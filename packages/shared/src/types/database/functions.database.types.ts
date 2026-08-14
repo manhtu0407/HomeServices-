@@ -29,6 +29,16 @@ export type DatabaseFunctions = {
           state: string
         }[]
       }
+      activate_admin_operator_atomic: {
+        Args: { p_actor_id: string }
+        Returns: {
+          activated_at: string
+          capabilities_out: string[]
+          error_code: string
+          ok: boolean
+          role_out: Database["public"]["Enums"]["user_role"]
+        }[]
+      }
       activate_job_broadcast_batch_atomic: {
         Args: {
           p_batch_id: string
@@ -40,6 +50,30 @@ export type DatabaseFunctions = {
         Returns: {
           id: string
           worker_id: string
+        }[]
+      }
+      admin_approve_finance_tax_policy: {
+        Args: {
+          p_accountant_approval_reference: string
+          p_actor_id: string
+          p_policy_id: string
+        }
+        Returns: {
+          approved_at: string
+          approved_by: string
+          basis: string
+          created_at: string
+          effective_from: string
+          effective_to: string
+          id: string
+          name: string
+          rate_bps: number
+          source_reference: string
+          status: string
+          subject: string
+          tax_type: string
+          updated_at: string
+          version: number
         }[]
       }
       admin_approve_learning_candidate: {
@@ -77,6 +111,19 @@ export type DatabaseFunctions = {
           status: string
         }[]
       }
+      admin_begin_operator_provisioning: {
+        Args: {
+          p_capabilities: string[]
+          p_email: string
+          p_full_name: string
+          p_owner_id: string
+        }
+        Returns: {
+          error_code: string
+          ok: boolean
+          provisioning_id: string
+        }[]
+      }
       admin_cancel_manager_nomination_atomic: {
         Args: { p_nomination_id: string; p_owner_id: string }
         Returns: {
@@ -94,6 +141,37 @@ export type DatabaseFunctions = {
           processing_by_out: string
           request_id: string
           status_out: string
+        }[]
+      }
+      admin_complete_operator_provisioning: {
+        Args: {
+          p_owner_id: string
+          p_provisioning_id: string
+          p_user_id: string
+        }
+        Returns: {
+          error_code: string
+          ok: boolean
+        }[]
+      }
+      admin_create_finance_tax_policy_draft: {
+        Args: { p_actor_id: string; p_policy: Json }
+        Returns: {
+          approved_at: string
+          approved_by: string
+          basis: string
+          created_at: string
+          effective_from: string
+          effective_to: string
+          id: string
+          name: string
+          rate_bps: number
+          source_reference: string
+          status: string
+          subject: string
+          tax_type: string
+          updated_at: string
+          version: number
         }[]
       }
       admin_decide_dispute_atomic: {
@@ -115,9 +193,77 @@ export type DatabaseFunctions = {
           ok: boolean
         }[]
       }
+      admin_fail_operator_provisioning: {
+        Args: {
+          p_failure_code: string
+          p_owner_id: string
+          p_provisioning_id: string
+        }
+        Returns: undefined
+      }
+      admin_finance_export_rows: {
+        Args: {
+          p_actor_id: string
+          p_from: string
+          p_limit?: number
+          p_payment_method?: string
+          p_service_type?: Database["public"]["Enums"]["service_type"]
+          p_status?: string
+          p_to: string
+        }
+        Returns: Json
+      }
+      admin_finance_overview: {
+        Args: {
+          p_actor_id: string
+          p_bucket?: string
+          p_from: string
+          p_to: string
+        }
+        Returns: Json
+      }
       admin_finance_summary: {
         Args: { p_actor_id: string; p_from: string; p_to: string }
         Returns: Json
+      }
+      admin_finance_tax_policies: {
+        Args: { p_actor_id: string }
+        Returns: Json
+      }
+      admin_finance_transactions_page: {
+        Args: {
+          p_actor_id: string
+          p_cursor_job_id?: string
+          p_cursor_paid_at?: string
+          p_from: string
+          p_limit?: number
+          p_payment_method?: string
+          p_service_type?: Database["public"]["Enums"]["service_type"]
+          p_status?: string
+          p_to: string
+        }
+        Returns: Json
+      }
+      admin_list_finance_tax_policies: {
+        Args: { p_actor_id: string }
+        Returns: {
+          active_policy_id: string
+          approved_at: string
+          approved_by: string
+          basis: string
+          created_at: string
+          effective_from: string
+          effective_to: string
+          id: string
+          name: string
+          rate_bps: number
+          source_reference: string
+          status: string
+          subject: string
+          tax_type: string
+          updated_at: string
+          version: number
+        }[]
       }
       admin_nominate_manager_atomic: {
         Args: { p_owner_id: string; p_target_id: string }
@@ -154,6 +300,26 @@ export type DatabaseFunctions = {
           processed_at_out: string
           request_id: string
           status_out: string
+        }[]
+      }
+      admin_retire_finance_tax_policy: {
+        Args: { p_actor_id: string; p_policy_id: string; p_reason: string }
+        Returns: {
+          approved_at: string
+          approved_by: string
+          basis: string
+          created_at: string
+          effective_from: string
+          effective_to: string
+          id: string
+          name: string
+          rate_bps: number
+          source_reference: string
+          status: string
+          subject: string
+          tax_type: string
+          updated_at: string
+          version: number
         }[]
       }
       admin_review_and_approve_learning_candidate_atomic: {
@@ -210,6 +376,37 @@ export type DatabaseFunctions = {
           status_out: string
         }[]
       }
+      admin_review_worker_profile_atomic: {
+        Args: {
+          p_admin_id: string
+          p_decision: string
+          p_queue_id: string
+          p_reason?: string
+        }
+        Returns: {
+          decided_at: string
+          decision: string
+          error_code: string
+          ok: boolean
+          queue_id: string
+          verification_status: Database["public"]["Enums"]["worker_verification_status"]
+          worker_id: string
+        }[]
+      }
+      admin_save_finance_tax_policy_draft: {
+        Args: {
+          p_actor_id: string
+          p_effective_from: string
+          p_effective_to: string
+          p_name: string
+          p_policy_id: string
+          p_policy_key: string
+          p_rules: Json
+          p_subject_type: string
+          p_version: number
+        }
+        Returns: Json
+      }
       admin_set_sub_admin_access_atomic: {
         Args: {
           p_action: string
@@ -242,6 +439,35 @@ export type DatabaseFunctions = {
           ok: boolean
           verification_status_out: Database["public"]["Enums"]["worker_verification_status"]
           worker_id: string
+        }[]
+      }
+      admin_transition_finance_tax_policy: {
+        Args: {
+          p_action: string
+          p_actor_id: string
+          p_approval_evidence_ref?: string
+          p_policy_id: string
+        }
+        Returns: Json
+      }
+      admin_update_finance_tax_policy_draft: {
+        Args: { p_actor_id: string; p_policy: Json; p_policy_id: string }
+        Returns: {
+          approved_at: string
+          approved_by: string
+          basis: string
+          created_at: string
+          effective_from: string
+          effective_to: string
+          id: string
+          name: string
+          rate_bps: number
+          source_reference: string
+          status: string
+          subject: string
+          tax_type: string
+          updated_at: string
+          version: number
         }[]
       }
       append_customer_kael_conversation_exchange: {
@@ -2036,6 +2262,16 @@ export type DatabaseFunctions = {
           error_code: string
           incident: Json
           ok: boolean
+        }[]
+      }
+      save_worker_registration_draft_atomic: {
+        Args: { p_actor_id: string; p_draft: Json; p_worker_id: string }
+        Returns: {
+          error_code: string
+          ok: boolean
+          updated_at: string
+          verification_status: Database["public"]["Enums"]["worker_verification_status"]
+          worker_id: string
         }[]
       }
       select_direct_worker_payment: {

@@ -1,11 +1,13 @@
 import { Redirect } from 'expo-router'
 import { ActivityIndicator, Platform, View } from 'react-native'
 import { useAuth } from '@/lib/auth-provider'
+import { useAdminActivation } from '@/lib/admin-activation-provider'
 
 export default function Index() {
   const { guestMode, session, role, loading } = useAuth()
+  const activation = useAdminActivation()
 
-  if (loading) {
+  if (loading || (session && activation.loading)) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
         <ActivityIndicator size="large" />
@@ -20,6 +22,7 @@ export default function Index() {
   if (!session) {
     return <Redirect href="/(auth)/login" />
   }
+  if (activation.status?.required) return <Redirect href="/(auth)/admin-activation" />
 
   // Admin actions stay visually and structurally separate from customer and worker flows.
   if (role === 'admin') {

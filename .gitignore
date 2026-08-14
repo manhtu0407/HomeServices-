@@ -9,7 +9,9 @@ node_modules
 !.yarn/versions
 
 # testing
-/coverage
+# Unanchored: every workspace package writes its own coverage/ next to its
+# package.json, so a root-anchored pattern would miss apps/* and packages/*.
+coverage/
 output/
 /tmp/
 

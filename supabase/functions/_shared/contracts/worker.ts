@@ -79,7 +79,7 @@ const workerDistrictSchema = z.string().min(1).max(50).refine(
   "districts[] must be a known HCMC district slug (e.g. binh_thanh, q1, thu_duc, hcmc_all)",
 );
 
-export const workerRegisterSchema = z.object({
+const workerRegistrationFieldsSchema = z.object({
   legal_name: z.string().trim().min(2).max(200),
   date_of_birth: z
     .string()
@@ -106,7 +106,18 @@ export const workerRegisterSchema = z.object({
   selfie_url: workerVerificationRefSchema("selfie"),
   bank_account: z.string().trim().min(6).max(50),
   bank_name: z.string().trim().min(2).max(100),
-}).superRefine((value, ctx) => {
+});
+
+function validateWorkerRegistrationRelations(
+  value: {
+    home_lat?: number;
+    home_lng?: number;
+    cccd_front_url?: string;
+    cccd_back_url?: string;
+    selfie_url?: string;
+  },
+  ctx: z.RefinementCtx,
+) {
   if ((value.home_lat === undefined) !== (value.home_lng === undefined)) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
@@ -115,6 +126,7 @@ export const workerRegisterSchema = z.object({
     });
   }
   const owners = [value.cccd_front_url, value.cccd_back_url, value.selfie_url]
+    .filter((ref): ref is string => Boolean(ref))
     .map((ref) => ref.match(/^supabase:\/\/worker-verification\/([^/]+)\//i)?.[1]?.toLowerCase())
     .filter((owner): owner is string => Boolean(owner));
   if (new Set(owners).size > 1) {
@@ -124,7 +136,16 @@ export const workerRegisterSchema = z.object({
       message: "Worker verification refs must belong to the same owner",
     });
   }
-});
+}
+
+export const workerRegisterSchema = workerRegistrationFieldsSchema
+  .strict()
+  .superRefine(validateWorkerRegistrationRelations);
+
+export const workerRegistrationDraftSchema = workerRegistrationFieldsSchema
+  .partial()
+  .strict()
+  .superRefine(validateWorkerRegistrationRelations);
 
 export const workerServiceAreaUpdateSchema = z.object({
   districts: z.array(workerDistrictSchema).min(1).max(20),
@@ -285,6 +306,7 @@ export type WorkerApplicationSubmitInput = z.infer<
   typeof workerApplicationSubmitSchema
 >;
 export type WorkerRegisterInput = z.infer<typeof workerRegisterSchema>;
+export type EdgeWorkerRegistrationDraftInput = z.infer<typeof workerRegistrationDraftSchema>;
 export type WorkerServiceAreaUpdateInput = z.infer<
   typeof workerServiceAreaUpdateSchema
 >;

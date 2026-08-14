@@ -126,7 +126,6 @@ describe('React Native backend wiring targets Supabase Edge mobile-api', () => {
     const provider = readFrontendWorkflowLayer()
     const workerService = readEdgeShared('domains/worker/service-settings.ts')
     const broadcastService = readEdgeShared('domains/matching/broadcast-workers.ts')
-    const migration = readRoot('supabase/migrations/20260518010500_availability_offline_expires_sent_broadcasts.sql')
     const availabilityActionStart = provider.indexOf('const workerUpdateAvailability = useCallback')
     const availabilityActionEnd = provider.indexOf('const workerUpdateServiceArea = useCallback', availabilityActionStart)
     const availabilityAction = provider.slice(availabilityActionStart, availabilityActionEnd)
@@ -139,7 +138,6 @@ describe('React Native backend wiring targets Supabase Edge mobile-api', () => {
 
     expect(provider).toContain("workerService.updateAvailability({ is_available: isAvailable })")
     expect(workerService).toContain('db(ctx).rpc("set_worker_availability_atomic"')
-    expect(migration).toContain('set is_available = p_is_available')
     expect(broadcastService).toContain('.eq("is_available", true)')
     expect(availabilityActionStart).toBeGreaterThanOrEqual(0)
     expect(availabilityActionEnd).toBeGreaterThan(availabilityActionStart)

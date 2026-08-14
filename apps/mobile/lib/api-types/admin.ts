@@ -3,8 +3,19 @@ import type { AdminCapability, JobStatus, ServiceType, UserRole, WorkerVerificat
 export type {
   AdminFinanceBalanceSnapshotInput,
   AdminFinanceBalanceSnapshotResponse,
+  AdminFinanceCsvExportResponse,
+  AdminFinanceOverviewResponse,
+  AdminFinancePeriodInput,
   AdminFinanceRange,
   AdminFinanceSummaryResponse,
+  AdminFinanceTaxPolicy,
+  AdminFinanceTaxPolicyApproveInput,
+  AdminFinanceTaxPolicyDraftInput,
+  AdminFinanceTaxPolicyListResponse,
+  AdminFinanceTaxPolicyRetireInput,
+  AdminFinanceTransaction,
+  AdminFinanceTransactionFilters,
+  AdminFinanceTransactionListResponse,
   AdminPaymentReconciliationDecisionInput,
   AdminPaymentReconciliationDecisionResponse,
   AdminPaymentReconciliationListResponse,
@@ -40,6 +51,7 @@ export type AdminViewOperationsResponse = {
 }
 
 export type AdminViewWorkerApplicationStatus = 'open' | 'acknowledged' | 'resolved' | 'cancelled'
+export type AdminViewWorkerReviewStage = 'pending_access' | 'missing_profile' | 'ready_verification' | 'verified'
 
 export type AdminViewWorkerApplicationSummary = {
   id: string
@@ -54,6 +66,9 @@ export type AdminViewWorkerApplicationSummary = {
   account_role: UserRole | null
   full_name: string | null
   phone_masked: string | null
+  stage: AdminViewWorkerReviewStage
+  checklist: { completed_count: number; total_count: number; missing: string[] }
+  profile_review_queue_id: string | null
   worker_profile: {
     verification_status: WorkerVerificationStatus
     is_approved: boolean
@@ -75,7 +90,37 @@ export type AdminViewWorkerApplicationListResponse = {
   applications: AdminViewWorkerApplicationSummary[]
   has_more: boolean
   next_offset: number | null
+  next_cursor: string | null
   total_count: number | null
+}
+
+export type AdminViewWorkerReviewDetail = {
+  application: AdminViewWorkerApplicationSummary
+  login_gates: { email: string | null; phone: string | null; full_name: string | null; created_at: string | null }
+  profile: {
+    legal_name: string | null
+    date_of_birth: string | null
+    gender: string | null
+    service_types: ServiceType[]
+    years_experience: number
+    districts: string[]
+    service_radius_km: number | null
+    problem_specializations: string[]
+    bank_account: string | null
+    bank_name: string | null
+    documents: { cccd_front_url: string | null; cccd_back_url: string | null; selfie_url: string | null; expires_at: string | null }
+  } | null
+  history: { stage: 'access' | 'profile'; decision: 'approve' | 'request_changes' | 'reject'; reason: string | null; decided_at: string; decided_by_name: string | null }[]
+}
+
+export type AdminViewWorkerProfileDecisionInput = { decision: 'approve' | 'request_changes'; reason?: string }
+export type AdminViewWorkerProfileDecisionResponse = {
+  ok: true
+  application_id: string
+  worker_id: string
+  decision: AdminViewWorkerProfileDecisionInput['decision']
+  verification_status: WorkerVerificationStatus
+  decided_at: string
 }
 
 export type AdminViewWorkerApplicationDecisionInput = {
@@ -123,7 +168,29 @@ export type AdminViewSubAdminListResponse = {
   actor: AdminViewActor
   members: AdminViewSubAdminSummary[]
   nominations: AdminViewManagerNominationSummary[]
+  pending_accounts: AdminViewOperatorProvisioningSummary[]
 }
+
+export type AdminViewOperatorProvisioningSummary = {
+  id: string
+  full_name: string
+  email_masked: string
+  status: 'pending_password_change' | 'active' | 'failed'
+  capabilities: AdminCapability[]
+  created_at: string
+  updated_at: string
+  last_activity_at: string | null
+}
+
+export type AdminViewOperatorProvisionInput = {
+  full_name: string
+  email: string
+  initial_password: string
+  capabilities: AdminCapability[]
+}
+
+export type AdminViewOperatorProvisionResponse = { ok: true; account: AdminViewOperatorProvisioningSummary }
+export type AdminViewOperatorResetPasswordResponse = { ok: true; provisioning_id: string; updated_at: string }
 
 export type AdminViewSubAdminAccountCandidate = {
   user_id: string

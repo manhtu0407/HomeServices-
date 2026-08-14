@@ -5,11 +5,11 @@
     "immutableThroughVersion": "20260805090000",
     "sha256": "7d4ac8a8227452e357caa11a21ece9099c80112712dba9a250114d0761a90275"
   },
-  "migrationCount": 259,
-  "migrationsSha256": "7095bebf549a483da070dab892f02a3423080c17ad3eec1db060d531df3dffb6",
+  "migrationCount": 262,
+  "migrationsSha256": "20ef961b29d19cc27ed1e67288a44544603e94b670e99d6e391d8ffd658c3cba",
   "databaseTypes": {
     "file": "packages/shared/src/types/database",
-    "sha256": "6affa54323e802577ba497c8c3f0259d774ea8770bf7d9fbdcaf1c0f01474be5"
+    "sha256": "25b9cc87c67d8d12c908d715e0ed2509fb5847a2fbcbb0ba2d06b539fb74f987"
   },
   "entries": [
     {
@@ -1749,6 +1749,13 @@
       "bytes": 3638
     },
     {
+      "version": "20260813100000",
+      "name": "admin_finance_overview_v1",
+      "file": "supabase/migrations/20260813100000_admin_finance_overview_v1.sql",
+      "sha256": "9c21b5df2d37b978d1c1d8ba5807080cbd02e60268caaf307d317f67f56b160a",
+      "bytes": 71700
+    },
+    {
       "version": "20260813104751",
       "name": "allow_edge_incident_projection",
       "file": "supabase/migrations/20260813104751_allow_edge_incident_projection.sql",
@@ -1761,6 +1768,20 @@
       "file": "supabase/migrations/20260813110757_allow_edge_incident_history_projection.sql",
       "sha256": "c3d9fd7e454ba9394ede898a0a6cd58f95c4ea1031f425607ce14835b35af32d",
       "bytes": 71
+    },
+    {
+      "version": "20260813113000",
+      "name": "worker_review_admin_provisioning",
+      "file": "supabase/migrations/20260813113000_worker_review_admin_provisioning.sql",
+      "sha256": "98fde0e92785065639879a60f073fcc3aa2587c2d74bd315a9605a0eda6c1e43",
+      "bytes": 24239
+    },
+    {
+      "version": "20260813114000",
+      "name": "fix_finance_rpc_conflict_ambiguities",
+      "file": "supabase/migrations/20260813114000_fix_finance_rpc_conflict_ambiguities.sql",
+      "sha256": "890080a186dcdd70a451339c52c85acc8a2c8df28d48fd0841c15ede73c76f8e",
+      "bytes": 1819
     },
     {
       "version": "20260813120000",

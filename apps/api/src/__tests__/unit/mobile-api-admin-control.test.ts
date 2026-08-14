@@ -50,6 +50,42 @@ describe('mobile-api admin control plane', () => {
     })
   })
 
+  it('routes additive finance reads and keeps tax approval owner-only', () => {
+    expect(matchRoute(new Request('https://edge.test/admin/finance/overview?range=month'))).toMatchObject({
+      kind: 'admin.finance.overview',
+      roles: ['admin', 'admin_operator'],
+    })
+    expect(matchRoute(new Request('https://edge.test/admin/finance/transactions?from=2026-08-01T00%3A00%3A00.000Z&to=2026-08-13T00%3A00%3A00.000Z'))).toMatchObject({
+      kind: 'admin.finance.transactions',
+    })
+    expect(matchRoute(new Request('https://edge.test/admin/finance/export.csv?from=2026-08-01T00%3A00%3A00.000Z&to=2026-08-13T00%3A00%3A00.000Z'))).toMatchObject({
+      kind: 'admin.finance.export',
+    })
+    expect(matchRoute(new Request('https://edge.test/admin/finance/tax-policies'))).toMatchObject({
+      kind: 'admin.finance.taxPolicies.list',
+    })
+    expect(matchRoute(new Request('https://edge.test/admin/finance/tax-policies/policy-1/approve', {
+      method: 'POST',
+    }))).toMatchObject({
+      kind: 'admin.finance.taxPolicies.approve',
+      policyId: 'policy-1',
+      roles: ['admin'],
+    })
+  })
+
+  it('rejects finance date ranges longer than 366 days before dispatch', async () => {
+    const handler = createMobileApiHandler({
+      authenticate: vi.fn(async () => operatorAuth),
+      services: {} as MobileApiServices,
+    })
+
+    const response = await handler(new Request(
+      'https://edge.test/admin/finance/transactions?from=2025-01-01T00%3A00%3A00.000Z&to=2026-08-13T00%3A00%3A00.000Z',
+    ))
+
+    expect(response.status).toBe(400)
+  })
+
   it('keeps Sub Admin account changes owner-only while still dispatching an operational read', async () => {
     const getAdminOperations = vi.fn(async () => ({
       actor: { access_level: 'operator', capabilities: ['operations.read'] },
@@ -152,35 +188,6 @@ describe('mobile-api admin control plane', () => {
     expect(operatorResponse.status).toBe(403)
     expect(nominateAdminManager).toHaveBeenCalledTimes(1)
     expect(nominateAdminManager).toHaveBeenCalledWith(expect.objectContaining({ role: 'admin' }), 'member-1')
-  })
-
-  it('keeps the persisted permission model server-owned and RLS-denied to direct clients', () => {
-    const roleMigration = read('supabase/migrations/20260808112000_admin_operator_role.sql')
-    const migration = read('supabase/migrations/20260808113000_admin_operations_sub_admin.sql')
-    const nominationMigration = read('supabase/migrations/20260809121000_admin_manager_nominations.sql')
-    const payoutCapabilityMigration = read('supabase/migrations/20260809122000_admin_operator_payout_capabilities.sql')
-
-    expect(roleMigration).toContain("alter type public.user_role add value if not exists 'admin_operator'")
-    expect(migration).toContain('create table if not exists public.admin_operator_accounts')
-    expect(migration).toContain('alter table public.admin_operator_accounts enable row level security')
-    expect(migration).toContain('revoke all on public.admin_operator_accounts from anon, authenticated')
-    expect(migration).toContain('grant all on public.admin_operator_accounts to service_role')
-    expect(migration).toContain('create table if not exists public.admin_worker_application_reviews')
-    expect(migration).toContain('create or replace function public.admin_set_sub_admin_access_atomic')
-    expect(migration).toContain('create or replace function public.admin_set_worker_access_atomic')
-    expect(migration).toContain('create or replace function public.admin_operations_snapshot')
-    expect(migration).toContain("raw_user_meta_data->>'role'")
-    expect(migration).toContain("when v_requested_role = 'worker' then 'worker'::public.user_role")
-    expect(migration).not.toContain("when v_requested_role = 'admin' then 'admin'::public.user_role")
-    expect(nominationMigration).toContain('create table if not exists public.admin_manager_nominations')
-    expect(nominationMigration).toContain('alter table public.admin_manager_nominations enable row level security')
-    expect(nominationMigration).toContain('revoke all on public.admin_manager_nominations from anon, authenticated')
-    expect(nominationMigration).toContain('grant all on public.admin_manager_nominations to service_role')
-    expect(nominationMigration).toContain('create or replace function public.admin_nominate_manager_atomic')
-    expect(nominationMigration).toContain('NOMINATION_REQUIRED')
-    expect(payoutCapabilityMigration).toContain('pg_catalog.cardinality(v_capabilities) > 8')
-    expect(payoutCapabilityMigration).toContain("'payouts.read'")
-    expect(payoutCapabilityMigration).toContain("'payouts.process'")
   })
 
   it('uses the worker payment ledger for a transaction reconciliation and exposes totals for numbered pagination', () => {

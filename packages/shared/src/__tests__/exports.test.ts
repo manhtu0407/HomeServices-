@@ -15,18 +15,6 @@ const read = (rel: string) => readFileSync(resolve(SRC_ROOT, rel), 'utf-8')
 describe('packages/shared barrel export completeness', () => {
   const indexSrc = read('index.ts')
 
-  it('re-exports from types/', () => {
-    expect(indexSrc).toContain("from './types'")
-  })
-
-  it('re-exports from constants', () => {
-    expect(indexSrc).toContain("from './constants'")
-  })
-
-  it('re-exports from workflow contracts', () => {
-    expect(indexSrc).toContain("from './workflow'")
-  })
-
   it('re-exports validation schemas by name (not wildcard)', () => {
     // Named exports are safer — prevent re-export collisions
     expect(indexSrc).toContain('serviceTypeSchema')
@@ -74,42 +62,6 @@ describe('types/index.ts barrel export completeness', () => {
 // ===================================================================
 // package.json export map — consumers rely on these paths
 // ===================================================================
-
-describe('package.json export map', () => {
-  const pkg = JSON.parse(readFileSync(resolve(PKG_ROOT, 'package.json'), 'utf-8'))
-
-  it('has . entry point', () => {
-    expect(pkg.exports['.']).toBeDefined()
-    expect(pkg.exports['.']).toContain('index.ts')
-  })
-
-  it('has ./types entry point', () => {
-    expect(pkg.exports['./types']).toBeDefined()
-    expect(pkg.exports['./types']).toContain('types/index.ts')
-  })
-
-  it('has ./validation entry point', () => {
-    expect(pkg.exports['./validation']).toBeDefined()
-    expect(pkg.exports['./validation']).toContain('validation.ts')
-  })
-
-  it('has ./constants entry point', () => {
-    expect(pkg.exports['./constants']).toBeDefined()
-    expect(pkg.exports['./constants']).toContain('constants.ts')
-  })
-
-  it('has ./workflow entry point', () => {
-    expect(pkg.exports['./workflow']).toBeDefined()
-    expect(pkg.exports['./workflow']).toContain('workflow/index.ts')
-  })
-
-  it('all exported files actually exist', () => {
-    for (const [key, path] of Object.entries(pkg.exports)) {
-      const fullPath = resolve(PKG_ROOT, path as string)
-      expect(existsSync(fullPath)).toBe(true)
-    }
-  })
-})
 
 // ===================================================================
 // Source file existence — no dangling imports

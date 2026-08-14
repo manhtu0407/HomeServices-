@@ -14,6 +14,7 @@ import {
   type LocalWorkflowState,
   type ReviewInput,
   type WorkerRegisterInput,
+  type WorkerRegistrationDraftInput,
   type WorkerServiceAreaUpdateInput,
   type WorkerServicePreferencesUpdateInput,
 } from '@nestscout/shared'
@@ -103,6 +104,7 @@ type FrontendWorkflowActions = {
   proposeScopeChangeFromKaelIncident: (quoteId: string) => Promise<boolean>
   requestWorkerCancellation: (input: WorkerCancellationRequestInput) => Promise<boolean>
   workerSubmitRegistration: (input: WorkerRegisterInput) => Promise<boolean>
+  workerSaveRegistrationDraft: (input: WorkerRegistrationDraftInput) => Promise<boolean>
   decideScopeChange: (scopeChangeId: string, input: CustomerScopeDecisionInput) => Promise<boolean>
   customerConfirmCompletion: () => Promise<boolean>
   createPaymentIntent: () => Promise<boolean>
@@ -268,6 +270,7 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
     workerRequestWithdrawal,
     workerSavePayoutMethod,
     workerSubmitRegistration,
+    workerSaveRegistrationDraft,
     workerUpdateAvailability,
     workerUpdateServiceArea,
     workerUpdateServicePreferences,
@@ -366,6 +369,7 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
     proposeScopeChangeFromKaelIncident,
     requestWorkerCancellation,
     workerSubmitRegistration,
+    workerSaveRegistrationDraft,
     decideScopeChange,
     customerConfirmCompletion,
     createManualBankPaymentOrder,
@@ -432,6 +436,7 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
     workerSavePayoutMethod,
     workerRequestWithdrawal,
     workerSubmitRegistration,
+    workerSaveRegistrationDraft,
     workerUpdateAvailability,
     workerUpdateServiceArea,
     workerUpdateServicePreferences,

@@ -1,6 +1,10 @@
 [
+  "admin_finance_tax_policies",
+  "admin_finance_tax_rules",
+  "admin_financial_adjustments",
   "admin_manager_nominations",
   "admin_operator_accounts",
+  "admin_operator_provisioning",
   "admin_worker_application_reviews",
   "ai_provider_routing",
   "api_logs",

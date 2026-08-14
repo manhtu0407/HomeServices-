@@ -7,11 +7,13 @@ import type {
   AdminViewActor,
   AdminViewManagerNominationSummary,
   AdminViewOperationsResponse,
+  AdminViewOperatorProvisioningSummary,
   AdminViewSubAdminAccountCandidate,
   AdminViewSubAdminSummary,
 } from '@/lib/api-types/admin'
 import { isLocalDealStatus, type AdminCapability } from '@nestscout/shared'
 import { localizedStatusLabel, type AppLanguage } from '@/lib/app-language'
+import { AdminTeamOwnerActions } from './admin-team-owner-actions'
 
 type OperationPanel = 'operations' | 'workers' | 'transactions'
 
@@ -180,7 +182,9 @@ const teamCopy: Record<AppLanguage, TeamCopy> = {
       update: 'Chỉnh quyền',
     },
     capabilities: {
+      'finance.read': 'Xem tổng quan tài chính',
       'finance.reconcile': 'Đối soát thanh toán',
+      'finance.tax.manage': 'Quản lý chính sách thuế',
       'operations.read': 'Xem vận hành',
       'payouts.process': 'Xử lý chi trả thợ',
       'payouts.read': 'Xem chi trả thợ',
@@ -223,7 +227,9 @@ const teamCopy: Record<AppLanguage, TeamCopy> = {
       update: 'Edit access',
     },
     capabilities: {
+      'finance.read': 'View finance overview',
       'finance.reconcile': 'Reconcile payments',
+      'finance.tax.manage': 'Manage tax policies',
       'operations.read': 'View operations',
       'payouts.process': 'Process worker payouts',
       'payouts.read': 'View worker payouts',
@@ -346,8 +352,10 @@ export function AdminSubAdminPanel({
   loading,
   members,
   nominations,
+  pendingAccounts,
   onRetry,
   onRefresh,
+  reduceMotion,
 }: {
   actor: AdminViewActor | null
   error: string | null
@@ -355,8 +363,10 @@ export function AdminSubAdminPanel({
   loading: boolean
   members: AdminViewSubAdminSummary[]
   nominations: AdminViewManagerNominationSummary[]
+  pendingAccounts: AdminViewOperatorProvisioningSummary[]
   onRetry: () => void
   onRefresh: () => Promise<void>
+  reduceMotion: boolean
 }) {
   const copy = teamCopy[language]
   const [state, dispatch] = useReducer(subAdminReducer, initialSubAdminState)
@@ -401,6 +411,7 @@ export function AdminSubAdminPanel({
   }
 
   const toggleCapability = (capability: AdminCapability) => {
+    if (capability === 'finance.read') return
     dispatch({ type: 'toggle_capability', capability })
   }
 
@@ -419,7 +430,9 @@ export function AdminSubAdminPanel({
       ? await adminControlService.nominateManager(editor.target.user_id)
       : await adminControlService.setSubAdminAccess(editor.target.user_id, {
         action: editor.mode,
-        capabilities: editor.mode === 'revoke' ? [] : capabilities,
+        capabilities: editor.mode === 'revoke'
+          ? []
+          : Array.from(new Set<AdminCapability>(['finance.read', ...capabilities])),
         ...(editor.mode === 'revoke' ? { reason: reason.trim() } : {}),
     })
     if (result.success) {
@@ -458,10 +471,10 @@ export function AdminSubAdminPanel({
           <Text style={styles.sectionTitle}>{copy.title}</Text>
           <Text style={styles.subtle}>{copy.subtitle}</Text>
         </View>
-        {isOwner && <KaelButton label={copy.actions.add} onPress={openSearch} variant="primary" />}
       </View>
       {!isOwner && <Text style={styles.ownerOnly}>{copy.ownerOnly}</Text>}
       {notice && <View accessibilityRole="alert" style={styles.notice}><Text style={styles.noticeText}>{notice}</Text></View>}
+      {isOwner ? <AdminTeamOwnerActions capabilityLabels={copy.capabilities} language={language} onNominateExisting={openSearch} onRefresh={onRefresh} pendingAccounts={pendingAccounts} reduceMotion={reduceMotion} /> : null}
       {isOwner && <>
         <Text style={styles.blockTitle}>{copy.nominationTitle}</Text>
         <Text style={styles.subtle}>{copy.nominationHint}</Text>
@@ -505,7 +518,7 @@ export function AdminSubAdminPanel({
         </View>
       ))}
 
-      <Modal animationType="fade" transparent visible={editor !== null} onRequestClose={closeEditor}>
+      <Modal animationType={reduceMotion ? 'none' : 'fade'} transparent visible={editor !== null} onRequestClose={closeEditor}>
         <View style={styles.modalBackdrop}>
           <View style={styles.modalCard}>
             {editor?.mode === 'search' ? <>
@@ -543,7 +556,8 @@ export function AdminSubAdminPanel({
                 {(Object.keys(copy.capabilities) as AdminCapability[]).map((capability) => <KaelChip
                   key={capability}
                   accessibilityLabel={copy.capabilities[capability]}
-                  accessibilityState={{ selected: capabilities.includes(capability) }}
+                  accessibilityState={{ disabled: capability === 'finance.read', selected: capabilities.includes(capability) }}
+                  disabled={capability === 'finance.read'}
                   label={copy.capabilities[capability]}
                   onPress={() => toggleCapability(capability)}
                   variant={capabilities.includes(capability) ? 'selected' : 'unselected'}
@@ -615,7 +629,10 @@ function subAdminReducer(state: SubAdminState, action: SubAdminAction): SubAdmin
       return {
         ...state,
         actionError: null,
-        capabilities: 'capabilities' in action.editor.target ? action.editor.target.capabilities : [],
+        capabilities: Array.from(new Set<AdminCapability>([
+          'finance.read',
+          ...('capabilities' in action.editor.target ? action.editor.target.capabilities : []),
+        ])),
         editor: action.editor,
         reason: '',
       }

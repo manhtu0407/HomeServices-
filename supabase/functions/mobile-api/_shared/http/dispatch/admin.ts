@@ -1,10 +1,15 @@
 import { priceSynthesisAbCaseSchema } from "../../platform/kael-contracts.ts";
+import {
+  adminOperatorProvisionSchema,
+  adminOperatorResetPasswordSchema,
+} from "../../../../_shared/domain.ts";
 import { apiFailure } from "../../platform/api-failure.ts";
 import { readJson } from "../read-json.ts";
 import {
   adminSubAdminAccessSchema,
   adminWorkerAccessSchema,
   adminWorkerApplicationDecisionSchema,
+  adminWorkerProfileDecisionSchema,
   parseAdminGovernanceListQuery,
   parseAdminSubAdminAccountSearchQuery,
   parseAdminTransactionListQuery,
@@ -17,11 +22,27 @@ import {
   parseAdminWithdrawalRequestListQuery,
 } from "../routes/admin-payout-contract.ts";
 import {
+  adminFinanceTaxPolicyApproveSchema,
+  adminFinanceTaxPolicyDraftSchema,
+  adminFinanceTaxPolicyRetireSchema,
   adminFinanceBalanceSnapshotSchema,
   adminPaymentReconciliationDecisionSchema,
+  parseAdminFinanceExportQuery,
+  parseAdminFinanceOverviewQuery,
   parseAdminFinanceSummaryQuery,
+  parseAdminFinanceTransactionListQuery,
   parseAdminPaymentReconciliationListQuery,
 } from "../routes/admin-finance-contract.ts";
+import {
+  approveAdminFinanceTaxPolicy,
+  createAdminFinanceTaxPolicyDraft,
+  exportAdminFinanceCsv,
+  getAdminFinanceOverview,
+  listAdminFinanceTaxPolicies,
+  listAdminFinanceTransactions,
+  retireAdminFinanceTaxPolicy,
+  updateAdminFinanceTaxPolicyDraft,
+} from "../../domains/admin/finance.ts";
 import {
   kaelBatchResultsProcessInput,
   kaelLearningCandidateListInput,
@@ -58,6 +79,13 @@ type AdminControlDispatchRoute = Extract<
       | `admin.managerNominations.${string}`;
   }
 >;
+type AdminWorkerTeamUpgradeRoute = Extract<AdminControlDispatchRoute, {
+  kind:
+    | "admin.workerApplications.reviewDetail"
+    | "admin.workerApplications.profileDecision"
+    | "admin.subAdmins.provision"
+    | "admin.subAdmins.resetPassword";
+}>;
 
 function isAdminControlRoute(route: AdminDispatchRoute): route is AdminControlDispatchRoute {
   return route.kind === "admin.operations.get"
@@ -121,6 +149,9 @@ async function dispatchAdminControlRoute(
   ctx: MobileApiContext,
   services: MobileApiServices,
 ): Promise<unknown> {
+  if (isAdminWorkerTeamUpgradeRoute(route)) {
+    return dispatchAdminWorkerTeamUpgrade(route, request, ctx, services);
+  }
   switch (route.kind) {
     case "admin.operations.get":
       return services.getAdminOperations(ctx);
@@ -171,6 +202,43 @@ async function dispatchAdminControlRoute(
       if (!input.success) apiFailure("VALIDATION", "Khoảng thời gian tài chính không hợp lệ", 400);
       return services.getAdminFinanceSummary(ctx, input.data);
     }
+    case "admin.finance.overview": {
+      const input = parseAdminFinanceOverviewQuery(new URL(request.url));
+      if (!input.success) apiFailure("VALIDATION", "Khoảng thời gian tổng quan tài chính không hợp lệ", 400);
+      return getAdminFinanceOverview(ctx, input.data);
+    }
+    case "admin.finance.transactions": {
+      const input = parseAdminFinanceTransactionListQuery(new URL(request.url));
+      if (!input.success) apiFailure("VALIDATION", "Bộ lọc giao dịch tài chính không hợp lệ", 400);
+      return listAdminFinanceTransactions(ctx, input.data);
+    }
+    case "admin.finance.export": {
+      const input = parseAdminFinanceExportQuery(new URL(request.url));
+      if (!input.success) apiFailure("VALIDATION", "Bộ lọc xuất báo cáo tài chính không hợp lệ", 400);
+      return exportAdminFinanceCsv(ctx, input.data);
+    }
+    case "admin.finance.taxPolicies.list":
+      return listAdminFinanceTaxPolicies(ctx);
+    case "admin.finance.taxPolicies.draft": {
+      const input = adminFinanceTaxPolicyDraftSchema.safeParse(await readJson(request));
+      if (!input.success) apiFailure("VALIDATION", "Bản nháp chính sách thuế không hợp lệ", 400);
+      return createAdminFinanceTaxPolicyDraft(ctx, input.data);
+    }
+    case "admin.finance.taxPolicies.updateDraft": {
+      const input = adminFinanceTaxPolicyDraftSchema.safeParse(await readJson(request));
+      if (!input.success) apiFailure("VALIDATION", "Bản nháp chính sách thuế không hợp lệ", 400);
+      return updateAdminFinanceTaxPolicyDraft(ctx, route.policyId, input.data);
+    }
+    case "admin.finance.taxPolicies.approve": {
+      const input = adminFinanceTaxPolicyApproveSchema.safeParse(await readJson(request));
+      if (!input.success) apiFailure("VALIDATION", "Bằng chứng phê duyệt thuế không hợp lệ", 400);
+      return approveAdminFinanceTaxPolicy(ctx, route.policyId, input.data);
+    }
+    case "admin.finance.taxPolicies.retire": {
+      const input = adminFinanceTaxPolicyRetireSchema.safeParse(await readJson(request));
+      if (!input.success) apiFailure("VALIDATION", "Lý do ngừng chính sách thuế không hợp lệ", 400);
+      return retireAdminFinanceTaxPolicy(ctx, route.policyId, input.data);
+    }
     case "admin.finance.balanceSnapshot": {
       const input = adminFinanceBalanceSnapshotSchema.safeParse(await readJson(request));
       if (!input.success) apiFailure("VALIDATION", "Số dư tài khoản không hợp lệ", 400);
@@ -220,6 +288,42 @@ async function dispatchAdminControlRoute(
     }
   }
   return assertNever(route);
+}
+
+function isAdminWorkerTeamUpgradeRoute(
+  route: AdminControlDispatchRoute,
+): route is AdminWorkerTeamUpgradeRoute {
+  return route.kind === "admin.workerApplications.reviewDetail" ||
+    route.kind === "admin.workerApplications.profileDecision" ||
+    route.kind === "admin.subAdmins.provision" ||
+    route.kind === "admin.subAdmins.resetPassword";
+}
+
+async function dispatchAdminWorkerTeamUpgrade(
+  route: AdminWorkerTeamUpgradeRoute,
+  request: Request,
+  ctx: MobileApiContext,
+  services: MobileApiServices,
+) {
+  switch (route.kind) {
+    case "admin.workerApplications.reviewDetail":
+      return services.getAdminWorkerReviewDetail(ctx, route.applicationId);
+    case "admin.workerApplications.profileDecision": {
+      const input = adminWorkerProfileDecisionSchema.safeParse(await readJson(request));
+      if (!input.success) apiFailure("VALIDATION", "Quyết định xác minh hồ sơ không hợp lệ", 400);
+      return services.decideAdminWorkerProfile(ctx, route.applicationId, input.data);
+    }
+    case "admin.subAdmins.provision": {
+      const input = adminOperatorProvisionSchema.safeParse(await readJson(request));
+      if (!input.success) apiFailure("VALIDATION", "Thông tin tài khoản quản trị không hợp lệ", 400);
+      return services.provisionAdminOperator(ctx, input.data);
+    }
+    case "admin.subAdmins.resetPassword": {
+      const input = adminOperatorResetPasswordSchema.safeParse(await readJson(request));
+      if (!input.success) apiFailure("VALIDATION", "Mật khẩu ban đầu không hợp lệ", 400);
+      return services.resetPendingAdminOperatorPassword(ctx, route.provisioningId, input.data);
+    }
+  }
 }
 
 async function dispatchAdminGovernance(

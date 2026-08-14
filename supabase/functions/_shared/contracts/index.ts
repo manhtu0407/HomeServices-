@@ -39,6 +39,7 @@ export * from "./kael-chat.ts";
 export * from "./worker.ts";
 export * from "./customer.ts";
 export * from "./payment.ts";
+export * from "./admin-operator.ts";
 export {
   customerCancellationRequestSchema,
   disputeAdminDecisionSchema,

@@ -301,22 +301,17 @@ describe('CustomerHomeSurface v2.1', () => {
     expect(existsSync(resolve(__dirname, '../../../assets/client-image-icons/client-service-start.png'))).toBe(true)
   })
 
-  it('uses a transparent nav-only icon for Activity without replacing Activity and History visuals', () => {
-    const assetsSource = readFileSync(resolve(__dirname, '../ui/assets.ts'), 'utf8')
-    const homeSurfaceSource = readFileSync(resolve(__dirname, '../v21/surfaces.tsx'), 'utf8')
-
-    expect(assetsSource).toContain("activity: require('@/assets/client-image-icons/client-activity-route.png')")
-    expect(assetsSource).toContain("activityNav: require('@/assets/client-image-icons/client-activity-nav.png')")
-    expect(homeSurfaceSource).toContain("{ image: customerV21Assets.activityNav, key: 'activity', route: '/(customer)/history' },")
+  // A missing PNG breaks require() at module load, so asset existence is checked
+  // here; which asset a tile shows is checked by the render cases below. The
+  // shared-icon fallbacks each expanded service used to reuse must not return,
+  // and only absence can say that.
+  it('ships the transparent nav-only Activity icon', () => {
     expect(existsSync(resolve(__dirname, '../../../assets/client-image-icons/client-activity-nav.png'))).toBe(true)
   })
 
   it('uses distinct generated icon assets for each expanded service path', () => {
     const assetsSource = readFileSync(resolve(__dirname, '../ui/assets.ts'), 'utf8')
 
-    expect(assetsSource).toContain("hvac_basic_maintenance: require('./assets/service-icons/client-service-hvac.png')")
-    expect(assetsSource).toContain("upholstery_care: require('./assets/service-icons/client-service-upholstery-care.png')")
-    expect(assetsSource).toContain("handyman_minor_installation: require('./assets/service-icons/client-service-handyman-installation.png')")
     expect(assetsSource).not.toContain('hvac_basic_maintenance: customerV21Assets.tools')
     expect(assetsSource).not.toContain('upholstery_care: customerV21ServiceAssets.cleaning')
     expect(assetsSource).not.toContain('handyman_minor_installation: customerV21Assets.tools')

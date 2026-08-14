@@ -1,17 +1,11 @@
-import { readFileSync, readdirSync } from 'node:fs'
-import { join, resolve } from 'node:path'
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import {
   buildVoiceTranscriptRow,
   scrubTranscriptForStorage,
 } from '../../../../../supabase/functions/mobile-api/_shared/kael/tools/voice-transcript'
 
-const migrationsDir = resolve(__dirname, '../../../../../supabase/migrations')
-const migration = readdirSync(migrationsDir)
-  .filter((name) => name.includes('kael_voice_transcript'))
-  .sort()
-  .map((name) => readFileSync(join(migrationsDir, name), 'utf8'))
-  .join('\n')
 const kaelChatService = ['create.ts', 'turn.ts', 'evidence.ts'].map((path) => readFileSync(
   resolve(__dirname, '../../../../../supabase/functions/mobile-api/_shared/domains/kael-chat', path),
   'utf8',
@@ -22,27 +16,6 @@ const kaelChatPersistence = readFileSync(
 )
 
 describe('KC7 voice transcript store (Plan.md §39)', () => {
-  it('creates a per-user RLS transcript table with service-role-only writes', () => {
-    expect(migration).toContain('create table if not exists public.kael_voice_transcript')
-    expect(migration).toContain('alter table public.kael_voice_transcript enable row level security')
-    expect(migration).toContain('revoke all on public.kael_voice_transcript from authenticated')
-    expect(migration).toContain('grant select on public.kael_voice_transcript to authenticated')
-    expect(migration).toContain('grant all on public.kael_voice_transcript to service_role')
-    expect(migration).toContain('using ((select auth.uid()) = user_id)')
-    expect(migration).toContain('using (private.is_admin())')
-    // stores scrubbed text only; no audio column (audio never uploaded, §36 D1)
-    expect(migration).toContain('scrubbed_text text not null')
-    expect(migration).not.toMatch(/audio\w*\s+(?:bytea|text|jsonb|uuid)\b/i)
-    expect(migration).toContain("source in ('on_device_stt', 'typed')")
-  })
-
-  it('adds a candidate-only loop-learning table that never auto-mutates the charter', () => {
-    expect(migration).toContain('create table if not exists public.kael_region_lexicon_candidate')
-    expect(migration).toContain("status text not null default 'candidate'")
-    expect(migration).toContain('grant all on public.kael_region_lexicon_candidate to service_role')
-    expect(migration).toContain('revoke all on public.kael_region_lexicon_candidate from authenticated')
-  })
-
   it('scrubs phone and address out of a transcript before storage', () => {
     const result = scrubTranscriptForStorage('Nhà em ở tầng 12 Vinhomes, gọi 0901234567 giúp nha')
     expect(result.ok).toBe(true)

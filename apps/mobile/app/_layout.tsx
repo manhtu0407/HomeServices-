@@ -2,6 +2,7 @@ import { Slot } from 'expo-router'
 import { useEffect } from 'react'
 import { Platform } from 'react-native'
 import { AuthProvider } from '@/lib/auth-provider'
+import { AdminActivationProvider } from '@/lib/admin-activation-provider'
 import { FrontendWorkflowProvider } from '@/lib/frontend-workflow-provider'
 
 const NESTSCOUT_SYSTEM_TYPOGRAPHY_WEB_STYLE_ID = 'nestscout-system-typography-web-style'
@@ -33,9 +34,11 @@ export default function RootLayout() {
 
   return (
     <AuthProvider>
-      <FrontendWorkflowProvider>
-        <Slot />
-      </FrontendWorkflowProvider>
+      <AdminActivationProvider>
+        <FrontendWorkflowProvider>
+          <Slot />
+        </FrontendWorkflowProvider>
+      </AdminActivationProvider>
     </AuthProvider>
   )
 }

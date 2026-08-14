@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useReducer } from 'react'
+import { useCallback, useEffect, useEffectEvent, useReducer } from 'react'
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router'
 import {
   ActivityIndicator,
@@ -22,11 +22,13 @@ import type {
   AdminViewActor,
   AdminViewManagerNominationSummary,
   AdminViewOperationsResponse,
+  AdminViewOperatorProvisioningSummary,
   AdminViewSubAdminSummary,
   AdminViewTransactionDetailResponse,
   AdminViewTransactionSummary,
   AdminViewWorkerApplicationDecisionInput,
   AdminViewWorkerApplicationSummary,
+  AdminViewWorkerReviewStage,
 } from '@/lib/api-types/admin'
 import { adminSectionsCopy, type AdminSectionsCopy } from './admin-sections-copy'
 import { AdminOperationsOverview, AdminSubAdminPanel } from './admin-operations-and-team'
@@ -37,12 +39,14 @@ import { AdminGovernancePanel } from './admin-governance'
 import { AdminFinancePanel } from './admin-finance'
 import { MetaItem, TransactionCard, WorkerApplicationCard } from './admin-section-cards'
 import { styles } from './admin-sections-styles'
+import { AdminWorkerReviewModal } from './admin-worker-review-modal'
+import { workerReviewCopy } from './admin-worker-review-copy'
 
 type AdminSectionTab = 'operations' | 'team' | 'governance' | 'finance'
 type AdminOperationPanel = 'operations' | 'workers' | 'transactions'
 type AdminTransactionView = 'services' | 'payouts'
-type WorkerFilter = 'open' | 'all'
-type AdminSectionRouteParams = { ns_admin_section?: string | string[] }
+type WorkerFilter = AdminViewWorkerReviewStage | 'all'
+type AdminSectionRouteParams = { ns_admin_section?: string | string[]; ns_finance_view?: string | string[] }
 type DecisionModal = {
   decision: Exclude<AdminViewWorkerApplicationDecisionInput['decision'], 'approve'>
   worker: AdminViewWorkerApplicationSummary
@@ -105,6 +109,7 @@ type AdminSectionsState = {
   operations: AdminViewOperationsResponse | null
   subAdmins: AdminViewSubAdminSummary[]
   managerNominations: AdminViewManagerNominationSummary[]
+  pendingAdminAccounts: AdminViewOperatorProvisioningSummary[]
   actor: AdminViewActor | null
   selectedWorker: AdminViewWorkerApplicationSummary | null
   selectedTransaction: AdminViewTransactionDetailResponse | null
@@ -161,13 +166,14 @@ function initialAdminSectionsState(adminSection: string | undefined): AdminSecti
     workerPage: 1,
     workersHasMore: false,
     workersTotalCount: null,
-    workerFilter: 'open',
+    workerFilter: 'pending_access',
     searchQuery: '',
     workers: [],
     transactions: [],
     operations: null,
     subAdmins: [],
     managerNominations: [],
+    pendingAdminAccounts: [],
     actor: null,
     selectedWorker: null,
     selectedTransaction: null,
@@ -187,11 +193,21 @@ function initialAdminSectionsState(adminSection: string | undefined): AdminSecti
   }
 }
 
+function withFinanceReadBaseline(actor: AdminViewActor): AdminViewActor {
+  if (actor.capabilities.includes('finance.read')) return actor
+  return { ...actor, capabilities: ['finance.read', ...actor.capabilities] }
+}
+
 function adminSectionsReducer(state: AdminSectionsState, action: AdminSectionsAction): AdminSectionsState {
   if (action.type === 'patch') return { ...state, ...action.patch }
   if (action.type === 'update_workers') return { ...state, workers: action.update(state.workers) }
   if (action.type === 'load_complete') {
     const { operationsResult, teamResult, transactionResult, workerResult } = action
+    const loadedActor = operationsResult.success
+      ? operationsResult.data.actor
+      : teamResult.success
+        ? state.actor ?? teamResult.data.actor
+        : state.actor
     const activePanelFailed = action.activePanel === 'workers'
       ? !workerResult.success
       : action.activePanel === 'transactions'
@@ -199,10 +215,11 @@ function adminSectionsReducer(state: AdminSectionsState, action: AdminSectionsAc
         : false
     return {
       ...state,
-      actor: operationsResult.success ? operationsResult.data.actor : teamResult.success ? state.actor ?? teamResult.data.actor : state.actor,
+      actor: loadedActor ? withFinanceReadBaseline(loadedActor) : null,
       error: activePanelFailed ? action.errorCopy : null,
       loading: false,
       managerNominations: teamResult.success ? teamResult.data.nominations : [],
+      pendingAdminAccounts: teamResult.success ? teamResult.data.pending_accounts : [],
       operations: operationsResult.success ? operationsResult.data : null,
       operationsError: operationsResult.success ? null : operationsResult.error,
       subAdmins: teamResult.success ? teamResult.data.members : [],
@@ -233,33 +250,49 @@ export function AdminSections() {
   const language = useAppLanguage()
   const { reduceMotion, reduceTransparency } = useGlassAccessibility()
   const copy = adminSectionsCopy[language]
-  const { signOut } = useAuth()
+  const { role, session, signOut } = useAuth()
   const params = useLocalSearchParams<AdminSectionRouteParams>()
   const adminSection = firstAdminSectionParam(params.ns_admin_section)
+  const financeView = firstAdminSectionParam(params.ns_finance_view) ?? 'overview'
+  const localVisualAuditSession = session?.user.app_metadata?.provider === 'local-visual-audit'
+  const hasAuthenticatedAdminSession = Boolean(
+    session
+      && !localVisualAuditSession
+      && (role === 'admin' || role === 'admin_operator'),
+  )
+  const loginRoute = localVisualAuditSession
+    ? '/(auth)/login?stage=login&ns_audit_role=none'
+    : '/(auth)/login?stage=login'
   const [state, dispatch] = useReducer(adminSectionsReducer, adminSection, initialAdminSectionsState)
   const { activePanel, searchQuery, signingOut, transactionPage, workerFilter, workerPage } = state
   const patch = useCallback((next: Partial<AdminSectionsState>) => {
     dispatch({ type: 'patch', patch: next })
   }, [])
+  const openFinance = useCallback((view = 'overview') => {
+    patch({ activeTab: 'finance' })
+    router.replace(`/sections?ns_admin_section=finance&ns_finance_view=${view}` as never)
+  }, [patch, router])
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      dispatch({ type: 'sync_route', adminSection })
-    }, 0)
-    return () => clearTimeout(timer)
+    dispatch({ type: 'sync_route', adminSection })
   }, [adminSection])
 
-  const loadData = useCallback(async (routeToLoginWhenSessionMissing = false) => {
+  useEffect(() => {
+    if (!hasAuthenticatedAdminSession) router.replace(loginRoute as never)
+  }, [hasAuthenticatedAdminSession, loginRoute, router])
+
+  const loadData = useCallback(async () => {
     patch({ loading: true, error: null, operationsError: null, teamError: null })
     const operationsResult = await adminControlService.getOperations()
-    if (routeToLoginWhenSessionMissing && !operationsResult.success && isMissingAdminSession(operationsResult)) {
-      patch({ loading: false, operations: null, operationsError: operationsResult.error })
-      router.replace('/(auth)/login?stage=login' as never)
+    if (!operationsResult.success && isMissingAdminSession(operationsResult)) {
+      patch({ actor: null, loading: false, operations: null, operationsError: operationsResult.error })
+      router.replace(loginRoute as never)
       return
     }
     const [workerResult, transactionResult, teamResult] = await Promise.all([
       adminControlService.listWorkerApplications({
-        status: workerFilter,
+        status: 'all',
+        stage: workerFilter,
         query: searchQuery,
         limit: WORKERS_PER_PAGE,
         offset: (workerPage - 1) * WORKERS_PER_PAGE,
@@ -280,19 +313,24 @@ export function AdminSections() {
       type: 'load_complete',
       workerResult,
     })
-  }, [activePanel, copy.errors.load, patch, router, searchQuery, transactionPage, workerFilter, workerPage])
+  }, [activePanel, copy.errors.load, loginRoute, patch, router, searchQuery, transactionPage, workerFilter, workerPage])
+  const startAdminDataLoad = useEffectEvent(() => {
+    void loadData()
+  })
 
   useEffect(() => {
+    if (!hasAuthenticatedAdminSession) return () => undefined
     const timer = setTimeout(() => {
-      void loadData()
+      startAdminDataLoad()
     }, 0)
     return () => clearTimeout(timer)
-  }, [loadData])
+  }, [activePanel, hasAuthenticatedAdminSession, searchQuery, transactionPage, workerFilter, workerPage])
 
   useFocusEffect(useCallback(() => {
+    if (!hasAuthenticatedAdminSession) return () => undefined
     const timer = setInterval(() => { void loadData() }, ADMIN_AUTO_REFRESH_MS)
     return () => clearInterval(timer)
-  }, [loadData]))
+  }, [hasAuthenticatedAdminSession, loadData]))
 
   const setWorkerStatus = useCallback((workerId: string, status: AdminViewWorkerApplicationSummary['status'], role?: AdminViewWorkerApplicationSummary['account_role']) => {
     dispatch({ type: 'update_workers', update: (current) => current.map((worker) => worker.id === workerId
@@ -355,9 +393,9 @@ export function AdminSections() {
       await signOut()
     } finally {
       patch({ signOutConfirmationOpen: false, signingOut: false })
-      router.replace('/(auth)/login?stage=login' as never)
+      router.replace(loginRoute as never)
     }
-  }, [patch, router, signOut, signingOut])
+  }, [loginRoute, patch, router, signOut, signingOut])
 
   const commitWorkerAccess = useCallback(async (worker: AdminViewWorkerApplicationSummary, action: 'suspend' | 'reinstate', reason: string) => {
     if (reason.trim().length < 3) {
@@ -421,9 +459,11 @@ export function AdminSections() {
   const jobStatusLabel = useCallback((value: AdminViewTransactionSummary['status']) => localizedStatusLabel(value, language), [language])
 
   return <AdminSectionsLayout
-    actions={{ commitDecision, commitWorkerAccess, completeSignOut, loadData, openTransaction, patch }}
+    actions={{ commitDecision, commitWorkerAccess, completeSignOut, loadData, openFinance, openTransaction, patch }}
     adminSection={adminSection}
     copy={copy}
+    canAccessFinance={hasAuthenticatedAdminSession && Boolean(state.actor?.capabilities.includes('finance.read'))}
+    financeView={financeView}
     formatters={{ disputeStatusLabel, formatCurrency, formatDate, jobStatusLabel, paymentProviderLabel, serviceLabel, statusLabel }}
     language={language}
     reduceMotion={reduceMotion}
@@ -437,12 +477,15 @@ type AdminSectionsLayoutProps = {
     commitDecision: (worker: AdminViewWorkerApplicationSummary, decision: AdminViewWorkerApplicationDecisionInput['decision'], reason?: string) => Promise<void>
     commitWorkerAccess: (worker: AdminViewWorkerApplicationSummary, action: 'suspend' | 'reinstate', reason: string) => Promise<void>
     completeSignOut: () => Promise<void>
-    loadData: (routeToLoginWhenSessionMissing?: boolean) => Promise<void>
+    loadData: () => Promise<void>
+    openFinance: (view?: string) => void
     openTransaction: (transaction: AdminViewTransactionSummary) => Promise<void>
     patch: (next: Partial<AdminSectionsState>) => void
   }
   adminSection: string | undefined
+  canAccessFinance: boolean
   copy: AdminSectionsCopy
+  financeView: string
   formatters: {
     disputeStatusLabel: (value: string | null) => string
     formatCurrency: (value: number | null) => string
@@ -458,10 +501,10 @@ type AdminSectionsLayoutProps = {
   state: AdminSectionsState
 }
 
-function AdminSectionsLayout({ actions, adminSection, copy, formatters, language, reduceMotion, reduceTransparency, state }: AdminSectionsLayoutProps) {
+function AdminSectionsLayout({ actions, adminSection, canAccessFinance, copy, financeView, formatters, language, reduceMotion, reduceTransparency, state }: AdminSectionsLayoutProps) {
   const {
     activePanel,
-    activeTab,
+    activeTab: requestedActiveTab,
     actionPending,
     actor,
     decisionModal,
@@ -473,6 +516,7 @@ function AdminSectionsLayout({ actions, adminSection, copy, formatters, language
     notice,
     operations,
     operationsError,
+    pendingAdminAccounts,
     searchQuery,
     selectedTransaction,
     selectedWorker,
@@ -493,8 +537,9 @@ function AdminSectionsLayout({ actions, adminSection, copy, formatters, language
     workersHasMore,
     workersTotalCount,
   } = state
-  const { commitDecision, commitWorkerAccess, completeSignOut, loadData, openTransaction, patch } = actions
+  const { commitDecision, commitWorkerAccess, completeSignOut, loadData, openFinance, openTransaction, patch } = actions
   const { disputeStatusLabel, formatCurrency, formatDate, jobStatusLabel, paymentProviderLabel, serviceLabel, statusLabel } = formatters
+  const activeTab = requestedActiveTab === 'finance' && !canAccessFinance ? 'operations' : requestedActiveTab
 
   return <SafeAreaView style={styles.safeArea} testID="admin-sections">
     <FormulaMintCanvasAura reduceTransparency={reduceTransparency} scope="AdminSections" testID="admin-sections-mint-aura" />
@@ -510,13 +555,13 @@ function AdminSectionsLayout({ actions, adminSection, copy, formatters, language
         <AdminTabNavigation
           items={[
             { key: 'operations', label: copy.navigation.operations, onPress: () => patch({ activePanel: 'operations', activeTab: 'operations' }), selected: activeTab === 'operations', testID: 'admin-sections-operations-tab' },
-            ...(actor?.capabilities.includes('finance.reconcile') ? [{ key: 'finance', label: language === 'vi' ? 'Tài chính' : 'Finance', onPress: () => patch({ activeTab: 'finance' }), selected: activeTab === 'finance', testID: 'admin-sections-finance-tab' }] : []),
+            ...(canAccessFinance ? [{ key: 'finance', label: language === 'vi' ? 'Tài chính' : 'Finance', onPress: () => openFinance(), selected: activeTab === 'finance', testID: 'admin-sections-finance-tab' }] : []),
             { key: 'team', label: copy.navigation.team, onPress: () => patch({ activeTab: 'team' }), selected: activeTab === 'team', testID: 'admin-sections-team-tab' },
             ...(actor?.access_level === 'owner' ? [{ key: 'governance', label: language === 'vi' ? 'Hệ thống' : 'System', onPress: () => patch({ activeTab: 'governance' }), selected: activeTab === 'governance', testID: 'admin-sections-governance-tab' }] : []),
           ]}
           testID="admin-sections-primary-navigation"
         />
-        {activeTab === 'finance' ? <AdminFinancePanel actor={actor} reduceMotion={reduceMotion} reduceTransparency={reduceTransparency} /> : activeTab === 'governance' ? <AdminGovernancePanel actor={actor} language={language} /> : activeTab === 'team' ? <AdminSubAdminPanel actor={actor} error={teamError} language={language} loading={loading} members={subAdmins} nominations={managerNominations} onRefresh={loadData} onRetry={() => { void loadData(true) }} /> : <>
+        {activeTab === 'finance' ? <AdminFinancePanel actor={actor} initialView={financeView} onViewChange={openFinance} reduceMotion={reduceMotion} reduceTransparency={reduceTransparency} /> : activeTab === 'governance' ? <AdminGovernancePanel actor={actor} language={language} /> : activeTab === 'team' ? <AdminSubAdminPanel actor={actor} error={teamError} language={language} loading={loading} members={subAdmins} nominations={managerNominations} pendingAccounts={pendingAdminAccounts} onRefresh={loadData} onRetry={() => { void loadData() }} reduceMotion={reduceMotion} /> : <>
           <AdminTabNavigation
             items={[
               { key: 'overview', label: copy.navigation.overview, onPress: () => patch({ activePanel: 'operations' }), selected: activePanel === 'operations', testID: 'admin-sections-overview-tab' },
@@ -525,7 +570,7 @@ function AdminSectionsLayout({ actions, adminSection, copy, formatters, language
             ]}
             testID="admin-sections-operation-navigation"
           />
-          {activePanel === 'operations' ? <AdminOperationsOverview error={operationsError} language={language} loading={loading} onOpenPanel={(panel) => patch(panel === 'workers' ? { activePanel: panel, workerPage: 1 } : panel === 'transactions' ? { activePanel: panel, transactionPage: 1, transactionView: 'services' } : { activePanel: panel })} onRetry={() => { void loadData(true) }} snapshot={operations} /> : <>
+          {activePanel === 'operations' ? <AdminOperationsOverview error={operationsError} language={language} loading={loading} onOpenPanel={(panel) => patch(panel === 'workers' ? { activePanel: panel, workerPage: 1 } : panel === 'transactions' ? { activePanel: panel, transactionPage: 1, transactionView: 'services' } : { activePanel: panel })} onRetry={() => { void loadData() }} snapshot={operations} /> : <>
             {activePanel === 'transactions' ? <AdminTabNavigation
               items={[
                 { key: 'services', label: language === 'vi' ? 'Giao dịch dịch vụ' : 'Service transactions', onPress: () => patch({ transactionPage: 1, transactionView: 'services' }), selected: transactionView === 'services', testID: 'admin-service-transactions-tab' },
@@ -539,13 +584,12 @@ function AdminSectionsLayout({ actions, adminSection, copy, formatters, language
                 <KaelButton accessibilityLabel={copy.actions.refresh} label={copy.actions.refresh} onPress={() => { void loadData() }} style={styles.refreshButton} variant="secondary" />
               </View>
               {activePanel === 'workers' ? <View style={styles.filterRow}>
-                <KaelChip accessibilityLabel={copy.filters.open} accessibilityState={{ selected: workerFilter === 'open' }} label={copy.filters.open} onPress={() => patch({ workerFilter: 'open', workerPage: 1 })} variant={workerFilter === 'open' ? 'selected' : 'unselected'} />
-                <KaelChip accessibilityLabel={copy.filters.all} accessibilityState={{ selected: workerFilter === 'all' }} label={copy.filters.all} onPress={() => patch({ workerFilter: 'all', workerPage: 1 })} variant={workerFilter === 'all' ? 'selected' : 'unselected'} />
+                {(['pending_access', 'missing_profile', 'ready_verification', 'verified', 'all'] as const).map((filter) => <KaelChip key={filter} accessibilityLabel={workerReviewCopy[language].filter[filter]} accessibilityState={{ selected: workerFilter === filter }} label={workerReviewCopy[language].filter[filter]} onPress={() => patch({ workerFilter: filter, workerPage: 1 })} variant={workerFilter === filter ? 'selected' : 'unselected'} />)}
               </View> : null}
               {notice ? <View accessibilityRole="alert" style={styles.notice}><Text style={styles.noticeText}>{notice}</Text></View> : null}
-              {error ? <View accessibilityRole="alert" style={styles.error}><Text style={styles.errorText}>{error}</Text><Pressable accessibilityRole="button" onPress={() => { patch({ error: null }); void loadData(true) }}><Text style={styles.errorAction}>{copy.actions.retry}</Text></Pressable></View> : null}
+              {error ? <View accessibilityRole="alert" style={styles.error}><Text style={styles.errorText}>{error}</Text><Pressable accessibilityRole="button" onPress={() => { patch({ error: null }); void loadData() }}><Text style={styles.errorAction}>{copy.actions.retry}</Text></Pressable></View> : null}
               {loading ? <View style={styles.loading}><ActivityIndicator color={color.brand.primary} /><Text style={styles.loadingText}>{copy.loading}</Text></View> : activePanel === 'workers' ? (workers.length === 0 ? <EmptyState body={copy.noData.workers} /> : <>
-                {workers.map((worker) => <WorkerApplicationCard key={worker.id} copy={copy} worker={worker} serviceLabel={serviceLabel} formatDate={formatDate} actionPending={actionPending} canReview={Boolean(actor?.capabilities.includes('workers.review'))} onOpen={() => patch({ selectedWorker: worker })} onApprove={() => void commitDecision(worker, 'approve')} onRequestChanges={() => patch({ decisionModal: { decision: 'request_changes', worker }, decisionReason: '' })} onReject={() => patch({ decisionModal: { decision: 'reject', worker }, decisionReason: '' })} />)}
+                {workers.map((worker) => <WorkerApplicationCard key={worker.id} copy={copy} language={language} worker={worker} serviceLabel={serviceLabel} formatDate={formatDate} actionPending={actionPending} canReview={Boolean(actor?.capabilities.includes('workers.review'))} onOpen={() => patch({ selectedWorker: worker })} onApprove={() => void commitDecision(worker, 'approve')} onRequestChanges={() => patch({ decisionModal: { decision: 'request_changes', worker }, decisionReason: '' })} onReject={() => patch({ decisionModal: { decision: 'reject', worker }, decisionReason: '' })} />)}
                 <AdminPagination hasMore={workersHasMore} labels={copy.pagination} loading={loading} onPageChange={(workerPage) => patch({ workerPage })} page={workerPage} pageTestIDPrefix="admin-worker-page" pageSize={WORKERS_PER_PAGE} testID="admin-worker-pagination" totalCount={workersTotalCount} />
               </>) : (transactions.length === 0 ? <EmptyState body={copy.noData.transactions} /> : <>
                 {transactions.map((transaction) => <TransactionCard key={transaction.job_id} transaction={transaction} copy={copy} serviceLabel={serviceLabel} statusLabel={statusLabel} paymentProviderLabel={paymentProviderLabel} disputeStatusLabel={disputeStatusLabel} jobStatusLabel={jobStatusLabel} formatCurrency={formatCurrency} formatDate={formatDate} onOpen={() => void openTransaction(transaction)} reduceTransparency={reduceTransparency} />)}
@@ -557,7 +601,7 @@ function AdminSectionsLayout({ actions, adminSection, copy, formatters, language
         </>}
       </View>
     </ScrollView>
-    <WorkerDetailModal copy={copy} language={language} worker={selectedWorker} formatDate={formatDate} actionPending={actionPending} canReview={Boolean(actor?.capabilities.includes('workers.review'))} canManage={Boolean(actor?.capabilities.includes('workers.manage'))} onClose={() => patch({ selectedWorker: null })} onApprove={() => selectedWorker && void commitDecision(selectedWorker, 'approve')} onRequestChanges={() => { if (selectedWorker) patch({ decisionModal: { decision: 'request_changes', worker: selectedWorker }, decisionReason: '' }) }} onReject={() => { if (selectedWorker) patch({ decisionModal: { decision: 'reject', worker: selectedWorker }, decisionReason: '' }) }} onSuspend={() => { if (selectedWorker) patch({ workerAccessModal: { action: 'suspend', worker: selectedWorker }, workerAccessReason: '' }) }} onReinstate={() => { if (selectedWorker) patch({ workerAccessModal: { action: 'reinstate', worker: selectedWorker }, workerAccessReason: '' }) }} />
+    <AdminWorkerReviewModal key={selectedWorker?.id ?? 'closed-worker-review'} copy={copy} language={language} worker={selectedWorker} serviceLabel={serviceLabel} formatDate={formatDate} actionPending={actionPending} canReview={Boolean(actor?.capabilities.includes('workers.review'))} canManage={Boolean(actor?.capabilities.includes('workers.manage'))} onClose={() => patch({ selectedWorker: null })} onRefresh={loadData} onAccessApprove={() => { if (selectedWorker) { patch({ selectedWorker: null }); void commitDecision(selectedWorker, 'approve') } }} onAccessRequestChanges={() => { if (selectedWorker) patch({ selectedWorker: null, decisionModal: { decision: 'request_changes', worker: selectedWorker }, decisionReason: '' }) }} onAccessReject={() => { if (selectedWorker) patch({ selectedWorker: null, decisionModal: { decision: 'reject', worker: selectedWorker }, decisionReason: '' }) }} onSuspend={() => { if (selectedWorker) patch({ selectedWorker: null, workerAccessModal: { action: 'suspend', worker: selectedWorker }, workerAccessReason: '' }) }} onReinstate={() => { if (selectedWorker) patch({ selectedWorker: null, workerAccessModal: { action: 'reinstate', worker: selectedWorker }, workerAccessReason: '' }) }} reduceMotion={reduceMotion} />
     <DecisionModalView copy={copy} modal={decisionModal} reason={decisionReason} pending={Boolean(actionPending)} onChangeReason={(decisionReason) => patch({ decisionReason })} onClose={() => patch({ decisionModal: null })} onSubmit={() => decisionModal && void commitDecision(decisionModal.worker, decisionModal.decision, decisionReason)} />
     <WorkerAccessModalView actionPending={Boolean(actionPending)} language={language} modal={workerAccessModal} onChangeReason={(workerAccessReason) => patch({ workerAccessReason })} onClose={() => patch({ workerAccessModal: null })} onSubmit={() => workerAccessModal && void commitWorkerAccess(workerAccessModal.worker, workerAccessModal.action, workerAccessReason)} reason={workerAccessReason} />
     <Modal animationType={reduceMotion ? 'none' : 'fade'} transparent visible={signOutConfirmationOpen} onRequestClose={() => { if (!signingOut) patch({ signOutConfirmationOpen: false }) }}>
@@ -576,49 +620,6 @@ function AdminSectionsLayout({ actions, adminSection, copy, formatters, language
 
 function EmptyState({ body }: { body: string }) {
   return <View style={styles.empty}><Text style={styles.emptyText}>{body}</Text></View>
-}
-
-function WorkerDetailModal({ copy, language, worker, formatDate, actionPending, canReview, canManage, onClose, onApprove, onRequestChanges, onReject, onSuspend, onReinstate }: {
-  copy: AdminSectionsCopy
-  language: 'vi' | 'en'
-  worker: AdminViewWorkerApplicationSummary | null
-  formatDate: (value: string | null | undefined) => string
-  actionPending: string | null
-  canReview: boolean
-  canManage: boolean
-  onClose: () => void
-  onApprove: () => void
-  onRequestChanges: () => void
-  onReject: () => void
-  onSuspend: () => void
-  onReinstate: () => void
-}) {
-  if (!worker) return null
-  const canAct = worker.status === 'open' || worker.status === 'acknowledged'
-  return <Modal animationType="fade" transparent visible onRequestClose={onClose}>
-    <View style={styles.modalBackdrop}><View style={styles.modalCard}>
-      <View style={styles.modalHeader}><Text style={styles.modalTitle}>{worker.full_name ?? copy.notRecorded}</Text><Pressable accessibilityRole="button" accessibilityLabel={copy.actions.close} onPress={onClose}><Text style={styles.closeLabel}>×</Text></Pressable></View>
-      <Text style={styles.modalSubtitle}>{copy.labels.accountAccess}: {copy.applicationStatus[worker.status]}</Text>
-      <MetaItem label={copy.labels.contact} value={worker.phone_masked ?? worker.contact_suffix ?? copy.notRecorded} />
-      <MetaItem label={copy.labels.submitted} value={formatDate(worker.submitted_at)} />
-      <MetaItem label={copy.labels.profileStatus} value={worker.worker_profile ? copy.profileStatus[worker.worker_profile.verification_status] : copy.profileStatus.draft} />
-      <Text style={styles.modalHint}>{copy.workerProfileHint}</Text>
-      {canAct && canReview && <View style={styles.modalActionStack}>
-        <KaelButton label={actionPending ? copy.actions.approving : copy.actions.approve} onPress={onApprove} disabled={Boolean(actionPending)} style={styles.modalButton} variant="primary" />
-        <KaelButton label={copy.actions.requestChanges} onPress={onRequestChanges} disabled={Boolean(actionPending)} style={styles.modalButton} variant="secondary" />
-        <KaelButton label={copy.actions.reject} onPress={onReject} disabled={Boolean(actionPending)} style={styles.modalButton} variant="destructive" />
-      </View>}
-      {canManage && worker.worker_profile && <View style={styles.modalActionStack}>
-        <KaelButton
-          label={worker.worker_profile.is_suspended ? (language === 'vi' ? 'Khôi phục hoạt động' : 'Reinstate access') : (language === 'vi' ? 'Tạm dừng hoạt động' : 'Suspend access')}
-          onPress={worker.worker_profile.is_suspended ? onReinstate : onSuspend}
-          disabled={Boolean(actionPending)}
-          style={styles.modalButton}
-          variant={worker.worker_profile.is_suspended ? 'secondary' : 'destructive'}
-        />
-      </View>}
-    </View></View>
-  </Modal>
 }
 
 function DecisionModalView({ copy, modal, reason, pending, onChangeReason, onClose, onSubmit }: {

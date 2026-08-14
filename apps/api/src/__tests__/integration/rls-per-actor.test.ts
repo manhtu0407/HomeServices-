@@ -304,7 +304,4 @@ describeReal('RLS per-actor — cleanup', () => {
     }
   })
 
-  it('cleanup hook registered', () => {
-    expect(true).toBe(true)
-  })
 })

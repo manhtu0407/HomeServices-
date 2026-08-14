@@ -1,18 +1,20 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native'
+import { Pressable, Text, View } from 'react-native'
 
 import { FormulaMintCardAura } from '@/components/ui/formula-mint-card'
 import { KaelButton } from '@/components/ui/kael-primitives'
-import { color, component, shadow, spacing, typography } from '@/design/theme'
 import type {
   AdminViewTransactionSummary,
   AdminViewWorkerApplicationSummary,
 } from '@/lib/api-types/admin'
 import type { AdminSectionsCopy } from './admin-sections-copy'
+import { workerReviewCopy } from './admin-worker-review-copy'
+import { styles } from './admin-sections-styles'
 
 type StatusTone = 'warning' | 'success' | 'danger' | 'neutral'
 
 export function WorkerApplicationCard({
   copy,
+  language,
   worker,
   serviceLabel,
   formatDate,
@@ -24,6 +26,7 @@ export function WorkerApplicationCard({
   onReject,
 }: {
   copy: AdminSectionsCopy
+  language: 'vi' | 'en'
   worker: AdminViewWorkerApplicationSummary
   serviceLabel: (value: AdminViewTransactionSummary['service_type']) => string
   formatDate: (value: string | null | undefined) => string
@@ -35,7 +38,8 @@ export function WorkerApplicationCard({
   onReject: () => void
 }) {
   const pending = actionPending?.startsWith(`${worker.id}:`)
-  const canAct = worker.status === 'open' || worker.status === 'acknowledged'
+  const canAct = worker.stage === 'pending_access' && (worker.status === 'open' || worker.status === 'acknowledged')
+  const reviewCopy = workerReviewCopy[language]
   return <View style={styles.card} testID={`admin-worker-application-${worker.id}`}>
     <Pressable accessibilityRole="button" accessibilityLabel={worker.full_name ?? worker.id} onPress={onOpen} style={styles.cardPressArea}>
       <View style={styles.cardHeader}>
@@ -43,14 +47,15 @@ export function WorkerApplicationCard({
           <Text style={styles.cardTitle}>{worker.full_name ?? copy.notRecorded}</Text>
           <Text style={styles.cardSubtitle}>{worker.phone_masked ?? worker.contact_suffix ?? copy.notRecorded}</Text>
         </View>
-        <StatusPill label={copy.applicationStatus[worker.status]} tone={worker.status === 'open' ? 'warning' : worker.status === 'resolved' ? 'success' : 'neutral'} />
+        <StatusPill label={reviewCopy.stage[worker.stage]} tone={worker.stage === 'verified' ? 'success' : worker.stage === 'ready_verification' ? 'warning' : 'neutral'} />
       </View>
       <View style={styles.metaGrid}>
         <MetaItem label={copy.labels.accountRole} value={worker.account_role === 'worker' ? copy.labels.worker : copy.labels.customer} />
         <MetaItem label={copy.labels.submitted} value={formatDate(worker.submitted_at)} />
         <MetaItem label={copy.labels.profileStatus} value={worker.worker_profile ? copy.profileStatus[worker.worker_profile.verification_status] : copy.profileStatus.draft} />
-        <MetaItem label={copy.labels.documents} value={worker.worker_profile ? copy.documentsSummary(worker.worker_profile.has_cccd, worker.worker_profile.has_selfie) : copy.notRecorded} />
+        <MetaItem label={reviewCopy.progressLabel} value={reviewCopy.progress(worker.checklist.completed_count, worker.checklist.total_count)} />
       </View>
+      {worker.checklist.missing.length > 0 ? <Text style={styles.cardHint}>{reviewCopy.missingLabel}: {worker.checklist.missing.map((field) => reviewCopy.field[field] ?? field).join(' · ')}</Text> : null}
       {worker.worker_profile?.service_types.length ? <Text style={styles.cardHint}>{worker.worker_profile.service_types.map(serviceLabel).join(' · ')}</Text> : <Text style={styles.cardHint}>{copy.workerProfileHint}</Text>}
     </Pressable>
     {canAct && canReview && <View style={styles.actionRow}>
@@ -117,37 +122,3 @@ function TransactionMetaItem({ label, value }: { label: string; value: string })
 export function StatusPill({ label, tone }: { label: string; tone: StatusTone }) {
   return <View style={[styles.statusPill, tone === 'warning' && styles.statusWarning, tone === 'success' && styles.statusSuccess, tone === 'danger' && styles.statusDanger]}><Text numberOfLines={2} style={styles.statusPillText}>{label}</Text></View>
 }
-
-const styles = StyleSheet.create({
-  card: { backgroundColor: color.surface.base, borderColor: color.surface.stroke, borderRadius: component.card.radius, borderWidth: 1, marginBottom: spacing.lg, padding: spacing.lg, ...shadow.soft },
-  cardPressArea: { gap: spacing.md },
-  cardHeader: { alignItems: 'flex-start', flexDirection: 'row', gap: spacing.md, justifyContent: 'space-between' },
-  cardTitleBlock: { flex: 1, gap: spacing.xs },
-  cardTitle: { ...typography.headline, color: color.text.strong, fontWeight: '700', includeFontPadding: false },
-  cardSubtitle: { ...typography.footnote, color: color.text.secondary },
-  statusPill: { alignSelf: 'flex-start', backgroundColor: color.surface.disabled, borderColor: color.surface.stroke, borderRadius: component.chip.radius, borderWidth: 1, flexShrink: 1, maxWidth: '48%', paddingHorizontal: spacing.sm, paddingVertical: spacing.xs },
-  statusWarning: { backgroundColor: component.chip.warning.bg, borderColor: component.chip.warning.border },
-  statusSuccess: { backgroundColor: component.chip.successStatus.bg, borderColor: component.chip.successStatus.border },
-  statusDanger: { backgroundColor: component.chip.error.bg, borderColor: component.chip.error.border },
-  statusPillText: { ...typography.caption2, color: color.text.strong, fontWeight: '600' },
-  metaGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md },
-  metaItem: { flexBasis: '45%', flexGrow: 1, gap: spacing.xs, minWidth: 120 },
-  metaLabel: { ...typography.caption2, color: color.text.muted, fontWeight: '600', textTransform: 'uppercase' },
-  metaValue: { ...typography.footnote, color: color.text.primary },
-  cardHint: { ...typography.footnote, color: color.text.secondary },
-  actionRow: { alignItems: 'center', borderTopColor: color.surface.stroke, borderTopWidth: 1, flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginTop: spacing.lg, paddingTop: spacing.md },
-  actionButton: { flexGrow: 1 },
-  transactionCard: { padding: spacing.lg },
-  transactionAuraClip: { ...StyleSheet.absoluteFill, borderRadius: component.card.radius, overflow: 'hidden' },
-  transactionContent: { position: 'relative', zIndex: 1 },
-  transactionHeader: { alignItems: 'flex-start', borderBottomColor: color.surface.stroke, borderBottomWidth: StyleSheet.hairlineWidth, flexDirection: 'row', gap: spacing.md, justifyContent: 'space-between', paddingBottom: spacing.md },
-  transactionSummary: { alignItems: 'flex-start', flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md, marginVertical: spacing.md },
-  transactionSummaryItem: { flexBasis: 120, flexGrow: 1, gap: spacing.xs, minWidth: 120 },
-  transactionSummaryLabel: { ...typography.caption2, color: color.text.muted, fontWeight: '600' },
-  transactionAmount: { ...typography.headline, color: color.text.strong, fontVariant: ['tabular-nums'], fontWeight: '700', includeFontPadding: false },
-  transactionStatus: { ...typography.headline, color: color.text.strong, fontWeight: '700', includeFontPadding: false },
-  transactionMetaGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md },
-  transactionMetaItem: { flexBasis: '45%', flexGrow: 1, gap: spacing.xs, minWidth: 120 },
-  transactionMetaLabel: { ...typography.caption2, color: color.text.muted, fontWeight: '600' },
-  transactionMetaValue: { ...typography.footnote, color: color.text.primary },
-})

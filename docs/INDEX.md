@@ -21,7 +21,7 @@ Durable project knowledge: feature specs, design contracts, audits, ops runbooks
 | `assets/` | Static assets (logo) | a doc/README needs an embedded asset |
 | `archive/` | Ephemeral or superseded material, kept for history | a doc served its purpose (see `archive/INDEX.md`) |
 
-Top-level files: `progress-log.md` (the running progress log, referenced by `README.md`), `agent-lessons.md` (cross-session lessons), `cost-baseline-2026-05.md` (a cost snapshot).
+Top-level files: `progress-log.md` (the running progress log, referenced by `README.md`), `agent-lessons.md` (cross-session lessons), `cost-baseline-2026-05.md` (a cost snapshot), `test-debt-ledger.md` (invariants whose only "test" asserted migration text, and the real verification layer each still needs — read before adding a `toContain` against a `.sql` file).
 
 Outside `docs/`: [`docker/INDEX.md`](../docker/INDEX.md) is the map for running the database and Edge toolchain locally (`pnpm db:local:*`, `pnpm edge:check`). Docker in this repo is a **dev dependency only, never a deployment target** — that boundary is stated there.
 

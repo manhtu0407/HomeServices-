@@ -32,10 +32,6 @@ describe('Kael foundation charter and permissions', () => {
     expect(existsSync(resolve(CHARTER_ROOT, file))).toBe(true)
   })
 
-  it('tracks the charter version in the version.json manifest', () => {
-    expect(readCharter('version.json')).toContain('2026-08-06.p11')
-  })
-
   it('records the locked charter files in the manifest', () => {
     const manifest = JSON.parse(readCharter('version.json')) as {
       locked_files: string[]

@@ -1,6 +1,8 @@
 import type { UserRole } from "../../../../_shared/domain.ts";
 
 export type MeRoute =
+  | { kind: "me.adminActivation"; method: "GET"; roles: UserRole[] }
+  | { kind: "me.adminActivation.activate"; method: "POST"; roles: UserRole[] }
   | { kind: "me.kaelMemory"; method: "GET"; roles: UserRole[] }
   | { kind: "me.kaelMemory.delete"; method: "DELETE"; roles: UserRole[] }
   | { kind: "me.kaelMemory.update"; method: "PATCH"; roles: UserRole[] }
@@ -24,6 +26,12 @@ export type MeRoute =
   | { kind: "me.favoriteWorkers.matching"; method: "GET"; roles: UserRole[] };
 
 export function matchMeRoute(path: string, method: string): MeRoute | null {
+  if (method === "GET" && path === "/me/admin-activation") {
+    return { kind: "me.adminActivation", method: "GET", roles: ["customer", "admin_operator"] };
+  }
+  if (method === "POST" && path === "/me/admin-activation") {
+    return { kind: "me.adminActivation.activate", method: "POST", roles: ["customer"] };
+  }
   if (method === "GET" && path === "/me/jobs/active") {
     return { kind: "me.jobs.active", method: "GET", roles: ["customer", "admin"] };
   }
