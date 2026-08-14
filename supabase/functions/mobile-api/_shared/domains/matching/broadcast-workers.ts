@@ -21,6 +21,7 @@ import {
   DISINTERMEDIATION_RISK_PENALTY_THRESHOLD,
   rankEligibleWorkers,
 } from "./broadcast-ranking.ts";
+import { getKaelPerformanceProfile } from "../../kael/learning/performance-profiles.ts";
 import {
   loadAllFavoriteWorkerIds,
   loadJobGeoForMatching,
@@ -92,6 +93,7 @@ export async function queryEligibleWorkers(
     hasEveryRequiredCapability(
       asStringArray(worker.problem_specializations),
       jobGeo?.workerRequirements ?? [],
+      serviceType,
     )
   );
   const candidateIds = candidates
@@ -263,12 +265,19 @@ async function loadFavoriteCandidates(
 function hasEveryRequiredCapability(
   workerCapabilities: string[],
   requiredCapabilities: string[],
+  serviceType: ServiceType,
 ) {
   if (requiredCapabilities.length === 0) return true;
-  // Legacy profiles predate granular capability capture; their selected
-  // service plus district eligibility remains the qualification.
-  if (workerCapabilities.length === 0) return true;
-  const available = specializationKeys(workerCapabilities);
+  const serviceCapabilityKeys = specializationKeys(
+    [...(getKaelPerformanceProfile(serviceType)?.worker_capabilities ?? [])],
+  );
+  const scopedCapabilities = workerCapabilities.filter((capability) =>
+    serviceCapabilityKeys.has(normalizeSpecializationKey(capability))
+  );
+  // problem_specializations is global across selected services. When it has no
+  // capability for this service, the selected service remains the legacy gate.
+  if (scopedCapabilities.length === 0) return true;
+  const available = specializationKeys(scopedCapabilities);
   return requiredCapabilities.every((requirement) =>
     available.has(normalizeSpecializationKey(requirement))
   );

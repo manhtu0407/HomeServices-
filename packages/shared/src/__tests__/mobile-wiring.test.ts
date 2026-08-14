@@ -2284,7 +2284,7 @@ describe('frontend-only workflow safety audit', () => {
     expect(workerStatusUpdateSchema).toContain('if (status === "completed_by_worker")')
     expect(workerStatusUpdateSchema).toContain('Cần ghi chú hoàn tất trước khi báo hoàn tất')
     const createJobReturn = edgeServices.slice(edgeServices.indexOf('return {\n    job_id: jobId'), edgeServices.indexOf('async function cancelAnalyzingJob'))
-    expect(createJobReturn).toContain('final_price: lockedFinalPrice')
+    expect(createJobReturn).toContain('final_price: null')
     // listWorkerJobs is the last function in the last service module, so slice to end of the layer.
     const listWorkerJobs = edgeServices.slice(edgeServices.indexOf('async function listWorkerJobs'))
     expect(edgeServices).toContain('const WORKER_JOB_LIST_COLUMNS =')

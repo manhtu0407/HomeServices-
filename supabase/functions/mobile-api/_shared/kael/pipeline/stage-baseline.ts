@@ -77,6 +77,13 @@ export async function runKaelBaselineStage(
       ? undefined
       : baselineResult?.error ?? baselineStage.failureReason,
     fallbackUsed: false,
+    safeMetadata: baselineResult?.success
+      ? {
+        baseline_price_evidence_receipt: baselineResult.evidenceReceipt,
+        baseline_source: baselineResult.source,
+        baseline_district: baselineResult.matchedDistrict,
+      }
+      : undefined,
   });
   void updateKaelProgress(supabase, progressTarget, {
     stage: "problem_synthesis",

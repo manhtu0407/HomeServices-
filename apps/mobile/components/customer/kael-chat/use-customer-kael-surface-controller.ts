@@ -122,6 +122,9 @@ export function useCustomerKaelSurfaceController(stateScopeKey: string) {
     Boolean(deal && mode === 'case'),
     language,
   )
+  const hasSharedJobIncident = jobIncidentThread.messages.some((message) =>
+    message.sender_role === 'kael' && message.content.startsWith('Kael Công việc:'),
+  )
   const visibleError = caseHydration.authRequired
     ? (language === 'vi'
       ? 'Phiên đăng nhập không còn hợp lệ. Vui lòng đăng nhập lại.'
@@ -225,7 +228,7 @@ export function useCustomerKaelSurfaceController(stateScopeKey: string) {
     conversation,
     conversations,
     deal,
-    hasSharedJobIncident: presentation.hasSharedJobIncident,
+    hasSharedJobIncident,
     jobIncidentThread,
     kaelRequestGuard,
     language,

@@ -185,7 +185,7 @@ export function useCustomerKaelEvidenceActions({
     const operation = { ownerKey: sessionId }
     if (evidenceSubmissionRef.current?.ownerKey === operation.ownerKey) return
     evidenceSubmissionRef.current = operation
-    const requestToken = kaelRequestGuard.begin('conversation')
+    const requestToken = kaelRequestGuard.begin('evidence')
     setSubmittingAgenticEvidence(true)
     setLoading(true)
     setError(null)
@@ -360,7 +360,7 @@ export function useCustomerKaelEvidenceActions({
     const operation = { ownerKey: deal.id }
     if (evidenceSubmissionRef.current?.ownerKey === operation.ownerKey) return
     evidenceSubmissionRef.current = operation
-    const requestToken = kaelRequestGuard.begin('conversation')
+    const requestToken = kaelRequestGuard.begin('evidence')
     setSubmittingCaseEvidence(true)
     setLoading(true)
     setError(null)

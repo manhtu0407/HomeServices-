@@ -112,6 +112,16 @@ describe('Kael X1 boundary guard — detectServiceMismatch', () => {
     )
     expect(result.detected).toBe(false)
   })
+
+  it('keeps excluded electrical work inside a shelf-installation handyman request', () => {
+    const message = 'Khoan và lắp một kệ nhẹ lên tường; không đi dây điện, không mở tường.'
+    const result = detectServiceMismatch(message, 'handyman')
+
+    expect(result.detected).toBe(false)
+    expect(result.hits.handyman).toBeGreaterThan(0)
+    expect(result.hits.electrical).toBe(0)
+    expect(evaluateMessageBoundary(message, 'handyman').ok).toBe(true)
+  })
 })
 
 describe('Kael X1 boundary guard — evaluateMessageBoundary acceptance cases', () => {

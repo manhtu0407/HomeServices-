@@ -74,7 +74,7 @@ export async function buildSafeWorkerCandidateView(
   const [worker, profile, favorite] = await Promise.all([
     dbQuery<Record<string, unknown>>(
       client.from("worker_profiles")
-        .select("id, rating, total_jobs, years_experience, verification_status")
+        .select("id, rating, total_jobs, years_experience, verification_status, date_of_birth, gender")
         .eq("id", workerId).maybeSingle(),
     ),
     dbQuery<Record<string, unknown>>(
@@ -117,12 +117,26 @@ export async function buildSafeWorkerCandidateView(
     rating: totalJobs > 0 && rating !== null && rating > 0 ? rating : null,
     total_jobs: totalJobs,
     years_experience: yearsExperience,
+    birth_year: safeBirthYear(worker.data.date_of_birth),
+    gender: safeCandidateGender(worker.data.gender),
     verification_status: verificationStatus,
     is_favorite: favorite.data !== null,
     proposed_at: proposedAt,
     expires_at: nullableString(candidate.expires_at),
     customer_decided_at: nullableString(candidate.customer_decided_at),
   };
+}
+
+function safeBirthYear(value: unknown): number | null {
+  const date = nullableString(value);
+  if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) return null;
+  const year = Number(date.slice(0, 4));
+  const currentYear = new Date().getUTCFullYear();
+  return Number.isSafeInteger(year) && year >= 1900 && year <= currentYear ? year : null;
+}
+
+function safeCandidateGender(value: unknown): "male" | "female" | "other" | null {
+  return value === "male" || value === "female" || value === "other" ? value : null;
 }
 
 function requiredCandidateInteger(value: unknown): number {

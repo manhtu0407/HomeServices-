@@ -10,6 +10,7 @@ export type CaseWorkResourceRoute =
   | { kind: "jobs.workerCandidateReject"; method: "POST"; jobId: string; candidateId: string; roles: UserRole[] }
   | { kind: "jobs.kaelIncidentGet"; method: "GET"; jobId: string; roles: UserRole[] }
   | { kind: "jobs.kaelIncidentOpen"; method: "POST"; jobId: string; roles: UserRole[]; successStatus: 201 }
+  | { kind: "jobs.kaelIncidentPreviewScope"; method: "POST"; jobId: string; roles: UserRole[] }
   | { kind: "jobs.kaelIncidentProposeScope"; method: "POST"; jobId: string; roles: UserRole[] }
   | { kind: "me.favoriteWorkerSave"; method: "POST"; workerId: string; roles: UserRole[] }
   | { kind: "me.favoriteWorkerRemove"; method: "DELETE"; workerId: string; roles: UserRole[] }
@@ -55,7 +56,7 @@ export function matchCaseWorkResourceRoute(
       : null;
   }
 
-  const incident = path.match(/^\/jobs\/([^/]+)\/kael-incident(?:\/(propose-scope))?$/);
+  const incident = path.match(/^\/jobs\/([^/]+)\/kael-incident(?:\/(preview-scope|propose-scope))?$/);
   if (incident) {
     const jobId = decodePathSegment(incident[1] ?? "");
     if (!jobId) return null;
@@ -67,6 +68,9 @@ export function matchCaseWorkResourceRoute(
     }
     if (incident[2] === "propose-scope" && method === "POST") {
       return { kind: "jobs.kaelIncidentProposeScope", method: "POST", jobId, roles: ["worker"] };
+    }
+    if (incident[2] === "preview-scope" && method === "POST") {
+      return { kind: "jobs.kaelIncidentPreviewScope", method: "POST", jobId, roles: ["worker"] };
     }
     return null;
   }

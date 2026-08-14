@@ -57,6 +57,12 @@ describe('JobEvidenceGallery', () => {
     expect(screen.getByTestId('field-gallery-tile-0')).toBeOnTheScreen()
     expect(screen.getByTestId('field-gallery-add-1')).toBeOnTheScreen()
     expect(screen.getByTestId('field-gallery-add-2')).toBeOnTheScreen()
+    expect(screen.getByTestId('field-gallery-add-mark-1')).toHaveStyle({
+      alignItems: 'center',
+      height: 20,
+      justifyContent: 'center',
+      width: 20,
+    })
 
     fireEvent.press(screen.getByTestId('field-gallery-add-2'))
     expect(onAddPhoto).toHaveBeenCalledWith(2)

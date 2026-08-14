@@ -65,7 +65,20 @@ const LEGITIMATE_PATTERNS: ReadonlyArray<{
   },
   {
     signal: "service_quality_concern",
-    patterns: ["chat luong", "chất lượng", "lo", "yen tam", "yên tâm", "moi lo", "mối lo"],
+    patterns: [
+      "chat luong",
+      "chất lượng",
+      "toi lo",
+      "tôi lo",
+      "lo lang",
+      "lo lắng",
+      "lo rang",
+      "lo rằng",
+      "yen tam",
+      "yên tâm",
+      "moi lo",
+      "mối lo",
+    ],
   },
 ];
 
@@ -75,7 +88,20 @@ const PRESSURE_PATTERNS: ReadonlyArray<{
 }> = [
   {
     signal: "demand_discount",
-    patterns: ["giam gia", "giảm giá", "re hon", "rẻ hơn", "bot tien", "bớt tiền"],
+    patterns: [
+      "giam gia",
+      "giảm giá",
+      "re hon",
+      "rẻ hơn",
+      "bot tien",
+      "bớt tiền",
+      "gia thap nhat",
+      "giá thấp nhất",
+      "muc gia thap nhat",
+      "mức giá thấp nhất",
+      "chot gia thap nhat",
+      "chốt giá thấp nhất",
+    ],
   },
   {
     signal: "threat_complaint",

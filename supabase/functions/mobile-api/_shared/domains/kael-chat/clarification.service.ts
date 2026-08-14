@@ -77,6 +77,7 @@ export async function maybeHandleDeterministicClarificationReply(
     input.artifact,
     input.pendingSlot,
     resolution.reviewReason,
+    input.customerEvidence,
   );
   await Promise.all([
     persistDiagnosisScopeArtifact(client, input.sessionId, artifact),

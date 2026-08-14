@@ -171,6 +171,11 @@ export const workerScopeChangeSchema = z.object({
 
 export const jobIncidentScopeProposalSchema = z.object({
   client_request_id: clientRequestIdSchema,
+  quote_id: clientRequestIdSchema,
+}).strict()
+
+export const jobIncidentScopePricePreviewSchema = z.object({
+  client_request_id: clientRequestIdSchema,
 }).strict()
 
 
@@ -279,6 +284,7 @@ export type WorkerAvatarUpdateInput = z.infer<typeof workerAvatarUpdateSchema>
 export type AvailabilityToggleInput = z.infer<typeof availabilityToggleSchema>
 export type WorkerScopeChangeInput = z.infer<typeof workerScopeChangeSchema>
 export type JobIncidentScopeProposalInput = z.infer<typeof jobIncidentScopeProposalSchema>
+export type JobIncidentScopePricePreviewInput = z.infer<typeof jobIncidentScopePricePreviewSchema>
 export type WorkerKaelChatMode = z.infer<typeof workerKaelChatModeSchema>
 export type WorkerKaelChatCreateInput = z.infer<typeof workerKaelChatCreateSchema>
 export type WorkerKaelChatTurnInput = z.infer<typeof workerKaelChatTurnSchema>

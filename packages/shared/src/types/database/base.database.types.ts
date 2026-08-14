@@ -11,6 +11,16 @@ export type Json =
 
 /* @slice:end json */
 
+export type DatabasePreamble = {
+/* @slice:begin database-preamble */
+  // Allows to automatically instantiate createClient with right options
+  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
+  __InternalSupabase: {
+    PostgrestVersion: "14.5"
+  }
+/* @slice:end database-preamble */
+}
+
 export type GraphqlPublicSchema = {
 /* @slice:begin graphql */
     Tables: {

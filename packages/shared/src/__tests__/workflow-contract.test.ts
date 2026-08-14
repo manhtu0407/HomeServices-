@@ -90,6 +90,7 @@ describe('workflow phase contract', () => {
       'arrived',
       'inspecting',
       'repairing',
+      'scope_change_reviewing',
       'scope_change_pending',
       'completed_by_worker',
       'customer_confirmed_completion',
@@ -98,6 +99,20 @@ describe('workflow phase contract', () => {
       'done',
       'cancelled',
     ])
+  })
+
+  it('models incident review as a locked phase before the Customer scope decision', () => {
+    const workflow = buildWorkflowViewModel({
+      hasScopeReview: true,
+      status: 'inspecting',
+    })
+
+    expect(workflow.phase).toBe('scope_change_reviewing')
+    expect(workflow.artifacts.scope_change.mode).toBe('loading')
+    expect(workflow.phaseContext.sourceOfTruth).toBe('job_incident')
+    expect(workflow.phaseContext.blockedReason).toBe('scope_change_review_in_progress')
+    expect(workflow.phaseContext.nextExpectedEvent).toBe('kael_decided_scope_change')
+    expect(workflow.allowedActions.confirmCompletion).toBe(false)
   })
 
   it('maps every existing backend job status into a workflow phase', () => {

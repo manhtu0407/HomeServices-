@@ -76,10 +76,36 @@ describe('Kael job incident assistant', () => {
       latencyMs: 14,
     }))
 
-    await expect(runJobIncidentAssistant({ ...incidentInput, callAI })).resolves.toMatchObject({
+    await expect(runJobIncidentAssistant({
+      ...incidentInput,
+      incident: {
+        description: 'Cần kiểm tra thêm.',
+        reason: 'Chưa rõ nguyên nhân.',
+        evidence_count: 0,
+      },
+      callAI,
+    })).resolves.toMatchObject({
       fallback_used: true,
       evidence_status: 'needs_more',
       next_actor: 'worker',
+    })
+  })
+
+  it('uses a deterministic ready fallback when the incident already has specific scope, reason, and evidence', async () => {
+    const callAI = vi.fn(async () => ({
+      success: true as const,
+      content: '{"summary":"thiếu trường bắt buộc"}',
+      usage: { inputTokens: 8, outputTokens: 5, costUsd: 0.0001 },
+      latencyMs: 14,
+    }))
+
+    await expect(runJobIncidentAssistant({ ...incidentInput, callAI })).resolves.toMatchObject({
+      fallback_used: true,
+      evidence_status: 'ready',
+      next_actor: 'worker',
+      evidence_gaps: [],
+      summary: expect.stringMatching(/1 ảnh.*chưa xác minh vật lý độc lập/i),
+      question: expect.stringContaining('đề xuất'),
     })
   })
 })

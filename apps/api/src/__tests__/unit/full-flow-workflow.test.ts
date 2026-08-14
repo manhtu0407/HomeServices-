@@ -704,7 +704,7 @@ describe('Full Customer Journey — End-to-End Flow', () => {
     console.log('✓ Worker role correctly blocked from creating jobs')
   })
 
-  it('Complete workflow — 7 steps: create → estimate → A7 → worker updates → complete → A12 → review', async () => {
+  it('Complete workflow — 8 steps: create → estimate → A7 → worker updates → A11 → complete → A12 → review', async () => {
     // ── Step 1: Customer tạo job + Kael estimate ──
     currentMockRole = 'customer'
     currentMockUserId = 'customer-001'
@@ -787,7 +787,7 @@ describe('Full Customer Journey — End-to-End Flow', () => {
       jobsTable.set(jobId, job)
     }
 
-    const workerStatuses = ['worker_on_way', 'arrived', 'inspecting', 'repairing'] as const
+    const workerStatuses = ['worker_on_way', 'arrived', 'inspecting'] as const
     for (const status of workerStatuses) {
       const statusRes = await updateStatus(makeRequest('PATCH', { status }), makeParams(jobId))
       const statusBody = await statusRes.json()
@@ -798,7 +798,23 @@ describe('Full Customer Journey — End-to-End Flow', () => {
       console.log(`Step 4 ✓ Worker: ${statusBody.from_status} → ${statusBody.to_status}`)
     }
 
-    // ── Step 5: Worker completes job ──
+    // ── Step 5: A11 locks one verified exact price after bilateral approval ──
+    const verifiedFinalPrice = Math.round(
+      (createBody.estimate.price_min + createBody.estimate.price_max) / 2,
+    )
+    const inspectedJob = jobsTable.get(jobId)
+    if (inspectedJob) {
+      jobsTable.set(jobId, {
+        ...inspectedJob,
+        final_price: verifiedFinalPrice,
+      })
+    }
+    const repairRes = await updateStatus(makeRequest('PATCH', { status: 'repairing' }), makeParams(jobId))
+    expect(repairRes.status).toBe(200)
+
+    console.log(`Step 5 ✓ A11 bilateral receipt locked exact final price: ${verifiedFinalPrice.toLocaleString()}đ`)
+
+    // ── Step 6: Worker completes job ──
     const completeRes = await updateStatus(makeRequest('PATCH', {
       status: 'completed_by_worker',
       completion_notes: 'Đã thay mối nối ống PVC và kiểm tra toàn bộ hệ thống nước',
@@ -809,9 +825,9 @@ describe('Full Customer Journey — End-to-End Flow', () => {
     expect(completeRes.status).toBe(200)
     expect(completeBody.to_status).toBe('completed_by_worker')
 
-    console.log(`Step 5 ✓ Worker completed — Kael final price preserved`)
+    console.log(`Step 6 ✓ Worker completed — Kael final price preserved`)
 
-    // ── Step 6: legacy confirm-completion recovery route ──
+    // ── Step 7: legacy confirm-completion recovery route ──
     currentMockRole = 'customer'
     currentMockUserId = 'customer-001'
 
@@ -820,11 +836,11 @@ describe('Full Customer Journey — End-to-End Flow', () => {
 
     expect(confirmRes.status).toBe(200)
     expect(confirmBody.status).toBe('confirmed_by_customer')
-    expect(confirmBody.final_price).toBe(createBody.estimate.price_max)
+    expect(confirmBody.final_price).toBe(verifiedFinalPrice)
 
-    console.log(`Step 6 ✓ legacy completion recovery — no auto-pay (Bug #3 fix)`)
+    console.log(`Step 7 ✓ legacy completion recovery — no auto-pay (Bug #3 fix)`)
 
-    // ── Step 7: Customer submits review ──
+    // ── Step 8: Customer submits review ──
 
     const reviewRes = await submitReview(makeRequest('POST', {
       rating: 5,
@@ -837,11 +853,11 @@ describe('Full Customer Journey — End-to-End Flow', () => {
     expect(reviewBody.review_id).toBeDefined()
     expect(reviewBody.status).toBe('reviewed')
 
-    console.log(`Step 7 ✓ Review submitted — ★★★★★`)
+    console.log(`Step 8 ✓ Review submitted — ★★★★★`)
     console.log(`\n══════ WORKFLOW COMPLETE ══════`)
-    console.log(`  7/7 steps passed`)
+    console.log(`  8/8 steps passed`)
     console.log(`  Job: ${jobId}`)
-    console.log(`  Flow: draft → analyzing → estimate → legacy recovery → broadcasting → matched → on_way → arrived → inspecting → repairing → completed → legacy completion recovery → confirmed → reviewed`)
+    console.log(`  Flow: draft → analyzing → estimate → legacy recovery → broadcasting → matched → on_way → arrived → inspecting → bilateral price lock → repairing → completed → legacy completion recovery → confirmed → reviewed`)
   })
 
   describe('State machine enforcement', () => {

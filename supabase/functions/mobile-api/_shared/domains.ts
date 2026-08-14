@@ -38,7 +38,7 @@ import {
 } from "./domains/dispute/dispute.ts";
 
 import { decideScopeChange, requestScopeChange } from "./domains/job/scope-change/request.ts";
-import { getJobIncident, openJobIncident, proposeScopeChangeFromJobIncident } from "./domains/job/incident.ts";
+import { getJobIncident, openJobIncident, previewScopeChangeFromJobIncident, proposeScopeChangeFromJobIncident } from "./domains/job/incident.ts";
 import { confirmCompletion, submitReview } from "./domains/payment/completion-review.ts";
 import { confirmStagingPayment, createStagingPaymentIntent } from "./domains/payment/staging.ts";
 import { createSePayVietQrPaymentIntent } from "./domains/payment/sepay-vietqr.ts";
@@ -293,6 +293,7 @@ function createJobWorkflowServices(secrets: EdgeServiceSecrets): Pick<
   | "requestScopeChange"
   | "getJobIncident"
   | "openJobIncident"
+  | "previewScopeChangeFromJobIncident"
   | "proposeScopeChangeFromJobIncident"
 > {
   return {
@@ -313,6 +314,8 @@ function createJobWorkflowServices(secrets: EdgeServiceSecrets): Pick<
     getJobIncident,
     openJobIncident: (ctx, jobId, input) =>
       openJobIncident(ctx, jobId, input, aiRuntime(ctx, secrets)),
+    previewScopeChangeFromJobIncident: (ctx, jobId, input) =>
+      previewScopeChangeFromJobIncident(ctx, jobId, input, aiRuntime(ctx, secrets)),
     proposeScopeChangeFromJobIncident: (ctx, jobId, input) =>
       proposeScopeChangeFromJobIncident(ctx, jobId, input, aiRuntime(ctx, secrets)),
   };

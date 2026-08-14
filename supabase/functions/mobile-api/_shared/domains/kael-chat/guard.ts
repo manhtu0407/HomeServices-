@@ -7,10 +7,15 @@ import { isIntakeEvalObservationExposureEnabled } from "../../kael/pipeline/inta
 import { ELECTRICAL_PLAYBOOK_VERSION, isElectricalPlaybookEnabled } from "../../kael/learning/playbooks/electrical.ts";
 import { kaelIntakeDiagnosisPromptVersion } from "../../kael/prompts/prompts.ts";
 import { isKaelAiKillSwitchEnabled } from "../../kael/kael-guardrails/spend-gate.ts";
-import { intakeEvalObservationSchema, updateKaelProgress, type IntakeEvalObservation } from "../../kael/index.ts";
+import {
+  intakeEvalObservationSchema,
+  kaelDiagnosisScopeArtifactSchema,
+  updateKaelProgress,
+  type IntakeEvalObservation,
+} from "../../kael/index.ts";
 import { auditGuardrailTripBestEffort } from "../../kael/learning/audit.ts";
 import type { DbClient } from "../../platform/db.ts";
-import { appendKaelSystemTurn } from "./session-store.ts";
+import { appendKaelSystemTurn, updateKaelSession } from "./session-store.ts";
 import { mergeBoundarySafetyGuidance, persistentKaelSafetySignals } from "./intake-safety.ts";
 
 import { asKaelStoredSentiment, asNumber } from "../../platform/coercions.ts";
@@ -141,6 +146,8 @@ export async function maybeHandleDemandingCustomerKaelChatTurn(
     actorId: string;
     jobId: string | null;
     status: KaelChatStatus;
+    casePhase?: unknown;
+    diagnosisScope?: unknown;
     metadata: Record<string, unknown>;
     message: string;
     qaCount: number;
@@ -158,9 +165,15 @@ export async function maybeHandleDemandingCustomerKaelChatTurn(
     // gap (soft only). Keyword detection above stays the primary, deterministic path.
     llmSentiment: asKaelStoredSentiment(input.metadata.last_customer_sentiment),
   });
-  const hasExplicitDemandSignal = detection.pressureSignals.length > 0 ||
-    detection.legitimateConcernSignals.some((signal) => signal !== "qa_loop_above_3");
-  if (!alreadyHardStopped && !hasExplicitDemandSignal) return false;
+  const hasPressureSignal = detection.pressureSignals.length > 0;
+  const hasLegitimateConcern = detection.legitimateConcernSignals.some((signal) =>
+    signal !== "qa_loop_above_3"
+  );
+  const canAnswerFromExistingOffer = input.status === "estimate_ready" &&
+    input.casePhase === "offer_review";
+  const shouldIntercept = alreadyHardStopped || hasPressureSignal ||
+    (hasLegitimateConcern && canAnswerFromExistingOffer);
+  if (!shouldIntercept) return false;
 
   const effectiveDetection = alreadyHardStopped && detection.escalationLevel !== "hard"
     ? {
@@ -173,6 +186,11 @@ export async function maybeHandleDemandingCustomerKaelChatTurn(
     : detection;
   const language = input.language ?? (input.metadata.language === "en" ? "en" : "vi");
   const response = buildDemandingCustomerResponse(effectiveDetection, {}, language);
+  const priorOfferArtifact = input.status === "estimate_ready" &&
+      input.casePhase === "offer_review" &&
+      !response.stopAiLoop
+    ? kaelDiagnosisScopeArtifactSchema.safeParse(input.diagnosisScope)
+    : null;
   const guarded = guardDemandingResponseText(response.responseText, language);
   if (guarded.trip) {
     await auditGuardrailTripBestEffort(client, {
@@ -212,5 +230,12 @@ export async function maybeHandleDemandingCustomerKaelChatTurn(
       response,
     ),
   });
+  if (priorOfferArtifact?.success && priorOfferArtifact.data.quote_ready) {
+    await updateKaelSession(client, input.sessionId, {
+      status: "estimate_ready",
+      case_phase: "offer_review",
+      diagnosis_scope: priorOfferArtifact.data,
+    });
+  }
   return true;
 }

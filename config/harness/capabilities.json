@@ -3,7 +3,7 @@
   "source": {
     "routeRoot": "supabase/functions/mobile-api/_shared/http/routes",
     "fileCount": 19,
-    "sha256": "38fa20f1fd74b446fc238d1ab0a241e22dd0045e9c215497b2f2eb64240a30fc"
+    "sha256": "2c0086a75b03d52c550134e2020d55aeefa00d3443ba2ddb0805ae2a647e9cc8"
   },
   "entries": [
     {
@@ -1482,6 +1482,29 @@
       ]
     },
     {
+      "kind": "jobs.kaelIncidentPreviewScope",
+      "capability": "mobile.route.jobs.kaelIncidentPreviewScope",
+      "public": false,
+      "methods": [
+        "POST"
+      ],
+      "roles": [
+        "admin",
+        "worker"
+      ],
+      "risk": "sensitive",
+      "operationClass": "idempotent_write",
+      "sideEffectClass": "idempotent-write",
+      "privileged": true,
+      "resourceType": "job",
+      "requiresResourceCheck": true,
+      "confirmationGate": "none",
+      "envelopeTtlMs": 60000,
+      "sources": [
+        "supabase/functions/mobile-api/_shared/http/routes/case-work-resource-routes.ts"
+      ]
+    },
+    {
       "kind": "jobs.kaelIncidentProposeScope",
       "capability": "mobile.route.jobs.kaelIncidentProposeScope",
       "public": false,
@@ -2128,7 +2151,7 @@
       "risk": "sensitive",
       "operationClass": "idempotent_write",
       "sideEffectClass": "idempotent-write",
-      "privileged": false,
+      "privileged": true,
       "resourceType": "session",
       "requiresResourceCheck": false,
       "confirmationGate": "none",
@@ -2151,7 +2174,7 @@
       "risk": "sensitive",
       "operationClass": "idempotent_write",
       "sideEffectClass": "idempotent-write",
-      "privileged": false,
+      "privileged": true,
       "resourceType": "session",
       "requiresResourceCheck": false,
       "confirmationGate": "none",

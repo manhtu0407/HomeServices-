@@ -13,6 +13,7 @@ export const WORKFLOW_PHASES = Object.freeze([
   'arrived',
   'inspecting',
   'repairing',
+  'scope_change_reviewing',
   'scope_change_pending',
   'completed_by_worker',
   'customer_confirmed_completion',

@@ -115,6 +115,10 @@ export type DatabaseFunctions = {
           ok: boolean
         }[]
       }
+      admin_finance_summary: {
+        Args: { p_actor_id: string; p_from: string; p_to: string }
+        Returns: Json
+      }
       admin_nominate_manager_atomic: {
         Args: { p_owner_id: string; p_target_id: string }
         Returns: {
@@ -449,13 +453,9 @@ export type DatabaseFunctions = {
           p_worker_brief_core: Json
         }
         Returns: {
-          error_code: string | null
+          error_code: string
           ok: boolean
         }[]
-      }
-      admin_finance_summary: {
-        Args: { p_actor_id: string; p_from: string; p_to: string }
-        Returns: Json
       }
       cancel_job_after_accept_atomic: {
         Args: {
@@ -542,19 +542,6 @@ export type DatabaseFunctions = {
           error_code: string
         }[]
       }
-      claim_saved_worker_fallback_atomic: {
-        Args: {
-          p_expected_worker_id?: string | null
-          p_job_id: string
-          p_reason: string
-        }
-        Returns: {
-          claimed: boolean
-          customer_id: string | null
-          error_code: string
-          preferred_worker_id: string | null
-        }[]
-      }
       claim_job_incident_chat_turn_atomic: {
         Args: {
           p_actor_id: string
@@ -575,7 +562,12 @@ export type DatabaseFunctions = {
         }[]
       }
       claim_job_incident_scope_proposal_atomic: {
-        Args: { p_claim_id: string; p_job_id: string; p_worker_id: string }
+        Args: {
+          p_claim_id: string
+          p_job_id: string
+          p_quote_id: string
+          p_worker_id: string
+        }
         Returns: {
           claimed: boolean
           error_code: string
@@ -644,6 +636,34 @@ export type DatabaseFunctions = {
           isOneToOne: false
           isSetofReturn: true
         }
+      }
+      claim_manual_bank_payment: {
+        Args: {
+          p_customer_id: string
+          p_job_id: string
+          p_sending_bank?: string
+          p_transferred_at: string
+        }
+        Returns: {
+          job_id: string
+          notification_required: boolean
+          payment_status: string
+          status: Database["public"]["Enums"]["job_status"]
+          transfer_claimed_at: string
+        }[]
+      }
+      claim_saved_worker_fallback_atomic: {
+        Args: {
+          p_expected_worker_id?: string
+          p_job_id: string
+          p_reason: string
+        }
+        Returns: {
+          claimed: boolean
+          customer_id: string
+          error_code: string
+          preferred_worker_id: string
+        }[]
       }
       claim_scope_change_push_effect_atomic: {
         Args: {
@@ -870,21 +890,33 @@ export type DatabaseFunctions = {
           stale: boolean
         }[]
       }
-      confirm_kael_chat_atomic: {
-        Args: {
-          p_customer_id: string
-          p_price_reasoning_receipt_id: string
-          p_session_id: string
-        }
-        Returns: {
-          district_code: string
-          error_code: string
-          job_id: string
-          job_status: Database["public"]["Enums"]["job_status"]
-          ok: boolean
-          service_type: Database["public"]["Enums"]["service_type"]
-        }[]
-      }
+      confirm_kael_chat_atomic:
+        | {
+            Args: { p_customer_id: string; p_session_id: string }
+            Returns: {
+              district_code: string
+              error_code: string
+              job_id: string
+              job_status: Database["public"]["Enums"]["job_status"]
+              ok: boolean
+              service_type: Database["public"]["Enums"]["service_type"]
+            }[]
+          }
+        | {
+            Args: {
+              p_customer_id: string
+              p_price_reasoning_receipt_id: string
+              p_session_id: string
+            }
+            Returns: {
+              district_code: string
+              error_code: string
+              job_id: string
+              job_status: Database["public"]["Enums"]["job_status"]
+              ok: boolean
+              service_type: Database["public"]["Enums"]["service_type"]
+            }[]
+          }
       confirm_worker_candidate_atomic: {
         Args: {
           p_candidate_id: string
@@ -943,6 +975,27 @@ export type DatabaseFunctions = {
           reason: string
         }[]
       }
+      create_manual_bank_payment_order: {
+        Args: {
+          p_customer_id: string
+          p_expected_gross_amount: number
+          p_job_id: string
+          p_payment_code: string
+          p_payment_updated_at?: string
+          p_qr_image_url: string
+          p_transfer_content: string
+        }
+        Returns: {
+          gross_amount: number
+          job_id: string
+          payment_code: string
+          payment_qr_image_url: string
+          payment_status: string
+          payment_transfer_content: string
+          payment_updated_at: string
+          status: Database["public"]["Enums"]["job_status"]
+        }[]
+      }
       create_worker_vietqr_payment_intent: {
         Args: {
           p_customer_id: string
@@ -985,6 +1038,27 @@ export type DatabaseFunctions = {
           requested_at_out: string
           status_out: string
           updated_at_out: string
+        }[]
+      }
+      decide_manual_bank_payment_reconciliation: {
+        Args: {
+          p_actor_id: string
+          p_amount_received?: number
+          p_bank_reference_hash?: string
+          p_bank_reference_suffix?: string
+          p_credited_at?: string
+          p_decision: string
+          p_payment_order_id: string
+          p_reason_code?: string
+        }
+        Returns: {
+          error_code: string
+          hold_until: string
+          job_id: string
+          ok: boolean
+          outcome: string
+          payment_status: string
+          status: Database["public"]["Enums"]["job_status"]
         }[]
       }
       decide_scope_change_atomic: {
@@ -1103,6 +1177,12 @@ export type DatabaseFunctions = {
           total_transaction_count: number
         }[]
       }
+      get_direct_worker_payment_availability: {
+        Args: { p_customer_id: string; p_job_id: string }
+        Returns: {
+          direct_payment_available: boolean
+        }[]
+      }
       get_kael_provider_spend_today: { Args: never; Returns: number }
       get_worker_current_commission_tier: {
         Args: { p_worker_id: string }
@@ -1136,6 +1216,15 @@ export type DatabaseFunctions = {
           to_date: string
           total_jobs_paid: number
           worker_id: string
+        }[]
+      }
+      get_worker_payment_safety_balance: {
+        Args: { p_worker_id: string }
+        Returns: {
+          available_balance: number
+          collateral_reserved_amount: number
+          withdrawal_reserved_amount: number
+          withdrawn_total: number
         }[]
       }
       get_worker_performance_insights_aggregate: {
@@ -1185,6 +1274,14 @@ export type DatabaseFunctions = {
       is_circuit_open: {
         Args: { p_key: string; p_now?: string; p_scope: string }
         Returns: boolean
+      }
+      maintain_manual_bank_payment_holds: {
+        Args: { p_limit?: number }
+        Returns: {
+          direct_reconcile_count: number
+          direct_reconcile_job_ids: string[]
+          released_count: number
+        }[]
       }
       mark_harness_idempotency_reconcile_required: {
         Args: { p_error_code: string; p_reservation_id: string }
@@ -1447,6 +1544,18 @@ export type DatabaseFunctions = {
         Args: { p_customer_id: string; p_job_id: string }
         Returns: {
           applied: boolean
+        }[]
+      }
+      record_platform_bank_balance_snapshot: {
+        Args: {
+          p_actor_id: string
+          p_balance_vnd: number
+          p_observed_at: string
+        }
+        Returns: {
+          balance_vnd: number
+          observed_at: string
+          snapshot_id: string
         }[]
       }
       record_worker_app_active_minute: {
@@ -1841,6 +1950,24 @@ export type DatabaseFunctions = {
           reason: string
         }[]
       }
+      respond_to_direct_worker_payment: {
+        Args: {
+          p_actor_id: string
+          p_actor_role: string
+          p_job_id: string
+          p_received: boolean
+        }
+        Returns: {
+          collateral_amount: number
+          direct_status: string
+          error_code: string
+          job_id: string
+          notification_required: boolean
+          ok: boolean
+          response_deadline: string
+          status: Database["public"]["Enums"]["job_status"]
+        }[]
+      }
       revoke_job_media_uploads: {
         Args: {
           p_job_id: string
@@ -1895,6 +2022,38 @@ export type DatabaseFunctions = {
           rule_id: string
         }[]
       }
+      save_job_incident_scope_price_quote_atomic: {
+        Args: {
+          p_expected_revision: number
+          p_incident_id: string
+          p_job_id: string
+          p_quote: Json
+          p_quote_expires_at: string
+          p_quote_id: string
+          p_worker_id: string
+        }
+        Returns: {
+          error_code: string
+          incident: Json
+          ok: boolean
+        }[]
+      }
+      select_direct_worker_payment: {
+        Args: {
+          p_client_request_id: string
+          p_customer_id: string
+          p_job_id: string
+        }
+        Returns: {
+          collateral_amount: number
+          direct_status: string
+          error_code: string
+          job_id: string
+          ok: boolean
+          response_deadline: string
+          status: Database["public"]["Enums"]["job_status"]
+        }[]
+      }
       set_harness_kill_switch: {
         Args: {
           p_actor_id: string
@@ -1913,14 +2072,14 @@ export type DatabaseFunctions = {
           p_client_request_id: string
           p_customer_id: string
           p_job_id: string
-          p_preferred_worker_id: string | null
+          p_preferred_worker_id: string
           p_strategy: string
         }
         Returns: {
           auto_general: boolean
           error_code: string
           ok: boolean
-          preferred_worker_id: string | null
+          preferred_worker_id: string
           strategy: string
         }[]
       }
@@ -2087,124 +2246,6 @@ export type DatabaseFunctions = {
           ok: boolean
           reason: string
           validated_refs: string[]
-        }[]
-      }
-      claim_manual_bank_payment: {
-        Args: {
-          p_customer_id: string
-          p_job_id: string
-          p_sending_bank?: string | null
-          p_transferred_at: string
-        }
-        Returns: {
-          job_id: string
-          payment_status: string
-          notification_required: boolean
-          status: Database["public"]["Enums"]["job_status"]
-          transfer_claimed_at: string
-        }[]
-      }
-      create_manual_bank_payment_order: {
-        Args: {
-          p_customer_id: string
-          p_expected_gross_amount: number
-          p_job_id: string
-          p_payment_code: string
-          p_payment_updated_at?: string
-          p_qr_image_url: string
-          p_transfer_content: string
-        }
-        Returns: {
-          gross_amount: number
-          job_id: string
-          payment_code: string
-          payment_qr_image_url: string
-          payment_status: string
-          payment_transfer_content: string
-          payment_updated_at: string
-          status: Database["public"]["Enums"]["job_status"]
-        }[]
-      }
-      decide_manual_bank_payment_reconciliation: {
-        Args: {
-          p_actor_id: string
-          p_amount_received?: number | null
-          p_bank_reference_hash?: string | null
-          p_bank_reference_suffix?: string | null
-          p_credited_at?: string | null
-          p_decision: string
-          p_payment_order_id: string
-          p_reason_code?: string | null
-        }
-        Returns: {
-          error_code: string
-          hold_until: string
-          job_id: string
-          ok: boolean
-          outcome: string
-          payment_status: string
-          status: Database["public"]["Enums"]["job_status"]
-        }[]
-      }
-      get_direct_worker_payment_availability: {
-        Args: { p_customer_id: string; p_job_id: string }
-        Returns: {
-          direct_payment_available: boolean
-        }[]
-      }
-      get_worker_payment_safety_balance: {
-        Args: { p_worker_id: string }
-        Returns: {
-          available_balance: number
-          collateral_reserved_amount: number
-          withdrawn_total: number
-          withdrawal_reserved_amount: number
-        }[]
-      }
-      maintain_manual_bank_payment_holds: {
-        Args: { p_limit?: number }
-        Returns: {
-          direct_reconcile_count: number
-          direct_reconcile_job_ids: string[]
-          released_count: number
-        }[]
-      }
-      record_platform_bank_balance_snapshot: {
-        Args: { p_actor_id: string; p_balance_vnd: number; p_observed_at: string }
-        Returns: {
-          balance_vnd: number
-          observed_at: string
-          snapshot_id: string
-        }[]
-      }
-      respond_to_direct_worker_payment: {
-        Args: {
-          p_actor_id: string
-          p_actor_role: string
-          p_job_id: string
-          p_received: boolean
-        }
-        Returns: {
-          collateral_amount: number
-          direct_status: string
-          error_code: string
-          job_id: string
-          notification_required: boolean
-          ok: boolean
-          response_deadline: string
-          status: Database["public"]["Enums"]["job_status"]
-        }[]
-      }
-      select_direct_worker_payment: {
-        Args: { p_client_request_id: string; p_customer_id: string; p_job_id: string }
-        Returns: {
-          collateral_amount: number
-          direct_status: string
-          error_code: string
-          job_id: string
-          ok: boolean
-          response_deadline: string
-          status: Database["public"]["Enums"]["job_status"]
         }[]
       }
 /* @slice:end functions */

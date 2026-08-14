@@ -18,6 +18,7 @@ import type {
   JobCreateInput,
   EdgeJobMatchingPreferenceInput,
   EdgeJobIncidentScopeProposalInput,
+  EdgeJobIncidentScopePricePreviewInput,
   JobMediaAttachInput,
   JobMessageSendInput,
   JobStatus,
@@ -66,7 +67,11 @@ import type {
 import type { KaelPublicCharterResponse, PriceSynthesisAbCaseInput, PriceSynthesisAbEvaluation } from "../platform/kael-contracts.ts";
 import type { MobileApiAuthResult, MobileApiContext } from "../platform/auth.ts";
 import type { PlacesAutocompleteResponse } from "../domains/contracts/catalog.ts";
-import type { WorkerRouteOrigin, WorkerStatusUpdateInput } from "../domains/contracts/worker.ts";
+import type {
+  EdgeJobIncidentScopePricePreviewResponse,
+  WorkerRouteOrigin,
+  WorkerStatusUpdateInput,
+} from "../domains/contracts/worker.ts";
 import type { EdgeCustomerAccountDeletionResponse } from "../domains/contracts/customer.ts";
 import type { EdgeStagingPaymentResponse } from "../domains/payment/staging.ts";
 import type { EdgePaymentIntentResponse } from "../domains/payment/sepay-vietqr.ts";
@@ -450,6 +455,11 @@ export type MobileApiServices = AdminControlServices & {
     jobId: string,
     input: EdgeJobIncidentScopeProposalInput,
   ): Promise<EdgeJobIncidentScopeProposalResponse>;
+  previewScopeChangeFromJobIncident(
+    ctx: MobileApiContext,
+    jobId: string,
+    input: EdgeJobIncidentScopePricePreviewInput,
+  ): Promise<EdgeJobIncidentScopePricePreviewResponse>;
   askKaelForWorker(
     ctx: MobileApiContext,
     jobId: string,

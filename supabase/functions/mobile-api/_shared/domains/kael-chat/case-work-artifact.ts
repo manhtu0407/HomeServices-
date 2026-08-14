@@ -113,17 +113,22 @@ export function diagnosisScopeWithUncertainAnswer(
   artifact: KaelDiagnosisScopeArtifact,
   missingFact: string,
   reason: string,
+  latestCustomerDetail?: string,
 ): KaelDiagnosisScopeArtifact {
   const normalizedFact = missingFact.trim().slice(0, 120) ||
     "unverified_detail";
   const reviewReason = reason.trim().slice(0, 500) ||
     "Cần xác minh tại chỗ trước khi chốt phạm vi.";
+  const normalizedCustomerDetail = latestCustomerDetail?.trim().slice(0, 2000);
   return kaelDiagnosisScopeArtifactSchema.parse({
     ...artifact,
     case_phase: "analysis",
     facts: {
       ...artifact.facts,
       latest_unavailable_fact: normalizedFact,
+      ...(normalizedCustomerDetail
+        ? { latest_customer_detail: normalizedCustomerDetail }
+        : {}),
     },
     missing_facts: [...new Set([normalizedFact, ...artifact.missing_facts])]
       .slice(0, 64),

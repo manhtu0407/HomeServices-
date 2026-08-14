@@ -1232,6 +1232,11 @@ export type KaelTables = {
           reported_reason: string
           revision: number
           scope_change_id: string | null
+          scope_price_quote: Json | null
+          scope_price_quote_confirmed_at: string | null
+          scope_price_quote_expires_at: string | null
+          scope_price_quote_id: string | null
+          scope_price_quote_revision: number | null
           scope_proposal_claim_id: string | null
           scope_proposal_claimed_at: string | null
           status: string
@@ -1251,6 +1256,11 @@ export type KaelTables = {
           reported_reason: string
           revision?: number
           scope_change_id?: string | null
+          scope_price_quote?: Json | null
+          scope_price_quote_confirmed_at?: string | null
+          scope_price_quote_expires_at?: string | null
+          scope_price_quote_id?: string | null
+          scope_price_quote_revision?: number | null
           scope_proposal_claim_id?: string | null
           scope_proposal_claimed_at?: string | null
           status?: string
@@ -1270,6 +1280,11 @@ export type KaelTables = {
           reported_reason?: string
           revision?: number
           scope_change_id?: string | null
+          scope_price_quote?: Json | null
+          scope_price_quote_confirmed_at?: string | null
+          scope_price_quote_expires_at?: string | null
+          scope_price_quote_id?: string | null
+          scope_price_quote_revision?: number | null
           scope_proposal_claim_id?: string | null
           scope_proposal_claimed_at?: string | null
           status?: string

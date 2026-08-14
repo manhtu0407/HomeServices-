@@ -12,6 +12,10 @@ import type { HarnessTraceContext } from "../../../../_shared/harness/trace.ts";
 export type { ComplexityLevel, ServiceType };
 export type { KaelEstimate };
 export type { AIProvider } from "../../platform/kael-contracts.ts";
+export type {
+  ScopeChangeKaelEstimate,
+  ScopeChangeVerifiedPriceReceipt,
+} from "./scope-change-price-receipt.ts";
 
 export type KaelDisplayLanguage = "vi" | "en";
 
@@ -284,19 +288,23 @@ export const scopeChangeReviewSchema = z.object({
   confidence: z.number().min(0).max(1),
 });
 
-// Worker scope reports provide evidence only; Kael computes the new price range
-// independently from the submitted context.
+// Worker scope reports provide evidence. The model classifies the updated scope;
+// the backend binds money to a sourced catalog baseline after this step.
 export const scopeChangeEstimateSchema = z.object({
+  problem_slug: z.string().trim().min(1).max(100),
   complexity_assessment: z.enum(["small", "medium", "large"]),
-  price_min: z.number().int().positive(),
-  price_max: z.number().int().positive(),
   confidence: z.number().min(0).max(1),
+  confirmed_facts: z.array(z.string().trim().min(1).max(180)).max(10),
+  unknowns: z.array(z.string().trim().min(1).max(180)).max(10),
+  pricing_factors: z.object({
+    quantity: z.number().int().positive().max(20),
+    access_condition: z.enum(["normal", "restricted", "unknown"]),
+    secondary_damage: z.enum(["none_confirmed", "present", "unknown"]),
+    material_tier: z.enum(["standard", "specialty", "unknown"]),
+  }).strict(),
   problem_summary: z.string().min(1).max(500),
   advisory: z.string().max(400).nullable().optional(),
-}).refine((data) => data.price_max >= data.price_min, {
-  message: "price_max must be >= price_min",
-  path: ["price_max"],
-});
+}).strict();
 
 export const KAEL_BUSINESS_GUARDRAILS = `Kael is the main AI assistant for NestScout.
 The supported service catalog remains six HCMC apartment service boxes: electrical repair, plumbing repair, home cleaning, HVAC cleaning/diagnosis/repair, upholstery care, and minor handyman installation/repair.
@@ -405,6 +413,7 @@ export const PROBLEM_SLUGS_BY_SERVICE: Record<ServiceType, readonly string[]> = 
     "mount_tv_or_furniture",
     "other_handyman",
     "repair_hinge_or_handle",
+    "replace_cabinet_hinges",
   ],
 };
 
@@ -638,8 +647,8 @@ export type ScopeChangeKaelReview = ScopeChangeReviewBody & {
   trace?: readonly KaelSafeTraceEvent[];
 };
 
-// Worker scope-change input carries evidence only; Kael computes price from the
-// original analysis plus the reported scope.
+// Worker scope-change input carries evidence only. Kael classifies the updated
+// scope; verified catalog data remains the only price authority.
 export type ScopeChangeComputeInput = {
   serviceType: ServiceType;
   district?: string | null;
@@ -655,9 +664,9 @@ export type ScopeChangeComputeInput = {
 export type ScopeChangeEstimateBody = z.infer<typeof scopeChangeEstimateSchema>;
 
 type ScopeChangeKaelEstimateBase = {
-  schema_version: "scope_change_kael_review.v1";
-  prompt_version: "scope-change-estimate.2026-05-23.v1";
-  version: "scope-change-estimate.2026-05-23.v1";
+  schema_version: "scope_change_kael_review.v2";
+  prompt_version: "scope-change-estimate.2026-08-14.v3";
+  version: "scope-change-estimate.2026-08-14.v3";
   model: string | null;
   computed_at: string;
   cost_usd: number | null;
@@ -676,9 +685,9 @@ type ScopeChangeKaelEstimateBase = {
   customer_card?: Record<string, unknown>;
 };
 
-export type ScopeChangeKaelEstimate =
+export type ScopeChangeKaelAnalysis =
   | (ScopeChangeEstimateBody & ScopeChangeKaelEstimateBase & {
-    provider: "anthropic";
+    provider: "anthropic" | "deepseek";
     fallback_used: false;
     failure_reason?: undefined;
   })
@@ -688,10 +697,10 @@ export type ScopeChangeKaelEstimate =
     confidence: 0;
     problem_summary: string;
     advisory: string | null;
-    provider: "anthropic" | null;
+    provider: "anthropic" | "deepseek" | null;
     fallback_used: true;
-    failure_reason: string;
-  });
+      failure_reason: string;
+    });
 
 export type PipelineResult =
   | {
@@ -700,9 +709,7 @@ export type PipelineResult =
     serviceProblemId: string;
     fallbackUsed: boolean;
     stageLogs: PipelineStageLog[];
-    // Admin-owned price_baselines band behind this estimate, before any learned rule
-    // or market blending. Persisted so the learning loop measures against a price it
-    // did not produce. Absent when no baseline row matched the analysis complexity.
+    // Admin baseline before market or learning adjustments; absent when none matched.
     referencePriceMin?: number;
     referencePriceMax?: number;
     knowledgeContext?: PipelineKnowledgeContext;

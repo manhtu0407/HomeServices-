@@ -6,6 +6,41 @@ import { getCustomerThemeTokens } from '../customer-theme'
 import { AgenticCaseThreadPanel } from '../kael-chat/chat-case-thread-stateful-surfaces'
 
 describe('Case Work phase controls', () => {
+  it('shows Worker and Kael scope-review progress before any Customer decision is available', () => {
+    const deal = dealFixture('inspecting')
+    deal.finalPrice = 350_000
+    deal.scopeReview = {
+      createdAt: '2026-08-13T02:10:00.000Z',
+      evidenceCount: 1,
+      evidenceStatus: 'ready',
+      id: 'incident-1',
+      lastNextActor: 'worker',
+      lastQuestion: null,
+      lastSummary: 'Kael đã đủ căn cứ để chuẩn bị đề xuất.',
+      reportedDescription: 'Thay đúng hai bản lề kim loại bị nứt',
+      reportedReason: 'Hai bản lề nứt, gỗ và cánh tủ không hư hỏng.',
+      status: 'ready_for_scope_proposal',
+      updatedAt: '2026-08-13T02:12:00.000Z',
+    }
+
+    renderPanel(deal)
+
+    expect(screen.getByTestId('customer-v21-case-work-scope-reviewing')).toBeOnTheScreen()
+    expect(screen.getByText('Phần việc thợ đề nghị')).toBeOnTheScreen()
+    expect(screen.getByText('Lý do kỹ thuật thợ nêu')).toBeOnTheScreen()
+    expect(screen.getByText('Kael đối chiếu theo dữ liệu đã nhận')).toBeOnTheScreen()
+    expect(screen.getByText('Phạm vi khách đã duyệt')).toBeOnTheScreen()
+    expect(screen.getByText('Điểm thay đổi cần xem xét')).toBeOnTheScreen()
+    expect(screen.getByText('Đủ dữ liệu để lập đề xuất')).toBeOnTheScreen()
+    expect(screen.getByText(/chưa xác minh vật lý độc lập/)).toBeOnTheScreen()
+    expect(screen.getByText(/chưa xác nhận giá mới/)).toBeOnTheScreen()
+    expect(screen.getAllByText(/Thay đúng hai bản lề kim loại bị nứt/)).toHaveLength(2)
+    expect(screen.getByText(/Kael đã đủ căn cứ/)).toBeOnTheScreen()
+    expect(screen.getByText(/350\.000/)).toBeOnTheScreen()
+    expect(screen.queryByTestId('customer-v21-case-work-scope-approve')).not.toBeOnTheScreen()
+    expect(screen.queryByTestId('customer-v21-case-work-scope-reject')).not.toBeOnTheScreen()
+  })
+
   it('does not expose scope decisions before Kael finishes reviewing the change', () => {
     renderPanel(dealFixture('scope_change_pending', 'reviewing_by_kael'))
 
@@ -16,7 +51,15 @@ describe('Case Work phase controls', () => {
   it('exposes scope decisions only at the authoritative customer-decision state', () => {
     renderPanel(dealFixture('scope_change_pending', 'waiting_customer_decision'))
 
+    expect(screen.getByTestId('customer-v21-case-work-scope-proposal-receipt')).toBeOnTheScreen()
+    expect(screen.getByText('1. Thợ đã báo cáo')).toBeOnTheScreen()
+    expect(screen.getByText('2. Kael đã đối chiếu')).toBeOnTheScreen()
+    expect(screen.getByText('3. Căn cứ giá cho công việc này')).toBeOnTheScreen()
+    expect(screen.getByText(/140\.000.*375\.000/)).toBeOnTheScreen()
+    expect(screen.getByText(/Trung điểm.*258\.000.*trung điểm/)).toBeOnTheScreen()
+    expect(screen.getByText(/258\.000.*toàn bộ phạm vi mới.*không cộng vào giá cũ/)).toBeOnTheScreen()
     expect(screen.getByTestId('customer-v21-case-work-scope-approve')).toBeOnTheScreen()
+    expect(screen.getByText('Xác nhận tổng 258.000đ')).toBeOnTheScreen()
     expect(screen.getByTestId('customer-v21-case-work-scope-reject')).toBeOnTheScreen()
   })
 
@@ -242,11 +285,11 @@ describe('Case Work phase controls', () => {
         release_stage: 'building_released',
         worker_checked_in: true,
       },
-      fullAddressLabel: 'TÃƒÂ²a A, QuÃ¡ÂºÂ­n 1',
+      fullAddressLabel: 'Tòa A, Quận 1',
       fullAddressVisible: false,
-      generalArea: 'QuÃ¡ÂºÂ­n 1',
+      generalArea: 'Quận 1',
       prebrief: [],
-      problemSummary: 'Ã¡Â»â€ cÃ¡ÂºÂ¯m bÃ¡Â»â€¹ chÃƒÂ¡y xÃƒÂ©m',
+      problemSummary: 'Ổ cắm bị cháy xém',
       secondsRemaining: null,
       serviceType: 'electrical',
       status: 'accepted',
@@ -278,7 +321,7 @@ function renderPanel(
 ) {
   return render(
     <AgenticCaseThreadPanel
-      activityLabel="Xem hoÃ¡ÂºÂ¡t Ã„â€˜Ã¡Â»â„¢ng"
+      activityLabel="Xem hoạt động"
       caseEvidenceGateActive={false}
       caseEvidenceGateNode={null}
       caseOptionsAcknowledged
@@ -338,6 +381,41 @@ function manualBankPayment(
   }
 }
 
+function verifiedBaselineEvidence() {
+  return {
+    schema_version: 'baseline_price_evidence_receipt.v1',
+    accepted_source_count: 2,
+    aggregate_price_min: 140000,
+    aggregate_price_max: 375000,
+    high_trust_source_count: 2,
+    quorum_met: true,
+    required_quorum: 2,
+    unit: 'per_cabinet_door',
+    sources: [
+      {
+        domain: 'suachuatainha.com.vn',
+        url: 'https://suachuatainha.com.vn/thay-sua-ray-truot-ban-le-phu-kien-tu-go/',
+        observed_at: '2026-08-14',
+        price_min: 120000,
+        price_max: 250000,
+        unit: 'per_cabinet_door',
+        effective_tier: 1,
+        weight: 1,
+      },
+      {
+        domain: 'nhabepsaigon.vn',
+        url: 'https://nhabepsaigon.vn/bao-gia-sua-tu-bep-moi-nhat',
+        observed_at: '2026-08-14',
+        price_min: 160000,
+        price_max: 500000,
+        unit: 'per_cabinet_door',
+        effective_tier: 1,
+        weight: 1,
+      },
+    ],
+  }
+}
+
 function dealFixture(
   status: LocalDeal['status'],
   scopeStatus: NonNullable<LocalDeal['scopeChange']>['status'] = 'waiting_customer_decision',
@@ -348,9 +426,9 @@ function dealFixture(
       ? {
           fullAddressLabel: null,
           fullAddressVisible: false,
-          generalArea: 'ThÃƒÂ nh phÃ¡Â»â€˜ ThÃ¡Â»Â§ Ã„ÂÃ¡Â»Â©c',
+          generalArea: 'Thành phố Thủ Đức',
           prebrief: [],
-          problemSummary: 'Ã¡Â»â€ cÃ¡ÂºÂ¯m bÃ¡Â»â€¹ chÃƒÂ¡y xÃƒÂ©m',
+          problemSummary: 'Ổ cắm bị cháy xém',
           secondsRemaining: broadcastStatus === 'expired' ? 0 : 42,
           serviceType: 'electrical',
           status: broadcastStatus,
@@ -359,8 +437,8 @@ function dealFixture(
     createdAt: '2026-07-19T08:00:00.000Z',
     draft: {
       addressLabel: 'Vinhomes Grand Park',
-      description: 'LÃ¡ÂºÂ¯p xÃƒÂ  Ã„â€˜Ã†Â¡n trÃƒÂªn tÃ†Â°Ã¡Â»Âng bÃƒÂª tÃƒÂ´ng',
-      districtLabel: 'ThÃƒÂ nh phÃ¡Â»â€˜ ThÃ¡Â»Â§ Ã„ÂÃ¡Â»Â©c',
+      description: 'Lắp xà đơn trên tường bê tông',
+      districtLabel: 'Thành phố Thủ Đức',
       inferredProblemLabel: null,
       mediaCount: 0,
       needsServiceChoice: false,
@@ -387,11 +465,44 @@ function dealFixture(
           evidencePhotoUrls: [],
           id: 'scope-1',
           kaelProgress: null,
-          kaelReview: { confidence: 0.9 },
-          priceMax: 520000,
-          priceMin: 480000,
-          reason: 'CÃ¡ÂºÂ§n Ã„â€˜Ã¡Â»â€¢i vÃ¡Â»â€¹ trÃƒÂ­ khoan Ã„â€˜Ã¡Â»Æ’ trÃƒÂ¡nh Ã„â€˜Ã†Â°Ã¡Â»Âng Ã„â€˜iÃ¡Â»â€¡n ÃƒÂ¢m tÃ†Â°Ã¡Â»Âng.',
-          requestedDescription: 'DÃ¡Â»Âi vÃ¡Â»â€¹ trÃƒÂ­ khoan sang trÃƒÂ¡i 20 cm.',
+          kaelReview: {
+            baseline_source: 'multi_source_hcmc_cabinet_door_2026_08',
+            baseline_evidence: verifiedBaselineEvidence(),
+            baseline_used: 'handyman:replace_cabinet_hinges:small:hcmc_all',
+            confidence: 0.9,
+            confirmed_facts: ['Hai bản lề nứt', 'Gỗ và cánh tủ còn nguyên', 'Lối tiếp cận bình thường'],
+            price_source: 'verified_baseline',
+            pricing_basis: {
+              calculation: 'neutral midpoint of 140000-375000 VND = 258000 VND',
+              quantity: 1,
+              unit: 'cabinet_door_scope',
+              unit_price_max: 258000,
+              unit_price_min: 258000,
+            },
+            pricing_mode: 'full_scope_total',
+            reference_price_max: 375000,
+            reference_price_min: 140000,
+            selection_rule: 'verified_neutral_midpoint_with_bilateral_confirmation',
+            stakeholder_balance: {
+              commission_level: 1,
+              commission_rate_bps: 1500,
+              customer_confirmation_required: true,
+              customer_total: 258000,
+              platform_fee: 38700,
+              worker_confirmation_required: true,
+              worker_net: 219300,
+            },
+            worker_price_confirmation: {
+              confirmed: true,
+              confirmed_at: '2026-08-13T08:00:00.000Z',
+              quote_id: 'a7500000-0000-4000-8000-000000000010',
+            },
+            unknowns: [],
+          },
+          priceMax: 258000,
+          priceMin: 258000,
+          reason: 'Cần đổi vị trí khoan để tránh đường điện âm tường.',
+          requestedDescription: 'Dời vị trí khoan sang trái 20 cm.',
           status: scopeStatus,
         }
       : null,

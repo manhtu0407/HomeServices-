@@ -8,6 +8,7 @@ import type {
   EdgeKaelEstimate,
 } from "./kael-chat.ts";
 import type {
+  EdgeScopeChangeWorkerQuote,
   EdgeWorkerScopeChangeResponse,
 } from "./worker.ts";
 
@@ -76,6 +77,8 @@ export type EdgeWorkerCandidateView = {
   rating: number | null;
   total_jobs: number;
   years_experience: number;
+  birth_year: number | null;
+  gender: "male" | "female" | "other" | null;
   verification_status: string;
   is_favorite: boolean;
   proposed_at: string;
@@ -123,7 +126,10 @@ export type EdgeJobIncident = {
   updated_at: string;
 };
 
-export type EdgeJobIncidentResponse = { incident: EdgeJobIncident | null };
+export type EdgeJobIncidentResponse = {
+  incident: EdgeJobIncident | null;
+  quote?: EdgeScopeChangeWorkerQuote | null;
+};
 
 export type EdgeJobIncidentScopeProposalResponse = {
   incident: EdgeJobIncident;

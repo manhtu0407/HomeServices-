@@ -13,6 +13,7 @@ const TIMEOUT_MS = 15_000
 const KAEL_CHAT_CREATE_TIMEOUT_MS = 30_000
 const KAEL_CHAT_CONFIRM_TIMEOUT_MS = 30_000
 const CUSTOMER_KAEL_TURN_TIMEOUT_MS = 30_000
+const SCOPE_CHANGE_PREVIEW_TIMEOUT_MS = 45_000
 const MAX_RETRIES = 2
 const BASE_RETRY_DELAY_MS = 500
 const MAX_RETRY_DELAY_MS = 10_000
@@ -25,6 +26,7 @@ const MOBILE_API_BASE_PATH = /(?:\/functions\/v1)?\/mobile-api$/i
 const KAEL_CHAT_CONFIRM_PATH = /^\/kael\/chat\/[^/]+\/confirm$/
 const KAEL_CHAT_INTAKE_CONFIRMATION_PATH = /^\/kael\/chat\/[^/]+\/intake-confirmation$/
 const CUSTOMER_KAEL_TURN_PATH = /^\/me\/kael\/conversations\/[^/]+\/turn$/
+const SCOPE_CHANGE_PREVIEW_PATH = /^\/jobs\/[^/]+\/kael-incident\/preview-scope$/
 
 export type ApiResult<T> =
   | { success: true; data: T; status: number }
@@ -298,6 +300,11 @@ function isRetrySafeRequest(method: string, path: string, body: unknown) {
   ) return true
   if (
     method === 'POST' &&
+    SCOPE_CHANGE_PREVIEW_PATH.test(path) &&
+    hasClientRequestId(body)
+  ) return true
+  if (
+    method === 'POST' &&
     /^\/jobs\/[^/]+\/kael-incident\/propose-scope$/.test(path) &&
     hasClientRequestId(body)
   ) return true
@@ -372,7 +379,10 @@ function abortError() {
 }
 
 function shouldRetryResponse(status: number, method: string, path: string) {
-  if (status >= 500 && method === 'POST' && isKaelChatDecisionPath(path)) return false
+  if (
+    method === 'POST' &&
+    (isKaelChatDecisionPath(path) || SCOPE_CHANGE_PREVIEW_PATH.test(path))
+  ) return false
   return status === 408 || status === 425 || status === 429 || status >= 500
 }
 
@@ -384,7 +394,7 @@ function shouldRetryRequestError(err: unknown, method: string, path: string) {
   if (
     isAbortError(err) &&
     method === 'POST' &&
-    (path === '/kael/chat' || isKaelChatDecisionPath(path))
+    (path === '/kael/chat' || isKaelChatDecisionPath(path) || SCOPE_CHANGE_PREVIEW_PATH.test(path))
   ) return false
   return shouldRetryError(err)
 }
@@ -394,6 +404,7 @@ function requestTimeoutMs(method: string, path: string) {
   if (path === '/kael/chat') return KAEL_CHAT_CREATE_TIMEOUT_MS
   if (isKaelChatDecisionPath(path)) return KAEL_CHAT_CONFIRM_TIMEOUT_MS
   if (CUSTOMER_KAEL_TURN_PATH.test(path)) return CUSTOMER_KAEL_TURN_TIMEOUT_MS
+  if (SCOPE_CHANGE_PREVIEW_PATH.test(path)) return SCOPE_CHANGE_PREVIEW_TIMEOUT_MS
   return TIMEOUT_MS
 }
 

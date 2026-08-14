@@ -382,8 +382,14 @@ describe('mobile-api Kael structured output health', () => {
   })
 
   it('fails closed without a price when scope-change estimation schema validation fails', async () => {
-    vi.stubGlobal('fetch', vi.fn(async () => anthropicResponse('{"unexpected":true}')))
-    const secrets = { anthropicApiKey: 'anthropic-test' }
+    vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL) =>
+      String(input).includes('deepseek')
+        ? deepseekResponse('{"unexpected":true}')
+        : anthropicResponse('{"unexpected":true}')))
+    const secrets = {
+      anthropicApiKey: 'anthropic-test',
+      deepseekApiKey: 'deepseek-test',
+    }
 
     const review = await reviewScopeChange({
       serviceType: 'plumbing',
@@ -419,11 +425,141 @@ describe('mobile-api Kael structured output health', () => {
       requires_human_inspection: true,
       fallback_used: true,
       failure_reason: 'INVALID_SCHEMA',
-      provider: 'anthropic',
+      provider: 'deepseek',
+      model: 'deepseek-v4-pro',
+      trace: [
+        {
+          model: 'claude-sonnet-5',
+          safe_metadata: {
+            provider_shape: 'schema:keys=unexpected:problem_slug:invalid_type|complexity_assessment:invalid_value|confidence:invalid_type',
+          },
+        },
+        {
+          model: 'deepseek-v4-pro',
+          safe_metadata: {
+            provider_shape: 'schema:keys=unexpected:problem_slug:invalid_type|complexity_assessment:invalid_value|confidence:invalid_type',
+          },
+        },
+      ],
     })
     expect(estimate).not.toHaveProperty('price_min')
     expect(estimate).not.toHaveProperty('price_max')
     expect(estimate).not.toHaveProperty('complexity_assessment')
+  })
+
+  it('recovers one schema-invalid scope classification through the configured provider fallback', async () => {
+    const fetchSpy = vi.fn()
+      .mockResolvedValueOnce(anthropicResponse(JSON.stringify([
+        { problem_slug: 'replace_cabinet_hinges' },
+        { complexity_assessment: 'small' },
+      ])))
+      .mockResolvedValueOnce(deepseekResponse(JSON.stringify({
+        problem_slug: 'replace_cabinet_hinges',
+        complexity_assessment: 'small',
+        confidence: 0.92,
+        confirmed_facts: [
+          'Hai bản lề kim loại nứt tại khớp.',
+          'Gỗ và cánh tủ còn nguyên vẹn.',
+        ],
+        unknowns: [],
+        pricing_factors: {
+          quantity: 2,
+          access_condition: 'normal',
+          secondary_damage: 'none_confirmed',
+          material_tier: 'standard',
+        },
+        problem_summary: 'Thay hai bản lề nứt và căn chỉnh lại một cánh tủ.',
+        advisory: null,
+      })))
+    vi.stubGlobal('fetch', fetchSpy)
+
+    const estimate = await computeScopeChangeEstimate({
+      serviceType: 'handyman',
+      district: 'hcmc_all',
+      originalDescription: 'Một cánh tủ bị xệ do hai bản lề lỏng.',
+      originalProblemSummary: 'Cần siết và căn chỉnh hai bản lề.',
+      originalComplexity: 'small',
+      originalPriceMin: 150_000,
+      originalPriceMax: 350_000,
+      workerReportedDescription: 'Thay hai bản lề âm giảm chấn tiêu chuẩn 35 mm.',
+      workerReason: 'Hai bản lề nứt; gỗ và cánh tủ còn nguyên vẹn.',
+    }, {
+      anthropicApiKey: 'anthropic-test',
+      deepseekApiKey: 'deepseek-test',
+    }, allowKaelSpendForTest('worker-1'))
+
+    expect(estimate).toMatchObject({
+      fallback_used: false,
+      provider: 'deepseek',
+      model: 'deepseek-v4-pro',
+      problem_slug: 'replace_cabinet_hinges',
+      pricing_factors: { quantity: 2 },
+      trace: [
+        expect.objectContaining({ validation: { status: 'fail', reason_code: 'INVALID_SCHEMA' } }),
+        expect.objectContaining({
+          provider: 'deepseek',
+          model: 'deepseek-v4-pro',
+          validation: { status: 'pass', reason_code: 'MODEL_ESCALATION_SCHEMA_INVALID' },
+        }),
+      ],
+    })
+    expect(fetchSpy).toHaveBeenCalledTimes(2)
+    const recoveryRequest = JSON.parse(String(fetchSpy.mock.calls[1]?.[1]?.body))
+    expect(JSON.stringify(recoveryRequest)).toContain(
+      'Previous provider attempt returned a top-level JSON array',
+    )
+  })
+
+  it('recovers a transient scope provider failure through the configured provider fallback', async () => {
+    const fetchSpy = vi.fn()
+      .mockRejectedValueOnce(new Error('transient provider response failure'))
+      .mockResolvedValueOnce(deepseekResponse(JSON.stringify({
+        problem_slug: 'pipe_leak',
+        complexity_assessment: 'medium',
+        confidence: 0.9,
+        confirmed_facts: ['Đã khoanh vùng một điểm rò trên nhánh cấp âm.'],
+        unknowns: ['Vật tư thay thế chưa thuộc phạm vi giá.'],
+        pricing_factors: {
+          quantity: 1,
+          access_condition: 'normal',
+          secondary_damage: 'none_confirmed',
+          material_tier: 'unknown',
+        },
+        problem_summary: 'Một điểm rò trên nhánh ống cấp âm cần mở tiếp cận và sửa.',
+        advisory: null,
+      })))
+    vi.stubGlobal('fetch', fetchSpy)
+
+    const estimate = await computeScopeChangeEstimate({
+      serviceType: 'plumbing',
+      district: 'hcmc_all',
+      originalDescription: 'Khảo sát áp lực và dò tìm không phá dỡ.',
+      originalProblemSummary: 'Áp lực yếu toàn căn hộ.',
+      originalComplexity: 'medium',
+      originalPriceMin: 700_000,
+      originalPriceMax: 1_200_000,
+      workerReportedDescription: 'Mở một điểm tiếp cận và sửa một đoạn ống cấp âm bị nứt.',
+      workerReason: 'Đã khoanh vùng một điểm rò; không gồm vật tư hoặc hoàn thiện bề mặt.',
+    }, {
+      anthropicApiKey: 'anthropic-test',
+      deepseekApiKey: 'deepseek-test',
+    }, allowKaelSpendForTest('worker-1'))
+
+    expect(estimate).toMatchObject({
+      fallback_used: false,
+      provider: 'deepseek',
+      model: 'deepseek-v4-pro',
+      problem_slug: 'pipe_leak',
+      trace: [
+        expect.objectContaining({ validation: { status: 'fail', reason_code: 'AI_CALL_FAILED' } }),
+        expect.objectContaining({
+          provider: 'deepseek',
+          model: 'deepseek-v4-pro',
+          validation: { status: 'pass', reason_code: 'MODEL_ESCALATION_PROVIDER_FAILURE' },
+        }),
+      ],
+    })
+    expect(fetchSpy).toHaveBeenCalledTimes(2)
   })
 
   it('persists scope-change attempts exactly once across failure, direct, and incident paths', () => {
@@ -444,9 +580,9 @@ describe('mobile-api Kael structured output health', () => {
       new URL(`../../../../../supabase/functions/mobile-api/_shared/domains/job/scope-change/${path}`, import.meta.url),
       'utf8',
     )).join('\n')
-    const failClosedGuard = supportSource.indexOf('if (\n    estimate.fallback_used')
+    const failClosedGuard = supportSource.indexOf('if (\n    analysis.fallback_used')
     const failureAudit = supportSource.indexOf(
-      'await logScopeChangeEstimateApiCall(client, jobId, estimate)',
+      'await logScopeChangeEstimateApiCall(client, jobId, analysis)',
       failClosedGuard,
     )
     const durableDirectAudit = requestSource.indexOf('buildDirectScopeEffectPayloads(')
@@ -461,7 +597,7 @@ describe('mobile-api Kael structured output health', () => {
     expect(incidentAudit).toBeGreaterThan(-1)
     expect(
       (supportSource + '\n' + effectsSource).match(/logScopeChangeEstimateApiCall\(client, jobId,/g),
-    ).toHaveLength(2)
+    ).toHaveLength(3)
   })
 
   it('routes every live structured Edge caller through the shared wrapper', () => {

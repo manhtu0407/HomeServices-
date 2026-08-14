@@ -152,6 +152,8 @@ export type WorkerCandidateView = {
   rating: number | null
   total_jobs: number
   years_experience: number
+  birth_year?: number | null
+  gender?: 'male' | 'female' | 'other' | null
   verification_status: string
   is_favorite: boolean
   proposed_at: string

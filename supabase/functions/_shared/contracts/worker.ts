@@ -192,6 +192,11 @@ export const workerScopeChangeSchema = z.object({
 
 export const edgeJobIncidentScopeProposalSchema = z.object({
   client_request_id: clientRequestIdSchema,
+  quote_id: clientRequestIdSchema,
+}).strict();
+
+export const edgeJobIncidentScopePricePreviewSchema = z.object({
+  client_request_id: clientRequestIdSchema,
 }).strict();
 
 const workerKaelMediaRefSchema = z
@@ -291,6 +296,7 @@ export type EdgeWorkerAvatarUpdateInput = z.infer<typeof workerAvatarUpdateSchem
 export type AvailabilityToggleInput = z.infer<typeof availabilityToggleSchema>;
 export type WorkerScopeChangeInput = z.infer<typeof workerScopeChangeSchema>;
 export type EdgeJobIncidentScopeProposalInput = z.infer<typeof edgeJobIncidentScopeProposalSchema>;
+export type EdgeJobIncidentScopePricePreviewInput = z.infer<typeof edgeJobIncidentScopePricePreviewSchema>;
 export type WorkerKaelChatCreateInput = z.infer<
   typeof workerKaelChatCreateSchema
 >;
