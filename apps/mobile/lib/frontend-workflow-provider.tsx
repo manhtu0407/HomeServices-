@@ -21,7 +21,7 @@ import {
 import type { PendingClientRequestId } from './client-request-id'
 import { useAuth } from './auth-provider'
 import type { LocalMediaUploadDraft } from './media-upload'
-import { subscribeToJobStatus, subscribeToWorkerBroadcasts } from './realtime'
+import { subscribeToJobStatus, subscribeToWorkerBroadcasts, subscribeToWorkerEarnings } from './realtime'
 import type {
   CustomerProfileInsightsResponse,
   EarningsResponse,
@@ -484,6 +484,19 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
   useEffect(() => {
     if (!remoteSessionUserId || (remoteRole !== 'worker' && remoteRole !== 'admin')) return
     const handle = subscribeToWorkerBroadcasts(remoteSessionUserId, () => {
+      void liveRefreshRef.current?.workerRefresh()
+    })
+    return () => {
+      void handle?.unsubscribe()?.catch(() => {})
+    }
+  }, [remoteRole, remoteSessionUserId])
+
+  // Payment rows are authoritative invalidation events. Keep the 20-second
+  // poll as recovery, but refresh immediately when reconciliation changes the
+  // authenticated Worker's own ledger.
+  useEffect(() => {
+    if (!remoteSessionUserId || remoteRole !== 'worker') return
+    const handle = subscribeToWorkerEarnings(remoteSessionUserId, () => {
       void liveRefreshRef.current?.workerRefresh()
     })
     return () => {

@@ -12,6 +12,23 @@ import { styles } from './admin-sections-styles'
 
 type StatusTone = 'warning' | 'success' | 'danger' | 'neutral'
 
+const SUCCESSFUL_PAYMENT_STATUSES = new Set([
+  'available',
+  'cash_collected',
+  'cash_confirmed',
+  'direct_paid',
+  'manual_verified',
+  'received',
+  'reconciled',
+])
+const FAILED_PAYMENT_STATUSES = new Set(['amount_mismatch', 'failed', 'reversed'])
+
+function paymentStatusTone(status: string | null, hasDispute: boolean): StatusTone {
+  if (hasDispute || (status && FAILED_PAYMENT_STATUSES.has(status))) return 'danger'
+  if (status && SUCCESSFUL_PAYMENT_STATUSES.has(status)) return 'success'
+  return status ? 'warning' : 'neutral'
+}
+
 export function WorkerApplicationCard({
   copy,
   language,
@@ -89,7 +106,7 @@ export function TransactionCard({ transaction, copy, serviceLabel, statusLabel, 
           <Text style={styles.cardTitle}>{transaction.display_code}</Text>
           <Text style={styles.cardSubtitle}>{serviceLabel(transaction.service_type)} · {formatDate(transaction.updated_at)}</Text>
         </View>
-        <StatusPill label={statusLabel(transaction.payment_status)} tone={transaction.dispute_status ? 'danger' : transaction.payment_status === 'received' ? 'success' : 'warning'} />
+        <StatusPill label={statusLabel(transaction.payment_status)} tone={paymentStatusTone(transaction.payment_status, Boolean(transaction.dispute_status))} />
       </View>
       <View style={styles.transactionSummary}>
         <View style={styles.transactionSummaryItem}>

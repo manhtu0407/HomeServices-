@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useEffectEvent, useReducer } from 'react'
+import { useCallback, useEffect, useEffectEvent, useReducer, useRef } from 'react'
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router'
 import {
   ActivityIndicator,
@@ -62,6 +62,10 @@ function isMissingAdminSession(result: ApiResult<unknown>) {
     || result.code === 'AUTH_MISSING'
     || result.code === 'AUTH_REQUIRED'
   )
+}
+
+function unavailableAdminResult<T>(error: string): ApiResult<T> {
+  return { success: false, code: 'AUTH_FORBIDDEN', error, status: 403 }
 }
 
 type WorkerAccessModal = {
@@ -129,6 +133,7 @@ type AdminSectionsState = {
 }
 
 type AdminOperationsResult = Awaited<ReturnType<typeof adminControlService.getOperations>>
+type AdminActorResult = Awaited<ReturnType<typeof adminControlService.getActor>>
 type AdminWorkerApplicationsResult = Awaited<ReturnType<typeof adminControlService.listWorkerApplications>>
 type AdminTransactionsResult = Awaited<ReturnType<typeof adminControlService.listTransactions>>
 type AdminTeamResult = Awaited<ReturnType<typeof adminControlService.listSubAdmins>>
@@ -138,6 +143,7 @@ type AdminSectionsAction =
   | {
     type: 'load_complete'
     activePanel: AdminOperationPanel
+    actorResult: AdminActorResult
     errorCopy: string
     operationsResult: AdminOperationsResult
     teamResult: AdminTeamResult
@@ -202,9 +208,11 @@ function adminSectionsReducer(state: AdminSectionsState, action: AdminSectionsAc
   if (action.type === 'patch') return { ...state, ...action.patch }
   if (action.type === 'update_workers') return { ...state, workers: action.update(state.workers) }
   if (action.type === 'load_complete') {
-    const { operationsResult, teamResult, transactionResult, workerResult } = action
-    const loadedActor = operationsResult.success
-      ? operationsResult.data.actor
+    const { actorResult, operationsResult, teamResult, transactionResult, workerResult } = action
+    const loadedActor = actorResult.success
+      ? actorResult.data
+      : operationsResult.success
+        ? operationsResult.data.actor
       : teamResult.success
         ? state.actor ?? teamResult.data.actor
         : state.actor
@@ -219,7 +227,7 @@ function adminSectionsReducer(state: AdminSectionsState, action: AdminSectionsAc
       error: activePanelFailed ? action.errorCopy : null,
       loading: false,
       managerNominations: teamResult.success ? teamResult.data.nominations : [],
-      pendingAdminAccounts: teamResult.success ? teamResult.data.pending_accounts : [],
+      pendingAdminAccounts: teamResult.success ? teamResult.data.pending_accounts ?? [] : [],
       operations: operationsResult.success ? operationsResult.data : null,
       operationsError: operationsResult.success ? null : operationsResult.error,
       subAdmins: teamResult.success ? teamResult.data.members : [],
@@ -264,6 +272,7 @@ export function AdminSections() {
     ? '/(auth)/login?stage=login&ns_audit_role=none'
     : '/(auth)/login?stage=login'
   const [state, dispatch] = useReducer(adminSectionsReducer, adminSection, initialAdminSectionsState)
+  const loadRequestIdRef = useRef(0)
   const { activePanel, searchQuery, signingOut, transactionPage, workerFilter, workerPage } = state
   const patch = useCallback((next: Partial<AdminSectionsState>) => {
     dispatch({ type: 'patch', patch: next })
@@ -282,30 +291,63 @@ export function AdminSections() {
   }, [hasAuthenticatedAdminSession, loginRoute, router])
 
   const loadData = useCallback(async () => {
+    const requestId = loadRequestIdRef.current + 1
+    loadRequestIdRef.current = requestId
     patch({ loading: true, error: null, operationsError: null, teamError: null })
-    const operationsResult = await adminControlService.getOperations()
-    if (!operationsResult.success && isMissingAdminSession(operationsResult)) {
-      patch({ actor: null, loading: false, operations: null, operationsError: operationsResult.error })
+    // react-doctor-disable-next-line react-doctor/async-defer-await
+    const actorResult = await adminControlService.getActor()
+    if (requestId !== loadRequestIdRef.current) return
+    if (!actorResult.success && isMissingAdminSession(actorResult)) {
+      patch({ actor: null, loading: false, operations: null, operationsError: actorResult.error })
       router.replace(loginRoute as never)
       return
     }
-    const [workerResult, transactionResult, teamResult] = await Promise.all([
-      adminControlService.listWorkerApplications({
+    if (!actorResult.success) {
+      patch({ actor: null, error: actorResult.error, loading: false, operations: null })
+      return
+    }
+    const actor = withFinanceReadBaseline(actorResult.data)
+    const denied = copy.errors.load
+    const operationsResultPromise = actor.capabilities.includes('operations.read')
+      ? adminControlService.getOperations()
+      : Promise.resolve(unavailableAdminResult<AdminViewOperationsResponse>(denied))
+    const workerResultPromise = actor.capabilities.includes('workers.read')
+      ? adminControlService.listWorkerApplications({
         status: 'all',
         stage: workerFilter,
         query: searchQuery,
         limit: WORKERS_PER_PAGE,
         offset: (workerPage - 1) * WORKERS_PER_PAGE,
-      }),
-      adminControlService.listTransactions({
+      })
+      : Promise.resolve(unavailableAdminResult<Awaited<ReturnType<typeof adminControlService.listWorkerApplications>> extends ApiResult<infer T> ? T : never>(denied))
+    const transactionResultPromise = actor.capabilities.includes('transactions.read')
+      ? adminControlService.listTransactions({
         query: searchQuery,
         limit: TRANSACTIONS_PER_PAGE,
         offset: (transactionPage - 1) * TRANSACTIONS_PER_PAGE,
-      }),
-      adminControlService.listSubAdmins(),
+      })
+      : Promise.resolve(unavailableAdminResult<Awaited<ReturnType<typeof adminControlService.listTransactions>> extends ApiResult<infer T> ? T : never>(denied))
+    const teamResultPromise = actor.capabilities.includes('team.read')
+      ? adminControlService.listSubAdmins()
+      : Promise.resolve(unavailableAdminResult<Awaited<ReturnType<typeof adminControlService.listSubAdmins>> extends ApiResult<infer T> ? T : never>(denied))
+    // react-doctor-disable-next-line react-doctor/async-defer-await
+    const [operationsResult, workerResult, transactionResult, teamResult] = await Promise.all([
+      operationsResultPromise,
+      workerResultPromise,
+      transactionResultPromise,
+      teamResultPromise,
     ])
+    if (requestId !== loadRequestIdRef.current) return
+    const sessionFailure = ([operationsResult, workerResult, transactionResult, teamResult] as ApiResult<unknown>[])
+      .find(isMissingAdminSession)
+    if (sessionFailure && !sessionFailure.success) {
+      patch({ actor: null, loading: false, operations: null, operationsError: sessionFailure.error })
+      router.replace(loginRoute as never)
+      return
+    }
     dispatch({
       activePanel,
+      actorResult,
       errorCopy: copy.errors.load,
       operationsResult,
       teamResult,
@@ -332,27 +374,6 @@ export function AdminSections() {
     return () => clearInterval(timer)
   }, [hasAuthenticatedAdminSession, loadData]))
 
-  const setWorkerStatus = useCallback((workerId: string, status: AdminViewWorkerApplicationSummary['status'], role?: AdminViewWorkerApplicationSummary['account_role']) => {
-    dispatch({ type: 'update_workers', update: (current) => current.map((worker) => worker.id === workerId
-      ? {
-        ...worker,
-        status,
-        account_role: role ?? worker.account_role,
-        worker_profile: role === 'worker' && !worker.worker_profile
-          ? {
-            verification_status: 'draft',
-            is_approved: false,
-            is_suspended: false,
-            service_types: [],
-            districts: [],
-            has_cccd: false,
-            has_selfie: false,
-          }
-          : worker.worker_profile,
-      }
-      : worker) })
-  }, [])
-
   const commitDecision = useCallback(async (worker: AdminViewWorkerApplicationSummary, decision: AdminViewWorkerApplicationDecisionInput['decision'], reason?: string) => {
     if ((decision === 'reject' || decision === 'request_changes') && !reason?.trim()) {
       patch({ error: copy.errors.reasonRequired })
@@ -365,18 +386,19 @@ export function AdminSections() {
       ...(reason?.trim() ? { reason: reason.trim() } : {}),
     })
     if (result.success) {
-      setWorkerStatus(worker.id, result.data.status, result.data.role)
+      dispatch({ type: 'update_workers', update: (current) => current.filter((item) => item.id !== worker.id) })
       patch({
         decisionModal: null,
         decisionReason: '',
         notice: decision === 'approve' ? copy.notices.approved : decision === 'request_changes' ? copy.notices.changesRequested : copy.notices.rejected,
         selectedWorker: null,
       })
+      await loadData()
     } else {
       patch({ error: copy.errors.action })
     }
     patch({ actionPending: null })
-  }, [copy.errors.action, copy.errors.reasonRequired, copy.notices.approved, copy.notices.changesRequested, copy.notices.rejected, patch, setWorkerStatus])
+  }, [copy.errors.action, copy.errors.reasonRequired, copy.notices.approved, copy.notices.changesRequested, copy.notices.rejected, loadData, patch])
 
   const openTransaction = useCallback(async (transaction: AdminViewTransactionSummary) => {
     patch({ detailLoading: true, error: null })
@@ -503,7 +525,7 @@ type AdminSectionsLayoutProps = {
 
 function AdminSectionsLayout({ actions, adminSection, canAccessFinance, copy, financeView, formatters, language, reduceMotion, reduceTransparency, state }: AdminSectionsLayoutProps) {
   const {
-    activePanel,
+    activePanel: requestedActivePanel,
     activeTab: requestedActiveTab,
     actionPending,
     actor,
@@ -539,7 +561,45 @@ function AdminSectionsLayout({ actions, adminSection, canAccessFinance, copy, fi
   } = state
   const { commitDecision, commitWorkerAccess, completeSignOut, loadData, openFinance, openTransaction, patch } = actions
   const { disputeStatusLabel, formatCurrency, formatDate, jobStatusLabel, paymentProviderLabel, serviceLabel, statusLabel } = formatters
-  const activeTab = requestedActiveTab === 'finance' && !canAccessFinance ? 'operations' : requestedActiveTab
+  const capabilities = actor?.capabilities ?? []
+  const canAccessOperations = capabilities.includes('operations.read')
+  const canAccessWorkers = capabilities.includes('workers.read')
+  const canAccessTransactions = capabilities.includes('transactions.read')
+  const canAccessPayouts = capabilities.includes('payouts.read')
+  const canAccessOperationalArea = canAccessOperations || canAccessWorkers || canAccessTransactions || canAccessPayouts
+  const canAccessTeam = capabilities.includes('team.read')
+  const activePanel = requestedActivePanel === 'operations' && canAccessOperations
+    ? 'operations'
+    : requestedActivePanel === 'workers' && canAccessWorkers
+      ? 'workers'
+      : requestedActivePanel === 'transactions' && (canAccessTransactions || canAccessPayouts)
+        ? 'transactions'
+        : canAccessOperations
+          ? 'operations'
+          : canAccessWorkers
+            ? 'workers'
+            : 'transactions'
+  const effectiveTransactionView = transactionView === 'services' && !canAccessTransactions && canAccessPayouts
+    ? 'payouts'
+    : transactionView === 'payouts' && !canAccessPayouts && canAccessTransactions
+      ? 'services'
+      : transactionView
+  const requestedTabAllowed = requestedActiveTab === 'finance'
+    ? canAccessFinance
+    : requestedActiveTab === 'team'
+      ? canAccessTeam
+      : requestedActiveTab === 'governance'
+        ? actor?.access_level === 'owner'
+        : canAccessOperationalArea
+  const activeTab = requestedTabAllowed
+    ? requestedActiveTab
+    : canAccessFinance
+      ? 'finance'
+      : canAccessOperationalArea
+        ? 'operations'
+        : canAccessTeam
+          ? 'team'
+          : requestedActiveTab
 
   return <SafeAreaView style={styles.safeArea} testID="admin-sections">
     <FormulaMintCanvasAura reduceTransparency={reduceTransparency} scope="AdminSections" testID="admin-sections-mint-aura" />
@@ -554,9 +614,9 @@ function AdminSectionsLayout({ actions, adminSection, canAccessFinance, copy, fi
         </View>
         <AdminTabNavigation
           items={[
-            { key: 'operations', label: copy.navigation.operations, onPress: () => patch({ activePanel: 'operations', activeTab: 'operations' }), selected: activeTab === 'operations', testID: 'admin-sections-operations-tab' },
+            ...(canAccessOperationalArea ? [{ key: 'operations', label: copy.navigation.operations, onPress: () => patch({ activePanel, activeTab: 'operations' }), selected: activeTab === 'operations', testID: 'admin-sections-operations-tab' }] : []),
             ...(canAccessFinance ? [{ key: 'finance', label: language === 'vi' ? 'Tài chính' : 'Finance', onPress: () => openFinance(), selected: activeTab === 'finance', testID: 'admin-sections-finance-tab' }] : []),
-            { key: 'team', label: copy.navigation.team, onPress: () => patch({ activeTab: 'team' }), selected: activeTab === 'team', testID: 'admin-sections-team-tab' },
+            ...(canAccessTeam ? [{ key: 'team', label: copy.navigation.team, onPress: () => patch({ activeTab: 'team' }), selected: activeTab === 'team', testID: 'admin-sections-team-tab' }] : []),
             ...(actor?.access_level === 'owner' ? [{ key: 'governance', label: language === 'vi' ? 'Hệ thống' : 'System', onPress: () => patch({ activeTab: 'governance' }), selected: activeTab === 'governance', testID: 'admin-sections-governance-tab' }] : []),
           ]}
           testID="admin-sections-primary-navigation"
@@ -564,21 +624,21 @@ function AdminSectionsLayout({ actions, adminSection, canAccessFinance, copy, fi
         {activeTab === 'finance' ? <AdminFinancePanel actor={actor} initialView={financeView} onViewChange={openFinance} reduceMotion={reduceMotion} reduceTransparency={reduceTransparency} /> : activeTab === 'governance' ? <AdminGovernancePanel actor={actor} language={language} /> : activeTab === 'team' ? <AdminSubAdminPanel actor={actor} error={teamError} language={language} loading={loading} members={subAdmins} nominations={managerNominations} pendingAccounts={pendingAdminAccounts} onRefresh={loadData} onRetry={() => { void loadData() }} reduceMotion={reduceMotion} /> : <>
           <AdminTabNavigation
             items={[
-              { key: 'overview', label: copy.navigation.overview, onPress: () => patch({ activePanel: 'operations' }), selected: activePanel === 'operations', testID: 'admin-sections-overview-tab' },
-              { key: 'workers', label: copy.navigation.workers, onPress: () => patch({ activePanel: 'workers', workerPage: 1 }), selected: activePanel === 'workers', testID: 'admin-sections-worker-tab' },
-              { key: 'transactions', label: copy.navigation.transactions, onPress: () => patch({ activePanel: 'transactions', transactionPage: 1, transactionView: 'services' }), selected: activePanel === 'transactions', testID: 'admin-sections-transactions-tab' },
+              ...(canAccessOperations ? [{ key: 'overview', label: copy.navigation.overview, onPress: () => patch({ activePanel: 'operations' }), selected: activePanel === 'operations', testID: 'admin-sections-overview-tab' }] : []),
+              ...(canAccessWorkers ? [{ key: 'workers', label: copy.navigation.workers, onPress: () => patch({ activePanel: 'workers', workerPage: 1 }), selected: activePanel === 'workers', testID: 'admin-sections-worker-tab' }] : []),
+              ...(canAccessTransactions || canAccessPayouts ? [{ key: 'transactions', label: copy.navigation.transactions, onPress: () => patch({ activePanel: 'transactions', transactionPage: 1, transactionView: canAccessTransactions ? 'services' : 'payouts' }), selected: activePanel === 'transactions', testID: 'admin-sections-transactions-tab' }] : []),
             ]}
             testID="admin-sections-operation-navigation"
           />
           {activePanel === 'operations' ? <AdminOperationsOverview error={operationsError} language={language} loading={loading} onOpenPanel={(panel) => patch(panel === 'workers' ? { activePanel: panel, workerPage: 1 } : panel === 'transactions' ? { activePanel: panel, transactionPage: 1, transactionView: 'services' } : { activePanel: panel })} onRetry={() => { void loadData() }} snapshot={operations} /> : <>
             {activePanel === 'transactions' ? <AdminTabNavigation
               items={[
-                { key: 'services', label: language === 'vi' ? 'Giao dịch dịch vụ' : 'Service transactions', onPress: () => patch({ transactionPage: 1, transactionView: 'services' }), selected: transactionView === 'services', testID: 'admin-service-transactions-tab' },
-                { key: 'payouts', label: language === 'vi' ? 'Chi trả thợ' : 'Worker payouts', onPress: () => patch({ transactionView: 'payouts' }), selected: transactionView === 'payouts', testID: 'admin-worker-payouts-tab' },
+                ...(canAccessTransactions ? [{ key: 'services', label: language === 'vi' ? 'Giao dịch dịch vụ' : 'Service transactions', onPress: () => patch({ transactionPage: 1, transactionView: 'services' }), selected: effectiveTransactionView === 'services', testID: 'admin-service-transactions-tab' }] : []),
+                ...(canAccessPayouts ? [{ key: 'payouts', label: language === 'vi' ? 'Chi trả thợ' : 'Worker payouts', onPress: () => patch({ transactionView: 'payouts' }), selected: effectiveTransactionView === 'payouts', testID: 'admin-worker-payouts-tab' }] : []),
               ]}
               testID="admin-transaction-view-navigation"
             /> : null}
-            {activePanel === 'transactions' && transactionView === 'payouts' ? <AdminPayoutsPanel actor={actor} initialTab={adminSection === 'withdrawals' ? 'withdrawals' : 'accounts'} key={adminSection === 'withdrawals' ? 'withdrawals' : 'accounts'} reduceMotion={reduceMotion} reduceTransparency={reduceTransparency} /> : <>
+            {activePanel === 'transactions' && effectiveTransactionView === 'payouts' ? <AdminPayoutsPanel actor={actor} initialTab={adminSection === 'withdrawals' ? 'withdrawals' : 'accounts'} key={adminSection === 'withdrawals' ? 'withdrawals' : 'accounts'} reduceMotion={reduceMotion} reduceTransparency={reduceTransparency} /> : <>
               <View style={styles.toolbar}>
                 <KaelTextField mode="search" accessibilityLabel={copy.filters.searchPlaceholder} placeholder={copy.filters.searchPlaceholder} placeholderTextColor={color.text.muted} value={searchQuery} onChangeText={(value) => patch({ searchQuery: value, transactionPage: 1, workerPage: 1 })} shellStyle={styles.searchField} inputShellStyle={styles.searchInput} style={styles.searchText} autoCapitalize="none" />
                 <KaelButton accessibilityLabel={copy.actions.refresh} label={copy.actions.refresh} onPress={() => { void loadData() }} style={styles.refreshButton} variant="secondary" />

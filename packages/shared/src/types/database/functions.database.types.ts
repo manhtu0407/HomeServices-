@@ -1382,6 +1382,15 @@ export type DatabaseFunctions = {
         }
         Returns: boolean
       }
+      get_admin_operator_activation_status: {
+        Args: { p_actor_id: string }
+        Returns: {
+          capabilities: string[]
+          email: string
+          full_name: string
+          status: string
+        }[]
+      }
       get_customer_profile_insights_aggregate: {
         Args: { p_customer_id: string }
         Returns: {

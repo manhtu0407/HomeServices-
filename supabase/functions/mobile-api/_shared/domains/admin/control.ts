@@ -12,9 +12,7 @@ import { db, dbQuery } from "../../platform/db.ts";
 import { apiFailure } from "../../platform/api-failure.ts";
 import type { MobileApiContext } from "../../platform/auth.ts";
 import {
-  ADMIN_CONTROL_CAPABILITIES,
   type AdminActor,
-  type AdminControlCapability,
   type AdminManagerNominationCancellationResponse,
   type AdminManagerNominationResponse,
   type AdminManagerNominationSummary,
@@ -43,7 +41,9 @@ import {
   maskPhone,
   matchesWorkerApplicationQuery,
 } from "./control-formatters.ts";
+import { asCapabilities, requireAdminCapability } from "./actor.ts";
 import { serializeProvisioning } from "./operator-provisioning.ts";
+export { getAdminActor, requireAdminCapability } from "./actor.ts";
 const WORKER_APPLICATION_SELECT =
   "id,actor_id,status,safe_metadata,created_at,updated_at";
 const WORKER_PROFILE_SELECT =
@@ -634,35 +634,6 @@ function serializeOperationsSnapshot(value: unknown, actor: AdminActor): AdminOp
   if (!generatedAt) apiFailure("DB_ERROR", "Dữ liệu vận hành chưa có thời điểm hợp lệ", 500);
   return { actor, generated_at: generatedAt, attention, flow, quality, audit_events: auditEvents };
 }
-export async function requireAdminCapability(
-  ctx: MobileApiContext,
-  capability: AdminControlCapability,
-): Promise<AdminActor> {
-  if (ctx.role === "admin") {
-    return { access_level: "owner", capabilities: [...ADMIN_CONTROL_CAPABILITIES] };
-  }
-  if (ctx.role !== "admin_operator") {
-    apiFailure("AUTH_FORBIDDEN", "Tài khoản không có quyền vào khu vực quản trị", 403);
-  }
-  const result = await dbQuery<Row>(
-    db(ctx)
-      .from("admin_operator_accounts")
-      .select("capabilities,status")
-      .eq("user_id", ctx.user.id)
-      .maybeSingle(),
-  );
-  if (result.error || !result.data || result.data.status !== "active") {
-    apiFailure("AUTH_FORBIDDEN", "Quyền Sub Admin hiện không còn hiệu lực", 403);
-  }
-  const storedCapabilities = asCapabilities(result.data.capabilities);
-  const capabilities = storedCapabilities.includes("finance.read")
-    ? storedCapabilities
-    : [...storedCapabilities, "finance.read" as const];
-  if (!capabilities.includes(capability)) {
-    apiFailure("AUTH_FORBIDDEN", "Tài khoản chưa được cấp quyền cho thao tác này", 403);
-  }
-  return { access_level: "operator", capabilities };
-}
 function requireAdminOwner(ctx: MobileApiContext): void {
   if (ctx.role !== "admin") {
     apiFailure("AUTH_FORBIDDEN", "Chỉ Owner Admin mới có thể thay đổi quyền Sub Admin", 403);
@@ -759,11 +730,6 @@ function asBaselineRole(value: unknown): "customer" | "worker" | null {
 
 function asOperatorStatus(value: unknown): "active" | "revoked" | null {
   return value === "active" || value === "revoked" ? value : null;
-}
-
-function asCapabilities(value: unknown): AdminControlCapability[] {
-  const allowed = new Set<string>(ADMIN_CONTROL_CAPABILITIES);
-  return Array.from(new Set(asStringArray(value).filter((capability): capability is AdminControlCapability => allowed.has(capability))));
 }
 
 function asRecordArray(value: unknown): Row[] {

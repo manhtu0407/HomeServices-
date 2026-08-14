@@ -274,6 +274,7 @@ jest.mock('@/lib/auth-provider', () => ({
 
 jest.mock('@/lib/services', () => ({
   adminControlService: {
+    getActor: jest.fn(),
     decideWorkerApplication: jest.fn(),
     decideWorkerProfile: jest.fn(),
     exportFinanceCsv: jest.fn(),
@@ -310,6 +311,7 @@ jest.mock('@/lib/services', () => ({
 }))
 
 function mockSuccessfulLoad() {
+  jest.mocked(adminControlService.getActor).mockResolvedValue({ success: true, data: operations.actor, status: 200 })
   jest.mocked(adminControlService.getOperations).mockResolvedValue({ success: true, data: operations, status: 200 })
   jest.mocked(adminControlService.listWorkerApplications).mockResolvedValue({
     success: true,
@@ -461,6 +463,54 @@ describe('AdminSections', () => {
     expect(screen.getByText('Operations Team One')).toBeTruthy()
   })
 
+  it('keeps the Team section usable while an older Edge release omits pending accounts', async () => {
+    mockSuccessfulLoad()
+    jest.mocked(adminControlService.listSubAdmins).mockResolvedValue({
+      success: true,
+      data: {
+        actor: operations.actor,
+        members: [subAdmin],
+        nominations: [],
+      } as never,
+      status: 200,
+    })
+
+    render(<AdminSections />)
+    await screen.findByTestId('admin-operations-overview')
+    fireEvent.press(screen.getByTestId('admin-sections-team-tab'))
+
+    expect(await screen.findByTestId('admin-sub-admin-panel')).toBeTruthy()
+    expect(screen.getByTestId('admin-team-owner-actions')).toBeTruthy()
+    expect(screen.getByText('Operations Team One')).toBeTruthy()
+  })
+
+  it('labels the current manual bank payment states without hiding them as unrecorded', async () => {
+    mockSuccessfulLoad()
+    const manualClaim = {
+      ...transaction,
+      job_id: 'manual-claim-job',
+      display_code: 'NS-MANUAL-0001',
+      status: 'payment_pending',
+      payment_status: 'manual_customer_claimed',
+      payment_provider: 'platform_bank_manual',
+      paid_at: null,
+    } satisfies AdminViewTransactionSummary
+    jest.mocked(adminControlService.listTransactions).mockResolvedValue({
+      success: true,
+      data: { transactions: [manualClaim], has_more: false, next_offset: null, total_count: 1 },
+      status: 200,
+    })
+
+    render(<AdminSections />)
+    await screen.findByTestId('admin-operations-overview')
+    fireEvent.press(screen.getByTestId('admin-sections-transactions-tab'))
+
+    expect(await screen.findByText('NS-MANUAL-0001')).toBeTruthy()
+    expect(screen.getAllByText('Khách đã báo chuyển').length).toBeGreaterThanOrEqual(1)
+    expect(screen.getByText('Chuyển khoản ngân hàng qua nền tảng')).toBeTruthy()
+    expect(screen.queryByText('Chưa ghi nhận')).toBeNull()
+  })
+
   it('shows eight service transactions per page and returns to the first page when searching', async () => {
     mockSuccessfulLoad()
     const firstPage = Array.from({ length: 8 }, (_, index) => transactionAt(index + 1))
@@ -549,19 +599,38 @@ describe('AdminSections', () => {
 
   it('sends worker approval decisions to the production service when the actor has workers.review', async () => {
     mockSuccessfulLoad()
-    jest.mocked(adminControlService.decideWorkerApplication).mockResolvedValue({
-      success: true,
-      data: {
-        ok: true,
-        application_id: workerApplication.id,
-        worker_id: workerApplication.worker_id,
-        decision: 'approve',
-        status: 'resolved',
-        role: 'worker',
-        verification_status: 'draft',
-        decided_at: '2026-08-08T04:12:00.000Z',
-      },
-      status: 200,
+    let workerAccessApproved = false
+    const workerListStates: boolean[] = []
+    jest.mocked(adminControlService.listWorkerApplications).mockImplementation(async () => {
+      workerListStates.push(workerAccessApproved)
+      return {
+        success: true,
+        data: {
+          applications: workerAccessApproved ? [] : [workerApplication],
+          has_more: false,
+          next_offset: null,
+          next_cursor: null,
+          total_count: workerAccessApproved ? 0 : 1,
+        },
+        status: 200,
+      }
+    })
+    jest.mocked(adminControlService.decideWorkerApplication).mockImplementation(async () => {
+      workerAccessApproved = true
+      return {
+        success: true,
+        data: {
+          ok: true,
+          application_id: workerApplication.id,
+          worker_id: workerApplication.worker_id,
+          decision: 'approve',
+          status: 'resolved',
+          role: 'worker',
+          verification_status: 'draft',
+          decided_at: '2026-08-08T04:12:00.000Z',
+        },
+        status: 200,
+      }
     })
 
     render(<AdminSections />)
@@ -571,7 +640,11 @@ describe('AdminSections', () => {
 
     await waitFor(() => {
       expect(adminControlService.decideWorkerApplication).toHaveBeenCalledWith(workerApplication.id, { decision: 'approve' })
+      expect(jest.mocked(adminControlService.listWorkerApplications).mock.calls.length).toBeGreaterThanOrEqual(2)
+      expect(workerListStates).toContain(true)
+      expect(screen.queryByTestId(`admin-worker-application-${workerApplication.id}`)).toBeNull()
     })
+    expect(screen.getByText('Đã cấp quyền vào luồng thợ. Tài khoản vẫn cần hoàn tất hồ sơ xác minh.')).toBeTruthy()
   })
 
   it('shows the complete worker review in the Admin Sections modal and verifies a ready profile', async () => {
@@ -672,6 +745,26 @@ describe('AdminSections', () => {
     expect(screen.getByTestId('admin-finance-tab-overview').props.accessibilityState).toEqual({ selected: true })
   })
 
+  it('opens Finance for a finance-only operator without requesting forbidden Admin sections', async () => {
+    mockSuccessfulLoad()
+    jest.mocked(adminControlService.getActor).mockResolvedValue({
+      success: true,
+      data: { access_level: 'operator', capabilities: ['finance.read'] },
+      status: 200,
+    })
+
+    render(<AdminSections />)
+
+    expect(await screen.findByTestId('admin-finance-view-overview')).toBeTruthy()
+    expect(screen.getByTestId('admin-sections-finance-tab')).toBeTruthy()
+    expect(screen.queryByTestId('admin-sections-operations-tab')).toBeNull()
+    expect(screen.queryByTestId('admin-sections-team-tab')).toBeNull()
+    expect(adminControlService.getOperations).not.toHaveBeenCalled()
+    expect(adminControlService.listWorkerApplications).not.toHaveBeenCalled()
+    expect(adminControlService.listTransactions).not.toHaveBeenCalled()
+    expect(adminControlService.listSubAdmins).not.toHaveBeenCalled()
+  })
+
   it('returns the localhost Admin visual-audit Finance route to Login Gates instead of rendering Finance without a backend session', async () => {
     mockAuthSessionProvider = 'local-visual-audit'
     mockLocalSearchParams = { ns_admin_section: 'finance' }
@@ -701,6 +794,7 @@ describe('AdminSections', () => {
     await waitFor(() => {
       expect(mockReplace).toHaveBeenCalledWith('/(auth)/login?stage=login')
     })
+    expect(adminControlService.getActor).not.toHaveBeenCalled()
     expect(adminControlService.getOperations).not.toHaveBeenCalled()
     expect(screen.queryByTestId('admin-sections-finance-tab')).toBeNull()
     expect(screen.queryByTestId('admin-finance-view-overview')).toBeNull()
@@ -714,8 +808,11 @@ describe('AdminSections', () => {
     fireEvent.press(screen.getByTestId('admin-sections-finance-tab'))
 
     expect(mockReplace).toHaveBeenLastCalledWith('/sections?ns_admin_section=finance&ns_finance_view=overview')
+    expect(await screen.findByTestId('admin-finance-view-overview')).toBeTruthy()
     fireEvent.press(await screen.findByTestId('admin-finance-tab-tax'))
     expect(mockReplace).toHaveBeenLastCalledWith('/sections?ns_admin_section=finance&ns_finance_view=tax')
+    expect(await screen.findByTestId('admin-finance-tax-reports')).toBeTruthy()
+    await waitFor(() => expect(adminControlService.listFinanceTaxPolicies).toHaveBeenCalled())
   })
 
   it('keeps Finance visible for authenticated admins during capability backfill', async () => {
@@ -846,6 +943,11 @@ describe('AdminSections', () => {
   it('hides Owner account actions from an Admin operator', async () => {
     mockSuccessfulLoad()
     const operatorActor = { ...operations.actor, access_level: 'operator' as const }
+    jest.mocked(adminControlService.getActor).mockResolvedValue({
+      success: true,
+      data: operatorActor,
+      status: 200,
+    })
     jest.mocked(adminControlService.getOperations).mockResolvedValue({
       success: true,
       data: { ...operations, actor: operatorActor },
@@ -893,7 +995,7 @@ describe('AdminSections', () => {
     await waitFor(() => {
       expect(mockReplace).toHaveBeenCalledWith('/(auth)/login?stage=login')
     })
+    expect(adminControlService.getActor).toHaveBeenCalledTimes(1)
     expect(adminControlService.getOperations).toHaveBeenCalledTimes(1)
-    expect(adminControlService.listWorkerApplications).not.toHaveBeenCalled()
   })
 })

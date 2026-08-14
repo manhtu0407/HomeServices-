@@ -22,7 +22,7 @@ type AdminActivationContextValue = {
 const AdminActivationContext = createContext<AdminActivationContextValue | null>(null)
 
 export function AdminActivationProvider({ children }: { children: ReactNode }) {
-  const { refreshProfile, session } = useAuth()
+  const { session, signOut } = useAuth()
   const [status, setStatus] = useState<AdminActivationStatus | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -71,11 +71,13 @@ export function AdminActivationProvider({ children }: { children: ReactNode }) {
       setLoading(false)
       return false
     }
-    await refreshProfile()
-    await refresh()
+    await signOut()
+    setStatus(null)
+    setResolvedUserId(null)
+    setError(null)
     setLoading(false)
     return true
-  }, [refresh, refreshProfile])
+  }, [signOut])
 
   const unresolvedSession = Boolean(session && resolvedUserId !== session.user.id)
   const visibleStatus = session && !unresolvedSession ? status : null

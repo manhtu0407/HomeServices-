@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useReducer } from 'react'
+import { useCallback, useEffect, useMemo, useReducer, useRef } from 'react'
 import { Modal, Pressable, StyleSheet, Text, useWindowDimensions, View, type ViewStyle } from 'react-native'
 import Svg, { Circle, Polyline } from 'react-native-svg'
 
@@ -256,6 +256,7 @@ export function AdminFinancePanel({
   const canApproveTax = actor?.access_level === 'owner' && canManageTax
   const [state, dispatch] = useReducer(financeReducer, { ...initialFinanceState, activeView: normalizeFinanceView(initialView) })
   const [taxRefreshKey, refreshTaxPolicies] = useReducer((value: number) => value + 1, 0)
+  const loadRequestIdRef = useRef(0)
   const patch = useCallback((value: Partial<FinanceState>) => {
     dispatch({ type: 'patch', value })
   }, [])
@@ -288,6 +289,8 @@ export function AdminFinancePanel({
   }, [initialView, patch])
 
   const load = useCallback(async () => {
+    const requestId = loadRequestIdRef.current + 1
+    loadRequestIdRef.current = requestId
     if (!canRead) {
       patch({ loading: false })
       return
@@ -304,19 +307,25 @@ export function AdminFinancePanel({
         ? adminControlService.listPaymentReconciliations({ status: 'pending', limit: 25, offset: 0 })
         : Promise.resolve(null),
     ])
-    patch({
-      error: null,
-      loading: false,
-      overview: overviewResult.success ? overviewResult.data : null,
-      reconciliations: queueResult?.success ? queueResult.data.payment_reconciliations : [],
-      summary: summaryResult?.success ? summaryResult.data : null,
-    })
+    if (requestId === loadRequestIdRef.current) {
+      patch({
+        error: null,
+        loading: false,
+        overview: overviewResult.success ? overviewResult.data : null,
+        reconciliations: queueResult?.success ? queueResult.data.payment_reconciliations : [],
+        summary: summaryResult?.success ? summaryResult.data : null,
+      })
+    }
   }, [canRead, canReconcile, copy.invalidRange, patch, period])
 
+  const invalidatePendingLoad = useCallback(() => {
+    loadRequestIdRef.current += 1
+  }, [])
+
   useEffect(() => {
-    const timer = setTimeout(() => { void load() }, 0)
-    return () => clearTimeout(timer)
-  }, [load])
+    void load()
+    return invalidatePendingLoad
+  }, [invalidatePendingLoad, load])
 
   const { formatCount, formatCurrency, formatDate, formatPercent, formatUsd } = useMemo(
     () => createFinanceFormatters(language, copy.unavailable),
@@ -446,57 +455,21 @@ export function AdminFinancePanel({
         <BreakdownCard copy={copy} formatCurrency={formatCurrency} items={paymentBreakdown} title={copy.paymentMix} />
         <BreakdownCard copy={copy} formatCurrency={formatCurrency} items={serviceBreakdown} title={copy.serviceMix} />
       </View>
-    </View> : activeView === 'cash' ? <View style={styles.viewStack} testID="admin-finance-view-cash">
-      {!canReconcile ? <View style={styles.readOnlyBadge}><Text style={styles.readOnlyText}>{copy.readOnly}</Text></View> : null}
-      <FinanceMetricGrid cardStyle={metricCardStyle} items={[
-        financePendingMetricItem('incoming', copy.incoming, summary?.platform_incoming, formatCurrency, copy),
-        financePendingMetricItem('paid-out', copy.paidOut, summary?.payout_outflow, formatCurrency, copy),
-        financePendingMetricItem('direct-payment', copy.directPayment, summary?.direct_payment_total, formatCurrency, copy),
-        financePendingMetricItem('completed-refunds', copy.completedRefunds, overview?.metrics.refund_completed_vnd.value, formatCurrency, copy),
-      ]} />
-      <View style={styles.balanceCard}>
-        <Text style={styles.sectionTitle}>{copy.accountBalance}</Text>
-        <View style={styles.balanceGrid}>
-          <PendingMetric label={copy.openingBalance} value={overview?.bank_reconciliation.opening_balance_vnd.value ?? summary?.opening_balance} formatValue={formatCurrency} copy={copy} />
-          <PendingMetric label={copy.closingBalance} value={overview?.bank_reconciliation.closing_balance_vnd.value ?? summary?.closing_balance} formatValue={formatCurrency} copy={copy} />
-          <PendingMetric label={copy.expectedBankChange} value={overview?.bank_reconciliation.expected_change_vnd.value ?? summary?.expected_bank_change} formatValue={formatCurrency} copy={copy} />
-          <PendingMetric label={copy.actualBankChange} value={overview?.bank_reconciliation.actual_change_vnd.value ?? summary?.actual_bank_change} formatValue={formatCurrency} copy={copy} />
-          <PendingMetric label={copy.variance} value={overview?.bank_reconciliation.unexplained_variance_vnd.value ?? summary?.unexplained_variance} formatValue={formatCurrency} copy={copy} />
-        </View>
-        {canReconcile ? <><Text style={styles.subtitle}>{copy.saveBalanceHint}</Text><KaelTextField
-          accessibilityLabel={copy.accountBalance}
-          keyboardType="number-pad"
-          label={copy.accountBalance}
-          onChangeText={(observedBalance) => patch({ observedBalance })}
-          placeholder="0"
-          placeholderTextColor={color.text.muted}
-          value={observedBalance}
-        />
-        <KaelButton disabled={pendingAction === 'snapshot'} label={copy.saveBalance} onPress={() => { void saveObservedBalance() }} variant="secondary" /></> : null}
-      </View>
-
-      {canReconcile ? <><View style={styles.queueHeader}>
-        <Text style={styles.sectionTitle}>{copy.reconciliationQueue}</Text>
-      </View>
-      {reconciliations.length === 0 ? <View style={styles.emptyCard}><Text style={styles.emptyText}>{copy.noQueue}</Text></View> : reconciliations.map((item) => <Pressable
-        accessibilityLabel={`${copy.reconciliationQueue}: ${item.job_id}`}
-        accessibilityRole="button"
-        key={item.id}
-        onPress={() => openReconciliation(item)}
-        style={styles.reconciliationCard}
-        testID={`admin-finance-reconciliation-${item.id}`}
-      >
-        <View style={styles.reconciliationHeader}>
-          <Text style={styles.reconciliationTitle}>{item.payment_method === 'platform_bank_manual' ? copy.incoming : copy.directPayment}</Text>
-          <Text style={styles.status}>{reconciliationStatusLabel(item.status, copy)}</Text>
-        </View>
-        <Text style={styles.jobId}>{item.job_id}</Text>
-        <View style={styles.detailGrid}>
-          <Metric label={copy.actualAmount} value={formatCurrency(item.amount_received ?? item.gross_amount)} />
-          <Metric label={copy.customerClaimedAt} value={formatDate(item.customer_transfer_claimed_at)} />
-        </View>
-      </Pressable>)}</> : null}
-    </View> : activeView === 'commission' ? <View style={styles.viewStack} testID="admin-finance-view-commission">
+    </View> : activeView === 'cash' ? <FinanceCashView
+      canReconcile={canReconcile}
+      copy={copy}
+      formatCurrency={formatCurrency}
+      formatDate={formatDate}
+      metricCardStyle={metricCardStyle}
+      observedBalance={observedBalance}
+      onChangeObservedBalance={(observedBalance) => patch({ observedBalance })}
+      onOpenReconciliation={openReconciliation}
+      onSaveObservedBalance={() => { void saveObservedBalance() }}
+      overview={overview}
+      pendingAction={pendingAction}
+      reconciliations={reconciliations}
+      summary={summary}
+    /> : activeView === 'commission' ? <View style={styles.viewStack} testID="admin-finance-view-commission">
       <FinanceMetricGrid cardStyle={metricCardStyle} items={[
         financePendingMetricItem('commission-accrued', copy.commissionAccrued, commissionAccrued, formatCurrency, copy),
         financePendingMetricItem('commission-collected', copy.commissionCollected, metricValue(overview?.metrics.commission_collected_vnd, summary?.commission_collected), formatCurrency, copy),
@@ -531,6 +504,88 @@ export function AdminFinancePanel({
       reduceTransparency={reduceTransparency}
       selected={selected}
     /> : null}
+  </View>
+}
+
+function FinanceCashView({
+  canReconcile,
+  copy,
+  formatCurrency,
+  formatDate,
+  metricCardStyle,
+  observedBalance,
+  onChangeObservedBalance,
+  onOpenReconciliation,
+  onSaveObservedBalance,
+  overview,
+  pendingAction,
+  reconciliations,
+  summary,
+}: {
+  canReconcile: boolean
+  copy: FinanceCopy
+  formatCurrency: (value: number | null) => string
+  formatDate: (value: string | null) => string
+  metricCardStyle: ViewStyle
+  observedBalance: string
+  onChangeObservedBalance: (value: string) => void
+  onOpenReconciliation: (item: AdminPaymentReconciliationSummary) => void
+  onSaveObservedBalance: () => void
+  overview: AdminFinanceOverviewResponse | null
+  pendingAction: string | null
+  reconciliations: AdminPaymentReconciliationSummary[]
+  summary: AdminFinanceSummaryResponse | null
+}) {
+  return <View style={styles.viewStack} testID="admin-finance-view-cash">
+    {!canReconcile ? <View style={styles.readOnlyBadge}><Text style={styles.readOnlyText}>{copy.readOnly}</Text></View> : null}
+    <FinanceMetricGrid cardStyle={metricCardStyle} items={[
+      financePendingMetricItem('incoming', copy.incoming, summary?.platform_incoming, formatCurrency, copy),
+      financePendingMetricItem('paid-out', copy.paidOut, summary?.payout_outflow, formatCurrency, copy),
+      financePendingMetricItem('direct-payment', copy.directPayment, summary?.direct_payment_total, formatCurrency, copy),
+      financePendingMetricItem('completed-refunds', copy.completedRefunds, overview?.metrics.refund_completed_vnd.value, formatCurrency, copy),
+    ]} />
+    <View style={styles.balanceCard}>
+      <Text style={styles.sectionTitle}>{copy.accountBalance}</Text>
+      <View style={styles.balanceGrid}>
+        <PendingMetric label={copy.openingBalance} value={overview?.bank_reconciliation.opening_balance_vnd.value ?? summary?.opening_balance} formatValue={formatCurrency} copy={copy} />
+        <PendingMetric label={copy.closingBalance} value={overview?.bank_reconciliation.closing_balance_vnd.value ?? summary?.closing_balance} formatValue={formatCurrency} copy={copy} />
+        <PendingMetric label={copy.expectedBankChange} value={overview?.bank_reconciliation.expected_change_vnd.value ?? summary?.expected_bank_change} formatValue={formatCurrency} copy={copy} />
+        <PendingMetric label={copy.actualBankChange} value={overview?.bank_reconciliation.actual_change_vnd.value ?? summary?.actual_bank_change} formatValue={formatCurrency} copy={copy} />
+        <PendingMetric label={copy.variance} value={overview?.bank_reconciliation.unexplained_variance_vnd.value ?? summary?.unexplained_variance} formatValue={formatCurrency} copy={copy} />
+      </View>
+      {canReconcile ? <><Text style={styles.subtitle}>{copy.saveBalanceHint}</Text><KaelTextField
+        accessibilityLabel={copy.accountBalance}
+        keyboardType="number-pad"
+        label={copy.accountBalance}
+        onChangeText={onChangeObservedBalance}
+        placeholder="0"
+        placeholderTextColor={color.text.muted}
+        value={observedBalance}
+      />
+      <KaelButton disabled={pendingAction === 'snapshot'} label={copy.saveBalance} onPress={onSaveObservedBalance} variant="secondary" /></> : null}
+    </View>
+
+    {canReconcile ? <><View style={styles.queueHeader}>
+      <Text style={styles.sectionTitle}>{copy.reconciliationQueue}</Text>
+    </View>
+    {reconciliations.length === 0 ? <View style={styles.emptyCard}><Text style={styles.emptyText}>{copy.noQueue}</Text></View> : reconciliations.map((item) => <Pressable
+      accessibilityLabel={`${copy.reconciliationQueue}: ${item.job_id}`}
+      accessibilityRole="button"
+      key={item.id}
+      onPress={() => onOpenReconciliation(item)}
+      style={styles.reconciliationCard}
+      testID={`admin-finance-reconciliation-${item.id}`}
+    >
+      <View style={styles.reconciliationHeader}>
+        <Text style={styles.reconciliationTitle}>{item.payment_method === 'platform_bank_manual' ? copy.incoming : copy.directPayment}</Text>
+        <Text style={styles.status}>{reconciliationStatusLabel(item.status, copy)}</Text>
+      </View>
+      <Text style={styles.jobId}>{item.job_id}</Text>
+      <View style={styles.detailGrid}>
+        <Metric label={copy.actualAmount} value={formatCurrency(item.amount_received ?? item.gross_amount)} />
+        <Metric label={copy.customerClaimedAt} value={formatDate(item.customer_transfer_claimed_at)} />
+      </View>
+    </Pressable>)}</> : null}
   </View>
 }
 
