@@ -5,8 +5,8 @@
     "immutableThroughVersion": "20260805090000",
     "sha256": "7d4ac8a8227452e357caa11a21ece9099c80112712dba9a250114d0761a90275"
   },
-  "migrationCount": 264,
-  "migrationsSha256": "9cecbb1a7d5ffd8515acc624c9c91b03ef11f56e3797139bfba99e61acbb143c",
+  "migrationCount": 265,
+  "migrationsSha256": "917cc8ea0110fe40f2e5df70b5c39449a12e28f1165087384786c568e50c0e50",
   "databaseTypes": {
     "file": "packages/shared/src/types/database",
     "sha256": "7e14ee78332efce47f523ac3d832bdfbc20aeced47c7f5c9282997b8811c8873"
@@ -1859,6 +1859,13 @@
       "file": "supabase/migrations/20260814111700_keep_scope_quote_current_during_claim.sql",
       "sha256": "2ed3ab156d3d1be566e8ea8e0968745f64b264b6b9ed0abe8edd5c288eb8b8b4",
       "bytes": 4217
+    },
+    {
+      "version": "20260814120000",
+      "name": "fail_closed_kael_receipt_identity",
+      "file": "supabase/migrations/20260814120000_fail_closed_kael_receipt_identity.sql",
+      "sha256": "132c489acddeff1edecadb63c13e064b2cefe7a62d0e400a0ae67eca29cd5e77",
+      "bytes": 17010
     }
   ]
 }

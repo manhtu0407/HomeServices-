@@ -8,11 +8,13 @@
 -- @pillar authority: governance/RULES.md #3 (AI output is validated before it reaches a user) |
 --   governance/RULES.md #7 (money-impacting state needs a validated server decision) |
 --   governance/RULES.md #8 (no silent degradation) | docs/test-debt-ledger.md section 1
--- @pillar target: supabase/migrations/20260811114500_bind_kael_price_reasoning_receipt.sql
+-- @pillar target: supabase/migrations/20260814120000_fail_closed_kael_receipt_identity.sql
 -- @pillar layer: sql
 -- @pillar siblings: P12-workflow-transition-composition, P14-kael-chat-cost-cap, P10-per-actor-rls
--- @pillar mutation: delete one conjunct from either receipt guard in confirm_kael_chat_atomic --
---   the drop-one-field case for that path stops raising and the script exits nonzero
+-- @pillar mutation: drop the coalesce around the receipt_id or schema_version comparison in
+--   20260814120000 -- `null <> 'x'` is null, the or chain stops firing, and the drop-one case for
+--   that field reports the confirmation as accepted. Deleting any other conjunct turns its own
+--   drop-one case red the same way
 --
 -- Rollback-only proof against a real Postgres. The gate exists; nothing executed it, so a later
 -- migration could have relaxed it and every JS gate would still have been green.
