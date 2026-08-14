@@ -9,7 +9,7 @@ Durable project knowledge: feature specs, design contracts, audits, ops runbooks
 | Folder | Holds | Add here when… |
 |---|---|---|
 | `playbooks/` | Kael knowledge distillation: per-service textbooks + eval corpora, and the distillation SOP | you are teaching Kael to reason about a service |
-| `architecture/` | Durable system specs: the code-ownership map, migration chain, agentic/worker specs. **Workflow runtime truth is not here** — it lives in `governance/STRUCTURES.md` §6/§7/§9/§12/§22; `status-vocabulary.md` and `workflow-step-contracts.md` are redirect stubs kept so historical links resolve | a decision is a lasting structural contract, not a point-in-time plan |
+| `architecture/` | Durable system specs: the code-ownership map, migration chain, agentic/worker specs. **Workflow runtime truth is not here** — it lives in `governance/STRUCTURES.md` §6/§7/§9/§12/§22; `status-vocabulary.md` and `workflow-step-contracts.md` are redirect stubs kept so historical links resolve, and `test-pillars.md` points at the canonical `governance/protocols/test-pillars.md` | a decision is a lasting structural contract, not a point-in-time plan |
 | `design/` | Design + UX contracts (glass/motion/mascot, price viz, voice, worker map, perceived-perf) | you accept a design direction to carry into production |
 | `foundation/` | Research + spikes + the Kael knowledge corpus + source-trust research/samples | you did throwaway research or a spike whose conclusion must persist |
 | `audit/` | Point-in-time codebase / security / process audits | you ran a formal audit and captured findings |
