@@ -440,6 +440,18 @@ export function WorkerV5EarningsDashboard({
       value: availableAmount,
     },
     {
+      id: 'pending',
+      label: textByLanguage(language, 'Đang chờ đối soát', 'Pending reconciliation'),
+      note: earnings?.pending_payment_count
+        ? textByLanguage(
+          language,
+          `${earnings.pending_payment_count} khoản khách đã báo thanh toán, đang chờ đối soát`,
+          `${earnings.pending_payment_count} customer payment claim${earnings.pending_payment_count === 1 ? '' : 's'} awaiting reconciliation`,
+        )
+        : textByLanguage(language, 'Không có khoản thanh toán nào đang chờ đối soát', 'No payments are awaiting reconciliation'),
+      value: displayAmount(earnings?.pending_payment_amount ?? 0, language),
+    },
+    {
       id: 'hold',
       label: textByLanguage(language, 'Tiền đang giữ 24 giờ', 'Funds held for 24 hours'),
       note: earnings?.on_hold_amount

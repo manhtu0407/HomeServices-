@@ -174,7 +174,7 @@ begin
       'estimate', jsonb_build_object(
         'problem_summary', 'Vòi nước bồn rửa rò rỉ',
         'problem_category', 'faucet_broken',
-        'complexity', 'simple',
+        'complexity', 'medium',
         'price_min', p_price_min,
         'price_max', p_price_max
       ),
@@ -575,7 +575,7 @@ begin
       'estimate', jsonb_build_object(
         'problem_summary', 'Vòi nước bồn rửa rò rỉ',
         'problem_category', 'faucet_broken',
-        'complexity', 'simple',
+        'complexity', 'medium',
         'price_min', 250000,
         'price_max', 400000
       ),

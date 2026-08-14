@@ -28,8 +28,7 @@ begin
     'public.admin_review_worker_profile_atomic(uuid,uuid,text,text)'::regprocedure,
     'public.admin_begin_operator_provisioning(uuid,text,text,text[])'::regprocedure,
     'public.admin_complete_operator_provisioning(uuid,uuid,uuid)'::regprocedure,
-    'public.admin_fail_operator_provisioning(uuid,uuid,text)'::regprocedure,
-    'public.activate_admin_operator_atomic(uuid)'::regprocedure
+    'public.admin_fail_operator_provisioning(uuid,uuid,text)'::regprocedure
   ] loop
     if not exists (
       select 1 from pg_catalog.pg_proc
@@ -43,6 +42,32 @@ begin
       raise exception 'RPC % is not service-only', v_function;
     end if;
   end loop;
+
+  v_function := 'public.get_admin_operator_activation_status(uuid)'::regprocedure;
+  if not exists (
+    select 1 from pg_catalog.pg_proc
+    where oid = v_function and prosecdef and proconfig = array['search_path=""']::text[]
+  ) then
+    raise exception 'activation receipt RPC is not a locked-path definer';
+  end if;
+  if pg_catalog.has_function_privilege('anon', v_function, 'execute')
+     or pg_catalog.has_function_privilege('authenticated', v_function, 'execute')
+     or not pg_catalog.has_function_privilege('service_role', v_function, 'execute') then
+    raise exception 'activation receipt RPC is not service-owned';
+  end if;
+
+  v_function := 'public.activate_admin_operator_atomic(uuid)'::regprocedure;
+  if not exists (
+    select 1 from pg_catalog.pg_proc
+    where oid = v_function and prosecdef and proconfig = array['search_path=""']::text[]
+  ) then
+    raise exception 'operator activation RPC is not a locked-path definer';
+  end if;
+  if pg_catalog.has_function_privilege('anon', v_function, 'execute')
+     or pg_catalog.has_function_privilege('authenticated', v_function, 'execute')
+     or not pg_catalog.has_function_privilege('service_role', v_function, 'execute') then
+    raise exception 'operator activation RPC is not service-owned';
+  end if;
 
   if not exists (
     select 1 from pg_catalog.pg_trigger
@@ -192,6 +217,22 @@ begin
     select 1 from public.profiles where id = v_operator and role = 'customer'::public.user_role
   ) then
     raise exception 'operator received privilege before first-password activation';
+  end if;
+
+  perform pg_catalog.set_config('request.jwt.claim.role', 'authenticated', true);
+  perform pg_catalog.set_config('request.jwt.claim.sub', v_owner::text, true);
+  select * into v_result from public.activate_admin_operator_atomic(v_operator);
+  if v_result.ok is not false or v_result.error_code <> 'ACTOR_MISMATCH' then
+    raise exception 'operator activation accepted a different authenticated actor';
+  end if;
+
+  perform pg_catalog.set_config('request.jwt.claim.role', 'service_role', true);
+  perform pg_catalog.set_config('request.jwt.claim.sub', v_operator::text, true);
+  select * into v_result from public.get_admin_operator_activation_status(v_operator);
+  if v_result.status <> 'pending_password_change'
+     or v_result.email <> 'upgrade.operator@gmail.com'
+     or not ('finance.read' = any(v_result.capabilities)) then
+    raise exception 'operator activation status receipt is incomplete';
   end if;
 
   select * into v_result from public.activate_admin_operator_atomic(v_operator);

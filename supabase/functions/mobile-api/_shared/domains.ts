@@ -83,6 +83,7 @@ import { approveKaelLearningCandidateAdmin, evaluatePriceSynthesisAbCaseAdmin, i
 import {
   decideAdminWorkerApplication,
   cancelAdminManagerNomination,
+  getAdminActor,
   getAdminOperations,
   getAdminWorkerApplication,
   listAdminSubAdmins,
@@ -523,6 +524,7 @@ function createAdminNotificationServices(secrets: EdgeServiceSecrets): Pick<
   | "listKaelLearningCandidates"
   | "approveKaelLearningCandidate"
   | "rejectKaelLearningCandidate"
+  | "getAdminActor"
   | "getAdminOperations"
   | "listAdminDisputes"
   | "listAdminPriceBaselines"
@@ -573,6 +575,7 @@ function createAdminNotificationServices(secrets: EdgeServiceSecrets): Pick<
       approveKaelLearningCandidateAdmin(ctx, candidateId, input),
     rejectKaelLearningCandidate: (ctx, candidateId, input) =>
       rejectKaelLearningCandidateAdmin(ctx, candidateId, input),
+    getAdminActor,
     getAdminOperations,
     listAdminDisputes,
     listAdminPriceBaselines,

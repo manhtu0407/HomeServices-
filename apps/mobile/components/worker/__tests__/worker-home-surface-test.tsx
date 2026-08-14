@@ -3193,6 +3193,24 @@ describe('Worker runtime surface wiring', () => {
     expect(mockReplace).toHaveBeenCalledWith('/(worker)/earnings?ns_worker_screen=4.2-ledger-detail')
   })
 
+  it('shows a customer payment claim as pending reconciliation without inventing income', () => {
+    buildWorkflow({
+      workerEarnings: {
+        ...buildNoEarnings(),
+        pending_payment_amount: 1_031_050,
+        pending_payment_count: 1,
+      },
+    })
+    mockRouteParams = { ns_worker_screen: '4.1-earnings-overview' }
+
+    render(<WorkerEarningsSurface />)
+
+    expect(screen.getByTestId('worker-v5-earnings-amount')).toHaveTextContent('0đ')
+    expect(screen.getByTestId('worker-v5-earnings-metric-available-value')).toHaveTextContent('0đ')
+    expect(screen.getByTestId('worker-v5-earnings-metric-pending-value')).toHaveTextContent('1.031.050đ')
+    expect(screen.getByText('1 khoản khách đã báo thanh toán, đang chờ đối soát')).toBeOnTheScreen()
+  })
+
   it('uses three dedicated icons for the rebuilt earnings utilities', () => {
     buildWorkflow({ workerEarnings: buildNoEarnings() })
     mockRouteParams = { ns_worker_screen: '4.1-earnings-overview' }

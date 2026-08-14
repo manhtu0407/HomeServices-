@@ -1,5 +1,6 @@
 import type { MobileApiContext } from "../contracts.ts";
 import type {
+  AdminActor,
   AdminOperationsResponse,
   AdminAiCostListResponse,
   AdminDisputeListResponse,
@@ -56,6 +57,7 @@ type AdminFinanceBalanceSnapshotInput = AdminFinanceContracts["financeBalanceSna
 type AdminFinanceBalanceSnapshotResponse = AdminFinanceContracts["financeBalanceSnapshotResponse"];
 
 export type AdminControlServices = {
+  getAdminActor(ctx: MobileApiContext): Promise<AdminActor>;
   getAdminOperations(ctx: MobileApiContext): Promise<AdminOperationsResponse>;
   listAdminDisputes(ctx: MobileApiContext, input: AdminGovernanceListInput): Promise<AdminDisputeListResponse>;
   listAdminPriceBaselines(ctx: MobileApiContext, input: AdminGovernanceListInput): Promise<AdminPriceBaselineListResponse>;

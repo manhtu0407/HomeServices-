@@ -19,6 +19,7 @@ import {
   subscribeToJobMessages,
   subscribeToJobStatus,
   subscribeToWorkerBroadcasts,
+  subscribeToWorkerEarnings,
 } from '../realtime'
 
 describe('mobile realtime subscription boundaries', () => {
@@ -34,6 +35,7 @@ describe('mobile realtime subscription boundaries', () => {
     expect(subscribeToJobMessages('job_id=neq.null', jest.fn())).toBeNull()
     expect(subscribeToJobStatus('../job', jest.fn())).toBeNull()
     expect(subscribeToWorkerBroadcasts('*', jest.fn())).toBeNull()
+    expect(subscribeToWorkerEarnings('worker_id=neq.null', jest.fn())).toBeNull()
     expect(mockChannel).not.toHaveBeenCalled()
   })
 
@@ -46,6 +48,27 @@ describe('mobile realtime subscription boundaries', () => {
     expect(mockOn).toHaveBeenCalledWith(
       'postgres_changes',
       expect.objectContaining({ filter: `job_id=eq.${jobId}` }),
+      expect.any(Function),
+    )
+    await expect(handle?.unsubscribe()).resolves.toBe('ok')
+    expect(mockRemoveChannel).toHaveBeenCalledWith(channel)
+  })
+
+  it('subscribes to the authenticated worker ledger with an exact worker filter', async () => {
+    const workerId = '22222222-2222-4222-8222-222222222222'
+    const onChange = jest.fn()
+    const handle = subscribeToWorkerEarnings(workerId, onChange)
+
+    expect(handle).not.toBeNull()
+    expect(mockChannel).toHaveBeenCalledWith(`worker-earnings:${workerId}`)
+    expect(mockOn).toHaveBeenCalledWith(
+      'postgres_changes',
+      {
+        event: '*',
+        schema: 'public',
+        table: 'worker_payment_ledger',
+        filter: `worker_id=eq.${workerId}`,
+      },
       expect.any(Function),
     )
     await expect(handle?.unsubscribe()).resolves.toBe('ok')

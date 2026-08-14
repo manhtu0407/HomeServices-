@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useEffectEvent, useReducer, useState } from 'react'
 import { Modal, Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native'
 
 import { KaelButton, KaelChip, KaelTextField } from '@/components/ui/kael-primitives'
@@ -40,6 +40,41 @@ type TaxPolicyEditor =
   | { form: TaxPolicyDraftForm; kind: 'edit'; policyId: string }
   | { approvalReference: string; kind: 'approve'; policyId: string }
   | { kind: 'retire'; policyId: string; reason: string }
+
+type FinanceTaxReportsState = {
+  editor: TaxPolicyEditor | null
+  exporting: boolean
+  loading: boolean
+  notice: string | null
+  policies: AdminFinanceTaxPolicy[]
+  policyError: boolean
+  saving: boolean
+}
+
+type FinanceTaxReportsPatch = Partial<FinanceTaxReportsState> |
+  ((current: FinanceTaxReportsState) => Partial<FinanceTaxReportsState>)
+
+const initialFinanceTaxReportsState: FinanceTaxReportsState = {
+  editor: null,
+  exporting: false,
+  loading: true,
+  notice: null,
+  policies: [],
+  policyError: false,
+  saving: false,
+}
+
+function financeTaxReportsReducer(
+  current: FinanceTaxReportsState,
+  next: FinanceTaxReportsPatch,
+) {
+  return { ...current, ...(typeof next === 'function' ? next(current) : next) }
+}
+
+const transactionDateFormatters = {
+  en: new Intl.DateTimeFormat('en-US', { dateStyle: 'medium' }),
+  vi: new Intl.DateTimeFormat('vi-VN', { dateStyle: 'medium' }),
+}
 
 const copy = {
   vi: {
@@ -172,58 +207,58 @@ export function FinanceTransactionsPanel({ formatCurrency, language, period }: C
 
 export function FinanceTaxReportsPanel({ canApproveTax, canManageTax, language, period, reduceMotion, refreshKey }: FinanceTaxReportsProps) {
   const strings = copy[language]
-  const [policies, setPolicies] = useState<AdminFinanceTaxPolicy[]>([])
-  const [loading, setLoading] = useState(true)
-  const [exporting, setExporting] = useState(false)
-  const [editor, setEditor] = useState<TaxPolicyEditor | null>(null)
-  const [notice, setNotice] = useState<string | null>(null)
-  const [policyError, setPolicyError] = useState(false)
-  const [saving, setSaving] = useState(false)
+  const [state, patch] = useReducer(financeTaxReportsReducer, initialFinanceTaxReportsState)
+  const { editor, exporting, loading, notice, policies, policyError, saving } = state
 
   const loadPolicies = useCallback(async () => {
-    setLoading(true)
+    patch({ loading: true })
     const result = await adminControlService.listFinanceTaxPolicies()
-    if (result.success) {
-      setPolicies(result.data.tax_policies)
-      setPolicyError(false)
-    } else {
-      setPolicies([])
-      setPolicyError(true)
-    }
-    setLoading(false)
+    patch(result.success
+      ? { loading: false, policies: result.data.tax_policies, policyError: false }
+      : { loading: false, policies: [], policyError: true })
   }, [])
 
+  const loadPoliciesOnRefresh = useEffectEvent(loadPolicies)
+
   useEffect(() => {
-    const timer = setTimeout(() => { void loadPolicies() }, 0)
+    const timer = setTimeout(() => { void loadPoliciesOnRefresh() }, 0)
     return () => clearTimeout(timer)
-  }, [loadPolicies, refreshKey])
+  }, [refreshKey])
 
   const exportCsv = useCallback(async () => {
-    setExporting(true)
-    setNotice(null)
+    patch({ exporting: true, notice: null })
     const result = await adminControlService.exportFinanceCsv(period)
     if (!result.success) {
-      setNotice(strings.exportFailed)
-      setExporting(false)
+      patch({ exporting: false, notice: strings.exportFailed })
       return
     }
     try {
       await Share.share({ message: result.data.csv, title: result.data.filename })
-      setNotice(strings.exportReady(result.data.row_count))
+      patch({ notice: strings.exportReady(result.data.row_count) })
     } catch {
-      setNotice(strings.shareFailed)
+      patch({ notice: strings.shareFailed })
     }
-    setExporting(false)
+    patch({ exporting: false })
   }, [period, strings])
 
   const openDraftEditor = useCallback((policy?: AdminFinanceTaxPolicy) => {
-    setEditor(policy
+    patch({ editor: policy
       ? { form: taxPolicyForm(policy), kind: 'edit', policyId: policy.id }
-      : { form: emptyTaxPolicyForm(), kind: 'create' })
+      : { form: emptyTaxPolicyForm(), kind: 'create' } })
   }, [])
 
   const updateDraftForm = useCallback((next: Partial<TaxPolicyDraftForm>) => {
-    setEditor((current) => isDraftEditor(current) ? { ...current, form: { ...current.form, ...next } } : current)
+    patch((current) => ({
+      editor: isDraftEditor(current.editor)
+        ? { ...current.editor, form: { ...current.editor.form, ...next } }
+        : current.editor,
+    }))
+  }, [])
+
+  const updateEditor = useCallback((next: TaxPolicyEditor | null | ((current: TaxPolicyEditor | null) => TaxPolicyEditor | null)) => {
+    patch((current) => ({
+      editor: typeof next === 'function' ? next(current.editor) : next,
+    }))
   }, [])
 
   const submitEditor = useCallback(async () => {
@@ -231,57 +266,54 @@ export function FinanceTaxReportsPanel({ canApproveTax, canManageTax, language, 
     if (editor.kind === 'approve') {
       const approvalReference = editor.approvalReference.trim()
       if (!approvalReference) {
-        setNotice(strings.approvalRequired)
+        patch({ notice: strings.approvalRequired })
         return
       }
-      setSaving(true)
+      patch({ saving: true })
       const result = await adminControlService.approveFinanceTaxPolicy(editor.policyId, { accountant_approval_reference: approvalReference })
       if (result.success) {
-        setEditor(null)
-        setNotice(strings.approved)
+        patch({ editor: null, notice: strings.approved })
         await loadPolicies()
       } else {
-        setNotice(strings.actionFailed)
+        patch({ notice: strings.actionFailed })
       }
-      setSaving(false)
+      patch({ saving: false })
       return
     }
     if (editor.kind === 'retire') {
       const reason = editor.reason.trim()
       if (reason.length < 3) {
-        setNotice(strings.actionFailed)
+        patch({ notice: strings.actionFailed })
         return
       }
-      setSaving(true)
+      patch({ saving: true })
       const result = await adminControlService.retireFinanceTaxPolicy(editor.policyId, { reason })
       if (result.success) {
-        setEditor(null)
-        setNotice(strings.retiredNotice)
+        patch({ editor: null, notice: strings.retiredNotice })
         await loadPolicies()
       } else {
-        setNotice(strings.actionFailed)
+        patch({ notice: strings.actionFailed })
       }
-      setSaving(false)
+      patch({ saving: false })
       return
     }
 
     const input = taxPolicyDraftInput(editor.form)
     if (!input) {
-      setNotice(strings.invalidDraft)
+      patch({ notice: strings.invalidDraft })
       return
     }
-    setSaving(true)
+    patch({ saving: true })
     const result = editor.kind === 'create'
       ? await adminControlService.createFinanceTaxPolicyDraft(input)
       : await adminControlService.updateFinanceTaxPolicyDraft(editor.policyId, input)
     if (result.success) {
-      setEditor(null)
-      setNotice(strings.draftSaved)
+      patch({ editor: null, notice: strings.draftSaved })
       await loadPolicies()
     } else {
-      setNotice(strings.actionFailed)
+      patch({ notice: strings.actionFailed })
     }
-    setSaving(false)
+    patch({ saving: false })
   }, [editor, loadPolicies, strings])
 
   return <View style={styles.section} testID="admin-finance-tax-reports">
@@ -304,17 +336,17 @@ export function FinanceTaxReportsPanel({ canApproveTax, canManageTax, language, 
           {canManageTax && policy.source_reference ? <Text style={styles.secondary}>{strings.sourceReference}: {policy.source_reference}</Text> : null}
           {canManageTax && policy.status === 'draft' ? <View style={styles.policyActions}>
             <KaelButton label={strings.edit} onPress={() => openDraftEditor(policy)} size="small" testID={`admin-finance-tax-edit-${policy.id}`} variant="secondary" />
-            {canApproveTax ? <KaelButton label={strings.approve} onPress={() => setEditor({ approvalReference: '', kind: 'approve', policyId: policy.id })} size="small" testID={`admin-finance-tax-approve-${policy.id}`} /> : <Text style={styles.secondary}>{strings.awaitingOwner}</Text>}
+            {canApproveTax ? <KaelButton label={strings.approve} onPress={() => patch({ editor: { approvalReference: '', kind: 'approve', policyId: policy.id } })} size="small" testID={`admin-finance-tax-approve-${policy.id}`} /> : <Text style={styles.secondary}>{strings.awaitingOwner}</Text>}
           </View> : null}
-          {canApproveTax && policy.status === 'approved' ? <KaelButton label={strings.retire} onPress={() => setEditor({ kind: 'retire', policyId: policy.id, reason: '' })} size="small" testID={`admin-finance-tax-retire-${policy.id}`} variant="secondary" /> : null}
+          {canApproveTax && policy.status === 'approved' ? <KaelButton label={strings.retire} onPress={() => patch({ editor: { kind: 'retire', policyId: policy.id, reason: '' } })} size="small" testID={`admin-finance-tax-retire-${policy.id}`} variant="secondary" /> : null}
         </View>)}
     <KaelButton disabled={exporting} label={strings.export} onPress={() => { void exportCsv() }} testID="admin-finance-export-csv" variant="secondary" />
     <TaxPolicyEditorModal
       editor={editor}
       language={language}
-      onClose={() => setEditor(null)}
+      onClose={() => patch({ editor: null })}
       onUpdateDraft={updateDraftForm}
-      onUpdateEditor={setEditor}
+      onUpdateEditor={updateEditor}
       onSubmit={() => { void submitEditor() }}
       reduceMotion={reduceMotion}
       saving={saving}
@@ -455,7 +487,7 @@ function TransactionRow({ formatCurrency, language, row }: {
   language: 'vi' | 'en'
   row: AdminFinanceTransaction
 }) {
-  const date = row.paid_at ? new Intl.DateTimeFormat(language === 'vi' ? 'vi-VN' : 'en-US', { dateStyle: 'medium' }).format(new Date(row.paid_at)) : copy[language].unavailable
+  const date = row.paid_at ? transactionDateFormatters[language].format(new Date(row.paid_at)) : copy[language].unavailable
   return <Pressable accessibilityLabel={`${row.display_code}, ${formatCurrency(row.gross_amount_vnd)}`} accessibilityRole="button" style={styles.transactionCard} testID={`admin-finance-transaction-${row.job_id}`}>
     <View style={styles.sectionHeader}><Text style={styles.rowTitle}>{row.display_code}</Text><Text style={styles.status}>{transactionStatusLabel(row.status, language)}</Text></View>
     <Text style={styles.amount}>{formatCurrency(row.gross_amount_vnd)}</Text>

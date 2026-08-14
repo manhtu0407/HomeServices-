@@ -49,6 +49,7 @@ jest.mock('../customer-avatar-upload', () => ({
 jest.mock('../realtime', () => ({
   subscribeToJobStatus: jest.fn(() => null),
   subscribeToWorkerBroadcasts: jest.fn(() => null),
+  subscribeToWorkerEarnings: jest.fn(() => null),
 }))
 
 jest.mock('../services', () => ({

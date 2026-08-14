@@ -2,8 +2,8 @@
   "version": "1.0.0",
   "source": {
     "migrationRoot": "supabase/migrations",
-    "migrationCount": 265,
-    "migrationDigest": "3728a8fac0d4e7e82feaa52f2feaa1746b7ce308b9bf1249c6668ee0f82f537f"
+    "migrationCount": 273,
+    "migrationDigest": "f2af6433aaa02346a9004c092287c2eff357f4ca6948ee7d6f8f6bf515211d3d"
   },
   "actors": [
     "anonymous",
@@ -2294,7 +2294,7 @@
         "update",
         "delete"
       ],
-      "realtime": false
+      "realtime": true
     },
     {
       "name": "worker_payout_methods",
@@ -3269,6 +3269,14 @@
       ]
     },
     {
+      "signature": "get_admin_operator_activation_status(uuid)",
+      "securityDefiner": true,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
       "signature": "get_customer_profile_insights_aggregate(uuid)",
       "securityDefiner": false,
       "fixedSearchPath": true,
@@ -4033,6 +4041,7 @@
     "job_events",
     "jobs",
     "notifications",
-    "scope_change_requests"
+    "scope_change_requests",
+    "worker_payment_ledger"
   ]
 }

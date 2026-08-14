@@ -17,6 +17,7 @@ jest.mock('../app-language', () => ({
 jest.mock('../realtime', () => ({
   subscribeToJobStatus: jest.fn(() => null),
   subscribeToWorkerBroadcasts: jest.fn(() => null),
+  subscribeToWorkerEarnings: jest.fn(() => null),
 }))
 
 jest.mock('../services', () => ({
@@ -53,6 +54,9 @@ import { FrontendWorkflowProvider, useFrontendWorkflow } from '../frontend-workf
 
 const { workerService: mockWorkerService } = jest.requireMock('../services') as {
   workerService: Record<keyof typeof import('../services').workerService, jest.Mock>
+}
+const { subscribeToWorkerEarnings: mockSubscribeToWorkerEarnings } = jest.requireMock('../realtime') as {
+  subscribeToWorkerEarnings: jest.Mock
 }
 
 let refreshPromise: Promise<boolean> | undefined
@@ -143,6 +147,40 @@ function arrangeSuccessfulWorkerRuntime() {
     success: true,
   })
 }
+
+it('refreshes earnings immediately when the worker ledger changes', async () => {
+  mockAuthRole = 'worker'
+  arrangeSuccessfulWorkerRuntime()
+  const unsubscribe = jest.fn(async () => 'ok')
+  mockSubscribeToWorkerEarnings.mockReturnValue({ unsubscribe })
+
+  const view = render(
+    <FrontendWorkflowProvider>
+      <WorkerRefreshProbe />
+    </FrontendWorkflowProvider>,
+  )
+
+  try {
+    await waitFor(() => {
+      expect(mockSubscribeToWorkerEarnings).toHaveBeenCalledWith('worker_test_1', expect.any(Function))
+    })
+    mockWorkerService.getEarnings.mockClear()
+
+    await act(async () => {
+      const onLedgerChange = mockSubscribeToWorkerEarnings.mock.calls[0][1] as () => void
+      onLedgerChange()
+      await Promise.resolve()
+    })
+
+    await waitFor(() => {
+      expect(mockWorkerService.getEarnings).toHaveBeenCalledTimes(1)
+    })
+  } finally {
+    view.unmount()
+  }
+
+  expect(unsubscribe).toHaveBeenCalledTimes(1)
+})
 
 function buildWorkerJob(status: string) {
   return {

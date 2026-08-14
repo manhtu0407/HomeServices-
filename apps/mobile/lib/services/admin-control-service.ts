@@ -15,6 +15,7 @@ import type {
   AdminFinanceTransactionFilters,
   AdminFinanceTransactionListResponse,
   AdminViewAiCostListResponse,
+  AdminViewActor,
   AdminViewDisputeListResponse,
   AdminViewGovernanceListInput,
   AdminViewLearningRuleListResponse,
@@ -80,6 +81,10 @@ function adminFinancePath(path: string, params: AdminFinanceTransactionFilters |
 }
 
 export const adminControlService = {
+  getActor() {
+    return api.get<AdminViewActor>('/admin/actor')
+  },
+
   getOperations() {
     return api.get<AdminViewOperationsResponse>('/admin/operations')
   },
