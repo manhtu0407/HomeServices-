@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useReducer, useRef } from 'react'
-import { Modal, Pressable, StyleSheet, Text, useWindowDimensions, View, type ViewStyle } from 'react-native'
+import { Pressable, StyleSheet, Text, useWindowDimensions, View, type ViewStyle } from 'react-native'
 import Svg, { Circle, Polyline } from 'react-native-svg'
 
 import { KaelButton, KaelTextField } from '@/components/ui/kael-primitives'
@@ -17,6 +17,7 @@ import { useAppLanguage } from '@/lib/app-language'
 import { adminControlService } from '@/lib/services'
 import { FinanceControls, type FinanceView } from './admin-finance-controls'
 import { createFinanceFormatters } from './admin-finance-formatters'
+import { ReconciliationModal, reconciliationStatusLabel } from './admin-finance-reconciliation-modal'
 import { FinanceTaxReportsPanel, FinanceTransactionsPanel } from './admin-finance-reports'
 
 const copyByLanguage = {
@@ -589,66 +590,6 @@ function FinanceCashView({
   </View>
 }
 
-function ReconciliationModal({
-  actualAmount,
-  bankReference,
-  copy,
-  formatCurrency,
-  onChangeActualAmount,
-  onChangeBankReference,
-  onChangeReason,
-  onClose,
-  onSubmit,
-  pending,
-  reason,
-  reduceMotion,
-  reduceTransparency,
-  selected,
-}: {
-  actualAmount: string
-  bankReference: string
-  copy: FinanceCopy
-  formatCurrency: (value: number | null) => string
-  onChangeActualAmount: (value: string) => void
-  onChangeBankReference: (value: string) => void
-  onChangeReason: (value: string) => void
-  onClose: () => void
-  onSubmit: (decision: AdminPaymentReconciliationDecisionInput['decision']) => void
-  pending: boolean
-  reason: string
-  reduceMotion: boolean
-  reduceTransparency: boolean
-  selected: AdminPaymentReconciliationSummary | null
-}) {
-  if (!selected) return null
-  const isManual = selected.payment_method === 'platform_bank_manual'
-  const canDecideDirect = selected.status === 'direct_reconcile_required'
-  return <Modal animationType={reduceMotion ? 'none' : 'fade'} onRequestClose={onClose} transparent visible>
-    <View style={[styles.modalBackdrop, reduceTransparency ? styles.modalBackdropSolid : null]}>
-      <View style={[styles.modalCard, reduceTransparency ? styles.solidSurface : null]}>
-        <Text style={styles.modalTitle}>{copy.reconcile}</Text>
-        <Text style={styles.modalAmount}>{formatCurrency(selected.gross_amount)}</Text>
-        <Text style={styles.modalStatus}>{reconciliationStatusLabel(selected.status, copy)}</Text>
-        {isManual ? <>
-          <KaelTextField accessibilityLabel={copy.actualAmount} keyboardType="number-pad" label={copy.actualAmount} onChangeText={onChangeActualAmount} value={actualAmount} />
-          <KaelTextField accessibilityLabel={copy.bankReference} autoCapitalize="characters" label={copy.bankReference} onChangeText={onChangeBankReference} value={bankReference} />
-          <KaelButton disabled={pending} label={copy.confirmIncoming} onPress={() => onSubmit('confirm')} variant="primary" />
-          <KaelTextField accessibilityLabel={copy.reconcileRequired} label={copy.reconcileRequired} onChangeText={onChangeReason} value={reason} />
-          <KaelButton disabled={pending} label={copy.reconcileRequired} onPress={() => onSubmit('reconcile_required')} variant="secondary" />
-        </> : canDecideDirect ? <>
-          <Text style={styles.directHint}>{copy.waitingCustomer}</Text>
-          <KaelButton disabled={pending} label={copy.confirmDirect} onPress={() => onSubmit('direct_paid')} variant="primary" />
-          <KaelTextField accessibilityLabel={copy.reconcileRequired} label={copy.reconcileRequired} onChangeText={onChangeReason} value={reason} />
-          <KaelButton disabled={pending} label={copy.reconcileRequired} onPress={() => onSubmit('direct_release')} variant="secondary" />
-        </> : <>
-          <Text style={styles.directHint}>{copy.waitingCustomer}</Text>
-        </>}
-        <KaelButton disabled={pending} label={copy.cancel} onPress={onClose} variant="ghost" />
-      </View>
-    </View>
-  </Modal>
-}
-
 type FinanceMetricItem = {
   comparison?: string
   dataSource?: string
@@ -784,13 +725,6 @@ function validDateInput(value: string) {
   return date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day
 }
 
-function reconciliationStatusLabel(status: string, copy: FinanceCopy) {
-  if (status === 'manual_customer_claimed') return copy.customerClaimedAt
-  if (status === 'manual_reconcile_required' || status === 'direct_reconcile_required') return copy.reconcileRequired
-  if (status === 'direct_awaiting_customer_confirmation' || status === 'direct_awaiting_worker_confirmation') return copy.waitingCustomer
-  return copy.receiptStatus
-}
-
 const styles = StyleSheet.create({
   accessCard: { backgroundColor: color.surface.base, borderColor: color.surface.stroke, borderRadius: component.card.radius, borderWidth: 1, padding: spacing.lg },
   accessText: { ...typography.subheadline, color: color.text.secondary },
@@ -803,7 +737,6 @@ const styles = StyleSheet.create({
   breakdownValue: { ...typography.label, color: color.text.strong, fontVariant: ['tabular-nums'], fontWeight: '700' },
   chartCard: { backgroundColor: color.surface.base, borderColor: color.surface.stroke, borderRadius: component.card.radius, borderWidth: 1, gap: spacing.md, padding: spacing.lg },
   detailGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md },
-  directHint: { ...typography.footnote, color: color.text.secondary },
   dismiss: { ...typography.headline, color: color.text.secondary },
   emptyCard: { backgroundColor: color.surface.base, borderColor: color.surface.stroke, borderRadius: component.card.radius, borderWidth: 1, gap: spacing.sm, padding: spacing.lg },
   emptyText: { ...typography.subheadline, color: color.text.secondary },
@@ -824,12 +757,6 @@ const styles = StyleSheet.create({
   metricGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md },
   metricLabel: { ...typography.caption2, color: color.text.muted, fontWeight: '600' },
   metricValue: { ...typography.headline, color: color.text.strong, fontVariant: ['tabular-nums'], fontWeight: '700' },
-  modalAmount: { ...typography.title2, color: color.text.strong, fontVariant: ['tabular-nums'], fontWeight: '700' },
-  modalBackdrop: { alignItems: 'center', backgroundColor: 'rgba(4, 20, 28, 0.42)', flex: 1, justifyContent: 'center', padding: spacing.lg },
-  modalBackdropSolid: { backgroundColor: color.surface.base },
-  modalCard: { backgroundColor: color.surface.base, borderColor: color.surface.stroke, borderRadius: component.card.radius, borderWidth: 1, gap: spacing.md, maxWidth: 520, padding: spacing.lg, width: '100%', ...shadow.raised },
-  modalStatus: { ...typography.footnote, color: color.text.secondary },
-  modalTitle: { ...typography.title2, color: color.text.strong, fontWeight: '700' },
   notice: { alignItems: 'center', backgroundColor: component.chip.successStatus.bg, borderColor: component.chip.successStatus.border, borderRadius: radius.md, borderWidth: 1, flexDirection: 'row', gap: spacing.sm, justifyContent: 'space-between', padding: spacing.md },
   noticeText: { ...typography.footnote, color: color.text.strong, flex: 1 },
   queueHeader: { marginTop: spacing.md },
@@ -839,7 +766,6 @@ const styles = StyleSheet.create({
   reconciliationHeader: { alignItems: 'flex-start', flexDirection: 'row', gap: spacing.md, justifyContent: 'space-between' },
   reconciliationTitle: { ...typography.subheadline, color: color.text.strong, flex: 1, fontWeight: '700' },
   sectionTitle: { ...typography.headline, color: color.text.strong, fontWeight: '700' },
-  solidSurface: { backgroundColor: color.surface.base },
   stack: { gap: spacing.lg },
   status: { ...typography.caption2, color: color.brand.primary, fontWeight: '700', maxWidth: '48%', textAlign: 'right' },
   subtitle: { ...typography.subheadline, color: color.text.secondary },
