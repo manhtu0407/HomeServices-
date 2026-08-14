@@ -67,6 +67,7 @@ type BaselinePriceEvidenceSourceResponse = {
 type BaselinePriceEvidenceUnitResponse =
   | "per_visit"
   | "per_cabinet_door"
+  | "per_repair_point"
   | "per_item";
 
 type KaelPriceReasoningReceipt = {
