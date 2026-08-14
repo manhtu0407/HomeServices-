@@ -29,6 +29,7 @@ disk, uncollected, as reference material.
 | `P18-capability-registry-parity` | static-type | `apps/api/src/__tests__/schema/capability-registry-parity-pillar.test.ts` |
 | `P19-job-access-ownership` | security-negative | `apps/api/src/__tests__/unit/job-access-ownership-pillar.test.ts` |
 | `P20-price-receipt-gate` | sql | `supabase/tests/kael_price_reasoning_receipt_verification.sql` |
+| `P21-matching-guard-liveness` | integration | `apps/api/src/__tests__/kael-edge-runtime/domains/matching-guard-liveness-pillar.test.ts` |
 
 P11-P20 cover the Edge request boundary, the workflow state machine, and the Kael agentic pipeline.
 Two shared fakes support them, in `apps/api/src/__tests__/kael-edge-runtime/harness/`:

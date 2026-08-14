@@ -52,7 +52,9 @@ Regenerate: `grep -c "'" packages/shared/src/workflow/workflow-phases.ts` is not
 
 ### 12.2 Job lifecycle
 
-Owner: `VALID_TRANSITIONS` in `supabase/functions/mobile-api/_shared/platform/lifecycle.ts`. `validateTransition(from, to)` is the only gate, and it also returns the timestamp column to stamp.
+Owner: **two tables, and a status change is legal only when both permit it.** `VALID_TRANSITIONS` in `supabase/functions/mobile-api/_shared/platform/lifecycle.ts` says which status pairs are reachable at all, and returns the timestamp column to stamp. `WORKFLOW_EVENT_TRANSITIONS` in `supabase/functions/mobile-api/_shared/workflow-orchestrator.ts` says which pairs each event may cause. `validateWorkflowTransition({ event, from, to })` is the composition of the two and is the real gate; `validateTransition(from, to)` alone answers only half the question.
+
+Widening one table therefore does not open an edge — the other still refuses it. Do not reason about this state machine from `lifecycle.ts` alone. `P12-workflow-transition-composition` pins the composed graph by probing every event against every status pair.
 
 ```mermaid
 stateDiagram-v2
