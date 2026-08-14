@@ -75,6 +75,8 @@ declare
   v_claim_two_blocked record;
   v_claim_two record;
   v_claim_retry record;
+  v_quote_one record;
+  v_quote_two record;
   v_after_claim_signal record;
   v_stale_scope record;
   v_scope record;
@@ -90,9 +92,11 @@ declare
   v_event_count integer;
   v_kael_message_count integer;
   v_evidence jsonb;
+  v_quote_one_id uuid := 'a7700000-0000-4000-8000-000000000001';
+  v_quote_two_id uuid := 'a7700000-0000-4000-8000-000000000002';
   v_review jsonb := '{
-    "price_min": 250000,
-    "price_max": 450000,
+    "price_min": 350000,
+    "price_max": 350000,
     "confidence": 0.84,
     "problem_summary": "The cable and heat-damaged terminal require replacement.",
     "advisory": "The customer must approve the changed scope before work continues.",
@@ -101,7 +105,27 @@ declare
     "fallback_used": false,
     "anti_fraud": {"score": 0.1, "challenge_required": false},
     "worker_challenge": {"challenge_required": false},
-    "customer_card": {"decision_required": true}
+    "customer_card": {"decision_required": true},
+    "price_source": "verified_baseline",
+    "pricing_mode": "full_scope_total",
+    "selection_rule": "verified_neutral_midpoint_with_bilateral_confirmation",
+    "baseline_used": "electrical_terminal_replacement_medium_hcmc",
+    "baseline_source": "verified_test_baseline",
+    "reference_price_min": 250000,
+    "reference_price_max": 450000,
+    "stakeholder_balance": {
+      "customer_total": 350000,
+      "platform_fee": 35000,
+      "worker_net": 315000,
+      "commission_rate_bps": 1000,
+      "worker_confirmation_required": true,
+      "customer_confirmation_required": true
+    },
+    "worker_price_confirmation": {
+      "confirmed": true,
+      "quote_id": "a7700000-0000-4000-8000-000000000001",
+      "confirmed_at": "pending"
+    }
   }'::jsonb;
 begin
   select * into v_first
@@ -484,6 +508,29 @@ begin
     raise exception 'fresh assistant turn did not emit exactly one Kael message';
   end if;
 
+  select * into v_quote_one
+  from public.save_job_incident_scope_price_quote_atomic(
+    v_incident_id,
+    'a7200000-0000-4000-8000-000000000001',
+    'a7100000-0000-4000-8000-000000000002',
+    (select incident.revision::integer from public.kael_job_incidents as incident where incident.id = v_incident_id),
+    v_quote_one_id,
+    jsonb_build_object(
+      'schema_version', 'scope_change_worker_quote.v1',
+      'quote_id', v_quote_one_id,
+      'incident_id', v_incident_id,
+      'job_id', 'a7200000-0000-4000-8000-000000000001',
+      'selection_rule', 'verified_neutral_midpoint_with_bilateral_confirmation',
+      'customer_total', 350000,
+      'platform_fee', 35000,
+      'worker_net', 315000
+    ),
+    pg_catalog.clock_timestamp() + interval '20 minutes'
+  );
+  if v_quote_one.ok is not true then
+    raise exception 'first worker-confirmed scope quote was not saved';
+  end if;
+
   update public.jobs
   set status = 'cancelled'
   where id = 'a7200000-0000-4000-8000-000000000001';
@@ -491,7 +538,8 @@ begin
   from public.claim_job_incident_scope_proposal_atomic(
     'a7200000-0000-4000-8000-000000000001',
     'a7100000-0000-4000-8000-000000000002',
-    'a7500000-0000-4000-8000-000000000009'
+    'a7500000-0000-4000-8000-000000000009',
+    v_quote_one_id
   );
   if v_claim_job_stale.error_code <> 'STATUS_CHANGED'
     or v_claim_job_stale.claimed is true
@@ -506,19 +554,26 @@ begin
   from public.claim_job_incident_scope_proposal_atomic(
     'a7200000-0000-4000-8000-000000000001',
     'a7100000-0000-4000-8000-000000000002',
-    'a7500000-0000-4000-8000-000000000001'
+    'a7500000-0000-4000-8000-000000000001',
+    v_quote_one_id
   );
   select * into v_claim_two_blocked
   from public.claim_job_incident_scope_proposal_atomic(
     'a7200000-0000-4000-8000-000000000001',
     'a7100000-0000-4000-8000-000000000002',
-    'a7500000-0000-4000-8000-000000000002'
+    'a7500000-0000-4000-8000-000000000002',
+    v_quote_one_id
   );
   if v_claim_one.claimed is not true
     or v_claim_two_blocked.error_code <> 'PROPOSAL_IN_PROGRESS'
   then
     raise exception 'concurrent proposal claim was not excluded';
   end if;
+  v_review := jsonb_set(
+    v_review,
+    '{worker_price_confirmation,confirmed_at}',
+    pg_catalog.to_jsonb(v_claim_one.incident ->> 'scope_price_quote_confirmed_at')
+  );
 
   select * into v_after_claim_signal
   from public.upsert_job_incident_signal_atomic(
@@ -540,8 +595,8 @@ begin
     'The cable and damaged terminal must both be replaced.',
     'The terminal shows additional heat damage.',
     array['ref-e', 'ref-f', 'ref-a', 'ref-b', 'ref-c'],
-    250000,
-    450000,
+    350000,
+    350000,
     v_review
   );
   if v_after_claim_signal.ok is not true
@@ -559,15 +614,47 @@ begin
     v_after_claim_signal.source_event_id,
     'a7600000-0000-4000-8000-000000000007'
   );
+  select * into v_quote_two
+  from public.save_job_incident_scope_price_quote_atomic(
+    v_incident_id,
+    'a7200000-0000-4000-8000-000000000001',
+    'a7100000-0000-4000-8000-000000000002',
+    (select incident.revision::integer from public.kael_job_incidents as incident where incident.id = v_incident_id),
+    v_quote_two_id,
+    jsonb_build_object(
+      'schema_version', 'scope_change_worker_quote.v1',
+      'quote_id', v_quote_two_id,
+      'incident_id', v_incident_id,
+      'job_id', 'a7200000-0000-4000-8000-000000000001',
+      'selection_rule', 'verified_neutral_midpoint_with_bilateral_confirmation',
+      'customer_total', 350000,
+      'platform_fee', 35000,
+      'worker_net', 315000
+    ),
+    pg_catalog.clock_timestamp() + interval '20 minutes'
+  );
+  if v_quote_two.ok is not true then
+    raise exception 'revised worker-confirmed scope quote was not saved';
+  end if;
   select * into v_claim_two
   from public.claim_job_incident_scope_proposal_atomic(
     'a7200000-0000-4000-8000-000000000001',
     'a7100000-0000-4000-8000-000000000002',
-    'a7500000-0000-4000-8000-000000000002'
+    'a7500000-0000-4000-8000-000000000002',
+    v_quote_two_id
   );
   if v_claim_two.claimed is not true then
     raise exception 'released proposal claim could not be reacquired';
   end if;
+  v_review := jsonb_set(
+    jsonb_set(
+      v_review,
+      '{worker_price_confirmation,quote_id}',
+      pg_catalog.to_jsonb(v_quote_two_id::text)
+    ),
+    '{worker_price_confirmation,confirmed_at}',
+    pg_catalog.to_jsonb(v_claim_two.incident ->> 'scope_price_quote_confirmed_at')
+  );
 
   select * into v_scope
   from public.request_job_incident_scope_change_atomic(
@@ -578,8 +665,8 @@ begin
     'The cable and damaged terminal must both be replaced.',
     'The terminal shows additional heat damage.',
     array['ref-e', 'ref-f', 'ref-a', 'ref-b', 'ref-c'],
-    250000,
-    450000,
+    350000,
+    350000,
     v_review
   );
   if v_scope.ok is not true
@@ -756,7 +843,8 @@ begin
   from public.claim_job_incident_scope_proposal_atomic(
     'a7200000-0000-4000-8000-000000000001',
     'a7100000-0000-4000-8000-000000000002',
-    'a7500000-0000-4000-8000-000000000003'
+    'a7500000-0000-4000-8000-000000000003',
+    v_quote_two_id
   );
   if v_claim_retry.ok is not true
     or v_claim_retry.claimed is true
@@ -776,7 +864,8 @@ declare
     'public.claim_job_incident_chat_turn_atomic(uuid, uuid, uuid, text, uuid, text)',
     'public.apply_job_incident_assistant_turn_atomic(uuid, uuid, bigint, uuid, uuid, text, text, text, text, text, text, jsonb, text)',
     'public.release_job_incident_assistant_claim_atomic(uuid, uuid, uuid)',
-    'public.claim_job_incident_scope_proposal_atomic(uuid, uuid, uuid)',
+    'public.save_job_incident_scope_price_quote_atomic(uuid, uuid, uuid, integer, uuid, jsonb, timestamp with time zone)',
+    'public.claim_job_incident_scope_proposal_atomic(uuid, uuid, uuid, uuid)',
     'public.release_job_incident_scope_proposal_atomic(uuid, uuid, uuid)',
     'public.request_job_incident_scope_change_atomic(uuid, uuid, uuid, uuid, text, text, text[], int, int, jsonb)'
   ];
