@@ -5,8 +5,8 @@
     "immutableThroughVersion": "20260805090000",
     "sha256": "7d4ac8a8227452e357caa11a21ece9099c80112712dba9a250114d0761a90275"
   },
-  "migrationCount": 263,
-  "migrationsSha256": "a95fff2163eaa14b44cee7b05a6cc0e39af7433516d05f45b83234b96d53c074",
+  "migrationCount": 264,
+  "migrationsSha256": "3b1aa3dad32135d2ad02c344b82ab5820b9ec7a470c608c75f1f53a1470692c6",
   "databaseTypes": {
     "file": "packages/shared/src/types/database",
     "sha256": "25b9cc87c67d8d12c908d715e0ed2509fb5847a2fbcbb0ba2d06b539fb74f987"
@@ -1852,6 +1852,13 @@
       "file": "supabase/migrations/20260814111600_harden_price_evidence_shape_check.sql",
       "sha256": "cf04d296fffb1a8e4ce679d2f4ec732dce0a3a53f3c873544cc276c39af96681",
       "bytes": 575
+    },
+    {
+      "version": "20260814111700",
+      "name": "keep_scope_quote_current_during_claim",
+      "file": "supabase/migrations/20260814111700_keep_scope_quote_current_during_claim.sql",
+      "sha256": "a4b5c54a7f3784796f452b03b79e6a343a45ef757fbf2ad7b09dd874afede52b",
+      "bytes": 4218
     }
   ]
 }

@@ -565,6 +565,8 @@ begin
     v_quote_one_id
   );
   if v_claim_one.claimed is not true
+    or (v_claim_one.incident ->> 'scope_price_quote_revision')::integer
+      <> (v_claim_one.incident ->> 'revision')::integer
     or v_claim_two_blocked.error_code <> 'PROPOSAL_IN_PROGRESS'
   then
     raise exception 'concurrent proposal claim was not excluded';
