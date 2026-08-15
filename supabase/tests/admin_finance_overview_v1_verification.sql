@@ -169,30 +169,31 @@ insert into public.worker_profiles (
   'approved', false, 'Finance Verification Worker', '1990-01-01'
 );
 
+-- A fixed historical window keeps these aggregates independent of relative-time seed jobs.
 insert into public.jobs (
   id, customer_id, worker_id, service_type, description, status,
   final_price, gross_amount, platform_fee, worker_net, payment_provider,
   payment_status, payment_amount_received, payment_received_at, paid_at,
   created_at, display_code
 ) values
-  ('f2000000-0000-4000-8000-000000000001', 'f1000000-0000-4000-8000-000000000003', 'f1000000-0000-4000-8000-000000000004', 'plumbing', 'Finance platform fixture one', 'paid', 100000, 100000, 10000, 90000, 'platform_bank_manual', 'manual_verified', 100000, '2026-08-13T01:00:00Z', '2026-08-13T01:00:00Z', '2026-08-13T00:00:00Z', 'FIN-0001'),
-  ('f2000000-0000-4000-8000-000000000002', 'f1000000-0000-4000-8000-000000000003', 'f1000000-0000-4000-8000-000000000004', 'plumbing', 'Finance direct fixture', 'paid', 200000, 200000, 20000, 180000, 'direct_worker', 'direct_paid', 200000, '2026-08-13T02:00:00Z', '2026-08-13T02:00:00Z', '2026-08-13T00:00:00Z', 'FIN-0002'),
-  ('f2000000-0000-4000-8000-000000000003', 'f1000000-0000-4000-8000-000000000003', 'f1000000-0000-4000-8000-000000000004', 'plumbing', 'Finance platform fixture two', 'paid', 300000, 300000, 30000, 270000, 'sepay_vietqr', 'received', 300000, '2026-08-13T03:00:00Z', '2026-08-13T03:00:00Z', '2026-08-13T00:00:00Z', 'FIN-0003');
+  ('f2000000-0000-4000-8000-000000000001', 'f1000000-0000-4000-8000-000000000003', 'f1000000-0000-4000-8000-000000000004', 'plumbing', 'Finance platform fixture one', 'paid', 100000, 100000, 10000, 90000, 'platform_bank_manual', 'manual_verified', 100000, '2001-08-13T01:00:00Z', '2001-08-13T01:00:00Z', '2001-08-13T00:00:00Z', 'FIN-0001'),
+  ('f2000000-0000-4000-8000-000000000002', 'f1000000-0000-4000-8000-000000000003', 'f1000000-0000-4000-8000-000000000004', 'plumbing', 'Finance direct fixture', 'paid', 200000, 200000, 20000, 180000, 'direct_worker', 'direct_paid', 200000, '2001-08-13T02:00:00Z', '2001-08-13T02:00:00Z', '2001-08-13T00:00:00Z', 'FIN-0002'),
+  ('f2000000-0000-4000-8000-000000000003', 'f1000000-0000-4000-8000-000000000003', 'f1000000-0000-4000-8000-000000000004', 'plumbing', 'Finance platform fixture two', 'paid', 300000, 300000, 30000, 270000, 'sepay_vietqr', 'received', 300000, '2001-08-13T03:00:00Z', '2001-08-13T03:00:00Z', '2001-08-13T00:00:00Z', 'FIN-0003');
 
 insert into public.job_payment_orders (
   id, job_id, customer_id, worker_id, payment_method, status,
   gross_amount, platform_fee, worker_net, payment_code, transfer_content,
   qr_image_url, amount_received, credited_at
 ) values
-  ('f3000000-0000-4000-8000-000000000001', 'f2000000-0000-4000-8000-000000000001', 'f1000000-0000-4000-8000-000000000003', 'f1000000-0000-4000-8000-000000000004', 'platform_bank_manual', 'manual_verified', 100000, 10000, 90000, 'NSAAAAAAAAAAAAAAAAAAAAAAAA', 'NSAAAAAAAAAAAAAAAAAAAAAAAA', 'https://example.test/qr.png', 100000, '2026-08-13T01:00:00Z'),
-  ('f3000000-0000-4000-8000-000000000002', 'f2000000-0000-4000-8000-000000000002', 'f1000000-0000-4000-8000-000000000003', 'f1000000-0000-4000-8000-000000000004', 'direct_worker', 'direct_paid', 200000, 20000, 180000, null, null, null, 200000, '2026-08-13T02:00:00Z');
+  ('f3000000-0000-4000-8000-000000000001', 'f2000000-0000-4000-8000-000000000001', 'f1000000-0000-4000-8000-000000000003', 'f1000000-0000-4000-8000-000000000004', 'platform_bank_manual', 'manual_verified', 100000, 10000, 90000, 'NSAAAAAAAAAAAAAAAAAAAAAAAA', 'NSAAAAAAAAAAAAAAAAAAAAAAAA', 'https://example.test/qr.png', 100000, '2001-08-13T01:00:00Z'),
+  ('f3000000-0000-4000-8000-000000000002', 'f2000000-0000-4000-8000-000000000002', 'f1000000-0000-4000-8000-000000000003', 'f1000000-0000-4000-8000-000000000004', 'direct_worker', 'direct_paid', 200000, 20000, 180000, null, null, null, 200000, '2001-08-13T02:00:00Z');
 
 insert into public.worker_payment_ledger (
   job_id, worker_id, payment_provider, payment_state, gross_amount,
   platform_fee, worker_net, commission_level, commission_rate_bps, available_at
 ) values
-  ('f2000000-0000-4000-8000-000000000001', 'f1000000-0000-4000-8000-000000000004', 'platform_bank_manual', 'available', 100000, 10000, 90000, 1, 1000, '2026-08-13T01:00:00Z'),
-  ('f2000000-0000-4000-8000-000000000003', 'f1000000-0000-4000-8000-000000000004', 'sepay_vietqr', 'available', 300000, 30000, 270000, 1, 1000, '2026-08-13T03:00:00Z');
+  ('f2000000-0000-4000-8000-000000000001', 'f1000000-0000-4000-8000-000000000004', 'platform_bank_manual', 'available', 100000, 10000, 90000, 1, 1000, '2001-08-13T01:00:00Z'),
+  ('f2000000-0000-4000-8000-000000000003', 'f1000000-0000-4000-8000-000000000004', 'sepay_vietqr', 'available', 300000, 30000, 270000, 1, 1000, '2001-08-13T03:00:00Z');
 
 insert into public.admin_financial_adjustments (
   source_key, adjustment_type, job_id, worker_id, gross_refund_vnd,
@@ -200,7 +201,7 @@ insert into public.admin_financial_adjustments (
 ) values (
   'finance-refund-1', 'refund', 'f2000000-0000-4000-8000-000000000001',
   'f1000000-0000-4000-8000-000000000004', 50000, 5000, 50000,
-  'CUSTOMER_REFUND', 'f1000000-0000-4000-8000-000000000001', '2026-08-13T04:00:00Z'
+  'CUSTOMER_REFUND', 'f1000000-0000-4000-8000-000000000001', '2001-08-13T04:00:00Z'
 );
 
 insert into public.admin_financial_adjustments (
@@ -209,14 +210,14 @@ insert into public.admin_financial_adjustments (
 ) values (
   'finance-worker-credit-1', 'worker_credit', 'f2000000-0000-4000-8000-000000000002',
   'f1000000-0000-4000-8000-000000000004', 7000,
-  'WORKER_CREDIT', 'f1000000-0000-4000-8000-000000000001', '2026-08-13T05:00:00Z'
+  'WORKER_CREDIT', 'f1000000-0000-4000-8000-000000000001', '2001-08-13T05:00:00Z'
 );
 
 insert into public.platform_bank_balance_snapshots (
   account_key, balance_vnd, observed_at, entered_by
 ) values
-  ('platform_secondary', 1000000, '2026-08-12T17:00:00Z', 'f1000000-0000-4000-8000-000000000001'),
-  ('platform_secondary', 1350000, '2026-08-13T16:00:00Z', 'f1000000-0000-4000-8000-000000000001');
+  ('platform_secondary', 1000000, '2001-08-12T17:00:00Z', 'f1000000-0000-4000-8000-000000000001'),
+  ('platform_secondary', 1350000, '2001-08-13T16:00:00Z', 'f1000000-0000-4000-8000-000000000001');
 
 do $behavior$
 declare
@@ -228,7 +229,7 @@ begin
   begin
     perform public.admin_finance_overview(
       'f1000000-0000-4000-8000-000000000005',
-      '2026-08-12T17:00:00Z', '2026-08-13T17:00:00Z', 'hour'
+      '2001-08-12T17:00:00Z', '2001-08-13T17:00:00Z', 'hour'
     );
   exception when sqlstate 'P0001' then
     v_rejected := true;
@@ -239,7 +240,7 @@ begin
 
   v_overview := public.admin_finance_overview(
     'f1000000-0000-4000-8000-000000000002',
-    '2026-08-12T17:00:00Z', '2026-08-13T17:00:00Z', 'hour'
+    '2001-08-12T17:00:00Z', '2001-08-13T17:00:00Z', 'hour'
   );
   if (v_overview#>>'{metrics,gmv}')::bigint <> 600000
     or (v_overview#>>'{metrics,paid_job_count}')::bigint <> 3
@@ -257,7 +258,7 @@ begin
 
   v_page := public.admin_finance_transactions_page(
     'f1000000-0000-4000-8000-000000000002',
-    '2026-08-12T17:00:00Z', '2026-08-13T17:00:00Z',
+    '2001-08-12T17:00:00Z', '2001-08-13T17:00:00Z',
     3, null, null, null, null, 'paid'
   );
   if pg_catalog.jsonb_array_length(v_page->'rows') <> 3
@@ -268,7 +269,7 @@ begin
 
   v_page := public.admin_finance_transactions_page(
     'f1000000-0000-4000-8000-000000000002',
-    '2026-08-12T17:00:00Z', '2026-08-13T17:00:00Z',
+    '2001-08-12T17:00:00Z', '2001-08-13T17:00:00Z',
     2, null, null, null, null, 'paid'
   );
   if pg_catalog.jsonb_array_length(v_page->'rows') <> 2
@@ -279,7 +280,7 @@ begin
 
   v_export := public.admin_finance_export_rows(
     'f1000000-0000-4000-8000-000000000002',
-    '2026-08-12T17:00:00Z', '2026-08-13T17:00:00Z',
+    '2001-08-12T17:00:00Z', '2001-08-13T17:00:00Z',
     50001, 'direct_worker', 'plumbing', 'paid'
   );
   if (v_export->>'row_count')::integer <> 1
@@ -312,7 +313,7 @@ begin
       cash_outflow_vnd, reason_code, recorded_by, realized_at
     ) values (
       'finance-over-refund', 'refund', 'f2000000-0000-4000-8000-000000000001',
-      60000, 60000, 'OVER_REFUND', 'f1000000-0000-4000-8000-000000000001', '2026-08-13T06:00:00Z'
+      60000, 60000, 'OVER_REFUND', 'f1000000-0000-4000-8000-000000000001', '2001-08-13T06:00:00Z'
     );
   exception when check_violation then
     v_rejected := true;
@@ -348,7 +349,7 @@ begin
   select * into strict v_policy
   from public.admin_create_finance_tax_policy_draft(
     'f1000000-0000-4000-8000-000000000002',
-    '{"name":"Platform commission tax estimate","tax_type":"vat","subject":"platform","basis":"platform_commission","rate_bps":500,"effective_from":"2026-01-01","source_reference":"accountant-file-1"}'::jsonb
+    '{"name":"Platform commission tax estimate","tax_type":"vat","subject":"platform","basis":"platform_commission","rate_bps":500,"effective_from":"2001-01-01","source_reference":"accountant-file-1"}'::jsonb
   );
   if v_policy.status <> 'draft' or v_policy.source_reference <> 'accountant-file-1'
     or v_policy.effective_to is not null or v_policy.created_at is null or v_policy.updated_at is null then
@@ -410,7 +411,7 @@ begin
 
   v_overview := public.admin_finance_overview(
     'f1000000-0000-4000-8000-000000000002',
-    '2026-08-12T17:00:00Z', '2026-08-13T17:00:00Z', 'hour'
+    '2001-08-12T17:00:00Z', '2001-08-13T17:00:00Z', 'hour'
   );
   if v_overview#>>'{tax,status}' <> 'estimated'
     or (v_overview#>>'{tax,estimated_vnd}')::bigint <> 1750 then
