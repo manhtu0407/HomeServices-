@@ -23,6 +23,8 @@ type PaymentBusyAction =
   | 'direct_response'
   | null
 
+type PaymentRefreshResult = 'failed' | 'success' | null
+
 type CustomerPaymentRailSurfaceProps = {
   deal: LocalDeal
   language: AppLanguage
@@ -35,6 +37,7 @@ type CustomerPaymentRailSurfaceProps = {
   paymentBusy: boolean
   paymentBusyAction: PaymentBusyAction
   paymentRailProvider: PaymentRailProvider
+  paymentRefreshResult: PaymentRefreshResult
   refreshingPayment: boolean
   reduceMotion: boolean
   reviewControls: ReactNode
@@ -53,6 +56,7 @@ export function CustomerPaymentRailSurface({
   paymentBusy,
   paymentBusyAction,
   paymentRailProvider,
+  paymentRefreshResult,
   refreshingPayment,
   reduceMotion,
   reviewControls,
@@ -122,6 +126,7 @@ export function CustomerPaymentRailSurface({
         onSelectDirect={onSelectDirectWorkerPayment}
         paymentBusy={paymentBusy}
         paymentBusyAction={paymentBusyAction}
+        refreshResult={paymentRefreshResult}
         refreshing={refreshingPayment}
         reduceMotion={reduceMotion}
         tokens={tokens}
@@ -142,6 +147,7 @@ function ManualBankPayment({
   onSelectDirect,
   paymentBusy,
   paymentBusyAction,
+  refreshResult,
   refreshing,
   reduceMotion,
   tokens,
@@ -153,6 +159,7 @@ function ManualBankPayment({
   onSelectDirect: () => void
   paymentBusy: boolean
   paymentBusyAction: PaymentBusyAction
+  refreshResult: PaymentRefreshResult
   refreshing: boolean
   reduceMotion: boolean
   tokens: CustomerThemeTokens
@@ -164,7 +171,7 @@ function ManualBankPayment({
       <PaymentSurface status={copy(language).awaitingAdminStatus} testID="customer-v21-case-manual-payment-claimed" title={copy(language).awaitingAdminTitle} tokens={tokens}>
         <Text style={[styles.body, { color: tokens.muted }]}>{copy(language).awaitingAdminBody}</Text>
         <PaymentAmount amount={safeAmount(payment.grossAmount)} label={copy(language).amountLabel} language={language} tokens={tokens} />
-        <RefreshButton language={language} onRefresh={onRefresh} refreshing={refreshing} />
+        <RefreshButton language={language} onRefresh={onRefresh} refreshResult={refreshResult} refreshing={refreshing} />
       </PaymentSurface>
     )
   }
@@ -173,7 +180,7 @@ function ManualBankPayment({
       <PaymentSurface status={copy(language).reconcileStatus} testID="customer-v21-case-manual-payment-reconcile" title={copy(language).reconcileTitle} tokens={tokens}>
         <Text style={[styles.body, { color: tokens.muted }]}>{copy(language).reconcileBody}</Text>
         <PaymentAmount amount={safeAmount(payment.grossAmount)} label={copy(language).amountLabel} language={language} tokens={tokens} />
-        <RefreshButton language={language} onRefresh={onRefresh} refreshing={refreshing} />
+        <RefreshButton language={language} onRefresh={onRefresh} refreshResult={refreshResult} refreshing={refreshing} />
       </PaymentSurface>
     )
   }
@@ -487,9 +494,28 @@ function PaymentDetail({ label, value, selectable = false, emphasis = false, tok
   )
 }
 
-function RefreshButton({ language, onRefresh, refreshing }: { language: AppLanguage; onRefresh: () => void; refreshing: boolean }) {
+function RefreshButton({
+  language,
+  onRefresh,
+  refreshResult = null,
+  refreshing,
+}: {
+  language: AppLanguage
+  onRefresh: () => void
+  refreshResult?: PaymentRefreshResult
+  refreshing: boolean
+}) {
   const text = copy(language)
-  return <KaelButton accessibilityState={{ busy: refreshing, disabled: refreshing }} disabled={refreshing} label={refreshing ? text.refreshingLabel : text.refreshLabel} onPress={onRefresh} size="small" testID="customer-v21-case-payment-refresh" variant="secondary" />
+  return (
+    <View style={styles.refreshGroup}>
+      <KaelButton accessibilityState={{ busy: refreshing, disabled: refreshing }} disabled={refreshing} label={refreshing ? text.refreshingLabel : text.refreshLabel} onPress={onRefresh} size="small" testID="customer-v21-case-payment-refresh" variant="secondary" />
+      {refreshResult ? (
+        <Text accessibilityLiveRegion="polite" style={styles.refreshFeedback} testID="customer-v21-case-payment-refresh-feedback">
+          {refreshResult === 'success' ? text.refreshUnchanged : text.refreshFailed}
+        </Text>
+      ) : null}
+    </View>
+  )
 }
 
 function useRealDeadlineLabel(deadline: string | null | undefined, language: AppLanguage, reduceMotion: boolean) {
@@ -564,6 +590,8 @@ function copy(language: AppLanguage) {
         reconcileStatus: 'Cần đối soát',
         reconcileTitle: 'Thanh toán đang được đối soát',
         refreshLabel: 'Cập nhật trạng thái',
+        refreshFailed: 'Chưa thể cập nhật trạng thái. Vui lòng thử lại.',
+        refreshUnchanged: 'Đã kiểm tra lại. Chưa có xác nhận mới từ Admin.',
         refreshingLabel: 'Đang cập nhật',
         responseDeadlineLabel: 'Thời gian phản hồi còn lại',
         reviewBody: 'Đánh giá của bạn sẽ được lưu vào công việc này.',
@@ -619,6 +647,8 @@ function copy(language: AppLanguage) {
         reconcileStatus: 'Reconciliation required',
         reconcileTitle: 'Payment is being reconciled',
         refreshLabel: 'Refresh status',
+        refreshFailed: 'The status could not be refreshed. Please try again.',
+        refreshUnchanged: 'Checked again. There is no new confirmation from Admin yet.',
         refreshingLabel: 'Refreshing',
         responseDeadlineLabel: 'Response time remaining',
         reviewBody: 'Your review will be saved to this work.',
@@ -652,6 +682,8 @@ const styles = StyleSheet.create({
   note: { fontSize: 14, lineHeight: 20 },
   qr: { height: '100%', width: '100%' },
   qrFrame: { alignSelf: 'center', alignItems: 'center', aspectRatio: 1, backgroundColor: '#ffffff', borderColor: '#d8ece8', borderRadius: 20, borderWidth: StyleSheet.hairlineWidth, justifyContent: 'center', maxWidth: QR_BOX_SIZE, padding: 10, width: '100%' },
+  refreshFeedback: { color: '#4f6f70', fontSize: 13, lineHeight: 18, textAlign: 'center' },
+  refreshGroup: { gap: 8 },
   reviewHeading: { fontSize: 18, fontWeight: '700', lineHeight: 24 },
   reviewSection: { borderTopWidth: StyleSheet.hairlineWidth, gap: 12, paddingTop: 18 },
   status: { fontSize: 14, fontWeight: '600', lineHeight: 20 },

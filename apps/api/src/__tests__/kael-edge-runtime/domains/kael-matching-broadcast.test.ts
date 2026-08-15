@@ -1,10 +1,31 @@
 import { describe, expect, it, vi } from 'vitest'
 import { type MobileApiContext } from '../../../../../../supabase/functions/mobile-api/_shared/http'
 import { createEdgeServices } from '../../../../../../supabase/functions/mobile-api/_shared/domains'
+import { getJobBroadcastState } from '../../../../../../supabase/functions/mobile-api/_shared/domains/matching/broadcasts'
+import type { DbClient } from '../../../../../../supabase/functions/mobile-api/_shared/platform/db'
 import { installEdgeRuntimeTestHooks, makeSequenceClient } from '../harness'
 
 describe('matching-broadcast', () => {
   installEdgeRuntimeTestHooks()
+
+  it('keeps customer broadcast-state reads free of maintenance writes', async () => {
+    const client = makeSequenceClient([], {}, {
+      job_broadcasts: [{
+        data: [{ id: 'broadcast-1', expires_at: '2000-01-01T00:00:00.000Z' }],
+        error: null,
+      }],
+    })
+
+    await expect(getJobBroadcastState(client as unknown as DbClient, 'job-1')).resolves.toEqual({
+      active_count: 0,
+      seconds_remaining: 0,
+    })
+
+    expect(client.calls.some((call) =>
+      call.table === 'job_broadcasts' &&
+      call.operations.some((operation) => operation[0] === 'update')
+    )).toBe(false)
+  })
 
   it('expires a stale broadcast before allowing worker decline', async () => {
     const client = makeSequenceClient([

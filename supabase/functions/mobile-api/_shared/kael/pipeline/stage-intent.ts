@@ -21,6 +21,11 @@ import { updateKaelProgress } from "./streaming.ts";
 import { pushPipelineStageLog } from "../learning/trace.ts";
 import { kaelIntakeDiagnosisPromptVersion } from "../prompts/prompts.ts";
 import type { PreparedKaelPipeline } from "./prepare.ts";
+import {
+  detectOutOfScope,
+  detectServiceMismatch,
+} from "../kael-guardrails/boundary-guard.ts";
+import { maskExplicitlyExcludedScopeForIntent } from "./utils.ts";
 
 export async function runKaelIntentStage(prepared: PreparedKaelPipeline) {
   const {
@@ -150,12 +155,21 @@ async function runAndRecordIntentStage(prepared: PreparedKaelPipeline) {
   });
   const intentStage = intentRun.value;
   if (!intentStage) throw new Error(intentRun.failureReason ?? "intent stage failed");
-  const intent = intentStage.success ? intentStage.intent : intentStage.fallback;
+  const rawIntent = intentStage.success ? intentStage.intent : intentStage.fallback;
+  const reconciliation = reconcileGroundedSelectedService({
+    intent: rawIntent,
+    serviceType,
+    problemChips,
+    description,
+    electricalPlaybookEnabled,
+  });
+  const intent = reconciliation.intent;
   intentStage.attempts.forEach((attempt, index) => {
     pushPipelineStageLog(stageLogs, input, {
       stage: "intent",
       ...attempt,
-      fallbackUsed: !intentStage.success && index === intentStage.attempts.length - 1,
+      fallbackUsed: (!intentStage.success || reconciliation.reconciled) &&
+        index === intentStage.attempts.length - 1,
     }, {
       promptVersion: input.intakeDiagnosisEnabled
         ? kaelIntakeDiagnosisPromptVersion(serviceType)
@@ -168,7 +182,54 @@ async function runAndRecordIntentStage(prepared: PreparedKaelPipeline) {
     progress: 0.2,
     failureReason: intentStage.success ? undefined : intentStage.failureReason,
   });
-  return { intent, intentStage, fallbackUsed: !intentStage.success };
+  return {
+    intent,
+    intentStage,
+    fallbackUsed: !intentStage.success || reconciliation.reconciled,
+  };
+}
+
+function reconcileGroundedSelectedService(input: {
+  readonly intent: IntentResult;
+  readonly serviceType: string;
+  readonly problemChips: string[];
+  readonly description: string;
+  readonly electricalPlaybookEnabled: boolean;
+}): { intent: IntentResult; reconciled: boolean } {
+  if (
+    input.intent.service_type !== "unsupported" &&
+    input.intent.scope_signal !== "out_of_scope"
+  ) return { intent: input.intent, reconciled: false };
+
+  const fallback = buildFallbackIntent(
+    input.serviceType,
+    input.problemChips,
+    maskExplicitlyExcludedScopeForIntent(input.description),
+    input.electricalPlaybookEnabled,
+  );
+  if (fallback.service_type === "unsupported") {
+    return { intent: input.intent, reconciled: false };
+  }
+  const boundary = detectOutOfScope(input.description, fallback.service_type);
+  const serviceEvidence = detectServiceMismatch(
+    input.description,
+    fallback.service_type,
+  );
+  if (boundary.detected || serviceEvidence.hits[fallback.service_type] < 2) {
+    return { intent: input.intent, reconciled: false };
+  }
+
+  return {
+    reconciled: true,
+    intent: {
+      ...input.intent,
+      service_type: fallback.service_type,
+      problem_slug: fallback.problem_slug,
+      confidence: Math.min(input.intent.confidence, 0.5),
+      scope_signal: "in_scope",
+      suggested_service: null,
+    },
+  };
 }
 
 async function resolveIntakeDiagnosisResult(input: {
@@ -233,7 +294,8 @@ async function resolveIntakeDiagnosisResult(input: {
   const coverage = resolveIntakeFactCoverage({
     serviceType: intent.service_type,
     problemSlug: problemSlug ?? intent.problem_slug,
-    profileFacts: { ...(intent.profile_facts ?? {}), ...(pipelineInput.priorProfileFacts ?? {}) },
+    customerDescription: pipelineInput.description,
+    profileFacts: { ...(pipelineInput.priorProfileFacts ?? {}), ...(intent.profile_facts ?? {}) },
     providerMissingSlots: intent.missing_slots ?? [],
     providerNeedsClarification: intent.needs_clarification,
     electricalPlaybookEnabled,

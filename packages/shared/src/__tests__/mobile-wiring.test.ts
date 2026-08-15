@@ -2121,11 +2121,13 @@ describe('frontend-only workflow safety audit', () => {
     expect(workerStatusUpdateSchema).toContain('Cần ghi chú hoàn tất trước khi báo hoàn tất')
     expect(edgeCreateJob).toContain('final_price: null')
     // listWorkerJobs is the last function in the last service module, so slice to end of the layer.
-    const listWorkerJobs = edgeServices.slice(edgeServices.indexOf('async function listWorkerJobs'))
+    const listWorkerJobs = edgeServices.slice(edgeServices.indexOf('export async function listWorkerJobs'))
     expect(edgeServices).toContain('const WORKER_JOB_LIST_COLUMNS =')
     expect(edgeServices).toContain('photo_urls, completion_notes, completion_photo_urls')
     expect(listWorkerJobs).toContain('.select(WORKER_JOB_LIST_COLUMNS)')
-    expect(listWorkerJobs).toContain('.select(`job_id, jobs!inner(${WORKER_JOB_LIST_COLUMNS})`)')
+    expect(listWorkerJobs).toContain(
+      '.select(`job_id, broadcast_id, original_scope_price_quote, jobs!inner(${WORKER_JOB_LIST_COLUMNS})`)',
+    )
     expect(listWorkerJobs).toContain('projectAddressAccess(row, "worker")')
     expect(listWorkerJobs).not.toContain('address_lat, address_lng, geo_source')
     expect(listWorkerJobs).not.toContain('address_lat: routeLatitude')

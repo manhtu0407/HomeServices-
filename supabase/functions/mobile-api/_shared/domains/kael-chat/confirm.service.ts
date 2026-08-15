@@ -170,6 +170,9 @@ function buildKaelChatMatchingDecision(
   confidence: number,
   scopeSummary: string | null,
 ): KaelAutonomyDecision {
+  const evidenceSummary = scopeSummary
+    ? scopeSummary.slice(0, 280)
+    : "Validated Kael DiagnosisScopeArtifact and customer-confirmed offer.";
   return buildKaelAutonomyDecision({
     action: "start_matching",
     policyId: "kael.autonomy.v2.chat_estimate_to_matching",
@@ -177,7 +180,7 @@ function buildKaelChatMatchingDecision(
       {
         kind: "artifact",
         reference_id: sessionId,
-        summary: scopeSummary ?? "Validated Kael DiagnosisScopeArtifact and customer-confirmed offer.",
+        summary: evidenceSummary,
       },
       {
         kind: "artifact",

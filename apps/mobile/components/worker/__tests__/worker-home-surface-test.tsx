@@ -318,6 +318,31 @@ function buildIncomingDeal(): LocalDeal {
       fullAddressVisible: false,
       generalArea: 'Qu?n 1',
       jobId: 'job_test_1',
+      priceQuote: {
+        schemaVersion: 'original_scope_price_quote.v1',
+        quoteId: 'a1510000-0000-4000-8000-000000000010',
+        referencePriceMin: 150000,
+        referencePriceMax: 240000,
+        customerTotal: 195000,
+        platformFee: 29250,
+        workerNet: 165750,
+        commissionLevel: 1,
+        commissionRateBps: 1500,
+        priceSource: 'baseline_with_market',
+        selectionRule: 'verified_neutral_midpoint_with_bilateral_confirmation',
+        workerConfirmationRequired: true,
+        customerConfirmationRequired: true,
+        workerConfirmedAt: null,
+        expiresAt: '2099-07-22T05:19:29.849Z',
+        evidenceSummary: {
+          confidence: 'high',
+          baselineSourceCount: 2,
+          marketSourceCount: 2,
+          highTrustSourceCount: 2,
+          quorumMet: true,
+          capStatement: 'Current confirmed scope only.',
+        },
+      },
       prebrief: ['Kael dã tóm t?t ph?m vi tru?c khi th? nh?n vi?c.'],
       problemSummary: '? c?m ch?p ch?n',
       secondsRemaining: 42,
@@ -1081,7 +1106,7 @@ describe('Worker runtime surface wiring', () => {
     render(<WorkerJobsSurface />)
 
     expect(screen.getByTestId('worker-v5-offer-summary-price')).not.toHaveTextContent(/^0$/)
-    expect(screen.getByTestId('worker-v5-offer-summary-price')).toHaveTextContent(/Kael/)
+    expect(screen.getByTestId('worker-v5-offer-summary-price')).toHaveTextContent(/165\.750/)
   })
 
   it('declines an open offer from the same decision screen and returns to the board', async () => {

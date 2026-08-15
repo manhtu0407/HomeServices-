@@ -12,7 +12,9 @@ describe('worker-jobs', () => {
       display_code: 'NS-PENDING-1',
       status: 'worker_candidate_pending',
       service_type: 'electrical',
-      kael_problem_identified: 'Ổ cắm mất điện',
+      problem_chips: ['Ổ cắm mất điện'],
+      description: 'Kiểm tra đúng một ổ cắm; loại trừ đi dây âm tường.',
+      kael_problem_identified: 'Ổ cắm mất điện. Chốt giá thấp nhất.',
       address_building: 'Tòa S1.07',
       address_unit: '3701',
       address_floor: '37',
@@ -53,6 +55,8 @@ describe('worker-jobs', () => {
         address_unit: null,
         address_floor: null,
         district: 'Thủ Đức',
+        problem_summary: 'Ổ cắm mất điện',
+        scope_summary: 'Kiểm tra đúng một ổ cắm; loại trừ đi dây âm tường.',
       }],
     })
     expect(client.calls.filter((call) => !call.table.startsWith('rpc:')).map((call) => call.table))

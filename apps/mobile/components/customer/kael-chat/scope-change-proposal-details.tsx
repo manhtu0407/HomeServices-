@@ -122,8 +122,8 @@ export function ScopeChangeProposalDetails({
           label={language === 'vi' ? 'Cách xử lý phần chưa biết' : 'How unknowns are handled'}
           tokens={tokens}
           value={language === 'vi'
-            ? 'Kael không dùng các điểm chưa biết trên để tự động tăng giá. Mức giá chỉ áp dụng cho phạm vi, số lượng và điều kiện tiếp cận đã nêu; nếu hiện trường xuất hiện thêm điểm rò, vật tư hoặc phần hoàn thiện ngoài phạm vi thì phải lập đề xuất mới để bạn duyệt.'
-            : 'Kael does not use these unknowns to increase the price automatically. The amount applies only to the stated scope, quantity, and access conditions; any additional leak point, material, or finishing work requires a new proposal for your approval.'}
+            ? 'Kael không dùng các điểm chưa biết trên để tự động tăng giá. Mức giá chỉ áp dụng cho phạm vi, số lượng và điều kiện tiếp cận đã nêu; nếu hiện trường xuất hiện thêm hạng mục, vật tư hoặc phần hoàn thiện ngoài phạm vi thì phải lập đề xuất mới để bạn duyệt.'
+            : 'Kael does not use these unknowns to increase the price automatically. The amount applies only to the stated scope, quantity, and access conditions; any additional work item, material, or finishing work requires a new proposal for your approval.'}
         />
       </Section>
 

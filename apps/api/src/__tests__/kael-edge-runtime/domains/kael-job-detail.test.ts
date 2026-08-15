@@ -6,7 +6,7 @@ import { installEdgeRuntimeTestHooks, makeSequenceClient } from '../harness'
 describe('job-detail', () => {
   installEdgeRuntimeTestHooks()
 
-  it('returns broadcast_state on job detail after expiring stale broadcasts', async () => {
+  it('returns broadcast_state without mutating stale broadcasts on a read', async () => {
     const client = makeSequenceClient([
       {
         data: {
@@ -22,7 +22,10 @@ describe('job-detail', () => {
         },
         error: null,
       },
-      { data: { id: 'broadcast-1' }, error: null },
+      {
+        data: [{ id: 'broadcast-1', expires_at: '2026-01-01T00:00:00.000Z' }],
+        error: null,
+      },
       { data: [], error: null },
     ])
     const ctx: MobileApiContext = {
@@ -37,13 +40,10 @@ describe('job-detail', () => {
       broadcast_state: { active_count: 0, seconds_remaining: 0 },
     })
 
-    const expireCall = client.calls.find((call) =>
+    expect(client.calls.some((call) =>
       call.table === 'job_broadcasts' &&
       call.operations.some((op) => op[0] === 'update')
-    )
-    expect(expireCall?.operations).toContainEqual(['eq', 'job_id', 'job-1'])
-    expect(expireCall?.operations).toContainEqual(['eq', 'status', 'sent'])
-    expect(expireCall?.operations.some((op) => op[0] === 'lte' && op[1] === 'expires_at')).toBe(true)
+    )).toBe(false)
   })
 
   it('returns the matched worker real private avatar as a signed Customer-safe URL', async () => {
@@ -195,6 +195,98 @@ describe('job-detail', () => {
     })
   })
 
+  it('reads the assigned worker projection through the privileged client after job ownership passes', async () => {
+    const userClient = makeSequenceClient([{
+      data: {
+        address_district: 'q7',
+        created_at: '2026-08-15T13:30:00.000Z',
+        customer_id: 'customer-1',
+        description: 'Replace a damaged outlet',
+        id: 'job-private-worker-1',
+        photo_urls: [],
+        problem_chips: ['Outlet'],
+        service_type: 'electrical',
+        status: 'worker_matched',
+        worker_id: 'worker-1',
+      },
+      error: null,
+    }])
+    const privilegedClient = makeSequenceClient([
+      { data: { avatar_url: null, full_name: 'Thợ Minh' }, error: null },
+      { data: { legal_name: 'Nguyễn Văn Minh', rating: 4.8, total_jobs: 37 }, error: null },
+    ])
+    const ctx: MobileApiContext = {
+      privilegedSupabase: privilegedClient,
+      role: 'customer',
+      success: true,
+      supabase: userClient,
+      user: { id: 'customer-1' },
+    }
+
+    await expect(createEdgeServices({}).getJob(ctx, 'job-private-worker-1')).resolves.toMatchObject({
+      worker: {
+        full_name: 'Thợ Minh',
+        id: 'worker-1',
+        rating: 4.8,
+        total_jobs: 37,
+      },
+    })
+    expect(userClient.calls.some((call) => (
+      call.table === 'profiles' || call.table === 'worker_profiles'
+    ))).toBe(false)
+    expect(privilegedClient.calls.map((call) => call.table)).toEqual([
+      'profiles',
+      'worker_profiles',
+    ])
+  })
+
+  it('projects the bilateral worker earning before payment without using a current tier', async () => {
+    const client = makeSequenceClient([
+      {
+        data: {
+          address_district: 'q7',
+          apartment_access_profile: {},
+          apartment_access_state: {},
+          created_at: '2026-08-15T00:00:00.000Z',
+          description: 'Replace a damaged outlet',
+          final_price: 400_000,
+          id: 'job-worker-price-1',
+          matched_at: '2026-08-15T00:05:00.000Z',
+          photo_urls: [],
+          problem_chips: ['Outlet'],
+          service_type: 'electrical',
+          status: 'completed_by_worker',
+          worker_commission_level: 2,
+          worker_commission_rate_bps: 1000,
+          worker_id: 'worker-1',
+          worker_net: null,
+        },
+        error: null,
+      },
+      { data: { full_name: 'Thợ Minh', avatar_url: null }, error: null },
+      { data: { legal_name: 'Nguyễn Văn Minh', rating: 4.8, total_jobs: 37 }, error: null },
+      { data: [], error: null },
+    ])
+    const ctx: MobileApiContext = {
+      success: true,
+      user: { id: 'worker-1' },
+      role: 'worker',
+      supabase: client,
+    }
+
+    await expect(createEdgeServices({}).getJob(ctx, 'job-worker-price-1')).resolves.toMatchObject({
+      job: {
+        estimated_worker_net: 360_000,
+        final_price: 400_000,
+        worker_net: null,
+      },
+    })
+    expect(client.calls[0]?.operations).toContainEqual([
+      'select',
+      expect.stringContaining('worker_commission_rate_bps'),
+    ])
+  })
+
   it('returns signed Case Work images to the owning Customer without exposing raw media refs', async () => {
     const customerId = '11111111-1111-4111-8111-111111111111'
     const imagePath = `${customerId}/kael-chat/model_vision/evidence.png`
@@ -245,6 +337,53 @@ describe('job-detail', () => {
       15 * 60,
       expect.objectContaining({ transform: expect.any(Object) }),
     )
+  })
+
+  it('signs owner-authorized Case Work evidence through the privileged storage client', async () => {
+    const customerId = '11111111-1111-4111-8111-111111111111'
+    const imagePath = `${customerId}/kael-chat/model_vision/evidence.png`
+    const imageRef = `supabase://kael-chat-media/${imagePath}`
+    const userClient = makeSequenceClient([{
+      data: {
+        address_district: 'q7',
+        created_at: '2026-07-27T00:00:00.000Z',
+        customer_id: customerId,
+        description: 'Leak under sink',
+        id: 'job-privileged-image-1',
+        photo_urls: [imageRef],
+        problem_chips: ['Leak'],
+        service_type: 'plumbing',
+        status: 'inspecting',
+      },
+      error: null,
+    }])
+    const privilegedClient = makeSequenceClient([{ data: null, error: null }])
+    const userCreateSignedUrl = vi.fn(async () => ({ data: null, error: { code: '403' } }))
+    const privilegedCreateSignedUrl = vi.fn(async () => ({
+      data: { signedUrl: `https://storage.example.test/signed/${imagePath}` },
+      error: null,
+    }))
+    Object.assign(userClient, {
+      storage: { from: vi.fn(() => ({ createSignedUrl: userCreateSignedUrl })) },
+    })
+    Object.assign(privilegedClient, {
+      storage: { from: vi.fn(() => ({ createSignedUrl: privilegedCreateSignedUrl })) },
+    })
+    const ctx: MobileApiContext = {
+      privilegedSupabase: privilegedClient,
+      role: 'customer',
+      success: true,
+      supabase: userClient,
+      user: { id: customerId },
+    }
+
+    await expect(createEdgeServices({}).getJob(ctx, 'job-privileged-image-1')).resolves.toMatchObject({
+      job: {
+        photo_urls: [`https://storage.example.test/signed/${imagePath}`],
+      },
+    })
+    expect(userCreateSignedUrl).not.toHaveBeenCalled()
+    expect(privilegedCreateSignedUrl).toHaveBeenCalledTimes(1)
   })
 
   it('fails closed when a persisted payment status violates the response contract', async () => {

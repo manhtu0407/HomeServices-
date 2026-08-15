@@ -11,10 +11,15 @@ import {
   listJobEvidenceRefsByStage,
 } from "../job/evidence-refs.ts";
 import { createSignedCaseWorkEvidenceUrls } from "../kael-chat/media-vision.ts";
-import { estimateWorkerNet, getWorkerCommissionTier } from "../payment/commission.ts";
+import {
+  estimateWorkerNet,
+  getWorkerCommissionTier,
+  type WorkerCommissionTier,
+} from "../payment/commission.ts";
+import { parseOriginalScopePriceQuote } from "../matching/original-scope-price-quote.ts";
 
 const WORKER_JOB_LIST_COLUMNS =
-  "id, customer_id, display_code, status, service_type, kael_problem_identified, address_building, address_unit, address_floor, address_district, apartment_access_profile, apartment_access_state, scheduled_at, kael_price_min, kael_price_max, kael_worker_brief_guidance, final_price, payment_status, payment_provider, payment_received_at, payment_amount_received, gross_amount, platform_fee, worker_net, photo_urls, completion_notes, completion_photo_urls, created_at, matched_at, completed_at";
+  "id, customer_id, display_code, status, service_type, problem_chips, description, kael_problem_identified, address_building, address_unit, address_floor, address_district, apartment_access_profile, apartment_access_state, scheduled_at, kael_price_min, kael_price_max, kael_worker_brief_guidance, final_price, worker_commission_level, worker_commission_rate_bps, payment_status, payment_provider, payment_received_at, payment_amount_received, gross_amount, platform_fee, worker_net, photo_urls, completion_notes, completion_photo_urls, created_at, matched_at, completed_at";
 
 export async function listWorkerJobs(ctx: MobileApiContext) {
   const client = db(ctx);
@@ -30,7 +35,7 @@ export async function listWorkerJobs(ctx: MobileApiContext) {
   const candidateJobsRequest = dbQuery<Array<Record<string, unknown>>>(
     client
       .from("job_worker_candidates")
-      .select(`job_id, jobs!inner(${WORKER_JOB_LIST_COLUMNS})`)
+      .select(`job_id, broadcast_id, original_scope_price_quote, jobs!inner(${WORKER_JOB_LIST_COLUMNS})`)
       .eq("worker_id", ctx.user.id)
       .eq("status", "proposed")
       .eq("jobs.status", "worker_candidate_pending")
@@ -47,16 +52,10 @@ export async function listWorkerJobs(ctx: MobileApiContext) {
     apiFailure("DB_ERROR", "Không thể tải danh sách công việc", 500);
   }
 
-  const pendingRows = (candidateJobs.data ?? []).map((candidate) => {
-    const related = candidate.jobs;
-    const job = isRecord(related)
-      ? related
-      : Array.isArray(related) && isRecord(related[0])
-      ? related[0]
-      : null;
-    if (!job) apiFailure("DB_ERROR", "Không thể tải công việc đang chờ xác nhận", 500);
-    return job;
-  });
+  const pendingRows = projectPendingCandidateRows(
+    candidateJobs.data ?? [],
+    ctx.user.id,
+  );
   const uniqueRows = new Map<string, Record<string, unknown>>();
   for (const row of [...(assignedJobs.data ?? []), ...pendingRows]) {
     const id = asString(row.id);
@@ -101,30 +100,36 @@ export async function listWorkerJobs(ctx: MobileApiContext) {
       const max = finalPrice ?? nullableNumber(row.kael_price_max);
       const min = nullableNumber(row.kael_price_min);
       const frozenWorkerNet = nullableNumber(row.worker_net);
+      const effectiveCommissionTier = commissionTierFromJob(
+        row,
+        commissionTier,
+      );
+      const problemSummary = asStringArray(row.problem_chips)[0] ??
+        nullableString(row.kael_problem_identified);
       const addressProjection = projectAddressAccess(row, "worker");
       const fallbackBrief = buildWorkerBriefOutput({
         stage: "guidance",
         serviceType: row.service_type as ServiceType,
-        problemSummary:
-          nullableString(row.kael_problem_identified) ?? "Yêu cầu cần thợ kiểm tra",
+        problemSummary: problemSummary ?? "Yêu cầu cần thợ kiểm tra",
         district: nullableString(row.address_district),
         fullAddress: addressProjection.fullAddress,
-        estimatedEarningMin: estimateWorkerNet(min, commissionTier),
-        estimatedEarningMax: frozenWorkerNet ?? estimateWorkerNet(max, commissionTier),
+        estimatedEarningMin: estimateWorkerNet(min, effectiveCommissionTier),
+        estimatedEarningMax: frozenWorkerNet ?? estimateWorkerNet(max, effectiveCommissionTier),
       }).brief;
       return {
         id: jobId,
         display_code: nullableString(row.display_code),
         status: row.status as JobStatus,
         service_type: row.service_type as ServiceType,
-        problem_summary: nullableString(row.kael_problem_identified),
+        problem_summary: problemSummary,
+        scope_summary: nullableString(row.description),
         address_building: addressProjection.fullAddress.building,
         address_unit: addressProjection.fullAddress.unit,
         address_floor: addressProjection.fullAddress.floor,
         district: addressProjection.fullAddress.district,
         address_access: addressProjection.addressAccess,
         final_price: finalPrice,
-        estimated_earning: frozenWorkerNet ?? estimateWorkerNet(finalPrice, commissionTier),
+        estimated_earning: frozenWorkerNet ?? estimateWorkerNet(finalPrice, effectiveCommissionTier),
         payment_status: parseWorkerJobPaymentStatus(row.payment_status),
         payment_provider: nullableString(row.payment_provider),
         payment_code: null,
@@ -154,6 +159,54 @@ export async function listWorkerJobs(ctx: MobileApiContext) {
       };
     }),
   };
+}
+
+function projectPendingCandidateRows(
+  candidates: Array<Record<string, unknown>>,
+  workerId: string,
+) {
+  return candidates.map((candidate) => {
+    const related = candidate.jobs;
+    const job = isRecord(related)
+      ? related
+      : Array.isArray(related) && isRecord(related[0])
+      ? related[0]
+      : null;
+    if (!job) apiFailure("DB_ERROR", "Không thể tải công việc đang chờ xác nhận", 500);
+    const broadcastId = nullableString(candidate.broadcast_id);
+    const jobId = nullableString(candidate.job_id);
+    const quote = broadcastId && jobId
+      ? parseOriginalScopePriceQuote(candidate.original_scope_price_quote, {
+        broadcastId,
+        jobId,
+        requireWorkerConfirmation: true,
+        workerId,
+      })
+      : null;
+    return quote
+      ? {
+        ...job,
+        worker_commission_level: quote.commissionLevel,
+        worker_commission_rate_bps: quote.commissionRateBps,
+      }
+      : job;
+  });
+}
+
+function commissionTierFromJob(
+  row: Record<string, unknown>,
+  fallback: WorkerCommissionTier | null,
+): WorkerCommissionTier | null {
+  const level = nullableNumber(row.worker_commission_level);
+  const rateBps = nullableNumber(row.worker_commission_rate_bps);
+  if (
+    level !== null && Number.isSafeInteger(level) && level >= 1 &&
+    rateBps !== null && Number.isSafeInteger(rateBps) &&
+    rateBps >= 0 && rateBps <= 1_500
+  ) {
+    return { level, rateBps };
+  }
+  return fallback;
 }
 
 function parseWorkerJobPaymentStatus(

@@ -17,12 +17,31 @@ export function resolveProfileFactCoverage(
     const value = candidateFacts[driver];
     if (typeof value !== "string") continue;
     const normalized = value.trim().slice(0, 500);
-    if (normalized) facts[driver] = normalized;
+    if (normalized && !isUnknownProfileFact(normalized)) facts[driver] = normalized;
   }
   return {
     facts,
     missing: profile.quote_drivers.filter((driver) => !facts[driver]),
   };
+}
+
+function isUnknownProfileFact(value: string) {
+  const normalized = value.normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/đ/g, "d")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+  return new Set([
+    "khong biet",
+    "khong ro",
+    "chua biet",
+    "chua ro",
+    "not known",
+    "not sure",
+    "unknown",
+    "unsure",
+  ]).has(normalized);
 }
 
 export function buildProfileSafetyFlags(

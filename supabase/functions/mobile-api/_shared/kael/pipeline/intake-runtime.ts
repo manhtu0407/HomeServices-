@@ -6,6 +6,7 @@ import {
   scanIntakeSafetySignals,
 } from "../kael-guardrails/electrical-intake-policy.ts";
 import { getKaelPerformanceProfile } from "../learning/performance-profiles.ts";
+import { resolveHandymanIntakeFactCoverage } from "../kael-guardrails/handyman-intake-policy.ts";
 import {
   ELECTRICAL_PLAYBOOK_VERSION,
   isElectricalPlaybookEnabled,
@@ -76,6 +77,7 @@ export function mergeIntakeSafetySignals(input: {
 export function resolveIntakeFactCoverage(input: {
   serviceType: string;
   problemSlug: string;
+  customerDescription?: string;
   profileFacts: Record<string, unknown>;
   providerMissingSlots: readonly string[];
   providerNeedsClarification: boolean;
@@ -88,6 +90,13 @@ export function resolveIntakeFactCoverage(input: {
   const coverage = profile
     ? requiredPolicy
       ? resolveRequiredSlotCoverage(profile, input.problemSlug, input.profileFacts)
+      : input.serviceType === "handyman"
+      ? resolveHandymanIntakeFactCoverage({
+        profile,
+        problemSlug: input.problemSlug,
+        candidateFacts: input.profileFacts,
+        customerDescription: input.customerDescription ?? "",
+      })
       : resolveProfileFactCoverage(profile, input.profileFacts)
     : { facts: {} as Record<string, string>, missing: [] as readonly string[] };
   const providerMissing = input.providerMissingSlots.filter((slot) => {
@@ -292,6 +301,10 @@ export function buildFocusedClarificationQuestion(
     concealed_services_and_load_requirement: {
       vi: "Khu vực khoan có đường điện hoặc ống nước âm tường đã biết không?",
       en: "Are there known concealed electrical or water lines at the drilling point?",
+    },
+    requested_scope_and_exclusions: {
+      vi: "Bạn muốn thợ chỉ kiểm tra, siết và căn chỉnh hay còn cho phép thay bản lề, vá gỗ hoặc khoan mới; phần nào cần loại trừ?",
+      en: "Should the worker only inspect, tighten and adjust, or may they replace hinges, patch wood or drill new holes; what must be excluded?",
     },
   };
   const compositeQuestion = compositeQuestions[slot]?.[language];

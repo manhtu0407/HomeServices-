@@ -2,8 +2,8 @@
   "version": "1.0.0",
   "source": {
     "migrationRoot": "supabase/migrations",
-    "migrationCount": 273,
-    "migrationDigest": "f2af6433aaa02346a9004c092287c2eff357f4ca6948ee7d6f8f6bf515211d3d"
+    "migrationCount": 278,
+    "migrationDigest": "edf837c3fad054d760018832c205023922ba30f04c0e55d88f98cb313361716a"
   },
   "actors": [
     "anonymous",
@@ -2465,6 +2465,14 @@
   ],
   "functions": [
     {
+      "signature": "accept_broadcast_atomic(uuid, uuid, uuid)",
+      "securityDefiner": false,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
       "signature": "accept_broadcast_atomic(uuid, uuid)",
       "securityDefiner": false,
       "fixedSearchPath": true,
@@ -3130,7 +3138,9 @@
       "signature": "confirm_worker_cash_payment(uuid, uuid)",
       "securityDefiner": true,
       "fixedSearchPath": true,
-      "executeRoles": []
+      "executeRoles": [
+        "service_role"
+      ]
     },
     {
       "signature": "consume_job_media_uploads(uuid, uuid, text[], timestamp with time zone)",
@@ -3281,6 +3291,7 @@
       "securityDefiner": false,
       "fixedSearchPath": true,
       "executeRoles": [
+        "authenticated",
         "service_role"
       ]
     },

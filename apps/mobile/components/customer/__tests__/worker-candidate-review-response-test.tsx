@@ -4,6 +4,31 @@ import { WorkerCandidateReviewResponse } from '../kael-chat/worker-candidate-rev
 import { getCustomerThemeTokens } from '../customer-theme'
 
 const tokens = getCustomerThemeTokens('light')
+const originalScopePriceQuote = {
+  schema_version: 'original_scope_price_quote.v1' as const,
+  quote_id: 'a1510000-0000-4000-8000-000000000001',
+  reference_price_min: 300000,
+  reference_price_max: 500000,
+  customer_total: 400000,
+  platform_fee: 40000,
+  worker_net: 360000,
+  commission_level: 1,
+  commission_rate_bps: 1000,
+  price_source: 'baseline_with_market',
+  selection_rule: 'verified_neutral_midpoint_with_bilateral_confirmation' as const,
+  worker_confirmation_required: true as const,
+  customer_confirmation_required: true as const,
+  worker_confirmed_at: '2026-07-11T01:01:00.000Z',
+  expires_at: '2026-07-11T01:10:00.000Z',
+  evidence_summary: {
+    confidence: 'high' as const,
+    baseline_source_count: 2,
+    market_source_count: 2,
+    high_trust_source_count: 1,
+    quorum_met: true as const,
+    cap_statement: 'Current scope only.',
+  },
+}
 
 it('places the real worker avatar before the name and shows only available personal facts', () => {
   const view = render(
@@ -13,6 +38,7 @@ it('places the real worker avatar before the name and shows only available perso
         avatar_url: 'https://storage.example.test/worker-avatar.webp',
         birth_year: 1990,
         candidate_id: 'candidate-avatar',
+        original_scope_price_quote: originalScopePriceQuote,
         customer_decided_at: null,
         display_name: 'Nguyễn An',
         expires_at: null,
@@ -45,6 +71,55 @@ it('places the real worker avatar before the name and shows only available perso
   }])
   expect(view.getByText('Nguyễn An')).toBeTruthy()
   expect(view.getByText('Sinh năm 1990 · Nam')).toBeTruthy()
+  expect(view.getByTestId('customer-v21-worker-candidate-price-receipt')).toBeTruthy()
+  expect(view.getByText('400.000đ')).toBeTruthy()
+  expect(view.getByText('40.000đ · 10%')).toBeTruthy()
+  expect(view.getByText('360.000đ')).toBeTruthy()
+  expect(view.getByText('300.000đ – 500.000đ')).toBeTruthy()
+  expect(view.getByText(/2 nguồn giá nền.*2 nguồn thị trường.*độ tin cậy cao/)).toBeTruthy()
+})
+
+it('fails closed when a proposed candidate has no worker-confirmed price receipt', () => {
+  const onConfirm = jest.fn()
+  const view = render(
+    <WorkerCandidateReviewResponse
+      busy={false}
+      candidate={{
+        avatar_url: null,
+        candidate_id: 'candidate-no-price',
+        customer_decided_at: null,
+        display_name: 'Nguyễn An',
+        expires_at: '2026-07-11T01:10:00.000Z',
+        is_favorite: false,
+        original_scope_price_quote: null,
+        proposed_at: '2026-07-11T01:00:00.000Z',
+        rating: null,
+        status: 'proposed',
+        total_jobs: 0,
+        verification_status: 'approved',
+        worker_id: 'worker-1',
+        years_experience: 0,
+      }}
+      error={null}
+      language="vi"
+      onConfirm={onConfirm}
+      onReject={jest.fn()}
+      onRetry={jest.fn()}
+      onRetrySavedWorkers={jest.fn()}
+      onToggleFavorite={jest.fn()}
+      savedWorkers={[]}
+      savedWorkersStatus="ready"
+      tokens={tokens}
+    />,
+  )
+
+  const action = view.getByTestId('customer-v21-worker-candidate-confirm')
+  expect(view.getByTestId('customer-v21-worker-candidate-price-blocked')).toBeTruthy()
+  expect(view.getByText('Chờ Kael tải giá')).toBeTruthy()
+  expect(action.props.accessibilityState.disabled).toBe(true)
+  fireEvent.press(action)
+  expect(view.queryByTestId('customer-v21-worker-candidate-final-review')).toBeNull()
+  expect(onConfirm).not.toHaveBeenCalled()
 })
 
 it('shows only real candidate facts and keeps the address locked until confirmation', () => {
@@ -57,6 +132,7 @@ it('shows only real candidate facts and keeps the address locked until confirmat
       candidate={{
         avatar_url: null,
         candidate_id: 'candidate-1',
+        original_scope_price_quote: originalScopePriceQuote,
         customer_decided_at: null,
         display_name: 'Nguyễn An',
         expires_at: '2026-07-11T01:10:00.000Z',
@@ -105,6 +181,7 @@ it('makes unavailable protected direct payment clear before the customer chooses
       candidate={{
         avatar_url: null,
         candidate_id: 'candidate-1',
+        original_scope_price_quote: originalScopePriceQuote,
         customer_decided_at: null,
         direct_payment_available: false,
         display_name: 'Nguyễn An',
@@ -143,6 +220,7 @@ it('explains that protected direct payment is rechecked before it opens', () => 
       candidate={{
         avatar_url: null,
         candidate_id: 'candidate-1',
+        original_scope_price_quote: originalScopePriceQuote,
         customer_decided_at: null,
         direct_payment_available: true,
         display_name: 'Nguyễn An',
@@ -182,6 +260,7 @@ it('opens a final review with saved workers before confirming the candidate', ()
       candidate={{
         avatar_url: null,
         candidate_id: 'candidate-1',
+        original_scope_price_quote: originalScopePriceQuote,
         customer_decided_at: null,
         display_name: 'Nguyễn An',
         expires_at: '2026-07-11T01:10:00.000Z',
@@ -229,6 +308,7 @@ it('keeps final confirmation available when saved-worker history cannot load', (
       candidate={{
         avatar_url: null,
         candidate_id: 'candidate-1',
+        original_scope_price_quote: originalScopePriceQuote,
         customer_decided_at: null,
         display_name: 'Nguyễn An',
         expires_at: null,

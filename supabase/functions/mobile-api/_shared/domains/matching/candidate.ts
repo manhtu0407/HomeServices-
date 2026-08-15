@@ -29,7 +29,7 @@ export async function getWorkerCandidate(ctx: MobileApiContext, jobId: string) {
   });
   const current = await dbQuery<Record<string, unknown>>(
     client.from("job_worker_candidates")
-      .select("id, job_id, worker_id, status, proposed_at, expires_at, customer_decided_at")
+      .select("id, job_id, worker_id, broadcast_id, status, proposed_at, expires_at, customer_decided_at, original_scope_price_quote")
       .eq("job_id", jobId).in("status", ["proposed", "customer_confirmed"])
       .order("proposed_at", { ascending: false }).limit(1).maybeSingle(),
   );

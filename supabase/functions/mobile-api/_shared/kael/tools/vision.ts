@@ -1,5 +1,5 @@
 import { sanitizeForLLM } from "../../../../_shared/domain.ts";
-import type { AIImageContent, AIProvider, EdgeAiSecrets, VisionResult } from "../contracts/types.ts";
+import type { AIImageContent, AIProvider, EdgeAiSecrets, ServiceType, VisionResult } from "../contracts/types.ts";
 import { visionResultSchema } from "../contracts/types.ts";
 import { buildVisionMessages } from "../prompts/prompts.ts";
 import {
@@ -18,6 +18,7 @@ import { logKaelEscalation, selectKaelEscalation } from "../kael-guardrails/esca
 import { sanitizeVisionPhotoUrls, scrubSensitiveForLLM } from "../pipeline/utils.ts";
 import { readResponseBytesBounded } from "../../../../_shared/network.ts";
 import { customerVisibleKaelProblemSummary } from "../language/user-facing-copy.ts";
+import { serviceReceiptCopy } from "../language/service-receipt-copy.ts";
 
 const VISION_BASE_MAX_TOKENS = 900;
 const VISION_EXTRA_IMAGE_MAX_TOKENS = 200;
@@ -396,6 +397,8 @@ export function buildFallbackVision(
   hasVisualEvidence = false,
   confirmedDescription = "",
 ): VisionResult {
+  const serviceType = serviceTypeFromIntentContext(intentContext);
+  const serviceCopy = serviceType ? serviceReceiptCopy(serviceType, language) : null;
   const problemLabel = customerVisibleKaelProblemSummary(intentContext, language) ||
     (language === "en"
       ? "The issue requires an on-site inspection"
@@ -413,17 +416,26 @@ export function buildFallbackVision(
     problem_identified: problem,
     severity_indicators: [],
     complexity_hint: "medium",
-    recommended_scope: language === "en"
-      ? "The worker should inspect the described area on site before the repair scope is finalized."
-      : "Thợ cần kiểm tra trực tiếp vị trí được mô tả trước khi chốt hạng mục sửa chữa.",
+    recommended_scope: serviceCopy?.fallbackRecommendedScope ?? (language === "en"
+      ? "The worker should inspect the described area on site before the scope is finalized."
+      : "Thợ cần kiểm tra trực tiếp khu vực được mô tả trước khi chốt phạm vi."),
     remaining_uncertainty: hasVisualEvidence
-      ? (language === "en"
+      ? serviceCopy?.fallbackVisualUnavailable ?? (language === "en"
         ? "Kael received the image but could not verify its details; the cause and any hidden damage still require an on-site inspection."
         : "Kael đã nhận ảnh nhưng chưa thể xác nhận chi tiết trong ảnh; nguyên nhân và phần hư hỏng bị che khuất vẫn cần kiểm tra trực tiếp.")
-      : (language === "en"
+      : serviceCopy?.fallbackNoVisual ?? (language === "en"
         ? "No image was provided to verify the cause or any hidden damage."
         : "Chưa có hình ảnh để xác nhận nguyên nhân và phần hư hỏng bị che khuất."),
   };
+}
+
+function serviceTypeFromIntentContext(value: string): ServiceType | null {
+  const candidate = value.split(":", 1)[0]?.trim();
+  return candidate === "electrical" || candidate === "plumbing" ||
+      candidate === "cleaning" || candidate === "hvac" ||
+      candidate === "upholstery" || candidate === "handyman"
+    ? candidate
+    : null;
 }
 
 function extractConfirmedIssueDescription(

@@ -71,6 +71,27 @@ describe('Kael X1 boundary guard — detectOutOfScope', () => {
       expect(result.detected).toBe(false)
     }
   })
+
+  it('does not turn a cleaning exclusion into an unsupported appliance repair request', () => {
+    const input = [
+      'Căn hộ 65m2 gồm 2 phòng ngủ, 2 phòng tắm, phòng khách và bếp.',
+      'Cần vệ sinh duy trì tiêu chuẩn: hút bụi, lau sàn và lau bề mặt bếp.',
+      'Loại trừ bên trong tủ, lò và tủ lạnh; không di chuyển đồ nặng.',
+    ].join(' ')
+
+    expect(detectOutOfScope(input, 'cleaning')).toEqual({ detected: false, signals: [] })
+    expect(evaluateMessageBoundary(input, 'cleaning')).toEqual({ ok: true })
+  })
+
+  it('keeps genuine refrigerator repair outside the selected cleaning service', () => {
+    const result = evaluateMessageBoundary(
+      'Không cần vệ sinh; tủ lạnh không chạy và cần sửa bo mạch.',
+      'cleaning',
+    )
+
+    expect(result.ok).toBe(false)
+    if (!result.ok) expect(result.reason).toBe('out_of_scope')
+  })
 })
 
 describe('Kael X1 boundary guard — detectServiceMismatch', () => {

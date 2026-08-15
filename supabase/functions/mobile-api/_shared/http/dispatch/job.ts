@@ -10,6 +10,7 @@ import {
   kaelWorkerClarifySchema,
   reviewSchema,
   workerCancellationRequestSchema,
+  workerBroadcastAcceptSchema,
   workerScopeChangeSchema,
 } from "../../../../_shared/domain.ts";
 import {
@@ -34,16 +35,8 @@ export async function dispatchJobRoute(
   services: MobileApiServices,
 ): Promise<unknown> {
   switch (route.kind) {
-    case "jobs.create": {
-      const input = jobCreateSchema.safeParse(await readJson(request));
-      if (!input.success) apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
-      apiFailure(
-        "KAEL_CASE_WORK_REQUIRED",
-        "Hãy bắt đầu qua Kael Case Work và xác nhận báo giá trước khi tạo yêu cầu.",
-        409,
-        { next_route: "/kael/chat" },
-      );
-    }
+    case "jobs.create":
+      return rejectDirectJobCreate(request);
     case "jobs.get":
       return services.getJob(ctx, route.jobId);
     case "jobs.confirmSearch":
@@ -66,7 +59,11 @@ export async function dispatchJobRoute(
       return services.openDispute(ctx, route.jobId, input.data);
     }
     case "jobs.accept":
-      return services.acceptBroadcast(ctx, route.jobId);
+      return services.acceptBroadcast(
+        ctx,
+        route.jobId,
+        await readWorkerBroadcastQuoteId(request),
+      );
     case "jobs.decline":
       return services.declineBroadcast(ctx, route.jobId);
     case "jobs.workerCandidate":
@@ -175,4 +172,27 @@ export async function dispatchJobRoute(
     }
   }
   return assertNever(route);
+}
+
+async function rejectDirectJobCreate(request: Request) {
+  const input = jobCreateSchema.safeParse(await readJson(request));
+  if (!input.success) apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
+  apiFailure(
+    "KAEL_CASE_WORK_REQUIRED",
+    "Hãy bắt đầu qua Kael Case Work và xác nhận báo giá trước khi tạo yêu cầu.",
+    409,
+    { next_route: "/kael/chat" },
+  );
+}
+
+async function readWorkerBroadcastQuoteId(request: Request) {
+  const input = workerBroadcastAcceptSchema.safeParse(await readJson(request));
+  if (!input.success) {
+    apiFailure(
+      "PRICE_CONFIRMATION_REQUIRED",
+      "Hãy tải lại báo giá chính xác trước khi nhận việc.",
+      409,
+    );
+  }
+  return input.data.quote_id;
 }

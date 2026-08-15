@@ -58,13 +58,17 @@ export function mergeKaelCustomerDetailForReanalysis(
   artifact: KaelDiagnosisScopeArtifact,
   latestCustomerDetail: string,
 ): string {
+  const latest = latestCustomerDetail.trim();
   const priorDetails = [
     artifact.facts.customer_goal,
     artifact.facts.latest_customer_detail,
-  ].filter((value): value is string => typeof value === "string" && value.trim().length > 0);
-  const latest = latestCustomerDetail.trim();
+  ]
+    .filter((value): value is string => typeof value === "string" && value.trim().length > 0)
+    .map((value) => removeSupersededRedactedMeasurementClauses(value, latest))
+    .filter((value) => value.length > 0);
   const details: string[] = [];
-  for (const detail of [...priorDetails, latest]) {
+  const orderedDetails = latest ? [latest, ...priorDetails] : priorDetails;
+  for (const detail of orderedDetails) {
     const normalized = normalizeCustomerDetail(detail);
     if (!normalized) continue;
     const coveringIndex = details.findIndex((current) =>
@@ -74,19 +78,39 @@ export function mergeKaelCustomerDetailForReanalysis(
     const coveredIndex = details.findIndex((current) =>
       normalized.includes(normalizeCustomerDetail(current))
     );
-    if (coveredIndex >= 0) details.splice(coveredIndex, 1, detail.trim());
+    if (coveredIndex > 0 || (coveredIndex === 0 && !latest)) {
+      details.splice(coveredIndex, 1, detail.trim());
+    }
     else details.push(detail.trim());
   }
   const merged = details.join("\n\n");
   if (merged.length <= 2000) return merged;
-  const latestBounded = latest.slice(0, 1200).trim();
-  const priorBudget = Math.max(0, 2000 - latestBounded.length - 2);
-  const priorBounded = details.slice(0, -1).join("\n\n").slice(0, priorBudget).trim();
-  return [priorBounded, latestBounded].filter(Boolean).join("\n\n");
+  const newestBounded = details[0]?.slice(0, 1200).trim() ?? "";
+  const priorBudget = Math.max(0, 2000 - newestBounded.length - 2);
+  const priorBounded = details.slice(1).join("\n\n").slice(0, priorBudget).trim();
+  return [newestBounded, priorBounded].filter(Boolean).join("\n\n");
 }
 
 function normalizeCustomerDetail(value: string) {
   return value.replace(/\s+/g, " ").trim().toLocaleLowerCase("vi");
+}
+
+function removeSupersededRedactedMeasurementClauses(
+  priorDetail: string,
+  latestCustomerDetail: string,
+) {
+  const hasConcreteDeviceMeasurement = /\b\d+(?:[.,]\d+)?\s*(?:hp|btu|v|a|kw)\b/iu.test(
+    latestCustomerDetail,
+  );
+  if (!hasConcreteDeviceMeasurement) return priorDetail.trim();
+  return priorDetail
+    .split(/(?:\r?\n)+|(?<=[.!?;])\s+/u)
+    .map((clause) => clause.trim())
+    .filter((clause) =>
+      clause.length > 0 &&
+      !/\[(?:house-no|unit|floor)\]\s*(?:hp|btu|v|a|kw)\b/iu.test(clause)
+    )
+    .join("\n\n");
 }
 
 export function demandingCustomerTurnMetadata(

@@ -141,16 +141,23 @@ function WorkerV5ScopeActionRail({
   scopeQuoting: boolean
 }) {
   const proposalReady = incidentStatus === 'ready_for_scope_proposal'
+  const proposalSubmitted = incidentStatus === 'scope_proposed'
   return (
     <WorkerV5ActionRail
       caseWideAura={WorkerV5CustomerCaseWideMintAura}
       primaryButtonFill={WorkerV5PrimaryButtonFill}
       zipAura={WorkerV5CustomerZipMintAura}
-      onPrimary={proposalReady
+      onPrimary={proposalSubmitted
+        ? onViewScopeDetails
+        : proposalReady
         ? scopeQuote ? onSubmitScopeProposal : onPreviewScopeProposal
         : hasScopeSubmission ? onViewScopeDetails : navigateNext}
-      onSecondary={scopeQuote ? onRejectScopeQuote : canDraftScopeEvidence ? onOpenScopeEditPath : undefined}
-      primary={proposalReady
+      onSecondary={proposalSubmitted
+        ? undefined
+        : scopeQuote ? onRejectScopeQuote : canDraftScopeEvidence ? onOpenScopeEditPath : undefined}
+      primary={proposalSubmitted
+        ? textByLanguage(language, 'Đang chờ khách xác nhận', 'Waiting for Customer approval')
+        : proposalReady
         ? scopeQuote
           ? textByLanguage(language, 'Xác nhận giá và gửi khách', 'Confirm price and send')
           : scopeQuoting
@@ -162,7 +169,9 @@ function WorkerV5ScopeActionRail({
       primaryTestID="worker-v5-scope-change-send-action"
       primaryVariant="source"
       reduceTransparency={reduceTransparency}
-      secondary={scopeQuote
+      secondary={proposalSubmitted
+        ? textByLanguage(language, 'Báo cáo đã khóa', 'Report locked')
+        : scopeQuote
         ? textByLanguage(language, 'Không đồng ý mức này', 'Decline this quote')
         : textByLanguage(language, 'Chỉnh sửa', 'Edit')}
       secondaryTestID="worker-v5-scope-change-edit-action"
@@ -228,7 +237,13 @@ export function WorkerV5ScopeChangeBody({
       }))
     })
   }, [runtime.actions, scopeDraftOwnerKey, scopeQuote, updateScopeDraft])
-  const scopeEvidenceOpen = scopeRouteMode === 'edit' || scopeEvidenceOpenLocal
+  const proposalSubmitted = jobIncident?.status === 'scope_proposed'
+  useEffect(() => {
+    if (deal?.status !== 'repairing' || !proposalSubmitted || scope) return
+    const jobId = deal.broadcast?.jobId ?? deal.id
+    router.replace(`/(worker)/jobs?ns_worker_screen=2.7-in-progress&job_id=${encodeURIComponent(jobId)}` as never)
+  }, [deal, proposalSubmitted, router, scope])
+  const scopeEvidenceOpen = !proposalSubmitted && (scopeRouteMode === 'edit' || scopeEvidenceOpenLocal)
   const fieldEvidenceUrls = deal?.fieldEvidencePhotoUrls ?? []
   const scopeEvidenceUrls = Array.from(new Set([
     ...fieldEvidenceUrls,
@@ -241,7 +256,7 @@ export function WorkerV5ScopeChangeBody({
   const hasScopeSubmission = Boolean(scope || scopeEvidenceSent || jobIncident)
   const scopeDescriptionReady = scopeDescription.trim().length >= 10
   const scopeReasonReady = scopeReason.trim().length >= 10
-  const scopeSubmitDisabled = !canDraftScopeEvidence || !scopeDescriptionReady || !scopeReasonReady || scopeSubmitting || Boolean(scope && !jobIncident)
+  const scopeSubmitDisabled = proposalSubmitted || !canDraftScopeEvidence || !scopeDescriptionReady || !scopeReasonReady || scopeSubmitting || Boolean(scope && !jobIncident)
   const openScopeEditPath = () => {
     updateScopeDraft((current) => ({ ...current, evidenceOpenLocal: true, quote: null }))
     const jobParam = scopeDraftOwnerKey === 'no-active-job'

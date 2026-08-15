@@ -44,6 +44,7 @@ export type {
   LocalDealSource,
   LocalKaelProgress,
   LocalJobIncidentReview,
+  LocalOriginalScopePriceQuote,
   LocalPaymentStatus,
   LocalRemoteBroadcastSnapshot,
   LocalRemoteJobSnapshot,

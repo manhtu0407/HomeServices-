@@ -3,6 +3,7 @@ import type {
   JobStatus,
   ServiceType,
 } from "../../../../_shared/domain.ts";
+import type { SafeOriginalScopePriceQuote } from "../matching/original-scope-price-quote.ts";
 
 export type EdgeAvailabilityToggleResponse = {
   worker_id: string;
@@ -38,6 +39,7 @@ export type EdgeBroadcastListResponse = {
     sent_at: string | null;
     expires_at: string | null;
     seconds_remaining: number | null;
+    original_scope_price_quote: SafeOriginalScopePriceQuote;
   }[];
 };
 

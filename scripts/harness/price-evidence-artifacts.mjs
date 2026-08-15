@@ -16,13 +16,18 @@ if (ledgerNames.length === 0) {
 let artifactCount = 0
 for (const ledgerName of ledgerNames) {
   const ledger = JSON.parse(readFileSync(resolve(EVIDENCE_ROOT, ledgerName), 'utf8'))
+  const sourceGroups = Array.isArray(ledger.sources)
+    ? [ledger.sources]
+    : Array.isArray(ledger.services)
+      ? ledger.services.map((service) => service?.sources)
+      : []
   if (ledger.schema_version !== 'price_source_evidence_ledger.v1'
-    || !Array.isArray(ledger.sources)
-    || ledger.sources.length < 2) {
+    || sourceGroups.length === 0
+    || sourceGroups.some((sources) => !Array.isArray(sources) || sources.length < 2)) {
     throw new Error(`${ledgerName}: invalid evidence ledger`)
   }
 
-  for (const source of ledger.sources) {
+  for (const source of sourceGroups.flat()) {
     for (const prefix of ['price_snapshot', 'identity_snapshot']) {
       const relativePath = source.artifacts?.[prefix]
       const expectedHash = source.artifacts?.[`${prefix}_sha256`]

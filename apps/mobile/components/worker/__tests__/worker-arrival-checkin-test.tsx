@@ -1098,7 +1098,7 @@ it('records arrival before continuing to the in-progress screen', async () => {
       ns_worker_screen: '2.8-scope-change',
     }
 
-    const { rerender } = render(<WorkerJobsSurface />)
+    render(<WorkerJobsSurface />)
 
     expect(screen.getByTestId('worker-scope-change-new-description-input')).toHaveProp(
       'value',
@@ -1186,6 +1186,91 @@ it('records arrival before continuing to the in-progress screen', async () => {
 
     expect(screen.getByText('Xác nhận giá và gửi khách')).toBeOnTheScreen()
     expect(screen.getAllByText('300.000 VND')).toHaveLength(2)
+  })
+
+  it('locks scope editing and shows the Customer decision gate after the Worker submits', () => {
+    const deal = {
+      ...buildInProgressDeal(),
+      finalPrice: 258000,
+      scopeChange: {
+        id: 'scope-change-proposed',
+        status: 'waiting_customer_decision' as const,
+        requestedDescription: 'Thay đúng hai bản lề nứt và căn chỉnh lại một cánh tủ.',
+        reason: 'Hai khớp bản lề đã nứt; gỗ và cánh tủ còn nguyên vẹn.',
+        priceMin: 258000,
+        priceMax: 258000,
+        kaelReview: null,
+        kaelProgress: null,
+        evidencePhotoUrls: [],
+        requestTiming: 'on_site' as const,
+        resumeJobStatus: 'inspecting' as const,
+        createdAt: '2026-08-13T13:06:00.000Z',
+      },
+      scopeReview: {
+        id: 'incident-proposed',
+        status: 'scope_proposed' as const,
+        evidenceStatus: 'ready' as const,
+        reportedDescription: 'Thay đúng hai bản lề nứt và căn chỉnh lại một cánh tủ.',
+        reportedReason: 'Hai khớp bản lề đã nứt; gỗ và cánh tủ còn nguyên vẹn.',
+        evidenceCount: 1,
+        lastSummary: 'Đề xuất đã được gửi để khách xem xét.',
+        lastQuestion: null,
+        lastNextActor: 'customer' as const,
+        createdAt: '2026-08-13T13:00:00.000Z',
+        updatedAt: '2026-08-13T13:06:00.000Z',
+      },
+    }
+    buildWorkflow(deal)
+    mockRouteParams = {
+      job_id: deal.id,
+      ns_scope_mode: 'edit',
+      ns_worker_screen: '2.8-scope-change',
+    }
+
+    render(<WorkerJobsSurface />)
+
+    expect(screen.getByText('Đang chờ khách xác nhận')).toBeOnTheScreen()
+    expect(screen.getByText('Không đổi tổng')).toBeOnTheScreen()
+    expect(screen.queryByText('+118.000 VND')).not.toBeOnTheScreen()
+    expect(screen.queryByTestId('worker-scope-change-evidence-form')).not.toBeOnTheScreen()
+    expect(screen.getByTestId('worker-v5-scope-change-edit-action')).toBeDisabled()
+  })
+
+  it('returns to in-progress after a pending scope proposal has been approved', async () => {
+    const deal = {
+      ...buildInProgressDeal(),
+      backendStatus: 'repairing' as const,
+      scopeChange: null,
+      status: 'repairing' as const,
+    }
+    buildWorkflow(deal)
+    mockWorkflowValue.actions.getKaelJobIncident.mockResolvedValueOnce({
+      incident: {
+        id: 'incident-approved',
+        job_id: deal.id,
+        status: 'scope_proposed',
+        evidence_status: 'ready',
+        last_summary: 'Khách đã xác nhận đề xuất.',
+        last_question: null,
+        last_next_actor: 'worker',
+        created_at: '2026-08-15T16:58:47.000Z',
+        updated_at: '2026-08-15T17:08:55.000Z',
+      },
+      quote: null,
+    })
+    mockRouteParams = {
+      job_id: deal.id,
+      ns_scope_mode: 'edit',
+      ns_worker_screen: '2.8-scope-change',
+    }
+
+    render(<WorkerJobsSurface />)
+
+    await waitFor(() => {
+      expect(mockReplace).toHaveBeenCalledWith(
+        `/(worker)/jobs?ns_worker_screen=2.7-in-progress&job_id=${deal.id}`,
+      )
+    })
   })
 
   it('previews one balanced quote, then serializes its final proposal', async () => {

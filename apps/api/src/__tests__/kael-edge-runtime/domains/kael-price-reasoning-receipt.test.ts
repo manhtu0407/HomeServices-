@@ -281,6 +281,46 @@ describe('Kael price reasoning receipt', () => {
     }, output)).not.toThrow()
   })
 
+  it('preserves explicit Vietnamese desired-scope and exclusion labels in the receipt', () => {
+    const output = buildEstimateCardOutput({
+      estimate: {
+        ...estimate,
+        problem_category: 'pipe_leak',
+        price_min: 150_000,
+        price_max: 375_000,
+      },
+      language: 'vi',
+      customerScopeContext: [
+        'Một lavabo phòng tắm rò tại khớp nối chữ P dưới chậu.',
+        'Phạm vi mong muốn: kiểm tra, căn lại và làm kín khớp hoặc thay một gioăng nhỏ.',
+        'Loại trừ đục tường/sàn, sửa ống âm và vật tư lớn.',
+      ].join(' '),
+      priceSource: 'baseline_only',
+      baselineEvidence,
+      baselineUsed: 'plumbing:pipe_leak:medium',
+      analysisEvidence: {
+        photoCount: 0,
+        skipped: true,
+        videoFrameCount: 0,
+        voiceTranscriptCount: 0,
+      },
+      visionAnalysis: {
+        analysisStatus: 'not_provided',
+        problemSummary: 'Khớp nối chữ P dưới lavabo bị rò nhìn thấy.',
+        recommendedScope: 'Kiểm tra và làm kín khớp nối.',
+        remainingUncertainty: 'Chưa có ảnh bổ sung.',
+        severityIndicators: [],
+      },
+    })
+
+    expect(output.card.price_reasoning_receipt.scope.included.join(' ')).toContain(
+      'Phạm vi mong muốn: kiểm tra, căn lại và làm kín khớp',
+    )
+    expect(output.card.price_reasoning_receipt.scope.excluded.join(' ')).toContain(
+      'Loại trừ đục tường/sàn, sửa ống âm và vật tư lớn',
+    )
+  })
+
   it('removes a Vietnamese conditional replacement sentence from the priced scope', () => {
     const output = buildEstimateCardOutput({
       estimate: {
@@ -305,6 +345,64 @@ describe('Kael price reasoning receipt', () => {
     })
 
     expect(output.card.price_reasoning_receipt.scope.included.join(' ')).not.toMatch(/thay bản lề/i)
+  })
+
+  it('lets a newer customer correction override stale hinge damage and excluded repair scope', () => {
+    const output = buildEstimateCardOutput({
+      estimate: {
+        ...estimate,
+        service_type: 'handyman',
+        problem_category: 'repair_hinge_or_handle',
+        problem_summary: 'Một cánh tủ với hai bản lề cần siết vít và căn chỉnh.',
+      },
+      language: 'vi',
+      customerScopeContext: [
+        'Chỉ 1 cánh tủ và đúng 2 bản lề âm kiểu chén.',
+        'Gỗ MDF, cánh, khung và lỗ vít còn nguyên, không nứt, mục, cong vênh hay toét.',
+        'Phạm vi chỉ gồm kiểm tra, siết vít và căn chỉnh hai bản lề.',
+        'Loại trừ thay bản lề, vá gỗ, khoan mới và sửa cánh hoặc khung.',
+      ].join(' '),
+      priceSource: 'baseline_only',
+      baselineUsed: 'handyman:repair_hinge_or_handle:small',
+      analysisEvidence: {
+        photoCount: 1,
+        skipped: false,
+        videoFrameCount: 0,
+        voiceTranscriptCount: 0,
+      },
+      previousAnalysisReceipt: {
+        schema_version: 'analysis_receipt.v1',
+        evidence: {
+          analysis_status: 'analyzed',
+          findings: [{
+            confidence: 'medium',
+            evidence_index: 1,
+            evidence_kind: 'photo',
+            observation: 'Có hai bản lề kim loại và một số lỗ vít cũ.',
+            possible_meaning: 'Bản lề hoặc lỗ vít bị lỏng có thể làm cánh tủ bị xệ.',
+          }],
+        },
+        problem: {
+          summary: 'Lỗ vít ở khung tủ có dấu hiệu bị nới rộng.',
+          recommended_scope:
+            'Thợ kiểm tra, siết vít hoặc thay ốc vít; có thể chèn gỗ vá lỗ cũ trước khi lắp lại bản lề.',
+          remaining_uncertainty:
+            'Không rõ lỗ vít hoặc khung tủ có bị nứt, mục hay hư hại không.',
+          severity_indicators: ['Lỗ vít cũ bị rộng hoặc hư.'],
+        },
+      },
+    })
+
+    const receipt = output.card.price_reasoning_receipt
+    expect(receipt.scope.included.join(' ')).not.toMatch(/thay|chèn gỗ|vá lỗ/i)
+    expect(receipt.problem.unknowns.join(' ')).not.toMatch(/không rõ.*(?:lỗ vít|khung tủ|nứt|mục)/i)
+    expect(receipt.problem.unknowns.join(' ')).toContain('Không còn điểm chưa xác định')
+    expect(output.card.analysis_receipt?.problem?.summary).toBe(
+      'Một cánh tủ với hai bản lề cần siết vít và căn chỉnh',
+    )
+    expect(output.card.analysis_receipt?.problem?.severity_indicators).toEqual([])
+    const replacement = receipt.costs.components.find((component) => component.kind === 'replacement_parts')
+    expect(replacement?.status).toBe('excluded')
   })
 
   it('fails closed if a stored receipt assigns an unverified amount to labor', () => {

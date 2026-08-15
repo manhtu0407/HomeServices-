@@ -3,6 +3,63 @@ import { type MobileApiContext } from '../../../../../../supabase/functions/mobi
 import { createEdgeServices } from '../../../../../../supabase/functions/mobile-api/_shared/domains'
 import { installEdgeRuntimeTestHooks, makeSequenceClient } from '../harness'
 
+function workerOfferQuote(input: {
+  broadcastId: string
+  commissionLevel: number
+  commissionRateBps: number
+  expiresAt: string
+  jobId: string
+  workerId: string
+}) {
+  const referencePriceMin = 150_000
+  const referencePriceMax = 250_000
+  const customerTotal = 200_000
+  const platformFee = Math.round(customerTotal * input.commissionRateBps / 10_000)
+  return {
+    broadcast_id: input.broadcastId,
+    commission_level: input.commissionLevel,
+    commission_rate_bps: input.commissionRateBps,
+    customer_confirmation_required: true,
+    customer_total: customerTotal,
+    expires_at: input.expiresAt,
+    job_id: input.jobId,
+    platform_fee: platformFee,
+    price_source: 'verified_baseline',
+    quote_id: '55555555-5555-4555-8555-555555555555',
+    reasoning_receipt: {
+      fairness: {
+        baseline_evidence: {
+          accepted_source_count: 1,
+          high_trust_source_count: 1,
+          quorum_met: true,
+          required_quorum: 1,
+          schema_version: 'baseline_price_evidence_receipt.v1',
+          sources: [{}],
+        },
+        cap_statement: 'Giá khóa trong phạm vi đã xác nhận.',
+        confidence: 'low',
+        high_trust_source_count: 1,
+        market_source_count: 2,
+        price_source: 'verified_baseline',
+        quorum_met: true,
+      },
+      scenarios: {
+        high: { total: referencePriceMax },
+        low: { total: referencePriceMin },
+      },
+      schema_version: 'price_reasoning_receipt.v1',
+    },
+    reference_price_max: referencePriceMax,
+    reference_price_min: referencePriceMin,
+    schema_version: 'original_scope_price_quote.v1',
+    selection_rule: 'verified_neutral_midpoint_with_bilateral_confirmation',
+    worker_confirmation_required: true,
+    worker_confirmed_at: null,
+    worker_id: input.workerId,
+    worker_net: customerTotal - platformFee,
+  }
+}
+
 describe('worker-earnings', () => {
   installEdgeRuntimeTestHooks()
 
@@ -344,6 +401,9 @@ describe('worker-earnings', () => {
 
   it('does not show sent worker broadcasts when the parent job is no longer broadcasting', async () => {
     const expiresAt = new Date(Date.now() + 30_000).toISOString()
+    const workerId = '33333333-3333-4333-8333-333333333333'
+    const activeBroadcastId = '44444444-4444-4444-8444-444444444444'
+    const activeJobId = '11111111-1111-4111-8111-111111111111'
     const client = makeSequenceClient([
       { data: null, error: null },
       {
@@ -365,8 +425,8 @@ describe('worker-earnings', () => {
             },
           },
           {
-            id: 'broadcast-active',
-            job_id: 'job-active',
+            id: activeBroadcastId,
+            job_id: activeJobId,
             status: 'sent',
             sent_at: '2026-05-18T00:00:01.000Z',
             expires_at: expiresAt,
@@ -375,10 +435,20 @@ describe('worker-earnings', () => {
               service_type: 'electrical',
               address_district: 'q1',
               scheduled_at: '2026-07-15T01:00:00.000Z',
-              kael_problem_identified: 'Outlet check',
+              problem_chips: ['Ổ cắm mất điện'],
+              description: 'Kiểm tra một ổ cắm mất điện; loại trừ đi dây âm tường.',
+              kael_problem_identified: 'Outlet check. Chốt giá thấp nhất.',
               kael_price_min: 150000,
               kael_price_max: 250000,
             },
+            original_scope_price_quote: workerOfferQuote({
+              broadcastId: activeBroadcastId,
+              commissionLevel: 1,
+              commissionRateBps: 1500,
+              expiresAt,
+              jobId: activeJobId,
+              workerId,
+            }),
           },
         ],
         error: null,
@@ -386,7 +456,7 @@ describe('worker-earnings', () => {
     ])
     const ctx: MobileApiContext = {
       success: true,
-      user: { id: 'worker-1' },
+      user: { id: workerId },
       role: 'worker',
       supabase: client,
     }
@@ -395,10 +465,12 @@ describe('worker-earnings', () => {
 
     expect(result.broadcasts).toHaveLength(1)
     expect(result.broadcasts[0]).toMatchObject({
-      broadcast_id: 'broadcast-active',
-      job_id: 'job-active',
+      broadcast_id: activeBroadcastId,
+      job_id: activeJobId,
       media_count: 0,
+      problem_summary: 'Ổ cắm mất điện',
       scheduled_at: '2026-07-15T01:00:00.000Z',
+      scope_summary: 'Kiểm tra một ổ cắm mất điện; loại trừ đi dây âm tường.',
       service_type: 'electrical',
     })
     const listCall = client.calls.find((call) =>
@@ -406,18 +478,21 @@ describe('worker-earnings', () => {
     )
     expect(listCall?.operations).toContainEqual([
       'select',
-      'id, job_id, status, sent_at, expires_at, jobs(status, service_type, address_district, scheduled_at, kael_problem_identified, kael_price_min, kael_price_max, kael_worker_brief_core, photo_urls)',
+      'id, job_id, status, sent_at, expires_at, original_scope_price_quote, jobs(status, service_type, problem_chips, description, address_district, scheduled_at, kael_problem_identified, kael_price_min, kael_price_max, kael_worker_brief_core, photo_urls)',
     ])
   })
 
-  it('quotes a worker offer from the current server commission tier instead of a static fee', async () => {
+  it('quotes a worker offer from the frozen bilateral commission tier', async () => {
     const expiresAt = new Date(Date.now() + 30_000).toISOString()
+    const workerId = '33333333-3333-4333-8333-333333333333'
+    const broadcastId = '44444444-4444-4444-8444-444444444445'
+    const jobId = '11111111-1111-4111-8111-111111111112'
     const client = makeSequenceClient([
       { data: null, error: null },
       {
         data: [{
-          id: 'broadcast-tiered',
-          job_id: 'job-tiered',
+          id: broadcastId,
+          job_id: jobId,
           status: 'sent',
           sent_at: '2026-07-27T04:00:00.000Z',
           expires_at: expiresAt,
@@ -430,18 +505,21 @@ describe('worker-earnings', () => {
             kael_price_min: 150000,
             kael_price_max: 250000,
           },
+          original_scope_price_quote: workerOfferQuote({
+            broadcastId,
+            commissionLevel: 3,
+            commissionRateBps: 800,
+            expiresAt,
+            jobId,
+            workerId,
+          }),
         }],
         error: null,
       },
-    ], {
-      get_worker_current_commission_tier: [{
-        data: [{ commission_level: 3, commission_rate_bps: 800 }],
-        error: null,
-      }],
-    })
+    ])
     const ctx: MobileApiContext = {
       success: true,
-      user: { id: 'worker-1' },
+      user: { id: workerId },
       role: 'worker',
       supabase: client,
     }
@@ -452,7 +530,6 @@ describe('worker-earnings', () => {
       estimated_earning_min: 138000,
       estimated_earning_max: 230000,
     })
-    expect(client.calls.find((call) => call.table === 'rpc:get_worker_current_commission_tier')?.operations)
-      .toContainEqual(['rpc', 'get_worker_current_commission_tier', { p_worker_id: 'worker-1' }])
+    expect(client.calls.some((call) => call.table === 'rpc:get_worker_current_commission_tier')).toBe(false)
   })
 })

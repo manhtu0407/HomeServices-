@@ -18,10 +18,9 @@ module.exports = {
     '^@/(.*)$': '<rootDir>/$1',
     '^@babel/runtime/(.*)$': '<rootDir>/node_modules/@babel/runtime/$1',
   },
-  // Collection is narrowed to the pillar suite; the rest of the tree stays on disk but
-  // uncollected. This list must stay non-empty: jest installs the testMatch filter only
-  // when `config.testMatch.length` is truthy, so an empty array removes the filter
-  // instead of matching nothing and every file under rootDir would look like a suite.
-  testMatch: ['<rootDir>/**/*-pillar-test.tsx'],
-  passWithNoTests: true,
+  // Match pillar paths with a platform-neutral regex. Expanding <rootDir> into a glob
+  // escapes Windows worktree segments such as `.claude` and can silently collect zero
+  // suites, so a zero-test pillar run must fail instead of becoming a false-green gate.
+  testRegex: '.*-pillar-test\\.tsx$',
+  passWithNoTests: false,
 }

@@ -11,12 +11,15 @@ import { secondsRemaining } from "../../platform/domain-utils.ts";
 import { apiFailure } from "../../platform/api-failure.ts";
 import type { MobileApiContext } from "../../platform/auth.ts";
 import type { BroadcastStatus, ServiceType } from "../../../../_shared/domain.ts";
-import { estimateWorkerNet, getWorkerCommissionTier } from "../payment/commission.ts";
+import { estimateWorkerNet } from "../payment/commission.ts";
+import {
+  parseOriginalScopePriceQuote,
+  projectOriginalScopePriceQuote,
+} from "../matching/original-scope-price-quote.ts";
 
 export async function listWorkerBroadcasts(ctx: MobileApiContext) {
   const client = db(ctx);
   const now = new Date();
-  const commissionTierRequest = getWorkerCommissionTier(client, ctx.user.id);
   const expired = await dbQuery(
     client
       .from("job_broadcasts")
@@ -33,7 +36,7 @@ export async function listWorkerBroadcasts(ctx: MobileApiContext) {
     client
       .from("job_broadcasts")
       .select(
-        "id, job_id, status, sent_at, expires_at, jobs(status, service_type, address_district, scheduled_at, kael_problem_identified, kael_price_min, kael_price_max, kael_worker_brief_core, photo_urls)",
+        "id, job_id, status, sent_at, expires_at, original_scope_price_quote, jobs(status, service_type, problem_chips, description, address_district, scheduled_at, kael_problem_identified, kael_price_min, kael_price_max, kael_worker_brief_core, photo_urls)",
       )
       .eq("worker_id", ctx.user.id)
       .eq("status", "sent")
@@ -42,19 +45,36 @@ export async function listWorkerBroadcasts(ctx: MobileApiContext) {
       .limit(20),
   );
   if (result.error) apiFailure("DB_ERROR", "Không thể tải yêu cầu", 500);
-  const commissionTier = await commissionTierRequest;
   return {
     broadcasts: (result.data ?? []).map((row) => {
       const job = relatedJob(row.jobs);
       if (!job || job.status !== "broadcasting") return null;
       const min = nullableNumber(job.kael_price_min);
       const max = nullableNumber(job.kael_price_max);
+      const broadcastId = asString(row.id);
+      const jobId = asString(row.job_id);
+      const quote = parseOriginalScopePriceQuote(
+        row.original_scope_price_quote,
+        {
+          broadcastId,
+          jobId,
+          requireWorkerConfirmation: false,
+          workerId: ctx.user.id,
+        },
+      );
+      if (!quote) return null;
+      const commissionTier = {
+        level: quote.commissionLevel,
+        rateBps: quote.commissionRateBps,
+      };
       return {
-        broadcast_id: asString(row.id),
-        job_id: asString(row.job_id),
+        broadcast_id: broadcastId,
+        job_id: jobId,
         status: row.status as BroadcastStatus,
         service_type: job.service_type as ServiceType,
-        problem_summary: nullableString(job.kael_problem_identified),
+        problem_summary: asStringArray(job.problem_chips)[0] ??
+          nullableString(job.kael_problem_identified),
+        scope_summary: nullableString(job.description),
         district: nullableString(job.address_district),
         estimated_price_min: min,
         estimated_price_max: max,
@@ -69,6 +89,7 @@ export async function listWorkerBroadcasts(ctx: MobileApiContext) {
           nullableString(row.expires_at),
           now,
         ),
+        original_scope_price_quote: projectOriginalScopePriceQuote(quote),
       };
     }).filter((broadcast): broadcast is NonNullable<typeof broadcast> =>
       broadcast !== null

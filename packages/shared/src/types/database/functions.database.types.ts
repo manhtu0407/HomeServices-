@@ -5,16 +5,27 @@ import type { Database } from './schema.database.types'
 
 export type DatabaseFunctions = {
 /* @slice:begin functions */
-      accept_broadcast_atomic: {
-        Args: { p_job_id: string; p_worker_id: string }
-        Returns: {
-          already_applied: boolean
-          candidate_id: string
-          error_code: string
-          job_status: Database["public"]["Enums"]["job_status"]
-          ok: boolean
-        }[]
-      }
+      accept_broadcast_atomic:
+        | {
+            Args: { p_job_id: string; p_worker_id: string }
+            Returns: {
+              already_applied: boolean
+              candidate_id: string
+              error_code: string
+              job_status: Database["public"]["Enums"]["job_status"]
+              ok: boolean
+            }[]
+          }
+        | {
+            Args: { p_job_id: string; p_quote_id: string; p_worker_id: string }
+            Returns: {
+              already_applied: boolean
+              candidate_id: string
+              error_code: string
+              job_status: Database["public"]["Enums"]["job_status"]
+              ok: boolean
+            }[]
+          }
       acquire_harness_dependency_permit: {
         Args: {
           p_dependency: string
