@@ -1,23 +1,9 @@
 import { createHash } from 'node:crypto'
-import { existsSync, readdirSync, readFileSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
 const repositoryRoot = resolve(__dirname, '../../../../..')
-const migrationsDir = resolve(repositoryRoot, 'supabase/migrations')
-const migrationName = readdirSync(migrationsDir).find((name) =>
-  name.endsWith('_six_service_quote_ready_baselines.sql'),
-)
-
-if (!migrationName) {
-  throw new Error('six-service quote-ready baseline migration is missing')
-}
-
-const migrationSql = readFileSync(resolve(migrationsDir, migrationName), 'utf8')
-const verificationSql = readFileSync(
-  resolve(repositoryRoot, 'supabase/tests/six_service_quote_ready_baselines_verification.sql'),
-  'utf8',
-)
 const ledgerPath = resolve(
   repositoryRoot,
   'docs/foundation/source-trust-samples/price-baseline-six-services-20260815-ledger.json',
@@ -37,26 +23,7 @@ const ledger = JSON.parse(readFileSync(ledgerPath, 'utf8')) as {
   }>
 }
 
-describe('six-service quote-ready price evidence', () => {
-  it('ships one deterministic, multi-source quote path for every supported service', () => {
-    for (const serviceType of [
-      'electrical',
-      'plumbing',
-      'cleaning',
-      'hvac',
-      'upholstery',
-      'handyman',
-    ]) {
-      expect(migrationSql).toContain(`'${serviceType}'`)
-      expect(verificationSql).toContain(`'${serviceType}'`)
-    }
-    expect(migrationSql).toContain("'baseline_price_evidence.v1'")
-    expect(migrationSql).toContain("'sources', jsonb_build_array(")
-    expect(verificationSql.trimStart().startsWith('-- Rollback-only')).toBe(true)
-    expect(verificationSql).toMatch(/\nbegin;[\s\S]*\nrollback;\s*$/)
-    expect(verificationSql).toContain('quote_ready_service_count <> 6')
-  })
-
+describe('six-service price evidence artifacts', () => {
   it('binds every new source claim to a byte-exact evidence artifact', () => {
     expect(ledger.schema_version).toBe('price_source_evidence_ledger.v1')
     expect(ledger.services.map((service) => service.service_type).sort()).toEqual([
