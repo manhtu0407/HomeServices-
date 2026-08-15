@@ -15,6 +15,11 @@ declare
   v_broadcast_id uuid;
   v_worker_available_after boolean;
 begin
+  delete from public.job_worker_candidates
+  where job_id in (
+    '92000000-0000-4000-8000-000000000001',
+    '92000000-0000-4000-8000-000000000002'
+  );
   delete from public.job_broadcasts
   where job_id in (
     '92000000-0000-4000-8000-000000000001',
@@ -280,6 +285,11 @@ begin
     v_broadcast_status_after,
     v_worker_available_after;
 
+  delete from public.job_worker_candidates
+  where job_id in (
+    '92000000-0000-4000-8000-000000000001',
+    '92000000-0000-4000-8000-000000000002'
+  );
   delete from public.job_broadcasts
   where job_id in (
     '92000000-0000-4000-8000-000000000001',
@@ -311,6 +321,11 @@ begin
   );
 exception
   when others then
+    delete from public.job_worker_candidates
+    where job_id in (
+      '92000000-0000-4000-8000-000000000001',
+      '92000000-0000-4000-8000-000000000002'
+    );
     delete from public.job_broadcasts
     where job_id in (
       '92000000-0000-4000-8000-000000000001',
