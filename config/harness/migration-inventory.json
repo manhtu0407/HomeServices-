@@ -5,8 +5,8 @@
     "immutableThroughVersion": "20260805090000",
     "sha256": "7d4ac8a8227452e357caa11a21ece9099c80112712dba9a250114d0761a90275"
   },
-  "migrationCount": 278,
-  "migrationsSha256": "2e5f0231c683864de3c6d04c9a456f6761c5f56b4953b47af0a7f6846fa00be1",
+  "migrationCount": 279,
+  "migrationsSha256": "db73b10ed4422176904ffcc402b308002ba8fc3cc2b9e73acfb173bc3d58f6ee",
   "databaseTypes": {
     "file": "packages/shared/src/types/database",
     "sha256": "e4dec1f59753a94e2253e71a6961d10103f8061993b4ccd51f4341b4c9a70638"
@@ -1957,6 +1957,13 @@
       "file": "supabase/migrations/20260815203000_bilateral_payment_balance.sql",
       "sha256": "8423df5c34d074bb534e8d9d086a2f1a4a5c3da985d26a9ed214d6f4b613e26d",
       "bytes": 24754
+    },
+    {
+      "version": "20260815213000",
+      "name": "preserve_broadcast_membership_privacy",
+      "file": "supabase/migrations/20260815213000_preserve_broadcast_membership_privacy.sql",
+      "sha256": "861463fe8cadb338e9a090adbdacef83a9c6fb0911830d7d5ca228433c9206c6",
+      "bytes": 1599
     }
   ]
 }
