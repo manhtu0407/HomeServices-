@@ -2,8 +2,8 @@
   "version": "1.0.0",
   "source": {
     "migrationRoot": "supabase/migrations",
-    "migrationCount": 280,
-    "migrationDigest": "f207feb66081afda0adb6508dc9df8dad503c309fd3f56df7e5995e49f9798f6"
+    "migrationCount": 281,
+    "migrationDigest": "dac13a73ec30f0c74e882d85f4bf6cb048a409d83d2814330f7b05f969229dd4"
   },
   "actors": [
     "anonymous",
@@ -3138,9 +3138,7 @@
       "signature": "confirm_worker_cash_payment(uuid, uuid)",
       "securityDefiner": true,
       "fixedSearchPath": true,
-      "executeRoles": [
-        "service_role"
-      ]
+      "executeRoles": []
     },
     {
       "signature": "consume_job_media_uploads(uuid, uuid, text[], timestamp with time zone)",
