@@ -58,6 +58,8 @@ describe('Case Work phase controls', () => {
     expect(screen.getByText(/140\.000.*375\.000/)).toBeOnTheScreen()
     expect(screen.getByText(/Trung điểm.*258\.000.*trung điểm/)).toBeOnTheScreen()
     expect(screen.getByText(/258\.000.*toàn bộ phạm vi mới.*không cộng vào giá cũ/)).toBeOnTheScreen()
+    expect(screen.getByText(/hạng mục, vật tư hoặc phần hoàn thiện ngoài phạm vi/)).toBeOnTheScreen()
+    expect(screen.queryByText(/điểm rò/)).not.toBeOnTheScreen()
     expect(screen.getByTestId('customer-v21-case-work-scope-approve')).toBeOnTheScreen()
     expect(screen.getByText('Xác nhận tổng 258.000đ')).toBeOnTheScreen()
     expect(screen.getByTestId('customer-v21-case-work-scope-reject')).toBeOnTheScreen()
@@ -200,6 +202,37 @@ describe('Case Work phase controls', () => {
     expect(screen.queryByTestId('customer-v21-case-manual-qr')).not.toBeOnTheScreen()
     fireEvent.press(screen.getByTestId('customer-v21-case-payment-refresh'))
     await waitFor(() => expect(onRefreshPayment).toHaveBeenCalledTimes(1))
+  })
+
+  it('confirms that a claimed transfer was checked even when Admin has not reconciled it yet', async () => {
+    const onRefreshPayment = jest.fn(async () => true)
+    const pendingDeal = dealFixture('payment_pending')
+    pendingDeal.payment = manualBankPayment({ status: 'manual_customer_claimed' })
+    renderPanel(pendingDeal, jest.fn(), jest.fn(), jest.fn(), {
+      onRefreshPayment,
+      paymentRailProvider: 'platform_bank_manual',
+    })
+
+    fireEvent.press(screen.getByTestId('customer-v21-case-payment-refresh'))
+
+    await waitFor(() => expect(screen.getByTestId('customer-v21-case-payment-refresh-feedback')).toHaveTextContent(
+      'Đã kiểm tra lại. Chưa có xác nhận mới từ Admin.',
+    ))
+  })
+
+  it('shows a retryable error when payment status refresh fails', async () => {
+    const pendingDeal = dealFixture('payment_pending')
+    pendingDeal.payment = manualBankPayment({ status: 'manual_customer_claimed' })
+    renderPanel(pendingDeal, jest.fn(), jest.fn(), jest.fn(), {
+      onRefreshPayment: jest.fn(async () => false),
+      paymentRailProvider: 'platform_bank_manual',
+    })
+
+    fireEvent.press(screen.getByTestId('customer-v21-case-payment-refresh'))
+
+    await waitFor(() => expect(screen.getByTestId('customer-v21-case-payment-refresh-feedback')).toHaveTextContent(
+      'Chưa thể cập nhật trạng thái. Vui lòng thử lại.',
+    ))
   })
 
   it('requires the customer direct-payment confirmation without marking the job paid', async () => {

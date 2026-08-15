@@ -1,6 +1,6 @@
 import type { BroadcastStatus, JobStatus, KaelPriceReasoningReceipt, LocalPaymentStatus, ScopeChangeStatus, ServiceType, WorkerKaelChatMode, WorkerServiceQualityStatus, WorkerVerificationStatus } from '@nestscout/shared'
 import type { KaelChatProgress } from './kael'
-import type { AddressAccessView } from './shared'
+import type { AddressAccessView, OriginalScopePriceQuote } from './shared'
 
 export type { WorkerActivityMinuteResponse, WorkerAvatarUploadResponse } from '@nestscout/shared'
 export type { WorkerServiceQualityStatus }
@@ -151,6 +151,7 @@ export type WorkerBroadcastsResponse = {
     status: BroadcastStatus
     service_type: ServiceType
     problem_summary: string | null
+    scope_summary?: string | null
     district: string | null
     estimated_price_min: number | null
     estimated_price_max: number | null
@@ -162,6 +163,7 @@ export type WorkerBroadcastsResponse = {
     sent_at: string | null
     expires_at: string | null
     seconds_remaining: number | null
+    original_scope_price_quote: OriginalScopePriceQuote
   }[]
 }
 
@@ -223,13 +225,13 @@ export type ScopeChangeWorkerQuote = {
   baseline_used: string
   baseline_source: string
   baseline_evidence?: NonNullable<KaelPriceReasoningReceipt['fairness']['baseline_evidence']>
-  pricing_components?: ReadonlyArray<{
+  pricing_components?: readonly {
     evidence_receipt: NonNullable<KaelPriceReasoningReceipt['fairness']['baseline_evidence']>
     kind: 'approved_scope_change' | 'original_confirmed_scope'
     price_max: number
     price_min: number
     selected_price: number
-  }>
+  }[]
   selection_rule: 'verified_neutral_midpoint_with_bilateral_confirmation'
   calculation: string
   expires_at: string
@@ -359,6 +361,7 @@ export type WorkerJobListResponse = {
     status: JobStatus
     service_type: ServiceType
     problem_summary: string | null
+    scope_summary?: string | null
     address_building: string | null
     address_unit: string | null
     address_floor: string | null

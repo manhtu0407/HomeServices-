@@ -99,7 +99,7 @@ export function WorkerV5HomeScreenSurface({
         {
           glyph: 'check' as const,
           label: hasActiveWork
-            ? localizedStatusLabel(deal?.status ?? null, language)
+            ? localizedStatusLabel(deal?.status ?? null, language, deal?.draft.serviceType ?? null)
             : textByLanguage(language, 'Bạn quyết định', 'You decide'),
         },
       ],
@@ -107,7 +107,7 @@ export function WorkerV5HomeScreenSurface({
       meta: hasIncomingOffer
         ? textByLanguage(language, '1 cơ hội đã lọc', '1 filtered opportunity')
         : hasActiveWork
-          ? localizedStatusLabel(deal?.status ?? null, language)
+          ? localizedStatusLabel(deal?.status ?? null, language, deal?.draft.serviceType ?? null)
         : runtime.workerJobsHydrated
           ? textByLanguage(language, 'Chưa có cơ hội thật', 'No real opportunity')
           : dataPending,
@@ -336,7 +336,7 @@ export function WorkerV5HomeBody({
         <MetricTile label={textByLanguage(language, 'Trạng thái', 'Status')} value={availability} />
         <MetricTile
           label={textByLanguage(language, 'Việc đang chạy', 'Active work')}
-          value={deal ? localizedStatusLabel(deal.status, language) : textByLanguage(language, 'Chưa có việc', 'No active work')}
+          value={deal ? localizedStatusLabel(deal.status, language, deal.draft.serviceType) : textByLanguage(language, 'Chưa có việc', 'No active work')}
         />
         <MetricTile label={textByLanguage(language, 'Đối soát', 'Settlement')} value={pendingPaymentLabel} />
       </View>
@@ -377,6 +377,6 @@ function buildDealSummary(deal: LocalDeal | null, language: AppLanguage) {
   if (!deal) return textByLanguage(language, 'Chưa có việc', 'No work')
   const service = localizedServiceLabel(deal.draft.serviceType, language)
   const area = deal.draft.districtLabel || textByLanguage(language, 'chưa rõ khu vực', 'unknown area')
-  return `${service} · ${area} · ${localizedStatusLabel(deal.status, language)}`
+  return `${service} · ${area} · ${localizedStatusLabel(deal.status, language, deal.draft.serviceType)}`
 }
 

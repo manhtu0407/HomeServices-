@@ -50,12 +50,39 @@ export type LocalDealEstimate = {
   fallbackUsed?: boolean
 }
 
+export type LocalOriginalScopePriceQuote = {
+  schemaVersion: 'original_scope_price_quote.v1'
+  quoteId: string
+  referencePriceMin: number
+  referencePriceMax: number
+  customerTotal: number
+  platformFee: number
+  workerNet: number
+  commissionLevel: number
+  commissionRateBps: number
+  priceSource: string
+  selectionRule: 'verified_neutral_midpoint_with_bilateral_confirmation'
+  workerConfirmationRequired: true
+  customerConfirmationRequired: true
+  workerConfirmedAt: string | null
+  expiresAt: string
+  evidenceSummary: {
+    confidence: 'low' | 'medium' | 'high'
+    baselineSourceCount: number
+    marketSourceCount: number
+    highTrustSourceCount: number
+    quorumMet: true
+    capStatement: string
+  }
+}
+
 export type LocalWorkerBroadcast = {
   status: LocalWorkerBroadcastStatus
   broadcastId?: string
   jobId?: string
   serviceType: ServiceType
   problemSummary: string
+  scopeSummary?: string
   generalArea: string
   prebrief: string[]
   fullAddressVisible: boolean
@@ -66,6 +93,7 @@ export type LocalWorkerBroadcast = {
   estimatedEarning?: number | null
   estimatedEarningLabel?: string
   safe_metadata?: Record<string, unknown> | null
+  priceQuote?: LocalOriginalScopePriceQuote
 }
 
 export type LocalWorkerProfileSummary = {
@@ -172,7 +200,7 @@ export type LocalScopeChange = {
 
 export type LocalJobIncidentReview = {
   id: string
-  status: 'open' | 'awaiting_worker' | 'awaiting_customer' | 'ready_for_scope_proposal'
+  status: 'open' | 'awaiting_worker' | 'awaiting_customer' | 'ready_for_scope_proposal' | 'scope_proposed' | 'resolved' | 'cancelled'
   evidenceStatus: 'needs_more' | 'ready'
   reportedDescription: string | null
   reportedReason: string | null
@@ -239,12 +267,14 @@ export type LocalRemoteBroadcastSnapshot = {
   status: LocalWorkerBroadcastStatus
   serviceType: ServiceType
   problemSummary: string
+  scopeSummary?: string
   generalArea: string
   prebrief?: string[]
   mediaCount?: number
   secondsRemaining: number | null
   estimatedPriceLabel?: string
   estimatedEarningLabel?: string
+  priceQuote?: LocalOriginalScopePriceQuote
   scheduledAt?: string | null
 }
 

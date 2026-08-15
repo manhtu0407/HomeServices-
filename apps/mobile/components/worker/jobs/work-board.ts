@@ -48,7 +48,7 @@ export function buildWorkerV5WorkBoardItems(
     {
       meta: textByLanguage(language, 'Trạng thái đã đồng bộ', 'Workflow status synced'),
       state: 'active',
-      title: localizedStatusLabel(deal.status, language),
+      title: localizedStatusLabel(deal.status, language, deal.draft.serviceType),
     },
   ]
 }

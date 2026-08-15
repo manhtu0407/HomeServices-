@@ -28,6 +28,7 @@ export {
   type ScopeChangeRiskConfig,
 } from "../kael-guardrails/scope-risk.ts";
 import { timed } from "../pipeline/utils.ts";
+import { groundScopeChangeEstimate } from "../kael-guardrails/scope-change-grounding.ts";
 
 type ScopeChangeEstimateFallback = Extract<
   ScopeChangeKaelAnalysis,
@@ -281,12 +282,13 @@ export async function computeScopeChangeEstimate(
     }
   }
 
+  const groundedData = groundScopeChangeEstimate(input, selectedData);
   return {
     schema_version: "scope_change_kael_review.v2",
     prompt_version: "scope-change-estimate.2026-08-14.v3",
     version: "scope-change-estimate.2026-08-14.v3",
-    ...selectedData,
-    advisory: selectedData.advisory ?? null,
+    ...groundedData,
+    advisory: groundedData.advisory ?? null,
     disclaimer: PRICE_DISCLAIMER,
     provider: selectedRoute.provider as "anthropic" | "deepseek",
     model: selectedRoute.model,

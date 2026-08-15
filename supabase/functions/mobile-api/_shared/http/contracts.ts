@@ -407,6 +407,7 @@ export type MobileApiServices = AdminControlServices & {
   acceptBroadcast(
     ctx: MobileApiContext,
     jobId: string,
+    quoteId: string,
   ): Promise<EdgeAcceptBroadcastResponse>;
   declineBroadcast(
     ctx: MobileApiContext,

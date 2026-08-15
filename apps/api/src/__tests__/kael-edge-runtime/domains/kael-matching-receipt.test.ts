@@ -194,4 +194,22 @@ describe('matching receipt', () => {
       'matching_recovery_required',
     ])
   })
+
+  it('makes a persisted general choice recoverable when no broadcast was created', () => {
+    const receipt = buildMatchingReceipt({
+      broadcasts: [],
+      events: [
+        { created_at: '2026-08-11T10:01:00.000Z', event_type: 'matching_preference_pending', safe_metadata: {} },
+      ],
+      preference: {
+        auto_general: true,
+        fallback_at: null,
+        strategy: 'general',
+      },
+      status: 'broadcasting',
+    })
+
+    expect(receipt.stage).toBe('recovery_required')
+    expect(receipt.batch).toBeNull()
+  })
 })

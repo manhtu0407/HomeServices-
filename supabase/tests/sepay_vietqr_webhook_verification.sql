@@ -45,11 +45,11 @@ insert into public.worker_profiles (
 )
 on conflict (id) do nothing;
 
--- Two jobs awaiting the same rail. The payment codes match ^NS[A-Z0-9]{24}$.
+-- Two completed jobs enter the rail through the canonical payment-intent RPC. This keeps
+-- the webhook fixture paired with the immutable Worker ledger it is required to settle.
 insert into public.jobs (
   id, customer_id, worker_id, service_type, description, status,
-  final_price, gross_amount, platform_fee, worker_net,
-  payment_provider, payment_status, payment_code, display_code, created_at
+  final_price, display_code, created_at
 ) values
   (
     'b7200000-0000-4000-8000-000000000010',
@@ -57,9 +57,8 @@ insert into public.jobs (
     'b7200000-0000-4000-8000-000000000002',
     'plumbing'::public.service_type,
     'SePay guard fixture job A',
-    'payment_pending'::public.job_status,
-    500000, 500000, 75000, 425000,
-    'sepay_vietqr', 'vietqr_ready', 'NSA1B2C3D4E5F6G7H8I9J0K1L2', 'SPG-0001', now()
+    'confirmed_by_customer'::public.job_status,
+    500000, 'SPG-0001', now()
   ),
   (
     'b7200000-0000-4000-8000-000000000011',
@@ -67,10 +66,29 @@ insert into public.jobs (
     'b7200000-0000-4000-8000-000000000002',
     'plumbing'::public.service_type,
     'SePay guard fixture job B',
-    'payment_pending'::public.job_status,
-    600000, 600000, 90000, 510000,
-    'sepay_vietqr', 'vietqr_ready', 'NSZ9Y8X7W6V5U4T3S2R1Q0P9O8', 'SPG-0002', now()
+    'confirmed_by_customer'::public.job_status,
+    600000, 'SPG-0002', now()
   );
+
+select * from public.create_worker_vietqr_payment_intent(
+  'b7200000-0000-4000-8000-000000000010',
+  'b7200000-0000-4000-8000-000000000001',
+  500000,
+  'NSA1B2C3D4E5F6G7H8I9J0K1L2',
+  'SEPAY GUARD A',
+  'https://vietqr.app/img?fixture=sepay-guard-a',
+  now()
+);
+
+select * from public.create_worker_vietqr_payment_intent(
+  'b7200000-0000-4000-8000-000000000011',
+  'b7200000-0000-4000-8000-000000000001',
+  600000,
+  'NSZ9Y8X7W6V5U4T3S2R1Q0P9O8',
+  'SEPAY GUARD B',
+  'https://vietqr.app/img?fixture=sepay-guard-b',
+  now()
+);
 
 -- 1. First delivery pays the job exactly once.
 do $webhook_first_delivery$

@@ -5,11 +5,11 @@
     "immutableThroughVersion": "20260805090000",
     "sha256": "7d4ac8a8227452e357caa11a21ece9099c80112712dba9a250114d0761a90275"
   },
-  "migrationCount": 273,
-  "migrationsSha256": "a32b33e79ab3746f48f88c79083ae763ff7f09f1a5c2a917893c32da8c4fd4bc",
+  "migrationCount": 281,
+  "migrationsSha256": "9b231ba4214883985fd0257d840fccfb7ec9e97ffb9e0b594c579412dcdb7356",
   "databaseTypes": {
     "file": "packages/shared/src/types/database",
-    "sha256": "7c7e448c3c5a27e97c476481888393f8eb60c8b101ea6619ca3ef9266e16eb05"
+    "sha256": "f7054292d088e6e7543ecef45b415a72607fa37782fbf6cc4f866284eac07872"
   },
   "entries": [
     {
@@ -1922,6 +1922,62 @@
       "file": "supabase/migrations/20260814134000_restore_service_owned_admin_activation.sql",
       "sha256": "a81a3feba9e785f3900415dbec6be17c7b5cdba4ad5dbc4c2094adb881de3ce5",
       "bytes": 397
+    },
+    {
+      "version": "20260815115034",
+      "name": "original_scope_bilateral_price_agreement",
+      "file": "supabase/migrations/20260815115034_original_scope_bilateral_price_agreement.sql",
+      "sha256": "a00de62815f19f391cfe5a4aab66aba99a34503dd613987b90bf3a4e9810af9a",
+      "bytes": 33777
+    },
+    {
+      "version": "20260815121242",
+      "name": "customer_read_endpoint_parity",
+      "file": "supabase/migrations/20260815121242_customer_read_endpoint_parity.sql",
+      "sha256": "79edc4f7527c96fac6fd0c4a7d0007c3d40ed1c5eb03677eaf0390218fb18433",
+      "bytes": 97
+    },
+    {
+      "version": "20260815123000",
+      "name": "six_service_quote_ready_baselines",
+      "file": "supabase/migrations/20260815123000_six_service_quote_ready_baselines.sql",
+      "sha256": "1deb44cfc374a009a0574b5d526fbe6cffc259feb23b8c2814874d0a0b13de09",
+      "bytes": 17329
+    },
+    {
+      "version": "20260815125000",
+      "name": "original_scope_price_confidence_contract",
+      "file": "supabase/migrations/20260815125000_original_scope_price_confidence_contract.sql",
+      "sha256": "d1996ce4ef73f6fb10a2059d576e58f601bff6c9828af75328e41ad8ae58eead",
+      "bytes": 6299
+    },
+    {
+      "version": "20260815203000",
+      "name": "bilateral_payment_balance",
+      "file": "supabase/migrations/20260815203000_bilateral_payment_balance.sql",
+      "sha256": "8423df5c34d074bb534e8d9d086a2f1a4a5c3da985d26a9ed214d6f4b613e26d",
+      "bytes": 24754
+    },
+    {
+      "version": "20260815213000",
+      "name": "preserve_broadcast_membership_privacy",
+      "file": "supabase/migrations/20260815213000_preserve_broadcast_membership_privacy.sql",
+      "sha256": "861463fe8cadb338e9a090adbdacef83a9c6fb0911830d7d5ca228433c9206c6",
+      "bytes": 1599
+    },
+    {
+      "version": "20260815214500",
+      "name": "restore_customer_aggregate_service_boundary",
+      "file": "supabase/migrations/20260815214500_restore_customer_aggregate_service_boundary.sql",
+      "sha256": "63f5dc850f4fe150659257c63844bf7feb466131d722d143927de21b74beeae4",
+      "bytes": 291
+    },
+    {
+      "version": "20260815215000",
+      "name": "preserve_retired_cash_confirmation",
+      "file": "supabase/migrations/20260815215000_preserve_retired_cash_confirmation.sql",
+      "sha256": "7425434993a09390d452b6331623e923fa74a9d3451c2f4d0b139d15527adcae",
+      "bytes": 230
     }
   ]
 }

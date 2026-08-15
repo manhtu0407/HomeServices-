@@ -1,4 +1,7 @@
 import type { ComplexityLevel, JobStatus, LocalPaymentStatus, MatchingState, ScopeChangeStatus, ServiceType, UserRole } from '@nestscout/shared'
+import type { KaelChatProgress } from './kael'
+import type { AddressAccessView } from './shared'
+
 export type {
   DirectWorkerPaymentResponse,
   DirectWorkerPaymentResponseInput,
@@ -6,8 +9,6 @@ export type {
   ManualBankPaymentClaimInput,
   ManualBankPaymentClaimResponse,
 } from '@nestscout/shared'
-import type { KaelChatProgress } from './kael'
-import type { AddressAccessView } from './shared'
 
 export type ConfirmKaelChatResponse = ConfirmSearchResponse & {
   session_id: string
@@ -40,6 +41,7 @@ export type JobDetailResponse = {
     kael_worker_brief_guidance: Record<string, unknown> | null
     kael_progress: KaelChatProgress | null
     final_price: number | null
+    estimated_worker_net?: number | null
     payment_rail_available?: boolean
     payment_rail_provider?: 'platform_bank_manual' | 'sepay_vietqr' | null
     payment_status?: LocalPaymentStatus | null

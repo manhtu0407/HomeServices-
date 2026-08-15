@@ -26,7 +26,18 @@ import { diagnosisScopeWithEvidenceRequest } from "./case-work-artifact.ts";
 import { emitKaelChatStep } from "./emit-step.ts";
 import { intakeObservationMetadata, withIntakeSafetyGuidance } from "./intake-safety.ts";
 import { appendKaelSystemTurn, updateKaelSession } from "./session-store.ts";
+import {
+  customerContextClauses,
+  customerDeclaredScope,
+  isBookingMetadataClause,
+  isCustomerInstruction,
+  isDeclaredScopeClause,
+  isDeclaredUnknownClause,
+  publicReceiptTextList,
+} from "../../kael/kael-guardrails/price-reasoning-text.ts";
 const KAEL_CHAT_SOFT_COST_CAP_USD = 0.5;
+const CONFIRMED_WORKER_SCOPE_MAX_LENGTH = 2000;
+const PRICE_PRESSURE_CLAUSE = /\b(?:giá thấp nhất|chốt[^.]{0,40}\bgiá|lowest price|cheapest)\b/iu;
 type SuccessfulPipeline = Extract<PipelineResult, { success: true }>;
 type KaelPerformanceProfile = NonNullable<ReturnType<typeof getKaelPerformanceProfile>>;
 type FinalizeKaelChatEstimateInput = {
@@ -119,6 +130,51 @@ function baselineEvidenceFromStageLogs(
   );
 }
 
+export function buildConfirmedWorkerScopeSummary(input: {
+  customerAnalysisDetail: string;
+  estimateProblemSummary: string;
+  language: "vi" | "en";
+}) {
+  const factualClauses = customerContextClauses(input.customerAnalysisDetail)
+    .map((clause) => clause.replace(
+      /,?\s*(?:hãy|khỏi|please|just)\b.*$/iu,
+      "",
+    ).trim())
+    .filter((clause) =>
+      clause.length > 0 &&
+      !isBookingMetadataClause(clause) &&
+      !PRICE_PRESSURE_CLAUSE.test(clause) &&
+      !isCustomerInstruction(clause) &&
+      !isDeclaredScopeClause(clause) &&
+      !isDeclaredUnknownClause(clause)
+    );
+  const confirmedFacts = publicReceiptTextList(
+    factualClauses,
+    input.estimateProblemSummary,
+    7,
+    260,
+  );
+  const declaredScope = customerDeclaredScope(
+    input.customerAnalysisDetail,
+    input.language,
+  );
+  const uniqueLines = new Map<string, string>();
+  for (const line of [
+    ...confirmedFacts,
+    ...declaredScope.included,
+    ...declaredScope.excluded,
+  ]) {
+    const normalized = line.replace(/\s+/g, " ").trim();
+    if (!normalized || PRICE_PRESSURE_CLAUSE.test(normalized)) continue;
+    const key = normalized.toLocaleLowerCase(input.language === "vi" ? "vi" : "en");
+    if (!uniqueLines.has(key)) uniqueLines.set(key, normalized);
+  }
+  return [...uniqueLines.values()]
+    .join("\n")
+    .slice(0, CONFIRMED_WORKER_SCOPE_MAX_LENGTH)
+    .trim();
+}
+
 type KaelEstimateMarketEvidence = ReturnType<
   typeof buildKaelEstimateMarketEvidence
 >;
@@ -191,6 +247,7 @@ export async function finalizeKaelChatEstimate(
   const profileFactCoverage = resolveIntakeFactCoverage({
     serviceType: input.service_type,
     problemSlug: estimate.problem_category,
+    customerDescription: customerAnalysisDetail,
     profileFacts: pipeline.profileFacts ?? {},
     providerMissingSlots: [],
     providerNeedsClarification: false,
@@ -276,6 +333,11 @@ async function persistValidatedEstimate(input: {
     ...(estimate.needs_inspection ? ["onsite_inspection_required"] : []),
   ];
   const quoteReady = quoteBlockers.length === 0;
+  const confirmedWorkerScope = buildConfirmedWorkerScopeSummary({
+    customerAnalysisDetail,
+    estimateProblemSummary: estimate.problem_summary,
+    language,
+  });
   const quoteReadyArtifact = kaelDiagnosisScopeArtifactSchema.parse({
     ...artifact,
     case_phase: quoteReady ? "offer_review" : "analysis",
@@ -293,7 +355,7 @@ async function persistValidatedEstimate(input: {
     missing_facts: [...profileFactCoverage.missing],
     evidence: artifact.evidence,
     safety_flags: safetyFlags,
-    scope_summary: estimate.problem_summary,
+    scope_summary: confirmedWorkerScope,
     quote_ready: quoteReady,
     quote_blockers: quoteBlockers,
     worker_requirements: input.profile.worker_capabilities,

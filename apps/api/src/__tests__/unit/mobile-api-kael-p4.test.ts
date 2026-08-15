@@ -19,6 +19,7 @@ import type { KaelDiagnosisScopeArtifact } from '../../../../../supabase/functio
 import { buildKaelEstimateAnalysisEvidence } from '../../../../../supabase/functions/mobile-api/_shared/domains/kael-chat/estimate-support'
 import { mergeKaelCustomerDetailForReanalysis } from '../../../../../supabase/functions/mobile-api/_shared/domains/kael-chat/case-work-context'
 import { buildVisionMessages } from '../../../../../supabase/functions/mobile-api/_shared/kael/prompts/prompts'
+import { buildFallbackVision } from '../../../../../supabase/functions/mobile-api/_shared/kael/tools/vision'
 
 describe('mobile-api Kael P4 output pipeline', () => {
   it('requires a grounded analysis result for every supplied image', () => {
@@ -68,6 +69,90 @@ describe('mobile-api Kael P4 output pipeline', () => {
       visibility: 'customer_review',
       may_transition: false,
     })
+  })
+
+  it('uses cleaning-specific scope, uncertainty, and cost components in the receipt', () => {
+    const fallback = buildFallbackVision(
+      'cleaning: standard_home_cleaning',
+      'vi',
+      false,
+      'Căn hộ 65m² cần hút bụi, lau sàn và vệ sinh hai phòng tắm.',
+    )
+    const output = buildEstimateCardOutput({
+      analysisEvidence: {
+        photoCount: 0,
+        skipped: true,
+        videoFrameCount: 0,
+        voiceTranscriptCount: 0,
+      },
+      estimate: {
+        service_type: 'cleaning',
+        problem_category: 'standard_home_cleaning',
+        problem_summary: 'Vệ sinh nhà tiêu chuẩn cho căn hộ 65m².',
+        complexity: 'small',
+        price_min: 253_000,
+        price_max: 315_000,
+        confidence: 0.58,
+        advisory: null,
+        disclaimer: KAEL_PRICE_DISCLAIMER_V3,
+      },
+      baselineUsed: 'cleaning:standard_home_cleaning:small',
+      customerScopeContext: 'Căn hộ 65m² cần hút bụi, lau sàn và vệ sinh hai phòng tắm.',
+      visionAnalysis: {
+        analysisStatus: 'not_provided',
+        evidenceFindings: [],
+        problemSummary: fallback.problem_identified,
+        recommendedScope: fallback.recommended_scope,
+        remainingUncertainty: fallback.remaining_uncertainty,
+        severityIndicators: [],
+      },
+    })
+
+    const receipt = output.card.price_reasoning_receipt
+    const serialized = JSON.stringify(receipt)
+    expect(receipt.problem.possible_causes[0]?.statement).toContain('Mức công và phương pháp vệ sinh')
+    expect(receipt.problem.unknowns).toEqual(expect.arrayContaining([
+      expect.stringContaining('mức bẩn'),
+    ]))
+    expect(receipt.scope.included).toEqual(expect.arrayContaining([
+      expect.stringContaining('mức bẩn, bề mặt và lối tiếp cận'),
+      expect.stringContaining('Gói vệ sinh nhà'),
+    ]))
+    expect(receipt.costs.components.map((component) => component.kind)).toContain('equipment')
+    expect(receipt.costs.components.map((component) => component.kind)).not.toContain('replacement_parts')
+    expect(serialized).not.toContain('hạng mục sửa chữa')
+    expect(serialized).not.toContain('Linh kiện thay thế')
+    expect(serialized).not.toContain('Nguyên nhân cụ thể')
+  })
+
+  it('keeps booking metadata and redacted address tokens out of upholstery facts', () => {
+    const output = buildEstimateCardOutput({
+      estimate: {
+        service_type: 'upholstery',
+        problem_category: 'sofa_cleaning',
+        problem_summary: 'Vệ sinh một sofa vải polyester hai chỗ.',
+        complexity: 'small',
+        price_min: 250_000,
+        price_max: 300_000,
+        confidence: 0.62,
+        advisory: null,
+        disclaimer: KAEL_PRICE_DISCLAIMER_V3,
+      },
+      customerScopeContext: [
+        'Dịch vụ: Sofa, nệm, rèm, thảm Vấn đề: Vệ sinh sofa Khu vực: [unit] E2E, Quận Bình Thạnh Thời gian: 14:00 Mô tả: Sofa hơi bẩn.',
+        'Chỉ có 1 sofa vải dệt polyester dài khoảng 1,8m, loại 2 chỗ ngồi.',
+        'Hiện trạng là bụi nhẹ và một vết nước ngọt gốc nước nhỏ.',
+      ].join('\n\n'),
+      language: 'vi',
+      priceSource: 'baseline_with_market',
+      baselineUsed: 'upholstery_care:sofa_cleaning:small',
+    })
+    const facts = output.card.price_reasoning_receipt.problem.confirmed_facts.join(' ')
+
+    expect(facts).toContain('polyester')
+    expect(facts).not.toContain('Dịch vụ:')
+    expect(facts).not.toContain('Khu vực:')
+    expect(facts).not.toContain('[unit]')
   })
 
   it('does not invent an inspection blocker from low price confidence alone', () => {
@@ -269,6 +354,47 @@ describe('mobile-api Kael P4 output pipeline', () => {
     expect(detail).toContain('already shut the valve')
     expect(detail).toContain('only while the sink is draining')
     expect(detail.match(/The sink drain joint leaks/g)).toHaveLength(1)
+  })
+
+  it('prioritizes the latest customer correction in a reanalyzed price receipt', () => {
+    const artifact = {
+      facts: {
+        customer_goal: 'Một máy lạnh treo tường [house-no] HP cần vệ sinh định kỳ.',
+        latest_customer_detail: [
+          'Một máy lạnh treo tường [house-no] HP cần vệ sinh định kỳ.',
+          'Luồng gió yếu nhưng ổn định, không có dấu hiệu nguy hiểm.',
+          'Dàn lạnh và dàn nóng đều tiếp cận an toàn.',
+          'Không gồm nạp gas, thay bo mạch hoặc thay linh kiện.',
+          'Chỉ vệ sinh và kiểm tra cơ bản.',
+        ].join('\n\n'),
+      },
+    } as unknown as KaelDiagnosisScopeArtifact
+    const detail = mergeKaelCustomerDetailForReanalysis(
+      artifact,
+      'Công suất của máy lạnh là 1 HP; đây là thông số thiết bị, không phải số nhà.',
+    )
+    const receipt = buildEstimateCardOutput({
+      estimate: {
+        service_type: 'hvac',
+        problem_category: 'ac_cleaning',
+        problem_summary: 'Vệ sinh định kỳ một máy lạnh treo tường.',
+        complexity: 'small',
+        price_min: 200_000,
+        price_max: 200_000,
+        confidence: 0.62,
+        advisory: null,
+        disclaimer: KAEL_PRICE_DISCLAIMER_V3,
+      },
+      customerScopeContext: detail,
+      language: 'vi',
+      priceSource: 'baseline_with_market',
+      baselineUsed: 'hvac:ac_cleaning:small',
+    }).card.price_reasoning_receipt
+
+    expect(detail).toMatch(/^Công suất của máy lạnh là 1 HP/)
+    expect(detail).not.toContain('[house-no] HP')
+    expect(receipt.problem.confirmed_facts.join(' ')).toContain('1 HP')
+    expect(receipt.problem.confirmed_facts.join(' ')).not.toContain('[house-no] HP')
   })
 
   it('retains a verified prior image receipt during a text-only adjustment', () => {

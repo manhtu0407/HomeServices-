@@ -7,6 +7,10 @@ export function customerKaelWorkRouteForHandoff(handoffId: string) {
   return `${customerKaelWorkRoute}&handoff=${encodeURIComponent(handoffId)}`
 }
 
+export function customerKaelWorkRouteForSession(sessionId: string, suffix = '') {
+  return `${customerKaelWorkRoute}&sessionId=${encodeURIComponent(sessionId)}${suffix}`
+}
+
 export function isRealCaseDeal(deal: LocalDeal | null | undefined): deal is LocalDeal {
   return Boolean(deal?.id && deal.id !== LOCAL_DEAL_ID)
 }

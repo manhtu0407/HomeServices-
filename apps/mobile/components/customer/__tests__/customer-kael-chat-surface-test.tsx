@@ -20,6 +20,7 @@ const mockConversationPin = jest.fn()
 const mockConversationSendTurn = jest.fn()
 const mockKaelChatCreate = jest.fn()
 const mockKaelChatGet = jest.fn()
+const mockKaelChatStreamSend = jest.fn()
 const mockJobChatSend = jest.fn(async () => true)
 const mockHydrateRemoteJobById = jest.fn()
 let mockCustomerId = 'customer_kael_test_0'
@@ -90,6 +91,10 @@ jest.mock('@/lib/services', () => {
       ...actual.kaelChatService,
       create: (...args: any[]) => mockKaelChatCreate(...args),
       get: (...args: any[]) => mockKaelChatGet(...args),
+    },
+    kaelChatStreamService: {
+      ...actual.kaelChatStreamService,
+      sendTurn: (...args: any[]) => mockKaelChatStreamSend(...args),
     },
   }
 })
@@ -309,6 +314,7 @@ describe('active customer Kael chat surface wiring', () => {
       mockConversationSendTurn,
       mockKaelChatCreate,
       mockKaelChatGet,
+      mockKaelChatStreamSend,
     ].forEach((mock) => mock.mockReset())
     mockConversationList.mockImplementation(async (mode: 'normal' | 'case') => ({
       data: { sessions: [...mockSessionsByMode[mode]] },
@@ -356,6 +362,10 @@ describe('active customer Kael chat surface wiring', () => {
     }))
     mockKaelChatCreate.mockImplementation(async () => ({
       data: makeCaseWorkResponse('new-case-session', 'Kael đã tiếp nhận yêu cầu kiểm thử.'),
+      success: true,
+    }))
+    mockKaelChatStreamSend.mockImplementation(async (sessionId: string) => ({
+      data: makeCaseWorkResponse(sessionId, 'Kael đã nhận phần thông tin bổ sung.'),
       success: true,
     }))
     mockConversationRename.mockImplementation(async (sessionId: string, { title }: { title: string }) => {
@@ -968,6 +978,31 @@ describe('active customer Kael chat surface wiring', () => {
     ])
   })
 
+  it('hides the remembered Case Work session while a new booking handoff owns the route', async () => {
+    const previousSession = {
+      ...makeConversationSession('case', 'previous-case-catalog'),
+      case_job_id: 'previous-job',
+      case_session_id: 'previous-authoritative-case',
+    }
+    mockSessionsByMode.case = [previousSession]
+    const previousMount = renderHook(() => useCustomerKaelConversations('case', 'vi'))
+    await waitForConversationCatalog('case')
+    await act(async () => {
+      await previousMount.result.current.openSession(previousSession.id)
+    })
+    expect(previousMount.result.current.activeSessionId).toBe(previousSession.id)
+    previousMount.unmount()
+
+    const handoffMount = renderHook(() => useCustomerKaelConversations('case', 'vi', {
+      suppressActiveResponse: true,
+    }))
+    await waitForConversationCatalog('case')
+
+    expect(handoffMount.result.current.activeSessionId).toBeNull()
+    expect(handoffMount.result.current.turns).toEqual([])
+    expect(handoffMount.result.current.sessions).toContainEqual(previousSession)
+  })
+
   it('reconciles a committed normal turn after the POST response times out', async () => {
     const { result } = renderHook(() => useCustomerKaelConversations('normal', 'vi'))
     await waitForConversationCatalog('normal')
@@ -1420,6 +1455,135 @@ describe('active customer Kael chat surface wiring', () => {
       service_type: 'plumbing',
     })))
   }, 30_000)
+
+  it('canonicalizes a booking handoff to its durable Case Work session route', async () => {
+    await setPendingKaelChatDraft(mockCustomerId, {
+      message: 'Lavabo phòng tắm rò tại khớp nối chữ P.',
+      profileId: 'water_diagnose',
+      scheduleMode: 'now',
+      scheduledAt: '2026-08-15T06:00:00.000Z',
+      serviceType: 'plumbing',
+    })
+    mockRouteParams = { handoff: 'booking-handoff-plumbing', mode: 'case' }
+    mockKaelChatCreate.mockResolvedValueOnce({
+      data: {
+        ...makeCaseWorkResponse('durable-plumbing-session', 'Kael cần bạn xác nhận thông tin.'),
+        session: {
+          ...makeCaseWorkResponse('durable-plumbing-session', '').session,
+          service_type: 'plumbing' as const,
+        },
+      },
+      success: true,
+    })
+
+    render(<CustomerKaelSurface />)
+
+    await waitFor(() => expect(mockKaelChatCreate).toHaveBeenCalledWith(expect.objectContaining({
+      service_type: 'plumbing',
+    })))
+    await waitFor(() => expect(mockReplace).toHaveBeenCalledWith(
+      '/(customer)/kael-chat?mode=case&sessionId=durable-plumbing-session',
+    ))
+  })
+
+  it('recovers a consumed booking handoff from the linked Customer catalog session', async () => {
+    mockRouteParams = { handoff: 'persisted-booking-handoff', mode: 'case' }
+    mockSessionsByMode.case = [{
+      ...makeConversationSession('case', 'persisted-case-catalog', 'persisted-booking-handoff'),
+      case_session_id: 'persisted-case-session',
+      service_type: 'plumbing',
+    }]
+
+    render(<CustomerKaelSurface />)
+
+    await waitForConversationCatalog('case')
+    await waitFor(() => expect(mockReplace).toHaveBeenCalledWith(
+      '/(customer)/kael-chat?mode=case&sessionId=persisted-case-session',
+    ))
+    expect(mockKaelChatCreate).not.toHaveBeenCalled()
+  })
+
+  it('keeps the server-owned service when sending after a session-route remount', async () => {
+    const sessionId = 'server-plumbing-session'
+    mockRouteParams = { mode: 'case', sessionId }
+    const response = {
+      ...makeCaseWorkResponse(sessionId, 'Kael cần thêm dữ kiện hiện trường.'),
+      session: {
+        ...makeCaseWorkResponse(sessionId, '').session,
+        service_type: 'plumbing' as const,
+      },
+    }
+    mockKaelChatGet.mockResolvedValueOnce({ data: response, success: true })
+    mockKaelChatStreamSend.mockResolvedValueOnce({
+      data: makeCaseWorkResponse(sessionId, 'Kael đã nhận phần thông tin bổ sung.'),
+      success: true,
+    })
+    render(<CustomerKaelSurface />)
+
+    await waitFor(() => expect(screen.getByText('Kael cần thêm dữ kiện hiện trường.')).toBeOnTheScreen())
+    fireEvent.changeText(screen.getByTestId('customer-v21-kael-input'), 'Thông tin bổ sung đã đầy đủ.')
+    fireEvent.press(screen.getByTestId('customer-v21-kael-send'))
+
+    await waitFor(() => expect(mockKaelChatStreamSend).toHaveBeenCalledWith(
+      sessionId,
+      expect.objectContaining({ message: 'Thông tin bổ sung đã đầy đủ.' }),
+      expect.any(Object),
+    ))
+    expect(screen.queryByText(/bạn hãy nêu hạng mục cần hỗ trợ/)).toBeNull()
+  })
+
+  it('does not leak an unrelated active-job error into a routed intake session', async () => {
+    const sessionId = 'new-upholstery-intake-session'
+    mockRouteParams = { mode: 'case', sessionId }
+    mockWorkflowDeal = makeWorkflowDeal()
+    mockWorkflowError = 'Đang có yêu cầu đang chạy, không thể tạo yêu cầu mới'
+    mockKaelChatGet.mockResolvedValueOnce({
+      data: makeCaseWorkResponse(sessionId, 'Kael đang làm rõ số lượng và chất liệu sofa.'),
+      success: true,
+    })
+
+    render(<CustomerKaelSurface />)
+
+    await waitFor(() => expect(screen.getByText('Kael đang làm rõ số lượng và chất liệu sofa.')).toBeOnTheScreen())
+    expect(screen.queryByText(mockWorkflowError)).toBeNull()
+  })
+
+  it('keeps an explicitly routed Case Work session authoritative over a stale catalog selection', async () => {
+    const staleCatalogSession = {
+      ...makeConversationSession('case', 'stale-catalog-conversation'),
+      case_session_id: 'stale-case-session',
+    }
+    mockRouteParams = { mode: 'case' }
+    mockSessionsByMode.case = [staleCatalogSession]
+    mockKaelChatGet.mockImplementation(async (sessionId: string) => ({
+      data: makeCaseWorkResponse(
+        sessionId,
+        sessionId === 'routed-case-session' ? 'ROUTED CASE READY' : 'STALE CASE READY',
+      ),
+      success: true,
+    }))
+    const staleView = render(<CustomerKaelSurface />)
+
+    await waitForConversationCatalog('case')
+    await waitFor(() => expect(mockKaelChatGet).toHaveBeenCalledWith('stale-case-session'))
+    fireEvent.press(screen.getByTestId('customer-v21-kael-new-conversation'))
+    fireEvent.press(screen.getByTestId(`customer-v21-kael-session-${staleCatalogSession.id}`))
+    await waitFor(() => expect(screen.getByText('STALE CASE READY')).toBeOnTheScreen())
+    staleView.unmount()
+
+    mockRouteParams = { mode: 'case', sessionId: 'routed-case-session' }
+    mockSessionsByMode.case = [
+      {
+        ...makeConversationSession('case', 'routed-catalog-conversation'),
+        case_session_id: 'routed-case-session',
+      },
+      staleCatalogSession,
+    ]
+    render(<CustomerKaelSurface />)
+
+    await waitFor(() => expect(screen.getByText('ROUTED CASE READY')).toBeOnTheScreen())
+    expect(screen.queryByText('STALE CASE READY')).toBeNull()
+  })
 
   it('does not trust a routed local job snapshot after server hydration rejects it', async () => {
     mockRouteParams = { jobId: 'job-old-session', mode: 'case' }

@@ -11,6 +11,7 @@ import type {
   EdgeScopeChangeWorkerQuote,
   EdgeWorkerScopeChangeResponse,
 } from "./worker.ts";
+import type { SafeOriginalScopePriceQuote } from "../matching/original-scope-price-quote.ts";
 
 type MatchingState = EdgeKaelMatchingContracts["matchingState"];
 type FavoriteWorkersForMatchingResponse = EdgeKaelMatchingContracts["favoriteWorkersResponse"];
@@ -85,6 +86,7 @@ export type EdgeWorkerCandidateView = {
   expires_at: string | null;
   customer_decided_at: string | null;
   direct_payment_available?: boolean | null;
+  original_scope_price_quote: SafeOriginalScopePriceQuote | null;
 };
 
 export type EdgeWorkerCandidateResponse = {

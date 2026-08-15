@@ -20,6 +20,7 @@ export function customerDeclaredUnknowns(
   const clauses = customerContextClauses(value).filter((clause) =>
     /\b(?:chưa biết|chưa rõ|không biết|unknown|not known|do not know)\b/iu.test(clause)
   );
+  if (clauses.length === 0) return [];
   return publicReceiptTextList(
     clauses,
     language === "vi"
@@ -42,7 +43,7 @@ export function customerDeclaredScope(
   return {
     included: publicReceiptTextList(
       clauses.filter((clause) =>
-        /\b(?:phạm vi).*(?:chỉ gồm|bao gồm)|\bscope\b.*\b(?:includes|covers)\b/iu.test(clause)
+        /^(?:phạm vi mong muốn|desired scope)\s*:|\b(?:phạm vi).*(?:chỉ gồm|bao gồm)|\bscope\b.*\b(?:includes|covers)\b/iu.test(clause)
       ),
       language === "vi"
         ? "Thực hiện đúng phần việc khách đã xác nhận."
@@ -52,7 +53,7 @@ export function customerDeclaredScope(
     ),
     excluded: publicReceiptTextList(
       clauses.filter((clause) =>
-        /^(?:không gồm|không bao gồm|không cho phép|does not include|do not|exclude)/iu.test(clause)
+        /^(?:loại trừ|không gồm|không bao gồm|không cho phép|does not include|do not|exclude)/iu.test(clause)
       ),
       language === "vi"
         ? "Không thực hiện phần việc khách chưa xác nhận."
@@ -74,8 +75,12 @@ export function isCustomerInstruction(value: string): boolean {
   return /^(?:hãy|khỏi|chỉ đánh giá|please|just quote|only assess)\b/iu.test(value);
 }
 
+export function isBookingMetadataClause(value: string): boolean {
+  return /^(?:Dịch vụ|Service|Vấn đề|Problem|Khu vực|Area|Thời gian|Time)\s*:/iu.test(value);
+}
+
 export function isDeclaredScopeClause(value: string): boolean {
-  return /\bphạm vi\b.*\b(?:chỉ gồm|bao gồm)\b|^không (?:gồm|bao gồm|cho phép)|\bscope\b.*\b(?:includes|covers)\b/iu.test(value);
+  return /^(?:phạm vi mong muốn|desired scope)\s*:|\bphạm vi\b.*\b(?:chỉ gồm|bao gồm)\b|^(?:loại trừ|không (?:gồm|bao gồm|cho phép))|\bscope\b.*\b(?:includes|covers)\b/iu.test(value);
 }
 
 export function mentionsVisualEvidence(value: string | null | undefined): boolean {
@@ -92,6 +97,35 @@ export function hasUnconfirmedReplacement(problemSummary: string): boolean {
     /\bthay\b[^.]{0,80}(?:chua|khong) xac nhan/.test(normalized) ||
     /replacement[^.]{0,80}(?:is )?not confirmed/.test(normalized) ||
     /not confirmed[^.]{0,80}\breplace/.test(normalized);
+}
+
+export function hasExplicitReplacementExclusion(
+  customerScopeContext: string,
+  language: "vi" | "en",
+): boolean {
+  return customerContextClauses(customerScopeContext).some((clause) => {
+    const normalized = normalizeCustomerReasoningClause(clause);
+    const exclusion = language === "vi"
+      ? /^(?:loai tru|khong gom|khong bao gom|khong cho phep)\b/.test(normalized)
+      : /^(?:exclude|does not include|do not|not included)\b/.test(normalized);
+    if (!exclusion) return false;
+    return language === "vi"
+      ? /\bthay(?: the)?\b[^.]{0,100}\b(?:ban le|linh kien|phu kien)\b/.test(normalized)
+      : /\b(?:replace|replacement)\b[^.]{0,100}\b(?:hinge|part|hardware)\b/.test(normalized);
+  });
+}
+
+export function customerResolvesHingeDamage(value: string): boolean {
+  const normalized = normalizeCustomerReasoningClause(value);
+  return /\bkhong\b[^.]{0,140}\b(?:nut|muc|cong|toet|hong)\b/.test(normalized) ||
+    /\b(?:intact|no)\b[^.]{0,140}\b(?:crack|rot|warp|stripped|damage)\b/.test(normalized);
+}
+
+export function mentionsHingeSubstrateDamage(value: string | null | undefined): boolean {
+  if (!value) return false;
+  const normalized = normalizeCustomerReasoningClause(value);
+  return /\b(?:lo vit|khung tu|go|screw hole|cabinet frame|wood)\b/.test(normalized) &&
+    /\b(?:nut|muc|cong|toet|hong|hu hai|rong|crack|rot|warp|stripped|damage|widened)\b/.test(normalized);
 }
 
 export function withoutUnconfirmedReplacement(

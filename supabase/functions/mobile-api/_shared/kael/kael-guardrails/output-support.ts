@@ -243,7 +243,8 @@ export function scrubKaelPiiText(input: string): string {
     .replace(/\b\d{9,12}\b/g, "[id-number]")
     .replace(
       /(?<![\p{L}\p{N}])(?:căn(?:[^\S\r\n]+hộ)?|can(?:[^\S\r\n]+ho)?|unit|phòng|phong|apt)[^\S\r\n]+([\p{L}\p{N}](?:[\p{L}\p{N}._/-]*[\p{L}\p{N}])?)/giu,
-      (match, identifier: string) => looksLikePrivateUnitIdentifier(identifier) ? "[unit]" : match,
+      (match, identifier: string, offset: number, source: string) =>
+        looksLikePrivateUnitIdentifier(identifier, source.slice(offset + match.length)) ? "[unit]" : match,
     )
     .replace(/\b(?:tầng|tang|lầu|lau|floor)\s*\d+\b/gi, "[floor]")
     .replace(/\b(?:số nhà|so nha|nhà số|nha so)\s*[A-Z0-9./-]+\b/gi, "[house-no]");

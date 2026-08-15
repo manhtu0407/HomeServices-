@@ -68,7 +68,7 @@ describe('mobile service path segments', () => {
     kaelChatProgressService.get(unsafeId)
     workerKaelChatService.get(unsafeId)
     workerKaelChatService.sendTurn(unsafeId, input)
-    workerService.acceptBroadcast(unsafeId)
+    workerService.acceptBroadcast(unsafeId, unsafeId)
     workerService.declineBroadcast(unsafeId)
     notificationService.markRead(unsafeId)
 

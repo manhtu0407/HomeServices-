@@ -107,6 +107,82 @@ export function buildWorkerV5OfferRequestRows(deal: LocalDeal | null, language: 
   ]
 }
 
+export function buildWorkerV5OfferPriceRows(
+  deal: LocalDeal | null,
+  language: AppLanguage,
+): WorkerV5OfferDetailRow[] {
+  const quote = deal?.broadcast?.priceQuote
+  if (!quote) {
+    return [{
+      icon: 'shield',
+      meta: textByLanguage(
+        language,
+        'Kael chưa tải được báo giá chính xác. Thợ chưa thể nhận việc.',
+        'Kael has not loaded the exact quote. The worker cannot accept yet.',
+      ),
+      status: textByLanguage(language, 'Đang khóa', 'Locked'),
+      title: textByLanguage(language, 'Cần tải lại báo giá', 'Reload the quote'),
+    }]
+  }
+
+  const sourceCount = Math.max(
+    quote.evidenceSummary.baselineSourceCount,
+    quote.evidenceSummary.marketSourceCount,
+  )
+  return [
+    {
+      icon: 'wallet',
+      meta: textByLanguage(
+        language,
+        `Điểm giữa trung lập của khoảng ${formatVnd(quote.referencePriceMin)} – ${formatVnd(quote.referencePriceMax)}.`,
+        `Neutral midpoint of the ${formatVnd(quote.referencePriceMin)} – ${formatVnd(quote.referencePriceMax)} range.`,
+      ),
+      status: textByLanguage(language, 'Khách trả', 'Customer total'),
+      title: formatVnd(quote.customerTotal),
+    },
+    {
+      icon: 'earnings',
+      meta: textByLanguage(
+        language,
+        `${quote.commissionRateBps / 100}% theo cấp ${quote.commissionLevel}; không đổi sau khi bạn xác nhận.`,
+        `${quote.commissionRateBps / 100}% at level ${quote.commissionLevel}; unchanged after you confirm.`,
+      ),
+      status: textByLanguage(language, 'Phí nền tảng', 'Platform fee'),
+      title: formatVnd(quote.platformFee),
+    },
+    {
+      icon: 'wallet',
+      meta: textByLanguage(
+        language,
+        'Khoản bạn nhận theo phạm vi hiện tại. Phần phát sinh chỉ làm sau khi khách duyệt receipt mới.',
+        'Your earnings for the current scope. Extra work starts only after the customer approves a new receipt.',
+      ),
+      status: textByLanguage(language, 'Bạn nhận', 'You keep'),
+      title: formatVnd(quote.workerNet),
+    },
+    {
+      icon: 'shield',
+      meta: textByLanguage(
+        language,
+        `${sourceCount} nguồn đạt điều kiện · độ tin cậy ${workerPriceConfidenceLabel(quote.evidenceSummary.confidence, language)}.`,
+        `${sourceCount} qualifying sources · ${workerPriceConfidenceLabel(quote.evidenceSummary.confidence, language)} confidence.`,
+      ),
+      status: textByLanguage(language, 'Có căn cứ', 'Grounded'),
+      title: textByLanguage(language, 'Kael đã đối chiếu giá', 'Kael verified the price'),
+    },
+  ]
+}
+
+function workerPriceConfidenceLabel(
+  confidence: 'low' | 'medium' | 'high',
+  language: AppLanguage,
+) {
+  if (language === 'en') return confidence
+  if (confidence === 'high') return 'cao'
+  if (confidence === 'medium') return 'trung bình'
+  return 'thấp'
+}
+
 function workerV5OfferProblemLabel(deal: LocalDeal, service: string, language: AppLanguage) {
   const serviceType = deal.broadcast?.serviceType ?? deal.draft.serviceType
   if (!serviceType) return service
@@ -136,9 +212,13 @@ export function buildWorkerV5OfferSummaryChips(deal: LocalDeal, language: AppLan
     : workerV5TimeChoiceLabel(deal.draft.timeChoice, language, deal.scheduledAt)
   const source = deal.broadcast?.status === 'sent'
     ? textByLanguage(language, 'Đã gửi tới bạn', 'Sent to you')
-    : localizedStatusLabel(deal.status, language)
+    : localizedStatusLabel(deal.status, language, deal.draft.serviceType)
   const privacy = canShowWorkerAddress(deal)
     ? textByLanguage(language, 'Địa chỉ đã mở', 'Address open')
     : textByLanguage(language, 'Địa chỉ bảo vệ', 'Address protected')
   return [destination, timing, deal.broadcast ? source : privacy]
+}
+
+function formatVnd(value: number) {
+  return `${new Intl.NumberFormat('vi-VN').format(value)}đ`
 }

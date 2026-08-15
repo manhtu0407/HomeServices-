@@ -2,8 +2,8 @@
   "version": "1.0.0",
   "source": {
     "migrationRoot": "supabase/migrations",
-    "migrationCount": 273,
-    "migrationDigest": "f2af6433aaa02346a9004c092287c2eff357f4ca6948ee7d6f8f6bf515211d3d"
+    "migrationCount": 281,
+    "migrationDigest": "dac13a73ec30f0c74e882d85f4bf6cb048a409d83d2814330f7b05f969229dd4"
   },
   "actors": [
     "anonymous",
@@ -2464,6 +2464,14 @@
     }
   ],
   "functions": [
+    {
+      "signature": "accept_broadcast_atomic(uuid, uuid, uuid)",
+      "securityDefiner": false,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
     {
       "signature": "accept_broadcast_atomic(uuid, uuid)",
       "securityDefiner": false,

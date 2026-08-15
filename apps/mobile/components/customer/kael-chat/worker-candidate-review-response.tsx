@@ -4,12 +4,14 @@ import { Image } from 'expo-image'
 
 import { KaelButton } from '@/components/ui/kael-primitives'
 import type { AppLanguage } from '@/lib/app-language'
-import type { WorkerCandidateView } from '@/lib/api-types'
+import type { OriginalScopePriceQuote, WorkerCandidateView } from '@/lib/api-types'
 import type { CustomerThemeTokens } from '../customer-theme'
 import { CaseWorkResponse } from './case-work-response'
 import { buildCaseWorkResponseModel } from './case-work-response-model'
 import type { SavedWorkerSummary, SavedWorkersStatus } from './customer-saved-workers'
 import { SavedWorkerConfirmationList } from './saved-worker-confirmation-list'
+
+const VND_FORMATTER = new Intl.NumberFormat('vi-VN')
 
 type WorkerCandidateReviewResponseProps = {
   busy: boolean
@@ -55,6 +57,8 @@ function WorkerCandidateReviewContent({
 }: WorkerCandidateReviewResponseProps) {
   const [finalReviewOpen, setFinalReviewOpen] = useState(false)
   const displayName = candidate?.display_name?.trim() || (language === 'vi' ? 'Hồ sơ thợ' : 'Worker profile')
+  const priceQuote = candidate?.original_scope_price_quote ?? null
+  const priceReady = Boolean(priceQuote?.worker_confirmed_at)
   const facts = candidate ? candidateFacts(candidate, language) : []
   const personalFacts = candidate ? candidatePersonalFacts(candidate, language) : []
   const paymentEligibility = candidate
@@ -68,7 +72,7 @@ function WorkerCandidateReviewContent({
 
   return (
     <CaseWorkResponse
-      controls={candidate?.status === 'proposed' && finalReviewOpen ? (
+      controls={candidate?.status === 'proposed' && finalReviewOpen && priceReady ? (
         <View style={styles.finalReview} testID="customer-v21-worker-candidate-final-review">
           <View style={styles.savedHeader}>
             <Text style={[styles.savedTitle, { color: tokens.text }]}>
@@ -91,8 +95,8 @@ function WorkerCandidateReviewContent({
           />
           <Text style={[styles.notice, { color: tokens.muted }]}>
             {language === 'vi'
-              ? 'Công việc chỉ ghép thợ và gửi thông báo sau lần xác nhận này.'
-              : 'The job is matched and notifications are sent only after this confirmation.'}
+              ? `Xác nhận này ghép ${displayName} và khóa giá ${formatVnd(priceQuote!.customer_total)} cho phạm vi hiện tại. Mọi phát sinh phải có receipt mới để bạn duyệt.`
+              : `This confirms ${displayName} and locks ${formatVnd(priceQuote!.customer_total)} for the current scope. Any extra work needs a new receipt for your approval.`}
           </Text>
           <View style={styles.actions}>
             <KaelButton
@@ -105,11 +109,13 @@ function WorkerCandidateReviewContent({
               variant="secondary"
             />
             <KaelButton
-              accessibilityState={{ busy, disabled: busy }}
-              disabled={busy}
+              accessibilityState={{ busy, disabled: busy || !priceReady }}
+              disabled={busy || !priceReady}
               label={busy
                 ? (language === 'vi' ? 'Đang xử lý' : 'Processing')
-                : (language === 'vi' ? 'Xác nhận thợ này' : 'Confirm this worker')}
+                : (language === 'vi'
+                    ? `Xác nhận thợ & giá ${formatVnd(priceQuote!.customer_total)}`
+                    : `Confirm worker & ${formatVnd(priceQuote!.customer_total)}`)}
               onPress={onConfirm}
               size="small"
               style={styles.action}
@@ -129,12 +135,18 @@ function WorkerCandidateReviewContent({
             variant="secondary"
           />
           <KaelButton
-            accessibilityState={{ busy, disabled: busy }}
-            disabled={busy}
+            accessibilityState={{ busy, disabled: busy || !priceReady }}
+            disabled={busy || !priceReady}
             label={busy
               ? (language === 'vi' ? 'Đang xử lý' : 'Processing')
-              : (language === 'vi' ? 'Chọn thợ này' : 'Choose this worker')}
-            onPress={() => setFinalReviewOpen(true)}
+              : priceQuote
+                ? (language === 'vi'
+                    ? `Xem thợ & giá ${formatVnd(priceQuote.customer_total)}`
+                    : `Review worker & ${formatVnd(priceQuote.customer_total)}`)
+                : (language === 'vi' ? 'Chờ Kael tải giá' : 'Waiting for Kael price')}
+            onPress={() => {
+              if (priceReady) setFinalReviewOpen(true)
+            }}
             size="small"
             style={styles.action}
             testID="customer-v21-worker-candidate-confirm"
@@ -215,6 +227,11 @@ function WorkerCandidateReviewContent({
                   ? 'Địa chỉ chi tiết vẫn được khóa cho tới khi bạn chọn thợ này.'
                   : 'Your detailed address stays locked until you choose this worker.'}
               </Text>
+              <CandidatePriceReceipt
+                language={language}
+                quote={priceQuote}
+                tokens={tokens}
+              />
               {paymentEligibility ? (
                 <View
                   accessible
@@ -249,6 +266,112 @@ function WorkerCandidateReviewContent({
       testID="customer-v21-worker-candidate-review"
       tokens={tokens}
     />
+  )
+}
+
+function CandidatePriceReceipt({
+  language,
+  quote,
+  tokens,
+}: {
+  language: AppLanguage
+  quote: OriginalScopePriceQuote | null
+  tokens: CustomerThemeTokens
+}) {
+  if (!quote?.worker_confirmed_at) {
+    return (
+      <View
+        accessible
+        accessibilityLabel={language === 'vi'
+          ? 'Chưa có báo giá đã được thợ xác nhận. Không thể chọn thợ.'
+          : 'No worker-confirmed quote is available. The worker cannot be selected.'}
+        style={[styles.priceReceipt, { backgroundColor: tokens.base, borderColor: tokens.borderStrong }]}
+        testID="customer-v21-worker-candidate-price-blocked"
+      >
+        <Text style={[styles.paymentTitle, { color: tokens.text }]}>
+          {language === 'vi' ? 'Giá chưa sẵn sàng để xác nhận' : 'Price is not ready to confirm'}
+        </Text>
+        <Text style={[styles.body, { color: tokens.muted }]}>
+          {language === 'vi'
+            ? 'Kael cần tải lại receipt giá bất biến đã được thợ xác nhận. Công việc chưa thể ghép thợ ở trạng thái này.'
+            : 'Kael must reload the immutable worker-confirmed price receipt. The job cannot be matched in this state.'}
+        </Text>
+      </View>
+    )
+  }
+
+  const confidenceLabel = priceConfidenceLabel(quote.evidence_summary.confidence, language)
+  return (
+    <View
+      accessible
+      accessibilityLabel={language === 'vi'
+        ? `Giá hai bên xác nhận. Khách trả ${formatVnd(quote.customer_total)}. Phí nền tảng ${formatVnd(quote.platform_fee)}. Thợ nhận ${formatVnd(quote.worker_net)}.`
+        : `Bilateral price confirmation. Customer total ${formatVnd(quote.customer_total)}. Platform fee ${formatVnd(quote.platform_fee)}. Worker keeps ${formatVnd(quote.worker_net)}.`}
+      style={[styles.priceReceipt, { backgroundColor: tokens.base, borderColor: tokens.borderStrong }]}
+      testID="customer-v21-worker-candidate-price-receipt"
+    >
+      <View style={styles.priceHeader}>
+        <View style={styles.priceHeaderCopy}>
+          <Text style={[styles.paymentTitle, { color: tokens.text }]}>
+            {language === 'vi' ? 'Giá đã được thợ xác nhận' : 'Worker-confirmed price'}
+          </Text>
+          <Text style={[styles.meta, { color: tokens.primary }]}>
+            {language === 'vi' ? 'Chờ bạn chốt lần cuối' : 'Awaiting your final confirmation'}
+          </Text>
+        </View>
+        <Text style={[styles.priceTotal, { color: tokens.text }]}>{formatVnd(quote.customer_total)}</Text>
+      </View>
+      <View style={styles.priceRows}>
+        <PriceReceiptRow
+          label={language === 'vi' ? 'Phí nền tảng' : 'Platform fee'}
+          tokens={tokens}
+          value={`${formatVnd(quote.platform_fee)} · ${quote.commission_rate_bps / 100}%`}
+        />
+        <PriceReceiptRow
+          label={language === 'vi' ? 'Thợ nhận' : 'Worker keeps'}
+          tokens={tokens}
+          value={formatVnd(quote.worker_net)}
+        />
+        <PriceReceiptRow
+          label={language === 'vi' ? 'Khoảng tham chiếu' : 'Reference range'}
+          tokens={tokens}
+          value={`${formatVnd(quote.reference_price_min)} – ${formatVnd(quote.reference_price_max)}`}
+        />
+      </View>
+      <Text style={[styles.body, { color: tokens.muted }]}>
+        {language === 'vi'
+          ? `Kael chọn điểm giữa trung lập sau khi đối chiếu ${quote.evidence_summary.baseline_source_count} nguồn giá nền và ${quote.evidence_summary.market_source_count} nguồn thị trường; độ tin cậy ${confidenceLabel}.`
+          : `Kael selected the neutral midpoint after checking ${quote.evidence_summary.baseline_source_count} baseline sources and ${quote.evidence_summary.market_source_count} market sources; ${confidenceLabel} confidence.`}
+      </Text>
+      <Text style={[styles.priceCap, { color: tokens.primary }]}>
+        {language === 'vi'
+          ? 'Chỉ áp dụng cho phạm vi hiện tại. Phát sinh vẫn bị khóa cho tới khi bạn duyệt receipt mới.'
+          : 'Current scope only. Extra work stays locked until you approve a new receipt.'}
+      </Text>
+    </View>
+  )
+}
+
+function priceConfidenceLabel(
+  confidence: 'low' | 'medium' | 'high',
+  language: 'vi' | 'en',
+) {
+  if (language === 'en') return confidence
+  if (confidence === 'high') return 'cao'
+  if (confidence === 'medium') return 'trung bình'
+  return 'thấp'
+}
+
+function PriceReceiptRow({ label, tokens, value }: {
+  label: string
+  tokens: CustomerThemeTokens
+  value: string
+}) {
+  return (
+    <View style={styles.priceRow}>
+      <Text style={[styles.body, { color: tokens.muted }]}>{label}</Text>
+      <Text style={[styles.priceValue, { color: tokens.text }]}>{value}</Text>
+    </View>
   )
 }
 
@@ -319,6 +442,10 @@ function initialsForCandidate(name: string) {
   return parts.slice(-2).map((part) => part[0]?.toLocaleUpperCase() ?? '').join('') || 'K'
 }
 
+function formatVnd(value: number) {
+  return `${VND_FORMATTER.format(value)}đ`
+}
+
 const styles = StyleSheet.create({
   action: { flex: 1 },
   actions: { flexDirection: 'row', gap: 10 },
@@ -347,6 +474,14 @@ const styles = StyleSheet.create({
   personalFacts: { fontSize: 12, lineHeight: 18 },
   paymentEligibility: { borderRadius: 14, borderWidth: StyleSheet.hairlineWidth, gap: 3, padding: 12 },
   paymentTitle: { fontSize: 13, fontWeight: '700', lineHeight: 19 },
+  priceCap: { fontSize: 12, fontWeight: '700', lineHeight: 18 },
+  priceHeader: { alignItems: 'flex-start', flexDirection: 'row', gap: 10, justifyContent: 'space-between' },
+  priceHeaderCopy: { flex: 1, gap: 2 },
+  priceReceipt: { borderRadius: 14, borderWidth: StyleSheet.hairlineWidth, gap: 10, padding: 12 },
+  priceRow: { alignItems: 'center', flexDirection: 'row', gap: 10, justifyContent: 'space-between' },
+  priceRows: { gap: 6 },
+  priceTotal: { fontSize: 18, fontWeight: '800', lineHeight: 23 },
+  priceValue: { flexShrink: 1, fontSize: 13, fontWeight: '700', lineHeight: 19, textAlign: 'right' },
   savedHeader: { gap: 3 },
   savedTitle: { fontSize: 14, fontWeight: '700', lineHeight: 19 },
 })

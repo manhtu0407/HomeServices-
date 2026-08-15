@@ -28,6 +28,14 @@ export const WORKER_KAEL_MEMORY_PREFERENCE_KEYS = Object.freeze([
 export type WorkerKaelMemoryPreferenceKey =
   (typeof WORKER_KAEL_MEMORY_PREFERENCE_KEYS)[number];
 
+export const workerBroadcastAcceptSchema = z.object({
+  quote_id: z.string().uuid(),
+}).strict();
+
+export type WorkerBroadcastAcceptInput = z.infer<
+  typeof workerBroadcastAcceptSchema
+>;
+
 export const workerKaelMemoryPreferenceUpdateSchema = z.object({
   key: z.enum(WORKER_KAEL_MEMORY_PREFERENCE_KEYS),
   enabled: z.boolean(),

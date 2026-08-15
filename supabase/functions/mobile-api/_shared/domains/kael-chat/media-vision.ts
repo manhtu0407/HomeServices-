@@ -108,7 +108,8 @@ export async function createSignedCaseWorkEvidenceUrls(
   const refs = [...new Set(mediaRefs.map((ref) => ref.trim()).filter(Boolean))];
   if (refs.length === 0) return [];
 
-  const storage = (ctx.supabase as KaelMediaStorage).storage;
+  const storageClient = ctx.privilegedSupabase ?? ctx.supabase;
+  const storage = (storageClient as KaelMediaStorage).storage;
   const bucket = storage?.from(KAEL_CHAT_MEDIA_BUCKET);
   const storagePrefix = `supabase://${KAEL_CHAT_MEDIA_BUCKET}/`;
 

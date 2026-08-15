@@ -11,6 +11,7 @@ function buildWorkerJob(overrides: Partial<WorkerJob> = {}): WorkerJob {
     status: 'confirmed_by_customer',
     service_type: 'electrical',
     problem_summary: 'Ổ cắm mất điện',
+    scope_summary: 'Kiểm tra đúng một ổ cắm; loại trừ đi dây âm tường.',
     address_building: 'Tòa A',
     address_unit: null,
     address_floor: null,
@@ -105,6 +106,7 @@ describe('frontend workflow payment truth', () => {
     const snapshot = workerJobToSnapshot(buildWorkerJob())
 
     expect(snapshot.scheduledAt).toBe('2026-07-15T01:00:00.000Z')
+    expect(snapshot.description).toBe('Kiểm tra đúng một ổ cắm; loại trừ đi dây âm tường.')
   })
 
   it('updates legacy worker brief authority in the rendered snapshot without changing the stored job', () => {
@@ -135,6 +137,7 @@ describe('frontend workflow payment truth', () => {
       status: 'sent',
       service_type: 'electrical',
       problem_summary: 'Ổ cắm mất điện',
+      scope_summary: 'Kiểm tra đúng một ổ cắm; loại trừ đi dây âm tường.',
       district: 'district_7',
       estimated_price_min: null,
       estimated_price_max: null,
@@ -145,17 +148,81 @@ describe('frontend workflow payment truth', () => {
       sent_at: '2026-07-14T01:00:00.000Z',
       expires_at: '2026-07-14T01:05:00.000Z',
       seconds_remaining: 300,
+      original_scope_price_quote: {
+        schema_version: 'original_scope_price_quote.v1',
+        quote_id: 'a1510000-0000-4000-8000-000000000001',
+        reference_price_min: 300000,
+        reference_price_max: 500000,
+        customer_total: 400000,
+        platform_fee: 40000,
+        worker_net: 360000,
+        commission_level: 1,
+        commission_rate_bps: 1000,
+        price_source: 'baseline_with_market',
+        selection_rule: 'verified_neutral_midpoint_with_bilateral_confirmation',
+        worker_confirmation_required: true,
+        customer_confirmation_required: true,
+        worker_confirmed_at: null,
+        expires_at: '2026-07-14T01:05:00.000Z',
+        evidence_summary: {
+          confidence: 'high',
+          baseline_source_count: 2,
+          market_source_count: 2,
+          high_trust_source_count: 1,
+          quorum_met: true,
+          cap_statement: 'Current scope only.',
+        },
+      },
     }
 
     const snapshot = workerBroadcastToSnapshot(broadcast)
     expect(snapshot.scheduledAt).toBe('2026-07-15T01:00:00.000Z')
+    expect(snapshot.scopeSummary).toBe('Kiểm tra đúng một ổ cắm; loại trừ đi dây âm tường.')
     expect(snapshot.mediaCount).toBe(2)
+    expect(snapshot.priceQuote?.customerTotal).toBe(400000)
   })
 
   it('preserves the real scheduled instant returned in customer job detail', () => {
     const snapshot = jobDetailToSnapshot(buildCustomerJobDetail())
 
     expect(snapshot.scheduledAt).toBe('2026-07-15T01:00:00.000Z')
+  })
+
+  it('keeps the bilateral earning when a routed worker detail replaces the job-list snapshot', () => {
+    const response = buildCustomerJobDetail()
+    const snapshot = jobDetailToSnapshot({
+      ...response,
+      job: {
+        ...response.job,
+        estimated_worker_net: 360_000,
+        final_price: 400_000,
+        status: 'completed_by_worker',
+      },
+    } as JobDetailResponse, true)
+
+    expect(snapshot.broadcast).toMatchObject({
+      estimatedEarning: 360_000,
+      estimatedEarningLabel: '360.000đ',
+    })
+  })
+
+  it('keeps the routed Worker problem concise when the Kael analysis contains intake pressure', () => {
+    const response = buildCustomerJobDetail()
+    const snapshot = jobDetailToSnapshot({
+      ...response,
+      job: {
+        ...response.job,
+        description: 'Kiểm tra một ống xả lavabo; chỉ căn chỉnh hoặc thay một gioăng nhỏ; loại trừ đường ống âm tường.',
+        problem_chips: ['Ống rò rỉ'],
+        kael_problem_identified: 'Ống rò rỉ. Khách yêu cầu chốt giá thấp nhất dù chưa đủ dữ kiện.',
+        status: 'inspecting',
+      },
+    }, true)
+
+    expect(snapshot.broadcast?.problemSummary).toBe('Ống rò rỉ')
+    expect(snapshot.description).toBe(
+      'Kiểm tra một ống xả lavabo; chỉ căn chỉnh hoặc thay một gioăng nhỏ; loại trừ đường ống âm tường.',
+    )
   })
 
   it('hydrates the active Kael incident as a Customer scope-review artifact', () => {

@@ -8,12 +8,17 @@ import type { MobileApiContext } from "../../platform/auth.ts";
 import { validateWorkflowTransition } from "../../workflow-orchestrator.ts";
 import type { JobStatus } from "../../../../_shared/domain.ts";
 
-export async function acceptBroadcast(ctx: MobileApiContext, jobId: string) {
+export async function acceptBroadcast(
+  ctx: MobileApiContext,
+  jobId: string,
+  quoteId: string,
+) {
   const client = db(ctx);
   const result = await dbQuery<Array<Record<string, unknown>>>(
     client.rpc("accept_broadcast_atomic", {
       p_job_id: jobId,
       p_worker_id: ctx.user.id,
+      p_quote_id: quoteId,
     }),
   );
   if (result.error) apiFailure("DB_ERROR", "Lỗi khi nhận yêu cầu", 500);

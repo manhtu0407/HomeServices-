@@ -7,6 +7,7 @@ import type {
   KaelPerformanceMode,
   ServiceType,
 } from '@nestscout/shared'
+import type { OriginalScopePriceQuote } from './shared'
 
 export type {
   CustomerKaelConversationCreateInput,
@@ -160,6 +161,7 @@ export type WorkerCandidateView = {
   expires_at: string | null
   customer_decided_at: string | null
   direct_payment_available?: boolean | null
+  original_scope_price_quote: OriginalScopePriceQuote | null
 }
 
 export type WorkerCandidateResponse = {

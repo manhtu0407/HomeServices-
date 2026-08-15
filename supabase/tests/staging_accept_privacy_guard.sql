@@ -12,8 +12,14 @@ declare
   v_eligible_accept_status public.job_status;
   v_job_status_after public.job_status;
   v_broadcast_status_after public.broadcast_status;
+  v_broadcast_id uuid;
   v_worker_available_after boolean;
 begin
+  delete from public.job_worker_candidates
+  where job_id in (
+    '92000000-0000-4000-8000-000000000001',
+    '92000000-0000-4000-8000-000000000002'
+  );
   delete from public.job_broadcasts
   where job_id in (
     '92000000-0000-4000-8000-000000000001',
@@ -148,7 +154,10 @@ begin
     address_unit,
     address_floor,
     address_district,
-    status
+    status,
+    kael_price_min,
+    kael_price_max,
+    kael_estimate_card_v3
   ) values
     (
       '92000000-0000-4000-8000-000000000001',
@@ -161,7 +170,10 @@ begin
       '1',
       '1',
       'q7',
-      'cancelled'
+      'cancelled',
+      null,
+      null,
+      null
     ),
     (
       '92000000-0000-4000-8000-000000000002',
@@ -174,23 +186,40 @@ begin
       '1',
       '1',
       'q7',
-      'broadcasting'
+      'broadcasting',
+      180000,
+      280000,
+      jsonb_build_object(
+        'card', jsonb_build_object(
+          'price_source', 'baseline_with_market',
+          'price_reasoning_receipt', jsonb_build_object(
+            'schema_version', 'price_reasoning_receipt.v1',
+            'receipt_id', 'price_reasoning:92500000-0000-4000-8000-000000000001',
+            'costs', jsonb_build_object('total_min', 180000, 'total_max', 280000),
+            'scenarios', jsonb_build_object(
+              'low', jsonb_build_object('total', 180000),
+              'high', jsonb_build_object('total', 280000)
+            ),
+            'fairness', jsonb_build_object(
+              'price_source', 'baseline_with_market',
+              'confidence', 'medium',
+              'baseline_evidence', null,
+              'market_source_count', 3,
+              'high_trust_source_count', 2,
+              'quorum_met', true,
+              'cap_statement', 'Verified range only.'
+            )
+          )
+        )
+      )
     );
 
-  insert into public.job_broadcasts (
-    id,
-    job_id,
-    worker_id,
-    status,
-    sent_at,
-    broadcast_at,
-    expires_at
-  ) values (
-    '93000000-0000-4000-8000-000000000001',
+  select id
+  into v_broadcast_id
+  from public.activate_job_broadcast_batch_atomic(
     '92000000-0000-4000-8000-000000000002',
-    '91000000-0000-4000-8000-000000000002',
-    'sent',
-    now(),
+    array['91000000-0000-4000-8000-000000000002']::uuid[],
+    '93000000-0000-4000-8000-000000000001',
     now(),
     now() + interval '60 seconds'
   );
@@ -217,7 +246,7 @@ begin
   select status
   into v_broadcast_status_after
   from public.job_broadcasts
-  where id = '93000000-0000-4000-8000-000000000001';
+  where id = v_broadcast_id;
 
   select is_available
   into v_worker_available_after
@@ -256,6 +285,11 @@ begin
     v_broadcast_status_after,
     v_worker_available_after;
 
+  delete from public.job_worker_candidates
+  where job_id in (
+    '92000000-0000-4000-8000-000000000001',
+    '92000000-0000-4000-8000-000000000002'
+  );
   delete from public.job_broadcasts
   where job_id in (
     '92000000-0000-4000-8000-000000000001',
@@ -287,6 +321,11 @@ begin
   );
 exception
   when others then
+    delete from public.job_worker_candidates
+    where job_id in (
+      '92000000-0000-4000-8000-000000000001',
+      '92000000-0000-4000-8000-000000000002'
+    );
     delete from public.job_broadcasts
     where job_id in (
       '92000000-0000-4000-8000-000000000001',

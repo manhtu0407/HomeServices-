@@ -32,6 +32,7 @@ export type EdgeJobDetailResponse = {
     kael_worker_brief_guidance: Record<string, unknown> | null;
     kael_progress: EdgeKaelChatProgressResponse["progress"];
     final_price: number | null;
+    estimated_worker_net: number | null;
     payment_rail_available: boolean;
     payment_rail_provider: "platform_bank_manual" | "sepay_vietqr" | null;
     payment_status:

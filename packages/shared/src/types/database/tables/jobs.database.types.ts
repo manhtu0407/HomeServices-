@@ -44,6 +44,7 @@ export type JobsTables = {
           expires_at: string | null
           id: string
           job_id: string
+          original_scope_price_quote: Json | null
           responded_at: string | null
           sent_at: string | null
           status: Database["public"]["Enums"]["broadcast_status"]
@@ -55,6 +56,7 @@ export type JobsTables = {
           expires_at?: string | null
           id?: string
           job_id: string
+          original_scope_price_quote?: Json | null
           responded_at?: string | null
           sent_at?: string | null
           status?: Database["public"]["Enums"]["broadcast_status"]
@@ -66,6 +68,7 @@ export type JobsTables = {
           expires_at?: string | null
           id?: string
           job_id?: string
+          original_scope_price_quote?: Json | null
           responded_at?: string | null
           sent_at?: string | null
           status?: Database["public"]["Enums"]["broadcast_status"]
@@ -531,6 +534,7 @@ export type JobsTables = {
           expires_at: string | null
           id: string
           job_id: string
+          original_scope_price_quote: Json | null
           proposed_at: string
           status: string
           updated_at: string
@@ -543,6 +547,7 @@ export type JobsTables = {
           expires_at?: string | null
           id?: string
           job_id: string
+          original_scope_price_quote?: Json | null
           proposed_at?: string
           status?: string
           updated_at?: string
@@ -555,6 +560,7 @@ export type JobsTables = {
           expires_at?: string | null
           id?: string
           job_id?: string
+          original_scope_price_quote?: Json | null
           proposed_at?: string
           status?: string
           updated_at?: string

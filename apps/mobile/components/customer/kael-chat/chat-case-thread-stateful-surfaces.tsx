@@ -109,6 +109,7 @@ export function AgenticCaseThreadPanel({
   const [authorizingApartmentAccess, setAuthorizingApartmentAccess] = useState(false)
   const [paymentBusyAction, setPaymentBusyAction] = useState<PaymentBusyAction>(null)
   const [refreshingPayment, setRefreshingPayment] = useState(false)
+  const [paymentRefreshResult, setPaymentRefreshResult] = useState<'failed' | 'success' | null>(null)
   const backendPhase = toWorkflowPhase(deal.backendStatus ?? deal.status)
   const phase = deal.scopeReview && (backendPhase === 'inspecting' || backendPhase === 'repairing')
     ? 'scope_change_reviewing'
@@ -276,12 +277,17 @@ export function AgenticCaseThreadPanel({
         }}
         onRefreshPayment={() => {
           if (refreshingPayment) return
+          setPaymentRefreshResult(null)
           setRefreshingPayment(true)
-          void onRefreshPayment().finally(() => setRefreshingPayment(false))
+          void onRefreshPayment()
+            .then((refreshed) => setPaymentRefreshResult(refreshed ? 'success' : 'failed'))
+            .catch(() => setPaymentRefreshResult('failed'))
+            .finally(() => setRefreshingPayment(false))
         }}
         paymentBusy={paymentBusy}
         paymentBusyAction={paymentBusyAction}
         paymentRailProvider={paymentRailProvider}
+        paymentRefreshResult={paymentRefreshResult}
         refreshingPayment={refreshingPayment}
         reduceMotion={reduceMotion}
         reviewControls={phase === 'paid' ? (

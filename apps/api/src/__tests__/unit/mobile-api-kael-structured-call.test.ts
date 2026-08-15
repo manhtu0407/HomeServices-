@@ -562,6 +562,103 @@ describe('mobile-api Kael structured output health', () => {
     expect(fetchSpy).toHaveBeenCalledTimes(2)
   })
 
+  it('inherits a confirmed normal access fact when the scope report does not contradict it', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => anthropicResponse(JSON.stringify({
+      problem_slug: 'replace_cabinet_hinges',
+      complexity_assessment: 'small',
+      confidence: 0.92,
+      confirmed_facts: [
+        'Hai bản lề kim loại đều nứt tại khớp.',
+        'Gỗ MDF, cánh, khung và lỗ vít còn nguyên vẹn.',
+      ],
+      unknowns: ['Điều kiện tiếp cận chưa được lặp lại trong báo cáo hiện trường.'],
+      pricing_factors: {
+        quantity: 2,
+        access_condition: 'unknown',
+        secondary_damage: 'none_confirmed',
+        material_tier: 'unknown',
+      },
+      problem_summary: 'Thay đúng hai bản lề nứt và căn chỉnh lại một cánh tủ.',
+      advisory: null,
+    }))))
+
+    const estimate = await computeScopeChangeEstimate({
+      serviceType: 'handyman',
+      district: 'binh_thanh',
+      originalDescription: [
+        'Chỉ một cánh tủ với đúng hai bản lề âm kiểu chén.',
+        'Tiếp cận ngang hông bình thường, đủ chỗ thao tác.',
+      ].join(' '),
+      originalProblemSummary: 'Siết và căn chỉnh hai bản lề.',
+      originalComplexity: 'small',
+      originalPriceMin: 140_000,
+      originalPriceMax: 375_000,
+      workerReportedDescription: [
+        'Thay đúng hai bản lề âm kiểu chén tương đương.',
+        'Không vá gỗ, không khoan mới và không sửa cánh hoặc khung.',
+      ].join(' '),
+      workerReason: [
+        'Hai khớp bản lề kim loại đều nứt.',
+        'Gỗ MDF, cánh, khung và lỗ vít vẫn nguyên vẹn.',
+      ].join(' '),
+    }, {
+      anthropicApiKey: 'anthropic-test',
+    }, allowKaelSpendForTest('worker-1'))
+
+    expect(estimate).toMatchObject({
+      fallback_used: false,
+      problem_slug: 'replace_cabinet_hinges',
+      pricing_factors: {
+        access_condition: 'normal',
+        material_tier: 'standard',
+      },
+    })
+    expect(estimate).not.toMatchObject({
+      unknowns: expect.arrayContaining([
+        expect.stringMatching(/tiếp cận/i),
+      ]),
+    })
+  })
+
+  it('does not inherit old access conditions after the worker reports a restricted site', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => anthropicResponse(JSON.stringify({
+      problem_slug: 'replace_cabinet_hinges',
+      complexity_assessment: 'small',
+      confidence: 0.82,
+      confirmed_facts: ['Hai bản lề kim loại đều nứt tại khớp.'],
+      unknowns: ['Cần xác nhận cách tiếp cận an toàn trong khe tủ hẹp.'],
+      pricing_factors: {
+        quantity: 2,
+        access_condition: 'unknown',
+        secondary_damage: 'none_confirmed',
+        material_tier: 'standard',
+      },
+      problem_summary: 'Thay hai bản lề trong vị trí thao tác hạn chế.',
+      advisory: null,
+    }))))
+
+    const estimate = await computeScopeChangeEstimate({
+      serviceType: 'handyman',
+      district: 'binh_thanh',
+      originalDescription: 'Tiếp cận ngang hông bình thường, đủ chỗ thao tác.',
+      originalProblemSummary: 'Siết và căn chỉnh hai bản lề.',
+      originalComplexity: 'small',
+      originalPriceMin: 140_000,
+      originalPriceMax: 375_000,
+      workerReportedDescription: 'Thay hai bản lề; không gian thao tác hiện rất chật và bị che.',
+      workerReason: 'Tủ bên cạnh làm hạn chế tiếp cận thực tế.',
+    }, {
+      anthropicApiKey: 'anthropic-test',
+    }, allowKaelSpendForTest('worker-1'))
+
+    expect(estimate).toMatchObject({
+      pricing_factors: { access_condition: 'unknown' },
+      unknowns: expect.arrayContaining([
+        expect.stringMatching(/tiếp cận/i),
+      ]),
+    })
+  })
+
   it('persists scope-change attempts exactly once across failure, direct, and incident paths', () => {
     const requestSource = readFileSync(
       new URL('../../../../../supabase/functions/mobile-api/_shared/domains/job/scope-change/request.ts', import.meta.url),

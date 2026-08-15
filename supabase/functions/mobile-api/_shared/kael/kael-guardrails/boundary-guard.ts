@@ -296,6 +296,34 @@ function isSupportedWaterPumpMention(normalized: string): boolean {
   );
 }
 
+function keywordAppearsOnlyInExcludedScope(
+  normalized: string,
+  keyword: string,
+): boolean {
+  const keywordPattern = new RegExp(
+    `(?:^|[^a-z0-9])${escapeRegExp(keyword)}(?:[^a-z0-9]|$)`,
+    "g",
+  );
+  let found = false;
+  for (const match of normalized.matchAll(keywordPattern)) {
+    found = true;
+    const keywordStart = match.index ?? 0;
+    const clauseStart = Math.max(
+      normalized.lastIndexOf(".", keywordStart),
+      normalized.lastIndexOf(";", keywordStart),
+      normalized.lastIndexOf("\n", keywordStart),
+    ) + 1;
+    const prefix = normalized.slice(clauseStart, keywordStart);
+    const marker = /\b(?:loai tru|khong bao gom|khong gom|khong yeu cau|excluding|excluded|not included)\b/g;
+    const markers = [...prefix.matchAll(marker)];
+    const lastMarker = markers.at(-1);
+    if (!lastMarker) return false;
+    const afterMarker = prefix.slice((lastMarker.index ?? 0) + lastMarker[0].length);
+    if (/\b(?:nhung|tuy nhien|but|however|instead|chi)\b/.test(afterMarker)) return false;
+  }
+  return found;
+}
+
 export function detectPromptInjection(
   text: string,
 ): { detected: boolean; signals: string[] } {
@@ -317,6 +345,9 @@ export function detectOutOfScope(
   const signals: string[] = [];
   for (const keyword of OUT_OF_SCOPE_KEYWORDS) {
     if (keyword === "may bom" && isSupportedWaterPumpMention(normalized)) {
+      continue;
+    }
+    if (selectedService && keywordAppearsOnlyInExcludedScope(normalized, keyword)) {
       continue;
     }
     if (containsKeyword(normalized, keyword)) {
@@ -465,7 +496,7 @@ export function evaluateMessageBoundary(
 
   const outOfScope = detectOutOfScope(
     trimmed,
-    undefined,
+    selectedService === "electrical" ? undefined : selectedService ?? undefined,
   );
   if (outOfScope.detected) {
     return {

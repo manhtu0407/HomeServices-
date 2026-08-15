@@ -9,7 +9,13 @@ jest.mock('@react-native-async-storage/async-storage', () => ({
 import AsyncStorage from '@react-native-async-storage/async-storage'
 
 import { entryAccessCopy } from '../../components/auth/entry-access/copy'
-import { APP_LANGUAGE_STORAGE_KEY, getAppLanguageSnapshot, hydrateAppLanguage, setAppLanguage } from '../app-language'
+import {
+  APP_LANGUAGE_STORAGE_KEY,
+  getAppLanguageSnapshot,
+  hydrateAppLanguage,
+  localizedStatusLabel,
+  setAppLanguage,
+} from '../app-language'
 
 const mockedStorage = AsyncStorage as unknown as {
   getItem: jest.Mock<Promise<string | null>, [string]>
@@ -97,5 +103,23 @@ describe('app language storage boundary', () => {
       [APP_LANGUAGE_STORAGE_KEY, 'vi'],
     ])
     expect(getAppLanguageSnapshot()).toBe('vi')
+  })
+})
+
+describe('service-aware work status copy', () => {
+  it.each([
+    ['cleaning', 'Đang vệ sinh', 'Cleaning in progress'],
+    ['electrical', 'Đang sửa điện', 'Electrical work in progress'],
+    ['handyman', 'Đang thực hiện', 'Work in progress'],
+    ['hvac', 'Đang xử lý điều hòa', 'Air care in progress'],
+    ['plumbing', 'Đang sửa nước', 'Plumbing work in progress'],
+    ['upholstery', 'Đang vệ sinh nội thất', 'Upholstery care in progress'],
+  ] as const)('uses %s-specific copy for the shared repairing state', (serviceType, vi, en) => {
+    expect(localizedStatusLabel('repairing', 'vi', serviceType)).toBe(vi)
+    expect(localizedStatusLabel('repairing', 'en', serviceType)).toBe(en)
+  })
+
+  it('keeps the generic status copy when no service is known', () => {
+    expect(localizedStatusLabel('repairing', 'vi')).toBe('Đang sửa')
   })
 })

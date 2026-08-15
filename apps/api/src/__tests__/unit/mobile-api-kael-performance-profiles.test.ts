@@ -126,7 +126,7 @@ describe('Kael six-service performance profiles', () => {
 
       expect(prompt).not.toContain('Electrical minimum-slot policy:')
       expect(prompt).toContain('Every selected-profile quote_driver must have a grounded value')
-      expect(kaelIntakeDiagnosisPromptVersion('electrical')).toBe('2026-07-16.v2-base-safety')
+      expect(kaelIntakeDiagnosisPromptVersion('electrical')).toBe('2026-08-15.v3-base-safety')
     } finally {
       vi.unstubAllGlobals()
     }

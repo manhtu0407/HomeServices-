@@ -21,6 +21,7 @@ describe('chat-confirm', () => {
           diagnosis_scope: {
             ...quoteReadyPlumbingDiagnosisScope(),
             confidence: 0.4,
+            scope_summary: 'Verified plumbing scope with explicit facts and exclusions. '.repeat(12),
           },
           scheduled_at: futureSchedule,
         },

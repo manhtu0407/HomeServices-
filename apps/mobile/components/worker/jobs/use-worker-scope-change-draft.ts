@@ -111,13 +111,12 @@ export function useWorkerV5ScopeChangeDraft(
   routeJobId?: string | null,
 ) {
   const resolvedOwnerKey = routeJobId?.trim() || deal?.broadcast?.jobId || deal?.id || null
-  const lastOwnerKeyRef = useRef<string | null>(resolvedOwnerKey)
-  if (resolvedOwnerKey) lastOwnerKeyRef.current = resolvedOwnerKey
-  const ownerKey = resolvedOwnerKey ?? lastOwnerKeyRef.current ?? 'no-active-job'
+  const initialOwnerKey = resolvedOwnerKey ?? 'no-active-job'
   const [stored, setStored] = useState<WorkerV5StoredScopeChangeDraftState>(() => {
-    const owner = { ownerKey }
-    return { owner, state: createWorkerV5ScopeChangeDraftState(ownerKey, deal) }
+    const owner = { ownerKey: initialOwnerKey }
+    return { owner, state: createWorkerV5ScopeChangeDraftState(initialOwnerKey, deal) }
   })
+  const ownerKey = resolvedOwnerKey ?? stored.owner.ownerKey
   let visibleStored = stored
   if (stored.owner.ownerKey !== ownerKey) {
     visibleStored = {
@@ -127,7 +126,7 @@ export function useWorkerV5ScopeChangeDraft(
     setStored(visibleStored)
   }
   const owner = visibleStored.owner
-  const activeOwnerRef = useRef(owner)
+  const activeOwnerRef = useRef<WorkerV5ScopeChangeDraftOwner | null>(null)
 
   useLayoutEffect(() => {
     activeOwnerRef.current = owner

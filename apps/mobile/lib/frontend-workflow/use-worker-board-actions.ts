@@ -308,7 +308,9 @@ export function useWorkerBoardActions({
   const workerAcceptBroadcast = useCallback(async (jobIdOverride?: string) => {
     const jobId = jobIdOverride ?? getRemoteJobId(stateRef.current)
     if (!jobId) return setRemoteError('Không có lời mời việc để nhận')
-    const accepted = await workerService.acceptBroadcast(jobId)
+    const quoteId = stateRef.current.deal?.broadcast?.priceQuote?.quoteId
+    if (!quoteId) return setRemoteError('Báo giá chính xác chưa sẵn sàng. Vui lòng tải lại lời mời việc.')
+    const accepted = await workerService.acceptBroadcast(jobId, quoteId)
     if (!accepted.success) {
       if (isStaleBroadcastError(accepted.code)) dispatch({ type: 'mark_remote_broadcast_expired' })
       return setRemoteError(accepted.error)

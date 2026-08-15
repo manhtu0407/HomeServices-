@@ -559,8 +559,11 @@ export const workerService = {
     return api.get<EarningsResponse>(`/workers/me/earnings?${params.toString()}`)
   },
 
-  acceptBroadcast(jobId: string) {
-    return api.post<AcceptBroadcastResponse>(`/jobs/${encodeURIComponent(jobId)}/accept`)
+  acceptBroadcast(jobId: string, quoteId: string) {
+    return api.post<AcceptBroadcastResponse>(
+      `/jobs/${encodeURIComponent(jobId)}/accept`,
+      { quote_id: quoteId },
+    )
   },
 
   declineBroadcast(jobId: string) {

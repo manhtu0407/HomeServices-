@@ -145,6 +145,7 @@ function isOptionalWorkerBroadcast(value: unknown): boolean {
     isWorkerBroadcastStatus(value.status) &&
     isSupportedServiceType(value.serviceType) &&
     isBoundedString(value.problemSummary, 2_000) &&
+    (value.scopeSummary === undefined || isNonEmptyBoundedString(value.scopeSummary, 2_000)) &&
     isBoundedString(value.generalArea, 500) &&
     isStringArray(value.prebrief, 20, 1_000) &&
     typeof value.fullAddressVisible === 'boolean' &&
@@ -158,7 +159,43 @@ function isOptionalWorkerBroadcast(value: unknown): boolean {
     (value.estimatedPriceLabel === undefined || isBoundedString(value.estimatedPriceLabel, 500)) &&
     isOptionalSafeMoney(value.estimatedEarning) &&
     (value.estimatedEarningLabel === undefined || isBoundedString(value.estimatedEarningLabel, 500)) &&
-    (value.safe_metadata === undefined || value.safe_metadata === null || isRecord(value.safe_metadata))
+    (value.safe_metadata === undefined || value.safe_metadata === null || isRecord(value.safe_metadata)) &&
+    isOptionalOriginalScopePriceQuote(value.priceQuote)
+}
+
+function isOptionalOriginalScopePriceQuote(value: unknown): boolean {
+  if (value === undefined) return true
+  if (!isRecord(value) || !isRecord(value.evidenceSummary)) return false
+  const referencePriceMin = value.referencePriceMin
+  const referencePriceMax = value.referencePriceMax
+  const customerTotal = value.customerTotal
+  const platformFee = value.platformFee
+  const workerNet = value.workerNet
+  const commissionRateBps = value.commissionRateBps
+  return value.schemaVersion === 'original_scope_price_quote.v1' &&
+    isNonEmptyBoundedString(value.quoteId, 200) &&
+    isSafeMoney(referencePriceMin) &&
+    isSafeMoney(referencePriceMax) &&
+    isSafeMoney(customerTotal) &&
+    isNonNegativeSafeMoney(platformFee) &&
+    isSafeMoney(workerNet) &&
+    referencePriceMin <= customerTotal && customerTotal <= referencePriceMax &&
+    platformFee + workerNet === customerTotal &&
+    typeof commissionRateBps === 'number' && Number.isSafeInteger(commissionRateBps) &&
+    commissionRateBps >= 0 && commissionRateBps <= 1_500 &&
+    value.selectionRule === 'verified_neutral_midpoint_with_bilateral_confirmation' &&
+    value.workerConfirmationRequired === true &&
+    value.customerConfirmationRequired === true &&
+    (value.workerConfirmedAt === null || isNonEmptyBoundedString(value.workerConfirmedAt, 100)) &&
+    isNonEmptyBoundedString(value.expiresAt, 100) &&
+    (value.evidenceSummary.confidence === 'low' ||
+      value.evidenceSummary.confidence === 'medium' ||
+      value.evidenceSummary.confidence === 'high') &&
+    value.evidenceSummary.quorumMet === true
+}
+
+function isNonNegativeSafeMoney(value: unknown): value is number {
+  return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0
 }
 
 function isNullableKaelProgress(value: unknown): boolean {
@@ -358,5 +395,6 @@ export function isValidRemoteBroadcastSnapshot(value: unknown): value is LocalRe
     )) &&
     isOptionalNullableString(broadcast.scheduledAt) &&
     (broadcast.estimatedPriceLabel === undefined || typeof broadcast.estimatedPriceLabel === 'string') &&
-    (broadcast.estimatedEarningLabel === undefined || typeof broadcast.estimatedEarningLabel === 'string')
+    (broadcast.estimatedEarningLabel === undefined || typeof broadcast.estimatedEarningLabel === 'string') &&
+    isOptionalOriginalScopePriceQuote(broadcast.priceQuote)
 }

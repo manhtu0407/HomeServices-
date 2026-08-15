@@ -26,6 +26,7 @@ import {
 } from "../../_shared/harness/reliability.ts";
 import { apiFailure, ApiFailure } from "./platform/api-failure.ts";
 import { dispatchRoute } from "./http/dispatch/index.ts";
+import { delegateDomainIdempotency } from "./http/domain-idempotency.ts";
 import {
   withHarnessStreamLifecycle,
   type HarnessEventStreamTerminal,
@@ -257,6 +258,7 @@ async function reserveRequestIdempotency(state: MobileApiRequestState): Promise<
       400,
     );
   }
+  if (await delegateDomainIdempotency(route.kind, trace)) return;
   state.idempotencyClient = ctx.privilegedSupabase as ReliabilityClient;
   const reservation = await reserveHarnessIdempotency(state.idempotencyClient, {
     environment: ctx.environment ?? "local",

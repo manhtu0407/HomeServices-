@@ -21,17 +21,28 @@ export {
 } from "./output-support.ts";
 export { buildScopeChangeOutputs } from "./scope-change-output.ts";
 import { customerVisibleKaelProblemSummary } from "../language/user-facing-copy.ts";
+import {
+  serviceReceiptCopy,
+} from "../language/service-receipt-copy.ts";
+import {
+  buildPriceReasoningCosts,
+  buildPriceReasoningScope,
+} from "./price-reasoning-components.ts";
 import type { BaselinePriceEvidenceReceipt } from "../evidence/baseline-price-evidence.ts";
 import {
   complexityLabel,
   customerContextClauses,
   customerDeclaredScope,
   customerDeclaredUnknowns,
+  customerResolvesHingeDamage,
   hasUnconfirmedReplacement,
+  hasExplicitReplacementExclusion,
+  isBookingMetadataClause,
   isCustomerInstruction,
   isDeclaredScopeClause,
   isDeclaredUnknownClause,
   mentionsVisualEvidence,
+  mentionsHingeSubstrateDamage,
   normalizeCustomerReasoningClause,
   publicReasoningText,
   publicReceiptTextList,
@@ -241,16 +252,18 @@ export function buildEstimateCardOutput(input: {
   const priceSource = needsInspection
     ? "inspection_required" as const
     : input.priceSource ?? "baseline_with_market";
+  const problemSummary = sanitizeKaelText(
+    customerVisibleKaelProblemSummary(input.estimate.problem_summary, language),
+    200,
+  );
   const analysisReceipt = buildEstimateAnalysisReceipt(
     input.analysisEvidence,
     input.marketEvidence,
     input.visionAnalysis,
     language,
     input.previousAnalysisReceipt,
-  );
-  const problemSummary = sanitizeKaelText(
-    customerVisibleKaelProblemSummary(input.estimate.problem_summary, language),
-    200,
+    input.customerScopeContext,
+    problemSummary,
   );
   const card: EstimateCardV3 = {
     service_type: input.estimate.service_type,
@@ -295,6 +308,7 @@ export function buildEstimateCardOutput(input: {
       priceMin,
       priceSource,
       problemSummary,
+      serviceType: input.estimate.service_type,
     }),
     advisory: needsInspection
       ? sanitizeKaelText(
@@ -438,6 +452,8 @@ function buildEstimateAnalysisReceipt(
   } | undefined,
   language: "vi" | "en",
   previousAnalysisReceipt?: unknown,
+  customerScopeContext?: string,
+  fallbackProblemSummary?: string,
 ): EstimateAnalysisReceipt | undefined {
   if (!evidence && !market && !vision) return undefined;
   const findings = buildReceiptEvidenceFindings(
@@ -480,7 +496,45 @@ function buildEstimateAnalysisReceipt(
       }
       : {}),
   };
-  return reusePreviousAnalyzedEvidence(receipt, previousAnalysisReceipt);
+  return reconcileAnalysisReceiptWithCustomerContext(
+    reusePreviousAnalyzedEvidence(receipt, previousAnalysisReceipt),
+    customerScopeContext,
+    fallbackProblemSummary,
+    language,
+  );
+}
+
+function reconcileAnalysisReceiptWithCustomerContext(
+  receipt: EstimateAnalysisReceipt,
+  customerScopeContext: string | undefined,
+  fallbackProblemSummary: string | undefined,
+  language: "vi" | "en",
+): EstimateAnalysisReceipt {
+  if (!receipt.problem || !customerScopeContext) return receipt;
+  const replacementExcluded = hasExplicitReplacementExclusion(customerScopeContext, language);
+  const damageResolved = customerResolvesHingeDamage(customerScopeContext);
+  const problem = receipt.problem;
+  return {
+    ...receipt,
+    problem: {
+      ...problem,
+      summary: damageResolved && mentionsHingeSubstrateDamage(problem.summary)
+        ? fallbackProblemSummary ?? problem.summary
+        : problem.summary,
+      remaining_uncertainty:
+        damageResolved && mentionsHingeSubstrateDamage(problem.remaining_uncertainty)
+          ? null
+          : problem.remaining_uncertainty,
+      recommended_scope: replacementExcluded
+        ? withoutUnconfirmedReplacement(problem.recommended_scope, language) ?? null
+        : problem.recommended_scope,
+      severity_indicators: damageResolved
+        ? problem.severity_indicators.filter((indicator) =>
+          !mentionsHingeSubstrateDamage(indicator)
+        )
+        : problem.severity_indicators,
+    },
+  };
 }
 
 function buildPriceReasoningReceipt(input: {
@@ -495,13 +549,20 @@ function buildPriceReasoningReceipt(input: {
   priceMax: number;
   priceSource: EstimatePriceSource;
   problemSummary: string;
+  serviceType: ServiceType;
 }): PriceReasoningReceipt {
   const isVietnamese = input.language === "vi";
+  const serviceCopy = serviceReceiptCopy(input.serviceType, input.language);
   const problem = input.analysisReceipt?.problem;
   const evidence = input.analysisReceipt?.evidence;
   const customerScopeContext = input.customerScopeContext ?? input.problemSummary;
   const declaredScope = customerDeclaredScope(customerScopeContext, input.language);
-  const replacementUnconfirmed = hasUnconfirmedReplacement(customerScopeContext);
+  const replacementExcluded = serviceCopy.replacementPartsExplanation !== null &&
+    hasExplicitReplacementExclusion(customerScopeContext, input.language);
+  const replacementUnconfirmed = !replacementExcluded &&
+    serviceCopy.replacementPartsExplanation !== null &&
+    hasUnconfirmedReplacement(customerScopeContext);
+  const replacementOutsideScope = replacementExcluded || replacementUnconfirmed;
   const noVisualEvidence = evidence?.analysis_status === "not_provided" ||
     evidence?.skipped === true || evidence?.photo_count === 0;
   const unknowns = publicReceiptTextList(
@@ -511,11 +572,12 @@ function buildPriceReasoningReceipt(input: {
         ? isVietnamese
           ? "Nhu cầu thay linh kiện chưa được xác nhận; thợ phải đối chiếu hiện trạng trước khi gửi đề xuất đổi phạm vi."
           : "The need for replacement parts is unconfirmed and must be checked before a scope-change proposal."
+        : customerResolvesHingeDamage(customerScopeContext) &&
+            mentionsHingeSubstrateDamage(problem?.remaining_uncertainty)
+        ? undefined
         : problem?.remaining_uncertainty,
       noVisualEvidence && !mentionsVisualEvidence(problem?.remaining_uncertainty)
-        ? isVietnamese
-          ? "Chưa có ảnh hoặc bằng chứng trực quan để xác nhận nguyên nhân và phần bị che khuất."
-          : "No image or visual evidence is available to verify the cause or hidden damage."
+        ? serviceCopy.noVisualUnknown
         : undefined,
       input.needsInspection
         ? isVietnamese
@@ -524,8 +586,8 @@ function buildPriceReasoningReceipt(input: {
         : undefined,
     ],
     isVietnamese
-      ? "Phạm vi thực tế vẫn cần được đối chiếu trước khi thực hiện."
-      : "The actual scope still needs to be verified before work begins.",
+      ? "Không còn điểm chưa xác định nào làm thay đổi phạm vi báo giá hiện tại; phát sinh mới phải được đề xuất riêng."
+      : "No remaining unknown changes the current quoted scope; any new finding requires a separate proposal.",
     4,
     280,
   );
@@ -548,9 +610,7 @@ function buildPriceReasoningReceipt(input: {
   }
   if (possibleCauses.length === 0) {
     possibleCauses.push({
-      statement: isVietnamese
-        ? "Nguyên nhân cụ thể chưa thể khẳng định chỉ từ thông tin hiện có."
-        : "The specific cause cannot yet be confirmed from the available information alone.",
+      statement: serviceCopy.possibleCondition,
       basis: ["customer_report"],
       confidence: "low",
     });
@@ -558,12 +618,10 @@ function buildPriceReasoningReceipt(input: {
   const included = publicReceiptTextList(
     [
       ...declaredScope.included,
-      replacementUnconfirmed
+      replacementOutsideScope
         ? withoutUnconfirmedReplacement(problem?.recommended_scope, input.language)
         : problem?.recommended_scope,
-      isVietnamese
-        ? `Gói hiện tại được tính theo mức độ phạm vi ${complexityLabel(input.complexity, input.language)}.`
-        : `The current package is priced for ${complexityLabel(input.complexity, input.language)} complexity.`,
+      serviceCopy.includedComplexity(complexityLabel(input.complexity, input.language)),
     ],
     isVietnamese
       ? "Kiểm tra và xử lý phần việc đã được mô tả trong yêu cầu hiện có."
@@ -571,7 +629,7 @@ function buildPriceReasoningReceipt(input: {
     3,
     320,
   );
-  const scope = priceReasoningScope(isVietnamese, replacementUnconfirmed);
+  const scope = buildPriceReasoningScope(isVietnamese, serviceCopy, replacementUnconfirmed);
   const excluded = publicReceiptTextList(
     [...declaredScope.excluded, ...scope.excluded],
     scope.excluded[0],
@@ -591,7 +649,7 @@ function buildPriceReasoningReceipt(input: {
       conditional: scope.conditional,
       excluded,
     },
-    costs: priceReasoningCosts(input, isVietnamese),
+    costs: buildPriceReasoningCosts(input, isVietnamese, serviceCopy, replacementExcluded),
     scenarios: {
       low: {
         total: input.priceMin,
@@ -623,106 +681,6 @@ function buildPriceReasoningReceipt(input: {
   };
 }
 
-function priceReasoningCosts(
-  input: {
-    priceMin: number;
-    priceMax: number;
-  },
-  isVietnamese: boolean,
-): PriceReasoningReceipt["costs"] {
-  return {
-    currency: "VND",
-    total_min: input.priceMin,
-    total_max: input.priceMax,
-    reconciliation: "package_total",
-    components: [
-      {
-        kind: "service_package",
-        status: "priced",
-        amount_min: input.priceMin,
-        amount_max: input.priceMax,
-        explanation: isVietnamese
-          ? "Khoảng giá đã chốt cho gói công việc trong phạm vi hiện có."
-          : "The confirmed price range for the current work package.",
-      },
-      {
-        kind: "labor",
-        status: "included_unitemized",
-        amount_min: null,
-        amount_max: null,
-        explanation: isVietnamese
-          ? "Tiền công được thể hiện trong gói, nhưng hệ thống không có số tách riêng."
-          : "Labor is represented in the package, but no separate amount is available.",
-      },
-      {
-        kind: "travel",
-        status: "undetermined",
-        amount_min: null,
-        amount_max: null,
-        explanation: isVietnamese
-          ? "Không có dữ liệu tách riêng cho di chuyển nên Kael không suy diễn thành một khoản giá."
-          : "There is no separate travel amount, so Kael does not infer one.",
-      },
-      {
-        kind: "materials",
-        status: "conditional_unpriced",
-        amount_min: null,
-        amount_max: null,
-        explanation: isVietnamese
-          ? "Vật tư chỉ được báo riêng nếu thực tế cần và khách xác nhận phạm vi mới."
-          : "Materials are quoted separately only if needed and the customer approves the new scope.",
-      },
-      {
-        kind: "replacement_parts",
-        status: "conditional_unpriced",
-        amount_min: null,
-        amount_max: null,
-        explanation: isVietnamese
-          ? "Linh kiện thay thế chưa được định giá khi chưa xác nhận hiện trạng."
-          : "Replacement parts are not priced before the condition is confirmed.",
-      },
-    ],
-  };
-}
-
-function priceReasoningScope(isVietnamese: boolean, replacementUnconfirmed = false) {
-  return {
-    conditional: [
-      ...(replacementUnconfirmed
-        ? [
-          isVietnamese
-            ? "Chỉ thay linh kiện sau khi thợ gửi đề xuất đổi phạm vi và khách xác nhận."
-            : "Replacement parts require a worker scope-change proposal and customer approval.",
-        ]
-        : []),
-      isVietnamese
-        ? "Nếu phát hiện hạng mục ngoài phạm vi, thợ phải gửi đề xuất đổi phạm vi để khách xác nhận trước khi làm."
-        : "If work outside the scope is found, the worker must submit a scope-change proposal for customer approval first.",
-    ],
-    excluded: [
-      isVietnamese
-        ? "Chưa có số tách riêng cho linh kiện thay thế, vật tư hoặc hạng mục ngoài mô tả."
-        : "No separate amount is quoted for replacement parts, materials, or work outside the description.",
-    ],
-    lowConditions: [
-      isVietnamese
-        ? "Phạm vi thực tế khớp với mô tả hiện có."
-        : "The actual scope matches the current description.",
-      isVietnamese
-        ? "Không phát hiện hạng mục ngoài phạm vi cần khách duyệt."
-        : "No out-of-scope work requiring customer approval is found.",
-    ],
-    highConditions: [
-      isVietnamese
-        ? "Cần nhiều thao tác hơn nhưng vẫn nằm trong phạm vi đã định giá."
-        : "More work is needed, but it remains within the priced scope.",
-      isVietnamese
-        ? "Không tự cộng linh kiện hoặc hạng mục ngoài phạm vi chưa được khách xác nhận."
-        : "Unapproved parts or out-of-scope work are not added automatically.",
-    ],
-  };
-}
-
 function customerConfirmedFacts(
   value: string,
   language: "vi" | "en",
@@ -734,6 +692,7 @@ function customerConfirmedFacts(
     ).trim())
     .filter((clause) =>
       clause.length > 0 &&
+      !isBookingMetadataClause(clause) &&
       !isCustomerInstruction(clause) &&
       !isDeclaredScopeClause(clause) &&
       !isDeclaredUnknownClause(clause)
