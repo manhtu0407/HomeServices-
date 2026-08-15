@@ -2,8 +2,8 @@
   "version": "1.0.0",
   "source": {
     "migrationRoot": "supabase/migrations",
-    "migrationCount": 279,
-    "migrationDigest": "09ff5c89bf55738cc1cdb88f78f906d6b8bc79c219d10079dd91f616f55a9bfe"
+    "migrationCount": 280,
+    "migrationDigest": "f207feb66081afda0adb6508dc9df8dad503c309fd3f56df7e5995e49f9798f6"
   },
   "actors": [
     "anonymous",
@@ -3291,7 +3291,6 @@
       "securityDefiner": false,
       "fixedSearchPath": true,
       "executeRoles": [
-        "authenticated",
         "service_role"
       ]
     },

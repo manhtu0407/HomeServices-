@@ -5,8 +5,8 @@
     "immutableThroughVersion": "20260805090000",
     "sha256": "7d4ac8a8227452e357caa11a21ece9099c80112712dba9a250114d0761a90275"
   },
-  "migrationCount": 279,
-  "migrationsSha256": "db73b10ed4422176904ffcc402b308002ba8fc3cc2b9e73acfb173bc3d58f6ee",
+  "migrationCount": 280,
+  "migrationsSha256": "5cf73a18affdb58334b1a6cdec4dfeed2ec8cb8070af6fc6d76a4d76a6f8351d",
   "databaseTypes": {
     "file": "packages/shared/src/types/database",
     "sha256": "e4dec1f59753a94e2253e71a6961d10103f8061993b4ccd51f4341b4c9a70638"
@@ -1964,6 +1964,13 @@
       "file": "supabase/migrations/20260815213000_preserve_broadcast_membership_privacy.sql",
       "sha256": "861463fe8cadb338e9a090adbdacef83a9c6fb0911830d7d5ca228433c9206c6",
       "bytes": 1599
+    },
+    {
+      "version": "20260815214500",
+      "name": "restore_customer_aggregate_service_boundary",
+      "file": "supabase/migrations/20260815214500_restore_customer_aggregate_service_boundary.sql",
+      "sha256": "63f5dc850f4fe150659257c63844bf7feb466131d722d143927de21b74beeae4",
+      "bytes": 291
     }
   ]
 }
