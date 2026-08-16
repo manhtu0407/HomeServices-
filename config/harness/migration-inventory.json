@@ -5,8 +5,8 @@
     "immutableThroughVersion": "20260805090000",
     "sha256": "7d4ac8a8227452e357caa11a21ece9099c80112712dba9a250114d0761a90275"
   },
-  "migrationCount": 281,
-  "migrationsSha256": "9b231ba4214883985fd0257d840fccfb7ec9e97ffb9e0b594c579412dcdb7356",
+  "migrationCount": 282,
+  "migrationsSha256": "b22e57fa3b5ace653eee790dce74162ddf4f1b21190b9622a2ba1695e6cdfb64",
   "databaseTypes": {
     "file": "packages/shared/src/types/database",
     "sha256": "f7054292d088e6e7543ecef45b415a72607fa37782fbf6cc4f866284eac07872"
@@ -1978,6 +1978,13 @@
       "file": "supabase/migrations/20260815215000_preserve_retired_cash_confirmation.sql",
       "sha256": "7425434993a09390d452b6331623e923fa74a9d3451c2f4d0b139d15527adcae",
       "bytes": 230
+    },
+    {
+      "version": "20260816120000",
+      "name": "enforce_customer_profile_invariant",
+      "file": "supabase/migrations/20260816120000_enforce_customer_profile_invariant.sql",
+      "sha256": "76c3c0e576feada75fc523d89e2daf902da06e90392a54aa09c3585d5746a432",
+      "bytes": 1193
     }
   ]
 }
