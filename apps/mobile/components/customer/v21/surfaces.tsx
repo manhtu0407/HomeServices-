@@ -1,3 +1,4 @@
+import { typography } from '@/design/theme'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import Constants from 'expo-constants'
 import {
@@ -13,7 +14,6 @@ import {
   CUSTOMER_SERVICE_IDS,
   extractKnownDistrictLabel,
   type CustomerServiceId,
-  type LocalDeal,
   type ServiceType,
 } from '@nestscout/shared'
 import { KaelButton } from '@/components/ui/kael-primitives'
@@ -32,12 +32,7 @@ import {
 } from '../kael-chat/pending-intake'
 import { ScopeChangeHardStopModal } from '../scope-change-modal/scope-change-hard-stop-modal'
 import { setCustomerThemeMode } from '../customer-theme'
-import {
-  CaseWideMintAura,
-  SourceCardSkin,
-  ZipMintAura,
-} from '../ui/aura-surfaces'
-import { customerV21Assets, customerV21BankAssets } from '../ui/assets'
+import { customerV21Assets, customerV21BankAssets, customerV21HomeV4Assets } from '../ui/assets'
 import { CustomerBookingEntryView, CustomerBookingGuestGateView } from '../booking/booking-entry-stateful-surfaces'
 import { HomeStorytellingCard } from '../home/home-storytelling-card'
 import {
@@ -68,6 +63,7 @@ import {
   canCustomerDecideScopeChange,
   formatNumber,
   formatVnd,
+  timeChoiceLabel,
 } from '../kael-chat/case-work-display-model'
 import { stepForStatus } from '../kael-chat/case-stage-display-model'
 import {
@@ -81,9 +77,10 @@ import {
   customerV21ServiceCopy,
   customerV21StatusCopy,
 } from '../ui/copy'
-import { ActiveCaseCardPanel } from '../history/history-active-surfaces'
 import { CustomerServiceHistorySurface } from '../history/service-history-surface'
-import { CaseFactGrid } from '../history/history-surfaces'
+import { HomeGuidanceBanner } from '../home/home-guidance-banner'
+import { HomeCurrentJobCard } from '../home/home-current-job-card'
+import { HomeIcon } from '../home/home-icons'
 import { CustomerProfileOverviewView, CustomerProfileSubscreenView } from '../profile/profile-stateful-surfaces'
 import { buildCustomerProfileSettingsGroups } from '../profile/profile-settings-groups'
 import {
@@ -211,6 +208,7 @@ export function CustomerHomeSurface() {
   const deal = workflow.state.deal
   const isDraftDeal = deal?.status === 'draft'
   const displayName = profileName(session?.user.user_metadata, language)
+  const { width } = useWindowDimensions()
 
   const activeCaseRoute = isDraftDeal
     ? '/(customer)/booking'
@@ -222,17 +220,35 @@ export function CustomerHomeSurface() {
     router.replace(`/(customer)/booking?service=${encodeURIComponent(serviceId)}` as never)
   }
 
+  const openNotifications = () => router.replace('/(customer)/profile?utility=notifications' as never)
+  const openHomeSearch = (value: string) => {
+    if (!value) return
+    router.replace('/(customer)/booking' as never)
+  }
+
   return (
     <V21Screen screenId="2.1-home" testID="customer-v21-home">
       <V21TopBar
+        action={(
+          <View style={styles.homeNotificationAction}>
+            <HomeIcon color={tokens.primary} name="bell" size={width < 560 ? 26 : 32} />
+            {workflow.notificationUnreadCount > 0 ? <View style={[styles.homeNotificationDot, { backgroundColor: tokens.primary }]} /> : null}
+          </View>
+        )}
+        actionAccessibilityLabel={language === 'vi' ? 'Mở thông báo' : 'Open notifications'}
         avatarText={initialsForName(displayName)}
         showAvatar={false}
         subtitle=""
         title={homeGreeting(displayName, language)}
+        titleNumberOfLines={2}
+        titleStyle={typography.title1}
+        onAction={openNotifications}
       />
 
       <HomeStorytellingCard
         language={language}
+        onQuickPress={openService}
+        onSearch={openHomeSearch}
         reduceTransparency={reduceTransparency}
         tokens={tokens}
       />
@@ -244,17 +260,39 @@ export function CustomerHomeSurface() {
       />
       <View style={[sharedStyles.serviceGrid, sharedStyles.homeServiceGrid]}>
         {CUSTOMER_SERVICE_IDS.map((service) => (
-          <ServiceTile homeAura key={service} onPress={() => openService(service)} service={service} />
+          <ServiceTile
+            homeAura
+            homeImage={customerV21HomeV4Assets.services[service]}
+            homeV4
+            key={service}
+            onPress={() => openService(service)}
+            service={service}
+          />
         ))}
       </View>
 
-      <SectionActionHeader
-        action={deal ? (isDraftDeal ? (language === 'vi' ? 'Tiếp tục ›' : 'Continue ›') : (language === 'vi' ? 'Mở công việc ›' : 'Open work ›')) : undefined}
-        onAction={deal ? () => router.replace(activeCaseRoute as never) : undefined}
-        title={isDraftDeal ? (language === 'vi' ? 'Nháp dịch vụ' : 'Service draft') : copy.activeCase}
-      />
+      <HomeGuidanceBanner language={language} onPress={() => router.replace('/(customer)/booking' as never)} reduceTransparency={reduceTransparency} tokens={tokens} />
+
       {deal ? (
-        <ActiveCaseCard deal={deal} onOpen={() => router.replace(activeCaseRoute as never)} />
+        <>
+          <SectionActionHeader
+            action={isDraftDeal ? (language === 'vi' ? 'Tiếp tục ›' : 'Continue ›') : (language === 'vi' ? 'Mở công việc ›' : 'Open work ›')}
+            onAction={() => router.replace(activeCaseRoute as never)}
+            title={isDraftDeal ? (language === 'vi' ? 'Nháp dịch vụ' : 'Service draft') : (language === 'vi' ? 'Công việc đang xử lý' : 'Current work')}
+          />
+          <HomeCurrentJobCard
+            caseCode={caseDisplayCode(deal, language)}
+            deal={deal}
+            language={language}
+            onOpen={() => router.replace(activeCaseRoute as never)}
+            problemLabel={agenticDealProblemLabel(deal, language)}
+            scheduleLabel={timeChoiceLabel(deal.draft.timeChoice, language, deal.scheduledAt)}
+            serviceLabel={deal.draft.serviceType ? customerV21ServiceCopy[language][deal.draft.serviceType].label : copy.dataPending}
+            statusLabel={customerV21StatusCopy[language][deal.status]}
+            step={Math.max(1, stepForStatus(deal.status))}
+            tokens={tokens}
+          />
+        </>
       ) : (
         <EmptyState
           action={<KaelButton label={copy.startService} onPress={() => router.replace('/(customer)/booking' as never)} size="small" testID="customer-v21-home-start" />}
@@ -1042,58 +1080,6 @@ export function CustomerV21DockOverlay({ active }: { active: CustomerDockActive 
 
 export const CustomerDockOverlay = CustomerV21DockOverlay
 
-function ActiveCaseCard({ deal, onOpen }: { deal: LocalDeal; onOpen: () => void }) {
-  const language = useAppLanguage()
-  const { tokens } = useV21Theme()
-  const copy = customerV21CommonCopy[language]
-  const service = deal.draft.serviceType ? customerV21ServiceCopy[language][deal.draft.serviceType].label : copy.dataPending
-  const caseFactMetrics = useMemo(() => [
-    {
-      auraScope: 'ActiveCaseService',
-      label: language === 'vi' ? 'Dịch vụ' : 'Service',
-      testID: 'customer-v21-active-case-service',
-      value: service,
-    },
-    {
-      auraScope: 'ActiveCaseProblem',
-      label: language === 'vi' ? 'Vấn đề' : 'Issue',
-      testID: 'customer-v21-active-case-problem',
-      value: agenticDealProblemLabel(deal, language),
-    },
-    {
-      auraScope: 'ActiveCaseArea',
-      label: language === 'vi' ? 'Khu vực' : 'Area',
-      testID: 'customer-v21-active-case-area',
-      value: deal.draft.addressLabel || deal.draft.districtLabel || copy.dataPending,
-    },
-    {
-      auraScope: 'ActiveCaseEstimate',
-      label: language === 'vi' ? 'Ước tính' : 'Estimate',
-      testID: 'customer-v21-active-case-estimate',
-      value: deal.estimate?.priceRangeLabel || copy.dataPending,
-    },
-  ], [copy.dataPending, deal, language, service])
-  const caseFactGrid = useMemo(
-    () => <CaseFactGrid metrics={caseFactMetrics} sourceCardSkin={SourceCardSkin} tokens={tokens} zipMintAura={ZipMintAura} />,
-    [caseFactMetrics, tokens],
-  )
-  return (
-    <ActiveCaseCardPanel
-      activeCaseLabel={customerV21CommonCopy[language].activeCase}
-      activeStep={stepForStatus(deal.status)}
-      activityImage={customerV21Assets.activity}
-      bodyTextStyle={styles.bodyText}
-      cardStyle={styles.activeCaseCard}
-      caseCode={caseDisplayCode(deal, language)}
-      caseFactGrid={caseFactGrid}
-      onOpen={onOpen}
-      openLabel={language === 'vi' ? 'Xem hoạt động' : 'View activity'}
-      service={service}
-      statusLabel={customerV21StatusCopy[language][deal.status]}
-    />
-  )
-}
-
 type ProfileUtilitySectionProps = {
   kind: Extract<CustomerProfileUtility, 'address' | 'language' | 'memory' | 'password' | 'personal-details'>
 }
@@ -1578,13 +1564,29 @@ const styles = StyleSheet.create({
     minHeight: 56,
     minWidth: 56,
   },
+  homeNotificationAction: {
+    alignItems: 'center',
+    height: 34,
+    justifyContent: 'center',
+    position: 'relative',
+    width: 34,
+  },
+  homeNotificationDot: {
+    borderColor: '#FFFFFF',
+    borderRadius: 5,
+    borderWidth: 2,
+    height: 10,
+    position: 'absolute',
+    right: 0,
+    top: 0,
+    width: 10,
+  },
   bodyText: {
-    fontSize: 14,
-    lineHeight: 20,
+    ...typography.subheadline,
   },
   errorText: {
-    fontSize: 13,
-    fontWeight: '700',
+    ...typography.footnote,
+    fontWeight: '600',
     marginTop: 10,
   },
   paymentMethodHeroWalletImage: {
@@ -1600,9 +1602,8 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   chevronText: {
-    fontSize: 22,
-    fontWeight: '700',
-    lineHeight: 24,
+    ...typography.title2,
+    fontWeight: '600',
   },
   chipWrap: {
     flexDirection: 'row',
@@ -1616,9 +1617,8 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   labelText: {
-    fontSize: 12,
-    fontWeight: '700',
-    lineHeight: 16,
+    ...typography.caption1,
+    fontWeight: '600',
   },
   matchingBarFill: {
     backgroundColor: '#08AF9C',
@@ -1626,9 +1626,8 @@ const styles = StyleSheet.create({
     height: '100%',
   },
   matchingBarLabel: {
-    fontSize: 13,
+    ...typography.footnote,
     fontWeight: '600',
-    lineHeight: 17,
     width: 78,
   },
   matchingBarRow: {
@@ -1645,9 +1644,8 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   matchingBarValue: {
-    fontSize: 14,
+    ...typography.footnote,
     fontWeight: '600',
-    lineHeight: 18,
     textAlign: 'right',
     width: 34,
   },
@@ -1691,22 +1689,18 @@ const styles = StyleSheet.create({
     minWidth: 0,
   },
   matchingHeroMeta: {
-    fontSize: 15,
+    ...typography.subheadline,
     fontWeight: '600',
-    lineHeight: 20,
     marginTop: 3,
   },
   matchingHeroName: {
-    fontSize: 30,
+    ...typography.title1,
     fontWeight: '600',
-    letterSpacing: 0,
-    lineHeight: 36,
     marginTop: 7,
   },
   matchingKaelBody: {
-    fontSize: 14,
+    ...typography.subheadline,
     fontWeight: '600',
-    lineHeight: 19,
     marginTop: 2,
   },
   matchingKaelCard: {
@@ -1723,9 +1717,7 @@ const styles = StyleSheet.create({
     boxShadow: '0 8px 18px rgba(8,125,114,0.07)',
   },
   matchingKaelTitle: {
-    fontSize: 17,
-    fontWeight: '600',
-    lineHeight: 22,
+    ...typography.headline,
   },
   matchingListCard: {
     gap: 0,
@@ -1737,9 +1729,8 @@ const styles = StyleSheet.create({
     marginTop: 10,
   },
   matchingReasonBody: {
-    fontSize: 14,
+    ...typography.subheadline,
     fontWeight: '600',
-    lineHeight: 19,
     marginTop: 2,
   },
   matchingReasonIcon: {
@@ -1756,9 +1747,7 @@ const styles = StyleSheet.create({
     zIndex: 1,
   },
   matchingReasonTitle: {
-    fontSize: 17,
-    fontWeight: '600',
-    lineHeight: 22,
+    ...typography.headline,
   },
   matchingScoreBadge: {
     alignItems: 'center',
@@ -1770,9 +1759,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
   },
   matchingScoreBadgeText: {
-    fontSize: 16,
+    ...typography.callout,
     fontWeight: '600',
-    lineHeight: 20,
     textAlign: 'center',
   },
   activeCaseCard: {
@@ -1792,9 +1780,8 @@ const styles = StyleSheet.create({
     minWidth: 82,
   },
   accountUtilityChevron: {
-    fontSize: 20,
-    fontWeight: '700',
-    lineHeight: 22,
+    ...typography.title3,
+    fontWeight: '600',
     position: 'absolute',
     right: 12,
     top: 12,
@@ -1832,17 +1819,13 @@ const styles = StyleSheet.create({
     zIndex: 1,
   },
   jobProgressValue: {
-    fontSize: 34,
+    ...typography.largeTitle,
     fontWeight: '600',
-    letterSpacing: 0,
-    lineHeight: 40,
     marginTop: 7,
   },
   liveAlertTime: {
-    fontSize: 38,
+    ...typography.largeTitle,
     fontWeight: '600',
-    letterSpacing: 0,
-    lineHeight: 44,
     marginTop: 2,
     textAlign: 'center',
   },
@@ -1852,26 +1835,23 @@ const styles = StyleSheet.create({
   },
   profileMintChipText: {
     color: '#087D72',
-    fontWeight: '700',
+    fontWeight: '600',
   },
   profileLogoutCta: {},
   profileInsightTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    lineHeight: 21,
+    ...typography.callout,
+    fontWeight: '600',
   },
   stepBadge: {
-    fontSize: 10.5,
+    ...typography.caption2,
     fontWeight: '600',
-    lineHeight: 15,
   },
   stepCard: {
     gap: 12,
     minHeight: 88,
   },
   stepLabel: {
-    fontSize: 10.5,
+    ...typography.caption2,
     fontWeight: '600',
-    lineHeight: 15,
   },
 })

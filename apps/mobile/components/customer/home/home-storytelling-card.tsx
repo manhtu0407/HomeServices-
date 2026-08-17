@@ -1,311 +1,219 @@
-import { StyleSheet, Text, View, useWindowDimensions } from 'react-native'
+import { scaledTypography, typography } from '@/design/theme'
+import { Image } from 'expo-image'
+import { useState } from 'react'
+import { Pressable, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native'
 import Svg, { Defs, Rect } from 'react-native-svg'
 
-import { AlphaStop as Stop, NativeSafeLinearGradient as LinearGradient, NativeSafeRadialGradient as RadialGradient } from '@/components/ui/svg-alpha-stop'
+import type { CustomerServiceId } from '@nestscout/shared'
 import type { AppLanguage } from '@/lib/app-language'
+
 import type { CustomerThemeTokens } from '../customer-theme'
-import { CaseWideMintAura, ZipMintAura } from '../ui/aura-surfaces'
+import { customerV21HomeV4Assets } from '../ui/assets'
+import { AlphaStop as Stop, NativeSafeLinearGradient as LinearGradient } from '@/components/ui/svg-alpha-stop'
+import { HomeIcon } from './home-icons'
 
 type HomeStorytellingCardProps = {
   language: AppLanguage
+  onQuickPress?: (service: CustomerServiceId) => void
+  onSearch?: (value: string) => void
   reduceTransparency: boolean
   tokens: CustomerThemeTokens
 }
 
-type OnboardingStep = {
-  label: string
-}
-
-type StorytellingCopy = {
-  accessibilityLabel: string
-  body: string
-  steps: [OnboardingStep, OnboardingStep, OnboardingStep]
+type HeroCopy = {
+  badge: string
+  chips: Record<QuickServiceId, string>
+  description: string
+  searchPlaceholder: string
   title: string
 }
 
-const storytellingCopy = {
-  vi: {
-    accessibilityLabel: 'Bắt đầu dễ dàng. Chọn dịch vụ, mô tả và xác nhận. Bước 1: Chọn dịch vụ. Bước 2: Mô tả vấn đề. Bước 3: Bạn xác nhận.',
-    body: 'Chọn dịch vụ, mô tả và xác nhận.',
-    steps: [
-      { label: 'Chọn dịch vụ' },
-      { label: 'Mô tả vấn đề' },
-      { label: 'Bạn xác nhận' },
-    ],
-    title: 'Bắt đầu dễ dàng',
-  },
-  en: {
-    accessibilityLabel: 'Getting started is easy. Choose a service, describe the issue, and confirm. Step 1: Choose a service. Step 2: Describe the issue. Step 3: Confirm.',
-    body: 'Choose a service, describe the issue, and confirm.',
-    steps: [
-      { label: 'Choose service' },
-      { label: 'Describe issue' },
-      { label: 'Confirm' },
-    ],
-    title: 'Getting started is easy',
-  },
-} satisfies Record<AppLanguage, StorytellingCopy>
+type QuickServiceId = 'electrical' | 'home_cleaning' | 'hvac_basic_maintenance'
 
-export function HomeStorytellingCard({ language, reduceTransparency, tokens }: HomeStorytellingCardProps) {
+const heroCopy = {
+  en: {
+    badge: 'Need a hand now?',
+    chips: {
+      electrical: 'Urgent electrical repair',
+      home_cleaning: 'Book weekend cleaning',
+      hvac_basic_maintenance: 'Service your air conditioner',
+    },
+    description: 'Skilled workers  •  Fast arrival  •  Clear pricing',
+    searchPlaceholder: 'What do you need help with?',
+    title: 'Home care made simple,\nso you can enjoy your space',
+  },
+  vi: {
+    badge: 'Cần hỗ trợ ngay?',
+    chips: {
+      electrical: 'Sửa điện gấp',
+      home_cleaning: 'Đặt vệ sinh cuối tuần',
+      hvac_basic_maintenance: 'Bảo dưỡng điều hòa',
+    },
+    description: 'Kết nối thợ lành nghề  •  Đến nhanh  •  Giá minh bạch',
+    searchPlaceholder: 'Bạn cần hỗ trợ việc gì?',
+    title: 'Việc nhà có chúng tôi,\nbạn yên tâm tận hưởng',
+  },
+} satisfies Record<AppLanguage, HeroCopy>
+
+const quickServices: { icon: 'calendar' | 'flash' | 'snow'; service: QuickServiceId }[] = [
+  { icon: 'flash', service: 'electrical' },
+  { icon: 'calendar', service: 'home_cleaning' },
+  { icon: 'snow', service: 'hvac_basic_maintenance' },
+]
+
+export function HomeStorytellingCard({ language, onQuickPress, onSearch, reduceTransparency, tokens }: HomeStorytellingCardProps) {
   const { width } = useWindowDimensions()
-  const compact = width < 720
-  const copy = storytellingCopy[language]
-  const dark = tokens.mode === 'dark'
-  const colors = {
-    accent: tokens.primary,
-    frame: dark ? tokens.canvas : tokens.base,
-    frameEnd: dark ? tokens.service : tokens.water,
-    frameMiddle: dark ? tokens.base : tokens.service,
-    frameStart: dark ? tokens.canvas : tokens.base,
-    subtitle: tokens.muted,
-    text: tokens.text,
+  const [value, setValue] = useState('')
+  const copy = heroCopy[language]
+  const scale = Math.min(Math.max(width - 32, 280) / 857, 1)
+  const q = (size: number) => size * scale
+  const content = (
+    <>
+      {!reduceTransparency ? (
+        <Svg height="100%" pointerEvents="none" preserveAspectRatio="none" style={StyleSheet.absoluteFill} viewBox="0 0 100 100" width="100%">
+          <Defs>
+            <LinearGradient id="customer-home-v4-hero-gradient" x1="0" x2="1" y1="0.5" y2="0.5">
+              <Stop offset="0" stopColor={tokens.primary} />
+              <Stop offset="0.34" stopColor="#BDEBE7" />
+              <Stop offset="0.58" stopColor="#D0F2EE" />
+              <Stop offset="1" stopColor="#BAE7E3" />
+            </LinearGradient>
+          </Defs>
+          <Rect fill="url(#customer-home-v4-hero-gradient)" height="100" width="100" />
+        </Svg>
+      ) : null}
+      <Image
+        accessible={false}
+        contentFit="contain"
+        pointerEvents="none"
+        source={customerV21HomeV4Assets.hero}
+        style={[styles.heroImage, { height: q(250), right: q(-11), top: q(-20), width: q(375), opacity: reduceTransparency ? 0 : 1 }]}
+        testID="customer-v21-home-hero-image"
+      />
+
+      <View style={[styles.heroCopy, { left: q(43), right: q(235), top: q(33) }]} testID="customer-v21-home-hero-copy">
+        <View style={[styles.badge, { borderRadius: q(14), gap: q(11), height: q(48), paddingHorizontal: q(18) }]}>
+          <HomeIcon color="#FFFFFF" name="flash" size={q(22)} />
+          <Text adjustsFontSizeToFit minimumFontScale={0.72} numberOfLines={1} style={[styles.badgeText, scaledTypography('title3', scale)]}>{copy.badge}</Text>
+        </View>
+        <Text adjustsFontSizeToFit minimumFontScale={0.72} numberOfLines={2} style={[styles.title, scaledTypography('largeTitle', scale)]}>{copy.title}</Text>
+        <Text adjustsFontSizeToFit minimumFontScale={0.72} numberOfLines={2} style={[styles.description, scaledTypography('subheadline', scale), { marginTop: q(4) }]}>{copy.description}</Text>
+      </View>
+
+      <View style={[styles.search, { borderRadius: q(40), height: q(80), left: q(33), paddingHorizontal: q(28), right: q(33), top: q(228) }]} testID="customer-v21-home-search">
+        <HomeIcon color={tokens.muted} name="search" size={q(38)} />
+        <TextInput
+          accessibilityLabel={copy.searchPlaceholder}
+          onChangeText={setValue}
+          onSubmitEditing={() => onSearch?.(value.trim())}
+          placeholder={copy.searchPlaceholder}
+          placeholderTextColor={tokens.muted}
+          returnKeyType="search"
+          style={[styles.searchInput, scaledTypography('body', scale), { height: q(68), paddingHorizontal: q(19) }]}
+          value={value}
+        />
+      </View>
+
+      <View style={[styles.quickRow, { bottom: q(28), gap: q(14), left: q(33), right: q(33) }]} testID="customer-v21-home-quick-suggestions">
+        {quickServices.map((item, index) => {
+          const selected = value === copy.chips[item.service]
+          return (
+            <Pressable
+              accessibilityLabel={copy.chips[item.service]}
+              accessibilityRole="button"
+              accessibilityState={{ selected }}
+              key={item.service}
+              onPress={() => {
+                setValue(copy.chips[item.service])
+                onQuickPress?.(item.service)
+              }}
+              style={[styles.quickChip, { borderRadius: q(29), flex: index === 0 ? 1 : 1.24, gap: q(12), height: q(58), paddingHorizontal: q(18) }, selected ? styles.quickChipSelected : null]}
+              testID={`customer-v21-home-quick-${item.service}`}
+            >
+              <HomeIcon color={tokens.primary} name={item.icon} size={q(25)} />
+              <Text adjustsFontSizeToFit minimumFontScale={0.62} numberOfLines={1} style={[styles.quickChipText, scaledTypography('callout', scale), { color: selected ? tokens.text : tokens.muted }]}>{copy.chips[item.service]}</Text>
+            </Pressable>
+          )
+        })}
+      </View>
+    </>
+  )
+
+  const sharedStyle = [styles.frame, { borderColor: tokens.border, borderRadius: q(32), height: q(408) }]
+  if (reduceTransparency) {
+    return <View style={[sharedStyle, { backgroundColor: tokens.raised }]} testID="customer-v21-home-hero">{content}</View>
   }
-  const badgeSize = compact ? 32 : 40
 
   return (
-    <View
-      style={[
-        styles.frame,
-        compact ? styles.frameCompact : styles.frameWide,
-        {
-          backgroundColor: colors.frame,
-          borderRadius: compact ? 28 : 44,
-          boxShadow: tokens.glassFloatShadow,
-        },
-      ]}
-      testID="customer-v21-home-hero"
-    >
-      <Svg
-        height="100%"
-        pointerEvents="none"
-        preserveAspectRatio="none"
-        style={styles.background}
-        testID="customer-v21-home-onboarding-wash"
-        viewBox="0 0 400 100"
-        width="100%"
-      >
-        <Defs>
-          <LinearGradient id="customer-home-onboarding-frame" x1="0" x2="400" y1="0" y2="100">
-            <Stop offset="0" stopColor={colors.frameStart} />
-            <Stop offset="0.54" stopColor={colors.frameMiddle} />
-            <Stop offset="1" stopColor={colors.frameEnd} />
-          </LinearGradient>
-          <RadialGradient cx="0.78" cy="0.06" id="customer-home-onboarding-glow" r="0.74">
-            <Stop offset="0" stopColor={colors.accent} stopOpacity={reduceTransparency ? 0 : dark ? 0.12 : 0.14} />
-            <Stop offset="1" stopColor={colors.accent} stopOpacity={0} />
-          </RadialGradient>
-        </Defs>
-        <Rect fill="url(#customer-home-onboarding-frame)" height="100" width="400" />
-        <Rect fill="url(#customer-home-onboarding-glow)" height="100" width="400" />
-      </Svg>
-
-      {reduceTransparency ? null : (
-        <View
-          pointerEvents="none"
-          style={[styles.formulaMintAura, { opacity: dark ? 0.36 : 0.52 }]}
-          testID="customer-v21-home-onboarding-formula-mint-aura"
-        >
-          <CaseWideMintAura scope="HomeStorytelling" />
-          <ZipMintAura scope="HomeStorytellingFine" />
-        </View>
-      )}
-
-      <View
-        accessibilityLabel={copy.accessibilityLabel}
-        accessibilityRole="image"
-        accessible
-        style={[styles.content, compact ? styles.contentCompact : styles.contentWide]}
-        testID="customer-v21-home-storytelling"
-      >
-        <View style={styles.copy} testID="customer-v21-home-onboarding-copy">
-          <Text
-            adjustsFontSizeToFit
-            minimumFontScale={0.8}
-            numberOfLines={compact ? 2 : 1}
-            style={[
-              styles.title,
-              {
-                color: colors.text,
-                fontSize: compact ? 22 : 28,
-                lineHeight: compact ? 28 : 34,
-              },
-            ]}
-          >
-            {copy.title}
-          </Text>
-          <Text
-            adjustsFontSizeToFit
-            minimumFontScale={0.78}
-            numberOfLines={compact ? 2 : 1}
-            style={[
-              styles.subtitle,
-              {
-                color: colors.subtitle,
-                fontSize: compact ? 12 : 16,
-                lineHeight: compact ? 16 : 22,
-                marginTop: compact ? 6 : 8,
-              },
-            ]}
-          >
-            {copy.body}
-          </Text>
-        </View>
-
-        <View style={styles.steps} testID="customer-v21-home-onboarding-steps">
-          <View
-            pointerEvents="none"
-            style={[styles.connectorTrack, { backgroundColor: colors.accent, top: badgeSize / 2 }]}
-          />
-          <View style={styles.stepsRow}>
-            {copy.steps.map((step, index) => (
-              <View key={step.label} style={styles.stepColumn}>
-                <View
-                  style={[
-                    styles.stepBadge,
-                    {
-                      backgroundColor: tokens.raised,
-                      borderColor: colors.accent,
-                      height: badgeSize,
-                      width: badgeSize,
-                    },
-                  ]}
-                  testID={'customer-v21-home-onboarding-step-' + (index + 1)}
-                >
-                  <Text
-                    style={[
-                      styles.stepBadgeText,
-                      {
-                        color: colors.accent,
-                        fontSize: compact ? 14 : 16,
-                        lineHeight: compact ? 18 : 18,
-                      },
-                    ]}
-                  >
-                    {index + 1}
-                  </Text>
-                </View>
-                <Text
-                  adjustsFontSizeToFit
-                  minimumFontScale={0.82}
-                  numberOfLines={2}
-                  style={[
-                    styles.stepLabel,
-                    {
-                      color: colors.text,
-                      fontSize: compact ? 12 : 15,
-                      lineHeight: compact ? 16 : 19,
-                      marginTop: compact ? 10 : 12,
-                    },
-                  ]}
-                  testID={'customer-v21-home-onboarding-label-' + (index + 1)}
-                >
-                  {step.label}
-                </Text>
-              </View>
-            ))}
-          </View>
-        </View>
-      </View>
-    </View>
+    <View style={sharedStyle} testID="customer-v21-home-hero">{content}</View>
   )
 }
 
 const styles = StyleSheet.create({
-  background: {
-    ...StyleSheet.absoluteFill,
-  },
-  connectorTrack: {
-    borderRadius: 999,
-    height: 2,
-    left: '16.6666667%',
-    position: 'absolute',
-    right: '16.6666667%',
-    zIndex: 0,
-  },
-  content: {
+  badge: {
     alignItems: 'center',
-    flex: 1,
+    backgroundColor: 'rgba(255,255,255,0.16)',
     flexDirection: 'row',
-    minWidth: 0,
   },
-  contentCompact: {
-    gap: 14,
-    paddingHorizontal: 28,
-    paddingVertical: 20,
+  badgeText: {
+    ...typography.title3,
+    color: '#FFFFFF',
+    fontWeight: '600',
   },
-  contentWide: {
-    gap: 34,
-    paddingHorizontal: 44,
-    paddingVertical: 28,
-  },
-  copy: {
-    flex: 0.42,
-    justifyContent: 'center',
-    minWidth: 0,
-    zIndex: 1,
+  description: {
+    ...typography.subheadline,
+    color: '#294C52',
   },
   frame: {
-    alignSelf: 'stretch',
-    justifyContent: 'center',
-    maxWidth: '100%',
+    alignSelf: 'center',
+    maxWidth: 857,
     overflow: 'hidden',
     position: 'relative',
+    width: '100%',
   },
-  frameCompact: {
-    aspectRatio: 3.2,
-    minHeight: 148,
+  heroCopy: {
+    position: 'absolute',
+    zIndex: 1,
   },
-  frameWide: {
-    aspectRatio: 4,
-  },
-  formulaMintAura: {
-    ...StyleSheet.absoluteFill,
+  heroImage: {
+    position: 'absolute',
     zIndex: 0,
   },
-  stepBadge: {
+  quickChip: {
     alignItems: 'center',
-    borderRadius: 999,
-    borderWidth: 1.25,
-    justifyContent: 'center',
-    zIndex: 1,
-  },
-  stepBadgeText: {
-    fontVariant: ['tabular-nums'],
-    fontWeight: '600',
-    includeFontPadding: false,
-  },
-  stepColumn: {
-    alignItems: 'center',
-    flex: 1,
-    minWidth: 0,
-    zIndex: 1,
-  },
-  stepLabel: {
-    fontWeight: '600',
-    includeFontPadding: false,
-    letterSpacing: -0.16,
-    minWidth: 0,
-    textAlign: 'center',
-  },
-  steps: {
-    flex: 0.58,
-    justifyContent: 'center',
-    minWidth: 0,
-    position: 'relative',
-    zIndex: 1,
-  },
-  stepsRow: {
+    backgroundColor: 'rgba(255,255,255,0.96)',
     flexDirection: 'row',
-    minWidth: 0,
+    justifyContent: 'center',
   },
-  subtitle: {
-    fontWeight: '400',
-    includeFontPadding: false,
-    letterSpacing: -0.2,
+  quickChipSelected: {
+    backgroundColor: '#E5F9F6',
+    borderColor: 'rgba(19,191,181,0.42)',
+    borderWidth: 2,
+  },
+  quickChipText: {
+    ...typography.callout,
+    fontWeight: '600',
+  },
+  quickRow: {
+    flexDirection: 'row',
+    position: 'absolute',
+  },
+  search: {
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.97)',
+    borderColor: 'rgba(255,255,255,0.88)',
+    borderWidth: 3,
+    flexDirection: 'row',
+    position: 'absolute',
+  },
+  searchInput: {
+    ...typography.body,
+    color: '#35555D',
+    flex: 1,
   },
   title: {
-    fontWeight: '700',
-    includeFontPadding: false,
-    letterSpacing: -0.75,
+    ...typography.largeTitle,
+    color: '#16343B',
+    marginTop: 5,
   },
 })

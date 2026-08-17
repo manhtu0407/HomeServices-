@@ -4,7 +4,7 @@ import { color, radius, shadow, typography } from '@/design/theme'
 
 export const styles = StyleSheet.create({
   workerCustomerFontText: {
-    fontFamily: typography.fontFamily,
+    ...typography.body,
   },
   iconTileMintAura: {
     opacity: 0.92,
@@ -45,9 +45,7 @@ export const styles = StyleSheet.create({
   },
   approvalDecisionMeta: {
     color: color.text.muted,
-    fontSize: 10,
-    fontWeight: '700',
-    lineHeight: 14,
+    ...typography.caption2,
   },
   approvalDecisionRow: {
     alignItems: 'stretch',
@@ -67,9 +65,6 @@ export const styles = StyleSheet.create({
     borderWidth: 1,
     color: color.brand.primaryDark,
     flexShrink: 1,
-    fontSize: 10,
-    fontWeight: '700',
-    lineHeight: 12,
     maxWidth: 92,
     marginLeft: 10,
     minWidth: 54,
@@ -77,21 +72,18 @@ export const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 4,
     textAlign: 'center',
+    ...typography.caption2,
   },
   approvalDecisionTitle: {
     color: color.text.strong,
-    fontSize: 12,
-    fontWeight: '700',
-    lineHeight: 16,
+    ...typography.caption1,
   },
   earningsHeroAmount: {
     color: color.text.strong,
     flexShrink: 1,
-    fontSize: 27,
-    fontWeight: '700',
-    letterSpacing: 0,
-    lineHeight: 32,
+    fontVariant: ['tabular-nums'],
     marginTop: 8,
+    ...typography.title1,
   },
   earningsHeroCard: {
     alignItems: 'center',
@@ -114,10 +106,8 @@ export const styles = StyleSheet.create({
   earningsHeroMeta: {
     color: color.text.secondary,
     flexShrink: 1,
-    fontSize: 12,
-    fontWeight: '700',
-    lineHeight: 16,
     marginTop: 3,
+    ...typography.caption1,
   },
   earningsHeroPill: {
     alignSelf: 'flex-start',
@@ -127,14 +117,12 @@ export const styles = StyleSheet.create({
     borderWidth: 1,
     color: color.brand.primaryDark,
     flexShrink: 1,
-    fontSize: 10,
-    fontWeight: '700',
-    lineHeight: 13,
     maxWidth: '100%',
     overflow: 'hidden',
     paddingHorizontal: 9,
     paddingVertical: 4,
     textTransform: 'uppercase',
+    ...typography.caption2,
   },
   offerDetailListDivider: {
     borderTopColor: 'rgba(205,226,222,0.78)',
@@ -150,10 +138,7 @@ export const styles = StyleSheet.create({
   rankingHeroTitle: {
     color: color.text.strong,
     flexShrink: 1,
-    fontSize: 23,
-    fontWeight: '700',
-    letterSpacing: 0,
-    lineHeight: 28,
+    ...typography.title2,
   },
   rankingProgressFill: {
     backgroundColor: color.brand.primaryDark,
@@ -195,18 +180,14 @@ export const styles = StyleSheet.create({
   },
   rankingScoreOrbLabel: {
     color: color.text.muted,
-    fontSize: 9,
-    fontWeight: '700',
-    lineHeight: 12,
     textAlign: 'center',
+    ...typography.caption2,
   },
   rankingScoreOrbValue: {
     color: color.brand.primaryDark,
-    fontSize: 27,
-    fontWeight: '700',
-    letterSpacing: 0,
-    lineHeight: 32,
+    fontVariant: ['tabular-nums'],
     textAlign: 'center',
+    ...typography.title1,
   },
   settlementCell: {
     alignItems: 'center',
@@ -228,12 +209,10 @@ export const styles = StyleSheet.create({
   settlementLabel: {
     color: color.text.muted,
     flexShrink: 1,
-    fontSize: 9,
-    fontWeight: '700',
-    lineHeight: 12,
     position: 'relative',
     textAlign: 'center',
     zIndex: 1,
+    ...typography.caption2,
   },
   settlementStrip: {
     flexDirection: 'row',
@@ -242,11 +221,9 @@ export const styles = StyleSheet.create({
   settlementValue: {
     color: color.text.strong,
     flexShrink: 1,
-    fontSize: 12,
-    fontWeight: '700',
-    lineHeight: 16,
     position: 'relative',
     textAlign: 'center',
     zIndex: 1,
+    ...typography.caption1,
   },
 })

@@ -4,7 +4,7 @@ import { color, radius, shadow, typography } from '@/design/theme'
 
 export const styles = StyleSheet.create({
   workerCustomerFontText: {
-    fontFamily: typography.fontFamily,
+    ...typography.body,
   },
   iconTileMintAura: {
     opacity: 0.92,
@@ -66,9 +66,7 @@ export const styles = StyleSheet.create({
   },
   reliabilityAxisMeta: {
     color: color.text.secondary,
-    fontSize: 12,
-    fontWeight: '700',
-    lineHeight: 17,
+    ...typography.caption1,
   },
   reliabilityAxisRow: {
     alignItems: 'stretch',
@@ -86,19 +84,16 @@ export const styles = StyleSheet.create({
     alignSelf: 'center',
     color: color.brand.primaryDark,
     flexShrink: 0,
-    fontSize: 12,
-    fontWeight: '700',
-    lineHeight: 16,
+    fontVariant: ['tabular-nums'],
     marginLeft: 12,
     textAlign: 'right',
     width: 58,
+    ...typography.caption1,
   },
   reliabilityAxisTitle: {
     color: color.text.strong,
     flexShrink: 1,
-    fontSize: 12,
-    fontWeight: '700',
-    lineHeight: 16,
+    ...typography.caption1,
   },
   reliabilityAxisTrack: {
     backgroundColor: '#D9EBE8',
@@ -108,9 +103,7 @@ export const styles = StyleSheet.create({
   },
   reliabilityStatLabel: {
     color: color.text.secondary,
-    fontSize: 12,
-    fontWeight: '700',
-    lineHeight: 16,
+    ...typography.caption1,
   },
   reliabilityStatsGrid: {
     flexDirection: 'row',
@@ -135,8 +128,7 @@ export const styles = StyleSheet.create({
   reliabilityStatValue: {
     color: color.text.strong,
     flexShrink: 1,
-    fontSize: 20,
-    fontWeight: '700',
-    lineHeight: 25,
+    fontVariant: ['tabular-nums'],
+    ...typography.title3,
   },
 })

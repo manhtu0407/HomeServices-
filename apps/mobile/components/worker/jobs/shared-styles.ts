@@ -4,7 +4,7 @@ import { color, shadow, typography } from '@/design/theme'
 
 export const styles = StyleSheet.create({
   workerCustomerFontText: {
-    fontFamily: typography.fontFamily,
+    ...typography.body,
   },
   opaqueCard: {
     backgroundColor: color.mint.white,
@@ -28,18 +28,16 @@ export const styles = StyleSheet.create({
   },
   infoCellLabel: {
     color: color.text.muted,
-    fontSize: 9,
-    fontWeight: '700',
-    lineHeight: 12,
+    ...typography.caption2,
+    fontWeight: '600',
     position: 'relative',
     textAlign: 'center',
     zIndex: 1,
   },
   infoCellValue: {
     color: color.text.strong,
-    fontSize: 13,
-    fontWeight: '700',
-    lineHeight: 17,
+    ...typography.footnote,
+    fontWeight: '600',
     position: 'relative',
     textAlign: 'center',
     zIndex: 1,
@@ -71,9 +69,8 @@ export const styles = StyleSheet.create({
   },
   infoLabel: {
     color: color.text.strong,
-    fontSize: 15,
-    fontWeight: '700',
-    lineHeight: 20,
+    ...typography.subheadline,
+    fontWeight: '600',
   },
   infoRow: {
     alignItems: 'center',
@@ -91,9 +88,8 @@ export const styles = StyleSheet.create({
   },
   infoValue: {
     color: color.text.secondary,
-    fontSize: 13,
+    ...typography.footnote,
     fontWeight: '600',
-    lineHeight: 18,
   },
   profileRouteIconVisualBoost: {
     height: 52,
@@ -114,9 +110,8 @@ export const styles = StyleSheet.create({
   },
   kaelDraftBody: {
     color: color.text.secondary,
-    fontSize: 11,
-    fontWeight: '700',
-    lineHeight: 16,
+    ...typography.caption1,
+    fontWeight: '600',
   },
   kaelDraftCard: {
     alignItems: 'center',
@@ -134,9 +129,8 @@ export const styles = StyleSheet.create({
   },
   kaelDraftChevron: {
     color: color.brand.primaryDark,
-    fontSize: 21,
-    fontWeight: '700',
-    lineHeight: 24,
+    ...typography.title2,
+    fontWeight: '600',
     position: 'relative',
     zIndex: 1,
   },
@@ -153,9 +147,8 @@ export const styles = StyleSheet.create({
   },
   kaelDraftTitle: {
     color: color.text.strong,
-    fontSize: 12,
-    fontWeight: '700',
-    lineHeight: 16,
+    ...typography.caption1,
+    fontWeight: '600',
   },
   formulaWideAura: {
     bottom: -88,
@@ -189,17 +182,16 @@ export const styles = StyleSheet.create({
     flex: 1,
     minWidth: 0,
     paddingRight: 2,
-    fontSize: 12,
-    fontWeight: '700',
-    lineHeight: 16,
+    ...typography.caption1,
+    fontWeight: '600',
   },
   priceLineValue: {
     color: color.text.strong,
     flex: 1.1,
     flexShrink: 1,
-    fontSize: 12,
-    fontWeight: '700',
-    lineHeight: 16,
+    ...typography.caption1,
+    fontWeight: '600',
+    fontVariant: ['tabular-nums'],
     minWidth: 92,
     textAlign: 'right',
   },
@@ -217,9 +209,8 @@ export const styles = StyleSheet.create({
   priceTotalLabel: {
     color: color.text.strong,
     flex: 1,
-    fontSize: 13,
-    fontWeight: '700',
-    lineHeight: 17,
+    ...typography.footnote,
+    fontWeight: '600',
     minWidth: 0,
     paddingRight: 2,
   },
@@ -237,9 +228,8 @@ export const styles = StyleSheet.create({
     color: color.brand.primaryDark,
     flex: 1.1,
     flexShrink: 1,
-    fontSize: 18,
-    fontWeight: '700',
-    lineHeight: 23,
+    ...typography.headline,
+    fontVariant: ['tabular-nums'],
     minWidth: 98,
     textAlign: 'right',
   },

@@ -4,7 +4,7 @@ import { color, shadow, typography } from '@/design/theme'
 
 export const styles = StyleSheet.create({
   workerCustomerFontText: {
-    fontFamily: typography.fontFamily,
+    ...typography.body,
   },
   iconTileMintAura: {
     opacity: 0.92,
@@ -15,11 +15,9 @@ export const styles = StyleSheet.create({
   earningsHeroAmount: {
     color: color.text.strong,
     flexShrink: 1,
-    fontSize: 28,
-    fontWeight: '700',
-    letterSpacing: -0.5,
-    lineHeight: 33,
+    fontVariant: ['tabular-nums'],
     marginTop: 7,
+    ...typography.title1,
   },
   earningsHeroCard: {
     alignItems: 'stretch',
@@ -60,11 +58,9 @@ export const styles = StyleSheet.create({
   },
   earningsHeroMeta: {
     color: color.text.secondary,
-    fontSize: 12,
-    fontWeight: '700',
-    lineHeight: 16,
     position: 'relative',
     zIndex: 1,
+    ...typography.caption1,
   },
   serviceCardGrid: {
     flexDirection: 'row',
@@ -145,25 +141,19 @@ export const styles = StyleSheet.create({
   },
   serviceSourceMeta: {
     color: color.text.muted,
-    fontSize: 9,
-    fontWeight: '700',
-    lineHeight: 12,
     textAlign: 'center',
+    ...typography.caption2,
   },
   serviceSourceTitle: {
     color: color.text.strong,
-    fontSize: 11,
-    fontWeight: '700',
-    lineHeight: 14,
     textAlign: 'center',
+    ...typography.caption2,
   },
   serviceQualityNotice: {
     color: '#8A552D',
-    fontSize: 9,
-    fontWeight: '600',
-    lineHeight: 13,
     marginTop: 4,
     textAlign: 'center',
+    ...typography.caption2,
   },
   servicePreferenceControls: {
     gap: 8,
@@ -172,24 +162,20 @@ export const styles = StyleSheet.create({
   },
   servicePreferenceHelper: {
     color: color.text.secondary,
-    fontSize: 12,
-    lineHeight: 17,
     paddingHorizontal: 4,
+    ...typography.caption1,
   },
   servicePreferenceMessage: {
     color: color.text.secondary,
-    fontSize: 12,
-    fontWeight: '600',
-    lineHeight: 17,
     paddingHorizontal: 4,
+    ...typography.caption1,
   },
   servicePreferenceSave: {
     minHeight: 52,
   },
   skillsServiceHeroAmount: {
-    fontSize: 26,
-    lineHeight: 31,
     marginTop: 0,
+    ...typography.title1,
   },
   skillsServiceHeroCopy: {
     gap: 6,

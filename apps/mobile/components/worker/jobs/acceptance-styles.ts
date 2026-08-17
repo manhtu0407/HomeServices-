@@ -6,22 +6,18 @@ export const styles = StyleSheet.create({
   acceptCheckLabel: {
     color: color.text.strong,
     flex: 1,
-    fontSize: 11,
-    fontWeight: '700',
-    lineHeight: 15,
     minWidth: 0,
     position: 'relative',
     zIndex: 1,
+    ...typography.caption1,
   },
   acceptCheckMeta: {
     color: color.text.secondary,
-    fontSize: 10,
-    fontWeight: '700',
-    lineHeight: 13,
     maxWidth: 86,
     position: 'relative',
     textAlign: 'right',
     zIndex: 1,
+    ...typography.caption2,
   },
   acceptCheckRow: {
     alignItems: 'center',
@@ -65,9 +61,7 @@ export const styles = StyleSheet.create({
   },
   acceptCheckStateText: {
     color: color.text.muted,
-    fontSize: 11,
-    fontWeight: '700',
-    lineHeight: 14,
+    ...typography.caption2,
   },
   acceptCheckStateTextDone: {
     color: color.brand.primaryDark,
@@ -135,16 +129,12 @@ export const styles = StyleSheet.create({
   },
   acceptCommitmentMeta: {
     color: color.text.secondary,
-    fontSize: 11,
-    fontWeight: '600',
-    lineHeight: 16,
     marginTop: 3,
+    ...typography.footnote,
   },
   acceptCommitmentTitle: {
     color: color.text.strong,
-    fontSize: 13,
-    fontWeight: '700',
-    lineHeight: 18,
+    ...typography.subheadline,
   },
   acceptCommitmentZipAura: {
     height: 178,
@@ -206,19 +196,16 @@ export const styles = StyleSheet.create({
   },
   acceptSummaryMeta: {
     color: color.text.muted,
-    fontSize: 10,
-    fontWeight: '700',
-    lineHeight: 14,
     marginTop: 3,
     minWidth: 0,
+    ...typography.caption2,
   },
   acceptSummaryPrice: {
     color: color.brand.primaryDark,
-    fontSize: 17,
-    fontWeight: '700',
-    lineHeight: 22,
+    fontVariant: ['tabular-nums'],
     textAlign: 'center',
     textAlignVertical: 'center',
+    ...typography.title3,
   },
   acceptSummaryPriceSlot: {
     alignItems: 'center',
@@ -230,10 +217,8 @@ export const styles = StyleSheet.create({
   },
   acceptSummaryTitle: {
     color: color.text.strong,
-    fontSize: 16,
-    fontWeight: '700',
-    lineHeight: 21,
     minWidth: 0,
+    ...typography.callout,
   },
   acceptSummaryZipAura: {
     height: 232,
@@ -249,6 +234,6 @@ export const styles = StyleSheet.create({
     backgroundColor: color.mint.white,
   },
   workerCustomerFontText: {
-    fontFamily: typography.fontFamily,
+    ...typography.body,
   },
 })

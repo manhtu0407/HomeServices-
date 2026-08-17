@@ -4,27 +4,23 @@ import { color, radius, shadow, typography } from '@/design/theme'
 
 export const styles = StyleSheet.create({
   workerCustomerFontText: {
-    fontFamily: typography.fontFamily,
+    ...typography.body,
   },
   opaqueCard: {
     backgroundColor: color.mint.white,
   },
   caseClosedAmount: {
     color: color.brand.primaryDark,
-    fontSize: 28,
-    fontWeight: '700',
-    letterSpacing: 0,
-    lineHeight: 34,
+    fontVariant: ['tabular-nums'],
     marginTop: 6,
     textAlign: 'center',
+    ...typography.title1,
   },
   caseClosedAmountLabel: {
     color: color.text.muted,
     maxWidth: '84%',
-    fontSize: 11,
-    fontWeight: '700',
-    lineHeight: 14,
     textAlign: 'center',
+    ...typography.caption2,
   },
   caseClosedHeroCard: {
     alignItems: 'center',
@@ -42,12 +38,10 @@ export const styles = StyleSheet.create({
   },
   caseClosedTitle: {
     color: color.text.strong,
-    fontSize: 23,
-    fontWeight: '700',
-    lineHeight: 28,
     marginTop: 10,
     maxWidth: '90%',
     textAlign: 'center',
+    ...typography.title2,
   },
   caseTrailCard: {
     backgroundColor: 'rgba(255,255,255,0.96)',
@@ -91,9 +85,7 @@ export const styles = StyleSheet.create({
   },
   caseTrailMeta: {
     color: color.text.secondary,
-    fontSize: 11,
-    fontWeight: '700',
-    lineHeight: 15,
+    ...typography.footnote,
   },
   caseTrailRow: {
     alignItems: 'stretch',
@@ -129,9 +121,6 @@ export const styles = StyleSheet.create({
     borderWidth: 1,
     color: color.brand.primaryDark,
     flexShrink: 1,
-    fontSize: 10,
-    fontWeight: '700',
-    lineHeight: 14,
     maxWidth: 86,
     marginLeft: 10,
     minWidth: 64,
@@ -141,12 +130,11 @@ export const styles = StyleSheet.create({
     position: 'relative',
     textAlign: 'center',
     zIndex: 1,
+    ...typography.caption2,
   },
   caseTrailTitle: {
     color: color.text.strong,
-    fontSize: 13,
-    fontWeight: '700',
-    lineHeight: 17,
+    ...typography.subheadline,
   },
   chatMessage: {
     borderRadius: 18,
@@ -157,16 +145,12 @@ export const styles = StyleSheet.create({
   },
   chatMessageBody: {
     color: color.text.secondary,
-    fontSize: 11,
-    fontWeight: '700',
-    lineHeight: 16,
     marginTop: 3,
+    ...typography.footnote,
   },
   chatMessageLabel: {
     color: color.text.strong,
-    fontSize: 10,
-    fontWeight: '700',
-    lineHeight: 13,
+    ...typography.caption2,
   },
   chatMessagePeer: {
     alignSelf: 'flex-start',

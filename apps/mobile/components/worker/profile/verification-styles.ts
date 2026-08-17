@@ -4,7 +4,7 @@ import { color, radius, shadow, typography } from '@/design/theme'
 
 export const styles = StyleSheet.create({
   workerCustomerFontText: {
-    fontFamily: typography.fontFamily,
+    ...typography.body,
   },
   iconTileMintAura: {
     opacity: 0.92,
@@ -15,11 +15,9 @@ export const styles = StyleSheet.create({
   earningsHeroAmount: {
     color: color.text.strong,
     flexShrink: 1,
-    fontSize: 27,
-    fontWeight: '700',
-    letterSpacing: 0,
-    lineHeight: 32,
+    fontVariant: ['tabular-nums'],
     marginTop: 8,
+    ...typography.title1,
   },
   earningsHeroAura: {
     bottom: 'auto',
@@ -66,10 +64,8 @@ export const styles = StyleSheet.create({
   earningsHeroMeta: {
     color: color.text.secondary,
     flexShrink: 1,
-    fontSize: 12,
-    fontWeight: '700',
-    lineHeight: 16,
     marginTop: 3,
+    ...typography.caption1,
   },
   earningsHeroPill: {
     alignSelf: 'flex-start',
@@ -79,14 +75,12 @@ export const styles = StyleSheet.create({
     borderWidth: 1,
     color: color.brand.primaryDark,
     flexShrink: 1,
-    fontSize: 10,
-    fontWeight: '700',
-    lineHeight: 13,
     maxWidth: '100%',
     overflow: 'hidden',
     paddingHorizontal: 9,
     paddingVertical: 4,
     textTransform: 'uppercase',
+    ...typography.caption2,
   },
   profileRouteIconVisualBoost: {
     height: 52,
@@ -143,9 +137,7 @@ export const styles = StyleSheet.create({
   },
   verificationDocumentMeta: {
     color: color.text.muted,
-    fontSize: 10,
-    fontWeight: '700',
-    lineHeight: 14,
+    ...typography.caption2,
   },
   verificationDocumentRow: {
     alignItems: 'center',
@@ -180,17 +172,13 @@ export const styles = StyleSheet.create({
   },
   verificationDocumentStatusText: {
     color: color.text.muted,
-    fontSize: 10,
-    fontWeight: '700',
-    lineHeight: 13,
+    ...typography.caption2,
   },
   verificationDocumentStatusTextDone: {
     color: color.brand.primaryDark,
   },
   verificationDocumentTitle: {
     color: color.text.strong,
-    fontSize: 12,
-    fontWeight: '700',
-    lineHeight: 16,
+    ...typography.caption1,
   },
 })

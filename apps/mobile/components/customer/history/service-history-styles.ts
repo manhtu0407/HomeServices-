@@ -1,5 +1,7 @@
 import { StyleSheet } from 'react-native'
 
+import { typography } from '@/design/theme'
+
 export const customerV21ServiceHistoryStyles = StyleSheet.create({
   actionRow: {
     alignItems: 'center',
@@ -24,9 +26,8 @@ export const customerV21ServiceHistoryStyles = StyleSheet.create({
     width: 40,
   },
   favoriteIcon: {
-    fontSize: 22,
+    ...typography.title3,
     includeFontPadding: false,
-    lineHeight: 22,
     textAlign: 'center',
     textAlignVertical: 'center',
   },
@@ -47,9 +48,8 @@ export const customerV21ServiceHistoryStyles = StyleSheet.create({
     zIndex: 0,
   },
   filterChipText: {
-    fontSize: 13,
-    fontWeight: '700',
-    lineHeight: 18,
+    ...typography.footnote,
+    fontWeight: '600',
     position: 'relative',
     zIndex: 1,
   },
@@ -114,9 +114,8 @@ export const customerV21ServiceHistoryStyles = StyleSheet.create({
     zIndex: 1,
   },
   historyCount: {
-    fontSize: 13,
-    fontWeight: '700',
-    lineHeight: 18,
+    ...typography.footnote,
+    fontWeight: '600',
   },
   historyGroup: {
     gap: 9,
@@ -125,9 +124,8 @@ export const customerV21ServiceHistoryStyles = StyleSheet.create({
     gap: 10,
   },
   historyGroupLabel: {
-    fontSize: 13,
+    ...typography.footnote,
     fontWeight: '600',
-    lineHeight: 18,
     paddingHorizontal: 4,
   },
   historyItemHeader: {
@@ -138,14 +136,11 @@ export const customerV21ServiceHistoryStyles = StyleSheet.create({
   },
   historyItemMeta: {
     flex: 1,
-    fontSize: 13,
+    ...typography.footnote,
     fontWeight: '600',
-    lineHeight: 18,
   },
   historyItemTitle: {
-    fontSize: 17,
-    fontWeight: '700',
-    lineHeight: 22,
+    ...typography.headline,
   },
   historyList: {
     gap: 18,
@@ -159,10 +154,8 @@ export const customerV21ServiceHistoryStyles = StyleSheet.create({
     marginTop: 18,
   },
   historySectionTitle: {
-    fontSize: 21,
-    fontWeight: '700',
-    letterSpacing: -0.35,
-    lineHeight: 27,
+    ...typography.title3,
+    fontWeight: '600',
   },
   loadingCard: {
     gap: 0,
@@ -177,23 +170,20 @@ export const customerV21ServiceHistoryStyles = StyleSheet.create({
   },
   loadingText: {
     flex: 1,
-    fontSize: 14,
+    ...typography.footnote,
     fontWeight: '600',
-    lineHeight: 20,
   },
   priceEyebrow: {
-    fontSize: 11,
+    ...typography.caption1,
     fontWeight: '600',
-    lineHeight: 15,
   },
   priceSlot: {
     flex: 1,
     minHeight: 36,
   },
   priceValue: {
-    fontSize: 17,
-    fontWeight: '700',
-    lineHeight: 22,
+    ...typography.headline,
+    fontVariant: ['tabular-nums'],
     marginTop: 1,
   },
   rebookButton: {
@@ -214,13 +204,11 @@ export const customerV21ServiceHistoryStyles = StyleSheet.create({
     zIndex: 1,
   },
   savedWorkerHintIcon: {
-    fontSize: 16,
-    lineHeight: 18,
+    ...typography.callout,
   },
   savedWorkerHintText: {
     flex: 1,
-    fontSize: 12,
-    lineHeight: 17,
+    ...typography.caption1,
   },
   screenContent: {
     alignSelf: 'center',
@@ -232,9 +220,8 @@ export const customerV21ServiceHistoryStyles = StyleSheet.create({
     paddingVertical: 5,
   },
   statusPillText: {
-    fontSize: 11,
-    fontWeight: '700',
-    lineHeight: 15,
+    ...typography.caption1,
+    fontWeight: '600',
   },
   supportButton: {
     minWidth: 76,
@@ -249,8 +236,8 @@ export const customerV21ServiceHistoryStyles = StyleSheet.create({
     justifyContent: 'center',
   },
   workerAvatarText: {
-    fontSize: 14,
-    fontWeight: '700',
+    ...typography.footnote,
+    fontWeight: '600',
   },
   workerCopy: {
     flex: 1,
@@ -258,14 +245,12 @@ export const customerV21ServiceHistoryStyles = StyleSheet.create({
     minWidth: 0,
   },
   workerEyebrow: {
-    fontSize: 11,
+    ...typography.caption1,
     fontWeight: '600',
-    lineHeight: 15,
   },
   workerName: {
-    fontSize: 16,
-    fontWeight: '700',
-    lineHeight: 21,
+    ...typography.callout,
+    fontWeight: '600',
   },
   workerRow: {
     alignItems: 'center',
@@ -275,7 +260,6 @@ export const customerV21ServiceHistoryStyles = StyleSheet.create({
     marginTop: -8,
   },
   workerUnavailable: {
-    fontSize: 12,
-    lineHeight: 18,
+    ...typography.caption1,
   },
 })

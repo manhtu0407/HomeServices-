@@ -1,14 +1,15 @@
 import { StyleSheet } from 'react-native'
 
+import { typography } from '@/design/theme'
+
 export const customerV21HistoryStyles = StyleSheet.create({
   caseOverviewInfoIcon: {
     minHeight: 64,
     minWidth: 64,
   },
   caseOverviewInfoLabel: {
-    fontSize: 15,
+    ...typography.subheadline,
     fontWeight: '600',
-    lineHeight: 19,
   },
   caseOverviewInfoRow: {
     alignItems: 'center',
@@ -19,15 +20,13 @@ export const customerV21HistoryStyles = StyleSheet.create({
     zIndex: 1,
   },
   caseOverviewInfoValue: {
-    fontSize: 13,
+    ...typography.footnote,
     fontWeight: '600',
-    lineHeight: 18,
     marginTop: 2,
   },
   caseProgressLabel: {
-    fontSize: 10,
+    ...typography.caption2,
     fontWeight: '600',
-    lineHeight: 13,
     minWidth: 0,
     width: 64,
   },
@@ -67,9 +66,8 @@ export const customerV21HistoryStyles = StyleSheet.create({
     textAlign: 'left',
   },
   chevronText: {
-    fontSize: 22,
-    fontWeight: '700',
-    lineHeight: 24,
+    ...typography.title2,
+    fontWeight: '600',
   },
   statusPill: {
     borderRadius: 999,
@@ -78,7 +76,7 @@ export const customerV21HistoryStyles = StyleSheet.create({
     paddingVertical: 7,
   },
   statusText: {
-    fontSize: 11,
+    ...typography.caption2,
     fontWeight: '600',
   },
   caseMiniStat: {
@@ -96,14 +94,11 @@ export const customerV21HistoryStyles = StyleSheet.create({
     shadowRadius: 26,
   },
   caseMiniStatLabel: {
-    fontSize: 11,
+    ...typography.caption2,
     fontWeight: '600',
-    lineHeight: 14,
   },
   caseMiniStatValue: {
-    fontSize: 18,
-    fontWeight: '600',
-    lineHeight: 23,
+    ...typography.headline,
     marginTop: 4,
   },
   metric: {
@@ -133,21 +128,18 @@ export const customerV21HistoryStyles = StyleSheet.create({
     gap: 10,
   },
   metricLabel: {
-    fontSize: 12,
+    ...typography.caption1,
     fontWeight: '600',
-    lineHeight: 16,
     marginTop: 4,
   },
   metricValue: {
-    fontSize: 16,
+    ...typography.callout,
     fontWeight: '600',
-    lineHeight: 21,
   },
   casePriceLabel: {
     flex: 1,
-    fontSize: 12,
-    fontWeight: '700',
-    lineHeight: 16,
+    ...typography.caption1,
+    fontWeight: '600',
   },
   casePriceLine: {
     alignItems: 'center',
@@ -160,9 +152,8 @@ export const customerV21HistoryStyles = StyleSheet.create({
   },
   casePriceTotalLabel: {
     flex: 1,
-    fontSize: 14,
+    ...typography.footnote,
     fontWeight: '600',
-    lineHeight: 18,
   },
   casePriceTotalLine: {
     alignItems: 'center',
@@ -172,23 +163,20 @@ export const customerV21HistoryStyles = StyleSheet.create({
     paddingTop: 11,
   },
   casePriceTotalValue: {
-    fontSize: 19,
-    fontWeight: '600',
-    lineHeight: 24,
+    ...typography.headline,
+    fontVariant: ['tabular-nums'],
     textAlign: 'right',
   },
   casePriceValue: {
-    fontSize: 13,
+    ...typography.footnote,
     fontWeight: '600',
-    lineHeight: 17,
     maxWidth: '48%',
     textAlign: 'right',
   },
   caseScopeLabel: {
     flex: 1,
-    fontSize: 12,
+    ...typography.caption1,
     fontWeight: '600',
-    lineHeight: 16,
   },
   caseScopeStateDot: {
     alignItems: 'center',
@@ -199,9 +187,8 @@ export const customerV21HistoryStyles = StyleSheet.create({
     width: 20,
   },
   caseScopeStateText: {
-    fontSize: 10,
+    ...typography.caption2,
     fontWeight: '600',
-    lineHeight: 12,
   },
   caseScopeStepRow: {
     alignItems: 'center',
@@ -218,16 +205,14 @@ export const customerV21HistoryStyles = StyleSheet.create({
     shadowRadius: 10,
   },
   caseScopeValue: {
-    fontSize: 10,
+    ...typography.caption2,
     fontWeight: '600',
-    lineHeight: 13,
     maxWidth: 86,
     textAlign: 'right',
   },
   caseTimelineBody: {
-    fontSize: 12,
-    fontWeight: '700',
-    lineHeight: 16,
+    ...typography.caption1,
+    fontWeight: '600',
     marginTop: 2,
   },
   caseTimelineDot: {
@@ -239,9 +224,8 @@ export const customerV21HistoryStyles = StyleSheet.create({
     width: 20,
   },
   caseTimelineDotText: {
-    fontSize: 9,
+    ...typography.caption2,
     fontWeight: '600',
-    lineHeight: 11,
   },
   caseTimelineItem: {
     alignItems: 'center',
@@ -252,9 +236,8 @@ export const customerV21HistoryStyles = StyleSheet.create({
     zIndex: 1,
   },
   caseTimelineTitle: {
-    fontSize: 14,
+    ...typography.footnote,
     fontWeight: '600',
-    lineHeight: 18,
   },
   caseWorkerAvatar: {
     alignItems: 'center',
@@ -270,19 +253,16 @@ export const customerV21HistoryStyles = StyleSheet.create({
     width: '100%',
   },
   caseWorkerAvatarText: {
-    fontSize: 14,
+    ...typography.footnote,
     fontWeight: '600',
-    lineHeight: 18,
   },
   cardTitle: {
-    fontSize: 14,
+    ...typography.footnote,
     fontWeight: '600',
-    lineHeight: 18,
   },
   labelText: {
-    fontSize: 12,
+    ...typography.caption1,
     fontWeight: '600',
-    lineHeight: 16,
   },
   caseSourceLayer: {
     gap: 12,
@@ -299,16 +279,13 @@ export const customerV21HistoryStyles = StyleSheet.create({
     position: 'relative',
   },
   caseArtifactLabel: {
-    fontSize: 11,
+    ...typography.caption2,
     fontWeight: '600',
-    lineHeight: 14,
     position: 'relative',
     zIndex: 1,
   },
   caseArtifactValue: {
-    fontSize: 20,
-    fontWeight: '600',
-    lineHeight: 24,
+    ...typography.title3,
     marginTop: 6,
     position: 'relative',
     zIndex: 1,
@@ -342,15 +319,13 @@ export const customerV21HistoryStyles = StyleSheet.create({
     minWidth: 54,
   },
   caseMapEtaLabel: {
-    fontSize: 10,
+    ...typography.caption2,
     fontWeight: '600',
-    lineHeight: 12,
     marginTop: 1,
   },
   caseMapEtaValue: {
-    fontSize: 15,
+    ...typography.subheadline,
     fontWeight: '600',
-    lineHeight: 18,
   },
   caseMapFloat: {
     alignItems: 'center',
@@ -405,15 +380,13 @@ export const customerV21HistoryStyles = StyleSheet.create({
     top: 127,
   },
   caseMapWorkerMeta: {
-    fontSize: 11,
-    fontWeight: '700',
-    lineHeight: 15,
+    ...typography.caption1,
+    fontWeight: '600',
     marginTop: 2,
   },
   caseMapWorkerName: {
-    fontSize: 15,
+    ...typography.subheadline,
     fontWeight: '600',
-    lineHeight: 19,
   },
   caseOverviewLiquidScore: {
     alignItems: 'center',
@@ -424,9 +397,7 @@ export const customerV21HistoryStyles = StyleSheet.create({
     width: 82,
   },
   caseOptionChoiceBody: {
-    fontSize: 12,
-    fontWeight: '500',
-    lineHeight: 17,
+    ...typography.caption1,
   },
   caseOptionChoiceCard: {
     borderRadius: 24,
@@ -450,9 +421,8 @@ export const customerV21HistoryStyles = StyleSheet.create({
     minWidth: 58,
   },
   caseOptionChoiceTitle: {
-    fontSize: 14,
+    ...typography.footnote,
     fontWeight: '600',
-    lineHeight: 18,
   },
   caseOverviewScoreAura: {
     bottom: -22,
@@ -478,9 +448,8 @@ export const customerV21HistoryStyles = StyleSheet.create({
     zIndex: 2,
   },
   caseOverviewScoreLabel: {
-    fontSize: 9,
-    fontWeight: '700',
-    lineHeight: 11,
+    ...typography.caption2,
+    fontWeight: '600',
     maxWidth: 58,
     textAlign: 'center',
   },
@@ -505,10 +474,9 @@ export const customerV21HistoryStyles = StyleSheet.create({
     zIndex: 1,
   },
   caseOverviewScoreValue: {
-    fontSize: 25,
+    ...typography.title2,
     fontWeight: '600',
-    letterSpacing: 0,
-    lineHeight: 28,
+    fontVariant: ['tabular-nums'],
   },
   matchingKaelStatusIconAura: {
     ...StyleSheet.absoluteFill,
@@ -552,9 +520,8 @@ export const customerV21HistoryStyles = StyleSheet.create({
     width: 42,
   },
   arrivalCodeDigitText: {
-    fontSize: 20,
+    ...typography.title3,
     fontWeight: '600',
-    lineHeight: 24,
   },
   arrivalCodeDigitPending: {
     opacity: 0.72,
@@ -572,9 +539,8 @@ export const customerV21HistoryStyles = StyleSheet.create({
     zIndex: 1,
   },
   arrivalCodePendingText: {
-    fontSize: 14,
+    ...typography.footnote,
     fontWeight: '600',
-    lineHeight: 18,
   },
   arrivalCodePendingWrap: {
     alignItems: 'center',
@@ -602,10 +568,9 @@ export const customerV21HistoryStyles = StyleSheet.create({
     borderRadius: 999,
     bottom: 6,
     color: '#FFFFFF',
-    fontSize: 9,
+    ...typography.caption2,
     fontWeight: '600',
     left: 7,
-    lineHeight: 12,
     overflow: 'hidden',
     paddingHorizontal: 7,
     paddingVertical: 3,
@@ -676,9 +641,8 @@ export const customerV21HistoryStyles = StyleSheet.create({
     shadowOpacity: 0.18,
   },
   successEmblemText: {
-    fontSize: 34,
+    ...typography.largeTitle,
     fontWeight: '600',
-    lineHeight: 39,
   },
   fulfillmentListIcon: {
     minHeight: 54,
@@ -693,14 +657,11 @@ export const customerV21HistoryStyles = StyleSheet.create({
     paddingVertical: 10,
   },
   fulfillmentRowBody: {
-    fontSize: 12,
-    fontWeight: '500',
-    lineHeight: 17,
+    ...typography.caption1,
   },
   fulfillmentRowTitle: {
-    fontSize: 14,
+    ...typography.footnote,
     fontWeight: '600',
-    lineHeight: 18,
   },
   fulfillmentStep: {
     alignItems: 'center',
@@ -712,9 +673,8 @@ export const customerV21HistoryStyles = StyleSheet.create({
     padding: 12,
   },
   fulfillmentStepBody: {
-    fontSize: 12,
+    ...typography.caption1,
     fontWeight: '600',
-    lineHeight: 16,
   },
   fulfillmentStepState: {
     alignItems: 'center',
@@ -725,14 +685,12 @@ export const customerV21HistoryStyles = StyleSheet.create({
     width: 26,
   },
   fulfillmentStepStateText: {
-    fontSize: 12,
+    ...typography.caption1,
     fontWeight: '600',
-    lineHeight: 14,
   },
   fulfillmentStepTitle: {
-    fontSize: 14,
+    ...typography.footnote,
     fontWeight: '600',
-    lineHeight: 18,
   },
   flex: {
     flex: 1,

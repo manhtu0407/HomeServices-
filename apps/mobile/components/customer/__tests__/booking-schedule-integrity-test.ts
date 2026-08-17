@@ -20,8 +20,14 @@ describe('HCMC booking schedule integrity', () => {
     const now = new Date('2026-07-15T04:30:00.000Z')
 
     expect(availableBookingTimeSlots('2026-07-15', now)).toEqual([
+      '12:00',
+      '13:00',
       '14:00',
+      '15:00',
       '16:00',
+      '17:00',
+      '18:00',
+      '19:00',
     ])
   })
 

@@ -1,3 +1,4 @@
+import { typography } from '@/design/theme'
 import { StyleSheet } from 'react-native'
 
 export const CUSTOMER_V21_SURFACE_SIDE_INSET = 16
@@ -49,8 +50,7 @@ export const customerV21SharedStyles = StyleSheet.create({
     width: '100%',
   },
   bodyText: {
-    fontSize: 14,
-    lineHeight: 20,
+    ...typography.subheadline,
   },
   centerText: {
     textAlign: 'center',
@@ -81,9 +81,8 @@ export const customerV21SharedStyles = StyleSheet.create({
     zIndex: 1,
   },
   emptyTitle: {
-    fontSize: 19,
+    ...typography.title3,
     fontWeight: '600',
-    lineHeight: 24,
     textAlign: 'center',
   },
   homeEmptyState: {
@@ -117,9 +116,8 @@ export const customerV21SharedStyles = StyleSheet.create({
     flexShrink: 0,
   },
   topActionText: {
-    fontSize: 18,
+    ...typography.title3,
     fontWeight: '600',
-    lineHeight: 22,
   },
   topAvatarDot: {
     backgroundColor: '#30D27B',
@@ -138,7 +136,7 @@ export const customerV21SharedStyles = StyleSheet.create({
   },
   topAvatarText: {
     color: '#FFFFFF',
-    fontSize: 18,
+    ...typography.title3,
     fontWeight: '600',
   },
   topAvatarWrap: {
@@ -170,17 +168,14 @@ export const customerV21SharedStyles = StyleSheet.create({
     minWidth: 0,
   },
   topSubtitle: {
-    fontSize: 13,
+    ...typography.footnote,
     fontWeight: '600',
-    lineHeight: 18,
     textAlign: 'left',
   },
   topTitle: {
-    fontSize: 27,
+    ...typography.title2,
     fontWeight: '600',
     includeFontPadding: true,
-    letterSpacing: 0,
-    lineHeight: 34,
     minHeight: 36,
     textAlign: 'left',
   },
@@ -203,9 +198,8 @@ export const customerV21SharedStyles = StyleSheet.create({
     alignSelf: 'flex-start',
   },
   eyebrowPillText: {
-    fontSize: 11,
+    ...typography.caption2,
     fontWeight: '600',
-    letterSpacing: 0,
     textTransform: 'uppercase',
   },
   eyebrowPillTextPreserve: {
@@ -224,18 +218,16 @@ export const customerV21SharedStyles = StyleSheet.create({
     padding: 12,
   },
   infoNoticeBody: {
-    fontSize: 12,
+    ...typography.caption1,
     fontWeight: '600',
-    lineHeight: 17,
   },
   infoNoticeIcon: {
     minHeight: 58,
     minWidth: 58,
   },
   infoNoticeTitle: {
-    fontSize: 14,
+    ...typography.footnote,
     fontWeight: '600',
-    lineHeight: 18,
   },
   matchingHandoffChip: {
     alignSelf: 'flex-start',
@@ -260,9 +252,8 @@ export const customerV21SharedStyles = StyleSheet.create({
     color: '#1F9B5B',
   },
   matchingHandoffChipText: {
-    fontSize: 12,
-    fontWeight: '700',
-    lineHeight: 16,
+    ...typography.caption1,
+    fontWeight: '600',
   },
   progressLine: {
     flex: 1,
@@ -284,9 +275,8 @@ export const customerV21SharedStyles = StyleSheet.create({
     shadowRadius: 7,
   },
   progressNodeText: {
-    fontSize: 9,
+    ...typography.caption2,
     fontWeight: '600',
-    lineHeight: 12,
   },
   progressRail: {
     alignItems: 'center',
@@ -303,14 +293,12 @@ export const customerV21SharedStyles = StyleSheet.create({
     gap: 12,
   },
   cardTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    lineHeight: 21,
+    ...typography.callout,
+    fontWeight: '600',
   },
   eyebrow: {
-    fontSize: 12,
+    ...typography.caption1,
     fontWeight: '600',
-    letterSpacing: 0,
     textTransform: 'uppercase',
   },
   heroChipRow: {
@@ -337,10 +325,8 @@ export const customerV21SharedStyles = StyleSheet.create({
     zIndex: 1,
   },
   heroTitle: {
-    fontSize: 28,
+    ...typography.title2,
     fontWeight: '600',
-    letterSpacing: 0,
-    lineHeight: 34,
   },
   homeAuraServiceTile: {
     alignItems: 'stretch',
@@ -361,6 +347,38 @@ export const customerV21SharedStyles = StyleSheet.create({
   homeAuraServiceTileWide: {
     flexBasis: '48%',
     maxWidth: '49%',
+  },
+  homeV4ServiceTile: {
+    alignItems: 'stretch',
+    aspectRatio: 264 / 186,
+    borderRadius: 24,
+    borderWidth: 1,
+    boxShadow: '0 8px 18px rgba(93,132,128,0.12)',
+    flexBasis: '31.5%',
+    flexGrow: 0,
+    gap: 0,
+    maxWidth: '32%',
+    minHeight: 0,
+    minWidth: 0,
+    overflow: 'hidden',
+    padding: 0,
+    position: 'relative',
+  },
+  homeV4ServiceContent: {
+    alignItems: 'stretch',
+    flex: 1,
+    justifyContent: 'center',
+    minWidth: 0,
+    position: 'relative',
+    zIndex: 1,
+  },
+  homeV4ServiceVisual: {
+    alignItems: 'center',
+    flex: 1,
+    justifyContent: 'center',
+    minHeight: 0,
+    overflow: 'hidden',
+    padding: 0,
   },
   homeServiceGrid: {
     flexWrap: 'wrap',
@@ -399,9 +417,8 @@ export const customerV21SharedStyles = StyleSheet.create({
     zIndex: 1,
   },
   homeServiceDetailLabel: {
-    fontSize: 10,
-    fontWeight: '700',
-    lineHeight: 14,
+    ...typography.caption2,
+    fontWeight: '600',
   },
   homeServiceDetailRail: {
     alignItems: 'center',
@@ -439,9 +456,8 @@ export const customerV21SharedStyles = StyleSheet.create({
     minHeight: 0,
   },
   homeServiceTitle: {
-    fontSize: 14,
-    fontWeight: '700',
-    lineHeight: 18,
+    ...typography.footnote,
+    fontWeight: '600',
     marginTop: 4,
     textAlign: 'left',
   },
@@ -484,8 +500,8 @@ export const customerV21SharedStyles = StyleSheet.create({
     paddingVertical: 9,
   },
   screenRailTitle: {
-    fontSize: 12,
-    fontWeight: '700',
+    ...typography.caption1,
+    fontWeight: '600',
   },
   sectionActionButton: {
     alignItems: 'flex-end',
@@ -507,7 +523,7 @@ export const customerV21SharedStyles = StyleSheet.create({
     paddingRight: 116,
   },
   sectionActionText: {
-    fontSize: 14,
+    ...typography.footnote,
     fontWeight: '600',
     textAlign: 'right',
   },
@@ -520,10 +536,8 @@ export const customerV21SharedStyles = StyleSheet.create({
     marginTop: 22,
   },
   sectionTitle: {
-    fontSize: 20,
+    ...typography.title3,
     fontWeight: '600',
-    letterSpacing: 0,
-    lineHeight: 25,
   },
   serviceGrid: {
     flexDirection: 'row',
@@ -537,9 +551,8 @@ export const customerV21SharedStyles = StyleSheet.create({
     minWidth: 82,
   },
   serviceNote: {
-    fontSize: 12,
+    ...typography.caption1,
     fontWeight: '600',
-    lineHeight: 16,
     textAlign: 'center',
   },
   serviceTile: {
@@ -555,9 +568,8 @@ export const customerV21SharedStyles = StyleSheet.create({
     padding: 12,
   },
   serviceTitle: {
-    fontSize: 15,
+    ...typography.subheadline,
     fontWeight: '600',
-    lineHeight: 19,
     textAlign: 'center',
   },
   sourceIconAuraFrame: {
@@ -580,9 +592,8 @@ export const customerV21SharedStyles = StyleSheet.create({
     width: 64,
   },
   utilityLabel: {
-    fontSize: 13,
+    ...typography.footnote,
     fontWeight: '600',
-    lineHeight: 17,
     textAlign: 'center',
   },
 })
