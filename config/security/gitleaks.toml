@@ -19,4 +19,11 @@ regexes = [
   # pasted into the same file is still caught, and a demo token is allowed
   # wherever it appears. Anything issued by a real project fails this regex.
   '''eyJpc3MiOiJzdXBhYmFzZS1kZW1v''',
+  # Test-pillar ids from a PILLAR manifest's `siblings` list, e.g. `P10-per-actor-rls`.
+  # `generic-api-key` matches a keyword, a separator, then a value: an id such as
+  # `P19-job-access-ownership` supplies the keyword `access`, the list comma supplies the
+  # separator, and the next id in the list is read as the value. Anchored to the id shape the
+  # registry already enforces (`scripts/harness/pillar-registry.mjs`), so it allows exactly
+  # `P<nn>-<kebab>` and nothing else — a real key sharing the line is still caught.
+  '''^P\d{2}-[a-z0-9]+(?:-[a-z0-9]+)*$''',
 ]

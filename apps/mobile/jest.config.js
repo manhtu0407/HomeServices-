@@ -18,4 +18,9 @@ module.exports = {
     '^@/(.*)$': '<rootDir>/$1',
     '^@babel/runtime/(.*)$': '<rootDir>/node_modules/@babel/runtime/$1',
   },
+  // Match pillar paths with a platform-neutral regex. Expanding <rootDir> into a glob
+  // escapes Windows worktree segments such as `.claude` and can silently collect zero
+  // suites, so a zero-test pillar run must fail instead of becoming a false-green gate.
+  testRegex: '.*-pillar-test\\.tsx$',
+  passWithNoTests: false,
 }

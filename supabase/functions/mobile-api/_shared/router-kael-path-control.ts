@@ -87,6 +87,12 @@ const KAEL_RUNTIME_PATH_CONTROL: Partial<Record<string, KaelRuntimePathControlRo
     edgeRoute: "POST /jobs/:id/kael-incident",
     kaelPurpose: "job_incident",
   },
+  "jobs.kaelIncidentPreviewScope": {
+    mobileAction: "worker.preview_scope_from_incident",
+    workflowPhase: "plan_price_adjust",
+    edgeRoute: "POST /jobs/:id/kael-incident/preview-scope",
+    kaelPurpose: "scope_change",
+  },
   "jobs.kaelIncidentProposeScope": {
     mobileAction: "worker.propose_scope_from_incident",
     workflowPhase: "plan_price_adjust",

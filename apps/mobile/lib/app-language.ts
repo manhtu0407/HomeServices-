@@ -104,6 +104,25 @@ export const appCopy = {
   },
 } as const
 
+const activeWorkStatusCopy: Record<AppLanguage, Record<ServiceType, string>> = {
+  en: {
+    cleaning: 'Cleaning in progress',
+    electrical: 'Electrical work in progress',
+    handyman: 'Work in progress',
+    hvac: 'Air care in progress',
+    plumbing: 'Plumbing work in progress',
+    upholstery: 'Upholstery care in progress',
+  },
+  vi: {
+    cleaning: 'Đang vệ sinh',
+    electrical: 'Đang sửa điện',
+    handyman: 'Đang thực hiện',
+    hvac: 'Đang xử lý điều hòa',
+    plumbing: 'Đang sửa nước',
+    upholstery: 'Đang vệ sinh nội thất',
+  },
+}
+
 const problemLabels: Record<AppLanguage, Record<ServiceType, Record<string, string>>> = {
   vi: {
     electrical: Object.fromEntries(PROBLEM_CHIPS.electrical.map((label) => [label, label])),
@@ -247,8 +266,13 @@ export function localizedServiceLabel(serviceType: ServiceType | null, language:
   return appCopy[language].services[serviceType]
 }
 
-export function localizedStatusLabel(status: LocalDealStatus | null, language: AppLanguage = appLanguage) {
+export function localizedStatusLabel(
+  status: LocalDealStatus | null,
+  language: AppLanguage = appLanguage,
+  serviceType: ServiceType | null = null,
+) {
   if (!status) return appCopy[language].status.none
+  if (status === 'repairing' && serviceType) return activeWorkStatusCopy[language][serviceType]
   return appCopy[language].status[status]
 }
 

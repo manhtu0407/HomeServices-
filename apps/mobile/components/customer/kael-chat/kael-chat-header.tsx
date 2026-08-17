@@ -2,11 +2,12 @@ import type { ComponentProps, ReactNode } from 'react'
 import { Text, View } from 'react-native'
 import Animated from 'react-native-reanimated'
 
+import { GlassSurface } from '@/components/ui/glass-surface'
+import { LiquidBackButton, LiquidSurfaceOverlay } from '@/components/ui/liquid-back-button'
 import type { AppLanguage } from '@/lib/app-language'
 
 import type { CustomerThemeTokens } from '../customer-theme'
-import { SourceCardSkin } from '../ui/aura-surfaces'
-import { ChatBackIcon, ChatModeSwitchAura, ChatNewConversationIcon } from './chat-surfaces'
+import { ChatModeSwitchAura, ChatNewConversationIcon } from './chat-surfaces'
 import { customerV21ChatStyles as styles } from './chat-styles'
 import { KaelLiquidPressable } from './kael-liquid-pressable'
 import type { CustomerKaelMode } from '../ui/types'
@@ -14,7 +15,6 @@ import type { CustomerKaelMode } from '../ui/types'
 type AnimatedViewStyle = ComponentProps<typeof Animated.View>['style']
 
 export function CustomerKaelChatHeader({
-  animatedModeMenuSheenStyle,
   animatedModeMenuStyle,
   canStartNewConversation,
   caseWorkLabel,
@@ -32,7 +32,6 @@ export function CustomerKaelChatHeader({
   sessionMenuOpen,
   tokens,
 }: {
-  animatedModeMenuSheenStyle: AnimatedViewStyle
   animatedModeMenuStyle: AnimatedViewStyle
   canStartNewConversation: boolean
   caseWorkLabel: string
@@ -67,29 +66,37 @@ export function CustomerKaelChatHeader({
   return (
     <>
       <View style={styles.chatHeader} testID="customer-v21-kael-source-header">
-        <KaelLiquidPressable
-          accessibilityLabel={language === 'vi' ? 'Quay lại' : 'Back'}
-          accessibilityRole="button"
+        <LiquidBackButton
+          iconColor={tokens.text}
+          label={language === 'vi' ? 'Quay lại' : 'Back'}
+          mode={tokens.mode}
           onPress={onBack}
-          reduceMotion={reduceMotion}
-          style={[
-            styles.chatHeaderBackControl,
-            { backgroundColor: tokens.raised, borderColor: tokens.border },
-          ]}
           testID="customer-v21-kael-back"
-        >
-          <ChatBackIcon color={tokens.text} />
-        </KaelLiquidPressable>
+        />
         <View style={styles.chatHeaderSpacer} />
-        <View
+        <GlassSurface
+          backgroundColor={reduceTransparency ? tokens.raised : tokens.mode === 'dark' ? 'rgba(22,29,27,0.42)' : 'rgba(255,255,255,0.16)'}
+          borderColor={reduceTransparency ? tokens.border : tokens.mode === 'dark' ? 'rgba(190,210,205,0.16)' : 'rgba(255,255,255,0.72)'}
+          material="liquid"
+          mode={tokens.mode}
+          showEdgeHighlight={false}
           style={[
             styles.chatHeaderActions,
+            !reduceTransparency ? styles.chatHeaderActionsLiquid : null,
             modeMenuOpen || sessionMenuOpen ? styles.chatHeaderActionsOpen : null,
-            { backgroundColor: tokens.raised, borderColor: tokens.border },
           ]}
           testID="customer-v21-kael-header-actions"
+          variant="control"
         >
-          {!reduceTransparency ? <SourceCardSkin /> : null}
+          {!reduceTransparency ? (
+            <LiquidSurfaceOverlay
+              designHeight={44}
+              designWidth={158}
+              mode={tokens.mode}
+              radius={22}
+              testID="customer-v21-kael-header-actions-liquid"
+            />
+          ) : null}
           <KaelLiquidPressable
             accessibilityLabel={language === 'vi' ? 'Mở danh sách cuộc trò chuyện' : 'Open conversation list'}
             accessibilityRole="button"
@@ -129,20 +136,37 @@ export function CustomerKaelChatHeader({
               {activeModeLabel}
             </Text>
           </KaelLiquidPressable>
-        </View>
+        </GlassSurface>
       </View>
 
       {sessionMenuOpen ? sessionMenuNode : null}
 
       {modeMenuOpen ? (
         <Animated.View
-          style={[styles.chatModeSwitch, styles.chatModeMenu, { backgroundColor: tokens.ghost, borderColor: 'rgba(255,255,255,0.88)' }, animatedModeMenuStyle]}
+          style={[
+            styles.chatModeSwitch,
+            styles.chatModeMenu,
+            reduceTransparency
+              ? { backgroundColor: tokens.raised, borderColor: tokens.border }
+              : {
+                backgroundColor: tokens.mode === 'dark' ? 'rgba(22,29,27,0.42)' : 'rgba(255,255,255,0.18)',
+                borderColor: tokens.mode === 'dark' ? 'rgba(190,210,205,0.16)' : 'rgba(255,255,255,0.72)',
+              },
+            !reduceTransparency ? styles.chatModeMenuLiquid : null,
+            animatedModeMenuStyle,
+          ]}
           testID="customer-v21-chat-mode-menu"
         >
-          {!reduceTransparency ? <SourceCardSkin /> : null}
-          <ChatModeSwitchAura reduceTransparency={reduceTransparency} />
-          {!reduceMotion && !reduceTransparency ? (
-            <Animated.View pointerEvents="none" style={[styles.chatModeMenuSheen, animatedModeMenuSheenStyle]} testID="customer-v21-chat-mode-menu-sheen" />
+          {!reduceTransparency ? (
+            <>
+              <ChatModeSwitchAura reduceTransparency={reduceTransparency} />
+              <LiquidSurfaceOverlay
+                designHeight={120}
+                mode={tokens.mode}
+                radius={18}
+                testID="customer-v21-chat-mode-menu-liquid"
+              />
+            </>
           ) : null}
           {modeOptions.map((option) => {
             const selected = mode === option.value
@@ -158,7 +182,18 @@ export function CustomerKaelChatHeader({
                   styles.chatModeButton,
                   styles.chatModeMenuButton,
                   styles.chatModeMenuOption,
-                  { backgroundColor: selected ? tokens.raised : 'rgba(255,255,255,0.42)', borderColor: selected ? 'rgba(255,255,255,0.92)' : 'rgba(13,167,151,0.12)' },
+                  {
+                    backgroundColor: reduceTransparency
+                      ? tokens.raised
+                      : tokens.mode === 'dark'
+                        ? selected ? tokens.glassStrong : tokens.glass
+                        : selected ? 'rgba(255,255,255,0.42)' : 'rgba(255,255,255,0.16)',
+                    borderColor: reduceTransparency
+                      ? selected ? tokens.primary : tokens.border
+                      : tokens.mode === 'dark'
+                        ? selected ? tokens.borderStrong : tokens.border
+                        : selected ? 'rgba(255,255,255,0.78)' : 'rgba(255,255,255,0.48)',
+                  },
                   selected ? styles.chatModeButtonActive : null,
                 ]}
                 testID={option.value === 'normal' ? 'customer-v21-chat-tab-normal' : 'customer-v21-chat-tab-case-work'}

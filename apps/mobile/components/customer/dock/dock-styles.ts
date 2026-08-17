@@ -1,40 +1,39 @@
 import { typography } from '@/design/theme'
 import { Platform, StyleSheet } from 'react-native'
 
-export const CUSTOMER_LIQUID_NAV_MAX_WIDTH = 390
-export const CUSTOMER_LIQUID_NAV_SIDE_INSET = 12
-export const CUSTOMER_LIQUID_NAV_DOCK_HEIGHT = 56
-export const CUSTOMER_LIQUID_NAV_ORB_SIZE = 72
-export const CUSTOMER_LIQUID_NAV_GAP = 8
-export const CUSTOMER_LIQUID_NAV_RAIL_PADDING = 4
-export const CUSTOMER_LIQUID_NAV_LENS_RADIUS = 24
+export const CUSTOMER_LIQUID_NAV_MAX_WIDTH = 384
+export const CUSTOMER_LIQUID_NAV_SIDE_INSET = 18
+export const CUSTOMER_LIQUID_NAV_DOCK_HEIGHT = 62
+export const CUSTOMER_LIQUID_NAV_ORB_SIZE = 68
+export const CUSTOMER_LIQUID_NAV_GAP = 7
+export const CUSTOMER_LIQUID_NAV_RAIL_PADDING = 2
+export const CUSTOMER_LIQUID_NAV_LENS_RADIUS = 30
 
 export const customerV21DockStyles = StyleSheet.create({
   dockIcon: {
-    height: 27,
-    opacity: 0.82,
+    height: 21,
+    opacity: 1,
     position: 'relative',
-    transform: [{ translateY: 1 }, { scale: 0.92 }],
-    width: 27,
+    width: 21,
     zIndex: 3,
   },
   dockIconActive: {
     opacity: 1,
-    transform: [{ translateY: -1 }, { scale: 1 }],
+    transform: [{ translateY: -0.15 }, { scale: 1.018 }],
   },
   dockItem: {
     alignItems: 'center',
-    borderRadius: 22,
+    borderRadius: 30,
     flex: 1,
-    gap: 2,
-    height: 48,
+    gap: 1,
+    height: 56,
     justifyContent: 'center',
     minWidth: 0,
     position: 'relative',
     zIndex: 3,
   },
   dockItemPressed: {
-    transform: [{ scale: 0.9 }],
+    transform: [{ scale: 0.976 }],
   },
   dockLabel: {
     ...typography.caption2,
@@ -86,7 +85,7 @@ export const customerV21DockStyles = StyleSheet.create({
   dockInnerRefraction: {
     borderBottomColor: 'rgba(42,205,180,0.08)',
     borderColor: 'rgba(255,255,255,0.45)',
-    borderRadius: 27,
+    borderRadius: 32,
     borderWidth: 1,
     bottom: 1,
     left: 1,
@@ -97,24 +96,24 @@ export const customerV21DockStyles = StyleSheet.create({
     zIndex: 2,
   },
   dockLens: {
-    backgroundColor: 'rgba(248,255,253,0.94)',
-    borderColor: 'rgba(255,255,255,0.98)',
-    borderRadius: 24,
+    backgroundColor: 'rgba(248,255,253,0.82)',
+    borderColor: 'rgba(255,255,255,0.90)',
+    borderRadius: CUSTOMER_LIQUID_NAV_LENS_RADIUS,
     borderWidth: 1,
-    bottom: 4,
-    left: 4,
+    bottom: 3,
+    left: 3,
     overflow: 'hidden',
     position: 'absolute',
     shadowColor: '#078071',
     shadowOffset: { height: 9, width: 0 },
     shadowOpacity: 0.12,
     shadowRadius: 20,
-    top: 4,
+    top: 3,
     zIndex: 1,
   },
   dockLensBloom: {
-    backgroundColor: 'rgba(220,249,242,0.52)',
-    borderRadius: 24,
+    backgroundColor: 'rgba(220,249,242,0.40)',
+    borderRadius: CUSTOMER_LIQUID_NAV_LENS_RADIUS,
     bottom: 5,
     left: 6,
     opacity: 0.88,
@@ -125,7 +124,7 @@ export const customerV21DockStyles = StyleSheet.create({
   dockLensInnerShadow: {
     borderBottomColor: 'rgba(12,181,159,0.14)',
     borderColor: 'rgba(5,95,87,0.045)',
-    borderRadius: 22,
+    borderRadius: 28,
     borderWidth: 1,
     bottom: 4,
     left: 4,
@@ -166,7 +165,7 @@ export const customerV21DockStyles = StyleSheet.create({
   },
   dockPlane: {
     alignItems: 'center',
-    borderRadius: 28,
+    borderRadius: CUSTOMER_LIQUID_NAV_DOCK_HEIGHT / 2,
     borderWidth: 1,
     flexDirection: 'row',
     gap: 0,

@@ -166,6 +166,7 @@ export function useCustomerKaelSessionHydration({
           if (result.success) {
             selectedServiceRef.current = result.data.session.service_type
             resolveHydration(result.data, false)
+            void onCaseSessionReady(result.data.session.id).catch(() => undefined)
           } else {
             rejectHydration(localizeKaelRequestFailure(result, language))
           }

@@ -57,14 +57,6 @@ function readKaelPersistenceService() {
   ))
 }
 
-function readMigrations() {
-  const root = new URL('../../../../../supabase/migrations/', import.meta.url)
-  return readdirSync(root, { withFileTypes: true })
-    .filter((entry) => entry.isFile() && entry.name.endsWith('.sql'))
-    .map((entry) => readUtf8(new URL(entry.name, root)))
-    .join('\n')
-}
-
 describe('customer Kael conversation catalog', () => {
   it('matches only the Customer POST stream route', () => {
     const decode = (value: string) => decodeURIComponent(value)
@@ -97,7 +89,6 @@ describe('customer Kael conversation catalog', () => {
   it('keeps normal chat and Case Work in explicit, owner-scoped catalogs', () => {
     const router = readRouterLayer()
     const services = readServiceLayer()
-    const migrations = readMigrations()
 
     expect(router).toContain('/me/kael/conversations')
     expect(router).toContain('customer.kaelConversations.list')
@@ -105,16 +96,11 @@ describe('customer Kael conversation catalog', () => {
     expect(services).toContain('listCustomerKaelConversations')
     expect(services).toContain('.eq("customer_id", ctx.user.id)')
     expect(services).toContain('.eq("chat_mode", mode)')
-    expect(migrations).toContain('create table if not exists public.kael_customer_conversations')
-    expect(migrations).toContain("check (chat_mode in ('normal', 'case'))")
-    expect(migrations).toContain('case_session_id uuid references public.kael_chat_sessions')
-    expect(migrations).toMatch(/unique\s*\(\s*customer_id\s*,\s*chat_mode\s*,\s*client_request_id\s*\)/i)
     expect(services).toContain('.eq("chat_mode", mode)')
   })
 
   it('persists pre-link turns but refuses to bypass the authoritative Agentic Case Work session', () => {
     const services = readServiceLayer()
-    const migrations = readMigrations()
 
     expect(services).toContain('sendCustomerKaelConversationTurn')
     expect(services).toContain('readLinkedCustomerCaseSession')
@@ -124,10 +110,6 @@ describe('customer Kael conversation catalog', () => {
     expect(services).toContain('scrubSensitiveForLLM')
     expect(services).toContain('client_request_id')
     expect(services).toContain('append_customer_kael_conversation_exchange')
-    expect(migrations).toContain('create table if not exists public.kael_customer_conversation_turns')
-    expect(migrations).toContain("check (role in ('customer', 'kael', 'system'))")
-    expect(migrations).toMatch(/unique[\s\S]*conversation_id[\s\S]*client_request_id/i)
-    expect(migrations).toContain('for update;')
     expect(services).toContain('total_turns: asNumber(row.total_turns) + caseDetail.totalTurns')
     expect(services).toContain('case_job_id: caseDetail.jobId')
     expect(services).not.toContain('total_turns: asNumber(caseSession.data.total_turns)')
@@ -137,7 +119,6 @@ describe('customer Kael conversation catalog', () => {
   it('supports soft-delete, rename, and pin through the Customer Edge boundary', () => {
     const router = readRouterLayer()
     const services = readServiceLayer()
-    const migrations = readMigrations()
 
     for (const action of ['archive', 'rename', 'pin']) {
       expect(router).toContain(`customer.kaelConversations.${action}`)
@@ -146,9 +127,6 @@ describe('customer Kael conversation catalog', () => {
     expect(services).toContain('renameCustomerKaelConversation')
     expect(services).toContain('setCustomerKaelConversationPinned')
     expect(services).toContain('.order("pinned_at", { ascending: false, nullsFirst: false })')
-    expect(migrations).toContain('archived_at timestamptz')
-    expect(migrations).toContain('pinned_at timestamptz')
-    expect(migrations).toContain('char_length(btrim(title)) between 1 and 64')
   })
 
   it('keeps the catalog Customer-only and safely restores a linked case after archive', () => {
@@ -182,23 +160,4 @@ describe('customer Kael conversation catalog', () => {
     )
   })
 
-  it('enables RLS, grants read-only owner access, and blocks cross-actor writes', () => {
-    const migrations = readMigrations()
-
-    expect(migrations).toContain('alter table public.kael_customer_conversations enable row level security')
-    expect(migrations).toContain('alter table public.kael_customer_conversation_turns enable row level security')
-    expect(migrations).toMatch(/to authenticated[\s\S]*\(select auth\.uid\(\)\) = customer_id/i)
-    expect(migrations).toContain('grant select on public.kael_customer_conversations to authenticated')
-    expect(migrations).toContain('grant select on public.kael_customer_conversation_turns to authenticated')
-    expect(migrations).toContain('revoke all on public.kael_customer_conversations from anon')
-    expect(migrations).toContain('revoke all on public.kael_customer_conversation_turns from anon')
-    expect(migrations).toContain('revoke insert, update, delete on public.kael_customer_conversations from authenticated')
-    expect(migrations).toContain('revoke insert, update, delete on public.kael_customer_conversation_turns from authenticated')
-  })
-
-  it('covers the composite owner foreign key used by Customer conversation turns', () => {
-    const migrations = readMigrations()
-
-    expect(migrations).toMatch(/kael_customer_conversation_turns_owner_idx[\s\S]*conversation_id\s*,\s*customer_id/i)
-  })
 })

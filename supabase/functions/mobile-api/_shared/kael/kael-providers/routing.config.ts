@@ -71,7 +71,7 @@ export const KAEL_ROUTING_CONFIG: Record<KaelPurpose, KaelPurposeRoutingConfig> 
   price_synthesis: config("price_synthesis", anthropic(), undefined, 0.01, 3_000, true, 200),
   advisory_generation: config("advisory_generation", deepseek(), anthropic("claude-haiku-4-5-20251001"), 0.004, 2_000, true, 150),
   worker_brief: config("worker_brief", deepseek(), anthropic(), 0.006, 3_000, false, 600),
-  scope_change: config("scope_change", anthropic(), undefined, 0.01, 20_000, true, 500, {
+  scope_change: config("scope_change", anthropic(), deepseek(), 0.01, 20_000, true, 500, {
     escalation: {
       route: anthropic("claude-opus-4-8"),
       trigger: HIGH_STAKES_ESCALATION,

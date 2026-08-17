@@ -8,6 +8,7 @@ import {
   type LocalDealDraft,
   type LocalDealEstimate,
   type LocalDealPayment,
+  type LocalOriginalScopePriceQuote,
   type LocalRemoteBroadcastSnapshot,
   type LocalRemoteJobSnapshot,
   type LocalScopeChange,
@@ -19,6 +20,7 @@ import type {
   ConfirmSearchResponse,
   CreateJobResponse,
   JobDetailResponse,
+  OriginalScopePriceQuote,
   WorkerBroadcastsResponse,
   WorkerJobListResponse,
 } from '../api-types'
@@ -113,10 +115,13 @@ export function jobDetailToSnapshot(data: JobDetailResponse, includeWorkerBrief 
         hasVndPrice: true,
       } satisfies LocalDealEstimate
     : null
-  const broadcast = broadcastFromJobStatus(
+  const broadcastProblemSummary = includeWorkerBrief
+    ? job.problem_chips[0] ?? job.kael_problem_identified ?? job.description
+    : job.kael_problem_identified ?? job.problem_chips[0] ?? job.description
+  const statusBroadcast = broadcastFromJobStatus(
     job.status,
     serviceType,
-    job.kael_problem_identified ?? job.problem_chips[0] ?? job.description,
+    broadcastProblemSummary,
     districtLabel,
     addressLabel,
     data.broadcast_state,
@@ -126,6 +131,16 @@ export function jobDetailToSnapshot(data: JobDetailResponse, includeWorkerBrief 
       : [],
     job.address_access,
   )
+  const estimatedWorkerNet = includeWorkerBrief
+    ? job.estimated_worker_net ?? null
+    : null
+  const broadcast = statusBroadcast && estimatedWorkerNet !== null
+    ? {
+        ...statusBroadcast,
+        estimatedEarning: estimatedWorkerNet,
+        estimatedEarningLabel: formatNullableSinglePrice(estimatedWorkerNet),
+      }
+    : statusBroadcast
 
   return {
     id: job.id,
@@ -140,6 +155,7 @@ export function jobDetailToSnapshot(data: JobDetailResponse, includeWorkerBrief 
     mediaCount: customerEvidencePhotoUrls.length,
     estimate,
     broadcast,
+    scopeReview: scopeReviewFromJobDetail(data),
     scopeChange: scopeChangeFromJobDetail(data),
     finalPrice: job.final_price,
     paymentRailAvailable: job.payment_rail_available === true,
@@ -168,13 +184,45 @@ export function workerBroadcastToSnapshot(broadcast: WorkerBroadcastsResponse['b
     status: broadcast.status,
     serviceType: broadcast.service_type,
     problemSummary: broadcast.problem_summary ?? 'Yêu cầu sửa chữa',
+    scopeSummary: broadcast.scope_summary ?? undefined,
     generalArea: districtLabelFromValue(broadcast.district),
     prebrief: workerBriefLinesFromRecord(broadcast.worker_brief_core),
     mediaCount: broadcast.media_count,
     secondsRemaining: broadcast.seconds_remaining,
     estimatedPriceLabel: formatNullablePriceRange(broadcast.estimated_price_min, broadcast.estimated_price_max),
     estimatedEarningLabel: formatNullablePriceRange(broadcast.estimated_earning_min, broadcast.estimated_earning_max),
+    priceQuote: originalScopePriceQuoteFromApi(broadcast.original_scope_price_quote),
     scheduledAt: broadcast.scheduled_at,
+  }
+}
+
+function originalScopePriceQuoteFromApi(
+  quote: OriginalScopePriceQuote,
+): LocalOriginalScopePriceQuote {
+  return {
+    schemaVersion: quote.schema_version,
+    quoteId: quote.quote_id,
+    referencePriceMin: quote.reference_price_min,
+    referencePriceMax: quote.reference_price_max,
+    customerTotal: quote.customer_total,
+    platformFee: quote.platform_fee,
+    workerNet: quote.worker_net,
+    commissionLevel: quote.commission_level,
+    commissionRateBps: quote.commission_rate_bps,
+    priceSource: quote.price_source,
+    selectionRule: quote.selection_rule,
+    workerConfirmationRequired: quote.worker_confirmation_required,
+    customerConfirmationRequired: quote.customer_confirmation_required,
+    workerConfirmedAt: quote.worker_confirmed_at,
+    expiresAt: quote.expires_at,
+    evidenceSummary: {
+      confidence: quote.evidence_summary.confidence,
+      baselineSourceCount: quote.evidence_summary.baseline_source_count,
+      marketSourceCount: quote.evidence_summary.market_source_count,
+      highTrustSourceCount: quote.evidence_summary.high_trust_source_count,
+      quorumMet: quote.evidence_summary.quorum_met,
+      capStatement: quote.evidence_summary.cap_statement,
+    },
   }
 }
 
@@ -203,7 +251,7 @@ export function workerJobToSnapshot(job: WorkerJobListResponse['jobs'][number]):
     backendStatus: job.status,
     status: toLocalDealStatus(job.status),
     serviceType: job.service_type,
-    description: job.problem_summary ?? 'Yêu cầu sửa chữa',
+    description: job.scope_summary ?? job.problem_summary ?? 'Yêu cầu sửa chữa',
     problemChips: job.problem_summary ? [job.problem_summary] : [],
     addressLabel: addressLabel || districtLabel,
     districtLabel,
@@ -322,6 +370,7 @@ export function dealToSnapshot(deal: NonNullable<LocalWorkflowState['deal']>): L
     mediaCount: deal.draft.mediaCount,
     estimate: deal.estimate,
     broadcast: deal.broadcast,
+    scopeReview: deal.scopeReview ?? null,
     scopeChange: deal.scopeChange,
     finalPrice: deal.finalPrice ?? null,
     paymentRailAvailable: deal.paymentRailAvailable === true,
@@ -340,6 +389,24 @@ export function dealToSnapshot(deal: NonNullable<LocalWorkflowState['deal']>): L
     paidAt: deal.paidAt ?? null,
     reviewedAt: deal.reviewedAt ?? null,
     matchingState: deal.matchingState ?? null,
+  }
+}
+
+function scopeReviewFromJobDetail(data: JobDetailResponse): LocalRemoteJobSnapshot['scopeReview'] {
+  const incident = data.current_job_incident
+  if (!incident) return null
+  return {
+    id: incident.id,
+    status: incident.status,
+    evidenceStatus: incident.evidence_status,
+    reportedDescription: incident.reported_description,
+    reportedReason: incident.reported_reason,
+    evidenceCount: incident.evidence_count,
+    lastSummary: incident.last_summary,
+    lastQuestion: incident.last_question,
+    lastNextActor: incident.last_next_actor,
+    createdAt: incident.created_at,
+    updatedAt: incident.updated_at,
   }
 }
 

@@ -66,7 +66,7 @@ describe('Edge fetch guard wiring', () => {
     expect(authSource).toContain('validateJsonResponses: true')
   })
 
-  it('rejects redirects on every Edge fetch that carries provider credentials or signed URLs', () => {
+  it('sets redirect: "error" on every Edge fetch that carries provider credentials or signed URLs', () => {
     expect(read('supabase/functions/mobile-api/_shared/platform/db.ts'))
       .toContain('redirect: "error"')
     expect(read('supabase/functions/mobile-api/_shared/platform/push.ts'))

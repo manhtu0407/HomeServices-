@@ -181,8 +181,7 @@ function resolveStage(input: {
   }
   if (hasPublicEvent(input.events, 'no_worker_found')) return 'exhausted'
   if (hasPublicEvent(input.events, 'matching_recovery_required')) return 'recovery_required'
-  if (input.batches.length === 0 && input.strategy === 'general') return 'general_search'
-  if (input.batches.length === 0 && input.strategy === 'saved_worker_first') return 'saved_worker_search'
+  if (input.batches.length === 0) return 'recovery_required'
   return 'exhausted'
 }
 

@@ -84,6 +84,13 @@ export async function confirmKaelChat(
         rpc_subject: safeConfirmRpcFailureSubject(result.error.message),
       },
     });
+    if (isPriceEvidenceConstraintError(result.error)) {
+      apiFailure(
+        "INVALID_STATUS",
+        "Báo giá này chưa có đủ nguồn giá đã kiểm chứng. Kael cần lập lại báo giá trước khi bạn xác nhận.",
+        409,
+      );
+    }
     apiFailure("DB_ERROR", "Không thể xác nhận phiên Kael", 500);
   }
   const row = result.data?.[0];
@@ -163,6 +170,9 @@ function buildKaelChatMatchingDecision(
   confidence: number,
   scopeSummary: string | null,
 ): KaelAutonomyDecision {
+  const evidenceSummary = scopeSummary
+    ? scopeSummary.slice(0, 280)
+    : "Validated Kael DiagnosisScopeArtifact and customer-confirmed offer.";
   return buildKaelAutonomyDecision({
     action: "start_matching",
     policyId: "kael.autonomy.v2.chat_estimate_to_matching",
@@ -170,7 +180,7 @@ function buildKaelChatMatchingDecision(
       {
         kind: "artifact",
         reference_id: sessionId,
-        summary: scopeSummary ?? "Validated Kael DiagnosisScopeArtifact and customer-confirmed offer.",
+        summary: evidenceSummary,
       },
       {
         kind: "artifact",
@@ -238,6 +248,15 @@ async function startConfirmedKaelMatching(input: {
     kaelSessionId: input.sessionId,
     autonomyDecision,
   });
+}
+
+function isPriceEvidenceConstraintError(value: {
+  code?: unknown;
+  message?: unknown;
+}): boolean {
+  return value.code === "23514" &&
+    typeof value.message === "string" &&
+    value.message.includes("KAEL_PRICE_EVIDENCE_REQUIRED");
 }
 
 function safeConfirmRpcErrorCode(value: unknown): string {

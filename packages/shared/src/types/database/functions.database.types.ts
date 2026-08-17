@@ -5,16 +5,27 @@ import type { Database } from './schema.database.types'
 
 export type DatabaseFunctions = {
 /* @slice:begin functions */
-      accept_broadcast_atomic: {
-        Args: { p_job_id: string; p_worker_id: string }
-        Returns: {
-          already_applied: boolean
-          candidate_id: string
-          error_code: string
-          job_status: Database["public"]["Enums"]["job_status"]
-          ok: boolean
-        }[]
-      }
+      accept_broadcast_atomic:
+        | {
+            Args: { p_job_id: string; p_worker_id: string }
+            Returns: {
+              already_applied: boolean
+              candidate_id: string
+              error_code: string
+              job_status: Database["public"]["Enums"]["job_status"]
+              ok: boolean
+            }[]
+          }
+        | {
+            Args: { p_job_id: string; p_quote_id: string; p_worker_id: string }
+            Returns: {
+              already_applied: boolean
+              candidate_id: string
+              error_code: string
+              job_status: Database["public"]["Enums"]["job_status"]
+              ok: boolean
+            }[]
+          }
       acquire_harness_dependency_permit: {
         Args: {
           p_dependency: string
@@ -788,7 +799,12 @@ export type DatabaseFunctions = {
         }[]
       }
       claim_job_incident_scope_proposal_atomic: {
-        Args: { p_claim_id: string; p_job_id: string; p_worker_id: string }
+        Args: {
+          p_claim_id: string
+          p_job_id: string
+          p_quote_id: string
+          p_worker_id: string
+        }
         Returns: {
           claimed: boolean
           error_code: string
@@ -1376,6 +1392,15 @@ export type DatabaseFunctions = {
           p_status: string
         }
         Returns: boolean
+      }
+      get_admin_operator_activation_status: {
+        Args: { p_actor_id: string }
+        Returns: {
+          capabilities: string[]
+          email: string
+          full_name: string
+          status: string
+        }[]
       }
       get_customer_profile_insights_aggregate: {
         Args: { p_customer_id: string }
@@ -2241,6 +2266,22 @@ export type DatabaseFunctions = {
           error_code: string
           ok: boolean
           rule_id: string
+        }[]
+      }
+      save_job_incident_scope_price_quote_atomic: {
+        Args: {
+          p_expected_revision: number
+          p_incident_id: string
+          p_job_id: string
+          p_quote: Json
+          p_quote_expires_at: string
+          p_quote_id: string
+          p_worker_id: string
+        }
+        Returns: {
+          error_code: string
+          incident: Json
+          ok: boolean
         }[]
       }
       save_worker_registration_draft_atomic: {

@@ -2,6 +2,7 @@ import { Text, View } from 'react-native'
 import Svg, { Circle, Path } from 'react-native-svg'
 
 import { KaelTextField } from '@/components/ui/kael-primitives'
+import { color } from '@/design/theme'
 import type { CustomerKaelConversationSession } from '@/lib/api-types/customer'
 
 import type { CustomerThemeTokens } from '../customer-theme'
@@ -40,6 +41,7 @@ export function CustomerKaelSessionRow({
   onToggleActions,
   pending,
   reduceMotion,
+  reduceTransparency,
   renaming,
   selected,
   session,
@@ -64,6 +66,7 @@ export function CustomerKaelSessionRow({
   onToggleActions: (sessionId: string, open: boolean) => void
   pending: boolean
   reduceMotion: boolean
+  reduceTransparency: boolean
   renaming: boolean
   selected: boolean
   session: CustomerKaelConversationSession
@@ -74,7 +77,24 @@ export function CustomerKaelSessionRow({
   const linkedCaseWork = Boolean(session.case_session_id)
   return (
     <View style={styles.sessionGroup}>
-      <View style={[styles.session, { borderColor: selected ? tokens.primary : tokens.border }, selected ? styles.sessionSelected : null]}>
+      <View
+        style={[
+          styles.session,
+          {
+            backgroundColor: reduceTransparency
+              ? tokens.raised
+              : selected
+                ? tokens.mode === 'dark' ? tokens.service : color.surface.mint
+                : tokens.mode === 'dark' ? tokens.glass : color.surface.soft,
+            borderColor: reduceTransparency
+              ? selected ? tokens.primary : tokens.border
+              : selected
+                ? tokens.mode === 'dark' ? tokens.borderStrong : color.surface.strokeStrong
+                : tokens.mode === 'dark' ? tokens.border : color.surface.stroke,
+          },
+        ]}
+        testID={`customer-v21-kael-session-row-${session.id}`}
+      >
         <KaelLiquidPressable
           accessibilityLabel={title}
           accessibilityRole="button"

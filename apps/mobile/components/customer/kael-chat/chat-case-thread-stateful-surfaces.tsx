@@ -12,7 +12,7 @@ import {
 } from '@nestscout/shared'
 
 import type { CustomerThemeTokens } from '../customer-theme'
-import { canCustomerDecideScopeChange } from './case-work-display-model'
+import { canCustomerDecideScopeChange, scopeChangeApproveLabel } from './case-work-display-model'
 import { CaseWorkResponse } from './case-work-response'
 import {
   buildCaseWorkResponseModel,
@@ -21,6 +21,8 @@ import {
 } from './case-work-response-model'
 import { CustomerPaymentRailSurface } from './customer-payment-rail-surface'
 import { FindingWorkersReceipt } from './finding-workers-receipt'
+import { ScopeChangeReviewingDetails } from './scope-change-reviewing-details'
+import { ScopeChangeProposalDetails } from './scope-change-proposal-details'
 
 type PaymentBusyAction =
   | 'legacy_create'
@@ -108,7 +110,11 @@ export function AgenticCaseThreadPanel({
   const [authorizingApartmentAccess, setAuthorizingApartmentAccess] = useState(false)
   const [paymentBusyAction, setPaymentBusyAction] = useState<PaymentBusyAction>(null)
   const [refreshingPayment, setRefreshingPayment] = useState(false)
-  const phase = toWorkflowPhase(deal.backendStatus ?? deal.status)
+  const [paymentRefreshResult, setPaymentRefreshResult] = useState<'failed' | 'success' | null>(null)
+  const backendPhase = toWorkflowPhase(deal.backendStatus ?? deal.status)
+  const phase = deal.scopeReview && (backendPhase === 'inspecting' || backendPhase === 'repairing')
+    ? 'scope_change_reviewing'
+    : backendPhase
   const model = buildCaseWorkResponseModel({ deal, language, paymentRailProvider, phase })
   const completedPhaseModels = buildCompletedCaseWorkResponseModels({
     deal,
@@ -163,6 +169,12 @@ export function AgenticCaseThreadPanel({
     />
   ) : null
   const retrySearchActive = phase === 'matching' && !matchingReceipt && deal.broadcast?.status === 'expired'
+  const scopeReviewingDetails = phase === 'scope_change_reviewing' ? (
+    <ScopeChangeReviewingDetails deal={deal} language={language} tokens={tokens} />
+  ) : null
+  const scopeProposalDetails = pendingScopeChange ? (
+    <ScopeChangeProposalDetails deal={deal} language={language} tokens={tokens} />
+  ) : null
   const apartmentAccessReady = model.actionKind === 'apartment_access'
   const activityActionLabel = phase === 'done' || phase === 'cancelled' ? activityLabel : null
 
@@ -181,7 +193,7 @@ export function AgenticCaseThreadPanel({
               variant="secondary"
             />
             <KaelButton
-              label={language === 'vi' ? 'Chấp nhận thay đổi' : 'Accept change'}
+              label={scopeChangeApproveLabel(pendingScopeChange, language)}
               onPress={() => onApproveScopeChange(pendingScopeChange.id)}
               size="small"
               style={styles.action}
@@ -241,7 +253,7 @@ export function AgenticCaseThreadPanel({
             variant="secondary"
           />
         ) : undefined}
-        details={matchingReceipt}
+        details={scopeReviewingDetails ?? scopeProposalDetails ?? matchingReceipt}
         model={model}
         reduceMotion={reduceMotion}
         tokens={tokens}
@@ -266,12 +278,17 @@ export function AgenticCaseThreadPanel({
         }}
         onRefreshPayment={() => {
           if (refreshingPayment) return
+          setPaymentRefreshResult(null)
           setRefreshingPayment(true)
-          void onRefreshPayment().finally(() => setRefreshingPayment(false))
+          void onRefreshPayment()
+            .then((refreshed) => setPaymentRefreshResult(refreshed ? 'success' : 'failed'))
+            .catch(() => setPaymentRefreshResult('failed'))
+            .finally(() => setRefreshingPayment(false))
         }}
         paymentBusy={paymentBusy}
         paymentBusyAction={paymentBusyAction}
         paymentRailProvider={paymentRailProvider}
+        paymentRefreshResult={paymentRefreshResult}
         refreshingPayment={refreshingPayment}
         reduceMotion={reduceMotion}
         reviewControls={phase === 'paid' ? (

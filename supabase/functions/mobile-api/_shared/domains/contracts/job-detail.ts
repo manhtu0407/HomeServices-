@@ -32,6 +32,7 @@ export type EdgeJobDetailResponse = {
     kael_worker_brief_guidance: Record<string, unknown> | null;
     kael_progress: EdgeKaelChatProgressResponse["progress"];
     final_price: number | null;
+    estimated_worker_net: number | null;
     payment_rail_available: boolean;
     payment_rail_provider: "platform_bank_manual" | "sepay_vietqr" | null;
     payment_status:
@@ -105,6 +106,19 @@ export type EdgeJobDetailResponse = {
     seconds_remaining: number | null;
   } | null;
   matching_state: MatchingState | null;
+  current_job_incident: {
+    id: string;
+    status: "open" | "awaiting_worker" | "awaiting_customer" | "ready_for_scope_proposal";
+    evidence_status: "needs_more" | "ready";
+    reported_description: string | null;
+    reported_reason: string | null;
+    evidence_count: number;
+    last_summary: string | null;
+    last_question: string | null;
+    last_next_actor: "customer" | "worker" | null;
+    created_at: string;
+    updated_at: string;
+  } | null;
   current_scope_change: {
     id: string;
     status: ScopeChangeStatus;

@@ -242,7 +242,10 @@ describe('catalog', () => {
     expect(learningCalls[1].operations).toContainEqual(['eq', 'rule_type', 'price_prior_update'])
 
     const baselineCall = client.calls.find((call) => call.table === 'price_baselines')
-    expect(baselineCall?.operations).toContainEqual(['select', 'complexity, price_min, price_max, district_code'])
+    expect(baselineCall?.operations).toContainEqual([
+      'select',
+      'complexity, price_min, price_max, district_code, source, price_evidence',
+    ])
     expect(baselineCall?.operations).toContainEqual(['in', 'district_code', ['q7', 'hcmc_all']])
   })
 })

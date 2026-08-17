@@ -66,6 +66,17 @@ export function mapAcceptError(errorCode: string | null): never {
       403,
     );
   }
+  if (
+    errorCode === "PRICE_QUOTE_REQUIRED" ||
+    errorCode === "PRICE_QUOTE_CHANGED" ||
+    errorCode === "PRICE_QUOTE_INVALID"
+  ) {
+    apiFailure(
+      "PRICE_CONFIRMATION_REQUIRED",
+      "Báo giá đã thay đổi hoặc không còn hợp lệ. Vui lòng tải lại trước khi nhận việc.",
+      409,
+    );
+  }
   apiFailure("DB_ERROR", "Lỗi khi nhận yêu cầu", 500);
 }
 

@@ -21,7 +21,7 @@ import {
 import type { PendingClientRequestId } from './client-request-id'
 import { useAuth } from './auth-provider'
 import type { LocalMediaUploadDraft } from './media-upload'
-import { subscribeToJobStatus, subscribeToWorkerBroadcasts } from './realtime'
+import { subscribeToJobStatus, subscribeToWorkerBroadcasts, subscribeToWorkerEarnings } from './realtime'
 import type {
   CustomerProfileInsightsResponse,
   EarningsResponse,
@@ -37,6 +37,7 @@ import type {
   WorkerWithdrawalRequestCreateInput,
   WorkerCandidateView,
   JobIncidentResponse,
+  JobIncidentScopePricePreviewResponse,
 } from './api-types'
 import { useAppLanguage } from './app-language'
 import { localizeWorkflowError, type WorkflowErrorContext } from './frontend-workflow/errors'
@@ -97,9 +98,10 @@ type FrontendWorkflowActions = {
   workerUpdateStatus: WorkerOnsiteActions['workerUpdateStatus']
   workerConfirmCashPayment: (received?: boolean) => Promise<boolean>
   requestScopeChange: (input: WorkerScopeChangeDraftInput) => Promise<boolean>
-  getKaelJobIncident: () => Promise<JobIncidentResponse | false>
+  getKaelJobIncident: (jobIdOverride?: string) => Promise<JobIncidentResponse | false>
   openKaelJobIncident: (input: WorkerScopeChangeDraftInput) => Promise<JobIncidentResponse | false>
-  proposeScopeChangeFromKaelIncident: () => Promise<boolean>
+  previewScopeChangeFromKaelIncident: () => Promise<JobIncidentScopePricePreviewResponse | false>
+  proposeScopeChangeFromKaelIncident: (quoteId: string) => Promise<boolean>
   requestWorkerCancellation: (input: WorkerCancellationRequestInput) => Promise<boolean>
   workerSubmitRegistration: (input: WorkerRegisterInput) => Promise<boolean>
   workerSaveRegistrationDraft: (input: WorkerRegistrationDraftInput) => Promise<boolean>
@@ -171,6 +173,7 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
   const pendingMatchingPreferenceClientRequestRef = useRef<PendingClientRequestId | null>(null)
   const pendingDirectScopeChangeClientRequestRef = useRef<PendingClientRequestId | null>(null)
   const pendingIncidentOpenClientRequestRef = useRef<PendingClientRequestId | null>(null)
+  const pendingScopePricePreviewClientRequestRef = useRef<PendingClientRequestId | null>(null)
   const pendingScopeProposalClientRequestRef = useRef<PendingClientRequestId | null>(null)
   const pendingRequestOwnerRef = useRef(sessionUserId)
   // Holds the latest refresh callbacks so realtime/AppState effects can stay
@@ -192,6 +195,7 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
     pendingMatchingPreferenceClientRequestRef.current = null
     pendingDirectScopeChangeClientRequestRef.current = null
     pendingIncidentOpenClientRequestRef.current = null
+    pendingScopePricePreviewClientRequestRef.current = null
     pendingScopeProposalClientRequestRef.current = null
   }, [sessionUserId])
 
@@ -303,11 +307,13 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
     decideScopeChange,
     getKaelJobIncident,
     openKaelJobIncident,
+    previewScopeChangeFromKaelIncident,
     proposeScopeChangeFromKaelIncident,
     requestScopeChange,
   } = useScopeChangeActions({
     pendingDirectScopeChangeClientRequestRef,
     pendingIncidentOpenClientRequestRef,
+    pendingScopePricePreviewClientRequestRef,
     pendingScopeProposalClientRequestRef,
     refreshCurrentJob,
     setRemoteError,
@@ -359,6 +365,7 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
     requestScopeChange,
     getKaelJobIncident,
     openKaelJobIncident,
+    previewScopeChangeFromKaelIncident,
     proposeScopeChangeFromKaelIncident,
     requestWorkerCancellation,
     workerSubmitRegistration,
@@ -419,6 +426,7 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
     requestScopeChange,
     getKaelJobIncident,
     openKaelJobIncident,
+    previewScopeChangeFromKaelIncident,
     proposeScopeChangeFromKaelIncident,
     requestWorkerCancellation,
     submitReview,
@@ -476,6 +484,19 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
   useEffect(() => {
     if (!remoteSessionUserId || (remoteRole !== 'worker' && remoteRole !== 'admin')) return
     const handle = subscribeToWorkerBroadcasts(remoteSessionUserId, () => {
+      void liveRefreshRef.current?.workerRefresh()
+    })
+    return () => {
+      void handle?.unsubscribe()?.catch(() => {})
+    }
+  }, [remoteRole, remoteSessionUserId])
+
+  // Payment rows are authoritative invalidation events. Keep the 20-second
+  // poll as recovery, but refresh immediately when reconciliation changes the
+  // authenticated Worker's own ledger.
+  useEffect(() => {
+    if (!remoteSessionUserId || remoteRole !== 'worker') return
+    const handle = subscribeToWorkerEarnings(remoteSessionUserId, () => {
       void liveRefreshRef.current?.workerRefresh()
     })
     return () => {

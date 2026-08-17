@@ -33,6 +33,7 @@ export function buildWorkerV5AcceptReviewChecks(
     ?? profile?.service_types
   const serviceMatched = Boolean(deal?.draft.serviceType && activeServices?.includes(deal.draft.serviceType))
   const area = deal ? routeDestinationLabel(deal, language) : textByLanguage(language, 'Chưa có khu vực', 'No area')
+  const priceQuote = deal?.broadcast?.priceQuote
 
   return [
     {
@@ -54,6 +55,17 @@ export function buildWorkerV5AcceptReviewChecks(
       meta: deal?.broadcast ? area : textByLanguage(language, 'Chờ', 'Waiting'),
       state: deal?.broadcast ? 'done' : 'pending',
     },
+    {
+      label: textByLanguage(language, 'Giá và tiền công đã khóa', 'Price and earnings are locked'),
+      meta: priceQuote
+        ? textByLanguage(
+            language,
+            `${formatVnd(priceQuote.customerTotal)} · nhận ${formatVnd(priceQuote.workerNet)}`,
+            `${formatVnd(priceQuote.customerTotal)} · keep ${formatVnd(priceQuote.workerNet)}`,
+          )
+        : textByLanguage(language, 'Cần tải lại báo giá', 'Reload price quote'),
+      state: priceQuote ? 'done' : 'blocked',
+    },
   ]
 }
 
@@ -61,6 +73,12 @@ export function workerV5CanAcceptOpenOffer(deal: LocalDeal | null, workerGate: s
   return Boolean(
     workerGate !== 'backend_pending'
     && deal?.broadcast?.status === 'sent'
-    && deal.broadcast.jobId,
+    && deal.broadcast.jobId
+    && deal.broadcast.priceQuote
+    && deal.broadcast.priceQuote.workerConfirmedAt === null,
   )
+}
+
+function formatVnd(value: number) {
+  return `${new Intl.NumberFormat('vi-VN').format(value)}đ`
 }

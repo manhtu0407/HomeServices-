@@ -1,21 +1,17 @@
-import { Image } from 'expo-image'
-import { Pressable, StyleSheet, Text, View, type ImageSourcePropType } from 'react-native'
-import Animated, { FadeIn, FadeOut } from 'react-native-reanimated'
+import { useState } from 'react'
+import { StyleSheet, Text, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import { PrimaryButton, useEntryAccessibility } from './components/materials'
-import { EntryIcon } from './components/icons'
+import { KaelCoreV9 } from '@/components/ui/kael-core-v9'
+import { useEntryAccessibility } from './components/materials'
 import { entryTheme } from './theme'
 import type { EntryAccessCopy } from './copy'
 import type { RoleGateGreeting } from './role-gate-greeting'
+import { RoleSelectionCards } from './role-selection-cards'
 import type { EntryRole } from './types'
 
-const roleAssets = {
-  customerHome: require('./assets/customer-home.png') as ImageSourcePropType,
-  workerTools: require('./assets/worker-tools.png') as ImageSourcePropType,
-}
-
-const roleMintEnter = FadeIn.duration(380)
-const roleMintExit = FadeOut.duration(180)
+const ROLE_GATE_QUOTE_LINE_HEIGHT = 26
+const ROLE_GATE_MASCOT_SIZE = 34
+const ROLE_GATE_PUNCTUATION_GAP = entryTheme.spacing.sm
 
 export function RoleGateScreen({
   copy,
@@ -34,132 +30,80 @@ export function RoleGateScreen({
     <SafeAreaView edges={['top', 'bottom']} style={styles.safe}>
       <View style={styles.screen} testID="auth-role-gate-content">
         <View style={styles.gateHead}>
-          <Text style={[styles.h1, styles.gateGreetingTitle, { marginTop: 0 }]} testID="auth-role-gate-greeting">{greeting.headline}</Text>
-          <Text style={[styles.lead, { marginTop: 7 }]} testID="auth-role-gate-greeting-lead">{greeting.lead}</Text>
+          <RoleGateGreetingHeadline headline={greeting.headline} />
         </View>
-        <DecisionField copy={copy} onRoleChange={onRoleChange} role={role} />
-        <View style={styles.gateBottom}>
-          <PrimaryButton label={role === 'customer' ? copy.continueCustomer : copy.continueWorker} onPress={onContinue} testID="auth-role-continue" />
-          <Text style={[styles.caption, styles.gateFoot]}>{copy.footer}</Text>
-        </View>
+        <DecisionField copy={copy} onContinue={onContinue} onRoleChange={onRoleChange} role={role} />
       </View>
     </SafeAreaView>
   )
 }
 
-function DecisionField({ copy, onRoleChange, role }: {
+function RoleGateGreetingHeadline({ headline }: { headline: string }) {
+  const finalBangIndex = headline.lastIndexOf('!')
+  const prefix = finalBangIndex === -1 ? headline : headline.slice(0, finalBangIndex)
+  const finalBang = finalBangIndex === -1 ? '' : headline.slice(finalBangIndex)
+
+  return (
+    <View accessibilityLabel={headline} style={styles.greetingLine} testID="auth-role-gate-greeting">
+      <Text style={[styles.h1, styles.gateGreetingTitle, { marginTop: 0 }]} testID="auth-role-gate-greeting-text">{prefix}</Text>
+      {finalBang ? (
+        <View style={styles.greetingPunctuation} testID="auth-role-gate-greeting-punctuation">
+          <Text style={[styles.h1, styles.gateGreetingTitle, styles.greetingBang]} testID="auth-role-gate-greeting-bang">{finalBang}</Text>
+          <View pointerEvents="none" style={styles.greetingKael} testID="auth-role-gate-kael-slot">
+            <KaelCoreV9 size={ROLE_GATE_MASCOT_SIZE} testID="auth-role-gate-kael-mascot" />
+          </View>
+        </View>
+      ) : null}
+    </View>
+  )
+}
+
+function DecisionField({ copy, onContinue, onRoleChange, role }: {
   copy: EntryAccessCopy['roleGate']
+  onContinue: () => void
   onRoleChange: (role: EntryRole) => void
   role: EntryRole
 }) {
   const { reduceMotion, reduceTransparency } = useEntryAccessibility()
+  const [hasSelectedRole, setHasSelectedRole] = useState(false)
+
+  const handleRolePress = (nextRole: EntryRole) => {
+    if (hasSelectedRole && role === nextRole) {
+      onContinue()
+      return
+    }
+
+    setHasSelectedRole(true)
+    onRoleChange(nextRole)
+  }
 
   return (
     <View style={styles.decisionField} testID="auth-role-gate-decision-field">
-      <View pointerEvents="none" style={styles.decisionSurface}>
-        {!reduceTransparency ? <View style={styles.decisionWash} /> : null}
-      </View>
-      <View accessibilityLabel={copy.chooseRole} accessibilityRole="radiogroup" style={styles.roleList} testID="auth-entry-role-options">
-        <RoleCard
-          assetTreatment="home"
-          description={copy.customer.description}
-          meta={copy.customer.meta}
-          onPress={() => onRoleChange('customer')}
-          reduceMotion={reduceMotion}
-          selected={role === 'customer'}
-          source={roleAssets.customerHome}
-          testID="auth-entry-role-customer"
-          title={copy.customer.title}
-        />
-        <RoleCard
-          assetTreatment="tools"
-          description={copy.worker.description}
-          meta={copy.worker.meta}
-          onPress={() => onRoleChange('worker')}
-          reduceMotion={reduceMotion}
-          selected={role === 'worker'}
-          source={roleAssets.workerTools}
-          testID="auth-entry-role-worker"
-          title={copy.worker.title}
-        />
-      </View>
-    </View>
-  )
-}
-
-function RoleCard({ assetTreatment, description, meta, onPress, reduceMotion, selected, source, testID, title }: {
-  assetTreatment: 'home' | 'tools'
-  description: string
-  meta: string
-  onPress: () => void
-  reduceMotion: boolean
-  selected: boolean
-  source: ImageSourcePropType
-  testID: string
-  title: string
-}) {
-  return (
-    <View style={selected ? styles.roleCardSelectedShell : styles.roleCardPassiveShell} testID={`${testID}-layout`}>
-      <Pressable accessibilityRole="radio" accessibilityState={{ checked: selected }} onPress={onPress} style={({ pressed }: { pressed: boolean }) => [styles.roleCard, selected ? styles.roleCardSelected : styles.roleCardPassive, pressed && styles.pressed]} testID={testID}>
-        {selected ? <Animated.View entering={reduceMotion ? undefined : roleMintEnter} exiting={reduceMotion ? undefined : roleMintExit} pointerEvents="none" style={styles.roleMintPool} /> : null}
-        {selected ? <View pointerEvents="none" style={styles.roleCardHighlight} /> : null}
-        <View style={styles.roleAssetAnchor}>
-          <RoleAssetTile selected={selected} source={source} treatment={assetTreatment} />
-        </View>
-        <View style={styles.roleCopy}>
-          <View style={styles.roleTitleRow}>
-            <Text style={styles.h3}>{title}</Text>
-          </View>
-          <Text style={styles.roleDescription}>{description}</Text>
-          <Text style={styles.roleMeta}>{meta}</Text>
-        </View>
-        <View style={[styles.roleArrow, selected && styles.roleArrowSelected]}><EntryIcon color={entryTheme.color.mint.mint700} name="arrow-right" size={13} /></View>
-      </Pressable>
-    </View>
-  )
-}
-
-function RoleAssetTile({ selected, source, treatment }: { selected: boolean; source: ImageSourcePropType; treatment: 'home' | 'tools' }) {
-  return (
-    <View style={styles.roleAssetStage}>
-      {selected ? <View pointerEvents="none" style={styles.roleAssetCradle} /> : null}
-      <Image contentFit="contain" source={source} style={treatment === 'tools' ? styles.roleAssetImageTools : styles.roleAssetImageHome} />
+      <RoleSelectionCards
+        accessibilityHint={copy.selectionHint}
+        chooseRoleLabel={copy.chooseRole}
+        customer={copy.customer}
+        onSelect={handleRolePress}
+        reduceMotion={reduceMotion}
+        reduceTransparency={reduceTransparency}
+        selectedRole={hasSelectedRole ? role : null}
+        customerTestID="auth-entry-role-customer"
+        worker={copy.worker}
+        workerTestID="auth-entry-role-worker"
+      />
     </View>
   )
 }
 
 const styles = StyleSheet.create({
-  caption: { ...entryTheme.typography.caption, color: entryTheme.color.text.muted },
-  decisionField: { flex: 1, marginTop: 18, padding: 10, position: 'relative' },
-  decisionSurface: { backgroundColor: 'rgba(255,255,255,0.80)', borderColor: 'rgba(184,231,223,0.72)', borderRadius: 34, borderWidth: 1, bottom: 0, left: 0, overflow: 'hidden', position: 'absolute', right: 0, top: 0 },
-  decisionWash: { backgroundColor: 'rgba(230,251,243,0.50)', borderRadius: 32, bottom: 0, left: 0, position: 'absolute', right: 0, top: 0 },
-  gateBottom: { paddingTop: 12 },
-  gateFoot: { marginTop: 10, textAlign: 'center' },
-  gateGreetingTitle: { ...entryTheme.typography.title1 },
+  decisionField: { flex: 1, marginTop: 28, position: 'relative', width: '100%' },
+  gateGreetingTitle: { ...entryTheme.typography.title3, lineHeight: ROLE_GATE_QUOTE_LINE_HEIGHT },
   gateHead: { paddingHorizontal: 4, paddingTop: 8 },
+  greetingBang: { position: 'relative', zIndex: 1 },
+  greetingKael: { marginLeft: ROLE_GATE_PUNCTUATION_GAP, position: 'relative', zIndex: 0 },
+  greetingLine: { alignItems: 'flex-end', alignSelf: 'stretch', flexDirection: 'row', justifyContent: 'center', minHeight: ROLE_GATE_QUOTE_LINE_HEIGHT, overflow: 'visible' },
+  greetingPunctuation: { alignItems: 'center', flexDirection: 'row', height: ROLE_GATE_QUOTE_LINE_HEIGHT, marginLeft: 1, overflow: 'visible', position: 'relative' },
   h1: { ...entryTheme.typography.h1, color: entryTheme.color.text.strong },
-  h3: { ...entryTheme.typography.h3, color: entryTheme.color.text.strong },
-  lead: { ...entryTheme.typography.body, color: entryTheme.color.text.secondary },
-  pressed: { opacity: 0.92 },
-  roleArrow: { alignItems: 'center', backgroundColor: 'rgba(230,251,243,0.76)', borderColor: 'rgba(184,231,223,0.64)', borderRadius: 15, borderWidth: 1, height: 30, justifyContent: 'center', width: 30, zIndex: 1 },
-  roleArrowSelected: { backgroundColor: 'rgba(230,251,243,0.94)', boxShadow: '0px 7px 10px rgba(8,135,121,0.10)' },
-  roleAssetAnchor: { position: 'relative', zIndex: 1 },
-  roleAssetCradle: { backgroundColor: 'rgba(207,247,237,0.82)', borderRadius: 28, height: 82, position: 'absolute', width: 82 },
-  roleAssetImageHome: { height: 80, width: 80 },
-  roleAssetImageTools: { height: 88, width: 88 },
-  roleAssetStage: { alignItems: 'center', height: 82, justifyContent: 'center', width: 82 },
-  roleCard: { alignItems: 'center', borderRadius: entryTheme.radius.card, borderWidth: 1, flex: 1, flexDirection: 'row', gap: 13, minHeight: 0, overflow: 'hidden', paddingHorizontal: 15, paddingVertical: 16 },
-  roleCardHighlight: { backgroundColor: 'rgba(255,255,255,0.72)', height: 1, left: 20, position: 'absolute', right: 20, top: 1 },
-  roleCardSelected: { backgroundColor: 'rgba(241,251,248,0.96)', borderColor: 'transparent', boxShadow: '0px 16px 17px rgba(8,135,121,0.13)' },
-  roleCardSelectedShell: { flex: 3 },
-  roleCardPassive: { backgroundColor: 'transparent', borderColor: 'transparent' },
-  roleCardPassiveShell: { flex: 1 },
-  roleCopy: { flex: 1, zIndex: 1 },
-  roleMintPool: { backgroundColor: 'rgba(200,244,234,0.64)', borderRadius: 82, bottom: 12, left: 8, position: 'absolute', right: 8, top: 12 },
-  roleDescription: { ...entryTheme.typography.caption1, color: entryTheme.color.text.secondary, marginTop: 5 },
-  roleList: { flex: 1, gap: 0 },
-  roleMeta: { ...entryTheme.typography.caption2, color: entryTheme.color.text.muted, marginTop: 7 },
-  roleTitleRow: { alignItems: 'center', flexDirection: 'row' },
   safe: { flex: 1 },
   screen: { flex: 1, paddingBottom: 18, paddingHorizontal: entryTheme.spacing.screenX, paddingTop: 8 },
 })

@@ -24,7 +24,6 @@ type Props = {
   agenticEstimateNode: ReactNode
   agenticVisibleTurns: AgenticTurnView[]
   analysisEvidenceNode: ReactNode
-  animatedModeMenuSheenStyle: AnimatedViewStyle
   animatedModeMenuStyle: AnimatedViewStyle
   caseAssistantTurns: ChatTurnView[]
   caseIntakeResponseNode: ReactNode
@@ -85,7 +84,6 @@ export function KaelChatSurfaceView({
   agenticEstimateNode,
   agenticVisibleTurns,
   analysisEvidenceNode,
-  animatedModeMenuSheenStyle,
   animatedModeMenuStyle,
   caseAssistantTurns,
   caseIntakeResponseNode,
@@ -179,7 +177,6 @@ export function KaelChatSurfaceView({
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={rootStyles.flex}>
         <View style={[chatStyles.chatFrame, mode === 'case' ? historyActiveStyles.caseChatFrame : null]} testID={mode === 'normal' ? 'customer-v21-screen-2.4-chat-normal' : 'customer-v21-screen-2.5-chat-case'}>
           <CustomerKaelChatHeader
-            animatedModeMenuSheenStyle={animatedModeMenuSheenStyle}
             animatedModeMenuStyle={animatedModeMenuStyle}
             canStartNewConversation={canStartNewConversation}
             caseWorkLabel={caseWorkLabel}

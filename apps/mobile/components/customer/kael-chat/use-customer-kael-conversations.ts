@@ -44,6 +44,7 @@ import {
 export function useCustomerKaelConversations(
   mode: CustomerKaelConversationMode,
   language: AppLanguage,
+  options: { suppressActiveResponse?: boolean } = {},
 ) {
   const { session: authSession } = useAuth()
   const customerId = authSession?.user.id ?? null
@@ -99,7 +100,7 @@ export function useCustomerKaelConversations(
     return !serverScopedCustomerId || candidateCustomerId === serverScopedCustomerId
   }, [catalogKey, customerId, localVisualAuditSession])
 
-  const visibleResponse = activeResponse?.session.mode === mode
+  const visibleResponse = !options.suppressActiveResponse && activeResponse?.session.mode === mode
     && (localVisualAuditSession || activeResponse.session.customer_id === customerId)
     ? activeResponse
     : null
@@ -380,11 +381,11 @@ export function useCustomerKaelConversations(
   const ensureActiveSession = useCallback(async (clientRequestId?: string) => {
     if (visibleResponse) return visibleResponse
     const currentResponse = catalogKey ? activeResponseByCatalogRef.current.get(catalogKey) : null
-    if (currentResponse?.session.mode === mode) return currentResponse
+    if (!options.suppressActiveResponse && currentResponse?.session.mode === mode) return currentResponse
     const inFlight = sessionCreateRequestRef.current
     if (inFlight) return inFlight
     return startNewSession(clientRequestId)
-  }, [catalogKey, mode, startNewSession, visibleResponse])
+  }, [catalogKey, mode, options.suppressActiveResponse, startNewSession, visibleResponse])
 
   const openSession = useCallback(async (sessionId: string) => {
     if (!customerId || !catalogKey) return null

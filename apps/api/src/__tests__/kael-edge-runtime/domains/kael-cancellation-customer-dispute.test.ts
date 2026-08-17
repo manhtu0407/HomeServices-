@@ -342,7 +342,7 @@ describe('cancellation-customer-dispute', () => {
   })
 
   it.each(['STATUS_CHANGED', 'INCIDENT_CLAIM_STALE'])(
-    'maps scope-change request race %s to STATUS_CHANGED instead of DB_ERROR',
+    'blocks the direct scope route before request race %s can mutate state',
     async (rpcErrorCode) => {
       const fetchMock = vi.fn(async () =>
       new Response(JSON.stringify({
@@ -407,9 +407,11 @@ describe('cancellation-customer-dispute', () => {
         reason: 'Phát hiện lỗi phụ',
         photo_urls: [],
       })).rejects.toMatchObject({
-        code: 'STATUS_CHANGED',
+        code: 'WORKER_QUOTE_CONFIRMATION_REQUIRED',
         status: 409,
       })
+      expect(fetchMock).not.toHaveBeenCalled()
+      expect(client.calls.some((call) => call.table === 'rpc:request_scope_change_atomic')).toBe(false)
     },
   )
 })

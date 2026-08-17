@@ -19,6 +19,8 @@ import { routeDestinationLabel, workerV5TimeChoiceLabel } from '../ui/labels'
 import { buildWorkerV5OfferSummaryChips, type WorkerV5OfferDetailRow } from './offer'
 import { styles } from './offer-styles'
 
+const VND_FORMATTER = new Intl.NumberFormat('vi-VN')
+
 type WorkerV5AuraComponent = ComponentType<{
   scope: string
   style?: StyleProp<ViewStyle>
@@ -48,7 +50,10 @@ export function WorkerV5OfferDetailSummaryCard({
 }) {
   const serviceLabel = localizedServiceLabel(deal.draft.serviceType, language)
   const serviceIcon = deal.draft.serviceType ? serviceIcons[deal.draft.serviceType] : jobIcon
-  const earning = deal.broadcast?.estimatedEarningLabel?.trim()
+  const exactWorkerNet = deal.broadcast?.priceQuote?.workerNet
+  const earning = exactWorkerNet
+    ? textByLanguage(language, `Nhận ${formatVnd(exactWorkerNet)}`, `Keep ${formatVnd(exactWorkerNet)}`)
+    : deal.broadcast?.estimatedEarningLabel?.trim()
     || textByLanguage(language, 'Chờ Kael tính tiền công', 'Waiting for Kael earning')
   const area = routeDestinationLabel(deal, language)
   const problem = deal.broadcast?.problemSummary || deal.draft.inferredProblemLabel || deal.draft.description
@@ -57,7 +62,7 @@ export function WorkerV5OfferDetailSummaryCard({
     : `${workerV5TimeChoiceLabel(deal.draft.timeChoice, language, deal.scheduledAt)} · ${area}`
   const status = deal.broadcast?.status === 'sent'
     ? textByLanguage(language, 'Mới từ nguồn thật', 'New from real source')
-    : localizedStatusLabel(deal.status, language)
+    : localizedStatusLabel(deal.status, language, deal.draft.serviceType)
   const chipItems = buildWorkerV5OfferSummaryChips(deal, language)
 
   return (
@@ -95,6 +100,10 @@ export function WorkerV5OfferDetailSummaryCard({
       </View>
     </View>
   )
+}
+
+function formatVnd(value: number) {
+  return `${VND_FORMATTER.format(value)}đ`
 }
 
 export function WorkerV5OfferDetailEmptyCard({

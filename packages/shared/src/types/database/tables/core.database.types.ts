@@ -505,6 +505,7 @@ export type CoreTables = {
           created_at: string
           district_code: string
           id: string
+          price_evidence: Json
           price_max: number
           price_min: number
           service_problem_id: string
@@ -518,6 +519,7 @@ export type CoreTables = {
           created_at?: string
           district_code?: string
           id?: string
+          price_evidence?: Json
           price_max: number
           price_min: number
           service_problem_id: string
@@ -531,6 +533,7 @@ export type CoreTables = {
           created_at?: string
           district_code?: string
           id?: string
+          price_evidence?: Json
           price_max?: number
           price_min?: number
           service_problem_id?: string

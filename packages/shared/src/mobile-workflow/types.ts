@@ -50,12 +50,39 @@ export type LocalDealEstimate = {
   fallbackUsed?: boolean
 }
 
+export type LocalOriginalScopePriceQuote = {
+  schemaVersion: 'original_scope_price_quote.v1'
+  quoteId: string
+  referencePriceMin: number
+  referencePriceMax: number
+  customerTotal: number
+  platformFee: number
+  workerNet: number
+  commissionLevel: number
+  commissionRateBps: number
+  priceSource: string
+  selectionRule: 'verified_neutral_midpoint_with_bilateral_confirmation'
+  workerConfirmationRequired: true
+  customerConfirmationRequired: true
+  workerConfirmedAt: string | null
+  expiresAt: string
+  evidenceSummary: {
+    confidence: 'low' | 'medium' | 'high'
+    baselineSourceCount: number
+    marketSourceCount: number
+    highTrustSourceCount: number
+    quorumMet: true
+    capStatement: string
+  }
+}
+
 export type LocalWorkerBroadcast = {
   status: LocalWorkerBroadcastStatus
   broadcastId?: string
   jobId?: string
   serviceType: ServiceType
   problemSummary: string
+  scopeSummary?: string
   generalArea: string
   prebrief: string[]
   fullAddressVisible: boolean
@@ -66,6 +93,7 @@ export type LocalWorkerBroadcast = {
   estimatedEarning?: number | null
   estimatedEarningLabel?: string
   safe_metadata?: Record<string, unknown> | null
+  priceQuote?: LocalOriginalScopePriceQuote
 }
 
 export type LocalWorkerProfileSummary = {
@@ -134,6 +162,7 @@ export type LocalDeal = {
   draft: LocalDealDraft
   estimate: LocalDealEstimate | null
   broadcast: LocalWorkerBroadcast | null
+  scopeReview?: LocalJobIncidentReview | null
   scopeChange: LocalScopeChange | null
   finalPrice?: number | null
   paymentRailAvailable?: boolean
@@ -169,6 +198,20 @@ export type LocalScopeChange = {
   createdAt: string | null
 }
 
+export type LocalJobIncidentReview = {
+  id: string
+  status: 'open' | 'awaiting_worker' | 'awaiting_customer' | 'ready_for_scope_proposal' | 'scope_proposed' | 'resolved' | 'cancelled'
+  evidenceStatus: 'needs_more' | 'ready'
+  reportedDescription: string | null
+  reportedReason: string | null
+  evidenceCount: number
+  lastSummary: string | null
+  lastQuestion: string | null
+  lastNextActor: 'customer' | 'worker' | null
+  createdAt: string
+  updatedAt: string
+}
+
 export type LocalKaelProgress = {
   current_stage: string
   status: 'queued' | 'running' | 'completed' | 'failed'
@@ -197,6 +240,7 @@ export type LocalRemoteJobSnapshot = {
   mediaCount?: number
   estimate?: LocalDealEstimate | null
   broadcast?: LocalWorkerBroadcast | null
+  scopeReview?: LocalJobIncidentReview | null
   scopeChange?: LocalScopeChange | null
   finalPrice?: number | null
   paymentRailAvailable?: boolean
@@ -223,12 +267,14 @@ export type LocalRemoteBroadcastSnapshot = {
   status: LocalWorkerBroadcastStatus
   serviceType: ServiceType
   problemSummary: string
+  scopeSummary?: string
   generalArea: string
   prebrief?: string[]
   mediaCount?: number
   secondsRemaining: number | null
   estimatedPriceLabel?: string
   estimatedEarningLabel?: string
+  priceQuote?: LocalOriginalScopePriceQuote
   scheduledAt?: string | null
 }
 

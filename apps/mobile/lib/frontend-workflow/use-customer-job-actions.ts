@@ -1,4 +1,4 @@
-import { useCallback, useEffect, type Dispatch, type RefObject } from 'react'
+import { useCallback, useEffect, useRef, type Dispatch, type RefObject } from 'react'
 import {
   extractKnownDistrictLabel,
   toLocalDealStatus,
@@ -59,6 +59,8 @@ export function useCustomerJobActions({
   setRemoteError,
   stateRef,
 }: CustomerJobActionsInput) {
+  const currentJobRefreshInFlightRef = useRef(false)
+  const activeJobHydrationInFlightRef = useRef(false)
   const hydrateJobResult = useCallback((result: ApiResult<JobDetailResponse>) => {
     if (!result.success) return setRemoteError(result.error)
     dispatch({ type: 'hydrate_remote_job', job: jobDetailToSnapshot(result.data, role === 'worker' || role === 'admin') })
@@ -73,23 +75,35 @@ export function useCustomerJobActions({
   }, [hydrateJobResult, setRemoteError])
 
   const refreshCurrentJob = useCallback(async () => {
-    const jobId = getRemoteJobId(stateRef.current)
-    if (!jobId) return setRemoteError('Chưa có yêu cầu để tải lại')
-    return hydrateJobResult(await jobService.getJob(jobId))
+    if (currentJobRefreshInFlightRef.current) return true
+    currentJobRefreshInFlightRef.current = true
+    try {
+      const jobId = getRemoteJobId(stateRef.current)
+      if (!jobId) return setRemoteError('Chưa có yêu cầu để tải lại')
+      return hydrateJobResult(await jobService.getJob(jobId))
+    } finally {
+      currentJobRefreshInFlightRef.current = false
+    }
   }, [hydrateJobResult, setRemoteError, stateRef])
 
   // Hydrate the active job from the backend so refresh/cold start keeps the
   // backend as source of truth without noisy "no active job" banners.
   const hydrateCustomerActiveJob = useCallback(async () => {
-    if (getRemoteJobId(stateRef.current)) return true
-    const result = await jobService.listMyActiveJob()
-    if (!result.success) return false
-    if (!result.data.active_job) return true
-    // A direct route can hydrate while this bootstrap request is in flight.
-    // Keep that newer, explicitly selected job instead of replacing it.
-    if (getRemoteJobId(stateRef.current)) return true
-    dispatch({ type: 'hydrate_remote_job', job: jobDetailToSnapshot(result.data.active_job, false) })
-    return true
+    if (activeJobHydrationInFlightRef.current) return true
+    activeJobHydrationInFlightRef.current = true
+    try {
+      if (getRemoteJobId(stateRef.current)) return true
+      const result = await jobService.listMyActiveJob()
+      if (!result.success) return false
+      if (!result.data.active_job) return true
+      // A direct route can hydrate while this bootstrap request is in flight.
+      // Keep that newer, explicitly selected job instead of replacing it.
+      if (getRemoteJobId(stateRef.current)) return true
+      dispatch({ type: 'hydrate_remote_job', job: jobDetailToSnapshot(result.data.active_job, false) })
+      return true
+    } finally {
+      activeJobHydrationInFlightRef.current = false
+    }
   }, [dispatch, stateRef])
 
   const createRemoteJobFromDraft = useCallback(async (

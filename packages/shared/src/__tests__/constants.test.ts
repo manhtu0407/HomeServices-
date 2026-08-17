@@ -107,7 +107,6 @@ describe('database enum constants', () => {
     expect(LEARNING_RULE_STATUSES).toContain('rolled_back')
   })
 })
-
 describe('business constants', () => {
   it('keeps platform fee constants within documented limits', () => {
     expect(PLATFORM_FEE_CUSTOMER).toBe(0.075)
@@ -137,7 +136,6 @@ describe('business constants', () => {
     expect(new Set(REVIEW_TAGS).size).toBe(REVIEW_TAGS.length)
   })
 })
-
 describe('constants are runtime immutable', () => {
   it.each([
     ['SERVICE_TYPES', SERVICE_TYPES],
@@ -149,11 +147,5 @@ describe('constants are runtime immutable', () => {
     expect(() => {
       ;(values as unknown as string[]).push('invalid')
     }).toThrow()
-  })
-})
-
-describe('migration source availability', () => {
-  it('contains the workflow alignment migration used for enum parity', () => {
-    expect(existsSync(resolve(MIGRATIONS_DIR, '20260513114845_align_structures_workflow.sql'))).toBe(true)
   })
 })

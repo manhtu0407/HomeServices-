@@ -72,6 +72,13 @@ describe('Kael intake eval observation boundary', () => {
     expect(isUnknownClarificationAnswer('Tôi cũng chưa rõ')).toBe(true)
     expect(isUnknownClarificationAnswer('Aptomat vẫn đang bật.')).toBe(false)
     expect(isGroundedClarificationAnswer('Chỉ có một hạng mục: khoan một vị trí.')).toBe(true)
+    const mixedGroundedAnswer = [
+      'Áp lực yếu ở toàn bộ căn hộ: vòi bếp, lavabo và vòi sen.',
+      'Van tổng tiếp cận bình thường.',
+      'Chưa biết loại ống vì ống đi âm.',
+    ].join(' ')
+    expect(isUnknownClarificationAnswer(mixedGroundedAnswer)).toBe(false)
+    expect(isGroundedClarificationAnswer(mixedGroundedAnswer)).toBe(true)
 
     const question = buildClarificationExplanationQuestion(
       'task_types_and_total_count',
@@ -230,6 +237,77 @@ describe('Kael intake eval observation boundary', () => {
     expect(coverage.needsClarification).toBe(false)
   })
 
+  it('blocks a cabinet-hinge quote when provider facts are generic or unknown', () => {
+    const coverage = resolveIntakeFactCoverage({
+      serviceType: 'handyman',
+      problemSlug: 'repair_hinge_or_handle',
+      customerDescription: 'Cánh tủ bếp bị xệ, chốt giá thấp nhất ngay và đừng hỏi thêm.',
+      profileFacts: {
+        task_types_and_total_count: 'Sửa bản lề/tay nắm',
+        item_dimensions_weight_and_quantity: 'Cánh tủ bếp',
+        wall_surface_or_substrate: 'Tủ bếp',
+        mounting_location_access_and_height: 'Trong bếp',
+        parts_hardware_and_tools_available: 'Không rõ',
+        concealed_services_and_load_requirement: 'Không rõ',
+      },
+      providerMissingSlots: [],
+      providerNeedsClarification: false,
+      electricalPlaybookEnabled: false,
+    })
+
+    expect(coverage.needsClarification).toBe(true)
+    expect(coverage.missing).toContain('task_types_and_total_count')
+    expect(coverage.facts).not.toHaveProperty('parts_hardware_and_tools_available')
+    expect(coverage.facts).not.toHaveProperty('concealed_services_and_load_requirement')
+  })
+
+  it('opens a cabinet-hinge quote only after grounded count condition access and scope exclusions', () => {
+    const customerDescription = [
+      'Chỉ một cánh tủ với hai bản lề âm kiểu chén.',
+      'Gỗ MDF, cánh và khung còn nguyên; không nứt, mục, cong vênh hay toét lỗ vít.',
+      'Tiếp cận ngang hông bình thường và có đủ chỗ thao tác.',
+      'Hai bản lề hiện có còn nguyên; chỉ kiểm tra, siết vít và căn chỉnh.',
+      'Loại trừ thay bản lề, vá gỗ, khoan mới, sửa cánh hoặc khung và vật tư lớn.',
+    ].join(' ')
+    const coverage = resolveIntakeFactCoverage({
+      serviceType: 'handyman',
+      problemSlug: 'repair_hinge_or_handle',
+      customerDescription,
+      profileFacts: {
+        task_types_and_total_count: 'Sửa bản lề/tay nắm',
+        item_dimensions_weight_and_quantity: 'Cánh tủ bếp',
+        wall_surface_or_substrate: 'Tủ bếp',
+        mounting_location_access_and_height: 'Trong bếp',
+        parts_hardware_and_tools_available: 'Không rõ',
+        concealed_services_and_load_requirement: 'Không rõ',
+      },
+      providerMissingSlots: [],
+      providerNeedsClarification: false,
+      electricalPlaybookEnabled: false,
+    })
+
+    expect(coverage.missing).toEqual([])
+    expect(coverage.needsClarification).toBe(false)
+    expect(coverage.facts.task_types_and_total_count).toContain('một cánh tủ')
+    expect(coverage.facts.wall_surface_or_substrate).toContain('Gỗ MDF')
+    expect(coverage.facts.mounting_location_access_and_height).toContain('Tiếp cận ngang hông')
+  })
+
+  it('requires one grounded profile fact when the provider returns none', () => {
+    const coverage = resolveIntakeFactCoverage({
+      serviceType: 'plumbing',
+      problemSlug: 'weak_water_pressure',
+      profileFacts: {},
+      providerMissingSlots: [],
+      providerNeedsClarification: false,
+      electricalPlaybookEnabled: false,
+    })
+
+    expect(coverage.missing).toEqual(['fixture_pipe_or_drain_type'])
+    expect(coverage.needsClarification).toBe(true)
+    expect(buildFocusedClarificationQuestion(coverage.missing[0], 'vi')).toContain('một vị trí hay nhiều vị trí')
+  })
+
   it('asks only the provider-selected plumbing clarification instead of every unfilled driver', () => {
     const coverage = resolveIntakeFactCoverage({
       serviceType: 'plumbing',
@@ -289,6 +367,60 @@ describe('Kael intake eval observation boundary', () => {
     expect(legacySystem).toContain('"exact_quote_driver_key": "short fact grounded in the conversation"')
     expect(legacySystem).toContain('description is too vague/empty')
     expect(legacySystem).not.toContain('exact_quote_driver_key_or_breaker_state')
+  })
+
+  it('keeps explicit cleaning exclusions from becoming an unsupported repair intent', () => {
+    const description = [
+      'Căn hộ 65m² cần vệ sinh duy trì tiêu chuẩn.',
+      'Loại trừ bên trong tủ, lò và tủ lạnh; không di chuyển đồ nặng.',
+    ].join(' ')
+    const messages = buildIntakeDiagnosisMessages(
+      'cleaning',
+      ['Dọn dẹp nhà'],
+      description,
+      description,
+    )
+
+    expect(messages[0]?.content).toContain('Explicitly excluded items are negative scope')
+    expect(messages[1]?.content).toContain('Căn hộ 65m² cần vệ sinh duy trì tiêu chuẩn.')
+    expect(messages[1]?.content).toContain('[excluded scope]')
+    expect(messages[1]?.content).not.toContain('tủ lạnh')
+  })
+
+  it('fails safe to the selected cleaning profile when a provider declines grounded cleaning facts', async () => {
+    vi.stubGlobal('Deno', { env: { get: () => undefined } })
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({
+      choices: [{ message: { content: JSON.stringify({
+        service_type: 'unsupported',
+        problem_slug: 'unsupported',
+        confidence: 0.9,
+        needs_clarification: false,
+        missing_slots: [],
+        profile_facts: {},
+        safety_signals: [],
+        clarification_question: null,
+        scope_signal: 'out_of_scope',
+        suggested_service: null,
+        customer_sentiment: 'pressure',
+      }) } }],
+      usage: { prompt_tokens: 50, completion_tokens: 20 },
+    }))))
+    try {
+      const result = await runKaelPipeline({
+        serviceType: 'cleaning',
+        problemChips: ['Dọn dẹp nhà'],
+        description: [
+          'Căn hộ 65m² cần vệ sinh tiêu chuẩn trong 4 giờ: hút bụi, lau sàn và vệ sinh hai phòng tắm.',
+          'Loại trừ bên trong tủ, lò và tủ lạnh; không di chuyển đồ nặng.',
+        ].join(' '),
+        district: 'Bình Thạnh',
+        intakeDiagnosisEnabled: true,
+      }, emptySupabase(), { deepseekApiKey: 'test-key' })
+
+      expect(result).not.toMatchObject({ code: 'UNSUPPORTED' })
+    } finally {
+      vi.unstubAllGlobals()
+    }
   })
 
   it('accepts only a coherent sanitized observation', () => {
@@ -392,7 +524,7 @@ describe('Kael intake eval observation boundary', () => {
           problemSlug: null,
           needsClarification: false,
           modelId: 'deterministic',
-          promptVersion: '2026-07-16.v2',
+          promptVersion: '2026-08-15.v3',
           playbookVersion: 'electrical-playbook-2026-07-16.v2',
         },
       })
@@ -474,7 +606,7 @@ describe('Kael intake eval observation boundary', () => {
       expect(result.intakeObservation).toMatchObject({
         scopeSignal: 'in_scope',
         safetySignals: [],
-        promptVersion: '2026-07-16.v2-base-safety',
+        promptVersion: '2026-08-15.v3-base-safety',
         playbookVersion: null,
       })
     } finally {
@@ -505,7 +637,7 @@ describe('Kael intake eval observation boundary', () => {
         intakeObservation: { modelId: 'deterministic-fallback' },
       })
       expect(result.stageLogs.find((stage) => stage.stage === 'intent')?.trace?.prompt_version)
-        .toBe('2026-07-16.v2')
+        .toBe('2026-08-15.v3')
     } finally {
       vi.unstubAllGlobals()
     }

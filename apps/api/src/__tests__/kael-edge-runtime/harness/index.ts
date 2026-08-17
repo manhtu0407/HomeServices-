@@ -1,3 +1,5 @@
 export * from './fixtures'
 export * from './hooks'
+export * from './ledger-client'
+export * from './scripted-provider'
 export * from './sequence-client'

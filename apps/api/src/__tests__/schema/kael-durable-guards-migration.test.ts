@@ -1,54 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
-
-const migrationPath = new URL(
-  '../../../../../supabase/migrations/20260710082120_kael_durable_guards.sql',
-  import.meta.url,
-)
-
 describe('Kael durable guards migration', () => {
-  it('creates the Plan section 41 circuit/rate stores with deny-all client access', () => {
-    const sql = readFileSync(migrationPath, 'utf8')
-
-    expect(sql).toContain('create table public.kael_provider_circuit')
-    expect(sql).toContain('create table public.kael_rate_counter')
-    expect(sql).toContain('alter table public.kael_provider_circuit enable row level security')
-    expect(sql).toContain('alter table public.kael_rate_counter enable row level security')
-    expect(sql).toMatch(/create policy[\s\S]+using \(false\)[\s\S]+with check \(false\)/)
-    expect(sql).toContain('revoke all on public.kael_provider_circuit from public, anon, authenticated')
-    expect(sql).toContain('revoke all on public.kael_rate_counter from public, anon, authenticated')
-  })
-
-  it('keeps circuit rules atomic, two-level, and identical to the RAM thresholds', () => {
-    const sql = readFileSync(migrationPath, 'utf8')
-
-    expect(sql).toContain('create or replace function public.record_circuit_failure')
-    expect(sql).toContain('create or replace function public.is_circuit_open')
-    expect(sql).toContain('create or replace function public.record_circuit_success')
-    expect(sql).toContain("when 'credit' then")
-    expect(sql).toContain("when 'rate_limit' then")
-    expect(sql).toContain("when 'server' then")
-    expect(sql).toContain("when 'timeout' then")
-    expect(sql).toContain("when 'schema' then")
-    expect(sql).toContain('pg_advisory_xact_lock')
-    expect(sql).toContain("scope = 'provider'")
-    expect(sql).toContain("split_part(p_key, ':', 2)")
-  })
-
-  it('takes both chat buckets atomically and grants RPC execution only to service_role', () => {
-    const sql = readFileSync(migrationPath, 'utf8')
-
-    expect(sql).toContain('create or replace function public.rate_take')
-    expect(sql).toContain("p_config -> 'buckets'")
-    expect(sql).toContain('jsonb_array_elements')
-    expect(sql).toContain('on conflict (scope, key) do update')
-    for (const fn of ['record_circuit_failure', 'is_circuit_open', 'record_circuit_success', 'rate_take']) {
-      expect(sql).toContain(`grant execute on function public.${fn}`)
-    }
-    expect(sql).toContain('from public, anon, authenticated')
-    expect(sql).toContain("set search_path = ''")
-  })
-
   it('wires the default-off rollout flag without putting it in mobile config', () => {
     const env = readFileSync(
       new URL('../../../../../supabase/functions/_shared/platform/env.ts', import.meta.url),
@@ -91,6 +43,9 @@ describe('Kael durable guards migration', () => {
     expect(workerChat).toContain('takeDurableKaelChatRateLimit')
   })
 
+  // database-controls runs this harness, so its assertions prove themselves.
+  // A harness that forgets to roll back still passes when it runs, which is why
+  // that one property is read here.
   it('ships a rollback-only runtime harness for local/staging verification', () => {
     const harness = readFileSync(
       new URL('../../../../../supabase/tests/kael_durable_guards_verification.sql', import.meta.url),

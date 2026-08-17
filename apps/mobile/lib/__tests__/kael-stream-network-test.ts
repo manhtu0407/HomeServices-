@@ -1,37 +1,15 @@
 import fs from 'node:fs'
 import path from 'node:path'
 
+// kael-stream.ts exports callable functions, so its route shape, timeouts and
+// bounded reads are testable by stubbing fetch and asserting the request — that
+// is the layer these belong in, and the substring versions were removed rather
+// than left as a weaker copy. The one claim a behaviour test cannot make is that
+// the un-encoded interpolation is absent from the file, so it stays here.
 const source = fs.readFileSync(path.resolve(__dirname, '../kael-stream.ts'), 'utf8')
 
 describe('Kael SSE network lifetime', () => {
-  it('encodes session identifiers as one route segment', () => {
-    expect(source).toContain('${encodeURIComponent(sessionId)}/stream')
+  it('never interpolates a session identifier into the route unencoded', () => {
     expect(source).not.toContain('${sessionId}/stream')
-  })
-
-  it('uses the same bounded SSE transport for evidence analysis', () => {
-    expect(source).toContain('${encodeURIComponent(sessionId)}/evidence-stream')
-  })
-
-  it('encodes Customer conversation identifiers on the bounded SSE transport', () => {
-    expect(source).toContain(
-      '`/me/kael/conversations/${encodeURIComponent(conversationId)}/stream`',
-    )
-  })
-
-  it('bounds both connection and total stream lifetime and cancels the reader', () => {
-    expect(source).toContain('STREAM_CONNECT_TIMEOUT_MS')
-    expect(source).toContain('STREAM_TOTAL_TIMEOUT_MS')
-    expect(source).toContain('signal: lifetime.signal')
-    expect(source).toContain("redirect: 'error'")
-    expect(source).toContain('await reader?.cancel()')
-  })
-
-  it('bounds error bodies, cumulative stream bytes, and partial frame buffers', () => {
-    expect(source).toContain('readResponseTextBounded(response, STREAM_MAX_ERROR_BYTES)')
-    expect(source).toContain('responseBytes > STREAM_MAX_RESPONSE_BYTES')
-    expect(source).toContain('buffer.length > STREAM_MAX_FRAME_BUFFER_CHARS')
-    expect(source).toContain('safeServerError(parsed[httpError.httpErrorField]')
-    expect(source).toContain('safeServerErrorCode(parsed.code, response.status)')
   })
 })

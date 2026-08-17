@@ -10,8 +10,8 @@
 Price principles
 -
 |- estimate before booking
-|- an offer may be locked only after the customer explicitly confirms the current Kael diagnosis/scope and estimate
-|- Kael owns price-computation authority (Phase 2.0 2026-05-23): initial lock = confirmed kael_price_max at A7; updates require Kael recomputation plus explicit customer scope-change confirmation
+|- a confirmed offer authorizes matching against the displayed estimate ceiling; it is not yet an exact payable price
+|- Kael owns price-computation authority: jobs.final_price remains null at A7 and is locked only from a source-verified point quote that the worker confirms and the customer explicitly approves at A11
 |- worker does not enter or change final price; worker submits scope description + reason + photos and Kael recomputes
 |- estimate shown as range, not exact guarantee
 |- required disclaimer on every price estimate
@@ -59,7 +59,7 @@ Scope change flow (Phase 2.0 2026-05-23)
 |- Kael compute new estimate from original Kael context + worker reported scope
 |- customer sees hard-stop review/appeal surface with Kael-computed new estimate (badge: computed by Kael)
 |- server validates the Kael-computed proposal from policy/evidence; customer explicitly confirms, keeps the old scope, or appeals
-|- only after customer confirmation may jobs.final_price be relocked to the Kael-computed max
+|- only after worker confirmation and explicit customer approval may jobs.final_price be locked to the exact Kael-computed full-scope total
 |- when the customer rejects the proposal, the job resumes its captured pre-change status and the old agreed scope remains authoritative
 |- worker continues changed work only after a validated proposal plus customer confirmation, or an explicit admin override resolving a dispute
 ```

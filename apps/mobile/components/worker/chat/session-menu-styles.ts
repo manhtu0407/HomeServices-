@@ -94,7 +94,8 @@ export const styles = StyleSheet.create({
     color: '#D94C51',
     ...typography.caption2,
     fontWeight: '600',
-    paddingHorizontal: 4,
+    paddingHorizontal: 6,
+    paddingVertical: 4,
   },
   feedback: {
     color: color.text.muted,
@@ -103,7 +104,7 @@ export const styles = StyleSheet.create({
     paddingHorizontal: 4,
   },
   menuGlass: {
-    borderRadius: 16,
+    borderRadius: 18,
     overflow: 'hidden',
   },
   menuInner: {
@@ -127,21 +128,32 @@ export const styles = StyleSheet.create({
     borderRadius: 13,
     justifyContent: 'center',
     minWidth: 36,
+    position: 'relative',
+    zIndex: 1,
   },
   moreButtonOpen: {
     backgroundColor: 'rgba(217, 246, 240, 0.78)',
   },
   newSession: {
     alignItems: 'center',
-    backgroundColor: 'rgba(229, 250, 245, 0.92)',
-    borderColor: 'rgba(35,96,84,0.13)',
+    alignSelf: 'stretch',
+    backgroundColor: 'rgba(255,255,255,0.18)',
+    borderColor: 'rgba(255,255,255,0.72)',
     borderRadius: radius.pill,
     borderWidth: 1,
     flexDirection: 'row',
-    gap: 6,
+    gap: 8,
     justifyContent: 'center',
+    marginHorizontal: -4,
     minHeight: 44,
-    paddingHorizontal: 8,
+    paddingHorizontal: 13,
+    position: 'relative',
+  },
+  newSessionPressed: {
+    opacity: 0.78,
+  },
+  newSessionLiquid: {
+    borderWidth: 0,
   },
   newSessionText: {
     color: color.brand.primary,
@@ -212,12 +224,15 @@ export const styles = StyleSheet.create({
   },
   session: {
     alignItems: 'center',
-    backgroundColor: 'rgba(247, 252, 251, 0.94)',
-    borderColor: 'rgba(35,96,84,0.13)',
-    borderRadius: 13,
+    backgroundColor: color.surface.soft,
+    borderColor: color.surface.stroke,
+    borderCurve: 'continuous',
+    borderRadius: 16,
     borderWidth: 1,
     flexDirection: 'row',
     minHeight: 44,
+    overflow: 'hidden',
+    position: 'relative',
   },
   sessionCopy: {
     flex: 1,
@@ -241,13 +256,12 @@ export const styles = StyleSheet.create({
     minHeight: 44,
     paddingLeft: 8,
     paddingRight: 2,
+    position: 'relative',
+    zIndex: 1,
   },
   sessionMeta: {
     color: color.text.muted,
     ...typography.caption2,
-  },
-  sessionSelected: {
-    backgroundColor: 'rgba(231, 252, 247, 0.98)',
   },
   sessionTitle: {
     color: color.text.strong,

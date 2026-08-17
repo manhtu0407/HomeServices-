@@ -11,6 +11,11 @@ export type Json =
 
 /* @slice:end json */
 
+export type DatabasePreamble = {
+/* @slice:begin database-preamble */
+/* @slice:end database-preamble */
+}
+
 export type GraphqlPublicSchema = {
 /* @slice:begin graphql */
     Tables: {

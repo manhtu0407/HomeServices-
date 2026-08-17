@@ -2,6 +2,7 @@ import {
   customerCancellationRequestSchema,
   disputeOpenRequestSchema,
   edgeJobIncidentScopeProposalSchema,
+  edgeJobIncidentScopePricePreviewSchema,
   jobCreateSchema,
   jobMatchingPreferenceSchema,
   jobMediaAttachSchema,
@@ -9,6 +10,7 @@ import {
   kaelWorkerClarifySchema,
   reviewSchema,
   workerCancellationRequestSchema,
+  workerBroadcastAcceptSchema,
   workerScopeChangeSchema,
 } from "../../../../_shared/domain.ts";
 import {
@@ -33,16 +35,8 @@ export async function dispatchJobRoute(
   services: MobileApiServices,
 ): Promise<unknown> {
   switch (route.kind) {
-    case "jobs.create": {
-      const input = jobCreateSchema.safeParse(await readJson(request));
-      if (!input.success) apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
-      apiFailure(
-        "KAEL_CASE_WORK_REQUIRED",
-        "Hãy bắt đầu qua Kael Case Work và xác nhận báo giá trước khi tạo yêu cầu.",
-        409,
-        { next_route: "/kael/chat" },
-      );
-    }
+    case "jobs.create":
+      return rejectDirectJobCreate(request);
     case "jobs.get":
       return services.getJob(ctx, route.jobId);
     case "jobs.confirmSearch":
@@ -55,9 +49,7 @@ export async function dispatchJobRoute(
     case "jobs.cancel":
       return services.cancelJob(ctx, route.jobId);
     case "jobs.customerCancellation": {
-      const input = customerCancellationRequestSchema.safeParse(
-        await readJson(request),
-      );
+      const input = customerCancellationRequestSchema.safeParse(await readJson(request));
       if (!input.success) apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
       return services.requestCustomerCancellation(ctx, route.jobId, input.data);
     }
@@ -67,7 +59,11 @@ export async function dispatchJobRoute(
       return services.openDispute(ctx, route.jobId, input.data);
     }
     case "jobs.accept":
-      return services.acceptBroadcast(ctx, route.jobId);
+      return services.acceptBroadcast(
+        ctx,
+        route.jobId,
+        await readWorkerBroadcastQuoteId(request),
+      );
     case "jobs.decline":
       return services.declineBroadcast(ctx, route.jobId);
     case "jobs.workerCandidate":
@@ -99,15 +95,18 @@ export async function dispatchJobRoute(
       if (!input.success) apiFailure("VALIDATION", "D\u1eef li\u1ec7u kh\u00f4ng h\u1ee3p l\u1ec7", 400);
       return services.proposeScopeChangeFromJobIncident(ctx, route.jobId, input.data);
     }
+    case "jobs.kaelIncidentPreviewScope": {
+      const input = edgeJobIncidentScopePricePreviewSchema.safeParse(await readJson(request));
+      if (!input.success) apiFailure("VALIDATION", "D\u1eef li\u1ec7u kh\u00f4ng h\u1ee3p l\u1ec7", 400);
+      return services.previewScopeChangeFromJobIncident(ctx, route.jobId, input.data);
+    }
     case "jobs.kaelClarify": {
       const input = kaelWorkerClarifySchema.safeParse(await readJson(request));
       if (!input.success) apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
       return services.askKaelForWorker(ctx, route.jobId, input.data);
     }
     case "jobs.workerCancellation": {
-      const input = workerCancellationRequestSchema.safeParse(
-        await readJson(request),
-      );
+      const input = workerCancellationRequestSchema.safeParse(await readJson(request));
       if (!input.success) apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
       return services.requestWorkerCancellation(ctx, route.jobId, input.data);
     }
@@ -173,4 +172,27 @@ export async function dispatchJobRoute(
     }
   }
   return assertNever(route);
+}
+
+async function rejectDirectJobCreate(request: Request) {
+  const input = jobCreateSchema.safeParse(await readJson(request));
+  if (!input.success) apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
+  apiFailure(
+    "KAEL_CASE_WORK_REQUIRED",
+    "Hãy bắt đầu qua Kael Case Work và xác nhận báo giá trước khi tạo yêu cầu.",
+    409,
+    { next_route: "/kael/chat" },
+  );
+}
+
+async function readWorkerBroadcastQuoteId(request: Request) {
+  const input = workerBroadcastAcceptSchema.safeParse(await readJson(request));
+  if (!input.success) {
+    apiFailure(
+      "PRICE_CONFIRMATION_REQUIRED",
+      "Hãy tải lại báo giá chính xác trước khi nhận việc.",
+      409,
+    );
+  }
+  return input.data.quote_id;
 }

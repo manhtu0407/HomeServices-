@@ -1,6 +1,6 @@
-import type { BroadcastStatus, JobStatus, LocalPaymentStatus, ScopeChangeStatus, ServiceType, WorkerKaelChatMode, WorkerServiceQualityStatus, WorkerVerificationStatus } from '@nestscout/shared'
+import type { BroadcastStatus, JobStatus, KaelPriceReasoningReceipt, LocalPaymentStatus, ScopeChangeStatus, ServiceType, WorkerKaelChatMode, WorkerServiceQualityStatus, WorkerVerificationStatus } from '@nestscout/shared'
 import type { KaelChatProgress } from './kael'
-import type { AddressAccessView } from './shared'
+import type { AddressAccessView, OriginalScopePriceQuote } from './shared'
 
 export type { WorkerActivityMinuteResponse, WorkerAvatarUploadResponse } from '@nestscout/shared'
 export type { WorkerServiceQualityStatus }
@@ -151,6 +151,7 @@ export type WorkerBroadcastsResponse = {
     status: BroadcastStatus
     service_type: ServiceType
     problem_summary: string | null
+    scope_summary?: string | null
     district: string | null
     estimated_price_min: number | null
     estimated_price_max: number | null
@@ -162,6 +163,7 @@ export type WorkerBroadcastsResponse = {
     sent_at: string | null
     expires_at: string | null
     seconds_remaining: number | null
+    original_scope_price_quote: OriginalScopePriceQuote
   }[]
 }
 
@@ -208,6 +210,38 @@ export type WorkerScopeChangeResponse = {
   customer_card?: Record<string, unknown>
 }
 
+export type ScopeChangeWorkerQuote = {
+  schema_version: 'scope_change_worker_quote.v1'
+  quote_id: string
+  incident_id: string
+  job_id: string
+  customer_total: number
+  platform_fee: number
+  worker_net: number
+  commission_level: number
+  commission_rate_bps: number
+  reference_price_min: number
+  reference_price_max: number
+  baseline_used: string
+  baseline_source: string
+  baseline_evidence?: NonNullable<KaelPriceReasoningReceipt['fairness']['baseline_evidence']>
+  pricing_components?: readonly {
+    evidence_receipt: NonNullable<KaelPriceReasoningReceipt['fairness']['baseline_evidence']>
+    kind: 'approved_scope_change' | 'original_confirmed_scope'
+    price_max: number
+    price_min: number
+    selected_price: number
+  }[]
+  selection_rule: 'verified_neutral_midpoint_with_bilateral_confirmation'
+  calculation: string
+  expires_at: string
+}
+
+export type JobIncidentScopePricePreviewResponse = {
+  incident: NonNullable<JobIncidentResponse['incident']>
+  quote: ScopeChangeWorkerQuote
+}
+
 type JobIncidentStatus = 'open' | 'awaiting_worker' | 'awaiting_customer' | 'ready_for_scope_proposal' | 'scope_proposed' | 'resolved' | 'cancelled'
 
 export type JobIncidentResponse = {
@@ -222,6 +256,7 @@ export type JobIncidentResponse = {
     created_at: string
     updated_at: string
   } | null
+  quote?: ScopeChangeWorkerQuote | null
 }
 
 export type JobIncidentScopeProposalResponse = {
@@ -326,6 +361,7 @@ export type WorkerJobListResponse = {
     status: JobStatus
     service_type: ServiceType
     problem_summary: string | null
+    scope_summary?: string | null
     address_building: string | null
     address_unit: string | null
     address_floor: string | null

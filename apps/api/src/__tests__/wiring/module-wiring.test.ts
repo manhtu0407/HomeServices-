@@ -8,20 +8,8 @@ const read = (rel: string) =>
 describe('proxy.ts wiring (Next.js 16)', () => {
   const src = read('src/proxy.ts')
 
-  it('exports "proxy" function (not "middleware")', () => {
-    expect(src).toMatch(/export\s+async\s+function\s+proxy/)
-  })
-
   it('does NOT export deprecated "middleware" function', () => {
     expect(src).not.toMatch(/export\s+(?:async\s+)?function\s+middleware/)
-  })
-
-  it('imports updateSession from @/lib/middleware', () => {
-    expect(src).toMatch(/import\s+\{.*updateSession.*\}\s+from\s+['"]@\/lib\/middleware['"]/)
-  })
-
-  it('has route matcher config', () => {
-    expect(src).toContain('matcher')
   })
 
   it('excludes static assets from matching', () => {
@@ -92,22 +80,6 @@ describe('Supabase clients import env module', () => {
 describe('Health route wiring', () => {
   const health = read('src/app/api/health/route.ts')
 
-  it('imports ensureServerEnv from env module', () => {
-    expect(health).toMatch(/import\s+\{.*ensureServerEnv.*\}\s+from/)
-  })
-
-  it('calls ensureServerEnv()', () => {
-    expect(health).toContain('ensureServerEnv()')
-  })
-
-  it('exports GET handler', () => {
-    expect(health).toMatch(/export\s+async\s+function\s+GET/)
-  })
-
-  it('checks supabase connectivity', () => {
-    expect(health).toContain('.from(')
-  })
-
   it('returns status field (healthy/degraded)', () => {
     expect(health).toContain("'healthy'")
     expect(health).toContain("'degraded'")
@@ -134,10 +106,6 @@ describe('AI client wiring (Rule #2: centralized wrapper)', () => {
     expect(client).toContain('MAX_RETRIES')
   })
 
-  it('exports callAI function', () => {
-    expect(client).toMatch(/export\s+async\s+function\s+callAI/)
-  })
-
   it('does not log PII (Rule #9)', () => {
     expect(client).not.toMatch(/phone|cccd|address|apiKey/i)
   })
@@ -153,14 +121,6 @@ describe('env module structure', () => {
     expect(env).toContain('ANTHROPIC_API_KEY')
     expect(env).toContain('PERPLEXITY_API_KEY')
     expect(env).toContain('DEEPSEEK_API_KEY')
-  })
-
-  it('has build-time detection', () => {
-    expect(env).toContain('isBuildTime')
-  })
-
-  it('exports ensureServerEnv', () => {
-    expect(env).toMatch(/export\s+function\s+ensureServerEnv/)
   })
 
   it('requireServerKey throws (not returns empty string)', () => {

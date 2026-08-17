@@ -8,6 +8,7 @@ import {
 
 const MAX_PRICE_EVIDENCE_AGE_MONTHS = 24;
 const OUTLIER_MAX_DISTANCE_FROM_MEDIAN = 0.4;
+const HCMC_UTC_OFFSET_MS = 7 * 60 * 60 * 1000;
 
 type AcceptedCitation = CitationValidationResult["accepted"][number];
 type RejectedSource = {
@@ -226,20 +227,31 @@ function sourceWeight(citation: AcceptedCitation): number {
 
 function isWithinEvidenceWindow(date: string, now: Date): boolean {
   const timestamp = Date.parse(`${date}T00:00:00.000Z`);
-  if (!Number.isFinite(timestamp) || timestamp > now.getTime()) return false;
-  const oldestAccepted = new Date(now);
+  const hcmcTodayTimestamp = hcmcCalendarDayTimestamp(now);
+  if (!Number.isFinite(timestamp) || timestamp > hcmcTodayTimestamp) return false;
+  const oldestAccepted = new Date(hcmcTodayTimestamp);
   oldestAccepted.setUTCMonth(oldestAccepted.getUTCMonth() - MAX_PRICE_EVIDENCE_AGE_MONTHS);
   return timestamp >= oldestAccepted.getTime();
 }
 
 function evidenceAgeMonths(date: string, now: Date): number | null {
   const timestamp = Date.parse(`${date}T00:00:00.000Z`);
-  if (!Number.isFinite(timestamp) || timestamp > now.getTime()) return null;
+  const hcmcNow = new Date(now.getTime() + HCMC_UTC_OFFSET_MS);
+  if (!Number.isFinite(timestamp) || timestamp > hcmcCalendarDayTimestamp(now)) return null;
   const observed = new Date(timestamp);
   return Math.max(
     0,
-    (now.getUTCFullYear() - observed.getUTCFullYear()) * 12 +
-      now.getUTCMonth() - observed.getUTCMonth(),
+    (hcmcNow.getUTCFullYear() - observed.getUTCFullYear()) * 12 +
+      hcmcNow.getUTCMonth() - observed.getUTCMonth(),
+  );
+}
+
+function hcmcCalendarDayTimestamp(now: Date): number {
+  const hcmcNow = new Date(now.getTime() + HCMC_UTC_OFFSET_MS);
+  return Date.UTC(
+    hcmcNow.getUTCFullYear(),
+    hcmcNow.getUTCMonth(),
+    hcmcNow.getUTCDate(),
   );
 }
 

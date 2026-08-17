@@ -30,6 +30,13 @@ export type CustomerThemeTokens = {
   muted: string
   subtleText: string
   primary: string
+  guidanceAction: string
+  progressActive: string
+  progressInactiveText: string
+  statusSurface: string
+  statusText: string
+  progressTrack: string
+  progressBorder: string
   primaryText: string
   aqua: string
   copper: string

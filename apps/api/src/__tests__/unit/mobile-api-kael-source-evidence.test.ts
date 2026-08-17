@@ -69,6 +69,25 @@ describe('Kael trusted per-source market evidence', () => {
     })
   })
 
+  it('accepts evidence dated on the current HCMC calendar day before UTC midnight', () => {
+    const result = aggregateTrustedMarketSources({
+      sources: [
+        source('btaskee.com', 180_000, 400_000, '2026-08-14'),
+        source('jupviec.vn', 200_000, 420_000, '2026-08-14'),
+      ],
+      acceptedCitations: [citation('btaskee.com', 1), citation('jupviec.vn', 1)],
+      highValueThresholdVnd: HIGH_VALUE_THRESHOLD_VND,
+      now: new Date('2026-08-13T17:30:00.000Z'),
+    })
+
+    expect(result).toMatchObject({
+      success: true,
+      quorumMet: true,
+      requiredQuorum: 2,
+      tier1Tier2Count: 2,
+    })
+  })
+
   it('requires three Tier 1-2 sources when the deterministic market range reaches the configured high-value threshold', () => {
     const result = aggregateTrustedMarketSources({
       sources: [

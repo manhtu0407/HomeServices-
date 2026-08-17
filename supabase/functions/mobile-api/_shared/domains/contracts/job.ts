@@ -8,8 +8,10 @@ import type {
   EdgeKaelEstimate,
 } from "./kael-chat.ts";
 import type {
+  EdgeScopeChangeWorkerQuote,
   EdgeWorkerScopeChangeResponse,
 } from "./worker.ts";
+import type { SafeOriginalScopePriceQuote } from "../matching/original-scope-price-quote.ts";
 
 type MatchingState = EdgeKaelMatchingContracts["matchingState"];
 type FavoriteWorkersForMatchingResponse = EdgeKaelMatchingContracts["favoriteWorkersResponse"];
@@ -76,12 +78,15 @@ export type EdgeWorkerCandidateView = {
   rating: number | null;
   total_jobs: number;
   years_experience: number;
+  birth_year: number | null;
+  gender: "male" | "female" | "other" | null;
   verification_status: string;
   is_favorite: boolean;
   proposed_at: string;
   expires_at: string | null;
   customer_decided_at: string | null;
   direct_payment_available?: boolean | null;
+  original_scope_price_quote: SafeOriginalScopePriceQuote | null;
 };
 
 export type EdgeWorkerCandidateResponse = {
@@ -123,7 +128,10 @@ export type EdgeJobIncident = {
   updated_at: string;
 };
 
-export type EdgeJobIncidentResponse = { incident: EdgeJobIncident | null };
+export type EdgeJobIncidentResponse = {
+  incident: EdgeJobIncident | null;
+  quote?: EdgeScopeChangeWorkerQuote | null;
+};
 
 export type EdgeJobIncidentScopeProposalResponse = {
   incident: EdgeJobIncident;

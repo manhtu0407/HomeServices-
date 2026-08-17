@@ -17,7 +17,7 @@ import { WorkerV5OpportunityCard, WorkerV5OpportunityEmptyCard } from '../home/o
 import { styles as opportunityStyles } from '../home/opportunity-styles'
 import { WorkerV5PrimaryButtonFill, WorkerV5SectionHeader } from '../ui/primitives-surfaces'
 import { buildWorkerV5AcceptReviewChecks, workerV5CanAcceptOpenOffer } from './acceptance'
-import { buildWorkerV5OfferAddressRows, buildWorkerV5OfferRequestRows } from './offer'
+import { buildWorkerV5OfferAddressRows, buildWorkerV5OfferPriceRows, buildWorkerV5OfferRequestRows } from './offer'
 import { localizedServiceLabel } from '@/lib/app-language'
 import { styles } from '../worker-v5-flow-styles'
 import { textByLanguage } from '../ui/format'
@@ -126,6 +126,7 @@ export function WorkerV5OfferDetailBody({
   const canDecline = deal?.status === 'broadcasting' && deal.broadcast?.status === 'sent'
   const addressRows = buildWorkerV5OfferAddressRows(deal, language)
   const requestRows = buildWorkerV5OfferRequestRows(deal, language)
+  const priceRows = buildWorkerV5OfferPriceRows(deal, language)
   const confirmAccept = async () => {
     if (!canAccept || decisionBusyRef.current) return
     decisionBusyRef.current = true
@@ -186,6 +187,19 @@ export function WorkerV5OfferDetailBody({
         zipAura={WorkerV5CustomerZipMintAura}
       />
       <WorkerV5SectionHeader
+        action={textByLanguage(language, 'Xác nhận song phương', 'Bilateral confirmation')}
+        title={textByLanguage(language, 'Giá chính xác & tiền công', 'Exact price and earnings')}
+      />
+      <WorkerV5OfferDetailListCard
+        caseWideAura={WorkerV5CustomerCaseWideMintAura}
+        iconSources={workerV5OfferDetailIcons}
+        reduceTransparency={reduceTransparency}
+        rows={priceRows}
+        scope="OfferPriceList"
+        testID="worker-v5-offer-price-list"
+        zipAura={WorkerV5CustomerZipMintAura}
+      />
+      <WorkerV5SectionHeader
         action={textByLanguage(language, 'Phạm vi hiện tại', 'Current scope')}
         title={textByLanguage(language, 'Yêu cầu', 'Request')}
       />
@@ -228,7 +242,9 @@ export function WorkerV5OfferDetailBody({
         zipAura={WorkerV5CustomerZipMintAura}
         onPrimary={canAccept ? () => void confirmAccept() : undefined}
         onSecondary={canDecline ? () => void declineOffer() : undefined}
-        primary={acceptBusy ? textByLanguage(language, 'Đang nhận việc', 'Accepting') : textByLanguage(language, 'Nhận việc', 'Accept job')}
+        primary={acceptBusy
+          ? textByLanguage(language, 'Đang xác nhận giá', 'Confirming price')
+          : textByLanguage(language, 'Xác nhận giá & nhận việc', 'Confirm price & accept')}
         primaryDisabled={!canAccept || acceptBusy}
         primaryTestID="worker-v5-accept-confirm-action"
         reduceTransparency={reduceTransparency}

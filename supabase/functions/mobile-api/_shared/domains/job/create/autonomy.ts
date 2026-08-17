@@ -12,6 +12,7 @@ import {
 import type { JobCreateInput } from "../../../../../_shared/domain.ts";
 import type { SuccessfulJobPipeline } from "./analyze.ts";
 import { retireAnalyzingJobOrFail } from "./compensation.ts";
+import { parseBaselinePriceEvidenceReceipt } from "../../../kael/evidence/baseline-price-evidence.ts";
 
 export async function prepareJobAutonomyOrFail(input: {
   readonly client: DbClient;
@@ -23,6 +24,10 @@ export async function prepareJobAutonomyOrFail(input: {
 }) {
   const { client, ctx, request, pipeline, jobId, canonicalDistrict } = input;
   const estimate = pipeline.estimate;
+  const baselineEvidence = parseBaselinePriceEvidenceReceipt(
+    pipeline.stageLogs.find((stage) => stage.stage === "baseline")
+      ?.safeMetadata?.baseline_price_evidence_receipt,
+  );
   const estimateCardV3 = buildEstimateCardOutput({
     estimate,
     priceSource: estimate.needs_inspection
@@ -30,11 +35,11 @@ export async function prepareJobAutonomyOrFail(input: {
       : estimatePriceSourceFromStageLogs(pipeline.stageLogs),
     baselineUsed:
       request.service_type + ":" + pipeline.serviceProblemId + ":" + estimate.complexity,
+    baselineEvidence,
     marketSignals: estimate.market_signals ?? estimate.needs_inspection_reason,
     needsInspectionReason: estimate.needs_inspection_reason,
   });
   const now = new Date().toISOString();
-  const lockedFinalPrice = estimate.price_max;
   const workerBriefCore = buildWorkerBriefOutput({
     stage: "core",
     serviceType: request.service_type,
@@ -127,7 +132,6 @@ export async function prepareJobAutonomyOrFail(input: {
     estimate,
     estimateCardV3,
     now,
-    lockedFinalPrice,
     workerBriefCore,
     autonomyDecision,
   };

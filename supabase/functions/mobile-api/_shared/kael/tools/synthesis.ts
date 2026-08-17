@@ -1,5 +1,14 @@
 import type { ComplexityLevel, MarketPriceResult, ServiceType, SupabaseLike } from "../contracts/types.ts";
 import { FALLBACK_PROBLEM_SLUG_BY_SERVICE, PROBLEM_SLUGS_BY_SERVICE } from "../contracts/types.ts";
+import {
+  baselinePriceEvidenceCitationUrls,
+  validateBaselinePriceEvidence,
+  type BaselinePriceEvidenceReceipt,
+} from "../evidence/baseline-price-evidence.ts";
+import {
+  sourceTrustHighValueThresholdVnd,
+  validateCitations,
+} from "../evidence/source-trust.ts";
 import { positiveNumberFrom, withDbTimeout } from "../pipeline/utils.ts";
 
 const COMPLEXITIES: ComplexityLevel[] = ["small", "medium", "large"];
@@ -7,9 +16,12 @@ const MARKET_BLEND_WEIGHT = 0.5;
 const INSPECTION_BAND_EXPANSION_FACTOR = 0.15;
 const MARKET_PRICE_MAX_DEVIATION_FACTOR = 4;
 
-type BaselinePrice = {
+export type BaselinePrice = {
+  districtCode: string;
+  evidenceReceipt?: BaselinePriceEvidenceReceipt | null;
   priceMin: number;
   priceMax: number;
+  source: string | null;
 };
 
 export type BaselineResult =
@@ -18,6 +30,9 @@ export type BaselineResult =
     priceMin: number;
     priceMax: number;
     serviceProblemId: string;
+    matchedDistrict: string;
+    evidenceReceipt: BaselinePriceEvidenceReceipt | null;
+    source: string | null;
   }
   | {
     success: false;
@@ -211,7 +226,7 @@ export async function fetchBaselineCandidates(
   >(
     supabase
       .from("price_baselines")
-      .select("complexity, price_min, price_max, district_code")
+      .select("complexity, price_min, price_max, district_code, source, price_evidence")
       .eq("service_problem_id", problemId)
       .eq("service_type", serviceType)
       .in("district_code", districts) as PromiseLike<
@@ -254,7 +269,25 @@ export async function fetchBaselineCandidates(
       });
       continue;
     }
-    byComplexity[complexity] = { priceMin, priceMax };
+    const districtCode = typeof chosen.district_code === "string"
+      ? chosen.district_code
+      : "hcmc_all";
+    const source = typeof chosen.source === "string" && chosen.source.trim().length > 0
+      ? chosen.source.trim()
+      : null;
+    const evidenceReceipt = await validateStoredBaselineEvidence({
+      priceEvidence: chosen.price_evidence,
+      priceMin,
+      priceMax,
+      supabase,
+    });
+    byComplexity[complexity] = {
+      districtCode,
+      evidenceReceipt,
+      priceMin,
+      priceMax,
+      source,
+    };
   }
 
   if (Object.keys(byComplexity).length === 0) {
@@ -291,5 +324,346 @@ export function pickBaselineCandidate(
     priceMin: chosen.priceMin,
     priceMax: chosen.priceMax,
     serviceProblemId: candidates.serviceProblemId,
+    matchedDistrict: chosen.districtCode,
+    evidenceReceipt: chosen.evidenceReceipt ?? null,
+    source: chosen.source,
+  };
+}
+
+async function validateStoredBaselineEvidence(input: {
+  priceEvidence: unknown;
+  priceMin: number;
+  priceMax: number;
+  supabase: SupabaseLike;
+}): Promise<BaselinePriceEvidenceReceipt | null> {
+  const citationUrls = baselinePriceEvidenceCitationUrls(input.priceEvidence);
+  const highValueThresholdVnd = sourceTrustHighValueThresholdVnd();
+  if (citationUrls.length === 0 || highValueThresholdVnd === null) return null;
+  const registry = await validateCitations(citationUrls, input.supabase, 1, {
+    maxAutoTier: 4,
+    quorumAutoTierMax: 2,
+  });
+  const validation = validateBaselinePriceEvidence({
+    baselinePriceMin: input.priceMin,
+    baselinePriceMax: input.priceMax,
+    document: input.priceEvidence,
+    highValueThresholdVnd,
+    registryCitations: registry.accepted,
+  });
+  if (!validation.success) {
+    console.warn("Baseline price evidence rejected", {
+      reason: validation.error,
+    });
+    return null;
+  }
+  return validation.receipt;
+}
+
+type VerifiedScopeChangePricingBasis = {
+  calculation: string;
+  quantity: number | null;
+  unit: "cabinet_door_scope" | "accepted_scope";
+  unitPriceMin: number | null;
+  unitPriceMax: number | null;
+};
+
+type VerifiedScopeChangePricingComponent = {
+  evidenceReceipt: BaselinePriceEvidenceReceipt;
+  kind: "approved_scope_change" | "original_confirmed_scope";
+  priceMax: number;
+  priceMin: number;
+  selectedPrice: number;
+};
+
+export type VerifiedScopeChangePriceResult =
+  | {
+    success: true;
+    baselineDistrict: string;
+    baselineEvidence: BaselinePriceEvidenceReceipt;
+    baselineSource: string;
+    baselineUsed: string;
+    priceMin: number;
+    priceMax: number;
+    priceSource: "verified_baseline";
+    pricingBasis: VerifiedScopeChangePricingBasis;
+    pricingComponents?: readonly VerifiedScopeChangePricingComponent[];
+    pricingMode: "full_scope_total";
+    problemSlug: string;
+    referencePriceMax: number;
+    referencePriceMin: number;
+    selectionRule: "verified_neutral_midpoint_with_bilateral_confirmation";
+    serviceProblemId: string;
+    stakeholderBalance: {
+      commissionLevel: number;
+      commissionRateBps: number;
+      customerConfirmationRequired: true;
+      customerTotal: number;
+      platformFee: number;
+      workerConfirmationRequired: true;
+      workerNet: number;
+    };
+  }
+  | { success: false; error: string };
+
+export function resolveVerifiedScopeChangePrice(input: {
+  candidates: BaselineCandidatesResult;
+  complexity: ComplexityLevel;
+  district: string;
+  commissionTier: {
+    level: number;
+    rateBps: number;
+  } | null;
+  originalScope?: {
+    evidenceReceipt: BaselinePriceEvidenceReceipt;
+    priceMax: number;
+    priceMin: number;
+  };
+  pricingFactors: {
+    accessCondition: "normal" | "restricted" | "unknown";
+    materialTier: "standard" | "specialty" | "unknown";
+    quantity: number;
+    secondaryDamage: "none_confirmed" | "present" | "unknown";
+  };
+  problemSlug: string;
+  scopeExclusions?: {
+    materialsExcluded: boolean;
+    surfaceFinishExcluded: boolean;
+  };
+  serviceType: ServiceType;
+}): VerifiedScopeChangePriceResult {
+  if (!PROBLEM_SLUGS_BY_SERVICE[input.serviceType].includes(input.problemSlug)) {
+    return { success: false, error: "problem slug is outside selected service" };
+  }
+  if (!input.candidates.success) {
+    return { success: false, error: input.candidates.error };
+  }
+  const exact = input.candidates.byComplexity[input.complexity];
+  if (!exact) {
+    return { success: false, error: "no exact verified baseline" };
+  }
+  if (!exact.source || !exact.evidenceReceipt) {
+    return { success: false, error: "baseline provenance missing" };
+  }
+  if (!input.commissionTier) {
+    return { success: false, error: "worker commission tier unavailable" };
+  }
+  if (input.problemSlug === "pipe_leak") {
+    return resolveVerifiedPipeLeakScopeChange({
+      candidates: input.candidates,
+      commissionTier: input.commissionTier,
+      complexity: input.complexity,
+      exact,
+      originalScope: input.originalScope,
+      pricingFactors: input.pricingFactors,
+      problemSlug: input.problemSlug,
+      scopeExclusions: input.scopeExclusions,
+      serviceType: input.serviceType,
+    });
+  }
+  if (input.problemSlug !== "replace_cabinet_hinges") {
+    return { success: false, error: "case pricing strategy missing" };
+  }
+  if (exact.evidenceReceipt.unit !== "per_cabinet_door") {
+    return { success: false, error: "case pricing unit does not match scope" };
+  }
+  if (input.pricingFactors.quantity !== 2) {
+    return { success: false, error: "scope quantity does not match baseline" };
+  }
+  if (input.pricingFactors.accessCondition !== "normal") {
+    return { success: false, error: "access condition is not confirmed" };
+  }
+  if (input.pricingFactors.secondaryDamage !== "none_confirmed") {
+    return { success: false, error: "secondary damage is not ruled out" };
+  }
+  if (input.pricingFactors.materialTier !== "standard") {
+    return { success: false, error: "material tier is not confirmed" };
+  }
+  const pricingBasis = scopeChangePricingBasis(
+    input.problemSlug,
+    exact.priceMin,
+    exact.priceMax,
+    exact.evidenceReceipt,
+  );
+  const customerTotal = pricingBasis.unitPriceMin! * (pricingBasis.quantity ?? 1);
+  const platformFee = Math.round(
+    customerTotal * input.commissionTier.rateBps / 10_000,
+  );
+  return {
+    success: true,
+    baselineDistrict: exact.districtCode,
+    baselineEvidence: exact.evidenceReceipt,
+    baselineSource: exact.source,
+    baselineUsed: [
+      input.serviceType,
+      input.problemSlug,
+      input.complexity,
+      exact.districtCode,
+    ].join(":"),
+    priceMin: customerTotal,
+    priceMax: customerTotal,
+    priceSource: "verified_baseline",
+    pricingBasis,
+    pricingMode: "full_scope_total",
+    problemSlug: input.problemSlug,
+    referencePriceMax: exact.priceMax,
+    referencePriceMin: exact.priceMin,
+    selectionRule: "verified_neutral_midpoint_with_bilateral_confirmation",
+    serviceProblemId: input.candidates.serviceProblemId,
+    stakeholderBalance: {
+      commissionLevel: input.commissionTier.level,
+      commissionRateBps: input.commissionTier.rateBps,
+      customerConfirmationRequired: true,
+      customerTotal,
+      platformFee,
+      workerConfirmationRequired: true,
+      workerNet: customerTotal - platformFee,
+    },
+  };
+}
+
+function resolveVerifiedPipeLeakScopeChange(input: {
+  commissionTier: { level: number; rateBps: number };
+  complexity: ComplexityLevel;
+  exact: BaselinePrice;
+  originalScope?: {
+    evidenceReceipt: BaselinePriceEvidenceReceipt;
+    priceMax: number;
+    priceMin: number;
+  };
+  pricingFactors: {
+    accessCondition: "normal" | "restricted" | "unknown";
+    materialTier: "standard" | "specialty" | "unknown";
+    quantity: number;
+    secondaryDamage: "none_confirmed" | "present" | "unknown";
+  };
+  problemSlug: string;
+  scopeExclusions?: {
+    materialsExcluded: boolean;
+    surfaceFinishExcluded: boolean;
+  };
+  serviceType: ServiceType;
+  candidates: Extract<BaselineCandidatesResult, { success: true }>;
+}): VerifiedScopeChangePriceResult {
+  const repairEvidence = input.exact.evidenceReceipt;
+  if (!repairEvidence || repairEvidence.unit !== "per_repair_point") {
+    return { success: false, error: "case pricing unit does not match scope" };
+  }
+  if (input.pricingFactors.quantity !== 1) {
+    return { success: false, error: "scope quantity does not match baseline" };
+  }
+  if (input.pricingFactors.accessCondition !== "normal") {
+    return { success: false, error: "access condition is not confirmed" };
+  }
+  if (input.pricingFactors.secondaryDamage !== "none_confirmed") {
+    return { success: false, error: "secondary damage is not ruled out" };
+  }
+  if (input.pricingFactors.materialTier !== "unknown") {
+    return { success: false, error: "material exclusion does not match pricing factors" };
+  }
+  if (!input.scopeExclusions?.materialsExcluded) {
+    return { success: false, error: "materials must be explicitly excluded" };
+  }
+  if (!input.scopeExclusions.surfaceFinishExcluded) {
+    return { success: false, error: "surface finishing must be explicitly excluded" };
+  }
+  const original = input.originalScope;
+  if (
+    !original || original.evidenceReceipt.unit !== "per_visit" ||
+    original.evidenceReceipt.aggregate_price_min !== original.priceMin ||
+    original.evidenceReceipt.aggregate_price_max !== original.priceMax
+  ) {
+    return { success: false, error: "original verified scope receipt missing" };
+  }
+  const originalSelected = neutralMidpoint(original.priceMin, original.priceMax);
+  const repairSelected = neutralMidpoint(input.exact.priceMin, input.exact.priceMax);
+  const customerTotal = originalSelected + repairSelected;
+  const platformFee = Math.round(
+    customerTotal * input.commissionTier.rateBps / 10_000,
+  );
+  return {
+    success: true,
+    baselineDistrict: input.exact.districtCode,
+    baselineEvidence: repairEvidence,
+    baselineSource: input.exact.source!,
+    baselineUsed: [
+      input.serviceType,
+      input.problemSlug,
+      input.complexity,
+      input.exact.districtCode,
+    ].join(":"),
+    priceMin: customerTotal,
+    priceMax: customerTotal,
+    priceSource: "verified_baseline",
+    pricingBasis: {
+      calculation:
+        `verified diagnostic midpoint ${original.priceMin}-${original.priceMax} VND = ${originalSelected} VND + verified one-point repair labor midpoint ${input.exact.priceMin}-${input.exact.priceMax} VND = ${repairSelected} VND; full accepted scope total = ${customerTotal} VND`,
+      quantity: 1,
+      unit: "accepted_scope",
+      unitPriceMin: customerTotal,
+      unitPriceMax: customerTotal,
+    },
+    pricingComponents: [
+      {
+        evidenceReceipt: original.evidenceReceipt,
+        kind: "original_confirmed_scope",
+        priceMax: original.priceMax,
+        priceMin: original.priceMin,
+        selectedPrice: originalSelected,
+      },
+      {
+        evidenceReceipt: repairEvidence,
+        kind: "approved_scope_change",
+        priceMax: input.exact.priceMax,
+        priceMin: input.exact.priceMin,
+        selectedPrice: repairSelected,
+      },
+    ],
+    pricingMode: "full_scope_total",
+    problemSlug: input.problemSlug,
+    referencePriceMax: original.priceMax + input.exact.priceMax,
+    referencePriceMin: original.priceMin + input.exact.priceMin,
+    selectionRule: "verified_neutral_midpoint_with_bilateral_confirmation",
+    serviceProblemId: input.candidates.serviceProblemId,
+    stakeholderBalance: {
+      commissionLevel: input.commissionTier.level,
+      commissionRateBps: input.commissionTier.rateBps,
+      customerConfirmationRequired: true,
+      customerTotal,
+      platformFee,
+      workerConfirmationRequired: true,
+      workerNet: customerTotal - platformFee,
+    },
+  };
+}
+
+function neutralMidpoint(priceMin: number, priceMax: number): number {
+  return Math.round(((priceMin + priceMax) / 2) / 1000) * 1000;
+}
+
+function scopeChangePricingBasis(
+  problemSlug: string,
+  priceMin: number,
+  priceMax: number,
+  evidence: BaselinePriceEvidenceReceipt,
+): VerifiedScopeChangePricingBasis {
+  if (
+    problemSlug === "replace_cabinet_hinges" &&
+    evidence.unit === "per_cabinet_door"
+  ) {
+    const selectedScopePrice = neutralMidpoint(priceMin, priceMax);
+    return {
+      calculation: `neutral midpoint of verified one-door scope ${priceMin}-${priceMax} VND = ${selectedScopePrice} VND`,
+      quantity: 1,
+      unit: "cabinet_door_scope",
+      unitPriceMin: selectedScopePrice,
+      unitPriceMax: selectedScopePrice,
+    };
+  }
+  return {
+    calculation: `verified baseline total = ${priceMin}-${priceMax} VND`,
+    quantity: null,
+    unit: "accepted_scope",
+    unitPriceMin: null,
+    unitPriceMax: null,
   };
 }

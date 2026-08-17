@@ -66,7 +66,7 @@ export function WorkerV5CompletionEvidenceHero({
     ? textByLanguage(language, `${sourceCount} nguồn · đã kiểm tra`, `${sourceCount} sources · checked`)
     : textByLanguage(language, 'Chưa có nguồn hoàn tất', 'No completion sources yet')
   const caption = noteReady && photoCount
-    ? textByLanguage(language, 'Ảnh, ghi chú và checklist lấy từ hồ sơ thật.', 'Photos, notes, and checklist come from the real case.')
+    ? textByLanguage(language, 'Ảnh, ghi chú và danh sách kiểm tra đã đủ để gửi.', 'Photos, notes, and checklist are ready to submit.')
     : textByLanguage(language, 'Cần ảnh hoặc ghi chú thật trước khi gửi.', 'Real photos or notes are required before submission.')
   const lensValue = sourceCount && completenessPercent != null
     ? `${Math.max(0, Math.min(100, completenessPercent))}%`

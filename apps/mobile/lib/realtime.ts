@@ -93,3 +93,32 @@ export function subscribeToWorkerBroadcasts(
     },
   }
 }
+
+// Ledger payloads are only invalidation signals. The Worker surface re-fetches
+// the server-owned earnings aggregate so no client event can author money.
+export function subscribeToWorkerEarnings(
+  workerId: string,
+  onChange: (payload: unknown) => void,
+): RealtimeChannelHandle | null {
+  if (!supabase || !UUID_PATTERN.test(workerId)) return null
+  const channel = supabase
+    .channel(`worker-earnings:${workerId}`)
+    .on(
+      'postgres_changes',
+      {
+        event: '*',
+        schema: 'public',
+        table: 'worker_payment_ledger',
+        filter: `worker_id=eq.${workerId}`,
+      },
+      (payload) => onChange(payload),
+    )
+    .subscribe()
+
+  return {
+    unsubscribe: async () => {
+      const status = await supabase!.removeChannel(channel)
+      return String(status)
+    },
+  }
+}

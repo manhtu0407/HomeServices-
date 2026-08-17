@@ -20,9 +20,11 @@ import type {
   ScopeChangeStatus,
 } from "../../../../../_shared/domain.ts";
 import type {
+  ScopeChangeKaelAnalysis,
   ScopeChangeKaelEstimate,
   ScopeChangeRiskConfig,
 } from "../../../kael/index.ts";
+import { hasVerifiedScopeDecisionReceipt } from "./decision-receipt.ts";
 
 export async function decideScopeChange(
   ctx: MobileApiContext,
@@ -33,12 +35,19 @@ export async function decideScopeChange(
   const scopeRow = await dbQuery<Record<string, unknown>>(
     client
       .from("scope_change_requests")
-      .select("job_id, request_timing, resume_job_status")
+      .select("job_id, request_timing, resume_job_status, kael_computed_min, kael_computed_max, kael_review")
       .eq("id", scopeChangeId)
       .maybeSingle(),
   );
   if (scopeRow.error || !scopeRow.data) {
     apiFailure("NOT_FOUND", "Không tìm thấy yêu cầu đổi phạm vi", 404);
+  }
+  if (input.decision === "approve" && !hasVerifiedScopeDecisionReceipt(scopeRow.data)) {
+    apiFailure(
+      "KAEL_PRICE_UNVERIFIED",
+      "Giá cho phạm vi mới chưa có receipt đã xác minh và chưa thể được chấp nhận.",
+      409,
+    );
   }
   const requestTiming =
     nullableString(scopeRow.data?.request_timing) === "pre_arrival"
@@ -106,7 +115,7 @@ export async function decideScopeChange(
 export async function logScopeChangeEstimateApiCall(
   client: DbClient,
   jobId: string,
-  estimate: ScopeChangeKaelEstimate,
+  estimate: ScopeChangeKaelAnalysis | ScopeChangeKaelEstimate,
 ) {
   const traceRows = (estimate.trace ?? [])
     .filter((trace) =>
