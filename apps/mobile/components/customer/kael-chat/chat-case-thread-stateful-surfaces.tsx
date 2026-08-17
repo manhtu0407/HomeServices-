@@ -1,3 +1,4 @@
+import { typography } from '@/design/theme'
 import { useState, type ReactNode } from 'react'
 import { StyleSheet, Text, View, type StyleProp, type TextStyle } from 'react-native'
 
@@ -494,19 +495,15 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   phaseHistoryEntryStatus: {
-    fontSize: 13,
-    fontWeight: '500',
-    lineHeight: 18,
+    ...typography.footnote,
   },
   phaseHistoryEntryTitle: {
-    fontSize: 15,
+    ...typography.subheadline,
     fontWeight: '600',
-    lineHeight: 21,
   },
   phaseHistoryHeading: {
-    fontSize: 16,
-    fontWeight: '700',
-    lineHeight: 22,
+    ...typography.callout,
+    fontWeight: '600',
   },
   phaseStack: {
     gap: 18,

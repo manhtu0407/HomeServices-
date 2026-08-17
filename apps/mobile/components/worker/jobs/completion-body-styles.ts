@@ -1,5 +1,7 @@
 import { StyleSheet } from 'react-native'
 
+import { typography } from '@/design/theme'
+
 export const styles = StyleSheet.create({
   completionDraftStack: {
     gap: 10,
@@ -14,9 +16,8 @@ export const styles = StyleSheet.create({
   },
   completionNotice: {
     color: '#086F65',
-    fontSize: 13,
+    ...typography.footnote,
     fontWeight: '600',
-    lineHeight: 19,
   },
   completionPhotoAction: {
     alignItems: 'center',
@@ -32,12 +33,12 @@ export const styles = StyleSheet.create({
   },
   completionPhotoActionLabel: {
     color: '#077C72',
-    fontSize: 14,
-    fontWeight: '700',
+    ...typography.subheadline,
+    fontWeight: '600',
   },
   completionPhotoActionMeta: {
     color: '#52706C',
-    fontSize: 12,
+    ...typography.caption1,
     fontWeight: '600',
   },
   completionPhotoActionPressed: {

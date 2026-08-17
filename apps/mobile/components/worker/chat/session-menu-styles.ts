@@ -1,6 +1,6 @@
 import { StyleSheet } from 'react-native'
 
-import { color, radius, shadow } from '@/design/theme'
+import { color, radius, shadow, typography } from '@/design/theme'
 
 export const styles = StyleSheet.create({
   actionDivider: {
@@ -34,19 +34,19 @@ export const styles = StyleSheet.create({
   },
   actionText: {
     color: color.text.strong,
-    fontSize: 10.5,
-    fontWeight: '700',
+    ...typography.caption2,
+    fontWeight: '600',
   },
   check: {
     color: color.brand.primary,
-    fontSize: 16,
-    fontWeight: '700',
+    ...typography.callout,
+    fontWeight: '600',
     marginLeft: 5,
   },
   deleteActionText: {
     color: '#E5484D',
-    fontSize: 10.5,
-    fontWeight: '700',
+    ...typography.caption2,
+    fontWeight: '600',
   },
   deleteConfirm: {
     alignItems: 'center',
@@ -68,15 +68,14 @@ export const styles = StyleSheet.create({
   },
   deleteConfirmCancelText: {
     color: color.text.muted,
-    fontSize: 10,
-    fontWeight: '700',
+    ...typography.caption2,
+    fontWeight: '600',
   },
   deleteConfirmCopy: {
     color: color.text.strong,
     flex: 1,
-    fontSize: 9.5,
+    ...typography.caption2,
     fontWeight: '600',
-    lineHeight: 12,
     paddingHorizontal: 7,
   },
   deleteConfirmDivider: {
@@ -93,16 +92,14 @@ export const styles = StyleSheet.create({
   },
   error: {
     color: '#D94C51',
-    fontSize: 10.5,
+    ...typography.caption2,
     fontWeight: '600',
-    lineHeight: 14,
     paddingHorizontal: 4,
   },
   feedback: {
     color: color.text.muted,
-    fontSize: 10.5,
+    ...typography.caption2,
     fontWeight: '600',
-    lineHeight: 14,
     paddingHorizontal: 4,
   },
   menuGlass: {
@@ -148,8 +145,8 @@ export const styles = StyleSheet.create({
   },
   newSessionText: {
     color: color.brand.primary,
-    fontSize: 13,
-    fontWeight: '700',
+    ...typography.footnote,
+    fontWeight: '600',
   },
   pinnedIcon: {
     alignItems: 'center',
@@ -177,7 +174,7 @@ export const styles = StyleSheet.create({
     padding: 8,
   },
   renameInput: {
-    fontSize: 12,
+    ...typography.caption1,
     minHeight: 38,
     paddingHorizontal: 10,
     paddingVertical: 7,
@@ -197,8 +194,8 @@ export const styles = StyleSheet.create({
   },
   renamePrimaryText: {
     color: '#FFFFFF',
-    fontSize: 11.5,
-    fontWeight: '700',
+    ...typography.caption2,
+    fontWeight: '600',
   },
   renameSecondary: {
     alignItems: 'center',
@@ -210,8 +207,8 @@ export const styles = StyleSheet.create({
   },
   renameSecondaryText: {
     color: color.text.muted,
-    fontSize: 11.5,
-    fontWeight: '700',
+    ...typography.caption2,
+    fontWeight: '600',
   },
   session: {
     alignItems: 'center',
@@ -247,9 +244,7 @@ export const styles = StyleSheet.create({
   },
   sessionMeta: {
     color: color.text.muted,
-    fontSize: 9.5,
-    fontWeight: '500',
-    lineHeight: 12,
+    ...typography.caption2,
   },
   sessionSelected: {
     backgroundColor: 'rgba(231, 252, 247, 0.98)',
@@ -257,9 +252,8 @@ export const styles = StyleSheet.create({
   sessionTitle: {
     color: color.text.strong,
     flexShrink: 1,
-    fontSize: 10.5,
-    fontWeight: '700',
-    lineHeight: 14,
+    ...typography.caption2,
+    fontWeight: '600',
   },
   sessionTitleRow: {
     alignItems: 'center',

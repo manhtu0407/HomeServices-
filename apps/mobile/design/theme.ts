@@ -80,7 +80,7 @@ export const signature = {
   providerBorder: 'rgba(23,169,149,0.28)',
 } as const
 
-type AppleTypographyRole =
+export type AppleTypographyRole =
   | 'largeTitle'
   | 'title1'
   | 'title2'
@@ -97,23 +97,24 @@ type AppleTypographyRole =
 const systemFontFamily: TextStyle['fontFamily'] = Platform.OS === 'ios' ? undefined : 'System'
 
 const appleSystemTypography = {
-  largeTitle: { fontFamily: systemFontFamily, fontSize: 34, lineHeight: 41, fontWeight: '400' },
-  title1: { fontFamily: systemFontFamily, fontSize: 28, lineHeight: 34, fontWeight: '400' },
-  title2: { fontFamily: systemFontFamily, fontSize: 22, lineHeight: 28, fontWeight: '400' },
-  title3: { fontFamily: systemFontFamily, fontSize: 20, lineHeight: 25, fontWeight: '400' },
-  headline: { fontFamily: systemFontFamily, fontSize: 17, lineHeight: 22, fontWeight: '600' },
-  body: { fontFamily: systemFontFamily, fontSize: 17, lineHeight: 22, fontWeight: '400' },
-  callout: { fontFamily: systemFontFamily, fontSize: 16, lineHeight: 21, fontWeight: '400' },
-  subheadline: { fontFamily: systemFontFamily, fontSize: 15, lineHeight: 20, fontWeight: '400' },
-  footnote: { fontFamily: systemFontFamily, fontSize: 13, lineHeight: 18, fontWeight: '400' },
-  caption1: { fontFamily: systemFontFamily, fontSize: 12, lineHeight: 16, fontWeight: '400' },
-  caption2: { fontFamily: systemFontFamily, fontSize: 11, lineHeight: 13, fontWeight: '400' },
+  largeTitle: { fontFamily: systemFontFamily, fontSize: 34, lineHeight: 41, fontWeight: '400', letterSpacing: 0.4 },
+  title1: { fontFamily: systemFontFamily, fontSize: 28, lineHeight: 34, fontWeight: '400', letterSpacing: 0.38 },
+  title2: { fontFamily: systemFontFamily, fontSize: 22, lineHeight: 28, fontWeight: '400', letterSpacing: -0.26 },
+  title3: { fontFamily: systemFontFamily, fontSize: 20, lineHeight: 25, fontWeight: '400', letterSpacing: -0.45 },
+  headline: { fontFamily: systemFontFamily, fontSize: 17, lineHeight: 22, fontWeight: '600', letterSpacing: -0.43 },
+  body: { fontFamily: systemFontFamily, fontSize: 17, lineHeight: 22, fontWeight: '400', letterSpacing: -0.43 },
+  callout: { fontFamily: systemFontFamily, fontSize: 16, lineHeight: 21, fontWeight: '400', letterSpacing: -0.31 },
+  subheadline: { fontFamily: systemFontFamily, fontSize: 15, lineHeight: 20, fontWeight: '400', letterSpacing: -0.23 },
+  footnote: { fontFamily: systemFontFamily, fontSize: 13, lineHeight: 18, fontWeight: '400', letterSpacing: -0.08 },
+  caption1: { fontFamily: systemFontFamily, fontSize: 12, lineHeight: 16, fontWeight: '400', letterSpacing: 0 },
+  caption2: { fontFamily: systemFontFamily, fontSize: 11, lineHeight: 13, fontWeight: '400', letterSpacing: 0.06 },
   tabularBody: {
     fontFamily: systemFontFamily,
     fontSize: 17,
     fontVariant: ['tabular-nums'] as TextStyle['fontVariant'],
     fontWeight: '400',
     lineHeight: 22,
+    letterSpacing: -0.43,
   },
 } satisfies Record<AppleTypographyRole, TextStyle>
 
@@ -133,6 +134,17 @@ export const typography = {
   label: appleSystemTypography.subheadline,
   caption: appleSystemTypography.caption1,
 } as const
+
+export function scaledTypography(role: AppleTypographyRole, scale: number): TextStyle {
+  const base = appleSystemTypography[role]
+  const factor = Number.isFinite(scale) && scale > 0 ? scale : 1
+
+  return {
+    ...base,
+    fontSize: Math.round((base.fontSize ?? 0) * factor),
+    lineHeight: Math.round((base.lineHeight ?? 0) * factor),
+  }
+}
 
 export const spacing = {
   xxs: 2,

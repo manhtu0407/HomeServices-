@@ -24,9 +24,7 @@ export const styles = StyleSheet.create({
   },
   copy: {
     color: color.text.secondary,
-    fontSize: 13,
-    fontWeight: '500',
-    lineHeight: 19,
+    ...typography.footnote,
   },
   darkCopy: {
     color: '#B8D0CF',
@@ -65,11 +63,9 @@ export const styles = StyleSheet.create({
   fileStatus: {
     color: color.brand.primaryDark,
     flexShrink: 0,
-    fontSize: 12,
-    fontWeight: '700',
-    lineHeight: 16,
     maxWidth: 116,
     textAlign: 'right',
+    ...typography.caption1,
   },
   fileStatusDark: {
     color: '#8FE2D4',
@@ -77,25 +73,19 @@ export const styles = StyleSheet.create({
   fileTitle: {
     color: color.text.strong,
     flex: 1,
-    fontSize: 14,
-    fontWeight: '700',
-    lineHeight: 18,
+    ...typography.subheadline,
   },
   formGap: {
     gap: 11,
   },
   formLabel: {
     color: color.text.secondary,
-    fontSize: 12,
-    fontWeight: '700',
-    lineHeight: 16,
     marginBottom: 5,
+    ...typography.caption1,
   },
   sectionTitle: {
     color: color.text.strong,
-    fontSize: 16,
-    fontWeight: '700',
-    lineHeight: 21,
+    ...typography.callout,
   },
   serviceWrap: {
     flexDirection: 'row',
@@ -104,30 +94,21 @@ export const styles = StyleSheet.create({
   },
   status: {
     color: color.brand.primaryDark,
-    fontSize: 12,
-    fontWeight: '700',
-    lineHeight: 16,
+    ...typography.caption1,
   },
   submit: {
     marginTop: 2,
   },
   title: {
     color: color.text.strong,
-    fontFamily: typography.fontFamily,
-    fontSize: 21,
-    fontWeight: '700',
-    lineHeight: 27,
+    ...typography.title2,
   },
   error: {
     color: color.accent.destructive,
-    fontSize: 13,
-    fontWeight: '600',
-    lineHeight: 19,
+    ...typography.footnote,
   },
   note: {
     color: color.text.muted,
-    fontSize: 12,
-    fontWeight: '500',
-    lineHeight: 17,
+    ...typography.caption1,
   },
 })

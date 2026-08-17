@@ -11,7 +11,7 @@ jest.mock('expo-image', () => {
   }
 })
 
-import { component, shadow, typography } from '@/design/theme'
+import { component, scaledTypography, shadow, typography } from '@/design/theme'
 import { FORMULA_MINT_CANVAS_STANDARD_RADIAL_RADIUS, FormulaMintCanvasAura } from '../formula-mint-canvas'
 import { FormulaMintCardAura } from '../formula-mint-card'
 import { KAEL_CORE_V9_CONTRACT } from '../kael-core-v9-contract'
@@ -243,8 +243,20 @@ describe('Kael UI primitives', () => {
       family: 'system',
       resolvedOnIOS: 'SF Pro',
     })
+    expect(typography.largeTitle).toMatchObject({ fontSize: 34, lineHeight: 41, fontWeight: '400', letterSpacing: 0.4 })
+    expect(typography.title1).toMatchObject({ fontSize: 28, lineHeight: 34, fontWeight: '400', letterSpacing: 0.38 })
+    expect(typography.title2).toMatchObject({ fontSize: 22, lineHeight: 28, fontWeight: '400', letterSpacing: -0.26 })
+    expect(typography.title3).toMatchObject({ fontSize: 20, lineHeight: 25, fontWeight: '400', letterSpacing: -0.45 })
+    expect(typography.headline).toMatchObject({ fontSize: 17, lineHeight: 22, fontWeight: '600', letterSpacing: -0.43 })
+    expect(typography.body).toMatchObject({ fontSize: 17, lineHeight: 22, fontWeight: '400', letterSpacing: -0.43 })
+    expect(typography.callout).toMatchObject({ fontSize: 16, lineHeight: 21, fontWeight: '400', letterSpacing: -0.31 })
+    expect(typography.subheadline).toMatchObject({ fontSize: 15, lineHeight: 20, fontWeight: '400', letterSpacing: -0.23 })
+    expect(typography.footnote).toMatchObject({ fontSize: 13, lineHeight: 18, fontWeight: '400', letterSpacing: -0.08 })
+    expect(typography.caption1).toMatchObject({ fontSize: 12, lineHeight: 16, fontWeight: '400', letterSpacing: 0 })
+    expect(typography.caption2).toMatchObject({ fontSize: 11, lineHeight: 13, fontWeight: '400', letterSpacing: 0.06 })
     expect(typography.tabularBody.fontVariant).toEqual(['tabular-nums'])
     expect(typography.h1).toBe(typography.largeTitle)
+    expect(scaledTypography('headline', 0.5)).toMatchObject({ fontSize: 9, lineHeight: 11, letterSpacing: -0.43, fontWeight: '600' })
   })
 
 })

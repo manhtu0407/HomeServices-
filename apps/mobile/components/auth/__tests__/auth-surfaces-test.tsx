@@ -435,7 +435,7 @@ describe('LoginRoleSurface', () => {
 
     const headline = screen.getByTestId('auth-role-gate-greeting').props.children as string
     const lead = screen.getByTestId('auth-role-gate-greeting-lead').props.children as string
-    expect(screen.getByTestId('auth-role-gate-greeting')).toHaveStyle({ fontSize: 29, lineHeight: 35 })
+    expect(screen.getByTestId('auth-role-gate-greeting')).toHaveStyle({ fontSize: 28, lineHeight: 34 })
     expect(screen.queryByTestId('auth-role-gate-signature-shell')).toBeNull()
     expect(screen.queryByTestId('auth-role-gate-greeting-signature')).toBeNull()
     expect(screen.getByTestId('auth-entry-role-customer-layout')).toHaveStyle({ flex: 3 })

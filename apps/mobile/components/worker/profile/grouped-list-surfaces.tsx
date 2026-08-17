@@ -93,7 +93,7 @@ export function WorkerV5ProfileGroupRow({
     >
       <Image accessibilityIgnoresInvertColors contentFit="contain" source={icon} style={styles.groupRowIcon} testID={`${testID}-icon`} />
       <View style={styles.groupRowCopy}>
-        <Text numberOfLines={1} style={[styles.groupRowTitle, isDark ? styles.groupRowTitleDark : null]} testID={`${testID}-title`}>{title}</Text>
+        <Text numberOfLines={2} style={[styles.groupRowTitle, isDark ? styles.groupRowTitleDark : null]} testID={`${testID}-title`}>{title}</Text>
         {description ? <Text numberOfLines={2} style={[styles.groupRowDescription, isDark ? styles.groupRowDescriptionDark : null]}>{description}</Text> : null}
       </View>
       {status ? <Text numberOfLines={2} style={[styles.groupRowMeta, statusStyle, isDark ? styles.groupRowMetaDark : null, isDark && statusTone === 'active' ? styles.groupRowMetaActiveDark : null]} testID={`${testID}-status`}>{status}</Text> : null}

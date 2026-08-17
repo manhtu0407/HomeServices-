@@ -8,6 +8,7 @@ import { useAuth } from '@/lib/auth-provider'
 import { useAdminActivation } from '@/lib/admin-activation-provider'
 import { useAppLanguage } from '@/lib/app-language'
 import { mobileRuntimeConfig } from '@/lib/runtime-config'
+import { typography } from '@/design/theme'
 
 const CUSTOMER_DOCK_MAIN_A = 'CUSTOMER_DOCK_MAIN_A: app layout hosts the custom customer dock'
 const CUSTOMER_DARK_DOCK_LAYER_MATCH = 'CUSTOMER_DARK_DOCK_LAYER_MATCH: dock follows customer theme layer'
@@ -165,8 +166,7 @@ const styles = StyleSheet.create({
   },
   runtimeMarkerText: {
     color: '#FFFFFF',
-    fontSize: 12,
+    ...typography.caption1,
     fontWeight: '600',
-    lineHeight: 16,
   },
 })

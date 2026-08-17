@@ -333,7 +333,7 @@ export function ProfileUtilityPaymentView({
             style={profilePaymentStyles.heroTitleCopy}
             testID="customer-v21-profile-payment-hero-title-copy"
           >
-            <Text numberOfLines={1} style={[sharedStyles.cardTitle, { color: tokens.text }]} testID="customer-v21-profile-payment-hero-title">{heroTitle}</Text>
+            <Text numberOfLines={2} style={[sharedStyles.cardTitle, { color: tokens.text }]} testID="customer-v21-profile-payment-hero-title">{heroTitle}</Text>
             <Text numberOfLines={2} style={[profilePaymentStyles.heroSummary, { color: tokens.muted }]}>
               {selectedBankHasRecordedAccount
                 ? `${confirmedPaymentBankName || dataPendingLabel} · ${confirmedPaymentAccountMasked}`

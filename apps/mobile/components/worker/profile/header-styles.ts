@@ -4,7 +4,7 @@ import { color, shadow, typography } from '@/design/theme'
 
 export const styles = StyleSheet.create({
   workerCustomerFontText: {
-    fontFamily: typography.fontFamily,
+    ...typography.body,
   },
   iconTileMintAura: {
     opacity: 0.72,
@@ -31,9 +31,7 @@ export const styles = StyleSheet.create({
   },
   profileAvatarAddGlyph: {
     color: color.brand.primaryDark,
-    fontSize: 25,
-    fontWeight: '400',
-    lineHeight: 28,
+    ...typography.title1,
   },
   profileAvatarAddGlyphDark: {
     color: '#63E6D0',
@@ -76,18 +74,14 @@ export const styles = StyleSheet.create({
   },
   profileHeaderMeta: {
     color: color.text.muted,
-    fontSize: 10,
-    fontWeight: '600',
-    lineHeight: 13,
+    ...typography.caption2,
   },
   profileHeaderMetaDark: {
     color: '#A9B7B3',
   },
   profileHeaderName: {
     color: color.text.strong,
-    fontSize: 16,
-    fontWeight: '700',
-    lineHeight: 20,
+    ...typography.callout,
   },
   profileHeaderNameDark: {
     color: '#F1F6F4',

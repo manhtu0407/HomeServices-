@@ -90,7 +90,7 @@ export function CheckRow({ checked, label, onPress, testID }: { checked: boolean
 }
 
 const styles = StyleSheet.create({
-  checkLabel: { color: entryTheme.color.text.secondary, flexShrink: 1, fontSize: 11, lineHeight: 16 },
+  checkLabel: { ...entryTheme.typography.caption1, color: entryTheme.color.text.secondary, flexShrink: 1 },
   checkbox: {
     alignItems: 'center',
     backgroundColor: '#FFFFFF',
@@ -129,8 +129,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     width: 30,
   },
-  input: { color: entryTheme.color.text.primary, flex: 1, fontSize: 13, height: '100%', paddingVertical: 0 },
-  label: { color: entryTheme.color.text.strong, fontSize: 12, fontWeight: '600', paddingLeft: 2 },
+  input: { ...entryTheme.typography.footnote, color: entryTheme.color.text.primary, flex: 1, height: '100%', paddingVertical: 0 },
+  label: { ...entryTheme.typography.caption1, color: entryTheme.color.text.strong, fontWeight: '600', paddingLeft: 2 },
 })
 
 const webInputFocusReset = Platform.OS === 'web'

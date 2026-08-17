@@ -4,7 +4,7 @@ import { color, radius, shadow, typography } from '@/design/theme'
 
 export const styles = StyleSheet.create({
   workerCustomerFontText: {
-    fontFamily: typography.fontFamily,
+    ...typography.body,
   },
   iconTileMintAura: {
     opacity: 0.92,
@@ -18,9 +18,8 @@ export const styles = StyleSheet.create({
   },
   opportunityCaption: {
     color: color.text.muted,
-    fontSize: 10,
-    fontWeight: '700',
-    lineHeight: 14,
+    ...typography.caption2,
+    fontWeight: '600',
     marginTop: 2,
     textAlign: 'right',
   },
@@ -38,9 +37,8 @@ export const styles = StyleSheet.create({
   },
   opportunityOpenButtonText: {
     color: color.brand.primaryDark,
-    fontSize: 10,
-    fontWeight: '700',
-    lineHeight: 12,
+    ...typography.caption2,
+    fontWeight: '600',
   },
   opportunityCard: {
     alignItems: 'stretch',
@@ -82,16 +80,14 @@ export const styles = StyleSheet.create({
   },
   opportunityMeta: {
     color: color.text.muted,
-    fontSize: 10,
-    fontWeight: '700',
-    lineHeight: 14,
+    ...typography.caption2,
+    fontWeight: '600',
     marginTop: 2,
   },
   opportunityPayout: {
     color: color.brand.primaryDark,
-    fontSize: 10,
-    fontWeight: '700',
-    lineHeight: 14,
+    ...typography.caption2,
+    fontWeight: '600',
     textAlign: 'right',
   },
   opportunityPayoutColumn: {
@@ -104,9 +100,8 @@ export const styles = StyleSheet.create({
   },
   opportunitySelectionHint: {
     color: color.text.secondary,
-    fontSize: 13,
+    ...typography.footnote,
     fontWeight: '600',
-    lineHeight: 19,
     paddingHorizontal: 4,
   },
   opportunityTextColumn: {
@@ -117,8 +112,7 @@ export const styles = StyleSheet.create({
   },
   opportunityTitle: {
     color: color.text.strong,
-    fontSize: 12,
-    fontWeight: '700',
-    lineHeight: 16,
+    ...typography.caption1,
+    fontWeight: '600',
   },
 })

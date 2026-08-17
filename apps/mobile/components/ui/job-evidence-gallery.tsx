@@ -1,3 +1,4 @@
+import { typography } from '@/design/theme'
 import { useMemo, useState } from 'react'
 import { Image } from 'expo-image'
 import {
@@ -331,9 +332,7 @@ export function JobEvidenceGallery({
 const styles = StyleSheet.create({
   addMark: {
     color: '#087F75',
-    fontSize: 32,
-    fontWeight: '500',
-    lineHeight: 36,
+    ...typography.largeTitle,
   },
   addTile: {
     alignItems: 'center',
@@ -345,9 +344,8 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     bottom: 7,
     color: '#FFFFFF',
-    fontSize: 9,
-    fontWeight: '700',
-    lineHeight: 11,
+    ...typography.caption2,
+    fontWeight: '600',
     maxWidth: '80%',
     overflow: 'hidden',
     paddingHorizontal: 7,
@@ -370,9 +368,8 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     color: '#607976',
-    fontSize: 12,
+    ...typography.caption1,
     fontWeight: '600',
-    lineHeight: 17,
     textAlign: 'center',
   },
   grid: {
@@ -407,9 +404,8 @@ const styles = StyleSheet.create({
   },
   unavailableText: {
     color: '#607976',
-    fontSize: 10,
+    ...typography.caption2,
     fontWeight: '600',
-    lineHeight: 14,
     paddingHorizontal: 8,
     position: 'absolute',
     textAlign: 'center',
@@ -438,9 +434,7 @@ const styles = StyleSheet.create({
   },
   viewerButtonText: {
     color: '#FFFFFF',
-    fontSize: 26,
-    fontWeight: '500',
-    lineHeight: 30,
+    ...typography.title2,
   },
   viewerCanvas: {
     alignItems: 'center',
@@ -457,9 +451,8 @@ const styles = StyleSheet.create({
   },
   viewerCounter: {
     color: 'rgba(255,255,255,0.7)',
-    fontSize: 12,
+    ...typography.caption1,
     fontWeight: '600',
-    lineHeight: 16,
   },
   viewerHeader: {
     alignItems: 'center',
@@ -481,9 +474,8 @@ const styles = StyleSheet.create({
   },
   viewerTitle: {
     color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '700',
-    lineHeight: 21,
+    ...typography.callout,
+    fontWeight: '600',
   },
   viewerTitleGroup: {
     flex: 1,
@@ -491,14 +483,14 @@ const styles = StyleSheet.create({
   },
   viewerUnavailable: {
     color: 'rgba(255,255,255,0.72)',
-    fontSize: 14,
+    ...typography.subheadline,
     fontWeight: '600',
   },
   zoomValue: {
     color: '#FFFFFF',
-    fontSize: 12,
+    ...typography.caption1,
+    fontWeight: '600',
     fontVariant: ['tabular-nums'],
-    fontWeight: '700',
     minWidth: 44,
     textAlign: 'center',
   },

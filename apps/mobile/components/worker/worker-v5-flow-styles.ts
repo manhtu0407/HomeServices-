@@ -4,7 +4,7 @@ import { color, glass, radius, shadow, signature, typography } from '@/design/th
 
 export const styles = StyleSheet.create({
   workerCustomerFontText: {
-    fontFamily: typography.fontFamily,
+    ...typography.body,
   },
   authorityCard: {
     backgroundColor: 'rgba(231,255,248,0.83)',
@@ -17,16 +17,14 @@ export const styles = StyleSheet.create({
   },
   authorityLabel: {
     color: color.brand.primaryDark,
-    fontSize: 12,
-    fontWeight: '700',
-    letterSpacing: 0,
+    ...typography.caption1,
+    fontWeight: '600',
     textTransform: 'uppercase',
   },
   authorityText: {
     color: color.text.strong,
-    fontSize: 14,
+    ...typography.subheadline,
     fontWeight: '600',
-    lineHeight: 20,
   },
   availabilityCard: {
     alignItems: 'center',
@@ -91,15 +89,13 @@ export const styles = StyleSheet.create({
   },
   availabilityTitle: {
     color: color.text.strong,
-    fontSize: 14,
-    fontWeight: '700',
-    lineHeight: 18,
+    ...typography.subheadline,
+    fontWeight: '600',
   },
   homeCommandBody: {
     color: color.text.muted,
-    fontSize: 13,
+    ...typography.footnote,
     fontWeight: '600',
-    lineHeight: 19,
     marginTop: 6,
   },
   homeCommandCard: {
@@ -120,10 +116,8 @@ export const styles = StyleSheet.create({
   },
   homeCommandTitle: {
     color: color.text.strong,
-    fontSize: 24,
+    ...typography.title2,
     fontWeight: '600',
-    letterSpacing: 0,
-    lineHeight: 29,
     marginTop: 0,
   },
   homeCommandTopRow: {
@@ -138,9 +132,8 @@ export const styles = StyleSheet.create({
   },
   homeScoreLabel: {
     color: color.text.muted,
-    fontSize: 7,
-    fontWeight: '700',
-    lineHeight: 9,
+    ...typography.caption2,
+    fontWeight: '600',
     marginTop: 0,
     maxWidth: 54,
     textAlign: 'center',
@@ -163,10 +156,8 @@ export const styles = StyleSheet.create({
   },
   homeScoreValue: {
     color: color.brand.primaryDark,
-    fontSize: 22,
+    ...typography.title2,
     fontWeight: '600',
-    letterSpacing: 0,
-    lineHeight: 25,
   },
   homeSourceHeader: {
     alignItems: 'center',
@@ -191,17 +182,14 @@ export const styles = StyleSheet.create({
   },
   homeSourceSubtitle: {
     color: color.text.muted,
-    fontSize: 11,
+    ...typography.caption2,
     fontWeight: '600',
-    lineHeight: 15,
     marginTop: 2,
   },
   homeSourceTitle: {
     color: color.text.strong,
-    fontSize: 21,
-    fontWeight: '700',
-    letterSpacing: 0,
-    lineHeight: 25,
+    ...typography.title2,
+    fontWeight: '600',
   },
   homeStatGrid: {
     flexDirection: 'row',
@@ -211,9 +199,8 @@ export const styles = StyleSheet.create({
   },
   homeStatLabel: {
     color: color.text.muted,
-    fontSize: 9,
-    fontWeight: '700',
-    lineHeight: 12,
+    ...typography.caption2,
+    fontWeight: '600',
     marginTop: 4,
     textAlign: 'center',
   },
@@ -232,17 +219,13 @@ export const styles = StyleSheet.create({
   },
   homeStatValue: {
     color: color.text.strong,
-    fontSize: 17,
-    fontWeight: '600',
-    letterSpacing: 0,
-    lineHeight: 20,
+    ...typography.headline,
     textAlign: 'center',
   },
   boundaryBody: {
     color: color.text.secondary,
-    fontSize: 12,
+    ...typography.caption1,
     fontWeight: '600',
-    lineHeight: 17,
     position: 'relative',
     zIndex: 1,
   },
@@ -260,9 +243,8 @@ export const styles = StyleSheet.create({
   },
   boundaryTitle: {
     color: color.text.strong,
-    fontSize: 13,
-    fontWeight: '700',
-    lineHeight: 17,
+    ...typography.footnote,
+    fontWeight: '600',
     position: 'relative',
     zIndex: 1,
   },
@@ -301,9 +283,8 @@ export const styles = StyleSheet.create({
   composerPlaceholder: {
     color: color.text.muted,
     flex: 1,
-    fontSize: 12,
-    fontWeight: '700',
-    lineHeight: 16,
+    ...typography.caption1,
+    fontWeight: '600',
     minWidth: 0,
   },
   composerSend: {
@@ -340,9 +321,8 @@ export const styles = StyleSheet.create({
   jobRoomComposerInput: {
     color: color.text.strong,
     flex: 1,
-    fontSize: 13,
-    fontWeight: '700',
-    lineHeight: 18,
+    ...typography.footnote,
+    fontWeight: '600',
     maxHeight: 92,
     minHeight: 38,
     minWidth: 0,
@@ -390,15 +370,12 @@ export const styles = StyleSheet.create({
   privateKaelMediaText: {
     color: color.text.strong,
     flexShrink: 1,
-    fontSize: 12,
-    fontWeight: '700',
-    lineHeight: 16,
+    ...typography.caption1,
+    fontWeight: '600',
   },
   privateKaelGreeting: {
     color: color.text.strong,
-    fontSize: 17,
-    fontWeight: '700',
-    lineHeight: 22,
+    ...typography.headline,
   },
   composerUtility: {
     alignItems: 'center',
@@ -432,15 +409,13 @@ export const styles = StyleSheet.create({
   },
   completionLensLabel: {
     color: color.text.muted,
-    fontSize: 9,
-    fontWeight: '700',
-    lineHeight: 11,
+    ...typography.caption2,
+    fontWeight: '600',
   },
   completionLensValue: {
     color: color.brand.primaryDark,
-    fontSize: 25,
-    fontWeight: '700',
-    lineHeight: 29,
+    ...typography.title2,
+    fontWeight: '600',
   },
   headerRow: {
     alignItems: 'center',
@@ -453,37 +428,31 @@ export const styles = StyleSheet.create({
   },
   headerMenuText: {
     color: color.brand.primaryDark,
+    ...typography.title3,
     height: 42,
-    fontSize: 18,
-    fontWeight: '700',
+    fontWeight: '600',
     includeFontPadding: false,
-    letterSpacing: 0,
-    lineHeight: 42,
     textAlign: 'center',
     textAlignVertical: 'center',
     width: 42,
   },
   headerSubtitleText: {
     color: color.text.muted,
-    fontSize: 11,
-    fontWeight: '700',
-    lineHeight: 15,
+    ...typography.caption2,
+    fontWeight: '600',
   },
   headerSubtitleTextDark: {
     color: '#A9B7B3',
   },
   heroBody: {
     color: color.text.secondary,
-    fontSize: 14,
+    ...typography.subheadline,
     fontWeight: '600',
-    lineHeight: 21,
   },
   heroTitle: {
     color: color.text.strong,
-    fontSize: 26,
+    ...typography.title2,
     fontWeight: '600',
-    letterSpacing: 0,
-    lineHeight: 32,
   },
   heroTopRow: {
     alignItems: 'center',
@@ -546,9 +515,8 @@ export const styles = StyleSheet.create({
   },
   kaelBriefBody: {
     color: color.text.secondary,
-    fontSize: 11,
+    ...typography.caption2,
     fontWeight: '600',
-    lineHeight: 16,
   },
   kaelBriefCard: {
     alignItems: 'stretch',
@@ -574,9 +542,8 @@ export const styles = StyleSheet.create({
   },
   kaelBriefChevron: {
     color: color.brand.primaryDark,
-    fontSize: 22,
-    fontWeight: '700',
-    lineHeight: 24,
+    ...typography.title2,
+    fontWeight: '600',
     alignSelf: 'center',
     marginLeft: 10,
     position: 'relative',
@@ -616,15 +583,13 @@ export const styles = StyleSheet.create({
   },
   kaelBriefTitle: {
     color: color.text.strong,
-    fontSize: 12,
-    fontWeight: '700',
-    lineHeight: 16,
+    ...typography.caption1,
+    fontWeight: '600',
   },
   kickerText: {
     color: color.brand.primaryDark,
-    fontSize: 12,
-    fontWeight: '700',
-    letterSpacing: 0,
+    ...typography.caption1,
+    fontWeight: '600',
     textTransform: 'uppercase',
   },
   listCardMintAura: {
@@ -684,15 +649,13 @@ export const styles = StyleSheet.create({
   },
   routeMapCaptionMeta: {
     color: color.text.secondary,
-    fontSize: 11,
-    fontWeight: '700',
-    lineHeight: 15,
+    ...typography.caption2,
+    fontWeight: '600',
   },
   routeMapCaptionTitle: {
     color: color.brand.primaryDark,
-    fontSize: 11,
-    fontWeight: '700',
-    lineHeight: 15,
+    ...typography.caption2,
+    fontWeight: '600',
   },
   mapStaticImage: {
     height: '100%',
@@ -711,16 +674,14 @@ export const styles = StyleSheet.create({
   },
   mapUnavailableMeta: {
     color: color.text.muted,
-    fontSize: 12,
-    fontWeight: '700',
-    lineHeight: 17,
+    ...typography.caption1,
+    fontWeight: '600',
     textAlign: 'center',
   },
   mapUnavailableTitle: {
     color: color.text.strong,
-    fontSize: 16,
-    fontWeight: '700',
-    lineHeight: 21,
+    ...typography.callout,
+    fontWeight: '600',
     textAlign: 'center',
   },
   mapPoint: {
@@ -759,8 +720,8 @@ export const styles = StyleSheet.create({
   },
   mapPointText: {
     color: '#ffffff',
-    fontSize: 13,
-    fontWeight: '700',
+    ...typography.footnote,
+    fontWeight: '600',
   },
   mapRoad: {
     backgroundColor: 'rgba(255,255,255,0.96)',
@@ -797,9 +758,8 @@ export const styles = StyleSheet.create({
   metricLabel: {
     color: color.text.secondary,
     flexShrink: 1,
-    fontSize: 12,
-    fontWeight: '700',
-    lineHeight: 16,
+    ...typography.caption1,
+    fontWeight: '600',
   },
   metricTile: {
     backgroundColor: 'rgba(255,255,255,0.73)',
@@ -818,9 +778,7 @@ export const styles = StyleSheet.create({
   metricValue: {
     color: color.text.strong,
     flexShrink: 1,
-    fontSize: 17,
-    fontWeight: '700',
-    lineHeight: 22,
+    ...typography.headline,
   },
   metricsGrid: {
     flexDirection: 'row',
@@ -981,9 +939,8 @@ export const styles = StyleSheet.create({
   },
   phaseText: {
     color: color.brand.primaryDark,
-    fontSize: 13,
-    fontWeight: '700',
-    letterSpacing: 0,
+    ...typography.footnote,
+    fontWeight: '600',
   },
   phaseTextDark: {
     color: '#63E6D0',
@@ -1011,18 +968,16 @@ export const styles = StyleSheet.create({
   },
   serviceAreaPlaceMeta: {
     color: color.text.muted,
-    fontSize: 11,
-    fontWeight: '700',
-    lineHeight: 16,
+    ...typography.caption2,
+    fontWeight: '600',
     position: 'relative',
     zIndex: 1,
   },
   serviceAreaPlaceName: {
     color: color.text.strong,
     flex: 1,
-    fontSize: 12,
-    fontWeight: '700',
-    lineHeight: 16,
+    ...typography.caption1,
+    fontWeight: '600',
     minWidth: 0,
   },
   serviceAreaPlacePanel: {
@@ -1046,9 +1001,8 @@ export const styles = StyleSheet.create({
   },
   serviceAreaPlacePinText: {
     color: color.brand.primaryDark,
-    fontSize: 11,
-    fontWeight: '700',
-    lineHeight: 14,
+    ...typography.caption2,
+    fontWeight: '600',
   },
   serviceAreaInlineEditor: {
     gap: 8,
@@ -1057,9 +1011,8 @@ export const styles = StyleSheet.create({
   },
   serviceAreaDraftLabel: {
     color: color.brand.primaryDark,
-    fontSize: 12,
-    fontWeight: '700',
-    lineHeight: 16,
+    ...typography.caption1,
+    fontWeight: '600',
   },
   serviceAreaDraftShell: {
     backgroundColor: 'rgba(255,255,255,0.84)',
@@ -1068,9 +1021,7 @@ export const styles = StyleSheet.create({
   },
   serviceAreaDraftInput: {
     color: color.text.strong,
-    fontSize: 15,
-    fontWeight: '500',
-    lineHeight: 20,
+    ...typography.subheadline,
   },
   serviceAreaSaveInlineButton: {
     backgroundColor: 'rgba(219,247,239,0.84)',
@@ -1102,9 +1053,8 @@ export const styles = StyleSheet.create({
   },
   serviceAreaPlaceTitle: {
     color: color.brand.primaryDark,
-    fontSize: 12,
-    fontWeight: '700',
-    lineHeight: 16,
+    ...typography.caption1,
+    fontWeight: '600',
     position: 'relative',
     zIndex: 1,
   },
@@ -1145,9 +1095,7 @@ export const styles = StyleSheet.create({
   },
   customerConfirmationWaitBody: {
     color: color.text.secondary,
-    fontSize: 14,
-    fontWeight: '500',
-    lineHeight: 21,
+    ...typography.subheadline,
     maxWidth: 520,
   },
   customerConfirmationWaitDot: {
@@ -1158,9 +1106,8 @@ export const styles = StyleSheet.create({
   },
   customerConfirmationWaitMeta: {
     color: color.text.muted,
-    fontSize: 12,
+    ...typography.caption1,
     fontWeight: '600',
-    lineHeight: 17,
     marginTop: 4,
   },
   customerConfirmationWaitRule: {
@@ -1171,9 +1118,8 @@ export const styles = StyleSheet.create({
   },
   customerConfirmationWaitStatus: {
     color: color.brand.primaryDark,
-    fontSize: 12,
-    fontWeight: '700',
-    lineHeight: 16,
+    ...typography.caption1,
+    fontWeight: '600',
   },
   customerConfirmationWaitStatusRow: {
     alignItems: 'center',
@@ -1182,9 +1128,8 @@ export const styles = StyleSheet.create({
   },
   customerConfirmationWaitTitle: {
     color: color.text.strong,
-    fontSize: 21,
-    fontWeight: '700',
-    lineHeight: 28,
+    ...typography.title2,
+    fontWeight: '600',
     maxWidth: 520,
   },
   sectionStack: {
@@ -1192,9 +1137,8 @@ export const styles = StyleSheet.create({
   },
   fieldEvidenceKaelConfirmation: {
     color: color.text.secondary,
-    fontSize: 12,
+    ...typography.caption1,
     fontWeight: '600',
-    lineHeight: 17,
     paddingHorizontal: 2,
   },
   sectionHeader: {
@@ -1206,21 +1150,18 @@ export const styles = StyleSheet.create({
   },
   sectionHeaderAction: {
     color: color.brand.primaryDark,
-    fontSize: 11,
-    fontWeight: '700',
-    lineHeight: 14,
+    ...typography.caption2,
+    fontWeight: '600',
   },
   sectionHeaderTitle: {
     color: color.text.strong,
-    fontSize: 15,
-    fontWeight: '700',
-    lineHeight: 20,
+    ...typography.subheadline,
+    fontWeight: '600',
   },
   successBody: {
     color: color.text.secondary,
-    fontSize: 13,
+    ...typography.footnote,
     fontWeight: '600',
-    lineHeight: 19,
     textAlign: 'center',
   },
   successCard: {
@@ -1263,9 +1204,8 @@ export const styles = StyleSheet.create({
   },
   successCheckText: {
     color: color.text.inverse,
-    fontSize: 36,
-    fontWeight: '700',
-    lineHeight: 40,
+    ...typography.largeTitle,
+    fontWeight: '600',
     position: 'relative',
     zIndex: 1,
   },
@@ -1302,16 +1242,14 @@ export const styles = StyleSheet.create({
   },
   successStatusText: {
     color: color.brand.primaryDark,
-    fontSize: 10,
-    fontWeight: '700',
-    lineHeight: 12,
+    ...typography.caption2,
+    fontWeight: '600',
     textTransform: 'uppercase',
   },
   successTitle: {
     color: color.text.strong,
-    fontSize: 21,
-    fontWeight: '700',
-    lineHeight: 26,
+    ...typography.title2,
+    fontWeight: '600',
     textAlign: 'center',
   },
   statusDot: {
@@ -1339,9 +1277,8 @@ export const styles = StyleSheet.create({
   },
   timerCaption: {
     color: color.text.muted,
-    fontSize: 10,
-    fontWeight: '700',
-    lineHeight: 14,
+    ...typography.caption2,
+    fontWeight: '600',
   },
   timerCard: {
     alignItems: 'center',
@@ -1360,9 +1297,8 @@ export const styles = StyleSheet.create({
   },
   timerLabel: {
     color: color.text.muted,
-    fontSize: 10,
-    fontWeight: '700',
-    lineHeight: 13,
+    ...typography.caption2,
+    fontWeight: '600',
     textTransform: 'uppercase',
   },
   timerRing: {
@@ -1387,9 +1323,8 @@ export const styles = StyleSheet.create({
   },
   timerRingValue: {
     color: color.brand.primaryDark,
-    fontSize: 13,
-    fontWeight: '700',
-    lineHeight: 16,
+    ...typography.footnote,
+    fontWeight: '600',
   },
   timerTextColumn: {
     flex: 1,
@@ -1400,16 +1335,13 @@ export const styles = StyleSheet.create({
   },
   timerValue: {
     color: color.text.strong,
-    fontSize: 24,
-    fontWeight: '700',
-    lineHeight: 29,
+    ...typography.title2,
+    fontWeight: '600',
   },
   titleText: {
     color: color.text.strong,
-    fontSize: 24,
-    fontWeight: '700',
-    letterSpacing: 0,
-    lineHeight: 29,
+    ...typography.title2,
+    fontWeight: '600',
   },
   titleTextDark: {
     color: '#F1F6F4',
@@ -1498,9 +1430,8 @@ export const styles = StyleSheet.create({
     borderRadius: radius.pill,
     borderWidth: 1,
     color: color.brand.primaryDark,
-    fontSize: 10,
-    fontWeight: '700',
-    lineHeight: 12,
+    ...typography.caption2,
+    fontWeight: '600',
     overflow: 'hidden',
     paddingHorizontal: 9,
     paddingVertical: 5,
@@ -1529,9 +1460,8 @@ export const styles = StyleSheet.create({
   },
   intakeEmptyMeta: {
     color: color.text.muted,
-    fontSize: 10,
-    fontWeight: '700',
-    lineHeight: 14,
+    ...typography.caption2,
+    fontWeight: '600',
   },
   intakeEmptyRow: {
     alignItems: 'center',
@@ -1547,9 +1477,8 @@ export const styles = StyleSheet.create({
   },
   intakeEmptyTitle: {
     color: color.text.strong,
-    fontSize: 12,
-    fontWeight: '700',
-    lineHeight: 16,
+    ...typography.caption1,
+    fontWeight: '600',
   },
   intakeStack: {
     gap: 9,
@@ -1602,21 +1531,19 @@ export const styles = StyleSheet.create({
   },
   kaelOrbBubbleRole: {
     color: color.text.muted,
-    fontSize: 8,
-    fontWeight: '700',
-    lineHeight: 10,
+    ...typography.caption2,
+    fontWeight: '600',
     marginTop: 5,
     textAlign: 'right',
   },
   kaelOrbBubbleText: {
     color: color.text.secondary,
-    fontSize: 14,
+    ...typography.subheadline,
     fontWeight: '600',
-    lineHeight: 20,
   },
   kaelOrbBubbleTextStrong: {
     color: color.text.strong,
-    fontWeight: '700',
+    fontWeight: '600',
   },
   kaelOrbBubbleTextRight: {
     color: color.text.inverse,
@@ -1642,15 +1569,13 @@ export const styles = StyleSheet.create({
   },
   kaelIntakeReadinessTitle: {
     color: color.text.strong,
-    fontSize: 15,
-    fontWeight: '700',
-    lineHeight: 20,
+    ...typography.subheadline,
+    fontWeight: '600',
   },
   kaelIntakeReadinessBody: {
     color: color.text.secondary,
-    fontSize: 12,
+    ...typography.caption1,
     fontWeight: '600',
-    lineHeight: 17,
   },
   kaelIntakeReadinessButton: {
     marginTop: 2,
@@ -1699,9 +1624,8 @@ export const styles = StyleSheet.create({
   },
   kaelOrbComposerCameraBadgeText: {
     color: color.text.inverse,
-    fontSize: 9,
-    fontWeight: '700',
-    lineHeight: 11,
+    ...typography.caption2,
+    fontWeight: '600',
   },
   kaelOrbComposerCameraIcon: {
     height: 20,
@@ -1709,9 +1633,8 @@ export const styles = StyleSheet.create({
   },
   kaelOrbComposerDisclaimer: {
     color: color.text.muted,
-    fontSize: 10.5,
+    ...typography.caption2,
     fontWeight: '600',
-    lineHeight: 14,
     marginTop: 6,
     paddingBottom: 2,
     textAlign: 'center',
@@ -1724,9 +1647,8 @@ export const styles = StyleSheet.create({
   },
   kaelOrbComposerInput: {
     color: color.text.strong,
-    fontSize: 15,
+    ...typography.subheadline,
     fontWeight: '600',
-    lineHeight: 20,
     minHeight: 44,
     paddingHorizontal: 10,
     paddingVertical: 0,
@@ -1793,9 +1715,8 @@ export const styles = StyleSheet.create({
   },
   kaelOrbCustomerModeMenuCheck: {
     color: color.brand.primary,
-    fontSize: 16,
-    fontWeight: '700',
-    lineHeight: 20,
+    ...typography.callout,
+    fontWeight: '600',
     marginLeft: 8,
   },
   kaelOrbCustomerModeMenuCopy: {
@@ -1809,15 +1730,12 @@ export const styles = StyleSheet.create({
   },
   kaelOrbCustomerModeMenuDescription: {
     color: color.text.muted,
-    fontSize: 10.5,
-    fontWeight: '500',
-    lineHeight: 14,
+    ...typography.caption2,
   },
   kaelOrbCustomerModeMenuText: {
     color: color.text.strong,
-    fontSize: 12.5,
-    fontWeight: '700',
-    lineHeight: 16,
+    ...typography.caption1,
+    fontWeight: '600',
   },
   kaelOrbCustomerModeMenuTextActive: {
     color: color.brand.primary,
@@ -1826,8 +1744,7 @@ export const styles = StyleSheet.create({
     minHeight: 62,
   },
   kaelOrbCustomerHeaderTitle: {
-    fontSize: 30,
-    lineHeight: 36,
+    ...typography.title1,
   },
   kaelOrbCustomerKeyboard: {
     flex: 1,
@@ -1920,10 +1837,9 @@ export const styles = StyleSheet.create({
   kaelOrbCustomerModeTriggerText: {
     alignSelf: 'stretch',
     color: color.text.strong,
-    fontSize: 14,
-    fontWeight: '700',
+    ...typography.subheadline,
+    fontWeight: '600',
     includeFontPadding: false,
-    lineHeight: 20,
     textAlign: 'center',
     textAlignVertical: 'center',
     transform: [{ translateX: -12 }],
@@ -1982,9 +1898,8 @@ export const styles = StyleSheet.create({
   },
   kaelOrbOpenButtonText: {
     color: color.brand.primaryDark,
-    fontSize: 11,
-    fontWeight: '700',
-    lineHeight: 14,
+    ...typography.caption2,
+    fontWeight: '600',
     textAlign: 'center',
   },
   kaelOrbOpportunityAside: {
@@ -2043,21 +1958,18 @@ export const styles = StyleSheet.create({
   },
   kaelOrbOpportunityMeta: {
     color: color.text.muted,
-    fontSize: 10,
-    fontWeight: '700',
-    lineHeight: 14,
+    ...typography.caption2,
+    fontWeight: '600',
   },
   kaelOrbOpportunityMetaStrong: {
     color: color.brand.primaryDark,
-    fontSize: 10,
-    fontWeight: '700',
-    lineHeight: 14,
+    ...typography.caption2,
+    fontWeight: '600',
   },
   kaelOrbOpportunityPayout: {
     color: color.brand.primaryDark,
-    fontSize: 11,
-    fontWeight: '700',
-    lineHeight: 14,
+    ...typography.caption2,
+    fontWeight: '600',
     textAlign: 'right',
   },
   kaelOrbOpportunityStatus: {
@@ -2067,9 +1979,8 @@ export const styles = StyleSheet.create({
     borderWidth: 1,
     color: color.brand.primaryDark,
     flexShrink: 0,
-    fontSize: 10,
-    fontWeight: '700',
-    lineHeight: 12,
+    ...typography.caption2,
+    fontWeight: '600',
     minWidth: 52,
     overflow: 'hidden',
     paddingHorizontal: 8,
@@ -2080,9 +1991,8 @@ export const styles = StyleSheet.create({
   },
   kaelOrbOpportunityTitle: {
     color: color.text.strong,
-    fontSize: 11,
-    fontWeight: '700',
-    lineHeight: 15,
+    ...typography.caption2,
+    fontWeight: '600',
   },
   kaelOrbQuickChip: {
     alignItems: 'center',
@@ -2103,9 +2013,8 @@ export const styles = StyleSheet.create({
   },
   kaelOrbQuickChipText: {
     color: color.text.secondary,
-    fontSize: 12.5,
-    fontWeight: '700',
-    lineHeight: 16,
+    ...typography.caption1,
+    fontWeight: '600',
   },
   kaelOrbQuickChipTextSelected: {
     color: color.brand.primaryDark,
@@ -2140,9 +2049,8 @@ export const styles = StyleSheet.create({
   },
   kaelOrbSendText: {
     color: color.text.inverse,
-    fontSize: 22,
+    ...typography.title2,
     fontWeight: '600',
-    lineHeight: 24,
   },
   kaelOrbStack: {
     gap: 10,
@@ -2198,15 +2106,13 @@ export const styles = StyleSheet.create({
   },
   kaelSourceHeaderSubtitle: {
     color: color.text.muted,
-    fontSize: 12,
-    fontWeight: '700',
-    lineHeight: 16,
+    ...typography.caption1,
+    fontWeight: '600',
   },
   kaelSourceHeaderTitle: {
     color: color.text.strong,
-    fontSize: 24,
-    fontWeight: '700',
-    lineHeight: 29,
+    ...typography.title2,
+    fontWeight: '600',
   },
   workerSettingsDivider: {
     backgroundColor: 'rgba(176,222,214,0.36)',
@@ -2221,8 +2127,8 @@ export const styles = StyleSheet.create({
   },
   workerSettingsInput: {
     color: color.text.strong,
-    fontSize: 14,
-    fontWeight: '700',
+    ...typography.subheadline,
+    fontWeight: '600',
   },
   workerSettingsInputShell: {
     backgroundColor: 'rgba(255,255,255,0.84)',
@@ -2245,16 +2151,14 @@ export const styles = StyleSheet.create({
   },
   workerSettingsMessage: {
     color: color.brand.primaryDark,
-    fontSize: 12,
-    fontWeight: '700',
-    lineHeight: 16,
+    ...typography.caption1,
+    fontWeight: '600',
     paddingHorizontal: 4,
   },
   workerSettingsMessageError: {
     color: color.brand.primaryDark,
-    fontSize: 12,
-    fontWeight: '700',
-    lineHeight: 17,
+    ...typography.caption1,
+    fontWeight: '600',
     paddingHorizontal: 4,
   },
   workerSettingsSaveButton: {
@@ -2268,10 +2172,8 @@ export const styles = StyleSheet.create({
   earningsHeroAmount: {
     color: color.text.strong,
     flexShrink: 1,
-    fontSize: 27,
-    fontWeight: '700',
-    letterSpacing: 0,
-    lineHeight: 32,
+    ...typography.title1,
+    fontWeight: '600',
     marginTop: 8,
   },
   earningsHeroAura: {
@@ -2326,9 +2228,8 @@ export const styles = StyleSheet.create({
   earningsHeroMeta: {
     color: color.text.secondary,
     flexShrink: 1,
-    fontSize: 12,
-    fontWeight: '700',
-    lineHeight: 16,
+    ...typography.caption1,
+    fontWeight: '600',
     marginTop: 3,
   },
   earningsHeroPill: {
@@ -2339,9 +2240,8 @@ export const styles = StyleSheet.create({
     borderWidth: 1,
     color: color.brand.primaryDark,
     flexShrink: 1,
-    fontSize: 10,
-    fontWeight: '700',
-    lineHeight: 13,
+    ...typography.caption2,
+    fontWeight: '600',
     maxWidth: '100%',
     overflow: 'hidden',
     paddingHorizontal: 9,
@@ -2366,9 +2266,8 @@ export const styles = StyleSheet.create({
   },
   earningsStatLabel: {
     color: color.text.muted,
-    fontSize: 9,
-    fontWeight: '700',
-    lineHeight: 12,
+    ...typography.caption2,
+    fontWeight: '600',
     textAlign: 'center',
   },
   earningsStatTile: {
@@ -2388,9 +2287,8 @@ export const styles = StyleSheet.create({
   earningsStatValue: {
     color: color.text.strong,
     flexShrink: 1,
-    fontSize: 14,
-    fontWeight: '700',
-    lineHeight: 18,
+    ...typography.subheadline,
+    fontWeight: '600',
     textAlign: 'center',
   },
 })

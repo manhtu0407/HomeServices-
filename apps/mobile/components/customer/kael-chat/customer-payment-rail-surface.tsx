@@ -1,3 +1,4 @@
+import { typography } from '@/design/theme'
 import { useEffect, useState, type ReactNode } from 'react'
 import { Image } from 'expo-image'
 import { StyleSheet, Text, View } from 'react-native'
@@ -637,25 +638,25 @@ function copy(language: AppLanguage) {
 const styles = StyleSheet.create({
   accountRows: { gap: 12 },
   actionStack: { gap: 10 },
-  amount: { fontSize: 22, fontVariant: ['tabular-nums'], fontWeight: '700', lineHeight: 29 },
-  body: { fontSize: 15, lineHeight: 22 },
+  amount: { ...typography.title2, fontWeight: '600', fontVariant: ['tabular-nums'] },
+  body: { ...typography.subheadline },
   detailGroup: { gap: 4 },
-  detailValue: { fontSize: 16, fontVariant: ['tabular-nums'], fontWeight: '600', lineHeight: 22 },
+  detailValue: { ...typography.callout, fontWeight: '600', fontVariant: ['tabular-nums'] },
   directCopy: { gap: 4 },
   directWarning: { borderRadius: 18, borderWidth: StyleSheet.hairlineWidth, gap: 12, paddingHorizontal: 16, paddingVertical: 16 },
   header: { gap: 4 },
-  heading: { fontSize: 20, fontWeight: '700', lineHeight: 27 },
-  instruction: { fontSize: 14, lineHeight: 20 },
+  heading: { ...typography.title3, fontWeight: '600' },
+  instruction: { ...typography.subheadline },
   instructions: { borderTopWidth: StyleSheet.hairlineWidth, gap: 7, paddingTop: 16 },
-  label: { fontSize: 13, fontWeight: '600', lineHeight: 18 },
-  messageTitle: { fontSize: 16, fontWeight: '700', lineHeight: 22 },
-  note: { fontSize: 14, lineHeight: 20 },
+  label: { ...typography.footnote, fontWeight: '600' },
+  messageTitle: { ...typography.callout, fontWeight: '600' },
+  note: { ...typography.subheadline },
   qr: { height: '100%', width: '100%' },
   qrFrame: { alignSelf: 'center', alignItems: 'center', aspectRatio: 1, backgroundColor: '#ffffff', borderColor: '#d8ece8', borderRadius: 20, borderWidth: StyleSheet.hairlineWidth, justifyContent: 'center', maxWidth: QR_BOX_SIZE, padding: 10, width: '100%' },
-  reviewHeading: { fontSize: 18, fontWeight: '700', lineHeight: 24 },
+  reviewHeading: { ...typography.title3, fontWeight: '600' },
   reviewSection: { borderTopWidth: StyleSheet.hairlineWidth, gap: 12, paddingTop: 18 },
-  status: { fontSize: 14, fontWeight: '600', lineHeight: 20 },
+  status: { ...typography.subheadline, fontWeight: '600' },
   surface: { alignSelf: 'center', borderRadius: 24, borderWidth: StyleSheet.hairlineWidth, maxWidth: 608, overflow: 'hidden', width: '100%' },
   surfaceContent: { gap: 18, padding: 20, zIndex: 1 },
-  transferContent: { fontSize: 16, fontVariant: ['tabular-nums'], fontWeight: '700', letterSpacing: 0.35, lineHeight: 22 },
+  transferContent: { ...typography.callout, fontWeight: '600', fontVariant: ['tabular-nums'] },
 })

@@ -4,7 +4,7 @@ import { color, component, glass, radius, shadow, typography } from '@/design/th
 
 export const styles = StyleSheet.create({
   workerCustomerFontText: {
-    fontFamily: typography.fontFamily,
+    ...typography.body,
   },
   iconButtonIcon: {
     flexShrink: 0,
@@ -21,15 +21,13 @@ export const styles = StyleSheet.create({
   },
   sectionHeaderAction: {
     color: color.brand.primaryDark,
-    fontSize: 11,
-    fontWeight: '700',
-    lineHeight: 14,
+    ...typography.caption2,
+    fontWeight: '600',
   },
   sectionHeaderTitle: {
     color: color.text.strong,
-    fontSize: 15,
-    fontWeight: '700',
-    lineHeight: 20,
+    ...typography.subheadline,
+    fontWeight: '600',
   },
   navButton: {
     alignItems: 'center',
@@ -63,9 +61,8 @@ export const styles = StyleSheet.create({
   },
   navButtonText: {
     color: color.brand.primaryDark,
-    fontSize: 15,
-    fontWeight: '700',
-    lineHeight: 19,
+    ...typography.subheadline,
+    fontWeight: '600',
     textAlign: 'center',
   },
   pressed: {
@@ -96,9 +93,8 @@ export const styles = StyleSheet.create({
   },
   primaryActionText: {
     color: color.text.inverse,
-    fontSize: 16,
-    fontWeight: '700',
-    letterSpacing: 0,
+    ...typography.callout,
+    fontWeight: '600',
     zIndex: 2,
   },
   primaryActionTopHighlight: {

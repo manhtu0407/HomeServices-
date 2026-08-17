@@ -95,7 +95,7 @@ export function WorkerV5ProfileHeader({
         )}
       </Pressable>
       <View style={styles.profileHeaderText}>
-        <Text style={[styles.profileHeaderName, isDark ? styles.profileHeaderNameDark : null]} numberOfLines={1} testID="worker-v5-profile-header-name">{name}</Text>
+        <Text style={[styles.profileHeaderName, isDark ? styles.profileHeaderNameDark : null]} numberOfLines={2} testID="worker-v5-profile-header-name">{name}</Text>
         <View
           accessibilityLabel={lifetimeLabel}
           accessibilityRole="progressbar"

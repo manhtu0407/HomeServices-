@@ -165,9 +165,9 @@ describe('CustomerHistorySurface service history', () => {
       marginTop: -8,
     })
     expect(StyleSheet.flatten(screen.getByTestId('customer-v21-history-favorite-job_paid-icon').props.style)).toMatchObject({
-      fontSize: 22,
+      fontSize: 20,
       includeFontPadding: false,
-      lineHeight: 22,
+      lineHeight: 25,
       textAlign: 'center',
       textAlignVertical: 'center',
     })

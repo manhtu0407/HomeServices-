@@ -1,3 +1,4 @@
+import { typography } from '@/design/theme'
 import { useMemo, useReducer } from 'react'
 import { StyleSheet, Text, View, type StyleProp, type TextStyle } from 'react-native'
 
@@ -200,8 +201,8 @@ export function AgenticScheduleGate({
 
 const styles = StyleSheet.create({
   choices: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  hint: { fontSize: 12, lineHeight: 18 },
+  hint: { ...typography.caption1 },
   root: { gap: 10 },
-  selection: { fontSize: 13, fontWeight: '600', lineHeight: 20 },
-  title: { fontSize: 14, fontWeight: '600', lineHeight: 20 },
+  selection: { ...typography.footnote, fontWeight: '600' },
+  title: { ...typography.subheadline, fontWeight: '600' },
 })

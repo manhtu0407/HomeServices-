@@ -116,7 +116,7 @@ const styles = StyleSheet.create({
   buttonDisabled: { opacity: 0.42 },
   buttonSelected: { backgroundColor: color.mint.mint50, borderColor: color.mint.mint300 },
   chevron: { alignSelf: 'center', margin: 0 },
-  ellipsis: { ...typography.footnote, color: color.text.muted, fontWeight: '700', minWidth: 12, textAlign: 'center' },
+  ellipsis: { ...typography.footnote, color: color.text.muted, fontWeight: '600', minWidth: 12, textAlign: 'center' },
   number: { ...typography.footnote, color: color.text.secondary, fontVariant: ['tabular-nums'], fontWeight: '600' },
-  numberSelected: { color: color.brand.primaryDark, fontWeight: '700' },
+  numberSelected: { color: color.brand.primaryDark, fontWeight: '600' },
 })

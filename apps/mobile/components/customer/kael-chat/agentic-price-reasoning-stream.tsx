@@ -1,3 +1,4 @@
+import { typography } from '@/design/theme'
 import { Image } from 'expo-image'
 import { StyleSheet, Text, View } from 'react-native'
 
@@ -132,8 +133,7 @@ function accessibleRowDetail(row: AgenticEstimateSupportingPhaseModel['rows'][nu
 
 const styles = StyleSheet.create({
   detail: {
-    fontSize: 14,
-    lineHeight: 22,
+    ...typography.subheadline,
   },
   evidencePreview: {
     alignSelf: 'flex-start',
@@ -154,9 +154,8 @@ const styles = StyleSheet.create({
   },
   label: {
     alignSelf: 'flex-start',
-    fontSize: 12,
-    fontWeight: '800',
-    lineHeight: 19,
+    ...typography.caption1,
+    fontWeight: '600',
   },
   row: {
     alignItems: 'flex-start',
@@ -176,17 +175,15 @@ const styles = StyleSheet.create({
     flexDirection: 'column',
   },
   sectionLabel: {
-    fontSize: 11.5,
-    fontWeight: '800',
-    lineHeight: 17,
+    ...typography.caption2,
+    fontWeight: '600',
   },
   sections: {
     gap: 12,
     width: '100%',
   },
   sectionValue: {
-    fontSize: 14,
-    lineHeight: 22,
+    ...typography.subheadline,
   },
   structuredRow: {
     flexDirection: 'column',
@@ -198,14 +195,12 @@ const styles = StyleSheet.create({
     paddingBottom: 20,
   },
   title: {
-    fontSize: 15,
+    ...typography.subheadline,
     fontWeight: '600',
-    lineHeight: 21,
     marginBottom: 4,
   },
   value: {
-    fontSize: 12.5,
-    lineHeight: 19,
+    ...typography.caption1,
     marginTop: 10,
   },
 })

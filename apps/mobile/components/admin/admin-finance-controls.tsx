@@ -89,7 +89,7 @@ const styles = StyleSheet.create({
   customRangeSummary: { ...typography.footnote, color: color.text.secondary, fontVariant: ['tabular-nums'] },
   periodHeading: { flex: 1, gap: spacing.xs, minWidth: 180 },
   periodMeta: { ...typography.caption2, color: color.text.muted },
-  periodTitle: { ...typography.subheadline, color: color.text.strong, fontWeight: '700' },
+  periodTitle: { ...typography.subheadline, color: color.text.strong, fontWeight: '600' },
   rangeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   toolbar: { alignItems: 'center', flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md, justifyContent: 'space-between' },
 })

@@ -1,17 +1,16 @@
+import { typography } from '@/design/theme'
 import { StyleSheet } from 'react-native'
 
 export const customerV21ProfileAccountUtilityStyles = StyleSheet.create({
   body: {
-    fontSize: 13,
-    lineHeight: 19,
+    ...typography.subheadline,
   },
   fieldGroup: {
     gap: 7,
   },
   fieldLabel: {
-    fontSize: 13,
-    fontWeight: '700',
-    lineHeight: 18,
+    ...typography.footnote,
+    fontWeight: '600',
   },
   formCard: {
     borderRadius: 24,
@@ -22,7 +21,7 @@ export const customerV21ProfileAccountUtilityStyles = StyleSheet.create({
   formInput: {
     borderRadius: 17,
     borderWidth: 1,
-    fontSize: 15,
+    ...typography.subheadline,
     minHeight: 54,
     paddingHorizontal: 14,
     paddingVertical: 12,
@@ -48,14 +47,12 @@ export const customerV21ProfileAccountUtilityStyles = StyleSheet.create({
     gap: 2,
   },
   memoryStatus: {
-    fontSize: 13,
-    fontWeight: '700',
-    lineHeight: 18,
+    ...typography.footnote,
+    fontWeight: '600',
   },
   message: {
-    fontSize: 13,
+    ...typography.footnote,
     fontWeight: '600',
-    lineHeight: 19,
     textAlign: 'center',
   },
   primaryButton: {
@@ -74,9 +71,8 @@ export const customerV21ProfileAccountUtilityStyles = StyleSheet.create({
     width: 48,
   },
   title: {
-    fontSize: 16,
-    fontWeight: '700',
-    lineHeight: 22,
+    ...typography.callout,
+    fontWeight: '600',
   },
   utilityStack: {
     gap: 14,

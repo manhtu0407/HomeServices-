@@ -1,3 +1,4 @@
+import { typography } from '@/design/theme'
 import { useState } from 'react'
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native'
 
@@ -272,17 +273,17 @@ function candidateFacts(candidate: WorkerCandidateView, language: AppLanguage) {
 const styles = StyleSheet.create({
   action: { flex: 1 },
   actions: { flexDirection: 'row', gap: 10 },
-  body: { fontSize: 13, lineHeight: 19 },
+  body: { ...typography.footnote },
   details: { gap: 8 },
-  error: { fontSize: 12, lineHeight: 18 },
-  facts: { fontSize: 13, fontWeight: '600', lineHeight: 20 },
+  error: { ...typography.caption1 },
+  facts: { ...typography.footnote, fontWeight: '600' },
   finalReview: { gap: 12 },
   loading: { alignItems: 'center', flexDirection: 'row', gap: 9 },
-  meta: { fontSize: 12, fontWeight: '600', lineHeight: 18 },
-  name: { fontSize: 17, fontWeight: '700', lineHeight: 23 },
-  notice: { fontSize: 12, lineHeight: 18 },
+  meta: { ...typography.caption1, fontWeight: '600' },
+  name: { ...typography.headline },
+  notice: { ...typography.caption1 },
   paymentEligibility: { borderRadius: 14, borderWidth: StyleSheet.hairlineWidth, gap: 3, padding: 12 },
-  paymentTitle: { fontSize: 13, fontWeight: '700', lineHeight: 19 },
+  paymentTitle: { ...typography.footnote, fontWeight: '600' },
   savedHeader: { gap: 3 },
-  savedTitle: { fontSize: 14, fontWeight: '700', lineHeight: 19 },
+  savedTitle: { ...typography.subheadline, fontWeight: '600' },
 })

@@ -4,7 +4,7 @@ import { color, shadow, typography } from '@/design/theme'
 
 export const styles = StyleSheet.create({
   workerCustomerFontText: {
-    fontFamily: typography.fontFamily,
+    ...typography.body,
   },
   checkInChecklistAura: {
     bottom: -88,
@@ -43,16 +43,15 @@ export const styles = StyleSheet.create({
   },
   railLabel: {
     color: color.text.muted,
-    fontSize: 10,
-    fontWeight: '700',
-    lineHeight: 13,
+    ...typography.caption2,
+    fontWeight: '600',
     minWidth: 0,
     textAlign: 'center',
     width: '100%',
   },
   railLabelActive: {
     color: color.brand.primaryDark,
-    fontWeight: '700',
+    fontWeight: '600',
   },
   railLine: {
     backgroundColor: '#DCEBEA',
@@ -90,9 +89,8 @@ export const styles = StyleSheet.create({
   },
   railNodeText: {
     color: '#8DA1A4',
-    fontSize: 9,
-    fontWeight: '700',
-    lineHeight: 11,
+    ...typography.caption2,
+    fontWeight: '600',
   },
   railNodeTextOn: {
     color: color.text.inverse,
@@ -120,9 +118,8 @@ export const styles = StyleSheet.create({
   stepMeta: {
     color: color.text.muted,
     flexShrink: 1,
-    fontSize: 10,
-    fontWeight: '700',
-    lineHeight: 13,
+    ...typography.caption2,
+    fontWeight: '600',
     marginLeft: 'auto',
     maxWidth: 86,
     minWidth: 48,
@@ -172,8 +169,8 @@ export const styles = StyleSheet.create({
   },
   stepStateText: {
     color: color.text.muted,
-    fontSize: 11,
-    fontWeight: '700',
+    ...typography.caption2,
+    fontWeight: '600',
   },
   stepStateTextActive: {
     color: color.text.inverse,
@@ -184,9 +181,8 @@ export const styles = StyleSheet.create({
   stepTitle: {
     color: color.text.strong,
     flex: 1,
-    fontSize: 11,
-    fontWeight: '700',
-    lineHeight: 15,
+    ...typography.caption2,
+    fontWeight: '600',
     minWidth: 0,
   },
   workProgressBoardMeta: {
@@ -199,8 +195,7 @@ export const styles = StyleSheet.create({
   },
   workProgressBoardTitle: {
     color: color.text.strong,
-    fontSize: 13,
-    fontWeight: '700',
-    lineHeight: 17,
+    ...typography.footnote,
+    fontWeight: '600',
   },
 })

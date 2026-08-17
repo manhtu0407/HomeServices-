@@ -1,3 +1,4 @@
+import { typography } from '@/design/theme'
 import { StyleSheet } from 'react-native'
 
 export const customerV21ProfileLegalStyles = StyleSheet.create({
@@ -14,8 +15,7 @@ export const customerV21ProfileLegalStyles = StyleSheet.create({
   },
   bulletText: {
     flex: 1,
-    fontSize: 14,
-    lineHeight: 21,
+    ...typography.footnote,
   },
   chevron: {
     alignItems: 'center',
@@ -39,17 +39,14 @@ export const customerV21ProfileLegalStyles = StyleSheet.create({
     marginHorizontal: 16,
   },
   detailParagraph: {
-    fontSize: 14,
-    lineHeight: 22,
+    ...typography.footnote,
   },
   detailSummary: {
-    fontSize: 13,
-    lineHeight: 19,
+    ...typography.footnote,
   },
   detailTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    lineHeight: 21,
+    ...typography.callout,
+    fontWeight: '600',
   },
   detailTitleCopy: {
     flex: 1,
@@ -57,8 +54,7 @@ export const customerV21ProfileLegalStyles = StyleSheet.create({
     minWidth: 0,
   },
   heroBody: {
-    fontSize: 14,
-    lineHeight: 21,
+    ...typography.subheadline,
   },
   heroCard: {
     borderRadius: 30,
@@ -75,9 +71,8 @@ export const customerV21ProfileLegalStyles = StyleSheet.create({
     minWidth: 0,
   },
   heroTitle: {
-    fontSize: 23,
-    fontWeight: '700',
-    lineHeight: 29,
+    ...typography.title2,
+    fontWeight: '600',
   },
   importantCard: {
     borderRadius: 24,

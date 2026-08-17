@@ -1,3 +1,4 @@
+import { typography } from '@/design/theme'
 import { StyleSheet } from 'react-native'
 
 export const customerV21ProfilePaymentStyles = StyleSheet.create({
@@ -61,9 +62,8 @@ export const customerV21ProfilePaymentStyles = StyleSheet.create({
   },
   heroSignalText: {
     flexShrink: 1,
-    fontSize: 11,
-    fontWeight: '700',
-    lineHeight: 15,
+    ...typography.caption2,
+    fontWeight: '600',
     minWidth: 0,
   },
   heroStatus: {
@@ -75,9 +75,8 @@ export const customerV21ProfilePaymentStyles = StyleSheet.create({
     marginRight: 16,
   },
   heroSummary: {
-    fontSize: 12,
-    fontWeight: '700',
-    lineHeight: 17,
+    ...typography.caption1,
+    fontWeight: '600',
     marginTop: 2,
   },
   heroTitleCopy: {

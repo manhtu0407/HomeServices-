@@ -71,7 +71,7 @@ export function WorkerV5KaelDraftCard({
         <Image source={chatIcon} style={styles.kaelDraftIcon} />
       </View>
       <View style={styles.kaelDraftCopy}>
-        <Text style={styles.kaelDraftTitle} numberOfLines={1}>{title}</Text>
+        <Text style={styles.kaelDraftTitle} numberOfLines={2}>{title}</Text>
         <Text style={styles.kaelDraftBody} numberOfLines={2}>{body}</Text>
       </View>
       <Text accessibilityLabel={textByLanguage(language, 'M\u1edf chi ti\u1ebft', 'Open details')} style={styles.kaelDraftChevron}>{'\u203a'}</Text>

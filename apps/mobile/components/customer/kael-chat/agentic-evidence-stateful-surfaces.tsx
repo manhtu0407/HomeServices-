@@ -1,3 +1,4 @@
+import { typography } from '@/design/theme'
 import type { ReactNode } from 'react'
 import { Pressable, StyleSheet, Text, View, type StyleProp, type TextStyle } from 'react-native'
 
@@ -196,18 +197,18 @@ export function AgenticEvidenceGateView({
 const styles = StyleSheet.create({
   action: { flex: 1 },
   actions: { flexDirection: 'row', gap: 10 },
-  counts: { fontSize: 13, fontWeight: '600', lineHeight: 20 },
+  counts: { ...typography.footnote, fontWeight: '600' },
   details: { gap: 12 },
   disclosure: { gap: 6 },
-  disclosureCopy: { flex: 1, fontSize: 12, lineHeight: 18 },
-  disclosureIntro: { fontSize: 12, lineHeight: 18 },
+  disclosureCopy: { flex: 1, ...typography.caption1 },
+  disclosureIntro: { ...typography.caption1 },
   disclosureItem: { alignItems: 'flex-start', flexDirection: 'row', gap: 8 },
-  disclosureLabel: { fontSize: 12, fontWeight: '700', lineHeight: 18, minWidth: 68 },
-  error: { fontSize: 12, lineHeight: 18 },
-  fileCount: { fontSize: 13, fontWeight: '600', lineHeight: 20 },
+  disclosureLabel: { ...typography.caption1, fontWeight: '600', minWidth: 68 },
+  error: { ...typography.caption1 },
+  fileCount: { ...typography.footnote, fontWeight: '600' },
   reason: { gap: 10 },
-  reasonInput: { flex: 1, fontSize: 15, minHeight: 44 },
+  reasonInput: { flex: 1, ...typography.subheadline, minHeight: 44 },
   toolButton: { alignItems: 'center', borderBottomWidth: 1, flexDirection: 'row', gap: 9, minHeight: 42 },
   toolRow: { alignItems: 'center', flexDirection: 'row', gap: 16 },
-  toolText: { flex: 1, fontSize: 14, fontWeight: '600' },
+  toolText: { flex: 1, ...typography.subheadline, fontWeight: '600' },
 })

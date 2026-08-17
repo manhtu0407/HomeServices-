@@ -183,7 +183,7 @@ describe('Agentic estimate adjustment', () => {
     )
     const noteTitleStyle = StyleSheet.flatten(screen.getByText('Phạm vi và ước tính').props.style)
 
-    expect(serviceTitleStyle).toMatchObject({ fontSize: 25, fontWeight: '600' })
-    expect(noteTitleStyle.fontWeight).toBe('700')
+    expect(serviceTitleStyle).toMatchObject({ fontSize: 22, fontWeight: '600' })
+    expect(noteTitleStyle.fontWeight).toBe('600')
   })
 })

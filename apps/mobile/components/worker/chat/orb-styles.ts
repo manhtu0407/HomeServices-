@@ -4,7 +4,7 @@ import { color, radius, shadow, typography } from '@/design/theme'
 
 export const styles = StyleSheet.create({
   workerCustomerFontText: {
-    fontFamily: typography.fontFamily,
+    ...typography.body,
   },
   iconTileMintAura: {
     opacity: 0.92,
@@ -32,9 +32,8 @@ export const styles = StyleSheet.create({
   },
   kaelOrbBareReplyBulletMarker: {
     color: color.brand.primary,
-    fontSize: 16,
-    fontWeight: '700',
-    lineHeight: 23,
+    ...typography.callout,
+    fontWeight: '600',
     minWidth: 16,
   },
   kaelOrbBareReplyBulletRow: {
@@ -44,18 +43,14 @@ export const styles = StyleSheet.create({
   kaelOrbBareReplyBulletText: {
     color: color.text.secondary,
     flex: 1,
-    fontSize: 14.5,
-    fontWeight: '500',
-    lineHeight: 23,
+    ...typography.subheadline,
   },
   kaelOrbBareReplyContent: {
     gap: 8,
   },
   kaelOrbBareReplyText: {
     color: color.text.secondary,
-    fontSize: 14.5,
-    fontWeight: '500',
-    lineHeight: 23,
+    ...typography.subheadline,
   },
   kaelOrbBubbleLeft: {
     alignSelf: 'flex-start',
@@ -71,13 +66,12 @@ export const styles = StyleSheet.create({
   },
   kaelOrbBubbleText: {
     color: color.text.secondary,
-    fontSize: 14,
+    ...typography.subheadline,
     fontWeight: '600',
-    lineHeight: 20,
   },
   kaelOrbBubbleTextStrong: {
     color: color.text.strong,
-    fontWeight: '700',
+    fontWeight: '600',
   },
   kaelOrbBubbleTextRight: {
     color: color.text.inverse,
@@ -155,9 +149,8 @@ export const styles = StyleSheet.create({
   },
   kaelOrbOpenButtonText: {
     color: color.brand.primaryDark,
-    fontSize: 11,
-    fontWeight: '700',
-    lineHeight: 14,
+    ...typography.caption2,
+    fontWeight: '600',
     textAlign: 'center',
   },
   kaelOrbOpportunityAside: {
@@ -216,22 +209,19 @@ export const styles = StyleSheet.create({
   },
   kaelOrbOpportunityMeta: {
     color: color.text.muted,
-    fontSize: 10,
-    fontWeight: '700',
-    lineHeight: 14,
+    ...typography.caption2,
+    fontWeight: '600',
   },
   kaelOrbOpportunityPayout: {
     color: color.brand.primaryDark,
-    fontSize: 11,
-    fontWeight: '700',
-    lineHeight: 14,
+    ...typography.caption2,
+    fontWeight: '600',
     textAlign: 'right',
   },
   kaelOrbOpportunityTitle: {
     color: color.text.strong,
-    fontSize: 11,
-    fontWeight: '700',
-    lineHeight: 15,
+    ...typography.caption2,
+    fontWeight: '600',
   },
   kaelOrbQuickChip: {
     alignItems: 'center',
@@ -252,9 +242,8 @@ export const styles = StyleSheet.create({
   },
   kaelOrbQuickChipText: {
     color: color.text.secondary,
-    fontSize: 13,
-    fontWeight: '700',
-    lineHeight: 16,
+    ...typography.footnote,
+    fontWeight: '600',
   },
   kaelOrbQuickChipTextSelected: {
     color: color.brand.primaryDark,

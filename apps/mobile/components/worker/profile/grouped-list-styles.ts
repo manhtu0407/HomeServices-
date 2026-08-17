@@ -4,7 +4,7 @@ import { color, shadow, typography } from '@/design/theme'
 
 export const styles = StyleSheet.create({
   workerCustomerFontText: {
-    fontFamily: typography.fontFamily,
+    ...typography.body,
   },
   group: {
     gap: 8,
@@ -41,10 +41,8 @@ export const styles = StyleSheet.create({
   },
   groupRowChevron: {
     color: color.brand.primaryDark,
-    fontSize: 25,
-    fontWeight: '400',
-    lineHeight: 28,
     marginLeft: 2,
+    ...typography.title1,
   },
   groupRowChevronDark: {
     color: '#63E6D0',
@@ -56,9 +54,7 @@ export const styles = StyleSheet.create({
   },
   groupRowDescription: {
     color: color.text.secondary,
-    fontSize: 12,
-    fontWeight: '500',
-    lineHeight: 17,
+    ...typography.caption1,
   },
   groupRowDescriptionDark: {
     color: '#A9B7B3',
@@ -71,11 +67,9 @@ export const styles = StyleSheet.create({
   groupRowMeta: {
     color: color.text.muted,
     flexShrink: 1,
-    fontSize: 11,
-    fontWeight: '700',
-    lineHeight: 15,
     maxWidth: 92,
     textAlign: 'right',
+    ...typography.caption2,
   },
   groupRowMetaActiveDark: {
     color: '#63E6D0',
@@ -91,19 +85,15 @@ export const styles = StyleSheet.create({
   },
   groupRowTitle: {
     color: color.text.strong,
-    fontSize: 15,
-    fontWeight: '700',
-    lineHeight: 20,
+    ...typography.subheadline,
   },
   groupRowTitleDark: {
     color: '#F1F6F4',
   },
   groupTitle: {
     color: color.text.strong,
-    fontSize: 18,
-    fontWeight: '700',
-    lineHeight: 23,
     marginLeft: 4,
+    ...typography.title3,
   },
   groupTitleDark: {
     color: '#F1F6F4',
