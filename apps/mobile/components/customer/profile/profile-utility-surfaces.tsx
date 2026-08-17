@@ -17,7 +17,15 @@ import { CaseWideMintAura, SourceCardSkin, ZipMintAura } from '../ui/aura-surfac
 import { customerV21Assets, type CustomerV21Visual } from '../ui/assets'
 import { customerV21CommonCopy } from '../ui/copy'
 import { CaseOverviewScoreAura } from '../history/history-surfaces'
-import { ProfileCompactMintAura, ProfileLiquidScore, ProfileStatCard } from './profile-metrics-surfaces'
+import { ProfileLiquidScore, ProfileStatCard } from './profile-metrics-surfaces'
+import {
+  ProfileRankingChevron,
+  ProfileRankingMetricIcon,
+  ProfileRankingRuleIcon,
+  type ProfileRankingMetricKind,
+  type ProfileRankingRuleKind,
+} from './profile-ranking-icons'
+import { ProfileRankingMilestoneRail } from './profile-ranking-progress'
 import { customerV21ProfileSettingsStyles as settingsStyles } from './profile-settings-styles'
 import { customerV21ProfileUtilityStyles as styles } from './profile-utility-styles'
 import { AssetTile, SectionActionHeader, V21Card } from '../ui/shared-surfaces'
@@ -39,7 +47,9 @@ type CustomerV21UtilityAssetTile = ComponentType<{
 }>
 
 type ProfilePanelMetric = {
+  icon?: ProfileRankingMetricKind
   label: string
+  testID?: string
   value: string
 }
 
@@ -53,6 +63,7 @@ type ProfileInsightModel = {
   details?: readonly CustomerV21SettingsDetail[]
   image: ImageSourcePropType
   label: string
+  rankingIcon?: ProfileRankingRuleKind
   status: string
   testID?: string
   value: string
@@ -67,12 +78,14 @@ export function ProfileAuraCard({
   children,
   contentStyle,
   scope,
+  showCardSkin = true,
   testID,
 }: {
   cardStyle?: StyleProp<ViewStyle>
   children: ReactNode
   contentStyle?: StyleProp<ViewStyle>
   scope: string
+  showCardSkin?: boolean
   testID?: string
 }) {
   const tokens = useCustomerV21ProfileTheme()
@@ -89,7 +102,7 @@ export function ProfileAuraCard({
       ]}
       testID={testID}
     >
-      <SourceCardSkin testID={`customer-v21-profile-${scope.toLowerCase()}-card-skin`} />
+      {showCardSkin ? <SourceCardSkin testID={`customer-v21-profile-${scope.toLowerCase()}-card-skin`} /> : null}
       <CaseWideMintAura scope={`Profile${scope}Wide`} testID={`customer-v21-profile-${scope.toLowerCase()}-wide-mint-aura`} />
       <ZipMintAura scope={`Profile${scope}Fine`} testID={`customer-v21-profile-${scope.toLowerCase()}-mint-aura`} />
       <View style={[styles.profileAuraContent, contentStyle]}>
@@ -142,6 +155,7 @@ function ProfileInsightRow({
   iconStyle,
   image,
   label,
+  rankingIcon,
   status,
   testID,
   value,
@@ -151,6 +165,7 @@ function ProfileInsightRow({
   iconStyle?: StyleProp<ViewStyle>
   image: ImageSourcePropType
   label: string
+  rankingIcon?: ProfileRankingRuleKind
   status: string
   testID?: string
   value: string
@@ -160,6 +175,28 @@ function ProfileInsightRow({
     || status === customerV21CommonCopy.en.dataPending
     || status === '0'
     || /^0\s*\/\s*0$/.test(status)
+
+  if (details && rankingIcon) {
+    const iconColor = tokens.mode === 'dark' ? tokens.text : '#182B34'
+    return (
+      <View
+        accessibilityLabel={`${label}. ${value}. ${status}`}
+        style={[styles.profileRankingRuleRow, { backgroundColor: tokens.raised, borderColor: tokens.border }]}
+        testID={testID}
+      >
+        <View style={styles.profileRankingRuleIconFrame} testID={testID ? `${testID}-visual-panel` : undefined}>
+          <ProfileRankingRuleIcon color={iconColor} kind={rankingIcon} testID={testID ? `${testID}-icon-image` : undefined} />
+        </View>
+        <View style={styles.profileRankingRuleCopy} testID={testID ? `${testID}-copy` : undefined}>
+          <Text numberOfLines={2} style={[styles.profileRankingRuleTitle, { color: tokens.text }]} testID={testID ? `${testID}-title` : undefined}>{label}</Text>
+          <Text numberOfLines={2} style={[styles.profileRankingRuleBody, { color: tokens.muted }]} testID={testID ? `${testID}-body` : undefined}>{value}</Text>
+        </View>
+        <View style={styles.profileRankingRuleMeta} testID={testID ? `${testID}-chip` : undefined}>
+          <ProfileRankingChevron color={tokens.primary} testID={testID ? `${testID}-chevron` : undefined} />
+        </View>
+      </View>
+    )
+  }
 
   if (details) {
     const auraScope = `ProfileRankingRuleIcon${profileAuraScope(label)}`
@@ -240,7 +277,6 @@ function ProfileInsightRow({
 export function ProfileRankingPanel({
   metrics,
   pointsText,
-  progress,
   progressBar,
   rank,
   rankNodes,
@@ -252,7 +288,6 @@ export function ProfileRankingPanel({
 }: {
   metrics: ProfilePanelMetric[]
   pointsText: string
-  progress: number
   progressBar: ReactNode
   rank: number | null
   rankNodes: ProfileRankingNode[]
@@ -265,40 +300,46 @@ export function ProfileRankingPanel({
   const language = useAppLanguage()
   const glass = useGlassAccessibility()
   const tokens = useCustomerV21ProfileTheme()
-  const activeRank = rank !== null && rank > 0
   const rankValue = rank === null
     ? (language === 'vi' ? 'Chưa có' : 'Pending')
     : rank === 0
       ? (language === 'vi' ? 'Chưa xếp hạng' : 'Not ranked')
       : String(rank)
+  const rankDescription = rank === null
+    ? (language === 'vi' ? 'Kael đánh giá từ dữ liệu sử dụng thật.' : 'Kael evaluates real usage data.')
+    : rankTitle
+  const metricIconColor = tokens.mode === 'dark' ? tokens.text : '#182B34'
 
   return (
     <View testID="customer-v21-profile-ranking">
       <ProfileAuraCard cardStyle={styles.profileRankingHeroCard} contentStyle={styles.profileRankingHero} scope="RankingHero" testID="customer-v21-profile-ranking-hero">
-        <ProfileLiquidScore
-          caseOverviewScoreAura={CaseOverviewScoreAura}
-          label={language === 'vi' ? 'Hạng hiện tại' : 'Current level'}
-          percent={activeRank ? progress : 0}
-          reduceTransparency={glass.reduceTransparency}
-          scope="Ranking"
-          showProgressDot
-          tokens={tokens}
-          value={rankValue}
-        />
-        <View style={styles.flex}>
-          <Text style={[styles.profileDetailTitle, { color: tokens.text }]}>{rankTitle}</Text>
-          <Text style={[styles.bodyText, { color: tokens.muted }]}>{pointsText}</Text>
-          {progressBar}
+        <View style={styles.profileRankingHeroWorkartFrame} testID="customer-v21-profile-ranking-hero-workart-frame">
+          <Image
+            accessibilityLabel={language === 'vi' ? 'Minh họa hành trình sử dụng dịch vụ' : 'Usage journey illustration'}
+            contentFit="contain"
+            source={customerV21Assets.usageRankingWorkart}
+            style={styles.profileRankingHeroWorkart}
+            testID="customer-v21-profile-ranking-hero-workart"
+          />
+        </View>
+        <View style={styles.profileRankingHeroCopy}>
+          <Text style={[styles.profileRankingHeroKicker, { color: tokens.muted }]}>{language === 'vi' ? 'Hạng hiện tại' : 'Current level'}</Text>
+          <Text style={[styles.profileRankingHeroValue, { color: tokens.text }]} testID="customer-v21-profile-ranking-current-value">{rankValue}</Text>
+          <Text numberOfLines={2} style={[styles.profileRankingHeroBody, { color: tokens.muted }]}>{rankDescription}</Text>
+          {rank !== null ? <Text numberOfLines={2} style={[styles.profileRankingHeroPoints, { color: tokens.muted }]}>{pointsText}</Text> : null}
+          <View style={styles.profileRankingHeroProgress}>{progressBar}</View>
         </View>
       </ProfileAuraCard>
 
       <View style={styles.profileMetrics}>
         {metrics.map((metric) => (
           <ProfileStatCard
+            icon={metric.icon ? <ProfileRankingMetricIcon color={metricIconColor} kind={metric.icon} testID={metric.testID ? `${metric.testID}-icon-image` : undefined} /> : undefined}
             key={metric.label}
             label={metric.label}
             reduceTransparency={glass.reduceTransparency}
             sourceCardSkin={SourceCardSkin}
+            testID={metric.testID}
             tokens={tokens}
             value={metric.value}
             zipMintAura={ZipMintAura}
@@ -310,54 +351,36 @@ export function ProfileRankingPanel({
         action={language === 'vi' ? 'Hạng tối đa 5' : 'Max level 5'}
         title={language === 'vi' ? 'Thang hạng khách hàng' : 'Customer levels'}
       />
-      <View style={styles.rankRail}>
-        {rankNodes.map((node) => (
-          <View
-            key={node.value}
-            style={[
-              styles.rankNode,
-              node.active ? styles.rankNodeActive : styles.rankNodeRest,
-              {
-                backgroundColor: node.active
-                  ? (tokens.mode === 'dark' ? tokens.service : 'rgba(220,255,246,0.91)')
-                  : (tokens.mode === 'dark' ? tokens.raised : 'rgba(255,255,255,0.81)'),
-                borderColor: node.active
-                  ? (tokens.mode === 'dark' ? 'rgba(117,236,220,0.34)' : 'rgba(13,174,154,0.38)')
-                  : (tokens.mode === 'dark' ? tokens.border : 'rgba(113,225,209,0.26)'),
-              },
-            ]}
-            testID={`customer-v21-profile-rank-node-${node.value}`}
-          >
-            <SourceCardSkin />
-            <ProfileCompactMintAura reduceTransparency={glass.reduceTransparency} scope={`ProfileRankNodeFine${node.value}`} />
-            {node.active ? <ZipMintAura scope={`ProfileRankNode${node.value}`} /> : null}
-            <View style={styles.rankNodeContent}>
-              <Text style={[styles.rankNodeValue, { color: node.active ? tokens.primary : tokens.muted }]}>{node.value}</Text>
-              <Text numberOfLines={1} style={[styles.rankNodeLabel, { color: tokens.muted }]}>{node.label}</Text>
-            </View>
-          </View>
-        ))}
-      </View>
+      <ProfileRankingMilestoneRail nodes={rankNodes} testID="customer-v21-profile-rank-rail" />
       {rankProcess}
 
       <SectionActionHeader action={rulesAction} title={rulesTitle} />
-      <ProfileAuraCard cardStyle={styles.profileListCard} contentStyle={styles.profileSettingsListContent} scope="RankingRules" testID="customer-v21-profile-ranking-rules">
+      <V21Card
+        style={[
+          styles.profileRankingRulesCard,
+          { backgroundColor: tokens.mode === 'dark' ? tokens.raised : 'rgba(255,255,255,0.84)', borderColor: tokens.border },
+        ]}
+        testID="customer-v21-profile-ranking-rules"
+      >
+        <View style={styles.profileRankingRulesContent}>
         {rules.map((rule, index) => (
           <Fragment key={rule.testID ?? rule.label}>
-            {index > 0 ? <View style={[styles.profileListDivider, { backgroundColor: tokens.border }]} /> : null}
+            {index > 0 ? <View style={[styles.profileRankingRuleDivider, { backgroundColor: tokens.border }]} /> : null}
             <ProfileInsightRow
               assetTile={AssetTile}
               details={rule.details}
               iconStyle={styles.profileInsightIcon}
               image={rule.image}
               label={rule.label}
+              rankingIcon={rule.rankingIcon}
               status={rule.status}
               testID={rule.testID}
               value={rule.value}
             />
           </Fragment>
         ))}
-      </ProfileAuraCard>
+        </View>
+      </V21Card>
     </View>
   )
 }

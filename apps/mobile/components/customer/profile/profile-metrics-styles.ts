@@ -1,3 +1,4 @@
+import { typography } from '@/design/theme'
 import { StyleSheet } from 'react-native'
 
 export const customerV21ProfileMetricStyles = StyleSheet.create({
@@ -35,15 +36,13 @@ export const customerV21ProfileMetricStyles = StyleSheet.create({
     alignSelf: 'center',
   },
   profileScoreLabel: {
-    fontSize: 9.5,
-    fontWeight: '700',
-    lineHeight: 11,
+    ...typography.caption2,
+    fontWeight: '600',
     maxWidth: 82,
     textAlign: 'center',
   },
   profileScoreLabelLarge: {
-    fontSize: 10.5,
-    lineHeight: 12,
+    ...typography.caption2,
     maxWidth: 86,
   },
   profileScoreLens: {
@@ -66,30 +65,24 @@ export const customerV21ProfileMetricStyles = StyleSheet.create({
     maxWidth: 88,
   },
   profileScoreSubLabel: {
-    fontSize: 9.5,
-    fontWeight: '700',
-    lineHeight: 11,
+    ...typography.caption2,
+    fontWeight: '600',
     maxWidth: 82,
     textAlign: 'center',
   },
   profileScoreSubLabelLarge: {
-    fontSize: 10.5,
-    lineHeight: 12,
+    ...typography.caption2,
     maxWidth: 88,
   },
   profileScoreValue: {
-    fontSize: 30,
+    ...typography.title1,
     fontWeight: '600',
-    letterSpacing: 0,
-    lineHeight: 34,
   },
   profileScoreValueLarge: {
-    fontSize: 38,
-    lineHeight: 42,
+    ...typography.largeTitle,
   },
   profileScoreValueStatus: {
-    fontSize: 18,
-    lineHeight: 22,
+    ...typography.title3,
     maxWidth: 72,
     textAlign: 'center',
   },
@@ -113,27 +106,46 @@ export const customerV21ProfileMetricStyles = StyleSheet.create({
     shadowOpacity: 0.10,
     shadowRadius: 24,
   },
+  profileStatCardWithIcon: {
+    borderRadius: 20,
+    minHeight: 126,
+    paddingHorizontal: 6,
+    paddingVertical: 14,
+  },
   profileStatContent: {
     alignItems: 'center',
     justifyContent: 'center',
     position: 'relative',
     zIndex: 1,
   },
+  profileStatContentWithIcon: {
+    gap: 6,
+  },
+  profileStatIcon: {
+    alignItems: 'center',
+    height: 38,
+    justifyContent: 'center',
+    width: 38,
+  },
   profileStatLabel: {
-    fontSize: 12,
+    ...typography.caption1,
     fontWeight: '600',
-    lineHeight: 16,
     marginTop: 4,
     textAlign: 'center',
   },
+  profileStatLabelWithIcon: {
+    marginTop: 0,
+  },
   profileStatValue: {
-    fontSize: 23,
+    ...typography.title2,
     fontWeight: '600',
-    lineHeight: 28,
     textAlign: 'center',
   },
+  profileStatValueWithIcon: {
+    ...typography.title3,
+    fontWeight: '600',
+  },
   profileStatValueCompact: {
-    fontSize: 17,
-    lineHeight: 22,
+    ...typography.body,
   },
 })

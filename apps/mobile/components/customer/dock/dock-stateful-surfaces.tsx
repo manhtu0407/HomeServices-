@@ -30,6 +30,7 @@ export function CustomerV21DockOverlayView({
   onTabPress,
   reduceMotion,
   reduceTransparency,
+  showKaelAccessory,
   tokens,
 }: {
   activeTab: CustomerPrimaryTab | null
@@ -44,6 +45,7 @@ export function CustomerV21DockOverlayView({
   onTabPress: (route: string) => void
   reduceMotion: boolean
   reduceTransparency: boolean
+  showKaelAccessory: boolean
   tokens: CustomerThemeTokens
 }) {
   const kaelRef = useRef<KaelCoreV9Handle>(null)
@@ -88,6 +90,7 @@ export function CustomerV21DockOverlayView({
             )
           })}
         </GlassSurface>
+        {showKaelAccessory ? (
         <Pressable
           accessibilityLabel={customerV21TabCopy[language].kael}
           accessibilityRole="button"
@@ -101,6 +104,7 @@ export function CustomerV21DockOverlayView({
         >
           <KaelCoreV9 reduceMotion={reduceMotion} ref={kaelRef} testID="customer-v21-kael-core-v9" />
         </Pressable>
+        ) : null}
       </Animated.View>
     </View>
   )

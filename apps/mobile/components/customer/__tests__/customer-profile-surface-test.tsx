@@ -247,11 +247,29 @@ describe('CustomerProfileSurface v2.1', () => {
     expect(screen.queryByTestId('customer-v21-profile-services')).toBeNull()
     expect(screen.queryByTestId('customer-v21-profile-protection-card')).toBeNull()
     expect(screen.getByTestId('customer-v21-profile-ranking-entry')).toBeOnTheScreen()
-    expect(screen.getByTestId('customer-v21-profile-ranking-entry-visual-panel')).toBeOnTheScreen()
+    expect(screen.queryByTestId('customer-v21-profile-overviewrankingentry-card-skin')).toBeNull()
+    expect(screen.getByTestId('customer-v21-profile-ranking-entry-visual-panel')).toHaveStyle({
+      backgroundColor: 'transparent',
+      borderRightWidth: 0,
+      bottom: 0,
+      left: 0,
+      position: 'absolute',
+      top: 0,
+      width: '40%',
+    })
     expect(screen.getByTestId('customer-v21-profile-ranking-entry-icon')).toBeOnTheScreen()
     expect(screen.getByTestId('customer-v21-profile-ranking-entry-icon-image')).toBeOnTheScreen()
-    expect(screen.getByTestId('customer-v21-profile-ranking-entry-connector-dot')).toBeOnTheScreen()
-    expect(screen.getByTestId('customer-v21-profile-ranking-entry-signals')).toHaveTextContent(/Tăng theo hoạt động thật/)
+    expect(screen.getByTestId('customer-v21-profile-ranking-entry-icon-image')).toHaveStyle({ transform: [{ scale: 1.5 }] })
+    expect(screen.queryByText('Kael đánh giá từ dữ liệu sử dụng thật.')).toBeNull()
+    expect(screen.queryByTestId('customer-v21-profile-ranking-entry-chevron')).toBeNull()
+    expect(screen.getByTestId('customer-v21-profile-ranking-entry-points-icon')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-v21-profile-ranking-entry-source-icon')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-v21-profile-ranking-entry-progress')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-v21-profile-ranking-entry-signals')).toHaveStyle({ flexWrap: 'nowrap', width: '100%' })
+    expect(screen.getByTestId('customer-v21-profile-ranking-entry-points-signal')).toHaveStyle({ flex: 1 })
+    expect(screen.getByTestId('customer-v21-profile-ranking-entry-source-signal')).toHaveStyle({ flex: 1 })
+    expect(screen.getByTestId('customer-v21-profile-ranking-entry-signals')).toHaveTextContent(/Hoạt động/)
+    expect(screen.getByTestId('customer-v21-profile-ranking-entry-signals')).not.toHaveTextContent(/Tăng theo hoạt động thật/)
     expect(screen.queryByTestId('customer-v21-profile-ranking-entry-status')).toBeNull()
     expect(screen.queryByTestId('customer-v21-top-avatar')).toBeNull()
     expect(screen.queryByText('⚙')).toBeNull()
@@ -303,8 +321,8 @@ describe('CustomerProfileSurface v2.1', () => {
     const view = render(<CustomerProfileSurface />)
 
     expect(screen.getByTestId('customer-v21-profile-avatar-picker')).toHaveStyle({
-      height: 80,
-      width: 80,
+      height: 76,
+      width: 76,
     })
     expect(screen.getByTestId('customer-v21-profile-avatar-fallback')).toHaveTextContent('PT')
     fireEvent.press(screen.getByTestId('customer-v21-profile-avatar-picker'))
@@ -430,36 +448,46 @@ describe('CustomerProfileSurface v2.1', () => {
     expect(screen.getByTestId('customer-v21-profile-ranking')).toHaveTextContent(/620/)
     expect(screen.queryByRole('button', { name: 'i' })).toBeNull()
     expect(screen.queryByTestId('customer-v21-profile-ranking-status-chip')).toBeNull()
+    expect(screen.getByTestId('customer-v21-profile-ranking-hero-workart')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-v21-profile-ranking-current-value')).toHaveTextContent('3')
     expect(screen.getByTestId('customer-v21-profile-ranking-progress')).toBeOnTheScreen()
-    expect(screen.getByTestId('customer-v21-profile-rank-node-3')).toHaveTextContent(/3/)
+    expect(screen.getByTestId('customer-v21-profile-rank-rail-node-3')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-v21-profile-rank-rail-label-3')).toHaveTextContent(/Tin cậy/)
     expect(screen.getByTestId('customer-v21-profile-rank-process')).toBeOnTheScreen()
     expect(screen.getByTestId('customer-v21-profile-rank-process-progress')).toBeOnTheScreen()
     expect(screen.queryByTestId('customer-v21-profile-ranking-evaluation')).toBeNull()
     expect(screen.queryByText('Kael đánh giá dữ liệu thật')).toBeNull()
-    expect(screen.getByTestId('customer-v21-profile-ranking-rule-completed-chip')).toHaveTextContent(/^0$/)
-    expect(screen.getByTestId('customer-v21-profile-ranking-rule-review-chip')).toHaveTextContent(/^0%$/)
-    expect(screen.getByTestId('customer-v21-profile-ranking-rule-protected-chip')).toHaveTextContent(/22 \/ 24/)
+    expect(screen.getByTestId('customer-v21-profile-ranking-metric-services-icon-image')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-v21-profile-ranking-metric-streak-icon-image')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-v21-profile-ranking-metric-reviews-icon-image')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-v21-profile-ranking-rule-completed-chip')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-v21-profile-ranking-rule-review-chip')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-v21-profile-ranking-rule-protected-chip')).toBeOnTheScreen()
+    expect(screen.queryByTestId('customer-v21-profile-ranking-rules-card-skin')).toBeNull()
+    expect(screen.queryByTestId('customer-v21-profile-ranking-rules-wide-mint-aura')).toBeNull()
+    expect(screen.queryByTestId('customer-v21-profile-ranking-rules-mint-aura')).toBeNull()
     const rankingRules = [
-      ['completed', 'Theo trạng thái', 'Không bỏ đơn'],
-      ['review', 'Sau công việc', 'Phản hồi công bằng'],
-      ['protected', 'Trong hệ thống', 'Có đối soát'],
+      ['completed', 'Hoàn tất đúng quy trình', 'Không bỏ đơn sau khi thợ đã di chuyển', '0'],
+      ['review', 'Đánh giá chất lượng', 'Phản hồi công bằng sau mỗi công việc', '0%'],
+      ['protected', 'Dùng thanh toán được bảo vệ', 'Giữ giao dịch trong hệ thống', '22 / 24'],
     ] as const
-    const rankingRuleIconSources = rankingRules.map(([rule, firstDetail, secondDetail]) => {
+    rankingRules.forEach(([rule, title, body, status]) => {
       const testID = `customer-v21-profile-ranking-rule-${rule}`
 
-      expect(screen.getByTestId(testID)).toHaveStyle({ flexDirection: 'row', minHeight: 112 })
-      expect(screen.getByTestId(`${testID}-visual-panel`)).toHaveStyle({ borderRightWidth: 1, width: 96 })
-      expect(screen.getByTestId(`${testID}-mint-aura`)).toBeOnTheScreen()
-      expect(screen.getByTestId(`${testID}-connector`)).toBeOnTheScreen()
-      expect(screen.getByTestId(`${testID}-connector-dot`)).toBeOnTheScreen()
-      expect(screen.getByTestId(`${testID}-title`)).toHaveStyle({ fontSize: 16, fontWeight: '700', lineHeight: 21 })
-      expect(screen.getByTestId(`${testID}-body`)).toHaveStyle({ fontSize: 14, lineHeight: 20 })
-      expect(screen.getByTestId(`${testID}-detail-rail-0`)).toHaveTextContent(firstDetail)
-      expect(screen.getByTestId(`${testID}-detail-rail-1`)).toHaveTextContent(secondDetail)
-
-      return screen.getByTestId(`${testID}-icon-image`).props.source
+      expect(screen.getByTestId(testID)).toHaveStyle({ flexDirection: 'row', minHeight: 88 })
+      expect(screen.getByTestId(`${testID}-visual-panel`)).toHaveStyle({ width: 56 })
+      expect(screen.getByTestId(`${testID}-icon-image`)).toBeOnTheScreen()
+      expect(screen.getByTestId(`${testID}-icon-image`)).toHaveProp('height', 38)
+      expect(screen.getByTestId(`${testID}-icon-image`)).toHaveProp('width', 38)
+      expect(screen.queryByTestId(`${testID}-mint-aura`)).toBeNull()
+      expect(screen.queryByTestId(`${testID}-connector`)).toBeNull()
+      expect(screen.queryByTestId(`${testID}-connector-dot`)).toBeNull()
+      expect(screen.getByTestId(`${testID}-title`)).toHaveTextContent(title)
+      expect(screen.getByTestId(`${testID}-body`)).toHaveTextContent(body)
+      expect(screen.queryByTestId(`${testID}-detail-rail-0`)).toBeNull()
+      expect(screen.getByTestId(`${testID}-chevron`)).toBeOnTheScreen()
+      expect(screen.getByTestId(testID).props.accessibilityLabel).toContain(status)
     })
-    expect(new Set(rankingRuleIconSources).size).toBe(rankingRules.length)
     expect(screen.queryByTestId('customer-v21-profile-ranking-kael')).toBeNull()
 
     unmount()
@@ -470,19 +498,18 @@ describe('CustomerProfileSurface v2.1', () => {
     expect(screen.getByTestId('customer-v21-profile-money')).toHaveTextContent(/2.150.000đ/)
   })
 
-  it('keeps the ranking status inside its score lens and tracks real rank progress with the mint dot', () => {
+  it('keeps pending and real ranking states honest in the workart hero and level rail', () => {
     mockScreenParam = '6.2-usage-ranking'
 
     const { rerender } = render(<CustomerProfileSurface />)
 
     expect(screen.queryByTestId('customer-v21-profile-ranking-status-chip')).toBeNull()
     expect(screen.queryByText('Hạng phản ánh cách bạn sử dụng dịch vụ')).toBeNull()
-    expect(screen.getByTestId('customer-v21-profile-score-Ranking-value')).toHaveProp('numberOfLines', 2)
-    expect(screen.getByTestId('customer-v21-profile-score-Ranking-value')).toHaveStyle({ maxWidth: 72 })
-    expect(screen.getByTestId('customer-v21-profile-score-Ranking-value')).toHaveStyle({ fontSize: 18, lineHeight: 22 })
-
-    const pendingDot = screen.getByTestId('customer-v21-profile-score-Ranking-progress-dot')
-    expect(Math.hypot(Number(pendingDot.props.cx) - 50, Number(pendingDot.props.cy) - 50)).toBeCloseTo(43, 5)
+    expect(screen.getByTestId('customer-v21-profile-ranking-hero-workart')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-v21-profile-ranking-current-value')).toHaveTextContent('Chưa có')
+    expect(screen.getByTestId('customer-v21-profile-ranking-progress')).toBeOnTheScreen()
+    expect(screen.queryByTestId('customer-v21-profile-score-Ranking-value')).toBeNull()
+    expect(screen.queryByTestId('customer-v21-profile-score-Ranking-progress-dot')).toBeNull()
 
     mockCustomerProfileInsights = {
       usage_rank_level: 3,
@@ -490,9 +517,9 @@ describe('CustomerProfileSurface v2.1', () => {
     }
     rerender(<CustomerProfileSurface />)
 
-    const firstProgressDot = screen.getByTestId('customer-v21-profile-score-Ranking-progress-dot')
-    const firstPosition = { cx: firstProgressDot.props.cx, cy: firstProgressDot.props.cy }
-    expect(Math.hypot(Number(firstPosition.cx) - 50, Number(firstPosition.cy) - 50)).toBeCloseTo(43, 5)
+    expect(screen.getByTestId('customer-v21-profile-ranking-current-value')).toHaveTextContent('3')
+    expect(screen.getByTestId('customer-v21-profile-rank-rail-node-3')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-v21-profile-ranking')).toHaveTextContent(/250/)
 
     mockCustomerProfileInsights = {
       usage_rank_level: 3,
@@ -500,10 +527,9 @@ describe('CustomerProfileSurface v2.1', () => {
     }
     rerender(<CustomerProfileSurface />)
 
-    const nextProgressDot = screen.getByTestId('customer-v21-profile-score-Ranking-progress-dot')
-    const nextPosition = { cx: nextProgressDot.props.cx, cy: nextProgressDot.props.cy }
-    expect(nextPosition).not.toEqual(firstPosition)
-    expect(Math.hypot(Number(nextPosition.cx) - 50, Number(nextPosition.cy) - 50)).toBeCloseTo(43, 5)
+    expect(screen.getByTestId('customer-v21-profile-ranking-current-value')).toHaveTextContent('3')
+    expect(screen.getByTestId('customer-v21-profile-ranking')).toHaveTextContent(/620/)
+    expect(screen.getByTestId('customer-v21-profile-ranking-progress')).toBeOnTheScreen()
   })
 
   it('removes the smart utility section and Agentic Center entry from Profile', () => {
@@ -522,15 +548,14 @@ describe('CustomerProfileSurface v2.1', () => {
   it('groups the approved account functions into compact rows without the three legacy tiles', () => {
     render(<CustomerProfileSurface />)
 
-    expect(screen.getByTestId('customer-v21-profile-settings-groups')).toHaveStyle({ marginTop: 12 })
+    expect(screen.getByTestId('customer-v21-profile-settings-groups')).toHaveStyle({ marginTop: 16 })
     expect(screen.getByTestId('customer-v21-profile-settings-group-account-security')).toBeOnTheScreen()
     expect(screen.getByTestId('customer-v21-profile-settings-group-payment-refunds')).toBeOnTheScreen()
     expect(screen.getByTestId('customer-v21-profile-settings-group-app')).toBeOnTheScreen()
     expect(screen.getByTestId('customer-v21-profile-settings-group-privacy-support')).toBeOnTheScreen()
     expect(screen.getByTestId('customer-v21-profile-settings-group-account-management')).toBeOnTheScreen()
-    expect(screen.getByTestId('customer-v21-profile-setting-signout-icon').props.source).toContainEqual(customerV21Assets.signOut)
-    expect(screen.getByTestId('customer-v21-profile-setting-delete-account-icon').props.source).toContainEqual(customerV21Assets.deleteAccount)
-    expect(customerV21Assets.signOut).not.toBe(customerV21Assets.deleteAccount)
+    expect(screen.getByTestId('customer-v21-profile-setting-signout-icon')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-v21-profile-setting-delete-account-icon')).toBeOnTheScreen()
     expect(screen.queryByTestId('customer-v21-profile-utility-grid')).toBeNull()
     expect(screen.queryByTestId('customer-v21-profile-utility-settings')).toBeNull()
 
@@ -581,8 +606,8 @@ describe('CustomerProfileSurface v2.1', () => {
     expect(screen.queryByTestId('customer-v21-profile-utility-grid')).toBeNull()
     for (const row of ['personal', 'address', 'password', 'refunds', 'language', 'appearance', 'notifications', 'signout', 'delete-account']) {
       const testID = `customer-v21-profile-setting-${row}`
-      expect(screen.getByTestId(testID)).toHaveStyle({ minHeight: 72 })
-      expect(screen.getByTestId(`${testID}-icon`)).toHaveStyle({ height: 40, width: 40 })
+      expect(screen.getByTestId(testID)).toHaveStyle({ minHeight: 34 })
+      expect(screen.getByTestId(`${testID}-icon`)).toBeOnTheScreen()
     }
   })
 

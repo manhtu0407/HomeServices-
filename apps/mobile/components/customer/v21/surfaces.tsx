@@ -28,11 +28,6 @@ import {
 } from '../kael-chat/pending-intake'
 import { ScopeChangeHardStopModal } from '../scope-change-modal/scope-change-hard-stop-modal'
 import { setCustomerThemeMode } from '../customer-theme'
-import {
-  CaseWideMintAura,
-  SourceCardSkin,
-  ZipMintAura,
-} from '../ui/aura-surfaces'
 import { customerV21Assets, customerV21BankAssets } from '../ui/assets'
 import { CustomerBookingEntryView, CustomerBookingGuestGateView } from '../booking/booking-entry-stateful-surfaces'
 import { HomeGuidanceBanner } from '../home/home-guidance-banner'
@@ -85,7 +80,6 @@ import {
 import { CustomerServiceHistorySurface } from '../history/service-history-surface'
 import { CustomerProfileOverviewView, CustomerProfileSubscreenView } from '../profile/profile-stateful-surfaces'
 import { buildCustomerProfileSettingsGroups } from '../profile/profile-settings-groups'
-import { ProfileCompactMintAura } from '../profile/profile-metrics-surfaces'
 import {
   ProfileKaelMemoryView,
   ProfileLanguageView,
@@ -131,7 +125,7 @@ import {
   CUSTOMER_LIQUID_NAV_SIDE_INSET,
 } from '../dock/dock-styles'
 import { customerV21ProfileUtilityStyles as profileUtilityStyles } from '../profile/profile-utility-styles'
-import { customerV21SharedStyles as sharedStyles } from '../ui/shared-styles'
+import { customerV21SurfaceContentWidth, customerV21SharedStyles as sharedStyles } from '../ui/shared-styles'
 import { type CustomerDockActive, type CustomerKaelMode, type CustomerPrimaryTab, type CustomerV21ScreenId } from '../ui/types'
 import {
   chatScreenModeParam,
@@ -165,6 +159,11 @@ const customerBookingServiceIdForHistory: Record<ServiceType, CustomerServiceId>
 }
 const PREFERRED_WORKER_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 
+function customerViewportWidth(fallback: number) {
+  const documentWidth = typeof document !== 'undefined' ? document.documentElement.clientWidth : 0
+  return documentWidth > 0 ? documentWidth : fallback
+}
+
 const customerV21DockNavItems: { icon: LiquidNavIconName; key: CustomerPrimaryTab; route: string }[] = [
   { icon: 'home', key: 'home', route: '/(customer)/home' },
   { icon: 'services', key: 'services', route: '/(customer)/booking' },
@@ -172,7 +171,7 @@ const customerV21DockNavItems: { icon: LiquidNavIconName; key: CustomerPrimaryTa
   { icon: 'profile', key: 'profile', route: '/(customer)/profile' },
 ]
 function ProfileRankProcess({ label, percent, value }: { label: string; percent: number; value: string }) {
-  const { reduceTransparency, tokens } = useV21Theme()
+  const { tokens } = useV21Theme()
   return (
     <View
       style={[
@@ -184,10 +183,6 @@ function ProfileRankProcess({ label, percent, value }: { label: string; percent:
       ]}
       testID="customer-v21-profile-rank-process"
     >
-      <SourceCardSkin />
-      <CaseWideMintAura scope="ProfileRankProcess" />
-      <ProfileCompactMintAura reduceTransparency={reduceTransparency} scope="ProfileRankProcessFine" />
-      <ZipMintAura scope="ProfileRankProcessZip" />
       <View style={profileUtilityStyles.profileRankProcessContent}>
         <View style={sharedStyles.rowBetween}>
           <Text numberOfLines={1} style={[profileUtilityStyles.profileRankProcessLabel, { color: tokens.text }]}>{label}</Text>
@@ -675,6 +670,10 @@ export function CustomerHistorySurface() {
 export function CustomerProfileSurface() {
   const language = useAppLanguage()
   const router = useRouter()
+  const { width } = useWindowDimensions()
+  const viewportWidth = customerViewportWidth(width)
+  const contentWidth = customerV21SurfaceContentWidth(viewportWidth)
+  const profileSurfaceFrameStyle = { width: contentWidth }
   const params = useLocalSearchParams<{
     panel?: string | string[]
     screen?: string | string[]
@@ -763,7 +762,7 @@ export function CustomerProfileSurface() {
     const directProfileBackPath = '/(customer)/profile'
     return (
       <V21Screen
-        frameStyle={profileUtilityStyles.profileSubscreenFrame}
+        frameStyle={[profileUtilityStyles.profileSubscreenFrame, profileSurfaceFrameStyle]}
         key={`profile-utility-${directProfileUtility}`}
         screenId="6.1-profile-overview"
         testID="customer-v21-profile"
@@ -831,7 +830,12 @@ export function CustomerProfileSurface() {
     panel === 'ranking' ? '6.2-usage-ranking' : panel === 'money' ? '6.3-protect-money' : '6.1-profile-overview'
   if (panel !== 'overview') {
     return (
-      <V21Screen key={profileScreenId} screenId={profileScreenId} testID="customer-v21-profile">
+      <V21Screen
+        frameStyle={profileSurfaceFrameStyle}
+        key={profileScreenId}
+        screenId={profileScreenId}
+        testID="customer-v21-profile"
+      >
         <CustomerProfileSubscreenView
           body={(
             <>
@@ -851,7 +855,12 @@ export function CustomerProfileSurface() {
   }
 
   return (
-    <V21Screen key={profileScreenId} screenId={profileScreenId} testID="customer-v21-profile">
+    <V21Screen
+      frameStyle={[profileUtilityStyles.profileOverviewFrame, profileSurfaceFrameStyle]}
+      key={profileScreenId}
+      screenId={profileScreenId}
+      testID="customer-v21-profile"
+    >
       <CustomerProfileOverviewView
         accountJourney={accountJourney}
         avatarAccessibilityHint={language === 'vi'
@@ -867,11 +876,10 @@ export function CustomerProfileSurface() {
         onPickAvatar={openCustomerAvatarPicker}
         onOpenRanking={() => openProfilePanel('ranking', '6.2-usage-ranking')}
         rankingAccessibilityLabel={language === 'vi' ? 'Xem xếp hạng sử dụng' : 'View usage ranking'}
-        rankingBody={language === 'vi' ? 'Kael đánh giá từ dữ liệu sử dụng thật.' : 'Kael evaluates real usage data.'}
         rankingLabel={language === 'vi' ? 'Xếp hạng sử dụng' : 'Usage ranking'}
         rankingMetaLabel={usageRankPointsLabel}
         rankingProgressPercent={usageRankProgress}
-        rankingProgressSourceLabel={language === 'vi' ? 'Tăng theo hoạt động thật' : 'Grows with real activity'}
+        rankingProgressSourceLabel={language === 'vi' ? 'Hoạt động' : 'Activity'}
         rootStyles={styles}
         settingsGroups={settingsGroups}
         tokens={tokens}
@@ -933,15 +941,20 @@ export function CustomerV21DockOverlay({ active }: { active: CustomerDockActive 
   const language = useAppLanguage()
   const router = useRouter()
   const { width } = useWindowDimensions()
+  const viewportWidth = customerViewportWidth(width)
   const { mode, reduceMotion, reduceTransparency, tokens } = useV21Theme()
   const { collapsed, resetDockScroll } = useDockScrollState()
   const animatedDockScrollStyle = useDockScrollTransform(collapsed, reduceMotion)
   // A parent-controlled active tab is external synchronization, not a local event surrogate.
   // react-doctor-disable-next-line react-doctor/no-event-handler
   const activeTab = active === 'chat' ? null : active
+  const showKaelAccessory = active !== 'profile'
+  const dockSideInset = showKaelAccessory ? CUSTOMER_LIQUID_NAV_SIDE_INSET : 18
 
-  const liquidNavWidth = Math.min(Math.max(width - CUSTOMER_LIQUID_NAV_SIDE_INSET * 2, 0), CUSTOMER_LIQUID_NAV_MAX_WIDTH)
-  const liquidDockWidth = Math.max(liquidNavWidth - CUSTOMER_LIQUID_NAV_ORB_SIZE - CUSTOMER_LIQUID_NAV_GAP, CUSTOMER_LIQUID_NAV_DOCK_HEIGHT)
+  const liquidNavWidth = Math.min(Math.max(viewportWidth - dockSideInset * 2, 0), CUSTOMER_LIQUID_NAV_MAX_WIDTH)
+  const liquidDockWidth = showKaelAccessory
+    ? Math.max(liquidNavWidth - CUSTOMER_LIQUID_NAV_ORB_SIZE - CUSTOMER_LIQUID_NAV_GAP, CUSTOMER_LIQUID_NAV_DOCK_HEIGHT)
+    : liquidNavWidth
   const kaelActive = active === 'chat'
   useEffect(() => {
     resetDockScroll()
@@ -964,6 +977,7 @@ export function CustomerV21DockOverlay({ active }: { active: CustomerDockActive 
       onKaelPress={openKael}
       onTabPress={(route) => router.replace(route as never)}
       reduceMotion={reduceMotion}
+      showKaelAccessory={showKaelAccessory}
       reduceTransparency={reduceTransparency}
       tokens={tokens}
     />
@@ -1322,12 +1336,11 @@ function ProfileRanking({ insights }: { insights: CustomerProfileInsightsRespons
   return (
     <ProfileRankingPanel
       metrics={[
-        { label: language === 'vi' ? 'Dịch vụ đã dùng' : 'Used services', value: completedCount },
-        { label: language === 'vi' ? 'Chuỗi hoạt động' : 'Active streak', value: streakLabel },
-        { label: language === 'vi' ? 'Đánh giá tích cực' : 'Positive reviews', value: reviewRate },
+        { icon: 'services', label: language === 'vi' ? 'Dịch vụ đã dùng' : 'Used services', testID: 'customer-v21-profile-ranking-metric-services', value: completedCount },
+        { icon: 'streak', label: language === 'vi' ? 'Chuỗi hoạt động' : 'Active streak', testID: 'customer-v21-profile-ranking-metric-streak', value: streakLabel },
+        { icon: 'reviews', label: language === 'vi' ? 'Đánh giá tích cực' : 'Positive reviews', testID: 'customer-v21-profile-ranking-metric-reviews', value: reviewRate },
       ]}
       pointsText={pointsText}
-      progress={progress}
       progressBar={progressBar}
       rank={rank}
       rankNodes={[1, 2, 3, 4, 5].map((node) => ({ active: numericRank === node, label: rankLabel(node, language), value: node }))}
@@ -1341,6 +1354,7 @@ function ProfileRanking({ insights }: { insights: CustomerProfileInsightsRespons
           ],
           image: customerV21Assets.rankingCompletion,
           label: language === 'vi' ? 'Hoàn tất đúng quy trình' : 'Finish through workflow',
+          rankingIcon: 'completion',
           status: completedCount,
           testID: 'customer-v21-profile-ranking-rule-completed',
           value: language === 'vi' ? 'Không bỏ đơn sau khi thợ đã di chuyển' : 'No cancellation after worker travel starts',
@@ -1352,6 +1366,7 @@ function ProfileRanking({ insights }: { insights: CustomerProfileInsightsRespons
           ],
           image: customerV21Assets.rankingReview,
           label: language === 'vi' ? 'Đánh giá chất lượng' : 'Quality review',
+          rankingIcon: 'review',
           status: reviewRate,
           testID: 'customer-v21-profile-ranking-rule-review',
           value: language === 'vi' ? 'Phản hồi công bằng sau mỗi công việc' : 'Fair feedback after each job',
@@ -1363,6 +1378,7 @@ function ProfileRanking({ insights }: { insights: CustomerProfileInsightsRespons
           ],
           image: customerV21Assets.rankingProtection,
           label: language === 'vi' ? 'Dùng thanh toán được bảo vệ' : 'Use protected payment',
+          rankingIcon: 'protected',
           status: protectedTransactions,
           testID: 'customer-v21-profile-ranking-rule-protected',
           value: language === 'vi' ? 'Giữ giao dịch trong hệ thống' : 'Keep transactions in system',

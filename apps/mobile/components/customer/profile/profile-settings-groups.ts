@@ -45,6 +45,7 @@ export function buildCustomerProfileSettingsGroups({
       title: vi ? 'Tài khoản & bảo mật' : 'Account & security',
       rows: [
         {
+          glyph: 'personal',
           image: customerV21Assets.identity,
           onPress: actions.openPersonalDetails,
           status: vi ? 'Sửa' : 'Edit',
@@ -53,6 +54,7 @@ export function buildCustomerProfileSettingsGroups({
           title: vi ? 'Thông tin cá nhân' : 'Personal details',
         },
         {
+          glyph: 'address',
           image: customerV21Assets.address,
           onPress: actions.openAddress,
           status: addressStatus,
@@ -61,6 +63,7 @@ export function buildCustomerProfileSettingsGroups({
           title: vi ? 'Địa chỉ' : 'Addresses',
         },
         {
+          glyph: 'password',
           image: customerV21Assets.password,
           onPress: actions.openPassword,
           status: vi ? 'Đổi' : 'Change',
@@ -75,6 +78,7 @@ export function buildCustomerProfileSettingsGroups({
       title: vi ? 'Thanh toán & hoàn tiền' : 'Payments & refunds',
       rows: [
         {
+          glyph: 'refunds',
           image: customerV21Assets.payment,
           onPress: actions.openRefunds,
           status: bankOptionLabel,
@@ -89,6 +93,7 @@ export function buildCustomerProfileSettingsGroups({
       title: vi ? 'Ứng dụng' : 'App',
       rows: [
         {
+          glyph: 'language',
           image: customerV21Assets.language,
           onPress: actions.openLanguage,
           status: vi ? 'Tiếng Việt' : 'English',
@@ -97,6 +102,7 @@ export function buildCustomerProfileSettingsGroups({
           title: vi ? 'Ngôn ngữ' : 'Language',
         },
         {
+          glyph: 'appearance',
           image: customerV21Assets.theme,
           onPress: actions.openAppearance,
           status: themeMode === 'dark'
@@ -107,6 +113,7 @@ export function buildCustomerProfileSettingsGroups({
           title: vi ? 'Giao diện' : 'Appearance',
         },
         {
+          glyph: 'notifications',
           image: customerV21Assets.notification,
           onPress: actions.openNotifications,
           status: notificationUnreadCount > 0
@@ -123,6 +130,7 @@ export function buildCustomerProfileSettingsGroups({
       title: vi ? 'Quyền riêng tư & hỗ trợ' : 'Privacy & support',
       rows: [
         {
+          glyph: 'memory',
           image: customerV21Assets.memory,
           onPress: actions.openMemory,
           status: memoryAllowed === true
@@ -135,6 +143,7 @@ export function buildCustomerProfileSettingsGroups({
           title: vi ? 'Bộ nhớ Kael' : 'Kael memory',
         },
         {
+          glyph: 'support',
           image: customerV21Assets.feedback,
           onPress: actions.openSupport,
           subtitle: vi ? 'Trợ giúp về công việc, giao dịch và tài khoản' : 'Help with jobs, transactions, and your account',
@@ -142,6 +151,7 @@ export function buildCustomerProfileSettingsGroups({
           title: vi ? 'Trợ giúp & hỗ trợ' : 'Help & support',
         },
         {
+          glyph: 'terms',
           image: customerV21Assets.privacy,
           onPress: actions.openLegal,
           subtitle: vi ? 'Quyền, trách nhiệm và quyền riêng tư' : 'Rights, responsibilities, and privacy',
@@ -155,6 +165,7 @@ export function buildCustomerProfileSettingsGroups({
       title: vi ? 'Quản lý tài khoản' : 'Account management',
       rows: [
         {
+          glyph: 'signout',
           image: customerV21Assets.signOut,
           onPress: actions.signOut,
           testID: 'customer-v21-profile-setting-signout',
@@ -162,6 +173,7 @@ export function buildCustomerProfileSettingsGroups({
         },
         {
           destructive: true,
+          glyph: 'delete',
           image: customerV21Assets.deleteAccount,
           onPress: actions.deleteAccount,
           subtitle: vi ? 'Xóa quyền truy cập và thông tin cá nhân' : 'Remove access and personal information',
