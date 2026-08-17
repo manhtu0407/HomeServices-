@@ -1,0 +1,91 @@
+{
+  "schema_version": "price_source_evidence_ledger.v1",
+  "audit_id": "price_baseline_hinge_20260814",
+  "verified_at": "2026-08-14",
+  "verified_by": "codex_agentic_e2e_price_audit",
+  "decision": "accepted_for_two_source_hcmc_baseline",
+  "normalization_target": "per_cabinet_door",
+  "aggregate": {
+    "method": "equal_weight_mean_of_t1_ranges_rounded_to_nearest_1000_vnd",
+    "price_min": 140000,
+    "price_max": 375000,
+    "currency": "VND"
+  },
+  "sources": [
+    {
+      "domain": "suachuatainha.com.vn",
+      "publisher": "Công ty TNHH Thiết Kế Xây Dựng Đại Phong",
+      "price_url": "https://suachuatainha.com.vn/thay-sua-ray-truot-ban-le-phu-kien-tu-go/",
+      "identity_url": "https://suachuatainha.com.vn/thay-sua-ray-truot-ban-le-phu-kien-tu-go/",
+      "source_published_at": "2025-12-14",
+      "observed_at": "2026-08-14",
+      "identity": {
+        "registration_or_tax_id": "0314953846",
+        "location": "TP. Thủ Đức, TP.HCM"
+      },
+      "published_price": {
+        "label": "Thay bản lề nửa che / full overlay",
+        "price_min": 120000,
+        "price_max": 250000,
+        "unit": "per_cabinet_door",
+        "currency": "VND"
+      },
+      "criteria": {
+        "A_identity": true,
+        "B_source_type": true,
+        "C_hcmc_relevant": true,
+        "D_clear_price_and_unit": true,
+        "E_fresh_within_12_months": true,
+        "F_source_controlled_integrity": true,
+        "G_evidence_stored": true
+      },
+      "artifacts": {
+        "price_snapshot": "docs/foundation/source-trust-samples/price-baseline-hinge-suachuatainha-20260814-price.png",
+        "price_snapshot_sha256": "251989BF6C0164DECCFAADEC460901340D68C90E1B98C9007D5FFB12F67BF35B",
+        "identity_snapshot": "docs/foundation/source-trust-samples/price-baseline-hinge-suachuatainha-20260814-identity.png",
+        "identity_snapshot_sha256": "F20C6FBCBC2183ED1A26CF38A2DC7F979711F1CA1C2A4EA146F41376C5161668"
+      }
+    },
+    {
+      "domain": "nhabepsaigon.vn",
+      "publisher": "Công ty TNHH Thiết Kế Nội Thất Hoàng Đạt",
+      "price_url": "https://nhabepsaigon.vn/bao-gia-sua-tu-bep-moi-nhat",
+      "identity_url": "https://nhabepsaigon.vn/bao-gia-sua-tu-bep-moi-nhat",
+      "source_published_at": "2026-06-04",
+      "observed_at": "2026-08-14",
+      "identity": {
+        "registration_or_tax_id": "0317253402",
+        "location": "Phường Trung Mỹ Tây, TP.HCM"
+      },
+      "published_price": {
+        "label": "Thay bản lề giảm chấn",
+        "price_min": 80000,
+        "price_max": 250000,
+        "unit": "per_item",
+        "currency": "VND"
+      },
+      "normalization": {
+        "quantity": 2,
+        "calculation": "2 cabinet hinges x published per-item range",
+        "price_min": 160000,
+        "price_max": 500000,
+        "unit": "per_cabinet_door"
+      },
+      "criteria": {
+        "A_identity": true,
+        "B_source_type": true,
+        "C_hcmc_relevant": true,
+        "D_clear_price_and_unit": true,
+        "E_fresh_within_12_months": true,
+        "F_source_controlled_integrity": true,
+        "G_evidence_stored": true
+      },
+      "artifacts": {
+        "price_snapshot": "docs/foundation/source-trust-samples/price-baseline-hinge-nhabepsaigon-20260814-price.png",
+        "price_snapshot_sha256": "0AB71E27B74DFBB137E15FBD611FB8122B3E653A354ADFED1A9C0B8DD8C145CD",
+        "identity_snapshot": "docs/foundation/source-trust-samples/price-baseline-hinge-nhabepsaigon-20260814-identity.png",
+        "identity_snapshot_sha256": "568479BCAF5746026273EF18D4C66F53F36F1337B2244FDA34206DE5BECB658E"
+      }
+    }
+  ]
+}

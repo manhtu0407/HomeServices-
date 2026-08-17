@@ -47,6 +47,58 @@ describe('matching-eligibility', () => {
     ])
   })
 
+  it('does not treat capabilities from another selected service as a handyman mismatch', async () => {
+    const handymanRequirements = [
+      'minor_home_repairs',
+      'safe_drilling_and_mounting',
+      'small_fixture_and_furniture_installation',
+      'multi_task_scope_management',
+    ]
+    const client = makeSequenceClient([
+      { data: { id: 'job-1', status: 'awaiting_customer_confirm', customer_id: 'customer-1', service_type: 'handyman', address_district: 'q7', kael_price_max: 350000, final_price: null }, error: null },
+      { data: { id: 'job-1' }, error: null },
+      { data: null, error: null },
+      { data: { customer_id: 'customer-1', address_lat: null, address_lng: null, problem_chips: ['repair_hinge_or_handle'], service_problem_id: null, kael_problem_identified: null, diagnosis_scope: { worker_requirements: handymanRequirements } }, error: null },
+      { data: [], error: null },
+      {
+        data: [{
+          id: 'worker-multi-service',
+          rating: 4.8,
+          total_jobs: 12,
+          selected_service_types: ['plumbing', 'handyman'],
+          active_service_types: ['plumbing', 'handyman'],
+          districts: ['q7'],
+          problem_specializations: [
+            'leak_and_flow_diagnosis',
+            'pipe_and_fixture_repair',
+            'drain_clearing',
+            'fixture_installation',
+          ],
+        }],
+        error: null,
+      },
+      { data: [], error: null },
+      { data: [], error: null },
+      { data: [], error: null },
+      { data: [{ id: 'broadcast-1', worker_id: 'worker-multi-service' }], error: null },
+      { data: [{ notification_id: 'notification-1' }], error: null },
+      { data: [], error: null },
+      { data: null, error: null },
+    ])
+    const ctx: MobileApiContext = {
+      success: true,
+      user: { id: 'customer-1' },
+      role: 'customer',
+      supabase: client,
+    }
+
+    await expect(createEdgeServices({}).confirmSearch(ctx, 'job-1')).resolves.toMatchObject({
+      job_id: 'job-1',
+      status: 'broadcasting',
+      broadcast_sent: true,
+    })
+  })
+
   it('excludes only the worker whose selected service is temporarily quality-locked', async () => {
     const client = makeSequenceClient([
       { data: { id: 'job-1', status: 'awaiting_customer_confirm', customer_id: 'customer-1', service_type: 'plumbing', address_district: 'q7', kael_price_max: 250000, final_price: null }, error: null },

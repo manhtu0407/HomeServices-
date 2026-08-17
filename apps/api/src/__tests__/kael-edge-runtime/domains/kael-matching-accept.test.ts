@@ -3,6 +3,11 @@ import { type MobileApiContext } from '../../../../../../supabase/functions/mobi
 import { createEdgeServices } from '../../../../../../supabase/functions/mobile-api/_shared/domains'
 import { installEdgeRuntimeTestHooks, makeSequenceClient } from '../harness'
 
+const originalScopeQuoteId = 'a1510000-0000-4000-8000-000000000001'
+const candidateJobId = 'a1520000-0000-4000-8000-000000000001'
+const candidateWorkerId = 'a1530000-0000-4000-8000-000000000001'
+const candidateBroadcastId = 'a1540000-0000-4000-8000-000000000001'
+
 describe('matching-accept', () => {
   installEdgeRuntimeTestHooks()
 
@@ -124,7 +129,7 @@ describe('matching-accept', () => {
       supabase: client,
     }
 
-    await expect(createEdgeServices({}).acceptBroadcast(ctx, 'job-1')).rejects.toMatchObject({
+    await expect(createEdgeServices({}).acceptBroadcast(ctx, 'job-1', originalScopeQuoteId)).rejects.toMatchObject({
       code: 'WORKER_NOT_ELIGIBLE',
       status: 403,
     })
@@ -153,7 +158,7 @@ describe('matching-accept', () => {
       supabase: client,
     }
 
-    await expect(createEdgeServices({}).acceptBroadcast(ctx, 'job-1')).resolves.toMatchObject({
+    await expect(createEdgeServices({}).acceptBroadcast(ctx, 'job-1', originalScopeQuoteId)).resolves.toMatchObject({
       job_id: 'job-1',
       status: 'worker_candidate_pending',
       candidate_id: 'candidate-1',
@@ -171,6 +176,15 @@ describe('matching-accept', () => {
         p_event_type: 'worker_candidate_ready',
         p_safe_metadata: { candidate_id: 'candidate-1' },
       }),
+    ])
+    expect(client.calls[0]?.operations).toContainEqual([
+      'rpc',
+      'accept_broadcast_atomic',
+      {
+        p_job_id: 'job-1',
+        p_quote_id: originalScopeQuoteId,
+        p_worker_id: 'worker-1',
+      },
     ])
   })
 
@@ -196,7 +210,7 @@ describe('matching-accept', () => {
       supabase: client,
     }
 
-    const response = await createEdgeServices({}).acceptBroadcast(ctx, 'job-1')
+    const response = await createEdgeServices({}).acceptBroadcast(ctx, 'job-1', originalScopeQuoteId)
     expect(response).toMatchObject({
       job_id: 'job-1',
       status: 'worker_candidate_pending',
@@ -210,7 +224,7 @@ describe('matching-accept', () => {
     const client = makeSequenceClient([
       {
         data: {
-          id: 'job-1',
+          id: candidateJobId,
           status: 'worker_candidate_pending',
           customer_id: 'customer-1',
           worker_id: null,
@@ -220,21 +234,61 @@ describe('matching-accept', () => {
       {
         data: {
           id: 'candidate-1',
-          job_id: 'job-1',
-          worker_id: 'worker-1',
+          job_id: candidateJobId,
+          worker_id: candidateWorkerId,
+          broadcast_id: candidateBroadcastId,
           status: 'proposed',
           proposed_at: '2026-07-11T00:00:00.000Z',
+          expires_at: '2099-08-15T04:10:00.000Z',
           customer_decided_at: null,
+          original_scope_price_quote: {
+            schema_version: 'original_scope_price_quote.v1',
+            quote_id: originalScopeQuoteId,
+            job_id: candidateJobId,
+            worker_id: candidateWorkerId,
+            broadcast_id: candidateBroadcastId,
+            reference_price_min: 150_000,
+            reference_price_max: 250_000,
+            customer_total: 200_000,
+            platform_fee: 20_000,
+            worker_net: 180_000,
+            commission_level: 2,
+            commission_rate_bps: 1_000,
+            price_source: 'baseline_with_market',
+            selection_rule: 'verified_neutral_midpoint_with_bilateral_confirmation',
+            worker_confirmation_required: true,
+            customer_confirmation_required: true,
+            worker_confirmed_at: '2026-08-15T04:00:00.000Z',
+            expires_at: '2099-08-15T04:10:00.000Z',
+            reasoning_receipt: {
+              schema_version: 'price_reasoning_receipt.v1',
+              scenarios: {
+                low: { total: 150_000 },
+                high: { total: 250_000 },
+              },
+              fairness: {
+                price_source: 'baseline_with_market',
+                confidence: 'medium',
+                baseline_evidence: null,
+                market_source_count: 3,
+                high_trust_source_count: 2,
+                quorum_met: true,
+                cap_statement: 'Khoảng giá chỉ dùng các kết quả định giá đã kiểm chứng.',
+              },
+            },
+          },
         },
         error: null,
       },
       {
         data: {
-          id: 'worker-1',
+          id: candidateWorkerId,
           rating: 4.8,
           total_jobs: 12,
           years_experience: 5,
           verification_status: 'approved',
+          date_of_birth: '1990-04-07',
+          gender: 'male',
         },
         error: null,
       },
@@ -258,19 +312,27 @@ describe('matching-accept', () => {
       supabase: client,
     }
 
-    const response = await createEdgeServices({}).getWorkerCandidate(ctx, 'job-1')
+    const response = await createEdgeServices({}).getWorkerCandidate(ctx, candidateJobId)
     expect(response).toMatchObject({
-      job_id: 'job-1',
+      job_id: candidateJobId,
       status: 'worker_candidate_pending',
       candidate: {
         candidate_id: 'candidate-1',
-        worker_id: 'worker-1',
+        worker_id: candidateWorkerId,
         display_name: 'Thợ Minh',
         rating: 4.8,
         total_jobs: 12,
         years_experience: 5,
+        birth_year: 1990,
+        gender: 'male',
         verification_status: 'approved',
         direct_payment_available: false,
+        original_scope_price_quote: {
+          quote_id: originalScopeQuoteId,
+          customer_total: 200_000,
+          platform_fee: 20_000,
+          worker_net: 180_000,
+        },
       },
     })
     expect(response.candidate).not.toHaveProperty('phone')
@@ -280,12 +342,13 @@ describe('matching-accept', () => {
     expect(response.candidate).not.toHaveProperty('collateral_amount')
     expect(response.candidate).not.toHaveProperty('available_balance')
     expect(response.candidate).not.toHaveProperty('worker_net')
+    expect(response.candidate?.original_scope_price_quote).not.toHaveProperty('reasoning_receipt')
     expect(client.calls).toContainEqual(expect.objectContaining({
       table: 'rpc:get_direct_worker_payment_availability',
       operations: [[
         'rpc',
         'get_direct_worker_payment_availability',
-        { p_customer_id: 'customer-1', p_job_id: 'job-1' },
+        { p_customer_id: 'customer-1', p_job_id: candidateJobId },
       ]],
     }))
     const selectedColumns = client.calls.flatMap((call) => call.operations)

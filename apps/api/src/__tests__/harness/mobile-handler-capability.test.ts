@@ -341,4 +341,60 @@ describe('mobile-api durable idempotency ingress', () => {
     })
     expect(service).not.toHaveBeenCalled()
   })
+
+  it('delegates Kael session-create replay to the domain response recovery', async () => {
+    const rpc = vi.fn(async (name: string) => {
+      if (name === 'reserve_harness_idempotency') {
+        return {
+          data: [{
+            reservation_id: '550e8400-e29b-41d4-a716-446655440000',
+            response_hash: 'a'.repeat(64),
+            state: 'completed',
+          }],
+          error: null,
+        }
+      }
+      return { data: true, error: null }
+    })
+    const createKaelChat = vi.fn(async () => ({
+      session: { id: 'case-session-1' },
+      turns: [],
+    }))
+    const handler = createMobileApiHandler({
+      environment: 'staging',
+      releaseId: 'harness-test',
+      authenticate: async () => ({
+        success: true,
+        user: { id: 'customer-1' },
+        role: 'customer',
+        accountState: 'active',
+        environment: 'staging',
+        releaseId: 'harness-test',
+        supabase: { rpc },
+        userSupabase: { rpc },
+        privilegedSupabase: { rpc },
+      }),
+      services: { createKaelChat } as unknown as MobileApiServices,
+    })
+    const clientRequestId = '550e8400-e29b-41d4-a716-446655440005'
+
+    const response = await handler(new Request('https://api.example.test/kael/chat', {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'idempotency-key': `mobile:${clientRequestId}`,
+      },
+      body: JSON.stringify({
+        client_request_id: clientRequestId,
+        message: 'Lavabo đang rò nước khi mở vòi.',
+        photo_urls: [],
+        problem_chips: ['Ống rò rỉ'],
+        service_type: 'plumbing',
+      }),
+    }))
+
+    expect(response.status).toBe(201)
+    expect(createKaelChat).toHaveBeenCalledTimes(1)
+    expect(rpc).not.toHaveBeenCalledWith('reserve_harness_idempotency', expect.anything())
+  })
 })

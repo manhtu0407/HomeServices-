@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { ServiceType } from '@nestscout/shared'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 
@@ -14,6 +14,7 @@ import {
   cleanRouteJobId,
   customerKaelChatRoute,
   customerKaelWorkRoute,
+  customerKaelWorkRouteForSession,
   customerCaseWorkRouteForDeal,
   isRealCaseDeal,
 } from './customer-kael-routing'
@@ -38,6 +39,7 @@ import { useV21Theme } from '../ui/use-v21-theme'
 
 type KaelRouteParams = {
   focus?: string | string[]
+  handoff?: string | string[]
   jobId?: string | string[]
   mode?: string | string[]
   ns_audit_role?: string | string[]
@@ -64,6 +66,7 @@ export function useCustomerKaelSurfaceController(stateScopeKey: string) {
       ? 'normal'
       : null
   const routeMode = explicitRouteMode ?? chatScreenModeParam(firstParam(params.screen)) ?? 'normal'
+  const routeHandoffId = firstParam(params.handoff) ?? null
   const routeJobId = cleanRouteJobId(firstParam(params.jobId))
   const routeSessionId = firstParam(params.sessionId) ?? null
   const [initialPendingDraft] = useState(() => (
@@ -87,7 +90,9 @@ export function useCustomerKaelSurfaceController(stateScopeKey: string) {
   )
   const chatUi = useCustomerKaelChatUiState()
   const mode: CustomerKaelMode = conversation.localMode
-  const conversations = useCustomerKaelConversations(mode, language)
+  const conversations = useCustomerKaelConversations(mode, language, {
+    suppressActiveResponse: Boolean(routeHandoffId || routeSessionId),
+  })
   const activeCatalogCaseSessionId = conversations.activeResponse?.session.case_session_id ?? null
   const activeCatalogCaseMatchesWorkflowDeal = Boolean(
     activeCatalogCaseSessionId &&
@@ -122,6 +127,10 @@ export function useCustomerKaelSurfaceController(stateScopeKey: string) {
     Boolean(deal && mode === 'case'),
     language,
   )
+  const hasSharedJobIncident = jobIncidentThread.messages.some((message) =>
+    message.sender_role === 'kael' && message.content.startsWith('Kael Công việc:'),
+  )
+  const dealScopedWorkflowError = deal ? workflow.state.lastError : null
   const visibleError = caseHydration.authRequired
     ? (language === 'vi'
       ? 'Phiên đăng nhập không còn hợp lệ. Vui lòng đăng nhập lại.'
@@ -130,12 +139,14 @@ export function useCustomerKaelSurfaceController(stateScopeKey: string) {
       ? workflow.state.lastError ?? (language === 'vi'
         ? 'Chưa thể tải công việc. Vui lòng thử lại.'
         : 'The job could not be loaded. Try again.')
-    : workflow.state.lastError ?? conversation.error
+    : dealScopedWorkflowError ?? conversation.error
   const [initialSelectedService] = useState<ServiceType | null>(() => (
     initialPendingDraft?.serviceType ??
     serviceParam(firstParam(params.service))
   ))
-  const selectedService = deal?.draft.serviceType ?? initialSelectedService
+  const selectedService = deal?.draft.serviceType ??
+    conversation.chat?.session.service_type ??
+    initialSelectedService
   const selectedServiceRef = useRef<ServiceType | null>(selectedService)
   useLayoutEffect(() => {
     selectedServiceRef.current = selectedService
@@ -151,6 +162,22 @@ export function useCustomerKaelSurfaceController(stateScopeKey: string) {
     language,
     selectedService,
   })
+  const visualAuditCustomerSuffix = firstParam(params.ns_audit_role) === 'customer'
+    ? '&ns_audit_role=customer'
+    : ''
+  const replaceRoute = router.replace
+  const recoveredHandoffSessionId = routeHandoffId
+    ? conversation.chat?.session.id ?? conversations.sessions.find((catalogSession) => (
+      catalogSession.client_request_id === routeHandoffId
+    ))?.case_session_id ?? null
+    : null
+  useEffect(() => {
+    if (!recoveredHandoffSessionId) return
+    replaceRoute(customerKaelWorkRouteForSession(
+      recoveredHandoffSessionId,
+      visualAuditCustomerSuffix,
+    ) as never)
+  }, [recoveredHandoffSessionId, replaceRoute, visualAuditCustomerSuffix])
   useCustomerKaelSessionHydration({
     conversation,
     kaelRequestGuard,
@@ -164,9 +191,6 @@ export function useCustomerKaelSurfaceController(stateScopeKey: string) {
     selectedServiceRef,
     sessionAccessToken,
   })
-  const visualAuditCustomerSuffix = firstParam(params.ns_audit_role) === 'customer'
-    ? '&ns_audit_role=customer'
-    : ''
   const normalChatRoute = `${customerKaelChatRoute}${visualAuditCustomerSuffix}`
   const blankCaseWorkRoute = `${customerKaelWorkRoute}${visualAuditCustomerSuffix}`
   const caseWorkRoute = customerCaseWorkRouteForDeal(deal, visualAuditCustomerSuffix)
@@ -225,7 +249,7 @@ export function useCustomerKaelSurfaceController(stateScopeKey: string) {
     conversation,
     conversations,
     deal,
-    hasSharedJobIncident: presentation.hasSharedJobIncident,
+    hasSharedJobIncident,
     jobIncidentThread,
     kaelRequestGuard,
     language,
@@ -257,7 +281,6 @@ export function useCustomerKaelSurfaceController(stateScopeKey: string) {
     normalChatRoute,
     processController,
     reduceMotion,
-    reduceTransparency,
     router,
     stateScopeKey,
   })

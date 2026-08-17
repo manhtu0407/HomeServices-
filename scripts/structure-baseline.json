@@ -264,7 +264,7 @@
       "supabase/functions/_shared/contracts.ts"
     ],
     "KaelEstimateAnalysisReceipt": [
-      "packages/shared/src/types/api-responses.ts",
+      "packages/shared/src/types/price-evidence-responses.ts",
       "supabase/functions/_shared/contracts.ts"
     ],
     "KaelLearningCandidateApproveResponse": [

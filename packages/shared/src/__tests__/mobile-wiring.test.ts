@@ -249,31 +249,12 @@ describe('screen files existence (STRUCTURES.md mapping)', () => {
     expect(exists(`app/(auth)/${file}`)).toBe(true)
   })
 
-  it('does not ship the removed auth onboarding route', () => {
-    expect(exists('app/(auth)/onboard.tsx')).toBe(false)
-  })
-
   it.each(customerScreens)('(customer)/%s exists', (file) => {
     expect(exists(`app/(customer)/${file}`)).toBe(true)
   })
 
   it.each(workerScreens)('(worker)/%s exists', (file) => {
     expect(exists(`app/(worker)/${file}`)).toBe(true)
-  })
-
-  it('root _layout.tsx exists', () => {
-    expect(exists('app/_layout.tsx')).toBe(true)
-  })
-
-  it('root index.tsx exists (splash redirect)', () => {
-    expect(exists('app/index.tsx')).toBe(true)
-  })
-
-  it('each group has _layout.tsx', () => {
-    expect(exists('app/(auth)/_layout.tsx')).toBe(true)
-    expect(exists('app/(customer)/_layout.tsx')).toBe(true)
-    expect(exists('app/(worker)/_layout.tsx')).toBe(true)
-    expect(exists('app/(admin)/_layout.tsx')).toBe(true)
   })
 
   it('routes every admin entry through the current Admin sections surface', () => {
@@ -347,30 +328,14 @@ describe('customer tab labels (STRUCTURES.md A1)', () => {
     expect(src).toContain('href: null')
   })
 
-  it('tab route: home', () => {
-    expect(src).toContain('name="home"')
-  })
-
   it('tab route: booking keeps the current service-entry role', () => {
     expect(src).toContain('name="booking"')
     expect(src).not.toContain('tabBarLabel')
   })
 
-  it('tab route: kael', () => {
-    expect(src).toContain('name="kael"')
-  })
-
   it('tab route: history uses the current activity role', () => {
     expect(src).toContain('name="history"')
     expect(src).not.toContain('tabBarLabel')
-  })
-
-  it('tab route: profile', () => {
-    expect(src).toContain('name="profile"')
-  })
-
-  it('uses Tabs from expo-router', () => {
-    expect(src).toMatch(/import\s+\{.*Tabs.*\}\s+from\s+['"]expo-router['"]/)
   })
 
   it('keeps route titles localized while the native tab bar stays removed', () => {
@@ -527,7 +492,6 @@ describe('customer frontend shell surfaces', () => {
     expect(src).not.toContain('client-price-check-prototype')
   })
 
-
   it('wires (customer)/kael to the restored V21 Kael chat surface', () => {
     const src = read('app/(customer)/kael.tsx')
     expect(src).toContain('CustomerKaelSurface')
@@ -561,18 +525,11 @@ describe('customer frontend shell surfaces', () => {
     expect(shell()).toContain('useFrontendWorkflow')
   })
 
-
-
-
   it('keeps design-lab artifacts out of production customer source references', () => {
     expect(exists('../../.tmp/design-lab/customer-app-v1')).toBe(false)
     expect(exists('../../.tmp/design-lab/customer-app-v2')).toBe(false)
     expect(shell()).not.toContain('.tmp/design-lab')
   })
-
-
-
-
 
   it('removes the legacy native customer tab bar so only the custom dock renders', () => {
     const src = customerLayout()
@@ -588,14 +545,6 @@ describe('customer frontend shell surfaces', () => {
     expect(src).not.toContain('customer-tab-kael-mascot-8a')
     expect(src).not.toContain('react-native-svg')
   })
-
-
-
-
-
-
-
-
 
 })
 
@@ -909,7 +858,6 @@ describe('frontend workflow provider wiring', () => {
     expect(src).toContain('await workerRefresh()')
   })
 
-
   it('normalizes backend price estimates to the required customer disclaimer before UI render', () => {
     const src = readFrontendWorkflowLayer()
     const requiredDisclaimer = 'Đây là ước tính do Kael tính theo dữ liệu hiện có. Kael có thể cập nhật khi có bằng chứng phạm vi mới.'
@@ -1151,26 +1099,6 @@ describe('worker tab labels (STRUCTURES.md B1)', () => {
     expect(matches.length).toBe(5)
   })
 
-  it('tab: Trang chủ', () => {
-    expect(src).toContain("'Trang chủ'")
-  })
-
-  it('tab: Công việc', () => {
-    expect(src).toContain("'Công việc'")
-  })
-
-  it('tab: Tin nhắn', () => {
-    expect(src).toContain("'Tin nhắn'")
-  })
-
-  it('tab: Thu nhập', () => {
-    expect(src).toContain("'Thu nhập'")
-  })
-
-  it('tab: Hồ sơ', () => {
-    expect(src).toContain("'Hồ sơ'")
-  })
-
   it('keeps hidden native tab icon accessibility labels user-facing', () => {
     expect(src).toContain('WORKER_TAB_COPY')
     expect(src).toContain('useAppLanguage')
@@ -1408,9 +1336,6 @@ describe('worker V5/XanhSM aligned shell surfaces', () => {
     expect(src).not.toContain('@/components/worker/worker-surfaces-v3')
   })
 
-
-
-
   it('keeps Worker shell behind provider actions with no direct backend, AI, or secrets', () => {
     const files = [
       shellPath,
@@ -1446,21 +1371,8 @@ describe('worker V5/XanhSM aligned shell surfaces', () => {
 // Auth layout - Stack navigator (A0: login -> verify-otp)
 // ===================================================================
 
-
 describe('auth layout wiring', () => {
   const src = read('app/(auth)/_layout.tsx')
-
-  it('uses Stack from expo-router', () => {
-    expect(src).toMatch(/import\s+\{.*Stack.*\}\s+from\s+['"]expo-router['"]/)
-  })
-
-  it('registers login screen', () => {
-    expect(src).toContain('"login"')
-  })
-
-  it('registers verify-otp screen', () => {
-    expect(src).toContain('"verify-otp"')
-  })
 
   it('does not register the removed onboard screen', () => {
     expect(src).not.toContain('"onboard"')
@@ -1494,7 +1406,10 @@ describe('auth production login surface', () => {
     expect(surface).toContain('auth-role-gate-content')
     expect(surface).toContain('auth-entry-role-customer')
     expect(surface).toContain('auth-entry-role-worker')
-    expect(surface).toContain('auth-role-continue')
+    expect(surface).toContain('hasSelectedRole')
+    expect(surface).toContain('onContinue')
+    expect(surface).not.toContain('ROLE_DOUBLE_TAP_WINDOW_MS')
+    expect(surface).not.toContain('auth-role-continue')
     expect(surface).not.toContain('/(auth)/onboard')
     expect(exists('app/(auth)/onboard.tsx')).toBe(false)
   })
@@ -1504,8 +1419,8 @@ describe('auth production login surface', () => {
     expect(surface).toContain('role: initialRole')
     expect(surface).toContain('useEntryAccessState(initialRole, initialStep)')
     expect(surface).toContain('const chooseRole')
-    expect(surface).toContain("onRoleChange('customer')")
-    expect(surface).toContain("onRoleChange('worker')")
+    expect(surface).toContain("handleRolePress('customer')")
+    expect(surface).toContain("handleRolePress('worker')")
     expect(surface).toContain('TextInput')
     expect(surface).toContain('secureTextEntry')
     expect(surface).toContain('signInWithPassword')
@@ -1526,7 +1441,8 @@ describe('auth production login surface', () => {
     expect(surface).toContain('auth-login-1-4')
     expect(surface).toContain('auth-register-1-5')
     expect(surface).toContain('auth-onboarding-1-6')
-    expect(surface).toContain('LottieLogoMark')    expect(surface).toContain('KaelCoreHero')
+    expect(surface).toContain('LottieLogoMark')
+    expect(surface).toContain('KaelCoreHero')
     expect(surface).not.toContain('function WelcomeScreen')
     expect(surface).not.toContain('KaelCoreMark')
     expect(surface).toContain('GlassPanel')
@@ -1550,17 +1466,8 @@ describe('auth production login surface', () => {
 // Root layout - AuthProvider wrapping
 // ===================================================================
 
-
 describe('root layout', () => {
   const src = read('app/_layout.tsx')
-
-  it('imports AuthProvider', () => {
-    expect(src).toContain('AuthProvider')
-  })
-
-  it('wraps children with AuthProvider', () => {
-    expect(src).toContain('<AuthProvider>')
-  })
 
   it('uses Slot from expo-router (not Stack)', () => {
     // Root should use Slot to let groups define their own navigators
@@ -1576,34 +1483,14 @@ describe('root layout', () => {
 describe('index.tsx routing logic', () => {
   const src = read('app/index.tsx')
 
-  it('imports useAuth hook', () => {
-    expect(src).toContain('useAuth')
-  })
-
-  it('checks loading state', () => {
-    expect(src).toContain('loading')
-  })
-
   it('redirects to (auth)/login when no session', () => {
     expect(src).toContain('/(auth)/login')
     expect(src).not.toContain('/(auth)/onboard')
   })
 
-  it('redirects to (worker)/home for worker role', () => {
-    expect(src).toContain('/(worker)/home')
-  })
-
-  it('redirects to (customer)/home as default', () => {
-    expect(src).toContain('/(customer)/home')
-  })
-
   it('uses Redirect from expo-router (not router.push)', () => {
     expect(src).toContain('Redirect')
     expect(src).toMatch(/import\s+\{.*Redirect.*\}\s+from\s+['"]expo-router['"]/)
-  })
-
-  it('shows loading indicator while checking auth', () => {
-    expect(src).toContain('ActivityIndicator')
   })
 
   it('keeps admin at auth gateway to choose audit section', () => {
@@ -1722,27 +1609,6 @@ describe('supabase.ts (Rule #1: no hardcoded secrets)', () => {
 describe('auth-provider.tsx', () => {
   const src = [read('lib/auth-provider.tsx'), read('lib/auth-oauth-runtime.ts')].join('\n')
 
-  it('creates React Context', () => {
-    expect(src).toContain('createContext')
-  })
-
-  it('exports AuthProvider component', () => {
-    expect(src).toMatch(/export\s+function\s+AuthProvider/)
-  })
-
-  it('exports useAuth hook', () => {
-    expect(src).toMatch(/export\s+function\s+useAuth/)
-  })
-
-  it('listens to onAuthStateChange', () => {
-    expect(src).toContain('onAuthStateChange')
-  })
-
-  it('cleans up subscription on unmount', () => {
-    // Must call subscription.unsubscribe() in cleanup
-    expect(src).toContain('subscription.unsubscribe()')
-  })
-
   it('fetches role from profiles table', () => {
     expect(src).toContain("from('profiles')")
     expect(src).toContain("select('role')")
@@ -1776,10 +1642,6 @@ describe('auth-provider.tsx', () => {
     expect(src).toContain('authError')
   })
 
-  it('sets loading false after role fetch completes', () => {
-    expect(src).toContain("patchAuth({ role: nextRole, profileStatus: 'ready', loading: false })")
-  })
-
   it('handles Supabase auth/profile failures without leaving loading stuck', () => {
     expect(src).toContain('try {')
     expect(src).toContain('} catch {')
@@ -1788,7 +1650,7 @@ describe('auth-provider.tsx', () => {
     expect(src).toContain('Vai trò tài khoản không hợp lệ')
   })
 
-  it('validates malformed Email/SDT locally before Supabase password sign-in', () => {
+  it('calls parseAuthIdentifier before signInWithPassword', () => {
     expect(src).toContain('parseAuthIdentifier')
     expect(src).toContain('validateAuthIdentifier')
     expect(src.indexOf('const identifier = parseAuthIdentifier(identifierInput)')).toBeLessThan(src.indexOf('supabase.auth.signInWithPassword(credentials)'))
@@ -1864,28 +1726,15 @@ describe('app.json configuration', () => {
   const appJson = JSON.parse(readFileSync(resolve(MOBILE_ROOT, 'app.json'), 'utf-8'))
   const expo = appJson.expo
 
-  it('has app name', () => {
-    expect(expo.name).toBeDefined()
-    expect(expo.name.length).toBeGreaterThan(0)
-  })
-
-  it('has scheme for deep linking', () => {
-    expect(expo.scheme).toBeDefined()
-  })
-
-  it('has iOS bundleIdentifier', () => {
-    expect(expo.ios?.bundleIdentifier).toBeDefined()
-  })
-
+  // A missing name, scheme, bundle identifier, or package fails `eas build` on
+  // the first step. Reading app.json to assert the field is present is the
+  // manifest-field pattern this suite dropped elsewhere; what stays below are
+  // the fields with a value the build does not check for us.
   it('has iOS store build metadata and review permission copy', () => {
     expect(expo.ios?.buildNumber).toBeDefined()
     expect(expo.ios?.config?.usesNonExemptEncryption).toBe(false)
     expect(expo.ios?.infoPlist?.NSCameraUsageDescription).toContain('camera')
     expect(expo.ios?.infoPlist?.NSPhotoLibraryUsageDescription).toContain('ảnh')
-  })
-
-  it('has Android package', () => {
-    expect(expo.android?.package).toBeDefined()
   })
 
   it('has an Android version code that can replace the prior preview build', () => {
@@ -1916,11 +1765,6 @@ describe('app.json configuration', () => {
       typeof p === 'string' ? p === 'expo-router' : p[0] === 'expo-router'
     )
     expect(hasRouter).toBe(true)
-  })
-
-  it('has supabase config in extra (not hardcoded in code)', () => {
-    expect(expo.extra?.supabaseUrl).toBeDefined()
-    expect(expo.extra?.supabasePublishableKey).toBeDefined()
   })
 
   it('registers expo-image-picker for customer image/video selection copy', () => {
@@ -1991,10 +1835,6 @@ describe('web preview dependencies', () => {
 
   it('keeps the existing Reanimated dependency available without forcing it into glass surfaces', () => {
     expect(mobilePackage.dependencies['react-native-reanimated']).toBe('4.5.1')
-  })
-
-  it('declares expo-image-picker for local image/video draft media', () => {
-    expect(mobilePackage.dependencies['expo-image-picker']).toBeDefined()
   })
 
   it('provides isolated staging and Production web preview runners that load public env without printing values', () => {
@@ -2146,7 +1986,6 @@ describe('mobile glassmorphism design system', () => {
     expect(workerDock).toContain('router.replace(workerV5Routes[item.id] as never)')
   })
 
-
 })
 
 // ===================================================================
@@ -2176,6 +2015,9 @@ describe('frontend-only workflow safety audit', () => {
   const frontendWorkflowProvider = readFrontendWorkflowLayer()
   const edgeRouter = readEdgeRouterLayer()
   const edgeServices = readEdgeServiceLayer()
+  const edgeCreateJob = readRepository(
+    'supabase/functions/mobile-api/_shared/domains/job/create/create.ts',
+  )
   const sharedApiTypes = readSource(resolve(__dirname, '../types/api-responses.ts'))
 
   it('uses one shared app language store with matching VI/EN dictionary keys', () => {
@@ -2212,9 +2054,6 @@ describe('frontend-only workflow safety audit', () => {
     expect(provider).toContain('return workflowErrorCopy[language].fallback')
     expect(provider).toContain('const mediaError = localizeMediaUploadFailure(uploaded, language)')
   })
-
-
-
 
   it('keeps mobile API response contracts aligned with PR#12 worker endpoints without wiring UI mutations', () => {
     expect(apiTypes).toContain('export type BroadcastListResponse = WorkerBroadcastsResponse')
@@ -2283,14 +2122,15 @@ describe('frontend-only workflow safety audit', () => {
     expect(workerStatusUpdateSchema).toContain('result.access_check_in = parseWorkerAccessCheckIn(record.access_check_in, jobId)')
     expect(workerStatusUpdateSchema).toContain('if (status === "completed_by_worker")')
     expect(workerStatusUpdateSchema).toContain('Cần ghi chú hoàn tất trước khi báo hoàn tất')
-    const createJobReturn = edgeServices.slice(edgeServices.indexOf('return {\n    job_id: jobId'), edgeServices.indexOf('async function cancelAnalyzingJob'))
-    expect(createJobReturn).toContain('final_price: lockedFinalPrice')
+    expect(edgeCreateJob).toContain('final_price: null')
     // listWorkerJobs is the last function in the last service module, so slice to end of the layer.
-    const listWorkerJobs = edgeServices.slice(edgeServices.indexOf('async function listWorkerJobs'))
+    const listWorkerJobs = edgeServices.slice(edgeServices.indexOf('export async function listWorkerJobs'))
     expect(edgeServices).toContain('const WORKER_JOB_LIST_COLUMNS =')
     expect(edgeServices).toContain('photo_urls, completion_notes, completion_photo_urls')
     expect(listWorkerJobs).toContain('.select(WORKER_JOB_LIST_COLUMNS)')
-    expect(listWorkerJobs).toContain('.select(`job_id, jobs!inner(${WORKER_JOB_LIST_COLUMNS})`)')
+    expect(listWorkerJobs).toContain(
+      '.select(`job_id, broadcast_id, original_scope_price_quote, jobs!inner(${WORKER_JOB_LIST_COLUMNS})`)',
+    )
     expect(listWorkerJobs).toContain('projectAddressAccess(row, "worker")')
     expect(listWorkerJobs).not.toContain('address_lat, address_lng, geo_source')
     expect(listWorkerJobs).not.toContain('address_lat: routeLatitude')

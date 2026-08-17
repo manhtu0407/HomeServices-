@@ -1,5 +1,5 @@
 import type { AppLanguage } from '@/lib/app-language'
-import { WORKFLOW_PHASES, type LocalDeal, type WorkflowPhase } from '@nestscout/shared'
+import { WORKFLOW_PHASES, toWorkflowPhase, type LocalDeal, type WorkflowPhase } from '@nestscout/shared'
 
 import { customerV21ServiceCopy } from '../ui/copy'
 import { formatDurationShort } from './case-work-display-model'
@@ -76,6 +76,13 @@ const ACTION_BY_PHASE: Readonly<Partial<Record<WorkflowPhase, CaseWorkResponseAc
 })
 
 const CASE_WORK_HISTORY_PHASES: readonly WorkflowPhase[] = WORKFLOW_PHASES.filter((phase) => phase !== 'cancelled')
+const WORK_EXECUTION_PHASES = new Set<WorkflowPhase>([
+  'worker_matched',
+  'worker_on_way',
+  'arrived',
+  'inspecting',
+  'repairing',
+])
 
 const VI_COMPLETED_PHASE_TITLES: Readonly<Record<WorkflowPhase, string>> = Object.freeze({
   arrived: 'Thợ đã đến nơi',
@@ -92,6 +99,7 @@ const VI_COMPLETED_PHASE_TITLES: Readonly<Record<WorkflowPhase, string>> = Objec
   paid: 'Thanh toán đã được xác nhận',
   payment_pending: 'Thanh toán đã được mở',
   repairing: 'Công việc đã được thực hiện',
+  scope_change_reviewing: 'Kael đã kiểm tra phát sinh',
   scope_change_pending: 'Đề xuất đổi phạm vi đã được xử lý',
   ticket_review: 'Bạn đã xác nhận phương án',
   worker_candidate_review: 'Bạn đã xem và xác nhận thợ',
@@ -114,6 +122,7 @@ const EN_COMPLETED_PHASE_TITLES: Readonly<Record<WorkflowPhase, string>> = Objec
   paid: 'Payment was confirmed',
   payment_pending: 'Payment was opened',
   repairing: 'The work was carried out',
+  scope_change_reviewing: 'Kael reviewed the incident',
   scope_change_pending: 'The scope proposal was handled',
   ticket_review: 'You confirmed the proposal',
   worker_candidate_review: 'You reviewed and confirmed the worker',
@@ -206,6 +215,12 @@ const VI_COPY: Readonly<Record<WorkflowPhase, PhaseCopy>> = Object.freeze({
     status: 'Đang thực hiện',
     title: 'Công việc đã bắt đầu',
   },
+  scope_change_reviewing: {
+    noteCopy: 'Giá và phạm vi cũ vẫn được giữ nguyên. Phần phát sinh chưa được phép thực hiện cho tới khi Kael đưa ra đề xuất có căn cứ và bạn xác nhận lại.',
+    noteTitle: 'Quyền quyết định vẫn thuộc về bạn',
+    status: 'Đang thu thập căn cứ',
+    title: 'Kael đang kiểm tra thay đổi phạm vi',
+  },
   scope_change_pending: {
     noteCopy: 'Công việc đang tạm dừng ở phần thay đổi để chờ quyết định hợp lệ.',
     noteTitle: 'Lý do thay đổi',
@@ -253,6 +268,7 @@ const EN_COPY: Readonly<Record<WorkflowPhase, PhaseCopy>> = Object.freeze({
   paid: { noteCopy: 'Payment has been confirmed by the system, so you can review this work.', noteTitle: 'After payment', status: 'Paid', title: 'Payment has been confirmed' },
   payment_pending: { noteCopy: 'The system is waiting for a real payment status before review becomes available.', noteTitle: 'Payment status', status: 'Payment pending', title: 'Payment is awaiting confirmation' },
   repairing: { noteCopy: 'Kael reports only important changes to scope, progress, or safety.', noteTitle: 'Change tracking', status: 'In progress', title: 'Work has started' },
+  scope_change_reviewing: { noteCopy: 'The prior scope and price remain unchanged. Changed work is not authorized until Kael produces an evidence-backed proposal and you confirm it again.', noteTitle: 'You retain the decision', status: 'Collecting evidence', title: 'Kael is reviewing the scope change' },
   scope_change_pending: { noteCopy: 'The changed work is paused until a valid decision is recorded.', noteTitle: 'Reason for change', status: 'Decision needed', title: 'A scope change has been proposed' },
   ticket_review: { noteCopy: 'Confirm only when the scope and estimate are clear and match your request.', noteTitle: 'Your decision', status: 'Confirmation needed', title: 'The proposal is waiting for your decision' },
   worker_candidate_review: { noteCopy: 'Review the safe profile and your saved checklist before deciding.', noteTitle: 'Before choosing', status: 'Confirmation needed', title: 'The worker profile is ready' },
@@ -293,7 +309,10 @@ export function buildCompletedCaseWorkResponseModels({
   language,
   phase,
 }: BuildCaseWorkResponseModelInput): CaseWorkResponseModel[] {
-  const currentIndex = CASE_WORK_HISTORY_PHASES.indexOf(phase)
+  const historyPhase = phase === 'scope_change_reviewing' && deal
+    ? toWorkflowPhase(deal.backendStatus ?? deal.status)
+    : phase
+  const currentIndex = CASE_WORK_HISTORY_PHASES.indexOf(historyPhase)
   if (currentIndex <= 0) return []
 
   const historyCopy = language === 'vi'
@@ -311,9 +330,14 @@ export function buildCompletedCaseWorkResponseModels({
       }
 
   const completedModels: CaseWorkResponseModel[] = []
+  const resumePhase = phase === 'scope_change_pending' && deal?.scopeChange?.resumeJobStatus
+    ? toWorkflowPhase(deal.scopeChange.resumeJobStatus)
+    : null
+  const resumeIndex = resumePhase ? CASE_WORK_HISTORY_PHASES.indexOf(resumePhase) : -1
   for (let index = 0; index < currentIndex; index += 1) {
     const completedPhase = CASE_WORK_HISTORY_PHASES[index]
     if (completedPhase === 'scope_change_pending' && !deal?.scopeChange) continue
+    if (resumeIndex >= 0 && WORK_EXECUTION_PHASES.has(completedPhase) && index > resumeIndex) continue
 
     completedModels.push({
       actionKind: 'none',
@@ -455,6 +479,22 @@ function dynamicPhaseCopy({
   if (phase === 'scope_change_pending') {
     const reason = compactText(deal?.scopeChange?.reason ?? deal?.scopeChange?.requestedDescription)
     return reason ? { ...copy, noteCopy: reason } : copy
+  }
+
+  if (phase === 'scope_change_reviewing') {
+    const status = deal?.scopeReview?.status
+    if (status === 'awaiting_customer') {
+      return {
+        ...copy,
+        status: language === 'vi' ? 'Cần bạn bổ sung thông tin' : 'Your input is needed',
+      }
+    }
+    if (status === 'ready_for_scope_proposal') {
+      return {
+        ...copy,
+        status: language === 'vi' ? 'Đang chuẩn bị đề xuất' : 'Preparing the proposal',
+      }
+    }
   }
 
   if (phase === 'customer_confirmed_completion' && !deal?.payment) {

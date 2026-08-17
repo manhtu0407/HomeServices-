@@ -34,7 +34,6 @@ export async function persistAndStartJobBroadcast(input: {
     estimate,
     estimateCardV3,
     now,
-    lockedFinalPrice,
     workerBriefCore,
     autonomyDecision,
   } = preparation;
@@ -52,7 +51,6 @@ export async function persistAndStartJobBroadcast(input: {
         kael_advisory: estimate.advisory,
         kael_estimate_card_v3: estimateCardV3,
         kael_worker_brief_core: workerBriefCore,
-        final_price: lockedFinalPrice,
         service_problem_id: pipeline.serviceProblemId,
         estimate_ready_at: now,
         broadcast_at: now,

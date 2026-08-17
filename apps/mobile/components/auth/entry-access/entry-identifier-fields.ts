@@ -3,16 +3,14 @@ import type { AppLanguage } from '@/lib/app-language'
 import { entryAccessCopy, localizeEntryAuthError } from './copy'
 import type { EntryRole } from './types'
 
-type IdentifierAvailabilityError = 'phoneRecovery' | 'phoneRegistration'
+type IdentifierAvailabilityError = 'phoneRecovery'
 
 const identifierAvailabilityErrors: Record<AppLanguage, Record<IdentifierAvailabilityError, string>> = {
   vi: {
     phoneRecovery: 'Khôi phục bằng SĐT chưa sẵn sàng. Vui lòng dùng thư điện tử.',
-    phoneRegistration: 'Đăng ký bằng SĐT chưa sẵn sàng. Vui lòng dùng thư điện tử.',
   },
   en: {
     phoneRecovery: 'Phone recovery is not available yet. Please use email.',
-    phoneRegistration: 'Phone registration is not available yet. Please use email.',
   },
 }
 
@@ -29,47 +27,41 @@ export function localizeIdentifierAvailabilityError(error: string, language: App
   return kind ? identifierAvailabilityError(kind, language) : null
 }
 
-export function validateIdentifierForRole(value: string, role: EntryRole, language: AppLanguage) {
-  if (role === 'customer') {
-    const error = validateAuthIdentifier(value)
-    return error ? localizeEntryAuthError(error, language, 'invalidIdentifier') : null
-  }
-  return parseAuthIdentifier(value)?.kind === 'email'
-    ? null
-    : entryAccessCopy[language].errors.invalidEmail
+export function validateIdentifierForRole(value: string, _role: EntryRole, language: AppLanguage) {
+  const error = validateAuthIdentifier(value)
+  return error ? localizeEntryAuthError(error, language, 'invalidIdentifier') : null
 }
 
-export function validateRegistrationIdentifier(value: string, language: AppLanguage) {
+export function validateRegistrationIdentifier(value: string, _role: EntryRole, language: AppLanguage) {
   const trimmed = value.trim()
   if (!trimmed) return entryAccessCopy[language].errors.registrationDetails
 
   const identifier = parseAuthIdentifier(trimmed)
-  if (identifier?.kind === 'phone') {
-    return identifierAvailabilityError('phoneRegistration', language)
-  }
-  return identifier?.kind === 'email' ? null : entryAccessCopy[language].errors.invalidEmail
+  return identifier?.kind === 'email' || identifier?.kind === 'phone'
+    ? null
+    : entryAccessCopy[language].errors.invalidEmail
 }
 
-export function identifierFieldProps(value: string, role: EntryRole, language: AppLanguage) {
-  const usesPhone = role === 'customer' && isPhoneIdentifierCandidate(value)
-  const isCustomer = role === 'customer'
+export function identifierFieldProps(value: string, _role: EntryRole, language: AppLanguage) {
+  const usesPhone = isPhoneIdentifierCandidate(value)
   const copy = entryAccessCopy[language].fields
   return {
     icon: usesPhone ? 'phone' as const : 'mail' as const,
-    keyboardType: isCustomer ? 'default' as const : 'email-address' as const,
-    label: isCustomer ? copy.customerIdentifierLabel : copy.workerIdentifierLabel,
-    placeholder: isCustomer ? copy.customerIdentifierPlaceholder : copy.workerIdentifierPlaceholder,
-    textContentType: isCustomer ? 'username' as const : 'emailAddress' as const,
+    keyboardType: 'default' as const,
+    label: copy.customerIdentifierLabel,
+    placeholder: copy.customerIdentifierPlaceholder,
+    textContentType: 'username' as const,
   }
 }
 
-export function registrationIdentifierFieldProps(language: AppLanguage) {
+export function registrationIdentifierFieldProps(value: string, _role: EntryRole, language: AppLanguage) {
+  const usesPhone = isPhoneIdentifierCandidate(value)
   const copy = entryAccessCopy[language].fields
   return {
-    icon: 'mail' as const,
-    keyboardType: 'email-address' as const,
-    label: copy.workerIdentifierLabel,
-    placeholder: copy.workerIdentifierPlaceholder,
-    textContentType: 'emailAddress' as const,
+    icon: usesPhone ? 'phone' as const : 'mail' as const,
+    keyboardType: 'default' as const,
+    label: copy.customerIdentifierLabel,
+    placeholder: copy.customerIdentifierPlaceholder,
+    textContentType: 'username' as const,
   }
 }

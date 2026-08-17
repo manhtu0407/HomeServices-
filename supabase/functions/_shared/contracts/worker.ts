@@ -28,6 +28,14 @@ export const WORKER_KAEL_MEMORY_PREFERENCE_KEYS = Object.freeze([
 export type WorkerKaelMemoryPreferenceKey =
   (typeof WORKER_KAEL_MEMORY_PREFERENCE_KEYS)[number];
 
+export const workerBroadcastAcceptSchema = z.object({
+  quote_id: z.string().uuid(),
+}).strict();
+
+export type WorkerBroadcastAcceptInput = z.infer<
+  typeof workerBroadcastAcceptSchema
+>;
+
 export const workerKaelMemoryPreferenceUpdateSchema = z.object({
   key: z.enum(WORKER_KAEL_MEMORY_PREFERENCE_KEYS),
   enabled: z.boolean(),
@@ -213,6 +221,11 @@ export const workerScopeChangeSchema = z.object({
 
 export const edgeJobIncidentScopeProposalSchema = z.object({
   client_request_id: clientRequestIdSchema,
+  quote_id: clientRequestIdSchema,
+}).strict();
+
+export const edgeJobIncidentScopePricePreviewSchema = z.object({
+  client_request_id: clientRequestIdSchema,
 }).strict();
 
 const workerKaelMediaRefSchema = z
@@ -313,6 +326,7 @@ export type EdgeWorkerAvatarUpdateInput = z.infer<typeof workerAvatarUpdateSchem
 export type AvailabilityToggleInput = z.infer<typeof availabilityToggleSchema>;
 export type WorkerScopeChangeInput = z.infer<typeof workerScopeChangeSchema>;
 export type EdgeJobIncidentScopeProposalInput = z.infer<typeof edgeJobIncidentScopeProposalSchema>;
+export type EdgeJobIncidentScopePricePreviewInput = z.infer<typeof edgeJobIncidentScopePricePreviewSchema>;
 export type WorkerKaelChatCreateInput = z.infer<
   typeof workerKaelChatCreateSchema
 >;

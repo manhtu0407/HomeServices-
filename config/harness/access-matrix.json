@@ -2,8 +2,8 @@
   "version": "1.0.0",
   "source": {
     "migrationRoot": "supabase/migrations",
-    "migrationCount": 251,
-    "migrationDigest": "e87d1393e7ceb42fbd3cbf53a233700ab5e178adb3a77cf242193e2f4f866fb6"
+    "migrationCount": 282,
+    "migrationDigest": "605a97179ecfa8260759ff333dad27701511cc3e53120b1d6dc3c2d10d642ede"
   },
   "actors": [
     "anonymous",
@@ -2294,7 +2294,7 @@
         "update",
         "delete"
       ],
-      "realtime": false
+      "realtime": true
     },
     {
       "name": "worker_payout_methods",
@@ -2464,6 +2464,14 @@
     }
   ],
   "functions": [
+    {
+      "signature": "accept_broadcast_atomic(uuid, uuid, uuid)",
+      "securityDefiner": false,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
     {
       "signature": "accept_broadcast_atomic(uuid, uuid)",
       "securityDefiner": false,
@@ -2919,7 +2927,7 @@
       ]
     },
     {
-      "signature": "claim_job_incident_scope_proposal_atomic(uuid, uuid, uuid)",
+      "signature": "claim_job_incident_scope_proposal_atomic(uuid, uuid, uuid, uuid)",
       "securityDefiner": true,
       "fixedSearchPath": true,
       "executeRoles": [
@@ -3197,6 +3205,14 @@
       ]
     },
     {
+      "signature": "enforce_kael_estimate_price_evidence()",
+      "securityDefiner": false,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
       "signature": "enqueue_worker_no_show_reviews(timestamp with time zone)",
       "securityDefiner": false,
       "fixedSearchPath": true,
@@ -3261,6 +3277,14 @@
       ]
     },
     {
+      "signature": "get_admin_operator_activation_status(uuid)",
+      "securityDefiner": true,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
       "signature": "get_customer_profile_insights_aggregate(uuid)",
       "securityDefiner": false,
       "fixedSearchPath": true,
@@ -3315,6 +3339,24 @@
       "executeRoles": [
         "service_role"
       ]
+    },
+    {
+      "signature": "guard_bilateral_final_price_lock()",
+      "securityDefiner": false,
+      "fixedSearchPath": true,
+      "executeRoles": []
+    },
+    {
+      "signature": "guard_scope_change_worker_quote_binding()",
+      "securityDefiner": true,
+      "fixedSearchPath": true,
+      "executeRoles": []
+    },
+    {
+      "signature": "guard_verified_scope_change_approval()",
+      "securityDefiner": false,
+      "fixedSearchPath": true,
+      "executeRoles": []
     },
     {
       "signature": "increment_kael_market_cache_hit(uuid)",
@@ -3805,6 +3847,14 @@
       ]
     },
     {
+      "signature": "save_job_incident_scope_price_quote_atomic(uuid, uuid, uuid, integer, uuid, jsonb, timestamp with time zone)",
+      "securityDefiner": true,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
       "signature": "save_worker_registration_draft_atomic(uuid, uuid, jsonb)",
       "securityDefiner": true,
       "fixedSearchPath": true,
@@ -3999,6 +4049,7 @@
     "job_events",
     "jobs",
     "notifications",
-    "scope_change_requests"
+    "scope_change_requests",
+    "worker_payment_ledger"
   ]
 }

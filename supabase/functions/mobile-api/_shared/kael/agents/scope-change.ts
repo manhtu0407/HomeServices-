@@ -1,11 +1,21 @@
-import type { EdgeAiSecrets, ScopeChangeComputeInput, ScopeChangeEstimateBody, ScopeChangeKaelEstimate, ScopeChangeKaelReview, ScopeChangeReviewBody, ScopeChangeReviewInput } from "../contracts/types.ts";
+import type { EdgeAiSecrets, ScopeChangeComputeInput, ScopeChangeEstimateBody, ScopeChangeKaelAnalysis, ScopeChangeKaelReview, ScopeChangeReviewBody, ScopeChangeReviewInput } from "../contracts/types.ts";
 import { PRICE_DISCLAIMER, scopeChangeEstimateSchema, scopeChangeReviewSchema } from "../contracts/types.ts";
 import { buildScopeChangeEstimateMessages, buildScopeChangeReviewMessages } from "../prompts/prompts.ts";
-import { callStructuredAI } from "../kael-providers/structured-call.ts";
+import {
+  callStructuredAI,
+  type StructuredValidationIssue,
+} from "../kael-providers/structured-call.ts";
 import type { KaelSpendGate } from "../kael-guardrails/spend-gate.ts";
-import { chooseCircuitAwareProviderOrNull } from "../kael-providers/routing.ts";
+import {
+  chooseCircuitAwareProviderOrNull,
+  circuitAwareProviderCandidatesForPurpose,
+} from "../kael-providers/routing.ts";
 import { maxTokensForPurpose } from "../kael-providers/routing.config.ts";
-import { logKaelEscalation, selectKaelEscalation } from "../kael-guardrails/escalation.ts";
+import {
+  type KaelEscalation,
+  logKaelEscalation,
+  selectKaelEscalation,
+} from "../kael-guardrails/escalation.ts";
 import {
   buildNoProviderTrace,
   buildProviderAttemptTrace,
@@ -18,10 +28,14 @@ export {
   type ScopeChangeRiskConfig,
 } from "../kael-guardrails/scope-risk.ts";
 import { timed } from "../pipeline/utils.ts";
+import { groundScopeChangeEstimate } from "../kael-guardrails/scope-change-grounding.ts";
 
 type ScopeChangeEstimateFallback = Extract<
-  ScopeChangeKaelEstimate,
+  ScopeChangeKaelAnalysis,
   { fallback_used: true }
+>;
+type ScopeChangeRoute = NonNullable<
+  ReturnType<typeof chooseCircuitAwareProviderOrNull>
 >;
 
 export const KAEL_PRICE_DISCLAIMER_V3 = PRICE_DISCLAIMER;
@@ -72,6 +86,12 @@ export async function reviewScopeChange(
           latencyMs: attempt.ms,
           costUsd: schemaResponse.usage.costUsd,
           fallbackUsed: true,
+          safeMetadata: {
+            provider_shape: describeScopeChangeProviderShape(
+              attempt.result.parsedValue,
+              attempt.result.validationIssues ?? [],
+            ),
+          },
         })],
       };
     }
@@ -148,13 +168,13 @@ export async function reviewScopeChange(
   };
 }
 
-// Kael computes new price estimate from worker's
-// reported on-site scope. Worker không nhập price; Kael giữ price authority.
+// Kael classifies the worker-reported scope. Money is attached only after this
+// function by a verified catalog-baseline gate.
 export async function computeScopeChangeEstimate(
   input: ScopeChangeComputeInput,
   secrets: EdgeAiSecrets,
   spendGate: KaelSpendGate,
-): Promise<ScopeChangeKaelEstimate> {
+): Promise<ScopeChangeKaelAnalysis> {
   const fallback = buildScopeChangeEstimateFallback(input);
   const route = chooseCircuitAwareProviderOrNull("scope_change");
   if (!route) {
@@ -164,19 +184,14 @@ export async function computeScopeChangeEstimate(
       trace: [scopeChangeNoProviderTrace()],
     };
   }
-  const provider = route.provider as "anthropic";
-  const attempt = await timed(() =>
-    callStructuredAI({
-      purpose: "scope_change",
-      provider,
-      model: route.model,
-      messages: buildScopeChangeEstimateMessages(input),
-      maxTokens: maxTokensForPurpose("scope_change", 500),
-      temperature: 0.1,
-      timeoutMs: route.latencyBudgetMs,
-      maxRetries: 0,
-    }, scopeChangeEstimateSchema, secrets, spendGate)
-  );
+  const { activeRoute, attempt, recoveryReason, recoveryTrace } =
+    await recoverScopeChangeEstimateSchema(
+      route,
+      await callScopeChangeEstimateProvider(route, input, secrets, spendGate),
+      input,
+      secrets,
+      spendGate,
+    );
 
   if (!attempt.result.success) {
     const schemaResponse = attempt.result.code === "SCHEMA_INVALID"
@@ -185,26 +200,32 @@ export async function computeScopeChangeEstimate(
     if (schemaResponse) {
       return {
         ...fallback,
-        provider,
-        model: route.model,
+        provider: activeRoute.provider as "anthropic" | "deepseek",
+        model: activeRoute.model,
         failure_reason: "INVALID_SCHEMA",
         cost_usd: schemaResponse.usage.costUsd,
         latency_ms: attempt.ms,
-        trace: [scopeChangeProviderTrace(route, "schema_invalid", {
+        trace: [...recoveryTrace, scopeChangeProviderTrace(activeRoute, "schema_invalid", {
           code: "INVALID_SCHEMA",
           latencyMs: attempt.ms,
           costUsd: schemaResponse.usage.costUsd,
           fallbackUsed: true,
+          safeMetadata: {
+            provider_shape: describeScopeChangeProviderShape(
+              attempt.result.parsedValue,
+              attempt.result.validationIssues ?? [],
+            ),
+          },
         })],
       };
     }
     return {
       ...fallback,
-      provider,
-      model: route.model,
+      provider: activeRoute.provider as "anthropic" | "deepseek",
+      model: activeRoute.model,
       failure_reason: attempt.result.code,
       latency_ms: attempt.ms,
-      trace: [scopeChangeProviderTrace(route, "error", {
+      trace: [...recoveryTrace, scopeChangeProviderTrace(activeRoute, "error", {
         code: attempt.result.code,
         latencyMs: attempt.ms,
         fallbackUsed: true,
@@ -212,19 +233,22 @@ export async function computeScopeChangeEstimate(
     };
   }
 
-  let selectedRoute = route;
+  let selectedRoute = activeRoute;
   let selectedData = attempt.result.data;
   let selectedCostUsd = attempt.result.usage.costUsd;
   let selectedLatencyMs = attempt.ms;
-  const trace = [scopeChangeProviderTrace(route, "success", {
+  const trace = [...recoveryTrace, scopeChangeProviderTrace(activeRoute, "success", {
+    code: recoveryReason
+      ? `MODEL_ESCALATION_${recoveryReason.toUpperCase()}`
+      : undefined,
     latencyMs: attempt.ms,
     costUsd: attempt.result.usage.costUsd,
     confidence: attempt.result.data.confidence,
     fallbackUsed: false,
   })];
   const escalation = selectKaelEscalation("scope_change", {
-    provider: route.provider,
-    model: route.model,
+    provider: activeRoute.provider,
+    model: activeRoute.model,
     confidence: attempt.result.data.confidence,
     highStakes: isScopeChangeHighStakes(input),
   });
@@ -258,14 +282,15 @@ export async function computeScopeChangeEstimate(
     }
   }
 
+  const groundedData = groundScopeChangeEstimate(input, selectedData);
   return {
-    schema_version: "scope_change_kael_review.v1",
-    prompt_version: "scope-change-estimate.2026-05-23.v1",
-    version: "scope-change-estimate.2026-05-23.v1",
-    ...selectedData,
-    advisory: selectedData.advisory ?? null,
+    schema_version: "scope_change_kael_review.v2",
+    prompt_version: "scope-change-estimate.2026-08-14.v3",
+    version: "scope-change-estimate.2026-08-14.v3",
+    ...groundedData,
+    advisory: groundedData.advisory ?? null,
     disclaimer: PRICE_DISCLAIMER,
-    provider: selectedRoute.provider as "anthropic",
+    provider: selectedRoute.provider as "anthropic" | "deepseek",
     model: selectedRoute.model,
     fallback_used: false,
     computed_at: new Date().toISOString(),
@@ -274,6 +299,113 @@ export async function computeScopeChangeEstimate(
     trace,
     input_summary: scopeChangeInputSummary(input),
   };
+}
+
+async function callScopeChangeEstimateProvider(
+  route: ScopeChangeRoute,
+  input: ScopeChangeComputeInput,
+  secrets: EdgeAiSecrets,
+  spendGate: KaelSpendGate,
+  schemaRepairRoot?: "array" | "other",
+) {
+  return await timed(() =>
+    callStructuredAI({
+      purpose: "scope_change",
+      provider: route.provider,
+      model: route.model,
+      messages: buildScopeChangeEstimateMessages(input, schemaRepairRoot),
+      maxTokens: maxTokensForPurpose("scope_change", 500),
+      temperature: 0.1,
+      timeoutMs: route.latencyBudgetMs,
+      maxRetries: 0,
+    }, scopeChangeEstimateSchema, secrets, spendGate)
+  );
+}
+
+async function recoverScopeChangeEstimateSchema(
+  route: ScopeChangeRoute,
+  initialAttempt: Awaited<ReturnType<typeof callScopeChangeEstimateProvider>>,
+  input: ScopeChangeComputeInput,
+  secrets: EdgeAiSecrets,
+  spendGate: KaelSpendGate,
+) {
+  const recoveryTrace: KaelSafeTraceEvent[] = [];
+  if (initialAttempt.result.success) {
+    return {
+      activeRoute: route,
+      attempt: initialAttempt,
+      recoveryReason: null,
+      recoveryTrace,
+    };
+  }
+  const recoveryReason = initialAttempt.result.code === "SCHEMA_INVALID"
+    ? "schema_invalid"
+    : initialAttempt.result.code === "AI_CALL_FAILED" ||
+        initialAttempt.result.code === "TIMEOUT"
+    ? "provider_failure"
+    : null;
+  if (!recoveryReason) {
+    return {
+      activeRoute: route,
+      attempt: initialAttempt,
+      recoveryReason: null,
+      recoveryTrace,
+    };
+  }
+  const providerFallback = circuitAwareProviderCandidatesForPurpose(
+    "scope_change",
+    { attemptedProviders: [route.provider] },
+  )[0];
+  const recovery: KaelEscalation | null = providerFallback
+    ? { route: providerFallback, reason: recoveryReason }
+    : selectKaelEscalation("scope_change", {
+      provider: route.provider,
+      model: route.model,
+      schemaInvalid: recoveryReason === "schema_invalid",
+      providerFailure: recoveryReason === "provider_failure",
+    });
+  if (!recovery) {
+    return {
+      activeRoute: route,
+      attempt: initialAttempt,
+      recoveryReason: null,
+      recoveryTrace,
+    };
+  }
+  const schemaResponse = initialAttempt.result.response;
+  recoveryTrace.push(scopeChangeProviderTrace(
+    route,
+    recoveryReason === "schema_invalid" ? "schema_invalid" : "error",
+    {
+    code: recoveryReason === "schema_invalid"
+      ? "INVALID_SCHEMA"
+      : initialAttempt.result.code,
+    latencyMs: initialAttempt.ms,
+    costUsd: schemaResponse?.usage.costUsd,
+    fallbackUsed: true,
+    safeMetadata: recoveryReason === "schema_invalid" ? {
+      provider_shape: describeScopeChangeProviderShape(
+        initialAttempt.result.parsedValue,
+        initialAttempt.result.validationIssues ?? [],
+      ),
+    } : undefined,
+  }));
+  logKaelEscalation("scope_change", recovery);
+  const activeRoute = { ...route, ...recovery.route };
+  const schemaRepairRoot = recoveryReason === "schema_invalid" &&
+      Array.isArray(initialAttempt.result.parsedValue)
+    ? "array"
+    : recoveryReason === "schema_invalid"
+    ? "other"
+    : undefined;
+  const attempt = await callScopeChangeEstimateProvider(
+    activeRoute,
+    input,
+    secrets,
+    spendGate,
+    schemaRepairRoot,
+  );
+  return { activeRoute, attempt, recoveryReason, recoveryTrace };
 }
 
 function scopeChangeNoProviderTrace(): KaelSafeTraceEvent {
@@ -317,6 +449,22 @@ function scopeChangeProviderTrace(
   });
 }
 
+function describeScopeChangeProviderShape(
+  value: unknown,
+  issues: readonly StructuredValidationIssue[],
+) {
+  const shape = !value || typeof value !== "object"
+    ? `type=${typeof value}`
+    : Array.isArray(value)
+    ? `array:${value.length}`
+    : `keys=${Object.keys(value as Record<string, unknown>).slice(0, 8).join("|") || "none"}`;
+  const issueSummary = issues
+    .slice(0, 3)
+    .map((issue) => `${issue.path.join(".") || "root"}:${issue.code}`)
+    .join("|");
+  return `schema:${shape}${issueSummary ? `:${issueSummary}` : ""}`.slice(0, 120);
+}
+
 function isScopeChangeHighStakes(
   input: ScopeChangeReviewInput | ScopeChangeComputeInput,
 ): boolean {
@@ -348,9 +496,9 @@ function buildScopeChangeEstimateFallback(
   input: ScopeChangeComputeInput,
 ): ScopeChangeEstimateFallback {
   return {
-    schema_version: "scope_change_kael_review.v1",
-    prompt_version: "scope-change-estimate.2026-05-23.v1",
-    version: "scope-change-estimate.2026-05-23.v1",
+    schema_version: "scope_change_kael_review.v2",
+    prompt_version: "scope-change-estimate.2026-08-14.v3",
+    version: "scope-change-estimate.2026-08-14.v3",
     outcome: "inspection_required",
     requires_human_inspection: true,
     confidence: 0,

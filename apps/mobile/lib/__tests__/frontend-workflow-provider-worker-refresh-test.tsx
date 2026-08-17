@@ -17,6 +17,7 @@ jest.mock('../app-language', () => ({
 jest.mock('../realtime', () => ({
   subscribeToJobStatus: jest.fn(() => null),
   subscribeToWorkerBroadcasts: jest.fn(() => null),
+  subscribeToWorkerEarnings: jest.fn(() => null),
 }))
 
 jest.mock('../services', () => ({
@@ -54,6 +55,9 @@ import { FrontendWorkflowProvider, useFrontendWorkflow } from '../frontend-workf
 const { workerService: mockWorkerService } = jest.requireMock('../services') as {
   workerService: Record<keyof typeof import('../services').workerService, jest.Mock>
 }
+const { subscribeToWorkerEarnings: mockSubscribeToWorkerEarnings } = jest.requireMock('../realtime') as {
+  subscribeToWorkerEarnings: jest.Mock
+}
 
 let refreshPromise: Promise<boolean> | undefined
 
@@ -88,6 +92,62 @@ beforeEach(() => {
   mockAuthRole = 'admin'
   refreshPromise = undefined
   jest.clearAllMocks()
+})
+
+it('coalesces overlapping Worker refresh triggers into one network pass', async () => {
+  jest.useFakeTimers()
+  mockAuthRole = 'worker'
+  const originalAppState = AppState.currentState
+  Object.defineProperty(AppState, 'currentState', { configurable: true, value: 'background' })
+  const profile = deferred<any>()
+  const earnings = deferred<any>()
+  const performance = deferred<any>()
+  const broadcasts = deferred<any>()
+  const jobs = deferred<any>()
+  mockWorkerService.getProfile.mockReturnValue(profile.promise)
+  mockWorkerService.getEarnings.mockReturnValue(earnings.promise)
+  mockWorkerService.getPerformanceInsights.mockReturnValue(performance.promise)
+  mockWorkerService.getBroadcasts.mockReturnValue(broadcasts.promise)
+  mockWorkerService.getJobs.mockReturnValue(jobs.promise)
+  mockWorkerService.getPayoutMethod.mockResolvedValue({ data: { payout_method: null }, status: 200, success: true })
+  mockWorkerService.listWithdrawalRequests.mockResolvedValue({ data: { requests: [] }, status: 200, success: true })
+
+  const view = render(
+    <FrontendWorkflowProvider>
+      <WorkerRefreshProbe />
+    </FrontendWorkflowProvider>,
+  )
+
+  try {
+    let firstRefresh: Promise<boolean> | undefined
+    let secondRefresh: Promise<boolean> | undefined
+    await waitFor(() => {
+      fireEvent.press(screen.getByTestId('worker-refresh'))
+      firstRefresh = refreshPromise
+      fireEvent.press(screen.getByTestId('worker-refresh'))
+      secondRefresh = refreshPromise
+      expect(mockWorkerService.getProfile).toHaveBeenCalledTimes(1)
+    })
+
+    expect(mockWorkerService.getEarnings).toHaveBeenCalledTimes(1)
+    expect(mockWorkerService.getPerformanceInsights).toHaveBeenCalledTimes(1)
+    expect(mockWorkerService.getBroadcasts).toHaveBeenCalledTimes(1)
+    expect(mockWorkerService.getJobs).toHaveBeenCalledTimes(1)
+
+    broadcasts.resolve({ data: { broadcasts: [] }, status: 200, success: true })
+    jobs.resolve({ data: { jobs: [] }, status: 200, success: true })
+    profile.resolve({ data: { is_available: false }, status: 200, success: true })
+    earnings.resolve({ code: 'UNAVAILABLE', error: 'Unavailable', status: 503, success: false })
+    performance.resolve({ code: 'UNAVAILABLE', error: 'Unavailable', status: 503, success: false })
+    await act(async () => {
+      await firstRefresh
+      await secondRefresh
+    })
+  } finally {
+    view.unmount()
+    Object.defineProperty(AppState, 'currentState', { configurable: true, value: originalAppState })
+    jest.useRealTimers()
+  }
 })
 
 function arrangeSuccessfulWorkerRuntime() {
@@ -143,6 +203,40 @@ function arrangeSuccessfulWorkerRuntime() {
     success: true,
   })
 }
+
+it('refreshes earnings immediately when the worker ledger changes', async () => {
+  mockAuthRole = 'worker'
+  arrangeSuccessfulWorkerRuntime()
+  const unsubscribe = jest.fn(async () => 'ok')
+  mockSubscribeToWorkerEarnings.mockReturnValue({ unsubscribe })
+
+  const view = render(
+    <FrontendWorkflowProvider>
+      <WorkerRefreshProbe />
+    </FrontendWorkflowProvider>,
+  )
+
+  try {
+    await waitFor(() => {
+      expect(mockSubscribeToWorkerEarnings).toHaveBeenCalledWith('worker_test_1', expect.any(Function))
+    })
+    mockWorkerService.getEarnings.mockClear()
+
+    await act(async () => {
+      const onLedgerChange = mockSubscribeToWorkerEarnings.mock.calls[0][1] as () => void
+      onLedgerChange()
+      await Promise.resolve()
+    })
+
+    await waitFor(() => {
+      expect(mockWorkerService.getEarnings).toHaveBeenCalledTimes(1)
+    })
+  } finally {
+    view.unmount()
+  }
+
+  expect(unsubscribe).toHaveBeenCalledTimes(1)
+})
 
 function buildWorkerJob(status: string) {
   return {
@@ -422,6 +516,31 @@ it('hydrates an incoming mission after reconciling the worker job list', async (
           estimated_price_min: 189_000,
           expires_at: '2026-07-22T05:19:29.849Z',
           job_id: 'job-fast',
+          original_scope_price_quote: {
+            schema_version: 'original_scope_price_quote.v1',
+            quote_id: 'a1510000-0000-4000-8000-000000000011',
+            reference_price_min: 189000,
+            reference_price_max: 450000,
+            customer_total: 320000,
+            platform_fee: 48000,
+            worker_net: 272000,
+            commission_level: 1,
+            commission_rate_bps: 1500,
+            price_source: 'baseline_with_market',
+            selection_rule: 'verified_neutral_midpoint_with_bilateral_confirmation',
+            worker_confirmation_required: true,
+            customer_confirmation_required: true,
+            worker_confirmed_at: null,
+            expires_at: '2099-07-22T05:19:29.849Z',
+            evidence_summary: {
+              confidence: 'high',
+              baseline_source_count: 2,
+              market_source_count: 2,
+              high_trust_source_count: 2,
+              quorum_met: true,
+              cap_statement: 'Current confirmed scope only.',
+            },
+          },
           problem_summary: 'Ổ cắm mất điện',
           scheduled_at: '2026-07-23T03:00:00.000Z',
           seconds_remaining: 60,

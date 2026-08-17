@@ -2,12 +2,14 @@ import { useCallback, useState } from 'react'
 import { FlatList, Text, View, type ListRenderItemInfo } from 'react-native'
 import Svg, { Path } from 'react-native-svg'
 
+import { GlassSurface } from '@/components/ui/glass-surface'
+import { LiquidSurfaceOverlay } from '@/components/ui/liquid-back-button'
+
 import { KaelLiquidPressable } from './kael-liquid-pressable'
 import { KaelLiquidReveal } from './kael-liquid-reveal'
 import { CustomerKaelSessionRow, type CustomerKaelSessionCopy } from './customer-kael-session-row'
 import { styles } from './kael-session-menu-styles'
 
-import { SourceCardSkin } from '../ui/aura-surfaces'
 import { customerV21ServiceCopy } from '../ui/copy'
 import type { AppLanguage } from '@/lib/app-language'
 import type { CustomerKaelConversationMode, CustomerKaelConversationSession } from '@/lib/api-types/customer'
@@ -102,6 +104,7 @@ export function CustomerKaelSessionMenu({
       onToggleActions={toggleActions}
       pending={pendingSessionIds.includes(session.id)}
       reduceMotion={reduceMotion}
+      reduceTransparency={reduceTransparency}
       renaming={renamingSessionId === session.id}
       selected={session.id === activeSessionId}
       session={session}
@@ -125,6 +128,7 @@ export function CustomerKaelSessionMenu({
     onSelect,
     pendingSessionIds,
     reduceMotion,
+    reduceTransparency,
     renamingSessionId,
     saveRename,
     tokens,
@@ -134,43 +138,77 @@ export function CustomerKaelSessionMenu({
 
   return (
     <KaelLiquidReveal reduceMotion={reduceMotion} style={styles.menuPosition} testID="customer-v21-kael-session-menu-shell">
-      <View
-        accessibilityLabel={copy.accessibilityLabel}
-        accessibilityRole="menu"
-        style={[styles.menu, { backgroundColor: reduceTransparency ? tokens.raised : 'rgba(250,255,253,0.92)', borderColor: tokens.border }]}
-        testID="customer-v21-kael-session-menu"
+      <GlassSurface
+        backgroundColor={reduceTransparency ? tokens.raised : tokens.mode === 'dark' ? 'rgba(22,29,27,0.42)' : 'rgba(255,255,255,0.18)'}
+        borderColor={reduceTransparency ? tokens.border : tokens.mode === 'dark' ? 'rgba(190,210,205,0.16)' : 'rgba(255,255,255,0.72)'}
+        material="liquid"
+        mode={tokens.mode}
+        showEdgeHighlight={false}
+        style={styles.menuGlass}
+        testID="customer-v21-kael-session-menu-glass"
+        variant="sheet"
       >
-        {!reduceTransparency ? <SourceCardSkin /> : null}
-        <KaelLiquidPressable
-          accessibilityLabel={copy.newSession}
-          accessibilityRole="button"
-          accessibilityState={{ disabled: !canCreate }}
-          disabled={!canCreate}
-          onPress={onCreate}
-          reduceMotion={reduceMotion}
-          style={[styles.newSession, { borderColor: tokens.border }, !canCreate ? styles.disabled : null]}
-          testID="customer-v21-kael-session-new"
-        >
-          <SessionPlusIcon color={tokens.primary} />
-          <Text testID="customer-v21-kael-session-new-label" style={[styles.newSessionText, { color: tokens.primary }]}>{copy.newSession}</Text>
-        </KaelLiquidPressable>
-        {loading ? <Text style={[styles.feedback, { color: tokens.muted }]}>{copy.loading}</Text> : null}
-        {!loading && error ? <Text style={styles.error}>{error}</Text> : null}
-        {!loading && !error && sessions.length === 0 ? <Text style={[styles.feedback, { color: tokens.muted }]}>{copy.empty}</Text> : null}
-        {!loading && sessions.length > 0 ? (
-          <FlatList
-            contentContainerStyle={styles.sessionList}
-            data={sessions}
-            keyExtractor={keyExtractor}
-            keyboardShouldPersistTaps="handled"
-            nestedScrollEnabled
-            renderItem={renderSession}
-            showsVerticalScrollIndicator={false}
-            style={styles.sessionListViewport}
-            testID="customer-v21-kael-session-list"
+        {!reduceTransparency ? (
+          <LiquidSurfaceOverlay
+            designHeight={180}
+            mode={tokens.mode}
+            radius={18}
+            testID="customer-v21-kael-session-menu-liquid"
           />
         ) : null}
-      </View>
+        <View
+          accessibilityLabel={copy.accessibilityLabel}
+          accessibilityRole="menu"
+          style={styles.menuContent}
+          testID="customer-v21-kael-session-menu"
+        >
+          <KaelLiquidPressable
+            accessibilityLabel={copy.newSession}
+            accessibilityRole="button"
+            accessibilityState={{ disabled: !canCreate }}
+            disabled={!canCreate}
+            onPress={onCreate}
+            reduceMotion={reduceMotion}
+            style={[
+              styles.newSession,
+              {
+                backgroundColor: reduceTransparency ? tokens.raised : tokens.mode === 'dark' ? 'rgba(22,29,27,0.42)' : 'rgba(255,255,255,0.18)',
+                borderColor: reduceTransparency ? tokens.border : tokens.mode === 'dark' ? 'rgba(190,210,205,0.16)' : 'rgba(255,255,255,0.72)',
+              },
+              !reduceTransparency ? styles.newSessionLiquid : null,
+              !canCreate ? styles.disabled : null,
+            ]}
+            testID="customer-v21-kael-session-new"
+          >
+            {!reduceTransparency ? (
+              <LiquidSurfaceOverlay
+                designHeight={44}
+                mode={tokens.mode}
+                radius={22}
+                testID="customer-v21-kael-session-new-liquid"
+              />
+            ) : null}
+            <SessionPlusIcon color={tokens.primary} />
+            <Text testID="customer-v21-kael-session-new-label" style={[styles.newSessionText, { color: tokens.primary }]}>{copy.newSession}</Text>
+          </KaelLiquidPressable>
+          {loading ? <Text style={[styles.feedback, { color: tokens.muted }]}>{copy.loading}</Text> : null}
+          {!loading && error ? <Text style={styles.error}>{error}</Text> : null}
+          {!loading && !error && sessions.length === 0 ? <Text style={[styles.feedback, { color: tokens.muted }]}>{copy.empty}</Text> : null}
+          {!loading && sessions.length > 0 ? (
+            <FlatList
+              contentContainerStyle={styles.sessionList}
+              data={sessions}
+              keyExtractor={keyExtractor}
+              keyboardShouldPersistTaps="handled"
+              nestedScrollEnabled
+              renderItem={renderSession}
+              showsVerticalScrollIndicator={false}
+              style={styles.sessionListViewport}
+              testID="customer-v21-kael-session-list"
+            />
+          ) : null}
+        </View>
+      </GlassSurface>
     </KaelLiquidReveal>
   )
 }

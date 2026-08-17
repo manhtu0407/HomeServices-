@@ -162,7 +162,6 @@ export async function hasActiveBroadcast(
 export async function getJobBroadcastState(client: DbClient, jobId: string) {
   const now = new Date();
   const nowIso = now.toISOString();
-  await expireStaleBroadcasts(client, jobId, nowIso);
   const result = await dbQuery<Array<Record<string, unknown>>>(
     client
       .from("job_broadcasts")

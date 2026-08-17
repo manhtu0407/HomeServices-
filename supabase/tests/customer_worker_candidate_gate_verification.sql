@@ -55,7 +55,8 @@ insert into public.worker_profiles (
 
 insert into public.jobs (
   id, customer_id, service_type, service_problem_id, description,
-  address_building, address_unit, address_floor, address_district, status
+  address_building, address_unit, address_floor, address_district, status,
+  kael_price_min, kael_price_max, kael_estimate_card_v3
 ) values
   (
     'b1200000-0000-4000-8000-000000000001',
@@ -63,7 +64,30 @@ insert into public.jobs (
     'electrical',
     (select id from public.service_problems where slug = 'electrical-general'),
     'Candidate confirmation fixture', 'Private Building', '1201', '12', 'q7',
-    'broadcasting'
+    'broadcasting', 150000, 250000,
+    jsonb_build_object(
+      'card', jsonb_build_object(
+        'price_source', 'baseline_with_market',
+        'price_reasoning_receipt', jsonb_build_object(
+          'schema_version', 'price_reasoning_receipt.v1',
+          'receipt_id', 'price_reasoning:b1250000-0000-4000-8000-000000000001',
+          'costs', jsonb_build_object('total_min', 150000, 'total_max', 250000),
+          'scenarios', jsonb_build_object(
+            'low', jsonb_build_object('total', 150000),
+            'high', jsonb_build_object('total', 250000)
+          ),
+          'fairness', jsonb_build_object(
+            'price_source', 'baseline_with_market',
+            'confidence', 'medium',
+            'baseline_evidence', null,
+            'market_source_count', 3,
+            'high_trust_source_count', 2,
+            'quorum_met', true,
+            'cap_statement', 'Verified range only.'
+          )
+        )
+      )
+    )
   ),
   (
     'b1200000-0000-4000-8000-000000000002',
@@ -71,30 +95,50 @@ insert into public.jobs (
     'electrical',
     (select id from public.service_problems where slug = 'electrical-general'),
     'Candidate rejection fixture', 'Private Building', '1202', '12', 'q7',
-    'broadcasting'
+    'broadcasting', 150000, 250000,
+    jsonb_build_object(
+      'card', jsonb_build_object(
+        'price_source', 'baseline_with_market',
+        'price_reasoning_receipt', jsonb_build_object(
+          'schema_version', 'price_reasoning_receipt.v1',
+          'receipt_id', 'price_reasoning:b1250000-0000-4000-8000-000000000002',
+          'costs', jsonb_build_object('total_min', 150000, 'total_max', 250000),
+          'scenarios', jsonb_build_object(
+            'low', jsonb_build_object('total', 150000),
+            'high', jsonb_build_object('total', 250000)
+          ),
+          'fairness', jsonb_build_object(
+            'price_source', 'baseline_with_market',
+            'confidence', 'medium',
+            'baseline_evidence', null,
+            'market_source_count', 3,
+            'high_trust_source_count', 2,
+            'quorum_met', true,
+            'cap_statement', 'Verified range only.'
+          )
+        )
+      )
+    )
   );
 
-insert into public.job_broadcasts (
-  id, job_id, worker_id, status, sent_at, expires_at
-) values
-  (
-    'b1300000-0000-4000-8000-000000000001',
-    'b1200000-0000-4000-8000-000000000001',
+select * from public.activate_job_broadcast_batch_atomic(
+  'b1200000-0000-4000-8000-000000000001',
+  array[
     'b1100000-0000-4000-8000-000000000003',
-    'sent', now(), now() + interval '5 minutes'
-  ),
-  (
-    'b1300000-0000-4000-8000-000000000002',
-    'b1200000-0000-4000-8000-000000000001',
-    'b1100000-0000-4000-8000-000000000004',
-    'sent', now(), now() + interval '5 minutes'
-  ),
-  (
-    'b1300000-0000-4000-8000-000000000003',
-    'b1200000-0000-4000-8000-000000000002',
-    'b1100000-0000-4000-8000-000000000004',
-    'sent', now(), now() + interval '5 minutes'
-  );
+    'b1100000-0000-4000-8000-000000000004'
+  ]::uuid[],
+  'b1300000-0000-4000-8000-000000000001',
+  now(),
+  now() + interval '5 minutes'
+);
+
+select * from public.activate_job_broadcast_batch_atomic(
+  'b1200000-0000-4000-8000-000000000002',
+  array['b1100000-0000-4000-8000-000000000004']::uuid[],
+  'b1300000-0000-4000-8000-000000000002',
+  now(),
+  now() + interval '5 minutes'
+);
 
 do $$
 declare
@@ -225,6 +269,10 @@ begin
   if pg_catalog.has_function_privilege(
     'authenticated',
     'public.accept_broadcast_atomic(uuid, uuid)',
+    'execute'
+  ) or pg_catalog.has_function_privilege(
+    'authenticated',
+    'public.accept_broadcast_atomic(uuid, uuid, uuid)',
     'execute'
   ) or pg_catalog.has_function_privilege(
     'authenticated',

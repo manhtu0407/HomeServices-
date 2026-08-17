@@ -164,4 +164,18 @@ describe('mobile capability policies', () => {
       roles: ['customer'],
     })).toMatchObject({ risk: 'money', privileged: true })
   })
+
+  it('uses the privileged client for Kael media reservations', () => {
+    const actor = createActorContext({ userId: 'customer-1', role: 'customer' })
+
+    expect(authorizeRouteCapability(actor, {
+      kind: 'kael.chat.mediaUpload',
+      method: 'POST',
+      roles: ['customer', 'admin'],
+    })).toMatchObject({
+      capability: 'mobile.route.kael.chat.mediaUpload',
+      privileged: true,
+      resource: { type: 'session', id: null },
+    })
+  })
 })

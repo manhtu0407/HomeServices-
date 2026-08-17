@@ -114,6 +114,7 @@ const GUARDED: Record<string, string> = {
   'jobs.kaelClarify': 'service participant check',
   'jobs.kaelIncidentGet': 'requireJobAccess (404)',
   'jobs.kaelIncidentOpen': 'service worker-owner (Edge)',
+  'jobs.kaelIncidentPreviewScope': 'service worker-owner + ready-case guard',
   'jobs.kaelIncidentProposeScope': 'service worker-owner + ready-case guard',
   'jobs.confirmCompletion': 'RPC customer-owner',
   'jobs.paymentIntent': 'requireJobAccess customer-owner + server staging capability',

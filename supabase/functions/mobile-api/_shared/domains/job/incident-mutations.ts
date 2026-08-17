@@ -117,7 +117,7 @@ export async function proposeScopeChangeFromJobIncident(
   const client = db(ctx);
   await requireJobAccess(client, jobId, ctx, {
     requiredRole: "worker",
-    select: "id, customer_id, worker_id",
+    select: "id, status, customer_id, worker_id",
   });
   const claimId = input.client_request_id;
   const claim = await callAtomicIncidentRpc(
@@ -126,6 +126,7 @@ export async function proposeScopeChangeFromJobIncident(
     {
       p_claim_id: claimId,
       p_job_id: jobId,
+      p_quote_id: input.quote_id,
       p_worker_id: ctx.user.id,
     },
     INCIDENT_MESSAGES.inspect,
@@ -170,6 +171,11 @@ export async function proposeScopeChangeFromJobIncident(
       },
       secrets,
       { claimId, incidentId },
+      {
+        confirmedAt: asString(incident.scope_price_quote_confirmed_at),
+        quoteId: input.quote_id,
+        storedQuote: incident.scope_price_quote,
+      },
     );
     const updated = await loadIncidentById(client, incidentId);
     return { incident: serializeIncident(updated), scope_change: scope };

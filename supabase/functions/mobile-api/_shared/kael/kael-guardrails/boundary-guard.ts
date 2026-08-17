@@ -214,7 +214,9 @@ const SERVICE_KEYWORDS: Record<ServiceType, readonly string[]> = {
     "giat nem",
   ],
   handyman: [
+    "khoan",
     "khoan tuong",
+    "ke",
     "lap ke",
     "lap thanh rem",
     "lap den",
@@ -294,6 +296,34 @@ function isSupportedWaterPumpMention(normalized: string): boolean {
   );
 }
 
+function keywordAppearsOnlyInExcludedScope(
+  normalized: string,
+  keyword: string,
+): boolean {
+  const keywordPattern = new RegExp(
+    `(?:^|[^a-z0-9])${escapeRegExp(keyword)}(?:[^a-z0-9]|$)`,
+    "g",
+  );
+  let found = false;
+  for (const match of normalized.matchAll(keywordPattern)) {
+    found = true;
+    const keywordStart = match.index ?? 0;
+    const clauseStart = Math.max(
+      normalized.lastIndexOf(".", keywordStart),
+      normalized.lastIndexOf(";", keywordStart),
+      normalized.lastIndexOf("\n", keywordStart),
+    ) + 1;
+    const prefix = normalized.slice(clauseStart, keywordStart);
+    const marker = /\b(?:loai tru|khong bao gom|khong gom|khong yeu cau|excluding|excluded|not included)\b/g;
+    const markers = [...prefix.matchAll(marker)];
+    const lastMarker = markers.at(-1);
+    if (!lastMarker) return false;
+    const afterMarker = prefix.slice((lastMarker.index ?? 0) + lastMarker[0].length);
+    if (/\b(?:nhung|tuy nhien|but|however|instead|chi)\b/.test(afterMarker)) return false;
+  }
+  return found;
+}
+
 export function detectPromptInjection(
   text: string,
 ): { detected: boolean; signals: string[] } {
@@ -317,6 +347,9 @@ export function detectOutOfScope(
     if (keyword === "may bom" && isSupportedWaterPumpMention(normalized)) {
       continue;
     }
+    if (selectedService && keywordAppearsOnlyInExcludedScope(normalized, keyword)) {
+      continue;
+    }
     if (containsKeyword(normalized, keyword)) {
       signals.push(`oos:${keyword}`);
       if (signals.length >= 3) break;
@@ -334,7 +367,7 @@ export function detectServiceMismatch(
   suggestedService: ServiceType | null;
   hits: Record<ServiceType, number>;
 } {
-  const normalized = normalize(text);
+  const normalized = serviceMismatchAssertionText(text);
   const hits: Record<ServiceType, number> = {
     electrical: 0,
     plumbing: 0,
@@ -371,6 +404,14 @@ export function detectServiceMismatch(
     suggestedService: detected ? suggestedService : null,
     hits,
   };
+}
+
+function serviceMismatchAssertionText(text: string): string {
+  return normalize(text)
+    .replace(/\bkhong (?:di|dau|sua|lam) (?:day )?dien\b/g, " ")
+    .replace(/\b(?:no|not) (?:electrical|wiring) work\b/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 export function evaluateMessageBoundary(
@@ -455,7 +496,7 @@ export function evaluateMessageBoundary(
 
   const outOfScope = detectOutOfScope(
     trimmed,
-    undefined,
+    selectedService === "electrical" ? undefined : selectedService ?? undefined,
   );
   if (outOfScope.detected) {
     return {

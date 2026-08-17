@@ -1246,8 +1246,14 @@ describe('CustomerV21 dock', () => {
     expect(screen.getByTestId('customer-v21-dock-services')).toBeOnTheScreen()
     expect(screen.getByTestId('customer-v21-dock-activity')).toBeOnTheScreen()
     expect(screen.getByTestId('customer-v21-dock-profile')).toBeOnTheScreen()
+    for (const id of ['home', 'services', 'activity', 'profile']) {
+      expect(screen.getByTestId(`customer-v21-dock-${id}-icon`)).toBeOnTheScreen()
+    }
     expect(screen.getByTestId('customer-v21-kael-accessory')).toBeOnTheScreen()
     expect(screen.queryByTestId('customer-v21-dock-kael')).toBeNull()
+    expect(screen.getByTestId('customer-v21-dock-lens')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-v21-dock-shimmer')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-v21-dock-caustic')).toBeOnTheScreen()
 
     fireEvent.press(screen.getByTestId('customer-v21-dock-services'))
     expect(mockReplace).toHaveBeenCalledWith('/(customer)/booking')

@@ -12,7 +12,9 @@ describe('worker-jobs', () => {
       display_code: 'NS-PENDING-1',
       status: 'worker_candidate_pending',
       service_type: 'electrical',
-      kael_problem_identified: 'Ổ cắm mất điện',
+      problem_chips: ['Ổ cắm mất điện'],
+      description: 'Kiểm tra đúng một ổ cắm; loại trừ đi dây âm tường.',
+      kael_problem_identified: 'Ổ cắm mất điện. Chốt giá thấp nhất.',
       address_building: 'Tòa S1.07',
       address_unit: '3701',
       address_floor: '37',
@@ -53,6 +55,8 @@ describe('worker-jobs', () => {
         address_unit: null,
         address_floor: null,
         district: 'Thủ Đức',
+        problem_summary: 'Ổ cắm mất điện',
+        scope_summary: 'Kiểm tra đúng một ổ cắm; loại trừ đi dây âm tường.',
       }],
     })
     expect(client.calls.filter((call) => !call.table.startsWith('rpc:')).map((call) => call.table))
@@ -62,6 +66,39 @@ describe('worker-jobs', () => {
     expect(candidateJobsCall?.operations).toContainEqual(['eq', 'status', 'proposed'])
     expect(candidateJobsCall?.operations).toContainEqual(['eq', 'jobs.status', 'worker_candidate_pending'])
     expect(candidateJobsCall?.operations).toContainEqual(['gt', 'expires_at', expect.any(String)])
+  })
+
+  it('keeps manual bank payment jobs readable in the worker list', async () => {
+    const client = makeSequenceClient([{
+      data: [{
+        id: 'job-manual-payment',
+        display_code: 'NS-2026-000321',
+        status: 'worker_matched',
+        service_type: 'handyman',
+        address_district: 'q7',
+        apartment_access_profile: {},
+        apartment_access_state: { release_stage: 'building_released', exact_unit_released: false },
+        payment_status: 'manual_qr_ready',
+        photo_urls: [],
+        completion_photo_urls: [],
+        created_at: '2026-08-12T00:00:00.000Z',
+        matched_at: '2026-08-12T00:05:00.000Z',
+      }],
+      error: null,
+    }])
+    const ctx: MobileApiContext = {
+      success: true,
+      user: { id: 'worker-manual-payment' },
+      role: 'worker',
+      supabase: client,
+    }
+
+    await expect(createEdgeServices({}).listWorkerJobs(ctx)).resolves.toMatchObject({
+      jobs: [{
+        id: 'job-manual-payment',
+        payment_status: 'manual_qr_ready',
+      }],
+    })
   })
 
   it('fails closed when a worker job contains an unsupported payment status', async () => {

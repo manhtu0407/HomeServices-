@@ -339,6 +339,51 @@ describe('mobile API response guard', () => {
     expect(abortTimes).toEqual([30_000])
   })
 
+  it('gives a scope-price preview enough time for one bounded escalation without retrying in flight', async () => {
+    jest.useFakeTimers()
+    jest.setSystemTime(0)
+    const abortTimes: number[] = []
+    mockFetch.mockImplementation((_url: string, init?: RequestInit) => new Promise((_resolve, reject) => {
+      init?.signal?.addEventListener('abort', () => {
+        abortTimes.push(Date.now())
+        const error = new Error('request aborted')
+        error.name = 'AbortError'
+        reject(error)
+      }, { once: true })
+    }))
+
+    const pending = api.post('/jobs/job-1/kael-incident/preview-scope', {
+      client_request_id: '4d390451-29df-4bb1-b05b-b7446f9237dc',
+    })
+    await jest.runAllTimersAsync()
+
+    await expect(pending).resolves.toMatchObject({ success: false, code: 'TIMEOUT' })
+    expect(mockFetch).toHaveBeenCalledTimes(1)
+    expect(abortTimes).toEqual([45_000])
+  })
+
+  it('does not automatically replay a failed scope-price preview with the same durable id', async () => {
+    mockFetch.mockResolvedValue({
+      body: null,
+      headers: { get: () => null },
+      ok: false,
+      status: 503,
+      text: jest.fn(async () => JSON.stringify({
+        code: 'KAEL_ESTIMATE_UNAVAILABLE',
+        error: 'Kael chưa tính được mức giá cân bằng.',
+      })),
+    })
+
+    await expect(api.post('/jobs/job-1/kael-incident/preview-scope', {
+      client_request_id: '4d390451-29df-4bb1-b05b-b7446f9237dd',
+    })).resolves.toMatchObject({
+      success: false,
+      code: 'KAEL_ESTIMATE_UNAVAILABLE',
+      status: 503,
+    })
+    expect(mockFetch).toHaveBeenCalledTimes(1)
+  })
+
   it('gives idempotent Kael estimate confirmation the complete Agentic deadline', async () => {
     jest.useFakeTimers()
     jest.setSystemTime(0)

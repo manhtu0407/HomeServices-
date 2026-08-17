@@ -53,7 +53,7 @@ function workerV5ActiveJobKaelContext(
   const serviceLabel = service
     ? localizedServiceLabel(service, language)
     : textByLanguage(language, 'công việc này', 'this job')
-  const statusLabel = localizedStatusLabel(deal?.status ?? null, language)
+  const statusLabel = localizedStatusLabel(deal?.status ?? null, language, deal?.draft.serviceType ?? null)
   const isArrived = status === 'arrived'
 
   if (language === 'vi') {

@@ -53,7 +53,7 @@ export const entryBrandAccessFlowStyles = StyleSheet.create({
   splashTagline: { ...entryTheme.typography.caption1, color: '#7792A8', marginTop: 4, textAlign: 'center' },
   splashWordmarkShell: { alignSelf: 'center', position: 'relative' },
   termsRow: { marginBottom: 12, marginHorizontal: 2, marginTop: 2 },
-  topbar: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', marginHorizontal: -3, marginBottom: 6, minHeight: 48 },
-  topbarSpacer: { width: 42 },
+  topbar: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', marginHorizontal: -3, marginBottom: 6, minHeight: 54 },
+  topbarSpacer: { width: 54 },
   topbarTitle: { ...entryTheme.typography.subheadline, color: entryTheme.color.text.primary, fontWeight: '600' },
 })

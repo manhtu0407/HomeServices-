@@ -62,7 +62,7 @@ export function useSessionPushRegistration(input: {
       return
     }
 
-    const registrationKey = `${userId}:${input.role}`
+    const registrationKey = `${userId}:${input.role}:${registrationSession.access_token}`
     const desiredRegistration: DesiredPushRegistration = {
       accessToken: registrationSession.access_token,
       key: registrationKey,

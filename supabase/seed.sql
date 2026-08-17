@@ -105,7 +105,7 @@ insert into jobs (
     'Vinhomes Central Park', 'A-1205', '12', 'Binh Thanh',
     'paid',
     'Cháy ổ cắm do quá tải', 'small', 150000, 250000,
-    200000,
+    null,
     now() - interval '3 days',
     now() - interval '3 days' + interval '5 minutes',
     now() - interval '3 days' + interval '1 hour',
@@ -113,6 +113,56 @@ insert into jobs (
     now() - interval '3 days' + interval '1 hour 15 minutes'
   )
 on conflict (id) do nothing;
+
+-- The paid fixture starts without a payable price. Apply the exact price only
+-- after the bilateral, source-verified receipt exists.
+insert into scope_change_requests (
+  id, job_id, worker_id, status,
+  original_summary, requested_description, reason,
+  price_min, price_max, kael_computed_min, kael_computed_max,
+  kael_review, customer_decision_at
+) values (
+  '00000000-0000-0000-0000-000000000030',
+  '00000000-0000-0000-0000-000000000010',
+  '00000000-0000-0000-0000-000000000002',
+  'approved_by_customer',
+  'Replace the damaged electrical outlet after inspection.',
+  'Replace one damaged electrical outlet using the confirmed full-scope price.',
+  'The inspection confirmed replacement was required instead of adjustment.',
+  200000,
+  200000,
+  200000,
+  200000,
+  jsonb_build_object(
+    'price_source', 'verified_baseline',
+    'pricing_mode', 'full_scope_total',
+    'selection_rule', 'verified_neutral_midpoint_with_bilateral_confirmation',
+    'baseline_used', 'electrical_outlet_replacement_small_hcmc',
+    'baseline_source', 'seed_fixture_verified_baseline',
+    'reference_price_min', 150000,
+    'reference_price_max', 250000,
+    'stakeholder_balance', jsonb_build_object(
+      'customer_total', 200000,
+      'platform_fee', 20000,
+      'worker_net', 180000,
+      'commission_rate_bps', 1000,
+      'worker_confirmation_required', true,
+      'customer_confirmation_required', true
+    ),
+    'worker_price_confirmation', jsonb_build_object(
+      'confirmed', true,
+      'quote_id', '00000000-0000-0000-0000-000000000040',
+      'confirmed_at', '2026-08-14T00:00:00Z'
+    )
+  ),
+  '2026-08-14T00:05:00Z'::timestamptz
+)
+on conflict (id) do nothing;
+
+update jobs
+set final_price = 200000
+where id = '00000000-0000-0000-0000-000000000010'
+  and final_price is null;
 
 -- Sample review
 insert into reviews (id, job_id, customer_id, worker_id, rating, tags, comment) values

@@ -4,7 +4,6 @@ import type { AppLanguage } from '@/lib/app-language'
 import { formatHcmcScheduledAt } from '@/lib/hcmc-schedule'
 
 import {
-  firstNumberFromPriceLabel,
   formatApprovalVnd,
   formatLooseLabel,
   formatVnd,
@@ -128,19 +127,22 @@ export function formatScopePriceRange(scope: LocalDeal['scopeChange'], language:
 
 export function scopeChangeDeltaLabel(deal: LocalDeal | null, scope: LocalDeal['scopeChange'], language: AppLanguage) {
   if (!scope) return textByLanguage(language, 'Chưa có phát sinh', 'No delta')
-  const originalMin = firstNumberFromPriceLabel(deal?.estimate?.priceRangeLabel)
-  if (!originalMin || !scope.priceMin) return formatScopePriceRange(scope, language)
-  const delta = Math.max(0, scope.priceMin - originalMin)
-  if (delta <= 0) return formatScopePriceRange(scope, language)
-  return `+${formatVnd(delta, language)}`
+  const proposedTotal = scope.priceMin === scope.priceMax ? scope.priceMin : null
+  const originalTotal = deal?.finalPrice ?? deal?.broadcast?.priceQuote?.customerTotal ?? null
+  if (!proposedTotal || !originalTotal) return formatScopePriceRange(scope, language)
+
+  const delta = proposedTotal - originalTotal
+  if (delta === 0) return textByLanguage(language, 'Không đổi tổng', 'No total change')
+  const sign = delta > 0 ? '+' : '−'
+  return `${sign}${formatVnd(Math.abs(delta), language)}`
 }
 
-export function scopeChangeApprovalAmountLabel(deal: LocalDeal | null, scope: LocalDeal['scopeChange'], language: AppLanguage) {
-  if (!scope?.priceMin) return textByLanguage(language, 'Chờ dữ liệu thật', 'Waiting for real data')
-  const originalMin = firstNumberFromPriceLabel(deal?.estimate?.priceRangeLabel)
-  const amount = originalMin ? Math.max(0, scope.priceMin - originalMin) : scope.priceMin
-  if (amount <= 0) return formatApprovalVnd(scope.priceMin, language)
-  return `+${formatApprovalVnd(amount, language)}`
+export function scopeChangeApprovalAmountLabel(_deal: LocalDeal | null, scope: LocalDeal['scopeChange'], language: AppLanguage) {
+  if (!scope?.priceMin || !scope.priceMax) {
+    return textByLanguage(language, 'Chờ dữ liệu thật', 'Waiting for real data')
+  }
+  if (scope.priceMin === scope.priceMax) return formatApprovalVnd(scope.priceMin, language)
+  return `${formatApprovalVnd(scope.priceMin, language)} - ${formatApprovalVnd(scope.priceMax, language)}`
 }
 
 export function scopeChangeStatusLabel(status: string, language: AppLanguage) {

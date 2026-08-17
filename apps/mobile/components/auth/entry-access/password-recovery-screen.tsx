@@ -1,10 +1,10 @@
 import { useReducer } from 'react'
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
+import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
+import { LiquidBackButton } from '@/components/ui/liquid-back-button'
 import type { AppLanguage } from '@/lib/app-language'
 import { NativeSafeGlassPanel, PrimaryButton } from './components/materials'
 import { EntryTextField } from './components/fields'
-import { EntryIcon } from './components/icons'
 import { entryAccessCopy } from './copy'
 import { entryTheme } from './theme'
 import type { EntryActionResult } from './types'
@@ -21,10 +21,9 @@ export function PasswordRecoveryScreen(props: {
 }) {
   const copy = RECOVERY_SCREEN_COPY[props.language]
   return (
-    <RecoveryPage language={props.language} onBack={props.onBack} title={copy.recoveryTopbar}>
+    <RecoveryPage language={props.language} onBack={props.onBack}>
       <View style={styles.header}>
-        <Text style={styles.title}>{copy.recoveryTitle}</Text>
-        <Text style={styles.lead}>{copy.recoveryLead}</Text>
+        <Text adjustsFontSizeToFit minimumFontScale={0.78} numberOfLines={1} style={styles.title}>{copy.recoveryTitle}</Text>
       </View>
       <NativeSafeGlassPanel style={styles.panel} testID="auth-password-recovery-panel">
         <EntryTextField
@@ -124,17 +123,15 @@ const INITIAL_PASSWORD_RESET_STATE: PasswordResetState = {
   error: null,
 }
 
-function RecoveryPage(props: { children: React.ReactNode; language: AppLanguage; onBack: () => void; title: string }) {
+function RecoveryPage(props: { children: React.ReactNode; language: AppLanguage; onBack: () => void; title?: string }) {
   const accessibilityCopy = entryAccessCopy[props.language].accessibility
   return (
     <SafeAreaView edges={['top', 'bottom']} style={styles.safe}>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.keyboard}>
         <ScrollView bounces={false} contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
           <View style={styles.topbar}>
-            <Pressable accessibilityLabel={accessibilityCopy.back} accessibilityRole="button" onPress={props.onBack} style={styles.backButton}>
-              <EntryIcon color={entryTheme.color.text.strong} name="back" size={18} />
-            </Pressable>
-            <Text style={styles.topbarTitle}>{props.title}</Text>
+            <LiquidBackButton label={accessibilityCopy.back} onPress={props.onBack} testID="auth-entry-back-button" />
+            {props.title ? <Text style={styles.topbarTitle}>{props.title}</Text> : null}
             <View style={styles.topbarSpacer} />
           </View>
           {props.children}
@@ -149,16 +146,14 @@ const RECOVERY_SCREEN_COPY = {
     confirmPasswordLabel: 'Xác nhận mật khẩu',
     confirmPasswordPlaceholder: 'Nhập lại mật khẩu mới',
     connectionFailed: 'Không thể kết nối. Vui lòng thử lại.',
-    emailLabel: 'Thư điện tử đã đăng ký',
+    emailLabel: 'Gmail đã đăng kí',
     emailPlaceholder: 'ten@vidu.vn',
     login: 'Đăng nhập',
     newPasswordLabel: 'Mật khẩu mới',
     newPasswordPlaceholder: 'Ít nhất 8 ký tự',
     passwordMismatch: 'Mật khẩu xác nhận chưa trùng khớp.',
     passwordShort: 'Mật khẩu mới cần ít nhất 8 ký tự.',
-    recoveryLead: 'Nhập thư điện tử đã đăng ký. NestScout sẽ gửi một liên kết đặt lại mật khẩu.',
-    recoveryTitle: 'Lấy lại\nmật khẩu.',
-    recoveryTopbar: 'Khôi phục mật khẩu',
+    recoveryTitle: 'Lấy lại mật khẩu.',
     resetLead: 'Chọn mật khẩu mới cho tài khoản NestScout của bạn.',
     resetTitle: 'Tạo mật khẩu\nmới.',
     resetTopbar: 'Đặt lại mật khẩu',
@@ -181,9 +176,7 @@ const RECOVERY_SCREEN_COPY = {
     newPasswordPlaceholder: 'At least 8 characters',
     passwordMismatch: 'The password confirmation does not match.',
     passwordShort: 'The new password must contain at least 8 characters.',
-    recoveryLead: 'Enter your registered email. NestScout will send a password-reset link.',
-    recoveryTitle: 'Recover your\npassword.',
-    recoveryTopbar: 'Password recovery',
+    recoveryTitle: 'Recover your password.',
     resetLead: 'Choose a new password for your NestScout account.',
     resetTitle: 'Create a new\npassword.',
     resetTopbar: 'Reset password',
@@ -198,7 +191,6 @@ const RECOVERY_SCREEN_COPY = {
 } as const
 
 const styles = StyleSheet.create({
-  backButton: { alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.70)', borderColor: 'rgba(255,255,255,0.92)', borderRadius: 21, borderWidth: 1, height: 42, justifyContent: 'center', width: 42, ...entryTheme.shadow.soft },
   error: { ...entryTheme.typography.caption1, color: entryTheme.color.accent.destructive, marginBottom: 10, marginTop: -2 },
   header: { paddingBottom: 12, paddingHorizontal: 3, paddingTop: 6 },
   keyboard: { flex: 1 },
@@ -211,7 +203,7 @@ const styles = StyleSheet.create({
   successLead: { ...entryTheme.typography.footnote, color: entryTheme.color.text.secondary, marginBottom: 8 },
   successTitle: { ...entryTheme.typography.headline, color: entryTheme.color.mint.mint800 },
   title: { ...entryTheme.typography.title1, color: entryTheme.color.text.strong },
-  topbar: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', marginHorizontal: -3, marginBottom: 6, minHeight: 48 },
-  topbarSpacer: { height: 42, width: 42 },
+  topbar: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', marginHorizontal: -3, marginBottom: 6, minHeight: 54 },
+  topbarSpacer: { height: 54, width: 54 },
   topbarTitle: { ...entryTheme.typography.headline, color: entryTheme.color.text.strong },
 })

@@ -422,6 +422,25 @@ describe('scrubSensitiveForLLM', () => {
     expect(scrubEdgeSensitiveForLLM(flattened)).toBe(flattened)
   })
 
+  it.each([
+    'Căn hộ 65m² gồm 2 phòng ngủ',
+    'Căn hộ 65 m2 gồm 2 phòng ngủ',
+    'Căn hộ 65㎡ gồm 2 phòng ngủ',
+  ])('preserves cleaning area measurements: %s', (input) => {
+    expect(scrubSensitiveForLLM(input)).toBe(input)
+    expect(scrubEdgeSensitiveForLLM(input)).toBe(input)
+  })
+
+  it.each([
+    'Máy lạnh treo tường công suất 1 HP',
+    'Điều hòa công suất 9.000 BTU',
+    'Nguồn điện đo được 220 V và CB 20 A',
+    'Máy sưởi công suất 2 kW',
+  ])('preserves service measurements instead of treating them as house numbers: %s', (input) => {
+    expect(scrubSensitiveForLLM(input)).toBe(input)
+    expect(scrubEdgeSensitiveForLLM(input)).toBe(input)
+  })
+
   it('combines patterns in a realistic customer message', () => {
     const input = 'Tôi ở Vinhomes Central Park tầng 25 căn A.25.07, STK 1234567890123'
     const out = scrubSensitiveForLLM(input)

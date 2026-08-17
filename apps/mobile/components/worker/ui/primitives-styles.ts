@@ -6,9 +6,6 @@ export const styles = StyleSheet.create({
   workerCustomerFontText: {
     ...typography.body,
   },
-  iconButtonIcon: {
-    flexShrink: 0,
-  },
   opaqueCard: {
     backgroundColor: color.mint.white,
   },

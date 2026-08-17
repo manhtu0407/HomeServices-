@@ -19,6 +19,16 @@ import { dbQuery, type DbClient } from "../../platform/db.ts";
 import { insertUserNotification } from "../notification/notifications.ts";
 import { resolveWorkerAvatarUrl } from "../worker/avatar.ts";
 import { estimateWorkerNet, getWorkerCommissionTier } from "../payment/commission.ts";
+import {
+  parseOriginalScopePriceQuote,
+  projectOriginalScopePriceQuote,
+} from "./original-scope-price-quote.ts";
+import {
+  requiredCandidateInteger,
+  requiredCandidateString,
+  safeCandidateBirthYear,
+  safeCandidateGender,
+} from "./candidate-profile.ts";
 
 export async function notifyCustomerCandidateReady(
   client: DbClient,
@@ -55,7 +65,7 @@ export async function loadSafeWorkerCandidateView(
 ) {
   const result = await dbQuery<Record<string, unknown>>(
     client.from("job_worker_candidates")
-      .select("id, job_id, worker_id, status, proposed_at, expires_at, customer_decided_at")
+      .select("id, job_id, worker_id, broadcast_id, status, proposed_at, expires_at, customer_decided_at, original_scope_price_quote")
       .eq("id", candidateId).eq("job_id", jobId).maybeSingle(),
   );
   if (result.error || !result.data) {
@@ -74,7 +84,7 @@ export async function buildSafeWorkerCandidateView(
   const [worker, profile, favorite] = await Promise.all([
     dbQuery<Record<string, unknown>>(
       client.from("worker_profiles")
-        .select("id, rating, total_jobs, years_experience, verification_status")
+        .select("id, rating, total_jobs, years_experience, verification_status, date_of_birth, gender")
         .eq("id", workerId).maybeSingle(),
     ),
     dbQuery<Record<string, unknown>>(
@@ -108,6 +118,23 @@ export async function buildSafeWorkerCandidateView(
     apiFailure("DB_ERROR", "Dữ liệu hồ sơ thợ đề xuất không hợp lệ", 500);
   }
   const avatarUrl = await resolveWorkerAvatarUrl(client, profile.data.avatar_url);
+  const broadcastId = nullableString(candidate.broadcast_id);
+  const jobId = nullableString(candidate.job_id);
+  const priceQuote = broadcastId && jobId
+    ? parseOriginalScopePriceQuote(candidate.original_scope_price_quote, {
+      broadcastId,
+      jobId,
+      requireWorkerConfirmation: true,
+      workerId,
+    })
+    : null;
+  if (status === "proposed" && !priceQuote) {
+    apiFailure(
+      "PRICE_CONFIRMATION_REQUIRED",
+      "Báo giá chính xác của thợ chưa sẵn sàng. Vui lòng tải lại.",
+      409,
+    );
+  }
   return {
     candidate_id: candidateId,
     worker_id: workerId,
@@ -117,32 +144,17 @@ export async function buildSafeWorkerCandidateView(
     rating: totalJobs > 0 && rating !== null && rating > 0 ? rating : null,
     total_jobs: totalJobs,
     years_experience: yearsExperience,
+    birth_year: safeCandidateBirthYear(worker.data.date_of_birth),
+    gender: safeCandidateGender(worker.data.gender),
     verification_status: verificationStatus,
     is_favorite: favorite.data !== null,
     proposed_at: proposedAt,
     expires_at: nullableString(candidate.expires_at),
     customer_decided_at: nullableString(candidate.customer_decided_at),
+    original_scope_price_quote: priceQuote
+      ? projectOriginalScopePriceQuote(priceQuote)
+      : null,
   };
-}
-
-function requiredCandidateInteger(value: unknown): number {
-  const parsed = typeof value === "number"
-    ? value
-    : typeof value === "string" && value.trim().length > 0
-    ? Number(value)
-    : Number.NaN;
-  if (!Number.isSafeInteger(parsed) || parsed < 0) {
-    apiFailure("DB_ERROR", "Dữ liệu hồ sơ thợ đề xuất không hợp lệ", 500);
-  }
-  return parsed;
-}
-
-function requiredCandidateString(value: unknown): string {
-  const parsed = nullableString(value);
-  if (!parsed?.trim()) {
-    apiFailure("DB_ERROR", "Dữ liệu hồ sơ thợ đề xuất không hợp lệ", 500);
-  }
-  return parsed;
 }
 
 export async function resumeMatchingAfterCandidateRejection(

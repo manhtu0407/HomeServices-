@@ -138,7 +138,7 @@ describe('CustomerHistorySurface service history', () => {
     render(<CustomerHistorySurface />)
 
     await waitFor(() => expect(screen.getByTestId('customer-v21-history-list')).toBeOnTheScreen())
-    fireEvent.press(screen.getByRole('button', { name: 'Back' }))
+    fireEvent.press(screen.getByRole('button', { name: 'Quay lại' }))
 
     expect(mockReplace).toHaveBeenCalledWith('/(customer)/profile?utility=support')
   })
@@ -186,10 +186,12 @@ describe('CustomerHistorySurface service history', () => {
       'Vuốt ngang để xem thêm bộ lọc dịch vụ',
     )
     expect(screen.getByTestId('customer-v21-history-filter-drag-surface')).toBeOnTheScreen()
-    expect(screen.getByTestId('customer-v21-history-filter-indicator')).toBeOnTheScreen()
-    for (const filter of ['all', 'saved', 'electrical', 'plumbing', 'cleaning', 'hvac', 'upholstery', 'handyman']) {
-      expect(screen.getByTestId(`customer-v21-history-filter-${filter}-wide-mint-aura`)).toBeOnTheScreen()
-      expect(screen.getByTestId(`customer-v21-history-filter-${filter}-mint-aura`)).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-v21-history-filter-fade')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-v21-history-filter-all-wide-mint-aura')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-v21-history-filter-all-mint-aura')).toBeOnTheScreen()
+    for (const filter of ['saved', 'electrical', 'plumbing', 'cleaning', 'hvac', 'upholstery', 'handyman']) {
+      expect(screen.queryByTestId(`customer-v21-history-filter-${filter}-wide-mint-aura`)).toBeNull()
+      expect(screen.queryByTestId(`customer-v21-history-filter-${filter}-mint-aura`)).toBeNull()
     }
 
     fireEvent.press(screen.getByTestId('customer-v21-history-filter-cleaning'))
@@ -208,9 +210,14 @@ describe('CustomerHistorySurface service history', () => {
     expect(screen.getByTestId('customer-v21-history-saved-hint-card-skin')).toBeOnTheScreen()
     expect(screen.getByTestId('customer-v21-history-saved-hint-wide-mint-aura')).toBeOnTheScreen()
     expect(screen.getByTestId('customer-v21-history-saved-hint-mint-aura')).toBeOnTheScreen()
+    expect(screen.getByText('Thợ đã lưu')).toBeOnTheScreen()
+    expect(screen.getByText('Kael sẽ ưu tiên họ trong lần tìm tiếp theo.')).toBeOnTheScreen()
     expect(screen.getByTestId('customer-v21-history-error-card-skin')).toBeOnTheScreen()
     expect(screen.getByTestId('customer-v21-history-error-wide-mint-aura')).toBeOnTheScreen()
     expect(screen.getByTestId('customer-v21-history-error-mint-aura')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-v21-history-error-workart')).toBeOnTheScreen()
+    expect(screen.getByText('Không thể tải lịch sử dịch vụ lúc này. Vui lòng kiểm tra kết nối và thử lại.')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-v21-history-error-icon')).toBeOnTheScreen()
     expect(screen.queryByText('Vui lòng thử lại khi kết nối ổn định hơn.')).toBeNull()
   })
 
@@ -237,11 +244,14 @@ describe('CustomerHistorySurface service history', () => {
 
     expect(assetsSource).toContain("activity: require('@/assets/client-image-icons/client-activity-route.png')")
     expect(assetsSource).toContain("activityEmpty: require('@/assets/client-image-icons/client-activity-empty.png')")
+    expect(assetsSource).toContain("historyErrorWorkart: require('@/assets/customer-history/history-error-workart.png')")
     expect(historySurfaceSource).toContain('assetSize={76}')
     expect(historySurfaceSource).toContain('image={customerV21Assets.activityEmpty}')
+    expect(historySurfaceSource).toContain('source={customerV21Assets.historyErrorWorkart}')
     expect(sharedSurfacesSource).toContain('assetSize = 64')
     expect(sharedSurfacesSource).toContain('size={assetSize}')
     expect(existsSync(resolve(__dirname, '../../../assets/client-image-icons/client-activity-empty.png'))).toBe(true)
+    expect(existsSync(resolve(__dirname, '../../../assets/customer-history/history-error-workart.png'))).toBe(true)
   })
 
   it('saves a worker and updates every completed deal from that worker', async () => {
@@ -372,13 +382,35 @@ describe('CustomerHistorySurface service history', () => {
         kaelProgress: null,
         kaelReview: {
           advisory: 'Nên thay đoạn dây bị hỏng.',
+          baseline_evidence: verifiedElectricalBaselineEvidence(),
+          baseline_source: 'verified-test-source',
+          baseline_used: 'electrical:outlet_or_switch_broken:medium:hcmc_all',
           complexity_assessment: 'medium',
           confidence: 0.82,
           fallback_used: false,
+          price_source: 'verified_baseline',
+          pricing_mode: 'full_scope_total',
           problem_summary: 'Phát hiện dây âm tường bị chập.',
+          reference_price_max: 600000,
+          reference_price_min: 400000,
+          selection_rule: 'verified_neutral_midpoint_with_bilateral_confirmation',
+          stakeholder_balance: {
+            commission_level: 1,
+            commission_rate_bps: 1500,
+            customer_confirmation_required: true,
+            customer_total: 500000,
+            platform_fee: 75000,
+            worker_confirmation_required: true,
+            worker_net: 425000,
+          },
+          worker_price_confirmation: {
+            confirmed: true,
+            confirmed_at: '2026-08-13T08:00:00.000Z',
+            quote_id: 'a7500000-0000-4000-8000-000000000010',
+          },
         },
-        priceMax: 520000,
-        priceMin: 420000,
+        priceMax: 500000,
+        priceMin: 500000,
         reason: 'Phát hiện hư hỏng ẩn.',
         requestTiming: 'on_site',
         requestedDescription: 'Thay dây âm tường bị chập',
@@ -410,3 +442,38 @@ describe('CustomerHistorySurface service history', () => {
     })
   })
 })
+
+function verifiedElectricalBaselineEvidence() {
+  return {
+    schema_version: 'baseline_price_evidence_receipt.v1',
+    accepted_source_count: 2,
+    aggregate_price_min: 400000,
+    aggregate_price_max: 600000,
+    high_trust_source_count: 2,
+    quorum_met: true,
+    required_quorum: 2,
+    unit: 'per_visit',
+    sources: [
+      {
+        domain: 'thoviet.com.vn',
+        url: 'https://thoviet.com.vn/bang-gia',
+        observed_at: '2026-08-14',
+        price_min: 350000,
+        price_max: 550000,
+        unit: 'per_visit',
+        effective_tier: 1,
+        weight: 1,
+      },
+      {
+        domain: 'thosaigon.vn',
+        url: 'https://thosaigon.vn/bang-gia',
+        observed_at: '2026-08-14',
+        price_min: 450000,
+        price_max: 650000,
+        unit: 'per_visit',
+        effective_tier: 1,
+        weight: 1,
+      },
+    ],
+  }
+}

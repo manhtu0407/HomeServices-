@@ -7,7 +7,7 @@
  *
  * Requires .env.local with real credentials.
  */
-import { describe, it, expect, beforeAll } from 'vitest'
+import { describe, it, expect, afterAll, beforeAll } from 'vitest'
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '@nestscout/shared'
 import { resolveOrAnnounceSkip } from './integration-target'
@@ -667,53 +667,31 @@ describeReal('Real Supabase — RLS enforcement', () => {
 // CLEANUP — delete all test data
 // ═══════════════════════════════════════════════════════════════════
 
-describeReal('Cleanup — remove all test data', () => {
-  beforeAll(() => {
-    supabase = createClient<Database>(supabaseUrl!, serviceRoleKey!)
-  })
+// Deleting fixtures is teardown, not a test: written as seven `it` blocks with
+// no assertion it could never fail, and it stopped running the moment an earlier
+// case threw. As afterAll it runs either way, child rows before parents.
+afterAll(async () => {
+  if (!resolution.ok) return
+  const admin = createClient<Database>(supabaseUrl!, serviceRoleKey!)
 
-  it('deletes test review', async () => {
-    if (testReviewId) {
-      await supabase.from('reviews').delete().eq('id', testReviewId)
-    }
-  })
-
-  it('deletes test job broadcasts', async () => {
-    if (testJobId) {
-      await supabase.from('job_broadcasts').delete().eq('job_id', testJobId)
-    }
-  })
-
-  it('deletes test job events', async () => {
-    if (testJobId) {
-      await supabase.from('job_events').delete().eq('job_id', testJobId)
-    }
-  })
-
-  it('deletes test job', async () => {
-    if (testJobId) {
-      await supabase.from('jobs').delete().eq('id', testJobId)
-    }
-  })
-
-  it('deletes test worker profile', async () => {
-    if (workerUserId) {
-      await supabase.from('worker_profiles').delete().eq('id', workerUserId)
-    }
-  })
-
-  it('deletes test customer profile', async () => {
-    if (customerUserId) {
-      await supabase.from('customer_profiles').delete().eq('id', customerUserId)
-    }
-  })
-
-  it('deletes test auth users', async () => {
-    if (customerUserId) {
-      await supabase.auth.admin.deleteUser(customerUserId)
-    }
-    if (workerUserId) {
-      await supabase.auth.admin.deleteUser(workerUserId)
-    }
-  })
+  if (testReviewId) {
+    await admin.from('reviews').delete().eq('id', testReviewId)
+  }
+  if (testJobId) {
+    await admin.from('job_broadcasts').delete().eq('job_id', testJobId)
+    await admin.from('job_events').delete().eq('job_id', testJobId)
+    await admin.from('jobs').delete().eq('id', testJobId)
+  }
+  if (workerUserId) {
+    await admin.from('worker_profiles').delete().eq('id', workerUserId)
+  }
+  if (customerUserId) {
+    await admin.from('customer_profiles').delete().eq('id', customerUserId)
+  }
+  if (customerUserId) {
+    await admin.auth.admin.deleteUser(customerUserId)
+  }
+  if (workerUserId) {
+    await admin.auth.admin.deleteUser(workerUserId)
+  }
 })

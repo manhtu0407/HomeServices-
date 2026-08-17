@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useReducer, useState } from 'react'
 import { Modal, ScrollView, Text, View } from 'react-native'
 
 import { KaelButton, KaelChip, KaelTextField } from '@/components/ui/kael-primitives'
@@ -112,7 +112,7 @@ export function AdminTeamOwnerActions(props: OwnerActionsProps) {
 }
 
 function PendingAccounts({ accounts, capabilityLabels, copy, language, onReset }: { accounts: AdminViewOperatorProvisioningSummary[]; capabilityLabels: OwnerActionsProps['capabilityLabels']; copy: typeof ownerActionCopy.vi | typeof ownerActionCopy.en; language: 'vi' | 'en'; onReset: (account: AdminViewOperatorProvisioningSummary) => void }) {
-  const formatDate = (value: string | null) => value ? new Intl.DateTimeFormat(language === 'vi' ? 'vi-VN' : 'en-US', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value)) : '—'
+  const formatDate = (value: string | null) => value ? pendingAccountDateFormatters[language].format(new Date(value)) : '—'
   return <View style={styles.reviewSection}>
     <Text style={styles.reviewSectionTitle}>{copy.pendingTitle}</Text>
     {accounts.length === 0 ? <Text style={styles.reviewSummaryText}>{copy.pendingEmpty}</Text> : <View style={styles.pendingAccountList}>{accounts.map((account) => <View key={account.id} style={styles.pendingAccountCard} testID={`admin-pending-operator-${account.id}`}>
@@ -131,15 +131,39 @@ type CreateModalProps = OwnerActionsProps & {
   visible: boolean
 }
 
+type CreateOperatorState = {
+  capabilities: AdminCapability[]
+  confirmed: boolean
+  email: string
+  error: string | null
+  fullName: string
+  password: string
+  passwordConfirmation: string
+  saving: boolean
+}
+
+const initialCreateOperatorState: CreateOperatorState = {
+  capabilities: ['finance.read'],
+  confirmed: false,
+  email: '',
+  error: null,
+  fullName: '',
+  password: '',
+  passwordConfirmation: '',
+  saving: false,
+}
+
+const pendingAccountDateFormatters = {
+  en: new Intl.DateTimeFormat('en-US', { dateStyle: 'medium', timeStyle: 'short' }),
+  vi: new Intl.DateTimeFormat('vi-VN', { dateStyle: 'medium', timeStyle: 'short' }),
+}
+
 function CreateOperatorModal(props: CreateModalProps) {
-  const [fullName, setFullName] = useState('')
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [passwordConfirmation, setPasswordConfirmation] = useState('')
-  const [capabilities, setCapabilities] = useState<AdminCapability[]>(['finance.read'])
-  const [confirmed, setConfirmed] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [saving, setSaving] = useState(false)
+  const [state, patch] = useReducer(
+    (current: CreateOperatorState, next: Partial<CreateOperatorState>) => ({ ...current, ...next }),
+    initialCreateOperatorState,
+  )
+  const { capabilities, confirmed, email, error, fullName, password, passwordConfirmation, saving } = state
   const selected = useMemo(() => new Set(capabilities), [capabilities])
 
   const close = () => {
@@ -147,27 +171,25 @@ function CreateOperatorModal(props: CreateModalProps) {
   }
   const toggleCapability = (capability: AdminCapability) => {
     if (capability === 'finance.read') return
-    setCapabilities((current) => current.includes(capability) ? current.filter((item) => item !== capability) : [...current, capability])
+    patch({ capabilities: capabilities.includes(capability) ? capabilities.filter((item) => item !== capability) : [...capabilities, capability] })
   }
   const submit = async () => {
     const validationError = validateCreateForm(props.copy, fullName, email, password, passwordConfirmation, confirmed)
-    if (validationError) { setError(validationError); return }
-    setSaving(true)
-    setError(null)
+    if (validationError) { patch({ error: validationError }); return }
+    patch({ error: null, saving: true })
     const result = await adminControlService.provisionOperator({ full_name: fullName.trim(), email: email.trim().toLowerCase(), initial_password: password, capabilities })
-    setSaving(false)
-    if (!result.success) { setError(result.error); return }
-    setFullName(''); setEmail(''); setPassword(''); setPasswordConfirmation(''); setCapabilities(['finance.read']); setConfirmed(false)
+    if (!result.success) { patch({ error: result.error, saving: false }); return }
+    patch(initialCreateOperatorState)
     await props.onSuccess()
   }
 
   return <Modal animationType={props.reduceMotion ? 'none' : 'fade'} transparent visible={props.visible} onRequestClose={close}><View style={styles.modalBackdrop}><View style={styles.modalCard} testID="admin-create-operator-modal">
     <Text style={styles.modalTitle}>{props.copy.create}</Text>
     <ScrollView style={styles.modalBodyScroll} contentContainerStyle={styles.modalScrollContent} keyboardShouldPersistTaps="handled">
-      <View style={styles.formSection}><Text style={styles.formSectionTitle}>{props.copy.accountSection}</Text><KaelTextField accessibilityLabel={props.copy.fullName} onChangeText={setFullName} placeholder={props.copy.fullName} placeholderTextColor={color.text.muted} value={fullName} /><KaelTextField accessibilityLabel={props.copy.email} autoCapitalize="none" keyboardType="email-address" onChangeText={setEmail} placeholder={props.copy.email} placeholderTextColor={color.text.muted} value={email} /></View>
-      <View style={styles.formSection}><Text style={styles.formSectionTitle}>{props.copy.passwordSection}</Text><KaelTextField accessibilityLabel={props.copy.password} autoCapitalize="none" onChangeText={setPassword} placeholder={props.copy.password} placeholderTextColor={color.text.muted} secureTextEntry value={password} /><KaelTextField accessibilityLabel={props.copy.passwordConfirmation} autoCapitalize="none" onChangeText={setPasswordConfirmation} placeholder={props.copy.passwordConfirmation} placeholderTextColor={color.text.muted} secureTextEntry value={passwordConfirmation} /></View>
+      <View style={styles.formSection}><Text style={styles.formSectionTitle}>{props.copy.accountSection}</Text><KaelTextField accessibilityLabel={props.copy.fullName} onChangeText={(value) => patch({ fullName: value })} placeholder={props.copy.fullName} placeholderTextColor={color.text.muted} value={fullName} /><KaelTextField accessibilityLabel={props.copy.email} autoCapitalize="none" keyboardType="email-address" onChangeText={(value) => patch({ email: value })} placeholder={props.copy.email} placeholderTextColor={color.text.muted} value={email} /></View>
+      <View style={styles.formSection}><Text style={styles.formSectionTitle}>{props.copy.passwordSection}</Text><KaelTextField accessibilityLabel={props.copy.password} autoCapitalize="none" onChangeText={(value) => patch({ password: value })} placeholder={props.copy.password} placeholderTextColor={color.text.muted} secureTextEntry value={password} /><KaelTextField accessibilityLabel={props.copy.passwordConfirmation} autoCapitalize="none" onChangeText={(value) => patch({ passwordConfirmation: value })} placeholder={props.copy.passwordConfirmation} placeholderTextColor={color.text.muted} secureTextEntry value={passwordConfirmation} /></View>
       <View style={styles.formSection}><Text style={styles.formSectionTitle}>{props.copy.accessSection}</Text><Text style={styles.reviewSummaryText}>{props.copy.financeBaseline}</Text><View style={styles.capabilityList}>{ADMIN_CAPABILITIES.map((capability) => <KaelChip key={capability} accessibilityLabel={props.capabilityLabels[capability]} accessibilityState={{ disabled: capability === 'finance.read', selected: selected.has(capability) }} disabled={capability === 'finance.read'} label={props.capabilityLabels[capability]} onPress={() => toggleCapability(capability)} variant={selected.has(capability) ? 'selected' : 'unselected'} />)}</View></View>
-      <View style={styles.formSection}><Text style={styles.formSectionTitle}>{props.copy.confirmationSection}</Text><KaelChip accessibilityLabel={props.copy.confirmation} accessibilityState={{ selected: confirmed }} label={props.copy.confirmation} onPress={() => setConfirmed((value) => !value)} variant={confirmed ? 'selected' : 'unselected'} /></View>
+      <View style={styles.formSection}><Text style={styles.formSectionTitle}>{props.copy.confirmationSection}</Text><KaelChip accessibilityLabel={props.copy.confirmation} accessibilityState={{ selected: confirmed }} label={props.copy.confirmation} onPress={() => patch({ confirmed: !confirmed })} variant={confirmed ? 'selected' : 'unselected'} /></View>
     </ScrollView>
     {error ? <Text accessibilityRole="alert" style={styles.errorText}>{error}</Text> : null}
     <View style={styles.inlineActions}><KaelButton label={props.copy.close} onPress={close} disabled={saving} style={styles.inlineAction} variant="secondary" /><KaelButton label={saving ? props.copy.saving : props.copy.create} onPress={() => { void submit() }} disabled={saving} loading={saving} style={styles.inlineAction} variant="primary" /></View>

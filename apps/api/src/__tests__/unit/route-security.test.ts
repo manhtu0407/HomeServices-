@@ -473,7 +473,7 @@ describe('Customer-only routes reject non-customers', () => {
 })
 
 describe('Kael-owned money path parity in Next reference routes', () => {
-  it('POST /jobs/[id]/confirm-search locks jobs.final_price from Kael baseline', async () => {
+  it('POST /jobs/[id]/confirm-search keeps the estimate cap separate from final_price', async () => {
     const updates: Array<Record<string, unknown>> = []
     const jobsQuery: any = {
       select: vi.fn().mockReturnThis(),
@@ -518,7 +518,7 @@ describe('Kael-owned money path parity in Next reference routes', () => {
     expect(res.status).toBe(200)
     expect(updates[0]).toMatchObject({
       status: 'broadcasting',
-      final_price: 250000,
+      final_price: null,
     })
   })
 })

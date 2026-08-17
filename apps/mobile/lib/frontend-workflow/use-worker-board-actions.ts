@@ -83,6 +83,7 @@ export function useWorkerBoardActions({
 }: WorkerBoardActionsInput) {
   const workerAvailabilityPreferenceRef = useRef<{ sessionUserId: string | null; value: boolean } | null>(null)
   const workerRefreshRequestIdRef = useRef(0)
+  const workerRefreshInFlightRef = useRef(false)
   const workerActivityHeartbeatBusyRef = useRef(false)
   const [workerRemoteState, setWorkerRemoteState] = useState<WorkerRemoteState>(initialWorkerRemoteState)
   const workerProfile = workerRemoteState.sessionUserId === sessionUserId ? workerRemoteState.profile : null
@@ -95,122 +96,128 @@ export function useWorkerBoardActions({
   const workerWithdrawalRequests = workerRemoteState.sessionUserId === sessionUserId ? workerRemoteState.withdrawalRequests : []
   const workerRefresh = useCallback(async () => {
     if (role !== 'worker' && role !== 'admin') return true
-    const workerRefreshRequestId = workerRefreshRequestIdRef.current + 1
-    workerRefreshRequestIdRef.current = workerRefreshRequestId
-    const isCurrentWorkerRefresh = () => workerRefreshRequestIdRef.current === workerRefreshRequestId
+    if (workerRefreshInFlightRef.current) return true
+    workerRefreshInFlightRef.current = true
+    try {
+      const workerRefreshRequestId = workerRefreshRequestIdRef.current + 1
+      workerRefreshRequestIdRef.current = workerRefreshRequestId
+      const isCurrentWorkerRefresh = () => workerRefreshRequestIdRef.current === workerRefreshRequestId
 
-    const profileRequest = workerService.getProfile()
-    const earningsRequest = workerService.getEarnings(currentWorkerYearRange())
-    const performanceInsightsRequest = workerService.getPerformanceInsights()
-    const payoutMethodRequest = role === 'worker'
-      ? workerService.getPayoutMethod()
-      : Promise.resolve({ success: true as const, data: { payout_method: null } })
-    const withdrawalRequestsRequest = role === 'worker'
-      ? workerService.listWithdrawalRequests()
-      : Promise.resolve({ success: true as const, data: { requests: [] } })
-    const broadcastsRequest = workerService.getBroadcasts()
-    const jobsRequest = workerService.getJobs()
+      const profileRequest = workerService.getProfile()
+      const earningsRequest = workerService.getEarnings(currentWorkerYearRange())
+      const performanceInsightsRequest = workerService.getPerformanceInsights()
+      const payoutMethodRequest = role === 'worker'
+        ? workerService.getPayoutMethod()
+        : Promise.resolve({ success: true as const, data: { payout_method: null } })
+      const withdrawalRequestsRequest = role === 'worker'
+        ? workerService.listWithdrawalRequests()
+        : Promise.resolve({ success: true as const, data: { requests: [] } })
+      const broadcastsRequest = workerService.getBroadcasts()
+      const jobsRequest = workerService.getJobs()
 
-    // Reconcile assigned work and offers together. An active assigned job is
-    // authoritative and must never be replaced by an offer during refresh.
-    const [broadcasts, jobs] = await Promise.all([broadcastsRequest, jobsRequest])
-    if (!isCurrentWorkerRefresh()) return true
-    const nextBroadcast = broadcasts.success ? broadcasts.data.broadcasts[0] : undefined
-    let workflowError = broadcasts.success ? null : broadcasts.error
-    if (jobs.success) {
-      setWorkerRemoteState((current) => {
-        const currentJobs = current.sessionUserId === sessionUserId ? current.jobs : []
-        if (current.sessionUserId === sessionUserId && current.jobsHydrated && sameWorkerJobs(currentJobs, jobs.data.jobs)) return current
-        return {
-          earnings: current.sessionUserId === sessionUserId ? current.earnings : null,
-          jobs: jobs.data.jobs,
-          jobsHydrated: true,
-          performanceInsights: current.sessionUserId === sessionUserId ? current.performanceInsights : null,
-          payoutMethod: current.sessionUserId === sessionUserId ? current.payoutMethod : null,
-          profile: current.sessionUserId === sessionUserId ? current.profile : null,
-          sessionUserId,
-          withdrawalRequests: current.sessionUserId === sessionUserId ? current.withdrawalRequests : [],
-        }
-      })
-      const activeJob = jobs.data.jobs.find((job) => isWorkerCurrentJobStatus(job.status))
-      const currentJobId = getRemoteJobId(stateRef.current)
-      const currentJob = currentJobId ? jobs.data.jobs.find((job) => job.id === currentJobId) : undefined
-      if (activeJob) {
-        dispatch({ type: 'hydrate_remote_job', job: workerJobToSnapshot(activeJob), workerGate: 'remote_backend' })
-      } else if (nextBroadcast) {
-        dispatch({ type: 'hydrate_remote_broadcast', broadcast: workerBroadcastToSnapshot(nextBroadcast) })
-      } else if (currentJob) {
-        dispatch({ type: 'hydrate_remote_job', job: workerJobToSnapshot(currentJob), workerGate: 'remote_backend' })
-      } else if (
-        stateRef.current.workerGate === 'remote_backend'
-        && stateRef.current.deal?.backendStatus === 'worker_candidate_pending'
-      ) {
-        dispatch({ type: 'reset_workflow' })
-      } else if (hasStaleRemoteBroadcast(stateRef.current)) {
-        dispatch({ type: 'mark_remote_broadcast_expired' })
-      }
-    } else {
-      workflowError = jobs.error
-    }
-
-    // The post-I/O generation check prevents an older refresh from committing after a newer refresh starts.
-    // react-doctor-disable-next-line react-doctor/async-defer-await
-    const [profile, earnings, performanceInsights, payoutMethod, withdrawalRequests] = await Promise.all([
-      profileRequest,
-      earningsRequest,
-      performanceInsightsRequest,
-      payoutMethodRequest,
-      withdrawalRequestsRequest,
-    ])
-    if (!isCurrentWorkerRefresh()) return true
-    if (!profile.success) return setRemoteError(profile.error)
-
-    const nextEarnings = earnings.success ? earnings.data : null
-    const nextPerformanceInsights = performanceInsights.success ? performanceInsights.data : null
-    const pendingAvailabilityPreference = workerAvailabilityPreferenceRef.current?.sessionUserId === sessionUserId
-      ? workerAvailabilityPreferenceRef.current.value
-      : null
-    const refreshedProfile = pendingAvailabilityPreference === null || profile.data.is_available === pendingAvailabilityPreference
-      ? profile.data
-      : { ...profile.data, is_available: pendingAvailabilityPreference }
-    if (pendingAvailabilityPreference !== null && profile.data.is_available === pendingAvailabilityPreference) {
-      workerAvailabilityPreferenceRef.current = null
-    }
-    setWorkerRemoteState((current) => {
-      const currentProfile = current.sessionUserId === sessionUserId ? current.profile : null
-      const currentEarnings = current.sessionUserId === sessionUserId ? current.earnings : null
-      const currentJobs = current.sessionUserId === sessionUserId ? current.jobs : []
-      const currentPerformanceInsights = current.sessionUserId === sessionUserId ? current.performanceInsights : null
-      const currentPayoutMethod = current.sessionUserId === sessionUserId ? current.payoutMethod : null
-      const currentWithdrawalRequests = current.sessionUserId === sessionUserId ? current.withdrawalRequests : []
-      const nextPayoutMethod = payoutMethod.success ? payoutMethod.data.payout_method : currentPayoutMethod
-      const nextWithdrawalRequests = withdrawalRequests.success
-        ? withdrawalRequests.data.requests
-        : currentWithdrawalRequests
-      const sameProfile = sameWorkerProfile(currentProfile, refreshedProfile)
-      const sameEarnings = nextEarnings ? sameWorkerEarnings(currentEarnings, nextEarnings) : currentEarnings === null
-      const samePerformanceInsights = nextPerformanceInsights
-        ? sameWorkerPerformanceInsights(currentPerformanceInsights, nextPerformanceInsights)
-        : currentPerformanceInsights === null
-      const samePayoutMethod = sameWorkerPayoutMethod(currentPayoutMethod, nextPayoutMethod)
-      const sameWithdrawalRequests = sameWorkerWithdrawalRequests(currentWithdrawalRequests, nextWithdrawalRequests)
-      return current.sessionUserId === sessionUserId && sameProfile && sameEarnings && samePerformanceInsights && samePayoutMethod && sameWithdrawalRequests
-        ? current
-        : {
-            earnings: nextEarnings,
-            jobs: currentJobs,
-            jobsHydrated: current.sessionUserId === sessionUserId ? current.jobsHydrated : false,
-            performanceInsights: nextPerformanceInsights,
-            payoutMethod: nextPayoutMethod,
-            profile: refreshedProfile,
+      // Reconcile assigned work and offers together. An active assigned job is
+      // authoritative and must never be replaced by an offer during refresh.
+      const [broadcasts, jobs] = await Promise.all([broadcastsRequest, jobsRequest])
+      if (!isCurrentWorkerRefresh()) return true
+      const nextBroadcast = broadcasts.success ? broadcasts.data.broadcasts[0] : undefined
+      let workflowError = broadcasts.success ? null : broadcasts.error
+      if (jobs.success) {
+        setWorkerRemoteState((current) => {
+          const currentJobs = current.sessionUserId === sessionUserId ? current.jobs : []
+          if (current.sessionUserId === sessionUserId && current.jobsHydrated && sameWorkerJobs(currentJobs, jobs.data.jobs)) return current
+          return {
+            earnings: current.sessionUserId === sessionUserId ? current.earnings : null,
+            jobs: jobs.data.jobs,
+            jobsHydrated: true,
+            performanceInsights: current.sessionUserId === sessionUserId ? current.performanceInsights : null,
+            payoutMethod: current.sessionUserId === sessionUserId ? current.payoutMethod : null,
+            profile: current.sessionUserId === sessionUserId ? current.profile : null,
             sessionUserId,
-            withdrawalRequests: nextWithdrawalRequests,
+            withdrawalRequests: current.sessionUserId === sessionUserId ? current.withdrawalRequests : [],
           }
-    })
-    if (!payoutMethod.success && !workflowError) workflowError = payoutMethod.error
-    if (!withdrawalRequests.success && !workflowError) workflowError = withdrawalRequests.error
-    if (workflowError) return setRemoteError(workflowError)
-    return true
+        })
+        const activeJob = jobs.data.jobs.find((job) => isWorkerCurrentJobStatus(job.status))
+        const currentJobId = getRemoteJobId(stateRef.current)
+        const currentJob = currentJobId ? jobs.data.jobs.find((job) => job.id === currentJobId) : undefined
+        if (activeJob) {
+          dispatch({ type: 'hydrate_remote_job', job: workerJobToSnapshot(activeJob), workerGate: 'remote_backend' })
+        } else if (nextBroadcast) {
+          dispatch({ type: 'hydrate_remote_broadcast', broadcast: workerBroadcastToSnapshot(nextBroadcast) })
+        } else if (currentJob) {
+          dispatch({ type: 'hydrate_remote_job', job: workerJobToSnapshot(currentJob), workerGate: 'remote_backend' })
+        } else if (
+          stateRef.current.workerGate === 'remote_backend'
+          && stateRef.current.deal?.backendStatus === 'worker_candidate_pending'
+        ) {
+          dispatch({ type: 'reset_workflow' })
+        } else if (hasStaleRemoteBroadcast(stateRef.current)) {
+          dispatch({ type: 'mark_remote_broadcast_expired' })
+        }
+      } else {
+        workflowError = jobs.error
+      }
+
+      // The post-I/O generation check prevents an older refresh from committing after a newer refresh starts.
+      // react-doctor-disable-next-line react-doctor/async-defer-await
+      const [profile, earnings, performanceInsights, payoutMethod, withdrawalRequests] = await Promise.all([
+        profileRequest,
+        earningsRequest,
+        performanceInsightsRequest,
+        payoutMethodRequest,
+        withdrawalRequestsRequest,
+      ])
+      if (!isCurrentWorkerRefresh()) return true
+      if (!profile.success) return setRemoteError(profile.error)
+
+      const nextEarnings = earnings.success ? earnings.data : null
+      const nextPerformanceInsights = performanceInsights.success ? performanceInsights.data : null
+      const pendingAvailabilityPreference = workerAvailabilityPreferenceRef.current?.sessionUserId === sessionUserId
+        ? workerAvailabilityPreferenceRef.current.value
+        : null
+      const refreshedProfile = pendingAvailabilityPreference === null || profile.data.is_available === pendingAvailabilityPreference
+        ? profile.data
+        : { ...profile.data, is_available: pendingAvailabilityPreference }
+      if (pendingAvailabilityPreference !== null && profile.data.is_available === pendingAvailabilityPreference) {
+        workerAvailabilityPreferenceRef.current = null
+      }
+      setWorkerRemoteState((current) => {
+        const currentProfile = current.sessionUserId === sessionUserId ? current.profile : null
+        const currentEarnings = current.sessionUserId === sessionUserId ? current.earnings : null
+        const currentJobs = current.sessionUserId === sessionUserId ? current.jobs : []
+        const currentPerformanceInsights = current.sessionUserId === sessionUserId ? current.performanceInsights : null
+        const currentPayoutMethod = current.sessionUserId === sessionUserId ? current.payoutMethod : null
+        const currentWithdrawalRequests = current.sessionUserId === sessionUserId ? current.withdrawalRequests : []
+        const nextPayoutMethod = payoutMethod.success ? payoutMethod.data.payout_method : currentPayoutMethod
+        const nextWithdrawalRequests = withdrawalRequests.success
+          ? withdrawalRequests.data.requests
+          : currentWithdrawalRequests
+        const sameProfile = sameWorkerProfile(currentProfile, refreshedProfile)
+        const sameEarnings = nextEarnings ? sameWorkerEarnings(currentEarnings, nextEarnings) : currentEarnings === null
+        const samePerformanceInsights = nextPerformanceInsights
+          ? sameWorkerPerformanceInsights(currentPerformanceInsights, nextPerformanceInsights)
+          : currentPerformanceInsights === null
+        const samePayoutMethod = sameWorkerPayoutMethod(currentPayoutMethod, nextPayoutMethod)
+        const sameWithdrawalRequests = sameWorkerWithdrawalRequests(currentWithdrawalRequests, nextWithdrawalRequests)
+        return current.sessionUserId === sessionUserId && sameProfile && sameEarnings && samePerformanceInsights && samePayoutMethod && sameWithdrawalRequests
+          ? current
+          : {
+              earnings: nextEarnings,
+              jobs: currentJobs,
+              jobsHydrated: current.sessionUserId === sessionUserId ? current.jobsHydrated : false,
+              performanceInsights: nextPerformanceInsights,
+              payoutMethod: nextPayoutMethod,
+              profile: refreshedProfile,
+              sessionUserId,
+              withdrawalRequests: nextWithdrawalRequests,
+            }
+      })
+      if (!payoutMethod.success && !workflowError) workflowError = payoutMethod.error
+      if (!withdrawalRequests.success && !workflowError) workflowError = withdrawalRequests.error
+      if (workflowError) return setRemoteError(workflowError)
+      return true
+    } finally {
+      workerRefreshInFlightRef.current = false
+    }
   }, [dispatch, role, sessionUserId, setRemoteError, stateRef])
 
   const workerUpdateAvailability = useCallback(async (
@@ -308,7 +315,9 @@ export function useWorkerBoardActions({
   const workerAcceptBroadcast = useCallback(async (jobIdOverride?: string) => {
     const jobId = jobIdOverride ?? getRemoteJobId(stateRef.current)
     if (!jobId) return setRemoteError('Không có lời mời việc để nhận')
-    const accepted = await workerService.acceptBroadcast(jobId)
+    const quoteId = stateRef.current.deal?.broadcast?.priceQuote?.quoteId
+    if (!quoteId) return setRemoteError('Báo giá chính xác chưa sẵn sàng. Vui lòng tải lại lời mời việc.')
+    const accepted = await workerService.acceptBroadcast(jobId, quoteId)
     if (!accepted.success) {
       if (isStaleBroadcastError(accepted.code)) dispatch({ type: 'mark_remote_broadcast_expired' })
       return setRemoteError(accepted.error)

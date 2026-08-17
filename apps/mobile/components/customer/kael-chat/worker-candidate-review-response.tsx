@@ -1,6 +1,7 @@
 import { typography } from '@/design/theme'
 import { useState } from 'react'
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native'
+import { Image } from 'expo-image'
 
 import { KaelButton } from '@/components/ui/kael-primitives'
 import type { AppLanguage } from '@/lib/app-language'
@@ -10,6 +11,9 @@ import { CaseWorkResponse } from './case-work-response'
 import { buildCaseWorkResponseModel } from './case-work-response-model'
 import type { SavedWorkerSummary, SavedWorkersStatus } from './customer-saved-workers'
 import { SavedWorkerConfirmationList } from './saved-worker-confirmation-list'
+import { CandidatePriceReceipt } from './worker-candidate-review-price-receipt'
+
+const VND_FORMATTER = new Intl.NumberFormat('vi-VN')
 
 type WorkerCandidateReviewResponseProps = {
   busy: boolean
@@ -55,7 +59,10 @@ function WorkerCandidateReviewContent({
 }: WorkerCandidateReviewResponseProps) {
   const [finalReviewOpen, setFinalReviewOpen] = useState(false)
   const displayName = candidate?.display_name?.trim() || (language === 'vi' ? 'Hồ sơ thợ' : 'Worker profile')
+  const priceQuote = candidate?.original_scope_price_quote ?? null
+  const priceReady = Boolean(priceQuote?.worker_confirmed_at)
   const facts = candidate ? candidateFacts(candidate, language) : []
+  const personalFacts = candidate ? candidatePersonalFacts(candidate, language) : []
   const paymentEligibility = candidate
     ? paymentEligibilityCopy(candidate.direct_payment_available, language)
     : null
@@ -67,7 +74,7 @@ function WorkerCandidateReviewContent({
 
   return (
     <CaseWorkResponse
-      controls={candidate?.status === 'proposed' && finalReviewOpen ? (
+      controls={candidate?.status === 'proposed' && finalReviewOpen && priceReady ? (
         <View style={styles.finalReview} testID="customer-v21-worker-candidate-final-review">
           <View style={styles.savedHeader}>
             <Text style={[styles.savedTitle, { color: tokens.text }]}>
@@ -90,8 +97,8 @@ function WorkerCandidateReviewContent({
           />
           <Text style={[styles.notice, { color: tokens.muted }]}>
             {language === 'vi'
-              ? 'Công việc chỉ ghép thợ và gửi thông báo sau lần xác nhận này.'
-              : 'The job is matched and notifications are sent only after this confirmation.'}
+              ? `Xác nhận này ghép ${displayName} và khóa giá ${formatVnd(priceQuote!.customer_total)} cho phạm vi hiện tại. Mọi phát sinh phải có receipt mới để bạn duyệt.`
+              : `This confirms ${displayName} and locks ${formatVnd(priceQuote!.customer_total)} for the current scope. Any extra work needs a new receipt for your approval.`}
           </Text>
           <View style={styles.actions}>
             <KaelButton
@@ -104,11 +111,13 @@ function WorkerCandidateReviewContent({
               variant="secondary"
             />
             <KaelButton
-              accessibilityState={{ busy, disabled: busy }}
-              disabled={busy}
+              accessibilityState={{ busy, disabled: busy || !priceReady }}
+              disabled={busy || !priceReady}
               label={busy
                 ? (language === 'vi' ? 'Đang xử lý' : 'Processing')
-                : (language === 'vi' ? 'Xác nhận thợ này' : 'Confirm this worker')}
+                : (language === 'vi'
+                    ? `Xác nhận thợ & giá ${formatVnd(priceQuote!.customer_total)}`
+                    : `Confirm worker & ${formatVnd(priceQuote!.customer_total)}`)}
               onPress={onConfirm}
               size="small"
               style={styles.action}
@@ -128,12 +137,18 @@ function WorkerCandidateReviewContent({
             variant="secondary"
           />
           <KaelButton
-            accessibilityState={{ busy, disabled: busy }}
-            disabled={busy}
+            accessibilityState={{ busy, disabled: busy || !priceReady }}
+            disabled={busy || !priceReady}
             label={busy
               ? (language === 'vi' ? 'Đang xử lý' : 'Processing')
-              : (language === 'vi' ? 'Chọn thợ này' : 'Choose this worker')}
-            onPress={() => setFinalReviewOpen(true)}
+              : priceQuote
+                ? (language === 'vi'
+                    ? `Xem thợ & giá ${formatVnd(priceQuote.customer_total)}`
+                    : `Review worker & ${formatVnd(priceQuote.customer_total)}`)
+                : (language === 'vi' ? 'Chờ Kael tải giá' : 'Waiting for Kael price')}
+            onPress={() => {
+              if (priceReady) setFinalReviewOpen(true)
+            }}
             size="small"
             style={styles.action}
             testID="customer-v21-worker-candidate-confirm"
@@ -160,7 +175,36 @@ function WorkerCandidateReviewContent({
           ) : null}
           {candidate ? (
             <>
-              <Text style={[styles.name, { color: tokens.text }]}>{displayName}</Text>
+              <View style={styles.identity} testID="customer-v21-worker-candidate-identity">
+                <View style={[styles.avatarFrame, { backgroundColor: tokens.raised, borderColor: tokens.borderStrong }]}>
+                  {candidate.avatar_url ? (
+                    <Image
+                      accessibilityIgnoresInvertColors
+                      accessibilityLabel={language === 'vi' ? `Ảnh đại diện của ${displayName}` : `${displayName}'s profile photo`}
+                      contentFit="cover"
+                      source={{ uri: candidate.avatar_url }}
+                      style={styles.avatar}
+                      testID="customer-v21-worker-candidate-avatar"
+                    />
+                  ) : (
+                    <Text
+                      accessibilityLabel={language === 'vi' ? `Chưa có ảnh đại diện của ${displayName}` : `${displayName} has no profile photo`}
+                      style={[styles.avatarFallback, { color: tokens.primary }]}
+                      testID="customer-v21-worker-candidate-avatar-fallback"
+                    >
+                      {initialsForCandidate(displayName)}
+                    </Text>
+                  )}
+                </View>
+                <View style={styles.identityCopy}>
+                  <Text style={[styles.name, { color: tokens.text }]}>{displayName}</Text>
+                  {personalFacts.length > 0 ? (
+                    <Text style={[styles.personalFacts, { color: tokens.muted }]} testID="customer-v21-worker-candidate-personal-facts">
+                      {personalFacts.join(' · ')}
+                    </Text>
+                  ) : null}
+                </View>
+              </View>
               {candidate.is_favorite ? (
                 <Text style={[styles.meta, { color: tokens.primary }]} testID="customer-v21-worker-candidate-favorite">
                   {language === 'vi' ? 'Đã lưu trong danh sách yêu thích' : 'Saved as a favorite worker'}
@@ -185,6 +229,12 @@ function WorkerCandidateReviewContent({
                   ? 'Địa chỉ chi tiết vẫn được khóa cho tới khi bạn chọn thợ này.'
                   : 'Your detailed address stays locked until you choose this worker.'}
               </Text>
+              <CandidatePriceReceipt
+                formatCurrency={formatVnd}
+                language={language}
+                quote={priceQuote}
+                tokens={tokens}
+              />
               {paymentEligibility ? (
                 <View
                   accessible
@@ -270,18 +320,55 @@ function candidateFacts(candidate: WorkerCandidateView, language: AppLanguage) {
   return facts
 }
 
+function candidatePersonalFacts(candidate: WorkerCandidateView, language: AppLanguage) {
+  const facts: string[] = []
+  if (typeof candidate.birth_year === 'number' && Number.isSafeInteger(candidate.birth_year)) {
+    facts.push(language === 'vi' ? `Sinh năm ${candidate.birth_year}` : `Born ${candidate.birth_year}`)
+  }
+  if (candidate.gender) {
+    const labels = language === 'vi'
+      ? { female: 'Nữ', male: 'Nam', other: 'Khác' }
+      : { female: 'Female', male: 'Male', other: 'Other' }
+    facts.push(labels[candidate.gender])
+  }
+  return facts
+}
+
+function initialsForCandidate(name: string) {
+  const parts = name.trim().split(/\s+/).filter(Boolean)
+  return parts.slice(-2).map((part) => part[0]?.toLocaleUpperCase() ?? '').join('') || 'K'
+}
+
+function formatVnd(value: number) {
+  return `${VND_FORMATTER.format(value)}đ`
+}
+
 const styles = StyleSheet.create({
   action: { flex: 1 },
   actions: { flexDirection: 'row', gap: 10 },
+  avatar: { height: '100%', width: '100%' },
+  avatarFallback: { ...typography.headline },
+  avatarFrame: {
+    alignItems: 'center',
+    borderRadius: 20,
+    borderWidth: StyleSheet.hairlineWidth,
+    height: 64,
+    justifyContent: 'center',
+    overflow: 'hidden',
+    width: 64,
+  },
   body: { ...typography.footnote },
-  details: { gap: 8 },
+  details: { gap: 9 },
   error: { ...typography.caption1 },
   facts: { ...typography.footnote, fontWeight: '600' },
   finalReview: { gap: 12 },
+  identity: { alignItems: 'center', flexDirection: 'row', gap: 12, marginBottom: 5 },
+  identityCopy: { flex: 1, gap: 3 },
   loading: { alignItems: 'center', flexDirection: 'row', gap: 9 },
   meta: { ...typography.caption1, fontWeight: '600' },
   name: { ...typography.headline },
   notice: { ...typography.caption1 },
+  personalFacts: { ...typography.caption1 },
   paymentEligibility: { borderRadius: 14, borderWidth: StyleSheet.hairlineWidth, gap: 3, padding: 12 },
   paymentTitle: { ...typography.footnote, fontWeight: '600' },
   savedHeader: { gap: 3 },

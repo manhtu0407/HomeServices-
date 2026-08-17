@@ -1,0 +1,99 @@
+{
+  "schema_version": "price_source_evidence_ledger.v1",
+  "audit_id": "price_baseline_pipe_leak_20260814",
+  "verified_at": "2026-08-14",
+  "verified_by": "codex_agentic_e2e_price_audit",
+  "decision": "accepted_for_one_point_hcmc_pipe_leak_labor_baseline",
+  "normalization_target": "per_repair_point",
+  "aggregate": {
+    "method": "equal_weight_mean_of_t1_t2_ranges_rounded_to_nearest_1000_vnd",
+    "price_min": 150000,
+    "price_max": 375000,
+    "currency": "VND"
+  },
+  "scope_boundary": {
+    "included": [
+      "labor to open one already-localized access point",
+      "cut, connect, and replace one damaged supply-pipe segment"
+    ],
+    "excluded": [
+      "pipe and fitting materials",
+      "tile, paint, plaster, or wall-surface restoration",
+      "a second repair point"
+    ]
+  },
+  "sources": [
+    {
+      "domain": "1fix.vn",
+      "publisher": "Cong ty TNHH TM&DV Sua Chua Nhanh",
+      "price_url": "https://1fix.vn/dich-vu-sua-ong-nuoc-tai-nha",
+      "identity_url": "https://1fix.vn/gioi-thieu",
+      "source_published_at": "2026-08-01",
+      "date_basis": "page_price_data_updated_2026_08",
+      "observed_at": "2026-08-14",
+      "identity": {
+        "registration_or_tax_id": "0315126341",
+        "location": "TP.HCM"
+      },
+      "published_price": {
+        "label": "Sua ro ri duong ong",
+        "price_min": 150000,
+        "price_max": 400000,
+        "unit": "per_repair_point",
+        "currency": "VND"
+      },
+      "scope_note": "One pipe-leak repair point; source page says the exact price follows inspection.",
+      "criteria": {
+        "A_identity": true,
+        "B_source_type": true,
+        "C_hcmc_relevant": true,
+        "D_clear_price_and_unit": true,
+        "E_fresh_within_12_months": true,
+        "F_source_controlled_integrity": true,
+        "G_evidence_stored": true
+      },
+      "artifacts": {
+        "price_snapshot": "docs/foundation/source-trust-samples/price-baseline-pipe-leak-1fix-repair-point-20260814.jpg",
+        "price_snapshot_sha256": "193247C16CF0C506839F6C266F719981DE81E0114AB60A0BF6E7AAB591E6C60D",
+        "identity_snapshot": "docs/foundation/source-trust-samples/price-baseline-water-pressure-1fix-20260814-identity.png",
+        "identity_snapshot_sha256": "A4D33F90F976DB76B314FE6D7BBE9F6AFA6FAC2944561818A7872B6DF3D8BA00"
+      }
+    },
+    {
+      "domain": "kythuatdiennuochaphat.com",
+      "publisher": "Dien Nuoc Ha Phat",
+      "price_url": "https://kythuatdiennuochaphat.com/tho-sua-dien-nuoc-phuong-long-phuoc",
+      "identity_url": "https://kythuatdiennuochaphat.com/gioi-thieu",
+      "source_published_at": "2026-03-15",
+      "date_basis": "published_article_date_and_2026_price_table_heading",
+      "observed_at": "2026-08-14",
+      "identity": {
+        "registration_or_tax_id": null,
+        "location": "TP.HCM"
+      },
+      "published_price": {
+        "label": "Sua ro ri ong nuoc nho",
+        "price_min": 150000,
+        "price_max": 350000,
+        "unit": "per_repair_point",
+        "currency": "VND"
+      },
+      "scope_note": "One small pipe-leak repair, 30-60 minutes; published note excludes replacement materials.",
+      "criteria": {
+        "A_identity": true,
+        "B_source_type": true,
+        "C_hcmc_relevant": true,
+        "D_clear_price_and_unit": true,
+        "E_fresh_within_12_months": true,
+        "F_source_controlled_integrity": true,
+        "G_evidence_stored": true
+      },
+      "artifacts": {
+        "price_snapshot": "docs/foundation/source-trust-samples/price-baseline-pipe-leak-haphat-20260814-full.jpg",
+        "price_snapshot_sha256": "3F9113E64A67E1566E75378A092E800FFA36450A3955F2C5D88C5EA77A00FCF0",
+        "identity_snapshot": "docs/foundation/source-trust-samples/price-baseline-pipe-leak-haphat-20260814-full.jpg",
+        "identity_snapshot_sha256": "3F9113E64A67E1566E75378A092E800FFA36450A3955F2C5D88C5EA77A00FCF0"
+      }
+    }
+  ]
+}

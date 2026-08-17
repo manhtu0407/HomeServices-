@@ -87,10 +87,24 @@ export const customerV21ServiceHistoryStyles = StyleSheet.create({
     maxWidth: '100%',
     width: '100%',
   },
+  filterRailFade: {
+    height: 44,
+    position: 'absolute',
+    right: 0,
+    top: 12,
+    width: 32,
+    zIndex: 2,
+  },
   filterRailWrap: {
     alignSelf: 'stretch',
     maxWidth: '100%',
     width: '100%',
+  },
+  filterIcon: {
+    height: 21,
+    position: 'relative',
+    width: 21,
+    zIndex: 1,
   },
   historyCard: {
     borderRadius: 22,
@@ -189,6 +203,55 @@ export const customerV21ServiceHistoryStyles = StyleSheet.create({
   rebookButton: {
     minWidth: 84,
   },
+  historyErrorCard: {
+    alignItems: 'center',
+    borderRadius: 26,
+    paddingBottom: 22,
+    paddingHorizontal: 18,
+    paddingTop: 10,
+  },
+  historyErrorContent: {
+    alignItems: 'center',
+    position: 'relative',
+    width: '100%',
+    zIndex: 1,
+  },
+  historyErrorIconFrame: {
+    alignItems: 'center',
+    borderRadius: 24,
+    height: 48,
+    justifyContent: 'center',
+    marginTop: -2,
+    width: 48,
+  },
+  historyErrorIllustration: {
+    height: 224,
+    maxWidth: 340,
+    width: '100%',
+  },
+  historyErrorIllustrationDark: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+  },
+  historyErrorBody: {
+    fontSize: 14,
+    lineHeight: 20,
+    marginTop: 4,
+    maxWidth: 310,
+    textAlign: 'center',
+  },
+  historyErrorRetry: {
+    marginTop: 16,
+    minHeight: 44,
+    minWidth: 216,
+  },
+  historyErrorTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    lineHeight: 23,
+    marginTop: 12,
+    textAlign: 'center',
+  },
   savedWorkerHint: {
     borderRadius: 16,
     borderWidth: 1,
@@ -197,18 +260,38 @@ export const customerV21ServiceHistoryStyles = StyleSheet.create({
     paddingVertical: 10,
   },
   savedWorkerHintContent: {
-    alignItems: 'center',
+    alignItems: 'flex-start',
     flexDirection: 'row',
-    gap: 9,
+    gap: 10,
     position: 'relative',
     zIndex: 1,
   },
+  savedWorkerHintCopy: {
+    flex: 1,
+    gap: 2,
+  },
   savedWorkerHintIcon: {
-    ...typography.callout,
+    fontSize: 15,
+    lineHeight: 17,
+    textAlign: 'center',
+  },
+  savedWorkerHintIconTile: {
+    alignItems: 'center',
+    borderRadius: 16,
+    borderWidth: 1,
+    height: 32,
+    justifyContent: 'center',
+    width: 32,
+  },
+  savedWorkerHintTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    lineHeight: 18,
   },
   savedWorkerHintText: {
     flex: 1,
-    ...typography.caption1,
+    fontSize: 12,
+    lineHeight: 17,
   },
   screenContent: {
     alignSelf: 'center',

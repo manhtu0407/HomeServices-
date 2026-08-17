@@ -18,6 +18,7 @@ const mockSelect = jest.fn(() => ({ eq: mockEq }))
 const mockFrom = jest.fn(() => ({ select: mockSelect }))
 const mockClearPendingKaelChatDraft = jest.fn(async (_ownerId: string) => undefined)
 const mockSubmitWorkerApplication = jest.fn()
+const mockGetRememberedAuthCredentials = jest.fn()
 let mockAuthStateListener: ((event: string, session: typeof mockSession | null) => void) | null = null
 const mockOnAuthStateChange = jest.fn((listener: typeof mockAuthStateListener) => {
   mockAuthStateListener = listener
@@ -64,6 +65,10 @@ jest.mock('../pending-kael-chat-draft', () => ({
   clearPendingKaelChatDraft: (ownerId: string) => mockClearPendingKaelChatDraft(ownerId),
 }))
 
+jest.mock('../remembered-auth-credentials', () => ({
+  getRememberedAuthCredentials: (...args: unknown[]) => mockGetRememberedAuthCredentials(...args),
+}))
+
 jest.mock('../services', () => ({
   workerService: {
     submitApplication: (...args: unknown[]) => mockSubmitWorkerApplication(...args),
@@ -107,13 +112,7 @@ function SignupHarness() {
             displayName: 'Tu Phan',
             identifier: 'TU@example.com',
             password: 'secret123',
-          }).then((nextResult) => setResult(
-            nextResult.requiresEmailConfirmation
-              ? 'email-confirmation-required'
-              : nextResult.success
-                ? 'success'
-                : nextResult.error ?? 'error',
-          ))
+          }).then((nextResult) => setResult(nextResult.success ? 'success' : nextResult.error ?? 'error'))
         }}
         testID="signup-email"
       >
@@ -292,6 +291,7 @@ beforeEach(() => {
   mockFrom.mockClear()
   mockClearPendingKaelChatDraft.mockClear()
   mockSubmitWorkerApplication.mockReset()
+  mockGetRememberedAuthCredentials.mockReset()
   mockOnAuthStateChange.mockClear()
   mockAuthStateListener = null
   latestSubmitWorkerApplication = null
@@ -313,6 +313,73 @@ beforeEach(() => {
     error: 'ambiguous failure',
     status: 0,
     success: false,
+  })
+  mockGetRememberedAuthCredentials.mockResolvedValue(null)
+})
+
+describe('AuthProvider native relaunch login', () => {
+  it('clears a remembered password session so the native login form can be submitted again', async () => {
+    mockGetRememberedAuthCredentials.mockResolvedValue({
+      identifier: 'customer@example.com',
+      password: 'secret123',
+      role: 'customer',
+    })
+
+    render(
+      <AuthProvider>
+        <AuthStateHarness />
+      </AuthProvider>,
+    )
+
+    await waitFor(() => expect(screen.getByTestId('auth-state-session')).toHaveTextContent('none'))
+    expect(mockSignOut).toHaveBeenCalledWith({ scope: 'local' })
+  })
+
+  it('keeps a remembered social session on the existing automatic route', async () => {
+    const socialSession = {
+      ...mockSession,
+      user: { ...mockSession.user, app_metadata: { provider: 'google' } },
+    }
+    mockGetSession.mockResolvedValueOnce({ data: { session: socialSession } })
+    mockGetRememberedAuthCredentials.mockResolvedValue({
+      identifier: 'customer@example.com',
+      password: 'secret123',
+      role: 'customer',
+    })
+
+    render(
+      <AuthProvider>
+        <AuthStateHarness />
+      </AuthProvider>,
+    )
+
+    await waitFor(() => expect(screen.getByTestId('auth-state-session')).toHaveTextContent('customer_test_1'))
+    expect(mockSignOut).not.toHaveBeenCalled()
+  })
+
+  it('keeps the current role mounted during a same-account token refresh', async () => {
+    render(
+      <AuthProvider>
+        <AuthStateHarness />
+      </AuthProvider>,
+    )
+
+    await waitFor(() => {
+      expect(screen.getByTestId('auth-state-role')).toHaveTextContent('customer')
+      expect(screen.getByTestId('auth-state-loading')).toHaveTextContent('ready')
+    })
+    const roleLookupCount = mockMaybeSingle.mock.calls.length
+
+    act(() => {
+      mockAuthStateListener?.('TOKEN_REFRESHED', {
+        ...mockSession,
+        access_token: 'customer-refreshed-access-token',
+      })
+    })
+
+    expect(screen.getByTestId('auth-state-role')).toHaveTextContent('customer')
+    expect(screen.getByTestId('auth-state-loading')).toHaveTextContent('ready')
+    expect(mockMaybeSingle).toHaveBeenCalledTimes(roleLookupCount)
   })
 })
 
@@ -871,7 +938,7 @@ describe('AuthProvider Email/SDT signup', () => {
     expect(mockMaybeSingle).toHaveBeenCalled()
   })
 
-  it('reports that email confirmation is required when Supabase creates the user without a session', async () => {
+  it('does not claim signup success when Supabase still requires confirmation', async () => {
     mockGetSession.mockResolvedValueOnce({ data: { session: null } })
     mockSignUp.mockResolvedValueOnce({ data: { session: null, user: mockSession.user }, error: null })
 
@@ -884,7 +951,7 @@ describe('AuthProvider Email/SDT signup', () => {
     fireEvent.press(screen.getByTestId('signup-email'))
 
     await waitFor(() => {
-      expect(screen.getByTestId('signup-result')).toHaveTextContent('email-confirmation-required')
+      expect(screen.getByTestId('signup-result')).toHaveTextContent('Đăng ký chưa sẵn sàng vì hệ thống vẫn yêu cầu xác minh. Vui lòng thử lại sau.')
     })
     expect(mockSignUp).toHaveBeenCalledWith({
       email: 'tu@example.com',
@@ -942,7 +1009,7 @@ describe('AuthProvider Email/SDT signup', () => {
 })
 
 describe('AuthProvider Email/SDT credentials', () => {
-  it('normalizes Vietnamese phone credentials for sign-in but keeps unsupported phone signup unavailable', async () => {
+  it('normalizes Vietnamese phone credentials for both sign-in and signup', async () => {
     mockGetSession.mockResolvedValueOnce({ data: { session: null } })
 
     render(
@@ -964,9 +1031,18 @@ describe('AuthProvider Email/SDT credentials', () => {
     fireEvent.press(screen.getByTestId('signup-phone'))
 
     await waitFor(() => {
-      expect(screen.getByTestId('identifier-auth-result')).toHaveTextContent('Đăng ký bằng SDT chưa sẵn sàng. Vui lòng dùng email.')
+      expect(screen.getByTestId('identifier-auth-result')).toHaveTextContent('signup-success')
     })
-    expect(mockSignUp).not.toHaveBeenCalled()
+    expect(mockSignUp).toHaveBeenCalledWith({
+      phone: '+84912345678',
+      password: 'secret123',
+      options: {
+        data: {
+          full_name: 'Tu Phan',
+          name: 'Tu Phan',
+        },
+      },
+    })
   })
 
   it('rejects a malformed Vietnamese phone number before Supabase is called', async () => {

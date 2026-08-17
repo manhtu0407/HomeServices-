@@ -4,6 +4,8 @@
 
 Load for: features, bugfixes, behavior/security/AI/Supabase changes, and non-trivial refactors.
 
+Pair with [`protocols/test-pillars.md`](test-pillars.md) whenever you actually write a test. This file rules on *what counts* as a layer; that one carries the pattern catalogue, the `PILLAR` manifest every test file must export, and a worked example of each shape. The pillar suite is the only suite the runners collect — `scripts/harness/pillar-registry.mjs` enforces it in CI.
+
 ## 7. Kael Protocol: `kael-tdd`
 
 Use for every feature, bugfix, behavior change, security fix, AI boundary change, Supabase change, and non-trivial refactor.
@@ -59,6 +61,18 @@ If a layer is unavailable, report the limitation and test at the closest availab
 Two test layers are valuable only when they cover distinct risk. For example, a unit test plus an integration/wiring check can prove more than two tests of the same internal helper. State why each selected layer is needed.
 
 Type-only assertions, broad snapshots, or simple existence checks are allowed only if they verify something useful. They MUST NOT be used as fake confidence.
+
+A text assertion over migration SQL is a ratchet, never a test layer. Matching a substring in a `.sql` file proves the string is in the file; it does not prove the migration ran, that a later migration did not drop the object, or that Postgres rejects a bad row. Anything a database enforces — constraints, RLS, grants, triggers, RPC atomicity — needs a script in `supabase/tests/` that exercises it against a real Postgres. Reading text stays correct for claims that are *about* text: application source (a banned call path must not reappear), config files, generated database types, and negative scans for committed secrets.
+
+`supabase/seed.sql` is the same artifact class as a migration: `supabase db reset --local` replays it in CI, so what it produces is settled by running it, and only a committed credential or a real phone number still needs a reader.
+
+Committed documentation is not a test layer either. Asserting that a `.md` file contains a sentence, a status banner, or a ticked checkbox proves the document says so; it fails when someone edits prose and stays green while the behaviour it names breaks. Markdown that the runtime *ships* is a different artifact — the Kael charter is read into the Edge system prompt and served by the public charter route, and the service playbooks are injected into model input — so comparing it byte-for-byte against the constant the runtime uses is a parity check, in the same family as generated database types.
+
+For an artifact CI already executes — every script under `supabase/tests/` is run by `run-sql-tests.ps1` in the `database-controls` job — a text assertion is only worth writing when execution cannot prove the same thing. Rollback-only discipline qualifies, because a script that commits still passes when it runs; "the fixtures are valid" and "it emits a summary row" do not.
+
+Whether reading source text counts at all depends on what else can reach the code. Under `supabase/functions` it does: Deno Edge code has no other layer available, so a substring is the only signal there is. Under `apps/mobile` it does not: React Native Testing Library mounts the real component, so a substring assertion is a weaker copy of a check that suite can already make — icon colour, stroke weight, row order and rendered copy are properties of a rendered node, not of a file. The one claim that stays a file read on either side is absence: removed code renders nothing, so only text can say a retired payment rail, a debug escape hatch, a static import that crashes at load, or a PII field never came back.
+
+`scripts/find-artifact-text-assertions.mjs` enforces this and runs in the `harness manifest + skills-sync + structure ratchet` job. It classifies per case, resolves paths built from constants and helpers, and follows bindings sliced out of an already-tainted variable — every one of those exists because a hand-written sweep missed that shape.
 
 ### Output Format
 

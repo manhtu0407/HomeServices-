@@ -9,6 +9,14 @@ import type {
 import type { LocalPaymentStatus } from '../mobile-workflow'
 import type { ApartmentAccessProfileInput, KaelChatProgress } from '../validation'
 import type { WorkflowResponses } from './workflow-responses'
+import type {
+  BaselinePriceEvidenceReceiptResponse,
+  KaelEstimateAnalysisReceipt,
+} from './price-evidence-responses'
+export type {
+  BaselinePriceEvidenceReceiptResponse,
+  KaelEstimateAnalysisReceipt,
+} from './price-evidence-responses'
 export type AddressAccessView = {
   release_stage: 'area_only' | 'building_released' | 'unit_released'
   exact_unit_released: boolean
@@ -18,35 +26,6 @@ export type AddressAccessView = {
   customer_handoff_required: boolean
   evidence_mode: 'none' | 'geofence' | 'manual_photo'
   access_profile: ApartmentAccessProfileInput
-}
-
-export type KaelEstimateAnalysisReceipt = {
-  schema_version: 'analysis_receipt.v1'
-  evidence: {
-    analysis_status?: 'analyzed' | 'not_provided' | 'unavailable'
-    findings?: {
-      confidence: 'low' | 'medium' | 'high'
-      evidence_index: number
-      evidence_kind: 'photo' | 'video_frame'
-      observation: string
-      possible_meaning: string | null
-    }[]
-    photo_count: number
-    video_frame_count: number
-    voice_transcript_count: number
-    skipped: boolean
-  }
-  market: {
-    accepted_source_count: number | null
-    high_trust_source_count: number | null
-    quorum_met: boolean | null
-  }
-  problem?: {
-    remaining_uncertainty: string | null
-    recommended_scope: string | null
-    severity_indicators: string[]
-    summary: string
-  }
 }
 
 export type KaelPriceReasoningReceipt = {
@@ -102,6 +81,7 @@ export type KaelPriceReasoningReceipt = {
       | 'baseline_only'
       | 'inspection_required'
     confidence: 'low' | 'medium' | 'high'
+    baseline_evidence?: BaselinePriceEvidenceReceiptResponse | null
     market_source_count: number | null
     high_trust_source_count: number | null
     quorum_met: boolean | null
@@ -149,20 +129,7 @@ export type MatchingState = {
   }[]
 }
 
-export type FavoriteWorkerForMatching = {
-  id: string
-  avatar_url: string | null
-  display_name: string | null
-  rating: number | null
-  total_jobs: number
-  availability: 'available' | 'unavailable'
-  availability_reason: 'not_available_for_this_request' | null
-}
-
-export type FavoriteWorkersForMatchingResponse = {
-  job_id: string
-  workers: FavoriteWorkerForMatching[]
-}
+export type { FavoriteWorkerForMatching, FavoriteWorkersForMatchingResponse } from './favorite-worker-responses'
 
 export type KaelEstimate = {
   service_type: ServiceType
@@ -396,6 +363,7 @@ export type JobDetailResponse = {
     kael_worker_brief_guidance: Record<string, unknown> | null
     kael_progress: KaelChatProgress | null
     final_price: number | null
+    estimated_worker_net?: number | null
     payment_rail_available?: boolean
     payment_rail_provider?: 'platform_bank_manual' | 'sepay_vietqr' | null
     payment_status?: LocalPaymentStatus | null
@@ -449,6 +417,19 @@ export type JobDetailResponse = {
     seconds_remaining: number | null
   } | null
   matching_state: MatchingState | null
+  current_job_incident?: {
+    id: string
+    status: 'open' | 'awaiting_worker' | 'awaiting_customer' | 'ready_for_scope_proposal' | 'scope_proposed' | 'resolved' | 'cancelled'
+    evidence_status: 'needs_more' | 'ready'
+    reported_description: string | null
+    reported_reason: string | null
+    evidence_count: number
+    last_summary: string | null
+    last_question: string | null
+    last_next_actor: 'customer' | 'worker' | null
+    created_at: string
+    updated_at: string
+  } | null
   current_scope_change: {
     id: string
     status: ScopeChangeStatus

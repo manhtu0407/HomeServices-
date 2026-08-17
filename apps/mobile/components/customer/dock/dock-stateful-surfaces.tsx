@@ -11,9 +11,17 @@ import type { CustomerThemeTokens } from '../customer-theme'
 import { customerV21TabCopy } from '../ui/copy'
 import { CustomerV21DockTabButton } from './dock-surfaces'
 import { customerV21DockStyles as dockStyles } from './dock-styles'
+import type { LiquidNavIconName } from './liquid-nav-icons'
 import type { CustomerPrimaryTab } from '../ui/types'
 
 type AnimatedViewStyle = ComponentProps<typeof Animated.View>['style']
+
+const dockIconForTab: Record<CustomerPrimaryTab, LiquidNavIconName> = {
+  activity: 'activity',
+  home: 'home',
+  profile: 'profile',
+  services: 'services',
+}
 
 export function CustomerV21DockOverlayView({
   activeTab,
@@ -114,7 +122,7 @@ export function CustomerV21DockOverlayView({
           const label = customerV21TabCopy[language][item.key]
           return (
             <CustomerV21DockTabButton
-              image={item.image}
+              icon={dockIconForTab[item.key]}
               key={item.key}
               label={label}
               onPress={() => onTabPress(item.route)}

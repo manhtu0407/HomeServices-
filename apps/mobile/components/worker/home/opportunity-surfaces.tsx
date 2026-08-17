@@ -51,7 +51,7 @@ export function WorkerV5OpportunityCard({
   const serviceIcon = deal.draft.serviceType ? serviceIcons[deal.draft.serviceType] ?? fallbackJobIcon : fallbackJobIcon
   const statusLabel = deal.status === 'broadcasting' && deal.broadcast?.status === 'sent'
     ? textByLanguage(language, 'Đã gửi tới bạn', 'Sent to you')
-    : localizedStatusLabel(deal.status, language)
+    : localizedStatusLabel(deal.status, language, deal.draft.serviceType)
   const content = (
     <>
       <WorkerV5FormulaMintCardAura

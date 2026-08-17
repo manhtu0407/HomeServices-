@@ -26,8 +26,6 @@ export function shouldShowCaseWorkIntakeResponse({
 export function resolveCaseWorkIntakePhase({
   hasSession,
   loading,
-  nextAction,
-  status,
 }: {
   hasSession: boolean
   loading: boolean
@@ -35,7 +33,6 @@ export function resolveCaseWorkIntakePhase({
   status: KaelChatStatus | null
 }): WorkflowPhase {
   if (!hasSession) return 'intake_started'
-  if (status === 'estimate_ready' || nextAction === 'estimate_ready') return 'kael_explaining'
   if (loading) return 'kael_estimating'
   return 'kael_collecting'
 }

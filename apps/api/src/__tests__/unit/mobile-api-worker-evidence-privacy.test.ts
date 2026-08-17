@@ -114,28 +114,83 @@ function workerContext(client: ReturnType<typeof makeSequenceClient>): MobileApi
   } as unknown as MobileApiContext
 }
 
+function originalScopePriceQuote(input: {
+  broadcastId: string
+  expiresAt: string
+  jobId: string
+}) {
+  return {
+    broadcast_id: input.broadcastId,
+    commission_level: 1,
+    commission_rate_bps: 1500,
+    customer_confirmation_required: true,
+    customer_total: 250_000,
+    expires_at: input.expiresAt,
+    job_id: input.jobId,
+    platform_fee: 37_500,
+    price_source: 'verified_baseline',
+    quote_id: '55555555-5555-4555-8555-555555555555',
+    reasoning_receipt: {
+      fairness: {
+        baseline_evidence: {
+          accepted_source_count: 1,
+          high_trust_source_count: 1,
+          quorum_met: true,
+          required_quorum: 1,
+          schema_version: 'baseline_price_evidence_receipt.v1',
+          sources: [{}],
+        },
+        cap_statement: 'Giá khóa trong phạm vi đã xác nhận.',
+        confidence: 'low',
+        high_trust_source_count: 1,
+        market_source_count: 2,
+        price_source: 'verified_baseline',
+        quorum_met: true,
+      },
+      scenarios: {
+        high: { total: 300_000 },
+        low: { total: 200_000 },
+      },
+      schema_version: 'price_reasoning_receipt.v1',
+    },
+    reference_price_max: 300_000,
+    reference_price_min: 200_000,
+    schema_version: 'original_scope_price_quote.v1',
+    selection_rule: 'verified_neutral_midpoint_with_bilateral_confirmation',
+    worker_confirmation_required: true,
+    worker_confirmed_at: null,
+    worker_id: '33333333-3333-4333-8333-333333333333',
+    worker_net: 212_500,
+  }
+}
+
 describe('worker evidence privacy and stage projection', () => {
   it('returns only the customer evidence count before confirmation', async () => {
     const privateRef = 'supabase://job-media/11111111-1111-4111-8111-111111111111/before/private.jpg'
     const expiresAt = new Date(Date.now() + 60_000).toISOString()
+    const broadcastId = '44444444-4444-4444-8444-444444444444'
+    const jobId = '11111111-1111-4111-8111-111111111111'
     const client = makeSequenceClient([
       { data: null, error: null },
       {
         data: [{
           expires_at: expiresAt,
-          id: 'broadcast-1',
-          job_id: '11111111-1111-4111-8111-111111111111',
+          id: broadcastId,
+          job_id: jobId,
           jobs: {
             address_district: 'q7',
+            description: 'Kiểm tra đúng một ổ cắm; loại trừ đi dây âm tường.',
             kael_price_max: 300_000,
             kael_price_min: 200_000,
-            kael_problem_identified: 'Ổ cắm chập chờn',
+            kael_problem_identified: 'Ổ cắm chập chờn. Chốt giá thấp nhất.',
             photo_urls: [privateRef],
+            problem_chips: ['Ổ cắm chập chờn'],
             service_type: 'electrical',
             status: 'broadcasting',
           },
           sent_at: '2026-07-23T00:00:00.000Z',
           status: 'sent',
+          original_scope_price_quote: originalScopePriceQuote({ broadcastId, expiresAt, jobId }),
         }],
         error: null,
       },
@@ -143,7 +198,11 @@ describe('worker evidence privacy and stage projection', () => {
 
     const result = await listWorkerBroadcasts(workerContext(client))
 
-    expect(result.broadcasts[0]).toMatchObject({ media_count: 1 })
+    expect(result.broadcasts[0]).toMatchObject({
+      media_count: 1,
+      problem_summary: 'Ổ cắm chập chờn',
+      scope_summary: 'Kiểm tra đúng một ổ cắm; loại trừ đi dây âm tường.',
+    })
     expect(result.broadcasts[0]).not.toHaveProperty('photo_urls')
     expect(JSON.stringify(result)).not.toContain(privateRef)
   })
@@ -305,6 +364,44 @@ describe('worker evidence privacy and stage projection', () => {
       'eq',
       'owner_id',
       '33333333-3333-4333-8333-333333333333',
+    ])
+  })
+
+  it('keeps the worker earning on the commission rate frozen at bilateral acceptance', async () => {
+    const jobId = '11111111-1111-4111-8111-111111111111'
+    const client = makeSequenceClient([
+      {
+        data: [{
+          apartment_access_profile: {},
+          apartment_access_state: {},
+          completion_photo_urls: [],
+          created_at: '2026-08-15T00:00:00.000Z',
+          final_price: 400_000,
+          id: jobId,
+          matched_at: '2026-08-15T00:05:00.000Z',
+          photo_urls: [],
+          service_type: 'electrical',
+          status: 'completed_by_worker',
+          worker_commission_level: 2,
+          worker_commission_rate_bps: 1000,
+          worker_net: null,
+        }],
+        error: null,
+      },
+      { data: [], error: null },
+      { data: [], error: null },
+    ])
+
+    const result = await listWorkerJobs(workerContext(client))
+
+    expect(result.jobs[0]).toMatchObject({
+      estimated_earning: 360_000,
+      final_price: 400_000,
+      worker_net: null,
+    })
+    expect(client.calls[0]?.operations).toContainEqual([
+      'select',
+      expect.stringContaining('worker_commission_rate_bps'),
     ])
   })
 

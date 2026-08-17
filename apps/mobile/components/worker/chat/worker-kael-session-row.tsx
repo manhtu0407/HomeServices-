@@ -73,8 +73,14 @@ export function WorkerV5KaelSessionRow({
       <View
         style={[
           styles.session,
-          selected ? styles.sessionSelected : null,
-          { borderColor: selected ? color.brand.primary : (reduceTransparency ? color.surface.stroke : 'rgba(35,96,84,0.13)') },
+          {
+            backgroundColor: reduceTransparency
+              ? color.surface.raised
+              : selected ? color.surface.mint : color.surface.soft,
+            borderColor: reduceTransparency
+              ? (selected ? color.brand.primary : color.surface.stroke)
+              : selected ? color.surface.strokeStrong : color.surface.stroke,
+          },
         ]}
         testID={`worker-v5-kael-session-row-${session.id}`}
       >

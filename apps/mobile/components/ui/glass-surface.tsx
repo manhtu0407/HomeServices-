@@ -12,12 +12,13 @@ type GlassSurfaceProps = {
   material?: GlassMaterial
   mode?: GlassMode
   onLayout?: ViewProps['onLayout']
+  showEdgeHighlight?: boolean
   style?: StyleProp<ViewStyle>
   testID?: string
   variant: GlassVariant
 }
 
-export function GlassSurface({ backgroundColor, borderColor, children, material = 'standard', mode = 'light', onLayout, style, testID, variant }: GlassSurfaceProps) {
+export function GlassSurface({ backgroundColor, borderColor, children, material = 'standard', mode = 'light', onLayout, showEdgeHighlight = true, style, testID, variant }: GlassSurfaceProps) {
   const { reduceTransparency } = useGlassAccessibility()
   const surfaceStyle = createGlassSurfaceStyle({ backgroundColor, borderColor, material, mode, reduceTransparency, variant })
   const webNavBackingStyle = Platform.OS === 'web' && variant === 'nav' && !reduceTransparency
@@ -33,7 +34,9 @@ export function GlassSurface({ backgroundColor, borderColor, children, material 
   const shouldUseBlurFallback = variant !== 'nav' || Platform.OS !== 'web'
   // Manual 1px highlight for the blur / solid fallbacks only. The native GlassView
   // path draws its own edge, so stacking this there double-highlights the surface.
-  const edgeHighlightStyle = [styles.edgeHighlight, material === 'liquid' ? liquidEdgeHighlightStyle(mode) : null]
+  const edgeHighlightStyle = showEdgeHighlight
+    ? [styles.edgeHighlight, material === 'liquid' ? liquidEdgeHighlightStyle(mode) : null]
+    : null
   const blurIntensity = material === 'liquid' ? liquidBlurIntensityByVariant[variant] : blurIntensityByVariant[variant]
 
   // Require both APIs: isLiquidGlassAvailable() can be true while the native
@@ -65,7 +68,7 @@ export function GlassSurface({ backgroundColor, borderColor, children, material 
         testID={testID}
         tint={blurTintByMode[mode]}
       >
-        <View pointerEvents="none" style={edgeHighlightStyle} />
+        {showEdgeHighlight ? <View pointerEvents="none" style={edgeHighlightStyle} /> : null}
         {children}
       </BlurView>
     )
@@ -77,7 +80,7 @@ export function GlassSurface({ backgroundColor, borderColor, children, material 
       style={composedStyle}
       testID={testID}
     >
-      {!reduceTransparency ? <View pointerEvents="none" style={edgeHighlightStyle} /> : null}
+      {!reduceTransparency && showEdgeHighlight ? <View pointerEvents="none" style={edgeHighlightStyle} /> : null}
       {children}
     </View>
   )

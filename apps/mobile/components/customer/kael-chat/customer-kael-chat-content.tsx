@@ -190,7 +190,6 @@ export function CustomerKaelChatContent({ controller }: { controller: Controller
       agenticVisibleTurns={mode === 'case' || presentation.agenticIntakeModeActive
         ? presentation.agenticVisibleTurns
         : []}
-      animatedModeMenuSheenStyle={modeMenu.animatedModeMenuSheenStyle}
       animatedModeMenuStyle={modeMenu.animatedModeMenuStyle}
       caseAssistantTurns={presentation.showCaseConversation ? presentation.caseAssistantTurns : []}
       caseIntakeResponseNode={caseIntakeResponseNode}

@@ -66,6 +66,7 @@ type AdminControlDispatchRoute = Extract<
   AdminDispatchRoute,
   {
     kind:
+      | "admin.actor.get"
       | "admin.operations.get"
       | `admin.governance.${string}`
       | `admin.workerApplications.${string}`
@@ -88,7 +89,8 @@ type AdminWorkerTeamUpgradeRoute = Extract<AdminControlDispatchRoute, {
 }>;
 
 function isAdminControlRoute(route: AdminDispatchRoute): route is AdminControlDispatchRoute {
-  return route.kind === "admin.operations.get"
+  return route.kind === "admin.actor.get"
+    || route.kind === "admin.operations.get"
     || route.kind.startsWith("admin.governance.")
     || route.kind.startsWith("admin.workerApplications.")
     || route.kind.startsWith("admin.workers.")
@@ -153,6 +155,8 @@ async function dispatchAdminControlRoute(
     return dispatchAdminWorkerTeamUpgrade(route, request, ctx, services);
   }
   switch (route.kind) {
+    case "admin.actor.get":
+      return services.getAdminActor(ctx);
     case "admin.operations.get":
       return services.getAdminOperations(ctx);
     case "admin.governance.disputes":

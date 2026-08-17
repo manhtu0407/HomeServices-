@@ -467,6 +467,7 @@ function createDealFromRemoteJob(job: LocalRemoteJobSnapshot): LocalDeal | null 
     },
     estimate: job.estimate ?? null,
     broadcast: job.broadcast ?? null,
+    scopeReview: job.scopeReview ?? null,
     scopeChange: job.scopeChange ?? null,
     finalPrice: job.finalPrice ?? null,
     paymentRailAvailable: job.paymentRailAvailable === true,
@@ -497,7 +498,7 @@ function createDealFromRemoteBroadcast(broadcast: LocalRemoteBroadcastSnapshot):
   }
   const draft: LocalDealDraft = {
     ...emptyDraft('booking', broadcast.serviceType),
-    description: broadcast.problemSummary,
+    description: broadcast.scopeSummary ?? broadcast.problemSummary,
     districtLabel: broadcast.generalArea,
     problemChips: broadcast.problemSummary ? [broadcast.problemSummary] : [],
     mediaCount: broadcast.mediaCount ?? 0,
@@ -517,6 +518,7 @@ function createDealFromRemoteBroadcast(broadcast: LocalRemoteBroadcastSnapshot):
       jobId: broadcast.jobId,
       serviceType: broadcast.serviceType,
       problemSummary: broadcast.problemSummary,
+      scopeSummary: broadcast.scopeSummary,
       generalArea: broadcast.generalArea,
       prebrief: remotePrebrief.length > 0 ? remotePrebrief : [
         `${serviceLabel(broadcast.serviceType)} · ${broadcast.problemSummary}`,
@@ -529,6 +531,7 @@ function createDealFromRemoteBroadcast(broadcast: LocalRemoteBroadcastSnapshot):
         : Math.max(0, Math.floor(broadcast.secondsRemaining)),
       estimatedPriceLabel: broadcast.estimatedPriceLabel,
       estimatedEarningLabel: broadcast.estimatedEarningLabel,
+      priceQuote: broadcast.priceQuote,
     },
     scopeChange: null,
     finalPrice: null,

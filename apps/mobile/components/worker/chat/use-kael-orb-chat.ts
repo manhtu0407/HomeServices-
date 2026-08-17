@@ -26,6 +26,7 @@ import { createWorkerKaelOrbSendAction } from './kael-orb-send-action'
 import { readWorkerKaelSessionCatalog, writeWorkerKaelSessionCatalog } from './session-catalog-cache'
 import { useWorkerV5KaelOrbScopedState } from './use-kael-orb-scoped-state'
 import { useLatestWorkerSessionRestore } from './use-latest-worker-session-restore'
+import { createLocalVisualAuditWorkerConversation } from './worker-kael-local-visual-audit'
 
 export function useWorkerV5KaelOrbChat(
   deal: LocalDeal | null,
@@ -270,6 +271,17 @@ export function useWorkerV5KaelOrbChat(
     if (!requestedWorkerId) return Promise.resolve()
     const requestedMode = mode
     const catalogKey = workerKaelSessionCatalogKey(requestedWorkerId, requestedMode)
+    if (localVisualAuditSession) {
+      const localSessions = sessionCatalogRef.current.filter((session) => (
+        workerKaelSessionMatchesScope(session, activeJobIdRef.current, requestedMode)
+      ))
+      sessionCatalogNetworkKeyRef.current = catalogKey
+      sessionCatalogReadyRef.current = true
+      setActiveField('sessions', localSessions)
+      setActiveField('sessionsError', null)
+      setActiveField('sessionsLoading', false)
+      return Promise.resolve()
+    }
     if (sessionCatalogNetworkKeyRef.current === catalogKey) return Promise.resolve()
     const inFlightRequest = sessionListRequestRef.current
     if (inFlightRequest?.catalogKey === catalogKey) return inFlightRequest.promise
@@ -346,7 +358,7 @@ export function useWorkerV5KaelOrbChat(
     })()
     sessionListRequestRef.current = request
     return request.promise
-  }, [language, mode, persistSessionCatalog, prefetchSessions, setActiveField, workerId])
+  }, [language, localVisualAuditSession, mode, persistSessionCatalog, prefetchSessions, setActiveField, workerId])
 
   useEffect(() => {
     if (!workerId) return
@@ -354,10 +366,11 @@ export function useWorkerV5KaelOrbChat(
   }, [refreshSessions, workerId])
 
   const startNewSession = async (): Promise<boolean> => {
+    const requestedWorkerId = workerId
     const requestedJobId = sessionJobId
     const requestedMode = mode
     const requestedOwner = owner
-    if (!canUseKaelSession || busy || creatingSession || openingSessionId) {
+    if (!requestedWorkerId || !canUseKaelSession || busy || creatingSession || openingSessionId) {
       setSessionsError(textByLanguage(language, 'Cần một công việc đang thực hiện để tạo cuộc trò chuyện này.', 'Active work is needed to create this conversation.'))
       return false
     }
@@ -367,12 +380,24 @@ export function useWorkerV5KaelOrbChat(
     setCreatingSession(true)
     setSessionsError(null)
     try {
-      const created = await workerKaelChatService.create({
-        client_request_id: generateClientRequestId(),
-        language,
-        mode: requestedMode,
-        ...(requestedJobId ? { job_id: requestedJobId } : {}),
-      })
+      const clientRequestId = generateClientRequestId()
+      const created = localVisualAuditSession
+        ? {
+            data: createLocalVisualAuditWorkerConversation(
+              requestedWorkerId,
+              requestedMode,
+              clientRequestId,
+              requestedJobId,
+            ),
+            status: 201,
+            success: true as const,
+          }
+        : await workerKaelChatService.create({
+          client_request_id: clientRequestId,
+          language,
+          mode: requestedMode,
+          ...(requestedJobId ? { job_id: requestedJobId } : {}),
+        })
       if (
         openRequestRef.current !== requestId
         || activeOwnerRef.current !== requestedOwner

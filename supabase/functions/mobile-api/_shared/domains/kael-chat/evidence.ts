@@ -21,7 +21,6 @@ import {
 } from "../../kael/index.ts";
 import {
   sanitizeCustomerCaseEvidenceText,
-  sanitizeUntrustedEvidenceList,
   sanitizeUntrustedEvidenceText,
 } from "../../kael/evidence/untrusted-evidence.ts";
 import { apiFailure } from "../../platform/api-failure.ts";
@@ -33,6 +32,7 @@ import {
   sanitizeCaseWorkEvidenceItems,
 } from "./case-work-context.ts";
 import { persistentKaelSafetySignals } from "./intake-safety.ts";
+import { resolveKaelChatProblemChips } from "./intake.ts";
 import {
   buildKaelVisionValidationEvidence,
   createSignedVisionUrls,
@@ -182,8 +182,9 @@ async function persistKaelChatEvidenceSubmission(input: {
     nullableString(previousMetadata.skip_reason) ?? "",
   ).slice(0, 500) || null;
   const previousTurns = asNumber(session.total_turns);
-  const safeProblemChips = sanitizeUntrustedEvidenceList(
-    input.input.problem_chips ?? asStringArray(previousMetadata.problem_chips),
+  const safeProblemChips = resolveKaelChatProblemChips(
+    input.input.problem_chips,
+    asStringArray(previousMetadata.problem_chips),
   );
   const transcriptText = sanitizedEvidenceItems
     .filter((evidence) => evidence.kind === "voice_transcript")

@@ -1,7 +1,12 @@
 import { existsSync, readFileSync } from 'fs'
 import { resolve } from 'path'
 
-// Customer surfaces live in per-domain buckets, so resolve a file by name.
+// Virtualization, row order, and the address-lookup snapshot are all observable
+// in a mounted tree, and the surface tests cover them there. Asserting the index
+// of one string against another inside a source file was the most fragile form
+// of that claim, and it is gone. What stays is the pair of regressions that only
+// absence can express: the ScrollView this transcript must never fall back to,
+// and the per-field pending setter the single-snapshot lookup replaced.
 const CUSTOMER_BUCKETS = ['v21', 'dock', 'ui', 'home', 'booking', 'history', 'profile', 'kael-chat']
 const customerV21Path = (fileName: string) => {
   const bucket = CUSTOMER_BUCKETS.find((dir) => existsSync(resolve(__dirname, '..', dir, fileName)))
@@ -9,33 +14,13 @@ const customerV21Path = (fileName: string) => {
 }
 
 describe('customer Kael chat transcript performance', () => {
-  it('renders chat rows through a virtualized React Native list', () => {
-    const viewSource = readFileSync(customerV21Path('chat-stateful-surfaces.tsx'), 'utf8')
-    const transcriptPath = customerV21Path('kael-chat-transcript.tsx')
-    const transcriptSource = existsSync(transcriptPath) ? readFileSync(transcriptPath, 'utf8') : ''
-
-    expect(`${viewSource}\n${transcriptSource}`).toContain('<FlatList')
-    expect(viewSource).not.toContain('<ScrollView')
-  })
-
-  it('places completed local Case Work exchanges before the current phase surface', () => {
-    const transcriptSource = readFileSync(customerV21Path('use-kael-chat-transcript.tsx'), 'utf8')
-    const localTurnsIndex = transcriptSource.indexOf('for (const turn of caseAssistantTurns)')
-    const currentEstimateIndex = transcriptSource.indexOf("appendRow(rows, 'agentic-estimate'")
-
-    expect(localTurnsIndex).toBeGreaterThanOrEqual(0)
-    expect(currentEstimateIndex).toBeGreaterThanOrEqual(0)
-    expect(localTurnsIndex).toBeLessThan(currentEstimateIndex)
+  it('never falls back to a non-virtualized transcript', () => {
+    expect(readFileSync(customerV21Path('chat-stateful-surfaces.tsx'), 'utf8'))
+      .not.toContain('<ScrollView')
   })
 
   it('keeps booking address lookup in one owner-scoped snapshot', () => {
-    const surfaceSource = readFileSync(customerV21Path('surfaces.tsx'), 'utf8')
-    const lookupPath = customerV21Path('use-booking-address-lookup.ts')
-    const lookupSource = existsSync(lookupPath) ? readFileSync(lookupPath, 'utf8') : ''
-
-    expect(surfaceSource).toContain('useBookingAddressLookup')
-    expect(surfaceSource).not.toContain('setAddressLookupPending')
-    expect(lookupSource).toContain('owner: BookingAddressLookupOwner | null')
-    expect(lookupSource).toContain('snapshot.owner?.query')
+    expect(readFileSync(customerV21Path('surfaces.tsx'), 'utf8'))
+      .not.toContain('setAddressLookupPending')
   })
 })

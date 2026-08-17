@@ -20,6 +20,7 @@ export function useNotificationActions({ role, sessionUserId, setRemoteError }: 
   const { notifications, unreadCount: notificationUnreadCount } = notificationState
   const notificationsRef = useRef<NotificationListResponse['notifications']>([])
   const locallyReadNotificationIdsRef = useRef<Set<string> | null>(null)
+  const refreshInFlightRef = useRef(false)
   if (locallyReadNotificationIdsRef.current === null) {
     locallyReadNotificationIdsRef.current = new Set<string>()
   }
@@ -30,20 +31,26 @@ export function useNotificationActions({ role, sessionUserId, setRemoteError }: 
 
   const refreshNotifications = useCallback(async () => {
     if (!sessionUserId || !role) return true
-    const result = await notificationService.list()
-    if (!result.success) return setRemoteError(result.error)
-    notificationsRef.current = result.data.notifications
-    const readNotificationIds = new Set<string>()
-    for (const item of result.data.notifications) {
-      if (item.status === 'read') readNotificationIds.add(item.id)
+    if (refreshInFlightRef.current) return true
+    refreshInFlightRef.current = true
+    try {
+      const result = await notificationService.list()
+      if (!result.success) return setRemoteError(result.error)
+      notificationsRef.current = result.data.notifications
+      const readNotificationIds = new Set<string>()
+      for (const item of result.data.notifications) {
+        if (item.status === 'read') readNotificationIds.add(item.id)
+      }
+      locallyReadNotificationIdsRef.current = readNotificationIds
+      setNotificationState({
+        type: 'refresh',
+        notifications: result.data.notifications,
+        unreadCount: result.data.unread_count,
+      })
+      return true
+    } finally {
+      refreshInFlightRef.current = false
     }
-    locallyReadNotificationIdsRef.current = readNotificationIds
-    setNotificationState({
-      type: 'refresh',
-      notifications: result.data.notifications,
-      unreadCount: result.data.unread_count,
-    })
-    return true
   }, [role, sessionUserId, setRemoteError])
 
   const markNotificationRead = useCallback(async (notificationId: string) => {

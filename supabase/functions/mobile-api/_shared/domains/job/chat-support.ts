@@ -8,9 +8,9 @@ import { guardOutput } from "../../kael/kael-guardrails/output-gateway.ts";
 import { auditGuardrailTripBestEffort } from "../../kael/learning/audit.ts";
 
 const DEMANDING_RESPONSE_SELF_CHECK_FALLBACK =
-  "Kael đã ghi nhận và lưu lại đầy đủ trao đổi của bạn. Nếu cần, bạn có thể yêu cầu admin can thiệp.";
+  "Kael đã ghi nhận yêu cầu kiểm tra kỹ. Giá và phạm vi hiện tại được giữ nguyên; Kael chỉ tiếp tục khi các dữ kiện và căn cứ hiển thị đủ rõ để bạn xác nhận.";
 const DEMANDING_RESPONSE_SELF_CHECK_FALLBACK_EN =
-  "Kael has recorded the conversation. You can request human support if another review is needed.";
+  "Kael recorded the request for a careful review. The current price and scope remain unchanged until the displayed facts and evidence are clear enough for you to confirm.";
 
 export async function maybeHandleJobChatContactGuard(
   client: DbClient,

@@ -5,10 +5,10 @@ import {
   View,
   type TextProps,
 } from 'react-native'
-import Svg, { Defs, Path, Rect } from 'react-native-svg'
+import Svg, { Defs, Rect } from 'react-native-svg'
 
 import { AlphaStop as Stop, NativeSafeLinearGradient as LinearGradient } from '@/components/ui/svg-alpha-stop'
-import { color, component } from '@/design/theme'
+import { component } from '@/design/theme'
 
 import { styles } from './primitives-styles'
 
@@ -24,21 +24,6 @@ export function WorkerV5SectionHeader({ action, title }: { action?: string; titl
       <Text style={styles.sectionHeaderTitle}>{title}</Text>
       {action ? <Text style={styles.sectionHeaderAction}>{action}</Text> : null}
     </View>
-  )
-}
-
-export function WorkerV5BackArrowIcon({ strokeColor = color.brand.primaryDark }: { strokeColor?: string } = {}) {
-  return (
-    <Svg height={18} style={styles.iconButtonIcon} viewBox="0 0 24 24" width={18}>
-      <Path
-        d="M15 18L9 12l6-6"
-        fill="none"
-        stroke={strokeColor}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={3}
-      />
-    </Svg>
   )
 }
 

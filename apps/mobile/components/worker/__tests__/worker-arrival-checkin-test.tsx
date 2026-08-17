@@ -237,7 +237,9 @@ function buildWorkflow(deal: LocalDeal) {
           updated_at: '2026-07-12T00:00:00.000Z',
         },
       })),
+      getKaelJobIncident: jest.fn(async () => null),
       hydrateRemoteJobById: jest.fn(async () => true),
+      previewScopeChangeFromKaelIncident: jest.fn(async () => false),
       proposeScopeChangeFromKaelIncident: jest.fn(async () => true),
       requestScopeChange: jest.fn(async () => true),
       requestWorkerCancellation: jest.fn(async () => true),
@@ -501,6 +503,10 @@ it('records arrival before continuing to the in-progress screen', async () => {
     expect(screen.queryByTestId('worker-v5-in-progress-library-action')).toBeNull()
     expect(screen.getByTestId('worker-v5-in-progress-scope-action')).toBeOnTheScreen()
     expect(screen.getByTestId('worker-v5-in-progress-kael-action')).toBeOnTheScreen()
+    fireEvent.press(screen.getByTestId('worker-v5-in-progress-scope-action'))
+    expect(mockReplace).toHaveBeenLastCalledWith(
+      '/(worker)/jobs?ns_worker_screen=2.8-scope-change&job_id=job_test_1',
+    )
   })
 
   it('opens case-bound Kael from an active job instead of generic chat', () => {
@@ -686,7 +692,7 @@ it('records arrival before continuing to the in-progress screen', async () => {
     const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => undefined)
 
     render(<WorkerJobsSurface />)
-    expect(screen.getAllByText('+')).toHaveLength(3)
+    expect(screen.getAllByTestId(/worker-v5-evidence-tray-add-mark-/)).toHaveLength(3)
     fireEvent.press(screen.getByTestId('worker-v5-evidence-tray-add-0'))
 
     const actions = alertSpy.mock.calls[0]?.[2] as { onPress?: () => void; text?: string }[] | undefined
@@ -956,7 +962,8 @@ it('records arrival before continuing to the in-progress screen', async () => {
         photo_urls: [privateEvidenceRef],
       }))
     })
-    expect(mockReplace).toHaveBeenCalledWith('/(worker)/chat?ns_worker_screen=3.1-kael-chat-normal')
+    expect(screen.getByText('Mở Kael Công việc')).toBeOnTheScreen()
+    expect(mockReplace).not.toHaveBeenCalledWith('/(worker)/chat?ns_worker_screen=3.1-kael-chat-normal')
 
     deal.backendStatus = 'repairing'
     deal.status = 'repairing'
@@ -1016,9 +1023,13 @@ it('records arrival before continuing to the in-progress screen', async () => {
   })
 
   it('does not show the submitted phase while the backend is still repairing', async () => {
+    const jobId = '11111111-1111-4111-8111-111111111111'
+    const repairingDeal = buildInProgressDeal()
     buildWorkflow({
-      ...buildInProgressDeal(),
+      ...repairingDeal,
       backendStatus: 'repairing',
+      broadcast: repairingDeal.broadcast ? { ...repairingDeal.broadcast, jobId } : null,
+      id: jobId,
       status: 'repairing',
     })
     mockRouteParams = { ns_worker_screen: '2.11-completion-submitted' }
@@ -1026,7 +1037,7 @@ it('records arrival before continuing to the in-progress screen', async () => {
     render(<WorkerJobsSurface />)
 
     await waitFor(() => {
-      expect(mockReplace).toHaveBeenCalledWith('/(worker)/jobs?ns_worker_screen=2.10-completion-evidence')
+      expect(mockReplace).toHaveBeenCalledWith(`/(worker)/jobs?ns_worker_screen=2.10-completion-evidence&job_id=${jobId}`)
     })
   })
 
@@ -1064,7 +1075,205 @@ it('records arrival before continuing to the in-progress screen', async () => {
     })
   })
 
-  it('serializes the final scope proposal and releases it after rejection', async () => {
+  it('restores the active incident report after a remount without opening another incident', () => {
+    const deal = {
+      ...buildInProgressDeal(),
+      scopeReview: {
+        id: 'incident-ready',
+        status: 'ready_for_scope_proposal' as const,
+        evidenceStatus: 'ready' as const,
+        reportedDescription: 'Thay đúng hai bản lề nứt và căn chỉnh lại một cánh tủ.',
+        reportedReason: 'Hai khớp bản lề đã nứt; gỗ và cánh tủ còn nguyên vẹn.',
+        evidenceCount: 1,
+        lastSummary: 'Kael đã đối chiếu báo cáo với bằng chứng.',
+        lastQuestion: 'Thợ có thể yêu cầu Kael tính giá.',
+        lastNextActor: 'worker' as const,
+        createdAt: '2026-07-15T00:00:00.000Z',
+        updatedAt: '2026-07-15T00:01:00.000Z',
+      },
+    }
+    buildWorkflow(deal)
+    mockRouteParams = {
+      ns_scope_mode: 'edit',
+      ns_worker_screen: '2.8-scope-change',
+    }
+
+    render(<WorkerJobsSurface />)
+
+    expect(screen.getByTestId('worker-scope-change-new-description-input')).toHaveProp(
+      'value',
+      deal.scopeReview.reportedDescription,
+    )
+    expect(screen.getByTestId('worker-scope-change-reason-input')).toHaveProp(
+      'value',
+      deal.scopeReview.reportedReason,
+    )
+    expect(screen.getByText('Kael tính giá cân bằng')).toBeOnTheScreen()
+    expect(mockWorkflowValue.actions.openKaelJobIncident).not.toHaveBeenCalled()
+  })
+
+  it('restores an unexpired server-owned scope quote after a remount without another AI preview', async () => {
+    const deal = {
+      ...buildInProgressDeal(),
+      scopeReview: {
+        id: 'incident-ready',
+        status: 'ready_for_scope_proposal' as const,
+        evidenceStatus: 'ready' as const,
+        reportedDescription: 'Thay đúng hai bản lề nứt và căn chỉnh lại một cánh tủ.',
+        reportedReason: 'Hai khớp bản lề đã nứt; gỗ và cánh tủ còn nguyên vẹn.',
+        evidenceCount: 1,
+        lastSummary: 'Kael đã đối chiếu báo cáo với bằng chứng.',
+        lastQuestion: 'Thợ có thể yêu cầu Kael tính giá.',
+        lastNextActor: 'worker' as const,
+        createdAt: '2026-08-13T13:00:00.000Z',
+        updatedAt: '2026-08-13T13:05:00.000Z',
+      },
+    }
+    const routedDeal = { ...deal, scopeReview: undefined }
+    buildWorkflow(routedDeal)
+    mockWorkflowValue.actions.getKaelJobIncident.mockResolvedValueOnce({
+      incident: {
+        id: 'incident-ready',
+        job_id: deal.id,
+        status: 'ready_for_scope_proposal',
+        evidence_status: 'ready',
+        last_summary: 'Kael đã đối chiếu báo cáo với bằng chứng.',
+        last_question: 'Thợ có thể yêu cầu Kael tính giá.',
+        last_next_actor: 'worker',
+        created_at: '2026-08-13T13:00:00.000Z',
+        updated_at: '2026-08-13T13:05:00.000Z',
+      },
+      quote: {
+        schema_version: 'scope_change_worker_quote.v1',
+        quote_id: 'a7500000-0000-4000-8000-000000000010',
+        incident_id: 'incident-ready',
+        job_id: deal.id,
+        customer_total: 300000,
+        platform_fee: 45000,
+        worker_net: 255000,
+        commission_level: 1,
+        commission_rate_bps: 1500,
+        reference_price_min: 240000,
+        reference_price_max: 360000,
+        baseline_used: 'handyman:replace_cabinet_hinges:small:hcmc_all',
+        baseline_source: 'verified-test-source',
+        selection_rule: 'verified_neutral_midpoint_with_bilateral_confirmation',
+        calculation: '2 x 150000 VND = 300000 VND',
+        expires_at: '2099-08-13T13:20:00.000Z',
+      },
+    })
+    mockRouteParams = {
+      job_id: deal.id,
+      ns_scope_mode: 'edit',
+      ns_worker_screen: '2.8-scope-change',
+    }
+
+    const { rerender } = render(<WorkerJobsSurface />)
+
+    await waitFor(() => expect(screen.getByText('Xác nhận giá và gửi khách')).toBeOnTheScreen())
+    expect(screen.getAllByText('300.000 VND')).toHaveLength(2)
+    expect(screen.getByText('45.000 VND · 15%')).toBeOnTheScreen()
+    expect(screen.getByText('255.000 VND')).toBeOnTheScreen()
+    expect(mockWorkflowValue.actions.getKaelJobIncident).toHaveBeenCalledTimes(1)
+    expect(mockWorkflowValue.actions.getKaelJobIncident).toHaveBeenCalledWith(deal.id)
+    expect(mockWorkflowValue.actions.previewScopeChangeFromKaelIncident).not.toHaveBeenCalled()
+
+    mockWorkflowValue = {
+      ...mockWorkflowValue,
+      state: { ...mockWorkflowValue.state, deal: null },
+    }
+    rerender(<WorkerJobsSurface />)
+
+    expect(screen.getByText('Xác nhận giá và gửi khách')).toBeOnTheScreen()
+    expect(screen.getAllByText('300.000 VND')).toHaveLength(2)
+  })
+
+  it('locks scope editing and shows the Customer decision gate after the Worker submits', () => {
+    const deal = {
+      ...buildInProgressDeal(),
+      finalPrice: 258000,
+      scopeChange: {
+        id: 'scope-change-proposed',
+        status: 'waiting_customer_decision' as const,
+        requestedDescription: 'Thay đúng hai bản lề nứt và căn chỉnh lại một cánh tủ.',
+        reason: 'Hai khớp bản lề đã nứt; gỗ và cánh tủ còn nguyên vẹn.',
+        priceMin: 258000,
+        priceMax: 258000,
+        kaelReview: null,
+        kaelProgress: null,
+        evidencePhotoUrls: [],
+        requestTiming: 'on_site' as const,
+        resumeJobStatus: 'inspecting' as const,
+        createdAt: '2026-08-13T13:06:00.000Z',
+      },
+      scopeReview: {
+        id: 'incident-proposed',
+        status: 'scope_proposed' as const,
+        evidenceStatus: 'ready' as const,
+        reportedDescription: 'Thay đúng hai bản lề nứt và căn chỉnh lại một cánh tủ.',
+        reportedReason: 'Hai khớp bản lề đã nứt; gỗ và cánh tủ còn nguyên vẹn.',
+        evidenceCount: 1,
+        lastSummary: 'Đề xuất đã được gửi để khách xem xét.',
+        lastQuestion: null,
+        lastNextActor: 'customer' as const,
+        createdAt: '2026-08-13T13:00:00.000Z',
+        updatedAt: '2026-08-13T13:06:00.000Z',
+      },
+    }
+    buildWorkflow(deal)
+    mockRouteParams = {
+      job_id: deal.id,
+      ns_scope_mode: 'edit',
+      ns_worker_screen: '2.8-scope-change',
+    }
+
+    render(<WorkerJobsSurface />)
+
+    expect(screen.getByText('Đang chờ khách xác nhận')).toBeOnTheScreen()
+    expect(screen.getByText('Không đổi tổng')).toBeOnTheScreen()
+    expect(screen.queryByText('+118.000 VND')).not.toBeOnTheScreen()
+    expect(screen.queryByTestId('worker-scope-change-evidence-form')).not.toBeOnTheScreen()
+    expect(screen.getByTestId('worker-v5-scope-change-edit-action')).toBeDisabled()
+  })
+
+  it('returns to in-progress after a pending scope proposal has been approved', async () => {
+    const deal = {
+      ...buildInProgressDeal(),
+      backendStatus: 'repairing' as const,
+      scopeChange: null,
+      status: 'repairing' as const,
+    }
+    buildWorkflow(deal)
+    mockWorkflowValue.actions.getKaelJobIncident.mockResolvedValueOnce({
+      incident: {
+        id: 'incident-approved',
+        job_id: deal.id,
+        status: 'scope_proposed',
+        evidence_status: 'ready',
+        last_summary: 'Khách đã xác nhận đề xuất.',
+        last_question: null,
+        last_next_actor: 'worker',
+        created_at: '2026-08-15T16:58:47.000Z',
+        updated_at: '2026-08-15T17:08:55.000Z',
+      },
+      quote: null,
+    })
+    mockRouteParams = {
+      job_id: deal.id,
+      ns_scope_mode: 'edit',
+      ns_worker_screen: '2.8-scope-change',
+    }
+
+    render(<WorkerJobsSurface />)
+
+    await waitFor(() => {
+      expect(mockReplace).toHaveBeenCalledWith(
+        `/(worker)/jobs?ns_worker_screen=2.7-in-progress&job_id=${deal.id}`,
+      )
+    })
+  })
+
+  it('previews one balanced quote, then serializes its final proposal', async () => {
     const deal = buildInProgressDeal()
     buildWorkflow(deal)
     mockWorkflowValue.actions.openKaelJobIncident.mockResolvedValueOnce({
@@ -1080,6 +1289,38 @@ it('records arrival before continuing to the in-progress screen', async () => {
         updated_at: '2026-07-15T00:00:00.000Z',
       },
     })
+    const quoteId = 'a7500000-0000-4000-8000-000000000010'
+    mockWorkflowValue.actions.previewScopeChangeFromKaelIncident.mockResolvedValueOnce({
+      incident: {
+        id: 'incident-ready',
+        job_id: deal.id,
+        status: 'ready_for_scope_proposal',
+        evidence_status: 'ready',
+        last_summary: null,
+        last_question: null,
+        last_next_actor: 'worker',
+        created_at: '2026-07-15T00:00:00.000Z',
+        updated_at: '2026-07-15T00:00:00.000Z',
+      },
+      quote: {
+        schema_version: 'scope_change_worker_quote.v1',
+        quote_id: quoteId,
+        incident_id: 'incident-ready',
+        job_id: deal.id,
+        customer_total: 300000,
+        platform_fee: 45000,
+        worker_net: 255000,
+        commission_level: 1,
+        commission_rate_bps: 1500,
+        reference_price_min: 240000,
+        reference_price_max: 360000,
+        baseline_used: 'handyman:replace_cabinet_hinges:small:hcmc_all',
+        baseline_source: 'verified-test-source',
+        selection_rule: 'verified_neutral_midpoint_with_bilateral_confirmation',
+        calculation: '2 x 150000 VND = 300000 VND',
+        expires_at: '2026-07-15T00:15:00.000Z',
+      },
+    })
     let rejectProposal!: (reason?: unknown) => void
     mockWorkflowValue.actions.proposeScopeChangeFromKaelIncident.mockImplementationOnce(() => new Promise((_, reject) => {
       rejectProposal = reject
@@ -1089,7 +1330,8 @@ it('records arrival before continuing to the in-progress screen', async () => {
     fireEvent.changeText(screen.getByTestId('worker-scope-change-new-description-input'), 'Cần thay dây cháy tại ổ cắm.')
     fireEvent.changeText(screen.getByTestId('worker-scope-change-reason-input'), 'Dây bên trong đã cháy do quá nhiệt.')
     fireEvent.press(screen.getByTestId('worker-scope-change-confirm-submit'))
-    await waitFor(() => expect(screen.getByText('Tạo đề xuất gửi khách')).toBeOnTheScreen())
+    await waitFor(() => expect(screen.getByText('Kael tính giá cân bằng')).toBeOnTheScreen())
+    expect(mockReplace).not.toHaveBeenCalledWith('/(worker)/chat?ns_worker_screen=3.1-kael-chat-normal')
 
     const proposalButton = screen.getByTestId('worker-v5-scope-change-send-action')
     let proposalPressTarget: typeof proposalButton | null = proposalButton
@@ -1097,13 +1339,27 @@ it('records arrival before continuing to the in-progress screen', async () => {
       proposalPressTarget = proposalPressTarget.parent
     }
     expect(proposalPressTarget).not.toBeNull()
-    const pressProposal = proposalPressTarget?.props.onPress as (() => void)
+    fireEvent.press(proposalButton)
+    await waitFor(() => expect(screen.getByText('Xác nhận giá và gửi khách')).toBeOnTheScreen())
+    expect(mockWorkflowValue.actions.previewScopeChangeFromKaelIncident).toHaveBeenCalledTimes(1)
+    expect(screen.getAllByText('300.000 VND')).toHaveLength(2)
+    expect(screen.getByText('45.000 VND · 15%')).toBeOnTheScreen()
+    expect(screen.getByText('255.000 VND')).toBeOnTheScreen()
+    expect(screen.getByText('Không đồng ý mức này')).toBeOnTheScreen()
+    const confirmedButton = screen.getByTestId('worker-v5-scope-change-send-action')
+    let confirmedPressTarget: typeof confirmedButton | null = confirmedButton
+    while (confirmedPressTarget && typeof confirmedPressTarget.props.onPress !== 'function') {
+      confirmedPressTarget = confirmedPressTarget.parent
+    }
+    expect(confirmedPressTarget).not.toBeNull()
+    const pressConfirmedProposal = confirmedPressTarget?.props.onPress as (() => void)
     act(() => {
-      pressProposal()
-      pressProposal()
+      pressConfirmedProposal()
+      pressConfirmedProposal()
     })
 
     expect(mockWorkflowValue.actions.proposeScopeChangeFromKaelIncident).toHaveBeenCalledTimes(1)
+    expect(mockWorkflowValue.actions.proposeScopeChangeFromKaelIncident).toHaveBeenCalledWith(quoteId)
     await act(async () => {
       rejectProposal(new Error('network unavailable'))
       await Promise.resolve()

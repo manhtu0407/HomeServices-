@@ -25,6 +25,7 @@ export type KaelMobileAction =
   | "customer.open_dispute"
   | "worker.ask_kael"
   | "worker.open_job_incident"
+  | "worker.preview_scope_from_incident"
   | "worker.propose_scope_from_incident"
   | "worker.request_scope_change"
   | "worker.request_cancellation"
@@ -40,6 +41,7 @@ export type KaelEdgeRoute =
   | "POST /jobs/:id/customer-cancellation"
   | "POST /jobs/:id/kael-clarify"
   | "POST /jobs/:id/kael-incident"
+  | "POST /jobs/:id/kael-incident/preview-scope"
   | "POST /jobs/:id/kael-incident/propose-scope"
   | "POST /workers/me/kael/chat/:id"
   | "POST /jobs/:id/scope-change"
@@ -154,6 +156,14 @@ const KAEL_PATH_CONTROL_RULES: readonly KaelPathControlRule[] = Object.freeze([
     edge_route: "POST /jobs/:id/kael-incident",
     kael_purpose: "job_incident",
     policy_id: "kael.case-work.job-incident.v1",
+  },
+  {
+    mobile_action: "worker.preview_scope_from_incident",
+    workflow_phase: "plan_price_adjust",
+    actor_role: "worker",
+    edge_route: "POST /jobs/:id/kael-incident/preview-scope",
+    kael_purpose: "scope_change",
+    policy_id: "kael.autonomy.v2.scope_change_worker_quote",
   },
   {
     mobile_action: "worker.propose_scope_from_incident",

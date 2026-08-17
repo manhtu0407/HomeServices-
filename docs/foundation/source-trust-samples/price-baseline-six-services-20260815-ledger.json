@@ -1,0 +1,295 @@
+{
+  "schema_version": "price_source_evidence_ledger.v1",
+  "audit_id": "price_baseline_six_services_20260815",
+  "verified_at": "2026-08-15",
+  "verified_by": "codex_six_service_agentic_e2e",
+  "decision": "accepted_for_quote_ready_six_service_e2e_paths",
+  "policy": {
+    "aggregate_method": "equal_weight_mean_of_non_outlier_t1_t2_ranges_rounded_to_nearest_1000_vnd",
+    "selection_rule": "verified_neutral_midpoint_with_bilateral_confirmation",
+    "materials_and_unconfirmed_scope": "excluded_until_worker_inspection_and_customer_approval"
+  },
+  "services": [
+    {
+      "service_type": "electrical",
+      "problem_slug": "install_device",
+      "complexity": "small",
+      "unit": "per_repair_point",
+      "aggregate": {
+        "price_min": 115000,
+        "price_max": 250000,
+        "currency": "VND"
+      },
+      "scope_boundary": {
+        "included": [
+          "labor to install one surface-mounted outlet at an existing accessible electrical point",
+          "safe isolation, connection check, and functional test"
+        ],
+        "excluded": [
+          "outlet and cable materials",
+          "concealed-wall chasing or a new dedicated circuit",
+          "distribution-board work"
+        ]
+      },
+      "sources": [
+        {
+          "domain": "1fix.vn",
+          "publisher": "Cong ty TNHH TM&DV Sua Chua Nhanh",
+          "price_url": "https://1fix.vn/bang-gia-sua-dien-nuoc",
+          "identity_url": "https://1fix.vn/gioi-thieu",
+          "source_published_at": "2026-08-01",
+          "date_basis": "Q2_2026_transaction_table_page_published_in_2026_08",
+          "observed_at": "2026-08-15",
+          "published_price": {
+            "label": "Lap o cam hoac cong tac, 29 completed HCMC jobs",
+            "price_min": 120000,
+            "price_max": 280000,
+            "unit": "per_repair_point",
+            "currency": "VND"
+          },
+          "artifacts": {
+            "price_snapshot": "docs/foundation/source-trust-samples/price-baseline-six-services-1fix-electrical-20260815.png",
+            "price_snapshot_sha256": "81ADB9C88BE011FC826C26ED317E1A08117D429F89EBC6C95698988B1E2E5250",
+            "identity_snapshot": "docs/foundation/source-trust-samples/price-baseline-water-pressure-1fix-20260814-identity.png",
+            "identity_snapshot_sha256": "A4D33F90F976DB76B314FE6D7BBE9F6AFA6FAC2944561818A7872B6DF3D8BA00"
+          }
+        },
+        {
+          "domain": "thoviet.com.vn",
+          "publisher": "Tho Viet",
+          "price_url": "https://thoviet.com.vn/thi-cong-noi-that",
+          "identity_url": "https://thoviet.com.vn/",
+          "source_published_at": "2026-08-01",
+          "date_basis": "page_heading_gia_thi_cong_dien_08_2026",
+          "observed_at": "2026-08-15",
+          "published_price": {
+            "label": "Lap moi mot o cam dien noi",
+            "price_min": 110000,
+            "price_max": 220000,
+            "unit": "per_repair_point",
+            "currency": "VND"
+          },
+          "artifacts": {
+            "price_snapshot": "docs/foundation/source-trust-samples/price-baseline-six-services-thoviet-electrical-20260815.png",
+            "price_snapshot_sha256": "0C8C2700062439774350CE93FC07C1D5EF4EB1CE5F7137B29A71F39BE169C877",
+            "identity_snapshot": "docs/foundation/source-trust-samples/price-baseline-six-services-thoviet-electrical-20260815.png",
+            "identity_snapshot_sha256": "0C8C2700062439774350CE93FC07C1D5EF4EB1CE5F7137B29A71F39BE169C877"
+          }
+        }
+      ]
+    },
+    {
+      "service_type": "cleaning",
+      "problem_slug": "standard_home_cleaning",
+      "complexity": "small",
+      "unit": "per_visit",
+      "aggregate": {
+        "price_min": 253000,
+        "price_max": 315000,
+        "currency": "VND"
+      },
+      "scope_boundary": {
+        "included": [
+          "one four-hour standard apartment-cleaning visit",
+          "ordinary reachable floors, kitchen surfaces, bathroom, and dusting"
+        ],
+        "excluded": [
+          "post-construction residue, exterior-height work, mold remediation, and specialist chemicals",
+          "additional hours or a second worker"
+        ]
+      },
+      "sources": [
+        {
+          "domain": "cogiupviec.com",
+          "publisher": "Co Giup Viec",
+          "price_url": "https://cogiupviec.com/cam-nang/don-nha-theo-gio-go-vap/",
+          "identity_url": "https://cogiupviec.com/",
+          "source_published_at": "2026-07-25",
+          "date_basis": "page_explicit_update_2026_07_25",
+          "observed_at": "2026-08-15",
+          "published_price": {
+            "label": "Dat le mot buoi bon gio tai TPHCM",
+            "price_min": 200000,
+            "price_max": 260000,
+            "unit": "per_visit",
+            "currency": "VND"
+          },
+          "artifacts": {
+            "price_snapshot": "docs/foundation/source-trust-samples/price-baseline-six-services-cogiupviec-cleaning-20260815.png",
+            "price_snapshot_sha256": "848B4D310A165AC3D910B1D4C6C762EA8D035AC458D8A52EEAB940057B8857C1",
+            "identity_snapshot": "docs/foundation/source-trust-samples/price-baseline-six-services-cogiupviec-cleaning-20260815.png",
+            "identity_snapshot_sha256": "848B4D310A165AC3D910B1D4C6C762EA8D035AC458D8A52EEAB940057B8857C1"
+          }
+        },
+        {
+          "domain": "be.com.vn",
+          "publisher": "Be Group",
+          "price_url": "https://be.com.vn/khach-hang-ca-nhan/be-clean/",
+          "identity_url": "https://be.com.vn/",
+          "source_published_at": "2026-08-15",
+          "date_basis": "undated_live_official_price_page_snapshotted_on_verification_date",
+          "observed_at": "2026-08-15",
+          "published_price": {
+            "label": "Goi bon gio ngay thuong va cuoi tuan tai TPHCM",
+            "price_min": 305000,
+            "price_max": 370000,
+            "unit": "per_visit",
+            "currency": "VND"
+          },
+          "artifacts": {
+            "price_snapshot": "docs/foundation/source-trust-samples/price-baseline-six-services-be-cleaning-20260815.png",
+            "price_snapshot_sha256": "240CC0601BF02E3EC9F814BA4855961B98B4958F3A37FB4D20AF97262ECC4C4E",
+            "identity_snapshot": "docs/foundation/source-trust-samples/price-baseline-six-services-be-cleaning-20260815.png",
+            "identity_snapshot_sha256": "240CC0601BF02E3EC9F814BA4855961B98B4958F3A37FB4D20AF97262ECC4C4E"
+          }
+        }
+      ]
+    },
+    {
+      "service_type": "hvac",
+      "problem_slug": "routine_hvac_cleaning",
+      "complexity": "small",
+      "unit": "per_item",
+      "aggregate": {
+        "price_min": 200000,
+        "price_max": 200000,
+        "currency": "VND"
+      },
+      "scope_boundary": {
+        "included": [
+          "cleaning one accessible wall-mounted 1 HP air conditioner",
+          "basic operating check after cleaning"
+        ],
+        "excluded": [
+          "refrigerant, electrical-board, compressor, drainage repair, and difficult outdoor-unit access",
+          "a second indoor or outdoor unit"
+        ]
+      },
+      "sources": [
+        {
+          "domain": "dienmayxanh.com",
+          "publisher": "Dien May Xanh",
+          "price_url": "https://www.dienmayxanh.com/tho-dien-may-xanh-dich-vu-tan-tam",
+          "identity_url": "https://www.dienmayxanh.com/",
+          "source_published_at": "2026-05-01",
+          "date_basis": "official_service_page_05_2026",
+          "observed_at": "2026-08-15",
+          "published_price": {
+            "label": "Ve sinh may lanh treo tuong",
+            "price_min": 200000,
+            "price_max": 200000,
+            "unit": "per_item",
+            "currency": "VND"
+          },
+          "artifacts": {
+            "price_snapshot": "docs/foundation/source-trust-samples/price-baseline-six-services-dienmayxanh-hvac-20260815.png",
+            "price_snapshot_sha256": "8EE3C2E2CAA700717960D3EDEF36EA6DFC757A17B5D339D5AE56D415A1684B53",
+            "identity_snapshot": "docs/foundation/source-trust-samples/price-baseline-six-services-dienmayxanh-hvac-20260815.png",
+            "identity_snapshot_sha256": "8EE3C2E2CAA700717960D3EDEF36EA6DFC757A17B5D339D5AE56D415A1684B53"
+          }
+        },
+        {
+          "domain": "1fix.vn",
+          "publisher": "Cong ty TNHH TM&DV Sua Chua Nhanh",
+          "price_url": "https://1fix.vn/ve-sinh-may-lanh-tai-nha",
+          "identity_url": "https://1fix.vn/gioi-thieu",
+          "source_published_at": "2026-01-01",
+          "date_basis": "page_price_data_updated_2026_01",
+          "observed_at": "2026-08-15",
+          "published_price": {
+            "label": "Ve sinh may lanh mot HP",
+            "price_min": 200000,
+            "price_max": 200000,
+            "unit": "per_item",
+            "currency": "VND"
+          },
+          "artifacts": {
+            "price_snapshot": "docs/foundation/source-trust-samples/price-baseline-six-services-onefix-hvac-20260815.png",
+            "price_snapshot_sha256": "0B14E90212A62882B9CA2355FC393894649A1D68B6836ADB7355D9187E619B22",
+            "identity_snapshot": "docs/foundation/source-trust-samples/price-baseline-water-pressure-1fix-20260814-identity.png",
+            "identity_snapshot_sha256": "A4D33F90F976DB76B314FE6D7BBE9F6AFA6FAC2944561818A7872B6DF3D8BA00"
+          }
+        }
+      ]
+    },
+    {
+      "service_type": "upholstery",
+      "problem_slug": "sofa_cleaning",
+      "complexity": "small",
+      "unit": "per_item",
+      "aggregate": {
+        "price_min": 250000,
+        "price_max": 300000,
+        "currency": "VND"
+      },
+      "scope_boundary": {
+        "included": [
+          "cleaning one reachable fabric bench sofa under two metres",
+          "standard vacuum, spot-safe cleaning, extraction, and deodorising"
+        ],
+        "excluded": [
+          "guaranteed stain removal, leather restoration, mold remediation, and structural repair",
+          "additional chairs, cushions, carpet, or mattress"
+        ]
+      },
+      "sources": [
+        {
+          "domain": "vesinhnhao24h.com",
+          "publisher": "Ve Sinh Aplite",
+          "price_url": "https://vesinhnhao24h.com/giat-ghe-sofa-tai-nha-tphcm/",
+          "identity_url": "https://vesinhnhao24h.com/",
+          "source_published_at": "2026-03-01",
+          "date_basis": "page_2026_price_table_and_search_publication_window",
+          "observed_at": "2026-08-15",
+          "published_price": {
+            "label": "Sofa don mot bang duoi hai met",
+            "price_min": 250000,
+            "price_max": 250000,
+            "unit": "per_item",
+            "currency": "VND"
+          },
+          "artifacts": {
+            "price_snapshot": "docs/foundation/source-trust-samples/price-baseline-six-services-aplite-upholstery-20260815.png",
+            "price_snapshot_sha256": "1C9D3BABBAC82984D7B55930CB6FDC664338E0D1E22048D51CF2B8F6F666B70A",
+            "identity_snapshot": "docs/foundation/source-trust-samples/price-baseline-six-services-aplite-upholstery-20260815.png",
+            "identity_snapshot_sha256": "1C9D3BABBAC82984D7B55930CB6FDC664338E0D1E22048D51CF2B8F6F666B70A"
+          }
+        },
+        {
+          "domain": "vesinhmastercare.com",
+          "publisher": "MasterCare",
+          "price_url": "https://vesinhmastercare.com/bang-gia/",
+          "identity_url": "https://vesinhmastercare.com/",
+          "source_published_at": "2026-07-01",
+          "date_basis": "page_heading_bang_gia_thang_07_2026",
+          "observed_at": "2026-08-15",
+          "published_price": {
+            "label": "Ve sinh sofa bang hoac chu I",
+            "price_min": 250000,
+            "price_max": 350000,
+            "unit": "per_item",
+            "currency": "VND"
+          },
+          "artifacts": {
+            "price_snapshot": "docs/foundation/source-trust-samples/price-baseline-six-services-mastercare-upholstery-20260815.png",
+            "price_snapshot_sha256": "EE8A0C00D73F6D35256109DB4EFD2BD44EAC2BF436BFD3939F310BF991826F28",
+            "identity_snapshot": "docs/foundation/source-trust-samples/price-baseline-six-services-mastercare-upholstery-20260815.png",
+            "identity_snapshot_sha256": "EE8A0C00D73F6D35256109DB4EFD2BD44EAC2BF436BFD3939F310BF991826F28"
+          }
+        }
+      ]
+    }
+  ],
+  "existing_verified_paths": [
+    {
+      "service_type": "plumbing",
+      "problem_slug": "pipe_leak",
+      "ledger_ref": "docs/foundation/source-trust-samples/price-baseline-pipe-leak-20260814-ledger.json"
+    },
+    {
+      "service_type": "handyman",
+      "problem_slug": "replace_cabinet_hinges",
+      "ledger_ref": "docs/foundation/source-trust-samples/price-baseline-hinge-20260814-ledger.json"
+    }
+  ]
+}

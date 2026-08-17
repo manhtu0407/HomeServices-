@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Image } from 'expo-image'
 import { StatusBar } from 'expo-status-bar'
 import {
@@ -15,19 +15,21 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated'
 import Svg, { Circle, Defs, LinearGradient, Path, RadialGradient, Stop } from 'react-native-svg'
 import { useAppLanguage, type AppLanguage } from '@/lib/app-language'
-import { parseAuthIdentifier, validateAuthIdentifier } from '@/lib/auth-identifier'
-import { clearRememberedAuthIdentifier, getRememberedAuthIdentifier, rememberAuthIdentifier } from '@/lib/remembered-auth-identifier'
-import { GlassPanel, IconButton, KaelCoreHero, NativeSafeGlassPanel, PageAura, PrimaryButton, useEntryAccessibility } from './components/materials'
+import { getRememberedAuthCredentials } from '@/lib/remembered-auth-credentials'
+import { getRememberedAuthIdentifier } from '@/lib/remembered-auth-identifier'
+import { LiquidBackButton } from '@/components/ui/liquid-back-button'
+import { GlassPanel, KaelCoreHero, NativeSafeGlassPanel, PageAura, PrimaryButton, useEntryAccessibility } from './components/materials'
 import { CheckRow, EntryTextField } from './components/fields'
 import { ProviderButton } from './components/provider-button'
 import { entryAccessCopy, localizeEntryAuthError, type EntryAccessCopy } from './copy'
 import { useEntryAccessState } from './entry-access-state'
-import { identifierAvailabilityError, identifierFieldProps, localizeIdentifierAvailabilityError, registrationIdentifierFieldProps, validateIdentifierForRole, validateRegistrationIdentifier } from './entry-identifier-fields'
+import { identifierFieldProps, localizeIdentifierAvailabilityError, registrationIdentifierFieldProps } from './entry-identifier-fields'
 import { entryBrandAccessFlowStyles as styles, SPLASH_LOADER_WIDTH } from './entry-brand-access-flow-styles'
 import { LottieLogoMark } from './lottie-logo-mark'
 import { PasswordRecoveryScreen, PasswordResetScreen } from './password-recovery-screen'
 import { RoleGateScreen } from './role-gate-screen'
 import { selectRoleGateGreeting } from './role-gate-greeting'
+import { useEntryBrandAccessActions } from './use-entry-brand-access-actions'
 import type {
   EntryAccessFeatureFlags,
   EntryAccessStep,
@@ -55,6 +57,7 @@ export function EntryBrandAccessFlow({
   featureFlags,
   initialRole = 'customer',
   initialStep = 'splash',
+  restoreRememberedRole = true,
   onRoleChange,
   onStepChange,
   splashDurationMs = AURORA_NEST_SPLASH_DURATION_MS,
@@ -63,6 +66,7 @@ export function EntryBrandAccessFlow({
   const copy = entryAccessCopy[language]
   const features = useMemo(() => ({ ...defaultFeatures, ...featureFlags }), [featureFlags])
   const [notice, setNotice] = useState<string | null>(null)
+  const entryAccessState = useEntryAccessState(initialRole, initialStep)
   const {
     acceptedTerms,
     busy,
@@ -70,18 +74,18 @@ export function EntryBrandAccessFlow({
     fullName,
     identifier,
     password,
+    passwordConfirmation,
     remember,
     role,
     setAcceptedTerms,
-    setBusy,
-    setError,
     setFullName,
     setIdentifier,
     setPassword,
+    setPasswordConfirmation,
     setRemember,
     step,
     updateState,
-  } = useEntryAccessState(initialRole, initialStep)
+  } = entryAccessState
   const localizedError = error
     ? localizeIdentifierAvailabilityError(error, language) ?? localizeEntryAuthError(error, language, 'connectionFailed')
     : null
@@ -90,10 +94,6 @@ export function EntryBrandAccessFlow({
     () => selectRoleGateGreeting(roleGateGreetingSelection.now, () => roleGateGreetingSelection.random, language),
     [language, roleGateGreetingSelection],
   )
-  const onStepChangeRef = useRef(onStepChange)
-  const actionVersionRef = useRef(0)
-  const actionBusyRef = useRef(false)
-
   useEffect(() => {
     StatusBar.setStyle('dark')
     return () => {
@@ -102,215 +102,47 @@ export function EntryBrandAccessFlow({
   }, [])
 
   useEffect(() => {
-    onStepChangeRef.current = onStepChange
-  }, [onStepChange])
-
-  useEffect(() => () => {
-    actionVersionRef.current += 1
-    actionBusyRef.current = false
-  }, [])
-
-  const go = useCallback((next: EntryAccessStep) => {
-    actionVersionRef.current += 1
-    actionBusyRef.current = false
-    setNotice(null)
-    updateState({ busy: false, error: null, step: next })
-    onStepChangeRef.current?.(next)
-  }, [updateState])
-
-  const beginAction = () => {
-    if (actionBusyRef.current) return null
-    actionBusyRef.current = true
-    const version = actionVersionRef.current + 1
-    actionVersionRef.current = version
-    setBusy(true)
-    return version
-  }
-
-  const isCurrentAction = (version: number) => actionBusyRef.current && actionVersionRef.current === version
-
-  const finishAction = (version: number) => {
-    if (!isCurrentAction(version)) return
-    actionBusyRef.current = false
-    setBusy(false)
-  }
-
-  const chooseRole = (nextRole: EntryRole) => {
-    updateState({ error: null, role: nextRole })
-    onRoleChange?.(nextRole)
-  }
-
-  useEffect(() => {
-    if (step !== 'splash' || splashDurationMs <= 0) return
-    const timeout = setTimeout(() => {
-      updateState({ error: null, step: 'role-gate' })
-      onStepChangeRef.current?.('role-gate')
-    }, splashDurationMs)
-    return () => clearTimeout(timeout)
-  }, [splashDurationMs, step, updateState])
-
-  useEffect(() => {
     let active = true
-    if (step !== 'login' || identifier) return () => {
+    if (step !== 'login' || identifier || password) return () => {
       active = false
     }
 
-    void getRememberedAuthIdentifier().then((remembered) => {
-      if (active && remembered) setIdentifier(remembered)
+    void getRememberedAuthCredentials().then(async (rememberedCredentials) => {
+      if (!active) return
+      if (rememberedCredentials) {
+        updateState({
+          identifier: rememberedCredentials.identifier,
+          password: rememberedCredentials.password,
+          ...(restoreRememberedRole ? { role: rememberedCredentials.role } : {}),
+        })
+        return
+      }
+
+      const rememberedIdentifier = await getRememberedAuthIdentifier()
+      if (active && rememberedIdentifier) setIdentifier(rememberedIdentifier)
     })
     return () => {
       active = false
     }
-  }, [identifier, setIdentifier, step])
-
-  const submitLogin = async () => {
-    setError(null)
-    const identifierError = validateIdentifierForRole(identifier, role, language)
-    const parsedIdentifier = parseAuthIdentifier(identifier)
-    if (identifierError || !parsedIdentifier || !password) {
-      setError(identifierError ?? copy.errors.loginDetails)
-      return
-    }
-    const actionVersion = beginAction()
-    if (actionVersion === null) return
-    try {
-      // The action-version guard intentionally runs after I/O so a stale screen cannot commit its result.
-      // react-doctor-disable-next-line react-doctor/async-defer-await
-      const result = await actions.onPasswordLogin({ identifier: parsedIdentifier.value, password, role })
-      if (!isCurrentAction(actionVersion)) return
-      if (!result.success) {
-        setError(localizeEntryAuthError(result.error, language, 'signInFailed'))
-        return
-      }
-      if (remember) {
-        await rememberAuthIdentifier(identifier)
-      } else {
-        await clearRememberedAuthIdentifier()
-      }
-      if (!isCurrentAction(actionVersion)) return
-      if (role === 'worker') go('onboarding')
-    } catch {
-      if (isCurrentAction(actionVersion)) setError(copy.errors.connectionFailed)
-    } finally {
-      finishAction(actionVersion)
-    }
-  }
-
-  const submitRegister = async () => {
-    setError(null)
-    setNotice(null)
-    const identifierError = validateRegistrationIdentifier(identifier, language)
-    if (!fullName.trim() || identifierError || password.length < 8) {
-      setError(identifierError ?? copy.errors.registrationDetails)
-      return
-    }
-    if (!acceptedTerms) {
-      setError(copy.errors.termsRequired)
-      return
-    }
-    const actionVersion = beginAction()
-    if (actionVersion === null) return
-    try {
-      // react-doctor-disable-next-line react-doctor/async-defer-await
-      const result = await actions.onRegister({ identifier: identifier.trim(), fullName: fullName.trim(), password, role })
-      if (!isCurrentAction(actionVersion)) return
-      if (!result.success) {
-        setError(localizeEntryAuthError(result.error, language, 'signupFailed'))
-        return
-      }
-      setPassword('')
-      if (result.nextStep) go(result.nextStep)
-      else if (role === 'worker') go('onboarding')
-    } catch {
-      if (isCurrentAction(actionVersion)) setError(copy.errors.connectionFailed)
-    } finally {
-      finishAction(actionVersion)
-    }
-  }
-
-  const providerLogin = async (provider: 'apple' | 'google') => {
-    const action = provider === 'apple' ? actions.onAppleLogin : actions.onGoogleLogin
-    const fallback = provider === 'apple' ? 'appleSignInFailed' : 'googleSignInFailed'
-    if (!action) {
-      setError(copy.errors.methodUnavailable)
-      return
-    }
-    const actionVersion = beginAction()
-    if (actionVersion === null) return
-    setError(null)
-    try {
-      // react-doctor-disable-next-line react-doctor/async-defer-await
-      const result = await action()
-      if (!isCurrentAction(actionVersion)) return
-      if (!result.success) {
-        setError(localizeEntryAuthError(result.error, language, fallback))
-        return
-      }
-      if (role === 'worker') go('onboarding')
-    } catch {
-      if (isCurrentAction(actionVersion)) setError(copy.errors.connectionFailed)
-    } finally {
-      finishAction(actionVersion)
-    }
-  }
-
-  const submitPasswordRecovery = async () => {
-    setError(null)
-    setNotice(null)
-    const account = parseAuthIdentifier(identifier)
-    const identifierError = validateAuthIdentifier(identifier)
-    if (!account || identifierError) {
-      setError(identifierError
-        ? localizeEntryAuthError(identifierError, language, 'recoveryEmail')
-        : copy.errors.recoveryEmail)
-      return
-    }
-    if (account.kind === 'phone') {
-      setError(identifierAvailabilityError('phoneRecovery', language))
-      return
-    }
-    if (!actions.onForgotPassword) {
-      setError(copy.errors.recoveryUnavailable)
-      return
-    }
-
-    const actionVersion = beginAction()
-    if (actionVersion === null) return
-    try {
-      // react-doctor-disable-next-line react-doctor/async-defer-await
-      const result = await actions.onForgotPassword({ email: account.value })
-      if (!isCurrentAction(actionVersion)) return
-      if (!result.success) {
-        setError(localizeEntryAuthError(result.error, language, 'recoveryUnavailable'))
-      } else {
-        setNotice(language === 'vi'
-          ? 'Nếu email thuộc một tài khoản NestScout, liên kết đặt lại mật khẩu đã được gửi.'
-          : 'If the email belongs to a NestScout account, a password-reset link has been sent.')
-      }
-    } catch {
-      if (isCurrentAction(actionVersion)) setError(copy.errors.connectionFailed)
-    } finally {
-      finishAction(actionVersion)
-    }
-  }
-
-  const completeOnboarding = async () => {
-    const actionVersion = beginAction()
-    if (actionVersion === null) return
-    setError(null)
-    try {
-      // react-doctor-disable-next-line react-doctor/async-defer-await
-      const result = await actions.onCompleteOnboarding(role)
-      if (!isCurrentAction(actionVersion)) return
-      if (!result.success) {
-        setError(localizeEntryAuthError(result.error, language, 'nextScreenUnavailable'))
-      }
-    } catch {
-      if (isCurrentAction(actionVersion)) setError(copy.errors.connectionFailed)
-    } finally {
-      finishAction(actionVersion)
-    }
-  }
+  }, [identifier, password, restoreRememberedRole, setIdentifier, step, updateState])
+  const {
+    chooseRole,
+    completeOnboarding,
+    go,
+    providerLogin,
+    submitLogin,
+    submitPasswordRecovery,
+    submitRegister,
+  } = useEntryBrandAccessActions({
+    actions,
+    controller: entryAccessState,
+    copy,
+    language,
+    onRoleChange,
+    onStepChange,
+    setNotice,
+    splashDurationMs,
+  })
 
   return (
     <View style={styles.root} testID={`auth-${step}-screen`}>
@@ -331,6 +163,7 @@ export function EntryBrandAccessFlow({
         onCompletePasswordRecovery={actions.onCompletePasswordRecovery}
         onExitPasswordRecovery={actions.onExitPasswordRecovery}
         password={password}
+        passwordConfirmation={passwordConfirmation}
         providerLogin={providerLogin}
         remember={remember}
         role={role}
@@ -339,6 +172,7 @@ export function EntryBrandAccessFlow({
         setFullName={setFullName}
         setIdentifier={setIdentifier}
         setPassword={setPassword}
+        setPasswordConfirmation={setPasswordConfirmation}
         setRemember={setRemember}
         splashDurationMs={splashDurationMs}
         step={step}
@@ -354,12 +188,12 @@ type EntryAccessStepContentProps = {
   acceptedTerms: boolean; busy: boolean; error: string | null; remember: boolean
   chooseRole: (role: EntryRole) => void; completeOnboarding: () => void; providerLogin: (provider: 'apple' | 'google') => Promise<void>
   copy: EntryAccessCopy; features: EntryAccessFeatureFlags; roleGateGreeting: ReturnType<typeof selectRoleGateGreeting>
-  fullName: string; identifier: string; notice: string | null; password: string
+  fullName: string; identifier: string; notice: string | null; password: string; passwordConfirmation: string
   go: (step: EntryAccessStep) => void; setAcceptedTerms: () => void; setRemember: () => void
   language: AppLanguage; role: EntryRole; splashDurationMs: number; step: EntryAccessStep
   onCompletePasswordRecovery?: (password: string) => Promise<{ success: boolean; error?: string }>
   onExitPasswordRecovery?: () => Promise<void> | void
-  setFullName: (value: string) => void; setIdentifier: (value: string) => void; setPassword: (value: string) => void
+  setFullName: (value: string) => void; setIdentifier: (value: string) => void; setPassword: (value: string) => void; setPasswordConfirmation: (value: string) => void
   submitLogin: () => void; submitPasswordRecovery: () => void; submitRegister: () => void
 }
 
@@ -411,7 +245,9 @@ function EntryAccessStepContent(props: EntryAccessStepContentProps) {
           onSubmit={props.submitRegister}
           onToggleTerms={props.setAcceptedTerms}
           password={props.password}
+          passwordConfirmation={props.passwordConfirmation}
           role={props.role}
+          onPasswordConfirmationChange={props.setPasswordConfirmation}
         />
       )
     case 'email-confirmation':
@@ -579,7 +415,7 @@ function SplashFormulaAura() {
 function AuthTopBar({ backLabel, onBack, title }: { backLabel: string; onBack: () => void; title: string }) {
   return (
     <View style={styles.topbar}>
-      <IconButton label={backLabel} onPress={onBack} />
+      <LiquidBackButton label={backLabel} onPress={onBack} testID="auth-entry-back-button" />
       <Text style={styles.topbarTitle}>{title}</Text>
       <View style={styles.topbarSpacer} />
     </View>
@@ -590,13 +426,13 @@ function normalizeTitleBreaks(value: string) {
   return value.replace(/\\n/g, '\n')
 }
 
-function FormHeader({ lead, title }: { lead: string; title: string }) {
+function FormHeader({ lead, singleLineTitle = false, title }: { lead: string; singleLineTitle?: boolean; title: string }) {
   return (
     <View style={styles.formHead}>
       <View style={styles.formHeadRow}>
         <View style={{ flex: 1 }}>
-          <Text style={styles.formTitle}>{normalizeTitleBreaks(title)}</Text>
-          <Text style={[styles.lead, { marginTop: 6 }]}>{lead}</Text>
+          <Text numberOfLines={singleLineTitle ? 1 : undefined} style={styles.formTitle}>{normalizeTitleBreaks(title)}</Text>
+          {lead ? <Text style={[styles.lead, { marginTop: 6 }]}>{lead}</Text> : null}
         </View>
       </View>
     </View>
@@ -648,21 +484,26 @@ function LoginScreen(props: {
 function RegisterScreen(props: {
   acceptedTerms: boolean; busy: boolean; error: string | null
   copy: EntryAccessCopy; language: AppLanguage; role: EntryRole
-  fullName: string; identifier: string; password: string
+  fullName: string; identifier: string; password: string; passwordConfirmation: string
   onBack: () => void; onLogin: () => void; onSubmit: () => void; onToggleTerms: () => void
-  onFullNameChange: (value: string) => void; onIdentifierChange: (value: string) => void; onPasswordChange: (value: string) => void
+  onFullNameChange: (value: string) => void; onIdentifierChange: (value: string) => void; onPasswordChange: (value: string) => void; onPasswordConfirmationChange: (value: string) => void
 }) {
-  const identifierProps = registrationIdentifierFieldProps(props.language)
+  const identifierProps = registrationIdentifierFieldProps(props.identifier, props.role, props.language)
   return (
     <Screen>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.keyboard}>
         <ScrollView bounces={false} contentContainerStyle={styles.formScroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
           <AuthTopBar backLabel={props.copy.accessibility.back} onBack={props.onBack} title={props.copy.register.topbar} />
-          <FormHeader lead={props.role === 'customer' ? props.copy.register.customerLead : props.copy.register.workerLead} title={props.role === 'customer' ? props.copy.register.customerTitle : props.copy.register.workerTitle} />
+          <FormHeader
+            lead={props.role === 'customer' ? props.copy.register.customerLead : ''}
+            singleLineTitle
+            title={props.role === 'customer' ? props.copy.register.customerTitle : props.copy.register.workerTitle}
+          />
           <NativeSafeGlassPanel style={styles.formPanel} testID="auth-register-1-5">
             <EntryTextField autoCapitalize="words" icon="user" label={props.copy.register.fullNameLabel} onChangeText={props.onFullNameChange} placeholder={props.copy.register.fullNamePlaceholder} testID="auth-register-name-input" textContentType="name" value={props.fullName} />
             <EntryTextField {...identifierProps} onChangeText={props.onIdentifierChange} testID="auth-register-email-input" value={props.identifier} />
             <EntryTextField icon="lock" label={props.copy.register.passwordLabel} onChangeText={props.onPasswordChange} placeholder={props.copy.register.passwordPlaceholder} secureTextEntry testID="auth-register-password-input" textContentType="newPassword" value={props.password} />
+            <EntryTextField icon="lock" label={props.copy.register.passwordConfirmationLabel} onChangeText={props.onPasswordConfirmationChange} placeholder={props.copy.register.passwordConfirmationPlaceholder} secureTextEntry testID="auth-register-password-confirmation-input" textContentType="newPassword" value={props.passwordConfirmation} />
             <View style={styles.termsRow}>
               <CheckRow checked={props.acceptedTerms} label={props.copy.register.terms} onPress={props.onToggleTerms} testID="auth-register-terms" />
             </View>

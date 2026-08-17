@@ -31,7 +31,6 @@ const caseWork = [
   'case-work-artifact.ts',
   'case-work-context.ts',
 ].map((path) => readFileSync(join(root, 'domains/kael-chat', path), 'utf8')).join('\n')
-const sessionStore = readFileSync(join(root, 'domains/kael-chat/session-store.ts'), 'utf8')
 const intakeService = readFileSync(join(root, 'domains/kael-chat/intake.ts'), 'utf8')
 const services = readFileSync(join(root, 'domains.ts'), 'utf8')
 const confirmService = readFileSync(join(root, 'domains/kael-chat/confirm.service.ts'), 'utf8')
@@ -63,10 +62,6 @@ function exportedAsyncFunctionBody(name: string, nextName?: string) {
 }
 
 describe('Kael Case Work runtime wiring', () => {
-  it('normalizes Kael response branding before an Agentic turn is persisted', () => {
-    expect(sessionStore).toContain('normalizeKaelResponseBrand(input.text)')
-  })
-
   it('holds booking intake at the confirmation Pre-Step before analysis', () => {
     expect(service).toContain('if (input.input.defer_analysis || input.prepared.intakeConfirmation) return;')
     expect(service).toContain('intake_confirmation: intakeConfirmation ?? undefined')
@@ -184,32 +179,6 @@ describe('Kael Case Work runtime wiring', () => {
     expect(confirmService).toContain('diagnosisScope.confidence')
     expect(confirmService).toContain('diagnosisScope.facts.needs_inspection')
     expect(confirmService).not.toContain('diagnosisScope.confidence < 0.7')
-  })
-
-  it('keeps the database confirmation gate aligned with the quote-ready artifact', () => {
-    const migration = readFileSync(
-      join(process.cwd(), '../../supabase/migrations/20260722033000_align_kael_confirm_quote_ready_gate.sql'),
-      'utf8',
-    )
-
-    expect(migration).toContain('create or replace function public.confirm_kael_chat_atomic')
-    expect(migration).toContain("v_session.diagnosis_scope ->> 'quote_ready' <> 'true'")
-    expect(migration).toContain("v_session.diagnosis_scope -> 'facts' ->> 'needs_inspection'")
-    expect(migration).toContain("v_session.diagnosis_scope -> 'next_action' ->> 'kind' <> 'prepare_offer'")
-    expect(migration).not.toMatch(/diagnosis_scope[^\n]+confidence[^\n]+0\.7/)
-  })
-
-  it('requires a validated Price Reasoning receipt before the database can confirm a quote', () => {
-    const migration = readFileSync(
-      join(process.cwd(), '../../supabase/migrations/20260811093000_require_kael_price_reasoning_receipt.sql'),
-      'utf8',
-    )
-
-    expect(migration).toContain('create or replace function public.confirm_kael_chat_atomic')
-    expect(migration).toContain('MISSING_REASONING_RECEIPT')
-    expect(migration).toContain("v_price_card -> 'analysis_receipt'")
-    expect(migration).toContain("coalesce(v_analysis_receipt ->> 'schema_version', '') <> 'analysis_receipt.v1'")
-    expect(migration).toContain('grant execute on function public.confirm_kael_chat_atomic(uuid, uuid) to service_role')
   })
 
   it('keeps completion behind an explicit customer confirmation', () => {

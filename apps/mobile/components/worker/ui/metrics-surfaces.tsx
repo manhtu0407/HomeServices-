@@ -279,7 +279,7 @@ export function WorkerV5TimerCard({
   sourceCount: number
 }) {
   const stage = workerStatusStage(deal?.status)
-  const status = deal ? localizedStatusLabel(deal.status, language) : textByLanguage(language, 'Chưa có việc', 'No work')
+  const status = deal ? localizedStatusLabel(deal.status, language, deal.draft.serviceType) : textByLanguage(language, 'Chưa có việc', 'No work')
   const caption = sourceCount > 0
     ? textByLanguage(language, `${sourceCount} nguồn kiểm tra thật`, `${sourceCount} real checklist sources`)
     : textByLanguage(language, 'Chờ nguồn kiểm tra thật từ việc', 'Waiting for real checklist sources')

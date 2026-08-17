@@ -3,8 +3,6 @@ import type { useRouter } from 'expo-router'
 import {
   useAnimatedStyle,
   useSharedValue,
-  withDelay,
-  withSequence,
   withSpring,
   withTiming,
 } from 'react-native-reanimated'
@@ -30,7 +28,6 @@ export function useCustomerKaelModeMenu({
   normalChatRoute,
   processController,
   reduceMotion,
-  reduceTransparency,
   router,
   stateScopeKey,
 }: {
@@ -41,7 +38,6 @@ export function useCustomerKaelModeMenu({
   normalChatRoute: string
   processController: ProcessController
   reduceMotion: boolean
-  reduceTransparency: boolean
   router: Router
   stateScopeKey: string
 }) {
@@ -65,8 +61,6 @@ export function useCustomerKaelModeMenu({
   const { stopProcessLines } = processController
   const opacity = useSharedValue(0)
   const scale = useSharedValue(0.96)
-  const sheenOpacity = useSharedValue(0)
-  const sheenX = useSharedValue(-92)
   const translateY = useSharedValue(-6)
 
   const switchChatMode = (nextMode: CustomerKaelMode) => {
@@ -93,8 +87,6 @@ export function useCustomerKaelModeMenu({
     if (!modeMenuOpen) {
       opacity.value = reduceMotion ? 1 : 0
       scale.value = reduceMotion ? 1 : 0.96
-      sheenOpacity.value = 0
-      sheenX.value = -92
       translateY.value = reduceMotion ? 0 : -6
     }
     setSessionMenuOpen(false)
@@ -108,20 +100,12 @@ export function useCustomerKaelModeMenu({
       { scale: scale.value },
     ],
   }))
-  const animatedModeMenuSheenStyle = useAnimatedStyle(() => ({
-    opacity: sheenOpacity.value,
-    transform: [
-      { translateX: sheenX.value },
-      { rotate: '-10deg' },
-    ],
-  }))
 
   useEffect(() => {
     if (!modeMenuOpen) return
     if (reduceMotion) {
       opacity.value = 1
       scale.value = 1
-      sheenOpacity.value = 0
       translateY.value = 0
       return
     }
@@ -129,17 +113,9 @@ export function useCustomerKaelModeMenu({
     opacity.value = withTiming(1, { duration: motionDuration(140, reduceMotion) })
     scale.value = withSpring(1, motionTokens.liquid.entrance)
     translateY.value = withSpring(0, motionTokens.liquid.entrance)
-    if (!reduceTransparency) {
-      sheenOpacity.value = withSequence(
-        withTiming(0.58, { duration: motionDuration(90, reduceMotion) }),
-        withDelay(170, withTiming(0, { duration: motionDuration(180, reduceMotion) })),
-      )
-      sheenX.value = withTiming(96, { duration: motionDuration(340, reduceMotion) })
-    }
-  }, [modeMenuOpen, opacity, reduceMotion, reduceTransparency, scale, sheenOpacity, sheenX, translateY])
+  }, [modeMenuOpen, opacity, reduceMotion, scale, translateY])
 
   return {
-    animatedModeMenuSheenStyle,
     animatedModeMenuStyle,
     switchChatMode,
     toggleModeMenu,

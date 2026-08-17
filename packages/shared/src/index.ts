@@ -169,6 +169,7 @@ export type {
   AvailabilityToggleInput,
   WorkerScopeChangeInput,
   JobIncidentScopeProposalInput,
+  JobIncidentScopePricePreviewInput,
   KaelWorkerClarifyInput,
   WorkerKaelChatMode,
   WorkerKaelChatCreateInput,

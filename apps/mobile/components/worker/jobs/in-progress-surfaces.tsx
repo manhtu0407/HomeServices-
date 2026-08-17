@@ -393,7 +393,7 @@ export function WorkerV5InProgressBody({
   const advanceWorkPhase = async () => {
     if (phaseActionBusy || !deal) return
     if (deal.status === 'repairing') {
-      router.replace('/(worker)/jobs?ns_worker_screen=2.10-completion-evidence' as never)
+      router.replace(`/(worker)/jobs?ns_worker_screen=2.10-completion-evidence&job_id=${currentJobId}` as never)
       return
     }
     const nextStatus = deal.status === 'arrived'
@@ -534,7 +534,9 @@ export function WorkerV5InProgressBody({
         caseWideAura={WorkerV5CustomerCaseWideMintAura}
         primaryButtonFill={WorkerV5PrimaryButtonFill}
         zipAura={WorkerV5CustomerZipMintAura}
-        onPrimary={() => router.replace('/(worker)/jobs?ns_worker_screen=2.8-scope-change' as never)}
+        onPrimary={() => router.replace((currentJobId
+          ? `/(worker)/jobs?ns_worker_screen=2.8-scope-change&job_id=${encodeURIComponent(currentJobId)}`
+          : '/(worker)/jobs?ns_worker_screen=2.8-scope-change') as never)}
         onSecondary={navigateJobChat}
         primary={textByLanguage(language, 'Báo đổi phạm vi', 'Report scope change')}
         primaryTestID="worker-v5-in-progress-scope-action"

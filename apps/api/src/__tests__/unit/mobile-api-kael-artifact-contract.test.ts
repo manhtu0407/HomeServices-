@@ -58,11 +58,14 @@ describe('Kael artifact proposal contract', () => {
       pending,
       'affected_area_and_power_state',
       'Cần xác minh tình trạng cấp điện tại chỗ.',
+      'Mất điện ở phòng ngủ; các phòng khác vẫn có điện. Tôi không biết aptomat nhánh nào cấp cho phòng này.',
     )
 
     expect(resolved.facts).not.toHaveProperty('affected_area_and_power_state')
     expect(resolved.facts).toMatchObject({
       latest_unavailable_fact: 'affected_area_and_power_state',
+      latest_customer_detail:
+        'Mất điện ở phòng ngủ; các phòng khác vẫn có điện. Tôi không biết aptomat nhánh nào cấp cho phòng này.',
     })
     expect(resolved.missing_facts).toContain('affected_area_and_power_state')
     expect(resolved.quote_blockers).toContain('onsite_inspection_required')

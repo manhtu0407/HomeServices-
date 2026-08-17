@@ -6,10 +6,12 @@ import type {
 } from '@nestscout/shared'
 import {
   clearStableClientRequestId,
+  shouldRetainClientRequestId,
   stableClientRequestId,
   type PendingClientRequestId,
 } from '../client-request-id'
 import { jobService, workerService } from '../services'
+import type { JobIncidentScopePricePreviewResponse } from '../api-types'
 import { getRemoteJobId, scopeChangeClientRequestFingerprint } from './helpers'
 
 export type WorkerScopeChangeDraftInput = Omit<WorkerScopeChangeInput, 'client_request_id'> & {
@@ -19,6 +21,7 @@ export type WorkerScopeChangeDraftInput = Omit<WorkerScopeChangeInput, 'client_r
 type ScopeChangeActionsInput = {
   pendingDirectScopeChangeClientRequestRef: RefObject<PendingClientRequestId | null>
   pendingIncidentOpenClientRequestRef: RefObject<PendingClientRequestId | null>
+  pendingScopePricePreviewClientRequestRef: RefObject<PendingClientRequestId | null>
   pendingScopeProposalClientRequestRef: RefObject<PendingClientRequestId | null>
   refreshCurrentJob: () => Promise<boolean>
   setRemoteError: (error: string) => false
@@ -28,6 +31,7 @@ type ScopeChangeActionsInput = {
 export function useScopeChangeActions({
   pendingDirectScopeChangeClientRequestRef,
   pendingIncidentOpenClientRequestRef,
+  pendingScopePricePreviewClientRequestRef,
   pendingScopeProposalClientRequestRef,
   refreshCurrentJob,
   setRemoteError,
@@ -55,8 +59,8 @@ export function useScopeChangeActions({
     return true
   }, [pendingDirectScopeChangeClientRequestRef, refreshCurrentJob, setRemoteError, stateRef])
 
-  const getKaelJobIncident = useCallback(async () => {
-    const jobId = getRemoteJobId(stateRef.current)
+  const getKaelJobIncident = useCallback(async (jobIdOverride?: string) => {
+    const jobId = jobIdOverride?.trim() || getRemoteJobId(stateRef.current)
     if (!jobId) return false
     const result = await workerService.getKaelJobIncident(jobId)
     if (!result.success) {
@@ -90,15 +94,36 @@ export function useScopeChangeActions({
     return result.data
   }, [pendingIncidentOpenClientRequestRef, setRemoteError, stateRef])
 
-  const proposeScopeChangeFromKaelIncident = useCallback(async () => {
+  const previewScopeChangeFromKaelIncident = useCallback(async (): Promise<JobIncidentScopePricePreviewResponse | false> => {
+    const jobId = getRemoteJobId(stateRef.current)
+    if (!jobId) return setRemoteError('Không có yêu cầu để Kael tính giá')
+    const requestFingerprint = `job-incident-scope-price-preview:${jobId}`
+    const result = await workerService.previewScopeChangeFromKaelIncident(jobId, {
+      client_request_id: stableClientRequestId(
+        pendingScopePricePreviewClientRequestRef,
+        requestFingerprint,
+      ),
+    })
+    if (!result.success) {
+      if (!shouldRetainClientRequestId(result)) {
+        clearStableClientRequestId(pendingScopePricePreviewClientRequestRef, requestFingerprint)
+      }
+      return setRemoteError(result.error)
+    }
+    clearStableClientRequestId(pendingScopePricePreviewClientRequestRef, requestFingerprint)
+    return result.data
+  }, [pendingScopePricePreviewClientRequestRef, setRemoteError, stateRef])
+
+  const proposeScopeChangeFromKaelIncident = useCallback(async (quoteId: string) => {
     const jobId = getRemoteJobId(stateRef.current)
     if (!jobId) return setRemoteError('Không có yêu cầu để tạo đề xuất')
-    const requestFingerprint = `job-incident-scope-proposal:${jobId}`
+    const requestFingerprint = `job-incident-scope-proposal:${jobId}:${quoteId}`
     const result = await workerService.proposeScopeChangeFromKaelIncident(jobId, {
       client_request_id: stableClientRequestId(
         pendingScopeProposalClientRequestRef,
         requestFingerprint,
       ),
+      quote_id: quoteId,
     })
     if (!result.success) return setRemoteError(result.error)
     clearStableClientRequestId(pendingScopeProposalClientRequestRef, requestFingerprint)
@@ -126,6 +151,7 @@ export function useScopeChangeActions({
     decideScopeChange,
     getKaelJobIncident,
     openKaelJobIncident,
+    previewScopeChangeFromKaelIncident,
     proposeScopeChangeFromKaelIncident,
     requestScopeChange,
   }

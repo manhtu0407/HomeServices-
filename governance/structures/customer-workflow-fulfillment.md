@@ -196,7 +196,8 @@ Customer  scope.decide - POST /scope-changes/:id/decide - decideScopeChange
           -> effects.ts + effects-drain.ts apply the decided effect
              (request -> command -> effect, so the decision and its side effects are
               separately auditable and replayable)
-Writes    scope_changes row, jobs.final_price on confirm, job status back to one of the
+Writes    scope_changes row, jobs.final_price to the exact verified full-scope total on confirm,
+          job status back to one of the
           five on-site statuses (or cancelled)
 Emits     'scope_change_decided' (customer) or 'kael_decided_scope_change' (autonomy)
 Gates     validateScopeChangeEvidenceRefs - scopeChangeRiskConfig -
@@ -217,7 +218,7 @@ Content
 -
 |- worker completion note
 |- completion photos
-|- final price (Kael-locked: set at A7 autonomy baseline or latest A11 Kael-computed value)
+|- final price (Kael-locked only from the latest worker-confirmed, customer-approved A11 receipt)
 |- explicit customer confirm/dispute actions
 |- audit / appeal / support actions
 

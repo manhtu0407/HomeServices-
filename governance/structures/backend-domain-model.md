@@ -204,7 +204,9 @@ Forbidden
 |- showing a payment state for which no implemented rail exists
 ```
 
-Open gap at the current milestone: `platform/lifecycle.ts` still allows `confirmed_by_customer -> reviewed`, the Phase-0 skip added when no rails existed. Rails now exist (#135, #139) but no real transaction has been processed, so the skip has not been closed. Closing it means requiring `payment_pending -> paid -> reviewed`; that is a deliberate decision tied to the first real transaction, not a cleanup.
+Open gap at the current milestone: the status table `VALID_TRANSITIONS` in `platform/lifecycle.ts` still allows `confirmed_by_customer -> reviewed`, the Phase-0 skip added when no rails existed. The event table in `workflow-orchestrator.ts` narrows it further — `kael_decided_dispute` is the only event that may cause that edge, and it is the only event reaching a terminal status without passing `paid` — so the skip is dispute-only rather than open, and the gate is the composition of the two tables, not `lifecycle.ts` alone.
+
+Rails now exist (#135, #139) but no real transaction has been processed, so the skip has not been closed. Closing it means requiring `payment_pending -> paid -> reviewed`; that is a deliberate decision tied to the first real transaction, not a cleanup, and it also means deciding whether a dispute resolved in the customer's favour should still reach `reviewed` unpaid. `P12-workflow-transition-composition` pins the current answer either way.
 
 ### LearningRuleModule
 

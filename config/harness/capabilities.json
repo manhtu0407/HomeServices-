@@ -3,9 +3,32 @@
   "source": {
     "routeRoot": "supabase/functions/mobile-api/_shared/http/routes",
     "fileCount": 19,
-    "sha256": "34ae93d058d0455d26e9a847e10dc58ba3465388db84ffcf643dd5291f146a77"
+    "sha256": "f15ac13fd24f1d59db04ad493bb1a8b3cc67ff4116bbca446a698e5554137f70"
   },
   "entries": [
+    {
+      "kind": "admin.actor.get",
+      "capability": "mobile.route.admin.actor.get",
+      "public": false,
+      "methods": [
+        "GET"
+      ],
+      "roles": [
+        "admin",
+        "admin_operator"
+      ],
+      "risk": "administrative",
+      "operationClass": "database_read",
+      "sideEffectClass": "read-only",
+      "privileged": true,
+      "resourceType": "system",
+      "requiresResourceCheck": false,
+      "confirmationGate": "none",
+      "envelopeTtlMs": 30000,
+      "sources": [
+        "supabase/functions/mobile-api/_shared/http/routes/admin-control-routes.ts"
+      ]
+    },
     {
       "kind": "admin.finance.balanceSnapshot",
       "capability": "mobile.route.admin.finance.balanceSnapshot",
@@ -1754,6 +1777,29 @@
       ]
     },
     {
+      "kind": "jobs.kaelIncidentPreviewScope",
+      "capability": "mobile.route.jobs.kaelIncidentPreviewScope",
+      "public": false,
+      "methods": [
+        "POST"
+      ],
+      "roles": [
+        "admin",
+        "worker"
+      ],
+      "risk": "sensitive",
+      "operationClass": "idempotent_write",
+      "sideEffectClass": "idempotent-write",
+      "privileged": true,
+      "resourceType": "job",
+      "requiresResourceCheck": true,
+      "confirmationGate": "none",
+      "envelopeTtlMs": 60000,
+      "sources": [
+        "supabase/functions/mobile-api/_shared/http/routes/case-work-resource-routes.ts"
+      ]
+    },
+    {
       "kind": "jobs.kaelIncidentProposeScope",
       "capability": "mobile.route.jobs.kaelIncidentProposeScope",
       "public": false,
@@ -2161,8 +2207,7 @@
       ],
       "roles": [
         "admin",
-        "customer",
-        "worker"
+        "customer"
       ],
       "risk": "money",
       "operationClass": "money_impacting",
@@ -2185,8 +2230,7 @@
       ],
       "roles": [
         "admin",
-        "customer",
-        "worker"
+        "customer"
       ],
       "risk": "money",
       "operationClass": "money_impacting",
@@ -2252,8 +2296,7 @@
       ],
       "roles": [
         "admin",
-        "customer",
-        "worker"
+        "customer"
       ],
       "risk": "write",
       "operationClass": "idempotent_write",
@@ -2299,8 +2342,7 @@
       ],
       "roles": [
         "admin",
-        "customer",
-        "worker"
+        "customer"
       ],
       "risk": "write",
       "operationClass": "idempotent_write",
@@ -2323,8 +2365,7 @@
       ],
       "roles": [
         "admin",
-        "customer",
-        "worker"
+        "customer"
       ],
       "risk": "write",
       "operationClass": "provider_call",
@@ -2347,8 +2388,7 @@
       ],
       "roles": [
         "admin",
-        "customer",
-        "worker"
+        "customer"
       ],
       "risk": "read",
       "operationClass": "database_read",
@@ -2371,8 +2411,7 @@
       ],
       "roles": [
         "admin",
-        "customer",
-        "worker"
+        "customer"
       ],
       "risk": "write",
       "operationClass": "idempotent_write",
@@ -2400,7 +2439,7 @@
       "risk": "sensitive",
       "operationClass": "idempotent_write",
       "sideEffectClass": "idempotent-write",
-      "privileged": false,
+      "privileged": true,
       "resourceType": "session",
       "requiresResourceCheck": false,
       "confirmationGate": "none",
@@ -2423,7 +2462,7 @@
       "risk": "sensitive",
       "operationClass": "idempotent_write",
       "sideEffectClass": "idempotent-write",
-      "privileged": false,
+      "privileged": true,
       "resourceType": "session",
       "requiresResourceCheck": false,
       "confirmationGate": "none",
@@ -2441,8 +2480,7 @@
       ],
       "roles": [
         "admin",
-        "customer",
-        "worker"
+        "customer"
       ],
       "risk": "read",
       "operationClass": "database_read",
@@ -2465,8 +2503,7 @@
       ],
       "roles": [
         "admin",
-        "customer",
-        "worker"
+        "customer"
       ],
       "risk": "write",
       "operationClass": "provider_call",
@@ -2489,8 +2526,7 @@
       ],
       "roles": [
         "admin",
-        "customer",
-        "worker"
+        "customer"
       ],
       "risk": "write",
       "operationClass": "idempotent_write",

@@ -25,6 +25,8 @@ import { createSignedCaseWorkEvidenceUrls } from "../kael-chat/media-vision.ts";
 import { getCurrentScopeChange } from "./pending-decisions.ts";
 import { loadPaymentReceipt, parsePaymentStatus } from "./payment-receipt.ts";
 import { listCustomerServiceHistory } from "./customer-history.ts";
+import { getCurrentJobIncidentReview } from "./incident.ts";
+import { estimateWorkerNet } from "../payment/commission.ts";
 
 export { listMyPendingDecisions } from "./pending-decisions.ts";
 export { listCustomerServiceHistory, projectCustomerServiceHistoryRows } from "./customer-history.ts";
@@ -52,6 +54,7 @@ export async function getJob(
   options: { paymentRailProvider?: AvailablePaymentRailProvider | null } = {},
 ): Promise<EdgeJobDetailResponse> {
   const client = db(ctx);
+  const privilegedClient = (ctx.privilegedSupabase ?? client) as DbClient;
   const job = await requireJobAccess(client, jobId, ctx, {
     select: JOB_DETAIL_SELECT,
   });
@@ -59,12 +62,19 @@ export async function getJob(
   const paymentProvider = nullableString(job.payment_provider);
   const hasPaymentReceipt = job.status === "payment_pending" ||
     paymentProvider === "platform_bank_manual" || paymentProvider === "direct_worker";
-  const [initialBroadcastState, currentScopeChange, worker, paymentReceipt] = await Promise.all([
+  const incidentReviewVisible = job.status === "inspecting" || job.status === "repairing";
+  const [initialBroadcastState, currentJobIncident, currentScopeChange, worker, paymentReceipt] = await Promise.all([
     job.status === "broadcasting" ? getJobBroadcastState(client, jobId) : null,
+    incidentReviewVisible ? getCurrentJobIncidentReview(client, jobId) : null,
     job.status === "scope_change_pending" ? getCurrentScopeChange(client, jobId) : null,
-    workerId ? loadJobWorkerSummary(client, workerId) : null,
+    workerId ? loadJobWorkerSummary(privilegedClient, workerId) : null,
     hasPaymentReceipt
-      ? loadPaymentReceipt(client, jobId, ctx.role, ctx.role === "customer" ? ctx.user.id : null)
+      ? loadPaymentReceipt(
+        privilegedClient,
+        jobId,
+        ctx.role,
+        ctx.role === "customer" ? ctx.user.id : null,
+      )
       : null,
   ]);
   let broadcastState = initialBroadcastState;
@@ -108,6 +118,12 @@ export async function getJob(
     )
     : [];
   const paymentInstructionsVisible = ctx.role === "customer";
+  const estimatedWorkerNet = ctx.role === "worker" || ctx.role === "admin"
+    ? nullableNumber(job.worker_net) ?? estimateWorkerNet(
+      nullableNumber(job.final_price),
+      frozenCommissionTier(job),
+    )
+    : null;
 
   return {
     job: {
@@ -136,6 +152,7 @@ export async function getJob(
       kael_worker_brief_guidance: nullableRecord(job.kael_worker_brief_guidance),
       kael_progress: parseKaelProgressSnapshot(job.kael_progress, jobId),
       final_price: nullableNumber(job.final_price),
+      estimated_worker_net: estimatedWorkerNet,
       payment_rail_available: ctx.role === "customer" && options.paymentRailProvider !== undefined && options.paymentRailProvider !== null,
       payment_rail_provider: ctx.role === "customer"
         ? options.paymentRailProvider ?? null
@@ -171,9 +188,24 @@ export async function getJob(
     worker,
     broadcast_state: broadcastState,
     matching_state: matchingState,
+    current_job_incident: currentJobIncident,
     current_scope_change: currentScopeChange,
   };
 }
+
+function frozenCommissionTier(job: Record<string, unknown>) {
+  const level = nullableNumber(job.worker_commission_level);
+  const rateBps = nullableNumber(job.worker_commission_rate_bps);
+  if (
+    level === null || !Number.isSafeInteger(level) || level < 1 ||
+    rateBps === null || !Number.isSafeInteger(rateBps) ||
+    rateBps < 0 || rateBps > 1_500
+  ) {
+    return null;
+  }
+  return { level, rateBps };
+}
+
 export async function listCustomerActiveJobs(
   ctx: MobileApiContext,
   options: { paymentRailProvider?: AvailablePaymentRailProvider | null } = {},

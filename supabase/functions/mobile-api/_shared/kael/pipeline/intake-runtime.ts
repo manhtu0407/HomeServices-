@@ -6,6 +6,7 @@ import {
   scanIntakeSafetySignals,
 } from "../kael-guardrails/electrical-intake-policy.ts";
 import { getKaelPerformanceProfile } from "../learning/performance-profiles.ts";
+import { resolveHandymanIntakeFactCoverage } from "../kael-guardrails/handyman-intake-policy.ts";
 import {
   ELECTRICAL_PLAYBOOK_VERSION,
   isElectricalPlaybookEnabled,
@@ -76,6 +77,7 @@ export function mergeIntakeSafetySignals(input: {
 export function resolveIntakeFactCoverage(input: {
   serviceType: string;
   problemSlug: string;
+  customerDescription?: string;
   profileFacts: Record<string, unknown>;
   providerMissingSlots: readonly string[];
   providerNeedsClarification: boolean;
@@ -88,6 +90,13 @@ export function resolveIntakeFactCoverage(input: {
   const coverage = profile
     ? requiredPolicy
       ? resolveRequiredSlotCoverage(profile, input.problemSlug, input.profileFacts)
+      : input.serviceType === "handyman"
+      ? resolveHandymanIntakeFactCoverage({
+        profile,
+        problemSlug: input.problemSlug,
+        candidateFacts: input.profileFacts,
+        customerDescription: input.customerDescription ?? "",
+      })
       : resolveProfileFactCoverage(profile, input.profileFacts)
     : { facts: {} as Record<string, string>, missing: [] as readonly string[] };
   const providerMissing = input.providerMissingSlots.filter((slot) => {
@@ -102,13 +111,17 @@ export function resolveIntakeFactCoverage(input: {
       ) && slot.startsWith("safety_")
     )
     : [];
+  const minimumGroundingMissing = !requiredPolicy && !input.providerNeedsClarification &&
+      Object.keys(coverage.facts).length === 0
+    ? coverage.missing.slice(0, 1)
+    : [];
   const missing = [...new Set(requiredPolicy
     ? [
       ...coverage.missing,
       ...providerMissing,
       ...safetyClarificationMissing,
     ]
-    : providerMissing)];
+    : [...minimumGroundingMissing, ...providerMissing])];
   const providerRequestedClarification = input.providerNeedsClarification &&
     providerMissing.length > 0;
   return {
@@ -116,7 +129,7 @@ export function resolveIntakeFactCoverage(input: {
     missing,
     needsClarification: requiredPolicy
       ? missing.length > 0
-      : providerRequestedClarification,
+      : minimumGroundingMissing.length > 0 || providerRequestedClarification,
   };
 }
 
@@ -179,8 +192,11 @@ export function isGroundedClarificationAnswer(message: string) {
 }
 
 export function isUnknownClarificationAnswer(message: string) {
-  const normalized = normalizeClarificationReply(message);
-  return [
+  const clauses = message
+    .split(/(?:[.!?;,\r\n]+|\bnhưng\b|\bbut\b)/iu)
+    .map(normalizeClarificationReply)
+    .filter(Boolean);
+  const unknownPatterns = [
     "khong biet",
     "khong ro",
     "chua ro",
@@ -191,7 +207,15 @@ export function isUnknownClarificationAnswer(message: string) {
     "do not know",
     "dont know",
     "don't know",
-  ].some((pattern) => normalized.includes(pattern));
+  ];
+  const hasUnknownClause = clauses.some((clause) =>
+    unknownPatterns.some((pattern) => clause.includes(pattern))
+  );
+  if (!hasUnknownClause) return false;
+  return !clauses.some((clause) =>
+    !unknownPatterns.some((pattern) => clause.includes(pattern)) &&
+    clause.split(" ").filter(Boolean).length >= 3
+  );
 }
 
 export function buildClarificationExplanationQuestion(
@@ -222,6 +246,10 @@ export function buildFocusedClarificationQuestion(
 ) {
   const slot = missingSlot.toLowerCase();
   const compositeQuestions: Record<string, Record<"vi" | "en", string>> = {
+    fixture_pipe_or_drain_type: {
+      vi: "Sự cố nằm ở thiết bị, đường ống hay thoát nước nào; chỉ một vị trí hay nhiều vị trí?",
+      en: "Which fixture, pipe, or drain is affected, and is it limited to one location or several?",
+    },
     breaker_state: {
       vi: "Aptomat hiện đang bật/tắt/đã nhảy, hay đã nhảy lại sau lần bật lại trước đó?",
       en: "Is the breaker currently on/off/tripped, or did it re-trip after a reset already attempted?",
@@ -273,6 +301,10 @@ export function buildFocusedClarificationQuestion(
     concealed_services_and_load_requirement: {
       vi: "Khu vực khoan có đường điện hoặc ống nước âm tường đã biết không?",
       en: "Are there known concealed electrical or water lines at the drilling point?",
+    },
+    requested_scope_and_exclusions: {
+      vi: "Bạn muốn thợ chỉ kiểm tra, siết và căn chỉnh hay còn cho phép thay bản lề, vá gỗ hoặc khoan mới; phần nào cần loại trừ?",
+      en: "Should the worker only inspect, tighten and adjust, or may they replace hinges, patch wood or drill new holes; what must be excluded?",
     },
   };
   const compositeQuestion = compositeQuestions[slot]?.[language];
