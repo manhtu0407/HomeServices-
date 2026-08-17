@@ -1,0 +1,12 @@
+diff --git a/android/cmake/main.cmake b/android/cmake/main.cmake
+index 05fae2ce5f25f259eb9de4d6d314d61d252cf89a..b02c4a7c279f740c6461d8467cc9b3ce56d3cc16 100644
+--- a/android/cmake/main.cmake	
++++ b/android/cmake/main.cmake
+@@ -60,6 +60,7 @@ endif ()
+ target_link_libraries(
+   expo-modules-core
+   PRIVATE
++  c++_shared
+   ${LOG_LIB}
+   android
+   ${JSEXECUTOR_LIB}

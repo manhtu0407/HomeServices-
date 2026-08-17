@@ -1,0 +1,24 @@
+diff --git a/android/CMakeLists.txt b/android/CMakeLists.txt
+index ae443541495bc868bc536ca26c9eba214e69dd50..72d1260176a030ccdd43891838ae193e154f9fd7 100644
+--- a/android/CMakeLists.txt	
++++ b/android/CMakeLists.txt
+@@ -23,6 +23,7 @@ target_include_directories(react_codegen_rngesturehandler_codegen PUBLIC ./build
+ 
+ target_link_libraries(
+   react_codegen_rngesturehandler_codegen
++  c++_shared
+   fbjni
+   jsi
+   reactnative
+diff --git a/android/src/main/jni/CMakeLists.txt b/android/src/main/jni/CMakeLists.txt
+index 8c0dc69242d2dc4529c93ecc1b2b9cffdf36c611..e3a48cd2451c32c106f4aaf4d1f12606cff613c7 100644
+--- a/android/src/main/jni/CMakeLists.txt	
++++ b/android/src/main/jni/CMakeLists.txt
+@@ -47,6 +47,7 @@ find_package(fbjni REQUIRED CONFIG)
+ 
+ target_link_libraries(
+   ${PACKAGE_NAME}
++  c++_shared
+   ReactAndroid::reactnative
+   ReactAndroid::jsi
+   fbjni::fbjni

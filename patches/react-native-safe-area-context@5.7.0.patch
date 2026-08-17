@@ -1,0 +1,12 @@
+diff --git a/android/src/main/jni/CMakeLists.txt b/android/src/main/jni/CMakeLists.txt
+index 52450f0eacbb0e7ba80a8c84a4fb5bdaffd3a7f5..3cf40157da8a90e4362594186273d5f8903968b6 100644
+--- a/android/src/main/jni/CMakeLists.txt	
++++ b/android/src/main/jni/CMakeLists.txt
+@@ -33,6 +33,7 @@ target_include_directories(
+ if (REACTNATIVE_MERGED_SO)
+   target_link_libraries(
+           ${LIB_TARGET_NAME}
++          c++_shared
+           fbjni
+           jsi
+           reactnative

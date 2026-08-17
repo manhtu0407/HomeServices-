@@ -1,0 +1,12 @@
+diff --git a/android/src/main/jni/CMakeLists.txt b/android/src/main/jni/CMakeLists.txt
+index f21366b0e50c934d798f129b871fc28663d2c6aa..a8e7a245982b0e76963472815f2c52a115af8b6e 100644
+--- a/android/src/main/jni/CMakeLists.txt	
++++ b/android/src/main/jni/CMakeLists.txt
+@@ -34,6 +34,7 @@ find_package(ReactAndroid REQUIRED CONFIG)
+ if(ReactAndroid_VERSION_MINOR GREATER_EQUAL 76)
+   target_link_libraries(
+     react_codegen_rnsvg
++    c++_shared
+     ReactAndroid::reactnative
+     ReactAndroid::jsi
+   )
