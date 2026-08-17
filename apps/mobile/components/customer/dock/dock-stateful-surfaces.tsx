@@ -42,7 +42,6 @@ export function CustomerV21DockOverlayView({
   onTabPress,
   reduceMotion,
   selectedIndex,
-  showKaelAccessory,
   tokens,
 }: {
   activeTab: CustomerPrimaryTab | null
@@ -63,7 +62,6 @@ export function CustomerV21DockOverlayView({
   onTabPress: (route: string) => void
   reduceMotion: boolean
   selectedIndex: number
-  showKaelAccessory: boolean
   tokens: CustomerThemeTokens
 }) {
   const kaelRef = useRef<KaelCoreV9Handle>(null)
@@ -133,21 +131,19 @@ export function CustomerV21DockOverlayView({
           )
         })}
       </GlassSurface>
-      {showKaelAccessory ? (
-        <Pressable
-          accessibilityLabel={customerV21TabCopy[language].kael}
-          accessibilityRole="button"
-          accessibilityState={{ selected: kaelActive }}
-          onFocus={() => kaelRef.current?.bow('focus')}
-          onHoverIn={() => kaelRef.current?.bow('proximity')}
-          onPress={onKaelPress}
-          onPressIn={() => kaelRef.current?.bow('pointer-press')}
-          style={[dockStyles.kaelAccessory, kaelActive ? dockStyles.kaelAccessoryActive : null]}
-          testID="customer-v21-kael-accessory"
-        >
-          <KaelCoreV9 reduceMotion={reduceMotion} ref={kaelRef} testID="customer-v21-kael-core-v9" />
-        </Pressable>
-      ) : null}
+      <Pressable
+        accessibilityLabel={customerV21TabCopy[language].kael}
+        accessibilityRole="button"
+        accessibilityState={{ selected: kaelActive }}
+        onFocus={() => kaelRef.current?.bow('focus')}
+        onHoverIn={() => kaelRef.current?.bow('proximity')}
+        onPress={onKaelPress}
+        onPressIn={() => kaelRef.current?.bow('pointer-press')}
+        style={[dockStyles.kaelAccessory, kaelActive ? dockStyles.kaelAccessoryActive : null]}
+        testID="customer-v21-kael-accessory"
+      >
+        <KaelCoreV9 reduceMotion={reduceMotion} ref={kaelRef} testID="customer-v21-kael-core-v9" />
+      </Pressable>
       </Animated.View>
     </View>
   )
