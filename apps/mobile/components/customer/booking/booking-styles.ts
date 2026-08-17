@@ -1,5 +1,7 @@
 import { StyleSheet } from 'react-native'
 
+import { bookingFormStyleDefinitions } from './booking-form-styles'
+
 export const customerV21BookingStyles = StyleSheet.create({
   mediaAnalyzeButtonAura: {
     ...StyleSheet.absoluteFill,
@@ -314,7 +316,7 @@ export const customerV21BookingStyles = StyleSheet.create({
   },
   bookingDescriptionInput: {
     borderRadius: 18,
-    minHeight: 84,
+    minHeight: 72,
     paddingHorizontal: 14,
     paddingVertical: 11,
     position: 'relative',
@@ -328,7 +330,7 @@ export const customerV21BookingStyles = StyleSheet.create({
     borderCurve: 'continuous',
     borderRadius: 18,
     borderWidth: 1,
-    minHeight: 84,
+    minHeight: 72,
     overflow: 'hidden',
     paddingHorizontal: 0,
     paddingVertical: 0,
@@ -358,6 +360,7 @@ export const customerV21BookingStyles = StyleSheet.create({
     borderColor: 'rgba(255,255,255,0.91)',
     borderRadius: 24,
     gap: 0,
+    marginTop: 18,
     overflow: 'hidden',
     paddingHorizontal: 14,
     paddingVertical: 13,
@@ -379,6 +382,22 @@ export const customerV21BookingStyles = StyleSheet.create({
   bookingInlineIcon: {
     height: 28,
     width: 28,
+  },
+  bookingInlineIconShell: {
+    alignItems: 'center',
+    borderCurve: 'continuous',
+    borderRadius: 13,
+    height: 40,
+    justifyContent: 'center',
+    width: 40,
+  },
+  bookingInlineChevron: {
+    fontSize: 24,
+    fontWeight: '500',
+    lineHeight: 26,
+    marginLeft: 4,
+    textAlign: 'center',
+    width: 18,
   },
   bookingInlineInput: {
     alignSelf: 'stretch',
@@ -443,8 +462,125 @@ export const customerV21BookingStyles = StyleSheet.create({
     paddingBottom: 2,
     paddingTop: 2,
   },
-  bookingProgressRail: {
-    marginTop: 9,
+  bookingJourneyArtwork: {
+    height: 164,
+    width: '100%',
+    zIndex: 0,
+  },
+  bookingJourneyBackdropFade: {
+    bottom: 0,
+    left: 0,
+    position: 'absolute',
+    right: 0,
+    top: 0,
+    zIndex: 1,
+  },
+  bookingJourneyArtworkFrame: {
+    marginHorizontal: -16,
+    marginTop: 4,
+    overflow: 'hidden',
+    position: 'relative',
+    width: 'auto',
+  },
+  bookingJourneyCaption: {
+    fontSize: 11.5,
+    fontWeight: '600',
+    lineHeight: 16,
+    textAlign: 'center',
+  },
+  bookingJourneyCopy: {
+    alignItems: 'center',
+    gap: 1,
+    paddingBottom: 7,
+    paddingHorizontal: 12,
+    paddingTop: 6,
+    position: 'relative',
+    zIndex: 2,
+  },
+  bookingJourneyTitle: {
+    fontSize: 17,
+    fontWeight: '700',
+    lineHeight: 21,
+    textAlign: 'center',
+  },
+  bookingWorkartServiceArtwork: {
+    height: '100%',
+    width: '100%',
+  },
+  bookingWorkartServiceCopy: {
+    flex: 1,
+    justifyContent: 'center',
+    minWidth: 0,
+    overflow: 'hidden',
+    paddingLeft: 16,
+    paddingRight: 14,
+    paddingVertical: 8,
+  },
+  bookingWorkartServiceDetail: {
+    fontSize: 10.5,
+    fontWeight: '600',
+    lineHeight: 14,
+  },
+  bookingWorkartServiceDetailRail: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    flexWrap: 'nowrap',
+    gap: 5,
+    marginTop: 2,
+    overflow: 'hidden',
+  },
+  bookingWorkartServiceDetailRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 4,
+    minWidth: 0,
+  },
+  bookingWorkartServiceDetailSeparator: {
+    fontSize: 12,
+    fontWeight: '700',
+    lineHeight: 14,
+  },
+  bookingWorkartServiceHeading: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    minWidth: 0,
+  },
+  bookingWorkartServiceTile: {
+    alignItems: 'stretch',
+    borderCurve: 'continuous',
+    borderRadius: 12,
+    borderWidth: 1,
+    flexDirection: 'row',
+    minHeight: 56,
+    overflow: 'hidden',
+    position: 'relative',
+    width: '100%',
+  },
+  bookingWorkartServiceTitle: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: '700',
+    lineHeight: 18,
+    minWidth: 0,
+  },
+  bookingWorkartServiceVisualPanel: {
+    alignSelf: 'stretch',
+    flexBasis: '27%',
+    flexGrow: 0,
+    flexShrink: 0,
+    justifyContent: 'center',
+    minHeight: 56,
+    overflow: 'hidden',
+    position: 'relative',
+    width: '27%',
+  },
+  bookingWorkartServiceWash: {
+    bottom: 0,
+    right: -1,
+    position: 'absolute',
+    top: 0,
+    width: 42,
+    zIndex: 1,
   },
   bookingReadonlyText: {
     flex: 1,
@@ -481,25 +617,8 @@ export const customerV21BookingStyles = StyleSheet.create({
     width: '100%',
   },
   bookingServiceGrid: {
+    marginHorizontal: 4,
     marginTop: 6,
-  },
-  bookingSourceStepCard: {
-    borderColor: 'rgba(255,255,255,0.88)',
-    borderRadius: 24,
-    gap: 0,
-    marginBottom: 0,
-    minHeight: 74,
-    overflow: 'hidden',
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    position: 'relative',
-    shadowColor: '#087D72',
-    shadowOpacity: 0.10,
-    shadowRadius: 22,
-  },
-  bookingSourceStepContent: {
-    position: 'relative',
-    zIndex: 1,
   },
   bookingTimeGrid: {
     flexDirection: 'row',
@@ -608,4 +727,5 @@ export const customerV21BookingStyles = StyleSheet.create({
     marginLeft: 8,
     marginTop: -4,
   },
+  ...bookingFormStyleDefinitions,
 })

@@ -17,6 +17,7 @@ export const customerV21Assets = {
   activityNav: require('@/assets/client-image-icons/client-activity-nav.png') as ImageSourcePropType,
   address: require('@/assets/client-image-icons/client-address.png') as ImageSourcePropType,
   booking: require('@/assets/client-image-icons/client-booking.png') as ImageSourcePropType,
+  bookingJourneyWorkart: require('@/assets/client-image-icons/client-booking-journey-workart.png') as ImageSourcePropType,
   clock: require('@/assets/worker-image-icons/utility-clock.png') as ImageSourcePropType,
   deleteAccount: require('@/assets/client-image-icons/client-delete-account-shredder.png') as ImageSourcePropType,
   evidence: require('@/assets/client-image-icons/client-evidence.png') as ImageSourcePropType,
@@ -77,6 +78,15 @@ export const customerV21BookingServiceAssets: Record<CustomerServiceId, ImageSou
   hvac_basic_maintenance: require('./assets/service-icons/client-service-hvac.png') as ImageSourcePropType,
   upholstery_care: require('./assets/service-icons/client-service-upholstery-care.png') as ImageSourcePropType,
   handyman_minor_installation: require('./assets/service-icons/client-service-handyman-installation.png') as ImageSourcePropType,
+}
+
+export const customerV21BookingWorkartAssets: Record<CustomerServiceId, ImageSourcePropType> = {
+  electrical: require('@/assets/client-image-icons/client-booking-workart-electrical.png') as ImageSourcePropType,
+  plumbing: require('@/assets/client-image-icons/client-booking-workart-plumbing.png') as ImageSourcePropType,
+  home_cleaning: require('@/assets/client-image-icons/client-booking-workart-cleaning.png') as ImageSourcePropType,
+  hvac_basic_maintenance: require('@/assets/client-image-icons/client-booking-workart-hvac.png') as ImageSourcePropType,
+  upholstery_care: require('@/assets/client-image-icons/client-booking-workart-upholstery.png') as ImageSourcePropType,
+  handyman_minor_installation: require('@/assets/client-image-icons/client-booking-workart-handyman.png') as ImageSourcePropType,
 }
 
 export const customerV21HomeV4Assets = {

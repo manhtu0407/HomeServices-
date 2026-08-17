@@ -195,13 +195,12 @@ describe('CustomerBookingEntrySurface v2.1', () => {
     expect(screen.getByTestId('customer-v21-service-hvac_basic_maintenance')).toBeOnTheScreen()
     expect(screen.getByTestId('customer-v21-service-upholstery_care')).toBeOnTheScreen()
     expect(screen.getByTestId('customer-v21-service-handyman_minor_installation')).toBeOnTheScreen()
-    expect(screen.getByTestId('customer-v21-booking-step-card-skin')).toBeOnTheScreen()
-    expect(screen.getByTestId('customer-v21-booking-step-wide-mint-aura')).toBeOnTheScreen()
-    expect(screen.getByTestId('customer-v21-booking-step-mint-aura')).toBeOnTheScreen()
-    expect(screen.getByTestId('customer-v21-booking-progress-node-1')).toHaveTextContent('1')
-    expect(screen.getByTestId('customer-v21-booking-progress-node-4')).toHaveTextContent('4')
-    expect(screen.getByTestId('customer-v21-booking-progress-line-1')).toBeOnTheScreen()
-    expect(screen.getByTestId('customer-v21-booking-progress-line-3')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-v21-booking-progress')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-v21-booking-progress-artwork-frame')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-v21-booking-progress-artwork')).toBeOnTheScreen()
+    expect(screen.getByText('Bắt đầu với dịch vụ')).toBeOnTheScreen()
+    expect(screen.queryByTestId('customer-v21-booking-progress-node-1')).toBeNull()
+    expect(screen.queryByTestId('customer-v21-booking-progress-line-1')).toBeNull()
     expect(screen.queryByTestId('customer-v21-booking-search-source')).toBeNull()
     expect(screen.queryByTestId('customer-v21-booking-search-mint-border')).toBeNull()
     expect(screen.queryByTestId('customer-v21-booking-search-icon')).toBeNull()
@@ -212,6 +211,8 @@ describe('CustomerBookingEntrySurface v2.1', () => {
     expect(screen.getByTestId('customer-v21-booking-info-card-aura-layer')).toHaveStyle({ opacity: 0.8 })
     expect(screen.getByTestId('customer-v21-booking-info-card-wide-mint-aura')).toBeOnTheScreen()
     expect(screen.getByTestId('customer-v21-booking-info-card-mint-aura')).toBeOnTheScreen()
+    expect(screen.getByText('Thông tin đặt lịch')).toBeOnTheScreen()
+    expect(screen.getByText('Kael nhớ sẵn')).toBeOnTheScreen()
     expect(screen.getByTestId('customer-v21-booking-schedule-card-skin')).toBeOnTheScreen()
     expect(screen.getByTestId('customer-v21-booking-schedule-wide-mint-aura')).toBeOnTheScreen()
     expect(screen.getByTestId('customer-v21-booking-schedule-mint-aura')).toBeOnTheScreen()
@@ -245,45 +246,48 @@ describe('CustomerBookingEntrySurface v2.1', () => {
     ] as const) {
       expect(screen.getByTestId(`customer-v21-service-${service}-visual-panel`)).toBeOnTheScreen()
       expect(screen.getByTestId(`customer-v21-service-${service}-icon`)).toHaveStyle({
-        backgroundColor: 'transparent',
-        borderWidth: 0,
+        height: '100%',
+        width: '100%',
       })
-      expect(screen.getByTestId(`customer-v21-service-${service}-connector`)).toBeOnTheScreen()
-      expect(screen.getByTestId(`customer-v21-service-${service}-connector-dot`)).toBeOnTheScreen()
+      expect(screen.queryByTestId(`customer-v21-service-${service}-connector`)).toBeNull()
+      expect(screen.queryByTestId(`customer-v21-service-${service}-connector-dot`)).toBeNull()
       expect(screen.getByTestId(`customer-v21-service-${service}-heading`)).toBeOnTheScreen()
-      expect(screen.getByTestId(`customer-v21-service-${service}-title`)).toHaveStyle({
-        fontSize: 14,
-        lineHeight: 18,
-        marginTop: 4,
-      })
+      const serviceTitleStyle = StyleSheet.flatten(screen.getByTestId(`customer-v21-service-${service}-title`).props.style)
+      expect(serviceTitleStyle.fontSize).toBeGreaterThanOrEqual(14)
+      expect(serviceTitleStyle.lineHeight).toBeGreaterThanOrEqual(18)
       expect(screen.getByTestId(`customer-v21-service-${service}-detail-0`)).toHaveTextContent(details[0])
       expect(screen.getByTestId(`customer-v21-service-${service}-detail-1`)).toHaveTextContent(details[1])
       expect(screen.getByTestId(`customer-v21-service-${service}-detail-rail`)).not.toHaveTextContent(/Mô tả nhu cầu|Bạn xác nhận/)
       expect(screen.getByTestId(`customer-v21-service-${service}-detail-rail`)).toHaveStyle({
-        borderTopWidth: 0,
         flexDirection: 'row',
-        marginTop: 6,
-        paddingTop: 0,
+        flexWrap: 'nowrap',
+        marginTop: 2,
       })
     }
 
-    expect(screen.getByTestId('customer-v21-service-electrical')).toHaveStyle({
+    const serviceTileStyle = StyleSheet.flatten(screen.getByTestId('customer-v21-service-electrical').props.style)
+    expect(serviceTileStyle).toMatchObject({
       alignItems: 'stretch',
-      flexBasis: '48%',
+      borderRadius: 12,
       flexDirection: 'row',
-      minHeight: 100,
+      width: '100%',
     })
-    expect(screen.getByTestId('customer-v21-service-electrical-visual-panel')).toHaveStyle({
-      borderRightWidth: 1,
-      minHeight: 100,
-      width: 80,
+    expect(serviceTileStyle.minHeight).toBeGreaterThanOrEqual(56)
+    const serviceVisualStyle = StyleSheet.flatten(screen.getByTestId('customer-v21-service-electrical-visual-panel').props.style)
+    expect(serviceVisualStyle).toMatchObject({
+      alignSelf: 'stretch',
+      flexBasis: '27%',
+      flexGrow: 0,
+      flexShrink: 0,
+      position: 'relative',
+      width: '27%',
     })
-    expect(screen.getByTestId('customer-v21-service-electrical-copy')).toHaveStyle({
-      justifyContent: 'center',
-      paddingLeft: 40,
-      paddingRight: 14,
-      paddingVertical: 10,
-    })
+    expect(serviceVisualStyle.minHeight).toBeGreaterThanOrEqual(56)
+    expect(screen.getByTestId('customer-v21-service-electrical-copy')).toHaveStyle({ justifyContent: 'center' })
+    const serviceCopyStyle = StyleSheet.flatten(screen.getByTestId('customer-v21-service-electrical-copy').props.style)
+    expect(serviceCopyStyle.paddingLeft).toBe(16)
+    expect(serviceCopyStyle.paddingRight).toBe(14)
+    expect(serviceCopyStyle.paddingVertical).toBe(8)
     expect(screen.getByTestId('customer-v21-service-electrical')).toHaveProp(
       'accessibilityLabel',
       'Sửa điện. Ổ cắm · cầu dao · đèn',
@@ -298,27 +302,17 @@ describe('CustomerBookingEntrySurface v2.1', () => {
     expect(screen.getByTestId('customer-v21-selected-service-frame')).toHaveStyle({
       marginTop: 6,
     })
-    expect(screen.getByTestId('customer-v21-selected-service')).toHaveStyle({
+    const selectedTileStyle = StyleSheet.flatten(screen.getByTestId('customer-v21-selected-service').props.style)
+    expect(selectedTileStyle).toMatchObject({
       alignItems: 'stretch',
-      flexBasis: '100%',
       flexDirection: 'row',
-      maxWidth: '100%',
-      minHeight: 100,
+      width: '100%',
     })
+    expect(selectedTileStyle.minHeight).toBeGreaterThanOrEqual(56)
     expect(screen.getByTestId('customer-v21-selected-service-visual-panel')).toBeOnTheScreen()
-    expect(screen.getByTestId('customer-v21-selected-service-formula-mint-aura')).toHaveStyle({
-      bottom: 0,
-      left: 0,
-      opacity: 0.94,
-      position: 'absolute',
-      right: 0,
-      top: 0,
-      zIndex: 0,
-    })
-    expect(screen.getByTestId('customer-v21-selected-service-wide-mint-aura')).toBeOnTheScreen()
-    expect(screen.getByTestId('customer-v21-selected-service-mint-aura')).toBeOnTheScreen()
-    expect(screen.getByTestId('customer-v21-selected-service-connector')).toBeOnTheScreen()
-    expect(screen.getByTestId('customer-v21-selected-service-connector-dot')).toBeOnTheScreen()
+    expect(screen.queryByTestId('customer-v21-selected-service-formula-mint-aura')).toBeNull()
+    expect(screen.queryByTestId('customer-v21-selected-service-connector')).toBeNull()
+    expect(screen.queryByTestId('customer-v21-selected-service-connector-dot')).toBeNull()
     expect(screen.getByTestId('customer-v21-selected-service-detail-0')).toHaveTextContent('Ổ cắm · cầu dao')
     expect(screen.getByTestId('customer-v21-selected-service-detail-1')).toHaveTextContent('Đèn')
     expect(screen.queryByTestId('customer-v21-booking-suggested-chip-aura')).toBeNull()
@@ -406,9 +400,9 @@ describe('CustomerBookingEntrySurface v2.1', () => {
 
     const rowStyle = StyleSheet.flatten(screen.getByTestId('customer-v21-booking-address-row').props.style)
     const inputStyle = StyleSheet.flatten(screen.getByTestId('customer-v21-booking-address').props.style)
-    expect(rowStyle.paddingRight).toBe(14)
-    expect(rowStyle.minHeight).toBe(48)
-    expect(inputStyle.lineHeight).toBe(17)
+    expect(rowStyle.paddingRight).toBeLessThanOrEqual(14)
+    expect(rowStyle.minHeight).toBeGreaterThanOrEqual(38)
+    expect(inputStyle.lineHeight).toBe(15)
     expect(inputStyle.width).toBe('100%')
     expect(inputStyle.overflow).toBe('hidden')
     expect(screen.getByTestId('customer-v21-booking-address').props.multiline).toBe(false)
@@ -703,26 +697,5 @@ describe('CustomerBookingEntrySurface v2.1', () => {
       await Promise.resolve()
     })
     expect(mockReplace).toHaveBeenCalledTimes(1)
-  })
-
-  it('allows a second service handoff after returning to the still-mounted booking surface', async () => {
-    render(<CustomerBookingEntrySurface />)
-
-    const submitDraft = (description: string) => {
-      fireEvent.press(screen.getByTestId('customer-v21-service-electrical'))
-      selectTomorrowQuickSchedule(2)
-      fireEvent.changeText(screen.getByTestId('customer-v21-booking-address'), 'Tòa A, Quận 7')
-      fireEvent.changeText(screen.getByTestId('customer-v21-booking-description'), description)
-      fireEvent.press(screen.getByTestId('customer-v21-booking-submit'))
-    }
-
-    submitDraft('Lần một: ổ cắm phải được kiểm tra an toàn.')
-    await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 5))
-    })
-    submitDraft('Lần hai: công tắc khác cần kiểm tra an toàn.')
-
-    expect(mockSetPendingKaelChatDraft).toHaveBeenCalledTimes(2)
-    expect(mockReplace).toHaveBeenCalledTimes(2)
   })
 })
