@@ -13,6 +13,7 @@ export function isKaelCoreV9Visual(value: CustomerV21Visual): value is KaelCoreV
 export const customerV21Assets = {
   activity: require('@/assets/client-image-icons/client-activity-route.png') as ImageSourcePropType,
   activityEmpty: require('@/assets/client-image-icons/client-activity-empty.png') as ImageSourcePropType,
+  historyErrorWorkart: require('@/assets/customer-history/history-error-workart.png') as ImageSourcePropType,
   activityNav: require('@/assets/client-image-icons/client-activity-nav.png') as ImageSourcePropType,
   address: require('@/assets/client-image-icons/client-address.png') as ImageSourcePropType,
   booking: require('@/assets/client-image-icons/client-booking.png') as ImageSourcePropType,
@@ -77,3 +78,25 @@ export const customerV21BookingServiceAssets: Record<CustomerServiceId, ImageSou
   upholstery_care: require('./assets/service-icons/client-service-upholstery-care.png') as ImageSourcePropType,
   handyman_minor_installation: require('./assets/service-icons/client-service-handyman-installation.png') as ImageSourcePropType,
 }
+
+export const customerV21HomeV4Assets = {
+  hero: require('@/assets/customer-home-v4/hero_scene.png') as ImageSourcePropType,
+  promoWorker: require('@/assets/customer-home-v4/promo_worker.png') as ImageSourcePropType,
+  taskCleaning: require('@/assets/customer-home-v4/task_cleaning_workart_384.png') as ImageSourcePropType,
+  services: {
+    electrical: require('@/assets/customer-home-v4/task_electrical_workart_384.png') as ImageSourcePropType,
+    plumbing: require('@/assets/customer-home-v4/task_plumbing_workart_384.png') as ImageSourcePropType,
+    home_cleaning: require('@/assets/customer-home-v4/service_cleaning.png') as ImageSourcePropType,
+    hvac_basic_maintenance: require('@/assets/customer-home-v4/task_hvac_workart_384.png') as ImageSourcePropType,
+    upholstery_care: require('@/assets/customer-home-v4/task_upholstery_workart_384.png') as ImageSourcePropType,
+    handyman_minor_installation: require('@/assets/customer-home-v4/task_handyman_workart_384.png') as ImageSourcePropType,
+  } satisfies Record<CustomerServiceId, ImageSourcePropType>,
+  serviceTiles: {
+    electrical: require('@/assets/customer-home-v4/service-tile-electrical.png') as ImageSourcePropType,
+    plumbing: require('@/assets/customer-home-v4/service-tile-plumbing.png') as ImageSourcePropType,
+    home_cleaning: require('@/assets/customer-home-v4/service-tile-cleaning.png') as ImageSourcePropType,
+    hvac_basic_maintenance: require('@/assets/customer-home-v4/service-tile-hvac.png') as ImageSourcePropType,
+    upholstery_care: require('@/assets/customer-home-v4/service-tile-upholstery.png') as ImageSourcePropType,
+    handyman_minor_installation: require('@/assets/customer-home-v4/service-tile-handyman.png') as ImageSourcePropType,
+  } satisfies Record<CustomerServiceId, ImageSourcePropType>,
+} as const

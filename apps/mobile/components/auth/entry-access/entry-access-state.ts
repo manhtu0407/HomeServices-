@@ -1,13 +1,14 @@
 import { useCallback, useMemo, useReducer } from 'react'
 import type { EntryAccessStep, EntryRole } from './types'
 
-type EntryAccessState = {
+export type EntryAccessState = {
   acceptedTerms: boolean
   busy: boolean
   error: string | null
   fullName: string
   identifier: string
   password: string
+  passwordConfirmation: string
   recoveryIdentifier: string
   remember: boolean
   role: EntryRole
@@ -41,6 +42,7 @@ export function useEntryAccessState(initialRole: EntryRole, initialStep: EntryAc
     fullName: '',
     identifier: '',
     password: '',
+    passwordConfirmation: '',
     recoveryIdentifier: '',
     remember: true,
     role: initialRole,
@@ -56,6 +58,7 @@ export function useEntryAccessState(initialRole: EntryRole, initialStep: EntryAc
     setFullName: (fullName: string) => patchState({ fullName }),
     setIdentifier: (identifier: string) => patchState({ identifier }),
     setPassword: (password: string) => patchState({ password }),
+    setPasswordConfirmation: (passwordConfirmation: string) => patchState({ passwordConfirmation }),
     setRecoveryIdentifier: (recoveryIdentifier: string) => patchState({ recoveryIdentifier }),
     setRemember: () => dispatch({ type: 'toggleRemember' as const }),
   }), [patchState])

@@ -1,5 +1,5 @@
 import { appCopy, localizedProblemLabel, type AppLanguage } from '@/lib/app-language'
-import { formatHcmcScheduledAt } from '@/lib/hcmc-schedule'
+import { formatHcmcScheduledAt, hcmcCalendarDate } from '@/lib/hcmc-schedule'
 import { buildLocalJobDisplayCode, type LocalDeal } from '@nestscout/shared'
 
 import { customerV21CommonCopy } from '../ui/copy'
@@ -112,4 +112,44 @@ export function timeChoiceLabel(value: LocalDeal['draft']['timeChoice'], languag
   if (scheduledLabel) return scheduledLabel
   if (value === 'now') return language === 'vi' ? 'Sớm nhất có thể' : 'As soon as possible'
   return customerV21CommonCopy[language].dataPending
+}
+
+export function homeScheduleLabel(value: LocalDeal['draft']['timeChoice'], language: AppLanguage, scheduledAt?: string | null, runtimeNow = new Date()) {
+  if (!scheduledAt) return timeChoiceLabel(value, language, scheduledAt)
+  const timestamp = Date.parse(scheduledAt)
+  if (!Number.isFinite(timestamp)) return timeChoiceLabel(value, language, scheduledAt)
+
+  const hcmcTime = new Date(timestamp + 7 * 60 * 60 * 1000)
+  const scheduledDate = `${hcmcTime.getUTCFullYear()}-${twoDigits(hcmcTime.getUTCMonth() + 1)}-${twoDigits(hcmcTime.getUTCDate())}`
+  const today = hcmcCalendarDate(runtimeNow).date
+  const tomorrow = hcmcCalendarDate(runtimeNow, 1).date
+  const time = `${twoDigits(hcmcTime.getUTCHours())}:${twoDigits(hcmcTime.getUTCMinutes())}`
+  if (scheduledDate === today) return language === 'vi' ? `Hôm nay, ${time}` : `Today, ${time}`
+  if (scheduledDate === tomorrow) return language === 'vi' ? `Ngày mai, ${time}` : `Tomorrow, ${time}`
+  return `${twoDigits(hcmcTime.getUTCDate())}/${twoDigits(hcmcTime.getUTCMonth() + 1)} · ${time}`
+}
+
+export function agenticDealDurationLabel(deal: LocalDeal, language: AppLanguage) {
+  const candidates = [deal.draft.description, deal.broadcast?.scopeSummary, deal.estimate?.advisory]
+  for (const candidate of candidates) {
+    if (typeof candidate !== 'string') continue
+    const match = /(?:Thời lượng dự kiến|Estimated duration)\s*:\s*(\d+)\s*[–-]\s*(\d+)\s*(phút|minutes?|giờ|hours?)/i.exec(candidate)
+    if (!match) continue
+    const minimum = Number(match[1])
+    const maximum = Number(match[2])
+    if (!Number.isFinite(minimum) || !Number.isFinite(maximum) || minimum <= 0 || maximum < minimum) continue
+    const unit = match[3].toLowerCase()
+    const minimumMinutes = unit.startsWith('gi') || unit.startsWith('hour') ? minimum * 60 : minimum
+    const maximumMinutes = unit.startsWith('gi') || unit.startsWith('hour') ? maximum * 60 : maximum
+    const useHours = minimumMinutes % 60 === 0 && maximumMinutes % 60 === 0
+    const range = useHours
+      ? `${minimumMinutes / 60} – ${maximumMinutes / 60} ${language === 'vi' ? 'giờ' : 'hours'}`
+      : `${minimumMinutes} – ${maximumMinutes} ${language === 'vi' ? 'phút' : 'minutes'}`
+    return language === 'vi' ? `Thời gian dự kiến: ${range}` : `Estimated duration: ${range}`
+  }
+  return undefined
+}
+
+function twoDigits(value: number) {
+  return String(value).padStart(2, '0')
 }

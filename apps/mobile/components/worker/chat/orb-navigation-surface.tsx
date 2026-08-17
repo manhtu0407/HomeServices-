@@ -2,12 +2,11 @@ import { Pressable, Text as RNText, type PressableStateCallbackType, type TextPr
 import Animated, { type AnimatedStyle } from 'react-native-reanimated'
 import type { AppLanguage } from '@/lib/app-language'
 import { GlassSurface } from '@/components/ui/glass-surface'
+import { LiquidBackButton, LiquidSurfaceOverlay } from '@/components/ui/liquid-back-button'
 import { KaelModeMenuMintAura } from '@/components/ui/kael-mode-menu-mint-aura'
 import { color } from '@/design/theme'
-import { WorkerV5SourceCardSkin } from '../ui/aura-surfaces'
 import { textByLanguage } from '../ui/format'
 import { styles } from '../worker-v5-flow-styles'
-import { WorkerV5BackArrowIcon } from '../ui/primitives-surfaces'
 import { WorkerV5KaelSessionMenu } from './session-menu'
 import { WorkerV5KaelSessionIcon } from './session-menu-icons'
 import { useWorkerV5KaelOrbChat } from './use-kael-orb-chat'
@@ -67,28 +66,36 @@ export function WorkerV5KaelOrbNavigationSurface({
 }) {
   return <>
     <View style={[styles.kaelOrbCustomerTopBar, reduceTransparency && styles.opaqueCard]} testID="worker-v5-kael-source-header">
-      <Pressable
-        accessibilityLabel={language === 'vi' ? 'Quay lại' : 'Back'}
-        accessibilityRole="button"
+      <LiquidBackButton
+        iconColor={color.text.primary}
+        label={language === 'vi' ? 'Quay lại' : 'Back'}
         onPress={onBack}
-        style={({ pressed }) => [styles.kaelOrbCustomerTopControl, pressed ? styles.pressed : null]}
         testID="worker-v5-back"
-      >
-        <WorkerV5BackArrowIcon strokeColor={color.text.primary} />
-      </Pressable>
+      />
       <View style={styles.kaelOrbCustomerTopSpacer} />
       <GlassSurface
-        backgroundColor="rgba(255,255,255,0.96)"
-        borderColor="rgba(255,255,255,0.98)"
+        backgroundColor="rgba(255,255,255,0.16)"
+        borderColor="rgba(255,255,255,0.72)"
         material="liquid"
         mode="light"
+        showEdgeHighlight={false}
         style={[
           styles.kaelOrbCustomerHeaderActions,
+          !reduceTransparency ? styles.kaelOrbCustomerHeaderActionsLiquid : null,
           modeMenuOpen || sessionMenuOpen ? styles.kaelOrbCustomerHeaderActionsOpen : null,
         ]}
         testID="worker-v5-kael-header-actions"
         variant="control"
       >
+        {!reduceTransparency ? (
+          <LiquidSurfaceOverlay
+            designHeight={44}
+            designWidth={158}
+            mode="light"
+            radius={22}
+            testID="worker-v5-kael-header-actions-liquid"
+          />
+        ) : null}
         <Pressable
           accessibilityLabel={textByLanguage(language, 'Quản lý các phiên Kael', 'Manage Kael conversations')}
           accessibilityRole="button"
@@ -97,7 +104,7 @@ export function WorkerV5KaelOrbNavigationSurface({
           style={({ pressed }) => [
             styles.kaelOrbCustomerSessionTrigger,
             sessionMenuOpen ? styles.kaelOrbCustomerSessionTriggerOpen : null,
-            pressed ? (reduceMotion ? styles.kaelOrbCustomerSessionTriggerPressedReduced : styles.pressed) : null,
+            pressed ? (reduceMotion ? styles.kaelOrbCustomerSessionTriggerPressedReduced : styles.kaelOrbCustomerHeaderTriggerPressed) : null,
           ]}
           testID="worker-v5-kael-session-toggle"
         >
@@ -122,7 +129,7 @@ export function WorkerV5KaelOrbNavigationSurface({
             onPress={onToggleModeMenu}
             style={({ pressed }: PressableStateCallbackType) => [
               styles.kaelOrbCustomerModeTriggerPressTarget,
-              pressed ? (reduceMotion ? styles.kaelOrbCustomerModeTriggerPressedReduced : styles.pressed) : null,
+              pressed ? (reduceMotion ? styles.kaelOrbCustomerModeTriggerPressedReduced : styles.kaelOrbCustomerHeaderTriggerPressed) : null,
             ]}
             testID="worker-v5-kael-mode-toggle"
           >
@@ -151,11 +158,16 @@ export function WorkerV5KaelOrbNavigationSurface({
       >
         {!reduceTransparency ? (
           <>
-            <WorkerV5SourceCardSkin testID="worker-v5-kael-mode-menu-skin" />
             <KaelModeMenuMintAura
               reduceTransparency={reduceTransparency}
               scope="Worker"
               testID="worker-v5-kael-mode-menu-mint-aura"
+            />
+            <LiquidSurfaceOverlay
+              designHeight={120}
+              mode="light"
+              radius={18}
+              testID="worker-v5-kael-mode-menu-liquid"
             />
           </>
         ) : null}

@@ -138,7 +138,7 @@ describe('CustomerHistorySurface service history', () => {
     render(<CustomerHistorySurface />)
 
     await waitFor(() => expect(screen.getByTestId('customer-v21-history-list')).toBeOnTheScreen())
-    fireEvent.press(screen.getByRole('button', { name: 'Back' }))
+    fireEvent.press(screen.getByRole('button', { name: 'Quay lại' }))
 
     expect(mockReplace).toHaveBeenCalledWith('/(customer)/profile?utility=support')
   })
@@ -186,10 +186,12 @@ describe('CustomerHistorySurface service history', () => {
       'Vuốt ngang để xem thêm bộ lọc dịch vụ',
     )
     expect(screen.getByTestId('customer-v21-history-filter-drag-surface')).toBeOnTheScreen()
-    expect(screen.getByTestId('customer-v21-history-filter-indicator')).toBeOnTheScreen()
-    for (const filter of ['all', 'saved', 'electrical', 'plumbing', 'cleaning', 'hvac', 'upholstery', 'handyman']) {
-      expect(screen.getByTestId(`customer-v21-history-filter-${filter}-wide-mint-aura`)).toBeOnTheScreen()
-      expect(screen.getByTestId(`customer-v21-history-filter-${filter}-mint-aura`)).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-v21-history-filter-fade')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-v21-history-filter-all-wide-mint-aura')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-v21-history-filter-all-mint-aura')).toBeOnTheScreen()
+    for (const filter of ['saved', 'electrical', 'plumbing', 'cleaning', 'hvac', 'upholstery', 'handyman']) {
+      expect(screen.queryByTestId(`customer-v21-history-filter-${filter}-wide-mint-aura`)).toBeNull()
+      expect(screen.queryByTestId(`customer-v21-history-filter-${filter}-mint-aura`)).toBeNull()
     }
 
     fireEvent.press(screen.getByTestId('customer-v21-history-filter-cleaning'))
@@ -208,9 +210,14 @@ describe('CustomerHistorySurface service history', () => {
     expect(screen.getByTestId('customer-v21-history-saved-hint-card-skin')).toBeOnTheScreen()
     expect(screen.getByTestId('customer-v21-history-saved-hint-wide-mint-aura')).toBeOnTheScreen()
     expect(screen.getByTestId('customer-v21-history-saved-hint-mint-aura')).toBeOnTheScreen()
+    expect(screen.getByText('Thợ đã lưu')).toBeOnTheScreen()
+    expect(screen.getByText('Kael sẽ ưu tiên họ trong lần tìm tiếp theo.')).toBeOnTheScreen()
     expect(screen.getByTestId('customer-v21-history-error-card-skin')).toBeOnTheScreen()
     expect(screen.getByTestId('customer-v21-history-error-wide-mint-aura')).toBeOnTheScreen()
     expect(screen.getByTestId('customer-v21-history-error-mint-aura')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-v21-history-error-workart')).toBeOnTheScreen()
+    expect(screen.getByText('Không thể tải lịch sử dịch vụ lúc này. Vui lòng kiểm tra kết nối và thử lại.')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-v21-history-error-icon')).toBeOnTheScreen()
     expect(screen.queryByText('Vui lòng thử lại khi kết nối ổn định hơn.')).toBeNull()
   })
 
@@ -237,11 +244,14 @@ describe('CustomerHistorySurface service history', () => {
 
     expect(assetsSource).toContain("activity: require('@/assets/client-image-icons/client-activity-route.png')")
     expect(assetsSource).toContain("activityEmpty: require('@/assets/client-image-icons/client-activity-empty.png')")
+    expect(assetsSource).toContain("historyErrorWorkart: require('@/assets/customer-history/history-error-workart.png')")
     expect(historySurfaceSource).toContain('assetSize={76}')
     expect(historySurfaceSource).toContain('image={customerV21Assets.activityEmpty}')
+    expect(historySurfaceSource).toContain('source={customerV21Assets.historyErrorWorkart}')
     expect(sharedSurfacesSource).toContain('assetSize = 64')
     expect(sharedSurfacesSource).toContain('size={assetSize}')
     expect(existsSync(resolve(__dirname, '../../../assets/client-image-icons/client-activity-empty.png'))).toBe(true)
+    expect(existsSync(resolve(__dirname, '../../../assets/customer-history/history-error-workart.png'))).toBe(true)
   })
 
   it('saves a worker and updates every completed deal from that worker', async () => {

@@ -94,6 +94,62 @@ beforeEach(() => {
   jest.clearAllMocks()
 })
 
+it('coalesces overlapping Worker refresh triggers into one network pass', async () => {
+  jest.useFakeTimers()
+  mockAuthRole = 'worker'
+  const originalAppState = AppState.currentState
+  Object.defineProperty(AppState, 'currentState', { configurable: true, value: 'background' })
+  const profile = deferred<any>()
+  const earnings = deferred<any>()
+  const performance = deferred<any>()
+  const broadcasts = deferred<any>()
+  const jobs = deferred<any>()
+  mockWorkerService.getProfile.mockReturnValue(profile.promise)
+  mockWorkerService.getEarnings.mockReturnValue(earnings.promise)
+  mockWorkerService.getPerformanceInsights.mockReturnValue(performance.promise)
+  mockWorkerService.getBroadcasts.mockReturnValue(broadcasts.promise)
+  mockWorkerService.getJobs.mockReturnValue(jobs.promise)
+  mockWorkerService.getPayoutMethod.mockResolvedValue({ data: { payout_method: null }, status: 200, success: true })
+  mockWorkerService.listWithdrawalRequests.mockResolvedValue({ data: { requests: [] }, status: 200, success: true })
+
+  const view = render(
+    <FrontendWorkflowProvider>
+      <WorkerRefreshProbe />
+    </FrontendWorkflowProvider>,
+  )
+
+  try {
+    let firstRefresh: Promise<boolean> | undefined
+    let secondRefresh: Promise<boolean> | undefined
+    await waitFor(() => {
+      fireEvent.press(screen.getByTestId('worker-refresh'))
+      firstRefresh = refreshPromise
+      fireEvent.press(screen.getByTestId('worker-refresh'))
+      secondRefresh = refreshPromise
+      expect(mockWorkerService.getProfile).toHaveBeenCalledTimes(1)
+    })
+
+    expect(mockWorkerService.getEarnings).toHaveBeenCalledTimes(1)
+    expect(mockWorkerService.getPerformanceInsights).toHaveBeenCalledTimes(1)
+    expect(mockWorkerService.getBroadcasts).toHaveBeenCalledTimes(1)
+    expect(mockWorkerService.getJobs).toHaveBeenCalledTimes(1)
+
+    broadcasts.resolve({ data: { broadcasts: [] }, status: 200, success: true })
+    jobs.resolve({ data: { jobs: [] }, status: 200, success: true })
+    profile.resolve({ data: { is_available: false }, status: 200, success: true })
+    earnings.resolve({ code: 'UNAVAILABLE', error: 'Unavailable', status: 503, success: false })
+    performance.resolve({ code: 'UNAVAILABLE', error: 'Unavailable', status: 503, success: false })
+    await act(async () => {
+      await firstRefresh
+      await secondRefresh
+    })
+  } finally {
+    view.unmount()
+    Object.defineProperty(AppState, 'currentState', { configurable: true, value: originalAppState })
+    jest.useRealTimers()
+  }
+})
+
 function arrangeSuccessfulWorkerRuntime() {
   mockWorkerService.getProfile.mockResolvedValue({
     data: {

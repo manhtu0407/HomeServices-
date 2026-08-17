@@ -8,7 +8,7 @@ const mockEnterGuestMode = jest.fn()
 const mockSignInWithGoogle = jest.fn(async () => ({ success: true }))
 const mockSignInWithApple = jest.fn(async () => ({ success: true }))
 const mockSignInWithPassword = jest.fn(async (): Promise<{ success: boolean; error?: string; role?: 'admin' | 'customer' | 'worker' }> => ({ success: false, error: 'Không thể đăng nhập' }))
-const mockSignUpWithIdentifier = jest.fn(async (): Promise<{ success: boolean; error?: string; requiresEmailConfirmation?: boolean }> => ({ success: true }))
+const mockSignUpWithIdentifier = jest.fn(async (): Promise<{ success: boolean; error?: string }> => ({ success: true }))
 const mockRequestPasswordRecovery = jest.fn(async () => ({ success: true }))
 const mockCompletePasswordRecovery = jest.fn(async () => ({ success: true }))
 const mockSignOut = jest.fn(async () => undefined)
@@ -66,6 +66,12 @@ jest.mock('@/lib/remembered-auth-identifier', () => ({
   rememberAuthIdentifier: jest.fn(async () => undefined),
 }))
 
+jest.mock('@/lib/remembered-auth-credentials', () => ({
+  clearRememberedAuthCredentials: jest.fn(async () => undefined),
+  getRememberedAuthCredentials: jest.fn(async () => null),
+  rememberAuthCredentials: jest.fn(async () => undefined),
+}))
+
 const mockedRememberedIdentifier = jest.requireMock('@/lib/remembered-auth-identifier') as {
   clearRememberedAuthIdentifier: jest.Mock
   getRememberedAuthIdentifier: jest.Mock
@@ -73,6 +79,14 @@ const mockedRememberedIdentifier = jest.requireMock('@/lib/remembered-auth-ident
 }
 const mockGetRememberedAuthIdentifier = mockedRememberedIdentifier.getRememberedAuthIdentifier
 const mockRememberAuthIdentifier = mockedRememberedIdentifier.rememberAuthIdentifier
+const mockedRememberedCredentials = jest.requireMock('@/lib/remembered-auth-credentials') as {
+  clearRememberedAuthCredentials: jest.Mock
+  getRememberedAuthCredentials: jest.Mock
+  rememberAuthCredentials: jest.Mock
+}
+const mockClearRememberedAuthCredentials = mockedRememberedCredentials.clearRememberedAuthCredentials
+const mockGetRememberedAuthCredentials = mockedRememberedCredentials.getRememberedAuthCredentials
+const mockRememberAuthCredentials = mockedRememberedCredentials.rememberAuthCredentials
 
 jest.mock('@/lib/app-language', () => {
   const actual = jest.requireActual('@/lib/app-language')
@@ -93,6 +107,7 @@ beforeEach(() => {
   mockRouteParams = {}
   jest.clearAllMocks()
   mockGetRememberedAuthIdentifier.mockResolvedValue(null)
+  mockGetRememberedAuthCredentials.mockResolvedValue(null)
 })
 
 afterEach(() => {
@@ -318,11 +333,28 @@ describe('LoginRoleSurface', () => {
 
     expect(screen.getByTestId('auth-role-gate-screen')).toBeOnTheScreen()
     expect(screen.getByTestId('auth-role-gate-content')).toBeOnTheScreen()
+    expect(screen.getByTestId('auth-role-gate-decision-field')).toHaveStyle({ marginTop: 28 })
     expect(screen.getByTestId('auth-entry-role-options')).toHaveProp('accessibilityRole', 'radiogroup')
     expect(screen.getByTestId('auth-entry-role-options')).toHaveProp('accessibilityLabel', 'Chọn vai trò')
     expect(screen.getByTestId('auth-entry-role-customer')).toBeOnTheScreen()
     expect(screen.getByTestId('auth-entry-role-worker')).toBeOnTheScreen()
-    expect(screen.getByTestId('auth-entry-role-customer')).toHaveProp('accessibilityState', { checked: true })
+    expect(screen.getByTestId('auth-entry-role-customer-image')).toBeOnTheScreen()
+    expect(screen.getByTestId('auth-entry-role-worker-image')).toBeOnTheScreen()
+    expect(screen.getByTestId('auth-entry-role-customer-artwork-edge-blend')).toBeOnTheScreen()
+    expect(screen.getByTestId('auth-entry-role-worker-artwork-edge-blend')).toBeOnTheScreen()
+    expect(screen.getByTestId('auth-entry-role-customer-silver-edge')).toBeOnTheScreen()
+    expect(screen.getByTestId('auth-entry-role-worker-silver-edge')).toBeOnTheScreen()
+    expect(screen.getByTestId('auth-entry-role-customer-silver-edge')).toHaveStyle({ backgroundColor: 'transparent' })
+    expect(screen.getByTestId('auth-entry-role-worker-silver-edge')).toHaveStyle({ backgroundColor: 'transparent' })
+    expect(screen.getByTestId('auth-entry-role-customer-right-silver-panel')).toBeOnTheScreen()
+    expect(screen.getByTestId('auth-entry-role-worker-right-silver-panel')).toBeOnTheScreen()
+    expect(screen.getByTestId('auth-entry-role-customer-copy')).toHaveStyle({ left: '52.5%', right: 21, top: '50%', transform: [{ translateY: -14.5 }] })
+    expect(screen.getByTestId('auth-entry-role-worker-copy')).toHaveStyle({ left: '52.5%', right: 21, top: '50%', transform: [{ translateY: -14.5 }] })
+    expect(screen.queryByText('Đặt dịch vụ, trò chuyện cùng Kael và theo dõi tiến độ.')).toBeNull()
+    expect(screen.queryByText('Nhận việc, quản lý lịch và theo dõi thu nhập.')).toBeNull()
+    expect(screen.queryByTestId('auth-entry-role-customer-arrow')).toBeNull()
+    expect(screen.queryByTestId('auth-entry-role-worker-arrow')).toBeNull()
+    expect(screen.getByTestId('auth-entry-role-customer')).toHaveProp('accessibilityState', { checked: false })
     expect(screen.queryByText('Phổ biến')).toBeNull()
     expect(screen.queryByTestId('auth-entry-role-guest')).toBeNull()
     expect(mockEnterGuestMode).not.toHaveBeenCalled()
@@ -336,18 +368,63 @@ describe('LoginRoleSurface', () => {
     expect(screen.getByTestId('auth-entry-role-options')).toHaveProp('accessibilityLabel', 'Choose your role')
     expect(screen.getByText('Customer')).toBeOnTheScreen()
     expect(screen.getByText('Service partner')).toBeOnTheScreen()
-    expect(screen.getByText('Continue as Customer')).toBeOnTheScreen()
+    expect(screen.queryByText('Continue as Customer')).toBeNull()
+    expect(screen.queryByTestId('auth-role-continue')).toBeNull()
     expect(screen.queryByText('Khách hàng')).toBeNull()
     expect(screen.queryByText('Đối tác thợ')).toBeNull()
 
-    fireEvent.press(screen.getByTestId('auth-role-continue'))
+    fireEvent.press(screen.getByTestId('auth-entry-role-customer'))
+    expect(screen.getByTestId('auth-role-gate-screen')).toBeOnTheScreen()
+    fireEvent.press(screen.getByTestId('auth-entry-role-customer'))
 
     expect(screen.getByTestId('auth-login-submit')).toHaveTextContent('Sign in')
-    expect(screen.getByText('Welcome\nback.')).toBeOnTheScreen()
+    expect(screen.getByText('Welcome Back..!')).toBeOnTheScreen()
+    expect(screen.getByTestId('auth-login-email-input')).toHaveProp('placeholder', 'email@example.com or 090 123 4567')
+    expect(screen.queryByText('Continue where you left off with Kael.')).toBeNull()
     expect(screen.getByText('Remember me')).toBeOnTheScreen()
     expect(screen.getByText('Forgot password?')).toBeOnTheScreen()
     expect(screen.queryByText('Đăng nhập')).toBeNull()
     expect(screen.queryByText('Ghi nhớ đăng nhập')).toBeNull()
+  })
+
+  it('selects on the first tap and enters on the second tap of the selected role', () => {
+    mockRouteParams = { stage: '1.3' }
+    render(<LoginRoleSurface />)
+
+    const customerRole = screen.getByTestId('auth-entry-role-customer')
+    expect(customerRole).toHaveProp('accessibilityHint', 'Chạm một lần để chọn vai trò; chạm lần nữa để tiếp tục.')
+    expect(screen.queryByTestId('auth-role-continue')).toBeNull()
+    expect(screen.queryByText('Tiếp tục với Khách hàng')).toBeNull()
+    expect(customerRole).toHaveStyle({ borderRadius: 29, borderWidth: 1.5, minHeight: 214 })
+    expect(screen.getByTestId('auth-entry-role-customer-layout')).toHaveStyle({ width: '100%' })
+    expect(screen.getByTestId('auth-entry-role-worker-layout')).toHaveStyle({ width: '100%' })
+
+    fireEvent.press(customerRole)
+    expect(screen.getByTestId('auth-role-gate-screen')).toBeOnTheScreen()
+    expect(customerRole).toHaveProp('accessibilityState', { checked: true })
+    expect(screen.getByTestId('auth-entry-role-worker')).toHaveProp('accessibilityState', { checked: false })
+
+    fireEvent.press(customerRole)
+    expect(screen.getByTestId('auth-login-screen')).toBeOnTheScreen()
+  })
+
+  it('selects and enters the worker role through the same two-step interaction', () => {
+    mockRouteParams = { stage: '1.3' }
+    render(<LoginRoleSurface />)
+
+    const workerRole = screen.getByTestId('auth-entry-role-worker')
+    expect(workerRole).toHaveProp('accessibilityHint', 'Chạm một lần để chọn vai trò; chạm lần nữa để tiếp tục.')
+    expect(workerRole).toHaveStyle({ borderRadius: 29, borderWidth: 1.5, minHeight: 214 })
+
+    fireEvent.press(workerRole)
+    expect(workerRole).toHaveProp('accessibilityState', { checked: true })
+    expect(screen.getByTestId('auth-entry-role-customer')).toHaveProp('accessibilityState', { checked: false })
+    expect(screen.getByTestId('auth-role-gate-screen')).toBeOnTheScreen()
+
+    fireEvent.press(workerRole)
+    expect(screen.getByTestId('auth-login-screen')).toBeOnTheScreen()
+    expect(screen.queryByTestId('auth-client-google-primary')).toBeNull()
+    expect(screen.queryByTestId('auth-client-apple-secondary')).toBeNull()
   })
 
   it('maps provider errors at the auth UI boundary instead of leaking the other language', async () => {
@@ -376,7 +453,13 @@ describe('LoginRoleSurface', () => {
 
     mockRouteParams = { stage: '1.5' }
     const registration = render(<LoginRoleSurface />)
-    expect(screen.getByText('Create your\naccount.')).toBeOnTheScreen()
+    expect(screen.getByText('Create your account.')).toBeOnTheScreen()
+    expect(screen.getByText('Create your account.')).toHaveProp('numberOfLines', 1)
+    expect(screen.getByText('Email/phone')).toBeOnTheScreen()
+    expect(screen.getByTestId('auth-register-email-input')).toHaveProp('placeholder', 'email@example.com or 090 123 4567')
+    expect(screen.getByText('Confirm password')).toBeOnTheScreen()
+    expect(screen.getByTestId('auth-register-password-confirmation-input')).toHaveProp('placeholder', 'Re-enter your password')
+    expect(screen.queryByText('It takes less than a minute.')).toBeNull()
     expect(screen.getByText('Full name')).toBeOnTheScreen()
     expect(screen.getByText('I agree to the NestScout Terms of Use and Privacy Policy.')).toBeOnTheScreen()
     registration.unmount()
@@ -386,8 +469,9 @@ describe('LoginRoleSurface', () => {
     expect(screen.getByTestId('auth-login-password-input')).toHaveProp('placeholder', 'Enter your password')
     expect(screen.getByLabelText('Show password')).toBeOnTheScreen()
     fireEvent.press(screen.getByTestId('auth-customer-forgot-password'))
-    expect(screen.getByText('Password recovery')).toBeOnTheScreen()
-    expect(screen.getByText('Recover your\npassword.')).toBeOnTheScreen()
+    expect(screen.queryByText('Password recovery')).toBeNull()
+    expect(screen.getByText('Recover your password.')).toBeOnTheScreen()
+    expect(screen.getByText('Recover your password.')).toHaveProp('numberOfLines', 1)
     expect(screen.getByText('Registered email')).toBeOnTheScreen()
     recovery.unmount()
 
@@ -397,6 +481,70 @@ describe('LoginRoleSurface', () => {
     expect(screen.getByText('Clear understanding')).toBeOnTheScreen()
     expect(screen.getByText('Get started')).toBeOnTheScreen()
     expect(screen.getByLabelText('Kael, your home assistant')).toBeOnTheScreen()
+  })
+
+  it('keeps customer registration title on one line without the removed lead', () => {
+    mockRouteParams = { stage: '1.5' }
+    render(<LoginRoleSurface />)
+
+    expect(screen.getByText('Tạo tài khoản của bạn.')).toBeOnTheScreen()
+    expect(screen.getByText('Tạo tài khoản của bạn.')).toHaveProp('numberOfLines', 1)
+    expect(screen.getByTestId('auth-register-password-confirmation-input')).toBeOnTheScreen()
+    expect(screen.getByTestId('auth-register-password-confirmation-input')).toHaveProp('placeholder', 'Xác nhận mật khẩu')
+    expect(screen.queryByText('Chỉ mất chưa đến một phút.')).toBeNull()
+  })
+
+  it('keeps worker registration title on one line, removes the worker lead, and shows confirmation', () => {
+    mockRouteParams = { stage: '1.3', role: 'worker' }
+    render(<LoginRoleSurface />)
+
+    fireEvent.press(screen.getByTestId('auth-entry-role-worker'))
+    fireEvent.press(screen.getByTestId('auth-entry-role-worker'))
+    fireEvent.press(screen.getByTestId('auth-client-register-email'))
+
+    expect(screen.getByText('Tạo hồ sơ đối tác.')).toBeOnTheScreen()
+    expect(screen.getByText('Tạo hồ sơ đối tác.')).toHaveProp('numberOfLines', 1)
+    expect(screen.queryByText('Tạo tài khoản trước khi gửi hồ sơ xác thực.')).toBeNull()
+    expect(screen.getByText('Xác nhận mật khẩu')).toBeOnTheScreen()
+    expect(screen.getByTestId('auth-register-password-confirmation-input')).toHaveProp('placeholder', 'Xác nhận mật khẩu')
+  })
+
+  it('blocks worker signup until the password confirmation matches', () => {
+    mockRouteParams = { stage: '1.3', role: 'worker' }
+    render(<LoginRoleSurface />)
+
+    fireEvent.press(screen.getByTestId('auth-entry-role-worker'))
+    fireEvent.press(screen.getByTestId('auth-entry-role-worker'))
+    fireEvent.press(screen.getByTestId('auth-client-register-email'))
+    fireEvent.changeText(screen.getByTestId('auth-register-name-input'), 'Worker One')
+    fireEvent.changeText(screen.getByTestId('auth-register-email-input'), 'worker@example.com')
+    fireEvent.changeText(screen.getByTestId('auth-register-password-input'), 'secret123')
+    fireEvent.changeText(screen.getByTestId('auth-register-password-confirmation-input'), 'secret124')
+    fireEvent.press(screen.getByTestId('auth-register-terms'))
+    fireEvent.press(screen.getByTestId('auth-register-submit'))
+
+    expect(screen.getByText('Mật khẩu nhập lại không khớp.')).toBeOnTheScreen()
+    expect(mockSignUpWithIdentifier).not.toHaveBeenCalled()
+  })
+
+  it('blocks customer signup until the password confirmation matches', async () => {
+    mockRouteParams = { stage: '1.5' }
+    render(<LoginRoleSurface />)
+
+    fireEvent.changeText(screen.getByTestId('auth-register-name-input'), 'Tu Phan')
+    fireEvent.changeText(screen.getByTestId('auth-register-email-input'), 'tu@example.com')
+    fireEvent.changeText(screen.getByTestId('auth-register-password-input'), 'secret123')
+    fireEvent.changeText(screen.getByTestId('auth-register-password-confirmation-input'), 'secret124')
+    fireEvent.press(screen.getByTestId('auth-register-terms'))
+    fireEvent.press(screen.getByTestId('auth-register-submit'))
+
+    expect(screen.getByText('Mật khẩu nhập lại không khớp.')).toBeOnTheScreen()
+    expect(mockSignUpWithIdentifier).not.toHaveBeenCalled()
+
+    fireEvent.changeText(screen.getByTestId('auth-register-password-confirmation-input'), 'secret123')
+    fireEvent.press(screen.getByTestId('auth-register-submit'))
+
+    await waitFor(() => expect(mockSignUpWithIdentifier).toHaveBeenCalledTimes(1))
   })
 
   it('uses a same-language generic fallback for an unrecognized provider error', async () => {
@@ -434,24 +582,28 @@ describe('LoginRoleSurface', () => {
     mockRouteParams = { stage: '1.3' }
     render(<LoginRoleSurface />)
 
-    const headline = screen.getByTestId('auth-role-gate-greeting').props.children as string
-    const lead = screen.getByTestId('auth-role-gate-greeting-lead').props.children as string
-    expect(screen.getByTestId('auth-role-gate-greeting')).toHaveStyle({ fontSize: 29, lineHeight: 35 })
+    const headline = screen.getByTestId('auth-role-gate-greeting').props.accessibilityLabel as string
+    expect(screen.getByTestId('auth-role-gate-greeting-text')).toHaveStyle({ fontSize: 20, lineHeight: 26 })
+    expect(screen.getByTestId('auth-role-gate-greeting')).toHaveStyle({ justifyContent: 'center' })
+    expect(screen.getByTestId('auth-role-gate-greeting-punctuation')).toHaveTextContent('!')
+    expect(screen.getByTestId('auth-role-gate-greeting-bang')).toHaveTextContent('!')
+    expect(screen.getByTestId('auth-role-gate-kael-slot')).toHaveStyle({ marginLeft: 8 })
+    expect(screen.getByTestId('auth-role-gate-kael-mascot')).toHaveStyle({ height: 34, width: 34 })
+    expect(screen.queryByTestId('auth-role-gate-greeting-lead')).toBeNull()
     expect(screen.queryByTestId('auth-role-gate-signature-shell')).toBeNull()
     expect(screen.queryByTestId('auth-role-gate-greeting-signature')).toBeNull()
-    expect(screen.getByTestId('auth-entry-role-customer-layout')).toHaveStyle({ flex: 3 })
-    expect(screen.getByTestId('auth-entry-role-worker-layout')).toHaveStyle({ flex: 1 })
+    expect(screen.getByTestId('auth-entry-role-customer')).toHaveStyle({ borderRadius: 29, minHeight: 214 })
+    expect(screen.getByTestId('auth-entry-role-worker')).toHaveStyle({ borderRadius: 29, minHeight: 214 })
 
     fireEvent.press(screen.getByTestId('auth-entry-role-worker'))
-    expect(screen.getByTestId('auth-entry-role-customer-layout')).toHaveStyle({ flex: 1 })
-    expect(screen.getByTestId('auth-entry-role-worker-layout')).toHaveStyle({ flex: 3 })
+    expect(screen.getByTestId('auth-entry-role-customer')).toHaveProp('accessibilityState', { checked: false })
+    expect(screen.getByTestId('auth-entry-role-worker')).toHaveProp('accessibilityState', { checked: true })
 
     fireEvent.press(screen.getByTestId('auth-entry-role-customer'))
-    expect(screen.getByTestId('auth-entry-role-customer-layout')).toHaveStyle({ flex: 3 })
-    expect(screen.getByTestId('auth-entry-role-worker-layout')).toHaveStyle({ flex: 1 })
+    expect(screen.getByTestId('auth-entry-role-customer')).toHaveProp('accessibilityState', { checked: true })
+    expect(screen.getByTestId('auth-entry-role-worker')).toHaveProp('accessibilityState', { checked: false })
 
-    expect(screen.getByTestId('auth-role-gate-greeting')).toHaveTextContent(headline)
-    expect(screen.getByTestId('auth-role-gate-greeting-lead')).toHaveTextContent(lead)
+    expect(screen.getByTestId('auth-role-gate-greeting')).toHaveProp('accessibilityLabel', headline)
   })
 
   it('offers Google and Apple only to customer login', async () => {
@@ -484,7 +636,10 @@ describe('LoginRoleSurface', () => {
     mockSignInWithPassword.mockResolvedValueOnce({ success: true })
     render(<LoginRoleSurface />)
 
-    expect(screen.getByText('Thư điện tử hoặc SĐT')).toBeOnTheScreen()
+    expect(screen.getByText('Gmail hoặc SĐT')).toBeOnTheScreen()
+    expect(screen.getByText('Welcome Back..!')).toBeOnTheScreen()
+    expect(screen.getByTestId('auth-login-email-input')).toHaveProp('placeholder', 'ten@vidu.vn hoặc 090 123 4567')
+    expect(screen.queryByText('Tiếp tục nơi bạn đã dừng cùng Kael.')).toBeNull()
     fireEvent.changeText(screen.getByTestId('auth-login-email-input'), '090 123 4567')
     fireEvent.changeText(screen.getByTestId('auth-login-password-input'), 'secret123')
     fireEvent.press(screen.getByTestId('auth-login-submit'))
@@ -507,6 +662,45 @@ describe('LoginRoleSurface', () => {
     })
   })
 
+  it('opens the native relaunch form with the remembered credential pair and submits without re-entry', async () => {
+    mockRouteParams = {}
+    mockGetRememberedAuthCredentials.mockResolvedValue({
+      identifier: 'tu@example.com',
+      password: 'secret123',
+      role: 'customer',
+    })
+    mockSignInWithPassword.mockResolvedValueOnce({ success: true })
+    render(<LoginRoleSurface />)
+
+    await waitFor(() => {
+      expect(screen.getByTestId('auth-login-email-input')).toHaveProp('value', 'tu@example.com')
+      expect(screen.getByTestId('auth-login-password-input')).toHaveProp('value', 'secret123')
+    })
+    fireEvent.press(screen.getByTestId('auth-login-submit'))
+
+    await waitFor(() => {
+      expect(mockSignInWithPassword).toHaveBeenCalledWith('tu@example.com', 'secret123')
+      expect(mockRememberAuthCredentials).toHaveBeenCalledWith('tu@example.com', 'secret123', 'customer')
+      expect(mockReplace).toHaveBeenCalledWith('/(customer)/home')
+    })
+  })
+
+  it('clears the native credential pair when the user disables remembering', async () => {
+    mockRouteParams = { stage: '1.4' }
+    mockSignInWithPassword.mockResolvedValueOnce({ success: true })
+    render(<LoginRoleSurface />)
+
+    fireEvent.changeText(screen.getByTestId('auth-login-email-input'), 'tu@example.com')
+    fireEvent.changeText(screen.getByTestId('auth-login-password-input'), 'secret123')
+    fireEvent.press(screen.getByTestId('auth-login-remember'))
+    fireEvent.press(screen.getByTestId('auth-login-submit'))
+
+    await waitFor(() => {
+      expect(mockClearRememberedAuthCredentials).toHaveBeenCalledTimes(1)
+      expect(mockReplace).toHaveBeenCalledWith('/(customer)/home')
+    })
+  })
+
   it('blocks malformed customer identifiers before the provider is called', () => {
     mockRouteParams = { stage: '1.4' }
     render(<LoginRoleSurface />)
@@ -526,7 +720,10 @@ describe('LoginRoleSurface', () => {
     fireEvent.press(screen.getByTestId('auth-customer-forgot-password'))
 
     expect(screen.getByTestId('auth-password-recovery-panel')).toBeOnTheScreen()
-    expect(screen.getByText('Thư điện tử đã đăng ký')).toBeOnTheScreen()
+    expect(screen.getByText('Lấy lại mật khẩu.')).toBeOnTheScreen()
+    expect(screen.queryByText('Khôi phục mật khẩu')).toBeNull()
+    expect(screen.queryByText('Nhập thư điện tử đã đăng ký. NestScout sẽ gửi một liên kết đặt lại mật khẩu.')).toBeNull()
+    expect(screen.getByText('Gmail đã đăng kí')).toBeOnTheScreen()
     expect(screen.queryByTestId('auth-recovery-secondary-input')).toBeNull()
     fireEvent.changeText(screen.getByTestId('auth-recovery-identifier-input'), 'tu@example.com')
     fireEvent.press(screen.getByTestId('auth-recovery-submit'))
@@ -586,6 +783,7 @@ describe('LoginRoleSurface', () => {
     fireEvent.changeText(screen.getByTestId('auth-register-name-input'), 'Tu Phan')
     fireEvent.changeText(screen.getByTestId('auth-register-email-input'), 'tu@example.com')
     fireEvent.changeText(screen.getByTestId('auth-register-password-input'), 'secret123')
+    fireEvent.changeText(screen.getByTestId('auth-register-password-confirmation-input'), 'secret123')
     fireEvent.press(screen.getByTestId('auth-register-submit'))
 
     expect(mockSignUpWithIdentifier).not.toHaveBeenCalled()
@@ -608,14 +806,18 @@ describe('LoginRoleSurface', () => {
     expect(mockSignUpWithIdentifier).not.toHaveBeenCalled()
   })
 
-  it('shows the email-confirmation step when the created account has no active session', async () => {
+  it('does not open an email-confirmation step when signup is not session-ready', async () => {
     mockRouteParams = { stage: '1.5' }
-    mockSignUpWithIdentifier.mockResolvedValueOnce({ success: true, requiresEmailConfirmation: true })
+    mockSignUpWithIdentifier.mockResolvedValueOnce({
+      success: false,
+      error: 'Đăng ký chưa sẵn sàng vì hệ thống vẫn yêu cầu xác minh. Vui lòng thử lại sau.',
+    })
     render(<LoginRoleSurface />)
 
     fireEvent.changeText(screen.getByTestId('auth-register-name-input'), 'Tu Phan')
     fireEvent.changeText(screen.getByTestId('auth-register-email-input'), 'tu@example.com')
     fireEvent.changeText(screen.getByTestId('auth-register-password-input'), 'secret123')
+    fireEvent.changeText(screen.getByTestId('auth-register-password-confirmation-input'), 'secret123')
     fireEvent.press(screen.getByTestId('auth-register-terms'))
     fireEvent.press(screen.getByTestId('auth-register-submit'))
 
@@ -626,12 +828,9 @@ describe('LoginRoleSurface', () => {
         password: 'secret123',
       })
     })
+    await waitFor(() => expect(screen.getByText('Đăng ký chưa sẵn sàng vì hệ thống vẫn yêu cầu xác minh. Vui lòng thử lại sau.')).toBeOnTheScreen())
     expect(mockReplace).not.toHaveBeenCalled()
-    expect(screen.getByTestId('auth-signup-confirmation-screen')).toBeOnTheScreen()
-    expect(screen.getByText('Tài khoản đã được tạo. Mở thư điện tử để xác nhận, rồi quay lại đăng nhập.')).toBeOnTheScreen()
-    fireEvent.press(screen.getByTestId('auth-signup-confirmation-login'))
-    expect(screen.getByTestId('auth-login-screen')).toBeOnTheScreen()
-    expect(screen.queryByTestId('auth-onboarding-screen')).toBeNull()
+    expect(screen.queryByTestId('auth-signup-confirmation-screen')).toBeNull()
   })
 
   it('explains email confirmation instead of an invalid-credentials error', async () => {
@@ -662,6 +861,7 @@ describe('LoginRoleSurface', () => {
     fireEvent.changeText(screen.getByTestId('auth-register-name-input'), 'Tu Phan')
     fireEvent.changeText(screen.getByTestId('auth-register-email-input'), 'tu@example.com')
     fireEvent.changeText(screen.getByTestId('auth-register-password-input'), 'secret123')
+    fireEvent.changeText(screen.getByTestId('auth-register-password-confirmation-input'), 'secret123')
     fireEvent.press(screen.getByTestId('auth-register-terms'))
     fireEvent.press(screen.getByTestId('auth-register-submit'))
 
@@ -671,18 +871,53 @@ describe('LoginRoleSurface', () => {
     expect(screen.queryByText('Chưa thể tạo tài khoản. Vui lòng thử lại.')).toBeNull()
   })
 
-  it('keeps unsupported phone signup out of the customer form', () => {
+  it('creates a customer account from a phone input without a form-level provider gate', async () => {
     mockRouteParams = { stage: '1.5' }
+    mockSignUpWithIdentifier.mockResolvedValueOnce({ success: true })
     render(<LoginRoleSurface />)
 
-    expect(screen.getByText('Thư điện tử')).toBeOnTheScreen()
+    expect(screen.getByText('Gmail hoặc SĐT')).toBeOnTheScreen()
+    expect(screen.getByTestId('auth-register-email-input')).toHaveProp('placeholder', 'ten@vidu.vn hoặc 090 123 4567')
     fireEvent.changeText(screen.getByTestId('auth-register-name-input'), 'Tu Phan')
     fireEvent.changeText(screen.getByTestId('auth-register-email-input'), '0912345678')
     fireEvent.changeText(screen.getByTestId('auth-register-password-input'), 'secret123')
+    fireEvent.changeText(screen.getByTestId('auth-register-password-confirmation-input'), 'secret123')
+    fireEvent.press(screen.getByTestId('auth-register-terms'))
     fireEvent.press(screen.getByTestId('auth-register-submit'))
 
-    expect(screen.getByText('Đăng ký bằng SĐT chưa sẵn sàng. Vui lòng dùng thư điện tử.')).toBeOnTheScreen()
-    expect(mockSignUpWithIdentifier).not.toHaveBeenCalled()
+    await waitFor(() => {
+      expect(mockSignUpWithIdentifier).toHaveBeenCalledWith({
+        displayName: 'Tu Phan',
+        identifier: '0912345678',
+        password: 'secret123',
+      })
+      expect(mockReplace).toHaveBeenCalledWith('/(customer)/home')
+    })
+  })
+
+  it('creates a worker account from a phone input before submitting the worker application', async () => {
+    mockRouteParams = { stage: '1.3', role: 'worker' }
+    render(<LoginRoleSurface />)
+
+    fireEvent.press(screen.getByTestId('auth-entry-role-worker'))
+    fireEvent.press(screen.getByTestId('auth-entry-role-worker'))
+    fireEvent.press(screen.getByTestId('auth-client-register-email'))
+    fireEvent.changeText(screen.getByTestId('auth-register-name-input'), 'Worker One')
+    fireEvent.changeText(screen.getByTestId('auth-register-email-input'), '0912345678')
+    fireEvent.changeText(screen.getByTestId('auth-register-password-input'), 'secret123')
+    fireEvent.changeText(screen.getByTestId('auth-register-password-confirmation-input'), 'secret123')
+    fireEvent.press(screen.getByTestId('auth-register-terms'))
+    fireEvent.press(screen.getByTestId('auth-register-submit'))
+
+    await waitFor(() => expect(mockSignUpWithIdentifier).toHaveBeenCalledWith({
+      displayName: 'Worker One',
+      identifier: '0912345678',
+      password: 'secret123',
+    }))
+    expect(mockSubmitWorkerApplication).toHaveBeenCalledWith({
+      contact: '0912345678',
+      language: 'vi',
+    })
   })
 
   it('routes a ready customer registration directly to Customer Home', async () => {
@@ -693,6 +928,7 @@ describe('LoginRoleSurface', () => {
     fireEvent.changeText(screen.getByTestId('auth-register-name-input'), 'Tu Phan')
     fireEvent.changeText(screen.getByTestId('auth-register-email-input'), 'tu@example.com')
     fireEvent.changeText(screen.getByTestId('auth-register-password-input'), 'secret123')
+    fireEvent.changeText(screen.getByTestId('auth-register-password-confirmation-input'), 'secret123')
     fireEvent.press(screen.getByTestId('auth-register-terms'))
     fireEvent.press(screen.getByTestId('auth-register-submit'))
 
@@ -707,7 +943,8 @@ describe('LoginRoleSurface', () => {
     mockRouteParams = { stage: '1.3', role: 'worker' }
     render(<LoginRoleSurface />)
 
-    fireEvent.press(screen.getByTestId('auth-role-continue'))
+    fireEvent.press(screen.getByTestId('auth-entry-role-worker'))
+    fireEvent.press(screen.getByTestId('auth-entry-role-worker'))
 
     expect(screen.getByTestId('auth-login-screen')).toBeOnTheScreen()
     expect(screen.queryByTestId('auth-client-google-primary')).toBeNull()
@@ -716,9 +953,13 @@ describe('LoginRoleSurface', () => {
     expect(screen.queryByTestId('auth-client-facebook-secondary')).toBeNull()
 
     fireEvent.press(screen.getByTestId('auth-client-register-email'))
+    expect(screen.getByText('Gmail hoặc SĐT')).toBeOnTheScreen()
+    expect(screen.getByTestId('auth-register-email-input')).toHaveProp('placeholder', 'ten@vidu.vn hoặc 090 123 4567')
+    expect(screen.getByTestId('auth-register-password-confirmation-input')).toHaveProp('placeholder', 'Xác nhận mật khẩu')
     fireEvent.changeText(screen.getByTestId('auth-register-name-input'), 'Worker One')
     fireEvent.changeText(screen.getByTestId('auth-register-email-input'), 'worker@example.com')
     fireEvent.changeText(screen.getByTestId('auth-register-password-input'), 'secret123')
+    fireEvent.changeText(screen.getByTestId('auth-register-password-confirmation-input'), 'secret123')
     fireEvent.press(screen.getByTestId('auth-register-terms'))
     fireEvent.press(screen.getByTestId('auth-register-submit'))
 
@@ -813,11 +1054,13 @@ describe('LoginRoleSurface', () => {
     mockRouteParams = { stage: '1.3', role: 'worker' }
     render(<LoginRoleSurface />)
 
-    fireEvent.press(screen.getByTestId('auth-role-continue'))
+    fireEvent.press(screen.getByTestId('auth-entry-role-worker'))
+    fireEvent.press(screen.getByTestId('auth-entry-role-worker'))
     fireEvent.press(screen.getByTestId('auth-client-register-email'))
     fireEvent.changeText(screen.getByTestId('auth-register-name-input'), 'Worker One')
     fireEvent.changeText(screen.getByTestId('auth-register-email-input'), 'worker@example.com')
     fireEvent.changeText(screen.getByTestId('auth-register-password-input'), 'secret123')
+    fireEvent.changeText(screen.getByTestId('auth-register-password-confirmation-input'), 'secret123')
     fireEvent.press(screen.getByTestId('auth-register-terms'))
     fireEvent.press(screen.getByTestId('auth-register-submit'))
 
@@ -853,11 +1096,12 @@ describe('LoginRoleSurface', () => {
       jest.advanceTimersByTime(2650)
     })
     fireEvent.press(screen.getByTestId('auth-entry-role-worker'))
-    fireEvent.press(screen.getByTestId('auth-role-continue'))
+    fireEvent.press(screen.getByTestId('auth-entry-role-worker'))
     fireEvent.press(screen.getByTestId('auth-client-register-email'))
     fireEvent.changeText(screen.getByTestId('auth-register-name-input'), 'Worker One')
     fireEvent.changeText(screen.getByTestId('auth-register-email-input'), 'worker@example.com')
     fireEvent.changeText(screen.getByTestId('auth-register-password-input'), 'secret123')
+    fireEvent.changeText(screen.getByTestId('auth-register-password-confirmation-input'), 'secret123')
     fireEvent.press(screen.getByTestId('auth-register-terms'))
     fireEvent.press(screen.getByTestId('auth-register-submit'))
 

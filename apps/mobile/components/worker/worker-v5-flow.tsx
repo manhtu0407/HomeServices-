@@ -15,6 +15,7 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import { useGlassAccessibility } from '@/components/ui/accessibility-motion'
 import { useDockScrollHandler } from '@/components/ui/dock-scroll-state'
 import { MintAura } from '@/components/ui/kael-primitives'
+import { LiquidBackButton } from '@/components/ui/liquid-back-button'
 import type { AppLanguage } from '@/lib/app-language'
 import { useAuth } from '@/lib/auth-provider'
 import { useFrontendWorkflow } from '@/lib/frontend-workflow-provider'
@@ -87,7 +88,6 @@ import {
   WorkerV5EarningsHomeListAura,
 } from './ui/aura-surfaces'
 import {
-  WorkerV5BackArrowIcon,
   WorkerV5NavButton,
   WorkerV5PrimaryActionButton,
   WorkerV5PrimaryButtonFill,
@@ -566,15 +566,12 @@ function WorkerV5ScreenHeader({
 
   return <View style={[styles.headerRow, usesKaelOrbHandoff ? styles.kaelOrbCustomerHeaderRow : null]}>
     {usesOpportunityInboxHandoff || usesEarningsOverviewHandoff || screen.id === '5.1-profile-overview' ? null : (
-      <Pressable
-        accessibilityLabel={language === 'vi' ? 'Quay lại worker hiện tại' : 'Back to current worker surface'}
-        accessibilityRole="button"
+      <LiquidBackButton
+        label={language === 'vi' ? 'Quay lại worker hiện tại' : 'Back to current worker surface'}
+        mode={workerThemeMode}
         onPress={onBack}
-        style={({ pressed }) => [styles.iconButton, pressed && !reduceMotion ? styles.pressed : null]}
         testID="worker-v5-back"
-      >
-        <WorkerV5BackArrowIcon />
-      </Pressable>
+      />
     )}
     <View style={styles.headerTextColumn}>
       {usesCaseClosedHandoff ? null : usesHandoffHeading ? (

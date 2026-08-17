@@ -1603,10 +1603,11 @@ describe('Worker runtime surface wiring', () => {
 
     const headerActions = screen.getByTestId('worker-v5-kael-header-actions')
     expect(StyleSheet.flatten(headerActions.props.style)).toMatchObject({
-      backgroundColor: 'rgba(255,255,255,0.96)',
-      borderColor: 'rgba(255,255,255,0.98)',
-      borderWidth: 1,
+      backgroundColor: 'rgba(255,255,255,0.16)',
+      borderColor: 'rgba(255,255,255,0.72)',
+      borderWidth: 0,
     })
+    expect(screen.getByTestId('worker-v5-kael-header-actions-liquid-layers')).toBeOnTheScreen()
     expect(headerActions.findAllByProps({ testID: 'worker-v5-kael-session-toggle' }).length).toBeGreaterThan(0)
     expect(headerActions.findAllByProps({ testID: 'worker-v5-kael-mode-toggle' }).length).toBeGreaterThan(0)
     expect(screen.getByTestId('worker-v5-kael-active-mode')).toHaveTextContent(modeLabel)
@@ -1635,7 +1636,7 @@ describe('Worker runtime surface wiring', () => {
 
     render(<WorkerChatSurface />)
 
-    expect(screen.getByTestId('worker-v5-back').findAllByProps({ strokeWidth: 3 }).length).toBeGreaterThan(0)
+    expect(screen.getByTestId('worker-v5-back').findAllByProps({ strokeWidth: 2.35 }).length).toBeGreaterThan(0)
     expect(screen.getByTestId('worker-v5-kael-session-toggle').findAllByProps({ strokeWidth: 2.7 }).length).toBeGreaterThan(0)
   })
 
@@ -1675,9 +1676,9 @@ describe('Worker runtime surface wiring', () => {
     fireEvent.press(screen.getByTestId('worker-v5-kael-mode-toggle'))
 
     expect(StyleSheet.flatten(screen.getByTestId('worker-v5-kael-mode-trigger-frame').props.style)).toMatchObject({
-      backgroundColor: 'rgba(255,255,255,0.94)',
-      borderColor: 'rgba(255,255,255,0.98)',
-      borderWidth: 1,
+      backgroundColor: 'transparent',
+      borderColor: 'transparent',
+      borderWidth: 0,
     })
   })
 
@@ -1697,18 +1698,18 @@ describe('Worker runtime surface wiring', () => {
     expect(modeMenu).toBeOnTheScreen()
     expect(screen.getByTestId('worker-v5-kael-mode-menu-options')).toBeOnTheScreen()
     expect(StyleSheet.flatten(modeMenu.props.style)).toMatchObject({
-      backgroundColor: 'rgba(255,253,248,0.78)',
-      borderColor: 'rgba(255,255,255,0.88)',
+      backgroundColor: 'rgba(255,255,255,0.18)',
+      borderColor: 'rgba(255,255,255,0.72)',
       borderRadius: 18,
       borderWidth: 1,
       maxWidth: 208,
       width: '59%',
     })
-    expect(screen.getByTestId('worker-v5-kael-mode-menu-skin')).toBeOnTheScreen()
+    expect(screen.getByTestId('worker-v5-kael-mode-menu-liquid-layers')).toBeOnTheScreen()
     expect(screen.getByTestId('worker-v5-kael-mode-menu-mint-aura')).toBeOnTheScreen()
     expect(screen.queryByTestId('worker-v5-kael-mode-menu-sheen')).toBeNull()
     expect(StyleSheet.flatten(screen.getByTestId('worker-v5-kael-mode-menu-normal').props.style)).toMatchObject({
-      backgroundColor: '#FFFFFF',
+      backgroundColor: 'rgba(255,255,255,0.42)',
     })
     expect(StyleSheet.flatten(screen.getByTestId('worker-v5-kael-mode-menu-intake').props.style)).toMatchObject({
       minHeight: 46,
@@ -1957,34 +1958,46 @@ describe('Worker runtime surface wiring', () => {
       ns_audit_role: 'worker',
       ns_worker_screen: '3.2-kael-job-intake',
     }
-    mockWorkerKaelChatService.list.mockResolvedValue({
-      data: { sessions: [] },
-      status: 200,
-      success: true,
-    })
 
     render(<WorkerChatSurface />)
 
-    await waitFor(() => {
-      expect(mockWorkerKaelChatService.list).toHaveBeenCalledTimes(1)
-    })
     fireEvent.press(screen.getByTestId('worker-v5-kael-session-toggle'))
     fireEvent.press(screen.getByTestId('worker-v5-kael-session-new'))
 
     await waitFor(() => {
-      expect(mockWorkerKaelChatService.create).toHaveBeenCalledWith(expect.objectContaining({
-        job_id: 'job_test_1',
-        language: 'vi',
-        mode: 'intake',
-      }))
-    })
-    await waitFor(() => {
       expect(screen.queryByTestId('worker-v5-kael-session-menu')).toBeNull()
-    })
+    }, { timeout: 3000 })
+    expect(mockWorkerKaelChatService.list).not.toHaveBeenCalled()
+    expect(mockWorkerKaelChatService.create).not.toHaveBeenCalled()
 
     fireEvent.press(screen.getByTestId('worker-v5-kael-session-toggle'))
 
-    expect(await screen.findByTestId('worker-v5-kael-session-worker-kael-session-1')).toBeOnTheScreen()
+    expect(await screen.findByText('Trao đổi về công việc')).toBeOnTheScreen()
+  })
+
+  it('creates a Worker Preview conversation locally without calling remote chat APIs', async () => {
+    mockAuthSessionProvider = 'local-visual-audit'
+    mockAuthSessionUserId = 'local-visual-audit-worker'
+    buildWorkflow()
+    mockRouteParams = {
+      ns_audit_role: 'worker',
+      ns_worker_screen: '3.1-kael-chat-normal',
+    }
+
+    render(<WorkerChatSurface />)
+    fireEvent.press(screen.getByTestId('worker-v5-kael-session-toggle'))
+    expect(screen.getByTestId('worker-v5-kael-session-menu')).toBeOnTheScreen()
+    expect(mockWorkerKaelChatService.list).not.toHaveBeenCalled()
+
+    fireEvent.press(screen.getByTestId('worker-v5-kael-session-new'))
+
+    await waitFor(() => {
+      expect(screen.queryByTestId('worker-v5-kael-session-menu')).toBeNull()
+    }, { timeout: 3000 })
+    expect(mockWorkerKaelChatService.create).not.toHaveBeenCalled()
+
+    fireEvent.press(screen.getByTestId('worker-v5-kael-session-toggle'))
+    expect(await screen.findByText('Trò chuyện cùng Kael')).toBeOnTheScreen()
   })
 
   it('keeps the empty hero mounted while a new conversation is being created', async () => {
@@ -2369,13 +2382,22 @@ describe('Worker runtime surface wiring', () => {
       width: '59%',
     })
     expect(StyleSheet.flatten(screen.getByTestId('worker-v5-kael-session-menu-glass').props.style)).toMatchObject({
-      borderRadius: 16,
+      borderRadius: 18,
     })
+    expect(screen.getByTestId('worker-v5-kael-session-menu-liquid-layers')).toBeOnTheScreen()
     expect(StyleSheet.flatten(screen.getByTestId('worker-v5-kael-session-list').props.style)).toMatchObject({
       marginTop: 6,
       maxHeight: 138,
     })
     expect(screen.getByText('Cuộc trò chuyện mới')).toBeOnTheScreen()
+    expect(screen.getByTestId('worker-v5-kael-session-new-liquid-layers')).toBeOnTheScreen()
+    expect(StyleSheet.flatten(screen.getByTestId('worker-v5-kael-session-new').props.style)).toMatchObject({
+      alignSelf: 'stretch',
+      borderWidth: 0,
+      gap: 8,
+      marginHorizontal: -4,
+      paddingHorizontal: 13,
+    })
     expect(StyleSheet.flatten(screen.getByTestId('worker-v5-kael-session-new-label').props.style))
       .toMatchObject({ color: color.brand.primary, fontSize: 13 })
     expect(screen.getByTestId('worker-v5-kael-session-new-plus')).toHaveProp('height', 21)
@@ -2384,10 +2406,13 @@ describe('Worker runtime surface wiring', () => {
     expect(screen.getByText('Kiểm tra phạm vi lavabo')).toBeOnTheScreen()
     expect(screen.queryByText('2')).toBeNull()
     expect(screen.getByTestId('worker-v5-kael-session-worker-kael-session-2')).toBeOnTheScreen()
+    expect(screen.queryByTestId('worker-v5-kael-session-row-worker-kael-session-2-liquid-layers')).toBeNull()
     expect(StyleSheet.flatten(screen.getByTestId('worker-v5-kael-session-row-worker-kael-session-2').props.style))
       .toMatchObject({
-        backgroundColor: 'rgba(231, 252, 247, 0.98)',
-        borderColor: '#08AF9C',
+        backgroundColor: color.surface.mint,
+        borderColor: color.surface.strokeStrong,
+        borderCurve: 'continuous',
+        borderRadius: 16,
       })
 
     const prefetchedCalls = mockWorkerKaelChatService.get.mock.calls.length
@@ -2752,6 +2777,11 @@ describe('Worker runtime surface wiring', () => {
     mockRouteParams = { ns_worker_screen: '3.1-kael-chat-normal' }
 
     render(<WorkerChatSurface />)
+    expect(screen.getByTestId('worker-v5-kael-orb-camera')).toHaveProp('hitSlop', 3)
+    expect(screen.getByTestId('worker-v5-kael-orb-camera-surface')).toHaveStyle({ borderRadius: 14, height: 38, width: 38 })
+    expect(screen.getByTestId('worker-v5-kael-orb-camera-layers')).toHaveStyle({ borderRadius: 14 })
+    expect(screen.getByTestId('worker-v5-kael-orb-camera-icon')).toBeOnTheScreen()
+    expect(screen.getByTestId('worker-v5-kael-orb-send-arrow')).toBeOnTheScreen()
     fireEvent.press(screen.getByTestId('worker-v5-kael-orb-camera'))
 
     await waitFor(() => {

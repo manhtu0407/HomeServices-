@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useFocusEffect } from 'expo-router'
 import {
   ActivityIndicator,
@@ -231,45 +231,47 @@ export function AdminPayoutsPanel({ actor, initialTab = 'accounts', reduceMotion
   const [resolution, setResolution] = useState<WithdrawalResolution>('paid')
   const [resolutionReason, setResolutionReason] = useState('')
   const [transferReference, setTransferReference] = useState('')
+  const hasLoadedRef = useRef(false)
+  const backgroundLoadInFlightRef = useRef(false)
 
   const canProcess = actor?.capabilities.includes('payouts.process') ?? false
 
-  const loadData = useCallback(async () => {
-    setLoading(true)
+  const loadData = useCallback(async ({ blocking }: { blocking?: boolean } = {}) => {
+    const shouldBlock = blocking ?? !hasLoadedRef.current
+    if (!shouldBlock && backgroundLoadInFlightRef.current) return
+    if (!shouldBlock) backgroundLoadInFlightRef.current = true
+    if (shouldBlock) setLoading(true)
     setError(null)
-    const [methodsResult, withdrawalsResult] = await Promise.all([
-      adminControlService.listPayoutMethods({ status: methodFilter, limit: PAYOUTS_PER_PAGE, offset: (payoutMethodPage - 1) * PAYOUTS_PER_PAGE }),
-      adminControlService.listWithdrawalRequests({ status: withdrawalFilter, limit: PAYOUTS_PER_PAGE, offset: (withdrawalPage - 1) * PAYOUTS_PER_PAGE }),
-    ])
-    if (methodsResult.success) {
-      setPayoutMethods(methodsResult.data.payout_methods)
-      setPayoutMethodsHasMore(methodsResult.data.has_more)
-      setPayoutMethodsTotalCount(methodsResult.data.total_count)
-    } else {
-      setPayoutMethods([])
-      setPayoutMethodsHasMore(false)
-      setPayoutMethodsTotalCount(null)
+    try {
+      const [methodsResult, withdrawalsResult] = await Promise.all([
+        adminControlService.listPayoutMethods({ status: methodFilter, limit: PAYOUTS_PER_PAGE, offset: (payoutMethodPage - 1) * PAYOUTS_PER_PAGE }),
+        adminControlService.listWithdrawalRequests({ status: withdrawalFilter, limit: PAYOUTS_PER_PAGE, offset: (withdrawalPage - 1) * PAYOUTS_PER_PAGE }),
+      ])
+      if (methodsResult.success) {
+        setPayoutMethods(methodsResult.data.payout_methods)
+        setPayoutMethodsHasMore(methodsResult.data.has_more)
+        setPayoutMethodsTotalCount(methodsResult.data.total_count)
+      }
+      if (withdrawalsResult.success) {
+        setWithdrawalRequests(withdrawalsResult.data.withdrawal_requests)
+        setWithdrawalsHasMore(withdrawalsResult.data.has_more)
+        setWithdrawalsTotalCount(withdrawalsResult.data.total_count)
+      }
+      if (!methodsResult.success || !withdrawalsResult.success) setError(copy.loadError)
+    } finally {
+      hasLoadedRef.current = true
+      setLoading(false)
+      if (!shouldBlock) backgroundLoadInFlightRef.current = false
     }
-    if (withdrawalsResult.success) {
-      setWithdrawalRequests(withdrawalsResult.data.withdrawal_requests)
-      setWithdrawalsHasMore(withdrawalsResult.data.has_more)
-      setWithdrawalsTotalCount(withdrawalsResult.data.total_count)
-    } else {
-      setWithdrawalRequests([])
-      setWithdrawalsHasMore(false)
-      setWithdrawalsTotalCount(null)
-    }
-    if (!methodsResult.success || !withdrawalsResult.success) setError(copy.loadError)
-    setLoading(false)
   }, [copy.loadError, methodFilter, payoutMethodPage, withdrawalFilter, withdrawalPage])
 
   useEffect(() => {
-    const initialLoad = setTimeout(() => { void loadData() }, 0)
+    const initialLoad = setTimeout(() => { void loadData({ blocking: true }) }, 0)
     return () => clearTimeout(initialLoad)
   }, [loadData])
 
   useFocusEffect(useCallback(() => {
-    const timer = setInterval(() => { void loadData() }, PAYOUT_AUTO_REFRESH_MS)
+    const timer = setInterval(() => { void loadData({ blocking: false }) }, PAYOUT_AUTO_REFRESH_MS)
     return () => clearInterval(timer)
   }, [loadData]))
 

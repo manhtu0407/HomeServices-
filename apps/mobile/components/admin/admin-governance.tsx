@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native'
 import { useFocusEffect } from 'expo-router'
 
@@ -101,56 +101,67 @@ export function AdminGovernancePanel({ actor, language }: { actor: AdminViewActo
   const [ruleHasMore, setRuleHasMore] = useState(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const hasLoadedRef = useRef(false)
+  const backgroundLoadInFlightRef = useRef(false)
 
-  const load = useCallback(async () => {
+  const load = useCallback(async ({ blocking }: { blocking?: boolean } = {}) => {
     if (actor?.access_level !== 'owner') {
       setLoading(false)
+      hasLoadedRef.current = true
       return
     }
-    setLoading(true)
+    const shouldBlock = blocking ?? !hasLoadedRef.current
+    if (!shouldBlock && backgroundLoadInFlightRef.current) return
+    if (!shouldBlock) backgroundLoadInFlightRef.current = true
+    if (shouldBlock) setLoading(true)
     setError(null)
-    if (activePanel === 'disputes') {
-      const result = await adminControlService.listDisputes({ limit: PAGE_SIZE, offset: (disputePage - 1) * PAGE_SIZE })
-      if (result.success) {
-        setDisputes(result.data.disputes)
-        setDisputeTotal(result.data.total_count)
-        setDisputeHasMore(result.data.has_more)
-      } else setError(result.error)
-    } else if (activePanel === 'prices') {
-      const result = await adminControlService.listPriceBaselines({ limit: PAGE_SIZE, offset: (pricePage - 1) * PAGE_SIZE })
-      if (result.success) {
-        setPrices(result.data.price_baselines)
-        setPriceTotal(result.data.total_count)
-        setPriceHasMore(result.data.has_more)
-      } else setError(result.error)
-    } else {
-      const [costResult, ruleResult] = await Promise.all([
-        adminControlService.listAiCosts({ limit: PAGE_SIZE, offset: (costPage - 1) * PAGE_SIZE }),
-        adminControlService.listLearningRules({ limit: PAGE_SIZE, offset: (rulePage - 1) * PAGE_SIZE }),
-      ])
-      if (costResult.success) {
-        setCosts(costResult.data.costs)
-        setCostTotal(costResult.data.total_count)
-        setCostHasMore(costResult.data.has_more)
+    try {
+      if (activePanel === 'disputes') {
+        const result = await adminControlService.listDisputes({ limit: PAGE_SIZE, offset: (disputePage - 1) * PAGE_SIZE })
+        if (result.success) {
+          setDisputes(result.data.disputes)
+          setDisputeTotal(result.data.total_count)
+          setDisputeHasMore(result.data.has_more)
+        } else setError(result.error)
+      } else if (activePanel === 'prices') {
+        const result = await adminControlService.listPriceBaselines({ limit: PAGE_SIZE, offset: (pricePage - 1) * PAGE_SIZE })
+        if (result.success) {
+          setPrices(result.data.price_baselines)
+          setPriceTotal(result.data.total_count)
+          setPriceHasMore(result.data.has_more)
+        } else setError(result.error)
+      } else {
+        const [costResult, ruleResult] = await Promise.all([
+          adminControlService.listAiCosts({ limit: PAGE_SIZE, offset: (costPage - 1) * PAGE_SIZE }),
+          adminControlService.listLearningRules({ limit: PAGE_SIZE, offset: (rulePage - 1) * PAGE_SIZE }),
+        ])
+        if (costResult.success) {
+          setCosts(costResult.data.costs)
+          setCostTotal(costResult.data.total_count)
+          setCostHasMore(costResult.data.has_more)
+        }
+        if (ruleResult.success) {
+          setRules(ruleResult.data.rules)
+          setRuleTotal(ruleResult.data.total_count)
+          setRuleHasMore(ruleResult.data.has_more)
+        }
+        if (!costResult.success) setError(costResult.error)
+        else if (!ruleResult.success) setError(ruleResult.error)
       }
-      if (ruleResult.success) {
-        setRules(ruleResult.data.rules)
-        setRuleTotal(ruleResult.data.total_count)
-        setRuleHasMore(ruleResult.data.has_more)
-      }
-      if (!costResult.success) setError(costResult.error)
-      else if (!ruleResult.success) setError(ruleResult.error)
+    } finally {
+      hasLoadedRef.current = true
+      setLoading(false)
+      if (!shouldBlock) backgroundLoadInFlightRef.current = false
     }
-    setLoading(false)
   }, [activePanel, actor?.access_level, costPage, disputePage, pricePage, rulePage])
 
   useEffect(() => {
-    const initialLoad = setTimeout(() => { void load() }, 0)
+    const initialLoad = setTimeout(() => { void load({ blocking: true }) }, 0)
     return () => clearTimeout(initialLoad)
   }, [load])
 
   useFocusEffect(useCallback(() => {
-    const timer = setInterval(() => { void load() }, REFRESH_INTERVAL_MS)
+    const timer = setInterval(() => { void load({ blocking: false }) }, REFRESH_INTERVAL_MS)
     return () => clearInterval(timer)
   }, [load]))
 

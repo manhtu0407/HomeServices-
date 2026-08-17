@@ -281,7 +281,6 @@ export function useCustomerKaelSurfaceController(stateScopeKey: string) {
     normalChatRoute,
     processController,
     reduceMotion,
-    reduceTransparency,
     router,
     stateScopeKey,
   })

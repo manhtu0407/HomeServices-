@@ -1,18 +1,18 @@
-import { Image } from 'expo-image'
-import { Pressable, Text, type ImageSourcePropType } from 'react-native'
+import { Pressable, Text } from 'react-native'
 
 import type { CustomerThemeTokens } from '../customer-theme'
+import { LiquidNavIcon, type LiquidNavIconName } from './liquid-nav-icons'
 import { customerV21DockStyles as styles } from './dock-styles'
 
 export function CustomerV21DockTabButton({
-  image,
+  icon,
   label,
   onPress,
   selected,
   testID,
   tokens,
 }: {
-  image: ImageSourcePropType
+  icon: LiquidNavIconName
   label: string
   onPress: () => void
   selected: boolean
@@ -28,7 +28,13 @@ export function CustomerV21DockTabButton({
       style={({ pressed }) => [styles.dockItem, pressed ? styles.dockItemPressed : null]}
       testID={testID}
     >
-      <Image contentFit="contain" source={image} style={[styles.dockIcon, selected ? styles.dockIconActive : null]} />
+      <LiquidNavIcon
+        color={selected ? tokens.primary : tokens.muted}
+        name={icon}
+        selected={selected}
+        style={[styles.dockIcon, selected ? styles.dockIconActive : null]}
+        testID={`${testID}-icon`}
+      />
       <Text numberOfLines={1} style={[styles.dockLabel, selected ? styles.dockLabelActive : null, { color: selected ? tokens.primary : tokens.muted }]}>{label}</Text>
     </Pressable>
   )

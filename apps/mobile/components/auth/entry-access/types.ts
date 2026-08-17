@@ -56,6 +56,7 @@ export type EntryBrandAccessFlowProps = {
   featureFlags?: Partial<EntryAccessFeatureFlags>
   initialRole?: EntryRole
   initialStep?: EntryAccessStep
+  restoreRememberedRole?: boolean
   onStepChange?: (step: EntryAccessStep) => void
   onRoleChange?: (role: EntryRole) => void
   splashDurationMs?: number

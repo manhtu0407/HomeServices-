@@ -89,19 +89,20 @@ export function SourceIconTileSkin() {
   )
 }
 
-export function ZipMintAura({ intensity = 'default', scope, testID }: { intensity?: 'default' | 'strong'; scope: string; testID?: string }) {
+export function ZipMintAura({ intensity = 'default', scope, testID }: { intensity?: 'default' | 'soft' | 'strong'; scope: string; testID?: string }) {
   const { reduceTransparency } = useGlassAccessibility()
   if (reduceTransparency) return null
 
   const fillId = `zipMintAura${scope}`
+  const soft = intensity === 'soft'
   const strong = intensity === 'strong'
   return (
     <View pointerEvents="none" style={styles.zipMintAura} testID={testID}>
       <Svg height="100%" preserveAspectRatio="none" viewBox="0 0 220 180" width="100%">
         <Defs>
-          <RadialGradient id={fillId} cx="50%" cy="50%" r="50%">
-            <Stop offset="0" stopColor={strong ? 'rgba(143,226,212,0.46)' : 'rgba(143,226,212,0.35)'} />
-            <Stop offset="0.45" stopColor={strong ? 'rgba(230,251,243,0.20)' : 'rgba(230,251,243,0.15)'} />
+          <RadialGradient cx={soft ? '56%' : '50%'} cy={soft ? '44%' : '50%'} id={fillId} r={soft ? '62%' : '50%'}>
+            <Stop offset="0" stopColor={soft ? 'rgba(143,226,212,0.20)' : strong ? 'rgba(143,226,212,0.46)' : 'rgba(143,226,212,0.35)'} />
+            <Stop offset="0.45" stopColor={soft ? 'rgba(230,251,243,0.08)' : strong ? 'rgba(230,251,243,0.20)' : 'rgba(230,251,243,0.15)'} />
             <Stop offset="0.72" stopColor="rgba(230,251,243,0)" />
             <Stop offset="1" stopColor="rgba(230,251,243,0)" />
           </RadialGradient>
@@ -117,7 +118,7 @@ export function CaseWideMintAura({
   scope,
   testID,
 }: {
-  intensity?: 'default' | 'strong'
+  intensity?: 'default' | 'soft' | 'strong'
   scope: string
   testID?: string
 }) {
@@ -127,14 +128,15 @@ export function CaseWideMintAura({
   const topId = `caseWideMintAuraTop${scope}`
   const leftId = `caseWideMintAuraLeft${scope}`
   const bottomId = `caseWideMintAuraBottom${scope}`
+  const soft = intensity === 'soft'
   const strong = intensity === 'strong'
   return (
     <View pointerEvents="none" style={styles.caseWideMintAura} testID={testID}>
       <Svg height="100%" preserveAspectRatio="none" viewBox="0 0 360 130" width="100%">
         <Defs>
-          <RadialGradient id={topId} cx="88%" cy="2%" r="68%">
-            <Stop offset="0" stopColor={strong ? 'rgba(143,226,212,0.57)' : 'rgba(143,226,212,0.38)'} />
-            <Stop offset="0.45" stopColor={strong ? 'rgba(230,251,243,0.26)' : 'rgba(230,251,243,0.17)'} />
+          <RadialGradient cx={soft ? '94%' : '88%'} cy={soft ? '-8%' : '2%'} id={topId} r={soft ? '78%' : '68%'}>
+            <Stop offset="0" stopColor={soft ? 'rgba(143,226,212,0.20)' : strong ? 'rgba(143,226,212,0.57)' : 'rgba(143,226,212,0.38)'} />
+            <Stop offset="0.45" stopColor={soft ? 'rgba(230,251,243,0.09)' : strong ? 'rgba(230,251,243,0.26)' : 'rgba(230,251,243,0.17)'} />
             <Stop offset="0.76" stopColor="rgba(230,251,243,0)" />
           </RadialGradient>
           <RadialGradient id={leftId} cx="5%" cy="96%" r="58%">

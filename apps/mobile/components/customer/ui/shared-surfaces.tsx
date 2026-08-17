@@ -3,13 +3,14 @@ import { Image } from 'expo-image'
 import { StatusBar } from 'expo-status-bar'
 import { Appearance, Pressable, ScrollView, Text, useWindowDimensions, View, type ImageSourcePropType, type StyleProp, type TextStyle, type ViewStyle } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import Svg, { Path } from 'react-native-svg'
+import Svg, { Defs, Path, Rect } from 'react-native-svg'
 
 import type { CustomerServiceId } from '@nestscout/shared'
 import { GlassSurface } from '@/components/ui/glass-surface'
 import { useGlassAccessibility } from '@/components/ui/accessibility-motion'
 import { useDockScrollHandler } from '@/components/ui/dock-scroll-state'
 import { KaelCoreV9 } from '@/components/ui/kael-core-v9'
+import { LiquidBackButton } from '@/components/ui/liquid-back-button'
 import { useAppLanguage } from '@/lib/app-language'
 
 import {
@@ -19,10 +20,11 @@ import {
   type CustomerThemeTokens,
 } from '../customer-theme'
 import { CaseWideMintAura, CustomerScreenCanvasAura, HomeEmptySourceAura, SourceCardSkin, SourceIconAura, SourceIconTileSkin, ZipMintAura } from './aura-surfaces'
-import { customerV21BookingServiceAssets, isKaelCoreV9Visual, type CustomerV21Visual } from './assets'
+import { customerV21BookingServiceAssets, customerV21HomeV4Assets, isKaelCoreV9Visual, type CustomerV21Visual } from './assets'
 import { customerV21BookingServiceCopy } from './copy'
 import { customerV21SharedStyles as styles } from './shared-styles'
 import { type CustomerV21ScreenId } from './types'
+import { AlphaStop as Stop, NativeSafeLinearGradient as LinearGradient } from '@/components/ui/svg-alpha-stop'
 
 export function useCustomerV21SurfaceTheme() {
   const mode = useCustomerThemeMode()
@@ -142,6 +144,7 @@ export function SectionActionHeader({
 export function ServiceTile({
   fullWidth = false,
   homeAura = false,
+  homeV4 = false,
   onPress,
   selected,
   service,
@@ -149,6 +152,7 @@ export function ServiceTile({
 }: {
   fullWidth?: boolean
   homeAura?: boolean
+  homeV4?: boolean
   onPress?: () => void
   selected?: boolean
   service: CustomerServiceId
@@ -159,7 +163,7 @@ export function ServiceTile({
   const { width: viewportWidth } = useWindowDimensions()
   const copy = customerV21BookingServiceCopy[language][service]
   const serviceTestID = testID ?? `customer-v21-service-${service}`
-
+  const homeV4VisualBackground = selected ? tokens.service : tokens.mode === 'dark' ? tokens.ghost : tokens.raised
   return (
     <Pressable
       accessibilityLabel={`${copy.label}. ${copy.note}`}
@@ -169,8 +173,8 @@ export function ServiceTile({
       onPress={onPress}
       style={({ pressed }) => [
         styles.serviceTile,
-        homeAura ? styles.homeAuraServiceTile : null,
-        homeAura ? (fullWidth || viewportWidth < 680 ? styles.homeAuraServiceTileNarrow : styles.homeAuraServiceTileWide) : null,
+        homeAura ? (homeV4 ? styles.homeV4ServiceTile : styles.homeAuraServiceTile) : null,
+        homeAura && !homeV4 ? (fullWidth || viewportWidth < 680 ? styles.homeAuraServiceTileNarrow : styles.homeAuraServiceTileWide) : null,
         {
           backgroundColor: homeAura
             ? reduceTransparency || tokens.mode === 'dark' ? tokens.raised : 'transparent'
@@ -197,6 +201,46 @@ export function ServiceTile({
               <ZipMintAura scope={`ServiceTile${service}Fine`} testID={`${serviceTestID}-mint-aura`} />
             </View>
           ) : null}
+          {homeV4 ? (
+            <View style={styles.homeV4ServiceContent}>
+              <View
+                accessibilityLabel={copy.label}
+                style={[styles.homeV4ServiceVisual, { backgroundColor: homeV4VisualBackground }]}
+                testID={`${serviceTestID}-visual-panel`}
+              >
+                <Image
+                  accessible={false}
+                  contentFit="cover"
+                  source={customerV21HomeV4Assets.serviceTiles[service]}
+                  style={styles.homeV4ServiceImage}
+                  testID={`${serviceTestID}-image`}
+                />
+                {!reduceTransparency ? (
+                  <Svg height="100%" pointerEvents="none" preserveAspectRatio="none" style={styles.homeV4ServiceFade} viewBox="0 0 100 100" width="100%">
+                    <Defs>
+                      <LinearGradient id={`customer-home-v4-service-fade-${service}`} x1="0" x2="0" y1="0" y2="1">
+                        <Stop offset="0.52" stopColor={homeV4VisualBackground} stopOpacity={0} />
+                        <Stop offset="1" stopColor={homeV4VisualBackground} stopOpacity={1} />
+                      </LinearGradient>
+                    </Defs>
+                    <Rect fill={`url(#customer-home-v4-service-fade-${service})`} height="100" width="100" />
+                  </Svg>
+                ) : null}
+              </View>
+              <View style={styles.homeV4ServiceLabel} testID={`${serviceTestID}-label`}>
+                <Text
+                  adjustsFontSizeToFit
+                  minimumFontScale={0.82}
+                  numberOfLines={2}
+                  style={[styles.homeV4ServiceTitle, { color: tokens.text }]}
+                  testID={`${serviceTestID}-title`}
+                >
+                  {copy.label}
+                </Text>
+              </View>
+            </View>
+          ) : (
+            <>
           <View
             style={[
               styles.homeServiceVisualPanel,
@@ -266,6 +310,8 @@ export function ServiceTile({
               ))}
             </View>
           </View>
+            </>
+          )}
         </>
       ) : (
         <>
@@ -318,14 +364,6 @@ export function V21Screen({
   )
 }
 
-function TopBackChevron({ color }: { color: string }) {
-  return (
-    <Svg height={18} style={styles.topControlIcon} viewBox="0 0 24 24" width={18}>
-      <Path d="M15 5L8 12L15 19" fill="none" stroke={color} strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.8} />
-    </Svg>
-  )
-}
-
 export function V21Card({
   children,
   glass = false,
@@ -368,6 +406,7 @@ export function V21Card({
 }
 
 export function V21TopBar({
+  action,
   actionAccessibilityLabel,
   actionLabel,
   actionTestID,
@@ -381,9 +420,11 @@ export function V21TopBar({
   subtitle,
   testID,
   title,
+  titleNumberOfLines = 1,
   titleContainerStyle,
   titleStyle,
 }: {
+  action?: ReactNode
   actionAccessibilityLabel?: string
   actionLabel?: string
   actionTestID?: string
@@ -397,19 +438,25 @@ export function V21TopBar({
   subtitle: string
   testID?: string
   title: string
+  titleNumberOfLines?: number
   titleContainerStyle?: StyleProp<ViewStyle>
   titleStyle?: StyleProp<TextStyle>
 }) {
   const { tokens } = useCustomerV21SurfaceTheme()
+  const language = useAppLanguage()
   const shouldShowAvatar = showAvatar && !onBack
   return (
     <View style={[styles.topBar, containerStyle]} testID={testID}>
       {leading ? (
         leading
       ) : onBack ? (
-        <Pressable accessibilityLabel="Back" accessibilityRole="button" onPress={onBack} style={[styles.topControl, { backgroundColor: tokens.raised, borderColor: tokens.border }]}>
-          <TopBackChevron color={tokens.primary} />
-        </Pressable>
+        <LiquidBackButton
+          iconColor={tokens.primary}
+          label={language === 'vi' ? 'Quay lại' : 'Back'}
+          mode={tokens.mode}
+          onPress={onBack}
+          testID={testID ? `${testID}-back` : 'customer-v21-top-back'}
+        />
       ) : shouldShowAvatar ? (
         <View style={styles.topAvatarWrap} testID="customer-v21-top-avatar">
           {avatarImage ? (
@@ -424,7 +471,7 @@ export function V21TopBar({
         <Text
           adjustsFontSizeToFit
           minimumFontScale={0.68}
-          numberOfLines={1}
+          numberOfLines={titleNumberOfLines}
           style={[styles.topTitle, { color: tokens.text }, titleStyle]}
           testID="customer-v21-top-title"
         >
@@ -432,9 +479,9 @@ export function V21TopBar({
         </Text>
         {subtitle ? <Text numberOfLines={2} style={[styles.topSubtitle, { color: tokens.muted }]} testID="customer-v21-top-subtitle">{subtitle}</Text> : null}
       </View>
-      {actionLabel ? (
-        <Pressable accessibilityLabel={actionAccessibilityLabel ?? actionLabel} accessibilityRole="button" onPress={onAction} style={[styles.topControl, { backgroundColor: tokens.raised, borderColor: tokens.border }]} testID={actionTestID}>
-          <Text style={[styles.topActionText, { color: tokens.primary }]}>{actionLabel}</Text>
+      {action || actionLabel ? (
+        <Pressable accessibilityLabel={actionAccessibilityLabel ?? actionLabel} accessibilityRole={onAction ? 'button' : undefined} disabled={!onAction} onPress={onAction} style={[styles.topControl, { backgroundColor: tokens.raised, borderColor: tokens.border }]} testID={actionTestID}>
+          {action ?? <Text style={[styles.topActionText, { color: tokens.primary }]}>{actionLabel}</Text>}
         </Pressable>
       ) : null}
     </View>
