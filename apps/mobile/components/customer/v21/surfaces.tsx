@@ -963,13 +963,9 @@ export function CustomerV21DockOverlay({ active }: { active: CustomerDockActive 
   // A parent-controlled active tab is external synchronization, not a local event surrogate.
   // react-doctor-disable-next-line react-doctor/no-event-handler
   const activeTab = active === 'chat' ? null : active
-  const showKaelAccessory = active !== 'profile'
-  const dockSideInset = showKaelAccessory ? CUSTOMER_LIQUID_NAV_SIDE_INSET : 18
 
-  const liquidNavWidth = Math.min(Math.max(viewportWidth - dockSideInset * 2, 0), CUSTOMER_LIQUID_NAV_MAX_WIDTH)
-  const liquidDockWidth = showKaelAccessory
-    ? Math.max(liquidNavWidth - CUSTOMER_LIQUID_NAV_ORB_SIZE - CUSTOMER_LIQUID_NAV_GAP, CUSTOMER_LIQUID_NAV_DOCK_HEIGHT)
-    : liquidNavWidth
+  const liquidNavWidth = Math.min(Math.max(viewportWidth - CUSTOMER_LIQUID_NAV_SIDE_INSET * 2, 0), CUSTOMER_LIQUID_NAV_MAX_WIDTH)
+  const liquidDockWidth = Math.max(liquidNavWidth - CUSTOMER_LIQUID_NAV_ORB_SIZE - CUSTOMER_LIQUID_NAV_GAP, CUSTOMER_LIQUID_NAV_DOCK_HEIGHT)
   const selectedIndex = activeTab ? customerV21DockNavItems.findIndex((item) => item.key === activeTab) : -1
   const settledIndex = selectedIndex >= 0 ? selectedIndex : 0
   const lensWidth = Math.max((liquidDockWidth - CUSTOMER_LIQUID_NAV_RAIL_PADDING * 2) / customerV21DockNavItems.length, 0)
@@ -1075,7 +1071,6 @@ export function CustomerV21DockOverlay({ active }: { active: CustomerDockActive 
       onTabPress={(route) => router.replace(route as never)}
       reduceMotion={reduceMotion}
       selectedIndex={selectedIndex}
-      showKaelAccessory={showKaelAccessory}
       tokens={tokens}
     />
   )

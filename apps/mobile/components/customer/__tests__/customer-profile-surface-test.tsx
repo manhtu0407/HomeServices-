@@ -1238,6 +1238,19 @@ describe('CustomerProfileSurface v2.1', () => {
 })
 
 describe('CustomerV21 dock', () => {
+  it.each(['home', 'services', 'activity', 'profile'] as const)('keeps four tabs and Kael visible when %s is active', (active) => {
+    const view = render(<CustomerDockOverlay active={active} />)
+
+    expect(screen.getByTestId('customer-v21-primary-dock')).toBeOnTheScreen()
+    for (const id of ['home', 'services', 'activity', 'profile']) {
+      expect(screen.getByTestId(`customer-v21-dock-${id}`)).toBeOnTheScreen()
+    }
+    expect(screen.getByTestId('customer-v21-kael-accessory')).toBeOnTheScreen()
+    expect(screen.getByTestId(`customer-v21-dock-${active}`).props.accessibilityState?.selected).toBe(true)
+
+    view.unmount()
+  })
+
   it('renders four primary tabs plus a separate Kael accessory', () => {
     render(<CustomerDockOverlay active="home" />)
 
