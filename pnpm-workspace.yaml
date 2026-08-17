@@ -32,6 +32,14 @@ packageExtensions:
     dependencies:
       "@babel/generator": 7.29.7
       "@babel/traverse": 7.29.7
+patchedDependencies:
+  expo-modules-core@57.0.8: patches/expo-modules-core@57.0.8.patch
+  react-native-gesture-handler@3.1.0: patches/react-native-gesture-handler@3.1.0.patch
+  react-native-reanimated@4.5.1: patches/react-native-reanimated@4.5.1.patch
+  react-native-safe-area-context@5.7.0: patches/react-native-safe-area-context@5.7.0.patch
+  react-native-screens@4.26.2: patches/react-native-screens@4.26.2.patch
+  react-native-svg@15.15.4: patches/react-native-svg@15.15.4.patch
+  react-native-worklets@0.10.1: patches/react-native-worklets@0.10.1.patch
 peerDependencyRules:
   allowedVersions:
     "@types/react-dom@19.2.3>@types/react": ">=19.1.10 <20"

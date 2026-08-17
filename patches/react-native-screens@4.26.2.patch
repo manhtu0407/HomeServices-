@@ -1,0 +1,24 @@
+diff --git a/android/CMakeLists.txt b/android/CMakeLists.txt
+index 9d0999253eb8c0d0ef43b2d061026751bc0ca6b8..0e0d1a52fa9ed0ff3710d2cb96fb788e0eaf78d6 100644
+--- a/android/CMakeLists.txt
++++ b/android/CMakeLists.txt
+@@ -32,6 +32,7 @@ find_package(ReactAndroid REQUIRED CONFIG)
+ find_package(fbjni REQUIRED CONFIG)
+ 
+ target_link_libraries(rnscreens
++    c++_shared
+     ReactAndroid::reactnative
+     ReactAndroid::jsi
+     fbjni::fbjni
+diff --git a/android/src/main/jni/CMakeLists.txt b/android/src/main/jni/CMakeLists.txt
+index b2dfc56afc4b9a1b1203246481389335d0fa8263..59e01a1c1307914cb28ec07c3d2501fcf7813ba3 100644
+--- a/android/src/main/jni/CMakeLists.txt
++++ b/android/src/main/jni/CMakeLists.txt
+@@ -41,6 +41,7 @@ target_include_directories(
+ 
+ target_link_libraries(
+   ${LIB_TARGET_NAME}
++  c++_shared
+   ReactAndroid::reactnative
+   ReactAndroid::jsi
+   fbjni::fbjni

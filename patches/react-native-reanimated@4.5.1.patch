@@ -1,0 +1,12 @@
+diff --git a/android/CMakeLists.txt b/android/CMakeLists.txt
+index 2e22d0d17d6b91d628c90969bda4d6fa0bdb04d9..0d091f11fa661832bcdc426c8ab613e9bbff02ae 100644
+--- a/android/CMakeLists.txt	
++++ b/android/CMakeLists.txt
+@@ -108,6 +108,7 @@ endif()
+ 
+ target_link_libraries(
+   reanimated
++  c++_shared
+   log
+   ReactAndroid::reactnative
+   ReactAndroid::jsi
