@@ -4,7 +4,7 @@ import { color, radius, shadow, typography } from '@/design/theme'
 
 export const styles = StyleSheet.create({
   workerCustomerFontText: {
-    fontFamily: typography.fontFamily,
+    ...typography.body,
   },
   opaqueCard: {
     backgroundColor: color.mint.white,
@@ -16,11 +16,9 @@ export const styles = StyleSheet.create({
   earningsHeroAmount: {
     color: color.text.strong,
     flexShrink: 1,
-    fontSize: 28,
-    fontWeight: '700',
-    letterSpacing: -0.5,
-    lineHeight: 33,
+    fontVariant: ['tabular-nums'],
     marginTop: 7,
+    ...typography.title1,
   },
   earningsHeroCard: {
     alignItems: 'stretch',
@@ -46,11 +44,9 @@ export const styles = StyleSheet.create({
   },
   earningsHeroMeta: {
     color: color.text.secondary,
-    fontSize: 12,
-    fontWeight: '700',
-    lineHeight: 16,
     position: 'relative',
     zIndex: 1,
+    ...typography.caption1,
   },
   memorySwitchCopy: {
     flex: 1,
@@ -87,15 +83,11 @@ export const styles = StyleSheet.create({
   },
   memorySwitchTitle: {
     color: color.text.strong,
-    fontSize: 13,
-    fontWeight: '700',
-    lineHeight: 17,
+    ...typography.subheadline,
   },
   memorySwitchValue: {
     color: color.text.secondary,
-    fontSize: 11,
-    fontWeight: '700',
-    lineHeight: 15,
+    ...typography.caption2,
   },
   toggleKnob: {
     backgroundColor: color.mint.white,

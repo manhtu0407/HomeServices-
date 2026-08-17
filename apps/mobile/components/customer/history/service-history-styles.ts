@@ -1,5 +1,7 @@
 import { StyleSheet } from 'react-native'
 
+import { typography } from '@/design/theme'
+
 export const customerV21ServiceHistoryStyles = StyleSheet.create({
   actionRow: {
     alignItems: 'center',
@@ -24,9 +26,8 @@ export const customerV21ServiceHistoryStyles = StyleSheet.create({
     width: 40,
   },
   favoriteIcon: {
-    fontSize: 22,
+    ...typography.title3,
     includeFontPadding: false,
-    lineHeight: 22,
     textAlign: 'center',
     textAlignVertical: 'center',
   },
@@ -35,12 +36,10 @@ export const customerV21ServiceHistoryStyles = StyleSheet.create({
     borderCurve: 'continuous',
     borderRadius: 18,
     borderWidth: 1,
-    flexDirection: 'row',
-    gap: 8,
     justifyContent: 'center',
-    minHeight: 44,
+    minHeight: 38,
     overflow: 'hidden',
-    paddingHorizontal: 14,
+    paddingHorizontal: 15,
     position: 'relative',
   },
   filterChipAura: {
@@ -49,17 +48,28 @@ export const customerV21ServiceHistoryStyles = StyleSheet.create({
     zIndex: 0,
   },
   filterChipText: {
-    fontSize: 13,
-    fontWeight: '700',
-    lineHeight: 18,
+    ...typography.footnote,
+    fontWeight: '600',
     position: 'relative',
     zIndex: 1,
   },
-  filterIcon: {
-    height: 21,
-    position: 'relative',
-    width: 21,
-    zIndex: 1,
+  filterIndicatorHighlight: {
+    borderRadius: 999,
+    height: 1,
+    left: 5,
+    position: 'absolute',
+    right: 5,
+    top: 0,
+  },
+  filterIndicatorThumb: {
+    borderRadius: 999,
+    height: 3,
+  },
+  filterIndicatorTrack: {
+    alignSelf: 'center',
+    borderRadius: 999,
+    height: 3,
+    marginTop: 3,
   },
   filterRail: {
     alignSelf: 'stretch',
@@ -69,19 +79,12 @@ export const customerV21ServiceHistoryStyles = StyleSheet.create({
   },
   filterRailContent: {
     gap: 8,
-    paddingLeft: 1,
-    paddingRight: 1,
-    paddingVertical: 4,
+    paddingHorizontal: 1,
+    paddingVertical: 3,
   },
   filterRailDragSurface: {
     alignSelf: 'stretch',
     maxWidth: '100%',
-    width: '100%',
-  },
-  filterRailWrap: {
-    alignSelf: 'stretch',
-    maxWidth: '100%',
-    position: 'relative',
     width: '100%',
   },
   filterRailFade: {
@@ -91,6 +94,17 @@ export const customerV21ServiceHistoryStyles = StyleSheet.create({
     top: 12,
     width: 32,
     zIndex: 2,
+  },
+  filterRailWrap: {
+    alignSelf: 'stretch',
+    maxWidth: '100%',
+    width: '100%',
+  },
+  filterIcon: {
+    height: 21,
+    position: 'relative',
+    width: 21,
+    zIndex: 1,
   },
   historyCard: {
     borderRadius: 22,
@@ -103,12 +117,91 @@ export const customerV21ServiceHistoryStyles = StyleSheet.create({
     overflow: 'hidden',
     position: 'relative',
   },
-  historyErrorBody: {
-    fontSize: 14,
-    lineHeight: 20,
+  historyAuraStack: {
+    gap: 14,
+    position: 'relative',
+    zIndex: 1,
+  },
+  historyCardContent: {
+    gap: 14,
+    position: 'relative',
+    zIndex: 1,
+  },
+  historyCount: {
+    ...typography.footnote,
+    fontWeight: '600',
+  },
+  historyGroup: {
+    gap: 9,
+  },
+  historyGroupItems: {
+    gap: 10,
+  },
+  historyGroupLabel: {
+    ...typography.footnote,
+    fontWeight: '600',
+    paddingHorizontal: 4,
+  },
+  historyItemHeader: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 10,
+    justifyContent: 'space-between',
+  },
+  historyItemMeta: {
+    flex: 1,
+    ...typography.footnote,
+    fontWeight: '600',
+  },
+  historyItemTitle: {
+    ...typography.headline,
+  },
+  historyList: {
+    gap: 18,
     marginTop: 4,
-    maxWidth: 310,
-    textAlign: 'center',
+  },
+  historySectionHeader: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 10,
+    justifyContent: 'space-between',
+    marginTop: 18,
+  },
+  historySectionTitle: {
+    ...typography.title3,
+    fontWeight: '600',
+  },
+  loadingCard: {
+    gap: 0,
+  },
+  loadingCardContent: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 10,
+    position: 'relative',
+    width: '100%',
+    zIndex: 1,
+  },
+  loadingText: {
+    flex: 1,
+    ...typography.footnote,
+    fontWeight: '600',
+  },
+  priceEyebrow: {
+    ...typography.caption1,
+    fontWeight: '600',
+  },
+  priceSlot: {
+    flex: 1,
+    minHeight: 36,
+  },
+  priceValue: {
+    ...typography.headline,
+    fontVariant: ['tabular-nums'],
+    marginTop: 1,
+  },
+  rebookButton: {
+    minWidth: 84,
   },
   historyErrorCard: {
     alignItems: 'center',
@@ -140,10 +233,17 @@ export const customerV21ServiceHistoryStyles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderRadius: 20,
   },
+  historyErrorBody: {
+    fontSize: 14,
+    lineHeight: 20,
+    marginTop: 4,
+    maxWidth: 310,
+    textAlign: 'center',
+  },
   historyErrorRetry: {
+    marginTop: 16,
     minHeight: 44,
     minWidth: 216,
-    marginTop: 16,
   },
   historyErrorTitle: {
     fontSize: 18,
@@ -152,98 +252,12 @@ export const customerV21ServiceHistoryStyles = StyleSheet.create({
     marginTop: 12,
     textAlign: 'center',
   },
-  historyCardContent: {
-    gap: 14,
-    position: 'relative',
-    zIndex: 1,
-  },
-  historyCount: {
-    fontSize: 13,
-    fontWeight: '700',
-    lineHeight: 18,
-  },
-  historyGroup: {
-    gap: 9,
-  },
-  historyGroupItems: {
-    gap: 10,
-  },
-  historyGroupLabel: {
-    fontSize: 13,
-    fontWeight: '600',
-    lineHeight: 18,
-    paddingHorizontal: 4,
-  },
-  historyItemHeader: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    gap: 10,
-    justifyContent: 'space-between',
-  },
-  historyItemMeta: {
-    flex: 1,
-    fontSize: 13,
-    fontWeight: '600',
-    lineHeight: 18,
-  },
-  historyList: {
-    gap: 18,
-    marginTop: 4,
-  },
-  historySectionHeader: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    gap: 10,
-    justifyContent: 'space-between',
-    marginTop: 30,
-  },
-  historySectionTitle: {
-    fontSize: 21,
-    fontWeight: '700',
-    letterSpacing: -0.35,
-    lineHeight: 27,
-  },
-  loadingCard: {
-    gap: 0,
-  },
-  loadingCardContent: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    gap: 10,
-    position: 'relative',
-    width: '100%',
-    zIndex: 1,
-  },
-  loadingText: {
-    flex: 1,
-    fontSize: 14,
-    fontWeight: '600',
-    lineHeight: 20,
-  },
-  priceEyebrow: {
-    fontSize: 11,
-    fontWeight: '600',
-    lineHeight: 15,
-  },
-  priceSlot: {
-    flex: 1,
-    minHeight: 36,
-  },
-  priceValue: {
-    fontSize: 17,
-    fontWeight: '700',
-    lineHeight: 22,
-    marginTop: 1,
-  },
-  rebookButton: {
-    minWidth: 84,
-  },
   savedWorkerHint: {
     borderRadius: 16,
     borderWidth: 1,
     marginTop: 10,
     paddingHorizontal: 12,
-    paddingVertical: 11,
+    paddingVertical: 10,
   },
   savedWorkerHintContent: {
     alignItems: 'flex-start',
@@ -275,6 +289,7 @@ export const customerV21ServiceHistoryStyles = StyleSheet.create({
     lineHeight: 18,
   },
   savedWorkerHintText: {
+    flex: 1,
     fontSize: 12,
     lineHeight: 17,
   },
@@ -288,9 +303,8 @@ export const customerV21ServiceHistoryStyles = StyleSheet.create({
     paddingVertical: 5,
   },
   statusPillText: {
-    fontSize: 11,
-    fontWeight: '700',
-    lineHeight: 15,
+    ...typography.caption1,
+    fontWeight: '600',
   },
   supportButton: {
     minWidth: 76,
@@ -305,8 +319,8 @@ export const customerV21ServiceHistoryStyles = StyleSheet.create({
     justifyContent: 'center',
   },
   workerAvatarText: {
-    fontSize: 14,
-    fontWeight: '700',
+    ...typography.footnote,
+    fontWeight: '600',
   },
   workerCopy: {
     flex: 1,
@@ -314,14 +328,12 @@ export const customerV21ServiceHistoryStyles = StyleSheet.create({
     minWidth: 0,
   },
   workerEyebrow: {
-    fontSize: 11,
+    ...typography.caption1,
     fontWeight: '600',
-    lineHeight: 15,
   },
   workerName: {
-    fontSize: 16,
-    fontWeight: '700',
-    lineHeight: 21,
+    ...typography.callout,
+    fontWeight: '600',
   },
   workerRow: {
     alignItems: 'center',
@@ -331,7 +343,6 @@ export const customerV21ServiceHistoryStyles = StyleSheet.create({
     marginTop: -8,
   },
   workerUnavailable: {
-    fontSize: 12,
-    lineHeight: 18,
+    ...typography.caption1,
   },
 })

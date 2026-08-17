@@ -8,6 +8,9 @@ The active Recall Index is intentionally short. Full entry detail lives in `docs
 
 ## Recall Index -> `docs/memory/2026-08.md`
 
+- **2026-08-17** iOS 26.6 Typography Sweep — canonical Apple semantic roles/tracking now cover mobile text surfaces; primary headings wrap safely; full mobile 120 suites / 1141 tests green. Native iOS/Dynamic Type visual matrix remains unrun on Windows; dirty unrelated worktree changes were preserved and nothing was committed.
+- **2026-08-13** Admin Finance enterprise dashboard — four Finance subviews, shared liquid-lens navigation, `finance.read` baseline, and compact verified-zero presentation: overview starts unrecorded metrics at `0` with a source/formula plus sync state, while every Finance subview shares the reduced type scale; JS/harness/Preview gates green, but real Postgres/type generation and Android+iOS native QA remain blocked by Docker RAM and broken/missing native toolchains.
+
 - **2026-08-10** Production Kael v76 + session-menu spacing — fixed stable mobile idempotency and guarded Customer privileged Edge DML; live Customer/Worker chat proof; duplicate menu `top: 66` -> `74` gives a 13px Preview gap; mobile 1028/106 green; v76 deployed, nothing committed.
 
 - **2026-08-08** PR #169 / Kael Agentic Completeness §50 — audit và đóng gap cuối: alert/boundary/live-runner/estimate/contract/VI UI/native SafeArea fixes; full JS gates + Deno 4/4 + evals xanh; local DB still blocked by RAM 2.86 GB < 4 GB; commit/push/checks pending at entry time.

@@ -1,13 +1,14 @@
 import { useMemo, type ReactNode } from 'react'
-import { Image } from 'expo-image'
 import {
   Pressable,
   Text,
   View,
+  useWindowDimensions,
   type StyleProp,
   type TextStyle,
   type ViewStyle,
 } from 'react-native'
+import Svg, { Circle, Line, Path, Rect } from 'react-native-svg'
 
 import { KaelButton, KaelChip, KaelTextField } from '@/components/ui/kael-primitives'
 import type { AppLanguage } from '@/lib/app-language'
@@ -24,8 +25,9 @@ import {
 import { customerV21Assets } from '../ui/assets'
 import { availableBookingTimeSlots } from './booking-intake-display-model'
 import { customerV21BookingStyles as bookingStyles } from './booking-styles'
+import { BookingWorkartJourney, BookingWorkartServiceTile } from './booking-workart-surfaces'
 import { customerV21SharedStyles as sharedStyles } from '../ui/shared-styles'
-import { AssetTile, EmptyState, ProgressRail, SectionActionHeader, ServiceTile, V21Card, V21TopBar } from '../ui/shared-surfaces'
+import { AssetTile, EmptyState, SectionActionHeader, V21Card, V21TopBar } from '../ui/shared-surfaces'
 
 type BookingProblemOptionView = {
   label: string
@@ -57,17 +59,69 @@ type RootBookingStyles = {
   stepLabel: StyleProp<TextStyle>
 }
 
+type BookingFormGlyphKind = 'calendar' | 'clock' | 'note' | 'pin'
+
+function BookingFormGlyph({
+  color,
+  kind,
+  size = 18,
+}: {
+  color: string
+  kind: BookingFormGlyphKind
+  size?: number
+}) {
+  const strokeProps = {
+    fill: 'none' as const,
+    stroke: color,
+    strokeLinecap: 'round' as const,
+    strokeLinejoin: 'round' as const,
+    strokeWidth: 1.7,
+  }
+
+  return (
+    <Svg fill="none" height={size} viewBox="0 0 24 24" width={size}>
+      {kind === 'pin' ? (
+        <>
+          <Path d="M12 21s6-5.25 6-10a6 6 0 1 0-12 0c0 4.75 6 10 6 10Z" {...strokeProps} />
+          <Circle cx={12} cy={11} r={2} {...strokeProps} />
+        </>
+      ) : kind === 'clock' ? (
+        <>
+          <Circle cx={12} cy={12} r={8.5} {...strokeProps} />
+          <Line x1={12} x2={12} y1={7.5} y2={12} {...strokeProps} />
+          <Line x1={12} x2={15.5} y1={12} y2={14.2} {...strokeProps} />
+        </>
+      ) : kind === 'note' ? (
+        <>
+          <Rect height={17} rx={2.5} width={14} x={4} y={3.5} {...strokeProps} />
+          <Path d="m8 16 1.8.4 7.7-7.7-2.2-2.2-7.7 7.7L8 16Z" {...strokeProps} />
+          <Path d="m14.7 6.5 2.2 2.2" {...strokeProps} />
+        </>
+      ) : (
+        <>
+          <Rect height={15} rx={2.5} width={16} x={4} y={5.5} {...strokeProps} />
+          <Line x1={8} x2={8} y1={3.5} y2={7.5} {...strokeProps} />
+          <Line x1={16} x2={16} y1={3.5} y2={7.5} {...strokeProps} />
+          <Line x1={4} x2={20} y1={9.5} y2={9.5} {...strokeProps} />
+        </>
+      )}
+    </Svg>
+  )
+}
+
 function BookingFormulaMintAura({
   includeSkin = false,
+  quiet = false,
   scope,
   testIDPrefix,
 }: {
   includeSkin?: boolean
+  quiet?: boolean
   scope: string
   testIDPrefix: string
 }) {
   return (
-    <View pointerEvents="none" style={bookingStyles.bookingFormulaMintAura}>
+    <View pointerEvents="none" style={[bookingStyles.bookingFormulaMintAura, quiet ? { opacity: 0 } : null]}>
       {includeSkin ? <SourceCardSkin testID={`${testIDPrefix}-card-skin`} /> : null}
       <CaseWideMintAura
         intensity="strong"
@@ -197,22 +251,324 @@ export function CustomerBookingEntryView({
   tokens: CustomerThemeTokens
   submitDisabled?: boolean
 }) {
+  const { width: viewportWidth } = useWindowDimensions()
+  const isWideBookingForm = viewportWidth >= 420
   const timeSlotAuraLayers = useMemo(
     () => timeSlots.map((slot, index) => (
-      <CaseWideMintAura
-        intensity="strong"
+      <View
         key={`booking-start-time-aura-${slot}`}
-        scope={`BookingStartTime${slot.replace(':', '')}`}
-        testID={`customer-v21-booking-time-${index}-mint-aura`}
-      />
+        pointerEvents="none"
+        style={[bookingStyles.bookingWideAuraLayer, isWideBookingForm ? bookingStyles.bookingWideHiddenAuraLayer : null]}
+      >
+        <CaseWideMintAura
+          intensity="strong"
+          scope={`BookingStartTime${slot.replace(':', '')}`}
+          testID={`customer-v21-booking-time-${index}-mint-aura`}
+        />
+      </View>
     )),
-    [timeSlots],
+    [isWideBookingForm, timeSlots],
   )
   const availableTimeSlots = availableBookingTimeSlots(
     selectedScheduleDate,
     new Date(scheduleRuntimeNow),
   )
   const availableTimeSlotSet = new Set<string>(availableTimeSlots)
+  const showDateChipGlyph = isWideBookingForm && viewportWidth >= 480
+  const bookingCardWidth = Math.max(0, viewportWidth - 32)
+  const bookingCardScale = Math.min(1.25, Math.max(1, Math.round((bookingCardWidth / 411) * 100) / 100))
+  const bookingJourneyArtworkHeight = Math.max(140, Math.min(184, Math.round(bookingCardWidth * 0.37)))
+  const bookingServiceTileHeight = Math.max(56, Math.min(72, Math.round(bookingCardWidth * 0.133)))
+  const bookingServiceGridGap = Math.max(3, Math.min(4, Math.round(bookingCardWidth * 0.007)))
+  const draftSubmitButton = (
+    <KaelButton
+      backgroundLayer={isWideBookingForm ? (
+        <View
+          pointerEvents="none"
+          style={[bookingStyles.bookingWideAuraLayer, bookingStyles.bookingWideHiddenAuraLayer]}
+        >
+          <BookingDraftButtonAura reduceTransparency={reduceTransparency} />
+        </View>
+      ) : <BookingDraftButtonAura reduceTransparency={reduceTransparency} />}
+      disabled={submitDisabled}
+      label={createDraftLabel}
+      onPress={onSubmit}
+      style={isWideBookingForm ? bookingStyles.bookingWideDraftSubmitButton : bookingStyles.bookingDraftSubmitButton}
+      testID="customer-v21-booking-submit"
+      textStyle={isWideBookingForm ? bookingStyles.bookingWideDraftSubmitText : undefined}
+      variant="primary"
+    />
+  )
+  const draftSubmitNode = isWideBookingForm ? (
+    <View style={bookingStyles.bookingWideDraftSubmitWrap}>
+      {draftSubmitButton}
+    </View>
+  ) : draftSubmitButton
+  const dateGridContentNode = (
+    <View
+      style={[bookingStyles.bookingDateGrid, isWideBookingForm ? bookingStyles.bookingDateGridWide : null]}
+      testID="customer-v21-booking-date-grid"
+    >
+      <View
+        pointerEvents="none"
+        style={[bookingStyles.bookingWideAuraLayer, isWideBookingForm ? bookingStyles.bookingWideHiddenAuraLayer : null]}
+      >
+        <CaseWideMintAura
+          intensity="strong"
+          scope="BookingDateGrid"
+          testID="customer-v21-booking-date-grid-mint-aura"
+        />
+      </View>
+      {scheduleDateOptions.map((option, index) => {
+        const selected = selectedScheduleDate === option.value
+        return (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityState={{ selected }}
+            key={option.value}
+            onPress={() => onScheduleDateSelect(option.value)}
+            style={[
+              bookingStyles.bookingDateOption,
+              isWideBookingForm ? bookingStyles.bookingDateOptionWide : null,
+              {
+                backgroundColor: isWideBookingForm
+                  ? 'transparent'
+                  : selected
+                    ? tokens.service
+                    : tokens.mode === 'dark'
+                      ? tokens.ghost
+                      : 'rgba(255,255,255,0.72)',
+                borderColor: isWideBookingForm ? 'transparent' : selected ? tokens.primary : tokens.border,
+                borderBottomColor: isWideBookingForm ? 'transparent' : undefined,
+              },
+            ]}
+            testID={`customer-v21-booking-date-${index}`}
+          >
+            <View style={[bookingStyles.bookingDateOptionContent, isWideBookingForm ? bookingStyles.bookingDateOptionContentWide : null]}>
+              {showDateChipGlyph ? <BookingFormGlyph color={selected ? tokens.primary : tokens.muted} kind="calendar" size={12} /> : null}
+              <View style={bookingStyles.bookingDateTextStack}>
+                <Text numberOfLines={1} style={[bookingStyles.bookingDateDay, { color: selected ? tokens.primary : tokens.muted }]}>{option.dayLabel}</Text>
+                <Text numberOfLines={1} style={[bookingStyles.bookingDateValue, { color: selected ? tokens.primary : tokens.text }]}>{option.dateLabel}</Text>
+              </View>
+              {isWideBookingForm ? <View style={[bookingStyles.bookingWideDateSelectionLine, { backgroundColor: selected ? tokens.primary : 'transparent' }]} /> : null}
+            </View>
+          </Pressable>
+        )
+      })}
+    </View>
+  )
+  const dateGridNode = isWideBookingForm ? (
+    <View style={bookingStyles.bookingWideDateGroup}>
+      <Text style={[bookingStyles.bookingWideDateLabel, { color: tokens.text }]}>
+        {language === 'vi' ? 'Ngày mong muốn' : 'Preferred date'}
+      </Text>
+      {dateGridContentNode}
+    </View>
+  ) : dateGridContentNode
+  const customDateFieldNode = (
+    <View style={[bookingStyles.bookingCustomScheduleField, isWideBookingForm ? [bookingStyles.bookingWideCustomScheduleField, bookingStyles.bookingWideCustomDateScheduleField] : null]}>
+      <Text style={[bookingStyles.bookingCustomScheduleLabel, isWideBookingForm ? bookingStyles.bookingWideCustomScheduleLabel : null, { color: tokens.text }]}>
+        {language === 'vi' ? 'Ngày khác' : 'Another date'}
+      </Text>
+      <KaelTextField
+        inputShellAdornment={(
+          isWideBookingForm ? (
+            <View style={bookingStyles.bookingWideFieldAdornment}>
+              <BookingFormulaMintAura
+                quiet={isWideBookingForm}
+                scope="BookingCustomDate"
+                testIDPrefix="customer-v21-booking-custom-date"
+              />
+              <BookingFormGlyph color={tokens.primary} kind="calendar" size={14} />
+            </View>
+          ) : (
+            <BookingFormulaMintAura
+              quiet={isWideBookingForm}
+              scope="BookingCustomDate"
+              testIDPrefix="customer-v21-booking-custom-date"
+            />
+          )
+        )}
+        inputShellStyle={[
+          bookingStyles.bookingCustomScheduleInputShell,
+          isWideBookingForm ? bookingStyles.bookingWideCustomScheduleInputShell : null,
+          {
+            backgroundColor: isWideBookingForm ? 'transparent' : tokens.mode === 'dark' ? tokens.ghost : 'rgba(255,255,255,0.72)',
+            borderColor: isWideBookingForm ? tokens.border : customScheduleDateInput && selectedScheduleDate ? tokens.primary : tokens.border,
+          },
+        ]}
+        accessibilityLabel={language === 'vi' ? 'Nhập ngày muốn đặt' : 'Enter desired date'}
+        accessibilityHint={customScheduleDateError ?? (language === 'vi' ? 'Định dạng ngày tháng năm' : 'Day month year format')}
+        keyboardType="number-pad"
+        maxLength={10}
+        onChangeText={onCustomScheduleDateChange}
+        placeholder="DD/MM/YYYY"
+        placeholderTextColor={tokens.subtleText}
+        style={[bookingStyles.bookingCustomScheduleInput, isWideBookingForm ? bookingStyles.bookingWideCustomScheduleInput : null, textInputNoOutlineStyle, { color: isWideBookingForm ? tokens.primary : tokens.text }]}
+        testID="customer-v21-booking-custom-date"
+        value={customScheduleDateInput}
+      />
+      {customScheduleDateError || !isWideBookingForm ? (
+        <Text
+          style={[bookingStyles.bookingCustomScheduleHint, { color: customScheduleDateError ? tokens.primary : tokens.muted }]}
+          testID={customScheduleDateError ? 'customer-v21-booking-custom-date-error' : undefined}
+        >
+          {customScheduleDateError ?? (language === 'vi' ? 'Nhập ngày mong muốn nếu lịch nằm sau 7 ngày.' : 'Enter a desired date when it is more than 7 days away.')}
+        </Text>
+      ) : null}
+    </View>
+  )
+  const timeStartNode = (
+    <View style={[bookingStyles.bookingTimeStartSection, isWideBookingForm ? bookingStyles.bookingWideTimeStartSection : null]}>
+      <Text style={[bookingStyles.bookingCustomScheduleHint, isWideBookingForm ? bookingStyles.bookingWideTimeStartLabel : null, { color: tokens.text, fontWeight: '600' }]}>
+        {language === 'vi'
+          ? 'Chọn giờ bạn muốn dịch vụ bắt đầu.'
+          : 'Choose when you want the service to start.'}
+      </Text>
+    </View>
+  )
+  const timeGridNode = (
+    <View style={[bookingStyles.bookingTimeGrid, isWideBookingForm ? bookingStyles.bookingWideTimeGrid : null]}>
+      {timeSlots.map((slot, index) => {
+        const selected = selectedScheduleTime === slot
+        const unavailable = !availableTimeSlotSet.has(slot)
+        return (
+          <View key={slot} style={[bookingStyles.bookingTimeSlotGroup, isWideBookingForm ? bookingStyles.bookingWideTimeSlotGroup : null]}>
+            <KaelChip
+              accessibilityState={{ selected }}
+              backgroundLayer={timeSlotAuraLayers[index]}
+              disabled={unavailable}
+              label={slot}
+              onPress={() => onScheduleTimeSelect(slot)}
+              style={[
+                bookingStyles.bookingTimeChip,
+                isWideBookingForm ? bookingStyles.bookingWideTimeChip : null,
+                {
+                  backgroundColor: isWideBookingForm
+                    ? 'transparent'
+                    : selected
+                      ? tokens.service
+                      : tokens.mode === 'dark'
+                        ? tokens.ghost
+                        : 'rgba(255,255,255,0.72)',
+                  borderColor: isWideBookingForm ? 'transparent' : selected ? tokens.primary : tokens.border,
+                },
+              ]}
+              testID={`customer-v21-booking-time-${index}`}
+              textStyle={isWideBookingForm ? bookingStyles.bookingWideTimeChipText : undefined}
+              variant={selected ? 'selected' : 'unselected'}
+            />
+          </View>
+        )
+      })}
+    </View>
+  )
+  const customTimeFieldNode = (
+    <View style={[bookingStyles.bookingCustomScheduleField, isWideBookingForm ? [bookingStyles.bookingWideCustomScheduleField, bookingStyles.bookingWideCustomTimeScheduleField] : null]}>
+      <Text style={[bookingStyles.bookingCustomScheduleLabel, isWideBookingForm ? bookingStyles.bookingWideCustomScheduleLabel : null, { color: tokens.text }]}>
+        {language === 'vi' ? 'Giờ khác' : 'Another start time'}
+      </Text>
+      <KaelTextField
+        inputShellAdornment={(
+          isWideBookingForm ? (
+            <View style={bookingStyles.bookingWideFieldAdornment}>
+              <BookingFormulaMintAura
+                quiet={isWideBookingForm}
+                scope="BookingCustomTime"
+                testIDPrefix="customer-v21-booking-custom-time"
+              />
+              <BookingFormGlyph color={tokens.primary} kind="clock" size={14} />
+            </View>
+          ) : (
+            <BookingFormulaMintAura
+              quiet={isWideBookingForm}
+              scope="BookingCustomTime"
+              testIDPrefix="customer-v21-booking-custom-time"
+            />
+          )
+        )}
+        inputShellStyle={[
+          bookingStyles.bookingCustomScheduleInputShell,
+          isWideBookingForm ? bookingStyles.bookingWideCustomScheduleInputShell : null,
+          {
+            backgroundColor: isWideBookingForm ? 'transparent' : tokens.mode === 'dark' ? tokens.ghost : 'rgba(255,255,255,0.72)',
+            borderColor: isWideBookingForm ? tokens.border : customScheduleTimeInput && selectedScheduleTime ? tokens.primary : tokens.border,
+          },
+        ]}
+        accessibilityLabel={language === 'vi' ? 'Nhập giờ bắt đầu mong muốn' : 'Enter desired start time'}
+        accessibilityHint={customScheduleTimeError ?? (language === 'vi' ? 'Định dạng giờ và phút' : 'Hour and minute format')}
+        keyboardType="number-pad"
+        maxLength={5}
+        onChangeText={onCustomScheduleTimeChange}
+        placeholder="HH:mm"
+        placeholderTextColor={tokens.subtleText}
+        style={[bookingStyles.bookingCustomScheduleInput, isWideBookingForm ? bookingStyles.bookingWideCustomScheduleInput : null, textInputNoOutlineStyle, { color: isWideBookingForm ? tokens.primary : tokens.text }]}
+        testID="customer-v21-booking-custom-time"
+        value={customScheduleTimeInput}
+      />
+      {customScheduleTimeError ? (
+        <Text
+          style={[bookingStyles.bookingCustomScheduleHint, { color: tokens.primary }]}
+          testID="customer-v21-booking-custom-time-error"
+        >
+          {customScheduleTimeError}
+        </Text>
+      ) : null}
+    </View>
+  )
+  const descriptionNode = isWideBookingForm ? (
+    <View
+      style={[bookingStyles.bookingInputRow, bookingStyles.bookingWideInputRow, { backgroundColor: 'transparent', borderColor: tokens.border, marginTop: 2 }]}
+      testID="customer-v21-booking-description-row"
+    >
+      <View style={[bookingStyles.bookingInlineIconShell, bookingStyles.bookingWideInlineIconShell, { backgroundColor: 'transparent' }]} testID="customer-v21-booking-description-icon">
+        <BookingFormGlyph color={tokens.primary} kind="note" size={22} />
+      </View>
+      <KaelTextField
+        inputShellAdornment={(
+          <BookingFormulaMintAura
+            quiet={isWideBookingForm}
+            scope="BookingDescription"
+            testIDPrefix="customer-v21-booking-description"
+          />
+        )}
+        inputShellStyle={bookingStyles.bookingInlineTextFieldShell}
+        accessibilityLabel={language === 'vi' ? 'Mô tả vấn đề' : 'Issue description'}
+        multiline
+        onChangeText={onDescriptionChange}
+        placeholder={chatPlaceholder}
+        placeholderTextColor={tokens.subtleText}
+        shellStyle={bookingStyles.bookingInlineTextFieldStack}
+        style={[bookingStyles.bookingInlineInput, bookingStyles.bookingWideInlineInput, bookingStyles.bookingWideDescriptionInput, bookingStyles.bookingWideDescriptionInputWeb, textInputNoOutlineStyle, invisibleTextInputScrollbarStyle, { color: tokens.text }]}
+        testID="customer-v21-booking-description"
+        textAlignVertical="center"
+        value={description}
+      />
+    </View>
+  ) : (
+    <>
+      <Text style={[bookingStyles.bookingFieldLabel, { color: tokens.text }]}>{language === 'vi' ? 'Mô tả sự cố' : 'Issue description'}</Text>
+      <KaelTextField
+        inputShellAdornment={(
+            <BookingFormulaMintAura
+              quiet={isWideBookingForm}
+              scope="BookingDescription"
+              testIDPrefix="customer-v21-booking-description"
+          />
+        )}
+        inputShellStyle={[bookingStyles.bookingDescriptionInputShell, { backgroundColor: tokens.mode === 'dark' ? tokens.base : 'rgba(255,255,255,0.70)', borderColor: tokens.border }]}
+        accessibilityLabel={language === 'vi' ? 'Mô tả vấn đề' : 'Issue description'}
+        multiline
+        onChangeText={onDescriptionChange}
+        placeholder={chatPlaceholder}
+        placeholderTextColor={tokens.subtleText}
+        style={[bookingStyles.bookingDescriptionInput, textInputNoOutlineStyle, invisibleTextInputScrollbarStyle, { color: tokens.text }]}
+        testID="customer-v21-booking-description"
+        textAlignVertical="top"
+        value={description}
+      />
+    </>
+  )
   return (
     <>
       <V21TopBar
@@ -222,20 +578,7 @@ export function CustomerBookingEntryView({
       />
 
       {!isMediaScreen ? (
-        <V21Card glass style={[rootStyles.stepCard, bookingStyles.bookingSourceStepCard]} testID="customer-v21-services-hero">
-          <SourceCardSkin testID="customer-v21-booking-step-card-skin" />
-          <BookingFormulaMintAura
-            scope="BookingStep"
-            testIDPrefix="customer-v21-booking-step"
-          />
-          <View style={bookingStyles.bookingSourceStepContent}>
-            <View style={sharedStyles.rowBetween}>
-              <Text style={[rootStyles.stepLabel, { color: tokens.text }]}>{language === 'vi' ? 'Bước 1/4 · Chọn dịch vụ' : 'Step 1/4 · Choose service'}</Text>
-              <Text style={[rootStyles.stepBadge, { color: tokens.primary }]}>{language === 'vi' ? 'Kael hỗ trợ' : 'Kael assisted'}</Text>
-            </View>
-            <ProgressRail activeStep={1} style={bookingStyles.bookingProgressRail} testID="customer-v21-booking-progress" tokens={tokens} />
-          </View>
-        </V21Card>
+        <BookingWorkartJourney artworkHeight={bookingJourneyArtworkHeight} copyScale={bookingCardScale} language={language} testID="customer-v21-booking-progress" tokens={tokens} />
       ) : null}
 
       {isMediaScreen ? mediaPanelNode : null}
@@ -250,54 +593,68 @@ export function CustomerBookingEntryView({
           />
           {selectedService ? (
             <View style={bookingStyles.bookingSelectedServiceFrame} testID="customer-v21-selected-service-frame">
-              <ServiceTile
-                fullWidth
-                homeAura
+              <BookingWorkartServiceTile
+                language={language}
                 selected
                 service={selectedService}
                 testID="customer-v21-selected-service"
+                tileHeight={bookingServiceTileHeight}
+                tokens={tokens}
               />
             </View>
           ) : null}
           {!selectedService ? (
-            <View style={[sharedStyles.serviceGrid, bookingStyles.bookingServiceGrid]}>
+            <View style={[sharedStyles.serviceGrid, bookingStyles.bookingServiceGrid, { gap: bookingServiceGridGap }]}>
               {CUSTOMER_SERVICE_IDS.map((service) => (
-                <ServiceTile
-                  homeAura
+                <BookingWorkartServiceTile
+                  language={language}
                   key={service}
                   onPress={() => onServiceSelect(service)}
                   selected={selectedService === service}
                   service={service}
+                  tileHeight={bookingServiceTileHeight}
+                  tokens={tokens}
                 />
               ))}
             </View>
           ) : null}
 
-          <SectionActionHeader
-            action={language === 'vi' ? 'Kael nhớ sẵn' : 'Saved by Kael'}
-            title={language === 'vi' ? 'Thông tin đặt lịch' : 'Booking details'}
-          />
-          <V21Card style={[rootStyles.formCard, bookingStyles.bookingInfoCard]} testID="customer-v21-booking-info-card">
-            <SourceCardSkin testID="customer-v21-booking-info-card-skin" />
+          <View style={bookingStyles.bookingInfoHeader}>
+            <Text style={[bookingStyles.bookingInfoHeaderTitle, { color: tokens.text }]}>{language === 'vi' ? 'Thông tin đặt lịch' : 'Booking details'}</Text>
+            <Text style={[bookingStyles.bookingInfoHeaderAction, { color: tokens.primary }]}>{language === 'vi' ? 'Kael nhớ sẵn' : 'Saved by Kael'}</Text>
+          </View>
+          <V21Card style={[rootStyles.formCard, bookingStyles.bookingInfoCard, isWideBookingForm ? bookingStyles.bookingInfoCardWide : null]} testID="customer-v21-booking-info-card">
+            <View
+              pointerEvents="none"
+              style={[bookingStyles.bookingWideAuraLayer, isWideBookingForm ? bookingStyles.bookingWideHiddenAuraLayer : null]}
+              testID="customer-v21-booking-info-card-skin"
+            >
+              <SourceCardSkin />
+            </View>
             <View
               pointerEvents="none"
               style={bookingStyles.bookingInfoMintAura}
               testID="customer-v21-booking-info-card-aura-layer"
             >
-              <CaseWideMintAura scope="BookingInfoWide" testID="customer-v21-booking-info-card-wide-mint-aura" />
-              <ZipMintAura scope="BookingInfoFine" testID="customer-v21-booking-info-card-mint-aura" />
+              <View style={[bookingStyles.bookingWideAuraLayer, isWideBookingForm ? bookingStyles.bookingWideHiddenAuraLayer : null]}>
+                <CaseWideMintAura scope="BookingInfoWide" testID="customer-v21-booking-info-card-wide-mint-aura" />
+                <ZipMintAura scope="BookingInfoFine" testID="customer-v21-booking-info-card-mint-aura" />
+              </View>
             </View>
-            <View style={bookingStyles.bookingField}>
-              <Text style={[bookingStyles.bookingFieldLabel, { color: tokens.text }]}>{language === 'vi' ? 'Địa điểm' : 'Location'}</Text>
+            <View style={[bookingStyles.bookingField, isWideBookingForm ? bookingStyles.bookingFieldWide : null]}>
+              <Text style={[bookingStyles.bookingFieldLabel, isWideBookingForm ? bookingStyles.bookingWideFieldLabel : null, { color: tokens.text }]}>{language === 'vi' ? 'Địa điểm' : 'Location'}</Text>
               <View
                 style={[
                   bookingStyles.bookingInputRow,
+                  isWideBookingForm ? bookingStyles.bookingWideInputRow : null,
                   addressUsesMultiline ? bookingStyles.bookingInputRowMultiline : null,
-                  { backgroundColor: tokens.mode === 'dark' ? tokens.base : '#FFFFFF', borderColor: tokens.border },
+                  { backgroundColor: isWideBookingForm ? 'transparent' : tokens.mode === 'dark' ? tokens.base : tokens.raised, borderColor: tokens.border },
                 ]}
                 testID="customer-v21-booking-address-row"
               >
-                <Image contentFit="contain" source={customerV21Assets.map} style={bookingStyles.bookingInlineIcon} />
+                <View style={[bookingStyles.bookingInlineIconShell, isWideBookingForm ? bookingStyles.bookingWideInlineIconShell : null, { backgroundColor: isWideBookingForm ? 'transparent' : tokens.mode === 'dark' ? tokens.ghost : '#E7F6F2' }]}>
+                  <BookingFormGlyph color={tokens.primary} kind="pin" size={isWideBookingForm ? 27 : 18} />
+                </View>
                 <KaelTextField
                   inputShellStyle={bookingStyles.bookingInlineTextFieldShell}
                   accessibilityLabel={language === 'vi' ? 'Khu vực căn hộ' : 'Apartment area'}
@@ -310,6 +667,7 @@ export function CustomerBookingEntryView({
                   shellStyle={bookingStyles.bookingInlineTextFieldStack}
                   style={[
                     bookingStyles.bookingInlineInput,
+                    isWideBookingForm ? bookingStyles.bookingWideInlineInput : null,
                     addressUsesMultiline ? bookingStyles.bookingInlineInputMultiline : null,
                     textInputNoOutlineStyle,
                     hiddenTextInputScrollbarStyle,
@@ -319,6 +677,7 @@ export function CustomerBookingEntryView({
                   textAlignVertical="center"
                   value={address}
                 />
+                <Text accessibilityElementsHidden style={[bookingStyles.bookingInlineChevron, { color: tokens.muted }]}>›</Text>
               </View>
               {addressLookupOpen && (addressLookupPending || addressSuggestions.length > 0 || addressFallbackUsed) ? (
                 <View style={[bookingStyles.bookingAddressSuggestions, { backgroundColor: tokens.mode === 'dark' ? tokens.base : '#FFFFFF', borderColor: tokens.border }]} testID="customer-v21-booking-address-suggestions">
@@ -339,7 +698,7 @@ export function CustomerBookingEntryView({
                         ]}
                         testID={`customer-v21-booking-address-suggestion-${index}`}
                       >
-                        <Text numberOfLines={1} style={[bookingStyles.bookingAddressSuggestionTitle, { color: tokens.text }]}>
+                        <Text numberOfLines={2} style={[bookingStyles.bookingAddressSuggestionTitle, { color: tokens.text }]}>
                           {suggestion.main_text}
                         </Text>
                         {suggestion.secondary_text ? (
@@ -357,184 +716,53 @@ export function CustomerBookingEntryView({
                 </View>
               ) : null}
             </View>
-            <View style={bookingStyles.bookingField}>
-              <Text style={[bookingStyles.bookingFieldLabel, { color: tokens.text }]}>{language === 'vi' ? 'Thời gian mong muốn' : 'Preferred time'}</Text>
-              <View style={[bookingStyles.bookingSchedulePanel, { backgroundColor: tokens.mode === 'dark' ? tokens.base : 'rgba(255,255,255,0.68)', borderColor: tokens.border }]} testID="customer-v21-booking-schedule-panel">
+            <View style={[bookingStyles.bookingField, isWideBookingForm ? bookingStyles.bookingFieldWide : null]}>
+              <Text style={[bookingStyles.bookingFieldLabel, isWideBookingForm ? bookingStyles.bookingWideFieldLabel : null, { color: tokens.text }]}>{language === 'vi' ? 'Thời gian mong muốn' : 'Preferred time'}</Text>
+              <View style={[bookingStyles.bookingSchedulePanel, isWideBookingForm ? bookingStyles.bookingWideSchedulePanel : null, { backgroundColor: isWideBookingForm ? 'transparent' : tokens.mode === 'dark' ? tokens.base : 'rgba(255,255,255,0.68)', borderColor: tokens.border }]} testID="customer-v21-booking-schedule-panel">
                 <BookingFormulaMintAura
                   includeSkin={tokens.mode !== 'dark'}
+                  quiet={isWideBookingForm}
                   scope="BookingSchedule"
                   testIDPrefix="customer-v21-booking-schedule"
                 />
                 <View style={bookingStyles.bookingScheduleContent}>
-                <View style={bookingStyles.bookingScheduleHeader}>
-                  <Image contentFit="contain" source={customerV21Assets.booking} style={bookingStyles.bookingInlineIcon} />
-                  <Text numberOfLines={1} style={[bookingStyles.bookingReadonlyText, { color: scheduleLabel ? tokens.text : tokens.muted }]} testID="customer-v21-booking-schedule-summary">
+                <View style={[bookingStyles.bookingScheduleHeader, isWideBookingForm ? bookingStyles.bookingWideScheduleHeader : null]}>
+                  <View style={[bookingStyles.bookingInlineIconShell, isWideBookingForm ? bookingStyles.bookingWideInlineIconShell : null, { backgroundColor: isWideBookingForm ? 'transparent' : tokens.mode === 'dark' ? tokens.ghost : '#E7F6F2' }]}>
+                    <BookingFormGlyph color={tokens.primary} kind="calendar" size={isWideBookingForm ? 27 : 18} />
+                  </View>
+                  <Text numberOfLines={2} style={[bookingStyles.bookingReadonlyText, isWideBookingForm ? bookingStyles.bookingWideReadonlyText : null, { color: scheduleLabel ? tokens.text : tokens.muted }]} testID="customer-v21-booking-schedule-summary">
                     {scheduleLabel ?? (language === 'vi' ? 'Chưa chọn' : 'Not selected')}
                   </Text>
                 </View>
-                <View style={bookingStyles.bookingDateGrid}>
-                  <CaseWideMintAura
-                    intensity="strong"
-                    scope="BookingDateGrid"
-                    testID="customer-v21-booking-date-grid-mint-aura"
-                  />
-                  {scheduleDateOptions.map((option, index) => {
-                    const selected = selectedScheduleDate === option.value
-                    return (
-                      <Pressable
-                        accessibilityRole="button"
-                        accessibilityState={{ selected }}
-                        key={option.value}
-                        onPress={() => onScheduleDateSelect(option.value)}
-                        style={[
-                          bookingStyles.bookingDateOption,
-                          {
-                            backgroundColor: selected
-                              ? tokens.service
-                              : tokens.mode === 'dark'
-                                ? tokens.ghost
-                                : 'rgba(255,255,255,0.72)',
-                            borderColor: selected ? tokens.primary : tokens.border,
-                          },
-                        ]}
-                        testID={`customer-v21-booking-date-${index}`}
-                      >
-                        <Text numberOfLines={1} style={[bookingStyles.bookingDateDay, { color: selected ? tokens.primary : tokens.muted }]}>{option.dayLabel}</Text>
-                        <Text numberOfLines={1} style={[bookingStyles.bookingDateValue, { color: selected ? tokens.primary : tokens.text }]}>{option.dateLabel}</Text>
-                      </Pressable>
-                    )
-                  })}
+                <View style={isWideBookingForm ? bookingStyles.bookingWideScheduleRow : null}>
+                  <View style={isWideBookingForm ? bookingStyles.bookingWideScheduleMain : null}>
+                    {dateGridNode}
+                  </View>
+                  {isWideBookingForm ? <View style={bookingStyles.bookingWideCustomScheduleColumn}>{customDateFieldNode}</View> : null}
                 </View>
-                <View style={bookingStyles.bookingCustomScheduleField}>
-                  <Text style={[bookingStyles.bookingCustomScheduleLabel, { color: tokens.text }]}>
-                    {language === 'vi' ? 'Ngày khác' : 'Another date'}
-                  </Text>
-                  <KaelTextField
-                    inputShellAdornment={(
-                      <BookingFormulaMintAura
-                        scope="BookingCustomDate"
-                        testIDPrefix="customer-v21-booking-custom-date"
-                      />
-                    )}
-                    inputShellStyle={[
-                      bookingStyles.bookingCustomScheduleInputShell,
-                      {
-                        backgroundColor: tokens.mode === 'dark' ? tokens.ghost : 'rgba(255,255,255,0.72)',
-                        borderColor: customScheduleDateInput && selectedScheduleDate ? tokens.primary : tokens.border,
-                      },
-                    ]}
-                    accessibilityLabel={language === 'vi' ? 'Nhập ngày muốn đặt' : 'Enter desired date'}
-                    accessibilityHint={customScheduleDateError ?? (language === 'vi' ? 'Định dạng ngày tháng năm' : 'Day month year format')}
-                    keyboardType="number-pad"
-                    maxLength={10}
-                    onChangeText={onCustomScheduleDateChange}
-                    placeholder="DD/MM/YYYY"
-                    placeholderTextColor={tokens.subtleText}
-                    style={[bookingStyles.bookingCustomScheduleInput, textInputNoOutlineStyle, { color: tokens.text }]}
-                    testID="customer-v21-booking-custom-date"
-                    value={customScheduleDateInput}
-                  />
-                  <Text
-                    style={[bookingStyles.bookingCustomScheduleHint, { color: customScheduleDateError ? tokens.primary : tokens.muted }]}
-                    testID={customScheduleDateError ? 'customer-v21-booking-custom-date-error' : undefined}
-                  >
-                    {customScheduleDateError ?? (language === 'vi' ? 'Nhập ngày mong muốn nếu lịch nằm sau 7 ngày.' : 'Enter a desired date when it is more than 7 days away.')}
-                  </Text>
+                {!isWideBookingForm ? customDateFieldNode : null}
+                <View
+                  style={isWideBookingForm ? [bookingStyles.bookingWideScheduleRow, bookingStyles.bookingWideScheduleRowSpaced] : null}
+                  testID="customer-v21-booking-time-section"
+                >
+                  <View style={isWideBookingForm ? bookingStyles.bookingWideScheduleMain : null}>
+                    {timeStartNode}
+                    {timeGridNode}
+                  </View>
+                  {isWideBookingForm ? <View style={bookingStyles.bookingWideCustomScheduleColumn}>{customTimeFieldNode}</View> : null}
                 </View>
-                <View style={bookingStyles.bookingTimeStartSection}>
-                  <Text style={[bookingStyles.bookingCustomScheduleHint, { color: tokens.muted, fontWeight: '700' }]}>
-                    {language === 'vi'
-                      ? 'Chọn giờ bạn muốn dịch vụ bắt đầu.'
-                      : 'Choose when you want the service to start.'}
-                  </Text>
-                </View>
-                <View style={bookingStyles.bookingTimeGrid}>
-                  {timeSlots.map((slot, index) => {
-                    const selected = selectedScheduleTime === slot
-                    const unavailable = !availableTimeSlotSet.has(slot)
-                    return (
-                      <KaelChip
-                        accessibilityState={{ selected }}
-                        backgroundLayer={timeSlotAuraLayers[index]}
-                        disabled={unavailable}
-                        key={slot}
-                        label={slot}
-                        onPress={() => onScheduleTimeSelect(slot)}
-                        style={{
-                          backgroundColor: selected
-                            ? tokens.service
-                            : tokens.mode === 'dark'
-                              ? tokens.ghost
-                              : 'rgba(255,255,255,0.72)',
-                          borderColor: selected ? tokens.primary : tokens.border,
-                        }}
-                        testID={`customer-v21-booking-time-${index}`}
-                        variant={selected ? 'selected' : 'unselected'}
-                      />
-                    )
-                  })}
-                </View>
-                <View style={bookingStyles.bookingCustomScheduleField}>
-                  <Text style={[bookingStyles.bookingCustomScheduleLabel, { color: tokens.text }]}>
-                    {language === 'vi' ? 'Giờ khác' : 'Another start time'}
-                  </Text>
-                  <KaelTextField
-                    inputShellAdornment={(
-                      <BookingFormulaMintAura
-                        scope="BookingCustomTime"
-                        testIDPrefix="customer-v21-booking-custom-time"
-                      />
-                    )}
-                    inputShellStyle={[
-                      bookingStyles.bookingCustomScheduleInputShell,
-                      {
-                        backgroundColor: tokens.mode === 'dark' ? tokens.ghost : 'rgba(255,255,255,0.72)',
-                        borderColor: customScheduleTimeInput && selectedScheduleTime ? tokens.primary : tokens.border,
-                      },
-                    ]}
-                    accessibilityLabel={language === 'vi' ? 'Nhập giờ bắt đầu mong muốn' : 'Enter desired start time'}
-                    accessibilityHint={customScheduleTimeError ?? (language === 'vi' ? 'Định dạng giờ và phút' : 'Hour and minute format')}
-                    keyboardType="number-pad"
-                    maxLength={5}
-                    onChangeText={onCustomScheduleTimeChange}
-                    placeholder="HH:mm"
-                    placeholderTextColor={tokens.subtleText}
-                    style={[bookingStyles.bookingCustomScheduleInput, textInputNoOutlineStyle, { color: tokens.text }]}
-                    testID="customer-v21-booking-custom-time"
-                    value={customScheduleTimeInput}
-                  />
-                  {customScheduleTimeError ? (
-                    <Text
-                      style={[bookingStyles.bookingCustomScheduleHint, { color: tokens.primary }]}
-                      testID="customer-v21-booking-custom-time-error"
-                    >
-                      {customScheduleTimeError}
-                    </Text>
-                  ) : null}
-                </View>
+                {!isWideBookingForm ? (
+                  <>
+                    {timeStartNode}
+                    {timeGridNode}
+                    {customTimeFieldNode}
+                  </>
+                ) : null}
                 </View>
               </View>
             </View>
-            <View style={bookingStyles.bookingField}>
-                <Text style={[bookingStyles.bookingFieldLabel, { color: tokens.text }]}>{language === 'vi' ? 'Mô tả sự cố' : 'Issue description'}</Text>
-                <KaelTextField
-                  inputShellAdornment={(
-                    <BookingFormulaMintAura
-                      scope="BookingDescription"
-                      testIDPrefix="customer-v21-booking-description"
-                    />
-                  )}
-                  inputShellStyle={[bookingStyles.bookingDescriptionInputShell, { backgroundColor: tokens.mode === 'dark' ? tokens.base : 'rgba(255,255,255,0.70)', borderColor: tokens.border }]}
-                  accessibilityLabel={language === 'vi' ? 'Mô tả vấn đề' : 'Issue description'}
-                  multiline
-                  onChangeText={onDescriptionChange}
-                  placeholder={chatPlaceholder}
-                  placeholderTextColor={tokens.subtleText}
-                  style={[bookingStyles.bookingDescriptionInput, textInputNoOutlineStyle, invisibleTextInputScrollbarStyle, { color: tokens.text }]}
-                  testID="customer-v21-booking-description"
-                  textAlignVertical="top"
-                  value={description}
-                />
+            <View style={[bookingStyles.bookingField, isWideBookingForm ? bookingStyles.bookingFieldWide : null]}>
+              {descriptionNode}
             </View>
             {selectedService ? (
               <View style={[bookingStyles.bookingField, bookingStyles.bookingProblemField]}>
@@ -554,18 +782,19 @@ export function CustomerBookingEntryView({
                 </View>
               </View>
             ) : null}
+          {isWideBookingForm ? (
+            <>
+              {error ? <Text style={[rootStyles.errorText, { color: tokens.primary }]} testID="customer-v21-booking-error">{error}</Text> : null}
+              {draftSubmitNode}
+            </>
+          ) : null}
           </V21Card>
-
-          {error ? <Text style={[rootStyles.errorText, { color: tokens.primary }]} testID="customer-v21-booking-error">{error}</Text> : null}
-          <KaelButton
-            backgroundLayer={<BookingDraftButtonAura reduceTransparency={reduceTransparency} />}
-            disabled={submitDisabled}
-            label={createDraftLabel}
-            onPress={onSubmit}
-            style={bookingStyles.bookingDraftSubmitButton}
-            testID="customer-v21-booking-submit"
-            variant="secondary"
-          />
+          {!isWideBookingForm ? (
+            <>
+              {error ? <Text style={[rootStyles.errorText, { color: tokens.primary }]} testID="customer-v21-booking-error">{error}</Text> : null}
+              {draftSubmitNode}
+            </>
+          ) : null}
         </>
       ) : null}
     </>

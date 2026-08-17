@@ -1,3 +1,4 @@
+import { scaledTypography, typography } from '@/design/theme'
 import { Image } from 'expo-image'
 import { Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native'
 
@@ -10,9 +11,9 @@ import { HomeIcon } from './home-icons'
 type HomeCurrentJobCardProps = {
   caseCode: string
   deal: LocalDeal
-  durationLabel?: string
   language: 'en' | 'vi'
   onOpen: () => void
+  problemLabel: string
   scheduleLabel: string
   serviceLabel: string
   statusLabel: string
@@ -20,71 +21,59 @@ type HomeCurrentJobCardProps = {
   tokens: CustomerThemeTokens
 }
 
-export function HomeCurrentJobCard({ caseCode, deal, durationLabel, language, onOpen, scheduleLabel, serviceLabel, statusLabel, step, tokens }: HomeCurrentJobCardProps) {
+export function HomeCurrentJobCard({ caseCode, deal, language, onOpen, problemLabel, scheduleLabel, serviceLabel, statusLabel, step, tokens }: HomeCurrentJobCardProps) {
   const { width } = useWindowDimensions()
+  const compact = width < 640
   const scale = Math.min(Math.max(width - 32, 280) / 829, 1)
   const q = (size: number) => size * scale
-  const image = deal.draft.serviceType === 'cleaning'
-    ? customerV21HomeV4Assets.taskCleaning
-    : deal.draft.serviceType
-      ? customerV21HomeV4Assets.services[serviceAssetKey(deal.draft.serviceType)]
-      : customerV21HomeV4Assets.hero
-  const resolvedDurationLabel = durationLabel ?? (language === 'vi' ? 'Thời gian dự kiến: đang cập nhật' : 'Estimated duration: updating')
+  const image = deal.draft.serviceType ? customerV21HomeV4Assets.services[serviceAssetKey(deal.draft.serviceType)] : customerV21HomeV4Assets.hero
+  const detailValues = [problemLabel, deal.draft.addressLabel || deal.draft.districtLabel, deal.estimate?.priceRangeLabel]
+    .filter((value): value is string => Boolean(value))
 
   return (
     <Pressable
       accessibilityLabel={`${serviceLabel}. ${statusLabel}`}
       accessibilityRole="button"
       onPress={onOpen}
-      style={[styles.card, {
-        backgroundColor: tokens.raised,
-        borderColor: tokens.border,
-        borderRadius: q(28),
-        height: q(132),
-        marginTop: q(8),
-        width: q(829),
-      }]}
+      style={[styles.card, { backgroundColor: tokens.raised, borderColor: tokens.border, borderRadius: q(28), padding: q(12) }]}
       testID="customer-v21-active-case"
     >
-      <Image
-        accessible={false}
-        contentFit="contain"
-        source={image}
-        style={[styles.asset, { height: q(82), left: q(27), top: q(15), width: q(82) }]}
-        testID="customer-v21-active-case-asset"
-      />
-
-      <View style={[styles.copy, { left: q(132), top: q(24), width: q(190) }]}>
-        <Text adjustsFontSizeToFit minimumFontScale={0.72} numberOfLines={1} style={[styles.service, { color: tokens.text, fontSize: q(23), lineHeight: q(28) }]}>{serviceLabel}</Text>
-        <Text numberOfLines={1} style={[styles.caseCode, { color: tokens.muted, fontSize: q(18), lineHeight: q(22), marginTop: q(3) }]}>{caseCode}</Text>
+      <View style={[styles.primaryRow, { gap: q(14) }]}>
+        <View style={[styles.asset, { borderColor: tokens.border, borderRadius: q(20), height: q(82), width: q(82) }]} testID="customer-v21-active-case-asset">
+          <Image accessible={false} contentFit="contain" source={image} style={{ height: q(76), width: q(76) }} />
+        </View>
+        <View style={styles.copy}>
+          <Text adjustsFontSizeToFit minimumFontScale={0.72} numberOfLines={2} style={[styles.service, scaledTypography('title2', scale), { color: tokens.text }]}>{serviceLabel}</Text>
+          <Text numberOfLines={1} style={[styles.caseCode, scaledTypography('footnote', scale), { color: tokens.muted, marginTop: q(3) }]}>{caseCode}</Text>
+        </View>
+        <View style={[styles.status, { backgroundColor: tokens.service, borderRadius: q(22), minHeight: q(43), paddingHorizontal: q(18) }]}>
+          <Text adjustsFontSizeToFit minimumFontScale={0.72} numberOfLines={1} style={[styles.statusText, scaledTypography('headline', scale), { color: tokens.primary }]}>{statusLabel}</Text>
+        </View>
       </View>
 
-      <View testID="customer-v21-active-case-status" style={[styles.status, { backgroundColor: tokens.statusSurface, borderRadius: q(22), height: q(43), left: q(343), minWidth: q(132), paddingHorizontal: q(18), top: q(27) }]}>
-        <Text adjustsFontSizeToFit minimumFontScale={0.72} numberOfLines={1} style={[styles.statusText, { color: tokens.statusText, fontSize: q(17) }]}>{statusLabel}</Text>
-      </View>
-
-      <View style={[styles.progress, { height: q(51), left: q(527), top: q(22), width: q(258) }]} accessibilityLabel={language === 'vi' ? `Bước ${step} trên 4` : `Step ${step} of 4`} testID="customer-v21-active-case-progress">
-        <View style={[styles.progressTrack, { backgroundColor: tokens.progressTrack, left: q(20), right: q(20), top: q(21) }]} testID="customer-v21-active-case-progress-track" />
-        <View style={[styles.progressFill, { backgroundColor: tokens.progressActive, left: q(20), top: q(21), width: q(progressWidth(step)) }]} testID="customer-v21-active-case-progress-fill" />
+      <View style={[styles.progress, { marginLeft: compact ? 0 : q(343), marginTop: compact ? q(12) : q(-52), width: compact ? '100%' : q(258) }]} accessibilityLabel={language === 'vi' ? `Bước ${step} trên 4` : `Step ${step} of 4`} testID="customer-v21-active-case-progress">
+        <View style={[styles.progressTrack, { backgroundColor: tokens.border, left: q(20), right: q(20), top: q(21) }]} />
+        <View style={[styles.progressFill, { backgroundColor: tokens.primary, left: q(20), top: q(21), width: q(progressWidth(step)) }]} />
         {[1, 2, 3, 4].map((number) => {
           const active = number <= step
           return (
-            <View key={number} style={[styles.progressNode, { backgroundColor: active ? tokens.progressActive : tokens.raised, borderColor: tokens.progressBorder, borderRadius: q(21), borderWidth: active ? 0 : q(2), height: q(41), width: q(41) }]} testID={`customer-v21-active-case-step-${number}`}>
-              <Text style={[styles.progressNodeText, { color: active ? tokens.primaryText : tokens.progressInactiveText, fontSize: q(17) }]}>{number}</Text>
+            <View key={number} style={[styles.progressNode, { backgroundColor: active ? tokens.primary : tokens.raised, borderColor: active ? tokens.primary : tokens.border, borderRadius: q(21), height: q(41), width: q(41) }]} testID={`customer-v21-active-case-step-${number}`}>
+              <Text style={[styles.progressNodeText, scaledTypography('headline', scale), { color: active ? tokens.primaryText : tokens.muted }]}>{number}</Text>
             </View>
           )
         })}
       </View>
 
-      <View style={[styles.meta, { backgroundColor: tokens.ghost, borderColor: tokens.border, borderRadius: q(17), bottom: q(11), height: q(34), left: q(132), right: q(30) }]} testID="customer-v21-active-case-meta">
-        <View style={[styles.metaItem, { gap: q(10), paddingHorizontal: q(18) }]}>
+      <View style={[styles.meta, { backgroundColor: tokens.ghost, borderColor: tokens.border, borderRadius: q(17), minHeight: q(34), marginLeft: compact ? 0 : q(132), marginTop: q(10), paddingHorizontal: q(18) }]} testID="customer-v21-active-case-meta">
+        <View style={[styles.metaItem, { gap: q(10) }]}>
           <HomeIcon color={tokens.muted} name="calendar" size={q(17)} />
-          <Text adjustsFontSizeToFit minimumFontScale={0.72} numberOfLines={1} style={[styles.metaText, { color: tokens.muted, fontSize: q(15) }]}>{scheduleLabel}</Text>
+          <Text numberOfLines={1} style={[styles.metaText, scaledTypography('footnote', scale), { color: tokens.muted }]}>{scheduleLabel}</Text>
         </View>
         <View style={[styles.metaDivider, { backgroundColor: tokens.border, height: q(18), marginLeft: q(12) }]} />
-        <View style={[styles.metaItem, styles.detailValues, { gap: q(10), marginLeft: q(18), paddingHorizontal: q(18) }]}>
-          <HomeIcon color={tokens.muted} name="clock" size={q(17)} />
-          <Text adjustsFontSizeToFit minimumFontScale={0.72} numberOfLines={1} style={[styles.metaText, { color: tokens.muted, fontSize: q(15) }]}>{resolvedDurationLabel}</Text>
+        <View style={[styles.detailValues, { gap: q(12), marginLeft: q(18) }]}>
+          {(detailValues.length > 0 ? detailValues : [language === 'vi' ? 'Kael đang cập nhật thông tin' : 'Kael is updating the details']).map((value) => (
+            <Text adjustsFontSizeToFit key={value} minimumFontScale={0.62} numberOfLines={1} style={[styles.metaText, scaledTypography('footnote', scale), { color: tokens.muted }]}>{value}</Text>
+          ))}
         </View>
       </View>
     </Pressable>
@@ -109,21 +98,32 @@ function serviceAssetKey(service: NonNullable<LocalDeal['draft']['serviceType']>
 
 const styles = StyleSheet.create({
   asset: {
-    position: 'absolute',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    flexShrink: 0,
+    justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  caseCode: {
+    ...typography.footnote,
+    fontWeight: '600',
   },
   card: {
     alignSelf: 'center',
     borderWidth: 1,
+    maxWidth: 829,
     overflow: 'hidden',
-    position: 'relative',
-  },
-  caseCode: {
-    fontWeight: '600',
+    width: '100%',
   },
   copy: {
-    position: 'absolute',
+    flex: 1,
+    minWidth: 0,
   },
   detailValues: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    flexWrap: 'wrap',
     flex: 1,
     minWidth: 0,
   },
@@ -131,7 +131,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     flexDirection: 'row',
     overflow: 'hidden',
-    position: 'absolute',
   },
   metaDivider: {
     width: 1,
@@ -139,19 +138,23 @@ const styles = StyleSheet.create({
   metaItem: {
     alignItems: 'center',
     flexDirection: 'row',
-    flexShrink: 1,
     minWidth: 0,
-    paddingHorizontal: 18,
   },
   metaText: {
-    flexShrink: 1,
+    ...typography.footnote,
     fontWeight: '600',
+  },
+  primaryRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    minWidth: 0,
   },
   progress: {
     alignItems: 'center',
     flexDirection: 'row',
+    height: 51,
     justifyContent: 'space-between',
-    position: 'absolute',
+    position: 'relative',
   },
   progressFill: {
     height: 3,
@@ -164,21 +167,23 @@ const styles = StyleSheet.create({
     zIndex: 1,
   },
   progressNodeText: {
-    fontWeight: '800',
+    ...typography.headline,
   },
   progressTrack: {
     height: 3,
     position: 'absolute',
   },
   service: {
-    fontWeight: '800',
+    ...typography.title2,
+    fontWeight: '600',
   },
   status: {
     alignItems: 'center',
+    flexShrink: 1,
     justifyContent: 'center',
-    position: 'absolute',
+    maxWidth: 150,
   },
   statusText: {
-    fontWeight: '800',
+    ...typography.headline,
   },
 })

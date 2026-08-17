@@ -3,14 +3,13 @@ import { Image } from 'expo-image'
 import { StatusBar } from 'expo-status-bar'
 import { Appearance, Pressable, ScrollView, Text, useWindowDimensions, View, type ImageSourcePropType, type StyleProp, type TextStyle, type ViewStyle } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import Svg, { Defs, Path, Rect } from 'react-native-svg'
+import Svg, { Path } from 'react-native-svg'
 
 import type { CustomerServiceId } from '@nestscout/shared'
 import { GlassSurface } from '@/components/ui/glass-surface'
 import { useGlassAccessibility } from '@/components/ui/accessibility-motion'
 import { useDockScrollHandler } from '@/components/ui/dock-scroll-state'
 import { KaelCoreV9 } from '@/components/ui/kael-core-v9'
-import { LiquidBackButton } from '@/components/ui/liquid-back-button'
 import { useAppLanguage } from '@/lib/app-language'
 
 import {
@@ -24,7 +23,6 @@ import { customerV21BookingServiceAssets, customerV21HomeV4Assets, isKaelCoreV9V
 import { customerV21BookingServiceCopy } from './copy'
 import { customerV21SharedStyles as styles } from './shared-styles'
 import { type CustomerV21ScreenId } from './types'
-import { AlphaStop as Stop, NativeSafeLinearGradient as LinearGradient } from '@/components/ui/svg-alpha-stop'
 
 export function useCustomerV21SurfaceTheme() {
   const mode = useCustomerThemeMode()
@@ -54,6 +52,15 @@ type CustomerV21AssetTile = ComponentType<{
   style?: StyleProp<ViewStyle>
   testID?: string
 }>
+
+const homeV4ServiceImageRules: Record<CustomerServiceId, { height: number; translateX: number; translateY: number; width: number }> = {
+  electrical: { height: 158, translateX: -13, translateY: -4, width: 190 },
+  handyman_minor_installation: { height: 192, translateX: -3, translateY: -17, width: 226 },
+  home_cleaning: { height: 168, translateX: -10, translateY: -4, width: 207 },
+  hvac_basic_maintenance: { height: 141, translateX: -11, translateY: -12, width: 229 },
+  plumbing: { height: 162, translateX: -12, translateY: -2, width: 200 },
+  upholstery_care: { height: 174, translateX: 0, translateY: -12, width: 225 },
+}
 
 export function AssetTile({
   bare = false,
@@ -145,6 +152,7 @@ export function ServiceTile({
   fullWidth = false,
   homeAura = false,
   homeV4 = false,
+  homeImage,
   onPress,
   selected,
   service,
@@ -153,6 +161,7 @@ export function ServiceTile({
   fullWidth?: boolean
   homeAura?: boolean
   homeV4?: boolean
+  homeImage?: ImageSourcePropType
   onPress?: () => void
   selected?: boolean
   service: CustomerServiceId
@@ -163,7 +172,9 @@ export function ServiceTile({
   const { width: viewportWidth } = useWindowDimensions()
   const copy = customerV21BookingServiceCopy[language][service]
   const serviceTestID = testID ?? `customer-v21-service-${service}`
-  const homeV4VisualBackground = selected ? tokens.service : tokens.mode === 'dark' ? tokens.ghost : tokens.raised
+  const homeV4Scale = Math.min(Math.max(viewportWidth - 32, 280) / 857, 1)
+  const homeV4ImageRule = homeV4ServiceImageRules[service]
+
   return (
     <Pressable
       accessibilityLabel={`${copy.label}. ${copy.note}`}
@@ -205,111 +216,106 @@ export function ServiceTile({
             <View style={styles.homeV4ServiceContent}>
               <View
                 accessibilityLabel={copy.label}
-                style={[styles.homeV4ServiceVisual, { backgroundColor: homeV4VisualBackground }]}
+                style={[
+                  styles.homeV4ServiceVisual,
+                  { backgroundColor: selected ? tokens.service : tokens.mode === 'dark' ? tokens.ghost : tokens.raised },
+                ]}
                 testID={`${serviceTestID}-visual-panel`}
               >
-                <Image
-                  accessible={false}
-                  contentFit="cover"
-                  source={customerV21HomeV4Assets.serviceTiles[service]}
-                  style={styles.homeV4ServiceImage}
-                  testID={`${serviceTestID}-image`}
-                />
-                {!reduceTransparency ? (
-                  <Svg height="100%" pointerEvents="none" preserveAspectRatio="none" style={styles.homeV4ServiceFade} viewBox="0 0 100 100" width="100%">
-                    <Defs>
-                      <LinearGradient id={`customer-home-v4-service-fade-${service}`} x1="0" x2="0" y1="0" y2="1">
-                        <Stop offset="0.52" stopColor={homeV4VisualBackground} stopOpacity={0} />
-                        <Stop offset="1" stopColor={homeV4VisualBackground} stopOpacity={1} />
-                      </LinearGradient>
-                    </Defs>
-                    <Rect fill={`url(#customer-home-v4-service-fade-${service})`} height="100" width="100" />
-                  </Svg>
-                ) : null}
-              </View>
-              <View style={styles.homeV4ServiceLabel} testID={`${serviceTestID}-label`}>
-                <Text
-                  adjustsFontSizeToFit
-                  minimumFontScale={0.82}
-                  numberOfLines={2}
-                  style={[styles.homeV4ServiceTitle, { color: tokens.text }]}
-                  testID={`${serviceTestID}-title`}
-                >
-                  {copy.label}
-                </Text>
+                {homeV4ImageRule ? (
+                  <Image
+                    accessible={false}
+                    contentFit="contain"
+                    source={homeImage ?? customerV21HomeV4Assets.services[service]}
+                    style={{
+                      height: homeV4ImageRule.height * homeV4Scale,
+                      transform: [
+                        { translateX: homeV4ImageRule.translateX * homeV4Scale },
+                        { translateY: homeV4ImageRule.translateY * homeV4Scale },
+                      ],
+                      width: homeV4ImageRule.width * homeV4Scale,
+                    }}
+                  />
+                ) : (
+                  <CustomerV21AssetVisual
+                    image={homeImage ?? customerV21BookingServiceAssets[service]}
+                    reduceMotion={reduceMotion}
+                    size={72}
+                  />
+                )}
               </View>
             </View>
           ) : (
             <>
-          <View
-            style={[
-              styles.homeServiceVisualPanel,
-              {
-                backgroundColor: selected
-                  ? tokens.service
-                  : tokens.mode === 'dark' ? tokens.ghost : 'rgba(232,250,247,0.90)',
-                borderRightColor: tokens.mode === 'dark' ? tokens.border : 'rgba(198,222,218,0.92)',
-              },
-            ]}
-            testID={`${serviceTestID}-visual-panel`}
-          >
-            <View accessibilityLabel={copy.label} style={styles.homeServiceIcon} testID={`${serviceTestID}-icon`}>
-              <SourceIconAura />
-              <CustomerV21AssetVisual
-                image={customerV21BookingServiceAssets[service]}
-                reduceMotion={reduceMotion}
-                size={50}
-              />
-            </View>
-            <View
-              pointerEvents="none"
-              style={[
-                styles.homeServiceConnector,
-                { backgroundColor: tokens.mode === 'dark' ? 'rgba(80,200,184,0.42)' : 'rgba(47,183,164,0.58)' },
-              ]}
-              testID={`${serviceTestID}-connector`}
-            />
-            <View
-              pointerEvents="none"
-              style={[
-                styles.homeServiceConnectorDot,
-                { backgroundColor: tokens.primary, borderColor: tokens.mode === 'dark' ? tokens.raised : 'rgba(255,255,255,0.98)' },
-              ]}
-              testID={`${serviceTestID}-connector-dot`}
-            />
-          </View>
-          <View style={styles.homeServiceCopy} testID={`${serviceTestID}-copy`}>
-            <View style={styles.homeServiceHeading} testID={`${serviceTestID}-heading`}>
-              <Text
-                adjustsFontSizeToFit
-                minimumFontScale={0.82}
-                numberOfLines={2}
-                style={[styles.serviceTitle, styles.homeServiceTitle, { color: tokens.text }]}
-                testID={`${serviceTestID}-title`}
+              <View
+                style={[
+                  styles.homeServiceVisualPanel,
+                  {
+                    backgroundColor: selected
+                      ? tokens.service
+                      : tokens.mode === 'dark' ? tokens.ghost : 'rgba(232,250,247,0.90)',
+                    borderRightColor: tokens.mode === 'dark' ? tokens.border : 'rgba(198,222,218,0.92)',
+                  },
+                ]}
+                testID={`${serviceTestID}-visual-panel`}
               >
-                {copy.label}
-              </Text>
-            </View>
-            <View style={styles.homeServiceDetailRail} testID={`${serviceTestID}-detail-rail`}>
-              {copy.details.map((detail, index) => (
-                <View key={detail} style={styles.homeServiceDetailRow} testID={`${serviceTestID}-detail-${index}`}>
-                  <Svg height={14} viewBox="0 0 14 14" width={14}>
-                    <Path
-                      d={index === 0
-                        ? 'M3.2 1.8h4.6l3 3v7.4H3.2V1.8Zm4.6 0v3h3M5 7h4M5 9.3h3.2'
-                        : 'm3.1 7.1 2.4 2.4 5.2-5.1'}
-                      fill="none"
-                      stroke={tokens.primary}
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={index === 0 ? 1.2 : 1.7}
-                    />
-                  </Svg>
-                  <Text numberOfLines={1} style={[styles.homeServiceDetailLabel, { color: tokens.muted }]}>{detail}</Text>
+                <View accessibilityLabel={copy.label} style={styles.homeServiceIcon} testID={`${serviceTestID}-icon`}>
+                  <SourceIconAura />
+                  <CustomerV21AssetVisual
+                    image={customerV21BookingServiceAssets[service]}
+                    reduceMotion={reduceMotion}
+                    size={50}
+                  />
                 </View>
-              ))}
-            </View>
-          </View>
+                <View
+                  pointerEvents="none"
+                  style={[
+                    styles.homeServiceConnector,
+                    { backgroundColor: tokens.mode === 'dark' ? 'rgba(80,200,184,0.42)' : 'rgba(47,183,164,0.58)' },
+                  ]}
+                  testID={`${serviceTestID}-connector`}
+                />
+                <View
+                  pointerEvents="none"
+                  style={[
+                    styles.homeServiceConnectorDot,
+                    { backgroundColor: tokens.primary, borderColor: tokens.mode === 'dark' ? tokens.raised : 'rgba(255,255,255,0.98)' },
+                  ]}
+                  testID={`${serviceTestID}-connector-dot`}
+                />
+              </View>
+              <View style={styles.homeServiceCopy} testID={`${serviceTestID}-copy`}>
+                <View style={styles.homeServiceHeading} testID={`${serviceTestID}-heading`}>
+                  <Text
+                    adjustsFontSizeToFit
+                    minimumFontScale={0.82}
+                    numberOfLines={2}
+                    style={[styles.serviceTitle, styles.homeServiceTitle, { color: tokens.text }]}
+                    testID={`${serviceTestID}-title`}
+                  >
+                    {copy.label}
+                  </Text>
+                </View>
+                <View style={styles.homeServiceDetailRail} testID={`${serviceTestID}-detail-rail`}>
+                  {copy.details.map((detail, index) => (
+                    <View key={detail} style={styles.homeServiceDetailRow} testID={`${serviceTestID}-detail-${index}`}>
+                      <Svg height={14} viewBox="0 0 14 14" width={14}>
+                        <Path
+                          d={index === 0
+                            ? 'M3.2 1.8h4.6l3 3v7.4H3.2V1.8Zm4.6 0v3h3M5 7h4M5 9.3h3.2'
+                            : 'm3.1 7.1 2.4 2.4 5.2-5.1'}
+                          fill="none"
+                          stroke={tokens.primary}
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={index === 0 ? 1.2 : 1.7}
+                        />
+                      </Svg>
+                      <Text numberOfLines={1} style={[styles.homeServiceDetailLabel, { color: tokens.muted }]}>{detail}</Text>
+                    </View>
+                  ))}
+                </View>
+              </View>
             </>
           )}
         </>
@@ -361,6 +367,14 @@ export function V21Screen({
         </View>
       </ScrollView>
     </SafeAreaView>
+  )
+}
+
+function TopBackChevron({ color }: { color: string }) {
+  return (
+    <Svg height={18} style={styles.topControlIcon} viewBox="0 0 24 24" width={18}>
+      <Path d="M15 5L8 12L15 19" fill="none" stroke={color} strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.8} />
+    </Svg>
   )
 }
 
@@ -418,6 +432,7 @@ export function V21TopBar({
   onBack,
   showAvatar = true,
   subtitle,
+  subtitleStyle,
   testID,
   title,
   titleNumberOfLines = 1,
@@ -436,6 +451,7 @@ export function V21TopBar({
   onBack?: () => void
   showAvatar?: boolean
   subtitle: string
+  subtitleStyle?: StyleProp<TextStyle>
   testID?: string
   title: string
   titleNumberOfLines?: number
@@ -443,20 +459,15 @@ export function V21TopBar({
   titleStyle?: StyleProp<TextStyle>
 }) {
   const { tokens } = useCustomerV21SurfaceTheme()
-  const language = useAppLanguage()
   const shouldShowAvatar = showAvatar && !onBack
   return (
     <View style={[styles.topBar, containerStyle]} testID={testID}>
       {leading ? (
         leading
       ) : onBack ? (
-        <LiquidBackButton
-          iconColor={tokens.primary}
-          label={language === 'vi' ? 'Quay lại' : 'Back'}
-          mode={tokens.mode}
-          onPress={onBack}
-          testID={testID ? `${testID}-back` : 'customer-v21-top-back'}
-        />
+        <Pressable accessibilityLabel="Back" accessibilityRole="button" onPress={onBack} style={[styles.topControl, { backgroundColor: tokens.raised, borderColor: tokens.border }]}>
+          <TopBackChevron color={tokens.primary} />
+        </Pressable>
       ) : shouldShowAvatar ? (
         <View style={styles.topAvatarWrap} testID="customer-v21-top-avatar">
           {avatarImage ? (
@@ -477,7 +488,7 @@ export function V21TopBar({
         >
           {title}
         </Text>
-        {subtitle ? <Text numberOfLines={2} style={[styles.topSubtitle, { color: tokens.muted }]} testID="customer-v21-top-subtitle">{subtitle}</Text> : null}
+        {subtitle ? <Text numberOfLines={2} style={[styles.topSubtitle, { color: tokens.muted }, subtitleStyle]} testID="customer-v21-top-subtitle">{subtitle}</Text> : null}
       </View>
       {action || actionLabel ? (
         <Pressable accessibilityLabel={actionAccessibilityLabel ?? actionLabel} accessibilityRole={onAction ? 'button' : undefined} disabled={!onAction} onPress={onAction} style={[styles.topControl, { backgroundColor: tokens.raised, borderColor: tokens.border }]} testID={actionTestID}>

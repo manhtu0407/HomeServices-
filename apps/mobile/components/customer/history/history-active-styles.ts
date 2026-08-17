@@ -1,5 +1,7 @@
 import { StyleSheet } from 'react-native'
 
+import { typography } from '@/design/theme'
+
 export const customerV21HistoryActiveStyles = StyleSheet.create({
   activityActiveDot: {
     borderRadius: 5,
@@ -7,9 +9,8 @@ export const customerV21HistoryActiveStyles = StyleSheet.create({
     width: 10,
   },
   activityScreenBody: {
-    fontSize: 12,
+    ...typography.caption1,
     fontWeight: '600',
-    lineHeight: 16,
     marginTop: 3,
   },
   activityScreenCard: {
@@ -46,10 +47,9 @@ export const customerV21HistoryActiveStyles = StyleSheet.create({
     marginTop: 12,
   },
   activityStatusValue: {
-    fontSize: 23,
+    ...typography.title2,
     fontWeight: '600',
-    letterSpacing: 0,
-    lineHeight: 29,
+    fontVariant: ['tabular-nums'],
     marginTop: 2,
   },
   caseArtifactGrid: {
@@ -91,14 +91,11 @@ export const customerV21HistoryActiveStyles = StyleSheet.create({
     minWidth: 60,
   },
   caseChatSummaryText: {
-    fontSize: 12,
-    fontWeight: '700',
-    lineHeight: 16,
+    ...typography.caption1,
+    fontWeight: '600',
   },
   caseChatSummaryTitle: {
-    fontSize: 17,
-    fontWeight: '600',
-    lineHeight: 21,
+    ...typography.headline,
   },
   caseDivider: {
     height: 1,
@@ -126,9 +123,8 @@ export const customerV21HistoryActiveStyles = StyleSheet.create({
     shadowRadius: 34,
   },
   caseKaelSourceBody: {
-    fontSize: 12,
-    fontWeight: '700',
-    lineHeight: 17,
+    ...typography.caption1,
+    fontWeight: '600',
   },
   caseKaelSourceCard: {
     backgroundColor: 'rgba(255,255,255,0.91)',
@@ -156,9 +152,8 @@ export const customerV21HistoryActiveStyles = StyleSheet.create({
     minWidth: 60,
   },
   caseKaelSourceTitle: {
-    fontSize: 16,
+    ...typography.callout,
     fontWeight: '600',
-    lineHeight: 21,
   },
   caseLoadingCard: {
     alignItems: 'center',
@@ -178,9 +173,8 @@ export const customerV21HistoryActiveStyles = StyleSheet.create({
     marginBottom: 7,
   },
   caseOptionBody: {
-    fontSize: 13,
+    ...typography.footnote,
     fontWeight: '600',
-    lineHeight: 18,
     marginTop: 3,
   },
   caseOptionChoiceStack: {
@@ -215,9 +209,8 @@ export const customerV21HistoryActiveStyles = StyleSheet.create({
     minWidth: 0,
   },
   caseOptionMetricLabel: {
-    fontSize: 10.5,
+    ...typography.caption2,
     fontWeight: '600',
-    lineHeight: 14,
   },
   caseOptionMetricRow: {
     alignItems: 'center',
@@ -225,30 +218,25 @@ export const customerV21HistoryActiveStyles = StyleSheet.create({
     gap: 12,
   },
   caseOptionMetricValue: {
-    fontSize: 14,
+    ...typography.footnote,
     fontWeight: '600',
-    lineHeight: 18,
     marginTop: 2,
   },
   caseOptionMoney: {
-    fontSize: 15,
+    ...typography.subheadline,
     fontWeight: '600',
-    lineHeight: 19,
     marginTop: 2,
   },
   caseOptionTitle: {
-    fontSize: 21,
+    ...typography.title3,
     fontWeight: '600',
-    letterSpacing: 0,
-    lineHeight: 26,
   },
   caseOverviewCard: {
     gap: 14,
   },
   caseOverviewDetailText: {
-    fontSize: 15,
+    ...typography.subheadline,
     fontWeight: '600',
-    lineHeight: 21,
     marginTop: 3,
   },
   caseOverviewHeroCard: {
@@ -304,9 +292,8 @@ export const customerV21HistoryActiveStyles = StyleSheet.create({
     zIndex: 1,
   },
   caseOverviewNextCopy: {
-    fontSize: 11,
+    ...typography.caption1,
     fontWeight: '600',
-    lineHeight: 15,
     marginTop: 2,
   },
   caseOverviewNextIcon: {
@@ -318,10 +305,8 @@ export const customerV21HistoryActiveStyles = StyleSheet.create({
     marginTop: 9,
   },
   caseOverviewTitle: {
-    fontSize: 28,
+    ...typography.title1,
     fontWeight: '600',
-    letterSpacing: 0,
-    lineHeight: 34,
     marginTop: 8,
   },
   casePriceLines: {
@@ -377,16 +362,13 @@ export const customerV21HistoryActiveStyles = StyleSheet.create({
     marginTop: 14,
   },
   caseQuoteWorkerMeta: {
-    fontSize: 12,
-    fontWeight: '700',
-    lineHeight: 16,
+    ...typography.caption1,
+    fontWeight: '600',
     marginTop: 2,
   },
   caseQuoteWorkerName: {
-    fontSize: 20,
+    ...typography.title3,
     fontWeight: '600',
-    letterSpacing: 0,
-    lineHeight: 25,
   },
   caseQuoteWorkerRow: {
     alignItems: 'center',
@@ -474,14 +456,11 @@ export const customerV21HistoryActiveStyles = StyleSheet.create({
     fontWeight: '600',
   },
   caseUnderstandingText: {
-    fontSize: 19,
-    fontWeight: '600',
-    lineHeight: 25,
+    ...typography.headline,
   },
   caseWorkDataSourceText: {
-    fontSize: 11,
-    fontWeight: '700',
-    lineHeight: 15,
+    ...typography.caption1,
+    fontWeight: '600',
     position: 'relative',
     textAlign: 'center',
     zIndex: 1,
@@ -508,17 +487,15 @@ export const customerV21HistoryActiveStyles = StyleSheet.create({
     position: 'relative',
   },
   caseWorkSourceChipText: {
-    fontSize: 13,
+    ...typography.footnote,
     fontWeight: '600',
-    lineHeight: 17,
     position: 'relative',
     textAlign: 'center',
     zIndex: 1,
   },
   fulfillmentCaption: {
-    fontSize: 13,
-    fontWeight: '700',
-    lineHeight: 17,
+    ...typography.footnote,
+    fontWeight: '600',
     marginTop: 9,
     textAlign: 'center',
   },
@@ -586,9 +563,8 @@ export const customerV21HistoryActiveStyles = StyleSheet.create({
     minWidth: 78,
   },
   fulfillmentScopeLabel: {
-    fontSize: 12,
+    ...typography.caption1,
     fontWeight: '600',
-    lineHeight: 16,
   },
   fulfillmentScopeRow: {
     alignItems: 'center',
@@ -600,9 +576,8 @@ export const customerV21HistoryActiveStyles = StyleSheet.create({
   },
   fulfillmentScopeValue: {
     flex: 1,
-    fontSize: 16,
+    ...typography.callout,
     fontWeight: '600',
-    lineHeight: 21,
     textAlign: 'right',
   },
   fulfillmentStepList: {

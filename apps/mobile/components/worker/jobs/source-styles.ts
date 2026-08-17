@@ -4,7 +4,7 @@ import { color, radius, shadow, typography } from '@/design/theme'
 
 export const styles = StyleSheet.create({
   workerCustomerFontText: {
-    fontFamily: typography.fontFamily,
+    ...typography.body,
   },
   opaqueCard: {
     backgroundColor: color.mint.white,
@@ -48,9 +48,8 @@ export const styles = StyleSheet.create({
   },
   approvalDecisionMeta: {
     color: color.text.muted,
-    fontSize: 10,
-    fontWeight: '700',
-    lineHeight: 14,
+    ...typography.caption2,
+    fontWeight: '600',
   },
   approvalDecisionRow: {
     alignItems: 'center',
@@ -69,9 +68,8 @@ export const styles = StyleSheet.create({
     borderWidth: 1,
     color: color.brand.primaryDark,
     flexShrink: 1,
-    fontSize: 10,
-    fontWeight: '700',
-    lineHeight: 12,
+    ...typography.caption2,
+    fontWeight: '600',
     maxWidth: 92,
     minWidth: 54,
     overflow: 'hidden',
@@ -81,16 +79,14 @@ export const styles = StyleSheet.create({
   },
   approvalDecisionTitle: {
     color: color.text.strong,
-    fontSize: 12,
-    fontWeight: '700',
-    lineHeight: 16,
+    ...typography.caption1,
+    fontWeight: '600',
   },
   scheduleSummaryAmount: {
     color: color.text.strong,
-    fontSize: 24,
-    fontWeight: '700',
-    letterSpacing: 0,
-    lineHeight: 29,
+    ...typography.title2,
+    fontWeight: '600',
+    fontVariant: ['tabular-nums'],
   },
   scheduleSummaryCard: {
     alignItems: 'center',
@@ -136,23 +132,21 @@ export const styles = StyleSheet.create({
   },
   scheduleSummaryLensLabel: {
     color: color.text.muted,
-    fontSize: 8,
-    fontWeight: '700',
-    lineHeight: 10,
+    ...typography.caption2,
+    fontWeight: '600',
     textAlign: 'center',
   },
   scheduleSummaryLensValue: {
     color: color.brand.primaryDark,
-    fontSize: 22,
-    fontWeight: '700',
-    lineHeight: 25,
+    ...typography.title2,
+    fontWeight: '600',
+    fontVariant: ['tabular-nums'],
     textAlign: 'center',
   },
   scheduleSummaryMeta: {
     color: color.text.muted,
-    fontSize: 11,
-    fontWeight: '700',
-    lineHeight: 15,
+    ...typography.caption1,
+    fontWeight: '600',
     marginTop: 2,
   },
   scheduleSummaryZipAura: {
@@ -176,9 +170,8 @@ export const styles = StyleSheet.create({
   },
   searchFeedback: {
     color: color.text.muted,
-    fontSize: 11,
-    fontWeight: '700',
-    lineHeight: 15,
+    ...typography.caption1,
+    fontWeight: '600',
     paddingHorizontal: 12,
   },
   searchFieldStack: {
@@ -187,9 +180,8 @@ export const styles = StyleSheet.create({
   searchInput: {
     color: color.text.strong,
     flex: 1,
-    fontSize: 13,
-    fontWeight: '700',
-    lineHeight: 18,
+    ...typography.footnote,
+    fontWeight: '600',
     minWidth: 0,
   },
   searchStack: {
@@ -205,15 +197,13 @@ export const styles = StyleSheet.create({
   },
   searchSuggestionMeta: {
     color: color.text.muted,
-    fontSize: 11,
-    fontWeight: '700',
-    lineHeight: 14,
+    ...typography.caption1,
+    fontWeight: '600',
   },
   searchSuggestionTitle: {
     color: color.text.strong,
-    fontSize: 13,
-    fontWeight: '700',
-    lineHeight: 17,
+    ...typography.footnote,
+    fontWeight: '600',
   },
   searchSuggestions: {
     backgroundColor: 'rgba(255,255,255,0.96)',
@@ -250,9 +240,8 @@ export const styles = StyleSheet.create({
   },
   shiftMeta: {
     color: color.text.muted,
-    fontSize: 11,
-    fontWeight: '700',
-    lineHeight: 15,
+    ...typography.caption1,
+    fontWeight: '600',
     marginTop: 1,
   },
   shiftSourceAura: {
@@ -283,8 +272,7 @@ export const styles = StyleSheet.create({
     minWidth: 64,
   },
   shiftSourceTitle: {
-    fontSize: 13,
-    lineHeight: 17,
+    ...typography.footnote,
   },
   shiftSummaryCard: {
     alignItems: 'center',
@@ -314,9 +302,8 @@ export const styles = StyleSheet.create({
   },
   shiftTitle: {
     color: color.text.strong,
-    fontSize: 16,
-    fontWeight: '700',
-    lineHeight: 20,
+    ...typography.callout,
+    fontWeight: '600',
     marginTop: 5,
   },
   sourceProgressFill: {
@@ -346,9 +333,8 @@ export const styles = StyleSheet.create({
   },
   sourceProgressText: {
     color: color.brand.primaryDark,
-    fontSize: 10,
-    fontWeight: '700',
-    lineHeight: 12,
+    ...typography.caption2,
+    fontWeight: '600',
     zIndex: 1,
   },
 })
