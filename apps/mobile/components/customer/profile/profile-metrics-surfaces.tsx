@@ -1,4 +1,4 @@
-import type { ComponentType } from 'react'
+import type { ComponentType, ReactNode } from 'react'
 import { Text, View } from 'react-native'
 import Svg, { Circle, Defs, Rect } from 'react-native-svg'
 
@@ -46,6 +46,7 @@ export function ProfileCompactMintAura({
 }
 
 export function ProfileStatCard({
+  icon,
   label,
   reduceTransparency,
   sourceCardSkin: SourceCardSkin,
@@ -54,6 +55,7 @@ export function ProfileStatCard({
   value,
   zipMintAura: ZipMintAura,
 }: {
+  icon?: ReactNode
   label: string
   reduceTransparency: boolean
   sourceCardSkin: CustomerV21SourceSkin
@@ -64,14 +66,17 @@ export function ProfileStatCard({
 }) {
   const compactValue = value.length > 8
   const scope = label.replace(/[^a-zA-Z0-9]/g, '')
+  const hasIcon = Boolean(icon)
   return (
-    <View style={[styles.profileStatCard, { backgroundColor: tokens.mode === 'dark' ? tokens.raised : 'rgba(255,255,255,0.80)', borderColor: tokens.mode === 'dark' ? tokens.border : 'rgba(113,225,209,0.38)' }]} testID={testID}>
+    <View style={[styles.profileStatCard, hasIcon ? styles.profileStatCardWithIcon : null, { backgroundColor: tokens.mode === 'dark' ? tokens.raised : 'rgba(255,255,255,0.80)', borderColor: tokens.mode === 'dark' ? tokens.border : 'rgba(113,225,209,0.38)' }]} testID={testID}>
       <SourceCardSkin />
       <ProfileCompactMintAura reduceTransparency={reduceTransparency} scope={`ProfileStatFine${scope}`} />
       <ZipMintAura scope={`ProfileStat${scope}`} />
-      <View style={styles.profileStatContent}>
-        <Text adjustsFontSizeToFit minimumFontScale={0.72} numberOfLines={1} style={[styles.profileStatValue, compactValue ? styles.profileStatValueCompact : null, { color: tokens.text }]}>{value}</Text>
-        <Text numberOfLines={2} style={[styles.profileStatLabel, { color: tokens.muted }]}>{label}</Text>
+      <View style={[styles.profileStatContent, hasIcon ? styles.profileStatContentWithIcon : null]}>
+        {icon ? <View style={styles.profileStatIcon} testID={testID ? `${testID}-icon` : undefined}>{icon}</View> : null}
+        {hasIcon ? <Text numberOfLines={2} style={[styles.profileStatLabel, styles.profileStatLabelWithIcon, { color: tokens.muted }]}>{label}</Text> : null}
+        <Text adjustsFontSizeToFit minimumFontScale={0.72} numberOfLines={1} style={[styles.profileStatValue, hasIcon ? styles.profileStatValueWithIcon : null, compactValue ? styles.profileStatValueCompact : null, { color: tokens.text }]}>{value}</Text>
+        {!hasIcon ? <Text numberOfLines={2} style={[styles.profileStatLabel, { color: tokens.muted }]}>{label}</Text> : null}
       </View>
     </View>
   )

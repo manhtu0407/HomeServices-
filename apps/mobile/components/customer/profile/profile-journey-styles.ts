@@ -1,24 +1,23 @@
+import { typography } from '@/design/theme'
 import { StyleSheet } from 'react-native'
 
 export const customerV21ProfileJourneyStyles = StyleSheet.create({
   activity: {
     flexShrink: 1,
-    fontSize: 11,
+    ...typography.caption2,
     fontWeight: '600',
-    lineHeight: 15,
   },
   activityValue: {
-    fontWeight: '800',
+    fontWeight: '600',
   },
   day: {
     flexShrink: 0,
-    fontSize: 12,
-    fontWeight: '800',
-    lineHeight: 15,
+    ...typography.caption2,
+    fontWeight: '600',
   },
   root: {
-    gap: 6,
-    marginTop: 12,
+    gap: 4,
+    marginTop: 7,
     width: '100%',
   },
   separator: {
@@ -28,13 +27,12 @@ export const customerV21ProfileJourneyStyles = StyleSheet.create({
     width: 4,
   },
   start: {
-    fontSize: 11,
-    fontWeight: '700',
-    lineHeight: 15,
+    ...typography.caption2,
+    fontWeight: '600',
   },
   summary: {
     alignItems: 'center',
     flexDirection: 'row',
-    gap: 7,
+    gap: 5,
   },
 })

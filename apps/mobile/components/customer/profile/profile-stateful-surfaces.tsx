@@ -7,13 +7,14 @@ import { useGlassAccessibility } from '@/components/ui/accessibility-motion'
 import { AlphaStop as Stop, NativeSafeLinearGradient as LinearGradient } from '@/components/ui/svg-alpha-stop'
 
 import type { CustomerThemeTokens } from '../customer-theme'
+import { ProfileRankingGrowthIcon, ProfileRankingPendingIcon } from './profile-ranking-icons'
 import { ProfileUsageRankingMark } from './profile-ranking-mark'
-import { ProfileProgressBar } from './profile-progress-bar'
+import { ProfileRankingProgress } from './profile-ranking-progress'
 import { customerV21ProfileJourneyStyles as profileJourneyStyles } from './profile-journey-styles'
+import { ProfileSettingsGlyph, type ProfileSettingsGlyphName } from './profile-settings-icons'
 import { customerV21ProfileSettingsGroupStyles as settingsGroupStyles } from './profile-settings-group-styles'
 import { ProfileAuraCard, ProfileFormulaMintSurface } from './profile-utility-surfaces'
 import { customerV21ProfileUtilityStyles as profileUtilityStyles } from './profile-utility-styles'
-import { customerV21SharedStyles as sharedStyles } from '../ui/shared-styles'
 import { useCustomerV21SurfaceTheme, V21TopBar } from '../ui/shared-surfaces'
 
 type RootProfileOverviewStyles = {
@@ -23,6 +24,7 @@ type RootProfileOverviewStyles = {
 
 type ProfileSettingsRowModel = {
   destructive?: boolean
+  glyph?: ProfileSettingsGlyphName
   image: ImageSourcePropType
   onPress: () => void
   status?: string
@@ -95,7 +97,6 @@ export function CustomerProfileOverviewView({
   onPickAvatar,
   onOpenRanking,
   rankingAccessibilityLabel,
-  rankingBody,
   rankingLabel,
   rankingMetaLabel,
   rankingProgressPercent,
@@ -117,7 +118,6 @@ export function CustomerProfileOverviewView({
   onPickAvatar: () => void
   onOpenRanking: () => void
   rankingAccessibilityLabel: string
-  rankingBody: string
   rankingLabel: string
   rankingMetaLabel: string
   rankingProgressPercent: number
@@ -134,9 +134,12 @@ export function CustomerProfileOverviewView({
   return (
     <>
       <V21TopBar
+        containerStyle={profileUtilityStyles.profileOverviewTopBar}
         showAvatar={false}
         subtitle={topBarSubtitle}
+        subtitleStyle={profileUtilityStyles.profileOverviewTopSubtitle}
         title={topBarTitle}
+        titleStyle={profileUtilityStyles.profileOverviewTopTitle}
       />
 
       <ProfileAuraCard cardStyle={profileUtilityStyles.profileOverviewHeroCard} contentStyle={profileUtilityStyles.profileHeroLarge} scope="OverviewHero" testID="customer-v21-profile-hero">
@@ -174,7 +177,7 @@ export function CustomerProfileOverviewView({
                       <Stop offset="1" stopColor="#087D72" />
                     </LinearGradient>
                   </Defs>
-                  <Rect fill="url(#profileAvatarGradient)" height="80" rx="30" width="80" />
+                  <Rect fill="url(#profileAvatarGradient)" height="80" rx="22" width="80" />
                 </Svg>
               </View>
               <Text style={profileUtilityStyles.profileAvatarText} testID="customer-v21-profile-avatar-fallback">{initials}</Text>
@@ -193,7 +196,7 @@ export function CustomerProfileOverviewView({
         </Pressable>
         <View style={rootStyles.flex}>
           <View style={profileUtilityStyles.profileNameRow}>
-            <Text numberOfLines={1} style={[sharedStyles.heroTitle, { color: tokens.text }]} testID="customer-v21-profile-name">{name}</Text>
+            <Text numberOfLines={2} style={[profileUtilityStyles.profileHeroName, { color: tokens.text }]} testID="customer-v21-profile-name">{name}</Text>
           </View>
           <View
             accessibilityLabel={accountJourney.accessibilityLabel}
@@ -226,66 +229,35 @@ export function CustomerProfileOverviewView({
           testID="customer-v21-profile-ranking-cta"
         >
           {({ pressed }) => (
-            <ProfileAuraCard cardStyle={[profileUtilityStyles.profileRankingEntryCard, pressed && !reduceMotion ? rootStyles.pressed : null]} contentStyle={profileUtilityStyles.profileRankingEntryContent} scope="OverviewRankingEntry" testID="customer-v21-profile-ranking-entry">
+            <ProfileAuraCard
+              cardStyle={[profileUtilityStyles.profileRankingEntryCard, pressed && !reduceMotion ? rootStyles.pressed : null]}
+              contentStyle={profileUtilityStyles.profileRankingEntryContent}
+              scope="OverviewRankingEntry"
+              showCardSkin={false}
+              testID="customer-v21-profile-ranking-entry"
+            >
               <View
-                style={[
-                  profileUtilityStyles.profileRankingEntryVisualPanel,
-                  {
-                    backgroundColor: tokens.mode === 'dark' ? 'rgba(12,62,57,0.68)' : 'rgba(239,252,249,0.70)',
-                    borderRightColor: tokens.mode === 'dark' ? tokens.border : 'rgba(176,222,214,0.78)',
-                  },
-                ]}
+                style={profileUtilityStyles.profileRankingEntryVisualPanel}
                 testID="customer-v21-profile-ranking-entry-visual-panel"
               >
                 <ProfileUsageRankingMark testID="customer-v21-profile-ranking-entry-icon" />
-                <View
-                  pointerEvents="none"
-                  style={[
-                    profileUtilityStyles.profileRankingEntryConnector,
-                    { backgroundColor: tokens.mode === 'dark' ? 'rgba(80,200,184,0.42)' : 'rgba(47,183,164,0.58)' },
-                  ]}
-                  testID="customer-v21-profile-ranking-entry-connector"
-                />
-                <View
-                  pointerEvents="none"
-                  style={[
-                    profileUtilityStyles.profileRankingEntryConnectorDot,
-                    {
-                      backgroundColor: tokens.primary,
-                      borderColor: tokens.mode === 'dark' ? tokens.raised : 'rgba(255,255,255,0.98)',
-                    },
-                  ]}
-                  testID="customer-v21-profile-ranking-entry-connector-dot"
-                />
               </View>
+              <View pointerEvents="none" style={profileUtilityStyles.profileRankingEntryWorkartSpacer} />
               <View style={profileUtilityStyles.profileRankingEntryCopy}>
-                <View style={profileUtilityStyles.profileRankingEntryTitleRow}>
-                  <View style={profileUtilityStyles.profileRankingEntryTitleCopy}>
-                    <Text numberOfLines={1} style={[sharedStyles.cardTitle, { color: tokens.text }]}>
-                      {rankingLabel}
-                    </Text>
-                    <Text numberOfLines={2} style={[profileUtilityStyles.profileRankingEntrySubtitle, { color: tokens.muted }]}>
-                      {rankingBody}
-                    </Text>
-                  </View>
-                </View>
+                <Text numberOfLines={1} style={[profileUtilityStyles.profileRankingEntryTitle, { color: tokens.text }]}>
+                  {rankingLabel}
+                </Text>
                 <View style={profileUtilityStyles.profileRankingEntrySignalRail} testID="customer-v21-profile-ranking-entry-signals">
                   <View style={profileUtilityStyles.profileRankingEntrySignal} testID="customer-v21-profile-ranking-entry-points-signal">
-                    <Svg height={14} viewBox="0 0 14 14" width={14}>
-                      <Path d="M2.1 7a4.9 4.9 0 0 1 8.3-3.5M11.9 7a4.9 4.9 0 0 1-8.3 3.5M10.4 1.8v2.7H7.7m-4.1 7.7V9.5h2.7" fill="none" stroke={tokens.primary} strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.35} />
-                    </Svg>
+                    <ProfileRankingPendingIcon color={tokens.primary} testID="customer-v21-profile-ranking-entry-points-icon" />
                     <Text numberOfLines={1} style={[profileUtilityStyles.profileRankingEntrySignalText, { color: tokens.muted }]}>{rankingMetaLabel}</Text>
                   </View>
                   <View style={profileUtilityStyles.profileRankingEntrySignal} testID="customer-v21-profile-ranking-entry-source-signal">
-                    <Svg height={14} viewBox="0 0 14 14" width={14}>
-                      <Path d="M7 1.5c.45 2.55 1.95 4.05 4.5 4.5C8.95 6.45 7.45 7.95 7 10.5 6.55 7.95 5.05 6.45 2.5 6 5.05 5.55 6.55 4.05 7 1.5Zm4 8.1c.2 1.05.85 1.7 1.9 1.9-1.05.2-1.7.85-1.9 1.9-.2-1.05-.85-1.7-1.9-1.9 1.05-.2 1.7-.85 1.9-1.9Z" fill={tokens.primary} />
-                    </Svg>
+                    <ProfileRankingGrowthIcon color={tokens.primary} testID="customer-v21-profile-ranking-entry-source-icon" />
                     <Text numberOfLines={1} style={[profileUtilityStyles.profileRankingEntrySignalText, { color: tokens.muted }]}>{rankingProgressSourceLabel}</Text>
                   </View>
                 </View>
-                <View style={profileUtilityStyles.profileRankingEntryProgress}>
-                  <ProfileProgressBar percent={rankingProgressPercent} testID="customer-v21-profile-ranking-entry-progress" />
-                </View>
+                <ProfileRankingProgress percent={rankingProgressPercent} testID="customer-v21-profile-ranking-entry-progress" />
               </View>
             </ProfileAuraCard>
           )}
@@ -346,49 +318,45 @@ function ProfileSettingsCompactRow({
   tokens: CustomerThemeTokens
 }) {
   const { reduceMotion } = useGlassAccessibility()
-  const foreground = row.destructive ? tokens.danger : tokens.text
+  const foreground = tokens.text
 
   return (
     <Pressable
-      accessibilityHint={row.subtitle}
+      accessibilityHint={[row.subtitle, row.status].filter(Boolean).join('. ') || undefined}
       accessibilityLabel={row.title}
       accessibilityRole="button"
+      hitSlop={8}
       onPress={row.onPress}
       style={({ pressed }) => [
         settingsGroupStyles.row,
         pressed && !reduceMotion ? rootStyles.pressed : null,
       ]}
-      testID={row.testID}
-    >
+      testID={row.testID}>
       <View style={settingsGroupStyles.rowIconFrame}>
-        <Image
-          accessibilityIgnoresInvertColors
-          contentFit="contain"
-          source={row.image}
-          style={settingsGroupStyles.rowIcon}
-          testID={`${row.testID}-icon`}
-        />
+        {row.glyph ? (
+          <ProfileSettingsGlyph color={tokens.primary} name={row.glyph} testID={`${row.testID}-icon`} />
+        ) : (
+          <Image
+            accessibilityIgnoresInvertColors
+            contentFit="contain"
+            source={row.image}
+            style={settingsGroupStyles.rowIcon}
+            testID={`${row.testID}-icon`}
+          />
+        )}
       </View>
       <View style={settingsGroupStyles.rowCopy}>
-        <Text numberOfLines={2} style={[settingsGroupStyles.rowTitle, { color: foreground }]}>{row.title}</Text>
-        {row.subtitle ? (
-          <Text numberOfLines={2} style={[settingsGroupStyles.rowSubtitle, { color: tokens.muted }]}>{row.subtitle}</Text>
-        ) : null}
+        <Text numberOfLines={1} style={[settingsGroupStyles.rowTitle, { color: foreground }]}>{row.title}</Text>
       </View>
       <View style={settingsGroupStyles.rowMeta}>
-        {row.status ? (
-          <Text numberOfLines={2} style={[settingsGroupStyles.rowStatus, { color: row.destructive ? tokens.danger : tokens.muted }]}>
-            {row.status}
-          </Text>
-        ) : null}
-        <Svg height={18} viewBox="0 0 18 18" width={18}>
+              <Svg height={16} viewBox="0 0 18 18" width={16}>
           <Path
             d="m7 4.5 4.5 4.5L7 13.5"
             fill="none"
-            stroke={row.destructive ? tokens.danger : tokens.primary}
+            stroke={tokens.primary}
             strokeLinecap="round"
             strokeLinejoin="round"
-            strokeWidth={1.7}
+                    strokeWidth={1.8}
           />
         </Svg>
       </View>

@@ -1,5 +1,18 @@
 import { StyleSheet } from 'react-native'
 
+export const CUSTOMER_V21_SURFACE_SIDE_INSET = 16
+export const CUSTOMER_V21_SURFACE_MAX_WIDTH = 560
+
+export function customerV21SurfaceContentWidth(viewportWidth: number) {
+  return Math.max(
+    0,
+    Math.min(
+      viewportWidth - CUSTOMER_V21_SURFACE_SIDE_INSET * 2,
+      CUSTOMER_V21_SURFACE_MAX_WIDTH,
+    ),
+  )
+}
+
 export const customerV21SharedStyles = StyleSheet.create({
   card: {
     borderRadius: 26,

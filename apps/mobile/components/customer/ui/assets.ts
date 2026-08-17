@@ -45,7 +45,7 @@ export const customerV21Assets = {
   signOut: require('@/assets/client-image-icons/client-sign-out.png') as ImageSourcePropType,
   theme: require('@/assets/client-image-icons/client-theme.png') as ImageSourcePropType,
   tools: require('@/assets/worker-image-icons/utility-tools.png') as ImageSourcePropType,
-  usageRanking: require('@/assets/client-image-icons/client-usage-ranking.png') as ImageSourcePropType,
+  usageRankingWorkart: require('@/assets/client-image-icons/client-usage-ranking-workart.png') as ImageSourcePropType,
   wallet: require('@/assets/worker-image-icons/utility-wallet.png') as ImageSourcePropType,
 } as const
 
