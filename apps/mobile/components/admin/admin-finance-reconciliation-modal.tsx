@@ -6,8 +6,9 @@ import type {
   AdminPaymentReconciliationDecisionInput,
   AdminPaymentReconciliationSummary,
 } from '@/lib/api-types/admin'
+import { reconciliationStatusLabel, type FinanceReconciliationCopy } from './admin-finance-reconciliation-status'
 
-type FinanceReconciliationCopy = {
+type ReconciliationModalCopy = FinanceReconciliationCopy & {
   actualAmount: string
   bankReference: string
   cancel: string
@@ -38,7 +39,7 @@ export function ReconciliationModal({
 }: {
   actualAmount: string
   bankReference: string
-  copy: FinanceReconciliationCopy
+  copy: ReconciliationModalCopy
   formatCurrency: (value: number | null) => string
   onChangeActualAmount: (value: string) => void
   onChangeBankReference: (value: string) => void
@@ -76,13 +77,6 @@ export function ReconciliationModal({
       </View>
     </View>
   </Modal>
-}
-
-export function reconciliationStatusLabel(status: string, copy: FinanceReconciliationCopy) {
-  if (status === 'manual_customer_claimed') return copy.customerClaimedAt
-  if (status === 'manual_reconcile_required' || status === 'direct_reconcile_required') return copy.reconcileRequired
-  if (status === 'direct_awaiting_customer_confirmation' || status === 'direct_awaiting_worker_confirmation') return copy.waitingCustomer
-  return copy.receiptStatus
 }
 
 const styles = StyleSheet.create({

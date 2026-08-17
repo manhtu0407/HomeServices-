@@ -18,7 +18,7 @@ import { KaelCoreV9 } from '@/components/ui/kael-core-v9'
 import { useAppLanguage } from '@/lib/app-language'
 import { entryAccessCopy } from '../copy'
 import { entryTheme } from '../theme'
-import { EntryIcon, type EntryIconName } from './icons'
+import { EntryIcon } from './icons'
 
 type AccessibilityPreferences = {
   reduceMotion: boolean
@@ -193,14 +193,6 @@ export function PrimaryButton({
   )
 }
 
-export function IconButton({ icon = 'back', label, onPress }: { icon?: EntryIconName; label: string; onPress: () => void }) {
-  return (
-    <Pressable accessibilityLabel={label} accessibilityRole="button" onPress={onPress} style={({ pressed }: { pressed: boolean }) => [styles.iconButton, pressed && styles.pressed]}>
-      <EntryIcon color={entryTheme.color.text.strong} name={icon} size={18} />
-    </Pressable>
-  )
-}
-
 export function KaelCoreHero({ compact = false }: { compact?: boolean }) {
   const language = useAppLanguage()
   const { reduceMotion } = useEntryAccessibility()
@@ -250,17 +242,6 @@ const styles = StyleSheet.create({
     zIndex: 2,
   },
   glassOpaque: { backgroundColor: '#FFFFFF', borderColor: entryTheme.color.surface.stroke },
-  iconButton: {
-    alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.70)',
-    borderColor: 'rgba(255,255,255,0.92)',
-    borderRadius: 21,
-    borderWidth: 1,
-    height: 42,
-    justifyContent: 'center',
-    width: 42,
-    ...entryTheme.shadow.soft,
-  },
   kaelCoreHero: { alignItems: 'center', height: 310, justifyContent: 'center', width: '100%' },
   kaelCoreHeroCompact: { height: 278 },
   pressed: { opacity: 0.78 },

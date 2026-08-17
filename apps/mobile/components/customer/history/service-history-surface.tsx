@@ -8,6 +8,7 @@ import {
   useWindowDimensions,
   View,
 } from 'react-native'
+import Svg, { Circle, G, Path } from 'react-native-svg'
 import Animated, {
   cancelAnimation,
   useAnimatedStyle,
@@ -171,18 +172,28 @@ function groupHistoryItems(items: CustomerServiceHistoryItem[], language: AppLan
 
 function HistoryCardAura({
   dark,
+  softenTopRight = false,
   scope,
   testIDPrefix,
 }: {
   dark: boolean
+  softenTopRight?: boolean
   scope: string
   testIDPrefix: string
 }) {
   return (
     <>
       {dark ? null : <SourceCardSkin testID={`${testIDPrefix}-card-skin`} />}
-      <CaseWideMintAura scope={`${scope}Wide`} testID={`${testIDPrefix}-wide-mint-aura`} />
-      <ZipMintAura scope={`${scope}Fine`} testID={`${testIDPrefix}-mint-aura`} />
+      <CaseWideMintAura
+        intensity={softenTopRight ? 'soft' : 'default'}
+        scope={`${scope}Wide`}
+        testID={`${testIDPrefix}-wide-mint-aura`}
+      />
+      <ZipMintAura
+        intensity={softenTopRight ? 'soft' : 'default'}
+        scope={`${scope}Fine`}
+        testID={`${testIDPrefix}-mint-aura`}
+      />
     </>
   )
 }
@@ -319,12 +330,22 @@ export function CustomerServiceHistorySurface({
       <View style={[styles.savedWorkerHint, styles.historyAuraCard, { backgroundColor: tokens.service, borderColor: tokens.border }]}>
         <HistoryCardAura dark={mode === 'dark'} scope="HistorySavedHint" testIDPrefix="customer-v21-history-saved-hint" />
         <View style={styles.savedWorkerHintContent}>
-          <Text style={[styles.savedWorkerHintIcon, { color: tokens.primary }]}>★</Text>
-          <Text style={[styles.savedWorkerHintText, { color: tokens.muted }]}>
-            {language === 'vi'
-              ? 'Thợ đã lưu được Kael ưu tiên khi tìm thợ cho lần tiếp theo.'
-              : 'Kael prioritizes saved workers during your next worker search.'}
-          </Text>
+          <View
+            accessible={false}
+            style={[styles.savedWorkerHintIconTile, { backgroundColor: tokens.raised, borderColor: tokens.border }]}
+          >
+            <Text style={[styles.savedWorkerHintIcon, { color: tokens.primary }]}>★</Text>
+          </View>
+          <View style={styles.savedWorkerHintCopy}>
+            <Text style={[styles.savedWorkerHintTitle, { color: tokens.text }]}>
+              {language === 'vi' ? 'Thợ đã lưu' : 'Saved workers'}
+            </Text>
+            <Text style={[styles.savedWorkerHintText, { color: tokens.muted }]}>
+              {language === 'vi'
+                ? 'Kael sẽ ưu tiên họ trong lần tìm tiếp theo.'
+                : 'Kael will prioritize them in your next worker search.'}
+            </Text>
+          </View>
         </View>
       </View>
 
@@ -337,11 +358,50 @@ export function CustomerServiceHistorySurface({
           </View>
         </V21Card>
       ) : loadFailed ? (
-        <V21Card style={styles.historyAuraCard} testID="customer-v21-history-error">
-          <HistoryCardAura dark={mode === 'dark'} scope="HistoryError" testIDPrefix="customer-v21-history-error" />
-          <View style={styles.historyAuraStack}>
-            <Text style={[styles.historyItemTitle, { color: tokens.text }]}>{language === 'vi' ? 'Chưa tải được lịch sử dịch vụ' : 'Service history is unavailable'}</Text>
-            <KaelButton label={language === 'vi' ? 'Thử lại' : 'Try again'} onPress={() => void load()} size="small" testID="customer-v21-history-retry" variant="secondary" />
+        <V21Card
+          style={[
+            styles.historyAuraCard,
+            styles.historyErrorCard,
+            { backgroundColor: tokens.raised, borderColor: tokens.border },
+          ]}
+          testID="customer-v21-history-error"
+        >
+          <HistoryCardAura
+            dark={mode === 'dark'}
+            scope="HistoryError"
+            softenTopRight
+            testIDPrefix="customer-v21-history-error"
+          />
+          <View style={styles.historyErrorContent}>
+            <Image
+              accessibilityIgnoresInvertColors
+              accessible={false}
+              contentFit="contain"
+              source={customerV21Assets.historyErrorWorkart}
+              style={[styles.historyErrorIllustration, mode === 'dark' ? styles.historyErrorIllustrationDark : null]}
+              testID="customer-v21-history-error-workart"
+            />
+            <View style={styles.historyErrorIconFrame} testID="customer-v21-history-error-icon">
+              <HistoryErrorIcon color={tokens.primary} />
+            </View>
+            <Text style={[styles.historyErrorTitle, { color: tokens.text }]} testID="customer-v21-history-error-title">
+              {language === 'vi' ? 'Chưa tải được lịch sử dịch vụ' : 'Service history is unavailable'}
+            </Text>
+            <Text style={[styles.historyErrorBody, { color: tokens.muted }]} testID="customer-v21-history-error-body">
+              {language === 'vi'
+                ? 'Không thể tải lịch sử dịch vụ lúc này. Vui lòng kiểm tra kết nối và thử lại.'
+                : 'Service history could not load right now. Check your connection and try again.'}
+            </Text>
+            <KaelButton
+              label={language === 'vi' ? 'THỬ LẠI' : 'TRY AGAIN'}
+              leftAdornment={<HistoryRefreshIcon color={tokens.primary} />}
+              onPress={() => void load()}
+              size="small"
+              style={[styles.historyErrorRetry, { borderColor: tokens.primary, backgroundColor: tokens.raised }]}
+              testID="customer-v21-history-retry"
+              textStyle={{ color: tokens.primary, fontWeight: '400' }}
+              variant="secondary"
+            />
           </View>
         </V21Card>
       ) : (
@@ -391,6 +451,34 @@ export function CustomerServiceHistorySurface({
       )}
       </View>
     </V21Screen>
+  )
+}
+
+function HistoryErrorIcon({ color }: { color: string }) {
+  return (
+    <Svg height={42} viewBox="0 0 48 48" width={42}>
+      <Path
+        d="M14.2 35.8h19.6a7.7 7.7 0 0 0 1.5-15.25A11.45 11.45 0 0 0 13.6 18.2 8.9 8.9 0 0 0 14.2 35.8Z"
+        fill="none"
+        stroke={color}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={2.25}
+      />
+      <Path d="M24 17.4v6.5" stroke={color} strokeLinecap="round" strokeWidth={2.25} />
+      <Circle cx={24} cy={28.2} fill={color} r={1.35} />
+    </Svg>
+  )
+}
+
+function HistoryRefreshIcon({ color }: { color: string }) {
+  return (
+    <Svg height={22} viewBox="0 0 24 24" width={22}>
+      <G transform="translate(-1 -2.8)">
+        <Path d="M20 11a8 8 0 1 0 1 4.1" fill="none" stroke={color} strokeLinecap="round" strokeWidth={2} />
+        <Path d="M20.4 6.8v4.8h-4.8" fill="none" stroke={color} strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} />
+      </G>
+    </Svg>
   )
 }
 

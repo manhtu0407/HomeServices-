@@ -1,4 +1,4 @@
-import { act, render, waitFor } from '@testing-library/react-native'
+import { act, render, screen, waitFor } from '@testing-library/react-native'
 import { useEffect } from 'react'
 import { AppState, Text } from 'react-native'
 import type { LocalWorkflowAction } from '@nestscout/shared'
@@ -140,6 +140,14 @@ function CustomerAvatarProbe() {
 function CustomerProfileInsightsProbe() {
   const { customerProfileInsights } = useFrontendWorkflow()
   return <Text testID="customer-profile-insights-points">{customerProfileInsights?.usage_rank_points ?? 'none'}</Text>
+}
+
+function deferred<T>() {
+  let resolve!: (value: T) => void
+  const promise = new Promise<T>((nextResolve) => {
+    resolve = nextResolve
+  })
+  return { promise, resolve }
 }
 
 function buildCustomerJobDetail(
@@ -322,6 +330,51 @@ describe('FrontendWorkflowProvider worker bootstrap', () => {
 
     expect(mockGetProfile).toHaveBeenCalled()
     expect(mockUpdateAvailability).not.toHaveBeenCalled()
+  })
+
+  it('coalesces overlapping Customer active-job refresh requests', async () => {
+    jest.useFakeTimers()
+    const originalAppState = AppState.currentState
+    Object.defineProperty(AppState, 'currentState', { configurable: true, value: 'background' })
+    mockAuth = {
+      role: 'customer',
+      session: { user: { id: 'customer-1' } },
+    }
+    const job = buildCustomerJobDetail('job-refresh', 'worker_matched')
+    mockGetJob.mockResolvedValue({ data: job, status: 200, success: true })
+
+    const view = render(
+      <FrontendWorkflowProvider>
+        <WorkflowStatusProbe />
+      </FrontendWorkflowProvider>,
+    )
+
+    try {
+      await waitFor(() => expect(latestWorkflowActions).not.toBeNull())
+      await act(async () => {
+        await latestWorkflowActions!.hydrateRemoteJobById('job-refresh')
+      })
+      await waitFor(() => {
+        expect(screen.getByTestId('workflow-status').props.children).not.toBe('none')
+      })
+      expect(mockGetJob).toHaveBeenCalledTimes(1)
+      mockGetJob.mockClear()
+      const refreshedJob = deferred<any>()
+      mockGetJob.mockReturnValue(refreshedJob.promise)
+      const firstRefresh = latestWorkflowActions!.refreshCurrentJob()
+      const secondRefresh = latestWorkflowActions!.refreshCurrentJob()
+
+      expect(mockGetJob).toHaveBeenCalledTimes(1)
+      refreshedJob.resolve({ data: job, status: 200, success: true })
+      await act(async () => {
+        await firstRefresh
+        await secondRefresh
+      })
+    } finally {
+      view.unmount()
+      Object.defineProperty(AppState, 'currentState', { configurable: true, value: originalAppState })
+      jest.useRealTimers()
+    }
   })
 
   it('does not hydrate remote workflow data for a local visual-audit session', async () => {

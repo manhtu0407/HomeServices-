@@ -360,10 +360,6 @@ export const styles = StyleSheet.create({
   workerChatTextFieldStack: {
     flex: 1,
   },
-  jobRoomSendDisabled: {
-    backgroundColor: 'rgba(133,154,148,0.44)',
-    boxShadow: 'none',
-  },
   privateKaelMediaImage: {
     backgroundColor: color.mint.mint100,
     borderRadius: 10,
@@ -514,9 +510,6 @@ export const styles = StyleSheet.create({
     padding: 0,
     width: 42,
     ...shadow.soft,
-  },
-  iconButtonIcon: {
-    flexShrink: 0,
   },
   iconImage: {
     height: 30,
@@ -1675,14 +1668,8 @@ export const styles = StyleSheet.create({
   },
   kaelOrbComposerCameraButton: {
     alignItems: 'center',
-    backgroundColor: color.mint.mint50,
-    borderColor: glass.stroke,
-    borderRadius: 18,
-    borderWidth: 1,
-    height: 38,
     justifyContent: 'center',
     position: 'relative',
-    width: 38,
     zIndex: 1,
   },
   kaelOrbComposerCameraBadge: {
@@ -1702,10 +1689,6 @@ export const styles = StyleSheet.create({
     fontSize: 9,
     fontWeight: '700',
     lineHeight: 11,
-  },
-  kaelOrbComposerCameraIcon: {
-    height: 20,
-    width: 20,
   },
   kaelOrbComposerDisclaimer: {
     color: color.text.muted,
@@ -1753,8 +1736,8 @@ export const styles = StyleSheet.create({
   },
   kaelOrbCustomerModeMenu: {
     alignSelf: 'flex-end',
-    backgroundColor: 'rgba(255,253,248,0.78)',
-    borderColor: 'rgba(255,255,255,0.88)',
+    backgroundColor: 'rgba(255,255,255,0.18)',
+    borderColor: 'rgba(255,255,255,0.72)',
     borderRadius: 18,
     borderWidth: 1,
     gap: 3,
@@ -1765,7 +1748,7 @@ export const styles = StyleSheet.create({
     paddingTop: 4,
     position: 'absolute',
     maxWidth: 208,
-    boxShadow: '0 8px 16px rgba(8,125,114,0.05)',
+    boxShadow: '0 10px 22px rgba(8,125,114,0.10)',
     right: 16,
     top: 68,
     width: '59%',
@@ -1773,8 +1756,8 @@ export const styles = StyleSheet.create({
   },
   kaelOrbCustomerModeMenuOption: {
     alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.42)',
-    borderColor: 'rgba(13,167,151,0.12)',
+    backgroundColor: 'rgba(255,255,255,0.16)',
+    borderColor: 'rgba(255,255,255,0.48)',
     borderRadius: 13,
     borderWidth: 1,
     flexDirection: 'row',
@@ -1787,9 +1770,9 @@ export const styles = StyleSheet.create({
     zIndex: 2,
   },
   kaelOrbCustomerModeMenuOptionActive: {
-    backgroundColor: color.surface.raised,
-    borderColor: 'rgba(255,255,255,0.92)',
-    boxShadow: '0 7px 16px rgba(4,99,88,0.08)',
+    backgroundColor: 'rgba(255,255,255,0.42)',
+    borderColor: 'rgba(255,255,255,0.78)',
+    boxShadow: '0 6px 14px rgba(4,99,88,0.07)',
   },
   kaelOrbCustomerModeMenuCheck: {
     color: color.brand.primary,
@@ -1849,30 +1832,27 @@ export const styles = StyleSheet.create({
     gap: 9,
     minHeight: 58,
   },
-  kaelOrbCustomerTopControl: {
-    alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.92)',
-    borderColor: 'rgba(216,235,232,0.9)',
-    borderRadius: 24,
-    borderWidth: 1,
-    height: 48,
-    justifyContent: 'center',
-    width: 48,
-    ...shadow.soft,
-  },
   kaelOrbCustomerTopSpacer: {
     flex: 1,
     minWidth: 0,
   },
   kaelOrbCustomerHeaderActions: {
     alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.16)',
+    borderColor: 'rgba(255,255,255,0.72)',
+    borderCurve: 'continuous',
     borderRadius: 22,
+    borderWidth: 1,
+    boxShadow: '0 7px 16px rgba(8,125,114,0.08)',
     flexDirection: 'row',
     height: 44,
     overflow: 'hidden',
   },
   kaelOrbCustomerHeaderActionsOpen: {
-    borderColor: 'rgba(255,255,255,0.72)',
+    borderColor: 'rgba(255,255,255,0.86)',
+  },
+  kaelOrbCustomerHeaderActionsLiquid: {
+    borderWidth: 0,
   },
   kaelOrbCustomerSessionTrigger: {
     alignItems: 'center',
@@ -1880,12 +1860,18 @@ export const styles = StyleSheet.create({
     borderRadius: 21,
     height: 44,
     justifyContent: 'center',
+    outlineColor: 'transparent',
+    outlineStyle: 'solid',
+    outlineWidth: 0,
     width: 44,
   },
   kaelOrbCustomerSessionTriggerOpen: {
-    backgroundColor: 'rgba(255,255,255,0.92)',
-    borderColor: 'rgba(255,255,255,0.96)',
-    borderWidth: 1,
+    backgroundColor: 'transparent',
+    borderColor: 'transparent',
+    borderWidth: 0,
+  },
+  kaelOrbCustomerHeaderTriggerPressed: {
+    opacity: 0.78,
   },
   kaelOrbCustomerSessionTriggerPressedReduced: {
     opacity: 0.78,
@@ -1900,9 +1886,9 @@ export const styles = StyleSheet.create({
     width: 114,
   },
   kaelOrbCustomerModeTriggerOpen: {
-    backgroundColor: 'rgba(255,255,255,0.94)',
-    borderColor: 'rgba(255,255,255,0.98)',
-    borderWidth: 1,
+    backgroundColor: 'transparent',
+    borderColor: 'transparent',
+    borderWidth: 0,
   },
   kaelOrbCustomerModeTriggerPressedReduced: {
     opacity: 0.82,
@@ -2117,32 +2103,13 @@ export const styles = StyleSheet.create({
   },
   kaelOrbSendButton: {
     alignItems: 'center',
-    backgroundColor: color.brand.primary,
-    borderColor: 'rgba(255,255,255,0.82)',
     borderRadius: 22,
-    borderWidth: 0,
     flexShrink: 0,
     height: 44,
     justifyContent: 'center',
     position: 'relative',
     width: 44,
     zIndex: 1,
-    boxShadow: '0 14px 16px rgba(8,125,114,0.24)',
-  },
-  kaelOrbSendButtonDisabled: {
-    backgroundColor: 'rgba(133,154,148,0.38)',
-    boxShadow: 'none',
-  },
-  kaelOrbSendIcon: {
-    height: 21,
-    tintColor: color.text.inverse,
-    width: 21,
-  },
-  kaelOrbSendText: {
-    color: color.text.inverse,
-    fontSize: 22,
-    fontWeight: '600',
-    lineHeight: 24,
   },
   kaelOrbStack: {
     gap: 10,

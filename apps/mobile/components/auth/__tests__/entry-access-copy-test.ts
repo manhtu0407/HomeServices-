@@ -20,6 +20,9 @@ describe('entry access copy', () => {
     expect(localizeEntryAuthError('Yêu cầu đang bị giới hạn. Vui lòng thử lại sau.', 'en', 'signupFailed')).toBe(
       'Too many requests. Please try again later.',
     )
+    expect(localizeEntryAuthError('Đăng ký chưa sẵn sàng vì hệ thống vẫn yêu cầu xác minh. Vui lòng thử lại sau.', 'en', 'signupFailed')).toBe(
+      'Sign-up is not ready because verification is still required. Please try again later.',
+    )
   })
 
   it('never exposes an unrecognized provider string', () => {

@@ -1,4 +1,4 @@
-import { createContext, use, useCallback, useEffect, useMemo, useRef, useReducer, useState } from 'react'
+import { use, useCallback, useEffect, useMemo, useRef, useReducer, useState } from 'react'
 import { useRouter } from 'expo-router'
 import { Platform } from 'react-native'
 import type { Session } from '@supabase/supabase-js'
@@ -11,7 +11,7 @@ import {
   type PendingClientRequestId,
 } from './client-request-id'
 import { parseAuthIdentifier, validateAuthIdentifier } from './auth-identifier'
-import { EMAIL_CONFIRMATION_REQUIRED_MESSAGE, getSafeSignupErrorMessage, isEmailConfirmationRequired, isValidEmail, staleAccountMutation } from './auth-provider-guards'
+import { EMAIL_CONFIRMATION_REQUIRED_MESSAGE, getSafeSignupErrorMessage, isEmailConfirmationRequired, isValidEmail, SIGNUP_CONFIRMATION_REQUIRED_MESSAGE, staleAccountMutation } from './auth-provider-guards'
 import { getEmailConfirmationRedirectUrl, getRuntimeAuthCallbackUrl, isPasswordRecoveryCallbackUrl } from './auth-callback'
 import { requestPasswordRecoveryEmail, updateRecoveredPassword } from './password-recovery'
 import { isBoundedLoginPassword, validateNewPassword, validateSignupPassword } from './auth-password'
@@ -28,77 +28,20 @@ import {
 } from './auth-oauth-runtime'
 import { workerService } from './services'
 import { useSessionPushRegistration } from './use-session-push-registration'
+import { getRememberedCredentialsForNativeRelaunch } from './auth-native-relaunch'
+import {
+  AuthContext,
+  INITIAL_AUTH_SNAPSHOT,
+  authSnapshotReducer,
+  type AuthSnapshot,
+  type AuthState,
+  type CustomerIdentifierSignupDraft,
+  type CustomerPasswordUpdateDraft,
+  type CustomerProfileDraft,
+  type WorkerApplicationDraft,
+} from './auth-context'
 
-type ProfileStatus = 'idle' | 'loading' | 'ready' | 'profile_missing' | 'profile_error' | 'config_missing'
 type OAuthProvider = 'apple' | 'google'
-
-type AuthState = {
-  session: Session | null
-  role: UserRole | null
-  guestMode: boolean
-  loading: boolean
-  profileStatus: ProfileStatus
-  authError: string | null
-  passwordRecoveryPending: boolean
-  enterGuestMode: () => void
-  signInWithApple: () => Promise<{ success: boolean; error?: string }>
-  signInWithGoogle: () => Promise<{ success: boolean; error?: string }>
-  signInWithPassword: (email: string, password: string) => Promise<{ success: boolean; error?: string; role?: UserRole }>
-  signUpWithIdentifier: (profile: CustomerIdentifierSignupDraft) => Promise<{ success: boolean; error?: string; requiresEmailConfirmation?: boolean }>
-  requestPasswordRecovery: (email: string) => Promise<{ success: boolean; error?: string }>
-  completePasswordRecovery: (password: string) => Promise<{ success: boolean; error?: string }>
-  submitWorkerApplication: (draft: WorkerApplicationDraft) => Promise<{ success: boolean; error?: string; applicationId?: string }>
-  updateCustomerProfile: (profile: CustomerProfileDraft) => Promise<{ success: boolean; error?: string }>
-  updatePassword: (passwords: CustomerPasswordUpdateDraft) => Promise<{ success: boolean; error?: string }>
-  signOut: () => Promise<void>
-  refreshProfile: () => Promise<UserRole | null>
-}
-
-type AuthSnapshot = Pick<AuthState, 'session' | 'role' | 'loading' | 'profileStatus' | 'authError'>
-
-type CustomerProfileDraft = {
-  birthDate?: string; defaultAddress?: string; displayName?: string
-  email?: string; fullName?: string; gender?: string; nickname?: string
-  phone?: string; salutation?: string
-  savedAddresses?: string[]
-}
-
-type CustomerIdentifierSignupDraft = { displayName: string; identifier: string; password: string }
-type WorkerApplicationDraft = { contact: string; language: 'vi' | 'en' }
-type CustomerPasswordUpdateDraft = { currentPassword: string; newPassword: string }
-const INITIAL_AUTH_SNAPSHOT: AuthSnapshot = {
-  session: null,
-  role: null,
-  loading: true,
-  profileStatus: 'idle',
-  authError: null,
-}
-
-const AuthContext = createContext<AuthState>({
-  session: null,
-  role: null,
-  guestMode: false,
-  loading: true,
-  profileStatus: 'idle',
-  authError: null,
-  passwordRecoveryPending: false,
-  enterGuestMode: () => undefined,
-  signInWithApple: async () => ({ success: false, error: 'Đăng nhập Apple chưa sẵn sàng' }),
-  signInWithGoogle: async () => ({ success: false, error: 'Đăng nhập Google chưa sẵn sàng' }),
-  signInWithPassword: async () => ({ success: false, error: 'Đăng nhập chưa sẵn sàng' }),
-  signUpWithIdentifier: async () => ({ success: false, error: 'Đăng ký chưa sẵn sàng' }),
-  requestPasswordRecovery: async () => ({ success: false, error: 'Khôi phục mật khẩu chưa sẵn sàng' }),
-  completePasswordRecovery: async () => ({ success: false, error: 'Đặt lại mật khẩu chưa sẵn sàng' }),
-  submitWorkerApplication: async () => ({ success: false, error: 'Gửi xét duyệt thợ chưa sẵn sàng' }),
-  updateCustomerProfile: async () => ({ success: false, error: 'Lưu hồ sơ khách chưa sẵn sàng' }),
-  updatePassword: async () => ({ success: false, error: 'Đổi mật khẩu chưa sẵn sàng' }),
-  signOut: async () => undefined,
-  refreshProfile: async () => null,
-})
-
-function authSnapshotReducer(current: AuthSnapshot, patch: Partial<AuthSnapshot>): AuthSnapshot {
-  return { ...current, ...patch }
-}
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const authValue = useAuthController()
@@ -126,6 +69,7 @@ function useAuthController(): AuthState {
   const pendingWorkerApplicationRequestRef = useRef<PendingClientRequestId | null>(null)
   const accountMutationSequenceRef = useRef(0)
   const roleLookupSequenceRef = useRef(0)
+  const roleLookupInFlightRef = useRef<{ userId: string; promise: Promise<UserRole | null> } | null>(null)
   const oauthPromiseRef = useRef<Promise<{ success: boolean; error?: string }> | null>(null)
   const lastOAuthCallbackCodeRef = useRef<string | null>(null)
   const sessionRef = useRef<Session | null>(localVisualAuditSnapshot?.session ?? INITIAL_AUTH_SNAPSHOT.session)
@@ -146,42 +90,80 @@ function useAuthController(): AuthState {
       void clearPendingKaelChatDraft(previousUserId)
     }
     sessionRef.current = nextSession
-    roleLookupSequenceRef.current += 1
+    if (previousUserId !== nextUserId) roleLookupSequenceRef.current += 1
   }, [unregisterPushTokenForSession])
 
-  const fetchRole = useCallback(async (userId: string): Promise<UserRole | null> => {
-    const lookupSequence = ++roleLookupSequenceRef.current
-    const isCurrentLookup = () => (
-      roleLookupSequenceRef.current === lookupSequence &&
-      sessionRef.current?.user.id === userId
-    )
+  const fetchRole = useCallback((userId: string): Promise<UserRole | null> => {
+    const existingLookup = roleLookupInFlightRef.current
+    if (existingLookup?.userId === userId) return existingLookup.promise
 
-    if (localVisualAuditRole) {
-      if (!isCurrentLookup()) return null
-      patchAuth({ role: localVisualAuditRole, profileStatus: 'ready', loading: false })
-      return localVisualAuditRole
-    }
+    const lookup = (async (): Promise<UserRole | null> => {
+      const lookupSequence = ++roleLookupSequenceRef.current
+      const isCurrentLookup = () => (
+        roleLookupSequenceRef.current === lookupSequence &&
+        sessionRef.current?.user.id === userId
+      )
 
-    if (!supabase) {
-      if (!isCurrentLookup()) return null
-      patchAuth({ role: null, profileStatus: 'config_missing', loading: false })
-      return null
-    }
+      if (localVisualAuditRole) {
+        if (!isCurrentLookup()) return null
+        patchAuth({ role: localVisualAuditRole, profileStatus: 'ready', loading: false })
+        return localVisualAuditRole
+      }
 
-    if (!isCurrentLookup()) return null
-    patchAuth({ loading: true, profileStatus: 'loading', authError: null })
-
-    try {
-      // The post-I/O owner check prevents an older account lookup from committing into a newer session.
-      // react-doctor-disable-next-line react-doctor/async-defer-await
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('role')
-        .eq('id', userId)
-        .maybeSingle()
+      if (!supabase) {
+        if (!isCurrentLookup()) return null
+        patchAuth({ role: null, profileStatus: 'config_missing', loading: false })
+        return null
+      }
 
       if (!isCurrentLookup()) return null
-      if (error) {
+      patchAuth({ loading: true, profileStatus: 'loading', authError: null })
+
+      try {
+        // The post-I/O owner check prevents an older account lookup from committing into a newer session.
+        // react-doctor-disable-next-line react-doctor/async-defer-await
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('role')
+          .eq('id', userId)
+          .maybeSingle()
+
+        if (!isCurrentLookup()) return null
+        if (error) {
+          patchAuth({
+            role: null,
+            profileStatus: 'profile_error',
+            authError: 'Không thể tải hồ sơ đăng nhập',
+            loading: false,
+          })
+          return null
+        }
+
+        if (!data?.role) {
+          patchAuth({
+            role: null,
+            profileStatus: 'profile_missing',
+            authError: 'Tài khoản chưa có hồ sơ vai trò',
+            loading: false,
+          })
+          return null
+        }
+
+        if (!USER_ROLES.includes(data.role as UserRole)) {
+          patchAuth({
+            role: null,
+            profileStatus: 'profile_error',
+            authError: 'Vai trò tài khoản không hợp lệ',
+            loading: false,
+          })
+          return null
+        }
+
+        const nextRole = data.role as UserRole
+        patchAuth({ role: nextRole, profileStatus: 'ready', loading: false })
+        return nextRole
+      } catch {
+        if (!isCurrentLookup()) return null
         patchAuth({
           role: null,
           profileStatus: 'profile_error',
@@ -190,40 +172,18 @@ function useAuthController(): AuthState {
         })
         return null
       }
+    })()
 
-      if (!data?.role) {
-        patchAuth({
-          role: null,
-          profileStatus: 'profile_missing',
-          authError: 'Tài khoản chưa có hồ sơ vai trò',
-          loading: false,
-        })
-        return null
-      }
-
-      if (!USER_ROLES.includes(data.role as UserRole)) {
-        patchAuth({
-          role: null,
-          profileStatus: 'profile_error',
-          authError: 'Vai trò tài khoản không hợp lệ',
-          loading: false,
-        })
-        return null
-      }
-
-      const nextRole = data.role as UserRole
-      patchAuth({ role: nextRole, profileStatus: 'ready', loading: false })
-      return nextRole
-    } catch {
-      if (!isCurrentLookup()) return null
-      patchAuth({
-        role: null,
-        profileStatus: 'profile_error',
-        authError: 'Không thể tải hồ sơ đăng nhập',
-        loading: false,
-      })
-      return null
-    }
+    roleLookupInFlightRef.current = { promise: lookup, userId }
+    void lookup.then(
+      () => {
+        if (roleLookupInFlightRef.current?.promise === lookup) roleLookupInFlightRef.current = null
+      },
+      () => {
+        if (roleLookupInFlightRef.current?.promise === lookup) roleLookupInFlightRef.current = null
+      },
+    )
+    return lookup
   }, [localVisualAuditRole])
 
   const createSessionFromAuthUrl = useCallback(async (url: string) => {
@@ -324,8 +284,21 @@ function useAuthController(): AuthState {
     }
 
     supabase.auth.getSession()
-      .then(({ data: { session } }) => {
+      .then(async ({ data: { session } }) => {
         if (!settleBootstrap() || roleLookupSequenceRef.current !== bootstrapSequence) return
+        if (roleLookupSequenceRef.current !== bootstrapSequence) return
+        // react-doctor-disable-next-line react-doctor/async-defer-await
+        const rememberedCredentials = await getRememberedCredentialsForNativeRelaunch(session, passwordRecoveryPendingRef.current)
+        if (roleLookupSequenceRef.current !== bootstrapSequence) return
+        if (session?.user && rememberedCredentials) {
+          setCurrentSession(null)
+          setGuestMode(false)
+          patchAuth({ session: null, role: null, profileStatus: 'idle', authError: null, loading: false })
+          if (supabase) void supabase.auth.signOut({ scope: 'local' }).catch(() => undefined)
+          return
+        }
+
+        if (roleLookupSequenceRef.current !== bootstrapSequence) return
         setCurrentSession(session)
         if (session?.user) {
           setGuestMode(false)
@@ -355,6 +328,8 @@ function useAuthController(): AuthState {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event, session) => {
       settleBootstrap()
+      const previousUserId = sessionRef.current?.user.id
+      const sameUserSession = Boolean(session?.user.id && previousUserId === session.user.id)
       setCurrentSession(session)
       if (session?.user) {
         setGuestMode(false)
@@ -363,6 +338,11 @@ function useAuthController(): AuthState {
           if (event === 'PASSWORD_RECOVERY') passwordRecoverySessionReadyRef.current = true
           setPasswordRecoveryPending(true)
           patchAuth({ session, role: null, profileStatus: 'idle', authError: null, loading: false })
+          return
+        }
+
+        if (sameUserSession && (event === 'INITIAL_SESSION' || event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED')) {
+          patchAuth({ session })
           return
         }
 
@@ -529,11 +509,6 @@ function useAuthController(): AuthState {
       patchAuth({ authError: error })
       return { success: false, error }
     }
-    if (identifier.kind !== 'email') {
-      const error = 'Đăng ký bằng SDT chưa sẵn sàng. Vui lòng dùng email.'
-      patchAuth({ authError: error })
-      return { success: false, error }
-    }
     const passwordError = validateSignupPassword(password)
     if (passwordError) {
       const error = passwordError
@@ -543,17 +518,26 @@ function useAuthController(): AuthState {
 
     patchAuth({ loading: true, authError: null })
     try {
-      const { data, error } = await supabase.auth.signUp({
-        email: identifier.value,
-        password,
-        options: {
-          data: {
-            full_name: normalizedName,
-            name: normalizedName,
-          },
-          emailRedirectTo: getEmailConfirmationRedirectUrl(),
+      const signupOptions = {
+        data: {
+          full_name: normalizedName,
+          name: normalizedName,
         },
-      })
+      }
+      const { data, error } = identifier.kind === 'email'
+        ? await supabase.auth.signUp({
+            email: identifier.value,
+            password,
+            options: {
+              ...signupOptions,
+              emailRedirectTo: getEmailConfirmationRedirectUrl(),
+            },
+          })
+        : await supabase.auth.signUp({
+            phone: identifier.value,
+            password,
+            options: signupOptions,
+          })
 
       if (error || !data.user) {
         const message = getSafeSignupErrorMessage(error)
@@ -563,8 +547,8 @@ function useAuthController(): AuthState {
 
       if (!data.session?.user) {
         setCurrentSession(null)
-        patchAuth({ authError: null, loading: false, profileStatus: 'idle', role: null, session: null })
-        return { success: true, requiresEmailConfirmation: true }
+        patchAuth({ authError: SIGNUP_CONFIRMATION_REQUIRED_MESSAGE, loading: false, profileStatus: 'idle', role: null, session: null })
+        return { success: false, error: SIGNUP_CONFIRMATION_REQUIRED_MESSAGE }
       }
 
       setGuestMode(false)

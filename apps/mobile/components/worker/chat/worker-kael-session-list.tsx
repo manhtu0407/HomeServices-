@@ -2,6 +2,7 @@ import { useCallback, useRef, useState } from 'react'
 import { FlatList, Pressable, Text, View } from 'react-native'
 import type { WorkerKaelChatMode } from '@nestscout/shared'
 
+import { LiquidSurfaceOverlay } from '@/components/ui/liquid-back-button'
 import { color } from '@/design/theme'
 import type { AppLanguage } from '@/lib/app-language'
 import type { WorkerKaelChatSession } from '@/lib/api-types'
@@ -145,12 +146,24 @@ export function WorkerV5KaelSessionList({
         onPress={onCreate}
         style={({ pressed }) => [
           styles.newSession,
-          { borderColor: reduceTransparency ? color.surface.stroke : 'rgba(35,96,84,0.13)' },
+          {
+            backgroundColor: reduceTransparency ? color.surface.raised : 'rgba(255,255,255,0.18)',
+            borderColor: reduceTransparency ? color.surface.stroke : 'rgba(255,255,255,0.72)',
+          },
+          !reduceTransparency ? styles.newSessionLiquid : null,
           !canCreate && styles.disabled,
-          pressed && canCreate ? (reduceMotion ? styles.pressedReduced : styles.pressed) : null,
+          pressed && canCreate ? (reduceMotion ? styles.pressedReduced : styles.newSessionPressed) : null,
         ]}
         testID="worker-v5-kael-session-new"
       >
+        {!reduceTransparency ? (
+          <LiquidSurfaceOverlay
+            designHeight={44}
+            mode="light"
+            radius={22}
+            testID="worker-v5-kael-session-new-liquid"
+          />
+        ) : null}
         <WorkerV5KaelSessionIcon kind="plus" size={21} testID="worker-v5-kael-session-new-plus" />
         <Text style={styles.newSessionText} testID="worker-v5-kael-session-new-label">{copy.newSession}</Text>
       </Pressable>

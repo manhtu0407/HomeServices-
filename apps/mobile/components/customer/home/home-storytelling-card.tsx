@@ -1,311 +1,152 @@
-import { StyleSheet, Text, View, useWindowDimensions } from 'react-native'
+import { Image } from 'expo-image'
+import { useState } from 'react'
+import { StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native'
 import Svg, { Defs, Rect } from 'react-native-svg'
 
-import { AlphaStop as Stop, NativeSafeLinearGradient as LinearGradient, NativeSafeRadialGradient as RadialGradient } from '@/components/ui/svg-alpha-stop'
 import type { AppLanguage } from '@/lib/app-language'
+
 import type { CustomerThemeTokens } from '../customer-theme'
-import { CaseWideMintAura, ZipMintAura } from '../ui/aura-surfaces'
+import { customerV21HomeV4Assets } from '../ui/assets'
+import { customerV21WebTextInputNoOutline } from '../ui/platform-styles'
+import { AlphaStop as Stop, NativeSafeLinearGradient as LinearGradient } from '@/components/ui/svg-alpha-stop'
+import { HomeIcon } from './home-icons'
 
 type HomeStorytellingCardProps = {
   language: AppLanguage
+  onSearch?: (value: string) => void
   reduceTransparency: boolean
   tokens: CustomerThemeTokens
 }
 
-type OnboardingStep = {
-  label: string
-}
-
-type StorytellingCopy = {
-  accessibilityLabel: string
-  body: string
-  steps: [OnboardingStep, OnboardingStep, OnboardingStep]
+type HeroCopy = {
+  description: string
+  searchPlaceholder: string
   title: string
 }
 
-const storytellingCopy = {
-  vi: {
-    accessibilityLabel: 'Bắt đầu dễ dàng. Chọn dịch vụ, mô tả và xác nhận. Bước 1: Chọn dịch vụ. Bước 2: Mô tả vấn đề. Bước 3: Bạn xác nhận.',
-    body: 'Chọn dịch vụ, mô tả và xác nhận.',
-    steps: [
-      { label: 'Chọn dịch vụ' },
-      { label: 'Mô tả vấn đề' },
-      { label: 'Bạn xác nhận' },
-    ],
-    title: 'Bắt đầu dễ dàng',
-  },
+const heroCopy = {
   en: {
-    accessibilityLabel: 'Getting started is easy. Choose a service, describe the issue, and confirm. Step 1: Choose a service. Step 2: Describe the issue. Step 3: Confirm.',
-    body: 'Choose a service, describe the issue, and confirm.',
-    steps: [
-      { label: 'Choose service' },
-      { label: 'Describe issue' },
-      { label: 'Confirm' },
-    ],
-    title: 'Getting started is easy',
+    description: 'Skilled workers  •  Fast arrival  •  Clear pricing',
+    searchPlaceholder: 'What do you need help with?',
+    title: 'Home care made simple,\nso you can enjoy your space',
   },
-} satisfies Record<AppLanguage, StorytellingCopy>
+  vi: {
+    description: 'Kết nối thợ lành nghề  •  Đến nhanh  •  Giá minh bạch',
+    searchPlaceholder: 'Bạn cần hỗ trợ việc gì?',
+    title: 'Việc nhà có chúng tôi,\nbạn yên tâm tận hưởng',
+  },
+} satisfies Record<AppLanguage, HeroCopy>
 
-export function HomeStorytellingCard({ language, reduceTransparency, tokens }: HomeStorytellingCardProps) {
+export function HomeStorytellingCard({ language, onSearch, reduceTransparency, tokens }: HomeStorytellingCardProps) {
   const { width } = useWindowDimensions()
-  const compact = width < 720
-  const copy = storytellingCopy[language]
-  const dark = tokens.mode === 'dark'
-  const colors = {
-    accent: tokens.primary,
-    frame: dark ? tokens.canvas : tokens.base,
-    frameEnd: dark ? tokens.service : tokens.water,
-    frameMiddle: dark ? tokens.base : tokens.service,
-    frameStart: dark ? tokens.canvas : tokens.base,
-    subtitle: tokens.muted,
-    text: tokens.text,
+  const [value, setValue] = useState('')
+  const copy = heroCopy[language]
+  const scale = Math.min(Math.max(width - 32, 280) / 857, 1)
+  const q = (size: number) => size * scale
+  const readable = (size: number, minimum: number) => Math.max(q(size), minimum)
+  const heroWidth = Math.min(Math.max(width - 32, 280), 857)
+  const copyMaxWidth = q(857 * 0.52)
+  const searchInset = q(20)
+  const searchTop = Math.max(q(228), 142)
+  const titleLineHeight = readable(47, 22)
+  const descriptionFontSize = readable(16.5, 12)
+  const descriptionLineHeight = readable(23, 17)
+  const descriptionTop = searchTop - descriptionLineHeight - Math.max(q(7), 4)
+  const titleTop = descriptionTop - (titleLineHeight * 2) - Math.max(q(10), 6) - q(8)
+  const descriptionWidth = Math.max(heroWidth - q(53), 0)
+  const heroHeight = Math.max(q(336), 190)
+  const content = (
+    <>
+      {!reduceTransparency ? (
+        <Svg height="100%" pointerEvents="none" preserveAspectRatio="none" style={StyleSheet.absoluteFill} viewBox="0 0 100 100" width="100%">
+          <Defs>
+            <LinearGradient id="customer-home-v4-hero-gradient" x1="0" x2="1" y1="0.5" y2="0.5">
+              <Stop offset="0" stopColor={tokens.primary} />
+              <Stop offset="0.34" stopColor="#BDEBE7" />
+              <Stop offset="0.58" stopColor="#D0F2EE" />
+              <Stop offset="1" stopColor="#BAE7E3" />
+            </LinearGradient>
+          </Defs>
+          <Rect fill="url(#customer-home-v4-hero-gradient)" height="100" width="100" />
+        </Svg>
+      ) : null}
+      <Image
+        accessible={false}
+        contentFit="contain"
+        pointerEvents="none"
+        source={customerV21HomeV4Assets.hero}
+        style={[styles.heroImage, { height: q(250), right: q(-11), top: q(-20), width: q(375), opacity: reduceTransparency ? 0 : 1 }]}
+        testID="customer-v21-home-hero-image"
+      />
+
+      <View style={[styles.heroCopy, { left: q(43), top: titleTop, width: copyMaxWidth }]} testID="customer-v21-home-hero-copy">
+        <Text adjustsFontSizeToFit minimumFontScale={0.86} numberOfLines={2} style={[styles.title, { fontSize: readable(42, 17), lineHeight: titleLineHeight, marginTop: q(5) }]}>{copy.title}</Text>
+      </View>
+
+      <Text adjustsFontSizeToFit minimumFontScale={0.72} numberOfLines={1} style={[styles.description, { fontSize: descriptionFontSize, left: q(43), lineHeight: descriptionLineHeight, position: 'absolute', top: descriptionTop, width: descriptionWidth }]}>{copy.description}</Text>
+
+      <View style={[styles.search, { borderRadius: q(40), height: q(80), left: searchInset, paddingHorizontal: q(28), right: searchInset, top: searchTop }]} testID="customer-v21-home-search">
+        <HomeIcon color={tokens.muted} name="search" size={q(38)} />
+        <TextInput
+          accessibilityLabel={copy.searchPlaceholder}
+          onChangeText={setValue}
+          onSubmitEditing={() => onSearch?.(value.trim())}
+          placeholder={copy.searchPlaceholder}
+          placeholderTextColor={tokens.muted}
+          returnKeyType="search"
+          style={[styles.searchInput, customerV21WebTextInputNoOutline, { fontSize: readable(24, 16), height: q(68), paddingHorizontal: q(19) }]}
+          value={value}
+        />
+      </View>
+    </>
+  )
+
+  const sharedStyle = [styles.frame, { borderColor: tokens.border, borderRadius: q(32), height: heroHeight }]
+  if (reduceTransparency) {
+    return <View style={[sharedStyle, { backgroundColor: tokens.raised }]} testID="customer-v21-home-hero">{content}</View>
   }
-  const badgeSize = compact ? 32 : 40
 
   return (
-    <View
-      style={[
-        styles.frame,
-        compact ? styles.frameCompact : styles.frameWide,
-        {
-          backgroundColor: colors.frame,
-          borderRadius: compact ? 28 : 44,
-          boxShadow: tokens.glassFloatShadow,
-        },
-      ]}
-      testID="customer-v21-home-hero"
-    >
-      <Svg
-        height="100%"
-        pointerEvents="none"
-        preserveAspectRatio="none"
-        style={styles.background}
-        testID="customer-v21-home-onboarding-wash"
-        viewBox="0 0 400 100"
-        width="100%"
-      >
-        <Defs>
-          <LinearGradient id="customer-home-onboarding-frame" x1="0" x2="400" y1="0" y2="100">
-            <Stop offset="0" stopColor={colors.frameStart} />
-            <Stop offset="0.54" stopColor={colors.frameMiddle} />
-            <Stop offset="1" stopColor={colors.frameEnd} />
-          </LinearGradient>
-          <RadialGradient cx="0.78" cy="0.06" id="customer-home-onboarding-glow" r="0.74">
-            <Stop offset="0" stopColor={colors.accent} stopOpacity={reduceTransparency ? 0 : dark ? 0.12 : 0.14} />
-            <Stop offset="1" stopColor={colors.accent} stopOpacity={0} />
-          </RadialGradient>
-        </Defs>
-        <Rect fill="url(#customer-home-onboarding-frame)" height="100" width="400" />
-        <Rect fill="url(#customer-home-onboarding-glow)" height="100" width="400" />
-      </Svg>
-
-      {reduceTransparency ? null : (
-        <View
-          pointerEvents="none"
-          style={[styles.formulaMintAura, { opacity: dark ? 0.36 : 0.52 }]}
-          testID="customer-v21-home-onboarding-formula-mint-aura"
-        >
-          <CaseWideMintAura scope="HomeStorytelling" />
-          <ZipMintAura scope="HomeStorytellingFine" />
-        </View>
-      )}
-
-      <View
-        accessibilityLabel={copy.accessibilityLabel}
-        accessibilityRole="image"
-        accessible
-        style={[styles.content, compact ? styles.contentCompact : styles.contentWide]}
-        testID="customer-v21-home-storytelling"
-      >
-        <View style={styles.copy} testID="customer-v21-home-onboarding-copy">
-          <Text
-            adjustsFontSizeToFit
-            minimumFontScale={0.8}
-            numberOfLines={compact ? 2 : 1}
-            style={[
-              styles.title,
-              {
-                color: colors.text,
-                fontSize: compact ? 22 : 28,
-                lineHeight: compact ? 28 : 34,
-              },
-            ]}
-          >
-            {copy.title}
-          </Text>
-          <Text
-            adjustsFontSizeToFit
-            minimumFontScale={0.78}
-            numberOfLines={compact ? 2 : 1}
-            style={[
-              styles.subtitle,
-              {
-                color: colors.subtitle,
-                fontSize: compact ? 12 : 16,
-                lineHeight: compact ? 16 : 22,
-                marginTop: compact ? 6 : 8,
-              },
-            ]}
-          >
-            {copy.body}
-          </Text>
-        </View>
-
-        <View style={styles.steps} testID="customer-v21-home-onboarding-steps">
-          <View
-            pointerEvents="none"
-            style={[styles.connectorTrack, { backgroundColor: colors.accent, top: badgeSize / 2 }]}
-          />
-          <View style={styles.stepsRow}>
-            {copy.steps.map((step, index) => (
-              <View key={step.label} style={styles.stepColumn}>
-                <View
-                  style={[
-                    styles.stepBadge,
-                    {
-                      backgroundColor: tokens.raised,
-                      borderColor: colors.accent,
-                      height: badgeSize,
-                      width: badgeSize,
-                    },
-                  ]}
-                  testID={'customer-v21-home-onboarding-step-' + (index + 1)}
-                >
-                  <Text
-                    style={[
-                      styles.stepBadgeText,
-                      {
-                        color: colors.accent,
-                        fontSize: compact ? 14 : 16,
-                        lineHeight: compact ? 18 : 18,
-                      },
-                    ]}
-                  >
-                    {index + 1}
-                  </Text>
-                </View>
-                <Text
-                  adjustsFontSizeToFit
-                  minimumFontScale={0.82}
-                  numberOfLines={2}
-                  style={[
-                    styles.stepLabel,
-                    {
-                      color: colors.text,
-                      fontSize: compact ? 12 : 15,
-                      lineHeight: compact ? 16 : 19,
-                      marginTop: compact ? 10 : 12,
-                    },
-                  ]}
-                  testID={'customer-v21-home-onboarding-label-' + (index + 1)}
-                >
-                  {step.label}
-                </Text>
-              </View>
-            ))}
-          </View>
-        </View>
-      </View>
-    </View>
+    <View style={sharedStyle} testID="customer-v21-home-hero">{content}</View>
   )
 }
 
 const styles = StyleSheet.create({
-  background: {
-    ...StyleSheet.absoluteFill,
-  },
-  connectorTrack: {
-    borderRadius: 999,
-    height: 2,
-    left: '16.6666667%',
-    position: 'absolute',
-    right: '16.6666667%',
-    zIndex: 0,
-  },
-  content: {
-    alignItems: 'center',
-    flex: 1,
-    flexDirection: 'row',
-    minWidth: 0,
-  },
-  contentCompact: {
-    gap: 14,
-    paddingHorizontal: 28,
-    paddingVertical: 20,
-  },
-  contentWide: {
-    gap: 34,
-    paddingHorizontal: 44,
-    paddingVertical: 28,
-  },
-  copy: {
-    flex: 0.42,
-    justifyContent: 'center',
-    minWidth: 0,
-    zIndex: 1,
+  description: {
+    color: '#294C52',
+    fontWeight: '500',
   },
   frame: {
-    alignSelf: 'stretch',
-    justifyContent: 'center',
-    maxWidth: '100%',
+    alignSelf: 'center',
+    maxWidth: 857,
     overflow: 'hidden',
     position: 'relative',
+    width: '100%',
   },
-  frameCompact: {
-    aspectRatio: 3.2,
-    minHeight: 148,
+  heroCopy: {
+    position: 'absolute',
+    zIndex: 1,
   },
-  frameWide: {
-    aspectRatio: 4,
-  },
-  formulaMintAura: {
-    ...StyleSheet.absoluteFill,
+  heroImage: {
+    position: 'absolute',
     zIndex: 0,
   },
-  stepBadge: {
+  search: {
     alignItems: 'center',
-    borderRadius: 999,
-    borderWidth: 1.25,
-    justifyContent: 'center',
-    zIndex: 1,
-  },
-  stepBadgeText: {
-    fontVariant: ['tabular-nums'],
-    fontWeight: '600',
-    includeFontPadding: false,
-  },
-  stepColumn: {
-    alignItems: 'center',
-    flex: 1,
-    minWidth: 0,
-    zIndex: 1,
-  },
-  stepLabel: {
-    fontWeight: '600',
-    includeFontPadding: false,
-    letterSpacing: -0.16,
-    minWidth: 0,
-    textAlign: 'center',
-  },
-  steps: {
-    flex: 0.58,
-    justifyContent: 'center',
-    minWidth: 0,
-    position: 'relative',
-    zIndex: 1,
-  },
-  stepsRow: {
+    backgroundColor: 'rgba(255,255,255,0.97)',
+    borderColor: 'rgba(255,255,255,0.88)',
+    borderWidth: 3,
     flexDirection: 'row',
-    minWidth: 0,
+    position: 'absolute',
   },
-  subtitle: {
-    fontWeight: '400',
-    includeFontPadding: false,
-    letterSpacing: -0.2,
+  searchInput: {
+    color: '#35555D',
+    flex: 1,
   },
   title: {
+    color: '#16343B',
     fontWeight: '700',
-    includeFontPadding: false,
-    letterSpacing: -0.75,
+    letterSpacing: -1.5,
+    marginTop: 5,
   },
 })

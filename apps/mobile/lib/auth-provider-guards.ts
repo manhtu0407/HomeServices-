@@ -3,6 +3,7 @@ export function isValidEmail(email: string) {
 }
 
 export const EMAIL_CONFIRMATION_REQUIRED_MESSAGE = 'Thư điện tử chưa được xác nhận. Hãy kiểm tra email rồi đăng nhập lại.'
+export const SIGNUP_CONFIRMATION_REQUIRED_MESSAGE = 'Đăng ký chưa sẵn sàng vì hệ thống vẫn yêu cầu xác minh. Vui lòng thử lại sau.'
 
 // These values intentionally match the shared Auth copy keys, so each selected language
 // can render a safe server failure without exposing Supabase's raw response.

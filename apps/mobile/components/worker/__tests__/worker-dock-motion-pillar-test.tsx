@@ -2,6 +2,11 @@ import { render, screen } from '@testing-library/react-native'
 import { StyleSheet } from 'react-native'
 
 import { withPillarContext, type PillarManifest } from '@/__tests__/pillar-manifest'
+import {
+  CUSTOMER_LIQUID_NAV_DOCK_HEIGHT,
+  CUSTOMER_LIQUID_NAV_RAIL_PADDING,
+  customerV21DockStyles,
+} from '@/components/customer/dock/dock-styles'
 
 const mockAccessibility = { reduceMotion: false, reduceTransparency: false }
 let mockRouteParams: Record<string, string | string[] | undefined> = {}
@@ -10,12 +15,6 @@ jest.mock('expo-router', () => ({
   useLocalSearchParams: () => mockRouteParams,
   useRouter: () => ({ push: jest.fn(), replace: jest.fn() }),
 }))
-
-jest.mock('expo-image', () => {
-  const React = require('react')
-  const { View } = require('react-native')
-  return { Image: (props: any) => React.createElement(View, props) }
-})
 
 jest.mock('@/components/ui/accessibility-motion', () => ({
   useGlassAccessibility: () => mockAccessibility,
@@ -155,8 +154,45 @@ describe('WorkerRebuildDockOverlay', () => {
           expect(screen.getByRole('tab', { name: label })).toBeTruthy()
         }
         expect(screen.getByRole('tab', { name: 'Hồ sơ' }).props.accessibilityState?.selected).toBe(true)
+        expect(screen.queryByTestId('worker-v5-dock-lens')).toBeNull()
+        expect(screen.queryByTestId('worker-v5-dock-shimmer')).toBeNull()
+        expect(screen.queryByTestId('worker-v5-dock-caustic')).toBeNull()
       },
       'an opaque dock is still a full dock',
     )
+  })
+
+  it('keeps the source-aligned rail geometry and restrained press feedback', () => {
+    mountDock()
+    const dockPlane = StyleSheet.flatten(customerV21DockStyles.dockPlane)
+    const dockIcon = StyleSheet.flatten(customerV21DockStyles.dockIcon)
+    const pressedItem = StyleSheet.flatten(customerV21DockStyles.dockItemPressed)
+
+    expect(dockPlane).toMatchObject({
+      borderRadius: CUSTOMER_LIQUID_NAV_DOCK_HEIGHT / 2,
+      height: CUSTOMER_LIQUID_NAV_DOCK_HEIGHT,
+      minHeight: CUSTOMER_LIQUID_NAV_DOCK_HEIGHT,
+      padding: CUSTOMER_LIQUID_NAV_RAIL_PADDING,
+    })
+    expect(dockIcon).toMatchObject({
+      height: 21,
+      opacity: 1,
+      width: 21,
+    })
+    expect(pressedItem.transform).toEqual([{ scale: 0.976 }])
+    for (const id of ['home', 'jobs', 'earnings', 'profile']) {
+      expect(screen.getByTestId(`worker-v5-dock-${id}-icon`)).toBeTruthy()
+    }
+    expect(screen.getByTestId('worker-v5-dock-lens')).toBeTruthy()
+    expect(screen.getByTestId('worker-v5-dock-shimmer')).toBeTruthy()
+    expect(screen.getByTestId('worker-v5-dock-caustic')).toBeTruthy()
+    expect(screen.getByTestId('worker-v5-kael-accessory')).toBeTruthy()
+  })
+
+  it('mounts the dedicated earnings icon on the Worker earnings route', () => {
+    mountDock('earnings')
+
+    expect(screen.getByTestId('worker-v5-dock-earnings-icon')).toBeTruthy()
+    expect(screen.getByTestId('worker-v5-dock-earnings').props.accessibilityState?.selected).toBe(true)
   })
 })

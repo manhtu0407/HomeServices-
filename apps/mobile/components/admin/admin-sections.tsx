@@ -226,11 +226,11 @@ function adminSectionsReducer(state: AdminSectionsState, action: AdminSectionsAc
       actor: loadedActor ? withFinanceReadBaseline(loadedActor) : null,
       error: activePanelFailed ? action.errorCopy : null,
       loading: false,
-      managerNominations: teamResult.success ? teamResult.data.nominations : [],
-      pendingAdminAccounts: teamResult.success ? teamResult.data.pending_accounts ?? [] : [],
-      operations: operationsResult.success ? operationsResult.data : null,
+      managerNominations: teamResult.success ? teamResult.data.nominations : state.managerNominations,
+      pendingAdminAccounts: teamResult.success ? teamResult.data.pending_accounts ?? [] : state.pendingAdminAccounts,
+      operations: operationsResult.success ? operationsResult.data : state.operations,
       operationsError: operationsResult.success ? null : operationsResult.error,
-      subAdmins: teamResult.success ? teamResult.data.members : [],
+      subAdmins: teamResult.success ? teamResult.data.members : state.subAdmins,
       teamError: teamResult.success ? null : teamResult.error,
       transactions: transactionResult.success ? transactionResult.data.transactions : state.transactions,
       transactionsHasMore: transactionResult.success ? transactionResult.data.has_more : false,
@@ -273,6 +273,8 @@ export function AdminSections() {
     : '/(auth)/login?stage=login'
   const [state, dispatch] = useReducer(adminSectionsReducer, adminSection, initialAdminSectionsState)
   const loadRequestIdRef = useRef(0)
+  const hasCompletedInitialLoadRef = useRef(false)
+  const backgroundLoadInFlightRef = useRef(false)
   const { activePanel, searchQuery, signingOut, transactionPage, workerFilter, workerPage } = state
   const patch = useCallback((next: Partial<AdminSectionsState>) => {
     dispatch({ type: 'patch', patch: next })
@@ -290,74 +292,85 @@ export function AdminSections() {
     if (!hasAuthenticatedAdminSession) router.replace(loginRoute as never)
   }, [hasAuthenticatedAdminSession, loginRoute, router])
 
-  const loadData = useCallback(async () => {
+  const loadData = useCallback(async ({ blocking }: { blocking?: boolean } = {}) => {
+    const shouldBlock = blocking ?? !hasCompletedInitialLoadRef.current
+    if (!shouldBlock && backgroundLoadInFlightRef.current) return
+    if (!shouldBlock) backgroundLoadInFlightRef.current = true
     const requestId = loadRequestIdRef.current + 1
     loadRequestIdRef.current = requestId
-    patch({ loading: true, error: null, operationsError: null, teamError: null })
-    // react-doctor-disable-next-line react-doctor/async-defer-await
-    const actorResult = await adminControlService.getActor()
-    if (requestId !== loadRequestIdRef.current) return
-    if (!actorResult.success && isMissingAdminSession(actorResult)) {
-      patch({ actor: null, loading: false, operations: null, operationsError: actorResult.error })
-      router.replace(loginRoute as never)
-      return
-    }
-    if (!actorResult.success) {
-      patch({ actor: null, error: actorResult.error, loading: false, operations: null })
-      return
-    }
-    const actor = withFinanceReadBaseline(actorResult.data)
-    const denied = copy.errors.load
-    const operationsResultPromise = actor.capabilities.includes('operations.read')
-      ? adminControlService.getOperations()
-      : Promise.resolve(unavailableAdminResult<AdminViewOperationsResponse>(denied))
-    const workerResultPromise = actor.capabilities.includes('workers.read')
-      ? adminControlService.listWorkerApplications({
-        status: 'all',
-        stage: workerFilter,
-        query: searchQuery,
-        limit: WORKERS_PER_PAGE,
-        offset: (workerPage - 1) * WORKERS_PER_PAGE,
+    patch({ ...(shouldBlock ? { loading: true } : {}), error: null, operationsError: null, teamError: null })
+    try {
+      // react-doctor-disable-next-line react-doctor/async-defer-await
+      const actorResult = await adminControlService.getActor()
+      if (requestId !== loadRequestIdRef.current) return
+      if (!actorResult.success && isMissingAdminSession(actorResult)) {
+        patch({ actor: null, operations: null, operationsError: actorResult.error })
+        router.replace(loginRoute as never)
+        return
+      }
+      if (!actorResult.success) {
+        patch({ actor: null, error: actorResult.error, operations: null })
+        return
+      }
+      const actor = withFinanceReadBaseline(actorResult.data)
+      const denied = copy.errors.load
+      const operationsResultPromise = actor.capabilities.includes('operations.read')
+        ? adminControlService.getOperations()
+        : Promise.resolve(unavailableAdminResult<AdminViewOperationsResponse>(denied))
+      const workerResultPromise = actor.capabilities.includes('workers.read')
+        ? adminControlService.listWorkerApplications({
+          status: 'all',
+          stage: workerFilter,
+          query: searchQuery,
+          limit: WORKERS_PER_PAGE,
+          offset: (workerPage - 1) * WORKERS_PER_PAGE,
+        })
+        : Promise.resolve(unavailableAdminResult<Awaited<ReturnType<typeof adminControlService.listWorkerApplications>> extends ApiResult<infer T> ? T : never>(denied))
+      const transactionResultPromise = actor.capabilities.includes('transactions.read')
+        ? adminControlService.listTransactions({
+          query: searchQuery,
+          limit: TRANSACTIONS_PER_PAGE,
+          offset: (transactionPage - 1) * TRANSACTIONS_PER_PAGE,
+        })
+        : Promise.resolve(unavailableAdminResult<Awaited<ReturnType<typeof adminControlService.listTransactions>> extends ApiResult<infer T> ? T : never>(denied))
+      const teamResultPromise = actor.capabilities.includes('team.read')
+        ? adminControlService.listSubAdmins()
+        : Promise.resolve(unavailableAdminResult<Awaited<ReturnType<typeof adminControlService.listSubAdmins>> extends ApiResult<infer T> ? T : never>(denied))
+      // react-doctor-disable-next-line react-doctor/async-defer-await
+      const [operationsResult, workerResult, transactionResult, teamResult] = await Promise.all([
+        operationsResultPromise,
+        workerResultPromise,
+        transactionResultPromise,
+        teamResultPromise,
+      ])
+      if (requestId !== loadRequestIdRef.current) return
+      const sessionFailure = ([operationsResult, workerResult, transactionResult, teamResult] as ApiResult<unknown>[])
+        .find(isMissingAdminSession)
+      if (sessionFailure && !sessionFailure.success) {
+        patch({ actor: null, operations: null, operationsError: sessionFailure.error })
+        router.replace(loginRoute as never)
+        return
+      }
+      dispatch({
+        activePanel,
+        actorResult,
+        errorCopy: copy.errors.load,
+        operationsResult,
+        teamResult,
+        transactionResult,
+        type: 'load_complete',
+        workerResult,
       })
-      : Promise.resolve(unavailableAdminResult<Awaited<ReturnType<typeof adminControlService.listWorkerApplications>> extends ApiResult<infer T> ? T : never>(denied))
-    const transactionResultPromise = actor.capabilities.includes('transactions.read')
-      ? adminControlService.listTransactions({
-        query: searchQuery,
-        limit: TRANSACTIONS_PER_PAGE,
-        offset: (transactionPage - 1) * TRANSACTIONS_PER_PAGE,
-      })
-      : Promise.resolve(unavailableAdminResult<Awaited<ReturnType<typeof adminControlService.listTransactions>> extends ApiResult<infer T> ? T : never>(denied))
-    const teamResultPromise = actor.capabilities.includes('team.read')
-      ? adminControlService.listSubAdmins()
-      : Promise.resolve(unavailableAdminResult<Awaited<ReturnType<typeof adminControlService.listSubAdmins>> extends ApiResult<infer T> ? T : never>(denied))
-    // react-doctor-disable-next-line react-doctor/async-defer-await
-    const [operationsResult, workerResult, transactionResult, teamResult] = await Promise.all([
-      operationsResultPromise,
-      workerResultPromise,
-      transactionResultPromise,
-      teamResultPromise,
-    ])
-    if (requestId !== loadRequestIdRef.current) return
-    const sessionFailure = ([operationsResult, workerResult, transactionResult, teamResult] as ApiResult<unknown>[])
-      .find(isMissingAdminSession)
-    if (sessionFailure && !sessionFailure.success) {
-      patch({ actor: null, loading: false, operations: null, operationsError: sessionFailure.error })
-      router.replace(loginRoute as never)
-      return
+    } finally {
+      if (requestId === loadRequestIdRef.current) {
+        hasCompletedInitialLoadRef.current = true
+        patch({ loading: false })
+      }
+      if (!shouldBlock) backgroundLoadInFlightRef.current = false
     }
-    dispatch({
-      activePanel,
-      actorResult,
-      errorCopy: copy.errors.load,
-      operationsResult,
-      teamResult,
-      transactionResult,
-      type: 'load_complete',
-      workerResult,
-    })
   }, [activePanel, copy.errors.load, loginRoute, patch, router, searchQuery, transactionPage, workerFilter, workerPage])
   const startAdminDataLoad = useEffectEvent(() => {
-    void loadData()
+    void loadData({ blocking: true })
   })
 
   useEffect(() => {
@@ -370,7 +383,7 @@ export function AdminSections() {
 
   useFocusEffect(useCallback(() => {
     if (!hasAuthenticatedAdminSession) return () => undefined
-    const timer = setInterval(() => { void loadData() }, ADMIN_AUTO_REFRESH_MS)
+    const timer = setInterval(() => { void loadData({ blocking: false }) }, ADMIN_AUTO_REFRESH_MS)
     return () => clearInterval(timer)
   }, [hasAuthenticatedAdminSession, loadData]))
 

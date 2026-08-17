@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react-native'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native'
 import AdminSections from '../sections'
 import type {
   AdminViewOperationsResponse,
@@ -246,12 +246,15 @@ const pendingOperator = {
 
 let mockLocalSearchParams: { ns_admin_section?: string | string[]; ns_finance_view?: string | string[] } = {}
 let mockAuthSessionProvider: string | undefined
+let mockFocusEffectCallback: (() => void | (() => void)) | undefined
 const mockReplace = jest.fn()
 const mockRouter = { replace: mockReplace }
 const mockSignOut = jest.fn()
 
 jest.mock('expo-router', () => ({
-  useFocusEffect: jest.fn(),
+  useFocusEffect: (callback: () => void | (() => void)) => {
+    mockFocusEffectCallback = callback
+  },
   useLocalSearchParams: () => mockLocalSearchParams,
   useRouter: () => mockRouter,
 }))
@@ -394,7 +397,41 @@ describe('AdminSections', () => {
     jest.clearAllMocks()
     mockAuthSessionProvider = 'email'
     mockLocalSearchParams = {}
+    mockFocusEffectCallback = undefined
     mockSignOut.mockResolvedValue(undefined)
+  })
+
+  it('keeps the current Admin surface visible during an automatic refresh', async () => {
+    mockSuccessfulLoad()
+
+    render(<AdminSections />)
+    await screen.findByTestId('admin-operations-overview')
+
+    jest.useFakeTimers()
+    let resolveActor!: (value: unknown) => void
+    const pendingActor = new Promise((resolve) => {
+      resolveActor = resolve
+    })
+    jest.mocked(adminControlService.getActor).mockReturnValue(pendingActor as never)
+
+    let cleanup: void | (() => void) = undefined
+    await act(async () => {
+      cleanup = mockFocusEffectCallback?.()
+      jest.advanceTimersByTime(30_000)
+      await Promise.resolve()
+    })
+
+    expect(screen.getByTestId('admin-operations-overview')).toBeTruthy()
+    expect(screen.queryByText('Đang tải dữ liệu quản trị...')).toBeNull()
+
+    resolveActor({ success: true, data: operations.actor, status: 200 })
+    await act(async () => {
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+    const cleanupFn = cleanup as (() => void) | undefined
+    cleanupFn?.()
+    jest.useRealTimers()
   })
 
   it('confirms Admin sign-out before returning to Login Gates', async () => {

@@ -16,7 +16,7 @@ export default function Index() {
   }
 
   if (guestMode) {
-    return <Redirect href="/(customer)/home" />
+    return <Redirect href="/(customer)/(tabs)/home" />
   }
 
   if (!session) {
@@ -38,7 +38,7 @@ export default function Index() {
   }
 
   if (role === 'customer') {
-    return <Redirect href="/(customer)/home" />
+    return <Redirect href="/(customer)/(tabs)/home" />
   }
 
   return <Redirect href="/(auth)/login" />
@@ -46,21 +46,21 @@ export default function Index() {
 
 function workerAuditRedirectHref() {
   const query = localWebQuery()
-  if (!query) return '/(worker)/home'
+  if (!query) return '/(worker)/(tabs)/home'
 
   const params = new URLSearchParams(query)
-  if (params.get('ns_audit_role') !== 'worker') return '/(worker)/home'
+  if (params.get('ns_audit_role') !== 'worker') return '/(worker)/(tabs)/home'
 
   const screen = params.get('ns_worker_screen') ?? ''
   const path = screen.startsWith('2.')
-    ? '/(worker)/jobs'
+    ? '/(worker)/(tabs)/jobs'
     : screen.startsWith('3.')
       ? '/(worker)/chat'
       : screen.startsWith('4.')
-        ? '/(worker)/earnings'
+        ? '/(worker)/(tabs)/earnings'
         : screen.startsWith('5.')
-          ? '/(worker)/profile'
-          : '/(worker)/home'
+          ? '/(worker)/(tabs)/profile'
+          : '/(worker)/(tabs)/home'
 
   return `${path}?${params.toString()}`
 }

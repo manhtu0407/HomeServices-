@@ -26,6 +26,8 @@ type EntryAuthErrorKey =
   | 'roleUnavailable'
   | 'signInFailed'
   | 'signupFailed'
+  | 'signupConfirmationRequired'
+  | 'passwordMismatch'
   | 'signupPasswordLong'
   | 'signupPasswordShort'
   | 'termsRequired'
@@ -37,7 +39,6 @@ type EntryAuthErrorKey =
 
 export type RoleGateGreeting = Readonly<{
   headline: string
-  lead: string
 }>
 
 export type RoleGateGreetingPeriod = 'morning' | 'midday' | 'afternoon' | 'evening'
@@ -116,18 +117,17 @@ export type EntryAccessCopy = Readonly<{
     login: string
     passwordLabel: string
     passwordPlaceholder: string
+    passwordConfirmationLabel: string
+    passwordConfirmationPlaceholder: string
     terms: string
     topbar: string
-    workerLead: string
     workerSubmit: string
     workerTitle: string
   }>
   roleGate: Readonly<{
     chooseRole: string
-    continueCustomer: string
-    continueWorker: string
     customer: RoleCardCopy
-    footer: string
+    selectionHint: string
     worker: RoleCardCopy
   }>
   splash: Readonly<{
@@ -162,6 +162,7 @@ const viCopy: EntryAccessCopy = {
     loginUnavailable: 'Dịch vụ đăng nhập chưa sẵn sàng. Vui lòng thử lại sau.',
     methodUnavailable: 'Phương thức này chưa được cấu hình.',
     nextScreenUnavailable: 'Chưa thể mở màn hình tiếp theo. Vui lòng thử lại.',
+    passwordMismatch: 'Mật khẩu nhập lại không khớp.',
     recoveryEmail: 'Nhập thư điện tử khôi phục đúng định dạng.',
     recoveryPhone: 'Nhập SĐT khôi phục đúng định dạng.',
     recoveryPrimary: 'Nhập thư điện tử hoặc SĐT đã đăng ký để tiếp tục.',
@@ -171,6 +172,7 @@ const viCopy: EntryAccessCopy = {
     roleUnavailable: 'Không thể tải vai trò tài khoản.',
     signInFailed: 'Chưa thể đăng nhập. Vui lòng thử lại.',
     signupFailed: 'Chưa thể tạo tài khoản. Vui lòng thử lại.',
+    signupConfirmationRequired: 'Đăng ký chưa sẵn sàng vì hệ thống vẫn yêu cầu xác minh. Vui lòng thử lại sau.',
     signupPasswordLong: 'Mật khẩu không được dài quá 128 ký tự.',
     signupPasswordShort: 'Mật khẩu cần ít nhất 8 ký tự.',
     termsRequired: 'Bạn cần đồng ý với điều khoản để tiếp tục.',
@@ -187,15 +189,15 @@ const viCopy: EntryAccessCopy = {
     topbar: 'Xác nhận thư điện tử',
   },
   fields: {
-    customerIdentifierLabel: 'Thư điện tử hoặc SĐT',
+    customerIdentifierLabel: 'Gmail hoặc SĐT',
     customerIdentifierPlaceholder: 'ten@vidu.vn hoặc 090 123 4567',
-    workerIdentifierLabel: 'Thư điện tử',
-    workerIdentifierPlaceholder: 'ten@vidu.vn',
+    workerIdentifierLabel: 'Gmail hoặc SĐT',
+    workerIdentifierPlaceholder: 'ten@vidu.vn hoặc 090 123 4567',
   },
   login: {
     busy: 'Đang xử lý…',
     forgotPassword: 'Quên mật khẩu?',
-    lead: 'Tiếp tục nơi bạn đã dừng cùng Kael.',
+    lead: '',
     noAccount: 'Chưa có tài khoản?',
     passwordLabel: 'Mật khẩu',
     passwordPlaceholder: 'Nhập mật khẩu',
@@ -203,7 +205,7 @@ const viCopy: EntryAccessCopy = {
     register: 'Đăng ký',
     remember: 'Ghi nhớ đăng nhập',
     submit: 'Đăng nhập',
-    title: 'Chào mừng\ntrở lại.',
+    title: 'Welcome Back..!',
     topbar: 'Đăng nhập',
   },
   onboarding: {
@@ -224,36 +226,35 @@ const viCopy: EntryAccessCopy = {
     phoneLabel: 'SĐT khôi phục',
     primaryLabel: 'Thư điện tử hoặc SĐT đã đăng ký',
     submit: 'Tiếp tục',
-    title: 'Lấy lại\nmật khẩu.',
+    title: 'Lấy lại mật khẩu.',
     topbar: 'Khôi phục mật khẩu',
   },
   register: {
     accountExists: 'Đã có tài khoản?',
     busy: 'Đang xử lý…',
-    customerLead: 'Chỉ mất chưa đến một phút.',
+    customerLead: '',
     customerSubmit: 'Đăng ký',
-    customerTitle: 'Tạo tài khoản\ncủa bạn.',
+    customerTitle: 'Tạo tài khoản của bạn.',
     fullNameLabel: 'Họ và tên',
     fullNamePlaceholder: 'Nguyễn Hoàng Minh',
     login: 'Đăng nhập',
     passwordLabel: 'Mật khẩu',
     passwordPlaceholder: 'Tối thiểu 8 ký tự',
+    passwordConfirmationLabel: 'Xác nhận mật khẩu',
+    passwordConfirmationPlaceholder: 'Xác nhận mật khẩu',
     terms: 'Tôi đồng ý với Điều khoản sử dụng và Chính sách bảo mật của NestScout.',
     topbar: 'Đăng ký',
-    workerLead: 'Tạo tài khoản trước khi gửi hồ sơ xác thực.',
     workerSubmit: 'Tạo tài khoản thợ',
-    workerTitle: 'Tạo hồ sơ\nđối tác.',
+    workerTitle: 'Tạo hồ sơ đối tác.',
   },
   roleGate: {
     chooseRole: 'Chọn vai trò',
-    continueCustomer: 'Tiếp tục với Khách hàng',
-    continueWorker: 'Tiếp tục với Đối tác thợ',
     customer: {
       description: 'Đặt dịch vụ, trò chuyện cùng Kael và theo dõi tiến độ.',
       meta: 'Google · Apple · Thư điện tử/SĐT',
       title: 'Khách hàng',
     },
-    footer: 'Vai trò được cố định sau khi đăng nhập.\nBạn có thể đổi trước khi xác thực.',
+    selectionHint: 'Chạm một lần để chọn vai trò; chạm lần nữa để tiếp tục.',
     worker: {
       description: 'Nhận việc, quản lý lịch và theo dõi thu nhập.',
       meta: 'Tài khoản thợ · Xác thực hồ sơ',
@@ -292,6 +293,7 @@ const enCopy: EntryAccessCopy = {
     loginUnavailable: 'Sign-in is not available right now. Please try again later.',
     methodUnavailable: 'This sign-in method is not configured.',
     nextScreenUnavailable: 'Unable to open the next screen. Please try again.',
+    passwordMismatch: 'Passwords do not match.',
     recoveryEmail: 'Enter a valid recovery email address.',
     recoveryPhone: 'Enter a valid recovery phone number.',
     recoveryPrimary: 'Enter the email or phone number registered to your account.',
@@ -301,6 +303,7 @@ const enCopy: EntryAccessCopy = {
     roleUnavailable: 'Unable to load the account role.',
     signInFailed: 'Unable to sign in. Please try again.',
     signupFailed: 'Unable to create your account. Please try again.',
+    signupConfirmationRequired: 'Sign-up is not ready because verification is still required. Please try again later.',
     signupPasswordLong: 'Password cannot exceed 128 characters.',
     signupPasswordShort: 'Password must be at least 8 characters.',
     termsRequired: 'Accept the terms to continue.',
@@ -319,13 +322,13 @@ const enCopy: EntryAccessCopy = {
   fields: {
     customerIdentifierLabel: 'Email/phone',
     customerIdentifierPlaceholder: 'email@example.com or 090 123 4567',
-    workerIdentifierLabel: 'Email',
-    workerIdentifierPlaceholder: 'email@example.com',
+    workerIdentifierLabel: 'Email/phone',
+    workerIdentifierPlaceholder: 'email@example.com or 090 123 4567',
   },
   login: {
     busy: 'Working…',
     forgotPassword: 'Forgot password?',
-    lead: 'Continue where you left off with Kael.',
+    lead: '',
     noAccount: 'New to NestScout?',
     passwordLabel: 'Password',
     passwordPlaceholder: 'Enter your password',
@@ -333,7 +336,7 @@ const enCopy: EntryAccessCopy = {
     register: 'Create account',
     remember: 'Remember me',
     submit: 'Sign in',
-    title: 'Welcome\nback.',
+    title: 'Welcome Back..!',
     topbar: 'Sign in',
   },
   onboarding: {
@@ -354,36 +357,35 @@ const enCopy: EntryAccessCopy = {
     phoneLabel: 'Recovery phone',
     primaryLabel: 'Registered email/phone',
     submit: 'Continue',
-    title: 'Recover your\npassword.',
+    title: 'Recover your password.',
     topbar: 'Password recovery',
   },
   register: {
     accountExists: 'Already have an account?',
     busy: 'Working…',
-    customerLead: 'It takes less than a minute.',
+    customerLead: '',
     customerSubmit: 'Create account',
-    customerTitle: 'Create your\naccount.',
+    customerTitle: 'Create your account.',
     fullNameLabel: 'Full name',
     fullNamePlaceholder: 'Alex Nguyen',
     login: 'Sign in',
     passwordLabel: 'Password',
     passwordPlaceholder: 'At least 8 characters',
+    passwordConfirmationLabel: 'Confirm password',
+    passwordConfirmationPlaceholder: 'Re-enter your password',
     terms: 'I agree to the NestScout Terms of Use and Privacy Policy.',
     topbar: 'Create account',
-    workerLead: 'Create an account before submitting your verification profile.',
     workerSubmit: 'Create worker account',
-    workerTitle: 'Create your\npartner profile.',
+    workerTitle: 'Create your partner profile.',
   },
   roleGate: {
     chooseRole: 'Choose your role',
-    continueCustomer: 'Continue as Customer',
-    continueWorker: 'Continue as Service partner',
     customer: {
       description: 'Book services, chat with Kael, and track progress.',
       meta: 'Google · Apple · Email/phone',
       title: 'Customer',
     },
-    footer: 'Your role is fixed after sign-in.\nYou can change it before authentication.',
+    selectionHint: 'Tap once to select a role; tap again to continue.',
     worker: {
       description: 'Receive work, manage your schedule, and track earnings.',
       meta: 'Worker account · Profile verification',
@@ -401,69 +403,44 @@ export const entryAccessCopy: Readonly<Record<AppLanguage, EntryAccessCopy>> = {
   vi: viCopy,
 }
 
+const englishRoleGateGreetingVariants: Readonly<
+  Record<RoleGateGreetingPeriod, readonly RoleGateGreeting[]>
+> = {
+  morning: [
+    { headline: 'Morning, let’s begin...!' },
+    { headline: 'Good morning, welcome in!' },
+    { headline: 'A fresh start, right here!' },
+    { headline: 'Let’s make today lighter!' },
+    { headline: 'Ready when you are...!' },
+  ],
+  midday: [
+    { headline: 'A little time for what matters...!' },
+    { headline: 'One thing at a time!' },
+    { headline: 'A small step, a lighter day!' },
+    { headline: 'Let’s make room for better!' },
+    { headline: 'What shall we sort out...!' },
+  ],
+  afternoon: [
+    { headline: 'Afternoon, let’s begin...!' },
+    { headline: 'Good to see you here!' },
+    { headline: 'Let’s make something easier!' },
+    { headline: 'One good step from here!' },
+    { headline: 'Where shall we begin...!' },
+  ],
+  evening: [
+    { headline: 'Good evening, take it easy!' },
+    { headline: 'A lighter evening starts here!' },
+    { headline: 'Let’s wrap up one thing...!' },
+    { headline: 'Quiet time for what matters!' },
+    { headline: 'Kael is here when you need help...!' },
+  ],
+}
+
 export const roleGateGreetingVariants: Readonly<
   Record<AppLanguage, Readonly<Record<RoleGateGreetingPeriod, readonly RoleGateGreeting[]>>>
 > = {
-  vi: {
-    morning: [
-      { headline: 'Chào buổi sáng, mình bắt đầu thật nhẹ nhàng nhé.', lead: 'Bạn đến để tìm người hỗ trợ, hay để nhận một việc phù hợp?' },
-      { headline: 'Buổi sáng yên, mình cùng sắp xếp một việc nhỏ nhé.', lead: 'Mình chọn vai trò phù hợp để bắt đầu thật rõ ràng.' },
-      { headline: 'Chào ngày mới, Kael ở đây để việc nhà bớt nặng.', lead: 'Bạn muốn tìm người hỗ trợ, hay mang tay nghề của mình đến nơi cần?' },
-      { headline: 'Sáng nay, căn nhà mình đang cần điều gì?', lead: 'Hôm nay, bạn muốn tìm hỗ trợ hay sẵn sàng nhận một việc phù hợp?' },
-      { headline: 'Một buổi sáng dịu, mình bắt đầu từ điều cần nhất nhé.', lead: 'Bạn muốn nhờ hỗ trợ, hay sẵn sàng mang kỹ năng đến một ngôi nhà?' },
-    ],
-    midday: [
-      { headline: 'Giữa trưa, mình dành một chút thời gian cho việc đang chờ nhé.', lead: 'Mình chọn cách đồng hành phù hợp, rồi bắt đầu từ việc cần nhất.' },
-      { headline: 'Trưa nay, có việc nào ở nhà bạn muốn gỡ trước không?', lead: 'Bạn muốn tìm sự hỗ trợ, hay sẵn sàng nhận một việc phù hợp?' },
-      { headline: 'Khoảng nghỉ ngắn, một khởi đầu gọn gàng.', lead: 'Chỉ cần chọn cách mình muốn bắt đầu, phần còn lại sẽ rõ ràng hơn.' },
-      { headline: 'Trưa rồi, Kael sẵn sàng cùng bạn sắp xếp từng việc.', lead: 'Khách hàng hay Đối tác thợ — mỗi bên đều có một điểm bắt đầu.' },
-      { headline: 'Một chút thời gian cho ngôi nhà cũng đủ làm mọi thứ nhẹ hơn.', lead: 'Dành vài giây để chọn đúng vai trò cho mình.' },
-    ],
-    afternoon: [
-      { headline: 'Chiều nay, mình cùng hoàn thành một việc cho ngôi nhà nhé.', lead: 'Mình chọn cách bạn muốn bắt đầu, Kael sẽ đồng hành đúng nhịp.' },
-      { headline: 'Buổi chiều dịu lại, việc cần làm cũng có thể nhẹ đi.', lead: 'Bạn đến để nhờ hỗ trợ, hay để mang kỹ năng của mình đến nơi cần?' },
-      { headline: 'Chiều rồi, bạn muốn Kael bắt đầu từ đâu?', lead: 'Bạn cần một người hỗ trợ, hay đang sẵn sàng nhận một việc?' },
-      { headline: 'Thêm một chút chủ động cho căn nhà của mình.', lead: 'Mỗi vai trò có một hành trình riêng, mình chọn trước nhé.' },
-      { headline: 'Chiều nay, tìm đúng người cho đúng việc nhé.', lead: 'Chỉ cần một lựa chọn, phần còn lại sẽ rõ ràng hơn.' },
-    ],
-    evening: [
-      { headline: 'Tối nay, mình khép lại việc còn dang dở thật nhẹ nhàng nhé.', lead: 'Mình chọn cách bắt đầu để phần việc còn lại rõ ràng hơn.' },
-      { headline: 'Buổi tối yên, Kael vẫn ở đây khi bạn cần.', lead: 'Bạn muốn nhờ một người phù hợp, hay sẵn sàng nhận một việc gần nhà?' },
-      { headline: 'Đêm xuống rồi, một việc nhỏ cũng đáng được giải quyết.', lead: 'Bạn đến để nhờ hỗ trợ, hay để nhận một việc phù hợp?' },
-      { headline: 'Tối nay, bạn muốn tìm người hỗ trợ hay bắt đầu nhận việc?', lead: 'Mình bắt đầu bằng việc chọn đúng chỗ đứng của mình nhé.' },
-      { headline: 'Nhà mình cần được chăm chút, từng việc một.', lead: 'Một lựa chọn nhỏ để buổi tối nhẹ hơn.' },
-    ],
-  },
-  en: {
-    morning: [
-      { headline: 'Good morning. Let’s begin gently.', lead: 'Are you here to find help or receive suitable work?' },
-      { headline: 'A quiet morning is a good time to sort one thing out.', lead: 'Choose the role that gives you a clear starting point.' },
-      { headline: 'Good morning. Kael is here to make home care feel lighter.', lead: 'Would you like to find help or bring your skills where they are needed?' },
-      { headline: 'What does your home need this morning?', lead: 'Would you like support or are you ready for suitable work?' },
-      { headline: 'A calm morning starts with what matters most.', lead: 'Would you like help or are you ready to bring your skills to a home?' },
-    ],
-    midday: [
-      { headline: 'Let’s make a little time for the task waiting at midday.', lead: 'Choose how you would like Kael to help, then start with what matters most.' },
-      { headline: 'Is there something at home you would like to solve first?', lead: 'Would you like support or are you ready for suitable work?' },
-      { headline: 'A short break can be a clear new start.', lead: 'Choose how you want to begin and the next step will become clearer.' },
-      { headline: 'Kael is ready to help you organize each task.', lead: 'Customers and service partners each have a clear place to begin.' },
-      { headline: 'A moment for your home can make the rest feel lighter.', lead: 'Take a few seconds to choose the role that fits you.' },
-    ],
-    afternoon: [
-      { headline: 'Let’s complete one thing for your home this afternoon.', lead: 'Choose how you want to begin and Kael will keep pace with you.' },
-      { headline: 'As the afternoon softens, the task can feel lighter too.', lead: 'Are you here for support or to bring your skills where they are needed?' },
-      { headline: 'Where would you like Kael to begin this afternoon?', lead: 'Do you need support, or are you ready to receive work?' },
-      { headline: 'Take one more active step for your home.', lead: 'Each role has its own journey, so choose yours first.' },
-      { headline: 'Let’s find the right person for the right task.', lead: 'One choice is enough to make the next step clearer.' },
-    ],
-    evening: [
-      { headline: 'Let’s gently close out what is still unfinished tonight.', lead: 'Choose how to begin so the remaining work feels clearer.' },
-      { headline: 'It is a quiet evening, and Kael is still here when you need help.', lead: 'Would you like the right person to help, or are you ready for nearby work?' },
-      { headline: 'Night has fallen, but one small task is still worth solving.', lead: 'Are you here to find help or receive suitable work?' },
-      { headline: 'Would you like to find help or start receiving work tonight?', lead: 'Begin by choosing the place that fits you.' },
-      { headline: 'A home is cared for one task at a time.', lead: 'One small choice can make the evening lighter.' },
-    ],
-  },
+  vi: englishRoleGateGreetingVariants,
+  en: englishRoleGateGreetingVariants,
 }
 
 const errorMatchers: readonly Readonly<{
@@ -489,6 +466,7 @@ const errorMatchers: readonly Readonly<{
   { key: 'loginUnavailable', patterns: [/dịch vụ đăng nhập chưa sẵn sàng/i, /sign.?in.*not available/i, /auth.*config/i] },
   { key: 'connectionFailed', patterns: [/không thể kết nối/i, /network/i, /timeout/i, /unable to connect/i] },
   { key: 'signupFailed', patterns: [/không thể tạo tài khoản/i, /unable to create.*account/i] },
+  { key: 'signupConfirmationRequired', patterns: [/hệ thống vẫn yêu cầu xác minh/i, /verification is still required/i] },
 ]
 
 const errorKeys = Object.keys(viCopy.errors) as EntryAuthErrorKey[]

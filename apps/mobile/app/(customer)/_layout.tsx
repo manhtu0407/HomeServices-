@@ -1,44 +1,11 @@
-import { Redirect, Tabs, usePathname } from 'expo-router'
+import { Redirect } from 'expo-router'
+import { Stack } from 'expo-router/stack'
 import { useMemo, useState } from 'react'
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native'
-import { CustomerDockOverlay, type CustomerDockActive } from '@/components/customer/customer-surfaces'
-import { getCustomerThemeTokens, useCustomerThemeMode } from '@/components/customer/customer-theme'
-import { DockScrollStateProvider } from '@/components/ui/dock-scroll-state'
 import { useAuth } from '@/lib/auth-provider'
 import { useAdminActivation } from '@/lib/admin-activation-provider'
-import { useAppLanguage } from '@/lib/app-language'
+import { color } from '@/design/theme'
 import { mobileRuntimeConfig } from '@/lib/runtime-config'
-
-const CUSTOMER_DOCK_MAIN_A = 'CUSTOMER_DOCK_MAIN_A: app layout hosts the custom customer dock'
-const CUSTOMER_DARK_DOCK_LAYER_MATCH = 'CUSTOMER_DARK_DOCK_LAYER_MATCH: dock follows customer theme layer'
-const CUSTOMER_DARK_DOCK_LAYER = 'CUSTOMER_DARK_DOCK_LAYER: customer dock follows the current semantic layer'
-const CUSTOMER_DOCK_SHADOW_LAYER = 'customer-dock-shadow-layer'
-void [CUSTOMER_DOCK_MAIN_A, CUSTOMER_DARK_DOCK_LAYER_MATCH, CUSTOMER_DARK_DOCK_LAYER, CUSTOMER_DOCK_SHADOW_LAYER]
-
-const CUSTOMER_TAB_COPY = {
-  en: {
-    booking: 'Request',
-    history: 'Activity',
-    home: 'Home',
-    kael: 'Kael',
-    profile: 'Profile',
-  },
-  vi: {
-    booking: 'Yêu cầu',
-    history: 'Hoạt động',
-    home: 'Trang chủ',
-    kael: 'Kael',
-    profile: 'Hồ sơ',
-  },
-} as const
-
-function activeCustomerDockFromPath(pathname: string): CustomerDockActive {
-  if (pathname.includes('booking')) return 'services'
-  if (pathname.includes('history')) return 'activity'
-  if (pathname.includes('profile')) return 'profile'
-  if (pathname.includes('kael')) return 'chat'
-  return 'home'
-}
 
 function runtimeBuildMarkerText() {
   const info = mobileRuntimeConfig.runtimeBuildInfo
@@ -87,18 +54,11 @@ function CustomerRuntimeBuildMarker() {
 export default function CustomerLayout() {
   const { guestMode, loading, role, session } = useAuth()
   const activation = useAdminActivation()
-  const language = useAppLanguage()
-  const themeMode = useCustomerThemeMode()
-  const tokens = getCustomerThemeTokens(themeMode)
-  const pathname = usePathname()
-  const tabCopy = CUSTOMER_TAB_COPY[language]
-  const activeDock = activeCustomerDockFromPath(pathname)
-  const showDock = !pathname.includes('/kael')
 
   if (loading || (session && activation.loading)) {
     return (
       <View style={{ alignItems: 'center', flex: 1, justifyContent: 'center' }}>
-        <ActivityIndicator color={tokens.primary} size="large" />
+        <ActivityIndicator color={color.brand.primary} size="large" />
       </View>
     )
   }
@@ -109,7 +69,7 @@ export default function CustomerLayout() {
   if (session && activation.status?.required) return <Redirect href="/(auth)/admin-activation" />
 
   if (session && role === 'worker') {
-    return <Redirect href="/(worker)/home" />
+    return <Redirect href="/(worker)/(tabs)/home" />
   }
 
   if (session && role === 'admin') {
@@ -125,20 +85,14 @@ export default function CustomerLayout() {
   }
 
   return (
-    <DockScrollStateProvider>
-      <View style={{ backgroundColor: tokens.canvas, flex: 1 }}>
-        <Tabs tabBar={() => null} screenOptions={{ headerShown: false }}>
-          <Tabs.Screen name="home" options={{ title: tabCopy.home }} />
-          <Tabs.Screen name="booking" options={{ title: tabCopy.booking }} />
-          <Tabs.Screen name="history" options={{ title: tabCopy.history }} />
-          <Tabs.Screen name="profile" options={{ title: tabCopy.profile }} />
-          <Tabs.Screen name="kael" options={{ href: null, title: tabCopy.kael }} />
-          <Tabs.Screen name="kael-chat" options={{ href: null, title: tabCopy.kael }} />
-        </Tabs>
-        {showDock ? <CustomerDockOverlay active={activeDock} /> : null}
-        <CustomerRuntimeBuildMarker />
-      </View>
-    </DockScrollStateProvider>
+    <View style={{ flex: 1 }}>
+      <Stack screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        <Stack.Screen name="kael" options={{ headerShown: false }} />
+        <Stack.Screen name="kael-chat" options={{ headerShown: false }} />
+      </Stack>
+      <CustomerRuntimeBuildMarker />
+    </View>
   )
 }
 

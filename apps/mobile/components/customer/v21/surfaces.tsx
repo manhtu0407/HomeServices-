@@ -5,20 +5,16 @@ import {
   Text,
   View,
   useWindowDimensions,
-  type ImageSourcePropType,
 } from 'react-native'
-import { cancelAnimation, useAnimatedStyle, useSharedValue, withSequence, withSpring, withTiming } from 'react-native-reanimated'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import {
   CUSTOMER_SERVICE_IDS,
   extractKnownDistrictLabel,
   type CustomerServiceId,
-  type LocalDeal,
   type ServiceType,
 } from '@nestscout/shared'
 import { KaelButton } from '@/components/ui/kael-primitives'
 import { useDockScrollState, useDockScrollTransform } from '@/components/ui/dock-scroll-state'
-import { motionTokens } from '@/components/ui/motion-tokens'
 import { generateClientRequestId } from '@/lib/client-request-id'
 import { localizeAccountMutationError } from '@/lib/account-mutation-error'
 import { localizedProblemOptions, setAppLanguage, useAppLanguage } from '@/lib/app-language'
@@ -39,6 +35,8 @@ import {
 } from '../ui/aura-surfaces'
 import { customerV21Assets, customerV21BankAssets } from '../ui/assets'
 import { CustomerBookingEntryView, CustomerBookingGuestGateView } from '../booking/booking-entry-stateful-surfaces'
+import { HomeGuidanceBanner } from '../home/home-guidance-banner'
+import { HomeCurrentJobCard } from '../home/home-current-job-card'
 import { HomeStorytellingCard } from '../home/home-storytelling-card'
 import {
   bookingCustomDateValue,
@@ -64,10 +62,12 @@ import { KaelChatSurface } from './kael-chat-surface'
 import { customerKaelStateScopeKey } from '../kael-chat/customer-kael-state-scope'
 import {
   agenticDealProblemLabel,
+  agenticDealDurationLabel,
   caseDisplayCode,
   canCustomerDecideScopeChange,
   formatNumber,
   formatVnd,
+  homeScheduleLabel,
 } from '../kael-chat/case-work-display-model'
 import { stepForStatus } from '../kael-chat/case-stage-display-model'
 import {
@@ -75,15 +75,14 @@ import {
   agenticMemoryRowsFromUnknown,
 } from '../kael-chat/agentic-memory-display-model'
 import { CustomerV21DockOverlayView } from '../dock/dock-stateful-surfaces'
+import type { LiquidNavIconName } from '../dock/liquid-nav-icons'
 import {
   customerV21CommonCopy,
   customerV21ScreenTitles,
   customerV21ServiceCopy,
   customerV21StatusCopy,
 } from '../ui/copy'
-import { ActiveCaseCardPanel } from '../history/history-active-surfaces'
 import { CustomerServiceHistorySurface } from '../history/service-history-surface'
-import { CaseFactGrid } from '../history/history-surfaces'
 import { CustomerProfileOverviewView, CustomerProfileSubscreenView } from '../profile/profile-stateful-surfaces'
 import { buildCustomerProfileSettingsGroups } from '../profile/profile-settings-groups'
 import { ProfileCompactMintAura } from '../profile/profile-metrics-surfaces'
@@ -129,7 +128,6 @@ import {
   CUSTOMER_LIQUID_NAV_GAP,
   CUSTOMER_LIQUID_NAV_MAX_WIDTH,
   CUSTOMER_LIQUID_NAV_ORB_SIZE,
-  CUSTOMER_LIQUID_NAV_RAIL_PADDING,
   CUSTOMER_LIQUID_NAV_SIDE_INSET,
 } from '../dock/dock-styles'
 import { customerV21ProfileUtilityStyles as profileUtilityStyles } from '../profile/profile-utility-styles'
@@ -167,11 +165,11 @@ const customerBookingServiceIdForHistory: Record<ServiceType, CustomerServiceId>
 }
 const PREFERRED_WORKER_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 
-const customerV21DockNavItems: { image: ImageSourcePropType; key: CustomerPrimaryTab; route: string }[] = [
-  { image: customerV21Assets.home, key: 'home', route: '/(customer)/home' },
-  { image: customerV21Assets.booking, key: 'services', route: '/(customer)/booking' },
-  { image: customerV21Assets.activityNav, key: 'activity', route: '/(customer)/history' },
-  { image: customerV21Assets.profile, key: 'profile', route: '/(customer)/profile' },
+const customerV21DockNavItems: { icon: LiquidNavIconName; key: CustomerPrimaryTab; route: string }[] = [
+  { icon: 'home', key: 'home', route: '/(customer)/home' },
+  { icon: 'services', key: 'services', route: '/(customer)/booking' },
+  { icon: 'activity', key: 'activity', route: '/(customer)/history' },
+  { icon: 'profile', key: 'profile', route: '/(customer)/profile' },
 ]
 function ProfileRankProcess({ label, percent, value }: { label: string; percent: number; value: string }) {
   const { reduceTransparency, tokens } = useV21Theme()
@@ -211,6 +209,7 @@ export function CustomerHomeSurface() {
   const deal = workflow.state.deal
   const isDraftDeal = deal?.status === 'draft'
   const displayName = profileName(session?.user.user_metadata, language)
+  const { width } = useWindowDimensions()
 
   const activeCaseRoute = isDraftDeal
     ? '/(customer)/booking'
@@ -222,6 +221,11 @@ export function CustomerHomeSurface() {
     router.replace(`/(customer)/booking?service=${encodeURIComponent(serviceId)}` as never)
   }
 
+  const openHomeSearch = (value: string) => {
+    if (!value) return
+    router.replace('/(customer)/booking' as never)
+  }
+
   return (
     <V21Screen screenId="2.1-home" testID="customer-v21-home">
       <V21TopBar
@@ -229,10 +233,13 @@ export function CustomerHomeSurface() {
         showAvatar={false}
         subtitle=""
         title={homeGreeting(displayName, language)}
+        titleNumberOfLines={2}
+        titleStyle={{ fontSize: width < 560 ? 23 : 32, fontWeight: '800', lineHeight: width < 560 ? 28 : 38 }}
       />
 
       <HomeStorytellingCard
         language={language}
+        onSearch={openHomeSearch}
         reduceTransparency={reduceTransparency}
         tokens={tokens}
       />
@@ -244,17 +251,38 @@ export function CustomerHomeSurface() {
       />
       <View style={[sharedStyles.serviceGrid, sharedStyles.homeServiceGrid]}>
         {CUSTOMER_SERVICE_IDS.map((service) => (
-          <ServiceTile homeAura key={service} onPress={() => openService(service)} service={service} />
+          <ServiceTile
+            homeAura
+            homeV4
+            key={service}
+            onPress={() => openService(service)}
+            service={service}
+          />
         ))}
       </View>
 
-      <SectionActionHeader
-        action={deal ? (isDraftDeal ? (language === 'vi' ? 'Tiếp tục ›' : 'Continue ›') : (language === 'vi' ? 'Mở công việc ›' : 'Open work ›')) : undefined}
-        onAction={deal ? () => router.replace(activeCaseRoute as never) : undefined}
-        title={isDraftDeal ? (language === 'vi' ? 'Nháp dịch vụ' : 'Service draft') : copy.activeCase}
-      />
+      <HomeGuidanceBanner language={language} onPress={() => router.replace('/(customer)/booking' as never)} reduceTransparency={reduceTransparency} tokens={tokens} />
+
       {deal ? (
-        <ActiveCaseCard deal={deal} onOpen={() => router.replace(activeCaseRoute as never)} />
+        <>
+          <SectionActionHeader
+            action={isDraftDeal ? (language === 'vi' ? 'Tiếp tục ›' : 'Continue ›') : (language === 'vi' ? 'Mở công việc ›' : 'Open work ›')}
+            onAction={() => router.replace(activeCaseRoute as never)}
+            title={isDraftDeal ? (language === 'vi' ? 'Nháp dịch vụ' : 'Service draft') : (language === 'vi' ? 'Công việc đang xử lý' : 'Current work')}
+          />
+          <HomeCurrentJobCard
+            caseCode={caseDisplayCode(deal, language)}
+            deal={deal}
+            durationLabel={agenticDealDurationLabel(deal, language)}
+            language={language}
+            onOpen={() => router.replace(activeCaseRoute as never)}
+            scheduleLabel={homeScheduleLabel(deal.draft.timeChoice, language, deal.scheduledAt)}
+            serviceLabel={deal.draft.serviceType ? customerV21ServiceCopy[language][deal.draft.serviceType].label : copy.dataPending}
+            statusLabel={customerV21StatusCopy[language][deal.status]}
+            step={Math.max(1, stepForStatus(deal.status))}
+            tokens={tokens}
+          />
+        </>
       ) : (
         <EmptyState
           action={<KaelButton label={copy.startService} onPress={() => router.replace('/(customer)/booking' as never)} size="small" testID="customer-v21-home-start" />}
@@ -914,86 +942,10 @@ export function CustomerV21DockOverlay({ active }: { active: CustomerDockActive 
 
   const liquidNavWidth = Math.min(Math.max(width - CUSTOMER_LIQUID_NAV_SIDE_INSET * 2, 0), CUSTOMER_LIQUID_NAV_MAX_WIDTH)
   const liquidDockWidth = Math.max(liquidNavWidth - CUSTOMER_LIQUID_NAV_ORB_SIZE - CUSTOMER_LIQUID_NAV_GAP, CUSTOMER_LIQUID_NAV_DOCK_HEIGHT)
-  const selectedIndex = activeTab ? customerV21DockNavItems.findIndex((item) => item.key === activeTab) : -1
-  const settledIndex = selectedIndex >= 0 ? selectedIndex : 0
-  const lensWidth = Math.max((liquidDockWidth - CUSTOMER_LIQUID_NAV_RAIL_PADDING * 2) / customerV21DockNavItems.length, 0)
-  const previousIndexRef = useRef(settledIndex)
-  const lensX = useSharedValue(settledIndex * lensWidth)
-  const lensScaleX = useSharedValue(1)
-  const lensScaleY = useSharedValue(1)
-  const lensRadius = useSharedValue(24)
-  const lensSkew = useSharedValue(0)
-  const lensSheenX = useSharedValue(-84)
-  const lensSheenOpacity = useSharedValue(0)
-  const dockShimmerX = useSharedValue((0.18 + settledIndex * 0.22) * liquidDockWidth)
-  const dockCausticX = useSharedValue(settledIndex * lensWidth)
   const kaelActive = active === 'chat'
-  const dockCausticWidth = Math.min(118, Math.max(lensWidth + 48, 72))
-  const dockCausticLeft = (lensWidth - dockCausticWidth) / 2
-  const animatedLensStyle = useAnimatedStyle(() => ({
-    borderRadius: lensRadius.value,
-    transform: [{ translateX: lensX.value }, { scaleX: lensScaleX.value }, { scaleY: lensScaleY.value }, { skewX: `${lensSkew.value}deg` }],
-    width: lensWidth,
-  }), [lensWidth])
-  const animatedLensSheenStyle = useAnimatedStyle(() => ({
-    opacity: lensSheenOpacity.value,
-    transform: [{ translateX: lensSheenX.value }, { rotate: '-12deg' }],
-  }))
-  const animatedDockShimmerStyle = useAnimatedStyle(() => ({
-    opacity: reduceTransparency ? 0 : 0.73,
-    transform: [{ translateX: dockShimmerX.value }],
-  }), [reduceTransparency])
-  const animatedDockCausticStyle = useAnimatedStyle(() => ({
-    opacity: reduceTransparency ? 0 : 1,
-    transform: [{ translateX: dockCausticX.value }],
-  }), [reduceTransparency])
-
   useEffect(() => {
     resetDockScroll()
   }, [active, resetDockScroll])
-
-  useEffect(() => {
-    const targetX = settledIndex * lensWidth
-    const shimmerTarget = (0.18 + settledIndex * 0.22) * liquidDockWidth
-    const causticTarget = settledIndex * lensWidth
-    const delta = settledIndex - previousIndexRef.current
-
-    cancelAnimation(lensX)
-    cancelAnimation(lensScaleX)
-    cancelAnimation(lensScaleY)
-    cancelAnimation(lensRadius)
-    cancelAnimation(lensSkew)
-    cancelAnimation(lensSheenX)
-    cancelAnimation(lensSheenOpacity)
-    cancelAnimation(dockShimmerX)
-    cancelAnimation(dockCausticX)
-
-    if (reduceMotion || delta === 0) {
-      lensX.value = withTiming(targetX, { duration: 120 })
-      lensScaleX.value = 1
-      lensScaleY.value = 1
-      lensRadius.value = 24
-      lensSkew.value = 0
-      dockShimmerX.value = withTiming(shimmerTarget, { duration: 160 })
-      dockCausticX.value = withTiming(causticTarget, { duration: 160 })
-      previousIndexRef.current = settledIndex
-      return
-    }
-
-    const stretch = Math.min(1.21, 1.08 + Math.abs(delta) * 0.045)
-    const direction = Math.sign(delta)
-    lensX.value = withSpring(targetX, motionTokens.liquid.pill)
-    lensScaleX.value = withSequence(withTiming(stretch, { duration: 235 }), withSpring(0.965, motionTokens.liquid.press), withSpring(1, motionTokens.liquid.press))
-    lensScaleY.value = withSequence(withTiming(0.91, { duration: 235 }), withSpring(1.035, motionTokens.liquid.press), withSpring(1, motionTokens.liquid.press))
-    lensRadius.value = withSequence(withTiming(27, { duration: 235 }), withTiming(22, { duration: 190 }), withSpring(24, motionTokens.liquid.press))
-    lensSkew.value = withSequence(withTiming(direction * -2.2, { duration: 235 }), withTiming(0, { duration: 325 }))
-    lensSheenX.value = -84
-    lensSheenOpacity.value = withSequence(withTiming(0.84, { duration: 90 }), withTiming(0, { duration: 270 }))
-    lensSheenX.value = withTiming(84, { duration: 360 })
-    dockShimmerX.value = withTiming(shimmerTarget, { duration: 580 })
-    dockCausticX.value = withTiming(causticTarget, { duration: 560 })
-    previousIndexRef.current = settledIndex
-  }, [dockCausticX, dockShimmerX, lensRadius, lensScaleX, lensScaleY, lensSheenOpacity, lensSheenX, lensSkew, lensWidth, lensX, liquidDockWidth, reduceMotion, settledIndex])
 
   const openKael = () => {
     router.replace(customerKaelChatRoute as never)
@@ -1002,13 +954,7 @@ export function CustomerV21DockOverlay({ active }: { active: CustomerDockActive 
   return (
     <CustomerV21DockOverlayView
       activeTab={activeTab}
-      animatedDockCausticStyle={animatedDockCausticStyle}
-      animatedDockShimmerStyle={animatedDockShimmerStyle}
       animatedDockScrollStyle={animatedDockScrollStyle}
-      animatedLensSheenStyle={animatedLensSheenStyle}
-      animatedLensStyle={animatedLensStyle}
-      dockCausticLeft={dockCausticLeft}
-      dockCausticWidth={dockCausticWidth}
       kaelActive={kaelActive}
       language={language}
       liquidDockWidth={liquidDockWidth}
@@ -1018,65 +964,13 @@ export function CustomerV21DockOverlay({ active }: { active: CustomerDockActive 
       onKaelPress={openKael}
       onTabPress={(route) => router.replace(route as never)}
       reduceMotion={reduceMotion}
-      selectedIndex={selectedIndex}
+      reduceTransparency={reduceTransparency}
       tokens={tokens}
     />
   )
 }
 
 export const CustomerDockOverlay = CustomerV21DockOverlay
-
-function ActiveCaseCard({ deal, onOpen }: { deal: LocalDeal; onOpen: () => void }) {
-  const language = useAppLanguage()
-  const { tokens } = useV21Theme()
-  const copy = customerV21CommonCopy[language]
-  const service = deal.draft.serviceType ? customerV21ServiceCopy[language][deal.draft.serviceType].label : copy.dataPending
-  const caseFactMetrics = useMemo(() => [
-    {
-      auraScope: 'ActiveCaseService',
-      label: language === 'vi' ? 'Dịch vụ' : 'Service',
-      testID: 'customer-v21-active-case-service',
-      value: service,
-    },
-    {
-      auraScope: 'ActiveCaseProblem',
-      label: language === 'vi' ? 'Vấn đề' : 'Issue',
-      testID: 'customer-v21-active-case-problem',
-      value: agenticDealProblemLabel(deal, language),
-    },
-    {
-      auraScope: 'ActiveCaseArea',
-      label: language === 'vi' ? 'Khu vực' : 'Area',
-      testID: 'customer-v21-active-case-area',
-      value: deal.draft.addressLabel || deal.draft.districtLabel || copy.dataPending,
-    },
-    {
-      auraScope: 'ActiveCaseEstimate',
-      label: language === 'vi' ? 'Ước tính' : 'Estimate',
-      testID: 'customer-v21-active-case-estimate',
-      value: deal.estimate?.priceRangeLabel || copy.dataPending,
-    },
-  ], [copy.dataPending, deal, language, service])
-  const caseFactGrid = useMemo(
-    () => <CaseFactGrid metrics={caseFactMetrics} sourceCardSkin={SourceCardSkin} tokens={tokens} zipMintAura={ZipMintAura} />,
-    [caseFactMetrics, tokens],
-  )
-  return (
-    <ActiveCaseCardPanel
-      activeCaseLabel={customerV21CommonCopy[language].activeCase}
-      activeStep={stepForStatus(deal.status)}
-      activityImage={customerV21Assets.activity}
-      bodyTextStyle={styles.bodyText}
-      cardStyle={styles.activeCaseCard}
-      caseCode={caseDisplayCode(deal, language)}
-      caseFactGrid={caseFactGrid}
-      onOpen={onOpen}
-      openLabel={language === 'vi' ? 'Xem hoạt động' : 'View activity'}
-      service={service}
-      statusLabel={customerV21StatusCopy[language][deal.status]}
-    />
-  )
-}
 
 type ProfileUtilitySectionProps = {
   kind: Extract<CustomerProfileUtility, 'address' | 'language' | 'memory' | 'password' | 'personal-details'>
@@ -1756,12 +1650,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     lineHeight: 20,
     textAlign: 'center',
-  },
-  activeCaseCard: {
-    borderColor: 'rgba(113,225,209,0.46)',
-    overflow: 'hidden',
-    position: 'relative',
-    boxShadow: '0 8px 24px rgba(8,125,114,0.12)',
   },
   accountUtilityGrid: {
     flexDirection: 'row',

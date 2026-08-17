@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react'
-import { Pressable, Text as RNText, View, type TextProps } from 'react-native'
+import { Text as RNText, View, type TextProps } from 'react-native'
 import { type LocalDeal } from '@nestscout/shared'
 import { KaelTextField, MintAura } from '@/components/ui/kael-primitives'
+import { LiquidControlButton, LiquidSendArrowIcon } from '@/components/ui/liquid-back-button'
 import { color } from '@/design/theme'
 import { type AppLanguage } from '@/lib/app-language'
 import { useJobChatThread } from '@/lib/use-job-chat-thread'
@@ -108,16 +109,18 @@ function WorkerV5SharedJobIncidentChat({
           testID="worker-v5-shared-job-incident-input"
           value={draft}
         />
-        <Pressable
+        <LiquidControlButton
           accessibilityLabel={textByLanguage(language, 'Gửi tin nhắn Kael Công việc', 'Send Kael Work message')}
-          accessibilityRole="button"
+          dimWhenDisabled={false}
           disabled={sending || !draft.trim()}
+          mode="light"
           onPress={() => void submit()}
-          style={({ pressed }) => [styles.kaelOrbSendButton, pressed && draft.trim() ? styles.pressed : null]}
+          size={44}
+          style={styles.kaelOrbSendButton}
           testID="worker-v5-shared-job-incident-send"
         >
-          <Text style={styles.kaelOrbSendText}>↑</Text>
-        </Pressable>
+          <LiquidSendArrowIcon color={color.text.primary} testID="worker-v5-shared-job-incident-send-arrow" />
+        </LiquidControlButton>
       </View>
     </View>
   )

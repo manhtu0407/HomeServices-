@@ -5,10 +5,6 @@ const customerV21WebFocusRing = Platform.OS === 'web'
   : {}
 
 export const customerV21ChatStyles = StyleSheet.create({
-  chatBackIcon: {
-    height: 18,
-    width: 18,
-  },
   chatBubble: {
     borderRadius: 22,
     borderWidth: 1,
@@ -143,31 +139,21 @@ export const customerV21ChatStyles = StyleSheet.create({
   },
   chatHeaderActions: {
     alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.16)',
+    borderColor: 'rgba(255,255,255,0.72)',
+    borderCurve: 'continuous',
     borderRadius: 22,
     borderWidth: 1,
+    boxShadow: '0 7px 16px rgba(8,125,114,0.08)',
     flexDirection: 'row',
     height: 44,
     overflow: 'hidden',
-    shadowColor: '#087D72',
-    shadowOffset: { height: 8, width: 0 },
-    shadowOpacity: 0.08,
-    shadowRadius: 18,
+  },
+  chatHeaderActionsLiquid: {
+    borderWidth: 0,
   },
   chatHeaderActionsOpen: {
-    borderColor: 'rgba(15,174,155,0.30)',
-  },
-  chatHeaderBackControl: {
-    ...customerV21WebFocusRing,
-    alignItems: 'center',
-    borderRadius: 24,
-    borderWidth: 1,
-    height: 48,
-    justifyContent: 'center',
-    shadowColor: '#087D72',
-    shadowOffset: { height: 8, width: 0 },
-    shadowOpacity: 0.08,
-    shadowRadius: 18,
-    width: 48,
+    borderColor: 'rgba(255,255,255,0.86)',
   },
   chatHeaderModeLabel: {
     alignSelf: 'stretch',
@@ -190,9 +176,9 @@ export const customerV21ChatStyles = StyleSheet.create({
     width: 114,
   },
   chatHeaderModeTriggerOpen: {
-    backgroundColor: 'rgba(255,255,255,0.94)',
-    borderColor: 'rgba(255,255,255,0.98)',
-    borderWidth: 1,
+    backgroundColor: 'transparent',
+    borderColor: 'transparent',
+    borderWidth: 0,
   },
   chatHeaderNewConversation: {
     ...customerV21WebFocusRing,
@@ -244,26 +230,16 @@ export const customerV21ChatStyles = StyleSheet.create({
   },
   chatMediaButton: {
     alignItems: 'center',
-    borderRadius: 18,
-    borderWidth: 1,
-    height: 38,
     justifyContent: 'center',
     position: 'relative',
-    width: 38,
     zIndex: 1,
-  },
-  chatMediaButtonDisabled: {
-    opacity: 1,
   },
   chatModeButton: {
     position: 'relative',
     zIndex: 1,
   },
   chatModeButtonActive: {
-    shadowColor: '#046358',
-    shadowOffset: { height: 7, width: 0 },
-    shadowOpacity: 0.08,
-    shadowRadius: 16,
+    boxShadow: '0 6px 14px rgba(4,99,88,0.07)',
   },
   chatModeMenu: {
     alignSelf: 'flex-end',
@@ -306,20 +282,13 @@ export const customerV21ChatStyles = StyleSheet.create({
   },
   chatModeMenuOption: {
     alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.16)',
+    borderColor: 'rgba(255,255,255,0.48)',
+    borderRadius: 13,
     borderWidth: 1,
     flexDirection: 'row',
     justifyContent: 'space-between',
     width: '100%',
-  },
-  chatModeMenuSheen: {
-    backgroundColor: 'rgba(255,255,255,0.62)',
-    borderRadius: 999,
-    height: 56,
-    left: -76,
-    position: 'absolute',
-    top: -18,
-    width: 42,
-    zIndex: 1,
   },
   chatModeMenuText: {
     fontSize: 12.5,
@@ -328,18 +297,19 @@ export const customerV21ChatStyles = StyleSheet.create({
     textAlign: 'left',
   },
   chatModeSwitch: {
-    borderColor: 'rgba(255,255,255,0.88)',
+    backgroundColor: 'rgba(255,255,255,0.18)',
+    borderColor: 'rgba(255,255,255,0.72)',
     borderRadius: 18,
     borderWidth: 1,
+    boxShadow: '0 10px 22px rgba(8,125,114,0.10)',
     gap: 4,
     minHeight: 46,
     overflow: 'hidden',
     padding: 4,
     position: 'relative',
-    shadowColor: '#087D72',
-    shadowOffset: { height: 8, width: 0 },
-    shadowOpacity: 0.05,
-    shadowRadius: 16,
+  },
+  chatModeMenuLiquid: {
+    borderWidth: 0,
   },
   chatTranscript: {
     flexGrow: 1,
@@ -426,10 +396,5 @@ export const customerV21KaelChatRootStyles = StyleSheet.create({
     position: 'relative',
     width: 44,
     zIndex: 1,
-  },
-  sendText: {
-    fontSize: 22,
-    fontWeight: '600',
-    lineHeight: 24,
   },
 })

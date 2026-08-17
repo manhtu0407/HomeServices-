@@ -17,7 +17,8 @@ import { useAppLanguage } from '@/lib/app-language'
 import { adminControlService } from '@/lib/services'
 import { FinanceControls, type FinanceView } from './admin-finance-controls'
 import { createFinanceFormatters } from './admin-finance-formatters'
-import { ReconciliationModal, reconciliationStatusLabel } from './admin-finance-reconciliation-modal'
+import { ReconciliationModal } from './admin-finance-reconciliation-modal'
+import { reconciliationStatusLabel } from './admin-finance-reconciliation-status'
 import { FinanceTaxReportsPanel, FinanceTransactionsPanel } from './admin-finance-reports'
 
 const copyByLanguage = {

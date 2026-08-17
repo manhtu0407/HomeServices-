@@ -1,6 +1,5 @@
 import {
   ActivityIndicator,
-  Pressable,
   Text,
   View,
   type StyleProp,
@@ -8,6 +7,7 @@ import {
   type ViewStyle,
 } from 'react-native'
 
+import { LiquidControlButton, LiquidSendArrowIcon } from '@/components/ui/liquid-back-button'
 import { KaelTextField } from '@/components/ui/kael-primitives'
 import type { AppLanguage } from '@/lib/app-language'
 
@@ -25,7 +25,6 @@ export type RootChatStyles = {
   errorText: StyleProp<TextStyle>
   flex: StyleProp<ViewStyle>
   sendButton: StyleProp<ViewStyle>
-  sendText: StyleProp<TextStyle>
 }
 
 export function KaelChatComposer({
@@ -72,17 +71,17 @@ export function KaelChatComposer({
       >
         <SourceCardSkin />
         <ChatComposerAura reduceTransparency={reduceTransparency} />
-        <Pressable
+        <LiquidControlButton
           accessibilityLabel={language === 'vi' ? 'Thêm ảnh hoặc video' : 'Add photo or video'}
-          accessibilityRole="button"
           accessibilityState={{ disabled: composerBusy || !canUseComposerMedia }}
+          dimWhenDisabled={false}
           disabled={composerBusy || !canUseComposerMedia}
+          hitSlop={3}
+          mode={tokens.mode}
           onPress={onPickMedia}
-          style={[
-            chatStyles.chatMediaButton,
-            !canUseComposerMedia ? chatStyles.chatMediaButtonDisabled : null,
-            { backgroundColor: tokens.service, borderColor: tokens.border },
-          ]}
+          radius={14}
+          size={38}
+          style={chatStyles.chatMediaButton}
           testID="customer-v21-kael-media-picker"
         >
           <ChatMediaCameraIcon color={tokens.primary} />
@@ -96,7 +95,7 @@ export function KaelChatComposer({
               </Text>
             </View>
           ) : null}
-        </Pressable>
+        </LiquidControlButton>
         <KaelTextField
           editable={!composerBusy}
           inputShellStyle={rootStyles.composerTextFieldShell}
@@ -112,19 +111,21 @@ export function KaelChatComposer({
           testID="customer-v21-kael-input"
           value={draft}
         />
-        <Pressable
+        <LiquidControlButton
           accessibilityLabel={language === 'vi' ? 'Gửi tin nhắn cho Kael' : 'Send message to Kael'}
-          accessibilityRole="button"
           accessibilityState={{ busy: composerBusy, disabled: composerBusy }}
+          dimWhenDisabled={false}
           disabled={composerBusy}
+          mode={tokens.mode}
           onPress={onSendMessage}
-          style={[rootStyles.sendButton, { backgroundColor: tokens.primary }]}
+          size={44}
+          style={rootStyles.sendButton}
           testID="customer-v21-kael-send"
         >
           {composerBusy
-            ? <ActivityIndicator color={tokens.primaryText} />
-            : <Text style={[rootStyles.sendText, { color: tokens.primaryText }]}>↑</Text>}
-        </Pressable>
+            ? <ActivityIndicator color={tokens.text} />
+            : <LiquidSendArrowIcon color={tokens.text} testID="customer-v21-kael-send-arrow" />}
+        </LiquidControlButton>
       </View>
       <Text
         style={[chatStyles.chatComposerDisclaimer, { color: tokens.muted }]}

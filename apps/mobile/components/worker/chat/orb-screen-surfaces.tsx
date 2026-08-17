@@ -1,9 +1,10 @@
 import { useCallback, useMemo, useRef, useState } from 'react'
-import { Pressable, Text as RNText, View, type StyleProp, type TextProps, type ViewStyle , KeyboardAvoidingView, Platform } from 'react-native'
+import { Text as RNText, View, type StyleProp, type TextProps, type ViewStyle , KeyboardAvoidingView, Platform } from 'react-native'
 import { useAnimatedStyle, useSharedValue, withSequence, withSpring, withTiming, withDelay } from 'react-native-reanimated'
 import { type LocalDeal } from '@nestscout/shared'
 import { useFocusEffect } from 'expo-router'
 import { KaelButton, KaelTextField } from '@/components/ui/kael-primitives'
+import { LiquidControlButton, LiquidSendArrowIcon } from '@/components/ui/liquid-back-button'
 import { motionDuration, motionTokens } from '@/components/ui/motion-tokens'
 import { color } from '@/design/theme'
 import { type AppLanguage } from '@/lib/app-language'
@@ -97,7 +98,7 @@ export function WorkerV5KaelOrbScreenSurface({
     setSessionMenuOpen(false)
     if (!reduceMotion) {
       modeMenuTriggerScale.value = withSequence(
-        withTiming(0.98, { duration: motionDuration(80, reduceMotion) }),
+        withTiming(0.84, { duration: motionDuration(80, reduceMotion) }),
         withSpring(1, motionTokens.liquid.press),
       )
     }
@@ -140,7 +141,7 @@ export function WorkerV5KaelOrbScreenSurface({
     transform: [{ translateY: modeMenuContentTranslateY.value }],
   }))
   const animatedModeTriggerStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: modeMenuTriggerScale.value }],
+    opacity: modeMenuTriggerScale.value,
   }))
   const orbChat = useWorkerV5KaelOrbChat(deal, language, mode, workerJobsHydrated)
   const resetToNewSession = orbChat.resetToNewSession
@@ -404,15 +405,17 @@ export function WorkerV5KaelOrbComposer({
             <WorkerV5CustomerCaseWideMintAura scope="KaelOrbComposerWide" style={styles.kaelOrbComposerAura} testID="worker-v5-kael-orb-composer-mint-aura" />
           </>
         ) : null}
-        <Pressable
+        <LiquidControlButton
           accessibilityLabel={mediaLabel}
-          accessibilityRole="button"
+          accessibilityState={{ disabled: busy }}
+          dimWhenDisabled={false}
           disabled={busy}
+          hitSlop={3}
+          mode="light"
           onPress={onPickMedia}
-          style={({ pressed }) => [
-            styles.kaelOrbComposerCameraButton,
-            pressed ? styles.pressed : null,
-          ]}
+          radius={14}
+          size={38}
+          style={styles.kaelOrbComposerCameraButton}
           testID="worker-v5-kael-orb-camera"
         >
           <WorkerV5KaelOrbCameraIcon color={color.brand.primaryDark} />
@@ -421,7 +424,7 @@ export function WorkerV5KaelOrbComposer({
               <Text style={styles.kaelOrbComposerCameraBadgeText}>{mediaCount}</Text>
             </View>
           ) : null}
-        </Pressable>
+        </LiquidControlButton>
         <KaelTextField
           accessibilityLabel={textByLanguage(language, 'Nhắn Kael', 'Message Kael')}
           inputShellStyle={styles.kaelOrbComposerInputShell}
@@ -438,21 +441,19 @@ export function WorkerV5KaelOrbComposer({
           testID="worker-v5-kael-orb-input"
           value={draft}
         />
-        <Pressable
+        <LiquidControlButton
           accessibilityLabel={textByLanguage(language, 'Gửi tin nhắn cho Kael', 'Send message to Kael')}
-          accessibilityRole="button"
           accessibilityState={{ busy, disabled: busy || !trimmedDraft }}
+          dimWhenDisabled={false}
           disabled={busy || !trimmedDraft}
+          mode="light"
           onPress={submitDraft}
-          style={({ pressed }) => [
-            styles.kaelOrbSendButton,
-            busy || !trimmedDraft ? styles.jobRoomSendDisabled : null,
-            pressed && trimmedDraft ? styles.pressed : null,
-          ]}
+          size={44}
+          style={styles.kaelOrbSendButton}
           testID="worker-v5-kael-orb-send"
         >
-          <Text style={styles.kaelOrbSendText}>↑</Text>
-        </Pressable>
+          <LiquidSendArrowIcon color={color.text.primary} testID="worker-v5-kael-orb-send-arrow" />
+        </LiquidControlButton>
       </View>
       <Text style={styles.kaelOrbComposerDisclaimer} testID="worker-v5-kael-orb-disclaimer">
         {textByLanguage(language, 'Kael có thể mắc lỗi. Hãy kiểm tra các thông tin quan trọng.', 'Kael can make mistakes. Check important information.')}
