@@ -1,3 +1,4 @@
+import { typography } from '@/design/theme'
 import { Image } from 'expo-image'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
 
@@ -67,13 +68,13 @@ export function MediaDraftPreviewTray({
 }
 
 const styles = StyleSheet.create({
-  disclosure: { fontSize: 11, lineHeight: 16 },
+  disclosure: { ...typography.caption2 },
   previewImage: { borderRadius: 8, height: 40, width: 40 },
   previewItem: { alignItems: 'center', borderRadius: 12, borderWidth: 1, flexDirection: 'row', gap: 9, padding: 7 },
-  previewName: { flex: 1, fontSize: 12 },
+  previewName: { flex: 1, ...typography.caption1 },
   removeButton: { alignItems: 'center', justifyContent: 'center', minHeight: 44, minWidth: 44, paddingHorizontal: 7 },
-  removeText: { fontSize: 12, fontWeight: '700' },
+  removeText: { ...typography.caption1, fontWeight: '600' },
   root: { gap: 7 },
   videoBadge: { alignItems: 'center', justifyContent: 'center' },
-  videoText: { fontSize: 8, fontWeight: '800' },
+  videoText: { ...typography.caption2, fontWeight: '600' },
 })

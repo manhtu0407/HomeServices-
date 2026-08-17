@@ -1,3 +1,4 @@
+import { typography } from '@/design/theme'
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native'
 
 import { KaelButton } from '@/components/ui/kael-primitives'
@@ -85,14 +86,14 @@ export function SavedWorkerConfirmationList({
 }
 
 const styles = StyleSheet.create({
-  body: { fontSize: 12, lineHeight: 18 },
-  check: { fontSize: 13, fontWeight: '700' },
-  empty: { fontSize: 12, lineHeight: 18, paddingVertical: 4 },
+  body: { ...typography.caption1 },
+  check: { ...typography.footnote, fontWeight: '600' },
+  empty: { ...typography.caption1, paddingVertical: 4 },
   error: { gap: 9 },
   list: { gap: 7 },
-  more: { fontSize: 11, lineHeight: 17 },
+  more: { ...typography.caption2 },
   state: { alignItems: 'center', flexDirection: 'row', gap: 9 },
-  stateLabel: { fontSize: 11, fontWeight: '600' },
+  stateLabel: { ...typography.caption2, fontWeight: '600' },
   worker: { alignItems: 'center', flexDirection: 'row', gap: 9, minHeight: 32 },
-  workerName: { flex: 1, fontSize: 13, fontWeight: '700' },
+  workerName: { flex: 1, ...typography.footnote, fontWeight: '600' },
 })

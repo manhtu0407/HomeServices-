@@ -1,4 +1,6 @@
-import type { TextStyle, ViewStyle } from 'react-native'
+import type { ViewStyle } from 'react-native'
+
+import { typography } from '@/design/theme'
 
 export const entryTheme = {
   color: {
@@ -58,14 +60,7 @@ export const entryTheme = {
     sheet: 30,
     pill: 999,
   },
-  typography: {
-    h1: { fontSize: 31, lineHeight: 38, fontWeight: '700', letterSpacing: 0 } satisfies TextStyle,
-    h2: { fontSize: 25, lineHeight: 32, fontWeight: '700', letterSpacing: 0 } satisfies TextStyle,
-    h3: { fontSize: 17, lineHeight: 22, fontWeight: '700', letterSpacing: 0 } satisfies TextStyle,
-    body: { fontSize: 15, lineHeight: 22, fontWeight: '400', letterSpacing: 0 } satisfies TextStyle,
-    label: { fontSize: 12, lineHeight: 17, fontWeight: '600' } satisfies TextStyle,
-    caption: { fontSize: 11, lineHeight: 16, fontWeight: '400' } satisfies TextStyle,
-  },
+  typography,
   shadow: {
     soft: {
       boxShadow: '0px 12px 14px rgba(8,95,87,0.08)',

@@ -1,3 +1,4 @@
+import { typography } from '@/design/theme'
 import { Platform, StyleSheet } from 'react-native'
 
 export const CUSTOMER_LIQUID_NAV_MAX_WIDTH = 384
@@ -35,9 +36,8 @@ export const customerV21DockStyles = StyleSheet.create({
     transform: [{ scale: 0.976 }],
   },
   dockLabel: {
-    fontSize: 9.5,
-    fontWeight: '500',
-    lineHeight: 10,
+    ...typography.caption2,
+    fontWeight: '600',
     maxWidth: 64,
     position: 'relative',
     textAlign: 'center',

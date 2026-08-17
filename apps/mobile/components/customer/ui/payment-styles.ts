@@ -1,3 +1,4 @@
+import { typography } from '@/design/theme'
 import { StyleSheet } from 'react-native'
 
 export const customerV21PaymentStyles = StyleSheet.create({
@@ -16,16 +17,14 @@ export const customerV21PaymentStyles = StyleSheet.create({
   },
   paymentPriceLabel: {
     flex: 1,
-    fontSize: 12,
+    ...typography.caption1,
     fontWeight: '600',
-    lineHeight: 16,
     minWidth: 0,
   },
   paymentPriceValue: {
     flexShrink: 1,
-    fontSize: 13,
+    ...typography.footnote,
     fontWeight: '600',
-    lineHeight: 17,
     maxWidth: '52%',
     textAlign: 'right',
   },
@@ -105,9 +104,8 @@ export const customerV21PaymentStyles = StyleSheet.create({
   },
   paymentBankCheckText: {
     color: '#FFFFFF',
-    fontSize: 14,
+    ...typography.subheadline,
     fontWeight: '600',
-    lineHeight: 16,
   },
   paymentMethodRow: {
     alignItems: 'center',
@@ -177,24 +175,19 @@ export const customerV21PaymentStyles = StyleSheet.create({
     zIndex: -1,
   },
   paymentLedgerDotText: {
-    fontSize: 11,
+    ...typography.caption2,
     fontWeight: '600',
-    lineHeight: 13,
   },
   cardTitle: {
-    fontSize: 14,
+    ...typography.subheadline,
     fontWeight: '600',
-    lineHeight: 18,
   },
   bodyText: {
-    fontSize: 13,
-    fontWeight: '500',
-    lineHeight: 19,
+    ...typography.footnote,
   },
   chevronText: {
-    fontSize: 24,
+    ...typography.title2,
     fontWeight: '600',
-    lineHeight: 26,
   },
   pressed: {
     transform: [{ scale: 0.985 }],
@@ -266,10 +259,8 @@ export const customerV21PaymentStyles = StyleSheet.create({
     shadowRadius: 28,
   },
   paymentMethodAmount: {
-    fontSize: 30,
+    ...typography.title1,
     fontWeight: '600',
-    letterSpacing: 0,
-    lineHeight: 36,
     marginVertical: 3,
   },
   paymentMethodHeroCard: {
@@ -336,9 +327,7 @@ export const customerV21PaymentStyles = StyleSheet.create({
   },
   paymentProtectedAmount: {
     flexShrink: 1,
-    fontSize: 17,
-    fontWeight: '600',
-    lineHeight: 22,
+    ...typography.headline,
     maxWidth: 112,
     textAlign: 'right',
   },
@@ -377,10 +366,8 @@ export const customerV21PaymentStyles = StyleSheet.create({
     shadowRadius: 30,
   },
   paymentProtectedTitle: {
-    fontSize: 28,
+    ...typography.title1,
     fontWeight: '600',
-    letterSpacing: 0,
-    lineHeight: 34,
     marginTop: 14,
     textAlign: 'center',
   },
@@ -413,12 +400,12 @@ export const customerV21PaymentStyles = StyleSheet.create({
   },
   paymentReviewMetaText: {
     flex: 1,
-    fontWeight: '700',
+    fontWeight: '600',
     minWidth: 0,
   },
   paymentReviewMetaTextRight: {
     flex: 1.15,
-    fontWeight: '700',
+    fontWeight: '600',
     minWidth: 0,
     textAlign: 'right',
   },
@@ -457,9 +444,8 @@ export const customerV21PaymentStyles = StyleSheet.create({
   },
   paymentTotalLabel: {
     flex: 1,
-    fontSize: 15,
+    ...typography.subheadline,
     fontWeight: '600',
-    lineHeight: 20,
   },
   paymentTotalLine: {
     alignItems: 'center',
@@ -474,15 +460,13 @@ export const customerV21PaymentStyles = StyleSheet.create({
   },
   paymentTotalValue: {
     flexShrink: 1,
-    fontSize: 21,
+    ...typography.title2,
     fontWeight: '600',
-    lineHeight: 26,
     textAlign: 'right',
   },
   paymentWorkerNetLabel: {
-    fontSize: 11,
+    ...typography.caption2,
     fontWeight: '600',
-    lineHeight: 14,
   },
   paymentWorkerNetPill: {
     alignItems: 'center',
@@ -500,8 +484,7 @@ export const customerV21PaymentStyles = StyleSheet.create({
     zIndex: 1,
   },
   paymentWorkerNetValue: {
-    fontSize: 12,
+    ...typography.caption1,
     fontWeight: '600',
-    lineHeight: 15,
   },
 })

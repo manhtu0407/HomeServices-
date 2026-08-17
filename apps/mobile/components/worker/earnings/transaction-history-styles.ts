@@ -4,7 +4,7 @@ import { color, shadow, typography } from '@/design/theme'
 
 export const styles = StyleSheet.create({
   workerCustomerFontText: {
-    fontFamily: typography.fontFamily,
+    ...typography.body,
   },
   opaqueCard: {
     backgroundColor: color.mint.white,
@@ -29,15 +29,13 @@ export const styles = StyleSheet.create({
   },
   emptyTitle: {
     color: color.text.strong,
-    fontSize: 16,
-    fontWeight: '700',
-    lineHeight: 22,
+    ...typography.callout,
+    fontWeight: '600',
     textAlign: 'center',
   },
   emptyDetail: {
     color: color.text.muted,
-    fontSize: 12,
-    lineHeight: 18,
+    ...typography.caption1,
     marginTop: 6,
     textAlign: 'center',
   },
@@ -62,23 +60,20 @@ export const styles = StyleSheet.create({
   },
   transactionTitle: {
     color: color.text.strong,
-    fontSize: 14,
-    fontWeight: '700',
-    lineHeight: 19,
+    ...typography.subheadline,
+    fontWeight: '600',
   },
   transactionMeta: {
     color: color.text.muted,
-    fontSize: 11,
-    lineHeight: 16,
+    ...typography.caption2,
     marginTop: 3,
   },
   transactionAmount: {
     color: color.brand.primaryDark,
     flexShrink: 0,
-    fontSize: 14,
+    ...typography.subheadline,
+    fontWeight: '600',
     fontVariant: ['tabular-nums'],
-    fontWeight: '700',
-    lineHeight: 19,
     textAlign: 'right',
   },
   transactionAmountDebit: {

@@ -4,7 +4,7 @@ import { color, component, glass, radius, shadow, typography } from '@/design/th
 
 export const styles = StyleSheet.create({
   workerCustomerFontText: {
-    fontFamily: typography.fontFamily,
+    ...typography.body,
   },
   opaqueCard: {
     backgroundColor: color.mint.white,
@@ -14,8 +14,7 @@ export const styles = StyleSheet.create({
     transform: [{ scale: 0.98 }],
   },
   actionRailButtonText: {
-    fontSize: 13,
-    lineHeight: 17,
+    ...typography.footnote,
   },
   actionRailFormulaAura: {
     bottom: -42,
@@ -48,15 +47,13 @@ export const styles = StyleSheet.create({
   },
   chatBubbleBody: {
     color: color.text.strong,
-    fontSize: 12,
-    fontWeight: '700',
-    lineHeight: 17,
+    ...typography.caption1,
+    fontWeight: '600',
   },
   chatBubbleLabel: {
     color: color.text.muted,
-    fontSize: 9,
-    fontWeight: '700',
-    lineHeight: 12,
+    ...typography.caption2,
+    fontWeight: '600',
     marginTop: 6,
     textAlign: 'right',
   },
@@ -97,9 +94,8 @@ export const styles = StyleSheet.create({
   },
   navButtonText: {
     color: color.brand.primaryDark,
-    fontSize: 15,
-    fontWeight: '700',
-    lineHeight: 19,
+    ...typography.subheadline,
+    fontWeight: '600',
     textAlign: 'center',
   },
   navigationRow: {
@@ -118,9 +114,8 @@ export const styles = StyleSheet.create({
   },
   onsiteAdvisoryText: {
     color: color.text.strong,
-    fontSize: 12,
-    fontWeight: '700',
-    lineHeight: 17,
+    ...typography.caption1,
+    fontWeight: '600',
   },
   primaryActionButton: {
     alignItems: 'center',
@@ -146,9 +141,8 @@ export const styles = StyleSheet.create({
   },
   primaryActionText: {
     color: color.text.inverse,
-    fontSize: 16,
-    fontWeight: '700',
-    letterSpacing: 0,
+    ...typography.callout,
+    fontWeight: '600',
     zIndex: 2,
   },
   sourceActionDisabled: {
@@ -176,9 +170,8 @@ export const styles = StyleSheet.create({
   },
   suggestionChipText: {
     color: color.brand.primaryDark,
-    fontSize: 10,
-    fontWeight: '700',
-    lineHeight: 12,
+    ...typography.caption2,
+    fontWeight: '600',
     textAlign: 'center',
   },
 })

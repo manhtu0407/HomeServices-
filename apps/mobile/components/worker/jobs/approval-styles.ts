@@ -4,17 +4,15 @@ import { color, radius, shadow, typography } from '@/design/theme'
 
 export const styles = StyleSheet.create({
   workerCustomerFontText: {
-    fontFamily: typography.fontFamily,
+    ...typography.body,
   },
   opaqueCard: {
     backgroundColor: color.mint.white,
   },
   approvalHeroAmount: {
     color: color.brand.primaryDark,
-    fontSize: 22,
-    fontWeight: '700',
-    letterSpacing: 0,
-    lineHeight: 27,
+    ...typography.title2,
+    fontWeight: '600',
     marginTop: 8,
   },
   approvalHeroCard: {
@@ -39,9 +37,8 @@ export const styles = StyleSheet.create({
   },
   approvalHeroMeta: {
     color: color.text.secondary,
-    fontSize: 12,
-    fontWeight: '700',
-    lineHeight: 16,
+    ...typography.caption1,
+    fontWeight: '600',
     marginTop: 3,
   },
   approvalHeroPill: {
@@ -51,9 +48,8 @@ export const styles = StyleSheet.create({
     borderRadius: radius.pill,
     borderWidth: 1,
     color: color.text.strong,
-    fontSize: 10,
-    fontWeight: '700',
-    lineHeight: 13,
+    ...typography.caption2,
+    fontWeight: '600',
     overflow: 'hidden',
     paddingHorizontal: 9,
     paddingVertical: 4,
@@ -74,15 +70,13 @@ export const styles = StyleSheet.create({
   },
   approvalLensLabel: {
     color: color.text.muted,
-    fontSize: 9,
-    fontWeight: '700',
-    lineHeight: 11,
+    ...typography.caption2,
+    fontWeight: '600',
   },
   approvalLensValue: {
     color: color.brand.primaryDark,
-    fontSize: 18,
-    fontWeight: '700',
-    lineHeight: 22,
+    ...typography.title3,
+    fontWeight: '600',
   },
   checkInHeroAura: {
     bottom: -92,
@@ -124,8 +118,7 @@ export const styles = StyleSheet.create({
   },
   settlementFormula: {
     color: color.text.muted,
-    fontSize: 11,
-    lineHeight: 16,
+    ...typography.caption2,
     paddingHorizontal: 4,
   },
   settlementGroup: {
@@ -134,9 +127,8 @@ export const styles = StyleSheet.create({
   settlementLabel: {
     color: color.text.muted,
     flexShrink: 1,
-    fontSize: 9,
-    fontWeight: '700',
-    lineHeight: 12,
+    ...typography.caption2,
+    fontWeight: '600',
     position: 'relative',
     textAlign: 'center',
     zIndex: 1,
@@ -148,9 +140,8 @@ export const styles = StyleSheet.create({
   settlementValue: {
     color: color.text.strong,
     flexShrink: 1,
-    fontSize: 12,
-    fontWeight: '700',
-    lineHeight: 16,
+    ...typography.caption1,
+    fontWeight: '600',
     position: 'relative',
     textAlign: 'center',
     zIndex: 1,

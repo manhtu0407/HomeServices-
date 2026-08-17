@@ -1,3 +1,4 @@
+import { typography } from '@/design/theme'
 import { StyleSheet, Text, View, type StyleProp, type TextStyle } from 'react-native'
 
 import { KaelButton, KaelTextField } from '@/components/ui/kael-primitives'
@@ -288,12 +289,12 @@ const styles = StyleSheet.create({
   action: { flex: 1 },
   actions: { flexDirection: 'row', gap: 10 },
   inquiryActions: { flexDirection: 'row', gap: 10 },
-  adjustmentHint: { fontSize: 12, lineHeight: 18 },
+  adjustmentHint: { ...typography.caption1 },
   adjustmentInput: { minHeight: 88, paddingTop: 12, textAlignVertical: 'top' },
-  detail: { fontSize: 14, lineHeight: 21 },
+  detail: { ...typography.subheadline },
   details: { gap: 7 },
-  estimateServiceTitle: { fontSize: 25, fontWeight: '600', lineHeight: 32 },
-  meta: { fontSize: 12, lineHeight: 18 },
+  estimateServiceTitle: { ...typography.title2, fontWeight: '600' },
+  meta: { ...typography.caption1 },
   reason: { gap: 10 },
-  reasonTitle: { fontSize: 14, fontWeight: '600', lineHeight: 20 },
+  reasonTitle: { ...typography.subheadline, fontWeight: '600' },
 })

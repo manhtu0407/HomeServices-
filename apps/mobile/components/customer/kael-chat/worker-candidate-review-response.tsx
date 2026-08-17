@@ -1,3 +1,4 @@
+import { typography } from '@/design/theme'
 import { useState } from 'react'
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native'
 import { Image } from 'expo-image'
@@ -346,7 +347,7 @@ const styles = StyleSheet.create({
   action: { flex: 1 },
   actions: { flexDirection: 'row', gap: 10 },
   avatar: { height: '100%', width: '100%' },
-  avatarFallback: { fontSize: 18, fontWeight: '800', letterSpacing: 0.3 },
+  avatarFallback: { ...typography.headline },
   avatarFrame: {
     alignItems: 'center',
     borderRadius: 20,
@@ -356,20 +357,20 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     width: 64,
   },
-  body: { fontSize: 13, lineHeight: 19 },
+  body: { ...typography.footnote },
   details: { gap: 9 },
-  error: { fontSize: 12, lineHeight: 18 },
-  facts: { fontSize: 13, fontWeight: '600', lineHeight: 20 },
+  error: { ...typography.caption1 },
+  facts: { ...typography.footnote, fontWeight: '600' },
   finalReview: { gap: 12 },
   identity: { alignItems: 'center', flexDirection: 'row', gap: 12, marginBottom: 5 },
   identityCopy: { flex: 1, gap: 3 },
   loading: { alignItems: 'center', flexDirection: 'row', gap: 9 },
-  meta: { fontSize: 12, fontWeight: '600', lineHeight: 18 },
-  name: { fontSize: 17, fontWeight: '700', lineHeight: 23 },
-  notice: { fontSize: 12, lineHeight: 18 },
-  personalFacts: { fontSize: 12, lineHeight: 18 },
+  meta: { ...typography.caption1, fontWeight: '600' },
+  name: { ...typography.headline },
+  notice: { ...typography.caption1 },
+  personalFacts: { ...typography.caption1 },
   paymentEligibility: { borderRadius: 14, borderWidth: StyleSheet.hairlineWidth, gap: 3, padding: 12 },
-  paymentTitle: { fontSize: 13, fontWeight: '700', lineHeight: 19 },
+  paymentTitle: { ...typography.footnote, fontWeight: '600' },
   savedHeader: { gap: 3 },
-  savedTitle: { fontSize: 14, fontWeight: '700', lineHeight: 19 },
+  savedTitle: { ...typography.subheadline, fontWeight: '600' },
 })

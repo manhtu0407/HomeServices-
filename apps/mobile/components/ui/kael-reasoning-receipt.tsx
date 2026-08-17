@@ -1,3 +1,4 @@
+import { typography } from '@/design/theme'
 import { useEffect } from 'react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
 import Animated, {
@@ -277,15 +278,14 @@ const styles = StyleSheet.create({
     width: 26,
   },
   elapsed: {
-    fontSize: 12,
+    ...typography.caption1,
     fontVariant: ['tabular-nums'],
-    lineHeight: 18,
   },
   elapsedUnit: {
-    fontWeight: '700',
+    fontWeight: '600',
   },
   elapsedValue: {
-    fontWeight: '700',
+    fontWeight: '600',
   },
   elapsedSlot: {
     alignItems: 'center',
@@ -311,12 +311,10 @@ const styles = StyleSheet.create({
     paddingRight: 88,
   },
   note: {
-    fontSize: 12.5,
-    lineHeight: 18,
+    ...typography.caption1,
   },
   status: {
-    fontSize: 12,
-    lineHeight: 17,
+    ...typography.caption1,
   },
   stepDot: {
     borderRadius: 4,
@@ -325,9 +323,8 @@ const styles = StyleSheet.create({
     width: 7,
   },
   stepLabel: {
-    fontSize: 13,
+    ...typography.footnote,
     fontWeight: '600',
-    lineHeight: 18,
   },
   stepRow: {
     alignItems: 'flex-start',
@@ -339,12 +336,10 @@ const styles = StyleSheet.create({
     gap: 1,
   },
   summary: {
-    fontSize: 13,
-    lineHeight: 19,
+    ...typography.footnote,
   },
   title: {
-    fontSize: 13,
-    fontWeight: '700',
-    lineHeight: 18,
+    ...typography.footnote,
+    fontWeight: '600',
   },
 })

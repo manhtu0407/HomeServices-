@@ -4,7 +4,7 @@ import { color, shadow, typography } from '@/design/theme'
 
 export const styles = StyleSheet.create({
   workerCustomerFontText: {
-    fontFamily: typography.fontFamily,
+    ...typography.body,
   },
   opaqueCard: {
     backgroundColor: color.mint.white,
@@ -29,37 +29,30 @@ export const styles = StyleSheet.create({
   },
   eyebrow: {
     color: color.text.muted,
-    fontSize: 10,
-    fontWeight: '700',
-    letterSpacing: 0.7,
-    lineHeight: 14,
+    ...typography.caption2,
+    fontWeight: '600',
   },
   rateValue: {
     color: color.brand.primaryDark,
-    fontSize: 32,
-    fontWeight: '700',
-    lineHeight: 38,
+    ...typography.largeTitle,
+    fontWeight: '600',
     marginTop: 2,
   },
   rateMeta: {
     color: color.text.secondary,
-    fontSize: 11,
-    lineHeight: 16,
+    ...typography.caption2,
     marginTop: 1,
   },
   sectionTitle: {
     color: color.text.strong,
-    fontSize: 17,
-    fontWeight: '700',
-    lineHeight: 23,
+    ...typography.headline,
     marginTop: 24,
     position: 'relative',
     zIndex: 1,
   },
   paragraph: {
     color: color.text.secondary,
-    fontSize: 13,
-    lineHeight: 20,
+    ...typography.footnote,
     marginTop: 8,
     position: 'relative',
     zIndex: 1,
@@ -85,8 +78,7 @@ export const styles = StyleSheet.create({
   pointCopy: {
     color: color.text.secondary,
     flex: 1,
-    fontSize: 13,
-    lineHeight: 19,
+    ...typography.footnote,
   },
   progressCard: {
     backgroundColor: color.surface.mint,
@@ -100,20 +92,17 @@ export const styles = StyleSheet.create({
   },
   progressTitle: {
     color: color.text.strong,
-    fontSize: 14,
-    fontWeight: '700',
-    lineHeight: 19,
+    ...typography.subheadline,
+    fontWeight: '600',
   },
   progressCopy: {
     color: color.text.secondary,
-    fontSize: 12,
-    lineHeight: 19,
+    ...typography.caption1,
     marginTop: 6,
   },
   footnote: {
     color: color.text.muted,
-    fontSize: 11,
-    lineHeight: 17,
+    ...typography.caption2,
     marginTop: 16,
     position: 'relative',
     zIndex: 1,

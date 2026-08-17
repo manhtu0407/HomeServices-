@@ -61,7 +61,7 @@ export function WorkerV5OpportunityCard({
       />
       <WorkerV5IntegratedIcon bleed={11} image={serviceIcon} reduceTransparency={reduceTransparency} tone="service" variant="compactPanel" />
       <View style={styles.opportunityTextColumn} testID="worker-v5-opportunity-copy">
-        <Text style={styles.opportunityTitle} numberOfLines={1}>{serviceLabel}</Text>
+        <Text style={styles.opportunityTitle} numberOfLines={2}>{serviceLabel}</Text>
         <WorkerV5DetailRail
           items={[
             { glyph: 'arrival', label: workerV5TimeChoiceLabel(deal.draft.timeChoice, language, deal.scheduledAt) },
@@ -146,7 +146,7 @@ export function WorkerV5OpportunityEmptyCard({
       />
       <WorkerV5IntegratedIcon bleed={11} image={jobIcon} reduceTransparency={reduceTransparency} tone="service" variant="compactPanel" />
       <View style={styles.opportunityTextColumn}>
-        <Text style={styles.opportunityTitle} numberOfLines={1}>
+        <Text style={styles.opportunityTitle} numberOfLines={2}>
           {title}
         </Text>
         <Text style={styles.opportunityMeta} numberOfLines={2}>

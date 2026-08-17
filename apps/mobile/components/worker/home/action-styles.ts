@@ -4,7 +4,7 @@ import { color, shadow, typography } from '@/design/theme'
 
 export const styles = StyleSheet.create({
   workerCustomerFontText: {
-    fontFamily: typography.fontFamily,
+    ...typography.body,
   },
   opaqueCard: {
     backgroundColor: color.mint.white,
@@ -18,9 +18,8 @@ export const styles = StyleSheet.create({
   },
   kaelBriefBody: {
     color: color.text.secondary,
-    fontSize: 11,
+    ...typography.caption2,
     fontWeight: '600',
-    lineHeight: 16,
   },
   kaelBriefCard: {
     alignItems: 'center',
@@ -46,9 +45,8 @@ export const styles = StyleSheet.create({
   },
   kaelBriefChevron: {
     color: color.brand.primaryDark,
-    fontSize: 22,
-    fontWeight: '700',
-    lineHeight: 24,
+    ...typography.title2,
+    fontWeight: '600',
     position: 'relative',
     zIndex: 1,
   },
@@ -85,9 +83,8 @@ export const styles = StyleSheet.create({
   },
   kaelBriefTitle: {
     color: color.text.strong,
-    fontSize: 12,
-    fontWeight: '700',
-    lineHeight: 16,
+    ...typography.caption1,
+    fontWeight: '600',
   },
   homeQuickActionCard: {
     minHeight: 62,
@@ -138,9 +135,8 @@ export const styles = StyleSheet.create({
   quickActionMeta: {
     color: color.text.muted,
     flexShrink: 1,
-    fontSize: 9,
-    fontWeight: '700',
-    lineHeight: 12,
+    ...typography.caption2,
+    fontWeight: '600',
     marginTop: 2,
   },
   quickActionText: {
@@ -152,8 +148,7 @@ export const styles = StyleSheet.create({
   quickActionTitle: {
     color: color.text.strong,
     flexShrink: 1,
-    fontSize: 11,
-    fontWeight: '700',
-    lineHeight: 14,
+    ...typography.caption2,
+    fontWeight: '600',
   },
 })

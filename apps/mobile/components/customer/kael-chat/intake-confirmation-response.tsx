@@ -1,3 +1,4 @@
+import { typography } from '@/design/theme'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
 
 import type { KaelIntakeConfirmation } from '@nestscout/shared'
@@ -153,43 +154,38 @@ const styles = StyleSheet.create({
   },
   fieldLabel: {
     flex: 1,
-    fontSize: 13,
+    ...typography.footnote,
     fontWeight: '600',
   },
   fieldNote: {
-    fontSize: 13,
-    lineHeight: 19,
+    ...typography.footnote,
   },
   fieldState: {
-    fontSize: 11,
+    ...typography.caption2,
     fontWeight: '600',
   },
   fields: {
     gap: 15,
   },
   fieldValue: {
-    fontSize: 15,
-    fontWeight: '500',
-    lineHeight: 22,
+    ...typography.subheadline,
   },
   primaryButton: {
     flexGrow: 1.15,
   },
   primaryLabel: {
-    fontSize: 14,
-    fontWeight: '700',
+    ...typography.subheadline,
+    fontWeight: '600',
   },
   question: {
-    fontSize: 14,
-    fontWeight: '500',
-    lineHeight: 21,
+    ...typography.subheadline,
   },
   secondaryButton: {
     borderWidth: 1,
     flexGrow: 1,
   },
   secondaryLabel: {
-    fontSize: 14,
-    fontWeight: '700',
+    ...typography.subheadline,
+    fontWeight: '600',
   },
 })

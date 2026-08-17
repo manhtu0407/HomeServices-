@@ -126,7 +126,7 @@ const styles = StyleSheet.create({
   safe: { backgroundColor: color.background, flex: 1 },
   content: { gap: spacing.lg, padding: spacing.xl },
   back: { ...typography.callout, color: color.brand.primaryDark, fontWeight: '600' },
-  title: { ...typography.title1, color: color.text.primary, fontWeight: '600' },
+  title: { ...typography.title1, color: color.text.primary },
   card: { backgroundColor: color.surface.base, borderColor: color.surface.stroke, borderRadius: radius.lg, borderWidth: 1, gap: spacing.lg, padding: spacing.xl },
   version: { ...typography.caption1, color: color.text.muted },
   identity: { ...typography.body, color: color.text.primary },

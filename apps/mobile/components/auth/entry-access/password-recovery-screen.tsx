@@ -191,19 +191,19 @@ const RECOVERY_SCREEN_COPY = {
 } as const
 
 const styles = StyleSheet.create({
-  error: { color: entryTheme.color.accent.destructive, fontSize: 11, lineHeight: 16, marginBottom: 10, marginTop: -2 },
+  error: { ...entryTheme.typography.caption1, color: entryTheme.color.accent.destructive, marginBottom: 10, marginTop: -2 },
   header: { paddingBottom: 12, paddingHorizontal: 3, paddingTop: 6 },
   keyboard: { flex: 1 },
-  lead: { color: entryTheme.color.text.secondary, fontSize: 15, lineHeight: 22, marginTop: 7 },
-  notice: { color: entryTheme.color.mint.mint800, fontSize: 12, lineHeight: 18, marginBottom: 12, marginTop: -2 },
+  lead: { ...entryTheme.typography.subheadline, color: entryTheme.color.text.secondary, marginTop: 7 },
+  notice: { ...entryTheme.typography.caption1, color: entryTheme.color.mint.mint800, marginBottom: 12, marginTop: -2 },
   panel: { borderRadius: entryTheme.radius.sheet, paddingBottom: 15, paddingHorizontal: 15, paddingTop: 17 },
   safe: { flex: 1 },
   scroll: { flexGrow: 1, paddingBottom: 18, paddingHorizontal: entryTheme.spacing.screenX },
   successBlock: { gap: 8 },
-  successLead: { color: entryTheme.color.text.secondary, fontSize: 13, lineHeight: 19, marginBottom: 8 },
-  successTitle: { color: entryTheme.color.mint.mint800, fontSize: 17, fontWeight: '700', lineHeight: 23 },
-  title: { color: entryTheme.color.text.strong, fontSize: 29, fontWeight: '700', lineHeight: 35 },
+  successLead: { ...entryTheme.typography.footnote, color: entryTheme.color.text.secondary, marginBottom: 8 },
+  successTitle: { ...entryTheme.typography.headline, color: entryTheme.color.mint.mint800 },
+  title: { ...entryTheme.typography.title1, color: entryTheme.color.text.strong },
   topbar: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', marginHorizontal: -3, marginBottom: 6, minHeight: 54 },
   topbarSpacer: { height: 54, width: 54 },
-  topbarTitle: { color: entryTheme.color.text.strong, fontSize: 17, fontWeight: '700' },
+  topbarTitle: { ...entryTheme.typography.headline, color: entryTheme.color.text.strong },
 })

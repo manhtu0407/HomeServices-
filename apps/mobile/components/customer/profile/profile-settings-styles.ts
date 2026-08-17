@@ -1,10 +1,9 @@
+import { typography } from '@/design/theme'
 import { StyleSheet } from 'react-native'
 
 export const customerV21ProfileSettingsStyles = StyleSheet.create({
   actionBody: {
-    fontSize: 12,
-    fontWeight: '400',
-    lineHeight: 17,
+    ...typography.caption1,
     marginTop: 2,
   },
   actionCopy: {
@@ -36,9 +35,8 @@ export const customerV21ProfileSettingsStyles = StyleSheet.create({
     position: 'relative',
   },
   actionTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    lineHeight: 21,
+    ...typography.callout,
+    fontWeight: '600',
   },
   connector: {
     height: 1,
@@ -73,9 +71,7 @@ export const customerV21ProfileSettingsStyles = StyleSheet.create({
   },
   detailLabel: {
     flexShrink: 1,
-    fontSize: 10,
-    fontWeight: '500',
-    lineHeight: 14,
+    ...typography.caption2,
     minWidth: 0,
   },
   detailRail: {
@@ -144,9 +140,7 @@ export const customerV21ProfileSettingsStyles = StyleSheet.create({
   },
   heroDetailText: {
     flexShrink: 1,
-    fontSize: 11,
-    fontWeight: '500',
-    lineHeight: 15,
+    ...typography.caption2,
     minWidth: 0,
   },
   heroIconAura: {
@@ -211,9 +205,8 @@ export const customerV21ProfileSettingsStyles = StyleSheet.create({
     zIndex: 1,
   },
   statusText: {
-    fontSize: 11,
+    ...typography.caption2,
     fontWeight: '600',
-    lineHeight: 15,
   },
   visualPanel: {
     alignItems: 'center',

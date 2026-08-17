@@ -9,7 +9,6 @@ import type { RoleGateGreeting } from './role-gate-greeting'
 import { RoleSelectionCards } from './role-selection-cards'
 import type { EntryRole } from './types'
 
-const ROLE_GATE_QUOTE_SIZE = 20
 const ROLE_GATE_QUOTE_LINE_HEIGHT = 26
 const ROLE_GATE_MASCOT_SIZE = 34
 const ROLE_GATE_PUNCTUATION_GAP = entryTheme.spacing.sm
@@ -98,7 +97,7 @@ function DecisionField({ copy, onContinue, onRoleChange, role }: {
 
 const styles = StyleSheet.create({
   decisionField: { flex: 1, marginTop: 28, position: 'relative', width: '100%' },
-  gateGreetingTitle: { fontSize: ROLE_GATE_QUOTE_SIZE, lineHeight: ROLE_GATE_QUOTE_LINE_HEIGHT },
+  gateGreetingTitle: { ...entryTheme.typography.title3, lineHeight: ROLE_GATE_QUOTE_LINE_HEIGHT },
   gateHead: { paddingHorizontal: 4, paddingTop: 8 },
   greetingBang: { position: 'relative', zIndex: 1 },
   greetingKael: { marginLeft: ROLE_GATE_PUNCTUATION_GAP, position: 'relative', zIndex: 0 },

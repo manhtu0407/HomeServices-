@@ -1,3 +1,4 @@
+import { typography } from '@/design/theme'
 import { StyleSheet, Text, View } from 'react-native'
 
 import { JobEvidenceGallery } from '@/components/ui/job-evidence-gallery'
@@ -102,5 +103,5 @@ const styles = StyleSheet.create({
   action: { flex: 1 },
   actions: { flexDirection: 'row', gap: 10 },
   details: { gap: 12 },
-  paymentGate: { fontSize: 12, lineHeight: 18 },
+  paymentGate: { ...typography.caption1 },
 })

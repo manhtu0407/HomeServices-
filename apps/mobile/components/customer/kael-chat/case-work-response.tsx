@@ -1,3 +1,4 @@
+import { typography } from '@/design/theme'
 import type { ReactNode } from 'react'
 import { StyleSheet, Text, useWindowDimensions, View, type StyleProp, type TextStyle } from 'react-native'
 
@@ -104,19 +105,14 @@ const styles = StyleSheet.create({
     paddingLeft: 16,
   },
   noteCopy: {
-    fontSize: 17,
-    fontWeight: '400',
-    letterSpacing: -0.1,
-    lineHeight: 26.35,
+    ...typography.body,
   },
   noteCopyCompact: {
-    lineHeight: 26.52,
+    ...typography.body,
   },
   noteTitle: {
-    fontSize: 14,
-    fontWeight: '700',
-    letterSpacing: -0.07,
-    lineHeight: 19,
+    ...typography.subheadline,
+    fontWeight: '600',
     marginBottom: 7,
   },
   response: {
@@ -128,9 +124,7 @@ const styles = StyleSheet.create({
   },
   status: {
     flexShrink: 0,
-    fontSize: 13,
-    fontWeight: '500',
-    lineHeight: 18,
+    ...typography.footnote,
     marginTop: 5,
   },
   statusCompact: {
@@ -148,18 +142,14 @@ const styles = StyleSheet.create({
   },
   title: {
     flexShrink: 1,
-    fontSize: 24,
+    ...typography.title2,
     fontWeight: '600',
-    letterSpacing: -0.36,
-    lineHeight: 31.2,
     maxWidth: 512,
   },
   titleCompact: {
     flexBasis: 'auto',
     flexGrow: 0,
-    fontSize: 21,
-    letterSpacing: -0.25,
-    lineHeight: 28.14,
+    ...typography.title2,
   },
   titleWide: {
     flexBasis: 0,

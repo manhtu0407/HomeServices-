@@ -4,16 +4,15 @@ import { color, shadow, typography } from '@/design/theme'
 
 export const styles = StyleSheet.create({
   workerCustomerFontText: {
-    fontFamily: typography.fontFamily,
+    ...typography.body,
   },
   opaqueCard: {
     backgroundColor: color.mint.white,
   },
   etaLabel: {
     color: color.text.muted,
-    fontSize: 11,
-    fontWeight: '700',
-    lineHeight: 14,
+    ...typography.caption2,
+    fontWeight: '600',
   },
   etaLens: {
     alignItems: 'center',
@@ -30,21 +29,18 @@ export const styles = StyleSheet.create({
   },
   etaLensLabel: {
     color: color.text.muted,
-    fontSize: 9,
-    fontWeight: '700',
-    lineHeight: 11,
+    ...typography.caption2,
+    fontWeight: '600',
   },
   etaLensValue: {
     color: color.brand.primaryDark,
-    fontSize: 24,
-    fontWeight: '700',
-    lineHeight: 28,
+    ...typography.title2,
+    fontWeight: '600',
   },
   etaMeta: {
     color: color.text.secondary,
-    fontSize: 12,
-    fontWeight: '700',
-    lineHeight: 16,
+    ...typography.caption1,
+    fontWeight: '600',
     marginTop: 2,
   },
   etaSummaryCard: {
@@ -84,10 +80,8 @@ export const styles = StyleSheet.create({
   },
   etaValue: {
     color: color.text.strong,
-    fontSize: 22,
-    fontWeight: '700',
-    letterSpacing: 0,
-    lineHeight: 27,
+    ...typography.title2,
+    fontWeight: '600',
     marginTop: 4,
   },
 })

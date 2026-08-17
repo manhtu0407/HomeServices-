@@ -258,6 +258,6 @@ const styles = StyleSheet.create({
     width: '100%',
     ...entryTheme.shadow.primary,
   },
-  primaryLabel: { color: entryTheme.color.text.inverse, fontSize: 15, fontWeight: '700', letterSpacing: 0 },
+  primaryLabel: { ...entryTheme.typography.subheadline, color: entryTheme.color.text.inverse, fontWeight: '600' },
   ribbon: { bottom: -120, left: -124, position: 'absolute', transform: [{ rotate: '-7deg' }] },
 })

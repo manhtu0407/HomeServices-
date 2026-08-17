@@ -5,9 +5,7 @@ import { color, radius, shadow, typography } from '@/design/theme'
 export const styles = StyleSheet.create({
   choiceBody: {
     color: color.text.secondary,
-    fontSize: 12,
-    fontWeight: '500',
-    lineHeight: 17,
+    ...typography.caption1,
   },
   choiceBodyDark: {
     color: '#A9B7B3',
@@ -87,9 +85,7 @@ export const styles = StyleSheet.create({
   toggleLabel: {
     color: color.text.strong,
     flexShrink: 1,
-    fontSize: 12,
-    fontWeight: '700',
-    lineHeight: 16,
+    ...typography.caption1,
   },
   toggleList: {
     backgroundColor: 'rgba(255,255,255,0.74)',
@@ -127,18 +123,14 @@ export const styles = StyleSheet.create({
   },
   toggleValue: {
     color: color.text.muted,
-    fontSize: 10,
-    fontWeight: '700',
-    lineHeight: 14,
+    ...typography.caption2,
   },
   workerCustomerFontText: {
-    fontFamily: typography.fontFamily,
+    ...typography.body,
   },
   choiceTitle: {
     color: color.text.strong,
-    fontSize: 14,
-    fontWeight: '700',
-    lineHeight: 19,
+    ...typography.subheadline,
   },
   choiceTitleDark: {
     color: '#F1F6F4',

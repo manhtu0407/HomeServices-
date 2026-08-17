@@ -1666,7 +1666,7 @@ describe('Worker runtime surface wiring', () => {
     })
     expect(StyleSheet.flatten(screen.getByTestId('worker-v5-kael-active-mode').props.style)).toMatchObject({
       alignSelf: 'stretch',
-      fontSize: 14,
+      fontSize: 15,
       includeFontPadding: false,
       textAlign: 'center',
       textAlignVertical: 'center',
@@ -2973,7 +2973,7 @@ describe('Worker runtime surface wiring', () => {
 
     const home = render(<WorkerHomeSurface />)
     expect(screen.getByTestId('worker-v5-home-header').children).toHaveLength(1)
-    expect(screen.getByText('Chào buổi sáng, Worker Test!')).toHaveStyle({ fontWeight: '700' })
+    expect(screen.getByText('Chào buổi sáng, Worker Test!')).toHaveStyle({ fontWeight: '600' })
     expect(screen.queryByTestId('worker-v5-home-notifications')).toBeNull()
     home.unmount()
 
@@ -3777,8 +3777,8 @@ describe('Worker runtime surface wiring', () => {
     const skills = render(<WorkerProfileSurface />)
     expect(screen.queryByText('Chỉ hiển thị dữ liệu sử dụng trực tiếp trong workflow.')).toBeNull()
     expect(StyleSheet.flatten(screen.getByTestId('worker-v5-skills-hero-copy').props.style)).toMatchObject({ justifyContent: 'center' })
-    expect(StyleSheet.flatten(screen.getByTestId('worker-v5-skills-service-count').props.style)).toMatchObject({ fontSize: 26 })
-    expect(StyleSheet.flatten(screen.getByText('3 dịch vụ đã chọn').props.style)).toMatchObject({ fontSize: 11 })
+    expect(StyleSheet.flatten(screen.getByTestId('worker-v5-skills-service-count').props.style)).toMatchObject({ fontSize: 28 })
+    expect(StyleSheet.flatten(screen.getByText('3 dịch vụ đã chọn').props.style)).toMatchObject({ fontSize: 12 })
     expect(screen.getByTestId('worker-v5-skills-hero-detail')).toBeOnTheScreen()
     expect(StyleSheet.flatten(screen.getByTestId('worker-v5-service-card-detail-0').props.style)).toMatchObject({
       alignItems: 'flex-start',

@@ -195,14 +195,12 @@ const styles = StyleSheet.create({
   label: {
     color: color.text.secondary,
     flexShrink: 1,
-    fontFamily: typography.fontFamily,
-    fontSize: 10,
-    fontWeight: '700',
-    lineHeight: 14,
+    ...typography.caption2,
+    fontWeight: '600',
   } satisfies TextStyle,
   labelProminent: {
-    fontSize: 11,
-    lineHeight: 16,
+    ...typography.caption1,
+    fontWeight: '600',
   } satisfies TextStyle,
   rail: {
     alignItems: 'center',

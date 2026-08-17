@@ -273,11 +273,7 @@ function buttonTextColor(variant: KaelButtonVariant, disabled: boolean) {
 }
 
 const sharedButtonText: TextStyle = {
-  fontFamily: typography.fontFamily,
-  fontSize: typography.label.fontSize,
-  fontWeight: typography.label.fontWeight,
-  letterSpacing: 0,
-  lineHeight: typography.label.lineHeight,
+  ...typography.label,
 }
 
 const styles = StyleSheet.create({
@@ -316,11 +312,7 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   chipText: {
-    fontFamily: typography.fontFamily,
-    fontSize: typography.label.fontSize,
-    fontWeight: typography.label.fontWeight,
-    letterSpacing: 0,
-    lineHeight: typography.label.lineHeight,
+    ...typography.label,
   },
   chipTextRaised: {
     position: 'relative',
@@ -331,11 +323,7 @@ const styles = StyleSheet.create({
   },
   fieldLabel: {
     color: color.text.secondary,
-    fontFamily: typography.fontFamily,
-    fontSize: typography.label.fontSize,
-    fontWeight: typography.label.fontWeight,
-    letterSpacing: 0,
-    lineHeight: typography.label.lineHeight,
+    ...typography.label,
   },
   fieldStack: {
     gap: spacing.xs,
@@ -343,10 +331,7 @@ const styles = StyleSheet.create({
   input: {
     color: color.text.primary,
     flex: 1,
-    fontFamily: typography.fontFamily,
-    fontSize: typography.body.fontSize,
-    fontWeight: typography.body.fontWeight,
-    lineHeight: typography.body.lineHeight,
+    ...typography.body,
     minHeight: component.input.height - 2,
     padding: 0,
   },

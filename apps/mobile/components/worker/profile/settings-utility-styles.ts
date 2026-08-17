@@ -8,9 +8,7 @@ export const styles = StyleSheet.create({
   },
   emptyBody: {
     color: color.text.secondary,
-    fontSize: 13,
-    fontWeight: '500',
-    lineHeight: 19,
+    ...typography.footnote,
   },
   emptyState: {
     gap: 4,
@@ -19,15 +17,11 @@ export const styles = StyleSheet.create({
   },
   emptyTitle: {
     color: color.text.strong,
-    fontSize: 15,
-    fontWeight: '700',
-    lineHeight: 20,
+    ...typography.subheadline,
   },
   notificationBody: {
     color: color.text.secondary,
-    fontSize: 12,
-    fontWeight: '500',
-    lineHeight: 17,
+    ...typography.caption1,
   },
   notificationCopy: {
     flex: 1,
@@ -50,24 +44,18 @@ export const styles = StyleSheet.create({
   notificationStatus: {
     color: color.brand.primaryDark,
     flexShrink: 0,
-    fontSize: 10,
-    fontWeight: '700',
-    lineHeight: 14,
     maxWidth: 52,
     textAlign: 'right',
+    ...typography.caption2,
   },
   notificationTime: {
     color: color.text.muted,
-    fontSize: 10,
-    fontWeight: '600',
-    lineHeight: 14,
     marginTop: 2,
+    ...typography.caption2,
   },
   notificationTitle: {
     color: color.text.strong,
-    fontSize: 14,
-    fontWeight: '700',
-    lineHeight: 19,
+    ...typography.subheadline,
   },
   notificationUnreadDot: {
     backgroundColor: color.brand.primary,
@@ -78,17 +66,14 @@ export const styles = StyleSheet.create({
   },
   policyBody: {
     color: color.text.secondary,
-    fontSize: 13,
-    fontWeight: '500',
-    lineHeight: 20,
     paddingBottom: 16,
     paddingHorizontal: 16,
+    ...typography.footnote,
   },
   policyChevron: {
     color: color.brand.primaryDark,
-    fontSize: 22,
-    lineHeight: 24,
     marginLeft: 12,
+    ...typography.title2,
   },
   policyIntro: {
     gap: 5,
@@ -106,9 +91,7 @@ export const styles = StyleSheet.create({
   policyTitle: {
     color: color.text.strong,
     flex: 1,
-    fontSize: 15,
-    fontWeight: '700',
-    lineHeight: 20,
+    ...typography.subheadline,
   },
   pressed: {
     opacity: 0.78,
@@ -124,17 +107,13 @@ export const styles = StyleSheet.create({
   },
   summaryBody: {
     color: color.text.secondary,
-    fontSize: 13,
-    fontWeight: '500',
-    lineHeight: 19,
+    ...typography.footnote,
   },
   summaryTitle: {
     color: color.text.strong,
-    fontSize: 16,
-    fontWeight: '700',
-    lineHeight: 21,
+    ...typography.callout,
   },
   workerCustomerFontText: {
-    fontFamily: typography.fontFamily,
+    ...typography.body,
   },
 })

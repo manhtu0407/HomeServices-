@@ -4,7 +4,7 @@ import { useMemo, useState } from 'react'
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native'
 import { useAuth } from '@/lib/auth-provider'
 import { useAdminActivation } from '@/lib/admin-activation-provider'
-import { color } from '@/design/theme'
+import { color, typography } from '@/design/theme'
 import { mobileRuntimeConfig } from '@/lib/runtime-config'
 
 function runtimeBuildMarkerText() {
@@ -119,8 +119,7 @@ const styles = StyleSheet.create({
   },
   runtimeMarkerText: {
     color: '#FFFFFF',
-    fontSize: 12,
+    ...typography.caption1,
     fontWeight: '600',
-    lineHeight: 16,
   },
 })

@@ -11,9 +11,6 @@ export const styles = StyleSheet.create({
   copy: {
     ...typography.title3,
     color: color.text.strong,
-    fontWeight: '400',
-    letterSpacing: -0.18,
-    lineHeight: 29,
     maxWidth: 320,
     textAlign: 'center',
   },

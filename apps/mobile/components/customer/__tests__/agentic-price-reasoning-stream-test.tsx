@@ -151,8 +151,8 @@ describe('Agentic Price Reasoning stream', () => {
     expect(rowStyle.paddingVertical).toBe(10)
     expect(titleStyle.color).toBe(customerTheme.lightLayer.primary)
     expect(titleStyle.fontWeight).toBe('600')
-    expect(labelStyle.fontWeight).toBe('800')
-    expect(sectionLabelStyle.fontWeight).toBe('800')
+    expect(labelStyle.fontWeight).toBe('600')
+    expect(sectionLabelStyle.fontWeight).toBe('600')
     expect(sectionStyle.flexDirection).toBe('column')
     expect(sectionStyle.gap).toBe(12)
 

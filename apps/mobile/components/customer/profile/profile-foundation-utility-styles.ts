@@ -1,3 +1,4 @@
+import { typography } from '@/design/theme'
 import { StyleSheet } from 'react-native'
 
 export const customerV21ProfileFoundationUtilityStyles = StyleSheet.create({
@@ -25,8 +26,7 @@ export const customerV21ProfileFoundationUtilityStyles = StyleSheet.create({
     paddingVertical: 12,
   },
   body: {
-    fontSize: 13,
-    lineHeight: 19,
+    ...typography.subheadline,
   },
   centerText: {
     textAlign: 'center',
@@ -41,14 +41,12 @@ export const customerV21ProfileFoundationUtilityStyles = StyleSheet.create({
   },
   checkboxLabel: {
     flex: 1,
-    fontSize: 14,
+    ...typography.footnote,
     fontWeight: '600',
-    lineHeight: 22,
   },
   checkboxMark: {
-    fontSize: 15,
-    fontWeight: '800',
-    lineHeight: 17,
+    ...typography.subheadline,
+    fontWeight: '600',
   },
   checkboxRow: {
     alignItems: 'flex-start',
@@ -68,16 +66,14 @@ export const customerV21ProfileFoundationUtilityStyles = StyleSheet.create({
   confirmationInput: {
     borderRadius: 16,
     borderWidth: 1,
-    fontSize: 15,
+    ...typography.subheadline,
     minHeight: 56,
     paddingHorizontal: 14,
     paddingVertical: 12,
   },
   confirmationPhrase: {
-    fontSize: 16,
-    fontWeight: '800',
-    letterSpacing: 0.4,
-    lineHeight: 22,
+    ...typography.callout,
+    fontWeight: '600',
   },
   dangerCard: {
     alignItems: 'center',
@@ -113,9 +109,8 @@ export const customerV21ProfileFoundationUtilityStyles = StyleSheet.create({
     overflow: 'hidden',
   },
   message: {
-    fontSize: 13,
+    ...typography.footnote,
     fontWeight: '600',
-    lineHeight: 19,
     textAlign: 'center',
   },
   notificationCopy: {
@@ -131,19 +126,16 @@ export const customerV21ProfileFoundationUtilityStyles = StyleSheet.create({
     paddingVertical: 12,
   },
   notificationState: {
-    fontSize: 11,
-    fontWeight: '700',
-    lineHeight: 16,
+    ...typography.caption2,
+    fontWeight: '600',
   },
   notificationTime: {
-    fontSize: 11,
-    lineHeight: 16,
+    ...typography.caption2,
   },
   notificationTitle: {
     flex: 1,
-    fontSize: 15,
-    fontWeight: '700',
-    lineHeight: 20,
+    ...typography.subheadline,
+    fontWeight: '600',
   },
   notificationTitleRow: {
     alignItems: 'flex-start',
@@ -152,9 +144,8 @@ export const customerV21ProfileFoundationUtilityStyles = StyleSheet.create({
   },
   sectionLabel: {
     flex: 1,
-    fontSize: 14,
-    fontWeight: '700',
-    lineHeight: 20,
+    ...typography.footnote,
+    fontWeight: '600',
   },
   summaryCard: {
     alignItems: 'center',
@@ -181,9 +172,8 @@ export const customerV21ProfileFoundationUtilityStyles = StyleSheet.create({
     width: 64,
   },
   title: {
-    fontSize: 16,
-    fontWeight: '700',
-    lineHeight: 22,
+    ...typography.callout,
+    fontWeight: '600',
   },
   unreadDot: {
     borderRadius: 5,

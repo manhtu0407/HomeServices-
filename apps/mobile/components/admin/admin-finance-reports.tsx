@@ -518,10 +518,10 @@ function transactionStatusLabel(status: string, language: 'vi' | 'en') {
 }
 
 const styles = StyleSheet.create({
-  amount: { ...typography.headline, color: color.text.strong, fontWeight: '700' },
+  amount: { ...typography.headline, color: color.text.strong, fontWeight: '600' },
   chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   error: { ...typography.subheadline, color: color.text.strong },
-  fieldLabel: { ...typography.caption2, color: color.text.secondary, fontWeight: '700' },
+  fieldLabel: { ...typography.caption2, color: color.text.secondary, fontWeight: '600' },
   formSection: { gap: spacing.sm },
   masked: { ...typography.caption2, color: color.text.muted },
   modalAction: { flex: 1 },
@@ -529,15 +529,15 @@ const styles = StyleSheet.create({
   modalBackdrop: { alignItems: 'center', backgroundColor: 'rgba(15, 48, 47, 0.36)', flex: 1, justifyContent: 'center', padding: spacing.lg },
   modalCard: { backgroundColor: color.surface.base, borderColor: color.surface.stroke, borderRadius: component.card.largeRadius, borderWidth: 1, gap: spacing.lg, maxHeight: '88%', maxWidth: 560, padding: spacing.xl, width: '100%' },
   modalContent: { gap: spacing.md },
-  modalTitle: { ...typography.title2, color: color.text.strong, fontWeight: '700' },
+  modalTitle: { ...typography.title2, color: color.text.strong, fontWeight: '600' },
   policyActions: { alignItems: 'center', flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   policyCard: { backgroundColor: color.surface.base, borderColor: color.surface.stroke, borderRadius: component.card.radius, borderWidth: 1, gap: spacing.sm, padding: spacing.lg },
-  rowTitle: { ...typography.subheadline, color: color.text.strong, flex: 1, fontWeight: '700' },
+  rowTitle: { ...typography.subheadline, color: color.text.strong, flex: 1, fontWeight: '600' },
   secondary: { ...typography.caption2, color: color.text.secondary },
   section: { gap: spacing.md },
   sectionHeader: { alignItems: 'center', flexDirection: 'row', gap: spacing.sm, justifyContent: 'space-between' },
-  sectionTitle: { ...typography.headline, color: color.text.strong, fontWeight: '700' },
+  sectionTitle: { ...typography.headline, color: color.text.strong, fontWeight: '600' },
   stateCard: { backgroundColor: color.surface.soft, borderRadius: component.card.radius, gap: spacing.md, padding: spacing.lg },
-  status: { ...typography.caption2, color: color.brand.primary, fontWeight: '700' },
+  status: { ...typography.caption2, color: color.brand.primary, fontWeight: '600' },
   transactionCard: { backgroundColor: color.surface.base, borderColor: color.surface.stroke, borderRadius: component.card.radius, borderWidth: 1, gap: spacing.sm, padding: spacing.lg },
 })

@@ -1,3 +1,4 @@
+import { typography } from '@/design/theme'
 import { Modal, ScrollView, StyleSheet, Text, View } from 'react-native'
 import type { LocalScopeChange } from '@nestscout/shared'
 import { JobEvidenceGallery } from '@/components/ui/job-evidence-gallery'
@@ -429,10 +430,8 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   body: {
-    fontSize: 14,
+    ...typography.subheadline,
     fontWeight: '600',
-    letterSpacing: 0,
-    lineHeight: 20,
   },
   compareGrid: {
     flexDirection: 'row',
@@ -444,9 +443,8 @@ const styles = StyleSheet.create({
     paddingTop: 4,
   },
   eyebrow: {
-    fontSize: 12,
-    fontWeight: '700',
-    letterSpacing: 0,
+    ...typography.caption1,
+    fontWeight: '600',
   },
   infoBlock: {
     borderRadius: 14,
@@ -458,9 +456,8 @@ const styles = StyleSheet.create({
     padding: 12,
   },
   infoLabel: {
-    fontSize: 11,
-    fontWeight: '700',
-    letterSpacing: 0,
+    ...typography.caption2,
+    fontWeight: '600',
     textTransform: 'uppercase',
   },
   kaelBadge: {
@@ -471,21 +468,16 @@ const styles = StyleSheet.create({
     paddingVertical: 9,
   },
   kaelBadgeHint: {
-    fontSize: 12,
+    ...typography.caption1,
     fontWeight: '600',
-    letterSpacing: 0,
-    lineHeight: 16,
   },
   kaelBadgeLabel: {
-    fontSize: 12,
-    fontWeight: '700',
-    letterSpacing: 0,
+    ...typography.caption1,
+    fontWeight: '600',
   },
   infoValue: {
-    fontSize: 14,
-    fontWeight: '700',
-    letterSpacing: 0,
-    lineHeight: 20,
+    ...typography.subheadline,
+    fontWeight: '600',
   },
   noteBox: {
     borderRadius: 16,
@@ -494,22 +486,17 @@ const styles = StyleSheet.create({
     padding: 13,
   },
   noteLabel: {
-    fontSize: 12,
-    fontWeight: '700',
-    letterSpacing: 0,
+    ...typography.caption1,
+    fontWeight: '600',
     textTransform: 'uppercase',
   },
   noteValue: {
-    fontSize: 14,
+    ...typography.subheadline,
     fontWeight: '600',
-    letterSpacing: 0,
-    lineHeight: 20,
   },
   priceDisclaimer: {
-    fontSize: 12,
+    ...typography.caption1,
     fontWeight: '600',
-    letterSpacing: 0,
-    lineHeight: 17,
   },
   primaryButton: {
     alignItems: 'center',
@@ -521,19 +508,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
   },
   primaryText: {
-    fontSize: 14,
-    fontWeight: '700',
-    letterSpacing: 0,
+    ...typography.subheadline,
+    fontWeight: '600',
   },
   riskList: {
     gap: 5,
     paddingTop: 4,
   },
   riskText: {
-    fontSize: 13,
+    ...typography.footnote,
     fontWeight: '600',
-    letterSpacing: 0,
-    lineHeight: 19,
   },
   scrim: {
     alignItems: 'center',
@@ -561,9 +545,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
   },
   secondaryText: {
-    fontSize: 14,
-    fontWeight: '700',
-    letterSpacing: 0,
+    ...typography.subheadline,
+    fontWeight: '600',
   },
   sheet: {
     borderRadius: 26,
@@ -574,9 +557,7 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   title: {
-    fontSize: 21,
-    fontWeight: '700',
-    letterSpacing: 0,
-    lineHeight: 27,
+    ...typography.title2,
+    fontWeight: '600',
   },
 })

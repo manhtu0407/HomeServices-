@@ -1340,7 +1340,7 @@ describe('active customer Kael chat surface wiring', () => {
     })
     expect(StyleSheet.flatten(screen.getByTestId('customer-v21-kael-active-mode').props.style)).toMatchObject({
       alignSelf: 'stretch',
-      fontSize: 14,
+      fontSize: 13,
       includeFontPadding: false,
       textAlign: 'center',
       textAlignVertical: 'center',

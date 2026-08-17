@@ -1,3 +1,4 @@
+import { typography } from '@/design/theme'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
 import Svg, { Path } from 'react-native-svg'
 
@@ -86,14 +87,13 @@ function VoiceMicrophoneIcon({ color }: { color: string }) {
 
 const styles = StyleSheet.create({
   error: {
-    fontSize: 11,
-    lineHeight: 15,
+    ...typography.caption2,
     paddingHorizontal: 8,
   },
   input: {
     borderRadius: 16,
     borderWidth: 1,
-    fontSize: 14,
+    ...typography.subheadline,
     minHeight: 64,
     padding: 12,
     textAlignVertical: 'top',
@@ -109,9 +109,8 @@ const styles = StyleSheet.create({
     minWidth: 32,
   },
   countText: {
-    fontSize: 13,
+    ...typography.footnote,
     fontWeight: '600',
-    lineHeight: 20,
   },
   toolButton: {
     alignItems: 'center',
@@ -128,7 +127,7 @@ const styles = StyleSheet.create({
   },
   toolText: {
     flex: 1,
-    fontSize: 14,
+    ...typography.subheadline,
     fontWeight: '600',
   },
 })

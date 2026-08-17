@@ -33,17 +33,13 @@ export const styles = StyleSheet.create({
   },
   completionHeroMeta: {
     color: color.text.secondary,
-    fontSize: 12,
-    fontWeight: '700',
-    lineHeight: 16,
     marginTop: 3,
+    ...typography.caption1,
   },
   completionHeroTitle: {
     color: color.text.strong,
-    fontSize: 18,
-    fontWeight: '700',
-    lineHeight: 23,
     marginTop: 0,
+    ...typography.title3,
   },
   completionHeroZipAura: {
     height: 252,
@@ -68,15 +64,12 @@ export const styles = StyleSheet.create({
   },
   completionLensLabel: {
     color: color.text.muted,
-    fontSize: 9,
-    fontWeight: '700',
-    lineHeight: 11,
+    ...typography.caption2,
   },
   completionLensValue: {
     color: color.brand.primaryDark,
-    fontSize: 25,
-    fontWeight: '700',
-    lineHeight: 29,
+    fontVariant: ['tabular-nums'],
+    ...typography.title1,
   },
   finalChecklistAura: {
     bottom: -88,
@@ -100,12 +93,10 @@ export const styles = StyleSheet.create({
   finalChecklistMeta: {
     color: color.text.muted,
     flexShrink: 1,
-    fontSize: 9,
-    fontWeight: '700',
-    lineHeight: 12,
     maxWidth: 78,
     minWidth: 48,
     textAlign: 'right',
+    ...typography.caption2,
   },
   finalChecklistRow: {
     alignItems: 'center',
@@ -134,9 +125,7 @@ export const styles = StyleSheet.create({
   },
   finalChecklistStateText: {
     color: color.text.muted,
-    fontSize: 10,
-    fontWeight: '700',
-    lineHeight: 12,
+    ...typography.caption2,
   },
   finalChecklistStateTextDone: {
     color: color.text.inverse,
@@ -144,10 +133,8 @@ export const styles = StyleSheet.create({
   finalChecklistTitle: {
     color: color.text.strong,
     flex: 1,
-    fontSize: 11,
-    fontWeight: '700',
-    lineHeight: 15,
     minWidth: 0,
+    ...typography.caption1,
   },
   finalChecklistZipAura: {
     height: 246,
@@ -160,6 +147,6 @@ export const styles = StyleSheet.create({
     backgroundColor: color.mint.white,
   },
   workerCustomerFontText: {
-    fontFamily: typography.fontFamily,
+    ...typography.body,
   },
 })

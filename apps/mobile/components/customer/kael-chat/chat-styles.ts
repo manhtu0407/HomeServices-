@@ -1,5 +1,7 @@
 import { Platform, StyleSheet, type ViewStyle } from 'react-native'
 
+import { typography } from '@/design/theme'
+
 const customerV21WebFocusRing = Platform.OS === 'web'
   ? ({ outlineColor: 'rgba(13,167,151,0.62)' } as unknown as ViewStyle)
   : {}
@@ -21,8 +23,7 @@ export const customerV21ChatStyles = StyleSheet.create({
     borderBottomLeftRadius: 8,
   },
   chatBubbleText: {
-    fontSize: 14,
-    lineHeight: 20,
+    ...typography.footnote,
   },
   kaelResponse: {
     alignSelf: 'flex-start',
@@ -41,18 +42,15 @@ export const customerV21ChatStyles = StyleSheet.create({
     paddingVertical: 10,
   },
   kaelResponseHeading: {
-    fontSize: 16,
-    fontWeight: '700',
-    letterSpacing: -0.12,
-    lineHeight: 22,
+    ...typography.callout,
+    fontWeight: '600',
   },
   kaelResponseList: {
     gap: 7,
   },
   kaelResponseListMarker: {
-    fontSize: 14,
-    fontWeight: '700',
-    lineHeight: 21,
+    ...typography.footnote,
+    fontWeight: '600',
     minWidth: 20,
   },
   kaelResponseListRow: {
@@ -61,15 +59,13 @@ export const customerV21ChatStyles = StyleSheet.create({
   },
   kaelResponseListText: {
     flex: 1,
-    fontSize: 14.5,
-    lineHeight: 21,
+    ...typography.subheadline,
   },
   kaelResponseProse: {
     gap: 8,
   },
   kaelResponseText: {
-    fontSize: 14.5,
-    lineHeight: 23,
+    ...typography.subheadline,
   },
   chatMediaCameraIcon: {
     height: 20,
@@ -89,9 +85,8 @@ export const customerV21ChatStyles = StyleSheet.create({
     shadowRadius: 24,
   },
   chatComposerDisclaimer: {
-    fontSize: 10.5,
+    ...typography.caption2,
     fontWeight: '600',
-    lineHeight: 14,
     marginTop: -4,
     textAlign: 'center',
   },
@@ -110,10 +105,7 @@ export const customerV21ChatStyles = StyleSheet.create({
     width: '100%',
   },
   chatEmptyHeroCopy: {
-    fontSize: 20,
-    fontWeight: '400',
-    letterSpacing: -0.18,
-    lineHeight: 29,
+    ...typography.title3,
     maxWidth: 320,
     textAlign: 'center',
   },
@@ -157,10 +149,9 @@ export const customerV21ChatStyles = StyleSheet.create({
   },
   chatHeaderModeLabel: {
     alignSelf: 'stretch',
-    fontSize: 14,
-    fontWeight: '700',
+    ...typography.footnote,
+    fontWeight: '600',
     includeFontPadding: false,
-    lineHeight: 20,
     textAlign: 'center',
     textAlignVertical: 'center',
     transform: [{ translateX: -12 }],
@@ -208,9 +199,8 @@ export const customerV21ChatStyles = StyleSheet.create({
     shadowRadius: 12,
   },
   chatLatestButtonText: {
-    fontSize: 12,
-    fontWeight: '700',
-    lineHeight: 16,
+    ...typography.caption1,
+    fontWeight: '600',
   },
   chatMediaBadge: {
     alignItems: 'center',
@@ -224,9 +214,8 @@ export const customerV21ChatStyles = StyleSheet.create({
     top: -4,
   },
   chatMediaBadgeText: {
-    fontSize: 9,
+    ...typography.caption2,
     fontWeight: '600',
-    lineHeight: 11,
   },
   chatMediaButton: {
     alignItems: 'center',
@@ -265,9 +254,8 @@ export const customerV21ChatStyles = StyleSheet.create({
     zIndex: 2,
   },
   chatModeMenuCheck: {
-    fontSize: 16,
-    fontWeight: '700',
-    lineHeight: 20,
+    ...typography.callout,
+    fontWeight: '600',
     marginLeft: 8,
   },
   chatModeMenuCopy: {
@@ -276,9 +264,7 @@ export const customerV21ChatStyles = StyleSheet.create({
     minWidth: 0,
   },
   chatModeMenuDescription: {
-    fontSize: 10.5,
-    fontWeight: '500',
-    lineHeight: 14,
+    ...typography.caption2,
   },
   chatModeMenuOption: {
     alignItems: 'center',
@@ -291,9 +277,8 @@ export const customerV21ChatStyles = StyleSheet.create({
     width: '100%',
   },
   chatModeMenuText: {
-    fontSize: 12.5,
-    fontWeight: '700',
-    lineHeight: 16,
+    ...typography.caption1,
+    fontWeight: '600',
     textAlign: 'left',
   },
   chatModeSwitch: {
@@ -329,8 +314,7 @@ export const customerV21ChatStyles = StyleSheet.create({
 
 export const customerV21KaelChatRootStyles = StyleSheet.create({
   bodyText: {
-    fontSize: 14,
-    lineHeight: 20,
+    ...typography.footnote,
   },
   composer: {
     alignItems: 'center',
@@ -342,7 +326,7 @@ export const customerV21KaelChatRootStyles = StyleSheet.create({
   },
   composerInput: {
     flex: 1,
-    fontSize: 15,
+    ...typography.subheadline,
     minHeight: 44,
     paddingHorizontal: 10,
     position: 'relative',
@@ -360,8 +344,8 @@ export const customerV21KaelChatRootStyles = StyleSheet.create({
     flex: 1,
   },
   errorText: {
-    fontSize: 13,
-    fontWeight: '700',
+    ...typography.footnote,
+    fontWeight: '600',
     marginTop: 10,
   },
   flex: {
@@ -376,7 +360,7 @@ export const customerV21KaelChatRootStyles = StyleSheet.create({
     paddingHorizontal: 12,
   },
   modeButtonText: {
-    fontSize: 13,
+    ...typography.footnote,
     fontWeight: '600',
     textAlign: 'center',
   },

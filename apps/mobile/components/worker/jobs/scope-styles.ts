@@ -5,9 +5,8 @@ import { color, component, glass, shadow, typography } from '@/design/theme'
 export const styles = StyleSheet.create({
   authorityText: {
     color: color.text.strong,
-    fontSize: 14,
+    ...typography.subheadline,
     fontWeight: '600',
-    lineHeight: 20,
   },
   glassCard: {
     backgroundColor: 'rgba(255,255,255,0.76)',
@@ -49,9 +48,8 @@ export const styles = StyleSheet.create({
   },
   navButtonText: {
     color: color.brand.primaryDark,
-    fontSize: 15,
-    fontWeight: '700',
-    lineHeight: 19,
+    ...typography.subheadline,
+    fontWeight: '600',
     textAlign: 'center',
   },
   opaqueCard: {
@@ -96,9 +94,8 @@ export const styles = StyleSheet.create({
   privateKaelMediaText: {
     color: color.text.strong,
     flexShrink: 1,
-    fontSize: 12,
-    fontWeight: '700',
-    lineHeight: 16,
+    ...typography.caption1,
+    fontWeight: '600',
   },
   scopePhotoPickerButton: {
     flexBasis: 112,
@@ -109,8 +106,8 @@ export const styles = StyleSheet.create({
   },
   scopePhotoPickerHint: {
     flex: 1,
-    lineHeight: 17,
     minWidth: 0,
+    ...typography.body,
   },
   scopePhotoPickerRow: {
     alignItems: 'center',
@@ -124,9 +121,8 @@ export const styles = StyleSheet.create({
   },
   scopeSubmitButtonText: {
     color: color.text.inverse,
-    fontSize: 15,
-    fontWeight: '700',
-    lineHeight: 20,
+    ...typography.subheadline,
+    fontWeight: '600',
     textAlign: 'center',
     zIndex: 2,
   },
@@ -154,6 +150,6 @@ export const styles = StyleSheet.create({
     flex: 1,
   },
   workerCustomerFontText: {
-    fontFamily: typography.fontFamily,
+    ...typography.body,
   },
 })

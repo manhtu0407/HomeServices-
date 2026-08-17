@@ -4,7 +4,7 @@ import { color, shadow, typography } from '@/design/theme'
 
 export const styles = StyleSheet.create({
   workerCustomerFontText: {
-    fontFamily: typography.fontFamily,
+    ...typography.body,
   },
   opaqueCard: {
     backgroundColor: color.mint.white,
@@ -65,9 +65,8 @@ export const styles = StyleSheet.create({
   },
   timelineMeta: {
     color: color.text.muted,
-    fontSize: 10,
-    fontWeight: '700',
-    lineHeight: 14,
+    ...typography.caption2,
+    fontWeight: '600',
     marginTop: 1,
   },
   timelineRail: {
@@ -80,8 +79,7 @@ export const styles = StyleSheet.create({
   },
   timelineTitle: {
     color: color.text.strong,
-    fontSize: 12,
-    fontWeight: '700',
-    lineHeight: 17,
+    ...typography.caption1,
+    fontWeight: '600',
   },
 })

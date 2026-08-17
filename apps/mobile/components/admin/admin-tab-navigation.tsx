@@ -180,7 +180,7 @@ const styles = StyleSheet.create({
   tabText: {
     ...typography.label,
     color: customerTheme.lightLayer.muted,
-    fontWeight: '700',
+    fontWeight: '600',
     textAlign: 'center',
   },
   activeTabText: {

@@ -1,3 +1,4 @@
+import { typography } from '@/design/theme'
 import { StyleSheet } from 'react-native'
 
 export const customerV21ProfilePreferenceStyles = StyleSheet.create({
@@ -29,8 +30,7 @@ export const customerV21ProfilePreferenceStyles = StyleSheet.create({
     minWidth: 0,
   },
   panelHeaderBody: {
-    fontSize: 13,
-    lineHeight: 19,
+    ...typography.subheadline,
   },
   panelHeaderIcon: {
     height: 42,
@@ -45,9 +45,7 @@ export const customerV21ProfilePreferenceStyles = StyleSheet.create({
     width: 52,
   },
   panelHeaderTitle: {
-    fontSize: 17,
-    fontWeight: '700',
-    lineHeight: 23,
+    ...typography.headline,
   },
   option: {
     alignItems: 'flex-start',
@@ -60,8 +58,7 @@ export const customerV21ProfilePreferenceStyles = StyleSheet.create({
     paddingVertical: 13,
   },
   optionBody: {
-    fontSize: 13,
-    lineHeight: 19,
+    ...typography.subheadline,
   },
   optionCopy: {
     flex: 1,
@@ -70,9 +67,8 @@ export const customerV21ProfilePreferenceStyles = StyleSheet.create({
   },
   optionTitle: {
     flexShrink: 1,
-    fontSize: 16,
-    fontWeight: '700',
-    lineHeight: 22,
+    ...typography.callout,
+    fontWeight: '600',
   },
   optionTitleRow: {
     alignItems: 'center',
@@ -81,8 +77,7 @@ export const customerV21ProfilePreferenceStyles = StyleSheet.create({
     gap: 8,
   },
   optionVisual: {
-    fontSize: 27,
-    lineHeight: 32,
+    ...typography.title2,
   },
   optionVisualFrame: {
     alignItems: 'center',
@@ -94,9 +89,8 @@ export const customerV21ProfilePreferenceStyles = StyleSheet.create({
     width: 48,
   },
   selectedLabel: {
-    fontSize: 11,
-    fontWeight: '700',
-    lineHeight: 15,
+    ...typography.caption2,
+    fontWeight: '600',
   },
   selectedPill: {
     borderRadius: 999,

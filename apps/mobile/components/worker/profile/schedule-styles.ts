@@ -16,17 +16,13 @@ export const styles = StyleSheet.create({
   },
   summaryBody: {
     color: color.text.secondary,
-    fontSize: 13,
-    fontWeight: '500',
-    lineHeight: 19,
+    ...typography.footnote,
   },
   summaryTitle: {
     color: color.text.strong,
-    fontSize: 16,
-    fontWeight: '700',
-    lineHeight: 21,
+    ...typography.callout,
   },
   workerCustomerFontText: {
-    fontFamily: typography.fontFamily,
+    ...typography.body,
   },
 })

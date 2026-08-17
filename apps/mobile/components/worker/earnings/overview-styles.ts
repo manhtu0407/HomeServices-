@@ -4,7 +4,7 @@ import { color, shadow, typography } from '@/design/theme'
 
 export const styles = StyleSheet.create({
   workerCustomerFontText: {
-    fontFamily: typography.fontFamily,
+    ...typography.body,
   },
   opaqueCard: {
     backgroundColor: color.mint.white,
@@ -34,23 +34,19 @@ export const styles = StyleSheet.create({
   },
   dashboardPeriodTitle: {
     color: color.text.secondary,
-    fontSize: 11,
-    fontWeight: '700',
-    lineHeight: 16,
+    ...typography.caption2,
+    fontWeight: '600',
   },
   dashboardAmount: {
     color: color.text.strong,
-    fontSize: 24,
+    ...typography.title2,
+    fontWeight: '600',
     fontVariant: ['tabular-nums'],
-    fontWeight: '700',
-    letterSpacing: -0.45,
-    lineHeight: 30,
     marginTop: 2,
   },
   dashboardUnit: {
     color: color.text.muted,
-    fontSize: 9,
-    lineHeight: 14,
+    ...typography.caption2,
     paddingLeft: 8,
     paddingTop: 2,
   },
@@ -183,9 +179,8 @@ export const styles = StyleSheet.create({
   },
   periodLabel: {
     color: color.text.secondary,
-    fontSize: 12,
-    fontWeight: '700',
-    lineHeight: 17,
+    ...typography.caption1,
+    fontWeight: '600',
     textAlign: 'center',
   },
   periodLabelActive: {
@@ -222,9 +217,8 @@ export const styles = StyleSheet.create({
   chartAxisLabel: {
     color: color.text.muted,
     flex: 1,
-    fontSize: 9,
-    fontWeight: '700',
-    lineHeight: 13,
+    ...typography.caption2,
+    fontWeight: '600',
     textAlign: 'center',
   },
   metricGrid: {
@@ -254,16 +248,14 @@ export const styles = StyleSheet.create({
   },
   metricLabel: {
     color: color.text.secondary,
-    fontSize: 10,
-    fontWeight: '700',
-    lineHeight: 14,
+    ...typography.caption2,
+    fontWeight: '600',
   },
   metricValue: {
     color: color.text.strong,
-    fontSize: 18,
+    ...typography.title3,
+    fontWeight: '600',
     fontVariant: ['tabular-nums'],
-    fontWeight: '700',
-    lineHeight: 24,
     marginTop: 4,
   },
   metricValueAccent: {
@@ -271,15 +263,13 @@ export const styles = StyleSheet.create({
   },
   metricNote: {
     color: color.text.muted,
-    fontSize: 9,
-    lineHeight: 13,
+    ...typography.caption2,
     marginTop: 2,
   },
   utilitySectionTitle: {
     color: color.text.strong,
-    fontSize: 18,
-    fontWeight: '700',
-    lineHeight: 24,
+    ...typography.title3,
+    fontWeight: '600',
     marginBottom: 9,
     marginHorizontal: 2,
   },
@@ -321,21 +311,17 @@ export const styles = StyleSheet.create({
   },
   utilityTitle: {
     color: color.text.strong,
-    fontSize: 13,
-    fontWeight: '700',
-    lineHeight: 18,
+    ...typography.footnote,
+    fontWeight: '600',
   },
   utilityDetail: {
     color: color.text.muted,
-    fontSize: 10,
-    lineHeight: 14,
+    ...typography.caption2,
     marginTop: 1,
   },
   utilityChevron: {
     color: color.brand.primaryDark,
-    fontSize: 24,
-    fontWeight: '400',
-    lineHeight: 28,
+    ...typography.title2,
     marginLeft: 8,
     textAlign: 'center',
     width: 24,

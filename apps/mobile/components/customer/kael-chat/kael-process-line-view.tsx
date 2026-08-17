@@ -1,3 +1,4 @@
+import { typography } from '@/design/theme'
 import { useEffect, useMemo } from 'react'
 import { StyleSheet, Text, View } from 'react-native'
 import Animated, {
@@ -191,11 +192,10 @@ const styles = StyleSheet.create({
   },
   text: {
     flexShrink: 1,
-    fontSize: 11.5,
+    ...typography.caption2,
     fontWeight: '600',
-    lineHeight: 16,
   },
   textActive: {
-    fontWeight: '700',
+    fontWeight: '600',
   },
 })
