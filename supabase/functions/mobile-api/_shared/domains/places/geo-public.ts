@@ -44,12 +44,14 @@ export async function placesAutocomplete(
   const control = await mapsPermit(ctx.privilegedSupabase ?? ctx.supabase, ctx.environment, ctx.releaseId, secrets);
   if (!control.permit.allowed) return { suggestions: [], fallback_used: true };
   const vietmapApiKey = readVietmapApiKey(secrets);
+  let emptyVietmapResult: PlacesAutocompleteResponse | null = null;
   if (vietmapApiKey) {
     const result = await vietmapPlacesAutocomplete(input, vietmapApiKey);
-    if (!result.fallback_used) {
+    if (!result.fallback_used && result.suggestions.length > 0) {
       await recordMapsResult(control, true);
       return result;
     }
+    if (!result.fallback_used) emptyVietmapResult = result;
   }
 
   const googleApiKey = readGoogleMapsApiKey(secrets);
@@ -57,6 +59,11 @@ export async function placesAutocomplete(
     const result = await googlePlacesAutocomplete(input, googleApiKey);
     await recordMapsResult(control, !result.fallback_used);
     return result;
+  }
+
+  if (emptyVietmapResult) {
+    await recordMapsResult(control, true);
+    return emptyVietmapResult;
   }
 
   await recordMapsResult(control, false, "MAPS_PROVIDER_UNAVAILABLE");

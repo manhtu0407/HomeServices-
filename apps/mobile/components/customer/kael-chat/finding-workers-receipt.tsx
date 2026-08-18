@@ -414,7 +414,7 @@ function SavedWorkersSheet({
 
 let receiptClockNow = Date.now()
 let receiptClockTimer: ReturnType<typeof setInterval> | null = null
-let receiptClockSubscribers: Array<() => void> = []
+let receiptClockSubscribers: (() => void)[] = []
 
 function getReceiptClockSnapshot() {
   return receiptClockNow

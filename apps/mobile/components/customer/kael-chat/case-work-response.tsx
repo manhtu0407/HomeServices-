@@ -3,6 +3,7 @@ import type { ReactNode } from 'react'
 import { StyleSheet, Text, useWindowDimensions, View, type StyleProp, type TextStyle } from 'react-native'
 
 import type { CustomerThemeTokens } from '../customer-theme'
+import { KaelChatMascot } from './kael-chat-mascot'
 import type { CaseWorkResponseModel } from './case-work-response-model'
 import { KaelLiquidReveal } from './kael-liquid-reveal'
 
@@ -34,52 +35,61 @@ export function CaseWorkResponse({
       style={styles.response}
       testID={testID}
     >
-      <View style={[styles.summary, compact ? styles.summaryCompact : null]}>
-        <Text
-          accessibilityRole="header"
-          style={[
-            styles.title,
-            compact ? styles.titleCompact : styles.titleWide,
-            titleStyle,
-            { color: tokens.text },
-          ]}
-          testID="customer-v21-case-work-response-title"
-        >
-          {model.title}
-        </Text>
-        <Text
-          accessibilityLabel={`${model.status}`}
-          accessibilityLiveRegion="polite"
-          style={[styles.status, compact ? styles.statusCompact : null, { color: tokens.muted }]}
-          testID="customer-v21-case-work-response-status"
-        >
-          {model.status}
-        </Text>
-      </View>
-
-      <View
-        accessible={!details && !controls}
-        accessibilityLabel={`${model.noteTitle}. ${model.noteCopy}`}
-        style={[
-          styles.note,
-          compact ? styles.noteCompact : null,
-          { borderLeftColor: accentLine },
-        ]}
-        testID="customer-v21-case-work-response-note"
-      >
-        <Text style={[styles.noteTitle, { color: tokens.primary }]}>{model.noteTitle}</Text>
-        <Text
-          style={[styles.noteCopy, compact ? styles.noteCopyCompact : null, { color: tokens.muted }]}
-          testID="customer-v21-case-work-response-note-copy"
-        >
-          {model.noteCopy}
-        </Text>
-        {details ? <View style={styles.details}>{details}</View> : null}
-        {controls ? (
-          <View accessible={false} style={styles.controls} testID="customer-v21-case-work-response-controls">
-            {controls}
+      <View style={styles.responseIdentity}>
+        <KaelChatMascot
+          reduceMotion={reduceMotion}
+          size={42}
+          testID={`${testID}-mascot`}
+        />
+        <View style={styles.responseContent}>
+          <View style={[styles.summary, compact ? styles.summaryCompact : null]}>
+            <Text
+              accessibilityRole="header"
+              style={[
+                styles.title,
+                compact ? styles.titleCompact : styles.titleWide,
+                titleStyle,
+                { color: tokens.text },
+              ]}
+              testID="customer-v21-case-work-response-title"
+            >
+              {model.title}
+            </Text>
+            <Text
+              accessibilityLabel={`${model.status}`}
+              accessibilityLiveRegion="polite"
+              style={[styles.status, compact ? styles.statusCompact : null, { color: tokens.muted }]}
+              testID="customer-v21-case-work-response-status"
+            >
+              {model.status}
+            </Text>
           </View>
-        ) : null}
+
+          <View
+            accessible={!details && !controls}
+            accessibilityLabel={`${model.noteTitle}. ${model.noteCopy}`}
+            style={[
+              styles.note,
+              compact ? styles.noteCompact : null,
+              { borderLeftColor: accentLine },
+            ]}
+            testID="customer-v21-case-work-response-note"
+          >
+            <Text style={[styles.noteTitle, { color: tokens.primary }]}>{model.noteTitle}</Text>
+            <Text
+              style={[styles.noteCopy, compact ? styles.noteCopyCompact : null, { color: tokens.muted }]}
+              testID="customer-v21-case-work-response-note-copy"
+            >
+              {model.noteCopy}
+            </Text>
+            {details ? <View style={styles.details}>{details}</View> : null}
+            {controls ? (
+              <View accessible={false} style={styles.controls} testID="customer-v21-case-work-response-controls">
+                {controls}
+              </View>
+            ) : null}
+          </View>
+        </View>
       </View>
     </KaelLiquidReveal>
   )
@@ -120,6 +130,16 @@ const styles = StyleSheet.create({
     maxWidth: 680,
     paddingHorizontal: 4,
     paddingVertical: 8,
+    width: '100%',
+  },
+  responseContent: {
+    flex: 1,
+    minWidth: 0,
+  },
+  responseIdentity: {
+    alignItems: 'flex-start',
+    flexDirection: 'row',
+    gap: 8,
     width: '100%',
   },
   status: {

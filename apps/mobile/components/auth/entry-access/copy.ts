@@ -130,10 +130,6 @@ export type EntryAccessCopy = Readonly<{
     selectionHint: string
     worker: RoleCardCopy
   }>
-  splash: Readonly<{
-    preparing: string
-    tagline: string
-  }>
 }>
 
 const viCopy: EntryAccessCopy = {
@@ -142,7 +138,7 @@ const viCopy: EntryAccessCopy = {
     continueWithProvider: 'Tiếp tục với',
     hidePassword: 'Ẩn mật khẩu',
     kaelAssistant: 'Kael, trợ lý gia đình',
-    logo: 'Biểu trưng NestScout Aurora Nest',
+    logo: 'Biểu trưng NestScout',
     showPassword: 'Hiện mật khẩu',
   },
   errors: {
@@ -153,7 +149,7 @@ const viCopy: EntryAccessCopy = {
     emailConfirmationRequired: 'Thư điện tử chưa được xác nhận. Hãy kiểm tra email rồi đăng nhập lại.',
     fullNameRequired: 'Nhập họ tên để tạo tài khoản.',
     googleSignInFailed: 'Chưa thể đăng nhập bằng Google. Vui lòng thử lại.',
-    invalidCredentials: 'Thư điện tử hoặc SĐT hoặc mật khẩu không đúng.',
+    invalidCredentials: 'Gmail hoặc SĐT hoặc mật khẩu không đúng.',
     invalidEmail: 'Địa chỉ thư điện tử chưa đúng định dạng.',
     invalidIdentifier: 'Nhập thư điện tử hoặc SĐT để tiếp tục.',
     loginDetails: 'Vui lòng nhập thư điện tử hoặc SĐT và mật khẩu.',
@@ -261,10 +257,6 @@ const viCopy: EntryAccessCopy = {
       title: 'Đối tác thợ',
     },
   },
-  splash: {
-    preparing: 'Kael đang chuẩn bị mọi thứ',
-    tagline: 'Dịch vụ gia đình đáng tin, trong tầm tay.',
-  },
 }
 
 const enCopy: EntryAccessCopy = {
@@ -273,7 +265,7 @@ const enCopy: EntryAccessCopy = {
     continueWithProvider: 'Continue with',
     hidePassword: 'Hide password',
     kaelAssistant: 'Kael, your home assistant',
-    logo: 'NestScout Aurora Nest logo',
+    logo: 'NestScout logo',
     showPassword: 'Show password',
   },
   errors: {
@@ -391,10 +383,6 @@ const enCopy: EntryAccessCopy = {
       meta: 'Worker account · Profile verification',
       title: 'Service partner',
     },
-  },
-  splash: {
-    preparing: 'Kael is getting everything ready',
-    tagline: 'Trusted home services, within reach.',
   },
 }
 

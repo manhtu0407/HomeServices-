@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/assets/nestscout-aurora-nest-logo.png" alt="NestScout AuroraNest logo" width="180" />
+  <img src="docs/assets/nestscout-app-icon.png" alt="NestScout app icon" width="180" />
 </p>
 
 # NestScout

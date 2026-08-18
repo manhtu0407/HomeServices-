@@ -115,9 +115,12 @@ export function WorkerV5CaseTrailCard({
   const ledgerReady = Boolean(workerNet && workerNet > 0)
   const paymentRailIsSePay = deal?.payment?.provider === 'sepay_vietqr'
   const directPaymentRecorded = deal?.payment?.provider === 'direct_worker' && deal.payment.status === 'direct_paid'
+  const directPaymentAwaitingAdmin = deal?.payment?.provider === 'direct_worker' && deal.payment.status === 'direct_admin_confirmation_required'
   const manualPaymentOnHold = deal?.payment?.provider === 'platform_bank_manual' && deal.payment.status === 'manual_verified'
   const pendingCreditLabel = directPaymentRecorded
     ? textByLanguage(language, 'Đã ghi nhận hoa hồng trả trực tiếp', 'Direct-payment commission recorded')
+    : directPaymentAwaitingAdmin
+    ? textByLanguage(language, 'Thu nhập tạm ghi nhận · chờ Admin xác minh', 'Provisional earnings · awaiting Admin verification')
     : manualPaymentOnHold
     ? textByLanguage(language, 'Thu nhập đang giữ 24 giờ', 'Earnings held for 24 hours')
     : paymentRailIsSePay
@@ -169,6 +172,8 @@ export function WorkerV5CaseTrailCard({
           : textByLanguage(language, 'Chờ', 'Waiting'),
       title: directPaymentRecorded
         ? textByLanguage(language, 'Đối soát hoa hồng trả trực tiếp', 'Direct-payment commission reconciliation')
+        : directPaymentAwaitingAdmin
+        ? textByLanguage(language, 'Thu nhập chờ xác minh', 'Earnings awaiting verification')
         : textByLanguage(language, 'Ghi có tài khoản thợ', 'Credit worker account'),
     },
   ]

@@ -11,6 +11,15 @@ export const activeResponseByCatalogMemory = new Map<string, CustomerKaelConvers
 export const archivedSessionIdsByCatalogMemory = new Map<string, Set<string>>()
 export const CUSTOMER_SESSION_PREFETCH_LIMIT = 6
 
+export function archivedSessionIdsForCatalog(catalogKey: string | null) {
+  if (!catalogKey) return new Set<string>()
+  const existing = archivedSessionIdsByCatalogMemory.get(catalogKey)
+  if (existing) return existing
+  const created = new Set<string>()
+  archivedSessionIdsByCatalogMemory.set(catalogKey, created)
+  return created
+}
+
 export type CustomerKaelCatalogState = {
   activeResponse: CustomerKaelConversationResponse | null
   catalogKey: string | null

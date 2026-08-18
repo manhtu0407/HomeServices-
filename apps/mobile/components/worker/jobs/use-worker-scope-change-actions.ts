@@ -3,8 +3,7 @@ import * as ImagePicker from 'expo-image-picker'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 
 import type { AppLanguage } from '@/lib/app-language'
-import type { ScopeChangeWorkerQuote } from '@/lib/api-types'
-import type { LocalDeal, LocalScopeChange } from '@nestscout/shared'
+import type { LocalDeal } from '@nestscout/shared'
 import { mergeJobMediaRefsNewestFirst } from '@/lib/job-media-preview'
 import { localizeMediaUploadFailure, type LocalMediaUploadDraft, uploadJobMediaDrafts } from '@/lib/media-upload'
 
@@ -13,16 +12,18 @@ import { WorkerV5RouteParams } from '../dock/types'
 import { textByLanguage } from '../ui/format'
 import { formatScopePriceRange } from '../ui/labels'
 import { useWorkerV5ScopeChangeDraft } from './use-worker-scope-change-draft'
-import type { useFrontendWorkflow } from '@/lib/frontend-workflow-provider'
+import type { WorkerV5Runtime } from '../worker-v5-runtime'
 
-export type WorkerV5Runtime = ReturnType<typeof useFrontendWorkflow>
+export type { WorkerV5Runtime } from '../worker-v5-runtime'
 
 export function useWorkerV5ScopeChangeActions({
   deal,
+  hydrateIncident = true,
   language,
   runtime,
 }: {
   deal: LocalDeal | null
+  hydrateIncident?: boolean
   language: AppLanguage
   runtime: WorkerV5Runtime
 }) {
@@ -59,6 +60,8 @@ export function useWorkerV5ScopeChangeActions({
 
   useEffect(() => {
     if (
+      !hydrateIncident
+      ||
       scopeHydrationOwnerRef.current === scopeDraftOwnerKey ||
       scopeDraftOwnerKey === 'no-active-job' ||
       scopeQuote
@@ -72,7 +75,7 @@ export function useWorkerV5ScopeChangeActions({
         quote: response.quote ?? current.quote,
       }))
     })
-  }, [runtime.actions, scopeDraftOwnerKey, scopeQuote, updateScopeDraft])
+  }, [hydrateIncident, runtime.actions, scopeDraftOwnerKey, scopeQuote, updateScopeDraft])
 
   const proposalSubmitted = jobIncident?.status === 'scope_proposed'
   useEffect(() => {

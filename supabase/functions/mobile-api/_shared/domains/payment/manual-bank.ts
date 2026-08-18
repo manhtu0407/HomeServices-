@@ -49,6 +49,8 @@ export type EdgeManualBankClaimResponse = {
   payment_status: "manual_customer_claimed" | "manual_reconcile_required";
   status: "payment_pending";
   transfer_claimed_at: string;
+  settlement_state: "customer_claimed" | "admin_verified";
+  salary_visible: true;
 };
 
 export type EdgeDirectPaymentResponse = {
@@ -57,6 +59,7 @@ export type EdgeDirectPaymentResponse = {
   direct_status:
     | "awaiting_customer_confirmation"
     | "awaiting_worker_confirmation"
+    | "awaiting_admin_confirmation"
     | "reconcile_required"
     | "paid";
   collateral_amount?: number;
@@ -181,11 +184,24 @@ export async function claimManualBankPayment(
   if (typeof row.notification_required !== "boolean") {
     apiFailure("DB_ERROR", "Không thể lưu xác nhận chuyển khoản.", 500);
   }
+  const recognition = await dbQuery<Array<Record<string, unknown>>>(
+    (ctx.supabase as DbClient).rpc("recognize_customer_payment_claim", {
+      p_customer_id: ctx.user.id,
+      p_job_id: jobId,
+    }),
+  );
+  const recognitionRow = recognition.data?.[0];
+  if (recognition.error || !recognitionRow || recognitionRow.ok !== true ||
+    (recognitionRow.settlement_state !== "customer_claimed" && recognitionRow.settlement_state !== "admin_verified")) {
+    apiFailure("DB_ERROR", "Không thể ghi nhận thu nhập tạm thời cho thợ.", 500);
+  }
   const response: EdgeManualBankClaimResponse = {
     job_id: typeof row.job_id === "string" ? row.job_id : jobId,
     payment_status: paymentStatus,
     status: "payment_pending",
     transfer_claimed_at: row.transfer_claimed_at,
+    settlement_state: recognitionRow.settlement_state,
+    salary_visible: true,
   };
   if (row.notification_required) {
     await notifyFinanceReconciliationRequired(
@@ -236,13 +252,18 @@ export async function respondToDirectWorkerPayment(
   if (typeof input.received !== "boolean") {
     apiFailure("VALIDATION", "Xác nhận thanh toán không hợp lệ.", 400);
   }
+  const rpcName = ctx.role === "customer" && input.received
+    ? "recognize_customer_payment_claim"
+    : ctx.role === "worker" && input.received
+      ? "acknowledge_worker_cash_payment"
+      : "respond_to_direct_worker_payment";
+  const rpcInput = rpcName === "recognize_customer_payment_claim"
+    ? { p_customer_id: ctx.user.id, p_job_id: jobId }
+    : rpcName === "acknowledge_worker_cash_payment"
+      ? { p_job_id: jobId, p_received: input.received, p_worker_id: ctx.user.id }
+      : { p_actor_id: ctx.user.id, p_actor_role: ctx.role, p_job_id: jobId, p_received: input.received };
   const result = await dbQuery<Array<Record<string, unknown>>>(
-    (ctx.supabase as DbClient).rpc("respond_to_direct_worker_payment", {
-      p_actor_id: ctx.user.id,
-      p_actor_role: ctx.role,
-      p_job_id: jobId,
-      p_received: input.received,
-    }),
+    (ctx.supabase as DbClient).rpc(rpcName, rpcInput),
   );
   const row = result.data?.[0];
   if (result.error || !row) {
@@ -251,15 +272,17 @@ export async function respondToDirectWorkerPayment(
   if (row.ok !== true) {
     mapDirectPaymentError(row.error_code);
   }
-  if (typeof row.notification_required !== "boolean") {
+  if (row.notification_required !== undefined && typeof row.notification_required !== "boolean") {
     apiFailure("DB_ERROR", "Không thể lưu xác nhận thanh toán trực tiếp.", 500);
   }
   const response = parseDirectPaymentResponse(row, jobId);
-  if (row.notification_required && response.direct_status === "reconcile_required") {
+  if (row.notification_required === true && (response.direct_status === "reconcile_required" || response.direct_status === "awaiting_admin_confirmation")) {
     await notifyFinanceReconciliationRequired(
       ctx.supabase as DbClient,
       response.job_id,
-      "direct_payment_reconcile_required",
+      response.direct_status === "awaiting_admin_confirmation"
+        ? "direct_payment_admin_confirmation_required"
+        : "direct_payment_reconcile_required",
     );
   }
   return response;
@@ -268,7 +291,7 @@ export async function respondToDirectWorkerPayment(
 export async function notifyFinanceReconciliationRequired(
   client: DbClient,
   jobId: string,
-  reasonCode: "customer_transfer_claimed" | "direct_payment_reconcile_required" | "direct_payment_timeout",
+  reasonCode: "customer_transfer_claimed" | "direct_payment_reconcile_required" | "direct_payment_admin_confirmation_required" | "direct_payment_timeout",
 ) {
   try {
     const [ownerResult, operatorResult] = await Promise.all([
@@ -299,7 +322,9 @@ export async function notifyFinanceReconciliationRequired(
     const title = "Cần đối soát thanh toán";
     const body = reasonCode === "direct_payment_timeout"
       ? "Một giao dịch trả trực tiếp chưa có đủ xác nhận trong thời hạn."
-      : "Một giao dịch cần được đối soát trước khi Kael xác nhận thanh toán.";
+      : reasonCode === "direct_payment_admin_confirmation_required"
+        ? "Khách hàng đã xác nhận thanh toán trực tiếp. Hãy xác minh trước khi ghi nhận hoàn tất."
+        : "Một giao dịch cần được đối soát trước khi Kael xác nhận thanh toán.";
     await Promise.all(userIds.map((userId) => insertUserNotification(client, {
       userId,
       jobId,
@@ -372,6 +397,7 @@ function parseDirectPaymentResponse(
     (row.status !== "payment_pending" && row.status !== "paid") ||
     (directStatus !== "awaiting_customer_confirmation" &&
       directStatus !== "awaiting_worker_confirmation" &&
+      directStatus !== "awaiting_admin_confirmation" &&
       directStatus !== "reconcile_required" && directStatus !== "paid")
   ) {
     apiFailure("DB_ERROR", "Biên nhận thanh toán trực tiếp không hợp lệ.", 500);

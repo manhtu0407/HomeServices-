@@ -73,6 +73,7 @@ export type AdminWithdrawalRequestSummary = {
   bank_account_masked: string;
   status: AdminWithdrawalRequestStatus;
   requested_at: string;
+  eligible_at: string;
   processing_at: string | null;
   processing_by_name: string | null;
   processed_at: string | null;

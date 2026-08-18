@@ -1,6 +1,6 @@
 import Svg, { Circle, Path, type SvgProps } from 'react-native-svg'
 
-export type HomeIconName = 'bell' | 'calendar' | 'check' | 'flash' | 'list' | 'search' | 'shield' | 'snow'
+export type HomeIconName = 'bell' | 'calendar' | 'check' | 'flash' | 'list' | 'search' | 'shield' | 'snow' | 'wave'
 
 export function HomeIcon({ color, name, size }: { color: string; name: HomeIconName; size: number }) {
   const props: SvgProps = {
@@ -30,6 +30,9 @@ export function HomeIcon({ color, name, size }: { color: string; name: HomeIconN
   }
   if (name === 'snow') {
     return <Svg {...props}><Path d="M12 3v18M4.2 7.5l15.6 9M4.2 16.5l15.6-9M8.2 4.8 12 7l3.8-2.2M8.2 19.2 12 17l3.8 2.2" stroke={color} strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.6" /></Svg>
+  }
+  if (name === 'wave') {
+    return <Svg {...props}><Path d="M8.1 12.8V7.5a1.3 1.3 0 0 1 2.6 0v4.1V5.4a1.3 1.3 0 0 1 2.6 0v6.2V6.4a1.3 1.3 0 0 1 2.6 0v5.1V8.1a1.3 1.3 0 0 1 2.6 0v5.4c0 3.7-2.6 6.3-6.1 6.3h-.7c-2.3 0-3.8-1.2-5.2-3.1l-1.9-2.7a1.3 1.3 0 0 1 2-1.7l2.1 1.9Z" stroke={color} strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.6" /><Path d="m4.5 6.2-1.3-1M6 3.8l-.3-1.4" stroke={color} strokeLinecap="round" strokeWidth="1.5" /></Svg>
   }
   return <Svg {...props}><Path d="m13.3 3.3-6 9h4.3l-1 8.4 6.1-10h-4.2l.8-7.4Z" stroke={color} strokeLinejoin="round" strokeWidth="1.7" /></Svg>
 }

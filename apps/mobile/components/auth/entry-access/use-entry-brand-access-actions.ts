@@ -61,7 +61,7 @@ export function useEntryBrandAccessActions({
     setNotice(null)
     controller.updateState({ busy: false, error: null, step: nextStep })
     onStepChangeRef.current?.(nextStep)
-  }, [controller.updateState])
+  }, [controller, setNotice])
 
   const beginAction = () => {
     if (actionBusyRef.current) return null
@@ -92,7 +92,7 @@ export function useEntryBrandAccessActions({
       onStepChangeRef.current?.('role-gate')
     }, splashDurationMs)
     return () => clearTimeout(timeout)
-  }, [controller.step, controller.updateState, splashDurationMs])
+  }, [controller, splashDurationMs])
 
   const submitLogin = async () => {
     controller.setError(null)

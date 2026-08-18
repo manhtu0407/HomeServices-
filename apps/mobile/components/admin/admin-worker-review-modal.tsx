@@ -5,6 +5,7 @@ import { ActivityIndicator, Modal, Pressable, ScrollView, Text, View } from 'rea
 import { KaelButton, KaelTextField } from '@/components/ui/kael-primitives'
 import { color } from '@/design/theme'
 import type {
+  AdminWorkerFinanceSnapshotResponse,
   AdminViewTransactionSummary,
   AdminViewWorkerApplicationSummary,
   AdminViewWorkerReviewDetail,
@@ -12,12 +13,14 @@ import type {
 import { adminControlService } from '@/lib/services'
 import type { AdminSectionsCopy } from './admin-sections-copy'
 import { MetaItem, StatusPill } from './admin-section-cards'
+import { createFinanceFormatters } from './admin-finance-formatters'
 import { styles } from './admin-sections-styles'
 import { workerReviewCopy } from './admin-worker-review-copy'
 
 type WorkerReviewModalProps = {
   actionPending: string | null
   canManage: boolean
+  canReadFinance: boolean
   canReview: boolean
   copy: AdminSectionsCopy
   formatDate: (value: string | null | undefined) => string
@@ -37,6 +40,9 @@ type WorkerReviewModalProps = {
 type WorkerReviewState = {
   detail: AdminViewWorkerReviewDetail | null
   error: string | null
+  finance: AdminWorkerFinanceSnapshotResponse | null
+  financeError: string | null
+  financeLoading: boolean
   loading: boolean
   profilePending: boolean
   reason: string
@@ -50,13 +56,16 @@ export function AdminWorkerReviewModal(props: WorkerReviewModalProps) {
     {
       detail: null,
       error: null,
+      finance: null,
+      financeError: null,
+      financeLoading: false,
       loading: Boolean(worker),
       profilePending: false,
       reason: '',
       requestingChanges: false,
     },
   )
-  const { detail, error, loading, profilePending, reason, requestingChanges } = state
+  const { detail, error, finance, financeError, financeLoading, loading, profilePending, reason, requestingChanges } = state
   const reviewCopy = workerReviewCopy[props.language]
 
   const loadDetail = useCallback(async () => {
@@ -67,18 +76,28 @@ export function AdminWorkerReviewModal(props: WorkerReviewModalProps) {
       : { error: result.error, loading: false })
   }, [worker])
 
+  const loadFinance = useCallback(async () => {
+    if (!worker || !props.canReadFinance) return
+    patch({ financeLoading: true, financeError: null })
+    const result = await adminControlService.getWorkerFinanceSnapshot(worker.worker_id)
+    patch(result.success
+      ? { finance: result.data, financeError: null, financeLoading: false }
+      : { financeError: result.error, financeLoading: false })
+  }, [props.canReadFinance, worker])
+
   useEffect(() => {
     if (!worker) return
     let cancelled = false
-    patch({ detail: null, error: null, loading: true, reason: '', requestingChanges: false })
+    patch({ detail: null, error: null, finance: null, financeError: null, financeLoading: props.canReadFinance, loading: true, reason: '', requestingChanges: false })
     void adminControlService.getWorkerReviewDetail(worker.id).then((result) => {
       if (cancelled) return
       patch(result.success
         ? { detail: result.data, error: null, loading: false }
         : { error: result.error, loading: false })
     })
+    if (props.canReadFinance) void loadFinance()
     return () => { cancelled = true }
-  }, [worker])
+  }, [loadFinance, props.canReadFinance, worker])
 
   const retryDetail = () => {
     patch({ error: null, loading: true })
@@ -112,6 +131,7 @@ export function AdminWorkerReviewModal(props: WorkerReviewModalProps) {
         <ScrollView style={styles.modalBodyScroll} contentContainerStyle={styles.modalScrollContent}>
           <LoginSection detail={detail} copy={props.copy} formatDate={props.formatDate} reviewCopy={reviewCopy} />
           <ChecklistSection worker={detail.application} reviewCopy={reviewCopy} />
+          <FinanceSection finance={finance} error={financeError} formatDate={props.formatDate} language={props.language} loading={financeLoading} reviewCopy={reviewCopy} />
           <ProfileSections detail={detail} copy={props.copy} reviewCopy={reviewCopy} serviceLabel={props.serviceLabel} />
           <HistorySection detail={detail} formatDate={props.formatDate} reviewCopy={reviewCopy} />
         </ScrollView>
@@ -145,6 +165,42 @@ function ChecklistSection({ reviewCopy, worker }: { reviewCopy: typeof workerRev
   return <View style={styles.reviewSection}>
     <Text style={styles.reviewSectionTitle}>{reviewCopy.group.checklist}</Text>
     <View style={styles.reviewSummary}><Text style={styles.cardTitle}>{reviewCopy.progress(worker.checklist.completed_count, worker.checklist.total_count)}</Text>{worker.checklist.missing.length > 0 ? <Text style={styles.reviewSummaryText}>{reviewCopy.missingLabel}: {worker.checklist.missing.map((field) => reviewCopy.field[field] ?? field).join(' · ')}</Text> : null}</View>
+  </View>
+}
+
+function FinanceSection({
+  error,
+  finance,
+  formatDate,
+  language,
+  loading,
+  reviewCopy,
+}: {
+  error: string | null
+  finance: AdminWorkerFinanceSnapshotResponse | null
+  formatDate: WorkerReviewModalProps['formatDate']
+  language: 'vi' | 'en'
+  loading: boolean
+  reviewCopy: typeof workerReviewCopy.vi
+}) {
+  const formatters = createFinanceFormatters(language, '—')
+  return <View style={styles.reviewSection} testID="admin-worker-finance-snapshot">
+    <Text style={styles.reviewSectionTitle}>{reviewCopy.group.finance}</Text>
+    {loading ? <Text style={styles.reviewSummaryText}>{language === 'vi' ? 'Đang tải thông tin tài chính...' : 'Loading finance data...'}</Text> : error && !finance ? <Text style={styles.reviewSummaryText}>{reviewCopy.noFinance}</Text> : finance ? <>
+      <View style={styles.metaGrid}>
+        <MetaItem label={language === 'vi' ? 'Có thể rút' : 'Available'} value={formatters.formatCurrency(finance.available_balance)} />
+        <MetaItem label={language === 'vi' ? 'Tạm ghi nhận' : 'Provisional'} value={formatters.formatCurrency(finance.provisional_payment_amount)} />
+        <MetaItem label={language === 'vi' ? 'Đang giữ' : 'On hold'} value={formatters.formatCurrency(finance.on_hold_amount)} />
+        <MetaItem label={language === 'vi' ? 'Đã reserve rút tiền' : 'Withdrawal reserved'} value={formatters.formatCurrency(finance.withdrawal_reserved_amount)} />
+        <MetaItem label={language === 'vi' ? 'Hoa hồng tiền mặt đã thu' : 'Cash commission collected'} value={formatters.formatCurrency(finance.cash_commission_collected_total)} />
+        <MetaItem label={language === 'vi' ? 'Hoa hồng tiền mặt còn thiếu' : 'Cash commission due'} value={formatters.formatCurrency(finance.cash_commission_due_total)} />
+        <MetaItem label={language === 'vi' ? 'Đã rút' : 'Withdrawn'} value={formatters.formatCurrency(finance.withdrawn_total)} />
+        <MetaItem label={language === 'vi' ? 'Chờ Admin xác minh' : 'Pending Admin review'} value={`${finance.provisional_payment_count} · ${formatters.formatCurrency(finance.provisional_payment_amount)}`} />
+      </View>
+      <Text style={styles.reviewSummaryText}>{finance.withdrawal_eligible_at
+        ? `${language === 'vi' ? 'Mốc rút sớm nhất' : 'Earliest withdrawal eligibility'}: ${formatDate(finance.withdrawal_eligible_at)}`
+        : (language === 'vi' ? 'Không có khoản rút tiền nào đang chờ đủ thời gian.' : 'No withdrawal is waiting for eligibility.')}</Text>
+    </> : <Text style={styles.reviewSummaryText}>{reviewCopy.noFinance}</Text>}
   </View>
 }
 

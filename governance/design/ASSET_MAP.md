@@ -2,7 +2,7 @@
 
 Status: active. This map preserves the existing non-Kael asset inventory and records the Core v9 replacement.
 
-Rule: the non-Kael asset inventory remains unchanged. Kael has one Core v9 visual source and one Motion v11 source, both user-supplied.
+Rule: the non-Kael asset inventory remains unchanged. Kael Core v9 remains the general assistant visual source; the approved Navigation artwork is isolated to the Customer/Worker Navigation accessory, both user-supplied.
 
 ## Existing Asset Inventory
 
@@ -10,6 +10,7 @@ Rule: the non-Kael asset inventory remains unchanged. Kael has one Core v9 visua
 |---|---|
 | App shell | `apps/mobile/assets/nestscout-logo-mark.png`, `icon.png`, `adaptive-icon.png`, `splash-icon.png`, `favicon.png` |
 | Kael Core v9 + Motion v11 | Sources: `apps/mobile/assets/kael/Kael-Core-v9-Codex-Rebuild.html` and `Kael-Motion-Clip-v11-Codex-Rebuild.html`; runtime: `apps/mobile/components/ui/kael-core-v9.tsx` |
+| Kael Navigation artwork | Customer: `apps/mobile/assets/kael/navigation/kael-customer-navigation-monocle.png`; Worker: `apps/mobile/assets/kael/navigation/kael-worker-navigation-monocle.png`; runtime: `apps/mobile/components/ui/kael-navigation-accessory.tsx` |
 | Common role icons | Not used for production mapping in this session because `apps/mobile/assets/common-image-icons/` is untracked prototype trash. Use tracked client/worker equivalents below. |
 | Client services | `apps/mobile/assets/client-image-icons/client-service-electrical.png`, `client-service-plumbing.png`, `client-service-cleaning.png` |
 | Worker services | `apps/mobile/assets/worker-image-icons/service-electrical.png`, `service-plumbing.png`, `service-cleaning.png` |
@@ -32,6 +33,7 @@ Production wrappers retain these tracked non-Kael PNG families for customer/work
 | Splash logo/icon | `apps/mobile/assets/splash-icon.png` | Uses the approved logo 01 transparent contour mark. |
 | App icon | `apps/mobile/assets/icon.png`, `adaptive-icon.png`, `favicon.png` | Uses the approved logo 01 transparent contour mark. |
 | Kael Core v9 | `Kael-Core-v9-Codex-Rebuild.html` preserved as source; `KaelCoreV9` is the native inline-SVG runtime. | One Obsidian Pearl, two pill eyes, one monocle; no raster state, emotion, or accessory variants. |
+| Kael Navigation accessory | `apps/mobile/assets/kael/navigation/kael-customer-navigation-monocle.png` or `kael-worker-navigation-monocle.png` | Approved role-specific Navigation artwork. Customer defaults to Cánh mở lời; Worker defaults to Điểm tựa; Kính đơn is the shipped finish. |
 | Customer role card | `apps/mobile/assets/client-image-icons/client-home.png` | Tracked production asset. |
 | Worker role card | `apps/mobile/assets/worker-image-icons/utility-tools.png` | Tracked production asset. |
 | Electrical service | `apps/mobile/assets/client-image-icons/client-service-electrical.png` or worker equivalent | Exists. |
@@ -45,7 +47,7 @@ Production wrappers retain these tracked non-Kael PNG families for customer/work
 | Worker bottom nav jobs | `apps/mobile/assets/worker-image-icons/nav-jobs.png` | Exists. |
 | Worker bottom nav earnings/activity | `apps/mobile/assets/worker-image-icons/nav-earnings.png` | Exists. |
 | Worker bottom nav profile | `apps/mobile/assets/worker-image-icons/nav-profile.png` | Exists. |
-| Kael visual | `KaelCoreV9` native inline SVG | The sole visual identity; the source HTML is preserved but not imported into React Native. |
+| Kael visual | `KaelCoreV9` native inline SVG outside Navigation; `KaelNavigationAccessory` in Navigation | The source HTML is preserved but not imported into React Native. Navigation artwork is a bounded role-specific exception, not workflow status. |
 | Address/map | `client-address.png`, `utility-map.png` | Exists. |
 | Media/photo/evidence | `client-evidence.png`, `utility-camera.png`, `utility-evidence-core.png` | Exists. |
 | Payment/wallet | `client-payment.png`, `utility-wallet.png`, `utility-earnings-wallet-core.png` | Exists. |
@@ -61,7 +63,7 @@ Production wrappers retain these tracked non-Kael PNG families for customer/work
 
 The rebuild no longer needs a root `ASSETS_NEEDED.md`. Remaining asset asks live here so the rebuild stays under the design governance topic.
 
-Kael Core v9 is used across customer, worker, auth, booking, and Agentic Center slots that previously rendered old Kael images. Only the customer Home hero plays the one-time 3800 ms Motion v11 clip; no visual state represents workflow truth and no Kael rendering has a ground shadow.
+Kael Core v9 is used across customer, worker, auth, booking, and Agentic Center slots that previously rendered old Kael images. Navigation uses the two approved role-specific raster artworks only in the bottom Navigation accessory. Only the customer Home hero plays the one-time 3800 ms Motion v11 clip; no visual state represents workflow truth and no Kael rendering has a ground shadow.
 
 ### Brand And App Shell
 
@@ -72,7 +74,7 @@ Kael Core v9 is used across customer, worker, auth, booking, and Agentic Center 
 
 ### Kael Core v9
 
-Kael has two preserved source assets (Core v9 and Motion v11) and one native inline-SVG runtime. It uses the Obsidian Pearl orb, two white pill eyes, one monocle, a one-time 3800 ms Home clip, and a single 1220 ms respectful bow on direct interaction. Reduced Motion disables the Home clip and uses the shortened bow. No Kael PNG, WebP, JPG, Lottie, Rive, state, emotion, hand, accessory, status asset, or ground shadow may be added without a new approved design.
+Kael has two preserved source assets (Core v9 and Motion v11) and one native inline-SVG runtime, plus the approved Navigation artwork from the 2026-08-18 handoff. Core v9 uses the Obsidian Pearl orb, two white pill eyes, one monocle, a one-time 3800 ms Home clip, and a single 1220 ms respectful bow on direct interaction. Navigation uses static role-specific artwork with a short press lift; Reduced Motion removes that lift and disables the Home clip. No Kael rendering communicates workflow truth or uses a ground shadow.
 
 ### Icons And Profile Visuals
 

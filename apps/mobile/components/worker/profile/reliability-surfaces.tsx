@@ -16,7 +16,9 @@ import {
 } from '../ui/performance'
 import { WorkerV5IntegratedIcon } from '../ui/integrated-icon-surfaces'
 import { WorkerV5DetailRail, type WorkerV5DetailGlyph } from '../ui/worker-v5-detail-rail'
+import { WorkerV5FormulaMintCardAura } from '../ui/aura-surfaces'
 import { styles } from './reliability-styles'
+import { styles as formulaStyles } from './worker-profile-formula-styles'
 
 type WorkerV5ReliabilityAura = ComponentType<{ testID: string }>
 type WorkerV5ReliabilityIcons = Record<string, ImageSourcePropType>
@@ -53,6 +55,11 @@ export function WorkerV5ReliabilityComponentList({
 }) {
   return (
     <View style={[styles.reliabilityAxisList, reduceTransparency && styles.opaqueCard]} testID="worker-v5-reliability-components">
+      <WorkerV5FormulaMintCardAura
+        reduceTransparency={reduceTransparency}
+        scope="WorkerReliabilityComponents"
+        testID="worker-v5-reliability-components-mint-aura"
+      />
       {axes.map((axis, index) => (
         <View key={axis.id} style={styles.reliabilityAxisRow}>
           <WorkerV5IntegratedIcon
@@ -93,7 +100,7 @@ export function WorkerV5ReliabilityComponentList({
 
 export function WorkerV5ReliabilityStatTile({ label, testID, value }: { label: string; testID: string; value: string }) {
   return (
-    <View style={styles.reliabilityStatTile} testID={testID}>
+    <View style={[styles.reliabilityStatTile, formulaStyles.compactMetric]} testID={testID}>
       <View pointerEvents="none" style={styles.cardTopHighlight} />
       <Text style={styles.reliabilityStatValue} numberOfLines={1} testID={`${testID}-value`}>{value}</Text>
       <Text style={styles.reliabilityStatLabel} numberOfLines={2} testID={`${testID}-label`}>{label}</Text>

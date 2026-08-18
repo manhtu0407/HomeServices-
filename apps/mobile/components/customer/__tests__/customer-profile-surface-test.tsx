@@ -152,7 +152,6 @@ jest.mock('../customer-theme', () => {
 
 import { CustomerDockOverlay, CustomerProfileSurface } from '../customer-surfaces'
 import { getCustomerThemeTokens } from '../customer-theme'
-import { customerV21Assets } from '../ui/assets'
 
 function collectRenderedTestIds(root: unknown) {
   const testIds: string[] = []
@@ -241,6 +240,16 @@ describe('CustomerProfileSurface v2.1', () => {
 
     render(<CustomerProfileSurface />)
 
+    expect(screen.getByTestId('customer-v21-top-title')).toHaveTextContent('Hồ sơ khách hàng')
+    expect(screen.getByTestId('customer-v21-top-title')).toHaveStyle({
+      fontSize: 20,
+      fontWeight: '400',
+      includeFontPadding: true,
+      lineHeight: 25,
+      minHeight: 25,
+      textAlign: 'left',
+    })
+    expect(screen.queryByTestId('customer-v21-top-subtitle')).toBeNull()
     expect(screen.getByTestId('customer-v21-profile-name')).toHaveTextContent('Phan Mạnh Tú')
     expect(screen.queryByTestId('customer-v21-profile-completed')).toBeNull()
     expect(screen.queryByTestId('customer-v21-profile-addresses')).toBeNull()
@@ -249,27 +258,40 @@ describe('CustomerProfileSurface v2.1', () => {
     expect(screen.getByTestId('customer-v21-profile-ranking-entry')).toBeOnTheScreen()
     expect(screen.queryByTestId('customer-v21-profile-overviewrankingentry-card-skin')).toBeNull()
     expect(screen.getByTestId('customer-v21-profile-ranking-entry-visual-panel')).toHaveStyle({
-      backgroundColor: 'transparent',
-      borderRightWidth: 0,
-      bottom: 0,
-      left: 0,
-      position: 'absolute',
-      top: 0,
-      width: '40%',
+      flex: 1,
+      height: '100%',
+      overflow: 'visible',
+      paddingHorizontal: 0,
+      position: 'relative',
     })
+    expect(screen.getByTestId('customer-v21-profile-ranking-entry-fade')).toHaveStyle({ left: '20%', width: '65%' })
+    expect(screen.queryByTestId('customer-v21-profile-overviewrankingentry-wide-mint-aura')).toBeNull()
+    expect(screen.queryByTestId('customer-v21-profile-overviewrankingentry-mint-aura')).toBeNull()
     expect(screen.getByTestId('customer-v21-profile-ranking-entry-icon')).toBeOnTheScreen()
     expect(screen.getByTestId('customer-v21-profile-ranking-entry-icon-image')).toBeOnTheScreen()
-    expect(screen.getByTestId('customer-v21-profile-ranking-entry-icon-image')).toHaveStyle({ transform: [{ scale: 1.5 }] })
+    expect(screen.getByTestId('customer-v21-profile-ranking-entry-icon-image')).toHaveStyle({
+      height: '100%',
+      transform: [{ scale: 2 }],
+      width: '100%',
+    })
+    expect(screen.getByTestId('customer-v21-profile-ranking-entry-title')).toHaveStyle({
+      fontSize: 18,
+      fontWeight: '600',
+      lineHeight: 23,
+    })
     expect(screen.queryByText('Kael đánh giá từ dữ liệu sử dụng thật.')).toBeNull()
     expect(screen.queryByTestId('customer-v21-profile-ranking-entry-chevron')).toBeNull()
-    expect(screen.getByTestId('customer-v21-profile-ranking-entry-points-icon')).toBeOnTheScreen()
-    expect(screen.getByTestId('customer-v21-profile-ranking-entry-source-icon')).toBeOnTheScreen()
-    expect(screen.getByTestId('customer-v21-profile-ranking-entry-progress')).toBeOnTheScreen()
-    expect(screen.getByTestId('customer-v21-profile-ranking-entry-signals')).toHaveStyle({ flexWrap: 'nowrap', width: '100%' })
-    expect(screen.getByTestId('customer-v21-profile-ranking-entry-points-signal')).toHaveStyle({ flex: 1 })
-    expect(screen.getByTestId('customer-v21-profile-ranking-entry-source-signal')).toHaveStyle({ flex: 1 })
-    expect(screen.getByTestId('customer-v21-profile-ranking-entry-signals')).toHaveTextContent(/Hoạt động/)
-    expect(screen.getByTestId('customer-v21-profile-ranking-entry-signals')).not.toHaveTextContent(/Tăng theo hoạt động thật/)
+    const rankingEntry = screen.getByTestId('customer-v21-profile-ranking-entry')
+    expect(within(rankingEntry).queryByTestId('customer-v21-profile-ranking-entry-signals')).toBeNull()
+    expect(screen.getByTestId('customer-v21-profile-ranking-entry-points')).toHaveTextContent('Chưa có')
+    expect(screen.getByTestId('customer-v21-profile-ranking-entry-points')).toHaveStyle({
+      fontSize: 20,
+      fontWeight: '700',
+      lineHeight: 25,
+    })
+    expect(screen.queryByTestId('customer-v21-profile-ranking-entry-progress')).toBeNull()
+    expect(screen.queryByTestId('customer-v21-profile-ranking-entry-progress-flag')).toBeNull()
+    expect(screen.getByTestId('customer-v21-profile-ranking-entry-copy')).toHaveStyle({ gap: 0, justifyContent: 'center', marginLeft: 20, paddingLeft: 32, paddingRight: 12, paddingVertical: 12 })
     expect(screen.queryByTestId('customer-v21-profile-ranking-entry-status')).toBeNull()
     expect(screen.queryByTestId('customer-v21-top-avatar')).toBeNull()
     expect(screen.queryByText('⚙')).toBeNull()
@@ -279,6 +301,8 @@ describe('CustomerProfileSurface v2.1', () => {
     expect(within(hero).queryByText('Tích cực')).toBeNull()
     expect(within(hero).queryByText('Khách hàng đã xác minh')).toBeNull()
     expect(screen.getByTestId('customer-v21-profile-account-journey')).toBeOnTheScreen()
+    expect(screen.queryByTestId('customer-v21-profile-overviewhero-wide-mint-aura')).toBeNull()
+    expect(screen.queryByTestId('customer-v21-profile-overviewhero-mint-aura')).toBeNull()
   })
 
   it('places usage ranking directly after the identity hero and before account settings', () => {
@@ -295,7 +319,7 @@ describe('CustomerProfileSurface v2.1', () => {
     )
   })
 
-  it('keeps the initials fallback in a standard frame and lets the customer choose a real profile photo', async () => {
+  it('keeps an empty classic frame and lets the customer choose a real profile photo', async () => {
     mockSessionMetadata = { full_name: 'Phan Mạnh Tú' }
     mockCustomerUploadAvatar.mockImplementation(async () => {
       mockCustomerAvatarUrl = 'https://storage.example.test/read/customer-avatar.jpg'
@@ -321,10 +345,13 @@ describe('CustomerProfileSurface v2.1', () => {
     const view = render(<CustomerProfileSurface />)
 
     expect(screen.getByTestId('customer-v21-profile-avatar-picker')).toHaveStyle({
-      height: 76,
-      width: 76,
+      borderRadius: 999,
+      height: 84,
+      width: 84,
     })
-    expect(screen.getByTestId('customer-v21-profile-avatar-fallback')).toHaveTextContent('PT')
+    expect(screen.getByTestId('customer-v21-profile-avatar-placeholder-icon')).toBeOnTheScreen()
+    expect(screen.queryByTestId('customer-v21-profile-avatar-fallback')).toBeNull()
+    expect(screen.getByTestId('customer-v21-profile-avatar-edit-badge')).toBeOnTheScreen()
     fireEvent.press(screen.getByTestId('customer-v21-profile-avatar-picker'))
 
     await waitFor(() => {
@@ -435,23 +462,44 @@ describe('CustomerProfileSurface v2.1', () => {
 
     expect(screen.queryByTestId('customer-v21-profile-completed')).toBeNull()
     expect(screen.queryByTestId('customer-v21-profile-protection-card')).toBeNull()
-    expect(screen.getByTestId('customer-v21-profile-ranking-entry')).toHaveTextContent(/620 \/ 1.000/)
-    expect(screen.getByTestId('customer-v21-profile-ranking-entry-progress')).toBeOnTheScreen()
-    expect(screen.getByTestId('customer-v21-profile-ranking-entry-points-signal')).toHaveTextContent(/620 \/ 1.000/)
+    expect(screen.getByTestId('customer-v21-profile-ranking-entry-points')).toHaveTextContent(/620 \/ 1.000/)
+    expect(screen.queryByTestId('customer-v21-profile-ranking-entry-progress')).toBeNull()
+    expect(screen.queryByTestId('customer-v21-profile-ranking-entry-signals')).toBeNull()
     expect(screen.getByTestId('customer-v21-profile-account-start')).toHaveTextContent('Thành viên từ 01/06/2026')
     expect(screen.getByTestId('customer-v21-profile-active-days')).toHaveTextContent('Dùng dịch vụ: 2 ngày')
     expect(screen.getByTestId('customer-v21-profile-total-days')).toHaveTextContent(/Ngày thứ \d+/)
 
     fireEvent.press(screen.getByTestId('customer-v21-profile-ranking-cta'))
-    expect(mockReplace).toHaveBeenCalledWith('/(customer)/profile?screen=6.2-usage-ranking')
+    expect(mockReplace).toHaveBeenCalledWith({
+      pathname: '/(customer)/profile',
+      params: { panel: 'ranking' },
+    })
     expect(screen.getByTestId('customer-v21-profile-ranking')).toHaveTextContent(/Tin cậy/)
     expect(screen.getByTestId('customer-v21-profile-ranking')).toHaveTextContent(/620/)
     expect(screen.queryByRole('button', { name: 'i' })).toBeNull()
     expect(screen.queryByTestId('customer-v21-profile-ranking-status-chip')).toBeNull()
     expect(screen.getByTestId('customer-v21-profile-ranking-hero-workart')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-v21-profile-ranking-hero')).toHaveStyle({ marginHorizontal: 7 })
+    expect(screen.getByTestId('customer-v21-profile-ranking-hero-workart-frame')).toHaveStyle({ height: 198, width: '50%' })
+    expect(screen.getByTestId('customer-v21-profile-ranking-hero-workart')).toHaveStyle({ height: 198, transform: [{ scale: 1.8 }], width: '100%' })
+    expect(screen.getByTestId('customer-v21-profile-ranking-hero-copy')).toHaveStyle({ paddingLeft: 12, paddingRight: 16, zIndex: 3 })
+    expect(screen.getByTestId('customer-v21-profile-ranking-current-line')).toHaveStyle({ fontSize: 14, lineHeight: 19, marginLeft: 0, transform: [{ translateY: -2 }] })
+    expect(screen.getByTestId('customer-v21-profile-ranking-hero-kicker')).toHaveStyle({ fontSize: 14, fontWeight: '700', lineHeight: 19 })
+    expect(screen.getByTestId('customer-v21-profile-ranking-current-value')).toHaveStyle({ fontSize: 14, fontWeight: '700', lineHeight: 19 })
+    expect(screen.getByTestId('customer-v21-profile-ranking-current-line')).toHaveTextContent(/Hạng hiện tại:\s*3/)
+    expect(screen.getByTestId('customer-v21-profile-ranking-hero-body')).toHaveStyle({ fontSize: 11, lineHeight: 15 })
+    expect(screen.getByTestId('customer-v21-profile-ranking-hero-body-line')).toHaveStyle({ flexDirection: 'row', gap: 4 })
+    expect(screen.getByTestId('customer-v21-profile-ranking-hero-body-icon')).toBeOnTheScreen()
+    expect(screen.queryByTestId('customer-v21-profile-ranking-hero-wide-mint-aura')).toBeNull()
+    expect(screen.queryByTestId('customer-v21-profile-ranking-hero-mint-aura')).toBeNull()
     expect(screen.getByTestId('customer-v21-profile-ranking-current-value')).toHaveTextContent('3')
     expect(screen.getByTestId('customer-v21-profile-ranking-progress')).toBeOnTheScreen()
     expect(screen.getByTestId('customer-v21-profile-rank-rail-node-3')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-v21-profile-rank-rail-node-3')).toHaveStyle({ borderRadius: 6, height: 12, width: 12 })
+    expect(screen.getByTestId('customer-v21-profile-rank-rail-track-path')).toHaveProp(
+      'd',
+      'M4.5 14H5.5 M14.5 14H15.5 M24.5 14H25.5 M34.5 14H35.5 M44.5 14H45.5 M54.5 14H55.5 M64.5 14H65.5 M74.5 14H75.5 M84.5 14H85.5 M94.5 14H95.5',
+    )
     expect(screen.getByTestId('customer-v21-profile-rank-rail-label-3')).toHaveTextContent(/Tin cậy/)
     expect(screen.getByTestId('customer-v21-profile-rank-process')).toBeOnTheScreen()
     expect(screen.getByTestId('customer-v21-profile-rank-process-progress')).toBeOnTheScreen()
@@ -460,9 +508,11 @@ describe('CustomerProfileSurface v2.1', () => {
     expect(screen.getByTestId('customer-v21-profile-ranking-metric-services-icon-image')).toBeOnTheScreen()
     expect(screen.getByTestId('customer-v21-profile-ranking-metric-streak-icon-image')).toBeOnTheScreen()
     expect(screen.getByTestId('customer-v21-profile-ranking-metric-reviews-icon-image')).toBeOnTheScreen()
-    expect(screen.getByTestId('customer-v21-profile-ranking-rule-completed-chip')).toBeOnTheScreen()
-    expect(screen.getByTestId('customer-v21-profile-ranking-rule-review-chip')).toBeOnTheScreen()
-    expect(screen.getByTestId('customer-v21-profile-ranking-rule-protected-chip')).toBeOnTheScreen()
+    for (const metric of ['services', 'streak', 'reviews']) {
+      expect(screen.queryByTestId(`customer-v21-profile-ranking-metric-${metric}-compact-mint-aura`)).toBeNull()
+      expect(screen.queryByTestId(`customer-v21-profile-ranking-metric-${metric}-mint-aura`)).toBeNull()
+    }
+    expect(screen.queryByText('Chi tiết')).toBeNull()
     expect(screen.queryByTestId('customer-v21-profile-ranking-rules-card-skin')).toBeNull()
     expect(screen.queryByTestId('customer-v21-profile-ranking-rules-wide-mint-aura')).toBeNull()
     expect(screen.queryByTestId('customer-v21-profile-ranking-rules-mint-aura')).toBeNull()
@@ -485,7 +535,7 @@ describe('CustomerProfileSurface v2.1', () => {
       expect(screen.getByTestId(`${testID}-title`)).toHaveTextContent(title)
       expect(screen.getByTestId(`${testID}-body`)).toHaveTextContent(body)
       expect(screen.queryByTestId(`${testID}-detail-rail-0`)).toBeNull()
-      expect(screen.getByTestId(`${testID}-chevron`)).toBeOnTheScreen()
+      expect(screen.queryByTestId(`${testID}-chevron`)).toBeNull()
       expect(screen.getByTestId(testID).props.accessibilityLabel).toContain(status)
     })
     expect(screen.queryByTestId('customer-v21-profile-ranking-kael')).toBeNull()
@@ -507,6 +557,10 @@ describe('CustomerProfileSurface v2.1', () => {
     expect(screen.queryByText('Hạng phản ánh cách bạn sử dụng dịch vụ')).toBeNull()
     expect(screen.getByTestId('customer-v21-profile-ranking-hero-workart')).toBeOnTheScreen()
     expect(screen.getByTestId('customer-v21-profile-ranking-current-value')).toHaveTextContent('Chưa có')
+    expect(screen.getByTestId('customer-v21-profile-ranking-current-line')).toHaveTextContent(/Hạng hiện tại:\s*Chưa có/)
+    expect(screen.getByTestId('customer-v21-profile-ranking-points-total')).toHaveTextContent('Chưa có')
+    expect(screen.getByTestId('customer-v21-profile-ranking-points-total-icon')).toBeOnTheScreen()
+    expect(screen.queryByTestId('customer-v21-profile-ranking-next-points')).toBeNull()
     expect(screen.getByTestId('customer-v21-profile-ranking-progress')).toBeOnTheScreen()
     expect(screen.queryByTestId('customer-v21-profile-score-Ranking-value')).toBeNull()
     expect(screen.queryByTestId('customer-v21-profile-score-Ranking-progress-dot')).toBeNull()
@@ -529,7 +583,15 @@ describe('CustomerProfileSurface v2.1', () => {
 
     expect(screen.getByTestId('customer-v21-profile-ranking-current-value')).toHaveTextContent('3')
     expect(screen.getByTestId('customer-v21-profile-ranking')).toHaveTextContent(/620/)
+    expect(screen.getByTestId('customer-v21-profile-ranking-points-total')).toHaveTextContent('620 / 1.000 điểm')
+    expect(screen.getByTestId('customer-v21-profile-ranking-points-total-line')).toHaveStyle({ flexDirection: 'row', gap: 4 })
+    expect(screen.getByTestId('customer-v21-profile-ranking-points-total-icon')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-v21-profile-ranking-next-points-text')).toHaveTextContent('Còn 380 điểm lên hạng 4')
+    expect(screen.getByTestId('customer-v21-profile-ranking-next-points-icon')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-v21-profile-ranking-points')).toHaveStyle({ gap: 6, transform: [{ translateY: 2 }] })
+    expect(screen.getByTestId('customer-v21-profile-ranking-next-points')).toHaveStyle({ flexDirection: 'row', gap: 4 })
     expect(screen.getByTestId('customer-v21-profile-ranking-progress')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-v21-profile-ranking-progress-slot')).toHaveStyle({ marginTop: 6 })
   })
 
   it('removes the smart utility section and Agentic Center entry from Profile', () => {
@@ -558,6 +620,10 @@ describe('CustomerProfileSurface v2.1', () => {
     expect(screen.getByTestId('customer-v21-profile-setting-delete-account-icon')).toBeOnTheScreen()
     expect(screen.queryByTestId('customer-v21-profile-utility-grid')).toBeNull()
     expect(screen.queryByTestId('customer-v21-profile-utility-settings')).toBeNull()
+
+    for (const title of ['Tài khoản & bảo mật', 'Thanh toán & hoàn tiền', 'Quyền riêng tư & hỗ trợ', 'Quản lý tài khoản']) {
+      expect(screen.getByText(title)).toHaveStyle({ fontWeight: '700' })
+    }
 
     fireEvent.press(screen.getByTestId('customer-v21-profile-setting-personal'))
     expect(mockReplace).toHaveBeenCalledWith('/(customer)/profile?utility=personal-details')
@@ -627,28 +693,17 @@ describe('CustomerProfileSurface v2.1', () => {
     expect(screen.getByTestId('customer-v21-profile-utility-payment-screen')).toBeOnTheScreen()
     expect(screen.getByText('Hoàn tiền')).toBeOnTheScreen()
     expect(screen.queryByText('Ngân hàng mặc định và nơi nhận tiền')).toBeNull()
-    expect(screen.getByTestId('customer-v21-profile-payment-hero-icon')).toBeOnTheScreen()
-    expect(screen.getByTestId('customer-v21-profile-payment-hero-connector-dot')).toBeOnTheScreen()
-    expect(screen.getByTestId('customer-v21-profile-payment-hero-signals')).toHaveTextContent(/Chủ tài khoản/)
-    expect(screen.getByTestId('customer-v21-profile-payment-hero-signals')).toHaveTextContent(/Cần xác minh/)
-    expect(screen.getByTestId('customer-v21-profile-payment-hero-title')).toHaveTextContent('Tài khoản nhận hoàn tiền')
-    expect(screen.getByTestId('customer-v21-profile-payment-hero-title-copy')).toHaveStyle({
-      flex: 1,
-      justifyContent: 'center',
-    })
-    await waitFor(() => expect(screen.getByTestId('customer-v21-profile-payment-hero-status')).toHaveTextContent('Chưa lưu'))
-    expect(screen.getByTestId('customer-v21-profile-payment-hero-status-slot')).toHaveStyle({
-      alignSelf: 'center',
-      flexShrink: 0,
-      marginRight: 16,
-    })
+    expect(screen.getByTestId('customer-v21-profile-payment-status-icon')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-v21-profile-payment-status-icon-glyph')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-v21-profile-payment-steps')).toHaveTextContent(/Chọn ngân hàng/)
+    expect(screen.getByTestId('customer-v21-profile-payment-steps')).toHaveTextContent(/Nhập thông tin/)
+    expect(screen.getByTestId('customer-v21-profile-payment-steps')).toHaveTextContent(/Hoàn tất/)
+    expect(screen.getByTestId('customer-v21-profile-payment-status-title')).toHaveTextContent('Tài khoản nhận hoàn tiền')
+    await waitFor(() => expect(screen.getByTestId('customer-v21-profile-payment-status')).toHaveTextContent('Chưa lưu'))
     expect(screen.getByTestId('customer-v21-profile-refund-account-usage')).toHaveTextContent('Chỉ dùng cho hoàn tiền đã xác nhận.')
     expect(screen.getByTestId('customer-v21-profile-payment-bank-grid')).toBeOnTheScreen()
     expect(screen.getByTestId('customer-v21-payment-bank-logo-vietcombank')).toBeOnTheScreen()
-    for (const bank of ['vietcombank', 'techcombank', 'bidv', 'mbbank', 'acb', 'vietinbank']) {
-      expect(screen.getByTestId(`customer-v21-payment-bank-tile-${bank}-mint-aura`)).toBeOnTheScreen()
-    }
-    expect(screen.queryByTestId('customer-v21-profile-payment-status')).toBeNull()
+    expect(screen.queryByTestId('customer-v21-profile-payment-bank-grid-wide-mint-aura')).toBeNull()
 
     for (const [bank, name] of [
       ['vietcombank', 'Vietcombank'],
@@ -659,19 +714,19 @@ describe('CustomerProfileSurface v2.1', () => {
       ['techcombank', 'Techcombank'],
     ]) {
       fireEvent.press(screen.getByTestId(`customer-v21-payment-bank-tile-${bank}`))
-      expect(screen.getByTestId('customer-v21-profile-payment-hero-title')).toHaveTextContent(name)
+      expect(screen.getByTestId(`customer-v21-payment-bank-tile-${bank}`)).toHaveTextContent(new RegExp(name))
       expect(screen.getByTestId(`customer-v21-payment-bank-tile-${bank}`)).toHaveProp('accessibilityState', {
         disabled: false,
         selected: true,
       })
     }
-    expect(screen.getByTestId('customer-v21-profile-payment-hero-status')).toHaveTextContent('Chưa lưu')
+    expect(screen.getByTestId('customer-v21-profile-payment-status')).toHaveTextContent('Chưa lưu')
     fireEvent.changeText(screen.getByTestId('customer-v21-profile-payment-account-name-input'), 'PHAN MANH TU')
     fireEvent.changeText(screen.getByTestId('customer-v21-profile-payment-account-number-input'), '123456789')
     fireEvent.changeText(screen.getByTestId('customer-v21-profile-payment-account-confirm-input'), '123456788')
     fireEvent.press(screen.getByTestId('customer-v21-profile-payment-account-save'))
 
-    expect(screen.getByTestId('customer-v21-payment-bank-tile-techcombank-mint-aura')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-v21-payment-bank-logo-techcombank')).toBeOnTheScreen()
     expect(screen.getByTestId('customer-v21-profile-payment-account-mismatch')).toHaveTextContent(/chưa khớp/)
     expect(mockSaveRefundAccount).not.toHaveBeenCalled()
     expect(mockUpdateCustomerProfile).not.toHaveBeenCalled()
@@ -686,7 +741,7 @@ describe('CustomerProfileSurface v2.1', () => {
     fireEvent.press(screen.getByTestId('customer-v21-profile-payment-account-save'))
 
     expect(screen.getByTestId('customer-v21-profile-refund-account-saving')).toBeOnTheScreen()
-    expect(screen.getByTestId('customer-v21-profile-payment-hero-status')).toHaveTextContent('Đang lưu')
+    expect(screen.getByTestId('customer-v21-profile-payment-status')).toHaveTextContent('Đang lưu')
     expect(screen.queryByTestId('customer-v21-profile-refund-account-saved')).toBeNull()
     await act(async () => {
       resolvePendingPaymentSave?.({
@@ -719,8 +774,8 @@ describe('CustomerProfileSurface v2.1', () => {
     expect(screen.getByTestId('customer-v21-profile-refund-account-saved')).toHaveTextContent(/Đã lưu tài khoản hoàn tiền/)
 
     fireEvent.press(screen.getByTestId('customer-v21-payment-bank-tile-bidv'))
-    expect(screen.getByTestId('customer-v21-profile-payment-hero-title')).toHaveTextContent('BIDV')
-    expect(screen.getByTestId('customer-v21-profile-payment-hero-status')).toHaveTextContent('Chưa lưu')
+    expect(screen.getByTestId('customer-v21-profile-payment-status-title')).toHaveTextContent('Tài khoản nhận hoàn tiền')
+    expect(screen.getByTestId('customer-v21-profile-payment-status')).toHaveTextContent('Chưa lưu')
     expect(screen.getByTestId('customer-v21-profile-payment-settings')).not.toHaveTextContent(/\*\*\*\* 6789/)
   })
 
@@ -743,7 +798,7 @@ describe('CustomerProfileSurface v2.1', () => {
     await waitFor(() => expect(mockSaveRefundAccount).toHaveBeenCalledTimes(1))
     await waitFor(() => expect(screen.getByTestId('customer-v21-profile-refund-account-error')).toHaveTextContent(/Chưa thể lưu tài khoản hoàn tiền/))
     expect(screen.queryByTestId('customer-v21-profile-refund-account-saved')).toBeNull()
-    expect(screen.getByTestId('customer-v21-profile-payment-hero-status')).toHaveTextContent('Chưa lưu')
+    expect(screen.getByTestId('customer-v21-profile-payment-status')).toHaveTextContent('Chưa lưu')
   })
 
   it('does not report a saved refund account without a persisted backend record', async () => {
@@ -762,11 +817,11 @@ describe('CustomerProfileSurface v2.1', () => {
     expect(screen.getByTestId('customer-v21-profile-refund-account-confirmed')).toBeOnTheScreen()
     fireEvent.press(screen.getByTestId('customer-v21-profile-payment-account-save'))
     expect(screen.getByTestId('customer-v21-profile-refund-account-saving')).toBeOnTheScreen()
-    expect(screen.getByTestId('customer-v21-profile-payment-hero-status')).toHaveTextContent('Đang lưu')
+    expect(screen.getByTestId('customer-v21-profile-payment-status')).toHaveTextContent('Đang lưu')
 
     await waitFor(() => expect(screen.getByTestId('customer-v21-profile-refund-account-error')).toBeOnTheScreen())
     expect(screen.queryByTestId('customer-v21-profile-refund-account-saved')).toBeNull()
-    expect(screen.getByTestId('customer-v21-profile-payment-hero-status')).toHaveTextContent('Chưa lưu')
+    expect(screen.getByTestId('customer-v21-profile-payment-status')).toHaveTextContent('Chưa lưu')
     expect(mockSaveRefundAccount).toHaveBeenCalledTimes(1)
   })
 
@@ -798,6 +853,10 @@ describe('CustomerProfileSurface v2.1', () => {
     expect(screen.getByTestId('customer-v21-profile-utility-address-screen')).toBeOnTheScreen()
     expect(screen.queryByTestId('customer-v21-profile-address-settings')).toBeNull()
     expect(screen.queryByText('Địa chỉ dùng cho đặt dịch vụ')).toBeNull()
+    expect(screen.getByTestId('customer-v21-profile-address-header')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-v21-profile-address-header-icon')).toBeOnTheScreen()
+    expect(screen.queryByTestId('customer-v21-profile-utilityaddresshub-mint-aura')).toBeNull()
+    expect(screen.getByText('Quản lý địa chỉ dịch vụ')).toBeOnTheScreen()
     expect(screen.getByTestId('customer-v21-profile-default-address-input').props.value).toBe('Tòa A, Quận 7')
 
     fireEvent.changeText(screen.getByTestId('customer-v21-profile-default-address-input'), 'Tòa C, Quận 7')
@@ -837,9 +896,14 @@ describe('CustomerProfileSurface v2.1', () => {
     expect(screen.queryByTestId('customer-v21-profile-settings-password-form')).toBeNull()
     expect(screen.queryByTestId('customer-v21-profile-settings-memory')).toBeNull()
     expect(screen.getByTestId('customer-v21-profile-subscreen-body')).toHaveStyle({ marginTop: 14 })
-    expect(
-      screen.getByTestId('customer-v21-profile-personal-details-card-formula-mint-aura'),
-    ).toHaveStyle({ opacity: 0.5 })
+    expect(screen.getByTestId('customer-v21-profile-personal-details-header')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-v21-profile-personal-details-header-icon')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-v21-profile-personal-details-privacy')).toBeOnTheScreen()
+    expect(screen.queryByTestId('customer-v21-profile-personal-details-card-formula-mint-aura')).toBeNull()
+    expect(screen.getByText('Kiểm soát thông tin của bạn')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-v21-profile-settings-account-save')).toHaveTextContent('Lưu thay đổi')
+    expect(screen.queryByText('Tài khoản')).toBeNull()
+    expect(screen.queryByText('Thông tin dùng để liên hệ')).toBeNull()
     expect(screen.queryByText('Cài đặt tài khoản')).toBeNull()
     expect(screen.queryByText('Cài đặt chung')).toBeNull()
 
@@ -865,7 +929,12 @@ describe('CustomerProfileSurface v2.1', () => {
     expect(screen.getByTestId('customer-v21-profile-settings-password-form')).toBeOnTheScreen()
     expect(screen.queryByTestId('customer-v21-profile-settings-account-form')).toBeNull()
     expect(screen.queryByTestId('customer-v21-profile-settings-memory')).toBeNull()
-    expect(screen.getByTestId('customer-v21-profile-password-card-formula-mint-aura')).toHaveStyle({ opacity: 0.5 })
+    expect(screen.queryByTestId('customer-v21-profile-password-card-formula-mint-aura')).toBeNull()
+    expect(screen.queryByTestId('customer-v21-top-subtitle')).toBeNull()
+    expect(screen.getByTestId('customer-v21-profile-password-header')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-v21-profile-password-header-icon')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-v21-profile-password-privacy')).toBeOnTheScreen()
+    expect(screen.getByText('Bảo vệ tài khoản')).toBeOnTheScreen()
     fireEvent.changeText(screen.getByTestId('customer-v21-profile-settings-password-current-input'), 'CurrentSafe123')
     fireEvent.changeText(screen.getByTestId('customer-v21-profile-settings-password-new-input'), 'NextSafe123')
     fireEvent.changeText(screen.getByTestId('customer-v21-profile-settings-password-confirm-input'), 'NextSafe123')
@@ -884,12 +953,12 @@ describe('CustomerProfileSurface v2.1', () => {
     render(<CustomerProfileSurface />)
 
     expect(screen.getByTestId('customer-v21-profile-utility-language-screen')).toBeOnTheScreen()
-    expect(screen.getByTestId('customer-v21-profile-language-card-formula-mint-aura')).toHaveStyle({ opacity: 0.5 })
+    expect(screen.queryByTestId('customer-v21-profile-language-card-formula-mint-aura')).toBeNull()
     expect(screen.getByTestId('customer-v21-profile-language-card-header')).toHaveStyle({
-      alignItems: 'flex-start',
+      alignItems: 'center',
       flexDirection: 'row',
     })
-    expect(screen.queryByTestId('customer-v21-profile-language-card-header-icon')).toBeNull()
+    expect(screen.getByTestId('customer-v21-profile-language-card-header-icon')).toBeOnTheScreen()
     expect(screen.getByTestId('customer-v21-profile-language-vi-visual')).toHaveStyle({ alignSelf: 'center' })
     expect(screen.getByTestId('customer-v21-profile-language-en-visual')).toHaveStyle({ alignSelf: 'center' })
     expect(screen.getByRole('radio', { name: 'Tiếng Việt' }).props.accessibilityState).toEqual({ selected: true })
@@ -910,14 +979,12 @@ describe('CustomerProfileSurface v2.1', () => {
     expect(screen.queryByTestId('customer-v21-profile-settings-account-form')).toBeNull()
     expect(screen.queryByTestId('customer-v21-profile-settings-password-form')).toBeNull()
     expect(screen.getByTestId('customer-v21-profile-settings-memory')).toHaveTextContent(/Không cho phép/)
-    expect(screen.getByTestId('customer-v21-profile-memory-card-formula-mint-aura')).toHaveStyle({ opacity: 0.5 })
+    expect(screen.queryByTestId('customer-v21-profile-memory-card-formula-mint-aura')).toBeNull()
     expect(screen.getByTestId('customer-v21-profile-memory-card-header')).toHaveStyle({
       alignItems: 'center',
       flexDirection: 'row',
     })
-    expect(screen.getByTestId('customer-v21-profile-memory-card-header-icon')).toHaveStyle({
-      backgroundColor: 'transparent',
-    })
+    expect(screen.getByTestId('customer-v21-profile-memory-card-header-icon')).toBeOnTheScreen()
 
     fireEvent.press(screen.getByTestId('customer-v21-profile-settings-memory'))
     await waitFor(() => expect(mockUpdateCustomerKaelMemoryPreference).toHaveBeenCalledWith({
@@ -941,13 +1008,13 @@ describe('CustomerProfileSurface v2.1', () => {
 
     expect(screen.getByTestId('customer-v21-profile-utility-appearance-screen')).toBeOnTheScreen()
     expect(
-      screen.getByTestId('customer-v21-profile-appearance-card-formula-mint-aura'),
-    ).toHaveStyle({ opacity: 0.5 })
+      screen.queryByTestId('customer-v21-profile-appearance-card-formula-mint-aura'),
+    ).toBeNull()
     expect(screen.getByTestId('customer-v21-profile-appearance-card-header')).toHaveStyle({
-      alignItems: 'flex-start',
+      alignItems: 'center',
       flexDirection: 'row',
     })
-    expect(screen.queryByTestId('customer-v21-profile-appearance-card-header-icon')).toBeNull()
+    expect(screen.getByTestId('customer-v21-profile-appearance-card-header-icon')).toBeOnTheScreen()
     expect(screen.getByTestId('customer-v21-profile-appearance-light-visual')).toHaveStyle({ alignSelf: 'center' })
     expect(screen.getByTestId('customer-v21-profile-appearance-dark-visual')).toHaveStyle({ alignSelf: 'center' })
     expect(screen.getByRole('radio', { name: 'Sáng' }).props.accessibilityState).toEqual({ selected: true })
@@ -992,12 +1059,13 @@ describe('CustomerProfileSurface v2.1', () => {
     await waitFor(() => expect(mockRefreshNotifications).toHaveBeenCalledTimes(1))
     expect(screen.getByTestId('customer-v21-profile-utility-notifications-screen')).toBeOnTheScreen()
     expect(
-      screen.getByTestId('customer-v21-profile-notifications-summary-formula-mint-aura'),
-    ).toHaveStyle({ opacity: 0.5 })
+      screen.queryByTestId('customer-v21-profile-notifications-summary-formula-mint-aura'),
+    ).toBeNull()
     expect(screen.getByTestId('customer-v21-profile-notifications-summary-header')).toHaveStyle({
-      alignItems: 'flex-start',
+      alignItems: 'center',
       flexDirection: 'row',
     })
+    expect(screen.getByTestId('customer-v21-profile-notifications-summary-header-icon')).toBeOnTheScreen()
     expect(screen.queryByTestId('customer-v21-profile-notifications-refresh')).toBeNull()
     expect(screen.queryByRole('button', { name: 'Làm mới thông báo' })).toBeNull()
     const notificationsPanel = within(screen.getByTestId('customer-v21-profile-notifications-summary'))
@@ -1016,25 +1084,17 @@ describe('CustomerProfileSurface v2.1', () => {
     render(<CustomerProfileSurface />)
 
     expect(screen.getByTestId('customer-v21-profile-utility-support-screen')).toBeOnTheScreen()
-    expect(
-      screen.getByTestId('customer-v21-profile-support-summary-formula-mint-aura'),
-    ).toHaveStyle({ opacity: 0.5 })
+    expect(screen.queryByTestId('customer-v21-profile-support-summary-formula-mint-aura')).toBeNull()
     expect(screen.getByTestId('customer-v21-profile-support-summary-header')).toHaveStyle({
       alignItems: 'center',
       flexDirection: 'row',
     })
-    expect(screen.getByTestId('customer-v21-profile-support-summary-header-icon')).toHaveStyle({
-      backgroundColor: 'transparent',
-    })
+    expect(screen.getByTestId('customer-v21-profile-support-summary-header-icon')).toBeOnTheScreen()
     const supportPanel = within(screen.getByTestId('customer-v21-profile-support-summary'))
     expect(supportPanel.getByTestId('customer-v21-profile-support-history')).toBeOnTheScreen()
     expect(supportPanel.getByTestId('customer-v21-profile-support-kael')).toBeOnTheScreen()
-    expect(supportPanel.getByTestId('customer-v21-profile-support-history-icon')).toHaveStyle({
-      backgroundColor: 'transparent',
-    })
-    expect(supportPanel.getByTestId('customer-v21-profile-support-kael-icon')).toHaveStyle({
-      backgroundColor: 'transparent',
-    })
+    expect(supportPanel.getByTestId('customer-v21-profile-support-history-icon-glyph')).toBeOnTheScreen()
+    expect(supportPanel.getByTestId('customer-v21-profile-support-kael-icon-glyph')).toBeOnTheScreen()
     fireEvent.press(screen.getByTestId('customer-v21-profile-support-history'))
     expect(mockReplace).toHaveBeenCalledWith('/(customer)/history?source=profile-support')
 
@@ -1048,23 +1108,15 @@ describe('CustomerProfileSurface v2.1', () => {
     render(<CustomerProfileSurface />)
 
     expect(screen.getByTestId('customer-v21-profile-utility-delete-account-screen')).toBeOnTheScreen()
-    expect(screen.getByTestId('customer-v21-profile-delete-account-icon').props.source).toContainEqual(customerV21Assets.deleteAccount)
+    expect(screen.queryByTestId('customer-v21-profile-delete-account-confirmation-card-formula-mint-aura')).toBeNull()
+    expect(screen.queryByTestId('customer-v21-profile-delete-account-card-header')).toBeNull()
+    expect(screen.queryByTestId('customer-v21-profile-delete-account-card-header-icon')).toBeNull()
     expect(screen.getByTestId('customer-v21-profile-delete-account-warning')).toHaveStyle({
       alignItems: 'center',
     })
-    expect(screen.getByTestId('customer-v21-profile-delete-account-icon-frame')).toHaveStyle({
-      backgroundColor: 'transparent',
-      height: 64,
-      width: 64,
-    })
-    expect(screen.getByTestId('customer-v21-profile-delete-account-icon')).toHaveStyle({
-      height: 64,
-      width: 64,
-    })
+    expect(screen.getByTestId('customer-v21-profile-delete-account-icon-frame')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-v21-profile-delete-account-icon')).toBeOnTheScreen()
     expect(screen.getByTestId('customer-v21-profile-delete-account-submit')).toBeDisabled()
-    expect(
-      screen.getByTestId('customer-v21-profile-delete-account-confirmation-card-formula-mint-aura'),
-    ).toHaveStyle({ opacity: 0.5 })
     expect(screen.getByTestId('customer-v21-profile-delete-account-confirmation-card')).toHaveStyle({
       gap: 20,
       paddingHorizontal: 18,
@@ -1111,18 +1163,14 @@ describe('CustomerProfileSurface v2.1', () => {
     expect(screen.getByTestId('customer-v21-top-title')).toHaveTextContent('Điều khoản & Chính sách')
     expect(screen.getByText('Hiểu rõ trước khi sử dụng')).toBeOnTheScreen()
     expect(screen.queryByLabelText('Điều khoản và chính sách')).toBeNull()
+    expect(screen.queryByTestId('customer-v21-profile-legal-important-formula-mint-aura')).toBeNull()
+    expect(screen.queryByTestId('customer-v21-profile-legal-details-formula-mint-aura')).toBeNull()
+    expect(screen.getByTestId('customer-v21-profile-legal-hero-header')).toHaveStyle({
+      alignItems: 'center',
+      flexDirection: 'row',
+    })
+    expect(screen.getByTestId('customer-v21-profile-legal-hero-header-icon')).toBeOnTheScreen()
     expect(screen.getByText('Những điều quan trọng')).toBeOnTheScreen()
-    for (const surface of ['important', 'details']) {
-      expect(
-        screen.getByTestId(`customer-v21-profile-legal-${surface}-formula-mint-aura`),
-      ).toHaveStyle({ opacity: 0.5 })
-      expect(
-        screen.getByTestId(`customer-v21-profile-legal-${surface}-wide-mint-aura`),
-      ).toBeOnTheScreen()
-      expect(
-        screen.getByTestId(`customer-v21-profile-legal-${surface}-mint-aura`),
-      ).toBeOnTheScreen()
-    }
     expect(screen.getByRole('button', { name: 'Điều khoản sử dụng' }).props.accessibilityState).toEqual({ expanded: true })
     expect(screen.getAllByText(/Kael không tự quyết định hoặc xác nhận thay bạn/)).not.toHaveLength(0)
     expect(screen.getByRole('button', { name: 'Quyền riêng tư' }).props.accessibilityState).toEqual({ expanded: false })

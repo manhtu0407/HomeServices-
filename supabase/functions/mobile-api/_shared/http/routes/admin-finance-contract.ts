@@ -54,6 +54,30 @@ export const adminFinanceBalanceSnapshotSchema = z.object({
   observed_at: z.string().datetime({ offset: true }),
 }).strict();
 
+export const adminWorkerFinanceSnapshotQuerySchema = z.object({
+  from: z.string().datetime({ offset: true }).optional(),
+  to: z.string().datetime({ offset: true }).optional(),
+}).strict().superRefine((value, context) => {
+  if (Boolean(value.from) !== Boolean(value.to)) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: [value.from ? "to" : "from"],
+      message: "Both worker finance date bounds are required.",
+    });
+    return;
+  }
+  if (value.from && value.to) {
+    const duration = Date.parse(value.to) - Date.parse(value.from);
+    if (!Number.isFinite(duration) || duration <= 0 || duration > MAX_FINANCE_RANGE_MS) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["to"],
+        message: "Worker finance date range must be between 1 millisecond and 366 days.",
+      });
+    }
+  }
+});
+
 export const adminFinanceOverviewQuerySchema = z.object(financePeriodFields)
   .strict()
   .superRefine(validateFinancePeriod);
@@ -113,6 +137,13 @@ export function parseAdminFinanceSummaryQuery(url: URL) {
   return adminFinanceSummaryQuerySchema.safeParse({
     range: url.searchParams.get("range") ?? undefined,
     anchor: url.searchParams.get("anchor") ?? undefined,
+  });
+}
+
+export function parseAdminWorkerFinanceSnapshotQuery(url: URL) {
+  return adminWorkerFinanceSnapshotQuerySchema.safeParse({
+    from: url.searchParams.get("from") ?? undefined,
+    to: url.searchParams.get("to") ?? undefined,
   });
 }
 

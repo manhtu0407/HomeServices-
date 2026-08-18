@@ -19,7 +19,7 @@ export const color = {
   },
   mint: {
     white: '#F7FFFB',
-    canvas: '#F1FAF8',
+    canvas: '#FFFFFF',
     auraSoft: '#E6F7F3',
     auraStrong: '#C8F4EA',
     mint50: '#E6FBF3',
@@ -58,7 +58,7 @@ export const color = {
   },
   primary: '#08AF9C',
   primaryDark: '#087D72',
-  background: '#F1FAF8',
+  background: '#FFFFFF',
   textPrimary: '#071A24',
 } as const
 
@@ -67,7 +67,7 @@ export const signature = {
   mintDeep: color.brand.primaryDeep,
   cover: color.brand.primary,
   coverDeep: color.brand.primaryDeep,
-  bg: '#F1FAF8',
+  bg: color.surface.base,
   surface: '#FFFFFF',
   text: '#14201E',
   textSecondary: '#5C6B68',

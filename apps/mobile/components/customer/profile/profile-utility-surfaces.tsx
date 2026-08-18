@@ -19,9 +19,11 @@ import { customerV21CommonCopy } from '../ui/copy'
 import { CaseOverviewScoreAura } from '../history/history-surfaces'
 import { ProfileLiquidScore, ProfileStatCard } from './profile-metrics-surfaces'
 import {
-  ProfileRankingChevron,
   ProfileRankingMetricIcon,
+  ProfileRankingNextLevelIcon,
+  ProfileRankingPointsIcon,
   ProfileRankingRuleIcon,
+  ProfileRankingUsageSignalIcon,
   type ProfileRankingMetricKind,
   type ProfileRankingRuleKind,
 } from './profile-ranking-icons'
@@ -79,6 +81,7 @@ export function ProfileAuraCard({
   contentStyle,
   scope,
   showCardSkin = true,
+  showMintAura = true,
   testID,
 }: {
   cardStyle?: StyleProp<ViewStyle>
@@ -86,6 +89,7 @@ export function ProfileAuraCard({
   contentStyle?: StyleProp<ViewStyle>
   scope: string
   showCardSkin?: boolean
+  showMintAura?: boolean
   testID?: string
 }) {
   const tokens = useCustomerV21ProfileTheme()
@@ -101,10 +105,14 @@ export function ProfileAuraCard({
         cardStyle,
       ]}
       testID={testID}
-    >
+      >
       {showCardSkin ? <SourceCardSkin testID={`customer-v21-profile-${scope.toLowerCase()}-card-skin`} /> : null}
-      <CaseWideMintAura scope={`Profile${scope}Wide`} testID={`customer-v21-profile-${scope.toLowerCase()}-wide-mint-aura`} />
-      <ZipMintAura scope={`Profile${scope}Fine`} testID={`customer-v21-profile-${scope.toLowerCase()}-mint-aura`} />
+      {showMintAura ? (
+        <>
+          <CaseWideMintAura scope={`Profile${scope}Wide`} testID={`customer-v21-profile-${scope.toLowerCase()}-wide-mint-aura`} />
+          <ZipMintAura scope={`Profile${scope}Fine`} testID={`customer-v21-profile-${scope.toLowerCase()}-mint-aura`} />
+        </>
+      ) : null}
       <View style={[styles.profileAuraContent, contentStyle]}>
         {children}
       </View>
@@ -191,9 +199,6 @@ function ProfileInsightRow({
           <Text numberOfLines={2} style={[styles.profileRankingRuleTitle, { color: tokens.text }]} testID={testID ? `${testID}-title` : undefined}>{label}</Text>
           <Text numberOfLines={2} style={[styles.profileRankingRuleBody, { color: tokens.muted }]} testID={testID ? `${testID}-body` : undefined}>{value}</Text>
         </View>
-        <View style={styles.profileRankingRuleMeta} testID={testID ? `${testID}-chip` : undefined}>
-          <ProfileRankingChevron color={tokens.primary} testID={testID ? `${testID}-chevron` : undefined} />
-        </View>
       </View>
     )
   }
@@ -276,6 +281,7 @@ function ProfileInsightRow({
 
 export function ProfileRankingPanel({
   metrics,
+  nextRankPointsText,
   pointsText,
   progressBar,
   rank,
@@ -283,10 +289,10 @@ export function ProfileRankingPanel({
   rankProcess,
   rankTitle,
   rules,
-  rulesAction,
   rulesTitle,
 }: {
   metrics: ProfilePanelMetric[]
+  nextRankPointsText: string | null
   pointsText: string
   progressBar: ReactNode
   rank: number | null
@@ -294,7 +300,6 @@ export function ProfileRankingPanel({
   rankProcess: ReactNode
   rankTitle: string
   rules: ProfileInsightModel[]
-  rulesAction: string
   rulesTitle: string
 }) {
   const language = useAppLanguage()
@@ -312,7 +317,7 @@ export function ProfileRankingPanel({
 
   return (
     <View testID="customer-v21-profile-ranking">
-      <ProfileAuraCard cardStyle={styles.profileRankingHeroCard} contentStyle={styles.profileRankingHero} scope="RankingHero" testID="customer-v21-profile-ranking-hero">
+      <ProfileAuraCard cardStyle={styles.profileRankingHeroCard} contentStyle={styles.profileRankingHero} scope="RankingHero" showMintAura={false} testID="customer-v21-profile-ranking-hero">
         <View style={styles.profileRankingHeroWorkartFrame} testID="customer-v21-profile-ranking-hero-workart-frame">
           <Image
             accessibilityLabel={language === 'vi' ? 'Minh họa hành trình sử dụng dịch vụ' : 'Usage journey illustration'}
@@ -322,12 +327,31 @@ export function ProfileRankingPanel({
             testID="customer-v21-profile-ranking-hero-workart"
           />
         </View>
-        <View style={styles.profileRankingHeroCopy}>
-          <Text style={[styles.profileRankingHeroKicker, { color: tokens.muted }]}>{language === 'vi' ? 'Hạng hiện tại' : 'Current level'}</Text>
-          <Text style={[styles.profileRankingHeroValue, { color: tokens.text }]} testID="customer-v21-profile-ranking-current-value">{rankValue}</Text>
-          <Text numberOfLines={2} style={[styles.profileRankingHeroBody, { color: tokens.muted }]}>{rankDescription}</Text>
-          {rank !== null ? <Text numberOfLines={2} style={[styles.profileRankingHeroPoints, { color: tokens.muted }]}>{pointsText}</Text> : null}
-          <View style={styles.profileRankingHeroProgress}>{progressBar}</View>
+        <View
+          style={[styles.profileRankingHeroCopy, { backgroundColor: tokens.raised }]}
+          testID="customer-v21-profile-ranking-hero-copy"
+        >
+          <Text style={[styles.profileRankingHeroCurrentLine, { color: tokens.muted }]} testID="customer-v21-profile-ranking-current-line">
+            <Text style={[styles.profileRankingHeroKicker, { color: tokens.muted }]} testID="customer-v21-profile-ranking-hero-kicker">{language === 'vi' ? 'Hạng hiện tại:' : 'Current level:'}</Text>
+            <Text style={[styles.profileRankingHeroValue, { color: tokens.muted }]} testID="customer-v21-profile-ranking-current-value">{` ${rankValue}`}</Text>
+          </Text>
+          <View style={styles.profileRankingHeroPointLine} testID="customer-v21-profile-ranking-hero-body-line">
+            <ProfileRankingUsageSignalIcon color={tokens.primary} testID="customer-v21-profile-ranking-hero-body-icon" />
+            <Text numberOfLines={2} style={[styles.profileRankingHeroBody, { color: tokens.muted }]} testID="customer-v21-profile-ranking-hero-body">{rankDescription}</Text>
+          </View>
+          <View style={styles.profileRankingHeroPointsGroup} testID="customer-v21-profile-ranking-points">
+            <View style={styles.profileRankingHeroPointLine} testID="customer-v21-profile-ranking-points-total-line">
+              <ProfileRankingPointsIcon color={tokens.muted} testID="customer-v21-profile-ranking-points-total-icon" />
+              <Text numberOfLines={1} style={[styles.profileRankingHeroPoints, { color: tokens.muted }]} testID="customer-v21-profile-ranking-points-total">{pointsText}</Text>
+            </View>
+            {nextRankPointsText ? (
+              <View style={styles.profileRankingHeroPointLine} testID="customer-v21-profile-ranking-next-points">
+                <ProfileRankingNextLevelIcon color={tokens.primary} testID="customer-v21-profile-ranking-next-points-icon" />
+                <Text numberOfLines={2} style={[styles.profileRankingHeroNextPointsText, { color: tokens.muted }]} testID="customer-v21-profile-ranking-next-points-text">{nextRankPointsText}</Text>
+              </View>
+            ) : null}
+          </View>
+          <View style={styles.profileRankingHeroProgress} testID="customer-v21-profile-ranking-progress-slot">{progressBar}</View>
         </View>
       </ProfileAuraCard>
 
@@ -338,6 +362,7 @@ export function ProfileRankingPanel({
             key={metric.label}
             label={metric.label}
             reduceTransparency={glass.reduceTransparency}
+            showMintAura={false}
             sourceCardSkin={SourceCardSkin}
             testID={metric.testID}
             tokens={tokens}
@@ -354,7 +379,7 @@ export function ProfileRankingPanel({
       <ProfileRankingMilestoneRail nodes={rankNodes} testID="customer-v21-profile-rank-rail" />
       {rankProcess}
 
-      <SectionActionHeader action={rulesAction} title={rulesTitle} />
+      <SectionActionHeader title={rulesTitle} />
       <V21Card
         style={[
           styles.profileRankingRulesCard,

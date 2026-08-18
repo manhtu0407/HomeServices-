@@ -1,12 +1,20 @@
 import {
   accountTotalDays,
   customerAccountJourneyDisplay,
+  homeGreeting,
   profileSettingsSectionParam,
   profileUtilityParam,
   profileUtilityTitle,
 } from '../profile/profile-display-model'
 
 describe('customer profile account journey display', () => {
+  it('places the greeting hand before the exclamation mark in both languages', () => {
+    const afternoon = new Date(2026, 7, 17, 15, 0, 0)
+
+    expect(homeGreeting('Anh Tú', 'vi', afternoon)).toBe('Chào buổi chiều, Anh Tú👋!')
+    expect(homeGreeting('NestScout Customer', 'en', afternoon)).toBe('Good afternoon, NestScout Customer👋!')
+  })
+
   it('counts inclusive account days on the Ho Chi Minh City calendar', () => {
     const createdAt = '2026-07-01T16:59:00.000Z'
     const now = new Date('2026-07-02T17:00:00.000Z')

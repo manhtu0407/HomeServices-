@@ -40,6 +40,21 @@ export const styles = StyleSheet.create({
     position: 'relative',
     ...shadow.raised,
   },
+  formulaHeroCard: {
+    backgroundColor: 'rgba(255,255,255,0.96)',
+    borderColor: 'rgba(204,223,219,0.94)',
+    borderRadius: 24,
+    minHeight: 136,
+    shadowColor: '#087D72',
+    shadowOpacity: 0.08,
+    shadowRadius: 22,
+  },
+  formulaHeroContent: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 14,
+    minHeight: 136,
+  },
   earningsHeroCopy: {
     flex: 1,
     minWidth: 0,
@@ -112,13 +127,16 @@ export const styles = StyleSheet.create({
     zIndex: 1,
   },
   verificationDocumentList: {
-    backgroundColor: 'rgba(255,255,255,0.80)',
-    borderColor: 'rgba(255,255,255,0.94)',
+    backgroundColor: 'rgba(255,255,255,0.96)',
+    borderColor: 'rgba(204,223,219,0.94)',
     borderRadius: 24,
     borderWidth: 1,
     overflow: 'hidden',
     position: 'relative',
     ...shadow.soft,
+  },
+  verificationDocumentListContent: {
+    paddingVertical: 2,
   },
   verificationDocumentListAura: {
     bottom: -64,

@@ -86,9 +86,30 @@ jobs:
                 ;;
               # Removing a test is a reviewable act, not a silent one: the diff
               # shows it and docs/test-debt-ledger.md records what each removal
-              # gave up. Product code, the admin surface, and every other tracked
-              # path stay blocked by the catch-all below.
+              # gave up. Unlisted product code, the admin surface, and every other
+              # tracked path stay blocked by the catch-all below.
               apps/api/src/__tests__/*|packages/shared/src/__tests__/*)
+                ;;
+              # Retired UI surfaces/assets are intentionally removed by this
+              # publication and replaced by the current production surfaces.
+              # Keep the exception exact so unrelated product deletions remain blocked.
+              'apps/mobile/assets/lottie/nestscout-aurora-nest-approved-logo-transparent.png'|\
+              'apps/mobile/assets/lottie/nestscout-aurora-nest-north-star-awakening.json'|\
+              'apps/mobile/components/auth/entry-access/lottie-logo-mark.tsx'|\
+              'apps/mobile/components/customer/ui/payment-styles.ts'|\
+              'apps/mobile/components/customer/ui/payment-surfaces.tsx'|\
+              'apps/mobile/components/kael/kael-svg-lottie-view.tsx'|\
+              'apps/mobile/components/worker/earnings/overview-styles.ts'|\
+              'apps/mobile/components/worker/earnings/overview-surfaces.tsx'|\
+              'apps/mobile/components/worker/home/opportunity-styles.ts'|\
+              'apps/mobile/components/worker/home/opportunity-surfaces.tsx'|\
+              'apps/mobile/components/worker/jobs/acceptance-styles.ts'|\
+              'apps/mobile/components/worker/jobs/acceptance-surfaces.tsx'|\
+              'apps/mobile/components/worker/jobs/completion-bodies.tsx'|\
+              'apps/mobile/components/worker/jobs/completion-evidence-screen-body.tsx'|\
+              'apps/mobile/components/worker/jobs/inbox-offer-surfaces.tsx'|\
+              'apps/mobile/components/worker/jobs/offer-styles.ts'|\
+              'apps/mobile/components/worker/jobs/offer-surfaces.tsx')
                 ;;
               '')
                 ;;

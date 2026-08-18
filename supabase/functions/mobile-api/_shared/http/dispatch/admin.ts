@@ -31,6 +31,7 @@ import {
   parseAdminFinanceOverviewQuery,
   parseAdminFinanceSummaryQuery,
   parseAdminFinanceTransactionListQuery,
+  parseAdminWorkerFinanceSnapshotQuery,
   parseAdminPaymentReconciliationListQuery,
 } from "../routes/admin-finance-contract.ts";
 import {
@@ -183,6 +184,11 @@ async function dispatchAdminControlRoute(
       const input = adminWorkerAccessSchema.safeParse(await readJson(request));
       if (!input.success) apiFailure("VALIDATION", "Thay đổi quyền truy cập của thợ không hợp lệ", 400);
       return services.setAdminWorkerAccess(ctx, route.workerId, input.data);
+    }
+    case "admin.workers.financeSnapshot": {
+      const input = parseAdminWorkerFinanceSnapshotQuery(new URL(request.url));
+      if (!input.success) apiFailure("VALIDATION", "Khoảng thời gian tài chính của thợ không hợp lệ", 400);
+      return services.getAdminWorkerFinanceSnapshot(ctx, route.workerId, input.data);
     }
     case "admin.transactions.list": {
       const input = parseAdminTransactionListQuery(new URL(request.url));

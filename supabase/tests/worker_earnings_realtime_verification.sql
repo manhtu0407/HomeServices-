@@ -20,7 +20,11 @@ set role = 'worker'
 where id = 'e4100000-0000-4000-8000-000000000002';
 
 insert into public.customer_profiles (id, building_name, unit_number, district)
-values ('e4100000-0000-4000-8000-000000000001', 'Realtime QA', 'QA-01', 'q1');
+values ('e4100000-0000-4000-8000-000000000001', 'Realtime QA', 'QA-01', 'q1')
+on conflict (id) do update
+set building_name = excluded.building_name,
+    unit_number = excluded.unit_number,
+    district = excluded.district;
 
 insert into public.worker_profiles (
   id, service_types, districts, is_approved, is_available, rating,

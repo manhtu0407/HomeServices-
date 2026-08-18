@@ -172,7 +172,7 @@ describe('mobile-api customer Kael assistant', () => {
     response.preview(prefix)
 
     const result = await runCustomerAssistant({
-      callAI: async (request) => ({
+      callAI: async (_request) => ({
         success: true as const,
         content: JSON.stringify({
           answer: `${prefix} Please keep the area dry while waiting for a worker.`,

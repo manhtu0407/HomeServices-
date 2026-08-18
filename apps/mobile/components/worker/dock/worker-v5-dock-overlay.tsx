@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { Pressable, Text, View, useWindowDimensions, type LayoutChangeEvent } from 'react-native'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import Animated from 'react-native-reanimated'
@@ -14,8 +14,7 @@ import {
 import { useGlassAccessibility } from '@/components/ui/accessibility-motion'
 import { DockScrollStateProvider, useDockScrollState, useDockScrollTransform } from '@/components/ui/dock-scroll-state'
 import { GlassSurface } from '@/components/ui/glass-surface'
-import { KaelCoreV9 } from '@/components/ui/kael-core-v9'
-import type { KaelCoreV9Handle } from '@/components/ui/kael-core-v9-contract'
+import { KaelNavigationAccessory } from '@/components/ui/kael-navigation-accessory'
 
 import { LiquidNavIcon, type LiquidNavIconName } from '@/components/customer/dock/liquid-nav-icons'
 import { LiquidSelectionLens } from '@/components/customer/dock/liquid-selection-lens'
@@ -102,7 +101,6 @@ export function WorkerRebuildDockOverlay({ active }: { active: WorkerDockActive 
   const activeTab = resolvedActive === WORKER_V5_DOCK_KAEL_ITEM.id ? null : resolvedActive
   const liquidNavWidth = Math.min(Math.max(width - CUSTOMER_LIQUID_NAV_SIDE_INSET * 2, 0), CUSTOMER_LIQUID_NAV_MAX_WIDTH)
   const liquidDockWidth = Math.max(liquidNavWidth - CUSTOMER_LIQUID_NAV_ORB_SIZE - CUSTOMER_LIQUID_NAV_GAP, CUSTOMER_LIQUID_NAV_DOCK_HEIGHT)
-  const kaelRef = useRef<KaelCoreV9Handle>(null)
   const kaelActive = resolvedActive === WORKER_V5_DOCK_KAEL_ITEM.id
   const [surfaceWidth, setSurfaceWidth] = useState(0)
   const selectedIndex = activeTab === null ? null : Math.max(WORKER_V5_DOCK_ROUTE_ITEMS.findIndex((item) => item.id === activeTab), 0)
@@ -149,19 +147,15 @@ export function WorkerRebuildDockOverlay({ active }: { active: WorkerDockActive 
             />
           ))}
         </GlassSurface>
-        <Pressable
+        <KaelNavigationAccessory
           accessibilityLabel={WORKER_V5_DOCK_KAEL_ITEM.label[language]}
-          accessibilityRole="button"
-          accessibilityState={{ selected: kaelActive }}
-          onFocus={() => kaelRef.current?.bow('focus')}
-          onHoverIn={() => kaelRef.current?.bow('proximity')}
+          active={kaelActive}
           onPress={openKael}
-          onPressIn={() => kaelRef.current?.bow('pointer-press')}
+          reduceMotion={reduceMotion}
           style={[dockStyles.kaelAccessory, kaelActive ? dockStyles.kaelAccessoryActive : null]}
           testID="worker-v5-kael-accessory"
-        >
-          <KaelCoreV9 reduceMotion={reduceMotion} ref={kaelRef} testID="worker-v5-kael-core-v9" />
-        </Pressable>
+          visualRole="worker"
+        />
       </Animated.View>
     </View>
   )

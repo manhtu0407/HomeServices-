@@ -24,7 +24,9 @@ import { localizeAccountMutationError } from '@/lib/account-mutation-error'
 import { localizedProblemOptions, setAppLanguage, useAppLanguage } from '@/lib/app-language'
 import { useAuth } from '@/lib/auth-provider'
 import { useFrontendWorkflow } from '@/lib/frontend-workflow-provider'
+import { placesService } from '@/lib/services'
 import { bookingServiceIdFromRoute, performanceProfileForBooking, productionServiceForBooking } from '@/lib/kael-performance-intake'
+import { stagePendingKaelChatMessage } from '@/lib/pending-kael-chat-message'
 import type { CustomerProfileInsightsResponse, CustomerServiceHistoryItem } from '@/lib/api-types'
 import {
   readPendingKaelChatDraft,
@@ -32,7 +34,7 @@ import {
 } from '../kael-chat/pending-intake'
 import { ScopeChangeHardStopModal } from '../scope-change-modal/scope-change-hard-stop-modal'
 import { setCustomerThemeMode } from '../customer-theme'
-import { customerV21Assets, customerV21BankAssets, customerV21HomeV4Assets } from '../ui/assets'
+import { customerV21Assets, customerV21BankAssets, customerV21BookingWorkartAssets } from '../ui/assets'
 import { CustomerBookingEntryView, CustomerBookingGuestGateView } from '../booking/booking-entry-stateful-surfaces'
 import { HomeStorytellingCard } from '../home/home-storytelling-card'
 import {
@@ -80,7 +82,6 @@ import {
 import { CustomerServiceHistorySurface } from '../history/service-history-surface'
 import { HomeGuidanceBanner } from '../home/home-guidance-banner'
 import { HomeCurrentJobCard } from '../home/home-current-job-card'
-import { HomeIcon } from '../home/home-icons'
 import { CustomerProfileOverviewView, CustomerProfileSubscreenView } from '../profile/profile-stateful-surfaces'
 import { buildCustomerProfileSettingsGroups } from '../profile/profile-settings-groups'
 import {
@@ -141,6 +142,7 @@ import {
   cleanRouteJobId,
   customerCaseWorkRouteForDeal,
   customerKaelChatRoute,
+  customerKaelChatRouteForHomeSearch,
   customerKaelWorkRoute,
   customerKaelWorkRouteForHandoff,
   isRealCaseDeal,
@@ -208,7 +210,6 @@ export function CustomerHomeSurface() {
   const deal = workflow.state.deal
   const isDraftDeal = deal?.status === 'draft'
   const displayName = profileName(session?.user.user_metadata, language)
-  const { width } = useWindowDimensions()
 
   const activeCaseRoute = isDraftDeal
     ? '/(customer)/booking'
@@ -220,35 +221,31 @@ export function CustomerHomeSurface() {
     router.replace(`/(customer)/booking?service=${encodeURIComponent(serviceId)}` as never)
   }
 
-  const openNotifications = () => router.replace('/(customer)/profile?utility=notifications' as never)
   const openHomeSearch = (value: string) => {
-    if (!value) return
-    router.replace('/(customer)/booking' as never)
+    const message = value.trim()
+    if (!message) return
+    stagePendingKaelChatMessage(session?.user.id, message)
+    router.replace(customerKaelChatRouteForHomeSearch() as never)
+  }
+  const openHomeChat = () => {
+    router.replace(customerKaelChatRouteForHomeSearch() as never)
   }
 
   return (
     <V21Screen screenId="2.1-home" testID="customer-v21-home">
       <V21TopBar
-        action={(
-          <View style={styles.homeNotificationAction}>
-            <HomeIcon color={tokens.primary} name="bell" size={width < 560 ? 26 : 32} />
-            {workflow.notificationUnreadCount > 0 ? <View style={[styles.homeNotificationDot, { backgroundColor: tokens.primary }]} /> : null}
-          </View>
-        )}
-        actionAccessibilityLabel={language === 'vi' ? 'Mở thông báo' : 'Open notifications'}
         avatarText={initialsForName(displayName)}
         showAvatar={false}
         subtitle=""
         title={homeGreeting(displayName, language)}
         titleNumberOfLines={2}
-        titleStyle={typography.title1}
-        onAction={openNotifications}
+        titleStyle={typography.title2}
       />
 
       <HomeStorytellingCard
         language={language}
-        onQuickPress={openService}
         onSearch={openHomeSearch}
+        onSearchFocus={openHomeChat}
         reduceTransparency={reduceTransparency}
         tokens={tokens}
       />
@@ -262,7 +259,7 @@ export function CustomerHomeSurface() {
         {CUSTOMER_SERVICE_IDS.map((service) => (
           <ServiceTile
             homeAura
-            homeImage={customerV21HomeV4Assets.services[service]}
+            homeArtwork={customerV21BookingWorkartAssets[service]}
             homeV4
             key={service}
             onPress={() => openService(service)}
@@ -271,6 +268,7 @@ export function CustomerHomeSurface() {
         ))}
       </View>
 
+      <SectionActionHeader title={copy.homeGuidanceSection} titleTestID="customer-v21-home-guidance-section-title" />
       <HomeGuidanceBanner language={language} onPress={() => router.replace('/(customer)/booking' as never)} reduceTransparency={reduceTransparency} tokens={tokens} />
 
       {deal ? (
@@ -294,16 +292,19 @@ export function CustomerHomeSurface() {
           />
         </>
       ) : (
-        <EmptyState
-          action={<KaelButton label={copy.startService} onPress={() => router.replace('/(customer)/booking' as never)} size="small" testID="customer-v21-home-start" />}
-          assetTile={AssetTile}
-          bareAsset
-          body={copy.emptyActivityBody}
-          image={customerV21Assets.serviceStart}
-          mintAura
-          testID="customer-v21-home-empty"
-          title={copy.emptyActivity}
-        />
+        <>
+          <SectionActionHeader title={copy.homeActivitySection} titleTestID="customer-v21-home-activity-section-title" />
+          <EmptyState
+            action={<KaelButton label={copy.startService} onPress={() => router.replace('/(customer)/booking' as never)} size="small" testID="customer-v21-home-start" />}
+            assetTile={AssetTile}
+            bareAsset
+            body={copy.emptyActivityBody}
+            image={customerV21Assets.serviceStart}
+            mintAura
+            testID="customer-v21-home-empty"
+            title={copy.emptyActivity}
+          />
+        </>
       )}
     </V21Screen>
   )
@@ -350,8 +351,10 @@ function CustomerBookingEntrySurfaceRoute() {
     clear: clearBookingForm,
   } = bookingForm
   const addressDistrictLabel = useRef<string | null>(null)
+  const addressResolutionRequestRef = useRef(0)
   const submitDraftInFlightRef = useRef(false)
   const [addressLookupOpen, setAddressLookupOpen] = useState(false)
+  const [addressResolvePending, setAddressResolvePending] = useState(false)
   const addressLookup = useBookingAddressLookup(address, addressLookupOpen)
   const scheduleRuntimeNow = useBookingScheduleRuntimeNow()
   useEffect(() => {
@@ -383,11 +386,17 @@ function CustomerBookingEntrySurfaceRoute() {
     && bookingScheduleDraft(availableSelectedScheduleDate, selectedScheduleTime, runtimeDate).scheduledAt
     ? selectedScheduleTime
     : null
-  const scheduleLabel = bookingScheduleLabel(scheduleDateOptions, availableSelectedScheduleDate, availableSelectedScheduleTime, language)
+  const selectedScheduleTimeForDisplay = selectedScheduleTime && (
+    !availableSelectedScheduleDate || availableSelectedScheduleTime
+  )
+    ? selectedScheduleTime
+    : null
+  const scheduleLabel = bookingScheduleLabel(scheduleDateOptions, availableSelectedScheduleDate, selectedScheduleTimeForDisplay, language)
   const customScheduleDateError = customScheduleDateInput.length === 10 && !availableSelectedScheduleDate
     ? (language === 'vi' ? 'Nhập ngày hợp lệ từ hôm nay trở đi.' : 'Enter a valid date from today onward.')
     : null
-  const customScheduleTimeError = customScheduleTimeInput.length === 5 && !availableSelectedScheduleTime
+  const customScheduleTimeError = customScheduleTimeInput.length === 5
+    && (!selectedScheduleTime || Boolean(availableSelectedScheduleDate && !availableSelectedScheduleTime))
     ? (language === 'vi' ? 'Nhập giờ hợp lệ trong tương lai theo HH:mm, trước 23:59.' : 'Enter a valid future HH:mm time before 23:59.')
     : null
   const addressUsesMultiline = address.trim().length > 34
@@ -413,6 +422,8 @@ function CustomerBookingEntrySurfaceRoute() {
     )
   }
   const updateAddress = (nextAddress: string) => {
+    addressResolutionRequestRef.current += 1
+    setAddressResolvePending(false)
     setAddress(nextAddress)
     addressDistrictLabel.current = extractKnownDistrictLabel(nextAddress) || null
     if (nextAddress.trim().length < 2) {
@@ -422,11 +433,27 @@ function CustomerBookingEntrySurfaceRoute() {
     setAddressLookupOpen(true)
   }
   const selectAddressSuggestion = (suggestion: BookingAddressSuggestion) => {
+    const requestId = addressResolutionRequestRef.current + 1
+    addressResolutionRequestRef.current = requestId
     setAddress(suggestion.label)
     addressDistrictLabel.current = extractKnownDistrictLabel(suggestion.label) || null
     setAddressLookupOpen(false)
+    setAddressResolvePending(true)
+    void placesService.resolve({ label: suggestion.label, place_id: suggestion.place_id }).then((result) => {
+      if (requestId !== addressResolutionRequestRef.current) return
+      setAddressResolvePending(false)
+      if (!result.success) return
+      const resolvedLabel = result.data.label?.trim()
+      if (!resolvedLabel) return
+      setAddress(resolvedLabel)
+      addressDistrictLabel.current = extractKnownDistrictLabel(resolvedLabel) || null
+    }).catch(() => {
+      if (requestId === addressResolutionRequestRef.current) setAddressResolvePending(false)
+    })
   }
   const resetBookingBoard = () => {
+    addressResolutionRequestRef.current += 1
+    setAddressResolvePending(false)
     clearBookingForm()
     addressDistrictLabel.current = null
     setAddressLookupOpen(false)
@@ -527,6 +554,7 @@ function CustomerBookingEntrySurfaceRoute() {
         addressFallbackUsed={addressLookup.fallbackUsed}
         addressLookupOpen={addressLookupOpen}
         addressLookupPending={addressLookup.pending}
+        addressResolvePending={addressResolvePending}
         addressSuggestions={addressLookup.suggestions}
         addressUsesMultiline={addressUsesMultiline}
         chatPlaceholder={copy.chatPlaceholder}
@@ -545,7 +573,6 @@ function CustomerBookingEntrySurfaceRoute() {
         onAddressChange={updateAddress}
         onAddressFocus={() => setAddressLookupOpen(true)}
         onAddressSuggestionPress={selectAddressSuggestion}
-        onBack={() => router.replace('/(customer)/home' as never)}
         onCustomScheduleDateChange={updateCustomScheduleDate}
         onCustomScheduleTimeChange={updateCustomScheduleTime}
         onDescriptionChange={setDescription}
@@ -578,7 +605,7 @@ function CustomerBookingEntrySurfaceRoute() {
         scheduleRuntimeNow={scheduleRuntimeNow}
         selectedProblems={selectedProblems}
         selectedScheduleDate={availableSelectedScheduleDate}
-        selectedScheduleTime={availableSelectedScheduleTime}
+        selectedScheduleTime={selectedScheduleTime}
         selectedService={selectedService}
         textInputNoOutlineStyle={customerV21WebTextInputNoOutline}
         timeSlots={bookingTimeSlots}
@@ -606,12 +633,6 @@ export function CustomerHistorySurface() {
   const routeJobId = cleanRouteJobId(firstParam(params.job_id))
   const routeScopeChangeParam = firstParam(params.scope_change)
   const legacyActivityScreen = firstParam(params.screen)
-  const historySource = firstParam(params.source)
-  const historyBackPath = historySource === 'profile-support'
-    ? '/(customer)/profile?utility=support'
-    : historySource === 'profile-notifications'
-      ? '/(customer)/profile?utility=notifications'
-      : '/(customer)/home'
   const shouldOpenCaseWork = Boolean(!routeScopeChangeParam && (routeJobId || legacyActivityScreen))
   const scopeChange = deal?.scopeChange ?? null
   const scopeChangeVisible = Boolean(scopeChange && canCustomerDecideScopeChange(scopeChange))
@@ -662,7 +683,6 @@ export function CustomerHistorySurface() {
   return (
     <>
       <CustomerServiceHistorySurface
-        onBack={() => router.replace(historyBackPath as never)}
         onOpenDetail={openHistoryDetail}
         onRebook={rebookService}
       />
@@ -729,11 +749,8 @@ export function CustomerProfileSurface() {
     ? `${formatNumber(bankOptionCount, language)} ngân hàng`
     : `${formatNumber(bankOptionCount, language)} banks`
   const messageMemoryAllowed = agenticBooleanFromMemory(workflow.customerKaelMemory, 'message_interaction_memory')
-  const usageRank = typeof insights?.usage_rank_level === 'number' ? Math.max(0, Math.min(5, insights.usage_rank_level)) : null
   const usageRankPoints = typeof insights?.usage_rank_points === 'number' ? Math.max(0, insights.usage_rank_points) : null
   const usageRankCyclePoints = usageRankPoints !== null && usageRankPoints > 0 ? (usageRankPoints % 1000 || 1000) : 0
-  const hasUsageRank = usageRank !== null && usageRank > 0
-  const usageRankProgress = hasUsageRank ? Math.max(0, Math.min(100, usageRankCyclePoints / 10)) : 0
   const usageRankPointsLabel = usageRankPoints === null
     ? copy.dataPending
     : language === 'vi'
@@ -768,9 +785,12 @@ export function CustomerProfileSurface() {
     themeMode: tokens.mode,
   })
 
-  const openProfilePanel = (nextPanel: CustomerProfilePanel, screenId: CustomerV21ScreenId) => {
+  const openProfilePanel = (nextPanel: CustomerProfilePanel) => {
     setSelectedPanel(nextPanel)
-    router.replace(`/(customer)/profile?screen=${screenId}` as never)
+    router.replace({
+      pathname: '/(customer)/profile',
+      params: { panel: nextPanel },
+    } as never)
   }
 
   if (directProfileUtility) {
@@ -833,7 +853,17 @@ export function CustomerProfileSurface() {
             />
           )}
           onBack={() => router.replace(directProfileBackPath as never)}
-          subtitle={directProfileUtility === 'address' ? '' : profileUtilitySubtitle(directProfileUtility, language)}
+          subtitle={directProfileUtility === 'address'
+            || directProfileUtility === 'appearance'
+            || directProfileUtility === 'language'
+            || directProfileUtility === 'legal'
+            || directProfileUtility === 'memory'
+            || directProfileUtility === 'notifications'
+            || directProfileUtility === 'password'
+            || directProfileUtility === 'personal-details'
+            || directProfileUtility === 'support'
+            ? ''
+            : profileUtilitySubtitle(directProfileUtility, language)}
           title={profileUtilityTitle(directProfileUtility, language)}
           titleStyle={directProfileUtility === 'address' ? profileUtilityStyles.profileAddressUtilityTitle : undefined}
         />
@@ -886,19 +916,15 @@ export function CustomerProfileSurface() {
           : (language === 'vi' ? 'Thêm ảnh đại diện' : 'Add profile photo')}
         avatarUploadBusy={avatarUploadBusy}
         avatarUrl={workflow.customerAvatarUrl}
-        initials={initialsForName(name)}
         name={name}
         onPickAvatar={openCustomerAvatarPicker}
-        onOpenRanking={() => openProfilePanel('ranking', '6.2-usage-ranking')}
+        onOpenRanking={() => openProfilePanel('ranking')}
         rankingAccessibilityLabel={language === 'vi' ? 'Xem xếp hạng sử dụng' : 'View usage ranking'}
         rankingLabel={language === 'vi' ? 'Xếp hạng sử dụng' : 'Usage ranking'}
-        rankingMetaLabel={usageRankPointsLabel}
-        rankingProgressPercent={usageRankProgress}
-        rankingProgressSourceLabel={language === 'vi' ? 'Hoạt động' : 'Activity'}
+        rankingPointsLabel={usageRankPointsLabel}
         rootStyles={styles}
         settingsGroups={settingsGroups}
         tokens={tokens}
-        topBarSubtitle={language === 'vi' ? 'Thông tin, bảo mật và các quyền của bạn' : 'Your details, security, and controls'}
         topBarTitle={language === 'vi' ? 'Hồ sơ khách hàng' : 'Customer profile'}
         versionLabel={Constants.expoConfig?.version
           ? (language === 'vi'
@@ -1394,13 +1420,11 @@ function ProfileRanking({ insights }: { insights: CustomerProfileInsightsRespons
     : numericRank > 0
       ? (language === 'vi' ? 'Sử dụng tích cực, hành vi tốt.' : 'Positive usage and good behavior.')
       : (language === 'vi' ? 'Chưa có hoạt động đủ điều kiện để xếp hạng.' : 'No qualifying activity yet for a level.')
-  const pointsText = points === null
-    ? copy.dataPending
-    : nextRank
-      ? (language === 'vi'
-        ? `${formatNumber(rankCyclePoints, language)} / 1.000 điểm · còn ${formatNumber(remaining, language)} điểm lên hạng ${nextRank}`
-        : `${formatNumber(rankCyclePoints, language)} / 1,000 points · ${formatNumber(remaining, language)} to level ${nextRank}`)
-      : (language === 'vi' ? `${formatNumber(rankCyclePoints, language)} / 1.000 điểm` : `${formatNumber(rankCyclePoints, language)} / 1,000 points`)
+  const nextRankPointsText = points !== null && nextRank
+    ? (language === 'vi'
+      ? `Còn ${formatNumber(remaining, language)} điểm lên hạng ${nextRank}`
+      : `${formatNumber(remaining, language)} to level ${nextRank}`)
+    : null
   const completedCount = insightNumber(insights, 'completed_service_count', copy.emptyProfileMetric, language)
   const streakLabel = insightNumber(insights, 'active_streak_days', copy.emptyProfileMetric, language, (value) => (language === 'vi' ? `${formatNumber(value, language)} ngày` : `${formatNumber(value, language)} days`))
   const reviewRate = insightNumber(
@@ -1432,7 +1456,8 @@ function ProfileRanking({ insights }: { insights: CustomerProfileInsightsRespons
         { icon: 'streak', label: language === 'vi' ? 'Chuỗi hoạt động' : 'Active streak', testID: 'customer-v21-profile-ranking-metric-streak', value: streakLabel },
         { icon: 'reviews', label: language === 'vi' ? 'Đánh giá tích cực' : 'Positive reviews', testID: 'customer-v21-profile-ranking-metric-reviews', value: reviewRate },
       ]}
-      pointsText={pointsText}
+      nextRankPointsText={nextRankPointsText}
+      pointsText={levelProgressLabel}
       progressBar={progressBar}
       rank={rank}
       rankNodes={[1, 2, 3, 4, 5].map((node) => ({ active: numericRank === node, label: rankLabel(node, language), value: node }))}
@@ -1476,7 +1501,6 @@ function ProfileRanking({ insights }: { insights: CustomerProfileInsightsRespons
           value: language === 'vi' ? 'Giữ giao dịch trong hệ thống' : 'Keep transactions in system',
         },
       ]}
-      rulesAction={language === 'vi' ? 'Chi tiết' : 'Details'}
       rulesTitle={language === 'vi' ? 'Điều giúp bạn thăng hạng' : 'What improves your level'}
     />
   )
@@ -1561,23 +1585,6 @@ const styles = StyleSheet.create({
   agenticUtilityIcon: {
     minHeight: 56,
     minWidth: 56,
-  },
-  homeNotificationAction: {
-    alignItems: 'center',
-    height: 34,
-    justifyContent: 'center',
-    position: 'relative',
-    width: 34,
-  },
-  homeNotificationDot: {
-    borderColor: '#FFFFFF',
-    borderRadius: 5,
-    borderWidth: 2,
-    height: 10,
-    position: 'absolute',
-    right: 0,
-    top: 0,
-    width: 10,
   },
   bodyText: {
     ...typography.subheadline,

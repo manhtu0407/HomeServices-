@@ -231,7 +231,7 @@ describe('Kael Case Work server phase authority', () => {
     const composite = makeCompositeScopeChange()
     expect(canCustomerDecideScopeChange(composite)).toBe(true)
 
-    const pricingComponents = composite.kaelReview?.pricing_components as Array<Record<string, unknown>>
+    const pricingComponents = composite.kaelReview?.pricing_components as Record<string, unknown>[]
     const tampered = {
       ...composite,
       kaelReview: {

@@ -132,45 +132,69 @@ beforeEach(() => {
 })
 
 describe('CustomerHistorySurface service history', () => {
-  it('returns to the support hub when history was opened from Profile support', async () => {
+  it('removes the history back control without changing the activity surface', async () => {
     mockRouteParams = { source: 'profile-support' }
 
     render(<CustomerHistorySurface />)
 
     await waitFor(() => expect(screen.getByTestId('customer-v21-history-list')).toBeOnTheScreen())
-    fireEvent.press(screen.getByRole('button', { name: 'Quay lại' }))
-
-    expect(mockReplace).toHaveBeenCalledWith('/(customer)/profile?utility=support')
+    expect(screen.queryByRole('button', { name: 'Back' })).toBeNull()
+    expect(screen.queryByText('Lịch sử dịch vụ và thợ bạn đã lưu')).toBeNull()
   })
 
-  it('renders a date-grouped deal feed with real worker and price data', async () => {
+  it('renders a date-grouped deal feed with real worker and price data without mint aura on deal cards', async () => {
     render(<CustomerHistorySurface />)
 
     await waitFor(() => {
       expect(screen.getByTestId('customer-v21-history-list')).toBeOnTheScreen()
     })
 
+    expect(screen.queryByTestId('customer-v21-top-title')).toBeNull()
     expect(screen.getByText('Hoạt động gần đây')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-v21-history-title')).toHaveStyle({
+      fontSize: 20,
+      fontWeight: '400',
+      includeFontPadding: true,
+      lineHeight: 25,
+      minHeight: 25,
+      textAlign: 'left',
+    })
     expect(screen.getByText('Sửa điện')).toBeOnTheScreen()
     expect(screen.getAllByText('Anh Minh')).toHaveLength(2)
     expect(screen.getByText('320.000 ₫')).toBeOnTheScreen()
     expect(screen.getAllByText('Đã hoàn tất')).toHaveLength(2)
+    expect(screen.getByText('Đã hủy')).toBeOnTheScreen()
     expect(screen.getByTestId('customer-v21-history-group-2026-07-13')).toBeOnTheScreen()
     expect(screen.getByTestId('customer-v21-history-group-2026-07-12')).toBeOnTheScreen()
-    expect(screen.getByTestId('customer-v21-history-item-job_paid-card-skin')).toBeOnTheScreen()
-    expect(screen.getByTestId('customer-v21-history-item-job_paid-wide-mint-aura')).toBeOnTheScreen()
-    expect(screen.getByTestId('customer-v21-history-item-job_paid-mint-aura')).toBeOnTheScreen()
+    for (const itemId of ['job_paid', 'job_reviewed', 'job_cancelled']) {
+      expect(screen.queryByTestId(`customer-v21-history-item-${itemId}-card-skin`)).toBeNull()
+      expect(screen.getByTestId(`customer-v21-history-item-${itemId}-state-mark`)).toBeOnTheScreen()
+      expect(screen.getByTestId(`customer-v21-history-item-${itemId}-status`)).toBeOnTheScreen()
+    }
+    expect(StyleSheet.flatten(screen.getByTestId('customer-v21-history-item-job_paid-state-mark').props.style)).toMatchObject({
+      backgroundColor: '#FFFFFF',
+      borderWidth: 1,
+    })
+    expect(StyleSheet.flatten(screen.getByTestId('customer-v21-history-item-job_cancelled-status').props.style)).toMatchObject({
+      backgroundColor: '#FFFFFF',
+      borderWidth: 1,
+    })
+    expect(screen.getByTestId('customer-v21-history-worker-avatar-job_reviewed-placeholder-icon')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-v21-history-worker-avatar-job_reviewed')).toHaveStyle({ borderWidth: 1 })
+    expect(screen.getByTestId('customer-v21-history-favorite-job_paid')).toHaveStyle({
+      backgroundColor: '#FFFFFF',
+      height: 44,
+      minWidth: 84,
+    })
+    expect(screen.getAllByText('Lưu thợ')).toHaveLength(2)
+    for (const itemId of ['job_paid', 'job_reviewed', 'job_cancelled']) {
+      expect(screen.queryByTestId(`customer-v21-history-item-${itemId}-wide-mint-aura`)).toBeNull()
+      expect(screen.queryByTestId(`customer-v21-history-item-${itemId}-mint-aura`)).toBeNull()
+    }
     expect(StyleSheet.flatten(screen.getByTestId('customer-v21-history-worker-row-job_paid').props.style)).toMatchObject({
-      marginBottom: 8,
-      marginTop: -8,
+      gap: 11,
     })
-    expect(StyleSheet.flatten(screen.getByTestId('customer-v21-history-favorite-job_paid-icon').props.style)).toMatchObject({
-      fontSize: 20,
-      includeFontPadding: false,
-      lineHeight: 25,
-      textAlign: 'center',
-      textAlignVertical: 'center',
-    })
+    expect(screen.getByTestId('customer-v21-history-favorite-job_paid-icon')).toBeOnTheScreen()
     expect(screen.queryByTestId('customer-v21-direct-empty-2.6-case-overview')).toBeNull()
   })
 
@@ -187,9 +211,7 @@ describe('CustomerHistorySurface service history', () => {
     )
     expect(screen.getByTestId('customer-v21-history-filter-drag-surface')).toBeOnTheScreen()
     expect(screen.getByTestId('customer-v21-history-filter-fade')).toBeOnTheScreen()
-    expect(screen.getByTestId('customer-v21-history-filter-all-wide-mint-aura')).toBeOnTheScreen()
-    expect(screen.getByTestId('customer-v21-history-filter-all-mint-aura')).toBeOnTheScreen()
-    for (const filter of ['saved', 'electrical', 'plumbing', 'cleaning', 'hvac', 'upholstery', 'handyman']) {
+    for (const filter of ['all', 'saved', 'electrical', 'plumbing', 'cleaning', 'hvac', 'upholstery', 'handyman']) {
       expect(screen.queryByTestId(`customer-v21-history-filter-${filter}-wide-mint-aura`)).toBeNull()
       expect(screen.queryByTestId(`customer-v21-history-filter-${filter}-mint-aura`)).toBeNull()
     }
@@ -201,15 +223,16 @@ describe('CustomerHistorySurface service history', () => {
     expect(screen.queryByTestId('customer-v21-history-item-job_reviewed')).toBeNull()
   })
 
-  it('reuses the profile mint aura formula for the saved-worker hint and unavailable card', async () => {
+  it('keeps the saved-worker hint plain while preserving the unavailable card treatment', async () => {
     mockListMyServiceHistory.mockResolvedValue({ success: false })
     render(<CustomerHistorySurface />)
 
     await waitFor(() => expect(screen.getByTestId('customer-v21-history-error')).toBeOnTheScreen())
 
-    expect(screen.getByTestId('customer-v21-history-saved-hint-card-skin')).toBeOnTheScreen()
-    expect(screen.getByTestId('customer-v21-history-saved-hint-wide-mint-aura')).toBeOnTheScreen()
-    expect(screen.getByTestId('customer-v21-history-saved-hint-mint-aura')).toBeOnTheScreen()
+    expect(screen.queryByTestId('customer-v21-history-saved-hint-card-skin')).toBeNull()
+    expect(screen.queryByTestId('customer-v21-history-saved-hint-wide-mint-aura')).toBeNull()
+    expect(screen.queryByTestId('customer-v21-history-saved-hint-mint-aura')).toBeNull()
+    expect(screen.getByTestId('customer-v21-history-saved-hint-star')).toBeOnTheScreen()
     expect(screen.getByText('Thợ đã lưu')).toBeOnTheScreen()
     expect(screen.getByText('Kael sẽ ưu tiên họ trong lần tìm tiếp theo.')).toBeOnTheScreen()
     expect(screen.getByTestId('customer-v21-history-error-card-skin')).toBeOnTheScreen()

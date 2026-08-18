@@ -2,7 +2,7 @@ import { existsSync, readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { fireEvent, render, screen } from '@testing-library/react-native'
 import type { LocalDeal, LocalWorkflowSelectors } from '@nestscout/shared'
-import { StyleSheet } from 'react-native'
+import { Dimensions, StyleSheet } from 'react-native'
 
 let mockWorkflowValue: any
 let mockSessionMetadata: Record<string, unknown>
@@ -86,7 +86,11 @@ jest.mock('@/lib/app-language', () => {
 })
 
 import { CustomerHomeSurface, CustomerV21DockOverlay } from '../customer-surfaces'
-import { customerV21SharedStyles } from '../ui/shared-styles'
+import { stepForStatus } from '../kael-chat/case-stage-display-model'
+import { scaledTypography } from '@/design/theme'
+import { clearPendingKaelChatMessage, peekPendingKaelChatMessage } from '@/lib/pending-kael-chat-message'
+import { customerV21BookingWorkartAssets } from '../ui/assets'
+import { customerV21SharedStyles, customerV21SurfaceContentWidth } from '../ui/shared-styles'
 import { CustomerThemeSystemBar } from '../ui/shared-surfaces'
 
 function buildDeal(): LocalDeal {
@@ -174,6 +178,7 @@ beforeEach(() => {
   mockReplace.mockClear()
   mockSetStatusBarStyle.mockClear()
   mockSessionMetadata = { default_address: 'Tòa A, Quận 7', full_name: 'Anh Tú' }
+  clearPendingKaelChatMessage('customer_test_1')
   buildWorkflow(null)
 })
 
@@ -205,6 +210,29 @@ describe('CustomerHomeSurface v2.1', () => {
     expect(mockReplace).not.toHaveBeenCalledWith('/(customer)/profile?utility=agentic')
   })
 
+  it('hands a Home search question to a fresh regular Kael Chat session', () => {
+    render(<CustomerHomeSurface />)
+
+    const search = screen.getByPlaceholderText('Bạn cần hỗ trợ việc gì?')
+    fireEvent.changeText(search, 'Ổ cắm phòng khách phát ra tiếng lép bép')
+    fireEvent(search, 'submitEditing')
+
+    expect(mockReplace).toHaveBeenCalledWith(
+      '/(customer)/kael-chat?mode=normal&newSession=home-search',
+    )
+    expect(peekPendingKaelChatMessage('customer_test_1')).toBe('Ổ cắm phòng khách phát ra tiếng lép bép')
+  })
+
+  it('opens the fresh regular Kael Chat route when the Home search is focused', () => {
+    render(<CustomerHomeSurface />)
+
+    fireEvent(screen.getByPlaceholderText('Bạn cần hỗ trợ việc gì?'), 'focus')
+
+    expect(mockReplace).toHaveBeenCalledWith(
+      '/(customer)/kael-chat?mode=normal&newSession=home-search',
+    )
+  })
+
   it('renders the accepted V4 home sections without prototype-only claims', () => {
     const storytellingSource = readFileSync(resolve(__dirname, '../home/home-storytelling-card.tsx'), 'utf8')
 
@@ -214,15 +242,56 @@ describe('CustomerHomeSurface v2.1', () => {
     expect(screen.getByTestId('customer-v21-home-hero')).toBeOnTheScreen()
     expect(screen.getByTestId('customer-v21-home-hero-image')).toBeOnTheScreen()
     expect(screen.getByTestId('customer-v21-home-search')).toBeOnTheScreen()
-    expect(screen.getByTestId('customer-v21-home-quick-suggestions')).toBeOnTheScreen()
-    expect(screen.getByTestId('customer-v21-home-quick-electrical')).toBeOnTheScreen()
-    expect(screen.getByTestId('customer-v21-home-quick-home_cleaning')).toBeOnTheScreen()
-    expect(screen.getByTestId('customer-v21-home-quick-hvac_basic_maintenance')).toBeOnTheScreen()
+    const searchScale = Math.min(Math.max(Dimensions.get('window').width - 32, 280) / 857, 1)
+    const searchInputStyle = StyleSheet.flatten(screen.getByPlaceholderText('Bạn cần hỗ trợ việc gì?').props.style)
+    const searchTypography = scaledTypography('body', Math.min(searchScale * 1.35, 1))
+    expect(searchInputStyle).toMatchObject({
+      borderWidth: 0,
+      fontSize: searchTypography.fontSize,
+      lineHeight: searchTypography.lineHeight,
+      textAlignVertical: 'center',
+    })
+    expect(screen.getByTestId('customer-v21-top-title')).toHaveTextContent(/Chào buổi (sáng|chiều|tối), Anh Tú👋!$/)
+    expect(screen.getByTestId('customer-v21-top-title')).toHaveStyle({ fontSize: 22, lineHeight: 28 })
     expect(screen.getByText('Việc nhà có chúng tôi,\nbạn yên tâm tận hưởng')).toBeOnTheScreen()
+    const heroScale = Math.min(Math.max(Dimensions.get('window').width - 32, 280) / 857, 1)
+    const heroTitleStyle = StyleSheet.flatten(screen.getByText('Việc nhà có chúng tôi,\nbạn yên tâm tận hưởng').props.style)
+    const baseHeroTitleStyle = scaledTypography('largeTitle', heroScale)
+    expect(StyleSheet.flatten(screen.getByTestId('customer-v21-home-hero-copy').props.style).top).toBeCloseTo(heroScale * 33 + 5)
+    expect(heroTitleStyle.fontSize).toBe((baseHeroTitleStyle.fontSize ?? 0) + 3)
+    expect(heroTitleStyle.lineHeight).toBe((baseHeroTitleStyle.lineHeight ?? 0) + 3)
+    const heroDescriptionStyle = StyleSheet.flatten(screen.getByText('Kết nối thợ lành nghề  •  Đến nhanh  •  Giá minh bạch').props.style)
+    const baseHeroDescriptionStyle = scaledTypography('subheadline', heroScale)
+    expect(heroDescriptionStyle.marginTop).toBeCloseTo(heroScale * 4 + 9)
+    expect(heroDescriptionStyle.fontSize).toBe((baseHeroDescriptionStyle.fontSize ?? 0) + 3)
+    expect(heroDescriptionStyle.lineHeight).toBe((baseHeroDescriptionStyle.lineHeight ?? 0) + 3)
+    expect(screen.queryByTestId('customer-v21-home-greeting-icon')).toBeNull()
+    expect(screen.queryByLabelText('Xin chào')).toBeNull()
     expect(screen.getByText('Kết nối thợ lành nghề  •  Đến nhanh  •  Giá minh bạch')).toBeOnTheScreen()
     expect(screen.getByText('An tâm với quy trình rõ ràng')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-v21-home-guidance-section-title')).toHaveTextContent('Quy trình dịch vụ')
+    expect(screen.getByTestId('customer-v21-home-activity-section-title')).toHaveTextContent('Hoạt động dịch vụ')
     expect(screen.getByTestId('customer-v21-home-promo-action')).toBeOnTheScreen()
     expect(screen.getByTestId('customer-v21-home-promo-image')).toBeOnTheScreen()
+    const guidanceScale = Math.min(Math.max(Dimensions.get('window').width - 32, 280) / 847, 1)
+    const guidanceTitleStyle = StyleSheet.flatten(screen.getByText('An tâm với quy trình rõ ràng').props.style)
+    const guidanceButtonStyle = StyleSheet.flatten(screen.getByTestId('customer-v21-home-promo-action').props.style)
+    const guidanceButtonTextStyle = StyleSheet.flatten(screen.getByText('Xem cách hoạt động').props.style)
+    const baseGuidanceTitleStyle = scaledTypography('title1', guidanceScale)
+    const baseGuidanceButtonStyle = scaledTypography('headline', guidanceScale)
+    expect(guidanceTitleStyle.fontSize).toBe((baseGuidanceTitleStyle.fontSize ?? 0) + 3)
+    expect(guidanceTitleStyle.lineHeight).toBe((baseGuidanceTitleStyle.lineHeight ?? 0) + 3)
+    expect(guidanceButtonStyle.height).toBeCloseTo(guidanceScale * 47 + 4)
+    expect(guidanceButtonStyle.paddingHorizontal).toBeCloseTo(guidanceScale * 21 + 4)
+    expect(guidanceButtonTextStyle.fontSize).toBe((baseGuidanceButtonStyle.fontSize ?? 0) + 3)
+    expect(guidanceButtonTextStyle.lineHeight).toBe((baseGuidanceButtonStyle.lineHeight ?? 0) + 3)
+    expect(StyleSheet.flatten(screen.getByTestId('customer-v21-home-guidance').props.style).marginTop).toBeGreaterThan(0)
+    expect(screen.queryByLabelText('Mở thông báo')).toBeNull()
+    expect(screen.queryByText('Cần hỗ trợ ngay?')).toBeNull()
+    expect(screen.queryByTestId('customer-v21-home-quick-suggestions')).toBeNull()
+    expect(screen.queryByText('Phạm vi rõ ràng')).toBeNull()
+    expect(screen.queryByText('Xác nhận trước khi làm')).toBeNull()
+    expect(screen.queryByText('Thanh toán an toàn')).toBeNull()
     expect(screen.queryByText('Đánh giá 4.9+')).toBeNull()
     expect(screen.queryByText('Bảo hiểm đầy đủ')).toBeNull()
     expect(storytellingSource).toContain('customer-home-v4-hero-gradient')
@@ -241,10 +310,33 @@ describe('CustomerHomeSurface v2.1', () => {
   it('shows the six approved service paths without fake worker or rating data', () => {
     render(<CustomerHomeSurface />)
 
+    const serviceLabels = ['Sửa điện', 'Sửa nước', 'Vệ sinh nhà cửa', 'Điều hòa', 'Sofa, nệm, rèm', 'Sửa vặt & Lắp đặt']
+
     for (const service of ['electrical', 'plumbing', 'home_cleaning', 'hvac_basic_maintenance', 'upholstery_care', 'handyman_minor_installation']) {
       expect(screen.getByTestId(`customer-v21-service-${service}`)).toBeOnTheScreen()
-      expect(screen.getByTestId(`customer-v21-service-${service}-visual-panel`)).toBeOnTheScreen()
+      const visualPanel = screen.getByTestId(`customer-v21-service-${service}-visual-panel`)
+      const workart = screen.getByTestId(`customer-v21-service-${service}-workart`)
+      expect(visualPanel).toBeOnTheScreen()
+      expect(StyleSheet.flatten(visualPanel.props.style)).toMatchObject({
+        alignItems: 'center',
+        flexBasis: '80%',
+        height: '80%',
+        justifyContent: 'center',
+      })
+      expect(StyleSheet.flatten(workart.props.style)).toMatchObject({ height: '100%', width: '100%' })
+      expect(workart.props.contentFit).toBe('cover')
+      expect(workart.props.source).toEqual([
+        customerV21BookingWorkartAssets[service as keyof typeof customerV21BookingWorkartAssets],
+      ])
+      expect(screen.getByTestId(`customer-v21-service-${service}-workart-fade`)).toBeOnTheScreen()
+      const title = screen.getByTestId(`customer-v21-service-${service}-title`)
+      expect(title).toBeOnTheScreen()
+      expect(StyleSheet.flatten(title.props.style)).toMatchObject({ paddingBottom: 0 })
     }
+    for (const label of serviceLabels) expect(screen.getByText(label)).toBeOnTheScreen()
+    expect(screen.queryByText('Điều hòa & Không khí')).toBeNull()
+    expect(screen.queryByText('Sofa, nệm, rèm, thảm')).toBeNull()
+    expect(screen.queryByText('Sửa vặt & Lắp đặt nhỏ')).toBeNull()
     expect(screen.queryByText(/rating|4\.9|Nguyễn Văn Minh/i)).toBeNull()
     expect(screen.getByText('Chưa có hoạt động dịch vụ')).toBeOnTheScreen()
   })
@@ -319,6 +411,16 @@ describe('CustomerHomeSurface v2.1', () => {
 
     expect(screen.getByText(/^#MOH-\d{2}[A-Z0-9]{4}$/)).toBeOnTheScreen()
     expect(screen.queryByText('Đang tạo mã')).toBeNull()
+    expect(StyleSheet.flatten(screen.getByTestId('customer-v21-active-case-copy').props.style).left).toBeCloseTo((customerV21SurfaceContentWidth(Dimensions.get('window').width) / 829) * 146)
+    expect(screen.queryByTestId('customer-v21-active-case-asset')).toBeNull()
+    const activeWorkartPanel = screen.getByTestId('customer-v21-active-case-workart-panel')
+    const activeWorkart = screen.getByTestId('customer-v21-active-case-workart')
+    expect(activeWorkartPanel).toBeOnTheScreen()
+    expect(StyleSheet.flatten(activeWorkartPanel.props.style)).not.toHaveProperty('borderWidth')
+    expect(StyleSheet.flatten(activeWorkart.props.style)).toMatchObject({ height: '100%', width: '100%' })
+    expect(activeWorkart.props.contentFit).toBe('cover')
+    expect(activeWorkart.props.source).toEqual([customerV21BookingWorkartAssets.electrical])
+    expect(screen.getByTestId('customer-v21-active-case-workart-wash')).toBeOnTheScreen()
     expect(screen.getByTestId('customer-v21-active-case-meta')).toHaveTextContent(/Ổ cắm nóng/)
     expect(screen.getByTestId('customer-v21-active-case-meta')).toHaveTextContent(/180\.000đ - 260\.000đ/)
     expect(screen.getByTestId('customer-v21-active-case-meta')).toHaveTextContent(/Tòa A, Quận 7/)
@@ -330,6 +432,68 @@ describe('CustomerHomeSurface v2.1', () => {
 
     fireEvent.press(screen.getByTestId('customer-v21-active-case'))
     expect(mockReplace).toHaveBeenCalledWith('/(customer)/kael-chat?mode=case&jobId=job_test_1')
+  })
+
+  it('uses the Booking Workart treatment for all six active service types', () => {
+    const activeServices = [
+      ['electrical', 'electrical'],
+      ['plumbing', 'plumbing'],
+      ['cleaning', 'home_cleaning'],
+      ['hvac', 'hvac_basic_maintenance'],
+      ['upholstery', 'upholstery_care'],
+      ['handyman', 'handyman_minor_installation'],
+    ] as const
+
+    for (const [serviceType, workartKey] of activeServices) {
+      const deal = buildDeal()
+      deal.draft.serviceType = serviceType
+      if (deal.broadcast) deal.broadcast.serviceType = serviceType
+      buildWorkflow(deal)
+
+      const { unmount } = render(<CustomerHomeSurface />)
+      const activeWorkart = screen.getByTestId('customer-v21-active-case-workart')
+      expect(activeWorkart.props.source).toEqual([customerV21BookingWorkartAssets[workartKey]])
+      expect(screen.queryByTestId('customer-v21-active-case-asset')).toBeNull()
+      unmount()
+    }
+  })
+
+  it('keeps the reference process composition on a compact native width', () => {
+    buildWorkflow(buildDeal())
+    const dimensionsSpy = jest.spyOn(Dimensions, 'get').mockReturnValue({ width: 430, height: 765, scale: 1, fontScale: 1 })
+
+    try {
+      render(<CustomerHomeSurface />)
+
+      const progressStyle = StyleSheet.flatten(screen.getByTestId('customer-v21-active-case-progress').props.style)
+      const progressTrackStyle = StyleSheet.flatten(screen.getByTestId('customer-v21-active-case-progress-track').props.style)
+      const progressFillStyle = StyleSheet.flatten(screen.getByTestId('customer-v21-active-case-progress-fill').props.style)
+      const progressNodeStyle = StyleSheet.flatten(screen.getByTestId('customer-v21-active-case-step-2').props.style)
+      const cardScale = customerV21SurfaceContentWidth(430) / 829
+      expect(progressStyle.position).toBe('absolute')
+      expect(progressStyle.left).toBeGreaterThan(0)
+      expect(progressStyle.top).toBeGreaterThan(0)
+      expect(progressStyle.height).toBeCloseTo(cardScale * 51)
+      expect(progressTrackStyle.top).toBeCloseTo(cardScale * 24)
+      expect(progressFillStyle.top).toBeCloseTo(cardScale * 24)
+      expect(progressTrackStyle.height).toBeCloseTo(cardScale * 3)
+      expect(progressFillStyle.height).toBeCloseTo(cardScale * 3)
+      expect(progressTrackStyle.top + progressTrackStyle.height / 2).toBeCloseTo(
+        (progressStyle.height - progressNodeStyle.height) / 2 + progressNodeStyle.height / 2,
+      )
+      expect(StyleSheet.flatten(screen.getByTestId('customer-v21-active-case-meta').props.style).borderWidth).toBe(1)
+    } finally {
+      dimensionsSpy.mockRestore()
+    }
+  })
+
+  it('maps real workflow phases to the visible four-step process', () => {
+    expect(stepForStatus('draft')).toBe(1)
+    expect(stepForStatus('broadcasting')).toBe(2)
+    expect(stepForStatus('worker_candidate_pending')).toBe(2)
+    expect(stepForStatus('worker_on_way')).toBe(2)
+    expect(stepForStatus('repairing')).toBe(3)
+    expect(stepForStatus('paid')).toBe(4)
   })
 
   it('keeps active case problem copy short and localizes raw taxonomy', () => {

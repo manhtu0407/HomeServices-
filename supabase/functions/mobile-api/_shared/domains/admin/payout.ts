@@ -50,6 +50,7 @@ const WITHDRAWAL_SAFE_SELECT = [
   "bank_account_masked",
   "status",
   "requested_at",
+  "eligible_at",
   "processing_at",
   "processing_by",
   "processed_at",
@@ -332,6 +333,7 @@ function serializeWithdrawalSummary(
     bank_account_masked: requiredString(row.bank_account_masked),
     status,
     requested_at: requiredString(row.requested_at),
+    eligible_at: requiredString(row.eligible_at),
     processing_at: optionalTimestamp(row.processing_at),
     processing_by_name: processingBy ? profileNames.get(processingBy) ?? null : null,
     processed_at: optionalTimestamp(row.processed_at),
@@ -398,6 +400,9 @@ function mapWithdrawalClaimError(code: string | null): never {
   if (code === "WITHDRAWAL_ALREADY_RESOLVED") {
     apiFailure("ALREADY_RESOLVED", "Yêu cầu rút tiền đã được xử lý", 409);
   }
+  if (code === "WITHDRAWAL_NOT_ELIGIBLE") {
+    apiFailure("CONFLICT", "Yêu cầu rút tiền chưa đủ thời gian chờ 24 giờ", 409);
+  }
   apiFailure("WITHDRAWAL_CLAIM_FAILED", "Không thể nhận xử lý yêu cầu rút tiền", 409);
 }
 
@@ -413,6 +418,9 @@ function mapWithdrawalResolveError(code: string | null): never {
   }
   if (code === "WITHDRAWAL_ASSIGNED_TO_OTHER") {
     apiFailure("AUTH_FORBIDDEN", "Yêu cầu này đang do quản trị viên khác xử lý", 403);
+  }
+  if (code === "WITHDRAWAL_NOT_ELIGIBLE") {
+    apiFailure("CONFLICT", "Yêu cầu rút tiền chưa đủ thời gian chờ 24 giờ", 409);
   }
   if (code === "INVALID_INPUT") {
     apiFailure("VALIDATION", "Kết quả chi trả không hợp lệ", 400);

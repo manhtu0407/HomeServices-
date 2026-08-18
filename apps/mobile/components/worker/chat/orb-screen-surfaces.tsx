@@ -10,7 +10,7 @@ import { color } from '@/design/theme'
 import { type AppLanguage } from '@/lib/app-language'
 import { isWorkerActiveExecutionStatus } from '@/lib/frontend-workflow/helpers'
 import { WorkerV5ScreenDefinition, WorkerV5ScreenId } from '../dock/types'
-import { WorkerV5CustomerCaseWideMintAura, WorkerV5CustomerZipMintAura, WorkerV5SourceCardSkin , WorkerV5CustomerFulfillmentCanvasAura, WorkerV5KaelChatScreenAura } from '../ui/aura-surfaces'
+import { WorkerV5CustomerCaseWideMintAura, WorkerV5SourceCardSkin } from '../ui/aura-surfaces'
 import { textByLanguage } from '../ui/format'
 import { getWorkerV5ChatJobId } from '../ui/labels'
 import { styles } from '../worker-v5-flow-styles'
@@ -219,23 +219,6 @@ export function WorkerV5KaelOrbScreenSurface({
 
   return (
     <SafeAreaView style={[styles.safeArea, surfaceStyle, styles.kaelOrbCustomerSafeArea]} testID={`worker-v5-screen-${screen.id}`}>
-      <WorkerV5CustomerFulfillmentCanvasAura
-        reduceTransparency={reduceTransparency}
-        scope="KaelOrbCustomerPage"
-        testID="worker-v5-kael-orb-background-mint-aura"
-      />
-      <WorkerV5KaelChatScreenAura
-        reduceTransparency={reduceTransparency}
-        scope={mode === 'intake' ? 'KaelJobIntake' : 'KaelChatNormal'}
-        testID={mode === 'intake' ? 'worker-v5-kael-job-intake-screen-mint-aura' : 'worker-v5-kael-chat-screen-mint-aura'}
-      />
-      {!reduceTransparency ? (
-        <WorkerV5CustomerZipMintAura
-          scope="KaelOrbCustomerPageFine"
-          style={styles.kaelOrbPageZipAura}
-          testID="worker-v5-kael-orb-page-zip-mint-aura"
-        />
-      ) : null}
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.kaelOrbCustomerKeyboard}>
         <View
           style={[styles.kaelOrbCustomerChatFrame, mode === 'intake' ? styles.kaelOrbCustomerChatFrameIntake : null]}

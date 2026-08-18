@@ -1,4 +1,5 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native'
+import * as ReactNative from 'react-native'
 import { StyleSheet } from 'react-native'
 import { PROBLEM_CHIPS, type LocalWorkflowSelectors } from '@nestscout/shared'
 
@@ -9,6 +10,7 @@ const mockReplace = jest.fn()
 const mockCreateRemoteJobFromDraft = jest.fn()
 const mockSetPendingKaelChatDraft = jest.fn()
 const mockPlacesAutocomplete = jest.fn()
+const mockPlacesResolve = jest.fn()
 const mockRequestRecordingPermissionsAsync = jest.fn()
 const mockSetAudioModeAsync = jest.fn()
 const mockAudioRecorder = {
@@ -21,6 +23,7 @@ const mockAudioRecorderState = {
   durationMillis: 0,
   isRecording: false,
 }
+const mockUseWindowDimensions = jest.spyOn(ReactNative, 'useWindowDimensions')
 
 jest.mock('@react-native-async-storage/async-storage', () => require('@react-native-async-storage/async-storage/jest/async-storage-mock'))
 
@@ -65,6 +68,7 @@ jest.mock('@/lib/services', () => {
     placesService: {
       ...actual.placesService,
       autocomplete: (...args: unknown[]) => mockPlacesAutocomplete(...args),
+      resolve: (...args: unknown[]) => mockPlacesResolve(...args),
     },
   }
 })
@@ -119,6 +123,7 @@ function selectTomorrowQuickSchedule(timeIndex = 0) {
 }
 
 beforeEach(() => {
+  mockUseWindowDimensions.mockReturnValue({ fontScale: 1, height: 844, scale: 1, width: 390 })
   mockRouteParams = {}
   mockAuthValue = {
     guestMode: false,
@@ -130,6 +135,17 @@ beforeEach(() => {
   mockSetPendingKaelChatDraft.mockResolvedValue(undefined)
   mockPlacesAutocomplete.mockReset()
   mockPlacesAutocomplete.mockImplementation(() => new Promise<never>(() => undefined))
+  mockPlacesResolve.mockReset()
+  mockPlacesResolve.mockResolvedValue({
+    data: {
+      fallback_used: true,
+      label: null,
+      location: null,
+      place_id: 'fallback-place',
+      provider: 'fallback',
+    },
+    success: true,
+  })
   mockAudioRecorder.prepareToRecordAsync.mockReset()
   mockAudioRecorder.prepareToRecordAsync.mockResolvedValue(undefined)
   mockAudioRecorder.record.mockReset()
@@ -181,6 +197,14 @@ describe('CustomerBookingEntrySurface v2.1', () => {
     render(<CustomerBookingEntrySurface />)
 
     expect(screen.queryByTestId('customer-v21-selected-service')).toBeNull()
+    expect(screen.getByTestId('customer-v21-top-title')).toHaveStyle({
+      fontSize: 20,
+      fontWeight: '400',
+      includeFontPadding: true,
+      lineHeight: 25,
+      minHeight: 25,
+      textAlign: 'left',
+    })
     expect(screen.getByTestId('customer-v21-booking-address')).toHaveProp('value', '')
     expect(screen.getByTestId('customer-v21-booking-description')).toHaveProp('value', '')
   })
@@ -195,12 +219,11 @@ describe('CustomerBookingEntrySurface v2.1', () => {
     expect(screen.getByTestId('customer-v21-service-hvac_basic_maintenance')).toBeOnTheScreen()
     expect(screen.getByTestId('customer-v21-service-upholstery_care')).toBeOnTheScreen()
     expect(screen.getByTestId('customer-v21-service-handyman_minor_installation')).toBeOnTheScreen()
+    expect(screen.queryByRole('button', { name: 'Back' })).toBeNull()
     expect(screen.getByTestId('customer-v21-booking-progress')).toBeOnTheScreen()
     expect(screen.getByTestId('customer-v21-booking-progress-artwork-frame')).toBeOnTheScreen()
     expect(screen.getByTestId('customer-v21-booking-progress-artwork')).toBeOnTheScreen()
     expect(screen.getByText('Bắt đầu với dịch vụ')).toBeOnTheScreen()
-    expect(screen.queryByTestId('customer-v21-booking-progress-node-1')).toBeNull()
-    expect(screen.queryByTestId('customer-v21-booking-progress-line-1')).toBeNull()
     expect(screen.queryByTestId('customer-v21-booking-search-source')).toBeNull()
     expect(screen.queryByTestId('customer-v21-booking-search-mint-border')).toBeNull()
     expect(screen.queryByTestId('customer-v21-booking-search-icon')).toBeNull()
@@ -226,7 +249,7 @@ describe('CustomerBookingEntrySurface v2.1', () => {
     expect(screen.queryByTestId('customer-v21-booking-kael-context')).toBeNull()
     expect(screen.queryByTestId('customer-v21-booking-kael-mint-aura')).toBeNull()
     expect(screen.getByTestId('customer-v21-booking-submit-mint-aura')).toBeOnTheScreen()
-    expect(screen.getByText('Kael sẽ dẫn bạn theo từng bước')).toBeOnTheScreen()
+    expect(screen.queryByText('Kael sẽ dẫn bạn theo từng bước')).toBeNull()
     expect(screen.queryByText(/Công việc mới/)).toBeNull()
     expect(screen.getByTestId('customer-v21-booking-schedule-summary')).toHaveTextContent(/Chưa chọn/)
     expect(screen.queryByText('⌄')).toBeNull()
@@ -249,6 +272,14 @@ describe('CustomerBookingEntrySurface v2.1', () => {
     }))
     const timeSectionStyle = StyleSheet.flatten(screen.getByTestId('customer-v21-booking-time-section').props.style)
     expect(timeSectionStyle.marginTop).toBe(20)
+    expect(StyleSheet.flatten(screen.getByTestId('customer-v21-booking-time-0-group').props.style)).toEqual(expect.objectContaining({
+      flexDirection: 'column',
+    }))
+    expect(StyleSheet.flatten(screen.getByTestId('customer-v21-booking-time-0-selection-line').props.style)).toEqual(expect.objectContaining({
+      height: 3,
+      marginTop: 8,
+      width: '70%',
+    }))
     const descriptionStyle = StyleSheet.flatten(screen.getByTestId('customer-v21-booking-description').props.style)
     expect(descriptionStyle.height).toBe(70)
     expect(descriptionStyle.maxHeight).toBe(70)
@@ -471,6 +502,16 @@ describe('CustomerBookingEntrySurface v2.1', () => {
       },
       success: true,
     })
+    mockPlacesResolve.mockResolvedValueOnce({
+      data: {
+        fallback_used: false,
+        label: 'Tòa A, Vinhomes Grand Park, Đường Nguyễn Xiển, Phường Long Thạnh Mỹ, TP. Thủ Đức',
+        location: { lat: 10.841234, lng: 106.828765 },
+        place_id: 'google_places_toa_a',
+        provider: 'google_maps',
+      },
+      success: true,
+    })
 
     render(<CustomerBookingEntrySurface />)
 
@@ -484,6 +525,13 @@ describe('CustomerBookingEntrySurface v2.1', () => {
     })
 
     fireEvent.press(screen.getByTestId('customer-v21-booking-address-suggestion-0'))
+    await waitFor(() => {
+      expect(mockPlacesResolve).toHaveBeenCalledWith({
+        label: 'Tòa A, Vinhomes Grand Park, TP. Thủ Đức',
+        place_id: 'google_places_toa_a',
+      })
+      expect(screen.getByTestId('customer-v21-booking-address')).toHaveProp('value', 'Tòa A, Vinhomes Grand Park, Đường Nguyễn Xiển, Phường Long Thạnh Mỹ, TP. Thủ Đức')
+    })
     fireEvent.press(screen.getByTestId('customer-v21-service-plumbing'))
     selectTomorrowQuickSchedule()
     fireEvent.changeText(screen.getByTestId('customer-v21-booking-description'), 'Vòi nước bếp bị rò và cần thợ kiểm tra')
@@ -491,13 +539,28 @@ describe('CustomerBookingEntrySurface v2.1', () => {
     fireEvent.press(screen.getByTestId('customer-v21-booking-submit'))
 
     expect(mockSetPendingKaelChatDraft).toHaveBeenCalledWith('customer_test_1', expect.objectContaining({
-      addressLabel: 'Tòa A, Vinhomes Grand Park, TP. Thủ Đức',
+      addressLabel: 'Tòa A, Vinhomes Grand Park, Đường Nguyễn Xiển, Phường Long Thạnh Mỹ, TP. Thủ Đức',
       serviceType: 'plumbing',
     }))
     await waitFor(() => {
       expect(mockReplace).toHaveBeenCalledWith(
         '/(customer)/kael-chat?mode=case&handoff=11111111-1111-4111-8111-111111111111',
       )
+    })
+  })
+
+  it('keeps a helpful near-match prompt visible when no address suggestion is returned', async () => {
+    mockPlacesAutocomplete.mockResolvedValueOnce({
+      data: { fallback_used: false, suggestions: [] },
+      success: true,
+    })
+
+    render(<CustomerBookingEntrySurface />)
+
+    fireEvent.changeText(screen.getByTestId('customer-v21-booking-address'), 'Nguyen Xien')
+
+    await waitFor(() => {
+      expect(screen.getByTestId('customer-v21-booking-address-fallback')).toHaveTextContent(/Chưa tìm thấy.*gần đúng hơn/)
     })
   })
 
@@ -524,9 +587,25 @@ describe('CustomerBookingEntrySurface v2.1', () => {
 
     fireEvent.press(screen.getByTestId('customer-v21-booking-date-1'))
     expect(screen.getByTestId('customer-v21-booking-schedule-summary')).toHaveTextContent(/Chưa chọn giờ/)
+    expect(screen.getByTestId('customer-v21-booking-time-1-selection-line')).toHaveStyle({ backgroundColor: 'transparent' })
 
     fireEvent.press(screen.getByTestId('customer-v21-booking-time-1'))
     expect(screen.getByTestId('customer-v21-booking-schedule-summary')).toHaveTextContent(/Bắt đầu lúc 09:00/)
+    expect(screen.getByTestId('customer-v21-booking-time-1-selection-line')).toHaveStyle({ backgroundColor: '#08AF9C' })
+  })
+
+  it('keeps time selection independent when the customer chooses time first', () => {
+    render(<CustomerBookingEntrySurface />)
+
+    fireEvent.press(screen.getByTestId('customer-v21-booking-time-1'))
+
+    expect(screen.getByTestId('customer-v21-booking-time-1-selection-line')).toHaveStyle({ backgroundColor: '#08AF9C' })
+    expect(screen.getByTestId('customer-v21-booking-time-1')).toHaveProp('accessibilityState', expect.objectContaining({ selected: true }))
+    expect(screen.getByTestId('customer-v21-booking-schedule-summary')).toHaveTextContent(/Chưa chọn ngày.*Bắt đầu lúc 09:00/)
+
+    fireEvent.press(screen.getByTestId('customer-v21-booking-date-1'))
+
+    expect(screen.getByTestId('customer-v21-booking-time-1-selection-line')).toHaveStyle({ backgroundColor: '#08AF9C' })
   })
 
   it('accepts a desired date beyond the seven quick date options', () => {

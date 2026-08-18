@@ -9,6 +9,8 @@ import { resolve } from 'node:path'
 // worker surface tests that mount the components.
 const asset = (fileName: string) =>
   resolve(__dirname, `../../../assets/worker-image-icons/${fileName}`)
+const clientImageAsset = (fileName: string) =>
+  resolve(__dirname, `../../../assets/client-image-icons/${fileName}`)
 const read = (rel: string) => readFileSync(resolve(__dirname, rel), 'utf8')
 
 describe('worker V5 icon assets', () => {
@@ -38,11 +40,30 @@ describe('worker V5 icon assets', () => {
     expect(iconAssetsSource).not.toContain("homeQuickSkillsArea: require('@/assets/worker-image-icons/utility-scope-core.png')")
   })
 
-  it('renders the offer-detail images without white icon tiles', () => {
-    expect(read('../jobs/offer-surfaces.tsx')).not.toContain('offerDetailRowIconTile')
-    expect(read('../jobs/offer-styles.ts')).not.toContain('offerDetailRowIconTile:')
-    expect(read('../jobs/acceptance-surfaces.tsx')).not.toContain('acceptCommitmentIconTile')
-    expect(read('../jobs/acceptance-styles.ts')).not.toContain('acceptCommitmentIconTile:')
+  it('keeps the rebuilt offer surface free of retired icon tiles', () => {
+    const offerSource = `${read('../jobs/worker-jobs-legacy-prototype-opportunity.tsx')}\n${read('../jobs/worker-jobs-legacy-prototype-offer-route.tsx')}`
+
+    expect(offerSource).not.toContain('offerDetailRowIconTile')
+    expect(offerSource).not.toContain('acceptCommitmentIconTile')
+  })
+
+  it('uses true-alpha Workart for every Jobs opportunity service', () => {
+    const opportunitySource = read('../jobs/worker-jobs-legacy-prototype-shared.tsx')
+
+    expect(existsSync(clientImageAsset('client-booking-journey-workart-cutout.png'))).toBe(true)
+    expect(opportunitySource).toContain('client-booking-journey-workart-cutout.png')
+    expect(opportunitySource).not.toContain("client-booking-journey-workart.png')")
+
+    for (const service of ['electrical', 'plumbing', 'cleaning', 'hvac', 'handyman', 'upholstery']) {
+      const assetName = `worker-jobs-workart-${service}-transparent.png`
+      expect(existsSync(clientImageAsset(assetName))).toBe(true)
+      expect(opportunitySource).toContain(assetName)
+      expect(opportunitySource).not.toContain(`client-booking-workart-${service}.png`)
+    }
+
+    expect(existsSync(clientImageAsset('worker-stage-seven-approval-workart-transparent.png'))).toBe(true)
+    expect(opportunitySource).toContain('worker-stage-seven-approval-workart-transparent.png')
+    expect(opportunitySource).not.toContain('worker-stage-seven-approval-workart.png')
   })
 
   it('keeps the replaced worker-facing copy and the accept boundary note gone', () => {
@@ -50,9 +71,8 @@ describe('worker V5 icon assets', () => {
 
     expect(offerSource).not.toContain("'NestScout chưa gửi khách hàng nào tới thợ.'")
     expect(offerSource).not.toContain("'Yêu cầu sẽ hiện khi backend đồng bộ cơ hội.'")
-    expect(read('../jobs/offer-surfaces.tsx')).not.toContain("'Chi tiết chỉ hiện khi NestScout gửi cơ hội tới thợ.'")
+    expect(read('../jobs/worker-jobs-legacy-prototype-opportunity.tsx')).not.toContain("'Chi tiết chỉ hiện khi NestScout gửi cơ hội tới thợ.'")
     expect(read('../worker-v5-flow.tsx')).not.toContain('WorkerV5AcceptBoundaryNote')
-    expect(read('../jobs/acceptance-surfaces.tsx')).not.toContain('WorkerV5AcceptBoundaryNote')
-    expect(read('../jobs/acceptance-styles.ts')).not.toContain('acceptBoundary')
+    expect(read('../jobs/worker-jobs-legacy-prototype-offer-route.tsx')).not.toContain('WorkerV5AcceptBoundaryNote')
   })
 })

@@ -148,9 +148,10 @@ export function useCustomerKaelMessageActions({
     setStreamingReply((current) => current?.responseId === responseId ? null : current)
   }, [setStreamingReply])
 
-  const sendMessage = async () => {
-    const reviewedVoiceTranscript = voiceTranscript.trim()
-    const message = draft.trim() || reviewedVoiceTranscript
+  const sendMessage = async (messageOverride?: string) => {
+    const submittedDraft = messageOverride ?? draft
+    const reviewedVoiceTranscript = messageOverride === undefined ? voiceTranscript.trim() : ''
+    const message = submittedDraft.trim() || reviewedVoiceTranscript
     const hasComposerMedia = composerMediaDrafts.length > 0
     if (!message && !hasComposerMedia && !reviewedVoiceTranscript) return
     if (sendOperationRef.current?.ownerKey === requestOwnerKey) return
@@ -266,8 +267,8 @@ export function useCustomerKaelMessageActions({
     }
     const restoreSubmittedComposer = () => {
       if (!composerCleared) return
-      setDraft(draft)
-      setVoiceTranscript(voiceTranscript)
+      setDraft(submittedDraft)
+      setVoiceTranscript(messageOverride === undefined ? voiceTranscript : '')
       composerCleared = false
     }
 
@@ -781,6 +782,5 @@ export function useCustomerKaelMessageActions({
       if (sendOperationRef.current === sendOperation) sendOperationRef.current = null
     }
   }
-
   return { sendMessage, settleStreamingReply }
 }

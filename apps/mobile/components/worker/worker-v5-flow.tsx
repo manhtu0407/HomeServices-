@@ -49,17 +49,11 @@ import {
   WorkerV5WorkerRankingBody,
 } from './profile/body-surfaces'
 import { useWorkerAvatarPicker } from './profile/use-worker-avatar-picker'
-import {
-  WorkerV5ReadOnlyToggleList,
-} from './profile/settings-surfaces'
 import { workerV5CanAcceptOpenOffer } from './jobs/acceptance'
 import {
-  WorkerV5ApprovalWaitBody,
-  WorkerV5CaseClosedBody,
-  WorkerV5CompletionSubmittedBody,
-} from './jobs/completion-bodies'
-import { WorkerV5CompletionEvidenceScreenBody } from './jobs/completion-evidence-screen-body'
-import { WorkerV5RouteEtaBody } from './jobs/active-body-surfaces'
+  isWorkerJobsLegacyPrototypeScreen,
+  WorkerJobsLegacyPrototypeHost,
+} from './jobs/worker-jobs-legacy-prototype-host'
 import {
   WorkerV5CommissionPolicyBody,
   WorkerV5EarningsOverviewBody,
@@ -67,42 +61,34 @@ import {
   WorkerV5ReceivingAccountBody,
   WorkerV5TransactionHistoryBody,
 } from './earnings/body-surfaces'
-import { WorkerV5EtaSummaryCard } from './jobs/map-surfaces'
 import { useWorkerV5RoutePreview, type WorkerV5RoutePreviewState } from './jobs/use-worker-route-preview'
 import { textByLanguage } from './ui/format'
 import {
   workerDocumentSummary,
 } from './ui/labels'
 import {
-  workerV5CapturedIconAssets,
   workerV5ProfileDossierIconAssets,
-  workerV5ProfileServiceIconAssets,
-  workerV5RankingIconAssets,
-  workerV5ReliabilityIconAssets,
 } from './ui/worker-v5-icon-assets'
 import {
   WorkerV5CustomerCaseWideMintAura,
   WorkerV5CustomerFulfillmentCanvasAura,
   WorkerV5CustomerZipMintAura,
   WorkerV5EarningsHomeHeroAura,
-  WorkerV5EarningsHomeListAura,
 } from './ui/aura-surfaces'
 import {
   WorkerV5NavButton,
   WorkerV5PrimaryActionButton,
-  WorkerV5PrimaryButtonFill,
 } from './ui/primitives-surfaces'
 import { styles } from './worker-v5-flow-styles'
-import { WorkerV5HomeScreenSurface , WorkerV5HomeBody } from './home/screen-surfaces'
+import { WorkerV5HomeBody } from './home/screen-surfaces'
+import { WorkerHomeRebuildSurface } from './home/worker-home-rebuild-surface'
 
-import { InfoListCard, MetricTile, WorkerV5ScreenInfoRow } from './ui/screen-atoms-surfaces'
-import { workerV5Icons , WORKER_V5_PROFILE_ICON_VISUAL_BOOST } from './ui/screen-icons'
+import { workerV5Icons } from './ui/screen-icons'
 
 import { WorkerV5KaelOrbScreenSurface } from './chat/orb-screen-surfaces'
 import { WorkerV5KaelChatBody, WorkerV5KaelJobIntakeBody } from './chat/kael-body-surfaces'
 
 import { workerV5JobsDestinationScreenId } from './ui/screen-navigation'
-import { WorkerV5RankingHero } from './profile/ranking-hero-surfaces'
 import { WorkerV5AgentMemoryBody } from './profile/agent-memory-surfaces'
 import { WorkerV5SettingsBody } from './profile/settings-body-surfaces'
 import { WorkerV5ScheduleBody } from './profile/schedule-surfaces'
@@ -112,17 +98,14 @@ import {
   WorkerV5SupportBody,
 } from './profile/settings-utility-surfaces'
 import { WorkerV5ServiceAreaMapCard } from './profile/service-area-map-surfaces'
-import { WorkerV5ReliabilityAxisFill, WorkerV5ReliabilityHero } from './profile/reliability-hero-surfaces'
-import { WorkerV5CustomerConfirmationWaitBody, WorkerV5OfferDetailBody, WorkerV5OpportunityInboxBody } from './jobs/inbox-offer-surfaces'
-
-import { WorkerV5InProgressBody } from './jobs/in-progress-surfaces'
-import { WorkerV5ScopeChangeBody } from './jobs/scope-change-body-surfaces'
-import { WorkerV5RouteMapStage, WorkerV5StatusTimeline } from './jobs/route-map-surfaces'
 import { workerV5CaseHeaderSubtitle, workerV5OfferHeaderSubtitle, workerV5TravelHeaderSubtitle } from './jobs/header-copy'
+import { WorkerV5ProfileProductionSurface } from './profile/production-overview-surfaces'
+import { WorkerV5DeleteAccountBody } from './profile/delete-account-surfaces'
 import { useWorkerThemeMode } from './worker-theme'
+import type { WorkerV5Runtime } from './worker-v5-runtime'
 
 export type { WorkerDockActive } from './dock/types'
-type WorkerV5Runtime = ReturnType<typeof useFrontendWorkflow>
+export type { WorkerV5Runtime } from './worker-v5-runtime'
 
 function Text({ style, ...props }: TextProps) {
   return <RNText {...props} style={[styles.workerCustomerFontText, style]} />
@@ -164,9 +147,12 @@ function WorkerV5ScreenSurface({ screen }: { screen: WorkerV5ScreenDefinition })
   const auditRole = firstRouteParam(params.ns_audit_role)
   const routeJobIdParam = firstRouteParam(params.job_id)
   const routeLanguage = firstRouteParam(params.ns_worker_lang)
+  const prototype = firstRouteParam(params.ns_worker_prototype)
+  const workerStage = firstRouteParam(params.ns_worker_stage)
   const workerKaelReturnTarget = firstRouteParam(params.ns_worker_return_to)
   const screenId = screen.id
   const screenPrimaryNext = screen.primaryNext
+  const usesWorkerJobsRebuild = screen.section === 'jobs'
   const onDockScroll = useDockScrollHandler()
   const router = useRouter()
   const { session, signOut } = useAuth()
@@ -177,7 +163,9 @@ function WorkerV5ScreenSurface({ screen }: { screen: WorkerV5ScreenDefinition })
     job_id: routeJobId ?? currentJobId,
     ns_audit_role: auditRole,
     ns_worker_lang: routeLanguage,
-  }), [auditRole, currentJobId, routeJobId, routeLanguage])
+    ns_worker_prototype: usesWorkerJobsRebuild ? 'worker-jobs-rebuild-v1' : prototype,
+    ns_worker_stage: workerStage,
+  }), [auditRole, currentJobId, prototype, routeJobId, routeLanguage, usesWorkerJobsRebuild, workerStage])
   const [actionBusy, setActionBusy] = useState(false)
   const actionBusyRef = useRef(false)
   const { height } = useWindowDimensions()
@@ -202,7 +190,7 @@ function WorkerV5ScreenSurface({ screen }: { screen: WorkerV5ScreenDefinition })
   const minHeight = Math.max(620, Math.round(height * 0.92))
   const surfaceStyle = workerThemeMode === 'dark'
     ? styles.surfaceDark
-    : glass.reduceTransparency ? styles.surfaceSolid : styles.surfaceGlass
+    : screen.id === '5.3-skills-service-area' || glass.reduceTransparency ? styles.surfaceSolid : styles.surfaceGlass
   const shouldShowWorkerAura = !glass.reduceTransparency && workerThemeMode === 'light'
   const usesOpportunityInboxHandoff = screen.id === '2.1-opportunity-inbox'
   const usesOfferDetailHandoff = screen.id === '2.2-offer-detail'
@@ -228,21 +216,17 @@ function WorkerV5ScreenSurface({ screen }: { screen: WorkerV5ScreenDefinition })
   const usesKaelOrbHandoff = screen.id === '3.1-kael-chat-normal' || screen.id === '3.2-kael-job-intake'
   const usesEarningsHandoff = screen.id === '4.1-earnings-overview' || screen.id === '4.2-ledger-detail' || screen.id === '4.3-payout-request' || screen.id === '4.4-payout-method' || screen.id === '4.5-commission-policy'
   const usesEarningsOverviewHandoff = screen.id === '4.1-earnings-overview'
-  const usesLedgerDetailHandoff = screen.id === '4.2-ledger-detail'
-  const usesPayoutRequestHandoff = screen.id === '4.3-payout-request'
-  const usesPayoutMethodHandoff = screen.id === '4.4-payout-method'
-  const usesCommissionPolicyHandoff = screen.id === '4.5-commission-policy'
-  const usesProfileHandoff = screen.id === '5.1-profile-overview' || screen.id === '5.2-worker-ranking' || screen.id === '5.3-skills-service-area' || screen.id === '5.4-reliability-insights' || screen.id === '5.5-account-utilities' || screen.id === '5.6-agent-memory-preferences' || screen.id === '5.7-verification-documents' || screen.id === '5.9-reviews-feedback' || screen.id === '5.10-support-settings' || screen.id === '5.11-worker-availability' || screen.id === '5.12-worker-notifications' || screen.id === '5.13-worker-support' || screen.id === '5.14-worker-policies'
+  const usesProfileHandoff = screen.id === '5.1-profile-overview' || screen.id === '5.15-worker-delete-account' || screen.id === '5.2-worker-ranking' || screen.id === '5.3-skills-service-area' || screen.id === '5.4-reliability-insights' || screen.id === '5.5-account-utilities' || screen.id === '5.6-agent-memory-preferences' || screen.id === '5.7-verification-documents' || screen.id === '5.9-reviews-feedback' || screen.id === '5.10-support-settings' || screen.id === '5.11-worker-availability' || screen.id === '5.12-worker-notifications' || screen.id === '5.13-worker-support' || screen.id === '5.14-worker-policies'
   const hidesHeaderUtility = usesProfileHandoff
   const usesCaseExecutionHandoff = usesCustomerConfirmationWaitHandoff || usesInProgressHandoff || usesScopeChangeHandoff || usesApprovalWaitHandoff || usesCompletionEvidenceHandoff || usesCompletionSubmittedHandoff || usesCaseClosedHandoff
   const usesHandoffStage = usesOpportunityInboxHandoff || usesOfferDetailHandoff || usesTravelHandoff || usesCaseExecutionHandoff || usesKaelOrbHandoff || usesEarningsHandoff || usesProfileHandoff
   const handoffHeaderSubtitle = usesOpportunityInboxHandoff
-    ? textByLanguage(language, 'Kael đã lọc theo kỹ năng, bán kính và lịch trống', 'Kael has filtered by skills, radius, and open schedule')
+    ? null
     : usesEarningsHandoff
       ? null
     : screen.id === '5.4-reliability-insights'
       ? null
-    : screen.id === '5.5-account-utilities' || screen.id === '5.10-support-settings'
+    : screen.id === '5.5-account-utilities' || screen.id === '5.10-support-settings' || screen.id === '5.15-worker-delete-account'
       ? null
     : screen.id === '5.11-worker-availability'
       ? null
@@ -274,6 +258,8 @@ function WorkerV5ScreenSurface({ screen }: { screen: WorkerV5ScreenDefinition })
 
   const displayTitle = usesKaelOrbHandoff && screen.id === '3.1-kael-chat-normal'
     ? 'Kael'
+    : screen.id === '5.3-skills-service-area'
+      ? textByLanguage(language, 'Dịch vụ chuyên môn', 'Professional services')
     : usesEarningsOverviewHandoff
       ? textByLanguage(language, 'Thu nhập của bạn', 'Your earnings')
     : title
@@ -361,6 +347,8 @@ function WorkerV5ScreenSurface({ screen }: { screen: WorkerV5ScreenDefinition })
       ? workflowDestinationScreenId
       : usesCustomerConfirmationWaitHandoff && workflowDestinationScreenId !== '2.3-customer-confirmation-wait'
         ? workflowDestinationScreenId
+      : usesApprovalWaitHandoff && workflowDestinationScreenId !== '2.9-approval-wait'
+        ? workflowDestinationScreenId
       : usesRouteEtaHandoff && workflowDestinationScreenId !== '2.4-route-eta'
         ? workflowDestinationScreenId
       : usesInProgressHandoff && workflowDestinationScreenId !== '2.7-in-progress'
@@ -383,6 +371,20 @@ function WorkerV5ScreenSurface({ screen }: { screen: WorkerV5ScreenDefinition })
 
   if (screenRedirectId) return null
 
+  if (screen.id === '5.1-profile-overview') {
+    return (
+      <WorkerV5ProfileProductionSurface
+        avatarUploadBusy={avatarUploadBusy}
+        insights={runtime.workerPerformanceInsights}
+        language={language}
+        navigateToScreen={openScreenById}
+        onPickAvatar={openWorkerAvatarPicker}
+        onSignOut={() => void signOut()}
+        profile={runtime.workerProfile}
+      />
+    )
+  }
+
   if (usesKaelOrbHandoff) {
     return (
       <WorkerV5KaelOrbScreenSurface
@@ -403,13 +405,16 @@ function WorkerV5ScreenSurface({ screen }: { screen: WorkerV5ScreenDefinition })
 
   if (screen.id === '1.1-worker-home') {
     return (
-      <WorkerV5HomeScreenSurface
+      <WorkerHomeRebuildSurface
+        avatarUploadBusy={avatarUploadBusy}
         glass={glass}
         language={language}
         minHeight={minHeight}
+        onPickAvatar={openWorkerAvatarPicker}
         openScreen={openScreen}
         runtime={runtime}
         surfaceStyle={surfaceStyle}
+        themeMode={workerThemeMode}
       />
     )
   }
@@ -445,8 +450,8 @@ function WorkerV5ScreenSurface({ screen }: { screen: WorkerV5ScreenDefinition })
       runWorkerAction,
     }}
     state={{
-      auraState: { formulaPageAuraTarget, reduceTransparency: glass.reduceTransparency, shouldShowWorkerAura, usesCaseExecutionHandoff, usesCommissionPolicyHandoff, usesEarningsHandoff, usesEarningsOverviewHandoff, usesInProgressHandoff, usesKaelOrbHandoff, usesLedgerDetailHandoff, usesOfferDetailHandoff, usesOpportunityInboxHandoff, usesPayoutMethodHandoff, usesPayoutRequestHandoff, usesProfileHandoff, usesRouteEtaHandoff },
-      content: { actionBusy, avatarUploadBusy, language, minHeight, primaryAction, reduceMotion: glass.reduceMotion, reduceTransparency: glass.reduceTransparency, routePreview, runtime, screen, surfaceStyle, usesCaseExecutionHandoff, usesEarningsHandoff, usesHandoffStage, usesKaelOrbHandoff, usesOfferDetailHandoff, usesOpportunityInboxHandoff, usesTravelHandoff, workerKey: session?.user.id ?? 'guest-worker' },
+      auraState: { formulaPageAuraTarget, reduceTransparency: glass.reduceTransparency, shouldShowWorkerAura, usesCaseExecutionHandoff, usesEarningsHandoff, usesInProgressHandoff, usesKaelOrbHandoff, usesOfferDetailHandoff, usesOpportunityInboxHandoff, usesProfileHandoff, usesRouteEtaHandoff },
+      content: { actionBusy, avatarUploadBusy, language, minHeight, primaryAction, prototype, reduceMotion: glass.reduceMotion, reduceTransparency: glass.reduceTransparency, routePreview, runtime, screen, surfaceStyle, usesCaseExecutionHandoff, usesEarningsHandoff, usesHandoffStage, usesKaelOrbHandoff, usesOfferDetailHandoff, usesOpportunityInboxHandoff, usesTravelHandoff, workerKey: session?.user.id ?? 'guest-worker' },
       headerState: { displayTitle, handoffHeaderSubtitle, hidesHeaderUtility, language, reduceMotion: glass.reduceMotion, screen, title, usesApprovalWaitHandoff, usesCaseClosedHandoff, usesCaseExecutionHandoff, usesEarningsHandoff, usesEarningsOverviewHandoff, usesKaelOrbHandoff, usesOfferDetailHandoff, usesOpportunityInboxHandoff, usesProfileHandoff, usesRouteEtaHandoff, usesTravelHandoff, workerThemeMode },
       nextScreen,
       previousScreen,
@@ -459,16 +464,11 @@ type WorkerV5ScreenAuraState = {
   reduceTransparency: boolean
   shouldShowWorkerAura: boolean
   usesCaseExecutionHandoff: boolean
-  usesCommissionPolicyHandoff: boolean
   usesEarningsHandoff: boolean
-  usesEarningsOverviewHandoff: boolean
   usesInProgressHandoff: boolean
   usesKaelOrbHandoff: boolean
-  usesLedgerDetailHandoff: boolean
   usesOfferDetailHandoff: boolean
   usesOpportunityInboxHandoff: boolean
-  usesPayoutMethodHandoff: boolean
-  usesPayoutRequestHandoff: boolean
   usesProfileHandoff: boolean
   usesRouteEtaHandoff: boolean
 }
@@ -479,28 +479,22 @@ function WorkerV5ScreenAuras({ state }: { state: WorkerV5ScreenAuraState }) {
     reduceTransparency,
     shouldShowWorkerAura,
     usesCaseExecutionHandoff,
-    usesCommissionPolicyHandoff,
     usesEarningsHandoff,
-    usesEarningsOverviewHandoff,
     usesInProgressHandoff,
     usesKaelOrbHandoff,
-    usesLedgerDetailHandoff,
     usesOfferDetailHandoff,
     usesOpportunityInboxHandoff,
-    usesPayoutMethodHandoff,
-    usesPayoutRequestHandoff,
     usesProfileHandoff,
     usesRouteEtaHandoff,
   } = state
+  const showPageAura = shouldShowWorkerAura && !usesProfileHandoff && !usesEarningsHandoff
 
   return <>
-    {shouldShowWorkerAura ? <WorkerV5CustomerFulfillmentCanvasAura reduceTransparency={reduceTransparency} scope={formulaPageAuraTarget.scope} testID={formulaPageAuraTarget.testID} /> : null}
+    {showPageAura ? <WorkerV5CustomerFulfillmentCanvasAura reduceTransparency={reduceTransparency} scope={formulaPageAuraTarget.scope} testID={formulaPageAuraTarget.testID} /> : null}
     {usesOpportunityInboxHandoff && shouldShowWorkerAura ? <WorkerV5CustomerZipMintAura scope="OpportunityInboxPageFine" style={styles.opportunityInboxPageZipAura} testID="worker-v5-opportunity-page-customer-zip-mint-aura" /> : null}
     {usesOfferDetailHandoff && shouldShowWorkerAura ? <WorkerV5CustomerZipMintAura scope="OfferDetailPageFine" style={styles.offerDetailPageZipAura} testID="worker-v5-offer-page-customer-zip-mint-aura" /> : null}
     {usesRouteEtaHandoff && shouldShowWorkerAura ? <WorkerV5CustomerZipMintAura scope="RouteEtaPageFine" style={styles.routeEtaPageZipAura} testID="worker-v5-route-page-customer-zip-mint-aura" /> : null}
     {usesCaseExecutionHandoff && !usesInProgressHandoff && shouldShowWorkerAura ? <WorkerV5CustomerZipMintAura scope="WorkerCaseExecutionPageFine" style={styles.arrivalCheckinPageZipAura} testID="worker-v5-case-flow-page-customer-zip-mint-aura" /> : null}
-    {(usesEarningsHandoff || usesProfileHandoff) && shouldShowWorkerAura ? <WorkerV5CustomerZipMintAura scope={usesProfileHandoff ? 'WorkerProfilePageFine' : 'WorkerEarningsPageFine'} style={usesEarningsOverviewHandoff || usesLedgerDetailHandoff || usesPayoutRequestHandoff || usesPayoutMethodHandoff || usesCommissionPolicyHandoff || usesProfileHandoff ? styles.earningsPageZipAura : styles.arrivalCheckinPageZipAura} testID="worker-v5-earnings-page-customer-zip-mint-aura" /> : null}
-    {(usesEarningsOverviewHandoff || usesLedgerDetailHandoff || usesPayoutRequestHandoff || usesPayoutMethodHandoff || usesCommissionPolicyHandoff || usesProfileHandoff) && shouldShowWorkerAura ? <WorkerV5CustomerCaseWideMintAura scope={usesProfileHandoff ? 'WorkerProfilePageLower' : 'WorkerEarningsPageLower'} style={styles.earningsPageLowerAura} testID={usesProfileHandoff ? 'worker-v5-profile-page-lower-mint-aura' : 'worker-v5-earnings-page-lower-mint-aura'} /> : null}
     {usesCaseExecutionHandoff && !usesInProgressHandoff && shouldShowWorkerAura ? <WorkerV5CustomerCaseWideMintAura scope="WorkerCaseExecutionPageLower" style={styles.caseFlowPageLowerAura} testID="worker-v5-case-flow-page-lower-mint-aura" /> : null}
     {usesKaelOrbHandoff && shouldShowWorkerAura ? <WorkerV5CustomerZipMintAura scope="KaelOrbPageFine" style={styles.kaelOrbPageZipAura} testID="worker-v5-kael-orb-page-zip-mint-aura" /> : null}
     {usesOfferDetailHandoff && shouldShowWorkerAura ? <WorkerV5CustomerCaseWideMintAura scope="OfferDetailPageLower" style={styles.offerDetailPageLowerAura} testID="worker-v5-offer-page-lower-mint-aura" /> : null}
@@ -564,7 +558,7 @@ function WorkerV5ScreenHeader({
   const usesHandoffHeading = usesKaelOrbHandoff || usesOpportunityInboxHandoff || usesOfferDetailHandoff || usesTravelHandoff || usesCaseExecutionHandoff || usesEarningsHandoff || usesProfileHandoff
   const showPlainTitle = !usesOpportunityInboxHandoff && !usesOfferDetailHandoff && !usesTravelHandoff && !usesCaseExecutionHandoff && !usesKaelOrbHandoff && !usesEarningsHandoff && !usesProfileHandoff
 
-  return <View style={[styles.headerRow, usesKaelOrbHandoff ? styles.kaelOrbCustomerHeaderRow : null]}>
+  return <View style={[styles.headerRow, usesKaelOrbHandoff ? styles.kaelOrbCustomerHeaderRow : null, usesEarningsOverviewHandoff ? styles.earningsOverviewHeaderRow : null]}>
     {usesOpportunityInboxHandoff || usesEarningsOverviewHandoff || screen.id === '5.1-profile-overview' ? null : (
       <LiquidBackButton
         label={language === 'vi' ? 'Quay lại worker hiện tại' : 'Back to current worker surface'}
@@ -625,6 +619,7 @@ type WorkerV5ScreenLayoutState = {
     language: AppLanguage
     minHeight: number
     primaryAction: ReturnType<typeof getWorkerV5PrimaryAction>
+    prototype?: string
     reduceMotion: boolean
     reduceTransparency: boolean
     routePreview: WorkerV5RoutePreviewState
@@ -675,6 +670,7 @@ function WorkerV5ScreenLayout({ actions, state }: { actions: WorkerV5ScreenLayou
     language,
     minHeight,
     primaryAction,
+    prototype,
     reduceMotion,
     reduceTransparency,
     routePreview,
@@ -690,7 +686,6 @@ function WorkerV5ScreenLayout({ actions, state }: { actions: WorkerV5ScreenLayou
     usesTravelHandoff,
     workerKey,
   } = content
-
   return <SafeAreaView style={[styles.safeArea, surfaceStyle]} testID={`worker-v5-screen-${screen.id}`}>
     <WorkerV5ScreenAuras state={auraState} />
     <ScrollView bounces={false} contentContainerStyle={[styles.scrollContent, usesKaelOrbHandoff ? styles.kaelOrbCustomerScrollContent : null, { minHeight }]} onScroll={actions.onDockScroll} scrollEventThrottle={16} showsVerticalScrollIndicator={false} testID="worker-v5-scroll">
@@ -716,6 +711,7 @@ function WorkerV5ScreenLayout({ actions, state }: { actions: WorkerV5ScreenLayou
         navigateToJobs={actions.navigateToJobs}
         openWorkerAvatarPicker={actions.openWorkerAvatarPicker}
         onSignOut={actions.onSignOut}
+        prototype={prototype}
         reduceMotion={reduceMotion}
         reduceTransparency={reduceTransparency}
         routePreview={routePreview}
@@ -724,7 +720,7 @@ function WorkerV5ScreenLayout({ actions, state }: { actions: WorkerV5ScreenLayou
         runtime={runtime}
         screen={screen}
       />
-      {primaryAction && screen.id !== '5.4-reliability-insights' && screen.id !== '5.5-account-utilities' && screen.id !== '5.6-agent-memory-preferences' && screen.id !== '5.10-support-settings' && !usesOpportunityInboxHandoff && !usesOfferDetailHandoff && !usesTravelHandoff && !usesCaseExecutionHandoff && !usesKaelOrbHandoff && !usesEarningsHandoff ? <WorkerV5PrimaryActionButton disabled={primaryAction.disabled} label={primaryAction.label} onPress={actions.handlePrimaryAction} variant={usesHandoffStage ? 'source' : 'default'} /> : null}
+      {primaryAction && screen.id !== '5.5-account-utilities' && screen.id !== '5.6-agent-memory-preferences' && screen.id !== '5.10-support-settings' && !usesOpportunityInboxHandoff && !usesOfferDetailHandoff && !usesTravelHandoff && !usesCaseExecutionHandoff && !usesKaelOrbHandoff && !usesEarningsHandoff ? <WorkerV5PrimaryActionButton disabled={primaryAction.disabled} label={primaryAction.label} onPress={actions.handlePrimaryAction} variant={usesHandoffStage ? 'source' : 'default'} /> : null}
       {usesHandoffStage ? null : <AuthorityCard screen={screen} language={language} />}
       {usesHandoffStage ? null : <View style={styles.navigationRow}>
         <WorkerV5NavButton disabled={!previousScreen} label={language === 'vi' ? 'Trước' : 'Previous'} onPress={actions.navigatePrevious} />
@@ -747,6 +743,7 @@ function WorkerV5Body({
   navigateToScreen,
   openWorkerAvatarPicker,
   onSignOut,
+  prototype,
   reduceMotion,
   reduceTransparency,
   routePreview,
@@ -767,6 +764,7 @@ function WorkerV5Body({
   navigateToScreen: (id: WorkerV5ScreenId) => void
   openWorkerAvatarPicker: () => void
   onSignOut: () => void
+  prototype?: string
   reduceMotion: boolean
   reduceTransparency: boolean
   routePreview: WorkerV5RoutePreviewState
@@ -778,101 +776,11 @@ function WorkerV5Body({
   runtime: WorkerV5Runtime
   screen: WorkerV5ScreenDefinition
 }) {
+  if (screen.section === 'jobs' && isWorkerJobsLegacyPrototypeScreen(screen.id)) return <WorkerJobsLegacyPrototypeHost {...{ actionBusy, language, navigateActiveJobChat, navigateJobChat, navigateNext, navigateToScreen, reduceMotion, reduceTransparency, routePreview, runRouteAction, runWorkerAction, runtime, screen }} />
+
   switch (screen.id) {
     case '1.1-worker-home':
       return <WorkerV5HomeBody language={language} onOpenProfileSetup={() => navigateToScreen('5.7-verification-documents')} reduceTransparency={reduceTransparency} runtime={runtime} />
-    case '2.1-opportunity-inbox':
-      return <WorkerV5OpportunityInboxBody language={language} reduceTransparency={reduceTransparency} runtime={runtime} />
-    case '2.2-offer-detail':
-      return <WorkerV5OfferDetailBody language={language} reduceTransparency={reduceTransparency} runtime={runtime} />
-    case '2.3-customer-confirmation-wait':
-      return <WorkerV5CustomerConfirmationWaitBody language={language} runtime={runtime} />
-    case '2.4-route-eta':
-      return (
-        <WorkerV5RouteEtaBody
-          actionBusy={actionBusy}
-          caseWideAura={WorkerV5CustomerCaseWideMintAura}
-          deal={runtime.state.deal}
-          etaSummaryComponent={WorkerV5EtaSummaryCard}
-          language={language}
-          navigateJobChat={navigateJobChat}
-          onPrimary={() => void runRouteAction()}
-          primaryLabel={runtime.state.deal?.status === 'worker_matched'
-            ? textByLanguage(language, 'Bắt đầu di chuyển', 'Start travel')
-            : textByLanguage(language, 'Xác nhận đã tới', 'Confirm arrival')}
-          primaryFill={WorkerV5PrimaryButtonFill}
-          reduceTransparency={reduceTransparency}
-          routeMapComponent={WorkerV5RouteMapStage}
-          routePreview={routePreview}
-          zipAura={WorkerV5CustomerZipMintAura}
-        />
-      )
-    case '2.7-in-progress':
-      return (
-        <WorkerV5InProgressBody
-          actionBusy={actionBusy}
-          language={language}
-          navigateJobChat={navigateActiveJobChat}
-          onTravelAction={() => void runRouteAction()}
-          reduceTransparency={reduceTransparency}
-          runtime={runtime}
-        />
-      )
-    case '2.8-scope-change':
-      return <WorkerV5ScopeChangeBody language={language} navigateNext={navigateNext} reduceTransparency={reduceTransparency} runtime={runtime} />
-    case '2.9-approval-wait':
-      return (
-        <WorkerV5ApprovalWaitBody
-          language={language}
-          navigateJobChat={navigateJobChat}
-          navigateNext={navigateNext}
-          primaryFill={WorkerV5PrimaryButtonFill}
-          reduceTransparency={reduceTransparency}
-          runtime={runtime}
-          statusTimeline={WorkerV5StatusTimeline}
-        />
-      )
-    case '2.10-completion-evidence':
-      return (
-        <WorkerV5CompletionEvidenceScreenBody
-          language={language}
-          navigateNext={navigateNext}
-          primaryFill={WorkerV5PrimaryButtonFill}
-          reduceTransparency={reduceTransparency}
-          runtime={runtime}
-        />
-      )
-    case '2.11-completion-submitted':
-      return (
-        <WorkerV5CompletionSubmittedBody
-          directPaymentBusy={actionBusy}
-          language={language}
-          navigateNext={navigateNext}
-          navigateToEvidence={() => navigateToScreen('2.10-completion-evidence')}
-          onRespondToDirectPayment={(received) => void runWorkerAction(
-            () => runtime.actions.workerConfirmCashPayment(received),
-            { navigateOnSuccess: received },
-          )}
-          primaryFill={WorkerV5PrimaryButtonFill}
-          reduceMotion={reduceMotion}
-          reduceTransparency={reduceTransparency}
-          runtime={runtime}
-          statusTimeline={WorkerV5StatusTimeline}
-        />
-      )
-    case '2.12-case-closed':
-      return (
-        <WorkerV5CaseClosedBody
-          completionRecordIcon={workerV5CapturedIconAssets.caseCompletionRecord}
-          incomeLedgerIcon={workerV5CapturedIconAssets.caseIncomeLedger}
-          language={language}
-          navigateToEarnings={() => navigateToScreen('4.1-earnings-overview')}
-          navigateToRanking={() => navigateToScreen('5.2-worker-ranking')}
-          primaryFill={WorkerV5PrimaryButtonFill}
-          reduceTransparency={reduceTransparency}
-          runtime={runtime}
-        />
-      )
     case '3.1-kael-chat-normal':
       return <WorkerV5KaelChatBody language={language} navigateToScreen={navigateToScreen} reduceTransparency={reduceTransparency} runtime={runtime} />
     case '3.2-kael-job-intake':
@@ -882,7 +790,6 @@ function WorkerV5Body({
         <WorkerV5EarningsOverviewBody
           language={language}
           navigateToScreen={navigateToScreen}
-          primaryFill={WorkerV5PrimaryButtonFill}
           reduceMotion={reduceMotion}
           reduceTransparency={reduceTransparency}
           runtime={runtime}
@@ -929,43 +836,28 @@ function WorkerV5Body({
           runtime={runtime}
         />
       )
+    case '5.15-worker-delete-account':
+      return <WorkerV5DeleteAccountBody language={language} onOpenSupport={() => navigateToScreen('5.13-worker-support')} />
     case '5.2-worker-ranking':
       return (
         <WorkerV5WorkerRankingBody
-          heroAura={WorkerV5EarningsHomeHeroAura}
           language={language}
-          listAura={WorkerV5EarningsHomeListAura}
-          rankingIcons={workerV5RankingIconAssets}
-          rankingHero={WorkerV5RankingHero}
-          reduceTransparency={reduceTransparency}
           runtime={runtime}
         />
       )
     case '5.3-skills-service-area':
       return (
         <WorkerV5SkillsServiceAreaBody
-          heroAura={WorkerV5EarningsHomeHeroAura}
           language={language}
-          listAura={WorkerV5EarningsHomeListAura}
           reduceTransparency={reduceTransparency}
           runtime={runtime}
           serviceAreaMapCard={WorkerV5ServiceAreaMapCard}
-          serviceIcons={workerV5ProfileServiceIconAssets}
-          skillsGridEmptyIcon={workerV5Icons.tools}
-          skillsHeroIcon={workerV5CapturedIconAssets.skillsHero}
         />
       )
     case '5.4-reliability-insights':
       return (
         <WorkerV5ReliabilityInsightsBody
-          icons={workerV5Icons}
           language={language}
-          listAura={WorkerV5EarningsHomeListAura}
-          reduceMotion={reduceMotion}
-          reduceTransparency={reduceTransparency}
-          reliabilityIcons={workerV5ReliabilityIconAssets}
-          reliabilityAxisFill={WorkerV5ReliabilityAxisFill}
-          reliabilityHero={WorkerV5ReliabilityHero}
           runtime={runtime}
         />
       )
@@ -976,25 +868,15 @@ function WorkerV5Body({
     case '5.7-verification-documents':
       return (
         <WorkerV5VerificationDocumentsBody
-          caseWideAura={WorkerV5CustomerCaseWideMintAura}
-          icons={workerV5Icons}
           language={language}
-          profileIconVisualBoost={WORKER_V5_PROFILE_ICON_VISUAL_BOOST}
-          readOnlyToggleList={WorkerV5ReadOnlyToggleList}
           reduceTransparency={reduceTransparency}
           runtime={runtime}
-          zipAura={WorkerV5CustomerZipMintAura}
         />
       )
     case '5.9-reviews-feedback':
       return (
         <WorkerV5ReviewsFeedbackBody
-          icons={workerV5Icons}
-          infoListCard={InfoListCard}
-          infoRow={WorkerV5ScreenInfoRow}
           language={language}
-          metricTile={MetricTile}
-          reduceTransparency={reduceTransparency}
           runtime={runtime}
         />
       )

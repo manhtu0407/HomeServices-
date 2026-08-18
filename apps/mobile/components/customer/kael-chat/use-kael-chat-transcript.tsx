@@ -123,6 +123,19 @@ export function useKaelChatTranscript({
     if (showPendingDraftBubble) {
       appendRow(rows, 'pending-draft', <ChatBubble speaker="customer" testID="customer-v21-pending-draft-bubble" text={customerVisibleCaseRequestText(pendingDraftMessage, language)} tokens={tokens} />)
     }
+    const pinnedCaseAssistantIndex = mode === 'case' && !showPendingDraftBubble
+      ? caseAssistantTurns.findIndex((turn) => turn.role === 'customer' && turn.text_content.trim().length > 0)
+      : -1
+    const pinnedAgenticIndex = pinnedCaseAssistantIndex < 0 && mode === 'case' && !showPendingDraftBubble
+      ? agenticVisibleTurns.findIndex((turn) => turn.role === 'customer' && Boolean(turn.text_content?.trim()))
+      : -1
+    if (pinnedCaseAssistantIndex >= 0) {
+      const pinnedTurn = caseAssistantTurns[pinnedCaseAssistantIndex]
+      appendRow(rows, 'pinned-intake-summary', <ChatBubble speaker="customer" testID="customer-v21-pinned-intake-summary" text={pinnedTurn.text_content} tokens={tokens} />)
+    } else if (pinnedAgenticIndex >= 0) {
+      const pinnedTurn = agenticVisibleTurns[pinnedAgenticIndex]
+      appendRow(rows, 'pinned-intake-summary', <ChatBubble speaker="customer" testID="customer-v21-pinned-intake-summary" text={pinnedTurn.text_content ?? ''} tokens={tokens} />)
+    }
     if (showNormalGreeting) {
       appendRow(rows, 'normal-greeting', <KaelResponseSurface language={language} reduceMotion={reduceMotion} state={createCompletedKaelResponseState(language === 'vi' ? 'Chào bạn, mình là Kael. Bạn muốn hỏi gì hôm nay?' : 'Hi, I am Kael. What would you like to ask today?', 'normal-greeting')} testID="customer-v21-normal-greeting-bubble" tokens={tokens} />)
     }
@@ -144,9 +157,13 @@ export function useKaelChatTranscript({
         />
       ))
     }
-    for (const turn of caseAssistantTurns) appendRow(rows, `turn-${turn.id}`, renderTurn(turn, language, reduceMotion, tokens))
+    for (const [index, turn] of caseAssistantTurns.entries()) {
+      if (index === pinnedCaseAssistantIndex) continue
+      appendRow(rows, `turn-${turn.id}`, renderTurn(turn, language, reduceMotion, tokens))
+    }
     const finalAgenticKaelTurnIndex = streamingReplyNode ? agenticVisibleTurns.findLastIndex((turn) => turn.role !== 'customer') : -1
     for (const [index, turn] of agenticVisibleTurns.entries()) {
+      if (index === pinnedAgenticIndex) continue
       if (index === finalAgenticKaelTurnIndex && streamingReplyNode) continue
       appendRow(rows, `turn-${turn.id}`, turn.role === 'customer'
         ? <ChatBubble speaker="customer" text={turn.text_content ?? ''} tokens={tokens} />

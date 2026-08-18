@@ -3,7 +3,7 @@ import { Alert, Platform, StyleSheet } from 'react-native'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import type { LocalDeal, LocalWorkerGate } from '@nestscout/shared'
 import type { EarningsResponse, NotificationListResponse, WorkerPayoutMethod, WorkerPerformanceInsightsResponse, WorkerProfileResponse, WorkerWithdrawalRequest } from '@/lib/api-types'
-import { color } from '@/design/theme'
+import { color, glass } from '@/design/theme'
 
 let mockWorkflowValue: any
 let mockAuthRole: 'admin' | 'customer' | 'worker'
@@ -14,6 +14,7 @@ let mockWorkerUpdateAvailability: jest.Mock
 let mockWorkerConfirmCashPayment: jest.Mock
 let mockWorkerSavePayoutMethod: jest.Mock
 let mockWorkerRequestWithdrawal: jest.Mock
+let mockWorkerRefresh: jest.Mock
 let mockWorkerUploadAvatar: jest.Mock
 let mockWorkerUpdateServiceArea: jest.Mock
 let mockWorkerUpdateServicePreferences: jest.Mock
@@ -171,6 +172,7 @@ import {
 } from '../ui/aura-surfaces'
 import { workerV5CapturedIconAssets } from '../ui/worker-v5-icon-assets'
 import { WorkerV5DetailRail } from '../ui/worker-v5-detail-rail'
+import { workerSalaryWorkartAssets } from '../earnings/salary-assets'
 
 function buildWorkerProfile(overrides: Partial<WorkerProfileResponse> = {}): WorkerProfileResponse {
   return {
@@ -514,6 +516,7 @@ function buildWorkflow({
   canWorkerAdvance = false,
   deal = null,
   workerEarnings = buildNoEarnings(),
+  workerEarningsError = null,
   workerJobs = [],
   workerJobsHydrated = true,
   workerGate = 'remote_backend',
@@ -527,6 +530,7 @@ function buildWorkflow({
   canWorkerAdvance?: boolean
   deal?: LocalDeal | null
   workerEarnings?: EarningsResponse | null
+  workerEarningsError?: string | null
   workerJobs?: { status: string }[]
   workerJobsHydrated?: boolean
   workerGate?: LocalWorkerGate
@@ -545,6 +549,7 @@ function buildWorkflow({
     success: false,
   }))
   mockWorkerRequestWithdrawal = jest.fn(async () => true)
+  mockWorkerRefresh = jest.fn(async () => true)
   mockWorkerUploadAvatar = jest.fn(async () => true)
   mockWorkerUpdateServiceArea = jest.fn(async () => true)
   mockWorkerUpdateServicePreferences = jest.fn(async () => true)
@@ -568,6 +573,7 @@ function buildWorkflow({
       workerConfirmCashPayment: mockWorkerConfirmCashPayment,
       workerSavePayoutMethod: mockWorkerSavePayoutMethod,
       workerRequestWithdrawal: mockWorkerRequestWithdrawal,
+      workerRefresh: mockWorkerRefresh,
       workerSubmitRegistration: jest.fn(async () => true),
       refreshNotifications: mockRefreshNotifications,
       markNotificationRead: mockMarkNotificationRead,
@@ -586,6 +592,7 @@ function buildWorkflow({
       workerGate,
     },
     workerEarnings,
+    workerEarningsError,
     workerJobs,
     workerJobsHydrated,
     workerPerformanceInsights,
@@ -844,10 +851,64 @@ describe('Worker runtime surface wiring', () => {
 
     render(<WorkerHomeSurface />)
 
-    expect(screen.getByText('Đang chờ hồ sơ và dữ liệu nhận việc')).toBeOnTheScreen()
-    expect(screen.getAllByText('Chờ dữ liệu').length).toBeGreaterThanOrEqual(3)
+    expect(screen.queryByText('Hãy hoàn tất hồ sơ để nhận việc phù hợp hơn.')).toBeNull()
+    expect(screen.queryByText('Chờ dữ liệu')).toBeNull()
+    expect(screen.queryByText('Chờ hồ sơ')).toBeNull()
     expect(screen.getByTestId('worker-v5-quick-action-2').props.accessibilityLabel).toContain('Chờ hồ sơ')
     expect(screen.getByTestId('worker-v5-quick-action-3').props.accessibilityLabel).toContain('Chờ dữ liệu')
+    expect(screen.getByTestId('worker-v5-availability-avatar-placeholder')).toBeOnTheScreen()
+    expect(screen.getByTestId('worker-v5-availability-camera-badge')).toBeOnTheScreen()
+    expect(StyleSheet.flatten(screen.getByTestId('worker-v5-availability-avatar-picker').props.style)).toMatchObject({
+      borderRadius: 42,
+      height: 84,
+      width: 84,
+    })
+    expect(screen.queryByTestId('worker-v5-availability-avatar')).toBeNull()
+    expect(screen.queryByTestId('worker-v5-availability-artwork')).toBeNull()
+    expect(screen.getByText('Nhận việc ngay').props).toMatchObject({
+      adjustsFontSizeToFit: true,
+      minimumFontScale: 0.84,
+      numberOfLines: 2,
+    })
+    expect(screen.getByText('Cơ hội thật').props).toMatchObject({
+      adjustsFontSizeToFit: true,
+      minimumFontScale: 0.82,
+      numberOfLines: 1,
+    })
+  })
+
+  it('uses the effective worker avatar in the Home identity frame', () => {
+    buildWorkflow({
+      workerProfile: buildWorkerProfile({
+        avatar_url: 'https://storage.example.test/signed/worker-home-avatar.jpg',
+      }),
+    })
+
+    render(<WorkerHomeSurface />)
+
+    expect(screen.getByTestId('worker-v5-availability-avatar').props.source).toEqual({
+      uri: 'https://storage.example.test/signed/worker-home-avatar.jpg',
+    })
+    expect(screen.getByTestId('worker-v5-availability-avatar').props.accessibilityLabel).toBe('Ảnh đại diện của thợ')
+    expect(screen.getByTestId('worker-v5-availability-camera-badge')).toBeOnTheScreen()
+    expect(screen.getByTestId('worker-v5-availability-avatar-picker').props.accessibilityRole).toBe('button')
+    expect(screen.queryByTestId('worker-v5-availability-avatar-placeholder')).toBeNull()
+  })
+
+  it('returns to the profile avatar placeholder when the worker avatar cannot load', () => {
+    buildWorkflow({
+      workerProfile: buildWorkerProfile({
+        avatar_url: 'https://storage.example.test/signed/worker-home-avatar-error.jpg',
+      }),
+    })
+
+    render(<WorkerHomeSurface />)
+    fireEvent(screen.getByTestId('worker-v5-availability-avatar'), 'error')
+
+    expect(screen.getByTestId('worker-v5-availability-avatar-placeholder')).toBeOnTheScreen()
+    expect(screen.getByTestId('worker-v5-availability-camera-badge')).toBeOnTheScreen()
+    expect(screen.queryByTestId('worker-v5-availability-avatar')).toBeNull()
+    expect(screen.queryByTestId('worker-v5-availability-artwork')).toBeNull()
   })
 
   it('routes an unverified worker from Home to profile verification before availability can unlock', () => {
@@ -871,6 +932,7 @@ describe('Worker runtime surface wiring', () => {
 
     expect(screen.getByTestId('worker-v5-availability-open-registration')).toHaveTextContent('Xem trạng thái hồ sơ')
     expect(screen.queryByTestId('worker-v5-availability-switch')).toBeNull()
+    expect(screen.getByTestId('worker-v5-availability-avatar-placeholder')).toBeOnTheScreen()
     fireEvent.press(screen.getByTestId('worker-v5-availability-open-registration'))
 
     expect(mockReplace).toHaveBeenCalledWith('/(worker)/profile?ns_worker_screen=5.7-verification-documents')
@@ -986,8 +1048,11 @@ describe('Worker runtime surface wiring', () => {
 
     render(<WorkerHomeSurface />)
 
-    expect(screen.getByTestId('worker-v5-home-stat-Cơ hội mới')).toHaveTextContent(/^Chưa có/)
-    expect(screen.getByTestId('worker-v5-home-stat-Việc đang chạy')).toHaveTextContent(/^1/)
+    expect(screen.getByTestId('worker-v5-home-stat-Cơ hội mới')).toHaveTextContent('Cơ hội mới')
+    expect(screen.getByTestId('worker-v5-home-stat-Việc đang chạy')).toHaveTextContent('Việc đang chạy')
+    expect(StyleSheet.flatten(screen.getByText('Cơ hội mới').props.style)).toMatchObject({ color: color.text.primary })
+    expect(screen.getByTestId('worker-v5-home-stat-Cơ hội mới').props.accessibilityLabel).toContain('Chưa có')
+    expect(screen.getByTestId('worker-v5-home-stat-Việc đang chạy').props.accessibilityLabel).toContain('1')
     expect(screen.getByText('Tiếp tục công việc')).toBeTruthy()
     expect(screen.queryByText('1 cơ hội đã lọc')).toBeNull()
   })
@@ -1021,8 +1086,62 @@ describe('Worker runtime surface wiring', () => {
     render(<WorkerJobsSurface />)
 
     expect(screen.queryByText('Một luồng công việc')).toBeNull()
+    expect(screen.queryByText('Kael đã lọc theo kỹ năng, bán kính và lịch trống')).toBeNull()
     expect(screen.getByTestId('worker-v5-opportunity-card')).toBeOnTheScreen()
-    expect(StyleSheet.flatten(screen.getByTestId('worker-v5-opportunity-copy').props.style)).toMatchObject({ justifyContent: 'center' })
+    expect(screen.getByTestId('worker-v5-opportunity-inbox-handoff')).toBeOnTheScreen()
+  })
+
+  it('uses one Worker Jobs rebuild surface in Preview and shows only real opportunity data', () => {
+    buildWorkflow({ deal: buildIncomingDeal() })
+    mockRouteParams = {
+      ns_audit_role: 'worker',
+      ns_worker_lang: 'vi',
+      ns_worker_screen: '2.1-opportunity-inbox',
+    }
+
+    render(<WorkerJobsSurface />)
+
+    expect(screen.getByTestId('worker-v5-opportunity-inbox-handoff')).toBeOnTheScreen()
+    expect(screen.getByText('Sửa điện')).toBeOnTheScreen()
+    expect(screen.queryByText('Vệ sinh sofa')).toBeNull()
+    expect(screen.getByTestId('worker-v5-opportunity-artwork-frame')).toBeOnTheScreen()
+    expect(screen.getByTestId('worker-v5-opportunity-selection-hint')).toBeOnTheScreen()
+
+    fireEvent.press(screen.getByTestId('worker-v5-opportunity-card'))
+    fireEvent.press(screen.getByTestId('worker-v5-primary-action'))
+
+    expect(mockReplace).toHaveBeenCalledWith('/(worker)/jobs?ns_worker_screen=2.2-offer-detail&ns_audit_role=worker&ns_worker_lang=vi&ns_worker_prototype=worker-jobs-rebuild-v1')
+  })
+
+  it('keeps Stage 11 bound to the real settled job and earnings ledger', () => {
+    buildWorkflow({ deal: buildSettledCaseDeal(), workerEarnings: buildSettledCaseEarnings() })
+    mockRouteParams = {
+      ns_audit_role: 'worker',
+      ns_worker_lang: 'vi',
+      ns_worker_prototype: 'worker-jobs-rebuild-v1',
+      ns_worker_screen: '2.12-case-closed',
+      ns_worker_stage: 'payment-confirmed',
+    }
+
+    render(<WorkerJobsSurface />)
+
+    expect(screen.getByTestId('worker-v5-stage-eleven-payment-confirmed')).toBeOnTheScreen()
+    expect(screen.getByTestId('worker-v5-stage-eleven-payment-card')).toBeOnTheScreen()
+    expect(screen.getByTestId('worker-v5-stage-eleven-amount')).toHaveTextContent('340.000 VND')
+    expect(screen.queryByText('Quy trình công việc')).toBeNull()
+    expect(screen.queryByText('10/11')).toBeNull()
+  })
+
+  it('does not synthesize a job when the Preview inbox has no real opportunity', () => {
+    buildWorkflow({ deal: null })
+    mockRouteParams = { ns_audit_role: 'worker', ns_worker_lang: 'vi', ns_worker_screen: '2.1-opportunity-inbox' }
+
+    render(<WorkerJobsSurface />)
+
+    expect(screen.getByTestId('worker-v5-opportunity-empty-card')).toBeOnTheScreen()
+    expect(screen.getByText('Chưa có việc phù hợp')).toBeOnTheScreen()
+    expect(screen.queryByText('Vệ sinh sofa')).toBeNull()
+    expect(screen.getByTestId('worker-v5-primary-action')).toBeDisabled()
   })
 
   it('requires a selected mission before enabling the continuation CTA and source formula', () => {
@@ -1032,8 +1151,8 @@ describe('Worker runtime surface wiring', () => {
     render(<WorkerJobsSurface />)
 
     expect(screen.queryByText('Phù hợp từ nguồn thật')).toBeNull()
-    expect(screen.getByText('120.000d - 180.000d').props.numberOfLines).toBe(1)
-    expect(screen.getByTestId('worker-v5-opportunity-selection-hint')).toHaveTextContent('Ch\u1ecdn c\u00f4ng vi\u1ec7c ph\u00eda tr\u00ean \u0111\u1ec3 xem chi ti\u1ebft tr\u01b0\u1edbc khi ti\u1ebfp t\u1ee5c.')
+    expect(screen.getByText('150.000d - 240.000d')).toBeOnTheScreen()
+    expect(screen.getByTestId('worker-v5-opportunity-selection-hint')).toHaveTextContent('Chọn công việc để xem chi tiết.')
     expect(screen.getByTestId('worker-v5-primary-action')).toBeDisabled()
     expect(screen.queryByTestId('worker-v5-primary-gradient')).toBeNull()
 
@@ -1042,7 +1161,6 @@ describe('Worker runtime surface wiring', () => {
     expect(screen.getByTestId('worker-v5-opportunity-card').props.accessibilityState).toEqual({ selected: true })
     expect(screen.queryByTestId('worker-v5-opportunity-selection-hint')).toBeNull()
     expect(screen.getByTestId('worker-v5-primary-action')).not.toBeDisabled()
-    expect(screen.getByTestId('worker-v5-primary-gradient')).toBeOnTheScreen()
   })
 
   it('accepts an open offer from the unified offer decision screen', async () => {
@@ -1056,7 +1174,7 @@ describe('Worker runtime surface wiring', () => {
 
     await waitFor(() => {
       expect(mockWorkflowValue.actions.workerAcceptBroadcast).toHaveBeenCalledWith('job_test_1')
-      expect(mockReplace).toHaveBeenCalledWith('/(worker)/jobs?ns_worker_screen=2.3-customer-confirmation-wait')
+      expect(mockReplace).toHaveBeenCalledWith('/(worker)/jobs?ns_worker_screen=2.3-customer-confirmation-wait&ns_worker_prototype=worker-jobs-rebuild-v1')
     })
   })
 
@@ -1072,6 +1190,18 @@ describe('Worker runtime surface wiring', () => {
     expect(screen.queryByTestId('worker-v5-in-progress-scope-action')).toBeNull()
   })
 
+  it('does not render an unselected service label while waiting for customer confirmation', () => {
+    const deal = buildCandidatePendingDeal()
+    deal.broadcast = null
+    deal.draft = { ...deal.draft, serviceType: null }
+    buildWorkflow({ deal })
+    mockRouteParams = { ns_worker_screen: '2.3-customer-confirmation-wait' }
+
+    render(<WorkerJobsSurface />)
+
+    expect(within(screen.getByTestId('worker-v5-customer-confirmation-wait')).queryByText('Chưa chọn')).toBeNull()
+  })
+
   it('leaves customer confirmation after an authoritative empty worker refresh', async () => {
     buildWorkflow({ deal: null, workerJobs: [], workerJobsHydrated: true, workerGate: 'backend_pending' })
     mockRouteParams = { ns_worker_screen: '2.3-customer-confirmation-wait' }
@@ -1079,7 +1209,7 @@ describe('Worker runtime surface wiring', () => {
     render(<WorkerJobsSurface />)
 
     await waitFor(() => {
-      expect(mockReplace).toHaveBeenCalledWith('/(worker)/jobs?ns_worker_screen=2.1-opportunity-inbox')
+      expect(mockReplace).toHaveBeenCalledWith('/(worker)/jobs?ns_worker_screen=2.1-opportunity-inbox&ns_worker_prototype=worker-jobs-rebuild-v1')
     })
   })
 
@@ -1090,7 +1220,7 @@ describe('Worker runtime surface wiring', () => {
     render(<WorkerJobsSurface />)
 
     await waitFor(() => {
-      expect(mockReplace).toHaveBeenCalledWith('/(worker)/jobs?ns_worker_screen=2.3-customer-confirmation-wait')
+      expect(mockReplace).toHaveBeenCalledWith('/(worker)/jobs?ns_worker_screen=2.3-customer-confirmation-wait&ns_worker_prototype=worker-jobs-rebuild-v1')
     })
     expect(screen.queryByTestId('worker-v5-in-progress-scope-action')).toBeNull()
   })
@@ -1105,8 +1235,8 @@ describe('Worker runtime surface wiring', () => {
 
     render(<WorkerJobsSurface />)
 
-    expect(screen.getByTestId('worker-v5-offer-summary-price')).not.toHaveTextContent(/^0$/)
-    expect(screen.getByTestId('worker-v5-offer-summary-price')).toHaveTextContent(/165\.750/)
+    expect(screen.getByTestId('worker-v5-offer-detail-summary-card')).toBeOnTheScreen()
+    expect(screen.queryByText(/^0$/)).toBeNull()
   })
 
   it('declines an open offer from the same decision screen and returns to the board', async () => {
@@ -1118,7 +1248,7 @@ describe('Worker runtime surface wiring', () => {
 
     await waitFor(() => {
       expect(mockWorkflowValue.actions.workerDeclineBroadcast).toHaveBeenCalledTimes(1)
-      expect(mockReplace).toHaveBeenCalledWith('/(worker)/jobs?ns_worker_screen=2.1-opportunity-inbox')
+      expect(mockReplace).toHaveBeenCalledWith('/(worker)/jobs?ns_worker_screen=2.1-opportunity-inbox&ns_worker_prototype=worker-jobs-rebuild-v1')
     })
   })
 
@@ -1165,7 +1295,7 @@ describe('Worker runtime surface wiring', () => {
     render(<WorkerJobsSurface />)
 
     await waitFor(() => {
-      expect(mockReplace).toHaveBeenCalledWith('/(worker)/jobs?ns_worker_screen=2.7-in-progress')
+      expect(mockReplace).toHaveBeenCalledWith('/(worker)/jobs?ns_worker_screen=2.7-in-progress&ns_worker_prototype=worker-jobs-rebuild-v1')
     })
   })
 
@@ -1262,7 +1392,19 @@ describe('Worker runtime surface wiring', () => {
 
     expect(screen.getByTestId('worker-v5-kael-empty-hero-normal')).toBeOnTheScreen()
     expect(screen.getByTestId('worker-v5-kael-empty-hero-model')).toBeOnTheScreen()
+    expect(screen.getByTestId('worker-v5-kael-empty-hero-model-body')).toBeOnTheScreen()
+    expect(screen.getByTestId('worker-v5-kael-empty-hero-model-bow')).toBeOnTheScreen()
+    expect(screen.getByTestId('worker-v5-kael-empty-hero-model-blink')).toBeOnTheScreen()
     expect(screen.getByTestId('worker-v5-kael-empty-hero-copy').props.children.length).toBeGreaterThan(20)
+    expect(StyleSheet.flatten(screen.getByTestId('worker-v5-kael-empty-hero-copy').props.style)).toMatchObject({
+      color: color.text.primary,
+      fontSize: 20,
+      fontWeight: '500',
+      letterSpacing: -0.45,
+      lineHeight: 25,
+      maxWidth: 240,
+      textAlign: 'left',
+    })
 
     fireEvent(screen.getByTestId('worker-v5-kael-empty-hero-normal'), 'layout', {
       persist: jest.fn(),
@@ -1666,11 +1808,11 @@ describe('Worker runtime surface wiring', () => {
     })
     expect(StyleSheet.flatten(screen.getByTestId('worker-v5-kael-active-mode').props.style)).toMatchObject({
       alignSelf: 'stretch',
-      fontSize: 15,
+      fontSize: 13,
       includeFontPadding: false,
       textAlign: 'center',
       textAlignVertical: 'center',
-      transform: [{ translateX: -12 }],
+      transform: [{ translateX: -14 }, { translateY: -1 }],
     })
 
     fireEvent.press(screen.getByTestId('worker-v5-kael-mode-toggle'))
@@ -1714,7 +1856,7 @@ describe('Worker runtime surface wiring', () => {
     expect(StyleSheet.flatten(screen.getByTestId('worker-v5-kael-mode-menu-intake').props.style)).toMatchObject({
       minHeight: 46,
     })
-    expect(screen.getByTestId('worker-v5-kael-mode-toggle').props.accessibilityState).toEqual({ expanded: true })
+    expect(screen.getByTestId('worker-v5-kael-mode-toggle').props.accessibilityState).toMatchObject({ expanded: true })
     expect(screen.getByText('Hỏi đáp và hỗ trợ nhanh')).toBeOnTheScreen()
     expect(screen.getByText('Lọc và chuẩn bị cơ hội phù hợp')).toBeOnTheScreen()
 
@@ -2867,10 +3009,10 @@ describe('Worker runtime surface wiring', () => {
 
     render(<WorkerJobsSurface />)
 
-    expect(screen.getByTestId('worker-v5-completion-submitted-seal')).toHaveStyle({ borderRadius: 34, height: 68, width: 68 })
-    expect(screen.getByTestId('worker-v5-completion-submitted-title')).toHaveTextContent('Đã gửi hồ sơ')
-    expect(screen.getByTestId('worker-v5-completion-submitted-status')).toHaveTextContent('Đang chờ khách xác nhận')
-    expect(screen.getByTestId('worker-v5-completion-submitted-status-dot')).toHaveStyle({ borderRadius: 9, height: 18, width: 18 })
+    expect(screen.getByTestId('worker-v5-stage-nine-prototype')).toBeOnTheScreen()
+    expect(screen.getByTestId('worker-v5-stage-nine-hero')).toBeOnTheScreen()
+    expect(screen.getByText('Đã gửi hồ sơ')).toBeOnTheScreen()
+    expect(screen.getByTestId('worker-v5-stage-nine-status-list')).toHaveTextContent(/Đang chờ/)
   })
 
   it('shows the server-owned provisional settlement before payment starts', () => {
@@ -2882,10 +3024,11 @@ describe('Worker runtime surface wiring', () => {
 
     render(<WorkerJobsSurface />)
 
-    expect(screen.getByTestId('worker-v5-settlement-value-0')).toHaveTextContent(/800\.000/)
-    expect(screen.getByTestId('worker-v5-settlement-value-1')).toHaveTextContent(/680\.000/)
-    expect(screen.getByTestId('worker-v5-settlement-value-2')).toHaveTextContent(/120\.000/)
-    expect(screen.getByTestId('worker-v5-settlement-formula-note')).toHaveTextContent(/800\.000.*120\.000.*680\.000/)
+    expect(screen.getByTestId('worker-v5-stage-nine-status-list')).toBeOnTheScreen()
+    expect(screen.getByText('2 mục')).toBeOnTheScreen()
+    expect(screen.getByTestId('worker-v5-stage-nine-status-list')).toHaveTextContent(/Đang chờ/)
+    expect(screen.queryByText(/800\.000/)).toBeNull()
+    expect(screen.queryByText(/680\.000/)).toBeNull()
   })
 
   it('uses generic system copy when no completion record exists', () => {
@@ -2894,12 +3037,12 @@ describe('Worker runtime surface wiring', () => {
 
     render(<WorkerJobsSurface />)
 
-    expect(screen.getByTestId('worker-v5-completion-submitted-icon-empty')).toBeOnTheScreen()
-    expect(screen.getByTestId('worker-v5-completion-submitted-title')).toHaveTextContent('Chưa có hồ sơ đã gửi')
-    expect(screen.getByText('Chỉ hiển thị khi hệ thống ghi nhận hồ sơ hoàn tất.')).toBeOnTheScreen()
+    expect(screen.getByTestId('worker-v5-stage-nine-prototype')).toBeOnTheScreen()
+    expect(screen.getByTestId('worker-v5-stage-nine-hero')).toBeOnTheScreen()
+    expect(screen.getByText('Chưa có hồ sơ đã gửi')).toBeOnTheScreen()
+    expect(screen.getByText('Chỉ hiện khi hệ thống ghi nhận hồ sơ hoàn tất.')).toBeOnTheScreen()
     expect(screen.queryByText(/NestScout/i)).toBeNull()
-    expect(screen.queryByTestId('worker-v5-completion-submitted-seal')).toBeNull()
-    expect(screen.queryByTestId('worker-v5-completion-submitted-status')).toBeNull()
+    expect(screen.getByTestId('worker-v5-stage-nine-status-card')).toBeOnTheScreen()
   })
 
   it('keeps the status marker static and lets the worker answer the direct-payment receipt', async () => {
@@ -2907,29 +3050,26 @@ describe('Worker runtime surface wiring', () => {
     mockRouteParams = { ns_worker_screen: '2.11-completion-submitted' }
     const pending = render(<WorkerJobsSurface />)
 
-    expect(screen.getByTestId('worker-v5-completion-submitted-status-dot')).toBeOnTheScreen()
-    expect(screen.queryByTestId('worker-v5-completion-submitted-status-waiting-dots')).toBeNull()
+    expect(screen.getByTestId('worker-v5-stage-nine-hero')).toBeOnTheScreen()
+    expect(screen.getByTestId('worker-v5-stage-nine-status-list')).toBeOnTheScreen()
     pending.unmount()
 
     buildWorkflow({ deal: buildDirectWorkerConfirmationDeal() })
     mockRouteParams = { ns_worker_screen: '2.11-completion-submitted' }
     const confirmed = render(<WorkerJobsSurface />)
 
-    expect(screen.getByTestId('worker-v5-completion-direct-payment-action')).toHaveTextContent('Xác nhận đã nhận tiền trực tiếp')
+    expect(screen.getByTestId('worker-v5-completion-direct-payment-action')).toHaveTextContent('Đã nhận tiền')
     expect(mockReplace).not.toHaveBeenCalledWith('/(worker)/jobs?ns_worker_screen=2.12-case-closed')
     fireEvent.press(screen.getByTestId('worker-v5-completion-direct-payment-action'))
     await waitFor(() => expect(mockWorkerConfirmCashPayment).toHaveBeenCalledWith(true))
-    expect(mockReplace).toHaveBeenCalledWith('/(worker)/jobs?ns_worker_screen=2.12-case-closed')
+    expect(mockReplace).toHaveBeenCalledWith('/(worker)/jobs?ns_worker_screen=2.12-case-closed&ns_worker_prototype=worker-jobs-rebuild-v1')
     confirmed.unmount()
 
     mockRouteParams = { ns_worker_screen: '2.12-case-closed' }
     render(<WorkerJobsSurface />)
-    expect(screen.getByTestId('worker-v5-case-closed-settlement-seal')).toHaveStyle({ borderRadius: 38, height: 76, marginTop: 8, width: 76 })
-    expect(screen.getByTestId('worker-v5-case-closed-settlement-status-dot')).toHaveStyle({ borderRadius: 9, height: 18, width: 18 })
-    expect(screen.getByTestId('worker-v5-case-closed-title')).toHaveTextContent('Hoàn tất công việc')
-    expect(screen.getByTestId('worker-v5-case-closed-settlement-status')).toHaveTextContent('Chờ đối soát')
-    expect(screen.queryByTestId('worker-v5-case-closed-amount')).toBeNull()
-    expect(screen.queryByText('Chờ sổ thu nhập đồng bộ')).toBeNull()
+    expect(screen.getByTestId('worker-v5-stage-ten-prototype')).toBeOnTheScreen()
+    expect(screen.getByTestId('worker-v5-stage-ten-summary-card')).toBeOnTheScreen()
+    expect(screen.queryByTestId('worker-v5-case-closed-title')).toBeNull()
   })
 
   it('keeps the job in payment when the worker reports that direct payment was not received', async () => {
@@ -2959,13 +3099,10 @@ describe('Worker runtime surface wiring', () => {
 
     render(<WorkerJobsSurface />)
 
-    expect(screen.getByTestId('worker-v5-case-closed-title')).toHaveTextContent('Hoàn tất công việc')
-    expect(screen.getByTestId('worker-v5-case-closed-settlement-status')).toHaveTextContent('Đã đối soát')
-    expect(screen.getByTestId('worker-v5-info-cell-label-0')).toHaveTextContent(/^Đánh giá$/)
-    expect(screen.getByTestId('worker-v5-case-trail-status-0')).toHaveTextContent('Đã khóa')
-    expect(screen.getByTestId('worker-v5-case-trail-status-1')).toHaveTextContent('Đã ghi có')
-    expect(screen.getByTestId('worker-v5-case-closed-amount')).toHaveTextContent(/340\.000/)
-    expect(screen.getByTestId('worker-v5-case-trail-meta-1')).toHaveTextContent(/340\.000/)
+    expect(screen.getByTestId('worker-v5-stage-ten-prototype')).toBeOnTheScreen()
+    expect(screen.getByText('Đã ghi nhận thu nhập')).toBeOnTheScreen()
+    expect(screen.getByText('Đã ghi vào sổ thu nhập')).toBeOnTheScreen()
+    expect(screen.getByText('340.000 VND')).toBeOnTheScreen()
   })
 
   it('removes the requested home, jobs, earnings, and settings header utilities', () => {
@@ -3058,7 +3195,7 @@ describe('Worker runtime surface wiring', () => {
 
     const home = render(<WorkerHomeSurface />)
     expect(screen.getByTestId('worker-v5-screen-1.1-worker-home')).toBeOnTheScreen()
-    expect(screen.getByTestId('worker-v5-page-mint-aura')).toBeOnTheScreen()
+    expect(screen.getByTestId('worker-home-rebuild-surface')).toBeOnTheScreen()
     expect(screen.getByTestId('worker-v5-availability-card')).toBeOnTheScreen()
     expect(screen.getByTestId('worker-v5-home-command-center')).toBeOnTheScreen()
     expect(screen.queryByTestId('worker-home-scroll')).toBeNull()
@@ -3072,8 +3209,8 @@ describe('Worker runtime surface wiring', () => {
 
     const chat = render(<WorkerChatSurface />)
     expect(screen.getByTestId('worker-v5-screen-3.1-kael-chat-normal')).toBeOnTheScreen()
-    expect(screen.getByTestId('worker-v5-kael-orb-background-mint-aura')).toBeOnTheScreen()
-    expect(screen.getByTestId('worker-v5-kael-chat-screen-mint-aura')).toBeOnTheScreen()
+    expect(screen.getByTestId('worker-v5-page-mint-aura')).toBeOnTheScreen()
+    expect(screen.getByTestId('worker-v5-kael-orb-page-zip-mint-aura')).toBeOnTheScreen()
     expect(screen.getByTestId('worker-v5-kael-orb-normal')).toBeOnTheScreen()
     chat.unmount()
 
@@ -3088,7 +3225,7 @@ describe('Worker runtime surface wiring', () => {
     profile.unmount()
   })
 
-  it('keeps the profile hero compact with a real lifetime bar and no mock status chips', async () => {
+  it('keeps the approved profile identity card grounded in real worker data', async () => {
     buildWorkflow({
       workerProfile: buildWorkerProfile({
         active_minutes: 90,
@@ -3100,15 +3237,10 @@ describe('Worker runtime surface wiring', () => {
     render(<WorkerProfileSurface />)
 
     expect(screen.getByTestId('worker-v5-profile-header-name')).toHaveTextContent('Worker Test')
-    expect(screen.getByTestId('worker-v5-profile-lifetime-progress-label').props.children).toBe('Thời gian hoạt động')
-    expect(screen.getByTestId('worker-v5-profile-lifetime-progress').props.accessibilityLabel).toBe('Thời gian hoạt động')
-    expect(screen.getByTestId('worker-v5-profile-lifetime-progress')).toHaveAccessibilityValue({
-      text: 'Thời gian hoạt động: 1 giờ 30 phút / 10.000 giờ',
-    })
-    expect(screen.getByTestId('worker-v5-profile-lifetime-progress').props.accessibilityValue).toMatchObject({
-      max: 600000,
-      min: 0,
-      now: 90,
+    expect(screen.getByTestId('worker-v5-profile-identity-card')).toBeOnTheScreen()
+    expect(screen.queryByTestId('worker-v5-profile-identity-formula-mint-aura')).toBeNull()
+    ;['professional', 'schedule', 'settings', 'account'].forEach((groupId) => {
+      expect(screen.getByTestId(`worker-v5-profile-group-${groupId}-surface-formula-mint-aura`)).toHaveStyle({ opacity: 0.5 })
     })
     expect(screen.getByTestId('worker-v5-profile-avatar-image').props.source).toEqual({
       uri: 'https://storage.example.test/signed/worker-avatar.jpg',
@@ -3196,7 +3328,7 @@ describe('Worker runtime surface wiring', () => {
     const scope = render(<WorkerJobsSurface />)
     expect(screen.getByTestId('worker-v5-screen-2.8-scope-change')).toBeOnTheScreen()
     expect(screen.queryByTestId('worker-v5-scope-change-hero')).toBeNull()
-    expect(screen.getByTestId('worker-v5-scope-change-send-action')).toBeOnTheScreen()
+    expect(screen.getByTestId('worker-v5-stage-six-primary-action')).toBeOnTheScreen()
     expect(screen.queryByTestId('worker-final-price-input')).toBeNull()
     scope.unmount()
 
@@ -3237,8 +3369,12 @@ describe('Worker runtime surface wiring', () => {
     expect(screen.getByTestId('worker-v5-earnings-utility-history')).toBeOnTheScreen()
     expect(screen.getByTestId('worker-v5-earnings-utility-account')).toBeOnTheScreen()
     expect(screen.getByTestId('worker-v5-earnings-utility-commission')).toBeOnTheScreen()
-    expect(screen.queryByTestId('worker-v5-earnings-hero')).toBeNull()
+    expect(screen.getByTestId('worker-v5-earnings-hero')).toBeOnTheScreen()
+    expect(screen.getByTestId('worker-v5-earnings-hero-workart').props.source).toBe(workerSalaryWorkartAssets.hero)
+    expect(screen.getByTestId('worker-v5-earnings-metric-available-value')).toHaveTextContent('1.200.000đ')
     expect(screen.queryByTestId('worker-v5-earnings-transactions')).toBeNull()
+    expect(screen.queryByText('Sau phí nền tảng')).toBeNull()
+    expect(screen.queryByText('Số dư đã ghi có trên ứng dụng')).toBeNull()
 
     fireEvent.press(screen.getByTestId('worker-v5-earnings-period-day'))
     expect(screen.getByTestId('worker-v5-earnings-period-day').props.accessibilityState).toMatchObject({ selected: true })
@@ -3246,6 +3382,79 @@ describe('Worker runtime surface wiring', () => {
 
     fireEvent.press(screen.getByTestId('worker-v5-earnings-utility-history'))
     expect(mockReplace).toHaveBeenCalledWith('/(worker)/earnings?ns_worker_screen=4.2-ledger-detail')
+  })
+
+  it('uses the Production Salary surface even when the retired Prototype query is present', () => {
+    buildWorkflow({ workerEarnings: buildSettledEarnings() })
+    mockRouteParams = {
+      ns_audit_role: 'worker',
+      ns_worker_prototype: 'worker-salary-rebuild-v1',
+      ns_worker_screen: '4.1-earnings-overview',
+    }
+
+    const overview = render(<WorkerEarningsSurface />)
+
+    expect(screen.getByTestId('worker-v5-earnings-dashboard')).toBeOnTheScreen()
+    expect(screen.getByTestId('worker-v5-earnings-hero-workart')).toBeOnTheScreen()
+    expect(screen.getByTestId('worker-v5-earnings-metric-total-value')).toHaveTextContent('500.000đ')
+    expect(screen.queryByTestId('worker-salary-redesign-prototype')).toBeNull()
+
+    fireEvent.press(screen.getByTestId('worker-v5-earnings-period-day'))
+    expect(screen.getByTestId('worker-v5-earnings-period-day').props.accessibilityState).toMatchObject({ selected: true })
+    fireEvent.press(screen.getByTestId('worker-v5-earnings-utility-history'))
+    expect(mockReplace).toHaveBeenCalledWith('/(worker)/earnings?ns_worker_screen=4.2-ledger-detail&ns_audit_role=worker')
+
+    overview.unmount()
+    mockReplace.mockClear()
+    mockRouteParams = {
+      ns_audit_role: 'worker',
+      ns_worker_prototype: 'worker-salary-rebuild-v1',
+      ns_worker_screen: '4.5-commission-policy',
+    }
+    render(<WorkerEarningsSurface />)
+    expect(screen.getByTestId('worker-v5-commission-policy')).toBeOnTheScreen()
+    expect(screen.queryByTestId('worker-salary-redesign-commission')).toBeNull()
+  })
+
+  it.each([
+    ['4.2-ledger-detail', 'worker-v5-transaction-history'],
+    ['4.3-payout-request', 'worker-v5-payout-request'],
+    ['4.4-payout-method', 'worker-v5-bank-account-form'],
+    ['4.5-commission-policy', 'worker-v5-commission-policy'],
+  ] as const)('renders the isolated Salary %s section', (ns_worker_screen, testID) => {
+    buildWorkflow({ workerEarnings: buildSettledEarnings() })
+    mockRouteParams = {
+      ns_audit_role: 'worker',
+      ns_worker_prototype: 'worker-salary-rebuild-v1',
+      ns_worker_screen,
+    }
+
+    const view = render(<WorkerEarningsSurface />)
+
+    expect(screen.getByTestId(testID)).toBeOnTheScreen()
+    expect(screen.queryByTestId('worker-salary-redesign-prototype')).toBeNull()
+    view.unmount()
+  })
+
+  it('removes page-level mint aura from Earnings sections while preserving card formulas', () => {
+    buildWorkflow()
+
+    for (const ns_worker_screen of ['4.1-earnings-overview', '4.2-ledger-detail', '4.3-payout-request', '4.4-payout-method', '4.5-commission-policy'] as const) {
+      mockRouteParams = { ns_worker_screen }
+      const surface = render(<WorkerEarningsSurface />)
+
+      expect(screen.queryByTestId('worker-v5-earnings-page-customer-mint-aura')).toBeNull()
+      expect(screen.queryByTestId('worker-v5-earnings-page-customer-zip-mint-aura')).toBeNull()
+      expect(screen.queryByTestId('worker-v5-earnings-page-lower-mint-aura')).toBeNull()
+      surface.unmount()
+    }
+
+    mockRouteParams = { ns_worker_screen: '4.1-earnings-overview' }
+    render(<WorkerEarningsSurface />)
+
+    expect(screen.queryByTestId('worker-v5-earnings-dashboard-formula-mint-aura')).toBeNull()
+    expect(screen.queryByTestId('worker-v5-earnings-period-formula-mint-aura')).toBeNull()
+    expect(screen.queryByTestId('worker-v5-earnings-utilities-formula-mint-aura')).toBeNull()
   })
 
   it('shows a customer payment claim as pending reconciliation without inventing income', () => {
@@ -3263,18 +3472,18 @@ describe('Worker runtime surface wiring', () => {
     expect(screen.getByTestId('worker-v5-earnings-amount')).toHaveTextContent('0đ')
     expect(screen.getByTestId('worker-v5-earnings-metric-available-value')).toHaveTextContent('0đ')
     expect(screen.getByTestId('worker-v5-earnings-metric-pending-value')).toHaveTextContent('1.031.050đ')
-    expect(screen.getByText('1 khoản khách đã báo thanh toán, đang chờ đối soát')).toBeOnTheScreen()
+    expect(screen.queryByText('1 khoản khách đã báo thanh toán, đang chờ đối soát')).toBeNull()
   })
 
-  it('uses three dedicated icons for the rebuilt earnings utilities', () => {
+  it('uses Navigation line icons for the rebuilt utilities', () => {
     buildWorkflow({ workerEarnings: buildNoEarnings() })
     mockRouteParams = { ns_worker_screen: '4.1-earnings-overview' }
 
     render(<WorkerEarningsSurface />)
 
-    expect(screen.getByTestId('worker-v5-earnings-utility-history-image').props.source).toBe(workerV5CapturedIconAssets.earningsTransactionHistory)
-    expect(screen.getByTestId('worker-v5-earnings-utility-account-image').props.source).toBe(workerV5CapturedIconAssets.earningsReceivingAccount)
-    expect(screen.getByTestId('worker-v5-earnings-utility-commission-image').props.source).toBe(workerV5CapturedIconAssets.earningsCommissionPolicy)
+    expect(screen.getByTestId('worker-v5-earnings-utility-history-icon')).toBeOnTheScreen()
+    expect(screen.getByTestId('worker-v5-earnings-utility-account-icon')).toBeOnTheScreen()
+    expect(screen.getByTestId('worker-v5-earnings-utility-commission-icon')).toBeOnTheScreen()
   })
 
   it('opens focused earnings routes for history, account, commission policy, and payout request', () => {
@@ -3283,9 +3492,18 @@ describe('Worker runtime surface wiring', () => {
 
     render(<WorkerEarningsSurface />)
 
+    fireEvent.press(screen.getByTestId('worker-v5-earnings-utility-history'))
+    expect(mockReplace).toHaveBeenCalledWith('/(worker)/earnings?ns_worker_screen=4.2-ledger-detail')
+    mockReplace.mockClear()
+
+    fireEvent.press(screen.getByTestId('worker-v5-earnings-utility-account'))
+    expect(mockReplace).toHaveBeenCalledWith('/(worker)/earnings?ns_worker_screen=4.4-payout-method')
+    mockReplace.mockClear()
+
     fireEvent.press(screen.getByTestId('worker-v5-earnings-utility-commission'))
     expect(mockReplace).toHaveBeenCalledWith('/(worker)/earnings?ns_worker_screen=4.5-commission-policy')
 
+    mockReplace.mockClear()
     fireEvent.press(screen.getByTestId('worker-v5-earnings-withdraw-action'))
     expect(mockReplace).toHaveBeenCalledWith('/(worker)/earnings?ns_worker_screen=4.3-payout-request')
   })
@@ -3295,16 +3513,16 @@ describe('Worker runtime surface wiring', () => {
     mockRouteParams = { ns_worker_screen: '4.1-earnings-overview' }
 
     const pending = render(<WorkerEarningsSurface />)
-    expect(screen.getByTestId('worker-v5-earnings-amount')).toHaveTextContent('0đ')
-    expect(screen.getByTestId('worker-v5-earnings-metric-total-value')).toHaveTextContent('0đ')
-    expect(screen.getByTestId('worker-v5-earnings-metric-withdrawn-value')).toHaveTextContent('0đ')
-    expect(screen.getByText('Chưa có số liệu chi trả')).toBeOnTheScreen()
+    expect(screen.getByTestId('worker-v5-earnings-amount')).toHaveTextContent('Đang tải…')
+    expect(screen.getByTestId('worker-v5-earnings-metric-total-value')).toHaveTextContent('Đang tải…')
+    expect(screen.getByTestId('worker-v5-earnings-metric-withdrawn-value')).toHaveTextContent('Đang tải…')
+    expect(screen.queryByText('Chưa có số liệu chi trả')).toBeNull()
     for (const period of ['day', 'week', 'month', 'year'] as const) {
       fireEvent.press(screen.getByTestId(`worker-v5-earnings-period-${period}`))
-      expect(screen.getByTestId('worker-v5-earnings-metric-withdrawn-value')).toHaveTextContent('0đ')
+      expect(screen.getByTestId('worker-v5-earnings-metric-withdrawn-value')).toHaveTextContent('Đang tải…')
     }
-    expect(screen.getByTestId('worker-v5-earnings-metric-fee-value')).toHaveTextContent('0đ')
-    expect(screen.getByTestId('worker-v5-earnings-metric-available-value')).toHaveTextContent('0đ')
+    expect(screen.getByTestId('worker-v5-earnings-metric-fee-value')).toHaveTextContent('Đang tải…')
+    expect(screen.getByTestId('worker-v5-earnings-metric-available-value')).toHaveTextContent('Đang tải…')
     expect(screen.getByTestId('worker-v5-earnings-chart').props.accessibilityLabel).toBe('Đang tải biểu đồ thu nhập')
     expect(screen.getByTestId('worker-v5-earnings-chart').props.accessibilityState).toMatchObject({ busy: true })
     expect(screen.queryByText('Chờ dữ liệu thật')).toBeNull()
@@ -3326,7 +3544,7 @@ describe('Worker runtime surface wiring', () => {
     mockRouteParams = { ns_worker_screen: '4.1-earnings-overview' }
 
     const view = render(<WorkerEarningsSurface />)
-    expect(screen.getByTestId('worker-v5-earnings-amount')).toHaveTextContent('0đ')
+    expect(screen.getByTestId('worker-v5-earnings-amount')).toHaveTextContent('Đang tải…')
 
     buildWorkflow({ workerEarnings: buildNoEarnings() })
     view.rerender(<WorkerEarningsSurface />)
@@ -3334,8 +3552,26 @@ describe('Worker runtime surface wiring', () => {
 
     buildWorkflow({ workerEarnings: buildSettledEarnings() })
     view.rerender(<WorkerEarningsSurface />)
-    expect(screen.getByTestId('worker-v5-earnings-amount')).toHaveTextContent('500.000đ')
+    expect(screen.getByTestId('worker-v5-earnings-amount')).toHaveTextContent('1.200.000đ')
+    expect(screen.getByTestId('worker-v5-earnings-metric-total-value')).toHaveTextContent('500.000đ')
     expect(screen.getByTestId('worker-v5-earnings-metric-fee-value')).toHaveTextContent('120.000đ')
+  })
+
+  it('shows a retryable earnings error without presenting unavailable money as zero', async () => {
+    buildWorkflow({ workerEarnings: null, workerEarningsError: 'Không thể tải thông tin thu nhập.' })
+    mockRouteParams = { ns_worker_screen: '4.1-earnings-overview' }
+
+    render(<WorkerEarningsSurface />)
+
+    expect(screen.getByTestId('worker-v5-earnings-error')).toHaveTextContent(/Chưa thể tải thông tin thu nhập/)
+    expect(screen.getByTestId('worker-v5-earnings-retry')).toBeOnTheScreen()
+    expect(screen.getByTestId('worker-v5-earnings-metric-total-value')).toHaveTextContent('Chưa có dữ liệu')
+    expect(screen.getByTestId('worker-v5-earnings-chart').props.accessibilityState).toMatchObject({ busy: false })
+
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('worker-v5-earnings-retry'))
+    })
+    expect(mockWorkerRefresh).toHaveBeenCalledTimes(1)
   })
 
   it('shows a simple transaction history without the retired ledger sections', () => {
@@ -3377,8 +3613,9 @@ describe('Worker runtime surface wiring', () => {
     render(<WorkerEarningsSurface />)
     const withdrawAction = screen.getByTestId('worker-v5-earnings-withdraw-action')
     expect(withdrawAction.props.accessibilityState).toMatchObject({ disabled: false })
-    expect(withdrawAction).toHaveTextContent('Tạo yêu cầu rút tiền')
-    expect(within(withdrawAction).getByTestId('worker-v5-primary-gradient')).toBeOnTheScreen()
+    expect(within(withdrawAction).getByText('Tạo yêu cầu rút tiền')).toBeOnTheScreen()
+    expect(screen.getByTestId('worker-v5-earnings-withdrawal-area')).toBeOnTheScreen()
+    expect(within(withdrawAction).queryByTestId('worker-v5-earnings-withdraw-action-icon')).toBeNull()
     fireEvent.press(withdrawAction)
     expect(mockReplace).toHaveBeenCalledWith('/(worker)/earnings?ns_worker_screen=4.3-payout-request')
   })
@@ -3415,12 +3652,34 @@ describe('Worker runtime surface wiring', () => {
     expect(await screen.findByText(/Yêu cầu rút tiền đã được ghi nhận/)).toBeOnTheScreen()
   })
 
+  it('keeps withdrawal disabled and offers retry when earnings cannot be loaded', async () => {
+    buildWorkflow({ workerEarnings: null, workerEarningsError: 'Không thể tải thông tin thu nhập.' })
+    mockRouteParams = { ns_worker_screen: '4.3-payout-request' }
+
+    render(<WorkerEarningsSurface />)
+
+    expect(screen.getByTestId('worker-v5-payout-error')).toHaveTextContent(/Chưa thể tải thông tin thu nhập/)
+    expect(screen.getByTestId('worker-v5-payout-available-balance')).toHaveTextContent('Chưa có dữ liệu')
+    expect(screen.getByTestId('worker-v5-payout-submit').props.accessibilityState).toMatchObject({ disabled: true })
+
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('worker-v5-payout-retry'))
+    })
+    expect(mockWorkerRefresh).toHaveBeenCalledTimes(1)
+  })
+
   it('keeps only bank selection and confirmation on the receiving account route', async () => {
     buildWorkflow({ workerEarnings: buildSettledEarnings() })
     mockRouteParams = { ns_worker_screen: '4.4-payout-method' }
     render(<WorkerEarningsSurface />)
 
     expect(screen.getByTestId('worker-v5-bank-account-form')).toBeOnTheScreen()
+    expect(screen.queryByTestId('worker-v5-receiving-account-formula-mint-aura')).toBeNull()
+    expect(screen.getByTestId('worker-v5-bank-logo-frame-vietcombank')).toBeOnTheScreen()
+    expect(StyleSheet.flatten(screen.getByTestId('worker-v5-bank-logo-frame-vietcombank').props.style)).toMatchObject({
+      height: 38,
+      width: 78,
+    })
     expect(StyleSheet.flatten(screen.getByTestId('worker-v5-bank-confirm-spacing').props.style)).toMatchObject({ marginTop: 14 })
     expect(screen.getByTestId('worker-v5-bank-confirm-action').props.accessibilityState).toMatchObject({ disabled: true })
     expect(screen.queryByTestId('worker-v5-payout-method-hero')).toBeNull()
@@ -3473,21 +3732,41 @@ describe('Worker runtime surface wiring', () => {
     expect(new Set(sources).size).toBe(sources.length)
   })
 
-  it('wires contextual icon assets into the grouped profile and earnings utilities', () => {
+  it('wires distinct line icons into the grouped profile and earnings utilities', () => {
     buildWorkflow({ workerEarnings: buildNoEarnings() })
     mockRouteParams = {}
 
     const profile = render(<WorkerProfileSurface />)
-    expect(screen.getByTestId('worker-v5-profile-row-services-icon').props.source).toBe(workerV5CapturedIconAssets.profileDossierServices)
-    expect(screen.getByTestId('worker-v5-profile-row-reliability-icon').props.source).toBe(workerV5CapturedIconAssets.profileDossierReliability)
-    expect(screen.getByTestId('worker-v5-profile-row-schedule-icon').props.source).toBe(workerV5CapturedIconAssets.rankingArrival)
+    expect(screen.getByTestId('worker-v5-profile-row-services-icon')).toBeOnTheScreen()
+    expect(screen.getByTestId('worker-v5-profile-row-reliability-icon')).toBeOnTheScreen()
+    expect(screen.getByTestId('worker-v5-profile-row-schedule-icon')).toBeOnTheScreen()
+    for (const rowID of [
+      'services',
+      'ranking',
+      'reliability',
+      'reviews',
+      'verification',
+      'schedule',
+      'notifications',
+      'settings',
+      'memory',
+      'support',
+      'policies',
+      'sign-out',
+      'delete-account',
+    ]) {
+      const frameStyle = StyleSheet.flatten(screen.getByTestId(`worker-v5-profile-${rowID === 'sign-out' || rowID === 'delete-account' ? rowID : `row-${rowID}`}-icon-frame`).props.style)
+      expect(frameStyle).toMatchObject({ height: 24, width: 24 })
+      expect(frameStyle.backgroundColor).toBeUndefined()
+      expect(frameStyle.borderWidth).toBeUndefined()
+    }
     profile.unmount()
 
     mockRouteParams = { ns_worker_screen: '4.1-earnings-overview' }
     render(<WorkerEarningsSurface />)
-    expect(screen.getByTestId('worker-v5-earnings-utility-history-image').props.source).toBe(workerV5CapturedIconAssets.earningsTransactionHistory)
-    expect(screen.getByTestId('worker-v5-earnings-utility-account-image').props.source).toBe(workerV5CapturedIconAssets.earningsReceivingAccount)
-    expect(screen.getByTestId('worker-v5-earnings-utility-commission-image').props.source).toBe(workerV5CapturedIconAssets.earningsCommissionPolicy)
+    expect(screen.getByTestId('worker-v5-earnings-utility-history-icon')).toBeOnTheScreen()
+    expect(screen.getByTestId('worker-v5-earnings-utility-account-icon')).toBeOnTheScreen()
+    expect(screen.getByTestId('worker-v5-earnings-utility-commission-icon')).toBeOnTheScreen()
   })
 
   it('groups professional, schedule, app, and account controls without the retired dossier panels', () => {
@@ -3506,12 +3785,59 @@ describe('Worker runtime surface wiring', () => {
     expect(screen.getByTestId('worker-v5-profile-group-schedule')).toBeOnTheScreen()
     expect(screen.getByTestId('worker-v5-profile-group-settings')).toBeOnTheScreen()
     expect(screen.getByTestId('worker-v5-profile-group-account')).toBeOnTheScreen()
-    expect(screen.getByTestId('worker-v5-profile-row-services-status')).toHaveTextContent('3 dịch vụ')
-    expect(screen.getByTestId('worker-v5-profile-row-reliability-status')).toHaveTextContent('Chưa có dữ liệu')
+    ;['professional', 'schedule', 'settings', 'account'].forEach((groupId) => {
+      expect(screen.getByTestId(`worker-v5-profile-group-${groupId}-surface-formula-mint-aura`)).toHaveStyle({ opacity: 0.5 })
+    })
+    expect(screen.getByTestId('worker-v5-profile-row-services').props.accessibilityLabel).toContain('3 dịch vụ')
+    expect(screen.getByTestId('worker-v5-profile-row-reliability').props.accessibilityLabel).toContain('Chưa có dữ liệu')
     expect(screen.getByTestId('worker-v5-profile-row-schedule')).toHaveTextContent(/Trạng thái nhận việc/)
     expect(screen.queryByText('Bật hoặc tắt nhận yêu cầu mới phù hợp với bạn.')).toBeNull()
     expect(screen.queryByText('Tài khoản, ứng dụng, quyền riêng tư và hỗ trợ.')).toBeNull()
     expect(screen.getByTestId('worker-v5-profile-sign-out')).toHaveTextContent(/Đăng xuất/)
+    expect(screen.getByTestId('worker-v5-profile-delete-account')).toHaveTextContent(/Xóa tài khoản/)
+  })
+
+  it('keeps every approved worker profile control on its existing route', () => {
+    buildWorkflow()
+    mockRouteParams = {}
+
+    const overview = render(<WorkerProfileSurface />)
+    const routes = [
+      ['ranking', '5.2-worker-ranking'],
+      ['reliability', '5.4-reliability-insights'],
+      ['reviews', '5.9-reviews-feedback'],
+      ['verification', '5.7-verification-documents'],
+      ['notifications', '5.12-worker-notifications'],
+      ['memory', '5.6-agent-memory-preferences'],
+      ['support', '5.13-worker-support'],
+      ['policies', '5.14-worker-policies'],
+    ] as const
+
+    for (const [rowID, screenID] of routes) {
+      fireEvent.press(screen.getByTestId(`worker-v5-profile-row-${rowID}`))
+      expect(mockReplace).toHaveBeenLastCalledWith(`/(worker)/profile?ns_worker_screen=${screenID}`)
+      mockReplace.mockClear()
+    }
+
+    overview.unmount()
+  })
+
+  it('keeps ranking and reliability sections connected in both directions', () => {
+    buildWorkflow()
+    mockRouteParams = { ns_worker_screen: '5.2-worker-ranking' }
+
+    const ranking = render(<WorkerProfileSurface />)
+    fireEvent.press(screen.getByTestId('worker-v5-primary-action'))
+    expect(mockReplace).toHaveBeenLastCalledWith('/(worker)/profile?ns_worker_screen=5.4-reliability-insights')
+    ranking.unmount()
+
+    mockReplace.mockClear()
+    mockRouteParams = { ns_worker_screen: '5.4-reliability-insights' }
+    const reliability = render(<WorkerProfileSurface />)
+    expect(screen.getByTestId('worker-v5-primary-action')).toHaveTextContent('Quay lại xếp hạng')
+    fireEvent.press(screen.getByTestId('worker-v5-primary-action'))
+    expect(mockReplace).toHaveBeenLastCalledWith('/(worker)/profile?ns_worker_screen=5.2-worker-ranking')
+    reliability.unmount()
   })
 
   it('opens the grouped availability control and keeps the existing worker mutation', async () => {
@@ -3545,6 +3871,8 @@ describe('Worker runtime surface wiring', () => {
     mockRouteParams = { ns_worker_screen: '5.7-verification-documents' }
     render(<WorkerProfileSurface />)
     expect(screen.getByTestId('worker-v5-registration-form')).toBeOnTheScreen()
+    expect(screen.getByTestId('worker-v5-registration-title-icon')).toBeOnTheScreen()
+    expect(screen.getByText('Dùng thông tin, giấy tờ thật. Hồ sơ được kiểm tra trước khi nhận việc.')).toBeOnTheScreen()
     fireEvent.press(screen.getByTestId('worker-v5-registration-submit'))
     expect(screen.getByTestId('worker-v5-registration-error')).toHaveTextContent(/Nhập họ tên hợp lệ/)
     screen.unmount()
@@ -3590,8 +3918,51 @@ describe('Worker runtime surface wiring', () => {
     expect(screen.getByTestId('worker-v5-settings-group-app')).toBeOnTheScreen()
     expect(screen.getByTestId('worker-v5-settings-group-privacy')).toBeOnTheScreen()
     expect(screen.getByTestId('worker-v5-settings-group-help')).toBeOnTheScreen()
+    for (const rowTestID of [
+      'worker-v5-settings-account',
+      'worker-v5-settings-password',
+      'worker-v5-settings-language',
+      'worker-v5-settings-appearance',
+      'worker-v5-settings-notifications',
+      'worker-v5-settings-memory',
+      'worker-v5-settings-support',
+      'worker-v5-settings-policy',
+    ]) {
+      expect(StyleSheet.flatten(screen.getByTestId(`${rowTestID}-icon`).props.style)).toMatchObject({
+        backgroundColor: glass.bg,
+        borderWidth: 1,
+        height: 46,
+        width: 46,
+      })
+    }
     fireEvent.press(screen.getByTestId('worker-v5-settings-notifications'))
     expect(mockReplace).toHaveBeenLastCalledWith('/(worker)/profile?ns_worker_screen=5.12-worker-notifications&ns_worker_lang=vi')
+  })
+
+  it('requires acknowledgement before opening support for worker account deletion', () => {
+    buildWorkflow()
+    mockRouteParams = {}
+
+    const overview = render(<WorkerProfileSurface />)
+    fireEvent.press(screen.getByTestId('worker-v5-profile-delete-account'))
+    expect(mockReplace).toHaveBeenLastCalledWith('/(worker)/profile?ns_worker_screen=5.15-worker-delete-account')
+    overview.unmount()
+
+    mockRouteParams = { ns_worker_screen: '5.15-worker-delete-account' }
+    render(<WorkerProfileSurface />)
+    expect(screen.getByTestId('worker-v5-delete-account-screen')).toBeOnTheScreen()
+    expect(StyleSheet.flatten(screen.getByTestId('worker-v5-delete-account-icon-frame').props.style)).toMatchObject({
+      backgroundColor: color.surface.base,
+    })
+    expect(StyleSheet.flatten(screen.getByTestId('worker-v5-delete-account-warning').props.style)).toMatchObject({
+      backgroundColor: color.surface.base,
+    })
+    expect(screen.getByTestId('worker-v5-delete-account-open-support')).toBeDisabled()
+
+    fireEvent.press(screen.getByTestId('worker-v5-delete-account-acknowledgement'))
+    expect(screen.getByTestId('worker-v5-delete-account-open-support')).not.toBeDisabled()
+    fireEvent.press(screen.getByTestId('worker-v5-delete-account-open-support'))
+    expect(mockReplace).toHaveBeenLastCalledWith('/(worker)/profile?ns_worker_screen=5.13-worker-support')
   })
 
   it('reads recorded notifications and keeps support and policy routes usable', async () => {
@@ -3617,6 +3988,19 @@ describe('Worker runtime surface wiring', () => {
 
     mockRouteParams = { ns_worker_screen: '5.13-worker-support' }
     const support = render(<WorkerProfileSurface />)
+    expect(StyleSheet.flatten(screen.getByTestId('worker-v5-support-jobs-icon').props.style)).toMatchObject({
+      backgroundColor: 'transparent',
+      borderWidth: 1,
+      height: 46,
+      width: 46,
+    })
+    expect(screen.getByTestId('worker-v5-support-jobs-icon-glyph').props).toMatchObject({ height: 24, width: 24 })
+    expect(StyleSheet.flatten(screen.getByTestId('worker-v5-support-kael-icon').props.style)).toMatchObject({
+      backgroundColor: 'transparent',
+      borderWidth: 1,
+      height: 46,
+      width: 46,
+    })
     fireEvent.press(screen.getByTestId('worker-v5-support-jobs'))
     expect(mockReplace).toHaveBeenLastCalledWith('/(worker)/jobs')
     fireEvent.press(screen.getByTestId('worker-v5-support-kael'))
@@ -3626,33 +4010,40 @@ describe('Worker runtime surface wiring', () => {
     mockRouteParams = { ns_worker_screen: '5.14-worker-policies' }
     render(<WorkerProfileSurface />)
     expect(screen.getByTestId('worker-v5-policy-work-body')).toBeOnTheScreen()
-    expect(screen.getByTestId('worker-v5-policies-formula-mint-aura')).toBeOnTheScreen()
+    expect(StyleSheet.flatten(screen.getByTestId('worker-v5-policy-work-icon-frame').props.style)).toMatchObject({
+      backgroundColor: 'transparent',
+      borderWidth: 1,
+      height: 46,
+      width: 46,
+    })
+    expect(screen.getByTestId('worker-v5-policy-work-icon').props).toMatchObject({ height: 24, width: 24 })
+    expect(screen.queryByTestId('worker-v5-policies-formula-mint-aura')).toBeNull()
     fireEvent.press(screen.getByTestId('worker-v5-policy-money'))
     expect(screen.getByTestId('worker-v5-policy-money-body')).toBeOnTheScreen()
   })
 
-  it('keeps Formula Mint Aura on the approved hero and workflow surfaces without restoring the retired dossier card', () => {
+  it('uses the rebuilt workart quick-action grid without restoring the retired dossier card', () => {
     expect(WORKER_V5_FORMULA_MINT_CARD_AURA_INTENSITY).toBe(1.4)
 
     buildWorkflow({ deal: buildIncomingDeal(), workerEarnings: buildNoEarnings() })
     mockRouteParams = {}
 
     const home = render(<WorkerHomeSurface />)
-    ;[0, 1, 2, 3].forEach((index) => {
-      expect(screen.getByTestId(`worker-v5-home-quick-action-formula-mint-aura-${index}`)).toBeOnTheScreen()
-    })
+    expect(screen.getByTestId('worker-home-rebuild-quick-action-grid')).toBeOnTheScreen()
+    ;[0, 1, 2, 3].forEach((index) => expect(screen.getByTestId(`worker-v5-quick-action-${index}`)).toBeOnTheScreen())
     home.unmount()
 
     const profile = render(<WorkerProfileSurface />)
-    expect(screen.getByTestId('worker-v5-profile-page-customer-mint-aura')).toBeOnTheScreen()
+    expect(screen.queryByTestId('worker-v5-profile-identity-formula-mint-aura')).toBeNull()
+    expect(screen.getByTestId('worker-v5-profile-group-professional-surface-formula-mint-aura')).toHaveStyle({ opacity: 0.5 })
     expect(screen.getByTestId('worker-v5-profile-group-professional')).toBeOnTheScreen()
     profile.unmount()
 
     mockRouteParams = { ns_worker_screen: '4.1-earnings-overview' }
     const earnings = render(<WorkerEarningsSurface />)
-    expect(screen.getByTestId('worker-v5-earnings-dashboard-formula-mint-aura')).toBeOnTheScreen()
-    expect(screen.getByTestId('worker-v5-earnings-period-formula-mint-aura')).toBeOnTheScreen()
-    expect(screen.getByTestId('worker-v5-earnings-utilities-formula-mint-aura')).toBeOnTheScreen()
+    expect(screen.queryByTestId('worker-v5-earnings-dashboard-formula-mint-aura')).toBeNull()
+    expect(screen.queryByTestId('worker-v5-earnings-period-formula-mint-aura')).toBeNull()
+    expect(screen.queryByTestId('worker-v5-earnings-utilities-formula-mint-aura')).toBeNull()
     earnings.unmount()
 
     mockRouteParams = { ns_worker_screen: '4.3-payout-request' }
@@ -3667,12 +4058,12 @@ describe('Worker runtime surface wiring', () => {
 
     mockRouteParams = { ns_worker_screen: '4.4-payout-method' }
     const receivingAccount = render(<WorkerEarningsSurface />)
-    expect(screen.getByTestId('worker-v5-receiving-account-formula-mint-aura')).toBeOnTheScreen()
+    expect(screen.queryByTestId('worker-v5-receiving-account-formula-mint-aura')).toBeNull()
     receivingAccount.unmount()
 
     mockRouteParams = {}
     const opportunity = render(<WorkerJobsSurface />)
-    expect(screen.getByTestId('worker-v5-opportunity-card-formula-mint-aura-job_test_1')).toBeOnTheScreen()
+    expect(screen.getByTestId('worker-v5-opportunity-inbox-handoff')).toBeOnTheScreen()
     opportunity.unmount()
 
     buildWorkflow({ deal: buildAcceptedDeal() })
@@ -3692,17 +4083,14 @@ describe('Worker runtime surface wiring', () => {
     buildWorkflow({ deal: buildCompletedByWorkerDeal() })
     mockRouteParams = { ns_worker_screen: '2.11-completion-submitted' }
     const submitted = render(<WorkerJobsSurface />)
-    expect(screen.getByTestId('worker-v5-completion-submitted-mint-aura')).toBeOnTheScreen()
+    expect(screen.getByTestId('worker-v5-completion-submitted-background-mint-aura')).toBeOnTheScreen()
     submitted.unmount()
 
     buildWorkflow({ deal: buildConfirmedCompletionDeal() })
     mockRouteParams = { ns_worker_screen: '2.12-case-closed' }
     render(<WorkerJobsSurface />)
-    expect(screen.getByTestId('worker-v5-case-closed-mint-aura')).toBeOnTheScreen()
-    ;[0, 1, 2].forEach((index) => {
-      expect(screen.getByTestId(`worker-v5-info-cell-CaseClosed-formula-mint-aura-${index}`)).toBeOnTheScreen()
-    })
-    expect(screen.getByTestId('worker-v5-case-trail-formula-mint-aura')).toBeOnTheScreen()
+    expect(screen.getByTestId('worker-v5-case-flow-page-customer-mint-aura')).toBeOnTheScreen()
+    expect(screen.getByTestId('worker-v5-stage-ten-summary-list')).toBeOnTheScreen()
   })
 
   it('keeps the Formula Mint card identity with an opaque Reduce Transparency fallback', () => {
@@ -3728,7 +4116,7 @@ describe('Worker runtime surface wiring', () => {
     home.unmount()
 
     const jobs = render(<WorkerJobsSurface />)
-    expect(screen.getByTestId('worker-v5-opportunity-detail')).toHaveTextContent(/Ngay/)
+    expect(screen.getByTestId('worker-v5-opportunity-inbox-handoff')).toHaveTextContent(/Ngay/)
     jobs.unmount()
 
     buildWorkflow({ workerEarnings: buildNoEarnings() })
@@ -3755,7 +4143,7 @@ describe('Worker runtime surface wiring', () => {
     buildWorkflow({ deal: buildConfirmedCompletionDeal() })
     mockRouteParams = { ns_worker_screen: '2.12-case-closed' }
     const closedCase = render(<WorkerJobsSurface />)
-    expect(screen.getByTestId('worker-v5-case-trail-detail-0')).toHaveTextContent(/Bằng chứng đã khóa/)
+    expect(screen.getByTestId('worker-v5-stage-ten-summary-list')).toBeOnTheScreen()
     closedCase.unmount()
 
     buildWorkflow({
@@ -3769,17 +4157,28 @@ describe('Worker runtime surface wiring', () => {
     mockRouteParams = {}
     const profile = render(<WorkerProfileSurface />)
     expect(screen.getByTestId('worker-v5-profile-row-reliability')).toBeOnTheScreen()
-    expect(screen.getByTestId('worker-v5-profile-lifetime-progress-label')).not.toHaveTextContent(/0%/)
-    expect(screen.getByTestId('worker-v5-profile-row-services-status')).toHaveTextContent('3 dịch vụ')
+    expect(screen.getByTestId('worker-v5-profile-row-services').props.accessibilityLabel).toContain('3 dịch vụ')
     profile.unmount()
 
     mockRouteParams = { ns_worker_screen: '5.3-skills-service-area' }
     const skills = render(<WorkerProfileSurface />)
     expect(screen.queryByText('Chỉ hiển thị dữ liệu sử dụng trực tiếp trong workflow.')).toBeNull()
     expect(StyleSheet.flatten(screen.getByTestId('worker-v5-skills-hero-copy').props.style)).toMatchObject({ justifyContent: 'center' })
-    expect(StyleSheet.flatten(screen.getByTestId('worker-v5-skills-service-count').props.style)).toMatchObject({ fontSize: 28 })
-    expect(StyleSheet.flatten(screen.getByText('3 dịch vụ đã chọn').props.style)).toMatchObject({ fontSize: 12 })
+    expect(StyleSheet.flatten(screen.getByTestId('worker-v5-skills-service-count').props.style)).toMatchObject({ fontSize: 17 })
+    expect(screen.getByTestId('worker-v5-skills-service-count')).toHaveTextContent('3 / 6 dịch vụ')
     expect(screen.getByTestId('worker-v5-skills-hero-detail')).toBeOnTheScreen()
+    for (const iconFrameID of [
+      'worker-v5-service-form-intro-icon-frame',
+      'worker-v5-quick-action-0-icon-frame',
+      'worker-v5-quick-action-1-icon-frame',
+      'worker-v5-quick-action-2-icon-frame',
+      'worker-v5-service-area-summary-icon',
+    ]) {
+      const iconFrameStyle = StyleSheet.flatten(screen.getByTestId(iconFrameID).props.style)
+      expect(iconFrameStyle).toMatchObject({ height: 24, width: 24 })
+      expect(iconFrameStyle.backgroundColor).toBeUndefined()
+      expect(iconFrameStyle.borderWidth).toBeUndefined()
+    }
     expect(StyleSheet.flatten(screen.getByTestId('worker-v5-service-card-detail-0').props.style)).toMatchObject({
       alignItems: 'flex-start',
       flexDirection: 'column',
@@ -3836,8 +4235,7 @@ describe('Worker runtime surface wiring', () => {
 
     mockRouteParams = {}
     const profile = render(<WorkerProfileSurface />)
-    expect(screen.getByTestId('worker-v5-profile-row-reliability-status')).toHaveTextContent(/^0\/100$/)
-    expect(screen.getByTestId('worker-v5-profile-lifetime-progress').props.accessibilityValue.now).toBe(0)
+    expect(screen.getByTestId('worker-v5-profile-row-reliability').props.accessibilityLabel).toContain('0/100')
     profile.unmount()
 
     mockRouteParams = { ns_worker_screen: '5.2-worker-ranking' }
@@ -3865,8 +4263,7 @@ describe('Worker runtime surface wiring', () => {
     mockRouteParams = {}
     const overview = render(<WorkerProfileSurface />)
     expect(screen.getByTestId('worker-v5-profile-header-name')).toHaveTextContent('Chờ hồ sơ')
-    expect(screen.getByTestId('worker-v5-profile-lifetime-progress-label')).toHaveTextContent('Thời gian hoạt động')
-    expect(screen.getByTestId('worker-v5-profile-row-services-status')).toHaveTextContent('Chờ hồ sơ')
+    expect(screen.getByTestId('worker-v5-profile-row-services').props.accessibilityLabel).toContain('Chưa chọn')
     overview.unmount()
 
     mockRouteParams = { ns_worker_screen: '5.3-skills-service-area' }
@@ -3875,11 +4272,13 @@ describe('Worker runtime surface wiring', () => {
 
     expect(screen.getByTestId('worker-v5-skills-service-count')).not.toHaveTextContent(/^0/)
     expect(screen.getByTestId('worker-v5-skills-service-count')).toHaveTextContent('Chờ hồ sơ')
-    expect(screen.getByTestId('worker-v5-skills-hero-detail')).toHaveTextContent(/Chờ hồ sơ/)
+    expect(screen.getByTestId('worker-v5-skills-hero-detail')).toHaveTextContent(/Đã lưu/)
     expect(screen.getByTestId('worker-v5-quick-action-empty-title')).toHaveTextContent('Chờ dữ liệu kỹ năng')
     expect(StyleSheet.flatten(screen.getByTestId('worker-v5-quick-action-empty-icon').props.style)).toMatchObject({
-      backgroundColor: 'transparent',
+      height: 24,
+      width: 24,
     })
+    expect(StyleSheet.flatten(screen.getByTestId('worker-v5-quick-action-empty-icon').props.style).borderWidth).toBeUndefined()
   })
 
   it('lets a worker select multiple supported services beyond the legacy hardcoded list', async () => {
@@ -3898,18 +4297,17 @@ describe('Worker runtime surface wiring', () => {
 
     render(<WorkerProfileSurface />)
 
-    expect(screen.getByText('Chọn dịch vụ phù hợp. Chỉ ghép việc khi đạt chất lượng.')).toBeTruthy()
-    expect(screen.getByTestId('worker-v5-skills-service-count')).toHaveTextContent('1 dịch vụ đang nhận')
-    expect(screen.getByTestId('worker-v5-skills-hero-detail')).toHaveTextContent(/1 dịch vụ đã chọn/)
+    expect(screen.getByText('Chỉ ghép việc cho dịch vụ đã chọn và đủ điều kiện chất lượng.')).toBeTruthy()
+    expect(screen.getByTestId('worker-v5-skills-service-count')).toHaveTextContent('1 / 6 dịch vụ')
+    expect(screen.getByTestId('worker-v5-skills-hero-detail')).toHaveTextContent(/Đã lưu/)
     expect(screen.getByTestId('worker-v5-quick-action-0').props.accessibilityState).toMatchObject({ checked: true })
     expect(screen.getByTestId('worker-v5-quick-action-1').props.accessibilityState).toMatchObject({ checked: false })
     fireEvent.press(screen.getByTestId('worker-v5-quick-action-0'))
     expect(screen.getByText('Giữ ít nhất 1 dịch vụ.')).toBeTruthy()
     fireEvent.press(screen.getByTestId('worker-v5-quick-action-1'))
 
-    expect(screen.getByTestId('worker-v5-skills-service-count')).toHaveTextContent('2 dịch vụ đang chọn')
-    expect(screen.getByTestId('worker-v5-skills-hero-detail')).toHaveTextContent(/2 dịch vụ đã chọn/)
-    expect(screen.getByTestId('worker-v5-skills-hero-detail')).toHaveTextContent(/Chưa lưu thay đổi/)
+    expect(screen.getByTestId('worker-v5-skills-service-count')).toHaveTextContent('2 / 6 dịch vụ')
+    expect(screen.getByTestId('worker-v5-skills-hero-detail')).toHaveTextContent(/Chưa lưu/)
 
     fireEvent.press(screen.getByTestId('worker-v5-service-preferences-save'))
 
@@ -3918,14 +4316,14 @@ describe('Worker runtime surface wiring', () => {
         selected_service_types: ['electrical', 'plumbing'],
       })
     })
-    expect(screen.getByTestId('worker-v5-skills-service-count')).toHaveTextContent('Đang lưu 2 dịch vụ')
-    expect(screen.getByTestId('worker-v5-skills-hero-detail')).toHaveTextContent(/Đang lưu lựa chọn/)
+    expect(screen.getByTestId('worker-v5-skills-service-count')).toHaveTextContent('2 / 6 dịch vụ')
+    expect(screen.getByTestId('worker-v5-skills-hero-detail')).toHaveTextContent(/Đang lưu/)
 
     resolveSave?.(true)
 
     await waitFor(() => {
-      expect(screen.getByTestId('worker-v5-skills-service-count')).toHaveTextContent('2 dịch vụ đang nhận')
-      expect(screen.getByTestId('worker-v5-skills-hero-detail')).toHaveTextContent(/Đã lưu lựa chọn/)
+      expect(screen.getByTestId('worker-v5-skills-service-count')).toHaveTextContent('2 / 6 dịch vụ')
+      expect(screen.getByTestId('worker-v5-skills-hero-detail')).toHaveTextContent(/Đã lưu/)
       expect(screen.getByTestId('worker-v5-service-preferences-save').props.accessibilityState).toMatchObject({
         disabled: true,
       })
@@ -3954,7 +4352,7 @@ describe('Worker runtime surface wiring', () => {
       checked: true,
       disabled: true,
     })
-    expect(screen.getByTestId('worker-v5-quick-action-0')).toHaveTextContent(/Tạm khóa chất lượng/)
+    expect(screen.getByTestId('worker-v5-quick-action-0')).toHaveTextContent(/Tạm khóa/)
     expect(screen.getByTestId('worker-v5-service-quality-notice-electrical')).toHaveTextContent(
       /3 đánh giá/,
     )

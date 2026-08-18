@@ -1,48 +1,31 @@
+import { Platform } from 'react-native'
 import Svg, { Circle, Path, Rect } from 'react-native-svg'
 
 export type ProfileRankingMetricKind = 'reviews' | 'services' | 'streak'
 export type ProfileRankingRuleKind = 'completion' | 'protected' | 'review'
 
-const profileRankingSignalIconSize = 20
-
-export function ProfileRankingPendingIcon({ color, testID }: { color: string; testID?: string }) {
+export function ProfileRankingPointsIcon({ color, testID }: { color: string; testID?: string }) {
   return (
-    <Svg height={profileRankingSignalIconSize} testID={testID} viewBox="0 0 18 18" width={profileRankingSignalIconSize}>
-      <Path
-        d="M13.7 5.2A6 6 0 1 0 14 10.8"
-        fill="none"
-        stroke={color}
-        strokeLinecap="round"
-        strokeWidth={1.5}
-      />
-      <Path d="M5.5 9h5" fill="none" stroke={color} strokeLinecap="round" strokeWidth={1.5} />
+    <Svg accessible={Platform.OS === 'web' ? undefined : false} height={16} testID={testID} viewBox="0 0 16 16" width={16}>
+      <Path d="m3.5 5.1 4.5-1.7 4.5 1.7L8 6.8 3.5 5.1ZM3.5 8 8 9.7 12.5 8M3.5 10.9 8 12.6l4.5-1.7" fill="none" stroke={color} strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.35} />
     </Svg>
   )
 }
 
-export function ProfileRankingGrowthIcon({ color, testID }: { color: string; testID?: string }) {
+export function ProfileRankingNextLevelIcon({ color, testID }: { color: string; testID?: string }) {
   return (
-    <Svg height={profileRankingSignalIconSize} testID={testID} viewBox="0 0 18 18" width={profileRankingSignalIconSize}>
-      <Path
-        d="M2.8 14.2c1.5-3.9 3.4-5.4 5.2-3.8 1.8 1.6 3.6.6 7-4.7"
-        fill="none"
-        stroke={color}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={1.45}
-      />
-      <Path d="M11.9 5.7H15v3.1" fill="none" stroke={color} strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.45} />
-      <Circle cx={2.8} cy={14.2} fill={color} r={1.25} />
-      <Circle cx={8} cy={10.4} fill={color} r={1.25} />
-      <Circle cx={15} cy={5.7} fill={color} r={1.25} />
+    <Svg accessible={Platform.OS === 'web' ? undefined : false} height={16} testID={testID} viewBox="0 0 16 16" width={16}>
+      <Circle cx={8} cy={8} fill="none" r={6.25} stroke={color} strokeWidth={1.35} />
+      <Path d="m4.7 9.4 2.1-2.1 1.7 1.7 2.8-2.8M9.9 6.2h1.4v1.4" fill="none" stroke={color} strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.35} />
     </Svg>
   )
 }
 
-export function ProfileRankingChevron({ color, testID }: { color: string; testID?: string }) {
+export function ProfileRankingUsageSignalIcon({ color, testID }: { color: string; testID?: string }) {
   return (
-    <Svg height={profileRankingSignalIconSize} testID={testID} viewBox="0 0 18 18" width={profileRankingSignalIconSize}>
-      <Path d="m7 4.5 4.5 4.5L7 13.5" fill="none" stroke={color} strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.6} />
+    <Svg accessible={Platform.OS === 'web' ? undefined : false} height={16} testID={testID} viewBox="0 0 16 16" width={16}>
+      <Path d="m8 2.4 1.5 4.1L13.6 8l-4.1 1.5L8 13.6 6.5 9.5 2.4 8l4.1-1.5L8 2.4Z" fill="none" stroke={color} strokeLinejoin="round" strokeWidth={1.35} />
+      <Circle cx={13.1} cy={3.2} fill={color} r={0.9} />
     </Svg>
   )
 }

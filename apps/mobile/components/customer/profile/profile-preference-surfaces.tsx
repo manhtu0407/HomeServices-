@@ -6,14 +6,19 @@ import { useGlassAccessibility } from '@/components/ui/accessibility-motion'
 import { reduceMotionAwarePressStyle } from '@/components/ui/reduce-motion-aware-animation'
 
 import type { CustomerThemeTokens } from '../customer-theme'
+import { ProfileSettingsGlyph, type ProfileSettingsGlyphName } from './profile-settings-icons'
 import { customerV21ProfilePreferenceStyles as styles } from './profile-preference-styles'
 import { ProfileFormulaMintSurface } from './profile-utility-surfaces'
+import { V21Card } from '../ui/shared-surfaces'
 
 export function ProfilePreferencePanel({
   body,
   children,
   framelessCenteredImage = false,
+  hideHeader = false,
   image,
+  icon,
+  simple = false,
   scope,
   testID,
   title,
@@ -22,12 +27,42 @@ export function ProfilePreferencePanel({
   body: string
   children: ReactNode
   framelessCenteredImage?: boolean
+  hideHeader?: boolean
   image?: ImageSourcePropType
+  icon?: ProfileSettingsGlyphName
+  simple?: boolean
   scope: string
   testID: string
   title: string
   tokens: CustomerThemeTokens
 }) {
+  if (simple) {
+    return (
+      <V21Card
+        style={[styles.simplePanel, { backgroundColor: tokens.raised, borderColor: tokens.border }]}
+        testID={testID}
+      >
+        {hideHeader ? null : (
+          <View style={styles.simplePanelHeader} testID={`${testID}-header`}>
+            <View
+              style={[styles.simplePanelHeaderIcon, { backgroundColor: tokens.raised, borderColor: tokens.border }]}
+              testID={`${testID}-header-icon`}
+            >
+              {icon ? <ProfileSettingsGlyph color={tokens.primary} name={icon} testID={`${testID}-header-icon-glyph`} /> : null}
+            </View>
+            <View style={styles.simplePanelHeaderCopy}>
+              <Text style={[styles.simplePanelHeaderTitle, { color: tokens.text }]}>{title}</Text>
+              <Text style={[styles.simplePanelHeaderBody, { color: tokens.muted }]}>{body}</Text>
+            </View>
+          </View>
+        )}
+        <View style={styles.simplePanelBody}>
+          {children}
+        </View>
+      </V21Card>
+    )
+  }
+
   return (
     <ProfileFormulaMintSurface
       contentStyle={styles.panelContent}

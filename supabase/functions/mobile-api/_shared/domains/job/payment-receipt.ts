@@ -82,6 +82,7 @@ export function parsePaymentStatus(
     value === "manual_verified" || value === "direct_awaiting_confirmation" ||
     value === "direct_awaiting_customer_confirmation" ||
     value === "direct_awaiting_worker_confirmation" ||
+    value === "direct_admin_confirmation_required" ||
     value === "direct_reconcile_required" || value === "direct_paid"
   ) {
     return value;

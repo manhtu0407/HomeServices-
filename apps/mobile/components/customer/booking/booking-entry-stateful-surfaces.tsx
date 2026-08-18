@@ -8,8 +8,6 @@ import {
   type TextStyle,
   type ViewStyle,
 } from 'react-native'
-import Svg, { Circle, Line, Path, Rect } from 'react-native-svg'
-
 import { KaelButton, KaelChip, KaelTextField } from '@/components/ui/kael-primitives'
 import type { AppLanguage } from '@/lib/app-language'
 import { CUSTOMER_SERVICE_IDS, type CustomerServiceId } from '@nestscout/shared'
@@ -24,6 +22,7 @@ import {
 } from '../ui/aura-surfaces'
 import { customerV21Assets } from '../ui/assets'
 import { availableBookingTimeSlots } from './booking-intake-display-model'
+import { BookingFormulaMintAura, BookingFormGlyph } from './booking-form-glyphs'
 import { customerV21BookingStyles as bookingStyles } from './booking-styles'
 import { BookingWorkartJourney, BookingWorkartServiceTile } from './booking-workart-surfaces'
 import { customerV21SharedStyles as sharedStyles } from '../ui/shared-styles'
@@ -59,80 +58,6 @@ type RootBookingStyles = {
   stepLabel: StyleProp<TextStyle>
 }
 
-type BookingFormGlyphKind = 'calendar' | 'clock' | 'note' | 'pin'
-
-function BookingFormGlyph({
-  color,
-  kind,
-  size = 18,
-}: {
-  color: string
-  kind: BookingFormGlyphKind
-  size?: number
-}) {
-  const strokeProps = {
-    fill: 'none' as const,
-    stroke: color,
-    strokeLinecap: 'round' as const,
-    strokeLinejoin: 'round' as const,
-    strokeWidth: 1.7,
-  }
-
-  return (
-    <Svg fill="none" height={size} viewBox="0 0 24 24" width={size}>
-      {kind === 'pin' ? (
-        <>
-          <Path d="M12 21s6-5.25 6-10a6 6 0 1 0-12 0c0 4.75 6 10 6 10Z" {...strokeProps} />
-          <Circle cx={12} cy={11} r={2} {...strokeProps} />
-        </>
-      ) : kind === 'clock' ? (
-        <>
-          <Circle cx={12} cy={12} r={8.5} {...strokeProps} />
-          <Line x1={12} x2={12} y1={7.5} y2={12} {...strokeProps} />
-          <Line x1={12} x2={15.5} y1={12} y2={14.2} {...strokeProps} />
-        </>
-      ) : kind === 'note' ? (
-        <>
-          <Rect height={17} rx={2.5} width={14} x={4} y={3.5} {...strokeProps} />
-          <Path d="m8 16 1.8.4 7.7-7.7-2.2-2.2-7.7 7.7L8 16Z" {...strokeProps} />
-          <Path d="m14.7 6.5 2.2 2.2" {...strokeProps} />
-        </>
-      ) : (
-        <>
-          <Rect height={15} rx={2.5} width={16} x={4} y={5.5} {...strokeProps} />
-          <Line x1={8} x2={8} y1={3.5} y2={7.5} {...strokeProps} />
-          <Line x1={16} x2={16} y1={3.5} y2={7.5} {...strokeProps} />
-          <Line x1={4} x2={20} y1={9.5} y2={9.5} {...strokeProps} />
-        </>
-      )}
-    </Svg>
-  )
-}
-
-function BookingFormulaMintAura({
-  includeSkin = false,
-  quiet = false,
-  scope,
-  testIDPrefix,
-}: {
-  includeSkin?: boolean
-  quiet?: boolean
-  scope: string
-  testIDPrefix: string
-}) {
-  return (
-    <View pointerEvents="none" style={[bookingStyles.bookingFormulaMintAura, quiet ? { opacity: 0 } : null]}>
-      {includeSkin ? <SourceCardSkin testID={`${testIDPrefix}-card-skin`} /> : null}
-      <CaseWideMintAura
-        intensity="strong"
-        scope={`${scope}Wide`}
-        testID={`${testIDPrefix}-wide-mint-aura`}
-      />
-      <ZipMintAura scope={`${scope}Fine`} testID={`${testIDPrefix}-mint-aura`} />
-    </View>
-  )
-}
-
 export function CustomerBookingGuestGateView({
   body,
   loginLabel,
@@ -160,6 +85,7 @@ export function CustomerBookingEntryView({
   address,
   addressLookupOpen,
   addressLookupPending,
+  addressResolvePending = false,
   addressFallbackUsed,
   addressSuggestions,
   addressUsesMultiline,
@@ -179,7 +105,6 @@ export function CustomerBookingEntryView({
   onAddressChange,
   onAddressFocus,
   onAddressSuggestionPress,
-  onBack,
   onCustomScheduleDateChange,
   onCustomScheduleTimeChange,
   onDescriptionChange,
@@ -208,6 +133,7 @@ export function CustomerBookingEntryView({
   addressFallbackUsed: boolean
   addressLookupOpen: boolean
   addressLookupPending: boolean
+  addressResolvePending?: boolean
   addressSuggestions: BookingAddressSuggestionView[]
   addressUsesMultiline: boolean
   chatPlaceholder: string
@@ -226,7 +152,6 @@ export function CustomerBookingEntryView({
   onAddressChange: (value: string) => void
   onAddressFocus: () => void
   onAddressSuggestionPress: (suggestion: BookingAddressSuggestionView) => void
-  onBack: () => void
   onCustomScheduleDateChange: (value: string) => void
   onCustomScheduleTimeChange: (value: string) => void
   onDescriptionChange: (value: string) => void
@@ -252,7 +177,8 @@ export function CustomerBookingEntryView({
   submitDisabled?: boolean
 }) {
   const { width: viewportWidth } = useWindowDimensions()
-  const isWideBookingForm = viewportWidth >= 420
+  // Keep the approved booking composition stable; width only tunes artwork and spacing.
+  const isWideBookingForm = true
   const timeSlotAuraLayers = useMemo(
     () => timeSlots.map((slot, index) => (
       <View
@@ -274,12 +200,12 @@ export function CustomerBookingEntryView({
     new Date(scheduleRuntimeNow),
   )
   const availableTimeSlotSet = new Set<string>(availableTimeSlots)
-  const showDateChipGlyph = isWideBookingForm && viewportWidth >= 480
   const bookingCardWidth = Math.max(0, viewportWidth - 32)
   const bookingCardScale = Math.min(1.25, Math.max(1, Math.round((bookingCardWidth / 411) * 100) / 100))
-  const bookingJourneyArtworkHeight = Math.max(140, Math.min(184, Math.round(bookingCardWidth * 0.37)))
+  const bookingJourneyArtworkHeight = Math.max(140, Math.min(184, Math.round(bookingCardWidth * 0.4)))
   const bookingServiceTileHeight = Math.max(56, Math.min(72, Math.round(bookingCardWidth * 0.133)))
   const bookingServiceGridGap = Math.max(3, Math.min(4, Math.round(bookingCardWidth * 0.007)))
+  const bookingCustomScheduleColumnWidth = Math.min(110, Math.max(98, Math.round((bookingCardWidth - 14) * 0.34)))
   const draftSubmitButton = (
     <KaelButton
       backgroundLayer={isWideBookingForm ? (
@@ -345,7 +271,6 @@ export function CustomerBookingEntryView({
             testID={`customer-v21-booking-date-${index}`}
           >
             <View style={[bookingStyles.bookingDateOptionContent, isWideBookingForm ? bookingStyles.bookingDateOptionContentWide : null]}>
-              {showDateChipGlyph ? <BookingFormGlyph color={selected ? tokens.primary : tokens.muted} kind="calendar" size={12} /> : null}
               <View style={bookingStyles.bookingDateTextStack}>
                 <Text numberOfLines={1} style={[bookingStyles.bookingDateDay, { color: selected ? tokens.primary : tokens.muted }]}>{option.dayLabel}</Text>
                 <Text numberOfLines={1} style={[bookingStyles.bookingDateValue, { color: selected ? tokens.primary : tokens.text }]}>{option.dateLabel}</Text>
@@ -433,7 +358,11 @@ export function CustomerBookingEntryView({
         const selected = selectedScheduleTime === slot
         const unavailable = !availableTimeSlotSet.has(slot)
         return (
-          <View key={slot} style={[bookingStyles.bookingTimeSlotGroup, isWideBookingForm ? bookingStyles.bookingWideTimeSlotGroup : null]}>
+          <View
+            key={slot}
+            style={[bookingStyles.bookingTimeSlotGroup, isWideBookingForm ? bookingStyles.bookingWideTimeSlotGroup : null]}
+            testID={`customer-v21-booking-time-${index}-group`}
+          >
             <KaelChip
               accessibilityState={{ selected }}
               backgroundLayer={timeSlotAuraLayers[index]}
@@ -455,9 +384,17 @@ export function CustomerBookingEntryView({
                 },
               ]}
               testID={`customer-v21-booking-time-${index}`}
-              textStyle={isWideBookingForm ? bookingStyles.bookingWideTimeChipText : undefined}
+              textStyle={isWideBookingForm
+                ? [bookingStyles.bookingWideTimeChipText, { color: selected ? tokens.primary : tokens.muted }]
+                : undefined}
               variant={selected ? 'selected' : 'unselected'}
             />
+            {isWideBookingForm ? (
+              <View
+                style={[bookingStyles.bookingWideTimeSelectionLine, { backgroundColor: selected ? tokens.primary : 'transparent' }]}
+                testID={`customer-v21-booking-time-${index}-selection-line`}
+              />
+            ) : null}
           </View>
         )
       })}
@@ -572,9 +509,10 @@ export function CustomerBookingEntryView({
   return (
     <>
       <V21TopBar
-        onBack={onBack}
-        subtitle={isMediaScreen ? (language === 'vi' ? 'Bước 2/4 · dữ liệu chờ công việc thật' : 'Step 2/4 · data waits for a real job') : (language === 'vi' ? 'Kael sẽ dẫn bạn theo từng bước' : 'Kael guides each step')}
+        showAvatar={false}
+        subtitle=""
         title={isMediaScreen ? (language === 'vi' ? 'Kael thu thập hiện trạng' : 'Kael collects current state') : (language === 'vi' ? 'Tạo yêu cầu dịch vụ' : 'Create service request')}
+        titleStyle={sharedStyles.screenTitle}
       />
 
       {!isMediaScreen ? (
@@ -679,7 +617,12 @@ export function CustomerBookingEntryView({
                 />
                 <Text accessibilityElementsHidden style={[bookingStyles.bookingInlineChevron, { color: tokens.muted }]}>›</Text>
               </View>
-              {addressLookupOpen && (addressLookupPending || addressSuggestions.length > 0 || addressFallbackUsed) ? (
+              {addressResolvePending ? (
+                <Text style={[bookingStyles.bookingAddressLookupText, { color: tokens.muted }]} testID="customer-v21-booking-address-resolving">
+                  {language === 'vi' ? 'Đang xác định địa chỉ chi tiết…' : 'Finding the detailed address…'}
+                </Text>
+              ) : null}
+              {addressLookupOpen && (addressLookupPending || addressSuggestions.length > 0 || addressFallbackUsed || address.trim().length >= 2) ? (
                 <View style={[bookingStyles.bookingAddressSuggestions, { backgroundColor: tokens.mode === 'dark' ? tokens.base : '#FFFFFF', borderColor: tokens.border }]} testID="customer-v21-booking-address-suggestions">
                   {addressLookupPending ? (
                     <Text style={[bookingStyles.bookingAddressLookupText, { color: tokens.muted }]} testID="customer-v21-booking-address-loading">
@@ -688,6 +631,8 @@ export function CustomerBookingEntryView({
                   ) : addressSuggestions.length > 0 ? (
                     addressSuggestions.map((suggestion, index) => (
                       <Pressable
+                        accessibilityHint={language === 'vi' ? 'Chọn để lấy địa chỉ chi tiết hơn' : 'Select to get a more detailed address'}
+                        accessibilityLabel={suggestion.label}
                         accessibilityRole="button"
                         key={suggestion.place_id}
                         onPress={() => onAddressSuggestionPress(suggestion)}
@@ -710,7 +655,7 @@ export function CustomerBookingEntryView({
                     ))
                   ) : (
                     <Text style={[bookingStyles.bookingAddressLookupText, { color: tokens.muted }]} testID="customer-v21-booking-address-fallback">
-                      {language === 'vi' ? 'Chưa có gợi ý' : 'No suggestions'}
+                      {language === 'vi' ? 'Chưa tìm thấy. Thử tên đường gần đúng hơn.' : 'No match yet. Try a nearby street name.'}
                     </Text>
                   )}
                 </View>
@@ -738,7 +683,13 @@ export function CustomerBookingEntryView({
                   <View style={isWideBookingForm ? bookingStyles.bookingWideScheduleMain : null}>
                     {dateGridNode}
                   </View>
-                  {isWideBookingForm ? <View style={bookingStyles.bookingWideCustomScheduleColumn}>{customDateFieldNode}</View> : null}
+                  {isWideBookingForm ? (
+                    <View
+                      style={[bookingStyles.bookingWideCustomScheduleColumn, { minWidth: bookingCustomScheduleColumnWidth, width: bookingCustomScheduleColumnWidth }]}
+                    >
+                      {customDateFieldNode}
+                    </View>
+                  ) : null}
                 </View>
                 {!isWideBookingForm ? customDateFieldNode : null}
                 <View
@@ -749,7 +700,13 @@ export function CustomerBookingEntryView({
                     {timeStartNode}
                     {timeGridNode}
                   </View>
-                  {isWideBookingForm ? <View style={bookingStyles.bookingWideCustomScheduleColumn}>{customTimeFieldNode}</View> : null}
+                  {isWideBookingForm ? (
+                    <View
+                      style={[bookingStyles.bookingWideCustomScheduleColumn, { minWidth: bookingCustomScheduleColumnWidth, width: bookingCustomScheduleColumnWidth }]}
+                    >
+                      {customTimeFieldNode}
+                    </View>
+                  ) : null}
                 </View>
                 {!isWideBookingForm ? (
                   <>

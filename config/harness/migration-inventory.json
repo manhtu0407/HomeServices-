@@ -5,11 +5,11 @@
     "immutableThroughVersion": "20260805090000",
     "sha256": "7d4ac8a8227452e357caa11a21ece9099c80112712dba9a250114d0761a90275"
   },
-  "migrationCount": 282,
-  "migrationsSha256": "b22e57fa3b5ace653eee790dce74162ddf4f1b21190b9622a2ba1695e6cdfb64",
+  "migrationCount": 283,
+  "migrationsSha256": "64ae5a294842d3fd1924d2ee88c5256e8aa542d5ba284c4383720d634d5495d8",
   "databaseTypes": {
     "file": "packages/shared/src/types/database",
-    "sha256": "f7054292d088e6e7543ecef45b415a72607fa37782fbf6cc4f866284eac07872"
+    "sha256": "67f2ba41a3fbd8337c8900a93029682251bdf45f4418185bcbe5483da27deb6c"
   },
   "entries": [
     {
@@ -1985,6 +1985,13 @@
       "file": "supabase/migrations/20260816120000_enforce_customer_profile_invariant.sql",
       "sha256": "76c3c0e576feada75fc523d89e2daf902da06e90392a54aa09c3585d5746a432",
       "bytes": 1193
+    },
+    {
+      "version": "20260818100000",
+      "name": "worker_salary_settlement_v2",
+      "file": "supabase/migrations/20260818100000_worker_salary_settlement_v2.sql",
+      "sha256": "19aa9477494419ec6099c6a523fb27bf67182d8168c8e784ad70b322e38e90a8",
+      "bytes": 44742
     }
   ]
 }

@@ -3,13 +3,14 @@ import { Image } from 'expo-image'
 import { StatusBar } from 'expo-status-bar'
 import { Appearance, Pressable, ScrollView, Text, useWindowDimensions, View, type ImageSourcePropType, type StyleProp, type TextStyle, type ViewStyle } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import Svg, { Path } from 'react-native-svg'
+import Svg, { Defs, Path, Rect } from 'react-native-svg'
 
 import type { CustomerServiceId } from '@nestscout/shared'
 import { GlassSurface } from '@/components/ui/glass-surface'
 import { useGlassAccessibility } from '@/components/ui/accessibility-motion'
 import { useDockScrollHandler } from '@/components/ui/dock-scroll-state'
 import { KaelCoreV9 } from '@/components/ui/kael-core-v9'
+import { AlphaStop as Stop, NativeSafeLinearGradient as LinearGradient } from '@/components/ui/svg-alpha-stop'
 import { useAppLanguage } from '@/lib/app-language'
 
 import {
@@ -19,7 +20,7 @@ import {
   type CustomerThemeTokens,
 } from '../customer-theme'
 import { CaseWideMintAura, CustomerScreenCanvasAura, HomeEmptySourceAura, SourceCardSkin, SourceIconAura, SourceIconTileSkin, ZipMintAura } from './aura-surfaces'
-import { customerV21BookingServiceAssets, customerV21HomeV4Assets, isKaelCoreV9Visual, type CustomerV21Visual } from './assets'
+import { customerV21BookingServiceAssets, customerV21BookingWorkartAssets, isKaelCoreV9Visual, type CustomerV21Visual } from './assets'
 import { customerV21BookingServiceCopy } from './copy'
 import { customerV21SharedStyles as styles } from './shared-styles'
 import { type CustomerV21ScreenId } from './types'
@@ -53,13 +54,36 @@ type CustomerV21AssetTile = ComponentType<{
   testID?: string
 }>
 
-const homeV4ServiceImageRules: Record<CustomerServiceId, { height: number; translateX: number; translateY: number; width: number }> = {
-  electrical: { height: 158, translateX: -13, translateY: -4, width: 190 },
-  handyman_minor_installation: { height: 192, translateX: -3, translateY: -17, width: 226 },
-  home_cleaning: { height: 168, translateX: -10, translateY: -4, width: 207 },
-  hvac_basic_maintenance: { height: 141, translateX: -11, translateY: -12, width: 229 },
-  plumbing: { height: 162, translateX: -12, translateY: -2, width: 200 },
-  upholstery_care: { height: 174, translateX: 0, translateY: -12, width: 225 },
+const homeV4ServiceArtworkRules: Record<CustomerServiceId, { height: number; translateX: number; translateY: number; width: number }> = {
+  electrical: { height: 150, translateX: 0, translateY: 0, width: 300 },
+  handyman_minor_installation: { height: 150, translateX: 0, translateY: 0, width: 300 },
+  home_cleaning: { height: 150, translateX: 0, translateY: 0, width: 300 },
+  hvac_basic_maintenance: { height: 150, translateX: 0, translateY: 0, width: 300 },
+  plumbing: { height: 150, translateX: 0, translateY: 0, width: 300 },
+  upholstery_care: { height: 150, translateX: 0, translateY: 0, width: 300 },
+}
+
+function HomeV4ServiceArtworkFade({ color, service, testID }: { color: string; service: CustomerServiceId; testID: string }) {
+  const gradientID = `${service}-${testID}-gradient`.replace(/[^A-Za-z0-9_-]/g, '-')
+  return (
+    <Svg
+      height="100%"
+      pointerEvents="none"
+      preserveAspectRatio="none"
+      style={styles.homeV4ServiceArtworkFade}
+      testID={testID}
+      viewBox="0 0 100 100"
+      width="100%"
+    >
+      <Defs>
+        <LinearGradient id={gradientID} x1="0" x2="0" y1="0" y2="1">
+          <Stop offset="0" stopColor={color} stopOpacity={0} />
+          <Stop offset="1" stopColor={color} stopOpacity={0.94} />
+        </LinearGradient>
+      </Defs>
+      <Rect fill={`url(#${gradientID})`} height="100" width="100" />
+    </Svg>
+  )
 }
 
 export function AssetTile({
@@ -152,7 +176,7 @@ export function ServiceTile({
   fullWidth = false,
   homeAura = false,
   homeV4 = false,
-  homeImage,
+  homeArtwork,
   onPress,
   selected,
   service,
@@ -161,7 +185,7 @@ export function ServiceTile({
   fullWidth?: boolean
   homeAura?: boolean
   homeV4?: boolean
-  homeImage?: ImageSourcePropType
+  homeArtwork?: ImageSourcePropType
   onPress?: () => void
   selected?: boolean
   service: CustomerServiceId
@@ -172,8 +196,8 @@ export function ServiceTile({
   const { width: viewportWidth } = useWindowDimensions()
   const copy = customerV21BookingServiceCopy[language][service]
   const serviceTestID = testID ?? `customer-v21-service-${service}`
-  const homeV4Scale = Math.min(Math.max(viewportWidth - 32, 280) / 857, 1)
-  const homeV4ImageRule = homeV4ServiceImageRules[service]
+  const homeV4Scale = Math.min(Math.max(viewportWidth - 32, 280) / 940, 1)
+  const homeV4ArtworkRule = homeV4ServiceArtworkRules[service]
 
   return (
     <Pressable
@@ -216,34 +240,41 @@ export function ServiceTile({
             <View style={styles.homeV4ServiceContent}>
               <View
                 accessibilityLabel={copy.label}
-                style={[
-                  styles.homeV4ServiceVisual,
-                  { backgroundColor: selected ? tokens.service : tokens.mode === 'dark' ? tokens.ghost : tokens.raised },
-                ]}
+                style={styles.homeV4ServiceVisual}
                 testID={`${serviceTestID}-visual-panel`}
               >
-                {homeV4ImageRule ? (
-                  <Image
-                    accessible={false}
-                    contentFit="contain"
-                    source={homeImage ?? customerV21HomeV4Assets.services[service]}
-                    style={{
-                      height: homeV4ImageRule.height * homeV4Scale,
+                <Image
+                  accessible={false}
+                  contentFit="cover"
+                  source={homeArtwork ?? customerV21BookingWorkartAssets[service]}
+                  style={[
+                    styles.homeV4ServiceArtwork,
+                    {
+                      height: '100%',
                       transform: [
-                        { translateX: homeV4ImageRule.translateX * homeV4Scale },
-                        { translateY: homeV4ImageRule.translateY * homeV4Scale },
+                        { translateX: homeV4ArtworkRule.translateX * homeV4Scale },
+                        { translateY: homeV4ArtworkRule.translateY * homeV4Scale },
                       ],
-                      width: homeV4ImageRule.width * homeV4Scale,
-                    }}
-                  />
-                ) : (
-                  <CustomerV21AssetVisual
-                    image={homeImage ?? customerV21BookingServiceAssets[service]}
-                    reduceMotion={reduceMotion}
-                    size={72}
-                  />
-                )}
+                      width: '100%',
+                    },
+                  ]}
+                  testID={`${serviceTestID}-workart`}
+                />
+                <HomeV4ServiceArtworkFade
+                  color={tokens.raised}
+                  service={service}
+                  testID={`${serviceTestID}-workart-fade`}
+                />
               </View>
+              <Text
+                adjustsFontSizeToFit
+                minimumFontScale={0.72}
+                numberOfLines={2}
+                style={[styles.homeV4ServiceTitle, { color: tokens.text }]}
+                testID={`${serviceTestID}-title`}
+              >
+                {copy.label}
+              </Text>
             </View>
           ) : (
             <>
@@ -435,6 +466,7 @@ export function V21TopBar({
   subtitleStyle,
   testID,
   title,
+  titleAccessory,
   titleNumberOfLines = 1,
   titleContainerStyle,
   titleStyle,
@@ -454,12 +486,24 @@ export function V21TopBar({
   subtitleStyle?: StyleProp<TextStyle>
   testID?: string
   title: string
+  titleAccessory?: ReactNode
   titleNumberOfLines?: number
   titleContainerStyle?: StyleProp<ViewStyle>
   titleStyle?: StyleProp<TextStyle>
 }) {
   const { tokens } = useCustomerV21SurfaceTheme()
   const shouldShowAvatar = showAvatar && !onBack
+  const titleNode = (
+    <Text
+      adjustsFontSizeToFit
+      minimumFontScale={0.68}
+      numberOfLines={titleNumberOfLines}
+      style={[styles.topTitle, { color: tokens.text }, titleAccessory ? { flex: 1, minWidth: 0 } : null, titleStyle]}
+      testID="customer-v21-top-title"
+    >
+      {title}
+    </Text>
+  )
   return (
     <View style={[styles.topBar, containerStyle]} testID={testID}>
       {leading ? (
@@ -479,15 +523,7 @@ export function V21TopBar({
         </View>
       ) : null}
       <View style={[styles.flex, styles.topCopy, titleContainerStyle]}>
-        <Text
-          adjustsFontSizeToFit
-          minimumFontScale={0.68}
-          numberOfLines={titleNumberOfLines}
-          style={[styles.topTitle, { color: tokens.text }, titleStyle]}
-          testID="customer-v21-top-title"
-        >
-          {title}
-        </Text>
+        {titleAccessory ? <View style={styles.topTitleRow}>{titleNode}<View style={styles.topTitleAccessory}>{titleAccessory}</View></View> : titleNode}
         {subtitle ? <Text numberOfLines={2} style={[styles.topSubtitle, { color: tokens.muted }, subtitleStyle]} testID="customer-v21-top-subtitle">{subtitle}</Text> : null}
       </View>
       {action || actionLabel ? (

@@ -64,6 +64,18 @@ export const styles = StyleSheet.create({
     padding: 12,
     ...shadow.soft,
   },
+  formulaHeroAura: {
+    opacity: 0.68,
+  },
+  formulaHeroCard: {
+    backgroundColor: 'rgba(255,255,255,0.96)',
+    borderColor: 'rgba(204,223,219,0.94)',
+    borderRadius: 24,
+    minHeight: 136,
+    shadowColor: '#087D72',
+    shadowOpacity: 0.08,
+    shadowRadius: 22,
+  },
   reliabilityAxisMeta: {
     color: color.text.secondary,
     ...typography.caption1,
@@ -79,6 +91,8 @@ export const styles = StyleSheet.create({
     minHeight: 72,
     overflow: 'hidden',
     paddingRight: 12,
+    position: 'relative',
+    zIndex: 1,
   },
   reliabilityAxisScore: {
     alignSelf: 'center',

@@ -36,7 +36,7 @@ export const appCopy = {
       hvac: 'Điều hòa & không khí',
       none: 'Chưa chọn',
       plumbing: 'Sửa nước',
-      upholstery: 'Sofa, nệm, rèm, thảm',
+      upholstery: 'Sofa, nệm, rèm',
     },
     status: {
       analyzing: 'Kael đang phân tích',

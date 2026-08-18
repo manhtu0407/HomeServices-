@@ -13,6 +13,7 @@ import type {
   AdminViewWithdrawalRequestSummary,
   AdminViewWorkerApplicationSummary,
   AdminViewWorkerReviewDetail,
+  AdminWorkerFinanceSnapshotResponse,
 } from '@/lib/api-types/admin'
 import { adminControlService } from '@/lib/services'
 
@@ -77,6 +78,31 @@ const workerReviewDetail = {
   },
   history: [{ stage: 'access', decision: 'approve', reason: null, decided_at: '2026-08-08T04:11:00.000Z', decided_by_name: 'Owner Admin' }],
 } satisfies AdminViewWorkerReviewDetail
+
+const workerFinanceSnapshot = {
+  worker_id: 'worker-1',
+  total_jobs_paid: 2,
+  gross_earnings: 700000,
+  platform_fee_total: 105000,
+  net_earnings: 595000,
+  available_balance: 420000,
+  withdrawal_reserved_amount: 250000,
+  withdrawn_total: 0,
+  cash_commission_collected_total: 30000,
+  cash_commission_due_total: 0,
+  pending_payment_count: 1,
+  pending_payment_amount: 200000,
+  provisional_payment_count: 1,
+  provisional_payment_amount: 200000,
+  on_hold_amount: 200000,
+  current_commission_level: 1,
+  current_commission_rate_bps: 1500,
+  withdrawal_eligible_at: '2026-08-09T03:20:00.000Z',
+  recent_transactions: [],
+  daily_earnings: [],
+  from_date: '2026-08-01',
+  to_date: '2026-08-08',
+} satisfies AdminWorkerFinanceSnapshotResponse
 
 const transaction = {
   job_id: 'job-1',
@@ -296,6 +322,7 @@ jest.mock('@/lib/services', () => ({
     getTransaction: jest.fn(),
     getWithdrawalRequest: jest.fn(),
     getWorkerReviewDetail: jest.fn(),
+    getWorkerFinanceSnapshot: jest.fn(),
     claimWithdrawalRequest: jest.fn(),
     listPayoutMethods: jest.fn(),
     listPriceBaselines: jest.fn(),
@@ -321,6 +348,7 @@ function mockSuccessfulLoad() {
     data: { applications: [workerApplication], has_more: false, next_offset: null, next_cursor: null, total_count: 1 },
     status: 200,
   })
+  jest.mocked(adminControlService.getWorkerFinanceSnapshot).mockResolvedValue({ success: true, data: workerFinanceSnapshot, status: 200 })
   jest.mocked(adminControlService.listTransactions).mockResolvedValue({
     success: true,
     data: { transactions: [transaction], has_more: false, next_offset: null, total_count: 1 },
@@ -714,6 +742,9 @@ describe('AdminSections', () => {
     expect(await screen.findByText('Thông tin đăng ký')).toBeTruthy()
     expect(screen.getByText('Giấy tờ xác minh')).toBeTruthy()
     expect(screen.getAllByText('Ngân hàng').length).toBeGreaterThanOrEqual(1)
+    expect(await screen.findByTestId('admin-worker-finance-snapshot')).toBeTruthy()
+    expect(screen.getByText('Tạm ghi nhận')).toBeTruthy()
+    expect(adminControlService.getWorkerFinanceSnapshot).toHaveBeenCalledWith(readyWorkerApplication.worker_id)
     fireEvent.press(screen.getByText('Xác minh hồ sơ'))
 
     await waitFor(() => {

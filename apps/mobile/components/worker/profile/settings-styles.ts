@@ -63,14 +63,14 @@ export const styles = StyleSheet.create({
     borderColor: '#63E6D0',
   },
   opaqueCard: {
-    backgroundColor: color.mint.white,
+    backgroundColor: color.surface.base,
   },
   pressed: {
     opacity: 0.78,
     transform: [{ scale: 0.992 }],
   },
   toggleKnob: {
-    backgroundColor: color.mint.white,
+    backgroundColor: color.surface.base,
     borderRadius: 10,
     height: 20,
     shadowColor: color.text.strong,
@@ -95,6 +95,11 @@ export const styles = StyleSheet.create({
     overflow: 'hidden',
     ...shadow.soft,
   },
+  toggleListFormula: {
+    backgroundColor: 'rgba(255,255,255,0.96)',
+    borderColor: 'rgba(204,223,219,0.94)',
+    position: 'relative',
+  },
   toggleRow: {
     alignItems: 'center',
     borderBottomColor: 'rgba(176,222,214,0.34)',
@@ -104,6 +109,8 @@ export const styles = StyleSheet.create({
     minHeight: 72,
     paddingHorizontal: 13,
     paddingVertical: 10,
+    position: 'relative',
+    zIndex: 1,
   },
   toggleTextColumn: {
     flex: 1,

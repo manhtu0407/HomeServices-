@@ -31,9 +31,9 @@ export const customerV21ServiceCopy: Localized<Record<ServiceType, { label: stri
     plumbing: { label: 'Plumbing repair', note: 'Leaks, drains, faucets' },
   },
   vi: {
-    hvac: { label: 'Điều hòa & Không khí', note: 'Vệ sinh · chẩn đoán · sửa chữa' },
-    upholstery: { label: 'Sofa, nệm, rèm, thảm', note: 'Chất liệu · vết bẩn · mùi · thời gian khô' },
-    handyman: { label: 'Sửa vặt & Lắp đặt nhỏ', note: 'Gom việc · vật tư · dụng cụ · ranh giới' },
+    hvac: { label: 'Điều hòa', note: 'Vệ sinh · chẩn đoán · sửa chữa' },
+    upholstery: { label: 'Sofa, nệm, rèm', note: 'Chất liệu · vết bẩn · mùi · thời gian khô' },
+    handyman: { label: 'Sửa vặt & Lắp đặt', note: 'Gom việc · vật tư · dụng cụ · ranh giới' },
     cleaning: { label: 'Vệ sinh nhà', note: 'Dọn nhà · bếp · phòng tắm' },
     electrical: { label: 'Sửa điện', note: 'Ổ cắm · cầu dao · đèn' },
     plumbing: { label: 'Sửa nước', note: 'Rò rỉ · đường ống' },
@@ -59,9 +59,9 @@ export const customerV21BookingServiceCopy: Localized<Record<CustomerServiceId, 
     electrical: { ...customerV21ServiceCopy.vi.electrical, details: ['Ổ cắm · cầu dao', 'Đèn'] },
     plumbing: { ...customerV21ServiceCopy.vi.plumbing, details: ['Rò rỉ', 'Đường ống'] },
     home_cleaning: { details: ['Diện tích', 'Hiện trạng · ưu tiên'], label: 'Vệ sinh nhà cửa', note: 'Phạm vi theo diện tích · hiện trạng · ưu tiên' },
-    hvac_basic_maintenance: { details: ['Vệ sinh · kiểm tra', 'An toàn'], label: 'Điều hòa & Không khí', note: 'Vệ sinh · kiểm tra cơ bản · duyệt an toàn' },
-    upholstery_care: { details: ['Chất liệu · vết bẩn', 'Mùi · khô'], label: 'Sofa, nệm, rèm, thảm', note: 'Chất liệu · vết bẩn · mùi · thời gian khô' },
-    handyman_minor_installation: { details: ['Vật tư · dụng cụ', 'Ranh giới việc'], label: 'Sửa vặt & Lắp đặt nhỏ', note: 'Gom việc · vật tư · dụng cụ · ranh giới' },
+    hvac_basic_maintenance: { details: ['Vệ sinh · kiểm tra', 'An toàn'], label: 'Điều hòa', note: 'Vệ sinh · kiểm tra cơ bản · duyệt an toàn' },
+    upholstery_care: { details: ['Chất liệu · vết bẩn', 'Mùi · khô'], label: 'Sofa, nệm, rèm', note: 'Chất liệu · vết bẩn · mùi · thời gian khô' },
+    handyman_minor_installation: { details: ['Vật tư · dụng cụ', 'Ranh giới việc'], label: 'Sửa vặt & Lắp đặt', note: 'Gom việc · vật tư · dụng cụ · ranh giới' },
   },
 }
 
@@ -122,6 +122,8 @@ export const customerV21CommonCopy: Localized<{
   emptyProfileMetric: string
   guestBody: string
   guestTitle: string
+  homeActivitySection: string
+  homeGuidanceSection: string
   homeSubtitle: string
   homeTitle: string
   intakeTitle: string
@@ -144,6 +146,8 @@ export const customerV21CommonCopy: Localized<{
     emptyProfileMetric: 'Pending',
     guestBody: 'Sign in to continue.',
     guestTitle: 'Customer sign-in required',
+    homeActivitySection: 'Service activity',
+    homeGuidanceSection: 'How NestScout works',
     homeSubtitle: 'Kael helps you create a safe service request.',
     homeTitle: 'What needs attention today?',
     intakeTitle: 'Find and book service',
@@ -166,6 +170,8 @@ export const customerV21CommonCopy: Localized<{
     emptyProfileMetric: 'Chưa có',
     guestBody: 'Đăng nhập để tiếp tục.',
     guestTitle: 'Cần đăng nhập khách hàng',
+    homeActivitySection: 'Hoạt động dịch vụ',
+    homeGuidanceSection: 'Quy trình dịch vụ',
     homeSubtitle: 'Kael giúp tạo yêu cầu dịch vụ an toàn.',
     homeTitle: 'Hôm nay nhà bạn cần xử lý gì?',
     intakeTitle: 'Tìm & đặt dịch vụ',

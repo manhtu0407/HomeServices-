@@ -1,18 +1,24 @@
 import { StyleSheet } from 'react-native'
 
-import { color, typography } from '@/design/theme'
+import { typography } from '@/design/theme'
 
 export const styles = StyleSheet.create({
   content: {
     alignItems: 'center',
+    flexDirection: 'row',
+    gap: 8,
     justifyContent: 'center',
+    maxWidth: 420,
     width: '100%',
   },
   copy: {
     ...typography.title3,
-    color: color.text.strong,
-    maxWidth: 320,
-    textAlign: 'center',
+    flex: 1,
+    flexShrink: 1,
+    fontWeight: '500',
+    maxWidth: 240,
+    minWidth: 0,
+    textAlign: 'left',
   },
   hero: {
     alignItems: 'center',
@@ -25,7 +31,7 @@ export const styles = StyleSheet.create({
   },
   modelStage: {
     alignItems: 'center',
+    flexShrink: 0,
     justifyContent: 'center',
-    marginBottom: 14,
   },
 })

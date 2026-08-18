@@ -12,20 +12,18 @@ import {
   type ImageSourcePropType,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import Animated, { Easing, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated'
-import Svg, { Circle, Defs, LinearGradient, Path, RadialGradient, Stop } from 'react-native-svg'
 import { useAppLanguage, type AppLanguage } from '@/lib/app-language'
 import { getRememberedAuthCredentials } from '@/lib/remembered-auth-credentials'
 import { getRememberedAuthIdentifier } from '@/lib/remembered-auth-identifier'
 import { LiquidBackButton } from '@/components/ui/liquid-back-button'
-import { GlassPanel, KaelCoreHero, NativeSafeGlassPanel, PageAura, PrimaryButton, useEntryAccessibility } from './components/materials'
+import { GlassPanel, KaelCoreHero, NativeSafeGlassPanel, PageAura, PrimaryButton } from './components/materials'
 import { CheckRow, EntryTextField } from './components/fields'
 import { ProviderButton } from './components/provider-button'
 import { entryAccessCopy, localizeEntryAuthError, type EntryAccessCopy } from './copy'
 import { useEntryAccessState } from './entry-access-state'
 import { identifierFieldProps, localizeIdentifierAvailabilityError, registrationIdentifierFieldProps } from './entry-identifier-fields'
-import { entryBrandAccessFlowStyles as styles, SPLASH_LOADER_WIDTH } from './entry-brand-access-flow-styles'
-import { LottieLogoMark } from './lottie-logo-mark'
+import { entryBrandAccessFlowStyles as styles } from './entry-brand-access-flow-styles'
+import { NestScoutLogoMotionMark, NESTSCOUT_LOGO_MOTION_DURATION_MS } from './nestscout-logo-motion-mark'
 import { PasswordRecoveryScreen, PasswordResetScreen } from './password-recovery-screen'
 import { RoleGateScreen } from './role-gate-screen'
 import { selectRoleGateGreeting } from './role-gate-greeting'
@@ -49,9 +47,6 @@ const defaultFeatures: EntryAccessFeatureFlags = {
   workerRegistration: true,
 }
 
-const AURORA_NEST_SPLASH_DURATION_MS = 4200
-const SPLASH_LOADER_SETTLE_OFFSET_MS = 260
-
 export function EntryBrandAccessFlow({
   actions,
   featureFlags,
@@ -60,7 +55,7 @@ export function EntryBrandAccessFlow({
   restoreRememberedRole = true,
   onRoleChange,
   onStepChange,
-  splashDurationMs = AURORA_NEST_SPLASH_DURATION_MS,
+  splashDurationMs = NESTSCOUT_LOGO_MOTION_DURATION_MS,
 }: EntryBrandAccessFlowProps) {
   const language = useAppLanguage()
   const copy = entryAccessCopy[language]
@@ -174,7 +169,6 @@ export function EntryBrandAccessFlow({
         setPassword={setPassword}
         setPasswordConfirmation={setPasswordConfirmation}
         setRemember={setRemember}
-        splashDurationMs={splashDurationMs}
         step={step}
         submitLogin={submitLogin}
         submitPasswordRecovery={submitPasswordRecovery}
@@ -190,7 +184,7 @@ type EntryAccessStepContentProps = {
   copy: EntryAccessCopy; features: EntryAccessFeatureFlags; roleGateGreeting: ReturnType<typeof selectRoleGateGreeting>
   fullName: string; identifier: string; notice: string | null; password: string; passwordConfirmation: string
   go: (step: EntryAccessStep) => void; setAcceptedTerms: () => void; setRemember: () => void
-  language: AppLanguage; role: EntryRole; splashDurationMs: number; step: EntryAccessStep
+  language: AppLanguage; role: EntryRole; step: EntryAccessStep
   onCompletePasswordRecovery?: (password: string) => Promise<{ success: boolean; error?: string }>
   onExitPasswordRecovery?: () => Promise<void> | void
   setFullName: (value: string) => void; setIdentifier: (value: string) => void; setPassword: (value: string) => void; setPasswordConfirmation: (value: string) => void
@@ -200,7 +194,7 @@ type EntryAccessStepContentProps = {
 function EntryAccessStepContent(props: EntryAccessStepContentProps) {
   switch (props.step) {
     case 'splash':
-      return <SplashScreen copy={props.copy} durationMs={props.splashDurationMs} />
+      return <SplashScreen copy={props.copy} />
     case 'role-gate':
       return <RoleGateScreen copy={props.copy.roleGate} greeting={props.roleGateGreeting} onContinue={() => props.go('login')} onRoleChange={props.chooseRole} role={props.role} />
     case 'login':
@@ -296,119 +290,15 @@ function Screen({ children }: { children: React.ReactNode }) {
   return <SafeAreaView edges={['top', 'bottom']} style={styles.safe}>{children}</SafeAreaView>
 }
 
-function SplashScreen({ copy, durationMs }: { copy: EntryAccessCopy; durationMs: number }) {
+function SplashScreen({ copy }: { copy: EntryAccessCopy }) {
   return (
     <Screen>
       <View style={[styles.screen, styles.centeredScreen]} testID="auth-splash-1-1">
-        <SplashFormulaAura />
         <View style={styles.splashCenter}>
-          <LottieLogoMark size={354} testID="auth-welcome-nestscout-logo" />
-          <SplashBrandLockup copy={copy} />
-        </View>
-        <View style={styles.splashFoot}>
-          <SplashLoadingBar durationMs={durationMs} />
-          <Text style={styles.caption}>{copy.splash.preparing}</Text>
+          <NestScoutLogoMotionMark accessibilityLabel={copy.accessibility.logo} testID="auth-welcome-nestscout-logo" />
         </View>
       </View>
     </Screen>
-  )
-}
-
-function SplashBrandLockup({ copy }: { copy: EntryAccessCopy }) {
-  return (
-    <View style={styles.splashBrandLockup}>
-      <View style={styles.splashWordmarkShell}>
-        <View style={styles.splashSpark} testID="auth-splash-brand-spark">
-          <Svg height={18} viewBox="0 0 24 24" width={18}>
-            <Path d="M12 0 L14.8 9.2 L24 12 L14.8 14.8 L12 24 L9.2 14.8 L0 12 L9.2 9.2 Z" fill="#22CFC3" />
-          </Svg>
-        </View>
-        <Text style={styles.splashName} testID="auth-splash-brand-wordmark">
-          <Text style={styles.splashNameNest}>Nest</Text>
-          <Text style={styles.splashNameScout}>Scout</Text>
-        </Text>
-      </View>
-      <Text style={styles.splashTagline}>{copy.splash.tagline}</Text>
-    </View>
-  )
-}
-
-function SplashLoadingBar({ durationMs }: { durationMs: number }) {
-  const { reduceMotion } = useEntryAccessibility()
-  const fillProgress = useSharedValue(reduceMotion ? 0.64 : 0.16)
-  const sheenProgress = useSharedValue(0)
-  const loaderDurationMs = Math.max(1200, durationMs - SPLASH_LOADER_SETTLE_OFFSET_MS)
-  const sheenDurationMs = Math.max(900, Math.round(loaderDurationMs * 0.78))
-
-  useEffect(() => {
-    if (reduceMotion) {
-      fillProgress.value = 0.64
-      sheenProgress.value = 0
-      return
-    }
-
-    fillProgress.value = 0.16
-    sheenProgress.value = 0
-    fillProgress.value = withTiming(0.94, { duration: loaderDurationMs, easing: Easing.out(Easing.cubic) })
-    sheenProgress.value = withTiming(1, { duration: sheenDurationMs, easing: Easing.inOut(Easing.quad) })
-  }, [fillProgress, loaderDurationMs, reduceMotion, sheenDurationMs, sheenProgress])
-
-  const fillStyle = useAnimatedStyle(() => ({
-    width: SPLASH_LOADER_WIDTH * fillProgress.value,
-  }))
-  const sheenStyle = useAnimatedStyle(() => {
-    const opacity = Math.sin(sheenProgress.value * Math.PI) * 0.48
-    return {
-      opacity,
-      transform: [{ translateX: -24 + sheenProgress.value * (SPLASH_LOADER_WIDTH + 30) }],
-    }
-  })
-
-  return (
-    <View accessibilityRole="progressbar" style={styles.loaderTrack}>
-      <Animated.View style={[styles.loaderFill, fillStyle]}>
-        {!reduceMotion ? <Animated.View pointerEvents="none" style={[styles.loaderSheen, sheenStyle]} /> : null}
-      </Animated.View>
-    </View>
-  )
-}
-
-function SplashFormulaAura() {
-  const { reduceTransparency } = useEntryAccessibility()
-
-  if (reduceTransparency || Platform.OS !== 'web') return null
-
-  return (
-    <View pointerEvents="none" style={styles.splashFormulaAura}>
-      <Svg height="100%" preserveAspectRatio="xMidYMid slice" viewBox="0 0 390 844" width="100%">
-        <Defs>
-          <RadialGradient id="splashLogoMintAura" cx="50%" cy="40%" r="37%">
-            <Stop offset="0" stopColor="#49CFC0" stopOpacity="0.16" />
-            <Stop offset="0.58" stopColor="#24B3A1" stopOpacity="0.08" />
-            <Stop offset="1" stopColor="#088779" stopOpacity="0" />
-          </RadialGradient>
-          <LinearGradient id="splashMintWave" x1="0%" y1="0%" x2="100%" y2="0%">
-            <Stop offset="0" stopColor="#49CFC0" stopOpacity="0" />
-            <Stop offset="0.26" stopColor="#49CFC0" stopOpacity="0.34" />
-            <Stop offset="0.58" stopColor="#24B3A1" stopOpacity="0.28" />
-            <Stop offset="1" stopColor="#088779" stopOpacity="0" />
-          </LinearGradient>
-          <LinearGradient id="splashMintSheen" x1="0%" y1="0%" x2="100%" y2="100%">
-            <Stop offset="0" stopColor="#FFFFFF" stopOpacity="0.48" />
-            <Stop offset="0.5" stopColor="#49CFC0" stopOpacity="0.16" />
-            <Stop offset="1" stopColor="#088779" stopOpacity="0" />
-          </LinearGradient>
-        </Defs>
-        <Circle cx="195" cy="342" fill="url(#splashLogoMintAura)" r="150" />
-        <Path d="M-24 322 C58 278 125 292 183 256 C249 215 309 231 414 174" fill="none" opacity="0.56" stroke="url(#splashMintWave)" strokeLinecap="round" strokeWidth="2.2" />
-        <Path d="M-10 409 C66 371 132 389 184 352 C250 306 303 316 405 270" fill="none" opacity="0.34" stroke="url(#splashMintWave)" strokeLinecap="round" strokeWidth="1.4" />
-        <Path d="M-20 684 C74 655 128 672 193 641 C263 608 322 612 411 577" fill="none" opacity="0.30" stroke="url(#splashMintWave)" strokeLinecap="round" strokeWidth="1.6" />
-        <Path d="M323 228 C326 238 331 243 341 246 C331 249 326 254 323 264 C320 254 315 249 305 246 C315 243 320 238 323 228 Z" fill="#49CFC0" opacity="0.23" />
-        <Path d="M91 275 C93 282 97 286 104 288 C97 290 93 294 91 301 C89 294 85 290 78 288 C85 286 89 282 91 275 Z" fill="#24B3A1" opacity="0.18" />
-        <Path d="M294 565 C296 572 300 576 307 578 C300 580 296 584 294 591 C292 584 288 580 281 578 C288 576 292 572 294 565 Z" fill="#088779" opacity="0.14" />
-        <Path d="M118 626 L156 604 C185 588 213 577 248 572" fill="none" opacity="0.30" stroke="url(#splashMintSheen)" strokeLinecap="round" strokeWidth="5" />
-      </Svg>
-    </View>
   )
 }
 

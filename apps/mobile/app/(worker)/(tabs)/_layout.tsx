@@ -31,7 +31,7 @@ function WorkerNativeTabs() {
   return (
     <NativeTabs tintColor={color.brand.ios26TabTint} minimizeBehavior="onScrollDown">
       <NativeTabs.BottomAccessory>
-        <NativeKaelBottomAccessory route="/(worker)/chat" />
+        <NativeKaelBottomAccessory route="/(worker)/chat" visualRole="worker" />
       </NativeTabs.BottomAccessory>
       <NativeTabs.Trigger name="home">
         <NativeTabs.Trigger.Icon sf="house" />

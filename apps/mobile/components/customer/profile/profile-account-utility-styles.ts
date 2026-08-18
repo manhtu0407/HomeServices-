@@ -32,6 +32,66 @@ export const customerV21ProfileAccountUtilityStyles = StyleSheet.create({
   formStack: {
     gap: 14,
   },
+  personalDetailsCard: {
+    borderRadius: 24,
+    borderWidth: 1,
+    gap: 16,
+    paddingHorizontal: 18,
+    paddingVertical: 18,
+  },
+  personalDetailsDivider: {
+    height: StyleSheet.hairlineWidth,
+    marginVertical: 2,
+  },
+  personalDetailsFieldLabel: {
+    ...typography.footnote,
+    fontWeight: '700',
+  },
+  personalDetailsHeader: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 12,
+  },
+  personalDetailsHeaderCopy: {
+    flex: 1,
+    gap: 2,
+  },
+  personalDetailsHeaderIcon: {
+    alignItems: 'center',
+    borderRadius: 16,
+    borderWidth: 1,
+    height: 48,
+    justifyContent: 'center',
+    width: 48,
+  },
+  personalDetailsInput: {
+    borderRadius: 16,
+    borderWidth: 1,
+    ...typography.body,
+    minHeight: 56,
+    paddingHorizontal: 14,
+    paddingVertical: 0,
+  },
+  personalDetailsIntroBody: {
+    ...typography.footnote,
+    marginTop: 2,
+  },
+  personalDetailsIntroTitle: {
+    ...typography.callout,
+    fontWeight: '700',
+  },
+  personalDetailsPrivacy: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 10,
+  },
+  personalDetailsPrivacyText: {
+    flex: 1,
+    ...typography.caption1,
+  },
+  personalDetailsReadonlyInput: {
+    opacity: 0.88,
+  },
   memoryControl: {
     alignItems: 'center',
     borderRadius: 18,

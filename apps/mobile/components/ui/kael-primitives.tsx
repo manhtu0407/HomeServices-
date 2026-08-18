@@ -23,9 +23,12 @@ type KaelButtonVariant = 'primary' | 'secondary' | 'ghost' | 'destructive'
 type KaelChipVariant = 'selected' | 'unselected' | 'successStatus' | 'warning' | 'error'
 
 const webTextInputNoOutline = {
+  backgroundColor: 'transparent',
   outlineColor: 'transparent',
   outlineStyle: 'none',
   outlineWidth: 0,
+  WebkitBoxShadow: `0 0 0 1000px ${component.input.bg} inset`,
+  WebkitTextFillColor: color.text.primary,
 } as unknown as TextStyle
 
 type KaelTextInputProps = TextInputProps & { ref?: Ref<TextInput> }

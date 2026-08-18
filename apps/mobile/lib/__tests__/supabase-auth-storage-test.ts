@@ -102,6 +102,15 @@ describe('native Supabase auth storage', () => {
     jest.useRealTimers()
   })
 
+  it('normalizes an auth transport failure into a retryable response without exposing the browser error', async () => {
+    mockFetch.mockRejectedValueOnce(new TypeError('Failed to fetch'))
+
+    const response = await supabaseFetch('https://project.supabase.co/auth/v1/token', { method: 'POST' })
+
+    expect(response.status).toBe(503)
+    await expect(response.json()).resolves.toEqual({ error: 'AUTH_NETWORK_UNAVAILABLE' })
+  })
+
   it('settles a stalled Supabase auth request at the network deadline', async () => {
     jest.useFakeTimers()
     mockFetch.mockReturnValueOnce(new Promise(() => undefined))

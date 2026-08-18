@@ -55,6 +55,8 @@ type AdminPaymentReconciliationDecisionResponse = AdminFinanceContracts["payment
 type AdminFinanceSummaryResponse = AdminFinanceContracts["financeSummaryResponse"];
 type AdminFinanceBalanceSnapshotInput = AdminFinanceContracts["financeBalanceSnapshotInput"];
 type AdminFinanceBalanceSnapshotResponse = AdminFinanceContracts["financeBalanceSnapshotResponse"];
+type AdminWorkerFinanceSnapshotInput = AdminFinanceContracts["workerFinanceSnapshotInput"];
+type AdminWorkerFinanceSnapshotResponse = AdminFinanceContracts["workerFinanceSnapshotResponse"];
 
 export type AdminControlServices = {
   getAdminActor(ctx: MobileApiContext): Promise<AdminActor>;
@@ -90,6 +92,11 @@ export type AdminControlServices = {
     workerId: string,
     input: AdminWorkerAccessInput,
   ): Promise<AdminWorkerAccessResponse>;
+  getAdminWorkerFinanceSnapshot(
+    ctx: MobileApiContext,
+    workerId: string,
+    input: AdminWorkerFinanceSnapshotInput,
+  ): Promise<AdminWorkerFinanceSnapshotResponse>;
   listAdminTransactions(
     ctx: MobileApiContext,
     input: AdminTransactionListInput,

@@ -5,8 +5,9 @@ import { textByLanguage } from '../ui/format'
 import { workerV5HasNumber, workerV5NumericInsight } from '../ui/performance'
 import { styles as rankingStyles } from './ranking-styles'
 import type { useFrontendWorkflow } from '@/lib/frontend-workflow-provider'
-import { MintAura } from '@/components/ui/kael-primitives'
-
+import { WorkerV5FormulaMintCardAura } from '../ui/aura-surfaces'
+import { WorkerV5ProfileFormulaCard } from './worker-profile-formula-surfaces'
+import { styles as formulaStyles } from './worker-profile-formula-styles'
 
 type WorkerV5Runtime = ReturnType<typeof useFrontendWorkflow>
 function Text({ style, ...props }: TextProps) {
@@ -14,7 +15,7 @@ function Text({ style, ...props }: TextProps) {
 }
 
 export function WorkerV5RankingHero({
-  heroAura: HeroAura,
+  heroAura: _heroAura,
   insights,
   language,
   profile,
@@ -37,11 +38,21 @@ export function WorkerV5RankingHero({
     ? textByLanguage(language, `${completed} việc hoàn tất`, `${completed} completed jobs`)
     : textByLanguage(language, 'Chờ dữ liệu việc hoàn tất', 'Completed-job data pending')
   return (
-    <View style={[rankingStyles.earningsHeroCard, reduceTransparency && rankingStyles.opaqueCard]} testID="worker-v5-ranking-hero">
-      {!reduceTransparency ? <HeroAura testID="worker-v5-ranking-mint-aura" /> : null}
+    <WorkerV5ProfileFormulaCard
+      auraTestID="worker-v5-ranking-mint-aura"
+      contentStyle={formulaStyles.heroContent}
+      reduceTransparency={reduceTransparency}
+      scope="WorkerRankingHero"
+      testID="worker-v5-ranking-hero"
+    >
       <View style={rankingStyles.rankingHeroRow}>
         <View style={rankingStyles.rankingScoreOrb} testID="worker-v5-ranking-score-orb">
-          {!reduceTransparency ? <MintAura intensity="component" style={rankingStyles.rankingScoreOrbAura} /> : null}
+          <WorkerV5FormulaMintCardAura
+            reduceTransparency={reduceTransparency}
+            scope="WorkerRankingScoreOrb"
+            style={rankingStyles.rankingScoreOrbAura}
+            testID="worker-v5-ranking-score-orb-mint-aura"
+          />
           <Text style={rankingStyles.rankingScoreOrbValue} numberOfLines={1} testID="worker-v5-ranking-score">{scoreLabel}</Text>
           <Text style={rankingStyles.rankingScoreOrbLabel} numberOfLines={2} testID="worker-v5-ranking-score-label">{textByLanguage(language, 'điểm hạng', 'rank points')}</Text>
         </View>
@@ -62,7 +73,7 @@ export function WorkerV5RankingHero({
           </View>
         </View>
       </View>
-    </View>
+    </WorkerV5ProfileFormulaCard>
   )
 }
 

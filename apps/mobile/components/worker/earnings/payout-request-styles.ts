@@ -137,6 +137,11 @@ export const styles = StyleSheet.create({
     maxWidth: '46%',
     textAlign: 'right',
   },
+  latestStatusBlock: {
+    alignItems: 'flex-end',
+    flex: 1,
+    marginLeft: 12,
+  },
   note: {
     color: color.text.muted,
     ...typography.caption2,

@@ -6,9 +6,6 @@ export const styles = StyleSheet.create({
   workerCustomerFontText: {
     ...typography.body,
   },
-  iconTileMintAura: {
-    opacity: 0.92,
-  },
   opaqueCard: {
     backgroundColor: color.mint.white,
   },
@@ -17,30 +14,29 @@ export const styles = StyleSheet.create({
     gap: 2,
     minWidth: 0,
   },
-  approvalDecisionIcon: {
-    height: 42,
-    width: 42,
-  },
   approvalDecisionIconShell: {
     alignItems: 'center',
     backgroundColor: 'rgba(255,255,255,0.82)',
     borderColor: 'rgba(216,235,232,0.9)',
-    borderRadius: 22,
+    borderRadius: 26,
     borderWidth: 1,
-    height: 64,
+    height: 52,
     justifyContent: 'center',
     overflow: 'hidden',
     position: 'relative',
     flexShrink: 0,
-    width: 64,
+    width: 52,
   },
   approvalDecisionList: {
-    backgroundColor: 'rgba(255,255,255,0.77)',
-    borderColor: 'rgba(255,255,255,0.92)',
+    backgroundColor: 'rgba(255,255,255,0.96)',
+    borderColor: 'rgba(204,223,219,0.94)',
     borderRadius: 24,
     borderWidth: 1,
     overflow: 'hidden',
     ...shadow.soft,
+  },
+  feedbackListContent: {
+    paddingVertical: 2,
   },
   approvalDecisionMeta: {
     color: color.text.muted,
@@ -51,9 +47,9 @@ export const styles = StyleSheet.create({
     borderBottomColor: 'rgba(176,222,214,0.38)',
     borderBottomWidth: 1,
     flexDirection: 'row',
-    gap: 11,
-    minHeight: 72,
-    padding: 12,
+    gap: 10,
+    minHeight: 66,
+    padding: 10,
     position: 'relative',
   },
   approvalDecisionStatus: {
@@ -102,7 +98,7 @@ export const styles = StyleSheet.create({
     color: color.text.strong,
     flexShrink: 1,
     fontVariant: ['tabular-nums'],
-    marginTop: 8,
+    marginTop: 0,
     ...typography.title1,
   },
   earningsHeroAura: {
@@ -125,6 +121,21 @@ export const styles = StyleSheet.create({
     padding: 18,
     position: 'relative',
     ...shadow.raised,
+  },
+  formulaHeroCard: {
+    backgroundColor: 'rgba(255,255,255,0.96)',
+    borderColor: 'rgba(204,223,219,0.94)',
+    borderRadius: 20,
+    minHeight: 120,
+    shadowColor: '#087D72',
+    shadowOpacity: 0.08,
+    shadowRadius: 22,
+  },
+  formulaHeroContent: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 12,
+    minHeight: 120,
   },
   earningsHeroCopy: {
     flex: 1,

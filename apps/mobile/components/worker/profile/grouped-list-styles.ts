@@ -1,6 +1,6 @@
 import { StyleSheet } from 'react-native'
 
-import { color, shadow, typography } from '@/design/theme'
+import { color, glass, shadow, typography } from '@/design/theme'
 
 export const styles = StyleSheet.create({
   workerCustomerFontText: {
@@ -10,7 +10,7 @@ export const styles = StyleSheet.create({
     gap: 8,
   },
   groupCard: {
-    backgroundColor: color.mint.white,
+    backgroundColor: color.surface.base,
     borderColor: 'rgba(205,225,221,0.94)',
     borderRadius: 24,
     borderWidth: 1,
@@ -39,6 +39,10 @@ export const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
   },
+  groupRowCompact: {
+    minHeight: 58,
+    paddingVertical: 8,
+  },
   groupRowChevron: {
     color: color.brand.primaryDark,
     marginLeft: 2,
@@ -63,6 +67,44 @@ export const styles = StyleSheet.create({
     flexShrink: 0,
     height: 44,
     width: 44,
+  },
+  groupRowIconCompact: {
+    height: 30,
+    width: 30,
+  },
+  groupRowIconFrame: {
+    alignItems: 'center',
+    flexShrink: 0,
+    height: 44,
+    justifyContent: 'center',
+    width: 44,
+  },
+  groupRowIconFrameOutlined: {
+    backgroundColor: 'transparent',
+    borderColor: color.surface.stroke,
+    borderRadius: 14,
+    borderWidth: 1,
+    height: 46,
+    width: 46,
+  },
+  groupRowIconFrameOutlinedWhite: {
+    backgroundColor: glass.bg,
+  },
+  groupRowIconFrameOutlinedWhiteReducedTransparency: {
+    backgroundColor: color.surface.base,
+  },
+  groupRowIconFrameOutlinedDark: {
+    borderColor: 'rgba(190,210,205,0.22)',
+  },
+  groupRowIconFrameOutlinedWhiteDark: {
+    backgroundColor: 'rgba(255,255,255,0.08)',
+  },
+  groupRowIconFrameOutlinedWhiteDarkReducedTransparency: {
+    backgroundColor: '#171D1B',
+  },
+  groupRowIconFrameCompact: {
+    height: 30,
+    width: 30,
   },
   groupRowMeta: {
     color: color.text.muted,

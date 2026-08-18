@@ -16,6 +16,8 @@ import { workerPerformanceAxisLabel } from '../ui/labels'
 import { workerV5HasNumber, workerV5NumericInsight } from '../ui/performance'
 import { WorkerV5DetailRail } from '../ui/worker-v5-detail-rail'
 import { styles } from './ranking-styles'
+import { WorkerV5ProfileFormulaCard } from './worker-profile-formula-surfaces'
+import { styles as formulaStyles } from './worker-profile-formula-styles'
 
 type WorkerV5RankingProfile = WorkerProfileResponse | null | undefined
 type WorkerV5RankingInsights = WorkerPerformanceInsightsResponse | null | undefined
@@ -93,7 +95,7 @@ export function WorkerV5RankingStatsStrip({
   return (
     <View style={styles.settlementStrip} testID="worker-v5-ranking-stat-strip">
       {stats.map((item, index) => (
-        <View key={item.label} style={[styles.settlementCell, reduceTransparency && styles.opaqueCard]} testID={`worker-v5-ranking-stat-${index}`}>
+        <View key={item.label} style={[styles.settlementCell, formulaStyles.compactMetric, reduceTransparency && styles.opaqueCard]} testID={`worker-v5-ranking-stat-${index}`}>
           <Text style={styles.settlementValue} numberOfLines={1} testID={`worker-v5-ranking-stat-value-${index}`}>{item.value}</Text>
           <Text style={styles.settlementLabel} numberOfLines={2} testID={`worker-v5-ranking-stat-label-${index}`}>{item.label}</Text>
         </View>
@@ -125,7 +127,12 @@ export function WorkerV5RankingLeaderboard({
   const hasRealSource = Boolean(insights || profile)
   const name = profile?.legal_name?.trim() || textByLanguage(language, 'Hồ sơ thợ', 'Worker profile')
   return (
-    <View style={[styles.approvalDecisionList, reduceTransparency && styles.opaqueCard]} testID="worker-v5-ranking-leaderboard">
+    <WorkerV5ProfileFormulaCard
+      reduceTransparency={reduceTransparency}
+      scope="WorkerRankingLeaderboard"
+      style={styles.approvalDecisionList}
+      testID="worker-v5-ranking-leaderboard"
+    >
       <View style={styles.approvalDecisionRow}>
         <WorkerV5IntegratedIcon
           bleed={12}
@@ -155,7 +162,7 @@ export function WorkerV5RankingLeaderboard({
           {score === null ? textByLanguage(language, 'Chờ', 'Pending') : score}
         </Text>
       </View>
-    </View>
+    </WorkerV5ProfileFormulaCard>
   )
 }
 
@@ -175,7 +182,12 @@ export function WorkerV5RankingImprovementList({
   const scoreByAxis = new Map(insights?.performance_axes.map((axis) => [axis.id, axis.score] as const) ?? [])
   const rows = rankingImprovementAxisOrder.map((id) => ({ id, score: scoreByAxis.get(id) ?? null }))
   return (
-    <View style={[styles.approvalDecisionList, reduceTransparency && styles.opaqueCard]} testID="worker-v5-ranking-improvement-list">
+    <WorkerV5ProfileFormulaCard
+      reduceTransparency={reduceTransparency}
+      scope="WorkerRankingImprovements"
+      style={styles.approvalDecisionList}
+      testID="worker-v5-ranking-improvement-list"
+    >
       {rows.map((axis, index) => {
         const score = typeof axis.score === 'number' && Number.isFinite(axis.score) ? workerV5NumericInsight(axis.score) : null
         const progress = score ?? 0
@@ -245,6 +257,6 @@ export function WorkerV5RankingImprovementList({
           </View>
         )
       })}
-    </View>
+    </WorkerV5ProfileFormulaCard>
   )
 }

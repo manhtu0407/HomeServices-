@@ -2,6 +2,7 @@ import Svg, { Circle, Path, Polygon, Rect } from 'react-native-svg'
 
 export type ProfileSettingsGlyphName =
   | 'address'
+  | 'activity'
   | 'appearance'
   | 'delete'
   | 'language'
@@ -13,6 +14,7 @@ export type ProfileSettingsGlyphName =
   | 'signout'
   | 'support'
   | 'terms'
+  | 'tools'
 
 const profileSettingsGlyphSize = 21
 
@@ -39,6 +41,12 @@ export function ProfileSettingsGlyph({
         <Svg height={profileSettingsGlyphSize} testID={testID} viewBox="0 0 20 20" width={profileSettingsGlyphSize}>
           <Path {...common} d="M10 18s5.2-4.8 5.2-9.2A5.2 5.2 0 0 0 4.8 8.8C4.8 13.2 10 18 10 18Z" />
           <Circle {...common} cx={10} cy={8.7} r={1.8} />
+        </Svg>
+      )
+    case 'activity':
+      return (
+        <Svg height={profileSettingsGlyphSize} testID={testID} viewBox="0 0 20 20" width={profileSettingsGlyphSize}>
+          <Path {...common} d="m3.2 13.9 4-4.2 3 2.7 6.5-6.3M13.7 6.1h3v3" />
         </Svg>
       )
     case 'appearance':
@@ -117,6 +125,12 @@ export function ProfileSettingsGlyph({
         <Svg height={profileSettingsGlyphSize} testID={testID} viewBox="0 0 20 20" width={profileSettingsGlyphSize}>
           <Path {...common} d="m10 2.5 6.1 2.3v4.8c0 3.6-2.5 6.5-6.1 7.9-3.6-1.4-6.1-4.3-6.1-7.9V4.8L10 2.5Z" />
           <Path {...common} d="m7.3 10 1.8 1.8 3.7-3.7" />
+        </Svg>
+      )
+    case 'tools':
+      return (
+        <Svg height={profileSettingsGlyphSize} testID={testID} viewBox="0 0 20 20" width={profileSettingsGlyphSize}>
+          <Path {...common} d="M11.7 4a3.3 3.3 0 0 0-3.8 4.3l-4.1 4.1a1.6 1.6 0 0 0 2.3 2.3l4.1-4.1A3.3 3.3 0 0 0 14.5 7l-2 2-2-.6-.6-2 1.8-2.4Z" />
         </Svg>
       )
   }

@@ -1,20 +1,29 @@
 import { useEffect, useRef, useState } from 'react'
-import { View } from 'react-native'
+import { Text as RNText, View } from 'react-native'
 import { type AppLanguage } from '@/lib/app-language'
 import { kaelMemoryService } from '@/lib/services'
-import { WorkerV5IconName } from '../dock/types'
-import { WorkerV5EarningsHomeHeroAura, WorkerV5EarningsHomeListAura } from '../ui/aura-surfaces'
 import { textByLanguage } from '../ui/format'
 import { formatWorkerDistrict } from '../ui/labels'
-import { WorkerV5SectionHeader } from '../ui/primitives-surfaces'
-import { WORKER_V5_PROFILE_ICON_VISUAL_BOOST, workerV5Icons } from '../ui/screen-icons'
 import { styles } from '../worker-v5-flow-styles'
 import { WORKER_V5_MEMORY_PREFERENCE_API_KEYS, WorkerV5MemoryPreferenceUiId, workerV5MemoryPreferenceOverridesFromMemory } from './memory'
 import { WorkerV5MemoryHero, WorkerV5MemorySwitchList } from './memory-surfaces'
+import type { WorkerV5UtilityGlyphName } from './utility-glyphs'
 import type { useFrontendWorkflow } from '@/lib/frontend-workflow-provider'
 import { localizedServiceLabel } from '@/lib/app-language'
+import { useWorkerThemeMode } from '../worker-theme'
+import { styles as memoryStyles } from './memory-styles'
 
 type WorkerV5Runtime = ReturnType<typeof useFrontendWorkflow>
+
+function MemorySectionHeader({ title }: { title: string }) {
+  const isDark = useWorkerThemeMode() === 'dark'
+  return (
+    <View style={styles.sectionHeader} testID="worker-v5-section-header">
+      <RNText style={[styles.sectionHeaderTitle, isDark ? memoryStyles.darkText : null]}>{title}</RNText>
+    </View>
+  )
+}
+
 export function WorkerV5AgentMemoryBody({ language, reduceMotion, reduceTransparency, runtime }: { language: AppLanguage; reduceMotion: boolean; reduceTransparency: boolean; runtime: WorkerV5Runtime }) {
   const profile = runtime.workerProfile
   const [memoryToggleOverrides, setMemoryToggleOverrides] = useState<Partial<Record<WorkerV5MemoryPreferenceUiId, boolean>>>({})
@@ -114,41 +123,41 @@ export function WorkerV5AgentMemoryBody({ language, reduceMotion, reduceTranspar
     ? selectedServices.map((service) => localizedServiceLabel(service, language)).join(', ')
     : textByLanguage(language, 'Chưa có kỹ năng ưu tiên', 'No priority skills')
   const canFilterFromProfile = hasDistricts || hasServices || hasRadius
-  const permissionItems: { enabled: boolean; icon: WorkerV5IconName; id: WorkerV5MemoryPreferenceUiId; label: string; value: string }[] = [
+  const permissionItems: { enabled: boolean; icon: WorkerV5UtilityGlyphName; id: WorkerV5MemoryPreferenceUiId; label: string; value: string }[] = [
     {
       id: 'area-preference',
       enabled: readMemoryToggle('area-preference', hasDistricts),
-      icon: 'map' as const,
+      icon: 'map',
       label: textByLanguage(language, 'Ưu tiên khu vực', 'Area preference'),
       value: areaPreference,
     },
     {
       id: 'travel-limit',
       enabled: readMemoryToggle('travel-limit', hasRadius),
-      icon: 'clock' as const,
+      icon: 'clock',
       label: textByLanguage(language, 'Giới hạn di chuyển', 'Travel limit'),
       value: hasRadius ? textByLanguage(language, `Tối đa ${radius}`, `Up to ${radius}`) : radius,
     },
     {
       id: 'skill-preference',
       enabled: readMemoryToggle('skill-preference', hasServices),
-      icon: 'tools' as const,
+      icon: 'tools',
       label: textByLanguage(language, 'Ưu tiên kỹ năng', 'Skill preference'),
       value: services,
     },
   ]
-  const boundaryItems: { enabled: boolean; icon: WorkerV5IconName; id: WorkerV5MemoryPreferenceUiId; label: string; value: string }[] = [
+  const boundaryItems: { enabled: boolean; icon: WorkerV5UtilityGlyphName; id: WorkerV5MemoryPreferenceUiId; label: string; value: string }[] = [
     {
       id: 'opportunity-filter',
       enabled: readMemoryToggle('opportunity-filter', canFilterFromProfile),
-      icon: 'jobs' as const,
+      icon: 'jobs',
       label: textByLanguage(language, 'Tự lọc cơ hội phù hợp', 'Auto-filter matching opportunities'),
       value: textByLanguage(language, 'Chỉ sắp xếp và đề xuất', 'Sorts and suggests only'),
     },
     {
       id: 'auto-accept-work',
       enabled: readMemoryToggle('auto-accept-work', false),
-      icon: 'shield' as const,
+      icon: 'shield',
       label: textByLanguage(language, 'Tự động nhận việc', 'Auto-accept work'),
       value: textByLanguage(language, 'Luôn khóa theo quyền quyết định của thợ', 'Always locked to worker authority'),
     },
@@ -157,37 +166,25 @@ export function WorkerV5AgentMemoryBody({ language, reduceMotion, reduceTranspar
   return (
     <View style={styles.sectionStack}>
       <WorkerV5MemoryHero
-        heroAura={WorkerV5EarningsHomeHeroAura}
         language={language}
         reduceTransparency={reduceTransparency}
-        shieldIcon={workerV5Icons.shield}
       />
-      <WorkerV5SectionHeader
-        action={textByLanguage(language, 'Chỉnh sửa', 'Edit')}
+      <MemorySectionHeader
         title={textByLanguage(language, 'Thông tin được phép dùng', 'Allowed information')}
       />
       <WorkerV5MemorySwitchList
-        auraTestID="worker-v5-memory-permission-mint-aura"
-        iconVisualBoost={WORKER_V5_PROFILE_ICON_VISUAL_BOOST}
-        icons={workerV5Icons}
         items={permissionItems}
-        listAura={WorkerV5EarningsHomeListAura}
         onChange={setMemoryItemEnabled}
         reduceMotion={reduceMotion}
         reduceTransparency={reduceTransparency}
         savingIds={savingMemoryToggleIds}
         testID="worker-v5-memory-permission-list"
       />
-      <WorkerV5SectionHeader
-        action={textByLanguage(language, 'Không được vượt', 'Cannot bypass')}
+      <MemorySectionHeader
         title={textByLanguage(language, 'Ranh giới tự động hóa', 'Automation boundary')}
       />
       <WorkerV5MemorySwitchList
-        auraTestID="worker-v5-memory-boundary-mint-aura"
-        iconVisualBoost={WORKER_V5_PROFILE_ICON_VISUAL_BOOST}
-        icons={workerV5Icons}
         items={boundaryItems}
-        listAura={WorkerV5EarningsHomeListAura}
         onChange={setMemoryItemEnabled}
         reduceMotion={reduceMotion}
         reduceTransparency={reduceTransparency}

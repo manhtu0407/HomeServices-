@@ -83,6 +83,15 @@ export const customerV21ProfileFoundationUtilityStyles = StyleSheet.create({
     gap: 14,
     padding: 18,
   },
+  dangerIconFrame: {
+    alignItems: 'center',
+    borderRadius: 16,
+    borderWidth: 1,
+    flexShrink: 0,
+    height: 48,
+    justifyContent: 'center',
+    width: 48,
+  },
   deleteButton: {
     minHeight: 56,
   },
@@ -102,6 +111,15 @@ export const customerV21ProfileFoundationUtilityStyles = StyleSheet.create({
     height: 56,
     marginBottom: 4,
     width: 56,
+  },
+  emptyIconFrame: {
+    alignItems: 'center',
+    borderRadius: 16,
+    borderWidth: 1,
+    height: 48,
+    justifyContent: 'center',
+    marginBottom: 4,
+    width: 48,
   },
   listSurface: {
     borderRadius: 18,
@@ -147,29 +165,9 @@ export const customerV21ProfileFoundationUtilityStyles = StyleSheet.create({
     ...typography.footnote,
     fontWeight: '600',
   },
-  summaryCard: {
-    alignItems: 'center',
-    borderRadius: 24,
-    borderWidth: 1,
-    flexDirection: 'row',
-    gap: 12,
-    padding: 16,
-  },
   summaryCopy: {
     flex: 1,
     gap: 5,
-  },
-  summaryIcon: {
-    height: 64,
-    width: 64,
-  },
-  summaryIconFrame: {
-    alignItems: 'center',
-    backgroundColor: 'transparent',
-    flexShrink: 0,
-    height: 64,
-    justifyContent: 'center',
-    width: 64,
   },
   title: {
     ...typography.callout,

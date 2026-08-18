@@ -338,6 +338,7 @@ function paymentStatusFromReceipt(status: string | null | undefined): LocalDealP
     case 'manual_verified':
     case 'direct_awaiting_customer_confirmation':
     case 'direct_awaiting_worker_confirmation':
+    case 'direct_admin_confirmation_required':
     case 'direct_reconcile_required':
     case 'direct_paid':
       return status

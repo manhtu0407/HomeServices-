@@ -1,8 +1,12 @@
+import { Image } from 'expo-image'
 import { useEffect, useRef, useState } from 'react'
-import { Alert, Pressable, View } from 'react-native'
+import { ActivityIndicator, Alert, Pressable, Text as RNText, View } from 'react-native'
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withDelay, withSpring, withTiming } from 'react-native-reanimated'
+import Svg, { Circle, Path, Rect } from 'react-native-svg'
 import { motionTokens } from '@/components/ui/motion-tokens'
 import { KaelButton } from '@/components/ui/kael-primitives'
+import { ProfileSettingsGlyph } from '@/components/customer/profile/profile-settings-icons'
+import { color } from '@/design/theme'
 import { type AppLanguage } from '@/lib/app-language'
 import { textByLanguage } from '../ui/format'
 import { workerAvailabilityLabel } from '../ui/labels'
@@ -27,6 +31,14 @@ export function WorkerV5AvailabilityCard({
   profile,
   reduceMotion = false,
   reduceTransparency,
+  artwork,
+  avatarUrl,
+  avatarPresentation = 'workart',
+  avatarUploadBusy = false,
+  description,
+  onPickAvatar,
+  surface = 'default',
+  themeMode = 'light',
 }: {
   availabilityGuardReady: boolean
   hasActiveJob: boolean
@@ -36,10 +48,19 @@ export function WorkerV5AvailabilityCard({
   profile: WorkerV5Runtime['workerProfile']
   reduceMotion?: boolean
   reduceTransparency: boolean
+  artwork?: number
+  avatarUrl?: string | null
+  avatarPresentation?: 'profile' | 'workart'
+  avatarUploadBusy?: boolean
+  description?: string
+  onPickAvatar?: () => void
+  surface?: 'default' | 'profile'
+  themeMode?: 'dark' | 'light'
 }) {
   const [pending, setPending] = useState(false)
   const [optimisticAvailable, setOptimisticAvailable] = useState<boolean | null>(null)
   const [inlineFailure, setInlineFailure] = useState<string | null>(null)
+  const [failedAvatarUrl, setFailedAvatarUrl] = useState<string | null>(null)
   const availabilityInteractionRef = useRef(false)
   const availabilityRequestIdRef = useRef(0)
   const availabilitySwitchDidMountRef = useRef(false)
@@ -62,6 +83,10 @@ export function WorkerV5AvailabilityCard({
       // Opening the real verification screen is safe before the work list hydrates;
       // submitting it remains guarded by the real API response.
   )
+  const usesProfileAvatarPresentation = avatarPresentation === 'profile'
+  const hasArtwork = Boolean(artwork || avatarUrl || usesProfileAvatarPresentation)
+  const showAvatar = Boolean(avatarUrl && avatarUrl !== failedAvatarUrl)
+  const showProfilePlaceholder = usesProfileAvatarPresentation && !showAvatar
   const profileSetupActionLabel = workerNeedsRegistration(profile)
     ? textByLanguage(language, 'Hoàn tất hồ sơ', 'Complete profile')
     : workerIsWaitingForReview(profile)
@@ -213,15 +238,99 @@ export function WorkerV5AvailabilityCard({
   }
 
   return (
-    <View style={[styles.availabilityCard, reduceTransparency && styles.opaqueCard]} testID="worker-v5-availability-card">
-      <View style={styles.availabilityCopy}>
+    <View
+      style={[
+        styles.availabilityCard,
+        hasArtwork ? styles.availabilityCardRebuild : null,
+        themeMode === 'dark' ? styles.availabilityCardDark : null,
+        reduceTransparency ? (themeMode === 'dark' ? styles.opaqueCardDark : styles.opaqueCard) : null,
+        surface === 'profile' ? styles.availabilityCardProfile : null,
+      ]}
+      testID="worker-v5-availability-card"
+    >
+      {hasArtwork ? (() => {
+        const artworkFrameStyle = [
+          styles.availabilityArtworkFrame,
+          themeMode === 'dark' ? styles.availabilityArtworkFrameDark : null,
+        ]
+        const avatarContent = avatarUploadBusy && usesProfileAvatarPresentation ? (
+          <ActivityIndicator color={themeMode === 'dark' ? '#63E6D0' : color.brand.primaryDark} size="small" testID="worker-v5-availability-avatar-loading" />
+        ) : showAvatar ? (
+          <Image
+            accessibilityLabel={textByLanguage(language, 'Ảnh đại diện của thợ', 'Worker profile photo')}
+            accessibilityIgnoresInvertColors
+            contentFit="cover"
+            onError={avatarUrl ? () => setFailedAvatarUrl(avatarUrl) : undefined}
+            onLoad={avatarUrl ? () => setFailedAvatarUrl(null) : undefined}
+            source={{ uri: avatarUrl! }}
+            style={styles.availabilityArtwork}
+            testID="worker-v5-availability-avatar"
+          />
+        ) : showProfilePlaceholder ? (
+          <View style={styles.availabilityAvatarPlaceholder} testID="worker-v5-availability-avatar-placeholder">
+            <ProfileSettingsGlyph
+              color={themeMode === 'dark' ? '#F1F6F4' : color.text.primary}
+              name="personal"
+              testID="worker-v5-availability-avatar-placeholder-glyph"
+            />
+          </View>
+        ) : (
+          <Image
+            accessibilityIgnoresInvertColors
+            contentFit="cover"
+            source={artwork}
+            style={styles.availabilityArtwork}
+            testID="worker-v5-availability-artwork"
+          />
+        )
+        const cameraBadge = usesProfileAvatarPresentation ? (
+          <View
+            pointerEvents="none"
+            style={[styles.availabilityCameraBadge, themeMode === 'dark' ? styles.availabilityCameraBadgeDark : null]}
+            testID="worker-v5-availability-camera-badge"
+          >
+            <CameraGlyph
+              color={themeMode === 'dark' ? '#F1F6F4' : color.text.primary}
+              testID="worker-v5-availability-camera-glyph"
+            />
+          </View>
+        ) : null
+
+        return usesProfileAvatarPresentation ? (
+          <Pressable
+            accessibilityLabel={showAvatar
+              ? textByLanguage(language, 'Đổi ảnh đại diện', 'Change profile photo')
+              : textByLanguage(language, 'Thêm ảnh đại diện', 'Add profile photo')}
+            accessibilityRole="button"
+            accessibilityState={{ busy: avatarUploadBusy, disabled: !onPickAvatar || avatarUploadBusy }}
+            disabled={!onPickAvatar || avatarUploadBusy}
+            onPress={onPickAvatar}
+            style={({ pressed }) => [
+              ...artworkFrameStyle,
+              pressed && !avatarUploadBusy ? styles.availabilityArtworkPressed : null,
+            ]}
+            testID="worker-v5-availability-avatar-picker"
+          >
+            {avatarContent}
+            {cameraBadge}
+          </Pressable>
+        ) : (
+          <View style={artworkFrameStyle} pointerEvents="none" testID="worker-v5-availability-artwork-frame">
+            {avatarContent}
+          </View>
+        )
+      })() : null}
+      <View style={[styles.availabilityCopy, hasArtwork ? styles.availabilityCopyRebuild : null]}>
         <Animated.Text
           numberOfLines={1}
-          style={[styles.workerCustomerFontText, styles.availabilityTitle, availabilityTitleMotionStyle]}
+          style={[styles.workerCustomerFontText, styles.availabilityTitle, themeMode === 'dark' ? styles.availabilityTitleDark : null, availabilityTitleMotionStyle]}
           testID="worker-v5-availability-title"
         >
           {availabilityTitle}
         </Animated.Text>
+        {hasArtwork && description ? (
+          <RNText style={[styles.availabilityDescription, themeMode === 'dark' ? styles.availabilityDescriptionDark : null]}>{description}</RNText>
+        ) : null}
       </View>
       {showProfileSetupAction ? (
         <KaelButton
@@ -247,6 +356,7 @@ export function WorkerV5AvailabilityCard({
             onPressOut={handleSwitchPressOut}
             style={[
               styles.availabilitySwitch,
+              themeMode === 'dark' ? styles.availabilitySwitchDark : null,
               disabled ? styles.availabilitySwitchDisabled : null,
             ]}
             testID="worker-v5-availability-switch"
@@ -268,6 +378,16 @@ export function WorkerV5AvailabilityCard({
         </Animated.View>
       )}
     </View>
+  )
+}
+
+function CameraGlyph({ color: strokeColor, testID }: { color: string; testID?: string }) {
+  return (
+    <Svg height={13} testID={testID} viewBox="0 0 20 20" width={13}>
+      <Rect fill="none" height={9.5} rx={2} stroke={strokeColor} strokeWidth={1.4} width={14} x={3} y={5.8} />
+      <Path d="M7.2 5.8 8.2 4h3.6l1 1.8" fill="none" stroke={strokeColor} strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.4} />
+      <Circle cx={10} cy={10.5} fill="none" r={2.4} stroke={strokeColor} strokeWidth={1.4} />
+    </Svg>
   )
 }
 

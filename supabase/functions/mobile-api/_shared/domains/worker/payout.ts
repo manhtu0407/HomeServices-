@@ -41,6 +41,7 @@ const WITHDRAWAL_REQUEST_COLUMNS = [
   "bank_account_masked",
   "status",
   "requested_at",
+  "eligible_at",
   "processing_at",
   "processed_at",
   "transfer_reference",
@@ -125,7 +126,19 @@ export async function createWorkerWithdrawalRequest(
     apiFailure("DB_ERROR", "Yêu cầu rút tiền chưa có biên nhận hợp lệ", 500);
   }
   if (row.ok !== true) mapWithdrawalCreateError(nullableString(row.error_code));
-  return { request: serializeWithdrawalRpcRow(row) };
+  const requestId = nullableString(row.request_id);
+  if (!requestId) apiFailure("DB_ERROR", "Yêu cầu rút tiền chưa có mã hợp lệ", 500);
+  const requestResult = await dbQuery<Row>(
+    db(ctx)
+      .from("worker_withdrawal_requests")
+      .select(WITHDRAWAL_REQUEST_COLUMNS)
+      .eq("id", requestId)
+      .maybeSingle(),
+  );
+  if (requestResult.error || !requestResult.data) {
+    apiFailure("DB_ERROR", "Không thể tải biên nhận yêu cầu rút tiền", 500);
+  }
+  return { request: serializeWithdrawalRequest(requestResult.data) };
 }
 
 function requireWorker(ctx: MobileApiContext): void {
@@ -156,36 +169,6 @@ function serializePayoutMethod(row: Row): EdgeWorkerPayoutMethod {
   };
 }
 
-function serializeWithdrawalRpcRow(row: Row): EdgeWorkerWithdrawalRequest {
-  const requestId = nullableString(row.request_id);
-  const status = withdrawalStatus(row.status_out);
-  const amount = nonnegativeInteger(row.amount_vnd_out);
-  const balance = nonnegativeInteger(row.available_balance_before_vnd_out);
-  const bankKey = nullableString(row.bank_key_out);
-  const bankName = nullableString(row.bank_name_out);
-  const bankAccountMasked = nullableString(row.bank_account_masked_out);
-  const requestedAt = nullableString(row.requested_at_out);
-  const updatedAt = nullableString(row.updated_at_out);
-  if (!requestId || !status || amount === null || balance === null || !bankKey || !bankName || !bankAccountMasked || !requestedAt || !updatedAt) {
-    apiFailure("DB_ERROR", "Yêu cầu rút tiền có biên nhận không hợp lệ", 500);
-  }
-  return {
-    id: requestId,
-    amount_vnd: amount,
-    available_balance_before_vnd: balance,
-    bank_key: bankKey,
-    bank_name: bankName,
-    bank_account_masked: bankAccountMasked,
-    status,
-    requested_at: requestedAt,
-    processing_at: null,
-    processed_at: null,
-    transfer_reference: null,
-    resolution_reason: null,
-    updated_at: updatedAt,
-  };
-}
-
 function serializeWithdrawalRequest(row: Row): EdgeWorkerWithdrawalRequest {
   const id = nullableString(row.id);
   const amount = nonnegativeInteger(row.amount_vnd);
@@ -195,10 +178,11 @@ function serializeWithdrawalRequest(row: Row): EdgeWorkerWithdrawalRequest {
   const bankAccountMasked = nullableString(row.bank_account_masked);
   const status = withdrawalStatus(row.status);
   const requestedAt = nullableString(row.requested_at);
+  const eligibleAt = nullableString(row.eligible_at);
   const updatedAt = nullableString(row.updated_at);
   const processingAt = row.processing_at === null ? null : nullableString(row.processing_at);
   const processedAt = row.processed_at === null ? null : nullableString(row.processed_at);
-  if (!id || amount === null || balance === null || !bankKey || !bankName || !bankAccountMasked || !status || !requestedAt || !updatedAt || (row.processing_at !== null && !processingAt) || (row.processed_at !== null && !processedAt)) {
+  if (!id || amount === null || balance === null || !bankKey || !bankName || !bankAccountMasked || !status || !requestedAt || !eligibleAt || !updatedAt || (row.processing_at !== null && !processingAt) || (row.processed_at !== null && !processedAt)) {
     apiFailure("DB_ERROR", "Yêu cầu rút tiền có dữ liệu không hợp lệ", 500);
   }
   return {
@@ -210,6 +194,7 @@ function serializeWithdrawalRequest(row: Row): EdgeWorkerWithdrawalRequest {
     bank_account_masked: bankAccountMasked,
     status,
     requested_at: requestedAt,
+    eligible_at: eligibleAt,
     processing_at: processingAt,
     processed_at: processedAt,
     transfer_reference: nullableString(row.transfer_reference),

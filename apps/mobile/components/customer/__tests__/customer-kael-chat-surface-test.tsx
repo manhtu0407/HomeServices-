@@ -5,6 +5,7 @@ import { StyleSheet, Text } from 'react-native'
 import type { LocalDeal } from '@nestscout/shared'
 
 import type { CustomerKaelConversationSession } from '@/lib/api-types/customer'
+import { clearPendingKaelChatMessage, stagePendingKaelChatMessage } from '@/lib/pending-kael-chat-message'
 import { setPendingKaelChatDraft } from '@/lib/pending-kael-chat-draft'
 import { customerV21ServiceCopy } from '../ui/copy'
 import { isLikelyKaelIntakeRequest } from '../kael-chat/customer-kael-chat-helpers'
@@ -302,6 +303,7 @@ describe('active customer Kael chat surface wiring', () => {
     mockCustomerSequence += 1
     mockCustomerId = `customer_kael_test_${mockCustomerSequence}`
     mockAccessToken = `customer-kael-access-token-${mockCustomerSequence}`
+    clearPendingKaelChatMessage(mockCustomerId)
     mockConversationSequence = 0
     mockSessionsByMode = { case: [], normal: [] }
     ;[
@@ -535,11 +537,11 @@ describe('active customer Kael chat surface wiring', () => {
     expect(header).not.toContain('<ChatNewConversationIcon color={tokens.primary} />')
   })
 
-  it('keeps the Kael empty-state timeline looping while the app is active', () => {
+  it('uses the new Kael mascot motion contract in the empty state', () => {
     const hero = readCustomerSource('kael-chat/kael-empty-hero.tsx')
 
-    expect(hero).toContain("motionClip={reduceMotion || !appActive ? undefined : 'autoplay-loop'}")
-    expect(hero).not.toContain("'autoplay-once'")
+    expect(hero).toContain('<KaelChatMascot')
+    expect(hero).toContain("motion={reduceMotion ? 'static' : 'live'}")
   })
 
   it('uses reduced-motion-aware liquid spring feedback across the header and session controls', () => {
@@ -635,6 +637,26 @@ describe('active customer Kael chat surface wiring', () => {
       expect.objectContaining({ onResponseDelta: expect.any(Function) }),
     ))
     expect(screen.getByTestId('customer-v21-kael-input')).toHaveProp('value', '')
+  })
+
+  it('turns a Home search handoff into a fresh normal session with the exact customer message', async () => {
+    const message = 'Ổ cắm phòng khách phát ra tiếng lép bép'
+    mockSessionsByMode.normal = [makeConversationSession('normal', 'remembered-normal-session')]
+    stagePendingKaelChatMessage(mockCustomerId, message)
+    mockRouteParams = { mode: 'normal', newSession: 'home-search' }
+
+    render(<CustomerKaelSurface />)
+
+    await waitForConversationCatalog('normal')
+    await waitFor(() => expect(mockConversationCreate).toHaveBeenCalledWith(
+      expect.objectContaining({ mode: 'normal' }),
+    ))
+    await waitFor(() => expect(mockConversationSendTurn).toHaveBeenCalledWith(
+      'conversation-1',
+      expect.objectContaining({ message }),
+      expect.objectContaining({ onResponseDelta: expect.any(Function) }),
+    ))
+    expect(await screen.findByText(message)).toBeOnTheScreen()
   })
 
   it('shows Suy nghĩ immediately for a normal Kael reply without inventing backend steps', async () => {
@@ -1341,10 +1363,11 @@ describe('active customer Kael chat surface wiring', () => {
     expect(StyleSheet.flatten(screen.getByTestId('customer-v21-kael-active-mode').props.style)).toMatchObject({
       alignSelf: 'stretch',
       fontSize: 13,
+      fontWeight: '700',
       includeFontPadding: false,
       textAlign: 'center',
       textAlignVertical: 'center',
-      transform: [{ translateX: -12 }],
+      transform: [{ translateX: -14 }, { translateY: -1 }],
     })
 
     fireEvent.press(screen.getByTestId('customer-v21-kael-mode-toggle'))

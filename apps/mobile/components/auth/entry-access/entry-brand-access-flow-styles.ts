@@ -2,15 +2,12 @@ import { StyleSheet } from 'react-native'
 
 import { entryTheme } from './theme'
 
-export const SPLASH_LOADER_WIDTH = 108
-
 export const entryBrandAccessFlowStyles = StyleSheet.create({
   benefitCard: { alignItems: 'center', borderRadius: 23, flex: 1, minHeight: 101, paddingHorizontal: 7, paddingVertical: 10 },
   benefitIcon: { height: 47, marginBottom: 4, width: 47 },
   benefitLabel: { ...entryTheme.typography.caption2, color: entryTheme.color.text.strong, fontWeight: '600', textAlign: 'center' },
   benefitMeta: { ...entryTheme.typography.caption2, color: entryTheme.color.text.muted, marginTop: 2, textAlign: 'center' },
   benefitRow: { flexDirection: 'row', gap: 9, marginBottom: 16, marginTop: 48 },
-  caption: { ...entryTheme.typography.caption, color: entryTheme.color.text.muted },
   centeredScreen: { alignItems: 'center' },
   divider: { alignItems: 'center', flexDirection: 'row', gap: 11, marginHorizontal: 2, marginVertical: 12 },
   dividerLine: { backgroundColor: entryTheme.color.surface.stroke, flex: 1, height: 1 },
@@ -28,9 +25,6 @@ export const entryBrandAccessFlowStyles = StyleSheet.create({
   keyboard: { flex: 1 },
   lead: { ...entryTheme.typography.body, color: entryTheme.color.text.secondary },
   link: { ...entryTheme.typography.footnote, color: entryTheme.color.mint.mint700, fontWeight: '600' },
-  loaderFill: { backgroundColor: entryTheme.color.mint.mint600, borderRadius: 999, bottom: 0, left: 0, overflow: 'hidden', position: 'absolute', top: 0 },
-  loaderSheen: { backgroundColor: 'rgba(255,255,255,0.72)', borderRadius: 999, bottom: 0, position: 'absolute', top: 0, width: 22 },
-  loaderTrack: { backgroundColor: 'rgba(13,174,154,0.12)', borderRadius: 999, height: 4, overflow: 'hidden', position: 'relative', width: SPLASH_LOADER_WIDTH },
   onboardingBottom: { marginTop: 'auto' },
   onboardingHead: { alignItems: 'center', paddingHorizontal: 8, paddingTop: 18 },
   onboardingLead: { marginTop: 7, textAlign: 'center' },
@@ -39,19 +33,10 @@ export const entryBrandAccessFlowStyles = StyleSheet.create({
   pagerActive: { backgroundColor: entryTheme.color.mint.mint600, borderRadius: 999, height: 5, width: 18 },
   pagerDot: { backgroundColor: '#BDD8D3', borderRadius: 999, height: 5, width: 5 },
   providerStack: { alignItems: 'stretch', flexDirection: 'row', gap: 10 },
-  root: { backgroundColor: entryTheme.color.mint.white, flex: 1 },
+  root: { backgroundColor: entryTheme.color.surface.base, flex: 1 },
   safe: { flex: 1 },
   screen: { flex: 1, paddingBottom: 18, paddingHorizontal: entryTheme.spacing.screenX, paddingTop: 8 },
-  splashBrandLockup: { alignItems: 'center', alignSelf: 'stretch', marginTop: 28 },
   splashCenter: { alignItems: 'center', flex: 1, justifyContent: 'center', paddingBottom: 48 },
-  splashFormulaAura: { bottom: 0, left: -entryTheme.spacing.screenX, position: 'absolute', right: -entryTheme.spacing.screenX, top: 0 },
-  splashFoot: { alignItems: 'center', gap: 11, paddingBottom: 14 },
-  splashName: { ...entryTheme.typography.title1, alignSelf: 'center', textAlign: 'center' },
-  splashNameNest: { color: '#20BFD4' },
-  splashNameScout: { color: '#8B72FF' },
-  splashSpark: { height: 18, left: -24, position: 'absolute', top: -8, width: 18 },
-  splashTagline: { ...entryTheme.typography.caption1, color: '#7792A8', marginTop: 4, textAlign: 'center' },
-  splashWordmarkShell: { alignSelf: 'center', position: 'relative' },
   termsRow: { marginBottom: 12, marginHorizontal: 2, marginTop: 2 },
   topbar: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', marginHorizontal: -3, marginBottom: 6, minHeight: 54 },
   topbarSpacer: { width: 54 },

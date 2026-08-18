@@ -98,4 +98,40 @@ export const customerV21ProfilePreferenceStyles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 3,
   },
+  simplePanel: {
+    borderRadius: 24,
+    borderWidth: 1,
+    gap: 16,
+    paddingHorizontal: 18,
+    paddingVertical: 18,
+  },
+  simplePanelBody: {
+    gap: 12,
+  },
+  simplePanelHeader: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 12,
+  },
+  simplePanelHeaderBody: {
+    ...typography.footnote,
+    marginTop: 2,
+  },
+  simplePanelHeaderCopy: {
+    flex: 1,
+    gap: 2,
+    minWidth: 0,
+  },
+  simplePanelHeaderIcon: {
+    alignItems: 'center',
+    borderRadius: 16,
+    borderWidth: 1,
+    height: 48,
+    justifyContent: 'center',
+    width: 48,
+  },
+  simplePanelHeaderTitle: {
+    ...typography.callout,
+    fontWeight: '700',
+  },
 })

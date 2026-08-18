@@ -2,8 +2,10 @@ import { useEffect, useReducer, useRef, type ReactNode } from 'react'
 import { Alert, Pressable, Text as RNText, View, type TextProps } from 'react-native'
 import * as ImagePicker from 'expo-image-picker'
 import { SERVICE_TYPES, type ServiceType, type WorkerRegisterInput, type WorkerRegistrationDraftInput } from '@nestscout/shared'
+import Svg, { Circle, Path, Rect } from 'react-native-svg'
 
 import { KaelButton, KaelChip, KaelTextField } from '@/components/ui/kael-primitives'
+import { color } from '@/design/theme'
 import type { AppLanguage } from '@/lib/app-language'
 import { localizedServiceLabel } from '@/lib/app-language'
 import type { LocalMediaUploadDraft } from '@/lib/media-upload'
@@ -87,6 +89,25 @@ function registrationReducer(state: RegistrationState, action: RegistrationActio
 function Text({ style, ...props }: TextProps) {
   const isDark = useWorkerThemeMode() === 'dark'
   return <RNText {...props} style={[styles.title, isDark ? styles.darkTitle : null, style]} />
+}
+
+function RegistrationHeaderGlyph({ isDark, stroke, testID }: { isDark: boolean; stroke: string; testID?: string }) {
+  const common = {
+    fill: 'none' as const,
+    stroke,
+    strokeLinecap: 'round' as const,
+    strokeLinejoin: 'round' as const,
+    strokeWidth: 1.55,
+  }
+  return (
+    <View style={[styles.registrationHeadingIconTile, isDark ? styles.registrationHeadingIconTileDark : null]}>
+      <Svg height={24} testID={testID} viewBox="0 0 20 20" width={24}>
+        <Rect {...common} height={13.5} rx={2} width={15} x={2.5} y={3.25} />
+        <Circle {...common} cx={7.2} cy={8} r={1.55} />
+        <Path {...common} d="M4.9 12.9c.55-1.1 1.32-1.65 2.3-1.65s1.75.55 2.3 1.65M11.8 7.25h3M11.8 10h3" />
+      </Svg>
+    </View>
+  )
 }
 
 export function WorkerV5WorkerRegistrationBody({
@@ -225,10 +246,18 @@ export function WorkerV5WorkerRegistrationBody({
 
   return (
     <View style={[styles.card, isDark ? styles.cardDark : null, reduceTransparency ? (isDark ? styles.cardOpaqueDark : styles.cardOpaque) : null]} testID="worker-v5-registration-form">
+      <View style={styles.cardContent}>
       <View>
-        <Text>{textByLanguage(language, 'Hoàn tất hồ sơ thợ', 'Complete your worker profile')}</Text>
+        <View style={styles.registrationHeading}>
+          <RegistrationHeaderGlyph
+            isDark={isDark}
+            stroke={isDark ? '#63E6D0' : color.brand.primary}
+            testID="worker-v5-registration-title-icon"
+          />
+          <Text>{textByLanguage(language, 'Hoàn tất hồ sơ thợ', 'Complete your worker profile')}</Text>
+        </View>
         <RNText style={[styles.copy, isDark ? styles.darkCopy : null]}>
-          {textByLanguage(language, 'Cần đủ thông tin và giấy tờ thật để hệ thống gửi yêu cầu phù hợp. Hồ sơ sẽ được kiểm tra trước khi nhận việc.', 'Real details and documents are required so the app can match you with suitable work. Your profile is reviewed before you can accept work.')}
+          {textByLanguage(language, 'Dùng thông tin, giấy tờ thật. Hồ sơ được kiểm tra trước khi nhận việc.', 'Use real details and documents. Your profile is reviewed before you accept work.')}
         </RNText>
         <RNText accessibilityLiveRegion="polite" style={[styles.note, isDark ? styles.darkCopy : null]} testID="worker-v5-registration-save-status">
           {registrationSaveStatus(language, state.saveStatus)}
@@ -298,6 +327,7 @@ export function WorkerV5WorkerRegistrationBody({
         style={styles.submit}
         testID="worker-v5-registration-submit"
       />
+      </View>
     </View>
   )
 }
@@ -357,7 +387,7 @@ function validWorkerRegistrationDraft(state: RegistrationDraftState): WorkerRegi
 function registrationSaveStatus(language: AppLanguage, status: RegistrationState['saveStatus']) {
   if (status === 'saving') return textByLanguage(language, 'Đang tự lưu tiến độ…', 'Saving progress…')
   if (status === 'saved') return textByLanguage(language, 'Đã tự lưu tiến độ.', 'Progress saved.')
-  if (status === 'error') return textByLanguage(language, 'Chưa thể tự lưu. Dữ liệu vẫn còn trên thiết bị.', 'Could not save yet. Your data remains on this device.')
+  if (status === 'error') return textByLanguage(language, 'Chưa lưu. Dữ liệu vẫn còn trên thiết bị.', 'Not saved. Your data remains on this device.')
   return textByLanguage(language, 'Tiến độ hợp lệ sẽ được tự lưu.', 'Valid progress is saved automatically.')
 }
 

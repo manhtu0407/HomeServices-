@@ -1,7 +1,7 @@
 import { use, useCallback, useEffect, useMemo, useRef, useReducer, useState } from 'react'
 import { useRouter } from 'expo-router'
 import { Platform } from 'react-native'
-import type { Session } from '@supabase/supabase-js'
+import { isAuthRetryableFetchError, type Session } from '@supabase/supabase-js'
 import { supabase } from './supabase'
 import { USER_ROLES, type UserRole } from '@nestscout/shared'
 import { addPushNotificationResponseListener } from './push-notifications'
@@ -417,7 +417,9 @@ function useAuthController(): AuthState {
       if (error || !data.session?.user) {
         const message = isEmailConfirmationRequired(error)
           ? EMAIL_CONFIRMATION_REQUIRED_MESSAGE
-          : 'Email/SDT hoặc mật khẩu không đúng'
+          : isAuthRetryableFetchError(error)
+            ? 'Không thể kết nối dịch vụ đăng nhập. Vui lòng thử lại sau.'
+            : 'Gmail hoặc SĐT hoặc mật khẩu không đúng'
         setCurrentSession(null)
         patchAuth({
           session: null,
@@ -729,8 +731,15 @@ function useAuthController(): AuthState {
     passwordRecoverySessionReadyRef.current = false
     setPasswordRecoveryPending(false)
     if (localVisualAuditSnapshot) {
-      setCurrentSession(localVisualAuditSnapshot.session)
-      patchAuth(localVisualAuditSnapshot)
+      setCurrentSession(null)
+      patchAuth({
+        session: null,
+        role: null,
+        profileStatus: 'idle',
+        authError: null,
+        loading: false,
+      })
+      setGuestMode(false)
       return
     }
 

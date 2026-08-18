@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { Pressable, Text } from 'react-native'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native'
+import { AuthRetryableFetchError } from '@supabase/supabase-js'
 
 const mockPushRoute = jest.fn()
 const mockUnsubscribe = jest.fn()
@@ -19,6 +20,7 @@ const mockFrom = jest.fn(() => ({ select: mockSelect }))
 const mockClearPendingKaelChatDraft = jest.fn(async (_ownerId: string) => undefined)
 const mockSubmitWorkerApplication = jest.fn()
 const mockGetRememberedAuthCredentials = jest.fn()
+const mockGetLocalVisualAuditRole = jest.fn<ReturnType<typeof import('../auth-visual-audit').getLocalVisualAuditRole>, Parameters<typeof import('../auth-visual-audit').getLocalVisualAuditRole>>()
 let mockAuthStateListener: ((event: string, session: typeof mockSession | null) => void) | null = null
 const mockOnAuthStateChange = jest.fn((listener: typeof mockAuthStateListener) => {
   mockAuthStateListener = listener
@@ -54,6 +56,14 @@ jest.mock('expo-router', () => ({
 jest.mock('../supabase', () => ({
   supabase: mockSupabase,
 }))
+
+jest.mock('../auth-visual-audit', () => {
+  const actual = jest.requireActual('../auth-visual-audit') as typeof import('../auth-visual-audit')
+  return {
+    ...actual,
+    getLocalVisualAuditRole: (...args: Parameters<typeof actual.getLocalVisualAuditRole>) => mockGetLocalVisualAuditRole(...args),
+  }
+})
 
 jest.mock('../push-notifications', () => ({
   addPushNotificationResponseListener: jest.fn(() => ({ remove: jest.fn() })),
@@ -164,6 +174,14 @@ function IdentifierAuthHarness() {
         testID="signin-email-unconfirmed"
       >
         <Text>sign in unconfirmed email</Text>
+      </Pressable>
+      <Pressable
+        onPress={() => {
+          void signInWithPassword('tu@example.com', 'secret123').then((nextResult) => setResult(nextResult.success ? 'network-success' : nextResult.error ?? 'error'))
+        }}
+        testID="signin-network"
+      >
+        <Text>sign in with unavailable auth</Text>
       </Pressable>
       <Text testID="identifier-auth-result">{result}</Text>
     </>
@@ -292,6 +310,8 @@ beforeEach(() => {
   mockClearPendingKaelChatDraft.mockClear()
   mockSubmitWorkerApplication.mockReset()
   mockGetRememberedAuthCredentials.mockReset()
+  mockGetLocalVisualAuditRole.mockReset()
+  mockGetLocalVisualAuditRole.mockReturnValue(null)
   mockOnAuthStateChange.mockClear()
   mockAuthStateListener = null
   latestSubmitWorkerApplication = null
@@ -467,6 +487,22 @@ describe('AuthProvider account isolation', () => {
     expect(mockUnregisterPushNotifications.mock.invocationCallOrder[0]).toBeLessThan(
       mockSignOut.mock.invocationCallOrder[0],
     )
+  })
+
+  it('clears a local visual-audit session without calling remote sign-out', async () => {
+    mockGetLocalVisualAuditRole.mockReturnValue('customer')
+
+    render(
+      <AuthProvider>
+        <AuthStateHarness />
+      </AuthProvider>,
+    )
+
+    await waitFor(() => expect(screen.getByTestId('auth-state-session')).toHaveTextContent('local-visual-audit-customer'))
+    fireEvent.press(screen.getByTestId('auth-state-sign-out'))
+
+    await waitFor(() => expect(screen.getByTestId('auth-state-session')).toHaveTextContent('none'))
+    expect(mockSignOut).not.toHaveBeenCalled()
   })
 
   it('cleans up a push setup that settles after sign-out without restarting the departed account', async () => {
@@ -1079,6 +1115,26 @@ describe('AuthProvider Email/SDT credentials', () => {
 
     await waitFor(() => {
       expect(screen.getByTestId('identifier-auth-result')).toHaveTextContent('Thư điện tử chưa được xác nhận. Hãy kiểm tra email rồi đăng nhập lại.')
+    })
+  })
+
+  it('keeps the account signed out and explains when Supabase auth cannot reach its service', async () => {
+    mockGetSession.mockResolvedValueOnce({ data: { session: null } })
+    mockSignInWithPassword.mockResolvedValueOnce({
+      data: { session: null },
+      error: new AuthRetryableFetchError('Failed to fetch', 0),
+    })
+
+    render(
+      <AuthProvider>
+        <IdentifierAuthHarness />
+      </AuthProvider>,
+    )
+
+    fireEvent.press(screen.getByTestId('signin-network'))
+
+    await waitFor(() => {
+      expect(screen.getByTestId('identifier-auth-result')).toHaveTextContent('Không thể kết nối dịch vụ đăng nhập. Vui lòng thử lại sau.')
     })
   })
 })

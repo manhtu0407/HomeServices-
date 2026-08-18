@@ -8,7 +8,6 @@ import type { AppLanguage } from '@/lib/app-language'
 import type { CustomerThemeTokens } from '../customer-theme'
 import { customerV21HomeV4Assets } from '../ui/assets'
 import { AlphaStop as Stop, NativeSafeLinearGradient as LinearGradient } from '@/components/ui/svg-alpha-stop'
-import { HomeIcon } from './home-icons'
 
 type HomeGuidanceBannerProps = {
   language: AppLanguage
@@ -19,30 +18,27 @@ type HomeGuidanceBannerProps = {
 
 type GuidanceCopy = {
   button: string
-  proofs: [string, string, string]
   title: string
 }
 
 const guidanceCopy = {
   en: {
     button: 'See how it works',
-    proofs: ['Clear scope', 'Confirm before work', 'Protected payment'],
     title: 'Feel confident with a clear process',
   },
   vi: {
     button: 'Xem cách hoạt động',
-    proofs: ['Phạm vi rõ ràng', 'Xác nhận trước khi làm', 'Thanh toán an toàn'],
     title: 'An tâm với quy trình rõ ràng',
   },
 } satisfies Record<AppLanguage, GuidanceCopy>
-
-const proofIcons = ['check', 'list', 'shield'] as const
 
 export function HomeGuidanceBanner({ language, onPress, reduceTransparency, tokens }: HomeGuidanceBannerProps) {
   const { width } = useWindowDimensions()
   const copy = guidanceCopy[language]
   const scale = Math.min(Math.max(width - 32, 280) / 847, 1)
   const q = (size: number) => size * scale
+  const buttonTypography = scaledTypography('headline', scale)
+  const titleTypography = scaledTypography('title1', scale)
   const content = (
     <>
       {!reduceTransparency ? (
@@ -66,30 +62,51 @@ export function HomeGuidanceBanner({ language, onPress, reduceTransparency, toke
         testID="customer-v21-home-promo-image"
       />
       <View style={[styles.copy, { left: q(40), top: q(49) }]}>
-        <Text adjustsFontSizeToFit minimumFontScale={0.72} numberOfLines={2} style={[styles.title, scaledTypography('title1', scale), { color: tokens.text }]}>{copy.title}</Text>
-        <View style={[styles.proofs, { gap: q(18), marginTop: q(20) }]}>
-          {copy.proofs.map((proof, index) => (
-            <View key={proof} style={[styles.proof, { gap: q(9) }]}>
-              <HomeIcon color={tokens.primary} name={proofIcons[index]} size={q(17)} />
-              <Text adjustsFontSizeToFit minimumFontScale={0.66} numberOfLines={1} style={[styles.proofText, scaledTypography('subheadline', scale), { color: tokens.muted }]}>{proof}</Text>
-            </View>
-          ))}
-        </View>
+        <Text
+          adjustsFontSizeToFit
+          minimumFontScale={0.72}
+          numberOfLines={2}
+          style={[
+            styles.title,
+            titleTypography,
+            {
+              color: tokens.text,
+              fontSize: (titleTypography.fontSize ?? 0) + 3,
+              lineHeight: (titleTypography.lineHeight ?? 0) + 3,
+            },
+          ]}
+        >
+          {copy.title}
+        </Text>
         {onPress ? (
           <Pressable
             accessibilityLabel={copy.button}
             accessibilityRole="button"
             onPress={onPress}
-            style={[styles.button, { backgroundColor: tokens.primary, borderRadius: q(24), height: q(47), marginTop: q(18), paddingHorizontal: q(21) }]}
+            style={[styles.button, { backgroundColor: tokens.primary, borderRadius: q(24) + 2, height: q(47) + 4, marginTop: q(18), paddingHorizontal: q(21) + 4 }]}
             testID="customer-v21-home-promo-action"
           >
-            <Text adjustsFontSizeToFit minimumFontScale={0.72} numberOfLines={1} style={[styles.buttonText, scaledTypography('headline', scale)]}>{copy.button}</Text>
+            <Text
+              adjustsFontSizeToFit
+              minimumFontScale={0.72}
+              numberOfLines={1}
+              style={[
+                styles.buttonText,
+                buttonTypography,
+                {
+                  fontSize: (buttonTypography.fontSize ?? 0) + 3,
+                  lineHeight: (buttonTypography.lineHeight ?? 0) + 3,
+                },
+              ]}
+            >
+              {copy.button}
+            </Text>
           </Pressable>
         ) : null}
       </View>
     </>
   )
-  const cardStyle = [styles.card, { borderColor: tokens.border, borderRadius: q(30), height: q(226) }]
+  const cardStyle = [styles.card, { borderColor: tokens.border, borderRadius: q(30), height: q(226), marginTop: q(20) }]
 
   if (reduceTransparency) {
     return <View style={[cardStyle, { backgroundColor: tokens.raised }]} testID="customer-v21-home-guidance">{content}</View>
@@ -121,18 +138,6 @@ const styles = StyleSheet.create({
   },
   image: {
     position: 'absolute',
-  },
-  proof: {
-    alignItems: 'center',
-    flexDirection: 'row',
-  },
-  proofs: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-  },
-  proofText: {
-    ...typography.subheadline,
-    fontWeight: '600',
   },
   title: {
     ...typography.title1,

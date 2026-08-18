@@ -12,7 +12,7 @@ describe('entry access copy', () => {
       'Email/phone or password is incorrect.',
     )
     expect(localizeEntryAuthError('Invalid login credentials', 'vi', 'signInFailed')).toBe(
-      'Thư điện tử hoặc SĐT hoặc mật khẩu không đúng.',
+      'Gmail hoặc SĐT hoặc mật khẩu không đúng.',
     )
     expect(localizeEntryAuthError('Địa chỉ thư điện tử chưa đúng định dạng.', 'en', 'signupFailed')).toBe(
       'Enter a valid email address.',

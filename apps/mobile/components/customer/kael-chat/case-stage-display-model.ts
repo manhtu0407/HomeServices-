@@ -9,7 +9,7 @@ export function formatKnownCount(value: number | null | undefined, language: App
 }
 export function stepForStatus(status: LocalDealStatus) {
   if (status === 'draft' || status === 'analyzing' || status === 'estimate_ready' || status === 'awaiting_customer_confirm') return 1
-  if (status === 'broadcasting' || status === 'worker_matched' || status === 'worker_on_way') return 2
+  if (status === 'broadcasting' || status === 'worker_candidate_pending' || status === 'worker_matched' || status === 'worker_on_way') return 2
   if (status === 'arrived' || status === 'inspecting' || status === 'repairing' || status === 'scope_change_pending') return 3
   return 4
 }

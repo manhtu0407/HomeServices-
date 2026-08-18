@@ -34,6 +34,7 @@ type ProfileAvatarStorageClient = {
 
 const WORKER_AVATAR_BUCKET = "worker-avatars" as const;
 const CUSTOMER_AVATAR_BUCKET = "customer-avatars" as const;
+const WORKER_VERIFICATION_BUCKET = "worker-verification" as const;
 type ProfileAvatarBucketId =
   | typeof WORKER_AVATAR_BUCKET
   | typeof CUSTOMER_AVATAR_BUCKET;
@@ -46,6 +47,8 @@ type ProfileAvatarUpdateInput =
 const PROFILE_AVATAR_UPLOAD_EXPIRES_IN_SECONDS = 2 * 60 * 60;
 const PROFILE_AVATAR_READ_EXPIRES_IN_SECONDS = 60 * 60;
 const PROFILE_AVATAR_READ_CACHE_MS = 50 * 60 * 1000;
+const WORKER_SELFIE_READ_EXPIRES_IN_SECONDS = 5 * 60;
+const WORKER_SELFIE_READ_CACHE_MS = 4 * 60 * 1000;
 const PROFILE_AVATAR_UPLOAD_LIMIT: RateLimitConfig = {
   maxTokens: 6,
   refillRate: 6,
@@ -55,8 +58,11 @@ const WORKER_AVATAR_REF_PATTERN =
   /^supabase:\/\/worker-avatars\/([^/\s?#]+)\/([A-Za-z0-9._-]+)$/i;
 const CUSTOMER_AVATAR_REF_PATTERN =
   /^supabase:\/\/customer-avatars\/([^/\s?#]+)\/([A-Za-z0-9._-]+)$/i;
+const WORKER_VERIFICATION_SELFIE_REF_PATTERN =
+  /^supabase:\/\/worker-verification\/([^/\s?#]+)\/selfie\/([A-Za-z0-9][A-Za-z0-9._-]{0,179})$/i;
 const PROFILE_AVATAR_MIME_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
 const signedAvatarCache = new Map<string, { expiresAt: number; url: string }>();
+const signedWorkerSelfieCache = new Map<string, { expiresAt: number; url: string }>();
 
 export async function createWorkerAvatarUpload(
   ctx: MobileApiContext,
@@ -233,6 +239,74 @@ export async function resolveWorkerAvatarUrl(
   rawAvatarRef: unknown,
 ): Promise<string | null> {
   return resolveProfileAvatarUrl(storageClient, rawAvatarRef, WORKER_AVATAR_BUCKET);
+}
+
+export async function resolveApprovedWorkerSelfieUrl(
+  storageClient: unknown,
+  rawSelfieRef: unknown,
+  expectedWorkerId: string,
+  isApproved: boolean,
+): Promise<string | null> {
+  if (!isApproved) return null;
+  const objectPath = workerVerificationSelfieObjectPath(rawSelfieRef, expectedWorkerId);
+  if (!objectPath) return null;
+
+  const selfieRef = nullableString(rawSelfieRef)!;
+  const cached = signedWorkerSelfieCache.get(selfieRef);
+  if (cached && cached.expiresAt > Date.now()) return cached.url;
+
+  const storage = (storageClient as ProfileAvatarStorageClient).storage;
+  if (!storage) return null;
+  let signed: Awaited<ReturnType<ProfileAvatarBucket["createSignedUrl"]>>;
+  try {
+    signed = await storage.from(WORKER_VERIFICATION_BUCKET).createSignedUrl(
+      objectPath,
+      WORKER_SELFIE_READ_EXPIRES_IN_SECONDS,
+    );
+  } catch {
+    return null;
+  }
+  const signedUrl = signed.data?.signedUrl;
+  if (signed.error || !signedUrl) return null;
+
+  if (signedWorkerSelfieCache.size >= 200) {
+    const firstKey = signedWorkerSelfieCache.keys().next().value;
+    if (typeof firstKey === "string") signedWorkerSelfieCache.delete(firstKey);
+  }
+  signedWorkerSelfieCache.set(selfieRef, {
+    expiresAt: Date.now() + WORKER_SELFIE_READ_CACHE_MS,
+    url: signedUrl,
+  });
+  return signedUrl;
+}
+
+export function workerVerificationSelfieObjectPath(
+  rawSelfieRef: unknown,
+  expectedWorkerId: string,
+): string | null {
+  const selfieRef = nullableString(rawSelfieRef);
+  if (!selfieRef) return null;
+  const match = selfieRef.match(WORKER_VERIFICATION_SELFIE_REF_PATTERN);
+  if (!match || match[1] !== expectedWorkerId || match[2].includes("..")) return null;
+  return `${match[1]}/selfie/${match[2]}`;
+}
+
+export async function resolveWorkerHomeAvatarUrl(
+  storageClient: unknown,
+  rawAvatarRef: unknown,
+  rawSelfieRef: unknown,
+  expectedWorkerId: string,
+  isApproved: boolean,
+): Promise<string | null> {
+  const avatarRef = nullableString(rawAvatarRef);
+  const profileAvatarUrl = await resolveWorkerAvatarUrl(storageClient, avatarRef);
+  if (profileAvatarUrl || avatarRef) return profileAvatarUrl;
+  return resolveApprovedWorkerSelfieUrl(
+    storageClient,
+    rawSelfieRef,
+    expectedWorkerId,
+    isApproved,
+  );
 }
 
 async function resolveCustomerAvatarUrl(

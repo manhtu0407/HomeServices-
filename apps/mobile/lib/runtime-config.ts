@@ -1,4 +1,5 @@
 import Constants from 'expo-constants'
+import { resolveMobilePublicAuthEnv } from '../config/public-auth-env'
 
 type ExpoExtra = Record<string, unknown>
 type RuntimeBuildInfo = {
@@ -51,8 +52,9 @@ function envString(...keys: string[]) {
 // Constants.extra payload was baked when the dev server started. Prefer the
 // runtime env so local previews do not accidentally point at placeholder
 // Supabase config, while native builds still fall back to app.config extra.
-const supabaseUrl = envString('EXPO_PUBLIC_SUPABASE_URL') || extraString('supabaseUrl')
-const supabasePublishableKey = envString('EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY') || extraString('supabasePublishableKey')
+const runtimePublicAuthEnv = resolveMobilePublicAuthEnv(runtimeProcess.process?.env ?? {})
+const supabaseUrl = runtimePublicAuthEnv.supabaseUrl || extraString('supabaseUrl')
+const supabasePublishableKey = runtimePublicAuthEnv.supabasePublishableKey || extraString('supabasePublishableKey')
 const configuredApiBaseUrl = envString('EXPO_PUBLIC_API_BASE_URL') || extraString('apiBaseUrl')
 const stagingPaymentRailEnabled = ['1', 'true', 'yes', 'on'].includes(
   envString('EXPO_PUBLIC_STAGING_PAYMENT_RAIL_ENABLED').toLowerCase(),

@@ -4,6 +4,11 @@ import type { MobileApiContext } from "../../platform/auth.ts";
 import { db, dbQuery } from "../../platform/db.ts";
 import type { AdminFinanceContracts } from "../contracts/admin-finance.ts";
 import { requireAdminCapability } from "./control.ts";
+export {
+  decideAdminPaymentReconciliation,
+  getAdminWorkerFinanceSnapshot,
+  listAdminPaymentReconciliations,
+} from "./finance-reconciliation.ts";
 import {
   csvCell,
   encodeFinanceCursor,
@@ -17,10 +22,6 @@ import {
 
 type Row = Record<string, unknown>;
 type AdminFinanceRange = AdminFinanceContracts["range"];
-type AdminPaymentReconciliationListInput = AdminFinanceContracts["paymentReconciliationListInput"];
-type AdminPaymentReconciliationDecisionInput = AdminFinanceContracts["paymentReconciliationDecisionInput"];
-type AdminPaymentReconciliationListResponse = AdminFinanceContracts["paymentReconciliationListResponse"];
-type AdminPaymentReconciliationDecisionResponse = AdminFinanceContracts["paymentReconciliationDecisionResponse"];
 type AdminFinanceSummaryResponse = AdminFinanceContracts["financeSummaryResponse"];
 type AdminFinanceBalanceSnapshotInput = AdminFinanceContracts["financeBalanceSnapshotInput"];
 type AdminFinanceBalanceSnapshotResponse = AdminFinanceContracts["financeBalanceSnapshotResponse"];
@@ -70,96 +71,6 @@ const FINANCE_CSV_COLUMNS: Array<keyof AdminFinanceTransaction> = [
   "data_quality",
   "unavailable_reason",
 ];
-
-const RECONCILIATION_SELECT = [
-  "id",
-  "job_id",
-  "payment_method",
-  "status",
-  "gross_amount",
-  "amount_received",
-  "customer_transfer_claimed_at",
-  "response_deadline",
-  "created_at",
-  "updated_at",
-].join(",");
-
-export async function listAdminPaymentReconciliations(
-  ctx: MobileApiContext,
-  input: AdminPaymentReconciliationListInput,
-): Promise<AdminPaymentReconciliationListResponse> {
-  await requireAdminCapability(ctx, "finance.read");
-  let query = db(ctx)
-    .from("job_payment_orders")
-    .select(RECONCILIATION_SELECT)
-    .order("updated_at", { ascending: false })
-    .range(input.offset, input.offset + input.limit);
-  if (input.status === "pending") {
-    query = query.in("status", [
-      "manual_customer_claimed",
-      "manual_reconcile_required",
-      "direct_awaiting_customer_confirmation",
-      "direct_awaiting_worker_confirmation",
-      "direct_reconcile_required",
-    ]);
-  } else if (input.status === "reconcile_required") {
-    query = query.in("status", ["manual_reconcile_required", "direct_reconcile_required"]);
-  }
-  const result = await dbQuery<Row[]>(query);
-  if (result.error) apiFailure("DB_ERROR", "Không thể tải hàng chờ đối soát", 500);
-  const page = result.data ?? [];
-  const rows = page.slice(0, input.limit).map(serializeReconciliation);
-  return {
-    payment_reconciliations: rows,
-    has_more: page.length > input.limit,
-    next_offset: page.length > input.limit ? input.offset + rows.length : null,
-  };
-}
-
-export async function decideAdminPaymentReconciliation(
-  ctx: MobileApiContext,
-  paymentOrderId: string,
-  input: AdminPaymentReconciliationDecisionInput,
-): Promise<AdminPaymentReconciliationDecisionResponse> {
-  await requireAdminCapability(ctx, "finance.reconcile");
-  const reference = input.bank_reference ? await hashBankReference(input.bank_reference) : null;
-  const result = await dbQuery<Row[]>(
-    db(ctx).rpc("decide_manual_bank_payment_reconciliation", {
-      p_actor_id: ctx.user.id,
-      p_amount_received: input.amount_received ?? null,
-      p_bank_reference_hash: reference?.hash ?? null,
-      p_bank_reference_suffix: reference?.suffix ?? null,
-      p_credited_at: input.credited_at ?? null,
-      p_decision: input.decision,
-      p_payment_order_id: paymentOrderId,
-      p_reason_code: input.reason ?? null,
-    }),
-  );
-  const row = result.data?.[0];
-  if (result.error || !row) apiFailure("DB_ERROR", "Không thể lưu quyết định đối soát", 500);
-  if (row.ok !== true) mapDecisionError(nullableString(row.error_code));
-  const outcome = nullableString(row.outcome);
-  const jobId = nullableString(row.job_id);
-  const status = nullableString(row.status);
-  const paymentStatus = nullableString(row.payment_status);
-  if (
-    !jobId ||
-    (outcome !== "paid" && outcome !== "reconcile_required" && outcome !== "direct_reconcile_required") ||
-    (status !== "payment_pending" && status !== "paid") ||
-    !paymentStatus
-  ) {
-    apiFailure("DB_ERROR", "Biên nhận đối soát không hợp lệ", 500);
-  }
-  return {
-    ok: true,
-    payment_order_id: paymentOrderId,
-    outcome,
-    job_id: jobId,
-    status,
-    payment_status: paymentStatus,
-    hold_until: nullableString(row.hold_until),
-  };
-}
 
 export async function getAdminFinanceSummary(
   ctx: MobileApiContext,
@@ -379,32 +290,6 @@ export async function recordAdminFinanceBalanceSnapshot(
     apiFailure("DB_ERROR", "Không thể lưu số dư tài khoản", 500);
   }
   return { snapshot_id: snapshotId, balance_vnd: balance, observed_at: observedAt };
-}
-
-function serializeReconciliation(row: Row): AdminPaymentReconciliationListResponse["payment_reconciliations"][number] {
-  const method = nullableString(row.payment_method);
-  const grossAmount = nonnegativeInteger(row.gross_amount);
-  const id = nullableString(row.id);
-  const jobId = nullableString(row.job_id);
-  const status = nullableString(row.status);
-  const createdAt = nullableString(row.created_at);
-  const updatedAt = nullableString(row.updated_at);
-  if (
-    (method !== "platform_bank_manual" && method !== "direct_worker") ||
-    grossAmount === null || grossAmount <= 0 || !id || !jobId || !status || !createdAt || !updatedAt
-  ) apiFailure("DB_ERROR", "Dữ liệu đối soát thanh toán không hợp lệ", 500);
-  return {
-    id,
-    job_id: jobId,
-    payment_method: method,
-    status,
-    gross_amount: grossAmount,
-    amount_received: nullableNumber(row.amount_received),
-    customer_transfer_claimed_at: nullableString(row.customer_transfer_claimed_at),
-    response_deadline: nullableString(row.response_deadline),
-    created_at: createdAt,
-    updated_at: updatedAt,
-  };
 }
 
 function serializeFinanceSummary(
@@ -755,22 +640,4 @@ function asTaxPolicyStatus(value: unknown): AdminFinanceTaxPolicy["status"] | nu
   return value === "draft" || value === "approved" || value === "retired" ? value : null;
 }
 
-async function hashBankReference(value: string) {
-  const normalized = value.trim();
-  const hashBuffer = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(normalized));
-  const hash = Array.from(new Uint8Array(hashBuffer)).map((byte) => byte.toString(16).padStart(2, "0")).join("");
-  return { hash, suffix: normalized.slice(-16) };
-}
-
 function nonnegativeInteger(value: unknown): number | null { return typeof value === "number" && Number.isSafeInteger(value) && value >= 0 ? value : null; }
-
-function mapDecisionError(code: string | null): never {
-  if (code === "PAYMENT_ORDER_NOT_FOUND") apiFailure("NOT_FOUND", "Không tìm thấy lệnh thanh toán", 404);
-  if (code === "BANK_REFERENCE_USED") apiFailure("CONFLICT", "Mã giao dịch ngân hàng đã được dùng cho công việc khác", 409);
-  if (code === "INVALID_STATUS") apiFailure("STATUS_CHANGED", "Lệnh thanh toán đã thay đổi trạng thái", 409);
-  if (code === "INVALID_INPUT") apiFailure("VALIDATION", "Thông tin đối soát không hợp lệ", 400);
-  if (code === "COLLATERAL_NOT_FOUND" || code === "WORKER_LEDGER_INVALID") {
-    apiFailure("CONFLICT", "Biên nhận thanh toán cần được kiểm tra thêm", 409);
-  }
-  apiFailure("PAYMENT_RECONCILIATION_FAILED", "Không thể xử lý đối soát thanh toán", 409);
-}

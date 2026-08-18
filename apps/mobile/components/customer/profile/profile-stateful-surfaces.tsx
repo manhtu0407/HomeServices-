@@ -7,14 +7,13 @@ import { useGlassAccessibility } from '@/components/ui/accessibility-motion'
 import { AlphaStop as Stop, NativeSafeLinearGradient as LinearGradient } from '@/components/ui/svg-alpha-stop'
 
 import type { CustomerThemeTokens } from '../customer-theme'
-import { ProfileRankingGrowthIcon, ProfileRankingPendingIcon } from './profile-ranking-icons'
 import { ProfileUsageRankingMark } from './profile-ranking-mark'
-import { ProfileRankingProgress } from './profile-ranking-progress'
 import { customerV21ProfileJourneyStyles as profileJourneyStyles } from './profile-journey-styles'
 import { ProfileSettingsGlyph, type ProfileSettingsGlyphName } from './profile-settings-icons'
 import { customerV21ProfileSettingsGroupStyles as settingsGroupStyles } from './profile-settings-group-styles'
 import { ProfileAuraCard, ProfileFormulaMintSurface } from './profile-utility-surfaces'
 import { customerV21ProfileUtilityStyles as profileUtilityStyles } from './profile-utility-styles'
+import { customerV21SharedStyles as sharedStyles } from '../ui/shared-styles'
 import { useCustomerV21SurfaceTheme, V21TopBar } from '../ui/shared-surfaces'
 
 type RootProfileOverviewStyles = {
@@ -92,18 +91,14 @@ export function CustomerProfileOverviewView({
   avatarAccessibilityLabel,
   avatarUploadBusy,
   avatarUrl,
-  initials,
   name,
   onPickAvatar,
   onOpenRanking,
   rankingAccessibilityLabel,
   rankingLabel,
-  rankingMetaLabel,
-  rankingProgressPercent,
-  rankingProgressSourceLabel,
+  rankingPointsLabel,
   settingsGroups,
   tokens,
-  topBarSubtitle,
   topBarTitle,
   versionLabel,
   rootStyles,
@@ -113,36 +108,31 @@ export function CustomerProfileOverviewView({
   avatarAccessibilityLabel: string
   avatarUploadBusy: boolean
   avatarUrl: string | null
-  initials: string
   name: string
   onPickAvatar: () => void
   onOpenRanking: () => void
   rankingAccessibilityLabel: string
   rankingLabel: string
-  rankingMetaLabel: string
-  rankingProgressPercent: number
-  rankingProgressSourceLabel: string
+  rankingPointsLabel: string
   settingsGroups: ProfileSettingsGroupModel[]
   tokens: CustomerThemeTokens
-  topBarSubtitle: string
   topBarTitle: string
   versionLabel: string | null
   rootStyles: RootProfileOverviewStyles
 }) {
-  const { reduceMotion } = useGlassAccessibility()
+  const { reduceMotion, reduceTransparency } = useGlassAccessibility()
 
   return (
     <>
       <V21TopBar
         containerStyle={profileUtilityStyles.profileOverviewTopBar}
         showAvatar={false}
-        subtitle={topBarSubtitle}
-        subtitleStyle={profileUtilityStyles.profileOverviewTopSubtitle}
+        subtitle=""
         title={topBarTitle}
-        titleStyle={profileUtilityStyles.profileOverviewTopTitle}
+        titleStyle={sharedStyles.screenTitle}
       />
 
-      <ProfileAuraCard cardStyle={profileUtilityStyles.profileOverviewHeroCard} contentStyle={profileUtilityStyles.profileHeroLarge} scope="OverviewHero" testID="customer-v21-profile-hero">
+      <ProfileAuraCard cardStyle={profileUtilityStyles.profileOverviewHeroCard} contentStyle={profileUtilityStyles.profileHeroLarge} scope="OverviewHero" showMintAura={false} testID="customer-v21-profile-hero">
         <Pressable
           accessibilityHint={avatarAccessibilityHint}
           accessibilityLabel={avatarAccessibilityLabel}
@@ -152,12 +142,13 @@ export function CustomerProfileOverviewView({
           onPress={onPickAvatar}
           style={({ pressed }) => [
             profileUtilityStyles.profileAvatarLarge,
+            { backgroundColor: tokens.raised, borderColor: tokens.border },
             pressed && !reduceMotion ? rootStyles.pressed : null,
           ]}
           testID="customer-v21-profile-avatar-picker"
         >
           {avatarUploadBusy ? (
-            <ActivityIndicator color="#FFFFFF" size="small" testID="customer-v21-profile-avatar-loading" />
+            <ActivityIndicator color={tokens.text} size="small" testID="customer-v21-profile-avatar-loading" />
           ) : avatarUrl ? (
             <Image
               accessibilityIgnoresInvertColors
@@ -167,28 +158,22 @@ export function CustomerProfileOverviewView({
               testID="customer-v21-profile-avatar-image"
             />
           ) : (
-            <>
-              <View pointerEvents="none" style={profileUtilityStyles.profileAvatarGradientLayer}>
-                <Svg height="100%" preserveAspectRatio="none" viewBox="0 0 80 80" width="100%">
-                  <Defs>
-                    <LinearGradient id="profileAvatarGradient" x1="0.08" x2="0.92" y1="0.08" y2="0.92">
-                      <Stop offset="0" stopColor="#7EDFD2" />
-                      <Stop offset="0.62" stopColor="#08AF9C" />
-                      <Stop offset="1" stopColor="#087D72" />
-                    </LinearGradient>
-                  </Defs>
-                  <Rect fill="url(#profileAvatarGradient)" height="80" rx="22" width="80" />
-                </Svg>
-              </View>
-              <Text style={profileUtilityStyles.profileAvatarText} testID="customer-v21-profile-avatar-fallback">{initials}</Text>
-            </>
+            <ProfileSettingsGlyph color={tokens.text} name="personal" testID="customer-v21-profile-avatar-placeholder-icon" />
           )}
           {!avatarUploadBusy ? (
-            <View pointerEvents="none" style={profileUtilityStyles.profileAvatarEditBadge}>
+            <View
+              pointerEvents="none"
+              style={[profileUtilityStyles.profileAvatarEditBadge, { backgroundColor: tokens.raised, borderColor: tokens.border }]}
+              testID="customer-v21-profile-avatar-edit-badge"
+            >
               <Svg height={13} viewBox="0 0 16 16" width={13}>
                 <Path
                   d="M5.2 4.2 6.1 2.8h3.8l.9 1.4h1.6c.9 0 1.6.7 1.6 1.6v5.1c0 .9-.7 1.6-1.6 1.6H3.6c-.9 0-1.6-.7-1.6-1.6V5.8c0-.9.7-1.6 1.6-1.6h1.6ZM8 10.8a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5Z"
-                  fill="#FFFFFF"
+                  fill="none"
+                  stroke={tokens.text}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={1.3}
                 />
               </Svg>
             </View>
@@ -234,6 +219,7 @@ export function CustomerProfileOverviewView({
               contentStyle={profileUtilityStyles.profileRankingEntryContent}
               scope="OverviewRankingEntry"
               showCardSkin={false}
+              showMintAura={false}
               testID="customer-v21-profile-ranking-entry"
             >
               <View
@@ -242,22 +228,56 @@ export function CustomerProfileOverviewView({
               >
                 <ProfileUsageRankingMark testID="customer-v21-profile-ranking-entry-icon" />
               </View>
-              <View pointerEvents="none" style={profileUtilityStyles.profileRankingEntryWorkartSpacer} />
-              <View style={profileUtilityStyles.profileRankingEntryCopy}>
-                <Text numberOfLines={1} style={[profileUtilityStyles.profileRankingEntryTitle, { color: tokens.text }]}>
+              <View
+                pointerEvents="none"
+                style={profileUtilityStyles.profileRankingEntryFadeLayer}
+                testID="customer-v21-profile-ranking-entry-fade"
+              >
+                <Svg height="100%" preserveAspectRatio="none" viewBox="0 0 100 100" width="100%">
+                  <Defs>
+                    <LinearGradient id="customer-v21-profile-ranking-entry-fade-gradient" x1="0" x2="1" y1="0.5" y2="0.5">
+                      <Stop
+                        offset="0"
+                        stopColor={tokens.mode === 'dark' ? tokens.raised : '#F5FFFD'}
+                        stopOpacity="0"
+                      />
+                      <Stop
+                        offset="0.45"
+                        stopColor={tokens.mode === 'dark' ? tokens.raised : '#FFFFFF'}
+                        stopOpacity={reduceTransparency ? 0.5 : 0.14}
+                      />
+                      <Stop
+                        offset="0.7"
+                        stopColor={tokens.mode === 'dark' ? tokens.raised : '#FFFFFF'}
+                        stopOpacity={reduceTransparency ? 0.9 : 0.82}
+                      />
+                      <Stop
+                        offset="1"
+                        stopColor={tokens.mode === 'dark' ? tokens.raised : '#FFFFFF'}
+                        stopOpacity={reduceTransparency ? 1 : 0.96}
+                      />
+                    </LinearGradient>
+                  </Defs>
+                  <Rect fill="url(#customer-v21-profile-ranking-entry-fade-gradient)" height="100" width="100" x="0" y="0" />
+                </Svg>
+              </View>
+              <View style={profileUtilityStyles.profileRankingEntryCopy} testID="customer-v21-profile-ranking-entry-copy">
+                <Text
+                  numberOfLines={1}
+                  style={[profileUtilityStyles.profileRankingEntryTitle, { color: tokens.text }]}
+                  testID="customer-v21-profile-ranking-entry-title"
+                >
                   {rankingLabel}
                 </Text>
-                <View style={profileUtilityStyles.profileRankingEntrySignalRail} testID="customer-v21-profile-ranking-entry-signals">
-                  <View style={profileUtilityStyles.profileRankingEntrySignal} testID="customer-v21-profile-ranking-entry-points-signal">
-                    <ProfileRankingPendingIcon color={tokens.primary} testID="customer-v21-profile-ranking-entry-points-icon" />
-                    <Text numberOfLines={1} style={[profileUtilityStyles.profileRankingEntrySignalText, { color: tokens.muted }]}>{rankingMetaLabel}</Text>
-                  </View>
-                  <View style={profileUtilityStyles.profileRankingEntrySignal} testID="customer-v21-profile-ranking-entry-source-signal">
-                    <ProfileRankingGrowthIcon color={tokens.primary} testID="customer-v21-profile-ranking-entry-source-icon" />
-                    <Text numberOfLines={1} style={[profileUtilityStyles.profileRankingEntrySignalText, { color: tokens.muted }]}>{rankingProgressSourceLabel}</Text>
-                  </View>
-                </View>
-                <ProfileRankingProgress percent={rankingProgressPercent} testID="customer-v21-profile-ranking-entry-progress" />
+                <Text
+                  adjustsFontSizeToFit
+                  minimumFontScale={0.7}
+                  numberOfLines={1}
+                  style={[profileUtilityStyles.profileRankingEntryPoints, { color: tokens.primary }]}
+                  testID="customer-v21-profile-ranking-entry-points"
+                >
+                  {rankingPointsLabel}
+                </Text>
               </View>
             </ProfileAuraCard>
           )}

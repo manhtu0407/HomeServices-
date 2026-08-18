@@ -11,7 +11,7 @@ export const customerV21ProfileSettingsGroupStyles = StyleSheet.create({
   },
   groupLabel: {
     ...typography.caption1,
-    fontWeight: '600',
+    fontWeight: '700',
     paddingHorizontal: 8,
   },
   groupSurface: {

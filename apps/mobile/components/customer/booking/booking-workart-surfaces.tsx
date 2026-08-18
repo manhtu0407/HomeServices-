@@ -63,30 +63,8 @@ function BookingWorkartServiceWash({
   )
 }
 
-function BookingJourneyBackdropFade({ color, gradientID }: { color: string; gradientID: string }) {
-  return (
-    <Svg
-      height="100%"
-      pointerEvents="none"
-      style={bookingStyles.bookingJourneyBackdropFade}
-      viewBox="0 0 100 100"
-      width="100%"
-    >
-      <Defs>
-        <LinearGradient id={gradientID} x1="0%" x2="0%" y1="0%" y2="100%">
-          <Stop offset="0%" stopColor={color} stopOpacity={0} />
-          <Stop offset="76%" stopColor={color} stopOpacity={0.04} />
-          <Stop offset="100%" stopColor={color} stopOpacity={1} />
-        </LinearGradient>
-      </Defs>
-      <Rect fill={`url(#${gradientID})`} height="100" width="100" />
-    </Svg>
-  )
-}
-
 export function BookingWorkartJourney({ artworkHeight = 140, copyScale = 1, language, testID = 'customer-v21-booking-progress', tokens }: BookingWorkartJourneyProps) {
   const isVietnamese = language === 'vi'
-  const backdropFadeGradientID = `${testID}-backdrop-fade`.replace(/[^A-Za-z0-9_-]/g, '-')
   return (
     <Fragment>
       <View
@@ -103,7 +81,6 @@ export function BookingWorkartJourney({ artworkHeight = 140, copyScale = 1, lang
           style={[bookingStyles.bookingJourneyArtwork, { height: artworkHeight }]}
           testID={`${testID}-artwork`}
         />
-        <BookingJourneyBackdropFade color={tokens.canvas} gradientID={backdropFadeGradientID} />
       </View>
       <View
         accessible

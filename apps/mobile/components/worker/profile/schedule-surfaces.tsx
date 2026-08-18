@@ -31,6 +31,7 @@ export function WorkerV5ScheduleBody({
   reduceTransparency: boolean
   runtime: WorkerV5Runtime
 }) {
+  const themeMode = useWorkerThemeMode()
   const profile = runtime.workerProfile
   const hasActiveJob = runtime.workerJobs.some((job) => isWorkerOperationalJobStatus(job.status))
   const profileSyncPending = !profile && !runtime.workerJobsHydrated && !onOpenProfileSetup
@@ -59,22 +60,25 @@ export function WorkerV5ScheduleBody({
 
   return (
     <View style={styles.stack} testID="worker-v5-schedule-screen">
-      <WorkerV5ProfileGroup testID="worker-v5-schedule-summary" title={textByLanguage(language, 'Lịch nhận việc', 'Work availability')}>
+      <WorkerV5ProfileGroup testID="worker-v5-schedule-summary" title={textByLanguage(language, 'Tình trạng hiện tại', 'Current status')}>
         <View style={styles.summary}>
           <Text style={styles.summaryTitle}>{status}</Text>
           <Text style={styles.summaryBody}>{detail}</Text>
         </View>
+        <View style={styles.summaryDivider} />
+        <WorkerV5AvailabilityCard
+          availabilityGuardReady={runtime.workerJobsHydrated}
+          hasActiveJob={hasActiveJob}
+          language={language}
+          onOpenProfileSetup={onOpenProfileSetup}
+          onToggleAvailability={runtime.actions.workerUpdateAvailability}
+          profile={profile}
+          reduceMotion={reduceMotion}
+          reduceTransparency={reduceTransparency}
+          surface="profile"
+          themeMode={themeMode}
+        />
       </WorkerV5ProfileGroup>
-      <WorkerV5AvailabilityCard
-        availabilityGuardReady={runtime.workerJobsHydrated}
-        hasActiveJob={hasActiveJob}
-        language={language}
-        onOpenProfileSetup={onOpenProfileSetup}
-        onToggleAvailability={runtime.actions.workerUpdateAvailability}
-        profile={profile}
-        reduceMotion={reduceMotion}
-        reduceTransparency={reduceTransparency}
-      />
     </View>
   )
 }

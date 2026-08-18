@@ -513,6 +513,7 @@ export type WorkerTables = {
           payment_provider: string
           payment_state: string
           platform_fee: number
+          settlement_state: string
           updated_at: string
           worker_id: string
           worker_net: number
@@ -528,6 +529,7 @@ export type WorkerTables = {
           payment_provider: string
           payment_state: string
           platform_fee: number
+          settlement_state?: string
           updated_at?: string
           worker_id: string
           worker_net: number
@@ -543,6 +545,7 @@ export type WorkerTables = {
           payment_provider?: string
           payment_state?: string
           platform_fee?: number
+          settlement_state?: string
           updated_at?: string
           worker_id?: string
           worker_net?: number
@@ -899,6 +902,7 @@ export type WorkerTables = {
           bank_name: string
           client_request_id: string
           created_at: string
+          eligible_at: string
           id: string
           payout_method_id: string
           processed_at: string | null
@@ -922,6 +926,7 @@ export type WorkerTables = {
           bank_name: string
           client_request_id: string
           created_at?: string
+          eligible_at?: string
           id?: string
           payout_method_id: string
           processed_at?: string | null
@@ -945,6 +950,7 @@ export type WorkerTables = {
           bank_name?: string
           client_request_id?: string
           created_at?: string
+          eligible_at?: string
           id?: string
           payout_method_id?: string
           processed_at?: string | null

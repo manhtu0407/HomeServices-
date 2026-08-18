@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
   Text as RNText,
   View,
@@ -6,6 +6,7 @@ import {
 } from 'react-native'
 
 import { KaelTextInput } from '@/components/ui/kael-primitives'
+import { color } from '@/design/theme'
 import type { AppLanguage } from '@/lib/app-language'
 import {
   clearStableClientRequestId,
@@ -19,6 +20,7 @@ import { WorkerV5SingleSourceActionButton } from '../jobs/advisory-surfaces'
 import { WorkerV5FormulaMintCardAura } from '../ui/aura-surfaces'
 import { textByLanguage } from '../ui/format'
 import { WorkerV5PrimaryButtonFill } from '../ui/primitives-surfaces'
+import { WorkerV5EarningsDataNotice } from './salary-overview-surfaces'
 import { styles } from './payout-request-styles'
 
 type WorkerV5Runtime = ReturnType<typeof useFrontendWorkflow>
@@ -53,13 +55,15 @@ function payoutMethodStatusCopy(
 }
 
 function withdrawalStatusCopy(
-  status: WorkerV5Runtime['workerWithdrawalRequests'][number]['status'],
+  request: WorkerV5Runtime['workerWithdrawalRequests'][number],
   language: AppLanguage,
+  now: number,
 ) {
-  if (status === 'pending') return textByLanguage(language, 'Đang chờ tiếp nhận', 'Awaiting review')
-  if (status === 'processing') return textByLanguage(language, 'Đang chuyển thủ công', 'Manual transfer in progress')
-  if (status === 'paid') return textByLanguage(language, 'Đã chi trả', 'Paid')
-  if (status === 'rejected') return textByLanguage(language, 'Đã từ chối', 'Rejected')
+  if (request.status === 'pending' && request.eligible_at && Date.parse(request.eligible_at) > now) return textByLanguage(language, 'Đang chờ đủ 24 giờ', 'Waiting for the 24-hour hold')
+  if (request.status === 'pending') return textByLanguage(language, 'Đang chờ quản trị viên xác minh', 'Awaiting admin verification')
+  if (request.status === 'processing') return textByLanguage(language, 'Đang chuyển thủ công', 'Manual transfer in progress')
+  if (request.status === 'paid') return textByLanguage(language, 'Đã chi trả', 'Paid')
+  if (request.status === 'rejected') return textByLanguage(language, 'Đã từ chối', 'Rejected')
   return textByLanguage(language, 'Chi trả chưa thành công', 'Payout failed')
 }
 
@@ -75,9 +79,11 @@ export function WorkerV5PayoutRequest({
   const [amountText, setAmountText] = useState('')
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
+  const [now, setNow] = useState(() => Date.now())
   const pendingRequestRef = useRef<PendingClientRequestId | null>(null)
   const payoutMethod = runtime.workerPayoutMethod
   const availableBalance = runtime.workerEarnings?.available_balance ?? null
+  const earningsError = runtime.workerEarningsError
   const reservedAmount = runtime.workerEarnings?.withdrawal_reserved_amount ?? null
   const latestRequest = runtime.workerWithdrawalRequests?.[0] ?? null
   const amount = Number(amountText)
@@ -85,6 +91,12 @@ export function WorkerV5PayoutRequest({
   const validAmount = Number.isSafeInteger(amount) && amount > 0
   const enoughBalance = availableBalance !== null && validAmount && amount <= availableBalance
   const canSubmit = accountVerified && enoughBalance && !busy
+
+  useEffect(() => {
+    if (!latestRequest?.eligible_at) return
+    const timer = setInterval(() => setNow(Date.now()), 30_000)
+    return () => clearInterval(timer)
+  }, [latestRequest?.eligible_at])
 
   const submitRequest = async () => {
     if (!canSubmit || !payoutMethod || availableBalance === null) return
@@ -119,7 +131,9 @@ export function WorkerV5PayoutRequest({
       <View style={styles.balanceBlock}>
         <Text style={styles.balanceLabel}>{textByLanguage(language, 'SỐ DƯ CÓ THỂ RÚT', 'WITHDRAWABLE BALANCE')}</Text>
         <Text style={styles.balanceValue} testID="worker-v5-payout-available-balance">
-          {availableBalance === null
+          {earningsError
+            ? textByLanguage(language, 'Chưa có dữ liệu', 'Data unavailable')
+            : availableBalance === null
             ? textByLanguage(language, 'Đang tải', 'Loading')
             : formatAmount(availableBalance, language)}
         </Text>
@@ -129,6 +143,14 @@ export function WorkerV5PayoutRequest({
           </Text>
         ) : null}
       </View>
+      {earningsError ? <WorkerV5EarningsDataNotice
+        error={earningsError}
+        language={language}
+        onRetry={runtime.actions.workerRefresh}
+        reduceTransparency={reduceTransparency}
+        retryTestID="worker-v5-payout-retry"
+        testID="worker-v5-payout-error"
+      /> : null}
 
       <View style={styles.accountBlock}>
         <Text style={styles.sectionLabel}>{textByLanguage(language, 'TÀI KHOẢN NHẬN TIỀN', 'RECEIVING ACCOUNT')}</Text>
@@ -147,7 +169,7 @@ export function WorkerV5PayoutRequest({
           setMessage(null)
         }}
         placeholder={textByLanguage(language, 'Nhập số tiền bằng đồng Việt Nam', 'Enter an amount in Vietnamese dong')}
-        placeholderTextColor="#78908E"
+        placeholderTextColor={color.text.muted}
         style={styles.input}
         testID="worker-v5-payout-amount-input"
         value={amountText}
@@ -180,7 +202,14 @@ export function WorkerV5PayoutRequest({
             <Text style={styles.sectionLabel}>{textByLanguage(language, 'YÊU CẦU GẦN NHẤT', 'LATEST REQUEST')}</Text>
             <Text style={styles.latestAmount}>{formatAmount(latestRequest.amount_vnd, language)}</Text>
           </View>
-          <Text style={styles.latestStatus}>{withdrawalStatusCopy(latestRequest.status, language)}</Text>
+          <View style={styles.latestStatusBlock}>
+            <Text style={styles.latestStatus}>{withdrawalStatusCopy(latestRequest, language, now)}</Text>
+            {latestRequest.status === 'pending' && latestRequest.eligible_at ? <Text style={styles.balanceNote}>
+              {Date.parse(latestRequest.eligible_at) > now
+                ? textByLanguage(language, 'Số tiền được xét sau mốc 24 giờ do máy chủ trả về; Admin vẫn phải xác minh trước khi chi trả.', 'The server-set 24-hour eligibility time must pass; Admin verification is still required before payout.')
+                : textByLanguage(language, 'Đã đủ thời gian chờ; yêu cầu vẫn cần Admin xác minh trước khi chi trả.', 'The waiting period has passed; Admin verification is still required before payout.')}
+            </Text> : null}
+          </View>
         </View>
       ) : null}
 

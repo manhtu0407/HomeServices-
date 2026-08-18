@@ -12,11 +12,10 @@ import { clearRememberedAuthCredentials, getRememberedAuthCredentials } from '@/
 type EntryParam = string | string[] | undefined
 
 const AUTH_ENTRY_SOURCE_OF_TRUTH_MARKERS = [
-  'NestScout_AuroraNest_Logo_Lottie_Code_v1_0_AGENT_HANDOFF.zip',
-  'NestScout_AuroraNest_Logo_Images_v1_0_APPSTORE_READY.zip',
   'AppIcon-AppStore-1024.png',
-  'nestscout-aurora-nest-north-star-awakening.json',
-  'auth-entry-six-step-native-lottie',
+  'nestscout-horizontal-lockup.png',
+  'nestscout-symbol-transparent-1024.png',
+  'auth-entry-six-step-logo-motion',
   'auth-entry-1-1-splash-brand',
   'auth-entry-1-3-login-gate',
   'auth-entry-1-4-login-email',

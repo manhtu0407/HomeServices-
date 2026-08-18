@@ -98,7 +98,6 @@ jest.mock('@/lib/app-language', () => {
 
 import { LoginRoleSurface } from '../auth-surfaces'
 import { EntryBrandAccessFlow } from '../entry-access/EntryBrandAccessFlow'
-import { kaelLottieRendererKind as splashLogoRendererKind } from '@/components/kael/kael-svg-lottie-view'
 
 beforeEach(() => {
   jest.useFakeTimers()
@@ -190,24 +189,28 @@ describe('LoginRoleSurface', () => {
     expect(onStepChange).not.toHaveBeenCalledWith('onboarding')
   })
 
-  // Which renderer the splash uses is a value the module exports, so it is
-  // asserted directly. The rest is absence: the native Lottie adapter must stay
-  // deleted and unimported, the retired static logo must not come back, and the
-  // renderer must not regain the mask that broke the approved mark.
-  it('keeps the splash logo on the SVG renderer instead of native Lottie', () => {
+  it('uses the ZIP logo motion and removes the legacy Lottie runtime', () => {
     const flowSource = readFileSync(resolve(__dirname, '../entry-access/EntryBrandAccessFlow.tsx'), 'utf-8')
-    const logoSource = readFileSync(resolve(__dirname, '../entry-access/lottie-logo-mark.tsx'), 'utf-8')
-    const rendererSource = readFileSync(resolve(__dirname, '../../kael/kael-svg-lottie-view.tsx'), 'utf-8')
-    const nativeAdapterPath = resolve(__dirname, '../../kael/kael-lottie-view.native.tsx')
+    const logoSource = readFileSync(resolve(__dirname, '../entry-access/nestscout-logo-motion-mark.tsx'), 'utf-8')
+    const authSurfaceSource = readFileSync(resolve(__dirname, '../auth-surfaces.tsx'), 'utf-8')
 
-    expect(splashLogoRendererKind).toBe('svg-lottie')
-    expect(flowSource).not.toContain('@/components/kael/kael-lottie-view')
-    expect(logoSource).not.toContain('@/components/kael/kael-lottie-view')
-    expect(flowSource).not.toContain('nestscout-aurora-nest-appstore-1024.png')
-    expect(flowSource).not.toContain('auroraNestLogoStatic')
-    expect(rendererSource).not.toContain('<Mask')
-    expect(rendererSource).not.toContain('mask={')
-    expect(existsSync(nativeAdapterPath)).toBe(false)
+    expect(flowSource).toContain('NestScoutLogoMotionMark')
+    expect(flowSource).not.toContain('LottieLogoMark')
+    expect(flowSource).not.toContain('SplashBrandLockup')
+    expect(flowSource).not.toContain('SplashLoadingBar')
+    expect(flowSource).not.toContain('splashFoot')
+    expect(flowSource).not.toContain('preparing')
+    expect(logoSource).toContain('nestscout-horizontal-lockup.png')
+    expect(logoSource).toContain('nestscout-symbol-transparent-1024.png')
+    expect(logoSource).not.toContain('borderColor:')
+    expect(logoSource).not.toContain('borderWidth:')
+    expect(logoSource).not.toContain('borderRadius: 24')
+    expect(authSurfaceSource).not.toContain('AuroraNest_Logo_Lottie')
+    expect(authSurfaceSource).not.toContain('nestscout-aurora-nest-north-star-awakening.json')
+    expect(existsSync(resolve(__dirname, '../entry-access/lottie-logo-mark.tsx'))).toBe(false)
+    expect(existsSync(resolve(__dirname, '../../kael/kael-svg-lottie-view.tsx'))).toBe(false)
+    expect(existsSync(resolve(__dirname, '../../../assets/lottie/nestscout-aurora-nest-north-star-awakening.json'))).toBe(false)
+    expect(existsSync(resolve(__dirname, '../../../assets/lottie/nestscout-aurora-nest-approved-logo-transparent.png'))).toBe(false)
   })
 
   it('leaves login TextInputs as the native touch responder instead of wrapping them in a press handler', () => {
@@ -271,7 +274,7 @@ describe('LoginRoleSurface', () => {
     expect(flowSource).not.toContain('runtimeBuildMarkerText')
   })
 
-  it('opens the 1.1 review link on the Lottie splash without redirecting authenticated users', () => {
+  it('opens the 1.1 review link on the logo motion splash without redirecting authenticated users', () => {
     mockRouteParams = { stage: '1.1' }
     mockAuthOverride = {
       role: 'customer',
@@ -283,7 +286,10 @@ describe('LoginRoleSurface', () => {
     expect(screen.getByTestId('auth-splash-screen')).toBeOnTheScreen()
     expect(screen.getByTestId('auth-splash-1-1')).toBeOnTheScreen()
     expect(screen.getByTestId('auth-welcome-nestscout-logo')).toBeOnTheScreen()
-    expect(screen.getByTestId('auth-welcome-nestscout-logo-lottie')).toBeOnTheScreen()
+    expect(screen.getByTestId('auth-welcome-nestscout-logo-motion')).toBeOnTheScreen()
+    expect(screen.getByTestId('auth-welcome-nestscout-logo-symbol')).toBeOnTheScreen()
+    expect(screen.queryByRole('progressbar')).toBeNull()
+    expect(screen.queryByText('Kael đang chuẩn bị mọi thứ')).toBeNull()
     expect(screen.queryByTestId('auth-welcome-nestscout-logo-static')).toBeNull()
     act(() => {
       jest.advanceTimersByTime(4000)
@@ -315,13 +321,13 @@ describe('LoginRoleSurface', () => {
     expect(screen.getByTestId('auth-splash-screen')).toBeOnTheScreen()
 
     act(() => {
-      jest.advanceTimersByTime(1550)
+      jest.advanceTimersByTime(2999)
     })
 
     expect(screen.getByTestId('auth-splash-screen')).toBeOnTheScreen()
 
     act(() => {
-      jest.advanceTimersByTime(2650)
+      jest.advanceTimersByTime(1)
     })
 
     expect(screen.getByTestId('auth-role-gate-screen')).toBeOnTheScreen()
@@ -441,14 +447,28 @@ describe('LoginRoleSurface', () => {
     expect(screen.queryByText('Email/SDT hoặc mật khẩu không đúng')).toBeNull()
   })
 
+  it('shows a connection message when the auth service is unavailable instead of an invalid-credentials message', async () => {
+    mockRouteParams = { stage: '1.4' }
+    mockSignInWithPassword.mockResolvedValueOnce({
+      success: false,
+      error: 'Không thể kết nối dịch vụ đăng nhập. Vui lòng thử lại sau.',
+    })
+    render(<LoginRoleSurface />)
+
+    fireEvent.changeText(screen.getByTestId('auth-login-email-input'), 'tu@example.com')
+    fireEvent.changeText(screen.getByTestId('auth-login-password-input'), 'secret123')
+    fireEvent.press(screen.getByTestId('auth-login-submit'))
+
+    await waitFor(() => expect(screen.getByText('Không thể kết nối. Vui lòng thử lại.')).toBeOnTheScreen())
+    expect(screen.queryByText('Gmail hoặc SĐT hoặc mật khẩu không đúng.')).toBeNull()
+  })
+
   it('localizes splash, registration, recovery, and onboarding in English mode', () => {
     mockLanguage = 'en'
     mockRouteParams = { stage: '1.1' }
     const splash = render(<LoginRoleSurface />)
 
-    expect(screen.getByText('Kael is getting everything ready')).toBeOnTheScreen()
-    expect(screen.getByText('Trusted home services, within reach.')).toBeOnTheScreen()
-    expect(screen.getByTestId('auth-welcome-nestscout-logo')).toHaveProp('accessibilityLabel', 'NestScout Aurora Nest logo')
+    expect(screen.getByTestId('auth-welcome-nestscout-logo')).toHaveProp('accessibilityLabel', 'NestScout logo')
     splash.unmount()
 
     mockRouteParams = { stage: '1.5' }
@@ -583,15 +603,24 @@ describe('LoginRoleSurface', () => {
     render(<LoginRoleSurface />)
 
     const headline = screen.getByTestId('auth-role-gate-greeting').props.accessibilityLabel as string
+    const greetingChildren = screen.getByTestId('auth-role-gate-greeting').props.children as { props?: { testID?: string } }[]
     expect(screen.getByTestId('auth-role-gate-greeting-text')).toHaveStyle({ fontSize: 20, lineHeight: 26 })
+    expect(screen.getByTestId('auth-role-gate-greeting-text')).toHaveTextContent(headline)
     expect(screen.getByTestId('auth-role-gate-greeting')).toHaveStyle({ justifyContent: 'center' })
-    expect(screen.getByTestId('auth-role-gate-greeting-punctuation')).toHaveTextContent('!')
-    expect(screen.getByTestId('auth-role-gate-greeting-bang')).toHaveTextContent('!')
-    expect(screen.getByTestId('auth-role-gate-kael-slot')).toHaveStyle({ marginLeft: 8 })
-    expect(screen.getByTestId('auth-role-gate-kael-mascot')).toHaveStyle({ height: 34, width: 34 })
+    expect(greetingChildren.map((child) => child.props?.testID)).toEqual([
+      'auth-role-gate-logo-slot',
+      'auth-role-gate-greeting-text',
+    ])
+    expect(screen.getByTestId('auth-role-gate-logo-slot')).toHaveStyle({ height: 26, marginRight: 4, width: 44 })
+    expect(screen.getByTestId('auth-role-gate-logo')).toHaveStyle({ height: 44, width: 44 })
     expect(screen.queryByTestId('auth-role-gate-greeting-lead')).toBeNull()
     expect(screen.queryByTestId('auth-role-gate-signature-shell')).toBeNull()
     expect(screen.queryByTestId('auth-role-gate-greeting-signature')).toBeNull()
+
+    const roleGateSource = readFileSync(resolve(__dirname, '../entry-access/role-gate-screen.tsx'), 'utf-8')
+    expect(roleGateSource).toContain('nestscout-aurora-nest-role-gate-transparent.png')
+    expect(roleGateSource).toContain('auth-role-gate-logo')
+    expect(roleGateSource).not.toContain('KaelCoreV9')
     expect(screen.getByTestId('auth-entry-role-customer')).toHaveStyle({ borderRadius: 29, minHeight: 214 })
     expect(screen.getByTestId('auth-entry-role-worker')).toHaveStyle({ borderRadius: 29, minHeight: 214 })
 

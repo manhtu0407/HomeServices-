@@ -36,7 +36,9 @@ where id in (
 
 insert into public.customer_profiles (id, district) values
   ('b1100000-0000-4000-8000-000000000001', 'q7'),
-  ('b1100000-0000-4000-8000-000000000002', 'q2');
+  ('b1100000-0000-4000-8000-000000000002', 'q2')
+on conflict (id) do update
+set district = excluded.district;
 
 insert into public.worker_profiles (
   id, service_types, selected_service_types, years_experience, districts, is_approved, is_available,
