@@ -158,7 +158,11 @@ end;
 $capability$;
 
 insert into public.customer_profiles (id, building_name, unit_number, district)
-values ('f1000000-0000-4000-8000-000000000003', 'Finance QA', 'A-01', 'q7');
+values ('f1000000-0000-4000-8000-000000000003', 'Finance QA', 'A-01', 'q7')
+on conflict (id) do update
+set building_name = excluded.building_name,
+    unit_number = excluded.unit_number,
+    district = excluded.district;
 
 insert into public.worker_profiles (
   id, service_types, districts, is_approved, is_available, rating,
