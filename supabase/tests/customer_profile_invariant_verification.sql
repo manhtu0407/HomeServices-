@@ -31,7 +31,7 @@ begin
     raise exception 'customer profile invariant trigger is not attached to public.profiles';
   end if;
 
-  foreach v_function in array[
+  foreach v_function in array ARRAY[
     'private.ensure_customer_profile_for_role()'::regprocedure
   ] loop
     if pg_catalog.has_function_privilege('public', v_function, 'execute')
@@ -54,6 +54,7 @@ begin
   ) values (
     v_user,
     'authenticated',
+    'authenticated',
     'customer-profile-invariant-signup@example.test',
     '{"provider":"email","providers":["email"]}'::jsonb,
     '{"full_name":"Invariant Signup"}'::jsonb,
@@ -73,13 +74,17 @@ begin
     raise exception 'signup created profiles without the required customer_profiles row';
   end if;
 
-  insert into public.jobs (id, customer_id, service_type, description, status)
+  insert into public.jobs (
+    id, customer_id, service_type, description, status, kael_price_min, kael_price_max
+  )
   values (
     v_job,
     v_user,
     'handyman'::public.service_type,
     'Matching invariant verification job',
-    'awaiting_customer_confirm'::public.job_status
+    'awaiting_customer_confirm'::public.job_status,
+    150000,
+    200000
   );
 
   select *
@@ -113,6 +118,7 @@ begin
     id, aud, role, email, raw_app_meta_data, raw_user_meta_data, created_at, updated_at
   ) values (
     v_user,
+    'authenticated',
     'authenticated',
     'customer-profile-invariant-transition@example.test',
     '{"provider":"email","providers":["email"]}'::jsonb,

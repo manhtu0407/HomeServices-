@@ -60,7 +60,9 @@ where id = 'a1100000-0000-4000-8000-000000000003';
 
 insert into public.customer_profiles (id, district) values
   ('a1100000-0000-4000-8000-000000000001', 'q7'),
-  ('a1100000-0000-4000-8000-000000000002', 'q2');
+  ('a1100000-0000-4000-8000-000000000002', 'q2')
+on conflict (id) do update
+set district = excluded.district;
 
 insert into public.worker_profiles (
   id,

@@ -73,7 +73,12 @@ where id = '30000000-0000-0000-0000-000000000002';
 
 insert into public.customer_profiles (id, building_name, unit_number, floor, district) values
   ('20000000-0000-0000-0000-000000000001', 'Staging Tower A', '1201', '12', 'District 1'),
-  ('20000000-0000-0000-0000-000000000002', 'Staging Tower B', '2202', '22', 'District 2');
+  ('20000000-0000-0000-0000-000000000002', 'Staging Tower B', '2202', '22', 'District 2')
+on conflict (id) do update
+set building_name = excluded.building_name,
+    unit_number = excluded.unit_number,
+    floor = excluded.floor,
+    district = excluded.district;
 
 insert into public.worker_profiles (
   id,

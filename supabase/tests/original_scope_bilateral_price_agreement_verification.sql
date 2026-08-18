@@ -23,7 +23,9 @@ set role = 'worker'
 where id = 'a1510000-0000-4000-8000-000000000002';
 
 insert into public.customer_profiles (id, district)
-values ('a1510000-0000-4000-8000-000000000001', 'q7');
+values ('a1510000-0000-4000-8000-000000000001', 'q7')
+on conflict (id) do update
+set district = excluded.district;
 
 insert into public.worker_profiles (
   id, service_types, selected_service_types, years_experience, districts,
