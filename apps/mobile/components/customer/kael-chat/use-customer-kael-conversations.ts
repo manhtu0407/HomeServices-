@@ -28,7 +28,7 @@ import {
 } from './customer-kael-conversation-requests'
 import {
   activeResponseByCatalogMemory,
-  archivedSessionIdsByCatalogMemory,
+  archivedSessionIdsForCatalog,
   catalogMemory,
   createCatalogState,
   CUSTOMER_SESSION_PREFETCH_LIMIT,
@@ -44,7 +44,10 @@ import {
 export function useCustomerKaelConversations(
   mode: CustomerKaelConversationMode,
   language: AppLanguage,
-  options: { suppressActiveResponse?: boolean } = {},
+  options: {
+    suppressActiveResponse?: boolean
+    suppressActiveResponseUntilNewSession?: boolean
+  } = {},
 ) {
   const { session: authSession } = useAuth()
   const customerId = authSession?.user.id ?? null
@@ -59,18 +62,14 @@ export function useCustomerKaelConversations(
   const operationRequestRef = useRef(0)
   const operationLockRef = useRef<number | null>(null)
   const pendingSessionIdSetRef = useRef(new Set<string>())
-  const archiveTombstones = useMemo(() => {
-    if (!catalogKey) return new Set<string>()
-    const existing = archivedSessionIdsByCatalogMemory.get(catalogKey)
-    if (existing) return existing
-    const created = new Set<string>()
-    archivedSessionIdsByCatalogMemory.set(catalogKey, created)
-    return created
-  }, [catalogKey])
+  const archiveTombstones = useMemo(() => archivedSessionIdsForCatalog(catalogKey), [catalogKey])
   const [storedCatalogState, setCatalogState] = useState(() => createCatalogState(
     catalogKey,
     activeResponseByCatalogMemory,
   ))
+  const [suppressInitialActiveResponse, setSuppressInitialActiveResponse] = useState(
+    Boolean(options.suppressActiveResponseUntilNewSession),
+  )
   const catalogState = storedCatalogState.catalogKey === catalogKey
     ? storedCatalogState
     : createCatalogState(catalogKey, activeResponseByCatalogMemory)
@@ -100,7 +99,7 @@ export function useCustomerKaelConversations(
     return !serverScopedCustomerId || candidateCustomerId === serverScopedCustomerId
   }, [catalogKey, customerId, localVisualAuditSession])
 
-  const visibleResponse = !options.suppressActiveResponse && activeResponse?.session.mode === mode
+  const visibleResponse = !options.suppressActiveResponse && !suppressInitialActiveResponse && activeResponse?.session.mode === mode
     && (localVisualAuditSession || activeResponse.session.customer_id === customerId)
     ? activeResponse
     : null
@@ -137,6 +136,7 @@ export function useCustomerKaelConversations(
       || response.session.mode !== mode
       || activeKeyRef.current !== catalogKey
     ) return false
+    setSuppressInitialActiveResponse(false)
     if (localVisualAuditSession) {
       visualAuditOwnerByCatalogRef.current.set(catalogKey, response.session.customer_id)
     }
@@ -381,11 +381,15 @@ export function useCustomerKaelConversations(
   const ensureActiveSession = useCallback(async (clientRequestId?: string) => {
     if (visibleResponse) return visibleResponse
     const currentResponse = catalogKey ? activeResponseByCatalogRef.current.get(catalogKey) : null
-    if (!options.suppressActiveResponse && currentResponse?.session.mode === mode) return currentResponse
+    if (
+      !options.suppressActiveResponse &&
+      !suppressInitialActiveResponse &&
+      currentResponse?.session.mode === mode
+    ) return currentResponse
     const inFlight = sessionCreateRequestRef.current
     if (inFlight) return inFlight
     return startNewSession(clientRequestId)
-  }, [catalogKey, mode, options.suppressActiveResponse, startNewSession, visibleResponse])
+  }, [catalogKey, mode, options.suppressActiveResponse, startNewSession, suppressInitialActiveResponse, visibleResponse])
 
   const openSession = useCallback(async (sessionId: string) => {
     if (!customerId || !catalogKey) return null

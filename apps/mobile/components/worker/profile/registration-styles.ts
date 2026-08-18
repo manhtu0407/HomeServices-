@@ -4,13 +4,20 @@ import { color, radius, shadow, typography } from '@/design/theme'
 
 export const styles = StyleSheet.create({
   card: {
-    backgroundColor: 'rgba(255,255,255,0.88)',
+    backgroundColor: color.surface.base,
     borderColor: color.surface.stroke,
     borderRadius: radius.lg,
     borderWidth: 1,
     gap: 14,
+    overflow: 'hidden',
     padding: 16,
+    position: 'relative',
     ...shadow.soft,
+  },
+  cardContent: {
+    gap: 14,
+    position: 'relative',
+    zIndex: 1,
   },
   cardDark: {
     backgroundColor: 'rgba(13,36,42,0.94)',
@@ -33,7 +40,7 @@ export const styles = StyleSheet.create({
     color: '#F1F6F4',
   },
   fieldShell: {
-    backgroundColor: 'rgba(247,255,251,0.94)',
+    backgroundColor: color.surface.base,
     borderColor: color.surface.stroke,
     borderRadius: 18,
     borderWidth: 1,
@@ -43,7 +50,7 @@ export const styles = StyleSheet.create({
   },
   fileRow: {
     alignItems: 'center',
-    backgroundColor: 'rgba(241,250,248,0.84)',
+    backgroundColor: color.surface.base,
     borderColor: color.surface.stroke,
     borderRadius: 17,
     borderWidth: 1,
@@ -78,6 +85,25 @@ export const styles = StyleSheet.create({
   formGap: {
     gap: 11,
   },
+  registrationHeading: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 8,
+  },
+  registrationHeadingIconTile: {
+    alignItems: 'center',
+    backgroundColor: color.surface.base,
+    borderColor: color.surface.stroke,
+    borderRadius: 17,
+    borderWidth: 1,
+    height: 56,
+    justifyContent: 'center',
+    width: 56,
+  },
+  registrationHeadingIconTileDark: {
+    backgroundColor: 'rgba(31,61,65,0.8)',
+    borderColor: 'rgba(143,226,212,0.22)',
+  },
   formLabel: {
     color: color.text.secondary,
     marginBottom: 5,
@@ -97,7 +123,7 @@ export const styles = StyleSheet.create({
     ...typography.caption1,
   },
   submit: {
-    marginTop: 2,
+    marginTop: 8,
   },
   title: {
     color: color.text.strong,

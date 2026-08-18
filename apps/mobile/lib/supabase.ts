@@ -153,6 +153,10 @@ export async function supabaseFetch(
       globalThis.fetch(input, { ...init, redirect: 'error', signal: controller.signal }),
       aborted,
     ])
+  } catch (error) {
+    // Keep auth-js on its retryable HTTP-error path so a browser transport failure does not become a raw dev overlay.
+    if (isSupabaseAuthTransportError(input, error)) return createSupabaseAuthUnavailableResponse()
+    throw error
   } finally {
     clearTimeout(timeout)
     controller.signal.removeEventListener('abort', onAbort)
@@ -161,16 +165,32 @@ export async function supabaseFetch(
 }
 
 function supabaseRequestTimeout(input: Parameters<typeof fetch>[0]) {
-  const url = typeof input === 'string'
+  return /\/storage\/v1\//i.test(supabaseRequestUrl(input))
+    ? SUPABASE_STORAGE_TIMEOUT_MS
+    : SUPABASE_API_TIMEOUT_MS
+}
+
+function supabaseRequestUrl(input: Parameters<typeof fetch>[0]) {
+  return typeof input === 'string'
     ? input
     : input instanceof URL
       ? input.toString()
       : typeof input.url === 'string'
         ? input.url
         : ''
-  return /\/storage\/v1\//i.test(url)
-    ? SUPABASE_STORAGE_TIMEOUT_MS
-    : SUPABASE_API_TIMEOUT_MS
+}
+
+function isSupabaseAuthTransportError(input: Parameters<typeof fetch>[0], error: unknown) {
+  if (!/\/auth\/v1\//i.test(supabaseRequestUrl(input))) return false
+  const message = error instanceof Error ? error.message : ''
+  return /failed to fetch|network request failed|networkerror|load failed/i.test(message)
+}
+
+function createSupabaseAuthUnavailableResponse() {
+  return new Response(JSON.stringify({ error: 'AUTH_NETWORK_UNAVAILABLE' }), {
+    headers: { 'Content-Type': 'application/json' },
+    status: 503,
+  })
 }
 
 function supabaseAbortError(message: string) {

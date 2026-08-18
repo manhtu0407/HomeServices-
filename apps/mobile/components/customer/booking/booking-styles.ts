@@ -444,17 +444,9 @@ export const customerV21BookingStyles = StyleSheet.create({
     width: '100%',
     zIndex: 0,
   },
-  bookingJourneyBackdropFade: {
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
-    right: 0,
-    top: 0,
-    zIndex: 1,
-  },
   bookingJourneyArtworkFrame: {
     marginHorizontal: -16,
-    marginTop: 4,
+    marginTop: -11,
     overflow: 'hidden',
     position: 'relative',
     width: 'auto',

@@ -68,8 +68,12 @@ const fromGit = (...args: string[]) => {
   }
 }
 
-const supabaseUrl = fromEnv('EXPO_PUBLIC_SUPABASE_URL')
-const supabasePublishableKey = fromEnv('EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY')
+const supabaseUrl = fromEnv('EXPO_PUBLIC_SUPABASE_URL', 'NEXT_PUBLIC_SUPABASE_URL')
+const supabasePublishableKey = fromEnv(
+  'EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY',
+  'NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY',
+  'NEXT_PUBLIC_SUPABASE_ANON_KEY',
+)
 const configuredApiBaseUrl = fromEnv('EXPO_PUBLIC_API_BASE_URL')
 const stagingPaymentRailEnabled = ['1', 'true', 'yes', 'on'].includes(
   fromEnv('EXPO_PUBLIC_STAGING_PAYMENT_RAIL_ENABLED').toLowerCase(),
@@ -129,12 +133,13 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   scheme: 'nestscout',
   ios: {
     supportsTablet: false,
-    buildNumber: '37',
+    buildNumber: '38',
     bundleIdentifier: 'com.phanmanhtu.homeservices',
     config: {
       usesNonExemptEncryption: false,
     },
     infoPlist: {
+      CFBundleDisplayName: 'NestScout',
       NSCameraUsageDescription:
         'NestScout cần quyền camera nếu bạn muốn chụp ảnh đại diện thật, hiện trạng sửa chữa hoặc giấy tờ xác minh.',
       NSMicrophoneUsageDescription:

@@ -18,6 +18,11 @@ export const styles = StyleSheet.create({
     color: color.text.secondary,
     ...typography.footnote,
   },
+  summaryDivider: {
+    backgroundColor: 'rgba(202,222,218,0.78)',
+    height: 1,
+    marginHorizontal: 16,
+  },
   summaryTitle: {
     color: color.text.strong,
     ...typography.callout,

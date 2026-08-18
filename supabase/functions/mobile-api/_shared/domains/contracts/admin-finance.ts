@@ -7,7 +7,7 @@ type AdminPaymentReconciliationListInput = {
 };
 
 type AdminPaymentReconciliationDecisionInput = {
-  decision: "confirm" | "reconcile_required" | "direct_paid" | "direct_release";
+  decision: "confirm" | "reconcile_required" | "direct_paid" | "direct_release" | "cash_confirm" | "cash_reject";
   amount_received?: number;
   bank_reference?: string;
   credited_at?: string;
@@ -21,6 +21,10 @@ type AdminPaymentReconciliationListResponse = {
     payment_method: "platform_bank_manual" | "direct_worker";
     status: string;
     gross_amount: number;
+    worker_id: string;
+    platform_fee: number;
+    worker_net: number;
+    settlement_state: "pending" | "customer_claimed" | "admin_verified" | "admin_rejected";
     amount_received: number | null;
     customer_transfer_claimed_at: string | null;
     response_deadline: string | null;
@@ -34,11 +38,62 @@ type AdminPaymentReconciliationListResponse = {
 type AdminPaymentReconciliationDecisionResponse = {
   ok: true;
   payment_order_id: string;
-  outcome: "paid" | "reconcile_required" | "direct_reconcile_required";
+  outcome: "paid" | "reconcile_required" | "direct_reconcile_required" | "confirmed" | "rejected";
   job_id: string;
   status: "payment_pending" | "paid";
   payment_status: string;
   hold_until: string | null;
+};
+
+type AdminWorkerFinanceSnapshotInput = {
+  from?: string;
+  to?: string;
+};
+
+type AdminWorkerFinanceSnapshotResponse = {
+  worker_id: string;
+  total_jobs_paid: number;
+  gross_earnings: number;
+  platform_fee_total: number;
+  net_earnings: number;
+  available_balance: number;
+  withdrawal_reserved_amount: number;
+  withdrawn_total: number;
+  cash_commission_collected_total: number;
+  cash_commission_due_total: number;
+  pending_payment_count: number;
+  pending_payment_amount: number;
+  provisional_payment_count: number;
+  provisional_payment_amount: number;
+  on_hold_amount: number;
+  current_commission_level: number;
+  current_commission_rate_bps: number;
+  withdrawal_eligible_at: string | null;
+  recent_transactions: Array<{
+    job_id: string;
+    display_code: string | null;
+    entry_type: "worker_credit" | "cash_commission_debit";
+    payment_state: "pending" | "available" | "on_hold" | "reversed" | "cash_collected" | "cash_reconciliation_due";
+    settlement_state: "pending" | "customer_claimed" | "admin_verified" | "admin_rejected";
+    gross_amount: number;
+    platform_fee: number;
+    worker_net: number;
+    commission_level: number;
+    commission_rate_bps: number;
+    cash_commission_collected: number;
+    cash_commission_due: number;
+    recorded_at: string;
+    available_at: string | null;
+  }>;
+  daily_earnings: Array<{
+    date: string;
+    gross_earnings: number;
+    platform_fee_total: number;
+    net_earnings: number;
+    paid_job_count: number;
+  }>;
+  from_date: string | null;
+  to_date: string | null;
 };
 
 type AdminFinanceSummaryResponse = {
@@ -254,6 +309,8 @@ export type AdminFinanceContracts = {
   paymentReconciliationDecisionInput: AdminPaymentReconciliationDecisionInput;
   paymentReconciliationListResponse: AdminPaymentReconciliationListResponse;
   paymentReconciliationDecisionResponse: AdminPaymentReconciliationDecisionResponse;
+  workerFinanceSnapshotInput: AdminWorkerFinanceSnapshotInput;
+  workerFinanceSnapshotResponse: AdminWorkerFinanceSnapshotResponse;
   financeSummaryResponse: AdminFinanceSummaryResponse;
   financeBalanceSnapshotInput: AdminFinanceBalanceSnapshotInput;
   financeBalanceSnapshotResponse: AdminFinanceBalanceSnapshotResponse;

@@ -67,13 +67,28 @@ export const styles = StyleSheet.create({
   policyBody: {
     color: color.text.secondary,
     paddingBottom: 16,
-    paddingHorizontal: 16,
+    paddingLeft: 76,
+    paddingRight: 16,
     ...typography.footnote,
   },
   policyChevron: {
     color: color.brand.primaryDark,
     marginLeft: 12,
     ...typography.title2,
+  },
+  policyIconFrame: {
+    alignItems: 'center',
+    backgroundColor: 'transparent',
+    borderColor: color.surface.stroke,
+    borderRadius: 14,
+    borderWidth: 1,
+    flexShrink: 0,
+    height: 46,
+    justifyContent: 'center',
+    width: 46,
+  },
+  policyIconFrameDark: {
+    borderColor: 'rgba(190,210,205,0.22)',
   },
   policyIntro: {
     gap: 5,
@@ -83,8 +98,8 @@ export const styles = StyleSheet.create({
   policyRow: {
     alignItems: 'center',
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    minHeight: 59,
+    gap: 10,
+    minHeight: 70,
     paddingHorizontal: 16,
     paddingVertical: 12,
   },

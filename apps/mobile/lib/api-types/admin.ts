@@ -21,6 +21,7 @@ export type {
   AdminPaymentReconciliationListResponse,
   AdminPaymentReconciliationStatus,
   AdminPaymentReconciliationSummary,
+  AdminWorkerFinanceSnapshotResponse,
 } from '@nestscout/shared'
 
 export type AdminViewActor = {
@@ -421,6 +422,7 @@ export type AdminViewWithdrawalRequestSummary = {
   bank_account_masked: string
   status: AdminViewWithdrawalRequestStatus
   requested_at: string
+  eligible_at?: string | null
   processing_at: string | null
   processing_by_name: string | null
   processed_at: string | null

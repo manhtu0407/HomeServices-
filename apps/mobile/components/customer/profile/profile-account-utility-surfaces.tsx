@@ -5,15 +5,15 @@ import { KaelButton, KaelTextInput } from '@/components/ui/kael-primitives'
 import type { AppLanguage } from '@/lib/app-language'
 
 import type { CustomerThemeTokens } from '../customer-theme'
-import { customerV21Assets } from '../ui/assets'
+import { V21Card } from '../ui/shared-surfaces'
 import { customerV21ProfileAccountUtilityStyles as styles } from './profile-account-utility-styles'
 import { ProfilePreferenceOption, ProfilePreferencePanel } from './profile-preference-surfaces'
+import { ProfileSettingsGlyph } from './profile-settings-icons'
 import type {
   ProfileUtilitySettingsAccountModel,
   ProfileUtilitySettingsMemoryModel,
   ProfileUtilitySettingsPasswordModel,
 } from './profile-utility-models'
-import { ProfileFormulaMintSurface } from './profile-utility-surfaces'
 
 function LanguageFlag({ language }: { language: AppLanguage }) {
   return (
@@ -55,25 +55,34 @@ export function ProfilePersonalDetailsView({
 }) {
   return (
     <View style={styles.utilityStack} testID="customer-v21-profile-utility-personal-details-screen">
-      <ProfileFormulaMintSurface
-        scope="PersonalDetails"
-        style={[styles.formCard, { backgroundColor: tokens.raised, borderColor: tokens.border }]}
+      <V21Card
+        style={[styles.personalDetailsCard, { backgroundColor: tokens.raised, borderColor: tokens.border }]}
         testID="customer-v21-profile-personal-details-card"
       >
-        <View style={styles.formIntro}>
-          <Text style={[styles.title, { color: tokens.text }]}>
-            {language === 'vi' ? 'Thông tin dùng để liên hệ' : 'Your contact details'}
-          </Text>
-          <Text style={[styles.body, { color: tokens.muted }]}>
-            {language === 'vi'
-              ? 'Kiểm tra lại thông tin để chúng tôi có thể liên hệ đúng với bạn.'
-              : 'Keep these details accurate so we can contact you when needed.'}
-          </Text>
+        <View style={styles.personalDetailsHeader} testID="customer-v21-profile-personal-details-header">
+          <View
+            style={[styles.personalDetailsHeaderIcon, { backgroundColor: tokens.raised, borderColor: tokens.border }]}
+            testID="customer-v21-profile-personal-details-header-icon"
+          >
+            <ProfileSettingsGlyph
+              color={tokens.primary}
+              name="personal"
+              testID="customer-v21-profile-personal-details-header-icon-glyph"
+            />
+          </View>
+          <View style={styles.personalDetailsHeaderCopy}>
+            <Text style={[styles.personalDetailsIntroTitle, { color: tokens.text }]}>
+              {language === 'vi' ? 'Kiểm soát thông tin của bạn' : 'Manage your contact details'}
+            </Text>
+            <Text style={[styles.personalDetailsIntroBody, { color: tokens.muted }]}>
+              {language === 'vi' ? 'Cập nhật cách NestScout liên hệ với bạn.' : 'Update how NestScout contacts you.'}
+            </Text>
+          </View>
         </View>
 
         <View style={styles.formStack} testID="customer-v21-profile-settings-account-form">
           <View style={styles.fieldGroup}>
-            <Text style={[styles.fieldLabel, { color: tokens.muted }]}>
+            <Text style={[styles.personalDetailsFieldLabel, { color: tokens.text }]}>
               {language === 'vi' ? 'Họ và tên' : 'Full name'}
             </Text>
             <KaelTextInput
@@ -81,47 +90,54 @@ export function ProfilePersonalDetailsView({
               onChangeText={account.onFullNameChange}
               placeholder={language === 'vi' ? 'Nhập họ và tên' : 'Enter your full name'}
               placeholderTextColor={tokens.subtleText}
-              style={[styles.formInput, textInputNoOutlineStyle, { backgroundColor: tokens.base, borderColor: tokens.border, color: tokens.text }]}
+              style={[styles.personalDetailsInput, textInputNoOutlineStyle, { backgroundColor: tokens.base, borderColor: tokens.border, color: tokens.text }]}
               testID="customer-v21-profile-settings-account-name-input"
               value={account.fullNameDraft}
             />
           </View>
           <View style={styles.fieldGroup}>
-            <Text style={[styles.fieldLabel, { color: tokens.muted }]}>
+            <Text style={[styles.personalDetailsFieldLabel, { color: tokens.text }]}>Gmail</Text>
+            <KaelTextInput
+              accessibilityLabel={language === 'vi' ? 'Gmail' : 'Email'}
+              autoCapitalize="none"
+              keyboardType="email-address"
+              onChangeText={account.onEmailChange}
+              placeholder={language === 'vi' ? 'Nhập Gmail' : 'Enter your email'}
+              placeholderTextColor={tokens.subtleText}
+              style={[styles.personalDetailsInput, textInputNoOutlineStyle, styles.personalDetailsReadonlyInput, { backgroundColor: tokens.base, borderColor: tokens.border, color: tokens.text }]}
+              testID="customer-v21-profile-settings-account-email-input"
+              value={account.emailDraft}
+            />
+          </View>
+          <View style={styles.fieldGroup}>
+            <Text style={[styles.personalDetailsFieldLabel, { color: tokens.text }]}>
               {language === 'vi' ? 'Số điện thoại' : 'Phone number'}
             </Text>
             <KaelTextInput
               accessibilityLabel={language === 'vi' ? 'Số điện thoại' : 'Phone number'}
               keyboardType="phone-pad"
               onChangeText={account.onPhoneChange}
-              placeholder={language === 'vi' ? 'Nhập số điện thoại' : 'Enter your phone number'}
-              placeholderTextColor={tokens.subtleText}
-              style={[styles.formInput, textInputNoOutlineStyle, { backgroundColor: tokens.base, borderColor: tokens.border, color: tokens.text }]}
+              placeholder={language === 'vi' ? 'Chưa cập nhật' : 'Not added yet'}
+              placeholderTextColor={tokens.muted}
+              style={[styles.personalDetailsInput, textInputNoOutlineStyle, { backgroundColor: tokens.base, borderColor: tokens.border, color: tokens.text }]}
               testID="customer-v21-profile-settings-account-phone-input"
               value={account.phoneDraft}
             />
           </View>
-          <View style={styles.fieldGroup}>
-            <Text style={[styles.fieldLabel, { color: tokens.muted }]}>
-              {language === 'vi' ? 'Email liên hệ' : 'Contact email'}
+          <View style={[styles.personalDetailsDivider, { backgroundColor: tokens.border }]} />
+          <View style={styles.personalDetailsPrivacy} testID="customer-v21-profile-personal-details-privacy">
+            <ProfileSettingsGlyph color={tokens.primary} name="password" testID="customer-v21-profile-personal-details-privacy-icon" />
+            <Text style={[styles.personalDetailsPrivacyText, { color: tokens.muted }]}>
+              {language === 'vi'
+                ? 'Thông tin này chỉ dùng cho tài khoản và liên hệ dịch vụ.'
+                : 'This information is used only for your account and service contact.'}
             </Text>
-            <KaelTextInput
-              accessibilityLabel={language === 'vi' ? 'Email liên hệ' : 'Contact email'}
-              autoCapitalize="none"
-              keyboardType="email-address"
-              onChangeText={account.onEmailChange}
-              placeholder={language === 'vi' ? 'Nhập email liên hệ' : 'Enter your contact email'}
-              placeholderTextColor={tokens.subtleText}
-              style={[styles.formInput, textInputNoOutlineStyle, { backgroundColor: tokens.base, borderColor: tokens.border, color: tokens.text }]}
-              testID="customer-v21-profile-settings-account-email-input"
-              value={account.emailDraft}
-            />
           </View>
           <KaelButton
             disabled={account.saving || !account.canSave}
             label={account.saving
               ? (language === 'vi' ? 'Đang lưu' : 'Saving')
-              : (language === 'vi' ? 'Lưu thông tin' : 'Save details')}
+              : (language === 'vi' ? 'Lưu thay đổi' : 'Save changes')}
             onPress={account.onSave}
             showPrimaryGradient={false}
             style={styles.primaryButton}
@@ -133,7 +149,7 @@ export function ProfilePersonalDetailsView({
             </Text>
           ) : null}
         </View>
-      </ProfileFormulaMintSurface>
+      </V21Card>
     </View>
   )
 }
@@ -151,25 +167,36 @@ export function ProfileLoginSecurityView({
 }) {
   return (
     <View style={styles.utilityStack} testID="customer-v21-profile-utility-password-screen">
-      <ProfileFormulaMintSurface
-        scope="Password"
-        style={[styles.formCard, { backgroundColor: tokens.raised, borderColor: tokens.border }]}
+      <V21Card
+        style={[styles.personalDetailsCard, { backgroundColor: tokens.raised, borderColor: tokens.border }]}
         testID="customer-v21-profile-password-card"
       >
-        <View style={styles.formIntro}>
-          <Text style={[styles.title, { color: tokens.text }]}>
-            {language === 'vi' ? 'Đổi mật khẩu' : 'Change password'}
-          </Text>
-          <Text style={[styles.body, { color: tokens.muted }]}>
-            {language === 'vi'
-              ? 'Xác nhận mật khẩu hiện tại, sau đó tạo mật khẩu mới có ít nhất 8 ký tự.'
-              : 'Confirm your current password, then create a new password with at least 8 characters.'}
-          </Text>
+        <View style={styles.personalDetailsHeader} testID="customer-v21-profile-password-header">
+          <View
+            style={[styles.personalDetailsHeaderIcon, { backgroundColor: tokens.raised, borderColor: tokens.border }]}
+            testID="customer-v21-profile-password-header-icon"
+          >
+            <ProfileSettingsGlyph
+              color={tokens.primary}
+              name="password"
+              testID="customer-v21-profile-password-header-icon-glyph"
+            />
+          </View>
+          <View style={styles.personalDetailsHeaderCopy}>
+            <Text style={[styles.personalDetailsIntroTitle, { color: tokens.text }]}>
+              {language === 'vi' ? 'Bảo vệ tài khoản' : 'Protect your account'}
+            </Text>
+            <Text style={[styles.personalDetailsIntroBody, { color: tokens.muted }]}>
+              {language === 'vi'
+                ? 'Xác nhận mật khẩu hiện tại, sau đó tạo mật khẩu mới có ít nhất 8 ký tự.'
+                : 'Confirm your current password, then create a new password with at least 8 characters.'}
+            </Text>
+          </View>
         </View>
 
         <View style={styles.formStack} testID="customer-v21-profile-settings-password-form">
           <View style={styles.fieldGroup}>
-            <Text style={[styles.fieldLabel, { color: tokens.muted }]}>
+            <Text style={[styles.personalDetailsFieldLabel, { color: tokens.text }]}>
               {language === 'vi' ? 'Mật khẩu hiện tại' : 'Current password'}
             </Text>
             <KaelTextInput
@@ -178,13 +205,13 @@ export function ProfileLoginSecurityView({
               placeholder={language === 'vi' ? 'Nhập mật khẩu hiện tại' : 'Enter your current password'}
               placeholderTextColor={tokens.subtleText}
               secureTextEntry
-              style={[styles.formInput, textInputNoOutlineStyle, { backgroundColor: tokens.base, borderColor: tokens.border, color: tokens.text }]}
+              style={[styles.personalDetailsInput, textInputNoOutlineStyle, { backgroundColor: tokens.base, borderColor: tokens.border, color: tokens.text }]}
               testID="customer-v21-profile-settings-password-current-input"
               value={password.currentDraft}
             />
           </View>
           <View style={styles.fieldGroup}>
-            <Text style={[styles.fieldLabel, { color: tokens.muted }]}>
+            <Text style={[styles.personalDetailsFieldLabel, { color: tokens.text }]}>
               {language === 'vi' ? 'Mật khẩu mới' : 'New password'}
             </Text>
             <KaelTextInput
@@ -193,13 +220,13 @@ export function ProfileLoginSecurityView({
               placeholder={language === 'vi' ? 'Nhập mật khẩu mới' : 'Enter a new password'}
               placeholderTextColor={tokens.subtleText}
               secureTextEntry
-              style={[styles.formInput, textInputNoOutlineStyle, { backgroundColor: tokens.base, borderColor: tokens.border, color: tokens.text }]}
+              style={[styles.personalDetailsInput, textInputNoOutlineStyle, { backgroundColor: tokens.base, borderColor: tokens.border, color: tokens.text }]}
               testID="customer-v21-profile-settings-password-new-input"
               value={password.newDraft}
             />
           </View>
           <View style={styles.fieldGroup}>
-            <Text style={[styles.fieldLabel, { color: tokens.muted }]}>
+            <Text style={[styles.personalDetailsFieldLabel, { color: tokens.text }]}>
               {language === 'vi' ? 'Nhập lại mật khẩu mới' : 'Confirm new password'}
             </Text>
             <KaelTextInput
@@ -209,7 +236,7 @@ export function ProfileLoginSecurityView({
               placeholderTextColor={tokens.subtleText}
               secureTextEntry
               style={[
-                styles.formInput,
+                styles.personalDetailsInput,
                 textInputNoOutlineStyle,
                 {
                   backgroundColor: tokens.base,
@@ -226,6 +253,15 @@ export function ProfileLoginSecurityView({
               {language === 'vi' ? 'Mật khẩu chưa khớp.' : 'Passwords do not match.'}
             </Text>
           ) : null}
+          <View style={[styles.personalDetailsDivider, { backgroundColor: tokens.border }]} />
+          <View style={styles.personalDetailsPrivacy} testID="customer-v21-profile-password-privacy">
+            <ProfileSettingsGlyph color={tokens.primary} name="password" testID="customer-v21-profile-password-privacy-icon" />
+            <Text style={[styles.personalDetailsPrivacyText, { color: tokens.muted }]}>
+              {language === 'vi'
+                ? 'Không chia sẻ mật khẩu với bất kỳ ai.'
+                : 'Do not share your password with anyone.'}
+            </Text>
+          </View>
           <KaelButton
             disabled={password.saving || !password.canSave}
             label={password.saving
@@ -242,7 +278,7 @@ export function ProfileLoginSecurityView({
             </Text>
           ) : null}
         </View>
-      </ProfileFormulaMintSurface>
+      </V21Card>
     </View>
   )
 }
@@ -279,6 +315,8 @@ export function ProfileLanguageView({
         body={language === 'vi'
           ? 'Lựa chọn được áp dụng ngay cho toàn bộ ứng dụng.'
           : 'Your choice is applied across the app immediately.'}
+        icon="language"
+        simple
         scope="Language"
         testID="customer-v21-profile-language-card"
         title={language === 'vi' ? 'Ngôn ngữ hiển thị' : 'Display language'}
@@ -322,8 +360,8 @@ export function ProfileKaelMemoryView({
         body={language === 'vi'
           ? 'Bạn quyết định Kael có được ghi nhớ cách bạn trao đổi để hỗ trợ phù hợp hơn hay không.'
           : 'You decide whether Kael may remember how you interact to provide more relevant help.'}
-        framelessCenteredImage
-        image={customerV21Assets.memory}
+        icon="memory"
+        simple
         scope="Memory"
         testID="customer-v21-profile-memory-card"
         title={language === 'vi' ? 'Quyền ghi nhớ tương tác' : 'Interaction memory permission'}

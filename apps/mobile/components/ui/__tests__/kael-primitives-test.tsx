@@ -11,7 +11,7 @@ jest.mock('expo-image', () => {
   }
 })
 
-import { component, scaledTypography, shadow, typography } from '@/design/theme'
+import { color, component, scaledTypography, shadow, typography } from '@/design/theme'
 import { FORMULA_MINT_CANVAS_STANDARD_RADIAL_RADIUS, FormulaMintCanvasAura } from '../formula-mint-canvas'
 import { FormulaMintCardAura } from '../formula-mint-card'
 import { KAEL_CORE_V9_CONTRACT } from '../kael-core-v9-contract'
@@ -89,24 +89,14 @@ describe('Kael UI primitives', () => {
     expect(stops[1]).toMatchObject({ props: { stopColor: '#97F6E8', stopOpacity: 0 } })
   })
 
-  it('renders the formula mint canvas with native-safe gradient stops', () => {
-    const { getByTestId, UNSAFE_getAllByType } = render(
+  it('renders a solid white light canvas without a mint page wash', () => {
+    const { getByTestId, UNSAFE_queryAllByType } = render(
       <FormulaMintCanvasAura reduceTransparency scope="Customer Chat Test" testID="formula-mint-canvas-test" />,
     )
 
     expect(getByTestId('formula-mint-canvas-test')).toBeOnTheScreen()
-    const stops = UNSAFE_getAllByType(Stop)
-    expect(stops.some((stop) => typeof stop.props.stopColor === 'string' && stop.props.stopColor.includes('rgba('))).toBe(false)
-    expect(stops.map((stop) => stop.props.stopColor)).toEqual(expect.arrayContaining([
-      '#F9FFFD',
-      '#F3FBF9',
-      '#EDF9F6',
-      '#50E8D2',
-      '#88F1DF',
-      '#53DCCE',
-      '#91E8DE',
-    ]))
-    expect(stops.map((stop) => stop.props.stopOpacity)).toEqual(expect.arrayContaining([0.34, 0.12, 0.22, 0.24, 0.23, 0]))
+    expect(StyleSheet.flatten(getByTestId('formula-mint-canvas-test').props.style)).toMatchObject({ backgroundColor: '#FFFFFF' })
+    expect(UNSAFE_queryAllByType(Stop)).toHaveLength(0)
   })
 
   it('keeps the card aura visible and preserves a mint fallback when transparency is reduced', () => {
@@ -123,9 +113,9 @@ describe('Kael UI primitives', () => {
     expect(StyleSheet.flatten(getByTestId('formula-mint-card-test').props.style)).toMatchObject({ backgroundColor: '#E6FBF3' })
   })
 
-  it('uses standard SVG radial geometry so the light mint canvas stays consistent on web and native', () => {
+  it('keeps standard SVG radial geometry for the dark canvas', () => {
     const { UNSAFE_getAllByType } = render(
-      <FormulaMintCanvasAura reduceTransparency scope="Customer Home Test" testID="formula-mint-canvas-parity-test" />,
+      <FormulaMintCanvasAura mode="dark" reduceTransparency scope="Customer Home Test" testID="formula-mint-canvas-parity-test" />,
     )
 
     const gradients = UNSAFE_getAllByType(RadialGradient)
@@ -233,6 +223,11 @@ describe('Kael UI primitives', () => {
     expect(screen.getByTestId('kael-field-shell')).toBeOnTheScreen()
     expect(screen.getByTestId('kael-field-adornment')).toBeOnTheScreen()
     expect(screen.getByPlaceholderText('Nhập nội dung...')).toBeOnTheScreen()
+    expect(StyleSheet.flatten(screen.getByPlaceholderText('Nhập nội dung...').props.style)).toMatchObject({
+      backgroundColor: 'transparent',
+      WebkitBoxShadow: `0 0 0 1000px ${component.input.bg} inset`,
+      WebkitTextFillColor: color.text.primary,
+    })
   })
 
   it('keeps the Apple system typography scale from the handoff theme', () => {

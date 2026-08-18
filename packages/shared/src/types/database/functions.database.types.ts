@@ -26,6 +26,19 @@ export type DatabaseFunctions = {
               ok: boolean
             }[]
           }
+      acknowledge_worker_cash_payment: {
+        Args: { p_job_id: string; p_received: boolean; p_worker_id: string }
+        Returns: {
+          collateral_amount: number
+          direct_status: string
+          error_code: string
+          job_id: string
+          notification_required: boolean
+          ok: boolean
+          response_deadline: string
+          status: Database["public"]["Enums"]["job_status"]
+        }[]
+      }
       acquire_harness_dependency_permit: {
         Args: {
           p_dependency: string
@@ -1277,7 +1290,47 @@ export type DatabaseFunctions = {
           updated_at_out: string
         }[]
       }
+      decide_cash_payment_reconciliation: {
+        Args: {
+          p_actor_id: string
+          p_decision: string
+          p_payment_order_id: string
+          p_reason_code?: string
+        }
+        Returns: {
+          cash_commission_collected: number
+          cash_commission_due: number
+          error_code: string
+          hold_until: string
+          job_id: string
+          ok: boolean
+          outcome: string
+          payment_status: string
+          status: Database["public"]["Enums"]["job_status"]
+        }[]
+      }
       decide_manual_bank_payment_reconciliation: {
+        Args: {
+          p_actor_id: string
+          p_amount_received?: number
+          p_bank_reference_hash?: string
+          p_bank_reference_suffix?: string
+          p_credited_at?: string
+          p_decision: string
+          p_payment_order_id: string
+          p_reason_code?: string
+        }
+        Returns: {
+          error_code: string
+          hold_until: string
+          job_id: string
+          ok: boolean
+          outcome: string
+          payment_status: string
+          status: Database["public"]["Enums"]["job_status"]
+        }[]
+      }
+      decide_manual_bank_payment_reconciliation_idempotent: {
         Args: {
           p_actor_id: string
           p_amount_received?: number
@@ -1402,6 +1455,39 @@ export type DatabaseFunctions = {
           status: string
         }[]
       }
+      get_admin_worker_finance_snapshot: {
+        Args: {
+          p_actor_id: string
+          p_from?: string
+          p_platform_fee_rate?: number
+          p_to?: string
+          p_worker_id: string
+        }
+        Returns: {
+          available_balance: number
+          cash_commission_collected_total: number
+          cash_commission_due_total: number
+          current_commission_level: number
+          current_commission_rate_bps: number
+          daily_earnings: Json
+          from_date: string
+          gross_earnings: number
+          net_earnings: number
+          on_hold_amount: number
+          pending_payment_amount: number
+          pending_payment_count: number
+          platform_fee_total: number
+          provisional_payment_amount: number
+          provisional_payment_count: number
+          recent_transactions: Json
+          to_date: string
+          total_jobs_paid: number
+          withdrawal_eligible_at: string
+          withdrawal_reserved_amount: number
+          withdrawn_total: number
+          worker_id: string
+        }[]
+      }
       get_customer_profile_insights_aggregate: {
         Args: { p_customer_id: string }
         Returns: {
@@ -1458,9 +1544,14 @@ export type DatabaseFunctions = {
           pending_payment_amount: number
           pending_payment_count: number
           platform_fee_total: number
+          provisional_payment_amount: number
+          provisional_payment_count: number
           recent_transactions: Json
           to_date: string
           total_jobs_paid: number
+          withdrawal_eligible_at: string
+          withdrawal_reserved_amount: number
+          withdrawn_total: number
           worker_id: string
         }[]
       }
@@ -1650,6 +1741,21 @@ export type DatabaseFunctions = {
         Returns: {
           enabled: boolean
           reason_code: string
+        }[]
+      }
+      recognize_customer_payment_claim: {
+        Args: { p_customer_id: string; p_job_id: string }
+        Returns: {
+          direct_status: string
+          error_code: string
+          job_id: string
+          notification_required: boolean
+          ok: boolean
+          payment_method: string
+          response_deadline: string
+          salary_visible: boolean
+          settlement_state: string
+          status: Database["public"]["Enums"]["job_status"]
         }[]
       }
       record_circuit_failure: {

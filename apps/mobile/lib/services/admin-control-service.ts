@@ -51,6 +51,7 @@ import type {
   AdminViewWorkerProfileDecisionResponse,
   AdminViewWorkerReviewDetail,
   AdminViewWorkerReviewStage,
+  AdminWorkerFinanceSnapshotResponse,
   AdminPaymentReconciliationDecisionInput,
   AdminPaymentReconciliationDecisionResponse,
   AdminPaymentReconciliationListResponse,
@@ -152,6 +153,16 @@ export const adminControlService = {
     return api.post<AdminViewWorkerAccessResponse>(
       `/admin/workers/${encodeURIComponent(workerId)}/access`,
       input,
+    )
+  },
+
+  getWorkerFinanceSnapshot(workerId: string, params: { from?: string; to?: string } = {}) {
+    const searchParams = new URLSearchParams()
+    if (params.from) searchParams.set('from', params.from)
+    if (params.to) searchParams.set('to', params.to)
+    const query = searchParams.toString()
+    return api.get<AdminWorkerFinanceSnapshotResponse>(
+      `/admin/workers/${encodeURIComponent(workerId)}/finance-snapshot${query ? `?${query}` : ''}`,
     )
   },
 

@@ -1,5 +1,4 @@
 import type { ComponentType } from 'react'
-import { Image } from 'expo-image'
 import {
   Text as RNText,
   View,
@@ -7,13 +6,15 @@ import {
   type TextProps,
 } from 'react-native'
 
-import { MintAura } from '@/components/ui/kael-primitives'
 import type { AppLanguage } from '@/lib/app-language'
 import type { WorkerPerformanceInsightsResponse, WorkerProfileResponse } from '@/lib/api-types'
 
 import type { WorkerV5IconName } from '../dock/types'
 import { formatNullablePercent, formatNullableRating, textByLanguage } from '../ui/format'
 import { workerPerformanceAxisLabel, workerPerformanceAxisShortLabel } from '../ui/labels'
+import { WorkerV5ProfileFormulaCard } from './worker-profile-formula-surfaces'
+import { styles as formulaStyles } from './worker-profile-formula-styles'
+import { WorkerReviewsGlyph } from './worker-profile-sections-surfaces'
 import { styles } from './reviews-styles'
 
 type WorkerV5ReviewsProfile = WorkerProfileResponse | null | undefined
@@ -59,28 +60,32 @@ export function WorkerV5ReviewsHero({
     ? insights.review_count
     : null
   return (
-    <View style={[styles.earningsHeroCard, reduceTransparency && styles.opaqueCard]} testID="worker-v5-reviews-hero">
-      {!reduceTransparency ? <MintAura intensity="component" style={styles.earningsHeroAura} testID="worker-v5-reviews-mint-aura" /> : null}
+    <WorkerV5ProfileFormulaCard
+      auraTestID="worker-v5-reviews-mint-aura"
+      contentStyle={[formulaStyles.heroContent, styles.formulaHeroContent]}
+      reduceTransparency={reduceTransparency}
+      scope="WorkerReviewsHero"
+      style={styles.formulaHeroCard}
+      testID="worker-v5-reviews-hero"
+    >
       <View style={styles.completionLens}>
         <Text style={styles.completionLensValue} numberOfLines={1} testID="worker-v5-reviews-rating">{hasRating ? rating.toFixed(rating % 1 === 0 ? 0 : 1) : '—'}</Text>
         <Text style={styles.completionLensLabel} numberOfLines={1}>{textByLanguage(language, 'điểm', 'rating')}</Text>
       </View>
       <View style={styles.earningsHeroCopy}>
-        <Text style={styles.earningsHeroPill} numberOfLines={2} testID="worker-v5-reviews-count">
-          {reviewCount === null
-            ? textByLanguage(language, 'Chờ dữ liệu đánh giá', 'Review data pending')
-            : reviewCount > 0
-              ? textByLanguage(language, `${reviewCount} phản hồi`, `${reviewCount} reviews`)
-              : textByLanguage(language, 'Chưa có phản hồi', 'No feedback yet')}
-        </Text>
+        {reviewCount !== null && reviewCount > 0 ? (
+          <Text style={styles.earningsHeroPill} numberOfLines={2} testID="worker-v5-reviews-count">
+            {textByLanguage(language, `${reviewCount} phản hồi`, `${reviewCount} reviews`)}
+          </Text>
+        ) : null}
         <Text style={styles.earningsHeroAmount} numberOfLines={2} testID="worker-v5-reviews-title">
           {hasRating ? textByLanguage(language, 'Tín hiệu chất lượng thật', 'Real quality signal') : textByLanguage(language, 'Chờ phản hồi thật', 'Waiting for real feedback')}
         </Text>
         <Text style={styles.earningsHeroMeta} numberOfLines={2}>
-          {textByLanguage(language, 'Chỉ hiển thị điểm, lượt đánh giá và tín hiệu đã đồng bộ.', 'Only synced rating, counts, and signals are shown.')}
+          {textByLanguage(language, 'Chỉ hiển thị dữ liệu đánh giá đã đồng bộ.', 'Only synced review data is shown.')}
         </Text>
       </View>
-    </View>
+    </WorkerV5ProfileFormulaCard>
   )
 }
 
@@ -119,12 +124,11 @@ export function WorkerV5ReviewSignalGrid({
 }
 
 export function WorkerV5RecentFeedbackList({
-  chatIcon,
   insights,
   language,
   reduceTransparency,
 }: {
-  chatIcon: ImageSourcePropType
+  chatIcon?: ImageSourcePropType
   insights: WorkerV5ReviewsInsights
   language: AppLanguage
   reduceTransparency: boolean
@@ -148,26 +152,31 @@ export function WorkerV5RecentFeedbackList({
           : reviewCount > 0
             ? textByLanguage(language, 'Có số lượt đánh giá nhưng chưa đồng bộ nội dung chi tiết', 'Review count exists but detailed content is not synced')
             : textByLanguage(language, 'Chưa có phản hồi thật để hiển thị', 'No real feedback to show yet'),
-        status: reviewCount !== null && reviewCount > 0 ? `${reviewCount}` : textByLanguage(language, 'Chờ', 'Waiting'),
+        status: reviewCount !== null && reviewCount > 0 ? `${reviewCount}` : undefined,
         title: textByLanguage(language, 'Phản hồi gần đây', 'Recent feedback'),
       },
     ]
   return (
-    <View style={[styles.approvalDecisionList, reduceTransparency && styles.opaqueCard]} testID="worker-v5-recent-feedback-list">
+    <WorkerV5ProfileFormulaCard
+      contentStyle={styles.feedbackListContent}
+      reduceTransparency={reduceTransparency}
+      scope="WorkerReviewsRecentFeedback"
+      style={styles.approvalDecisionList}
+      testID="worker-v5-recent-feedback-list"
+    >
       {rows.map((row, index) => (
         <View key={row.title} style={styles.approvalDecisionRow}>
           <View style={styles.approvalDecisionIconShell}>
-            {!reduceTransparency ? <MintAura intensity="iconTile" style={styles.iconTileMintAura} /> : null}
-            <Image contentFit="contain" source={chatIcon} style={styles.approvalDecisionIcon} />
+            <WorkerReviewsGlyph name={index % 2 === 0 ? 'feedback' : 'pulse'} testID={`worker-v5-feedback-icon-${index}`} />
           </View>
           <View style={styles.approvalDecisionCopy}>
             <Text style={styles.approvalDecisionTitle} numberOfLines={2} testID={`worker-v5-feedback-title-${index}`}>{row.title}</Text>
             <Text style={styles.approvalDecisionMeta} numberOfLines={2} testID={`worker-v5-feedback-meta-${index}`}>{row.meta}</Text>
           </View>
-          <Text style={styles.approvalDecisionStatus} numberOfLines={2} testID={`worker-v5-feedback-status-${index}`}>{row.status}</Text>
+          {row.status ? <Text style={styles.approvalDecisionStatus} numberOfLines={2} testID={`worker-v5-feedback-status-${index}`}>{row.status}</Text> : null}
         </View>
       ))}
-    </View>
+    </WorkerV5ProfileFormulaCard>
   )
 }
 

@@ -12,9 +12,9 @@ import type { AppLanguage } from '@/lib/app-language'
 import type { useFrontendWorkflow } from '@/lib/frontend-workflow-provider'
 
 import { WorkerV5SingleSourceActionButton } from '../jobs/advisory-surfaces'
-import { WorkerV5FormulaMintCardAura } from '../ui/aura-surfaces'
 import { textByLanguage } from '../ui/format'
 import { WorkerV5PrimaryButtonFill } from '../ui/primitives-surfaces'
+import { getReducedTransparencyWorkerTokens, getWorkerThemeTokens, useWorkerThemeMode } from '../worker-theme'
 import {
   WORKER_V5_BANK_OPTIONS,
   resolveWorkerV5BankLogoName,
@@ -24,9 +24,17 @@ import {
 import { styles } from './receiving-account-styles'
 
 type WorkerV5Runtime = ReturnType<typeof useFrontendWorkflow>
+type WorkerReceivingTokens = ReturnType<typeof getWorkerThemeTokens>
 
-function Text({ style, ...props }: TextProps) {
-  return <RNText {...props} style={[styles.workerCustomerFontText, style]} />
+function Text({ color, style, ...props }: TextProps & { color?: string }) {
+  return <RNText {...props} style={[styles.workerCustomerFontText, color ? { color } : null, style]} />
+}
+
+function surface(tokens: WorkerReceivingTokens) {
+  return {
+    backgroundColor: tokens.base,
+    borderColor: tokens.border,
+  }
 }
 
 function normalizedAccount(value: string) {
@@ -49,6 +57,9 @@ export function WorkerV5ReceivingAccount({
   reduceTransparency: boolean
   runtime: WorkerV5Runtime
 }) {
+  const themeMode = useWorkerThemeMode()
+  const baseTokens = getWorkerThemeTokens(themeMode)
+  const tokens = reduceTransparency ? getReducedTransparencyWorkerTokens(baseTokens) : baseTokens
   const payoutMethod = runtime.workerPayoutMethod
   const profile = runtime.workerProfile
   const recordedBank = resolveWorkerV5BankLogoName(payoutMethod?.bank_name)
@@ -98,27 +109,22 @@ export function WorkerV5ReceivingAccount({
 
   return (
     <View
-      style={[styles.accountCard, reduceTransparency && styles.opaqueCard]}
+      style={[styles.accountCard, surface(tokens)]}
       testID="worker-v5-bank-account-form"
     >
-      <WorkerV5FormulaMintCardAura
-        reduceTransparency={reduceTransparency}
-        scope="ReceivingAccount"
-        testID="worker-v5-receiving-account-formula-mint-aura"
-      />
       {payoutMethod ? (
-        <View style={styles.recordedAccount}>
-          <Text style={styles.recordedLabel}>{textByLanguage(language, 'TÀI KHOẢN ĐANG DÙNG', 'CURRENT ACCOUNT')}</Text>
-          <Text style={styles.recordedValue}>
+        <View style={[styles.recordedAccount, surface(tokens)]}>
+          <Text color={tokens.muted} style={styles.recordedLabel}>{textByLanguage(language, 'Tài khoản hiện tại', 'Current account')}</Text>
+          <Text color={tokens.text} style={styles.recordedValue}>
             {payoutMethod.bank_name || textByLanguage(language, 'Ngân hàng', 'Bank')} · {payoutMethod.bank_account_masked}
           </Text>
           {statusCopy(payoutMethod.status, language) ? (
-            <Text style={styles.recordedStatus}>{statusCopy(payoutMethod.status, language)}</Text>
+            <Text color={tokens.primary} style={styles.recordedStatus}>{statusCopy(payoutMethod.status, language)}</Text>
           ) : null}
         </View>
       ) : null}
 
-      <Text style={styles.sectionTitle}>{textByLanguage(language, 'Chọn ngân hàng', 'Choose a bank')}</Text>
+      <Text color={tokens.text} style={styles.sectionTitle}>{textByLanguage(language, 'Chọn ngân hàng', 'Choose a bank')}</Text>
       <View style={styles.bankGrid}>
         {WORKER_V5_BANK_OPTIONS.map((bank) => {
           const selected = bank.code === selectedBank
@@ -135,21 +141,24 @@ export function WorkerV5ReceivingAccount({
               }}
               style={({ pressed }) => [
                 styles.bankOption,
-                selected && styles.bankOptionSelected,
+                surface(tokens),
+                selected && [styles.bankOptionSelected, { backgroundColor: tokens.service, borderColor: tokens.primary }],
                 pressed && styles.bankOptionPressed,
               ]}
               testID={`worker-v5-bank-option-${bank.code}`}
             >
-              <Image contentFit="contain" source={workerV5BankLogos[bank.code]} style={styles.bankLogo} />
-              <Text style={[styles.bankName, selected && styles.bankNameSelected]}>{bank.label}</Text>
-              {selected ? <Text style={styles.selectedMark}>✓</Text> : null}
+              <View style={[styles.bankLogoFrame, surface(tokens)]} testID={`worker-v5-bank-logo-frame-${bank.code}`}>
+                <Image contentFit="contain" source={workerV5BankLogos[bank.code]} style={styles.bankLogo} />
+              </View>
+              <Text color={selected ? tokens.primary : tokens.muted} style={styles.bankName}>{bank.label}</Text>
+              {selected ? <Text color={tokens.primaryText} style={[styles.selectedMark, { backgroundColor: tokens.primary }]}>✓</Text> : null}
             </Pressable>
           )
         })}
       </View>
 
-      <Text style={styles.sectionTitle}>{textByLanguage(language, 'Thông tin tài khoản', 'Account details')}</Text>
-      <Text style={styles.fieldLabel}>{textByLanguage(language, 'Tên chủ tài khoản', 'Account holder name')}</Text>
+      <Text color={tokens.text} style={styles.sectionTitle}>{textByLanguage(language, 'Thông tin tài khoản', 'Account details')}</Text>
+      <Text color={tokens.muted} style={styles.fieldLabel}>{textByLanguage(language, 'Tên chủ tài khoản', 'Account holder name')}</Text>
       <KaelTextInput
         accessibilityLabel={textByLanguage(language, 'Tên chủ tài khoản', 'Account holder name')}
         autoCapitalize="characters"
@@ -158,13 +167,13 @@ export function WorkerV5ReceivingAccount({
           setMessage(null)
         }}
         placeholder={textByLanguage(language, 'Nhập đúng tên trên tài khoản', 'Enter the name on the account')}
-        placeholderTextColor="#78908E"
-        style={styles.input}
+        placeholderTextColor={tokens.subtleText}
+        style={[styles.input, { backgroundColor: tokens.base, borderColor: tokens.border, color: tokens.text }]}
         testID="worker-v5-bank-holder-input"
         value={holderName}
       />
 
-      <Text style={styles.fieldLabel}>{textByLanguage(language, 'Số tài khoản', 'Account number')}</Text>
+      <Text color={tokens.muted} style={styles.fieldLabel}>{textByLanguage(language, 'Số tài khoản', 'Account number')}</Text>
       <KaelTextInput
         accessibilityLabel={textByLanguage(language, 'Số tài khoản', 'Account number')}
         keyboardType="number-pad"
@@ -173,13 +182,13 @@ export function WorkerV5ReceivingAccount({
           setMessage(null)
         }}
         placeholder={textByLanguage(language, 'Nhập số tài khoản', 'Enter the account number')}
-        placeholderTextColor="#78908E"
-        style={styles.input}
+        placeholderTextColor={tokens.subtleText}
+        style={[styles.input, { backgroundColor: tokens.base, borderColor: tokens.border, color: tokens.text }]}
         testID="worker-v5-bank-account-input"
         value={accountNumber}
       />
 
-      <Text style={styles.fieldLabel}>{textByLanguage(language, 'Nhập lại số tài khoản', 'Confirm account number')}</Text>
+      <Text color={tokens.muted} style={styles.fieldLabel}>{textByLanguage(language, 'Nhập lại số tài khoản', 'Confirm account number')}</Text>
       <KaelTextInput
         accessibilityLabel={textByLanguage(language, 'Nhập lại số tài khoản', 'Confirm account number')}
         keyboardType="number-pad"
@@ -188,16 +197,17 @@ export function WorkerV5ReceivingAccount({
           setMessage(null)
         }}
         placeholder={textByLanguage(language, 'Nhập lại để kiểm tra', 'Enter it again to confirm')}
-        placeholderTextColor="#78908E"
+        placeholderTextColor={tokens.subtleText}
         style={[
           styles.input,
-          accountConfirmation.length > 0 && !accountMatches && styles.inputMismatch,
+          { backgroundColor: tokens.base, borderColor: tokens.border, color: tokens.text },
+          accountConfirmation.length > 0 && !accountMatches && { borderColor: tokens.danger },
         ]}
         testID="worker-v5-bank-account-confirm-input"
         value={accountConfirmation}
       />
       {accountConfirmation.length > 0 && !accountMatches ? (
-        <Text style={styles.validationText}>
+        <Text color={tokens.danger} style={styles.validationText}>
           {textByLanguage(language, 'Hai số tài khoản chưa giống nhau.', 'The account numbers do not match.')}
         </Text>
       ) : null}
@@ -217,13 +227,14 @@ export function WorkerV5ReceivingAccount({
       {message ? (
         <Text
           accessibilityLiveRegion="polite"
-          style={[styles.message, messageTone === 'error' ? styles.messageError : styles.messageSuccess]}
+          color={messageTone === 'error' ? tokens.danger : tokens.primary}
+          style={styles.message}
           testID="worker-v5-bank-save-message"
         >
           {message}
         </Text>
       ) : null}
-      <Text style={styles.privacyNote}>
+      <Text color={tokens.muted} style={styles.privacyNote}>
         {textByLanguage(
           language,
           'Hãy kiểm tra kỹ trước khi xác nhận. Ứng dụng chỉ hiển thị lại số tài khoản ở dạng đã che.',

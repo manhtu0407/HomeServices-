@@ -126,6 +126,7 @@ import {
 } from "./domains/admin/payout.ts";
 import {
   decideAdminPaymentReconciliation,
+  getAdminWorkerFinanceSnapshot,
   getAdminFinanceSummary,
   listAdminPaymentReconciliations,
   recordAdminFinanceBalanceSnapshot,
@@ -536,6 +537,7 @@ function createAdminNotificationServices(secrets: EdgeServiceSecrets): Pick<
   | "decideAdminWorkerProfile"
   | "decideAdminWorkerApplication"
   | "setAdminWorkerAccess"
+  | "getAdminWorkerFinanceSnapshot"
   | "listAdminTransactions"
   | "getAdminTransaction"
   | "listAdminPayoutMethods"
@@ -587,6 +589,7 @@ function createAdminNotificationServices(secrets: EdgeServiceSecrets): Pick<
     decideAdminWorkerProfile,
     decideAdminWorkerApplication,
     setAdminWorkerAccess,
+    getAdminWorkerFinanceSnapshot,
     listAdminTransactions,
     getAdminTransaction,
     listAdminPayoutMethods,

@@ -6,6 +6,10 @@ import { useAppLanguage } from '@/lib/app-language'
 import { useAuth } from '@/lib/auth-provider'
 import { useFrontendWorkflow } from '@/lib/frontend-workflow-provider'
 import { useJobChatThread } from '@/lib/use-job-chat-thread'
+import {
+  peekPendingKaelChatMessage,
+  takePendingKaelChatMessage,
+} from '@/lib/pending-kael-chat-message'
 
 import { peekPendingKaelChatDraft } from './pending-intake'
 import { localizedPendingBookingDraftMessage } from '../booking/booking-intake-display-model'
@@ -42,6 +46,7 @@ type KaelRouteParams = {
   handoff?: string | string[]
   jobId?: string | string[]
   mode?: string | string[]
+  newSession?: string | string[]
   ns_audit_role?: string | string[]
   screen?: string | string[]
   sessionId?: string | string[]
@@ -66,6 +71,7 @@ export function useCustomerKaelSurfaceController(stateScopeKey: string) {
       ? 'normal'
       : null
   const routeMode = explicitRouteMode ?? chatScreenModeParam(firstParam(params.screen)) ?? 'normal'
+  const routeStartsNewNormalSession = routeMode === 'normal' && firstParam(params.newSession) === 'home-search'
   const routeHandoffId = firstParam(params.handoff) ?? null
   const routeJobId = cleanRouteJobId(firstParam(params.jobId))
   const routeSessionId = firstParam(params.sessionId) ?? null
@@ -74,13 +80,27 @@ export function useCustomerKaelSurfaceController(stateScopeKey: string) {
       ? null
       : peekPendingKaelChatDraft(pendingDraftOwnerId)
   ))
+  const [initialPendingNormalMessage] = useState(() => (
+    routeStartsNewNormalSession && !initialPendingDraft
+      ? peekPendingKaelChatMessage(pendingDraftOwnerId)
+      : null
+  ))
+  const initialPendingNormalMessageSentRef = useRef(false)
+  useEffect(() => {
+    if (!initialPendingNormalMessage || !pendingDraftOwnerId) return
+    takePendingKaelChatMessage(pendingDraftOwnerId)
+  }, [initialPendingNormalMessage, pendingDraftOwnerId])
   const workflowDeal = workflow.state.deal
   const workflowCaseDeal = isRealCaseDeal(workflowDeal) ? workflowDeal : null
   const routeDerivedMode: CustomerKaelMode = routeMode === 'case' || routeJobId || initialPendingDraft
     ? 'case'
     : 'normal'
   const conversation = useCustomerKaelConversationState({
-    initialLoading: Boolean(routeSessionId || (initialPendingDraft?.serviceType && sessionAccessToken)),
+    initialLoading: Boolean(
+      routeSessionId ||
+      (initialPendingDraft?.serviceType && sessionAccessToken) ||
+      initialPendingNormalMessage,
+    ),
     initialMode: routeDerivedMode,
     pendingDraft: initialPendingDraft,
   })
@@ -92,6 +112,7 @@ export function useCustomerKaelSurfaceController(stateScopeKey: string) {
   const mode: CustomerKaelMode = conversation.localMode
   const conversations = useCustomerKaelConversations(mode, language, {
     suppressActiveResponse: Boolean(routeHandoffId || routeSessionId),
+    suppressActiveResponseUntilNewSession: routeStartsNewNormalSession,
   })
   const activeCatalogCaseSessionId = conversations.activeResponse?.session.case_session_id ?? null
   const activeCatalogCaseMatchesWorkflowDeal = Boolean(
@@ -259,6 +280,16 @@ export function useCustomerKaelSurfaceController(stateScopeKey: string) {
     selectedService,
     selectedServiceRef,
   })
+  const { sendMessage: sendNormalMessage } = messageActions
+  useEffect(() => {
+    if (
+      mode !== 'normal' ||
+      !initialPendingNormalMessage ||
+      initialPendingNormalMessageSentRef.current
+    ) return
+    initialPendingNormalMessageSentRef.current = true
+    void sendNormalMessage(initialPendingNormalMessage)
+  }, [initialPendingNormalMessage, mode, sendNormalMessage])
   const decisionActions = useCustomerKaelDecisionActions({
     chatEstimate: presentation.chatEstimate,
     chatUi,

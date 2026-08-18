@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
-import { AppState, Text, View, type LayoutChangeEvent } from 'react-native'
+import { Text, View, type LayoutChangeEvent } from 'react-native'
 
-import { KaelCoreV9 } from '@/components/ui/kael-core-v9'
+import { KaelChatMascot } from '@/components/customer/kael-chat/kael-chat-mascot'
 import type { AppLanguage } from '@/lib/app-language'
 
 import {
@@ -10,6 +10,7 @@ import {
   type WorkerKaelEmptyHeroMode,
 } from './empty-hero-copy'
 import { styles } from './empty-hero-styles'
+import { getWorkerThemeTokens, useWorkerThemeMode } from '../worker-theme'
 
 const SLOT_TIMER_GRACE_MS = 40
 const HERO_CENTER_TO_TOP_SHIFT_RATIO = 0.3 / 2
@@ -26,8 +27,9 @@ export function WorkerV5KaelEmptyHero({
   reduceMotion: boolean
 }) {
   const [now, setNow] = useState(() => new Date())
-  const [appActive, setAppActive] = useState(() => AppState.currentState === 'active')
   const [heroHeight, setHeroHeight] = useState(0)
+  const workerThemeMode = useWorkerThemeMode()
+  const themeTokens = getWorkerThemeTokens(workerThemeMode)
   const copy = contextualCopy ? { text: contextualCopy } : getWorkerKaelEmptyHeroCopy(mode, language, now)
 
   useEffect(() => {
@@ -37,16 +39,6 @@ export function WorkerV5KaelEmptyHero({
 
     return () => clearTimeout(timer)
   }, [now])
-
-  useEffect(() => {
-    const subscription = AppState.addEventListener('change', (nextState) => {
-      const active = nextState === 'active'
-      setAppActive(active)
-      if (active) setNow(new Date())
-    })
-
-    return () => subscription.remove()
-  }, [])
 
   const handleHeroLayout = (event: LayoutChangeEvent) => {
     const nextHeight = event.nativeEvent.layout.height
@@ -65,8 +57,9 @@ export function WorkerV5KaelEmptyHero({
           accessible
           style={styles.modelStage}
         >
-          <KaelCoreV9
-            motionClip={reduceMotion || !appActive ? undefined : 'autoplay-loop'}
+          <KaelChatMascot
+            accessibilityLabel={language === 'vi' ? 'Mô hình Kael đang chờ bạn' : 'Kael is waiting for you'}
+            motion={reduceMotion ? 'static' : 'live'}
             reduceMotion={reduceMotion}
             size={116}
             testID="worker-v5-kael-empty-hero-model"
@@ -74,7 +67,7 @@ export function WorkerV5KaelEmptyHero({
         </View>
         <Text
           maxFontSizeMultiplier={1.6}
-          style={styles.copy}
+          style={[styles.copy, { color: themeTokens.text }]}
           testID="worker-v5-kael-empty-hero-copy"
         >
           {copy.text}

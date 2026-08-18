@@ -221,6 +221,32 @@ function buildInProgressDeal(): LocalDeal {
   }
 }
 
+function buildScopePendingDeal(): LocalDeal {
+  return {
+    ...buildInProgressDeal(),
+    backendStatus: 'scope_change_pending',
+    scopeChange: {
+      id: 'scope-change-pending',
+      status: 'waiting_customer_decision',
+      requestedDescription: 'Thay đoạn dây bị cháy tại ổ cắm phòng khách.',
+      reason: 'Dây bên trong đã quá nhiệt và không còn an toàn để tiếp tục.',
+      priceMin: 300000,
+      priceMax: 300000,
+      kaelReview: null,
+      kaelProgress: {
+        current_stage: 'customer_decision',
+        status: 'completed',
+        progress: 1,
+        updated_at: '2026-08-13T13:06:00.000Z',
+      },
+      evidencePhotoUrls: ['https://storage.example.test/scope-evidence.jpg'],
+      requestTiming: 'on_site',
+      resumeJobStatus: 'inspecting',
+      createdAt: '2026-08-13T13:00:00.000Z',
+    },
+  }
+}
+
 function buildWorkflow(deal: LocalDeal) {
   mockWorkflowValue = {
     actions: {
@@ -421,7 +447,7 @@ describe('Worker V5 arrival check-in', () => {
     fireEvent.press(screen.getByTestId('worker-v5-back'))
 
     await waitFor(() => {
-      expect(mockReplace).toHaveBeenCalledWith('/(worker)/jobs?ns_worker_screen=2.1-opportunity-inbox')
+      expect(mockReplace).toHaveBeenCalledWith('/(worker)/jobs?ns_worker_screen=2.1-opportunity-inbox&ns_worker_prototype=worker-jobs-rebuild-v1')
     })
   })
 
@@ -434,7 +460,7 @@ it('opens an already-arrived job at its real check-in step', async () => {
     fireEvent.press(screen.getByTestId('worker-v5-primary-action'))
 
     await waitFor(() => {
-      expect(mockReplace).toHaveBeenCalledWith('/(worker)/jobs?ns_worker_screen=2.7-in-progress')
+      expect(mockReplace).toHaveBeenCalledWith('/(worker)/jobs?ns_worker_screen=2.7-in-progress&ns_worker_prototype=worker-jobs-rebuild-v1')
   })
 })
 
@@ -455,7 +481,7 @@ it('records arrival before continuing to the in-progress screen', async () => {
 
     await waitFor(() => {
       expect(mockWorkflowValue.actions.workerUpdateStatus).toHaveBeenCalledWith('arrived')
-      expect(mockReplace).toHaveBeenCalledWith('/(worker)/jobs?ns_worker_screen=2.7-in-progress')
+      expect(mockReplace).toHaveBeenCalledWith('/(worker)/jobs?ns_worker_screen=2.7-in-progress&ns_worker_prototype=worker-jobs-rebuild-v1')
     })
   })
 
@@ -468,7 +494,7 @@ it('records arrival before continuing to the in-progress screen', async () => {
 
     await waitFor(() => {
       expect(mockWorkflowValue.actions.workerUpdateStatus).toHaveBeenCalledWith('worker_on_way')
-      expect(mockReplace).toHaveBeenCalledWith('/(worker)/jobs?ns_worker_screen=2.7-in-progress')
+      expect(mockReplace).toHaveBeenCalledWith('/(worker)/jobs?ns_worker_screen=2.7-in-progress&ns_worker_prototype=worker-jobs-rebuild-v1')
     })
   })
 
@@ -971,7 +997,7 @@ it('records arrival before continuing to the in-progress screen', async () => {
     rerender(<WorkerJobsSurface />)
 
     await waitFor(() => {
-      expect(screen.getByTestId('worker-v5-completion-field-gallery-tile-0')).toBeOnTheScreen()
+      expect(screen.getByTestId('worker-v5-evidence-tray-tile-0')).toBeOnTheScreen()
     })
     expect(screen.queryByText('Hồ sơ hoàn tất')).toBeNull()
   })
@@ -1003,7 +1029,7 @@ it('records arrival before continuing to the in-progress screen', async () => {
     fireEvent.press(screen.getByTestId('worker-v5-completion-add-photo-action'))
 
     await waitFor(() => {
-      expect(screen.getByText('1 ảnh đã chọn')).toBeOnTheScreen()
+      expect(screen.getByText('1 ảnh')).toBeOnTheScreen()
       expect(screen.getByTestId('worker-v5-completion-submit-action').props.accessibilityState).toEqual({ disabled: false })
     })
     fireEvent.press(screen.getByTestId('worker-v5-completion-submit-action'))
@@ -1018,7 +1044,7 @@ it('records arrival before continuing to the in-progress screen', async () => {
         completion_notes: 'Đã khoan tường, lắp giá và kiểm tra tải an toàn.',
         completion_photo_urls: ['supabase://job-media/job_test_1/after/completed.jpg'],
       })
-      expect(mockReplace).toHaveBeenCalledWith('/(worker)/jobs?ns_worker_screen=2.11-completion-submitted')
+      expect(mockReplace).toHaveBeenCalledWith('/(worker)/jobs?ns_worker_screen=2.11-completion-submitted&ns_worker_prototype=worker-jobs-rebuild-v1')
     })
   })
 
@@ -1037,7 +1063,7 @@ it('records arrival before continuing to the in-progress screen', async () => {
     render(<WorkerJobsSurface />)
 
     await waitFor(() => {
-      expect(mockReplace).toHaveBeenCalledWith(`/(worker)/jobs?ns_worker_screen=2.10-completion-evidence&job_id=${jobId}`)
+      expect(mockReplace).toHaveBeenCalledWith(`/(worker)/jobs?ns_worker_screen=2.10-completion-evidence&job_id=${jobId}&ns_worker_prototype=worker-jobs-rebuild-v1`)
     })
   })
 
@@ -1230,10 +1256,65 @@ it('records arrival before continuing to the in-progress screen', async () => {
     render(<WorkerJobsSurface />)
 
     expect(screen.getByText('Đang chờ khách xác nhận')).toBeOnTheScreen()
-    expect(screen.getByText('Không đổi tổng')).toBeOnTheScreen()
+    expect(screen.getByText('Khách đang xem đề xuất.')).toBeOnTheScreen()
     expect(screen.queryByText('+118.000 VND')).not.toBeOnTheScreen()
     expect(screen.queryByTestId('worker-scope-change-evidence-form')).not.toBeOnTheScreen()
-    expect(screen.getByTestId('worker-v5-scope-change-edit-action')).toBeDisabled()
+    expect(screen.getByTestId('worker-v5-stage-six-edit-action')).toBeDisabled()
+  })
+
+  it('does not advance an empty scope-change screen into approval wait', () => {
+    buildWorkflow(buildInProgressDeal())
+    mockRouteParams = { ns_worker_screen: '2.8-scope-change' }
+
+    render(<WorkerJobsSurface />)
+
+    const primaryAction = screen.getByTestId('worker-v5-stage-six-primary-action')
+    expect(primaryAction).toBeDisabled()
+    fireEvent.press(primaryAction)
+    expect(mockReplace).not.toHaveBeenCalled()
+  })
+
+  it('keeps approval wait inert until the customer decides on the real proposal', () => {
+    buildWorkflow(buildScopePendingDeal())
+    mockRouteParams = { ns_worker_screen: '2.9-approval-wait' }
+
+    render(<WorkerJobsSurface />)
+
+    const primaryAction = screen.getByTestId('worker-v5-stage-seven-primary-action')
+    expect(primaryAction).toBeDisabled()
+    fireEvent.press(primaryAction)
+    expect(mockReplace).not.toHaveBeenCalled()
+  })
+
+  it('resumes the active job screen after a real scope approval', () => {
+    const deal = buildScopePendingDeal()
+    deal.scopeChange = { ...deal.scopeChange!, status: 'approved_by_customer' }
+    buildWorkflow(deal)
+    mockRouteParams = { ns_worker_screen: '2.9-approval-wait' }
+
+    render(<WorkerJobsSurface />)
+
+    const primaryAction = screen.getByTestId('worker-v5-stage-seven-primary-action')
+    expect(primaryAction).not.toBeDisabled()
+    fireEvent.press(primaryAction)
+
+    expect(mockReplace).toHaveBeenCalledWith('/(worker)/jobs?ns_worker_screen=2.7-in-progress&ns_worker_prototype=worker-jobs-rebuild-v1')
+  })
+
+  it('redirects a stale approval route after the backend resumes the real job status', async () => {
+    const deal = {
+      ...buildInProgressDeal(),
+      backendStatus: 'inspecting' as const,
+      status: 'inspecting' as const,
+    }
+    buildWorkflow(deal)
+    mockRouteParams = { ns_worker_screen: '2.9-approval-wait' }
+
+    render(<WorkerJobsSurface />)
+
+    await waitFor(() => {
+      expect(mockReplace).toHaveBeenCalledWith('/(worker)/jobs?ns_worker_screen=2.7-in-progress&ns_worker_prototype=worker-jobs-rebuild-v1')
+    })
   })
 
   it('returns to in-progress after a pending scope proposal has been approved', async () => {
@@ -1376,10 +1457,7 @@ it('records arrival before continuing to the in-progress screen', async () => {
     render(<WorkerJobsSurface />)
 
     expect(screen.queryByText('Dấu vết Case')).toBeNull()
-    expect(screen.getByTestId('worker-v5-case-trail-icon-0')).toBeOnTheScreen()
-    expect(screen.getByTestId('worker-v5-case-trail-icon-1')).toBeOnTheScreen()
-    expect(screen.queryByTestId('worker-v5-case-trail-icon-aura-0')).toBeNull()
-    expect(screen.queryByTestId('worker-v5-case-trail-icon-aura-1')).toBeNull()
+    expect(screen.getByTestId('worker-v5-stage-ten-summary-list')).toBeOnTheScreen()
   })
 
   it('opens earnings from a closed case on the earnings route', () => {
@@ -1393,12 +1471,12 @@ it('records arrival before continuing to the in-progress screen', async () => {
   })
 
   it('keeps approval and completion actions without the two removed information cards', () => {
-    buildWorkflow(buildInProgressDeal())
+    buildWorkflow(buildScopePendingDeal())
     mockRouteParams = { ns_worker_screen: '2.9-approval-wait' }
 
     const { rerender } = render(<WorkerJobsSurface />)
 
-    expect(screen.getByTestId('worker-v5-approval-continue-action')).toBeOnTheScreen()
+    expect(screen.getByTestId('worker-v5-stage-seven-primary-action')).toBeOnTheScreen()
     expect(screen.queryByText('Không tự thực hiện phần phát sinh')).toBeNull()
     expect(screen.queryByText('Hồ sơ giữ nguyên phạm vi cũ cho tới khi khách phê duyệt trên hệ thống.')).toBeNull()
 
@@ -1416,11 +1494,11 @@ it('records arrival before continuing to the in-progress screen', async () => {
   })
 
   it('opens the shared Kael Work thread when messaging the customer during approval wait', () => {
-    buildWorkflow(buildInProgressDeal())
+    buildWorkflow(buildScopePendingDeal())
     mockRouteParams = { ns_worker_screen: '2.9-approval-wait' }
 
     render(<WorkerJobsSurface />)
-    fireEvent.press(screen.getByTestId('worker-v5-approval-message-action'))
+    fireEvent.press(screen.getByTestId('worker-v5-stage-seven-message-action'))
 
     expect(mockReplace).toHaveBeenCalledWith('/(worker)/chat?ns_worker_screen=3.1-kael-chat-normal')
   })

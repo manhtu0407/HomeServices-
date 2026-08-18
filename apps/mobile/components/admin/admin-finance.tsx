@@ -37,6 +37,11 @@ const copyByLanguage = {
     commissionCollected: 'Hoa hồng đã thu',
     commissionReceivable: 'Hoa hồng còn phải thu',
     commissionRate: 'Tỷ lệ hoa hồng hiệu dụng',
+    cashConfirmation: 'Chờ xác nhận tiền mặt',
+    cashConfirm: 'Xác nhận tiền mặt và khấu trừ hoa hồng',
+    cashReject: 'Từ chối xác nhận tiền mặt',
+    cashConfirmationHint: 'Khách đã xác nhận nhận tiền mặt. Xác nhận sẽ ghi nhận lương thợ và chỉ khấu trừ phần hoa hồng nền tảng.',
+    workerNet: 'Lương thợ được ghi nhận',
     confirmDirect: 'Xác nhận trả trực tiếp',
     confirmIncoming: 'Xác nhận tiền vào',
     customerClaimedAt: 'Khách đã báo chuyển',
@@ -117,6 +122,11 @@ const copyByLanguage = {
     commissionCollected: 'Commission collected',
     commissionReceivable: 'Commission receivable',
     commissionRate: 'Effective commission rate',
+    cashConfirmation: 'Cash confirmation required',
+    cashConfirm: 'Confirm cash and collect commission',
+    cashReject: 'Reject cash confirmation',
+    cashConfirmationHint: 'The customer reported cash payment. Confirming records the worker salary and collects only the platform commission.',
+    workerNet: 'Worker salary recorded',
     confirmDirect: 'Confirm direct payment',
     confirmIncoming: 'Confirm incoming transfer',
     customerClaimedAt: 'Customer reported transfer',
@@ -362,7 +372,7 @@ export function AdminFinancePanel({
       patch({ error: copy.errorAction })
       return
     }
-    if ((decision === 'reconcile_required' || decision === 'direct_release') && reason.trim().length < 3) {
+    if ((decision === 'reconcile_required' || decision === 'direct_release' || decision === 'cash_reject') && reason.trim().length < 3) {
       patch({ error: copy.errorAction })
       return
     }
@@ -374,7 +384,7 @@ export function AdminFinancePanel({
         bank_reference: bankReference.trim(),
         credited_at: new Date().toISOString(),
       } : {}),
-      ...((decision === 'reconcile_required' || decision === 'direct_release') ? { reason: reason.trim() } : {}),
+      ...((decision === 'reconcile_required' || decision === 'direct_release' || decision === 'cash_reject') ? { reason: reason.trim() } : {}),
     }
     const result = await adminControlService.decidePaymentReconciliation(selected.id, input)
     if (result.success) {

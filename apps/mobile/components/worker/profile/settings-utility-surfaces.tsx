@@ -5,11 +5,10 @@ import type { AppLanguage } from '@/lib/app-language'
 import type { useFrontendWorkflow } from '@/lib/frontend-workflow-provider'
 
 import { textByLanguage } from '../ui/format'
-import { WorkerV5FormulaMintCardAura } from '../ui/aura-surfaces'
-import { workerV5CapturedIconAssets, workerV5SettingsIconAssets } from '../ui/worker-v5-icon-assets'
 import { useWorkerThemeMode } from '../worker-theme'
 import { WorkerV5ProfileGroup, WorkerV5ProfileGroupDivider, WorkerV5ProfileGroupRow } from './grouped-list-surfaces'
 import { styles } from './settings-utility-styles'
+import { WorkerV5UtilityGlyph } from './utility-glyphs'
 
 type WorkerV5Runtime = ReturnType<typeof useFrontendWorkflow>
 
@@ -58,20 +57,20 @@ export function WorkerV5NotificationsBody({
 
   return (
     <View style={styles.stack} testID="worker-v5-notifications-screen">
-      <WorkerV5ProfileGroup testID="worker-v5-notifications-summary" title={textByLanguage(language, 'Thông báo', 'Notifications')}>
+      <WorkerV5ProfileGroup testID="worker-v5-notifications-summary" title={textByLanguage(language, 'Tổng quan', 'Overview')}>
         <View style={styles.summary}>
           <Text style={styles.summaryTitle}>{runtime.notificationUnreadCount > 0
             ? textByLanguage(language, `${runtime.notificationUnreadCount} thông báo chưa đọc`, `${runtime.notificationUnreadCount} unread notifications`)
             : textByLanguage(language, 'Không có thông báo chưa đọc', 'No unread notifications')}</Text>
-          <Text style={styles.summaryBody}>{textByLanguage(language, 'Danh sách này dùng các cập nhật đã ghi nhận trong ứng dụng.', 'This list uses updates recorded in the app.')}</Text>
+          <Text style={styles.summaryBody}>{textByLanguage(language, 'Chỉ hiển thị cập nhật đã ghi nhận.', 'Only recorded updates are shown.')}</Text>
         </View>
       </WorkerV5ProfileGroup>
 
-      <WorkerV5ProfileGroup testID="worker-v5-notifications-list" title={textByLanguage(language, 'Danh sách thông báo', 'Notification list')}>
+      <WorkerV5ProfileGroup testID="worker-v5-notifications-list" title={textByLanguage(language, 'Cập nhật gần đây', 'Recent updates')}>
         {runtime.notifications.length === 0 ? (
           <View style={styles.emptyState} testID="worker-v5-notifications-empty">
             <Text style={styles.emptyTitle}>{textByLanguage(language, 'Chưa có thông báo', 'No notifications yet')}</Text>
-            <Text style={styles.emptyBody}>{textByLanguage(language, 'Khi có cập nhật về công việc hoặc tài khoản, chúng sẽ xuất hiện ở đây.', 'Updates about work or your account will appear here.')}</Text>
+            <Text style={styles.emptyBody}>{textByLanguage(language, 'Cập nhật về công việc hoặc tài khoản sẽ xuất hiện ở đây.', 'Work or account updates will appear here.')}</Text>
           </View>
         ) : runtime.notifications.map((notification, index) => (
           <View key={notification.id}>
@@ -115,20 +114,18 @@ export function WorkerV5SupportBody({
       <WorkerV5ProfileGroup testID="worker-v5-support-options" title={textByLanguage(language, 'Bạn đang cần trợ giúp việc gì?', 'What do you need help with?')}>
         <WorkerV5ProfileGroupRow
           description={textByLanguage(language, 'Xem công việc, giao dịch hoặc tiến độ đang có.', 'Review existing jobs, transactions, or progress.')}
-          icon={workerV5CapturedIconAssets.homeQuickIncoming}
+          iconElement={<WorkerV5UtilityGlyph name="briefcase" size={24} testID="worker-v5-support-jobs-icon-glyph" />}
+          iconFrame="outlined"
           onPress={navigateToJobs}
-          status={textByLanguage(language, 'Mở', 'Open')}
-          statusTone="active"
           testID="worker-v5-support-jobs"
           title={textByLanguage(language, 'Hỗ trợ theo công việc', 'Work support')}
         />
         <WorkerV5ProfileGroupDivider />
         <WorkerV5ProfileGroupRow
           description={textByLanguage(language, 'Hỏi Kael để được hướng dẫn cách dùng ứng dụng.', 'Ask Kael for guidance on using the app.')}
-          icon={workerV5SettingsIconAssets.support}
+          iconElement={<WorkerV5UtilityGlyph name="chat" size={24} testID="worker-v5-support-kael-icon-glyph" />}
+          iconFrame="outlined"
           onPress={navigateToKael}
-          status={textByLanguage(language, 'Mở', 'Open')}
-          statusTone="active"
           testID="worker-v5-support-kael"
           title={textByLanguage(language, 'Hỏi Kael cách sử dụng', 'Ask Kael for help')}
         />
@@ -187,16 +184,14 @@ const POLICY_SECTIONS = {
 export function WorkerV5PoliciesBody({ language, reduceTransparency }: { language: AppLanguage; reduceTransparency: boolean }) {
   const [expandedId, setExpandedId] = useState<(typeof POLICY_SECTIONS)[AppLanguage][number]['id'] | null>('work')
   const sections = POLICY_SECTIONS[language]
+  const isDark = useWorkerThemeMode() === 'dark'
+  void reduceTransparency
 
   return (
     <View style={styles.stack} testID="worker-v5-policies-screen">
       <WorkerV5ProfileGroup
-        aura={WorkerV5FormulaMintCardAura}
-        auraScope="WorkerPolicies"
-        auraTestID="worker-v5-policies-formula-mint-aura"
-        reduceTransparency={reduceTransparency}
         testID="worker-v5-policies-list"
-        title={textByLanguage(language, 'Chính sách dành cho thợ', 'Worker policies')}
+        title={textByLanguage(language, 'Tóm tắt chính sách', 'Policy summary')}
       >
         <View style={styles.policyIntro}>
           <Text style={styles.summaryTitle}>{textByLanguage(language, 'Hiểu rõ trước khi thực hiện', 'Understand before you work')}</Text>
@@ -215,6 +210,9 @@ export function WorkerV5PoliciesBody({ language, reduceTransparency }: { languag
                 style={({ pressed }) => [styles.policyRow, pressed ? styles.pressed : null]}
                 testID={`worker-v5-policy-${section.id}`}
               >
+                <View style={[styles.policyIconFrame, isDark ? styles.policyIconFrameDark : null]} testID={`worker-v5-policy-${section.id}-icon-frame`}>
+                  <WorkerV5UtilityGlyph name={section.id === 'work' ? 'tools' : section.id === 'money' ? 'document' : section.id === 'privacy' ? 'shield' : 'check'} size={24} testID={`worker-v5-policy-${section.id}-icon`} />
+                </View>
                 <Text style={styles.policyTitle}>{section.title}</Text>
                 <Text style={styles.policyChevron}>{expanded ? '⌃' : '›'}</Text>
               </Pressable>

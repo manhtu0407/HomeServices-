@@ -11,7 +11,10 @@ import { db, dbQuery } from "../../platform/db.ts";
 import { blankWorkerProfile, clampServiceRadius, maskBankAccount } from "../../platform/domain-utils.ts";
 import { apiFailure } from "../../platform/api-failure.ts";
 import type { MobileApiContext } from "../../platform/auth.ts";
-import { resolveWorkerAvatarUrl } from "./avatar.ts";
+import {
+  resolveWorkerHomeAvatarUrl,
+  resolveWorkerAvatarUrl,
+} from "./avatar.ts";
 import {
   activeServiceTypesForWorker,
   isWorkerServiceQualityLocked,
@@ -45,11 +48,20 @@ export async function getWorkerProfile(ctx: MobileApiContext) {
   if (result.error || account.error || qualityResult.error) {
     apiFailure("DB_ERROR", "Không thể tải hồ sơ", 500);
   }
-  const avatarUrl = await resolveWorkerAvatarUrl(ctx.supabase, account.data?.avatar_url);
   if (!result.data) {
-    return { ...blankWorkerProfile(ctx.user.id), avatar_url: avatarUrl };
+    return {
+      ...blankWorkerProfile(ctx.user.id),
+      avatar_url: await resolveWorkerAvatarUrl(ctx.supabase, account.data?.avatar_url),
+    };
   }
   const worker = result.data;
+  const avatarUrl = await resolveWorkerHomeAvatarUrl(
+    ctx.supabase,
+    account.data?.avatar_url,
+    worker.selfie_url,
+    ctx.user.id,
+    worker.verification_status === "approved" && worker.is_approved === true,
+  );
   const serviceTypes = asServiceTypeArray(worker.service_types);
   const selectedServiceTypes = selectedServiceTypesForWorker(worker);
   const serviceQuality = (qualityResult.data ?? []).flatMap((row) => {

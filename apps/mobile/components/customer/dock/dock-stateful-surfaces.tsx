@@ -1,10 +1,9 @@
-import { useRef, type ComponentProps } from 'react'
-import { Pressable, View, type ImageSourcePropType, type ViewStyle } from 'react-native'
+import { type ComponentProps } from 'react'
+import { View, type ImageSourcePropType, type ViewStyle } from 'react-native'
 import Animated from 'react-native-reanimated'
 
 import { GlassSurface } from '@/components/ui/glass-surface'
-import { KaelCoreV9 } from '@/components/ui/kael-core-v9'
-import type { KaelCoreV9Handle } from '@/components/ui/kael-core-v9-contract'
+import { KaelNavigationAccessory } from '@/components/ui/kael-navigation-accessory'
 import type { AppLanguage } from '@/lib/app-language'
 
 import type { CustomerThemeTokens } from '../customer-theme'
@@ -64,7 +63,6 @@ export function CustomerV21DockOverlayView({
   selectedIndex: number
   tokens: CustomerThemeTokens
 }) {
-  const kaelRef = useRef<KaelCoreV9Handle>(null)
   const liquidDockStyles = dockStyles as typeof dockStyles & Record<
     | 'dockCaustic'
     | 'dockCausticGlow'
@@ -131,19 +129,15 @@ export function CustomerV21DockOverlayView({
           )
         })}
       </GlassSurface>
-      <Pressable
+      <KaelNavigationAccessory
         accessibilityLabel={customerV21TabCopy[language].kael}
-        accessibilityRole="button"
-        accessibilityState={{ selected: kaelActive }}
-        onFocus={() => kaelRef.current?.bow('focus')}
-        onHoverIn={() => kaelRef.current?.bow('proximity')}
+        active={kaelActive}
         onPress={onKaelPress}
-        onPressIn={() => kaelRef.current?.bow('pointer-press')}
+        reduceMotion={reduceMotion}
         style={[dockStyles.kaelAccessory, kaelActive ? dockStyles.kaelAccessoryActive : null]}
         testID="customer-v21-kael-accessory"
-      >
-        <KaelCoreV9 reduceMotion={reduceMotion} ref={kaelRef} testID="customer-v21-kael-core-v9" />
-      </Pressable>
+        visualRole="customer"
+      />
       </Animated.View>
     </View>
   )

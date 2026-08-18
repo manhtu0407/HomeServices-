@@ -47,6 +47,7 @@ export type {
   AdminFinanceTransactionListResponse,
   AdminFinanceTrendDirection,
   AdminFinanceTrendPoint,
+  AdminWorkerFinanceSnapshotResponse,
   AdminPaymentReconciliationDecisionInput,
   AdminPaymentReconciliationDecisionResponse,
   AdminPaymentReconciliationListResponse,

@@ -9,12 +9,13 @@
     "scheme": "nestscout",
     "ios": {
       "supportsTablet": false,
-      "buildNumber": "37",
+      "buildNumber": "38",
       "bundleIdentifier": "com.phanmanhtu.homeservices",
       "config": {
         "usesNonExemptEncryption": false
       },
       "infoPlist": {
+        "CFBundleDisplayName": "NestScout",
         "NSCameraUsageDescription": "NestScout cần quyền camera nếu bạn muốn chụp ảnh đại diện thật, hiện trạng sửa chữa hoặc giấy tờ xác minh.",
         "NSMicrophoneUsageDescription": "NestScout cần quyền micro để chuyển giọng nói thành bản chép lời có thể chỉnh sửa ngay trên thiết bị.",
         "NSPhotoLibraryUsageDescription": "NestScout cần quyền chọn ảnh hoặc video để đặt ảnh đại diện thật, mô tả tình trạng sửa chữa hoặc gửi hồ sơ xác minh."

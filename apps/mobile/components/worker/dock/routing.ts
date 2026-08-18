@@ -43,12 +43,21 @@ export function routeForWorkerV5Screen(
   const auditRole = firstRouteParam(params.ns_audit_role)
   const jobId = validatedWorkerV5JobId(firstRouteParam(params.job_id))
   const language = firstRouteParam(params.ns_worker_lang)
+  const prototype = firstRouteParam(params.ns_worker_prototype)
+  const workerStage = firstRouteParam(params.ns_worker_stage)
 
   if (auditRole === 'worker') query.push('ns_audit_role=worker')
   if (jobId) query.push(`job_id=${encodeURIComponent(jobId)}`)
   if (language === 'en' || language === 'vi') {
     query.push(`ns_worker_lang=${language}`)
   }
+  if (
+    (prototype === 'worker-jobs-rebuild-v1' && screen.section === 'jobs')
+    || (prototype === 'worker-profile-redesign-v1' && screen.section === 'profile')
+  ) {
+    query.push(`ns_worker_prototype=${prototype}`)
+  }
+  if (prototype === 'worker-jobs-rebuild-v1' && screen.section === 'jobs' && workerStage === 'payment-confirmed') query.push('ns_worker_stage=payment-confirmed')
 
   return `${workerV5Routes[screen.section]}?${query.join('&')}`
 }

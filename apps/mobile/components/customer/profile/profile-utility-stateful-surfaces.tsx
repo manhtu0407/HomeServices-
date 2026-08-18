@@ -8,25 +8,21 @@ import {
 } from 'react-native'
 import Svg, { Path } from 'react-native-svg'
 
-import { KaelButton, KaelChip, KaelTextInput } from '@/components/ui/kael-primitives'
+import { KaelButton, KaelTextInput } from '@/components/ui/kael-primitives'
 import type { AppLanguage } from '@/lib/app-language'
 
 import type { CustomerThemeTokens } from '../customer-theme'
-import { CaseWideMintAura, SourceCardSkin, ZipMintAura } from '../ui/aura-surfaces'
-import { customerV21Assets, type CustomerV21BankKey } from '../ui/assets'
-import { customerV21PaymentStyles as paymentStyles } from '../ui/payment-styles'
-import { PaymentBankTile } from '../ui/payment-surfaces'
+import { customerV21BankAssets, type CustomerV21BankKey } from '../ui/assets'
 import { customerV21ProfilePaymentStyles as profilePaymentStyles } from './profile-payment-styles'
 import type {
   PaymentBankOption,
   RootProfileUtilityStyles,
 } from './profile-utility-models'
 import { customerV21ProfileUtilityStyles as profileUtilityStyles } from './profile-utility-styles'
-import { KaelLiquidStatusTransition } from '../kael-chat/kael-liquid-status-transition'
-import { ProfileAuraCard } from './profile-utility-surfaces'
 import { RefundAccountFeedback, RefundAccountUsageNotice } from './profile-refund-account-feedback'
 import { customerV21SharedStyles as sharedStyles } from '../ui/shared-styles'
-import { AssetTile, SectionActionHeader } from '../ui/shared-surfaces'
+import { V21Card } from '../ui/shared-surfaces'
+import { ProfileSettingsGlyph } from './profile-settings-icons'
 
 export function ProfileUtilityAddressView({
   addressMessage,
@@ -79,35 +75,49 @@ export function ProfileUtilityAddressView({
 }) {
   return (
     <View style={profileUtilityStyles.profileUtilityStack} testID="customer-v21-profile-utility-address-screen">
-      <ProfileAuraCard cardStyle={profileUtilityStyles.profileListCard} contentStyle={profileUtilityStyles.profileAddressHub} scope="UtilityAddressHub" testID="customer-v21-profile-address-hub">
-        <View style={profileUtilityStyles.profileAddressHubHeader}>
-          <AssetTile image={customerV21Assets.address} label={title} size={54} sourceAura style={profileUtilityStyles.profileAddressHubIcon} />
-          <View style={rootStyles.flex}>
-            <Text style={[sharedStyles.cardTitle, { color: tokens.text }]}>{language === 'vi' ? 'Cài đặt địa chỉ' : 'Address settings'}</Text>
+      <V21Card
+        style={[profileUtilityStyles.profileAddressSimpleCard, { backgroundColor: tokens.raised, borderColor: tokens.border }]}
+        testID="customer-v21-profile-address-hub"
+      >
+        <View accessibilityLabel={title} style={profileUtilityStyles.profileAddressSimpleHeader} testID="customer-v21-profile-address-header">
+          <View
+            style={[profileUtilityStyles.profileAddressSimpleHeaderIcon, { backgroundColor: tokens.raised, borderColor: tokens.border }]}
+            testID="customer-v21-profile-address-header-icon"
+          >
+            <ProfileSettingsGlyph color={tokens.primary} name="address" testID="customer-v21-profile-address-header-icon-glyph" />
+          </View>
+          <View style={profileUtilityStyles.profileAddressSimpleHeaderCopy}>
+            <Text style={[sharedStyles.cardTitle, { color: tokens.text }]}>
+              {language === 'vi' ? 'Quản lý địa chỉ dịch vụ' : 'Manage service addresses'}
+            </Text>
             <Text style={[rootStyles.bodyText, { color: tokens.muted }]}>
-              {language === 'vi' ? 'Địa chỉ mặc định chỉ mở cho thợ sau khi nhận đơn.' : 'The default address opens only after a worker accepts the job.'}
+              {language === 'vi' ? 'Cập nhật nơi NestScout sẽ phục vụ bạn.' : 'Update where NestScout will provide service.'}
             </Text>
           </View>
-          <KaelChip label={defaultStatusLabel} variant={defaultStatusSaved ? 'selected' : 'unselected'} />
         </View>
 
         <View style={profileUtilityStyles.profileAddressBlock}>
           <View style={profileUtilityStyles.profileAddressBlockHeader}>
             <Text style={[rootStyles.profileInsightTitle, { color: tokens.text }]}>{language === 'vi' ? 'Địa chỉ mặc định' : 'Default address'}</Text>
-            <Text style={[profileUtilityStyles.profileAddressHint, { color: defaultDraftChanged && currentDefaultAddress ? tokens.primary : tokens.muted }]}>
-              {defaultDraftChanged && currentDefaultAddress
-                ? (language === 'vi' ? 'Bấm lưu để đặt mặc định' : 'Save to set default')
-                : hasSavedDefaultAddress
-                  ? (language === 'vi' ? 'Thợ nhận khi đơn được chấp nhận' : 'Shared after acceptance')
-                  : dataPendingLabel}
+            <Text style={[profileUtilityStyles.profileAddressHint, { color: defaultStatusSaved || defaultDraftChanged ? tokens.primary : tokens.muted }]}>
+              {defaultStatusLabel || dataPendingLabel}
             </Text>
+            {defaultDraftChanged && currentDefaultAddress ? (
+              <Text style={[profileUtilityStyles.profileAddressHint, { color: tokens.primary }]}>
+                {language === 'vi' ? 'Bấm lưu để đặt mặc định' : 'Save to set default'}
+              </Text>
+            ) : hasSavedDefaultAddress ? (
+              <Text style={[profileUtilityStyles.profileAddressHint, { color: tokens.muted }]}>
+                {language === 'vi' ? 'Thợ nhận khi đơn được chấp nhận' : 'Shared after acceptance'}
+              </Text>
+            ) : null}
           </View>
           <KaelTextInput
             accessibilityLabel={language === 'vi' ? 'Địa chỉ mặc định' : 'Default address'}
             onChangeText={onDefaultAddressChange}
             placeholder={language === 'vi' ? 'Ví dụ: Tòa A, Quận 7' : 'Example: Tower A, District 7'}
             placeholderTextColor={tokens.subtleText}
-            style={[profileUtilityStyles.profileAddressInput, textInputNoOutlineStyle, { backgroundColor: tokens.raised, borderColor: tokens.border, color: tokens.text }]}
+            style={[profileUtilityStyles.profileAddressSimpleInput, textInputNoOutlineStyle, { backgroundColor: tokens.base, borderColor: tokens.border, color: tokens.text }]}
             testID="customer-v21-profile-default-address-input"
             value={defaultAddressDraft}
           />
@@ -137,7 +147,7 @@ export function ProfileUtilityAddressView({
               onChangeText={onSecondaryAddressChange}
               placeholder={language === 'vi' ? 'Thêm địa chỉ phụ' : 'Add secondary address'}
               placeholderTextColor={tokens.subtleText}
-              style={[profileUtilityStyles.profileAddressInput, rootStyles.flex, textInputNoOutlineStyle, { backgroundColor: tokens.raised, borderColor: tokens.border, color: tokens.text }]}
+              style={[profileUtilityStyles.profileAddressSimpleInput, rootStyles.flex, textInputNoOutlineStyle, { backgroundColor: tokens.base, borderColor: tokens.border, color: tokens.text }]}
               testID="customer-v21-profile-secondary-address-input"
               value={secondaryAddressDraft}
             />
@@ -160,7 +170,12 @@ export function ProfileUtilityAddressView({
                     style={[profileUtilityStyles.profileAddressSavedRow, { borderColor: tokens.border }]}
                     testID={`customer-v21-profile-secondary-address-${index}`}
                   >
-                    <AssetTile image={customerV21Assets.map} label={language === 'vi' ? 'Địa chỉ đã lưu' : 'Saved address'} size={42} sourceAura style={profileUtilityStyles.profileAddressSavedIcon} />
+                    <View
+                      style={[profileUtilityStyles.profileAddressSimpleSavedIcon, { backgroundColor: tokens.raised, borderColor: tokens.border }]}
+                      testID={`customer-v21-profile-secondary-address-icon-${index}`}
+                    >
+                      <ProfileSettingsGlyph color={tokens.primary} name="address" />
+                    </View>
                     <View style={rootStyles.flex}>
                       <Text numberOfLines={1} style={[rootStyles.profileInsightTitle, { color: tokens.text }]}>
                         {isDefault ? (language === 'vi' ? 'Mặc định' : 'Default') : (language === 'vi' ? `Địa chỉ ${index + 1}` : `Address ${index + 1}`)}
@@ -191,9 +206,8 @@ export function ProfileUtilityAddressView({
             </View>
           ) : null}
         </View>
-      </ProfileAuraCard>
-
-      {addressMessage ? <Text style={[profileUtilityStyles.profileAddressMessage, { color: addressMessageColor }]} testID="customer-v21-profile-address-message">{addressMessage}</Text> : null}
+        {addressMessage ? <Text style={[profileUtilityStyles.profileAddressMessage, { color: addressMessageColor }]} testID="customer-v21-profile-address-message">{addressMessage}</Text> : null}
+      </V21Card>
     </View>
   )
 }
@@ -228,7 +242,6 @@ export function ProfileUtilityPaymentView({
   rootStyles,
   selectedBankKey,
   textInputNoOutlineStyle,
-  title,
   tokens,
 }: {
   accountConfirmBorderColor: string
@@ -260,23 +273,17 @@ export function ProfileUtilityPaymentView({
   rootStyles: RootProfileUtilityStyles
   selectedBankKey: CustomerV21BankKey | null
   textInputNoOutlineStyle: StyleProp<TextStyle>
-  title: string
   tokens: CustomerThemeTokens
 }) {
-  const selectedBank = selectedBankKey
-    ? paymentBankOptions.find((bank) => bank.key === selectedBankKey) ?? null
-    : null
   const selectedBankHasRecordedAccount = Boolean(
     confirmedPaymentReady
     && confirmedPaymentBankKey
     && selectedBankKey === confirmedPaymentBankKey,
   )
-  const heroTitle = selectedBank?.name
-    || (selectedBankHasRecordedAccount ? confirmedPaymentBankName : '')
-    || (language === 'vi' ? 'Tài khoản nhận hoàn tiền' : 'Refund account')
-  const heroStatus = paymentSaving
+  const statusLabel = paymentSaving
     ? (language === 'vi' ? 'Đang lưu' : 'Saving')
     : selectedBankHasRecordedAccount ? confirmedPaymentStatus : dataPendingLabel
+  const stepTwoActive = accountNameDraft.trim().length >= 2 && accountNumberDraft.replace(/\D/g, '').length >= 6
   const refundAccountTransitionKey = paymentSaving
     ? 'saving'
     : paymentMessageTone === 'error'
@@ -288,159 +295,172 @@ export function ProfileUtilityPaymentView({
           : paymentConfirmationReady ? 'ready' : 'idle'
 
   return (
-    <View style={profileUtilityStyles.profileUtilityStack} testID="customer-v21-profile-utility-payment-screen">
-      <ProfileAuraCard cardStyle={profilePaymentStyles.heroCard} contentStyle={profilePaymentStyles.heroContent} scope="UtilityPaymentHero" testID="customer-v21-profile-payment-settings">
-        <View
-          style={[
-            profilePaymentStyles.heroVisualPanel,
-            {
-              backgroundColor: tokens.mode === 'dark' ? 'rgba(12,62,57,0.68)' : 'rgba(239,252,249,0.70)',
-              borderRightColor: tokens.mode === 'dark' ? tokens.border : 'rgba(176,222,214,0.78)',
-            },
-          ]}
-          testID="customer-v21-profile-payment-hero-visual-panel"
-        >
-          <Image
-            accessibilityIgnoresInvertColors
-            accessibilityLabel={title}
-            contentFit="contain"
-            source={customerV21Assets.receivingAccount}
-            style={profilePaymentStyles.heroIconImage}
-            testID="customer-v21-profile-payment-hero-icon"
-          />
+    <View style={[profileUtilityStyles.profileUtilityStack, profilePaymentStyles.paymentStack]} testID="customer-v21-profile-utility-payment-screen">
+      <V21Card
+        style={[profilePaymentStyles.statusCard, { backgroundColor: tokens.raised, borderColor: tokens.border }]}
+        testID="customer-v21-profile-payment-settings"
+      >
+        <View style={profilePaymentStyles.statusHeader}>
           <View
-            pointerEvents="none"
-            style={[
-              profilePaymentStyles.heroConnector,
-              { backgroundColor: tokens.mode === 'dark' ? 'rgba(80,200,184,0.42)' : 'rgba(47,183,164,0.58)' },
-            ]}
-            testID="customer-v21-profile-payment-hero-connector"
-          />
-          <View
-            pointerEvents="none"
-            style={[
-              profilePaymentStyles.heroConnectorDot,
-              {
-                backgroundColor: tokens.primary,
-                borderColor: tokens.mode === 'dark' ? tokens.raised : 'rgba(255,255,255,0.98)',
-              },
-            ]}
-            testID="customer-v21-profile-payment-hero-connector-dot"
-          />
-        </View>
-        <View style={profilePaymentStyles.heroCopy}>
-          <View
-            style={profilePaymentStyles.heroTitleCopy}
-            testID="customer-v21-profile-payment-hero-title-copy"
+            style={[profilePaymentStyles.statusIcon, { backgroundColor: tokens.raised, borderColor: tokens.text }]}
+            testID="customer-v21-profile-payment-status-icon"
           >
-            <Text numberOfLines={2} style={[sharedStyles.cardTitle, { color: tokens.text }]} testID="customer-v21-profile-payment-hero-title">{heroTitle}</Text>
-            <Text numberOfLines={2} style={[profilePaymentStyles.heroSummary, { color: tokens.muted }]}>
+            <BankAccountIcon color={tokens.primary} testID="customer-v21-profile-payment-status-icon-glyph" />
+          </View>
+          <View style={profilePaymentStyles.statusCopy}>
+            <Text style={[profilePaymentStyles.statusTitle, { color: tokens.text }]} testID="customer-v21-profile-payment-status-title">
+              {language === 'vi' ? 'Tài khoản nhận hoàn tiền' : 'Refund account'}
+            </Text>
+            <Text numberOfLines={2} style={[profilePaymentStyles.statusBody, { color: tokens.muted }]}>
               {selectedBankHasRecordedAccount
                 ? `${confirmedPaymentBankName || dataPendingLabel} · ${confirmedPaymentAccountMasked}`
-                : (language === 'vi' ? 'Chỉ dùng khi NestScout xác nhận hoàn tiền.' : 'Used only after NestScout confirms a refund.')}
+                : (language === 'vi'
+                    ? 'Chỉ dùng khi NestScout xác nhận một khoản hoàn tiền.'
+                    : 'Only used after NestScout confirms a refund.')}
             </Text>
           </View>
-          <View style={profilePaymentStyles.heroSignalRail} testID="customer-v21-profile-payment-hero-signals">
-            <View style={profilePaymentStyles.heroSignal}>
-              <Svg height={14} viewBox="0 0 14 14" width={14}>
-                <Path d="M7 6.4a2.25 2.25 0 1 0 0-4.5 2.25 2.25 0 0 0 0 4.5Zm-4 5.7c.35-2.1 1.8-3.35 4-3.35s3.65 1.25 4 3.35" fill="none" stroke={tokens.primary} strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.35} />
-              </Svg>
-              <Text numberOfLines={1} style={[profilePaymentStyles.heroSignalText, { color: tokens.muted }]}>{language === 'vi' ? 'Chủ tài khoản' : 'Account holder'}</Text>
-            </View>
-            <View style={profilePaymentStyles.heroSignal}>
-              <Svg height={14} viewBox="0 0 14 14" width={14}>
-                <Path d="M7 1.4 11 3v3.1c0 2.7-1.5 4.8-4 6.4-2.5-1.6-4-3.7-4-6.4V3l4-1.6Z" fill="none" stroke={tokens.primary} strokeLinejoin="round" strokeWidth={1.3} />
-                <Path d="m5.2 6.9 1.15 1.15L8.9 5.5" fill="none" stroke={tokens.primary} strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.3} />
-              </Svg>
-              <Text numberOfLines={1} style={[profilePaymentStyles.heroSignalText, { color: tokens.muted }]}>{language === 'vi' ? 'Cần xác minh' : 'Verification required'}</Text>
-            </View>
+          <View
+            style={[profilePaymentStyles.statusPill, {
+              backgroundColor: paymentSaving || selectedBankHasRecordedAccount ? tokens.service : tokens.raised,
+              borderColor: paymentSaving || selectedBankHasRecordedAccount ? tokens.primary : tokens.border,
+            }]}
+            testID="customer-v21-profile-payment-status"
+          >
+            <Text style={[profilePaymentStyles.statusPillText, { color: paymentSaving || selectedBankHasRecordedAccount ? tokens.primary : tokens.muted }]}>
+              {statusLabel}
+            </Text>
           </View>
         </View>
-        <KaelLiquidStatusTransition
-          reduceMotion={reduceMotion}
-          style={profilePaymentStyles.heroStatusSlot}
-          testID="customer-v21-profile-payment-hero-status-slot"
-          transitionKey={refundAccountTransitionKey}
-        >
-          <KaelChip
-            label={heroStatus}
-            style={profilePaymentStyles.heroStatus}
-            testID="customer-v21-profile-payment-hero-status"
-            variant={paymentSaving || selectedBankHasRecordedAccount ? 'selected' : 'unselected'}
-          />
-        </KaelLiquidStatusTransition>
-      </ProfileAuraCard>
+        <View style={profilePaymentStyles.stepRow} testID="customer-v21-profile-payment-steps">
+          <PaymentStep active={Boolean(selectedBankKey)} label={language === 'vi' ? 'Chọn ngân hàng' : 'Choose bank'} number="1" tokens={tokens} />
+          <View style={[profilePaymentStyles.stepLine, { backgroundColor: tokens.border }]} />
+          <PaymentStep active={stepTwoActive} label={language === 'vi' ? 'Nhập thông tin' : 'Enter details'} number="2" tokens={tokens} />
+          <View style={[profilePaymentStyles.stepLine, { backgroundColor: tokens.border }]} />
+          <PaymentStep active={selectedBankHasRecordedAccount} label={language === 'vi' ? 'Hoàn tất' : 'Complete'} number="3" tokens={tokens} />
+        </View>
+      </V21Card>
 
-      <SectionActionHeader
-        action={bankCountLabel}
-        title={language === 'vi' ? 'Ngân hàng nhận hoàn tiền' : 'Refund bank'}
-      />
-      <View style={paymentStyles.paymentBankGrid} testID="customer-v21-profile-payment-bank-grid">
-        <CaseWideMintAura scope="ProfilePaymentBankGrid" testID="customer-v21-profile-payment-bank-grid-wide-mint-aura" />
-        {paymentBankOptions.map((bank) => (
-          <PaymentBankTile
-            bank={bank}
-            disabled={false}
-            key={bank.key}
-            onPress={() => onBankSelect(bank)}
-            selected={bank.key === selectedBankKey}
-            showMintAura
-            sourceCardSkin={SourceCardSkin}
-            zipMintAura={ZipMintAura}
-          />
-        ))}
+      <View style={profilePaymentStyles.sectionHeader}>
+        <View style={profilePaymentStyles.sectionCopy}>
+          <Text style={[profilePaymentStyles.sectionTitle, { color: tokens.text }]}>{language === 'vi' ? 'Ngân hàng nhận hoàn tiền' : 'Refund bank'}</Text>
+          <Text style={[profilePaymentStyles.sectionBody, { color: tokens.muted }]}>{language === 'vi' ? 'Chọn ngân hàng bạn muốn nhận tiền.' : 'Choose where you want to receive the refund.'}</Text>
+        </View>
+        <Text style={[profilePaymentStyles.sectionMeta, { color: tokens.primary }]}>{bankCountLabel}</Text>
       </View>
 
-      <ProfileAuraCard cardStyle={profileUtilityStyles.profileListCard} contentStyle={profileUtilityStyles.profilePaymentForm} scope="UtilityPaymentAccount" testID="customer-v21-profile-payment-account-form">
-        <View style={profileUtilityStyles.profileAddressBlockHeader}>
-          <Text style={[sharedStyles.cardTitle, { color: tokens.text }]}>{language === 'vi' ? 'Xác nhận tài khoản hoàn tiền' : 'Confirm refund account'}</Text>
-          <Text style={[rootStyles.bodyText, { color: tokens.muted }]}>
-            {language === 'vi' ? 'Nhập tên chủ tài khoản và số tài khoản hai lần trước khi lưu.' : 'Enter the holder name and account number twice before saving.'}
-          </Text>
+      <View style={profilePaymentStyles.bankGrid} testID="customer-v21-profile-payment-bank-grid">
+        {paymentBankOptions.map((bank) => {
+          const selected = bank.key === selectedBankKey
+          return (
+            <Pressable
+              accessibilityLabel={`${bank.name}${selected ? (language === 'vi' ? '. Đã chọn' : '. Selected') : ''}`}
+              accessibilityRole="button"
+              accessibilityState={{ disabled: false, selected }}
+              key={bank.key}
+              onPress={() => onBankSelect(bank)}
+              style={({ pressed }) => [
+                profilePaymentStyles.bankTile,
+                {
+                  backgroundColor: selected ? tokens.service : tokens.raised,
+                  borderColor: selected ? tokens.primary : tokens.border,
+                  opacity: pressed ? 0.82 : 1,
+                },
+              ]}
+              testID={`customer-v21-payment-bank-tile-${bank.key}`}
+            >
+              <View style={[profilePaymentStyles.bankLogoFrame, { backgroundColor: tokens.raised, borderColor: selected ? tokens.primary : tokens.border }]}>
+                <Image
+                  accessibilityIgnoresInvertColors
+                  contentFit="contain"
+                  source={customerV21BankAssets[bank.key]}
+                  style={profilePaymentStyles.bankLogo}
+                  testID={`customer-v21-payment-bank-logo-${bank.key}`}
+                />
+              </View>
+              <Text numberOfLines={1} style={[profilePaymentStyles.bankName, { color: tokens.text }]}>{bank.name}</Text>
+              {selected ? <Text style={[profilePaymentStyles.bankSelected, { color: tokens.primary }]}>{language === 'vi' ? 'Đã chọn' : 'Selected'}</Text> : null}
+            </Pressable>
+          )
+        })}
+      </View>
+
+      <V21Card
+        style={[profilePaymentStyles.formCard, { backgroundColor: tokens.raised, borderColor: tokens.border }]}
+        testID="customer-v21-profile-payment-account-form"
+      >
+        <View style={profilePaymentStyles.formHeader}>
+          <View style={profilePaymentStyles.formHeaderCopy}>
+            <Text style={[profilePaymentStyles.formTitle, { color: tokens.text }]}>{language === 'vi' ? 'Xác nhận tài khoản' : 'Confirm account'}</Text>
+            <Text style={[profilePaymentStyles.formBody, { color: tokens.muted }]}>{language === 'vi' ? 'Nhập đúng thông tin để việc hoàn tiền không bị gián đoạn.' : 'Enter the correct details so your refund is not interrupted.'}</Text>
+          </View>
+          <View style={[profilePaymentStyles.formHeaderIcon, { backgroundColor: tokens.raised, borderColor: tokens.border }]}>
+            <ProfileSettingsGlyph color={tokens.primary} name="password" />
+          </View>
         </View>
-        <RefundAccountUsageNotice language={language} tokens={tokens} />
-        <KaelTextInput
-          accessibilityLabel={language === 'vi' ? 'Tên chủ tài khoản' : 'Account holder'}
-          autoCapitalize="characters"
-          onChangeText={onAccountNameChange}
-          placeholder={language === 'vi' ? 'Tên chủ tài khoản' : 'Account holder'}
-          placeholderTextColor={tokens.subtleText}
-          style={[profileUtilityStyles.profileAddressInput, textInputNoOutlineStyle, { backgroundColor: tokens.raised, borderColor: tokens.border, color: tokens.text }]}
-          testID="customer-v21-profile-payment-account-name-input"
-          value={accountNameDraft}
-        />
-        <KaelTextInput
-          accessibilityLabel={language === 'vi' ? 'Số tài khoản' : 'Account number'}
-          keyboardType="number-pad"
-          onChangeText={onAccountNumberChange}
-          placeholder={language === 'vi' ? 'Số tài khoản' : 'Account number'}
-          placeholderTextColor={tokens.subtleText}
-          style={[profileUtilityStyles.profileAddressInput, textInputNoOutlineStyle, { backgroundColor: tokens.raised, borderColor: tokens.border, color: tokens.text }]}
-          testID="customer-v21-profile-payment-account-number-input"
-          value={accountNumberDraft}
-        />
-        <KaelTextInput
-          accessibilityLabel={language === 'vi' ? 'Nhập lại số tài khoản' : 'Confirm account number'}
-          keyboardType="number-pad"
-          onChangeText={onAccountConfirmChange}
-          placeholder={language === 'vi' ? 'Nhập lại số tài khoản' : 'Confirm account number'}
-          placeholderTextColor={tokens.subtleText}
-          style={[profileUtilityStyles.profileAddressInput, textInputNoOutlineStyle, { backgroundColor: tokens.raised, borderColor: accountConfirmBorderColor, color: tokens.text }]}
-          testID="customer-v21-profile-payment-account-confirm-input"
-          value={accountNumberConfirmDraft}
-        />
+
+        <View style={profilePaymentStyles.fieldStack}>
+          <Text style={[profilePaymentStyles.fieldLabel, { color: tokens.text }]}>{language === 'vi' ? 'Tên chủ tài khoản' : 'Account holder'}</Text>
+          <KaelTextInput
+            accessibilityLabel={language === 'vi' ? 'Tên chủ tài khoản' : 'Account holder'}
+            autoCapitalize="characters"
+            onChangeText={onAccountNameChange}
+            placeholder={language === 'vi' ? 'Tên chủ tài khoản' : 'Account holder'}
+            placeholderTextColor={tokens.subtleText}
+            style={[profilePaymentStyles.input, textInputNoOutlineStyle, { backgroundColor: tokens.base, borderColor: tokens.border, color: tokens.text }]}
+            testID="customer-v21-profile-payment-account-name-input"
+            value={accountNameDraft}
+          />
+        </View>
+        <View style={profilePaymentStyles.fieldStack}>
+          <Text style={[profilePaymentStyles.fieldLabel, { color: tokens.text }]}>{language === 'vi' ? 'Số tài khoản' : 'Account number'}</Text>
+          <KaelTextInput
+            accessibilityLabel={language === 'vi' ? 'Số tài khoản' : 'Account number'}
+            keyboardType="number-pad"
+            onChangeText={onAccountNumberChange}
+            placeholder={language === 'vi' ? 'Số tài khoản' : 'Account number'}
+            placeholderTextColor={tokens.subtleText}
+            style={[profilePaymentStyles.input, textInputNoOutlineStyle, { backgroundColor: tokens.base, borderColor: tokens.border, color: tokens.text }]}
+            testID="customer-v21-profile-payment-account-number-input"
+            value={accountNumberDraft}
+          />
+        </View>
+        <View style={profilePaymentStyles.fieldStack}>
+          <View style={profilePaymentStyles.fieldLabelRow}>
+            <Text style={[profilePaymentStyles.fieldLabel, { color: tokens.text }]}>{language === 'vi' ? 'Nhập lại số tài khoản' : 'Confirm account number'}</Text>
+            {paymentAccountConfirm.length > 0 ? (
+              <Text style={[profilePaymentStyles.fieldMeta, { color: paymentAccountMatches ? tokens.primary : tokens.danger }]}>{paymentAccountMatches ? (language === 'vi' ? 'Khớp' : 'Match') : (language === 'vi' ? 'Chưa khớp' : 'Mismatch')}</Text>
+            ) : null}
+          </View>
+          <KaelTextInput
+            accessibilityLabel={language === 'vi' ? 'Nhập lại số tài khoản' : 'Confirm account number'}
+            keyboardType="number-pad"
+            onChangeText={onAccountConfirmChange}
+            placeholder={language === 'vi' ? 'Nhập lại số tài khoản' : 'Confirm account number'}
+            placeholderTextColor={tokens.subtleText}
+            style={[profilePaymentStyles.input, textInputNoOutlineStyle, { backgroundColor: tokens.base, borderColor: accountConfirmBorderColor, color: tokens.text }]}
+            testID="customer-v21-profile-payment-account-confirm-input"
+            value={accountNumberConfirmDraft}
+          />
+        </View>
         {paymentAccountConfirm.length > 0 && !paymentAccountMatches ? (
           <Text style={[profileUtilityStyles.profileAddressMessage, { color: tokens.danger }]} testID="customer-v21-profile-payment-account-mismatch">
             {language === 'vi' ? 'Số tài khoản chưa khớp.' : 'Account numbers do not match.'}
           </Text>
         ) : null}
+
+        <View style={[profilePaymentStyles.formDivider, { backgroundColor: tokens.border }]} />
+        <View style={profilePaymentStyles.privacyRow}>
+          <ProfileSettingsGlyph color={tokens.primary} name="password" />
+          <RefundAccountUsageNotice language={language} tokens={tokens} />
+        </View>
         <KaelButton
           disabled={paymentSaving || !paymentCanSave}
           label={paymentSaving ? (language === 'vi' ? 'Đang lưu tài khoản' : 'Saving account') : (language === 'vi' ? 'Lưu tài khoản hoàn tiền' : 'Save refund account')}
           onPress={onSave}
           showPrimaryGradient={false}
-          style={[profileUtilityStyles.profileAddressSaveDefaultButton, paymentCanSave && !paymentSaving ? profileUtilityStyles.profileAddressSaveDefaultButtonActive : null]}
+          style={[profilePaymentStyles.saveButton, paymentCanSave && !paymentSaving ? { backgroundColor: tokens.primary } : null]}
           testID="customer-v21-profile-payment-account-save"
+          variant="primary"
         />
         <RefundAccountFeedback
           confirmed={paymentConfirmationReady}
@@ -452,7 +472,33 @@ export function ProfileUtilityPaymentView({
           tokens={tokens}
           transitionKey={refundAccountTransitionKey}
         />
-      </ProfileAuraCard>
+      </V21Card>
     </View>
+  )
+}
+
+function PaymentStep({ active, label, number, tokens }: {
+  active: boolean
+  label: string
+  number: string
+  tokens: CustomerThemeTokens
+}) {
+  return (
+    <View style={profilePaymentStyles.step}>
+      <View style={[profilePaymentStyles.stepMark, { backgroundColor: active ? tokens.primary : tokens.raised, borderColor: active ? tokens.primary : tokens.border }]}>
+        <Text style={[profilePaymentStyles.stepNumber, { color: active ? tokens.raised : tokens.muted }]}>{number}</Text>
+      </View>
+      <Text numberOfLines={2} style={[profilePaymentStyles.stepLabel, { color: active ? tokens.text : tokens.muted }]}>{label}</Text>
+    </View>
+  )
+}
+
+function BankAccountIcon({ color, testID }: { color: string; testID?: string }) {
+  return (
+    <Svg fill="none" height={21} testID={testID} viewBox="0 0 24 24" width={21}>
+      <Path d="m3 9 9-5 9 5" stroke={color} strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.65} />
+      <Path d="M5.5 10.5v6.8M9.8 10.5v6.8M14.2 10.5v6.8M18.5 10.5v6.8" stroke={color} strokeLinecap="round" strokeWidth={1.45} />
+      <Path d="M3.5 18.5h17M2.5 21h19" stroke={color} strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.65} />
+    </Svg>
   )
 }

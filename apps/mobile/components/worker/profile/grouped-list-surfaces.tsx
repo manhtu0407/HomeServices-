@@ -59,8 +59,13 @@ export function WorkerV5ProfileGroupDivider() {
 export function WorkerV5ProfileGroupRow({
   accessibilityHint,
   description,
+  density = 'default',
   icon,
+  iconElement,
+  iconFrame = 'default',
+  iconFrameTone = 'default',
   onPress,
+  reduceTransparency = false,
   status,
   statusTone = 'muted',
   testID,
@@ -68,8 +73,13 @@ export function WorkerV5ProfileGroupRow({
 }: {
   accessibilityHint?: string
   description?: string
-  icon: ImageSourcePropType
+  density?: 'compact' | 'default'
+  icon?: ImageSourcePropType
+  iconElement?: ReactNode
+  iconFrame?: 'default' | 'outlined'
+  iconFrameTone?: 'default' | 'white'
   onPress: () => void
+  reduceTransparency?: boolean
   status?: string
   statusTone?: 'active' | 'danger' | 'muted'
   testID: string
@@ -88,10 +98,28 @@ export function WorkerV5ProfileGroupRow({
       accessibilityLabel={title}
       accessibilityRole="button"
       onPress={onPress}
-      style={({ pressed }) => [styles.groupRow, pressed ? styles.pressed : null]}
+      style={({ pressed }) => [styles.groupRow, density === 'compact' ? styles.groupRowCompact : null, pressed ? styles.pressed : null]}
       testID={testID}
     >
-      <Image accessibilityIgnoresInvertColors contentFit="contain" source={icon} style={styles.groupRowIcon} testID={`${testID}-icon`} />
+      {iconElement ? (
+        <View
+          style={[
+            styles.groupRowIconFrame,
+            density === 'compact' ? styles.groupRowIconFrameCompact : null,
+            iconFrame === 'outlined' ? styles.groupRowIconFrameOutlined : null,
+            iconFrame === 'outlined' && iconFrameTone === 'white' ? styles.groupRowIconFrameOutlinedWhite : null,
+            isDark && iconFrame === 'outlined' ? styles.groupRowIconFrameOutlinedDark : null,
+            isDark && iconFrame === 'outlined' && iconFrameTone === 'white' ? styles.groupRowIconFrameOutlinedWhiteDark : null,
+            iconFrame === 'outlined' && iconFrameTone === 'white' && reduceTransparency ? styles.groupRowIconFrameOutlinedWhiteReducedTransparency : null,
+            isDark && iconFrame === 'outlined' && iconFrameTone === 'white' && reduceTransparency ? styles.groupRowIconFrameOutlinedWhiteDarkReducedTransparency : null,
+          ]}
+          testID={`${testID}-icon`}
+        >
+          {iconElement}
+        </View>
+      ) : icon ? (
+        <Image accessibilityIgnoresInvertColors contentFit="contain" source={icon} style={[styles.groupRowIcon, density === 'compact' ? styles.groupRowIconCompact : null]} testID={`${testID}-icon`} />
+      ) : null}
       <View style={styles.groupRowCopy}>
         <Text numberOfLines={2} style={[styles.groupRowTitle, isDark ? styles.groupRowTitleDark : null]} testID={`${testID}-title`}>{title}</Text>
         {description ? <Text numberOfLines={2} style={[styles.groupRowDescription, isDark ? styles.groupRowDescriptionDark : null]}>{description}</Text> : null}

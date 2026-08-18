@@ -14,6 +14,8 @@ type WorkerEarningsDashboardModel = {
   grossEarnings: number
   netEarnings: number
   platformFee: number
+  provisionalAmount: number
+  provisionalCount: number
   points: WorkerEarningsChartPoint[]
   state: 'pending' | 'empty' | 'ready'
 }
@@ -116,6 +118,8 @@ export function buildEarningsDashboardModel(
     grossEarnings,
     netEarnings,
     platformFee,
+    provisionalAmount: earnings?.provisional_payment_amount ?? earnings?.pending_payment_amount ?? 0,
+    provisionalCount: earnings?.provisional_payment_count ?? earnings?.pending_payment_count ?? 0,
     points,
     state: !earnings ? 'pending' : netEarnings > 0 ? 'ready' : 'empty',
   }

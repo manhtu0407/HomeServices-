@@ -82,6 +82,23 @@ export const customerV21ProfileLegalStyles = StyleSheet.create({
   importantContent: {
     gap: 12,
   },
+  legalSectionAction: {
+    ...typography.caption1,
+    fontWeight: '600',
+  },
+  legalSectionHeader: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingHorizontal: 2,
+  },
+  legalSectionStack: {
+    gap: 10,
+  },
+  legalSectionTitle: {
+    ...typography.callout,
+    fontWeight: '700',
+  },
   sectionButton: {
     alignItems: 'center',
     flexDirection: 'row',

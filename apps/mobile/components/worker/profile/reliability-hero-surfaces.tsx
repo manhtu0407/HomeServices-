@@ -1,7 +1,7 @@
 import { Text as RNText, View, type TextProps , type ViewStyle } from 'react-native'
 import Animated, { useAnimatedStyle, useSharedValue , withDelay, withSpring } from 'react-native-reanimated'
 import { type AppLanguage } from '@/lib/app-language'
-import { WorkerV5EarningsHomeHeroAura } from '../ui/aura-surfaces'
+import { WorkerV5FormulaMintCardAura } from '../ui/aura-surfaces'
 import { textByLanguage } from '../ui/format'
 import { workerV5HasNumber, workerV5NumericInsight } from '../ui/performance'
 import { styles } from '../worker-v5-flow-styles'
@@ -32,8 +32,8 @@ export function WorkerV5ReliabilityHero({
   const hasScore = workerV5HasNumber(insights?.performance_score)
   const score = workerV5NumericInsight(insights?.performance_score)
   return (
-    <View style={[styles.earningsHeroCard, reduceTransparency && styles.opaqueCard]} testID="worker-v5-reliability-hero">
-      {!reduceTransparency ? <WorkerV5EarningsHomeHeroAura testID="worker-v5-reliability-mint-aura" /> : null}
+    <View style={[styles.earningsHeroCard, reliabilityStyles.formulaHeroCard, reduceTransparency && styles.opaqueCard]} testID="worker-v5-reliability-hero">
+      <WorkerV5FormulaMintCardAura reduceTransparency={reduceTransparency} scope="WorkerReliabilityHero" style={reliabilityStyles.formulaHeroAura} testID="worker-v5-reliability-mint-aura" />
       <View style={styles.completionLens}>
         <Text style={styles.completionLensValue} numberOfLines={1} testID="worker-v5-reliability-score">
           {hasScore ? score : textByLanguage(language, 'Chờ', 'Pending')}

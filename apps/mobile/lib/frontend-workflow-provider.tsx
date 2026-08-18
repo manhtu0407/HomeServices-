@@ -145,6 +145,7 @@ type FrontendWorkflowContextValue = {
   customerWorkerCandidateError: string | null
   customerScopeDecisionBusyId: string | null
   workerEarnings: EarningsResponse | null
+  workerEarningsError: string | null
   workerJobs: WorkerJobListResponse['jobs']
   workerJobsHydrated: boolean
   workerPerformanceInsights: WorkerPerformanceInsightsResponse | null
@@ -261,6 +262,7 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
     workerAcceptBroadcast,
     workerDeclineBroadcast,
     workerEarnings,
+    workerEarningsError,
     workerJobs,
     workerJobsHydrated,
     workerPerformanceInsights,
@@ -278,6 +280,7 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
     workerWithdrawalRequests,
   } = useWorkerBoardActions({
     dispatch,
+    language,
     refreshCurrentJob,
     role: remoteRole,
     sessionUserId: remoteSessionUserId,
@@ -557,6 +560,7 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
     customerWorkerCandidateError,
     customerScopeDecisionBusyId,
     workerEarnings,
+    workerEarningsError,
     workerJobs,
     workerJobsHydrated,
     workerPerformanceInsights,

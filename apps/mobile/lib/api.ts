@@ -266,7 +266,7 @@ function isAbortError(err: unknown) {
 
 function isRetrySafeRequest(method: string, path: string, body: unknown) {
   if (method === 'GET' || method === 'HEAD') return true
-  if (method === 'POST' && path === '/places/autocomplete') return true
+  if (method === 'POST' && (path === '/places/autocomplete' || path === '/places/resolve')) return true
   if (
     method === 'POST' &&
     path === '/worker-applications' &&

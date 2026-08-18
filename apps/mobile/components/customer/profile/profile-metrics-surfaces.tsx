@@ -49,6 +49,7 @@ export function ProfileStatCard({
   icon,
   label,
   reduceTransparency,
+  showMintAura = true,
   sourceCardSkin: SourceCardSkin,
   testID,
   tokens,
@@ -58,6 +59,7 @@ export function ProfileStatCard({
   icon?: ReactNode
   label: string
   reduceTransparency: boolean
+  showMintAura?: boolean
   sourceCardSkin: CustomerV21SourceSkin
   testID?: string
   tokens: CustomerThemeTokens
@@ -70,8 +72,16 @@ export function ProfileStatCard({
   return (
     <View style={[styles.profileStatCard, hasIcon ? styles.profileStatCardWithIcon : null, { backgroundColor: tokens.mode === 'dark' ? tokens.raised : 'rgba(255,255,255,0.80)', borderColor: tokens.mode === 'dark' ? tokens.border : 'rgba(113,225,209,0.38)' }]} testID={testID}>
       <SourceCardSkin />
-      <ProfileCompactMintAura reduceTransparency={reduceTransparency} scope={`ProfileStatFine${scope}`} />
-      <ZipMintAura scope={`ProfileStat${scope}`} />
+      {showMintAura ? (
+        <>
+          <ProfileCompactMintAura
+            reduceTransparency={reduceTransparency}
+            scope={`ProfileStatFine${scope}`}
+            testID={testID ? `${testID}-compact-mint-aura` : undefined}
+          />
+          <ZipMintAura scope={`ProfileStat${scope}`} testID={testID ? `${testID}-mint-aura` : undefined} />
+        </>
+      ) : null}
       <View style={[styles.profileStatContent, hasIcon ? styles.profileStatContentWithIcon : null]}>
         {icon ? <View style={styles.profileStatIcon} testID={testID ? `${testID}-icon` : undefined}>{icon}</View> : null}
         {hasIcon ? <Text numberOfLines={2} style={[styles.profileStatLabel, styles.profileStatLabelWithIcon, { color: tokens.muted }]}>{label}</Text> : null}

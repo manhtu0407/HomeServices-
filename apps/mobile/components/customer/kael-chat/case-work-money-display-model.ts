@@ -137,13 +137,13 @@ export type CustomerBaselineEvidence = {
   aggregatePriceMax: number
   requiredQuorum: number
   unit: 'per_visit' | 'per_cabinet_door' | 'per_repair_point' | 'per_item'
-  sources: Array<{
+  sources: {
     domain: string
     observedAt: string
     priceMin: number
     priceMax: number
     effectiveTier: 1 | 2
-  }>
+  }[]
 }
 
 export function customerBaselineEvidenceFromReview(

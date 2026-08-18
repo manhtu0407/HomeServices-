@@ -3,6 +3,10 @@ import { LOCAL_DEAL_ID, type LocalDeal } from '@nestscout/shared'
 export const customerKaelChatRoute = '/(customer)/kael-chat?mode=normal'
 export const customerKaelWorkRoute = '/(customer)/kael-chat?mode=case'
 
+export function customerKaelChatRouteForHomeSearch(suffix = '') {
+  return `${customerKaelChatRoute}&newSession=home-search${suffix}`
+}
+
 export function customerKaelWorkRouteForHandoff(handoffId: string) {
   return `${customerKaelWorkRoute}&handoff=${encodeURIComponent(handoffId)}`
 }

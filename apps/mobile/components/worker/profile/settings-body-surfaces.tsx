@@ -10,7 +10,6 @@ import type { useFrontendWorkflow } from '@/lib/frontend-workflow-provider'
 
 import { textByLanguage } from '../ui/format'
 import { workerV5StringFromUnknown } from '../ui/route'
-import { workerV5SettingsIconAssets } from '../ui/worker-v5-icon-assets'
 import { useWorkerThemeMode, setWorkerThemeMode } from '../worker-theme'
 import { styles } from '../worker-v5-flow-styles'
 import {
@@ -19,6 +18,7 @@ import {
   WorkerV5ProfileGroupRow,
 } from './grouped-list-surfaces'
 import { WorkerV5SettingsChoiceRow } from './settings-surfaces'
+import { WorkerV5UtilityGlyph } from './utility-glyphs'
 
 type WorkerV5Runtime = ReturnType<typeof useFrontendWorkflow>
 
@@ -145,15 +145,17 @@ export function WorkerV5SettingsBody({ language, reduceTransparency, runtime }: 
     routeTo('5.10-support-settings', nextLanguage)
   }
 
-  void reduceTransparency
-
   return (
-    <View style={styles.sectionStack} testID="worker-v5-settings-screen">
+    <View style={[styles.sectionStack, styles.workerSettingsScreenStack]} testID="worker-v5-settings-screen">
       <WorkerV5ProfileGroup testID="worker-v5-settings-group-account-security" title={textByLanguage(language, 'Tài khoản & bảo mật', 'Account & security')}>
         <WorkerV5ProfileGroupRow
-          description={textByLanguage(language, 'Tên, số điện thoại và email liên hệ.', 'Name, phone number, and contact email.')}
-          icon={workerV5SettingsIconAssets.personal}
+          accessibilityHint={textByLanguage(language, 'Tên, số điện thoại và email liên hệ.', 'Name, phone number, and contact email.')}
+          density="compact"
+          iconElement={<WorkerV5UtilityGlyph name="person" />}
+          iconFrame="outlined"
+          iconFrameTone="white"
           onPress={() => setSettingsState((current) => ({ ...current, accountMessage: null, accountPanelOpen: !current.accountPanelOpen }))}
+          reduceTransparency={reduceTransparency}
           status={accountPanelOpen ? textByLanguage(language, 'Đóng', 'Close') : textByLanguage(language, 'Sửa', 'Edit')}
           statusTone="active"
           testID="worker-v5-settings-account"
@@ -208,9 +210,13 @@ export function WorkerV5SettingsBody({ language, reduceTransparency, runtime }: 
         ) : null}
         <WorkerV5ProfileGroupDivider />
         <WorkerV5ProfileGroupRow
-          description={textByLanguage(language, 'Xác nhận mật khẩu hiện tại trước khi đổi.', 'Confirm the current password before changing it.')}
-          icon={workerV5SettingsIconAssets.security}
+          accessibilityHint={textByLanguage(language, 'Xác nhận mật khẩu hiện tại trước khi đổi.', 'Confirm the current password before changing it.')}
+          density="compact"
+          iconElement={<WorkerV5UtilityGlyph name="lock" />}
+          iconFrame="outlined"
+          iconFrameTone="white"
           onPress={() => setSettingsState((current) => ({ ...current, passwordMessage: null, passwordPanelOpen: !current.passwordPanelOpen }))}
+          reduceTransparency={reduceTransparency}
           status={passwordPanelOpen ? textByLanguage(language, 'Đóng', 'Close') : textByLanguage(language, 'Đổi', 'Change')}
           statusTone="active"
           testID="worker-v5-settings-password"
@@ -264,9 +270,13 @@ export function WorkerV5SettingsBody({ language, reduceTransparency, runtime }: 
 
       <WorkerV5ProfileGroup testID="worker-v5-settings-group-app" title={textByLanguage(language, 'Ứng dụng', 'App')}>
         <WorkerV5ProfileGroupRow
-          description={textByLanguage(language, 'Chọn ngôn ngữ hiển thị cho ứng dụng.', 'Choose the display language for the app.')}
-          icon={workerV5SettingsIconAssets.language}
+          accessibilityHint={textByLanguage(language, 'Chọn ngôn ngữ hiển thị cho ứng dụng.', 'Choose the display language for the app.')}
+          density="compact"
+          iconElement={<WorkerV5UtilityGlyph name="globe" />}
+          iconFrame="outlined"
+          iconFrameTone="white"
           onPress={() => setSettingsState((current) => ({ ...current, languagePanelOpen: !current.languagePanelOpen }))}
+          reduceTransparency={reduceTransparency}
           status={currentLanguage}
           statusTone="active"
           testID="worker-v5-settings-language"
@@ -280,9 +290,13 @@ export function WorkerV5SettingsBody({ language, reduceTransparency, runtime }: 
         ) : null}
         <WorkerV5ProfileGroupDivider />
         <WorkerV5ProfileGroupRow
-          description={textByLanguage(language, 'Chọn nền sáng hoặc tối cho thiết bị này.', 'Choose light or dark appearance for this device.')}
-          icon={workerV5SettingsIconAssets.appearance}
+          accessibilityHint={textByLanguage(language, 'Chọn nền sáng hoặc tối cho thiết bị này.', 'Choose light or dark appearance for this device.')}
+          density="compact"
+          iconElement={<WorkerV5UtilityGlyph name="palette" />}
+          iconFrame="outlined"
+          iconFrameTone="white"
           onPress={() => setSettingsState((current) => ({ ...current, appearancePanelOpen: !current.appearancePanelOpen }))}
+          reduceTransparency={reduceTransparency}
           status={currentAppearance}
           statusTone="active"
           testID="worker-v5-settings-appearance"
@@ -296,9 +310,13 @@ export function WorkerV5SettingsBody({ language, reduceTransparency, runtime }: 
         ) : null}
         <WorkerV5ProfileGroupDivider />
         <WorkerV5ProfileGroupRow
-          description={textByLanguage(language, 'Xem các cập nhật về công việc và tài khoản.', 'Review work and account updates.')}
-          icon={workerV5SettingsIconAssets.notifications}
+          accessibilityHint={textByLanguage(language, 'Xem các cập nhật về công việc và tài khoản.', 'Review work and account updates.')}
+          density="compact"
+          iconElement={<WorkerV5UtilityGlyph name="bell" />}
+          iconFrame="outlined"
+          iconFrameTone="white"
           onPress={() => routeTo('5.12-worker-notifications')}
+          reduceTransparency={reduceTransparency}
           status={notificationStatus}
           statusTone={runtime.notificationUnreadCount > 0 ? 'active' : 'muted'}
           testID="worker-v5-settings-notifications"
@@ -308,9 +326,13 @@ export function WorkerV5SettingsBody({ language, reduceTransparency, runtime }: 
 
       <WorkerV5ProfileGroup testID="worker-v5-settings-group-privacy" title={textByLanguage(language, 'Quyền riêng tư', 'Privacy')}>
         <WorkerV5ProfileGroupRow
-          description={textByLanguage(language, 'Bạn kiểm soát việc Kael ghi nhớ tương tác.', 'You control whether Kael remembers interactions.')}
-          icon={workerV5SettingsIconAssets.kaelMemory}
+          accessibilityHint={textByLanguage(language, 'Bạn kiểm soát việc Kael ghi nhớ tương tác.', 'You control whether Kael remembers interactions.')}
+          density="compact"
+          iconElement={<WorkerV5UtilityGlyph name="memory" />}
+          iconFrame="outlined"
+          iconFrameTone="white"
           onPress={() => routeTo('5.6-agent-memory-preferences')}
+          reduceTransparency={reduceTransparency}
           status={textByLanguage(language, 'Mở', 'Open')}
           statusTone="active"
           testID="worker-v5-settings-memory"
@@ -320,9 +342,13 @@ export function WorkerV5SettingsBody({ language, reduceTransparency, runtime }: 
 
       <WorkerV5ProfileGroup testID="worker-v5-settings-group-help" title={textByLanguage(language, 'Hỗ trợ & chính sách', 'Help & policies')}>
         <WorkerV5ProfileGroupRow
-          description={textByLanguage(language, 'Tìm trợ giúp theo công việc hoặc hỏi Kael.', 'Get help with work or ask Kael.')}
-          icon={workerV5SettingsIconAssets.support}
+          accessibilityHint={textByLanguage(language, 'Tìm trợ giúp theo công việc hoặc hỏi Kael.', 'Get help with work or ask Kael.')}
+          density="compact"
+          iconElement={<WorkerV5UtilityGlyph name="chat" />}
+          iconFrame="outlined"
+          iconFrameTone="white"
           onPress={() => routeTo('5.13-worker-support')}
+          reduceTransparency={reduceTransparency}
           status={textByLanguage(language, 'Mở', 'Open')}
           statusTone="active"
           testID="worker-v5-settings-support"
@@ -330,9 +356,13 @@ export function WorkerV5SettingsBody({ language, reduceTransparency, runtime }: 
         />
         <WorkerV5ProfileGroupDivider />
         <WorkerV5ProfileGroupRow
-          description={textByLanguage(language, 'Quy định rõ ràng khi nhận và thực hiện công việc.', 'Clear rules for accepting and completing work.')}
-          icon={workerV5SettingsIconAssets.policy}
+          accessibilityHint={textByLanguage(language, 'Quy định rõ ràng khi nhận và thực hiện công việc.', 'Clear rules for accepting and completing work.')}
+          density="compact"
+          iconElement={<WorkerV5UtilityGlyph name="document" />}
+          iconFrame="outlined"
+          iconFrameTone="white"
           onPress={() => routeTo('5.14-worker-policies')}
+          reduceTransparency={reduceTransparency}
           status={textByLanguage(language, 'Xem', 'View')}
           statusTone="active"
           testID="worker-v5-settings-policy"

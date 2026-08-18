@@ -14,7 +14,7 @@ export const entryTheme = {
     },
     mint: {
       white: '#F7FFFB',
-      canvas: '#F4FAF9',
+      canvas: '#FFFFFF',
       auraSoft: '#E6F7F3',
       auraStrong: '#C8F4EA',
       mint50: '#E6FBF3',

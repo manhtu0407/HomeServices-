@@ -9,13 +9,15 @@ import {
   type ViewStyle,
 } from 'react-native'
 
-import { MintAura } from '@/components/ui/kael-primitives'
 import type { AppLanguage } from '@/lib/app-language'
 import type { WorkerProfileResponse } from '@/lib/api-types'
 
 import type { WorkerV5IconName } from '../dock/types'
+import { WorkerV5FormulaMintCardAura } from '../ui/aura-surfaces'
 import { textByLanguage } from '../ui/format'
 import { workerV5VerificationChecks } from './verification-model'
+import { WorkerV5ProfileFormulaCard } from './worker-profile-formula-surfaces'
+import { styles as formulaStyles } from './worker-profile-formula-styles'
 import { styles } from './verification-styles'
 
 type WorkerV5VerificationProfile = WorkerProfileResponse | null | undefined
@@ -26,6 +28,7 @@ type WorkerV5VerificationAura = ComponentType<{
   testID?: string
 }>
 type WorkerV5ReadOnlyToggleList = ComponentType<{
+  formula?: boolean
   items: readonly { enabled: boolean; label: string; value: string }[]
   reduceTransparency: boolean
 }>
@@ -49,10 +52,21 @@ export function WorkerV5VerificationHero({
   const completed = checks.filter((check) => check.done).length
   const ready = completed === checks.length && Boolean(profile?.is_approved)
   return (
-    <View style={[styles.earningsHeroCard, reduceTransparency && styles.opaqueCard]} testID="worker-v5-verification-hero">
-      {!reduceTransparency ? <MintAura intensity="component" style={styles.earningsHeroAura} testID="worker-v5-verification-mint-aura" /> : null}
+    <WorkerV5ProfileFormulaCard
+      auraTestID="worker-v5-verification-mint-aura"
+      contentStyle={[formulaStyles.heroContent, styles.formulaHeroContent]}
+      reduceTransparency={reduceTransparency}
+      scope="WorkerVerificationHero"
+      style={styles.formulaHeroCard}
+      testID="worker-v5-verification-hero"
+    >
       <View style={styles.earningsHeroIconShell}>
-        {!reduceTransparency ? <MintAura intensity="iconTile" style={styles.iconTileMintAura} /> : null}
+        <WorkerV5FormulaMintCardAura
+          reduceTransparency={reduceTransparency}
+          scope="WorkerVerificationHeroIcon"
+          style={styles.iconTileMintAura}
+          testID="worker-v5-verification-hero-icon-mint-aura"
+        />
         <Image contentFit="contain" source={icons.shield} style={styles.earningsHeroIcon} />
       </View>
       <View style={styles.earningsHeroCopy}>
@@ -60,18 +74,18 @@ export function WorkerV5VerificationHero({
         <Text style={styles.earningsHeroAmount} numberOfLines={2} testID="worker-v5-verification-title">{ready ? textByLanguage(language, 'Sẵn sàng nhận việc', 'Ready for work') : textByLanguage(language, 'Cần hoàn tất xác minh', 'Verification needed')}</Text>
         <Text style={styles.earningsHeroMeta} numberOfLines={2}>{textByLanguage(language, 'Chỉ hiển thị giấy tờ, dịch vụ và trạng thái xét duyệt có trong hồ sơ.', 'Only recorded documents, services, and review status are shown.')}</Text>
       </View>
-    </View>
+    </WorkerV5ProfileFormulaCard>
   )
 }
 
 export function WorkerV5VerificationChecklist({
-  caseWideAura: CaseWideAura,
+  caseWideAura: _caseWideAura,
   iconVisualBoost,
   icons,
   language,
   profile,
   reduceTransparency,
-  zipAura: ZipAura,
+  zipAura: _zipAura,
 }: {
   caseWideAura: WorkerV5VerificationAura
   iconVisualBoost: ReadonlySet<WorkerV5IconName>
@@ -83,13 +97,14 @@ export function WorkerV5VerificationChecklist({
 }) {
   const checks = workerV5VerificationChecks(profile, language)
   return (
-    <View style={[styles.verificationDocumentList, reduceTransparency && styles.opaqueCard]} testID="worker-v5-verification-checklist">
-      {!reduceTransparency ? (
-        <>
-          <CaseWideAura scope="VerificationDocumentsWide" style={styles.verificationDocumentListAura} testID="worker-v5-verification-checklist-mint-aura" />
-          <ZipAura scope="VerificationDocumentsFine" style={styles.verificationDocumentListZipAura} testID="worker-v5-verification-checklist-zip-mint-aura" />
-        </>
-      ) : null}
+    <WorkerV5ProfileFormulaCard
+      auraTestID="worker-v5-verification-checklist-mint-aura"
+      contentStyle={styles.verificationDocumentListContent}
+      reduceTransparency={reduceTransparency}
+      scope="WorkerVerificationChecklist"
+      style={styles.verificationDocumentList}
+      testID="worker-v5-verification-checklist"
+    >
       {checks.map((check, index) => (
         <View
           key={check.title}
@@ -97,7 +112,12 @@ export function WorkerV5VerificationChecklist({
           testID={`worker-v5-verification-row-${index}`}
         >
           <View style={styles.verificationDocumentIconTile}>
-            {!reduceTransparency ? <MintAura intensity="iconTile" style={styles.iconTileMintAura} /> : null}
+            <WorkerV5FormulaMintCardAura
+              reduceTransparency={reduceTransparency}
+              scope={`WorkerVerificationDocumentIcon${index}`}
+              style={styles.iconTileMintAura}
+              testID={`worker-v5-verification-row-${index}-mint-aura`}
+            />
             <Image
               contentFit="contain"
               source={icons[check.icon]}
@@ -115,7 +135,7 @@ export function WorkerV5VerificationChecklist({
           </View>
         </View>
       ))}
-    </View>
+    </WorkerV5ProfileFormulaCard>
   )
 }
 
@@ -131,6 +151,7 @@ export function WorkerV5VerificationRenewalCard({
   return (
     <View testID="worker-v5-verification-renewal-card">
       <ReadOnlyToggleList
+        formula
         items={[
           {
             enabled: false,

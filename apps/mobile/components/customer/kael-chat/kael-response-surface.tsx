@@ -12,6 +12,7 @@ import { useKaelResponseStreamPresentation } from '@/components/ui/use-kael-resp
 
 import type { CustomerThemeTokens } from '../customer-theme'
 import { customerV21ChatStyles as styles } from './chat-styles'
+import { KaelChatMascot } from './kael-chat-mascot'
 import { KaelLiquidReveal } from './kael-liquid-reveal'
 
 export function KaelResponseSurface({
@@ -47,19 +48,29 @@ export function KaelResponseSurface({
       style={styles.kaelResponse}
       testID={testID}
     >
-      {presentationState.blockOrder.map((blockId, index) => {
-        const block = presentationState.blocks[blockId]
-        if (!block || (!block.text && blockId !== activeBlockId)) return null
-        return (
-          <KaelResponseBlockView
-            block={block}
-            index={index}
-            key={blockId}
-            reduceMotion={reduceMotion}
-            tokens={tokens}
-          />
-        )
-      })}
+      <View style={styles.kaelResponseIdentity}>
+        <KaelChatMascot
+          motion={streaming ? 'live' : 'static'}
+          reduceMotion={reduceMotion}
+          size={36}
+          testID={testID ? `${testID}-mascot` : undefined}
+        />
+        <View style={styles.kaelResponseContent}>
+          {presentationState.blockOrder.map((blockId, index) => {
+            const block = presentationState.blocks[blockId]
+            if (!block || (!block.text && blockId !== activeBlockId)) return null
+            return (
+              <KaelResponseBlockView
+                block={block}
+                index={index}
+                key={blockId}
+                reduceMotion={reduceMotion}
+                tokens={tokens}
+              />
+            )
+          })}
+        </View>
+      </View>
     </View>
   )
 }

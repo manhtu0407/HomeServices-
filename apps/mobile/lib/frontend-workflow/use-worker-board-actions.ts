@@ -9,6 +9,7 @@ import {
   type WorkerServiceAreaUpdateInput,
   type WorkerServicePreferencesUpdateInput,
 } from '@nestscout/shared'
+import type { AppLanguage } from '../app-language'
 import type {
   EarningsResponse,
   WorkerJobListResponse,
@@ -21,6 +22,7 @@ import type {
 } from '../api-types'
 import { workerService } from '../services'
 import { uploadWorkerAvatar, type WorkerAvatarDraft } from '../worker-avatar-upload'
+import { localizeWorkflowError } from './errors'
 import {
   sameWorkerEarnings,
   sameWorkerJobs,
@@ -66,6 +68,7 @@ const initialWorkerRemoteState: WorkerRemoteState = {
 
 type WorkerBoardActionsInput = {
   dispatch: Dispatch<LocalWorkflowAction>
+  language: AppLanguage
   refreshCurrentJob: () => Promise<boolean>
   role: UserRole | null
   sessionUserId: string | null
@@ -75,6 +78,7 @@ type WorkerBoardActionsInput = {
 
 export function useWorkerBoardActions({
   dispatch,
+  language,
   refreshCurrentJob,
   role,
   sessionUserId,
@@ -86,6 +90,7 @@ export function useWorkerBoardActions({
   const workerRefreshInFlightRef = useRef(false)
   const workerActivityHeartbeatBusyRef = useRef(false)
   const [workerRemoteState, setWorkerRemoteState] = useState<WorkerRemoteState>(initialWorkerRemoteState)
+  const [workerEarningsError, setWorkerEarningsError] = useState<string | null>(null)
   const workerProfile = workerRemoteState.sessionUserId === sessionUserId ? workerRemoteState.profile : null
   const workerEarnings = workerRemoteState.sessionUserId === sessionUserId ? workerRemoteState.earnings : null
   const workerJobs = workerRemoteState.sessionUserId === sessionUserId ? workerRemoteState.jobs : []
@@ -169,6 +174,7 @@ export function useWorkerBoardActions({
       if (!isCurrentWorkerRefresh()) return true
       if (!profile.success) return setRemoteError(profile.error)
 
+      setWorkerEarningsError(earnings.success ? null : localizeWorkflowError(earnings.error, language))
       const nextEarnings = earnings.success ? earnings.data : null
       const nextPerformanceInsights = performanceInsights.success ? performanceInsights.data : null
       const pendingAvailabilityPreference = workerAvailabilityPreferenceRef.current?.sessionUserId === sessionUserId
@@ -218,7 +224,7 @@ export function useWorkerBoardActions({
     } finally {
       workerRefreshInFlightRef.current = false
     }
-  }, [dispatch, role, sessionUserId, setRemoteError, stateRef])
+  }, [dispatch, language, role, sessionUserId, setRemoteError, stateRef])
 
   const workerUpdateAvailability = useCallback(async (
     isAvailable: boolean,
@@ -444,6 +450,7 @@ export function useWorkerBoardActions({
     workerAcceptBroadcast,
     workerDeclineBroadcast,
     workerEarnings,
+    workerEarningsError,
     workerJobs,
     workerJobsHydrated,
     workerPerformanceInsights,

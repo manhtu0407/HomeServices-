@@ -41,6 +41,7 @@ export type WorkerV5ScreenId =
   | '4.4-payout-method'
   | '4.5-commission-policy'
   | '5.1-profile-overview'
+  | '5.15-worker-delete-account'
   | '5.2-worker-ranking'
   | '5.3-skills-service-area'
   | '5.4-reliability-insights'
@@ -74,7 +75,9 @@ export type WorkerV5RouteParams = {
   ns_payment_step?: string | string[]
   ns_scope_mode?: string | string[]
   ns_worker_lang?: string | string[]
+  ns_worker_prototype?: string | string[]
   ns_worker_return_to?: string | string[]
   ns_worker_screen?: string | string[]
+  ns_worker_stage?: string | string[]
   tab?: string | string[]
 }

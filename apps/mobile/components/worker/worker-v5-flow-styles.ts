@@ -40,10 +40,85 @@ export const styles = StyleSheet.create({
     paddingVertical: 12,
     ...shadow.soft,
   },
+  availabilityCardRebuild: {
+    borderRadius: 24,
+    minHeight: 92,
+    paddingHorizontal: 10,
+    paddingVertical: 10,
+  },
+  availabilityCardProfile: {
+    backgroundColor: 'transparent',
+    borderColor: 'transparent',
+    borderRadius: 0,
+    borderWidth: 0,
+    elevation: 0,
+    minHeight: 76,
+    paddingHorizontal: 16,
+    paddingVertical: 13,
+    shadowOpacity: 0,
+    shadowRadius: 0,
+  },
+  availabilityCardDark: {
+    backgroundColor: '#1A332F',
+    borderColor: 'rgba(169,213,204,0.35)',
+  },
   availabilityCopy: {
     flex: 1,
     gap: 3,
     minWidth: 0,
+  },
+  availabilityCopyRebuild: {
+    gap: 2,
+    paddingLeft: 4,
+  },
+  availabilityArtwork: {
+    borderRadius: 42,
+    height: '100%',
+    opacity: 0.92,
+    width: '100%',
+  },
+  availabilityArtworkFrame: {
+    alignItems: 'center',
+    backgroundColor: color.surface.base,
+    borderColor: color.surface.stroke,
+    borderRadius: 42,
+    borderWidth: 1,
+    flexShrink: 0,
+    height: 84,
+    justifyContent: 'center',
+    position: 'relative',
+    width: 84,
+  },
+  availabilityArtworkFrameDark: {
+    backgroundColor: '#1D2522',
+    borderColor: 'rgba(190,210,205,0.16)',
+  },
+  availabilityArtworkPressed: {
+    opacity: 0.88,
+    transform: [{ scale: 0.975 }],
+  },
+  availabilityAvatarPlaceholder: {
+    alignItems: 'center',
+    height: '100%',
+    justifyContent: 'center',
+    width: '100%',
+  },
+  availabilityCameraBadge: {
+    alignItems: 'center',
+    backgroundColor: color.surface.base,
+    borderColor: color.surface.stroke,
+    borderRadius: 999,
+    borderWidth: 1,
+    bottom: -2,
+    height: 26,
+    justifyContent: 'center',
+    position: 'absolute',
+    right: -2,
+    width: 26,
+  },
+  availabilityCameraBadgeDark: {
+    backgroundColor: '#1D2522',
+    borderColor: 'rgba(190,210,205,0.16)',
   },
   availabilityKnob: {
     backgroundColor: color.mint.white,
@@ -64,6 +139,10 @@ export const styles = StyleSheet.create({
     overflow: 'hidden',
     paddingHorizontal: 3,
     width: 44,
+  },
+  availabilitySwitchDark: {
+    backgroundColor: '#29433F',
+    borderColor: 'rgba(169,213,204,0.32)',
   },
   availabilitySwitchDisabled: {
     opacity: 0.58,
@@ -91,6 +170,17 @@ export const styles = StyleSheet.create({
     color: color.text.strong,
     ...typography.subheadline,
     fontWeight: '600',
+  },
+  availabilityTitleDark: {
+    color: '#F1F6F4',
+  },
+  availabilityDescription: {
+    color: color.text.muted,
+    ...typography.caption2,
+    fontWeight: '500',
+  },
+  availabilityDescriptionDark: {
+    color: '#A9B7B3',
   },
   homeCommandBody: {
     color: color.text.muted,
@@ -421,6 +511,10 @@ export const styles = StyleSheet.create({
   headerTextColumn: {
     flex: 1,
     gap: 2,
+  },
+  earningsOverviewHeaderRow: {
+    position: 'relative',
+    zIndex: 2,
   },
   headerMenuText: {
     color: color.brand.primaryDark,
@@ -796,6 +890,9 @@ export const styles = StyleSheet.create({
   opaqueCard: {
     backgroundColor: color.mint.white,
   },
+  opaqueCardDark: {
+    backgroundColor: '#1A332F',
+  },
   opportunityInboxStack: {
     gap: 8,
   },
@@ -837,21 +934,6 @@ export const styles = StyleSheet.create({
     right: -92,
     top: 122,
     width: 390,
-  },
-  earningsPageZipAura: {
-    height: 390,
-    opacity: 0.26,
-    right: -108,
-    top: 86,
-    width: 430,
-  },
-  earningsPageLowerAura: {
-    bottom: 40,
-    height: 390,
-    left: -92,
-    opacity: 0.24,
-    right: -72,
-    top: 'auto',
   },
   kaelOrbPageZipAura: {
     bottom: 84,
@@ -955,6 +1037,43 @@ export const styles = StyleSheet.create({
   },
   serviceAreaExpandedStack: {
     gap: 10,
+  },
+  serviceAreaSummaryCard: {
+    alignItems: 'center',
+    borderRadius: 18,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 12,
+    minHeight: 72,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  serviceAreaSummaryPressed: {
+    opacity: 0.78,
+  },
+  serviceAreaSummaryIcon: {
+    alignItems: 'center',
+    borderRadius: 12,
+    flexShrink: 0,
+    height: 24,
+    justifyContent: 'center',
+    width: 24,
+  },
+  serviceAreaSummaryText: {
+    flex: 1,
+    gap: 2,
+    minWidth: 0,
+  },
+  serviceAreaSummaryTitle: {
+    ...typography.body,
+    fontWeight: '600',
+  },
+  serviceAreaSummaryBody: {
+    ...typography.caption1,
+  },
+  serviceAreaSummaryChevron: {
+    ...typography.title2,
+    fontWeight: '500',
   },
   serviceAreaOpenCard: {
     minHeight: 82,
@@ -1127,6 +1246,9 @@ export const styles = StyleSheet.create({
   },
   sectionStack: {
     gap: 14,
+  },
+  workerSettingsScreenStack: {
+    paddingBottom: 92,
   },
   fieldEvidenceKaelConfirmation: {
     color: color.text.secondary,
@@ -1544,9 +1666,8 @@ export const styles = StyleSheet.create({
   kaelOrbComposerStack: {
     gap: 0,
     marginBottom: 0,
-    marginTop: 10,
-    paddingBottom: 3,
-    transform: [{ translateY: 7 }],
+    marginTop: 0,
+    paddingBottom: 0,
     position: 'relative',
     zIndex: 3,
   },
@@ -1823,12 +1944,12 @@ export const styles = StyleSheet.create({
   kaelOrbCustomerModeTriggerText: {
     alignSelf: 'stretch',
     color: color.text.strong,
-    ...typography.subheadline,
-    fontWeight: '600',
+    ...typography.footnote,
+    fontWeight: '700',
     includeFontPadding: false,
     textAlign: 'center',
     textAlignVertical: 'center',
-    transform: [{ translateX: -12 }],
+    transform: [{ translateX: -14 }, { translateY: -1 }],
   },
   kaelOrbMediaAura: {
     bottom: -44,

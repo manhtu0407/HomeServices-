@@ -28,9 +28,10 @@ import { jobService } from '@/lib/services'
 import { CaseWideMintAura, SourceCardSkin, ZipMintAura } from '../ui/aura-surfaces'
 import { customerV21Assets } from '../ui/assets'
 import { customerV21ServiceCopy } from '../ui/copy'
-import { initialsForName } from '../profile/profile-display-model'
+import { ProfileSettingsGlyph } from '../profile/profile-settings-icons'
 import { ServiceHistoryFilterRail, type HistoryFilter } from './service-history-filter-rail'
-import { AssetTile, EmptyState, V21Card, V21Screen, V21TopBar, useCustomerV21SurfaceTheme } from '../ui/shared-surfaces'
+import { customerV21SharedStyles as sharedStyles } from '../ui/shared-styles'
+import { AssetTile, EmptyState, V21Card, V21Screen, useCustomerV21SurfaceTheme } from '../ui/shared-surfaces'
 import { customerV21ServiceHistoryStyles as styles } from './service-history-styles'
 
 const historyDayFormatters = {
@@ -56,6 +57,8 @@ const historyTimeFormatters = {
     minute: '2-digit',
   }),
 } satisfies Record<AppLanguage, Intl.DateTimeFormat>
+
+const savedWorkerStarPath = 'M12 2.9 14.83 8.64l6.34.92-4.59 4.48 1.08 6.32L12 17.38l-5.66 2.98 1.08-6.32-4.59-4.48 6.34-.92L12 2.9Z'
 
 type HistoryState = {
   favoriteWorkerIdsInFlight: Set<string>
@@ -170,6 +173,16 @@ function groupHistoryItems(items: CustomerServiceHistoryItem[], language: AppLan
   return Array.from(grouped.values())
 }
 
+function HistoryCardSkin({
+  dark,
+  testIDPrefix,
+}: {
+  dark: boolean
+  testIDPrefix: string
+}) {
+  return dark ? null : <SourceCardSkin testID={`${testIDPrefix}-card-skin`} />
+}
+
 function HistoryCardAura({
   dark,
   softenTopRight = false,
@@ -183,7 +196,7 @@ function HistoryCardAura({
 }) {
   return (
     <>
-      {dark ? null : <SourceCardSkin testID={`${testIDPrefix}-card-skin`} />}
+      <HistoryCardSkin dark={dark} testIDPrefix={testIDPrefix} />
       <CaseWideMintAura
         intensity={softenTopRight ? 'soft' : 'default'}
         scope={`${scope}Wide`}
@@ -199,11 +212,9 @@ function HistoryCardAura({
 }
 
 export function CustomerServiceHistorySurface({
-  onBack,
   onOpenDetail,
   onRebook,
 }: {
-  onBack: () => void
   onOpenDetail: (item: CustomerServiceHistoryItem) => void
   onRebook: (item: CustomerServiceHistoryItem) => void
 }) {
@@ -310,14 +321,8 @@ export function CustomerServiceHistorySurface({
   return (
     <V21Screen screenId="2.6-case-overview" testID="customer-v21-activity">
       <View style={[styles.screenContent, { width: contentWidth }]}>
-      <V21TopBar
-        onBack={onBack}
-        subtitle={language === 'vi' ? 'Lịch sử dịch vụ và thợ bạn đã lưu' : 'Service history and your saved workers'}
-        title={language === 'vi' ? 'Hoạt động' : 'Activity'}
-      />
-
       <View style={styles.historySectionHeader}>
-        <Text style={[styles.historySectionTitle, { color: tokens.text }]} testID="customer-v21-history-title">
+        <Text style={[sharedStyles.screenTitle, { color: tokens.text }]} testID="customer-v21-history-title">
           {language === 'vi' ? 'Hoạt động gần đây' : 'Recent activity'}
         </Text>
         <Text style={[styles.historyCount, { color: tokens.muted }]}>
@@ -327,14 +332,14 @@ export function CustomerServiceHistorySurface({
 
       <ServiceHistoryFilterRail onSelect={(nextFilter) => dispatch({ type: 'filter', filter: nextFilter })} selected={filter} />
 
-      <View style={[styles.savedWorkerHint, styles.historyAuraCard, { backgroundColor: tokens.service, borderColor: tokens.border }]}>
-        <HistoryCardAura dark={mode === 'dark'} scope="HistorySavedHint" testIDPrefix="customer-v21-history-saved-hint" />
+      <View style={[styles.savedWorkerHint, { backgroundColor: tokens.raised, borderColor: tokens.border }]}>
         <View style={styles.savedWorkerHintContent}>
           <View
             accessible={false}
             style={[styles.savedWorkerHintIconTile, { backgroundColor: tokens.raised, borderColor: tokens.border }]}
+            testID="customer-v21-history-saved-hint-star-tile"
           >
-            <Text style={[styles.savedWorkerHintIcon, { color: tokens.primary }]}>★</Text>
+            <SavedWorkerStarMark color={tokens.primary} outline={tokens.text} />
           </View>
           <View style={styles.savedWorkerHintCopy}>
             <Text style={[styles.savedWorkerHintTitle, { color: tokens.text }]}>
@@ -511,24 +516,32 @@ function HistoryDealCard({
 
   return (
     <View
-      style={[styles.historyCard, styles.historyAuraCard, { backgroundColor: tokens.raised, borderColor: tokens.border }]}
+      accessibilityLabel={`${customerV21ServiceCopy[language][item.service_type].label}, ${historyTimeLabel(item.ended_at, language)}, ${status.label}`}
+      style={[styles.historyCard, { backgroundColor: tokens.raised, borderColor: tokens.border }]}
       testID={`customer-v21-history-item-${item.id}`}
     >
-      <HistoryCardAura
-        dark={tokens.mode === 'dark'}
-        scope={`HistoryItem${item.id.replace(/[^a-zA-Z0-9]/g, '')}`}
-        testIDPrefix={`customer-v21-history-item-${item.id}`}
-      />
       <View style={styles.historyCardContent}>
         <View style={styles.historyItemHeader}>
-          <Text style={[styles.historyItemMeta, { color: tokens.muted }]}>
-            {customerV21ServiceCopy[language][item.service_type].label} · {historyTimeLabel(item.ended_at, language)}
-          </Text>
+          <View
+            style={[styles.stateMark, { backgroundColor: tokens.raised, borderColor: completed ? tokens.text : tokens.border }]}
+            testID={`customer-v21-history-item-${item.id}-state-mark`}
+          >
+            {completed ? <CompletedHistoryMark color={tokens.text} /> : <CancelledHistoryMark color={tokens.muted} />}
+          </View>
+          <View style={styles.historyMetaCopy}>
+            <Text style={[styles.historyItemMeta, { color: tokens.muted }]}>
+              {customerV21ServiceCopy[language][item.service_type].label} · {historyTimeLabel(item.ended_at, language)}
+            </Text>
+          </View>
           <View
             style={[
               styles.statusPill,
-              { backgroundColor: status.tone === 'completed' ? tokens.service : tokens.ghost },
+              {
+                backgroundColor: status.tone === 'completed' ? tokens.service : tokens.raised,
+                borderColor: status.tone === 'completed' ? tokens.primary : tokens.border,
+              },
             ]}
+            testID={`customer-v21-history-item-${item.id}-status`}
           >
             <Text style={[styles.statusPillText, { color: status.tone === 'completed' ? tokens.primary : tokens.muted }]}>{status.label}</Text>
           </View>
@@ -538,15 +551,28 @@ function HistoryDealCard({
           item.worker ? (
             <View style={styles.workerRow} testID={`customer-v21-history-worker-row-${item.id}`}>
               {item.worker.avatar_url ? (
-                <Image accessibilityIgnoresInvertColors contentFit="cover" source={{ uri: item.worker.avatar_url }} style={styles.workerAvatar} />
+                <Image
+                  accessibilityIgnoresInvertColors
+                  contentFit="cover"
+                  source={{ uri: item.worker.avatar_url }}
+                  style={[styles.workerAvatar, { borderColor: tokens.text }]}
+                  testID={`customer-v21-history-worker-avatar-${item.id}`}
+                />
               ) : (
-                <View style={[styles.workerAvatar, styles.workerAvatarFallback, { backgroundColor: tokens.service }]}>
-                  <Text style={[styles.workerAvatarText, { color: tokens.primary }]}>{initialsForName(workerName)}</Text>
+                <View
+                  style={[styles.workerAvatar, styles.workerAvatarFallback, { backgroundColor: tokens.raised, borderColor: tokens.text }]}
+                  testID={`customer-v21-history-worker-avatar-${item.id}`}
+                >
+                  <ProfileSettingsGlyph
+                    color={tokens.text}
+                    name="personal"
+                    testID={`customer-v21-history-worker-avatar-${item.id}-placeholder-icon`}
+                  />
                 </View>
               )}
               <View style={styles.workerCopy}>
-                <Text style={[styles.workerEyebrow, { color: tokens.muted }]}>{language === 'vi' ? 'Thợ đã thực hiện' : 'Completed by'}</Text>
                 <Text numberOfLines={1} style={[styles.workerName, { color: tokens.text }]}>{workerName}</Text>
+                <Text style={[styles.workerEyebrow, { color: tokens.muted }]}>{language === 'vi' ? 'Thợ đã thực hiện' : 'Completed by'}</Text>
               </View>
               <FavoriteWorkerButton
                 busy={favoriteBusy}
@@ -565,6 +591,8 @@ function HistoryDealCard({
             </Text>
           )
         ) : null}
+
+        <View style={[styles.divider, { backgroundColor: tokens.border }]} />
 
         <View style={styles.dealFooter}>
           <View style={styles.priceSlot}>
@@ -609,6 +637,52 @@ function HistoryDealCard({
       </View>
     </View>
   )
+}
+
+function CompletedHistoryMark({ color }: { color: string }) {
+  return (
+    <Svg fill="none" height={18} viewBox="0 0 24 24" width={18}>
+      <Circle cx={12} cy={12} r={8.7} stroke={color} strokeWidth={1.8} />
+      <Path d="m8.3 12.1 2.5 2.5 5-5.1" stroke={color} strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} />
+    </Svg>
+  )
+}
+
+function CancelledHistoryMark({ color }: { color: string }) {
+  return (
+    <Svg fill="none" height={18} viewBox="0 0 24 24" width={18}>
+      <Circle cx={12} cy={12} r={8.7} stroke={color} strokeWidth={1.8} />
+      <Path d="M8.5 12h7" stroke={color} strokeLinecap="round" strokeWidth={1.8} />
+    </Svg>
+  )
+}
+
+function HistoryStarMark({
+  filled,
+  fill,
+  outline,
+  testID,
+}: {
+  filled: boolean
+  fill: string
+  outline: string
+  testID?: string
+}) {
+  return (
+    <Svg fill="none" height={19} testID={testID} viewBox="0 0 24 24" width={19}>
+      <Path
+        d={savedWorkerStarPath}
+        fill={filled ? fill : 'none'}
+        stroke={outline}
+        strokeLinejoin="round"
+        strokeWidth={filled ? 1.5 : 0.8}
+      />
+    </Svg>
+  )
+}
+
+function SavedWorkerStarMark({ color, outline }: { color: string; outline: string }) {
+  return <HistoryStarMark fill={color} filled outline={outline} testID="customer-v21-history-saved-hint-star" />
 }
 
 function FavoriteWorkerButton({
@@ -660,7 +734,7 @@ function FavoriteWorkerButton({
         style={[
           styles.favoriteButton,
           {
-            backgroundColor: selected ? tokens.service : tokens.ghost,
+            backgroundColor: selected ? tokens.service : tokens.raised,
             borderColor: selected ? tokens.primary : tokens.border,
           },
         ]}
@@ -669,9 +743,15 @@ function FavoriteWorkerButton({
         {busy ? (
           <ActivityIndicator color={tokens.primary} size="small" />
         ) : (
-          <Text style={[styles.favoriteIcon, { color: selected ? tokens.primary : tokens.muted }]} testID={`${testID}-icon`}>
-            {selected ? '★' : '☆'}
-          </Text>
+          <>
+            <HistoryStarMark
+              fill={tokens.service}
+              filled={selected}
+              outline={tokens.primary}
+              testID={`${testID}-icon`}
+            />
+            <Text style={[styles.favoriteLabel, { color: tokens.primary }]}>{language === 'vi' ? 'Lưu thợ' : 'Save worker'}</Text>
+          </>
         )}
       </Pressable>
     </Animated.View>

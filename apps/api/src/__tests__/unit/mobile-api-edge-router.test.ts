@@ -198,6 +198,7 @@ function makeServices(overrides: Partial<MobileApiServices> = {}): MobileApiServ
     getAdminWorkerApplication: vi.fn(),
     decideAdminWorkerApplication: vi.fn(),
     setAdminWorkerAccess: vi.fn(),
+    getAdminWorkerFinanceSnapshot: vi.fn(),
     listAdminTransactions: vi.fn(),
     getAdminTransaction: vi.fn(),
     listAdminPayoutMethods: vi.fn(),

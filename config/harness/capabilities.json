@@ -3,7 +3,7 @@
   "source": {
     "routeRoot": "supabase/functions/mobile-api/_shared/http/routes",
     "fileCount": 19,
-    "sha256": "f15ac13fd24f1d59db04ad493bb1a8b3cc67ff4116bbca446a698e5554137f70"
+    "sha256": "d76353ffc571472ad620a81dc87142871114314b4ea5ffe66141db5a8af4aab3"
   },
   "entries": [
     {
@@ -1169,6 +1169,29 @@
       "risk": "administrative",
       "operationClass": "idempotent_write",
       "sideEffectClass": "idempotent-write",
+      "privileged": true,
+      "resourceType": "system",
+      "requiresResourceCheck": false,
+      "confirmationGate": "none",
+      "envelopeTtlMs": 30000,
+      "sources": [
+        "supabase/functions/mobile-api/_shared/http/routes/admin-control-routes.ts"
+      ]
+    },
+    {
+      "kind": "admin.workers.financeSnapshot",
+      "capability": "mobile.route.admin.workers.financeSnapshot",
+      "public": false,
+      "methods": [
+        "GET"
+      ],
+      "roles": [
+        "admin",
+        "admin_operator"
+      ],
+      "risk": "administrative",
+      "operationClass": "database_read",
+      "sideEffectClass": "read-only",
       "privileged": true,
       "resourceType": "system",
       "requiresResourceCheck": false,

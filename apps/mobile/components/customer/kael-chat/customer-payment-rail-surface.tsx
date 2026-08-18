@@ -324,20 +324,21 @@ function DirectWorkerPayment({
   const text = copy(language)
   const customerConfirmed = Boolean(payment.directCustomerConfirmedAt)
   const isReconcile = payment.status === 'direct_reconcile_required'
+  const isAdminPending = payment.status === 'direct_admin_confirmation_required'
   return (
     <PaymentSurface
-      status={isReconcile ? text.reconcileStatus : text.directStatus}
+      status={isReconcile ? text.reconcileStatus : isAdminPending ? text.directAdminStatus : text.directStatus}
       testID="customer-v21-case-direct-payment"
-      title={isReconcile ? text.reconcileTitle : text.directPendingTitle}
+      title={isReconcile ? text.reconcileTitle : isAdminPending ? text.directAdminPendingTitle : text.directPendingTitle}
       tokens={tokens}
     >
       <Text style={[styles.body, { color: tokens.muted }]}>
-        {isReconcile ? text.directReconcileBody : text.directPendingBody}
+        {isReconcile ? text.directReconcileBody : isAdminPending ? text.directAdminPendingBody : text.directPendingBody}
       </Text>
       <PaymentAmount amount={safeAmount(payment.grossAmount)} label={text.amountLabel} language={language} tokens={tokens} />
       {payment.collateralAmount ? <PaymentDetail label={text.collateralLabel} value={formatVnd(payment.collateralAmount, language)} tokens={tokens} /> : null}
       {deadlineLabel ? <PaymentDetail label={text.responseDeadlineLabel} value={deadlineLabel} tokens={tokens} /> : null}
-      {!isReconcile && !customerConfirmed ? (
+      {!isReconcile && !isAdminPending && !customerConfirmed ? (
         <View style={styles.actionStack}>
           <KaelButton
             accessibilityState={{ busy: paymentBusyAction === 'direct_response', disabled: paymentBusy }}
@@ -554,7 +555,7 @@ function copy(language: AppLanguage) {
         accountHolderLabel: 'Chủ tài khoản',
         accountPending: 'Đang xác minh thông tin hiển thị',
         amountLabel: 'Số tiền cần chuyển',
-        awaitingAdminBody: 'Kael đã ghi nhận thời điểm bạn báo chuyển. Đây chưa phải xác nhận tiền đã vào; Admin sẽ đối soát trước khi mở bước đánh giá.',
+        awaitingAdminBody: 'Kael đã ghi nhận thời điểm bạn báo chuyển. Thu nhập của thợ đã hiện ở trạng thái tạm ghi nhận; Admin sẽ đối soát trước khi mở bước đánh giá.',
         awaitingAdminStatus: 'Đang chờ Admin đối soát',
         awaitingAdminTitle: 'Đã nhận báo chuyển khoản',
         bankLabel: 'Ngân hàng',
@@ -573,6 +574,9 @@ function copy(language: AppLanguage) {
         directConfirmedTitle: 'Thanh toán trực tiếp đã được xác nhận',
         directPendingBody: 'Kael đang chờ đủ xác nhận từ khách và thợ. Công việc chưa được coi là đã thanh toán.',
         directPendingTitle: 'Thanh toán trực tiếp cần hai xác nhận',
+        directAdminPendingBody: 'Kael đã ghi nhận bạn trả tiền mặt. Thu nhập của thợ đã hiện ở trạng thái tạm ghi nhận; Admin sẽ xác minh trước khi hoàn tất thanh toán.',
+        directAdminPendingTitle: 'Đã ghi nhận thanh toán tiền mặt',
+        directAdminStatus: 'Chờ Admin xác minh tiền mặt',
         directProblemAction: 'Báo có vấn đề',
         directReconcileBody: 'Kael đã chuyển biên nhận cho Admin đối soát. Khoản hoa hồng giữ lại không được tự giải phóng.',
         directEligibilityPendingBody: 'Kael chưa thể xác minh điều kiện trả trực tiếp. Bạn vẫn có thể thanh toán QR hoặc cập nhật lại trạng thái.',
@@ -611,7 +615,7 @@ function copy(language: AppLanguage) {
         accountHolderLabel: 'Account holder',
         accountPending: 'Display details are being verified',
         amountLabel: 'Amount to transfer',
-        awaitingAdminBody: 'Kael recorded when you claimed the transfer. This is not proof of funds received; an admin reconciles it before review opens.',
+        awaitingAdminBody: 'Kael recorded when you claimed the transfer. The worker’s earnings are visible as provisional; an admin reconciles it before review opens.',
         awaitingAdminStatus: 'Awaiting admin reconciliation',
         awaitingAdminTitle: 'Transfer claim received',
         bankLabel: 'Bank',
@@ -630,6 +634,9 @@ function copy(language: AppLanguage) {
         directConfirmedTitle: 'Direct payment confirmed',
         directPendingBody: 'Kael is waiting for both customer and worker confirmations. The job is not paid yet.',
         directPendingTitle: 'Direct payment needs two confirmations',
+        directAdminPendingBody: 'Kael recorded that you paid in cash. The worker’s earnings are visible as provisional; an admin verifies the cash before payment is completed.',
+        directAdminPendingTitle: 'Cash payment recorded',
+        directAdminStatus: 'Awaiting admin cash verification',
         directProblemAction: 'Report a problem',
         directReconcileBody: 'Kael sent the receipt to an admin for reconciliation. The held commission is not released automatically.',
         directEligibilityPendingBody: 'Kael could not verify direct-payment eligibility yet. You can still use QR payment or refresh the status.',

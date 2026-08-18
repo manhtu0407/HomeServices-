@@ -1,6 +1,7 @@
 import { StyleSheet, View } from 'react-native'
 import Svg, { Defs, Rect } from 'react-native-svg'
 
+import { color } from '@/design/theme'
 import { AlphaStop as Stop, NativeSafeLinearGradient as LinearGradient, NativeSafeRadialGradient as RadialGradient } from './svg-alpha-stop'
 
 type FormulaMintCanvasAuraProps = {
@@ -14,6 +15,18 @@ const FORMULA_WIDTH = 390
 const FORMULA_HEIGHT = 844
 // `rx` and `ry` are native-only radial extensions; a standard radius keeps web and native aligned.
 export const FORMULA_MINT_CANVAS_STANDARD_RADIAL_RADIUS = Math.hypot(FORMULA_WIDTH, FORMULA_HEIGHT) / (2 * Math.SQRT2)
+const FORMULA_MINT_DARK_COLORS = {
+  ambientBottomLeft: 'rgba(39,157,136,0.10)',
+  ambientMidRight: 'rgba(56,177,154,0.12)',
+  ambientTopLeft: 'rgba(43,167,145,0.12)',
+  baseEnd: '#101A17',
+  baseMiddle: '#0E1513',
+  baseStart: '#0B0F0E',
+  bottomLeft: 'rgba(54,174,151,0.13)',
+  leftWash: 'rgba(45,167,145,0.12)',
+  rightWash: 'rgba(49,183,159,0.13)',
+  topRight: 'rgba(50,194,169,0.15)',
+} as const
 
 function safeFormulaScope(scope: string) {
   return scope.replace(/[^a-zA-Z0-9]/g, '')
@@ -25,32 +38,11 @@ export function FormulaMintCanvasAura({
   scope,
   testID,
 }: FormulaMintCanvasAuraProps) {
-  // The page formula remains visible under Reduce Transparency; glass components own the opaque fallback.
-  const colors = mode === 'dark'
-    ? {
-        ambientBottomLeft: 'rgba(39,157,136,0.10)',
-        ambientMidRight: 'rgba(56,177,154,0.12)',
-        ambientTopLeft: 'rgba(43,167,145,0.12)',
-        baseEnd: '#101A17',
-        baseMiddle: '#0E1513',
-        baseStart: '#0B0F0E',
-        bottomLeft: 'rgba(54,174,151,0.13)',
-        leftWash: 'rgba(45,167,145,0.12)',
-        rightWash: 'rgba(49,183,159,0.13)',
-        topRight: 'rgba(50,194,169,0.15)',
-      }
-    : {
-        ambientBottomLeft: 'rgba(81,216,203,0.15)',
-        ambientMidRight: 'rgba(122,243,223,0.18)',
-        ambientTopLeft: 'rgba(89,232,207,0.20)',
-        baseEnd: '#EDF9F6',
-        baseMiddle: '#F3FBF9',
-        baseStart: '#F9FFFD',
-        bottomLeft: 'rgba(145,232,222,0.23)',
-        leftWash: 'rgba(136,241,223,0.22)',
-        rightWash: 'rgba(83,220,206,0.24)',
-        topRight: 'rgba(80,232,210,0.34)',
-      }
+  if (mode === 'light') {
+    return <View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: color.surface.base }]} testID={testID} />
+  }
+
+  const colors = FORMULA_MINT_DARK_COLORS
   const safeScope = safeFormulaScope(scope)
   const baseId = `formulaMintCanvasBase${safeScope}`
   const topRightId = `formulaMintCanvasTopRight${safeScope}`

@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Image } from 'expo-image'
-import { Pressable, Text, View, type ImageSourcePropType, type StyleProp, type TextStyle } from 'react-native'
+import { Pressable, Text, View, type StyleProp, type TextStyle } from 'react-native'
 import Svg, { Path } from 'react-native-svg'
 
 import { KaelButton, KaelTextInput } from '@/components/ui/kael-primitives'
@@ -10,10 +9,9 @@ import { generateClientRequestId } from '@/lib/client-request-id'
 import { customerAccountService } from '@/lib/services'
 
 import type { CustomerThemeTokens, ThemeMode } from '../customer-theme'
-import { customerV21Assets } from '../ui/assets'
 import { customerV21ProfileFoundationUtilityStyles as styles } from './profile-foundation-utility-styles'
 import { ProfilePreferenceOption, ProfilePreferencePanel } from './profile-preference-surfaces'
-import { ProfileFormulaMintSurface } from './profile-utility-surfaces'
+import { ProfileSettingsGlyph, type ProfileSettingsGlyphName } from './profile-settings-icons'
 
 type CustomerNotification = NotificationListResponse['notifications'][number]
 
@@ -56,6 +54,8 @@ export function ProfileAppearanceView({
         body={language === 'vi'
           ? 'Lựa chọn được lưu trên thiết bị này và áp dụng ngay.'
           : 'Your choice is saved on this device and applied immediately.'}
+        icon="appearance"
+        simple
         scope="Appearance"
         testID="customer-v21-profile-appearance-card"
         title={language === 'vi' ? 'Chọn giao diện dễ nhìn với bạn' : 'Choose the appearance that works for you'}
@@ -118,7 +118,8 @@ export function ProfileNotificationsView({
         body={unreadCount > 0
           ? (language === 'vi' ? `${unreadCount} thông báo chưa đọc` : `${unreadCount} unread notifications`)
           : (language === 'vi' ? 'Không có thông báo chưa đọc' : 'No unread notifications')}
-        image={customerV21Assets.notification}
+        icon="notifications"
+        simple
         scope="NotificationsSummary"
         testID="customer-v21-profile-notifications-summary"
         title={language === 'vi' ? 'Cập nhật quan trọng của bạn' : 'Your important updates'}
@@ -132,12 +133,9 @@ export function ProfileNotificationsView({
             style={[styles.emptyCard, { backgroundColor: tokens.base, borderColor: tokens.border }]}
             testID="customer-v21-profile-notifications-empty"
           >
-            <Image
-              accessibilityIgnoresInvertColors
-              contentFit="contain"
-              source={customerV21Assets.activityEmpty}
-              style={styles.emptyIcon}
-            />
+            <View style={[styles.emptyIconFrame, { backgroundColor: tokens.raised, borderColor: tokens.border }]}>
+              <ProfileSettingsGlyph color={tokens.primary} name="notifications" />
+            </View>
             <Text style={[styles.title, { color: tokens.text }]}>
               {language === 'vi' ? 'Chưa có thông báo' : 'No notifications yet'}
             </Text>
@@ -234,8 +232,8 @@ export function ProfileSupportView({
         body={language === 'vi'
           ? 'Chọn đúng nơi để xem công việc hoặc hỏi cách sử dụng ứng dụng.'
           : 'Choose where to review a job or ask how to use the app.'}
-        framelessCenteredImage
-        image={customerV21Assets.feedback}
+        icon="support"
+        simple
         scope="SupportSummary"
         testID="customer-v21-profile-support-summary"
         title={language === 'vi' ? 'Bạn đang cần trợ giúp việc gì?' : 'What do you need help with?'}
@@ -244,7 +242,7 @@ export function ProfileSupportView({
         <View style={[styles.listSurface, { backgroundColor: tokens.base, borderColor: tokens.border }]}>
           <FoundationActionRow
             body={language === 'vi' ? 'Xem công việc, giao dịch hoặc gửi yêu cầu sau dịch vụ.' : 'Review jobs, transactions, or request after-service help.'}
-            image={customerV21Assets.activity}
+            glyph="activity"
             onPress={onOpenHistory}
             testID="customer-v21-profile-support-history"
             title={language === 'vi' ? 'Hỗ trợ theo công việc' : 'Job-specific help'}
@@ -253,7 +251,7 @@ export function ProfileSupportView({
           <View style={[styles.divider, { backgroundColor: tokens.border }]} />
           <FoundationActionRow
             body={language === 'vi' ? 'Hỏi Kael về cách dùng ứng dụng; Kael không thay người hỗ trợ xử lý tranh chấp.' : 'Ask Kael how to use the app; Kael does not replace dispute support.'}
-            image={customerV21Assets.tools}
+            glyph="tools"
             onPress={onOpenKael}
             testID="customer-v21-profile-support-kael"
             title={language === 'vi' ? 'Hỏi Kael cách sử dụng' : 'Ask Kael how to use the app'}
@@ -313,122 +311,128 @@ export function ProfileDeleteAccountView({
 
   return (
     <View style={styles.utilityStack} testID="customer-v21-profile-utility-delete-account-screen">
-      <View
-        style={[styles.dangerCard, { backgroundColor: tokens.raised, borderColor: tokens.danger }]}
-        testID="customer-v21-profile-delete-account-warning"
+      <ProfilePreferencePanel
+        body={language === 'vi'
+          ? 'Thao tác này không thể hoàn tác. Xác nhận từng bước trước khi tiếp tục.'
+          : 'This action cannot be undone. Confirm each step before continuing.'}
+        hideHeader
+        icon="delete"
+        simple
+        scope="DeleteAccount"
+        testID="customer-v21-profile-delete-account-card"
+        title={language === 'vi' ? 'Xóa tài khoản' : 'Delete account'}
+        tokens={tokens}
       >
         <View
-          style={styles.summaryIconFrame}
-          testID="customer-v21-profile-delete-account-icon-frame"
-        >
-          <Image
-            accessibilityIgnoresInvertColors
-            contentFit="contain"
-            source={customerV21Assets.deleteAccount}
-            style={styles.summaryIcon}
-            testID="customer-v21-profile-delete-account-icon"
-          />
-        </View>
-        <View style={styles.summaryCopy}>
-          <Text style={[styles.title, { color: tokens.danger }]}>
-            {language === 'vi' ? 'Xóa tài khoản là thao tác không thể hoàn tác' : 'Account deletion cannot be undone'}
-          </Text>
-          <Text style={[styles.body, { color: tokens.muted }]}>
-            {language === 'vi'
-              ? 'Thông tin liên hệ, địa chỉ, tài khoản hoàn tiền và thông báo của bạn sẽ bị xóa. Hồ sơ giao dịch cần thiết có thể được giữ lại nhưng không còn dùng để đăng nhập.'
-              : 'Your contact details, addresses, refund account, and notifications will be removed. Required transaction records may be retained without login access.'}
-          </Text>
-        </View>
-      </View>
-
-      <ProfileFormulaMintSurface
-        scope="DeleteAccountConfirmation"
-        style={[styles.confirmationCard, { backgroundColor: tokens.raised, borderColor: tokens.border }]}
-        testID="customer-v21-profile-delete-account-confirmation-card"
-      >
-        <Pressable
-          accessibilityLabel={language === 'vi' ? 'Tôi hiểu dữ liệu cá nhân sẽ bị xóa' : 'I understand my personal data will be deleted'}
-          accessibilityRole="checkbox"
-          accessibilityState={{ checked: acknowledged, disabled: deleting }}
-          disabled={deleting}
-          onPress={() => setAcknowledged((current) => !current)}
-          style={styles.checkboxRow}
-          testID="customer-v21-profile-delete-account-acknowledgement"
+          style={[styles.dangerCard, { backgroundColor: tokens.base, borderColor: tokens.danger }]}
+          testID="customer-v21-profile-delete-account-warning"
         >
           <View
-            style={[
-              styles.checkbox,
-              {
-                backgroundColor: acknowledged ? tokens.primary : 'transparent',
-                borderColor: acknowledged ? tokens.primary : tokens.borderStrong,
-              },
-            ]}
+            style={[styles.dangerIconFrame, { borderColor: tokens.danger }]}
+            testID="customer-v21-profile-delete-account-icon-frame"
           >
-            {acknowledged ? <Text style={[styles.checkboxMark, { color: tokens.primaryText }]}>✓</Text> : null}
+            <ProfileSettingsGlyph color={tokens.danger} name="delete" testID="customer-v21-profile-delete-account-icon" />
           </View>
-          <Text style={[styles.checkboxLabel, { color: tokens.text }]}>
-            {language === 'vi'
-              ? 'Tôi hiểu dữ liệu cá nhân của mình sẽ bị xóa và không thể khôi phục.'
-              : 'I understand that my personal data will be deleted and cannot be restored.'}
-          </Text>
-        </Pressable>
+          <View style={styles.summaryCopy}>
+            <Text style={[styles.title, { color: tokens.danger }]}>
+              {language === 'vi' ? 'Xóa tài khoản là thao tác không thể hoàn tác' : 'Account deletion cannot be undone'}
+            </Text>
+            <Text style={[styles.body, { color: tokens.muted }]}>
+              {language === 'vi'
+                ? 'Thông tin liên hệ, địa chỉ, tài khoản hoàn tiền và thông báo của bạn sẽ bị xóa. Hồ sơ giao dịch cần thiết có thể được giữ lại nhưng không còn dùng để đăng nhập.'
+                : 'Your contact details, addresses, refund account, and notifications will be removed. Required transaction records may be retained without login access.'}
+            </Text>
+          </View>
+        </View>
 
         <View
-          style={styles.confirmationCopy}
-          testID="customer-v21-profile-delete-account-confirmation-copy"
+          style={[styles.confirmationCard, { backgroundColor: tokens.base, borderColor: tokens.border }]}
+          testID="customer-v21-profile-delete-account-confirmation-card"
         >
-          <Text style={[styles.body, { color: tokens.muted }]}>
-            {language === 'vi' ? 'Nhập đúng cụm từ sau để xác nhận:' : 'Enter this exact phrase to confirm:'}
-          </Text>
-          <Text selectable style={[styles.confirmationPhrase, { color: tokens.text }]}>
-            {ACCOUNT_DELETION_CONFIRMATION}
-          </Text>
+          <Pressable
+            accessibilityLabel={language === 'vi' ? 'Tôi hiểu dữ liệu cá nhân sẽ bị xóa' : 'I understand my personal data will be deleted'}
+            accessibilityRole="checkbox"
+            accessibilityState={{ checked: acknowledged, disabled: deleting }}
+            disabled={deleting}
+            onPress={() => setAcknowledged((current) => !current)}
+            style={styles.checkboxRow}
+            testID="customer-v21-profile-delete-account-acknowledgement"
+          >
+            <View
+              style={[
+                styles.checkbox,
+                {
+                  backgroundColor: acknowledged ? tokens.primary : 'transparent',
+                  borderColor: acknowledged ? tokens.primary : tokens.borderStrong,
+                },
+              ]}
+            >
+              {acknowledged ? <Text style={[styles.checkboxMark, { color: tokens.primaryText }]}>✓</Text> : null}
+            </View>
+            <Text style={[styles.checkboxLabel, { color: tokens.text }]}>
+              {language === 'vi'
+                ? 'Tôi hiểu dữ liệu cá nhân của mình sẽ bị xóa và không thể khôi phục.'
+                : 'I understand that my personal data will be deleted and cannot be restored.'}
+            </Text>
+          </Pressable>
+
+          <View
+            style={styles.confirmationCopy}
+            testID="customer-v21-profile-delete-account-confirmation-copy"
+          >
+            <Text style={[styles.body, { color: tokens.muted }]}>
+              {language === 'vi' ? 'Nhập đúng cụm từ sau để xác nhận:' : 'Enter this exact phrase to confirm:'}
+            </Text>
+            <Text selectable style={[styles.confirmationPhrase, { color: tokens.text }]}>
+              {ACCOUNT_DELETION_CONFIRMATION}
+            </Text>
+          </View>
+          <KaelTextInput
+            accessibilityLabel={language === 'vi' ? 'Cụm từ xác nhận xóa tài khoản' : 'Account deletion confirmation phrase'}
+            autoCapitalize="characters"
+            editable={!deleting}
+            onChangeText={setConfirmation}
+            placeholder={ACCOUNT_DELETION_CONFIRMATION}
+            placeholderTextColor={tokens.subtleText}
+            style={[
+              styles.confirmationInput,
+              textInputNoOutlineStyle,
+              { backgroundColor: tokens.base, borderColor: tokens.border, color: tokens.text },
+            ]}
+            testID="customer-v21-profile-delete-account-confirmation"
+            value={confirmation}
+          />
+          <KaelButton
+            disabled={!canDelete}
+            label={deleting
+              ? (language === 'vi' ? 'Đang xóa tài khoản' : 'Deleting account')
+              : (language === 'vi' ? 'Xóa tài khoản của tôi' : 'Delete my account')}
+            onPress={() => void deleteAccount()}
+            showPrimaryGradient={false}
+            style={[styles.deleteButton, canDelete ? { backgroundColor: tokens.danger } : null]}
+            testID="customer-v21-profile-delete-account-submit"
+          />
+          {message ? (
+            <Text accessibilityRole="alert" style={[styles.message, { color: tokens.danger }]} testID="customer-v21-profile-delete-account-message">
+              {message}
+            </Text>
+          ) : null}
         </View>
-        <KaelTextInput
-          accessibilityLabel={language === 'vi' ? 'Cụm từ xác nhận xóa tài khoản' : 'Account deletion confirmation phrase'}
-          autoCapitalize="characters"
-          editable={!deleting}
-          onChangeText={setConfirmation}
-          placeholder={ACCOUNT_DELETION_CONFIRMATION}
-          placeholderTextColor={tokens.subtleText}
-          style={[
-            styles.confirmationInput,
-            textInputNoOutlineStyle,
-            { backgroundColor: tokens.base, borderColor: tokens.border, color: tokens.text },
-          ]}
-          testID="customer-v21-profile-delete-account-confirmation"
-          value={confirmation}
-        />
-        <KaelButton
-          disabled={!canDelete}
-          label={deleting
-            ? (language === 'vi' ? 'Đang xóa tài khoản' : 'Deleting account')
-            : (language === 'vi' ? 'Xóa tài khoản của tôi' : 'Delete my account')}
-          onPress={() => void deleteAccount()}
-          showPrimaryGradient={false}
-          style={[styles.deleteButton, canDelete ? { backgroundColor: tokens.danger } : null]}
-          testID="customer-v21-profile-delete-account-submit"
-        />
-        {message ? (
-          <Text accessibilityRole="alert" style={[styles.message, { color: tokens.danger }]} testID="customer-v21-profile-delete-account-message">
-            {message}
-          </Text>
-        ) : null}
-      </ProfileFormulaMintSurface>
+      </ProfilePreferencePanel>
     </View>
   )
 }
 
 function FoundationActionRow({
   body,
-  image,
+  glyph,
   onPress,
   testID,
   title,
   tokens,
 }: {
   body: string
-  image: ImageSourcePropType
+  glyph: ProfileSettingsGlyphName
   onPress: () => void
   testID: string
   title: string
@@ -447,7 +451,7 @@ function FoundationActionRow({
         style={[styles.actionIconFrame, { backgroundColor: 'transparent' }]}
         testID={`${testID}-icon`}
       >
-        <Image accessibilityIgnoresInvertColors contentFit="contain" source={image} style={styles.actionIcon} />
+        <ProfileSettingsGlyph color={tokens.primary} name={glyph} testID={`${testID}-icon-glyph`} />
       </View>
       <View style={styles.actionCopy}>
         <Text style={[styles.title, { color: tokens.text }]}>{title}</Text>

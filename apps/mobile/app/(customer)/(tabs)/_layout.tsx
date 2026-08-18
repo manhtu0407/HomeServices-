@@ -23,7 +23,7 @@ function CustomerNativeTabs() {
   return (
     <NativeTabs tintColor={color.brand.ios26TabTint} minimizeBehavior="onScrollDown">
       <NativeTabs.BottomAccessory>
-        <NativeKaelBottomAccessory route="/(customer)/kael-chat?mode=normal" />
+        <NativeKaelBottomAccessory route="/(customer)/kael-chat?mode=normal" visualRole="customer" />
       </NativeTabs.BottomAccessory>
       <NativeTabs.Trigger name="home">
         <NativeTabs.Trigger.Icon sf="house" />

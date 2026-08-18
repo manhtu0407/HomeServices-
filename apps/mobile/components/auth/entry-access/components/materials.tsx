@@ -68,44 +68,7 @@ export function useEntryAccessibility(): AccessibilityPreferences {
 }
 
 export function PageAura() {
-  if (Platform.OS !== 'web') return null
-
-  return (
-    <View pointerEvents="none" style={StyleSheet.absoluteFill}>
-      <Svg width="100%" height="100%" viewBox="0 0 390 844" preserveAspectRatio="none">
-        <Defs>
-          <RadialGradient id="topAura" cx="84%" cy="4%" r="72%">
-            <Stop offset="0" stopColor="#8FE2D4" stopOpacity="0.30" />
-            <Stop offset="0.36" stopColor="#E6F7F3" stopOpacity="0.23" />
-            <Stop offset="0.72" stopColor="#F7FFFB" stopOpacity="0" />
-          </RadialGradient>
-          <LinearGradient id="baseWash" x1="0" y1="0" x2="0" y2="1">
-            <Stop offset="0" stopColor="#FCFFFE" />
-            <Stop offset="0.50" stopColor="#F7FFFB" />
-            <Stop offset="1" stopColor="#F4FAF9" />
-          </LinearGradient>
-        </Defs>
-        <Rect width="390" height="844" fill="url(#baseWash)" />
-        <Rect width="390" height="844" fill="url(#topAura)" />
-      </Svg>
-      <Svg width="620" height="230" viewBox="0 0 620 230" style={styles.ribbon}>
-        <Defs>
-          <LinearGradient id="ribbonFill" x1="0" y1="0" x2="0" y2="1">
-            <Stop offset="0" stopColor="#C8F4EA" stopOpacity="0.17" />
-            <Stop offset="1" stopColor="#28C4B3" stopOpacity="0.12" />
-          </LinearGradient>
-        </Defs>
-        <PathWithFallback />
-        <Rect x="58" y="48" width="500" height="104" rx="52" fill="none" stroke="#8FE2D4" strokeOpacity="0.18" />
-        <Rect x="24" y="78" width="566" height="128" rx="64" fill="none" stroke="#8FE2D4" strokeOpacity="0.28" />
-      </Svg>
-    </View>
-  )
-}
-
-function PathWithFallback() {
-  // Rect/large radius renders more consistently than a complex path on old Android SVG engines.
-  return <Rect x="0" y="112" width="620" height="190" rx="95" fill="url(#ribbonFill)" />
+  return null
 }
 
 export function GlassPanel({ children, style, testID }: PropsWithChildren<{ style?: StyleProp<ViewStyle>; testID?: string }>) {
@@ -259,5 +222,4 @@ const styles = StyleSheet.create({
     ...entryTheme.shadow.primary,
   },
   primaryLabel: { ...entryTheme.typography.subheadline, color: entryTheme.color.text.inverse, fontWeight: '600' },
-  ribbon: { bottom: -120, left: -124, position: 'absolute', transform: [{ rotate: '-7deg' }] },
 })

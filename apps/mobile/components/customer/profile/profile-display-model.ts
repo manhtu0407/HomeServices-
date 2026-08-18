@@ -124,14 +124,14 @@ export function initialsForName(name: string) {
   return `${first}${last ?? ''}`.toLocaleUpperCase('vi-VN')
 }
 
-export function homeGreeting(name: string, language: AppLanguage) {
-  const hour = new Date().getHours()
+export function homeGreeting(name: string, language: AppLanguage, now = new Date()) {
+  const hour = now.getHours()
   if (language === 'vi') {
     const moment = hour < 12 ? 'Chào buổi sáng' : hour < 18 ? 'Chào buổi chiều' : 'Chào buổi tối'
-    return `${moment}, ${name}`
+    return `${moment}, ${name}👋!`
   }
   const moment = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening'
-  return `${moment}, ${name}`
+  return `${moment}, ${name}👋!`
 }
 
 export function customerAccountJourneyDisplay({

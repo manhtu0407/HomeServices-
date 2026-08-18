@@ -6,6 +6,7 @@ import {
 } from 'react-native'
 
 import { useWorkerThemeMode } from '../worker-theme'
+import { WorkerV5FormulaMintCardAura } from '../ui/aura-surfaces'
 import { styles } from './settings-styles'
 
 function Text({ style, ...props }: TextProps) {
@@ -48,14 +49,17 @@ export function WorkerV5SettingsChoiceRow({
 }
 
 export function WorkerV5ReadOnlyToggleList({
+  formula = false,
   items,
   reduceTransparency,
 }: {
+  formula?: boolean
   items: readonly { enabled: boolean; label: string; value: string }[]
   reduceTransparency: boolean
 }) {
   return (
-    <View style={[styles.toggleList, reduceTransparency && styles.opaqueCard]} testID="worker-v5-toggle-list">
+    <View style={[styles.toggleList, formula && styles.toggleListFormula, reduceTransparency && styles.opaqueCard]} testID="worker-v5-toggle-list">
+      {formula ? <WorkerV5FormulaMintCardAura reduceTransparency={reduceTransparency} scope="WorkerVerificationRenewal" testID="worker-v5-verification-renewal-formula-mint-aura" /> : null}
       {items.map((item, index) => (
         <View key={`${item.label}-${item.value}`} style={styles.toggleRow} testID={`worker-v5-toggle-row-${index}`}>
           <View style={styles.toggleTextColumn}>

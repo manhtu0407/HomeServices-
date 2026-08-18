@@ -699,14 +699,18 @@ export type EarningsResponse = {
   cash_commission_due_total: number
   pending_payment_count: number
   pending_payment_amount: number
+  provisional_payment_count?: number
+  provisional_payment_amount?: number
   on_hold_amount: number
   current_commission_level: number
   current_commission_rate_bps: number
+  withdrawal_eligible_at?: string | null
   recent_transactions: {
     job_id: string
     display_code: string | null
     entry_type: 'worker_credit' | 'cash_commission_debit'
     payment_state: 'pending' | 'available' | 'on_hold' | 'reversed' | 'cash_collected' | 'cash_reconciliation_due'
+    settlement_state?: 'pending' | 'customer_claimed' | 'admin_verified' | 'admin_rejected'
     gross_amount: number
     platform_fee: number
     worker_net: number

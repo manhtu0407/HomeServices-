@@ -1,6 +1,7 @@
-import { Pressable, Text as RNText, type PressableStateCallbackType, type TextProps, View, type ViewStyle } from 'react-native'
+import { Text as RNText, View, type TextProps, type ViewStyle } from 'react-native'
 import Animated, { type AnimatedStyle } from 'react-native-reanimated'
 import type { AppLanguage } from '@/lib/app-language'
+import { KaelLiquidPressable } from '@/components/customer/kael-chat/kael-liquid-pressable'
 import { GlassSurface } from '@/components/ui/glass-surface'
 import { LiquidBackButton, LiquidSurfaceOverlay } from '@/components/ui/liquid-back-button'
 import { KaelModeMenuMintAura } from '@/components/ui/kael-mode-menu-mint-aura'
@@ -96,20 +97,21 @@ export function WorkerV5KaelOrbNavigationSurface({
             testID="worker-v5-kael-header-actions-liquid"
           />
         ) : null}
-        <Pressable
+        <KaelLiquidPressable
           accessibilityLabel={textByLanguage(language, 'Quản lý các phiên Kael', 'Manage Kael conversations')}
           accessibilityRole="button"
           accessibilityState={{ expanded: sessionMenuOpen }}
           onPress={onToggleSessionMenu}
-          style={({ pressed }) => [
+          reduceMotion={reduceMotion}
+          selected={sessionMenuOpen}
+          style={[
             styles.kaelOrbCustomerSessionTrigger,
             sessionMenuOpen ? styles.kaelOrbCustomerSessionTriggerOpen : null,
-            pressed ? (reduceMotion ? styles.kaelOrbCustomerSessionTriggerPressedReduced : styles.kaelOrbCustomerHeaderTriggerPressed) : null,
           ]}
           testID="worker-v5-kael-session-toggle"
         >
           <WorkerV5KaelSessionIcon kind="plus" strokeColor={color.text.primary} strokeWidth={2.7} />
-        </Pressable>
+        </KaelLiquidPressable>
         <Animated.View
           style={[
             styles.kaelOrbCustomerModeTrigger,
@@ -118,7 +120,7 @@ export function WorkerV5KaelOrbNavigationSurface({
           ]}
           testID="worker-v5-kael-mode-trigger-frame"
         >
-          <Pressable
+          <KaelLiquidPressable
             accessibilityLabel={textByLanguage(
               language,
               `Chế độ Kael: ${activeMode.label}. Nhấn để đổi chế độ`,
@@ -127,10 +129,9 @@ export function WorkerV5KaelOrbNavigationSurface({
             accessibilityRole="button"
             accessibilityState={{ expanded: modeMenuOpen }}
             onPress={onToggleModeMenu}
-            style={({ pressed }: PressableStateCallbackType) => [
-              styles.kaelOrbCustomerModeTriggerPressTarget,
-              pressed ? (reduceMotion ? styles.kaelOrbCustomerModeTriggerPressedReduced : styles.kaelOrbCustomerHeaderTriggerPressed) : null,
-            ]}
+            reduceMotion={reduceMotion}
+            selected={modeMenuOpen}
+            style={styles.kaelOrbCustomerModeTriggerPressTarget}
             testID="worker-v5-kael-mode-toggle"
           >
             <Text
@@ -142,7 +143,7 @@ export function WorkerV5KaelOrbNavigationSurface({
             >
               {activeMode.label}
             </Text>
-          </Pressable>
+          </KaelLiquidPressable>
         </Animated.View>
       </GlassSurface>
     </View>
@@ -174,16 +175,17 @@ export function WorkerV5KaelOrbNavigationSurface({
         <Animated.View style={[styles.kaelOrbCustomerModeMenuOptions, animatedModeMenuContentStyle]} testID="worker-v5-kael-mode-menu-options">
           {modeOptions.map((item) => {
             const selected = mode === item.value
-            return <Pressable
+            return <KaelLiquidPressable
               accessibilityRole="tab"
               accessibilityState={{ selected }}
               key={item.value}
               onPress={() => onSelectMode(item.value)}
-              style={({ pressed }) => [
+              reduceMotion={reduceMotion}
+              selected={selected}
+              style={[
                 styles.kaelOrbCustomerModeMenuOption,
                 selected ? styles.kaelOrbCustomerModeMenuOptionActive : null,
                 reduceTransparency ? styles.opaqueCard : null,
-                pressed ? styles.pressed : null,
               ]}
               testID={`worker-v5-kael-mode-menu-${item.value}`}
             >
@@ -192,7 +194,7 @@ export function WorkerV5KaelOrbNavigationSurface({
                 <Text style={styles.kaelOrbCustomerModeMenuDescription}>{item.description}</Text>
               </View>
               {selected ? <Text style={styles.kaelOrbCustomerModeMenuCheck}>{'✓'}</Text> : null}
-            </Pressable>
+            </KaelLiquidPressable>
           })}
         </Animated.View>
       </Animated.View>

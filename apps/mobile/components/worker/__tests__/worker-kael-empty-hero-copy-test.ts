@@ -2,17 +2,27 @@ import {
   getWorkerKaelEmptyHeroCopy,
   millisecondsUntilNextVietnamTwoHourSlot,
 } from '../chat/empty-hero-copy'
+import {
+  CUSTOMER_KAEL_EMPTY_HERO_LINE_COUNT,
+  getCustomerKaelEmptyHeroCopy,
+} from '@/components/customer/kael-chat/kael-empty-hero-copy'
 
 const TWO_HOURS_MS = 2 * 60 * 60 * 1000
 const VIETNAM_DAY_START_UTC = Date.UTC(2026, 6, 13, 17)
 
 describe('Worker Kael empty hero copy', () => {
-  it.each(['normal', 'intake'] as const)('serves twelve distinct Vietnamese lines across a Vietnam day for %s chat', (mode) => {
-    const lines = Array.from({ length: 12 }, (_, slot) => (
-      getWorkerKaelEmptyHeroCopy(mode, 'vi', new Date(VIETNAM_DAY_START_UTC + slot * TWO_HOURS_MS)).text
-    ))
+  it.each(['normal', 'intake'] as const)('reuses twenty English Customer quotes for %s chat', (mode) => {
+    const customerMode = mode === 'intake' ? 'case' : 'normal'
 
-    expect(new Set(lines).size).toBe(12)
+    expect(CUSTOMER_KAEL_EMPTY_HERO_LINE_COUNT[customerMode]).toBe(20)
+    for (let slot = 0; slot < 12; slot += 1) {
+      const now = new Date(VIETNAM_DAY_START_UTC + slot * TWO_HOURS_MS)
+      const expected = getCustomerKaelEmptyHeroCopy(customerMode, 'en', now)
+
+      expect(getWorkerKaelEmptyHeroCopy(mode, 'vi', now)).toEqual(expected)
+      expect(getWorkerKaelEmptyHeroCopy(mode, 'en', now)).toEqual(expected)
+      expect(expected.text).not.toMatch(/[À-ỹĐđ]/)
+    }
   })
 
   it('keeps normal chat and job intake language independent in every time slot', () => {
@@ -41,17 +51,30 @@ describe('Worker Kael empty hero copy', () => {
     )
   })
 
-  it('rotates the two lines inside a matching four-hour period across Vietnam dates', () => {
-    const observedOrders = new Set<string>()
+  it('keeps the Customer quote rotation stable across Vietnam dates', () => {
+    const observedQuotes = new Set<string>()
     for (let day = 0; day < 31; day += 1) {
       const dayStart = VIETNAM_DAY_START_UTC + day * 24 * 60 * 60 * 1000
-      observedOrders.add([
-        getWorkerKaelEmptyHeroCopy('intake', 'vi', new Date(dayStart)).text,
-        getWorkerKaelEmptyHeroCopy('intake', 'vi', new Date(dayStart + TWO_HOURS_MS)).text,
-      ].join('|'))
+      observedQuotes.add(getWorkerKaelEmptyHeroCopy('intake', 'vi', new Date(dayStart)).text)
     }
 
-    expect(observedOrders.size).toBe(2)
+    expect(observedQuotes.size).toBeGreaterThan(1)
+  })
+
+  it('keeps Worker quotes short and punctuated in both chat modes', () => {
+    for (const mode of ['normal', 'intake'] as const) {
+      for (let slot = 0; slot < 12; slot += 1) {
+        const quote = getWorkerKaelEmptyHeroCopy(
+          mode,
+          'vi',
+          new Date(VIETNAM_DAY_START_UTC + slot * TWO_HOURS_MS),
+        ).text
+
+        expect(quote.length).toBeLessThanOrEqual(44)
+        expect(quote).toMatch(/[.!]+$/)
+        expect(quote).not.toMatch(/[À-ỹĐđ]/)
+      }
+    }
   })
 
   it('schedules the next update at the real Vietnam slot boundary', () => {

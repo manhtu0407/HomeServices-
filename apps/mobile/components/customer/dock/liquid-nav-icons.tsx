@@ -1,7 +1,7 @@
 import Svg, { Circle, Path, Rect } from 'react-native-svg'
 import type { ColorValue, StyleProp, ViewStyle } from 'react-native'
 
-export type LiquidNavIconName = 'activity' | 'camera' | 'earnings' | 'home' | 'profile' | 'services'
+export type LiquidNavIconName = 'activity' | 'balance' | 'camera' | 'document' | 'earnings' | 'home' | 'profile' | 'services' | 'withdrawal'
 
 export function LiquidNavIcon({ color, name, selected, size = 22, style, testID }: {
   color: ColorValue
@@ -36,6 +36,23 @@ export function LiquidNavIcon({ color, name, selected, size = 22, style, testID 
           <Rect height={6.7} rx={2} stroke={color} strokeWidth={strokeWidth} width={6.7} x={13.6} y={3.7} />
           <Rect height={6.7} rx={2} stroke={color} strokeWidth={strokeWidth} width={6.7} x={3.7} y={13.6} />
           <Rect height={6.7} rx={2} stroke={color} strokeWidth={strokeWidth} width={6.7} x={13.6} y={13.6} />
+        </>
+      ) : name === 'document' ? (
+        <>
+          <Path d="M7.25 3.75h6.5l4.9 4.9v11.6H7.25a2.5 2.5 0 0 1-2.5-2.5V6.25a2.5 2.5 0 0 1 2.5-2.5Z" stroke={color} strokeLinecap="round" strokeLinejoin="round" strokeWidth={strokeWidth} />
+          <Path d="M13.75 3.75v4.9h4.9M8.6 12.45h6.8M8.6 16h6.8" stroke={color} strokeLinecap="round" strokeLinejoin="round" strokeWidth={strokeWidth} />
+        </>
+      ) : name === 'balance' ? (
+        <>
+          <Path d="M6.25 8.25c0-1.52 2.57-2.75 5.75-2.75s5.75 1.23 5.75 2.75-2.57 2.75-5.75 2.75-5.75-1.23-5.75-2.75Z" stroke={color} strokeWidth={strokeWidth} />
+          <Path d="M6.25 8.25v3.5c0 1.52 2.57 2.75 5.75 2.75s5.75-1.23 5.75-2.75v-3.5M6.25 11.75v3.5c0 1.52 2.57 2.75 5.75 2.75s5.75-1.23 5.75-2.75v-3.5" stroke={color} strokeLinecap="round" strokeLinejoin="round" strokeWidth={strokeWidth} />
+          <Circle cx={12} cy={8.25} fill={color} r={0.9} />
+        </>
+      ) : name === 'withdrawal' ? (
+        <>
+          <Path d="M4.5 6.25A2.5 2.5 0 0 1 7 3.75h9.5A2.5 2.5 0 0 1 19 6.25v4.5" stroke={color} strokeLinecap="round" strokeLinejoin="round" strokeWidth={strokeWidth} />
+          <Path d="M4.5 7.25h15v5.5h-3.25a2.75 2.75 0 0 0 0 5.5H19v.5A2.5 2.5 0 0 1 16.5 21h-9A2.5 2.5 0 0 1 5 18.5V7.75" stroke={color} strokeLinecap="round" strokeLinejoin="round" strokeWidth={strokeWidth} />
+          <Path d="M12 3.75v6.5m0 0-2.25-2.25M12 10.25l2.25-2.25" stroke={color} strokeLinecap="round" strokeLinejoin="round" strokeWidth={strokeWidth} />
         </>
       ) : name === 'earnings' ? (
         <>

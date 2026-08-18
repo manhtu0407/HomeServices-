@@ -69,6 +69,175 @@ export const styles = StyleSheet.create({
     position: 'relative',
     zIndex: 1,
   },
+  serviceCardShell: {
+    borderRadius: 24,
+  },
+  serviceFormCard: {
+    borderRadius: 24,
+    borderWidth: 1,
+    gap: 14,
+    paddingHorizontal: 18,
+    paddingVertical: 18,
+  },
+  serviceFormHeader: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 12,
+  },
+  serviceFormIntroIcon: {
+    alignItems: 'center',
+    borderRadius: 12,
+    flexShrink: 0,
+    height: 24,
+    justifyContent: 'center',
+    width: 24,
+  },
+  serviceFormIntroCopy: {
+    flex: 1,
+    gap: 2,
+    minWidth: 0,
+  },
+  serviceFormIntroTitle: {
+    ...typography.callout,
+    fontWeight: '700',
+  },
+  serviceFormIntroBody: {
+    ...typography.footnote,
+  },
+  serviceSummary: {
+    alignItems: 'center',
+    borderRadius: 16,
+    borderWidth: 1,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    minHeight: 62,
+    paddingHorizontal: 14,
+  },
+  serviceSummaryCopy: {
+    flex: 1,
+    gap: 1,
+    minWidth: 0,
+  },
+  serviceSummaryLabel: {
+    ...typography.caption1,
+  },
+  serviceSummaryValue: {
+    ...typography.body,
+    fontWeight: '600',
+  },
+  serviceSummaryStatus: {
+    alignItems: 'center',
+    borderRadius: 999,
+    flexDirection: 'row',
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  serviceSummaryStatusDot: {
+    borderRadius: 4,
+    height: 7,
+    width: 7,
+  },
+  serviceSummaryStatusText: {
+    ...typography.caption2,
+    fontWeight: '700',
+  },
+  serviceList: {
+    borderRadius: 18,
+    borderWidth: 1,
+    overflow: 'hidden',
+  },
+  serviceRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 12,
+    minHeight: 76,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  serviceRowPressed: {
+    opacity: 0.76,
+  },
+  serviceIcon: {
+    alignItems: 'center',
+    borderRadius: 12,
+    flexShrink: 0,
+    height: 24,
+    justifyContent: 'center',
+    width: 24,
+  },
+  serviceCopy: {
+    flex: 1,
+    gap: 2,
+    minWidth: 0,
+  },
+  serviceTitle: {
+    ...typography.body,
+    fontWeight: '600',
+  },
+  serviceDetailRail: {
+    alignItems: 'flex-start',
+    flexDirection: 'column',
+  },
+  serviceDetail: {
+    ...typography.caption1,
+  },
+  serviceState: {
+    alignItems: 'flex-end',
+    flexShrink: 0,
+    gap: 6,
+    minWidth: 76,
+  },
+  serviceStatus: {
+    ...typography.caption2,
+    fontWeight: '600',
+  },
+  selectionMark: {
+    alignItems: 'center',
+    borderRadius: 8,
+    borderWidth: 1,
+    height: 22,
+    justifyContent: 'center',
+    width: 22,
+  },
+  serviceDivider: {
+    height: StyleSheet.hairlineWidth,
+    marginLeft: 64,
+  },
+  serviceEmpty: {
+    alignItems: 'center',
+    borderRadius: 18,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 12,
+    minHeight: 92,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+  },
+  serviceEmptyIcon: {
+    alignItems: 'center',
+    borderRadius: 12,
+    flexShrink: 0,
+    height: 24,
+    justifyContent: 'center',
+    width: 24,
+  },
+  serviceEmptyCopy: {
+    flex: 1,
+    gap: 2,
+    minWidth: 0,
+  },
+  serviceEmptyTitle: {
+    ...typography.body,
+    fontWeight: '600',
+  },
+  serviceEmptyMeta: {
+    ...typography.caption1,
+  },
+  serviceFormHelper: {
+    ...typography.caption1,
+    paddingHorizontal: 2,
+  },
   serviceSourceCard: {
     backgroundColor: 'rgba(255,255,255,0.96)',
     borderColor: 'rgba(204,223,219,0.94)',
@@ -176,6 +345,14 @@ export const styles = StyleSheet.create({
   skillsServiceHeroAmount: {
     marginTop: 0,
     ...typography.title1,
+  },
+  skillsServiceHeroContent: {
+    padding: 16,
+  },
+  skillsServiceHeroRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 14,
   },
   skillsServiceHeroCopy: {
     gap: 6,

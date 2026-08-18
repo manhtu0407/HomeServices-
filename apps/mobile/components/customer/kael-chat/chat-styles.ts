@@ -32,6 +32,10 @@ export const customerV21ChatStyles = StyleSheet.create({
     paddingHorizontal: 4,
     paddingVertical: 5,
   },
+  kaelResponseContent: {
+    flex: 1,
+    minWidth: 0,
+  },
   kaelResponseBlock: {
     width: '100%',
   },
@@ -67,6 +71,12 @@ export const customerV21ChatStyles = StyleSheet.create({
   kaelResponseText: {
     ...typography.subheadline,
   },
+  kaelResponseIdentity: {
+    alignItems: 'flex-start',
+    flexDirection: 'row',
+    gap: 8,
+    width: '100%',
+  },
   chatMediaCameraIcon: {
     height: 20,
     width: 20,
@@ -101,18 +111,25 @@ export const customerV21ChatStyles = StyleSheet.create({
   },
   chatEmptyHeroContent: {
     alignItems: 'center',
+    flexDirection: 'row',
+    gap: 8,
     justifyContent: 'center',
+    maxWidth: 420,
     width: '100%',
   },
   chatEmptyHeroCopy: {
     ...typography.title3,
-    maxWidth: 320,
-    textAlign: 'center',
+    flex: 1,
+    flexShrink: 1,
+    fontWeight: '500',
+    maxWidth: 240,
+    minWidth: 0,
+    textAlign: 'left',
   },
   chatEmptyHeroModelStage: {
     alignItems: 'center',
+    flexShrink: 0,
     justifyContent: 'center',
-    marginBottom: 14,
   },
   chatFrame: {
     flex: 1,
@@ -150,11 +167,11 @@ export const customerV21ChatStyles = StyleSheet.create({
   chatHeaderModeLabel: {
     alignSelf: 'stretch',
     ...typography.footnote,
-    fontWeight: '600',
+    fontWeight: '700',
     includeFontPadding: false,
     textAlign: 'center',
     textAlignVertical: 'center',
-    transform: [{ translateX: -12 }],
+    transform: [{ translateX: -14 }, { translateY: -1 }],
   },
   chatHeaderModeTrigger: {
     ...customerV21WebFocusRing,

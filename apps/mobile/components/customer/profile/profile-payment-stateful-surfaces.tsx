@@ -14,7 +14,6 @@ import {
   paymentBankKeyFromUnknown,
   paymentBankOptions,
 } from './payment-bank-display-model'
-import { profileUtilityTitle } from './profile-display-model'
 import { ProfileUtilityPaymentView } from './profile-utility-stateful-surfaces'
 import { customerV21ProfileUtilityStyles as profileUtilityStyles } from './profile-utility-styles'
 
@@ -228,7 +227,6 @@ export function ProfilePaymentUtilitySection({
       rootStyles={profileUtilityStyles}
       selectedBankKey={state.selectedBankKey}
       textInputNoOutlineStyle={textInputNoOutlineStyle}
-      title={profileUtilityTitle('payment', language)}
       tokens={tokens}
     />
   )

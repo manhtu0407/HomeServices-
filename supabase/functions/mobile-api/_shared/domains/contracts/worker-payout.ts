@@ -33,6 +33,7 @@ export type EdgeWorkerWithdrawalRequest = {
   bank_account_masked: string;
   status: WorkerWithdrawalRequestStatus;
   requested_at: string;
+  eligible_at: string;
   processing_at: string | null;
   processed_at: string | null;
   transfer_reference: string | null;

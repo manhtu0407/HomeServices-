@@ -79,9 +79,12 @@ export function sameWorkerEarnings(left: EarningsResponse | null, right: Earning
     && left.cash_commission_due_total === right.cash_commission_due_total
     && left.pending_payment_count === right.pending_payment_count
     && left.pending_payment_amount === right.pending_payment_amount
+    && left.provisional_payment_count === right.provisional_payment_count
+    && left.provisional_payment_amount === right.provisional_payment_amount
     && left.on_hold_amount === right.on_hold_amount
     && left.current_commission_level === right.current_commission_level
     && left.current_commission_rate_bps === right.current_commission_rate_bps
+    && left.withdrawal_eligible_at === right.withdrawal_eligible_at
     && sameWorkerRecentTransactions(left.recent_transactions, right.recent_transactions)
     && sameWorkerDailyEarnings(left.daily_earnings, right.daily_earnings)
     && left.from_date === right.from_date
@@ -232,6 +235,7 @@ export function sameWorkerWithdrawalRequests(
       && request.bank_account_masked === next.bank_account_masked
       && request.status === next.status
       && request.requested_at === next.requested_at
+      && request.eligible_at === next.eligible_at
       && request.processing_at === next.processing_at
       && request.processed_at === next.processed_at
       && request.transfer_reference === next.transfer_reference
@@ -249,6 +253,7 @@ function sameWorkerRecentTransactions(left: EarningsResponse['recent_transaction
       && item.display_code === next.display_code
       && item.entry_type === next.entry_type
       && item.payment_state === next.payment_state
+      && item.settlement_state === next.settlement_state
       && item.gross_amount === next.gross_amount
       && item.platform_fee === next.platform_fee
       && item.worker_net === next.worker_net

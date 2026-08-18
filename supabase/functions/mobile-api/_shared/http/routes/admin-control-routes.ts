@@ -38,6 +38,12 @@ export type AdminControlRoute =
     workerId: string;
     roles: AdminReadRoles;
   }
+  | {
+    kind: "admin.workers.financeSnapshot";
+    method: "GET";
+    workerId: string;
+    roles: AdminReadRoles;
+  }
   | { kind: "admin.transactions.list"; method: "GET"; roles: AdminReadRoles }
   | {
     kind: "admin.transactions.detail";
@@ -316,6 +322,17 @@ function matchAdminWorkerTransactionRoute(
     return {
       kind: "admin.workers.access",
       method: "POST",
+      workerId,
+      roles: adminReadRoles,
+    };
+  }
+  const workerFinanceSnapshot = path.match(/^\/admin\/workers\/([^/]+)\/finance-snapshot$/);
+  if (workerFinanceSnapshot && method === "GET") {
+    const workerId = decodeSegment(workerFinanceSnapshot[1] ?? "");
+    if (!workerId) return null;
+    return {
+      kind: "admin.workers.financeSnapshot",
+      method: "GET",
       workerId,
       roles: adminReadRoles,
     };

@@ -6,7 +6,9 @@ export const customerV21ServiceHistoryStyles = StyleSheet.create({
   actionRow: {
     alignItems: 'center',
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 7,
+    justifyContent: 'flex-end',
   },
   dealFooter: {
     alignItems: 'flex-end',
@@ -17,19 +19,23 @@ export const customerV21ServiceHistoryStyles = StyleSheet.create({
   detailButton: {
     minWidth: 118,
   },
+  divider: {
+    height: StyleSheet.hairlineWidth,
+  },
   favoriteButton: {
     alignItems: 'center',
-    borderRadius: 20,
+    borderRadius: 22,
     borderWidth: 1,
-    height: 40,
+    flexDirection: 'row',
+    gap: 6,
+    height: 44,
     justifyContent: 'center',
-    width: 40,
+    minWidth: 84,
+    paddingHorizontal: 11,
   },
-  favoriteIcon: {
-    ...typography.title3,
-    includeFontPadding: false,
-    textAlign: 'center',
-    textAlignVertical: 'center',
+  favoriteLabel: {
+    ...typography.caption1,
+    fontWeight: '700',
   },
   filterChip: {
     alignItems: 'center',
@@ -41,11 +47,6 @@ export const customerV21ServiceHistoryStyles = StyleSheet.create({
     overflow: 'hidden',
     paddingHorizontal: 15,
     position: 'relative',
-  },
-  filterChipAura: {
-    ...StyleSheet.absoluteFill,
-    opacity: 0.94,
-    zIndex: 0,
   },
   filterChipText: {
     ...typography.footnote,
@@ -143,10 +144,15 @@ export const customerV21ServiceHistoryStyles = StyleSheet.create({
     paddingHorizontal: 4,
   },
   historyItemHeader: {
-    alignItems: 'center',
+    alignItems: 'flex-start',
     flexDirection: 'row',
     gap: 10,
     justifyContent: 'space-between',
+  },
+  historyMetaCopy: {
+    flex: 1,
+    minWidth: 0,
+    paddingTop: 8,
   },
   historyItemMeta: {
     flex: 1,
@@ -166,10 +172,6 @@ export const customerV21ServiceHistoryStyles = StyleSheet.create({
     gap: 10,
     justifyContent: 'space-between',
     marginTop: 18,
-  },
-  historySectionTitle: {
-    ...typography.title3,
-    fontWeight: '600',
   },
   loadingCard: {
     gap: 0,
@@ -193,7 +195,7 @@ export const customerV21ServiceHistoryStyles = StyleSheet.create({
   },
   priceSlot: {
     flex: 1,
-    minHeight: 36,
+    minHeight: 44,
   },
   priceValue: {
     ...typography.headline,
@@ -270,18 +272,13 @@ export const customerV21ServiceHistoryStyles = StyleSheet.create({
     flex: 1,
     gap: 2,
   },
-  savedWorkerHintIcon: {
-    fontSize: 15,
-    lineHeight: 17,
-    textAlign: 'center',
-  },
   savedWorkerHintIconTile: {
     alignItems: 'center',
-    borderRadius: 16,
+    borderRadius: 999,
     borderWidth: 1,
-    height: 32,
+    height: 36,
     justifyContent: 'center',
-    width: 32,
+    width: 36,
   },
   savedWorkerHintTitle: {
     fontSize: 13,
@@ -297,8 +294,18 @@ export const customerV21ServiceHistoryStyles = StyleSheet.create({
     alignSelf: 'center',
     minWidth: 0,
   },
+  stateMark: {
+    alignItems: 'center',
+    borderRadius: 18,
+    borderWidth: 1,
+    height: 36,
+    justifyContent: 'center',
+    width: 36,
+  },
   statusPill: {
     borderRadius: 13,
+    borderWidth: 1,
+    flexShrink: 0,
     paddingHorizontal: 9,
     paddingVertical: 5,
   },
@@ -310,6 +317,7 @@ export const customerV21ServiceHistoryStyles = StyleSheet.create({
     minWidth: 76,
   },
   workerAvatar: {
+    borderWidth: 1,
     borderRadius: 23,
     height: 46,
     width: 46,
@@ -317,10 +325,6 @@ export const customerV21ServiceHistoryStyles = StyleSheet.create({
   workerAvatarFallback: {
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  workerAvatarText: {
-    ...typography.footnote,
-    fontWeight: '600',
   },
   workerCopy: {
     flex: 1,
@@ -339,8 +343,6 @@ export const customerV21ServiceHistoryStyles = StyleSheet.create({
     alignItems: 'center',
     flexDirection: 'row',
     gap: 11,
-    marginBottom: 8,
-    marginTop: -8,
   },
   workerUnavailable: {
     ...typography.caption1,

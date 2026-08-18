@@ -69,6 +69,8 @@ type ManualBankPaymentClaimResponse = {
   status: 'payment_pending'
   payment_status: 'manual_customer_claimed' | 'manual_reconcile_required'
   transfer_claimed_at: string
+  settlement_state: 'customer_claimed' | 'admin_verified'
+  salary_visible: true
 }
 
 type DirectWorkerPaymentSelectInput = {
@@ -85,6 +87,7 @@ type DirectWorkerPaymentResponse = {
   direct_status:
     | 'awaiting_customer_confirmation'
     | 'awaiting_worker_confirmation'
+    | 'awaiting_admin_confirmation'
     | 'reconcile_required'
     | 'paid'
   collateral_amount?: number

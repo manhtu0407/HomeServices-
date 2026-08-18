@@ -1,72 +1,53 @@
 import { scaledTypography, typography } from '@/design/theme'
 import { Image } from 'expo-image'
 import { useState } from 'react'
-import { Pressable, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native'
+import { StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native'
 import Svg, { Defs, Rect } from 'react-native-svg'
 
-import type { CustomerServiceId } from '@nestscout/shared'
 import type { AppLanguage } from '@/lib/app-language'
 
 import type { CustomerThemeTokens } from '../customer-theme'
 import { customerV21HomeV4Assets } from '../ui/assets'
+import { customerV21WebTextInputNoOutline } from '../ui/platform-styles'
 import { AlphaStop as Stop, NativeSafeLinearGradient as LinearGradient } from '@/components/ui/svg-alpha-stop'
 import { HomeIcon } from './home-icons'
 
 type HomeStorytellingCardProps = {
   language: AppLanguage
-  onQuickPress?: (service: CustomerServiceId) => void
   onSearch?: (value: string) => void
+  onSearchFocus?: () => void
   reduceTransparency: boolean
   tokens: CustomerThemeTokens
 }
 
 type HeroCopy = {
-  badge: string
-  chips: Record<QuickServiceId, string>
   description: string
   searchPlaceholder: string
   title: string
 }
 
-type QuickServiceId = 'electrical' | 'home_cleaning' | 'hvac_basic_maintenance'
-
 const heroCopy = {
   en: {
-    badge: 'Need a hand now?',
-    chips: {
-      electrical: 'Urgent electrical repair',
-      home_cleaning: 'Book weekend cleaning',
-      hvac_basic_maintenance: 'Service your air conditioner',
-    },
     description: 'Skilled workers  •  Fast arrival  •  Clear pricing',
     searchPlaceholder: 'What do you need help with?',
     title: 'Home care made simple,\nso you can enjoy your space',
   },
   vi: {
-    badge: 'Cần hỗ trợ ngay?',
-    chips: {
-      electrical: 'Sửa điện gấp',
-      home_cleaning: 'Đặt vệ sinh cuối tuần',
-      hvac_basic_maintenance: 'Bảo dưỡng điều hòa',
-    },
     description: 'Kết nối thợ lành nghề  •  Đến nhanh  •  Giá minh bạch',
     searchPlaceholder: 'Bạn cần hỗ trợ việc gì?',
     title: 'Việc nhà có chúng tôi,\nbạn yên tâm tận hưởng',
   },
 } satisfies Record<AppLanguage, HeroCopy>
 
-const quickServices: { icon: 'calendar' | 'flash' | 'snow'; service: QuickServiceId }[] = [
-  { icon: 'flash', service: 'electrical' },
-  { icon: 'calendar', service: 'home_cleaning' },
-  { icon: 'snow', service: 'hvac_basic_maintenance' },
-]
-
-export function HomeStorytellingCard({ language, onQuickPress, onSearch, reduceTransparency, tokens }: HomeStorytellingCardProps) {
+export function HomeStorytellingCard({ language, onSearch, onSearchFocus, reduceTransparency, tokens }: HomeStorytellingCardProps) {
   const { width } = useWindowDimensions()
   const [value, setValue] = useState('')
   const copy = heroCopy[language]
   const scale = Math.min(Math.max(width - 32, 280) / 857, 1)
   const q = (size: number) => size * scale
+  const titleTypography = scaledTypography('largeTitle', scale)
+  const descriptionTypography = scaledTypography('subheadline', scale)
+  const searchTypography = scaledTypography('body', Math.min(scale * 1.35, 1))
   const content = (
     <>
       {!reduceTransparency ? (
@@ -91,13 +72,38 @@ export function HomeStorytellingCard({ language, onQuickPress, onSearch, reduceT
         testID="customer-v21-home-hero-image"
       />
 
-      <View style={[styles.heroCopy, { left: q(43), right: q(235), top: q(33) }]} testID="customer-v21-home-hero-copy">
-        <View style={[styles.badge, { borderRadius: q(14), gap: q(11), height: q(48), paddingHorizontal: q(18) }]}>
-          <HomeIcon color="#FFFFFF" name="flash" size={q(22)} />
-          <Text adjustsFontSizeToFit minimumFontScale={0.72} numberOfLines={1} style={[styles.badgeText, scaledTypography('title3', scale)]}>{copy.badge}</Text>
-        </View>
-        <Text adjustsFontSizeToFit minimumFontScale={0.72} numberOfLines={2} style={[styles.title, scaledTypography('largeTitle', scale)]}>{copy.title}</Text>
-        <Text adjustsFontSizeToFit minimumFontScale={0.72} numberOfLines={2} style={[styles.description, scaledTypography('subheadline', scale), { marginTop: q(4) }]}>{copy.description}</Text>
+      <View style={[styles.heroCopy, { left: q(43), right: q(235), top: q(33) + 5 }]} testID="customer-v21-home-hero-copy">
+        <Text
+          adjustsFontSizeToFit
+          minimumFontScale={0.72}
+          numberOfLines={2}
+          style={[
+            styles.title,
+            titleTypography,
+            {
+              fontSize: (titleTypography.fontSize ?? 0) + 3,
+              lineHeight: (titleTypography.lineHeight ?? 0) + 3,
+            },
+          ]}
+        >
+          {copy.title}
+        </Text>
+        <Text
+          adjustsFontSizeToFit
+          minimumFontScale={0.72}
+          numberOfLines={2}
+          style={[
+            styles.description,
+            descriptionTypography,
+            {
+              fontSize: (descriptionTypography.fontSize ?? 0) + 3,
+              lineHeight: (descriptionTypography.lineHeight ?? 0) + 3,
+              marginTop: q(4) + 9,
+            },
+          ]}
+        >
+          {copy.description}
+        </Text>
       </View>
 
       <View style={[styles.search, { borderRadius: q(40), height: q(80), left: q(33), paddingHorizontal: q(28), right: q(33), top: q(228) }]} testID="customer-v21-home-search">
@@ -105,41 +111,20 @@ export function HomeStorytellingCard({ language, onQuickPress, onSearch, reduceT
         <TextInput
           accessibilityLabel={copy.searchPlaceholder}
           onChangeText={setValue}
+          onFocus={onSearchFocus}
           onSubmitEditing={() => onSearch?.(value.trim())}
+          maxLength={2000}
           placeholder={copy.searchPlaceholder}
           placeholderTextColor={tokens.muted}
           returnKeyType="search"
-          style={[styles.searchInput, scaledTypography('body', scale), { height: q(68), paddingHorizontal: q(19) }]}
+          style={[customerV21WebTextInputNoOutline, styles.searchInput, searchTypography, { borderWidth: 0, height: q(68), paddingHorizontal: q(19), textAlignVertical: 'center' }]}
           value={value}
         />
-      </View>
-
-      <View style={[styles.quickRow, { bottom: q(28), gap: q(14), left: q(33), right: q(33) }]} testID="customer-v21-home-quick-suggestions">
-        {quickServices.map((item, index) => {
-          const selected = value === copy.chips[item.service]
-          return (
-            <Pressable
-              accessibilityLabel={copy.chips[item.service]}
-              accessibilityRole="button"
-              accessibilityState={{ selected }}
-              key={item.service}
-              onPress={() => {
-                setValue(copy.chips[item.service])
-                onQuickPress?.(item.service)
-              }}
-              style={[styles.quickChip, { borderRadius: q(29), flex: index === 0 ? 1 : 1.24, gap: q(12), height: q(58), paddingHorizontal: q(18) }, selected ? styles.quickChipSelected : null]}
-              testID={`customer-v21-home-quick-${item.service}`}
-            >
-              <HomeIcon color={tokens.primary} name={item.icon} size={q(25)} />
-              <Text adjustsFontSizeToFit minimumFontScale={0.62} numberOfLines={1} style={[styles.quickChipText, scaledTypography('callout', scale), { color: selected ? tokens.text : tokens.muted }]}>{copy.chips[item.service]}</Text>
-            </Pressable>
-          )
-        })}
       </View>
     </>
   )
 
-  const sharedStyle = [styles.frame, { borderColor: tokens.border, borderRadius: q(32), height: q(408) }]
+  const sharedStyle = [styles.frame, { borderColor: tokens.border, borderRadius: q(32), height: q(340) }]
   if (reduceTransparency) {
     return <View style={[sharedStyle, { backgroundColor: tokens.raised }]} testID="customer-v21-home-hero">{content}</View>
   }
@@ -150,16 +135,6 @@ export function HomeStorytellingCard({ language, onQuickPress, onSearch, reduceT
 }
 
 const styles = StyleSheet.create({
-  badge: {
-    alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.16)',
-    flexDirection: 'row',
-  },
-  badgeText: {
-    ...typography.title3,
-    color: '#FFFFFF',
-    fontWeight: '600',
-  },
   description: {
     ...typography.subheadline,
     color: '#294C52',
@@ -178,25 +153,6 @@ const styles = StyleSheet.create({
   heroImage: {
     position: 'absolute',
     zIndex: 0,
-  },
-  quickChip: {
-    alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.96)',
-    flexDirection: 'row',
-    justifyContent: 'center',
-  },
-  quickChipSelected: {
-    backgroundColor: '#E5F9F6',
-    borderColor: 'rgba(19,191,181,0.42)',
-    borderWidth: 2,
-  },
-  quickChipText: {
-    ...typography.callout,
-    fontWeight: '600',
-  },
-  quickRow: {
-    flexDirection: 'row',
-    position: 'absolute',
   },
   search: {
     alignItems: 'center',

@@ -19,6 +19,10 @@ type ReconciliationModalCopy = FinanceReconciliationCopy & {
   reconcile: string
   reconcileRequired: string
   waitingCustomer: string
+  cashConfirm: string
+  cashReject: string
+  cashConfirmationHint: string
+  workerNet: string
 }
 
 export function ReconciliationModal({
@@ -54,6 +58,7 @@ export function ReconciliationModal({
 }) {
   if (!selected) return null
   const isManual = selected.payment_method === 'platform_bank_manual'
+  const canDecideCash = selected.payment_method === 'direct_worker' && selected.status === 'direct_admin_confirmation_required'
   const canDecideDirect = selected.status === 'direct_reconcile_required'
   return <Modal animationType={reduceMotion ? 'none' : 'fade'} onRequestClose={onClose} transparent visible>
     <View style={[styles.modalBackdrop, reduceTransparency ? styles.modalBackdropSolid : null]}>
@@ -67,6 +72,13 @@ export function ReconciliationModal({
           <KaelButton disabled={pending} label={copy.confirmIncoming} onPress={() => onSubmit('confirm')} variant="primary" />
           <KaelTextField accessibilityLabel={copy.reconcileRequired} label={copy.reconcileRequired} onChangeText={onChangeReason} value={reason} />
           <KaelButton disabled={pending} label={copy.reconcileRequired} onPress={() => onSubmit('reconcile_required')} variant="secondary" />
+        </> : canDecideCash ? <>
+          <Text style={styles.directHint}>{copy.cashConfirmationHint}</Text>
+          {selected.platform_fee !== undefined ? <Text style={styles.directHint}>{copy.cashConfirm}: {formatCurrency(selected.platform_fee)}</Text> : null}
+          {selected.worker_net !== undefined ? <Text style={styles.directHint}>{copy.workerNet}: {formatCurrency(selected.worker_net)}</Text> : null}
+          <KaelButton disabled={pending} label={copy.cashConfirm} onPress={() => onSubmit('cash_confirm')} variant="primary" />
+          <KaelTextField accessibilityLabel={copy.reconcileRequired} label={copy.reconcileRequired} onChangeText={onChangeReason} value={reason} />
+          <KaelButton disabled={pending} label={copy.cashReject} onPress={() => onSubmit('cash_reject')} variant="secondary" />
         </> : canDecideDirect ? <>
           <Text style={styles.directHint}>{copy.waitingCustomer}</Text>
           <KaelButton disabled={pending} label={copy.confirmDirect} onPress={() => onSubmit('direct_paid')} variant="primary" />

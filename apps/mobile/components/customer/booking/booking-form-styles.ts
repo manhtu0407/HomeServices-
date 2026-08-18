@@ -229,7 +229,7 @@ export const bookingFormStyleDefinitions = {
     backgroundColor: 'transparent',
     borderRadius: 0,
     borderWidth: 0,
-    flex: 1,
+    flex: 0,
     minHeight: 34,
     minWidth: 0,
     paddingHorizontal: 0,
@@ -253,11 +253,17 @@ export const bookingFormStyleDefinitions = {
   bookingWideTimeSlotGroup: {
     alignItems: 'center',
     flexBasis: '25%',
-    flexDirection: 'row',
+    flexDirection: 'column',
     flexGrow: 0,
     flexShrink: 0,
     minWidth: 0,
     width: '25%',
+  },
+  bookingWideTimeSelectionLine: {
+    borderRadius: 999,
+    height: 3,
+    marginTop: 8,
+    width: '70%',
   },
   bookingWideTimeStartLabel: {
     ...typography.caption1,

@@ -13,6 +13,7 @@ import { useKaelRespondStreamItems } from '@/components/ui/use-kael-respond-stre
 import { useAppLanguage } from '@/lib/app-language'
 
 import type { KaelProcessLine, KaelProcessLineStatus } from './kael-process-lines'
+import { KaelChatMascot } from './kael-chat-mascot'
 import type { KaelProcessLineRuntime } from './use-customer-kael-chat-ui-state'
 import { useV21Theme } from '../ui/use-v21-theme'
 
@@ -41,13 +42,16 @@ export function KaelProcessLines({ state }: { state: KaelProcessLineRuntime }) {
       <View
         accessibilityLabel={state.collapse}
         accessibilityLiveRegion="polite"
-        style={styles.lines}
+        style={styles.processShell}
         testID="customer-v21-kael-process-lines"
       >
-        <View style={styles.line} testID="customer-v21-kael-process-collapse">
-          <Text style={[styles.text, styles.textActive, { color: tokens.primary }]}>
-            {state.collapse}
-          </Text>
+        <KaelChatMascot motion="live" reduceMotion={reduceMotion} size={34} testID="customer-v21-kael-process-mascot" />
+        <View style={styles.lines}>
+          <View style={styles.line} testID="customer-v21-kael-process-collapse">
+            <Text style={[styles.text, styles.textActive, { color: tokens.primary }]}>
+              {state.collapse}
+            </Text>
+          </View>
         </View>
       </View>
     )
@@ -59,21 +63,24 @@ export function KaelProcessLines({ state }: { state: KaelProcessLineRuntime }) {
       accessibilityLabel={language === 'vi' ? 'Kael đang xử lý' : 'Kael processing'}
       accessibilityLiveRegion={usesBackendProgress ? 'none' : 'polite'}
       accessibilityState={{ busy: state.activeIndex !== null }}
-      style={styles.lines}
+      style={styles.processShell}
       testID="customer-v21-kael-process-lines"
     >
-      {visibleLines.map((line, index) => {
-        const text = presentedText.get(line.key) ?? ''
-        if (usesBackendProgress && !text) return null
-        return (
-          <KaelProcessLineView
-            key={line.key}
-            line={{ ...line, text }}
-            status={resolveLineStatus(line, index, state.activeIndex)}
-            testID={`customer-v21-kael-process-line-${index}`}
-          />
-        )
-      })}
+      <KaelChatMascot motion="live" reduceMotion={reduceMotion} size={34} testID="customer-v21-kael-process-mascot" />
+      <View style={styles.lines}>
+        {visibleLines.map((line, index) => {
+          const text = presentedText.get(line.key) ?? ''
+          if (usesBackendProgress && !text) return null
+          return (
+            <KaelProcessLineView
+              key={line.key}
+              line={{ ...line, text }}
+              status={resolveLineStatus(line, index, state.activeIndex)}
+              testID={`customer-v21-kael-process-line-${index}`}
+            />
+          )
+        })}
+      </View>
     </View>
   )
 }
@@ -168,10 +175,15 @@ const styles = StyleSheet.create({
     minHeight: 16,
   },
   lines: {
-    alignSelf: 'flex-start',
     gap: 7,
+    flex: 1,
+  },
+  processShell: {
+    alignItems: 'flex-start',
+    alignSelf: 'flex-start',
+    flexDirection: 'row',
+    gap: 8,
     marginBottom: 10,
-    marginLeft: 8,
     marginTop: 10,
     maxWidth: '88%',
   },

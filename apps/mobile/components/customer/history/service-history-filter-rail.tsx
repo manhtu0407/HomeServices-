@@ -23,7 +23,6 @@ import { motionTokens } from '@/components/ui/motion-tokens'
 import { ReduceMotionAwareEntranceView } from '@/components/ui/reduce-motion-aware-animation'
 import { useAppLanguage, type AppLanguage } from '@/lib/app-language'
 
-import { CaseWideMintAura, ZipMintAura } from '../ui/aura-surfaces'
 import { customerV21ServiceCopy } from '../ui/copy'
 import {
   advanceHistoryRailMomentum,
@@ -277,7 +276,6 @@ export function ServiceHistoryFilterRail({
         >
           {historyFilters.map((option) => (
             <HistoryFilterChip
-              auraScope={`HistoryFilter${option}`}
               filter={option}
               key={option}
               label={historyFilterLabel(option, language)}
@@ -302,7 +300,6 @@ export function ServiceHistoryFilterRail({
 }
 
 function HistoryFilterChip({
-  auraScope,
   filter,
   label,
   onPress,
@@ -311,7 +308,6 @@ function HistoryFilterChip({
   testID,
   tokens,
 }: {
-  auraScope: string
   filter: HistoryFilter
   label: string
   onPress: () => void
@@ -339,22 +335,12 @@ function HistoryFilterChip({
         style={[
           styles.filterChip,
           {
-            backgroundColor: selected ? tokens.service : tokens.raised,
+            backgroundColor: tokens.raised,
             borderColor: selected ? tokens.borderStrong : tokens.border,
           },
         ]}
         testID={testID}
       >
-        {selected ? (
-          <View pointerEvents="none" style={styles.filterChipAura}>
-            <CaseWideMintAura
-              intensity="strong"
-              scope={`${auraScope}Wide`}
-              testID={`${testID}-wide-mint-aura`}
-            />
-            <ZipMintAura scope={`${auraScope}Fine`} testID={`${testID}-mint-aura`} />
-          </View>
-        ) : null}
         <View style={styles.filterIcon}>
           <HistoryFilterIcon color={tokens.primary} filter={filter} selected={selected} />
         </View>

@@ -1,7 +1,24 @@
 import { fireEvent, render, screen } from '@testing-library/react-native'
 import { Circle, Path, RadialGradient, Rect } from 'react-native-svg'
 
+import type { PillarManifest } from '@/__tests__/pillar-manifest'
 import { LiquidBackButton, LiquidSendArrowIcon, LiquidSurfaceOverlay } from '../liquid-back-button'
+
+export const PILLAR = {
+  id: 'P26-liquid-back-button-surface',
+  invariant:
+    'Shared liquid navigation controls preserve the accessible callback and their restrained vector surface layers',
+  authority: [
+    'governance/RULES.md (accessibility and visual consistency)',
+    'governance/protocols/frontend-test.md G1 (layout) and G4 (accessibility)',
+    'governance/design/runtime.md (shared navigation surface)',
+  ],
+  target: 'apps/mobile/components/ui/liquid-back-button.tsx',
+  layer: 'ui-visual',
+  siblings: ['P08-worker-dock-motion', 'P09-native-ios-liquid-tabs'],
+  mutation:
+    'remove the shared vector layers or callback wiring from the liquid back/send controls — the navigation surface contract turns red',
+} as const satisfies PillarManifest
 
 describe('LiquidBackButton', () => {
   it('keeps the compact accessible control and preserves its callback', () => {

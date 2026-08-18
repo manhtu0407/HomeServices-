@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
-import { AppState, Text, View, type LayoutChangeEvent } from 'react-native'
+import { Text, View, type LayoutChangeEvent } from 'react-native'
 
-import { KaelCoreV9 } from '@/components/ui/kael-core-v9'
 import type { AppLanguage } from '@/lib/app-language'
 
 import type { CustomerThemeTokens } from '../customer-theme'
@@ -10,6 +9,7 @@ import {
   millisecondsUntilNextVietnamTwoHourSlot,
   type CustomerKaelEmptyHeroMode,
 } from './kael-empty-hero-copy'
+import { KaelChatMascot } from './kael-chat-mascot'
 import { customerV21ChatStyles as styles } from './chat-styles'
 
 const SLOT_TIMER_GRACE_MS = 40
@@ -27,7 +27,6 @@ export function CustomerKaelEmptyHero({
   tokens: CustomerThemeTokens
 }) {
   const [now, setNow] = useState(() => new Date())
-  const [appActive, setAppActive] = useState(() => AppState.currentState === 'active')
   const [heroHeight, setHeroHeight] = useState(0)
   const copy = getCustomerKaelEmptyHeroCopy(mode, language, now)
 
@@ -38,16 +37,6 @@ export function CustomerKaelEmptyHero({
 
     return () => clearTimeout(timer)
   }, [now])
-
-  useEffect(() => {
-    const subscription = AppState.addEventListener('change', (nextState) => {
-      const active = nextState === 'active'
-      setAppActive(active)
-      if (active) setNow(new Date())
-    })
-
-    return () => subscription.remove()
-  }, [])
 
   const handleHeroLayout = (event: LayoutChangeEvent) => {
     const nextHeight = event.nativeEvent.layout.height
@@ -66,8 +55,9 @@ export function CustomerKaelEmptyHero({
           accessible
           style={styles.chatEmptyHeroModelStage}
         >
-          <KaelCoreV9
-            motionClip={reduceMotion || !appActive ? undefined : 'autoplay-loop'}
+          <KaelChatMascot
+            accessibilityLabel={language === 'vi' ? 'Mô hình Kael đang chờ bạn' : 'Kael is waiting for you'}
+            motion={reduceMotion ? 'static' : 'live'}
             reduceMotion={reduceMotion}
             size={116}
             testID="customer-v21-kael-empty-hero-model"

@@ -53,6 +53,7 @@ export type EdgeJobDetailResponse = {
       | "direct_awaiting_confirmation"
       | "direct_awaiting_customer_confirmation"
       | "direct_awaiting_worker_confirmation"
+      | "direct_admin_confirmation_required"
       | "direct_reconcile_required"
       | "direct_paid"
       | null;

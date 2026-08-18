@@ -2,8 +2,8 @@
   "version": "1.0.0",
   "source": {
     "migrationRoot": "supabase/migrations",
-    "migrationCount": 282,
-    "migrationDigest": "605a97179ecfa8260759ff333dad27701511cc3e53120b1d6dc3c2d10d642ede"
+    "migrationCount": 283,
+    "migrationDigest": "124c6014c1bf2bfeb1ae58c5c3948d34043a44960bea740da3722fb5f72939f1"
   },
   "actors": [
     "anonymous",
@@ -2481,6 +2481,14 @@
       ]
     },
     {
+      "signature": "acknowledge_worker_cash_payment(uuid, uuid, boolean)",
+      "securityDefiner": true,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
       "signature": "acquire_harness_dependency_permit(text, text, integer, integer)",
       "securityDefiner": true,
       "fixedSearchPath": true,
@@ -3181,6 +3189,22 @@
       ]
     },
     {
+      "signature": "decide_cash_payment_reconciliation(uuid, uuid, text, text)",
+      "securityDefiner": true,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
+      "signature": "decide_manual_bank_payment_reconciliation_idempotent(uuid, uuid, text, integer, timestamp with time zone, text, text, text)",
+      "securityDefiner": true,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
       "signature": "decide_manual_bank_payment_reconciliation(uuid, uuid, text, integer, timestamp with time zone, text, text, text)",
       "securityDefiner": true,
       "fixedSearchPath": true,
@@ -3278,6 +3302,14 @@
     },
     {
       "signature": "get_admin_operator_activation_status(uuid)",
+      "securityDefiner": true,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
+      "signature": "get_admin_worker_finance_snapshot(uuid, uuid, timestamp with time zone, timestamp with time zone, numeric)",
       "securityDefiner": true,
       "fixedSearchPath": true,
       "executeRoles": [
@@ -3488,6 +3520,14 @@
     },
     {
       "signature": "read_harness_kill_switch(text, text)",
+      "securityDefiner": true,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
+      "signature": "recognize_customer_payment_claim(uuid, uuid)",
       "securityDefiner": true,
       "fixedSearchPath": true,
       "executeRoles": [

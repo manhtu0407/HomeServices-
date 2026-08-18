@@ -2,7 +2,7 @@ import { StyleSheet } from 'react-native'
 import { color, component, radius, shadow, spacing, typography } from '@/design/theme'
 
 export const styles = StyleSheet.create({
-  safeArea: { backgroundColor: color.mint.canvas, flex: 1 },
+  safeArea: { backgroundColor: color.surface.base, flex: 1 },
   stack: { gap: spacing.lg },
   scrollContent: { paddingBottom: spacing.xxxl },
   page: { alignSelf: 'stretch', maxWidth: 1040, paddingHorizontal: spacing.screenHorizontalPadding, paddingTop: spacing.lg },

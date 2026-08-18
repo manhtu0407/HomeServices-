@@ -1,33 +1,26 @@
-import { useRef } from 'react'
-import { Pressable, StyleSheet } from 'react-native'
+import { StyleSheet } from 'react-native'
 import { useRouter } from 'expo-router'
 import { NativeTabs } from 'expo-router/unstable-native-tabs'
-import { KaelCoreV9 } from './kael-core-v9'
-import type { KaelCoreV9Handle } from './kael-core-v9-contract'
 import { useGlassAccessibility } from './accessibility-motion'
+import { KaelNavigationAccessory, type KaelNavigationRole } from './kael-navigation-accessory'
 import { useAppLanguage } from '@/lib/app-language'
 
-export function NativeKaelBottomAccessory({ route }: { route: string }) {
+export function NativeKaelBottomAccessory({ route, visualRole }: { route: string; visualRole: KaelNavigationRole }) {
   const router = useRouter()
   const language = useAppLanguage()
   const { reduceMotion } = useGlassAccessibility()
-  const kaelRef = useRef<KaelCoreV9Handle>(null)
   const placement = NativeTabs.BottomAccessory.usePlacement()
   const label = language === 'vi' ? 'Kael' : 'Kael'
 
   return (
-    <Pressable
+    <KaelNavigationAccessory
       accessibilityLabel={label}
-      accessibilityRole="button"
-      onFocus={() => kaelRef.current?.bow('focus')}
-      onHoverIn={() => kaelRef.current?.bow('proximity')}
       onPress={() => router.replace(route as never)}
-      onPressIn={() => kaelRef.current?.bow('pointer-press')}
+      reduceMotion={reduceMotion}
       style={[styles.accessory, placement === 'inline' ? styles.inline : styles.regular]}
       testID="native-kael-bottom-accessory"
-    >
-      <KaelCoreV9 reduceMotion={reduceMotion} ref={kaelRef} testID="native-kael-core-v9" />
-    </Pressable>
+      visualRole={visualRole}
+    />
   )
 }
 

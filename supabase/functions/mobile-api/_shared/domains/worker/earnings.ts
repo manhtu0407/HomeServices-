@@ -71,9 +71,14 @@ function parseWorkerEarningsAggregate(
     cash_commission_due_total: nonnegativeSafeInteger(row.cash_commission_due_total),
     pending_payment_count: nonnegativeSafeInteger(row.pending_payment_count),
     pending_payment_amount: nonnegativeSafeInteger(row.pending_payment_amount),
+    provisional_payment_count: nonnegativeSafeInteger(row.provisional_payment_count),
+    provisional_payment_amount: nonnegativeSafeInteger(row.provisional_payment_amount),
     on_hold_amount: nonnegativeSafeInteger(row.on_hold_amount),
     current_commission_level: positiveSafeInteger(row.current_commission_level),
     current_commission_rate_bps: commissionRateBps(row.current_commission_rate_bps),
+    withdrawal_eligible_at: row.withdrawal_eligible_at === null
+      ? null
+      : normalizeIsoTimestamp(nullableString(row.withdrawal_eligible_at) ?? ""),
     recent_transactions: parseRecentWorkerTransactions(row.recent_transactions),
     daily_earnings: parseDailyEarnings(row.daily_earnings),
   };
@@ -127,6 +132,7 @@ function parseRecentWorkerTransactions(
       display_code: nullableString(entry.display_code),
       entry_type: entry.entry_type,
       payment_state: entry.payment_state,
+      settlement_state: settlementState(entry.settlement_state),
       gross_amount: nonnegativeSafeInteger(entry.gross_amount),
       platform_fee: nonnegativeSafeInteger(entry.platform_fee),
       worker_net: positiveSafeInteger(entry.worker_net),
@@ -144,6 +150,13 @@ function isWorkerPaymentState(
   value: unknown,
 ): value is EdgeEarningsResponse["recent_transactions"][number]["payment_state"] {
   return value === "pending" || value === "available" || value === "on_hold" || value === "reversed" || value === "cash_collected" || value === "cash_reconciliation_due";
+}
+
+function settlementState(value: unknown): EdgeEarningsResponse["recent_transactions"][number]["settlement_state"] {
+  if (value === "pending" || value === "customer_claimed" || value === "admin_verified" || value === "admin_rejected") {
+    return value;
+  }
+  throw new Error("INVALID_RECENT_TRANSACTIONS");
 }
 
 function isWorkerLedgerEntryType(
