@@ -90,15 +90,15 @@ export function HomeStorytellingCard({ language, onSearch, onSearchFocus, reduce
         </Text>
         <Text
           adjustsFontSizeToFit
-          minimumFontScale={0.72}
-          numberOfLines={2}
+          minimumFontScale={0.62}
+          numberOfLines={1}
           style={[
             styles.description,
             descriptionTypography,
             {
-              fontSize: (descriptionTypography.fontSize ?? 0) + 3,
-              lineHeight: (descriptionTypography.lineHeight ?? 0) + 3,
-              marginTop: q(4) + 9,
+              fontSize: (descriptionTypography.fontSize ?? 0) + 1,
+              lineHeight: (descriptionTypography.lineHeight ?? 0) + 1,
+              marginTop: q(4) + 5,
             },
           ]}
         >

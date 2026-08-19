@@ -1,6 +1,7 @@
 import { type ComponentProps } from 'react'
-import { View, type ImageSourcePropType, type ViewStyle } from 'react-native'
+import { Platform, View, type ImageSourcePropType, type ViewStyle } from 'react-native'
 import Animated from 'react-native-reanimated'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { GlassSurface } from '@/components/ui/glass-surface'
 import { KaelNavigationAccessory } from '@/components/ui/kael-navigation-accessory'
@@ -63,6 +64,8 @@ export function CustomerV21DockOverlayView({
   selectedIndex: number
   tokens: CustomerThemeTokens
 }) {
+  const insets = useSafeAreaInsets()
+  const dockBottom = Platform.OS === 'ios' ? insets.bottom + 12 : 12
   const liquidDockStyles = dockStyles as typeof dockStyles & Record<
     | 'dockCaustic'
     | 'dockCausticGlow'
@@ -80,7 +83,7 @@ export function CustomerV21DockOverlayView({
   >
 
   return (
-    <View pointerEvents="box-none" style={dockStyles.dockOverlay} testID="customer-v21-dock-overlay">
+    <View pointerEvents="box-none" style={[dockStyles.dockOverlay, { bottom: dockBottom }]} testID="customer-v21-dock-overlay">
       <Animated.View style={[liquidDockStyles.dockRow, { width: liquidNavWidth }, animatedDockScrollStyle]} testID="customer-v21-liquid-navigation">
       <GlassSurface
         backgroundColor={tokens.glass}

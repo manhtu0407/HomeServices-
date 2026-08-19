@@ -317,7 +317,7 @@ function SvgBlendGradient({ index, stops }: { index: number; stops: readonly str
     <SvgBlendRoot>
       <Defs>
         <LinearGradient id={`worker-home-rebuild-quick-blend-${index}`} x1="0%" x2="100%" y1="50%" y2="50%">
-          {stops.map((stopColor, stopIndex) => <Stop key={`${index}-${stopIndex}`} offset={String(stopIndex / (stops.length - 1))} stopColor={stopColor} />)}
+          {stops.map((stopColor, stopIndex) => <Stop key={stopColor} offset={String(stopIndex / (stops.length - 1))} stopColor={stopColor} />)}
         </LinearGradient>
       </Defs>
       <Rect fill={`url(#worker-home-rebuild-quick-blend-${index})`} height="100" width="100" x="0" y="0" />

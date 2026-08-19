@@ -344,6 +344,7 @@ describe('CustomerBookingEntrySurface v2.1', () => {
       flexShrink: 0,
       width: '100%',
     })
+    expect(serviceTileStyle.height).toBeGreaterThanOrEqual(56)
     expect(serviceTileStyle.minHeight).toBeGreaterThanOrEqual(56)
     const serviceVisualStyle = StyleSheet.flatten(screen.getByTestId('customer-v21-service-electrical-visual-panel').props.style)
     expect(serviceVisualStyle).toMatchObject({
@@ -354,6 +355,7 @@ describe('CustomerBookingEntrySurface v2.1', () => {
       position: 'relative',
       width: '27%',
     })
+    expect(serviceVisualStyle.height).toBeGreaterThanOrEqual(56)
     expect(serviceVisualStyle.minHeight).toBeGreaterThanOrEqual(56)
     expect(screen.getByTestId('customer-v21-service-electrical-copy')).toHaveStyle({ justifyContent: 'center' })
     const serviceCopyStyle = StyleSheet.flatten(screen.getByTestId('customer-v21-service-electrical-copy').props.style)

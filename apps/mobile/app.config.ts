@@ -165,7 +165,8 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     [
       'expo-splash-screen',
       {
-        image: './assets/nestscout-aurora-nest-foreground-1024.png',
+        image: './assets/prototypes/nestscout-logo-motion/nestscout-horizontal-lockup.png',
+        imageWidth: 220,
         resizeMode: 'contain',
         backgroundColor: '#ffffff',
       },

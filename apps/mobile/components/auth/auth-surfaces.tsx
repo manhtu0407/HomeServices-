@@ -1,13 +1,12 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import { useLocalSearchParams, useRouter } from 'expo-router'
-import { Platform } from 'react-native'
 import { EntryBrandAccessFlow } from './entry-access/EntryBrandAccessFlow'
 import { entryAccessCopy, localizeEntryAuthError } from './entry-access/copy'
 import { localizeIdentifierAvailabilityError } from './entry-access/entry-identifier-fields'
 import type { EntryAccessStep, EntryRole, PasswordLoginInput, RegistrationInput } from './entry-access/types'
 import { useAppLanguage } from '@/lib/app-language'
 import { useAuth } from '@/lib/auth-provider'
-import { clearRememberedAuthCredentials, getRememberedAuthCredentials } from '@/lib/remembered-auth-credentials'
+import { clearRememberedAuthCredentials } from '@/lib/remembered-auth-credentials'
 
 type EntryParam = string | string[] | undefined
 
@@ -62,25 +61,13 @@ export function LoginRoleSurface() {
   const router = useRouter()
   const workerApplicationSubmittedRef = useRef(false)
   const workerRegistrationIntentRef = useRef(false)
-  const [rememberedCredentialsAvailable, setRememberedCredentialsAvailable] = useState(false)
   const reviewStep = resolveEntryStep(params.stage)
   const initialRole = resolveEntryRole(params.role)
   const hasExplicitRole = firstParam(params.role) !== undefined
   const passwordRecoveryStep: EntryAccessStep | null = !reviewStep && auth.passwordRecoveryPending ? 'password-reset' : null
   const profileRecoveryStep: EntryAccessStep | null = !reviewStep && auth.session && auth.profileStatus === 'profile_missing' ? 'onboarding' : null
-  const initialStep = reviewStep ?? passwordRecoveryStep ?? profileRecoveryStep ?? (rememberedCredentialsAvailable ? 'login' : 'splash')
-  const flowKey = `${initialStep}:${initialRole}:${reviewStep ? 'review' : 'live'}:${passwordRecoveryStep ? 'recovery' : profileRecoveryStep ? 'profile' : rememberedCredentialsAvailable ? 'remembered' : 'entry'}`
-
-  useEffect(() => {
-    if (Platform.OS === 'web' || reviewStep) return
-    let active = true
-    void getRememberedAuthCredentials().then((credentials) => {
-      if (active) setRememberedCredentialsAvailable(Boolean(credentials))
-    })
-    return () => {
-      active = false
-    }
-  }, [reviewStep])
+  const initialStep = reviewStep ?? passwordRecoveryStep ?? profileRecoveryStep ?? 'splash'
+  const flowKey = `${initialStep}:${initialRole}:${reviewStep ? 'review' : 'live'}:${passwordRecoveryStep ? 'recovery' : profileRecoveryStep ? 'profile' : 'entry'}`
 
   useEffect(() => {
     if (reviewStep) return

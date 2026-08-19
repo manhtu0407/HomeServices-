@@ -12,8 +12,9 @@ import { textByLanguage } from '../ui/format'
 import { workerV5JobsDestinationScreenId } from '../ui/screen-navigation'
 import { workerV5TimeChoiceLabel } from '../ui/labels'
 import { type WorkerV5OfferDetailRow } from './offer'
-import type { WorkerJobsLegacyPrototypeRuntime } from './worker-jobs-legacy-prototype-shared'
-import { Text, workerJobsLegacyPrototypeOpportunityArtwork } from './worker-jobs-legacy-prototype-shared'
+import type { WorkerJobsLegacyPrototypeRuntime } from './worker-jobs-legacy-prototype-contracts'
+import { workerJobsLegacyPrototypeOpportunityArtwork } from './worker-jobs-legacy-prototype-contracts'
+import { Text } from './worker-jobs-legacy-prototype-shared'
 import { prototypeStyles } from './worker-jobs-legacy-prototype-styles'
 export function WorkerJobsLegacyPrototypeOpportunityCard({
   currentDeal,

@@ -3217,8 +3217,9 @@ describe('Worker runtime surface wiring', () => {
 
     const chat = render(<WorkerChatSurface />)
     expect(screen.getByTestId('worker-v5-screen-3.1-kael-chat-normal')).toBeOnTheScreen()
-    expect(screen.getByTestId('worker-v5-page-mint-aura')).toBeOnTheScreen()
-    expect(screen.getByTestId('worker-v5-kael-orb-page-zip-mint-aura')).toBeOnTheScreen()
+    expect(screen.queryByTestId('worker-v5-page-mint-aura')).toBeNull()
+    expect(screen.queryByTestId('worker-v5-kael-orb-page-zip-mint-aura')).toBeNull()
+    expect(screen.getByTestId('worker-v5-kael-orb-composer-mint-aura')).toBeOnTheScreen()
     expect(screen.getByTestId('worker-v5-kael-orb-normal')).toBeOnTheScreen()
     chat.unmount()
 

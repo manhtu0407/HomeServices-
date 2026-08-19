@@ -2,26 +2,21 @@ import {
   getWorkerKaelEmptyHeroCopy,
   millisecondsUntilNextVietnamTwoHourSlot,
 } from '../chat/empty-hero-copy'
-import {
-  CUSTOMER_KAEL_EMPTY_HERO_LINE_COUNT,
-  getCustomerKaelEmptyHeroCopy,
-} from '@/components/customer/kael-chat/kael-empty-hero-copy'
 
 const TWO_HOURS_MS = 2 * 60 * 60 * 1000
 const VIETNAM_DAY_START_UTC = Date.UTC(2026, 6, 13, 17)
 
 describe('Worker Kael empty hero copy', () => {
-  it.each(['normal', 'intake'] as const)('reuses twenty English Customer quotes for %s chat', (mode) => {
-    const customerMode = mode === 'intake' ? 'case' : 'normal'
-
-    expect(CUSTOMER_KAEL_EMPTY_HERO_LINE_COUNT[customerMode]).toBe(20)
+  it.each(['normal', 'intake'] as const)('keeps twenty localized Worker quotes for %s chat', (mode) => {
     for (let slot = 0; slot < 12; slot += 1) {
       const now = new Date(VIETNAM_DAY_START_UTC + slot * TWO_HOURS_MS)
-      const expected = getCustomerKaelEmptyHeroCopy(customerMode, 'en', now)
+      const vietnamese = getWorkerKaelEmptyHeroCopy(mode, 'vi', now)
+      const english = getWorkerKaelEmptyHeroCopy(mode, 'en', now)
 
-      expect(getWorkerKaelEmptyHeroCopy(mode, 'vi', now)).toEqual(expected)
-      expect(getWorkerKaelEmptyHeroCopy(mode, 'en', now)).toEqual(expected)
-      expect(expected.text).not.toMatch(/[À-ỹĐđ]/)
+      expect(vietnamese.slot).toBe(english.slot)
+      expect(vietnamese.text).not.toBe(english.text)
+      expect(vietnamese.text).toMatch(/[À-ỹĐđ]/)
+      expect(english.text).not.toMatch(/[À-ỹĐđ]/)
     }
   })
 
@@ -64,15 +59,11 @@ describe('Worker Kael empty hero copy', () => {
   it('keeps Worker quotes short and punctuated in both chat modes', () => {
     for (const mode of ['normal', 'intake'] as const) {
       for (let slot = 0; slot < 12; slot += 1) {
-        const quote = getWorkerKaelEmptyHeroCopy(
-          mode,
-          'vi',
-          new Date(VIETNAM_DAY_START_UTC + slot * TWO_HOURS_MS),
-        ).text
+        const quote = getWorkerKaelEmptyHeroCopy(mode, 'vi', new Date(VIETNAM_DAY_START_UTC + slot * TWO_HOURS_MS)).text
 
-        expect(quote.length).toBeLessThanOrEqual(44)
+        expect(quote.length).toBeLessThanOrEqual(52)
         expect(quote).toMatch(/[.!]+$/)
-        expect(quote).not.toMatch(/[À-ỹĐđ]/)
+        expect(quote).toMatch(/[À-ỹĐđ]/)
       }
     }
   })

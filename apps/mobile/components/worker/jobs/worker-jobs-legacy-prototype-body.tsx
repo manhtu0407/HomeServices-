@@ -1,5 +1,5 @@
 import { View } from 'react-native'
-import type { WorkerJobsLegacyPrototypeBodyProps } from './worker-jobs-legacy-prototype-shared'
+import type { WorkerJobsLegacyPrototypeBodyProps } from './worker-jobs-legacy-prototype-contracts'
 import { prototypeStyles } from './worker-jobs-legacy-prototype-styles'
 import { WorkerJobsLegacyPrototypeOpportunityInboxBody } from './worker-jobs-legacy-prototype-opportunity'
 import { WorkerJobsLegacyPrototypeOfferDetailBody, WorkerJobsLegacyPrototypeRouteEtaBody } from './worker-jobs-legacy-prototype-offer-route'
