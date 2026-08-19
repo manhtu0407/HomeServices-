@@ -11,11 +11,37 @@ Local Docker stack for this repo. Full map and rationale: [`docker/INDEX.md`](..
 
 | Needs | Check | If absent |
 |---|---|---|
-| Docker daemon | `docker info` | Stop. Report that the daemon is down. Reading SQL as text is not a substitute for executing it — say which check did not run. |
-| >= 7 GB available RAM | `pnpm db:local:doctor` | Stop. The doctor prints the measured number; quote it rather than retrying. |
-| A PowerShell host | `pwsh --version` | Stop. `docker/scripts/*.ps1` has no POSIX mirror by decision, so these commands are Windows-only. Hand the task to Tu's machine rather than improvising an equivalent. |
+| Docker daemon | `docker info` | Run the degraded lane. Quote the failure; reading SQL as text never becomes a substitute for executing it. |
+| >= 7 GB available RAM | `pnpm db:local:doctor` | Run the degraded lane. The doctor prints the measured number; quote it rather than retrying. |
+| A PowerShell host | `pwsh --version` | Run the degraded lane. `docker/scripts/*.ps1` has no POSIX mirror by decision, so the commands themselves are Windows-only. |
 
-Every command below assumes all three. Verify before running, not after failing.
+Every command in `## Commands` assumes all three. Verify before running, not after failing. When any
+of them is missing you do not stop — you switch lanes.
+
+## Degraded lane
+
+No daemon means no Postgres, and no amount of reading changes that. It does not mean there is nothing
+to do: the database work this repo is actually blocked on is *bookkeeping* that has rotted precisely
+because nobody could run the scripts.
+
+Reconcile `docs/test-debt-ledger.md` against what is on disk. For each invariant it lists, put the
+row in one of three states:
+
+| State | How to tell | What to write |
+|---|---|---|
+| script written, unrun | the named `supabase/tests/*.sql` exists **and** contains an assertion for this invariant | correct the row to "script asserts it, awaiting `pnpm db:local:test`" |
+| script written, silent | the script exists but never asserts this invariant | flag it — this is worse than missing, because it reads as covered |
+| no script | nothing under `supabase/tests/` names it | leave the row; it is real debt |
+
+Then hand back the exact command list for a machine that has a daemon, in order:
+`pnpm db:local:doctor` → `pnpm db:local:up` → `pnpm db:local:reset` → `pnpm db:local:test` →
+`pnpm db:local:down`.
+
+Two hard limits on this lane. Reading a `.sql` file and judging that it asserts an invariant is
+static analysis, so the corrected row says **"asserts it, unrun"** and never "covered" — the whole
+reason that ledger exists is that `toContain()` over SQL text proved nothing. And a schema question
+that needs a real query still gets reported unanswered; the lane keeps bookkeeping honest, it does
+not verify behavior.
 
 ## The boundary — non-negotiable
 
@@ -82,10 +108,13 @@ the right per-function `--config`; use it rather than calling `deno check` by ha
 
 ```text
 Precondition check:
+Lane:
 Stack state:
 Commands run:
 Result:
 Blocker:
 ```
 
-If the precondition check failed, report the measured blocker and stop. Reading SQL is not a substitute for running it against Postgres.
+Name which lane ran. In the degraded lane, `Result` is the ledger reconciliation and `Blocker` is
+the measured precondition failure — never a verdict about schema behavior. Reading SQL is not a
+substitute for running it against Postgres, and a corrected ledger row is bookkeeping, not proof.

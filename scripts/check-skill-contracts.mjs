@@ -32,6 +32,10 @@ const PRECONDITIONS = /^##\s+Preconditions\s*$/m
 // A skill has to say how it ends, or it ends however the agent feels like ending it. `## Close` is
 // where the stop rule lives — the sentence naming what this skill must not claim without evidence.
 const CLOSE = /^##\s+Close\s*$/m
+// A gated skill whose only answer to a missing dependency is "stop" contributes nothing on every
+// machine that lacks it — which, for a daemon or a physical device, is most of them. `## Degraded
+// lane` is where it says what it still does, so readiness selects a lane instead of an on/off switch.
+const DEGRADED = /^##\s+Degraded lane\s*$/m
 
 function pathCandidates(text) {
   const found = new Set()
@@ -104,13 +108,6 @@ function hasReportTemplate(text) {
   return false
 }
 
-function closeBody(text) {
-  const start = CLOSE.exec(text)
-  if (!start) return null
-  const rest = text.slice(start.index + start[0].length)
-  const next = /^##\s+/m.exec(rest)
-  return (next ? rest.slice(0, next.index) : rest).trim()
-}
 
 // Closeout is the readiness contract one axis over: the manifest says what shape the skill owes the
 // agent when it finishes, and the body has to actually carry that shape.
@@ -120,7 +117,7 @@ function checkCloseout(id, text, problems) {
     problems.push(`${id}: no closeout declared in config/harness/manifest.json`)
     return
   }
-  const body = closeBody(text)
+  const body = sectionBody(text, CLOSE)
   if (body === null) {
     problems.push(`${id}: no \`## Close\` section — every skill must say how it ends and what it may not claim`)
     return
@@ -135,6 +132,14 @@ function checkCloseout(id, text, problems) {
   }
 }
 
+function sectionBody(text, heading) {
+  const start = heading.exec(text)
+  if (!start) return null
+  const rest = text.slice(start.index + start[0].length)
+  const next = /^##\s+/m.exec(rest)
+  return (next ? rest.slice(0, next.index) : rest).trim()
+}
+
 function checkReadiness(id, text, problems) {
   const readiness = readinessById.get(id)
   if (!readiness) {
@@ -147,6 +152,15 @@ function checkReadiness(id, text, problems) {
   }
   if (readiness !== 'autonomous' && !declares) {
     problems.push(`${id}: declares readiness \`${readiness}\` but carries no \`## Preconditions\` block saying what to do when it is unmet`)
+  }
+  const lane = sectionBody(text, DEGRADED)
+  if (readiness === 'gated' && !lane) {
+    problems.push(
+      `${id}: declares readiness \`gated\` but carries no \`## Degraded lane\` — a gated skill must say what it still does when its dependency is absent, not just stop`,
+    )
+  }
+  if (readiness === 'autonomous' && lane) {
+    problems.push(`${id}: declares readiness \`autonomous\` but carries a Degraded lane — it has no dependency to degrade from`)
   }
 }
 
@@ -190,5 +204,5 @@ const summary = Object.entries(byReadiness).sort().map(([readiness, count]) => `
 const reports = ids.filter((id) => closeoutById.get(id) === 'report').length
 console.log(
   `skill contracts ok: ${ids.length} skills (${summary}; ${reports} report, ${ids.length - reports} inline) — ` +
-    'paths resolve, commands exist, readiness and closeout match, every skill carries a Codex descriptor',
+    'paths resolve, commands exist, readiness/lanes and closeout match, every skill carries a Codex descriptor',
 )

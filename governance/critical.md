@@ -199,7 +199,7 @@ The agent MUST NOT claim the task is done if:
 - a required protocol was skipped,
 - the agent could not run verification and did not say so.
 
-A gate that could not run is not a gate that passed. Name it. Every workspace command dispatches through `scripts/run.mjs`, so "the command does not work on my platform" is no longer a reason one went unrun; a skill whose readiness is `gated` or `unavailable` states its own fallback in `## Preconditions`.
+A gate that could not run is not a gate that passed. Name it. Every workspace command dispatches through `scripts/run.mjs`, so "the command does not work on my platform" is no longer a reason one went unrun; a skill whose readiness is `gated` names its precondition in `## Preconditions` and, in `## Degraded lane`, the work it still does without it. A degraded lane produces a debt record naming what stayed unverified — never a verdict, and never a substitute for the gate.
 
 False success reports are forbidden.
 

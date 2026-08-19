@@ -10,39 +10,51 @@ Deleting them did not make the product less safe. It made the real level of safe
 
 ---
 
-## 1. Uncovered — money
+## 1. Money — six scripted and unrun, four still open
 
-Nothing verifies these against a database. This is the same surface that has to carry the first real transaction, so it is the first thing to fix.
+This is the same surface that has to carry the first real transaction, so it is the first thing to fix.
 
-| Invariant | Deleted case that "covered" it | Real layer needed |
+**Reconciled 2026-08-19** by `kael-docker`'s degraded lane (no daemon available; read-only). Six of these rows were written before the scripts existed and had gone stale — the script is on disk and asserts the invariant, it has simply never been executed here. The `State` column below is a static reading of the SQL, not a run: **"asserts it, unrun" is bookkeeping, not proof.** Clearing any row still requires `pnpm db:local:test` on a machine with a Docker daemon. The full sequence on such a machine is:
+
+```text
+pnpm db:local:doctor   # refuses below the 7 GB floor and prints the measured number
+pnpm db:local:up
+pnpm db:local:reset    # replay every migration from zero, then seed
+pnpm db:local:test     # run supabase/tests/*.sql through psql
+pnpm db:local:down
+```
+
+Section 2 was reconciled in the same pass and under the same caveat.
+
+| Invariant | Real layer needed | State (2026-08-19, static) |
 |---|---|---|
-| `gross_amount = platform_fee + worker_net` holds for every ledger row | `worker-payment-ledger-commission` → *creates one private in-app credit per job…* | `supabase/tests/worker_payment_ledger_verification.sql` — insert a violating row, assert the check constraint rejects it |
-| `commission_rate_bps` stays within `[0, 1500]` | `worker-payment-ledger-commission` → *keeps the base worker commission at 15%…* | same script — insert `1501`, assert rejection |
-| Higher commission tiers never carry a higher rate | same case (`enforce_worker_commission_tier_policy`) | same script — insert an inverted tier pair, assert the trigger raises |
-| `create_worker_vietqr_payment_intent` freezes the tier at intent creation | `worker-payment-ledger-commission` → *atomically freezes the configured tier…* | call the RPC, change the tier, call again, assert the first intent keeps its frozen rate |
-| `apply_sepay_vietqr_payment_webhook` is idempotent | `sepay-vietqr-production-rail` → *uses one locked service-role RPC…* | `supabase/tests/sepay_vietqr_webhook_verification.sql` — call twice with one transaction id, assert exactly one ledger row and one `paid` transition |
-| A duplicate provider transaction id cannot create a second credit | `sepay-vietqr-production-rail` → *…a unique provider identity* | same script — assert `jobs_sepay_transaction_uidx` rejects the second insert |
-| Payment RPCs are unreachable from `anon` / `authenticated` | both cases above (`revoke` / `grant` substrings) | same scripts — `set role authenticated`, call, assert permission denied |
-| `upsert_customer_refund_payment_method` locks the row and never exposes the raw account | `customer-refund-account-persistence` → *uses one locked service-role RPC…* | `supabase/tests/customer_refund_account_verification.sql` |
-| Cash commission is deducted from in-app balance without inventing a cash credit | `worker-cash-commission-settlement` (file deleted) | extend `supabase/tests/manual_bank_payment_finance_v1_verification.sql` |
-| `confirm_kael_chat_atomic` refuses to confirm a quote without a valid `analysis_receipt.v1` Price Reasoning receipt | `unit/mobile-api-kael-casework-runtime` → *requires a validated Price Reasoning receipt…* | `supabase/tests/kael_price_reasoning_receipt_verification.sql` — confirm with a missing receipt and with a wrong `schema_version`, assert both raise `MISSING_REASONING_RECEIPT` |
+| `gross_amount = platform_fee + worker_net` holds for every ledger row | `supabase/tests/worker_payment_ledger_verification.sql` — insert a violating row, assert the check constraint rejects it | **asserts it, unrun** — inserts `1000000 / 150000 / 849999` and raises |
+| `commission_rate_bps` stays within `[0, 1500]` | same script — insert `1501`, assert rejection | **asserts it, unrun** — covers `1501` and `-1` |
+| Higher commission tiers never carry a higher rate | same script — insert an inverted tier pair, assert the trigger raises | **asserts it, unrun** |
+| `create_worker_vietqr_payment_intent` freezes the tier at intent creation | call the RPC, change the tier, call again, assert the first intent keeps its frozen rate | **still debt** — the RPC is called in the webhook script, but no test changes the tier between two calls |
+| `apply_sepay_vietqr_payment_webhook` is idempotent | `supabase/tests/sepay_vietqr_webhook_verification.sql` — call twice with one transaction id, assert exactly one ledger row and one `paid` transition | **asserts it, unrun** |
+| A duplicate provider transaction id cannot create a second credit | same script — assert `jobs_sepay_transaction_uidx` rejects the second insert | **asserts it, unrun** |
+| Payment RPCs are unreachable from `anon` / `authenticated` | same scripts — `set role authenticated`, call, assert permission denied | **partial** — the webhook RPC is checked via `has_function_privilege`; the ledger script has no role check |
+| `upsert_customer_refund_payment_method` locks the row and never exposes the raw account | `supabase/tests/customer_refund_account_verification.sql` | **still debt** — script does not exist |
+| Cash commission is deducted from in-app balance without inventing a cash credit | extend `supabase/tests/manual_bank_payment_finance_v1_verification.sql` | **written but silent** — the extension asserts `pg_get_functiondef(...) like '%…%'`, i.e. the function's source text, not the behavior |
+| `confirm_kael_chat_atomic` refuses to confirm a quote without a valid `analysis_receipt.v1` Price Reasoning receipt | `supabase/tests/kael_price_reasoning_receipt_verification.sql` — confirm with a missing receipt and with a wrong `schema_version`, assert both raise `MISSING_REASONING_RECEIPT` | **asserts it, unrun** |
 
 `worker_payment_ledger` rows are read by `exact_aggregate_rpcs_verification.sql` and `manual_bank_payment_finance_v1_verification.sql`, so the table is not entirely unseen — but no script drives the VietQR write path that creates those rows.
 
-## 2. Uncovered — access control
+## 2. Access control — three scripted and unrun, two partial, five still open
 
-| Invariant | Deleted case | Real layer needed |
+| Invariant | Real layer needed | State (2026-08-19, static) |
 |---|---|---|
-| `handle_new_user` cannot take a role from user metadata | `tier5-security-hardening` → *does NOT use coalesce…* | partly covered by `admin_operations_sub_admin_verification.sql`; add a negative case that signs up with `raw_user_meta_data.role = 'admin'` and asserts the row lands as `customer` |
-| Admin RLS policies all route through `is_admin()` | `tier5-security-hardening` → *all admin policies use is_admin()…* | partly covered by `harness_access_boundary_verification.sql`; extend to enumerate policies per actor |
-| Authenticated clients stay read-only on workflow tables | `mobile-api-edge-schema` → *keeps authenticated mobile clients read-only…* | per-actor DML attempts in `supabase/tests/` — the pattern `rls-per-actor.test.ts` uses, but at the SQL layer |
-| `worker_profiles_districts_backup_x3` has RLS on and is revoked from `anon` / `authenticated` | `unit/mobile-api-kael-x2` → *protects the worker district backup table…* | a per-actor `select` attempt asserting permission denied; the table holds worker district history, so a leak is a privacy leak |
-| `kael_customer_conversations` grants owner-only reads and blocks cross-actor writes | `unit/mobile-api-customer-kael-conversations` → *enables RLS, grants read-only owner access…*; *covers the composite owner foreign key…* | `supabase/tests/kael_customer_conversations_verification.sql` |
-| The per-user Kael chat quota (`check_kael_worker_chat_rate`) is enforced in the database, not only in Edge | `unit/mobile-api-worker-kael-chat` → *keeps the rollback limiter fail-closed…* | exceed the bucket inside one transaction, assert the RPC rejects |
-| Participants can read jobs while ordinary roles cannot mutate workflow state | `tier4-sql-migration` → *participants can read jobs but normal users cannot mutate workflow state directly* | per-actor DML matrix in `supabase/tests/`; this is the broadest RLS claim the suite ever made and it rested on substrings |
-| `handle_new_user` execute is revoked from `public`, `anon`, `authenticated` | `tier4-sql-migration` → *prevents API roles from calling trigger-only handle_new_user directly* | `set role anon`, call it, assert permission denied |
-| Storage policies stay scoped by job folder and worker ownership | `tier4-sql-migration` → *job photos require participant access…*; *completion uploads require the matched worker*; *worker documents remain worker-owned…* | storage-object access attempts per actor |
-| Six-service foundation enables RLS and grants only least Data API privilege | `six-service-casework-foundation-migration` → *enables RLS and exposes only the least Data API privileges* | extend `supabase/tests/six_service_casework_foundation_verification.sql` |
+| `handle_new_user` cannot take a role from user metadata | partly covered by `admin_operations_sub_admin_verification.sql`; add a negative case that signs up with `raw_user_meta_data.role = 'admin'` and asserts the row lands as `customer` | **asserts it, unrun** — `signup_role_guard_verification.sql` signs up with `{"role":"admin"}` and asserts the profile lands `customer` |
+| Admin RLS policies all route through `is_admin()` | partly covered by `harness_access_boundary_verification.sql`; extend to enumerate policies per actor | **still debt** — no script enumerates policies per actor |
+| Authenticated clients stay read-only on workflow tables | per-actor DML attempts in `supabase/tests/` — the pattern `rls-per-actor.test.ts` uses, but at the SQL layer | **partial** — per-actor role switching exists in the job-media scripts, but no workflow-table DML matrix |
+| `worker_profiles_districts_backup_x3` has RLS on and is revoked from `anon` / `authenticated` | a per-actor `select` attempt asserting permission denied; the table holds worker district history, so a leak is a privacy leak | **still debt** — no script names the table |
+| `kael_customer_conversations` grants owner-only reads and blocks cross-actor writes | `supabase/tests/kael_customer_conversations_verification.sql` | **still debt** — script does not exist |
+| The per-user Kael chat quota (`check_kael_worker_chat_rate`) is enforced in the database, not only in Edge | exceed the bucket inside one transaction, assert the RPC rejects | **still debt** — no script names the function |
+| Participants can read jobs while ordinary roles cannot mutate workflow state | per-actor DML matrix in `supabase/tests/`; this is the broadest RLS claim the suite ever made and it rested on substrings | **still debt** — the broadest claim in the ledger, still unscripted |
+| `handle_new_user` execute is revoked from `public`, `anon`, `authenticated` | `set role anon`, call it, assert permission denied | **asserts it, unrun** — same `signup_role_guard_verification.sql` |
+| Storage policies stay scoped by job folder and worker ownership | storage-object access attempts per actor | **partial** — `storage.objects` is exercised in the job-media and staging scripts, not as a per-actor folder matrix |
+| Six-service foundation enables RLS and grants only least Data API privilege | extend `supabase/tests/six_service_casework_foundation_verification.sql` | **asserts it, unrun** — `six_service_casework_foundation_verification.sql` exists |
 | Cancelling a job releases the pending worker candidate in the same transaction | `customer-worker-candidate-gate-migration` → *atomically releases a pending candidate when the customer cancels* | extend `supabase/tests/customer_worker_candidate_gate_verification.sql` — cancel mid-flight, assert candidate status and `jobs.worker_id` both settle |
 | The learning evidence gate numbers in the promotion RPC match the shared constants | `learning-gate-constants-parity` → *promotion RPC migration pins the same evidence gate numbers* | call the RPC at the boundary values and assert accept/reject, rather than reading the number out of a file |
 

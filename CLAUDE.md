@@ -70,15 +70,14 @@ kael-design-preflight -> kael-design-direction  kael-design-intelligence  kael-d
    kael-adaptive-layout  kael-accessible-content  kael-visual-qa
 ```
 
-**Readiness.** Every skill declares in `config/harness/manifest.json` what it needs before it can run, and `pnpm skills:contracts` fails when a skill's `## Preconditions` block disagrees with that declaration.
+**Readiness.** Every skill declares in `config/harness/manifest.json` what it needs, and `pnpm skills:contracts` fails when the skill body disagrees with that declaration. Readiness selects which **lane** a skill runs in — it is not an on/off switch, and no skill answers a matching task with nothing.
 
 | Class | Count | What it means for you |
 |---|---|---|
-| `autonomous` | 28 | Needs only Read/Grep/Edit, or commands that run on every platform. Fire it on any matching task — no check first. |
-| `gated` | 2 | Needs something that can legitimately be absent. Run the one-line check in its `## Preconditions`; if it fails, take the declared fallback and say which check failed. |
-| `unavailable` | 1 | Its dependency is not in this repo by decision. The skill says so in its first line and names the substitute. |
+| `autonomous` | 29 | Needs only Read/Grep/Edit, or commands that run on every platform. Fire it on any matching task — no check first. |
+| `gated` | 2 | Needs something that can legitimately be absent. Run the one-line check in its `## Preconditions`; on failure run its `## Degraded lane`, which names the work that does not need the dependency and the artifact it produces. Say which check failed. |
 
-`gated` and `unavailable` are honest states, not bugs to route around: a missing Docker daemon, a human with a device, and a deliberately un-imported MCP server. Never claim a gate passed that you could not run (`governance/critical.md` §3).
+A degraded lane is real work, not a consolation: `kael-docker` without a daemon reconciles the database debt ledger against what is on disk, and `kael-visual-qa` without a device produces the capture matrix as a runnable checklist. It is never a verdict — a lane emits a debt record, and a gate that could not run is still not a gate that passed (`governance/critical.md` §3).
 
 ## Runtime Boundary (summary - canonical: `governance/RULES.md` #0)
 

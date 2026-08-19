@@ -9,10 +9,26 @@ description: Visual QA contract for the NestScout Expo React Native app — scre
 
 | Needs | Check | If absent |
 |---|---|---|
-| A running iOS or Android build a human can drive | ask Tu, or look for a live simulator / device session | Stop. Produce the capture matrix and the baseline names as a checklist for Tu to run, and say plainly that no shot was taken. Never describe a screenshot you did not see. |
+| A running iOS or Android build a human can drive | ask Tu, or look for a live simulator / device session | Run the degraded lane. Never describe a screenshot you did not see. |
 
 There is no capture command: this skill is the contract for shots taken by hand, and building the
 screenshot / E2E automation is a separate task (plan §44.5 / P5).
+
+## Degraded lane
+
+No device attached is the normal case in an agent shell, so this is the lane that runs most of the
+time — and it produces a real deliverable, not an apology.
+
+Derive the capture matrix for the change at hand and hand back a checklist Tu can execute in one
+sitting: every shot named with the full scheme below, grouped so one pass through the app covers a
+whole group, and ordered so the axes most likely to break come first. Say which axes you excluded and
+why — an honest four-shot matrix beats a thorough one nobody runs.
+
+Name the visual risk you are asking to be checked, in words, per shot group: what would a regression
+look like here? That is what makes the checklist worth a human's time rather than a naming exercise.
+
+The lane ends with `Diff verdict: not captured`. It never ends with an opinion about how the surface
+looks.
 
 Thin wrapper. The capture matrix, naming scheme, and diff classification are canonical in
 `governance/design/visual-qa.md` — do not duplicate them here.
