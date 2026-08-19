@@ -16,7 +16,7 @@ import { FORMULA_MINT_CANVAS_STANDARD_RADIAL_RADIUS, FormulaMintCanvasAura } fro
 import { FormulaMintCardAura } from '../formula-mint-card'
 import { KAEL_CORE_V9_CONTRACT } from '../kael-core-v9-contract'
 import { AlphaStop, NativeSafeLinearGradient } from '../svg-alpha-stop'
-import { KaelButton, KaelChip, KaelTextField } from '../kael-primitives'
+import { KaelButton, KaelChip, KaelTextField, KaelTextInput } from '../kael-primitives'
 
 describe('Kael UI primitives', () => {
   it('keeps the primary CTA gradient aligned with the final mint aura colors without extra white overlays', () => {
@@ -225,9 +225,29 @@ describe('Kael UI primitives', () => {
     expect(screen.getByPlaceholderText('Nhập nội dung...')).toBeOnTheScreen()
     expect(StyleSheet.flatten(screen.getByPlaceholderText('Nhập nội dung...').props.style)).toMatchObject({
       backgroundColor: 'transparent',
+      includeFontPadding: false,
+      textAlignVertical: 'center',
       WebkitBoxShadow: `0 0 0 1000px ${component.input.bg} inset`,
       WebkitTextFillColor: color.text.primary,
     })
+  })
+
+  it('keeps single-line KaelTextInput placeholders vertically centered on Android', () => {
+    render(
+      <>
+        <KaelTextInput placeholder="Nhập thông tin" testID="single-line-input" />
+        <KaelTextInput multiline placeholder="Nhập mô tả" testID="multiline-input" />
+      </>,
+    )
+
+    expect(StyleSheet.flatten(screen.getByTestId('single-line-input').props.style)).toMatchObject({
+      includeFontPadding: false,
+      textAlignVertical: 'center',
+    })
+    expect(StyleSheet.flatten(screen.getByTestId('multiline-input').props.style)).toMatchObject({
+      includeFontPadding: false,
+    })
+    expect(StyleSheet.flatten(screen.getByTestId('multiline-input').props.style).textAlignVertical).toBeUndefined()
   })
 
   it('keeps the Apple system typography scale from the handoff theme', () => {

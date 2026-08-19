@@ -37,7 +37,7 @@ describe('native iOS 26.6 tab wiring', () => {
     for (const source of [customerTabs, workerTabs]) {
       expect(source).toContain("Platform.OS === 'ios'")
       expect(source).toContain('NativeTabs')
-      expect(source).toContain('minimizeBehavior="onScrollDown"')
+      expect(source).toContain('minimizeBehavior="never"')
       expect(source).toContain('sf="house"')
       expect(source).toContain('sf="square.grid.2x2"')
       expect(source).toContain('sf="clock"')

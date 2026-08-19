@@ -21,7 +21,7 @@ function CustomerNativeTabs() {
   const tabCopy = customerV21TabCopy[language]
 
   return (
-    <NativeTabs tintColor={color.brand.ios26TabTint} minimizeBehavior="onScrollDown">
+    <NativeTabs tintColor={color.brand.ios26TabTint} minimizeBehavior="never">
       <NativeTabs.BottomAccessory>
         <NativeKaelBottomAccessory route="/(customer)/kael-chat?mode=normal" visualRole="customer" />
       </NativeTabs.BottomAccessory>

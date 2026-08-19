@@ -34,7 +34,7 @@ const webTextInputNoOutline = {
 type KaelTextInputProps = TextInputProps & { ref?: Ref<TextInput> }
 
 export function KaelTextInput({ ref, style, ...inputProps }: KaelTextInputProps) {
-  return <TextInput {...inputProps} ref={ref} style={[webTextInputNoOutline, style]} />
+  return <TextInput {...inputProps} ref={ref} style={[webTextInputNoOutline, styles.inputFontMetrics, inputProps.multiline ? null : styles.singleLineInput, style]} />
 }
 
 type KaelButtonProps = {
@@ -186,7 +186,7 @@ export function KaelTextField({ inputShellAdornment, inputShellStyle, inputShell
         {mode === 'search' ? <SearchIcon /> : null}
         <TextInput
           placeholderTextColor={component.input.placeholder}
-          style={[styles.input, webTextInputNoOutline, mode === 'search' ? styles.searchInput : null, style]}
+          style={[styles.input, webTextInputNoOutline, mode === 'search' ? styles.searchInput : null, inputProps.multiline ? null : styles.singleLineInput, style]}
           {...inputProps}
         />
       </View>
@@ -335,8 +335,12 @@ const styles = StyleSheet.create({
     color: color.text.primary,
     flex: 1,
     ...typography.body,
+    includeFontPadding: false,
     minHeight: component.input.height - 2,
     padding: 0,
+  },
+  inputFontMetrics: {
+    includeFontPadding: false,
   },
   inputShell: {
     alignItems: 'center',
@@ -355,5 +359,8 @@ const styles = StyleSheet.create({
   },
   searchInput: {
     minHeight: component.input.height - 2,
+  },
+  singleLineInput: {
+    textAlignVertical: 'center',
   },
 })

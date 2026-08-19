@@ -29,7 +29,7 @@ function WorkerNativeTabs() {
   const tabCopy = workerTabCopy[language]
 
   return (
-    <NativeTabs tintColor={color.brand.ios26TabTint} minimizeBehavior="onScrollDown">
+    <NativeTabs tintColor={color.brand.ios26TabTint} minimizeBehavior="never">
       <NativeTabs.BottomAccessory>
         <NativeKaelBottomAccessory route="/(worker)/chat" visualRole="worker" />
       </NativeTabs.BottomAccessory>

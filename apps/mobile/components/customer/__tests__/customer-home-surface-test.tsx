@@ -248,7 +248,9 @@ describe('CustomerHomeSurface v2.1', () => {
     expect(searchInputStyle).toMatchObject({
       borderWidth: 0,
       fontSize: searchTypography.fontSize,
+      includeFontPadding: false,
       lineHeight: searchTypography.lineHeight,
+      paddingVertical: 0,
       textAlignVertical: 'center',
     })
     expect(screen.getByTestId('customer-v21-top-title')).toHaveTextContent(/Chào buổi (sáng|chiều|tối), Anh Tú👋!$/)

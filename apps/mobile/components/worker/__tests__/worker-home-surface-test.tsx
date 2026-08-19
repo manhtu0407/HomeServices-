@@ -953,7 +953,15 @@ describe('Worker runtime surface wiring', () => {
 
     for (const index of [0, 1, 2, 3]) {
       expect(screen.queryByTestId(`worker-v5-home-quick-action-detail-${index}-divider-0`)).toBeNull()
-      expect(screen.getByTestId(`worker-v5-home-quick-action-detail-${index}`)).toHaveStyle({ flexDirection: 'column' })
+      const quickCopyStyle = StyleSheet.flatten(screen.getByTestId(`worker-v5-home-quick-action-detail-${index}`).props.style)
+      expect(quickCopyStyle).toMatchObject({
+        bottom: 0,
+        flexDirection: 'column',
+        position: 'absolute',
+        right: 0,
+        top: 0,
+      })
+      expect(quickCopyStyle.minHeight).toBeUndefined()
     }
   })
 

@@ -330,10 +330,18 @@ describe('CustomerBookingEntrySurface v2.1', () => {
     }
 
     const serviceTileStyle = StyleSheet.flatten(screen.getByTestId('customer-v21-service-electrical').props.style)
+    const serviceGridStyle = StyleSheet.flatten(screen.getByTestId('customer-v21-service-grid').props.style)
+    expect(serviceGridStyle).toMatchObject({
+      alignSelf: 'stretch',
+      flexDirection: 'column',
+      flexWrap: 'nowrap',
+    })
     expect(serviceTileStyle).toMatchObject({
       alignItems: 'stretch',
+      alignSelf: 'stretch',
       borderRadius: 12,
       flexDirection: 'row',
+      flexShrink: 0,
       width: '100%',
     })
     expect(serviceTileStyle.minHeight).toBeGreaterThanOrEqual(56)
