@@ -2,7 +2,7 @@ import { existsSync, readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { fireEvent, render, screen } from '@testing-library/react-native'
 import type { LocalDeal, LocalWorkflowSelectors } from '@nestscout/shared'
-import { Dimensions, StyleSheet } from 'react-native'
+import { Dimensions, StyleSheet, Text } from 'react-native'
 
 let mockWorkflowValue: any
 let mockSessionMetadata: Record<string, unknown>
@@ -429,6 +429,11 @@ describe('CustomerHomeSurface v2.1', () => {
     expect(screen.getByTestId('customer-v21-active-case-meta')).toHaveTextContent(/180\.000đ - 260\.000đ/)
     expect(screen.getByTestId('customer-v21-active-case-meta')).toHaveTextContent(/Tòa A, Quận 7/)
     expect(screen.getByTestId('customer-v21-active-case-meta')).toBeOnTheScreen()
+    const activeMetaTextStyles = screen.getByTestId('customer-v21-active-case-meta').findAllByType(Text).map((text) => StyleSheet.flatten(text.props.style))
+    expect(activeMetaTextStyles.length).toBeGreaterThan(0)
+    for (const style of activeMetaTextStyles) {
+      expect(style).toMatchObject({ includeFontPadding: false, textAlignVertical: 'center' })
+    }
     expect(screen.getByTestId('customer-v21-active-case-progress')).toBeOnTheScreen()
     expect(screen.getByTestId('customer-v21-active-case')).not.toHaveTextContent(/4\.9|rating|--/)
     expect(screen.getByLabelText(/^Bước \d+ trên \d+$/)).toBeOnTheScreen()
