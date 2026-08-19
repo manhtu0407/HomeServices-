@@ -189,6 +189,8 @@ const styles = StyleSheet.create({
   },
   metaText: {
     flexShrink: 1,
+    includeFontPadding: false,
+    textAlignVertical: 'center',
     ...typography.footnote,
     fontWeight: '600',
   },
