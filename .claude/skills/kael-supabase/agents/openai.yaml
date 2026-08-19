@@ -1,0 +1,4 @@
+interface:
+  display_name: "Kael Supabase"
+  short_description: "Migrations, RLS, generated types, and clients"
+  default_prompt: "Use $kael-supabase before changing migrations, RLS, generated types, storage, or Supabase clients."

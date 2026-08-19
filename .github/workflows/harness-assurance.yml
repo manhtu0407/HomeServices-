@@ -53,6 +53,8 @@ jobs:
         run: ./docker/scripts/edge-check.ps1
       - name: Comment discipline
         run: node scripts/check-comment-discipline.mjs
+      - name: Skill contract ratchet
+        run: node scripts/check-skill-contracts.mjs
       - name: Structure ratchet
         run: node scripts/lint-structure.mjs
 

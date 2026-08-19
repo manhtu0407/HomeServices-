@@ -1,0 +1,4 @@
+interface:
+  display_name: "Kael Visual QA"
+  short_description: "Manual capture matrix and diff rules; no tooling yet"
+  default_prompt: "Use $kael-visual-qa to plan a capture matrix and classify visual diffs; captures are manual."

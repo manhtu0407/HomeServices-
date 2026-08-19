@@ -1,0 +1,4 @@
+interface:
+  display_name: "Kael Session Memory"
+  short_description: "Write the session memory entry and its index line"
+  default_prompt: "Use $source-command-kael-mem at session close to write the memory entry and its one-line index."

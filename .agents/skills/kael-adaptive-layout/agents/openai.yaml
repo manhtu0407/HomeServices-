@@ -1,0 +1,4 @@
+interface:
+  display_name: "Kael Adaptive Layout"
+  short_description: "Responsive RN layout for size, orientation, and keyboard"
+  default_prompt: "Use $kael-adaptive-layout when a screen must adapt to window size, orientation, keyboard, or large text."

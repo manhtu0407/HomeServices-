@@ -1,11 +1,16 @@
 ---
 name: kael-codebase-memory
-description: Use codebase-memory-mcp for lightweight structural code discovery in NestScout. Trigger when exploring architecture, finding symbols, tracing callers/callees, checking impact, looking for dead code, or deciding which files to read before editing.
+description: UNAVAILABLE in this repo — requires the codebase-memory-mcp MCP server, which has no committed configuration; use Grep / Glob / Read instead. Once configured, it gives lightweight structural code discovery in NestScout. Trigger when exploring architecture, finding symbols, tracing callers/callees, checking impact, looking for dead code, or deciding which files to read before editing.
 ---
 
 # kael-codebase-memory
 
-Use this only when the `codebase-memory-mcp` MCP server or CLI is available. It is a discovery accelerator, not an authority source.
+> **Unavailable in this repo.** Every tool below comes from the `codebase-memory-mcp` MCP
+> server, which is not configured: there is no committed `.mcp.json` at the repo root, and the
+> `.claude/` variant is gitignored. Stop here and use Grep / Glob / Read instead.
+
+The workflow below applies only once Tu has set that server up. Even then it is a discovery
+accelerator, not an authority source.
 
 ## Workflow
 

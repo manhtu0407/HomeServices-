@@ -1,0 +1,4 @@
+interface:
+  display_name: "Kael Subagent Orchestration"
+  short_description: "Decide local vs delegated before decomposing a task"
+  default_prompt: "Use $kael-subagent-orchestration before decomposing any task, to decide local or delegated."

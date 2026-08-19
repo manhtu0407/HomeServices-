@@ -141,7 +141,7 @@ Never bake into code: dates, phase/plan tags, status banners, audit/ticket codes
 
 This skill is promoted to the always-on `kael-core-hygiene` skill (`.claude/skills/kael-core-hygiene`, `.agents/skills/kael-core-hygiene`). The full ban list (machine-enforced + judgment), before/after examples, and self-check are **canonical in `protocols/code-hygiene.md`** — do not duplicate them here.
 
-Enforcement: `pnpm lint:comments` (`--diff`/`--working` ratchet), the `comment-hygiene` Stop hook (`.claude/hooks/verify-comment-hygiene.mjs`), and the `comment-discipline` CI job. Going-forward ratchet — legacy files are cleaned when next touched, not in one mass rewrite.
+Enforcement: `pnpm lint:comments` (`--diff`/`--working` ratchet), the `comment-hygiene` Stop hook (`.claude/hooks/verify-comment-hygiene.mjs`, Claude Code only — Codex runs the command by hand), and the `comment-discipline` CI job. Going-forward ratchet — legacy files are cleaned when next touched, not in one mass rewrite.
 
 ## Core Skill 6: Code Organization
 

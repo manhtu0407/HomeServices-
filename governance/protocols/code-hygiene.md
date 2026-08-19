@@ -29,7 +29,7 @@ The ban below targets dated/status/plan-tag narrative and AI residue — never a
 
 ## Banned in source
 
-### Machine-enforced (blocked by `pnpm lint:comments` + the comment-hygiene Stop hook + the `comment-discipline` CI job)
+### Machine-enforced (blocked by `pnpm lint:comments` + the comment-hygiene Stop hook (Claude Code) + the `comment-discipline` CI job)
 
 These are detected on comment text of added/changed lines only (a ratchet — legacy is cleaned when next touched, not in one sweep):
 
@@ -96,7 +96,7 @@ lint:comments on this change: clean / <violations>
 ## Enforcement
 
 - `pnpm lint:comments` — full report (`scripts/check-comment-discipline.mjs`). `--diff <ref>` judges only lines added versus a ref (CI ratchet); `--working` judges only the current uncommitted change (Stop hook).
-- The `comment-hygiene` Stop hook (`.claude/hooks/verify-comment-hygiene.mjs`) re-runs `--working` when code under `apps/`, `packages/`, or `supabase/functions/` changed, and blocks a false "done" on a new violation.
+- The `comment-hygiene` Stop hook (`.claude/hooks/verify-comment-hygiene.mjs`) re-runs `--working` when code under `apps/`, `packages/`, or `supabase/functions/` changed, and blocks a false "done" on a new violation. It is wired in `.claude/settings.json`, so it fires for Claude Code only; Codex has no hook and runs `pnpm lint:comments --working` by hand.
 - The `comment-discipline` CI job (`.github/workflows/comment-discipline.yml`) blocks new banner comments on the lines a PR adds.
 
 All three are going-forward ratchets. Legacy files are cleaned when next touched, never in one mass rewrite.
