@@ -57,6 +57,8 @@ jobs:
         run: node scripts/check-skill-contracts.mjs
       - name: Runner parity ratchet
         run: node scripts/check-runner-parity.mjs
+      - name: Design adapter ratchet
+        run: node scripts/design/check-design-adapters.mjs
       - name: Structure ratchet
         run: node scripts/lint-structure.mjs
 

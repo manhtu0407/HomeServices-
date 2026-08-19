@@ -17,14 +17,22 @@
         "ui-ux-pro-max/react-native.csv"
       ],
       "sha256": {
-        "ui-ux-pro-max/colors.csv": "d628b178803aee95c2bb8f3cf64d38ea5418948a072ef4feeedf4a69226912e8",
-        "ui-ux-pro-max/LICENSE": "1b8bd455510cc1f6f9bd510ffe2ec372d1c51fe0e082ddfee8b41825fb7aa055",
-        "ui-ux-pro-max/products.csv": "83579b1fa5078e9607d6799195347506ffdd80ee0cb169693517b376459bc7f1",
-        "ui-ux-pro-max/react-native.csv": "a08ca77fcf6b6d9531982dce465366296013bfcf12d2938ac72ad57cf0c4f085",
-        "ui-ux-pro-max/styles.csv": "baedf4b9681eb7b5a404179e3cd5eb1e8e40b3e2807db5154b72e1431c644b11",
-        "ui-ux-pro-max/typography.csv": "9577e2243d032e226b36fe5037b33299872244f6905b296e16b597a3ed9853c8",
-        "ui-ux-pro-max/ui-reasoning.csv": "41976082ecae1100da937c949215dc6694393e03f3c2a7444dd92a9edb43cb11",
-        "ui-ux-pro-max/ux-guidelines.csv": "1870ee048f2a2bdd60709f8f7adf7f3b6dcad560bc005c8b2915a8ac8639820d"
+        "ui-ux-pro-max/colors.csv": "cb26759805217edaaa31b09836aec09eab0fe245c58f5884e9a16ef802c6e26a",
+        "ui-ux-pro-max/LICENSE": "738f69dfa83db5c347c678fb9d90e560877059f0de93a327c39001bff92dc014",
+        "ui-ux-pro-max/products.csv": "e9749e4fd8f7d4c94919c25ebd347a4adaddb671e7b01d33fbc2c87d447e6667",
+        "ui-ux-pro-max/react-native.csv": "077aefc81d194895ecf7936b3ed298b978e36961f183e3a275f8acda19b5f621",
+        "ui-ux-pro-max/styles.csv": "1bf9c1d8484a0a7a54fb67555902380446865b604c8449e47a449cb3d9c1ef88",
+        "ui-ux-pro-max/typography.csv": "7abead73de0e43e09544f164cb60cd431674e411f1e063e555a8b44d51273328",
+        "ui-ux-pro-max/ui-reasoning.csv": "06e4369445388ba9b7a57347510b125b7a2145bbf8546a327ba50292503b204a",
+        "ui-ux-pro-max/ux-guidelines.csv": "e01943c433b2cad3040f19389b3b0455673758a569b7a927b5bedf65c989cb96"
+      },
+      "provenance": {
+        "checksumsComputedFrom": "committed LF bytes",
+        "unverifiedAgainstUpstream": [
+          "ui-ux-pro-max/colors.csv",
+          "ui-ux-pro-max/ux-guidelines.csv"
+        ],
+        "note": "The previous pins were computed on a CRLF working copy and could never pass on an LF checkout. The two files listed above match none of the LF, CRLF, or trailing-newline variants of those pins, so their content drifted from what was vendored and this repo cannot prove them verbatim against the pinned commit. They are pinned to the committed bytes; treat their rows as adapted, not upstream."
       }
     },
     "taste-skill": {
@@ -36,10 +44,10 @@
       "sourcePath": "governance/design/direction.md",
       "upstreamExtract": "taste-skill/SKILL.md",
       "sha256": {
-        "taste-skill/SKILL.md": "2e064e92aca020b2e0bad69326fe7ea55d59005ed53d1a8cbce1bd135d44b8b3"
+        "taste-skill/SKILL.md": "aa194351b246b8b4799099d4ed7b033d29eab6e6e3d58d8d2172978be7b3ec89"
       }
     }
   },
   "authority": "NestScout governance, product rules, React Native/Expo platform contracts, and the existing Design Wheel outrank this corpus.",
-  "lastVerified": "2026-08-01"
+  "lastVerified": "2026-08-19"
 }
