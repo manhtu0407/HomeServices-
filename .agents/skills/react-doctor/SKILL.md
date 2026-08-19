@@ -1,6 +1,6 @@
 ---
 name: react-doctor
-description: Run or triage React Doctor diagnostics in the NestScout repo. Use when the user asks for React Doctor, `/doctor`, a changed React scan, a full React health scan, or cleanup based on React Doctor findings. Uses the project-local runner, not npx, so local agents can invoke it directly in this Windows/Codex workspace.
+description: Run or triage React Doctor diagnostics in the NestScout repo. Use when the user asks for React Doctor, `/doctor`, a changed React scan, a full React health scan, or cleanup based on React Doctor findings. Uses the project-local runner, not npx, so any agent can invoke it directly on any platform.
 ---
 
 # React Doctor
@@ -27,7 +27,7 @@ pnpm doctor:react
 pnpm doctor
 ```
 
-The root scripts call `scripts/run-react-doctor.ps1`, which pins `react-doctor@0.5.8`, prepends the bundled Codex Node runtime when needed, prefers the installed local binary, and falls back to `pnpm dlx`.
+The root scripts dispatch through `scripts/run.mjs` to `scripts/run-react-doctor.ps1` on Windows and `scripts/run-react-doctor.sh` elsewhere. Both pin `react-doctor@0.5.8`, prefer the installed local binary, and fall back to `pnpm dlx`.
 
 ## Triage Rules
 

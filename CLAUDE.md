@@ -21,7 +21,7 @@ Read in three tiers. **Tier 1 is unconditional. Tier 2 depends on the task. Tier
 
 - `governance/RULES.md` — hard product / security / AI / data / runtime / language rules. Never traded away for convenience or speed.
 - `governance/critical.md` — §5 preflight before touching anything, §1 task-class index to choose Tier 2, §3 gates before reporting done.
-- `governance/protocols/code-hygiene.md` — applies to every line written (skill `kael-core-hygiene`; enforced by `pnpm lint:comments`, Stop hook, CI).
+- `governance/protocols/code-hygiene.md` — applies to every line written (skill `kael-core-hygiene`; enforced by `pnpm lint:comments` and CI for both agents, plus a `Stop` hook in Claude Code only — Codex runs the command itself).
 - `.claude/MEMORY.md` — read last, then **write it back at session close**: full entry -> `docs/memory/<YYYY-MM>.md`, one line -> `.claude/MEMORY.md`. Claude Code runs `/kael-mem`; Codex does the same steps by hand. Contract in `docs/memory/INDEX.md`, gate in `governance/critical.md` §3.
 
 A one-line fix does not exempt you from Tier 1. Skipping it is the exact failure this stack exists to prevent.
@@ -69,6 +69,16 @@ kael-design-preflight -> kael-design-direction  kael-design-intelligence  kael-d
    kael-design-review  kael-design-tokens  kael-material-direction  kael-motion
    kael-adaptive-layout  kael-accessible-content  kael-visual-qa
 ```
+
+**Readiness.** Every skill declares in `config/harness/manifest.json` what it needs before it can run, and `pnpm skills:contracts` fails when a skill's `## Preconditions` block disagrees with that declaration.
+
+| Class | Count | What it means for you |
+|---|---|---|
+| `autonomous` | 28 | Needs only Read/Grep/Edit, or commands that run on every platform. Fire it on any matching task — no check first. |
+| `gated` | 2 | Needs something that can legitimately be absent. Run the one-line check in its `## Preconditions`; if it fails, take the declared fallback and say which check failed. |
+| `unavailable` | 1 | Its dependency is not in this repo by decision. The skill says so in its first line and names the substitute. |
+
+`gated` and `unavailable` are honest states, not bugs to route around: a missing Docker daemon, a human with a device, and a deliberately un-imported MCP server. Never claim a gate passed that you could not run (`governance/critical.md` §3).
 
 ## Runtime Boundary (summary - canonical: `governance/RULES.md` #0)
 

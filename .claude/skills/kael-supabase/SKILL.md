@@ -5,6 +5,9 @@ description: Supabase workflow for NestScout. Use when changing the database, Au
 
 # kael-supabase
 
+> Outranks the upstream `supabase` skill inside this repo. That one is a library / CLI / API
+> reference; this one owns NestScout's workflow and the rules a change here must satisfy.
+
 Auto-trigger wrapper. Full procedure is canonical in `governance/protocols/ai-data-security.md` — do not duplicate it here.
 
 ## CLI access for agents

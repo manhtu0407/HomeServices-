@@ -5,9 +5,14 @@ description: Visual QA contract for the NestScout Expo React Native app — scre
 
 # kael-visual-qa
 
-> **No capture tooling yet.** This skill is the contract — capture matrix, baseline naming, diff
-> classification — for screenshots taken by hand. The screenshot / E2E automation is a separate
-> task (plan §44.5 / P5), so there is no command to run here.
+## Preconditions
+
+| Needs | Check | If absent |
+|---|---|---|
+| A running iOS or Android build a human can drive | ask Tu, or look for a live simulator / device session | Stop. Produce the capture matrix and the baseline names as a checklist for Tu to run, and say plainly that no shot was taken. Never describe a screenshot you did not see. |
+
+There is no capture command: this skill is the contract for shots taken by hand, and building the
+screenshot / E2E automation is a separate task (plan §44.5 / P5).
 
 Thin wrapper. The capture matrix, naming scheme, and diff classification are canonical in
 `governance/design/visual-qa.md` — do not duplicate them here.

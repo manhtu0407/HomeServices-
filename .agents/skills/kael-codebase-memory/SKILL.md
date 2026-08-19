@@ -9,8 +9,15 @@ description: UNAVAILABLE in this repo — requires the codebase-memory-mcp MCP s
 > server, which is not configured: there is no committed `.mcp.json` at the repo root, and the
 > `.claude/` variant is gitignored. Stop here and use Grep / Glob / Read instead.
 
-The workflow below applies only once Tu has set that server up. Even then it is a discovery
-accelerator, not an authority source.
+## Preconditions
+
+| Needs | Check | If absent |
+|---|---|---|
+| `codebase-memory-mcp` tools in the session | is `list_projects` callable? | Use Grep / Glob / Read. They answer every question below — slower, never wrong. Do not ask Tu to install the server; not depending on it is a decision, not an oversight. |
+
+The absence is deliberate: importing an unvetted third-party MCP server that can write agent config
+and hooks costs this repo more than the discovery speed returns. The workflow below applies only
+once Tu decides otherwise. Even then it is a discovery accelerator, not an authority source.
 
 ## Workflow
 

@@ -7,6 +7,16 @@ description: Run the NestScout database and Edge toolchain locally with Docker. 
 
 Local Docker stack for this repo. Full map and rationale: [`docker/INDEX.md`](../../../docker/INDEX.md).
 
+## Preconditions
+
+| Needs | Check | If absent |
+|---|---|---|
+| Docker daemon | `docker info` | Stop. Report that the daemon is down. Reading SQL as text is not a substitute for executing it — say which check did not run. |
+| >= 7 GB available RAM | `pnpm db:local:doctor` | Stop. The doctor prints the measured number; quote it rather than retrying. |
+| A PowerShell host | `pwsh --version` | Stop. `docker/scripts/*.ps1` has no POSIX mirror by decision, so these commands are Windows-only. Hand the task to Tu's machine rather than improvising an equivalent. |
+
+Every command below assumes all three. Verify before running, not after failing.
+
 ## The boundary — non-negotiable
 
 Docker here is a **dev dependency**, never a deployment target. Nothing in this
