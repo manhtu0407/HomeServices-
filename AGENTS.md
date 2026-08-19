@@ -12,7 +12,7 @@ Same three tiers as `CLAUDE.md`, so Codex and Claude Code enter a task through o
 
 - `governance/RULES.md` — hard product / security / AI / data / runtime / language rules.
 - `governance/critical.md` — §5 preflight, §1 task-class index to choose Tier 2, §3 gates before reporting done.
-- `governance/protocols/code-hygiene.md` — every line written (skill `kael-core-hygiene`; enforced by `pnpm lint:comments`, Stop hook, CI).
+- `governance/protocols/code-hygiene.md` — every line written (skill `kael-core-hygiene`; enforced by `pnpm lint:comments` and CI for both agents, plus a Stop hook in Claude Code only — Codex runs the command by hand).
 - `.claude/MEMORY.md` — read last, write back at session close (see the memory row below and §3 Session Memory Gate).
 
 ### Tier 2 - by task and difficulty
@@ -75,7 +75,7 @@ Before editing code:
 
 - Run `kael-preflight` and state the pre-edit status (`governance/critical.md` §5).
 - Classify the task (`governance/critical.md` §2), then load only the matching protocol file from `governance/protocols/` via the §1 index. `kael-preflight` (§5) and `kael-review` (§8) stay inline in `governance/critical.md`.
-- Auto-trigger skills exist for the common protocols and live in both `.claude/skills/` (Claude Code) and `.agents/skills/` (Codex): `kael-subagent-orchestration`, `kael-diagnose`, `kael-tdd`, `kael-ai-boundary`, `kael-supabase`, `kael-security-sweep`, `kael-design-preflight`, `kael-design-direction`, `kael-design-intelligence`, plus `karpathy-guidelines`. `kael-core-hygiene` is always on for any code change (comments/headers/notes) and is enforced by `pnpm lint:comments`, the comment-hygiene Stop hook, and CI.
+- Auto-trigger skills exist for the common protocols and live in both `.claude/skills/` (Claude Code) and `.agents/skills/` (Codex): `kael-subagent-orchestration`, `kael-diagnose`, `kael-tdd`, `kael-ai-boundary`, `kael-supabase`, `kael-security-sweep`, `kael-design-preflight`, `kael-design-direction`, `kael-design-intelligence`, plus `karpathy-guidelines`. `kael-core-hygiene` is always on for any code change (comments/headers/notes), enforced by `pnpm lint:comments` and CI for both agents and by the comment-hygiene Stop hook in Claude Code only — Codex has no hooks and runs the command itself.
 
 Core quality gates (`governance/critical.md` §3) — do not bypass:
 
@@ -123,7 +123,7 @@ If the task becomes unclear, stop coding, reread the plan and the important docs
 
 Canonical gated workflow + RN-reality detail: `governance/protocols/frontend-test.md` (skill: `kael-frontend-test`), gates G0–G6. This is a React Native store-bound app, not a web app — evidence must come from the RN runtime (jest-expo / React Native Testing Library and device/simulator), never a browser or Expo-web stand-in; glass and motion render only on native.
 
-Static gate (real, enforced): `pnpm type-check:mobile` and `pnpm test:mobile` (wrappers for `@nestscout/mobile` type-check + jest-expo / React Native Testing Library that inject the bundled Node runtime when agent shells lack `node`). The `Stop` hook (`.claude/hooks/verify-frontend-gates.mjs`, wired in `.claude/settings.json`) re-runs these when `apps/mobile` code changed and blocks a false "done" on a red gate.
+Static gate (real, enforced): `pnpm type-check:mobile` and `pnpm test:mobile` (wrappers for `@nestscout/mobile` type-check + jest-expo / React Native Testing Library that inject the bundled Node runtime when agent shells lack `node`). The `Stop` hook (`.claude/hooks/verify-frontend-gates.mjs`) re-runs these when `apps/mobile` code changed and blocks a false "done" on a red gate — but it is wired in `.claude/settings.json`, so it fires for Claude Code only. Codex has no hook and MUST run both commands itself before claiming a frontend task done.
 
 For every frontend change, first record the upstream-aware design preflight, then check: layout, responsive behavior, accessibility (roles/labels/state, Reduce Motion/Transparency), color contrast in both modes, motion quality (`kael-motion` / `governance/design/motion.md`), loading/empty/error/success states, performance budget (60fps; glass layer budget), and visual consistency with the glass-liquid signature (`governance/design/signature.md`). Do not claim completion without validation evidence (commands run + real results + states tested + states NOT tested). Avoid generic SaaS UI; preserve or improve the Glass/Liquid direction.
 

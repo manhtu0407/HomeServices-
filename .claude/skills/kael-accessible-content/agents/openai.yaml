@@ -1,0 +1,4 @@
+interface:
+  display_name: "Kael Accessible Content"
+  short_description: "Accessibility for VI/EN copy, screen readers, and touch"
+  default_prompt: "Use $kael-accessible-content when writing user-facing copy or checking screen-reader, contrast, and touch-target behavior."

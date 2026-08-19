@@ -1,0 +1,4 @@
+interface:
+  display_name: "Supabase"
+  short_description: "Official Supabase product and client guidance"
+  default_prompt: "Use $supabase for any Supabase database, auth, storage, realtime, or edge function task."

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Kael Handoff"
+  short_description: "Package a session for compaction or agent transfer"
+  default_prompt: "Use $kael-handoff before a context compaction or a Claude Code to Codex transfer."

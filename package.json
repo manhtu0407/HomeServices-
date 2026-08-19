@@ -34,6 +34,7 @@
     "type-check:shared": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-package-script.ps1 @nestscout/shared type-check",
     "skills:sync": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-node.ps1 scripts/sync-skills.mjs",
     "skills:check": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-node.ps1 scripts/check-skills-sync.mjs",
+    "skills:contracts": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-node.ps1 scripts/check-skill-contracts.mjs",
     "harness:manifest:check": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-node.ps1 scripts/harness/check-manifest.mjs",
     "harness:manifest:hash": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-node.ps1 scripts/harness/hash-manifest.mjs",
     "harness:pillars:check": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-node.ps1 scripts/harness/pillar-registry.mjs",

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Kael Codebase Memory"
+  short_description: "Unavailable - needs the codebase-memory MCP server"
+  default_prompt: "Use $kael-codebase-memory only after the codebase-memory MCP server is configured; otherwise search with Grep and Read."

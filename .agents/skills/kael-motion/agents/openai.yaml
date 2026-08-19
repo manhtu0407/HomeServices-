@@ -1,0 +1,4 @@
+interface:
+  display_name: "Kael Motion"
+  short_description: "Design and audit RN motion within the budget"
+  default_prompt: "Use $kael-motion when adding or reviewing any animation, transition, or gesture."

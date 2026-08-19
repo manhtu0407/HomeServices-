@@ -1,0 +1,4 @@
+interface:
+  display_name: "Kael Design Tokens"
+  short_description: "One canonical source for color, type, and spacing"
+  default_prompt: "Use $kael-design-tokens before adding a token or writing any raw color, spacing, or radius value."

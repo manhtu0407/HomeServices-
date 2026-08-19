@@ -1,0 +1,4 @@
+interface:
+  display_name: "Kael AI Boundary"
+  short_description: "Keep Kael model calls server-side and validated"
+  default_prompt: "Use $kael-ai-boundary before touching any Kael prompt, provider call, or AI output validation."

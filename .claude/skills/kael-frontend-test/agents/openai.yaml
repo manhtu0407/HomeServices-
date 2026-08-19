@@ -1,0 +1,4 @@
+interface:
+  display_name: "Kael Frontend Test"
+  short_description: "Evidence-backed testing for the Expo RN app"
+  default_prompt: "Use $kael-frontend-test before claiming any NestScout UI task done."

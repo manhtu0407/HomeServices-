@@ -1,0 +1,4 @@
+interface:
+  display_name: "Kael Material Direction"
+  short_description: "Choose glass vs solid and audit the glass budget"
+  default_prompt: "Use $kael-material-direction when deciding whether a surface should be glass or solid."

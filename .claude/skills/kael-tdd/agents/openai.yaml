@@ -1,0 +1,4 @@
+interface:
+  display_name: "Kael TDD"
+  short_description: "Failing test first, then the smallest fix"
+  default_prompt: "Use $kael-tdd to write the failing test before implementing a feature or fixing a bug."

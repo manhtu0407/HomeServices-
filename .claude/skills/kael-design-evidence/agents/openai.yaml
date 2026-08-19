@@ -1,0 +1,4 @@
+interface:
+  display_name: "Kael Design Evidence"
+  short_description: "Cite and check the sources behind design rules"
+  default_prompt: "Use $kael-design-evidence when a design decision rests on an external guideline, standard, or benchmark."
