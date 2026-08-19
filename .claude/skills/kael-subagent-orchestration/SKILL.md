@@ -15,10 +15,16 @@ When this fires:
 4. Use the smallest useful fan-out: 0 for simple work, 1 for a high-leverage sidecar, and 2-3 only for genuinely distinct complex workstreams.
 5. Keep the critical path, cross-cutting decisions, integration, final review, verification, and user-facing response with the main agent.
 
-Output:
+## Close
+
+Record `local` or `delegated` on the first line, then what each side carried.
 
 ```text
-Delegation: local / delegated
+Delegation:
 Reason:
+Delegated work:
 Main-agent work:
+Verified independently:
 ```
+
+A subagent's report is a claim, not a result. Verify what it says changed before passing it on as your own finding.

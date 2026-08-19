@@ -32,3 +32,7 @@ No AI residue (attribution, request narration, first-person, dates, status/plan/
 No dead code / bare TODO / restated-code / editorializing: yes/no
 lint:comments on this change: clean / <violations>
 ```
+
+## Close
+
+`pnpm lint:comments` is the only proof a comment passes. If it did not run, say so rather than asserting the file is clean.

@@ -43,7 +43,7 @@ If the question is ambiguous, inspect the surrounding code/docs first. Ask Tu on
 - Do not connect to production Supabase or real providers unless persistence/provider behavior is the explicit question and Tu approves the sandbox.
 - Print or render the relevant state after each action.
 
-## Output
+## Close
 
 ```text
 Prototype question:
@@ -60,3 +60,5 @@ Delete or absorb plan:
 - Do not over-polish or add tests for the throwaway shell.
 - Do not wire prototypes to real mutations.
 - Do not promote prototype code directly without rewriting it to production standards and running the relevant gates.
+
+A prototype answers one question and is then thrown away. Never report a prototype result as production evidence, and never leave `sandbox/` code in the product path.

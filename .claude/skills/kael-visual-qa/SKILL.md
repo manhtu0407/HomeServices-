@@ -24,4 +24,17 @@ When this fires:
 3. Classify every diff: intended / platform-render / flaky-data / regression / baseline-update. Stabilize fixtures, don't mask a bug.
 4. Native capture only (no Expo-web); a green pixel-diff is not aesthetic approval — defer taste to `kael-design-review` / human sign-off.
 
+## Close
+
+```text
+Surface:
+Capture matrix:
+Captured:
+Not captured:
+Baseline:
+Diff verdict:
+```
+
+Capture is device-gated. Without a real screenshot there is no visual verdict — report `not captured`, never `looks correct`.
+
 Single source: `governance/design/visual-qa.md`. Pair with `kael-frontend-test`, `kael-design-review`, and the design router `governance/design/runtime.md`.

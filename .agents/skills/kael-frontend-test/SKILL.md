@@ -15,7 +15,7 @@ When this fires:
 4. G4–G5: validate on iOS + Android (light/dark, Reduce Motion/Transparency, VI/EN, glass budget); cover key flows + money-impacting confirmations. This is RN — no browser, no web glass, press not hover. For a visual change, hand off to `kael-visual-qa` (capture matrix + naming; runbook `docs/design-research/visual-qa-runbook.md`) — automated capture is not set up yet.
 5. G6: end with real evidence (commands + results + states tested + states NOT tested). No evidence → not done.
 
-Output:
+## Close
 
 ```text
 Surface(s):
@@ -27,3 +27,5 @@ User-flow validation:
 States NOT covered:
 Evidence:
 ```
+
+G3 is `pnpm type-check:mobile` plus `pnpm test:mobile`. If either did not run, the surface is unverified — name the gate that did not run instead of calling it done.

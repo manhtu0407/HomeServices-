@@ -14,7 +14,7 @@ When this fires:
 3. No local repro → say so and verify at the closest signal. Never report "fixed" without rerunning the failing signal.
 4. Close with `kael-review` (`governance/critical.md` §8).
 
-Output:
+## Close
 
 ```text
 Feedback loop:

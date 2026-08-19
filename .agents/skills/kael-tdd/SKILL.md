@@ -26,7 +26,7 @@ Prefer these root aliases over raw package binaries. They route through `scripts
 
 If a gate does not run, the task is not done. Name the gate that did not run and why; never infer a green signal from reading the code. A red-green loop with no observed red is not TDD.
 
-Output:
+## Close
 
 ```text
 Behavior under test:

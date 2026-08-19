@@ -31,7 +31,7 @@ When this fires:
 3. RLS positive AND negative tests for each relevant actor (customer/worker/admin); test constraints/triggers/indexes when touched.
 4. Keep Supabase client/server code type-safe; apply `kael-security-sweep` for PII/auth/logging.
 
-Output:
+## Close
 
 ```text
 Schema area:
@@ -42,3 +42,5 @@ Actor tests:
 Data integrity tests:
 Limitations:
 ```
+
+Migrations and RLS are proven against real Postgres. If the local stack did not start, say the SQL is unrun rather than reviewed-and-correct.

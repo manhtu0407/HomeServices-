@@ -28,7 +28,7 @@ Research is evidence gathering, not a substitute for a product decision or an im
 - Do not claim a time-sensitive fact is current unless it was verified during the task.
 - Do not turn research into provider integration, data collection, or workflow mutation without a separate approved task.
 
-## Output
+## Close
 
 ```text
 Question:
@@ -39,3 +39,5 @@ Inference:
 Conflicts or limitations:
 Recommendation:
 ```
+
+Separate observed fact from inference, and never call a time-sensitive fact current unless it was verified during this task.

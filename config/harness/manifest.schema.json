@@ -179,6 +179,12 @@
             "unavailable"
           ]
         },
+        "closeout": {
+          "enum": [
+            "report",
+            "inline"
+          ]
+        },
         "runtimeDependencies": {
           "type": "array",
           "uniqueItems": true,

@@ -16,7 +16,7 @@ When this fires:
 
 A security claim with no executed check is not a finding. If a gate could not run, say which one and treat the area as unverified rather than clean.
 
-Output:
+## Close
 
 ```text
 Secrets:

@@ -120,3 +120,7 @@ Do NOT use `apply_migration` to change a local database schema — it writes a m
 
 - **Skill Feedback** → [references/skill-feedback.md](references/skill-feedback.md)
   **MUST read when** the user reports that this skill gave incorrect guidance or is missing information.
+
+## Close
+
+`kael-supabase` outranks this skill inside this repo, and the MCP server is not configured here. Use the cited docs URL; never present recalled detail as `search_docs` output.

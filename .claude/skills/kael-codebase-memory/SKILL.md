@@ -50,3 +50,7 @@ search_code
 query_graph
 detect_changes
 ```
+
+## Close
+
+The structural tools this skill describes are absent here (`readiness: unavailable`). Say plainly that you fell back to Grep/Glob/Read; never present a structural claim as if an index produced it.

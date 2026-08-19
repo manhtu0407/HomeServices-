@@ -77,3 +77,15 @@ compose.yaml (root)    owns the pinned Deno toolbox only
 `deno check` without `--config` on `mobile-api` resolves bare specifiers as
 plain npm names and emits a flood of phantom errors. `pnpm edge:check` embeds
 the right per-function `--config`; use it rather than calling `deno check` by hand.
+
+## Close
+
+```text
+Precondition check:
+Stack state:
+Commands run:
+Result:
+Blocker:
+```
+
+If the precondition check failed, report the measured blocker and stop. Reading SQL is not a substitute for running it against Postgres.

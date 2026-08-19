@@ -38,7 +38,7 @@ The root scripts dispatch through `scripts/run.mjs` to `scripts/run-react-doctor
 5. Do not touch unrelated findings unless Tu asked for a cleanup pass.
 6. After fixes, rerun the same React Doctor command and the narrowest relevant type-check/test gate.
 
-## Reporting
+## Close
 
 Summarize:
 
@@ -50,3 +50,5 @@ Fixed:
 Remaining:
 Verification:
 ```
+
+The exit code is the signal, not your reading of the findings. A finding you chose not to fix stays in `Remaining`; never silently drop one.

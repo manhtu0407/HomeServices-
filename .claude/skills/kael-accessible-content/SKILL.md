@@ -15,4 +15,8 @@ When this fires:
 4. Pass WCAG contrast in light + dark; never encode meaning by color alone.
 5. Targets >= ~44pt; press not hover; respect Reduce Motion / Transparency via `useGlassAccessibility()`.
 
+## Close
+
+Contrast, dynamic type, and screen-reader state are claims about rendered output. Name any you did not measure — `kael-visual-qa` is device-gated, so "checked visually" is not available in an agent shell.
+
 Single source: `governance/design/accessible-content.md`. Pair with `kael-frontend-test` (accessibility gate) and the design router `governance/design/runtime.md`.

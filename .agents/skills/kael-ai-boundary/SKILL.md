@@ -15,7 +15,7 @@ When this fires:
 4. Track session cost before the next call; enforce timeouts/retries; fallback is allowed, fake success is forbidden.
 5. Pair with `kael-security-sweep` and `kael-tdd` (negative cases).
 
-Output:
+## Close
 
 ```text
 AI boundary touched:
@@ -27,3 +27,5 @@ Fallback:
 Cost tracking:
 Tests:
 ```
+
+A provider or schema claim is proven by an executed call or a passing negative test, not by reading the adapter. Name any boundary you changed but did not exercise.

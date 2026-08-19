@@ -29,6 +29,9 @@ const PNPM_PASSTHROUGH = new Set(['dlx', 'exec', 'install', 'add', 'remove', 'ru
 // Readiness is declared once in the harness manifest; the skill body has to agree with it, or the
 // agent reading the skill and the ratchet reading the manifest believe different things.
 const PRECONDITIONS = /^##\s+Preconditions\s*$/m
+// A skill has to say how it ends, or it ends however the agent feels like ending it. `## Close` is
+// where the stop rule lives — the sentence naming what this skill must not claim without evidence.
+const CLOSE = /^##\s+Close\s*$/m
 
 function pathCandidates(text) {
   const found = new Set()
@@ -78,9 +81,9 @@ if (!existsSync(SKILLS)) {
 
 const scripts = JSON.parse(readFileSync(resolve(root, 'package.json'), 'utf8')).scripts ?? {}
 const manifest = JSON.parse(readFileSync(resolve(root, 'config/harness/manifest.json'), 'utf8'))
-const readinessById = new Map(
-  manifest.entries.filter((entry) => entry.kind === 'repository-skill').map((entry) => [entry.id, entry.readiness]),
-)
+const skillEntries = manifest.entries.filter((entry) => entry.kind === 'repository-skill')
+const readinessById = new Map(skillEntries.map((entry) => [entry.id, entry.readiness]))
+const closeoutById = new Map(skillEntries.map((entry) => [entry.id, entry.closeout]))
 
 // A skill that names a command the agent cannot run fails at the point of highest cost — mid-task,
 // after the agent has already committed to the approach the skill prescribed.
@@ -88,6 +91,47 @@ function checkCommands(id, text, problems) {
   for (const [, name] of text.matchAll(/\bpnpm\s+([a-z][a-z0-9:._-]*)/g)) {
     if (PNPM_PASSTHROUGH.has(name)) continue
     if (!(name in scripts)) problems.push(`${id}: SKILL.md names \`pnpm ${name}\`, which is not a script in package.json`)
+  }
+}
+
+// A report template is a fenced block of bare `Field:` lines. Three is the smallest count that
+// reads as a contract rather than a stray colon in prose.
+function hasReportTemplate(text) {
+  for (const [, block] of text.matchAll(/```[a-z]*\n([\s\S]*?)```/g)) {
+    const fields = block.split(/\r?\n/).filter((line) => /^[A-Za-z][^`]*:\s*$/.test(line))
+    if (fields.length >= 3) return true
+  }
+  return false
+}
+
+function closeBody(text) {
+  const start = CLOSE.exec(text)
+  if (!start) return null
+  const rest = text.slice(start.index + start[0].length)
+  const next = /^##\s+/m.exec(rest)
+  return (next ? rest.slice(0, next.index) : rest).trim()
+}
+
+// Closeout is the readiness contract one axis over: the manifest says what shape the skill owes the
+// agent when it finishes, and the body has to actually carry that shape.
+function checkCloseout(id, text, problems) {
+  const closeout = closeoutById.get(id)
+  if (!closeout) {
+    problems.push(`${id}: no closeout declared in config/harness/manifest.json`)
+    return
+  }
+  const body = closeBody(text)
+  if (body === null) {
+    problems.push(`${id}: no \`## Close\` section — every skill must say how it ends and what it may not claim`)
+    return
+  }
+  if (!body) problems.push(`${id}: \`## Close\` is empty — it must carry the stop rule for this skill`)
+  const template = hasReportTemplate(text)
+  if (closeout === 'report' && !template) {
+    problems.push(`${id}: declares closeout \`report\` but carries no field template for the agent to fill`)
+  }
+  if (closeout === 'inline' && template) {
+    problems.push(`${id}: declares closeout \`inline\` but carries a field template — it should be \`report\``)
   }
 }
 
@@ -128,6 +172,7 @@ for (const id of ids) {
   })
   checkCommands(id, text, problems)
   checkReadiness(id, text, problems)
+  checkCloseout(id, text, problems)
   checkDescriptor(id, skillDir, problems)
 }
 
@@ -142,4 +187,8 @@ const byReadiness = ids.reduce((counts, id) => {
   return counts
 }, {})
 const summary = Object.entries(byReadiness).sort().map(([readiness, count]) => `${count} ${readiness}`).join(', ')
-console.log(`skill contracts ok: ${ids.length} skills (${summary}) — paths resolve, commands exist, readiness matches, every skill carries a Codex descriptor`)
+const reports = ids.filter((id) => closeoutById.get(id) === 'report').length
+console.log(
+  `skill contracts ok: ${ids.length} skills (${summary}; ${reports} report, ${ids.length - reports} inline) — ` +
+    'paths resolve, commands exist, readiness and closeout match, every skill carries a Codex descriptor',
+)

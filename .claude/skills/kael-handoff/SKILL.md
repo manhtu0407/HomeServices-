@@ -30,7 +30,7 @@ Use this when:
 7. Include a `Suggested skills` section listing the project skills/protocols likely needed next.
 8. Default to putting the handoff in the final response. If Tu asks for a file handoff, write it to the OS temp directory, not the repo, unless Tu explicitly asks for a tracked artifact.
 
-## Output
+## Close
 
 ```text
 Handoff:
@@ -50,3 +50,5 @@ Next action:
 - Do not duplicate long artifacts already captured elsewhere.
 - Do not write repo files for handoff unless Tu explicitly asked for a tracked document.
 - Do not claim production-ready from a handoff alone.
+
+A handoff that omits a skipped check is a false handoff. List the commands that did not run beside the ones that did.
