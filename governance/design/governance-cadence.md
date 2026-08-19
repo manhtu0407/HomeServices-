@@ -1,10 +1,10 @@
 # Design Reference — Governance Cadence
 
-> A nan of the `design.md` system. `critical.md` is highest authority; `design/runtime.md` routes here; `design/design-evidence.md` owns the source contract this file schedules. This nan answers **when design governance is re-checked and how it retires its own rules** — so the wheel keeps itself honest instead of decaying into stale citations and orphaned rules.
+> A spoke of the `design.md` system. `critical.md` is highest authority; `design/runtime.md` routes here; `design/design-evidence.md` owns the source contract this file schedules. This spoke answers **when design governance is re-checked and how it retires its own rules** — so the wheel keeps itself honest instead of decaying into stale citations and orphaned rules.
 
 ## 0. Role
 
-Every other design nan states a rule. This one states **when a rule is re-examined and when it dies**. Without it the system fails two predictable ways: sources silently age past their freshness window and keep getting cited as "current", and superseded rules stay on the books because nobody owns removing them.
+Every other design spoke states a rule. This one states **when a rule is re-examined and when it dies**. Without it the system fails two predictable ways: sources silently age past their freshness window and keep getting cited as "current", and superseded rules stay on the books because nobody owns removing them.
 
 Nothing here runs on a timer. There is no scheduler, no CI job. Every trigger below is **event-driven** — it fires when an agent touches the relevant surface. Do not write "reviewed quarterly" into any artifact; that is a promise this repo cannot keep.
 
@@ -24,7 +24,7 @@ The freshness windows live in `design-evidence.md` §3 (framework 90d · compone
 
 **Marking review-due.** Set `lifecycle = unknown` and leave `last_verified` at its real old date. Never bump `last_verified` to today without actually re-reading the source — a refreshed date with no re-read is a fabricated verification, which `AGENTS.md` data-honesty forbids.
 
-**Hard rule — no silent reuse.** A source past its window may not back a "current" claim just because it is already in the ledger. Either re-verify it, or say in the work product that the rule rests on an unverified source. Reusing an expired row without saying so is the exact failure this nan exists to prevent.
+**Hard rule — no silent reuse.** A source past its window may not back a "current" claim just because it is already in the ledger. Either re-verify it, or say in the work product that the rule rests on an unverified source. Reusing an expired row without saying so is the exact failure this spoke exists to prevent.
 
 **Scope discipline.** Re-verify only the rows the current task actually cites. A full-ledger sweep is its own task with its own evidence — not something to smuggle into an unrelated change.
 
@@ -69,13 +69,13 @@ A visual or UX defect that reached a user (or reached Tu in review) is evidence 
 
 Design rules accumulate. A rule that no longer matches the product, the platform, or the runtime is worse than no rule: agents still obey it.
 
-**Retire when** the platform behavior it encodes is gone (an SDK removed the API), the product decision reversed, it is fully subsumed by another nan, or its only supporting source is `retired-site` / `superseded` with no replacement.
+**Retire when** the platform behavior it encodes is gone (an SDK removed the API), the product decision reversed, it is fully subsumed by another spoke, or its only supporting source is `retired-site` / `superseded` with no replacement.
 
 **How to retire — explicitly, in one edit:**
 
-1. Delete the rule from its nan. Do not leave it commented out; `protocols/code-hygiene.md` forbids commented-out residue, and the same applies to governance prose.
+1. Delete the rule from its spoke. Do not leave it commented out; `protocols/code-hygiene.md` forbids commented-out residue, and the same applies to governance prose.
 2. State the retirement and its reason in the change that removes it, so the history carries the why.
-3. Fix every pointer to it — the router `runtime.md`, the skill body, sibling nan. A dangling pointer is the defect this step exists to prevent.
+3. Fix every pointer to it — the router `runtime.md`, the skill body, sibling spokes. A dangling pointer is the defect this step exists to prevent.
 4. If a ledger row existed only to support that rule, mark its `lifecycle = superseded` or drop the row; do not leave it inflating the count.
 
 **Rule.** Retirement is a normal, expected edit — not an admission of failure. A wheel that never retires anything is not being maintained.

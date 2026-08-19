@@ -1,6 +1,6 @@
 # Design Reference — Visual QA
 
-> A nan of the `design.md` system. `critical.md` is highest authority; `design/runtime.md` routes here; the `kael-visual-qa` skill points here. This is the **contract** for visual capture, naming, and diff review — the matrix and the naming scheme. Building the actual screenshot / E2E tooling is a separate task (plan §44.5 / P5); this nan does not stand up tooling.
+> A spoke of the `design.md` system. `critical.md` is highest authority; `design/runtime.md` routes here; the `kael-visual-qa` skill points here. This is the **contract** for visual capture, naming, and diff review — the matrix and the naming scheme. Building the actual screenshot / E2E tooling is a separate task (plan §44.5 / P5); this spoke does not stand up tooling.
 
 ## 0. Role
 

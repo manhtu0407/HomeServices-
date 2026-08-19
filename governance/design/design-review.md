@@ -1,6 +1,6 @@
 # Design Reference — Design Review
 
-> A nan of the `design.md` system. `critical.md` is highest authority (`kael-review` §8 is the general code review); this is the **design** review that runs before a UI change is called done. `design/runtime.md` routes here; the `kael-design-review` skill points here.
+> A spoke of the `design.md` system. `critical.md` is highest authority (`kael-review` §8 is the general code review); this is the **design** review that runs before a UI change is called done. `design/runtime.md` routes here; the `kael-design-review` skill points here.
 
 ## 0. Role
 

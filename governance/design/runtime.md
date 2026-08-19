@@ -1,6 +1,6 @@
 # Design Reference — Design Runtime (the router)
 
-> The single entry point (the "axle") for design work. Both Claude Code (`.claude/skills`) and Codex (`.agents/skills`) route through here: classify the design task → pick the skill → run the preflight + gates. This file is **thin** — it points to the nan (spokes) and the skills; it does not duplicate their content. `critical.md` is highest authority; `AGENTS.md` owns the glass / motion / performance / language / scope rules; `design.md` §5 owns the design preflight.
+> The single entry point (the "axle") for design work. Both Claude Code (`.claude/skills`) and Codex (`.agents/skills`) route through here: classify the design task → pick the skill → run the preflight + gates. This file is **thin** — it points to the spokes and the skills; it does not duplicate their content. `critical.md` is highest authority; `AGENTS.md` owns the glass / motion / performance / language / scope rules; `design.md` §5 owns the design preflight.
 
 ## 0. Upstream-aware activation
 
