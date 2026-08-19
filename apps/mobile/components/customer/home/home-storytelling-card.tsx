@@ -90,15 +90,15 @@ export function HomeStorytellingCard({ language, onSearch, onSearchFocus, reduce
         </Text>
         <Text
           adjustsFontSizeToFit
-          minimumFontScale={0.72}
-          numberOfLines={2}
+          minimumFontScale={0.62}
+          numberOfLines={1}
           style={[
             styles.description,
             descriptionTypography,
             {
-              fontSize: (descriptionTypography.fontSize ?? 0) + 3,
-              lineHeight: (descriptionTypography.lineHeight ?? 0) + 3,
-              marginTop: q(4) + 9,
+              fontSize: (descriptionTypography.fontSize ?? 0) + 1,
+              lineHeight: (descriptionTypography.lineHeight ?? 0) + 1,
+              marginTop: q(4) + 5,
             },
           ]}
         >
@@ -117,7 +117,7 @@ export function HomeStorytellingCard({ language, onSearch, onSearchFocus, reduce
           placeholder={copy.searchPlaceholder}
           placeholderTextColor={tokens.muted}
           returnKeyType="search"
-          style={[customerV21WebTextInputNoOutline, styles.searchInput, searchTypography, { borderWidth: 0, height: q(68), paddingHorizontal: q(19), textAlignVertical: 'center' }]}
+          style={[customerV21WebTextInputNoOutline, styles.searchInput, searchTypography, { borderWidth: 0, height: q(68), includeFontPadding: false, paddingHorizontal: q(19), paddingVertical: 0, textAlignVertical: 'center' }]}
           value={value}
         />
       </View>

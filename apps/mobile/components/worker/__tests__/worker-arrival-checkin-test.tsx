@@ -535,6 +535,38 @@ it('records arrival before continuing to the in-progress screen', async () => {
     )
   })
 
+  it('selects the rebuilt in-progress session surface instead of the legacy jobs host', () => {
+    mockRouteParams = { ns_worker_screen: '2.7-in-progress' }
+    buildWorkflow(buildInProgressDeal())
+
+    render(<WorkerJobsSurface />)
+
+    expect(screen.getByTestId('worker-v5-rebuilt-in-progress-session')).toBeOnTheScreen()
+    expect(screen.getByTestId('worker-v5-timer-card')).toBeOnTheScreen()
+    expect(screen.getByTestId('worker-v5-work-progress-board')).toBeOnTheScreen()
+    expect(screen.getByTestId('worker-v5-evidence-tray')).toBeOnTheScreen()
+    expect(screen.getByTestId('worker-v5-in-progress-scope-action')).toBeOnTheScreen()
+    expect(screen.getByTestId('worker-v5-in-progress-kael-action')).toBeOnTheScreen()
+    expect(screen.queryByTestId('worker-v5-stage-five-prototype')).toBeNull()
+    expect(screen.queryByTestId('worker-jobs-surface')).toBeNull()
+  })
+
+  it('keeps the rebuilt session visible while the active job is hydrating', () => {
+    mockRouteParams = { ns_worker_screen: '2.7-in-progress' }
+    buildWorkflow(buildInProgressDeal())
+    mockWorkflowValue.state.deal = null
+    mockWorkflowValue.selectors.currentBackendStatus = null
+    mockWorkflowValue.selectors.currentStatus = null
+    mockWorkflowValue.state.workerGate = 'backend_pending'
+    mockWorkflowValue.workerJobsHydrated = false
+
+    render(<WorkerJobsSurface />)
+
+    expect(screen.getByTestId('worker-v5-rebuilt-in-progress-session')).toBeOnTheScreen()
+    expect(screen.getByTestId('worker-v5-timer-card')).toBeOnTheScreen()
+    expect(screen.queryByTestId('worker-v5-stage-five-prototype')).toBeNull()
+  })
+
   it('opens case-bound Kael from an active job instead of generic chat', () => {
     mockRouteParams = { ns_worker_screen: '2.7-in-progress' }
     buildWorkflow(buildInProgressDeal())

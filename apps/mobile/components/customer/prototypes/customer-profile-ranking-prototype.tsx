@@ -110,10 +110,7 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     marginTop: 4,
     padding: 0,
-    shadowColor: '#087D72',
-    shadowOffset: { height: 14, width: 0 },
-    shadowOpacity: 0.14,
-    shadowRadius: 24,
+    boxShadow: '0px 14px 24px rgba(8,125,114,0.14)',
   },
   cardContent: {
     overflow: 'hidden',

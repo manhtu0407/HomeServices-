@@ -32,6 +32,15 @@ type WorkerProfileSectionIconName = 'badge' | 'calendar' | 'chat' | 'check' | 'd
 type WorkerReliabilityIconName = 'cadence' | 'proof' | 'quality' | 'stability'
 export type WorkerReviewsIconName = 'feedback' | 'pulse'
 
+const glyphCommon = {
+  fill: 'none' as const,
+  stroke: color.brand.primary,
+  strokeLinecap: 'round' as const,
+  strokeLinejoin: 'round' as const,
+  strokeWidth: 1.55,
+}
+const workerRankingAxisOrder = ['arrival', 'completion', 'rating', 'work_response', 'incident_handling'] as const
+
 function Text({ style, ...props }: TextProps) {
   return <RNText {...props} style={[styles.rowMeta, style]} />
 }
@@ -46,149 +55,125 @@ function SectionHeading({ action, title }: { action?: string; title: string }) {
 }
 
 function SectionGlyph({ name, testID }: { name: WorkerProfileSectionIconName; testID?: string }) {
-  const common = {
-    fill: 'none' as const,
-    stroke: color.brand.primary,
-    strokeLinecap: 'round' as const,
-    strokeLinejoin: 'round' as const,
-    strokeWidth: 1.55,
-  }
-
   switch (name) {
     case 'badge':
       return (
         <Svg height={22} testID={testID} viewBox="0 0 20 20" width={22}>
-          <Circle {...common} cx={10} cy={7.8} r={4.2} />
-          <Path {...common} d="m7.8 11.2-1 5 3.2-1.8 3.2 1.8-1-5M8.6 8.1l1 .9 1.8-1.8" />
+          <Circle {...glyphCommon} cx={10} cy={7.8} r={4.2} />
+          <Path {...glyphCommon} d="m7.8 11.2-1 5 3.2-1.8 3.2 1.8-1-5M8.6 8.1l1 .9 1.8-1.8" />
         </Svg>
       )
     case 'calendar':
       return (
         <Svg height={22} testID={testID} viewBox="0 0 20 20" width={22}>
-          <Rect {...common} height={13.2} rx={2} width={14} x={3} y={4.2} />
-          <Path {...common} d="M6.5 2.8v3M13.5 2.8v3M3 8h14" />
+          <Rect {...glyphCommon} height={13.2} rx={2} width={14} x={3} y={4.2} />
+          <Path {...glyphCommon} d="M6.5 2.8v3M13.5 2.8v3M3 8h14" />
         </Svg>
       )
     case 'medal':
       return (
         <Svg height={22} testID={testID} viewBox="0 0 20 20" width={22}>
-          <Circle {...common} cx={10} cy={7.7} r={4.1} />
-          <Path {...common} d="m7.5 11.1-.8 5.1 3.3-1.9 3.3 1.9-.8-5.1M8.5 7.8 10 9l1.5-1.2" />
+          <Circle {...glyphCommon} cx={10} cy={7.7} r={4.1} />
+          <Path {...glyphCommon} d="m7.5 11.1-.8 5.1 3.3-1.9 3.3 1.9-.8-5.1M8.5 7.8 10 9l1.5-1.2" />
         </Svg>
       )
     case 'chat':
       return (
         <Svg height={22} testID={testID} viewBox="0 0 20 20" width={22}>
-          <Path {...common} d="M4.4 4.1h11.2a2 2 0 0 1 2 2v6.1a2 2 0 0 1-2 2H9.4l-3.6 2.1v-2.1h-1.4a2 2 0 0 1-2-2V6.1a2 2 0 0 1 2-2Z" />
-          <Path {...common} d="M6.3 9.2h.1M9.9 9.2h.1M13.5 9.2h.1" />
+          <Path {...glyphCommon} d="M4.4 4.1h11.2a2 2 0 0 1 2 2v6.1a2 2 0 0 1-2 2H9.4l-3.6 2.1v-2.1h-1.4a2 2 0 0 1-2-2V6.1a2 2 0 0 1 2-2Z" />
+          <Path {...glyphCommon} d="M6.3 9.2h.1M9.9 9.2h.1M13.5 9.2h.1" />
         </Svg>
       )
     case 'check':
       return (
         <Svg height={22} testID={testID} viewBox="0 0 20 20" width={22}>
-          <Circle {...common} cx={10} cy={10} r={7.2} />
-          <Path {...common} d="m6.6 10 2.2 2.2 4.7-4.7" />
+          <Circle {...glyphCommon} cx={10} cy={10} r={7.2} />
+          <Path {...glyphCommon} d="m6.6 10 2.2 2.2 4.7-4.7" />
         </Svg>
       )
     case 'document':
       return (
         <Svg height={22} testID={testID} viewBox="0 0 20 20" width={22}>
-          <Path {...common} d="M5.2 2.8h6l3.6 3.6v10.8H5.2V2.8Z" />
-          <Path {...common} d="M11.2 2.8v3.6h3.6M7.7 10h4.6M7.7 13h4.6" />
+          <Path {...glyphCommon} d="M5.2 2.8h6l3.6 3.6v10.8H5.2V2.8Z" />
+          <Path {...glyphCommon} d="M11.2 2.8v3.6h3.6M7.7 10h4.6M7.7 13h4.6" />
         </Svg>
       )
     case 'shield':
       return (
         <Svg height={22} testID={testID} viewBox="0 0 20 20" width={22}>
-          <Path {...common} d="m10 2.7 6 2.2v4.7c0 3.5-2.4 6.3-6 7.7-3.6-1.4-6-4.2-6-7.7V4.9l6-2.2Z" />
-          <Path {...common} d="m7.3 10 1.8 1.8 3.7-3.7" />
+          <Path {...glyphCommon} d="m10 2.7 6 2.2v4.7c0 3.5-2.4 6.3-6 7.7-3.6-1.4-6-4.2-6-7.7V4.9l6-2.2Z" />
+          <Path {...glyphCommon} d="m7.3 10 1.8 1.8 3.7-3.7" />
         </Svg>
       )
     case 'tools':
       return (
         <Svg height={22} testID={testID} viewBox="0 0 20 20" width={22}>
-          <Path {...common} d="M11.7 4a3.3 3.3 0 0 0-3.8 4.3l-4.1 4.1a1.6 1.6 0 0 0 2.3 2.3l4.1-4.1A3.3 3.3 0 0 0 14.5 7l-2 2-2-.6-.6-2 1.8-2.4Z" />
+          <Path {...glyphCommon} d="M11.7 4a3.3 3.3 0 0 0-3.8 4.3l-4.1 4.1a1.6 1.6 0 0 0 2.3 2.3l4.1-4.1A3.3 3.3 0 0 0 14.5 7l-2 2-2-.6-.6-2 1.8-2.4Z" />
         </Svg>
       )
     case 'worker':
       return (
         <Svg height={22} testID={testID} viewBox="0 0 20 20" width={22}>
-          <Circle {...common} cx={10} cy={6.3} r={2.7} />
-          <Path {...common} d="M4.6 16.7a5.4 5.4 0 0 1 10.8 0" />
+          <Circle {...glyphCommon} cx={10} cy={6.3} r={2.7} />
+          <Path {...glyphCommon} d="M4.6 16.7a5.4 5.4 0 0 1 10.8 0" />
         </Svg>
       )
   }
 }
 
 function ReliabilityGlyph({ name, testID }: { name: WorkerReliabilityIconName; testID?: string }) {
-  const common = {
-    fill: 'none' as const,
-    stroke: color.brand.primary,
-    strokeLinecap: 'round' as const,
-    strokeLinejoin: 'round' as const,
-    strokeWidth: 1.55,
-  }
-
   switch (name) {
     case 'cadence':
       return (
         <Svg height={22} testID={testID} viewBox="0 0 20 20" width={22}>
-          <Path {...common} d="m3.2 12.8 4-4 3 2.2 6.6-5.5" />
-          <Path {...common} d="M14.2 5.5h2.6v2.6" />
-          <Circle {...common} cx={3.2} cy={12.8} r={1.2} />
-          <Circle {...common} cx={7.2} cy={8.8} r={1.2} />
-          <Circle {...common} cx={10.2} cy={11} r={1.2} />
+          <Path {...glyphCommon} d="m3.2 12.8 4-4 3 2.2 6.6-5.5" />
+          <Path {...glyphCommon} d="M14.2 5.5h2.6v2.6" />
+          <Circle {...glyphCommon} cx={3.2} cy={12.8} r={1.2} />
+          <Circle {...glyphCommon} cx={7.2} cy={8.8} r={1.2} />
+          <Circle {...glyphCommon} cx={10.2} cy={11} r={1.2} />
         </Svg>
       )
     case 'proof':
       return (
         <Svg height={22} testID={testID} viewBox="0 0 20 20" width={22}>
-          <Path {...common} d="M4 5.2h1.4M8.2 5.2H16M4 10h1.4M8.2 10H16M4 14.8h1.4M8.2 14.8H16" />
-          <Path {...common} d="m4.1 4.9.6.6 1.1-1.1M4.1 9.7l.6.6 1.1-1.1M4.1 14.5l.6.6 1.1-1.1" />
+          <Path {...glyphCommon} d="M4 5.2h1.4M8.2 5.2H16M4 10h1.4M8.2 10H16M4 14.8h1.4M8.2 14.8H16" />
+          <Path {...glyphCommon} d="m4.1 4.9.6.6 1.1-1.1M4.1 9.7l.6.6 1.1-1.1M4.1 14.5l.6.6 1.1-1.1" />
         </Svg>
       )
     case 'quality':
       return (
         <Svg height={22} testID={testID} viewBox="0 0 20 20" width={22}>
-          <Path {...common} d="M3.1 13.8a7 7 0 0 1 13.8 0" />
-          <Path {...common} d="M10 13.8 13.6 8.7" />
-          <Circle {...common} cx={10} cy={13.8} r={1.3} />
+          <Path {...glyphCommon} d="M3.1 13.8a7 7 0 0 1 13.8 0" />
+          <Path {...glyphCommon} d="M10 13.8 13.6 8.7" />
+          <Circle {...glyphCommon} cx={10} cy={13.8} r={1.3} />
         </Svg>
       )
     case 'stability':
       return (
         <Svg height={22} testID={testID} viewBox="0 0 20 20" width={22}>
-          <Circle {...common} cx={10} cy={10} r={7.1} />
-          <Circle {...common} cx={10} cy={10} r={3.1} />
-          <Path {...common} d="M10 2.2v2M10 15.8v2M2.2 10h2M15.8 10h2" />
+          <Circle {...glyphCommon} cx={10} cy={10} r={7.1} />
+          <Circle {...glyphCommon} cx={10} cy={10} r={3.1} />
+          <Path {...glyphCommon} d="M10 2.2v2M10 15.8v2M2.2 10h2M15.8 10h2" />
         </Svg>
       )
   }
 }
 
 export function WorkerReviewsGlyph({ name, testID }: { name: WorkerReviewsIconName; testID?: string }) {
-  const common = {
-    fill: 'none' as const,
-    stroke: color.brand.primary,
-    strokeLinecap: 'round' as const,
-    strokeLinejoin: 'round' as const,
-    strokeWidth: 1.55,
-  }
-
   switch (name) {
     case 'feedback':
       return (
         <Svg height={22} testID={testID} viewBox="0 0 20 20" width={22}>
-          <Circle {...common} cx={10} cy={10} r={7.1} />
-          <Path {...common} d="M6.4 8.4h2.1M6.4 11.6h2.1M11.5 8.4h2.1M11.5 11.6h2.1" />
-          <Path {...common} d="M9.7 14.2h.6" />
+          <Circle {...glyphCommon} cx={10} cy={10} r={7.1} />
+          <Path {...glyphCommon} d="M6.4 8.4h2.1M6.4 11.6h2.1M11.5 8.4h2.1M11.5 11.6h2.1" />
+          <Path {...glyphCommon} d="M9.7 14.2h.6" />
         </Svg>
       )
     case 'pulse':
       return (
         <Svg height={22} testID={testID} viewBox="0 0 20 20" width={22}>
-          <Circle {...common} cx={10} cy={10} r={7.1} />
-          <Path {...common} d="M4.3 10h2l1.4-2.8 2.2 5.6 1.7-3.6h4.1" />
+          <Circle {...glyphCommon} cx={10} cy={10} r={7.1} />
+          <Path {...glyphCommon} d="M4.3 10h2l1.4-2.8 2.2 5.6 1.7-3.6h4.1" />
         </Svg>
       )
   }
@@ -279,7 +264,6 @@ export function WorkerV5RankingSection({
   const completed = numericOrNull(insights?.completed_job_count ?? profile?.total_jobs)
   const reviewCount = numericOrNull(insights?.review_count)
   const onTime = numericOrNull(insights?.on_time_rate_percent)
-  const axisOrder = ['arrival', 'completion', 'rating', 'work_response', 'incident_handling'] as const
   const scoreByAxis = new Map(insights?.performance_axes.map((axis) => [axis.id, axis.score] as const) ?? [])
   const name = profile?.legal_name?.trim() || textByLanguage(language, 'Hồ sơ thợ', 'Worker profile')
 
@@ -339,7 +323,7 @@ export function WorkerV5RankingSection({
 
       <SectionHeading title={textByLanguage(language, 'Điều giúp bạn thăng hạng', 'Ranking improvements')} action={textByLanguage(language, 'Có thể theo dõi', 'Trackable')} />
       <View style={styles.listCard} testID="worker-v5-ranking-improvement-list">
-        {axisOrder.map((axisId, index) => {
+        {workerRankingAxisOrder.map((axisId, index) => {
           const axisScore = numericOrNull(scoreByAxis.get(axisId))
           return (
             <View key={axisId}>
@@ -355,7 +339,7 @@ export function WorkerV5RankingSection({
                 progress={axisScore}
                 detailTestID={`worker-v5-ranking-improvement-detail-${index}`}
               />
-              {index < axisOrder.length - 1 ? <Divider /> : null}
+              {index < workerRankingAxisOrder.length - 1 ? <Divider /> : null}
             </View>
           )
         })}

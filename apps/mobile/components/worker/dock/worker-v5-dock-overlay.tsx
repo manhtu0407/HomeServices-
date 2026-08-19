@@ -1,7 +1,8 @@
 import { useEffect, useState, type ReactNode } from 'react'
-import { Pressable, Text, View, useWindowDimensions, type LayoutChangeEvent } from 'react-native'
+import { Platform, Pressable, Text, View, useWindowDimensions, type LayoutChangeEvent } from 'react-native'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import Animated from 'react-native-reanimated'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import {
   CUSTOMER_LIQUID_NAV_DOCK_HEIGHT,
@@ -91,6 +92,7 @@ export function WorkerRebuildDockOverlay({ active }: { active: WorkerDockActive 
   const params = useLocalSearchParams<WorkerV5RouteParams>()
   const language = resolveWorkerV5Language(params)
   const { width } = useWindowDimensions()
+  const insets = useSafeAreaInsets()
   const { reduceMotion, reduceTransparency } = useGlassAccessibility()
   const workerThemeMode = useWorkerThemeMode()
   const { collapsed, resetDockScroll } = useDockScrollState()
@@ -115,7 +117,7 @@ export function WorkerRebuildDockOverlay({ active }: { active: WorkerDockActive 
   }
 
   return (
-    <View pointerEvents="box-none" style={dockStyles.dockOverlay} testID="worker-v5-dock-overlay">
+    <View pointerEvents="box-none" style={[dockStyles.dockOverlay, { bottom: Platform.OS === 'ios' ? insets.bottom + 12 : 12 }]} testID="worker-v5-dock-overlay">
       <Animated.View style={[dockStyles.dockRow, { width: liquidNavWidth }, animatedDockScrollStyle]} testID="worker-v5-liquid-navigation">
         <GlassSurface
           backgroundColor={tokens.glass}

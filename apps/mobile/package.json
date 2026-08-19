@@ -12,12 +12,12 @@
     "test:watch": "jest --watch",
     "lint": "eslint .",
     "lint:mobile": "eslint .",
-    "eas:login": "pnpm dlx eas-cli@21.0.0 login",
-    "eas:whoami": "pnpm dlx eas-cli@21.0.0 whoami",
-    "testflight": "pnpm dlx eas-cli@21.0.0 build -p ios --profile production --auto-submit",
-    "submit:ios:latest": "pnpm dlx eas-cli@21.0.0 submit -p ios --profile production --latest",
-    "play:internal": "pnpm dlx eas-cli@21.0.0 build -p android --profile production --auto-submit",
-    "submit:android:latest": "pnpm dlx eas-cli@21.0.0 submit -p android --profile production --latest"
+    "eas:login": "pnpm dlx eas-cli@22.0.0 login",
+    "eas:whoami": "pnpm dlx eas-cli@22.0.0 whoami",
+    "testflight": "pnpm dlx eas-cli@22.0.0 build -p ios --profile production --auto-submit",
+    "submit:ios:latest": "pnpm dlx eas-cli@22.0.0 submit -p ios --profile production --latest",
+    "play:internal": "pnpm dlx eas-cli@22.0.0 build -p android --profile production --auto-submit",
+    "submit:android:latest": "pnpm dlx eas-cli@22.0.0 submit -p android --profile production --latest"
   },
   "dependencies": {
     "@babel/runtime": "7.29.2",

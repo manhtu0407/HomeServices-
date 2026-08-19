@@ -511,10 +511,12 @@ export const customerV21BookingStyles = StyleSheet.create({
   },
   bookingWorkartServiceTile: {
     alignItems: 'stretch',
+    alignSelf: 'stretch',
     borderCurve: 'continuous',
     borderRadius: 12,
     borderWidth: 1,
     flexDirection: 'row',
+    flexShrink: 0,
     minHeight: 56,
     overflow: 'hidden',
     position: 'relative',
@@ -580,6 +582,9 @@ export const customerV21BookingStyles = StyleSheet.create({
     width: '100%',
   },
   bookingServiceGrid: {
+    alignSelf: 'stretch',
+    flexDirection: 'column',
+    flexWrap: 'nowrap',
     marginHorizontal: 4,
     marginTop: 6,
   },

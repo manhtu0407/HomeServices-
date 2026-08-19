@@ -11,19 +11,19 @@ function readMobileSource(relativePath: string) {
 
 export const PILLAR = {
   id: 'P09-native-ios-liquid-tabs',
-  invariant: 'iOS primary navigation uses the system native tab host with exactly four source-defined routes',
+  invariant: 'Customer and Worker iOS navigation use one custom liquid dock with four routes and Kael in the same surface',
   authority: [
-    'NestScout_iOS26_6_Liquid_Navigation_Source.zip/native/NestScoutNativeTabs.swift',
+    'customer/worker dock surfaces and the native-device regression report',
     'governance/protocols/frontend-test.md G4',
   ],
   target: 'apps/mobile/app/(customer)/(tabs)/_layout.tsx',
   layer: 'ui-visual',
   siblings: ['P08-worker-dock-motion', 'P07-worker-verification-states'],
-  mutation: 'remove NativeTabs or leave a duplicate primary route beside the native tab group — the contract turns red',
+  mutation: 'restore NativeTabs.BottomAccessory beside the custom dock — the contract turns red',
 } as const satisfies PillarManifest
 
-describe('native iOS 26.6 tab wiring', () => {
-  it('keeps primary Customer and Worker routes inside native tab layouts', () => {
+describe('cross-platform liquid dock wiring', () => {
+  it('keeps one custom dock with four routes and Kael on both role gates', () => {
     const customerLayout = readMobileSource('app/(customer)/_layout.tsx')
     const workerLayout = readMobileSource('app/(worker)/_layout.tsx')
     const customerTabs = readMobileSource('app/(customer)/(tabs)/_layout.tsx')
@@ -34,18 +34,17 @@ describe('native iOS 26.6 tab wiring', () => {
     expect(workerLayout).toContain('name="(tabs)"')
     expect(workerLayout).not.toContain('WorkerRebuildDockOverlay')
 
-    for (const source of [customerTabs, workerTabs]) {
-      expect(source).toContain("Platform.OS === 'ios'")
-      expect(source).toContain('NativeTabs')
-      expect(source).toContain('minimizeBehavior="onScrollDown"')
-      expect(source).toContain('sf="house"')
-      expect(source).toContain('sf="square.grid.2x2"')
-      expect(source).toContain('sf="clock"')
-      expect(source).toContain('sf="person"')
-      expect(source).toContain('NativeTabs.BottomAccessory')
-      expect(source).toContain('NativeKaelBottomAccessory')
-      expect(source).not.toContain('GlassSurface')
-    }
+    expect(customerTabs).toContain('<Slot />')
+    expect(customerTabs).toContain('DockScrollStateProvider')
+    expect(customerTabs).toContain('CustomerDockOverlay')
+    expect(customerTabs).not.toContain('NativeTabs')
+    expect(customerTabs).not.toContain('NativeKaelBottomAccessory')
+
+    expect(workerTabs).toContain('<Slot />')
+    expect(workerTabs).toContain('WorkerDockLayoutProvider')
+    expect(workerTabs).toContain('WorkerRebuildDockOverlay')
+    expect(workerTabs).not.toContain('NativeTabs')
+    expect(workerTabs).not.toContain('NativeKaelBottomAccessory')
   })
 
   it('does not leave duplicate primary routes beside the native tab group', () => {

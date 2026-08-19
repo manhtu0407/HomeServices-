@@ -45,6 +45,7 @@ export function useEntryBrandAccessActions({
   const onStepChangeRef = useRef(onStepChange)
   const actionVersionRef = useRef(0)
   const actionBusyRef = useRef(false)
+  const { step: controllerStep, updateState } = controller
 
   useEffect(() => {
     onStepChangeRef.current = onStepChange
@@ -86,13 +87,13 @@ export function useEntryBrandAccessActions({
   }
 
   useEffect(() => {
-    if (controller.step !== 'splash' || splashDurationMs <= 0) return
+    if (controllerStep !== 'splash' || splashDurationMs <= 0) return
     const timeout = setTimeout(() => {
-      controller.updateState({ error: null, step: 'role-gate' })
+      updateState({ error: null, step: 'role-gate' })
       onStepChangeRef.current?.('role-gate')
     }, splashDurationMs)
     return () => clearTimeout(timeout)
-  }, [controller, splashDurationMs])
+  }, [controllerStep, splashDurationMs, updateState])
 
   const submitLogin = async () => {
     controller.setError(null)

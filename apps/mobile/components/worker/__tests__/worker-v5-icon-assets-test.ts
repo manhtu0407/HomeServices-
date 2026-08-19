@@ -48,7 +48,7 @@ describe('worker V5 icon assets', () => {
   })
 
   it('uses true-alpha Workart for every Jobs opportunity service', () => {
-    const opportunitySource = read('../jobs/worker-jobs-legacy-prototype-shared.tsx')
+    const opportunitySource = read('../jobs/worker-jobs-legacy-prototype-contracts.ts')
 
     expect(existsSync(clientImageAsset('client-booking-journey-workart-cutout.png'))).toBe(true)
     expect(opportunitySource).toContain('client-booking-journey-workart-cutout.png')

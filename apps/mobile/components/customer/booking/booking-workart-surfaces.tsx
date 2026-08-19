@@ -136,6 +136,7 @@ export function BookingWorkartServiceTile({
         {
           backgroundColor: surfaceColor,
           borderColor: selected ? tokens.primary : tokens.border,
+          height: tileHeight,
           minHeight: tileHeight,
           opacity: pressed && !reduceMotion ? 0.84 : 1,
           transform: [{ scale: pressed && !reduceMotion ? 0.985 : 1 }],
@@ -148,6 +149,7 @@ export function BookingWorkartServiceTile({
           bookingStyles.bookingWorkartServiceVisualPanel,
           {
             backgroundColor: selected ? tokens.service : tokens.mode === 'dark' ? tokens.ghost : '#E8F5F1',
+            height: tileHeight,
             minHeight: tileHeight,
           },
         ]}

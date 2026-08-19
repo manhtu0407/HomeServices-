@@ -103,10 +103,7 @@ const styles = StyleSheet.create({
     marginTop: 3,
     overflow: 'hidden',
     position: 'relative',
-    shadowColor: '#5D8480',
-    shadowOffset: { height: 8, width: 0 },
-    shadowOpacity: 0.12,
-    shadowRadius: 18,
+    boxShadow: '0px 8px 18px rgba(93,132,128,0.12)',
   },
   wideCard: {
     alignSelf: 'flex-start',

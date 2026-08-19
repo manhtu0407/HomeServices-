@@ -542,7 +542,10 @@ export function CustomerBookingEntryView({
             </View>
           ) : null}
           {!selectedService ? (
-            <View style={[sharedStyles.serviceGrid, bookingStyles.bookingServiceGrid, { gap: bookingServiceGridGap }]}>
+            <View
+              style={[sharedStyles.serviceGrid, bookingStyles.bookingServiceGrid, { gap: bookingServiceGridGap }]}
+              testID="customer-v21-service-grid"
+            >
               {CUSTOMER_SERVICE_IDS.map((service) => (
                 <BookingWorkartServiceTile
                   language={language}

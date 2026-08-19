@@ -8,6 +8,7 @@ The active Recall Index is intentionally short. Full entry detail lives in `docs
 
 ## Recall Index -> `docs/memory/2026-08.md`
 
+- **2026-08-19** Worker Earnings period navigation liquid lens — translated the Worker dock's selected lens, mint material, refraction/bloom, one-shot sheen, spring settle, accessibility state, and 44pt targets into Day/Week/Month/Year Earnings navigation; focused 6/6, full mobile 9 suites/48 tests, type-check, lint/comments, and diff hygiene green. React Doctor exited 0 with 19 pre-existing mobile findings; native iOS/Android visual QA remains unrun and nothing was committed.
 - **2026-08-17** iOS 26.6 Typography Sweep — canonical Apple semantic roles/tracking now cover mobile text surfaces; primary headings wrap safely; full mobile 120 suites / 1141 tests green. Native iOS/Dynamic Type visual matrix remains unrun on Windows; dirty unrelated worktree changes were preserved and nothing was committed.
 - **2026-08-13** Admin Finance enterprise dashboard — four Finance subviews, shared liquid-lens navigation, `finance.read` baseline, and compact verified-zero presentation: overview starts unrecorded metrics at `0` with a source/formula plus sync state, while every Finance subview shares the reduced type scale; JS/harness/Preview gates green, but real Postgres/type generation and Android+iOS native QA remain blocked by Docker RAM and broken/missing native toolchains.
 

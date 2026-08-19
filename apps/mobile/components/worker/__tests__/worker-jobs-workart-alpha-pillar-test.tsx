@@ -15,7 +15,7 @@ export const PILLAR = {
     'governance/protocols/frontend-test.md G2 (state coverage) and G4 (Reduce Transparency)',
     'governance/design/runtime.md (Workart is context, not a repeated opaque tile)',
   ],
-  target: 'apps/mobile/components/worker/jobs/worker-jobs-legacy-prototype-shared.tsx',
+  target: 'apps/mobile/components/worker/jobs/worker-jobs-legacy-prototype-contracts.ts',
   layer: 'ui-visual',
   siblings: ['P06-payment-unlock-gate', 'P08-worker-dock-motion'],
   mutation:
@@ -28,7 +28,7 @@ const read = (relativePath: string) => readFileSync(resolve(__dirname, relativeP
 
 describe('Worker Jobs Workart background contract', () => {
   it('ships a dedicated transparent asset for every supported Jobs service', () => {
-    const opportunitySource = read('../jobs/worker-jobs-legacy-prototype-shared.tsx')
+    const opportunitySource = read('../jobs/worker-jobs-legacy-prototype-contracts.ts')
 
     for (const service of ['electrical', 'plumbing', 'cleaning', 'hvac', 'handyman', 'upholstery']) {
       const assetName = `worker-jobs-workart-${service}-transparent.png`

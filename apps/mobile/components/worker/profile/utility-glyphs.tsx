@@ -21,8 +21,13 @@ export type WorkerV5UtilityGlyphName =
   | 'shield'
   | 'tools'
 
+function useWorkerUtilityGlyphStroke() {
+  const workerThemeMode = useWorkerThemeMode()
+  return workerThemeMode === 'dark' ? '#63E6D0' : color.brand.primary
+}
+
 export function WorkerV5UtilityGlyph({ name, size = 22, testID }: { name: WorkerV5UtilityGlyphName; size?: number; testID?: string }) {
-  const stroke = useWorkerThemeMode() === 'dark' ? '#63E6D0' : color.brand.primary
+  const stroke = useWorkerUtilityGlyphStroke()
   const common = {
     fill: 'none' as const,
     stroke,

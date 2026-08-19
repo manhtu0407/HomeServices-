@@ -50,8 +50,9 @@ import {
 } from './profile/body-surfaces'
 import { useWorkerAvatarPicker } from './profile/use-worker-avatar-picker'
 import { workerV5CanAcceptOpenOffer } from './jobs/acceptance'
+import { isWorkerJobsLegacyPrototypeScreen } from './jobs/worker-jobs-screen-registry'
+import { WorkerV5InProgressBody } from './jobs/in-progress-surfaces'
 import {
-  isWorkerJobsLegacyPrototypeScreen,
   WorkerJobsLegacyPrototypeHost,
 } from './jobs/worker-jobs-legacy-prototype-host'
 import {
@@ -779,6 +780,19 @@ function WorkerV5Body({
   if (screen.section === 'jobs' && isWorkerJobsLegacyPrototypeScreen(screen.id)) return <WorkerJobsLegacyPrototypeHost {...{ actionBusy, language, navigateActiveJobChat, navigateJobChat, navigateNext, navigateToScreen, reduceMotion, reduceTransparency, routePreview, runRouteAction, runWorkerAction, runtime, screen }} />
 
   switch (screen.id) {
+    case '2.7-in-progress':
+      return (
+        <View testID="worker-v5-rebuilt-in-progress-session">
+          <WorkerV5InProgressBody
+            actionBusy={actionBusy}
+            language={language}
+            navigateJobChat={navigateActiveJobChat}
+            onTravelAction={() => void runRouteAction()}
+            reduceTransparency={reduceTransparency}
+            runtime={runtime}
+          />
+        </View>
+      )
     case '1.1-worker-home':
       return <WorkerV5HomeBody language={language} onOpenProfileSetup={() => navigateToScreen('5.7-verification-documents')} reduceTransparency={reduceTransparency} runtime={runtime} />
     case '3.1-kael-chat-normal':

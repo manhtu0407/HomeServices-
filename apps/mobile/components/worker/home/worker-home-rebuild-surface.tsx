@@ -317,7 +317,7 @@ function SvgBlendGradient({ index, stops }: { index: number; stops: readonly str
     <SvgBlendRoot>
       <Defs>
         <LinearGradient id={`worker-home-rebuild-quick-blend-${index}`} x1="0%" x2="100%" y1="50%" y2="50%">
-          {stops.map((stopColor, stopIndex) => <Stop key={`${index}-${stopIndex}`} offset={String(stopIndex / (stops.length - 1))} stopColor={stopColor} />)}
+          {stops.map((stopColor, stopIndex) => <Stop key={stopColor} offset={String(stopIndex / (stops.length - 1))} stopColor={stopColor} />)}
         </LinearGradient>
       </Defs>
       <Rect fill={`url(#worker-home-rebuild-quick-blend-${index})`} height="100" width="100" x="0" y="0" />
@@ -408,6 +408,9 @@ const styles = StyleSheet.create({
   quickArtwork: {
     height: '100%',
     opacity: 0.84,
+    position: 'absolute',
+    left: 0,
+    top: 0,
     width: '60%',
   },
   quickArtworkBlend: {
@@ -452,15 +455,16 @@ const styles = StyleSheet.create({
     transform: [{ scale: 0.985 }],
   },
   quickCopy: {
-    alignSelf: 'flex-end',
+    bottom: 0,
     flexDirection: 'column',
     gap: 6,
     justifyContent: 'space-between',
     minWidth: 0,
-    minHeight: '100%',
     paddingHorizontal: 8,
     paddingVertical: 14,
-    position: 'relative',
+    position: 'absolute',
+    right: 0,
+    top: 0,
     width: '40%',
     zIndex: 2,
   },

@@ -21,6 +21,7 @@ import {
   type WorkerEarningsPeriod,
 } from './overview-model'
 import { workerSalaryWorkartAssets } from './salary-assets'
+import { WorkerEarningsPeriodSelectionLens } from './period-selection-lens'
 import { styles } from './salary-overview-styles'
 
 type WorkerSalaryTokens = ReturnType<typeof getWorkerThemeTokens>
@@ -150,41 +151,71 @@ function PeriodSelector({
   language,
   period,
   reduceMotion,
+  reduceTransparency,
   setPeriod,
   tokens,
 }: {
   language: AppLanguage
   period: WorkerEarningsPeriod
   reduceMotion: boolean
+  reduceTransparency: boolean
   setPeriod: (period: WorkerEarningsPeriod) => void
   tokens: WorkerSalaryTokens
 }) {
+  const [surfaceWidth, setSurfaceWidth] = useState(0)
+  const selectedIndex = Math.max(WORKER_EARNINGS_PERIODS.indexOf(period), 0)
+
   return (
-    <View accessibilityLabel={textByLanguage(language, 'Khoảng thời gian thu nhập', 'Earnings period')} accessibilityRole="tablist" style={[styles.periodSelector, surface(tokens)]} testID="worker-v5-earnings-period-tabs">
-      {WORKER_EARNINGS_PERIODS.map((item) => {
-        const active = item === period
-        return (
-          <Pressable
-            accessibilityRole="tab"
-            accessibilityState={{ selected: active }}
-            key={item}
-            onPress={() => setPeriod(item)}
-            style={({ pressed }) => [
-              styles.periodButton,
-              { borderColor: tokens.base },
-              active && {
-                backgroundColor: tokens.glassStrong,
-                borderColor: tokens.borderStrong,
-                ...styles.periodButtonActive,
-              },
-              pressed && !reduceMotion ? styles.pressed : null,
-            ]}
-            testID={`worker-v5-earnings-period-${item}`}
-          >
-            <Text color={active ? tokens.primary : tokens.muted} style={[styles.periodLabel, active && styles.periodLabelActive]}>{periodLabel(item, language)}</Text>
-          </Pressable>
-        )
-      })}
+    <View
+      accessibilityLabel={textByLanguage(language, 'Khoảng thời gian thu nhập', 'Earnings period')}
+      accessibilityRole="tablist"
+      style={[styles.periodSelector, surface(tokens)]}
+      testID="worker-v5-earnings-period-tabs"
+    >
+      <View
+        onLayout={({ nativeEvent: { layout } }) => setSurfaceWidth(layout.width)}
+        style={styles.periodSelectorRail}
+      >
+        <WorkerEarningsPeriodSelectionLens
+          colors={{
+            bloom: tokens.glassHighlight,
+            border: tokens.borderStrong,
+            fill: tokens.glassStrong,
+            innerBorder: tokens.border,
+            shadow: tokens.glassFloatShadow,
+            sheen: tokens.glassHighlight,
+            topLight: tokens.glassHighlight,
+          }}
+          itemCount={WORKER_EARNINGS_PERIODS.length}
+          reduceMotion={reduceMotion}
+          reduceTransparency={reduceTransparency}
+          selectedIndex={selectedIndex}
+          surfaceWidth={surfaceWidth}
+        />
+        {WORKER_EARNINGS_PERIODS.map((item) => {
+          const active = item === period
+          return (
+            <Pressable
+              accessibilityRole="tab"
+              accessibilityState={{ selected: active }}
+              key={item}
+              onPress={() => setPeriod(item)}
+              style={({ pressed }) => [
+                styles.periodButton,
+                active && {
+                  backgroundColor: reduceTransparency ? tokens.glassStrong : 'transparent',
+                  borderColor: tokens.borderStrong,
+                  borderWidth: reduceTransparency ? 1 : 0,
+                },
+                pressed && !reduceMotion ? styles.pressed : null,
+              ]}
+              testID={`worker-v5-earnings-period-${item}`}
+            >
+              <Text color={active ? tokens.primary : tokens.muted} style={[styles.periodLabel, active && styles.periodLabelActive]}>{periodLabel(item, language)}</Text>
+            </Pressable>
+          )
+        })}
+      </View>
     </View>
   )
 }
@@ -318,7 +349,7 @@ export function WorkerV5EarningsDashboard({
           retryTestID="worker-v5-earnings-retry"
           testID="worker-v5-earnings-error"
         /> : null}
-        <PeriodSelector language={language} period={period} reduceMotion={reduceMotion} setPeriod={setPeriod} tokens={tokens} />
+        <PeriodSelector language={language} period={period} reduceMotion={reduceMotion} reduceTransparency={reduceTransparency} setPeriod={setPeriod} tokens={tokens} />
         <EarningsChart language={language} model={earningsError ? { ...model, state: 'empty' } : model} period={period} tokens={tokens} />
       </View>
 

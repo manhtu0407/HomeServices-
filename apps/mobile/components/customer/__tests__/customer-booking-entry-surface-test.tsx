@@ -330,12 +330,21 @@ describe('CustomerBookingEntrySurface v2.1', () => {
     }
 
     const serviceTileStyle = StyleSheet.flatten(screen.getByTestId('customer-v21-service-electrical').props.style)
+    const serviceGridStyle = StyleSheet.flatten(screen.getByTestId('customer-v21-service-grid').props.style)
+    expect(serviceGridStyle).toMatchObject({
+      alignSelf: 'stretch',
+      flexDirection: 'column',
+      flexWrap: 'nowrap',
+    })
     expect(serviceTileStyle).toMatchObject({
       alignItems: 'stretch',
+      alignSelf: 'stretch',
       borderRadius: 12,
       flexDirection: 'row',
+      flexShrink: 0,
       width: '100%',
     })
+    expect(serviceTileStyle.height).toBeGreaterThanOrEqual(56)
     expect(serviceTileStyle.minHeight).toBeGreaterThanOrEqual(56)
     const serviceVisualStyle = StyleSheet.flatten(screen.getByTestId('customer-v21-service-electrical-visual-panel').props.style)
     expect(serviceVisualStyle).toMatchObject({
@@ -346,6 +355,7 @@ describe('CustomerBookingEntrySurface v2.1', () => {
       position: 'relative',
       width: '27%',
     })
+    expect(serviceVisualStyle.height).toBeGreaterThanOrEqual(56)
     expect(serviceVisualStyle.minHeight).toBeGreaterThanOrEqual(56)
     expect(screen.getByTestId('customer-v21-service-electrical-copy')).toHaveStyle({ justifyContent: 'center' })
     const serviceCopyStyle = StyleSheet.flatten(screen.getByTestId('customer-v21-service-electrical-copy').props.style)

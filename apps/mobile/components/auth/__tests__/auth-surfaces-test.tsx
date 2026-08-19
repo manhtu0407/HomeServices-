@@ -193,6 +193,7 @@ describe('LoginRoleSurface', () => {
     const flowSource = readFileSync(resolve(__dirname, '../entry-access/EntryBrandAccessFlow.tsx'), 'utf-8')
     const logoSource = readFileSync(resolve(__dirname, '../entry-access/nestscout-logo-motion-mark.tsx'), 'utf-8')
     const authSurfaceSource = readFileSync(resolve(__dirname, '../auth-surfaces.tsx'), 'utf-8')
+    const appConfigSource = readFileSync(resolve(__dirname, '../../../app.config.ts'), 'utf-8')
 
     expect(flowSource).toContain('NestScoutLogoMotionMark')
     expect(flowSource).not.toContain('LottieLogoMark')
@@ -207,6 +208,10 @@ describe('LoginRoleSurface', () => {
     expect(logoSource).not.toContain('borderRadius: 24')
     expect(authSurfaceSource).not.toContain('AuroraNest_Logo_Lottie')
     expect(authSurfaceSource).not.toContain('nestscout-aurora-nest-north-star-awakening.json')
+    expect(appConfigSource).toContain("'expo-splash-screen'")
+    expect(appConfigSource).not.toContain("image: './assets/nestscout-aurora-nest-foreground-1024.png'")
+    expect(appConfigSource).toContain("image: './assets/prototypes/nestscout-logo-motion/nestscout-horizontal-lockup.png'")
+    expect(appConfigSource).toContain('imageWidth: 220')
     expect(existsSync(resolve(__dirname, '../entry-access/lottie-logo-mark.tsx'))).toBe(false)
     expect(existsSync(resolve(__dirname, '../../kael/kael-svg-lottie-view.tsx'))).toBe(false)
     expect(existsSync(resolve(__dirname, '../../../assets/lottie/nestscout-aurora-nest-north-star-awakening.json'))).toBe(false)
@@ -321,7 +326,7 @@ describe('LoginRoleSurface', () => {
     expect(screen.getByTestId('auth-splash-screen')).toBeOnTheScreen()
 
     act(() => {
-      jest.advanceTimersByTime(2999)
+      jest.advanceTimersByTime(1999)
     })
 
     expect(screen.getByTestId('auth-splash-screen')).toBeOnTheScreen()
@@ -331,6 +336,35 @@ describe('LoginRoleSurface', () => {
     })
 
     expect(screen.getByTestId('auth-role-gate-screen')).toBeOnTheScreen()
+  })
+
+  it('keeps the branded splash visible before loading remembered credentials into Login', async () => {
+    mockGetRememberedAuthCredentials.mockResolvedValue({
+      identifier: 'tu@example.com',
+      password: 'secret123',
+      role: 'customer',
+    })
+
+    render(<LoginRoleSurface />)
+
+    await act(async () => {
+      await Promise.resolve()
+    })
+    expect(screen.getByTestId('auth-splash-1-1')).toBeOnTheScreen()
+    expect(screen.queryByTestId('auth-login-email-input')).toBeNull()
+
+    act(() => {
+      jest.advanceTimersByTime(2000)
+    })
+
+    expect(screen.getByTestId('auth-role-gate-screen')).toBeOnTheScreen()
+    fireEvent.press(screen.getByTestId('auth-entry-role-customer'))
+    fireEvent.press(screen.getByTestId('auth-entry-role-customer'))
+
+    await waitFor(() => {
+      expect(screen.getByTestId('auth-login-email-input')).toHaveProp('value', 'tu@example.com')
+      expect(screen.getByTestId('auth-login-password-input')).toHaveProp('value', 'secret123')
+    })
   })
 
   it('maps the former welcome review link into the role-first login gate without guest entry', () => {
@@ -700,6 +734,14 @@ describe('LoginRoleSurface', () => {
     })
     mockSignInWithPassword.mockResolvedValueOnce({ success: true })
     render(<LoginRoleSurface />)
+
+    act(() => {
+      jest.advanceTimersByTime(2_000)
+    })
+
+    expect(screen.getByTestId('auth-role-gate-screen')).toBeOnTheScreen()
+    fireEvent.press(screen.getByTestId('auth-entry-role-customer'))
+    fireEvent.press(screen.getByTestId('auth-entry-role-customer'))
 
     await waitFor(() => {
       expect(screen.getByTestId('auth-login-email-input')).toHaveProp('value', 'tu@example.com')

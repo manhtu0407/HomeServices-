@@ -165,7 +165,8 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     [
       'expo-splash-screen',
       {
-        image: './assets/nestscout-aurora-nest-foreground-1024.png',
+        image: './assets/prototypes/nestscout-logo-motion/nestscout-horizontal-lockup.png',
+        imageWidth: 220,
         resizeMode: 'contain',
         backgroundColor: '#ffffff',
       },
@@ -215,7 +216,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     stagingPaymentRailEnabled,
     runtimeBuildInfo,
     eas: {
-      projectId: 'df74d6a3-f85b-4b40-85ef-fe3162023d6e',
+      projectId: 'c2fd8ae7-a6fa-4b6e-a9a0-df85b52ac94b',
     },
   },
 })
