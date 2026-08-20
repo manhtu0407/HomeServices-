@@ -39,6 +39,7 @@ Small, well-scoped task: Tier 1 plus the one row that matches. Large, cross-cutt
 | Frontend / UI testing on the Expo app | `governance/protocols/frontend-test.md` (gates `pnpm type-check:mobile`, `pnpm test:mobile`) |
 | Coding behavior (explicit assumptions, simplicity, surgical diffs, goal-driven execution) | `governance/skills.md` |
 | Code enhancement / refactor (owner files per layer) | `docs/architecture/code-ownership-map.md` |
+| Finding a symbol, tracing its callers, or deciding which runtime owns a name defined twice | `.claude/skills/kael-codebase-memory/SKILL.md` |
 | Continuing or deferred plan work | `governance/Plan.md` (the referenced section only) |
 | Where a doc lives; adding, moving, or naming docs (`README.md` is a LOCKED filename at any path) | `docs/INDEX.md` |
 | Cross-session lessons and gotchas already paid for | `docs/agent-lessons.md` |
