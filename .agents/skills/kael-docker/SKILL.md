@@ -12,11 +12,15 @@ Local Docker stack for this repo. Full map and rationale: [`docker/INDEX.md`](..
 | Needs | Check | If absent |
 |---|---|---|
 | Docker daemon | `docker info` | Run the degraded lane. Quote the failure; reading SQL as text never becomes a substitute for executing it. |
-| >= 7 GB available RAM | `pnpm db:local:doctor` | Run the degraded lane. The doctor prints the measured number; quote it rather than retrying. |
-| A PowerShell host | `pwsh --version` | Run the degraded lane. `docker/scripts/*.ps1` has no POSIX mirror by decision, so the commands themselves are Windows-only. |
+| A reachable image registry | `docker compose pull --policy missing deno` — the one image this repo pins itself | Run the degraded lane. **This is the usual blocker in an agent container**, and it is not a tooling problem: the daemon starts and the CLI installs, but the Supabase image layers return `403 Forbidden` from the CDN behind the proxy (`governance/protocols/test-pillars.md`, "money and privilege invariants"). |
+| >= 4 GB available RAM | `pnpm db:local:doctor` | Run the degraded lane. The doctor prints the measured number; quote it rather than retrying. |
 
 Every command in `## Commands` assumes all three. Verify before running, not after failing. When any
 of them is missing you do not stop — you switch lanes.
+
+**Not a precondition: your shell.** All six `docker/scripts/*` runners have POSIX mirrors and
+dispatch through `scripts/run.mjs`, so these commands run on Linux and macOS as well as Windows —
+CI drives them from bash. Do not defer a Docker task to another machine on shell grounds alone.
 
 ## Degraded lane
 
@@ -71,9 +75,10 @@ real client, violates `RULES.md` #0. Stop if you find yourself doing it.
 
 ## Rules
 
-1. **Doctor before start.** Available RAM is the binding constraint — the target
-   machine has 15.7 GB total and Supabase wants >= 7 GB for the full service set.
-   `db:local:up` enforces this; do not route around it.
+1. **Doctor before start.** Available RAM is the binding constraint on a laptop —
+   Supabase wants roughly 7 GB for the *full* service set, though the doctor's
+   enforced floor is 4 GB and the lean profile is what `db:local:up` starts.
+   Quote the measured number; do not route around the gate.
 2. **Every `up` gets a `down`.** Nothing forces this. Leaving the stack running
    is a real cost on this machine.
 3. **Never hand-edit `supabase/config.toml`** to shape a profile — it is

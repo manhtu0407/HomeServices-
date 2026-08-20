@@ -13,18 +13,11 @@ import { resolveInvocation } from './run.mjs'
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const DISPATCH = /node scripts\/run\.mjs ([A-Za-z0-9._/-]+)/
-// A runner with no POSIX mirror is a deliberate Windows-only dependency, not an oversight: the
-// Docker stack needs a daemon and >= 7 GB RAM before any of it means anything (skill kael-docker).
-const WINDOWS_ONLY = new Set([
-  'docker/scripts/doctor',
-  'docker/scripts/down',
-  'docker/scripts/edge-check',
-  'docker/scripts/gen-types',
-  'docker/scripts/run-sql-tests',
-  'docker/scripts/up',
-  'run-mobile-web-production-preview',
-  'run-mobile-web-staging-preview',
-])
+// A runner with no POSIX mirror is a deliberate Windows-only dependency, not an oversight. The
+// Docker stack is no longer one of them: its gate is a reachable image registry and a daemon
+// (governance/protocols/test-pillars.md section "money and privilege invariants"), neither of which
+// is a property of the shell, and CI already drives the Supabase CLI from bash.
+const WINDOWS_ONLY = new Set(['run-mobile-web-production-preview', 'run-mobile-web-staging-preview'])
 
 const problems = []
 const scripts = JSON.parse(readFileSync(resolve(root, 'package.json'), 'utf8')).scripts ?? {}

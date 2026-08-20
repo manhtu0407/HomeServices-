@@ -10,16 +10,30 @@ A visual change is not verified by type-check + Jest alone — those do not rend
 
 Capture the axes that can change the render. Not every screen needs every cell — capture the axes the change can affect, and say which you skipped.
 
+Two kinds of axis. **Only the first needs a device** — the second is assertable in a pillar test and
+belongs in CI, where it runs on every push instead of waiting for a human.
+
+Needs eyes on a real build:
+
 | Axis | Values |
 |---|---|
 | platform | iOS native · Android native |
 | width (dp) | 320 · 375–390 · 430 · 600–768 |
 | orientation / input | portrait · landscape · keyboard-open |
-| theme | light · dark · increased-contrast |
-| text scale | 100% · 135% · 160% · 200% |
-| locale | VI · EN |
-| accessibility | Reduce Motion · Reduce Transparency |
-| state | loading · empty · error · success · retry · confirmation |
+| material / motion | glass and blur rendering · real animation timing |
+
+Provable without a camera — write or extend a `*-pillar-test.tsx` rather than queueing a screenshot:
+
+| Axis | Values | Proven by |
+|---|---|---|
+| theme | light · dark · increased-contrast | P27 `theme-token-resolution` |
+| text scale | 100% · 135% · 160% · 200% | P28 `text-scale-reflow` |
+| locale | VI · EN | existing pillars |
+| accessibility | Reduce Motion · Reduce Transparency | existing pillars |
+| state | loading · empty · error · success · retry · confirmation | existing pillars |
+
+A screenshot of a second column axis proves less than the pillar does and costs a human's time. If
+one is uncovered, the fix is a pillar, not a capture.
 
 Priority when the full grid is too large: the two platforms × light/dark × VI/EN × the affected states first; then the widths and text scales the layout is sensitive to.
 

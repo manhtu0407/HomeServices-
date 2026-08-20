@@ -14,7 +14,7 @@ Deleting them did not make the product less safe. It made the real level of safe
 
 This is the same surface that has to carry the first real transaction, so it is the first thing to fix.
 
-**Reconciled 2026-08-19** by `kael-docker`'s degraded lane (no daemon available; read-only). Six of these rows were written before the scripts existed and had gone stale — the script is on disk and asserts the invariant, it has simply never been executed here. The `State` column below is a static reading of the SQL, not a run: **"asserts it, unrun" is bookkeeping, not proof.** Clearing any row still requires `pnpm db:local:test` on a machine with a Docker daemon. The full sequence on such a machine is:
+**Reconciled 2026-08-19** by `kael-docker`'s degraded lane (no daemon available; read-only). Six of these rows had gone stale: the script is on disk and asserts the invariant, it has simply never been executed here. The scripts were **not** undocumented — PR #199 landed them on 2026-08-14 together with `governance/protocols/test-pillars.md` §"The money and privilege invariants", which lists exactly which rows each one covers. This ledger was last touched 2026-08-13 and was never updated to match, so the failure was two governance docs disagreeing rather than nobody knowing. Treat that section as the sibling of this one and update both together. The `State` column below is a static reading of the SQL, not a run: **"asserts it, unrun" is bookkeeping, not proof.** Clearing any row still requires `pnpm db:local:test` on a machine with a Docker daemon. The full sequence on such a machine is:
 
 ```text
 pnpm db:local:doctor   # refuses below the 7 GB floor and prints the measured number

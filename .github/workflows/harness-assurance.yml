@@ -49,8 +49,7 @@ jobs:
           src/__tests__/unit/mobile-api-s3-authz-coverage.test.ts
           src/__tests__/unit/mobile-api-s3-require-job-access.test.ts
       - name: Edge function type-check
-        shell: pwsh
-        run: ./docker/scripts/edge-check.ps1
+        run: node scripts/run.mjs docker/scripts/edge-check
       - name: Comment discipline
         run: node scripts/check-comment-discipline.mjs
       - name: Skill contract ratchet
@@ -102,10 +101,9 @@ jobs:
       - name: Replay all migrations from empty state
         run: pnpm --filter @nestscout/api exec supabase db reset --local
       - name: Run SQL verification matrix
-        shell: pwsh
         env:
           NESTSCOUT_TEST_DB_URL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
-        run: ./docker/scripts/run-sql-tests.ps1 -StopOnFirstFailure
+        run: node scripts/run.mjs docker/scripts/run-sql-tests --stop-on-first-failure
       - name: Generate database types from replayed schema
         run: |
           pnpm --filter @nestscout/api exec supabase gen types typescript --local > /tmp/database.types.ts
