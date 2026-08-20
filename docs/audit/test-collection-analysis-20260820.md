@@ -103,7 +103,7 @@ Only 2 of the 53 scripts are registered pillars (`kael_price_reasoning_receipt`,
 | 6 | The Edge service surface matches the plan | `kael-edge-service-surface.test.ts` | n/a | `delete + ledger §5` | Restates a 160-name table; `test-pillars.md` rejects the shape outright |
 | 7 | Edge functions stay within 150 lines | `backend-function-size.test.ts` | **No live rule exists** | **Tu decides — A5 Q1** | Either promote the rule and build a real ratchet, or delete it |
 | 8 | Stop hooks launch through the safe wrapper | `frontend-gate-hook.test.ts` | n/a | `fix test in place` | The wrapper moved to the cross-platform runner on purpose |
-| 9–12 | Mobile wiring stays behind the workflow provider / config stays publishable-only | shared `mobile-wiring`, `mobile-backend-wiring` | n/a | `delete + ledger §5` | Source-text assertions over files that no longer exist |
+| 9–12 | Mobile wiring stays behind the workflow provider / config stays publishable-only | shared `mobile-wiring`, `mobile-backend-wiring` | n/a | **superseded — see §A6** | The premise was wrong: the files were moved, not deleted |
 | 13–15 | Monorepo contract alignment, `eas-cli` pin | shared `monorepo-wiring` | n/a | `delete + ledger §5`, and raise the `eas-cli` pin separately | A version pin belongs in a ratchet that reads `package.json`, not in a test that hardcodes the old number |
 | 16 | 357 `it` blocks are claimed by CI and run by nothing | 28 files | — | **S1: gate + stop the claim** | See below |
 | — | Secret-hygiene baseline | `pre-app-build-contract.test.ts` | — | **investigate separately** | Order-dependent; batching it with stale tests would hide it |
@@ -124,6 +124,31 @@ Evidence says the hook was deliberately made cross-platform. If Tu agrees, the t
 
 **Q3 — Delete-with-ledger, or keep as reference?**
 Rows 1, 2, 6, 9–15 are proposed for deletion because another layer carries the invariant or because the assertion has no falsifiable content. `test-pillars.md` permits keeping uncollected files as reference material, so keeping them is defensible — it just means the ledger records nine more rows of "exists, never runs, may already be false".
+
+---
+
+## A6 — Correction: the shared wiring rows, and what unblocking them showed
+
+Rows 9–12 read the four visible `packages/shared` failures as *"source-text assertions over files that no longer exist"* and proposed deletion. Acting on that would have deleted a 106-case file over a directory move.
+
+`fd6a53e7` **moved** the customer and worker tab screens under `(tabs)/` — git records the renames with zero content change. `mobile-wiring.test.ts` died at module scope on the old path, so its 106 cases never entered any total in the Phase T sweep. Twenty-four customer references and thirteen worker references were repointed, and the tabbed/stacked screen lists split to match the layout that shipped.
+
+With the file loading, `packages/shared` reports **37 failures over 742 cases**, not 6 over 558:
+
+| File | Failing |
+|---|---|
+| `mobile-wiring.test.ts` | 32 |
+| `monorepo-wiring.test.ts` | 3 |
+| `mobile-backend-wiring.test.ts` | 2 |
+
+The remaining 32 are not path drift. They assert tab-bar composition, surface wiring, push registration, and prototype cleanup against an app that was restructured around `(tabs)/_layout.tsx`. That is genuine content rot, and repairing it is a piece of work in its own right, not a step in this sweep.
+
+**Both readings were half right.** The deletion instinct was too coarse — it would have thrown away a file whose load error was a moved path. The repair instinct was too optimistic — one third of the file is false regardless. The number needed for that decision did not exist until the file could load, which is why this section exists rather than a quiet edit to rows 9–12.
+
+Two facts fall out of it and are recorded rather than acted on:
+
+- **`governance/structures/customer-workflow.md` still names `app/(customer)/home.tsx` and `app/(customer)/booking.tsx`.** No document records the `(tabs)` move at all. The wiring test was reporting a real doc-versus-code divergence, not only its own staleness.
+- **A load error is not a small failure.** It is an unknown one. Every total in the Phase T sweep was computed with 184 cases invisible.
 
 ---
 

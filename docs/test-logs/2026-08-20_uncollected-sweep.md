@@ -181,6 +181,21 @@ Test Files  3 failed | 25 passed (28)
      Tests  6 failed | 552 passed (558)
 ```
 
+> **Corrected after Phase A.** These six were what the run could *see*. `mobile-wiring.test.ts`
+> died at module scope, so its 106 cases were never collected into the total at all. The
+> `ENOENT` came from a pure directory move — `fd6a53e7` relocated the customer and worker tab
+> screens under `(tabs)/` with zero content change — so the paths were repointed at where the
+> files actually live. With the file loading, the same sweep reports:
+>
+> ```text
+> Test Files  3 failed | 25 passed (28)
+>      Tests  37 failed | 705 passed (742)
+>            mobile-wiring 32 · monorepo-wiring 3 · mobile-backend-wiring 2
+> ```
+>
+> The true figure for this package was never 6. A load error is not a small failure; it is an
+> unknown one, and it hid 184 cases from every number in this file.
+
 | File | Failing case | Assertion |
 |---|---|---|
 | `mobile-wiring.test.ts` | file-level load failure | `ENOENT: apps/mobile/app/(customer)/booking.tsx` |
