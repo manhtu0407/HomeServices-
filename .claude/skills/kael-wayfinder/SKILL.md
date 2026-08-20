@@ -32,7 +32,7 @@ Use this for planning, not delivery. Its output is a decision map that makes a l
 - Do not resolve a human decision on Tu's behalf.
 - Route research to `kael-research` and experimental questions to `kael-prototype`.
 
-## Output
+## Close
 
 ```text
 Destination:
@@ -43,3 +43,5 @@ Not yet specified:
 Recommended next investigation:
 Implementation handoff condition:
 ```
+
+Wayfinding produces a map, not a decision. Do not resolve a question that is Tu's to answer, and do not implement production code while wayfinding.

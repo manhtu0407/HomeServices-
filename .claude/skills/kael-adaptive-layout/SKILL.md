@@ -15,4 +15,8 @@ When this fires:
 4. Reflow (columns / layout) rather than a uniform scale; change nav only when there is room.
 5. Verify at a phone width and a large width (+ landscape when the layout adapts).
 
+## Close
+
+Reflow is judged at a real size. Without a measured viewport, report the breakpoints you reasoned about as unverified.
+
 Single source: `governance/design/adaptive-layout.md`. Pair with `kael-frontend-test` (verify widths) and the design router `governance/design/runtime.md`.

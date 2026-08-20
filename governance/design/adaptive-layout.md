@@ -1,6 +1,6 @@
 # Design Reference — Adaptive Layout
 
-> A nan of the `design.md` system. `critical.md` is highest authority; `AGENTS.md` owns the Performance Budget; `design/runtime.md` routes here. The `kael-adaptive-layout` skill points here. RN reality: layout adapts to available size and posture, not to device names.
+> A spoke of the `design.md` system. `critical.md` is highest authority; `AGENTS.md` owns the Performance Budget; `design/runtime.md` routes here. The `kael-adaptive-layout` skill points here. RN reality: layout adapts to available size and posture, not to device names.
 
 ## 0. Role
 
@@ -23,7 +23,7 @@ Do not stretch a compact layout to fill an expanded width; cap content at a read
 `useWindowDimensions()` is used in 12 places across 6 files (customer surfaces, service history, worker flow + dock). Each reads `width` or `height` **directly and ad-hoc**; there is **no shared window-class helper yet**. When you add adaptive behavior:
 
 - Derive the class from `useWindowDimensions().width` at the point of use.
-- If more than a couple of surfaces need the same threshold, introduce one small shared helper rather than copying `< 600` literals — but that helper is a separate task, not an assumption this nan makes.
+- If more than a couple of surfaces need the same threshold, introduce one small shared helper rather than copying `< 600` literals — but that helper is a separate task, not an assumption this spoke makes.
 
 ## 3. Posture + environment
 

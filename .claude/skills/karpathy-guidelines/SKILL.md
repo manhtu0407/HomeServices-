@@ -228,3 +228,7 @@ Risk:
 ## Summary
 
 Think first, build the smallest correct thing, touch only what is necessary, and finish only after verification evidence exists.
+
+## Close
+
+Finish only after verification evidence exists. An unrun command in the `Verification` field means the task is not done.

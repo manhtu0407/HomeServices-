@@ -64,6 +64,7 @@ jobs:
           fi
           node scripts/check-skills-sync.mjs
           node scripts/check-skill-contracts.mjs
+          node scripts/check-runner-parity.mjs
           node scripts/lint-structure.mjs
       - name: Run pinned Deno checks
         run: |

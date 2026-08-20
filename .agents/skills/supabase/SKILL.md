@@ -8,6 +8,15 @@ metadata:
 
 # Supabase
 
+> **Inside this repo, `kael-supabase` outranks this skill.** That one owns NestScout's migration,
+> RLS, generated-types, and Edge workflow and the rules that go with it. Use this skill for
+> library, CLI, and API detail it does not cover — never to override it.
+>
+> **The Supabase MCP server is not configured here and will not be.** No `.mcp.json` is committed
+> by decision, so every `search_docs` / `execute_sql` / `apply_migration` instruction below is
+> unavailable. Fetch the docs page directly instead (any docs URL serves markdown with `.md`
+> appended) and run SQL through the CLI via `pnpm supabase`.
+
 ## Core Principles
 
 **1. Supabase changes frequently — verify against changelog and current docs before implementing.**
@@ -81,6 +90,7 @@ For setup instructions, server URL, and configuration, see the [MCP setup guide]
 
 2. **Check `.mcp.json` configuration:**
    Verify the project root has a valid `.mcp.json` with the correct server URL. If missing, create one pointing to `https://mcp.supabase.com/mcp`.
+   *In NestScout this step does not apply — the absent `.mcp.json` is a decision, not a misconfiguration. Do not create one.*
 
 3. **Authenticate the MCP server:**
    If the server is reachable and `.mcp.json` is correct but tools aren't visible, the user needs to authenticate. The Supabase MCP server uses OAuth 2.1 — tell the user to trigger the auth flow in their agent, complete it in the browser, and reload the session.
@@ -89,7 +99,7 @@ For setup instructions, server URL, and configuration, see the [MCP setup guide]
 
 Before implementing any Supabase feature, find the relevant documentation. Use these methods in priority order:
 
-1. **MCP `search_docs` tool** (preferred — returns relevant snippets directly)
+1. **MCP `search_docs` tool** (preferred — returns relevant snippets directly). *Unavailable in NestScout; start at 2.*
 2. **Fetch docs pages as markdown** — any docs page can be fetched by appending `.md` to the URL path.
 3. **Web search** for Supabase-specific topics when you don't know which page to look at.
 
@@ -110,3 +120,7 @@ Do NOT use `apply_migration` to change a local database schema — it writes a m
 
 - **Skill Feedback** → [references/skill-feedback.md](references/skill-feedback.md)
   **MUST read when** the user reports that this skill gave incorrect guidance or is missing information.
+
+## Close
+
+`kael-supabase` outranks this skill inside this repo, and the MCP server is not configured here. Use the cited docs URL; never present recalled detail as `search_docs` output.

@@ -49,3 +49,15 @@ Same standard as verification (`governance/critical.md` §3): only commands actu
 real results. Record what was NOT tested as plainly as what was. Never write memory for work that
 was not done. An entry rebuilt after the fact says so at the top of the file and states what
 could not be recovered. Never write secrets, tokens, keys, or PII (`governance/RULES.md` #9).
+
+## Close
+
+```text
+Session scope:
+Entry draft:
+Index line:
+Shown to Tu:
+Written:
+```
+
+Never write memory for work that was not done, and show the draft before writing — `docs/memory/INDEX.md` requires Tu's confirmation first.

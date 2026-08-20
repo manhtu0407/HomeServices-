@@ -21,7 +21,7 @@ Read in three tiers. **Tier 1 is unconditional. Tier 2 depends on the task. Tier
 
 - `governance/RULES.md` — hard product / security / AI / data / runtime / language rules. Never traded away for convenience or speed.
 - `governance/critical.md` — §5 preflight before touching anything, §1 task-class index to choose Tier 2, §3 gates before reporting done.
-- `governance/protocols/code-hygiene.md` — applies to every line written (skill `kael-core-hygiene`; enforced by `pnpm lint:comments`, Stop hook, CI).
+- `governance/protocols/code-hygiene.md` — applies to every line written (skill `kael-core-hygiene`; enforced by `pnpm lint:comments` and CI for both agents, plus a `Stop` hook in Claude Code only — Codex runs the command itself).
 - `.claude/MEMORY.md` — read last, then **write it back at session close**: full entry -> `docs/memory/<YYYY-MM>.md`, one line -> `.claude/MEMORY.md`. Claude Code runs `/kael-mem`; Codex does the same steps by hand. Contract in `docs/memory/INDEX.md`, gate in `governance/critical.md` §3.
 
 A one-line fix does not exempt you from Tier 1. Skipping it is the exact failure this stack exists to prevent.
@@ -69,6 +69,15 @@ kael-design-preflight -> kael-design-direction  kael-design-intelligence  kael-d
    kael-design-review  kael-design-tokens  kael-material-direction  kael-motion
    kael-adaptive-layout  kael-accessible-content  kael-visual-qa
 ```
+
+**Readiness.** Every skill declares in `config/harness/manifest.json` what it needs, and `pnpm skills:contracts` fails when the skill body disagrees with that declaration. Readiness selects which **lane** a skill runs in — it is not an on/off switch, and no skill answers a matching task with nothing.
+
+| Class | Count | What it means for you |
+|---|---|---|
+| `autonomous` | 29 | Needs only Read/Grep/Edit, or commands that run on every platform. Fire it on any matching task — no check first. |
+| `gated` | 2 | Needs something that can legitimately be absent. Run the one-line check in its `## Preconditions`; on failure run its `## Degraded lane`, which names the work that does not need the dependency and the artifact it produces. Say which check failed. |
+
+A degraded lane is real work, not a consolation: `kael-docker` without a daemon reconciles the database debt ledger against what is on disk, and `kael-visual-qa` without a device produces the capture matrix as a runnable checklist. It is never a verdict — a lane emits a debt record, and a gate that could not run is still not a gate that passed (`governance/critical.md` §3).
 
 ## Runtime Boundary (summary - canonical: `governance/RULES.md` #0)
 

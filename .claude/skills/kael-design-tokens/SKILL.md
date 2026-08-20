@@ -15,4 +15,8 @@ When this fires:
 4. Name by purpose, not appearance. Reject same-name-different-value and `prettyMint2`-style names.
 5. Do not refactor the token layers as a side effect — a token migration is its own task.
 
+## Close
+
+A token change is proven by the value resolving at the layer you claim, not by the diff reading correctly.
+
 Single source: `governance/design/tokens.md`. Pair with `kael-material-direction` (glass tokens) and the design router `governance/design/runtime.md`.

@@ -62,3 +62,7 @@ Each rule file contains:
 - https://wiki.postgresql.org/wiki/Performance_Optimization
 - https://supabase.com/docs/guides/database/overview
 - https://supabase.com/docs/guides/auth/row-level-security
+
+## Close
+
+This is reference knowledge, not a verification. A query shaped correctly by these rules is still unproven until it runs.

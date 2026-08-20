@@ -39,6 +39,8 @@ Same three tiers as `CLAUDE.md`, so Codex and Claude Code enter a task through o
 
 Two groups, 31 total: **Everyday (20)** and **Design (11)**. The canonical list is `CLAUDE.md` Tier 3 — this is a pointer, not a second copy, so the two files cannot drift. Design work always enters through `kael-design-preflight`.
 
+Each skill declares a readiness class in `config/harness/manifest.json` — 29 `autonomous`, 2 `gated`. Readiness picks a lane rather than switching the skill off: `autonomous` fires with no precondition check, and `gated` carries a `## Preconditions` block plus a `## Degraded lane` naming what it still does when the dependency is absent. Every skill also declares a `closeout` (`report` or `inline`) matching its `## Close` block. `pnpm skills:contracts` fails when body and declaration disagree. Classes and meanings: `CLAUDE.md` Tier 3.
+
 Codex reads the mirrored copies in `.agents/skills/`; `.claude/skills/` is canonical and `scripts/check-skills-sync.mjs` enforces parity.
 
 ## Workspace Layout
@@ -123,7 +125,7 @@ If the task becomes unclear, stop coding, reread the plan and the important docs
 
 Canonical gated workflow + RN-reality detail: `governance/protocols/frontend-test.md` (skill: `kael-frontend-test`), gates G0–G6. This is a React Native store-bound app, not a web app — evidence must come from the RN runtime (jest-expo / React Native Testing Library and device/simulator), never a browser or Expo-web stand-in; glass and motion render only on native.
 
-Static gate (real, enforced): `pnpm type-check:mobile` and `pnpm test:mobile` (wrappers for `@nestscout/mobile` type-check + jest-expo / React Native Testing Library that inject the bundled Node runtime when agent shells lack `node`). The `Stop` hook (`.claude/hooks/verify-frontend-gates.mjs`) re-runs these when `apps/mobile` code changed and blocks a false "done" on a red gate — but it is wired in `.claude/settings.json`, so it fires for Claude Code only. Codex has no hook and MUST run both commands itself before claiming a frontend task done.
+Static gate (real, enforced): `pnpm type-check:mobile` and `pnpm test:mobile` (wrappers for `@nestscout/mobile` type-check + jest-expo / React Native Testing Library; they dispatch through `scripts/run.mjs`, so they run on Windows, Linux, and macOS alike). The `Stop` hook (`.claude/hooks/verify-frontend-gates.mjs`) re-runs these when `apps/mobile` code changed and blocks a false "done" on a red gate — but it is wired in `.claude/settings.json`, so it fires for Claude Code only. Codex has no hook and MUST run both commands itself before claiming a frontend task done.
 
 For every frontend change, first record the upstream-aware design preflight, then check: layout, responsive behavior, accessibility (roles/labels/state, Reduce Motion/Transparency), color contrast in both modes, motion quality (`kael-motion` / `governance/design/motion.md`), loading/empty/error/success states, performance budget (60fps; glass layer budget), and visual consistency with the glass-liquid signature (`governance/design/signature.md`). Do not claim completion without validation evidence (commands run + real results + states tested + states NOT tested). Avoid generic SaaS UI; preserve or improve the Glass/Liquid direction.
 

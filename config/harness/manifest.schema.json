@@ -172,6 +172,27 @@
           "type": "string",
           "minLength": 1
         },
+        "readiness": {
+          "enum": [
+            "autonomous",
+            "gated",
+            "unavailable"
+          ]
+        },
+        "closeout": {
+          "enum": [
+            "report",
+            "inline"
+          ]
+        },
+        "runtimeDependencies": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+          }
+        },
         "allowedEnvironments": {
           "type": "array",
           "minItems": 1,

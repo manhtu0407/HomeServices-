@@ -30,3 +30,16 @@ Locked docs (`CLAUDE.md`, `governance/critical.md`, `governance/RULES.md`, `gove
 - **Lock integrity**: no locked doc changed without an approval trail in a change log.
 
 Single source of the rubric = `references/audit-rubric.md`.
+
+## Close
+
+```text
+Scope:
+Files read:
+Findings:
+Conflicts:
+Fixed:
+Left open:
+```
+
+An audit cannot report on a file it did not open. List the files actually read; never infer a doc's state from its name or its index entry.

@@ -1,6 +1,6 @@
 # Design Reference — Design Tokens
 
-> A nan of the `design.md` system. `critical.md` is highest authority; `AGENTS.md` owns the language / data-honesty rules; `design/runtime.md` routes here for token work. The `kael-design-tokens` skill points here. This file describes the token architecture **as it exists in the repo** and the rules for changing it — it is guidance, not a refactor.
+> A spoke of the `design.md` system. `critical.md` is highest authority; `AGENTS.md` owns the language / data-honesty rules; `design/runtime.md` routes here for token work. The `kael-design-tokens` skill points here. This file describes the token architecture **as it exists in the repo** and the rules for changing it — it is guidance, not a refactor.
 
 ## 0. Role
 
@@ -32,7 +32,7 @@ Rules:
 - **Change a token in exactly one place: `design/theme.ts`.** If you also update `tokens.json`, keep it byte-consistent — never let the two diverge silently.
 - Do not add new runtime consumers of `tokens.json`; if a value is needed in code, read it from `theme.ts`.
 - Treat `constants/colors.ts` as legacy: prefer `theme.ts` `color.*`; do not add new raw hex there.
-- Proposed one-source direction (not now): generate `theme.ts` from `tokens.json`, or mark `tokens.json` reference-only. **This nan is the rule; the token migration is a separate task.**
+- Proposed one-source direction (not now): generate `theme.ts` from `tokens.json`, or mark `tokens.json` reference-only. **This spoke is the rule; the token migration is a separate task.**
 
 ## 3. Raw-value ratchet
 

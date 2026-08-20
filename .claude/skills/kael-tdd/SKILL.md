@@ -22,9 +22,11 @@ Direct agent commands:
 - Whole repo gates: `pnpm type-check`, `pnpm test`, `pnpm build` only when the broader Turbo graph is required.
 - React/React Native risk: add `pnpm doctor:react:changed`.
 
-Prefer these root aliases over raw package binaries. They route through wrapper scripts that prepend the bundled Codex Node runtime, so agent shells can run tests directly even when `node`, `turbo`, `jest`, or `vitest` are not globally available.
+Prefer these root aliases over raw package binaries. They route through `scripts/run.mjs`, which picks the PowerShell runner on Windows and the bash mirror everywhere else, so an agent shell can run them on any platform without `turbo`, `jest`, or `vitest` being globally available.
 
-Output:
+If a gate does not run, the task is not done. Name the gate that did not run and why; never infer a green signal from reading the code. A red-green loop with no observed red is not TDD.
+
+## Close
 
 ```text
 Behavior under test:

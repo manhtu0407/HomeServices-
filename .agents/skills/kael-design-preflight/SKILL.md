@@ -33,3 +33,7 @@ Usage:
 ```text
 pnpm design:preflight --task "redesign preserve" --surface "customer home" --workflow "basic intake" --format markdown
 ```
+
+## Close
+
+An unfilled field is a blocker, not a formality. Do not start editing with `Design Read`, `Workflow step`, or `Acceptance gate` empty.

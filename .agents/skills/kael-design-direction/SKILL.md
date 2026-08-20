@@ -23,4 +23,17 @@ pnpm design:direction --task "redesign preserve" --surface "customer home" --wor
 
 This is a direction starter, not aesthetic approval. Human taste remains part of `kael-design-review`.
 
+## Close
+
+```text
+Surface:
+Audience:
+Workflow step:
+Direction:
+Assumptions:
+Sources:
+```
+
+Direction inferred from source is a hypothesis. Mark anything not grounded in a cited artifact as an assumption for Tu to confirm.
+
 Single source: `governance/design/direction.md`.

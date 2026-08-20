@@ -1,45 +1,66 @@
 ---
 name: kael-codebase-memory
-description: UNAVAILABLE in this repo — requires the codebase-memory-mcp MCP server, which has no committed configuration; use Grep / Glob / Read instead. Once configured, it gives lightweight structural code discovery in NestScout. Trigger when exploring architecture, finding symbols, tracing callers/callees, checking impact, looking for dead code, or deciding which files to read before editing.
+description: Structural code discovery in NestScout — find a symbol, trace its callers and callees, judge blast radius, spot dead code, and settle on the smallest set of files worth reading before editing. Use when architecture or code ownership is unclear, before a refactor, or when deciding what to read. Works with Grep / Glob / Read on any machine; an indexing MCP server only makes the same method faster.
 ---
 
 # kael-codebase-memory
 
-> **Unavailable in this repo.** Every tool below comes from the `codebase-memory-mcp` MCP
-> server, which is not configured: there is no committed `.mcp.json` at the repo root, and the
-> `.claude/` variant is gitignored. Stop here and use Grep / Glob / Read instead.
+Discovery is a method, not a tool. The steps below run with Grep, Glob, and Read — always available,
+never wrong, only slower than an index. Where an indexing MCP server is configured, it accelerates
+the same steps; it never changes them and never becomes the authority.
 
-The workflow below applies only once Tu has set that server up. Even then it is a discovery
-accelerator, not an authority source.
+Read the layer map first: `docs/architecture/code-ownership-map.md` names the owner file per layer,
+which is usually a faster answer than any search.
 
 ## Workflow
 
-1. Check index state with `list_projects` or `index_status`.
-2. If the current repo is not indexed and Tu approved MCP setup, run `index_repository` for the repo root.
-3. Start broad with `get_architecture` or `get_graph_schema`.
-4. Find exact symbols with `search_graph` before reading files.
-5. Use `trace_path` for callers, callees, dependency paths, and impact questions.
-6. Use `get_code_snippet` only after `search_graph` returns the exact `qualified_name`.
-7. Use `search_code` for text patterns inside indexed files when structural search is not enough.
+1. **Bound the question.** Name the symbol, behavior, or table you are chasing and what decision the
+   answer feeds. "Understand the module" is not a bounded question; "what writes `jobs.status`" is.
+2. **Start at the boundary, not the leaf.** For Edge work the layering is
+   `http/` → `domains/` → `kael/` → `platform/` (`docs/architecture/code-ownership-map.md`). Enter at
+   the layer that owns the concern.
+3. **Find the exact definition before reading anything.** Grep the symbol with a definition-shaped
+   pattern (`function <name>`, `const <name> =`, `create (or replace )?function <name>`) rather than
+   the bare word, which matches every call site too.
+4. **Trace callers outward one hop at a time.** Grep the bare name, drop the definition file, and
+   repeat on each caller until you reach a route handler, a test, or a migration. Stop at the hop
+   that answers the question — a full transitive closure is rarely the question.
+5. **Judge blast radius before editing.** Count call sites, and check whether any live in
+   `supabase/migrations/`, `supabase/tests/`, or `packages/shared` — a shared or SQL caller makes a
+   local-looking change cross-package.
+6. **Suspect dead code, do not declare it.** No callers in source is a hypothesis; check tests,
+   generated types, dynamic dispatch, and string-keyed lookups before calling anything dead.
+7. **Cut the read set.** Name the smallest file list that answers the question and read those in
+   full. Reading five whole files beats skimming thirty.
 
-## Guardrails
+## Optional accelerator
 
-- Do not treat graph output as final truth; verify risky conclusions by reading source.
-- Do not run the upstream full installer unless Tu explicitly asks; it can write MCP config, skills, and hooks.
-- Keep `auto_index` off unless Tu asks for background indexing.
-- Do not commit `.codebase-memory/graph.db.zst` unless Tu explicitly approves a shared graph artifact.
-- If graph output conflicts with `critical.md`, `RULES.md`, `STRUCTURES.md`, `design.md`, or code, stop and surface the conflict.
+If an indexing MCP server (`codebase-memory-mcp` or equivalent) is configured in the session, its
+graph tools map onto the same steps — `search_graph` for step 3, `trace_path` for steps 4-5,
+`get_architecture` for step 2. Two standing constraints if it is present:
 
-## Preferred Tool Order
+- Graph output is a lead, not proof. Verify anything load-bearing by reading the source.
+- Never run an upstream installer that writes MCP config, skills, or hooks without Tu asking; never
+  commit a graph artifact without approval.
+
+The server is not configured in this repo today, and not depending on it is a decision rather than an
+oversight. Nothing above waits on it.
+
+## Close
 
 ```text
-list_projects
-get_graph_schema
-get_architecture
-search_graph
-trace_path
-get_code_snippet
-search_code
-query_graph
-detect_changes
+Question:
+Entry point:
+Definition:
+Callers:
+Blast radius:
+Minimal read set:
+Unresolved:
 ```
+
+Structural search finds candidates; it does not prove behavior. Say which conclusions you confirmed
+by reading source and which are still inferred from grep hits — and never call code dead on caller
+count alone.
+
+Pair with `kael-diagnose` for a failing signal and `kael-wayfinder` when the question is which work
+to do rather than where the code is.

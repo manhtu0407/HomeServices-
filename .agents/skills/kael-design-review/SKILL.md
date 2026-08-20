@@ -14,4 +14,16 @@ When this fires:
 3. An agent score is never proof; never self-assign an aesthetic rating.
 4. End with one verdict: `block` | `revise` | `ready-for-human-review`.
 
+## Close
+
+```text
+Surface:
+Reviewed in order:
+Blocking failures:
+Needs human taste:
+Verdict:
+```
+
+The verdict is `block`, `revise`, or `ready-for-human-review` — never `approved`. Taste and brand fit need Tu's eyes, and an agent score is not proof.
+
 Single source: `governance/design/design-review.md`. Pair with `kael-frontend-test`, `kael-visual-qa`, and the design router `governance/design/runtime.md`.
