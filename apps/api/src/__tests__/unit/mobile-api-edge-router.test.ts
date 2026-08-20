@@ -295,7 +295,14 @@ function makeServices(overrides: Partial<MobileApiServices> = {}): MobileApiServ
     saveWorkerPayoutMethod: vi.fn(),
     listWorkerWithdrawalRequests: vi.fn(),
     createWorkerWithdrawalRequest: vi.fn(),
-    getWorkerRoutePreview: vi.fn(async () => ({ distance_meters: 3200, duration_seconds: 720 })),
+    getWorkerRoutePreview: vi.fn(async () => ({
+      destination: { kind: 'building' as const, latitude: 10.7769, longitude: 106.7009 },
+      distance_meters: 3200,
+      duration_seconds: 720,
+      encoded_polyline: null,
+      fetched_at: '2026-08-20T00:00:00.000Z',
+      provider: 'vietmap' as const,
+    })),
     getWorkerRouteMap: vi.fn(async () => new Response('map', {
       headers: { 'Content-Type': 'image/png' },
     })),

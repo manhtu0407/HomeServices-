@@ -5,6 +5,20 @@ import {
   ZIP_STAGE_SCREEN_IDS,
   resolveZipPrototypeSelection,
 } from '../jobs/worker-jobs-zip-prototype'
+import type { PillarManifest } from '@/__tests__/pillar-manifest'
+
+export const PILLAR = {
+  id: 'P27-worker-jobs-zip-prototype',
+  invariant: 'the approved eleven-stage Jobs surface remains the single visual source for Prototype and Production, with workflow transitions and route data kept intact',
+  authority: [
+    'governance/RULES.md (workflow integrity and visual consistency)',
+    'governance/protocols/frontend-test.md G1 (layout) and G2 (state coverage)',
+  ],
+  target: 'apps/mobile/components/worker/jobs/worker-jobs-zip-prototype.tsx',
+  layer: 'ui-visual',
+  siblings: ['P22-worker-jobs-workart-alpha', 'P23-worker-jobs-empty-copy', 'P09-native-ios-liquid-tabs'],
+  mutation: 'route Production through the retired Jobs surface or change the eleven-stage screen mapping — the source and workflow assertions turn red',
+} as const satisfies PillarManifest
 
 const prototypeHostSource = readFileSync(resolve(__dirname, '../jobs/worker-jobs-zip-prototype.tsx'), 'utf8')
 const source = [
