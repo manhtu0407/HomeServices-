@@ -83,9 +83,12 @@ Deno.serve(async (request: Request) => {
       );
       // Rewritten sub-resource URLs must be reachable by the CLIENT, so the base
       // mirrors however this request arrived (hosted gateway vs local serve).
+      const proxyOrigin = url.pathname.startsWith("/functions/v1/")
+        ? url.origin.replace(/^http:/i, "https:")
+        : url.origin;
       const proxyBase = url.pathname.startsWith("/functions/v1/")
-        ? `${url.origin}/functions/v1/map-proxy-spike`
-        : `${url.origin}/map-proxy-spike`;
+        ? `${proxyOrigin}/functions/v1/map-proxy-spike`
+        : `${proxyOrigin}/map-proxy-spike`;
       const result = rewriteVietmapStyleJson(rawStyle, proxyBase);
       const payload = JSON.stringify(result.style);
       // Hard gate G2: the rewritten payload must never contain key material.
