@@ -102,7 +102,8 @@ async function executePreparedAiProviderCall(
       purpose: request.purpose,
     });
     await recordHarnessEvent(secrets.harnessTrace, {
-      eventId: prepared.providerAttemptId,
+      eventId: crypto.randomUUID(),
+      parentEventId: prepared.providerAttemptId,
       eventClass: "provider.call",
       stage: request.purpose ?? "unknown",
       status: "blocked",
@@ -171,7 +172,8 @@ async function executePreparedAiProviderStreamCall(
       purpose: request.purpose,
     });
     await recordHarnessEvent(secrets.harnessTrace, {
-      eventId: prepared.providerAttemptId,
+      eventId: crypto.randomUUID(),
+      parentEventId: prepared.providerAttemptId,
       eventClass: "provider.call",
       stage: request.purpose ?? "unknown",
       status: "blocked",
