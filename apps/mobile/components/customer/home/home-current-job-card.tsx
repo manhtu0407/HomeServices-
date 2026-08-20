@@ -110,15 +110,15 @@ export function HomeCurrentJobCard({ caseCode, deal, language, onOpen, problemLa
       </View>
 
       <View style={[styles.meta, { backgroundColor: tokens.ghost, borderColor: tokens.border, borderRadius: q(17), bottom: q(11), height: q(34), left: q(132), paddingHorizontal: q(18), right: q(30) }]} testID="customer-v21-active-case-meta">
-        <View style={[styles.metaItem, { gap: q(10) }]}>
+        <View style={[styles.metaItem, styles.metaDate, { gap: q(10), height: q(18) }]} testID="customer-v21-active-case-meta-date">
           <HomeIcon color={tokens.muted} name="calendar" size={q(17)} />
-          <Text adjustsFontSizeToFit minimumFontScale={0.62} numberOfLines={1} style={[styles.metaText, scaledTypography('footnote', scale), { color: tokens.muted }]}>{scheduleLabel}</Text>
+          <Text ellipsizeMode="tail" numberOfLines={1} style={[styles.metaText, scaledTypography('footnote', scale), { color: tokens.muted, lineHeight: q(18) }]}>{scheduleLabel}</Text>
         </View>
         <View style={[styles.metaDivider, { backgroundColor: tokens.border, height: q(18), marginLeft: q(12) }]} />
-        <View style={[styles.detailValues, { gap: q(12), marginLeft: q(18) }]}>
-          {(detailValues.length > 0 ? detailValues : [language === 'vi' ? 'Kael đang cập nhật thông tin' : 'Kael is updating the details']).map((value) => (
-            <Text adjustsFontSizeToFit key={value} minimumFontScale={0.62} numberOfLines={1} style={[styles.metaText, scaledTypography('footnote', scale), { color: tokens.muted }]}>{value}</Text>
-          ))}
+        <View style={[styles.detailValues, { height: q(18), marginLeft: q(18) }]} testID="customer-v21-active-case-meta-details">
+          <Text ellipsizeMode="tail" numberOfLines={1} style={[styles.metaText, styles.metaDetailLine, scaledTypography('footnote', scale), { color: tokens.muted, lineHeight: q(18) }]} testID="customer-v21-active-case-meta-detail-line">
+            {detailValues.length > 0 ? detailValues.join(' · ') : language === 'vi' ? 'Kael đang cập nhật thông tin' : 'Kael is updating the details'}
+          </Text>
         </View>
       </View>
     </Pressable>
@@ -168,7 +168,7 @@ const styles = StyleSheet.create({
   detailValues: {
     alignItems: 'center',
     flex: 1,
-    flexDirection: 'row',
+    justifyContent: 'center',
     minWidth: 0,
   },
   meta: {
@@ -186,6 +186,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexShrink: 1,
     minWidth: 0,
+  },
+  metaDate: {
+    flexShrink: 0,
+    maxWidth: '30%',
+  },
+  metaDetailLine: {
+    flexShrink: 1,
+    minWidth: 0,
+    textAlign: 'left',
   },
   metaText: {
     flexShrink: 1,

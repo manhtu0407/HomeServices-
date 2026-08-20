@@ -133,7 +133,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   scheme: 'nestscout',
   ios: {
     supportsTablet: false,
-    buildNumber: '38',
+    buildNumber: '42',
     bundleIdentifier: 'com.phanmanhtu.homeservices',
     config: {
       usesNonExemptEncryption: false,
@@ -216,7 +216,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     stagingPaymentRailEnabled,
     runtimeBuildInfo,
     eas: {
-      projectId: 'c2fd8ae7-a6fa-4b6e-a9a0-df85b52ac94b',
+      projectId: 'df74d6a3-f85b-4b40-85ef-fe3162023d6e',
     },
   },
 })

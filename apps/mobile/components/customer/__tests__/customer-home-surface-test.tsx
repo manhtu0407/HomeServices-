@@ -134,6 +134,7 @@ function buildDeal(): LocalDeal {
     },
     finalPrice: null,
     id: 'job_test_1',
+    scheduledAt: '2026-08-17T01:00:00.000Z',
     scopeChange: null,
     status: 'broadcasting',
   }
@@ -428,7 +429,14 @@ describe('CustomerHomeSurface v2.1', () => {
     expect(screen.getByTestId('customer-v21-active-case-meta')).toHaveTextContent(/Ổ cắm nóng/)
     expect(screen.getByTestId('customer-v21-active-case-meta')).toHaveTextContent(/180\.000đ - 260\.000đ/)
     expect(screen.getByTestId('customer-v21-active-case-meta')).toHaveTextContent(/Tòa A, Quận 7/)
+    expect(screen.getByTestId('customer-v21-active-case-meta-date')).toHaveTextContent('17/08 · 08:00')
     expect(screen.getByTestId('customer-v21-active-case-meta')).toBeOnTheScreen()
+    expect(StyleSheet.flatten(screen.getByTestId('customer-v21-active-case-meta').props.style)).toMatchObject({ flexDirection: 'row' })
+    expect(StyleSheet.flatten(screen.getByTestId('customer-v21-active-case-meta-date').props.style)).toMatchObject({ flexShrink: 0 })
+    expect(StyleSheet.flatten(screen.getByTestId('customer-v21-active-case-meta-details').props.style)).toMatchObject({ alignItems: 'center', flex: 1, justifyContent: 'center', minWidth: 0 })
+    const detailLine = screen.getByTestId('customer-v21-active-case-meta-detail-line')
+    expect(detailLine.props.numberOfLines).toBe(1)
+    expect(StyleSheet.flatten(detailLine.props.style)).toMatchObject({ flexShrink: 1, includeFontPadding: false, minWidth: 0, textAlignVertical: 'center' })
     const activeMetaTextStyles = screen.getByTestId('customer-v21-active-case-meta').findAllByType(Text).map((text) => StyleSheet.flatten(text.props.style))
     expect(activeMetaTextStyles.length).toBeGreaterThan(0)
     for (const style of activeMetaTextStyles) {
