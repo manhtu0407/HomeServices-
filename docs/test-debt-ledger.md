@@ -201,6 +201,20 @@ Three steps named **28 files carrying 357 `it` blocks**. Each package narrows co
 
 The §6 row *"78 skipped integration tests … the fix is a step in the `database-controls` job"* was written before this measurement and understates the problem: the dedicated `integration` workflow that exists to run them also collected zero. Fixing `database-controls` alone would not have surfaced that.
 
+### Deleted in this sweep
+
+| Invariant | Deleted case | Real layer needed |
+|---|---|---|
+| A customer transfer claim is reconciliation-pending, never a paid authority | `unit/manual-bank-payment` → *treats a customer transfer claim as reconciliation pending* | **already covered** — `worker_salary_settlement_v2_verification.sql` asserts it against the real RPC in `database-controls` |
+| A worker cash acknowledgement stays pending until the customer also confirms | same file → *allows a worker confirmation to remain pending* | **already covered** — same script, plus `acknowledge_worker_cash_payment` refusing a caller that does not own the job |
+| Every Edge function stays within 150 lines | `schema/backend-function-size` (whole file) | **none — the rule is gone.** It cited "the §46.0 150-line boundary"; §46 exists only in `governance/plan-archive/`, and no live governance file carries a function-length rule. `lint-structure.mjs` caps files at 800 lines, not functions. Reinstating it means writing the rule down first, then a baseline ratchet |
+| The Edge service surface matches the plan | `kael-edge-runtime/platform/kael-edge-service-surface` (whole file) | **none, and none wanted.** It listed 159 service names by hand and broke when a 160th arrived. `test-pillars.md`: *"Derive the property; do not restate the table"* |
+| The Supabase auth config carries the phone-OTP upgrade annotation | `monorepo-wiring` → *keeps the Supabase auth config annotated…* | **none.** It pinned an exact comment string; `fd6a53e7` rewrote that comment to describe the current sign-up phase. A comment is not the setting |
+
+### Found while clearing the above — not debt, a live violation
+
+`monorepo-wiring` → *keeps production mobile source on Kael component and image systems* fails because `apps/mobile/components/customer/home/home-storytelling-card.tsx` uses a raw `<TextInput>` outside `components/ui/kael-primitives.tsx`, and the exemption set `knownNativeTextInputFiles` is empty. The test is working; the source is not. It is left failing rather than exempted, because an exemption would be the second way this sweep found to make a check report success over something it was written to stop. `packages/shared` collects pillars only, so nothing surfaces it today.
+
 ---
 
 ## Structural notes

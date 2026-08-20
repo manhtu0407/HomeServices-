@@ -31,8 +31,12 @@ describe('frontend Stop hook guardrails', () => {
     expect(HOOK_SOURCE).toContain('eas\\.json')
   })
 
-  it('launches Stop hooks through the safe PowerShell Node wrapper', () => {
-    expect(CLAUDE_SETTINGS).toContain('scripts/run-node.ps1')
+  // 99a5e76d moved every Stop hook off the direct PowerShell invocation onto scripts/run.mjs,
+  // which dispatches by platform. The invariant is unchanged — a hook launches through a
+  // wrapper, never through a shell-interpolated path or a .cmd — only the wrapper moved.
+  it('launches Stop hooks through the cross-platform runner, never a raw shell path', () => {
+    expect(CLAUDE_SETTINGS).toContain('scripts/run.mjs')
+    expect(CLAUDE_SETTINGS).toContain('run-node')
     expect(CLAUDE_SETTINGS).not.toContain('scripts/run-node.cmd')
   })
 
