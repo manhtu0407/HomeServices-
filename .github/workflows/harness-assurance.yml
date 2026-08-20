@@ -38,18 +38,16 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - name: API type-check
         run: pnpm --filter @nestscout/api type-check
+      # Names only what apps/api/vitest.config.mts collects. The six files this step used to
+      # list are outside the pillar glob, so they were never run and the step reported success
+      # over them; docs/audit/test-collection-analysis-20260820.md records which layer carries
+      # each invariant now. scripts/check-test-collection.mjs fails if a path is added back.
       - name: Harness runtime tests
-        run: >
-          pnpm --filter @nestscout/api exec vitest run
-          src/__tests__/harness
-          src/__tests__/schema/learning-autopromote-atomic.test.ts
-          src/__tests__/unit/learning-evidence-gate.test.ts
-          src/__tests__/unit/mobile-api-edge-learning-hook.test.ts
-          src/__tests__/unit/mobile-api-edge-router.test.ts
-          src/__tests__/unit/mobile-api-s3-authz-coverage.test.ts
-          src/__tests__/unit/mobile-api-s3-require-job-access.test.ts
+        run: pnpm --filter @nestscout/api exec vitest run --passWithNoTests=false src/__tests__/harness
       - name: Edge function type-check
         run: node scripts/run.mjs docker/scripts/edge-check
+      - name: Test collection ratchet
+        run: node scripts/check-test-collection.mjs
       - name: Comment discipline
         run: node scripts/check-comment-discipline.mjs
       - name: Skill contract ratchet
