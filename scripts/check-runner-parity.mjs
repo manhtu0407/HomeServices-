@@ -45,15 +45,34 @@ for (const runner of [...runners].sort()) {
 
 // The Windows branch cannot be executed from CI, so its argv is asserted instead. Any drift here
 // changes what Tu's machine actually runs.
+//
+// resolveInvocation builds the script path with node:path resolve(), which is host-flavoured:
+// the same simulated 'win32' call yields /repo/scripts/... on Linux and C:\repo\scripts\... on
+// Windows. Comparing the whole string made this check pass only on the CI runner and fail on
+// every Windows checkout — a parity gate that had no parity. The script path is therefore
+// compared by suffix, and everything drift would actually change — the runner, the flags and
+// their order, the extension, and the forwarded arguments — is still compared exactly.
+const asPosix = (value) => value.split('\\').join('/')
+
 const windows = resolveInvocation('run-node', ['scripts/x.mjs'], 'win32', '/repo')
-const expectedWindows = ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', '/repo/scripts/run-node.ps1', 'scripts/x.mjs']
-if (windows.command !== 'powershell' || JSON.stringify(windows.args) !== JSON.stringify(expectedWindows)) {
-  problems.push(`win32 dispatch drifted from the historical invocation: ${windows.command} ${JSON.stringify(windows.args)}`)
+const windowsArgs = windows.args.map(asPosix)
+if (
+  windows.command !== 'powershell'
+  || JSON.stringify(windowsArgs.slice(0, 4)) !== JSON.stringify(['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File'])
+  || !windowsArgs[4]?.endsWith('/repo/scripts/run-node.ps1')
+  || JSON.stringify(windowsArgs.slice(5)) !== JSON.stringify(['scripts/x.mjs'])
+) {
+  problems.push(`win32 dispatch drifted from the historical invocation: ${windows.command} ${JSON.stringify(windowsArgs)}`)
 }
 
 const posix = resolveInvocation('run-node', ['scripts/x.mjs'], 'linux', '/repo')
-if (posix.command !== 'bash' || JSON.stringify(posix.args) !== JSON.stringify(['/repo/scripts/run-node.sh', 'scripts/x.mjs'])) {
-  problems.push(`posix dispatch is wrong: ${posix.command} ${JSON.stringify(posix.args)}`)
+const posixArgs = posix.args.map(asPosix)
+if (
+  posix.command !== 'bash'
+  || !posixArgs[0]?.endsWith('/repo/scripts/run-node.sh')
+  || JSON.stringify(posixArgs.slice(1)) !== JSON.stringify(['scripts/x.mjs'])
+) {
+  problems.push(`posix dispatch is wrong: ${posix.command} ${JSON.stringify(posixArgs)}`)
 }
 
 if (problems.length) {
