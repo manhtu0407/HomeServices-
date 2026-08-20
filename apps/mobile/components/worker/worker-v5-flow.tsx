@@ -50,11 +50,11 @@ import {
 } from './profile/body-surfaces'
 import { useWorkerAvatarPicker } from './profile/use-worker-avatar-picker'
 import { workerV5CanAcceptOpenOffer } from './jobs/acceptance'
-import { isWorkerJobsLegacyPrototypeScreen } from './jobs/worker-jobs-screen-registry'
+import { isWorkerJobsRebuildScreen } from './jobs/worker-jobs-screen-registry'
 import { WorkerV5InProgressBody } from './jobs/in-progress-surfaces'
 import {
-  WorkerJobsLegacyPrototypeHost,
-} from './jobs/worker-jobs-legacy-prototype-host'
+  WorkerJobsProductionHost,
+} from './jobs/worker-jobs-production-host'
 import {
   WorkerV5CommissionPolicyBody,
   WorkerV5EarningsOverviewBody,
@@ -153,7 +153,6 @@ function WorkerV5ScreenSurface({ screen }: { screen: WorkerV5ScreenDefinition })
   const workerKaelReturnTarget = firstRouteParam(params.ns_worker_return_to)
   const screenId = screen.id
   const screenPrimaryNext = screen.primaryNext
-  const usesWorkerJobsRebuild = screen.section === 'jobs'
   const onDockScroll = useDockScrollHandler()
   const router = useRouter()
   const { session, signOut } = useAuth()
@@ -164,9 +163,9 @@ function WorkerV5ScreenSurface({ screen }: { screen: WorkerV5ScreenDefinition })
     job_id: routeJobId ?? currentJobId,
     ns_audit_role: auditRole,
     ns_worker_lang: routeLanguage,
-    ns_worker_prototype: usesWorkerJobsRebuild ? 'worker-jobs-rebuild-v1' : prototype,
+    ns_worker_prototype: prototype,
     ns_worker_stage: workerStage,
-  }), [auditRole, currentJobId, prototype, routeJobId, routeLanguage, usesWorkerJobsRebuild, workerStage])
+  }), [auditRole, currentJobId, prototype, routeJobId, routeLanguage, workerStage])
   const [actionBusy, setActionBusy] = useState(false)
   const actionBusyRef = useRef(false)
   const { height } = useWindowDimensions()
@@ -777,7 +776,7 @@ function WorkerV5Body({
   runtime: WorkerV5Runtime
   screen: WorkerV5ScreenDefinition
 }) {
-  if (screen.section === 'jobs' && isWorkerJobsLegacyPrototypeScreen(screen.id)) return <WorkerJobsLegacyPrototypeHost {...{ actionBusy, language, navigateActiveJobChat, navigateJobChat, navigateNext, navigateToScreen, reduceMotion, reduceTransparency, routePreview, runRouteAction, runWorkerAction, runtime, screen }} />
+  if (screen.section === 'jobs' && isWorkerJobsRebuildScreen(screen.id)) return <WorkerJobsProductionHost {...{ actionBusy, language, navigateActiveJobChat, navigateJobChat, navigateNext, navigateToScreen, reduceMotion, reduceTransparency, routePreview, runRouteAction, runWorkerAction, runtime, screen }} />
 
   switch (screen.id) {
     case '2.7-in-progress':

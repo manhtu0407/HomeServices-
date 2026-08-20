@@ -1,100 +1,27 @@
-import { Image } from 'expo-image'
 import * as ImagePicker from 'expo-image-picker'
-import { Pressable, View } from 'react-native'
+import { Image } from 'expo-image'
 import { useRef, useState } from 'react'
-import { useLocalSearchParams } from 'expo-router'
+import { Pressable, View } from 'react-native'
 import { KaelTextField } from '@/components/ui/kael-primitives'
 import { color } from '@/design/theme'
-import { localizedServiceLabel, type AppLanguage } from '@/lib/app-language'
 import { localizeMediaUploadFailure, uploadJobMediaDrafts, type LocalMediaUploadDraft } from '@/lib/media-upload'
+import type { AppLanguage } from '@/lib/app-language'
+import { formatVnd, textByLanguage } from '../ui/format'
+import { workerV5PrivateKaelMediaName } from '../chat/use-worker-kael-orb-chat'
 import { WorkerV5EvidenceTray } from './evidence-surfaces'
 import { WorkerV5InProgressBody } from './in-progress-surfaces'
-import { WorkerV5ScopeChangeBody } from './scope-change-body-surfaces'
-import { WorkerV5PrimaryButtonFill } from '../ui/primitives-surfaces'
-import { WorkerV5BoundaryNote } from '../ui/metrics-surfaces'
-import { formatVnd, textByLanguage } from '../ui/format'
-import { workerV5DisplayCode } from '../ui/screen-labels'
-import { firstRouteParam } from '../dock/routing'
-import { workerV5PrivateKaelMediaName } from '../chat/use-worker-kael-orb-chat'
-import { type WorkerV5OfferDetailRow } from './offer'
 import { WorkerV5ProgressRail } from './progress-surfaces'
+import { WorkerV5ScopeChangeBody } from './scope-change-body-surfaces'
 import { useWorkerV5ScopeChangeActions } from './use-worker-scope-change-actions'
-import type { WorkerJobsLegacyPrototypeRuntime } from './worker-jobs-legacy-prototype-contracts'
-import { workerJobsLegacyPrototypeStageSevenArtwork, workerJobsLegacyPrototypeStageNineWorkart } from './worker-jobs-legacy-prototype-contracts'
-import { Text } from './worker-jobs-legacy-prototype-shared'
-import { WorkerJobsLegacyPrototypeMetaIcon, WorkerJobsLegacyPrototypeOfferInfoGroup } from './worker-jobs-legacy-prototype-opportunity'
-import { prototypeStyles } from './worker-jobs-legacy-prototype-styles'
-export function WorkerJobsLegacyPrototypeStageActionButton({
-  disabled,
-  label,
-  onPress,
-  primary,
-  testID,
-}: {
-  disabled?: boolean
-  label: string
-  onPress: () => void
-  primary?: boolean
-  testID: string
-}) {
-  const isDisabled = Boolean(disabled)
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityState={{ disabled: isDisabled }}
-      disabled={isDisabled}
-      onPress={onPress}
-      style={({ pressed }) => [
-        prototypeStyles.stageActionButton,
-        primary ? prototypeStyles.stageActionPrimary : prototypeStyles.stageActionSecondary,
-        isDisabled && prototypeStyles.stageActionDisabled,
-        pressed && !isDisabled && { opacity: 0.84 },
-      ]}
-      testID={testID}
-    >
-      {primary && !isDisabled ? <WorkerV5PrimaryButtonFill disabled={false} variant="source" /> : null}
-      <Text adjustsFontSizeToFit minimumFontScale={0.84} numberOfLines={1} style={[prototypeStyles.stageActionText, primary ? prototypeStyles.stageActionPrimaryText : prototypeStyles.stageActionSecondaryText, isDisabled && prototypeStyles.stageActionDisabledText]}>{label}</Text>
-    </Pressable>
-  )
-}
-
-export function WorkerJobsLegacyPrototypeCustomerConfirmationWaitBody({
-  language,
-  reduceTransparency,
-  runtime,
-}: {
-  language: AppLanguage
-  reduceTransparency: boolean
-  runtime: WorkerJobsLegacyPrototypeRuntime
-}) {
-  const deal = runtime.state.deal
-  const serviceType = deal?.broadcast?.serviceType ?? deal?.draft.serviceType ?? null
-  const service = serviceType ? localizedServiceLabel(serviceType, language) : null
-  const code = workerV5DisplayCode(deal, language)
-
-  return (
-    <View style={prototypeStyles.bodyStack} testID="worker-v5-customer-confirmation-wait">
-      <View style={[prototypeStyles.stageSummaryCard, reduceTransparency && { backgroundColor: color.mint.white }]}>
-        <View style={prototypeStyles.stageSummaryCopy}>
-          <Text style={prototypeStyles.stageSummaryEyebrow}>{textByLanguage(language, 'Đã gửi nhận việc', 'Acceptance sent')}</Text>
-          <Text style={prototypeStyles.stageSummaryTitle}>{textByLanguage(language, 'Đang chờ khách xác nhận', 'Waiting for customer confirmation')}</Text>
-          <Text style={prototypeStyles.stageSummaryMeta}>{textByLanguage(language, 'Địa chỉ chi tiết và thao tác thi công vẫn khóa cho tới khi khách chọn bạn.', 'Exact address and execution actions stay locked until the customer confirms you.')}</Text>
-        </View>
-      </View>
-      <View style={prototypeStyles.stageSectionHeader}>
-        <Text style={prototypeStyles.stageSectionTitle}>{textByLanguage(language, 'Trạng thái việc', 'Work status')}</Text>
-        <Text style={prototypeStyles.stageSectionAction}>{textByLanguage(language, 'Đang chờ', 'Waiting')}</Text>
-      </View>
-      <View style={[prototypeStyles.stageEvidenceEmpty, reduceTransparency && { backgroundColor: color.mint.white }]}>
-        <View style={prototypeStyles.stageEvidenceEmptyIcon}>
-          <WorkerJobsLegacyPrototypeMetaIcon kind="status" size={22} />
-        </View>
-        <Text style={prototypeStyles.stageEvidenceEmptyText}>{textByLanguage(language, 'Kael sẽ mở bước di chuyển sau khi khách xác nhận.', 'Kael opens travel after the customer confirms you.')}</Text>
-      </View>
-      {service || code ? <Text style={prototypeStyles.stageSummaryMeta}>{[service, code ? textByLanguage(language, `Mã việc ${code}`, `Work ${code}`) : null].filter(Boolean).join(' · ')}</Text> : null}
-    </View>
-  )
-}
+import {
+  Text,
+  WorkerJobsLegacyPrototypeMetaIcon,
+  WorkerJobsLegacyPrototypeStageActionButton,
+  type WorkerJobsLegacyPrototypeRuntime,
+  workerJobsLegacyPrototypeStageEightCompletionWorkart,
+  workerJobsLegacyPrototypeStageSevenArtwork,
+} from './worker-jobs-zip-prototype-shared'
+import { prototypeStyles } from './worker-jobs-zip-prototype-styles'
 
 export function WorkerJobsLegacyPrototypeStageFiveBody({
   actionBusy,
@@ -124,11 +51,13 @@ export function WorkerJobsLegacyPrototypeStageFiveBody({
           onTravelAction={() => void runRouteAction()}
           reduceTransparency={reduceTransparency}
           runtime={runtime}
+          styleVariant="jobs-review"
         />
       </View>
     )
   }
 
+  const evidenceSlots = [null, null, null]
   return (
     <View style={prototypeStyles.bodyStack} testID="worker-v5-stage-five-prototype">
       <View style={[prototypeStyles.stageSummaryCard, reduceTransparency && { backgroundColor: color.mint.white }]} testID="worker-v5-stage-five-summary-card">
@@ -137,6 +66,9 @@ export function WorkerJobsLegacyPrototypeStageFiveBody({
           <Text style={prototypeStyles.stageSummaryTitle}>{textByLanguage(language, 'Chưa có việc', 'No active job')}</Text>
           <Text style={prototypeStyles.stageSummaryMeta}>{textByLanguage(language, 'Chờ nguồn kiểm tra thật từ việc', 'Waiting for real job data')}</Text>
         </View>
+        <View style={prototypeStyles.stageSummaryCount}>
+          <Text style={prototypeStyles.stageSummaryCountText}>0/5</Text>
+        </View>
       </View>
 
       <View style={prototypeStyles.stageSectionHeader}>
@@ -144,11 +76,33 @@ export function WorkerJobsLegacyPrototypeStageFiveBody({
         <Text style={prototypeStyles.stageSectionAction}>{textByLanguage(language, 'Chưa có', 'None')}</Text>
       </View>
 
+      <View style={prototypeStyles.stageEvidenceRow} testID="worker-v5-stage-five-evidence-slots">
+        {evidenceSlots.map((url, index) => (
+          <Pressable
+            accessibilityLabel={textByLanguage(language, 'Thêm ảnh', 'Add photo')}
+            accessibilityRole="button"
+            accessibilityState={{ disabled: true }}
+            disabled
+            key={`stage-five-slot-${index}`}
+            style={[prototypeStyles.stageEvidenceSlot, prototypeStyles.stageEvidenceSlotDisabled]}
+            testID={`worker-v5-stage-five-evidence-slot-${index}`}
+          >
+            {url ? <Image contentFit="cover" source={{ uri: url }} style={prototypeStyles.stageEvidenceImage} /> : <Text style={prototypeStyles.stageEvidencePlus}>+</Text>}
+          </Pressable>
+        ))}
+      </View>
+
       <View style={prototypeStyles.stageActionRow}>
         <WorkerJobsLegacyPrototypeStageActionButton
-          label={textByLanguage(language, 'Mở Kael', 'Open Kael')}
+          label={textByLanguage(language, 'Hỏi Kael', 'Ask Kael')}
           onPress={navigateActiveJobChat}
           testID="worker-v5-stage-five-kael-action"
+        />
+        <WorkerJobsLegacyPrototypeStageActionButton
+          label={textByLanguage(language, 'Báo đổi phạm vi', 'Report scope change')}
+          onPress={navigateNext}
+          primary
+          testID="worker-v5-stage-five-scope-action"
         />
       </View>
     </View>
@@ -168,9 +122,7 @@ export function WorkerJobsLegacyPrototypeStageSixBody({
   reduceTransparency: boolean
   runtime: WorkerJobsLegacyPrototypeRuntime
 }) {
-  const params = useLocalSearchParams<{ ns_scope_mode?: string | string[] }>()
-  const scopeRouteMode = firstRouteParam(params.ns_scope_mode)
-  const scopeChange = useWorkerV5ScopeChangeActions({ deal: runtime.state.deal, hydrateIncident: scopeRouteMode !== 'edit', language, runtime })
+  const scopeChange = useWorkerV5ScopeChangeActions({ deal: runtime.state.deal, language, runtime })
   if (scopeChange.scopeEvidenceOpen) {
     return <View style={prototypeStyles.bodyStack}><WorkerV5ScopeChangeBody language={language} navigateNext={navigateNext} reduceTransparency={reduceTransparency} runtime={runtime} /></View>
   }
@@ -194,12 +146,11 @@ export function WorkerJobsLegacyPrototypeStageSixBody({
   const totalValue = scopeChange.scopeQuote
     ? formatVnd(scopeChange.scopeQuote.customer_total, language)
     : scopeChange.price
-  const hasPendingScopeSubmission = scopeChange.hasScopeSubmission
   const primaryAction = proposalSubmitted
     ? scopeChange.onViewScopeDetails
     : proposalReady
       ? scopeChange.scopeQuote ? scopeChange.onSubmitScopeProposal : scopeChange.onPreviewScopeProposal
-      : hasPendingScopeSubmission ? navigateJobChat : () => undefined
+      : navigateNext
   const primaryLabel = proposalSubmitted
     ? textByLanguage(language, 'Đang chờ khách xác nhận', 'Waiting for customer approval')
     : proposalReady
@@ -208,15 +159,12 @@ export function WorkerJobsLegacyPrototypeStageSixBody({
         : scopeChange.scopeQuoting
           ? textByLanguage(language, 'Kael đang tính...', 'Kael is calculating...')
           : textByLanguage(language, 'Kael tính giá cân bằng', 'Calculate balanced price')
-      : hasPendingScopeSubmission
-        ? textByLanguage(language, 'Mở Kael Công việc', 'Open Kael Work')
-        : textByLanguage(language, 'Chưa có đề xuất', 'No proposal yet')
-  const primaryDisabled = !proposalSubmitted && !proposalReady && !hasPendingScopeSubmission
+      : textByLanguage(language, 'Không phát sinh', 'No scope issue')
   const secondaryDisabled = !scopeChange.canDraftScopeEvidence || proposalSubmitted
 
   return (
     <View style={prototypeStyles.bodyStack} testID="worker-v5-stage-six-prototype">
-      <WorkerV5ProgressRail activeStep={4} language={language} reduceTransparency={reduceTransparency} />
+      <WorkerV5ProgressRail activeStep={4} formulaAura={false} language={language} reduceTransparency={reduceTransparency} />
 
       <View style={[prototypeStyles.stageProposalCard, reduceTransparency && { backgroundColor: color.mint.white }]} testID="worker-v5-stage-six-proposal-card">
         <View style={prototypeStyles.stageProposalHeader}>
@@ -266,7 +214,6 @@ export function WorkerJobsLegacyPrototypeStageSixBody({
           testID="worker-v5-stage-six-edit-action"
         />
         <WorkerJobsLegacyPrototypeStageActionButton
-          disabled={primaryDisabled}
           label={primaryLabel}
           onPress={() => void primaryAction()}
           primary
@@ -284,13 +231,13 @@ export function WorkerJobsLegacyPrototypeStageSixBody({
 export function WorkerJobsLegacyPrototypeStageSevenBody({
   language,
   navigateJobChat,
-  navigateToScreen,
+  navigateNext,
   reduceTransparency,
   runtime,
 }: {
   language: AppLanguage
   navigateJobChat: () => void
-  navigateToScreen: (id: '2.7-in-progress') => void
+  navigateNext: () => void
   reduceTransparency: boolean
   runtime: WorkerJobsLegacyPrototypeRuntime
 }) {
@@ -299,14 +246,6 @@ export function WorkerJobsLegacyPrototypeStageSevenBody({
   const approved = scope?.status === 'approved_by_customer'
   const rejected = scope?.status === 'rejected_by_customer' || scope?.status === 'cancelled'
   const kaelDone = scope?.kaelProgress?.status === 'completed'
-  const resumeJobStatus = scope?.resumeJobStatus
-  const canResumeWork = approved && (
-    resumeJobStatus === 'worker_matched'
-    || resumeJobStatus === 'worker_on_way'
-    || resumeJobStatus === 'arrived'
-    || resumeJobStatus === 'inspecting'
-    || resumeJobStatus === 'repairing'
-  )
   const proposalTitle = scope?.requestedDescription?.trim() || textByLanguage(language, 'Chờ dữ liệu thật', 'Waiting for real data')
   const proposalMeta = scope
     ? textByLanguage(language, 'Kael đã kiểm tra. Chờ khách quyết định.', 'Kael checked the request. Waiting for the customer.')
@@ -387,11 +326,8 @@ export function WorkerJobsLegacyPrototypeStageSevenBody({
           testID="worker-v5-stage-seven-message-action"
         />
         <WorkerJobsLegacyPrototypeStageActionButton
-          disabled={!canResumeWork}
-          label={approved ? textByLanguage(language, 'Tiếp tục công việc', 'Continue work') : textByLanguage(language, 'Chờ khách phê duyệt', 'Waiting for customer')}
-          onPress={() => {
-            if (canResumeWork) navigateToScreen('2.7-in-progress')
-          }}
+          label={approved ? textByLanguage(language, 'Tiếp tục', 'Continue') : textByLanguage(language, 'Chờ khách phê duyệt', 'Waiting for customer')}
+          onPress={navigateNext}
           primary
           testID="worker-v5-stage-seven-primary-action"
         />
@@ -518,6 +454,13 @@ export function WorkerJobsLegacyPrototypeStageEightBody({
           <Text numberOfLines={2} style={prototypeStyles.stageCompletionTitle}>{hasCompletionPhoto || Boolean(completionNote.trim()) ? textByLanguage(language, 'Hồ sơ đang hoàn thiện', 'Completion record in progress') : textByLanguage(language, 'Chưa có hồ sơ hoàn tất', 'No completion record yet')}</Text>
           <Text numberOfLines={2} style={prototypeStyles.stageCompletionMeta}>{textByLanguage(language, 'Thêm ảnh và ghi chú ngắn trước khi gửi.', 'Add a photo and short note before sending.')}</Text>
         </View>
+        <Image
+          accessible={false}
+          contentFit="contain"
+          source={workerJobsLegacyPrototypeStageEightCompletionWorkart}
+          style={prototypeStyles.stageCompletionWorkart}
+          testID="worker-v5-stage-eight-workart"
+        />
       </View>
 
       {customerEvidencePhotoUrls.length > 0 ? (
@@ -612,127 +555,6 @@ export function WorkerJobsLegacyPrototypeStageEightBody({
         primary
         testID="worker-v5-completion-submit-action"
       />
-    </View>
-  )
-}
-
-export function WorkerJobsLegacyPrototypeStageNineBody({
-  actionBusy,
-  language,
-  navigateNext,
-  navigateToEvidence,
-  onRespondToDirectPayment,
-  reduceTransparency,
-  runtime,
-}: {
-  actionBusy: boolean
-  language: AppLanguage
-  navigateNext: () => void
-  navigateToEvidence: () => void
-  onRespondToDirectPayment: (received: boolean) => void
-  reduceTransparency: boolean
-  runtime: WorkerJobsLegacyPrototypeRuntime
-}) {
-  const deal = runtime.state.deal
-  const sourceCount = (deal?.completionPhotoUrls?.length ?? 0) + (deal?.completionNotes?.trim() ? 1 : 0)
-  const customerConfirmed = deal?.status === 'confirmed_by_customer' || deal?.status === 'payment_pending' || deal?.status === 'paid' || deal?.status === 'reviewed'
-  const awaitingDirectPaymentConfirmation = deal?.payment?.provider === 'direct_worker'
-    && (deal.payment.status === 'direct_awaiting_worker_confirmation'
-      || (deal.payment.status === 'direct_awaiting_confirmation' && Boolean(deal.payment.directCustomerConfirmedAt)))
-    && !deal.payment.directWorkerConfirmedAt
-  const hasSubmittedArtifact = Boolean(deal && (sourceCount > 0 || deal.completionPhotoUrls?.length || deal.completionNotes?.trim()))
-  const heroTitle = customerConfirmed
-    ? textByLanguage(language, 'Khách đã xác nhận', 'Customer confirmed')
-    : hasSubmittedArtifact
-      ? textByLanguage(language, 'Đã gửi hồ sơ', 'Completion record sent')
-      : textByLanguage(language, 'Chưa có hồ sơ đã gửi', 'No submitted record')
-  const heroMeta = customerConfirmed
-    ? textByLanguage(language, 'Công việc đã chuyển sang bước kết thúc.', 'The job moved to its closing step.')
-    : hasSubmittedArtifact
-      ? textByLanguage(language, 'Khách đang kiểm tra bằng chứng và thanh toán.', 'The customer is reviewing evidence and payment.')
-      : textByLanguage(language, 'Chỉ hiện khi hệ thống ghi nhận hồ sơ hoàn tất.', 'Shown when the system records completion.')
-  const statusLabel = customerConfirmed
-    ? textByLanguage(language, 'Đã xác nhận', 'Confirmed')
-    : hasSubmittedArtifact
-      ? textByLanguage(language, 'Đang chờ', 'Waiting')
-      : textByLanguage(language, 'Chưa có', 'Not ready')
-  const rows: WorkerV5OfferDetailRow[] = [
-    {
-      icon: 'document',
-      title: textByLanguage(language, 'Hồ sơ hoàn tất', 'Completion record'),
-      meta: textByLanguage(language, 'Ảnh và ghi chú đã gửi', 'Photos and note submitted'),
-      status: sourceCount > 0 ? textByLanguage(language, `${sourceCount} mục`, `${sourceCount} items`) : textByLanguage(language, 'Chưa có', 'None'),
-    },
-    {
-      icon: 'profile',
-      title: textByLanguage(language, 'Khách kiểm tra', 'Customer review'),
-      meta: textByLanguage(language, 'Phản hồi từ khách', 'Customer response'),
-      status: customerConfirmed ? textByLanguage(language, 'Đã xác nhận', 'Confirmed') : textByLanguage(language, 'Đang chờ', 'Waiting'),
-    },
-    {
-      icon: 'wallet',
-      title: textByLanguage(language, 'Thanh toán', 'Payment'),
-      meta: textByLanguage(language, 'Theo phương thức đã chọn', 'Selected payment method'),
-      status: awaitingDirectPaymentConfirmation
-        ? textByLanguage(language, 'Cần xác nhận', 'Needs confirmation')
-        : customerConfirmed
-          ? textByLanguage(language, 'Đã ghi nhận', 'Recorded')
-          : textByLanguage(language, 'Đang chờ', 'Waiting'),
-    },
-  ]
-
-  return (
-    <View style={prototypeStyles.bodyStack} testID="worker-v5-stage-nine-prototype">
-      <View style={[prototypeStyles.stageSubmissionHero, reduceTransparency && { backgroundColor: color.mint.white }]} testID="worker-v5-stage-nine-hero">
-        <View style={prototypeStyles.stageSubmissionCopy}>
-          <Text style={prototypeStyles.stageSubmissionKicker}>{textByLanguage(language, 'Hồ sơ hoàn tất', 'Completion record')}</Text>
-          <Text numberOfLines={2} style={prototypeStyles.stageSubmissionTitle}>{heroTitle}</Text>
-          <Text numberOfLines={2} style={prototypeStyles.stageSubmissionMeta}>{heroMeta}</Text>
-        </View>
-        <View style={prototypeStyles.stageSubmissionStatus}>
-          <Image
-            accessibilityIgnoresInvertColors
-            accessible={false}
-            contentFit="contain"
-            source={workerJobsLegacyPrototypeStageNineWorkart}
-            style={prototypeStyles.stageSubmissionStatusArtwork}
-            testID="worker-v5-stage-nine-status-workart"
-          />
-          <Text style={prototypeStyles.stageSubmissionStatusText}>{statusLabel}</Text>
-        </View>
-      </View>
-
-      <View style={[prototypeStyles.offerInfoCard, reduceTransparency && { backgroundColor: color.mint.white }]} testID="worker-v5-stage-nine-status-card">
-        <WorkerJobsLegacyPrototypeOfferInfoGroup
-          rows={rows}
-          testID="worker-v5-stage-nine-status-list"
-          title={textByLanguage(language, 'Trạng thái xử lý', 'Processing status')}
-        />
-      </View>
-
-      {awaitingDirectPaymentConfirmation && runtime.state.lastError ? (
-        <WorkerV5BoundaryNote
-          body={runtime.state.lastError}
-          title={textByLanguage(language, 'Chưa lưu được', 'Not recorded')}
-        />
-      ) : null}
-
-      <View style={prototypeStyles.stageActionRow}>
-        <WorkerJobsLegacyPrototypeStageActionButton
-          label={awaitingDirectPaymentConfirmation ? textByLanguage(language, 'Báo chưa nhận', 'Report not received') : textByLanguage(language, 'Xem hồ sơ', 'View record')}
-          onPress={awaitingDirectPaymentConfirmation ? () => onRespondToDirectPayment(false) : navigateToEvidence}
-          testID={awaitingDirectPaymentConfirmation ? 'worker-v5-completion-direct-payment-problem' : 'worker-v5-completion-submitted-timeline-action'}
-        />
-        <WorkerJobsLegacyPrototypeStageActionButton
-          disabled={actionBusy && awaitingDirectPaymentConfirmation}
-          label={awaitingDirectPaymentConfirmation
-            ? actionBusy ? textByLanguage(language, 'Đang lưu', 'Saving') : textByLanguage(language, 'Đã nhận tiền', 'Payment received')
-            : customerConfirmed ? textByLanguage(language, 'Mở công việc đã hoàn tất', 'Open completed job') : textByLanguage(language, 'Chờ khách xác nhận', 'Waiting for customer')}
-          onPress={awaitingDirectPaymentConfirmation ? () => onRespondToDirectPayment(true) : navigateNext}
-          primary
-          testID={awaitingDirectPaymentConfirmation ? 'worker-v5-completion-direct-payment-action' : 'worker-v5-completion-submitted-next-action'}
-        />
-      </View>
     </View>
   )
 }

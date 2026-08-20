@@ -115,6 +115,19 @@ export const styles = StyleSheet.create({
     position: 'relative',
     ...shadow.soft,
   },
+  stepListJobsReview: {
+    backgroundColor: '#FFFFFF',
+    borderColor: '#D6E9E5',
+    borderRadius: 18,
+    borderWidth: 1,
+    elevation: 0,
+    gap: 0,
+    paddingHorizontal: 14,
+    paddingVertical: 0,
+    shadowColor: 'transparent',
+    shadowOpacity: 0,
+    shadowRadius: 0,
+  },
   stepMeta: {
     color: color.text.muted,
     flexShrink: 1,
@@ -124,6 +137,12 @@ export const styles = StyleSheet.create({
     maxWidth: 86,
     minWidth: 48,
     textAlign: 'right',
+  },
+  stepMetaJobsReview: {
+    color: '#718887',
+    maxWidth: 132,
+    minWidth: 72,
+    fontWeight: '500',
   },
   stepRow: {
     alignItems: 'center',
@@ -149,6 +168,41 @@ export const styles = StyleSheet.create({
   stepRowDone: {
     backgroundColor: 'rgba(255,255,255,0.72)',
   },
+  stepRowJobsReview: {
+    backgroundColor: 'transparent',
+    borderBottomColor: '#E2EEEB',
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderRadius: 0,
+    borderWidth: 0,
+    elevation: 0,
+    gap: 12,
+    minHeight: 64,
+    paddingHorizontal: 0,
+    paddingVertical: 12,
+    shadowColor: 'transparent',
+    shadowOpacity: 0,
+    shadowRadius: 0,
+  },
+  stepRowJobsReviewActive: {
+    backgroundColor: '#F1FBF8',
+    borderBottomWidth: 0,
+    borderRadius: 12,
+    marginHorizontal: -8,
+    paddingHorizontal: 8,
+  },
+  stepRowJobsReviewContext: {
+    backgroundColor: 'transparent',
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderRadius: 0,
+    marginHorizontal: 0,
+    paddingHorizontal: 0,
+  },
+  stepRowJobsReviewDone: {
+    backgroundColor: 'transparent',
+  },
+  stepRowJobsReviewLast: {
+    borderBottomWidth: 0,
+  },
   stepState: {
     alignItems: 'center',
     backgroundColor: '#EDF3F2',
@@ -167,6 +221,32 @@ export const styles = StyleSheet.create({
   stepStateDone: {
     backgroundColor: color.mint.mint50,
   },
+  stepStateJobsReview: {
+    backgroundColor: color.surface.base,
+    borderColor: color.surface.stroke,
+    borderRadius: 18,
+    borderWidth: 1,
+    height: 36,
+    width: 36,
+  },
+  stepStateJobsReviewActive: {
+    backgroundColor: color.brand.primary,
+    borderColor: color.brand.primary,
+    shadowColor: 'transparent',
+    shadowOpacity: 0,
+    shadowRadius: 0,
+  },
+  stepStateJobsReviewContext: {
+    backgroundColor: color.surface.soft,
+    borderColor: color.surface.strokeStrong,
+    shadowColor: 'transparent',
+    shadowOpacity: 0,
+    shadowRadius: 0,
+  },
+  stepStateJobsReviewDone: {
+    backgroundColor: color.mint.mint50,
+    borderColor: color.mint.mint100,
+  },
   stepStateText: {
     color: color.text.muted,
     ...typography.caption2,
@@ -178,12 +258,37 @@ export const styles = StyleSheet.create({
   stepStateTextDone: {
     color: color.brand.primaryDark,
   },
+  stepStateTextJobsReview: {
+    color: color.text.secondary,
+    fontSize: 14,
+    fontWeight: '700',
+    lineHeight: 18,
+    textAlign: 'center',
+  },
+  stepStateTextJobsReviewActive: {
+    color: color.text.inverse,
+    fontWeight: '700',
+  },
+  stepStateTextJobsReviewContext: {
+    color: color.text.secondary,
+    fontWeight: '700',
+  },
+  stepStateTextJobsReviewDone: {
+    color: color.brand.primaryDark,
+    fontSize: 17,
+    fontWeight: '700',
+    lineHeight: 20,
+  },
   stepTitle: {
     color: color.text.strong,
     flex: 1,
     ...typography.caption2,
     fontWeight: '600',
     minWidth: 0,
+  },
+  stepTitleJobsReview: {
+    color: '#123A35',
+    fontWeight: '600',
   },
   workProgressBoardMeta: {
     alignItems: 'center',
@@ -193,9 +298,16 @@ export const styles = StyleSheet.create({
   workProgressBoardShell: {
     gap: 8,
   },
+  workProgressBoardShellJobsReview: {
+    gap: 10,
+  },
   workProgressBoardTitle: {
     color: color.text.strong,
     ...typography.footnote,
     fontWeight: '600',
+  },
+  workProgressBoardTitleJobsReview: {
+    color: '#123A35',
+    fontWeight: '700',
   },
 })

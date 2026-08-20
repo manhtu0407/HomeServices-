@@ -28,6 +28,7 @@ type JobEvidenceGalleryProps = {
   reduceTransparency?: boolean
   refs: readonly (string | null | undefined)[]
   stageLabel: string
+  styleVariant?: 'default' | 'jobs-review'
   testID: string
   uploadingSlot?: number | null
 }
@@ -56,10 +57,12 @@ export function JobEvidenceGallery({
   reduceTransparency,
   refs,
   stageLabel,
+  styleVariant = 'default',
   testID,
   uploadingSlot = null,
 }: JobEvidenceGalleryProps) {
   const accessibility = useGlassAccessibility()
+  const isJobsReview = styleVariant === 'jobs-review'
   const shouldReduceMotion = reduceMotion ?? accessibility.reduceMotion
   const shouldReduceTransparency = reduceTransparency ?? accessibility.reduceTransparency
   const refsKey = JSON.stringify(refs.map((ref) => ref?.trim() || null))
@@ -123,6 +126,7 @@ export function JobEvidenceGallery({
       <View
         style={[
           styles.emptyState,
+          isJobsReview ? styles.emptyStateJobsReview : null,
           shouldReduceTransparency ? styles.opaqueSurface : null,
         ]}
         testID={`${testID}-empty`}
@@ -134,7 +138,7 @@ export function JobEvidenceGallery({
 
   return (
     <>
-      <View style={styles.grid} testID={testID}>
+      <View style={[styles.grid, isJobsReview ? styles.gridJobsReview : null]} testID={testID}>
         {slots.map((ref, slot) => {
           const previewUrl = previewUrls[slot] ?? null
           const viewerItemIndex = viewerItems.findIndex((item) => item.slot === slot)
@@ -151,6 +155,8 @@ export function JobEvidenceGallery({
                 style={({ pressed }) => [
                   styles.tile,
                   styles.addTile,
+                  isJobsReview ? styles.tileJobsReview : null,
+                  isJobsReview ? styles.addTileJobsReview : null,
                   shouldReduceTransparency ? styles.opaqueSurface : null,
                   addPhotoDisabled ? styles.disabled : null,
                   pressed && !addPhotoDisabled
@@ -160,11 +166,13 @@ export function JobEvidenceGallery({
                 testID={`${testID}-add-${slot}`}
               >
                 <CenteredAddMark testID={`${testID}-add-mark-${slot}`} />
-                <Text numberOfLines={1} style={styles.badge}>
-                  {isUploading
-                    ? (language === 'vi' ? 'Đang gửi' : 'Uploading')
-                    : copy.add}
-                </Text>
+                {!isJobsReview ? (
+                  <Text numberOfLines={1} style={styles.badge}>
+                    {isUploading
+                      ? (language === 'vi' ? 'Đang gửi' : 'Uploading')
+                      : copy.add}
+                  </Text>
+                ) : null}
               </Pressable>
             )
           }
@@ -176,6 +184,8 @@ export function JobEvidenceGallery({
                 style={[
                   styles.tile,
                   styles.addTile,
+                  isJobsReview ? styles.tileJobsReview : null,
+                  isJobsReview ? styles.addTileJobsReview : null,
                   shouldReduceTransparency ? styles.opaqueSurface : null,
                 ]}
                 testID={`${testID}-empty-${slot}`}
@@ -194,6 +204,7 @@ export function JobEvidenceGallery({
               onPress={() => openViewer(viewerItemIndex)}
               style={({ pressed }) => [
                 styles.tile,
+                isJobsReview ? styles.tileJobsReview : null,
                 shouldReduceTransparency ? styles.opaqueSurface : null,
                 pressed
                   ? (shouldReduceMotion ? styles.pressedWithoutMotion : styles.pressed)
@@ -212,7 +223,7 @@ export function JobEvidenceGallery({
               ) : (
                 <Text style={styles.unavailableText}>{copy.unavailable}</Text>
               )}
-              <Text numberOfLines={1} style={styles.badge}>
+              <Text numberOfLines={1} style={[styles.badge, isJobsReview ? styles.badgeJobsReview : null]}>
                 {viewerItemIndex + 1}/{viewerItems.length}
               </Text>
             </Pressable>
@@ -368,6 +379,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#E5F1EF',
     justifyContent: 'center',
   },
+  addTileJobsReview: {
+    backgroundColor: '#F4FAF9',
+  },
   badge: {
     backgroundColor: 'rgba(4,29,34,0.72)',
     borderRadius: 999,
@@ -382,6 +396,14 @@ const styles = StyleSheet.create({
     position: 'absolute',
     right: 7,
   },
+  badgeJobsReview: {
+    backgroundColor: '#FFFFFF',
+    borderColor: '#D2E6E1',
+    borderWidth: 1,
+    color: '#345A59',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+  },
   disabled: {
     opacity: 0.46,
   },
@@ -395,6 +417,11 @@ const styles = StyleSheet.create({
     minHeight: 92,
     padding: 16,
   },
+  emptyStateJobsReview: {
+    backgroundColor: '#F4FAF9',
+    borderColor: '#D7EAE5',
+    borderRadius: 16,
+  },
   emptyText: {
     color: '#607976',
     ...typography.caption1,
@@ -405,6 +432,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 9,
+  },
+  gridJobsReview: {
+    gap: 10,
   },
   image: {
     height: '100%',
@@ -430,6 +460,11 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     position: 'relative',
     width: '31%',
+  },
+  tileJobsReview: {
+    backgroundColor: '#F4FAF9',
+    borderColor: '#D5E8E3',
+    borderRadius: 16,
   },
   unavailableText: {
     color: '#607976',

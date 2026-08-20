@@ -3,11 +3,15 @@ import * as Location from 'expo-location'
 import type { LocalDeal } from '@nestscout/shared'
 
 import { mobileApiUrl } from '@/lib/api'
+import { decodeGooglePolyline5, type WorkerRouteGeometry } from '@/lib/route-geometry'
 import { workerRouteService } from '@/lib/services'
 
 export type WorkerV5RoutePreview = {
   distanceMeters: number
   durationSeconds: number
+  destination: { latitude: number; longitude: number } | null
+  geometry: WorkerRouteGeometry | null
+  fetchedAt: string
 }
 
 export type WorkerV5RoutePreviewState = {
@@ -111,6 +115,9 @@ export function useWorkerV5RoutePreview(deal: LocalDeal | null, enabled: boolean
           route: {
             distanceMeters: result.data.distance_meters,
             durationSeconds: result.data.duration_seconds,
+            destination: result.data.destination,
+            geometry: decodeGooglePolyline5(result.data.encoded_polyline),
+            fetchedAt: result.data.fetched_at,
           },
         })
       })

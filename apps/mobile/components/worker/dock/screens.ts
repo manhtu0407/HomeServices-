@@ -36,7 +36,7 @@ export const WORKER_V5_SCREENS: WorkerV5ScreenDefinition[] = [
     id: '2.2-offer-detail',
     order: 6,
     phase: 'accept',
-    primaryNext: '2.4-route-eta',
+    primaryNext: '2.3-customer-confirmation-wait',
     section: 'jobs',
     title: { en: 'New opportunity', vi: 'Cơ hội mới' },
   },

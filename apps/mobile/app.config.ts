@@ -75,6 +75,10 @@ const supabasePublishableKey = fromEnv(
   'NEXT_PUBLIC_SUPABASE_ANON_KEY',
 )
 const configuredApiBaseUrl = fromEnv('EXPO_PUBLIC_API_BASE_URL')
+const vietmapDisplayKey = fromEnv('EXPO_PUBLIC_VIETMAP_DISPLAY_KEY', 'VIETMAP_DISPLAY_KEY')
+const vietmapMapStyleUrl = fromEnv('EXPO_PUBLIC_VIETMAP_MAP_STYLE_URL')
+const mapProxyBaseUrl = fromEnv('EXPO_PUBLIC_MAP_PROXY_BASE_URL')
+const nativeArchitectureConfig = { newArchEnabled: true } as unknown as Partial<ExpoConfig>
 const stagingPaymentRailEnabled = ['1', 'true', 'yes', 'on'].includes(
   fromEnv('EXPO_PUBLIC_STAGING_PAYMENT_RAIL_ENABLED').toLowerCase(),
 )
@@ -124,6 +128,7 @@ const withoutIosPushEntitlement: ConfigPlugin = (expoConfig) => {
 
 export default ({ config }: ConfigContext): ExpoConfig => ({
   ...config,
+  ...nativeArchitectureConfig,
   name: 'NestScout',
   slug: 'home-services',
   version: '0.1.0',
@@ -191,6 +196,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     ],
     'expo-secure-store',
     'expo-status-bar',
+    '@vietmap/vietmap-gl-react-native',
     [
       'expo-image-picker',
       {
@@ -213,6 +219,9 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     supabaseUrl,
     supabasePublishableKey,
     apiBaseUrl,
+    vietmapDisplayKey,
+    vietmapMapStyleUrl,
+    mapProxyBaseUrl,
     stagingPaymentRailEnabled,
     runtimeBuildInfo,
     eas: {

@@ -80,9 +80,20 @@ export const styles = StyleSheet.create({
   navButtonDisabledText: {
     color: color.text.muted,
   },
+  navButtonJobsReview: {
+    elevation: 0,
+    shadowColor: 'transparent',
+    shadowOpacity: 0,
+    shadowRadius: 0,
+  },
   navButtonPrimary: {
     backgroundColor: color.brand.primary,
     ...shadow.primary,
+  },
+  navButtonPrimaryJobsReview: {
+    backgroundColor: '#0EA897',
+    borderColor: '#0A8D80',
+    borderWidth: 1,
   },
   navButtonPrimaryText: {
     color: color.text.inverse,
@@ -92,17 +103,29 @@ export const styles = StyleSheet.create({
     borderColor: color.surface.strokeStrong,
     borderWidth: 1,
   },
+  navButtonSecondaryJobsReview: {
+    backgroundColor: '#FFFFFF',
+    borderColor: '#B9DFD9',
+  },
   navButtonText: {
     color: color.brand.primaryDark,
     ...typography.subheadline,
     fontWeight: '600',
     textAlign: 'center',
   },
+  navButtonTextJobsReview: {
+    ...typography.callout,
+    fontWeight: '600',
+  },
   navigationRow: {
     flexDirection: 'row',
     gap: 10,
     minHeight: 52,
     position: 'relative',
+  },
+  navigationRowJobsReview: {
+    gap: 10,
+    minHeight: 52,
   },
   onsiteAdvisoryRail: {
     backgroundColor: 'rgba(239, 251, 246, 0.9)',
@@ -138,6 +161,15 @@ export const styles = StyleSheet.create({
     shadowOffset: { height: 14, width: 0 },
     shadowOpacity: 0.27,
     shadowRadius: 28,
+  },
+  primaryActionButtonJobsReview: {
+    backgroundColor: '#11B5A4',
+    borderColor: '#0C9588',
+    borderRadius: 16,
+    elevation: 0,
+    shadowColor: 'transparent',
+    shadowOpacity: 0,
+    shadowRadius: 0,
   },
   primaryActionText: {
     color: color.text.inverse,

@@ -49,6 +49,7 @@ export function WorkerV5InProgressBody({
   onTravelAction,
   reduceTransparency,
   runtime,
+  styleVariant = 'default',
 }: {
   actionBusy: boolean
   language: AppLanguage
@@ -56,6 +57,7 @@ export function WorkerV5InProgressBody({
   onTravelAction: () => void
   reduceTransparency: boolean
   runtime: WorkerV5Runtime
+  styleVariant?: 'default' | 'jobs-review'
 }) {
   const params = useLocalSearchParams<WorkerV5RouteParams>()
   const router = useRouter()
@@ -465,86 +467,95 @@ export function WorkerV5InProgressBody({
   }
 
   return (
-    <View style={styles.sectionStack}>
-      <WorkerV5TimerCard deal={deal} language={language} reduceTransparency={reduceTransparency} sourceCount={progressItems.length} />
-      {progressItems.length ? (
-        <WorkerV5WorkProgressBoard
-          caseWideAura={WorkerV5CustomerCaseWideMintAura}
-          items={progressItems}
-          language={language}
-          reduceTransparency={reduceTransparency}
-          zipAura={WorkerV5CustomerZipMintAura}
-        />
-      ) : null}
-      {customerEvidenceUrls.length > 0 ? (
-        <>
-          <WorkerV5SectionHeader
+    <View style={[styles.sectionStack, styleVariant === 'jobs-review' && styles.sectionStackJobsReview]}>
+      <WorkerV5TimerCard deal={deal} language={language} reduceTransparency={reduceTransparency} sourceCount={progressItems.length} styleVariant={styleVariant} />
+      <View style={styleVariant === 'jobs-review' ? styles.jobsReviewContentShell : null} testID={styleVariant === 'jobs-review' ? 'worker-v5-jobs-review-content' : undefined}>
+        {progressItems.length ? (
+          <WorkerV5WorkProgressBoard
+            caseWideAura={WorkerV5CustomerCaseWideMintAura}
+            items={progressItems}
+            language={language}
+            reduceTransparency={reduceTransparency}
+            styleVariant={styleVariant}
+            zipAura={WorkerV5CustomerZipMintAura}
+          />
+        ) : null}
+        {customerEvidenceUrls.length > 0 ? (
+          <>
+            <WorkerV5SectionHeader
             action={textByLanguage(language, `${customerEvidenceUrls.length} ảnh`, `${customerEvidenceUrls.length} photos`)}
             title={textByLanguage(language, 'Ảnh hiện trạng từ khách', 'Customer condition photos')}
+            styleVariant={styleVariant}
           />
           <WorkerV5EvidenceTray
             emptyLabel={textByLanguage(language, 'Chưa có', 'None')}
             language={language}
             reduceTransparency={reduceTransparency}
             stageLabel={textByLanguage(language, 'Ảnh hiện trạng từ khách', 'Customer condition photos')}
+            styleVariant={styleVariant}
             testID="worker-v5-customer-evidence-gallery"
             urls={customerEvidenceUrls}
           />
-        </>
-      ) : null}
-      <WorkerV5SectionHeader
-        action={evidenceCount ? textByLanguage(language, `${evidenceCount} tệp`, `${evidenceCount} files`) : textByLanguage(language, 'Chưa có', 'None yet')}
-        title={textByLanguage(language, 'Bằng chứng hiện trường', 'On-site evidence')}
-      />
-      <WorkerV5EvidenceTray
-        addPhotoDisabled={fieldEvidenceBusy}
-        emptyLabel={textByLanguage(language, 'Chưa có', 'None')}
-        language={language}
-        onAddPhoto={chooseFieldEvidenceSource}
-        reduceTransparency={reduceTransparency}
-        stageLabel={textByLanguage(language, 'Bằng chứng hiện trường của thợ', 'Worker on-site evidence')}
-        uploadingSlot={fieldEvidenceBusySlot}
-        urls={visibleEvidenceUrls}
-      />
-      {fieldEvidenceKaelConfirmation ? (
-        <Text
-          numberOfLines={3}
-          style={styles.fieldEvidenceKaelConfirmation}
-          testID="worker-v5-field-evidence-kael-confirmation"
-        >
-          {fieldEvidenceKaelConfirmation}
-        </Text>
-      ) : null}
-      {phaseAction ? (
-        <WorkerV5SingleSourceActionButton
-          disabled={phaseAction.disabled}
-          label={phaseAction.label}
-          onPress={phaseAction.onPress}
-          primaryButtonFill={WorkerV5PrimaryButtonFill}
-          reduceTransparency={reduceTransparency}
-          testID={phaseAction.testID}
+          </>
+        ) : null}
+        <WorkerV5SectionHeader
+          action={evidenceCount ? textByLanguage(language, `${evidenceCount} tệp`, `${evidenceCount} files`) : textByLanguage(language, 'Chưa có', 'None yet')}
+          title={textByLanguage(language, 'Bằng chứng hiện trường', 'On-site evidence')}
+          styleVariant={styleVariant}
         />
-      ) : null}
-      {visiblePhaseActionNotice ? (
-        <Text style={styles.fieldEvidenceKaelConfirmation} testID="worker-v5-phase-action-notice">
-          {visiblePhaseActionNotice}
-        </Text>
-      ) : null}
-      <WorkerV5ActionRail
-        caseWideAura={WorkerV5CustomerCaseWideMintAura}
-        primaryButtonFill={WorkerV5PrimaryButtonFill}
-        zipAura={WorkerV5CustomerZipMintAura}
-        onPrimary={() => router.replace((currentJobId
-          ? `/(worker)/jobs?ns_worker_screen=2.8-scope-change&job_id=${encodeURIComponent(currentJobId)}`
-          : '/(worker)/jobs?ns_worker_screen=2.8-scope-change') as never)}
-        onSecondary={navigateJobChat}
-        primary={textByLanguage(language, 'Báo đổi phạm vi', 'Report scope change')}
-        primaryTestID="worker-v5-in-progress-scope-action"
-        primaryVariant="source"
-        reduceTransparency={reduceTransparency}
-        secondary={textByLanguage(language, 'Hỏi Kael', 'Ask Kael')}
-        secondaryTestID="worker-v5-in-progress-kael-action"
-      />
+        <WorkerV5EvidenceTray
+          addPhotoDisabled={fieldEvidenceBusy}
+          emptyLabel={textByLanguage(language, 'Chưa có', 'None')}
+          language={language}
+          onAddPhoto={chooseFieldEvidenceSource}
+          reduceTransparency={reduceTransparency}
+          stageLabel={textByLanguage(language, 'Bằng chứng hiện trường của thợ', 'Worker on-site evidence')}
+          styleVariant={styleVariant}
+          uploadingSlot={fieldEvidenceBusySlot}
+          urls={visibleEvidenceUrls}
+        />
+        {fieldEvidenceKaelConfirmation ? (
+          <Text
+            numberOfLines={3}
+            style={[styles.fieldEvidenceKaelConfirmation, styleVariant === 'jobs-review' && styles.fieldEvidenceKaelConfirmationJobsReview]}
+            testID="worker-v5-field-evidence-kael-confirmation"
+          >
+            {fieldEvidenceKaelConfirmation}
+          </Text>
+        ) : null}
+        {phaseAction ? (
+          <WorkerV5SingleSourceActionButton
+            disabled={phaseAction.disabled}
+            label={phaseAction.label}
+            onPress={phaseAction.onPress}
+            primaryButtonFill={WorkerV5PrimaryButtonFill}
+            reduceTransparency={reduceTransparency}
+            styleVariant={styleVariant}
+            testID={phaseAction.testID}
+          />
+        ) : null}
+        {visiblePhaseActionNotice ? (
+          <Text style={[styles.fieldEvidenceKaelConfirmation, styleVariant === 'jobs-review' && styles.fieldEvidenceKaelConfirmationJobsReview]} testID="worker-v5-phase-action-notice">
+            {visiblePhaseActionNotice}
+          </Text>
+        ) : null}
+        <WorkerV5ActionRail
+          caseWideAura={WorkerV5CustomerCaseWideMintAura}
+          primaryButtonFill={WorkerV5PrimaryButtonFill}
+          zipAura={WorkerV5CustomerZipMintAura}
+          onPrimary={() => router.replace((currentJobId
+            ? `/(worker)/jobs?ns_worker_screen=2.8-scope-change&job_id=${encodeURIComponent(currentJobId)}`
+            : '/(worker)/jobs?ns_worker_screen=2.8-scope-change') as never)}
+          onSecondary={navigateJobChat}
+          primary={textByLanguage(language, 'Báo đổi phạm vi', 'Report scope change')}
+          primaryTestID="worker-v5-in-progress-scope-action"
+          primaryVariant="source"
+          reduceTransparency={reduceTransparency}
+          secondary={textByLanguage(language, 'Hỏi Kael', 'Ask Kael')}
+          secondaryTestID="worker-v5-in-progress-kael-action"
+          styleVariant={styleVariant}
+        />
+      </View>
     </View>
   )
 }

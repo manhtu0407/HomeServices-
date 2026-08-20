@@ -58,6 +58,17 @@ describe('cross-platform navigation wiring', () => {
     expect(customerStyles).toContain("flexDirection: 'row'")
   })
 
+  it('keeps exactly four Worker routes on the left and Kael on the same row to the right', () => {
+    const workerDock = readMobileSource('components/worker/dock/worker-v5-dock-overlay.tsx')
+    const routeIds = [...workerDock.matchAll(/\{ icon: '[^']+', id: '([^']+)'/g)].map((match) => match[1])
+
+    expect(routeIds).toEqual(['home', 'jobs', 'earnings', 'profile'])
+    expect(workerDock).toContain('itemCount={WORKER_V5_DOCK_ROUTE_ITEMS.length}')
+    expect(workerDock.indexOf('<GlassSurface')).toBeLessThan(workerDock.indexOf('<KaelNavigationAccessory'))
+    expect(workerDock).toContain('style={[dockStyles.dockRow')
+    expect(workerDock).not.toContain('NativeKaelBottomAccessory')
+  })
+
   it('does not leave duplicate primary routes beside the native tab group', () => {
     const primaryRoutes = [
       ['customer', 'home'],

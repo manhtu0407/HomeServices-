@@ -272,12 +272,15 @@ export function WorkerV5TimerCard({
   language,
   reduceTransparency,
   sourceCount,
+  styleVariant = 'default',
 }: {
   deal: LocalDeal | null
   language: AppLanguage
   reduceTransparency: boolean
   sourceCount: number
+  styleVariant?: 'default' | 'jobs-review'
 }) {
+  const isJobsReview = styleVariant === 'jobs-review'
   const stage = workerStatusStage(deal?.status)
   const status = deal ? localizedStatusLabel(deal.status, language, deal.draft.serviceType) : textByLanguage(language, 'Chưa có việc', 'No work')
   const caption = sourceCount > 0
@@ -288,8 +291,8 @@ export function WorkerV5TimerCard({
   const dashOffset = circumference - (stage.progress / 100) * circumference
 
   return (
-    <View style={[styles.timerCard, reduceTransparency && styles.opaqueCard]} testID="worker-v5-timer-card">
-      {!reduceTransparency ? (
+    <View style={[styles.timerCard, isJobsReview && styles.timerCardJobsReview, reduceTransparency && styles.opaqueCard]} testID="worker-v5-timer-card">
+      {!reduceTransparency && !isJobsReview ? (
         <>
           <WorkerV5SourceCardSkin testID="worker-v5-in-progress-card-skin" />
           <WorkerV5CustomerCaseWideMintAura scope="JobProgressHero" testID="worker-v5-in-progress-mint-aura" />
@@ -298,31 +301,33 @@ export function WorkerV5TimerCard({
         </>
       ) : null}
       <View style={styles.timerTextColumn}>
-        <Text style={styles.timerLabel}>{textByLanguage(language, 'Tiến độ theo trạng thái', 'Status-based progress')}</Text>
-        <Text style={styles.timerValue} numberOfLines={1}>{status}</Text>
-        <Text style={styles.timerCaption} numberOfLines={2} testID="worker-v5-timer-caption">{caption}</Text>
+        <Text style={[styles.timerLabel, isJobsReview && styles.timerLabelJobsReview]}>{textByLanguage(language, 'Tiến độ theo trạng thái', 'Status-based progress')}</Text>
+        <Text style={[styles.timerValue, isJobsReview && styles.timerValueJobsReview]} numberOfLines={1}>{status}</Text>
+        <Text style={[styles.timerCaption, isJobsReview && styles.timerCaptionJobsReview]} numberOfLines={2} testID="worker-v5-timer-caption">{caption}</Text>
       </View>
       <View
         accessibilityLabel={textByLanguage(language, `Mốc ${stage.current} trên ${stage.total}`, `Step ${stage.current} of ${stage.total}`)}
         accessibilityRole="progressbar"
         accessibilityValue={{ max: stage.total, min: 0, now: stage.current }}
-        style={styles.timerRing}
+        style={[styles.timerRing, isJobsReview && styles.timerRingJobsReview]}
       >
         <Svg height={70} width={70} viewBox="0 0 70 70">
-          <Defs>
-            <LinearGradient id="worker-v5-timer-gradient" x1="0" x2="1" y1="0" y2="1">
-              <Stop offset={0} stopColor={color.mint.mint300} />
-              <Stop offset={0.58} stopColor={color.brand.primary} />
-              <Stop offset={1} stopColor={color.brand.primaryDark} />
-            </LinearGradient>
-          </Defs>
+          {!isJobsReview ? (
+            <Defs>
+              <LinearGradient id="worker-v5-timer-gradient" x1="0" x2="1" y1="0" y2="1">
+                <Stop offset={0} stopColor={color.mint.mint300} />
+                <Stop offset={0.58} stopColor={color.brand.primary} />
+                <Stop offset={1} stopColor={color.brand.primaryDark} />
+              </LinearGradient>
+            </Defs>
+          ) : null}
           <Circle cx={35} cy={35} r={radiusPx} fill="none" stroke="rgba(205,228,223,0.62)" strokeWidth={7} />
           <Circle
             cx={35}
             cy={35}
             r={radiusPx}
             fill="none"
-            stroke="url(#worker-v5-timer-gradient)"
+            stroke={isJobsReview ? color.brand.primary : 'url(#worker-v5-timer-gradient)'}
             strokeDasharray={`${circumference} ${circumference}`}
             strokeDashoffset={dashOffset}
             strokeLinecap="round"
@@ -331,7 +336,7 @@ export function WorkerV5TimerCard({
           />
         </Svg>
         <View style={styles.timerRingLens}>
-          <Text style={styles.timerRingValue}>{stage.current}/{stage.total}</Text>
+          <Text style={[styles.timerRingValue, isJobsReview && styles.timerRingValueJobsReview]}>{stage.current}/{stage.total}</Text>
         </View>
       </View>
     </View>

@@ -1,17 +1,17 @@
 import { useLocalSearchParams } from 'expo-router'
 import { firstRouteParam } from '../dock/routing'
 import type { WorkerV5RouteParams } from '../dock/types'
-import { WorkerJobsLegacyPrototypeBody } from './worker-jobs-legacy-prototype-surface'
-import type { WorkerJobsLegacyPrototypeBodyProps } from './worker-jobs-legacy-prototype-contracts'
+import { WorkerJobsLegacyPrototypeBody, type WorkerJobsLegacyPrototypeBodyProps } from './worker-jobs-zip-prototype-surface'
 
-type WorkerJobsLegacyPrototypeHostProps = Omit<WorkerJobsLegacyPrototypeBodyProps, 'prototypeStage'>
+type WorkerJobsProductionHostProps = Omit<WorkerJobsLegacyPrototypeBodyProps, 'prototypeMode' | 'prototypeStage'>
 
-export function WorkerJobsLegacyPrototypeHost(props: WorkerJobsLegacyPrototypeHostProps) {
+export function WorkerJobsProductionHost(props: WorkerJobsProductionHostProps) {
   const prototypeStage = firstRouteParam(useLocalSearchParams<WorkerV5RouteParams>().ns_worker_stage)
 
   return (
     <WorkerJobsLegacyPrototypeBody
       {...props}
+      prototypeMode={false}
       prototypeStage={prototypeStage === 'payment-confirmed' ? 'payment-confirmed' : undefined}
     />
   )
