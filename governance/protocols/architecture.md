@@ -32,7 +32,7 @@ Use these terms exactly:
 
 ### Workflow
 
-1. Map the relevant modules and callers.
+1. Map the relevant modules and callers with `kael-codebase-memory`, settling which runtime tree owns each symbol first — a caller count means nothing until you know whether the definition ships to users.
 2. Identify current seams.
 3. Look for shallow modules and pass-through abstractions.
 4. Apply the deletion test.
@@ -97,7 +97,7 @@ Use before enhancing, reorganizing, cleaning up, or refactoring existing code. T
 1. Name the workflow step or cross-cutting concern.
 2. Identify the touched layer: route, UI surface, provider/state, mobile API client, Edge runtime, shared contract, storage/media, notification, or test.
 3. Read the owner files from `docs/architecture/code-ownership-map.md`.
-4. Search for an existing helper, pattern, schema, selector, or service method before adding a new one.
+4. Search for an existing helper, pattern, schema, selector, or service method before adding a new one, using `kael-codebase-memory` for the search — a helper that exists only in `apps/api` is not one the Edge runtime can reuse.
 5. Keep routes thin, surfaces visual, providers orchestration-focused, shared contracts centralized, and workflow-sensitive writes behind Edge.
 6. Do not move logic across layers unless the reason and verification impact are stated.
 7. Choose the narrowest test/static gate that proves the ownership boundary still holds.
@@ -145,7 +145,7 @@ Use when the agent is unfamiliar with a code area, when a change crosses several
 ### Workflow
 
 1. Step up one abstraction level before editing.
-2. Map relevant modules and callers.
+2. Map relevant modules and callers with `kael-codebase-memory`.
 3. Identify the user/product workflow each module supports.
 4. Identify likely seams and shared dependencies.
 5. Summarize the smallest safe area to edit.
@@ -166,7 +166,7 @@ Next protocol:
 
 - Editing a local file without knowing its callers.
 - Missing a shared module.
-- Confusing prototype/admin surface with product surface.
+- Confusing prototype/admin surface with product surface. The cure is the `## Runtime ownership` step in `kael-codebase-memory`: 73 exported names are defined in both the Edge runtime and `apps/api`.
 
 ### Anti-Patterns
 
