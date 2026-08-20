@@ -141,7 +141,43 @@ export function getPublicKaelCharter(): KaelPublicCharterResponse {
   };
 }
 
-export function buildKaelSystemPrompt(input: BuildKaelSystemPromptInput): string {
+/** Stable name for one assembled prompt section; `register` is the only conditional member. */
+export type KaelPromptSectionId =
+  | "identity"
+  | "persona"
+  | "mission"
+  | "tone"
+  | "language"
+  | "register"
+  | "forbidden"
+  | "security"
+  | "permission"
+  | "memory"
+  | "knowledge"
+  | "context";
+
+export type KaelPromptSection = {
+  readonly id: KaelPromptSectionId;
+  readonly text: string;
+};
+
+/** The assembled prompt and the sections it was joined from; `text` is always the join of `sections`. */
+export type KaelPromptParts = {
+  readonly sections: readonly KaelPromptSection[];
+  readonly text: string;
+};
+
+export const KAEL_PROMPT_SECTION_SEPARATOR = "\n\n---\n\n";
+
+/**
+ * Assembles the system prompt and keeps the sections it was built from, so a
+ * caller can digest the exact string the model receives section by section. No
+ * section may embed the separator; the join is what `buildKaelSystemPrompt`
+ * returns.
+ * @param input - purpose, actor, and the optional per-call summaries.
+ * @returns the ordered sections and their join.
+ */
+export function buildKaelSystemPromptParts(input: BuildKaelSystemPromptInput): KaelPromptParts {
   const language = input.language ?? "vi";
   const context = input.contextSummary?.trim() || "No extra context supplied.";
   const permission = input.permissionSummary?.trim() || "Use only the current purpose, actor authority, sanitized job context, and allowed NestScout scope.";
@@ -149,38 +185,62 @@ export function buildKaelSystemPrompt(input: BuildKaelSystemPromptInput): string
   const knowledge = input.knowledgeSummary?.trim() || "No runtime knowledge supplied.";
   const registerHint = input.registerHint?.trim() || null;
 
-  return [
-    IDENTITY,
-    PERSONA,
-    MISSION,
-    [
-      "Tone guidance",
-      `purpose=${input.purpose}`,
-      ACTOR_STYLE[input.actor],
-      PURPOSE_GUIDANCE[input.purpose],
-    ].join("\n"),
-    LANGUAGE_RULES,
+  const sections: readonly KaelPromptSection[] = [
+    { id: "identity", text: IDENTITY },
+    { id: "persona", text: PERSONA },
+    { id: "mission", text: MISSION },
+    {
+      id: "tone",
+      text: [
+        "Tone guidance",
+        `purpose=${input.purpose}`,
+        ACTOR_STYLE[input.actor],
+        PURPOSE_GUIDANCE[input.purpose],
+      ].join("\n"),
+    },
+    { id: "language", text: LANGUAGE_RULES },
     // Only included when a deterministic register hint is supplied; absent hint =
     // unchanged prompt (preserves determinism and existing prompt tests).
-    ...(registerHint ? [registerHint] : []),
-    FORBIDDEN_LANGUAGE,
-    SECURITY_DIRECTIVES,
-    [
-      "Permission summary",
-      permission,
-    ].join("\n"),
-    [
-      "Memory summary",
-      memory,
-    ].join("\n"),
-    [
-      "Knowledge summary",
-      knowledge,
-    ].join("\n"),
-    [
-      "Context summary",
-      `language=${language}`,
-      context,
-    ].join("\n"),
-  ].join("\n\n---\n\n");
+    ...(registerHint ? [{ id: "register" as const, text: registerHint }] : []),
+    { id: "forbidden", text: FORBIDDEN_LANGUAGE },
+    { id: "security", text: SECURITY_DIRECTIVES },
+    {
+      id: "permission",
+      text: [
+        "Permission summary",
+        permission,
+      ].join("\n"),
+    },
+    {
+      id: "memory",
+      text: [
+        "Memory summary",
+        memory,
+      ].join("\n"),
+    },
+    {
+      id: "knowledge",
+      text: [
+        "Knowledge summary",
+        knowledge,
+      ].join("\n"),
+    },
+    {
+      id: "context",
+      text: [
+        "Context summary",
+        `language=${language}`,
+        context,
+      ].join("\n"),
+    },
+  ];
+
+  return {
+    sections,
+    text: sections.map((section) => section.text).join(KAEL_PROMPT_SECTION_SEPARATOR),
+  };
+}
+
+export function buildKaelSystemPrompt(input: BuildKaelSystemPromptInput): string {
+  return buildKaelSystemPromptParts(input).text;
 }
