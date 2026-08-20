@@ -1,0 +1,4 @@
+interface:
+  display_name: "Kael Security Sweep"
+  short_description: "Review secrets, PII, auth, RLS, and input validation"
+  default_prompt: "Use $kael-security-sweep when touching secrets, PII, auth, payment, uploads, or database access."

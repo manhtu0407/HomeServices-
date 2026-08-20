@@ -1,6 +1,6 @@
 ---
 name: kael-core-hygiene
-description: Always use when writing, editing, or reviewing any code — before adding any comment, header, or note. Enforces senior-developer output hygiene so the source is not an AI worklog. Forbids dates, phase/plan/status/audit banners, AI self-attribution ("added by Claude/Codex"), request narration ("as requested"), first-person change narration, restated-code and dead-code comments; keeps only non-obvious WHY, invariants, JSDoc, and authority citations. Canonical: governance/protocols/code-hygiene.md. Enforced by pnpm lint:comments + the comment-hygiene Stop hook + the comment-discipline CI job.
+description: Always use when writing, editing, or reviewing any code — before adding any comment, header, or note. Enforces senior-developer output hygiene so the source is not an AI worklog. Forbids dates, phase/plan/status/audit banners, AI self-attribution ("added by Claude/Codex"), request narration ("as requested"), first-person change narration, restated-code and dead-code comments; keeps only non-obvious WHY, invariants, JSDoc, and authority citations. Canonical: governance/protocols/code-hygiene.md. Enforced by pnpm lint:comments and the comment-discipline CI job for both agents, plus the comment-hygiene Stop hook in Claude Code only.
 ---
 
 # kael-core-hygiene
@@ -21,7 +21,7 @@ Commands:
 
 - `pnpm lint:comments` — full report over `apps/`, `packages/`, `supabase/functions/`.
 - `pnpm lint:comments --diff <ref>` — judge only lines added versus a ref (CI ratchet).
-- `pnpm lint:comments --working` — judge only the current uncommitted change (what the Stop hook runs).
+- `pnpm lint:comments --working` — judge only the current uncommitted change (what the Claude Code Stop hook runs). Codex has no Stop hook: run this by hand before reporting done.
 
 Self-check before reporting done:
 
@@ -32,3 +32,7 @@ No AI residue (attribution, request narration, first-person, dates, status/plan/
 No dead code / bare TODO / restated-code / editorializing: yes/no
 lint:comments on this change: clean / <violations>
 ```
+
+## Close
+
+`pnpm lint:comments` is the only proof a comment passes. If it did not run, say so rather than asserting the file is clean.

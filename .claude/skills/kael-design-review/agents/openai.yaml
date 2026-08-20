@@ -1,0 +1,4 @@
+interface:
+  display_name: "Kael Design Review"
+  short_description: "Final UI design critique before human sign-off"
+  default_prompt: "Use $kael-design-review as the final critique pass on a UI change before human sign-off."

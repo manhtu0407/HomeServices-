@@ -1,0 +1,4 @@
+interface:
+  display_name: "Karpathy Guidelines"
+  short_description: "Explicit assumptions, simple code, surgical diffs"
+  default_prompt: "Use $karpathy-guidelines when writing, refactoring, or reviewing code to keep changes small and explicit."

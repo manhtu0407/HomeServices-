@@ -1,0 +1,4 @@
+interface:
+  display_name: "Kael Docker"
+  short_description: "Run Postgres and the Edge toolchain locally"
+  default_prompt: "Use $kael-docker to run migrations, RLS checks, or deno check against a real local Postgres."

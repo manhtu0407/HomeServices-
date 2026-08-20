@@ -1,0 +1,4 @@
+interface:
+  display_name: "Kael Core Hygiene"
+  short_description: "Senior-developer comment and header discipline"
+  default_prompt: "Use $kael-core-hygiene before adding any comment, header, or note to code."

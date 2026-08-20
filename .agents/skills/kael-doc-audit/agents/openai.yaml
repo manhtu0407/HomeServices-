@@ -1,0 +1,4 @@
+interface:
+  display_name: "Kael Doc Audit"
+  short_description: "Audit the governance stack for drift and dead links"
+  default_prompt: "Use $kael-doc-audit to check the governance stack for drift, contradictions, and dead references."

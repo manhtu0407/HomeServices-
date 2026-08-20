@@ -261,13 +261,47 @@ export function harnessTraceHeaders(trace: HarnessTraceContext): Headers {
   });
 }
 
+/**
+ * Provenance keys admitted past the free-text denylist below. Membership is the
+ * whole lowercased key, never a prefix, and it does not relax the value
+ * constraints that follow — an allowlisted key still crosses only as a bounded
+ * scalar or array.
+ *
+ * A key qualifies only when its value is a one-way digest, an opaque version
+ * label, or a finite count: none of those can carry customer text, which is what
+ * the denylist exists to stop. `prompt_digest` and `input_tokens` would
+ * otherwise be dropped for matching `prompt` and `token`, leaving a model call
+ * that decides a price with no record of which prompt or schema produced it.
+ *
+ * Widening this set requires updating `P29-harness-metadata-allowlist`, whose
+ * closed-set case fails on any key added here alone.
+ */
+export const HARNESS_METADATA_ALLOWLIST: ReadonlySet<string> = new Set([
+  "charter_version",
+  "prompt_digest",
+  "prompt_section_digests",
+  "schema_id",
+  "schema_digest",
+  "prefix_stable",
+  "max_output_tokens",
+  "temperature",
+  "effort",
+  "input_tokens",
+  "output_tokens",
+  "cache_hit_tokens",
+  "cache_miss_tokens",
+]);
+
 export function sanitizeHarnessMetadata(
   metadata: Record<string, unknown>,
 ): Record<string, unknown> {
   const safe: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(metadata)) {
     const normalized = key.toLowerCase();
-    if (/token|secret|password|authorization|email|phone|address|description|content|prompt|image|audio|transcript|latitude|longitude|cccd|bank|message|text|question|answer|query|title|name|url|uri|unit|floor|street|ward|postal|zip|otp/iu.test(normalized)) continue;
+    if (
+      !HARNESS_METADATA_ALLOWLIST.has(normalized) &&
+      /token|secret|password|authorization|email|phone|address|description|content|prompt|image|audio|transcript|latitude|longitude|cccd|bank|message|text|question|answer|query|title|name|url|uri|unit|floor|street|ward|postal|zip|otp/iu.test(normalized)
+    ) continue;
     const safeKey = safeMetadataString(key, 80);
     if (!safeKey) continue;
     if (value === null || typeof value === "boolean") safe[safeKey] = value;

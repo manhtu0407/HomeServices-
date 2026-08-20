@@ -12,7 +12,7 @@ Same three tiers as `CLAUDE.md`, so Codex and Claude Code enter a task through o
 
 - `governance/RULES.md` — hard product / security / AI / data / runtime / language rules.
 - `governance/critical.md` — §5 preflight, §1 task-class index to choose Tier 2, §3 gates before reporting done.
-- `governance/protocols/code-hygiene.md` — every line written (skill `kael-core-hygiene`; enforced by `pnpm lint:comments`, Stop hook, CI).
+- `governance/protocols/code-hygiene.md` — every line written (skill `kael-core-hygiene`; enforced by `pnpm lint:comments` and CI for both agents, plus a Stop hook in Claude Code only — Codex runs the command by hand).
 - `.claude/MEMORY.md` — read last, write back at session close (see the memory row below and §3 Session Memory Gate).
 
 ### Tier 2 - by task and difficulty
@@ -25,7 +25,7 @@ Same three tiers as `CLAUDE.md`, so Codex and Claude Code enter a task through o
 | Per-task execution protocol (diagnose, tdd, architecture, ai-boundary, supabase, security, ui, docs) | `governance/critical.md` §1 index -> `governance/protocols/*` (load only the selected protocol) |
 | UI, motion, glass, mascot, design tokens, screen recipes | `governance/design/runtime.md` (upstream adapters -> existing wheel skill + gates), then `governance/design.md` (-> `governance/design/*`) |
 | Coding behavior (assumptions, simplicity, surgical diffs) | `governance/skills.md` |
-| Code enhancement / refactor (owner files per layer) | `docs/architecture/code-ownership-map.md` |
+| Code enhancement / refactor (owner files per layer) | `docs/architecture/code-ownership-map.md` + skill `kael-codebase-memory` for which runtime owns a symbol and what its blast radius is |
 | Frontend / UI testing on the Expo app | `governance/protocols/frontend-test.md` |
 | Running the database or Edge toolchain locally (real Postgres, migrations, RLS/SQL checks, `deno check`) | `docker/INDEX.md` + skill `kael-docker`. Docker here is a **dev dependency, never a deployment target** |
 | Continuing or deferred plan work | `governance/Plan.md` (referenced section only) |
@@ -38,6 +38,8 @@ Same three tiers as `CLAUDE.md`, so Codex and Claude Code enter a task through o
 ### Tier 3 - skills
 
 Two groups, 31 total: **Everyday (20)** and **Design (11)**. The canonical list is `CLAUDE.md` Tier 3 — this is a pointer, not a second copy, so the two files cannot drift. Design work always enters through `kael-design-preflight`.
+
+Each skill declares a readiness class in `config/harness/manifest.json` — 29 `autonomous`, 2 `gated`. Readiness picks a lane rather than switching the skill off: `autonomous` fires with no precondition check, and `gated` carries a `## Preconditions` block plus a `## Degraded lane` naming what it still does when the dependency is absent. Every skill also declares a `closeout` (`report` or `inline`) matching its `## Close` block. `pnpm skills:contracts` fails when body and declaration disagree. Classes and meanings: `CLAUDE.md` Tier 3.
 
 Codex reads the mirrored copies in `.agents/skills/`; `.claude/skills/` is canonical and `scripts/check-skills-sync.mjs` enforces parity.
 
@@ -75,7 +77,7 @@ Before editing code:
 
 - Run `kael-preflight` and state the pre-edit status (`governance/critical.md` §5).
 - Classify the task (`governance/critical.md` §2), then load only the matching protocol file from `governance/protocols/` via the §1 index. `kael-preflight` (§5) and `kael-review` (§8) stay inline in `governance/critical.md`.
-- Auto-trigger skills exist for the common protocols and live in both `.claude/skills/` (Claude Code) and `.agents/skills/` (Codex): `kael-subagent-orchestration`, `kael-diagnose`, `kael-tdd`, `kael-ai-boundary`, `kael-supabase`, `kael-security-sweep`, `kael-design-preflight`, `kael-design-direction`, `kael-design-intelligence`, plus `karpathy-guidelines`. `kael-core-hygiene` is always on for any code change (comments/headers/notes) and is enforced by `pnpm lint:comments`, the comment-hygiene Stop hook, and CI.
+- Auto-trigger skills exist for the common protocols and live in both `.claude/skills/` (Claude Code) and `.agents/skills/` (Codex): `kael-subagent-orchestration`, `kael-diagnose`, `kael-tdd`, `kael-ai-boundary`, `kael-supabase`, `kael-security-sweep`, `kael-design-preflight`, `kael-design-direction`, `kael-design-intelligence`, `kael-codebase-memory`, plus `karpathy-guidelines`. `kael-core-hygiene` is always on for any code change (comments/headers/notes), enforced by `pnpm lint:comments` and CI for both agents and by the comment-hygiene Stop hook in Claude Code only — Codex has no hooks and runs the command itself.
 
 Core quality gates (`governance/critical.md` §3) — do not bypass:
 
@@ -123,7 +125,7 @@ If the task becomes unclear, stop coding, reread the plan and the important docs
 
 Canonical gated workflow + RN-reality detail: `governance/protocols/frontend-test.md` (skill: `kael-frontend-test`), gates G0–G6. This is a React Native store-bound app, not a web app — evidence must come from the RN runtime (jest-expo / React Native Testing Library and device/simulator), never a browser or Expo-web stand-in; glass and motion render only on native.
 
-Static gate (real, enforced): `pnpm type-check:mobile` and `pnpm test:mobile` (wrappers for `@nestscout/mobile` type-check + jest-expo / React Native Testing Library that inject the bundled Node runtime when agent shells lack `node`). The `Stop` hook (`.claude/hooks/verify-frontend-gates.mjs`, wired in `.claude/settings.json`) re-runs these when `apps/mobile` code changed and blocks a false "done" on a red gate.
+Static gate (real, enforced): `pnpm type-check:mobile` and `pnpm test:mobile` (wrappers for `@nestscout/mobile` type-check + jest-expo / React Native Testing Library; they dispatch through `scripts/run.mjs`, so they run on Windows, Linux, and macOS alike). The `Stop` hook (`.claude/hooks/verify-frontend-gates.mjs`) re-runs these when `apps/mobile` code changed and blocks a false "done" on a red gate — but it is wired in `.claude/settings.json`, so it fires for Claude Code only. Codex has no hook and MUST run both commands itself before claiming a frontend task done.
 
 For every frontend change, first record the upstream-aware design preflight, then check: layout, responsive behavior, accessibility (roles/labels/state, Reduce Motion/Transparency), color contrast in both modes, motion quality (`kael-motion` / `governance/design/motion.md`), loading/empty/error/success states, performance budget (60fps; glass layer budget), and visual consistency with the glass-liquid signature (`governance/design/signature.md`). Do not claim completion without validation evidence (commands run + real results + states tested + states NOT tested). Avoid generic SaaS UI; preserve or improve the Glass/Liquid direction.
 

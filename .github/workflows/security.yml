@@ -74,6 +74,10 @@ jobs:
         run: node scripts/harness/check-manifest.mjs
       - name: Skills single-source check
         run: node scripts/check-skills-sync.mjs
+      - name: Skill contract ratchet
+        run: node scripts/check-skill-contracts.mjs
+      - name: Runner parity ratchet
+        run: node scripts/check-runner-parity.mjs
       - name: Structure ratchet (Core Skill 6)
         run: node scripts/lint-structure.mjs
       - name: Artifact-text assertion ratchet

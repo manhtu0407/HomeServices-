@@ -1,0 +1,4 @@
+interface:
+  display_name: "Kael Diagnose"
+  short_description: "Root-cause bugs, failing tests, and regressions"
+  default_prompt: "Use $kael-diagnose when something is broken and the root cause is not yet proven."

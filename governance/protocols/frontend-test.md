@@ -32,7 +32,7 @@ Run and report real output:
 - `pnpm type-check:mobile`
 - `pnpm test:mobile`  (jest-expo + RNTL; config `apps/mobile/jest.config.js`, setup `apps/mobile/jest.setup.ts`)
 
-These root aliases wrap `@nestscout/mobile` package scripts and inject the bundled Codex Node runtime when an agent shell lacks `node` on PATH. The `Stop` hook (`.claude/hooks/verify-frontend-gates.mjs`, wired in `.claude/settings.json`) re-runs these whenever `apps/mobile` code or gate-relevant mobile config changed and blocks a false "done" on a red gate. Lint (`pnpm lint:mobile`, eslint-config-expo) is available for manual debt work but is **not** in the Stop hook yet - see Limitations.
+These root aliases wrap `@nestscout/mobile` package scripts and dispatch through `scripts/run.mjs`, which selects the PowerShell runner on Windows and the bash mirror elsewhere, so they run on every platform an agent works from. The `Stop` hook (`.claude/hooks/verify-frontend-gates.mjs`) re-runs these whenever `apps/mobile` code or gate-relevant mobile config changed and blocks a false "done" on a red gate — but it is wired in `.claude/settings.json`, so it fires for Claude Code only. Codex has no hook and runs both commands by hand. Lint (`pnpm lint:mobile`, eslint-config-expo) is available for manual debt work but is **not** in the Stop hook yet - see Limitations.
 
 ### G4 — UI/UX validation (RN reality)
 Verify on iOS and Android (simulator or device via `expo start`), not a browser:

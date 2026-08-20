@@ -23,4 +23,16 @@ pnpm design:intelligence --query "customer repair booking accessibility" --stack
 
 Do not use web-only code, hover, CSS, Tailwind, GSAP, landing-page composition, or upstream fake data in the Expo product.
 
+## Close
+
+```text
+Query:
+Corpus hits:
+Adapted to NestScout:
+Rejected and why:
+Normative source:
+```
+
+Corpus evidence is non-normative. Never let a pattern from the corpus override `governance/design/*` or a NestScout workflow rule, and say which rule won when they disagree.
+
 Single source: `governance/design/intelligence.md`. The existing Design Wheel remains the execution authority.

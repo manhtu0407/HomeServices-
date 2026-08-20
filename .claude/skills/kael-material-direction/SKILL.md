@@ -27,7 +27,8 @@ Builds on `kael-motion` + `governance/design/motion.md` (timing) and stays insid
 ## Mode: audit
 Check the surface against material-direction.md (right material for the role? money / scope / evidence solid?) and the signature.md recipe checklist (neutral + single mint, mode-aware highlight, spring not linear, dark tokens, fallbacks). Report each failing item with a concrete fix. Aesthetic quality is confirmed by human sign-off on device — do not assign a numeric score.
 
-## Output
+## Close
+
 ```text
 Mode: decide | apply | audit
 Surface + role:
@@ -38,3 +39,5 @@ Fixes:
 ```
 
 Single sources: `governance/design/material-direction.md` (decision) + `governance/design/signature.md` (recipe). Pair with `kael-motion`.
+
+Glass is a runtime effect. Do not call a material decision verified from source alone; native capture is device-gated.

@@ -1,10 +1,10 @@
 # Design Reference — Design Evidence
 
-> A nan of the `design.md` system. `critical.md` is highest authority; `AGENTS.md` owns the data-honesty rules; `design/runtime.md` routes here. The `kael-design-evidence` skill points here and pairs with `kael-research`. This nan governs **how an external design claim earns its place** in a rule — and the source ledger that records it: `docs/design-research/source-ledger.csv`.
+> A spoke of the `design.md` system. `critical.md` is highest authority; `AGENTS.md` owns the data-honesty rules; `design/runtime.md` routes here. The `kael-design-evidence` skill points here and pairs with `kael-research`. This spoke governs **how an external design claim earns its place** in a rule — and the source ledger that records it: `docs/design-research/source-ledger.csv`.
 
 ## 0. Role
 
-Design rules that come from outside the repo (a platform guideline, a standard, an SDK behavior) must be **traceable to a real, current, first-party source**. This nan defines the source tiers, the record fields, the freshness windows, the lifecycle states, and the quality bar. It exists so no rule rests on a half-remembered blog post or a fabricated "best practice".
+Design rules that come from outside the repo (a platform guideline, a standard, an SDK behavior) must be **traceable to a real, current, first-party source**. This spoke defines the source tiers, the record fields, the freshness windows, the lifecycle states, and the quality bar. It exists so no rule rests on a half-remembered blog post or a fabricated "best practice".
 
 ## 1. Source tiers
 
@@ -27,7 +27,7 @@ A design rule should rest on **T0–T2**. T3 is supporting only. T4/T5 never bac
 id · tier · publisher · title · url · backs · lifecycle · last_verified · freshness_window · q_authority · q_freshness · q_lifecycle · q_total · basis
 ```
 
-- `backs` — the exact rule / nan this source supports.
+- `backs` — the exact rule / spoke this source supports.
 - `last_verified` — the date the source was checked (ISO). Passed in by the recorder; never invented.
 - `freshness_window` — see §3.
 - `q_*` — the quality sub-scores (§5); `q_total` = their sum.

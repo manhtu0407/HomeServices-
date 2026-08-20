@@ -1,0 +1,4 @@
+interface:
+  display_name: "Kael Prototype"
+  short_description: "Throwaway prototype to answer one question"
+  default_prompt: "Use $kael-prototype to answer one design or logic question with throwaway code before production work."

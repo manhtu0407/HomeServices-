@@ -16,4 +16,16 @@ When this fires:
 5. Do not call a source "current" without a date + known lifecycle; do not pad the ledger.
 6. Check the row against its freshness window before citing it. Past the window, re-verify or say the rule rests on an unverified source — never reuse it silently, and never bump `last_verified` without re-reading. Cadence, corpus manifests, the incident log, and rule retirement are in `governance/design/governance-cadence.md`.
 
+## Close
+
+```text
+Claim:
+Source:
+Source type:
+Applies to:
+Conflicts:
+```
+
+A source you did not open is not evidence. Record the claim as unverified rather than attributing it to a guideline you recalled.
+
 Single source: `governance/design/design-evidence.md` + `governance/design/governance-cadence.md` + `docs/design-research/`. Pair with `kael-research` and the design router `governance/design/runtime.md`.

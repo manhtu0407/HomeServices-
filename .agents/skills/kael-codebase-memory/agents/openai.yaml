@@ -1,0 +1,4 @@
+interface:
+  display_name: "Kael Codebase Memory"
+  short_description: "Structural code discovery — symbols, callers, blast radius, minimal read set"
+  default_prompt: "Use $kael-codebase-memory to locate a symbol, trace its callers, judge blast radius, and pick the smallest set of files to read before editing."

@@ -30,12 +30,12 @@
         "hooks": [
           {
             "type": "command",
-            "command": "powershell -NoProfile -ExecutionPolicy Bypass -File \"${CLAUDE_PROJECT_DIR}/scripts/run-node.ps1\" \"${CLAUDE_PROJECT_DIR}/.claude/hooks/verify-frontend-gates.mjs\"",
+            "command": "node \"${CLAUDE_PROJECT_DIR}/scripts/run.mjs\" run-node \"${CLAUDE_PROJECT_DIR}/.claude/hooks/verify-frontend-gates.mjs\"",
             "timeout": 180
           },
           {
             "type": "command",
-            "command": "powershell -NoProfile -ExecutionPolicy Bypass -File \"${CLAUDE_PROJECT_DIR}/scripts/run-node.ps1\" \"${CLAUDE_PROJECT_DIR}/.claude/hooks/verify-comment-hygiene.mjs\"",
+            "command": "node \"${CLAUDE_PROJECT_DIR}/scripts/run.mjs\" run-node \"${CLAUDE_PROJECT_DIR}/.claude/hooks/verify-comment-hygiene.mjs\"",
             "timeout": 60
           }
         ]

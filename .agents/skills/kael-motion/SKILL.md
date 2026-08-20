@@ -21,7 +21,8 @@ Use when reviewing existing UI motion.
 3. **Performance:** no real-time blur in long lists, no repeated `BlurView`/`GlassView` cells, no heavy shadow stacks in scroll views; target 60fps; stabilize dimensions.
 4. **Honesty:** motion must never fake latency or hide a failure state.
 
-## Output
+## Close
+
 ```text
 Mode: create | audit
 Moment (why it animates):
@@ -34,3 +35,5 @@ Verdict / fixes:
 ```
 
 Single source: `governance/design/motion.md` + `AGENTS.md` Motion Rules & Performance Budget. `governance/critical.md` remains highest execution authority; pair with the `kael-ui-rn-execution` protocol (`governance/protocols/ui.md` §16).
+
+Motion is judged at runtime, including under Reduce Motion. A spring that reads correctly in the diff is not a verified interaction.

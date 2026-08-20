@@ -14,7 +14,9 @@ When this fires:
 3. Validate/sanitize all user input before DB or LLM; enforce timeout + bounded retry on every network call.
 4. Add security negative tests where behavior changed. Never return fake success on provider/DB failure.
 
-Output:
+A security claim with no executed check is not a finding. If a gate could not run, say which one and treat the area as unverified rather than clean.
+
+## Close
 
 ```text
 Secrets:

@@ -131,14 +131,14 @@ For UI, motion, glass, or other design tasks, route through `governance/design/r
 | Any coding change | `kael-preflight`, relevant primary protocol, `kael-review` |
 | Bug, failing test, build failure, runtime failure | `kael-preflight`, `kael-diagnose`, `kael-tdd`, `kael-review` |
 | Feature work | `kael-preflight`, `kael-architecture-deepening`, `kael-tdd`, `kael-review` |
-| Code enhancement, reorganization, or cleanup | `kael-preflight`, `kael-code-enhancement`, relevant primary protocol, `kael-review` |
+| Code enhancement, reorganization, or cleanup | `kael-preflight`, `kael-codebase-memory`, `kael-code-enhancement`, relevant primary protocol, `kael-review` |
 | UI-only small change | `kael-preflight`, read `design.md`, `kael-ui-rn-execution`, test-after or visual verification, `kael-review` |
-| Refactor | `kael-preflight`, `kael-architecture-deepening`, `kael-tdd` when behavior may change, `kael-review` |
+| Refactor | `kael-preflight`, `kael-codebase-memory`, `kael-architecture-deepening`, `kael-tdd` when behavior may change, `kael-review` |
 | Supabase, Auth, SQL, RLS, migrations, generated types | `kael-preflight`, `kael-supabase`, `kael-tdd`, `kael-security-sweep`, `kael-review` |
 | AI provider, prompt, LLM output, price synthesis, worker brief | `kael-preflight`, `kael-ai-boundary`, `kael-tdd`, `kael-security-sweep`, `kael-review` |
 | Security, PII, secrets, logging, rate limit | `kael-preflight`, `kael-security-sweep`, `kael-tdd`, `kael-review` |
 | Architecture planning | `kael-preflight`, `kael-architecture-deepening`, `kael-clarify-with-docs` |
-| Unfamiliar code area | `kael-preflight`, `kael-zoom-out`, then the relevant primary protocol |
+| Unfamiliar code area | `kael-preflight`, `kael-codebase-memory`, `kael-zoom-out`, then the relevant primary protocol |
 | PRD/spec creation | `kael-to-prd`, `kael-clarify-with-docs` when missing decisions |
 | Issue breakdown | `kael-issue-slicing` |
 | Issue triage | `kael-triage` |
@@ -163,6 +163,8 @@ critical.md keeps `kael-preflight` (§5) and `kael-review` (§8) inline because 
 | `kael-prototype`, `kael-clarify-with-docs` | `protocols/prototype-clarify.md` |
 | `kael-to-prd`, `kael-issue-slicing`, `kael-triage`, `kael-docs-execution`, `kael-handoff`, `kael-compact-communication` | `protocols/docs-workflow.md` |
 | dormant protocols | `protocols/dormant.md` |
+
+`kael-codebase-memory` resolves to a skill rather than a protocol file: `.claude/skills/kael-codebase-memory/SKILL.md` (Codex reads the `.agents/skills/` mirror). It supplies the discovery method the three architecture protocols call for, so there is nothing to load from `protocols/`.
 
 Load a protocol file only when §1 selects its protocol for the current task class.
 
@@ -194,10 +196,12 @@ These gates apply to all code changes.
 The agent MUST NOT claim the task is done if:
 
 - relevant tests fail,
-- `npm run build` fails when applicable,
+- `pnpm build` fails when applicable,
 - the implementation was not verified,
 - a required protocol was skipped,
 - the agent could not run verification and did not say so.
+
+A gate that could not run is not a gate that passed. Name it. Every workspace command dispatches through `scripts/run.mjs`, so "the command does not work on my platform" is no longer a reason one went unrun; a skill whose readiness is `gated` names its precondition in `## Preconditions` and, in `## Degraded lane`, the work it still does without it. A degraded lane produces a debt record naming what stayed unverified — never a verdict, and never a substitute for the gate.
 
 False success reports are forbidden.
 
@@ -220,7 +224,7 @@ The agent MUST NOT say "production-ready" unless:
 
 - relevant tests pass,
 - build passes when applicable,
-- `kael-review` passes,
+- the review pass in §8 of this file passes (`kael-review` there names that section, not a skill),
 - no known critical limitation remains.
 
 ### Git Rule

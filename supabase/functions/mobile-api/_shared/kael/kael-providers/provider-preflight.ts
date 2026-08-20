@@ -23,6 +23,7 @@ import {
   type HarnessPromotionClient,
 } from "../../../../_shared/harness/promotion.ts";
 import { emitKaelOpsAlert } from "../ops/alerts.ts";
+import { buildKaelRequestProvenance } from "../prompts/prompt-fingerprint.ts";
 export type PreparedAiProviderCall = {
   durableGuardsEnabled: boolean;
   pricingAt: Date;
@@ -36,6 +37,42 @@ export type PreparedAiProviderCall = {
   releaseId: string;
   reliabilityClient: ReliabilityClient | null;
 };
+
+/**
+ * Records request provenance as a child of one provider.call event, off the
+ * call path. Digesting a request costs a real crypto turn, and an observability
+ * cost must not sit between a caller and its provider or change retry timing.
+ * A failure here is warned and dropped: a call that decides a price must never
+ * fail because its audit trail could not be written.
+ * @param secrets - carries the harness trace; absent trace records nothing.
+ * @param request - read for its messages and sampling config, never mutated.
+ * @param parentEventId - the provider.call event this provenance belongs to.
+ */
+function recordProviderCallProvenance(
+  secrets: EdgeAiSecrets,
+  request: AIRequest,
+  parentEventId: string,
+): void {
+  void buildKaelRequestProvenance(request)
+    .then((provenance) =>
+      recordHarnessEvent(secrets.harnessTrace, {
+        parentEventId,
+        eventClass: "provider.provenance",
+        stage: request.purpose ?? "unknown",
+        status: "observed",
+        provider: request.provider,
+        model: request.model,
+        safeMetadata: provenance,
+      })
+    )
+    .catch((error) => {
+      console.warn("Kael request provenance not recorded", {
+        provider: request.provider,
+        purpose: request.purpose ?? "unknown",
+        code: error instanceof Error ? error.name : "unknown",
+      });
+    });
+}
 
 export async function prepareAiProviderCall(
   request: AIRequest,
@@ -88,6 +125,7 @@ export async function prepareAiProviderCall(
       model: request.model,
       errorCode: "KEY_MISSING",
     });
+    recordProviderCallProvenance(secrets, request, providerAttemptId);
     return {
       success: false,
       provider: request.provider,
@@ -115,6 +153,7 @@ export async function prepareAiProviderCall(
     provider: request.provider,
     model: request.model,
   });
+  recordProviderCallProvenance(secrets, request, providerAttemptId);
   return {
     durableGuardsEnabled,
     pricingAt,
@@ -166,6 +205,7 @@ async function providerCallBlocker(
       model: request.model,
       errorCode: "AI_DISABLED",
     });
+    recordProviderCallProvenance(secrets, request, providerAttemptId);
     return {
       success: false,
       provider: request.provider,
@@ -203,6 +243,7 @@ async function providerCallBlocker(
     model: request.model,
     errorCode: "OPEN_CIRCUIT",
   });
+  recordProviderCallProvenance(secrets, request, providerAttemptId);
   return {
     success: false,
     provider: request.provider,
@@ -276,6 +317,7 @@ async function reserveProviderSpend(
     errorCode: "SPEND_CAP",
     safeMetadata: { scope: reservation.scope ?? "spend_cap" },
   });
+  recordProviderCallProvenance(secrets, request, providerAttemptId);
   return {
     success: false,
     provider: request.provider,

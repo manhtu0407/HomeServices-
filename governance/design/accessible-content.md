@@ -1,6 +1,6 @@
 # Design Reference — Accessible Content
 
-> A nan of the `design.md` system. `critical.md` is highest authority; `AGENTS.md` owns the language + Reduce Motion / Transparency rules; `design/runtime.md` routes here. The `kael-accessible-content` skill points here. RN reality: no hover (press, not hover), native accessibility APIs.
+> A spoke of the `design.md` system. `critical.md` is highest authority; `AGENTS.md` owns the language + Reduce Motion / Transparency rules; `design/runtime.md` routes here. The `kael-accessible-content` skill points here. RN reality: no hover (press, not hover), native accessibility APIs.
 
 ## 0. Role
 

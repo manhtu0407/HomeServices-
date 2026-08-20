@@ -8,7 +8,7 @@ import {
 import type { PillarManifest } from '@/__tests__/pillar-manifest'
 
 export const PILLAR = {
-  id: 'P27-worker-jobs-zip-prototype',
+  id: 'P33-worker-jobs-zip-prototype',
   invariant: 'the approved eleven-stage Jobs surface remains the single visual source for Prototype and Production, with workflow transitions and route data kept intact',
   authority: [
     'governance/RULES.md (workflow integrity and visual consistency)',
