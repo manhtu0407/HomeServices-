@@ -33,10 +33,12 @@ function Text({ style, ...props }: TextProps) {
 
 export function WorkerV5ProgressRail({
   activeStep,
+  formulaAura = true,
   language,
   reduceTransparency,
 }: {
   activeStep: number
+  formulaAura?: boolean
   language: AppLanguage
   reduceTransparency: boolean
 }) {
@@ -47,7 +49,7 @@ export function WorkerV5ProgressRail({
     textByLanguage(language, 'Duyệt', 'Review'),
     textByLanguage(language, 'Đóng', 'Close'),
   ]
-  return <WorkerV5Rail labels={labels} activeStep={activeStep} reduceTransparency={reduceTransparency} testID="worker-v5-progress-rail" />
+  return <WorkerV5Rail formulaAura={formulaAura} labels={labels} activeStep={activeStep} reduceTransparency={reduceTransparency} testID="worker-v5-progress-rail" />
 }
 
 export function WorkerV5WorkProgressBoard({
@@ -55,24 +57,28 @@ export function WorkerV5WorkProgressBoard({
   items,
   language,
   reduceTransparency,
+  styleVariant = 'default',
   zipAura,
 }: {
   caseWideAura: WorkerV5ProgressAuraComponent
   items: readonly WorkerV5ProgressItem[]
   language: AppLanguage
   reduceTransparency: boolean
+  styleVariant?: 'default' | 'jobs-review'
   zipAura: WorkerV5ProgressAuraComponent
 }) {
+  const isJobsReview = styleVariant === 'jobs-review'
   return (
-    <View style={styles.workProgressBoardShell} testID="worker-v5-work-progress-board">
+    <View style={[styles.workProgressBoardShell, isJobsReview && styles.workProgressBoardShellJobsReview]} testID="worker-v5-work-progress-board">
       <View style={styles.workProgressBoardMeta}>
-        <Text style={styles.workProgressBoardTitle}>{textByLanguage(language, 'Bảng công việc', 'Work board')}</Text>
+        <Text style={[styles.workProgressBoardTitle, isJobsReview && styles.workProgressBoardTitleJobsReview]}>{textByLanguage(language, 'Bảng công việc', 'Work board')}</Text>
       </View>
       <WorkerV5StepList
         caseWideAura={caseWideAura}
         formulaAura
         items={items}
         reduceTransparency={reduceTransparency}
+        styleVariant={styleVariant}
         testID="worker-v5-in-progress-step-list"
         zipAura={zipAura}
       />
@@ -82,22 +88,26 @@ export function WorkerV5WorkProgressBoard({
 
 function WorkerV5Rail({
   activeStep,
+  formulaAura,
   labels,
   reduceTransparency,
   testID,
 }: {
   activeStep: number
+  formulaAura: boolean
   labels: readonly string[]
   reduceTransparency: boolean
   testID: string
 }) {
   return (
     <View style={[styles.railCard, reduceTransparency && styles.opaqueCard]} testID={testID}>
-      <WorkerV5FormulaMintCardAura
-        reduceTransparency={reduceTransparency}
-        scope="ScopeChangeProgressRail"
-        testID="worker-v5-progress-rail-formula-mint-aura"
-      />
+      {formulaAura ? (
+        <WorkerV5FormulaMintCardAura
+          reduceTransparency={reduceTransparency}
+          scope="ScopeChangeProgressRail"
+          testID="worker-v5-progress-rail-formula-mint-aura"
+        />
+      ) : null}
       <View style={styles.progressRail}>
         {labels.map((label, index) => {
           const step = index + 1
@@ -125,6 +135,7 @@ function WorkerV5StepList({
   formulaAura = false,
   items,
   reduceTransparency = false,
+  styleVariant = 'default',
   testID = 'worker-v5-step-list',
   zipAura: ZipAura,
 }: {
@@ -132,12 +143,15 @@ function WorkerV5StepList({
   formulaAura?: boolean
   items: readonly WorkerV5ProgressItem[]
   reduceTransparency?: boolean
+  styleVariant?: 'default' | 'jobs-review'
   testID?: string
   zipAura: WorkerV5ProgressAuraComponent
 }) {
+  const isJobsReview = styleVariant === 'jobs-review'
+  const primaryActiveIndex = isJobsReview ? items.findIndex((item) => item.state === 'active') : -1
   return (
-    <View style={[styles.stepList, formulaAura && styles.stepListFormula, reduceTransparency && styles.opaqueCard]} testID={testID}>
-      {formulaAura && !reduceTransparency ? (
+    <View style={[styles.stepList, formulaAura && styles.stepListFormula, isJobsReview && styles.stepListJobsReview, reduceTransparency && styles.opaqueCard]} testID={testID}>
+      {formulaAura && !reduceTransparency && !isJobsReview ? (
         <>
           <CaseWideAura scope="StepListWide" style={styles.checkInChecklistAura} testID={`${testID}-formula-aura`} />
           <ZipAura scope="StepListFine" style={styles.checkInChecklistZipAura} testID={`${testID}-zip-mint-aura`} />
@@ -150,15 +164,44 @@ function WorkerV5StepList({
             styles.stepRow,
             item.state === 'done' ? styles.stepRowDone : null,
             item.state === 'active' ? styles.stepRowActive : null,
+            isJobsReview && styles.stepRowJobsReview,
+            isJobsReview && item.state === 'done' ? styles.stepRowJobsReviewDone : null,
+            isJobsReview && item.state === 'active' && index === primaryActiveIndex ? styles.stepRowJobsReviewActive : null,
+            isJobsReview && item.state === 'active' && index !== primaryActiveIndex ? styles.stepRowJobsReviewContext : null,
+            isJobsReview && index === items.length - 1 ? styles.stepRowJobsReviewLast : null,
           ]}
         >
-          <View style={[styles.stepState, item.state === 'done' ? styles.stepStateDone : null, item.state === 'active' ? styles.stepStateActive : null]}>
-            <Text style={[styles.stepStateText, item.state === 'active' ? styles.stepStateTextActive : null, item.state === 'done' ? styles.stepStateTextDone : null]}>
+          <View
+            style={[
+              styles.stepState,
+              isJobsReview && styles.stepStateJobsReview,
+              item.state === 'done' ? styles.stepStateDone : null,
+              item.state === 'active' ? styles.stepStateActive : null,
+              isJobsReview && item.state === 'done' ? styles.stepStateJobsReviewDone : null,
+              isJobsReview && item.state === 'active' && index === primaryActiveIndex ? styles.stepStateJobsReviewActive : null,
+              isJobsReview && item.state === 'active' && index !== primaryActiveIndex ? styles.stepStateJobsReviewContext : null,
+            ]}
+          >
+            <Text
+              style={[
+                styles.stepStateText,
+                isJobsReview ? styles.stepStateTextJobsReview : null,
+                item.state === 'active' ? styles.stepStateTextActive : null,
+                item.state === 'done' ? styles.stepStateTextDone : null,
+                isJobsReview && item.state === 'active' && index === primaryActiveIndex ? styles.stepStateTextJobsReviewActive : null,
+                isJobsReview && item.state === 'active' && index !== primaryActiveIndex ? styles.stepStateTextJobsReviewContext : null,
+                isJobsReview && item.state === 'done' ? styles.stepStateTextJobsReviewDone : null,
+              ]}
+            >
               {item.state === 'done' ? '✓' : index + 1}
             </Text>
           </View>
-          <Text style={styles.stepTitle} numberOfLines={2} testID={`worker-v5-step-title-${index}`}>{item.title}</Text>
-          <Text style={styles.stepMeta} numberOfLines={2} testID={`worker-v5-step-meta-${index}`}>{item.meta}</Text>
+          <Text style={[styles.stepTitle, isJobsReview && styles.stepTitleJobsReview]} numberOfLines={2} testID={`worker-v5-step-title-${index}`}>
+            {item.title}
+          </Text>
+          <Text style={[styles.stepMeta, isJobsReview && styles.stepMetaJobsReview]} numberOfLines={2} testID={`worker-v5-step-meta-${index}`}>
+            {item.meta}
+          </Text>
         </View>
       ))}
     </View>

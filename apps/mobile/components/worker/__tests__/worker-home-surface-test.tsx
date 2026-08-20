@@ -1109,16 +1109,19 @@ describe('Worker runtime surface wiring', () => {
 
     render(<WorkerJobsSurface />)
 
+    expect(screen.getByTestId('worker-v5-jobs-rebuild-surface')).toBeOnTheScreen()
     expect(screen.getByTestId('worker-v5-opportunity-inbox-handoff')).toBeOnTheScreen()
     expect(screen.getByText('Sửa điện')).toBeOnTheScreen()
     expect(screen.queryByText('Vệ sinh sofa')).toBeNull()
-    expect(screen.getByTestId('worker-v5-opportunity-artwork-frame')).toBeOnTheScreen()
+    const opportunityCard = screen.getByTestId('worker-v5-opportunity-card')
+    expect(StyleSheet.flatten(opportunityCard.props.style)).toMatchObject({ flexDirection: 'row', minHeight: 172, position: 'relative' })
+    expect(screen.queryByTestId('worker-v5-opportunity-artwork-frame')).toBeNull()
     expect(screen.getByTestId('worker-v5-opportunity-selection-hint')).toBeOnTheScreen()
 
     fireEvent.press(screen.getByTestId('worker-v5-opportunity-card'))
     fireEvent.press(screen.getByTestId('worker-v5-primary-action'))
 
-    expect(mockReplace).toHaveBeenCalledWith('/(worker)/jobs?ns_worker_screen=2.2-offer-detail&ns_audit_role=worker&ns_worker_lang=vi&ns_worker_prototype=worker-jobs-rebuild-v1')
+    expect(mockReplace).toHaveBeenCalledWith('/(worker)/jobs?ns_worker_screen=2.2-offer-detail&ns_audit_role=worker&ns_worker_lang=vi')
   })
 
   it('keeps Stage 11 bound to the real settled job and earnings ledger', () => {
@@ -1138,6 +1141,24 @@ describe('Worker runtime surface wiring', () => {
     expect(screen.getByTestId('worker-v5-stage-eleven-amount')).toHaveTextContent('340.000 VND')
     expect(screen.queryByText('Quy trình công việc')).toBeNull()
     expect(screen.queryByText('10/11')).toBeNull()
+  })
+
+  it('shows the recorded bank-transfer amount as currency when the payment record has it', () => {
+    const deal = buildSettledCaseDeal()
+    deal.payment = deal.payment ? { ...deal.payment, amountReceived: 400_000 } : null
+    buildWorkflow({ deal, workerEarnings: buildNoEarnings() })
+    mockRouteParams = {
+      ns_audit_role: 'worker',
+      ns_worker_lang: 'vi',
+      ns_worker_prototype: 'worker-jobs-rebuild-v1',
+      ns_worker_screen: '2.12-case-closed',
+      ns_worker_stage: 'payment-confirmed',
+    }
+
+    render(<WorkerJobsSurface />)
+
+    expect(screen.getByTestId('worker-v5-stage-eleven-amount')).toHaveTextContent('400.000 VND')
+    expect(screen.getByText('Số tiền chuyển khoản')).toBeOnTheScreen()
   })
 
   it('does not synthesize a job when the Preview inbox has no real opportunity', () => {
@@ -1182,7 +1203,7 @@ describe('Worker runtime surface wiring', () => {
 
     await waitFor(() => {
       expect(mockWorkflowValue.actions.workerAcceptBroadcast).toHaveBeenCalledWith('job_test_1')
-      expect(mockReplace).toHaveBeenCalledWith('/(worker)/jobs?ns_worker_screen=2.3-customer-confirmation-wait&ns_worker_prototype=worker-jobs-rebuild-v1')
+      expect(mockReplace).toHaveBeenCalledWith('/(worker)/jobs?ns_worker_screen=2.3-customer-confirmation-wait')
     })
   })
 
@@ -1217,7 +1238,7 @@ describe('Worker runtime surface wiring', () => {
     render(<WorkerJobsSurface />)
 
     await waitFor(() => {
-      expect(mockReplace).toHaveBeenCalledWith('/(worker)/jobs?ns_worker_screen=2.1-opportunity-inbox&ns_worker_prototype=worker-jobs-rebuild-v1')
+      expect(mockReplace).toHaveBeenCalledWith('/(worker)/jobs?ns_worker_screen=2.1-opportunity-inbox')
     })
   })
 
@@ -1228,7 +1249,7 @@ describe('Worker runtime surface wiring', () => {
     render(<WorkerJobsSurface />)
 
     await waitFor(() => {
-      expect(mockReplace).toHaveBeenCalledWith('/(worker)/jobs?ns_worker_screen=2.3-customer-confirmation-wait&ns_worker_prototype=worker-jobs-rebuild-v1')
+      expect(mockReplace).toHaveBeenCalledWith('/(worker)/jobs?ns_worker_screen=2.3-customer-confirmation-wait')
     })
     expect(screen.queryByTestId('worker-v5-in-progress-scope-action')).toBeNull()
   })
@@ -1256,7 +1277,7 @@ describe('Worker runtime surface wiring', () => {
 
     await waitFor(() => {
       expect(mockWorkflowValue.actions.workerDeclineBroadcast).toHaveBeenCalledTimes(1)
-      expect(mockReplace).toHaveBeenCalledWith('/(worker)/jobs?ns_worker_screen=2.1-opportunity-inbox&ns_worker_prototype=worker-jobs-rebuild-v1')
+      expect(mockReplace).toHaveBeenCalledWith('/(worker)/jobs?ns_worker_screen=2.1-opportunity-inbox')
     })
   })
 
@@ -1303,7 +1324,7 @@ describe('Worker runtime surface wiring', () => {
     render(<WorkerJobsSurface />)
 
     await waitFor(() => {
-      expect(mockReplace).toHaveBeenCalledWith('/(worker)/jobs?ns_worker_screen=2.7-in-progress&ns_worker_prototype=worker-jobs-rebuild-v1')
+      expect(mockReplace).toHaveBeenCalledWith('/(worker)/jobs?ns_worker_screen=2.7-in-progress')
     })
   })
 
@@ -3070,7 +3091,7 @@ describe('Worker runtime surface wiring', () => {
     expect(mockReplace).not.toHaveBeenCalledWith('/(worker)/jobs?ns_worker_screen=2.12-case-closed')
     fireEvent.press(screen.getByTestId('worker-v5-completion-direct-payment-action'))
     await waitFor(() => expect(mockWorkerConfirmCashPayment).toHaveBeenCalledWith(true))
-    expect(mockReplace).toHaveBeenCalledWith('/(worker)/jobs?ns_worker_screen=2.12-case-closed&ns_worker_prototype=worker-jobs-rebuild-v1')
+    expect(mockReplace).toHaveBeenCalledWith('/(worker)/jobs?ns_worker_screen=2.12-case-closed')
     confirmed.unmount()
 
     mockRouteParams = { ns_worker_screen: '2.12-case-closed' }
@@ -4086,7 +4107,7 @@ describe('Worker runtime surface wiring', () => {
     buildWorkflow({ deal: buildRepairingDeal() })
     mockRouteParams = { ns_audit_surface: 'worker_scope_change' }
     const scopeChange = render(<WorkerJobsSurface />)
-    expect(screen.getByTestId('worker-v5-progress-rail-formula-mint-aura')).toBeOnTheScreen()
+    expect(screen.queryByTestId('worker-v5-progress-rail-formula-mint-aura')).toBeNull()
     scopeChange.unmount()
 
     buildWorkflow({ deal: buildCompletedByWorkerDeal() })

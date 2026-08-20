@@ -176,6 +176,10 @@ export const styles = StyleSheet.create({
     ...typography.caption2,
     fontWeight: '600',
   },
+  timerCaptionJobsReview: {
+    color: '#6C8383',
+    fontWeight: '500',
+  },
   timerCard: {
     alignItems: 'center',
     backgroundColor: 'rgba(255,255,255,0.78)',
@@ -195,11 +199,27 @@ export const styles = StyleSheet.create({
     shadowOpacity: 0.16,
     shadowRadius: 38,
   },
+  timerCardJobsReview: {
+    backgroundColor: '#FFFFFF',
+    borderColor: '#B9DFD9',
+    borderRadius: 22,
+    elevation: 0,
+    minHeight: 106,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    shadowColor: 'transparent',
+    shadowOpacity: 0,
+    shadowRadius: 0,
+  },
   timerLabel: {
     color: color.text.muted,
     ...typography.caption2,
     fontWeight: '600',
     textTransform: 'uppercase',
+  },
+  timerLabelJobsReview: {
+    color: '#718787',
+    letterSpacing: 0.2,
   },
   timerRing: {
     alignItems: 'center',
@@ -209,6 +229,10 @@ export const styles = StyleSheet.create({
     position: 'relative',
     width: 70,
     zIndex: 1,
+  },
+  timerRingJobsReview: {
+    height: 68,
+    width: 68,
   },
   timerRingLens: {
     alignItems: 'center',
@@ -226,6 +250,10 @@ export const styles = StyleSheet.create({
     ...typography.footnote,
     fontWeight: '600',
   },
+  timerRingValueJobsReview: {
+    color: '#087F75',
+    fontWeight: '700',
+  },
   timerTextColumn: {
     flex: 1,
     gap: 4,
@@ -237,5 +265,9 @@ export const styles = StyleSheet.create({
     color: color.text.strong,
     ...typography.title2,
     fontWeight: '600',
+  },
+  timerValueJobsReview: {
+    color: '#103B36',
+    fontWeight: '700',
   },
 })

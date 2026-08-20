@@ -397,6 +397,14 @@ export type WorkerJobListResponse = {
 export type WorkerRoutePreviewResponse = {
   distance_meters: number
   duration_seconds: number
+  provider: 'vietmap'
+  encoded_polyline: string | null
+  destination: {
+    latitude: number
+    longitude: number
+    kind: 'building'
+  }
+  fetched_at: string
 }
 
 export type EarningsResponse = {

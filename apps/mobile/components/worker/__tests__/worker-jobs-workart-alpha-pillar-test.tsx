@@ -4,7 +4,7 @@ import { StyleSheet } from 'react-native'
 
 import { withPillarContext, type PillarManifest } from '@/__tests__/pillar-manifest'
 
-import { prototypeStyles } from '../jobs/worker-jobs-legacy-prototype-styles'
+import { prototypeStyles } from '../jobs/worker-jobs-zip-prototype-surface'
 
 export const PILLAR = {
   id: 'P22-worker-jobs-workart-alpha',
@@ -15,11 +15,11 @@ export const PILLAR = {
     'governance/protocols/frontend-test.md G2 (state coverage) and G4 (Reduce Transparency)',
     'governance/design/runtime.md (Workart is context, not a repeated opaque tile)',
   ],
-  target: 'apps/mobile/components/worker/jobs/worker-jobs-legacy-prototype-contracts.ts',
+  target: 'apps/mobile/components/worker/jobs/worker-jobs-zip-prototype-shared.tsx',
   layer: 'ui-visual',
   siblings: ['P06-payment-unlock-gate', 'P08-worker-dock-motion'],
   mutation:
-    'map a supported service back to a client-booking-workart asset or restore the white opportunityArtworkFrame fill — the asset and shell assertions turn red',
+    'map a supported service back to a baked-background asset or restore a repeated Workart tile shell — the asset and shell assertions turn red',
 } as const satisfies PillarManifest
 
 const clientImageAsset = (fileName: string) =>
@@ -28,7 +28,7 @@ const read = (relativePath: string) => readFileSync(resolve(__dirname, relativeP
 
 describe('Worker Jobs Workart background contract', () => {
   it('ships a dedicated transparent asset for every supported Jobs service', () => {
-    const opportunitySource = read('../jobs/worker-jobs-legacy-prototype-contracts.ts')
+    const opportunitySource = read('../jobs/worker-jobs-zip-prototype-shared.tsx')
 
     for (const service of ['electrical', 'plumbing', 'cleaning', 'hvac', 'handyman', 'upholstery']) {
       const assetName = `worker-jobs-workart-${service}-transparent.png`
@@ -55,25 +55,21 @@ describe('Worker Jobs Workart background contract', () => {
     )
   })
 
-  it('removes the visual surface behind opportunity Workart', () => {
-    const artworkFrame = StyleSheet.flatten(prototypeStyles.opportunityArtworkFrame)
+  it('keeps opportunity Workart full-bleed and free of a repeated tile shell', () => {
     const opportunityArtwork = StyleSheet.flatten(prototypeStyles.opportunityArtwork)
     const offerSummaryArtwork = StyleSheet.flatten(prototypeStyles.offerSummaryArtwork)
 
     withPillarContext(
       PILLAR,
       () => {
-        expect(artworkFrame).toMatchObject({
-          backgroundColor: 'transparent',
-          borderWidth: 0,
-          height: 154,
-          maxWidth: 182,
-          minWidth: 144,
-          overflow: 'visible',
-          width: '50%',
+        expect(StyleSheet.flatten(prototypeStyles.opportunityCard)).toMatchObject({ flexDirection: 'row', minHeight: 172 })
+        expect(opportunityArtwork).toMatchObject({
+          height: '100%',
+          transform: [{ translateX: 10 }],
+          width: '54%',
         })
-        expect(opportunityArtwork.backgroundColor).toBe('transparent')
-        expect(offerSummaryArtwork.backgroundColor).toBe('transparent')
+        expect(opportunityArtwork).not.toHaveProperty('backgroundColor')
+        expect(offerSummaryArtwork).not.toHaveProperty('backgroundColor')
       },
       'the Workart must sit directly on the card surface without a white tile or border shell',
     )

@@ -16,15 +16,26 @@ export const styles = StyleSheet.create({
     marginBottom: -4,
     paddingHorizontal: 2,
   },
+  sectionHeaderJobsReview: {
+    marginBottom: -1,
+  },
   sectionHeaderAction: {
     color: color.brand.primaryDark,
     ...typography.caption2,
+    fontWeight: '600',
+  },
+  sectionHeaderActionJobsReview: {
+    color: '#138E82',
     fontWeight: '600',
   },
   sectionHeaderTitle: {
     color: color.text.strong,
     ...typography.subheadline,
     fontWeight: '600',
+  },
+  sectionHeaderTitleJobsReview: {
+    color: '#123A35',
+    fontWeight: '700',
   },
   navButton: {
     alignItems: 'center',

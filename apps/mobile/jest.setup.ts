@@ -8,6 +8,29 @@
 jest.mock('react-native-worklets', () => require('react-native-worklets/src/mock'))
 jest.mock('react-native-reanimated', () => require('react-native-reanimated/mock'))
 jest.mock('@react-native-async-storage/async-storage', () => require('@react-native-async-storage/async-storage/jest/async-storage-mock'))
+jest.mock('@vietmap/vietmap-gl-react-native', () => {
+  const React = require('react')
+  const { View } = require('react-native')
+  const layer = ({ children, ...props }: any) => React.createElement(View, props, children)
+  const Camera = React.forwardRef(({ children, ...props }: any, ref: any) => {
+    React.useImperativeHandle(ref, () => ({
+      fitBounds: jest.fn(),
+      flyTo: jest.fn(),
+      moveTo: jest.fn(),
+      setCamera: jest.fn(),
+      zoomTo: jest.fn(),
+    }))
+    return React.createElement(View, props, children)
+  })
+  Camera.displayName = 'VietMapMockCamera'
+  return {
+    Camera,
+    LineLayer: layer,
+    MapView: layer,
+    MarkerView: layer,
+    ShapeSource: layer,
+  }
+})
 
 // Glass is native (expo-glass-effect / expo-blur). In tests, render children as
 // plain Views and report no liquid glass, so glass surfaces mount without the

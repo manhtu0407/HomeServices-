@@ -12,6 +12,7 @@ export function WorkerV5EvidenceTray({
   onAddPhoto,
   reduceTransparency,
   stageLabel,
+  styleVariant = 'default',
   testID = 'worker-v5-evidence-tray',
   uploadingSlot = null,
   urls,
@@ -22,6 +23,7 @@ export function WorkerV5EvidenceTray({
   onAddPhoto?: (slot: number) => void
   reduceTransparency: boolean
   stageLabel?: string
+  styleVariant?: 'default' | 'jobs-review'
   testID?: string
   uploadingSlot?: number | null
   urls: readonly (string | null | undefined)[]
@@ -36,6 +38,7 @@ export function WorkerV5EvidenceTray({
       reduceTransparency={reduceTransparency}
       refs={urls}
       stageLabel={stageLabel ?? textByLanguage(language, 'Bằng chứng công việc', 'Job evidence')}
+      styleVariant={styleVariant}
       testID={testID}
       uploadingSlot={uploadingSlot}
     />

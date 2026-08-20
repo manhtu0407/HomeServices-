@@ -1247,6 +1247,15 @@ export const styles = StyleSheet.create({
   sectionStack: {
     gap: 14,
   },
+  sectionStackJobsReview: {
+    gap: 18,
+  },
+  jobsReviewContentShell: {
+    backgroundColor: 'transparent',
+    gap: 18,
+    paddingHorizontal: 0,
+    paddingVertical: 0,
+  },
   workerSettingsScreenStack: {
     paddingBottom: 92,
   },
@@ -1255,6 +1264,14 @@ export const styles = StyleSheet.create({
     ...typography.caption1,
     fontWeight: '600',
     paddingHorizontal: 2,
+  },
+  fieldEvidenceKaelConfirmationJobsReview: {
+    backgroundColor: '#F4FAF8',
+    borderColor: '#D8EBE6',
+    borderRadius: 14,
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
   },
   sectionHeader: {
     alignItems: 'center',

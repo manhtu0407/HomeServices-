@@ -1,7 +1,82 @@
 import { StyleSheet } from 'react-native'
+
 import { color, typography } from '@/design/theme'
 
-export const workerJobsLegacyPrototypeStylePartB = StyleSheet.create({
+export const prototypeStageStyles = StyleSheet.create({
+  stageProposalCard: {
+    backgroundColor: color.surface.base,
+    borderColor: color.surface.strokeStrong,
+    borderRadius: 24,
+    borderWidth: 1,
+    gap: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+  },
+  stageProposalHeader: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 10,
+    minHeight: 44,
+  },
+  stageProposalIcon: {
+    alignItems: 'center',
+    borderColor: color.surface.strokeStrong,
+    borderRadius: 14,
+    borderWidth: 1,
+    height: 44,
+    justifyContent: 'center',
+    width: 44,
+  },
+  stageProposalHeaderCopy: {
+    flex: 1,
+    gap: 1,
+    minWidth: 0,
+  },
+  stageProposalKicker: {
+    color: color.text.secondary,
+    ...typography.caption1,
+    fontWeight: '500',
+  },
+  stageProposalTitle: {
+    color: color.text.strong,
+    ...typography.body,
+    fontWeight: '700',
+  },
+  stageProposalAction: {
+    color: color.brand.primaryDark,
+    ...typography.caption1,
+    fontWeight: '600',
+    textAlign: 'right',
+  },
+  stageProposalRow: {
+    alignItems: 'center',
+    borderBottomColor: color.surface.stroke,
+    borderBottomWidth: 1,
+    flexDirection: 'row',
+    gap: 12,
+    minHeight: 48,
+    paddingVertical: 8,
+  },
+  stageProposalRowLast: {
+    borderBottomWidth: 0,
+  },
+  stageProposalLabel: {
+    color: color.text.secondary,
+    ...typography.footnote,
+    fontWeight: '500',
+  },
+  stageProposalValue: {
+    color: color.text.strong,
+    ...typography.footnote,
+    flex: 1,
+    fontWeight: '600',
+    textAlign: 'right',
+  },
+  stageProposalTotalValue: {
+    color: color.brand.primaryDark,
+    ...typography.title3,
+    fontWeight: '600',
+  },
   stageEvidenceEmpty: {
     alignItems: 'center',
     backgroundColor: color.surface.base,
@@ -159,6 +234,11 @@ export const workerJobsLegacyPrototypeStylePartB = StyleSheet.create({
     gap: 5,
     justifyContent: 'center',
     minWidth: 0,
+  },
+  stageCompletionWorkart: {
+    height: 136,
+    marginRight: -4,
+    width: 174,
   },
   stageCompletionKicker: {
     color: color.text.secondary,
@@ -344,13 +424,18 @@ export const workerJobsLegacyPrototypeStylePartB = StyleSheet.create({
   },
   stageSubmissionStatus: {
     alignItems: 'center',
+    flexBasis: 124,
+    flexShrink: 1,
     gap: 6,
     marginLeft: 12,
-    maxWidth: 132,
+    maxWidth: '100%',
+    minWidth: 0,
   },
   stageSubmissionStatusArtwork: {
+    flexShrink: 1,
     height: 100,
-    width: 130,
+    maxWidth: 130,
+    width: '100%',
   },
   stageSubmissionStatusText: {
     color: color.brand.primaryDark,
@@ -370,6 +455,7 @@ export const workerJobsLegacyPrototypeStylePartB = StyleSheet.create({
     borderBottomColor: color.surface.stroke,
     borderBottomWidth: 1,
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 10,
     minHeight: 58,
     paddingVertical: 8,
@@ -379,6 +465,8 @@ export const workerJobsLegacyPrototypeStylePartB = StyleSheet.create({
   },
   stageSubmissionRowCopy: {
     flex: 1,
+    flexBasis: 150,
+    flexShrink: 1,
     gap: 2,
     minWidth: 0,
   },
@@ -395,8 +483,12 @@ export const workerJobsLegacyPrototypeStylePartB = StyleSheet.create({
   stageSubmissionRowValue: {
     color: color.text.secondary,
     ...typography.caption1,
+    flexBasis: 94,
+    flexShrink: 1,
     fontWeight: '600',
-    maxWidth: 132,
+    marginLeft: 'auto',
+    maxWidth: '42%',
+    minWidth: 0,
     textAlign: 'right',
   },
   stageClosedHero: {
@@ -406,14 +498,19 @@ export const workerJobsLegacyPrototypeStylePartB = StyleSheet.create({
     borderRadius: 24,
     borderWidth: 1,
     flexDirection: 'row',
+    flexWrap: 'wrap',
     minHeight: 148,
     paddingHorizontal: 18,
     paddingVertical: 14,
   },
   stageClosedCopy: {
     flex: 1,
+    flexBasis: 196,
+    flexGrow: 1,
+    flexShrink: 1,
     gap: 5,
     justifyContent: 'center',
+    maxWidth: '100%',
     minWidth: 0,
   },
   stageClosedKicker: {
@@ -433,19 +530,17 @@ export const workerJobsLegacyPrototypeStylePartB = StyleSheet.create({
   },
   stageClosedStatus: {
     alignItems: 'center',
-    gap: 6,
+    flexBasis: 124,
+    flexShrink: 1,
     marginLeft: 12,
-    maxWidth: 132,
+    maxWidth: '100%',
+    minWidth: 0,
   },
   stageClosedStatusArtwork: {
-    height: 100,
-    width: 130,
-  },
-  stageClosedStatusText: {
-    color: color.brand.primaryDark,
-    ...typography.caption1,
-    fontWeight: '700',
-    textAlign: 'center',
+    flexShrink: 1,
+    height: 126,
+    maxWidth: 164,
+    width: '100%',
   },
   stageClosedSummaryCard: {
     backgroundColor: color.surface.base,
@@ -459,6 +554,7 @@ export const workerJobsLegacyPrototypeStylePartB = StyleSheet.create({
     borderBottomColor: color.surface.stroke,
     borderBottomWidth: 1,
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 10,
     minHeight: 62,
     paddingVertical: 8,
@@ -468,6 +564,8 @@ export const workerJobsLegacyPrototypeStylePartB = StyleSheet.create({
   },
   stageClosedSummaryCopy: {
     flex: 1,
+    flexBasis: 150,
+    flexShrink: 1,
     gap: 2,
     minWidth: 0,
   },
@@ -484,8 +582,12 @@ export const workerJobsLegacyPrototypeStylePartB = StyleSheet.create({
   stageClosedSummaryValue: {
     color: color.text.strong,
     ...typography.footnote,
+    flexBasis: 94,
+    flexShrink: 1,
     fontWeight: '700',
-    maxWidth: 160,
+    marginLeft: 'auto',
+    maxWidth: '42%',
+    minWidth: 0,
     textAlign: 'right',
   },
 })

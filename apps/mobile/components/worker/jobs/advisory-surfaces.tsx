@@ -55,6 +55,7 @@ export function WorkerV5ActionRail({
   reduceTransparency,
   secondary,
   secondaryTestID,
+  styleVariant = 'default',
   zipAura: ZipAura,
 }: {
   auraTestID?: string
@@ -70,13 +71,19 @@ export function WorkerV5ActionRail({
   reduceTransparency: boolean
   secondary: string
   secondaryTestID?: string
+  styleVariant?: 'default' | 'jobs-review'
   zipAura: WorkerV5CaseAuraComponent
 }) {
   const primaryIsDisabled = primaryDisabled || !onPrimary
   const primaryUsesSourceTone = primaryVariant === 'source'
+  const isJobsReview = styleVariant === 'jobs-review'
   return (
-    <View accessibilityRole="summary" style={styles.navigationRow} testID="worker-v5-action-rail">
-      {formulaAura && !reduceTransparency ? (
+    <View
+      accessibilityRole="summary"
+      style={[styles.navigationRow, isJobsReview ? styles.navigationRowJobsReview : null]}
+      testID="worker-v5-action-rail"
+    >
+      {formulaAura && !reduceTransparency && !isJobsReview ? (
         <>
           <CaseWideAura scope={`${auraTestID ?? 'ActionRail'}Wide`} style={styles.actionRailFormulaAura} testID={auraTestID} />
           <ZipAura scope={`${auraTestID ?? 'ActionRail'}Fine`} style={styles.actionRailZipAura} testID={auraTestID ? `${auraTestID}-zip` : undefined} />
@@ -90,12 +97,14 @@ export function WorkerV5ActionRail({
         style={({ pressed }) => [
           styles.navButton,
           styles.navButtonSecondary,
+          isJobsReview ? styles.navButtonJobsReview : null,
+          isJobsReview ? styles.navButtonSecondaryJobsReview : null,
           reduceTransparency && styles.opaqueCard,
           pressed && onSecondary ? styles.pressed : null,
         ]}
         testID={secondaryTestID}
       >
-        <Text adjustsFontSizeToFit minimumFontScale={0.78} style={[styles.navButtonText, styles.actionRailButtonText]} numberOfLines={1}>{secondary}</Text>
+        <Text adjustsFontSizeToFit minimumFontScale={0.78} style={[styles.navButtonText, isJobsReview ? styles.navButtonTextJobsReview : null, styles.actionRailButtonText]} numberOfLines={1}>{secondary}</Text>
       </Pressable>
       <Pressable
         accessibilityRole="button"
@@ -105,17 +114,20 @@ export function WorkerV5ActionRail({
         style={({ pressed }) => [
           styles.navButton,
           styles.navButtonPrimary,
-          primaryUsesSourceTone && styles.primaryActionButtonSource,
+          primaryUsesSourceTone && !isJobsReview ? styles.primaryActionButtonSource : null,
+          isJobsReview ? styles.navButtonJobsReview : null,
+          isJobsReview ? styles.navButtonPrimaryJobsReview : null,
           reduceTransparency && (primaryUsesSourceTone ? styles.primaryActionButtonSource : styles.opaqueCard),
           primaryIsDisabled && (primaryUsesSourceTone ? styles.sourceActionDisabled : styles.navButtonDisabled),
           pressed && !primaryIsDisabled ? styles.pressed : null,
         ]}
         testID={primaryTestID}
       >
-        {primaryUsesSourceTone ? <PrimaryButtonFill disabled={primaryIsDisabled} variant="source" /> : null}
+        {primaryUsesSourceTone && !isJobsReview ? <PrimaryButtonFill disabled={primaryIsDisabled} variant="source" /> : null}
         <Text
           style={[
             styles.navButtonText,
+            isJobsReview ? styles.navButtonTextJobsReview : null,
             styles.actionRailButtonText,
             styles.navButtonPrimaryText,
             reduceTransparency && !primaryUsesSourceTone && styles.actionRailPrimaryText,
@@ -138,6 +150,7 @@ export function WorkerV5SingleSourceActionButton({
   onPress,
   primaryButtonFill: PrimaryButtonFill,
   reduceTransparency,
+  styleVariant = 'default',
   testID,
 }: {
   disabled: boolean
@@ -145,8 +158,10 @@ export function WorkerV5SingleSourceActionButton({
   onPress: () => void
   primaryButtonFill: WorkerV5PrimaryButtonFillComponent
   reduceTransparency: boolean
+  styleVariant?: 'default' | 'jobs-review'
   testID: string
 }) {
+  const isJobsReview = styleVariant === 'jobs-review'
   return (
     <Pressable
       accessibilityRole="button"
@@ -156,13 +171,14 @@ export function WorkerV5SingleSourceActionButton({
       style={({ pressed }) => [
         styles.primaryActionButton,
         styles.primaryActionButtonSource,
+        isJobsReview ? styles.primaryActionButtonJobsReview : null,
         reduceTransparency && styles.primaryActionButtonSource,
         disabled && styles.sourceActionDisabled,
         pressed && !disabled ? styles.pressed : null,
       ]}
       testID={testID}
     >
-      <PrimaryButtonFill disabled={disabled} variant="source" />
+      {!isJobsReview ? <PrimaryButtonFill disabled={disabled} variant="source" /> : null}
       <Text
         adjustsFontSizeToFit
         minimumFontScale={0.76}

@@ -18,11 +18,11 @@ function Text({ style, ...props }: TextProps) {
   return <RNText {...props} style={[styles.workerCustomerFontText, style]} />
 }
 
-export function WorkerV5SectionHeader({ action, title }: { action?: string; title: string }) {
+export function WorkerV5SectionHeader({ action, styleVariant = 'default', title }: { action?: string; styleVariant?: 'default' | 'jobs-review'; title: string }) {
   return (
-    <View style={styles.sectionHeader} testID="worker-v5-section-header">
-      <Text style={styles.sectionHeaderTitle}>{title}</Text>
-      {action ? <Text style={styles.sectionHeaderAction}>{action}</Text> : null}
+    <View style={[styles.sectionHeader, styleVariant === 'jobs-review' && styles.sectionHeaderJobsReview]} testID="worker-v5-section-header">
+      <Text style={[styles.sectionHeaderTitle, styleVariant === 'jobs-review' && styles.sectionHeaderTitleJobsReview]}>{title}</Text>
+      {action ? <Text style={[styles.sectionHeaderAction, styleVariant === 'jobs-review' && styles.sectionHeaderActionJobsReview]}>{action}</Text> : null}
     </View>
   )
 }

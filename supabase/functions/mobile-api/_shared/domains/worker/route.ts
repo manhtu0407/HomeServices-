@@ -34,6 +34,7 @@ type VietmapRouteResponse = {
   code?: string;
   paths?: Array<{
     distance?: number;
+    points?: string;
     time?: number;
   }>;
 };
@@ -68,6 +69,10 @@ export async function getWorkerRoutePreview(
   return {
     distance_meters: Math.round(distance),
     duration_seconds: Math.max(1, Math.round(duration / 1000)),
+    provider: "vietmap" as const,
+    encoded_polyline: typeof path?.points === "string" && path.points.length > 0 ? path.points : null,
+    destination: { ...destination, kind: "building" as const },
+    fetched_at: new Date().toISOString(),
   };
 }
 

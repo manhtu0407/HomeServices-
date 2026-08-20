@@ -111,7 +111,19 @@ jobs:
               'apps/mobile/components/worker/jobs/completion-evidence-screen-body.tsx'|\
               'apps/mobile/components/worker/jobs/inbox-offer-surfaces.tsx'|\
               'apps/mobile/components/worker/jobs/offer-styles.ts'|\
-              'apps/mobile/components/worker/jobs/offer-surfaces.tsx')
+              'apps/mobile/components/worker/jobs/offer-surfaces.tsx'|\
+              'apps/mobile/components/worker/jobs/worker-jobs-legacy-prototype-body.tsx'|\
+              'apps/mobile/components/worker/jobs/worker-jobs-legacy-prototype-contracts.ts'|\
+              'apps/mobile/components/worker/jobs/worker-jobs-legacy-prototype-host.tsx'|\
+              'apps/mobile/components/worker/jobs/worker-jobs-legacy-prototype-offer-route.tsx'|\
+              'apps/mobile/components/worker/jobs/worker-jobs-legacy-prototype-opportunity.tsx'|\
+              'apps/mobile/components/worker/jobs/worker-jobs-legacy-prototype-settlement.tsx'|\
+              'apps/mobile/components/worker/jobs/worker-jobs-legacy-prototype-shared.tsx'|\
+              'apps/mobile/components/worker/jobs/worker-jobs-legacy-prototype-stages.tsx'|\
+              'apps/mobile/components/worker/jobs/worker-jobs-legacy-prototype-style-part-a.ts'|\
+              'apps/mobile/components/worker/jobs/worker-jobs-legacy-prototype-style-part-b.ts'|\
+              'apps/mobile/components/worker/jobs/worker-jobs-legacy-prototype-styles.ts'|\
+              'apps/mobile/components/worker/jobs/worker-jobs-legacy-prototype-surface.tsx')
                 ;;
               '')
                 ;;

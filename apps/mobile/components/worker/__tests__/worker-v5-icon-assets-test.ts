@@ -41,14 +41,14 @@ describe('worker V5 icon assets', () => {
   })
 
   it('keeps the rebuilt offer surface free of retired icon tiles', () => {
-    const offerSource = `${read('../jobs/worker-jobs-legacy-prototype-opportunity.tsx')}\n${read('../jobs/worker-jobs-legacy-prototype-offer-route.tsx')}`
+    const offerSource = read('../jobs/worker-jobs-zip-prototype-surface.tsx')
 
     expect(offerSource).not.toContain('offerDetailRowIconTile')
     expect(offerSource).not.toContain('acceptCommitmentIconTile')
   })
 
   it('uses true-alpha Workart for every Jobs opportunity service', () => {
-    const opportunitySource = read('../jobs/worker-jobs-legacy-prototype-contracts.ts')
+    const opportunitySource = read('../jobs/worker-jobs-zip-prototype-surface.tsx')
 
     expect(existsSync(clientImageAsset('client-booking-journey-workart-cutout.png'))).toBe(true)
     expect(opportunitySource).toContain('client-booking-journey-workart-cutout.png')
@@ -71,8 +71,8 @@ describe('worker V5 icon assets', () => {
 
     expect(offerSource).not.toContain("'NestScout chưa gửi khách hàng nào tới thợ.'")
     expect(offerSource).not.toContain("'Yêu cầu sẽ hiện khi backend đồng bộ cơ hội.'")
-    expect(read('../jobs/worker-jobs-legacy-prototype-opportunity.tsx')).not.toContain("'Chi tiết chỉ hiện khi NestScout gửi cơ hội tới thợ.'")
+    expect(read('../jobs/worker-jobs-zip-prototype-surface.tsx')).not.toContain("'Chi tiết chỉ hiện khi NestScout gửi cơ hội tới thợ.'")
     expect(read('../worker-v5-flow.tsx')).not.toContain('WorkerV5AcceptBoundaryNote')
-    expect(read('../jobs/worker-jobs-legacy-prototype-offer-route.tsx')).not.toContain('WorkerV5AcceptBoundaryNote')
+    expect(read('../jobs/worker-jobs-zip-prototype-surface.tsx')).not.toContain('WorkerV5AcceptBoundaryNote')
   })
 })
