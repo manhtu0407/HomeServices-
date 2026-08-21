@@ -22,43 +22,9 @@ describe('places', () => {
     })
   })
 
-  it('calculates a worker route from the server-held building destination while the unit stays protected', async () => {
-    const fetchMock = vi.fn(async () => new Response(JSON.stringify({
-      code: 'OK',
-      paths: [{ distance: 3_200, time: 720_000 }],
-    })))
-    vi.stubGlobal('fetch', fetchMock)
-    const client = makeSequenceClient([{
-      data: {
-        id: 'job-route-1',
-        status: 'worker_matched',
-        worker_id: 'worker-1',
-        address_lat: 10.7767,
-        address_lng: 106.7009,
-        address_building: 'Tòa A',
-        address_unit: 'A1201',
-        address_floor: '12',
-        address_district: 'Bình Thạnh',
-        apartment_access_profile: {},
-        apartment_access_state: { exact_unit_released: false },
-      },
-      error: null,
-    }])
-    const ctx: MobileApiContext = {
-      success: true,
-      user: { id: 'worker-1' },
-      role: 'worker',
-      supabase: client,
-    }
-
-    await expect(createEdgeServices({ vietmapApiKey: 'vietmap-test-key' }).getWorkerRoutePreview(
-      ctx,
-      'job-route-1',
-      { latitude: 10.7692, longitude: 106.6819 },
-    )).resolves.toEqual({ distance_meters: 3200, duration_seconds: 720 })
-
-    expect(fetchMock).toHaveBeenCalledTimes(1)
-  })
+  // The route case moved to P36-worker-route-unit-protection. This one used toEqual against a
+  // two-field shape, so it broke the moment the response gained destination, provider,
+  // encoded_polyline and fetched_at — it pinned the shape, not the protection.
 
   it('rejects malformed UTF-8 route JSON instead of using corrupted coordinates', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => new Response(
