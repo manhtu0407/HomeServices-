@@ -17,7 +17,7 @@ const SKILLS = resolve(root, '.claude/skills')
 // after failing every one of these plus the skill's own directory.
 const SEARCH_ROOTS = ['', 'governance', 'apps/mobile']
 // Generated or machine-local: absent in a clean checkout, so absence proves nothing.
-const UNTRACKED = [/(^|\/)node_modules\//, /(^|\/)\.temp\//, /^\.codebase-memory\//]
+const UNTRACKED = [/(^|\/)node_modules\//, /(^|\/)\.temp\//, /^\.codebase-memory\//, /(^|\/)\.scratch\//]
 // AGENTS.md Workspace Layout: `~/.codex/` is the CLI's own config home and the repo must never
 // contain a matching path. `.gitignore` ignores it, so anything written there is lost.
 const FORBIDDEN = [[/\.codex\//i, 'references a `.codex/` path — the repo must never contain one (AGENTS.md Workspace Layout)']]
@@ -101,7 +101,7 @@ function checkCommands(id, text, problems) {
 // A report template is a fenced block of bare `Field:` lines. Three is the smallest count that
 // reads as a contract rather than a stray colon in prose.
 function hasReportTemplate(text) {
-  for (const [, block] of text.matchAll(/```[a-z]*\n([\s\S]*?)```/g)) {
+  for (const [, block] of text.matchAll(/```[a-z]*\r?\n([\s\S]*?)```/g)) {
     const fields = block.split(/\r?\n/).filter((line) => /^[A-Za-z][^`]*:\s*$/.test(line))
     if (fields.length >= 3) return true
   }

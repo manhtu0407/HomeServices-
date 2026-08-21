@@ -169,7 +169,7 @@ Future shared contracts should live in `packages/shared`:
 
 The production UI build must preserve these rules:
 
-- Only electrical, plumbing, and cleaning are active.
+- Only the six services approved in `governance/RULES.md` #6 are active.
 - No booking broadcast, matching, worker flow, payment, or scope-change UI in the A2-A5 slice.
 - No exact guaranteed price.
 - No raw AI output shown to users.

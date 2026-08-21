@@ -58,7 +58,7 @@ Anatomy:
 - apartment/address context,
 - search or Kael input affordance,
 - Kael Price Check primary CTA,
-- service entries for electrical, plumbing, and cleaning,
+- service entries for the six approved services,
 - active draft / active booking summary when present,
 - useful trust or estimate note,
 - promotional content only when it supports service conversion,
@@ -68,7 +68,7 @@ Rules:
 
 - do not make Home a marketing landing page,
 - do not overcrowd service catalog,
-- only electrical, plumbing, and cleaning are active,
+- only the six approved services are active (`governance/RULES.md` #6),
 - future-service entries must stay hidden unless Tu explicitly approves a specific non-functional state,
 - address context must be visible but not dominate,
 - Kael should feel like the guide into price check.

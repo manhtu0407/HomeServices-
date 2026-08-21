@@ -37,6 +37,11 @@
             "type": "command",
             "command": "node \"${CLAUDE_PROJECT_DIR}/scripts/run.mjs\" run-node \"${CLAUDE_PROJECT_DIR}/.claude/hooks/verify-comment-hygiene.mjs\"",
             "timeout": 60
+          },
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PROJECT_DIR}/scripts/run.mjs\" run-node \"${CLAUDE_PROJECT_DIR}/.claude/hooks/verify-work-plan.mjs\"",
+            "timeout": 60
           }
         ]
       }

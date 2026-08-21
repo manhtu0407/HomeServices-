@@ -211,7 +211,7 @@ Product:
 - Primary client is React Native / Expo.
 - Store-bound runtime is `Expo React Native -> Supabase Auth -> Supabase Edge Function mobile-api -> Supabase DB/RPC/Storage/Realtime -> server-side providers`.
 - Next.js in `apps/api` is reference/parity/admin/support unless Tu explicitly assigns a Next.js task.
-- Service scope is electrical, plumbing, and cleaning only.
+- Service scope is exactly six: electrical, plumbing, cleaning/housekeeping, HVAC/indoor air, upholstery care, and handyman/minor installation (`RULES.md` #6).
 - Kael is the default workflow actor for intake, diagnosis, price analysis, matching, cancellation, scope, completion, dispute, and payment/refund decisions when server-side policy has enough data; raw AI output never mutates workflow status directly, and all Kael transitions must be schema-validated, audited, reversible/appealable where policy requires.
 - Optimize for first real transaction, not architectural perfection.
 
