@@ -58,6 +58,25 @@ sequenceDiagram
 
 If the customer rejects, `rejectWorkerCandidate` returns the job to `broadcasting` and the address is never released. `jobs.worker_id` is written in exactly one place: `confirmWorkerCandidate`.
 
+### 7.0.2 Worker route tree
+
+Every `Trigger` line below names a file in this tree. The four docked screens sit under a `(tabs)` group; chat is pushed over the dock rather than switched to.
+
+```text
+app/(worker)/
+  _layout.tsx          Stack: hosts (tabs), pushes chat
+  (tabs)/
+    _layout.tsx        Slot + WorkerRebuildDockOverlay, wrapped in WorkerDockLayoutProvider
+    home.tsx           -> WorkerHomeSurface
+    jobs.tsx           -> WorkerJobsSurface
+    earnings.tsx       -> WorkerEarningsSurface
+    profile.tsx        -> WorkerProfileSurface
+  chat.tsx             pushed, not a tab
+  jobs-prototype.tsx   prototype route, never reachable from production navigation
+```
+
+**There is no `Tabs` navigator**, the same as the customer side. The active dock entry comes from `resolveWorkerV5DockActive(pathname, params)`, not from a navigator's own state.
+
 ### B0. Worker Registration
 
 ```text
@@ -156,7 +175,7 @@ UI
 **Runtime**
 
 ```text
-Trigger   app/(worker)/home.tsx -> WorkerHomeSurface (stage 1.1-worker-home)
+Trigger   app/(worker)/(tabs)/home.tsx -> WorkerHomeSurface (stage 1.1-worker-home)
 Chain     workers.me           GET   /workers/me                 getWorkerProfile
           workers.availability PATCH /workers/me/availability     updateWorkerAvailability
           workers.serviceArea  PATCH /workers/me/service-area     updateWorkerServiceArea

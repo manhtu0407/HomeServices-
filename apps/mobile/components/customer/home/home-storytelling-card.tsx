@@ -1,15 +1,15 @@
 import { scaledTypography, typography } from '@/design/theme'
 import { Image } from 'expo-image'
 import { useState } from 'react'
-import { StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native'
+import { StyleSheet, Text, useWindowDimensions, View } from 'react-native'
 import Svg, { Defs, Rect } from 'react-native-svg'
 
 import type { AppLanguage } from '@/lib/app-language'
 
 import type { CustomerThemeTokens } from '../customer-theme'
 import { customerV21HomeV4Assets } from '../ui/assets'
-import { customerV21WebTextInputNoOutline } from '../ui/platform-styles'
 import { AlphaStop as Stop, NativeSafeLinearGradient as LinearGradient } from '@/components/ui/svg-alpha-stop'
+import { KaelTextInput } from '@/components/ui/kael-primitives'
 import { HomeIcon } from './home-icons'
 
 type HomeStorytellingCardProps = {
@@ -108,7 +108,7 @@ export function HomeStorytellingCard({ language, onSearch, onSearchFocus, reduce
 
       <View style={[styles.search, { borderRadius: q(40), height: q(80), left: q(33), paddingHorizontal: q(28), right: q(33), top: q(228) }]} testID="customer-v21-home-search">
         <HomeIcon color={tokens.muted} name="search" size={q(38)} />
-        <TextInput
+        <KaelTextInput
           accessibilityLabel={copy.searchPlaceholder}
           onChangeText={setValue}
           onFocus={onSearchFocus}
@@ -117,7 +117,7 @@ export function HomeStorytellingCard({ language, onSearch, onSearchFocus, reduce
           placeholder={copy.searchPlaceholder}
           placeholderTextColor={tokens.muted}
           returnKeyType="search"
-          style={[customerV21WebTextInputNoOutline, styles.searchInput, searchTypography, { borderWidth: 0, height: q(68), includeFontPadding: false, paddingHorizontal: q(19), paddingVertical: 0, textAlignVertical: 'center' }]}
+          style={[styles.searchInput, searchTypography, { borderWidth: 0, height: q(68), includeFontPadding: false, paddingHorizontal: q(19), paddingVertical: 0, textAlignVertical: 'center' }]}
           value={value}
         />
       </View>

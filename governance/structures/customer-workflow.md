@@ -108,6 +108,25 @@ sequenceDiagram
 
 Path 1 is the primary product flow: the customer talks to Kael, and the job row is created **at confirm time** by the `confirm_kael_chat_atomic` RPC. Path 2 creates the job row first and runs the pipeline inside the request. Both converge on `confirmSearch → createBroadcasts` and both end at `broadcasting`.
 
+### 6.0.2 Customer route tree
+
+Every `Trigger` line below names a file in this tree. The four docked screens sit under a `(tabs)` group; Kael stays outside it because Kael is pushed over the dock, not switched to.
+
+```text
+app/(customer)/
+  _layout.tsx          Stack: hosts (tabs), pushes kael and kael-chat
+  (tabs)/
+    _layout.tsx        Slot + CustomerDockOverlay, wrapped in DockScrollStateProvider
+    home.tsx           -> CustomerHomeSurface
+    booking.tsx        -> CustomerBookingEntrySurface
+    history.tsx        -> CustomerHistorySurface
+    profile.tsx        -> CustomerProfileSurface
+  kael.tsx             pushed, not a tab
+  kael-chat.tsx        pushed, not a tab
+```
+
+**There is no `Tabs` navigator.** The group is named `(tabs)` for the URL segment only; the layout renders a `Slot` and paints `CustomerDockOverlay` over it, deriving the active entry from `usePathname()`. One custom surface owns the affordances on both platforms, so there is no platform tab bar to hide.
+
 ### A0. Auth And Profile
 
 ```text
@@ -202,7 +221,7 @@ Rules
 **Runtime**
 
 ```text
-Trigger   app/(customer)/home.tsx -> CustomerHomeSurface
+Trigger   app/(customer)/(tabs)/home.tsx -> CustomerHomeSurface
 Chain     jobService.getServices          -> GET /services         (services)
           jobService.listMyActiveJob      -> GET /me/jobs/active   (me.jobs.active)
           jobService.listMyServiceHistory -> GET /me/jobs/history  (me.jobs.history)
@@ -245,7 +264,7 @@ Events
 **Runtime**
 
 ```text
-Trigger   app/(customer)/booking.tsx -> CustomerBookingEntrySurface
+Trigger   app/(customer)/(tabs)/booking.tsx -> CustomerBookingEntrySurface
 Chain     components/customer/booking/use-booking-form-state.ts (fields)
           + use-booking-address-lookup.ts -> placesService.autocomplete
             -> POST /places/autocomplete (places.autocomplete)
