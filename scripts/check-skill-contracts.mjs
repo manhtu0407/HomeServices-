@@ -101,7 +101,7 @@ function checkCommands(id, text, problems) {
 // A report template is a fenced block of bare `Field:` lines. Three is the smallest count that
 // reads as a contract rather than a stray colon in prose.
 function hasReportTemplate(text) {
-  for (const [, block] of text.matchAll(/```[a-z]*\n([\s\S]*?)```/g)) {
+  for (const [, block] of text.matchAll(/```[a-z]*\r?\n([\s\S]*?)```/g)) {
     const fields = block.split(/\r?\n/).filter((line) => /^[A-Za-z][^`]*:\s*$/.test(line))
     if (fields.length >= 3) return true
   }
