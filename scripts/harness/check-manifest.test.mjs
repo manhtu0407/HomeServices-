@@ -214,7 +214,7 @@ test('the checksum-drift message names the command that records it', () => {
   withFixture(({ root }) => {
     write(resolve(root, '.claude/skills/alpha/SKILL.md'), '---\nname: alpha\n---\nchanged\n')
     const report = checkHarnessManifest({ root })
-    assert.ok(report.problems.some((problem) => problem.includes('harness:manifest:fix')))
+    assert.ok(report.problems.some((problem) => problem.includes('harness:manifest:write')))
   })
 })
 

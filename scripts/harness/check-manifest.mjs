@@ -145,7 +145,7 @@ function checkEntries(root, manifest, problems) {
     }
     let actual
     try { actual = `git-blob-sha1:${gitHash(root, entry.canonicalPath)}` } catch (error) { problems.push(`could not hash ${entry.id}: ${error.message}`); continue }
-    if (entry.checksum !== actual) problems.push(`checksum drift for ${entry.id}: expected ${entry.checksum}, actual ${actual} — if the edit was intended, record it with \`pnpm harness:manifest:fix\``)
+    if (entry.checksum !== actual) problems.push(`checksum drift for ${entry.id}: expected ${entry.checksum}, actual ${actual} — if the edit was intended, record it with \`pnpm harness:manifest:write\``)
     if (entry.kind !== 'repository-skill') continue
     const expectedCanonical = `${manifest.inventory.repositorySkillRoot}/${entry.id}/${manifest.inventory.repositorySkillEntryFile}`
     const expectedMirror = `${manifest.inventory.repositorySkillMirrorRoot}/${entry.id}/${manifest.inventory.repositorySkillEntryFile}`

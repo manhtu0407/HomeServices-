@@ -200,7 +200,11 @@ function renderIndex() {
 const docPath = resolve(root, INDEX_DOC)
 let doc = ''
 try {
-  doc = readFileSync(docPath, 'utf8')
+  // renderIndex() joins with \n, so comparing it against a CRLF checkout reports
+  // stale on every run and --write rewrites bytes git then normalises straight
+  // back. Windows could never reach a clean check. Normalising on read compares
+  // the index, not the checkout's line endings.
+  doc = readFileSync(docPath, 'utf8').replace(/\r\n/g, '\n')
 } catch {
   problems.push(`missing ${INDEX_DOC}; the pillar index has nowhere to live`)
 }

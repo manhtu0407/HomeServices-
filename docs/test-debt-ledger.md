@@ -173,6 +173,50 @@ Each row is an invariant that lost its (weak) signal in the fifth sweep, with th
 
 ---
 
+## 7. Claimed but never collected — the sixth sweep, 2026-08-20
+
+Every row above is debt somebody wrote down. This section is the other kind: coverage a CI step **claimed to run** while its runner collected nothing. Raw measurement in [`docs/test-logs/2026-08-20_uncollected-sweep.md`](test-logs/2026-08-20_uncollected-sweep.md); classification and per-invariant decisions in [`docs/audit/test-collection-analysis-20260820.md`](audit/test-collection-analysis-20260820.md).
+
+Three steps named **28 files carrying 357 `it` blocks**. Each package narrows collection to its pillar suite and sets `passWithNoTests`, so a positional filter naming a non-pillar file intersects to nothing and the runner exits 0.
+
+| Step | Named | Actually collected | Now |
+|---|---|---|---|
+| `security.yml` → Security guardrail tests | 8 filters, 10 files, 83 `it` | **0** — `No test files found` | names the nine security-negative pillars instead; runs 7 api files / 132 tests plus the two shared pillars |
+| `integration.yml` → Integration tests vs staging Supabase | `src/__tests__/integration`, 4 files, 70 `it` | **0** | `--passWithNoTests=false`, so the nightly staging run fails instead of reporting green. It never ran on pull requests, so no PR is blocked |
+| `harness-assurance.yml` → Harness runtime tests | 17 paths, 204 `it` in the 14 non-pillar ones | 1 file / 12 tests | names only `src/__tests__/harness` |
+
+`scripts/check-test-collection.mjs` now fails when a workflow names a path its package does not collect. A step may still name one, but only as a declared gap that also passes `--passWithNoTests=false`, so the run fails rather than lying.
+
+### What stopped being claimed
+
+| Invariant | Real layer needed | State (2026-08-20, static) |
+|---|---|---|
+| Per-actor RLS: a non-owner customer and a non-assigned worker cannot read a job | `integration/rls-per-actor.test.ts` asserts it against staging and has never been collected. `P10-per-actor-rls` covers the same ground in SQL and does run, in `database-controls` | **covered elsewhere** — the TS suite adds a second reading, not the only one |
+| Worker registration → admin approval → availability → accept | `integration/worker-flow.test.ts`, 12 `it`, never collected. `worker_registration_atomic_verification.sql` and `worker_review_admin_provisioning_verification.sql` exist | **partial** — the SQL scripts cover the atomic writes, not the end-to-end order |
+| The learning evidence gate holds at its boundary values | `unit/learning-evidence-gate.test.ts`, 26 `it`, named by CI, never collected | **still debt** — §2 already lists the constants-parity half of this; the boundary half has no collected layer |
+| Edge route dispatch, authz, and error mapping | `unit/mobile-api-edge-router.test.ts`, 87 `it` — the largest single block, never collected and never read during this sweep | **still debt** — `P18-capability-registry-parity` covers route→role parity, nothing covers dispatch behaviour |
+| Learning hook wiring end to end | `unit/mobile-api-edge-learning-hook.test.ts`, 27 `it` | **still debt** |
+| Privileged Supabase client boundary | `harness/privileged-client-boundary.test.ts`, 2 `it` | **covered elsewhere** — `scripts/harness/check-privileged-clients.mjs` runs in `verify.mjs` |
+| Capability policy per actor | `harness/capability-policy.test.ts`, 9 `it` | **covered elsewhere** — `scripts/harness/capability-registry.mjs` plus `P18` |
+
+The §6 row *"78 skipped integration tests … the fix is a step in the `database-controls` job"* was written before this measurement and understates the problem: the dedicated `integration` workflow that exists to run them also collected zero. Fixing `database-controls` alone would not have surfaced that.
+
+### Deleted in this sweep
+
+| Invariant | Deleted case | Real layer needed |
+|---|---|---|
+| A customer transfer claim is reconciliation-pending, never a paid authority | `unit/manual-bank-payment` → *treats a customer transfer claim as reconciliation pending* | **already covered** — `worker_salary_settlement_v2_verification.sql` asserts it against the real RPC in `database-controls` |
+| A worker cash acknowledgement stays pending until the customer also confirms | same file → *allows a worker confirmation to remain pending* | **already covered** — same script, plus `acknowledge_worker_cash_payment` refusing a caller that does not own the job |
+| Every Edge function stays within 150 lines | `schema/backend-function-size` (whole file) | **none — the rule is gone.** It cited "the §46.0 150-line boundary"; §46 exists only in `governance/plan-archive/`, and no live governance file carries a function-length rule. `lint-structure.mjs` caps files at 800 lines, not functions. Reinstating it means writing the rule down first, then a baseline ratchet |
+| The Edge service surface matches the plan | `kael-edge-runtime/platform/kael-edge-service-surface` (whole file) | **none, and none wanted.** It listed 159 service names by hand and broke when a 160th arrived. `test-pillars.md`: *"Derive the property; do not restate the table"* |
+| The Supabase auth config carries the phone-OTP upgrade annotation | `monorepo-wiring` → *keeps the Supabase auth config annotated…* | **none.** It pinned an exact comment string; `fd6a53e7` rewrote that comment to describe the current sign-up phase. A comment is not the setting |
+
+### Found while clearing the above — not debt, a live violation
+
+`monorepo-wiring` → *keeps production mobile source on Kael component and image systems* fails because `apps/mobile/components/customer/home/home-storytelling-card.tsx` uses a raw `<TextInput>` outside `components/ui/kael-primitives.tsx`, and the exemption set `knownNativeTextInputFiles` is empty. The test is working; the source is not. It is left failing rather than exempted, because an exemption would be the second way this sweep found to make a check report success over something it was written to stop. `packages/shared` collects pillars only, so nothing surfaces it today.
+
+---
+
 ## Structural notes
 
 Two things made this debt easy to accumulate, and both still hold:

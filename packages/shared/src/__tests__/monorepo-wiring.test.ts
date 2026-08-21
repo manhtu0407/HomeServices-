@@ -44,15 +44,10 @@ function listSourceFiles(rel: string): string[] {
 // ===================================================================
 
 describe('root product contract alignment', () => {
-  const supabaseConfig = readText('supabase/config.toml')
-
-  // config.toml is loaded by the Supabase CLI, so its auth comment is part of
-  // the runtime surface. The governance markdown that used to be asserted here
-  // was not: it described the auth flow without touching it.
-  it('keeps the Supabase auth config annotated for the later phone OTP upgrade', () => {
-    expect(supabaseConfig).toContain('later phone OTP production-auth upgrade')
-    expect(supabaseConfig).not.toContain('auth flow is phone OTP')
-  })
+  // The phone-OTP annotation case was removed: it pinned an exact comment string in
+  // config.toml, and fd6a53e7 rewrote that comment to describe the current sign-up phase
+  // instead of the planned upgrade. A comment is not the setting, so the assertion could
+  // only ever track wording. docs/test-debt-ledger.md section 7 records what it claimed.
 
   it('keeps production source files free from mojibake Vietnamese strings', () => {
     const productionFiles = [
@@ -197,11 +192,12 @@ describe('apps/mobile/package.json', () => {
     ]
 
     for (const script of easScripts) {
-      expect(script).toContain('pnpm dlx eas-cli@21.0.0')
+      expect(script).toContain('pnpm dlx eas-cli@22.0.0')
       expect(script).not.toContain('npx')
       expect(script).not.toContain('@latest')
     }
-    expect(readJSON('apps/mobile/eas.json').cli.version).toBe('21.0.0')
+    // eas.json states a floor (">= 22.0.0"), the scripts pin the exact version; both must name the same one.
+    expect(readJSON('apps/mobile/eas.json').cli.version).toContain('22.0.0')
   })
 })
 

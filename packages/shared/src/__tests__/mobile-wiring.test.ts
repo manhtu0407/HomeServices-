@@ -242,18 +242,30 @@ function readMobileSourceGraph(entryRelativePaths: string[]) {
 
 describe('screen files existence (STRUCTURES.md mapping)', () => {
   const authScreens = ['login.tsx', 'verify-otp.tsx']
-  const customerScreens = ['home.tsx', 'booking.tsx', 'kael.tsx', 'kael-chat.tsx', 'history.tsx', 'profile.tsx']
-  const workerScreens = ['home.tsx', 'jobs.tsx', 'chat.tsx', 'earnings.tsx', 'profile.tsx']
+  // The four tabbed customer screens moved under (tabs) with the tab layout; kael and
+  // kael-chat stayed directly under (customer) because they are pushed, not tabbed.
+  const customerTabScreens = ['home.tsx', 'booking.tsx', 'history.tsx', 'profile.tsx']
+  const customerStackScreens = ['kael.tsx', 'kael-chat.tsx']
+  const workerTabScreens = ['home.tsx', 'jobs.tsx', 'earnings.tsx', 'profile.tsx']
+  const workerStackScreens = ['chat.tsx']
 
   it.each(authScreens)('(auth)/%s exists', (file) => {
     expect(exists(`app/(auth)/${file}`)).toBe(true)
   })
 
-  it.each(customerScreens)('(customer)/%s exists', (file) => {
+  it.each(customerTabScreens)('(customer)/(tabs)/%s exists', (file) => {
+    expect(exists(`app/(customer)/(tabs)/${file}`)).toBe(true)
+  })
+
+  it.each(customerStackScreens)('(customer)/%s exists', (file) => {
     expect(exists(`app/(customer)/${file}`)).toBe(true)
   })
 
-  it.each(workerScreens)('(worker)/%s exists', (file) => {
+  it.each(workerTabScreens)('(worker)/(tabs)/%s exists', (file) => {
+    expect(exists(`app/(worker)/(tabs)/${file}`)).toBe(true)
+  })
+
+  it.each(workerStackScreens)('(worker)/%s exists', (file) => {
     expect(exists(`app/(worker)/${file}`)).toBe(true)
   })
 
@@ -289,18 +301,18 @@ describe('all screens export default function', () => {
     'app/(auth)/login.tsx',
     'app/(auth)/verify-otp.tsx',
     'app/(customer)/_layout.tsx',
-    'app/(customer)/home.tsx',
-    'app/(customer)/booking.tsx',
+    'app/(customer)/(tabs)/home.tsx',
+    'app/(customer)/(tabs)/booking.tsx',
     'app/(customer)/kael.tsx',
     'app/(customer)/kael-chat.tsx',
-    'app/(customer)/history.tsx',
-    'app/(customer)/profile.tsx',
+    'app/(customer)/(tabs)/history.tsx',
+    'app/(customer)/(tabs)/profile.tsx',
     'app/(worker)/_layout.tsx',
-    'app/(worker)/home.tsx',
-    'app/(worker)/jobs.tsx',
+    'app/(worker)/(tabs)/home.tsx',
+    'app/(worker)/(tabs)/jobs.tsx',
     'app/(worker)/chat.tsx',
-    'app/(worker)/earnings.tsx',
-    'app/(worker)/profile.tsx',
+    'app/(worker)/(tabs)/earnings.tsx',
+    'app/(worker)/(tabs)/profile.tsx',
     'app/(admin)/_layout.tsx',
     'app/(admin)/sections.tsx',
   ]
@@ -395,12 +407,12 @@ describe('customer frontend shell surfaces', () => {
     const customerLayoutSrc = customerLayout()
     const routeGraphFiles = readMobileSourceGraph([
       'app/(customer)/_layout.tsx',
-      'app/(customer)/home.tsx',
-      'app/(customer)/booking.tsx',
+      'app/(customer)/(tabs)/home.tsx',
+      'app/(customer)/(tabs)/booking.tsx',
       'app/(customer)/kael.tsx',
       'app/(customer)/kael-chat.tsx',
-      'app/(customer)/history.tsx',
-      'app/(customer)/profile.tsx',
+      'app/(customer)/(tabs)/history.tsx',
+      'app/(customer)/(tabs)/profile.tsx',
     ])
     const rel = (path: string) => path.replace(/\\/g, '/').replace(MOBILE_ROOT.replace(/\\/g, '/'), '').replace(/^\//, '')
     const graph = routeGraphFiles.map(rel)
@@ -429,12 +441,12 @@ describe('customer frontend shell surfaces', () => {
   it('keeps customer route entrypoints wired to the restored PR72 V21 surfaces', () => {
     const routeGraphFiles = readMobileSourceGraph([
       'app/(customer)/_layout.tsx',
-      'app/(customer)/home.tsx',
-      'app/(customer)/booking.tsx',
+      'app/(customer)/(tabs)/home.tsx',
+      'app/(customer)/(tabs)/booking.tsx',
       'app/(customer)/kael.tsx',
       'app/(customer)/kael-chat.tsx',
-      'app/(customer)/history.tsx',
-      'app/(customer)/profile.tsx',
+      'app/(customer)/(tabs)/history.tsx',
+      'app/(customer)/(tabs)/profile.tsx',
     ])
     const rel = (path: string) => path.replace(/\\/g, '/').replace(MOBILE_ROOT.replace(/\\/g, '/'), '').replace(/^\//, '')
     const offenders = routeGraphFiles
@@ -457,9 +469,9 @@ describe('customer frontend shell surfaces', () => {
       'app/index.tsx',
       'app/(auth)/login.tsx',
       'app/(customer)/_layout.tsx',
-      'app/(customer)/home.tsx',
+      'app/(customer)/(tabs)/home.tsx',
       'app/(worker)/_layout.tsx',
-      'app/(worker)/home.tsx',
+      'app/(worker)/(tabs)/home.tsx',
     ])
     const rel = (path: string) => path.replace(/\\/g, '/').replace(MOBILE_ROOT.replace(/\\/g, '/'), '').replace(/^\//, '')
     const oldHomeNeedles = [
@@ -502,11 +514,11 @@ describe('customer frontend shell surfaces', () => {
   it('keeps customer shell frontend-only with no backend, AI, or workflow mutations', () => {
     const files = [
       shellPath,
-      'app/(customer)/home.tsx',
-      'app/(customer)/booking.tsx',
+      'app/(customer)/(tabs)/home.tsx',
+      'app/(customer)/(tabs)/booking.tsx',
       'app/(customer)/kael.tsx',
-      'app/(customer)/history.tsx',
-      'app/(customer)/profile.tsx',
+      'app/(customer)/(tabs)/history.tsx',
+      'app/(customer)/(tabs)/profile.tsx',
     ]
 
     for (const file of files) {
@@ -987,11 +999,11 @@ describe('prototype runtime cleanup', () => {
 
   it('keeps production customer routes free from prototype imports', () => {
     const productionRoutes = [
-      'app/(customer)/home.tsx',
-      'app/(customer)/booking.tsx',
+      'app/(customer)/(tabs)/home.tsx',
+      'app/(customer)/(tabs)/booking.tsx',
       'app/(customer)/kael.tsx',
-      'app/(customer)/history.tsx',
-      'app/(customer)/profile.tsx',
+      'app/(customer)/(tabs)/history.tsx',
+      'app/(customer)/(tabs)/profile.tsx',
     ]
 
     for (const file of productionRoutes) {
@@ -1151,11 +1163,11 @@ describe('worker V5/XanhSM aligned shell surfaces', () => {
     const layout = read('app/(worker)/_layout.tsx')
     const routeGraphFiles = readMobileSourceGraph([
       'app/(worker)/_layout.tsx',
-      'app/(worker)/home.tsx',
-      'app/(worker)/jobs.tsx',
+      'app/(worker)/(tabs)/home.tsx',
+      'app/(worker)/(tabs)/jobs.tsx',
       'app/(worker)/chat.tsx',
-      'app/(worker)/earnings.tsx',
-      'app/(worker)/profile.tsx',
+      'app/(worker)/(tabs)/earnings.tsx',
+      'app/(worker)/(tabs)/profile.tsx',
     ])
     const rel = (path: string) => path.replace(/\\/g, '/').replace(MOBILE_ROOT.replace(/\\/g, '/'), '').replace(/^\//, '')
     const graph = routeGraphFiles.map(rel)
@@ -1345,11 +1357,11 @@ describe('worker V5/XanhSM aligned shell surfaces', () => {
   it('keeps Worker shell behind provider actions with no direct backend, AI, or secrets', () => {
     const files = [
       shellPath,
-      'app/(worker)/home.tsx',
-      'app/(worker)/jobs.tsx',
+      'app/(worker)/(tabs)/home.tsx',
+      'app/(worker)/(tabs)/jobs.tsx',
       'app/(worker)/chat.tsx',
-      'app/(worker)/earnings.tsx',
-      'app/(worker)/profile.tsx',
+      'app/(worker)/(tabs)/earnings.tsx',
+      'app/(worker)/(tabs)/profile.tsx',
     ]
 
     for (const file of files) {
@@ -2001,7 +2013,7 @@ describe('mobile glassmorphism design system', () => {
 // ===================================================================
 
 describe('removed legacy price-check production UI', () => {
-  const bookingRoute = read('app/(customer)/booking.tsx')
+  const bookingRoute = read('app/(customer)/(tabs)/booking.tsx')
   const productionComponentPath = 'components/client-price-check/client-price-check-flow.tsx'
 
   it('keeps the removed legacy price-check flow off the primary booking route', () => {

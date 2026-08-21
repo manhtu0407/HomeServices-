@@ -19,6 +19,7 @@ const commands = [
   ['scripts/harness/price-evidence-artifacts.mjs'],
   ['scripts/harness/reliability-registry.mjs'],
   ['scripts/harness/promotion.mjs', '--check'],
+  ['scripts/check-test-collection.mjs'],
 ]
 
 mkdirSync(ARTIFACT_ROOT, { recursive: true })

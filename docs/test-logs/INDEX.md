@@ -4,6 +4,7 @@ Newest test reports first.
 
 | Date | Report | Result | Bugs | Notes |
 |------|--------|--------|------|-------|
+| 2026-08-20 | [Uncollected Test Sweep](2026-08-20_uncollected-sweep.md) | measurement only — no classification, no fix | none diagnosed; Phase A owns that | Raw Phase T evidence at `cd3b0487` (= origin/main). `pnpm test` fails locally on a mobile pillar while CI reports success on the same sha; two CI steps collect zero test files; `packages/shared` and the four non-pillar `apps/mobile` files measured for the first time |
 | 2026-08-08 | [Kael Agentic Completeness Eval Rerun](2026-08-08_kael-eval.md) | passed deterministic | 0 in offline harness | 99/99 fixture pass; 19 multi-turn contracts pass; no live model/provider, DB migration replay, or native render claimed |
 | 2026-08-07 | [Kael Agentic Completeness Eval](2026-08-07_kael-eval.md) | passed deterministic | 0 in offline harness | 99/99 fixture pass; 18 multi-turn contracts pass; no live model/provider or DB migration replay claimed |
 | 2026-07-16 | [Kael Electrical Structured Harness Contract](2026-07-16_kael-playbook-electrical-structured-harness-contract.md) | diagnostic fixture 63/72; harness caught all 3 deliberate corruptions | none; 3 deliberately corrupted fixture cases detected | Local mock contract only (24 unique cases x 3 replays); routing 72/72, immediate-critical safety 9/12, capability safety 18/18, total required safety 27/30; turns/latency/stochastic consistency and live delta N/A; decision `NEEDS_HOLDOUT` |

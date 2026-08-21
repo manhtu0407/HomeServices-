@@ -134,8 +134,13 @@ Plan đang sống viết từ đây xuống, bắt đầu từ **§51**.
 ## 51. `kael-work-router` — lớp định tuyến vào trước mọi việc — 2026-08-21
 
 > **Trigger.** Tu yêu cầu nghiên cứu một skill hệ Supporting luôn Active cho cả skills system và Codex, ban đầu tên `Kael-anti-overengineers`. Tu bổ sung hai lần: (1) bản chất không chỉ là effort budget — Codex/Claude có xu hướng gom sạch thông tin trước rồi làm từ từ, Input phình, mất dần do context, Output yếu; skill nên đổi tên và hoạt động như support/link skill phân bổ skills theo tasks; (2) plan chưa nói skill **nhận diện task thuộc dạng nào** để định hướng. Audit chạy trong chat, plan ở file riêng ngoài repo. Nhánh `claude/skills-structure-review-fdda04`.
-> **Freshness check (2026-08-21, chạy ngay trước khi viết section này).** `git status` = 14 file bẩn (toàn bộ là diff của plan này) · `git merge-base --is-ancestor` **cả hai chiều** giữa `HEAD cd3b0487` và `main` đều YES (bằng nhau, không lệch) · baseline đo THẬT: `check-skill-contracts` **exit 1 ĐỎ SẴN** (25 vi phạm giả, xem §51.1), `check-runner-parity` **exit 1 ĐỎ SẴN** (fixture path Windows, ngoài scope), `check-manifest` / `check-skills-sync` / `check-comment-discipline` / `lint-structure` exit 0. Toolchain: `node v24.19.0` có, **`pnpm` và `npm` KHÔNG có trên máy** → mọi gate viết bằng `node scripts/…`.
-> **EXECUTING.** Toàn bộ P0–P9 đã chạy, 9/9 gate xanh, diff chưa commit. Chờ Tu duyệt commit và quyết hai việc còn treo ở §51.0.2 D5–D6.
+> **Freshness check (2026-08-21, chạy ngay trước khi viết section này).** `git status` = 14 file bẩn (toàn bộ là diff của plan này) · baseline đo THẬT: `check-skill-contracts` **exit 1 ĐỎ SẴN** (25 vi phạm giả, xem §51.1), `check-runner-parity` **exit 1 ĐỎ SẴN** (fixture path Windows), `check-manifest` / `check-skills-sync` / `check-comment-discipline` / `lint-structure` exit 0. Toolchain: `node v24.19.0` có, **`pnpm` và `npm` KHÔNG có trên máy** → mọi gate viết bằng `node scripts/…`.
+>
+> **⚠ Freshness check ban đầu SAI — đã sửa (2026-08-21, sau khi mở PR #222).** Bản đầu ghi *"`merge-base --is-ancestor` cả hai chiều giữa `HEAD cd3b0487` và `main` đều YES (bằng nhau)"*. Câu đó đo trên ref **`main` local đã cũ**, không phải `origin/main`. Thực tế: `main` local = `cd3b0487`, **`origin/main` = `a8d763e3`, đi trước 11 commit**. PR #222 vì thế báo merge conflict. Luật D3 nói "freshness check đo thật" — `git merge-base ... main` **không** phải đo thật khi chưa `git fetch`; phải đo với `origin/<base>` sau khi fetch. Đây là lỗi của phiên này, ghi lại nguyên văn thay vì sửa lặng.
+>
+> Trong 11 commit đó có `1fba34c9 fix(scripts): give the runner-parity gate the parity it checks for` — tức `check-runner-parity` mà §51 khai là "đỏ sẵn, ngoài scope" **đã được sửa trên `origin/main`**, không còn đỏ sau khi merge.
+>
+> **EXECUTING — PR [#222](https://github.com/manhtu0407/HomeServices-/pull/222) đang mở.** 2 commit (`b89623c5` P0 tách riêng, `3bbb3258` feature) + 1 merge commit từ `origin/main`. Chờ Tu review và merge.
 
 ### 51.0 Metadata
 
@@ -183,7 +188,7 @@ Skill mapping:  P0 kael-diagnose · P1 kael-tdd · P2-P4 kael-doc-audit · P5-P7
 | D5 | Commit tách P0 riêng khỏi diff skill | **OPEN** | — | P0 là bug fix độc lập; Tu chưa nói commit trong phiên này |
 | D6 | Sửa drift "3 dịch vụ" → sáu, ở **5 file** | Tu ✔ | 2026-08-21 | Tu xác nhận "6 Services mới đúng". Grep toàn repo ra 7 chỗ; sửa 5 chỗ là scope law (`governance/skills.md`, `governance/design/decoration-mascot-icons.md`, `governance/design/screen-recipes.md` ×2, `docs/design/worker-production-contract.md`, `docs/product/client-price-check-production-ui-prep.md`). **KHÔNG sửa 2 chỗ**: `docs/architecture/workflow-step-contracts.md:14` đang mô tả khuyết điểm của file cũ (đúng như lịch sử) và `docs/foundation/kael-knowledge-corpus.md:7` cố ý giới hạn **corpus B3**, không phải scope sản phẩm. Sửa xong thì mục `## Project Correction` trong karpathy thành thừa → xoá |
 | D7 | Mở quyền `CLAUDE.md` phủ **cả P8**, không chỉ đăng ký skill Tier 3 | Tu ✔ | 2026-08-21 | Tu nhắc lại là đã cho quyền sửa; tôi đã đọc hẹp hơn mức Tu cấp. P8 chuyển từ "đề xuất" sang **đã áp dụng** |
-| D8 | Đóng papercut checksum bằng `harness:manifest:fix` thay vì sửa tay JSON | Tu ✔ | 2026-08-21 | Gate bắt đúng nhưng cách chữa là gõ tay 40 ký tự hex — đã cắn 2 lần chỉ trong phiên này, và memory 2026-08-19 đã ghi "SKILL.md edits need a manual manifest checksum bump" như một trap tái diễn. `--write` chỉ ghi checksum và **từ chối** khi còn bất kỳ vấn đề nào khác, nên nó không thể bị dùng để làm gate im |
+| D8 | Đóng papercut checksum bằng `harness:manifest:write` thay vì sửa tay JSON | Tu ✔ | 2026-08-21 | Gate bắt đúng nhưng cách chữa là gõ tay 40 ký tự hex — đã cắn 2 lần chỉ trong phiên này, và memory 2026-08-19 đã ghi "SKILL.md edits need a manual manifest checksum bump" như một trap tái diễn. `--write` chỉ ghi checksum và **từ chối** khi còn bất kỳ vấn đề nào khác, nên nó không thể bị dùng để làm gate im |
 
 ### 51.0.3 DoD Gates
 
@@ -292,9 +297,9 @@ Sàn không được hạ: `RULES.md` full mọi lúc, §3 gates full mọi lúc
 Gate `harness:manifest:check` bắt đúng: sửa `SKILL.md` → blob hash đổi → checksum trong manifest thành cũ → ĐỎ. Vấn đề không phải cái gate, mà là **cách chữa**: gõ tay 40 ký tự hex vào một file JSON một-entry-một-dòng. Đã cắn 2 lần trong chính phiên này (karpathy sửa 2 lần), và `.claude/MEMORY.md` 2026-08-19 đã ghi nó như trap tái diễn.
 
 - `scripts/harness/check-manifest.mjs`: thêm `--write`, export `recordChecksums(text, drifts)`. Chỉ ghi field `checksum`, thay theo dòng có `"id":"<id>"` nên giữ nguyên CRLF và format compact. **Từ chối ghi khi còn bất kỳ problem nào không phải checksum drift** — nếu không, cờ này thành cách làm gate im thay vì cách ghi nhận một sửa đổi có chủ ý.
-- Thông điệp drift giờ tự nói cách chữa: `… — if the edit was intended, record it with \`pnpm harness:manifest:fix\``.
-- `package.json`: thêm `harness:manifest:fix`.
-- `docs/agent-lessons.md`: mục mới ghi trình tự `skills:sync` → `harness:manifest:fix` → `harness:manifest:check`, cộng ba bẫy liền kề (manifest không round-trip qua `JSON.stringify`; `skills-lock.json` là provenance upstream, cấm "sửa cho khớp"; CRLF phải dùng `\r?\n`).
+- Thông điệp drift giờ tự nói cách chữa: `… — if the edit was intended, record it with \`pnpm harness:manifest:write\``.
+- `package.json`: thêm `harness:manifest:write`.
+- `docs/agent-lessons.md`: mục mới ghi trình tự `skills:sync` → `harness:manifest:write` → `harness:manifest:check`, cộng ba bẫy liền kề (manifest không round-trip qua `JSON.stringify`; `skills-lock.json` là provenance upstream, cấm "sửa cho khớp"; CRLF phải dùng `\r?\n`).
 
 Chứng minh chạy thật, cả hai chiều: sửa `kael-tdd/SKILL.md` → gate ĐỎ đúng entry → `--write` ghi `86b0a7e5… -> c4955ead…` → gate XANH. Rồi làm bẩn thêm mirror của `kael-tdd` và `kael-diagnose` → `--write` **từ chối**, `exit 1`, và checksum `kael-diagnose` **không đổi** (`c0becc70…` giữ nguyên trong khi file hash `dbb95821…`). Toàn bộ file test đã khôi phục, `git status` sạch phần đó.
 
