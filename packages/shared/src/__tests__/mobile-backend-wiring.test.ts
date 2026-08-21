@@ -286,7 +286,7 @@ describe('React Native backend wiring targets Supabase Edge mobile-api', () => {
 
   it('keeps UI components behind the workflow provider instead of direct backend calls', () => {
     const provider = readFrontendWorkflowLayer()
-    const bookingRoute = read('app/(customer)/booking.tsx')
+    const bookingRoute = read('app/(customer)/(tabs)/booking.tsx')
     const customer = readCustomerSurfaceLayer()
     const worker = readWorkerSurfaceLayer()
 
@@ -434,7 +434,7 @@ describe('React Native backend wiring targets Supabase Edge mobile-api', () => {
 
   it('keeps visible mobile copy away from backend and server implementation language', () => {
     const visibleSources = [
-      read('app/(customer)/booking.tsx'),
+      read('app/(customer)/(tabs)/booking.tsx'),
       read('components/customer/customer-surfaces.tsx'),
       readWorkerSurfaceLayer(),
       read('lib/api.ts'),

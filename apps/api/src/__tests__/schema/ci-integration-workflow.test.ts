@@ -11,7 +11,10 @@ describe('staging integration workflow', () => {
     const workflow = readFileSync(workflowPath, 'utf8')
 
     expect(workflow).toContain('node-version: 22')
-    expect(workflow).toContain('pnpm --filter @nestscout/api exec vitest run src/__tests__/integration')
+    // --passWithNoTests=false is load-bearing: apps/api collects the pillar suite only, so
+    // this path currently matches nothing and the flag is what makes the step fail instead of
+    // reporting a green staging run over zero tests.
+    expect(workflow).toContain('pnpm --filter @nestscout/api exec vitest run --passWithNoTests=false src/__tests__/integration')
     expect(workflow).not.toContain('@home-services/api')
     expect(workflow).toContain('test -n "$NEXT_PUBLIC_SUPABASE_URL"')
     expect(workflow).toContain('test -n "$SUPABASE_SERVICE_ROLE_KEY"')
