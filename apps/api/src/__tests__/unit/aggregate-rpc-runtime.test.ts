@@ -89,65 +89,9 @@ describe('exact aggregate RPC runtime wiring', () => {
     })
   })
 
-  it('loads Edge worker earnings with an exact aggregate and payment-safety balance', async () => {
-    const { client, rpc } = rpcOnlyClient({
-      worker_id: 'worker-1',
-      total_jobs_paid: 1_205,
-      gross_earnings: 12_050_000,
-      platform_fee_total: 1_205_000,
-      net_earnings: 10_845_000,
-      available_balance: 10_845_000,
-      cash_commission_collected_total: 0,
-      cash_commission_due_total: 0,
-      pending_payment_count: 17,
-      pending_payment_amount: 170_000,
-      on_hold_amount: 0,
-      current_commission_level: 1,
-      current_commission_rate_bps: 1500,
-      recent_transactions: [],
-      daily_earnings: [{
-        date: '2026-07-15',
-        gross_earnings: 12_050_000,
-        platform_fee_total: 1_205_000,
-        net_earnings: 10_845_000,
-        paid_job_count: 1_205,
-      }],
-      from_date: null,
-      to_date: null,
-    }, {
-      available_balance: 10_845_000,
-      collateral_reserved_amount: 0,
-      withdrawal_reserved_amount: 0,
-      withdrawn_total: 0,
-    })
-    const ctx: MobileApiContext = {
-      success: true,
-      user: { id: 'worker-1' },
-      role: 'worker',
-      supabase: client,
-    }
-
-    await expect(getWorkerEarnings(ctx, {})).resolves.toMatchObject({
-      total_jobs_paid: 1_205,
-      gross_earnings: 12_050_000,
-      net_earnings: 10_845_000,
-      daily_earnings: [{
-        date: '2026-07-15',
-        gross_earnings: 12_050_000,
-        platform_fee_total: 1_205_000,
-        net_earnings: 10_845_000,
-        paid_job_count: 1_205,
-      }],
-    })
-    expect(rpc).toHaveBeenCalledWith('get_worker_earnings_summary', {
-      p_from: null,
-      p_to: null,
-      p_worker_id: 'worker-1',
-    })
-    expect(rpc).toHaveBeenCalledWith('get_worker_payment_safety_balance', {
-      p_worker_id: 'worker-1',
-    })
-  })
+  // The earnings case moved to P35-worker-earnings-fail-closed. It pinned one happy fixture that
+  // went stale the moment the aggregate grew a field; the pillar pins the refusal instead —
+  // a row naming another worker, a failed query, and every value outside the declared range.
 
   it('loads customer profile totals without a 500-row ceiling', async () => {
     const { client, rpc } = rpcOnlyClient({

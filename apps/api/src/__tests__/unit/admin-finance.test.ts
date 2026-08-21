@@ -316,44 +316,9 @@ describe('admin finance authority', () => {
     })
   })
 
-  it('hashes a bank reference before it reaches the reconciliation RPC', async () => {
-    const calls: Array<{ args: Record<string, unknown> | undefined; name: string }> = []
-    const rpc = vi.fn(async (name: string, args?: Record<string, unknown>) => {
-      calls.push({ args, name })
-      return {
-      data: [{
-        hold_until: '2026-08-12T10:00:00.000Z',
-        job_id: 'job-1',
-        ok: true,
-        outcome: 'paid',
-        payment_status: 'manual_verified',
-        status: 'paid',
-      }],
-      error: null,
-      }
-    })
-
-    await expect(decideAdminPaymentReconciliation(ownerContext(rpc), 'payment-order-1', {
-      amount_received: 450_000,
-      bank_reference: 'BANK-REF-123',
-      credited_at: '2026-08-11T10:00:00.000Z',
-      decision: 'confirm',
-    })).resolves.toMatchObject({
-      hold_until: '2026-08-12T10:00:00.000Z',
-      outcome: 'paid',
-    })
-
-    expect(calls).toHaveLength(1)
-    expect(calls[0]?.name).toBe('decide_manual_bank_payment_reconciliation')
-    const request = calls[0]?.args
-    if (!request) throw new Error('expected reconciliation RPC arguments')
-    expect(request).toMatchObject({
-      p_actor_id: 'owner-1',
-      p_bank_reference_suffix: 'BANK-REF-123',
-      p_decision: 'confirm',
-      p_payment_order_id: 'payment-order-1',
-    })
-    expect(request.p_bank_reference_hash).toMatch(/^[0-9a-f]{64}$/)
-    expect(request.p_bank_reference_hash).not.toBe('BANK-REF-123')
-  })
+  // The bank-reference case moved to P34-admin-finance-bank-reference, which pins the
+  // invariant instead of the RPC name: a hash that is not the value, a suffix bounded at
+  // sixteen characters, trimming before hashing, null for absence, and a cash decision that
+  // carries no bank field at all. This one pinned the pre-idempotent RPC name and used a
+  // twelve-character reference, so it could never tell a bounded suffix from the whole value.
 })
