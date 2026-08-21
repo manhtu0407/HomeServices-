@@ -5,7 +5,7 @@ import {
   ZIP_STAGE_SCREEN_IDS,
   resolveZipPrototypeSelection,
 } from '../jobs/worker-jobs-zip-prototype'
-import type { PillarManifest } from '@/__tests__/pillar-manifest'
+import { withPillarContext, type PillarManifest } from '@/__tests__/pillar-manifest'
 
 export const PILLAR = {
   id: 'P33-worker-jobs-zip-prototype',
@@ -20,7 +20,15 @@ export const PILLAR = {
   mutation: 'route Production through the retired Jobs surface or change the eleven-stage screen mapping — the source and workflow assertions turn red',
 } as const satisfies PillarManifest
 
-const prototypeHostSource = readFileSync(resolve(__dirname, '../jobs/worker-jobs-zip-prototype.tsx'), 'utf8')
+// The layout assertions below are multi-line substrings written with `\n`.
+// `core.autocrlf` checks these sources out as CRLF on Windows and LF on the
+// Linux CI runner, so reading them raw makes the same commit pass on CI and
+// fail on a Windows machine. Every read goes through one normaliser, and
+// `sourcesAreNewlineNormalised` below fails if it is ever removed.
+const readSource = (...segments: string[]): string =>
+  readFileSync(resolve(__dirname, ...segments), 'utf8').replace(/\r\n/g, '\n')
+
+const prototypeHostSource = readSource('../jobs/worker-jobs-zip-prototype.tsx')
 const source = [
   'worker-jobs-zip-prototype-surface.tsx',
   'worker-jobs-zip-prototype-shared.tsx',
@@ -31,13 +39,32 @@ const source = [
   'worker-jobs-zip-prototype-style-stages.ts',
   'worker-jobs-zip-prototype-style-stage-two.ts',
   'worker-jobs-zip-prototype-styles.ts',
-].map((fileName) => readFileSync(resolve(__dirname, '../jobs', fileName), 'utf8')).join('\n')
-const evidenceSource = readFileSync(resolve(__dirname, '../../ui/job-evidence-gallery.tsx'), 'utf8')
-const advisoryStylesSource = readFileSync(resolve(__dirname, '../jobs/advisory-styles.ts'), 'utf8')
-const progressSource = readFileSync(resolve(__dirname, '../jobs/progress-surfaces.tsx'), 'utf8')
-const progressStylesSource = readFileSync(resolve(__dirname, '../jobs/progress-styles.ts'), 'utf8')
+].map((fileName) => readSource('../jobs', fileName)).join('\n')
+const evidenceSource = readSource('../../ui/job-evidence-gallery.tsx')
+const advisoryStylesSource = readSource('../jobs/advisory-styles.ts')
+const progressSource = readSource('../jobs/progress-surfaces.tsx')
+const progressStylesSource = readSource('../jobs/progress-styles.ts')
 
 describe('Worker Jobs ZIP Prototype', () => {
+  it('reads every source with newlines normalised, so the layout assertions mean the same on Windows and CI', () => {
+    for (const [name, text] of Object.entries({
+      prototypeHostSource,
+      source,
+      evidenceSource,
+      advisoryStylesSource,
+      progressSource,
+      progressStylesSource,
+    })) {
+      withPillarContext(
+        PILLAR,
+        () => {
+          expect(text.includes('\r')).toBe(false)
+        },
+        `${name} still carries a carriage return, so the multi-line layout substrings below would pass on the Linux runner and fail on a Windows checkout`,
+      )
+    }
+  })
+
   it('keeps the supplied visual surface and excludes the retired navigator chrome', () => {
     expect(source).toContain('export function WorkerJobsLegacyPrototypeBody')
     expect(source).not.toContain('WorkerJobsLegacyPrototypeNavigator')
