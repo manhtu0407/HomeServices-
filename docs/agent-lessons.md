@@ -1,5 +1,13 @@
 # Home Services Agent Lessons
 
+## 2026-08-21 - Editing a skill, and the checksum that goes with it
+
+- **Editing any `SKILL.md` invalidates its recorded checksum.** `config/harness/manifest.json` stores a `git-blob-sha1` per skill, so a perfectly intended edit turns `harness:manifest:check` red. The sequence after touching a skill is: `pnpm skills:sync` (mirror to `.agents/`), then `pnpm harness:manifest:fix` (record the new hash), then `pnpm harness:manifest:check`. Do **not** hand-edit the hex in the JSON — that is how it gets typed wrong or skipped.
+- `harness:manifest:fix` writes checksums and nothing else, and **refuses while any other problem is outstanding** (mirror drift, missing path, count drift). If it refuses, fix the real problem first; it is not a way to make the gate quiet.
+- `config/harness/manifest.json` is CRLF with one compact entry per line and does **not** round-trip through `JSON.stringify(value, null, 2)`. Edit it by targeted line replacement, or a two-line change becomes a whole-file diff.
+- `config/agent-skills/skills-lock.json` is a different thing and must not be "corrected" to match: it holds the sha256 of the **upstream** file at install time, matches neither the local CRLF nor LF hash, and is read by no script. Rewriting it destroys provenance.
+- Windows-only trap that CI cannot see: the working tree is CRLF (`core.autocrlf=true`) while `.gitattributes` does not cover `SKILL.md`. Any tool that parses skill bodies must use `\r?\n`, never a bare `\n`. A bare `\n` in a fenced-block regex made `check-skill-contracts` report 25 false violations locally while staying green on ubuntu CI.
+
 ## 2026-07-14 - Docs conventions + Kael teaching playbooks
 
 - `README.md` is a locked filename in this project (the root `README.md` is on the locked list). Do NOT create new `README.md` files for folder indexes; use `INDEX.md`, matching the existing `docs/test-logs/INDEX.md` convention. `docs/INDEX.md` is the docs navigation map.

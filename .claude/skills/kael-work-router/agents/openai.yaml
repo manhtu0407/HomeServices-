@@ -1,0 +1,4 @@
+interface:
+  display_name: "Kael Work Router"
+  short_description: "Classify the task, assign the skills, fix the read-window"
+  default_prompt: "Use $kael-work-router before starting a task or mission to classify it by domain and reach, assign the smallest sufficient skills, and slice the work with a read-window per slice."

@@ -12,7 +12,7 @@ Allowed decoration families:
 
 - Home repair service illustrations,
 - apartment / building / home context,
-- electrical, plumbing, and cleaning pictograms,
+- pictograms for the six approved services (`governance/RULES.md` #6),
 - abstract mint / cream / cyan material layers,
 - Kael mascot,
 - service icons,

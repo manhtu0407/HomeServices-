@@ -37,7 +37,7 @@ Same three tiers as `CLAUDE.md`, so Codex and Claude Code enter a task through o
 
 ### Tier 3 - skills
 
-Two groups, 31 total: **Everyday (20)** and **Design (11)**. The canonical list is `CLAUDE.md` Tier 3 — this is a pointer, not a second copy, so the two files cannot drift. Design work always enters through `kael-design-preflight`.
+Two groups, 32 total: **Everyday (21)** and **Design (11)**. The canonical list is `CLAUDE.md` Tier 3 — this is a pointer, not a second copy, so the two files cannot drift. Design work always enters through `kael-design-preflight`.
 
 Each skill declares a readiness class in `config/harness/manifest.json` — 29 `autonomous`, 2 `gated`. Readiness picks a lane rather than switching the skill off: `autonomous` fires with no precondition check, and `gated` carries a `## Preconditions` block plus a `## Degraded lane` naming what it still does when the dependency is absent. Every skill also declares a `closeout` (`report` or `inline`) matching its `## Close` block. `pnpm skills:contracts` fails when body and declaration disagree. Classes and meanings: `CLAUDE.md` Tier 3.
 
@@ -77,7 +77,7 @@ Before editing code:
 
 - Run `kael-preflight` and state the pre-edit status (`governance/critical.md` §5).
 - Classify the task (`governance/critical.md` §2), then load only the matching protocol file from `governance/protocols/` via the §1 index. `kael-preflight` (§5) and `kael-review` (§8) stay inline in `governance/critical.md`.
-- Auto-trigger skills exist for the common protocols and live in both `.claude/skills/` (Claude Code) and `.agents/skills/` (Codex): `kael-subagent-orchestration`, `kael-diagnose`, `kael-tdd`, `kael-ai-boundary`, `kael-supabase`, `kael-security-sweep`, `kael-design-preflight`, `kael-design-direction`, `kael-design-intelligence`, `kael-codebase-memory`, plus `karpathy-guidelines`. `kael-core-hygiene` is always on for any code change (comments/headers/notes), enforced by `pnpm lint:comments` and CI for both agents and by the comment-hygiene Stop hook in Claude Code only — Codex has no hooks and runs the command itself.
+- Auto-trigger skills exist for the common protocols and live in both `.claude/skills/` (Claude Code) and `.agents/skills/` (Codex): `kael-subagent-orchestration`, `kael-diagnose`, `kael-tdd`, `kael-ai-boundary`, `kael-supabase`, `kael-security-sweep`, `kael-design-preflight`, `kael-design-direction`, `kael-design-intelligence`, `kael-codebase-memory`, plus `karpathy-guidelines`. `kael-work-router` runs before the work starts — it classifies the task, assigns the smallest sufficient skills, and binds reading to the slice that uses it (canonical `governance/protocols/work-router.md`). `kael-core-hygiene` is always on for any code change (comments/headers/notes), enforced by `pnpm lint:comments` and CI for both agents and by the comment-hygiene Stop hook in Claude Code only — Codex has no hooks and runs the command itself.
 
 Core quality gates (`governance/critical.md` §3) — do not bypass:
 
@@ -113,8 +113,8 @@ Before enhancing, refactoring, reorganizing, or "cleaning up" code:
 - update or run the narrowest matching test/static gate when a boundary changes
 
 Before any major implementation batch:
-- rebuild the important `.md` manifest outside generated/vendor folders
-- read every important `.md` file in authority order, including `governance/critical.md`, `governance/RULES.md`, `governance/STRUCTURES.md`, `governance/design.md` when relevant, `CLAUDE.md`, `governance/skills.md`, `docs/architecture/code-ownership-map.md` for code changes, `README.md`, `docs/INDEX.md` (docs map) then relevant `docs/**/*.md`, `docs/agent-lessons.md` for prior gotchas, relevant `governance/Plan.md` sections, and `.claude/MEMORY.md` last
+- read Tier 1 in full — `governance/RULES.md`, `governance/critical.md`, `governance/protocols/code-hygiene.md`, `.claude/MEMORY.md` last. This is unconditional and does not scale with task size.
+- then read **only the Tier 2 rows the task actually touches**, and say which ones before starting. Reading every important `.md` before every batch is the front-loading `kael-work-router` exists to stop: docs loaded first are furthest from the point of use and the first to be compacted away. Let the task pick the rows — `governance/protocols/work-router.md` holds the method, `CLAUDE.md` holds the row table.
 - re-check relevant PR findings and the current touched files
 - compare the intended UI work against the local recording and glass reference notes
 - run React Doctor regularly after UI or React performance changes and treat reported issues as objective audit input

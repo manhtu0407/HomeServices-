@@ -17,7 +17,7 @@ const SKILLS = resolve(root, '.claude/skills')
 // after failing every one of these plus the skill's own directory.
 const SEARCH_ROOTS = ['', 'governance', 'apps/mobile']
 // Generated or machine-local: absent in a clean checkout, so absence proves nothing.
-const UNTRACKED = [/(^|\/)node_modules\//, /(^|\/)\.temp\//, /^\.codebase-memory\//]
+const UNTRACKED = [/(^|\/)node_modules\//, /(^|\/)\.temp\//, /^\.codebase-memory\//, /(^|\/)\.scratch\//]
 // AGENTS.md Workspace Layout: `~/.codex/` is the CLI's own config home and the repo must never
 // contain a matching path. `.gitignore` ignores it, so anything written there is lost.
 const FORBIDDEN = [[/\.codex\//i, 'references a `.codex/` path — the repo must never contain one (AGENTS.md Workspace Layout)']]

@@ -1,6 +1,6 @@
 import { spawnSync } from 'node:child_process'
 import { createHash } from 'node:crypto'
-import { existsSync, readFileSync, readdirSync, realpathSync, statSync } from 'node:fs'
+import { existsSync, readFileSync, readdirSync, realpathSync, statSync, writeFileSync } from 'node:fs'
 import { dirname, extname, relative, resolve, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -145,7 +145,7 @@ function checkEntries(root, manifest, problems) {
     }
     let actual
     try { actual = `git-blob-sha1:${gitHash(root, entry.canonicalPath)}` } catch (error) { problems.push(`could not hash ${entry.id}: ${error.message}`); continue }
-    if (entry.checksum !== actual) problems.push(`checksum drift for ${entry.id}: expected ${entry.checksum}, actual ${actual}`)
+    if (entry.checksum !== actual) problems.push(`checksum drift for ${entry.id}: expected ${entry.checksum}, actual ${actual} — if the edit was intended, record it with \`pnpm harness:manifest:fix\``)
     if (entry.kind !== 'repository-skill') continue
     const expectedCanonical = `${manifest.inventory.repositorySkillRoot}/${entry.id}/${manifest.inventory.repositorySkillEntryFile}`
     const expectedMirror = `${manifest.inventory.repositorySkillMirrorRoot}/${entry.id}/${manifest.inventory.repositorySkillEntryFile}`
@@ -281,9 +281,10 @@ export function checkHarnessManifest(options = {}) {
 }
 
 function parseArgs(values) {
-  const options = { json: false }
+  const options = { json: false, write: false }
   for (let index = 0; index < values.length; index += 1) {
     if (values[index] === '--json') options.json = true
+    else if (values[index] === '--write') options.write = true
     else if (values[index] === '--root') options.root = values[++index]
     else if (values[index] === '--manifest') options.manifestPath = values[++index]
     else throw new Error(`unknown argument: ${values[index]}`)
@@ -291,11 +292,60 @@ function parseArgs(values) {
   return options
 }
 
+// Editing a SKILL.md changes its blob hash, so the recorded checksum goes stale and the gate
+// goes red on a change that was entirely intended. Hand-editing 40 hex characters inside a
+// one-line-per-entry JSON file is the kind of chore that gets done wrong or skipped, so the
+// bump gets a command.
+//
+// `--write` is deliberately narrow: it rewrites checksum fields and nothing else, and it
+// REFUSES to write while any other problem is outstanding. A flag that could silence the rest
+// of the gate would be a way to make drift disappear rather than a way to record an edit.
+const CHECKSUM_DRIFT = /^checksum drift for (\S+): expected \S+, actual (git-blob-sha1:[0-9a-f]{40})/
+
+export function recordChecksums(text, drifts) {
+  const lines = text.split(/\r?\n/)
+  const eol = text.includes('\r\n') ? '\r\n' : '\n'
+  const applied = []
+  for (const { id, actual } of drifts) {
+    const index = lines.findIndex((line) => line.includes(`"id":"${id}"`))
+    if (index === -1) throw new Error(`cannot record ${id}: no manifest line declares that id`)
+    const current = /git-blob-sha1:[0-9a-f]{40}/.exec(lines[index])
+    if (!current) throw new Error(`cannot record ${id}: its manifest line carries no git-blob-sha1 checksum`)
+    lines[index] = lines[index].replace(current[0], actual)
+    applied.push(`${id}: ${current[0]} -> ${actual}`)
+  }
+  return { text: lines.join(eol), applied }
+}
+
 const isMain = process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)
 if (isMain) {
   try {
     const options = parseArgs(process.argv.slice(2))
-    const report = checkHarnessManifest(options)
+    let report = checkHarnessManifest(options)
+
+    if (options.write && !report.ok) {
+      const drifts = []
+      const others = []
+      for (const problem of report.problems) {
+        const match = CHECKSUM_DRIFT.exec(problem)
+        if (match) drifts.push({ id: match[1], actual: match[2] })
+        else others.push(problem)
+      }
+      if (others.length) {
+        console.error('refusing to write: --write records checksums only, and these are unresolved:')
+        for (const problem of others) console.error(`  - ${problem}`)
+        process.exitCode = 1
+      } else if (!drifts.length) {
+        console.error('nothing to record')
+        process.exitCode = 1
+      } else {
+        const { text, applied } = recordChecksums(readFileSync(report.manifestPath, 'utf8'), drifts)
+        writeFileSync(report.manifestPath, text)
+        for (const line of applied) console.log(`recorded ${line}`)
+        report = checkHarnessManifest(options)
+      }
+    }
+
     if (options.json) console.log(JSON.stringify({ ok: report.ok, manifest: repoPath(relative(report.root, report.manifestPath)), hash: report.hash ? `sha256:${report.hash}` : null, skillCount: report.skillCount ?? 0, runtimeToolCount: report.runtimeToolCount ?? 0, providerAdapterCount: report.providerAdapterCount ?? 0, runtimeEntryCount: report.runtimeEntryCount ?? 0, routerCount: report.routerCount ?? 0, problems: report.problems }, null, 2))
     else if (report.ok) console.log(`harness manifest ok: ${report.skillCount} repository skills, ${report.runtimeToolCount} runtime tools, ${report.providerAdapterCount} provider adapters, ${report.routerCount} routers; sha256:${report.hash}`)
     else {

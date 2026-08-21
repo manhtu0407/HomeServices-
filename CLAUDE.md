@@ -26,6 +26,8 @@ Read in three tiers. **Tier 1 is unconditional. Tier 2 depends on the task. Tier
 
 A one-line fix does not exempt you from Tier 1. Skipping it is the exact failure this stack exists to prevent.
 
+**Whether** you read Tier 1 never scales with task size. **Depth does.** `governance/RULES.md` and the `governance/critical.md` §3 gates are read in full at every size — they are the security and honesty floor, and a one-line change is precisely where both get skipped. For a reach-`T` slice (one known file, no behavior change) the rest of Tier 1 may be read at index level: `critical.md` through §1/§2, `.claude/MEMORY.md` through its Recall Index, pulling a full section only when it bears on the change. Reach `C`, `X`, and `E` read Tier 1 in full. `kael-work-router` assigns the reach; the rule lives in `governance/protocols/work-router.md`.
+
 ### Tier 2 - by task and difficulty
 
 Small, well-scoped task: Tier 1 plus the one row that matches. Large, cross-cutting, or ambiguous task: read every row it touches and say which ones before starting.
@@ -38,6 +40,7 @@ Small, well-scoped task: Tier 1 plus the one row that matches. Large, cross-cutt
 | UI, motion, glass, mascot, design tokens, screen recipes | `governance/design/runtime.md`, then `governance/design.md` (-> `governance/design/*`) |
 | Frontend / UI testing on the Expo app | `governance/protocols/frontend-test.md` (gates `pnpm type-check:mobile`, `pnpm test:mobile`) |
 | Coding behavior (explicit assumptions, simplicity, surgical diffs, goal-driven execution) | `governance/skills.md` |
+| A task whose shape is unclear — what kind of work it is, which skills it needs, how wide to read | `governance/protocols/work-router.md` |
 | Code enhancement / refactor (owner files per layer) | `docs/architecture/code-ownership-map.md` |
 | Finding a symbol, tracing its callers, or deciding which runtime owns a name defined twice | `.claude/skills/kael-codebase-memory/SKILL.md` |
 | Continuing or deferred plan work | `governance/Plan.md` (the referenced section only) |
@@ -51,16 +54,16 @@ Each hub routes onward to its own spokes on demand. If two docs conflict, stop a
 
 ### Tier 3 - skills
 
-Skills live in `.claude/skills/` (canonical), mirrored to `.agents/skills/`; parity is enforced by `scripts/check-skills-sync.mjs`. Two groups, 31 total. Choose a skill only after Tier 2 has told you the task class.
+Skills live in `.claude/skills/` (canonical), mirrored to `.agents/skills/`; parity is enforced by `scripts/check-skills-sync.mjs`. Two groups, 32 total. Choose a skill only after Tier 2 has told you the task class.
 
-**Everyday (20).** `kael-core-hygiene` and `karpathy-guidelines` are always-on coding behavior; the rest are task-triggered.
+**Everyday (21).** `kael-work-router`, `kael-core-hygiene`, and `karpathy-guidelines` are always-on; the rest are task-triggered. The router runs first and decides which of the others fire — `kael-core-hygiene` and `karpathy-guidelines` govern the artifact, the router governs how the effort reaching it is spent.
 
 ```text
 kael-tdd  kael-diagnose  kael-supabase  kael-security-sweep  kael-ai-boundary
 kael-frontend-test  kael-core-hygiene  kael-subagent-orchestration  karpathy-guidelines
 kael-handoff  kael-doc-audit  kael-prototype  kael-research  kael-wayfinder
 kael-codebase-memory  react-doctor  supabase  supabase-postgres-best-practices
-kael-docker  source-command-kael-mem
+kael-docker  source-command-kael-mem  kael-work-router
 ```
 
 **Design (11).** One entry point: `kael-design-preflight` loads `governance/design/runtime.md` and binds the token/runtime contract. Never open a design skill without it.
@@ -75,7 +78,7 @@ kael-design-preflight -> kael-design-direction  kael-design-intelligence  kael-d
 
 | Class | Count | What it means for you |
 |---|---|---|
-| `autonomous` | 29 | Needs only Read/Grep/Edit, or commands that run on every platform. Fire it on any matching task — no check first. |
+| `autonomous` | 30 | Needs only Read/Grep/Edit, or commands that run on every platform. Fire it on any matching task — no check first. |
 | `gated` | 2 | Needs something that can legitimately be absent. Run the one-line check in its `## Preconditions`; on failure run its `## Degraded lane`, which names the work that does not need the dependency and the artifact it produces. Say which check failed. |
 
 A degraded lane is real work, not a consolation: `kael-docker` without a daemon reconciles the database debt ledger against what is on disk, and `kael-visual-qa` without a device produces the capture matrix as a runnable checklist. It is never a verdict — a lane emits a debt record, and a gate that could not run is still not a gate that passed (`governance/critical.md` §3).

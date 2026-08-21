@@ -9,6 +9,7 @@ import {
   checkHarnessManifest,
   gitBlobSha1,
   manifestSha256,
+  recordChecksums,
 } from './check-manifest.mjs'
 
 const schemaSource = resolve(
@@ -183,6 +184,37 @@ test('rejects canonical checksum drift', () => {
     const report = checkHarnessManifest({ root })
     assert.equal(report.ok, false)
     assert.ok(report.problems.some((problem) => problem.includes('checksum drift for alpha')))
+  })
+})
+
+test('recordChecksums rewrites only the checksum on the named entry line', () => {
+  const before = [
+    '    {"id":"alpha","checksum":"git-blob-sha1:1111111111111111111111111111111111111111"},',
+    '    {"id":"beta","checksum":"git-blob-sha1:2222222222222222222222222222222222222222"},',
+  ].join('\r\n')
+  const { text, applied } = recordChecksums(before, [
+    { id: 'alpha', actual: 'git-blob-sha1:3333333333333333333333333333333333333333' },
+  ])
+  assert.equal(applied.length, 1)
+  assert.ok(text.includes('"id":"alpha","checksum":"git-blob-sha1:3333333333333333333333333333333333333333"'))
+  assert.ok(text.includes('"id":"beta","checksum":"git-blob-sha1:2222222222222222222222222222222222222222"'))
+  assert.ok(text.includes('\r\n'))
+})
+
+test('recordChecksums refuses an id the manifest does not declare', () => {
+  assert.throws(
+    () => recordChecksums('{"id":"alpha","checksum":"git-blob-sha1:1111111111111111111111111111111111111111"}', [
+      { id: 'ghost', actual: 'git-blob-sha1:4444444444444444444444444444444444444444' },
+    ]),
+    /no manifest line declares that id/,
+  )
+})
+
+test('the checksum-drift message names the command that records it', () => {
+  withFixture(({ root }) => {
+    write(resolve(root, '.claude/skills/alpha/SKILL.md'), '---\nname: alpha\n---\nchanged\n')
+    const report = checkHarnessManifest({ root })
+    assert.ok(report.problems.some((problem) => problem.includes('harness:manifest:fix')))
   })
 })
 

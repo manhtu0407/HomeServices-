@@ -107,7 +107,7 @@ Forbidden regressions:
 - Do not depend on `.tmp/design-lab` files from production routes/components.
 - Do not reveal full address, unit, phone, or exact customer identity before accept.
 - Do not fabricate paid transactions or completed payouts.
-- Do not expand services beyond electrical, plumbing, and cleaning without explicit Tu approval.
+- Do not expand services beyond the six approved in `governance/RULES.md` #6 without explicit Tu approval.
 
 Verification plan:
 
