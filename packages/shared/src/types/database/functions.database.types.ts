@@ -1049,14 +1049,6 @@ export type DatabaseFunctions = {
           request_status: string
         }[]
       }
-      complete_worker_account_deletion: {
-        Args: { p_client_request_id: string; p_worker_id: string }
-        Returns: {
-          checkpoint: string
-          request_id: string
-          request_status: string
-        }[]
-      }
       complete_harness_idempotency: {
         Args: { p_reservation_id: string; p_response_hash: string }
         Returns: boolean
@@ -1091,6 +1083,14 @@ export type DatabaseFunctions = {
         }
         Returns: {
           completed: boolean
+        }[]
+      }
+      complete_worker_account_deletion: {
+        Args: { p_client_request_id: string; p_worker_id: string }
+        Returns: {
+          checkpoint: string
+          request_id: string
+          request_status: string
         }[]
       }
       complete_worker_kael_chat_turn_atomic: {
