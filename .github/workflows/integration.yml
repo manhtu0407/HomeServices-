@@ -66,10 +66,6 @@ jobs:
           SUPABASE_PROJECT_REF: xyylanuyflrjzbjzhqfl
           HARNESS_REMOTE_MUTATION_APPROVAL: ${{ github.run_id }}
           HARNESS_RELEASE_ID: ${{ github.sha }}
-        # apps/api/vitest.config.mts collects the pillar suite only, so this path currently
-        # intersects to nothing. `--passWithNoTests=false` makes that state fail here instead
-        # of reporting a green staging integration run that executed zero tests, which is what
-        # this step did until 2026-08-20 (docs/test-logs/2026-08-20_uncollected-sweep.md).
-        # It goes green again when an integration invariant lands as a pillar; this workflow
-        # never runs on pull_request, so the red belongs to the nightly signal, not to anyone's PR.
+        # Keep the explicit path and fail-on-empty flag together: the integration pillar must
+        # remain collected, and this job must never report green after executing zero tests.
         run: pnpm --filter @nestscout/api exec vitest run --passWithNoTests=false src/__tests__/integration

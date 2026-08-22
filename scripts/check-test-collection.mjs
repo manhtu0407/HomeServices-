@@ -29,17 +29,9 @@ const PACKAGES = {
   '@nestscout/mobile': { dir: 'apps/mobile', runner: 'jest', config: 'apps/mobile/jest.config.js' },
 }
 
-// Steps that knowingly name a path nothing collects yet. An entry is only honest when the
-// step ALSO passes `--passWithNoTests=false`, so the run fails instead of reporting success;
-// the gate enforces that pairing. Adding an entry is a deliberate edit with a stated exit,
-// never a way to quiet this check.
-const DECLARED_GAPS = [
-  {
-    step: 'Integration tests vs staging Supabase',
-    filter: 'src/__tests__/integration',
-    clearedBy: 'an integration invariant landing as a pillar — docs/audit/test-collection-analysis-20260820.md §A4',
-  },
-]
+// A temporary gap is honest only when the step also passes `--passWithNoTests=false`, so the
+// run fails instead of reporting success. Adding an entry requires a named exit condition.
+const DECLARED_GAPS = []
 
 const problems = []
 const declaredGaps = []
