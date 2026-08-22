@@ -4,6 +4,12 @@ import * as ImagePicker from 'expo-image-picker'
 
 import type { AppLanguage } from '@/lib/app-language'
 import type { ProfileAvatarDraft } from '@/lib/profile-avatar-upload'
+import {
+  cameraPermissionAllowsAccess,
+  presentBlockedCameraSettings,
+  resolveUserInitiatedCameraPermission,
+  shouldOfferCameraSettings,
+} from '@/lib/user-initiated-camera-permission'
 
 type ProfileAvatarKind = 'customer' | 'worker'
 
@@ -27,24 +33,12 @@ export function useProfileAvatarPicker({
   const selectProfileAvatar = useCallback(async (source: 'camera' | 'library') => {
     if (avatarUploadBusy) return
     try {
-      const permission = Platform.OS === 'web'
-        ? { granted: true }
-        : source === 'camera'
-          ? await ImagePicker.requestCameraPermissionsAsync()
-          : await ImagePicker.requestMediaLibraryPermissionsAsync()
-      if (!permission.granted) {
-        Alert.alert(
-          copy('Cần quyền truy cập', 'Permission needed'),
-          copy(
-            source === 'camera'
-              ? 'Cho phép Camera để chụp ảnh đại diện của bạn.'
-              : 'Cho phép Thư viện ảnh để chọn ảnh đại diện của bạn.',
-            source === 'camera'
-              ? 'Allow Camera access to take your profile photo.'
-              : 'Allow Photos access to choose your profile photo.',
-          ),
-        )
-        return
+      if (Platform.OS !== 'web' && source === 'camera') {
+        const permission = await resolveUserInitiatedCameraPermission()
+        if (!cameraPermissionAllowsAccess(permission)) {
+          if (shouldOfferCameraSettings(permission)) presentBlockedCameraSettings(language)
+          return
+        }
       }
 
       const result = source === 'camera'
@@ -91,7 +85,7 @@ export function useProfileAvatarPicker({
     } finally {
       setAvatarUploadBusy(false)
     }
-  }, [avatarUploadBusy, copy, uploadAvatar])
+  }, [avatarUploadBusy, copy, language, uploadAvatar])
 
   const openProfileAvatarPicker = useCallback(() => {
     if (avatarUploadBusy) return

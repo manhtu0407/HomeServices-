@@ -16,6 +16,7 @@ export type CustomerTables = {
           id: string
           requested_at: string
           status: string
+          storage_refs: string[]
           updated_at: string
         }
         Insert: {
@@ -29,6 +30,7 @@ export type CustomerTables = {
           id?: string
           requested_at?: string
           status?: string
+          storage_refs?: string[]
           updated_at?: string
         }
         Update: {
@@ -42,6 +44,7 @@ export type CustomerTables = {
           id?: string
           requested_at?: string
           status?: string
+          storage_refs?: string[]
           updated_at?: string
         }
         Relationships: [

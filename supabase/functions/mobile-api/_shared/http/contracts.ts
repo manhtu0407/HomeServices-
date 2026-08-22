@@ -1,6 +1,6 @@
 import type {
   AvailabilityToggleInput,
-  CustomerAccountDeletionRequest,
+  AccountDeletionRequest,
   EdgeCustomerAvatarUpdateInput,
   EdgeCustomerAvatarUploadInput,
   CustomerCancellationRequestInput,
@@ -73,7 +73,7 @@ import type {
   WorkerRouteOrigin,
   WorkerStatusUpdateInput,
 } from "../domains/contracts/worker.ts";
-import type { EdgeCustomerAccountDeletionResponse } from "../domains/contracts/customer.ts";
+import type { EdgeAccountDeletionResponse } from "../domains/contracts/account.ts";
 import type { EdgeStagingPaymentResponse } from "../domains/payment/staging.ts";
 import type { EdgePaymentIntentResponse } from "../domains/payment/sepay-vietqr.ts";
 import type {
@@ -670,10 +670,10 @@ export type MobileApiServices = AdminControlServices & {
     ctx: MobileApiContext,
     input: CustomerRefundAccountSaveRequest,
   ): Promise<EdgeCustomerRefundAccountResponse>;
-  deleteCustomerAccount?(
+  deleteAccount?(
     ctx: MobileApiContext,
-    input: CustomerAccountDeletionRequest,
-  ): Promise<EdgeCustomerAccountDeletionResponse>;
+    input: AccountDeletionRequest,
+  ): Promise<EdgeAccountDeletionResponse>;
   getWorkerProfile(ctx: MobileApiContext): Promise<EdgeWorkerProfileResponse>;
   createWorkerAvatarUpload(
     ctx: MobileApiContext,

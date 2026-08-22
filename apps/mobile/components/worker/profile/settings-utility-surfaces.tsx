@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Pressable, Text as RNText, View, type TextProps } from 'react-native'
 
+import { PublicPrivacyPolicyLink } from '@/components/ui/public-privacy-policy-link'
 import type { AppLanguage } from '@/lib/app-language'
 import type { useFrontendWorkflow } from '@/lib/frontend-workflow-provider'
 
@@ -196,6 +197,7 @@ export function WorkerV5PoliciesBody({ language, reduceTransparency }: { languag
         <View style={styles.policyIntro}>
           <Text style={styles.summaryTitle}>{textByLanguage(language, 'Hiểu rõ trước khi thực hiện', 'Understand before you work')}</Text>
           <Text style={styles.summaryBody}>{textByLanguage(language, 'Các hướng dẫn ngắn dưới đây giúp bạn dùng ứng dụng an toàn và rõ ràng.', 'These short guidelines help you use the app clearly and safely.')}</Text>
+          <PublicPrivacyPolicyLink language={language} testID="worker-v5-public-privacy-policy" />
         </View>
         {sections.map((section, index) => {
           const expanded = expandedId === section.id

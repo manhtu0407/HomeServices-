@@ -94,8 +94,4 @@ export type EdgeCustomerAvatarUploadResponse = {
   expires_in_seconds: number;
 };
 
-export type EdgeCustomerAccountDeletionResponse = {
-  account_deleted: true;
-  request_id: string;
-  retained_transaction_records: true;
-};
+export type { EdgeAccountDeletionResponse as EdgeCustomerAccountDeletionResponse } from "./account.ts";

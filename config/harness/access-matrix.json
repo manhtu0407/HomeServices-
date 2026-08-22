@@ -2,8 +2,8 @@
   "version": "1.0.0",
   "source": {
     "migrationRoot": "supabase/migrations",
-    "migrationCount": 283,
-    "migrationDigest": "124c6014c1bf2bfeb1ae58c5c3948d34043a44960bea740da3722fb5f72939f1"
+    "migrationCount": 287,
+    "migrationDigest": "e317c94d07584f6a20d98b18c1c1cffc71453dbad1a9dfa65ab589c81ffd3020"
   },
   "actors": [
     "anonymous",
@@ -2115,6 +2115,22 @@
       "realtime": false
     },
     {
+      "name": "worker_account_deletion_requests",
+      "classification": "internal",
+      "rlsEnabled": true,
+      "actorCommands": {
+        "anonymous": [],
+        "authenticated": []
+      },
+      "serviceRole": [
+        "select",
+        "insert",
+        "update",
+        "delete"
+      ],
+      "realtime": false
+    },
+    {
       "name": "worker_cancellation_reason_taxonomy",
       "classification": "actor-scoped",
       "rlsEnabled": true,
@@ -3103,6 +3119,14 @@
       ]
     },
     {
+      "signature": "complete_worker_account_deletion(uuid, uuid)",
+      "securityDefiner": true,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
       "signature": "complete_worker_kael_chat_turn_atomic(uuid, uuid, uuid, uuid, uuid, uuid, text, text, jsonb, api_provider, text, integer, numeric, jsonb, timestamp with time zone)",
       "securityDefiner": true,
       "fixedSearchPath": true,
@@ -3471,7 +3495,23 @@
       ]
     },
     {
+      "signature": "prepare_customer_account_deletion_v2(uuid, uuid)",
+      "securityDefiner": true,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
       "signature": "prepare_customer_account_deletion(uuid, uuid)",
+      "securityDefiner": true,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
+      "signature": "prepare_worker_account_deletion(uuid, uuid)",
       "securityDefiner": true,
       "fixedSearchPath": true,
       "executeRoles": [

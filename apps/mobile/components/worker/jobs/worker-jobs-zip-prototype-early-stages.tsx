@@ -545,7 +545,7 @@ function WorkerJobsLegacyPrototypeRouteMetrics({
     : routePreview.locationStatus === 'loading'
       ? textByLanguage(language, 'Đang lấy vị trí', 'Getting location')
       : routePreview.locationStatus === 'denied'
-        ? textByLanguage(language, 'Cần bật vị trí', 'Location required')
+        ? textByLanguage(language, 'Không có vị trí hiện tại', 'Current location unavailable')
         : routePreview.locationStatus === 'unavailable'
           ? textByLanguage(language, 'Chưa lấy được vị trí', 'Location unavailable')
           : textByLanguage(language, 'Đang tính lộ trình', 'Calculating route')

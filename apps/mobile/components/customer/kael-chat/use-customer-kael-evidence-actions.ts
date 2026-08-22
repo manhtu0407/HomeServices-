@@ -1,6 +1,5 @@
 import type { CaseWorkEvidence, LocalDeal, ServiceType } from '@nestscout/shared'
 import { useRef } from 'react'
-import { Alert } from 'react-native'
 import * as ImagePicker from 'expo-image-picker'
 
 import type { AppLanguage } from '@/lib/app-language'
@@ -117,17 +116,6 @@ export function useCustomerKaelEvidenceActions({
     if (mode !== 'normal' && mode !== 'case') return
     const requestToken = kaelRequestGuard.begin('media-picker')
     try {
-      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync()
-      if (!kaelRequestGuard.isCurrent(requestToken)) return
-      if (!permission.granted) {
-        Alert.alert(
-          language === 'vi' ? 'Cần quyền ảnh/video' : 'Media permission needed',
-          language === 'vi'
-            ? 'Cho phép NestScout chọn ảnh hoặc video để gửi cho Kael.'
-            : 'Allow NestScout to pick photos or videos for Kael.',
-        )
-        return
-      }
       const result = await ImagePicker.launchImageLibraryAsync({
         allowsMultipleSelection: true,
         mediaTypes: chatComposerMediaTypes,

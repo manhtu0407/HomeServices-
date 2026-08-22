@@ -191,12 +191,12 @@ export function WorkerInteractiveRouteMapPrototype({
 
   if ((routePreview.locationStatus !== 'ready' || !routePreview.origin) && !useWebFixture) {
     const title = routePreview.locationStatus === 'denied'
-      ? textByLanguage(language, 'Cần bật vị trí để mở bản đồ', 'Enable location to open the map')
+      ? textByLanguage(language, 'Không có vị trí hiện tại để mở bản đồ', 'Current location is unavailable for the map')
       : routePreview.locationStatus === 'unavailable'
         ? textByLanguage(language, 'Chưa thể lấy vị trí hiện tại', 'Current location is unavailable')
         : textByLanguage(language, 'Đang lấy vị trí của bạn', 'Getting your current location')
     const meta = routePreview.locationStatus === 'denied'
-      ? textByLanguage(language, 'Bật quyền vị trí để tính tuyến đường tới tòa nhà.', 'Enable location to calculate the route to the building.')
+      ? textByLanguage(language, 'Không thể tính tuyến đường từ vị trí hiện tại.', 'A route from the current location cannot be calculated.')
       : textByLanguage(language, 'Tuyến đường chỉ dùng tọa độ tòa nhà; số căn và tầng vẫn được bảo vệ.', 'The route uses the building location only; unit and floor remain protected.')
 
     return <WorkerInteractiveRouteMapEmpty language={language} reduceTransparency={reduceTransparency} title={title} meta={meta} />
@@ -431,7 +431,7 @@ function WorkerInteractiveRouteMapWeb({
   const isGlass = !reduceTransparency
   const controlSurface = isGlass ? styles.controlGlass : styles.controlOpaque
   const statusCopy = prototypeFixture && locationStatus !== 'ready'
-    ? textByLanguage(language, 'Bản xem thử · cần bật vị trí', 'Preview · location needed')
+    ? textByLanguage(language, 'Bản xem thử · chưa có vị trí', 'Preview · location unavailable')
     : status === 'loading'
     ? textByLanguage(language, 'Đang tải bản đồ', 'Loading map')
     : status === 'error'

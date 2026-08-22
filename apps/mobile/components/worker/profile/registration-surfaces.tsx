@@ -151,11 +151,6 @@ export function WorkerV5WorkerRegistrationBody({
   }, [runtime.actions, state.bankAccount, state.bankName, state.dateOfBirth, state.districts, state.legalName, state.problemSpecializations, state.serviceRadiusKm, state.serviceTypes, state.yearsExperience])
 
   const pickFile = async (slot: WorkerVerificationFileSlot) => {
-    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync()
-    if (!permission.granted) {
-      dispatch({ type: 'error', value: textByLanguage(language, 'Cần cho phép chọn ảnh để gửi hồ sơ.', 'Allow photo access to submit your profile.') })
-      return
-    }
     const result = await ImagePicker.launchImageLibraryAsync({
       allowsMultipleSelection: false,
       mediaTypes: ImagePicker.MediaTypeOptions.Images,

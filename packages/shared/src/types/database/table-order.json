@@ -111,6 +111,7 @@
   "service_knowledge_boxes",
   "service_problems",
   "source_trust_registry",
+  "worker_account_deletion_requests",
   "worker_cancellation_reason_taxonomy",
   "worker_cancellation_requests",
   "worker_cash_commission_ledger",

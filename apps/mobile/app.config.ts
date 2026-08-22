@@ -82,6 +82,17 @@ const nativeArchitectureConfig = { newArchEnabled: true } as unknown as Partial<
 const stagingPaymentRailEnabled = ['1', 'true', 'yes', 'on'].includes(
   fromEnv('EXPO_PUBLIC_STAGING_PAYMENT_RAIL_ENABLED').toLowerCase(),
 )
+const iosPushNotificationsEnabled = false
+const iosPurposeStrings = {
+  NSCameraUsageDescription:
+    'NestScout cần quyền camera nếu bạn muốn chụp ảnh đại diện thật, hiện trạng sửa chữa hoặc giấy tờ xác minh.',
+  NSLocationWhenInUseUsageDescription:
+    'NestScout cần vị trí của bạn khi mở lộ trình đến địa chỉ khách hàng.',
+  NSMicrophoneUsageDescription:
+    'NestScout cần quyền micro để chuyển giọng nói thành bản chép lời có thể chỉnh sửa ngay trên thiết bị.',
+  NSPhotoLibraryUsageDescription:
+    'NestScout cần quyền chọn ảnh hoặc video để đặt ảnh đại diện thật, mô tả tình trạng sửa chữa hoặc gửi hồ sơ xác minh.',
+} as const
 const apiBaseUrl =
   configuredApiBaseUrl || (supabaseUrl ? `${supabaseUrl.replace(/\/$/, '')}/functions/v1/mobile-api` : '')
 assertReleaseAuthConfig({
@@ -131,6 +142,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   ...nativeArchitectureConfig,
   name: 'NestScout',
   slug: 'home-services',
+  owner: 'nestscout',
   version: '0.1.0',
   orientation: 'portrait',
   icon: './assets/nestscout-aurora-nest-appstore-1024.png',
@@ -138,21 +150,14 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   scheme: 'nestscout',
   ios: {
     supportsTablet: false,
-    buildNumber: '43',
+    buildNumber: '44',
     bundleIdentifier: 'com.phanmanhtu.homeservices',
     config: {
       usesNonExemptEncryption: false,
     },
     infoPlist: {
       CFBundleDisplayName: 'NestScout',
-      NSCameraUsageDescription:
-        'NestScout cần quyền camera nếu bạn muốn chụp ảnh đại diện thật, hiện trạng sửa chữa hoặc giấy tờ xác minh.',
-      NSMicrophoneUsageDescription:
-        'NestScout cần quyền micro để chuyển giọng nói thành bản chép lời có thể chỉnh sửa ngay trên thiết bị.',
-      NSPhotoLibraryUsageDescription:
-        'NestScout cần quyền chọn ảnh hoặc video để đặt ảnh đại diện thật, mô tả tình trạng sửa chữa hoặc gửi hồ sơ xác minh.',
-      NSLocationWhenInUseUsageDescription:
-        'NestScout cần vị trí của bạn khi mở lộ trình đến địa chỉ khách hàng.',
+      ...iosPurposeStrings,
     },
   },
   android: {
@@ -180,16 +185,15 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     [
       'expo-audio',
       {
-        microphonePermission:
-          'NestScout cần quyền micro để chuyển giọng nói thành bản chép lời có thể chỉnh sửa ngay trên thiết bị.',
+        enableBackgroundPlayback: false,
+        microphonePermission: iosPurposeStrings.NSMicrophoneUsageDescription,
         recordAudioAndroid: false,
       },
     ],
     [
       'expo-speech-recognition',
       {
-        microphonePermission:
-          'NestScout cần quyền micro để chuyển giọng nói thành bản chép lời ngay trên thiết bị.',
+        microphonePermission: iosPurposeStrings.NSMicrophoneUsageDescription,
         speechRecognitionPermission:
           'NestScout dùng nhận dạng giọng nói trên thiết bị để tạo bản chép lời có thể chỉnh sửa.',
       },
@@ -200,17 +204,14 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     [
       'expo-image-picker',
       {
-        photosPermission:
-          'NestScout cần quyền chọn ảnh hoặc video để đặt ảnh đại diện thật hoặc mô tả tình trạng sửa chữa.',
-        cameraPermission:
-          'NestScout cần quyền camera nếu bạn muốn chụp ảnh đại diện thật hoặc hiện trạng sửa chữa.',
+        photosPermission: iosPurposeStrings.NSPhotoLibraryUsageDescription,
+        cameraPermission: iosPurposeStrings.NSCameraUsageDescription,
       },
     ],
     [
       'expo-location',
       {
-        locationWhenInUsePermission:
-          'NestScout cần vị trí của bạn khi mở lộ trình đến địa chỉ khách hàng.',
+        locationWhenInUsePermission: iosPurposeStrings.NSLocationWhenInUseUsageDescription,
       },
     ],
     withoutIosPushEntitlement as unknown as string,
@@ -222,10 +223,11 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     vietmapDisplayKey,
     vietmapMapStyleUrl,
     mapProxyBaseUrl,
+    iosPushNotificationsEnabled,
     stagingPaymentRailEnabled,
     runtimeBuildInfo,
     eas: {
-      projectId: 'df74d6a3-f85b-4b40-85ef-fe3162023d6e',
+      projectId: 'c2fd8ae7-a6fa-4b6e-a9a0-df85b52ac94b',
     },
   },
 })

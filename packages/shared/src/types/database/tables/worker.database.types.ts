@@ -5,6 +5,56 @@ import type { Database } from '../schema.database.types'
 
 export type WorkerTables = {
 /* @slice:begin tables:worker */
+      worker_account_deletion_requests: {
+        Row: {
+          checkpoint: string
+          client_request_id: string
+          completed_at: string | null
+          created_at: string
+          database_scrubbed_at: string | null
+          id: string
+          requested_at: string
+          status: string
+          storage_refs: string[]
+          updated_at: string
+          worker_id: string
+        }
+        Insert: {
+          checkpoint?: string
+          client_request_id: string
+          completed_at?: string | null
+          created_at?: string
+          database_scrubbed_at?: string | null
+          id?: string
+          requested_at?: string
+          status?: string
+          storage_refs?: string[]
+          updated_at?: string
+          worker_id: string
+        }
+        Update: {
+          checkpoint?: string
+          client_request_id?: string
+          completed_at?: string | null
+          created_at?: string
+          database_scrubbed_at?: string | null
+          id?: string
+          requested_at?: string
+          status?: string
+          storage_refs?: string[]
+          updated_at?: string
+          worker_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "worker_account_deletion_requests_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       worker_cancellation_reason_taxonomy: {
         Row: {
           admin_tunable: boolean

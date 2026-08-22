@@ -1,14 +1,15 @@
 {
   "configVersion": 0,
   "apple": {
-    "version": "1.0",
+    "version": "0.1.0",
     "release": {
-      "automaticRelease": true
+      "automaticRelease": false
     },
     "info": {
       "vi": {
         "title": "NestScout",
-        "privacyPolicyUrl": "https://manhtu0407.github.io/nestscout-privacy-policy/"
+        "privacyPolicyUrl": "https://manhtu0407.github.io/nestscout-privacy-policy/",
+        "supportUrl": "https://manhtu0407.github.io/nestscout-privacy-policy/"
       }
     },
     "advisory": {
@@ -36,9 +37,9 @@
       "developerAgeRatingInfoUrl": null,
       "gunsOrOtherWeapons": "NONE",
       "healthOrWellnessTopics": false,
-      "messagingAndChat": false,
+      "messagingAndChat": true,
       "parentalControls": false,
-      "userGeneratedContent": false
+      "userGeneratedContent": true
     }
   }
 }

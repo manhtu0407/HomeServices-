@@ -16,6 +16,7 @@ import { useAppLanguage, type AppLanguage } from '@/lib/app-language'
 import { getRememberedAuthCredentials } from '@/lib/remembered-auth-credentials'
 import { getRememberedAuthIdentifier } from '@/lib/remembered-auth-identifier'
 import { LiquidBackButton } from '@/components/ui/liquid-back-button'
+import { PublicPrivacyPolicyLink } from '@/components/ui/public-privacy-policy-link'
 import { GlassPanel, KaelCoreHero, NativeSafeGlassPanel, PageAura, PrimaryButton } from './components/materials'
 import { CheckRow, EntryTextField } from './components/fields'
 import { ProviderButton } from './components/provider-button'
@@ -396,6 +397,7 @@ function RegisterScreen(props: {
             <EntryTextField icon="lock" label={props.copy.register.passwordConfirmationLabel} onChangeText={props.onPasswordConfirmationChange} placeholder={props.copy.register.passwordConfirmationPlaceholder} secureTextEntry testID="auth-register-password-confirmation-input" textContentType="newPassword" value={props.passwordConfirmation} />
             <View style={styles.termsRow}>
               <CheckRow checked={props.acceptedTerms} label={props.copy.register.terms} onPress={props.onToggleTerms} testID="auth-register-terms" />
+              <PublicPrivacyPolicyLink language={props.language} testID="auth-register-privacy-policy" />
             </View>
             {props.error ? <Text accessibilityLiveRegion="polite" style={styles.error}>{props.error}</Text> : null}
             <PrimaryButton disabled={props.busy} label={props.busy ? props.copy.register.busy : props.role === 'customer' ? props.copy.register.customerSubmit : props.copy.register.workerSubmit} onPress={props.onSubmit} testID="auth-register-submit" />
