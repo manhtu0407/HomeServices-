@@ -37,7 +37,7 @@ type AccountDeletionClient = DbClient & {
 };
 
 type OwnedStorageObject = {
-  bucket: "kael-chat-media" | "worker-avatars" | "worker-verification";
+  bucket: "job-media" | "kael-chat-media" | "worker-avatars" | "worker-verification";
   path: string;
 };
 
@@ -226,9 +226,8 @@ function customerOwnedStorageObject(
     `^supabase://kael-chat-media/(${escapedCustomerId}/kael-chat/(?:model_vision|private_video_original)/(?!.*(?:\\.\\.|//))[^\\s?#]+)$`,
     "i",
   ));
-  return kaelMedia
-    ? { bucket: "kael-chat-media", path: kaelMedia[1] }
-    : null;
+  if (kaelMedia) return { bucket: "kael-chat-media", path: kaelMedia[1] };
+  return jobMediaStorageObject(value);
 }
 
 function workerOwnedStorageObject(
@@ -256,7 +255,14 @@ function workerOwnedStorageObject(
     "i",
   ));
   if (kaelMedia) return { bucket: "kael-chat-media", path: kaelMedia[1] };
-  return null;
+  return jobMediaStorageObject(value);
+}
+
+function jobMediaStorageObject(value: string): OwnedStorageObject | null {
+  const jobMedia = value.match(
+    /^supabase:\/\/job-media\/([0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\/(?:before|after|kael_reference|cancellation_evidence|scope_change_evidence|access_check_in)\/(?!.*(?:\.\.|\/\/))[^\s?#/]+)$/i,
+  );
+  return jobMedia ? { bucket: "job-media", path: jobMedia[1] } : null;
 }
 
 function hasFreshSignIn(value: string | undefined) {

@@ -50,11 +50,15 @@ const mobileRoot = resolve(__dirname, '..', '..')
 
 type StaticExpoConfig = {
   expo: {
-    extra?: { iosPushNotificationsEnabled?: boolean }
+    extra?: {
+      eas?: { projectId?: string }
+      iosPushNotificationsEnabled?: boolean
+    }
     ios: {
       buildNumber: string
       infoPlist: Record<string, string>
     }
+    owner?: string
     plugins: ExpoConfig['plugins']
     version: string
   }
@@ -69,6 +73,12 @@ type StoreConfig = {
     release: { automaticRelease: boolean }
     version: string
   }
+}
+
+type EasConfig = {
+  build: { production: { autoIncrement: boolean } }
+  cli: { appVersionSource: string }
+  submit: { production: { ios: { appleTeamId: string; ascAppId: string } } }
 }
 
 function readJson<T>(relativePath: string): T {
@@ -101,9 +111,14 @@ describe('iOS release readiness', () => {
     } as ConfigContext)
     const staticConfig = readJson<StaticExpoConfig>('app.json').expo
     const storeConfig = readJson<StoreConfig>('store.config.json').apple
+    const easConfig = readJson<EasConfig>('eas.json')
 
     expect(evaluated.version).toBe('0.1.0')
     expect(staticConfig.version).toBe(evaluated.version)
+    expect(evaluated.owner).toBe('nestscout')
+    expect(staticConfig.owner).toBe(evaluated.owner)
+    expect(evaluated.extra?.eas?.projectId).toBe('c2fd8ae7-a6fa-4b6e-a9a0-df85b52ac94b')
+    expect(staticConfig.extra?.eas?.projectId).toBe(evaluated.extra?.eas?.projectId)
     expect(evaluated.ios?.buildNumber).toBe('44')
     expect(staticConfig.ios.buildNumber).toBe(evaluated.ios?.buildNumber)
     expect(storeConfig.version).toBe(evaluated.version)
@@ -112,6 +127,10 @@ describe('iOS release readiness', () => {
     expect(storeConfig.advisory.userGeneratedContent).toBe(true)
     expect(storeConfig.info.vi.privacyPolicyUrl).toBe('https://manhtu0407.github.io/nestscout-privacy-policy/')
     expect(storeConfig.info.vi.supportUrl).toBe(storeConfig.info.vi.privacyPolicyUrl)
+    expect(easConfig.cli.appVersionSource).toBe('local')
+    expect(easConfig.build.production.autoIncrement).toBe(false)
+    expect(easConfig.submit.production.ios.ascAppId).toBe('6771323477')
+    expect(easConfig.submit.production.ios.appleTeamId).toBe('7S4723Q8LP')
   })
 
   it('keeps every native permission explanation and the audio posture in sync', () => {

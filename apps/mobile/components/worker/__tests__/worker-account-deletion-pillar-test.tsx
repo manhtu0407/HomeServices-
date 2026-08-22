@@ -2,10 +2,14 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react-nativ
 
 import { withPillarContext, type PillarManifest } from '@/__tests__/pillar-manifest'
 
+import { ProfileDeleteAccountView } from '../../customer/profile/profile-foundation-utility-surfaces'
+import { getCustomerThemeTokens } from '../../customer/customer-theme'
 import { WorkerV5DeleteAccountBody } from '../profile/delete-account-surfaces'
 
 const mockDeleteAccount = jest.fn()
+const mockCustomerDeleteAccount = jest.fn()
 const mockOnDeleted = jest.fn()
+const mockOnReauthenticate = jest.fn()
 
 jest.mock('@/components/ui/accessibility-motion', () => ({
   useGlassAccessibility: () => ({ reduceTransparency: false }),
@@ -16,10 +20,14 @@ jest.mock('@/lib/account-deletion-service', () => ({
   accountDeletionService: { deleteAccount: (...args: unknown[]) => mockDeleteAccount(...args) },
 }))
 
+jest.mock('@/lib/services', () => ({
+  customerAccountService: { deleteAccount: (...args: unknown[]) => mockCustomerDeleteAccount(...args) },
+}))
+
 export const PILLAR = {
   id: 'P41-worker-account-deletion-ui',
   invariant:
-    'a worker can start account deletion inside the app only after acknowledging data loss and typing the exact confirmation phrase, then signs out only after the authenticated API succeeds',
+    'customer and worker can start account deletion in-app only after both confirmation gates, and a stale session offers an explicit sign-in-again action without deleting data',
   authority: [
     'App Store Review Guideline 5.1.1(v) (account deletion must be initiated in-app)',
     'governance/RULES.md #3 (destructive actions require explicit confirmation)',
@@ -29,13 +37,21 @@ export const PILLAR = {
   layer: 'ui-visual',
   siblings: ['P07-worker-verification-states', 'P40-role-aware-account-deletion'],
   mutation:
-    'route the action back to Support or remove either the checkbox or exact phrase gate — the disabled-state and API cases turn red',
+    'remove either confirmation gate or the explicit reauthentication action — the disabled-state, API, or stale-session cases turn red',
 } as const satisfies PillarManifest
 
 describe('worker in-app account deletion', () => {
   beforeEach(() => {
     jest.clearAllMocks()
     mockDeleteAccount.mockResolvedValue({
+      success: true,
+      data: {
+        account_deleted: true,
+        request_id: '77777777-7777-4777-8777-777777777777',
+        retained_transaction_records: true,
+      },
+    })
+    mockCustomerDeleteAccount.mockResolvedValue({
       success: true,
       data: {
         account_deleted: true,
@@ -51,6 +67,7 @@ describe('worker in-app account deletion', () => {
         accessToken="worker-access-token"
         language="vi"
         onDeleted={mockOnDeleted}
+        onReauthenticate={mockOnReauthenticate}
       />,
     )
 
@@ -72,6 +89,7 @@ describe('worker in-app account deletion', () => {
         accessToken="worker-access-token"
         language="vi"
         onDeleted={mockOnDeleted}
+        onReauthenticate={mockOnReauthenticate}
       />,
     )
 
@@ -99,6 +117,7 @@ describe('worker in-app account deletion', () => {
         accessToken="worker-access-token"
         language="vi"
         onDeleted={mockOnDeleted}
+        onReauthenticate={mockOnReauthenticate}
       />,
     )
 
@@ -124,6 +143,7 @@ describe('worker in-app account deletion', () => {
         accessToken="worker-access-token"
         language="en"
         onDeleted={mockOnDeleted}
+        onReauthenticate={mockOnReauthenticate}
       />,
     )
 
@@ -135,6 +155,52 @@ describe('worker in-app account deletion', () => {
       'Finish or cancel your active job before deleting the account.',
     )
     expect(screen.queryByText('Bạn còn công việc chưa kết thúc.')).toBeNull()
+    expect(mockOnDeleted).not.toHaveBeenCalled()
+  })
+
+  it('offers an explicit reauthentication action to both roles when the fresh-login gate rejects', async () => {
+    const reauthFailure = {
+      success: false,
+      code: 'REAUTH_REQUIRED',
+      error: 'fresh sign-in required',
+      status: 401,
+    }
+    mockDeleteAccount.mockResolvedValue(reauthFailure)
+
+    const worker = render(
+      <WorkerV5DeleteAccountBody
+        accessToken="worker-access-token"
+        language="vi"
+        onDeleted={mockOnDeleted}
+        onReauthenticate={mockOnReauthenticate}
+      />,
+    )
+    fireEvent.press(screen.getByTestId('worker-v5-delete-account-acknowledgement'))
+    fireEvent.changeText(screen.getByTestId('worker-v5-delete-account-confirmation'), 'XÓA TÀI KHOẢN')
+    fireEvent.press(screen.getByTestId('worker-v5-delete-account-submit'))
+
+    fireEvent.press(await screen.findByTestId('worker-v5-delete-account-reauthenticate'))
+    expect(mockOnReauthenticate).toHaveBeenCalledTimes(1)
+    expect(mockOnDeleted).not.toHaveBeenCalled()
+    worker.unmount()
+
+    mockCustomerDeleteAccount.mockResolvedValue(reauthFailure)
+    render(
+      <ProfileDeleteAccountView
+        accessToken="customer-access-token"
+        language="vi"
+        onDeleted={mockOnDeleted}
+        onReauthenticate={mockOnReauthenticate}
+        textInputNoOutlineStyle={undefined}
+        tokens={getCustomerThemeTokens('light')}
+      />,
+    )
+    fireEvent.press(screen.getByTestId('customer-v21-profile-delete-account-acknowledgement'))
+    fireEvent.changeText(screen.getByTestId('customer-v21-profile-delete-account-confirmation'), 'XÓA TÀI KHOẢN')
+    fireEvent.press(screen.getByTestId('customer-v21-profile-delete-account-submit'))
+
+    fireEvent.press(await screen.findByTestId('customer-v21-profile-delete-account-reauthenticate'))
+    expect(mockOnReauthenticate).toHaveBeenCalledTimes(2)
     expect(mockOnDeleted).not.toHaveBeenCalled()
   })
 })

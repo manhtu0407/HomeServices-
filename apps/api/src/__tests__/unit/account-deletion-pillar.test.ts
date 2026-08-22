@@ -23,6 +23,7 @@ export const PILLAR = {
 
 const customerId = '11111111-1111-4111-8111-111111111111'
 const workerId = '33333333-3333-4333-8333-333333333333'
+const jobId = '44444444-4444-4444-8444-444444444444'
 const clientRequestId = '88888888-8888-4888-8888-888888888888'
 const requestId = '77777777-7777-4777-8777-777777777777'
 const input = {
@@ -98,6 +99,7 @@ describe('role-aware account deletion', () => {
         storage_refs: [
           `supabase://kael-chat-media/${customerId}/kael-chat/private_video_original/evidence.mov`,
           `supabase://kael-chat-media/${customerId}/kael-chat/model_vision/evidence.jpg`,
+          `supabase://job-media/${jobId}/kael_reference/intake.jpg`,
         ],
       }),
     })
@@ -117,6 +119,9 @@ describe('role-aware account deletion', () => {
       `${customerId}/kael-chat/private_video_original/evidence.mov`,
       `${customerId}/kael-chat/model_vision/evidence.jpg`,
     ])
+    expect(runtime.remove).toHaveBeenCalledWith('job-media', [
+      `${jobId}/kael_reference/intake.jpg`,
+    ])
     expect(runtime.rpc).toHaveBeenNthCalledWith(2, 'complete_customer_account_deletion', {
       p_client_request_id: clientRequestId,
       p_customer_id: customerId,
@@ -132,6 +137,7 @@ describe('role-aware account deletion', () => {
           `supabase://worker-verification/${workerId}/cccd-front/front.jpg`,
           `supabase://worker-verification/${workerId}/cccd-back/back.jpg`,
           `supabase://kael-chat-media/${workerId}/kael-chat/model_vision/evidence.jpg`,
+          `supabase://job-media/${jobId}/access_check_in/lobby.jpg`,
         ],
       }),
     })
@@ -152,6 +158,9 @@ describe('role-aware account deletion', () => {
     ])
     expect(runtime.remove).toHaveBeenCalledWith('kael-chat-media', [
       `${workerId}/kael-chat/model_vision/evidence.jpg`,
+    ])
+    expect(runtime.remove).toHaveBeenCalledWith('job-media', [
+      `${jobId}/access_check_in/lobby.jpg`,
     ])
     expect(runtime.deleteUser).toHaveBeenCalledWith(workerId, true)
     expect(runtime.rpc).toHaveBeenNthCalledWith(2, 'complete_worker_account_deletion', {
@@ -179,6 +188,22 @@ describe('role-aware account deletion', () => {
     })
     expect(runtime.deleteUser).not.toHaveBeenCalled()
     expect(runtime.rpc).toHaveBeenCalledTimes(1)
+  })
+
+  it('fails closed on a malformed job-media path instead of deleting an unrelated object', async () => {
+    const runtime = context({
+      role: 'worker',
+      rpc: successfulRpc({
+        storage_refs: [`supabase://job-media/${jobId}/after/../other-user.jpg`],
+      }),
+    })
+
+    await expect(deleteAccount(runtime.value, input)).rejects.toMatchObject({
+      code: 'ACCOUNT_DELETION_PROCESSING',
+      status: 503,
+    })
+    expect(runtime.remove).not.toHaveBeenCalled()
+    expect(runtime.deleteUser).not.toHaveBeenCalled()
   })
 
   it('keeps unresolved worker settlement as a conflict and never touches auth', async () => {

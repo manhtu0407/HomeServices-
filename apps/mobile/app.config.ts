@@ -142,6 +142,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   ...nativeArchitectureConfig,
   name: 'NestScout',
   slug: 'home-services',
+  owner: 'nestscout',
   version: '0.1.0',
   orientation: 'portrait',
   icon: './assets/nestscout-aurora-nest-appstore-1024.png',
@@ -226,7 +227,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     stagingPaymentRailEnabled,
     runtimeBuildInfo,
     eas: {
-      projectId: 'df74d6a3-f85b-4b40-85ef-fe3162023d6e',
+      projectId: 'c2fd8ae7-a6fa-4b6e-a9a0-df85b52ac94b',
     },
   },
 })

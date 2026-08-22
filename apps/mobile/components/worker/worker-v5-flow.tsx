@@ -855,7 +855,14 @@ function WorkerV5Body({
         />
       )
     case '5.15-worker-delete-account':
-      return <WorkerV5DeleteAccountBody accessToken={accessToken} language={language} onDeleted={onSignOut} />
+      return (
+        <WorkerV5DeleteAccountBody
+          accessToken={accessToken}
+          language={language}
+          onDeleted={onSignOut}
+          onReauthenticate={onSignOut}
+        />
+      )
     case '5.2-worker-ranking':
       return (
         <WorkerV5WorkerRankingBody
