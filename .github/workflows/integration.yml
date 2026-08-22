@@ -1,6 +1,6 @@
-# Integration suite against STAGING Supabase (R4 — closes the ~75 env-gated skips in CI).
-# Runs ONLY apps/api/src/__tests__/integration/** (real-supabase, learning-real-supabase,
-# worker-flow, rls-per-actor) — the real-DB tests that hit live Supabase.
+# Integration pillar suite against staging Supabase.
+# The API runner collects only `*-pillar.test.ts`; the path filter keeps this workflow scoped
+# to real-DB invariants under apps/api/src/__tests__/integration/.
 #
 # Secrets required (Settings > Secrets and variables > Actions). The workflow fails before
 # integration tests when any required secret is absent:
