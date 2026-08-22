@@ -6,7 +6,7 @@
     "sha256": "7d4ac8a8227452e357caa11a21ece9099c80112712dba9a250114d0761a90275"
   },
   "migrationCount": 287,
-  "migrationsSha256": "cf6f896b6b3a05216f58455974401a3cadf550eca4a1894de46eccc98fb913a6",
+  "migrationsSha256": "f1a3928ed41dee612bc9a2893a8828ae05caa80b3a3e04a62071e6f6887fd084",
   "databaseTypes": {
     "file": "packages/shared/src/types/database",
     "sha256": "81f2085ee77c96d3cc69572006e56d1afc6798af891d88f253d0314ccf72adb6"
@@ -2018,8 +2018,8 @@
       "version": "20260822211500",
       "name": "account_deletion_job_media_cleanup",
       "file": "supabase/migrations/20260822211500_account_deletion_job_media_cleanup.sql",
-      "sha256": "4270f17d12fcbfb9f212158ea1f0024e1fd3644457a5efe268495f9969a0628b",
-      "bytes": 9235
+      "sha256": "e1102aac221ed7c77044f76c5eb39303676400f5fe856b8ab9ec422792e1d83b",
+      "bytes": 9315
     }
   ]
 }

@@ -125,8 +125,10 @@ declare
   v_storage_refs text[] := '{}'::text[];
 begin
   v_owner_id := case
-    when tg_table_name = 'customer_account_deletion_requests' then new.customer_id
-    when tg_table_name = 'worker_account_deletion_requests' then new.worker_id
+    when tg_table_name = 'customer_account_deletion_requests'
+      then nullif(to_jsonb(new) ->> 'customer_id', '')::uuid
+    when tg_table_name = 'worker_account_deletion_requests'
+      then nullif(to_jsonb(new) ->> 'worker_id', '')::uuid
     else null
   end;
 
