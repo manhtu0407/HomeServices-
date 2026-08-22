@@ -7,9 +7,9 @@ Release: `0.1.0 (44)`
 
 ## Decision
 
-Current decision: **NO-GO because EAS billing blocked binary creation; the native iPhone/iPad matrix is also pending.**
+Current decision: **NO-GO because Build 44 has not been created or processed, the new job-media cleanup migration is awaiting target deployment proof, and the native iPhone/iPad matrix is pending.**
 
-The code, database, Edge Function, public privacy page, local automated gates, and CI are ready for the Build 44 binary. The Free plan build allowance is exhausted and resets on 2026-09-01, so the attempted production build stopped after upload/fingerprint and created no Build ID. App Review resubmission remains user-controlled and must not happen until Build 44 exists and every unchecked native item below passes.
+The target EAS project is now `@nestscout/home-services` (`c2fd8ae7-a6fa-4b6e-a9a0-df85b52ac94b`). Its dashboard showed 0 of 15 included iOS builds used before Build 44, so EAS billing is not the current blocker. iOS credential import, Build 44 processing, target deployment, and native verification still remain. App Review resubmission remains user-controlled and must not happen until Build 44 exists and every unchecked native item below passes.
 
 ## Apple rejection closure
 
@@ -28,26 +28,30 @@ The code, database, Edge Function, public privacy page, local automated gates, a
 - Active jobs, disputes, pending payments, withdrawals, collateral, and cash-settlement obligations block deletion with explicit codes.
 - Customer and Worker profile PII, optional Kael media references, push tokens, Kael memory, and voice transcripts are scrubbed; required transaction records remain de-identified and cannot restore login access.
 - Worker deletion is initiated and confirmed in-app; Support is no longer a mandatory redirect.
+- A stale sign-in returns a localized error plus an explicit `Đăng nhập lại` / `Sign in again` action for both roles; it never starts deletion or signs out automatically.
+- Job media cleanup is actor-scoped through `job_media_assets.owner_id` and `job_media_upload_intents.owner_id`; the opposite job participant's media is excluded. Attached `before`, `after`, `cancellation_evidence`, and `scope_change_evidence` records are retained, while only disposable or unattached media is collected for removal. Malformed Storage paths fail closed before Auth deletion.
 - Staging and production received the three Build 44 migrations `20260822193000`, `20260822194500`, and `20260822195500`. Staging also replayed the already-recorded `20260729210000` customer foundation because its migration history said applied while the table/RPC were absent; no duplicate history marker was added. No existing user was modified because the new RPCs run only after a user-owned request.
 - `mobile-api` was deployed to staging project `xyylanuyflrjzbjzhqfl` and production project `iwevizmsedyqozxlawwl`.
 - A real Postgres transaction fixture passed on both projects and rolled back its two disposable database identities.
+- The additive migration `20260822211500_account_deletion_job_media_cleanup.sql` is not yet deployed. Its updated transaction fixture passed the GitHub CI Postgres matrix and must still pass on the intended Supabase targets before GO.
 
 ## Verification ledger
 
 | Evidence | Result |
 |---|---|
 | `pnpm type-check:mobile` | PASS |
-| `pnpm test:mobile -- --runInBand` | PASS — 16 suites, 92 tests |
+| `pnpm test:mobile -- --runInBand` | PASS — 16 suites, 93 tests |
 | `pnpm type-check:api` | PASS |
-| `pnpm test:api` | PASS — 22 suites, 594 tests |
+| `pnpm test:api` | PASS — 22 suites, 595 tests |
 | `pnpm type-check:shared` | PASS |
 | `pnpm test:shared` | PASS — 3 files, 98 tests |
 | OAuth targeted tests | PASS — 98 tests; known React `act` console warnings only |
-| Dormant customer deletion + Edge router tests | PASS — 2 files, 105 tests |
+| Customer deletion targeted UI test | PASS — exact confirmation and authenticated request path |
+| Dormant Customer Profile suite | PARTIAL — deletion case passed; 3 legacy permission expectations fail because they still expect the removed broad-library/coercive denial behavior |
 | `pnpm lint:comments` | PASS |
 | `pnpm lint:structure` | PASS — 1,047 files |
-| `pnpm lint:workplan` | PASS — 6 closed slices, 59 files |
-| `pnpm harness:migrations:check` | PASS — 286 migrations |
+| `pnpm lint:workplan` | PASS — 18 follow-up files inside the declared read window |
+| Harness assurance verification | PASS — 173 routes, 130 tables, 202 functions, 287 migrations |
 | `pnpm harness:pillars:check` | PASS — 42 unique pillars |
 | `pnpm doctor:react:changed` | PASS — 0 issues |
 | Expo prebuild config inspection | PASS — `0.1.0 (44)`, no entitlements, no background modes, push disabled |
@@ -56,17 +60,24 @@ The code, database, Edge Function, public privacy page, local automated gates, a
 | Production SQL transaction test | PASS — same matrix; rollback |
 | Staging/production unauthenticated Edge smoke | PASS — HTTP 401 from custom auth boundary |
 | Public Privacy/Support page | PASS — HTTP 200 at the configured URL, commit `593f662` live |
-| Local Docker Edge check | NOT RUN — Docker doctor RAM gate was below 4 GB; CI equivalent required |
-| GitHub CI | PASS — run [32574319869](https://github.com/manhtu0407/HomeServices-/actions/runs/32574319869), including pinned Deno checks |
-| EAS production build + auto-submit | BLOCKED — Free plan monthly build allowance exhausted; no Build 44 ID or submission created |
+| Local Docker SQL/Edge check | NOT RUN — Docker doctor measured 1.47 GB available RAM, below the 4 GB floor; CI equivalent required |
+| GitHub CI | PASS — 9/9 checks on head `8b91a762`; SQL/reset/generated-types job passed in run [`32579813067`](https://github.com/manhtu0407/HomeServices-/actions/runs/32579813067) |
+| EAS production build + auto-submit | PENDING — target project has iOS allowance; credentials/import and merged green commit are required first |
 
-## EAS blocker and resume command
+## App Store screenshot handoff
+
+- Replace all five existing Introduction screenshots in App Store Connect with the six new PNG sources supplied on 2026-08-22; do not mix old and new assets.
+- Source order received: `21_43_49`, `21_43_41`, `21_41_37`, `21_41_30`, `21_41_18`, `21_41_09`.
+- All six source files are distinct and readable at `853 × 1844`. Validate the exact App Store device slot and export dimensions before upload; do not upload a stretched or non-compliant rendition.
+- Keep the original source files outside Git. Verify all six uploaded previews visually before saving App Store Connect metadata.
+
+## EAS status and resume command
 
 - Latest EAS iOS binary remains `0.1.0 (43)`, build ID `9dfc4572-ef98-4a1e-8135-ef36e25ee52b`.
-- The Build 44 attempt uploaded the project and computed its fingerprint but stopped before creating a build record.
-- EAS reports that the Free plan allowance resets on 2026-09-01. Upgrading is a user-owned billing action and was not performed.
-- Non-interactive credential validation also requested an Apple Team ID while stdin was unavailable. The stored distribution certificate and provisioning profile were still reported active, but App Store Connect API-key authentication must be reconfirmed on the resumed run.
-- After billing access is available, rerun from `apps/mobile`:
+- The old `tshine` attempt uploaded the project and computed its fingerprint but stopped before creating a build record.
+- The intended target is `@nestscout/home-services`; its dashboard showed 15 included iOS builds remaining before Build 44. App Store Connect itself does not impose that EAS monthly build allowance.
+- Team ID `7S4723Q8LP` is explicit in the EAS submit profile. The target EAS project still needs a verified iOS distribution credential/provisioning profile and App Store Connect authentication before non-interactive submission.
+- After the PR is merged, CI is green, and target credentials are verified, rerun from `apps/mobile`:
 
   `pnpm dlx eas-cli@22.0.0 build -p ios --profile production --auto-submit --non-interactive`
 
