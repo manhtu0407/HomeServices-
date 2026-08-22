@@ -17,7 +17,7 @@ export const PILLAR = {
   target: 'Supabase public.service_categories',
   layer: 'integration',
   siblings: ['P04-remote-snapshot-validation', 'P11-kael-routing-conformance'],
-  mutation: 'filter the catalog query to the unsupported `appliance` service — the six-service set assertion turns red',
+  mutation: 'filter the catalog query to the unsupported `appliance` service — PostgreSQL rejects the enum value and the query assertion turns red',
 } as const satisfies PillarManifest
 
 const resolution = await resolveOrAnnounceSkip(PILLAR.id)
@@ -42,7 +42,6 @@ describeIntegration('staging service catalog', () => {
       .from('service_categories')
       .select('service_type')
       .eq('is_active', true)
-      .eq('service_type', 'appliance')
 
     expect(
       error,
