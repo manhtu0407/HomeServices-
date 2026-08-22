@@ -1,13 +1,16 @@
 import { Redirect } from 'expo-router'
 import { ActivityIndicator, Platform, View } from 'react-native'
 import { useAuth } from '@/lib/auth-provider'
+import { isAuthShellBlocking } from '@/lib/auth-loading-gate'
 import { useAdminActivation } from '@/lib/admin-activation-provider'
 
 export default function Index() {
-  const { guestMode, session, role, loading } = useAuth()
+  const { guestMode, session, role, loading, profileStatus } = useAuth()
   const activation = useAdminActivation()
+  const authShellBlocking = isAuthShellBlocking({ guestMode, loading, profileStatus, role, session })
+  const activationShellBlocking = Boolean(session && activation.loading && !activation.status)
 
-  if (loading || (session && activation.loading)) {
+  if (authShellBlocking || activationShellBlocking) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
         <ActivityIndicator size="large" />

@@ -3,13 +3,16 @@ import { Stack } from 'expo-router/stack'
 import { ActivityIndicator, View } from 'react-native'
 import { color } from '@/design/theme'
 import { useAuth } from '@/lib/auth-provider'
+import { isAuthShellBlocking } from '@/lib/auth-loading-gate'
 import { useAdminActivation } from '@/lib/admin-activation-provider'
 
 export default function WorkerLayout() {
-  const { loading, role, session } = useAuth()
+  const { loading, profileStatus, role, session } = useAuth()
   const activation = useAdminActivation()
+  const authShellBlocking = isAuthShellBlocking({ loading, profileStatus, role, session })
+  const activationShellBlocking = Boolean(session && activation.loading && !activation.status)
 
-  if (loading || (session && activation.loading)) {
+  if (authShellBlocking || activationShellBlocking) {
     return (
       <View style={{ alignItems: 'center', flex: 1, justifyContent: 'center' }}>
         <ActivityIndicator color={color.brand.primary} size="large" />

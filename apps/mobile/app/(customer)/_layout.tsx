@@ -3,6 +3,7 @@ import { Stack } from 'expo-router/stack'
 import { useMemo, useState } from 'react'
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native'
 import { useAuth } from '@/lib/auth-provider'
+import { isAuthShellBlocking } from '@/lib/auth-loading-gate'
 import { useAdminActivation } from '@/lib/admin-activation-provider'
 import { color, typography } from '@/design/theme'
 import { mobileRuntimeConfig } from '@/lib/runtime-config'
@@ -52,10 +53,12 @@ function CustomerRuntimeBuildMarker() {
 }
 
 export default function CustomerLayout() {
-  const { guestMode, loading, role, session } = useAuth()
+  const { guestMode, loading, profileStatus, role, session } = useAuth()
   const activation = useAdminActivation()
+  const authShellBlocking = isAuthShellBlocking({ guestMode, loading, profileStatus, role, session })
+  const activationShellBlocking = Boolean(session && activation.loading && !activation.status)
 
-  if (loading || (session && activation.loading)) {
+  if (authShellBlocking || activationShellBlocking) {
     return (
       <View style={{ alignItems: 'center', flex: 1, justifyContent: 'center' }}>
         <ActivityIndicator color={color.brand.primary} size="large" />

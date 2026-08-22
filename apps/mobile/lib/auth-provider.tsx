@@ -73,6 +73,8 @@ function useAuthController(): AuthState {
   const oauthPromiseRef = useRef<Promise<{ success: boolean; error?: string }> | null>(null)
   const lastOAuthCallbackCodeRef = useRef<string | null>(null)
   const sessionRef = useRef<Session | null>(localVisualAuditSnapshot?.session ?? INITIAL_AUTH_SNAPSHOT.session)
+  const roleRef = useRef<UserRole | null>(localVisualAuditSnapshot?.role ?? INITIAL_AUTH_SNAPSHOT.role)
+  roleRef.current = role
   const unregisterPushTokenForSession = useSessionPushRegistration({
     disabled: Boolean(localVisualAuditRole),
     profileReady: profileStatus === 'ready',
@@ -117,7 +119,12 @@ function useAuthController(): AuthState {
       }
 
       if (!isCurrentLookup()) return null
-      patchAuth({ loading: true, profileStatus: 'loading', authError: null })
+      const softRoleRefresh = sessionRef.current?.user.id === userId && roleRef.current !== null
+      if (softRoleRefresh) {
+        patchAuth({ profileStatus: 'loading', authError: null })
+      } else {
+        patchAuth({ loading: true, profileStatus: 'loading', authError: null })
+      }
 
       try {
         // The post-I/O owner check prevents an older account lookup from committing into a newer session.
@@ -338,6 +345,12 @@ function useAuthController(): AuthState {
           if (event === 'PASSWORD_RECOVERY') passwordRecoverySessionReadyRef.current = true
           setPasswordRecoveryPending(true)
           patchAuth({ session, role: null, profileStatus: 'idle', authError: null, loading: false })
+          return
+        }
+
+        if (sameUserSession && roleRef.current) {
+          patchAuth({ session })
+          if (event === 'USER_UPDATED') void fetchRole(session.user.id)
           return
         }
 

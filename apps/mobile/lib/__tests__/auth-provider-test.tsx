@@ -242,13 +242,16 @@ function ProfileHarness() {
 }
 
 function AuthStateHarness() {
-  const { loading, role, session, signOut } = useAuth()
+  const { loading, refreshProfile, role, session, signOut } = useAuth()
 
   return (
     <>
       <Text testID="auth-state-session">{session?.user.id ?? 'none'}</Text>
       <Text testID="auth-state-role">{role ?? 'none'}</Text>
       <Text testID="auth-state-loading">{loading ? 'loading' : 'ready'}</Text>
+      <Pressable testID="auth-state-refresh-profile" onPress={() => void refreshProfile()}>
+        <Text>refresh profile</Text>
+      </Pressable>
       <Pressable testID="auth-state-sign-out" onPress={() => void signOut()}>
         <Text>sign out</Text>
       </Pressable>
@@ -395,6 +398,48 @@ describe('AuthProvider native relaunch login', () => {
         ...mockSession,
         access_token: 'customer-refreshed-access-token',
       })
+    })
+
+    expect(screen.getByTestId('auth-state-role')).toHaveTextContent('customer')
+    expect(screen.getByTestId('auth-state-loading')).toHaveTextContent('ready')
+    expect(mockMaybeSingle).toHaveBeenCalledTimes(roleLookupCount)
+  })
+
+  it('keeps the current role mounted during refreshProfile', async () => {
+    render(
+      <AuthProvider>
+        <AuthStateHarness />
+      </AuthProvider>,
+    )
+
+    await waitFor(() => {
+      expect(screen.getByTestId('auth-state-role')).toHaveTextContent('customer')
+      expect(screen.getByTestId('auth-state-loading')).toHaveTextContent('ready')
+    })
+
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('auth-state-refresh-profile'))
+    })
+
+    expect(screen.getByTestId('auth-state-role')).toHaveTextContent('customer')
+    expect(screen.getByTestId('auth-state-loading')).toHaveTextContent('ready')
+  })
+
+  it('keeps the current role mounted when the same account signs in again', async () => {
+    render(
+      <AuthProvider>
+        <AuthStateHarness />
+      </AuthProvider>,
+    )
+
+    await waitFor(() => {
+      expect(screen.getByTestId('auth-state-role')).toHaveTextContent('customer')
+      expect(screen.getByTestId('auth-state-loading')).toHaveTextContent('ready')
+    })
+    const roleLookupCount = mockMaybeSingle.mock.calls.length
+
+    act(() => {
+      mockAuthStateListener?.('SIGNED_IN', mockSession)
     })
 
     expect(screen.getByTestId('auth-state-role')).toHaveTextContent('customer')
