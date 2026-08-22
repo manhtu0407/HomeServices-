@@ -7,9 +7,9 @@ Release: `0.1.0 (44)`
 
 ## Decision
 
-Current decision: **NO-GO pending external binary processing and the native iPhone/iPad matrix.**
+Current decision: **NO-GO because EAS billing blocked binary creation; the native iPhone/iPad matrix is also pending.**
 
-The code, database, Edge Function, public privacy page, and local automated gates are ready for the Build 44 binary. App Review resubmission remains user-controlled and must not happen until every unchecked native item below passes on Build 44.
+The code, database, Edge Function, public privacy page, local automated gates, and CI are ready for the Build 44 binary. The Free plan build allowance is exhausted and resets on 2026-09-01, so the attempted production build stopped after upload/fingerprint and created no Build ID. App Review resubmission remains user-controlled and must not happen until Build 44 exists and every unchecked native item below passes.
 
 ## Apple rejection closure
 
@@ -46,7 +46,7 @@ The code, database, Edge Function, public privacy page, and local automated gate
 | Dormant customer deletion + Edge router tests | PASS — 2 files, 105 tests |
 | `pnpm lint:comments` | PASS |
 | `pnpm lint:structure` | PASS — 1,047 files |
-| `pnpm lint:workplan` | PASS before this report; rerun required after final files |
+| `pnpm lint:workplan` | PASS — 6 closed slices, 59 files |
 | `pnpm harness:migrations:check` | PASS — 286 migrations |
 | `pnpm harness:pillars:check` | PASS — 42 unique pillars |
 | `pnpm doctor:react:changed` | PASS — 0 issues |
@@ -57,6 +57,18 @@ The code, database, Edge Function, public privacy page, and local automated gate
 | Staging/production unauthenticated Edge smoke | PASS — HTTP 401 from custom auth boundary |
 | Public Privacy/Support page | PASS — HTTP 200 at the configured URL, commit `593f662` live |
 | Local Docker Edge check | NOT RUN — Docker doctor RAM gate was below 4 GB; CI equivalent required |
+| GitHub CI | PASS — run [32574319869](https://github.com/manhtu0407/HomeServices-/actions/runs/32574319869), including pinned Deno checks |
+| EAS production build + auto-submit | BLOCKED — Free plan monthly build allowance exhausted; no Build 44 ID or submission created |
+
+## EAS blocker and resume command
+
+- Latest EAS iOS binary remains `0.1.0 (43)`, build ID `9dfc4572-ef98-4a1e-8135-ef36e25ee52b`.
+- The Build 44 attempt uploaded the project and computed its fingerprint but stopped before creating a build record.
+- EAS reports that the Free plan allowance resets on 2026-09-01. Upgrading is a user-owned billing action and was not performed.
+- Non-interactive credential validation also requested an Apple Team ID while stdin was unavailable. The stored distribution certificate and provisioning profile were still reported active, but App Store Connect API-key authentication must be reconfirmed on the resumed run.
+- After billing access is available, rerun from `apps/mobile`:
+
+  `pnpm dlx eas-cli@22.0.0 build -p ios --profile production --auto-submit --non-interactive`
 
 ## Resolved iOS configuration
 
