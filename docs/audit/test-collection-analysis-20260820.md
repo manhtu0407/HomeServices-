@@ -158,3 +158,17 @@ Two facts fall out of it and are recorded rather than acted on:
 - **The 53 SQL scripts were read for their `raise` strings, not executed.** No Docker stack was started. `docs/test-debt-ledger.md` already marks many of them "asserts it, unrun"; this analysis does not change that status.
 - **A3 judged the 28 CI-named files, not all 320.** Files that are uncollected and unclaimed were treated as declared debt per `test-pillars.md`, not audited one by one.
 - **`unit/mobile-api-edge-router.test.ts` (87 `it`) was not read.** It is the largest single block of undisclosed debt and its invariants are unknown; S1 stops the claim, it does not evaluate the content.
+
+---
+
+## A7 — Integration collection gap closed
+
+The staging workflow now collects `P43-staging-service-catalog`, a read-only integration pillar
+under `apps/api/src/__tests__/integration/`. It queries the configured Supabase target with a
+bounded request and compares the active `service_categories` set with the shared six-service
+contract. Local runs skip loudly when the default local stack is absent; an explicitly configured
+staging target remains fail-closed through `integration-target.ts`.
+
+`--passWithNoTests=false` remains on the workflow command as the collection ratchet. The temporary
+`DECLARED_GAPS` entry was removed from `scripts/check-test-collection.mjs`, so removing or renaming
+the pillar now fails both the collection gate and the staging job instead of becoming declared debt.
