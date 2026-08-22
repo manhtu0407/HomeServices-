@@ -1,6 +1,10 @@
-import { StyleSheet } from 'react-native'
+import { StyleSheet, type TextStyle } from 'react-native'
 
 import { color, glass, radius, shadow, signature, typography } from '@/design/theme'
+
+export const workerV5KaelComposerWebTextInputNoOutline = {
+  WebkitBoxShadow: 'none',
+} as unknown as TextStyle
 
 export const styles = StyleSheet.create({
   workerCustomerFontText: {
@@ -1757,7 +1761,7 @@ export const styles = StyleSheet.create({
     ...typography.caption2,
     fontWeight: '600',
     marginTop: 6,
-    paddingBottom: 2,
+    paddingBottom: 0,
     textAlign: 'center',
   },
   kaelOrbComposerField: {
@@ -1769,7 +1773,7 @@ export const styles = StyleSheet.create({
   kaelOrbComposerInput: {
     color: color.text.strong,
     ...typography.subheadline,
-    fontWeight: '600',
+    boxShadow: 'none',
     minHeight: 44,
     paddingHorizontal: 10,
     paddingVertical: 0,
@@ -1786,7 +1790,7 @@ export const styles = StyleSheet.create({
   kaelOrbCustomerChatFrame: {
     flex: 1,
     gap: 10,
-    paddingBottom: 18,
+    paddingBottom: 0,
     paddingHorizontal: 16,
     paddingTop: 10,
     position: 'relative',

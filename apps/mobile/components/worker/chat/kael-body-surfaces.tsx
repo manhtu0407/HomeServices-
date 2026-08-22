@@ -11,7 +11,7 @@ import { WorkerV5ChatBubble } from '../jobs/advisory-surfaces'
 import { textByLanguage } from '../ui/format'
 import { getWorkerV5ChatJobId } from '../ui/labels'
 import { workerV5Icons , workerV5OpportunityServiceIcons } from '../ui/screen-icons'
-import { styles } from '../worker-v5-flow-styles'
+import { styles, workerV5KaelComposerWebTextInputNoOutline } from '../worker-v5-flow-styles'
 import { WorkerV5KaelOrbBody } from './body-surfaces'
 import { WorkerV5KaelOrbComposer } from './orb-screen-surfaces'
 import { useWorkerV5KaelOrbChat } from './use-kael-orb-chat'
@@ -105,7 +105,7 @@ function WorkerV5SharedJobIncidentChat({
           placeholderTextColor={color.text.muted}
           returnKeyType="send"
           shellStyle={styles.kaelOrbComposerField}
-          style={styles.kaelOrbComposerInput}
+          style={[styles.kaelOrbComposerInput, workerV5KaelComposerWebTextInputNoOutline]}
           testID="worker-v5-shared-job-incident-input"
           value={draft}
         />

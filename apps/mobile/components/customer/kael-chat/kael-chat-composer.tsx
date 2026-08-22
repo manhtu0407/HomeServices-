@@ -99,6 +99,7 @@ export function KaelChatComposer({
         <KaelTextField
           editable={!composerBusy}
           inputShellStyle={rootStyles.composerTextFieldShell}
+          inputShellTestID="customer-v21-kael-input-shell"
           onBlur={onBlur}
           onChangeText={onDraftChange}
           onFocus={onFocus}
