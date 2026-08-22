@@ -3,7 +3,6 @@ import { useRouter } from 'expo-router'
 import { Platform } from 'react-native'
 import { isAuthRetryableFetchError, type Session } from '@supabase/supabase-js'
 import { supabase } from './supabase'
-import { USER_ROLES, type UserRole } from '@nestscout/shared'
 import { addPushNotificationResponseListener } from './push-notifications'
 import {
   clearStableClientRequestId,
@@ -29,6 +28,7 @@ import {
 import { workerService } from './services'
 import { useSessionPushRegistration } from './use-session-push-registration'
 import { getRememberedCredentialsForNativeRelaunch } from './auth-native-relaunch'
+import { useAuthRoleLookup } from './use-auth-role-lookup'
 import {
   AuthContext,
   INITIAL_AUTH_SNAPSHOT,
@@ -69,10 +69,11 @@ function useAuthController(): AuthState {
   const pendingWorkerApplicationRequestRef = useRef<PendingClientRequestId | null>(null)
   const accountMutationSequenceRef = useRef(0)
   const roleLookupSequenceRef = useRef(0)
-  const roleLookupInFlightRef = useRef<{ userId: string; promise: Promise<UserRole | null> } | null>(null)
   const oauthPromiseRef = useRef<Promise<{ success: boolean; error?: string }> | null>(null)
   const lastOAuthCallbackCodeRef = useRef<string | null>(null)
   const sessionRef = useRef<Session | null>(localVisualAuditSnapshot?.session ?? INITIAL_AUTH_SNAPSHOT.session)
+  const roleRef = useRef(localVisualAuditSnapshot?.role ?? INITIAL_AUTH_SNAPSHOT.role)
+  roleRef.current = role
   const unregisterPushTokenForSession = useSessionPushRegistration({
     disabled: Boolean(localVisualAuditRole),
     profileReady: profileStatus === 'ready',
@@ -92,99 +93,13 @@ function useAuthController(): AuthState {
     sessionRef.current = nextSession
     if (previousUserId !== nextUserId) roleLookupSequenceRef.current += 1
   }, [unregisterPushTokenForSession])
-
-  const fetchRole = useCallback((userId: string): Promise<UserRole | null> => {
-    const existingLookup = roleLookupInFlightRef.current
-    if (existingLookup?.userId === userId) return existingLookup.promise
-
-    const lookup = (async (): Promise<UserRole | null> => {
-      const lookupSequence = ++roleLookupSequenceRef.current
-      const isCurrentLookup = () => (
-        roleLookupSequenceRef.current === lookupSequence &&
-        sessionRef.current?.user.id === userId
-      )
-
-      if (localVisualAuditRole) {
-        if (!isCurrentLookup()) return null
-        patchAuth({ role: localVisualAuditRole, profileStatus: 'ready', loading: false })
-        return localVisualAuditRole
-      }
-
-      if (!supabase) {
-        if (!isCurrentLookup()) return null
-        patchAuth({ role: null, profileStatus: 'config_missing', loading: false })
-        return null
-      }
-
-      if (!isCurrentLookup()) return null
-      patchAuth({ loading: true, profileStatus: 'loading', authError: null })
-
-      try {
-        // The post-I/O owner check prevents an older account lookup from committing into a newer session.
-        // react-doctor-disable-next-line react-doctor/async-defer-await
-        const { data, error } = await supabase
-          .from('profiles')
-          .select('role')
-          .eq('id', userId)
-          .maybeSingle()
-
-        if (!isCurrentLookup()) return null
-        if (error) {
-          patchAuth({
-            role: null,
-            profileStatus: 'profile_error',
-            authError: 'Không thể tải hồ sơ đăng nhập',
-            loading: false,
-          })
-          return null
-        }
-
-        if (!data?.role) {
-          patchAuth({
-            role: null,
-            profileStatus: 'profile_missing',
-            authError: 'Tài khoản chưa có hồ sơ vai trò',
-            loading: false,
-          })
-          return null
-        }
-
-        if (!USER_ROLES.includes(data.role as UserRole)) {
-          patchAuth({
-            role: null,
-            profileStatus: 'profile_error',
-            authError: 'Vai trò tài khoản không hợp lệ',
-            loading: false,
-          })
-          return null
-        }
-
-        const nextRole = data.role as UserRole
-        patchAuth({ role: nextRole, profileStatus: 'ready', loading: false })
-        return nextRole
-      } catch {
-        if (!isCurrentLookup()) return null
-        patchAuth({
-          role: null,
-          profileStatus: 'profile_error',
-          authError: 'Không thể tải hồ sơ đăng nhập',
-          loading: false,
-        })
-        return null
-      }
-    })()
-
-    roleLookupInFlightRef.current = { promise: lookup, userId }
-    void lookup.then(
-      () => {
-        if (roleLookupInFlightRef.current?.promise === lookup) roleLookupInFlightRef.current = null
-      },
-      () => {
-        if (roleLookupInFlightRef.current?.promise === lookup) roleLookupInFlightRef.current = null
-      },
-    )
-    return lookup
-  }, [localVisualAuditRole])
+  const fetchRole = useAuthRoleLookup({
+    localVisualAuditRole,
+    patchAuth,
+    roleLookupSequenceRef,
+    roleRef,
+    sessionRef,
+  })
 
   const createSessionFromAuthUrl = useCallback(async (url: string) => {
     const callback = inspectOAuthCallbackUrl(url, getOAuthRedirectUrl())
@@ -338,6 +253,12 @@ function useAuthController(): AuthState {
           if (event === 'PASSWORD_RECOVERY') passwordRecoverySessionReadyRef.current = true
           setPasswordRecoveryPending(true)
           patchAuth({ session, role: null, profileStatus: 'idle', authError: null, loading: false })
+          return
+        }
+
+        if (sameUserSession && roleRef.current) {
+          patchAuth({ session })
+          if (event === 'USER_UPDATED') void fetchRole(session.user.id)
           return
         }
 
