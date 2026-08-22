@@ -21,16 +21,23 @@ export function useAuthRoleLookup({
   sessionRef,
 }: AuthRoleLookupOptions) {
   const roleLookupInFlightRef = useRef<{
+    lookupSequence: number
     userId: string
     promise: Promise<UserRole | null>
   } | null>(null)
 
   return useCallback((userId: string): Promise<UserRole | null> => {
     const existingLookup = roleLookupInFlightRef.current
-    if (existingLookup?.userId === userId) return existingLookup.promise
+    if (
+      existingLookup?.userId === userId &&
+      existingLookup.lookupSequence === roleLookupSequenceRef.current &&
+      sessionRef.current?.user.id === userId
+    ) {
+      return existingLookup.promise
+    }
 
+    const lookupSequence = ++roleLookupSequenceRef.current
     const lookup = (async (): Promise<UserRole | null> => {
-      const lookupSequence = ++roleLookupSequenceRef.current
       const isCurrentLookup = () => (
         roleLookupSequenceRef.current === lookupSequence &&
         sessionRef.current?.user.id === userId
@@ -111,7 +118,7 @@ export function useAuthRoleLookup({
       }
     })()
 
-    roleLookupInFlightRef.current = { promise: lookup, userId }
+    roleLookupInFlightRef.current = { lookupSequence, promise: lookup, userId }
     void lookup.then(
       () => {
         if (roleLookupInFlightRef.current?.promise === lookup) roleLookupInFlightRef.current = null

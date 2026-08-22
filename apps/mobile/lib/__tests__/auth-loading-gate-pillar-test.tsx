@@ -18,7 +18,7 @@ export const PILLAR = {
   layer: 'integration',
   siblings: ['P09-native-ios-liquid-tabs'],
   mutation:
-    'set loading=true during a same-account role lookup — the pending refresh case reports the routed shell as blocked',
+    'set loading=true during a same-account lookup — the pending refresh case blocks; dedupe by user id alone — the returning-account case skips its fresh lookup',
 } as const satisfies PillarManifest
 
 const mockGetSession = jest.fn()
@@ -242,5 +242,34 @@ describe('auth session shell gate', () => {
       expect(screen.getByTestId('auth-role')).toHaveTextContent('worker')
       expect(screen.getByTestId('auth-shell-state')).toHaveTextContent('mounted')
     })
+  })
+
+  it('starts a fresh lookup when the same account returns after signing out', async () => {
+    await renderKnownCustomer()
+    const roleLookupCount = mockMaybeSingle.mock.calls.length
+    const staleRole = deferred<{ data: { role: 'customer' }; error: null }>()
+    mockMaybeSingle.mockImplementationOnce(() => staleRole.promise)
+
+    fireEvent.press(screen.getByTestId('refresh-profile'))
+    await waitFor(() => {
+      expect(screen.getByTestId('auth-profile-status')).toHaveTextContent('loading')
+      expect(mockMaybeSingle).toHaveBeenCalledTimes(roleLookupCount + 1)
+    })
+
+    act(() => {
+      mockAuthStateListener?.('SIGNED_OUT', null)
+      mockAuthStateListener?.('SIGNED_IN', customerSession)
+    })
+
+    await waitFor(() => {
+      withPillarContext(PILLAR, () => {
+        expect(mockMaybeSingle).toHaveBeenCalledTimes(roleLookupCount + 2)
+        expect(screen.getByTestId('auth-role')).toHaveTextContent('customer')
+        expect(screen.getByTestId('auth-shell-state')).toHaveTextContent('mounted')
+      })
+    })
+
+    staleRole.resolve({ data: { role: 'customer' }, error: null })
+    await waitFor(() => expect(screen.getByTestId('auth-role')).toHaveTextContent('customer'))
   })
 })
