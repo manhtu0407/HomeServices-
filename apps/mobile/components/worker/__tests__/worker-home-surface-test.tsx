@@ -1410,6 +1410,30 @@ describe('Worker runtime surface wiring', () => {
     expect(screen.queryByTestId('worker-v5-kael-orb-live-thread')).toBeNull()
     expect(screen.queryByText('Cuộc trò chuyện mới. Hãy gửi tin nhắn đầu tiên cho Kael.')).toBeNull()
     expect(screen.getByTestId('worker-v5-kael-orb-composer')).toBeOnTheScreen()
+    expect(StyleSheet.flatten(screen.getByTestId('worker-v5-kael-customer-frame').props.style)).toMatchObject({
+      paddingBottom: 0,
+    })
+    expect(StyleSheet.flatten(screen.getByTestId('worker-v5-kael-orb-disclaimer').props.style)).toMatchObject({
+      paddingBottom: 0,
+    })
+    expect(StyleSheet.flatten(screen.getByTestId('worker-v5-kael-orb-input').props.style)).toMatchObject({
+      boxShadow: 'none',
+      fontSize: 15,
+      fontWeight: '400',
+      letterSpacing: -0.23,
+      lineHeight: 20,
+      minHeight: 44,
+      paddingHorizontal: 10,
+      paddingVertical: 0,
+      WebkitBoxShadow: 'none',
+    })
+    expect(StyleSheet.flatten(screen.getByTestId('worker-v5-kael-orb-input-shell').props.style)).toMatchObject({
+      backgroundColor: 'transparent',
+      borderWidth: 0,
+      minHeight: 44,
+      paddingHorizontal: 0,
+      paddingVertical: 0,
+    })
     expect(mockWorkerKaelChatService.create).not.toHaveBeenCalled()
   })
 
@@ -1425,6 +1449,20 @@ describe('Worker runtime surface wiring', () => {
     expect(screen.getByTestId('worker-v5-kael-empty-hero-model-bow')).toBeOnTheScreen()
     expect(screen.getByTestId('worker-v5-kael-empty-hero-model-blink')).toBeOnTheScreen()
     expect(screen.getByTestId('worker-v5-kael-empty-hero-copy').props.children.length).toBeGreaterThan(20)
+    expect(StyleSheet.flatten(screen.getByTestId('worker-v5-kael-orb-transcript').props.contentContainerStyle)).toMatchObject({
+      flexGrow: 1,
+      gap: 8,
+      justifyContent: 'center',
+      paddingBottom: 44,
+      paddingVertical: 6,
+    })
+    expect(StyleSheet.flatten(screen.getByTestId('worker-v5-kael-empty-hero-normal').props.style)).toMatchObject({
+      flexGrow: 0,
+      minHeight: 300,
+      paddingBottom: 18,
+      paddingHorizontal: 24,
+      paddingTop: 22,
+    })
     expect(StyleSheet.flatten(screen.getByTestId('worker-v5-kael-empty-hero-copy').props.style)).toMatchObject({
       color: color.text.primary,
       fontSize: 20,

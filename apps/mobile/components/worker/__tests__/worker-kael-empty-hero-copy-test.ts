@@ -7,15 +7,15 @@ const TWO_HOURS_MS = 2 * 60 * 60 * 1000
 const VIETNAM_DAY_START_UTC = Date.UTC(2026, 6, 13, 17)
 
 describe('Worker Kael empty hero copy', () => {
-  it.each(['normal', 'intake'] as const)('keeps twenty localized Worker quotes for %s chat', (mode) => {
+  it.each(['normal', 'intake'] as const)('keeps twenty English Worker quotes for %s chat', (mode) => {
     for (let slot = 0; slot < 12; slot += 1) {
       const now = new Date(VIETNAM_DAY_START_UTC + slot * TWO_HOURS_MS)
       const vietnamese = getWorkerKaelEmptyHeroCopy(mode, 'vi', now)
       const english = getWorkerKaelEmptyHeroCopy(mode, 'en', now)
 
       expect(vietnamese.slot).toBe(english.slot)
-      expect(vietnamese.text).not.toBe(english.text)
-      expect(vietnamese.text).toMatch(/[À-ỹĐđ]/)
+      expect(vietnamese.text).toBe(english.text)
+      expect(vietnamese.text).not.toMatch(/[À-ỹĐđ]/)
       expect(english.text).not.toMatch(/[À-ỹĐđ]/)
     }
   })
@@ -46,7 +46,7 @@ describe('Worker Kael empty hero copy', () => {
     )
   })
 
-  it('keeps the Customer quote rotation stable across Vietnam dates', () => {
+  it('keeps the intake quote rotation stable across Vietnam dates', () => {
     const observedQuotes = new Set<string>()
     for (let day = 0; day < 31; day += 1) {
       const dayStart = VIETNAM_DAY_START_UTC + day * 24 * 60 * 60 * 1000
@@ -61,9 +61,9 @@ describe('Worker Kael empty hero copy', () => {
       for (let slot = 0; slot < 12; slot += 1) {
         const quote = getWorkerKaelEmptyHeroCopy(mode, 'vi', new Date(VIETNAM_DAY_START_UTC + slot * TWO_HOURS_MS)).text
 
-        expect(quote.length).toBeLessThanOrEqual(52)
+        expect(quote.length).toBeLessThanOrEqual(44)
         expect(quote).toMatch(/[.!]+$/)
-        expect(quote).toMatch(/[À-ỹĐđ]/)
+        expect(quote).not.toMatch(/[À-ỹĐđ]/)
       }
     }
   })

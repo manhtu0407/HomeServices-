@@ -94,7 +94,8 @@ export function getCustomerKaelEmptyHeroCopy(
     String(vietnamClock.getUTCMonth() + 1).padStart(2, '0'),
     String(vietnamClock.getUTCDate()).padStart(2, '0'),
   ].join('-')
-  const lineIndex = stableHash(`${dateKey}:${mode}:${slot}`) % EMPTY_HERO_LINES[mode].length
+  const workerMode = mode === 'case' ? 'intake' : mode
+  const lineIndex = stableHash(`${dateKey}:${workerMode}:${slot}`) % EMPTY_HERO_LINES[mode].length
 
   return {
     slot,

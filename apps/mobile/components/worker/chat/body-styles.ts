@@ -14,6 +14,7 @@ export const styles = StyleSheet.create({
   },
   kaelOrbCustomerTranscriptEmpty: {
     justifyContent: 'center',
+    paddingBottom: 44,
   },
   kaelOrbCustomerTranscriptMenuOpen: {
     paddingTop: 94,

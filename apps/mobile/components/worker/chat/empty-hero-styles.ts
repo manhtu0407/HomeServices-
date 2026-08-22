@@ -22,7 +22,7 @@ export const styles = StyleSheet.create({
   },
   hero: {
     alignItems: 'center',
-    flexGrow: 1,
+    flexGrow: 0,
     justifyContent: 'center',
     minHeight: 300,
     paddingBottom: 18,
