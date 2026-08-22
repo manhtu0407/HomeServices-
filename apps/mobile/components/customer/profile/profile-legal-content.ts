@@ -86,12 +86,12 @@ const vi: CustomerProfileLegalCopy = {
     {
       id: 'support',
       paragraphs: [
-        'Khi gặp vấn đề, bạn có thể gửi phản ánh trong ứng dụng. NestScout sẽ dựa trên phạm vi công việc đã xác nhận, nội dung trao đổi, bằng chứng hoàn tất và thông tin giao dịch để xem xét.',
-        'Bạn nên giữ trao đổi và các thay đổi quan trọng trong ứng dụng để có căn cứ đối chiếu khi cần.',
-        'Nếu không đồng ý với kết quả giải quyết, bạn có quyền yêu cầu xem xét lại hoặc sử dụng các quyền khác theo quy định.',
+        'Để xem lại công việc, giao dịch hoặc yêu cầu hỗ trợ sau dịch vụ, hãy mở Hỗ trợ theo công việc từ Hồ sơ.',
+        'Kael có thể hướng dẫn cách sử dụng ứng dụng nhưng không thay bộ phận hỗ trợ xử lý tranh chấp.',
+        'Bạn có thể mở Chính sách quyền riêng tư công khai từ trang này hoặc từ màn hình đăng ký.',
       ],
-      summary: 'Cách gửi phản ánh, đối chiếu bằng chứng và yêu cầu xem xét lại.',
-      title: 'Phản ánh và giải quyết vấn đề',
+      summary: 'Các lối hỗ trợ đang có và phạm vi hỗ trợ của Kael.',
+      title: 'Hỗ trợ và phản ánh',
     },
     {
       id: 'changes',
@@ -173,12 +173,12 @@ const en: CustomerProfileLegalCopy = {
     {
       id: 'support',
       paragraphs: [
-        'If a problem occurs, you can submit a concern in the app. NestScout reviews the confirmed scope, messages, completion evidence, and transaction information.',
-        'Keep important messages and changes in the app so they can be reviewed if needed.',
-        'If you disagree with the outcome, you may request another review or exercise other rights available under the law.',
+        'To review a job, transaction, or request after-service help, open Job-specific help from Profile.',
+        'Kael can explain how to use the app but does not replace dispute support.',
+        'You can open the public Privacy Policy from this page or from registration.',
       ],
-      summary: 'How to raise a concern, review evidence, and request another review.',
-      title: 'Concerns and resolution',
+      summary: 'Available support paths and the limits of Kael support.',
+      title: 'Support and concerns',
     },
     {
       id: 'changes',

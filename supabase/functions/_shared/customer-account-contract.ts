@@ -1,12 +1,14 @@
 import { z } from "zod";
 
-const CUSTOMER_ACCOUNT_DELETION_CONFIRMATION = "XÓA TÀI KHOẢN";
+export const ACCOUNT_DELETION_CONFIRMATION = "XÓA TÀI KHOẢN";
 
-export const customerAccountDeletionRequestSchema = z.object({
+export const accountDeletionRequestSchema = z.object({
   acknowledge_data_loss: z.literal(true),
   client_request_id: z.string().uuid(),
-  confirmation: z.literal(CUSTOMER_ACCOUNT_DELETION_CONFIRMATION),
+  confirmation: z.literal(ACCOUNT_DELETION_CONFIRMATION),
 }).strict();
+
+export const customerAccountDeletionRequestSchema = accountDeletionRequestSchema;
 
 export const customerKaelFeedbackSchema = z.object({
   message: z.string().trim().min(8).max(1200).optional(),
@@ -85,9 +87,8 @@ export const customerRefundAccountSaveSchema = customerPaymentMethodSaveSchema
 export type CustomerKaelFeedbackInput = z.infer<
   typeof customerKaelFeedbackSchema
 >;
-export type CustomerAccountDeletionRequest = z.infer<
-  typeof customerAccountDeletionRequestSchema
->;
+export type AccountDeletionRequest = z.infer<typeof accountDeletionRequestSchema>;
+export type CustomerAccountDeletionRequest = AccountDeletionRequest;
 export type CustomerKaelMemoryPreferenceUpdateInput = z.infer<
   typeof customerKaelMemoryPreferenceUpdateSchema
 >;

@@ -1,5 +1,17 @@
 import type { ApartmentAccessProfileInput, ComplexityLevel, ServiceType } from '@nestscout/shared'
 
+export type AccountDeletionInput = {
+  acknowledge_data_loss: true
+  client_request_id: string
+  confirmation: 'XÓA TÀI KHOẢN'
+}
+
+export type AccountDeletionResponse = {
+  account_deleted: true
+  request_id: string
+  retained_transaction_records: true
+}
+
 export type AddressAccessView = {
   release_stage: 'area_only' | 'building_released' | 'unit_released'
   exact_unit_released: boolean

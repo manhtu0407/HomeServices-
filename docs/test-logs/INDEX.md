@@ -4,6 +4,7 @@ Newest test reports first.
 
 | Date | Report | Result | Bugs | Notes |
 |------|--------|--------|------|-------|
+| 2026-08-22 | [Build 44 Apple Review Hardening](2026-08-22_build44-apple-review-hardening.md) | local + staging + production backend passed; native and processed-binary gates pending | remote SQL fixture caught and closed 2 worker-deletion schema/constraint bugs | Permission denial, account deletion, release config, Privacy/Support, App Privacy handoff, review reply, and user-controlled resubmit checklist |
 | 2026-08-20 | [Uncollected Test Sweep](2026-08-20_uncollected-sweep.md) | measurement only — no classification, no fix | none diagnosed; Phase A owns that | Raw Phase T evidence at `cd3b0487` (= origin/main). `pnpm test` fails locally on a mobile pillar while CI reports success on the same sha; two CI steps collect zero test files; `packages/shared` and the four non-pillar `apps/mobile` files measured for the first time |
 | 2026-08-08 | [Kael Agentic Completeness Eval Rerun](2026-08-08_kael-eval.md) | passed deterministic | 0 in offline harness | 99/99 fixture pass; 19 multi-turn contracts pass; no live model/provider, DB migration replay, or native render claimed |
 | 2026-08-07 | [Kael Agentic Completeness Eval](2026-08-07_kael-eval.md) | passed deterministic | 0 in offline harness | 99/99 fixture pass; 18 multi-turn contracts pass; no live model/provider or DB migration replay claimed |

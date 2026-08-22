@@ -195,11 +195,6 @@ export function useWorkerV5KaelOrbChat(deal: LocalDeal | null, language: AppLang
       Alert.alert('Kael', textByLanguage(language, 'Cần việc đang thực hiện để gửi ảnh cho Kael.', 'Active work is needed to send a photo to Kael.'))
       return
     }
-    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync()
-    if (!permission.granted) {
-      Alert.alert('Kael', textByLanguage(language, 'Cần quyền thư viện ảnh để thêm ảnh cho Kael.', 'Photo library permission is needed to add a photo for Kael.'))
-      return
-    }
     const result = await ImagePicker.launchImageLibraryAsync({
       allowsMultipleSelection: false,
       mediaTypes: ImagePicker.MediaTypeOptions.Images,

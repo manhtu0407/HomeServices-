@@ -128,6 +128,20 @@ export async function unregisterPushNotifications(input: {
 
 function pushNotificationsDisabledForRuntime() {
   return process.env.EXPO_PUBLIC_DISABLE_PUSH_NOTIFICATIONS === '1'
+    || (Platform.OS === 'ios' && !iosPushNotificationsEnabledForRuntime())
+}
+
+function iosPushNotificationsEnabledForRuntime() {
+  const constants = Constants as {
+    expoConfig?: { extra?: { iosPushNotificationsEnabled?: boolean } }
+    manifest?: { extra?: { iosPushNotificationsEnabled?: boolean } }
+    manifest2?: { extra?: { expoClient?: { extra?: { iosPushNotificationsEnabled?: boolean } } } }
+  }
+
+  return constants.expoConfig?.extra?.iosPushNotificationsEnabled
+    ?? constants.manifest2?.extra?.expoClient?.extra?.iosPushNotificationsEnabled
+    ?? constants.manifest?.extra?.iosPushNotificationsEnabled
+    ?? false
 }
 
 export function toNotificationPath(data: NotificationData) {

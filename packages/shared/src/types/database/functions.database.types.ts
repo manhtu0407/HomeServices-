@@ -1049,6 +1049,14 @@ export type DatabaseFunctions = {
           request_status: string
         }[]
       }
+      complete_worker_account_deletion: {
+        Args: { p_client_request_id: string; p_worker_id: string }
+        Returns: {
+          checkpoint: string
+          request_id: string
+          request_status: string
+        }[]
+      }
       complete_harness_idempotency: {
         Args: { p_reservation_id: string; p_response_hash: string }
         Returns: boolean
@@ -1677,6 +1685,25 @@ export type DatabaseFunctions = {
           checkpoint: string
           request_id: string
           request_status: string
+        }[]
+      }
+      prepare_customer_account_deletion_v2: {
+        Args: { p_client_request_id: string; p_customer_id: string }
+        Returns: {
+          avatar_storage_ref: string
+          checkpoint: string
+          request_id: string
+          request_status: string
+          storage_refs: string[]
+        }[]
+      }
+      prepare_worker_account_deletion: {
+        Args: { p_client_request_id: string; p_worker_id: string }
+        Returns: {
+          checkpoint: string
+          request_id: string
+          request_status: string
+          storage_refs: string[]
         }[]
       }
       promote_learning_candidate: {

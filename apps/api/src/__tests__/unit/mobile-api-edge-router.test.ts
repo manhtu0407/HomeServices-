@@ -851,8 +851,8 @@ describe('mobile-api Edge router contract', () => {
     expect(saveCustomerRefundAccount).not.toHaveBeenCalled()
   })
 
-  it('routes an explicitly confirmed account-deletion request to the customer-only service', async () => {
-    const deleteCustomerAccount = vi.fn(async () => ({
+  it('routes an explicitly confirmed account-deletion request to the role-aware service', async () => {
+    const deleteAccount = vi.fn(async () => ({
       account_deleted: true as const,
       request_id: '77777777-7777-4777-8777-777777777777',
       retained_transaction_records: true as const,
@@ -860,7 +860,7 @@ describe('mobile-api Edge router contract', () => {
     const authenticate = vi.fn(async () => customerAuth)
     const handler = createMobileApiHandler({
       authenticate,
-      services: makeServices({ deleteCustomerAccount }),
+      services: makeServices({ deleteAccount }),
     })
     const input = {
       acknowledge_data_loss: true,
@@ -875,15 +875,15 @@ describe('mobile-api Edge router contract', () => {
     }))
 
     expect(response.status).toBe(200)
-    expect(deleteCustomerAccount).toHaveBeenCalledWith(expect.objectContaining(customerAuth), input)
-    expect(authenticate).toHaveBeenCalledWith(expect.any(Request), ['customer'])
+    expect(deleteAccount).toHaveBeenCalledWith(expect.objectContaining(customerAuth), input)
+    expect(authenticate).toHaveBeenCalledWith(expect.any(Request), ['customer', 'worker'])
   })
 
   it('rejects account deletion when consent, phrase, idempotency id, or body shape is invalid', async () => {
-    const deleteCustomerAccount = vi.fn()
+    const deleteAccount = vi.fn()
     const handler = createMobileApiHandler({
       authenticate: vi.fn(async () => customerAuth),
-      services: makeServices({ deleteCustomerAccount }),
+      services: makeServices({ deleteAccount }),
     })
 
     const response = await handler(new Request('https://example.test/mobile-api/me/account-deletion', {
@@ -898,7 +898,7 @@ describe('mobile-api Edge router contract', () => {
     }))
 
     expect(response.status).toBe(400)
-    expect(deleteCustomerAccount).not.toHaveBeenCalled()
+    expect(deleteAccount).not.toHaveBeenCalled()
   })
 
   it('X4 F-17: routes customer GET /me/jobs/active to listCustomerActiveJobs', async () => {

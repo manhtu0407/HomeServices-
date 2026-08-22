@@ -5,11 +5,11 @@
     "immutableThroughVersion": "20260805090000",
     "sha256": "7d4ac8a8227452e357caa11a21ece9099c80112712dba9a250114d0761a90275"
   },
-  "migrationCount": 283,
-  "migrationsSha256": "64ae5a294842d3fd1924d2ee88c5256e8aa542d5ba284c4383720d634d5495d8",
+  "migrationCount": 286,
+  "migrationsSha256": "9e71928e2b04afb7fd13f0e088d9e4689c813ae241f405f85c6d03b401fe5320",
   "databaseTypes": {
     "file": "packages/shared/src/types/database",
-    "sha256": "67f2ba41a3fbd8337c8900a93029682251bdf45f4418185bcbe5483da27deb6c"
+    "sha256": "81f2085ee77c96d3cc69572006e56d1afc6798af891d88f253d0314ccf72adb6"
   },
   "entries": [
     {
@@ -1992,6 +1992,27 @@
       "file": "supabase/migrations/20260818100000_worker_salary_settlement_v2.sql",
       "sha256": "19aa9477494419ec6099c6a523fb27bf67182d8168c8e784ad70b322e38e90a8",
       "bytes": 44742
+    },
+    {
+      "version": "20260822193000",
+      "name": "worker_account_deletion",
+      "file": "supabase/migrations/20260822193000_worker_account_deletion.sql",
+      "sha256": "ff36084403476e7856ef1bf491006c6a9c06049a153ec3f9d5ba1c4a04715f3b",
+      "bytes": 16894
+    },
+    {
+      "version": "20260822194500",
+      "name": "fix_worker_account_deletion_blockers",
+      "file": "supabase/migrations/20260822194500_fix_worker_account_deletion_blockers.sql",
+      "sha256": "d36c0d35ab68f13bb117715a2d034c90cfcb590a4baa909854857980acca0858",
+      "bytes": 9640
+    },
+    {
+      "version": "20260822195500",
+      "name": "fix_worker_deletion_profile_scrub",
+      "file": "supabase/migrations/20260822195500_fix_worker_deletion_profile_scrub.sql",
+      "sha256": "8d09b13c703ab9b4faf15a632557f2ccea1e8f099ad11b2e088b4a5fdf2f97bd",
+      "bytes": 9629
     }
   ]
 }

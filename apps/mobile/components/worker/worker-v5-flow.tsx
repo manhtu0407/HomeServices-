@@ -451,7 +451,7 @@ function WorkerV5ScreenSurface({ screen }: { screen: WorkerV5ScreenDefinition })
     }}
     state={{
       auraState: { formulaPageAuraTarget, reduceTransparency: glass.reduceTransparency, shouldShowWorkerAura, usesCaseExecutionHandoff, usesEarningsHandoff, usesInProgressHandoff, usesKaelOrbHandoff, usesOfferDetailHandoff, usesOpportunityInboxHandoff, usesProfileHandoff, usesRouteEtaHandoff },
-      content: { actionBusy, avatarUploadBusy, language, minHeight, primaryAction, prototype, reduceMotion: glass.reduceMotion, reduceTransparency: glass.reduceTransparency, routePreview, runtime, screen, surfaceStyle, usesCaseExecutionHandoff, usesEarningsHandoff, usesHandoffStage, usesKaelOrbHandoff, usesOfferDetailHandoff, usesOpportunityInboxHandoff, usesTravelHandoff, workerKey: session?.user.id ?? 'guest-worker' },
+      content: { accessToken: session?.access_token ?? null, actionBusy, avatarUploadBusy, language, minHeight, primaryAction, prototype, reduceMotion: glass.reduceMotion, reduceTransparency: glass.reduceTransparency, routePreview, runtime, screen, surfaceStyle, usesCaseExecutionHandoff, usesEarningsHandoff, usesHandoffStage, usesKaelOrbHandoff, usesOfferDetailHandoff, usesOpportunityInboxHandoff, usesTravelHandoff, workerKey: session?.user.id ?? 'guest-worker' },
       headerState: { displayTitle, handoffHeaderSubtitle, hidesHeaderUtility, language, reduceMotion: glass.reduceMotion, screen, title, usesApprovalWaitHandoff, usesCaseClosedHandoff, usesCaseExecutionHandoff, usesEarningsHandoff, usesEarningsOverviewHandoff, usesKaelOrbHandoff, usesOfferDetailHandoff, usesOpportunityInboxHandoff, usesProfileHandoff, usesRouteEtaHandoff, usesTravelHandoff, workerThemeMode },
       nextScreen,
       previousScreen,
@@ -614,6 +614,7 @@ function WorkerV5ScreenHeader({
 type WorkerV5ScreenLayoutState = {
   auraState: WorkerV5ScreenAuraState
   content: {
+    accessToken: string | null
     actionBusy: boolean
     avatarUploadBusy: boolean
     language: AppLanguage
@@ -665,6 +666,7 @@ type WorkerV5ScreenLayoutActions = {
 function WorkerV5ScreenLayout({ actions, state }: { actions: WorkerV5ScreenLayoutActions; state: WorkerV5ScreenLayoutState }) {
   const { auraState, content, headerState, nextScreen, previousScreen } = state
   const {
+    accessToken,
     actionBusy,
     avatarUploadBusy,
     language,
@@ -700,6 +702,7 @@ function WorkerV5ScreenLayout({ actions, state }: { actions: WorkerV5ScreenLayou
       <WorkerV5Body
         key={workerKey}
         actionBusy={actionBusy}
+        accessToken={accessToken}
         avatarUploadBusy={avatarUploadBusy}
         language={language}
         navigateActiveJobChat={actions.navigateActiveJobChat}
@@ -731,6 +734,7 @@ function WorkerV5ScreenLayout({ actions, state }: { actions: WorkerV5ScreenLayou
 }
 
 function WorkerV5Body({
+  accessToken,
   actionBusy,
   avatarUploadBusy,
   language,
@@ -752,6 +756,7 @@ function WorkerV5Body({
   runtime,
   screen,
 }: {
+  accessToken: string | null
   actionBusy: boolean
   avatarUploadBusy: boolean
   language: AppLanguage
@@ -850,7 +855,7 @@ function WorkerV5Body({
         />
       )
     case '5.15-worker-delete-account':
-      return <WorkerV5DeleteAccountBody language={language} onOpenSupport={() => navigateToScreen('5.13-worker-support')} />
+      return <WorkerV5DeleteAccountBody accessToken={accessToken} language={language} onDeleted={onSignOut} />
     case '5.2-worker-ranking':
       return (
         <WorkerV5WorkerRankingBody

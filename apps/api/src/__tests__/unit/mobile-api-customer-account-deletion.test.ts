@@ -74,7 +74,7 @@ describe('customer account deletion service', () => {
       retained_transaction_records: true,
     })
 
-    expect(runtime.rpc).toHaveBeenNthCalledWith(1, 'prepare_customer_account_deletion', {
+    expect(runtime.rpc).toHaveBeenNthCalledWith(1, 'prepare_customer_account_deletion_v2', {
       p_client_request_id: clientRequestId,
       p_customer_id: customerId,
     })

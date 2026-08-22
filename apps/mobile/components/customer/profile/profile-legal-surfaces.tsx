@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Pressable, Text, View } from 'react-native'
 import Svg, { Path } from 'react-native-svg'
 
+import { PublicPrivacyPolicyLink } from '@/components/ui/public-privacy-policy-link'
 import type { AppLanguage } from '@/lib/app-language'
 
 import type { CustomerThemeTokens } from '../customer-theme'
@@ -32,6 +33,11 @@ export function ProfileLegalView({
         tokens={tokens}
       >
         <View style={styles.legalSectionStack}>
+          <PublicPrivacyPolicyLink
+            color={tokens.primary}
+            language={language}
+            testID="customer-v21-profile-public-privacy-policy"
+          />
           <View style={styles.legalSectionHeader}>
             <Text style={[styles.legalSectionTitle, { color: tokens.text }]}>{copy.importantTitle}</Text>
             <Text style={[styles.legalSectionAction, { color: tokens.primary }]}>{copy.importantAction}</Text>
