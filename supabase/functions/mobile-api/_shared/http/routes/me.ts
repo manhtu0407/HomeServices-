@@ -62,7 +62,7 @@ export function matchMeRoute(path: string, method: string): MeRoute | null {
     return { kind: "me.avatarUpdate", method: "PATCH", roles: ["customer"] };
   }
   if (method === "POST" && path === "/me/account-deletion") {
-    return { kind: "me.accountDeletion", method: "POST", roles: ["customer"] };
+    return { kind: "me.accountDeletion", method: "POST", roles: ["customer", "worker"] };
   }
   if (method === "GET" && path === "/me/refund-account") {
     return { kind: "me.refundAccount", method: "GET", roles: ["customer"] };

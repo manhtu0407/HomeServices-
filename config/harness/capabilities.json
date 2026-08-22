@@ -3,7 +3,7 @@
   "source": {
     "routeRoot": "supabase/functions/mobile-api/_shared/http/routes",
     "fileCount": 19,
-    "sha256": "d76353ffc571472ad620a81dc87142871114314b4ea5ffe66141db5a8af4aab3"
+    "sha256": "40673444daaebc4dd2723a8237c4e72c801fa364968cbc0264947fad85328ed1"
   },
   "entries": [
     {
@@ -2572,7 +2572,8 @@
       ],
       "roles": [
         "admin",
-        "customer"
+        "customer",
+        "worker"
       ],
       "risk": "sensitive",
       "operationClass": "idempotent_write",

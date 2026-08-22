@@ -509,8 +509,39 @@ describe('active customer Kael chat surface wiring', () => {
       expect(screen.getByTestId('customer-v21-kael-empty-hero-normal')).toBeOnTheScreen()
       expect(screen.getByTestId('customer-v21-kael-empty-hero-model')).toBeOnTheScreen()
       expect(screen.getByTestId('customer-v21-kael-empty-hero-copy')).toBeOnTheScreen()
+      expect(StyleSheet.flatten(screen.getByTestId('customer-v21-kael-empty-hero-copy').props.style)).toMatchObject({
+        fontSize: 20,
+        fontWeight: '500',
+        letterSpacing: -0.45,
+        lineHeight: 25,
+        maxWidth: 240,
+        textAlign: 'left',
+      })
+      expect(screen.getByTestId('customer-v21-kael-empty-hero-copy').props.children).not.toMatch(/[À-ỹĐđ]/)
       expect(screen.getByTestId('customer-v21-kael-input')).toBeOnTheScreen()
+      expect(StyleSheet.flatten(screen.getByTestId('customer-v21-kael-input').props.style)).toMatchObject({
+        fontSize: 15,
+        fontWeight: '400',
+        letterSpacing: -0.23,
+        lineHeight: 20,
+        minHeight: 44,
+        paddingHorizontal: 10,
+      })
+      expect(StyleSheet.flatten(screen.getByTestId('customer-v21-kael-input-shell').props.style)).toMatchObject({
+        backgroundColor: 'transparent',
+        borderWidth: 0,
+        minHeight: 44,
+        paddingHorizontal: 0,
+        paddingVertical: 0,
+      })
       expect(screen.getByTestId('customer-v21-kael-chat-disclaimer')).toBeOnTheScreen()
+      expect(StyleSheet.flatten(screen.getByTestId('customer-v21-screen-2.4-chat-normal').props.style)).toMatchObject({
+        paddingBottom: 0,
+      })
+      expect(StyleSheet.flatten(screen.getByTestId('customer-v21-kael-chat-disclaimer').props.style)).toMatchObject({
+        marginTop: -4,
+        paddingBottom: 0,
+      })
       expect(screen.queryByTestId('customer-v21-normal-greeting-bubble')).toBeNull()
       expect(screen.queryByText(/nhận việc|cơ hội việc/i)).toBeNull()
     } finally {

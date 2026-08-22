@@ -218,7 +218,7 @@ export const WORKER_V5_SCREENS: WorkerV5ScreenDefinition[] = [
   },
   {
     authority: 'worker',
-    guardrail: 'Xóa tài khoản phải được xác nhận rõ ràng và đi qua hỗ trợ để kiểm tra công việc, đối soát và dữ liệu cần lưu.',
+    guardrail: 'Xóa tài khoản được xác nhận trực tiếp trong ứng dụng; hệ thống chặn khi còn công việc, tranh chấp, thanh toán hoặc đối soát chưa hoàn tất.',
     icon: 'profile',
     id: '5.15-worker-delete-account',
     order: 28.5,
@@ -380,7 +380,7 @@ export const workerV5EnglishGuardrails: Partial<Record<WorkerV5ScreenId, string>
   '4.4-payout-method': 'Changing payout account must use the existing verification flow.',
   '4.5-commission-policy': 'The starting commission is 15%; higher levels may reduce it only after recorded requirements are met.',
   '5.1-profile-overview': 'Profile shows real worker data only, without invented level or job totals.',
-  '5.15-worker-delete-account': 'Account deletion requires explicit confirmation and support review of active work, settlement, and retained records.',
+  '5.15-worker-delete-account': 'Account deletion starts in-app after explicit confirmation and is blocked while active work, disputes, payments, or settlements remain open.',
   '5.2-worker-ranking': 'Ranking reads from real performance insights or shows an honest empty state.',
   '5.3-skills-service-area': 'Skills and service area update through the real worker profile.',
   '5.4-reliability-insights': 'Reliability uses real performance insights, never decorative reference numbers.',

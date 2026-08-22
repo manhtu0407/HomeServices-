@@ -98,6 +98,7 @@ export const customerV21ChatStyles = StyleSheet.create({
     ...typography.caption2,
     fontWeight: '600',
     marginTop: -4,
+    paddingBottom: 0,
     textAlign: 'center',
   },
   chatEmptyHero: {
@@ -134,7 +135,7 @@ export const customerV21ChatStyles = StyleSheet.create({
   chatFrame: {
     flex: 1,
     gap: 10,
-    paddingBottom: 18,
+    paddingBottom: 0,
     paddingHorizontal: 16,
     paddingTop: 10,
     position: 'relative',

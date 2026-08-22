@@ -5,6 +5,12 @@ import { useLocalSearchParams, useRouter } from 'expo-router'
 import { type AppLanguage } from '@/lib/app-language'
 import { clearStableClientRequestId, stableClientRequestId } from '@/lib/client-request-id'
 import { localizeMediaUploadFailure, uploadJobMediaDrafts } from '@/lib/media-upload'
+import {
+  cameraPermissionAllowsAccess,
+  presentBlockedCameraSettings,
+  resolveUserInitiatedCameraPermission,
+  shouldOfferCameraSettings,
+} from '@/lib/user-initiated-camera-permission'
 import { workerKaelChatService } from '@/lib/services'
 import { type WorkerV5PrivateKaelSession, workerV5PrivateKaelMediaName } from '../chat/use-worker-kael-orb-chat'
 import { firstRouteParam } from '../dock/routing'
@@ -137,26 +143,16 @@ export function WorkerV5InProgressBody({
 
     try {
       // The post-I/O job guard prevents a picker result from crossing into a newly active job.
-      // react-doctor-disable-next-line react-doctor/async-defer-await
-      const permission = source === 'camera'
-        ? await ImagePicker.requestCameraPermissionsAsync()
-        : await ImagePicker.requestMediaLibraryPermissionsAsync()
-      if (activeFieldEvidenceJobIdRef.current !== requestJobId) return
-      if (!permission.granted) {
-        Alert.alert(
-          'Kael',
-          textByLanguage(
-            language,
-            source === 'camera'
-              ? 'Cần quyền camera để chụp ảnh hiện trường cho Kael.'
-              : 'Cần quyền kho ảnh để gửi ảnh hiện trường cho Kael.',
-            source === 'camera'
-              ? 'Camera permission is needed to capture on-site evidence for Kael.'
-              : 'Photo-library permission is needed to send on-site evidence to Kael.',
-          ),
-        )
-        return
+      if (source === 'camera') {
+        // react-doctor-disable-next-line react-doctor/async-defer-await
+        const permission = await resolveUserInitiatedCameraPermission()
+        if (activeFieldEvidenceJobIdRef.current !== requestJobId) return
+        if (!cameraPermissionAllowsAccess(permission)) {
+          if (shouldOfferCameraSettings(permission)) presentBlockedCameraSettings(language)
+          return
+        }
       }
+      if (activeFieldEvidenceJobIdRef.current !== requestJobId) return
 
       // react-doctor-disable-next-line react-doctor/async-defer-await
       const result = await withImagePickerDeadline(source === 'camera'
@@ -339,15 +335,6 @@ export function WorkerV5InProgressBody({
     setPhaseActionBusy(true)
     setPhaseActionNotice(null)
     try {
-      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync()
-      if (!permission.granted) {
-        setPhaseActionNotice(textByLanguage(
-          language,
-          'Cần quyền kho ảnh để gửi ảnh check-in tại sảnh.',
-          'Photo-library access is needed to send lobby check-in evidence.',
-        ))
-        return
-      }
       const result = await withImagePickerDeadline(ImagePicker.launchImageLibraryAsync({
         allowsMultipleSelection: false,
         mediaTypes: ImagePicker.MediaTypeOptions.Images,

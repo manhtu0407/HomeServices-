@@ -1,5 +1,5 @@
 import {
-  customerAccountDeletionRequestSchema,
+  accountDeletionRequestSchema,
   customerAvatarUpdateSchema,
   customerAvatarUploadSchema,
   customerKaelFeedbackSchema,
@@ -78,14 +78,14 @@ export async function dispatchMeRoute(
       return services.updateCustomerAvatar(ctx, input.data);
     }
     case "me.accountDeletion": {
-      if (!services.deleteCustomerAccount) {
+      if (!services.deleteAccount) {
         apiFailure("NOT_IMPLEMENTED", "Chức năng xóa tài khoản chưa sẵn sàng", 501);
       }
-      const input = customerAccountDeletionRequestSchema.safeParse(await readJson(request));
+      const input = accountDeletionRequestSchema.safeParse(await readJson(request));
       if (!input.success) {
         apiFailure("VALIDATION", "Xác nhận xóa tài khoản không hợp lệ", 400);
       }
-      return services.deleteCustomerAccount(ctx, input.data);
+      return services.deleteAccount(ctx, input.data);
     }
     case "me.refundAccount":
       return services.getCustomerRefundAccount(ctx);

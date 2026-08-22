@@ -132,17 +132,10 @@ export type CustomerRefundAccountResponse = {
   } | null
 }
 
-export type CustomerAccountDeletionInput = {
-  acknowledge_data_loss: true
-  client_request_id: string
-  confirmation: 'XÓA TÀI KHOẢN'
-}
-
-export type CustomerAccountDeletionResponse = {
-  account_deleted: true
-  request_id: string
-  retained_transaction_records: true
-}
+export type {
+  AccountDeletionInput as CustomerAccountDeletionInput,
+  AccountDeletionResponse as CustomerAccountDeletionResponse,
+} from './shared'
 
 export type WorkerCandidateView = {
   candidate_id: string

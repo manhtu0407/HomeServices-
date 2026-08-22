@@ -138,7 +138,7 @@ function workerV5PendingRouteLabel(
     return textByLanguage(language, 'Đang lấy vị trí', 'Getting location')
   }
   if (routePreview.locationStatus === 'denied') {
-    return textByLanguage(language, 'Cần bật vị trí', 'Location required')
+    return textByLanguage(language, 'Không có vị trí hiện tại', 'Current location unavailable')
   }
   if (routePreview.locationStatus === 'unavailable') {
     return textByLanguage(language, 'Chưa lấy được vị trí', 'Location unavailable')

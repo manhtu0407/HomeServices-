@@ -30,7 +30,7 @@ export function WorkerV5RouteMapStage({
   const originLabel = routePreview.locationStatus === 'ready'
     ? textByLanguage(language, 'Vị trí của bạn đang được cập nhật', 'Your position is updating')
     : routePreview.locationStatus === 'denied'
-      ? textByLanguage(language, 'Bật vị trí để tính quãng đường và thời gian đến', 'Enable location for distance and ETA')
+      ? textByLanguage(language, 'Không có vị trí hiện tại để tính quãng đường và thời gian đến', 'Current location is unavailable for distance and ETA')
       : textByLanguage(language, 'Đang lấy vị trí của bạn', 'Getting your position')
 
   return (
@@ -54,7 +54,7 @@ export function WorkerV5RouteMapStage({
             {!routePreview.hasRouteDestination
               ? textByLanguage(language, 'Địa chỉ chưa được mở cho lộ trình', 'The route address is not available yet')
               : routePreview.locationStatus === 'denied'
-                ? textByLanguage(language, 'Cần bật vị trí để mở bản đồ', 'Enable location to open the map')
+                ? textByLanguage(language, 'Không có vị trí hiện tại để mở bản đồ', 'Current location is unavailable for the map')
                 : routePreview.locationStatus === 'unavailable'
                   ? textByLanguage(language, 'Chưa thể lấy vị trí hiện tại', 'Current location is unavailable')
                   : textByLanguage(language, 'Đang lấy vị trí của bạn', 'Getting your current location')}

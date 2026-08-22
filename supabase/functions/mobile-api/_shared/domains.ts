@@ -173,7 +173,7 @@ import {
   getCustomerRefundAccount,
   saveCustomerRefundAccount,
 } from "./domains/customer/refund-account.ts";
-import { deleteCustomerAccount } from "./domains/customer/account-deletion.ts";
+import { deleteAccount } from "./domains/account/account-deletion.ts";
 
 import type { MobileApiContext } from "./platform/auth.ts";
 import type { MobileApiServices } from "./http/contracts.ts";
@@ -446,7 +446,7 @@ function createProfileServices(secrets: EdgeServiceSecrets): Pick<
   | "updateCustomerAvatar"
   | "getCustomerRefundAccount"
   | "saveCustomerRefundAccount"
-  | "deleteCustomerAccount"
+  | "deleteAccount"
   | "getMyKaelMemory"
   | "getWorkerKaelMemory"
   | "deleteMyKaelMemory"
@@ -485,7 +485,7 @@ function createProfileServices(secrets: EdgeServiceSecrets): Pick<
     updateCustomerAvatar,
     getCustomerRefundAccount,
     saveCustomerRefundAccount,
-    deleteCustomerAccount,
+    deleteAccount,
     getMyKaelMemory,
     getWorkerKaelMemory,
     deleteMyKaelMemory,

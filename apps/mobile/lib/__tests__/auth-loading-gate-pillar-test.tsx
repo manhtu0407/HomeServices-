@@ -7,7 +7,7 @@ import { withPillarContext, type PillarManifest } from '@/__tests__/pillar-manif
 import { isAuthShellBlocking } from '@/lib/auth-loading-gate'
 
 export const PILLAR = {
-  id: 'P37-auth-session-shell',
+  id: 'P42-auth-session-shell',
   invariant:
     'a known same-account role keeps the routed shell mounted during auth refresh, while an account change blocks until its own role resolves',
   authority: [

@@ -378,11 +378,6 @@ export function WorkerJobsLegacyPrototypeStageEightBody({
     if (submitBusyRef.current || completionPhotos.length >= 10) return
     setNotice(null)
     try {
-      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync()
-      if (!permission.granted) {
-        setNotice(textByLanguage(language, 'Cần quyền kho ảnh để thêm bằng chứng hoàn tất.', 'Photo-library access is needed to add completion evidence.'))
-        return
-      }
       const result = await ImagePicker.launchImageLibraryAsync({
         allowsMultipleSelection: false,
         mediaTypes: ImagePicker.MediaTypeOptions.Images,

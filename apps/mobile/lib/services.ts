@@ -726,6 +726,7 @@ export const notificationService = {
   },
 }
 
+export { accountDeletionService } from './account-deletion-service'
 export { customerAccountService } from './customer-account-service'
 
 export const adminLearningService = {

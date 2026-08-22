@@ -1,9 +1,10 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useReducer, useRef, useState } from 'react'
 import { Pressable, Text, View, type StyleProp, type TextStyle } from 'react-native'
 import Svg, { Path } from 'react-native-svg'
 
 import { KaelButton, KaelTextInput } from '@/components/ui/kael-primitives'
 import type { AppLanguage } from '@/lib/app-language'
+import { accountDeletionErrorMessage } from '@/lib/account-deletion-service'
 import type { NotificationListResponse } from '@/lib/api-types'
 import { generateClientRequestId } from '@/lib/client-request-id'
 import { customerAccountService } from '@/lib/services'
@@ -16,6 +17,22 @@ import { ProfileSettingsGlyph, type ProfileSettingsGlyphName } from './profile-s
 type CustomerNotification = NotificationListResponse['notifications'][number]
 
 const ACCOUNT_DELETION_CONFIRMATION = 'XÓA TÀI KHOẢN'
+
+type DeleteAccountState = {
+  acknowledged: boolean
+  clientRequestId: string
+  confirmation: string
+  deleting: boolean
+  message: string | null
+  reauthRequired: boolean
+}
+
+function mergeDeleteAccountState(
+  state: DeleteAccountState,
+  next: Partial<DeleteAccountState>,
+) {
+  return { ...state, ...next }
+}
 
 export function ProfileAppearanceView({
   language,
@@ -267,45 +284,61 @@ export function ProfileDeleteAccountView({
   accessToken,
   language,
   onDeleted,
+  onReauthenticate,
   textInputNoOutlineStyle,
   tokens,
 }: {
   accessToken: string | null
   language: AppLanguage
   onDeleted: () => Promise<void> | void
+  onReauthenticate: () => Promise<void> | void
   textInputNoOutlineStyle: StyleProp<TextStyle>
   tokens: CustomerThemeTokens
 }) {
-  const [acknowledged, setAcknowledged] = useState(false)
-  const [confirmation, setConfirmation] = useState('')
-  const [deleting, setDeleting] = useState(false)
-  const [message, setMessage] = useState<string | null>(null)
-  const requestIdRef = useRef(generateClientRequestId())
+  const [{ acknowledged, clientRequestId, confirmation, deleting, message, reauthRequired }, setDeleteState] = useReducer(
+    mergeDeleteAccountState,
+    undefined,
+    () => ({
+      acknowledged: false,
+      clientRequestId: generateClientRequestId(),
+      confirmation: '',
+      deleting: false,
+      message: null,
+      reauthRequired: false,
+    }),
+  )
   const canDelete = acknowledged && confirmation.trim() === ACCOUNT_DELETION_CONFIRMATION && !deleting
 
   const deleteAccount = async () => {
     if (!canDelete || !accessToken) {
       if (!accessToken) {
-        setMessage(language === 'vi' ? 'Phiên đăng nhập đã hết hạn. Hãy đăng nhập lại rồi thử tiếp.' : 'Your session expired. Sign in again and retry.')
+        setDeleteState({
+          message: language === 'vi'
+            ? 'Phiên đăng nhập đã hết hạn. Hãy đăng nhập lại rồi thử tiếp.'
+            : 'Your session expired. Sign in again and retry.',
+          reauthRequired: true,
+        })
       }
       return
     }
 
-    setDeleting(true)
-    setMessage(null)
+    setDeleteState({ deleting: true, message: null, reauthRequired: false })
     try {
       const result = await customerAccountService.deleteAccount({
         acknowledge_data_loss: true,
-        client_request_id: requestIdRef.current,
+        client_request_id: clientRequestId,
         confirmation: ACCOUNT_DELETION_CONFIRMATION,
       }, accessToken)
       if (!result.success) {
-        setMessage(result.error)
+        setDeleteState({
+          message: accountDeletionErrorMessage(language, result),
+          reauthRequired: result.code === 'AUTH_REQUIRED' || result.code === 'REAUTH_REQUIRED',
+        })
         return
       }
       await onDeleted()
     } finally {
-      setDeleting(false)
+      setDeleteState({ deleting: false })
     }
   }
 
@@ -354,7 +387,7 @@ export function ProfileDeleteAccountView({
             accessibilityRole="checkbox"
             accessibilityState={{ checked: acknowledged, disabled: deleting }}
             disabled={deleting}
-            onPress={() => setAcknowledged((current) => !current)}
+            onPress={() => setDeleteState({ acknowledged: !acknowledged })}
             style={styles.checkboxRow}
             testID="customer-v21-profile-delete-account-acknowledgement"
           >
@@ -391,7 +424,7 @@ export function ProfileDeleteAccountView({
             accessibilityLabel={language === 'vi' ? 'Cụm từ xác nhận xóa tài khoản' : 'Account deletion confirmation phrase'}
             autoCapitalize="characters"
             editable={!deleting}
-            onChangeText={setConfirmation}
+            onChangeText={(value) => setDeleteState({ confirmation: value })}
             placeholder={ACCOUNT_DELETION_CONFIRMATION}
             placeholderTextColor={tokens.subtleText}
             style={[
@@ -416,6 +449,14 @@ export function ProfileDeleteAccountView({
             <Text accessibilityRole="alert" style={[styles.message, { color: tokens.danger }]} testID="customer-v21-profile-delete-account-message">
               {message}
             </Text>
+          ) : null}
+          {reauthRequired ? (
+            <KaelButton
+              label={language === 'vi' ? 'Đăng nhập lại' : 'Sign in again'}
+              onPress={() => void onReauthenticate()}
+              showPrimaryGradient={false}
+              testID="customer-v21-profile-delete-account-reauthenticate"
+            />
           ) : null}
         </View>
       </ProfilePreferencePanel>

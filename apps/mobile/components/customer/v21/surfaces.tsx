@@ -843,6 +843,7 @@ export function CustomerProfileSurface() {
               accessToken={session?.access_token ?? null}
               language={language}
               onDeleted={() => signOut()}
+              onReauthenticate={() => signOut()}
               textInputNoOutlineStyle={customerV21WebTextInputNoOutline}
               tokens={tokens}
             />

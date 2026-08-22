@@ -244,14 +244,6 @@ export function useWorkerV5ScopeChangeActions({
   }
 
   const attachScopePhotos = async () => {
-    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync()
-    if (!permission.granted) {
-      updateScopeDraft((current) => ({
-        ...current,
-        mediaNotice: textByLanguage(language, 'Cần quyền thư viện ảnh để đính kèm bằng chứng đổi phạm vi.', 'Photo library permission is needed to attach scope evidence.'),
-      }))
-      return
-    }
     const result = await ImagePicker.launchImageLibraryAsync({
       allowsMultipleSelection: true,
       mediaTypes: ImagePicker.MediaTypeOptions.Images,

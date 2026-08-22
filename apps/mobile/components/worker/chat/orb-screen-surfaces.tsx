@@ -13,7 +13,7 @@ import { WorkerV5ScreenDefinition, WorkerV5ScreenId } from '../dock/types'
 import { WorkerV5CustomerCaseWideMintAura, WorkerV5SourceCardSkin } from '../ui/aura-surfaces'
 import { textByLanguage } from '../ui/format'
 import { getWorkerV5ChatJobId } from '../ui/labels'
-import { styles } from '../worker-v5-flow-styles'
+import { styles, workerV5KaelComposerWebTextInputNoOutline } from '../worker-v5-flow-styles'
 import { WorkerV5KaelOrbCameraIcon } from './orb-camera-icon'
 import { useWorkerV5KaelOrbChat } from './use-kael-orb-chat'
 import { canUseWorkerV5PrivateKaelChat } from './use-worker-kael-orb-chat'
@@ -420,7 +420,7 @@ export function WorkerV5KaelOrbComposer({
           placeholderTextColor={color.text.muted}
           returnKeyType="send"
           shellStyle={styles.kaelOrbComposerField}
-          style={styles.kaelOrbComposerInput}
+          style={[styles.kaelOrbComposerInput, workerV5KaelComposerWebTextInputNoOutline]}
           testID="worker-v5-kael-orb-input"
           value={draft}
         />
