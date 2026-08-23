@@ -1,5 +1,9 @@
 import { AgenticEvidenceGateResponse } from '../kael-chat/agentic-evidence-gate-response'
 import { QuoteReadinessReviewResponse } from '../kael-chat/quote-readiness-review-response'
+import {
+  ConfirmationReconciliationResponse,
+  IntakeCoverageResponse,
+} from '../kael-chat/intake-coverage-response'
 import { customerV21WebTextInputNoOutline } from '../ui/platform-styles'
 import type { useCustomerKaelSurfaceController } from './use-customer-kael-surface-controller'
 
@@ -13,6 +17,7 @@ export function CustomerKaelAnalysisEvidenceNode({
   const {
     chatUi,
     conversation,
+    decisionActions,
     evidenceActions,
     language,
     presentation,
@@ -21,6 +26,34 @@ export function CustomerKaelAnalysisEvidenceNode({
   } = controller
 
   if (presentation.intakeConfirmationActive) return null
+  if (decisionActions.confirmationReconciling) {
+    return (
+      <ConfirmationReconciliationResponse
+        language={language}
+        supportCode={decisionActions.confirmationSupportCode}
+        tokens={tokens}
+      />
+    )
+  }
+  const intakeCoverage = conversation.chat?.session.intake_coverage
+  if (
+    intakeCoverage
+    && (
+      intakeCoverage.quote_mode !== 'kael_auto_quote'
+      || intakeCoverage.next_action === 'collect_required'
+      || intakeCoverage.next_action === 'blocked'
+    )
+  ) {
+    return (
+      <IntakeCoverageResponse
+        busy={chatUi.confirmingAgenticEstimate}
+        coverage={intakeCoverage}
+        language={language}
+        onConfirm={() => void decisionActions.confirmAgenticEstimate()}
+        tokens={tokens}
+      />
+    )
+  }
   if (presentation.agenticEvidenceGateActive) {
     return (
       <AgenticEvidenceGateResponse

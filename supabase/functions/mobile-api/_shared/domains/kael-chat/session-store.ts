@@ -106,7 +106,7 @@ export async function appendKaelSystemTurn(
   client: DbClient,
   sessionId: string,
   input: {
-    contentType: "clarification" | "estimate" | "error";
+    contentType: "analysis" | "clarification" | "estimate" | "error";
     text: string;
     nextStatus: "active" | "estimate_ready" | "unsupported";
     estimate?: unknown;

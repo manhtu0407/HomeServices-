@@ -168,6 +168,31 @@ export type DatabaseViews = {
         }
         Relationships: []
       }
+      stage1_current_production_acceptance: {
+        Row: {
+          acceptance_status: string | null
+          cleanup_receipt_sha256: string | null
+          cohort_id: string | null
+          created_at: string | null
+          environment: string | null
+          hosted_state_sha256: string | null
+          note_sha256: string | null
+          production_ui_receipt_sha256: string | null
+          production_ui_source_sha256: string | null
+          promotion_packet_sha256: string | null
+          release_id: string | null
+          summary_vi: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stage1_production_acceptance_notes_release_id_fkey"
+            columns: ["release_id"]
+            isOneToOne: true
+            referencedRelation: "harness_releases"
+            referencedColumns: ["release_id"]
+          },
+        ]
+      }
       worker_overview: {
         Row: {
           avg_response_time_min: number | null

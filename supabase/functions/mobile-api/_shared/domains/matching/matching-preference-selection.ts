@@ -4,7 +4,7 @@ import { requireJobAccess } from "../../platform/access.ts";
 import { logJobEvent } from "../../platform/audit.ts";
 import { apiFailure } from "../../platform/api-failure.ts";
 import type { MobileApiContext } from "../../platform/auth.ts";
-import { db, dbQuery, type DbClient } from "../../platform/db.ts";
+import { db, dbQuery, type DbClient, workflowDb } from "../../platform/db.ts";
 import { buildWorkerBriefOutput, type KaelAutonomyDecision } from "../../kael/index.ts";
 import { validateKaelAutonomyTransition, validateWorkflowTransition } from "../../workflow-orchestrator.ts";
 import { hasActiveBroadcast, runWithBroadcastRetryLease } from "./broadcasts.ts";
@@ -55,7 +55,7 @@ export async function beginMatchingPreferencePrompt(
     estimatedEarningMax: null,
   });
   const started = await dbQuery<Array<Record<string, unknown>>>(
-    client.rpc("begin_job_matching_preference_atomic", {
+    workflowDb(ctx).rpc("begin_job_matching_preference_atomic", {
       p_customer_id: ctx.user.id,
       p_final_price: confirmedPriceCap,
       p_job_id: jobId,
@@ -131,7 +131,7 @@ export async function setJobMatchingPreference(
     apiFailure("INVALID_STATUS", "Yêu cầu này chưa sẵn sàng để chọn cách tìm thợ", 409);
   }
   const selected = await dbQuery<Array<Record<string, unknown>>>(
-    client.rpc("set_job_matching_preference_atomic", {
+    workflowDb(ctx).rpc("set_job_matching_preference_atomic", {
       p_job_id: jobId,
       p_customer_id: ctx.user.id,
       p_strategy: input.mode,
@@ -146,14 +146,15 @@ export async function setJobMatchingPreference(
     apiFailure("DB_ERROR", "Phản hồi quyết định tìm thợ không hợp lệ", 500);
   }
   if (!row.ok) mapMatchingPreferenceError(nullableString(row.error_code));
-  const result = await runWithBroadcastRetryLease(client, jobId, ctx.user.id, async () => {
+  const workflowClient = workflowDb(ctx);
+  const result = await runWithBroadcastRetryLease(workflowClient, jobId, ctx.user.id, async () => {
     if (await hasActiveBroadcast(client, jobId, new Date().toISOString())) {
       return { broadcast_sent: true, message: "Kael đang chờ phản hồi từ nhóm thợ hiện tại." };
     }
     if (input.mode === "general") {
-      return startGeneralBroadcast(client, job, "matching_general_selected");
+      return startGeneralBroadcast(workflowClient, job, "matching_general_selected");
     }
-    return startSavedWorkerBroadcast(client, job, input.worker_id ?? "", input.auto_general);
+    return startSavedWorkerBroadcast(workflowClient, job, input.worker_id ?? "", input.auto_general);
   });
   if (!result.acquired) {
     return matchingPreferenceResponse(

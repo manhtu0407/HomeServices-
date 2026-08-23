@@ -11,10 +11,9 @@ export default defineConfig({
   test: {
     // Collection is narrowed to the pillar suite. The rest of the tree stays on disk but
     // uncollected; `governance/protocols/test-pillars.md` explains which invariants the
-    // pillars carry. `passWithNoTests` holds the exit code at 0 for the CI steps that
-    // invoke vitest with positional filters naming paths outside this glob.
+    // pillars carry. An empty positional filter stays red so CI cannot report a test that
+    // collection excluded.
     include: ['src/__tests__/**/*-pillar.test.ts'],
-    passWithNoTests: true,
     environment: 'node',
   },
 })

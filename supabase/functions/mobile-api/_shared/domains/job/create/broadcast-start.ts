@@ -3,7 +3,7 @@ import { createBroadcasts } from "../../matching/broadcasts.ts";
 import { rollbackFailedBroadcastStart } from "../../matching/flow.ts";
 import { apiFailure } from "../../../platform/api-failure.ts";
 import type { MobileApiContext } from "../../../platform/auth.ts";
-import { dbQuery, type DbClient } from "../../../platform/db.ts";
+import { dbQuery, type DbClient, workflowDb } from "../../../platform/db.ts";
 import { recordLearningRuleApplication } from "../../../kael/index.ts";
 import type { JobCreateInput } from "../../../../../_shared/domain.ts";
 import type { SuccessfulJobPipeline } from "./analyze.ts";
@@ -94,7 +94,7 @@ export async function persistAndStartJobBroadcast(input: {
   );
 
   const broadcast = await createBroadcasts(
-    client,
+    workflowDb(ctx),
     jobId,
     request.service_type,
     canonicalDistrict,

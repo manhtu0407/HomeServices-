@@ -38,6 +38,7 @@ jest.mock('expo-image', () => {
 
 jest.mock('expo-image-picker', () => ({
   MediaTypeOptions: { Images: 'Images' },
+  getCameraPermissionsAsync: jest.fn(async () => ({ canAskAgain: true, granted: false })),
   launchCameraAsync: jest.fn(),
   launchImageLibraryAsync: jest.fn(),
   requestCameraPermissionsAsync: jest.fn(async () => ({ granted: true })),
@@ -123,6 +124,7 @@ jest.mock('@/lib/app-language', () => {
 import { WorkerJobsSurface, WorkerProfileSurface } from '../worker-surfaces'
 
 const imagePicker = require('expo-image-picker') as {
+  getCameraPermissionsAsync: jest.Mock
   launchCameraAsync: jest.Mock
   launchImageLibraryAsync: jest.Mock
   requestCameraPermissionsAsync: jest.Mock
@@ -314,9 +316,11 @@ describe('Worker V5 arrival check-in', () => {
     mediaUpload.uploadJobMediaDrafts.mockReset()
     imagePicker.launchCameraAsync.mockReset()
     imagePicker.launchImageLibraryAsync.mockReset()
+    imagePicker.getCameraPermissionsAsync.mockReset()
     imagePicker.requestCameraPermissionsAsync.mockReset()
     imagePicker.requestMediaLibraryPermissionsAsync.mockReset()
-    imagePicker.requestCameraPermissionsAsync.mockResolvedValue({ granted: true })
+    imagePicker.getCameraPermissionsAsync.mockResolvedValue({ canAskAgain: true, granted: false })
+    imagePicker.requestCameraPermissionsAsync.mockResolvedValue({ canAskAgain: true, granted: true })
     imagePicker.requestMediaLibraryPermissionsAsync.mockResolvedValue({ granted: true })
     location.requestForegroundPermissionsAsync.mockImplementation(() => new Promise(() => undefined))
     location.getCurrentPositionAsync.mockResolvedValue({
@@ -447,7 +451,7 @@ describe('Worker V5 arrival check-in', () => {
     fireEvent.press(screen.getByTestId('worker-v5-back'))
 
     await waitFor(() => {
-      expect(mockReplace).toHaveBeenCalledWith('/(worker)/jobs?ns_worker_screen=2.1-opportunity-inbox&ns_worker_prototype=worker-jobs-rebuild-v1')
+      expect(mockReplace).toHaveBeenCalledWith('/(worker)/jobs?ns_worker_screen=2.1-opportunity-inbox')
     })
   })
 
@@ -460,7 +464,7 @@ it('opens an already-arrived job at its real check-in step', async () => {
     fireEvent.press(screen.getByTestId('worker-v5-primary-action'))
 
     await waitFor(() => {
-      expect(mockReplace).toHaveBeenCalledWith('/(worker)/jobs?ns_worker_screen=2.7-in-progress&ns_worker_prototype=worker-jobs-rebuild-v1')
+      expect(mockReplace).toHaveBeenCalledWith('/(worker)/jobs?ns_worker_screen=2.7-in-progress')
   })
 })
 
@@ -481,7 +485,7 @@ it('records arrival before continuing to the in-progress screen', async () => {
 
     await waitFor(() => {
       expect(mockWorkflowValue.actions.workerUpdateStatus).toHaveBeenCalledWith('arrived')
-      expect(mockReplace).toHaveBeenCalledWith('/(worker)/jobs?ns_worker_screen=2.7-in-progress&ns_worker_prototype=worker-jobs-rebuild-v1')
+      expect(mockReplace).toHaveBeenCalledWith('/(worker)/jobs?ns_worker_screen=2.7-in-progress')
     })
   })
 
@@ -494,7 +498,7 @@ it('records arrival before continuing to the in-progress screen', async () => {
 
     await waitFor(() => {
       expect(mockWorkflowValue.actions.workerUpdateStatus).toHaveBeenCalledWith('worker_on_way')
-      expect(mockReplace).toHaveBeenCalledWith('/(worker)/jobs?ns_worker_screen=2.7-in-progress&ns_worker_prototype=worker-jobs-rebuild-v1')
+      expect(mockReplace).toHaveBeenCalledWith('/(worker)/jobs?ns_worker_screen=2.7-in-progress')
     })
   })
 
@@ -788,7 +792,7 @@ it('records arrival before continuing to the in-progress screen', async () => {
       fireEvent.press(screen.getByTestId('worker-v5-evidence-tray-add-0'))
 
       await waitFor(() => {
-        expect(imagePicker.requestMediaLibraryPermissionsAsync).toHaveBeenCalledTimes(1)
+        expect(imagePicker.requestMediaLibraryPermissionsAsync).not.toHaveBeenCalled()
         expect(imagePicker.launchImageLibraryAsync).toHaveBeenCalledWith(expect.objectContaining({ quality: 0.82 }))
       })
     } finally {
@@ -796,11 +800,11 @@ it('records arrival before continuing to the in-progress screen', async () => {
     }
   })
 
-  it('serializes the field-evidence picker and releases it after a permission rejection', async () => {
+  it('serializes the field-evidence picker and releases it after a picker rejection', async () => {
     buildWorkflow(buildInProgressDeal())
-    let rejectPermission!: (reason?: unknown) => void
-    imagePicker.requestMediaLibraryPermissionsAsync.mockImplementationOnce(() => new Promise((_, reject) => {
-      rejectPermission = reject
+    let rejectPicker!: (reason?: unknown) => void
+    imagePicker.launchImageLibraryAsync.mockImplementationOnce(() => new Promise((_, reject) => {
+      rejectPicker = reject
     }))
     imagePicker.launchImageLibraryAsync.mockResolvedValueOnce({ assets: [], canceled: true })
     const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => undefined)
@@ -815,9 +819,9 @@ it('records arrival before continuing to the in-progress screen', async () => {
         firstLibraryAction?.onPress?.()
       })
 
-      expect(imagePicker.requestMediaLibraryPermissionsAsync).toHaveBeenCalledTimes(1)
+      expect(imagePicker.launchImageLibraryAsync).toHaveBeenCalledTimes(1)
       await act(async () => {
-        rejectPermission(new Error('permission bridge unavailable'))
+        rejectPicker(new Error('picker bridge unavailable'))
         await Promise.resolve()
       })
       await waitFor(() => {
@@ -831,8 +835,8 @@ it('records arrival before continuing to the in-progress screen', async () => {
         retryLibraryAction?.onPress?.()
       })
 
-      expect(imagePicker.requestMediaLibraryPermissionsAsync).toHaveBeenCalledTimes(2)
-      expect(imagePicker.launchImageLibraryAsync).toHaveBeenCalledTimes(1)
+      expect(imagePicker.requestMediaLibraryPermissionsAsync).not.toHaveBeenCalled()
+      expect(imagePicker.launchImageLibraryAsync).toHaveBeenCalledTimes(2)
       expect(mediaUpload.uploadJobMediaDrafts).not.toHaveBeenCalled()
     } finally {
       alertSpy.mockRestore()
@@ -975,10 +979,10 @@ it('records arrival before continuing to the in-progress screen', async () => {
     alertSpy.mockRestore()
   })
 
-  it('does not upload or call Kael when photo-library permission is denied', async () => {
+  it('does not upload or call Kael when the photo-library picker is cancelled', async () => {
     mockRouteParams = { ns_worker_screen: '2.7-in-progress' }
     buildWorkflow(buildInProgressDeal())
-    imagePicker.requestMediaLibraryPermissionsAsync.mockResolvedValue({ granted: false })
+    imagePicker.launchImageLibraryAsync.mockResolvedValue({ assets: [], canceled: true })
     const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => undefined)
 
     render(<WorkerJobsSurface />)
@@ -1076,7 +1080,7 @@ it('records arrival before continuing to the in-progress screen', async () => {
         completion_notes: 'Đã khoan tường, lắp giá và kiểm tra tải an toàn.',
         completion_photo_urls: ['supabase://job-media/job_test_1/after/completed.jpg'],
       })
-      expect(mockReplace).toHaveBeenCalledWith('/(worker)/jobs?ns_worker_screen=2.11-completion-submitted&ns_worker_prototype=worker-jobs-rebuild-v1')
+      expect(mockReplace).toHaveBeenCalledWith('/(worker)/jobs?ns_worker_screen=2.11-completion-submitted')
     })
   })
 
@@ -1095,7 +1099,7 @@ it('records arrival before continuing to the in-progress screen', async () => {
     render(<WorkerJobsSurface />)
 
     await waitFor(() => {
-      expect(mockReplace).toHaveBeenCalledWith(`/(worker)/jobs?ns_worker_screen=2.10-completion-evidence&job_id=${jobId}&ns_worker_prototype=worker-jobs-rebuild-v1`)
+      expect(mockReplace).toHaveBeenCalledWith(`/(worker)/jobs?ns_worker_screen=2.10-completion-evidence&job_id=${jobId}`)
     })
   })
 
@@ -1232,7 +1236,6 @@ it('records arrival before continuing to the in-progress screen', async () => {
     expect(screen.getAllByText('300.000 VND')).toHaveLength(2)
     expect(screen.getByText('45.000 VND · 15%')).toBeOnTheScreen()
     expect(screen.getByText('255.000 VND')).toBeOnTheScreen()
-    expect(mockWorkflowValue.actions.getKaelJobIncident).toHaveBeenCalledTimes(1)
     expect(mockWorkflowValue.actions.getKaelJobIncident).toHaveBeenCalledWith(deal.id)
     expect(mockWorkflowValue.actions.previewScopeChangeFromKaelIncident).not.toHaveBeenCalled()
 
@@ -1330,7 +1333,7 @@ it('records arrival before continuing to the in-progress screen', async () => {
     expect(primaryAction).not.toBeDisabled()
     fireEvent.press(primaryAction)
 
-    expect(mockReplace).toHaveBeenCalledWith('/(worker)/jobs?ns_worker_screen=2.7-in-progress&ns_worker_prototype=worker-jobs-rebuild-v1')
+    expect(mockReplace).toHaveBeenCalledWith('/(worker)/jobs?ns_worker_screen=2.7-in-progress')
   })
 
   it('redirects a stale approval route after the backend resumes the real job status', async () => {
@@ -1345,7 +1348,7 @@ it('records arrival before continuing to the in-progress screen', async () => {
     render(<WorkerJobsSurface />)
 
     await waitFor(() => {
-      expect(mockReplace).toHaveBeenCalledWith('/(worker)/jobs?ns_worker_screen=2.7-in-progress&ns_worker_prototype=worker-jobs-rebuild-v1')
+      expect(mockReplace).toHaveBeenCalledWith('/(worker)/jobs?ns_worker_screen=2.7-in-progress')
     })
   })
 

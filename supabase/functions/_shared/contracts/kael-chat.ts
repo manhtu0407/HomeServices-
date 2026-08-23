@@ -5,6 +5,7 @@ import { refineKaelChatCreateInput } from "../kael-chat-create-refinement.ts";
 import { kaelChatMediaRefSchema } from "../kael-chat-media-contract.ts";
 import { clientRequestIdSchema, serviceTypeSchema } from "./common.ts";
 import { apartmentAccessProfileSchema } from "./job.ts";
+import { intakeConfirmationKindSchema } from "./stage1-reliability.ts";
 const kaelChatEvidenceItemsSchema = z.array(kaelCaseEvidenceSchema).max(20).optional();
 const kaelChatScheduleWindowSchema = z.object({
   date: z.string().refine(isRealCalendarDate, "date must be YYYY-MM-DD"),
@@ -49,9 +50,19 @@ export const kaelChatIntakeConfirmationDecisionSchema = z.object({
 }).strict();
 
 export const kaelChatConfirmSchema = z.object({
-  price_reasoning_receipt_id: z.string().trim().min(8).max(160),
+  price_reasoning_receipt_id: z.string().trim().min(8).max(160).optional(),
+  confirmation_kind: intakeConfirmationKindSchema.exclude(["none"]).optional(),
   matching_mode: z.enum(["prompt_if_saved"]).optional(),
-}).strict();
+}).strict().superRefine((value, ctx) => {
+  const pricedConfirmation = !value.confirmation_kind || value.confirmation_kind === "priced_offer";
+  if (pricedConfirmation && !value.price_reasoning_receipt_id) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "priced offer confirmation requires a price reasoning receipt",
+      path: ["price_reasoning_receipt_id"],
+    });
+  }
+});
 
 export const kaelChatEvidenceSchema = z.object({
   decision: z.enum(["confirmed", "skipped"]),

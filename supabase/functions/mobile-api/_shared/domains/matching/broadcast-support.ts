@@ -242,7 +242,7 @@ export async function loadJobGeoForMatching(client: DbClient, jobId: string) {
     client
       .from("jobs")
       .select(
-        "customer_id, address_lat, address_lng, problem_chips, service_problem_id, kael_problem_identified, diagnosis_scope",
+        "customer_id, address_lat, address_lng, problem_chips, service_problem_id, kael_problem_identified, diagnosis_scope, intake_scope_snapshot, quote_mode, synthetic_cohort_id",
       )
       .eq("id", jobId)
       .maybeSingle(),
@@ -255,9 +255,12 @@ export async function loadJobGeoForMatching(client: DbClient, jobId: string) {
     return null;
   }
   if (!result.data) return null;
-  const diagnosisScope = nullableRecord(result.data.diagnosis_scope) ?? {};
+  const diagnosisScope = nullableRecord(result.data.diagnosis_scope) ??
+    nullableRecord(result.data.intake_scope_snapshot) ?? {};
   return {
     customerId: nullableString(result.data.customer_id),
+    quoteMode: nullableString(result.data.quote_mode),
+    syntheticCohortId: nullableString(result.data.synthetic_cohort_id),
     lat: nullableNumber(result.data.address_lat),
     lng: nullableNumber(result.data.address_lng),
     problemKeys: specializationKeys([

@@ -8,6 +8,8 @@ import {
   type EdgeAiSecrets,
   type PipelineResult,
 } from "../../kael/index.ts";
+import { prepareKaelPipeline } from "../../kael/pipeline/prepare.ts";
+import { runKaelIntentStage } from "../../kael/pipeline/stage-intent.ts";
 import {
   sanitizeCustomerCaseEvidenceText,
   sanitizeUntrustedEvidenceList,
@@ -15,10 +17,23 @@ import {
 import type { MobileApiContext } from "../../platform/auth.ts";
 import { isElectricalPlaybookEnabled } from "../../kael/learning/playbooks/electrical.ts";
 import { db } from "../../platform/db.ts";
-import { persistentKaelSafetySignals } from "./intake-safety.ts";
-import { handleKaelChatPipelineOutcome } from "./branches-post-pipeline.ts";
+import { apiFailure } from "../../platform/api-failure.ts";
+import {
+  persistentKaelSafetySignals,
+  resolveKaelResponseSafetySignals,
+} from "./intake-safety.ts";
+import {
+  handleKaelChatPipelineOutcome,
+  recordKaelChatPipelineApiCalls,
+} from "./branches-post-pipeline.ts";
 import { prepareKaelChatPrePipeline } from "./branches-pre-pipeline.ts";
 import { appendKaelSystemTurn } from "./session-store.ts";
+import {
+  loadActiveIntakePolicy,
+  resolveGroundedServiceProblem,
+} from "./estimate-intake-policy.ts";
+import { finalizeUnpricedStage1Intake } from "./estimate-support.ts";
+import { resolveStage1RuntimeBehavior } from "../release/stage1-release-lane.ts";
 
 export async function advanceKaelChatEstimate(
   ctx: MobileApiContext,
@@ -81,10 +96,105 @@ export async function advanceKaelChatEstimate(
       status: "queued",
       progress: 0,
     });
+    const groundedProblem = await resolveGroundedServiceProblem(
+      client,
+      input.service_type,
+      problemChips,
+    );
+    const runtimeBehavior = groundedProblem
+      ? await resolveStage1RuntimeBehavior(client, {
+        environment: ctx.environment,
+        releaseId: ctx.releaseId,
+        sessionId,
+        deploymentId: ctx.deploymentId,
+        clientContractEpoch: ctx.clientContractEpoch,
+      })
+      : "previous";
+    const intakePolicy = groundedProblem && runtimeBehavior === "governed"
+      ? await loadActiveIntakePolicy({
+        client,
+        sessionId,
+        artifact,
+        serviceProblemId: groundedProblem.id,
+        service_type: input.service_type,
+        district,
+        customerAnalysisDetail,
+        language,
+      }, groundedProblem.slug)
+      : null;
+    if (intakePolicy?.quoteMode === "blocked") {
+      apiFailure(
+        "POLICY_BLOCKED",
+        language === "en"
+          ? "This request cannot continue under the current service policy."
+          : "Yêu cầu chưa thể tiếp tục theo chính sách dịch vụ hiện tại.",
+        409,
+      );
+    }
+    if (groundedProblem && intakePolicy &&
+      (intakePolicy.quoteMode === "rfq" || intakePolicy.quoteMode === "inspection_only")) {
+      const prepared = await prepareKaelPipeline({
+        serviceType: input.service_type,
+        problemChips: problemChips.length > 0 ? problemChips : [input.service_type],
+        groundedProblemSlug: groundedProblem.slug,
+        intakeQuoteMode: intakePolicy.quoteMode,
+        description: customerAnalysisDetail,
+        district,
+        photoUrls: input.photo_urls ?? [],
+        intakeDiagnosisEnabled: llmClarificationEnabled,
+        conversationContext,
+        clarificationCount: priorClarificationCount,
+        priorProfileFacts: artifact.facts,
+        priorSafetySignals: earlySafetySignals,
+        language,
+        progressTarget,
+        actorId: ctx.user.id,
+      }, client, sourceTrustSecretsForRequest(secrets, ctx));
+      if ("success" in prepared) {
+        pipeline = prepared;
+      } else {
+        const intent = await runKaelIntentStage(prepared);
+        if (!("intent" in intent)) {
+          pipeline = intent;
+        } else {
+          await prepared.recordProviderSpendIfEnforced();
+          await recordKaelChatPipelineApiCalls(client, requestId, sessionId, {
+            stageLogs: prepared.stageLogs,
+          });
+          await updateKaelProgress(client, progressTarget, {
+            stage: "intent_classification",
+            status: "completed",
+            progress: 1,
+          });
+          await finalizeUnpricedStage1Intake({
+            client,
+            sessionId,
+            artifact,
+            serviceProblemId: groundedProblem.id,
+            serviceType: input.service_type,
+            customerAnalysisDetail,
+            problemChips,
+            district,
+            language,
+            policy: intakePolicy,
+            profileFacts: intent.profileFacts ?? {},
+            responseSafetySignals: resolveKaelResponseSafetySignals({
+              electricalPlaybookEnabled,
+              earlySafetySignals,
+              pipelineSafetySignals: intent.safetySignals,
+              intakeObservation: intent.intakeObservation,
+            }),
+            costUsd: prepared.stageLogs.reduce((sum, stage) => sum + (stage.costUsd ?? 0), 0),
+          });
+          return;
+        }
+      }
+    } else {
     pipeline = await runKaelPipeline(
       {
         serviceType: input.service_type,
         problemChips: problemChips.length > 0 ? problemChips : [input.service_type],
+        ...(groundedProblem ? { groundedProblemSlug: groundedProblem.slug } : {}),
         description: customerAnalysisDetail,
         district,
         photoUrls: input.photo_urls ?? [],
@@ -100,6 +210,7 @@ export async function advanceKaelChatEstimate(
       client,
       sourceTrustSecretsForRequest(secrets, ctx),
     );
+    }
   } catch {
     await updateKaelProgress(client, progressTarget, {
       stage: "intent_classification",

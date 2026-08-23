@@ -300,8 +300,8 @@ describe('customer Kael evidence concurrency', () => {
     expect(harness.caseUi.clearCaseEvidenceDraft).toHaveBeenCalledTimes(1)
   })
 
-  it('turns a rejected media permission lookup into a retryable UI error', async () => {
-    mockRequestMediaLibraryPermissions.mockRejectedValueOnce(new Error('permission bridge unavailable'))
+  it('turns a rejected media-library launch into a retryable UI error', async () => {
+    mockLaunchImageLibrary.mockRejectedValueOnce(new Error('media bridge unavailable'))
     const harness = evidenceHarness()
     const { result } = renderHook(() => useCustomerKaelEvidenceActions(harness.input))
 
@@ -313,8 +313,8 @@ describe('customer Kael evidence concurrency', () => {
     await act(async () => {
       await result.current.pickComposerMedia()
     })
-    expect(mockRequestMediaLibraryPermissions).toHaveBeenCalledTimes(2)
-    expect(mockLaunchImageLibrary).toHaveBeenCalledTimes(1)
+    expect(mockRequestMediaLibraryPermissions).not.toHaveBeenCalled()
+    expect(mockLaunchImageLibrary).toHaveBeenCalledTimes(2)
   })
 
   it('keeps the case composer media picker available after the evidence gate closes', async () => {
@@ -338,7 +338,7 @@ describe('customer Kael evidence concurrency', () => {
       await result.current.pickComposerMedia()
     })
 
-    expect(mockRequestMediaLibraryPermissions).toHaveBeenCalledTimes(1)
+    expect(mockRequestMediaLibraryPermissions).not.toHaveBeenCalled()
     expect(mockLaunchImageLibrary).toHaveBeenCalledTimes(1)
     expect(harness.conversation.setComposerMediaDrafts).toHaveBeenCalledTimes(1)
   })

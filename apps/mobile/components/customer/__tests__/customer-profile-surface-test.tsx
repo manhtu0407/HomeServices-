@@ -42,6 +42,7 @@ jest.mock('expo-router', () => ({
 
 jest.mock('expo-image-picker', () => ({
   MediaTypeOptions: { Images: 'Images' },
+  getCameraPermissionsAsync: jest.fn(async () => ({ canAskAgain: true, granted: false })),
   launchCameraAsync: jest.fn(),
   launchImageLibraryAsync: jest.fn(),
   requestCameraPermissionsAsync: jest.fn(async () => ({ granted: true })),
@@ -217,10 +218,12 @@ beforeEach(() => {
   mockCustomerUploadAvatar.mockReset()
   mockCustomerUploadAvatar.mockResolvedValue(true)
   const imagePicker = jest.requireMock('expo-image-picker')
+  imagePicker.getCameraPermissionsAsync.mockReset()
+  imagePicker.getCameraPermissionsAsync.mockResolvedValue({ canAskAgain: true, granted: false })
   imagePicker.launchCameraAsync.mockReset()
   imagePicker.launchImageLibraryAsync.mockReset()
   imagePicker.requestCameraPermissionsAsync.mockReset()
-  imagePicker.requestCameraPermissionsAsync.mockResolvedValue({ granted: true })
+  imagePicker.requestCameraPermissionsAsync.mockResolvedValue({ canAskAgain: true, granted: true })
   imagePicker.requestMediaLibraryPermissionsAsync.mockReset()
   imagePicker.requestMediaLibraryPermissionsAsync.mockResolvedValue({ granted: true })
   mockCustomerKaelMemory = null
@@ -362,7 +365,7 @@ describe('CustomerProfileSurface v2.1', () => {
         uri: 'file:///customer.jpg',
       })
     })
-    expect(imagePicker.requestMediaLibraryPermissionsAsync).toHaveBeenCalledTimes(1)
+    expect(imagePicker.requestMediaLibraryPermissionsAsync).not.toHaveBeenCalled()
 
     view.rerender(<CustomerProfileSurface />)
     expect(screen.getByTestId('customer-v21-profile-avatar-image').props.source).toEqual([{
@@ -414,7 +417,7 @@ describe('CustomerProfileSurface v2.1', () => {
   it('does not open the camera when camera permission is denied', async () => {
     mockSessionMetadata = { full_name: 'Phan Mạnh Tú' }
     const imagePicker = jest.requireMock('expo-image-picker')
-    imagePicker.requestCameraPermissionsAsync.mockResolvedValueOnce({ granted: false })
+    imagePicker.requestCameraPermissionsAsync.mockResolvedValueOnce({ canAskAgain: true, granted: false })
     const alertSpy = jest.spyOn(require('react-native').Alert, 'alert').mockImplementation(
       (...args: unknown[]) => {
         const buttons = args[2] as { onPress?: () => void; text?: string }[] | undefined
@@ -426,12 +429,7 @@ describe('CustomerProfileSurface v2.1', () => {
     render(<CustomerProfileSurface />)
     fireEvent.press(screen.getByTestId('customer-v21-profile-avatar-picker'))
 
-    await waitFor(() => {
-      expect(alertSpy).toHaveBeenCalledWith(
-        'Cần quyền truy cập',
-        'Cho phép Camera để chụp ảnh đại diện của bạn.',
-      )
-    })
+    await waitFor(() => expect(imagePicker.requestCameraPermissionsAsync).toHaveBeenCalledTimes(1))
     expect(imagePicker.launchCameraAsync).not.toHaveBeenCalled()
     expect(mockCustomerUploadAvatar).not.toHaveBeenCalled()
     alertSpy.mockRestore()

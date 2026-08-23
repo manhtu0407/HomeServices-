@@ -43,6 +43,7 @@ import {
 } from "./control-formatters.ts";
 import { asCapabilities, requireAdminCapability } from "./actor.ts";
 import { serializeProvisioning } from "./operator-provisioning.ts";
+import { scopeQueryToRealTraffic } from "../../platform/synthetic-cohort.ts";
 export { getAdminActor, requireAdminCapability } from "./actor.ts";
 const WORKER_APPLICATION_SELECT =
   "id,actor_id,status,safe_metadata,created_at,updated_at";
@@ -76,12 +77,12 @@ export async function listAdminWorkerApplications(
   const scanLimit = needsPostFilter
     ? Math.min(500, Math.max(100, effectiveOffset + input.limit + 1))
     : effectiveOffset + input.limit + 1;
-  let queueQuery = db(ctx)
+  let queueQuery = scopeQueryToRealTraffic(db(ctx)
     .from("kael_admin_queue")
     .select(WORKER_APPLICATION_SELECT, { count: "exact" })
     .eq("queue_type", "worker_application_review")
     .order("created_at", { ascending: false })
-    .range(needsPostFilter ? 0 : effectiveOffset, (needsPostFilter ? 0 : effectiveOffset) + scanLimit - 1);
+    .range(needsPostFilter ? 0 : effectiveOffset, (needsPostFilter ? 0 : effectiveOffset) + scanLimit - 1));
   if (input.status !== "all") queueQuery = queueQuery.eq("status", input.status);
 
   const result = await dbQuery<Row[]>(queueQuery);
@@ -114,11 +115,11 @@ export async function getAdminWorkerApplication(
 ): Promise<AdminWorkerApplicationSummary> {
   await requireAdminCapability(ctx, "workers.read");
   const result = await dbQuery<Row>(
-    db(ctx)
+    scopeQueryToRealTraffic(db(ctx)
       .from("kael_admin_queue")
       .select(WORKER_APPLICATION_SELECT)
       .eq("id", applicationId)
-      .eq("queue_type", "worker_application_review")
+      .eq("queue_type", "worker_application_review"))
       .maybeSingle(),
   );
   if (result.error) {
@@ -441,7 +442,9 @@ async function buildWorkerApplicationSummaries(
       ? dbQuery<Row[]>(client.from("profiles").select("id,role,full_name,phone").in("id", actorIds))
       : emptyRows(),
     actorIds.length
-      ? dbQuery<Row[]>(client.from("worker_profiles").select(WORKER_PROFILE_SELECT).in("id", actorIds))
+      ? dbQuery<Row[]>(scopeQueryToRealTraffic(
+        client.from("worker_profiles").select(WORKER_PROFILE_SELECT).in("id", actorIds),
+      ))
       : emptyRows(),
     queueIds.length
       ? dbQuery<Row[]>(
@@ -453,11 +456,11 @@ async function buildWorkerApplicationSummaries(
       : emptyRows(),
     actorIds.length
       ? dbQuery<Row[]>(
-        client.from("kael_admin_queue")
+        scopeQueryToRealTraffic(client.from("kael_admin_queue")
           .select("id,actor_id,status,created_at")
           .eq("queue_type", "worker_profile_verification")
           .in("actor_id", actorIds)
-          .order("created_at", { ascending: false }),
+          .order("created_at", { ascending: false })),
       )
       : emptyRows(),
   ]);

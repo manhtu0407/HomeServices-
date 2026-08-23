@@ -1,5 +1,5 @@
 import { Image } from 'expo-image'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Pressable, View } from 'react-native'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 
@@ -22,6 +22,7 @@ import {
   type WorkerV5OfferDetailRow,
 } from './offer'
 import { buildWorkerV5AcceptReviewChecks, workerV5CanAcceptOpenOffer } from './acceptance'
+import { WorkerBroadcastProposalForm } from './worker-broadcast-proposal-form'
 import { WorkerInteractiveRouteMapPrototype } from './worker-interactive-route-map-prototype'
 import type { WorkerV5RoutePreviewState } from './use-worker-route-preview'
 import { prototypeStyles, stageTwoStyles } from './worker-jobs-zip-prototype-styles'
@@ -36,6 +37,7 @@ import {
   workerJobsLegacyPrototypeOpportunityArtwork,
   workerJobsLegacyPrototypePreviewJob,
 } from './worker-jobs-zip-prototype-shared'
+import { WorkerMatchingDeliveryStatus } from './worker-matching-delivery-status'
 
 export function WorkerJobsLegacyPrototypeOpportunityCard({
   currentDeal,
@@ -44,6 +46,7 @@ export function WorkerJobsLegacyPrototypeOpportunityCard({
   previewJob,
   reduceTransparency,
   selected,
+  showPrice = true,
 }: {
   currentDeal: LocalDeal | null
   language: AppLanguage
@@ -51,6 +54,7 @@ export function WorkerJobsLegacyPrototypeOpportunityCard({
   previewJob?: WorkerJobsLegacyPrototypePreviewJob | null
   reduceTransparency: boolean
   selected: boolean
+  showPrice?: boolean
 }) {
   const isIncoming = currentDeal?.status === 'broadcasting' && currentDeal.broadcast?.status === 'sent'
   const service = currentDeal ? localizedServiceLabel(currentDeal.draft.serviceType, language) : textByLanguage(language, 'Cơ hội công việc', 'Job opportunity')
@@ -62,11 +66,9 @@ export function WorkerJobsLegacyPrototypeOpportunityCard({
     : previewJob?.meta[language] || textByLanguage(language, 'Kael sẽ gửi khi có việc.', 'Kael will send a job when one is available.')
   const status = selected
     ? textByLanguage(language, 'Đã chọn', 'Selected')
-    : previewJob?.status[language] || (
-      isIncoming
-        ? textByLanguage(language, 'Cơ hội gửi tới bạn', 'Opportunity sent to you')
-        : textByLanguage(language, 'Chờ dữ liệu thật', 'Waiting for real data')
-    )
+    : currentDeal
+      ? workerOpportunityStatus(currentDeal, language, isIncoming)
+      : previewJob?.status[language] || textByLanguage(language, 'Chưa có trạng thái thật', 'No real status yet')
   const displayTime = currentDeal ? workerV5TimeChoiceLabel(currentDeal.draft.timeChoice, language, currentDeal.scheduledAt) : previewJob?.time[language] || null
   const displayPrice = currentDeal?.broadcast?.estimatedPriceLabel || currentDeal?.estimate?.priceRangeLabel || previewJob?.price[language] || null
   const copy = (
@@ -87,7 +89,7 @@ export function WorkerJobsLegacyPrototypeOpportunityCard({
           </>
         ) : null}
       </View>
-      {displayPrice ? (
+      {showPrice && displayPrice ? (
         <View style={prototypeStyles.opportunityMetaItem}>
           <WorkerJobsLegacyPrototypeMetaIcon kind="price" />
           <Text style={[prototypeStyles.opportunityMetaText, prototypeStyles.opportunityPriceText]}>{displayPrice}</Text>
@@ -113,6 +115,38 @@ export function WorkerJobsLegacyPrototypeOpportunityCard({
       {copy}{artworkView}
     </Pressable>
   )
+}
+
+function workerOpportunityStatus(currentDeal: LocalDeal, language: AppLanguage, isIncoming: boolean) {
+  if (isIncoming) return textByLanguage(language, 'Cơ hội gửi tới bạn', 'Opportunity sent to you')
+  switch (currentDeal.status) {
+    case 'broadcasting':
+      return textByLanguage(language, 'Đang đối soát gửi việc', 'Reconciling delivery')
+    case 'awaiting_customer_confirm':
+      return textByLanguage(language, 'Chờ khách xác nhận', 'Waiting for customer')
+    case 'worker_matched':
+      return textByLanguage(language, 'Đã khớp với khách', 'Matched with customer')
+    case 'worker_on_way':
+      return textByLanguage(language, 'Đang di chuyển', 'On the way')
+    case 'arrived':
+      return textByLanguage(language, 'Thợ đã đến', 'Worker arrived')
+    case 'inspecting':
+      return textByLanguage(language, 'Đang khảo sát', 'Inspecting')
+    case 'repairing':
+      return textByLanguage(language, 'Đang thực hiện', 'In progress')
+    case 'scope_change_pending':
+      return textByLanguage(language, 'Chờ duyệt đổi phạm vi', 'Scope change pending')
+    case 'completed_by_worker':
+      return textByLanguage(language, 'Chờ khách xác nhận hoàn tất', 'Waiting for completion confirmation')
+    case 'confirmed_by_customer':
+    case 'payment_pending':
+      return textByLanguage(language, 'Chờ thanh toán', 'Payment pending')
+    case 'paid':
+    case 'reviewed':
+      return textByLanguage(language, 'Đã hoàn tất', 'Completed')
+    default:
+      return textByLanguage(language, 'Chưa có trạng thái thật', 'No real status yet')
+  }
 }
 
 function WorkerJobsStageTwoInfoGroup({ iconNames, rows, testID, title, tokens }: {
@@ -210,6 +244,10 @@ export function WorkerJobsLegacyPrototypeOpportunityInboxBody({
   const previewJob = prototypeMode && !currentDeal && firstRouteParam(params.ns_worker_jobs_variant) === 'available' ? workerJobsLegacyPrototypePreviewJob : null
   const displayedJobId = currentDeal?.id ?? previewJob?.id ?? null
   const isIncoming = Boolean(previewJob) || (currentDeal?.status === 'broadcasting' && currentDeal.broadcast?.status === 'sent')
+  const proposalOpportunity = runtime.workerProposalOpportunity?.broadcastId === currentDeal?.broadcast?.broadcastId
+    ? runtime.workerProposalOpportunity
+    : null
+  const isPricedOffer = proposalOpportunity?.proposalAction === 'accept_priced_offer'
   const isSelected = selectedMissionId === displayedJobId
   const routeParams = {
     ns_audit_role: params.ns_audit_role,
@@ -225,9 +263,22 @@ export function WorkerJobsLegacyPrototypeOpportunityInboxBody({
   }
   const openKaelIntake = () => router.replace('/(worker)/chat?ns_worker_screen=3.2-kael-job-intake' as never)
 
+  useEffect(() => {
+    const receipt = runtime.workerMatchingDelivery?.receipt
+    if (prototypeMode || !receipt || !['queued', 'delivered'].includes(receipt.state)) return
+    void runtime.actions.workerMarkBroadcastSeen(receipt.broadcast_id)
+  }, [prototypeMode, runtime.actions, runtime.workerMatchingDelivery?.receipt])
+
   return (
     <View style={prototypeStyles.opportunityInboxNew} testID="worker-v5-opportunity-inbox-handoff">
-      <WorkerJobsLegacyPrototypeOpportunityCard currentDeal={currentDeal} language={language} onSelect={displayedJobId ? () => setSelectedMissionId(displayedJobId) : undefined} previewJob={previewJob} reduceTransparency={reduceTransparency} selected={isSelected} />
+      <WorkerJobsLegacyPrototypeOpportunityCard currentDeal={currentDeal} language={language} onSelect={displayedJobId ? () => setSelectedMissionId(displayedJobId) : undefined} previewJob={previewJob} reduceTransparency={reduceTransparency} selected={isSelected} showPrice={!proposalOpportunity || isPricedOffer} />
+      {!prototypeMode && runtime.workerMatchingDelivery ? (
+        <WorkerMatchingDeliveryStatus
+          confirmedRecipientCount={runtime.workerMatchingDelivery.confirmedRecipientCount}
+          language={language}
+          receipt={runtime.workerMatchingDelivery.receipt}
+        />
+      ) : null}
       {displayedJobId && !isSelected ? (
         <Text style={prototypeStyles.opportunitySelectionHintNew} testID="worker-v5-opportunity-selection-hint">
           {textByLanguage(language, 'Chọn công việc để xem chi tiết.', 'Select the job to review details.')}
@@ -239,7 +290,11 @@ export function WorkerJobsLegacyPrototypeOpportunityInboxBody({
         onPrimary={isSelected ? openCurrentWork : undefined}
         primary={isSelected
           ? isIncoming
-            ? textByLanguage(language, 'Xem & nhận việc', 'Review and accept')
+            ? proposalOpportunity?.proposalAction === 'submit_rfq_proposal'
+              ? textByLanguage(language, 'Xem & gửi báo giá', 'Review and quote')
+              : proposalOpportunity?.proposalAction === 'submit_inspection_scope'
+                ? textByLanguage(language, 'Xem & gửi phạm vi', 'Review scope')
+                : textByLanguage(language, 'Xem & nhận việc', 'Review and accept')
             : textByLanguage(language, 'Tiếp tục công việc', 'Continue work')
           : textByLanguage(language, 'Chọn công việc để tiếp tục', 'Select a job to continue')}
         primaryDisabled={!displayedJobId || !isSelected}
@@ -255,12 +310,14 @@ function WorkerJobsLegacyPrototypeOfferSummary({
   previewJob,
   reduceTransparency,
   tokens,
+  showPrice = true,
 }: {
   deal: LocalDeal | null
   language: AppLanguage
   previewJob: WorkerJobsLegacyPrototypePreviewJob | null
   reduceTransparency: boolean
   tokens: ReturnType<typeof getWorkerThemeTokens>
+  showPrice?: boolean
 }) {
   const service = deal
     ? localizedServiceLabel(deal.draft.serviceType, language)
@@ -283,7 +340,7 @@ function WorkerJobsLegacyPrototypeOfferSummary({
             <Text numberOfLines={1} style={[stageTwoStyles.heroMetaText, { color: tokens.muted }]}>{displayTime || textByLanguage(language, 'Chưa có khung giờ', 'No time yet')}</Text>
           </View>
         </View>
-        {displayPrice ? (
+        {showPrice && displayPrice ? (
           <View style={stageTwoStyles.heroMetaItem}>
             <WorkerJobsStageTwoIcon color={tokens.primary} name="price" />
             <Text numberOfLines={1} style={[stageTwoStyles.heroPrice, { color: tokens.muted }]}>{displayPrice}</Text>
@@ -349,9 +406,19 @@ export function WorkerJobsLegacyPrototypeOfferDetailBody({
   const router = useRouter()
   const deal = runtime.state.deal
   const previewJob = prototypeMode && !deal && firstRouteParam(params.ns_worker_jobs_variant) === 'available' ? workerJobsLegacyPrototypePreviewJob : null
+  const proposalOpportunity = runtime.workerProposalOpportunity?.broadcastId === deal?.broadcast?.broadcastId
+    ? runtime.workerProposalOpportunity
+    : null
+  const proposalAction = proposalOpportunity?.proposalAction === 'submit_rfq_proposal'
+    || proposalOpportunity?.proposalAction === 'submit_inspection_scope'
+    ? proposalOpportunity.proposalAction
+    : null
+  const isPricedOffer = proposalOpportunity?.proposalAction === 'accept_priced_offer'
   const checks = buildWorkerV5AcceptReviewChecks(deal, runtime.workerProfile, language)
-  const canAccept = workerV5CanAcceptOpenOffer(deal, runtime.state.workerGate)
-  const canDecline = deal?.status === 'broadcasting' && deal.broadcast?.status === 'sent'
+  const canAccept = isPricedOffer && workerV5CanAcceptOpenOffer(deal, runtime.state.workerGate)
+  const canDecline = deal?.status === 'broadcasting'
+    && deal.broadcast?.status === 'sent'
+    && !proposalOpportunity?.result
   const addressRows = buildWorkerV5OfferAddressRows(deal, language)
   const priceRows = buildWorkerV5OfferPriceRows(deal, language).map((row) => deal?.broadcast?.priceQuote
     ? row
@@ -378,7 +445,7 @@ export function WorkerJobsLegacyPrototypeOfferDetailBody({
 
   return (
     <View style={stageTwoStyles.section} testID="worker-v5-offer-detail-handoff">
-      <WorkerJobsLegacyPrototypeOfferSummary deal={deal} language={language} previewJob={previewJob} reduceTransparency={reduceTransparency} tokens={tokens} />
+      <WorkerJobsLegacyPrototypeOfferSummary deal={deal} language={language} previewJob={previewJob} reduceTransparency={reduceTransparency} showPrice={isPricedOffer || !proposalOpportunity} tokens={tokens} />
 
       <WorkerJobsStageTwoInfoGroup
         iconNames={['home', 'service', 'photo']}
@@ -394,15 +461,17 @@ export function WorkerJobsLegacyPrototypeOfferDetailBody({
         title={textByLanguage(language, 'Địa chỉ & khách hàng', 'Address & customer')}
         tokens={tokens}
       />
-      <WorkerJobsStageTwoInfoGroup
-        iconNames={['price']}
-        rows={priceRows}
-        testID="worker-v5-offer-price-list"
-        title={textByLanguage(language, 'Giá dịch vụ & tiền công', 'Service price & earnings')}
-        tokens={tokens}
-      />
+      {isPricedOffer || !proposalOpportunity ? (
+        <WorkerJobsStageTwoInfoGroup
+          iconNames={['price']}
+          rows={priceRows}
+          testID="worker-v5-offer-price-list"
+          title={textByLanguage(language, 'Giá dịch vụ & tiền công', 'Service price & earnings')}
+          tokens={tokens}
+        />
+      ) : null}
 
-      <View style={stageTwoStyles.section}>
+      {isPricedOffer || !proposalOpportunity ? <View style={stageTwoStyles.section}>
         <View style={stageTwoStyles.sectionHeading}>
           <Text style={[stageTwoStyles.sectionTitle, { color: tokens.text }]}>{textByLanguage(language, 'Sẵn sàng nhận việc', 'Ready to accept')}</Text>
         </View>
@@ -430,7 +499,19 @@ export function WorkerJobsLegacyPrototypeOfferDetailBody({
             )
           })}
         </View>
-      </View>
+      </View> : null}
+
+      {proposalAction ? (
+        <WorkerBroadcastProposalForm
+          action={proposalAction}
+          alreadyApplied={proposalOpportunity?.result?.already_applied}
+          busy={actionBusy}
+          language={language}
+          onSubmit={runtime.actions.workerSubmitBroadcastProposal}
+          submitted={Boolean(proposalOpportunity?.result)}
+          tokens={tokens}
+        />
+      ) : null}
 
       <View style={[stageTwoStyles.etaCard, { backgroundColor: reduceTransparency ? tokens.base : tokens.raised, borderColor: tokens.border }]} testID="worker-v5-accept-commitment">
         <View style={[stageTwoStyles.sectionIconFrame, { backgroundColor: tokens.base, borderColor: tokens.border }]}>
@@ -462,7 +543,7 @@ export function WorkerJobsLegacyPrototypeOfferDetailBody({
         >
           <Text style={[stageTwoStyles.actionLabel, { color: !canDecline || actionBusy ? tokens.subtleText : tokens.primary }]}>{actionBusy ? textByLanguage(language, 'Đang xử lý', 'Working') : textByLanguage(language, 'Từ chối', 'Decline')}</Text>
         </Pressable>
-        <Pressable
+        {isPricedOffer || !proposalOpportunity ? <Pressable
           accessibilityLabel={textByLanguage(language, 'Xác nhận giá và nhận việc', 'Confirm price and accept')}
           accessibilityRole="button"
           accessibilityState={{ disabled: !canAccept || actionBusy }}
@@ -472,7 +553,7 @@ export function WorkerJobsLegacyPrototypeOfferDetailBody({
           testID="worker-v5-accept-confirm-action"
         >
           <Text style={[stageTwoStyles.actionLabel, { color: !canAccept || actionBusy ? tokens.subtleText : tokens.primaryText }]}>{actionBusy ? textByLanguage(language, 'Đang xác nhận giá', 'Confirming price') : textByLanguage(language, 'Xác nhận giá & nhận việc', 'Confirm price & accept')}</Text>
-        </Pressable>
+        </Pressable> : null}
       </View>
     </View>
   )

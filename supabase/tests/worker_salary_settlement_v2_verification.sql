@@ -63,7 +63,7 @@ begin
   end if;
 
   select pg_get_functiondef('public.get_admin_worker_finance_snapshot(uuid,uuid,timestamptz,timestamptz,numeric)'::regprocedure) into admin_snapshot_definition;
-  if position('assert_finance_reader' in admin_snapshot_definition) = 0 or position('get_worker_earnings_summary' in admin_snapshot_definition) = 0 then
+  if position('assert_finance_reader' in admin_snapshot_definition) = 0 or position('get_worker_earnings_summary_v2' in admin_snapshot_definition) = 0 then
     raise exception 'Admin Worker finance snapshot is not protected by the finance reader boundary';
   end if;
 

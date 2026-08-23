@@ -11,6 +11,7 @@ import type {
   CustomerKaelFeedbackInput,
   CustomerScopeDecisionInput,
   DevicePushTokenInput,
+  EdgeMatchingPushDeliveryAckInput,
   EdgeDevicePushTokenUnregisterInput,
   DisputeAdminDecisionInput,
   DisputeCounterStatementInput,
@@ -151,6 +152,8 @@ import type {
   EdgeWorkerActivityMinuteResponse,
   EdgeWorkerRegisterResponse,
   EdgeWorkerRoutePreviewResponse,
+  EdgeWorkerMatchingProposalInput,
+  EdgeWorkerMatchingProposalResponse,
   EdgeWorkerScopeChangeResponse,
   EdgeRejectWorkerCandidateResponse,
 } from "./dtos.ts";
@@ -167,6 +170,7 @@ import type {
 } from "./worker-kael-chat-dtos.ts";
 import type {
   EdgeDevicePushTokenUnregisterResponse,
+  EdgeMatchingPushDeliveryAckResponse,
 } from "./notification-device.dtos.ts";
 import type {
   EdgeWorkerPayoutMethodResponse,
@@ -174,6 +178,12 @@ import type {
   EdgeWorkerWithdrawalRequestListResponse,
 } from "../domains/contracts/worker-payout.ts";
 import type { AdminControlServices } from "./routes/admin-control-services-contract.ts";
+import type {
+  EdgeKaelMemoryDeleteResponse,
+  EdgeKaelMemorySelfViewResponse,
+  EdgePendingDecisionsResponse,
+  EdgeThreadsResponse,
+} from "./response-contracts.ts";
 import type {
   AdminActivationResponse,
   AdminActivationStatusResponse,
@@ -226,47 +236,14 @@ export type {
   WorkerStatusUpdateInput,
 } from "../domains/contracts/worker.ts";
 export type { EdgeCustomerAccountDeletionResponse } from "../domains/contracts/customer.ts";
-
-export type KaelMemorySelfViewResponse = {
-  subject_type: "customer" | "worker";
-  memory: Record<string, unknown> | null;
-};
-
-export type KaelMemoryDeleteResponse = {
-  subject_type: "customer" | "worker";
-  deleted: true;
-};
-
-export type PendingDecisionItem = {
-  kind: "scope_change";
-  scope_change_id: string;
-  job_id: string;
-  service_type: string | null;
-  problem: string | null;
-  requested_description: string;
-  reason: string;
-  price_min: number;
-  price_max: number;
-  created_at: string;
-};
-export type PendingDecisionsResponse = {
-  pending_decisions: PendingDecisionItem[];
-};
-
-export type ThreadSummary = {
-  job_id: string;
-  status: string;
-  service_type: string | null;
-  last_message: {
-    content: string;
-    sender_role: string | null;
-    created_at: string;
-  };
-  unread_count: number;
-};
-export type ThreadsResponse = {
-  threads: ThreadSummary[];
-};
+export type {
+  EdgeKaelMemoryDeleteResponse as KaelMemoryDeleteResponse,
+  EdgeKaelMemorySelfViewResponse as KaelMemorySelfViewResponse,
+  EdgePendingDecisionItem as PendingDecisionItem,
+  EdgePendingDecisionsResponse as PendingDecisionsResponse,
+  EdgeThreadSummary as ThreadSummary,
+  EdgeThreadsResponse as ThreadsResponse,
+} from "./response-contracts.ts";
 
 export type MobileApiServices = AdminControlServices & {
   getAdminActivation(ctx: MobileApiContext): Promise<AdminActivationStatusResponse>;
@@ -386,6 +363,10 @@ export type MobileApiServices = AdminControlServices & {
     sessionId: string,
     input: EdgeKaelChatConfirmInput,
   ): Promise<EdgeConfirmSearchResponse & { session_id: string }>;
+  getKaelConfirmationOperation(
+    ctx: MobileApiContext,
+    sessionId: string,
+  ): Promise<Record<string, unknown>>;
   submitKaelChatEvidence(
     ctx: MobileApiContext,
     sessionId: string,
@@ -638,19 +619,19 @@ export type MobileApiServices = AdminControlServices & {
     ctx: MobileApiContext,
     input: WorkerApplicationSubmitInput,
   ): Promise<EdgeWorkerApplicationResponse>;
-  getMyKaelMemory(ctx: MobileApiContext): Promise<KaelMemorySelfViewResponse>;
-  getWorkerKaelMemory(ctx: MobileApiContext): Promise<KaelMemorySelfViewResponse>;
-  deleteMyKaelMemory(ctx: MobileApiContext): Promise<KaelMemoryDeleteResponse>;
+  getMyKaelMemory(ctx: MobileApiContext): Promise<EdgeKaelMemorySelfViewResponse>;
+  getWorkerKaelMemory(ctx: MobileApiContext): Promise<EdgeKaelMemorySelfViewResponse>;
+  deleteMyKaelMemory(ctx: MobileApiContext): Promise<EdgeKaelMemoryDeleteResponse>;
   updateMyKaelMemory(
     ctx: MobileApiContext,
     input: UpdateKaelMemoryInput,
-  ): Promise<KaelMemorySelfViewResponse>;
+  ): Promise<EdgeKaelMemorySelfViewResponse>;
   updateWorkerKaelMemoryPreference(
     ctx: MobileApiContext,
     input: WorkerKaelMemoryPreferenceUpdateInput,
-  ): Promise<KaelMemorySelfViewResponse>;
-  listMyPendingDecisions(ctx: MobileApiContext): Promise<PendingDecisionsResponse>;
-  listMyThreads(ctx: MobileApiContext): Promise<ThreadsResponse>;
+  ): Promise<EdgeKaelMemorySelfViewResponse>;
+  listMyPendingDecisions(ctx: MobileApiContext): Promise<EdgePendingDecisionsResponse>;
+  listMyThreads(ctx: MobileApiContext): Promise<EdgeThreadsResponse>;
   getCustomerProfileInsights(
     ctx: MobileApiContext,
   ): Promise<EdgeCustomerProfileInsightsResponse>;
@@ -702,6 +683,18 @@ export type MobileApiServices = AdminControlServices & {
     input: AvailabilityToggleInput,
   ): Promise<EdgeAvailabilityToggleResponse>;
   listWorkerBroadcasts(ctx: MobileApiContext): Promise<EdgeBroadcastListResponse>;
+  recordWorkerMatchingHeartbeat(
+    ctx: MobileApiContext,
+  ): Promise<{ server_time: string; active_until: string | null }>;
+  markWorkerBroadcastSeen(
+    ctx: MobileApiContext,
+    broadcastId: string,
+  ): Promise<Record<string, unknown>>;
+  submitWorkerMatchingProposal(
+    ctx: MobileApiContext,
+    broadcastId: string,
+    input: EdgeWorkerMatchingProposalInput,
+  ): Promise<EdgeWorkerMatchingProposalResponse>;
   listWorkerJobs(ctx: MobileApiContext): Promise<EdgeWorkerJobListResponse>;
   getWorkerRoutePreview(
     ctx: MobileApiContext,
@@ -778,6 +771,10 @@ export type MobileApiServices = AdminControlServices & {
     ctx: MobileApiContext,
     input: EdgeDevicePushTokenUnregisterInput,
   ): Promise<EdgeDevicePushTokenUnregisterResponse>;
+  acknowledgeMatchingPushDelivery(
+    ctx: MobileApiContext,
+    input: EdgeMatchingPushDeliveryAckInput,
+  ): Promise<EdgeMatchingPushDeliveryAckResponse>;
 };
 
 export type MobileApiHandlerDeps = {
@@ -788,4 +785,6 @@ export type MobileApiHandlerDeps = {
   services: MobileApiServices;
   releaseId?: string;
   environment?: "local" | "preview" | "staging" | "production";
+  minimumClientBuildNumber?: number | null;
+  clientCompatibility?: import("../../../_shared/platform/env.ts").MobileClientCompatibility;
 };

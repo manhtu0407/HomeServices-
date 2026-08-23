@@ -6,6 +6,7 @@
 .tmp/
 tmp/
 output/
+artifacts/
 
 # Dependency and build caches
 node_modules/

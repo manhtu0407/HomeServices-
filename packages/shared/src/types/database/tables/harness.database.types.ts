@@ -962,5 +962,338 @@ export type HarnessTables = {
           },
         ]
       }
+      stage1_production_acceptance_notes: {
+        Row: {
+          acceptance_status: string
+          cleanup_receipt_sha256: string
+          cohort_id: string
+          created_at: string
+          environment: string
+          hosted_state_sha256: string
+          note_sha256: string
+          production_ui_receipt_sha256: string
+          production_ui_source_sha256: string
+          promotion_packet_sha256: string
+          release_id: string
+          summary_vi: string
+        }
+        Insert: {
+          acceptance_status?: string
+          cleanup_receipt_sha256: string
+          cohort_id: string
+          created_at?: string
+          environment?: string
+          hosted_state_sha256: string
+          note_sha256: string
+          production_ui_receipt_sha256: string
+          production_ui_source_sha256: string
+          promotion_packet_sha256: string
+          release_id: string
+          summary_vi: string
+        }
+        Update: {
+          acceptance_status?: string
+          cleanup_receipt_sha256?: string
+          cohort_id?: string
+          created_at?: string
+          environment?: string
+          hosted_state_sha256?: string
+          note_sha256?: string
+          production_ui_receipt_sha256?: string
+          production_ui_source_sha256?: string
+          promotion_packet_sha256?: string
+          release_id?: string
+          summary_vi?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stage1_production_acceptance_notes_release_id_fkey"
+            columns: ["release_id"]
+            isOneToOne: true
+            referencedRelation: "harness_releases"
+            referencedColumns: ["release_id"]
+          },
+        ]
+      }
+      stage1_release_control_events: {
+        Row: {
+          cohort_id: string | null
+          created_at: string
+          environment: string
+          event_type: string
+          evidence_sha256: string
+          id: number
+          release_id: string
+          revision: number
+          safe_metadata: Json
+        }
+        Insert: {
+          cohort_id?: string | null
+          created_at?: string
+          environment: string
+          event_type: string
+          evidence_sha256: string
+          id?: never
+          release_id: string
+          revision: number
+          safe_metadata?: Json
+        }
+        Update: {
+          cohort_id?: string | null
+          created_at?: string
+          environment?: string
+          event_type?: string
+          evidence_sha256?: string
+          id?: never
+          release_id?: string
+          revision?: number
+          safe_metadata?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stage1_release_control_events_release_id_fkey"
+            columns: ["release_id"]
+            isOneToOne: false
+            referencedRelation: "harness_releases"
+            referencedColumns: ["release_id"]
+          },
+        ]
+      }
+      stage1_release_controls: {
+        Row: {
+          active_release_id: string | null
+          candidate_cohort_id: string | null
+          candidate_packet_sha256: string | null
+          candidate_release_id: string | null
+          candidate_started_at: string | null
+          environment: string
+          previous_active_release_id: string | null
+          revision: number
+          updated_at: string
+        }
+        Insert: {
+          active_release_id?: string | null
+          candidate_cohort_id?: string | null
+          candidate_packet_sha256?: string | null
+          candidate_release_id?: string | null
+          candidate_started_at?: string | null
+          environment: string
+          previous_active_release_id?: string | null
+          revision?: number
+          updated_at?: string
+        }
+        Update: {
+          active_release_id?: string | null
+          candidate_cohort_id?: string | null
+          candidate_packet_sha256?: string | null
+          candidate_release_id?: string | null
+          candidate_started_at?: string | null
+          environment?: string
+          previous_active_release_id?: string | null
+          revision?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stage1_release_controls_active_release_id_fkey"
+            columns: ["active_release_id"]
+            isOneToOne: false
+            referencedRelation: "harness_releases"
+            referencedColumns: ["release_id"]
+          },
+          {
+            foreignKeyName: "stage1_release_controls_candidate_release_id_fkey"
+            columns: ["candidate_release_id"]
+            isOneToOne: false
+            referencedRelation: "harness_releases"
+            referencedColumns: ["release_id"]
+          },
+          {
+            foreignKeyName: "stage1_release_controls_previous_active_release_id_fkey"
+            columns: ["previous_active_release_id"]
+            isOneToOne: false
+            referencedRelation: "harness_releases"
+            referencedColumns: ["release_id"]
+          },
+        ]
+      }
+      stage1_smoke_deployment_attestations: {
+        Row: {
+          created_at: string
+          deployment_id: string
+          function_name: string
+          proof_sha256: string
+          smoke_receipt_id: string
+        }
+        Insert: {
+          created_at?: string
+          deployment_id: string
+          function_name: string
+          proof_sha256: string
+          smoke_receipt_id: string
+        }
+        Update: {
+          created_at?: string
+          deployment_id?: string
+          function_name?: string
+          proof_sha256?: string
+          smoke_receipt_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stage1_smoke_deployment_attest_function_name_deployment_id_fkey"
+            columns: ["function_name", "deployment_id"]
+            isOneToOne: false
+            referencedRelation: "stage1_source_deployment_attestations"
+            referencedColumns: ["function_name", "deployment_id"]
+          },
+          {
+            foreignKeyName: "stage1_smoke_deployment_attestations_smoke_receipt_id_fkey"
+            columns: ["smoke_receipt_id"]
+            isOneToOne: false
+            referencedRelation: "stage1_synthetic_smoke_receipts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      stage1_source_deployment_attestations: {
+        Row: {
+          created_at: string
+          deployment_id: string
+          edge_version: number
+          entrypoint_path: string
+          environment: string
+          function_name: string
+          hosted_bundle_sha256: string
+          import_map: boolean
+          import_map_path: string | null
+          proof_sha256: string
+          release_id: string
+          runtime_configuration_sha256: string
+          source_sha256: string
+          verify_jwt: boolean
+        }
+        Insert: {
+          created_at?: string
+          deployment_id: string
+          edge_version: number
+          entrypoint_path: string
+          environment: string
+          function_name: string
+          hosted_bundle_sha256: string
+          import_map: boolean
+          import_map_path?: string | null
+          proof_sha256: string
+          release_id: string
+          runtime_configuration_sha256: string
+          source_sha256: string
+          verify_jwt: boolean
+        }
+        Update: {
+          created_at?: string
+          deployment_id?: string
+          edge_version?: number
+          entrypoint_path?: string
+          environment?: string
+          function_name?: string
+          hosted_bundle_sha256?: string
+          import_map?: boolean
+          import_map_path?: string | null
+          proof_sha256?: string
+          release_id?: string
+          runtime_configuration_sha256?: string
+          source_sha256?: string
+          verify_jwt?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stage1_source_deployment_attestations_release_id_fkey"
+            columns: ["release_id"]
+            isOneToOne: false
+            referencedRelation: "harness_releases"
+            referencedColumns: ["release_id"]
+          },
+        ]
+      }
+      stage1_synthetic_smoke_receipts: {
+        Row: {
+          auto_quote_passed: boolean
+          cohort_id: string
+          confirm_acceptance_ms: number
+          created_at: string
+          duplicate_broadcast_count: number
+          duplicate_job_count: number
+          environment: string
+          id: string
+          receipt_generated_at: string
+          receipt_sha256: string
+          recovery_passed: boolean
+          release_id: string
+          release_identity_match: boolean
+          rfq_or_inspection_passed: boolean
+          run_id: string
+          safe_error_code_ratio: number
+          sequence: number
+          support_trace_count: number
+          synthetic_leak_count: number
+          terminal_reconcile_passed: boolean
+          worker_offer_visible_ms: number
+        }
+        Insert: {
+          auto_quote_passed: boolean
+          cohort_id: string
+          confirm_acceptance_ms: number
+          created_at?: string
+          duplicate_broadcast_count: number
+          duplicate_job_count: number
+          environment: string
+          id?: string
+          receipt_generated_at: string
+          receipt_sha256: string
+          recovery_passed: boolean
+          release_id: string
+          release_identity_match: boolean
+          rfq_or_inspection_passed: boolean
+          run_id: string
+          safe_error_code_ratio: number
+          sequence: number
+          support_trace_count: number
+          synthetic_leak_count: number
+          terminal_reconcile_passed: boolean
+          worker_offer_visible_ms: number
+        }
+        Update: {
+          auto_quote_passed?: boolean
+          cohort_id?: string
+          confirm_acceptance_ms?: number
+          created_at?: string
+          duplicate_broadcast_count?: number
+          duplicate_job_count?: number
+          environment?: string
+          id?: string
+          receipt_generated_at?: string
+          receipt_sha256?: string
+          recovery_passed?: boolean
+          release_id?: string
+          release_identity_match?: boolean
+          rfq_or_inspection_passed?: boolean
+          run_id?: string
+          safe_error_code_ratio?: number
+          sequence?: number
+          support_trace_count?: number
+          synthetic_leak_count?: number
+          terminal_reconcile_passed?: boolean
+          worker_offer_visible_ms?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stage1_synthetic_smoke_receipts_release_id_fkey"
+            columns: ["release_id"]
+            isOneToOne: false
+            referencedRelation: "harness_releases"
+            referencedColumns: ["release_id"]
+          },
+        ]
+      }
 /* @slice:end tables:harness */
 }

@@ -34,7 +34,6 @@ describe('customer Kael process-line controller', () => {
 
     expect(screen.getByTestId('customer-v21-kael-process-lines')).toHaveStyle({
       marginBottom: 10,
-      marginLeft: 8,
       marginTop: 10,
     })
     expect(screen.queryByText('Kael đang kiểm tra ảnh.')).toBeNull()

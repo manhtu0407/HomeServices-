@@ -85,6 +85,29 @@ test('rejects a broad SECURITY DEFINER function without a fixed search path', ()
   })
 })
 
+test('tracks every target in a multi-function execute revoke', () => {
+  withFixture((root) => {
+    write(resolve(root, 'supabase/migrations/20260101000000_multi_revoke.sql'), `
+      create table public.items(id uuid primary key);
+      alter table public.items enable row level security;
+      create function public.first_guard(uuid) returns boolean language sql security definer set search_path = '' as 'select true';
+      create function public.second_guard(uuid, text) returns boolean language sql security definer set search_path = '' as 'select true';
+      revoke execute on function public.first_guard(uuid), public.second_guard(uuid, text) from public, anon, authenticated;
+      grant execute on function public.first_guard(uuid), public.second_guard(uuid, text) to service_role;
+    `)
+    const matrix = buildAccessMatrix({ root })
+    write(resolve(root, 'config/harness/access-matrix.json'), `${JSON.stringify(matrix, null, 2)}\n`)
+    assert.deepEqual(checkAccessMatrix({ root }).problems, [])
+    assert.deepEqual(
+      matrix.functions.map((entry) => [entry.signature, entry.executeRoles]),
+      [
+        ['first_guard(uuid)', ['service_role']],
+        ['second_guard(uuid, text)', ['service_role']],
+      ],
+    )
+  })
+})
+
 
 test('rejects a public view without security_invoker', () => {
   withFixture((root) => {

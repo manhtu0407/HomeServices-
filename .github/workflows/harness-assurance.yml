@@ -126,7 +126,7 @@ jobs:
             exit 1
           fi
       - name: Supabase schema lint
-        run: pnpm --filter @nestscout/api exec supabase db lint --local
+        run: pnpm --filter @nestscout/api exec supabase db lint --local --fail-on warning
       - name: Stop local Supabase
         if: always()
         run: pnpm --filter @nestscout/api exec supabase stop --no-backup

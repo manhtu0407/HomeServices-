@@ -16,6 +16,7 @@ import {
 } from "../../platform/coercions.ts";
 import { db, dbQuery } from "../../platform/db.ts";
 import { displayCodeFor } from "./control-formatters.ts";
+import { scopeQueryToRealTraffic } from "../../platform/synthetic-cohort.ts";
 
 type Row = Record<string, unknown>;
 
@@ -25,11 +26,11 @@ export async function listAdminDisputes(
 ): Promise<AdminDisputeListResponse> {
   requireOwnerAdmin(ctx);
   const result = await dbQuery<Row[]>(
-    db(ctx)
+    scopeQueryToRealTraffic(db(ctx)
       .from("disputes")
       .select("id,job_id,dispute_type,initiated_by,status,created_at,updated_at,admin_decision_at", { count: "exact" })
       .order("updated_at", { ascending: false })
-      .range(input.offset, input.offset + input.limit),
+      .range(input.offset, input.offset + input.limit)),
   );
   if (result.error) apiFailure("DB_ERROR", "Không thể tải danh sách tranh chấp", 500);
   const page = result.data ?? [];

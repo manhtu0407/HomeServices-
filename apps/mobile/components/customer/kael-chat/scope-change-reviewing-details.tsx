@@ -54,8 +54,8 @@ export function ScopeChangeReviewingDetails({
           tokens={tokens}
         />
         <FactRow
-          body={review.reportedReason || (language === 'vi' ? 'Thợ chưa nêu lý do kỹ thuật.' : 'No technical reason was supplied.')}
-          label={language === 'vi' ? 'Lý do kỹ thuật thợ nêu' : 'Worker-stated technical reason'}
+          body={review.reportedReason || (language === 'vi' ? 'Thợ chưa nêu lý do thay đổi.' : 'No reason for the change was supplied.')}
+          label={language === 'vi' ? 'Lý do thợ cung cấp' : 'Reason supplied by the worker'}
           tokens={tokens}
         />
         <FactRow

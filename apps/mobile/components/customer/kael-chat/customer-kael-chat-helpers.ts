@@ -5,47 +5,108 @@ import { normalizeKaelRoutingText } from './case-work-display-model'
 import type { CustomerAssistantLocalTurn } from './use-customer-kael-conversation-state'
 
 export function localizeKaelRequestFailure(
-  failure: { code?: string; error: string },
+  failure: {
+    code?: string
+    error: string
+    meta?: { supportCode?: string | null }
+  },
   language: AppLanguage,
 ) {
   const copy = kaelRequestFailureCopy[language]
+  let message: string
   switch (failure.code) {
     case 'RATE_LIMITED':
     case 'PENDING_MEDIA_QUOTA':
     case 'DAILY_MEDIA_QUOTA':
-      return copy.rateLimited
+      message = copy.rateLimited
+      break
     case 'VALIDATION':
     case 'INVALID_MEDIA_CONTENT':
     case 'INVALID_MEDIA_REF':
-      return copy.validation
+      message = copy.validation
+      break
     case 'INVALID_STATUS':
     case 'ALREADY_DECIDED':
-      return copy.invalidStatus
+      message = copy.invalidStatus
+      break
     case 'ALREADY_CONFIRMED':
-      return copy.alreadyConfirmed
+      message = copy.alreadyConfirmed
+      break
     case 'IDEMPOTENCY_RECONCILE_REQUIRED':
-      return copy.reconcilingConfirmation
+      message = copy.reconcilingConfirmation
+      break
     case 'MISSING_ESTIMATE':
-      return copy.missingEstimate
+      message = copy.missingEstimate
+      break
     case 'MISSING_SCOPE':
-      return copy.missingScope
+      message = copy.missingScope
+      break
     case 'MISSING_REASONING_RECEIPT':
-      return copy.missingReasoningReceipt
+    case 'PRICE_REASONING_RECEIPT_REQUIRED':
+    case 'INVALID_PRICE_REASONING_RECEIPT':
+      message = copy.missingReasoningReceipt
+      break
+    case 'SCHEDULE_REQUIRED':
+    case 'SCHEDULE_INVALID':
+    case 'SCHEDULE_EXPIRED':
+      message = copy.schedule
+      break
+    case 'INTAKE_POLICY_MISSING':
+    case 'POLICY_NOT_FOUND':
+    case 'POLICY_VERSION_MISMATCH':
+    case 'QUOTE_MODE_BLOCKED':
+      message = copy.policy
+      break
+    case 'CLIENT_UPDATE_REQUIRED':
+    case 'RELEASE_MISMATCH':
+    case 'RELEASE_ID_MISMATCH':
+    case 'MOBILE_RELEASE_MISMATCH':
+    case 'CLIENT_RELEASE_MISMATCH':
+    case 'RELEASE_INCOMPATIBLE':
+    case 'BUILD_BELOW_MINIMUM':
+      message = copy.releaseMismatch
+      break
+    case 'NO_REACHABLE_WORKER':
+    case 'NO_WORKER_FOUND':
+      message = copy.noWorker
+      break
+    case 'RECOVERY_REQUIRED':
+    case 'CONFIRMATION_RECOVERY_REQUIRED':
+    case 'UNKNOWN_CONFIRMATION_OUTCOME':
+      message = copy.reconcilingConfirmation
+      break
     case 'SESSION_PENDING':
-      return copy.sessionPending
+      message = copy.sessionPending
+      break
     case 'TIMEOUT':
     case 'STREAM_TIMEOUT':
     case 'STREAM_NETWORK':
-      return copy.slowResponse
+      message = copy.slowResponse
+      break
     case 'AI_DISABLED':
     case 'NO_PROVIDER_AVAILABLE':
     case 'MEDIA_VALIDATION_UNAVAILABLE':
-      return copy.unavailable
+      message = copy.unavailable
+      break
     case 'NOT_FOUND':
-      return copy.notFound
+      message = copy.notFound
+      break
     default:
-      return copy.fallback
+      message = copy.fallback
   }
+  return appendKaelSupportCode(message, language, failure.meta?.supportCode)
+}
+
+export function appendKaelSupportCode(
+  message: string,
+  language: AppLanguage,
+  supportCode?: string | null,
+) {
+  if (!supportCode || !/^[A-Z0-9]{8}$/.test(supportCode)) return message
+  if (message.includes(`${language === 'vi' ? 'Mã hỗ trợ' : 'Support code'}: ${supportCode}.`)) {
+    return message
+  }
+  return `${message} ${language === 'vi' ? 'Mã hỗ trợ' : 'Support code'}: ${supportCode}.`
 }
 
 const kaelRequestFailureCopy = {
@@ -60,6 +121,10 @@ const kaelRequestFailureCopy = {
     notFound: 'Không tìm thấy công việc này hoặc công việc không còn khả dụng.',
     rateLimited: 'Kael đã tạm đạt giới hạn yêu cầu. Vui lòng thử lại sau.',
     sessionPending: 'Kael đang chuẩn bị công việc này. Vui lòng thử lại sau ít phút.',
+    schedule: 'Kael cần một khung giờ dịch vụ hợp lệ trước khi gửi yêu cầu.',
+    policy: 'Yêu cầu chưa đáp ứng chính sách tiếp nhận. Hãy kiểm tra các thông tin bắt buộc.',
+    releaseMismatch: 'Phiên bản ứng dụng chưa khớp với dịch vụ. Hãy cập nhật hoặc mở lại ứng dụng.',
+    noWorker: 'Chưa có thợ phù hợp đang hoạt động. Yêu cầu vẫn được giữ để thử lại.',
     slowResponse: 'Phản hồi của Kael đang mất nhiều thời gian hơn bình thường. Vui lòng gửi lại sau ít phút.',
     unavailable: 'Kael tạm thời không khả dụng. Vui lòng thử lại sau ít phút.',
     validation: 'Một số thông tin yêu cầu chưa hợp lệ. Hãy kiểm tra và thử lại.',
@@ -75,6 +140,10 @@ const kaelRequestFailureCopy = {
     notFound: 'This case could not be found or is no longer available.',
     rateLimited: 'Kael has reached a temporary request limit. Please try again later.',
     sessionPending: 'Kael is still preparing this case. Please try again shortly.',
+    schedule: 'Kael needs a valid service time before sending this request.',
+    policy: 'This request does not meet the current intake policy. Review the required information.',
+    releaseMismatch: 'The app release does not match the service. Update or reopen the app.',
+    noWorker: 'No suitable worker is currently reachable. Your request is preserved for retry.',
     slowResponse: 'Kael is taking longer than usual to respond. Please try again shortly.',
     unavailable: 'Kael is temporarily unavailable. Please try again shortly.',
     validation: 'Some request information is invalid. Please review it and try again.',

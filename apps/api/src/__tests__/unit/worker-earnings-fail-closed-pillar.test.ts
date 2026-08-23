@@ -55,10 +55,15 @@ function context(
   userId = WORKER,
 ) {
   const rpc = vi.fn(async (name: string) =>
-    name === 'get_worker_earnings_summary'
+    name === 'get_worker_earnings_summary_v2'
       ? { data: summary.data ?? null, error: summary.error ?? null }
       : { data: safety.data ?? null, error: safety.error ?? null })
-  return { role: 'worker', supabase: { rpc }, user: { id: userId } } as never
+  const cohortLookup: Record<string, unknown> = {}
+  cohortLookup.select = vi.fn(() => cohortLookup)
+  cohortLookup.eq = vi.fn(() => cohortLookup)
+  cohortLookup.maybeSingle = vi.fn(async () => ({ data: null, error: null }))
+  const from = vi.fn(() => cohortLookup)
+  return { role: 'worker', supabase: { from, rpc }, user: { id: userId } } as never
 }
 
 const failsClosed = { code: 'DB_ERROR', status: 500 }

@@ -2,7 +2,7 @@ import { apiFailure } from "../../platform/api-failure.ts";
 import type { MobileApiContext } from "../../platform/auth.ts";
 import { SERVICE_TYPES } from "../../../../_shared/domain.ts";
 import { nullableString } from "../../platform/coercions.ts";
-import { db, dbQuery } from "../../platform/db.ts";
+import { dbQuery, workflowDb } from "../../platform/db.ts";
 
 type CustomerProfileInsightJobRow = {
   id: string;
@@ -87,7 +87,7 @@ export async function getCustomerProfileInsights(ctx: MobileApiContext) {
   }
 
   const result = await dbQuery<Array<Record<string, unknown>>>(
-    db(ctx).rpc("get_customer_profile_insights_aggregate", {
+    workflowDb(ctx).rpc("get_customer_profile_insights_aggregate", {
       p_customer_id: ctx.user.id,
     }),
   );

@@ -118,6 +118,7 @@ function makeServices(overrides: Partial<MobileApiServices> = {}): MobileApiServ
     sendKaelChatTurn: vi.fn(),
     decideKaelIntakeConfirmation: vi.fn(),
     confirmKaelChat: vi.fn(),
+    getKaelConfirmationOperation: vi.fn(),
     submitKaelChatEvidence: vi.fn(),
     confirmSearch: vi.fn(),
     setJobMatchingPreference: vi.fn(),
@@ -290,6 +291,9 @@ function makeServices(overrides: Partial<MobileApiServices> = {}): MobileApiServ
     updateWorkerServicePreferences: vi.fn(),
     updateWorkerAvailability: vi.fn(),
     listWorkerBroadcasts: vi.fn(),
+    markWorkerBroadcastSeen: vi.fn(),
+    recordWorkerMatchingHeartbeat: vi.fn(),
+    submitWorkerMatchingProposal: vi.fn(),
     listWorkerJobs: vi.fn(),
     getWorkerPayoutMethod: vi.fn(),
     saveWorkerPayoutMethod: vi.fn(),
@@ -363,6 +367,7 @@ function makeServices(overrides: Partial<MobileApiServices> = {}): MobileApiServ
     markNotificationRead: vi.fn(),
     registerDevicePushToken: vi.fn(),
     unregisterDevicePushToken: vi.fn(),
+    acknowledgeMatchingPushDelivery: vi.fn(),
     ...overrides,
   }
 }
@@ -1119,6 +1124,71 @@ describe('mobile-api Edge router contract', () => {
       expect.objectContaining({ role: 'customer' }),
       expect.objectContaining({ platform: 'ios', permission_status: 'granted' }),
     )
+  })
+
+  it('routes an exact app-level delivery acknowledgement through the Worker-only boundary', async () => {
+    const acknowledgeMatchingPushDelivery = vi.fn(async () => ({
+      acknowledged: true as const,
+      delivery_id: '44444444-4444-4444-8444-444444444444',
+      delivered_at: '2026-08-23T07:00:01.000Z',
+    }))
+    const authenticate = vi.fn(async () => workerAuth)
+    const handler = createMobileApiHandler({
+      authenticate,
+      services: makeServices({ acknowledgeMatchingPushDelivery }),
+    })
+    const input = {
+      matching_delivery_id: '44444444-4444-4444-8444-444444444444',
+      device_push_token_id: '55555555-5555-4555-8555-555555555555',
+      device_push_token_updated_at: '2026-08-23T07:00:00.000Z',
+    }
+
+    const response = await handler(new Request(
+      'https://example.test/mobile-api/notifications/matching-delivery-ack',
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(input),
+      },
+    ))
+
+    expect(response.status).toBe(200)
+    expect(await response.json()).toMatchObject({ acknowledged: true, delivered_at: '2026-08-23T07:00:01.000Z' })
+    expect(authenticate).toHaveBeenCalledWith(expect.any(Request), ['worker'])
+    expect(acknowledgeMatchingPushDelivery).toHaveBeenCalledWith(
+      expect.objectContaining({ role: 'worker', user: workerAuth.success ? workerAuth.user : null }),
+      input,
+    )
+  })
+
+  it('does not dispatch a matching delivery acknowledgement when Worker authorization fails', async () => {
+    const acknowledgeMatchingPushDelivery = vi.fn()
+    const authenticate = vi.fn(async (): Promise<MobileApiAuthResult> => ({
+      success: false,
+      status: 403,
+      error: 'forbidden',
+    }))
+    const handler = createMobileApiHandler({
+      authenticate,
+      services: makeServices({ acknowledgeMatchingPushDelivery }),
+    })
+
+    const response = await handler(new Request(
+      'https://example.test/mobile-api/notifications/matching-delivery-ack',
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          matching_delivery_id: '44444444-4444-4444-8444-444444444444',
+          device_push_token_id: '55555555-5555-4555-8555-555555555555',
+          device_push_token_updated_at: '2026-08-23T07:00:00.000Z',
+        }),
+      },
+    ))
+
+    expect(response.status).toBe(403)
+    expect(authenticate).toHaveBeenCalledWith(expect.any(Request), ['worker'])
+    expect(acknowledgeMatchingPushDelivery).not.toHaveBeenCalled()
   })
 
   it('routes Places autocomplete through authenticated mobile API services', async () => {

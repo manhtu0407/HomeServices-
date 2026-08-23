@@ -3,7 +3,7 @@
 // createBroadcasts. Imported by services.ts for wiring.
 
 import { asBoolean, asJobStatus, asString, asWorkerCancellationAbuseSignals, asWorkerCancellationCategory, asWorkerCancellationReasonCode, nullableString } from "../../platform/coercions.ts";
-import { db, dbQuery, type DbClient } from "../../platform/db.ts";
+import { db, dbQuery, type DbClient, workflowDb } from "../../platform/db.ts";
 import { validateJobEvidenceRefs } from "../job/evidence-refs.ts";
 import { mapWorkerCancellationRequestError } from "../../platform/domain-error-mappers.ts";
 import { logJobEvent } from "../../platform/audit.ts";
@@ -222,7 +222,7 @@ async function restartReplacementSearch(
       const cancelledWorkerId = nullableString(input.row.worker_id_out) ?? input.ctx.user.id;
       const excludeWorkerIds = Array.from(new Set([cancelledWorkerId, ...previousRecipients.workerIds]));
       const broadcast = await createBroadcasts(
-        input.client, input.jobId, input.row.service_type_out as ServiceType, district, { excludeWorkerIds },
+        workflowDb(input.ctx), input.jobId, input.row.service_type_out as ServiceType, district, { excludeWorkerIds },
       );
       broadcastSent = broadcast.success;
       message = broadcast.success

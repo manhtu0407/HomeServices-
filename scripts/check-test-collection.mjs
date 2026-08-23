@@ -2,9 +2,9 @@
 // only if the owning package's runner actually collects it.
 //
 // The defect this catches is a step that reports success having run nothing. Every package
-// narrows collection to its pillar suite and sets `passWithNoTests`, so a positional filter
-// naming a non-pillar file intersects to the empty set and vitest exits 0 with
-// "No test files found". Three steps were measured in that state — two collecting nothing at
+// narrows collection to its pillar suite, so a positional filter naming a non-pillar file
+// intersects to the empty set. The configs now leave that outcome red. Three steps were
+// previously measured in a false-green state — two collecting nothing at
 // all, one collecting a single file of the seventeen paths it named. The measurement is in
 // docs/test-logs/2026-08-20_uncollected-sweep.md and the per-invariant decisions in
 // docs/audit/test-collection-analysis-20260820.md.

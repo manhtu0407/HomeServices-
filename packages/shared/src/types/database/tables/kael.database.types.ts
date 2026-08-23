@@ -79,6 +79,7 @@ export type KaelTables = {
           service_type: Database["public"]["Enums"]["service_type"] | null
           source: string
           status: string
+          synthetic_cohort_id: string | null
           updated_at: string
         }
         Insert: {
@@ -103,6 +104,7 @@ export type KaelTables = {
           service_type?: Database["public"]["Enums"]["service_type"] | null
           source: string
           status?: string
+          synthetic_cohort_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -127,6 +129,7 @@ export type KaelTables = {
           service_type?: Database["public"]["Enums"]["service_type"] | null
           source?: string
           status?: string
+          synthetic_cohort_id?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -151,6 +154,13 @@ export type KaelTables = {
             referencedRelation: "jobs"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "kael_ab_price_synthesis_cases_synthetic_cohort_id_fkey"
+            columns: ["synthetic_cohort_id"]
+            isOneToOne: false
+            referencedRelation: "synthetic_matching_cohorts"
+            referencedColumns: ["cohort_id"]
+          },
         ]
       }
       kael_admin_queue: {
@@ -170,6 +180,7 @@ export type KaelTables = {
           response_summary: string
           safe_metadata: Json
           status: string
+          synthetic_cohort_id: string | null
           updated_at: string
         }
         Insert: {
@@ -188,6 +199,7 @@ export type KaelTables = {
           response_summary: string
           safe_metadata?: Json
           status?: string
+          synthetic_cohort_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -206,6 +218,7 @@ export type KaelTables = {
           response_summary?: string
           safe_metadata?: Json
           status?: string
+          synthetic_cohort_id?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -229,6 +242,13 @@ export type KaelTables = {
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "kael_admin_queue_synthetic_cohort_id_fkey"
+            columns: ["synthetic_cohort_id"]
+            isOneToOne: false
+            referencedRelation: "synthetic_matching_cohorts"
+            referencedColumns: ["cohort_id"]
           },
         ]
       }
@@ -771,6 +791,7 @@ export type KaelTables = {
           service_type: Database["public"]["Enums"]["service_type"]
           started_at: string
           status: string
+          synthetic_cohort_id: string | null
           total_cost_usd: number
           total_turns: number
           updated_at: string
@@ -792,6 +813,7 @@ export type KaelTables = {
           service_type: Database["public"]["Enums"]["service_type"]
           started_at?: string
           status?: string
+          synthetic_cohort_id?: string | null
           total_cost_usd?: number
           total_turns?: number
           updated_at?: string
@@ -813,6 +835,7 @@ export type KaelTables = {
           service_type?: Database["public"]["Enums"]["service_type"]
           started_at?: string
           status?: string
+          synthetic_cohort_id?: string | null
           total_cost_usd?: number
           total_turns?: number
           updated_at?: string
@@ -1694,6 +1717,7 @@ export type KaelTables = {
           quality_signal: string | null
           request_id: string | null
           safe_metadata: Json
+          synthetic_cohort_id: string | null
         }
         Insert: {
           cost_actual?: number | null
@@ -1715,6 +1739,7 @@ export type KaelTables = {
           quality_signal?: string | null
           request_id?: string | null
           safe_metadata?: Json
+          synthetic_cohort_id?: string | null
         }
         Update: {
           cost_actual?: number | null
@@ -1736,6 +1761,7 @@ export type KaelTables = {
           quality_signal?: string | null
           request_id?: string | null
           safe_metadata?: Json
+          synthetic_cohort_id?: string | null
         }
         Relationships: [
           {
@@ -1744,6 +1770,13 @@ export type KaelTables = {
             isOneToOne: false
             referencedRelation: "jobs"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "kael_optimization_metrics_synthetic_cohort_id_fkey"
+            columns: ["synthetic_cohort_id"]
+            isOneToOne: false
+            referencedRelation: "synthetic_matching_cohorts"
+            referencedColumns: ["cohort_id"]
           },
         ]
       }

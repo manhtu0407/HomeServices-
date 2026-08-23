@@ -79,7 +79,7 @@ export function useCompletionPaymentActions({
 
   const confirmStagingPayment = useCallback(async () => {
     const jobId = getRemoteJobId(stateRef.current)
-    if (!jobId) return setRemoteError('Không có yêu cầu để xác nhận thanh toán Staging')
+    if (!jobId) return setRemoteError('Không có yêu cầu để xác nhận thanh toán')
     const confirmed = await jobService.confirmStagingPayment(jobId)
     if (!confirmed.success) return setRemoteError(confirmed.error)
     await refreshCurrentJob()

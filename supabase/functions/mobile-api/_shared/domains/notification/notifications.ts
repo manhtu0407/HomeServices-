@@ -1,6 +1,7 @@
 // Edge service notifications domain facade. Notification responsibilities are split by caller shape.
 
 export {
+  acknowledgeMatchingPushDelivery,
   listNotifications,
   markNotificationRead,
   registerDevicePushToken,

@@ -120,6 +120,12 @@ export const devicePushTokenUnregisterSchema = z.object({
   push_token: z.string().min(8).max(4096),
 }).strict()
 
+export const matchingPushDeliveryAckSchema = z.object({
+  matching_delivery_id: z.string().uuid(),
+  device_push_token_id: z.string().uuid(),
+  device_push_token_updated_at: z.string().datetime(),
+}).strict()
+
 export const customerScopeDecisionSchema = z.object({
   decision: z.enum(['approve', 'reject']),
 })
@@ -137,4 +143,5 @@ export type CustomerAvatarUpdateInput = z.infer<typeof customerAvatarUpdateSchem
 export type CustomerCancellationRequestInput = z.infer<typeof customerCancellationRequestSchema>
 export type DevicePushTokenInput = z.infer<typeof devicePushTokenSchema>
 export type DevicePushTokenUnregisterInput = z.infer<typeof devicePushTokenUnregisterSchema>
+export type MatchingPushDeliveryAckInput = z.infer<typeof matchingPushDeliveryAckSchema>
 export type CustomerScopeDecisionInput = z.infer<typeof customerScopeDecisionSchema>

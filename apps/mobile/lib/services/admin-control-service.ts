@@ -58,6 +58,81 @@ import type {
   AdminPaymentReconciliationStatus,
 } from '../api-types/admin'
 
+export type AdminGovernanceActionInput = { expected_revision: number; reason: string }
+export type AdminGovernanceCapabilities = { read: boolean; draft: boolean; approve: boolean; publish: boolean }
+export type AdminPolicyEvidenceRequirements = {
+  minimum_source_count: number
+  minimum_high_trust_source_count: number
+  requires_active_baseline: boolean
+}
+export type AdminIntakePolicy = {
+  id: string
+  service_problem_id: string
+  service_type: string
+  problem_slug: string
+  version: number
+  status: 'draft' | 'approved' | 'active' | 'retired'
+  quote_mode: 'kael_auto_quote' | 'rfq' | 'inspection_only' | 'blocked'
+  tier_a_fields: string[]
+  tier_b_slots: { key: string; enabled: boolean; required_for_quote: boolean }[]
+  question_overrides: Record<string, { vi: string; en: string }>
+  safety_requirements: string[]
+  capability_requirements: string[]
+  evidence_requirements: AdminPolicyEvidenceRequirements
+  service_intake_policy_heads: { revision: number; active_version: number | null }
+}
+export type AdminIntakePolicyListResponse = { capabilities: AdminGovernanceCapabilities; policies: AdminIntakePolicy[] }
+export type AdminIntakePolicyPreview = {
+  policy_id: string
+  service_type: string
+  problem_slug: string
+  version: number
+  revision: number
+  quote_mode: AdminIntakePolicy['quote_mode']
+  missing_tier_a: string[]
+  missing_tier_b: string[]
+  order_eligible: boolean
+  quote_eligible: boolean
+  safety_requirements: string[]
+  capability_requirements: string[]
+  evidence_requirements: AdminPolicyEvidenceRequirements
+}
+export type AdminIntakePolicyDraftInput = Omit<AdminIntakePolicy, 'id' | 'service_problem_id' | 'service_type' | 'problem_slug' | 'version' | 'status' | 'service_intake_policy_heads'> & {
+  expected_revision: number
+  problem_id: string
+  reason: string
+}
+export type AdminPriceBaselineVersion = {
+  id: string
+  service_problem_id: string
+  service_type: string
+  district_code: string
+  complexity: 'small' | 'medium' | 'large'
+  version: number
+  status: AdminIntakePolicy['status']
+  price_min: number
+  price_max: number
+  source: string
+  price_evidence: Record<string, unknown>
+  price_baseline_governance_heads: { revision: number; active_version: number | null }
+}
+export type AdminPriceBaselineVersionListResponse = {
+  baselines: AdminPriceBaselineVersion[]
+  capabilities: AdminGovernanceCapabilities
+  evidence_quorum: { minimum_distinct_domains: number; schema_version: string }
+}
+export type AdminPriceBaselineDraftInput = {
+  problem_id: string
+  district_code: string
+  complexity: AdminPriceBaselineVersion['complexity']
+  expected_revision: number
+  price_min: number
+  price_max: number
+  source: string
+  price_evidence: Record<string, unknown>
+  reason: string
+}
+
 function adminGovernancePath(path: string, params: AdminViewGovernanceListInput) {
   const searchParams = new URLSearchParams()
   if (params.limit !== undefined) searchParams.set('limit', String(params.limit))
@@ -104,6 +179,34 @@ export const adminControlService = {
 
   listLearningRules(params: AdminViewGovernanceListInput = {}) {
     return api.get<AdminViewLearningRuleListResponse>(adminGovernancePath('/admin/governance/learning-rules', params))
+  },
+
+  listIntakePolicies() {
+    return api.get<AdminIntakePolicyListResponse>('/admin/governance/intake-policies')
+  },
+
+  previewIntakePolicy(input: { problem_id: string; version?: number; provided_fields: string[]; provided_slots: string[] }) {
+    return api.post<AdminIntakePolicyPreview>('/admin/governance/intake-policies/preview', input)
+  },
+
+  createIntakePolicyDraft(input: AdminIntakePolicyDraftInput) {
+    return api.post<AdminIntakePolicy>('/admin/governance/intake-policies/drafts', input)
+  },
+
+  transitionIntakePolicy(policyId: string, action: 'approve' | 'publish' | 'rollback', input: AdminGovernanceActionInput) {
+    return api.post<AdminIntakePolicy>(`/admin/governance/intake-policies/${encodeURIComponent(policyId)}/${action}`, input)
+  },
+
+  listPriceBaselineVersions() {
+    return api.get<AdminPriceBaselineVersionListResponse>('/admin/governance/price-baseline-versions')
+  },
+
+  createPriceBaselineDraft(input: AdminPriceBaselineDraftInput) {
+    return api.post<AdminPriceBaselineVersion>('/admin/governance/price-baseline-versions/drafts', input)
+  },
+
+  transitionPriceBaseline(versionId: string, action: 'approve' | 'publish' | 'rollback', input: AdminGovernanceActionInput) {
+    return api.post<AdminPriceBaselineVersion>(`/admin/governance/price-baseline-versions/${encodeURIComponent(versionId)}/${action}`, input)
   },
 
   listWorkerApplications(params: {

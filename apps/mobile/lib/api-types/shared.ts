@@ -1,5 +1,13 @@
 import type { ApartmentAccessProfileInput, ComplexityLevel, ServiceType } from '@nestscout/shared'
 
+export type ApiResponseMetadata = {
+  operationId: string | null
+  releaseId: string | null
+  runId: string | null
+  supportCode: string | null
+  traceId: string | null
+}
+
 export type AccountDeletionInput = {
   acknowledge_data_loss: true
   client_request_id: string

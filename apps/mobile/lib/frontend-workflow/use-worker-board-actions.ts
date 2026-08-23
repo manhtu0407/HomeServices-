@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, useState, type Dispatch, type RefObject } from 'react'
 import {
   toLocalDealStatus,
+  type MatchingDeliveryReceipt,
+  type QuoteMode,
   type LocalWorkflowAction,
   type LocalWorkflowState,
   type UserRole,
@@ -13,6 +15,9 @@ import type { AppLanguage } from '../app-language'
 import type {
   EarningsResponse,
   WorkerJobListResponse,
+  WorkerBroadcastProposalInput,
+  WorkerBroadcastProposalResponse,
+  WorkerBroadcastProposalAction,
   WorkerPayoutMethod,
   WorkerPayoutMethodSaveInput,
   WorkerPerformanceInsightsResponse,
@@ -23,6 +28,7 @@ import type {
 import { workerService } from '../services'
 import { uploadWorkerAvatar, type WorkerAvatarDraft } from '../worker-avatar-upload'
 import { localizeWorkflowError } from './errors'
+import { isWorkerBroadcastProposalAction, validateWorkerProposal } from './worker-proposal'
 import {
   sameWorkerEarnings,
   sameWorkerJobs,
@@ -55,6 +61,18 @@ type WorkerRemoteState = {
   withdrawalRequests: WorkerWithdrawalRequest[]
 }
 
+export type WorkerMatchingDeliveryView = {
+  confirmedRecipientCount: number | null
+  receipt: MatchingDeliveryReceipt
+}
+
+export type WorkerProposalOpportunityView = {
+  broadcastId: string
+  proposalAction: WorkerBroadcastProposalAction
+  quoteMode: QuoteMode | null
+  result: WorkerBroadcastProposalResponse | null
+}
+
 const initialWorkerRemoteState: WorkerRemoteState = {
   earnings: null,
   jobs: [],
@@ -72,7 +90,7 @@ type WorkerBoardActionsInput = {
   refreshCurrentJob: () => Promise<boolean>
   role: UserRole | null
   sessionUserId: string | null
-  setRemoteError: (error: string) => false
+  setRemoteError: (error: string, code?: string) => false
   stateRef: RefObject<LocalWorkflowState>
 }
 
@@ -89,8 +107,11 @@ export function useWorkerBoardActions({
   const workerRefreshRequestIdRef = useRef(0)
   const workerRefreshInFlightRef = useRef(false)
   const workerActivityHeartbeatBusyRef = useRef(false)
+  const workerProposalInFlightRef = useRef<string | null>(null)
   const [workerRemoteState, setWorkerRemoteState] = useState<WorkerRemoteState>(initialWorkerRemoteState)
   const [workerEarningsError, setWorkerEarningsError] = useState<string | null>(null)
+  const [workerMatchingDelivery, setWorkerMatchingDelivery] = useState<WorkerMatchingDeliveryView | null>(null)
+  const [workerProposalOpportunity, setWorkerProposalOpportunity] = useState<WorkerProposalOpportunityView | null>(null)
   const workerProfile = workerRemoteState.sessionUserId === sessionUserId ? workerRemoteState.profile : null
   const workerEarnings = workerRemoteState.sessionUserId === sessionUserId ? workerRemoteState.earnings : null
   const workerJobs = workerRemoteState.sessionUserId === sessionUserId ? workerRemoteState.jobs : []
@@ -119,12 +140,34 @@ export function useWorkerBoardActions({
         : Promise.resolve({ success: true as const, data: { requests: [] } })
       const broadcastsRequest = workerService.getBroadcasts()
       const jobsRequest = workerService.getJobs()
+      const matchingHeartbeatRequest = role === 'worker'
+        ? workerService.sendMatchingHeartbeat()
+        : Promise.resolve({ success: true as const })
 
       // Reconcile assigned work and offers together. An active assigned job is
       // authoritative and must never be replaced by an offer during refresh.
       const [broadcasts, jobs] = await Promise.all([broadcastsRequest, jobsRequest])
       if (!isCurrentWorkerRefresh()) return true
       const nextBroadcast = broadcasts.success ? broadcasts.data.broadcasts[0] : undefined
+      if (broadcasts.success) {
+        setWorkerMatchingDelivery(nextBroadcast?.delivery_receipt
+          ? {
+              confirmedRecipientCount: nextBroadcast.confirmed_recipient_count ?? null,
+              receipt: nextBroadcast.delivery_receipt,
+            }
+          : null)
+        setWorkerProposalOpportunity((current) => {
+          if (nextBroadcast && isWorkerBroadcastProposalAction(nextBroadcast.proposal_action)) {
+            return {
+              broadcastId: nextBroadcast.broadcast_id,
+              proposalAction: nextBroadcast.proposal_action,
+              quoteMode: nextBroadcast.quote_mode ?? null,
+              result: current?.broadcastId === nextBroadcast.broadcast_id ? current.result : null,
+            }
+          }
+          return current?.result ? current : null
+        })
+      }
       let workflowError = broadcasts.success ? null : broadcasts.error
       if (jobs.success) {
         setWorkerRemoteState((current) => {
@@ -170,6 +213,7 @@ export function useWorkerBoardActions({
         performanceInsightsRequest,
         payoutMethodRequest,
         withdrawalRequestsRequest,
+        matchingHeartbeatRequest,
       ])
       if (!isCurrentWorkerRefresh()) return true
       if (!profile.success) return setRemoteError(profile.error)
@@ -331,6 +375,12 @@ export function useWorkerBoardActions({
 
     const existing = stateRef.current.deal
     if (existing?.broadcast) {
+      if (accepted.data.delivery_receipt) {
+        setWorkerMatchingDelivery((current) => ({
+          confirmedRecipientCount: current?.confirmedRecipientCount ?? null,
+          receipt: accepted.data.delivery_receipt!,
+        }))
+      }
       dispatch({
         type: 'hydrate_remote_job',
         workerGate: 'remote_backend',
@@ -359,6 +409,44 @@ export function useWorkerBoardActions({
     }
     return true
   }, [dispatch, refreshCurrentJob, setRemoteError, stateRef])
+
+  const workerMarkBroadcastSeen = useCallback(async (broadcastId: string) => {
+    const seen = await workerService.markBroadcastSeen(broadcastId)
+    if (!seen.success) return false
+    setWorkerMatchingDelivery((current) => current?.receipt.broadcast_id === broadcastId
+      ? { ...current, receipt: seen.data.delivery_receipt }
+      : current)
+    return true
+  }, [])
+
+  const workerSubmitBroadcastProposal = useCallback(async (input: WorkerBroadcastProposalInput) => {
+    const opportunity = workerProposalOpportunity
+    if (
+      !opportunity
+      || opportunity.proposalAction === 'accept_priced_offer'
+      || workerProposalInFlightRef.current
+    ) return false
+    const validated = validateWorkerProposal(opportunity.proposalAction, {
+      priceMaxText: input.price_max === null || input.price_max === undefined ? '' : String(input.price_max),
+      priceMinText: input.price_min === null || input.price_min === undefined ? '' : String(input.price_min),
+      scopeSummary: input.scope_summary,
+    })
+    if (!validated.success) return setRemoteError('', validated.code)
+    workerProposalInFlightRef.current = opportunity.broadcastId
+    try {
+      const submitted = await workerService.submitBroadcastProposal(
+        opportunity.broadcastId,
+        validated.input,
+      )
+      if (!submitted.success) return setRemoteError(submitted.error, submitted.code)
+      setWorkerProposalOpportunity((current) => current?.broadcastId === submitted.data.broadcast_id
+        ? { ...current, result: submitted.data }
+        : current)
+      return true
+    } finally {
+      workerProposalInFlightRef.current = null
+    }
+  }, [setRemoteError, workerProposalOpportunity])
 
   const workerDeclineBroadcast = useCallback(async () => {
     const jobId = getRemoteJobId(stateRef.current)
@@ -453,14 +541,18 @@ export function useWorkerBoardActions({
     workerEarningsError,
     workerJobs,
     workerJobsHydrated,
+    workerMarkBroadcastSeen,
+    workerMatchingDelivery,
     workerPerformanceInsights,
     workerPayoutMethod,
     workerProfile,
+    workerProposalOpportunity,
     workerRefresh,
     workerRequestWithdrawal,
     workerSavePayoutMethod,
     workerSubmitRegistration,
     workerSaveRegistrationDraft,
+    workerSubmitBroadcastProposal,
     workerUpdateAvailability,
     workerUpdateServiceArea,
     workerUpdateServicePreferences,

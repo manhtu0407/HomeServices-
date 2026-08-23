@@ -37,6 +37,24 @@ insert into public.worker_profiles (
   5, array['q7'], true, true, 'Price Worker', '1990-01-01', 'approved'
 );
 
+set local role service_role;
+
+select * from public.bind_synthetic_matching_cohort(
+  'synthetic-a151-price-agreement',
+  array['a1510000-0000-4000-8000-000000000001']::uuid[],
+  array['a1510000-0000-4000-8000-000000000002']::uuid[]
+);
+
+reset role;
+
+insert into public.kael_chat_sessions(
+  id, customer_id, service_type, status, safe_metadata
+) values (
+  'a1530000-0000-4000-8000-000000000001',
+  'a1510000-0000-4000-8000-000000000001',
+  'electrical', 'active', '{"source":"bilateral_price_sql"}'::jsonb
+);
+
 insert into public.jobs (
   id, customer_id, service_type, service_problem_id, description,
   address_building, address_unit, address_floor, address_district, status,
@@ -76,6 +94,38 @@ insert into public.jobs (
   )
 );
 
+insert into public.confirmation_operations(
+  id, idempotency_key, session_id, customer_id, job_id, quote_mode,
+  confirmation_kind, state, support_code, synthetic_cohort_id
+) values (
+  'a1570000-0000-4000-8000-000000000001',
+  'kael-confirm:a1530000-0000-4000-8000-000000000001:a1510000-0000-4000-8000-000000000001',
+  'a1530000-0000-4000-8000-000000000001',
+  'a1510000-0000-4000-8000-000000000001',
+  'a1520000-0000-4000-8000-000000000001',
+  'kael_auto_quote', 'priced_offer', 'candidate_ready', 'A151C0DE',
+  'synthetic-a151-price-agreement'
+);
+
+insert into public.matching_operations(
+  id, confirmation_operation_id, job_id, state, synthetic_cohort_id
+) values (
+  'a1580000-0000-4000-8000-000000000001',
+  'a1570000-0000-4000-8000-000000000001',
+  'a1520000-0000-4000-8000-000000000001',
+  'candidate_ready', 'synthetic-a151-price-agreement'
+);
+
+insert into public.workflow_outbox(
+  operation_id, event_type, status, safe_payload
+) values (
+  'a1570000-0000-4000-8000-000000000001',
+  'matching_requested', 'processing',
+  '{"job_id":"a1520000-0000-4000-8000-000000000001"}'::jsonb
+);
+
+set local role service_role;
+
 do $verification$
 declare
   v_broadcast record;
@@ -88,6 +138,13 @@ declare
   v_candidate_quote jsonb;
   v_tier record;
 begin
+  if (select synthetic_cohort_id from public.jobs
+      where id = 'a1520000-0000-4000-8000-000000000001')
+      <> 'synthetic-a151-price-agreement'
+  then
+    raise exception 'verified price fixture did not inherit its synthetic cohort';
+  end if;
+
   select * into v_broadcast
   from public.activate_job_broadcast_batch_atomic(
     'a1520000-0000-4000-8000-000000000001',
@@ -185,6 +242,25 @@ begin
     raise exception 'customer did not atomically confirm worker and exact price';
   end if;
 
+  if (select state from public.confirmation_operations
+      where id = 'a1570000-0000-4000-8000-000000000001') <> 'official_match'
+    or (select state from public.matching_operations
+      where id = 'a1580000-0000-4000-8000-000000000001') <> 'official_match'
+    or (select status from public.workflow_outbox
+      where operation_id = 'a1570000-0000-4000-8000-000000000001'
+        and event_type = 'matching_requested') <> 'completed'
+  then
+    raise exception 'official match did not atomically project its durable terminal receipt';
+  end if;
+
+  begin
+    update public.jobs
+    set gross_amount = 200000
+    where id = 'a1520000-0000-4000-8000-000000000001';
+    raise exception 'synthetic official match entered a money field';
+  exception when insufficient_privilege then null;
+  end;
+
   select * into v_confirm_retry
   from public.confirm_worker_candidate_atomic(
     'a1520000-0000-4000-8000-000000000001',
@@ -204,11 +280,14 @@ begin
 end;
 $verification$;
 
+reset role;
+
 select jsonb_build_object(
   'server_frozen_quote', true,
   'worker_confirmation', true,
   'customer_confirmation', true,
   'final_price_atomic', true,
+  'terminal_receipt_atomic', true,
   'retry_idempotent', true,
   'estimate_range_preserved', true
 ) as original_scope_bilateral_price_agreement_verification;

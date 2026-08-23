@@ -571,6 +571,8 @@ export type EdgeAiSecrets = {
 export type PipelineInput = {
   serviceType: string;
   problemChips: string[];
+  groundedProblemSlug?: string;
+  intakeQuoteMode?: "rfq" | "inspection_only";
   description: string;
   district: string;
   photoUrls?: string[];

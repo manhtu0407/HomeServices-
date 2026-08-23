@@ -700,7 +700,7 @@ describe('LoginRoleSurface', () => {
     render(<LoginRoleSurface />)
 
     expect(screen.getByText('Gmail hoặc SĐT')).toBeOnTheScreen()
-    expect(screen.getByText('Welcome Back..!')).toBeOnTheScreen()
+    expect(screen.getByText('Chào mừng trở lại!')).toBeOnTheScreen()
     expect(screen.getByTestId('auth-login-email-input')).toHaveProp('placeholder', 'ten@vidu.vn hoặc 090 123 4567')
     expect(screen.queryByText('Tiếp tục nơi bạn đã dừng cùng Kael.')).toBeNull()
     fireEvent.changeText(screen.getByTestId('auth-login-email-input'), '090 123 4567')

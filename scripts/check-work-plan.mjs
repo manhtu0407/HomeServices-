@@ -192,6 +192,8 @@ export function reconcile({ plan, changed }) {
   const problems = []
   const window = []
   let declaredFiles = 0
+  let closedSlices = 0
+  let pendingSlices = 0
 
   for (const slice of slices) {
     const id = slice.id ?? '<unnamed>'
@@ -204,8 +206,14 @@ export function reconcile({ plan, changed }) {
     if (!Array.isArray(slice.dropped)) {
       problems.push(`${id}: no \`dropped\` array — an empty one is valid, a missing one hides which candidate skills were cut`)
     }
-    if (slice.status === 'open') {
+    if (!['closed', 'open', 'pending'].includes(slice.status)) {
+      problems.push(`${id}: status \`${slice.status}\` is not closed, pending, or open`)
+    } else if (slice.status === 'open') {
       problems.push(`${id}: still open — a slice closes before the next one opens`)
+    } else if (slice.status === 'closed') {
+      closedSlices += 1
+    } else {
+      pendingSlices += 1
     }
     for (const entry of slice.read ?? []) window.push(entry)
     for (const entry of slice.scope ?? []) window.push(entry)
@@ -239,6 +247,8 @@ export function reconcile({ plan, changed }) {
     mode: 'reconcile',
     mission: plan.mission ?? null,
     slices: slices.length,
+    closedSlices,
+    pendingSlices,
     changed: changed.length,
     declaredFiles,
     problems,
@@ -324,7 +334,7 @@ if (isMain) {
     console.log(
       result.mode === 'coverage'
         ? `work-router coverage ok: ${result.reachable}/${result.skills} skills reachable (${result.alwaysOn} always-on exempt, ${result.protocolOnly} protocol-only names trapped)`
-        : `work plan ok: ${result.slices} slices closed, ${result.changed} files changed inside the declared read-window`,
+        : `work plan ok: ${result.slices} slices declared (${result.closedSlices} closed, ${result.pendingSlices} pending), ${result.changed} files changed inside the declared read-window`,
     )
   } else {
     console.error(problems.map((problem) => `  - ${problem}`).join('\n'))

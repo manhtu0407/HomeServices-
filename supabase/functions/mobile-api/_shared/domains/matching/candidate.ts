@@ -16,20 +16,22 @@ import {
   resumeMatchingAfterCandidateRejection,
 } from "./candidate-support.ts";
 import { asJobStatus, asString, nullableString } from "../../platform/coercions.ts";
-import { db, dbQuery } from "../../platform/db.ts";
+import { db, dbQuery, workflowDb } from "../../platform/db.ts";
 import { insertUserNotification, notifyCustomerWorkerMatched } from "../notification/notifications.ts";
 import { loadDirectWorkerPaymentAvailability } from "../payment/direct-payment-availability.ts";
+import { recordHarnessEvent } from "../../../../_shared/harness/trace.ts";
 
 export { notifyCustomerCandidateReady } from "./candidate-support.ts";
 
 export async function getWorkerCandidate(ctx: MobileApiContext, jobId: string) {
   const client = db(ctx);
+  const workflowClient = workflowDb(ctx);
   const job = await requireJobAccess(client, jobId, ctx, {
-    select: "id, status, customer_id, worker_id",
+    select: "id, status, customer_id, worker_id, quote_mode",
   });
   const current = await dbQuery<Record<string, unknown>>(
     client.from("job_worker_candidates")
-      .select("id, job_id, worker_id, broadcast_id, status, proposed_at, expires_at, customer_decided_at, original_scope_price_quote")
+      .select("id, job_id, worker_id, broadcast_id, status, proposed_at, expires_at, customer_decided_at, original_scope_price_quote, worker_matching_proposals(id, scope_summary, price_min, price_max, status)")
       .eq("job_id", jobId).in("status", ["proposed", "customer_confirmed"])
       .order("proposed_at", { ascending: false }).limit(1).maybeSingle(),
   );
@@ -38,15 +40,21 @@ export async function getWorkerCandidate(ctx: MobileApiContext, jobId: string) {
     current.data?.status === "proposed" &&
     candidateHasExpired(current.data.expires_at)
   ) {
+    const proposalMode = job.quote_mode === "rfq" || job.quote_mode === "inspection_only";
     const expired = await dbQuery<Array<Record<string, unknown>>>(
-      client.rpc("reject_worker_candidate_atomic", {
+      workflowClient.rpc(proposalMode
+        ? "confirm_worker_matching_proposal_atomic"
+        : "reject_worker_candidate_atomic", {
         p_job_id: jobId,
         p_candidate_id: asString(current.data.id),
         p_customer_id: ctx.user.id,
       }),
     );
     const expiredRow = expired.data?.[0];
-    if (expired.error || !expiredRow?.ok) {
+    const proposalExpired = proposalMode && expiredRow?.ok === false &&
+      nullableString(expiredRow.error_code) === "EXPIRED" &&
+      nullableString(expiredRow.job_status) === "broadcasting";
+    if (expired.error || (!proposalExpired && expiredRow?.ok !== true)) {
       apiFailure("STATUS_CHANGED", "Đề xuất thợ đã hết hạn. Vui lòng tải lại.", 409);
     }
     await logJobEvent(client, jobId, "worker_candidate_expired", ctx,
@@ -81,16 +89,52 @@ export async function confirmWorkerCandidate(
   candidateId: string,
 ) {
   const client = db(ctx);
+  const workflowClient = workflowDb(ctx);
+  const job = await requireJobAccess(client, jobId, ctx, {
+    requiredRole: "customer",
+    select: "id, status, customer_id, quote_mode",
+  });
+  const proposalMode = job.quote_mode === "rfq" || job.quote_mode === "inspection_only";
   const result = await dbQuery<Array<Record<string, unknown>>>(
-    client.rpc("confirm_worker_candidate_atomic", {
+    workflowClient.rpc(proposalMode
+      ? "confirm_worker_matching_proposal_atomic"
+      : "confirm_worker_candidate_atomic", {
       p_job_id: jobId,
       p_candidate_id: candidateId,
       p_customer_id: ctx.user.id,
     }),
   );
-  if (result.error) apiFailure("DB_ERROR", "Không thể xác nhận thợ", 500);
+  if (result.error) {
+    await recordHarnessEvent(ctx.traceContext, {
+      eventClass: "matching.candidate_confirm.rpc_failed",
+      stage: "matching.candidate.confirm",
+      status: "failed",
+      errorCode: "CANDIDATE_CONFIRM_RPC_FAILED",
+      safeMetadata: {
+        rpc_code: safeRpcCode(result.error.code),
+        rpc_subject: safeRpcSubject(result.error.message),
+      },
+    });
+    apiFailure("DB_ERROR", "Không thể xác nhận thợ", 500, {
+      reason_code: safeRpcReason(result.error.code),
+    });
+  }
   const row = result.data?.[0];
-  if (!row) apiFailure("DB_ERROR", "Không thể xác nhận thợ", 500);
+  if (!row) {
+    await recordHarnessEvent(ctx.traceContext, {
+      eventClass: "matching.candidate_confirm.empty_result",
+      stage: "matching.candidate.confirm",
+      status: "failed",
+      errorCode: "CANDIDATE_CONFIRM_EMPTY_RESULT",
+      safeMetadata: {
+        result_kind: Array.isArray(result.data) ? "array" : typeof result.data,
+        result_count: Array.isArray(result.data) ? result.data.length : null,
+      },
+    });
+    apiFailure("DB_ERROR", "Không thể xác nhận thợ", 500, {
+      reason_code: "DB_EMPTY_RESULT",
+    });
+  }
   if (!row.ok) {
     const errorCode = nullableString(row.error_code);
     const shouldResumeMatching = (
@@ -141,14 +185,41 @@ export async function confirmWorkerCandidate(
   };
 }
 
+function safeRpcCode(value: unknown) {
+  return typeof value === "string" && /^[A-Za-z0-9_]{1,64}$/u.test(value)
+    ? value
+    : "UNKNOWN";
+}
+
+function safeRpcSubject(value: unknown) {
+  if (typeof value !== "string") return "unknown";
+  const normalized = value.toLowerCase();
+  if (normalized.includes("permission denied for function")) return "function_execute";
+  if (normalized.includes("permission denied")) return "data_access";
+  if (normalized.includes("ambiguous")) return "sql_ambiguity";
+  if (normalized.includes("constraint")) return "constraint";
+  return "unknown";
+}
+
+function safeRpcReason(value: unknown) {
+  if (value === "42501") return "DB_PERMISSION";
+  if (value === "40001") return "DB_SERIALIZATION";
+  if (value === "23503" || value === "23514") return "DB_CONSTRAINT";
+  if (value === "42702" || value === "42703" || value === "42P01") {
+    return "DB_SCHEMA";
+  }
+  return "DB_RPC";
+}
+
 export async function rejectWorkerCandidate(
   ctx: MobileApiContext,
   jobId: string,
   candidateId: string,
 ) {
   const client = db(ctx);
+  const workflowClient = workflowDb(ctx);
   const result = await dbQuery<Array<Record<string, unknown>>>(
-    client.rpc("reject_worker_candidate_atomic", {
+    workflowClient.rpc("reject_worker_candidate_atomic", {
       p_job_id: jobId,
       p_candidate_id: candidateId,
       p_customer_id: ctx.user.id,
@@ -179,6 +250,12 @@ export async function rejectWorkerCandidate(
       body: "Bạn đã được mở lại trạng thái nhận việc.",
       metadata: { candidate_id: candidateId },
     });
+    await dbQuery(
+      client.from("worker_matching_proposals")
+        .update({ status: "customer_declined", updated_at: new Date().toISOString() })
+        .eq("candidate_id", candidateId)
+        .eq("status", "proposed"),
+    );
   }
   const candidate = await loadSafeWorkerCandidateView(client, jobId, candidateId, ctx.user.id);
   if (returnedStatus !== "broadcasting") {

@@ -12,6 +12,9 @@ import { notifyBroadcastWorkers } from "../notification/notifications.ts";
 import { apiFailure } from "../../platform/api-failure.ts";
 import type { ServiceType } from "../../../../_shared/domain.ts";
 import { queryEligibleWorkers } from "./broadcast-workers.ts";
+import { BROADCAST_DELIVERY_TTL_MS } from "./delivery.ts";
+
+const PREVIOUS_RELEASE_BROADCAST_TTL_MS = 60_000;
 
 export {
   acquireBroadcastRetryLease,
@@ -27,6 +30,7 @@ type ActivateBroadcastBatchInput = {
   batchId: string;
   sentAt: string;
   expiresAt: string;
+  durable?: boolean;
 };
 
 export async function activateBroadcastBatch(
@@ -34,7 +38,9 @@ export async function activateBroadcastBatch(
   input: ActivateBroadcastBatchInput,
 ) {
   const result = await dbQuery<Array<Record<string, unknown>>>(
-    client.rpc("activate_job_broadcast_batch_atomic", {
+    client.rpc(input.durable !== false
+      ? "activate_job_broadcast_batch_durable_atomic"
+      : "activate_job_broadcast_batch_atomic", {
       p_job_id: input.jobId,
       p_worker_ids: input.workerIds,
       p_batch_id: input.batchId,
@@ -52,6 +58,8 @@ export async function activateBroadcastBatch(
   const targets = (result.data ?? []).map((row) => ({
     broadcastId: asString(row.id),
     workerId: asString(row.worker_id),
+    deliveryId: asString(row.delivery_id),
+    operationId: asString(row.operation_id),
   })).filter((row) => row.broadcastId && row.workerId);
   if (targets.length === 0) {
     return {
@@ -70,6 +78,17 @@ export async function createBroadcasts(
   district: string,
   options: { candidateWorkerIds?: string[]; excludeWorkerIds?: string[] } = {},
 ) {
+  const modeResult = await dbQuery<Record<string, unknown>>(
+    client.from("jobs").select("quote_mode").eq("id", jobId).maybeSingle(),
+  );
+  if (modeResult.error || !modeResult.data) {
+    return {
+      success: false as const,
+      reasonCode: "DB_ERROR" as const,
+      reason: "Không thể kiểm tra chế độ gửi yêu cầu",
+    };
+  }
+  const durable = nullableString(modeResult.data.quote_mode) !== null;
   const eligibleResult = await queryEligibleWorkers(
     client,
     serviceType,
@@ -93,7 +112,9 @@ export async function createBroadcasts(
     };
   }
   const now = new Date();
-  const expiresAt = new Date(now.getTime() + 60_000);
+  const expiresAt = new Date(now.getTime() + (durable
+    ? BROADCAST_DELIVERY_TTL_MS
+    : PREVIOUS_RELEASE_BROADCAST_TTL_MS));
   const batchId = crypto.randomUUID();
   const activation = await activateBroadcastBatch(client, {
     jobId,
@@ -101,6 +122,7 @@ export async function createBroadcasts(
     batchId,
     sentAt: now.toISOString(),
     expiresAt: expiresAt.toISOString(),
+    durable,
   });
   if (!activation.success) return activation;
   await notifyBroadcastWorkers(

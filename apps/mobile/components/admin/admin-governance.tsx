@@ -14,9 +14,10 @@ import { type AppLanguage } from '@/lib/app-language'
 import { adminControlService } from '@/lib/services'
 
 import { AdminPagination } from './admin-pagination'
+import { AdminPolicyGovernance } from './admin-policy-governance'
 import { AdminTabNavigation } from './admin-tab-navigation'
 
-type GovernancePanel = 'disputes' | 'prices' | 'kael'
+type GovernancePanel = 'disputes' | 'prices' | 'policies' | 'kael'
 
 const PAGE_SIZE = 8
 const REFRESH_INTERVAL_MS = 30_000
@@ -40,6 +41,7 @@ const copy = {
     priceEmpty: 'Chưa có nền tảng giá nào.',
     priceRange: 'Khoảng giá',
     prices: 'Nền tảng giá',
+    policies: 'Chính sách',
     provider: 'Nhà cung cấp',
     purpose: 'Mục đích',
     refresh: 'Tải lại',
@@ -68,6 +70,7 @@ const copy = {
     priceEmpty: 'No price baseline is available.',
     priceRange: 'Price range',
     prices: 'Price baselines',
+    policies: 'Policies',
     provider: 'Provider',
     purpose: 'Purpose',
     refresh: 'Refresh',
@@ -130,7 +133,7 @@ export function AdminGovernancePanel({ actor, language }: { actor: AdminViewActo
           setPriceTotal(result.data.total_count)
           setPriceHasMore(result.data.has_more)
         } else setError(result.error)
-      } else {
+      } else if (activePanel === 'kael') {
         const [costResult, ruleResult] = await Promise.all([
           adminControlService.listAiCosts({ limit: PAGE_SIZE, offset: (costPage - 1) * PAGE_SIZE }),
           adminControlService.listLearningRules({ limit: PAGE_SIZE, offset: (rulePage - 1) * PAGE_SIZE }),
@@ -181,6 +184,7 @@ export function AdminGovernancePanel({ actor, language }: { actor: AdminViewActo
       items={[
         { key: 'disputes', label: labels.disputes, onPress: () => { setActivePanel('disputes'); setDisputePage(1) }, selected: activePanel === 'disputes', testID: 'admin-governance-disputes-tab' },
         { key: 'prices', label: labels.prices, onPress: () => { setActivePanel('prices'); setPricePage(1) }, selected: activePanel === 'prices', testID: 'admin-governance-prices-tab' },
+        { key: 'policies', label: labels.policies, onPress: () => { setActivePanel('policies') }, selected: activePanel === 'policies', testID: 'admin-governance-policies-tab' },
         { key: 'kael', label: 'Kael', onPress: () => { setActivePanel('kael'); setCostPage(1); setRulePage(1) }, selected: activePanel === 'kael', testID: 'admin-governance-kael-tab' },
       ]}
       testID="admin-governance-navigation"
@@ -191,7 +195,7 @@ export function AdminGovernancePanel({ actor, language }: { actor: AdminViewActo
     </> : activePanel === 'prices' ? <>
       {prices.length === 0 ? <EmptyState label={labels.priceEmpty} /> : prices.map((item) => <PriceCard item={item} key={item.id} language={language} />)}
       <Pagination hasMore={priceHasMore} language={language} loading={loading} onPageChange={setPricePage} page={pricePage} prefix="admin-governance-price-page" total={priceTotal} />
-    </> : <>
+    </> : activePanel === 'policies' ? <AdminPolicyGovernance language={language} /> : <>
       <Text style={styles.sectionTitle}>{labels.aiCosts}</Text>
       {costs.length === 0 ? <EmptyState label={labels.aiEmpty} /> : costs.map((item) => <CostCard item={item} key={`${item.day}:${item.provider}:${item.purpose}`} language={language} />)}
       <Pagination hasMore={costHasMore} language={language} loading={loading} onPageChange={setCostPage} page={costPage} prefix="admin-governance-cost-page" total={costTotal} />

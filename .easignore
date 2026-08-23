@@ -6,6 +6,7 @@
 .tmp/
 tmp/
 output/
+artifacts/
 docker/
 compose.yaml
 

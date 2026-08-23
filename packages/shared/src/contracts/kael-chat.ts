@@ -3,6 +3,7 @@ import { KAEL_PERFORMANCE_PROFILE_IDS } from '../service-intake/types'
 import { caseWorkEvidenceSchema } from '../kael-case-work'
 import { clientRequestIdSchema, serviceTypeSchema } from './common'
 import { apartmentAccessProfileSchema } from './job'
+import { intakeConfirmationKindSchema } from './stage1-reliability'
 
 function isRealCalendarDate(s: string): boolean {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return false
@@ -97,9 +98,19 @@ export const kaelChatIntakeConfirmationDecisionSchema = z.object({
 }).strict()
 
 export const kaelChatConfirmSchema = z.object({
-  price_reasoning_receipt_id: z.string().trim().min(8).max(160),
+  price_reasoning_receipt_id: z.string().trim().min(8).max(160).optional(),
+  confirmation_kind: intakeConfirmationKindSchema.exclude(['none']).optional(),
   matching_mode: z.enum(['prompt_if_saved']).optional(),
-}).strict()
+}).strict().superRefine((value, ctx) => {
+  const pricedConfirmation = !value.confirmation_kind || value.confirmation_kind === 'priced_offer'
+  if (pricedConfirmation && !value.price_reasoning_receipt_id) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'priced offer confirmation requires a price reasoning receipt',
+      path: ['price_reasoning_receipt_id'],
+    })
+  }
+})
 
 const kaelChatMediaRefSchema = z.string().regex(
   /^supabase:\/\/kael-chat-media\/(?!\.{1,2}\/)[^/\s?#]+\/kael-chat\/(?:model_vision|private_video_original)\/(?!.*(?:\.\.|\/\/))[^\s?#]+$/i,

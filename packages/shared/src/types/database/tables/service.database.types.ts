@@ -5,6 +5,207 @@ import type { Database } from '../schema.database.types'
 
 export type ServiceTables = {
 /* @slice:begin tables:service */
+      price_baseline_governance_audit: {
+        Row: {
+          actor_id: string
+          baseline_version_id: string
+          created_at: string
+          event: string
+          from_version: number | null
+          id: number
+          reason: string
+          revision: number
+          to_version: number
+        }
+        Insert: {
+          actor_id: string
+          baseline_version_id: string
+          created_at?: string
+          event: string
+          from_version?: number | null
+          id?: never
+          reason: string
+          revision: number
+          to_version: number
+        }
+        Update: {
+          actor_id?: string
+          baseline_version_id?: string
+          created_at?: string
+          event?: string
+          from_version?: number | null
+          id?: never
+          reason?: string
+          revision?: number
+          to_version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "price_baseline_governance_audit_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "price_baseline_governance_audit_baseline_version_id_fkey"
+            columns: ["baseline_version_id"]
+            isOneToOne: false
+            referencedRelation: "price_baseline_versions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      price_baseline_governance_heads: {
+        Row: {
+          active_version: number | null
+          complexity: Database["public"]["Enums"]["complexity_level"]
+          district_code: string
+          revision: number
+          service_problem_id: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          active_version?: number | null
+          complexity: Database["public"]["Enums"]["complexity_level"]
+          district_code: string
+          revision?: number
+          service_problem_id: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          active_version?: number | null
+          complexity?: Database["public"]["Enums"]["complexity_level"]
+          district_code?: string
+          revision?: number
+          service_problem_id?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "price_baseline_governance_heads_service_problem_id_fkey"
+            columns: ["service_problem_id"]
+            isOneToOne: false
+            referencedRelation: "service_problems"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "price_baseline_governance_heads_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      price_baseline_versions: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          complexity: Database["public"]["Enums"]["complexity_level"]
+          created_at: string
+          created_by: string | null
+          district_code: string
+          id: string
+          price_evidence: Json
+          price_max: number
+          price_min: number
+          published_at: string | null
+          published_by: string | null
+          reason: string
+          service_problem_id: string
+          service_type: Database["public"]["Enums"]["service_type"]
+          source: string
+          status: Database["public"]["Enums"]["admin_governance_status"]
+          updated_at: string
+          updated_by: string | null
+          version: number
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          complexity: Database["public"]["Enums"]["complexity_level"]
+          created_at?: string
+          created_by?: string | null
+          district_code: string
+          id?: string
+          price_evidence: Json
+          price_max: number
+          price_min: number
+          published_at?: string | null
+          published_by?: string | null
+          reason: string
+          service_problem_id: string
+          service_type: Database["public"]["Enums"]["service_type"]
+          source: string
+          status?: Database["public"]["Enums"]["admin_governance_status"]
+          updated_at?: string
+          updated_by?: string | null
+          version: number
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          complexity?: Database["public"]["Enums"]["complexity_level"]
+          created_at?: string
+          created_by?: string | null
+          district_code?: string
+          id?: string
+          price_evidence?: Json
+          price_max?: number
+          price_min?: number
+          published_at?: string | null
+          published_by?: string | null
+          reason?: string
+          service_problem_id?: string
+          service_type?: Database["public"]["Enums"]["service_type"]
+          source?: string
+          status?: Database["public"]["Enums"]["admin_governance_status"]
+          updated_at?: string
+          updated_by?: string | null
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "price_baseline_versions_approved_by_fkey"
+            columns: ["approved_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "price_baseline_versions_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "price_baseline_versions_published_by_fkey"
+            columns: ["published_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "price_baseline_versions_service_problem_id_fkey"
+            columns: ["service_problem_id"]
+            isOneToOne: false
+            referencedRelation: "service_problems"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "price_baseline_versions_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       service_categories: {
         Row: {
           created_at: string
@@ -37,6 +238,247 @@ export type ServiceTables = {
           updated_at?: string
         }
         Relationships: []
+      }
+      service_intake_policies: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          capability_requirements: Json
+          created_at: string
+          created_by: string | null
+          evidence_requirements: Json
+          id: string
+          problem_slug: string
+          published_at: string | null
+          published_by: string | null
+          question_overrides: Json
+          quote_mode: Database["public"]["Enums"]["service_quote_mode"]
+          reason: string
+          safety_requirements: Json
+          service_problem_id: string
+          service_type: Database["public"]["Enums"]["service_type"]
+          status: Database["public"]["Enums"]["admin_governance_status"]
+          tier_a_fields: Json
+          tier_b_slots: Json
+          updated_at: string
+          updated_by: string | null
+          version: number
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          capability_requirements: Json
+          created_at?: string
+          created_by?: string | null
+          evidence_requirements: Json
+          id?: string
+          problem_slug: string
+          published_at?: string | null
+          published_by?: string | null
+          question_overrides: Json
+          quote_mode: Database["public"]["Enums"]["service_quote_mode"]
+          reason: string
+          safety_requirements: Json
+          service_problem_id: string
+          service_type: Database["public"]["Enums"]["service_type"]
+          status?: Database["public"]["Enums"]["admin_governance_status"]
+          tier_a_fields: Json
+          tier_b_slots: Json
+          updated_at?: string
+          updated_by?: string | null
+          version: number
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          capability_requirements?: Json
+          created_at?: string
+          created_by?: string | null
+          evidence_requirements?: Json
+          id?: string
+          problem_slug?: string
+          published_at?: string | null
+          published_by?: string | null
+          question_overrides?: Json
+          quote_mode?: Database["public"]["Enums"]["service_quote_mode"]
+          reason?: string
+          safety_requirements?: Json
+          service_problem_id?: string
+          service_type?: Database["public"]["Enums"]["service_type"]
+          status?: Database["public"]["Enums"]["admin_governance_status"]
+          tier_a_fields?: Json
+          tier_b_slots?: Json
+          updated_at?: string
+          updated_by?: string | null
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "service_intake_policies_approved_by_fkey"
+            columns: ["approved_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "service_intake_policies_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "service_intake_policies_published_by_fkey"
+            columns: ["published_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "service_intake_policies_service_problem_id_fkey"
+            columns: ["service_problem_id"]
+            isOneToOne: false
+            referencedRelation: "service_problems"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "service_intake_policies_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      service_intake_policy_audit: {
+        Row: {
+          actor_id: string
+          created_at: string
+          event: string
+          from_version: number | null
+          id: number
+          policy_id: string
+          reason: string
+          revision: number
+          service_problem_id: string
+          to_version: number
+        }
+        Insert: {
+          actor_id: string
+          created_at?: string
+          event: string
+          from_version?: number | null
+          id?: never
+          policy_id: string
+          reason: string
+          revision: number
+          service_problem_id: string
+          to_version: number
+        }
+        Update: {
+          actor_id?: string
+          created_at?: string
+          event?: string
+          from_version?: number | null
+          id?: never
+          policy_id?: string
+          reason?: string
+          revision?: number
+          service_problem_id?: string
+          to_version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "service_intake_policy_audit_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "service_intake_policy_audit_policy_id_fkey"
+            columns: ["policy_id"]
+            isOneToOne: false
+            referencedRelation: "service_intake_policies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "service_intake_policy_audit_service_problem_id_fkey"
+            columns: ["service_problem_id"]
+            isOneToOne: false
+            referencedRelation: "service_problems"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      service_intake_policy_floors: {
+        Row: {
+          capability_requirements: Json
+          created_at: string
+          safety_requirements: Json
+          service_type: Database["public"]["Enums"]["service_type"]
+          tier_a_fields: Json
+        }
+        Insert: {
+          capability_requirements: Json
+          created_at?: string
+          safety_requirements: Json
+          service_type: Database["public"]["Enums"]["service_type"]
+          tier_a_fields: Json
+        }
+        Update: {
+          capability_requirements?: Json
+          created_at?: string
+          safety_requirements?: Json
+          service_type?: Database["public"]["Enums"]["service_type"]
+          tier_a_fields?: Json
+        }
+        Relationships: []
+      }
+      service_intake_policy_heads: {
+        Row: {
+          active_version: number | null
+          problem_slug: string
+          revision: number
+          service_problem_id: string
+          service_type: Database["public"]["Enums"]["service_type"]
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          active_version?: number | null
+          problem_slug: string
+          revision?: number
+          service_problem_id: string
+          service_type: Database["public"]["Enums"]["service_type"]
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          active_version?: number | null
+          problem_slug?: string
+          revision?: number
+          service_problem_id?: string
+          service_type?: Database["public"]["Enums"]["service_type"]
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "service_intake_policy_heads_service_problem_id_fkey"
+            columns: ["service_problem_id"]
+            isOneToOne: true
+            referencedRelation: "service_problems"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "service_intake_policy_heads_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       service_knowledge_boxes: {
         Row: {

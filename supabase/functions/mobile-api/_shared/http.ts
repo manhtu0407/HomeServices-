@@ -43,6 +43,14 @@ import type {
   MobileApiHandlerDeps,
   MobileApiServices,
 } from "./http/contracts.ts";
+import {
+  enforceClientCompatibility,
+  requestRuntimeContext,
+} from "./http/request-runtime.ts";
+import {
+  beginBatchedAuthorizedRequest,
+  finishBatchedAuthorizedRequest,
+} from "./http/authorized-request-lifecycle.ts";
 export type {
   KaelBatchResultsProcessInput,
   KaelBatchResultsProcessResponse,
@@ -75,7 +83,7 @@ export type {
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type, idempotency-key",
+    "authorization, x-client-info, x-client-platform, x-client-application-id, x-client-build-number, x-client-contract-epoch, x-client-eas-build-id, x-client-runtime-version, x-client-git-sha, x-client-release-id, apikey, content-type, idempotency-key",
   "Access-Control-Allow-Methods": "GET, POST, PATCH, DELETE, OPTIONS",
 };
 const JSON_HEADERS = {
@@ -98,6 +106,7 @@ type MobileApiRequestState = {
   idempotencyReservationId: string | null;
   idempotencyClient: ReliabilityClient | null;
   idempotencyExecutionStarted: boolean;
+  batchedLifecycle: boolean;
 };
 
 export function createMobileApiHandler(deps: MobileApiHandlerDeps) {
@@ -108,15 +117,19 @@ async function handleMobileApi(
   request: Request,
   deps: MobileApiHandlerDeps,
 ): Promise<Response> {
+  const trace = await requestTraceContext(request, deps);
   if (request.method === "OPTIONS") {
-    return new Response(null, { status: 204, headers: CORS_HEADERS });
+    return withHarnessHeaders(
+      new Response(null, { status: 204, headers: CORS_HEADERS }),
+      trace,
+    );
   }
 
-  const trace = await requestTraceContext(request, deps);
   try {
     const route = matchRoute(request);
     if (!route) return handleNotFound(request, trace);
     if (isPublicRoute(route)) return handlePublicRoute(route, request, deps.services, trace);
+    enforceClientCompatibility(request, deps);
     return handleAuthenticatedRequest(
       request,
       deps,
@@ -206,6 +219,7 @@ async function createRequestState(
     traceContext: boundTrace,
     releaseId: actorContext.releaseId,
     environment: actorContext.environment,
+    requestLifecycle: { finalizedByDomain: false },
   };
   return {
     request,
@@ -216,6 +230,7 @@ async function createRequestState(
     idempotencyReservationId: null,
     idempotencyClient: null,
     idempotencyExecutionStarted: false,
+    batchedLifecycle: false,
   };
 }
 
@@ -223,6 +238,10 @@ async function persistAuthorization(state: MobileApiRequestState): Promise<void>
   const { ctx, route, trace } = state;
   const envelope = ctx.capabilityEnvelope;
   if (!envelope) return;
+  if (await beginBatchedAuthorizedRequest(trace, ctx, route.kind)) {
+    state.batchedLifecycle = true;
+    return;
+  }
   const runPersisted = await beginHarnessRun(trace, {
     actorRole: ctx.role,
     routeKind: route.kind,
@@ -380,6 +399,7 @@ function assertIdempotencyReservation(
 }
 
 async function auditPrivilegedAuthorization(state: MobileApiRequestState): Promise<void> {
+  if (state.batchedLifecycle) return;
   const { ctx, route, trace } = state;
   const envelope = ctx.capabilityEnvelope;
   if (!envelope?.privileged) return;
@@ -428,6 +448,18 @@ async function dispatchAuthorizedRequest(state: MobileApiRequestState): Promise<
       (input) => finalizeAuthorizedEventStream(state, input),
     ), state.trace);
   }
+  if (state.batchedLifecycle) {
+    if (!state.ctx.requestLifecycle?.finalizedByDomain) {
+      await finishBatchedAuthorizedRequest(state.trace, state.ctx, state.route.kind);
+    }
+    const response = data instanceof Response
+      ? withCorsHeaders(data)
+      : json(
+        data,
+        ("successStatus" in state.route ? state.route.successStatus : undefined) ?? 200,
+      );
+    return withHarnessHeaders(response, state.trace);
+  }
   await recordHarnessEvent(state.trace, {
     eventClass: "request.completed",
     stage: state.route.kind,
@@ -447,12 +479,14 @@ async function dispatchAuthorizedRequest(state: MobileApiRequestState): Promise<
 }
 
 async function startAuthorizedRequest(state: MobileApiRequestState): Promise<void> {
-  await recordHarnessEvent(state.trace, {
-    eventClass: "request.started",
-    stage: state.route.kind,
-    status: "started",
-    safeMetadata: { method: state.request.method },
-  });
+  if (!state.batchedLifecycle) {
+    await recordHarnessEvent(state.trace, {
+      eventClass: "request.started",
+      stage: state.route.kind,
+      status: "started",
+      safeMetadata: { method: state.request.method },
+    });
+  }
   enforceKaelRuntimePathControl(state.route, state.ctx.role, apiFailure);
   if (!state.idempotencyReservationId) return;
   const started = await startHarnessIdempotencyExecution(
@@ -692,41 +726,6 @@ async function requestTraceContext(
     releaseId: deps.releaseId ?? "unreleased",
     environment: deps.environment ?? "local",
   });
-}
-
-function requestRuntimeContext(request: Request): Pick<
-  MobileApiContext,
-  "requestUrl" | "requestHost" | "requestProjectRef"
-> {
-  const parsed = safeRequestUrl(request.url);
-  const host = request.headers.get("host") ??
-    request.headers.get("x-forwarded-host") ??
-    parsed?.host;
-  return {
-    requestUrl: request.url,
-    requestHost: host ?? undefined,
-    requestProjectRef: request.headers.get("sb-project-ref") ??
-      request.headers.get("x-supabase-project-ref") ??
-      projectRefFromHost(host) ??
-      projectRefFromHost(parsed?.host),
-  };
-}
-
-function safeRequestUrl(value: string): URL | null {
-  try {
-    return new URL(value);
-  } catch {
-    return null;
-  }
-}
-
-function projectRefFromHost(value: string | null | undefined): string | undefined {
-  if (!value) return undefined;
-  const hostname = value.split(":")[0] ?? value;
-  const [projectRef, ...rest] = hostname.split(".");
-  return rest.join(".").endsWith("supabase.co") && projectRef
-    ? projectRef
-    : undefined;
 }
 
 function withHarnessHeaders(

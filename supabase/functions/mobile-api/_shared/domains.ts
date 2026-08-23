@@ -1,6 +1,7 @@
 
 
 import {
+  acknowledgeMatchingPushDelivery,
   listNotifications,
   markNotificationRead,
   notifyCustomerScopeChangeRequested,
@@ -26,6 +27,9 @@ import {
   updateWorkerServicePreferences,
   updateWorkerAvailability,
   listWorkerBroadcasts,
+  markWorkerBroadcastSeen,
+  recordWorkerMatchingHeartbeat,
+  submitWorkerMatchingProposal,
   getWorkerEarnings,
 } from "./domains/worker/workers.ts";
 import { listWorkerJobs } from "./domains/worker/jobs.ts";
@@ -166,7 +170,10 @@ import {
 } from "./domains/matching/matching-preference.ts";
 import { createJob } from "./domains/job/create/create.ts";
 import { updateJobStatus } from "./domains/job/status.ts";
-import { confirmKaelChat } from "./domains/kael-chat/confirm.service.ts";
+import {
+  confirmKaelChat,
+  recoverKaelConfirmationOperation,
+} from "./domains/kael-chat/confirm.service.ts";
 import { getCustomerProfileInsights } from "./domains/customer/profile-insights.ts";
 import { getWorkerPerformanceInsights } from "./domains/worker/profile-insights.ts";
 import {
@@ -254,6 +261,7 @@ function createKaelChatServices(secrets: EdgeServiceSecrets): Pick<
   | "sendKaelChatTurn"
   | "decideKaelIntakeConfirmation"
   | "confirmKaelChat"
+  | "getKaelConfirmationOperation"
   | "submitKaelChatEvidence"
 > {
   return {
@@ -286,6 +294,8 @@ function createKaelChatServices(secrets: EdgeServiceSecrets): Pick<
       decideKaelIntakeConfirmation(ctx, sessionId, input, aiRuntime(ctx, secrets)),
     confirmKaelChat: (ctx, sessionId, input) =>
       confirmKaelChat(ctx, sessionId, input, aiRuntime(ctx, secrets)),
+    getKaelConfirmationOperation: (ctx, sessionId) =>
+      recoverKaelConfirmationOperation(ctx, sessionId, aiRuntime(ctx, secrets)),
     submitKaelChatEvidence: (ctx, sessionId, input) =>
       submitKaelChatEvidence(ctx, sessionId, input, aiRuntime(ctx, secrets)),
   };
@@ -463,6 +473,9 @@ function createProfileServices(secrets: EdgeServiceSecrets): Pick<
   | "updateWorkerServicePreferences"
   | "updateWorkerAvailability"
   | "listWorkerBroadcasts"
+  | "markWorkerBroadcastSeen"
+  | "recordWorkerMatchingHeartbeat"
+  | "submitWorkerMatchingProposal"
   | "listWorkerJobs"
   | "getWorkerRoutePreview"
   | "getWorkerRouteMap"
@@ -502,6 +515,9 @@ function createProfileServices(secrets: EdgeServiceSecrets): Pick<
     updateWorkerServicePreferences,
     updateWorkerAvailability,
     listWorkerBroadcasts,
+    markWorkerBroadcastSeen,
+    recordWorkerMatchingHeartbeat,
+    submitWorkerMatchingProposal,
     listWorkerJobs,
     getWorkerPayoutMethod,
     saveWorkerPayoutMethod,
@@ -560,6 +576,7 @@ function createAdminNotificationServices(secrets: EdgeServiceSecrets): Pick<
   | "setAdminSubAdminAccess"
   | "listNotifications"
   | "markNotificationRead"
+  | "acknowledgeMatchingPushDelivery"
   | "registerDevicePushToken"
   | "unregisterDevicePushToken"
 > {
@@ -612,6 +629,7 @@ function createAdminNotificationServices(secrets: EdgeServiceSecrets): Pick<
     setAdminSubAdminAccess,
     listNotifications,
     markNotificationRead,
+    acknowledgeMatchingPushDelivery,
     registerDevicePushToken,
     unregisterDevicePushToken,
   };

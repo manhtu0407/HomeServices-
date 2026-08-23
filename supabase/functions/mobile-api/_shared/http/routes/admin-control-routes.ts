@@ -7,6 +7,17 @@ export type AdminControlRoute =
   | { kind: "admin.governance.priceBaselines"; method: "GET"; roles: ["admin"] }
   | { kind: "admin.governance.aiCosts"; method: "GET"; roles: ["admin"] }
   | { kind: "admin.governance.learningRules"; method: "GET"; roles: ["admin"] }
+  | { kind: "admin.governance.intakePolicies.list"; method: "GET"; roles: ["admin"] }
+  | { kind: "admin.governance.intakePolicies.preview"; method: "POST"; roles: ["admin"] }
+  | { kind: "admin.governance.intakePolicies.draft"; method: "POST"; roles: ["admin"] }
+  | { kind: "admin.governance.intakePolicies.approve"; method: "POST"; policyId: string; roles: ["admin"] }
+  | { kind: "admin.governance.intakePolicies.publish"; method: "POST"; policyId: string; roles: ["admin"] }
+  | { kind: "admin.governance.intakePolicies.rollback"; method: "POST"; policyId: string; roles: ["admin"] }
+  | { kind: "admin.governance.priceBaselineVersions.list"; method: "GET"; roles: ["admin"] }
+  | { kind: "admin.governance.priceBaselineVersions.draft"; method: "POST"; roles: ["admin"] }
+  | { kind: "admin.governance.priceBaselineVersions.approve"; method: "POST"; baselineVersionId: string; roles: ["admin"] }
+  | { kind: "admin.governance.priceBaselineVersions.publish"; method: "POST"; baselineVersionId: string; roles: ["admin"] }
+  | { kind: "admin.governance.priceBaselineVersions.rollback"; method: "POST"; baselineVersionId: string; roles: ["admin"] }
   | { kind: "admin.workerApplications.list"; method: "GET"; roles: AdminReadRoles }
   | {
     kind: "admin.workerApplications.detail";
@@ -252,6 +263,37 @@ function matchAdminOperationsRoute(
   }
   if (method === "GET" && path === "/admin/governance/learning-rules") {
     return { kind: "admin.governance.learningRules", method: "GET", roles: ["admin"] };
+  }
+  if (method === "GET" && path === "/admin/governance/intake-policies") {
+    return { kind: "admin.governance.intakePolicies.list", method: "GET", roles: ["admin"] };
+  }
+  if (method === "POST" && path === "/admin/governance/intake-policies/preview") {
+    return { kind: "admin.governance.intakePolicies.preview", method: "POST", roles: ["admin"] };
+  }
+  if (method === "POST" && path === "/admin/governance/intake-policies/drafts") {
+    return { kind: "admin.governance.intakePolicies.draft", method: "POST", roles: ["admin"] };
+  }
+  const intakeLifecycle = path.match(/^\/admin\/governance\/intake-policies\/([^/]+)\/(approve|publish|rollback)$/);
+  if (method === "POST" && intakeLifecycle) {
+    const policyId = decodeSegment(intakeLifecycle[1] ?? "");
+    if (!policyId) return null;
+    if (intakeLifecycle[2] === "approve") return { kind: "admin.governance.intakePolicies.approve", method: "POST", policyId, roles: ["admin"] };
+    if (intakeLifecycle[2] === "publish") return { kind: "admin.governance.intakePolicies.publish", method: "POST", policyId, roles: ["admin"] };
+    return { kind: "admin.governance.intakePolicies.rollback", method: "POST", policyId, roles: ["admin"] };
+  }
+  if (method === "GET" && path === "/admin/governance/price-baseline-versions") {
+    return { kind: "admin.governance.priceBaselineVersions.list", method: "GET", roles: ["admin"] };
+  }
+  if (method === "POST" && path === "/admin/governance/price-baseline-versions/drafts") {
+    return { kind: "admin.governance.priceBaselineVersions.draft", method: "POST", roles: ["admin"] };
+  }
+  const baselineLifecycle = path.match(/^\/admin\/governance\/price-baseline-versions\/([^/]+)\/(approve|publish|rollback)$/);
+  if (method === "POST" && baselineLifecycle) {
+    const baselineVersionId = decodeSegment(baselineLifecycle[1] ?? "");
+    if (!baselineVersionId) return null;
+    if (baselineLifecycle[2] === "approve") return { kind: "admin.governance.priceBaselineVersions.approve", method: "POST", baselineVersionId, roles: ["admin"] };
+    if (baselineLifecycle[2] === "publish") return { kind: "admin.governance.priceBaselineVersions.publish", method: "POST", baselineVersionId, roles: ["admin"] };
+    return { kind: "admin.governance.priceBaselineVersions.rollback", method: "POST", baselineVersionId, roles: ["admin"] };
   }
   if (method === "GET" && path === "/admin/worker-applications") {
     return { kind: "admin.workerApplications.list", method: "GET", roles: adminReadRoles };

@@ -62,7 +62,7 @@ All of these are aliases with a gate in front — they are not raw CLI passthrou
 | `pnpm db:local:test` | Run the SQL verification scripts through psql in the db container. |
 | `pnpm db:local:types` | Regenerate `packages/shared/src/types/database/**` from the local schema (generates, then splits by domain). |
 | `pnpm db:local:diff` | Diff local schema against migrations. |
-| `pnpm db:local:lint` | `supabase db lint --local`. |
+| `pnpm db:local:lint` | `supabase db lint --local --fail-on warning`. |
 | `pnpm edge:check` | Type-check `supabase/functions/**` in the pinned Deno container. |
 
 ### Rules that are not optional

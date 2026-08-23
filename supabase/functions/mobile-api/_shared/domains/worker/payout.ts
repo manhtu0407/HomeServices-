@@ -19,6 +19,10 @@ import {
   nullableString,
 } from "../../platform/coercions.ts";
 import { db, dbQuery } from "../../platform/db.ts";
+import {
+  requireRealTrafficActor,
+  scopeQueryToRealTraffic,
+} from "../../platform/synthetic-cohort.ts";
 
 type Row = Record<string, unknown>;
 
@@ -52,13 +56,13 @@ const WITHDRAWAL_REQUEST_COLUMNS = [
 export async function getWorkerPayoutMethod(
   ctx: MobileApiContext,
 ): Promise<EdgeWorkerPayoutMethodResponse> {
-  requireWorker(ctx);
+  await requireWorkerPayoutActor(ctx);
   const result = await dbQuery<Row>(
-    db(ctx)
+    scopeQueryToRealTraffic(db(ctx)
       .from("worker_payout_methods")
       .select(PAYOUT_METHOD_COLUMNS)
       .eq("worker_id", ctx.user.id)
-      .eq("is_default", true)
+      .eq("is_default", true))
       .maybeSingle(),
   );
   if (result.error) {
@@ -71,7 +75,7 @@ export async function saveWorkerPayoutMethod(
   ctx: MobileApiContext,
   input: WorkerPayoutMethodSaveRequest,
 ): Promise<EdgeWorkerPayoutMethodResponse> {
-  requireWorker(ctx);
+  await requireWorkerPayoutActor(ctx);
   // The database RPC stores the raw number atomically and returns only a mask.
   const result = await dbQuery<Row[]>(
     db(ctx).rpc("upsert_worker_payout_method", {
@@ -91,14 +95,14 @@ export async function saveWorkerPayoutMethod(
 export async function listWorkerWithdrawalRequests(
   ctx: MobileApiContext,
 ): Promise<EdgeWorkerWithdrawalRequestListResponse> {
-  requireWorker(ctx);
+  await requireWorkerPayoutActor(ctx);
   const result = await dbQuery<Row[]>(
-    db(ctx)
+    scopeQueryToRealTraffic(db(ctx)
       .from("worker_withdrawal_requests")
       .select(WITHDRAWAL_REQUEST_COLUMNS)
       .eq("worker_id", ctx.user.id)
       .order("requested_at", { ascending: false })
-      .limit(20),
+      .limit(20)),
   );
   if (result.error) {
     apiFailure("DB_ERROR", "Chưa thể tải yêu cầu rút tiền", 500);
@@ -110,7 +114,7 @@ export async function createWorkerWithdrawalRequest(
   ctx: MobileApiContext,
   input: EdgeWorkerWithdrawalRequestCreateInput,
 ): Promise<EdgeWorkerWithdrawalRequestCreateResponse> {
-  requireWorker(ctx);
+  await requireWorkerPayoutActor(ctx);
   const result = await dbQuery<Row[]>(
     db(ctx).rpc("create_worker_withdrawal_request", {
       p_amount_vnd: input.amount_vnd,
@@ -129,10 +133,10 @@ export async function createWorkerWithdrawalRequest(
   const requestId = nullableString(row.request_id);
   if (!requestId) apiFailure("DB_ERROR", "Yêu cầu rút tiền chưa có mã hợp lệ", 500);
   const requestResult = await dbQuery<Row>(
-    db(ctx)
+    scopeQueryToRealTraffic(db(ctx)
       .from("worker_withdrawal_requests")
       .select(WITHDRAWAL_REQUEST_COLUMNS)
-      .eq("id", requestId)
+      .eq("id", requestId))
       .maybeSingle(),
   );
   if (requestResult.error || !requestResult.data) {
@@ -145,6 +149,11 @@ function requireWorker(ctx: MobileApiContext): void {
   if (ctx.role !== "worker") {
     apiFailure("AUTH_FORBIDDEN", "Tài khoản không có quyền rút tiền", 403);
   }
+}
+
+async function requireWorkerPayoutActor(ctx: MobileApiContext): Promise<void> {
+  requireWorker(ctx);
+  await requireRealTrafficActor(db(ctx), ctx.user.id, "worker");
 }
 
 function serializePayoutMethod(row: Row): EdgeWorkerPayoutMethod {

@@ -10,6 +10,9 @@ type RuntimeBuildInfo = {
   gitBranch: string
   gitSha: string
   gitShortSha: string
+  releaseId: string
+  contractEpoch: string
+  runtimeVersion: string
 }
 
 const runtimeProcess = globalThis as typeof globalThis & {
@@ -68,6 +71,9 @@ const runtimeBuildInfo: RuntimeBuildInfo = {
   gitBranch: envString('EXPO_PUBLIC_NESTSCOUT_GIT_BRANCH') || recordString(runtimeBuildInfoExtra, 'gitBranch'),
   gitSha: envString('EXPO_PUBLIC_NESTSCOUT_GIT_SHA') || recordString(runtimeBuildInfoExtra, 'gitSha'),
   gitShortSha: envString('EXPO_PUBLIC_NESTSCOUT_GIT_SHORT_SHA') || recordString(runtimeBuildInfoExtra, 'gitShortSha'),
+  releaseId: envString('EXPO_PUBLIC_RELEASE_ID', 'EXPO_PUBLIC_NESTSCOUT_RELEASE_ID') || recordString(runtimeBuildInfoExtra, 'releaseId'),
+  contractEpoch: recordString(runtimeBuildInfoExtra, 'contractEpoch'),
+  runtimeVersion: recordString(runtimeBuildInfoExtra, 'runtimeVersion'),
 }
 
 export const mobileRuntimeConfig = {

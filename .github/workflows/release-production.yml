@@ -1,0 +1,743 @@
+name: release-production
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: '17 * * * *'
+
+permissions:
+  contents: read
+  pull-requests: read
+
+concurrency:
+  group: production-release
+  cancel-in-progress: false
+
+jobs:
+  stale-canary-reconciler:
+    name: reconcile a cancelled or timed-out Stage 1 candidate
+    if: github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: production
+    env:
+      PRODUCTION_PROJECT_REF: iwevizmsedyqozxlawwl
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+      - name: CAS-reconcile only a server-proven stale candidate
+        env:
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.PRODUCTION_SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          mkdir -p artifacts/release
+          node scripts/harness/release-control.mjs \
+            --action reconcile-stale --environment production \
+            --project-ref "$PRODUCTION_PROJECT_REF" \
+            > artifacts/release/stale-reconcile.json
+      - name: Upload stale-candidate reconciliation evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: stage1-stale-reconcile-${{ github.run_id }}
+          path: artifacts/release/stale-reconcile.json
+          if-no-files-found: error
+          retention-days: 90
+
+  quality:
+    name: quality, security, integration, SQL, and immutable-source gates
+    if: github.event_name != 'schedule' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Verify reviewed main identity
+        run: |
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test "$GITHUB_REF" = "refs/heads/main"
+          test -z "$(git status --porcelain=v1 --untracked-files=all)"
+      - name: Resolve exact Dev-reviewed merge authority
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p artifacts/release
+          node scripts/harness/github-merge-approval.mjs \
+            --repository "$GITHUB_REPOSITORY" --merge-sha "$GITHUB_SHA" \
+            --output artifacts/release/merge-approval.json
+      - run: pnpm install --frozen-lockfile
+      - name: Whole-workspace quality gates
+        run: |
+          pnpm type-check
+          pnpm test
+          pnpm build
+          pnpm lint:comments
+          pnpm lint:structure
+          pnpm lint:workplan
+          pnpm lint:production-ui-copy -- --output artifacts/release/production-ui-normality.json
+          pnpm lint:test-collection
+          pnpm skills:check
+          pnpm skills:contracts
+          pnpm runners:check
+          pnpm doctor:react
+      - name: Harness, access, capability, migration, and release gates
+        run: |
+          pnpm harness:verify
+          pnpm harness:manifest:check
+          pnpm harness:pillars:check
+          pnpm harness:capabilities:check
+          pnpm harness:privileged:check
+          pnpm harness:access:check
+          pnpm harness:migrations:check
+          pnpm harness:reliability:check
+          pnpm harness:promotion:check
+      - name: Edge Deno checks
+        run: pnpm edge:check
+      - name: Deterministic Kael gates
+        run: |
+          node apps/api/scripts/kael-eval.mjs --mode deterministic --report /tmp/kael-eval.md
+          node apps/api/scripts/kael-multi-turn-eval.mjs
+          node apps/api/scripts/kael-model-health.mjs --list
+          node apps/api/scripts/kael-model-health.mjs --self-test
+      - name: Secret scan
+        uses: gitleaks/gitleaks-action@ff98106e4c7b2bc287b24eaf42907196329070c7 # v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_CONFIG: config/security/gitleaks.toml
+      - name: Staging integration pillar
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          NESTSCOUT_ENVIRONMENT: staging
+          SUPABASE_PROJECT_REF: xyylanuyflrjzbjzhqfl
+          HARNESS_REMOTE_MUTATION_APPROVAL: ${{ github.run_id }}
+          HARNESS_RELEASE_ID: ${{ github.sha }}
+        run: |
+          test "$NEXT_PUBLIC_SUPABASE_URL" = "https://xyylanuyflrjzbjzhqfl.supabase.co"
+          test -n "$NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY"
+          test -n "$SUPABASE_SERVICE_ROLE_KEY"
+          pnpm --filter @nestscout/api exec vitest run src/__tests__/integration
+      - name: Start isolated local Supabase
+        run: pnpm --filter @nestscout/api exec supabase start
+      - name: Replay migrations from empty state
+        run: pnpm --filter @nestscout/api exec supabase db reset --local
+      - name: run-sql-tests
+        env:
+          NESTSCOUT_TEST_DB_URL: postgresql://postgres:postgres@127.0.0.1:55322/postgres
+        run: node scripts/run.mjs docker/scripts/run-sql-tests --stop-on-first-failure
+      - name: Generated database types and schema lint
+        run: |
+          pnpm --filter @nestscout/api exec supabase gen types typescript --local > /tmp/database.types.ts
+          node -e "const fs=require('node:fs');const p='/tmp/database.types.ts';const t=fs.readFileSync(p,'utf8');fs.writeFileSync(p,t.replace(/\\n+$/u,'\\n'))"
+          node scripts/split-database-types.mjs --join > /tmp/rejoined.types.ts
+          cmp /tmp/rejoined.types.ts /tmp/database.types.ts
+          pnpm --filter @nestscout/api exec supabase db lint --local --fail-on warning
+      - name: Record quality receipt
+        run: |
+          mkdir -p artifacts/release
+          node -e "require('node:fs').writeFileSync('artifacts/release/quality.json', JSON.stringify({gitSha:process.env.GITHUB_SHA,runId:process.env.GITHUB_RUN_ID,status:'passed',gates:['workspace-typecheck','workspace-tests','workspace-build','security','harness','edge-deno','database-reset','sql-verification','generated-types','staging-integration']},null,2)+'\n')"
+      - name: Upload quality evidence
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: stage1-quality-${{ github.run_id }}
+          path: |
+            artifacts/release/quality.json
+            artifacts/release/production-ui-normality.json
+            artifacts/release/merge-approval.json
+            /tmp/kael-eval.md
+            /tmp/database.types.ts
+          if-no-files-found: error
+          retention-days: 30
+
+  production-release:
+    name: expand, cohort canary, three full smokes, and atomic promotion
+    needs: quality
+    if: github.event_name != 'schedule' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    environment: production
+    env:
+      PRODUCTION_PROJECT_REF: iwevizmsedyqozxlawwl
+      PRODUCTION_PROJECT_URL: https://iwevizmsedyqozxlawwl.supabase.co
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Verify immutable reviewed source
+        run: |
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test "$GITHUB_REF" = "refs/heads/main"
+          test -z "$(git status --porcelain=v1 --untracked-files=all)"
+      - name: Re-resolve exact Dev-reviewed merge authority
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p artifacts/release
+          node scripts/harness/github-merge-approval.mjs \
+            --repository "$GITHUB_REPOSITORY" --merge-sha "$GITHUB_SHA" \
+            --output artifacts/release/merge-approval.json
+      - name: Build immutable production release manifest
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+          PERPLEXITY_API_KEY: ${{ secrets.PERPLEXITY_API_KEY }}
+          VIETMAP_API_KEY: ${{ secrets.VIETMAP_API_KEY }}
+          KAEL_DURABLE_GUARDS_ENABLED: ${{ vars.KAEL_DURABLE_GUARDS_ENABLED }}
+          KAEL_AI_KILL_SWITCH: ${{ vars.KAEL_AI_KILL_SWITCH }}
+        run: |
+          mkdir -p artifacts/release artifacts/harness
+          node scripts/check-production-ui-copy.mjs --output artifacts/release/production-ui-normality.json
+          node scripts/harness/release-bundle.mjs --environment production --output artifacts/release/release.json
+          node scripts/harness/release-bundle.mjs --verify artifacts/release/release.json
+          release_id=$(node -e "const r=require('./artifacts/release/release.json');process.stdout.write(r.releaseId)")
+          cohort_id="synthetic-stage1-${release_id#harness-}-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          echo "RELEASE_ID=$release_id" >> "$GITHUB_ENV"
+          echo "COHORT_ID=$cohort_id" >> "$GITHUB_ENV"
+      - name: Reuse or build exact iOS and Android store binaries for this merge
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: |
+          mkdir -p artifacts/mobile
+          list_builds() {
+            (cd apps/mobile && pnpm dlx eas-cli@22.0.0 build:list \
+              --platform all --status finished --distribution store \
+              --build-profile production --git-commit-hash "$GITHUB_SHA" \
+              --app-version 0.2.0 --limit 50 --json --non-interactive) \
+              > artifacts/mobile/eas-builds.json
+          }
+          list_builds
+          missing=$(node scripts/harness/eas-build-readiness.mjs \
+            --release artifacts/release/release.json \
+            --builds artifacts/mobile/eas-builds.json --mode missing)
+          if [ -n "$missing" ]; then
+            IFS=',' read -ra platforms <<< "$missing"
+            for platform in "${platforms[@]}"; do
+              (cd apps/mobile && \
+                NESTSCOUT_RELEASE_ID="$RELEASE_ID" \
+                NESTSCOUT_BUILD_GIT_SHA="$GITHUB_SHA" \
+                pnpm dlx eas-cli@22.0.0 build --platform "$platform" \
+                  --profile production --non-interactive --wait --json)
+            done
+            list_builds
+          fi
+          test -z "$(node scripts/harness/eas-build-readiness.mjs \
+            --release artifacts/release/release.json \
+            --builds artifacts/mobile/eas-builds.json --mode missing)"
+      - name: Download and attest exact EAS binary artifacts
+        run: |
+          ios_url=$(node scripts/harness/eas-build-readiness.mjs \
+            --release artifacts/release/release.json --builds artifacts/mobile/eas-builds.json \
+            --mode artifact-url --platform ios)
+          android_url=$(node scripts/harness/eas-build-readiness.mjs \
+            --release artifacts/release/release.json --builds artifacts/mobile/eas-builds.json \
+            --mode artifact-url --platform android)
+          curl --fail --location --retry 3 --output artifacts/mobile/nestscout.ipa "$ios_url"
+          curl --fail --location --retry 3 --output artifacts/mobile/nestscout.aab "$android_url"
+          node scripts/harness/mobile-binary-attestation.mjs \
+            --release artifacts/release/release.json \
+            --builds artifacts/mobile/eas-builds.json \
+            --ios-artifact artifacts/mobile/nestscout.ipa \
+            --android-artifact artifacts/mobile/nestscout.aab \
+            --output artifacts/release/mobile-binary-attestation.json
+      - name: Collect hosted production baseline
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: |
+          node scripts/harness/hosted-state.mjs \
+            --environment production \
+            --project-ref "$PRODUCTION_PROJECT_REF" \
+            --project-url "$PRODUCTION_PROJECT_URL" \
+            --output artifacts/release/hosted-before.json
+      - name: Reconcile a stale cancelled candidate before starting a new release
+        env:
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.PRODUCTION_SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          node scripts/harness/release-control.mjs \
+            --action reconcile-stale --environment production \
+            --project-ref "$PRODUCTION_PROJECT_REF" \
+            > artifacts/release/stale-preflight.json
+          node -e "const r=require('./artifacts/release/stale-preflight.json');if(r.mode==='candidate_not_stale')process.exit(1)"
+      - name: Download and bind rollback_source
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: |
+          mkdir -p artifacts/rollback/supabase/functions/mobile-api
+          mkdir -p artifacts/rollback/supabase/functions/kael-matching-maintainer
+          cp supabase/config.toml artifacts/rollback/supabase/config.toml
+          ./apps/api/node_modules/.bin/supabase --workdir artifacts/rollback functions download mobile-api \
+            --project-ref "$PRODUCTION_PROJECT_REF" --use-api
+          ./apps/api/node_modules/.bin/supabase --workdir artifacts/rollback functions download kael-matching-maintainer \
+            --project-ref "$PRODUCTION_PROJECT_REF" --use-api
+          cp supabase/functions/mobile-api/deno.json artifacts/rollback/supabase/functions/mobile-api/deno.json
+          cp supabase/functions/mobile-api/deno.lock artifacts/rollback/supabase/functions/mobile-api/deno.lock
+          cp supabase/functions/kael-matching-maintainer/deno.json artifacts/rollback/supabase/functions/kael-matching-maintainer/deno.json
+          cp supabase/functions/kael-matching-maintainer/deno.lock artifacts/rollback/supabase/functions/kael-matching-maintainer/deno.lock
+          node scripts/harness/hosted-state.mjs \
+            --environment production \
+            --project-ref "$PRODUCTION_PROJECT_REF" \
+            --project-url "$PRODUCTION_PROJECT_URL" \
+            --output artifacts/release/hosted-rollback-snapshot.json
+          node -e "const a=require('./artifacts/release/hosted-before.json');const b=require('./artifacts/release/hosted-rollback-snapshot.json');for(const n of ['mobile-api','kael-matching-maintainer']){const x=a.managedEdgeFunctions[n];const y=b.managedEdgeFunctions[n];if(a.releaseId!==b.releaseId||x.version!==y.version||x.ezbr_sha256!==y.ezbr_sha256||x.verify_jwt!==y.verify_jwt||x.import_map!==y.import_map||x.entrypoint_path!==y.entrypoint_path||x.import_map_path!==y.import_map_path)process.exit(1)}"
+          rollback_mobile_source_sha=$(node scripts/harness/edge-source-proof.mjs \
+            --source-root artifacts/rollback --function mobile-api --digest-only)
+          rollback_maintainer_source_sha=$(node scripts/harness/edge-source-proof.mjs \
+            --source-root artifacts/rollback --function kael-matching-maintainer --digest-only)
+          rollback_mobile_edge_version=$(node -e "const h=require('./artifacts/release/hosted-before.json');process.stdout.write(String(h.managedEdgeFunctions['mobile-api'].version))")
+          rollback_mobile_hosted_digest=$(node -e "const h=require('./artifacts/release/hosted-before.json');process.stdout.write(h.managedEdgeFunctions['mobile-api'].ezbr_sha256)")
+          rollback_maintainer_edge_version=$(node -e "const h=require('./artifacts/release/hosted-before.json');process.stdout.write(String(h.managedEdgeFunctions['kael-matching-maintainer'].version))")
+          rollback_maintainer_hosted_digest=$(node -e "const h=require('./artifacts/release/hosted-before.json');process.stdout.write(h.managedEdgeFunctions['kael-matching-maintainer'].ezbr_sha256)")
+          echo "ROLLBACK_MOBILE_SOURCE_SHA=$rollback_mobile_source_sha" >> "$GITHUB_ENV"
+          echo "ROLLBACK_MOBILE_EDGE_VERSION=$rollback_mobile_edge_version" >> "$GITHUB_ENV"
+          echo "ROLLBACK_MOBILE_HOSTED_DIGEST=$rollback_mobile_hosted_digest" >> "$GITHUB_ENV"
+          echo "ROLLBACK_MAINTAINER_SOURCE_SHA=$rollback_maintainer_source_sha" >> "$GITHUB_ENV"
+          echo "ROLLBACK_MAINTAINER_EDGE_VERSION=$rollback_maintainer_edge_version" >> "$GITHUB_ENV"
+          echo "ROLLBACK_MAINTAINER_HOSTED_DIGEST=$rollback_maintainer_hosted_digest" >> "$GITHUB_ENV"
+      - name: Assert hosted inventory and expand-only migration set
+        run: |
+          node scripts/harness/assert-expand-only.mjs \
+            --environment production \
+            --project-ref "$PRODUCTION_PROJECT_REF" \
+            --project-url "$PRODUCTION_PROJECT_URL" \
+            --inventory config/harness/migration-inventory.json \
+            --hosted artifacts/release/hosted-before.json \
+            --output artifacts/release/expand-only.json
+          node scripts/harness/stage1-promotion-packet.mjs \
+            --release artifacts/release/release.json \
+            --expand-only artifacts/release/expand-only.json \
+            --hosted-before artifacts/release/hosted-before.json \
+            --rollback-mobile-source-sha256 "$ROLLBACK_MOBILE_SOURCE_SHA" \
+            --rollback-maintainer-source-sha256 "$ROLLBACK_MAINTAINER_SOURCE_SHA" \
+            --cohort "$COHORT_ID" \
+            --merge-approval artifacts/release/merge-approval.json \
+            --mobile-binary artifacts/release/mobile-binary-attestation.json \
+            --production-ui-normality artifacts/release/production-ui-normality.json \
+            --workflow-run-id "$GITHUB_RUN_ID" \
+            --gates workspace-typecheck,workspace-tests,workspace-build,security,harness,edge-deno,database-reset,sql-verification,generated-types,expand-only,hosted-drift-baseline,production-ui-normality \
+            --output artifacts/release/promotion-packet.json
+      - name: Apply exact expand-only migration inventory
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.PRODUCTION_SUPABASE_DB_PASSWORD }}
+        run: |
+          node scripts/harness/prepare-migration-workdir.mjs \
+            --inventory config/harness/migration-inventory.json \
+            --hosted artifacts/release/hosted-before.json \
+            --receipt artifacts/release/expand-only.json \
+            --output artifacts/migration-apply
+          ./apps/api/node_modules/.bin/supabase --workdir artifacts/migration-apply \
+            link --project-ref "$PRODUCTION_PROJECT_REF" --password "$SUPABASE_DB_PASSWORD"
+          ./apps/api/node_modules/.bin/supabase --workdir artifacts/migration-apply \
+            db push --linked --dry-run --include-all
+          ./apps/api/node_modules/.bin/supabase --workdir artifacts/migration-apply \
+            db push --linked --include-all --yes
+      - name: Verify hosted migration watermark
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: |
+          node scripts/harness/hosted-state.mjs \
+            --environment production \
+            --project-ref "$PRODUCTION_PROJECT_REF" \
+            --project-url "$PRODUCTION_PROJECT_URL" \
+            --output artifacts/release/hosted-after-migrations.json
+          node scripts/harness/assert-expand-only.mjs \
+            --environment production \
+            --project-ref "$PRODUCTION_PROJECT_REF" \
+            --project-url "$PRODUCTION_PROJECT_URL" \
+            --hosted artifacts/release/hosted-after-migrations.json \
+            --output artifacts/release/no-pending-migrations.json
+          node -e "const r=require('./artifacts/release/no-pending-migrations.json');if(r.pendingMigrations.length!==0)process.exit(1)"
+      - name: Register immutable release
+        env:
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.PRODUCTION_SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          node scripts/harness/release-control.mjs \
+            --action register --environment production --project-ref "$PRODUCTION_PROJECT_REF" \
+            --release artifacts/release/release.json > artifacts/release/register.json
+          node scripts/harness/release-control.mjs \
+            --action read --environment production --project-ref "$PRODUCTION_PROJECT_REF" \
+            > artifacts/release/control-before.json
+          expected_active=$(node -e "const c=require('./artifacts/release/control-before.json').result;process.stdout.write(c?.active_release_id??'none')")
+          echo "EXPECTED_ACTIVE_RELEASE_ID=$expected_active" >> "$GITHUB_ENV"
+          node scripts/harness/hosted-release-artifact.mjs \
+            --environment production --project-ref "$PRODUCTION_PROJECT_REF" \
+            --release-id "$expected_active" \
+            --output artifacts/release/previous-active-release.json
+      - name: Configure exact synthetic cohort canary
+        id: configure
+        env:
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.PRODUCTION_SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          node scripts/harness/release-control.mjs \
+            --action configure --environment production --project-ref "$PRODUCTION_PROJECT_REF" \
+            --release artifacts/release/release.json \
+            --packet artifacts/release/promotion-packet.json \
+            --cohort-id "$COHORT_ID" \
+            --expected-active-release-id "$EXPECTED_ACTIVE_RELEASE_ID" \
+            > artifacts/release/configure.json
+          expected_revision=$(node -e "const c=require('./artifacts/release/configure.json').result;process.stdout.write(String(c[0].revision))")
+          echo "EXPECTED_REVISION=$expected_revision" >> "$GITHUB_ENV"
+      - name: Bind candidate release identity before one Edge deploy
+        id: bind-release
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: |
+          mapfile -t release_bindings < <(node scripts/harness/runtime-release-bindings.mjs \
+            --release artifacts/release/release.json \
+            --mobile-attestation artifacts/release/mobile-binary-attestation.json)
+          test "${#release_bindings[@]}" -eq 22
+          ./apps/api/node_modules/.bin/supabase secrets set "${release_bindings[@]}" --project-ref "$PRODUCTION_PROJECT_REF"
+          ./apps/api/node_modules/.bin/supabase functions deploy mobile-api --project-ref "$PRODUCTION_PROJECT_REF" --use-api --no-verify-jwt
+          ./apps/api/node_modules/.bin/supabase functions deploy kael-matching-maintainer --project-ref "$PRODUCTION_PROJECT_REF" --use-api --no-verify-jwt
+      - name: Verify hosted candidate identity and bundle state
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: |
+          matched=false
+          for attempt in 1 2 3 4 5 6 7 8 9 10 11 12; do
+            if node scripts/harness/deployment-drift.mjs \
+              --release artifacts/release/release.json --hosted \
+              --environment production --project-ref "$PRODUCTION_PROJECT_REF"; then
+              matched=true
+              break
+            fi
+            sleep 10
+          done
+          test "$matched" = true
+          node scripts/harness/hosted-state.mjs \
+            --environment production \
+            --project-ref "$PRODUCTION_PROJECT_REF" \
+            --project-url "$PRODUCTION_PROJECT_URL" \
+            --output artifacts/release/hosted-candidate.json
+      - name: Redownload and byte-prove the exact hosted candidate import closure
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: |
+          mkdir -p artifacts/candidate-source
+          ./apps/api/node_modules/.bin/supabase --workdir artifacts/candidate-source functions download mobile-api \
+            --project-ref "$PRODUCTION_PROJECT_REF" --use-api
+          ./apps/api/node_modules/.bin/supabase --workdir artifacts/candidate-source functions download kael-matching-maintainer \
+            --project-ref "$PRODUCTION_PROJECT_REF" --use-api
+          node scripts/harness/edge-source-proof.mjs \
+            --release artifacts/release/release.json \
+            --hosted artifacts/release/hosted-candidate.json \
+            --source-root artifacts/candidate-source --function mobile-api \
+            --output artifacts/release/source-deployment-proof.json
+          node scripts/harness/edge-source-proof.mjs \
+            --release artifacts/release/release.json \
+            --hosted artifacts/release/hosted-candidate.json \
+            --source-root artifacts/candidate-source --function kael-matching-maintainer \
+            --output artifacts/release/maintainer-source-deployment-proof.json
+      - name: Attest provider-owned deployment identity after byte proof
+        env:
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.PRODUCTION_SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          node scripts/harness/source-deployment-attestation.mjs \
+            --environment production --project-ref "$PRODUCTION_PROJECT_REF" \
+            --proof artifacts/release/source-deployment-proof.json \
+            --output artifacts/release/source-deployment-attestation.json
+          node scripts/harness/source-deployment-attestation.mjs \
+            --environment production --project-ref "$PRODUCTION_PROJECT_REF" \
+            --proof artifacts/release/maintainer-source-deployment-proof.json \
+            --output artifacts/release/maintainer-source-deployment-attestation.json
+      - name: Run and record three consecutive full synthetic smokes
+        id: smokes
+        env:
+          STAGE1_SUPABASE_PROJECT_REF: iwevizmsedyqozxlawwl
+          STAGE1_SUPABASE_URL: https://iwevizmsedyqozxlawwl.supabase.co
+          STAGE1_SUPABASE_ANON_KEY: ${{ secrets.PRODUCTION_SUPABASE_ANON_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.PRODUCTION_SUPABASE_SERVICE_ROLE_KEY }}
+          STAGE1_SYNTHETIC_CUSTOMER_EMAIL: ${{ secrets.PRODUCTION_SYNTHETIC_CUSTOMER_EMAIL }}
+          STAGE1_SYNTHETIC_CUSTOMER_PASSWORD: ${{ secrets.PRODUCTION_SYNTHETIC_CUSTOMER_PASSWORD }}
+          STAGE1_SYNTHETIC_WORKER_EMAIL: ${{ secrets.PRODUCTION_SYNTHETIC_WORKER_EMAIL }}
+          STAGE1_SYNTHETIC_WORKER_PASSWORD: ${{ secrets.PRODUCTION_SYNTHETIC_WORKER_PASSWORD }}
+        run: |
+          for sequence in 1 2 3; do
+            export STAGE1_RUN_ID="gh:${GITHUB_RUN_ID}:${GITHUB_RUN_ATTEMPT}:${sequence}"
+            export STAGE1_SMOKE_MUTATION_APPROVAL="stage1-synthetic:${STAGE1_RUN_ID}"
+            output="artifacts/release/smoke-${sequence}.json"
+            node apps/api/scripts/stage1-synthetic-release-smoke.mjs \
+              --release artifacts/release/release.json --cohort "$COHORT_ID" \
+              --mobile-attestation artifacts/release/mobile-binary-attestation.json \
+              --sequence "$sequence" --output "$output"
+            node scripts/harness/release-control.mjs \
+              --action record --environment production --project-ref "$PRODUCTION_PROJECT_REF" \
+              --release artifacts/release/release.json --receipt "$output" \
+              --source-proof artifacts/release/source-deployment-proof.json \
+              --maintainer-source-proof artifacts/release/maintainer-source-deployment-proof.json \
+              > "artifacts/release/smoke-record-${sequence}.json"
+          done
+      - name: Recheck exact hosted deployment immediately before promotion
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: |
+          node scripts/harness/hosted-state.mjs \
+            --environment production --project-ref "$PRODUCTION_PROJECT_REF" \
+            --project-url "$PRODUCTION_PROJECT_URL" \
+            --output artifacts/release/hosted-prepromotion.json
+          node scripts/harness/edge-source-proof.mjs \
+            --verify-hosted --proof artifacts/release/source-deployment-proof.json \
+            --hosted artifacts/release/hosted-prepromotion.json
+          node scripts/harness/edge-source-proof.mjs \
+            --verify-hosted --proof artifacts/release/maintainer-source-deployment-proof.json \
+            --hosted artifacts/release/hosted-prepromotion.json
+      - name: Prove the final synthetic cohort is clean before promotion
+        env:
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.PRODUCTION_SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          cleanup_run_id="gh:${GITHUB_RUN_ID}:${GITHUB_RUN_ATTEMPT}:final"
+          STAGE1_CLEANUP_MUTATION_APPROVAL="stage1-cleanup:${cleanup_run_id}:${COHORT_ID}" \
+            node apps/api/scripts/stage1-synthetic-cohort-cleanup.mjs \
+              --release artifacts/release/release.json \
+              --cohort "$COHORT_ID" --run-id "$cleanup_run_id" \
+              --environment production --project-ref "$PRODUCTION_PROJECT_REF" \
+              --project-url "$PRODUCTION_PROJECT_URL" \
+              --output artifacts/release/final-cleanup.json
+      - name: Atomically promote the proven release
+        id: promote
+        env:
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.PRODUCTION_SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          node scripts/harness/release-control.mjs \
+            --action promote --environment production --project-ref "$PRODUCTION_PROJECT_REF" \
+            --release artifacts/release/release.json \
+            --packet artifacts/release/promotion-packet.json \
+            --source-proof artifacts/release/source-deployment-proof.json \
+            --maintainer-source-proof artifacts/release/maintainer-source-deployment-proof.json \
+            --cohort-id "$COHORT_ID" --expected-revision "$EXPECTED_REVISION" \
+            > artifacts/release/promotion.json
+      - name: Record the final Dev-review result in Supabase Production
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.PRODUCTION_SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          node scripts/harness/hosted-state.mjs \
+            --environment production --project-ref "$PRODUCTION_PROJECT_REF" \
+            --project-url "$PRODUCTION_PROJECT_URL" \
+            --output artifacts/release/hosted-after-promotion.json
+          node scripts/harness/deployment-drift.mjs \
+            --release artifacts/release/release.json --hosted \
+            --environment production --project-ref "$PRODUCTION_PROJECT_REF"
+          node scripts/harness/release-control.mjs \
+            --action read --environment production --project-ref "$PRODUCTION_PROJECT_REF" \
+            > artifacts/release/control-after-promotion.json
+          node -e "const c=require('./artifacts/release/control-after-promotion.json').result;if(c?.active_release_id!==process.env.RELEASE_ID||c?.candidate_release_id!==null||c?.candidate_cohort_id!==null)process.exit(1)"
+          node scripts/harness/production-acceptance-note.mjs \
+            --project-ref "$PRODUCTION_PROJECT_REF" --project-url "$PRODUCTION_PROJECT_URL" \
+            --release artifacts/release/release.json \
+            --production-ui-normality artifacts/release/production-ui-normality.json \
+            --cleanup artifacts/release/final-cleanup.json \
+            --hosted artifacts/release/hosted-after-promotion.json \
+            --promotion-packet artifacts/release/promotion-packet.json \
+            --output artifacts/release/production-acceptance-note.json
+      - name: Abort canary, restore identity, and redeploy downloaded rollback
+        if: always() && (failure() || cancelled()) && steps.configure.outcome != 'skipped'
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.PRODUCTION_SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          rollback_status=0
+          receipt_ready=false
+          if node scripts/harness/failure-receipt.mjs \
+              --release artifacts/release/release.json \
+              --phase canary_release --reason-code POST_CONFIGURE_RELEASE_FAILURE \
+              --run-id "gh:${GITHUB_RUN_ID}:${GITHUB_RUN_ATTEMPT}" \
+              --cohort-id "$COHORT_ID" \
+              --rollback-mobile-edge-version "$ROLLBACK_MOBILE_EDGE_VERSION" \
+              --rollback-mobile-hosted-digest "$ROLLBACK_MOBILE_HOSTED_DIGEST" \
+              --rollback-maintainer-edge-version "$ROLLBACK_MAINTAINER_EDGE_VERSION" \
+              --rollback-maintainer-hosted-digest "$ROLLBACK_MAINTAINER_HOSTED_DIGEST" \
+              --output artifacts/release/failure-receipt.json; then
+            receipt_ready=true
+          else
+            rollback_status=1
+            echo "::error::Could not create the checksummed release failure receipt"
+          fi
+
+          if [ "$receipt_ready" = true ]; then
+            if node scripts/harness/release-control.mjs \
+                --action recover --environment production --project-ref "$PRODUCTION_PROJECT_REF" \
+                --release artifacts/release/release.json \
+                --receipt artifacts/release/failure-receipt.json \
+                --previous-release-id "$EXPECTED_ACTIVE_RELEASE_ID" \
+                > artifacts/release/control-recovery.json; then
+              echo "Candidate or ambiguous promotion reconciled to the previous active release"
+            else
+              rollback_status=1
+              echo "::error::Hosted candidate or ambiguous promotion did not recover"
+            fi
+          fi
+
+          cleanup_run_id="gh:${GITHUB_RUN_ID}:${GITHUB_RUN_ATTEMPT}"
+          if STAGE1_CLEANUP_MUTATION_APPROVAL="stage1-cleanup:${cleanup_run_id}:${COHORT_ID}" \
+              node apps/api/scripts/stage1-synthetic-cohort-cleanup.mjs \
+                --release artifacts/release/release.json \
+                --cohort "$COHORT_ID" --run-id "$cleanup_run_id" \
+                --environment production --project-ref "$PRODUCTION_PROJECT_REF" \
+                --project-url "$PRODUCTION_PROJECT_URL" \
+                --output artifacts/release/rollback-cleanup.json; then
+            echo "Exact synthetic cohort cleanup was retried and proven"
+          else
+            rollback_status=1
+            echo "::error::Exact synthetic cohort cleanup remains unproven"
+          fi
+
+          if node scripts/harness/release-control.mjs \
+              --action read --environment production --project-ref "$PRODUCTION_PROJECT_REF" \
+              > artifacts/release/control-after-recovery.json; then
+            echo "Post-recovery control state recorded"
+          else
+            rollback_status=1
+            echo "::error::Could not read post-recovery release control state"
+          fi
+
+          if rollback_binding_output=$(node scripts/harness/runtime-release-bindings.mjs \
+              --hosted artifacts/release/hosted-before.json); then
+            mapfile -t rollback_bindings <<< "$rollback_binding_output"
+            if [ "${#rollback_bindings[@]}" -eq 22 ] && \
+                ./apps/api/node_modules/.bin/supabase secrets set "${rollback_bindings[@]}" \
+                  --project-ref "$PRODUCTION_PROJECT_REF"; then
+              echo "Rollback release identity restored"
+            else
+              rollback_status=1
+              echo "::error::Rollback release identity was not restored"
+            fi
+          else
+            rollback_status=1
+            echo "::error::Rollback release bindings were invalid"
+          fi
+
+          if ./apps/api/node_modules/.bin/supabase --workdir artifacts/rollback functions deploy mobile-api \
+              --project-ref "$PRODUCTION_PROJECT_REF" --use-api --no-verify-jwt; then
+            echo "Downloaded mobile-api rollback source redeployed"
+          else
+            rollback_status=1
+            echo "::error::Downloaded mobile-api rollback source failed to redeploy"
+          fi
+          if ./apps/api/node_modules/.bin/supabase --workdir artifacts/rollback functions deploy kael-matching-maintainer \
+              --project-ref "$PRODUCTION_PROJECT_REF" --use-api --no-verify-jwt; then
+            echo "Downloaded maintainer rollback source redeployed"
+          else
+            rollback_status=1
+            echo "::error::Downloaded maintainer rollback source failed to redeploy"
+          fi
+
+          expected_binding_output=$(node scripts/harness/runtime-release-bindings.mjs \
+            --hosted artifacts/release/hosted-before.json) || rollback_status=1
+          hosted_restored=false
+          for attempt in 1 2 3 4 5 6 7 8 9 10 11 12; do
+            if node scripts/harness/hosted-state.mjs \
+                --environment production \
+                --project-ref "$PRODUCTION_PROJECT_REF" \
+                --project-url "$PRODUCTION_PROJECT_URL" \
+                --output artifacts/release/hosted-after-rollback.json; then
+              current_binding_output=$(node scripts/harness/runtime-release-bindings.mjs \
+                --hosted artifacts/release/hosted-after-rollback.json) || current_binding_output=invalid
+              if [ "$current_binding_output" = "$expected_binding_output" ] && \
+                  node -e "const before=require('./artifacts/release/hosted-before.json').managedEdgeFunctions;const after=require('./artifacts/release/hosted-after-rollback.json').managedEdgeFunctions;for(const n of ['mobile-api','kael-matching-maintainer']){const b=before[n];const a=after[n];if(a?.status!=='ACTIVE'||!Number.isInteger(a?.version)||a.version<=b.version)process.exit(1)}"; then
+                hosted_restored=true
+                break
+              fi
+            fi
+            sleep 10
+          done
+          if [ "$hosted_restored" != true ]; then
+            rollback_status=1
+            echo "::error::Hosted identity or Edge redeploy evidence did not converge"
+          fi
+
+          restored_mobile_source_sha=invalid
+          restored_maintainer_source_sha=invalid
+          mkdir -p artifacts/rollback-proof
+          if ./apps/api/node_modules/.bin/supabase --workdir artifacts/rollback-proof functions download mobile-api \
+              --project-ref "$PRODUCTION_PROJECT_REF" --use-api; then
+            restored_mobile_source_sha=$(node scripts/harness/edge-source-proof.mjs \
+              --source-root artifacts/rollback-proof --function mobile-api --digest-only) || restored_mobile_source_sha=invalid
+          else
+            rollback_status=1
+            echo "::error::Could not redownload the restored mobile-api source"
+          fi
+          if ./apps/api/node_modules/.bin/supabase --workdir artifacts/rollback-proof functions download kael-matching-maintainer \
+              --project-ref "$PRODUCTION_PROJECT_REF" --use-api; then
+            restored_maintainer_source_sha=$(node scripts/harness/edge-source-proof.mjs \
+              --source-root artifacts/rollback-proof --function kael-matching-maintainer --digest-only) || restored_maintainer_source_sha=invalid
+          else
+            rollback_status=1
+            echo "::error::Could not redownload the restored maintainer source"
+          fi
+
+          if node -e "const r=require('./artifacts/release/previous-active-release.json');process.exit(r===null?1:0)"; then
+            if node scripts/harness/edge-source-proof.mjs \
+                --release artifacts/release/previous-active-release.json \
+                --hosted artifacts/release/hosted-after-rollback.json \
+                --source-root artifacts/rollback-proof --function mobile-api \
+                --output artifacts/release/rollback-mobile-source-proof.json && \
+                node scripts/harness/edge-source-proof.mjs \
+                --release artifacts/release/previous-active-release.json \
+                --hosted artifacts/release/hosted-after-rollback.json \
+                --source-root artifacts/rollback-proof --function kael-matching-maintainer \
+                --output artifacts/release/rollback-maintainer-source-proof.json && \
+                node scripts/harness/source-deployment-attestation.mjs \
+                --environment production --project-ref "$PRODUCTION_PROJECT_REF" \
+                --proof artifacts/release/rollback-mobile-source-proof.json \
+                --output artifacts/release/rollback-mobile-source-attestation.json && \
+                node scripts/harness/source-deployment-attestation.mjs \
+                --environment production --project-ref "$PRODUCTION_PROJECT_REF" \
+                --proof artifacts/release/rollback-maintainer-source-proof.json \
+                --output artifacts/release/rollback-maintainer-source-attestation.json; then
+              echo "Restored active release was re-attested to both new provider deployment identities"
+            else
+              rollback_status=1
+              echo "::error::Restored active release could not be re-attested"
+            fi
+          else
+            echo "Legacy unreleased baseline restored with its expand-window runtime bindings"
+          fi
+
+          if node scripts/harness/rollback-proof.mjs \
+              --hosted-before artifacts/release/hosted-before.json \
+              --hosted-after artifacts/release/hosted-after-rollback.json \
+              --control-before artifacts/release/control-before.json \
+              --control-after artifacts/release/control-after-recovery.json \
+              --control-recovery artifacts/release/control-recovery.json \
+              --rollback-mobile-source-sha256 "$ROLLBACK_MOBILE_SOURCE_SHA" \
+              --restored-mobile-source-sha256 "$restored_mobile_source_sha" \
+              --rollback-maintainer-source-sha256 "$ROLLBACK_MAINTAINER_SOURCE_SHA" \
+              --restored-maintainer-source-sha256 "$restored_maintainer_source_sha" \
+              --output artifacts/release/rollback-proof.json; then
+            echo "Rollback proof is complete"
+          else
+            rollback_status=1
+            echo "::error::Rollback proof is incomplete"
+          fi
+
+          if [ "$rollback_status" -ne 0 ]; then
+            echo "::error::Production rollback attempted but one or more safety actions remain unproven"
+          fi
+          exit 1
+      - name: Upload immutable release, smoke, and rollback evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: stage1-production-release-${{ github.run_id }}
+          path: artifacts/release
+          if-no-files-found: error
+          retention-days: 90

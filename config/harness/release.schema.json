@@ -10,12 +10,18 @@
     "environment",
     "environmentBinding",
     "gitSha",
+    "sourceBundleSha256",
+    "mobileBuildFingerprintSha256",
+    "productionUiSourceSha256",
     "manifestSha256",
     "migrationInventorySha256",
     "migrationInventory",
+    "migrationWatermark",
     "databaseTypesSha256",
     "promptBundleSha256",
     "policyBundleSha256",
+    "serviceIntakePolicyBundleSha256",
+    "priceEvidenceBundleSha256",
     "runtimeConfigurationSha256",
     "evaluationSuiteVersion",
     "evaluationSuiteSha256",
@@ -23,7 +29,11 @@
     "accessMatrixSha256",
     "reliabilityPolicySha256",
     "promotionPolicySha256",
+    "providerReadiness",
+    "providerReadinessFingerprintSha256",
     "edgeFunctions",
+    "edgeRuntimeConfigurations",
+    "edgeBundleSha256",
     "edgeFunctionInputs",
     "verificationRequirements",
     "rollbackPolicy",
@@ -49,11 +59,24 @@
       "type": "string",
       "pattern": "^[0-9a-f]{40}$"
     },
+    "sourceBundleSha256": {
+      "$ref": "#/$defs/sha256"
+    },
+    "mobileBuildFingerprintSha256": {
+      "$ref": "#/$defs/sha256"
+    },
+    "productionUiSourceSha256": {
+      "$ref": "#/$defs/sha256"
+    },
     "manifestSha256": {
       "$ref": "#/$defs/sha256"
     },
     "migrationInventorySha256": {
       "$ref": "#/$defs/sha256"
+    },
+    "migrationWatermark": {
+      "type": "string",
+      "pattern": "^[0-9]{14}$"
     },
     "databaseTypesSha256": {
       "$ref": "#/$defs/sha256"
@@ -62,6 +85,12 @@
       "$ref": "#/$defs/sha256"
     },
     "policyBundleSha256": {
+      "$ref": "#/$defs/sha256"
+    },
+    "serviceIntakePolicyBundleSha256": {
+      "$ref": "#/$defs/sha256"
+    },
+    "priceEvidenceBundleSha256": {
       "$ref": "#/$defs/sha256"
     },
     "evaluationSuiteVersion": {
@@ -74,6 +103,52 @@
       "additionalProperties": {
         "$ref": "#/$defs/sha256"
       }
+    },
+    "edgeRuntimeConfigurations": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "sha256",
+          "inputs",
+          "verifyJwt",
+          "entrypointPath",
+          "importMap",
+          "importMapPath"
+        ],
+        "properties": {
+          "sha256": {
+            "$ref": "#/$defs/sha256"
+          },
+          "inputs": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "verifyJwt": {
+            "type": "boolean"
+          },
+          "entrypointPath": {
+            "type": "string",
+            "minLength": 1
+          },
+          "importMap": {
+            "type": "boolean"
+          },
+          "importMapPath": {
+            "type": ["string", "null"]
+          }
+        }
+      }
+    },
+    "edgeBundleSha256": {
+      "$ref": "#/$defs/sha256"
     },
     "bundleSha256": {
       "$ref": "#/$defs/sha256"
@@ -92,6 +167,29 @@
     },
     "promotionPolicySha256": {
       "$ref": "#/$defs/sha256"
+    },
+    "providerReadinessFingerprintSha256": {
+      "$ref": "#/$defs/sha256"
+    },
+    "providerReadiness": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "anthropic",
+        "deepseek",
+        "durable_guards",
+        "global_ai_enabled",
+        "perplexity",
+        "vietmap"
+      ],
+      "properties": {
+        "anthropic": { "type": "boolean" },
+        "deepseek": { "type": "boolean" },
+        "durable_guards": { "type": "boolean" },
+        "global_ai_enabled": { "type": "boolean" },
+        "perplexity": { "type": "boolean" },
+        "vietmap": { "type": "boolean" }
+      }
     },
     "environmentBinding": {
       "type": "object",

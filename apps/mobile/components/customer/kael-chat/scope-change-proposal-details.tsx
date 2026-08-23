@@ -85,7 +85,7 @@ export function ScopeChangeProposalDetails({
           value={scope.requestedDescription || (language === 'vi' ? 'Chưa có mô tả.' : 'No description.')}
         />
         <Fact
-          label={language === 'vi' ? 'Lý do kỹ thuật' : 'Technical reason'}
+          label={language === 'vi' ? 'Lý do thay đổi' : 'Reason for the change'}
           tokens={tokens}
           value={scope.reason || (language === 'vi' ? 'Chưa có lý do.' : 'No reason.')}
         />

@@ -39,13 +39,15 @@ const TABLES_DIR = `${OUT_DIR}/tables`
 // a broader rule that would swallow it.
 const BUCKET_RULES = [
   ['kael', (name) => name.startsWith('kael_')],
-  ['harness', (name) => name.startsWith('harness_')],
+  ['harness', (name) => name.startsWith('harness_') || name.startsWith('stage1_')],
+  ['matching', (name) => name.startsWith('matching_') || name.startsWith('confirmation_') ||
+    name.startsWith('synthetic_matching_') || name === 'workflow_outbox'],
   ['worker', (name) => name.startsWith('worker_')],
   ['customer', (name) => name.startsWith('customer_')],
   ['learning', (name) => name.startsWith('learning_')],
   ['jobs', (name) => name.startsWith('job_') || name === 'jobs'],
   ['admin', (name) => name.startsWith('admin_')],
-  ['service', (name) => name.startsWith('service_')],
+  ['service', (name) => name.startsWith('service_') || name.startsWith('price_baseline_')],
 ]
 
 // Tables with no domain prefix. An explicit list rather than a fallback, so a new unprefixed

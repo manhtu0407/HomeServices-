@@ -183,16 +183,19 @@ export type CustomerTables = {
         Row: {
           created_at: string
           customer_id: string
+          synthetic_cohort_id: string | null
           worker_id: string
         }
         Insert: {
           created_at?: string
           customer_id: string
+          synthetic_cohort_id?: string | null
           worker_id: string
         }
         Update: {
           created_at?: string
           customer_id?: string
+          synthetic_cohort_id?: string | null
           worker_id?: string
         }
         Relationships: [
@@ -209,6 +212,13 @@ export type CustomerTables = {
             isOneToOne: false
             referencedRelation: "customer_profiles"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_favorite_workers_synthetic_cohort_id_fkey"
+            columns: ["synthetic_cohort_id"]
+            isOneToOne: false
+            referencedRelation: "synthetic_matching_cohorts"
+            referencedColumns: ["cohort_id"]
           },
           {
             foreignKeyName: "customer_favorite_workers_worker_id_fkey"
@@ -344,6 +354,7 @@ export type CustomerTables = {
           id: string
           is_default: boolean
           status: string
+          synthetic_cohort_id: string | null
           updated_at: string
           verified_at: string | null
         }
@@ -358,6 +369,7 @@ export type CustomerTables = {
           id?: string
           is_default?: boolean
           status?: string
+          synthetic_cohort_id?: string | null
           updated_at?: string
           verified_at?: string | null
         }
@@ -372,6 +384,7 @@ export type CustomerTables = {
           id?: string
           is_default?: boolean
           status?: string
+          synthetic_cohort_id?: string | null
           updated_at?: string
           verified_at?: string | null
         }
@@ -382,6 +395,13 @@ export type CustomerTables = {
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_payment_methods_synthetic_cohort_id_fkey"
+            columns: ["synthetic_cohort_id"]
+            isOneToOne: false
+            referencedRelation: "synthetic_matching_cohorts"
+            referencedColumns: ["cohort_id"]
           },
         ]
       }

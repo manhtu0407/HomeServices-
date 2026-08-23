@@ -1,4 +1,4 @@
-import { useEffect, useReducer, useRef, useState } from 'react'
+import { useEffect, useReducer, useRef } from 'react'
 import { Pressable, Text, View, type StyleProp, type TextStyle } from 'react-native'
 import Svg, { Path } from 'react-native-svg'
 

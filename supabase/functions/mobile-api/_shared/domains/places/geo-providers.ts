@@ -276,7 +276,9 @@ export async function geocodeWithVietmap(
   address: string,
   apiKey: string,
   jobId: string,
+  timeoutBudgetMs = 5_000,
 ): Promise<GeocodeResult | null> {
+  const deadline = performance.now() + timeoutBudgetMs;
   try {
     const searchUrl = buildVietmapUrl(VIETMAP_SEARCH_URL, apiKey, {
       text: address,
@@ -284,9 +286,13 @@ export async function geocodeWithVietmap(
       display_type: "6",
       cityId: VIETMAP_HCMC_CITY_ID,
     });
-    const searchResponse = await fetchJsonWithTimeout(searchUrl, {
-      method: "GET",
-    });
+    const searchTimeout = remainingTimeoutMs(deadline);
+    if (searchTimeout === null) return null;
+    const searchResponse = await fetchJsonWithTimeout(
+      searchUrl,
+      { method: "GET" },
+      searchTimeout,
+    );
     if (!searchResponse.ok) {
       console.warn("mobile-api geocoding failed", {
         provider: "vietmap",
@@ -307,9 +313,13 @@ export async function geocodeWithVietmap(
     const placeUrl = buildVietmapUrl(VIETMAP_PLACE_URL, apiKey, {
       refid: refId,
     });
-    const placeResponse = await fetchJsonWithTimeout(placeUrl, {
-      method: "GET",
-    });
+    const placeTimeout = remainingTimeoutMs(deadline);
+    if (placeTimeout === null) return null;
+    const placeResponse = await fetchJsonWithTimeout(
+      placeUrl,
+      { method: "GET" },
+      placeTimeout,
+    );
     if (!placeResponse.ok) {
       console.warn("mobile-api geocoding failed", {
         provider: "vietmap",
@@ -347,12 +357,17 @@ export async function geocodeWithGoogleMaps(
   address: string,
   apiKey: string,
   jobId: string,
+  timeoutBudgetMs = 5_000,
 ): Promise<GeocodeResult | null> {
   try {
     const url = `${GOOGLE_GEOCODING_URL}?address=${
       encodeURIComponent(address)
     }&region=vn&language=vi&key=${encodeURIComponent(apiKey)}`;
-    const response = await fetchJsonWithTimeout(url, { method: "GET" });
+    const response = await fetchJsonWithTimeout(
+      url,
+      { method: "GET" },
+      timeoutBudgetMs,
+    );
     if (!response.ok) {
       console.warn("mobile-api geocoding failed", {
         provider: "google_maps",
@@ -386,6 +401,11 @@ export async function geocodeWithGoogleMaps(
     });
     return null;
   }
+}
+
+function remainingTimeoutMs(deadline: number): number | null {
+  const remaining = Math.floor(deadline - performance.now());
+  return remaining >= 1 ? remaining : null;
 }
 
 export function buildGeocodingAddress(

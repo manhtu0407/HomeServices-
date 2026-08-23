@@ -4,14 +4,16 @@ import { apiFailure } from "../../platform/api-failure.ts";
 import type { MobileApiContext } from "../../platform/auth.ts";
 import { normalizeIsoTimestamp } from "../../platform/iso-timestamp.ts";
 import type { EdgeEarningsResponse } from "../contracts/broadcast.ts";
+import { requireRealTrafficActor } from "../../platform/synthetic-cohort.ts";
 
 export async function getWorkerEarnings(
   ctx: MobileApiContext,
   range: { from?: string; to?: string },
 ): Promise<EdgeEarningsResponse> {
+  await requireRealTrafficActor(db(ctx), ctx.user.id, "worker");
   const [result, safetyResult] = await Promise.all([
     dbQuery<Array<Record<string, unknown>>>(
-      db(ctx).rpc("get_worker_earnings_summary", {
+      db(ctx).rpc("get_worker_earnings_summary_v2", {
         p_worker_id: ctx.user.id,
         p_from: range.from ?? null,
         p_to: range.to ?? null,

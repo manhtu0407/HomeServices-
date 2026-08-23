@@ -34,6 +34,8 @@ declare
   v_spend record;
   v_spend_blocked record;
   v_spend_after_release record;
+  v_existing_global_spend numeric := 0;
+  v_spend_cap numeric := 0;
   v_invalid record;
   v_long_dependency text := repeat('x', 121);
 begin
@@ -97,21 +99,29 @@ begin
     raise exception 'unknown execution outcome was allowed to retry';
   end if;
 
+  perform pg_advisory_xact_lock(hashtext('kael_ai_spend_reserve'));
+  perform public.expire_harness_reliability_reservations();
+  select coalesce(sum(cost_usd), 0) into v_existing_global_spend
+  from public.kael_ai_spend_log
+  where created_at >= now() - interval '1 day'
+    and reservation_status in ('reserved', 'settled');
+  v_spend_cap := v_existing_global_spend + 1;
+
   select * into v_spend from public.reserve_kael_ai_spend(
-    null, 1, 'reliability-test', 1, null, null
+    null, 1, 'reliability-test', v_spend_cap, null, null
   );
   if not v_spend.allowed or v_spend.reservation_id is null then
     raise exception 'spend reservation failed';
   end if;
   select * into v_spend_blocked from public.reserve_kael_ai_spend(
-    null, 0.01, 'reliability-test', 1, null, null
+    null, 0.01, 'reliability-test', v_spend_cap, null, null
   );
   if v_spend_blocked.allowed or v_spend_blocked.blocked_scope <> 'global_daily' then
     raise exception 'concurrent spend envelope was not bounded';
   end if;
   perform public.finalize_kael_ai_spend(v_spend.reservation_id, 0, 'reliability-test');
   select * into v_spend_after_release from public.reserve_kael_ai_spend(
-    null, 0.01, 'reliability-test', 1, null, null
+    null, 0.01, 'reliability-test', v_spend_cap, null, null
   );
   if not v_spend_after_release.allowed then
     raise exception 'released spend reservation still consumed the cap';

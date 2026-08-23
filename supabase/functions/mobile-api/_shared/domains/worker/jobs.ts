@@ -17,28 +17,35 @@ import {
   type WorkerCommissionTier,
 } from "../payment/commission.ts";
 import { parseOriginalScopePriceQuote } from "../matching/original-scope-price-quote.ts";
+import {
+  resolveSyntheticActorScope,
+  scopeQueryToSyntheticActor,
+} from "../../platform/synthetic-cohort.ts";
 
 const WORKER_JOB_LIST_COLUMNS =
   "id, customer_id, display_code, status, service_type, problem_chips, description, kael_problem_identified, address_building, address_unit, address_floor, address_district, apartment_access_profile, apartment_access_state, scheduled_at, kael_price_min, kael_price_max, kael_worker_brief_guidance, final_price, worker_commission_level, worker_commission_rate_bps, payment_status, payment_provider, payment_received_at, payment_amount_received, gross_amount, platform_fee, worker_net, photo_urls, completion_notes, completion_photo_urls, created_at, matched_at, completed_at";
 
 export async function listWorkerJobs(ctx: MobileApiContext) {
   const client = db(ctx);
+  const actorScope = await resolveSyntheticActorScope(client, ctx.user.id, "worker");
   const commissionTierRequest = getWorkerCommissionTier(client, ctx.user.id);
+  const assignedJobsQuery = client
+    .from("jobs")
+    .select(WORKER_JOB_LIST_COLUMNS)
+    .eq("worker_id", ctx.user.id);
   const assignedJobsRequest = dbQuery<Array<Record<string, unknown>>>(
-    client
-      .from("jobs")
-      .select(WORKER_JOB_LIST_COLUMNS)
-      .eq("worker_id", ctx.user.id)
+    scopeQueryToSyntheticActor(assignedJobsQuery, actorScope)
       .order("created_at", { ascending: false })
       .limit(100),
   );
+  const candidateJobsQuery = client
+    .from("job_worker_candidates")
+    .select(`job_id, broadcast_id, original_scope_price_quote, jobs!inner(${WORKER_JOB_LIST_COLUMNS})`)
+    .eq("worker_id", ctx.user.id)
+    .eq("status", "proposed")
+    .eq("jobs.status", "worker_candidate_pending");
   const candidateJobsRequest = dbQuery<Array<Record<string, unknown>>>(
-    client
-      .from("job_worker_candidates")
-      .select(`job_id, broadcast_id, original_scope_price_quote, jobs!inner(${WORKER_JOB_LIST_COLUMNS})`)
-      .eq("worker_id", ctx.user.id)
-      .eq("status", "proposed")
-      .eq("jobs.status", "worker_candidate_pending")
+    scopeQueryToSyntheticActor(candidateJobsQuery, actorScope)
       .gt("expires_at", new Date().toISOString())
       .order("proposed_at", { ascending: false })
       .limit(20),

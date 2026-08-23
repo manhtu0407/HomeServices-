@@ -36,6 +36,10 @@ import {
   vietmapPlacesResolve,
 } from "./geo-providers.ts";
 
+export const CONFIRMED_MATCHING_GEOCODE_BUDGET_MS = 1_500;
+
+type GeocodeProvider<T> = (timeoutMs: number) => Promise<T | null>;
+
 export async function placesAutocomplete(
   ctx: MobileApiContext,
   input: PlacesAutocompleteInput,
@@ -114,6 +118,7 @@ export async function geocodeJobAddressForMatching(
   jobId: string,
   input: { addressLabel: string | null; district: string | null },
   secrets: EdgeAiSecrets,
+  options: { providerBudgetMs?: number } = {},
 ) {
   const district = normalizeServiceAreaDistrict(input.district);
   const address = buildGeocodingAddress(input.addressLabel, district);
@@ -133,13 +138,17 @@ export async function geocodeJobAddressForMatching(
     await updateJobGeo(client, jobId, fallbackUpdate);
     return;
   }
-  const vietmapResult = vietmapApiKey
-    ? await geocodeWithVietmap(address, vietmapApiKey, jobId)
-    : null;
-  const result = vietmapResult ??
-    (googleApiKey
-      ? await geocodeWithGoogleMaps(address, googleApiKey, jobId)
-      : null);
+  const providers: Array<GeocodeProvider<Awaited<ReturnType<typeof geocodeWithVietmap>>>> = [];
+  if (vietmapApiKey) {
+    providers.push((timeoutMs) => geocodeWithVietmap(address, vietmapApiKey, jobId, timeoutMs));
+  }
+  if (googleApiKey) {
+    providers.push((timeoutMs) => geocodeWithGoogleMaps(address, googleApiKey, jobId, timeoutMs));
+  }
+  const result = await firstProviderResultWithinBudget(
+    options.providerBudgetMs ?? 5_000,
+    providers,
+  );
 
   await recordMapsResult(control, result !== null, result ? null : "MAPS_GEOCODE_FAILED");
   if (result) {
@@ -193,7 +202,25 @@ export async function geocodeConfirmedKaelJob(
   await geocodeJobAddressForMatching(client, jobId, {
     addressLabel: nullableString(metadata.address_label),
     district,
-  }, secrets);
+  }, secrets, { providerBudgetMs: CONFIRMED_MATCHING_GEOCODE_BUDGET_MS });
+}
+
+export async function firstProviderResultWithinBudget<T>(
+  budgetMs: number,
+  providers: Array<GeocodeProvider<T>>,
+  now: () => number = () => performance.now(),
+): Promise<T | null> {
+  if (!Number.isSafeInteger(budgetMs) || budgetMs < 1 || budgetMs > 5_000) {
+    throw new Error("MATCHING_GEOCODE_BUDGET_INVALID");
+  }
+  const deadline = now() + budgetMs;
+  for (const provider of providers) {
+    const remaining = Math.floor(deadline - now());
+    if (remaining < 1) return null;
+    const result = await provider(remaining);
+    if (result !== null) return result;
+  }
+  return null;
 }
 
 type MapsControl = {

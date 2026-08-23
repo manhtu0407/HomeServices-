@@ -2,7 +2,7 @@ import { act, fireEvent, render, screen, waitFor, within } from '@testing-librar
 import { Alert, Platform, StyleSheet } from 'react-native'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import type { LocalDeal, LocalWorkerGate } from '@nestscout/shared'
-import type { EarningsResponse, NotificationListResponse, WorkerPayoutMethod, WorkerPerformanceInsightsResponse, WorkerProfileResponse, WorkerWithdrawalRequest } from '@/lib/api-types'
+import type { EarningsResponse, NotificationListResponse, WorkerBroadcastProposalAction, WorkerPayoutMethod, WorkerPerformanceInsightsResponse, WorkerProfileResponse, WorkerWithdrawalRequest } from '@/lib/api-types'
 import { color, glass } from '@/design/theme'
 
 let mockWorkflowValue: any
@@ -522,6 +522,9 @@ function buildWorkflow({
   workerGate = 'remote_backend',
   workerPerformanceInsights = null,
   workerProfile = buildWorkerProfile(),
+  workerProposalAction = deal?.status === 'broadcasting' && deal.broadcast?.status === 'sent'
+    ? 'accept_priced_offer'
+    : null,
   workerPayoutMethod = null,
   workerWithdrawalRequests = [],
   notifications = [],
@@ -536,6 +539,7 @@ function buildWorkflow({
   workerGate?: LocalWorkerGate
   workerPerformanceInsights?: WorkerPerformanceInsightsResponse | null
   workerProfile?: WorkerProfileResponse | null
+  workerProposalAction?: WorkerBroadcastProposalAction | null
   workerPayoutMethod?: WorkerPayoutMethod | null
   workerWithdrawalRequests?: WorkerWithdrawalRequest[]
   notifications?: NotificationListResponse['notifications']
@@ -565,6 +569,7 @@ function buildWorkflow({
       requestWorkerCancellation: jest.fn(async () => true),
       workerAcceptBroadcast: jest.fn(async () => true),
       workerDeclineBroadcast: jest.fn(async () => true),
+      workerMarkBroadcastSeen: jest.fn(async () => true),
       workerUpdateAvailability: mockWorkerUpdateAvailability,
       workerUploadAvatar: mockWorkerUploadAvatar,
       workerUpdateServiceArea: mockWorkerUpdateServiceArea,
@@ -572,6 +577,7 @@ function buildWorkflow({
       workerUpdateStatus: jest.fn(async () => true),
       workerConfirmCashPayment: mockWorkerConfirmCashPayment,
       workerSavePayoutMethod: mockWorkerSavePayoutMethod,
+      workerSubmitBroadcastProposal: jest.fn(async () => true),
       workerRequestWithdrawal: mockWorkerRequestWithdrawal,
       workerRefresh: mockWorkerRefresh,
       workerSubmitRegistration: jest.fn(async () => true),
@@ -595,8 +601,17 @@ function buildWorkflow({
     workerEarningsError,
     workerJobs,
     workerJobsHydrated,
+    workerMatchingDelivery: null,
     workerPerformanceInsights,
     workerProfile,
+    workerProposalOpportunity: workerProposalAction && deal?.broadcast?.broadcastId
+      ? {
+          broadcastId: deal.broadcast.broadcastId,
+          proposalAction: workerProposalAction,
+          quoteMode: workerProposalAction === 'accept_priced_offer' ? 'kael_auto_quote' : null,
+          result: null,
+        }
+      : null,
     workerPayoutMethod,
     workerWithdrawalRequests,
     notifications,
@@ -1097,6 +1112,29 @@ describe('Worker runtime surface wiring', () => {
     expect(screen.queryByText('Kael đã lọc theo kỹ năng, bán kính và lịch trống')).toBeNull()
     expect(screen.getByTestId('worker-v5-opportunity-card')).toBeOnTheScreen()
     expect(screen.getByTestId('worker-v5-opportunity-inbox-handoff')).toBeOnTheScreen()
+  })
+
+  it('acknowledges a queued durable offer when the foreground Worker opens the inbox', async () => {
+    const deal = buildIncomingDeal()
+    buildWorkflow({ deal })
+    mockWorkflowValue.workerMatchingDelivery = {
+      confirmedRecipientCount: 1,
+      receipt: {
+        accepted_at: null,
+        broadcast_id: deal.broadcast!.broadcastId,
+        delivered_at: null,
+        expires_at: '2026-08-15T03:05:00.000Z',
+        seen_at: null,
+        state: 'queued',
+      },
+    }
+    mockRouteParams = { ns_worker_screen: '2.1-opportunity-inbox' }
+
+    render(<WorkerJobsSurface />)
+
+    await waitFor(() => {
+      expect(mockWorkflowValue.actions.workerMarkBroadcastSeen).toHaveBeenCalledWith(deal.broadcast!.broadcastId)
+    })
   })
 
   it('uses one Worker Jobs rebuild surface in Preview and shows only real opportunity data', () => {
@@ -2171,17 +2209,18 @@ describe('Worker runtime surface wiring', () => {
     render(<WorkerChatSurface />)
 
     fireEvent.press(screen.getByTestId('worker-v5-kael-session-toggle'))
-    fireEvent.press(screen.getByTestId('worker-v5-kael-session-new'))
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('worker-v5-kael-session-new'))
+      await Promise.resolve()
+    })
 
-    await waitFor(() => {
-      expect(screen.queryByTestId('worker-v5-kael-session-menu')).toBeNull()
-    }, { timeout: 3000 })
+    expect(screen.queryByTestId('worker-v5-kael-session-menu')).toBeNull()
     expect(mockWorkerKaelChatService.list).not.toHaveBeenCalled()
     expect(mockWorkerKaelChatService.create).not.toHaveBeenCalled()
 
     fireEvent.press(screen.getByTestId('worker-v5-kael-session-toggle'))
 
-    expect(await screen.findByText('Trao đổi về công việc')).toBeOnTheScreen()
+    expect(screen.getByText('Trao đổi về công việc')).toBeOnTheScreen()
   })
 
   it('creates a Worker Preview conversation locally without calling remote chat APIs', async () => {
@@ -2198,15 +2237,16 @@ describe('Worker runtime surface wiring', () => {
     expect(screen.getByTestId('worker-v5-kael-session-menu')).toBeOnTheScreen()
     expect(mockWorkerKaelChatService.list).not.toHaveBeenCalled()
 
-    fireEvent.press(screen.getByTestId('worker-v5-kael-session-new'))
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('worker-v5-kael-session-new'))
+      await Promise.resolve()
+    })
 
-    await waitFor(() => {
-      expect(screen.queryByTestId('worker-v5-kael-session-menu')).toBeNull()
-    }, { timeout: 3000 })
+    expect(screen.queryByTestId('worker-v5-kael-session-menu')).toBeNull()
     expect(mockWorkerKaelChatService.create).not.toHaveBeenCalled()
 
     fireEvent.press(screen.getByTestId('worker-v5-kael-session-toggle'))
-    expect(await screen.findByText('Trò chuyện cùng Kael')).toBeOnTheScreen()
+    expect(screen.getByText('Trò chuyện cùng Kael')).toBeOnTheScreen()
   })
 
   it('keeps the empty hero mounted while a new conversation is being created', async () => {
@@ -3319,7 +3359,7 @@ describe('Worker runtime surface wiring', () => {
     expect(screen.queryByText('Sẵn sàng nhận việc')).toBeNull()
   })
 
-  it('lets the worker choose a real avatar from camera or photo library', async () => {
+  it('lets the worker choose a real avatar without requesting library permission', async () => {
     buildWorkflow()
     const imagePicker = jest.requireMock('expo-image-picker')
     imagePicker.launchImageLibraryAsync.mockResolvedValueOnce({
@@ -3336,20 +3376,24 @@ describe('Worker runtime surface wiring', () => {
       void library?.onPress?.()
     })
 
-    render(<WorkerProfileSurface />)
-    fireEvent.press(screen.getByTestId('worker-v5-profile-avatar-picker'))
+    try {
+      render(<WorkerProfileSurface />)
+      fireEvent.press(screen.getByTestId('worker-v5-profile-avatar-picker'))
 
-    await waitFor(() => {
-      expect(mockWorkerUploadAvatar).toHaveBeenCalledWith({
-        fileName: 'worker.jpg',
-        fileSizeBytes: 1234,
-        mimeType: 'image/jpeg',
-        uri: 'file:///worker.jpg',
+      await waitFor(() => {
+        expect(mockWorkerUploadAvatar).toHaveBeenCalledWith({
+          fileName: 'worker.jpg',
+          fileSizeBytes: 1234,
+          mimeType: 'image/jpeg',
+          uri: 'file:///worker.jpg',
+        })
       })
-    })
-    expect(imagePicker.requestMediaLibraryPermissionsAsync).toHaveBeenCalledTimes(1)
-    expect(alertSpy).toHaveBeenCalled()
-    alertSpy.mockRestore()
+      expect(imagePicker.launchImageLibraryAsync).toHaveBeenCalledTimes(1)
+      expect(imagePicker.requestMediaLibraryPermissionsAsync).not.toHaveBeenCalled()
+      expect(alertSpy).toHaveBeenCalled()
+    } finally {
+      alertSpy.mockRestore()
+    }
   })
 
   it('opens the real image library directly from the avatar button in web Preview', async () => {
@@ -4007,7 +4051,7 @@ describe('Worker runtime surface wiring', () => {
     expect(mockReplace).toHaveBeenLastCalledWith('/(worker)/profile?ns_worker_screen=5.12-worker-notifications&ns_worker_lang=vi')
   })
 
-  it('requires acknowledgement before opening support for worker account deletion', () => {
+  it('requires acknowledgement and the exact phrase before submitting account deletion', () => {
     buildWorkflow()
     mockRouteParams = {}
 
@@ -4025,12 +4069,14 @@ describe('Worker runtime surface wiring', () => {
     expect(StyleSheet.flatten(screen.getByTestId('worker-v5-delete-account-warning').props.style)).toMatchObject({
       backgroundColor: color.surface.base,
     })
-    expect(screen.getByTestId('worker-v5-delete-account-open-support')).toBeDisabled()
+    const submit = screen.getByTestId('worker-v5-delete-account-submit')
+    expect(submit).toBeDisabled()
 
     fireEvent.press(screen.getByTestId('worker-v5-delete-account-acknowledgement'))
-    expect(screen.getByTestId('worker-v5-delete-account-open-support')).not.toBeDisabled()
-    fireEvent.press(screen.getByTestId('worker-v5-delete-account-open-support'))
-    expect(mockReplace).toHaveBeenLastCalledWith('/(worker)/profile?ns_worker_screen=5.13-worker-support')
+    expect(submit).toBeDisabled()
+    fireEvent.changeText(screen.getByTestId('worker-v5-delete-account-confirmation'), 'XÓA TÀI KHOẢN')
+    expect(submit).not.toBeDisabled()
+    expect(screen.queryByTestId('worker-v5-delete-account-open-support')).toBeNull()
   })
 
   it('reads recorded notifications and keeps support and policy routes usable', async () => {
