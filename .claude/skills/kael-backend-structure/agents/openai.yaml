@@ -1,0 +1,4 @@
+interface:
+  display_name: "Kael Backend Structure"
+  short_description: "Layer placement, weakening test, blast radius, risk-keyed gates"
+  default_prompt: "Use $kael-backend-structure on any change touching supabase/functions, supabase/migrations, shared contracts, or generated database types, however small."

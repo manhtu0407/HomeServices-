@@ -1,0 +1,4 @@
+interface:
+  display_name: "Kael Ship"
+  short_description: "Delivery gate before push or pull request"
+  default_prompt: "Use $kael-ship before pushing or opening a pull request: run pnpm ship:check, then apply the judgment half."

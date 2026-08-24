@@ -180,6 +180,9 @@ function checkEntries(root, manifest, problems) {
 
 function checkRouters(root, manifest, problems) {
   const counts = Object.fromEntries(['everyday', 'design'].map((group) => [group, manifest.entries.filter((entry) => entry.kind === 'repository-skill' && entry.group === group).length]))
+  const readinessCounts = Object.fromEntries(['autonomous', 'gated', 'unavailable']
+    .map((readiness) => [readiness, manifest.entries.filter((entry) => entry.kind === 'repository-skill' && entry.readiness === readiness).length])
+    .filter(([, count]) => count > 0))
   const total = counts.everyday + counts.design
   const paths = manifest.routers.map((router) => router.path)
   if (!unique(paths)) problems.push('router paths must be unique')
@@ -190,6 +193,16 @@ function checkRouters(root, manifest, problems) {
       continue
     }
     const text = readFileSync(path, 'utf8')
+    // Readiness counts are claimed by both routers in different shapes — a table row in
+    // the canonical list, prose in the pointer — and neither shape was checked, which is
+    // how one of them sat two skills behind the manifest without anything going red.
+    for (const [readiness, expected] of Object.entries(readinessCounts)) {
+      const claim = new RegExp(`\\|\\s*\`${readiness}\`\\s*\\|\\s*(\\d+)\\s*\\|`).exec(text)
+        ?? new RegExp(`(\\d+)\\s+\`${readiness}\``).exec(text)
+      if (claim && Number(claim[1]) !== expected) {
+        problems.push(`router ${router.path} ${readiness} count drift: declared ${claim[1]}, manifest ${expected}`)
+      }
+    }
     if (router.mode === 'skill-count-pointer') {
       const match = /Two groups,\s*(\d+)\s*total:\s*\*\*Everyday \((\d+)\)\*\*\s*and\s*\*\*Design \((\d+)\)\*\*/.exec(text)
       if (!match) problems.push(`router ${router.path} is missing the skill-count pointer contract`)

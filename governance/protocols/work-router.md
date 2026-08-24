@@ -84,6 +84,7 @@ These fire on state, not on where the code lives, so they are independent of dom
 | a decision that needs evidence from outside the repository | `kael-research` |
 | a question better answered by hand before production code | `kael-prototype` |
 | destination clear, path unclear, **across several sessions** | `kael-wayfinder` — hands back to this router when the map exists |
+| a change is going out — push, pull request, or handoff as delivered | `kael-ship` — `pnpm ship:check` for the machine half, then the judgment it cannot make |
 | session closing, context about to compact, or handing between agents | `kael-handoff` and `source-command-kael-mem` |
 
 ## Always-on — exempt from routing
@@ -91,6 +92,21 @@ These fire on state, not on where the code lives, so they are independent of dom
 `kael-core-hygiene` `karpathy-guidelines` `kael-subagent-orchestration` `kael-work-router`
 
 These are never selected because they are never optional. A lane that does not name them is correct.
+
+## Lane — by backend path
+
+This lane routes on paths rather than on the domain word, and it is the one lane reach cannot thin. Everywhere else on this page reach decides how many candidates fire, and at `T` the answer is `skills: none`. A change set containing any of
+
+```text
+supabase/functions/**              supabase/migrations/**
+packages/shared/src/contracts/**   packages/shared/src/types/database/**
+```
+
+fires `kael-backend-structure` and `kael-backend-parity` **at every reach, `T` included**. Neither may appear in a `dropped:` line.
+
+This extends the existing path rule rather than inventing one: `packages/shared/**` and `supabase/functions/_shared/**` already force reach `X` regardless of how small a change looks. That rule missed `supabase/migrations/**`, which is where a half-applied deploy hides — Edge code shipped while its migration did not, with every local gate green.
+
+Always-on is not permission to be ceremonial. Neither skill may close with "nothing to report": `kael-backend-parity` runs a real query every time, and `kael-backend-structure` names the files it inspected. A Close block that is reflexively empty reports that a check happened when it did not, which `governance/critical.md` §3 forbids.
 
 ## Namespace trap — protocol, not skill
 
