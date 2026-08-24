@@ -97,17 +97,23 @@ jobs:
           node-version: 20
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - name: Prepare canonical empty-reset migration inventory
+        run: |
+          node scripts/harness/prepare-migration-workdir.mjs \
+            --empty-reset \
+            --inventory config/harness/migration-inventory.json \
+            --output artifacts/empty-reset
       - name: Start local Supabase
-        run: pnpm --filter @nestscout/api exec supabase start
+        run: pnpm --filter @nestscout/api exec supabase --workdir artifacts/empty-reset start --exclude edge-runtime
       - name: Replay all migrations from empty state
-        run: pnpm --filter @nestscout/api exec supabase db reset --local
+        run: pnpm --filter @nestscout/api exec supabase --workdir artifacts/empty-reset db reset --local
       - name: Run SQL verification matrix
         env:
           NESTSCOUT_TEST_DB_URL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
         run: node scripts/run.mjs docker/scripts/run-sql-tests --stop-on-first-failure
       - name: Generate database types from replayed schema
         run: |
-          pnpm --filter @nestscout/api exec supabase gen types typescript --local > /tmp/database.types.ts
+          pnpm --filter @nestscout/api exec supabase --workdir artifacts/empty-reset gen types typescript --local > /tmp/database.types.ts
           node -e "const fs = require('node:fs'); const path = '/tmp/database.types.ts'; const text = fs.readFileSync(path, 'utf8'); fs.writeFileSync(path, text.replace(/\\n+$/u, '\\n'))"
       - name: Upload generated database types
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
@@ -129,7 +135,7 @@ jobs:
             exit 1
           fi
       - name: Supabase schema lint
-        run: pnpm --filter @nestscout/api exec supabase db lint --local --fail-on warning
+        run: pnpm --filter @nestscout/api exec supabase --workdir artifacts/empty-reset db lint --local --fail-on warning
       - name: Stop local Supabase
         if: always()
-        run: pnpm --filter @nestscout/api exec supabase stop --no-backup
+        run: pnpm --filter @nestscout/api exec supabase --workdir artifacts/empty-reset stop --no-backup

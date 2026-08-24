@@ -3,7 +3,7 @@ import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from
 import { dirname, relative, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-import { resolveHostedMigrationState } from './migration-history.mjs'
+import { canonicalMigrationEntries, resolveHostedMigrationState } from './migration-history.mjs'
 import { pendingMigrationEntries } from './release-safety.mjs'
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..')
@@ -49,15 +49,55 @@ export function buildMigrationApplyPlan(input) {
   }
 }
 
+export function buildEmptyMigrationApplyPlan(input) {
+  const selected = canonicalMigrationEntries(input.inventory)
+  if (selected.length === 0) throw new Error('empty reset migration inventory is empty')
+  const versions = selected.map((entry) => entry.version)
+  if (new Set(versions).size !== versions.length) {
+    throw new Error('empty reset migration inventory contains a duplicate version')
+  }
+  return {
+    schemaVersion: '1.0.0',
+    mode: 'empty-reset',
+    environment: 'local',
+    projectRef: 'nestscout',
+    hostedVersions: [],
+    pendingVersions: versions,
+    files: selected.map((entry) => ({
+      version: entry.version,
+      file: entry.file,
+      sha256: entry.sha256,
+    })),
+  }
+}
+
 export function materializeMigrationApplyWorkdir(input) {
   const root = resolve(input.root ?? ROOT)
   const output = resolveInsideRoot(root, input.output)
   if (existsSync(output)) throw new Error('migration apply workdir already exists')
   const plan = buildMigrationApplyPlan(input)
+  materializeMigrationWorkdir({ root, output, plan, includeSeed: false })
+  return plan
+}
+
+export function materializeEmptyMigrationWorkdir(input) {
+  const root = resolve(input.root ?? ROOT)
+  const output = resolveInsideRoot(root, input.output)
+  if (existsSync(output)) throw new Error('empty reset migration workdir already exists')
+  const plan = buildEmptyMigrationApplyPlan(input)
+  materializeMigrationWorkdir({ root, output, plan, includeSeed: true })
+  return plan
+}
+
+function materializeMigrationWorkdir(input) {
+  const { root, output, plan } = input
   const supabaseRoot = resolve(output, 'supabase')
   const migrationRoot = resolve(supabaseRoot, 'migrations')
   mkdirSync(migrationRoot, { recursive: true })
   copyFileSync(resolve(root, 'supabase/config.toml'), resolve(supabaseRoot, 'config.toml'))
+  if (input.includeSeed) {
+    copyFileSync(resolve(root, 'supabase/seed.sql'), resolve(supabaseRoot, 'seed.sql'))
+  }
   for (const entry of plan.files) {
     const source = resolveInsideRoot(root, entry.file)
     const bytes = readFileSync(source)
@@ -67,7 +107,6 @@ export function materializeMigrationApplyWorkdir(input) {
     copyFileSync(source, resolve(migrationRoot, entry.file.split('/').at(-1)))
   }
   writeFileSync(resolve(output, 'apply-plan.json'), `${JSON.stringify(plan, null, 2)}\n`)
-  return plan
 }
 
 function resolveInsideRoot(root, value) {
@@ -85,6 +124,10 @@ function parseArgs(args) {
       options.stagingCatchup = true
       continue
     }
+    if (key === '--empty-reset') {
+      options.emptyReset = true
+      continue
+    }
     if (!['--inventory', '--hosted', '--receipt', '--output'].includes(key)) {
       throw new Error(`unknown argument: ${key}`)
     }
@@ -98,20 +141,31 @@ function parseArgs(args) {
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   try {
     const options = parseArgs(process.argv.slice(2))
-    for (const required of ['inventory', 'hosted', 'output']) {
+    const requiredOptions = options.emptyReset ? ['inventory', 'output'] : ['inventory', 'hosted', 'output']
+    for (const required of requiredOptions) {
       if (!options[required]) throw new Error(`--${required} is required`)
     }
-    if (!options.stagingCatchup && !options.receipt) throw new Error('--receipt is required')
-    const plan = materializeMigrationApplyWorkdir({
+    if (options.emptyReset && (options.stagingCatchup || options.receipt || options.hosted)) {
+      throw new Error('--empty-reset cannot be combined with hosted release options')
+    }
+    if (!options.emptyReset && !options.stagingCatchup && !options.receipt) {
+      throw new Error('--receipt is required')
+    }
+    const input = {
       root: ROOT,
       inventory: JSON.parse(readFileSync(resolveInsideRoot(ROOT, options.inventory), 'utf8')),
-      hosted: JSON.parse(readFileSync(resolveInsideRoot(ROOT, options.hosted), 'utf8')),
+      hosted: options.hosted
+        ? JSON.parse(readFileSync(resolveInsideRoot(ROOT, options.hosted), 'utf8'))
+        : null,
       receipt: options.receipt
         ? JSON.parse(readFileSync(resolveInsideRoot(ROOT, options.receipt), 'utf8'))
         : null,
       mode: options.stagingCatchup ? 'staging-catchup' : 'expand-only-release',
       output: options.output,
-    })
+    }
+    const plan = options.emptyReset
+      ? materializeEmptyMigrationWorkdir(input)
+      : materializeMigrationApplyWorkdir(input)
     console.log(`prepared isolated migration workdir: ${plan.pendingVersions.length} pending migration(s)`)
   } catch (error) {
     console.error(error instanceof Error ? error.message : String(error))

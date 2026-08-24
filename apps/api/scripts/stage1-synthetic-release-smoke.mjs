@@ -61,18 +61,26 @@ export class Stage1SyntheticReleaseSmoke {
     this.cleanupProofs = []
     this.actorIds = null
     this.results = []
+    this.currentStage = 'initialized'
   }
 
   async run() {
+    this.currentStage = 'signing_in_actors'
     const actors = await this.signInActors()
     this.actorIds = { customerId: actors.customer.id, workerId: actors.worker.id }
+    this.currentStage = 'normalizing_actor_presentation'
     await this.normalizeSyntheticActorPresentation(actors)
+    this.currentStage = 'checking_release_mismatch'
     await this.assertReleaseMismatch(actors.customer)
+    this.currentStage = 'checking_role_boundary'
     await this.assertRoleBoundary(actors.worker)
+    this.currentStage = 'binding_permanent_cohort'
     await this.preparePermanentCohort()
+    this.currentStage = 'loading_worker_and_policies'
     const worker = await this.loadEligibleWorker(actors.worker.id)
     const policies = await this.selectScenarioPolicies(worker.serviceTypes, worker.capabilities)
 
+    this.currentStage = 'running_auto_quote'
     const auto = await this.runScenario({
       actors,
       district: worker.district,
@@ -81,10 +89,14 @@ export class Stage1SyntheticReleaseSmoke {
       recoverAfterConfirm: false,
       autonomousAfterConfirm: true,
     })
+    this.currentStage = 'verifying_auto_quote_isolation'
     await this.verifyIsolation()
+    this.currentStage = 'cleaning_auto_quote_cohort'
     await this.cleanupCohort()
 
+    this.currentStage = 'rebinding_rfq_cohort'
     await this.bindCohort()
+    this.currentStage = 'running_rfq_or_inspection'
     const unpriced = await this.runScenario({
       actors,
       district: worker.district,
@@ -93,9 +105,12 @@ export class Stage1SyntheticReleaseSmoke {
       recoverAfterConfirm: true,
       autonomousAfterConfirm: false,
     })
+    this.currentStage = 'verifying_rfq_isolation'
     const isolation = await this.verifyIsolation()
+    this.currentStage = 'cleaning_rfq_cohort'
     await this.cleanupCohort()
     this.cleanupCompleted = true
+    this.currentStage = 'building_observation'
 
     const observation = buildSyntheticSmokeObservation({
       releaseId: this.config.release.releaseId,

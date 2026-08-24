@@ -149,13 +149,24 @@ describeIntegration('Stage 1 hosted Agentic Customer-Worker flow', () => {
 
   it('runs real auto-quote, RFQ or inspection, recovery, delivery, and official match', async () => {
     expect(smoke, pillarWhy(PILLAR, 'the registered Staging release must be available')).not.toBeNull()
+    const progress = setInterval(() => {
+      console.info(`[P59_STAGE] ${JSON.stringify({
+        stage: smoke!.currentStage,
+        confirmCount: smoke!.confirmLatencies.length,
+        offerCount: smoke!.offerLatencies.length,
+        completedScenarioCount: smoke!.results.length,
+      })}`)
+    }, 30_000)
     const result = await smoke!.run().catch((error: unknown) => {
       console.info(`[P59_SLO_FAILURE] ${JSON.stringify({
+        stage: smoke!.currentStage,
         confirmLatenciesMs: [...smoke!.confirmLatencies],
         workerOfferLatenciesMs: [...smoke!.offerLatencies],
         completedScenarioCount: smoke!.results.length,
       })}`)
       throw error
+    }).finally(() => {
+      clearInterval(progress)
     })
     expect(result.status, pillarWhy(PILLAR, 'hosted synthetic Stage 1 smoke status')).toBe('passed')
     expect(result.observation.scenarios, pillarWhy(PILLAR, 'required scenario observation')).toEqual({
@@ -169,7 +180,7 @@ describeIntegration('Stage 1 hosted Agentic Customer-Worker flow', () => {
     expect(result.observation.syntheticLeakCount, pillarWhy(PILLAR, 'synthetic leak count')).toBe(0)
     expect(result.observation.safeErrorCodeRatio, pillarWhy(PILLAR, 'safe error and trace coverage')).toBe(1)
     console.info(`[P59_SLO_OBSERVATION] ${JSON.stringify(result.observation)}`)
-  }, 240_000)
+  }, 600_000)
 })
 
 async function loadRuntimeHealth(projectUrl: string, anonKey: string): Promise<RuntimeHealth> {

@@ -1,7 +1,10 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 
-import { buildMigrationApplyPlan } from './prepare-migration-workdir.mjs'
+import {
+  buildEmptyMigrationApplyPlan,
+  buildMigrationApplyPlan,
+} from './prepare-migration-workdir.mjs'
 
 const entries = [
   { version: '20260801000000', file: 'supabase/migrations/alias-a.sql', sha256: 'a'.repeat(64) },
@@ -57,4 +60,16 @@ test('catch-up mode is restricted to the exact Staging target', () => {
     receipt: null,
   })
   assert.equal(plan.mode, 'staging-catchup')
+})
+
+test('empty reset replays one canonical migration per equivalence group', () => {
+  const plan = buildEmptyMigrationApplyPlan({ inventory })
+  assert.equal(plan.mode, 'empty-reset')
+  assert.deepEqual(plan.hostedVersions, [])
+  assert.deepEqual(plan.pendingVersions, [
+    '20260803000000', '20260804000000',
+  ])
+  assert.deepEqual(plan.files.map((entry) => entry.version), [
+    '20260803000000', '20260804000000',
+  ])
 })
