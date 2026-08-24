@@ -380,6 +380,41 @@ test('rejects near-miss provider paths with the wrong source root or function', 
   ))
 })
 
+test('accepts the legacy parity snapshot only for a minimal release contract', () => {
+  const legacyRelease = {
+    environment: 'staging',
+    releaseId: 'rel-1',
+    gitSha: 'c'.repeat(40),
+    migrationInventorySha256: 'd'.repeat(64),
+  }
+  const legacyRemote = {
+    environment: 'staging',
+    projectRef: 'proj',
+    releaseId: 'rel-1',
+    gitSha: legacyRelease.gitSha,
+    manifestSha256: 'a'.repeat(64),
+    migrationInventorySha256: legacyRelease.migrationInventorySha256,
+    registered: true,
+    migrations: [{ version: '20260101000000' }],
+  }
+
+  const legacyReport = compareDeploymentState({
+    release: legacyRelease,
+    inventory: { entries: [{ version: '20260101000000' }] },
+    remote: legacyRemote,
+  })
+  const hostedReport = compareDeploymentState({
+    release,
+    inventory,
+    remote: legacyRemote,
+  })
+
+  assert.equal(legacyReport.ok, true, legacyReport.problems.join('; '))
+  assert.equal(hostedReport.ok, false)
+  assert.ok(hostedReport.problems.includes('remote project ref does not match the registered release target'))
+  assert.ok(hostedReport.problems.includes('remote release bundle digest is missing'))
+})
+
 function releaseWithRuntimeConfiguration() {
   return {
     ...release,

@@ -162,27 +162,35 @@ export function compareDeploymentState(input) {
   if (!release || typeof release !== 'object') return { ok: false, problems: ['release artifact is missing'] }
   if (!inventory || !Array.isArray(inventory.entries)) return { ok: false, problems: ['migration inventory is missing'] }
   if (!remote || typeof remote !== 'object') return { ok: false, problems: ['remote deployment snapshot is missing'] }
+  const legacyParitySnapshot = isLegacyParitySnapshot(release, remote)
   if (remote.environment !== release.environment) problems.push(`environment mismatch: release ${release.environment}, remote ${remote.environment}`)
   const expectedProjectRef = PROJECT_REFS[release.environment]
-  if (!expectedProjectRef || remote.projectRef !== expectedProjectRef) problems.push('remote project ref does not match the registered release target')
+  if (!legacyParitySnapshot && (!expectedProjectRef || remote.projectRef !== expectedProjectRef)) {
+    problems.push('remote project ref does not match the registered release target')
+  }
   if (!remote.releaseId) problems.push('remote release ID is missing')
   else if (remote.releaseId !== release.releaseId) problems.push(`release ID mismatch: expected ${release.releaseId}, remote ${remote.releaseId}`)
   if (!remote.gitSha) problems.push('remote Git SHA is missing')
   else if (remote.gitSha !== release.gitSha) problems.push(`Git SHA mismatch: expected ${release.gitSha}, remote ${remote.gitSha}`)
-  compareDigest(problems, release, remote, 'manifestSha256', 'manifest')
-  compareDigest(problems, release, remote, 'bundleSha256', 'release bundle')
+  if (!legacyParitySnapshot) {
+    compareDigest(problems, release, remote, 'manifestSha256', 'manifest')
+    compareDigest(problems, release, remote, 'bundleSha256', 'release bundle')
+  }
   if (!remote.migrationInventorySha256) problems.push('remote migration inventory digest is missing')
   else if (remote.migrationInventorySha256 !== release.migrationInventorySha256) problems.push('migration inventory digest mismatch')
-  compareDigest(problems, release, remote, 'sourceBundleSha256', 'source bundle')
-  compareDigest(problems, release, remote, 'mobileBuildFingerprintSha256', 'mobile build fingerprint')
-  compareDigest(problems, release, remote, 'productionUiSourceSha256', 'Production UI source')
-  compareDigest(problems, release, remote, 'edgeBundleSha256', 'Edge bundle')
-  compareDigest(problems, release, remote, 'serviceIntakePolicyBundleSha256', 'service intake policy bundle')
-  compareDigest(problems, release, remote, 'priceEvidenceBundleSha256', 'price evidence bundle')
-  compareDigest(problems, release, remote, 'providerReadinessFingerprintSha256', 'provider readiness fingerprint')
-  compareProviderReadiness(problems, release, remote)
+  if (!legacyParitySnapshot) {
+    compareDigest(problems, release, remote, 'sourceBundleSha256', 'source bundle')
+    compareDigest(problems, release, remote, 'mobileBuildFingerprintSha256', 'mobile build fingerprint')
+    compareDigest(problems, release, remote, 'productionUiSourceSha256', 'Production UI source')
+    compareDigest(problems, release, remote, 'edgeBundleSha256', 'Edge bundle')
+    compareDigest(problems, release, remote, 'serviceIntakePolicyBundleSha256', 'service intake policy bundle')
+    compareDigest(problems, release, remote, 'priceEvidenceBundleSha256', 'price evidence bundle')
+    compareDigest(problems, release, remote, 'providerReadinessFingerprintSha256', 'provider readiness fingerprint')
+    compareProviderReadiness(problems, release, remote)
+  }
   const remoteMigrations = remote.migrations ?? []
   if (!Array.isArray(remoteMigrations)) problems.push('remote migrations snapshot is not an array')
+  else if (legacyParitySnapshot) compareLegacyMigrations(problems, inventory.entries, remoteMigrations)
   else {
     try {
       const migrationState = resolveHostedMigrationState(inventory, remoteMigrations)
@@ -197,7 +205,7 @@ export function compareDeploymentState(input) {
   const expectedFunctions = release.edgeFunctions ?? {}
   const actualFunctions = remote.edgeFunctions
   const managedFunctions = remote.managedEdgeFunctions
-  if (actualFunctions && typeof actualFunctions === 'object') {
+  if (!legacyParitySnapshot && actualFunctions && typeof actualFunctions === 'object') {
     for (const [name, digest] of Object.entries(expectedFunctions)) {
       if (!actualFunctions[name]) problems.push(`remote Edge function is missing: ${name}`)
       else if (actualFunctions[name] !== digest) problems.push(`remote Edge function digest mismatch: ${name}`)
@@ -205,7 +213,7 @@ export function compareDeploymentState(input) {
     for (const name of Object.keys(actualFunctions)) {
       if (!(name in expectedFunctions)) problems.push(`remote has unknown Edge function: ${name}`)
     }
-  } else if (managedFunctions && typeof managedFunctions === 'object') {
+  } else if (!legacyParitySnapshot && managedFunctions && typeof managedFunctions === 'object') {
     for (const name of Object.keys(expectedFunctions)) {
       const deployed = managedFunctions[name]
       if (!deployed) problems.push(`remote Edge function is missing: ${name}`)
@@ -248,7 +256,7 @@ export function compareDeploymentState(input) {
     if (!expectedDeploymentId || remote.deploymentId !== expectedDeploymentId) {
       problems.push('provider deployment identity does not match the managed mobile-api deployment')
     }
-  } else {
+  } else if (!legacyParitySnapshot) {
     problems.push('remote Edge function deployment evidence is missing')
   }
   return {
@@ -325,6 +333,30 @@ function escapeRegExp(value) {
 function compareDigest(problems, release, remote, field, label) {
   if (!remote[field]) problems.push(`remote ${label} digest is missing`)
   else if (remote[field] !== release[field]) problems.push(`${label} digest mismatch`)
+}
+
+function isLegacyParitySnapshot(release, remote) {
+  const releaseFields = ['environment', 'gitSha', 'migrationInventorySha256', 'releaseId']
+  const remoteFields = new Set([
+    'environment', 'gitSha', 'manifestSha256', 'migrationInventorySha256', 'migrations',
+    'projectRef', 'registered', 'releaseId',
+  ])
+  return Object.keys(release).sort().join('\n') === releaseFields.sort().join('\n') &&
+    Object.keys(remote).every((field) => remoteFields.has(field)) &&
+    typeof remote.registered === 'boolean'
+}
+
+function compareLegacyMigrations(problems, inventoryEntries, remoteMigrations) {
+  const expected = inventoryEntries.map((entry) => String(entry?.version ?? '')).filter(Boolean)
+  const observed = remoteMigrations.map((entry) => String(entry?.version ?? '')).filter(Boolean)
+  if (observed.length !== remoteMigrations.length || observed.some((version) => !/^\d{14}$/u.test(version)) ||
+      new Set(observed).size !== observed.length) {
+    problems.push('remote migration history contains an invalid version')
+    return
+  }
+  const observedVersions = new Set(observed)
+  const missing = expected.filter((version) => !observedVersions.has(version))
+  if (missing.length) problems.push(`remote is missing migrations: ${missing.join(', ')}`)
 }
 
 function compareProviderReadiness(problems, release, remote) {
