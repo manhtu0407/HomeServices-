@@ -135,7 +135,7 @@ Six invariants make the two planes enforceable rather than decorative. They are 
 3. The request/response contracts are hand-maintained twins, because Deno cannot import `packages/shared`: `supabase/functions/_shared/contracts/**` <-> `packages/shared/src/contracts/**`. Change one, change both; drift fails the contract-parity tests.
 4. `apps/api/src/lib/{kael,learning}/**` is **frozen** — it may shrink or stay, never grow. A new file there, or a longer one, means the second brain is being extended instead of the Edge one.
 5. No source under `apps/mobile/**` or `supabase/functions/**` may import `apps/api` at all. The freeze above says the second brain may not grow; this says nothing may call it. It is a separate check, and it is the one a single convenience import from there trips.
-6. The ratchet: no source file over 800 lines, no already-oversize file may grow, and an exported type or interface name may not be newly re-declared in a second file. Today's exceptions live in `scripts/structure-baseline.json`. Never run `lint-structure.mjs --init` to clear a failure — it re-grandfathers whatever is oversize at that moment and lifts the ratchet for the whole repo.
+6. The ratchet: no source file over 800 lines, no already-oversize file may grow, and an exported type or interface name may not be newly re-declared in a second file. Today's exceptions live in `scripts/structure-baseline.json`. Never run `scripts/lint-structure.mjs --init` to clear a failure — it re-grandfathers whatever is oversize at that moment and lifts the ratchet for the whole repo.
 
 ### Mobile plane
 
