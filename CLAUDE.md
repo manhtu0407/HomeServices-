@@ -39,6 +39,7 @@ Small, well-scoped task: Tier 1 plus the one row that matches. Large, cross-cutt
 | Per-task execution protocol (diagnose, tdd, architecture, ai-boundary, supabase, security, ui, docs, handoff) | `governance/critical.md` §1 index -> `governance/protocols/*` (load only the selected protocol) |
 | UI, motion, glass, mascot, design tokens, screen recipes | `governance/design/runtime.md`, then `governance/design.md` (-> `governance/design/*`) |
 | Frontend / UI testing on the Expo app | `governance/protocols/frontend-test.md` (gates `pnpm type-check:mobile`, `pnpm test:mobile`) |
+| Writing or reviewing any test, in any package | `governance/protocols/test-pillars.md` — only `*-pillar.test.ts` / `*-pillar-test.tsx` are collected, so a test outside that shape runs nowhere; `node scripts/harness/pillar-registry.mjs` enforces it |
 | Coding behavior (explicit assumptions, simplicity, surgical diffs, goal-driven execution) | `governance/skills.md` |
 | A task whose shape is unclear — what kind of work it is, which skills it needs, how wide to read | `governance/protocols/work-router.md` |
 | Code enhancement / refactor (owner files per layer) | `docs/architecture/code-ownership-map.md` |

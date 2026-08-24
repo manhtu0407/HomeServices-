@@ -130,6 +130,7 @@ For UI, motion, glass, or other design tasks, route through `governance/design/r
 | Every task or mission | `kael-subagent-orchestration`, then the smallest sufficient task-specific protocols |
 | Any coding change | `kael-preflight`, relevant primary protocol, `kael-review` |
 | Bug, failing test, build failure, runtime failure | `kael-preflight`, `kael-diagnose`, `kael-tdd`, `kael-review` |
+| Writing or reviewing any test, in any package | `kael-tdd`, plus `protocols/test-pillars.md` for the shape the runners actually collect |
 | Feature work | `kael-preflight`, `kael-architecture-deepening`, `kael-tdd`, `kael-review` |
 | Code enhancement, reorganization, or cleanup | `kael-preflight`, `kael-codebase-memory`, `kael-code-enhancement`, relevant primary protocol, `kael-review` |
 | UI-only small change | `kael-preflight`, read `design.md`, `kael-ui-rn-execution`, test-after or visual verification, `kael-review` |
