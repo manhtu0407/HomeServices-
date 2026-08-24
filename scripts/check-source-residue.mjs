@@ -54,8 +54,8 @@ export const RULES = [
   },
   {
     id: 'debug probe',
-    // The group around `kael` is what keeps this file from flagging itself: the pattern
-    // still accepts `[DEBUG-kael-...]` while its own source no longer spells that string.
+    // The group around `kael` is what keeps this file from flagging itself: it still
+    // accepts a real probe marker while its own source no longer spells one out.
     re: /\[DEBUG-(kael)-/,
     scope: 'source',
     why: 'critical.md section 24.14 requires temporary probes be removed before final',
@@ -107,12 +107,20 @@ export function residue(files) {
 
   return { problems, scanned, runtime }
 }
+function gitList(args) {
+  return execFileSync('git', args, { cwd: ROOT, encoding: 'utf8', maxBuffer: 1e8 }).split('\0').filter(Boolean)
+}
 
 const isMain = process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)
 if (isMain) {
-  const listed = execFileSync('git', ['ls-files', '-z'], { cwd: ROOT, encoding: 'utf8', maxBuffer: 1e8 })
-    .split('\0')
-    .filter(Boolean)
+  // Untracked-but-not-ignored files are scanned too. Residue is cheapest to remove before the
+  // commit, and a scan of only committed files is blind at the one moment the author is still
+  // looking at the line — this rule said nothing about its own source until the day it was
+  // committed, which is the failure mode in miniature.
+  const listed = [
+    ...gitList(['ls-files', '-z']),
+    ...gitList(['ls-files', '--others', '--exclude-standard', '-z']),
+  ]
 
   const files = []
   for (const path of listed) {
