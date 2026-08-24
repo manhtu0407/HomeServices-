@@ -84,6 +84,7 @@
     "kael:eval:multi-turn": "node scripts/run.mjs run-node apps/api/scripts/kael-multi-turn-eval.mjs",
     "kael:redteam:live": "node scripts/run.mjs run-node apps/api/scripts/kael-live-redteam.mjs",
     "kael:model-health": "node scripts/run.mjs run-node apps/api/scripts/kael-model-health.mjs",
+    "stage1:synthetic-actors": "node scripts/run.mjs run-node apps/api/scripts/stage1-synthetic-actor-provision.mjs",
     "stage1:synthetic-smoke": "node scripts/run.mjs run-node apps/api/scripts/stage1-synthetic-release-smoke.mjs",
     "stage1:slo-report": "node scripts/run.mjs run-node scripts/harness/stage1-slo-report.mjs",
     "stage1:native-persona": "node scripts/run.mjs run-node apps/api/scripts/stage1-native-persona-driver.mjs"

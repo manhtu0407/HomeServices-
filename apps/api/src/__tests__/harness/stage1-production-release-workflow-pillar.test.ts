@@ -14,7 +14,11 @@ export const PILLAR = {
   ],
   target: '.github/workflows/release-production.yml',
   layer: 'security-negative',
-  siblings: ['P53-stage1-release-integrity', 'P54-synthetic-cohort-nonvisibility'],
+  siblings: [
+    'P53-stage1-release-integrity',
+    'P54-synthetic-cohort-nonvisibility',
+    'P66-stage1-synthetic-actor-provision',
+  ],
   mutation:
     'deploy before safe binding, skip full source-closure attestation, remove an exact canary/smoke/rollback gate, or add prune/delete — this pillar turns red',
 } as const satisfies PillarManifest
@@ -50,7 +54,17 @@ describe('Stage 1 production release workflow', () => {
       'prepare-migration-workdir.mjs',
       'hosted-state.mjs',
       'iwevizmsedyqozxlawwl',
+      '@nestscout/home-services',
+      'c2fd8ae7-a6fa-4b6e-a9a0-df85b52ac94b',
+      'eas-project.txt',
     ]) expect(workflow, pillarWhy(PILLAR, `release gate ${gate}`)).toContain(gate)
+    expect(workflow, pillarWhy(PILLAR, 'token-authenticated CLI link does not depend on an unrecoverable DB password'))
+      .toContain('link --project-ref "$PRODUCTION_PROJECT_REF" --yes')
+    expect(workflow, pillarWhy(PILLAR, 'release has no undeclared DB-password dependency'))
+      .not.toContain('PRODUCTION_SUPABASE_DB_PASSWORD')
+    const productionJob = workflow.slice(workflow.indexOf('  production-release:'))
+    expect(productionJob, pillarWhy(PILLAR, 'native release and rollback have enough bounded execution time'))
+      .toContain('timeout-minutes: 240')
   })
 
   it('binds before one candidate deploy and attests the exact redownloaded source before smoke', () => {
@@ -61,6 +75,7 @@ describe('Stage 1 production release workflow', () => {
     const sourceDownload = workflow.indexOf('--workdir artifacts/candidate-source functions download mobile-api')
     const sourceProof = workflow.indexOf('edge-source-proof.mjs', sourceDownload)
     const attestation = workflow.indexOf('source-deployment-attestation.mjs')
+    const actorProvision = workflow.indexOf('stage1-synthetic-actor-provision.mjs')
     const smoke = workflow.indexOf('stage1-synthetic-release-smoke.mjs')
     const promote = workflow.indexOf('--action promote')
     const finalCleanup = workflow.indexOf('final-cleanup.json')
@@ -72,6 +87,8 @@ describe('Stage 1 production release workflow', () => {
     expect(sourceDownload, pillarWhy(PILLAR, 'hosted candidate source is redownloaded after both deploys')).toBeGreaterThan(maintainerDeploy)
     expect(sourceProof, pillarWhy(PILLAR, 'the hosted import closure is compared to the reviewed candidate')).toBeGreaterThan(sourceDownload)
     expect(attestation, pillarWhy(PILLAR, 'the exact provider deployment is bound only after byte proof')).toBeGreaterThan(sourceProof)
+    expect(actorProvision, pillarWhy(PILLAR, 'dedicated actors are safely created and permanently classified after source proof')).toBeGreaterThan(attestation)
+    expect(smoke, pillarWhy(PILLAR, 'smoke begins only after actor classification proof')).toBeGreaterThan(actorProvision)
     expect(smoke, pillarWhy(PILLAR, 'full synthetic workflow follows source attestation')).toBeGreaterThan(attestation)
     expect(promote, pillarWhy(PILLAR, 'atomic promotion follows smoke evidence')).toBeGreaterThan(smoke)
     expect(finalCleanup, pillarWhy(PILLAR, 'exact cohort cleanup is proven before real traffic promotion')).toBeGreaterThan(smoke)
@@ -84,6 +101,8 @@ describe('Stage 1 production release workflow', () => {
       pillarWhy(PILLAR, 'candidate dispatcher is deployed exactly once before smoke')).toBe(1)
     expect(workflow.slice(sourceDownload, smoke)).toContain('functions download kael-matching-maintainer')
     expect(workflow.slice(sourceDownload, promote)).toContain('--maintainer-source-proof')
+    expect(workflow.slice(attestation, smoke)).toContain('STAGE1_ACTOR_PROVISION_APPROVAL=')
+    expect(workflow.slice(attestation, smoke)).toContain('synthetic-actor-provision.json')
   })
 
   it('downloads the hosted rollback source and aborts plus redeploys it on failure', () => {

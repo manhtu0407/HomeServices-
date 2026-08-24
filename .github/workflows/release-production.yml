@@ -182,7 +182,7 @@ jobs:
     needs: quality
     if: github.event_name != 'schedule' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
-    timeout-minutes: 90
+    timeout-minutes: 240
     environment: production
     env:
       PRODUCTION_PROJECT_REF: iwevizmsedyqozxlawwl
@@ -198,6 +198,33 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - name: Require complete encrypted Production release configuration
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          PRODUCTION_SUPABASE_ANON_KEY: ${{ secrets.PRODUCTION_SUPABASE_ANON_KEY }}
+          PRODUCTION_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.PRODUCTION_SUPABASE_SERVICE_ROLE_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+          PERPLEXITY_API_KEY: ${{ secrets.PERPLEXITY_API_KEY }}
+          VIETMAP_API_KEY: ${{ secrets.VIETMAP_API_KEY }}
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+          PRODUCTION_SYNTHETIC_CUSTOMER_EMAIL: ${{ secrets.PRODUCTION_SYNTHETIC_CUSTOMER_EMAIL }}
+          PRODUCTION_SYNTHETIC_CUSTOMER_PASSWORD: ${{ secrets.PRODUCTION_SYNTHETIC_CUSTOMER_PASSWORD }}
+          PRODUCTION_SYNTHETIC_WORKER_EMAIL: ${{ secrets.PRODUCTION_SYNTHETIC_WORKER_EMAIL }}
+          PRODUCTION_SYNTHETIC_WORKER_PASSWORD: ${{ secrets.PRODUCTION_SYNTHETIC_WORKER_PASSWORD }}
+        run: |
+          test -n "$SUPABASE_ACCESS_TOKEN"
+          test -n "$PRODUCTION_SUPABASE_ANON_KEY"
+          test -n "$PRODUCTION_SUPABASE_SERVICE_ROLE_KEY"
+          test -n "$ANTHROPIC_API_KEY"
+          test -n "$DEEPSEEK_API_KEY"
+          test -n "$PERPLEXITY_API_KEY"
+          test -n "$VIETMAP_API_KEY"
+          test -n "$EXPO_TOKEN"
+          test -n "$PRODUCTION_SYNTHETIC_CUSTOMER_EMAIL"
+          test -n "$PRODUCTION_SYNTHETIC_CUSTOMER_PASSWORD"
+          test -n "$PRODUCTION_SYNTHETIC_WORKER_EMAIL"
+          test -n "$PRODUCTION_SYNTHETIC_WORKER_PASSWORD"
       - name: Verify immutable reviewed source
         run: |
           test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
@@ -233,6 +260,10 @@ jobs:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
         run: |
           mkdir -p artifacts/mobile
+          (cd apps/mobile && pnpm dlx eas-cli@22.0.0 project:info) \
+            > artifacts/release/eas-project.txt
+          grep -F '@nestscout/home-services' artifacts/release/eas-project.txt
+          grep -F 'c2fd8ae7-a6fa-4b6e-a9a0-df85b52ac94b' artifacts/release/eas-project.txt
           list_builds() {
             (cd apps/mobile && pnpm dlx eas-cli@22.0.0 build:list \
               --platform all --status finished --distribution store \
@@ -352,7 +383,6 @@ jobs:
       - name: Apply exact expand-only migration inventory
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-          SUPABASE_DB_PASSWORD: ${{ secrets.PRODUCTION_SUPABASE_DB_PASSWORD }}
         run: |
           node scripts/harness/prepare-migration-workdir.mjs \
             --inventory config/harness/migration-inventory.json \
@@ -360,7 +390,7 @@ jobs:
             --receipt artifacts/release/expand-only.json \
             --output artifacts/migration-apply
           ./apps/api/node_modules/.bin/supabase --workdir artifacts/migration-apply \
-            link --project-ref "$PRODUCTION_PROJECT_REF" --password "$SUPABASE_DB_PASSWORD"
+            link --project-ref "$PRODUCTION_PROJECT_REF" --yes
           ./apps/api/node_modules/.bin/supabase --workdir artifacts/migration-apply \
             db push --linked --dry-run --include-all
           ./apps/api/node_modules/.bin/supabase --workdir artifacts/migration-apply \
@@ -474,6 +504,23 @@ jobs:
             --environment production --project-ref "$PRODUCTION_PROJECT_REF" \
             --proof artifacts/release/maintainer-source-deployment-proof.json \
             --output artifacts/release/maintainer-source-deployment-attestation.json
+      - name: Provision and permanently classify dedicated synthetic actors
+        env:
+          STAGE1_SUPABASE_ANON_KEY: ${{ secrets.PRODUCTION_SUPABASE_ANON_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.PRODUCTION_SUPABASE_SERVICE_ROLE_KEY }}
+          STAGE1_SYNTHETIC_CUSTOMER_EMAIL: ${{ secrets.PRODUCTION_SYNTHETIC_CUSTOMER_EMAIL }}
+          STAGE1_SYNTHETIC_CUSTOMER_PASSWORD: ${{ secrets.PRODUCTION_SYNTHETIC_CUSTOMER_PASSWORD }}
+          STAGE1_SYNTHETIC_WORKER_EMAIL: ${{ secrets.PRODUCTION_SYNTHETIC_WORKER_EMAIL }}
+          STAGE1_SYNTHETIC_WORKER_PASSWORD: ${{ secrets.PRODUCTION_SYNTHETIC_WORKER_PASSWORD }}
+        run: |
+          actor_run_id="gh:${GITHUB_RUN_ID}:${GITHUB_RUN_ATTEMPT}:actors"
+          STAGE1_ACTOR_PROVISION_APPROVAL="stage1-actors:${actor_run_id}:${COHORT_ID}" \
+            node apps/api/scripts/stage1-synthetic-actor-provision.mjs \
+              --release artifacts/release/release.json --release-id "$RELEASE_ID" \
+              --cohort "$COHORT_ID" --run-id "$actor_run_id" \
+              --environment production --project-ref "$PRODUCTION_PROJECT_REF" \
+              --project-url "$PRODUCTION_PROJECT_URL" \
+              --output artifacts/release/synthetic-actor-provision.json
       - name: Run and record three consecutive full synthetic smokes
         id: smokes
         env:

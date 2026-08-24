@@ -23,6 +23,12 @@ const problems = []
 const scripts = JSON.parse(readFileSync(resolve(root, 'package.json'), 'utf8')).scripts ?? {}
 const runners = new Set()
 
+const rootTurboConfig = readFileSync(resolve(root, 'turbo.json'), 'utf8').replaceAll('\r\n', '\n')
+const canonicalTurboConfig = readFileSync(resolve(root, 'config/turbo/turbo.json'), 'utf8').replaceAll('\r\n', '\n')
+if (rootTurboConfig !== canonicalTurboConfig) {
+  problems.push('root turbo.json must remain line-ending-equivalent to config/turbo/turbo.json for CLI discovery')
+}
+
 for (const [name, command] of Object.entries(scripts)) {
   if (/powershell/i.test(command)) {
     problems.push(`package.json script \`${name}\` invokes PowerShell directly — route it through \`node scripts/run.mjs\``)
