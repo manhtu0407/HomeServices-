@@ -2,17 +2,19 @@ import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
-const migrationSql = readFileSync(
+const verificationSql = readFileSync(
   resolve(
     __dirname,
-    '../../../../../supabase/migrations/20260823173000_sql_volatility_contracts.sql',
+    '../../../../../supabase/tests/stage1_sql_volatility_verification.sql',
   ),
   'utf8',
 )
 
 describe('Stage 1 SQL volatility migration', () => {
-  it('is safe when canonical history already removed the volatile call', () => {
-    expect(migrationSql).toContain('if v_rewritten <> v_definition then')
-    expect(migrationSql).not.toContain('WORKER_EARNINGS_TIMESTAMP_FIX_SOURCE_DRIFT')
+  it('ships rollback-only runtime verification for the final volatility contract', () => {
+    expect(verificationSql.trimStart().startsWith('-- Rollback-only')).toBe(true)
+    expect(verificationSql).toMatch(/\nbegin;[\s\S]*\nrollback;\s*$/)
+    expect(verificationSql).toContain('worker earnings summary still calls clock_timestamp')
+    expect(verificationSql).toContain('worker earnings summary is not STABLE')
   })
 })
