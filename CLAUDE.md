@@ -46,6 +46,7 @@ Small, well-scoped task: Tier 1 plus the one row that matches. Large, cross-cutt
 | Where backend code belongs, whether the structure held, Edge <-> DB parity | `governance/protocols/backend-structure.md` §24-§25 (skills `kael-backend-structure`, `kael-backend-parity`) |
 | Running the database or Edge toolchain locally (real Postgres, migrations, RLS/SQL checks, `deno check`) | `docker/INDEX.md` + skill `kael-docker`. Docker is a **dev dependency, never a deployment target** |
 | Finding a symbol, tracing its callers, or deciding which runtime owns a name defined twice | `.claude/skills/kael-codebase-memory/SKILL.md` |
+| Preparing a change for push, a pull request, or handoff as delivered | skill `kael-ship` — `pnpm ship:check` proves the machine half and names what it could not run |
 | Continuing or deferred plan work | `governance/Plan.md` (the referenced section only) |
 | Where a doc lives; adding, moving, or naming docs (`README.md` is a LOCKED filename at any path) | `docs/INDEX.md` |
 | Cross-session lessons and gotchas already paid for | `docs/agent-lessons.md` |
@@ -57,9 +58,9 @@ Each hub routes onward to its own spokes on demand. If two docs conflict, stop a
 
 ### Tier 3 - skills
 
-Skills live in `.claude/skills/` (canonical), mirrored to `.agents/skills/`; parity is enforced by `scripts/check-skills-sync.mjs`. Two groups, 34 total. Choose a skill only after Tier 2 has told you the task class.
+Skills live in `.claude/skills/` (canonical), mirrored to `.agents/skills/`; parity is enforced by `scripts/check-skills-sync.mjs`. Two groups, 35 total. Choose a skill only after Tier 2 has told you the task class.
 
-**Everyday (23).** Two always-on classes, then the rest.
+**Everyday (24).** Two always-on classes, then the rest.
 
 - **Always-on, every task:** `kael-work-router`, `kael-subagent-orchestration`, `kael-core-hygiene`, `karpathy-guidelines`. The router runs first and decides which of the others fire; `kael-subagent-orchestration` then forces one explicit `local` or `delegated` decision before any task is decomposed, and never requires spawning anything (`governance/critical.md` §0). `kael-core-hygiene` and `karpathy-guidelines` govern the artifact, the router governs how the effort reaching it is spent.
 - **Always-on by path:** `kael-backend-structure` and `kael-backend-parity` fire on any change set touching `supabase/functions/**`, `supabase/migrations/**`, `packages/shared/src/contracts/**`, or `packages/shared/src/types/database/**` — **at every reach, `T` included**, and neither may appear in a `dropped:` line (`governance/protocols/work-router.md` `## Lane — by backend path`). Always-on is not permission to be ceremonial: neither may close with "nothing to report".
@@ -71,7 +72,7 @@ kael-frontend-test  kael-core-hygiene  kael-subagent-orchestration  karpathy-gui
 kael-handoff  kael-doc-audit  kael-prototype  kael-research  kael-wayfinder
 kael-codebase-memory  react-doctor  supabase  supabase-postgres-best-practices
 kael-docker  source-command-kael-mem  kael-work-router
-kael-backend-structure  kael-backend-parity
+kael-backend-structure  kael-backend-parity  kael-ship
 ```
 
 **Design (11).** One entry point: `kael-design-preflight` loads `governance/design/runtime.md` and binds the token/runtime contract. Never open a design skill without it.
@@ -86,7 +87,7 @@ kael-design-preflight -> kael-design-direction  kael-design-intelligence  kael-d
 
 | Class | Count | What it means for you |
 |---|---|---|
-| `autonomous` | 31 | Needs only Read/Grep/Edit, or commands that run on every platform. Fire it on any matching task — no check first. |
+| `autonomous` | 32 | Needs only Read/Grep/Edit, or commands that run on every platform. Fire it on any matching task — no check first. |
 | `gated` | 3 | Needs something that can legitimately be absent. Run the one-line check in its `## Preconditions`; on failure run its `## Degraded lane`, which names the work that does not need the dependency and the artifact it produces. Say which check failed. |
 
 A degraded lane is real work, not a consolation: `kael-docker` without a daemon reconciles the database debt ledger against what is on disk, and `kael-visual-qa` without a device produces the capture matrix as a runnable checklist. It is never a verdict — a lane emits a debt record, and a gate that could not run is still not a gate that passed (`governance/critical.md` §3).
