@@ -136,6 +136,12 @@ Six invariants make the two planes enforceable rather than decorative. They are 
 5. No source under `apps/mobile/**` or `supabase/functions/**` may import `apps/api` at all. The freeze above says the second brain may not grow; this says nothing may call it. It is a separate check, and it is the one a single convenience import from there trips.
 6. The ratchet: no source file over 800 lines, no already-oversize file may grow, and an exported type or interface name may not be newly re-declared in a second file. Today's exceptions live in `scripts/structure-baseline.json`. Never run `lint-structure.mjs --init` to clear a failure — it re-grandfathers whatever is oversize at that moment and lifts the ratchet for the whole repo.
 
+### Mobile plane
+
+`apps/mobile` has no layer model: `app/` holds Expo Router routes, `components/` the UI, `lib/` the logic, `design/` the tokens. That absence is deliberate, and it is not an exemption — invariants 5 and 6 bind `apps/mobile/**` exactly as they bind the Edge, because `pnpm lint:structure` polices all four roots and not only `supabase/functions`. What the mobile side lacks is a *reach* rule, not a *ratchet*.
+
+Which mobile file owns which behavior is never inferred from a folder name. `docs/architecture/code-ownership-map.md` carries it, split by surface: Customer Workflow, Worker Workflow, Shared Mobile State, and UI System Ownership.
+
 ### Filesystem plane
 
 Workspace packages are `nestscout` (root) plus `@nestscout/{mobile,api,shared,sandbox}`.
@@ -159,6 +165,12 @@ docs/          - durable feature, ops, design, and historical execution notes (m
 DOCUMENT.md    - plain-language product explainer for non-engineers
 .claude/skills, .agents/skills - project-local agent skills; .claude is canonical, .agents mirrors it, parity enforced by scripts/check-skills-sync.mjs
 ```
+
+### Registry plane
+
+Both planes are declared together in one file. `config/harness/manifest.json` holds the repository skills under `.claude/skills` (agent structure) beside the Kael runtime tools and provider adapter whose `canonicalPath` points into `supabase/functions/mobile-api/_shared/kael/tools/` (product architecture). A runtime tool declares what a skill does not — `sideEffectClass`, `requiredCapability`, `timeoutMs`, `dataClasses`, `redactionProfile` — so read the entry to learn what a name is; the folder will not tell you.
+
+That file also registers this one. `CLAUDE.md` is its `canonical-skill-list` and `AGENTS.md` its `skill-count-pointer`, which makes the Tier 3 lists above **machine-checked by set equality, not by count**: `pnpm harness:manifest:check` fails on a skill present in one and absent in the other, and on a readiness count that has drifted. Adding, renaming, or removing a skill is therefore an edit to this locked file, and the order is `pnpm skills:sync` -> `pnpm harness:manifest:write` -> `pnpm harness:manifest:check`. Never hand-type a checksum, and never treat `--write` as a way to quiet a gate — it refuses while any other problem is outstanding (`docs/agent-lessons.md`).
 
 ## Current Phase
 
