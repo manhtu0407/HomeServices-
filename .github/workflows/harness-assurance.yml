@@ -26,7 +26,7 @@ jobs:
         run: node scripts/check-structure-baseline.mjs
 
   governance-controls:
-    name: protocol routes, work-router coverage, and script fixtures
+    name: source residue, protocol routes, work-router coverage, and script fixtures
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
@@ -35,10 +35,12 @@ jobs:
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 20
-      # All three are pure node with no workspace imports, so this job skips the pnpm install
-      # the others pay for. All three were unenforced before it existed: --coverage had no CI
-      # step and no package script, and the node --test suites ran in no place at all — 104
+      # All four are pure node with no workspace imports, so this job skips the pnpm install
+      # the others pay for. Three of them were unenforced before it existed: --coverage had no
+      # CI step and no package script, and the node --test suites ran in no place at all — 129
       # passing assertions that could not fail a build.
+      - name: Source residue ratchet
+        run: node scripts/check-source-residue.mjs
       - name: Protocol routing ratchet
         run: node scripts/check-protocol-routes.mjs
       - name: Work-router coverage ratchet
