@@ -24,7 +24,9 @@ Adapted from Anthropic `claude-md-improver`, retargeted from "one CLAUDE.md" to 
 
 ### 5. Context Economy (15)
 - `governance/critical.md` core lean (target <= ~650 lines); protocol bodies live in `governance/protocols/`, not the core.
+- `CLAUDE.md` lean (target <= ~230 lines). It is Tier 1 and always loaded, so every line it gains is paid on every task.
 - CLAUDE.md free of long restated process lists.
+- Over a cap, move content to a spoke and leave the pointer behind. Cutting substance to reach a number is how a router loses the rule that made it worth reading, so a cap is a trigger to route, never a licence to delete.
 
 ### 6. Skill Health (15)
 - Each skill has `name` + a trigger-shaped `description`.
