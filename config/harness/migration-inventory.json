@@ -5,7 +5,7 @@
     "immutableThroughVersion": "20260805090000",
     "sha256": "7d4ac8a8227452e357caa11a21ece9099c80112712dba9a250114d0761a90275"
   },
-  "migrationCount": 327,
+  "migrationCount": 328,
   "migrationEquivalences": {
     "version": "1.0.0",
     "groups": [
@@ -75,7 +75,7 @@
       }
     ]
   },
-  "migrationsSha256": "bc4b1b35d9ca7ee611d4c043de9e06eb7dcc407c231717086ec7ee1cccd9ca61",
+  "migrationsSha256": "16c39193f5bacdd0753603bcdc44857ce79b692bfbcec52506736775eef72276",
   "databaseTypes": {
     "file": "packages/shared/src/types/database",
     "sha256": "1b3543ba569f8141c3c7d2057e48aba3053644b3259f0d748ffd11f4578dd101"
@@ -2061,6 +2061,13 @@
       "file": "supabase/migrations/20260818100000_worker_salary_settlement_v2.sql",
       "sha256": "852865e4c0ff9192a17773e37f79016aba2ec5a3ea5c60291811c8bb161dbafe",
       "bytes": 44427
+    },
+    {
+      "version": "20260822150501",
+      "name": "worker_account_deletion_request_prerequisite",
+      "file": "supabase/migrations/20260822150501_worker_account_deletion_request_prerequisite.sql",
+      "sha256": "dbf8789b2129e0b01eca001bb781779c4f9c797df945a30fbb0dadefba17a7b5",
+      "bytes": 773
     },
     {
       "version": "20260822150502",

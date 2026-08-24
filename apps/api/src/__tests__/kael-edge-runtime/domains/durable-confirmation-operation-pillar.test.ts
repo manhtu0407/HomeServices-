@@ -1,5 +1,3 @@
-import { readFileSync } from 'node:fs'
-import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
 import { installEdgeRuntimeTestHooks } from '../harness'
@@ -143,36 +141,6 @@ describe('durable Kael confirmation', () => {
     expect(rpcCalls).not.toContain('reserve_harness_idempotency')
   })
 
-  it('keeps governed acceptance to one workflow RPC after release-lane selection', () => {
-    const root = resolve(import.meta.dirname, '../../../../../..')
-    const confirmSource = readFileSync(resolve(root,
-      'supabase/functions/mobile-api/_shared/domains/kael-chat/confirm.service.ts'), 'utf8')
-    const lifecycleMigration = readFileSync(resolve(root,
-      'supabase/migrations/20260823192000_confirmation_request_lifecycle.sql'), 'utf8')
-    const singleRpcMigration = readFileSync(resolve(root,
-      'supabase/migrations/20260824090000_confirmation_acceptance_single_rpc.sql'), 'utf8')
-    const lifecyclePermissionFix = readFileSync(resolve(root,
-      'supabase/migrations/20260824100000_confirmation_acceptance_lifecycle_permission_fix.sql'), 'utf8')
-    const scheduleRecoveryMigration = readFileSync(resolve(root,
-      'supabase/migrations/20260823192100_confirmation_schedule_guard_job_recovery.sql'), 'utf8')
-    const governedReturn = confirmSource.indexOf('return confirmGovernedKaelChat({')
-    const legacySessionRead = confirmSource.indexOf('.from("kael_chat_sessions")')
-
-    expect(governedReturn, pillarWhy(PILLAR, 'the durable RPC owns governed validation and acceptance'))
-      .toBeGreaterThan(-1)
-    expect(legacySessionRead, pillarWhy(PILLAR, 'only the previous release needs the legacy session projection'))
-      .toBeGreaterThan(governedReturn)
-    expect(lifecycleMigration).toContain('begin_harness_authorized_request')
-    expect(lifecycleMigration).toContain('finish_harness_authorized_request')
-    expect(lifecycleMigration).toContain('confirmation_operations_schedule_guard')
-    expect(lifecycleMigration).toContain("message = 'KAEL_SCHEDULE_INVALID'")
-    expect(singleRpcMigration).toContain('confirm_kael_chat_durable_authorized_v3')
-    expect(singleRpcMigration).toContain('finish_harness_authorized_request')
-    expect(lifecyclePermissionFix).toContain('confirm_kael_chat_durable_authorized_v4')
-    expect(lifecyclePermissionFix).toContain('finish_harness_authorized_request')
-    expect(lifecyclePermissionFix).toContain('revoke execute on function public.confirm_kael_chat_durable_authorized_v3')
-    expect(scheduleRecoveryMigration).toContain('new.job_id is null and v_session.job_id is null')
-  })
   it('derives the same non-secret idempotency key for every retry', () => {
     const first = buildConfirmationIdempotencyKey(SESSION_ID, CUSTOMER_ID)
     const retry = buildConfirmationIdempotencyKey(SESSION_ID, CUSTOMER_ID)

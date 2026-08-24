@@ -182,7 +182,8 @@ describe('AdminFinancePanel', () => {
     render(<AdminFinancePanel actor={{ access_level: 'operator', capabilities: ['finance.read'] }} initialView="commission" reduceMotion reduceTransparency />)
 
     expect(await screen.findByTestId('admin-finance-transactions')).toBeTruthy()
-    expect(screen.getByText('Dữ liệu giao dịch chi tiết đang chờ đồng bộ.')).toBeTruthy()
+    expect(await screen.findByText('Dữ liệu giao dịch chi tiết đang chờ đồng bộ.')).toBeTruthy()
+    expect(screen.queryByText('Đang tải dữ liệu…')).toBeNull()
     expect(screen.queryByText('Không tìm thấy endpoint')).toBeNull()
   })
 

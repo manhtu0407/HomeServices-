@@ -6,6 +6,7 @@ import {
   buildSyntheticSmokeObservation,
   buildSyntheticSmokeReceipt,
   isSyntheticActorPresentationSafe,
+  isReleaseConvergenceRetry,
   pollUntil,
   priceEvidenceHasQuorum,
 } from './stage1-synthetic-smoke-core.mjs'
@@ -39,6 +40,19 @@ test('assertResponseIdentity requires exact release and safe request lineage', (
   })
   headers.set('x-release-id', 'unreleased')
   assert.throws(() => assertResponseIdentity(headers, releaseId), /release identity mismatch/u)
+})
+
+test('release convergence retries only a safe stale-isolate handshake refusal', () => {
+  const stale = new Response(JSON.stringify({ code: 'CLIENT_UPDATE_REQUIRED' }), {
+    status: 426,
+    headers: { 'x-release-id': 'harness-aaaaaaaaaaaa-bbbbbbbbbbbb' },
+  })
+  assert.equal(isReleaseConvergenceRetry(stale, { code: 'CLIENT_UPDATE_REQUIRED' }, releaseId), true)
+  assert.equal(isReleaseConvergenceRetry(stale, { code: 'AUTH_FORBIDDEN' }, releaseId), false)
+  assert.equal(isReleaseConvergenceRetry(new Response(null, {
+    status: 500,
+    headers: { 'x-release-id': 'harness-aaaaaaaaaaaa-bbbbbbbbbbbb' },
+  }), { code: 'CLIENT_UPDATE_REQUIRED' }, releaseId), false)
 })
 
 test('assertScenarioReady distinguishes priced evidence from honest RFQ and inspection', () => {

@@ -28,6 +28,13 @@ export function assertResponseIdentity(headers, expectedReleaseId) {
   return identity
 }
 
+export function isReleaseConvergenceRetry(response, payload, expectedReleaseId) {
+  const actualReleaseId = response?.headers?.get?.('x-release-id')
+  return response?.status === 426 && payload?.code === 'CLIENT_UPDATE_REQUIRED' &&
+    RELEASE_ID.test(expectedReleaseId ?? '') && RELEASE_ID.test(actualReleaseId ?? '') &&
+    actualReleaseId !== expectedReleaseId
+}
+
 export function assertSafeErrorEvidence(actual, expected) {
   if (!expected || !Number.isSafeInteger(expected.status) || !nonEmptyString(expected.code) ||
       !nonEmptyString(expected.surface)) {

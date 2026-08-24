@@ -17,6 +17,7 @@ import {
   buildSyntheticSmokeObservation,
   buildSyntheticSmokeReceipt,
   isSyntheticActorPresentationSafe,
+  isReleaseConvergenceRetry,
   pollUntil,
   priceEvidenceHasQuorum,
 } from './lib/stage1-synthetic-smoke-core.mjs'
@@ -617,12 +618,19 @@ export class Stage1SyntheticReleaseSmoke {
       ...(options.headerOverrides ?? {}),
     }
     if (method !== 'GET') headers['idempotency-key'] = options.idempotencyKey ?? randomUUID()
-    const response = await fetch(`${this.config.apiBaseUrl}${path}`, {
-      method,
-      headers,
-      body: body === undefined ? undefined : JSON.stringify(body),
-      signal: AbortSignal.timeout(90_000),
-    })
+    let response
+    for (let attempt = 0; attempt < 9; attempt += 1) {
+      response = await fetch(`${this.config.apiBaseUrl}${path}`, {
+        method,
+        headers,
+        body: body === undefined ? undefined : JSON.stringify(body),
+        signal: AbortSignal.timeout(90_000),
+      })
+      if (response.headers.get('x-release-id') === this.config.release.releaseId) break
+      const payload = await response.clone().json().catch(() => null)
+      if (!isReleaseConvergenceRetry(response, payload, this.config.release.releaseId) || attempt === 8) break
+      await new Promise((resolveDelay) => setTimeout(resolveDelay, 1_500))
+    }
     const durationMs = Math.round(performance.now() - started)
     const identity = assertResponseIdentity(response.headers, this.config.release.releaseId)
     this.traceIds.add(identity.traceId)
