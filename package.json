@@ -66,6 +66,8 @@
     "lint:comments": "node scripts/run.mjs run-node scripts/check-comment-discipline.mjs",
     "lint:test-collection": "node scripts/run.mjs run-node scripts/check-test-collection.mjs",
     "lint:workplan": "node scripts/run.mjs run-node scripts/check-work-plan.mjs",
+    "lint:workplan:coverage": "node scripts/run.mjs run-node scripts/check-work-plan.mjs --coverage",
+    "lint:protocol-routes": "node scripts/run.mjs run-node scripts/check-protocol-routes.mjs",
     "db:local:doctor": "node scripts/run.mjs docker/scripts/doctor",
     "db:local:up": "node scripts/run.mjs docker/scripts/up",
     "db:local:down": "node scripts/run.mjs docker/scripts/down",
