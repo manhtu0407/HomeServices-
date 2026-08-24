@@ -658,7 +658,6 @@ export type JobsTables = {
           payment_status: string
           payment_transfer_content: string | null
           payment_updated_at: string | null
-          payment_verification_reference: string | null
           photo_urls: string[]
           platform_fee: number | null
           price_context_1: Json | null
@@ -738,7 +737,6 @@ export type JobsTables = {
           payment_status?: string
           payment_transfer_content?: string | null
           payment_updated_at?: string | null
-          payment_verification_reference?: string | null
           photo_urls?: string[]
           platform_fee?: number | null
           price_context_1?: Json | null
@@ -818,7 +816,6 @@ export type JobsTables = {
           payment_status?: string
           payment_transfer_content?: string | null
           payment_updated_at?: string | null
-          payment_verification_reference?: string | null
           photo_urls?: string[]
           platform_fee?: number | null
           price_context_1?: Json | null
