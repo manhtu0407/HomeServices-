@@ -35,13 +35,15 @@ Small, well-scoped task: Tier 1 plus the one row that matches. Large, cross-cutt
 | When your task involves... | Read |
 |---|---|
 | Where the product actually is today vs. still a plan | `governance/STRUCTURES.md` §1.5 (status by PR) |
-| Workflow truth, service taxonomy, state machines, backend contracts, "do not build now" | `governance/STRUCTURES.md` (§0-§4 hub; §5-§21 -> `governance/structures/*`) |
+| Workflow truth, service taxonomy, state machines, backend contracts, "do not build now" | `governance/STRUCTURES.md` (§0-§4.6 hub; §5-§22 -> `governance/structures/*`) |
 | Per-task execution protocol (diagnose, tdd, architecture, ai-boundary, supabase, security, ui, docs, handoff) | `governance/critical.md` §1 index -> `governance/protocols/*` (load only the selected protocol) |
 | UI, motion, glass, mascot, design tokens, screen recipes | `governance/design/runtime.md`, then `governance/design.md` (-> `governance/design/*`) |
 | Frontend / UI testing on the Expo app | `governance/protocols/frontend-test.md` (gates `pnpm type-check:mobile`, `pnpm test:mobile`) |
 | Coding behavior (explicit assumptions, simplicity, surgical diffs, goal-driven execution) | `governance/skills.md` |
 | A task whose shape is unclear — what kind of work it is, which skills it needs, how wide to read | `governance/protocols/work-router.md` |
 | Code enhancement / refactor (owner files per layer) | `docs/architecture/code-ownership-map.md` |
+| Where backend code belongs, whether the structure held, Edge <-> DB parity | `governance/protocols/backend-structure.md` §24-§25 (skills `kael-backend-structure`, `kael-backend-parity`) |
+| Running the database or Edge toolchain locally (real Postgres, migrations, RLS/SQL checks, `deno check`) | `docker/INDEX.md` + skill `kael-docker`. Docker is a **dev dependency, never a deployment target** |
 | Finding a symbol, tracing its callers, or deciding which runtime owns a name defined twice | `.claude/skills/kael-codebase-memory/SKILL.md` |
 | Continuing or deferred plan work | `governance/Plan.md` (the referenced section only) |
 | Where a doc lives; adding, moving, or naming docs (`README.md` is a LOCKED filename at any path) | `docs/INDEX.md` |
@@ -56,7 +58,11 @@ Each hub routes onward to its own spokes on demand. If two docs conflict, stop a
 
 Skills live in `.claude/skills/` (canonical), mirrored to `.agents/skills/`; parity is enforced by `scripts/check-skills-sync.mjs`. Two groups, 34 total. Choose a skill only after Tier 2 has told you the task class.
 
-**Everyday (23).** `kael-work-router`, `kael-core-hygiene`, and `karpathy-guidelines` are always-on; the rest are task-triggered. The router runs first and decides which of the others fire — `kael-core-hygiene` and `karpathy-guidelines` govern the artifact, the router governs how the effort reaching it is spent.
+**Everyday (23).** Two always-on classes, then the rest.
+
+- **Always-on, every task:** `kael-work-router`, `kael-core-hygiene`, `karpathy-guidelines`. The router runs first and decides which of the others fire — `kael-core-hygiene` and `karpathy-guidelines` govern the artifact, the router governs how the effort reaching it is spent.
+- **Always-on by path:** `kael-backend-structure` and `kael-backend-parity` fire on any change set touching `supabase/functions/**`, `supabase/migrations/**`, `packages/shared/src/contracts/**`, or `packages/shared/src/types/database/**` — **at every reach, `T` included**, and neither may appear in a `dropped:` line (`governance/protocols/work-router.md` `## Lane — by backend path`). Always-on is not permission to be ceremonial: neither may close with "nothing to report".
+- **Task-triggered:** everything else, selected by the router.
 
 ```text
 kael-tdd  kael-diagnose  kael-supabase  kael-security-sweep  kael-ai-boundary
@@ -84,7 +90,18 @@ kael-design-preflight -> kael-design-direction  kael-design-intelligence  kael-d
 
 A degraded lane is real work, not a consolation: `kael-docker` without a daemon reconciles the database debt ledger against what is on disk, and `kael-visual-qa` without a device produces the capture matrix as a runnable checklist. It is never a verdict — a lane emits a debt record, and a gate that could not run is still not a gate that passed (`governance/critical.md` §3).
 
-## Runtime Boundary (summary - canonical: `governance/RULES.md` #0)
+## Architecture <-> Structure
+
+This is where the two planes meet. **Architecture** says who may call whom at runtime; **structure** says where the code lives on disk. A change is correct only when it satisfies both — a file in the right folder that reaches the wrong way is still wrong, and so is a correct call chain written into a file that does not own the behavior. This section is a summary and a router, never the authority. Each plane has exactly one canonical owner:
+
+| Plane | Question it answers | Canonical owner |
+|---|---|---|
+| Runtime boundary | Which process may talk to which | `governance/RULES.md` #0 |
+| Layer invariants | Which layer may reach which; what may never grow | `governance/STRUCTURES.md` §4.5 |
+| Placement and ownership | Which file owns this behavior | `docs/architecture/code-ownership-map.md` |
+| Procedure | Where a change belongs, and whether the structure held | `governance/protocols/backend-structure.md` §24-§25 |
+
+### Runtime plane
 
 ```text
 Expo React Native -> Supabase Auth -> Edge Function `mobile-api`
@@ -95,9 +112,27 @@ Expo React Native -> Supabase Auth -> Edge Function `mobile-api`
 
 `apps/api` is Next.js reference/parity/admin/support code — never the mobile runtime, and never the consumer web product. Do not start Next.js work unless Tu explicitly assigns it, and verify version-specific Next.js behavior against the installed package or official docs before writing code.
 
-Inside `mobile-api/_shared`, code is layered: `http/` (routing, dispatch, DTO validation) -> `domains/` (workflow reads/writes, DB/RPC/Storage, matching, notifications) -> `kael/` (Edge Kael pipeline and providers) -> `platform/` (env, logging, and other cross-cutting helpers). Owner files per layer: `docs/architecture/code-ownership-map.md`.
+### Layer plane
 
-## Project Structure
+Inside `supabase/functions/mobile-api/_shared`, dependencies run one way:
+
+```text
+http/   ->   domains/   ->   kael/   ->   platform/
+```
+
+- `http/` — routing, dispatch, role guards, DTO validation, response envelope.
+- `domains/` — workflow reads/writes, DB/RPC/Storage, matching, notifications.
+- `kael/` — Edge Kael pipeline, providers, guardrails, learning.
+- `platform/` — env, logging, lifecycle, access, rate limit, and other cross-cutting helpers.
+
+Four invariants make that chain enforceable rather than decorative. They are summarized here because a router that draws the chain without them invites a change that looks fine and is not; canonical text and the gates that enforce them stay in `governance/STRUCTURES.md` §4.5:
+
+1. A layer may reach the layers below it, never above.
+2. `http/` may not reach `kael/` directly — an endpoint that talks to the brain with no use-case in between is how workflow rules get bypassed.
+3. The request/response contracts are hand-maintained twins, because Deno cannot import `packages/shared`: `supabase/functions/_shared/contracts/**` <-> `packages/shared/src/contracts/**`. Change one, change both; drift fails the contract-parity tests.
+4. `apps/api/src/lib/{kael,learning}/**` is **frozen** — it may shrink or stay, never grow. A new file there, or a longer one, means the second brain is being extended instead of the Edge one.
+
+### Filesystem plane
 
 Workspace packages are `nestscout` (root) plus `@nestscout/{mobile,api,shared,sandbox}`.
 
@@ -108,10 +143,13 @@ packages/shared/ - shared constants, contracts, schemas, generated DB types, tes
 sandbox/agent/   - @nestscout/sandbox, throwaway agent experiments, never product code
 supabase/functions/mobile-api/ - production Edge runtime; _shared/ layers into http / domains / kael / platform
 supabase/functions/_shared/    - contracts and platform helpers shared across Edge functions
-supabase/functions/<other>/    - kael-learning-monitor, kael-media-retention, sepay-webhook, map-proxy-spike
+supabase/functions/<other>/    - kael-learning-monitor, kael-matching-maintainer, kael-media-retention,
+                                 map-proxy-spike, payment-maintainer, sepay-webhook
 supabase/migrations/           - database schema, RLS, RPC, storage, and hardening migrations
-config/        - env/workspace.env.example (key names only), security, turbo, agent-skills
-scripts/       - repo tooling: comment-discipline, skills-sync, lint-structure, smoke scripts
+config/        - env/workspace.env.example (key names only), harness (skill manifest), security, turbo, agent-skills
+docker/        - local Postgres and Edge toolchain profiles and scripts (map: docker/INDEX.md); dev dependency, never a deployment target
+patches/       - pnpm patches pinning React Native / Expo native dependencies
+scripts/       - repo tooling: comment-discipline, skills-sync, lint-structure, structure-baseline, edge-db-contract, smoke scripts
 governance/    - the rule stack this router points to: critical / RULES / STRUCTURES / design / skills / Plan, plus protocols/, structures/, and design/ spokes
 docs/          - durable feature, ops, design, and historical execution notes (map: docs/INDEX.md)
 DOCUMENT.md    - plain-language product explainer for non-engineers
@@ -120,13 +158,13 @@ DOCUMENT.md    - plain-language product explainer for non-engineers
 
 ## Current Phase
 
-Phase 0 - production fix and foundation hardening. **Milestone: PR #148 (commit `d0e4af88`); merged range #1 -> #148.**
+Phase 0 - production fix and foundation hardening. **Milestone: PR #227 (commit `1c5813b4`).**
 
-Closed so far: the customer and worker workflow spine runs end to end — auth (#143), six-service Case Work (#110), Kael agentic production flow (#142), job lifecycle, matching, chat/evidence, scope change, completion/review, dispute, evidence-gated learning (#124). The Edge backend is layered (#144) and gated by a test suite (#145). #146-#148 were governance, workspace, and cleanup work — they moved no capability row.
+Phase 0 closes on the first real transaction, and no money has moved yet. That single fact, not a feature count, is what the phase is measured against.
 
-Still open before Phase 0 can close: **no real transaction has been processed** — payment rails (#135 VietQR, #139 cash) are code-and-tests only; admin controls cover Kael learning candidates only (#29); Expo SDK 57 (#132) has never run on a real device; no TestFlight or Play internal validation is recorded.
+Which capability runs, which is partial, and what blocks next lives in `governance/STRUCTURES.md` §1.5 and nowhere else — a status repeated in two places drifts in two places (`governance/STRUCTURES.md` §4). This section is a pointer, not a second status board.
 
-Per-capability status with PR anchors: `governance/STRUCTURES.md` §1.5. Refresh it with `git log d0e4af88..HEAD --pretty="%s" | grep -E "^#"`.
+§1.5 carries its own milestone line and is refreshed on its own cadence. When that line names an older PR than the milestone above, its capability rows are lagging: refresh them before relying on one, with `git log <§1.5 milestone>..HEAD --pretty="%s" | grep -E "^#"`.
 
 ## Core Principles
 
