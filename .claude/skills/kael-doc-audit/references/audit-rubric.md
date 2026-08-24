@@ -35,7 +35,7 @@ Adapted from Anthropic `claude-md-improver`, retargeted from "one CLAUDE.md" to 
 A 90-100 / B 70-89 / C 50-69 / D 30-49 / F 0-29.
 
 ## Red Flags (instant deductions)
-- A service category other than electrical / plumbing / cleaning anywhere in product scope.
+- A service category outside the active set in `governance/RULES.md` #6 anywhere in product scope.
 - A money / booking / scope-change path without explicit-confirmation language.
 - PII (phone, CCCD, address, bank) shown in a logging example.
 - A protocol referenced in §1 with no source file.
@@ -70,7 +70,7 @@ When auditing, also score the design docs:
 - **Recipes complete:** each screen recipe in `governance/design/screen-recipes.md` covers loading / empty / error / success + money-impacting confirmation where relevant.
 
 ### Design red flags (instant deductions)
-- A service beyond electrical / plumbing / cleaning in any recipe or surface.
+- A service outside the active set in `governance/RULES.md` #6 in any recipe or surface.
 - A money-impacting screen recipe without explicit-confirmation language.
 - A forbidden AI default (gradient orbs, bento-default, purple/blue AI gradient, card spam, fake stats) presented as allowed.
 - English user-facing copy in a recipe example.
