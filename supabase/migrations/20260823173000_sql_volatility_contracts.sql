@@ -21,10 +21,9 @@ begin
     'pg_catalog.clock_timestamp()',
     'pg_catalog.statement_timestamp()'
   );
-  if v_rewritten = v_definition then
-    raise exception using errcode = '55000', message = 'WORKER_EARNINGS_TIMESTAMP_FIX_SOURCE_DRIFT';
+  if v_rewritten <> v_definition then
+    execute v_rewritten;
   end if;
-  execute v_rewritten;
 end
 $migration$;
 
