@@ -60,7 +60,7 @@ Skills live in `.claude/skills/` (canonical), mirrored to `.agents/skills/`; par
 
 **Everyday (23).** Two always-on classes, then the rest.
 
-- **Always-on, every task:** `kael-work-router`, `kael-core-hygiene`, `karpathy-guidelines`. The router runs first and decides which of the others fire — `kael-core-hygiene` and `karpathy-guidelines` govern the artifact, the router governs how the effort reaching it is spent.
+- **Always-on, every task:** `kael-work-router`, `kael-subagent-orchestration`, `kael-core-hygiene`, `karpathy-guidelines`. The router runs first and decides which of the others fire; `kael-subagent-orchestration` then forces one explicit `local` or `delegated` decision before any task is decomposed, and never requires spawning anything (`governance/critical.md` §0). `kael-core-hygiene` and `karpathy-guidelines` govern the artifact, the router governs how the effort reaching it is spent.
 - **Always-on by path:** `kael-backend-structure` and `kael-backend-parity` fire on any change set touching `supabase/functions/**`, `supabase/migrations/**`, `packages/shared/src/contracts/**`, or `packages/shared/src/types/database/**` — **at every reach, `T` included**, and neither may appear in a `dropped:` line (`governance/protocols/work-router.md` `## Lane — by backend path`). Always-on is not permission to be ceremonial: neither may close with "nothing to report".
 - **Task-triggered:** everything else, selected by the router.
 
@@ -101,6 +101,8 @@ This is where the two planes meet. **Architecture** says who may call whom at ru
 | Placement and ownership | Which file owns this behavior | `docs/architecture/code-ownership-map.md` |
 | Procedure | Where a change belongs, and whether the structure held | `governance/protocols/backend-structure.md` §24-§25 |
 
+One command proves both planes at once. `pnpm lint:structure` checks the layer model, the runtime boundary, the frozen paths, and the file and type ratchets, across `apps/api/src`, `apps/mobile`, `packages/shared/src`, and `supabase/functions` alike. Green means the seam held; red names the invariant that broke. Run it before arguing that a placement is fine.
+
 ### Runtime plane
 
 ```text
@@ -125,12 +127,14 @@ http/   ->   domains/   ->   kael/   ->   platform/
 - `kael/` — Edge Kael pipeline, providers, guardrails, learning.
 - `platform/` — env, logging, lifecycle, access, rate limit, and other cross-cutting helpers.
 
-Four invariants make that chain enforceable rather than decorative. They are summarized here because a router that draws the chain without them invites a change that looks fine and is not; canonical text and the gates that enforce them stay in `governance/STRUCTURES.md` §4.5:
+Six invariants make the two planes enforceable rather than decorative. They are summarized here because a router that draws the chain without them invites a change that looks fine and is not; canonical text and the gates that enforce them stay in `governance/STRUCTURES.md` §4.5:
 
 1. A layer may reach the layers below it, never above.
 2. `http/` may not reach `kael/` directly — an endpoint that talks to the brain with no use-case in between is how workflow rules get bypassed.
 3. The request/response contracts are hand-maintained twins, because Deno cannot import `packages/shared`: `supabase/functions/_shared/contracts/**` <-> `packages/shared/src/contracts/**`. Change one, change both; drift fails the contract-parity tests.
 4. `apps/api/src/lib/{kael,learning}/**` is **frozen** — it may shrink or stay, never grow. A new file there, or a longer one, means the second brain is being extended instead of the Edge one.
+5. No source under `apps/mobile/**` or `supabase/functions/**` may import `apps/api` at all. The freeze above says the second brain may not grow; this says nothing may call it. It is a separate check, and it is the one a single convenience import from there trips.
+6. The ratchet: no source file over 800 lines, no already-oversize file may grow, and an exported type or interface name may not be newly re-declared in a second file. Today's exceptions live in `scripts/structure-baseline.json`. Never run `lint-structure.mjs --init` to clear a failure — it re-grandfathers whatever is oversize at that moment and lifts the ratchet for the whole repo.
 
 ### Filesystem plane
 
