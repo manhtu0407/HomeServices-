@@ -37,7 +37,7 @@ Same three tiers as `CLAUDE.md`, so Codex and Claude Code enter a task through o
 
 ### Tier 3 - skills
 
-Two groups, 32 total: **Everyday (21)** and **Design (11)**. The canonical list is `CLAUDE.md` Tier 3 — this is a pointer, not a second copy, so the two files cannot drift. Design work always enters through `kael-design-preflight`.
+Two groups, 34 total: **Everyday (23)** and **Design (11)**. The canonical list is `CLAUDE.md` Tier 3 — this is a pointer, not a second copy, so the two files cannot drift. Design work always enters through `kael-design-preflight`.
 
 Each skill declares a readiness class in `config/harness/manifest.json` — 29 `autonomous`, 2 `gated`. Readiness picks a lane rather than switching the skill off: `autonomous` fires with no precondition check, and `gated` carries a `## Preconditions` block plus a `## Degraded lane` naming what it still does when the dependency is absent. Every skill also declares a `closeout` (`report` or `inline`) matching its `## Close` block. `pnpm skills:contracts` fails when body and declaration disagree. Classes and meanings: `CLAUDE.md` Tier 3.
 

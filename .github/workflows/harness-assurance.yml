@@ -22,6 +22,8 @@ jobs:
           node-version: 20
       - name: Harness assurance verification
         run: node scripts/harness/verify.mjs
+      - name: Structure baseline lock
+        run: node scripts/check-structure-baseline.mjs
 
   runtime-controls:
     name: API and Edge runtime controls

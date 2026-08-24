@@ -1,0 +1,4 @@
+interface:
+  display_name: "Kael Backend Parity"
+  short_description: "Deployed Edge code must not call objects the database lacks"
+  default_prompt: "Use $kael-backend-parity on any backend change, deploy, release, or production-broken question to prove deployed code and the target schema still agree."

@@ -92,6 +92,21 @@ These fire on state, not on where the code lives, so they are independent of dom
 
 These are never selected because they are never optional. A lane that does not name them is correct.
 
+## Lane — by backend path
+
+This lane routes on paths rather than on the domain word, and it is the one lane reach cannot thin. Everywhere else on this page reach decides how many candidates fire, and at `T` the answer is `skills: none`. A change set containing any of
+
+```text
+supabase/functions/**              supabase/migrations/**
+packages/shared/src/contracts/**   packages/shared/src/types/database/**
+```
+
+fires `kael-backend-structure` and `kael-backend-parity` **at every reach, `T` included**. Neither may appear in a `dropped:` line.
+
+This extends the existing path rule rather than inventing one: `packages/shared/**` and `supabase/functions/_shared/**` already force reach `X` regardless of how small a change looks. That rule missed `supabase/migrations/**`, which is where a half-applied deploy hides — Edge code shipped while its migration did not, with every local gate green.
+
+Always-on is not permission to be ceremonial. Neither skill may close with "nothing to report": `kael-backend-parity` runs a real query every time, and `kael-backend-structure` names the files it inspected. A Close block that is reflexively empty reports that a check happened when it did not, which `governance/critical.md` §3 forbids.
+
 ## Namespace trap — protocol, not skill
 
 These names appear in `governance/critical.md` section 1 and have **no skill of that name**. Load the protocol file; do not go looking for a skill.

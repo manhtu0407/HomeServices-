@@ -61,6 +61,8 @@
     "design:preflight": "node scripts/run.mjs run-node scripts/design/kael-design-preflight.mjs",
     "design:check": "node scripts/run.mjs run-node scripts/design/check-design-adapters.mjs",
     "lint:structure": "node scripts/run.mjs run-node scripts/lint-structure.mjs",
+    "lint:baseline": "node scripts/run.mjs run-node scripts/check-structure-baseline.mjs",
+    "lint:edge-db": "node scripts/run.mjs run-node scripts/check-edge-db-contract.mjs",
     "lint:comments": "node scripts/run.mjs run-node scripts/check-comment-discipline.mjs",
     "lint:test-collection": "node scripts/run.mjs run-node scripts/check-test-collection.mjs",
     "lint:workplan": "node scripts/run.mjs run-node scripts/check-work-plan.mjs",
