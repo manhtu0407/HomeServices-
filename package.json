@@ -64,6 +64,7 @@
     "lint:baseline": "node scripts/run.mjs run-node scripts/check-structure-baseline.mjs",
     "lint:edge-db": "node scripts/run.mjs run-node scripts/check-edge-db-contract.mjs",
     "lint:comments": "node scripts/run.mjs run-node scripts/check-comment-discipline.mjs",
+    "lint:residue": "node scripts/run.mjs run-node scripts/check-source-residue.mjs",
     "lint:test-collection": "node scripts/run.mjs run-node scripts/check-test-collection.mjs",
     "lint:workplan": "node scripts/run.mjs run-node scripts/check-work-plan.mjs",
     "lint:workplan:coverage": "node scripts/run.mjs run-node scripts/check-work-plan.mjs --coverage",
