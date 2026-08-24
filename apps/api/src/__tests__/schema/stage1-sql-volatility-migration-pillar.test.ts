@@ -16,7 +16,7 @@ export const PILLAR = {
   layer: 'sql',
   siblings: ['P35-worker-earnings-fail-closed', 'P56-stage1-production-release-workflow'],
   mutation:
-    'restore clock_timestamp() in get_worker_earnings_summary or mark the function VOLATILE — the rollback-only verification raises its named contract exception in the fresh Postgres lane',
+    'restore clock_timestamp() in either earnings summary function or mark either function VOLATILE — the rollback-only verification raises its named contract exception in the fresh Postgres lane',
 } as const satisfies PillarManifest
 
 const verificationSql = readFileSync(
