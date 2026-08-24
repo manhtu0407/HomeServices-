@@ -35,14 +35,18 @@ Small, well-scoped task: Tier 1 plus the one row that matches. Large, cross-cutt
 | When your task involves... | Read |
 |---|---|
 | Where the product actually is today vs. still a plan | `governance/STRUCTURES.md` §1.5 (status by PR) |
-| Workflow truth, service taxonomy, state machines, backend contracts, "do not build now" | `governance/STRUCTURES.md` (§0-§4 hub; §5-§21 -> `governance/structures/*`) |
+| Workflow truth, service taxonomy, state machines, backend contracts, "do not build now" | `governance/STRUCTURES.md` (§0-§4.6 hub; §5-§22 -> `governance/structures/*`) |
 | Per-task execution protocol (diagnose, tdd, architecture, ai-boundary, supabase, security, ui, docs, handoff) | `governance/critical.md` §1 index -> `governance/protocols/*` (load only the selected protocol) |
 | UI, motion, glass, mascot, design tokens, screen recipes | `governance/design/runtime.md`, then `governance/design.md` (-> `governance/design/*`) |
 | Frontend / UI testing on the Expo app | `governance/protocols/frontend-test.md` (gates `pnpm type-check:mobile`, `pnpm test:mobile`) |
+| Writing or reviewing any test, in any package | `governance/protocols/test-pillars.md` — only `*-pillar.test.ts` / `*-pillar-test.tsx` are collected, so a test outside that shape runs nowhere; `node scripts/harness/pillar-registry.mjs` enforces it |
 | Coding behavior (explicit assumptions, simplicity, surgical diffs, goal-driven execution) | `governance/skills.md` |
 | A task whose shape is unclear — what kind of work it is, which skills it needs, how wide to read | `governance/protocols/work-router.md` |
 | Code enhancement / refactor (owner files per layer) | `docs/architecture/code-ownership-map.md` |
+| Where backend code belongs, whether the structure held, Edge <-> DB parity | `governance/protocols/backend-structure.md` §24-§25 (skills `kael-backend-structure`, `kael-backend-parity`) |
+| Running the database or Edge toolchain locally (real Postgres, migrations, RLS/SQL checks, `deno check`) | `docker/INDEX.md` + skill `kael-docker`. Docker is a **dev dependency, never a deployment target** |
 | Finding a symbol, tracing its callers, or deciding which runtime owns a name defined twice | `.claude/skills/kael-codebase-memory/SKILL.md` |
+| Preparing a change for push, a pull request, or handoff as delivered | skill `kael-ship` — `pnpm ship:check` proves the machine half and names what it could not run |
 | Continuing or deferred plan work | `governance/Plan.md` (the referenced section only) |
 | Where a doc lives; adding, moving, or naming docs (`README.md` is a LOCKED filename at any path) | `docs/INDEX.md` |
 | Cross-session lessons and gotchas already paid for | `docs/agent-lessons.md` |
@@ -54,9 +58,13 @@ Each hub routes onward to its own spokes on demand. If two docs conflict, stop a
 
 ### Tier 3 - skills
 
-Skills live in `.claude/skills/` (canonical), mirrored to `.agents/skills/`; parity is enforced by `scripts/check-skills-sync.mjs`. Two groups, 34 total. Choose a skill only after Tier 2 has told you the task class.
+Skills live in `.claude/skills/` (canonical), mirrored to `.agents/skills/`; parity is enforced by `scripts/check-skills-sync.mjs`. Two groups, 35 total. Choose a skill only after Tier 2 has told you the task class.
 
-**Everyday (23).** `kael-work-router`, `kael-core-hygiene`, and `karpathy-guidelines` are always-on; the rest are task-triggered. The router runs first and decides which of the others fire — `kael-core-hygiene` and `karpathy-guidelines` govern the artifact, the router governs how the effort reaching it is spent.
+**Everyday (24).** Two always-on classes, then the rest.
+
+- **Always-on, every task:** `kael-work-router`, `kael-subagent-orchestration`, `kael-core-hygiene`, `karpathy-guidelines`. The router runs first and decides which of the others fire; `kael-subagent-orchestration` then forces one explicit `local` or `delegated` decision before any task is decomposed, and never requires spawning anything (`governance/critical.md` §0). `kael-core-hygiene` and `karpathy-guidelines` govern the artifact, the router governs how the effort reaching it is spent.
+- **Always-on by path:** `kael-backend-structure` and `kael-backend-parity` fire on any change set touching `supabase/functions/**`, `supabase/migrations/**`, `packages/shared/src/contracts/**`, or `packages/shared/src/types/database/**` — **at every reach, `T` included**, and neither may appear in a `dropped:` line (`governance/protocols/work-router.md` `## Lane — by backend path`). Always-on is not permission to be ceremonial: neither may close with "nothing to report".
+- **Task-triggered:** everything else, selected by the router.
 
 ```text
 kael-tdd  kael-diagnose  kael-supabase  kael-security-sweep  kael-ai-boundary
@@ -64,7 +72,7 @@ kael-frontend-test  kael-core-hygiene  kael-subagent-orchestration  karpathy-gui
 kael-handoff  kael-doc-audit  kael-prototype  kael-research  kael-wayfinder
 kael-codebase-memory  react-doctor  supabase  supabase-postgres-best-practices
 kael-docker  source-command-kael-mem  kael-work-router
-kael-backend-structure  kael-backend-parity
+kael-backend-structure  kael-backend-parity  kael-ship
 ```
 
 **Design (11).** One entry point: `kael-design-preflight` loads `governance/design/runtime.md` and binds the token/runtime contract. Never open a design skill without it.
@@ -79,12 +87,25 @@ kael-design-preflight -> kael-design-direction  kael-design-intelligence  kael-d
 
 | Class | Count | What it means for you |
 |---|---|---|
-| `autonomous` | 31 | Needs only Read/Grep/Edit, or commands that run on every platform. Fire it on any matching task — no check first. |
+| `autonomous` | 32 | Needs only Read/Grep/Edit, or commands that run on every platform. Fire it on any matching task — no check first. |
 | `gated` | 3 | Needs something that can legitimately be absent. Run the one-line check in its `## Preconditions`; on failure run its `## Degraded lane`, which names the work that does not need the dependency and the artifact it produces. Say which check failed. |
 
 A degraded lane is real work, not a consolation: `kael-docker` without a daemon reconciles the database debt ledger against what is on disk, and `kael-visual-qa` without a device produces the capture matrix as a runnable checklist. It is never a verdict — a lane emits a debt record, and a gate that could not run is still not a gate that passed (`governance/critical.md` §3).
 
-## Runtime Boundary (summary - canonical: `governance/RULES.md` #0)
+## Architecture <-> Structure
+
+This is where the two planes meet. **Architecture** says who may call whom at runtime; **structure** says where the code lives on disk. A change is correct only when it satisfies both — a file in the right folder that reaches the wrong way is still wrong, and so is a correct call chain written into a file that does not own the behavior. This section is a summary and a router, never the authority. Each plane has exactly one canonical owner:
+
+| Plane | Question it answers | Canonical owner |
+|---|---|---|
+| Runtime boundary | Which process may talk to which | `governance/RULES.md` #0 |
+| Layer invariants | Which layer may reach which; what may never grow | `governance/STRUCTURES.md` §4.5 |
+| Placement and ownership | Which file owns this behavior | `docs/architecture/code-ownership-map.md` |
+| Procedure | Where a change belongs, and whether the structure held | `governance/protocols/backend-structure.md` §24-§25 |
+
+One command proves both planes at once. `pnpm lint:structure` checks the layer model, the runtime boundary, the frozen paths, and the file and type ratchets, across `apps/api/src`, `apps/mobile`, `packages/shared/src`, and `supabase/functions` alike. Green means the seam held; red names the invariant that broke. Run it before arguing that a placement is fine.
+
+### Runtime plane
 
 ```text
 Expo React Native -> Supabase Auth -> Edge Function `mobile-api`
@@ -95,9 +116,35 @@ Expo React Native -> Supabase Auth -> Edge Function `mobile-api`
 
 `apps/api` is Next.js reference/parity/admin/support code — never the mobile runtime, and never the consumer web product. Do not start Next.js work unless Tu explicitly assigns it, and verify version-specific Next.js behavior against the installed package or official docs before writing code.
 
-Inside `mobile-api/_shared`, code is layered: `http/` (routing, dispatch, DTO validation) -> `domains/` (workflow reads/writes, DB/RPC/Storage, matching, notifications) -> `kael/` (Edge Kael pipeline and providers) -> `platform/` (env, logging, and other cross-cutting helpers). Owner files per layer: `docs/architecture/code-ownership-map.md`.
+### Layer plane
 
-## Project Structure
+Inside `supabase/functions/mobile-api/_shared`, dependencies run one way:
+
+```text
+http/   ->   domains/   ->   kael/   ->   platform/
+```
+
+- `http/` — routing, dispatch, role guards, DTO validation, response envelope.
+- `domains/` — workflow reads/writes, DB/RPC/Storage, matching, notifications.
+- `kael/` — Edge Kael pipeline, providers, guardrails, learning.
+- `platform/` — env, logging, lifecycle, access, rate limit, and other cross-cutting helpers.
+
+Six invariants make the two planes enforceable rather than decorative. They are summarized here because a router that draws the chain without them invites a change that looks fine and is not; canonical text and the gates that enforce them stay in `governance/STRUCTURES.md` §4.5:
+
+1. A layer may reach the layers below it, never above.
+2. `http/` may not reach `kael/` directly — an endpoint that talks to the brain with no use-case in between is how workflow rules get bypassed.
+3. The request/response contracts are hand-maintained twins, because Deno cannot import `packages/shared`: `supabase/functions/_shared/contracts/**` <-> `packages/shared/src/contracts/**`. Change one, change both; drift fails the contract-parity tests.
+4. `apps/api/src/lib/{kael,learning}/**` is **frozen** — it may shrink or stay, never grow. A new file there, or a longer one, means the second brain is being extended instead of the Edge one.
+5. No source under `apps/mobile/**` or `supabase/functions/**` may import `apps/api` at all. The freeze above says the second brain may not grow; this says nothing may call it. It is a separate check, and it is the one a single convenience import from there trips.
+6. The ratchet: no source file over 800 lines, no already-oversize file may grow, and an exported type or interface name may not be newly re-declared in a second file. Today's exceptions live in `scripts/structure-baseline.json`. Never run `scripts/lint-structure.mjs --init` to clear a failure — it re-grandfathers whatever is oversize at that moment and lifts the ratchet for the whole repo.
+
+### Mobile plane
+
+`apps/mobile` has no layer model: `app/` holds Expo Router routes, `components/` the UI, `lib/` the logic, `design/` the tokens. That absence is deliberate, and it is not an exemption — invariants 5 and 6 bind `apps/mobile/**` exactly as they bind the Edge, because `pnpm lint:structure` polices all four roots and not only `supabase/functions`. What the mobile side lacks is a *reach* rule, not a *ratchet*.
+
+Which mobile file owns which behavior is never inferred from a folder name. `docs/architecture/code-ownership-map.md` carries it, split by surface: Customer Workflow, Worker Workflow, Shared Mobile State, and UI System Ownership.
+
+### Filesystem plane
 
 Workspace packages are `nestscout` (root) plus `@nestscout/{mobile,api,shared,sandbox}`.
 
@@ -108,25 +155,34 @@ packages/shared/ - shared constants, contracts, schemas, generated DB types, tes
 sandbox/agent/   - @nestscout/sandbox, throwaway agent experiments, never product code
 supabase/functions/mobile-api/ - production Edge runtime; _shared/ layers into http / domains / kael / platform
 supabase/functions/_shared/    - contracts and platform helpers shared across Edge functions
-supabase/functions/<other>/    - kael-learning-monitor, kael-media-retention, sepay-webhook, map-proxy-spike
+supabase/functions/<other>/    - kael-learning-monitor, kael-matching-maintainer, kael-media-retention,
+                                 map-proxy-spike, payment-maintainer, sepay-webhook
 supabase/migrations/           - database schema, RLS, RPC, storage, and hardening migrations
-config/        - env/workspace.env.example (key names only), security, turbo, agent-skills
-scripts/       - repo tooling: comment-discipline, skills-sync, lint-structure, smoke scripts
+config/        - env/workspace.env.example (key names only), harness (skill manifest), security, turbo, agent-skills
+docker/        - local Postgres and Edge toolchain profiles and scripts (map: docker/INDEX.md); dev dependency, never a deployment target
+patches/       - pnpm patches pinning React Native / Expo native dependencies
+scripts/       - repo tooling: comment-discipline, skills-sync, lint-structure, structure-baseline, edge-db-contract, smoke scripts
 governance/    - the rule stack this router points to: critical / RULES / STRUCTURES / design / skills / Plan, plus protocols/, structures/, and design/ spokes
 docs/          - durable feature, ops, design, and historical execution notes (map: docs/INDEX.md)
 DOCUMENT.md    - plain-language product explainer for non-engineers
 .claude/skills, .agents/skills - project-local agent skills; .claude is canonical, .agents mirrors it, parity enforced by scripts/check-skills-sync.mjs
 ```
 
+### Registry plane
+
+Both planes are declared together in one file. `config/harness/manifest.json` holds the repository skills under `.claude/skills` (agent structure) beside the Kael runtime tools and provider adapter whose `canonicalPath` points into `supabase/functions/mobile-api/_shared/kael/tools/` (product architecture). A runtime tool declares what a skill does not — `sideEffectClass`, `requiredCapability`, `timeoutMs`, `dataClasses`, `redactionProfile` — so read the entry to learn what a name is; the folder will not tell you.
+
+That file also registers this one. `CLAUDE.md` is its `canonical-skill-list` and `AGENTS.md` its `skill-count-pointer`, which makes the Tier 3 lists above **machine-checked by set equality, not by count**: `pnpm harness:manifest:check` fails on a skill present in one and absent in the other, and on a readiness count that has drifted. Adding, renaming, or removing a skill is therefore an edit to this locked file, and the order is `pnpm skills:sync` -> `pnpm harness:manifest:write` -> `pnpm harness:manifest:check`. Never hand-type a checksum, and never treat `--write` as a way to quiet a gate — it refuses while any other problem is outstanding (`docs/agent-lessons.md`).
+
 ## Current Phase
 
-Phase 0 - production fix and foundation hardening. **Milestone: PR #148 (commit `d0e4af88`); merged range #1 -> #148.**
+Phase 0 - production fix and foundation hardening. **Milestone: PR #227 (commit `1c5813b4`).**
 
-Closed so far: the customer and worker workflow spine runs end to end — auth (#143), six-service Case Work (#110), Kael agentic production flow (#142), job lifecycle, matching, chat/evidence, scope change, completion/review, dispute, evidence-gated learning (#124). The Edge backend is layered (#144) and gated by a test suite (#145). #146-#148 were governance, workspace, and cleanup work — they moved no capability row.
+Phase 0 closes on the first real transaction, and no money has moved yet. That single fact, not a feature count, is what the phase is measured against.
 
-Still open before Phase 0 can close: **no real transaction has been processed** — payment rails (#135 VietQR, #139 cash) are code-and-tests only; admin controls cover Kael learning candidates only (#29); Expo SDK 57 (#132) has never run on a real device; no TestFlight or Play internal validation is recorded.
+Which capability runs, which is partial, and what blocks next lives in `governance/STRUCTURES.md` §1.5 and nowhere else — a status repeated in two places drifts in two places (`governance/STRUCTURES.md` §4). This section is a pointer, not a second status board.
 
-Per-capability status with PR anchors: `governance/STRUCTURES.md` §1.5. Refresh it with `git log d0e4af88..HEAD --pretty="%s" | grep -E "^#"`.
+§1.5 carries its own milestone line and is refreshed on its own cadence. When that line names an older PR than the milestone above, its capability rows are lagging: refresh them before relying on one, with `git log <§1.5 milestone>..HEAD --pretty="%s" | grep -E "^#"`.
 
 ## Core Principles
 

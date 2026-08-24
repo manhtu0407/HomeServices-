@@ -84,6 +84,7 @@ These fire on state, not on where the code lives, so they are independent of dom
 | a decision that needs evidence from outside the repository | `kael-research` |
 | a question better answered by hand before production code | `kael-prototype` |
 | destination clear, path unclear, **across several sessions** | `kael-wayfinder` — hands back to this router when the map exists |
+| a change is going out — push, pull request, or handoff as delivered | `kael-ship` — `pnpm ship:check` for the machine half, then the judgment it cannot make |
 | session closing, context about to compact, or handing between agents | `kael-handoff` and `source-command-kael-mem` |
 
 ## Always-on — exempt from routing

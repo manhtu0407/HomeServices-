@@ -23,7 +23,7 @@ Locked docs (`CLAUDE.md`, `governance/critical.md`, `governance/RULES.md`, `gove
 
 ## What to check (summary)
 - **Drift**: file paths that no longer exist; `§N` cross-references that do not resolve; protocols referenced but missing.
-- **Scope**: any service beyond electrical / plumbing / cleaning; any money/booking/scope-change path missing explicit-confirmation language.
+- **Scope**: any service outside the active set in `governance/RULES.md` #6; any money/booking/scope-change path missing explicit-confirmation language.
 - **Duplication**: lifecycle / runtime / scope blocks re-emerging verbatim outside their canonical home.
 - **Skill <-> protocol coherence**: every protocol-wrapper kael-* skill points to a real `governance/protocols/` section and its output format still matches; standalone audit/context/design skills may point to `references/` or their own workflow.
 - **Context economy**: always-loaded files (CLAUDE.md, governance/critical.md core) stay lean; protocol bodies do not creep back into the core.

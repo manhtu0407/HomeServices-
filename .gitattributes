@@ -1,2 +1,6 @@
 packages/shared/src/types/database/** linguist-generated=true -diff
 docs/design-research/corpus/** text eol=lf
+*.md text eol=lf
+*.mjs text eol=lf
+*.cjs text eol=lf
+*.js text eol=lf

@@ -138,11 +138,12 @@ Kael is not
 
 ## 1.5 Where The Product Actually Is
 
-**Milestone: PR #148 (commit `d0e4af88`). Merged range: #1 -> #148.**
+**Milestone: PR #227 (commit `1c5813b4`). Merged range: #1 -> #227.**
 
-§1 above and §5–§21 below describe the intended product. This section describes what exists today. When the two disagree, this section is the fact and the rest is the target.
+§1 above and §5–§22 below describe the intended product. This section describes what exists today. When the two disagree, this section is the fact and the rest is the target.
 
-Status vocabulary — every claim is anchored to the PR that delivered it, so `git log --pretty="%s" | grep "#<n>"` verifies it:
+Status vocabulary — every claim is anchored to the PR that delivered it, so `git log --pretty="%s" | grep "#<n>"` verifies it. That check needs **full history**: a shallow clone (CI, and the remote agent environments) truncates the log, and every anchor older than the graft point reads as unresolvable. Run `git rev-parse --is-shallow-repository` before concluding an anchor is dead — deleting a valid one because the clone could not see it is the failure this note exists to prevent.
+
 
 ```text
 RUNNING (#n)              - code exists and is covered by tests or a recorded run
@@ -152,27 +153,31 @@ NOT BUILT                 - blueprint only, no runtime code
 
 ### 1.5.1 Surface inventory
 
-Every number below carries the command that regenerates it. **A count with no command is not evidence.** This rule exists because the previous inventory claimed 97 `mobile-api` route kinds while the tree held 114, and nobody could tell which was wrong.
+Every number below carries the command that regenerates it. **A count with no command is not evidence.** This rule exists because the previous inventory claimed 97 `mobile-api` route kinds while the tree held 114, and nobody could tell which was wrong. It applies to the command too: a command that cannot reproduce the number beside it is the same defect wearing evidence, which is how the SQL row below sat wrong for a full milestone.
 
 | Surface | Count | Regenerate with |
 |---|---|---|
-| Expo Router route files | 20 | `git ls-files apps/mobile/app \| grep -v __tests__ \| wc -l` |
-| `mobile-api` route kinds | 114 | `grep -rhoE 'kind: "[^"]+"' supabase/functions/mobile-api/_shared/http/routes \| sort -u \| wc -l` |
-| ...of which dispatched | 113 | same over `_shared/http/dispatch` with `case "[^"]+"`. The difference is `kael.charter`, the one public route, handled in `routes/index.ts` |
-| Edge `_shared` source files | 313 | `git ls-files supabase/functions/mobile-api/_shared \| wc -l` — split http 41 / domains 126 / kael 120 / platform 21 (§4.5) |
-| Deployable Edge functions | 5 | `git ls-files supabase/functions \| awk -F/ 'NF>2 && $3!="_shared"{print $3}' \| sort -u \| wc -l` |
-| Migrations | 208 | `git ls-files 'supabase/migrations/*.sql' \| wc -l` |
-| `public` tables / views / functions | 124 / 9 / 156 | the `--count` command below |
-| Test suites (api / mobile / shared / SQL) | 278 / 106 / 24 / 23 | `git ls-files <package> \| grep -cE '[-.]test\.tsx?$'` |
+| Expo Router route files | 31 | `git ls-files apps/mobile/app \| grep -v __tests__ \| wc -l` |
+| `mobile-api` route kinds | 173 | `grep -rhoE 'kind: "[^"]+"' supabase/functions/mobile-api/_shared/http/routes \| sort -u \| wc -l` |
+| ...of which dispatched | 171 | same over `_shared/http/dispatch` with `case "[^"]+"` |
+| Edge `_shared` source files | 383 | `git ls-files supabase/functions/mobile-api/_shared \| wc -l` — split http 49 / domains 168 / kael 135 / platform 26 (§4.5) |
+| Deployable Edge functions | 7 | `git ls-files supabase/functions \| awk -F/ 'NF>2 && $3!="_shared"{print $3}' \| sort -u \| wc -l` |
+| Migrations | 287 | `git ls-files 'supabase/migrations/*.sql' \| wc -l` |
+| `public` tables / views / functions | 129 / 9 / 183 | the `--count` command below |
+| Test suites (api / mobile / shared) | 323 / 145 / 28 | `git ls-files <package> \| grep -cE '[-.]test\.tsx?$'` |
+| SQL verification tests | 54 | `git ls-files 'supabase/tests/*.sql' \| wc -l` |
 
 ```bash
 node scripts/split-database-types.mjs --count
 ```
 
-Two counting traps, both of which have produced wrong numbers here before:
+The two undispatched route kinds are the public ones, `kael.charter` and `harness.health` — both declared `public: true` and handled in `routes/index.ts` rather than through `dispatch`. `harness.health` needs no auth and answers deployment identity, which is what makes it usable as a parity probe.
 
-- Mobile suites use **two** naming conventions — `*-test.ts(x)` (103) and `*.test.ts` (3, under `apps/mobile/lib/__tests__`). Counting only the `.test.` form returns 3 and makes the app look untested; hence the `[-.]` in the command above.
-- The generated artifact declares members in three shapes — `name: {` over several lines, `name: { Args: …; Returns: … }` on one line, and `name:` followed by a multi-line union (the three `*_kael_ai_spend` RPCs). A regex keyed on `name: {` silently drops the last two, and one keyed on the file as a whole also picks up `graphql` from the separate `graphql_public` schema. The 156 above counts by brace depth inside `public` only, so it excludes `graphql` and includes all three shapes.
+Three counting traps, all of which have produced wrong numbers here before:
+
+- Mobile suites use **two** naming conventions — `*-test.ts(x)` and `*.test.ts` (under `apps/mobile/lib/__tests__`). Counting only the `.test.` form makes the app look untested; hence the `[-.]` in the command above.
+- SQL verification tests are **not** `*.test.ts` and never were. They are `supabase/tests/*.sql`, so the JS pattern returns 1 and hides 53 of them. They get their own row and their own command.
+- The generated artifact declares members in three shapes — `name: {` over several lines, `name: { Args: …; Returns: … }` on one line, and `name:` followed by a multi-line union (the three `*_kael_ai_spend` RPCs). A regex keyed on `name: {` silently drops the last two, and one keyed on the file as a whole also picks up `graphql` from the separate `graphql_public` schema. The function count above counts by brace depth inside `public` only, so it excludes `graphql` and includes all three shapes.
 
 ### 1.5.2 Capability status
 
@@ -180,23 +185,23 @@ Two counting traps, both of which have produced wrong numbers here before:
 
 | Capability | Status | Lives in |
 |---|---|---|
-| Auth, profile, account lifecycle | RUNNING (#10 foundation, #126 simplified registration, #143 auth hardening, #139 account deletion) | Supabase Auth + `domains/customer/**` (9), `domains/worker/registration.ts` |
-| Six-service taxonomy + Basic Intake | RUNNING (#110 six-service Case Work foundation) | `domains/catalog/catalog.ts`, `packages/shared/src/service-intake/**` |
-| Kael Case Work pipeline (intent -> knowledge -> baseline -> synthesis) | RUNNING (#37 pipeline/orchestrator, #84 agentic harness, #142 agentic production flow, #144 layer split) | `kael/pipeline/**` (16), `kael/tools/**` (9), `kael/agents/**` (20) |
-| Kael provider layer: routing, circuit breaker, spend budget, batching | RUNNING (#37 `routing.config.ts`, #138 role-based subfolders) | `kael/kael-providers/**` (8), `kael/kael-guardrails/**` (16) |
-| Job lifecycle + state machine | RUNNING (#7 workflow alignment) | `domains/job/**` (34), `platform/lifecycle.ts`, `workflow-orchestrator.ts` |
-| Matching + broadcast (atomic accept, retry claims) | RUNNING (#7, #144) | `domains/matching/**` (12) |
-| Chat, media evidence, realtime | RUNNING (#29 realtime) | `domains/job/{chat,media,evidence-refs,incident}*.ts`; `chat_messages`, `job_media_assets`, `evidence_snapshots` |
-| Scope change (request -> command -> effect) | RUNNING (#7) | `domains/job/scope-change/**` (9) |
-| Completion + review | RUNNING | `domains/payment/completion-review.ts`, `reviews` |
+| Auth, profile, account lifecycle | RUNNING (#10 foundation, #126 simplified registration, #143 auth hardening, #139 account deletion, #224 auth shell refresh hardening) | Supabase Auth + `domains/customer/**` (9), `domains/worker/registration.ts` |
+| Six-service taxonomy + Basic Intake | RUNNING (#110 six-service Case Work foundation) | `domains/catalog/catalog.ts` (1), `packages/shared/src/service-intake/**` (4) |
+| Kael Case Work pipeline (intent -> knowledge -> baseline -> synthesis) | RUNNING (#37 pipeline/orchestrator, #84 agentic harness, #142 agentic production flow, #144 layer split, #198 evidence-backed agentic job flow) | `kael/pipeline/**` (16), `kael/tools/**` (9), `kael/agents/**` (20) |
+| Kael provider layer: routing, circuit breaker, spend budget, batching | RUNNING (#37 `routing.config.ts`, #138 role-based subfolders, #214 identity-only provenance per model call) | `kael/kael-providers/**` (10), `kael/kael-guardrails/**` (22) |
+| Job lifecycle + state machine | RUNNING (#7 workflow alignment) | `domains/job/**` (41), `platform/lifecycle.ts`, `workflow-orchestrator.ts` |
+| Matching + broadcast (atomic accept, retry claims) | RUNNING (#7, #144) | `domains/matching/**` (20) + the `kael-matching-maintainer` Edge function |
+| Chat, media evidence, realtime | RUNNING (#29 realtime) | `domains/job/{chat,media,evidence-refs,incident}*.ts` (14); `chat_messages`, `job_media_assets`, `evidence_snapshots` |
+| Scope change (request -> command -> effect) | RUNNING (#7) | `domains/job/scope-change/**` (13) |
+| Completion + review | RUNNING (#197 finance and review workflows) | `domains/payment/completion-review.ts`, `reviews` |
 | Dispute (open, counter-statement, admin decision) | RUNNING (#37) | `domains/dispute/dispute.ts` — one file |
 | Kael evidence-gated learning | RUNNING (#7 candidate tables, #124 loop learning) | `kael/learning/**` (32) + the `kael-learning-monitor` Edge function |
 | Notifications + push tokens | RUNNING | `domains/notification/**` (4), `device_push_tokens` |
-| Worker self-service: register, verification upload, availability | PARTIAL (#109 availability guard) — admin approval happens outside the app | `domains/worker/**` (18) |
-| Admin controls | PARTIAL (#29 dashboard) — the 8 `admin.*` route kinds cover Kael learning candidates, A/B price synthesis, and market-cache invalidation only. Worker approval, job review, price-baseline management, dispute review, and taxonomy management from §3 are NOT BUILT | `domains/admin/learning.ts` — **one file**, which is why this row is PARTIAL |
-| Payments | PARTIAL (#135 SePay VietQR intent + webhook, #139 cash confirm + commission ledger) — no real transaction has been processed, and the status table in `platform/lifecycle.ts` still allows `confirmed_by_customer -> reviewed`, so the Phase-0 payment skip is **not closed** even though rails exist. The gate is the composition of that table with `WORKFLOW_EVENT_TRANSITIONS` in `workflow-orchestrator.ts`, which restricts the skip to `kael_decided_dispute`; reason about it from both tables, never `lifecycle.ts` alone | `domains/payment/**` (5: `cash`, `sepay-vietqr`, `commission`, `completion-review`, `staging`) + the `sepay-webhook` Edge function |
-| Worker map | NOT BUILT as a real map. #66 shipped `map-proxy-spike` and it is still a spike; `apps/mobile` has no map SDK dependency, so the worker map surfaces are SVG | `supabase/functions/map-proxy-spike` |
-| Actor stats / gamification | PARTIAL — **write-only**. The production cron `recompute-actor-stats-daily` does run, so the tables are populated; the defect is that **no `apps/mobile` or `supabase/functions` source reads them**, so nothing surfaces | `20260619151536_worker_customer_stats.sql` (#70); zero readers |
+| Worker self-service: register, verification upload, availability | RUNNING (#109 availability guard, #186 worker payout controls, #190 production worker access) — admin approval now happens **inside** the app through `admin.workerApplications.*`, which retires the previous "approval happens outside the app" gap | `domains/worker/**` (21) |
+| Admin controls | PARTIAL (#186 admin operations + worker payout controls, #188 admin controls, payouts, preview safety, #190 production worker access) — the surface grew from 8 `admin.*` route kinds in one file to **53 across 16**, of which **25 mutate and 28 are read-only**. Against §3's thirteen duties: **8 RUNNING** (approve workers; inspect AI logs and failures; roll back learned Kael rules; finance reporting and tax policy; payout methods and withdrawals; reconciliation and transaction ledger; sub-admin provisioning, nomination and access; operations dashboard and actor lookup). **2 read-only** — manage price baselines and review support/disputes are `GET` only (`admin.governance.priceBaselines`, `admin.governance.disputes`), and the dispute decision path lives in `domains/dispute/dispute.ts`, not an `admin.*` route. **3 with zero matching routes** — review jobs, monitor scope changes, manage service taxonomy. The read-only two are graded down because their duty verb is *manage* / *review* while only `GET` exists; the operations-dashboard and actor-lookup duties are read verbs, so `GET` satisfies them and they count as RUNNING | `domains/admin/**` (16) |
+| Payments | PARTIAL (#135 SePay VietQR intent + webhook, #139 cash confirm + commission ledger, #192 protected direct payment eligibility, #197 finance and review workflows) — no real transaction has been processed, and the status table in `platform/lifecycle.ts` still allows `confirmed_by_customer -> reviewed` (`:23`), so the Phase-0 payment skip is **not closed** even though rails exist. The gate is the composition of that table with `WORKFLOW_EVENT_TRANSITIONS` in `workflow-orchestrator.ts` (`:152`), which restricts the skip to `kael_decided_dispute`; reason about it from both tables, never `lifecycle.ts` alone | `domains/payment/**` (7: `cash`, `sepay-vietqr`, `commission`, `completion-review`, `direct-payment-availability`, `manual-bank`, `staging`) + the `sepay-webhook` and `payment-maintainer` Edge functions |
+| Worker map | PARTIAL (#215) — `apps/mobile` now depends on `@vietmap/vietmap-gl-react-native` 3.0.0 and renders real map surfaces (worker home stage, route, service area), which retires the earlier "no map SDK, so the surfaces are SVG" claim. Still PARTIAL: one surface is still named `worker-interactive-route-map-prototype.tsx`, and `map-proxy-spike` remains a spike that is nonetheless deployed to production | `apps/mobile/components/worker/**` (10 files reference the SDK) + `supabase/functions/map-proxy-spike` |
+| Actor stats / gamification | PARTIAL — **write-only**, unchanged since the last milestone. The production cron `recompute-actor-stats-daily` does run, so the tables are populated; the defect is that **no `apps/mobile` or `supabase/functions` source reads them**, re-verified at this milestone by grepping the three table names across both trees and finding zero hits | `20260619151536_worker_customer_stats.sql` (#70); zero readers |
 | Consumer web app | NOT BUILT — deliberately out of scope per §1 |  |
 
 ### 1.5.3 Frontier
@@ -205,8 +210,9 @@ The PARTIAL rows are where the next backend work belongs; the RUNNING rows are n
 
 ```text
 1. Payments      - rails exist, no money has moved, and the lifecycle payment skip is still open
-2. Admin         - 1 of 6 §3 duties shipped; worker approval still happens outside the app
-3. Device proof  - Expo SDK 57 has never run on real hardware from this repo
+2. Device proof  - Expo SDK 57 has never run on real hardware from this repo, and the current
+                   release decision is NO-GO
+3. Admin         - of §3's 13 duties: 8 running, 2 read-only, 3 with no route at all
 4. Actor stats   - written daily, read nowhere; either wire a reader or stop writing
 ```
 
@@ -215,11 +221,18 @@ Known-unverified at this milestone. State these plainly; do not let a green JS g
 ```text
 Expo SDK 54 -> 57 (#132)  - JS gates green (type-check + mobile suites). Never run on a
                             real device or simulator from this repo.
-Payment rails (#135,#139) - code and tests only. No money has moved.
-Store readiness           - no TestFlight or Play internal validation recorded.
+Payment rails             - code and tests only. "No money has moved" is a business fact this
+                            repository cannot prove in either direction; it is carried from
+                            the milestone and only Tu can retire it, never a gate.
+Store readiness           - a build reached Apple App Review and was REJECTED; iOS Builds 43
+                            and 44 followed as hardening work. The recorded decision is
+                            NO-GO (docs/test-logs/2026-08-22_build44-apple-review-hardening.md):
+                            Build 44 not yet created or processed, target deployment proof
+                            outstanding, native iPhone/iPad matrix pending. No TestFlight or
+                            Play internal validation is recorded.
 ```
 
-Refreshing this section: run `git log d0e4af88..HEAD --pretty="%s" | grep -E "^#"` for the new PRs, re-run the §1.5.1 commands, re-check the rows those PRs touch, and move the milestone line to the newest PR.
+Refreshing this section: run `git log 1c5813b4..HEAD --pretty="%s" | grep -E "^#|^Merge pull request #"` for the new PRs, re-run the §1.5.1 commands, re-check the rows those PRs touch, and move the milestone line to the newest PR. The `^Merge pull request #` half is not optional — at the previous milestone 12 of 40 PRs merged in that form, `#215` among them, and a `^#`-only grep hid every one.
 
 ---
 
@@ -335,7 +348,14 @@ Admin panel
 |- review support/disputes
 |- manage service taxonomy
 |- view and roll back learned Kael rules
+|- run finance reporting and the tax-policy lifecycle (draft -> approve -> retire)
+|- decide worker payout methods and resolve withdrawal requests
+|- reconcile payments and inspect the transaction ledger
+|- provision sub-admins, nominate managers, and grant or revoke their access
+|- read the operations dashboard and look up any actor
 ```
+
+Every money-moving admin action — a payout-method decision, a withdrawal resolution, a payment reconciliation, a tax-policy approval or retirement — is an explicit, logged decision taken by a named admin actor against a specific record. None of it is automatic, none of it is batched behind a single confirmation, and none of it is Kael's to take: Kael may surface and recommend, an admin decides. Where each of these duties actually stands is §1.5 and nowhere else.
 
 ### Kael
 
