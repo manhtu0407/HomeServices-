@@ -198,7 +198,7 @@ Three counting traps, all of which have produced wrong numbers here before:
 | Kael evidence-gated learning | RUNNING (#7 candidate tables, #124 loop learning) | `kael/learning/**` (32) + the `kael-learning-monitor` Edge function |
 | Notifications + push tokens | RUNNING | `domains/notification/**` (4), `device_push_tokens` |
 | Worker self-service: register, verification upload, availability | RUNNING (#109 availability guard, #186 worker payout controls, #190 production worker access) — admin approval now happens **inside** the app through `admin.workerApplications.*`, which retires the previous "approval happens outside the app" gap | `domains/worker/**` (21) |
-| Admin controls | PARTIAL (#186 admin operations + worker payout controls, #188 admin controls, payouts, preview safety, #190 production worker access) — the surface grew from 8 `admin.*` route kinds in one file to **53 across 16**. Against §3's eight duties: approve workers, inspect AI logs and failures, and roll back learned Kael rules are RUNNING; **manage price baselines and review support/disputes are read-only** (`admin.governance.priceBaselines` and `admin.governance.disputes` are `GET`, and the dispute decision path lives in `domains/dispute/dispute.ts`, not an `admin.*` route); review jobs, monitor scope changes, and manage service taxonomy have **zero** matching routes. Separately, roughly 28 finance / payout / sub-admin / withdrawal / reconciliation kinds answer to no §3 duty at all — on that part §3 is the document that is behind, not this row | `domains/admin/**` (16) |
+| Admin controls | PARTIAL (#186 admin operations + worker payout controls, #188 admin controls, payouts, preview safety, #190 production worker access) — the surface grew from 8 `admin.*` route kinds in one file to **53 across 16**, of which **25 mutate and 28 are read-only**. Against §3's thirteen duties: **8 RUNNING** (approve workers; inspect AI logs and failures; roll back learned Kael rules; finance reporting and tax policy; payout methods and withdrawals; reconciliation and transaction ledger; sub-admin provisioning, nomination and access; operations dashboard and actor lookup). **2 read-only** — manage price baselines and review support/disputes are `GET` only (`admin.governance.priceBaselines`, `admin.governance.disputes`), and the dispute decision path lives in `domains/dispute/dispute.ts`, not an `admin.*` route. **3 with zero matching routes** — review jobs, monitor scope changes, manage service taxonomy. The read-only two are graded down because their duty verb is *manage* / *review* while only `GET` exists; the operations-dashboard and actor-lookup duties are read verbs, so `GET` satisfies them and they count as RUNNING | `domains/admin/**` (16) |
 | Payments | PARTIAL (#135 SePay VietQR intent + webhook, #139 cash confirm + commission ledger, #192 protected direct payment eligibility, #197 finance and review workflows) — no real transaction has been processed, and the status table in `platform/lifecycle.ts` still allows `confirmed_by_customer -> reviewed` (`:23`), so the Phase-0 payment skip is **not closed** even though rails exist. The gate is the composition of that table with `WORKFLOW_EVENT_TRANSITIONS` in `workflow-orchestrator.ts` (`:152`), which restricts the skip to `kael_decided_dispute`; reason about it from both tables, never `lifecycle.ts` alone | `domains/payment/**` (7: `cash`, `sepay-vietqr`, `commission`, `completion-review`, `direct-payment-availability`, `manual-bank`, `staging`) + the `sepay-webhook` and `payment-maintainer` Edge functions |
 | Worker map | PARTIAL (#215) — `apps/mobile` now depends on `@vietmap/vietmap-gl-react-native` 3.0.0 and renders real map surfaces (worker home stage, route, service area), which retires the earlier "no map SDK, so the surfaces are SVG" claim. Still PARTIAL: one surface is still named `worker-interactive-route-map-prototype.tsx`, and `map-proxy-spike` remains a spike that is nonetheless deployed to production | `apps/mobile/components/worker/**` (10 files reference the SDK) + `supabase/functions/map-proxy-spike` |
 | Actor stats / gamification | PARTIAL — **write-only**, unchanged since the last milestone. The production cron `recompute-actor-stats-daily` does run, so the tables are populated; the defect is that **no `apps/mobile` or `supabase/functions` source reads them**, re-verified at this milestone by grepping the three table names across both trees and finding zero hits | `20260619151536_worker_customer_stats.sql` (#70); zero readers |
@@ -212,7 +212,7 @@ The PARTIAL rows are where the next backend work belongs; the RUNNING rows are n
 1. Payments      - rails exist, no money has moved, and the lifecycle payment skip is still open
 2. Device proof  - Expo SDK 57 has never run on real hardware from this repo, and the current
                    release decision is NO-GO
-3. Admin         - of §3's 8 duties: 3 running, 2 read-only, 3 with no route at all
+3. Admin         - of §3's 13 duties: 8 running, 2 read-only, 3 with no route at all
 4. Actor stats   - written daily, read nowhere; either wire a reader or stop writing
 ```
 
@@ -348,7 +348,14 @@ Admin panel
 |- review support/disputes
 |- manage service taxonomy
 |- view and roll back learned Kael rules
+|- run finance reporting and the tax-policy lifecycle (draft -> approve -> retire)
+|- decide worker payout methods and resolve withdrawal requests
+|- reconcile payments and inspect the transaction ledger
+|- provision sub-admins, nominate managers, and grant or revoke their access
+|- read the operations dashboard and look up any actor
 ```
+
+Every money-moving admin action — a payout-method decision, a withdrawal resolution, a payment reconciliation, a tax-policy approval or retirement — is an explicit, logged decision taken by a named admin actor against a specific record. None of it is automatic, none of it is batched behind a single confirmation, and none of it is Kael's to take: Kael may surface and recommend, an admin decides. Where each of these duties actually stands is §1.5 and nowhere else.
 
 ### Kael
 
