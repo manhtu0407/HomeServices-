@@ -75,7 +75,7 @@
       }
     ]
   },
-  "migrationsSha256": "16c39193f5bacdd0753603bcdc44857ce79b692bfbcec52506736775eef72276",
+  "migrationsSha256": "9aa5026067c0a6cbdb351f822f29f5ad76423c6296b5616219da002a059ecb4b",
   "databaseTypes": {
     "file": "packages/shared/src/types/database",
     "sha256": "1b3543ba569f8141c3c7d2057e48aba3053644b3259f0d748ffd11f4578dd101"
@@ -2234,8 +2234,8 @@
       "version": "20260823173000",
       "name": "sql_volatility_contracts",
       "file": "supabase/migrations/20260823173000_sql_volatility_contracts.sql",
-      "sha256": "a1eff324e6f2ecc45220f4475b15557640f1c518c8e6bd41ad25690dbfe3e773",
-      "bytes": 929
+      "sha256": "ffe4cfc25176f61a91b2717d1b11bad271180075176e13a861e9793efd9a7a14",
+      "bytes": 831
     },
     {
       "version": "20260823174000",
