@@ -634,11 +634,13 @@ export type WorkerTables = {
           created_at: string
           id: string
           is_default: boolean
+          last_client_request_id: string | null
           review_reason: string | null
           reviewed_at: string | null
           reviewed_by: string | null
           status: string
           updated_at: string
+          version: number
           worker_id: string
         }
         Insert: {
@@ -650,11 +652,13 @@ export type WorkerTables = {
           created_at?: string
           id?: string
           is_default?: boolean
+          last_client_request_id?: string | null
           review_reason?: string | null
           reviewed_at?: string | null
           reviewed_by?: string | null
           status?: string
           updated_at?: string
+          version?: number
           worker_id: string
         }
         Update: {
@@ -666,11 +670,13 @@ export type WorkerTables = {
           created_at?: string
           id?: string
           is_default?: boolean
+          last_client_request_id?: string | null
           review_reason?: string | null
           reviewed_at?: string | null
           reviewed_by?: string | null
           status?: string
           updated_at?: string
+          version?: number
           worker_id?: string
         }
         Relationships: [
@@ -954,6 +960,7 @@ export type WorkerTables = {
           created_at: string
           eligible_at: string
           id: string
+          last_client_request_id: string | null
           payout_method_id: string
           processed_at: string | null
           processed_by: string | null
@@ -963,7 +970,10 @@ export type WorkerTables = {
           resolution_reason: string | null
           status: string
           transfer_reference: string | null
+          transfer_reference_hash: string | null
+          transfer_reference_suffix: string | null
           updated_at: string
+          version: number
           worker_id: string
         }
         Insert: {
@@ -978,6 +988,7 @@ export type WorkerTables = {
           created_at?: string
           eligible_at?: string
           id?: string
+          last_client_request_id?: string | null
           payout_method_id: string
           processed_at?: string | null
           processed_by?: string | null
@@ -987,7 +998,10 @@ export type WorkerTables = {
           resolution_reason?: string | null
           status?: string
           transfer_reference?: string | null
+          transfer_reference_hash?: string | null
+          transfer_reference_suffix?: string | null
           updated_at?: string
+          version?: number
           worker_id: string
         }
         Update: {
@@ -1002,6 +1016,7 @@ export type WorkerTables = {
           created_at?: string
           eligible_at?: string
           id?: string
+          last_client_request_id?: string | null
           payout_method_id?: string
           processed_at?: string | null
           processed_by?: string | null
@@ -1011,7 +1026,10 @@ export type WorkerTables = {
           resolution_reason?: string | null
           status?: string
           transfer_reference?: string | null
+          transfer_reference_hash?: string | null
+          transfer_reference_suffix?: string | null
           updated_at?: string
+          version?: number
           worker_id?: string
         }
         Relationships: [

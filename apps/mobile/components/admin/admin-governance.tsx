@@ -1,12 +1,10 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native'
-import { useFocusEffect } from 'expo-router'
+import { useCallback, useEffect, useMemo, useReducer, useRef } from 'react'
+import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native'
 
-import { color, radius, shadow, spacing, typography } from '@/design/theme'
+import { color, radius, spacing, typography } from '@/design/theme'
 import type {
   AdminViewActor,
   AdminViewAiCostSummary,
-  AdminViewDisputeSummary,
   AdminViewLearningRuleSummary,
   AdminViewPriceBaselineSummary,
 } from '@/lib/api-types/admin'
@@ -15,24 +13,21 @@ import { adminControlService } from '@/lib/services'
 
 import { AdminPagination } from './admin-pagination'
 import { AdminTabNavigation } from './admin-tab-navigation'
+import { AdminText } from './admin-text'
 
-type GovernancePanel = 'disputes' | 'prices' | 'kael'
+export type AdminGovernancePanelId = 'prices' | 'kael'
 
 const PAGE_SIZE = 8
-const REFRESH_INTERVAL_MS = 30_000
 
 const copy = {
   vi: {
     aiCosts: 'Chi phí và độ ổn định Kael',
     aiEmpty: 'Chưa có bản ghi chi phí Kael.',
     calls: 'Lần gọi',
-    disputes: 'Tranh chấp',
-    disputesEmpty: 'Chưa có tranh chấp nào.',
     error: 'Không thể tải dữ liệu giám sát. Hãy thử lại.',
     evidence: 'Bằng chứng',
     failed: 'Lỗi',
     fallback: 'Dự phòng',
-    generated: 'Dữ liệu tự động cập nhật khi khu vực này đang mở.',
     kael: 'Giám sát Kael',
     loading: 'Đang tải giám sát hệ thống...',
     ownerOnly: 'Khu vực giám sát hệ thống chỉ dành cho quản trị viên chính.',
@@ -54,13 +49,10 @@ const copy = {
     aiCosts: 'Kael cost and reliability',
     aiEmpty: 'No Kael cost record yet.',
     calls: 'Calls',
-    disputes: 'Disputes',
-    disputesEmpty: 'There are no disputes.',
     error: 'Unable to load monitoring data. Please try again.',
     evidence: 'Evidence',
     failed: 'Failures',
     fallback: 'Fallbacks',
-    generated: 'This data refreshes while the section is open.',
     kael: 'Kael monitoring',
     loading: 'Loading system monitoring...',
     ownerOnly: 'System monitoring is available only to the Owner Admin.',
@@ -80,124 +72,179 @@ const copy = {
   },
 } as const
 
-export function AdminGovernancePanel({ actor, language }: { actor: AdminViewActor | null; language: AppLanguage }) {
+type GovernanceState = {
+  activePanel: AdminGovernancePanelId
+  costHasMore: boolean
+  costPage: number
+  costs: AdminViewAiCostSummary[]
+  costTotal: number
+  error: string | null
+  loading: boolean
+  priceHasMore: boolean
+  pricePage: number
+  prices: AdminViewPriceBaselineSummary[]
+  priceTotal: number
+  ruleHasMore: boolean
+  rulePage: number
+  rules: AdminViewLearningRuleSummary[]
+  ruleTotal: number
+}
+
+function initialGovernanceState(activePanel: AdminGovernancePanelId): GovernanceState {
+  return {
+    activePanel,
+    costHasMore: false,
+    costPage: 1,
+    costs: [],
+    costTotal: 0,
+    error: null,
+    loading: true,
+    priceHasMore: false,
+    pricePage: 1,
+    prices: [],
+    priceTotal: 0,
+    ruleHasMore: false,
+    rulePage: 1,
+    rules: [],
+    ruleTotal: 0,
+  }
+}
+
+function governanceReducer(state: GovernanceState, patch: Partial<GovernanceState>) {
+  return { ...state, ...patch }
+}
+
+export function AdminGovernancePanel({ actor, initialPanel = 'prices', language }: {
+  actor: AdminViewActor | null
+  initialPanel?: AdminGovernancePanelId
+  language: AppLanguage
+}) {
   const labels = copy[language]
-  const [activePanel, setActivePanel] = useState<GovernancePanel>('disputes')
-  const [disputePage, setDisputePage] = useState(1)
-  const [pricePage, setPricePage] = useState(1)
-  const [costPage, setCostPage] = useState(1)
-  const [rulePage, setRulePage] = useState(1)
-  const [disputes, setDisputes] = useState<AdminViewDisputeSummary[]>([])
-  const [prices, setPrices] = useState<AdminViewPriceBaselineSummary[]>([])
-  const [costs, setCosts] = useState<AdminViewAiCostSummary[]>([])
-  const [rules, setRules] = useState<AdminViewLearningRuleSummary[]>([])
-  const [disputeTotal, setDisputeTotal] = useState(0)
-  const [priceTotal, setPriceTotal] = useState(0)
-  const [costTotal, setCostTotal] = useState(0)
-  const [ruleTotal, setRuleTotal] = useState(0)
-  const [disputeHasMore, setDisputeHasMore] = useState(false)
-  const [priceHasMore, setPriceHasMore] = useState(false)
-  const [costHasMore, setCostHasMore] = useState(false)
-  const [ruleHasMore, setRuleHasMore] = useState(false)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const hasLoadedRef = useRef(false)
-  const backgroundLoadInFlightRef = useRef(false)
+  const [state, patch] = useReducer(governanceReducer, initialPanel, initialGovernanceState)
+  const {
+    activePanel,
+    costHasMore,
+    costPage,
+    costs,
+    costTotal,
+    error,
+    loading,
+    priceHasMore,
+    pricePage,
+    prices,
+    priceTotal,
+    ruleHasMore,
+    rulePage,
+    rules,
+    ruleTotal,
+  } = state
+  const loadedPanels = useMemo(() => new Set<AdminGovernancePanelId>(), [])
+  const backgroundLoads = useMemo(() => new Set<AdminGovernancePanelId>(), [])
+  const loadRequestIds = useMemo<Partial<Record<AdminGovernancePanelId, number>>>(() => ({}), [])
+  const activePanelRef = useRef(activePanel)
+
+  useEffect(() => {
+    activePanelRef.current = activePanel
+  }, [activePanel])
 
   const load = useCallback(async ({ blocking }: { blocking?: boolean } = {}) => {
     if (actor?.access_level !== 'owner') {
-      setLoading(false)
-      hasLoadedRef.current = true
+      patch({ loading: false })
       return
     }
-    const shouldBlock = blocking ?? !hasLoadedRef.current
-    if (!shouldBlock && backgroundLoadInFlightRef.current) return
-    if (!shouldBlock) backgroundLoadInFlightRef.current = true
-    if (shouldBlock) setLoading(true)
-    setError(null)
+    const requestedPanel = activePanel
+    const shouldBlock = blocking ?? !loadedPanels.has(requestedPanel)
+    if (!shouldBlock && backgroundLoads.has(requestedPanel)) return
+    if (!shouldBlock) backgroundLoads.add(requestedPanel)
+    const requestId = (loadRequestIds[requestedPanel] ?? 0) + 1
+    loadRequestIds[requestedPanel] = requestId
+    patch({ error: null, ...(shouldBlock ? { loading: true } : {}) })
     try {
-      if (activePanel === 'disputes') {
-        const result = await adminControlService.listDisputes({ limit: PAGE_SIZE, offset: (disputePage - 1) * PAGE_SIZE })
-        if (result.success) {
-          setDisputes(result.data.disputes)
-          setDisputeTotal(result.data.total_count)
-          setDisputeHasMore(result.data.has_more)
-        } else setError(result.error)
-      } else if (activePanel === 'prices') {
+      if (requestedPanel === 'prices') {
         const result = await adminControlService.listPriceBaselines({ limit: PAGE_SIZE, offset: (pricePage - 1) * PAGE_SIZE })
-        if (result.success) {
-          setPrices(result.data.price_baselines)
-          setPriceTotal(result.data.total_count)
-          setPriceHasMore(result.data.has_more)
-        } else setError(result.error)
+        if (requestId === loadRequestIds[requestedPanel] && activePanelRef.current === requestedPanel) {
+          if (result.success) {
+            patch({
+              priceHasMore: result.data.has_more,
+              prices: result.data.price_baselines,
+              priceTotal: result.data.total_count,
+            })
+          } else patch({ error: result.error })
+        }
       } else {
         const [costResult, ruleResult] = await Promise.all([
           adminControlService.listAiCosts({ limit: PAGE_SIZE, offset: (costPage - 1) * PAGE_SIZE }),
           adminControlService.listLearningRules({ limit: PAGE_SIZE, offset: (rulePage - 1) * PAGE_SIZE }),
         ])
-        if (costResult.success) {
-          setCosts(costResult.data.costs)
-          setCostTotal(costResult.data.total_count)
-          setCostHasMore(costResult.data.has_more)
+        if (requestId === loadRequestIds[requestedPanel] && activePanelRef.current === requestedPanel) {
+          if (costResult.success) {
+            patch({
+              costHasMore: costResult.data.has_more,
+              costs: costResult.data.costs,
+              costTotal: costResult.data.total_count,
+            })
+          }
+          if (ruleResult.success) {
+            patch({
+              ruleHasMore: ruleResult.data.has_more,
+              rules: ruleResult.data.rules,
+              ruleTotal: ruleResult.data.total_count,
+            })
+          }
+          if (!costResult.success) patch({ error: costResult.error })
+          else if (!ruleResult.success) patch({ error: ruleResult.error })
         }
-        if (ruleResult.success) {
-          setRules(ruleResult.data.rules)
-          setRuleTotal(ruleResult.data.total_count)
-          setRuleHasMore(ruleResult.data.has_more)
-        }
-        if (!costResult.success) setError(costResult.error)
-        else if (!ruleResult.success) setError(ruleResult.error)
       }
     } finally {
-      hasLoadedRef.current = true
-      setLoading(false)
-      if (!shouldBlock) backgroundLoadInFlightRef.current = false
+      if (requestId === loadRequestIds[requestedPanel]) {
+        loadedPanels.add(requestedPanel)
+        backgroundLoads.delete(requestedPanel)
+        if (activePanelRef.current === requestedPanel) patch({ loading: false })
+      }
     }
-  }, [activePanel, actor?.access_level, costPage, disputePage, pricePage, rulePage])
+  }, [activePanel, actor?.access_level, backgroundLoads, costPage, loadRequestIds, loadedPanels, pricePage, rulePage])
 
   useEffect(() => {
-    const initialLoad = setTimeout(() => { void load({ blocking: true }) }, 0)
-    return () => clearTimeout(initialLoad)
-  }, [load])
+    const panelAtStart = activePanel
+    let cancelled = false
+    void Promise.resolve().then(() => {
+      if (!cancelled) void load()
+    })
+    return () => {
+      cancelled = true
+      loadRequestIds[panelAtStart] = (loadRequestIds[panelAtStart] ?? 0) + 1
+      backgroundLoads.delete(panelAtStart)
+    }
+  }, [activePanel, backgroundLoads, costPage, load, loadRequestIds, pricePage, rulePage])
 
-  useFocusEffect(useCallback(() => {
-    const timer = setInterval(() => { void load({ blocking: false }) }, REFRESH_INTERVAL_MS)
-    return () => clearInterval(timer)
-  }, [load]))
-
-  if (actor?.access_level !== 'owner') return <View style={styles.empty}><Text style={styles.emptyText}>{labels.ownerOnly}</Text></View>
+  if (actor?.access_level !== 'owner') return <View style={styles.empty}><AdminText textRole="subheadline" style={styles.emptyText}>{labels.ownerOnly}</AdminText></View>
 
   return <View style={styles.stack} testID="admin-governance-panel">
     <View style={styles.heading}>
       <View>
-        <Text style={styles.title}>{labels.kael}</Text>
-        <Text style={styles.subtitle}>{labels.generated}</Text>
+        <AdminText textRole="headline" style={styles.title}>{labels.kael}</AdminText>
       </View>
       <Pressable accessibilityLabel={labels.refresh} accessibilityRole="button" onPress={() => { void load() }} style={styles.refresh}>
-        <Text style={styles.refreshText}>{labels.refresh}</Text>
+        <AdminText textRole="subheadline" style={styles.refreshText}>{labels.refresh}</AdminText>
       </Pressable>
     </View>
     <AdminTabNavigation
       items={[
-        { key: 'disputes', label: labels.disputes, onPress: () => { setActivePanel('disputes'); setDisputePage(1) }, selected: activePanel === 'disputes', testID: 'admin-governance-disputes-tab' },
-        { key: 'prices', label: labels.prices, onPress: () => { setActivePanel('prices'); setPricePage(1) }, selected: activePanel === 'prices', testID: 'admin-governance-prices-tab' },
-        { key: 'kael', label: 'Kael', onPress: () => { setActivePanel('kael'); setCostPage(1); setRulePage(1) }, selected: activePanel === 'kael', testID: 'admin-governance-kael-tab' },
+        { key: 'prices', label: labels.prices, onPress: () => patch({ activePanel: 'prices', pricePage: 1 }), selected: activePanel === 'prices', testID: 'admin-governance-prices-tab' },
+        { key: 'kael', label: 'Kael', onPress: () => patch({ activePanel: 'kael', costPage: 1, rulePage: 1 }), selected: activePanel === 'kael', testID: 'admin-governance-kael-tab' },
       ]}
       testID="admin-governance-navigation"
     />
-    {loading ? <View style={styles.loading}><ActivityIndicator color={color.brand.primary} /><Text style={styles.loadingText}>{labels.loading}</Text></View> : error ? <View accessibilityRole="alert" style={styles.error}><Text style={styles.errorText}>{labels.error}</Text><Pressable accessibilityRole="button" onPress={() => { void load() }}><Text style={styles.retry}>{labels.refresh}</Text></Pressable></View> : activePanel === 'disputes' ? <>
-      {disputes.length === 0 ? <EmptyState label={labels.disputesEmpty} /> : disputes.map((item) => <DisputeCard item={item} key={item.id} language={language} />)}
-      <Pagination hasMore={disputeHasMore} language={language} loading={loading} onPageChange={setDisputePage} page={disputePage} prefix="admin-governance-dispute-page" total={disputeTotal} />
-    </> : activePanel === 'prices' ? <>
+    {loading ? <View style={styles.loading}><ActivityIndicator color={color.brand.primary} /><AdminText textRole="subheadline" style={styles.loadingText}>{labels.loading}</AdminText></View> : error ? <View accessibilityRole="alert" style={styles.error}><AdminText textRole="subheadline" style={styles.errorText}>{labels.error}</AdminText><Pressable accessibilityRole="button" onPress={() => { void load() }}><AdminText textRole="headline" style={styles.retry}>{labels.refresh}</AdminText></Pressable></View> : activePanel === 'prices' ? <>
       {prices.length === 0 ? <EmptyState label={labels.priceEmpty} /> : prices.map((item) => <PriceCard item={item} key={item.id} language={language} />)}
-      <Pagination hasMore={priceHasMore} language={language} loading={loading} onPageChange={setPricePage} page={pricePage} prefix="admin-governance-price-page" total={priceTotal} />
+      <Pagination hasMore={priceHasMore} language={language} loading={loading} onPageChange={(pricePage) => patch({ pricePage })} page={pricePage} prefix="admin-governance-price-page" total={priceTotal} />
     </> : <>
-      <Text style={styles.sectionTitle}>{labels.aiCosts}</Text>
+      <AdminText textRole="title2" style={styles.sectionTitle}>{labels.aiCosts}</AdminText>
       {costs.length === 0 ? <EmptyState label={labels.aiEmpty} /> : costs.map((item) => <CostCard item={item} key={`${item.day}:${item.provider}:${item.purpose}`} language={language} />)}
-      <Pagination hasMore={costHasMore} language={language} loading={loading} onPageChange={setCostPage} page={costPage} prefix="admin-governance-cost-page" total={costTotal} />
-      <Text style={styles.sectionTitle}>{labels.rules}</Text>
+      <Pagination hasMore={costHasMore} language={language} loading={loading} onPageChange={(costPage) => patch({ costPage })} page={costPage} prefix="admin-governance-cost-page" total={costTotal} />
+      <AdminText textRole="title2" style={styles.sectionTitle}>{labels.rules}</AdminText>
       {rules.length === 0 ? <EmptyState label={labels.ruleEmpty} /> : rules.map((item) => <RuleCard item={item} key={item.id} language={language} />)}
-      <Pagination hasMore={ruleHasMore} language={language} loading={loading} onPageChange={setRulePage} page={rulePage} prefix="admin-governance-rule-page" total={ruleTotal} />
+      <Pagination hasMore={ruleHasMore} language={language} loading={loading} onPageChange={(rulePage) => patch({ rulePage })} page={rulePage} prefix="admin-governance-rule-page" total={ruleTotal} />
     </>}
   </View>
 }
@@ -207,46 +254,31 @@ function Pagination({ hasMore, language, loading, onPageChange, page, prefix, to
   return <AdminPagination hasMore={hasMore} labels={{ more: '…', next: language === 'vi' ? 'Trang sau' : 'Next page', page: labels.page, previous: language === 'vi' ? 'Trang trước' : 'Previous page' }} loading={loading} onPageChange={onPageChange} page={page} pageSize={PAGE_SIZE} pageTestIDPrefix={prefix} testID={`${prefix}-pagination`} totalCount={total} />
 }
 
-function DisputeCard({ item, language }: { item: AdminViewDisputeSummary; language: AppLanguage }) {
-  const labels = copy[language]
-  return <View style={styles.card} testID={`admin-governance-dispute-${item.id}`}>
-    <View style={styles.cardTop}><Text style={styles.cardTitle}>{item.display_code}</Text><Text style={styles.pill}>{disputeStatusLabel(item.status, language)}</Text></View>
-    <Text style={styles.cardMeta}>{disputeTypeLabel(item.dispute_type, language)} · {actorLabel(item.initiated_by, language)}</Text>
-    <Metric label={labels.updated} value={formatDate(item.updated_at, language)} />
-  </View>
-}
-
 function PriceCard({ item, language }: { item: AdminViewPriceBaselineSummary; language: AppLanguage }) {
   const labels = copy[language]
   return <View style={styles.card} testID={`admin-governance-price-${item.id}`}>
-    <View style={styles.cardTop}><Text style={styles.cardTitle}>{serviceLabel(item.service_type, language)}</Text><Text style={styles.pill}>{complexityLabel(item.complexity, language)}</Text></View>
+    <View style={styles.cardTop}><AdminText textRole="headline" style={styles.cardTitle}>{serviceLabel(item.service_type, language)}</AdminText><AdminText textRole="caption1" style={styles.pill}>{complexityLabel(item.complexity, language)}</AdminText></View>
     <Metric label={labels.priceRange} value={`${formatVnd(item.price_min, language)} – ${formatVnd(item.price_max, language)}`} />
-    <Text style={styles.cardMeta}>{districtLabel(item.district_code, language)} · {labels.version} {item.version}</Text>
+    <AdminText textRole="footnote" style={styles.cardMeta}>{districtLabel(item.district_code, language)} · {labels.version} {item.version}</AdminText>
   </View>
 }
 
 function CostCard({ item, language }: { item: AdminViewAiCostSummary; language: AppLanguage }) {
   const labels = copy[language]
   return <View style={styles.card} testID={`admin-governance-cost-${item.day}-${item.purpose}`}>
-    <View style={styles.cardTop}><Text style={styles.cardTitle}>{kaelPurposeLabel(item.purpose, language)}</Text><Text style={styles.pill}>{providerLabel(item.provider, language)}</Text></View>
+    <View style={styles.cardTop}><AdminText textRole="headline" style={styles.cardTitle}>{kaelPurposeLabel(item.purpose, language)}</AdminText><AdminText textRole="caption1" style={styles.pill}>{providerLabel(item.provider, language)}</AdminText></View>
     <View style={styles.metricGrid}><Metric label={labels.calls} value={String(item.call_count)} /><Metric label={labels.failed} value={String(item.failure_count)} /><Metric label="USD" value={formatUsd(item.total_cost_usd, language)} /></View>
-    <Text style={styles.cardMeta}>{formatDate(item.day, language)} · {labels.fallback}: {item.fallback_count}</Text>
+    <AdminText textRole="footnote" style={styles.cardMeta}>{formatDate(item.day, language)} · {labels.fallback}: {item.fallback_count}</AdminText>
   </View>
 }
 
 function RuleCard({ item, language }: { item: AdminViewLearningRuleSummary; language: AppLanguage }) {
   const labels = copy[language]
   return <View style={styles.card} testID={`admin-governance-rule-${item.id}`}>
-    <View style={styles.cardTop}><Text style={styles.cardTitle}>{learningRuleLabel(item.rule_type, language)}</Text><Text style={styles.pill}>{ruleStatusLabel(item.status, language)}</Text></View>
+    <View style={styles.cardTop}><AdminText textRole="headline" style={styles.cardTitle}>{learningRuleLabel(item.rule_type, language)}</AdminText><AdminText textRole="caption1" style={styles.pill}>{ruleStatusLabel(item.status, language)}</AdminText></View>
     <View style={styles.metricGrid}><Metric label={labels.version} value={String(item.active_version)} /><Metric label={labels.evidence} value={String(item.evidence_count)} /><Metric label={labels.rollbackAvailable} value={item.rollback_available ? '✓' : '—'} /></View>
-    <Text style={styles.cardMeta}>{item.affected_service ? serviceLabel(item.affected_service, language) : 'Kael'} · {formatDate(item.updated_at, language)}</Text>
+    <AdminText textRole="footnote" style={styles.cardMeta}>{item.affected_service ? serviceLabel(item.affected_service, language) : 'Kael'} · {formatDate(item.updated_at, language)}</AdminText>
   </View>
-}
-
-function actorLabel(value: string, language: AppLanguage) {
-  if (value === 'customer') return language === 'vi' ? 'Khách hàng' : 'Customer'
-  if (value === 'worker') return language === 'vi' ? 'Thợ' : 'Worker'
-  return language === 'vi' ? 'Tài khoản trong hệ thống' : 'System account'
 }
 
 function complexityLabel(value: string, language: AppLanguage) {
@@ -261,26 +293,6 @@ function complexityLabel(value: string, language: AppLanguage) {
 function districtLabel(value: string, language: AppLanguage) {
   if (value === 'hcmc_all') return language === 'vi' ? 'TP. Hồ Chí Minh' : 'Ho Chi Minh City'
   return language === 'vi' ? 'Khu vực đã cấu hình' : 'Configured area'
-}
-
-function disputeStatusLabel(value: string, language: AppLanguage) {
-  const labels: Record<string, readonly [string, string]> = {
-    admin_decided: ['Đã quyết định', 'Decided'],
-    open: ['Đang mở', 'Open'],
-    resolved: ['Đã xử lý', 'Resolved'],
-    under_review: ['Đang xem xét', 'Under review'],
-  }
-  return labels[value]?.[language === 'vi' ? 0 : 1] ?? (language === 'vi' ? 'Cần xem xét' : 'Needs review')
-}
-
-function disputeTypeLabel(value: string, language: AppLanguage) {
-  const labels: Record<string, readonly [string, string]> = {
-    cancellation: ['Hủy việc', 'Cancellation'],
-    payment: ['Thanh toán', 'Payment'],
-    scope: ['Phạm vi công việc', 'Work scope'],
-    work_quality: ['Chất lượng công việc', 'Work quality'],
-  }
-  return labels[value]?.[language === 'vi' ? 0 : 1] ?? (language === 'vi' ? 'Yêu cầu hỗ trợ' : 'Support request')
 }
 
 function kaelPurposeLabel(value: string, language: AppLanguage) {
@@ -333,11 +345,11 @@ function serviceLabel(value: string, language: AppLanguage) {
 }
 
 function Metric({ label, value }: { label: string; value: string }) {
-  return <View style={styles.metric}><Text style={styles.metricLabel}>{label}</Text><Text numberOfLines={1} style={styles.metricValue}>{value}</Text></View>
+  return <View style={styles.metric}><AdminText textRole="subheadline" style={styles.metricLabel}>{label}</AdminText><AdminText numeric textRole="headline" style={styles.metricValue}>{value}</AdminText></View>
 }
 
 function EmptyState({ label }: { label: string }) {
-  return <View style={styles.empty}><Text style={styles.emptyText}>{label}</Text></View>
+  return <View style={styles.empty}><AdminText textRole="subheadline" style={styles.emptyText}>{label}</AdminText></View>
 }
 
 function formatDate(value: string, language: AppLanguage) {
@@ -354,11 +366,11 @@ function formatUsd(value: number, language: AppLanguage) {
 }
 
 const styles = StyleSheet.create({
-  card: { ...shadow.soft, backgroundColor: color.surface.base, borderColor: color.surface.stroke, borderRadius: radius.lg, borderWidth: 1, gap: spacing.sm, padding: spacing.lg },
+  card: { backgroundColor: color.surface.base, borderColor: color.surface.stroke, borderRadius: radius.lg, borderWidth: 1, gap: spacing.sm, padding: spacing.lg },
   cardMeta: { ...typography.footnote, color: color.text.secondary },
   cardTitle: { ...typography.headline, color: color.text.strong, flex: 1, textTransform: 'capitalize' },
   cardTop: { alignItems: 'center', flexDirection: 'row', gap: spacing.sm, justifyContent: 'space-between' },
-  empty: { ...shadow.soft, alignItems: 'center', backgroundColor: color.surface.base, borderColor: color.surface.stroke, borderRadius: radius.lg, borderWidth: 1, minHeight: 88, justifyContent: 'center', padding: spacing.lg },
+  empty: { alignItems: 'center', backgroundColor: color.surface.base, borderColor: color.surface.stroke, borderRadius: radius.lg, borderWidth: 1, minHeight: 88, justifyContent: 'center', padding: spacing.lg },
   emptyText: { ...typography.callout, color: color.text.secondary, textAlign: 'center' },
   error: { alignItems: 'center', backgroundColor: color.mint.mint50, borderColor: color.mint.mint300, borderRadius: radius.md, borderWidth: 1, gap: spacing.sm, padding: spacing.lg },
   errorText: { ...typography.footnote, color: color.text.secondary, textAlign: 'center' },
@@ -375,6 +387,5 @@ const styles = StyleSheet.create({
   retry: { ...typography.footnote, color: color.brand.primaryDark, fontWeight: '600' },
   sectionTitle: { ...typography.title3, color: color.text.strong, marginTop: spacing.xs },
   stack: { gap: spacing.md },
-  subtitle: { ...typography.footnote, color: color.text.secondary, marginTop: spacing.xxs, maxWidth: 260 },
   title: { ...typography.title2, color: color.text.strong, fontWeight: '600' },
 })

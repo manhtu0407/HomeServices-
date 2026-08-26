@@ -2,7 +2,7 @@ import { z } from "zod";
 
 const FINANCE_RANGES = ["day", "week", "month", "year"] as const;
 const RECONCILIATION_STATUSES = ["pending", "reconcile_required", "all"] as const;
-const PAYMENT_DECISIONS = ["confirm", "reconcile_required", "direct_paid", "direct_release"] as const;
+const PAYMENT_DECISIONS = ["confirm", "reconcile_required", "direct_paid", "direct_release", "cash_confirm", "cash_reject"] as const;
 const BANK_REFERENCE = /^[A-Za-z0-9._/-]{3,128}$/;
 const FINANCE_FILTER = /^[a-z][a-z0-9_]{0,63}$/;
 const FINANCE_CURSOR = /^[A-Za-z0-9_-]{1,512}$/;
@@ -18,11 +18,30 @@ const financePeriodFields = {
 
 export const adminPaymentReconciliationListQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(50).default(25),
-  offset: z.coerce.number().int().min(0).max(5_000).default(0),
+  cursor: z.string().regex(FINANCE_CURSOR).optional(),
   status: z.enum(RECONCILIATION_STATUSES).default("pending"),
+  payment_method: z.enum(["platform_bank_manual", "direct_worker", "all"]).default("all"),
+  assignment: z.enum(["mine", "unassigned", "all"]).default("all"),
+  query: z.string().trim().min(2).max(80).optional(),
+}).strict();
+
+const moneyMutationFields = {
+  expected_version: z.coerce.number().int().positive(),
+  client_request_id: z.string().uuid(),
+};
+
+export const adminPaymentReconciliationClaimSchema = z.object({
+  ...moneyMutationFields,
+  takeover_reason: z.string().trim().min(3).max(500).optional(),
+}).strict();
+
+export const adminPaymentReconciliationReleaseSchema = z.object({
+  ...moneyMutationFields,
+  reason: z.string().trim().min(3).max(500),
 }).strict();
 
 export const adminPaymentReconciliationDecisionSchema = z.object({
+  ...moneyMutationFields,
   decision: z.enum(PAYMENT_DECISIONS),
   amount_received: z.coerce.number().int().positive().optional(),
   bank_reference: z.string().trim().regex(BANK_REFERENCE).optional(),
@@ -50,6 +69,7 @@ export const adminFinanceSummaryQuerySchema = z.object({
 }).strict();
 
 export const adminFinanceBalanceSnapshotSchema = z.object({
+  client_request_id: z.string().uuid(),
   balance_vnd: z.coerce.number().int().min(0),
   observed_at: z.string().datetime({ offset: true }),
 }).strict();
@@ -100,10 +120,12 @@ export const adminFinanceExportQuerySchema = z.object({
 
 export const adminFinanceTaxPolicyDraftSchema = z.object({
   name: z.string().trim().min(3).max(120),
-  tax_type: z.string().trim().regex(/^[A-Za-z0-9_]{2,40}$/),
-  subject: z.enum(["platform", "worker"]),
-  basis: z.enum(["gmv", "commission_collected", "commission_retained", "worker_net_paid"]),
-  rate_bps: z.coerce.number().int().min(1).max(10_000),
+  rules: z.array(z.object({
+    tax_type: z.string().trim().regex(/^[A-Za-z0-9_]{2,40}$/),
+    subject: z.enum(["platform", "worker"]),
+    basis: z.enum(["gmv", "commission_collected", "commission_retained", "worker_net_paid"]),
+    rate_bps: z.coerce.number().int().min(1).max(10_000),
+  }).strict()).min(1).max(20),
   effective_from: z.string().regex(DATE_ONLY),
   effective_to: z.string().regex(DATE_ONLY).optional(),
   source_reference: z.string().trim().min(3).max(512),
@@ -129,7 +151,10 @@ export function parseAdminPaymentReconciliationListQuery(url: URL) {
   return adminPaymentReconciliationListQuerySchema.safeParse({
     status: url.searchParams.get("status") ?? undefined,
     limit: url.searchParams.get("limit") ?? undefined,
-    offset: url.searchParams.get("offset") ?? undefined,
+    cursor: url.searchParams.get("cursor") ?? undefined,
+    payment_method: url.searchParams.get("payment_method") ?? undefined,
+    assignment: url.searchParams.get("assignment") ?? undefined,
+    query: url.searchParams.get("query") ?? undefined,
   });
 }
 

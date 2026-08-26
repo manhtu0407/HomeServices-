@@ -85,6 +85,12 @@ jest.mock('expo-speech-recognition', () => ({
   useSpeechRecognitionEvent: jest.fn(),
 }))
 
+jest.mock('expo-image-picker', () => ({
+  MediaTypeOptions: { Images: 'Images' },
+  launchImageLibraryAsync: jest.fn(async () => ({ assets: [], canceled: true })),
+  requestMediaLibraryPermissionsAsync: jest.fn(async () => ({ granted: true })),
+}))
+
 // Accessibility prefs are environmental. Default them to "off" in tests so the
 // async AccessibilityInfo probes inside useGlassAccessibility don't fire state
 // updates after assertions (which otherwise log act(...) warnings).

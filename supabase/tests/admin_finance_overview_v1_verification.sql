@@ -176,13 +176,14 @@ insert into public.worker_profiles (
 -- A fixed historical window keeps these aggregates independent of relative-time seed jobs.
 insert into public.jobs (
   id, customer_id, worker_id, service_type, description, status,
-  final_price, gross_amount, platform_fee, worker_net, payment_provider,
+  final_price, gross_amount, platform_fee, worker_net,
+  worker_commission_level, worker_commission_rate_bps, payment_provider,
   payment_status, payment_amount_received, payment_received_at, paid_at,
   created_at, display_code
 ) values
-  ('f2000000-0000-4000-8000-000000000001', 'f1000000-0000-4000-8000-000000000003', 'f1000000-0000-4000-8000-000000000004', 'plumbing', 'Finance platform fixture one', 'paid', 100000, 100000, 10000, 90000, 'platform_bank_manual', 'manual_verified', 100000, '2001-08-13T01:00:00Z', '2001-08-13T01:00:00Z', '2001-08-13T00:00:00Z', 'FIN-0001'),
-  ('f2000000-0000-4000-8000-000000000002', 'f1000000-0000-4000-8000-000000000003', 'f1000000-0000-4000-8000-000000000004', 'plumbing', 'Finance direct fixture', 'paid', 200000, 200000, 20000, 180000, 'direct_worker', 'direct_paid', 200000, '2001-08-13T02:00:00Z', '2001-08-13T02:00:00Z', '2001-08-13T00:00:00Z', 'FIN-0002'),
-  ('f2000000-0000-4000-8000-000000000003', 'f1000000-0000-4000-8000-000000000003', 'f1000000-0000-4000-8000-000000000004', 'plumbing', 'Finance platform fixture two', 'paid', 300000, 300000, 30000, 270000, 'sepay_vietqr', 'received', 300000, '2001-08-13T03:00:00Z', '2001-08-13T03:00:00Z', '2001-08-13T00:00:00Z', 'FIN-0003');
+  ('f2000000-0000-4000-8000-000000000001', 'f1000000-0000-4000-8000-000000000003', 'f1000000-0000-4000-8000-000000000004', 'plumbing', 'Finance platform fixture one', 'paid', 100000, 100000, 10000, 90000, 2, 1000, 'platform_bank_manual', 'manual_verified', 100000, '2001-08-13T01:00:00Z', '2001-08-13T01:00:00Z', '2001-08-13T00:00:00Z', 'FIN-0001'),
+  ('f2000000-0000-4000-8000-000000000002', 'f1000000-0000-4000-8000-000000000003', 'f1000000-0000-4000-8000-000000000004', 'plumbing', 'Finance direct fixture', 'paid', 200000, 200000, 20000, 180000, 2, 1000, 'direct_worker', 'direct_paid', 200000, '2001-08-13T02:00:00Z', '2001-08-13T02:00:00Z', '2001-08-13T00:00:00Z', 'FIN-0002'),
+  ('f2000000-0000-4000-8000-000000000003', 'f1000000-0000-4000-8000-000000000003', 'f1000000-0000-4000-8000-000000000004', 'plumbing', 'Finance platform fixture two', 'paid', 300000, 300000, 30000, 270000, 2, 1000, 'sepay_vietqr', 'received', 300000, '2001-08-13T03:00:00Z', '2001-08-13T03:00:00Z', '2001-08-13T00:00:00Z', 'FIN-0003');
 
 insert into public.job_payment_orders (
   id, job_id, customer_id, worker_id, payment_method, status,
@@ -196,8 +197,8 @@ insert into public.worker_payment_ledger (
   job_id, worker_id, payment_provider, payment_state, gross_amount,
   platform_fee, worker_net, commission_level, commission_rate_bps, available_at
 ) values
-  ('f2000000-0000-4000-8000-000000000001', 'f1000000-0000-4000-8000-000000000004', 'platform_bank_manual', 'available', 100000, 10000, 90000, 1, 1000, '2001-08-13T01:00:00Z'),
-  ('f2000000-0000-4000-8000-000000000003', 'f1000000-0000-4000-8000-000000000004', 'sepay_vietqr', 'available', 300000, 30000, 270000, 1, 1000, '2001-08-13T03:00:00Z');
+  ('f2000000-0000-4000-8000-000000000001', 'f1000000-0000-4000-8000-000000000004', 'platform_bank_manual', 'available', 100000, 10000, 90000, 2, 1000, '2001-08-13T01:00:00Z'),
+  ('f2000000-0000-4000-8000-000000000003', 'f1000000-0000-4000-8000-000000000004', 'sepay_vietqr', 'available', 300000, 30000, 270000, 2, 1000, '2001-08-13T03:00:00Z');
 
 insert into public.admin_financial_adjustments (
   source_key, adjustment_type, job_id, worker_id, gross_refund_vnd,
@@ -353,7 +354,7 @@ begin
   select * into strict v_policy
   from public.admin_create_finance_tax_policy_draft(
     'f1000000-0000-4000-8000-000000000002',
-    '{"name":"Platform commission tax estimate","tax_type":"vat","subject":"platform","basis":"platform_commission","rate_bps":500,"effective_from":"2001-01-01","source_reference":"accountant-file-1"}'::jsonb
+    '{"name":"Platform commission tax estimate","rules":[{"tax_type":"vat","subject":"platform","basis":"commission_retained","rate_bps":500}],"effective_from":"2001-01-01","source_reference":"accountant-file-1"}'::jsonb
   );
   if v_policy.status <> 'draft' or v_policy.source_reference <> 'accountant-file-1'
     or v_policy.effective_to is not null or v_policy.created_at is null or v_policy.updated_at is null then

@@ -1,7 +1,8 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native'
+import { Pressable, StyleSheet, View } from 'react-native'
 import Svg, { Path } from 'react-native-svg'
 
 import { color, radius, spacing, typography } from '@/design/theme'
+import { AdminText } from './admin-text'
 
 type PaginationLabels = {
   more: string
@@ -82,7 +83,7 @@ export function AdminPagination({
       const previousPage = pages[index - 1]
       const selected = pageNumber === page
       return <View key={pageNumber} style={styles.pageSlot}>
-        {previousPage !== undefined && pageNumber - previousPage > 1 && <Text accessibilityLabel={labels.more} style={styles.ellipsis}>…</Text>}
+        {previousPage !== undefined && pageNumber - previousPage > 1 && <AdminText textRole="subheadline" accessibilityLabel={labels.more} style={styles.ellipsis}>…</AdminText>}
         <Pressable
           accessibilityLabel={labels.page(pageNumber)}
           accessibilityRole="button"
@@ -92,7 +93,7 @@ export function AdminPagination({
           style={[styles.button, selected && styles.buttonSelected, loading && styles.buttonDisabled]}
           testID={`${pageTestIDPrefix}-${pageNumber}`}
         >
-          <Text style={[styles.number, selected && styles.numberSelected]}>{pageNumber}</Text>
+          <AdminText numeric textRole="subheadline" style={[styles.number, selected && styles.numberSelected]}>{pageNumber}</AdminText>
         </Pressable>
       </View>
     })}

@@ -5,6 +5,44 @@ import type { Database } from '../schema.database.types'
 
 export type AdminTables = {
 /* @slice:begin tables:admin */
+      admin_finance_mutation_receipts: {
+        Row: {
+          actor_id: string
+          client_request_id: string
+          created_at: string
+          id: string
+          operation: string
+          response: Json
+          subject_id: string
+        }
+        Insert: {
+          actor_id: string
+          client_request_id: string
+          created_at?: string
+          id?: string
+          operation: string
+          response: Json
+          subject_id: string
+        }
+        Update: {
+          actor_id?: string
+          client_request_id?: string
+          created_at?: string
+          id?: string
+          operation?: string
+          response?: Json
+          subject_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "admin_finance_mutation_receipts_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       admin_finance_tax_policies: {
         Row: {
           approval_evidence_ref: string | null
@@ -293,6 +331,7 @@ export type AdminTables = {
           status: string
           updated_at: string
           user_id: string
+          version: number
         }
         Insert: {
           baseline_role: Database["public"]["Enums"]["user_role"]
@@ -304,6 +343,7 @@ export type AdminTables = {
           status?: string
           updated_at?: string
           user_id: string
+          version?: number
         }
         Update: {
           baseline_role?: Database["public"]["Enums"]["user_role"]
@@ -315,6 +355,7 @@ export type AdminTables = {
           status?: string
           updated_at?: string
           user_id?: string
+          version?: number
         }
         Relationships: [
           {
@@ -392,6 +433,146 @@ export type AdminTables = {
             foreignKeyName: "admin_operator_provisioning_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      admin_support_case_notes: {
+        Row: {
+          body: string
+          created_at: string
+          created_by: string
+          id: string
+          idempotency_key: string
+          source_id: string
+          source_kind: string
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          created_by: string
+          id?: string
+          idempotency_key: string
+          source_id: string
+          source_kind: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          created_by?: string
+          id?: string
+          idempotency_key?: string
+          source_id?: string
+          source_kind?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "admin_support_case_notes_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      admin_support_case_preparations: {
+        Row: {
+          assigned_to: string | null
+          checklist: Json
+          created_at: string
+          last_idempotency_key: string | null
+          source_id: string
+          source_kind: string
+          status: string
+          updated_at: string
+          updated_by: string
+          version: number
+        }
+        Insert: {
+          assigned_to?: string | null
+          checklist?: Json
+          created_at?: string
+          last_idempotency_key?: string | null
+          source_id: string
+          source_kind: string
+          status?: string
+          updated_at?: string
+          updated_by: string
+          version?: number
+        }
+        Update: {
+          assigned_to?: string | null
+          checklist?: Json
+          created_at?: string
+          last_idempotency_key?: string | null
+          source_id?: string
+          source_kind?: string
+          status?: string
+          updated_at?: string
+          updated_by?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "admin_support_case_preparations_assigned_to_fkey"
+            columns: ["assigned_to"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "admin_support_case_preparations_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      admin_team_mutation_receipts: {
+        Row: {
+          actor_id: string
+          client_request_id: string
+          created_at: string
+          id: string
+          operation: string
+          request: Json
+          response: Json
+          subject_id: string
+        }
+        Insert: {
+          actor_id: string
+          client_request_id: string
+          created_at?: string
+          id?: string
+          operation: string
+          request: Json
+          response: Json
+          subject_id: string
+        }
+        Update: {
+          actor_id?: string
+          client_request_id?: string
+          created_at?: string
+          id?: string
+          operation?: string
+          request?: Json
+          response?: Json
+          subject_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "admin_team_mutation_receipts_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "admin_team_mutation_receipts_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },

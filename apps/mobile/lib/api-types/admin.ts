@@ -1,7 +1,17 @@
-import type { AdminCapability, JobStatus, ServiceType, UserRole, WorkerVerificationStatus } from '@nestscout/shared'
+import type { AdminCapability, JobStatus, ScopeChangeStatus, ServiceType, UserRole, WorkerVerificationStatus } from '@nestscout/shared'
+
+export type {
+  AdminViewAiCostListResponse,
+  AdminViewAiCostSummary,
+  AdminViewLearningRuleListResponse,
+  AdminViewLearningRuleSummary,
+  AdminViewPriceBaselineListResponse,
+  AdminViewPriceBaselineSummary,
+} from './admin-system'
 
 export type {
   AdminFinanceBalanceSnapshotInput,
+  AdminFinanceBalanceSnapshotListResponse,
   AdminFinanceBalanceSnapshotResponse,
   AdminFinanceCsvExportResponse,
   AdminFinanceOverviewResponse,
@@ -16,9 +26,15 @@ export type {
   AdminFinanceTransaction,
   AdminFinanceTransactionFilters,
   AdminFinanceTransactionListResponse,
+  AdminFinanceTransactionDetailResponse,
+  AdminPaymentReconciliationAssignmentResponse,
+  AdminPaymentReconciliationClaimInput,
   AdminPaymentReconciliationDecisionInput,
   AdminPaymentReconciliationDecisionResponse,
   AdminPaymentReconciliationListResponse,
+  AdminPaymentReconciliationListInput,
+  AdminPaymentReconciliationDetailResponse,
+  AdminPaymentReconciliationReleaseInput,
   AdminPaymentReconciliationStatus,
   AdminPaymentReconciliationSummary,
   AdminWorkerFinanceSnapshotResponse,
@@ -50,6 +66,303 @@ export type AdminViewOperationsResponse = {
     occurred_at: string
   }[]
 }
+
+export type AdminViewScopeChangeListInput = {
+  cursor?: string
+  limit?: number
+  query?: string
+  requested_from?: string
+  requested_to?: string
+  request_timing?: 'all' | 'pre_arrival' | 'on_site'
+  service_type?: ServiceType | 'all'
+  status?: ScopeChangeStatus | 'all'
+}
+
+export type AdminViewScopeChangeSummary = {
+  scope_change_id: string
+  job_id: string
+  display_code: string
+  service_type: ServiceType
+  status: ScopeChangeStatus
+  updated_at: string
+  delta_min_vnd: number | null
+  delta_max_vnd: number | null
+}
+
+export type AdminViewScopeChangeListResponse = {
+  generated_at: string
+  counts: {
+    kael_processing: number
+    waiting_customer: number
+    approved: number
+    rejected_or_cancelled: number
+  }
+  records: AdminViewScopeChangeSummary[]
+  has_more: boolean
+  next_cursor: string | null
+}
+
+export type AdminViewEvidenceMetadata = {
+  evidence_id: string
+  kind: 'photo' | 'document' | 'chat' | 'snapshot'
+  label: string
+  captured_at: string | null
+}
+
+export type AdminViewCaseTimelineEntry = {
+  key: string
+  label: string
+  occurred_at: string
+}
+
+export type AdminViewScopeChangeDetailResponse = {
+  generated_at: string
+  summary: AdminViewScopeChangeSummary
+  original_scope: {
+    description: string | null
+    price_min_vnd: number | null
+    price_max_vnd: number | null
+  }
+  proposed_scope: {
+    description: string
+    reason: string
+    request_timing: 'pre_arrival' | 'on_site'
+    requested_at: string
+    customer_decision_at: string | null
+  }
+  pricing: {
+    kael_min_vnd: number | null
+    kael_max_vnd: number | null
+    total_min_vnd: number | null
+    total_max_vnd: number | null
+  }
+  evidence: AdminViewEvidenceMetadata[]
+  timeline: AdminViewCaseTimelineEntry[]
+  price_receipt: Record<string, unknown> | null
+  related_dispute: {
+    dispute_id: string
+    dispute_type: string
+    status: string
+  } | null
+}
+
+export const ADMIN_VIEW_SUPPORT_QUEUE_TYPES = [
+  'demanding_customer',
+  'worker_cancellation_review',
+  'worker_no_show',
+  'customer_cancellation_review',
+  'disintermediation_risk',
+  'autonomy_escalation',
+] as const
+
+export type AdminViewSupportQueueType = (typeof ADMIN_VIEW_SUPPORT_QUEUE_TYPES)[number]
+export type AdminViewSupportCaseSource = 'dispute' | 'queue'
+export type AdminViewSupportPreparationStatus = 'new' | 'acknowledged' | 'in_review' | 'ready'
+
+export type AdminViewSupportChecklist = {
+  opening_request_reviewed: boolean
+  counterparty_response_reviewed_or_missing: boolean
+  locked_evidence_reviewed: boolean
+  job_timeline_reviewed: boolean
+  scope_and_payment_reviewed: boolean
+  ready_for_next_step: boolean
+}
+
+export type AdminViewSupportPreparation = {
+  status: AdminViewSupportPreparationStatus
+  checklist: AdminViewSupportChecklist
+  assigned_to: string | null
+  assigned_to_name: string | null
+  version: number
+  updated_at: string | null
+  can_edit: boolean
+  assigned_to_me: boolean
+}
+
+export type AdminViewSupportCaseListInput = {
+  assignee?: 'all' | 'unassigned' | 'mine'
+  cursor?: string
+  limit?: number
+  preparation_status?: AdminViewSupportPreparationStatus | 'all'
+  priority?: 'all' | 'low' | 'medium' | 'high' | 'critical'
+  query?: string
+  service_type?: ServiceType | 'all'
+  source_status?: string | 'all'
+  type?: 'all' | 'dispute' | AdminViewSupportQueueType
+}
+
+export type AdminViewSupportCaseSummary = {
+  source: AdminViewSupportCaseSource
+  case_id: string
+  type: 'dispute' | AdminViewSupportQueueType
+  job_id: string | null
+  display_code?: string | null
+  service_type?: ServiceType | null
+  priority: 'low' | 'medium' | 'high' | 'critical'
+  source_status: string
+  preparation_status?: AdminViewSupportPreparationStatus
+  assigned_to?: string | null
+  reason_code: string
+  deadline_at?: string | null
+  updated_at: string
+}
+
+export type AdminViewSupportCaseListResponse = {
+  generated_at: string
+  counts: { key: string; count: number }[]
+  records: AdminViewSupportCaseSummary[]
+  has_more: boolean
+  next_cursor: string | null
+}
+
+export type AdminViewSupportCaseNote = {
+  note_id: string
+  body: string
+  author_name: string | null
+  created_at: string
+}
+
+export type AdminViewSupportCaseDetailResponse = {
+  generated_at: string
+  summary: AdminViewSupportCaseSummary
+  neutral_summary: string
+  parties: { role: string; name: string | null; contact_masked: string | null }[]
+  opening_statement: string | null
+  counterparty_statement: string | null
+  evidence: AdminViewEvidenceMetadata[]
+  timeline: AdminViewCaseTimelineEntry[]
+  abuse_signals: string[]
+  recorded_decision: Record<string, unknown> | null
+  preparation: AdminViewSupportPreparation
+  notes: AdminViewSupportCaseNote[]
+}
+
+export type AdminViewSupportPreparationInput = {
+  expected_version: number
+  idempotency_key: string
+  assignment?: 'claim' | 'unclaim' | 'keep'
+  status?: AdminViewSupportPreparationStatus
+  checklist?: Partial<AdminViewSupportChecklist>
+  note?: string
+}
+
+export type AdminViewEvidenceAccessInput = { evidence_id: string }
+export type AdminViewEvidenceAccessResponse = {
+  evidence_id: string
+  signed_url: string
+  expires_at: string
+}
+
+export type AdminViewOverviewDetailKey =
+  | 'coordination'
+  | 'assigned'
+  | 'inService'
+  | 'finishing'
+  | 'other'
+  | 'worker_applications'
+  | 'payment_attention'
+  | 'open_disputes'
+  | 'other_admin_queue'
+  | 'workers_in_verification'
+  | 'workers_suspended'
+
+export type AdminViewOverviewBreakdown = { key: string; count: number }
+
+export type AdminViewOverviewJobRecord = {
+  kind: 'job'
+  job_id: string
+  display_code: string
+  service_type: ServiceType
+  status: string
+  updated_at: string
+}
+
+export type AdminViewOverviewApplicationRecord = {
+  kind: 'application'
+  application_id: string
+  worker_id: string
+  name: string | null
+  contact_masked: string | null
+  stage: AdminViewWorkerReviewStage
+  checklist: { completed_count: number; total_count: number; missing: string[] }
+  service_types: ServiceType[]
+  updated_at: string
+}
+
+export type AdminViewOverviewWorkerRecord = {
+  kind: 'worker'
+  worker_id: string
+  name: string | null
+  service_types: ServiceType[]
+  state: string
+  updated_at: string
+}
+
+export type AdminViewOverviewPaymentRecord = {
+  kind: 'payment'
+  job_id: string
+  display_code: string
+  service_type: ServiceType
+  payment_status: string
+  updated_at: string
+}
+
+export type AdminViewOverviewDisputeRecord = {
+  kind: 'dispute'
+  dispute_id: string
+  job_id: string
+  display_code: string
+  dispute_type: string
+  status: string
+  updated_at: string
+}
+
+export type AdminViewOverviewQueueRecord = {
+  kind: 'queue'
+  queue_id: string
+  queue_type: string
+  status: string
+  updated_at: string
+}
+
+export type AdminViewOverviewDetailRecord =
+  | AdminViewOverviewJobRecord
+  | AdminViewOverviewApplicationRecord
+  | AdminViewOverviewWorkerRecord
+  | AdminViewOverviewPaymentRecord
+  | AdminViewOverviewDisputeRecord
+  | AdminViewOverviewQueueRecord
+
+type AdminViewOverviewDetailsCommon = {
+  generated_at: string
+  total_count: number
+  status_breakdown: AdminViewOverviewBreakdown[]
+  service_breakdown: AdminViewOverviewBreakdown[]
+  oldest_updated_at: string | null
+  has_more: boolean
+  next_cursor: string | null
+}
+
+type AdminViewOverviewRecordByKey = {
+  coordination: AdminViewOverviewJobRecord
+  assigned: AdminViewOverviewJobRecord
+  inService: AdminViewOverviewJobRecord
+  finishing: AdminViewOverviewJobRecord
+  other: AdminViewOverviewJobRecord
+  worker_applications: AdminViewOverviewApplicationRecord
+  payment_attention: AdminViewOverviewPaymentRecord
+  open_disputes: AdminViewOverviewDisputeRecord
+  other_admin_queue: AdminViewOverviewQueueRecord
+  workers_in_verification: AdminViewOverviewWorkerRecord
+  workers_suspended: AdminViewOverviewWorkerRecord
+}
+
+export type AdminViewOverviewDetailsResponse = {
+  [Key in AdminViewOverviewDetailKey]: AdminViewOverviewDetailsCommon & {
+    key: Key
+    records: AdminViewOverviewRecordByKey[Key][]
+  }
+}[AdminViewOverviewDetailKey]
 
 export type AdminViewWorkerApplicationStatus = 'open' | 'acknowledged' | 'resolved' | 'cancelled'
 export type AdminViewWorkerReviewStage = 'pending_access' | 'missing_profile' | 'ready_verification' | 'verified'
@@ -160,16 +473,26 @@ export type AdminViewSubAdminSummary = {
   baseline_role: 'customer' | 'worker'
   status: 'active' | 'revoked'
   capabilities: AdminCapability[]
+  version: number
   granted_at: string
   updated_at: string
   last_activity_at: string | null
 }
 
+export type AdminViewSubAdminListInput = {
+  limit?: number
+  cursor?: string
+}
+
 export type AdminViewSubAdminListResponse = {
   actor: AdminViewActor
+  generated_at: string
+  total_count: number
   members: AdminViewSubAdminSummary[]
   nominations: AdminViewManagerNominationSummary[]
   pending_accounts: AdminViewOperatorProvisioningSummary[]
+  has_more: boolean
+  next_cursor: string | null
 }
 
 export type AdminViewOperatorProvisioningSummary = {
@@ -226,6 +549,8 @@ export type AdminViewManagerNominationCancellationResponse = {
 export type AdminViewSubAdminAccessInput = {
   action: 'grant' | 'update' | 'revoke'
   capabilities: AdminCapability[]
+  client_request_id: string
+  expected_version: number
   reason?: string
 }
 
@@ -235,6 +560,10 @@ export type AdminViewSubAdminAccessResponse = {
   status: 'active' | 'revoked'
   role: UserRole
   capabilities: AdminCapability[]
+  version: number
+  event_id: string
+  generated_at: string
+  replayed: boolean
   updated_at: string
 }
 
@@ -307,67 +636,6 @@ export type AdminViewDisputeListResponse = {
   total_count: number
 }
 
-export type AdminViewPriceBaselineSummary = {
-  id: string
-  service_type: ServiceType
-  complexity: string
-  district_code: string
-  price_min: number
-  price_max: number
-  source: string
-  version: number
-  updated_at: string
-}
-
-export type AdminViewPriceBaselineListResponse = {
-  price_baselines: AdminViewPriceBaselineSummary[]
-  has_more: boolean
-  next_offset: number | null
-  total_count: number
-}
-
-export type AdminViewAiCostSummary = {
-  day: string
-  purpose: string
-  provider: string
-  call_count: number
-  success_count: number
-  failure_count: number
-  fallback_count: number
-  total_cost_usd: number
-  avg_latency_ms: number | null
-  p95_latency_ms: number | null
-  failure_rate: number | null
-}
-
-export type AdminViewAiCostListResponse = {
-  costs: AdminViewAiCostSummary[]
-  has_more: boolean
-  next_offset: number | null
-  total_count: number
-}
-
-export type AdminViewLearningRuleSummary = {
-  id: string
-  rule_type: string
-  affected_service: ServiceType | null
-  affected_problem: string | null
-  affected_district: string | null
-  confidence: number
-  evidence_count: number
-  status: string
-  active_version: number
-  rollback_available: boolean
-  updated_at: string
-}
-
-export type AdminViewLearningRuleListResponse = {
-  rules: AdminViewLearningRuleSummary[]
-  has_more: boolean
-  next_offset: number | null
-  total_count: number
-}
-
 export type AdminViewPayoutMethodStatus = 'pending_verification' | 'verified' | 'rejected'
 export type AdminViewWithdrawalRequestStatus = 'pending' | 'processing' | 'paid' | 'rejected' | 'failed'
 
@@ -383,25 +651,34 @@ export type AdminViewPayoutMethodSummary = {
   review_reason: string | null
   created_at: string
   updated_at: string
+  version: number
 }
 
 export type AdminViewPayoutMethodListResponse = {
+  generated_at: string
   payout_methods: AdminViewPayoutMethodSummary[]
   has_more: boolean
-  next_offset: number | null
+  next_cursor: string | null
   total_count: number | null
 }
 
 export type AdminViewPayoutMethodDetailResponse = {
-  payout_method: AdminViewPayoutMethodSummary & {
-    account_holder_name: string
-    bank_account: string
-  }
+  generated_at: string
+  payout_method: AdminViewPayoutMethodSummary
+}
+
+export type AdminViewSensitivePayoutAccessInput = { reason: string }
+export type AdminViewSensitivePayoutAccessResponse = {
+  expires_at: string
+  account_holder_name: string
+  bank_account: string
 }
 
 export type AdminViewPayoutMethodDecisionInput = {
   decision: 'verify' | 'reject'
   reason?: string
+  expected_version: number
+  client_request_id: string
 }
 
 export type AdminViewPayoutMethodDecisionResponse = {
@@ -409,6 +686,8 @@ export type AdminViewPayoutMethodDecisionResponse = {
   payout_method_id: string
   status: Exclude<AdminViewPayoutMethodStatus, 'pending_verification'>
   reviewed_at: string
+  version: number
+  generated_at: string
 }
 
 export type AdminViewWithdrawalRequestSummary = {
@@ -425,25 +704,32 @@ export type AdminViewWithdrawalRequestSummary = {
   eligible_at?: string | null
   processing_at: string | null
   processing_by_name: string | null
+  processing_by_me: boolean
   processed_at: string | null
   processed_by_name: string | null
-  transfer_reference: string | null
+  transfer_reference_suffix: string | null
   resolution_reason: string | null
   updated_at: string
+  version: number
 }
 
 export type AdminViewWithdrawalRequestListResponse = {
+  generated_at: string
   withdrawal_requests: AdminViewWithdrawalRequestSummary[]
   has_more: boolean
-  next_offset: number | null
+  next_cursor: string | null
   total_count: number | null
 }
 
 export type AdminViewWithdrawalRequestDetailResponse = {
-  withdrawal_request: AdminViewWithdrawalRequestSummary & {
-    account_holder_name: string
-    bank_account: string
-  }
+  generated_at: string
+  withdrawal_request: AdminViewWithdrawalRequestSummary
+}
+
+export type AdminViewWithdrawalRequestClaimInput = {
+  expected_version: number
+  client_request_id: string
+  takeover_reason?: string
 }
 
 export type AdminViewWithdrawalRequestClaimResponse = {
@@ -452,12 +738,17 @@ export type AdminViewWithdrawalRequestClaimResponse = {
   status: 'processing'
   processing_by: string
   processing_at: string
+  version: number
+  generated_at: string
 }
 
 export type AdminViewWithdrawalRequestResolveInput = {
   decision: 'paid' | 'rejected' | 'failed'
   transfer_reference?: string
   reason?: string
+  external_transfer_confirmed?: true
+  expected_version: number
+  client_request_id: string
 }
 
 export type AdminViewWithdrawalRequestResolveResponse = {
@@ -465,4 +756,21 @@ export type AdminViewWithdrawalRequestResolveResponse = {
   request_id: string
   status: 'paid' | 'rejected' | 'failed'
   processed_at: string
+  version: number
+  event_id: string
+  generated_at: string
+}
+
+export type AdminViewWithdrawalRequestReleaseInput = {
+  expected_version: number
+  client_request_id: string
+  reason: string
+}
+
+export type AdminViewWithdrawalRequestReleaseResponse = {
+  ok: true
+  request_id: string
+  status: 'pending'
+  version: number
+  generated_at: string
 }

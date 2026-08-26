@@ -2,8 +2,11 @@ type AdminFinanceRange = "day" | "week" | "month" | "year";
 
 type AdminPaymentReconciliationListInput = {
   limit: number;
-  offset: number;
+  cursor?: string;
   status: "pending" | "reconcile_required" | "all";
+  payment_method: "platform_bank_manual" | "direct_worker" | "all";
+  assignment: "mine" | "unassigned" | "all";
+  query?: string;
 };
 
 type AdminPaymentReconciliationDecisionInput = {
@@ -12,12 +15,16 @@ type AdminPaymentReconciliationDecisionInput = {
   bank_reference?: string;
   credited_at?: string;
   reason?: string;
+  expected_version: number;
+  client_request_id: string;
 };
 
 type AdminPaymentReconciliationListResponse = {
+  generated_at: string;
   payment_reconciliations: Array<{
     id: string;
     job_id: string;
+    display_code: string;
     payment_method: "platform_bank_manual" | "direct_worker";
     status: string;
     gross_amount: number;
@@ -28,11 +35,50 @@ type AdminPaymentReconciliationListResponse = {
     amount_received: number | null;
     customer_transfer_claimed_at: string | null;
     response_deadline: string | null;
+    assigned_to: string | null;
+    assigned_to_name: string | null;
+    assigned_to_me: boolean;
+    assigned_at: string | null;
+    version: number;
     created_at: string;
     updated_at: string;
   }>;
   has_more: boolean;
-  next_offset: number | null;
+  next_cursor: string | null;
+  total_count: number;
+  total_amount_vnd: number;
+};
+
+type AdminPaymentReconciliationDetailResponse = {
+  generated_at: string;
+  reconciliation: AdminPaymentReconciliationListResponse["payment_reconciliations"][number];
+  customer_ref: string;
+  worker_ref: string | null;
+  service_type: string;
+  expected_amount_vnd: number;
+  received_amount_vnd: number | null;
+  timeline: Array<{ event_id: string; event_type: string; actor_ref: string | null; occurred_at: string }>;
+};
+
+type AdminPaymentReconciliationClaimInput = {
+  expected_version: number;
+  client_request_id: string;
+  takeover_reason?: string;
+};
+
+type AdminPaymentReconciliationReleaseInput = {
+  expected_version: number;
+  client_request_id: string;
+  reason: string;
+};
+
+type AdminPaymentReconciliationAssignmentResponse = {
+  ok: true;
+  payment_order_id: string;
+  assigned_to: string | null;
+  assigned_at: string | null;
+  version: number;
+  generated_at: string;
 };
 
 type AdminPaymentReconciliationDecisionResponse = {
@@ -43,6 +89,9 @@ type AdminPaymentReconciliationDecisionResponse = {
   status: "payment_pending" | "paid";
   payment_status: string;
   hold_until: string | null;
+  event_id: string;
+  version: number;
+  generated_at: string;
 };
 
 type AdminWorkerFinanceSnapshotInput = {
@@ -97,6 +146,7 @@ type AdminWorkerFinanceSnapshotResponse = {
 };
 
 type AdminFinanceSummaryResponse = {
+  generated_at: string;
   range: AdminFinanceRange;
   from: string;
   to: string;
@@ -119,12 +169,19 @@ type AdminFinanceSummaryResponse = {
 type AdminFinanceBalanceSnapshotInput = {
   balance_vnd: number;
   observed_at: string;
+  client_request_id: string;
 };
 
 type AdminFinanceBalanceSnapshotResponse = {
   snapshot_id: string;
   balance_vnd: number;
   observed_at: string;
+  generated_at: string;
+};
+
+type AdminFinanceBalanceSnapshotListResponse = {
+  generated_at: string;
+  snapshots: Array<{ snapshot_id: string; balance_vnd: number; observed_at: string; recorded_by_ref: string }>;
 };
 
 type AdminFinancePeriodInput = {
@@ -154,6 +211,7 @@ type AdminFinanceSnapshotMetric = {
 };
 
 type AdminFinanceOverviewResponse = {
+  generated_at: string;
   preset: AdminFinanceRange | "custom";
   from: string;
   to: string;
@@ -244,9 +302,16 @@ type AdminFinanceTransaction = {
 };
 
 type AdminFinanceTransactionListResponse = {
+  generated_at: string;
   transactions: AdminFinanceTransaction[];
   has_more: boolean;
   next_cursor: string | null;
+};
+
+type AdminFinanceTransactionDetailResponse = {
+  generated_at: string;
+  transaction: AdminFinanceTransaction;
+  timeline: Array<{ event_type: string; occurred_at: string; actor_ref: string | null }>;
 };
 
 type AdminFinanceCsvExportResponse = {
@@ -259,6 +324,16 @@ type AdminFinanceCsvExportResponse = {
   pii_masked: true;
   from: string;
   to: string;
+  generated_at: string;
+};
+
+type AdminFinanceTaxRule = {
+  id: string;
+  tax_type: string;
+  subject: "platform" | "worker";
+  basis: "gmv" | "commission_collected" | "commission_retained" | "worker_net_paid";
+  rate_bps: number;
+  created_at: string;
 };
 
 type AdminFinanceTaxPolicy = {
@@ -277,14 +352,12 @@ type AdminFinanceTaxPolicy = {
   approved_by: string | null;
   created_at: string;
   updated_at: string;
+  rules: AdminFinanceTaxRule[];
 };
 
 type AdminFinanceTaxPolicyDraftInput = {
   name: string;
-  tax_type: AdminFinanceTaxPolicy["tax_type"];
-  subject: AdminFinanceTaxPolicy["subject"];
-  basis: AdminFinanceTaxPolicy["basis"];
-  rate_bps: number;
+  rules: Array<Pick<AdminFinanceTaxRule, "tax_type" | "subject" | "basis" | "rate_bps">>;
   effective_from: string;
   effective_to?: string;
   source_reference: string;
@@ -299,6 +372,7 @@ type AdminFinanceTaxPolicyRetireInput = {
 };
 
 type AdminFinanceTaxPolicyListResponse = {
+  generated_at: string;
   tax_policies: AdminFinanceTaxPolicy[];
   active_policy_ids: string[];
 };
@@ -308,17 +382,23 @@ export type AdminFinanceContracts = {
   paymentReconciliationListInput: AdminPaymentReconciliationListInput;
   paymentReconciliationDecisionInput: AdminPaymentReconciliationDecisionInput;
   paymentReconciliationListResponse: AdminPaymentReconciliationListResponse;
+  paymentReconciliationDetailResponse: AdminPaymentReconciliationDetailResponse;
+  paymentReconciliationClaimInput: AdminPaymentReconciliationClaimInput;
+  paymentReconciliationReleaseInput: AdminPaymentReconciliationReleaseInput;
+  paymentReconciliationAssignmentResponse: AdminPaymentReconciliationAssignmentResponse;
   paymentReconciliationDecisionResponse: AdminPaymentReconciliationDecisionResponse;
   workerFinanceSnapshotInput: AdminWorkerFinanceSnapshotInput;
   workerFinanceSnapshotResponse: AdminWorkerFinanceSnapshotResponse;
   financeSummaryResponse: AdminFinanceSummaryResponse;
   financeBalanceSnapshotInput: AdminFinanceBalanceSnapshotInput;
   financeBalanceSnapshotResponse: AdminFinanceBalanceSnapshotResponse;
+  financeBalanceSnapshotListResponse: AdminFinanceBalanceSnapshotListResponse;
   financePeriodInput: AdminFinancePeriodInput;
   financeOverviewResponse: AdminFinanceOverviewResponse;
   financeTransactionFilters: AdminFinanceTransactionFilters;
   financeTransaction: AdminFinanceTransaction;
   financeTransactionListResponse: AdminFinanceTransactionListResponse;
+  financeTransactionDetailResponse: AdminFinanceTransactionDetailResponse;
   financeCsvExportResponse: AdminFinanceCsvExportResponse;
   financeTaxPolicy: AdminFinanceTaxPolicy;
   financeTaxPolicyDraftInput: AdminFinanceTaxPolicyDraftInput;

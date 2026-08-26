@@ -5,11 +5,11 @@
     "immutableThroughVersion": "20260805090000",
     "sha256": "7d4ac8a8227452e357caa11a21ece9099c80112712dba9a250114d0761a90275"
   },
-  "migrationCount": 287,
-  "migrationsSha256": "f1a3928ed41dee612bc9a2893a8828ae05caa80b3a3e04a62071e6f6887fd084",
+  "migrationCount": 292,
+  "migrationsSha256": "12c74c7eca7b3aac79194f11c432463ae677529c55db6f064138d5248c7443ac",
   "databaseTypes": {
     "file": "packages/shared/src/types/database",
-    "sha256": "bf827494df60a6de8dc0abfe0d13d7361bbcfd788bef28e0dffb7e51238938e6"
+    "sha256": "f80391f8b030a5be28ff066f8253459fd40b3ccb2df23fbae4b65914bc33d7c8"
   },
   "entries": [
     {
@@ -2020,6 +2020,41 @@
       "file": "supabase/migrations/20260822211500_account_deletion_job_media_cleanup.sql",
       "sha256": "e1102aac221ed7c77044f76c5eb39303676400f5fe856b8ab9ec422792e1d83b",
       "bytes": 9315
+    },
+    {
+      "version": "20260825123000",
+      "name": "admin_operations_support_preparation",
+      "file": "supabase/migrations/20260825123000_admin_operations_support_preparation.sql",
+      "sha256": "187854521d7201849cdd2dc10a78961cd61d572056b6e743002d1f6ed495bb2f",
+      "bytes": 19511
+    },
+    {
+      "version": "20260825160000",
+      "name": "worker_salary_settlement_v2_hardening",
+      "file": "supabase/migrations/20260825160000_worker_salary_settlement_v2_hardening.sql",
+      "sha256": "08514ec8fa31621061e67222cdc9b48abc56549a3aa21a18fb92f5cfd530cb15",
+      "bytes": 32540
+    },
+    {
+      "version": "20260825190000",
+      "name": "admin_finance_operations_hardening",
+      "file": "supabase/migrations/20260825190000_admin_finance_operations_hardening.sql",
+      "sha256": "5687e8cc4be2f01c709b349ee9c8394691fd51388f3c27777d248cf6561ade93",
+      "bytes": 46356
+    },
+    {
+      "version": "20260826100000",
+      "name": "admin_team_access_hardening",
+      "file": "supabase/migrations/20260826100000_admin_team_access_hardening.sql",
+      "sha256": "db3b574119d090645cebcb2d17c87a52a8e607ab2229001e6dd803c4a43a0e1a",
+      "bytes": 7859
+    },
+    {
+      "version": "20260826143000",
+      "name": "admin_system_governance",
+      "file": "supabase/migrations/20260826143000_admin_system_governance.sql",
+      "sha256": "5d3b240fc2087258dab45fee01082f3c36d05a3bb3af0e78fe8fa04a6699e688",
+      "bytes": 37229
     }
   ]
 }

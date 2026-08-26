@@ -9,9 +9,9 @@ import type {
   EdgeAdminOperatorResetPasswordInput,
 } from "../../../../_shared/domain.ts";
 export type { EdgeAdminOperatorProvisionInput, EdgeAdminOperatorResetPasswordInput };
-
 export const ADMIN_CONTROL_CAPABILITIES = [
   "operations.read",
+  "operations.triage",
   "workers.read",
   "workers.review",
   "workers.manage",
@@ -22,8 +22,9 @@ export const ADMIN_CONTROL_CAPABILITIES = [
   "payouts.read",
   "payouts.process",
   "team.read",
+  "system.read",
+  "system.manage",
 ] as const;
-
 export type AdminControlCapability = typeof ADMIN_CONTROL_CAPABILITIES[number];
 
 export type AdminActor = {
@@ -58,6 +59,326 @@ export type AdminOperationsResponse = {
     decision: string;
     occurred_at: string;
   }>;
+};
+
+export const ADMIN_OVERVIEW_DETAIL_KEYS = [
+  "coordination",
+  "assigned",
+  "inService",
+  "finishing",
+  "other",
+  "worker_applications",
+  "payment_attention",
+  "open_disputes",
+  "other_admin_queue",
+  "workers_in_verification",
+  "workers_suspended",
+] as const;
+
+export type AdminOverviewDetailKey = typeof ADMIN_OVERVIEW_DETAIL_KEYS[number];
+
+export type AdminOverviewDetailsInput = {
+  key: AdminOverviewDetailKey;
+  limit: number;
+  cursor?: string;
+};
+
+export type AdminOverviewBreakdown = {
+  key: string;
+  count: number;
+};
+
+export type AdminOverviewJobRecord = {
+  kind: "job";
+  job_id: string;
+  display_code: string;
+  service_type: ServiceType;
+  status: string;
+  updated_at: string;
+};
+
+export type AdminOverviewApplicationRecord = {
+  kind: "application";
+  application_id: string;
+  worker_id: string;
+  name: string | null;
+  contact_masked: string | null;
+  stage: AdminWorkerReviewStage;
+  checklist: AdminWorkerChecklist;
+  service_types: ServiceType[];
+  updated_at: string;
+};
+
+export type AdminOverviewWorkerRecord = {
+  kind: "worker";
+  worker_id: string;
+  name: string | null;
+  service_types: ServiceType[];
+  state: string;
+  updated_at: string;
+};
+
+export type AdminOverviewPaymentRecord = {
+  kind: "payment";
+  job_id: string;
+  display_code: string;
+  service_type: ServiceType;
+  payment_status: string;
+  updated_at: string;
+};
+
+export type AdminOverviewDisputeRecord = {
+  kind: "dispute";
+  dispute_id: string;
+  job_id: string;
+  display_code: string;
+  dispute_type: string;
+  status: string;
+  updated_at: string;
+};
+
+export type AdminOverviewQueueRecord = {
+  kind: "queue";
+  queue_id: string;
+  queue_type: string;
+  status: string;
+  updated_at: string;
+};
+
+export type AdminOverviewDetailRecord =
+  | AdminOverviewJobRecord
+  | AdminOverviewApplicationRecord
+  | AdminOverviewWorkerRecord
+  | AdminOverviewPaymentRecord
+  | AdminOverviewDisputeRecord
+  | AdminOverviewQueueRecord;
+
+type AdminOverviewDetailsCommon = {
+  generated_at: string;
+  total_count: number;
+  status_breakdown: AdminOverviewBreakdown[];
+  service_breakdown: AdminOverviewBreakdown[];
+  oldest_updated_at: string | null;
+  has_more: boolean;
+  next_cursor: string | null;
+};
+
+type AdminOverviewRecordByKey = {
+  coordination: AdminOverviewJobRecord;
+  assigned: AdminOverviewJobRecord;
+  inService: AdminOverviewJobRecord;
+  finishing: AdminOverviewJobRecord;
+  other: AdminOverviewJobRecord;
+  worker_applications: AdminOverviewApplicationRecord;
+  payment_attention: AdminOverviewPaymentRecord;
+  open_disputes: AdminOverviewDisputeRecord;
+  other_admin_queue: AdminOverviewQueueRecord;
+  workers_in_verification: AdminOverviewWorkerRecord;
+  workers_suspended: AdminOverviewWorkerRecord;
+};
+
+export type AdminOverviewDetailsResponse = {
+  [Key in AdminOverviewDetailKey]: AdminOverviewDetailsCommon & {
+    key: Key;
+    records: AdminOverviewRecordByKey[Key][];
+  };
+}[AdminOverviewDetailKey];
+
+export const ADMIN_SCOPE_CHANGE_STATUSES = [
+  "requested_by_worker",
+  "reviewing_by_kael",
+  "waiting_customer_decision",
+  "approved_by_customer",
+  "rejected_by_customer",
+  "cancelled",
+] as const;
+
+export type AdminScopeChangeStatus = typeof ADMIN_SCOPE_CHANGE_STATUSES[number];
+
+export type AdminScopeChangeListInput = {
+  query: string;
+  status: AdminScopeChangeStatus | "all";
+  service_type: ServiceType | "all";
+  request_timing: "all" | "pre_arrival" | "on_site";
+  requested_from?: string;
+  requested_to?: string;
+  limit: number;
+  cursor?: string;
+};
+
+export type AdminScopeChangeSummary = {
+  scope_change_id: string;
+  job_id: string;
+  display_code: string;
+  service_type: ServiceType;
+  status: AdminScopeChangeStatus;
+  updated_at: string;
+  delta_min_vnd: number | null;
+  delta_max_vnd: number | null;
+};
+
+export type AdminScopeChangeListResponse = {
+  generated_at: string;
+  counts: {
+    kael_processing: number;
+    waiting_customer: number;
+    approved: number;
+    rejected_or_cancelled: number;
+  };
+  records: AdminScopeChangeSummary[];
+  has_more: boolean;
+  next_cursor: string | null;
+};
+
+export type AdminEvidenceMetadata = {
+  evidence_id: string;
+  kind: "photo" | "document" | "chat" | "snapshot";
+  label: string;
+  captured_at: string | null;
+};
+
+export type AdminCaseTimelineEntry = {
+  key: string;
+  label: string;
+  occurred_at: string;
+};
+
+export type AdminScopeChangeDetailResponse = {
+  generated_at: string;
+  summary: AdminScopeChangeSummary;
+  original_scope: {
+    description: string | null;
+    price_min_vnd: number | null;
+    price_max_vnd: number | null;
+  };
+  proposed_scope: {
+    description: string;
+    reason: string;
+    request_timing: "pre_arrival" | "on_site";
+    requested_at: string;
+    customer_decision_at: string | null;
+  };
+  pricing: {
+    kael_min_vnd: number | null;
+    kael_max_vnd: number | null;
+    total_min_vnd: number | null;
+    total_max_vnd: number | null;
+  };
+  evidence: AdminEvidenceMetadata[];
+  timeline: AdminCaseTimelineEntry[];
+  price_receipt: Record<string, unknown> | null;
+  related_dispute: {
+    dispute_id: string;
+    dispute_type: string;
+    status: string;
+  } | null;
+};
+
+export const ADMIN_SUPPORT_QUEUE_TYPES = [
+  "demanding_customer",
+  "worker_cancellation_review",
+  "worker_no_show",
+  "customer_cancellation_review",
+  "disintermediation_risk",
+  "autonomy_escalation",
+] as const;
+
+export type AdminSupportQueueType = typeof ADMIN_SUPPORT_QUEUE_TYPES[number];
+export type AdminSupportCaseSource = "dispute" | "queue";
+export type AdminSupportPreparationStatus = "new" | "acknowledged" | "in_review" | "ready";
+
+export type AdminSupportChecklist = {
+  opening_request_reviewed: boolean;
+  counterparty_response_reviewed_or_missing: boolean;
+  locked_evidence_reviewed: boolean;
+  job_timeline_reviewed: boolean;
+  scope_and_payment_reviewed: boolean;
+  ready_for_next_step: boolean;
+};
+
+export type AdminSupportPreparation = {
+  status: AdminSupportPreparationStatus;
+  checklist: AdminSupportChecklist;
+  assigned_to: string | null;
+  assigned_to_name: string | null;
+  version: number;
+  updated_at: string | null;
+  can_edit: boolean;
+  assigned_to_me: boolean;
+};
+
+export type AdminSupportCaseListInput = {
+  query: string;
+  type: "all" | "dispute" | AdminSupportQueueType;
+  source_status: string | "all";
+  priority: "all" | "low" | "medium" | "high" | "critical";
+  service_type: ServiceType | "all";
+  preparation_status: AdminSupportPreparationStatus | "all";
+  assignee: "all" | "unassigned" | "mine";
+  limit: number;
+  cursor?: string;
+};
+
+export type AdminSupportCaseSummary = {
+  source: AdminSupportCaseSource;
+  case_id: string;
+  type: "dispute" | AdminSupportQueueType;
+  job_id: string | null;
+  display_code?: string | null;
+  service_type?: ServiceType | null;
+  priority: "low" | "medium" | "high" | "critical";
+  source_status: string;
+  preparation_status?: AdminSupportPreparationStatus;
+  assigned_to?: string | null;
+  reason_code: string;
+  deadline_at?: string | null;
+  updated_at: string;
+};
+
+export type AdminSupportCaseListResponse = {
+  generated_at: string;
+  counts: Array<{ key: string; count: number }>;
+  records: AdminSupportCaseSummary[];
+  has_more: boolean;
+  next_cursor: string | null;
+};
+
+export type AdminSupportCaseNote = {
+  note_id: string;
+  body: string;
+  author_name: string | null;
+  created_at: string;
+};
+
+export type AdminSupportCaseDetailResponse = {
+  generated_at: string;
+  summary: AdminSupportCaseSummary;
+  neutral_summary: string;
+  parties: Array<{ role: string; name: string | null; contact_masked: string | null }>;
+  opening_statement: string | null;
+  counterparty_statement: string | null;
+  evidence: AdminEvidenceMetadata[];
+  timeline: AdminCaseTimelineEntry[];
+  abuse_signals: string[];
+  recorded_decision: Record<string, unknown> | null;
+  preparation: AdminSupportPreparation;
+  notes: AdminSupportCaseNote[];
+};
+
+export type AdminSupportPreparationInput = {
+  expected_version: number;
+  idempotency_key: string;
+  assignment?: "claim" | "unclaim" | "keep";
+  status?: AdminSupportPreparationStatus;
+  checklist?: Partial<AdminSupportChecklist>;
+  note?: string;
+};
+
+export type AdminEvidenceAccessInput = { evidence_id: string };
+export type AdminEvidenceAccessResponse = {
+  evidence_id: string;
+  signed_url: string;
+  expires_at: string;
 };
 
 export type AdminWorkerApplicationStatus =
@@ -213,18 +534,25 @@ export type AdminSubAdminSummary = {
   baseline_role: "customer" | "worker";
   status: "active" | "revoked";
   capabilities: AdminControlCapability[];
+  version: number;
   granted_at: string;
   updated_at: string;
   last_activity_at: string | null;
 };
-
+export type AdminSubAdminListInput = {
+  limit: number;
+  cursor?: string;
+};
 export type AdminSubAdminListResponse = {
   actor: AdminActor;
+  generated_at: string;
+  total_count: number;
   members: AdminSubAdminSummary[];
   nominations: AdminManagerNominationSummary[];
   pending_accounts: AdminOperatorProvisioningSummary[];
+  has_more: boolean;
+  next_cursor: string | null;
 };
-
 export type AdminOperatorProvisioningSummary = {
   id: string;
   full_name: string;
@@ -235,7 +563,6 @@ export type AdminOperatorProvisioningSummary = {
   updated_at: string;
   last_activity_at: string | null;
 };
-
 export type AdminOperatorProvisionResponse = {
   ok: true;
   account: AdminOperatorProvisioningSummary;
@@ -284,6 +611,8 @@ export type AdminManagerNominationCancellationResponse = {
 export type AdminSubAdminAccessInput = {
   action: "grant" | "update" | "revoke";
   capabilities: AdminControlCapability[];
+  client_request_id: string;
+  expected_version: number;
   reason?: string;
 };
 
@@ -293,6 +622,10 @@ export type AdminSubAdminAccessResponse = {
   status: "active" | "revoked";
   role: UserRole;
   capabilities: AdminControlCapability[];
+  version: number;
+  event_id: string;
+  generated_at: string;
+  replayed: boolean;
   updated_at: string;
 };
 
@@ -387,6 +720,7 @@ export type AdminPriceBaselineSummary = {
 };
 
 export type AdminPriceBaselineListResponse = {
+  generated_at: string;
   price_baselines: AdminPriceBaselineSummary[];
   has_more: boolean;
   next_offset: number | null;
@@ -408,6 +742,7 @@ export type AdminAiCostSummary = {
 };
 
 export type AdminAiCostListResponse = {
+  generated_at: string;
   costs: AdminAiCostSummary[];
   has_more: boolean;
   next_offset: number | null;
@@ -429,8 +764,36 @@ export type AdminLearningRuleSummary = {
 };
 
 export type AdminLearningRuleListResponse = {
+  generated_at: string;
   rules: AdminLearningRuleSummary[];
   has_more: boolean;
   next_offset: number | null;
   total_count: number;
+};
+
+export type AdminServiceTaxonomyProblem = {
+  id: string;
+  slug: string;
+  label_vi: string;
+  default_complexity: string;
+  is_active: boolean;
+  sort_order: number;
+  updated_at: string;
+};
+
+export type AdminServiceTaxonomyCategory = {
+  id: string;
+  service_type: ServiceType;
+  slug: string;
+  label_vi: string;
+  is_active: boolean;
+  sort_order: number;
+  updated_at: string;
+  problems: AdminServiceTaxonomyProblem[];
+};
+
+export type AdminServiceTaxonomyResponse = {
+  generated_at: string;
+  data_quality: "available" | "partial" | "unavailable";
+  categories: AdminServiceTaxonomyCategory[];
 };

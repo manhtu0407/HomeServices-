@@ -468,6 +468,7 @@ export type CoreTables = {
         Row: {
           account_key: string
           balance_vnd: number
+          client_request_id: string | null
           created_at: string
           entered_by: string
           id: string
@@ -476,6 +477,7 @@ export type CoreTables = {
         Insert: {
           account_key: string
           balance_vnd: number
+          client_request_id?: string | null
           created_at?: string
           entered_by: string
           id?: string
@@ -484,6 +486,7 @@ export type CoreTables = {
         Update: {
           account_key?: string
           balance_vnd?: number
+          client_request_id?: string | null
           created_at?: string
           entered_by?: string
           id?: string
