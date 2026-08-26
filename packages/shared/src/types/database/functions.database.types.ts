@@ -76,6 +76,26 @@ export type DatabaseFunctions = {
           worker_id: string
         }[]
       }
+      admin_apply_service_taxonomy_revision: {
+        Args: {
+          p_actor_id: string
+          p_client_request_id: string
+          p_expected_revision: number
+          p_problem_changes: Json
+          p_reason: string
+          p_service_patch: Json
+          p_service_type: Database["public"]["Enums"]["service_type"]
+        }
+        Returns: {
+          action: string
+          actor_id: string
+          event_id: string
+          new_version: number
+          recorded_at: string
+          replayed: boolean
+          resource_id: string
+        }[]
+      }
       admin_approve_finance_tax_policy: {
         Args: {
           p_accountant_approval_reference: string
@@ -368,6 +388,26 @@ export type DatabaseFunctions = {
         }[]
       }
       admin_operations_snapshot: { Args: { p_actor_id: string }; Returns: Json }
+      admin_publish_price_baseline_version: {
+        Args: {
+          p_actor_id: string
+          p_baseline_id: string
+          p_client_request_id: string
+          p_effective_from: string
+          p_evidence_package_id: string
+          p_expected_version: number
+          p_reason: string
+        }
+        Returns: {
+          action: string
+          actor_id: string
+          event_id: string
+          new_version: number
+          recorded_at: string
+          replayed: boolean
+          resource_id: string
+        }[]
+      }
       admin_reject_learning_candidate: {
         Args: { p_admin_id: string; p_candidate_id: string; p_reason: string }
         Returns: {
@@ -471,6 +511,24 @@ export type DatabaseFunctions = {
           version: number
         }[]
       }
+      admin_retire_price_baseline: {
+        Args: {
+          p_actor_id: string
+          p_baseline_id: string
+          p_client_request_id: string
+          p_expected_version: number
+          p_reason: string
+        }
+        Returns: {
+          action: string
+          actor_id: string
+          event_id: string
+          new_version: number
+          recorded_at: string
+          replayed: boolean
+          resource_id: string
+        }[]
+      }
       admin_review_and_approve_learning_candidate_atomic: {
         Args: {
           p_admin_id: string
@@ -559,6 +617,44 @@ export type DatabaseFunctions = {
           queue_id: string
           verification_status: Database["public"]["Enums"]["worker_verification_status"]
           worker_id: string
+        }[]
+      }
+      admin_revoke_learning_rule_atomic: {
+        Args: {
+          p_actor_id: string
+          p_client_request_id: string
+          p_expected_version: number
+          p_reason: string
+          p_rule_id: string
+          p_target_version: number
+        }
+        Returns: {
+          action: string
+          actor_id: string
+          event_id: string
+          new_version: number
+          recorded_at: string
+          replayed: boolean
+          resource_id: string
+        }[]
+      }
+      admin_rollback_learning_rule_atomic: {
+        Args: {
+          p_actor_id: string
+          p_client_request_id: string
+          p_expected_version: number
+          p_reason: string
+          p_rule_id: string
+          p_target_version: number
+        }
+        Returns: {
+          action: string
+          actor_id: string
+          event_id: string
+          new_version: number
+          recorded_at: string
+          replayed: boolean
+          resource_id: string
         }[]
       }
       admin_save_finance_tax_policy_draft: {

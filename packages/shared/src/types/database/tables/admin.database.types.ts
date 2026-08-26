@@ -438,6 +438,62 @@ export type AdminTables = {
           },
         ]
       }
+      admin_price_evidence_packages: {
+        Row: {
+          aggregate_max: number
+          aggregate_min: number
+          complexity: Database["public"]["Enums"]["complexity_level"]
+          created_at: string
+          district_code: string
+          evidence_document: Json
+          id: string
+          package_hash: string
+          schema_version: string
+          service_problem_id: string
+          service_type: Database["public"]["Enums"]["service_type"]
+          unit: string
+          verified_at: string
+        }
+        Insert: {
+          aggregate_max: number
+          aggregate_min: number
+          complexity: Database["public"]["Enums"]["complexity_level"]
+          created_at?: string
+          district_code: string
+          evidence_document: Json
+          id?: string
+          package_hash: string
+          schema_version: string
+          service_problem_id: string
+          service_type: Database["public"]["Enums"]["service_type"]
+          unit: string
+          verified_at: string
+        }
+        Update: {
+          aggregate_max?: number
+          aggregate_min?: number
+          complexity?: Database["public"]["Enums"]["complexity_level"]
+          created_at?: string
+          district_code?: string
+          evidence_document?: Json
+          id?: string
+          package_hash?: string
+          schema_version?: string
+          service_problem_id?: string
+          service_type?: Database["public"]["Enums"]["service_type"]
+          unit?: string
+          verified_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "admin_price_evidence_packages_service_problem_id_fkey"
+            columns: ["service_problem_id"]
+            isOneToOne: false
+            referencedRelation: "service_problems"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       admin_support_case_notes: {
         Row: {
           body: string
@@ -524,6 +580,47 @@ export type AdminTables = {
           {
             foreignKeyName: "admin_support_case_preparations_updated_by_fkey"
             columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      admin_system_mutation_receipts: {
+        Row: {
+          actor_id: string
+          client_request_id: string
+          created_at: string
+          id: string
+          operation: string
+          request: Json
+          resource_id: string
+          response: Json
+        }
+        Insert: {
+          actor_id: string
+          client_request_id: string
+          created_at?: string
+          id?: string
+          operation: string
+          request: Json
+          resource_id: string
+          response: Json
+        }
+        Update: {
+          actor_id?: string
+          client_request_id?: string
+          created_at?: string
+          id?: string
+          operation?: string
+          request?: Json
+          resource_id?: string
+          response?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "admin_system_mutation_receipts_actor_id_fkey"
+            columns: ["actor_id"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
