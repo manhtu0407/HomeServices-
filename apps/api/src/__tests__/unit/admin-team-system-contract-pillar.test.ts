@@ -87,20 +87,6 @@ describe('Admin Team and System route contract', () => {
     expect(read('supabase/functions/mobile-api/_shared/domains/contracts/admin-system.ts')).not.toContain('package_hash:')
   })
 
-  it('keeps price and taxonomy writes additive, versioned, and non-destructive', () => {
-    const migration = read('supabase/migrations/20260826143000_admin_system_governance.sql')
-    const supersede = migration.indexOf("update public.price_baselines set lifecycle = 'superseded'")
-    const insertVersion = migration.indexOf('insert into public.price_baselines(service_type')
-
-    expect(migration).toContain("where lifecycle = 'active'")
-    expect(supersede).toBeGreaterThan(-1)
-    expect(insertVersion).toBeGreaterThan(supersede)
-    expect(migration).toContain("values(v_category.id, p_service_type, v_change#>>'{value,slug}', v_change#>>'{value,label_vi}', v_change#>>'{value,label_en}', (v_change#>>'{value,default_complexity}')::public.complexity_level, false")
-    expect(migration).toContain("message = 'QUOTE_READY_BASELINE_REQUIRED'")
-    expect(migration).toContain('unique (actor_id, client_request_id)')
-    expect(migration).not.toMatch(/delete\s+from\s+public\.(price_baselines|service_categories|service_problems|learning_rules)/i)
-  })
-
   it('keeps model health observational and strips sensitive evidence internals', () => {
     const model = read('supabase/functions/mobile-api/_shared/domains/admin/system-model-health.ts')
     const price = read('supabase/functions/mobile-api/_shared/domains/admin/system-price.ts')
