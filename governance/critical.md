@@ -130,11 +130,13 @@ For UI, motion, glass, or other design tasks, route through `governance/design/r
 | Every task or mission | `kael-subagent-orchestration`, then the smallest sufficient task-specific protocols |
 | Any coding change | `kael-preflight`, relevant primary protocol, `kael-review` |
 | Bug, failing test, build failure, runtime failure | `kael-preflight`, `kael-diagnose`, `kael-tdd`, `kael-review` |
+| Writing or reviewing any test, in any package | `kael-tdd`, plus `protocols/test-pillars.md` for the shape the runners actually collect |
+| Frontend or UI testing on the Expo app | `kael-preflight`, `kael-frontend-test` (gates G0–G6), `kael-review` |
 | Feature work | `kael-preflight`, `kael-architecture-deepening`, `kael-tdd`, `kael-review` |
 | Code enhancement, reorganization, or cleanup | `kael-preflight`, `kael-codebase-memory`, `kael-code-enhancement`, relevant primary protocol, `kael-review` |
 | UI-only small change | `kael-preflight`, read `design.md`, `kael-ui-rn-execution`, test-after or visual verification, `kael-review` |
 | Refactor | `kael-preflight`, `kael-codebase-memory`, `kael-architecture-deepening`, `kael-tdd` when behavior may change, `kael-review` |
-| Supabase, Auth, SQL, RLS, migrations, generated types | `kael-preflight`, `kael-supabase`, `kael-tdd`, `kael-security-sweep`, `kael-review` |
+| Supabase, Auth, SQL, RLS, migrations, generated types | `kael-preflight`, `kael-supabase`, `kael-backend-structure`, `kael-backend-parity`, `kael-tdd`, `kael-security-sweep`, `kael-review` |
 | AI provider, prompt, LLM output, price synthesis, worker brief | `kael-preflight`, `kael-ai-boundary`, `kael-tdd`, `kael-security-sweep`, `kael-review` |
 | Security, PII, secrets, logging, rate limit | `kael-preflight`, `kael-security-sweep`, `kael-tdd`, `kael-review` |
 | Architecture planning | `kael-preflight`, `kael-architecture-deepening`, `kael-clarify-with-docs` |
@@ -145,7 +147,7 @@ For UI, motion, glass, or other design tasks, route through `governance/design/r
 | Prototype | read `design.md` when visual/UI-related, `kael-prototype`, `kael-review` before absorbing into production |
 | Long session or tool handoff | `kael-handoff` |
 | Technical documentation | `kael-docs-execution` |
-| Agent context setup missing | propose `kael-agent-context-setup` |
+| Agent context setup missing | no protocol exists for this yet — propose one to Tu instead of improvising |
 
 
 ### Protocol Source Files
@@ -162,11 +164,17 @@ critical.md keeps `kael-preflight` (§5) and `kael-review` (§8) inline because 
 | `kael-ui-rn-execution` | `protocols/ui.md` |
 | `kael-prototype`, `kael-clarify-with-docs` | `protocols/prototype-clarify.md` |
 | `kael-to-prd`, `kael-issue-slicing`, `kael-triage`, `kael-docs-execution`, `kael-handoff`, `kael-compact-communication` | `protocols/docs-workflow.md` |
+| `kael-backend-structure`, `kael-backend-parity` | `protocols/backend-structure.md` |
+| `kael-frontend-test` | `protocols/frontend-test.md` |
+| `kael-work-router` | `protocols/work-router.md` |
+| test pillars (the manifest and its diagnostic contract) | `protocols/test-pillars.md` |
 | dormant protocols | `protocols/dormant.md` |
 
 `kael-codebase-memory` resolves to a skill rather than a protocol file: `.claude/skills/kael-codebase-memory/SKILL.md` (Codex reads the `.agents/skills/` mirror). It supplies the discovery method the three architecture protocols call for, so there is nothing to load from `protocols/`.
 
-Load a protocol file only when §1 selects its protocol for the current task class.
+`kael-backend-structure` and `kael-backend-parity` are the exception to that selection: `protocols/work-router.md` `## Lane — by backend path` fires both on any change set touching `supabase/functions/**`, `supabase/migrations/**`, `packages/shared/src/contracts/**`, or `packages/shared/src/types/database/**`, at every reach, whether or not the row above matched. Neither may appear in a `dropped:` line.
+
+Load a protocol file only when §1 selects its protocol for the current task class, or when the backend-path lane fires one.
 
 ## 2. Task Classification Matrix
 

@@ -24,7 +24,9 @@ Adapted from Anthropic `claude-md-improver`, retargeted from "one CLAUDE.md" to 
 
 ### 5. Context Economy (15)
 - `governance/critical.md` core lean (target <= ~650 lines); protocol bodies live in `governance/protocols/`, not the core.
+- `CLAUDE.md` lean (target <= ~230 lines). It is Tier 1 and always loaded, so every line it gains is paid on every task.
 - CLAUDE.md free of long restated process lists.
+- Over a cap, move content to a spoke and leave the pointer behind. Cutting substance to reach a number is how a router loses the rule that made it worth reading, so a cap is a trigger to route, never a licence to delete.
 
 ### 6. Skill Health (15)
 - Each skill has `name` + a trigger-shaped `description`.
@@ -35,7 +37,7 @@ Adapted from Anthropic `claude-md-improver`, retargeted from "one CLAUDE.md" to 
 A 90-100 / B 70-89 / C 50-69 / D 30-49 / F 0-29.
 
 ## Red Flags (instant deductions)
-- A service category other than electrical / plumbing / cleaning anywhere in product scope.
+- A service category outside the active set in `governance/RULES.md` #6 anywhere in product scope.
 - A money / booking / scope-change path without explicit-confirmation language.
 - PII (phone, CCCD, address, bank) shown in a logging example.
 - A protocol referenced in §1 with no source file.
@@ -70,7 +72,7 @@ When auditing, also score the design docs:
 - **Recipes complete:** each screen recipe in `governance/design/screen-recipes.md` covers loading / empty / error / success + money-impacting confirmation where relevant.
 
 ### Design red flags (instant deductions)
-- A service beyond electrical / plumbing / cleaning in any recipe or surface.
+- A service outside the active set in `governance/RULES.md` #6 in any recipe or surface.
 - A money-impacting screen recipe without explicit-confirmation language.
 - A forbidden AI default (gradient orbs, bento-default, purple/blue AI gradient, card spam, fake stats) presented as allowed.
 - English user-facing copy in a recipe example.
