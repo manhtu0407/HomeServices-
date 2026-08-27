@@ -1,10 +1,12 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
+import { render, screen } from '@testing-library/react-native'
 
 import { withPillarContext, type PillarManifest } from '@/__tests__/pillar-manifest'
 import type { AdminViewActor } from '@/lib/api-types/admin'
 
 import { adminProductionPresentationCopy } from '../admin-sections-production-copy'
+import { AdminSectionsProductionShell } from '../admin-sections-production-shell'
 import {
   ADMIN_PRODUCTION_SECTIONS,
   resolveAdminProductionCapability,
@@ -116,6 +118,41 @@ describe('Admin Production section registry', () => {
         'system',
       ])
     }, 'the Owner has every required read capability and must see the complete Admin hierarchy')
+  })
+
+  it('renders all six compact routes in one equal-width, non-scrolling row', () => {
+    const navigation = ADMIN_PRODUCTION_SECTIONS.map((section) => ({
+      id: section.id,
+      label: adminProductionPresentationCopy.vi.sections.find((candidate) => candidate.id === section.id)?.shortLabel ?? section.id,
+      testID: `admin-route-${section.id}`,
+    }))
+
+    render(<AdminSectionsProductionShell
+      activeSection="team"
+      navigation={navigation}
+      navigationLabel="Khu vực quản trị"
+      onSelectSection={jest.fn()}
+      onSignOut={jest.fn()}
+      signOutLabel="Đăng xuất"
+      title="Điều hành NestScout"
+    >
+      {null}
+    </AdminSectionsProductionShell>)
+
+    withPillarContext(PILLAR, () => {
+      expect(screen.getAllByRole('tab')).toHaveLength(6)
+      expect(screen.getByTestId('admin-sections-primary-navigation-scroll')).toHaveStyle({
+        flexDirection: 'row',
+        width: '100%',
+      })
+      for (const section of ADMIN_PRODUCTION_SECTIONS) {
+        expect(screen.getByTestId(`admin-route-${section.id}`)).toHaveStyle({
+          flexBasis: 0,
+          flexGrow: 1,
+          minWidth: 0,
+        })
+      }
+    }, 'the compact navigation must distribute six routes across the viewport instead of clipping the last route in a horizontal list')
   })
 
   it('shows a finance-baseline operator Finance and read-only System', () => {

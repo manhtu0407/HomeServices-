@@ -1,12 +1,10 @@
-import { useCallback, useState, type ReactNode } from 'react'
+import { useState, type ReactNode } from 'react'
 import {
-  FlatList,
   Pressable,
   ScrollView,
   StyleSheet,
   useWindowDimensions,
   View,
-  type ListRenderItemInfo,
 } from 'react-native'
 import Svg, { Path } from 'react-native-svg'
 
@@ -120,23 +118,20 @@ function HorizontalNavigation({
   onSelect: (section: AdminProductionSectionId) => void
   tokens: ThemeTokens
 }) {
-  const renderItem = useCallback(({ item }: ListRenderItemInfo<AdminProductionNavigationItem>) => <MobileNavigationTab
-    item={item}
-    onSelect={onSelect}
-    selected={item.id === activeSection}
-    tokens={tokens}
-  />, [activeSection, onSelect, tokens])
   return <View style={[styles.mobileNavigationShell, { backgroundColor: tokens.base, borderBottomColor: tokens.border }]} testID="admin-sections-primary-navigation">
-    <FlatList
+    <View
       accessibilityRole="tablist"
-      contentContainerStyle={styles.mobileNavigationContent}
-      data={items}
-      horizontal
-      keyExtractor={(item) => item.id}
-      renderItem={renderItem}
-      showsHorizontalScrollIndicator={false}
+      style={styles.mobileNavigationContent}
       testID="admin-sections-primary-navigation-scroll"
-    />
+    >
+      {items.map((item) => <MobileNavigationTab
+        item={item}
+        key={item.id}
+        onSelect={onSelect}
+        selected={item.id === activeSection}
+        tokens={tokens}
+      />)}
+    </View>
   </View>
 }
 
@@ -234,7 +229,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
   },
   mobileNavigationContent: {
-    flexGrow: 1,
+    flexDirection: 'row',
     paddingHorizontal: spacing.xs,
     width: '100%',
   },
