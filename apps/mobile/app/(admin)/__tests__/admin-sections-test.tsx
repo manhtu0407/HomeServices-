@@ -564,7 +564,8 @@ describe('AdminSections', () => {
     render(<AdminSections />)
     await screen.findByTestId('admin-production-section-overview')
 
-    expect(screen.getByTestId('admin-sections-primary-navigation-scroll').props.contentContainerStyle).toMatchObject({
+    expect(screen.getByTestId('admin-sections-primary-navigation-scroll')).toHaveStyle({
+      flexDirection: 'row',
       width: '100%',
     })
 
