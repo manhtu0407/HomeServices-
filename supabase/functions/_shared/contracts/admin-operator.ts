@@ -1,9 +1,9 @@
 import { z } from "zod";
 
 export const ADMIN_OPERATOR_CAPABILITIES = [
-  "operations.read", "workers.read", "workers.review", "workers.manage",
+  "operations.read", "operations.triage", "workers.read", "workers.review", "workers.manage",
   "transactions.read", "finance.read", "finance.reconcile",
-  "finance.tax.manage", "payouts.read", "payouts.process", "team.read",
+  "finance.tax.manage", "payouts.read", "payouts.process", "team.read", "system.read", "system.manage",
 ] as const;
 
 const capabilitySchema = z.enum(ADMIN_OPERATOR_CAPABILITIES);
@@ -25,11 +25,27 @@ export const adminOperatorProvisionSchema = z.object({
       message: "Capabilities must be unique",
     });
   }
+  if (value.capabilities.includes("operations.triage") && !value.capabilities.includes("operations.read")) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["capabilities"],
+      message: "operations.triage requires operations.read",
+    });
+  }
+  if (value.capabilities.includes("system.manage") && !value.capabilities.includes("system.read")) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["capabilities"],
+      message: "system.manage requires system.read",
+    });
+  }
 }).transform((value) => ({
   ...value,
-  capabilities: value.capabilities.includes("finance.read")
-    ? value.capabilities
-    : ["finance.read" as const, ...value.capabilities],
+  capabilities: Array.from(new Set([
+    "finance.read" as const,
+    "system.read" as const,
+    ...value.capabilities,
+  ])),
 }));
 
 export const adminOperatorResetPasswordSchema = z.object({

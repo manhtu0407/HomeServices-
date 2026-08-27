@@ -74,7 +74,7 @@ export function buildCapabilityRegistry(options = {}) {
     const roleAliases = roleAliasesFor(source)
     for (const { kind, index } of declaredKinds(source)) {
       const window = routeDescriptorWindow(source, index)
-      const method = /\bmethod:\s*["'](GET|POST|PATCH|DELETE)["']/u.exec(window)?.[1] ?? null
+      const method = /\bmethod:\s*["'](GET|POST|PUT|PATCH|DELETE)["']/u.exec(window)?.[1] ?? null
       const roleBlock = /\broles:\s*\[([^\]]*)\]/u.exec(window)?.[1] ?? ''
       const literalRoles = [...roleBlock.matchAll(/["'](customer|worker|admin|admin_operator)["']/gu)]
         .map((item) => item[1])
@@ -223,6 +223,7 @@ function sideEffectFor(operationClass) {
 }
 
 function confirmationFor(kind) {
+  if (kind.startsWith('admin.operations.scopeChanges.')) return 'none'
   if (/paymentIntent|cashPaymentConfirm|stagingPaymentConfirm/iu.test(kind)) return 'payment'
   if (/scope\.decide|scopeChange/iu.test(kind)) return 'scope_change'
   if (/confirmCompletion/iu.test(kind)) return 'completion'

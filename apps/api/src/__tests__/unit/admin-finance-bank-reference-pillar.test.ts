@@ -37,21 +37,27 @@ function recordingRpc(row: Record<string, unknown>) {
 }
 
 const MANUAL_ROW = {
+  event_id_out: 'event-1',
+  generated_at_out: '2026-08-12T10:00:00.000Z',
   hold_until: '2026-08-12T10:00:00.000Z',
   job_id: 'job-1',
   ok: true,
   outcome: 'paid',
   payment_status: 'manual_verified',
   status: 'paid',
+  version_out: 3,
 }
 
 const CASH_ROW = {
+  event_id_out: 'event-2',
+  generated_at_out: '2026-08-12T10:00:00.000Z',
   hold_until: null,
   job_id: 'job-1',
   ok: true,
   outcome: 'confirmed',
   payment_status: 'cash_verified',
   status: 'paid',
+  version_out: 3,
 }
 
 async function decideWith(bankReference: string | undefined) {
@@ -60,6 +66,8 @@ async function decideWith(bankReference: string | undefined) {
     amount_received: 450_000,
     credited_at: '2026-08-11T10:00:00.000Z',
     decision: 'confirm',
+    expected_version: 2,
+    client_request_id: 'c2f2d727-3809-4e16-b31c-9a9d98302819',
     ...(bankReference === undefined ? {} : { bank_reference: bankReference }),
   } as never)
   expect(calls).toHaveLength(1)
@@ -125,13 +133,15 @@ describe('P34 admin finance — a cash decision carries no bank fields at all', 
     const { calls, rpc } = recordingRpc(CASH_ROW)
     await decideAdminPaymentReconciliation(ownerContext(rpc), 'payment-order-1', {
       decision: 'cash_confirm',
+      expected_version: 2,
+      client_request_id: 'c2f2d727-3809-4e16-b31c-9a9d98302819',
     } as never)
 
     expect(calls).toHaveLength(1)
     expect(
       calls[0].name,
       pillarWhy(PILLAR, 'cash reconciliation is a different RPC; sending it down the bank path would carry bank columns'),
-    ).toBe('decide_cash_payment_reconciliation')
+    ).toBe('admin_decide_payment_reconciliation_v2')
     expect(
       Object.keys(calls[0].args).filter((key) => key.includes('bank_reference')),
       pillarWhy(PILLAR, 'there is no bank reference in a cash settlement, so none may be sent'),

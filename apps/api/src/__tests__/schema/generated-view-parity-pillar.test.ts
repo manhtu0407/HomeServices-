@@ -9,7 +9,7 @@ export const PILLAR = {
     'every view in the generated schema is named here with a column its consumers rely on, so a new, dropped, or renamed view cannot arrive unguarded',
   authority: [
     'governance/protocols/tdd.md (derived sets are a ratchet doing its job)',
-    'governance/STRUCTURES.md §1.5 (9 public views at the recorded milestone)',
+    'supabase/migrations/20260826143000_admin_system_governance.sql (admin model-health view)',
   ],
   target: 'packages/shared/src/types/database/views.database.types.ts',
   layer: 'static-type',
@@ -27,6 +27,7 @@ type ViewName = keyof Database['public']['Views']
 const VIEW_IDENTITY_COLUMN: {
   [V in ViewName]: keyof Database['public']['Views'][V]['Row']
 } = {
+  admin_model_health_daily: 'day',
   customer_overview: 'customer_id',
   harness_run_timeline: 'capability',
   kael_cost_daily_summary: 'day',
@@ -44,13 +45,13 @@ const VIEW_IDENTITY_COLUMN: {
 const COMPOSITE_TYPE_GUARD: { [C in keyof Database['public']['CompositeTypes']]: true } = {}
 
 describe('generated view parity', () => {
-  // Independent oracle: STRUCTURES §1.5 records the public view count at the milestone,
-  // so this number comes from the governance doc rather than from the artifact under test.
-  it('covers exactly the nine public views the schema inventory records', () => {
+  // The explicit count keeps additions visible during review instead of allowing the mapped
+  // type to absorb a new view without updating this behavioral inventory.
+  it('covers exactly the ten public views the schema inventory records', () => {
     expect(
       Object.keys(VIEW_IDENTITY_COLUMN),
       pillarWhy(PILLAR, 'a count drift here means a view shipped without anyone guarding it'),
-    ).toHaveLength(9)
+    ).toHaveLength(10)
   })
 
   it('names a real, non-empty column for every view', () => {

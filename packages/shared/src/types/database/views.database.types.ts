@@ -5,6 +5,24 @@ import type { Database } from './schema.database.types'
 
 export type DatabaseViews = {
 /* @slice:begin views */
+      admin_model_health_daily: {
+        Row: {
+          avg_latency_ms: number | null
+          call_count: number | null
+          day: string | null
+          failure_count: number | null
+          failure_kind: string | null
+          fallback_count: number | null
+          model: string | null
+          p95_latency_ms: number | null
+          provider: Database["public"]["Enums"]["api_provider"] | null
+          purpose: string | null
+          success_count: number | null
+          total_cost_usd: number | null
+          updated_at: string | null
+        }
+        Relationships: []
+      }
       customer_overview: {
         Row: {
           bookings_30d: number | null

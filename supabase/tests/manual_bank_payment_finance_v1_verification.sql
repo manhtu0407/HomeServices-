@@ -108,9 +108,10 @@ begin
   if v_definition not like '%pg_advisory_xact_lock%'
     or v_definition not like '%v_has_existing_order%'
     or v_definition not like '%INSUFFICIENT_COLLATERAL%'
-    or v_definition not like '%0.15%'
+    or v_definition not like '%private.resolve_job_commission_terms%'
+    or v_definition not like '%v_tier.commission_rate_bps%'
   then
-    raise exception 'direct-payment selection lost its serialized 15 percent collateral guard';
+    raise exception 'direct-payment selection lost its serialized tier-based collateral guard';
   end if;
   if position('if v_collateral <= 0' in v_definition) = 0
     or position('delete from public.worker_payment_ledger' in v_definition) = 0

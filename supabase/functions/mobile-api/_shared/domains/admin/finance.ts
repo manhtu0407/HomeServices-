@@ -5,9 +5,12 @@ import { db, dbQuery } from "../../platform/db.ts";
 import type { AdminFinanceContracts } from "../contracts/admin-finance.ts";
 import { requireAdminCapability } from "./control.ts";
 export {
+  claimAdminPaymentReconciliation,
   decideAdminPaymentReconciliation,
+  getAdminPaymentReconciliation,
   getAdminWorkerFinanceSnapshot,
   listAdminPaymentReconciliations,
+  releaseAdminPaymentReconciliation,
 } from "./finance-reconciliation.ts";
 import {
   csvCell,
@@ -25,11 +28,13 @@ type AdminFinanceRange = AdminFinanceContracts["range"];
 type AdminFinanceSummaryResponse = AdminFinanceContracts["financeSummaryResponse"];
 type AdminFinanceBalanceSnapshotInput = AdminFinanceContracts["financeBalanceSnapshotInput"];
 type AdminFinanceBalanceSnapshotResponse = AdminFinanceContracts["financeBalanceSnapshotResponse"];
+type AdminFinanceBalanceSnapshotListResponse = AdminFinanceContracts["financeBalanceSnapshotListResponse"];
 type AdminFinancePeriodInput = AdminFinanceContracts["financePeriodInput"];
 type AdminFinanceOverviewResponse = AdminFinanceContracts["financeOverviewResponse"];
 type AdminFinanceTransactionFilters = AdminFinanceContracts["financeTransactionFilters"];
 type AdminFinanceTransaction = AdminFinanceContracts["financeTransaction"];
 type AdminFinanceTransactionListResponse = AdminFinanceContracts["financeTransactionListResponse"];
+type AdminFinanceTransactionDetailResponse = AdminFinanceContracts["financeTransactionDetailResponse"];
 type AdminFinanceCsvExportResponse = AdminFinanceContracts["financeCsvExportResponse"];
 type AdminFinanceTaxPolicy = AdminFinanceContracts["financeTaxPolicy"];
 type AdminFinanceTaxPolicyDraftInput = AdminFinanceContracts["financeTaxPolicyDraftInput"];
@@ -136,6 +141,7 @@ export async function listAdminFinanceTransactions(
   }
   const encodedCursor = nextCursor ? encodeFinanceCursor(nextCursor) : null;
   return {
+    generated_at: new Date().toISOString(),
     transactions: rows.map(serializeFinanceTransaction),
     has_more: encodedCursor !== null,
     next_cursor: encodedCursor,
@@ -181,6 +187,7 @@ export async function exportAdminFinanceCsv(
     pii_masked: true,
     from: period.from,
     to: period.to,
+    generated_at: new Date().toISOString(),
   };
 }
 
@@ -195,8 +202,9 @@ export async function listAdminFinanceTaxPolicies(
   const policyRows = asRecordArray(result.data.tax_policies);
   const activePolicyIds = Array.isArray(result.data.active_policy_ids) ? result.data.active_policy_ids : null;
   if (!policyRows || !activePolicyIds) apiFailure("DB_ERROR", "Danh sách chính sách thuế không hợp lệ", 500);
-  const policies = policyRows.map(serializeTaxPolicy);
+  const policies = groupTaxPolicyRows(policyRows);
   return {
+    generated_at: new Date().toISOString(),
     tax_policies: policies,
     active_policy_ids: uniqueStrings(activePolicyIds.map(nullableString)),
   };
@@ -213,9 +221,9 @@ export async function createAdminFinanceTaxPolicyDraft(
       p_policy: input,
     }),
   );
-  const row = result.data?.[0];
-  if (result.error || !row) apiFailure("DB_ERROR", "Không thể tạo bản nháp chính sách thuế", 500);
-  return serializeTaxPolicy(row);
+  const policy = result.data ? groupTaxPolicyRows(result.data)[0] : null;
+  if (result.error || !policy) apiFailure("DB_ERROR", "Không thể tạo bản nháp chính sách thuế", 500);
+  return policy;
 }
 
 export async function updateAdminFinanceTaxPolicyDraft(
@@ -229,9 +237,9 @@ export async function updateAdminFinanceTaxPolicyDraft(
     p_policy_id: policyId,
     p_policy: input,
   }));
-  const row = result.data?.[0];
-  if (result.error || !row) apiFailure("DB_ERROR", "Không thể cập nhật bản nháp chính sách thuế", 500);
-  return serializeTaxPolicy(row);
+  const policy = result.data ? groupTaxPolicyRows(result.data)[0] : null;
+  if (result.error || !policy) apiFailure("DB_ERROR", "Không thể cập nhật bản nháp chính sách thuế", 500);
+  return policy;
 }
 
 export async function approveAdminFinanceTaxPolicy(
@@ -248,9 +256,9 @@ export async function approveAdminFinanceTaxPolicy(
       p_policy_id: policyId,
     }),
   );
-  const row = result.data?.[0];
-  if (result.error || !row) apiFailure("DB_ERROR", "Không thể phê duyệt chính sách thuế", 500);
-  return serializeTaxPolicy(row);
+  const policy = result.data ? groupTaxPolicyRows(result.data)[0] : null;
+  if (result.error || !policy) apiFailure("DB_ERROR", "Không thể phê duyệt chính sách thuế", 500);
+  return policy;
 }
 
 export async function retireAdminFinanceTaxPolicy(
@@ -265,9 +273,9 @@ export async function retireAdminFinanceTaxPolicy(
     p_policy_id: policyId,
     p_reason: input.reason,
   }));
-  const row = result.data?.[0];
-  if (result.error || !row) apiFailure("DB_ERROR", "Không thể ngừng chính sách thuế", 500);
-  return serializeTaxPolicy(row);
+  const policy = result.data ? groupTaxPolicyRows(result.data)[0] : null;
+  if (result.error || !policy) apiFailure("DB_ERROR", "Không thể ngừng chính sách thuế", 500);
+  return policy;
 }
 
 export async function recordAdminFinanceBalanceSnapshot(
@@ -276,9 +284,10 @@ export async function recordAdminFinanceBalanceSnapshot(
 ): Promise<AdminFinanceBalanceSnapshotResponse> {
   await requireAdminCapability(ctx, "finance.reconcile");
   const result = await dbQuery<Row[]>(
-    db(ctx).rpc("record_platform_bank_balance_snapshot", {
+    db(ctx).rpc("record_platform_bank_balance_snapshot_idempotent", {
       p_actor_id: ctx.user.id,
       p_balance_vnd: input.balance_vnd,
+      p_client_request_id: input.client_request_id,
       p_observed_at: input.observed_at,
     }),
   );
@@ -289,7 +298,69 @@ export async function recordAdminFinanceBalanceSnapshot(
   if (result.error || !snapshotId || balance === null || !observedAt) {
     apiFailure("DB_ERROR", "Không thể lưu số dư tài khoản", 500);
   }
-  return { snapshot_id: snapshotId, balance_vnd: balance, observed_at: observedAt };
+  return { snapshot_id: snapshotId, balance_vnd: balance, observed_at: observedAt, generated_at: new Date().toISOString() };
+}
+
+export async function listAdminFinanceBalanceSnapshots(
+  ctx: MobileApiContext,
+): Promise<AdminFinanceBalanceSnapshotListResponse> {
+  await requireAdminCapability(ctx, "finance.read");
+  const result = await dbQuery<Row[]>(
+    db(ctx).from("platform_bank_balance_snapshots")
+      .select("id,balance_vnd,observed_at,entered_by")
+      .eq("account_key", "platform_secondary")
+      .order("observed_at", { ascending: false })
+      .limit(50),
+  );
+  if (result.error) apiFailure("DB_ERROR", "Không thể tải lịch sử số dư tài khoản", 500);
+  return {
+    generated_at: new Date().toISOString(),
+    snapshots: (result.data ?? []).map((row) => ({
+      snapshot_id: requiredFinanceString(row.id),
+      balance_vnd: requiredFinanceAmount(row.balance_vnd),
+      observed_at: requiredFinanceString(row.observed_at),
+      recorded_by_ref: maskedFinanceReference(requiredFinanceString(row.entered_by)),
+    })),
+  };
+}
+
+export async function getAdminFinanceTransaction(
+  ctx: MobileApiContext,
+  jobId: string,
+): Promise<AdminFinanceTransactionDetailResponse> {
+  await requireAdminCapability(ctx, "finance.read");
+  const result = await dbQuery<Row>(db(ctx).rpc("admin_finance_transaction_detail", {
+    p_actor_id: ctx.user.id,
+    p_job_id: jobId,
+  }));
+  if (result.error) apiFailure("DB_ERROR", "Không thể tải chi tiết giao dịch tài chính", 500);
+  if (!result.data) apiFailure("NOT_FOUND", "Không tìm thấy giao dịch tài chính", 404);
+  const transaction = asRecord(result.data.transaction);
+  const timeline = asRecordArray(result.data.timeline);
+  if (!timeline || result.data.pii !== "masked") apiFailure("DB_ERROR", "Chi tiết giao dịch tài chính không hợp lệ", 500);
+  return {
+    generated_at: new Date().toISOString(),
+    transaction: serializeFinanceTransaction(transaction),
+    timeline: timeline.map((row) => ({
+      event_type: requiredFinanceString(row.event_type),
+      occurred_at: requiredFinanceString(row.occurred_at),
+      actor_ref: nullableString(row.actor_ref),
+    })),
+  };
+}
+
+export async function getAdminFinanceTaxPolicy(
+  ctx: MobileApiContext,
+  policyId: string,
+): Promise<AdminFinanceTaxPolicy> {
+  await requireAdminCapability(ctx, "finance.read");
+  const [policyResult, rulesResult] = await Promise.all([
+    dbQuery<Row>(db(ctx).from("admin_finance_tax_policies").select("*").eq("id", policyId).maybeSingle()),
+    dbQuery<Row[]>(db(ctx).from("admin_finance_tax_rules").select("*").eq("policy_id", policyId).order("created_at", { ascending: true })),
+  ]);
+  if (policyResult.error || rulesResult.error) apiFailure("DB_ERROR", "Không thể tải chính sách thuế", 500);
+  if (!policyResult.data) apiFailure("NOT_FOUND", "Không tìm thấy chính sách thuế", 404);
+  return serializeTaxPolicyFromTables(policyResult.data, rulesResult.data ?? []);
 }
 
 function serializeFinanceSummary(
@@ -313,6 +384,7 @@ function serializeFinanceSummary(
     apiFailure("DB_ERROR", "Tổng hợp tài chính không hợp lệ", 500);
   }
   return {
+    generated_at: new Date().toISOString(),
     range,
     from: bounds.from,
     to: bounds.to,
@@ -400,6 +472,7 @@ function serializeFinanceOverview(
   };
   const taxRules = asRecordArray(tax.rules) ?? [];
   return {
+    generated_at: new Date().toISOString(),
     preset: period.preset,
     from: period.from,
     to: period.to,
@@ -410,8 +483,8 @@ function serializeFinanceOverview(
     current_balances: serializedBalances,
     bank_reconciliation: serializedBank,
     trend: trend.map(serializeTrendPoint),
-    payment_methods: paymentMethods.map((item) => serializePaymentMethodBreakdown(item, nullableFiniteNumber(metrics.gmv), financialQuality)),
-    services: services.map((item) => serializeServiceBreakdown(item, financialQuality)),
+    payment_methods: paymentMethods.map(serializePaymentMethodBreakdown),
+    services: services.map(serializeServiceBreakdown),
     tax_policy_ids: uniqueStrings(taxRules.map((rule) => nullableString(rule.policy_id))),
   };
 }
@@ -466,56 +539,65 @@ function signedSnapshotMetric(
 }
 
 function serializeTrendPoint(row: Row): AdminFinanceOverviewResponse["trend"][number] {
-  const metrics = asRecord(row.metrics);
-  const quality = nonnegativeInteger(metrics.missing_paid_financial_rows) === 0 ? "available" : "partial";
-  const bucketStart = nullableString(row.from);
-  const bucketEnd = nullableString(row.to);
-  if (!bucketStart || !bucketEnd) apiFailure("DB_ERROR", "Mốc xu hướng tài chính không hợp lệ", 500);
+  const quality = requireDataQuality(row);
+  const bucketStart = nullableString(row.bucket_start);
+  const bucketEnd = nullableString(row.bucket_end);
+  const gmv = nonnegativeInteger(row.gmv_vnd);
+  const commissionCollected = nonnegativeInteger(row.commission_collected_vnd);
+  const paidJobs = nonnegativeInteger(row.paid_jobs);
+  if (!bucketStart || !bucketEnd || gmv === null || commissionCollected === null || paidJobs === null) {
+    apiFailure("DB_ERROR", "Mốc xu hướng tài chính không hợp lệ", 500);
+  }
   return {
     bucket_start: bucketStart,
     bucket_end: bucketEnd,
-    gmv_vnd: quality === "available" ? nullableFiniteNumber(metrics.gmv) : null,
-    commission_collected_vnd: quality === "available" ? nullableFiniteNumber(metrics.commission_collected) : null,
-    paid_jobs: nullableFiniteNumber(metrics.paid_job_count),
+    gmv_vnd: quality === "available" ? gmv : null,
+    commission_collected_vnd: quality === "available" ? commissionCollected : null,
+    paid_jobs: paidJobs,
     data_quality: quality,
-    unavailable_reason: quality === "partial" ? "PAID_FINANCIALS_PARTIAL" : null,
+    unavailable_reason: quality === "available" ? null : nullableString(row.unavailable_reason) ?? "PAID_FINANCIALS_PARTIAL",
   };
 }
 
-function serializePaymentMethodBreakdown(
-  row: Row,
-  totalGmv: number | null,
-  quality: AdminFinanceOverviewResponse["data_quality"],
-): AdminFinanceOverviewResponse["payment_methods"][number] {
+function serializePaymentMethodBreakdown(row: Row): AdminFinanceOverviewResponse["payment_methods"][number] {
+  const quality = requireDataQuality(row);
   const paymentMethod = nullableString(row.payment_method);
-  const gmv = nonnegativeInteger(row.gmv);
-  const paidJobs = nonnegativeInteger(row.paid_job_count);
-  if (!paymentMethod || gmv === null || paidJobs === null) apiFailure("DB_ERROR", "Phương thức thanh toán không hợp lệ", 500);
+  const gmv = nonnegativeInteger(row.gmv_vnd);
+  const paidJobs = nonnegativeInteger(row.paid_jobs);
+  const sharePercent = nullableFiniteNumber(row.share_percent);
+  if (!paymentMethod || gmv === null || paidJobs === null || sharePercent === null || sharePercent < 0 || sharePercent > 100) {
+    apiFailure("DB_ERROR", "Phương thức thanh toán không hợp lệ", 500);
+  }
   return {
     payment_method: paymentMethod,
     gmv_vnd: quality === "available" ? gmv : null,
     paid_jobs: paidJobs,
-    share_percent: quality !== "available" || totalGmv === null || totalGmv === 0 ? null : (gmv / totalGmv) * 100,
+    share_percent: quality === "available" ? sharePercent : null,
     data_quality: quality,
-    unavailable_reason: quality === "partial" ? "PAID_FINANCIALS_PARTIAL" : null,
+    unavailable_reason: quality === "available" ? null : nullableString(row.unavailable_reason) ?? "PAID_FINANCIALS_PARTIAL",
   };
 }
 
-function serializeServiceBreakdown(row: Row, quality: AdminFinanceOverviewResponse["data_quality"]): AdminFinanceOverviewResponse["services"][number] {
+function serializeServiceBreakdown(row: Row): AdminFinanceOverviewResponse["services"][number] {
+  const sourceQuality = requireDataQuality(row);
   const serviceType = nullableString(row.service_type);
-  const gmv = nonnegativeInteger(row.gmv);
-  const commissionAccrued = nonnegativeInteger(row.commission_accrued);
-  const paidJobs = nonnegativeInteger(row.paid_job_count);
-  if (!serviceType || gmv === null || commissionAccrued === null || paidJobs === null) {
+  const gmv = nonnegativeInteger(row.gmv_vnd);
+  const commissionAccrued = nonnegativeInteger(row.commission_accrued_vnd);
+  const paidJobs = nonnegativeInteger(row.paid_jobs);
+  if (!serviceType || gmv === null || paidJobs === null) {
     apiFailure("DB_ERROR", "Loại dịch vụ tài chính không hợp lệ", 500);
   }
+  const quality = sourceQuality === "available" && commissionAccrued === null ? "partial" : sourceQuality;
+  const unavailableReason = commissionAccrued === null
+    ? "SERVICE_COMMISSION_ACCRUAL_UNAVAILABLE"
+    : nullableString(row.unavailable_reason);
   return {
     service_type: serviceType,
-    gmv_vnd: quality === "available" ? gmv : null,
+    gmv_vnd: sourceQuality === "available" ? gmv : null,
     commission_accrued_vnd: quality === "available" ? commissionAccrued : null,
     paid_jobs: paidJobs,
     data_quality: quality,
-    unavailable_reason: quality === "partial" ? "PAID_FINANCIALS_PARTIAL" : null,
+    unavailable_reason: quality === "available" ? null : unavailableReason ?? "PAID_FINANCIALS_PARTIAL",
   };
 }
 
@@ -559,7 +641,7 @@ function serializeFinanceTransaction(row: Row): AdminFinanceTransaction {
   };
 }
 
-function serializeTaxPolicy(row: Row): AdminFinanceTaxPolicy {
+function serializeTaxPolicy(row: Row, ruleRows: Row[] = [row]): AdminFinanceTaxPolicy {
   const id = nullableString(row.id);
   const name = nullableString(row.name);
   const taxType = asTaxType(row.tax_type);
@@ -591,7 +673,70 @@ function serializeTaxPolicy(row: Row): AdminFinanceTaxPolicy {
     approved_by: nullableString(row.approved_by),
     created_at: createdAt,
     updated_at: updatedAt,
+    rules: ruleRows.map((rule, index) => serializeTaxRule(rule, id, subject, createdAt, index)),
   };
+}
+
+function groupTaxPolicyRows(rows: Row[]): AdminFinanceTaxPolicy[] {
+  const grouped = new Map<string, Row[]>();
+  for (const row of rows) {
+    const id = requiredFinanceString(row.id);
+    grouped.set(id, [...(grouped.get(id) ?? []), row]);
+  }
+  return Array.from(grouped.values()).map((rules) => serializeTaxPolicy(rules[0], rules));
+}
+
+function serializeTaxPolicyFromTables(policy: Row, rules: Row[]): AdminFinanceTaxPolicy {
+  const adaptedRules = rules.map((rule) => ({
+    ...rule,
+    basis: rule.calculation_basis,
+    subject: policy.subject_type,
+    tax_type: rule.tax_code,
+    rate_bps: rule.rate_bps,
+  }));
+  const firstRule = adaptedRules[0];
+  if (!firstRule) apiFailure("DB_ERROR", "Chính sách thuế chưa có quy tắc", 500);
+  return serializeTaxPolicy({
+    ...policy,
+    basis: firstRule.basis,
+    subject: policy.subject_type,
+    tax_type: firstRule.tax_type,
+    rate_bps: firstRule.rate_bps,
+  }, adaptedRules);
+}
+
+function serializeTaxRule(row: Row, policyId: string, fallbackSubject: AdminFinanceTaxPolicy["subject"], fallbackCreatedAt: string, index: number) {
+  const taxType = asTaxType(row.tax_type ?? row.tax_code);
+  const subject = asTaxSubject(row.subject) ?? fallbackSubject;
+  const basis = asTaxBasis(row.basis ?? row.calculation_basis);
+  const rateBps = nonnegativeInteger(row.rate_bps);
+  if (!taxType || !basis || rateBps === null || rateBps <= 0 || rateBps > 10_000) {
+    apiFailure("DB_ERROR", "Quy tắc thuế không hợp lệ", 500);
+  }
+  return {
+    id: nullableString(row.rule_id) ?? nullableString(row.id) ?? `${policyId}:${index}`,
+    tax_type: taxType,
+    subject,
+    basis,
+    rate_bps: rateBps,
+    created_at: nullableString(row.rule_created_at) ?? nullableString(row.created_at) ?? fallbackCreatedAt,
+  };
+}
+
+function requiredFinanceString(value: unknown): string {
+  const parsed = nullableString(value);
+  if (!parsed) apiFailure("DB_ERROR", "Dữ liệu tài chính thiếu trường bắt buộc", 500);
+  return parsed;
+}
+
+function requiredFinanceAmount(value: unknown): number {
+  const parsed = nonnegativeInteger(value);
+  if (parsed === null) apiFailure("DB_ERROR", "Số tiền tài chính không hợp lệ", 500);
+  return parsed;
+}
+
+function maskedFinanceReference(value: string) {
+  return `***${value.slice(-6)}`;
 }
 
 function asRecord(value: unknown): Row {

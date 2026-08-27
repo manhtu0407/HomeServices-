@@ -2,8 +2,8 @@
   "version": "1.0.0",
   "source": {
     "migrationRoot": "supabase/migrations",
-    "migrationCount": 287,
-    "migrationDigest": "e317c94d07584f6a20d98b18c1c1cffc71453dbad1a9dfa65ab589c81ffd3020"
+    "migrationCount": 292,
+    "migrationDigest": "d9f27391a221d5bb18041e565bb4a84730432273b106e8e9aeefe9980164c19e"
   },
   "actors": [
     "anonymous",
@@ -15,6 +15,22 @@
     "service_role"
   ],
   "tables": [
+    {
+      "name": "admin_finance_mutation_receipts",
+      "classification": "internal",
+      "rlsEnabled": true,
+      "actorCommands": {
+        "anonymous": [],
+        "authenticated": []
+      },
+      "serviceRole": [
+        "select",
+        "insert",
+        "update",
+        "delete"
+      ],
+      "realtime": false
+    },
     {
       "name": "admin_finance_tax_policies",
       "classification": "internal",
@@ -97,6 +113,86 @@
     },
     {
       "name": "admin_operator_provisioning",
+      "classification": "internal",
+      "rlsEnabled": true,
+      "actorCommands": {
+        "anonymous": [],
+        "authenticated": []
+      },
+      "serviceRole": [
+        "select",
+        "insert",
+        "update",
+        "delete"
+      ],
+      "realtime": false
+    },
+    {
+      "name": "admin_price_evidence_packages",
+      "classification": "internal",
+      "rlsEnabled": true,
+      "actorCommands": {
+        "anonymous": [],
+        "authenticated": []
+      },
+      "serviceRole": [
+        "select",
+        "insert",
+        "update",
+        "delete"
+      ],
+      "realtime": false
+    },
+    {
+      "name": "admin_support_case_notes",
+      "classification": "internal",
+      "rlsEnabled": true,
+      "actorCommands": {
+        "anonymous": [],
+        "authenticated": []
+      },
+      "serviceRole": [
+        "select",
+        "insert",
+        "update",
+        "delete"
+      ],
+      "realtime": false
+    },
+    {
+      "name": "admin_support_case_preparations",
+      "classification": "internal",
+      "rlsEnabled": true,
+      "actorCommands": {
+        "anonymous": [],
+        "authenticated": []
+      },
+      "serviceRole": [
+        "select",
+        "insert",
+        "update",
+        "delete"
+      ],
+      "realtime": false
+    },
+    {
+      "name": "admin_system_mutation_receipts",
+      "classification": "internal",
+      "rlsEnabled": true,
+      "actorCommands": {
+        "anonymous": [],
+        "authenticated": []
+      },
+      "serviceRole": [
+        "select",
+        "insert",
+        "update",
+        "delete"
+      ],
+      "realtime": false
+    },
+    {
+      "name": "admin_team_mutation_receipts",
       "classification": "internal",
       "rlsEnabled": true,
       "actorCommands": {
@@ -2097,6 +2193,22 @@
       "realtime": false
     },
     {
+      "name": "service_taxonomy_revisions",
+      "classification": "internal",
+      "rlsEnabled": true,
+      "actorCommands": {
+        "anonymous": [],
+        "authenticated": []
+      },
+      "serviceRole": [
+        "select",
+        "insert",
+        "update",
+        "delete"
+      ],
+      "realtime": false
+    },
+    {
       "name": "source_trust_registry",
       "classification": "actor-scoped",
       "rlsEnabled": true,
@@ -2443,6 +2555,10 @@
   ],
   "views": [
     {
+      "name": "admin_model_health_daily",
+      "securityInvoker": true
+    },
+    {
       "name": "customer_overview",
       "securityInvoker": true
     },
@@ -2529,6 +2645,14 @@
       ]
     },
     {
+      "signature": "admin_apply_service_taxonomy_revision(uuid, service_type, integer, uuid, text, jsonb, jsonb)",
+      "securityDefiner": true,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
       "signature": "admin_approve_finance_tax_policy(uuid, uuid, text)",
       "securityDefiner": true,
       "fixedSearchPath": true,
@@ -2567,7 +2691,23 @@
       ]
     },
     {
+      "signature": "admin_claim_payment_reconciliation_atomic(uuid, uuid, integer, uuid, text)",
+      "securityDefiner": true,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
       "signature": "admin_claim_worker_withdrawal_atomic(uuid, uuid)",
+      "securityDefiner": true,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
+      "signature": "admin_claim_worker_withdrawal_v2(uuid, uuid, integer, uuid, text)",
       "securityDefiner": true,
       "fixedSearchPath": true,
       "executeRoles": [
@@ -2593,6 +2733,14 @@
     {
       "signature": "admin_decide_dispute_atomic(uuid, uuid, text, integer, integer, text, text, text)",
       "securityDefiner": false,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
+      "signature": "admin_decide_payment_reconciliation_v2(uuid, uuid, integer, uuid, text, integer, text, text, timestamp with time zone, text)",
+      "securityDefiner": true,
       "fixedSearchPath": true,
       "executeRoles": [
         "service_role"
@@ -2639,6 +2787,14 @@
       ]
     },
     {
+      "signature": "admin_finance_transaction_detail(uuid, uuid)",
+      "securityDefiner": true,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
       "signature": "admin_finance_transactions_page(uuid, timestamp with time zone, timestamp with time zone, integer, timestamp with time zone, uuid, text, service_type, text)",
       "securityDefiner": true,
       "fixedSearchPath": true,
@@ -2671,7 +2827,31 @@
       ]
     },
     {
+      "signature": "admin_publish_price_baseline_version(uuid, uuid, uuid, timestamp with time zone, integer, uuid, text)",
+      "securityDefiner": true,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
       "signature": "admin_reject_learning_candidate(uuid, uuid, text)",
+      "securityDefiner": true,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
+      "signature": "admin_release_payment_reconciliation_atomic(uuid, uuid, integer, uuid, text)",
+      "securityDefiner": true,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
+      "signature": "admin_release_worker_withdrawal_v2(uuid, uuid, integer, uuid, text)",
       "securityDefiner": true,
       "fixedSearchPath": true,
       "executeRoles": [
@@ -2687,7 +2867,23 @@
       ]
     },
     {
+      "signature": "admin_resolve_worker_withdrawal_v2(uuid, uuid, integer, uuid, text, text, text, boolean, text)",
+      "securityDefiner": true,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
       "signature": "admin_retire_finance_tax_policy(uuid, uuid, text)",
+      "securityDefiner": true,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
+      "signature": "admin_retire_price_baseline(uuid, uuid, integer, uuid, text)",
       "securityDefiner": true,
       "fixedSearchPath": true,
       "executeRoles": [
@@ -2719,7 +2915,31 @@
       ]
     },
     {
+      "signature": "admin_review_worker_payout_method_v2(uuid, uuid, integer, uuid, text, text)",
+      "securityDefiner": true,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
       "signature": "admin_review_worker_profile_atomic(uuid, uuid, text, text)",
+      "securityDefiner": true,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
+      "signature": "admin_revoke_learning_rule_atomic(uuid, uuid, integer, integer, uuid, text)",
+      "securityDefiner": true,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
+      "signature": "admin_rollback_learning_rule_atomic(uuid, uuid, integer, integer, uuid, text)",
       "securityDefiner": true,
       "fixedSearchPath": true,
       "executeRoles": [
@@ -2736,6 +2956,22 @@
     },
     {
       "signature": "admin_set_sub_admin_access_atomic(uuid, uuid, text, text[], text)",
+      "securityDefiner": true,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
+      "signature": "admin_set_sub_admin_access_v2_atomic(uuid, uuid, text, text[], text)",
+      "securityDefiner": true,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
+      "signature": "admin_set_sub_admin_access_v3_atomic(uuid, uuid, text, text[], text, integer, uuid)",
       "securityDefiner": true,
       "fixedSearchPath": true,
       "executeRoles": [
@@ -2760,6 +2996,14 @@
     },
     {
       "signature": "admin_update_finance_tax_policy_draft(uuid, uuid, jsonb)",
+      "securityDefiner": true,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
+      "signature": "admin_update_support_case_preparation_atomic(uuid, text, uuid, integer, uuid, text, text, jsonb, text)",
       "securityDefiner": true,
       "fixedSearchPath": true,
       "executeRoles": [
@@ -3665,6 +3909,14 @@
     {
       "signature": "record_normal_transaction_memory_atomic(uuid, uuid)",
       "securityDefiner": false,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
+      "signature": "record_platform_bank_balance_snapshot_idempotent(uuid, integer, timestamp with time zone, uuid)",
+      "securityDefiner": true,
       "fixedSearchPath": true,
       "executeRoles": [
         "service_role"

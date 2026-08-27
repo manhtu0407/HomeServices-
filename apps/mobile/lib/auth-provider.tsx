@@ -73,7 +73,9 @@ function useAuthController(): AuthState {
   const lastOAuthCallbackCodeRef = useRef<string | null>(null)
   const sessionRef = useRef<Session | null>(localVisualAuditSnapshot?.session ?? INITIAL_AUTH_SNAPSHOT.session)
   const roleRef = useRef(localVisualAuditSnapshot?.role ?? INITIAL_AUTH_SNAPSHOT.role)
-  roleRef.current = role
+  useEffect(() => {
+    roleRef.current = role
+  }, [role])
   const unregisterPushTokenForSession = useSessionPushRegistration({
     disabled: Boolean(localVisualAuditRole),
     profileReady: profileStatus === 'ready',

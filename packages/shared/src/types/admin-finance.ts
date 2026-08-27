@@ -2,9 +2,19 @@ export type AdminFinanceRange = 'day' | 'week' | 'month' | 'year'
 
 export type AdminPaymentReconciliationStatus = 'pending' | 'reconcile_required' | 'all'
 
+export type AdminPaymentReconciliationListInput = {
+  status?: AdminPaymentReconciliationStatus
+  payment_method?: 'platform_bank_manual' | 'direct_worker' | 'all'
+  assignment?: 'mine' | 'unassigned' | 'all'
+  query?: string
+  cursor?: string
+  limit?: number
+}
+
 export type AdminPaymentReconciliationSummary = {
   id: string
   job_id: string
+  display_code: string
   payment_method: 'platform_bank_manual' | 'direct_worker'
   status: string
   gross_amount: number
@@ -15,14 +25,59 @@ export type AdminPaymentReconciliationSummary = {
   amount_received: number | null
   customer_transfer_claimed_at: string | null
   response_deadline: string | null
+  assigned_to: string | null
+  assigned_to_name: string | null
+  assigned_to_me: boolean
+  assigned_at: string | null
+  version: number
   created_at: string
   updated_at: string
 }
 
 export type AdminPaymentReconciliationListResponse = {
+  generated_at: string
   payment_reconciliations: AdminPaymentReconciliationSummary[]
+  total_count: number
+  total_amount_vnd: number
   has_more: boolean
-  next_offset: number | null
+  next_cursor: string | null
+}
+
+export type AdminPaymentReconciliationDetailResponse = {
+  generated_at: string
+  reconciliation: AdminPaymentReconciliationSummary
+  customer_ref: string
+  worker_ref: string | null
+  service_type: string
+  expected_amount_vnd: number
+  received_amount_vnd: number | null
+  timeline: Array<{
+    event_id: string
+    event_type: string
+    actor_ref: string | null
+    occurred_at: string
+  }>
+}
+
+export type AdminPaymentReconciliationClaimInput = {
+  expected_version: number
+  client_request_id: string
+  takeover_reason?: string
+}
+
+export type AdminPaymentReconciliationReleaseInput = {
+  expected_version: number
+  client_request_id: string
+  reason: string
+}
+
+export type AdminPaymentReconciliationAssignmentResponse = {
+  ok: true
+  payment_order_id: string
+  assigned_to: string | null
+  assigned_at: string | null
+  version: number
+  generated_at: string
 }
 
 export type AdminPaymentReconciliationDecisionInput = {
@@ -31,6 +86,8 @@ export type AdminPaymentReconciliationDecisionInput = {
   bank_reference?: string
   credited_at?: string
   reason?: string
+  expected_version: number
+  client_request_id: string
 }
 
 export type AdminPaymentReconciliationDecisionResponse = {
@@ -41,6 +98,9 @@ export type AdminPaymentReconciliationDecisionResponse = {
   status: 'payment_pending' | 'paid'
   payment_status: string
   hold_until: string | null
+  event_id: string
+  version: number
+  generated_at: string
 }
 
 export type AdminWorkerFinanceSnapshotResponse = {
@@ -90,6 +150,7 @@ export type AdminWorkerFinanceSnapshotResponse = {
 }
 
 export type AdminFinanceSummaryResponse = {
+  generated_at: string
   range: AdminFinanceRange
   from: string
   to: string
@@ -112,12 +173,24 @@ export type AdminFinanceSummaryResponse = {
 export type AdminFinanceBalanceSnapshotInput = {
   balance_vnd: number
   observed_at: string
+  client_request_id: string
 }
 
 export type AdminFinanceBalanceSnapshotResponse = {
   snapshot_id: string
   balance_vnd: number
   observed_at: string
+  generated_at: string
+}
+
+export type AdminFinanceBalanceSnapshotListResponse = {
+  generated_at: string
+  snapshots: Array<{
+    snapshot_id: string
+    balance_vnd: number
+    observed_at: string
+    recorded_by_ref: string
+  }>
 }
 
 export type AdminFinancePeriodInput = {
@@ -148,6 +221,7 @@ export type AdminFinanceSnapshotMetric = {
 }
 
 export type AdminFinanceOverviewResponse = {
+  generated_at: string
   preset: AdminFinanceRange | 'custom'
   from: string
   to: string
@@ -243,9 +317,20 @@ export type AdminFinanceTransaction = {
 }
 
 export type AdminFinanceTransactionListResponse = {
+  generated_at: string
   transactions: AdminFinanceTransaction[]
   has_more: boolean
   next_cursor: string | null
+}
+
+export type AdminFinanceTransactionDetailResponse = {
+  generated_at: string
+  transaction: AdminFinanceTransaction
+  timeline: Array<{
+    event_type: string
+    occurred_at: string
+    actor_ref: string | null
+  }>
 }
 
 export type AdminFinanceCsvExportResponse = {
@@ -258,12 +343,22 @@ export type AdminFinanceCsvExportResponse = {
   pii_masked: true
   from: string
   to: string
+  generated_at: string
 }
 
 export type AdminFinanceTaxPolicyStatus = 'draft' | 'approved' | 'retired'
 export type AdminFinanceTaxType = string
 export type AdminFinanceTaxSubject = 'platform' | 'worker'
 export type AdminFinanceTaxBasis = 'gmv' | 'commission_collected' | 'commission_retained' | 'worker_net_paid'
+
+export type AdminFinanceTaxRule = {
+  id: string
+  tax_type: AdminFinanceTaxType
+  subject: AdminFinanceTaxSubject
+  basis: AdminFinanceTaxBasis
+  rate_bps: number
+  created_at: string
+}
 
 export type AdminFinanceTaxPolicy = {
   id: string
@@ -281,14 +376,12 @@ export type AdminFinanceTaxPolicy = {
   approved_by: string | null
   created_at: string
   updated_at: string
+  rules: AdminFinanceTaxRule[]
 }
 
 export type AdminFinanceTaxPolicyDraftInput = {
   name: string
-  tax_type: AdminFinanceTaxType
-  subject: AdminFinanceTaxSubject
-  basis: AdminFinanceTaxBasis
-  rate_bps: number
+  rules: Array<Pick<AdminFinanceTaxRule, 'tax_type' | 'subject' | 'basis' | 'rate_bps'>>
   effective_from: string
   effective_to?: string
   source_reference: string
@@ -303,6 +396,7 @@ export type AdminFinanceTaxPolicyRetireInput = {
 }
 
 export type AdminFinanceTaxPolicyListResponse = {
+  generated_at: string
   tax_policies: AdminFinanceTaxPolicy[]
   active_policy_ids: string[]
 }

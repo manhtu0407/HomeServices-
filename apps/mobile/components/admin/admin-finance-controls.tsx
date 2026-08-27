@@ -1,32 +1,74 @@
-import { StyleSheet, Text, View } from 'react-native'
+import { StyleSheet, View, type AccessibilityState, type StyleProp, type TextStyle, type ViewStyle } from 'react-native'
 
 import { KaelButton, KaelChip, KaelTextField } from '@/components/ui/kael-primitives'
 import { color, component, spacing, typography } from '@/design/theme'
 import type { AdminFinanceRange } from '@/lib/api-types/admin'
 
-import { AdminTabNavigation } from './admin-tab-navigation'
+import { AdminText } from './admin-text'
 
 export type FinanceView = 'overview' | 'cash' | 'commission' | 'tax'
 
 type FinanceControlsCopy = {
-  cashView: string
-  commissionView: string
   customApply: string
   customFrom: string
   customRange: string
   customTo: string
   load: string
-  overview: string
   period: string
-  taxView: string
   timeZone: string
 }
 
 const RANGE_OPTIONS: AdminFinanceRange[] = ['day', 'week', 'month', 'year']
 
-export function FinanceControls({ activeView, compact, copy, customEditorOpen, customFrom, customMode, customTo, language, onApplyCustom, onChangeCustomFrom, onChangeCustomTo, onRefresh, onSelectRange, onSelectView, onToggleCustom, range }: {
-  activeView: FinanceView
-  compact: boolean
+type FinanceChoiceChipProps = {
+  accessibilityLabel?: string
+  disabled?: boolean
+  label: string
+  onPress: () => void
+  selected: boolean
+  style?: StyleProp<ViewStyle>
+  testID?: string
+  tone?: 'neutral' | 'danger'
+}
+
+export function FinanceChoiceChip({ accessibilityLabel, disabled, label, onPress, selected, style, testID, tone = 'neutral' }: FinanceChoiceChipProps) {
+  const accessibilityState: AccessibilityState = { disabled, selected }
+  return <KaelChip
+    accessibilityLabel={accessibilityLabel ?? label}
+    accessibilityState={accessibilityState}
+    disabled={disabled}
+    label={selected ? `✓ ${label}` : label}
+    onPress={onPress}
+    style={[styles.choiceChip, selected ? styles.choiceChipSelected : null, style]}
+    testID={testID}
+    textStyle={[styles.choiceChipText, selected ? styles.choiceChipTextSelected : null]}
+    variant={tone === 'danger' && selected ? 'error' : 'unselected'}
+  />
+}
+
+type FinanceSecondaryButtonProps = {
+  accessibilityLabel?: string
+  accessibilityState?: AccessibilityState
+  disabled?: boolean
+  label: string
+  loading?: boolean
+  onPress: () => void
+  size?: 'default' | 'small'
+  style?: StyleProp<ViewStyle>
+  testID?: string
+  textStyle?: StyleProp<TextStyle>
+}
+
+export function FinanceSecondaryButton({ style, textStyle, ...props }: FinanceSecondaryButtonProps) {
+  return <KaelButton
+    {...props}
+    style={[styles.secondaryAction, style]}
+    textStyle={[styles.secondaryActionText, textStyle]}
+    variant="secondary"
+  />
+}
+
+export function FinanceControls({ copy, customEditorOpen, customFrom, customMode, customTo, language, onApplyCustom, onChangeCustomFrom, onChangeCustomTo, onRefresh, onSelectRange, onToggleCustom, range }: {
   copy: FinanceControlsCopy
   customEditorOpen: boolean
   customFrom: string
@@ -38,41 +80,24 @@ export function FinanceControls({ activeView, compact, copy, customEditorOpen, c
   onChangeCustomTo: (value: string) => void
   onRefresh: () => void
   onSelectRange: (range: AdminFinanceRange) => void
-  onSelectView: (view: FinanceView) => void
   onToggleCustom: () => void
   range: AdminFinanceRange
 }) {
-  const views = compact
-    ? [['overview', copy.overview], ['cash', language === 'vi' ? 'Dòng tiền' : 'Cash flow'], ['commission', language === 'vi' ? 'Hoa hồng' : 'Commission'], ['tax', language === 'vi' ? 'Thuế' : 'Tax']] as const
-    : [['overview', copy.overview], ['cash', copy.cashView], ['commission', copy.commissionView], ['tax', copy.taxView]] as const
-  return <>
-    <AdminTabNavigation
-      items={views.map(([view, label]) => ({
-        accessibilityLabel: label,
-        key: view,
-        label,
-        onPress: () => onSelectView(view),
-        selected: activeView === view,
-        testID: `admin-finance-tab-${view}`,
-      }))}
-      testID="admin-finance-view-navigation"
-    />
-    <View style={styles.controlsCard}>
+  return <View style={styles.controlsCard}>
       <View style={styles.toolbar}>
-        <View style={styles.periodHeading}><Text style={styles.periodTitle}>{copy.period}</Text><Text style={styles.periodMeta}>{copy.timeZone}</Text></View>
-        <KaelButton label={copy.load} onPress={onRefresh} size="small" variant="secondary" />
+        <View style={styles.periodHeading}><AdminText textRole="headline" style={styles.periodTitle}>{copy.period}</AdminText><AdminText textRole="footnote" style={styles.periodMeta}>{copy.timeZone}</AdminText></View>
+        <FinanceSecondaryButton label={copy.load} onPress={onRefresh} size="small" testID="admin-finance-refresh" />
       </View>
       <View style={styles.rangeRow}>
-        {RANGE_OPTIONS.map((option) => <KaelChip accessibilityLabel={rangeLabel(option, language)} accessibilityState={{ selected: !customMode && range === option }} key={option} label={rangeLabel(option, language)} onPress={() => onSelectRange(option)} testID={`admin-finance-range-${option}`} variant={!customMode && range === option ? 'selected' : 'unselected'} />)}
-        <KaelChip accessibilityLabel={copy.customRange} accessibilityState={{ selected: customMode }} label={copy.customRange} onPress={onToggleCustom} testID="admin-finance-range-custom-toggle" variant={customMode ? 'selected' : 'unselected'} />
+        {RANGE_OPTIONS.map((option) => <FinanceChoiceChip accessibilityLabel={rangeLabel(option, language)} key={option} label={rangeLabel(option, language)} onPress={() => onSelectRange(option)} selected={!customMode && range === option} testID={`admin-finance-range-${option}`} />)}
+        <FinanceChoiceChip accessibilityLabel={copy.customRange} label={copy.customRange} onPress={onToggleCustom} selected={customMode} testID="admin-finance-range-custom-toggle" />
       </View>
       {customEditorOpen ? <View style={styles.customRangeRow}>
         <View style={styles.customRangeField}><KaelTextField accessibilityLabel={copy.customFrom} autoCapitalize="none" label={copy.customFrom} onChangeText={onChangeCustomFrom} testID="admin-finance-custom-from" value={customFrom} /></View>
         <View style={styles.customRangeField}><KaelTextField accessibilityLabel={copy.customTo} autoCapitalize="none" label={copy.customTo} onChangeText={onChangeCustomTo} testID="admin-finance-custom-to" value={customTo} /></View>
         <KaelButton label={copy.customApply} onPress={onApplyCustom} size="small" testID="admin-finance-range-custom" variant="primary" />
-      </View> : customMode ? <Text style={styles.customRangeSummary}>{customFrom} — {customTo}</Text> : null}
+      </View> : customMode ? <AdminText textRole="footnote" style={styles.customRangeSummary}>{customFrom} — {customTo}</AdminText> : null}
     </View>
-  </>
 }
 
 function rangeLabel(range: AdminFinanceRange, language: 'vi' | 'en') {
@@ -83,6 +108,10 @@ function rangeLabel(range: AdminFinanceRange, language: 'vi' | 'en') {
 }
 
 const styles = StyleSheet.create({
+  choiceChip: { backgroundColor: color.surface.base, borderColor: color.surface.stroke, minHeight: 44 },
+  choiceChipSelected: { borderColor: color.text.strong, borderWidth: 1.5 },
+  choiceChipText: { color: color.text.secondary, fontWeight: '500' },
+  choiceChipTextSelected: { color: color.text.strong, fontWeight: '700' },
   controlsCard: { backgroundColor: color.surface.base, borderColor: color.surface.stroke, borderRadius: component.card.radius, borderWidth: 1, gap: spacing.md, padding: spacing.lg },
   customRangeField: { flex: 1, minWidth: 180 },
   customRangeRow: { alignItems: 'flex-end', flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
@@ -91,5 +120,7 @@ const styles = StyleSheet.create({
   periodMeta: { ...typography.caption2, color: color.text.muted },
   periodTitle: { ...typography.subheadline, color: color.text.strong, fontWeight: '600' },
   rangeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+  secondaryAction: { backgroundColor: color.surface.base, borderColor: color.surface.strokeStrong, minHeight: 44 },
+  secondaryActionText: { color: color.text.strong, fontWeight: '600' },
   toolbar: { alignItems: 'center', flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md, justifyContent: 'space-between' },
 })

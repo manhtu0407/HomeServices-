@@ -31,7 +31,7 @@ export type Chain = {
   lte(column: string, value: unknown): Chain;
   is(column: string, value: unknown): Chain;
   in(column: string, value: unknown[]): Chain;
-  contains(column: string, value: unknown[]): Chain;
+  contains(column: string, value: unknown): Chain;
   or(filter: string): Chain;
   order(column: string, options?: unknown): Chain;
   range(from: number, to: number): Chain;
