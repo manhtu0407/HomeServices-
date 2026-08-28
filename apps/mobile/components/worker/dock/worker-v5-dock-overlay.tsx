@@ -1,5 +1,5 @@
-import { useEffect, useState, type ReactNode } from 'react'
-import { Platform, Pressable, Text, View, useWindowDimensions, type LayoutChangeEvent } from 'react-native'
+import { useEffect, type ReactNode } from 'react'
+import { Platform, Pressable, Text, View, useWindowDimensions } from 'react-native'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import Animated from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
@@ -18,7 +18,6 @@ import { GlassSurface } from '@/components/ui/glass-surface'
 import { KaelNavigationAccessory } from '@/components/ui/kael-navigation-accessory'
 
 import { LiquidNavIcon, type LiquidNavIconName } from '@/components/customer/dock/liquid-nav-icons'
-import { LiquidSelectionLens } from '@/components/customer/dock/liquid-selection-lens'
 import { resolveWorkerV5DockActive, resolveWorkerV5Language, workerV5Routes } from './routing'
 import type { WorkerDockActive, WorkerV5RouteParams } from './types'
 import {
@@ -104,9 +103,6 @@ export function WorkerRebuildDockOverlay({ active }: { active: WorkerDockActive 
   const liquidNavWidth = Math.min(Math.max(width - CUSTOMER_LIQUID_NAV_SIDE_INSET * 2, 0), CUSTOMER_LIQUID_NAV_MAX_WIDTH)
   const liquidDockWidth = Math.max(liquidNavWidth - CUSTOMER_LIQUID_NAV_ORB_SIZE - CUSTOMER_LIQUID_NAV_GAP, CUSTOMER_LIQUID_NAV_DOCK_HEIGHT)
   const kaelActive = resolvedActive === WORKER_V5_DOCK_KAEL_ITEM.id
-  const [surfaceWidth, setSurfaceWidth] = useState(0)
-  const selectedIndex = activeTab === null ? null : Math.max(WORKER_V5_DOCK_ROUTE_ITEMS.findIndex((item) => item.id === activeTab), 0)
-  const handleDockLayout = ({ nativeEvent: { layout } }: LayoutChangeEvent) => setSurfaceWidth(layout.width)
 
   useEffect(() => {
     resetDockScroll()
@@ -124,19 +120,10 @@ export function WorkerRebuildDockOverlay({ active }: { active: WorkerDockActive 
           borderColor={tokens.glassBorder}
           material="liquid"
           mode={tokens.mode}
-          onLayout={handleDockLayout}
           style={[dockStyles.dockPlane, { width: liquidDockWidth }]}
           testID="worker-v5-primary-dock"
           variant="nav"
         >
-          <LiquidSelectionLens
-            itemCount={WORKER_V5_DOCK_ROUTE_ITEMS.length}
-            reduceMotion={reduceMotion}
-            reduceTransparency={reduceTransparency}
-            selectedIndex={selectedIndex}
-            surfaceWidth={surfaceWidth}
-            testID="worker-v5-dock"
-          />
           {WORKER_V5_DOCK_ROUTE_ITEMS.map((item) => (
             <WorkerV5DockTabButton
               icon={item.icon}
