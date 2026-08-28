@@ -120,3 +120,17 @@ The follow-up runtime evidence is recorded in [`2026-08-27_kael-playbook-six-ser
 - The complete local runtime rerun now also passes 54/54 SQL verification files
   and 6/6 Edge checks. Staging G4/G5 remains blocked before traffic by absent
   approved staging identity; no hosted environment or flag was changed.
+
+## Scoped publication — 2026-08-28
+
+Tu authorized the publication follow-up with “Next Step”. Commit
+`5d97f48d524d76a812a2340cfea97958e74e2cc4` (`feat(kael): add six-service
+playbooks`) was pushed to `origin/claude/audit-system-skills-e2ad42` with exactly
+60 allow-listed files (`8,643` insertions, `223` deletions).
+
+Post-push remote-tree verification found all 6 service textbooks, all 12
+corpus/holdout JSON files, and all 8 runtime playbook/registry/flags files. The
+commit added zero raw JSON sidecars. Local and remote refs matched with
+ahead/behind `0/0`; 70 unrelated dirty paths remained local and were not staged.
+This closes the branch-display gap without changing any flag, staging runtime,
+or Production environment.

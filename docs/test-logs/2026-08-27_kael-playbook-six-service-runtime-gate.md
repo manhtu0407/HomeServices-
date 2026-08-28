@@ -220,3 +220,12 @@ Latest verdict: `LOCAL_RUNTIME_PASS / SQL_54_OF_54_PASS / G2_PASS / G3_PASS /
 G4_BLOCKED / G5_BLOCKED / NEEDS_HOLDOUT / NO_ROLLOUT`. This continuation
 supersedes the earlier `SQL_UNVERIFIED` status only; it does not weaken the
 staging, independent-label, or Production gates.
+
+## Publication boundary — 2026-08-28
+
+The complete six-service source cohort was published separately as commit
+`5d97f48d524d76a812a2340cfea97958e74e2cc4` on
+`origin/claude/audit-system-skills-e2ad42`. Remote-tree verification found 6
+textbooks, 12 corpus/holdout files, and 8 runtime playbook/registry/flags files.
+This publication changes source visibility only: G4/G5 remain blocked, all
+playbook flags remain OFF, and no hosted environment was changed.

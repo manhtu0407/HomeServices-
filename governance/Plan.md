@@ -703,6 +703,8 @@ Addendum này **thay thế checkpoint plumbing-only ở trên cho phần authori
 
 **Addendum local runtime closure 2026-08-28:** trên HEAD `f444cf04` tại thời điểm pre-publication, local và remote branch ref khớp nhau. `pnpm docker:version:ensure` PASS với Engine `29.7.2` / Compose `v5.4.0`; doctor PASS tại `4.26 GB` RAM khả dụng; lean Supabase stack lên healthy, migrations + seed hoàn tất; `pnpm db:local:test` PASS `54/54`; `pnpm edge:check` PASS `6/6`; `pnpm lint:playbooks` PASS lại đủ 6 lane, mỗi lane `24` corpus + `24` holdout; `pnpm test:api` PASS `603/603` với `1` skip và `pnpm type-check:api` PASS. Fresh recount giữ nguyên `7,032` dòng artifact (`1,942` Electrical + `5,090` năm lane mới). `pnpm db:local:down` và `docker desktop stop` PASS; final snapshot không còn container project, Docker/backend/dockerd, browser, Claude, Discord, Zalo, Teams hay Douyin, Codex vẫn chạy và RAM khả dụng `5.30 GB`. Trạng thái SQL được nâng từ `UNVERIFIED` thành `PASS`; G2/G3 vẫn PASS. G4/G5 vẫn **BLOCKED trước traffic** vì thiếu toàn bộ staging endpoint/customer identity và `.scratch/pb-eval.env`; không có delta mới, flag vẫn OFF, Production bất biến. Audit xác nhận pre-publication HEAD chỉ track artifact Electrical; năm lane mới khi đó vẫn chỉ có trong worktree, giải thích vì sao UI branch hiển thị thiếu trước bước publication được Tu duyệt. Chi tiết: `docs/test-logs/2026-08-27_kael-playbook-six-service-runtime-gate.md`.
 
+**Addendum scoped publication 2026-08-28:** Tu duyệt “Next Step”; commit `5d97f48d524d76a812a2340cfea97958e74e2cc4` đã push lên `origin/claude/audit-system-skills-e2ad42` với đúng 60 path allow-list (`+8,643/-223`). Remote-tree proof có đủ 6 textbook, 12 corpus/holdout và 8 runtime playbook/registry/flags; commit không thêm raw JSON sidecar. Local/remote khớp `0/0`; 70 path bẩn ngoài scope vẫn được giữ local. Publication này chỉ đóng lỗi hiển thị branch, không thay đổi G4/G5, flag hay hosted environment.
+
 ### 53.6 Change Log
 
 | Ver | Ngày | Ai | Đổi gì |
@@ -725,6 +727,7 @@ Addendum này **thay thế checkpoint plumbing-only ở trên cho phần authori
 | 1.6 | 2026-08-27 | Codex | Dọn tiếp task-owned launcher: đóng Docker `desktop start --timeout 120` tree và Expo/Jest child trees theo PID/port/path; Codex main/MCP và system/security giữ nguyên; last immediate scan không còn target |
 | 1.7 | 2026-08-27 | Codex | Sau khi RAM hồi lên `5.22 GB`, thử launch Docker Desktop một lần; `docker info` vẫn fail vì thiếu Linux engine pipe và backend lặp lỗi `dockerInference`; đóng lại Docker/WSL, không factory-reset/purge |
 | 1.8 | 2026-08-28 | Codex | Docker/runtime closure PASS trên HEAD `f444cf04`: doctor 4.26 GB, stack healthy, SQL 54/54, Edge 6/6, source ratchet 6 x (24+24), down sạch; G4/G5 vẫn blocked vì staging identity absent; xác nhận năm lane mới chưa được track nên branch UI hiển thị thiếu |
+| 1.9 | 2026-08-28 | Codex | Tu duyệt scoped publication; commit `5d97f48d` push đủ 60 Playbook/evaluator/Edge/report paths, remote tree có 6 textbook + 12 eval + 8 runtime files, raw sidecars không được thêm; giữ 70 path ngoài scope local và flags OFF |
 
 ---
 

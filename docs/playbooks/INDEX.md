@@ -4,7 +4,7 @@ Distilled reasoning that teaches Kael how to think about each service — the "t
 
 **Start here:** [`process-distillation.md`](process-distillation.md) — the step-by-step SOP for producing or revising a playbook. Follow it every time; do not freestyle. Use [`TEMPLATE.md`](TEMPLATE.md) for the service textbook shape.
 
-**Latest audits:** [`six-service source audit`](../test-logs/2026-08-27_kael-playbook-six-service-source-audit.md) verifies all six lanes and explains why the branch UI omits untracked Playbooks; [`runtime gate report`](../test-logs/2026-08-27_kael-playbook-six-service-runtime-gate.md) records the 54/54 SQL and 6/6 Edge PASS plus the staging boundary.
+**Latest audits:** [`six-service source audit`](../test-logs/2026-08-27_kael-playbook-six-service-source-audit.md) verifies all six lanes and records their scoped publication in commit `5d97f48d`; [`runtime gate report`](../test-logs/2026-08-27_kael-playbook-six-service-runtime-gate.md) records the 54/54 SQL and 6/6 Edge PASS plus the staging boundary.
 
 ## Layout
 
