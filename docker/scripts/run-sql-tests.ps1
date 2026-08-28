@@ -8,20 +8,39 @@
 # executed before. The runner reports honest pass/fail counts and never swallows
 # an error message.
 
-[CmdletBinding()]
-param(
-  [string]$Container = "supabase_db_nestscout",
-  [string]$Filter = "*.sql",
-  [switch]$StopOnFirstFailure,
-  # These values are interpolated only for the local dblink shell invocation.
-  # Restrict them to PostgreSQL identifier syntax so they cannot alter that command.
-  [ValidatePattern('^[A-Za-z_][A-Za-z0-9_]*$')]
-  [string]$DbUser = "postgres",
-  [ValidatePattern('^[A-Za-z_][A-Za-z0-9_]*$')]
-  [string]$DblinkDbUser = "supabase_admin"
-)
-
 $ErrorActionPreference = "Stop"
+$Container = "supabase_db_nestscout"
+$Filter = "*.sql"
+$StopOnFirstFailure = $false
+$DbUser = "postgres"
+$DblinkDbUser = "supabase_admin"
+
+for ($index = 0; $index -lt $args.Count; $index++) {
+  $argument = $args[$index]
+  if ($argument -in "-StopOnFirstFailure", "--stop-on-first-failure") {
+    $StopOnFirstFailure = $true
+    continue
+  }
+  if ($argument -notin "-Container", "--container", "-Filter", "--filter", "-DbUser", "--db-user", "-DblinkDbUser", "--dblink-db-user" -or $index + 1 -ge $args.Count) {
+    [Console]::Error.WriteLine("run-sql-tests: invalid argument '$argument'")
+    exit 2
+  }
+  $index += 1
+  switch ($argument) {
+    { $_ -in "-Container", "--container" } { $Container = $args[$index]; break }
+    { $_ -in "-Filter", "--filter" } { $Filter = $args[$index]; break }
+    { $_ -in "-DbUser", "--db-user" } { $DbUser = $args[$index]; break }
+    { $_ -in "-DblinkDbUser", "--dblink-db-user" } { $DblinkDbUser = $args[$index]; break }
+  }
+}
+
+# These values enter the local dblink shell command, so reject anything outside
+# PostgreSQL identifier syntax before Docker receives it.
+if ($DbUser -notmatch '^[A-Za-z_][A-Za-z0-9_]*$' -or $DblinkDbUser -notmatch '^[A-Za-z_][A-Za-z0-9_]*$') {
+  [Console]::Error.WriteLine("run-sql-tests: database roles must be PostgreSQL identifiers")
+  exit 2
+}
+
 $here = Split-Path -Parent $MyInvocation.MyCommand.Path
 $repoRoot = (Resolve-Path (Join-Path $here "..\..")).Path
 $testDir = Join-Path $repoRoot "supabase\tests"
@@ -31,10 +50,19 @@ if (-not (Test-Path $testDir)) {
   exit 1
 }
 
+$files = Get-ChildItem -LiteralPath $testDir -Filter $Filter -File | Sort-Object Name
+$discovered = $files.Count
+if ($discovered -eq 0) {
+  Write-Output "no SQL verification files matched filter '$Filter'"
+  Write-Output "sql verification: discovered=0 executed=0 passed=0 failed=0 stopped_early=false"
+  exit 2
+}
+
 # The container must already be up; starting it here would hide the fact that
 # a caller skipped the doctor gate.
 $running = & docker ps --filter "name=$Container" --format "{{.Names}}" 2>&1
-if ($LASTEXITCODE -ne 0 -or -not ($running -match [regex]::Escape($Container))) {
+$runningNames = @($running | ForEach-Object { "$($_)".Trim() })
+if ($LASTEXITCODE -ne 0 -or -not ($runningNames -contains $Container)) {
   Write-Output "container '$Container' is not running. Run 'pnpm db:local:up' first."
   exit 1
 }
@@ -45,12 +73,14 @@ $prevEncoding = [Console]::OutputEncoding
 [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false)
 $OutputEncoding = [System.Text.UTF8Encoding]::new($false)
 
-$files = Get-ChildItem -LiteralPath $testDir -Filter $Filter -File | Sort-Object Name
 $passed = @()
 $failed = @()
+$executed = 0
+$stoppedEarly = $false
 
 try {
   foreach ($file in $files) {
+    $executed += 1
     # Windows PowerShell otherwise decodes UTF-8 Vietnamese fixtures with the
     # active ANSI code page before the UTF-8 pipe can preserve them.
     $sql = Get-Content -Raw -Encoding UTF8 -LiteralPath $file.FullName
@@ -87,7 +117,10 @@ try {
       $failed += [pscustomobject]@{ File = $file.Name; Output = ($output | Out-String).Trim() }
       Write-Output "FAIL  $($file.Name)"
       Write-Output "      $(($output | Out-String).Trim() -replace "`r?`n", "`n      ")"
-      if ($StopOnFirstFailure) { break }
+      if ($StopOnFirstFailure) {
+        $stoppedEarly = $executed -lt $discovered
+        break
+      }
     }
   }
 } finally {
@@ -95,7 +128,8 @@ try {
 }
 
 Write-Output ""
-Write-Output "sql verification: $($passed.Count) passed / $($failed.Count) failed / $($files.Count) total"
+$stoppedText = $stoppedEarly.ToString().ToLowerInvariant()
+Write-Output "sql verification: discovered=$discovered executed=$executed passed=$($passed.Count) failed=$($failed.Count) stopped_early=$stoppedText"
 
 if ($failed.Count -gt 0) {
   Write-Output ""

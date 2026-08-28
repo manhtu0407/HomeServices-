@@ -10,51 +10,53 @@ Deleting them did not make the product less safe. It made the real level of safe
 
 ---
 
-## 1. Money — six scripted and unrun, four still open
+## 1. Money — six executed in CI, four still open
 
 This is the same surface that has to carry the first real transaction, so it is the first thing to fix.
 
-**Reconciled 2026-08-19** by `kael-docker`'s degraded lane (no daemon available; read-only). Six of these rows had gone stale: the script is on disk and asserts the invariant, it has simply never been executed here. The scripts were **not** undocumented — PR #199 landed them on 2026-08-14 together with `governance/protocols/test-pillars.md` §"The money and privilege invariants", which lists exactly which rows each one covers. This ledger was last touched 2026-08-13 and was never updated to match, so the failure was two governance docs disagreeing rather than nobody knowing. Treat that section as the sibling of this one and update both together. The `State` column below is a static reading of the SQL, not a run: **"asserts it, unrun" is bookkeeping, not proof.** Clearing any row still requires `pnpm db:local:test` on a machine with a Docker daemon. The full sequence on such a machine is:
+**Historical reconciliation (2026-08-19)** by `kael-docker`'s degraded lane (no daemon available; read-only). Six of these rows had gone stale: the script was on disk and asserted the invariant, but had simply never been executed here. The scripts were **not** undocumented — PR #199 landed them on 2026-08-14 together with `governance/protocols/test-pillars.md` §"The money and privilege invariants", which lists exactly which rows each one covers. This ledger was last touched 2026-08-13 and was never updated to match, so the failure was two governance docs disagreeing rather than nobody knowing. Treat that section as the sibling of this one and update both together. At that time, the `State` column was a static reading of the SQL, not a run: **"asserts it, unrun" was bookkeeping, not proof.** Clearing any row still required `pnpm db:local:test` on a machine with a Docker daemon. The full sequence on such a machine is:
 
 ```text
-pnpm db:local:doctor   # refuses below the 7 GB floor and prints the measured number
+pnpm db:local:doctor   # refuses below the 4 GB floor and prints the measured number
 pnpm db:local:up
 pnpm db:local:reset    # replay every migration from zero, then seed
 pnpm db:local:test     # run supabase/tests/*.sql through psql
 pnpm db:local:down
 ```
 
+**Reconciled 2026-08-27 against the exact branch HEAD.** The `database-controls` job in [run 32731516949](https://github.com/manhtu0407/HomeServices-/actions/runs/32731516949) completed successfully at commit `99349b5fc64f07d00d1f62a340750c16d4563b38`; its log reports `54 passed / 0 failed / 54 total`. The runner enumerates every `supabase/tests/*.sql`, so the six rows below that assert real behavior are no longer "unrun". This is CI execution evidence, not local Docker evidence.
+
 Section 2 was reconciled in the same pass and under the same caveat.
 
-| Invariant | Real layer needed | State (2026-08-19, static) |
+| Invariant | Real layer needed | State (2026-08-27, CI reconciled) |
 |---|---|---|
-| `gross_amount = platform_fee + worker_net` holds for every ledger row | `supabase/tests/worker_payment_ledger_verification.sql` — insert a violating row, assert the check constraint rejects it | **asserts it, unrun** — inserts `1000000 / 150000 / 849999` and raises |
-| `commission_rate_bps` stays within `[0, 1500]` | same script — insert `1501`, assert rejection | **asserts it, unrun** — covers `1501` and `-1` |
-| Higher commission tiers never carry a higher rate | same script — insert an inverted tier pair, assert the trigger raises | **asserts it, unrun** |
+| `gross_amount = platform_fee + worker_net` holds for every ledger row | `supabase/tests/worker_payment_ledger_verification.sql` — insert a violating row, assert the check constraint rejects it | **executed in CI** — [run 32731516949](https://github.com/manhtu0407/HomeServices-/actions/runs/32731516949), commit `99349b5fc64f07d00d1f62a340750c16d4563b38` |
+| `commission_rate_bps` stays within `[0, 1500]` | same script — insert `1501`, assert rejection | **executed in CI** — [run 32731516949](https://github.com/manhtu0407/HomeServices-/actions/runs/32731516949), commit `99349b5fc64f07d00d1f62a340750c16d4563b38` |
+| Higher commission tiers never carry a higher rate | same script — insert an inverted tier pair, assert the trigger raises | **executed in CI** — [run 32731516949](https://github.com/manhtu0407/HomeServices-/actions/runs/32731516949), commit `99349b5fc64f07d00d1f62a340750c16d4563b38` |
 | `create_worker_vietqr_payment_intent` freezes the tier at intent creation | call the RPC, change the tier, call again, assert the first intent keeps its frozen rate | **still debt** — the RPC is called in the webhook script, but no test changes the tier between two calls |
-| `apply_sepay_vietqr_payment_webhook` is idempotent | `supabase/tests/sepay_vietqr_webhook_verification.sql` — call twice with one transaction id, assert exactly one ledger row and one `paid` transition | **asserts it, unrun** |
-| A duplicate provider transaction id cannot create a second credit | same script — assert `jobs_sepay_transaction_uidx` rejects the second insert | **asserts it, unrun** |
+| `apply_sepay_vietqr_payment_webhook` is idempotent | `supabase/tests/sepay_vietqr_webhook_verification.sql` — call twice with one transaction id, assert exactly one ledger row and one `paid` transition | **executed in CI** — [run 32731516949](https://github.com/manhtu0407/HomeServices-/actions/runs/32731516949), commit `99349b5fc64f07d00d1f62a340750c16d4563b38` |
+| A duplicate provider transaction id cannot create a second credit | same script — assert `jobs_sepay_transaction_uidx` rejects the second insert | **executed in CI** — [run 32731516949](https://github.com/manhtu0407/HomeServices-/actions/runs/32731516949), commit `99349b5fc64f07d00d1f62a340750c16d4563b38` |
 | Payment RPCs are unreachable from `anon` / `authenticated` | same scripts — `set role authenticated`, call, assert permission denied | **partial** — the webhook RPC is checked via `has_function_privilege`; the ledger script has no role check |
 | `upsert_customer_refund_payment_method` locks the row and never exposes the raw account | `supabase/tests/customer_refund_account_verification.sql` | **still debt** — script does not exist |
 | Cash commission is deducted from in-app balance without inventing a cash credit | extend `supabase/tests/manual_bank_payment_finance_v1_verification.sql` | **written but silent** — the extension asserts `pg_get_functiondef(...) like '%…%'`, i.e. the function's source text, not the behavior |
-| `confirm_kael_chat_atomic` refuses to confirm a quote without a valid `analysis_receipt.v1` Price Reasoning receipt | `supabase/tests/kael_price_reasoning_receipt_verification.sql` — confirm with a missing receipt and with a wrong `schema_version`, assert both raise `MISSING_REASONING_RECEIPT` | **asserts it, unrun** |
+| `confirm_kael_chat_atomic` refuses to confirm a quote without a valid `analysis_receipt.v1` Price Reasoning receipt | `supabase/tests/kael_price_reasoning_receipt_verification.sql` — confirm with a missing receipt and with a wrong `schema_version`, assert both raise `MISSING_REASONING_RECEIPT` | **executed in CI** — [run 32731516949](https://github.com/manhtu0407/HomeServices-/actions/runs/32731516949), commit `99349b5fc64f07d00d1f62a340750c16d4563b38` |
 
 `worker_payment_ledger` rows are read by `exact_aggregate_rpcs_verification.sql` and `manual_bank_payment_finance_v1_verification.sql`, so the table is not entirely unseen — but no script drives the VietQR write path that creates those rows.
 
-## 2. Access control — three scripted and unrun, two partial, five still open
+## 2. Access control — three executed in CI, two partial, five still open
 
-| Invariant | Real layer needed | State (2026-08-19, static) |
+| Invariant | Real layer needed | State (2026-08-27, CI reconciled) |
 |---|---|---|
-| `handle_new_user` cannot take a role from user metadata | partly covered by `admin_operations_sub_admin_verification.sql`; add a negative case that signs up with `raw_user_meta_data.role = 'admin'` and asserts the row lands as `customer` | **asserts it, unrun** — `signup_role_guard_verification.sql` signs up with `{"role":"admin"}` and asserts the profile lands `customer` |
+| `handle_new_user` cannot take a role from user metadata | partly covered by `admin_operations_sub_admin_verification.sql`; add a negative case that signs up with `raw_user_meta_data.role = 'admin'` and asserts the row lands as `customer` | **executed in CI** — [run 32731516949](https://github.com/manhtu0407/HomeServices-/actions/runs/32731516949), commit `99349b5fc64f07d00d1f62a340750c16d4563b38` |
 | Admin RLS policies all route through `is_admin()` | partly covered by `harness_access_boundary_verification.sql`; extend to enumerate policies per actor | **still debt** — no script enumerates policies per actor |
 | Authenticated clients stay read-only on workflow tables | per-actor DML attempts in `supabase/tests/` — the pattern `rls-per-actor.test.ts` uses, but at the SQL layer | **partial** — per-actor role switching exists in the job-media scripts, but no workflow-table DML matrix |
 | `worker_profiles_districts_backup_x3` has RLS on and is revoked from `anon` / `authenticated` | a per-actor `select` attempt asserting permission denied; the table holds worker district history, so a leak is a privacy leak | **still debt** — no script names the table |
 | `kael_customer_conversations` grants owner-only reads and blocks cross-actor writes | `supabase/tests/kael_customer_conversations_verification.sql` | **still debt** — script does not exist |
 | The per-user Kael chat quota (`check_kael_worker_chat_rate`) is enforced in the database, not only in Edge | exceed the bucket inside one transaction, assert the RPC rejects | **still debt** — no script names the function |
 | Participants can read jobs while ordinary roles cannot mutate workflow state | per-actor DML matrix in `supabase/tests/`; this is the broadest RLS claim the suite ever made and it rested on substrings | **still debt** — the broadest claim in the ledger, still unscripted |
-| `handle_new_user` execute is revoked from `public`, `anon`, `authenticated` | `set role anon`, call it, assert permission denied | **asserts it, unrun** — same `signup_role_guard_verification.sql` |
+| `handle_new_user` execute is revoked from `public`, `anon`, `authenticated` | `set role anon`, call it, assert permission denied | **executed in CI** — [run 32731516949](https://github.com/manhtu0407/HomeServices-/actions/runs/32731516949), commit `99349b5fc64f07d00d1f62a340750c16d4563b38` |
 | Storage policies stay scoped by job folder and worker ownership | storage-object access attempts per actor | **partial** — `storage.objects` is exercised in the job-media and staging scripts, not as a per-actor folder matrix |
-| Six-service foundation enables RLS and grants only least Data API privilege | extend `supabase/tests/six_service_casework_foundation_verification.sql` | **asserts it, unrun** — `six_service_casework_foundation_verification.sql` exists |
+| Six-service foundation enables RLS and grants only least Data API privilege | extend `supabase/tests/six_service_casework_foundation_verification.sql` | **executed in CI** — [run 32731516949](https://github.com/manhtu0407/HomeServices-/actions/runs/32731516949), commit `99349b5fc64f07d00d1f62a340750c16d4563b38` |
 | Cancelling a job releases the pending worker candidate in the same transaction | `customer-worker-candidate-gate-migration` → *atomically releases a pending candidate when the customer cancels* | extend `supabase/tests/customer_worker_candidate_gate_verification.sql` — cancel mid-flight, assert candidate status and `jobs.worker_id` both settle |
 | The learning evidence gate numbers in the promotion RPC match the shared constants | `learning-gate-constants-parity` → *promotion RPC migration pins the same evidence gate numbers* | call the RPC at the boundary values and assert accept/reject, rather than reading the number out of a file |
 
