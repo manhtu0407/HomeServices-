@@ -1,0 +1,362 @@
+[
+  {
+    "id": "plh_01",
+    "input_text_vi": "Khớp nối ống dưới lavabo rịn nước sau mỗi lần rửa tay, tủ vẫn khô",
+    "expected": {
+      "problem_slug": "pipe_leak",
+      "scope_signal": "in_scope",
+      "suggested_service": null,
+      "safety_signals": [],
+      "needs_clarification": true,
+      "complexity": "small"
+    },
+    "difficulty": "easy",
+    "rationale": "[SYNTHETIC SELF-REVIEW] Rò cục bộ tại kết nối nhưng cần hỏi thêm về van khóa và mức độ lan nước",
+    "detail": "Sau khi rửa tay, khớp nối dưới lavabo có vài giọt nước, phần tủ bên dưới chưa bị ướt."
+  },
+  {
+    "id": "plh_02",
+    "input_text_vi": "Nước từ ống mềm phun mạnh không dừng, nền bếp đã chảy thành vệt dài",
+    "expected": {
+      "problem_slug": "pipe_leak",
+      "scope_signal": "in_scope",
+      "suggested_service": null,
+      "safety_signals": ["uncontrolled_flow", "flooding"],
+      "needs_clarification": false,
+      "complexity": "large"
+    },
+    "difficulty": "medium",
+    "rationale": "[SYNTHETIC SELF-REVIEW] Dòng chảy chưa kiểm soát và đã lan trên nền nên phải ưu tiên safety gate",
+    "detail": "Ống mềm cạnh máy giặt phun liên tục, van gần đó không khóa được và nước đã chạy dài trên nền bếp."
+  },
+  {
+    "id": "plh_03",
+    "input_text_vi": "Vòi rửa tay xoay được nhưng phần đầu vòi lung lay, chưa thấy rỉ nước",
+    "expected": {
+      "problem_slug": "faucet_broken",
+      "scope_signal": "in_scope",
+      "suggested_service": null,
+      "safety_signals": [],
+      "needs_clarification": false,
+      "complexity": "small"
+    },
+    "difficulty": "easy",
+    "rationale": "[SYNTHETIC SELF-REVIEW] Một faucet dễ tiếp cận có lỗi cơ học đơn giản và chưa có safety signal",
+    "detail": "Đầu vòi lavabo bị lỏng khi chạm vào, đóng mở nước vẫn bình thường và chân vòi khô."
+  },
+  {
+    "id": "plh_04",
+    "input_text_vi": "Mở vòi nóng là có hơi bốc lên ở van sen, nhà em đã ngừng dùng",
+    "expected": {
+      "problem_slug": "faucet_broken",
+      "scope_signal": "in_scope",
+      "suggested_service": null,
+      "safety_signals": ["hot_water_hazard"],
+      "needs_clarification": false,
+      "complexity": "medium"
+    },
+    "difficulty": "medium",
+    "rationale": "[SYNTHETIC SELF-REVIEW] Hơi nóng tại van là tín hiệu phải khuyến cáo tránh xa trước khi phân nhánh vòi",
+    "detail": "Van vòi sen phát hơi nóng khi mở phía nước nóng, khách đã dừng sử dụng khu vực này."
+  },
+  {
+    "id": "plh_05",
+    "input_text_vi": "Đổi vòi rửa chén mới vào đúng lỗ cũ, chưa mua bộ dây cấp",
+    "expected": {
+      "problem_slug": "install_or_replace_fixture",
+      "scope_signal": "in_scope",
+      "suggested_service": null,
+      "safety_signals": [],
+      "needs_clarification": true,
+      "complexity": "medium"
+    },
+    "difficulty": "easy",
+    "rationale": "[SYNTHETIC SELF-REVIEW] Like-for-like replacement nhưng thiếu thông tin vật tư và tương thích kết nối",
+    "detail": "Vòi rửa chén mới sẽ lắp vào vị trí cũ, khách chưa biết bộ dây cấp hay ren có cần thay không."
+  },
+  {
+    "id": "plh_06",
+    "input_text_vi": "Lắp thêm thoát sàn trong phòng tắm, đường ống phải đi âm dưới nền chống thấm",
+    "expected": {
+      "problem_slug": "install_or_replace_fixture",
+      "scope_signal": "in_scope",
+      "suggested_service": null,
+      "safety_signals": ["concealed_pipe", "waterproofing_boundary"],
+      "needs_clarification": false,
+      "complexity": "large"
+    },
+    "difficulty": "hard",
+    "rationale": "[SYNTHETIC SELF-REVIEW] Đường ống âm và lớp chống thấm là capability boundary cần khảo sát tại chỗ",
+    "detail": "Khách muốn bổ sung một thoát sàn, dự kiến phải mở nền nhà tắm và đi ống bên dưới lớp chống thấm."
+  },
+  {
+    "id": "plh_07",
+    "input_text_vi": "Hệ thống nước nhà tôi hơi bất thường, mong thợ xem tổng quát",
+    "expected": {
+      "problem_slug": "other_plumbing",
+      "scope_signal": "in_scope",
+      "suggested_service": null,
+      "safety_signals": [],
+      "needs_clarification": true,
+      "complexity": null
+    },
+    "difficulty": "hard",
+    "rationale": "[SYNTHETIC SELF-REVIEW] Intent plumbing rõ nhưng chưa có triệu chứng để chọn slug chuyên biệt",
+    "detail": "Khách yêu cầu xem hệ thống nước nhưng chưa chỉ ra thiết bị, thời điểm hay biểu hiện cụ thể."
+  },
+  {
+    "id": "plh_08",
+    "input_text_vi": "Nuoc trong nha co tieng re re, em khong biet la ong nao",
+    "expected": {
+      "problem_slug": "other_plumbing",
+      "scope_signal": "in_scope",
+      "suggested_service": null,
+      "safety_signals": [],
+      "needs_clarification": true,
+      "complexity": null
+    },
+    "difficulty": "hard",
+    "rationale": "[SYNTHETIC SELF-REVIEW] Câu không dấu chỉ nêu âm thanh mơ hồ, chưa đủ để chọn rò, tắc hay áp lực",
+    "detail": "Có tiếng rè trong hệ thống nước nhưng khách chưa biết phát ra từ tuyến hay thiết bị nào."
+  },
+  {
+    "id": "plh_09",
+    "input_text_vi": "Trước ngày dọn vào, nhờ kiểm tra vòi, bồn cầu, thoát sàn và đường ống",
+    "expected": {
+      "problem_slug": "plumbing-general",
+      "scope_signal": "in_scope",
+      "suggested_service": null,
+      "safety_signals": [],
+      "needs_clarification": false,
+      "complexity": "medium"
+    },
+    "difficulty": "easy",
+    "rationale": "[SYNTHETIC SELF-REVIEW] Yêu cầu inspection nhiều hạng mục trong căn hộ phù hợp plumbing-general",
+    "detail": "Khách muốn kiểm tra các điểm cấp thoát nước và thiết bị vệ sinh trước khi chuyển vào ở."
+  },
+  {
+    "id": "plh_10",
+    "input_text_vi": "Căn dưới cũng bị nước dội ngược, có vẻ ống đứng chung đang nghẹt",
+    "expected": {
+      "problem_slug": "plumbing-general",
+      "scope_signal": "in_scope",
+      "suggested_service": null,
+      "safety_signals": ["shared_stack"],
+      "needs_clarification": false,
+      "complexity": "large"
+    },
+    "difficulty": "hard",
+    "rationale": "[SYNTHETIC SELF-REVIEW] Nhiều căn cùng bị ảnh hưởng và ống đứng chung cần đánh giá capability tại hiện trường",
+    "detail": "Căn này và căn phía dưới đều bị dội nước, khách nghi tuyến ống đứng dùng chung của tòa nhà."
+  },
+  {
+    "id": "plh_11",
+    "input_text_vi": "Nút bấm bồn cầu bị kẹt, nước trong két vẫn không tràn",
+    "expected": {
+      "problem_slug": "toilet_flush_issue",
+      "scope_signal": "in_scope",
+      "suggested_service": null,
+      "safety_signals": [],
+      "needs_clarification": false,
+      "complexity": "small"
+    },
+    "difficulty": "easy",
+    "rationale": "[SYNTHETIC SELF-REVIEW] Cơ cấu xả tại một toilet có lỗi nhưng không có nước thải hay tràn",
+    "detail": "Nút bấm không bật lại sau khi nhấn, két nước không rò và sàn xung quanh vẫn khô."
+  },
+  {
+    "id": "plh_12",
+    "input_text_vi": "Nước bẩn từ bồn cầu dâng lên mỗi lần xả và phủ một phần nền",
+    "expected": {
+      "problem_slug": "toilet_flush_issue",
+      "scope_signal": "in_scope",
+      "suggested_service": null,
+      "safety_signals": ["sewage", "flooding"],
+      "needs_clarification": false,
+      "complexity": "large"
+    },
+    "difficulty": "medium",
+    "rationale": "[SYNTHETIC SELF-REVIEW] Nước thải dâng và lan trên nền yêu cầu tránh tiếp xúc, không tự tháo thiết bị",
+    "detail": "Mỗi lần xả, nước bẩn từ bồn cầu dâng lên rồi chảy ra một phần nền nhà tắm."
+  },
+  {
+    "id": "plh_13",
+    "input_text_vi": "Bồn rửa mặt rút nước lâu hơn trước, không có mùi hay nước dội ngược",
+    "expected": {
+      "problem_slug": "clogged_drain_or_sink",
+      "scope_signal": "in_scope",
+      "suggested_service": null,
+      "safety_signals": [],
+      "needs_clarification": false,
+      "complexity": "small"
+    },
+    "difficulty": "easy",
+    "rationale": "[SYNTHETIC SELF-REVIEW] Thoát chậm tại một sink không kèm contamination hay flooding là tắc cục bộ",
+    "detail": "Lavabo thoát chậm nhưng nước không trào ngược, không có nước thải bẩn trên nền."
+  },
+  {
+    "id": "plh_14",
+    "input_text_vi": "Nước đen trào lên từ phễu thoát sàn sau khi tắm",
+    "expected": {
+      "problem_slug": "clogged_drain_or_sink",
+      "scope_signal": "in_scope",
+      "suggested_service": null,
+      "safety_signals": ["sewage", "flooding"],
+      "needs_clarification": false,
+      "complexity": "large"
+    },
+    "difficulty": "medium",
+    "rationale": "[SYNTHETIC SELF-REVIEW] Backflow nước bẩn kèm nước lan là safety case của nhánh clogged drain",
+    "detail": "Sau khi tắm, nước đen từ phễu thoát sàn dâng lên và phủ quanh khu vực nhà tắm."
+  },
+  {
+    "id": "plh_15",
+    "input_text_vi": "Vòi bếp vẫn mạnh nhưng vòi sen tầng trên chỉ còn tia nhỏ",
+    "expected": {
+      "problem_slug": "weak_water_pressure",
+      "scope_signal": "in_scope",
+      "suggested_service": null,
+      "safety_signals": [],
+      "needs_clarification": true,
+      "complexity": "medium"
+    },
+    "difficulty": "medium",
+    "rationale": "[SYNTHETIC SELF-REVIEW] Một fixture yếu trong khi fixture khác bình thường cần tách lỗi cục bộ với áp lực chung",
+    "detail": "Vòi bếp chảy bình thường nhưng vòi sen ở phòng tắm chỉ còn một tia nước nhỏ."
+  },
+  {
+    "id": "plh_16",
+    "input_text_vi": "Sáng nay mọi vòi trong căn hộ đều yếu, van cấp chính của căn hộ bị kẹt",
+    "expected": {
+      "problem_slug": "weak_water_pressure",
+      "scope_signal": "in_scope",
+      "suggested_service": null,
+      "safety_signals": ["main_supply"],
+      "needs_clarification": true,
+      "complexity": "large"
+    },
+    "difficulty": "medium",
+    "rationale": "[SYNTHETIC SELF-REVIEW] Toàn căn hộ bị ảnh hưởng và main isolation được nêu trực tiếp, cần đánh giá capability",
+    "detail": "Tất cả vòi cùng yếu từ buổi sáng, van cấp chính vào căn hộ đang bị kẹt không xoay được."
+  },
+  {
+    "id": "plh_17",
+    "input_text_vi": "Dàn nóng lạnh trong phòng ngủ nhỏ nước, không phải vòi hay ống cấp sinh hoạt",
+    "expected": {
+      "problem_slug": null,
+      "scope_signal": "service_mismatch",
+      "suggested_service": "hvac",
+      "safety_signals": [],
+      "needs_clarification": false,
+      "complexity": null
+    },
+    "difficulty": "easy",
+    "rationale": "[SYNTHETIC SELF-REVIEW] Nước phát sinh từ máy điều hòa nên route sang hvac dù biểu hiện là chảy nước",
+    "detail": "Dàn lạnh của máy điều hòa nhỏ nước xuống tường, hệ thống vòi và ống nước trong nhà không có triệu chứng."
+  },
+  {
+    "id": "plh_18",
+    "input_text_vi": "Bật bình nóng lạnh thì CB nhảy, cần thợ kiểm tra phần điện",
+    "expected": {
+      "problem_slug": null,
+      "scope_signal": "service_mismatch",
+      "suggested_service": "electrical",
+      "safety_signals": [],
+      "needs_clarification": false,
+      "complexity": null
+    },
+    "difficulty": "easy",
+    "rationale": "[SYNTHETIC SELF-REVIEW] Lỗi cấp điện cho water heater phải route electrical, không chọn plumbing vì thiết bị dùng nước",
+    "detail": "Cầu dao nhảy ngay khi bật bình nóng lạnh, khách đang yêu cầu kiểm tra mạch điện."
+  },
+  {
+    "id": "plh_19",
+    "input_text_vi": "Muốn vệ sinh nệm bị mùi ẩm trong phòng ngủ",
+    "expected": {
+      "problem_slug": null,
+      "scope_signal": "service_mismatch",
+      "suggested_service": "upholstery",
+      "safety_signals": [],
+      "needs_clarification": false,
+      "complexity": null
+    },
+    "difficulty": "easy",
+    "rationale": "[SYNTHETIC SELF-REVIEW] Nệm và xử lý bề mặt vải thuộc upholstery, không phải đường nước",
+    "detail": "Khách muốn làm sạch mùi ẩm trên nệm trong phòng ngủ."
+  },
+  {
+    "id": "plh_20",
+    "input_text_vi": "Ống cấp nước dùng chung cho cả block vỡ ở khu kỹ thuật, BQL đã lập biên bản",
+    "expected": {
+      "problem_slug": null,
+      "scope_signal": "out_of_scope",
+      "suggested_service": null,
+      "safety_signals": ["main_supply"],
+      "needs_clarification": false,
+      "complexity": null
+    },
+    "difficulty": "easy",
+    "rationale": "[SYNTHETIC SELF-REVIEW] Tuyến cấp chung của toàn block nằm ngoài phạm vi căn hộ và do BQL quản lý",
+    "detail": "Sự cố xảy ra tại khu kỹ thuật của cả block, không phải đường ống riêng của căn hộ khách."
+  },
+  {
+    "id": "plh_21",
+    "input_text_vi": "Cần thi công trạm xử lý nước cho nhà máy, không phải sửa căn hộ",
+    "expected": {
+      "problem_slug": null,
+      "scope_signal": "out_of_scope",
+      "suggested_service": null,
+      "safety_signals": [],
+      "needs_clarification": false,
+      "complexity": null
+    },
+    "difficulty": "easy",
+    "rationale": "[SYNTHETIC SELF-REVIEW] Công trình xử lý nước công nghiệp nằm ngoài service boundary của NestScout",
+    "detail": "Yêu cầu là thi công cho nhà máy với quy mô công nghiệp, không liên quan đến sửa chữa plumbing căn hộ."
+  },
+  {
+    "id": "plh_22",
+    "input_text_vi": "Mảng trần dưới phòng tắm ố vàng và nhỏ giọt, đường ống nằm phía trên trần",
+    "expected": {
+      "problem_slug": "pipe_leak",
+      "scope_signal": "in_scope",
+      "suggested_service": null,
+      "safety_signals": ["concealed_pipe"],
+      "needs_clarification": false,
+      "complexity": "large"
+    },
+    "difficulty": "medium",
+    "rationale": "[SYNTHETIC SELF-REVIEW] Rò phía trên trần là concealed pipe và không nên yêu cầu khách tự mở trần",
+    "detail": "Trần thạch cao bên dưới phòng tắm ố vàng rồi nhỏ giọt, khách chưa mở tấm trần để tìm ống."
+  },
+  {
+    "id": "plh_23",
+    "input_text_vi": "Mưa làm nước từ mép ban công chảy vào nhà, lớp chống thấm có vẻ hỏng",
+    "expected": {
+      "problem_slug": "pipe_leak",
+      "scope_signal": "in_scope",
+      "suggested_service": null,
+      "safety_signals": ["flooding", "waterproofing_boundary"],
+      "needs_clarification": false,
+      "complexity": "large"
+    },
+    "difficulty": "medium",
+    "rationale": "[SYNTHETIC SELF-REVIEW] Nước mưa đang lan và liên quan ranh chống thấm nên cần on-site assessment",
+    "detail": "Mưa lớn làm nước qua mép ban công chảy vào phòng, nền trong nhà đang ướt dần."
+  },
+  {
+    "id": "plh_24",
+    "input_text_vi": "Hai căn cùng tầng bị trào nước bẩn từ tuyến thoát chung, chưa ai mở đường ống",
+    "expected": {
+      "problem_slug": "clogged_drain_or_sink",
+      "scope_signal": "in_scope",
+      "suggested_service": null,
+      "safety_signals": ["sewage", "shared_stack"],
+      "needs_clarification": false,
+      "complexity": "large"
+    },
+    "difficulty": "hard",
+    "rationale": "[SYNTHETIC SELF-REVIEW] Nước bẩn và tuyến dùng chung là hai tín hiệu khác loại phải cùng được recall",
+    "detail": "Hai căn cùng tầng cùng bị nước bẩn trào từ tuyến thoát chung, chưa có ai tự mở hoặc tháo đường ống."
+  }
+]

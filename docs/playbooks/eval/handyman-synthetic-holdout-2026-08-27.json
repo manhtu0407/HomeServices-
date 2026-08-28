@@ -1,0 +1,362 @@
+[
+  {
+    "id": "hm_holdout_01",
+    "input_text_vi": "Gắn một kệ nhỏ trên tường gạch, đồ nhẹ và đã có bộ vít",
+    "expected": {
+      "problem_slug": "drill_or_mount_shelf",
+      "scope_signal": "in_scope",
+      "suggested_service": null,
+      "safety_signals": [],
+      "needs_clarification": true,
+      "complexity": "small"
+    },
+    "difficulty": "easy",
+    "rationale": "[SYNTHETIC SELF-REVIEW] Kệ nhỏ và tường gạch là bounded mounting nhưng tải và điểm neo vẫn cần xác nhận",
+    "detail": "Khách có vít nhưng chưa nói chiều dài kệ, số điểm bắt hay đường điện/nước phía sau."
+  },
+  {
+    "id": "hm_holdout_02",
+    "input_text_vi": "Khoan hệ kệ sắt nhiều tầng rất nặng vào vách chưa xác định, phía sau là khu vực kỹ thuật",
+    "expected": {
+      "problem_slug": "drill_or_mount_shelf",
+      "scope_signal": "in_scope",
+      "suggested_service": null,
+      "required_safety_signals": ["concealed_electrical", "concealed_plumbing", "load_bearing_change"],
+      "needs_clarification": false,
+      "complexity": "large"
+    },
+    "difficulty": "hard",
+    "rationale": "[SYNTHETIC SELF-REVIEW] Heavy load, unknown substrate and technical void require a direct safety assessment",
+    "detail": "Kệ sắt nhiều tầng đặt sát khu kỹ thuật; khách chưa có bản vẽ hoặc xác nhận tường chịu tải."
+  },
+  {
+    "id": "hm_holdout_03",
+    "input_text_vi": "Bắt hai giá treo áo nhẹ vào tường bê tông, đã có vít và không chạm điện nước",
+    "expected": {
+      "problem_slug": "install_small_fixture",
+      "scope_signal": "in_scope",
+      "suggested_service": null,
+      "safety_signals": [],
+      "needs_clarification": false,
+      "complexity": "medium"
+    },
+    "difficulty": "medium",
+    "rationale": "[SYNTHETIC SELF-REVIEW] Multiple bounded accessories on a known substrate remain a small-fixture installation",
+    "detail": "Khách xác nhận hai giá nhẹ, tường bê tông, hardware đã có và không có đường điện/nước liên quan."
+  },
+  {
+    "id": "hm_holdout_04",
+    "input_text_vi": "Treo tủ, gắn TV và lắp máy lọc nước cùng một vách, chưa biết có dây và ống phía trong",
+    "expected": {
+      "problem_slug": "handyman-general",
+      "scope_signal": "in_scope",
+      "suggested_service": null,
+      "required_safety_signals": ["concealed_electrical", "concealed_plumbing", "load_bearing_change"],
+      "needs_clarification": false,
+      "complexity": "large"
+    },
+    "difficulty": "hard",
+    "rationale": "[SYNTHETIC SELF-REVIEW] Shared wall, multiple heavy items, and hidden services make the scope high risk",
+    "detail": "Ba hạng mục cùng vách và khách không có hồ sơ đường điện/nước; không được coi là ba việc nhỏ độc lập."
+  },
+  {
+    "id": "hm_holdout_05",
+    "input_text_vi": "Đổi vòi lavabo mới cùng chân cũ, không đục tường hay thay ống",
+    "expected": {
+      "problem_slug": "install_bathroom_fixture",
+      "scope_signal": "in_scope",
+      "suggested_service": null,
+      "safety_signals": [],
+      "needs_clarification": true,
+      "complexity": "small"
+    },
+    "difficulty": "easy",
+    "rationale": "[SYNTHETIC SELF-REVIEW] Like-for-like fixture remains handyman when water boundary is bounded",
+    "detail": "Khách chưa nêu ren, local shutoff và vật tư đi kèm dù đã xác nhận không đục tường."
+  },
+  {
+    "id": "hm_holdout_06",
+    "input_text_vi": "Gắn bồn rửa treo lên tường gạch, cần khoan vào vùng có ống thoát âm",
+    "expected": {
+      "problem_slug": "install_bathroom_fixture",
+      "scope_signal": "in_scope",
+      "suggested_service": null,
+      "required_safety_signals": ["concealed_plumbing", "load_bearing_change"],
+      "needs_clarification": false,
+      "complexity": "large"
+    },
+    "difficulty": "hard",
+    "rationale": "[SYNTHETIC SELF-REVIEW] Wall-mounted load and concealed drain require assessment before drilling",
+    "detail": "Bồn rửa treo tạo tải lên tường và điểm khoan nằm gần ống thoát âm được khách nêu rõ."
+  },
+  {
+    "id": "hm_holdout_07",
+    "input_text_vi": "Bắt thanh treo rèm cửa sổ trong phòng, điểm lắp thấp và đứng sàn được",
+    "expected": {
+      "problem_slug": "install_curtain_rod",
+      "scope_signal": "in_scope",
+      "suggested_service": null,
+      "safety_signals": [],
+      "needs_clarification": true,
+      "complexity": "small"
+    },
+    "difficulty": "easy",
+    "rationale": "[SYNTHETIC SELF-REVIEW] Interior curtain-rod task has bounded access with hardware facts still missing",
+    "detail": "Khách chưa nêu chiều dài thanh và tải rèm, nhưng đã xác nhận điểm lắp thấp và không cần thang."
+  },
+  {
+    "id": "hm_holdout_08",
+    "input_text_vi": "Lắp màn sáo ngoài logia cao, phải với qua lan can và dùng thang nhôm",
+    "expected": {
+      "problem_slug": "install_curtain_rod",
+      "scope_signal": "in_scope",
+      "suggested_service": null,
+      "required_safety_signals": ["unsafe_height"],
+      "needs_clarification": false,
+      "complexity": "large"
+    },
+    "difficulty": "hard",
+    "rationale": "[SYNTHETIC SELF-REVIEW] Reaching over a balcony rail and ladder use are unsafe-height signals",
+    "detail": "Màn sáo ở logia cao, khách mô tả phải với qua lan can; không cung cấp hướng dẫn tự trèo."
+  },
+  {
+    "id": "hm_holdout_09",
+    "input_text_vi": "Gắn bảng số phòng nhỏ bằng keo và vít vào tường hành lang, không có điện nước",
+    "expected": {
+      "problem_slug": "install_small_fixture",
+      "scope_signal": "in_scope",
+      "suggested_service": null,
+      "safety_signals": [],
+      "needs_clarification": true,
+      "complexity": "small"
+    },
+    "difficulty": "easy",
+    "rationale": "[SYNTHETIC SELF-REVIEW] Small non-service accessory is in scope when surface and access remain bounded",
+    "detail": "Khách chưa nêu số lượng và loại nền hành lang nhưng xác nhận không chạm điện/nước."
+  },
+  {
+    "id": "hm_holdout_10",
+    "input_text_vi": "Lắp quạt trần mới và đấu dây vào mạch đèn có sẵn",
+    "expected": {
+      "problem_slug": null,
+      "scope_signal": "service_mismatch",
+      "suggested_service": "electrical",
+      "safety_signals": ["regulated_electrical"],
+      "needs_clarification": false,
+      "complexity": null
+    },
+    "difficulty": "medium",
+    "rationale": "[SYNTHETIC SELF-REVIEW] Fixed wiring and ceiling electrical work require the electrical service",
+    "detail": "Dù thiết bị có thể là fixture nhỏ, khách yêu cầu đấu vào mạch đèn nên vượt handyman."
+  },
+  {
+    "id": "hm_holdout_11",
+    "input_text_vi": "Gắn gương 30kg lên tường bê tông, giá đã có và không cần đi dây",
+    "expected": {
+      "problem_slug": "mount_tv_or_furniture",
+      "scope_signal": "in_scope",
+      "suggested_service": null,
+      "safety_signals": [],
+      "needs_clarification": true,
+      "complexity": "medium"
+    },
+    "difficulty": "easy",
+    "rationale": "[SYNTHETIC SELF-REVIEW] Heavy mirror mounting is a handyman task but needs anchor and clearance confirmation",
+    "detail": "Tải đã biết là 30kg nhưng chưa xác nhận bracket rating, điểm neo và vật liệu tường phía sau."
+  },
+  {
+    "id": "hm_holdout_12",
+    "input_text_vi": "Bắt tủ bếp nặng vào cột và dầm, cạnh đó có đường dây âm, vị trí phải leo cao",
+    "expected": {
+      "problem_slug": "mount_tv_or_furniture",
+      "scope_signal": "in_scope",
+      "suggested_service": null,
+      "required_safety_signals": ["load_bearing_change", "concealed_electrical", "unsafe_height"],
+      "needs_clarification": false,
+      "complexity": "large"
+    },
+    "difficulty": "hard",
+    "rationale": "[SYNTHETIC SELF-REVIEW] Structural member, hidden wiring, and high access require direct assessment",
+    "detail": "Tủ nặng cần bắt gần cột/dầm; dây âm và việc leo cao đều được khách nêu, không được tự chọn anchor."
+  },
+  {
+    "id": "hm_holdout_13",
+    "input_text_vi": "Khóa tủ lỏng và tay nắm bị lệch, chỉ cần thay phụ kiện cùng kích thước",
+    "expected": {
+      "problem_slug": "repair_hinge_or_handle",
+      "scope_signal": "in_scope",
+      "suggested_service": null,
+      "safety_signals": [],
+      "needs_clarification": true,
+      "complexity": "small"
+    },
+    "difficulty": "easy",
+    "rationale": "[SYNTHETIC SELF-REVIEW] Bounded fitting replacement is minor repair while exact hardware remains to verify",
+    "detail": "Khách chưa có ảnh mặt sau hoặc khoảng cách lỗ, nên không thể hứa phụ kiện cùng kích thước sẽ vừa."
+  },
+  {
+    "id": "hm_holdout_14",
+    "input_text_vi": "Bản lề cửa bị bung khỏi khung, khung mục và cánh cửa rất nặng",
+    "expected": {
+      "problem_slug": "repair_hinge_or_handle",
+      "scope_signal": "in_scope",
+      "suggested_service": null,
+      "required_safety_signals": ["load_bearing_change"],
+      "needs_clarification": false,
+      "complexity": "medium"
+    },
+    "difficulty": "hard",
+    "rationale": "[SYNTHETIC SELF-REVIEW] Failed substrate and heavy door change a fitting repair into a load assessment",
+    "detail": "Bản lề đã bung khỏi khung mục; trọng lượng cánh cửa khiến việc bắt lại không được coi là bounded."
+  },
+  {
+    "id": "hm_holdout_15",
+    "input_text_vi": "Đổi sáu bản lề tủ cùng mẫu, cửa và lỗ bắt vít còn tốt",
+    "expected": {
+      "problem_slug": "replace_cabinet_hinges",
+      "scope_signal": "in_scope",
+      "suggested_service": null,
+      "safety_signals": [],
+      "needs_clarification": true,
+      "complexity": "medium"
+    },
+    "difficulty": "easy",
+    "rationale": "[SYNTHETIC SELF-REVIEW] Several compatible hinge replacements are medium scope pending geometry confirmation",
+    "detail": "Khách xác nhận cửa và nền tốt nhưng chưa nói overlay/inset, số cánh và phụ kiện đã mua."
+  },
+  {
+    "id": "hm_holdout_16",
+    "input_text_vi": "Tủ âm tường bị ẩm, muốn thay toàn bộ bản lề gần một hộp kỹ thuật có ống nước",
+    "expected": {
+      "problem_slug": "replace_cabinet_hinges",
+      "scope_signal": "in_scope",
+      "suggested_service": null,
+      "required_safety_signals": ["concealed_plumbing"],
+      "needs_clarification": false,
+      "complexity": "large"
+    },
+    "difficulty": "hard",
+    "rationale": "[SYNTHETIC SELF-REVIEW] Damp substrate and a nearby concealed water line can change the hinge scope",
+    "detail": "Tủ âm tường ẩm gần hộp kỹ thuật; khách biết có ống nước nhưng chưa xác định vị trí an toàn để khoan."
+  },
+  {
+    "id": "hm_holdout_17",
+    "input_text_vi": "muon xu ly mot diem o bep nhung chua biet la treo do, sua hay khoan, nho tho xem giup",
+    "expected": {
+      "problem_slug": "other_handyman",
+      "scope_signal": "in_scope",
+      "suggested_service": null,
+      "safety_signals": [],
+      "needs_clarification": true,
+      "complexity": null
+    },
+    "difficulty": "medium",
+    "rationale": "[SYNTHETIC SELF-REVIEW] Handyman intent is clear but the task type is not, so the fallback must preserve uncertainty",
+    "detail": "Khách chỉ nêu khu vực bếp và muốn thợ xem, chưa mô tả vật dụng, nền hoặc lỗi cụ thể."
+  },
+  {
+    "id": "hm_holdout_18",
+    "input_text_vi": "Lắp giàn phơi nặng ở ban công, gần trục nước và dây điện âm, phải với ra ngoài",
+    "expected": {
+      "problem_slug": "handyman-general",
+      "scope_signal": "in_scope",
+      "suggested_service": null,
+      "required_safety_signals": ["concealed_plumbing", "concealed_electrical", "unsafe_height", "load_bearing_change"],
+      "needs_clarification": false,
+      "complexity": "large"
+    },
+    "difficulty": "hard",
+    "rationale": "[SYNTHETIC SELF-REVIEW] Balcony load, height, and two hidden-service risks require an on-site plan",
+    "detail": "Giàn phơi nặng cần bắt gần trục kỹ thuật và phải với ra ngoài ban công; không được hướng dẫn tự làm."
+  },
+  {
+    "id": "hm_holdout_19",
+    "input_text_vi": "Kéo dây và lắp CB riêng cho bếp, nhờ người lắp đặt việc nhỏ",
+    "expected": {
+      "problem_slug": null,
+      "scope_signal": "service_mismatch",
+      "suggested_service": "electrical",
+      "safety_signals": ["regulated_electrical"],
+      "needs_clarification": false,
+      "complexity": null
+    },
+    "difficulty": "easy",
+    "rationale": "[SYNTHETIC SELF-REVIEW] A dedicated breaker and cable run are regulated electrical work",
+    "detail": "Tên gọi việc nhỏ không thay đổi bản chất fixed electrical work."
+  },
+  {
+    "id": "hm_holdout_20",
+    "input_text_vi": "Mở tường chuyển ống thoát và dời chậu rửa sang bên kia bếp",
+    "expected": {
+      "problem_slug": null,
+      "scope_signal": "service_mismatch",
+      "suggested_service": "plumbing",
+      "safety_signals": ["regulated_plumbing", "concealed_plumbing"],
+      "needs_clarification": false,
+      "complexity": null
+    },
+    "difficulty": "medium",
+    "rationale": "[SYNTHETIC SELF-REVIEW] Opening wall and relocating a drain are plumbing boundary work",
+    "detail": "Yêu cầu thay đổi tuyến ống thoát trong tường, không phải lắp phụ kiện nhỏ."
+  },
+  {
+    "id": "hm_holdout_21",
+    "input_text_vi": "Máy giặt rung và báo lỗi, muốn mở bo mạch bên trong để thay",
+    "expected": {
+      "problem_slug": null,
+      "scope_signal": "out_of_scope",
+      "suggested_service": null,
+      "safety_signals": ["specialist_appliance"],
+      "needs_clarification": false,
+      "complexity": null
+    },
+    "difficulty": "medium",
+    "rationale": "[SYNTHETIC SELF-REVIEW] Internal appliance repair is outside minor handyman capability",
+    "detail": "Khách yêu cầu mở bo máy giặt, cần route specialist thay vì handyman."
+  },
+  {
+    "id": "hm_holdout_22",
+    "input_text_vi": "Cắt dầm bê tông để làm cửa lớn hơn giữa hai phòng",
+    "expected": {
+      "problem_slug": null,
+      "scope_signal": "out_of_scope",
+      "suggested_service": null,
+      "required_safety_signals": ["structural_work", "load_bearing_change"],
+      "needs_clarification": false,
+      "complexity": null
+    },
+    "difficulty": "hard",
+    "rationale": "[SYNTHETIC SELF-REVIEW] Beam cutting is structural work and cannot be accepted as drilling or mounting",
+    "detail": "Khách muốn cắt dầm bê tông để mở rộng cửa; không được hướng dẫn thao tác hay bỏ qua thẩm định kết cấu."
+  },
+  {
+    "id": "hm_holdout_23",
+    "input_text_vi": "Sửa bên trong máy lạnh và thay tụ, chỉ cần người lắp đặt phụ",
+    "expected": {
+      "problem_slug": null,
+      "scope_signal": "out_of_scope",
+      "suggested_service": null,
+      "required_safety_signals": ["specialist_appliance"],
+      "needs_clarification": false,
+      "complexity": null
+    },
+    "difficulty": "medium",
+    "rationale": "[SYNTHETIC SELF-REVIEW] Internal HVAC component repair is specialist work, regardless of the requested label",
+    "detail": "Thay tụ bên trong máy lạnh vượt minor handyman và cần HVAC-qualified worker."
+  },
+  {
+    "id": "hm_holdout_24",
+    "input_text_vi": "Muốn treo một món đồ nặng sát lan can tầng cao, cạnh đó có dây điện và ống nước âm nhưng chưa biết loại giá nào",
+    "expected": {
+      "problem_slug": "other_handyman",
+      "scope_signal": "in_scope",
+      "suggested_service": null,
+      "required_safety_signals": ["concealed_electrical", "concealed_plumbing", "unsafe_height"],
+      "needs_clarification": true,
+      "complexity": "large"
+    },
+    "difficulty": "hard",
+    "rationale": "[SYNTHETIC SELF-REVIEW] A high, heavy, underspecified mounting request needs the fallback plus every grounded access/service signal",
+    "detail": "Khách nêu vật nặng, vị trí sát lan can, dây điện và ống nước âm nhưng chưa biết loại giá, nền hay cách tiếp cận an toàn."
+  }
+]

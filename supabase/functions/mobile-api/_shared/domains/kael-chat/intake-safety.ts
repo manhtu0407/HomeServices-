@@ -6,7 +6,7 @@ import {
   prependDeterministicSafetyGuidance,
   scanIntakeSafetySignals,
 } from "../../kael/index.ts";
-import { isElectricalPlaybookEnabled } from "../../kael/learning/playbooks/electrical.ts";
+import { getEnabledKaelPlaybook } from "../../kael/learning/playbooks/registry.ts";
 import type { IntakeEvalObservation } from "../../kael/contracts/types.ts";
 
 export function persistentKaelSafetySignals(
@@ -14,7 +14,7 @@ export function persistentKaelSafetySignals(
   serviceType: ServiceType,
   persistedSafetySignals: readonly string[] = [],
 ) {
-  if (serviceType !== "electrical" || !isElectricalPlaybookEnabled()) return [];
+  if (!getEnabledKaelPlaybook(serviceType)) return [];
   const allowed = new Set(
     getKaelPerformanceProfile(serviceType)?.safety_capability_gates
       .flatMap((gate) => [...gate.trigger_signals]) ?? [],
@@ -30,12 +30,14 @@ export function requiresImmediateKaelSafetyPath(
   serviceType: ServiceType,
   persistedSafetySignals: readonly string[] = [],
 ) {
-  return serviceType === "electrical" &&
-    isElectricalPlaybookEnabled() &&
-    deterministicSafetyGuidance(
+  return Boolean(
+    getEnabledKaelPlaybook(serviceType) &&
+      deterministicSafetyGuidance(
         persistentKaelSafetySignals(message, serviceType, persistedSafetySignals),
         "vi",
-      ) !== null;
+        serviceType,
+      ) !== null,
+  );
 }
 
 export function mergeBoundarySafetyGuidance(
@@ -43,17 +45,20 @@ export function mergeBoundarySafetyGuidance(
   currentSafetySignals: readonly string[],
   persistedSafetySignals: readonly string[],
   language: "vi" | "en",
+  serviceType: ServiceType = "electrical",
 ) {
-  if (deterministicSafetyGuidance(currentSafetySignals, language)) return declineText;
+  if (deterministicSafetyGuidance(currentSafetySignals, language, serviceType)) return declineText;
   return prependDeterministicSafetyGuidance(
     declineText,
     persistedSafetySignals,
     language,
+    { serviceType },
   );
 }
 
 export function resolveKaelResponseSafetySignals(input: {
   readonly electricalPlaybookEnabled: boolean;
+  readonly serviceType?: ServiceType;
   readonly earlySafetySignals: readonly string[];
   readonly pipelineSafetySignals?: readonly string[];
   readonly intakeObservation?: IntakeEvalObservation;
@@ -71,10 +76,12 @@ export function buildSafetyFirstKaelClarification(input: {
   readonly focusedFallback: string;
   readonly safetySignals: readonly string[];
   readonly language: "vi" | "en";
+  readonly serviceType?: ServiceType;
 }) {
   const safetyFallbackUsed = deterministicSafetyGuidance(
     input.safetySignals,
     input.language,
+    input.serviceType,
   ) !== null;
   const question = safetyFallbackUsed ? input.focusedFallback : input.providerText;
   return {
@@ -84,6 +91,7 @@ export function buildSafetyFirstKaelClarification(input: {
         question,
         input.safetySignals,
         input.language,
+        { serviceType: input.serviceType },
       )
       : question,
     safetyFallbackUsed,
@@ -112,11 +120,12 @@ export function withIntakeSafetyGuidance(
   safetySignals: readonly string[],
   language: "vi" | "en",
   trustedText = true,
+  serviceType: ServiceType = "electrical",
 ) {
   return prependDeterministicSafetyGuidance(
     text,
     safetySignals,
     language,
-    { trustedText },
+    { trustedText, serviceType },
   );
 }

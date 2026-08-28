@@ -1,7 +1,7 @@
-# Kael Electrical Playbook — v0.1 (sample teaching artifact)
+# Kael Electrical Playbook — v0.1 (teaching artifact)
 
 Status: DRAFT — awaiting Tu domain review (see Appendix C for the exact review list).
-Scope: service_type `electrical` only. This is the SAMPLE playbook proving the "teach Kael" channel; the other five services follow the same template after Tu approves this one.
+Scope: service_type `electrical` only. This is the original teaching artifact; five parallel service artifacts now use the same contract and remain independently gated.
 
 ## What this is
 
@@ -16,7 +16,7 @@ Kael's runtime intelligence = rented LLMs + this kind of distilled procedure. Th
 
 - **Primary channel:** Appendix A exists as the byte-parity-tested runtime segment and is appended to the electrical intake-diagnosis system prompt only behind `KAEL_PLAYBOOK_ELECTRICAL_ENABLED`. STABLE content remains cacheable; this local hardening pass does not attest a deployment or enable the flag.
 - **Secondary channel:** per-slug knowledge rows through the existing `knowledge.ts` retrieval (240-token runtime budget — only the per-slug distilled lines fit there, not this document).
-- **Measurement:** Appendix B is a 24-case ground-truth mini-corpus (subset of §43 E0). Local fixture replay validates the harness contract only; improvement still requires matched live baseline/After arms plus an independent holdout.
+- **Measurement:** Appendix B points to a 24-case ground-truth-style corpus and a separate 24-case synthetic wording holdout. Local validation proves artifact shape, coverage and parity only; improvement still requires matched live baseline/After arms plus an independently labeled holdout.
 
 ## Binding contract snapshot (verified against code 2026-07-14)
 
@@ -987,7 +987,7 @@ Allowed customer actions ONLY: keep distance and wait for the worker. With NO im
 
 # Appendix A — Compressed STABLE prompt segment (the runtime artifact)
 
-Ready to append to the electrical intake-diagnosis system prompt (after the service profile contract). STABLE content — no per-request data — so it is prompt-cacheable (Plan §43 Workstream C). Estimated ~1.6k tokens. Everything below the line is the artifact, verbatim.
+Ready to append to the electrical intake-diagnosis system prompt (after the service profile contract). STABLE content — no per-request data — so it is prompt-cacheable (`governance/plan-archive/2026-05-20_workflow-enhancement.md` §43 Workstream C). Estimated ~1.6k tokens. Everything below the line is the artifact, verbatim.
 
 ---
 
@@ -1057,42 +1057,18 @@ capability gate (panel/fixed wiring/new circuit): "Phần tủ điện và dây 
 
 ---
 
-# Appendix B — Eval mini-corpus (24 ground-truth cases)
+# Appendix B — Eval corpus and synthetic holdout (24 + 24 cases)
 
-Subset of the §43 E0 corpus format. `expected` follows THIS playbook's trees. Inputs mimic real chat: some without diacritics, some with typos. Run against staging BEFORE and AFTER injecting Appendix A; the delta is the honest measure of this playbook.
+The machine-readable files are canonical; this appendix intentionally does not duplicate a stale JSON snapshot.
 
-```json
-[
-  {"id":"el_01","input_text_vi":"aptomat nha em cu bat len la sap lien, rut het do ra van vay","expected":{"problem_slug":"breaker_trip","scope_signal":"in_scope","suggested_service":null,"safety_signals":["fixed_wiring","protective_device"],"needs_clarification":false,"complexity":"large"},"difficulty":"medium","rationale":"Branch A: re-trips instantly with loads unplugged = short in fixed wiring"},
-  {"id":"el_02","input_text_vi":"cầu dao chống giật nhà em hay nhảy mỗi khi trời mưa to","expected":{"problem_slug":"breaker_trip","scope_signal":"in_scope","suggested_service":null,"safety_signals":["protective_device"],"needs_clarification":false,"complexity":"medium"},"difficulty":"easy","rationale":"Branch D: RCBO rain-day leakage pattern"},
-  {"id":"el_03","input_text_vi":"nhà em mất điện toàn bộ mà đèn hành lang vẫn sáng","expected":{"problem_slug":"power_outage_whole_unit","scope_signal":"in_scope","suggested_service":null,"safety_signals":[],"needs_clarification":true,"complexity":null},"difficulty":"easy","rationale":"Corridor check answered; main CB state unknown -> ask branch 2 question"},
-  {"id":"el_04","input_text_vi":"ca tang chung cu deu bi cup dien roi","expected":{"problem_slug":null,"scope_signal":"out_of_scope","suggested_service":null,"safety_signals":[],"needs_clarification":false,"complexity":null},"difficulty":"easy","rationale":"Building-wide outage = BQL/EVN territory"},
-  {"id":"el_05","input_text_vi":"phòng ngủ mất điện cả đèn lẫn ổ cắm, các phòng khác vẫn bình thường","expected":{"problem_slug":"power_outage_one_room","scope_signal":"in_scope","suggested_service":null,"safety_signals":[],"needs_clarification":true,"complexity":null},"difficulty":"easy","rationale":"One area, both dead; branch CB state unknown -> ask section-2 question"},
-  {"id":"el_06","input_text_vi":"o cam phong khach het dien het ca day luon, den van sang","expected":{"problem_slug":"power_outage_one_room","scope_signal":"in_scope","suggested_service":null,"safety_signals":[],"needs_clarification":true,"complexity":"medium"},"difficulty":"medium","rationale":"PB0 boundary: >=2 dead outlets = circuit-level, NOT outlet_or_switch_broken"},
-  {"id":"el_07","input_text_vi":"đèn phòng khách nhấp nháy liên tục, thay bóng mới rồi mà vẫn bị","expected":{"problem_slug":"flickering_light","scope_signal":"in_scope","suggested_service":null,"safety_signals":[],"needs_clarification":false,"complexity":"small"},"difficulty":"easy","rationale":"Branch A: new bulb did not fix -> driver or holder, still single-fixture small"},
-  {"id":"el_08","input_text_vi":"den nha em cu sang roi toi moi khi may lanh chay","expected":{"problem_slug":"flickering_light","scope_signal":"in_scope","suggested_service":null,"safety_signals":[],"needs_clarification":false,"complexity":"medium"},"difficulty":"medium","rationale":"Branch B: voltage dip when high-power device starts"},
-  {"id":"el_09","input_text_vi":"ổ cắm chỗ tivi bị lỏng, cắm sạc cứ bị rớt ra","expected":{"problem_slug":"outlet_or_switch_broken","scope_signal":"in_scope","suggested_service":null,"safety_signals":[],"needs_clarification":false,"complexity":"small"},"difficulty":"easy","rationale":"Branch B: worn spring contacts, like-for-like swap"},
-  {"id":"el_10","input_text_vi":"công tắc đèn nhà tắm bấm hoài không lên","expected":{"problem_slug":"outlet_or_switch_broken","scope_signal":"in_scope","suggested_service":null,"safety_signals":[],"needs_clarification":true,"complexity":null},"difficulty":"medium","rationale":"Branch F + bathroom -> water-proximity check question expected before closing"},
-  {"id":"el_11","input_text_vi":"muốn lắp thêm một ổ cắm ngoài ban công","expected":{"problem_slug":"install_device","scope_signal":"in_scope","suggested_service":null,"safety_signals":[],"needs_clarification":true,"complexity":null},"difficulty":"easy","rationale":"Install; wiring-path fork unanswered -> section-2 question"},
-  {"id":"el_12","input_text_vi":"lap binh nong lanh moi cho nha tam giup em","expected":{"problem_slug":"install_device","scope_signal":"in_scope","suggested_service":null,"safety_signals":["new_circuit","distribution_board"],"needs_clarification":true,"complexity":"large"},"difficulty":"medium","rationale":"High-load install defaults to dedicated-circuit assumption"},
-  {"id":"el_13","input_text_vi":"em mới nhận nhà, nhờ thợ kiểm tra lại toàn bộ hệ thống điện căn hộ","expected":{"problem_slug":"electrical-general","scope_signal":"in_scope","suggested_service":null,"safety_signals":[],"needs_clarification":false,"complexity":"medium"},"difficulty":"easy","rationale":"Clear but general multi-point request -> electrical-general"},
-  {"id":"el_14","input_text_vi":"dien nha em dao nay chap chon lam, nhieu thu ky lam","expected":{"problem_slug":"other_electrical","scope_signal":"in_scope","suggested_service":null,"safety_signals":[],"needs_clarification":true,"complexity":null},"difficulty":"hard","rationale":"Vague symptom -> one splitting question first; commits to other_electrical if still vague"},
-  {"id":"el_15","input_text_vi":"sờ vào vỏ tủ lạnh thấy tê tê như bị giật nhẹ","expected":{"problem_slug":"other_electrical","scope_signal":"in_scope","suggested_service":null,"safety_signals":["exposed_live_parts"],"needs_clarification":false,"complexity":"medium"},"difficulty":"medium","rationale":"Leakage/tingling casing -> other_electrical + exposed_live_parts per PB7"},
-  {"id":"el_16","input_text_vi":"dien nha minh co van de, khong biet mo ta sao nua","expected":{"problem_slug":"other_electrical","scope_signal":"in_scope","suggested_service":null,"safety_signals":[],"needs_clarification":true,"complexity":null},"difficulty":"easy","rationale":"Too vague -> clarify once, fallback slug, confidence <=0.4"},
-  {"id":"el_17","input_text_vi":"máy lạnh nhà em chảy nước quá trời, sửa giúp em","expected":{"problem_slug":null,"scope_signal":"service_mismatch","suggested_service":"hvac","safety_signals":[],"needs_clarification":false,"complexity":null},"difficulty":"easy","rationale":"AC device internals -> hvac"},
-  {"id":"el_18","input_text_vi":"bình nóng lạnh bị rò nước nhỏ giọt dưới đáy bình","expected":{"problem_slug":null,"scope_signal":"service_mismatch","suggested_service":"plumbing","safety_signals":[],"forbidden_safety_signals":["water_near_power"],"needs_clarification":false,"complexity":null},"difficulty":"medium","rationale":"Water heater WATER side -> plumbing (power side would stay electrical)"},
-  {"id":"el_19","input_text_vi":"nhờ thợ qua khoan tường treo cái tivi 55 inch","expected":{"problem_slug":null,"scope_signal":"service_mismatch","suggested_service":"handyman","safety_signals":[],"needs_clarification":false,"complexity":null},"difficulty":"easy","rationale":"Pure mounting, no electrical connection -> handyman"},
-  {"id":"el_20","input_text_vi":"lắp trạm sạc ô tô điện dưới hầm xe chung cư được không","expected":{"problem_slug":null,"scope_signal":"out_of_scope","suggested_service":null,"safety_signals":[],"needs_clarification":false,"complexity":null},"difficulty":"easy","rationale":"EV charging + building common area -> out_of_scope"},
-  {"id":"el_21","input_text_vi":"em cần kéo điện 3 pha cho xưởng may nhỏ","expected":{"problem_slug":null,"scope_signal":"out_of_scope","suggested_service":null,"safety_signals":[],"needs_clarification":false,"complexity":null},"difficulty":"easy","rationale":"Industrial 3-phase -> out_of_scope"},
-  {"id":"el_22","input_text_vi":"ổ cắm trong bếp có khói bốc ra kèm mùi khét","expected":{"problem_slug":"outlet_or_switch_broken","scope_signal":"in_scope","suggested_service":null,"safety_signals":["smoke_or_burning"],"needs_clarification":false,"complexity":"medium"},"difficulty":"easy","rationale":"Safety signal + safety template must precede any question"},
-  {"id":"el_23","input_text_vi":"day dien may giat bi chuot can lo ca loi dong ra","expected":{"problem_slug":"other_electrical","scope_signal":"in_scope","suggested_service":null,"safety_signals":["exposed_live_parts"],"needs_clarification":false,"complexity":"medium"},"difficulty":"hard","rationale":"Exposed copper on an appliance cord; electrician-replaceable, hazard signal fires"},
-  {"id":"el_24","input_text_vi":"nuoc mua tat vao o dien ngoai ban cong, gio bat cau dao len la nhay lien","expected":{"problem_slug":"breaker_trip","scope_signal":"in_scope","suggested_service":null,"safety_signals":["water_near_power","protective_device"],"needs_clarification":false,"complexity":"medium"},"difficulty":"medium","rationale":"Rain ingress + RCBO trip: branch D with water hazard"}
-]
-```
+- Corpus: [`docs/playbooks/eval/electrical-cases.json`](../eval/electrical-cases.json), 24 ground-truth-style cases using the current contract.
+- Holdout: [`docs/playbooks/eval/electrical-synthetic-holdout-2026-08-27.json`](../eval/electrical-synthetic-holdout-2026-08-27.json), 24 new-wording cases whose rationales are marked `[SYNTHETIC SELF-REVIEW]`.
+- Corpus distribution after the coverage repair: 18 `in_scope`, 3 `service_mismatch`, 3 `out_of_scope`; all eight slugs appear at least twice; difficulty is 12 easy / 7 medium / 5 hard; complexity is 4 small / 6 medium / 6 large.
+- Holdout distribution: 18 `in_scope`, 3 `service_mismatch`, 3 `out_of_scope`; all eight slugs appear at least twice; difficulty is 14 easy / 6 medium / 4 hard; complexity is 4 small / 4 medium / 6 large.
+- Both files have grounded `detail` fields, cover every Electrical safety signal, contain hard multi-signal cases, and are checked together with the five newer service lanes by `scripts/check-kael-playbook-coverage.mjs`.
+- The local gate is an artifact-quality gate, not live model evidence. The synthetic holdout is not independent domain labeling; deployment-attested baseline/After arms and an independently labeled holdout are still required before any rollout claim.
 
-Distribution: 16 slug cases (2× each of 8 slugs), 3 service_mismatch, 2 out_of_scope, 3 safety-signal-critical (el_22/23/24 double as slug cases for their slugs). Difficulty: 13 easy / 9 medium / 2 hard.
-
-Scoring guide: `problem_slug` exact match; `scope_signal`/`suggested_service` exact; required `safety_signals` must be emitted and any explicit `forbidden_safety_signals` must stay absent; `needs_clarification` exact; `complexity` informative only in v0 (not an intake field).
+Scoring guide: `problem_slug`, `scope_signal`, and `suggested_service` are exact-match fields; required `safety_signals` must be emitted and explicit `forbidden_safety_signals` must stay absent; `needs_clarification` is exact; `complexity` is an analysis target, not an intake output field.
 
 
 ---
@@ -1127,16 +1103,16 @@ Scoring guide: `problem_slug` exact match; `scope_signal`/`suggested_service` ex
 
 ## Known limitations
 
-- The eval corpus is 24 cases — enough to detect gross regressions and playbook-vs-no-playbook deltas, not fine-grained drift (that is §43 E0's 250-case job).
+- Each local eval file has 24 cases — enough to detect gross regressions and playbook-vs-no-playbook deltas, not fine-grained drift (that is §43 E0's 250-case job).
 - The compressed segment (Appendix A) is my distillation; token count (~1.6k) is estimated, not measured — measure at injection time.
-- The five remaining services (plumbing, cleaning, hvac, upholstery, handyman) have no playbook yet; this document is the template they follow.
+- All six supported services now have source artifacts and pass the local shape/coverage/parity gate; Electrical remains pending independent domain review and live evaluation just like the five newer lanes.
 
 ## Suggested next steps (after Tu review)
 
 1. Tu resolves the [VERIFY] tags + 3 policy calls (30–45 min of review).
 2. Run a deployment-attested staging baseline with the existing flag disabled.
 3. Enable the existing Appendix A path only for the controlled After arm, re-run, and compare.
-4. If the delta is positive: replicate the template for plumbing (next-highest volume), and fold these 24 cases into §43 E0's corpus.
+4. Run the six-lane local gate, then perform deployment-attested baseline/After and independent holdout review one service at a time; keep every flag OFF until its own delta and review gates pass.
 
 
 ---

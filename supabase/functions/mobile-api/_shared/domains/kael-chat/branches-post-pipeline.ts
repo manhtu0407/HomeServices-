@@ -69,6 +69,7 @@ export async function handleKaelChatPipelineOutcome(
   let artifact = input.artifact;
   const responseSafetySignals = resolveKaelResponseSafetySignals({
     electricalPlaybookEnabled,
+    serviceType: input.service_type,
     earlySafetySignals,
     pipelineSafetySignals: pipeline.success ? pipeline.safetySignals : undefined,
     intakeObservation: pipeline.intakeObservation,
@@ -76,6 +77,7 @@ export async function handleKaelChatPipelineOutcome(
   const criticalSafetyGuidance = deterministicSafetyGuidance(
     responseSafetySignals,
     language,
+    input.service_type,
   );
 
   await recordKaelChatPipelineApiCalls(client, requestId, sessionId, pipeline);

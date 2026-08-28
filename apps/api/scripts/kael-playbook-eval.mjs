@@ -23,10 +23,32 @@ import {
 
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url))
 const REPO_ROOT = resolve(SCRIPT_DIR, '../../..')
-const DEFAULT_CORPUS = resolve(REPO_ROOT, 'docs/playbooks/eval/electrical-cases.json')
+const PLAYBOOK_SERVICES = new Set([
+  'electrical', 'plumbing', 'cleaning', 'hvac', 'upholstery', 'handyman',
+])
+const DEFAULT_CORPUS_BY_SERVICE = Object.freeze({
+  electrical: 'docs/playbooks/eval/electrical-cases.json',
+  plumbing: 'docs/playbooks/eval/plumbing-cases.json',
+  cleaning: 'docs/playbooks/eval/cleaning-cases.json',
+  hvac: 'docs/playbooks/eval/hvac-cases.json',
+  upholstery: 'docs/playbooks/eval/upholstery-cases.json',
+  handyman: 'docs/playbooks/eval/handyman-cases.json',
+})
 const MOCK_FIXTURE_DIR = resolve(REPO_ROOT, 'apps/api/scripts/fixtures')
-const PLAYBOOK_SOURCE = resolve(REPO_ROOT, 'supabase/functions/mobile-api/_shared/kael/learning/playbooks/electrical.ts')
+const PLAYBOOK_SOURCE_BY_SERVICE = Object.freeze({
+  electrical: 'supabase/functions/mobile-api/_shared/kael/learning/playbooks/electrical.ts',
+  plumbing: 'supabase/functions/mobile-api/_shared/kael/learning/playbooks/plumbing.ts',
+  cleaning: 'supabase/functions/mobile-api/_shared/kael/learning/playbooks/cleaning.ts',
+  hvac: 'supabase/functions/mobile-api/_shared/kael/learning/playbooks/hvac.ts',
+  upholstery: 'supabase/functions/mobile-api/_shared/kael/learning/playbooks/upholstery.ts',
+  handyman: 'supabase/functions/mobile-api/_shared/kael/learning/playbooks/handyman.ts',
+})
 const APPROVED_STAGING_PROJECT_REF = 'xyylanuyflrjzbjzhqfl'
+const CLIENT_BUILD_NUMBER_PATTERN = /^[1-9][0-9]{0,8}$/
+const CLIENT_CONTRACT_EPOCH_PATTERN = /^[1-9][0-9]{0,8}$/
+const CLIENT_EAS_BUILD_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+const CLIENT_GIT_SHA_PATTERN = /^[0-9a-f]{40}$/i
+const CLIENT_IDENTITY_PATTERN = /^[A-Za-z0-9._:-]{1,160}$/
 const SOURCE_FILES = [
   'apps/api/scripts/kael-playbook-eval.mjs',
   'apps/api/scripts/lib/kael-playbook-eval-core.mjs',
@@ -37,6 +59,8 @@ const SOURCE_FILES = [
   'supabase/functions/mobile-api/_shared/kael/tools/intent.ts',
   'supabase/functions/mobile-api/_shared/kael/pipeline/pipeline.ts',
   'supabase/functions/mobile-api/_shared/kael/learning/performance-profiles.ts',
+  'supabase/functions/mobile-api/_shared/kael/learning/playbooks/flags.ts',
+  'supabase/functions/mobile-api/_shared/kael/learning/playbooks/registry.ts',
   'supabase/functions/mobile-api/_shared/kael/prompts/prompts.ts',
   'supabase/functions/mobile-api/_shared/kael/learning/trace.ts',
   'supabase/functions/mobile-api/_shared/kael/contracts/types.ts',
@@ -70,16 +94,19 @@ async function main() {
   const startedAt = new Date().toISOString()
   const label = args.label ?? process.env.KAEL_PB_EVAL_LABEL ?? 'baseline'
   const serviceType = args.service ?? 'electrical'
+  const defaultCorpus = resolve(REPO_ROOT, DEFAULT_CORPUS_BY_SERVICE[serviceType])
+  const playbookSource = resolve(REPO_ROOT, PLAYBOOK_SOURCE_BY_SERVICE[serviceType])
+  const sourceFiles = sourceFilesForService(serviceType)
   const corpusPath = resolve(
     REPO_ROOT,
-    args.corpus ?? process.env.KAEL_PB_EVAL_CORPUS ?? DEFAULT_CORPUS,
+    args.corpus ?? process.env.KAEL_PB_EVAL_CORPUS ?? defaultCorpus,
   )
   ensureInsideRepo(corpusPath, 'corpus')
   if (!repoRelative(corpusPath).startsWith('docs/playbooks/eval/') || !corpusPath.endsWith('.json')) {
     throw new Error('corpus_path_outside_eval_directory')
   }
   const corpusText = await readFile(corpusPath, 'utf8')
-  const fullCorpus = validatePlaybookCorpus(JSON.parse(corpusText))
+  const fullCorpus = validatePlaybookCorpus(JSON.parse(corpusText), serviceType)
   const offset = args.offset ?? 0
   const corpus = args.limit == null
     ? fullCorpus.slice(offset)
@@ -96,7 +123,7 @@ async function main() {
   )
   ensureInsideRepo(reportPath, 'report')
   const reportRelativePath = repoRelative(reportPath)
-  if (!/^docs\/test-logs\/20\d{2}-\d{2}-\d{2}_kael-playbook-electrical-[a-z0-9._-]+\.md$/i.test(reportRelativePath)) {
+  if (!new RegExp(`^docs/test-logs/20\\d{2}-\\d{2}-\\d{2}_kael-playbook-${serviceType}-[a-z0-9._-]+\\.md$`, 'i').test(reportRelativePath)) {
     throw new Error('report_path_outside_test_logs')
   }
   const mockInput = args.mock ?? process.env.KAEL_PB_EVAL_MOCK ?? null
@@ -214,19 +241,19 @@ async function main() {
     observed_playbook_state: observations.length === 0
       ? 'unobserved'
       : observedPlaybook === null ? 'off' : 'on',
-    playbook_hash: `sha256:${sha256(await readFile(PLAYBOOK_SOURCE, 'utf8'))}`,
+    playbook_hash: `sha256:${sha256(await readFile(playbookSource, 'utf8'))}`,
     playbook_hash_scope: 'full_local_source_file',
-    playbook_source_path: repoRelative(PLAYBOOK_SOURCE),
-    source_tree_hash: `sha256:${await sourceTreeHash()}`,
+    playbook_source_path: repoRelative(playbookSource),
+    source_tree_hash: `sha256:${await sourceTreeHash(sourceFiles)}`,
     source_scope: 'local_curated_source_set',
-    source_files: SOURCE_FILES,
+    source_files: sourceFiles,
     source_hash_algorithm: 'sha256_path_and_file_sha256_v1',
     source_state: gitIsDirty() ? 'base_sha_with_uncommitted_sources' : 'clean_commit',
     fixture_hash: mockText ? `sha256:${sha256(mockText)}` : null,
     selected_case_hash: `sha256:${sha256(JSON.stringify(corpus))}`,
     corpus_path: repoRelative(corpusPath),
     feature_flags: {
-      electrical_playbook: args.playbookEnabled,
+      [`${serviceType}_playbook`]: args.playbookEnabled,
     },
     corpus_version: `sha256:${sha256(corpusText)}`,
     run_mode: mode,
@@ -287,6 +314,7 @@ async function runCaseLive(post, testCase, serviceType, maxTurns, district) {
     problem_chips: [],
     client_request_id: randomUUID(),
     address_district: district,
+    language: 'vi',
   })
   const initialObservation = extractIntakeObservation(response)
   let sessionId = response?.session?.id ?? null
@@ -310,6 +338,7 @@ async function runCaseLive(post, testCase, serviceType, maxTurns, district) {
       session_id: sessionId,
       message,
       address_district: district,
+      language: 'vi',
     })
     if (lastContentType(response) === 'clarification') clarificationTurns += 1
     sessionId = response?.session?.id ?? sessionId
@@ -320,6 +349,7 @@ async function runCaseLive(post, testCase, serviceType, maxTurns, district) {
 
 function livePost(config, retryWaitSec, maxAttempts, timeoutSec) {
   return async (request) => {
+    const idempotencyKey = buildLiveIdempotencyKey(request)
     let refreshed = false
     for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
       const response = await fetch(`${config.baseUrl}/kael/chat`, {
@@ -328,6 +358,8 @@ function livePost(config, retryWaitSec, maxAttempts, timeoutSec) {
           ...(config.anonKey ? { apikey: config.anonKey } : {}),
           Authorization: `Bearer ${config.bearerToken}`,
           'Content-Type': 'application/json',
+          'Idempotency-Key': idempotencyKey,
+          ...config.clientHeaders,
         },
         body: JSON.stringify(request),
         signal: AbortSignal.timeout(timeoutSec * 1000),
@@ -372,11 +404,13 @@ async function buildLiveConfig() {
     supabaseUrl,
     APPROVED_STAGING_PROJECT_REF,
   )
+  const clientHeaders = buildLiveClientHeaders()
   const canRefresh = Boolean(email && password && supabaseUrl && anonKey)
   const config = {
     baseUrl: targets.mobileApiUrl,
     anonKey,
     bearerToken: process.env.KAEL_PB_EVAL_BEARER_TOKEN?.trim() || null,
+    clientHeaders,
     canRefresh,
     async refresh() {
       if (!canRefresh) return false
@@ -396,6 +430,48 @@ async function buildLiveConfig() {
   return config
 }
 
+function buildLiveClientHeaders() {
+  const platform = requireEnv('KAEL_PB_EVAL_CLIENT_PLATFORM').toLowerCase()
+  if (platform !== 'ios' && platform !== 'android') throw new Error('invalid_eval_client_platform')
+
+  const applicationId = requireEnv('KAEL_PB_EVAL_CLIENT_APPLICATION_ID')
+  const buildNumber = requireEnv('KAEL_PB_EVAL_CLIENT_BUILD_NUMBER')
+  const contractEpoch = requireEnv('KAEL_PB_EVAL_CLIENT_CONTRACT_EPOCH')
+  const easBuildId = requireEnv('KAEL_PB_EVAL_CLIENT_EAS_BUILD_ID')
+  const runtimeVersion = requireEnv('KAEL_PB_EVAL_CLIENT_RUNTIME_VERSION')
+  const gitSha = requireEnv('KAEL_PB_EVAL_CLIENT_GIT_SHA').toLowerCase()
+  const releaseId = requireEnv('KAEL_PB_EVAL_CLIENT_RELEASE_ID')
+
+  if (!CLIENT_IDENTITY_PATTERN.test(applicationId)) throw new Error('invalid_eval_client_application_id')
+  if (!CLIENT_BUILD_NUMBER_PATTERN.test(buildNumber)) throw new Error('invalid_eval_client_build_number')
+  if (!CLIENT_CONTRACT_EPOCH_PATTERN.test(contractEpoch)) throw new Error('invalid_eval_client_contract_epoch')
+  if (!CLIENT_EAS_BUILD_ID_PATTERN.test(easBuildId)) throw new Error('invalid_eval_client_eas_build_id')
+  if (!CLIENT_IDENTITY_PATTERN.test(runtimeVersion)) throw new Error('invalid_eval_client_runtime_version')
+  if (!CLIENT_GIT_SHA_PATTERN.test(gitSha)) throw new Error('invalid_eval_client_git_sha')
+  if (!CLIENT_IDENTITY_PATTERN.test(releaseId)) throw new Error('invalid_eval_client_release_id')
+
+  return {
+    'x-client-platform': platform,
+    'x-client-application-id': applicationId,
+    'x-client-build-number': buildNumber,
+    'x-client-contract-epoch': contractEpoch,
+    'x-client-eas-build-id': easBuildId,
+    'x-client-runtime-version': runtimeVersion,
+    'x-client-git-sha': gitSha,
+    'x-client-release-id': releaseId,
+  }
+}
+
+function buildLiveIdempotencyKey(request) {
+  const clientRequestId = typeof request?.client_request_id === 'string'
+    ? request.client_request_id.trim()
+    : ''
+  const stableRequestId = clientRequestId || randomUUID()
+  return stableRequestId.startsWith('mobile:')
+    ? stableRequestId
+    : `mobile:${stableRequestId}`
+}
+
 async function writeReports(input) {
   await mkdir(dirname(input.reportPath), { recursive: true })
   const pct = (value) => value == null ? 'n/a' : `${Math.round(value * 1000) / 10}%`
@@ -408,13 +484,13 @@ async function writeReports(input) {
     '',
     '## Hypothesis',
     '',
-    '- The electrical playbook may improve supported-service routing and safety handling without increasing false declines or unnecessary clarification.',
+    `- The ${input.serviceType} playbook may improve supported-service routing and safety handling without increasing false declines or unnecessary clarification.`,
     '',
     '## Changed',
     '',
     input.mode === 'mock'
       ? '- Local fixture replay exercised the evaluator contract only; no deployed runtime was exercised or changed.'
-      : `- Requested live arm: electrical playbook ${input.manifest.feature_flags.electrical_playbook ? 'enabled' : 'disabled'}. This report does not infer a deployment change.`,
+      : `- Requested live arm: ${input.serviceType} playbook ${input.manifest.feature_flags[`${input.serviceType}_playbook`] ? 'enabled' : 'disabled'}. This report does not infer a deployment change.`,
     '',
     '## Baseline',
     '',
@@ -492,7 +568,7 @@ async function writeReports(input) {
     '',
     '## Human/domain review still required',
     '',
-    '- Tu/domain approval of the electrical textbook, safety wording, and product-policy calls remains pending; this harness cannot provide that approval.',
+    `- Tu/domain approval of the ${input.serviceType} textbook, safety wording, and product-policy calls remains pending; this harness cannot provide that approval.`,
     '',
     '## Risks/Limitations',
     '',
@@ -586,9 +662,9 @@ function printHelp() {
 Mock contract run:
   node apps/api/scripts/kael-playbook-eval.mjs --mock <fixture.json> --label mock --date YYYY-MM-DD --repetitions 3 --allow-failures
 
-Live staging run requires KAEL_PB_EVAL_MOBILE_API_URL, KAEL_PB_EVAL_DEPLOYMENT_VERSION, an explicit --playbook-enabled arm, and either KAEL_PB_EVAL_BEARER_TOKEN or KAEL_PB_EVAL_EMAIL, KAEL_PB_EVAL_PASSWORD, KAEL_PB_EVAL_SUPABASE_URL, KAEL_PB_EVAL_ANON_KEY.
+Live staging run requires KAEL_PB_EVAL_MOBILE_API_URL, KAEL_PB_EVAL_DEPLOYMENT_VERSION, an explicit --playbook-enabled arm, client identity variables KAEL_PB_EVAL_CLIENT_PLATFORM, KAEL_PB_EVAL_CLIENT_APPLICATION_ID, KAEL_PB_EVAL_CLIENT_BUILD_NUMBER, KAEL_PB_EVAL_CLIENT_CONTRACT_EPOCH, KAEL_PB_EVAL_CLIENT_EAS_BUILD_ID, KAEL_PB_EVAL_CLIENT_RUNTIME_VERSION, KAEL_PB_EVAL_CLIENT_GIT_SHA, KAEL_PB_EVAL_CLIENT_RELEASE_ID, and either KAEL_PB_EVAL_BEARER_TOKEN or KAEL_PB_EVAL_EMAIL, KAEL_PB_EVAL_PASSWORD, KAEL_PB_EVAL_SUPABASE_URL, KAEL_PB_EVAL_ANON_KEY.
 
-Flags: --mock, --label, --corpus, --report, --service, --date, --delay, --offset, --limit, --max-turns, --retry-wait, --timeout, --repetitions, --district, --playbook-enabled, --allow-failures.`)
+Flags: --mock, --label, --corpus, --report, --service (electrical|plumbing|cleaning|hvac|upholstery|handyman), --date, --delay, --offset, --limit, --max-turns, --retry-wait, --timeout, --repetitions, --district, --playbook-enabled, --allow-failures.`)
 }
 
 function lastContentType(response) {
@@ -623,8 +699,12 @@ function gitIsDirty() {
   }
 }
 
-async function sourceTreeHash() {
-  const parts = await Promise.all(SOURCE_FILES.map(async (path) =>
+function sourceFilesForService(serviceType) {
+  return [...SOURCE_FILES, PLAYBOOK_SOURCE_BY_SERVICE[serviceType]]
+}
+
+async function sourceTreeHash(sourceFiles) {
+  const parts = await Promise.all(sourceFiles.map(async (path) =>
     `${path}\n${sha256(await readFile(resolve(REPO_ROOT, path), 'utf8'))}`
   ))
   return sha256(parts.join('\n'))
@@ -656,7 +736,7 @@ function validateRunArgs(args) {
   if (date !== undefined && !/^20\d{2}-(?:0[1-9]|1[0-2])-(?:0[1-9]|[12]\d|3[01])$/.test(date)) {
     throw new Error('invalid_date')
   }
-  if ((args.service ?? 'electrical') !== 'electrical') throw new Error('unsupported_playbook_service')
+  if (!PLAYBOOK_SERVICES.has(args.service ?? 'electrical')) throw new Error('unsupported_playbook_service')
   for (const [key, minimum, maximum] of [
     ['offset', 0, 10000], ['limit', 1, 10000], ['maxTurns', 1, 10],
     ['retryWait', 0, 3600], ['timeout', 1, 600], ['delay', 0, 3600],

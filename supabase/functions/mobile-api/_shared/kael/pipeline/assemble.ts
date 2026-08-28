@@ -103,6 +103,6 @@ export async function assembleKaelPipeline(
       market_signals: input.marketResult.success
         ? input.marketResult.market.sources_summary ?? null
         : null,
-    }, electricalPlaybookEnabled ? input.mergedSafetySignals : [], language),
+    }, electricalPlaybookEnabled ? input.mergedSafetySignals : [], language, input.serviceType),
   };
 }

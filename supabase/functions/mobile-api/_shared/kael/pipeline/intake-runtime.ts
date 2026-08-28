@@ -8,9 +8,10 @@ import {
 import { getKaelPerformanceProfile } from "../learning/performance-profiles.ts";
 import { resolveHandymanIntakeFactCoverage } from "../kael-guardrails/handyman-intake-policy.ts";
 import {
-  ELECTRICAL_PLAYBOOK_VERSION,
-  isElectricalPlaybookEnabled,
-} from "../learning/playbooks/electrical.ts";
+  getKaelPlaybook,
+  getKaelPlaybookVersion,
+  isKaelPlaybookEnabled,
+} from "../learning/playbooks/registry.ts";
 import { kaelIntakeDiagnosisPromptVersion } from "../prompts/prompts.ts";
 import type { IntakeEvalObservation } from "../contracts/types.ts";
 import {
@@ -34,8 +35,10 @@ export function resolveElectricalIntakeRuntime(input: {
   description: string;
   priorSafetySignals?: readonly string[];
 }) {
-  const enabled = input.serviceType === "electrical" &&
-    isElectricalPlaybookEnabled();
+  const enabled = Boolean(
+    getKaelPlaybook(input.serviceType) &&
+      isKaelPlaybookEnabled(input.serviceType),
+  );
   const text = [...input.problemChips, input.description]
     .map((part) => part.trim())
     .filter(Boolean)
@@ -44,15 +47,15 @@ export function resolveElectricalIntakeRuntime(input: {
     enabled,
     safetySignals: enabled
       ? mergeIntakeSafetySignals({
-        serviceType: "electrical",
+        serviceType: input.serviceType,
         deterministic: [
           ...(input.priorSafetySignals ?? []),
-          ...scanIntakeSafetySignals("electrical", text),
+          ...scanIntakeSafetySignals(input.serviceType, text),
         ],
         reported: [],
       })
       : [],
-    hardRoute: enabled
+    hardRoute: enabled && input.serviceType === "electrical"
       ? applyHardRoutingPolicy({
         selectedService: "electrical",
         text,
@@ -84,7 +87,8 @@ export function resolveIntakeFactCoverage(input: {
   electricalPlaybookEnabled: boolean;
 }) {
   const profile = getKaelPerformanceProfile(input.serviceType);
-  const requiredPolicy = input.electricalPlaybookEnabled
+  const requiredPolicy = input.serviceType === "electrical" &&
+    input.electricalPlaybookEnabled
     ? getRequiredSlotPolicy("electrical", input.problemSlug)
     : null;
   const coverage = profile
@@ -143,10 +147,13 @@ export function buildIntakeObservation(input: {
   serviceType: string;
   electricalPlaybookEnabled: boolean;
 }): IntakeEvalObservation | undefined {
-  if (
-    input.serviceType !== "electrical" ||
-    (!input.electricalPlaybookEnabled && !isIntakeEvalObservationExposureEnabled())
-  ) {
+  const playbookEnabled = input.serviceType === "electrical"
+    ? input.electricalPlaybookEnabled
+    : Boolean(
+      getKaelPlaybookVersion(input.serviceType) &&
+        isKaelPlaybookEnabled(input.serviceType),
+    );
+  if (!playbookEnabled && !isIntakeEvalObservationExposureEnabled()) {
     return undefined;
   }
   const parsed = intakeEvalObservationSchema.safeParse({
@@ -157,9 +164,8 @@ export function buildIntakeObservation(input: {
     safetySignals: [...new Set(input.safetySignals)].slice(0, 8),
     modelId: input.modelId,
     promptVersion: kaelIntakeDiagnosisPromptVersion(input.serviceType),
-    playbookVersion: input.serviceType === "electrical" &&
-        input.electricalPlaybookEnabled
-      ? ELECTRICAL_PLAYBOOK_VERSION
+    playbookVersion: playbookEnabled
+      ? getKaelPlaybookVersion(input.serviceType)
       : null,
   });
   return parsed.success ? parsed.data : undefined;

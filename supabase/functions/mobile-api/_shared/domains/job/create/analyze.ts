@@ -45,6 +45,7 @@ export async function analyzeJobOrFail(input: {
       message,
       isKaelAiKillSwitchEnabled() ? [] : jobIntakeSafetySignals,
       "vi",
+      { serviceType: request.service_type },
     );
 
   let pipeline: PipelineResult;

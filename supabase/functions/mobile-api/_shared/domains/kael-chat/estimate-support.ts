@@ -231,6 +231,7 @@ export async function finalizeKaelChatEstimate(
     pipeline.estimate,
     responseSafetySignals,
     language,
+    input.service_type,
   );
   const profile = getKaelPerformanceProfile(input.service_type);
   if (!profile) {
@@ -402,6 +403,8 @@ async function persistValidatedEstimate(input: {
       formatKaelEstimateText(estimate, language),
       input.input.responseSafetySignals,
       language,
+      true,
+      input.input.service_type,
     ),
     nextStatus: quoteReady ? "estimate_ready" : "active",
     estimate,
@@ -467,6 +470,8 @@ async function maybeRequestEstimateEvidence(input: {
         evidenceRequest.prompt,
         input.input.responseSafetySignals,
         input.input.language,
+        true,
+        input.input.service_type,
       ),
       nextStatus: "active",
       metadata: {

@@ -1,38 +1,37 @@
 [
   {
     "id": "el_01",
-    "input_text_vi": "aptomat nha em cu bat len la sap lien, rut het do ra van vay",
+    "input_text_vi": "aptomat tong bat len la sap lien, tu dien con nghe tieng xet",
     "expected": {
       "problem_slug": "breaker_trip",
       "scope_signal": "in_scope",
       "suggested_service": null,
       "safety_signals": [
         "fixed_wiring",
-        "protective_device"
+        "protective_device",
+        "sparking"
       ],
       "needs_clarification": false,
       "complexity": "large"
     },
-    "difficulty": "medium",
-    "rationale": "Branch A: re-trips instantly with loads unplugged = short in fixed wiring",
-    "detail": "Cầu dao tổng cứ bật lên là sập ngay, em rút hết tủ lạnh máy giặt ra rồi vẫn sập, không mùi khét không tia lửa."
+    "difficulty": "hard",
+    "rationale": "Branch A: an immediate re-trip with panel arcing signs requires fixed-wiring and protective-device escalation",
+    "detail": "Cầu dao tổng vừa bật lên là sập ngay dù đã rút thiết bị, tại tủ điện còn nghe tiếng xẹt và thấy tia lửa nhỏ."
   },
   {
     "id": "el_02",
-    "input_text_vi": "cầu dao chống giật nhà em hay nhảy mỗi khi trời mưa to",
+    "input_text_vi": "cong tac den phong ngu bi long, den van dung binh thuong",
     "expected": {
-      "problem_slug": "breaker_trip",
+      "problem_slug": "outlet_or_switch_broken",
       "scope_signal": "in_scope",
       "suggested_service": null,
-      "safety_signals": [
-        "protective_device"
-      ],
+      "safety_signals": [],
       "needs_clarification": false,
-      "complexity": "medium"
+      "complexity": "small"
     },
     "difficulty": "easy",
-    "rationale": "Branch D: RCBO rain-day leakage pattern",
-    "detail": "Cầu dao chống giật hay nhảy mỗi khi trời mưa to, bật lại được một lúc rồi nhảy tiếp, trời khô thì không sao."
+    "rationale": "Branch F: one dry-room switch is a focused like-for-like repair",
+    "detail": "Công tắc đèn phòng ngủ bị lỏng và bấm không chắc, đèn các phòng khác vẫn dùng bình thường, khu vực khô ráo."
   },
   {
     "id": "el_03",
@@ -111,18 +110,21 @@
   },
   {
     "id": "el_08",
-    "input_text_vi": "den nha em cu sang roi toi moi khi may lanh chay",
+    "input_text_vi": "den nhieu phong chap chon ngau nhien, aptomat tong cung am am",
     "expected": {
       "problem_slug": "flickering_light",
       "scope_signal": "in_scope",
       "suggested_service": null,
-      "safety_signals": [],
+      "safety_signals": [
+        "distribution_board",
+        "fixed_wiring"
+      ],
       "needs_clarification": false,
-      "complexity": "medium"
+      "complexity": "large"
     },
-    "difficulty": "medium",
-    "rationale": "Branch B: voltage dip when high-power device starts",
-    "detail": "Nhiều đèn cùng khu vực sáng rồi tối, chỉ bị mỗi khi máy lạnh hoặc bình nóng lạnh khởi động."
+    "difficulty": "hard",
+    "rationale": "Branch B: multi-room flicker with panel noise needs a distribution-board versus fixed-wiring differential",
+    "detail": "Đèn ở nhiều phòng chập chờn ngẫu nhiên, tủ điện phát tiếng ù và hiện tượng không gắn với một thiết bị công suất riêng lẻ."
   },
   {
     "id": "el_09",
@@ -141,18 +143,18 @@
   },
   {
     "id": "el_10",
-    "input_text_vi": "công tắc đèn nhà tắm bấm hoài không lên",
+    "input_text_vi": "cong tac den phong ngu bi ket, cac den khac van sang",
     "expected": {
       "problem_slug": "outlet_or_switch_broken",
       "scope_signal": "in_scope",
       "suggested_service": null,
       "safety_signals": [],
-      "needs_clarification": true,
-      "complexity": null
+      "needs_clarification": false,
+      "complexity": "small"
     },
-    "difficulty": "medium",
-    "rationale": "Branch F + bathroom -> water-proximity check question expected before closing",
-    "detail": "Công tắc đèn nhà tắm bấm hoài không lên đèn, công tắc lỏng không nghe tiếng tách, chỉ công tắc đó."
+    "difficulty": "easy",
+    "rationale": "Branch F: one dry-room switch failure with other lights working stays a small repair",
+    "detail": "Chỉ công tắc đèn phòng ngủ bị kẹt và không bật được, các đèn khác vẫn sáng ổn định, không có nước hoặc mùi khét."
   },
   {
     "id": "el_11",
@@ -161,13 +163,16 @@
       "problem_slug": "install_device",
       "scope_signal": "in_scope",
       "suggested_service": null,
-      "safety_signals": [],
+      "safety_signals": [
+        "new_circuit",
+        "fixed_wiring"
+      ],
       "needs_clarification": true,
-      "complexity": null
+      "complexity": "large"
     },
-    "difficulty": "easy",
-    "rationale": "Install; wiring-path fork unanswered -> section-2 question",
-    "detail": "Em muốn lắp thêm một ổ cắm ngoài ban công, chỗ đó chưa có sẵn điểm điện nào cả."
+    "difficulty": "medium",
+    "rationale": "New balcony outlet without an existing point requires a wiring-path and weather-exposure assessment",
+    "detail": "Em muốn lắp thêm ổ cắm ngoài ban công, chỗ đó chưa có điểm điện sẵn và cần kiểm tra đường dây cố định trước khi khoan đi ống."
   },
   {
     "id": "el_12",
@@ -204,18 +209,18 @@
   },
   {
     "id": "el_14",
-    "input_text_vi": "dien nha em dao nay chap chon lam, nhieu thu ky lam",
+    "input_text_vi": "em moi nhan can ho, nho kiem tra tu dien, o cam va den trong nha",
     "expected": {
-      "problem_slug": "other_electrical",
+      "problem_slug": "electrical-general",
       "scope_signal": "in_scope",
       "suggested_service": null,
       "safety_signals": [],
-      "needs_clarification": true,
-      "complexity": null
+      "needs_clarification": false,
+      "complexity": "medium"
     },
-    "difficulty": "hard",
-    "rationale": "Vague symptom -> one splitting question first; commits to other_electrical if still vague",
-    "detail": "Điện nhà em dạo này chập chờn lúc được lúc không, nhiều thứ kỳ lắm em thật sự không rõ nằm ở đâu."
+    "difficulty": "medium",
+    "rationale": "Explicit multi-point move-in inspection maps to electrical-general rather than an unknown symptom fallback",
+    "detail": "Em mới nhận căn hộ, muốn thợ kiểm tra tủ điện, ổ cắm và đèn trong nhà trước khi dọn vào, chưa có lỗi cụ thể nào."
   },
   {
     "id": "el_15",
@@ -236,18 +241,21 @@
   },
   {
     "id": "el_16",
-    "input_text_vi": "dien nha minh co van de, khong biet mo ta sao nua",
+    "input_text_vi": "ca can ho mat dien, nha ben canh van sang, aptomat tong van bat",
     "expected": {
-      "problem_slug": "other_electrical",
+      "problem_slug": "power_outage_whole_unit",
       "scope_signal": "in_scope",
       "suggested_service": null,
-      "safety_signals": [],
-      "needs_clarification": true,
-      "complexity": null
+      "safety_signals": [
+        "distribution_board",
+        "protective_device"
+      ],
+      "needs_clarification": false,
+      "complexity": "large"
     },
-    "difficulty": "easy",
-    "rationale": "Too vague -> clarify once, fallback slug, confidence <=0.4",
-    "detail": "Điện nhà mình có vấn đề mà em không biết mô tả sao cho đúng, nhờ thợ qua xem trực tiếp giúp em."
+    "difficulty": "hard",
+    "rationale": "Whole-unit outage with neighboring power and an apparently on main breaker requires a panel and supply differential",
+    "detail": "Cả căn hộ mất điện nhưng nhà bên cạnh vẫn sáng, aptomat tổng nhìn vẫn bật; các phòng đều tắt nên cần kiểm tra nguồn vào và tủ điện."
   },
   {
     "id": "el_17",
@@ -329,20 +337,23 @@
   },
   {
     "id": "el_22",
-    "input_text_vi": "ổ cắm trong bếp có khói bốc ra kèm mùi khét",
+    "input_text_vi": "o cam bep nong chay mat nhua, toe tia lua va co mui khet",
     "expected": {
       "problem_slug": "outlet_or_switch_broken",
       "scope_signal": "in_scope",
       "suggested_service": null,
       "safety_signals": [
-        "smoke_or_burning"
+        "smoke_or_burning",
+        "sparking",
+        "fixed_wiring",
+        "protective_device"
       ],
       "needs_clarification": false,
-      "complexity": "medium"
+      "complexity": "large"
     },
-    "difficulty": "easy",
-    "rationale": "Safety signal + safety template must precede any question",
-    "detail": "Ổ cắm trong bếp có khói bốc ra kèm mùi khét, em đã rút phích và tắt aptomat khu đó rồi."
+    "difficulty": "hard",
+    "rationale": "A hot, melted and sparking receptacle needs immediate customer safety plus fixed-wiring and protective-device inspection",
+    "detail": "Ổ cắm bếp nóng chảy mặt nhựa, tóe tia lửa và có mùi khét; em đã ngắt aptomat khu đó, cần kiểm tra cả hộp âm tường và mạch bảo vệ."
   },
   {
     "id": "el_23",

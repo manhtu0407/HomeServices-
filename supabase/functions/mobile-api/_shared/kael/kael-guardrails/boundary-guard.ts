@@ -18,7 +18,7 @@ import {
   type HardRoutingPolicyDecision,
 } from "./electrical-intake-policy.ts";
 import { KAEL_CASE_WORK_SERVICE_TYPES } from "../learning/performance-profiles.ts";
-import { isElectricalPlaybookEnabled } from "../learning/playbooks/electrical.ts";
+import { getEnabledKaelPlaybook } from "../learning/playbooks/registry.ts";
 
 export type BoundaryReason =
   | "prompt_injection"
@@ -423,9 +423,13 @@ export function evaluateMessageBoundary(
   const language = options.language ?? "vi";
   const declineCopy = DECLINE_COPY[language];
   if (trimmed.length === 0) return { ok: true };
-  const electricalPolicyEnabled = selectedService === "electrical" &&
-    (options.electricalPlaybookEnabled ?? isElectricalPlaybookEnabled());
-  const safetySignals = electricalPolicyEnabled
+  const playbookEnabled = Boolean(
+    selectedService &&
+      getEnabledKaelPlaybook(selectedService) &&
+      (options.electricalPlaybookEnabled ?? true),
+  );
+  const electricalPolicyEnabled = selectedService === "electrical" && playbookEnabled;
+  const safetySignals = playbookEnabled && selectedService
     ? scanIntakeSafetySignals(selectedService, trimmed)
     : [];
 

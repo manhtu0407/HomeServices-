@@ -1,0 +1,363 @@
+[
+  {
+    "id": "up_01",
+    "input_text_vi": "Giặt một sofa vải tổng hợp hai chỗ ngồi, chỉ có bụi và không có vết bẩn lạ",
+    "expected": {
+      "problem_slug": "sofa_cleaning",
+      "scope_signal": "in_scope",
+      "suggested_service": null,
+      "safety_signals": [],
+      "needs_clarification": true,
+      "complexity": "small"
+    },
+    "difficulty": "easy",
+    "rationale": "Sofa vải thông thường với condition bounded là nhánh sofa cleaning, còn thiếu care label và drying space",
+    "detail": "Khách biết sofa hai chỗ và vải tổng hợp nhưng chưa nói tháo được đệm, nơi phơi hay sản phẩm đã dùng."
+  },
+  {
+    "id": "up_02",
+    "input_text_vi": "Sofa nhung cổ, không còn nhãn giặt, có vết nước và giá trị cao",
+    "expected": {
+      "problem_slug": "sofa_cleaning",
+      "scope_signal": "in_scope",
+      "suggested_service": null,
+      "required_safety_signals": ["missing_care_label", "delicate_fabric", "high_value_item"],
+      "needs_clarification": false,
+      "complexity": "large"
+    },
+    "difficulty": "hard",
+    "rationale": "Vải nhung không có nhãn và có giá trị cao buộc nhận diện vật liệu/patch test trước khi xử lý",
+    "detail": "Sofa cổ bằng nhung bị vết nước, care label đã mất; khách nói đây là món giá trị cao và không muốn thử hóa chất tại nhà."
+  },
+  {
+    "id": "up_03",
+    "input_text_vi": "Vệ sinh một nệm queen bị mùi mồ hôi, có thể di chuyển ra ban công phơi",
+    "expected": {
+      "problem_slug": "mattress_cleaning",
+      "scope_signal": "in_scope",
+      "suggested_service": null,
+      "safety_signals": [],
+      "needs_clarification": true,
+      "complexity": "small"
+    },
+    "difficulty": "easy",
+    "rationale": "Nệm và odor thông thường thuộc mattress cleaning nhưng drying condition cần xác nhận",
+    "detail": "Khách nêu nệm queen có mùi mồ hôi và có thể chuyển ra ban công, chưa biết vật liệu/độ ẩm cụ thể."
+  },
+  {
+    "id": "up_04",
+    "input_text_vi": "Nệm có nước tiểu và máu khô, phòng có em bé nên chưa ai tự giặt",
+    "expected": {
+      "problem_slug": "mattress_cleaning",
+      "scope_signal": "in_scope",
+      "suggested_service": null,
+      "required_safety_signals": ["bio_contamination", "sensitive_occupant"],
+      "needs_clarification": false,
+      "complexity": "large"
+    },
+    "difficulty": "hard",
+    "rationale": "Biological contamination và em bé trong nhà phải override mattress cleaning thông thường",
+    "detail": "Nệm có nước tiểu và máu khô; gia đình có em bé, đã tránh chạm và cần đánh giá cách xử lý an toàn."
+  },
+  {
+    "id": "up_05",
+    "input_text_vi": "Tháo và giặt sáu tấm rèm vải trong căn hộ, nhãn chăm sóc còn đọc được",
+    "expected": {
+      "problem_slug": "curtain_cleaning",
+      "scope_signal": "in_scope",
+      "suggested_service": null,
+      "safety_signals": [],
+      "needs_clarification": true,
+      "complexity": "medium"
+    },
+    "difficulty": "medium",
+    "rationale": "Curtain cleaning nhiều tấm có care label nhưng cần đo kích thước, lining và nơi sấy",
+    "detail": "Sáu tấm rèm có nhãn còn đọc được, khách chưa nêu chiều dài, lớp lót hoặc có cần tháo thanh không."
+  },
+  {
+    "id": "up_06",
+    "input_text_vi": "Rèm hai lớp rất dài, treo ở cửa kính cao và không thể tháo nếu không có người đứng trên thang",
+    "expected": {
+      "problem_slug": "curtain_cleaning",
+      "scope_signal": "in_scope",
+      "suggested_service": null,
+      "safety_signals": [],
+      "needs_clarification": true,
+      "complexity": "medium"
+    },
+    "difficulty": "medium",
+    "rationale": "Kích thước, lining và access cao làm tăng complexity dù upholstery profile không có unsafe_height signal riêng",
+    "detail": "Rèm rất dài ở cửa kính cao cần tháo bằng thang; không được hướng dẫn khách tự leo hoặc kéo rèm xuống."
+  },
+  {
+    "id": "up_07",
+    "input_text_vi": "Giặt thảm phòng khách 2 mét, vết bụi nhẹ và có chỗ phơi thoáng",
+    "expected": {
+      "problem_slug": "carpet_cleaning",
+      "scope_signal": "in_scope",
+      "suggested_service": null,
+      "safety_signals": [],
+      "needs_clarification": true,
+      "complexity": "small"
+    },
+    "difficulty": "easy",
+    "rationale": "Thảm nhỏ, soil nhẹ và drying space rõ là carpet cleaning bounded",
+    "detail": "Khách nêu kích thước khoảng 2 mét và bụi nhẹ, chưa nêu pile/material hoặc màu có dễ phai không."
+  },
+  {
+    "id": "up_08",
+    "input_text_vi": "Thảm len lớn bị lem màu sau lần giặt trước, không còn nhãn chăm sóc",
+    "expected": {
+      "problem_slug": "carpet_cleaning",
+      "scope_signal": "in_scope",
+      "suggested_service": null,
+      "required_safety_signals": ["missing_care_label", "delicate_fabric", "color_transfer_risk"],
+      "needs_clarification": false,
+      "complexity": "large"
+    },
+    "difficulty": "hard",
+    "rationale": "Len, care label missing và color transfer sau treatment trước buộc patch test và qualified worker",
+    "detail": "Thảm len lớn đã từng lem màu; nhãn chăm sóc mất nên không thể hứa giặt lại sẽ trả màu ban đầu."
+  },
+  {
+    "id": "up_09",
+    "input_text_vi": "Xử lý vết cà phê mới trên một ghế vải, chưa bôi chất gì",
+    "expected": {
+      "problem_slug": "stain_treatment",
+      "scope_signal": "in_scope",
+      "suggested_service": null,
+      "safety_signals": [],
+      "needs_clarification": true,
+      "complexity": "small"
+    },
+    "difficulty": "easy",
+    "rationale": "Một stain mới, item rõ và chưa dùng chemical là branch stain treatment bounded",
+    "detail": "Vết cà phê mới trên ghế vải, khách chưa lau hoặc bôi sản phẩm nên cần biết material/care label trước."
+  },
+  {
+    "id": "up_10",
+    "input_text_vi": "Vết dung dịch không rõ đã khô trên sofa, lần trước có người xịt chất tẩy mạnh",
+    "expected": {
+      "problem_slug": "stain_treatment",
+      "scope_signal": "in_scope",
+      "suggested_service": null,
+      "required_safety_signals": ["unknown_chemical"],
+      "needs_clarification": false,
+      "complexity": "medium"
+    },
+    "difficulty": "hard",
+    "rationale": "Unknown spill và prior chemical treatment khiến stain có rủi ro vật liệu, cần assessment/patch test",
+    "detail": "Khách không biết dung dịch là gì; một lần trước đã dùng chất tẩy mạnh nên không được khuyên bôi thêm sản phẩm."
+  },
+  {
+    "id": "up_11",
+    "input_text_vi": "Sofa và rèm có mùi ẩm sau mùa mưa, chưa thấy mốc lan rộng",
+    "expected": {
+      "problem_slug": "odor_or_mold",
+      "scope_signal": "in_scope",
+      "suggested_service": null,
+      "safety_signals": [],
+      "forbidden_safety_signals": ["pest_evidence", "bio_contamination"],
+      "needs_clarification": true,
+      "complexity": "medium"
+    },
+    "difficulty": "medium",
+    "rationale": "Odor ở nhiều item sau mưa là odor_or_mold nhưng khách phủ định mold spreading và pest",
+    "detail": "Mùi ẩm bắt đầu sau mùa mưa ở sofa và rèm, chưa có ảnh hay bằng chứng mốc lan rộng."
+  },
+  {
+    "id": "up_12",
+    "input_text_vi": "Nệm và ghế có dấu rệp, nhà có người hen nên muốn xử lý nhưng chưa phun gì",
+    "expected": {
+      "problem_slug": "odor_or_mold",
+      "scope_signal": "in_scope",
+      "suggested_service": null,
+      "required_safety_signals": ["pest_evidence", "sensitive_occupant"],
+      "needs_clarification": false,
+      "complexity": "large"
+    },
+    "difficulty": "hard",
+    "rationale": "Pest evidence và respiratory-sensitive occupant yêu cầu assessment, không hướng dẫn tự phun",
+    "detail": "Khách thấy dấu rệp trên hai loại vật dụng, trong nhà có người hen và chưa dùng hóa chất để xử lý."
+  },
+  {
+    "id": "up_13",
+    "input_text_vi": "Cần chăm sóc một sofa, hai nệm và ba tấm thảm, chưa rõ item nào cần làm trước",
+    "expected": {
+      "problem_slug": "upholstery-general",
+      "scope_signal": "in_scope",
+      "suggested_service": null,
+      "safety_signals": [],
+      "needs_clarification": true,
+      "complexity": "large"
+    },
+    "difficulty": "medium",
+    "rationale": "Nhiều item khác loại cần inventory, dimension, material và priority trước khi tách branch",
+    "detail": "Khách chưa nêu condition từng item, care label, access hoặc drying route nên không gán một item slug."
+  },
+  {
+    "id": "up_14",
+    "input_text_vi": "Bộ sofa da, nệm và rèm của căn hộ đều có vết bẩn; sofa là đồ cổ không có nhãn",
+    "expected": {
+      "problem_slug": "upholstery-general",
+      "scope_signal": "in_scope",
+      "suggested_service": null,
+      "required_safety_signals": ["delicate_fabric", "missing_care_label", "high_value_item"],
+      "needs_clarification": false,
+      "complexity": "large"
+    },
+    "difficulty": "hard",
+    "rationale": "Nhiều item và sofa cổ không nhãn/giá trị cao cần material assessment trước toàn bộ treatment",
+    "detail": "Sofa da cổ, nệm và rèm cùng có stain; care label của sofa mất và khách muốn tránh thử dung dịch trên toàn bộ bộ đồ."
+  },
+  {
+    "id": "up_15",
+    "input_text_vi": "Đồ vải trong nhà cần làm sạch, tôi chưa biết là sofa, rèm hay nệm",
+    "expected": {
+      "problem_slug": "other_upholstery",
+      "scope_signal": "in_scope",
+      "suggested_service": null,
+      "safety_signals": [],
+      "needs_clarification": true,
+      "complexity": null
+    },
+    "difficulty": "hard",
+    "rationale": "Ý định upholstery rõ nhưng item branch chưa xác định, chỉ hỏi một câu discriminator",
+    "detail": "Khách chỉ nói đồ vải và chưa nêu vật dụng, số lượng, vết bẩn hay mùi."
+  },
+  {
+    "id": "up_16",
+    "input_text_vi": "Can cham soc vai nhung khong biet mon do la ghe hay rem, nhan giat cung mat",
+    "expected": {
+      "problem_slug": "other_upholstery",
+      "scope_signal": "in_scope",
+      "suggested_service": null,
+      "required_safety_signals": ["missing_care_label", "delicate_fabric"],
+      "needs_clarification": true,
+      "complexity": null
+    },
+    "difficulty": "hard",
+    "rationale": "Không dấu nhưng đã có vật liệu nhạy và nhãn mất; item chưa rõ nên giữ other_upholstery",
+    "detail": "Khách chưa biết là ghế hay rèm, nhưng xác nhận vải nhung và không còn nhãn giặt."
+  },
+  {
+    "id": "up_17",
+    "input_text_vi": "Máy lạnh chảy nước lên sofa, cần sửa dàn lạnh trước khi giặt ghế",
+    "expected": {
+      "problem_slug": null,
+      "scope_signal": "service_mismatch",
+      "suggested_service": "hvac",
+      "safety_signals": [],
+      "needs_clarification": false,
+      "complexity": null
+    },
+    "difficulty": "easy",
+    "rationale": "Nguồn nước là HVAC và phải sửa nguyên nhân trước, upholstery chỉ là hậu quả trên sofa",
+    "detail": "Khách chủ động yêu cầu sửa dàn lạnh trước khi xử lý ghế ướt."
+  },
+  {
+    "id": "up_18",
+    "input_text_vi": "Ống nước vỡ làm ướt thảm, nhờ xử lý đường ống chứ chưa cần giặt thảm",
+    "expected": {
+      "problem_slug": null,
+      "scope_signal": "service_mismatch",
+      "suggested_service": "plumbing",
+      "safety_signals": [],
+      "needs_clarification": false,
+      "complexity": null
+    },
+    "difficulty": "easy",
+    "rationale": "Khách xác định nguyên nhân là pipe leak và ưu tiên plumbing",
+    "detail": "Thảm chỉ bị ướt do ống vỡ; phần sửa nguồn nước không thuộc upholstery care."
+  },
+  {
+    "id": "up_19",
+    "input_text_vi": "Cần lau toàn bộ căn hộ và bếp sau khi sửa, sofa chỉ là một phần nhỏ",
+    "expected": {
+      "problem_slug": null,
+      "scope_signal": "service_mismatch",
+      "suggested_service": "cleaning",
+      "safety_signals": [],
+      "needs_clarification": false,
+      "complexity": null
+    },
+    "difficulty": "medium",
+    "rationale": "Dominant request is whole-home post-repair cleaning, not a fabric treatment",
+    "detail": "Sofa chỉ là một phần nhỏ trong cleanup toàn căn hộ sau sửa, cần route cleaning."
+  },
+  {
+    "id": "up_20",
+    "input_text_vi": "Nhờ đội xử lý hóa chất tẩy không rõ trên sàn kho, không phải trên đồ vải",
+    "expected": {
+      "problem_slug": null,
+      "scope_signal": "out_of_scope",
+      "suggested_service": null,
+      "required_safety_signals": ["unknown_chemical"],
+      "needs_clarification": false,
+      "complexity": null
+    },
+    "difficulty": "easy",
+    "rationale": "Unknown chemical trên sàn kho là hazardous cleanup ngoài upholstery và không có fabric item",
+    "detail": "Khách nói rõ khu vực là sàn kho và chất tẩy không rõ; không được hướng dẫn lau hoặc pha loãng."
+  },
+  {
+    "id": "up_21",
+    "input_text_vi": "Cần phun diệt rệp cho cả tầng, xử lý tường và hành lang chứ không chỉ nệm",
+    "expected": {
+      "problem_slug": null,
+      "scope_signal": "out_of_scope",
+      "suggested_service": null,
+      "required_safety_signals": ["pest_evidence"],
+      "needs_clarification": false,
+      "complexity": null
+    },
+    "difficulty": "medium",
+    "rationale": "Pest remediation quy mô tầng và nhiều bề mặt vượt fabric-care scope",
+    "detail": "Yêu cầu là phun diệt rệp cho tầng và hành lang, cần pest specialist thay vì upholstery worker."
+  },
+  {
+    "id": "up_22",
+    "input_text_vi": "Ghế da cao cấp bị lem màu sau hóa chất, không có nhãn và khách muốn giữ nguyên màu",
+    "expected": {
+      "problem_slug": "stain_treatment",
+      "scope_signal": "in_scope",
+      "suggested_service": null,
+      "required_safety_signals": ["high_value_item", "missing_care_label", "color_transfer_risk", "delicate_fabric"],
+      "needs_clarification": false,
+      "complexity": "large"
+    },
+    "difficulty": "hard",
+    "rationale": "High-value item đã có chemical history và color transfer risk, bắt buộc patch test/qualified assessment",
+    "detail": "Ghế da cao cấp bị lem sau một hóa chất không rõ; khách muốn giữ màu nhưng chưa có care label để xác nhận phương pháp."
+  },
+  {
+    "id": "up_23",
+    "input_text_vi": "Sofa có dịch cơ thể, chai dung dịch mất nhãn và người hen vẫn ở phòng bên cạnh",
+    "expected": {
+      "problem_slug": "sofa_cleaning",
+      "scope_signal": "in_scope",
+      "suggested_service": null,
+      "required_safety_signals": ["bio_contamination", "unknown_chemical", "sensitive_occupant"],
+      "needs_clarification": false,
+      "complexity": "large"
+    },
+    "difficulty": "hard",
+    "rationale": "Ba safety signals cùng nằm trên sofa và occupancy nhạy cảm, không hướng dẫn tự làm sạch",
+    "detail": "Sofa có dịch cơ thể; một chai dung dịch mất nhãn ở cạnh đó và người hen vẫn ở phòng bên, cần giữ khu vực tránh xa."
+  },
+  {
+    "id": "up_24",
+    "input_text_vi": "Thảm cổ giá trị cao bị mốc và côn trùng, nhãn mất, cần di chuyển qua cầu thang hẹp",
+    "expected": {
+      "problem_slug": "carpet_cleaning",
+      "scope_signal": "in_scope",
+      "suggested_service": null,
+      "required_safety_signals": ["pest_evidence", "missing_care_label", "delicate_fabric", "high_value_item"],
+      "needs_clarification": false,
+      "complexity": "large"
+    },
+    "difficulty": "hard",
+    "rationale": "Thảm cổ, giá trị cao, pest evidence, care label missing và access hẹp là trường hợp siêu phức tạp",
+    "detail": "Thảm cổ bị mốc và có dấu côn trùng; nhãn mất, giá trị cao và lối chuyển qua cầu thang hẹp cần đánh giá trước."
+  }
+]
