@@ -34,23 +34,19 @@ pnpm db:local:up
 ```
 
 That runs `doctor` first and refuses if available RAM is under 4 GB.
-
-To bypass the gate deliberately — for example to measure what actually happens
-under pressure — call the script directly:
-
-```bash
-powershell -NoProfile -ExecutionPolicy Bypass -File docker/scripts/up.ps1 -MinRamGb 2
-```
+The floor is immutable: a refused doctor closes the local-stack lane for that
+measured state unless the skill's single safe RAM recovery pass can stop exact
+stale task-owned helper/dev/test children. User apps, Codex, Claude Code,
+system/security, required Docker components, WSL, AppData, and Docker data are
+outside that pass. One final doctor decides the lane; there is no retry loop.
 
 ## Measurements
 
 | | Value |
 |---|---|
-| Image pull time | **not measured** |
-| Disk consumed | **not measured** |
-| Stack RAM at idle | **not measured** |
-| Machine available RAM while running | **not measured** |
-| Disk reclaimed after `down` | **not measured** |
+| Edge-only Deno lane | Verified separately; it does not measure this profile |
+| Full local-stack resource envelope | **not established on this host** |
+| Minimum available RAM before start | **4 GB, enforced** |
 
-Do not fill these from an estimate. They come from one real run:
-`docker stats`, and free-disk before/after.
+Do not infer the missing resource envelope from CI or the Edge-only lane. It
+requires one doctor-approved start plus `docker stats` and free-disk before/after.

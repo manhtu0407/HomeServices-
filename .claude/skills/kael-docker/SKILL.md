@@ -1,125 +1,246 @@
 ---
 name: kael-docker
-description: Run the NestScout database and Edge toolchain locally with Docker. Use when you need a real Postgres instead of reading SQL as text - running migrations, db reset, RLS or trigger or constraint checks, the SQL verification scripts, integration tests against a real database, regenerating the database types under packages/shared/src/types/database, or deno check on supabase/functions. Also use on the bare word docker, or for compose, container, local stack, or local supabase.
+description: "Route a database or Edge verification question to the narrowest evidence lane, ensure Docker is latest stable or capability-compatible before local work, and require relevant runtime proof before calling the task done. Use for Docker, Compose, local Supabase, migrations, reset, SQL/RLS/trigger/constraint verification, generated database types, and deno check under supabase/functions."
 ---
 
 # kael-docker
 
-Local Docker stack for this repo. Full map and rationale: [`docker/INDEX.md`](../../../docker/INDEX.md).
+This skill owns the question **“what evidence can answer this database or Edge question?”** Docker is
+a local development dependency, not the goal and never a deployment target. Repository map:
+[`docker/INDEX.md`](../../../docker/INDEX.md).
+
+## Route the question first
+
+Before any command, write one sentence naming the question and classify it:
+
+- `structure`: object declarations, policies, grants, triggers, constraints, function signatures, or
+  applied migrations.
+- `behavior`: what a real database does when a statement, role, trigger, constraint, RPC, migration,
+  or verification script executes.
+- `types`: whether Edge functions or generated database types still type-check.
+
+Take the narrowest lane whose evidence answers that exact class:
+
+| Lane | Valid evidence | Requirements |
+|---|---|---|
+| **D — exact prior evidence** | `behavior` or `types` already executed for the exact commit | Exact commit SHA, workflow and job URL, and the log line that answers the question |
+| **C — hosted read-only** | `structure` on one named hosted target | Read-only access and the target's project ref or environment name |
+| **B — pinned Deno toolbox** | Current-checkout Edge `types` | An open local-runtime attempt budget, Docker daemon, and registry |
+| **A — local Supabase stack** | Current-checkout database `behavior`, migrations, SQL checks, and generated types | An open local-runtime attempt budget, daemon, registry, immutable RAM floor, disk, ports, and Supabase CLI |
+
+Never turn source inspection, an old green run, or a different commit into runtime proof. If no lane
+answers the question, report it as unanswered.
+
+## Docker version policy — latest stable or suitable
+
+Before entering Lane A or B, run `pnpm docker:version:ensure` once. The runner records the installed
+Docker and Compose versions, then takes one of two routes:
+
+- When the Docker Desktop updater is available, invoke the official stable updater once with
+  `docker desktop update --quiet`, bounded by a five-minute timeout. Re-read both versions after it
+  succeeds. Do not select beta, test, preview, or another prerelease channel.
+- When the Desktop updater is unavailable, accept the existing Engine/Compose installation as
+  **suitable** only when Compose proves the `pull --policy` and `run --pull` capabilities this repo
+  requires. This is a compatibility result, not a claim that the installation is globally latest.
+
+Do not hardcode a “latest” version number, install through a privileged package manager, or retry a
+failed update. A failed or timed-out update closes Lane A and B for this attempt. Version work never
+authorizes an additional manual Docker Desktop restart, WSL/AppData edits, Docker-data repair, or a
+prerelease channel.
 
 ## Preconditions
 
-| Needs | Check | If absent |
+The local-runtime precondition is **gated and bounded**. Measure it only when Lane A or B is required:
+
+1. Complete the version policy above once for the current local attempt.
+2. Run one doctor probe with profile `lean` or `full`. The Docker daemon probe times out after exactly
+   **15 seconds** and must reap its child process.
+3. `lean` has an immutable **4 GB** available-RAM floor. `full` has an immutable **7 GB** floor.
+   There is no numeric override and no skip-doctor route.
+4. When RAM is at or above the selected floor, run the required runtime lane immediately. When RAM
+   is below the floor, perform at most one safe RAM recovery pass, then one final doctor probe.
+5. If Tu explicitly asks to launch or restart Docker Desktop, do that at most once. Coalesce an
+   authorized launch/restart and any safe RAM recovery before the same single final bounded probe. A
+   plain **“Next Step”** does not authorize another launch, restart, recovery pass, or probe.
+6. After that final probe, the attempt budget is exhausted. Retry only after Tu explicitly identifies
+   a changed environment and authorizes a new attempt.
+
+### Windows launch-origin gate
+
+Before consuming an authorized Docker Desktop launch on Windows, verify that the launch will use the
+normal user filesystem namespace. If Codex Desktop, an AppContainer, or a `CodexSandboxUsers` child
+sees `%LOCALAPPDATA%\Docker` while WSL/DrvFS cannot see the same absolute path under `/mnt/c`, the
+skill must not launch Docker Desktop through `Start-Process`, `explorer.exe`, a CLI child, or another
+agent-created broker. That mismatch is host-filesystem virtualization, not a daemon retry condition;
+ACL edits do not turn the overlay into the profile WSL mounts.
+
+In that state, require one launch from the Windows Start menu or an unsandboxed Windows shell owned by
+Tu. That user launch consumes the same `1/1` launch budget and permits exactly one final doctor probe.
+If it is unavailable, close Lane A/B for the current attempt. Do not try elevation, scheduled tasks,
+WSL interop, AppData recreation, ACL repair, or a second launch as a workaround.
+
+The safe RAM recovery pass begins with a read-only process inventory. It may stop only stale task-owned
+helper, dev-server, test, or child processes tied to the current repo/session that are no longer needed,
+and have an exact PID, command, and root recorded. It protects Codex, Claude Code, system/security
+processes, Docker components needed by the run, and every user application that may contain unsaved
+work. Closing any other application requires Tu's explicit approval of the exact target.
+
+The skill never kills or terminates WSL, edits AppData or reparse points, touches Docker data,
+disables services, prunes images or volumes, or guesses ownership from a port. Those are separate
+host-repair or cleanup tasks and need their own exact scope and authority.
+
+## Attempt budget
+
+Record the counter before using the local runtime:
+
+```text
+version update: 0/1
+daemon probes: 0/1
+RAM recovery: 0/1
+Docker Desktop launches or restarts: 0/0 unless explicitly authorized, then 0/1
+final probe after launch/restart or RAM recovery: 0/1
+Supabase starts: 0/1
+Deno registry pulls: 0/1
+runtime proof: 0/1
+```
+
+- Normal local work gets one probe. A reachable daemon does not permit repeated image pulls or stack
+  starts.
+- Explicit Docker Desktop authority permits one launch or restart and one final probe; it does not
+  permit Windows, WSL, process, filesystem, or Docker-data repair.
+- RAM recovery is one bounded inventory-and-stop pass, not repeated host tuning. If the final probe
+  remains below the floor, local runtime is closed for this task state.
+- `up` calls `supabase start` once. `edge-check` pulls the pinned Deno image once. A failure is a
+  result and closes that route for the current attempt.
+
+## Command forms
+
+The canonical package commands and direct Windows/POSIX dispatcher forms are equivalent:
+
+| Canonical | Direct form | Contract |
 |---|---|---|
-| Docker daemon | `docker info` | Run the degraded lane. Quote the failure; reading SQL as text never becomes a substitute for executing it. |
-| A reachable image registry | `docker compose pull --policy missing deno` — the one image this repo pins itself | Run the degraded lane. **This is the usual blocker in an agent container**, and it is not a tooling problem: the daemon starts and the CLI installs, but the Supabase image layers return `403 Forbidden` from the CDN behind the proxy (`governance/protocols/test-pillars.md`, "money and privilege invariants"). |
-| >= 4 GB available RAM | `pnpm db:local:doctor` | Run the degraded lane. The doctor prints the measured number; quote it rather than retrying. |
+| `pnpm docker:version:ensure` | `node scripts/run.mjs docker/scripts/ensure-version` | One latest-stable Desktop update or capability-proven suitable install |
+| `pnpm db:local:doctor -- --profile lean` | `node scripts/run.mjs docker/scripts/doctor --profile lean` | One bounded daemon probe; only `lean` or `full` |
+| `pnpm db:local:up -- --profile lean` | `node scripts/run.mjs docker/scripts/up --profile lean` | Always doctor first; one `supabase start` |
+| `pnpm db:local:down` | `node scripts/run.mjs docker/scripts/down` | Stop only; no purge or `--no-backup` |
+| `pnpm db:local:reset` | `node scripts/run.mjs run-supabase db reset --local` | Explicitly local migration replay and seed |
+| `pnpm db:local:test` | `node scripts/run.mjs docker/scripts/run-sql-tests` | Fail on zero SQL files; honest execution summary |
+| `pnpm db:local:types` | `node scripts/run.mjs docker/scripts/gen-types` | Preserve the generator exit code and clean temporary output |
+| `pnpm db:local:diff` | `node scripts/run.mjs run-supabase db diff --local` | Local schema diff |
+| `pnpm db:local:lint` | `node scripts/run.mjs run-supabase db lint --local` | Local schema lint |
+| `pnpm edge:check` | `node scripts/run.mjs docker/scripts/edge-check` | One pull; strict target selection and counts |
 
-Every command in `## Commands` assumes all three. Verify before running, not after failing. When any
-of them is missing you do not stop — you switch lanes.
+Runner exit codes are part of the interface:
 
-**Not a precondition: your shell.** All six `docker/scripts/*` runners have POSIX mirrors and
-dispatch through `scripts/run.mjs`, so these commands run on Linux and macOS as well as Windows —
-CI drives them from bash. Do not defer a Docker task to another machine on shell grounds alone.
+- `0`: the requested runner proved success.
+- `1`: environment or verification failure.
+- `2`: invalid invocation or invalid/empty target selection.
+
+## Lane A — local Supabase behavior
+
+Use only when behavior has not already been proved for the exact commit and hosted mutation is not
+allowed. Sequence: doctor → up → reset → test or types → down.
+
+- `up` always runs doctor and invokes `supabase start` once.
+- `reset` always spells out `--local`; never pass `--linked` or `--db-url`.
+- The SQL runner discovers every `supabase/tests/*.sql` first. Zero files is invalid selection. Its
+  closeout is `discovered/executed/passed/failed/stopped_early` on both platforms.
+- A red SQL file is a verification result. Classify it as a script defect, schema defect, or missing
+  execution context; never edit migrations merely to force green.
+- `down` stops the local stack without deleting its volume. Deletion is outside this runner.
 
 ## Degraded lane
 
-No daemon means no Postgres, and no amount of reading changes that. It does not mean there is nothing
-to do: the database work this repo is actually blocked on is *bookkeeping* that has rotted precisely
-because nobody could run the scripts.
+When the local-runtime gate is closed, continue only through Lane C or D if one answers the question.
+Do not disguise degraded evidence as local execution.
 
-Reconcile `docs/test-debt-ledger.md` against what is on disk. For each invariant it lists, put the
-row in one of three states:
+### Lane C — named hosted read-only target
 
-| State | How to tell | What to write |
-|---|---|---|
-| script written, unrun | the named `supabase/tests/*.sql` exists **and** contains an assertion for this invariant | correct the row to "script asserts it, awaiting `pnpm db:local:test`" |
-| script written, silent | the script exists but never asserts this invariant | flag it — this is worse than missing, because it reads as covered |
-| no script | nothing under `supabase/tests/` names it | leave the row; it is real debt |
+Use for `structure` only. Name the exact environment or Supabase project ref before querying. Catalog,
+migration-list, policy, trigger, and row-count reads are allowed. DDL, DML, RPC mutation, seed, reset,
+deployment, or destructive verification is forbidden. Hosted mutation belongs to `kael-supabase`
+under its own authority.
 
-Then hand back the exact command list for a machine that has a daemon, in order:
-`pnpm db:local:doctor` → `pnpm db:local:up` → `pnpm db:local:reset` → `pnpm db:local:test` →
-`pnpm db:local:down`.
+Lane C cannot prove behavior merely because a constraint or policy exists. Its result must identify
+the target and remain `PARTIAL` or `UNVERIFIED` for any behavioral claim.
 
-Two hard limits on this lane. Reading a `.sql` file and judging that it asserts an invariant is
-static analysis, so the corrected row says **"asserts it, unrun"** and never "covered" — the whole
-reason that ledger exists is that `toContain()` over SQL text proved nothing. And a schema question
-that needs a real query still gets reported unanswered; the lane keeps bookkeeping honest, it does
-not verify behavior.
+### Lane D — exact CI or prior execution evidence
 
-## The boundary — non-negotiable
+Use only when all four items are available:
 
-Docker here is a **dev dependency**, never a deployment target. Nothing in this
-repo is packaged into an image to serve users. The store-bound runtime stays:
+1. the exact commit SHA being reviewed;
+2. a direct workflow run URL;
+3. the exact job URL;
+4. a log line or artifact that answers the stated question.
 
-```text
-Expo React Native -> Supabase Auth -> Edge `mobile-api` -> Supabase DB/RPC/Storage
-```
+A green workflow badge alone is insufficient. A SQL count can prove the discovered files executed on
+that commit only when the job log identifies the reset, runner, totals, and successful status. Static
+inspection of a SQL file may say “assertion exists, execution unverified”; it may not say “covered”.
 
-Writing a `Dockerfile` for `apps/api`, or a compose service answering HTTP for a
-real client, violates `RULES.md` #0. Stop if you find yourself doing it.
+## Runtime completion gate
 
-## Commands
+For every task routed through this skill, runtime evidence is mandatory before `Task status: DONE`.
+Source inspection, a static ratchet, Lane C alone, a green badge, or a run for another commit cannot
+close the task. Use exactly one relevant proof route:
 
-| Command | Does |
-|---|---|
-| `pnpm db:local:doctor` | Daemon, available RAM, disk, ports. Prints the measured number when it refuses. |
-| `pnpm db:local:up` | Doctor first, then start the lean profile. |
-| `pnpm db:local:down` | Stop the stack. |
-| `pnpm db:local:reset` | Replay every migration from zero, then `supabase/seed.sql`. |
-| `pnpm db:local:test` | Run the SQL verification scripts through psql in the db container. |
-| `pnpm db:local:types` | Regenerate `packages/shared/src/types/database/**` from the local schema (generates, then splits by domain). |
-| `pnpm db:local:diff` | Diff local schema against migrations. |
-| `pnpm db:local:lint` | `supabase db lint --local`. |
-| `pnpm edge:check` | Type-check `supabase/functions/**` in the pinned Deno container. |
+- Lane A or B executes the requested behavior or type check against the current checkout; or
+- Lane D supplies the exact commit SHA, workflow URL, job URL, and log or artifact that proves the
+  requested outcome.
 
-## Rules
+If the checkout has uncommitted changes, CI for an older commit cannot prove them. If local runtime
+is closed and no exact CI evidence exists, keep useful source work but report `Task status: BLOCKED`.
+Prioritizing task completion means moving promptly to the valid runtime lane and producing evidence;
+it never means looping on Docker, repeatedly reclaiming RAM, or widening host-repair authority.
 
-1. **Doctor before start.** Available RAM is the binding constraint on a laptop —
-   Supabase wants roughly 7 GB for the *full* service set, though the doctor's
-   enforced floor is 4 GB and the lean profile is what `db:local:up` starts.
-   Quote the measured number; do not route around the gate.
-2. **Every `up` gets a `down`.** Nothing forces this. Leaving the stack running
-   is a real cost on this machine.
-3. **Never hand-edit `supabase/config.toml`** to shape a profile — it is
-   committed. Profiles are selected with the CLI's `-x` flag.
-4. **Never point local credentials at staging or production.** The local stack
-   issues fixed, publicly-known demo JWTs. The integration-test guard throws
-   rather than skips when it detects this, and that guard stays.
-5. **A red SQL verification file is a result, not a crash.** Several have never
-   been executed. Classify it — bad script, real schema defect, or missing JWT
-   context — and report it. Do not edit a migration to force green.
+## Edge selection contract
 
-## Two systems own containers
+`edge-check --only` accepts only canonical function directories that contain both `deno.json` and
+`index.ts`. An unknown name, empty selection, missing config, or missing entry point exits `2` before
+Docker. The runner pulls Deno once, then reports `discovered/checked/failed`; skipped functions and
+zero-target green results are forbidden.
 
-There is no single file covering all of it, and merging them would fork the
-versions the Supabase CLI pins.
+## Runtime ownership and boundary
+
+Two systems own different resources:
 
 ```text
-supabase/config.toml   Supabase CLI owns postgres, auth, storage, edge_runtime
-compose.yaml (root)    owns the pinned Deno toolbox only
+supabase/config.toml   Supabase CLI owns postgres, auth, storage, and edge_runtime
+compose.yaml           Docker Compose owns the pinned Deno toolbox only
 ```
 
-`compose.yaml` is at the repo root so Compose auto-discovers it —
-`docker compose run --rm deno …` works with no `-f` flag.
+Do not use Compose to stop or delete the Supabase stack, and do not infer Supabase ownership from a
+container name or occupied port without inspecting the exact project and mounts.
 
-## Known trap
+The store-bound runtime remains:
 
-`deno check` without `--config` on `mobile-api` resolves bare specifiers as
-plain npm names and emits a flood of phantom errors. `pnpm edge:check` embeds
-the right per-function `--config`; use it rather than calling `deno check` by hand.
+```text
+Expo React Native -> Supabase Auth -> Edge mobile-api -> Supabase DB/RPC/Storage/Realtime
+```
+
+No Dockerfile or Compose service from this skill may become a second deployment runtime.
 
 ## Close
 
+Always close in this exact shape:
+
 ```text
-Precondition check:
+Question and class:
 Lane:
-Stack state:
+Target or commit SHA:
+Docker version/current target:
+Attempt count:
+RAM recovery:
 Commands run:
-Result:
-Blocker:
+Runtime evidence:
+Result: PASS | PARTIAL | UNVERIFIED
+Task status: DONE | BLOCKED
+Stop reason:
+Unanswered:
 ```
 
-Name which lane ran. In the degraded lane, `Result` is the ledger reconciliation and `Blocker` is
-the measured precondition failure — never a verdict about schema behavior. Reading SQL is not a
-substitute for running it against Postgres, and a corrected ledger row is bookkeeping, not proof.
+`PASS` means the chosen lane proved the exact question. `PARTIAL` means valid evidence answered only
+part of it. `UNVERIFIED` means no valid lane produced evidence. For Lane C, name the read-only target.
+For Lane D, include SHA, workflow/job URLs, and the relevant log. For Lane A/B, include each bounded
+attempt count, the final Docker/Compose version result, RAM recovery decision, runtime command, and
+why the route stopped. `DONE` requires relevant runtime evidence; otherwise use `BLOCKED`, even when
+the source edit itself is useful. Never claim completion from an unrun command or a closed lane.
