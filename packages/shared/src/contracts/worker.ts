@@ -219,13 +219,6 @@ export const workerKaelChatCreateSchema = z.object({
   language: z.enum(['vi', 'en']).default('vi'),
   client_request_id: clientRequestIdSchema.optional(),
 }).strict().superRefine((value, ctx) => {
-  if (value.mode === 'intake' && !value.job_id) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      message: 'Worker intake chat requires an active job.',
-      path: ['job_id'],
-    })
-  }
   if (value.mode === 'normal' && value.job_id) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,

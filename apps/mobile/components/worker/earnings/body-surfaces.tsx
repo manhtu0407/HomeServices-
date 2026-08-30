@@ -14,16 +14,19 @@ import { WorkerV5ReceivingAccount } from './receiving-account-surfaces'
 import { WorkerV5PayoutRequest } from './payout-request-surfaces'
 import { WorkerV5TransactionHistory } from './transaction-history-surfaces'
 import { styles } from './body-styles'
+import type { WorkerEarningsPeriod } from './overview-model'
 
 type WorkerV5Runtime = ReturnType<typeof useFrontendWorkflow>
 
 export function WorkerV5EarningsOverviewBody({
+  initialPeriod,
   language,
   navigateToScreen,
   reduceMotion,
   reduceTransparency,
   runtime,
 }: {
+  initialPeriod?: WorkerEarningsPeriod
   language: AppLanguage
   navigateToScreen: (id: WorkerV5ScreenId) => void
   reduceMotion: boolean
@@ -35,6 +38,8 @@ export function WorkerV5EarningsOverviewBody({
       <WorkerV5EarningsDashboard
         earnings={runtime.workerEarnings}
         earningsError={runtime.workerEarningsError}
+        initialPeriod={initialPeriod}
+        key={initialPeriod}
         language={language}
         onRetry={runtime.actions.workerRefresh}
         reduceMotion={reduceMotion}

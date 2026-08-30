@@ -33,7 +33,6 @@ type WorkerV5Runtime = ReturnType<typeof useFrontendWorkflow>
 function Text({ style, ...props }: TextProps) {
   return <RNText {...props} style={[styles.workerCustomerFontText, style]} />
 }
-
 export function WorkerV5HomeScreenSurface({
   glass,
   language,

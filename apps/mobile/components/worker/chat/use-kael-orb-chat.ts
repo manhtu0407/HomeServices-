@@ -32,21 +32,20 @@ export function useWorkerV5KaelOrbChat(
   deal: LocalDeal | null,
   language: AppLanguage,
   mode: WorkerKaelChatMode,
-  workerJobsHydrated: boolean,
+  _workerJobsHydrated?: boolean,
 ) {
   const { session: authSession } = useAuth()
   const workerId = authSession?.user.id ?? null
   const localVisualAuditSession = authSession?.user.app_metadata?.provider === 'local-visual-audit'
   const jobId = getWorkerV5ChatJobId(deal)
   const readOnly = isWorkerV5KaelOrbReadOnly(deal)
-  const sessionJobId = mode === 'intake' ? jobId : null
+  const sessionJobId = mode === 'intake' && canUseWorkerV5KaelOrbSession(deal) ? jobId : null
   const hasJobKaelSessionAccess = Boolean(sessionJobId) && canUseWorkerV5KaelOrbSession(deal) && !readOnly
-  const canUseKaelSession = mode === 'normal' ? Boolean(workerId) : hasJobKaelSessionAccess
+  const canUseKaelSession = Boolean(workerId) && (mode === 'normal' || !sessionJobId || hasJobKaelSessionAccess)
   const activeWorkerIdRef = useRef<string | null>(workerId)
   const activeModeRef = useRef<WorkerKaelChatMode>(mode)
   const localVisualAuditSessionRef = useRef(localVisualAuditSession)
   const activeJobIdRef = useRef<string | null>(sessionJobId)
-  const workerJobsHydratedRef = useRef(workerJobsHydrated)
   const sessionRef = useRef<WorkerV5KaelOrbSession | null>(null)
   const sessionCacheRef = useRef(new Map<string, WorkerKaelChatResponse>())
   const sessionLoadPromiseRef = useRef(new Map<string, Promise<WorkerKaelChatResponse | null>>())
@@ -80,9 +79,8 @@ export function useWorkerV5KaelOrbChat(
     activeModeRef.current = mode
     localVisualAuditSessionRef.current = localVisualAuditSession
     activeJobIdRef.current = sessionJobId
-    workerJobsHydratedRef.current = workerJobsHydrated
     pendingSessionIdsRef.current = pendingSessionIds
-  }, [localVisualAuditSession, mode, pendingSessionIds, sessionJobId, workerId, workerJobsHydrated])
+  }, [localVisualAuditSession, mode, pendingSessionIds, sessionJobId, workerId])
   const advisoryUnavailableReply = workerV5KaelAdvisoryUnavailableReply(readOnly, language)
   const progressPercent = progress ? Math.max(0, Math.min(100, Math.round(progress.progress * 100))) : null
   const busyLabel = openingSessionId || creatingSession ? textByLanguage(language, 'Đang mở cuộc trò chuyện...', 'Opening conversation...')
@@ -231,13 +229,11 @@ export function useWorkerV5KaelOrbChat(
       sessionCatalogRef.current = cachedCatalog
       sessionCatalogReadyRef.current = true
       const currentJobId = activeJobIdRef.current
-      if (mode === 'normal' || currentJobId) {
-        setActiveField('sessions', cachedCatalog.filter((session) =>
-          workerKaelSessionMatchesScope(session, currentJobId, mode)
-          && !removedSessionIdsRef.current.has(session.id)
-        ))
-      }
-      setActiveField('sessionsLoading', Boolean(mode === 'intake' && !currentJobId && !workerJobsHydratedRef.current))
+      setActiveField('sessions', cachedCatalog.filter((session) =>
+        workerKaelSessionMatchesScope(session, currentJobId, mode)
+        && !removedSessionIdsRef.current.has(session.id)
+      ))
+      setActiveField('sessionsLoading', false)
     })
     return () => {
       cancelled = true
@@ -253,8 +249,7 @@ export function useWorkerV5KaelOrbChat(
     sessionRef.current = null
 
     if (
-      (mode === 'normal' || sessionJobId)
-      && workerId
+      workerId
       && sessionCatalogNetworkKeyRef.current === workerKaelSessionCatalogKey(workerId, mode)
     ) {
       prefetchSessions(
@@ -326,13 +321,11 @@ export function useWorkerV5KaelOrbChat(
         persistSessionCatalog(nextCatalog)
 
         const currentJobId = activeJobIdRef.current
-        if (requestedMode === 'normal' || currentJobId) {
-          const matchingSessions = nextCatalog.filter((session) =>
-            workerKaelSessionMatchesScope(session, currentJobId, requestedMode)
-          )
-          setActiveField('sessions', matchingSessions)
-          prefetchSessions(matchingSessions, currentJobId)
-        }
+        const matchingSessions = nextCatalog.filter((session) =>
+          workerKaelSessionMatchesScope(session, currentJobId, requestedMode)
+        )
+        setActiveField('sessions', matchingSessions)
+        prefetchSessions(matchingSessions, currentJobId)
       } catch {
         if (
           activeWorkerIdRef.current === requestedWorkerId
@@ -347,12 +340,7 @@ export function useWorkerV5KaelOrbChat(
           activeWorkerIdRef.current === requestedWorkerId
           && activeModeRef.current === requestedMode
         ) {
-          setActiveField('sessionsLoading', Boolean(
-            sessionCatalogReadyRef.current
-            && requestedMode === 'intake'
-            && !activeJobIdRef.current
-            && !workerJobsHydratedRef.current
-          ))
+          setActiveField('sessionsLoading', false)
         }
       }
     })()
@@ -371,7 +359,7 @@ export function useWorkerV5KaelOrbChat(
     const requestedMode = mode
     const requestedOwner = owner
     if (!requestedWorkerId || !canUseKaelSession || busy || creatingSession || openingSessionId) {
-      setSessionsError(textByLanguage(language, 'Cần một công việc đang thực hiện để tạo cuộc trò chuyện này.', 'Active work is needed to create this conversation.'))
+      setSessionsError(textByLanguage(language, 'Chưa thể tạo cuộc trò chuyện này.', 'This conversation cannot be created right now.'))
       return false
     }
     reasoningActions.reset()
@@ -481,7 +469,7 @@ export function useWorkerV5KaelOrbChat(
     }
   }
 
-  useLatestWorkerSessionRestore({ activeSessionId, jobId, openSession, openingSessionId, ownerKey, sessions, sessionsLoading })
+  useLatestWorkerSessionRestore({ activeSessionId, jobId: sessionJobId, openSession, openingSessionId, ownerKey, sessions, sessionsLoading })
 
   const resetToNewSession = useCallback(() => {
     openRequestRef.current += 1

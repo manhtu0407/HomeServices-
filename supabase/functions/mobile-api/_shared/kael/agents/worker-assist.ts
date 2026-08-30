@@ -3,6 +3,9 @@ import type {
   AIRequest,
   AIResponse,
   EdgeAiSecrets,
+  WorkerKaelConversationScope,
+  WorkerOpportunityAssistContext,
+  WorkerOpportunityAssistPreferences,
   WorkerVisionFinding,
 } from "../contracts/types.ts";
 import {
@@ -77,7 +80,10 @@ export type WorkerAssistJobContext = {
 
 export type WorkerAssistInput = {
   readonly conversationMode?: "normal" | "intake";
+  readonly conversationScope?: WorkerKaelConversationScope;
   readonly job: WorkerAssistJobContext | null;
+  readonly opportunities?: readonly WorkerOpportunityAssistContext[];
+  readonly opportunityPreferences?: WorkerOpportunityAssistPreferences;
   readonly question: string;
   readonly language?: KaelPromptLanguage;
   readonly mediaRefs?: readonly string[];
@@ -158,9 +164,13 @@ export async function runWorkerAssist(
 ): Promise<WorkerAssistAnswer> {
   const language = input.language ?? "vi";
   const conversationMode = input.conversationMode ?? (input.job ? "intake" : "normal");
+  const conversationScope = input.conversationScope ?? (
+    input.job ? "job_intake" : conversationMode === "intake" ? "opportunity_intake" : "normal"
+  );
+  const isJobIntake = conversationScope === "job_intake";
   const topic = topicForQuestion(input.question);
   reportKaelPublicExecutionStep(input.reasoning, {
-    detail: workerRequestScopeDetail(language, conversationMode),
+    detail: workerRequestScopeDetail(language, conversationScope),
     id: "request-classified",
     label: workerExecutionLabel(language, "request"),
     sequence: 0,
@@ -189,7 +199,7 @@ export async function runWorkerAssist(
   if (!permission.allowed) {
     return fallbackAnswer(
       permission.reasonCode,
-      conversationMode === "intake" && shouldRedirectToScopeChange(input.question),
+      isJobIntake && shouldRedirectToScopeChange(input.question),
       language,
       [],
       [],
@@ -198,12 +208,12 @@ export async function runWorkerAssist(
     );
   }
 
-  if (conversationMode === "intake" && isWorkerPrematureScopeWorkRequest(input.question)) {
+  if (isJobIntake && isWorkerPrematureScopeWorkRequest(input.question)) {
     return workerScopeConfirmationAnswer(input.question, language);
   }
 
   if (
-    conversationMode === "intake" &&
+    isJobIntake &&
     input.job?.status === "arrived" &&
     isWorkerPreCheckInBypassRequest(input.question)
   ) {
@@ -211,7 +221,7 @@ export async function runWorkerAssist(
   }
 
   if (
-    conversationMode === "intake" &&
+    isJobIntake &&
     input.job?.status === "arrived" &&
     isWorkerPrematureCompletionPaymentRequest(input.question)
   ) {
@@ -231,7 +241,7 @@ export async function runWorkerAssist(
       workflowPhase: "in_progress",
       actorRole: "worker",
       action: "worker.ask_kael",
-      policyId: workerAssistPolicyId(conversationMode),
+      policyId: workerAssistPolicyId(conversationScope),
       purpose: "worker_assist",
       reasonCode: "NO_PROVIDER_AVAILABLE",
       safeMetadata: {
@@ -240,7 +250,7 @@ export async function runWorkerAssist(
     }));
     return fallbackAnswer(
       "NO_PROVIDER_AVAILABLE",
-      conversationMode === "intake" && shouldRedirectToScopeChange(input.question),
+      isJobIntake && shouldRedirectToScopeChange(input.question),
       language,
       providerAttempts,
       trace,
@@ -253,6 +263,7 @@ export async function runWorkerAssist(
     input,
     language,
     conversationMode,
+    conversationScope,
     routes,
     providerAttempts,
     trace,
@@ -263,6 +274,7 @@ async function executeWorkerAssistProviderCandidates(
   input: WorkerAssistInput,
   language: KaelPromptLanguage,
   conversationMode: "normal" | "intake",
+  conversationScope: WorkerKaelConversationScope,
   routes: readonly ProviderChoice[],
   providerAttempts: WorkerAssistProviderAttempt[],
   trace: KaelSafeTraceEvent[],
@@ -310,12 +322,12 @@ async function executeWorkerAssistProviderCandidates(
         return fallbackWithPublishedWorkerResponse(
           fallbackAnswer(
             schemaResponse ? "AI_RESPONSE_INVALID" : `AI_${result.code}`,
-            conversationMode === "intake" && shouldRedirectToScopeChange(input.question),
+            conversationScope === "job_intake" && shouldRedirectToScopeChange(input.question),
             language,
             providerAttempts,
             trace,
             undefined,
-            conversationMode,
+            conversationScope === "job_intake" ? "intake" : "normal",
           ),
           input.response,
         );
@@ -369,6 +381,7 @@ async function executeWorkerAssistProviderCandidates(
       input,
       language,
       conversationMode,
+      conversationScope,
       route,
       result,
       providerAttempts,
@@ -378,12 +391,12 @@ async function executeWorkerAssistProviderCandidates(
 
   return fallbackAnswer(
     lastProviderFailure,
-    conversationMode === "intake" && shouldRedirectToScopeChange(input.question),
+    conversationScope === "job_intake" && shouldRedirectToScopeChange(input.question),
     language,
     providerAttempts,
     trace,
     undefined,
-    conversationMode,
+    conversationScope === "job_intake" ? "intake" : "normal",
   );
 }
 
@@ -391,6 +404,7 @@ function finalizeWorkerAssistProviderReply(input: {
   readonly input: WorkerAssistInput;
   readonly language: KaelPromptLanguage;
   readonly conversationMode: "normal" | "intake";
+  readonly conversationScope: WorkerKaelConversationScope;
   readonly providerAttempts: readonly WorkerAssistProviderAttempt[];
   readonly result: WorkerAssistProviderResult;
   readonly route: ProviderChoice;
@@ -401,12 +415,12 @@ function finalizeWorkerAssistProviderReply(input: {
     return fallbackWithPublishedWorkerResponse(
       fallbackAnswer(
         guarded.reason ?? "WORKER_ASSIST_GUARD",
-        input.conversationMode === "intake",
+        input.conversationScope === "job_intake",
         input.language,
         input.providerAttempts,
         input.trace,
         "boundary_guard",
-        input.conversationMode,
+        input.conversationScope === "job_intake" ? "intake" : "normal",
       ),
       input.input.response,
     );
@@ -422,12 +436,12 @@ function finalizeWorkerAssistProviderReply(input: {
     return fallbackWithPublishedWorkerResponse(
       fallbackAnswer(
         checked.reason ?? "SELF_CHECK",
-        input.conversationMode === "intake" && input.result.data.redirect_scope_change,
+        input.conversationScope === "job_intake" && input.result.data.redirect_scope_change,
         input.language,
         input.providerAttempts,
         input.trace,
         checked.trip?.source,
-        input.conversationMode,
+        input.conversationScope === "job_intake" ? "intake" : "normal",
       ),
       input.input.response,
     );
@@ -453,7 +467,7 @@ function finalizeWorkerAssistProviderReply(input: {
     ),
     safety_notes: visionHonesty.safetyNotes,
     redirect_scope_change:
-      input.conversationMode === "intake" &&
+      input.conversationScope === "job_intake" &&
       (input.result.data.redirect_scope_change || shouldRedirectToScopeChange(input.input.question)),
     fallback_used: false,
     public_reasoning_summary: publicReasoningSummary,
@@ -559,16 +573,22 @@ function workerExecutionLabel(
 
 function workerRequestScopeDetail(
   language: KaelPromptLanguage,
-  conversationMode: "normal" | "intake",
+  conversationScope: WorkerKaelConversationScope,
 ) {
   if (language === "en") {
-    return conversationMode === "normal"
-      ? "The request was classified as a general worker-support question."
-      : "The request was classified as work-related worker support.";
+    if (conversationScope === "normal") {
+      return "The request was classified as a general worker-support question.";
+    }
+    return conversationScope === "opportunity_intake"
+      ? "The request was classified as support for reviewing available opportunities."
+      : "The request was classified as accepted-job worker support.";
   }
-  return conversationMode === "normal"
-    ? "Yêu cầu được nhận diện là hỗ trợ chung dành cho thợ."
-    : "Yêu cầu được nhận diện là hỗ trợ liên quan đến công việc.";
+  if (conversationScope === "normal") {
+    return "Yêu cầu được nhận diện là hỗ trợ chung dành cho thợ.";
+  }
+  return conversationScope === "opportunity_intake"
+    ? "Yêu cầu được nhận diện là hỗ trợ xem các cơ hội đang có."
+    : "Yêu cầu được nhận diện là hỗ trợ công việc đã nhận.";
 }
 
 function workerBoundaryDetail(language: KaelPromptLanguage, allowed: boolean) {
@@ -647,6 +667,9 @@ function buildWorkerAssistRequest(
   language: KaelPromptLanguage,
 ): AIRequest {
   const conversationMode = input.conversationMode ?? (input.job ? "intake" : "normal");
+  const conversationScope = input.conversationScope ?? (
+    input.job ? "job_intake" : conversationMode === "intake" ? "opportunity_intake" : "normal"
+  );
   const responseContract = conversationMode === "normal"
     ? [
       "Return JSON only with text and public_reasoning_summary.",
@@ -675,8 +698,10 @@ function buildWorkerAssistRequest(
           purpose: "worker_assist",
           actor: "worker",
           language,
-          permissionSummary: conversationMode === "normal"
+          permissionSummary: conversationScope === "normal"
             ? "Worker can receive general NestScout app, supported-service, skill, and safety guidance without customer or job-specific context. Never infer or expose another job. Worker cannot set price, scope, or lifecycle status."
+            : conversationScope === "opportunity_intake"
+            ? "Worker can review only the available opportunity records supplied in validated context. Explain and filter those records without ranking claims, accepting, declining, exposing exact addresses, or changing workflow state. The worker must open an opportunity and decide in the app."
             : "Worker can read only the accepted job context and receive advisory guidance. Worker cannot set price, approve/reject scope change, change lifecycle status, or move support off app.",
           contextSummary: buildWorkerAssistContext(input),
           ...(input.memorySummary ? { memorySummary: input.memorySummary } : {}),

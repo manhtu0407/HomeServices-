@@ -16,6 +16,7 @@ import { requestPasswordRecoveryEmail, updateRecoveredPassword } from './passwor
 import { isBoundedLoginPassword, validateNewPassword, validateSignupPassword } from './auth-password'
 import { buildLocalVisualAuditSession, getLocalVisualAuditRole } from './auth-visual-audit'
 import { clearPendingKaelChatDraft } from './pending-kael-chat-draft'
+import { clearPendingWorkerKaelDraft } from './pending-worker-kael-draft'
 import { buildCustomerProfileMetadata } from './customer-profile-metadata'
 import { inspectOAuthCallbackUrl } from './oauth-callback'
 import {
@@ -91,6 +92,7 @@ function useAuthController(): AuthState {
     if (previousUserId && previousUserId !== nextUserId) {
       unregisterPushTokenForSession(previousSession)
       void clearPendingKaelChatDraft(previousUserId)
+      clearPendingWorkerKaelDraft(previousUserId)
     }
     sessionRef.current = nextSession
     if (previousUserId !== nextUserId) roleLookupSequenceRef.current += 1

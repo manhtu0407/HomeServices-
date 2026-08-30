@@ -5,8 +5,8 @@
     "immutableThroughVersion": "20260805090000",
     "sha256": "7d4ac8a8227452e357caa11a21ece9099c80112712dba9a250114d0761a90275"
   },
-  "migrationCount": 292,
-  "migrationsSha256": "12c74c7eca7b3aac79194f11c432463ae677529c55db6f064138d5248c7443ac",
+  "migrationCount": 294,
+  "migrationsSha256": "4c1037935980f36bc671d750e46950448f8cd1b6c6bc0b3355d3df75094b397a",
   "databaseTypes": {
     "file": "packages/shared/src/types/database",
     "sha256": "dd3f09bda8454c9e2f5adf3cff57a320c54645e10df8722001f03283c41b8710"
@@ -1994,6 +1994,13 @@
       "bytes": 44742
     },
     {
+      "version": "20260822163107",
+      "name": "account_deletion_job_media_cleanup",
+      "file": "supabase/migrations/20260822163107_account_deletion_job_media_cleanup.sql",
+      "sha256": "54e7e094cc15d7cbc750559f019b5a1b244c45889740fe0927d5ea8a0cd61618",
+      "bytes": 394
+    },
+    {
       "version": "20260822193000",
       "name": "worker_account_deletion",
       "file": "supabase/migrations/20260822193000_worker_account_deletion.sql",
@@ -2055,6 +2062,13 @@
       "file": "supabase/migrations/20260826143000_admin_system_governance.sql",
       "sha256": "5d3b240fc2087258dab45fee01082f3c36d05a3bb3af0e78fe8fa04a6699e688",
       "bytes": 37229
+    },
+    {
+      "version": "20260830152000",
+      "name": "enable_worker_kael_opportunity_intake",
+      "file": "supabase/migrations/20260830152000_enable_worker_kael_opportunity_intake.sql",
+      "sha256": "2dfa610ac0bbefe08d9e8a9919a64a82565f5778ea7b3b6245c2d5a823efd665",
+      "bytes": 3222
     }
   ]
 }

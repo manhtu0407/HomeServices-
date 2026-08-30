@@ -25,6 +25,7 @@ import {
   requireWorkerKaelChatJob,
   serializeWorkerKaelSession,
 } from "./kael-chat-turn.ts";
+import { deriveWorkerKaelConversationScope } from "./kael-chat-scope.ts";
 
 export {
   getWorkerKaelChat,
@@ -100,10 +101,7 @@ export async function createWorkerKaelChat(
 ) {
   const client = db(ctx);
   const jobId = input.job_id ?? null;
-  if (
-    (input.mode === "normal" && jobId !== null) ||
-    (input.mode === "intake" && jobId === null)
-  ) {
+  if (!deriveWorkerKaelConversationScope(input.mode, jobId)) {
     apiFailure("VALIDATION", "Dữ liệu phiên Kael không hợp lệ", 400);
   }
   if (jobId) await requireWorkerKaelChatJob(client, ctx, jobId);

@@ -8,11 +8,15 @@ import {
 } from '../profile/profile-display-model'
 
 describe('customer profile account journey display', () => {
-  it('places the greeting hand before the exclamation mark in both languages', () => {
+  it('uses the same English time-aware greeting in both languages', () => {
+    const morning = new Date(2026, 7, 17, 9, 0, 0)
     const afternoon = new Date(2026, 7, 17, 15, 0, 0)
+    const evening = new Date(2026, 7, 17, 20, 0, 0)
 
-    expect(homeGreeting('Anh Tú', 'vi', afternoon)).toBe('Chào buổi chiều, Anh Tú👋!')
-    expect(homeGreeting('NestScout Customer', 'en', afternoon)).toBe('Good afternoon, NestScout Customer👋!')
+    expect(homeGreeting('Anh Tú', 'vi', morning)).toBe('Good morning, Anh Tú')
+    expect(homeGreeting('Anh Tú', 'vi', afternoon)).toBe('Good afternoon, Anh Tú')
+    expect(homeGreeting('Anh Tú', 'vi', evening)).toBe('Good evening, Anh Tú')
+    expect(homeGreeting('NestScout Customer', 'en', afternoon)).toBe('Good afternoon, NestScout Customer')
   })
 
   it('counts inclusive account days on the Ho Chi Minh City calendar', () => {

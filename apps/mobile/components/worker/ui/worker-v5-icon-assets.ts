@@ -11,6 +11,7 @@ export const workerV5CapturedIconAssets = {
   homeQuickIncoming: require('@/assets/worker-image-icons/nav-jobs.png') as ImageSourcePropType,
   homeQuickKael: require('@/assets/worker-image-icons/utility-chat.png') as ImageSourcePropType,
   homeQuickSkillsArea: require('@/assets/worker-image-icons/home-quick-skills-area-map-kit.png') as ImageSourcePropType,
+  homeWorkerHero: require('@/assets/worker-image-icons/home-worker-hero-workart.png') as ImageSourcePropType,
   opportunityPlumbing: require('@/assets/worker-image-icons/service-plumbing.png') as ImageSourcePropType,
   profileDossierReliability: require('@/assets/worker-image-icons/profile-reliability-core.png') as ImageSourcePropType,
   profileDossierServices: require('@/assets/worker-image-icons/profile-skills.png') as ImageSourcePropType,

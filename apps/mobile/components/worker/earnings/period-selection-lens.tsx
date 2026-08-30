@@ -24,6 +24,7 @@ export function WorkerEarningsPeriodSelectionLens({
   reduceTransparency,
   selectedIndex,
   surfaceWidth,
+  testID = 'worker-v5-earnings-period-lens',
 }: {
   colors: PeriodSelectionLensColors
   itemCount: number
@@ -31,6 +32,7 @@ export function WorkerEarningsPeriodSelectionLens({
   reduceTransparency: boolean
   selectedIndex: number
   surfaceWidth: number
+  testID?: string
 }) {
   const normalizedItemCount = Math.max(itemCount, 1)
   const normalizedSelectedIndex = Math.min(Math.max(selectedIndex, 0), normalizedItemCount - 1)
@@ -102,7 +104,7 @@ export function WorkerEarningsPeriodSelectionLens({
         },
         animatedLensStyle,
       ]}
-      testID="worker-v5-earnings-period-lens"
+      testID={testID}
     >
       <View pointerEvents="none" style={[styles.bloom, { backgroundColor: colors.bloom }]} />
       <View pointerEvents="none" style={[styles.topLight, { backgroundColor: colors.topLight }]} />
