@@ -62,6 +62,7 @@ import {
   WorkerV5ReceivingAccountBody,
   WorkerV5TransactionHistoryBody,
 } from './earnings/body-surfaces'
+import { resolveWorkerEarningsPeriod, type WorkerEarningsPeriod } from './earnings/overview-model'
 import { useWorkerV5RoutePreview, type WorkerV5RoutePreviewState } from './jobs/use-worker-route-preview'
 import { textByLanguage } from './ui/format'
 import {
@@ -81,8 +82,7 @@ import {
   WorkerV5PrimaryActionButton,
 } from './ui/primitives-surfaces'
 import { styles } from './worker-v5-flow-styles'
-import { WorkerV5HomeBody } from './home/screen-surfaces'
-import { WorkerHomeRebuildSurface } from './home/worker-home-rebuild-surface'
+import { WorkerHomeProductionSurface } from './home/worker-home-production-surface'
 
 import { workerV5Icons } from './ui/screen-icons'
 
@@ -148,6 +148,7 @@ function WorkerV5ScreenSurface({ screen }: { screen: WorkerV5ScreenDefinition })
   const auditRole = firstRouteParam(params.ns_audit_role)
   const routeJobIdParam = firstRouteParam(params.job_id)
   const routeLanguage = firstRouteParam(params.ns_worker_lang)
+  const earningsPeriod = resolveWorkerEarningsPeriod(params.ns_worker_earnings_period)
   const prototype = firstRouteParam(params.ns_worker_prototype)
   const workerStage = firstRouteParam(params.ns_worker_stage)
   const workerKaelReturnTarget = firstRouteParam(params.ns_worker_return_to)
@@ -162,10 +163,11 @@ function WorkerV5ScreenSurface({ screen }: { screen: WorkerV5ScreenDefinition })
   const workerRouteContext = useMemo(() => ({
     job_id: routeJobId ?? currentJobId,
     ns_audit_role: auditRole,
+    ns_worker_earnings_period: earningsPeriod,
     ns_worker_lang: routeLanguage,
     ns_worker_prototype: prototype,
     ns_worker_stage: workerStage,
-  }), [auditRole, currentJobId, prototype, routeJobId, routeLanguage, workerStage])
+  }), [auditRole, currentJobId, earningsPeriod, prototype, routeJobId, routeLanguage, workerStage])
   const [actionBusy, setActionBusy] = useState(false)
   const actionBusyRef = useRef(false)
   const { height } = useWindowDimensions()
@@ -286,6 +288,14 @@ function WorkerV5ScreenSurface({ screen }: { screen: WorkerV5ScreenDefinition })
     if (!target) return
     router.replace(routeForWorkerV5Screen(target, workerRouteContext) as never)
   }
+  const openHomeEarnings = (period: WorkerEarningsPeriod) => {
+    const target = getWorkerV5Screen('4.1-earnings-overview')
+    if (!target) return
+    router.replace(routeForWorkerV5Screen(target, {
+      ...workerRouteContext,
+      ns_worker_earnings_period: period,
+    }) as never)
+  }
   const openScreenById = (id: WorkerV5ScreenId) => {
     openScreen(WORKER_V5_SCREENS.find((candidate) => candidate.id === id) ?? null)
   }
@@ -398,23 +408,24 @@ function WorkerV5ScreenSurface({ screen }: { screen: WorkerV5ScreenDefinition })
         reduceTransparency={glass.reduceTransparency}
         screen={screen}
         surfaceStyle={surfaceStyle}
-        workerJobsHydrated={runtime.workerJobsHydrated}
       />
     )
   }
 
   if (screen.id === '1.1-worker-home') {
     return (
-      <WorkerHomeRebuildSurface
+      <WorkerHomeProductionSurface
         avatarUploadBusy={avatarUploadBusy}
         glass={glass}
         language={language}
         minHeight={minHeight}
+        onOpenEarnings={openHomeEarnings}
         onPickAvatar={openWorkerAvatarPicker}
         openScreen={openScreen}
         runtime={runtime}
         surfaceStyle={surfaceStyle}
         themeMode={workerThemeMode}
+        workerKey={session?.user.id ?? null}
       />
     )
   }
@@ -451,7 +462,7 @@ function WorkerV5ScreenSurface({ screen }: { screen: WorkerV5ScreenDefinition })
     }}
     state={{
       auraState: { formulaPageAuraTarget, reduceTransparency: glass.reduceTransparency, shouldShowWorkerAura, usesCaseExecutionHandoff, usesEarningsHandoff, usesInProgressHandoff, usesKaelOrbHandoff, usesOfferDetailHandoff, usesOpportunityInboxHandoff, usesProfileHandoff, usesRouteEtaHandoff },
-      content: { accessToken: session?.access_token ?? null, actionBusy, avatarUploadBusy, language, minHeight, primaryAction, prototype, reduceMotion: glass.reduceMotion, reduceTransparency: glass.reduceTransparency, routePreview, runtime, screen, surfaceStyle, usesCaseExecutionHandoff, usesEarningsHandoff, usesHandoffStage, usesKaelOrbHandoff, usesOfferDetailHandoff, usesOpportunityInboxHandoff, usesTravelHandoff, workerKey: session?.user.id ?? 'guest-worker' },
+      content: { accessToken: session?.access_token ?? null, actionBusy, avatarUploadBusy, earningsPeriod, language, minHeight, primaryAction, prototype, reduceMotion: glass.reduceMotion, reduceTransparency: glass.reduceTransparency, routePreview, runtime, screen, surfaceStyle, usesCaseExecutionHandoff, usesEarningsHandoff, usesHandoffStage, usesKaelOrbHandoff, usesOfferDetailHandoff, usesOpportunityInboxHandoff, usesTravelHandoff, workerKey: session?.user.id ?? 'guest-worker' },
       headerState: { displayTitle, handoffHeaderSubtitle, hidesHeaderUtility, language, reduceMotion: glass.reduceMotion, screen, title, usesApprovalWaitHandoff, usesCaseClosedHandoff, usesCaseExecutionHandoff, usesEarningsHandoff, usesEarningsOverviewHandoff, usesKaelOrbHandoff, usesOfferDetailHandoff, usesOpportunityInboxHandoff, usesProfileHandoff, usesRouteEtaHandoff, usesTravelHandoff, workerThemeMode },
       nextScreen,
       previousScreen,
@@ -617,6 +628,7 @@ type WorkerV5ScreenLayoutState = {
     accessToken: string | null
     actionBusy: boolean
     avatarUploadBusy: boolean
+    earningsPeriod: WorkerEarningsPeriod
     language: AppLanguage
     minHeight: number
     primaryAction: ReturnType<typeof getWorkerV5PrimaryAction>
@@ -669,6 +681,7 @@ function WorkerV5ScreenLayout({ actions, state }: { actions: WorkerV5ScreenLayou
     accessToken,
     actionBusy,
     avatarUploadBusy,
+    earningsPeriod,
     language,
     minHeight,
     primaryAction,
@@ -704,6 +717,7 @@ function WorkerV5ScreenLayout({ actions, state }: { actions: WorkerV5ScreenLayou
         actionBusy={actionBusy}
         accessToken={accessToken}
         avatarUploadBusy={avatarUploadBusy}
+        earningsPeriod={earningsPeriod}
         language={language}
         navigateActiveJobChat={actions.navigateActiveJobChat}
         navigateJobChat={actions.onOpenJobChat}
@@ -737,6 +751,7 @@ function WorkerV5Body({
   accessToken,
   actionBusy,
   avatarUploadBusy,
+  earningsPeriod,
   language,
   navigateActiveJobChat,
   navigateJobChat,
@@ -759,6 +774,7 @@ function WorkerV5Body({
   accessToken: string | null
   actionBusy: boolean
   avatarUploadBusy: boolean
+  earningsPeriod: WorkerEarningsPeriod
   language: AppLanguage
   navigateActiveJobChat: () => void
   navigateJobChat: () => void
@@ -797,8 +813,6 @@ function WorkerV5Body({
           />
         </View>
       )
-    case '1.1-worker-home':
-      return <WorkerV5HomeBody language={language} onOpenProfileSetup={() => navigateToScreen('5.7-verification-documents')} reduceTransparency={reduceTransparency} runtime={runtime} />
     case '3.1-kael-chat-normal':
       return <WorkerV5KaelChatBody language={language} navigateToScreen={navigateToScreen} reduceTransparency={reduceTransparency} runtime={runtime} />
     case '3.2-kael-job-intake':
@@ -806,6 +820,7 @@ function WorkerV5Body({
     case '4.1-earnings-overview':
       return (
         <WorkerV5EarningsOverviewBody
+          initialPeriod={earningsPeriod}
           language={language}
           navigateToScreen={navigateToScreen}
           reduceMotion={reduceMotion}

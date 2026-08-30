@@ -622,13 +622,36 @@ export function isWorkerPrematureCompletionPaymentRequest(question: string) {
 
 export function buildWorkerAssistContext(input: WorkerAssistInput) {
   const job = input.job;
+  const conversationMode = input.conversationMode ?? (job ? "intake" : "normal");
+  const conversationScope = input.conversationScope ?? (
+    job ? "job_intake" : conversationMode === "intake" ? "opportunity_intake" : "normal"
+  );
+  const opportunities = conversationScope === "opportunity_intake"
+    ? (input.opportunities ?? []).slice(0, 20).map((opportunity) => ({
+      ...opportunity,
+      district: scrubOptionalWorkerOpportunityText(opportunity.district, 120),
+      problem_summary: scrubOptionalWorkerOpportunityText(opportunity.problem_summary, 240),
+      scope_summary: scrubOptionalWorkerOpportunityText(opportunity.scope_summary, 480),
+    }))
+    : undefined;
+  const workerPreferences = conversationScope === "opportunity_intake"
+    ? {
+      service_types: input.opportunityPreferences?.service_types ?? [],
+      districts: (input.opportunityPreferences?.districts ?? [])
+        .map((district) => scrubSensitiveForLLM(district).trim().slice(0, 120))
+        .filter(Boolean)
+        .slice(0, 20),
+    }
+    : undefined;
   const turns = (input.previousTurns ?? []).slice(-6).map((turn) => ({
     role: turn.role,
     text: turn.text ? scrubSensitiveForLLM(turn.text).slice(0, 240) : null,
   }));
   if (!job) {
     return JSON.stringify({
-      conversation_mode: "general",
+      conversation_mode: conversationScope,
+      opportunities,
+      worker_preferences: workerPreferences,
       recent_turns: turns,
     });
   }
@@ -657,9 +680,21 @@ export function buildWorkerAssistContext(input: WorkerAssistInput) {
   });
 }
 
-export function workerAssistPolicyId(conversationMode: "normal" | "intake") {
-  return conversationMode === "normal"
-    ? "kael.path.worker_assist_general.v1"
+function scrubOptionalWorkerOpportunityText(
+  value: string | null,
+  maxLength: number,
+) {
+  if (!value) return null;
+  const scrubbed = scrubSensitiveForLLM(value).trim().slice(0, maxLength);
+  return scrubbed || null;
+}
+
+export function workerAssistPolicyId(
+  conversationScope: "normal" | "intake" | "opportunity_intake" | "job_intake",
+) {
+  if (conversationScope === "normal") return "kael.path.worker_assist_general.v1";
+  return conversationScope === "opportunity_intake"
+    ? "kael.path.worker_assist_opportunity.v1"
     : "kael.path.worker_assist_own_job.v1";
 }
 

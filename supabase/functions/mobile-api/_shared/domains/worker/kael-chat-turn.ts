@@ -15,6 +15,9 @@ import {
   type KaelReasoningReporter,
   type KaelResponseReporter,
   type WorkerAssistAnswer,
+  type WorkerKaelConversationScope,
+  type WorkerOpportunityAssistContext,
+  type WorkerOpportunityAssistPreferences,
 } from "../../kael/index.ts";
 import { takeDurableKaelChatRateLimit } from "../../kael/kael-guardrails/durable-guards.ts";
 import {
@@ -34,6 +37,8 @@ import {
   releaseWorkerKaelTurnClaim,
 } from "./kael-chat-claims.ts";
 import type { WorkerKaelChatCreateInput, WorkerKaelChatTurnInput } from "../../../../_shared/domain.ts";
+import { readWorkerOpportunityAssistContext } from "./broadcasts.ts";
+import { deriveWorkerKaelConversationScope } from "./kael-chat-scope.ts";
 
 export const WORKER_KAEL_SESSION_SELECT =
   "id, job_id, chat_mode, worker_id, status, title, pinned_at, started_at, closed_at, archived_at, total_turns, total_cost_usd, kael_progress, safe_metadata, created_at, updated_at";
@@ -83,13 +88,11 @@ export async function sendWorkerKaelChatTurn(
   }
   const sessionMode = asWorkerKaelChatMode(session.chat_mode);
   const sessionJobId = nullableString(session.job_id);
-  if (
-    (sessionMode === "normal" && sessionJobId !== null) ||
-    (sessionMode === "intake" && sessionJobId === null)
-  ) {
+  const conversationScope = deriveWorkerKaelConversationScope(sessionMode, sessionJobId);
+  if (!conversationScope) {
     apiFailure("WORKFLOW_STALE", "Phi\u00ean Kael kh\u00f4ng c\u00f2n h\u1ee3p l\u1ec7", 409);
   }
-  if (sessionMode === "normal" && input.media_refs.length > 0) {
+  if (sessionJobId === null && input.media_refs.length > 0) {
     apiFailure(
       "VALIDATION_ERROR",
       "\u1ea2nh ch\u1ec9 \u0111\u01b0\u1ee3c g\u1eedi trong cu\u1ed9c tr\u00f2 chuy\u1ec7n theo c\u00f4ng vi\u1ec7c",
@@ -142,6 +145,24 @@ export async function sendWorkerKaelChatTurn(
       throw error;
     }
   }
+  let opportunityContext: {
+    opportunities: WorkerOpportunityAssistContext[];
+    preferences: WorkerOpportunityAssistPreferences;
+  } | null = null;
+  if (conversationScope === "opportunity_intake") {
+    try {
+      opportunityContext = await readWorkerOpportunityAssistContext(ctx);
+    } catch (error) {
+      await releaseWorkerKaelTurnClaim(client, {
+        claimId,
+        discard: false,
+        requestId: asString(claim.request_id),
+        sessionId,
+        workerId: ctx.user.id,
+      });
+      throw error;
+    }
+  }
   await updateKaelProgress(client, {
     table: "kael_worker_chat_sessions",
     id: sessionId,
@@ -150,9 +171,26 @@ export async function sendWorkerKaelChatTurn(
     status: "running",
     progress: 0.2,
   });
+  if (opportunityContext && opportunityContext.opportunities.length === 0) {
+    return finalizeWorkerKaelChatTurn({
+      client,
+      ctx,
+      sessionId,
+      input,
+      sessionJobId,
+      answer: emptyWorkerOpportunityAnswer(safeMessage, input.language),
+      needsInitialTitle: asNumber(session.total_turns) === 0 && !nullableString(session.title),
+      claim,
+      claimId,
+      reasoning: options.reasoning,
+      response: options.response,
+      safeMessage,
+    });
+  }
   const { answer, needsInitialTitle } = await runWorkerKaelAssistant({
     client, ctx, session, sessionId, input, secrets, spendGate, sessionMode,
-    sessionJobId, job, visionPhotoUrls, claim, claimId, reasoning: options.reasoning,
+    conversationScope, opportunityContext, sessionJobId, job, visionPhotoUrls,
+    claim, claimId, reasoning: options.reasoning,
     response: options.response, safeMessage,
   });
   return finalizeWorkerKaelChatTurn({
@@ -170,6 +208,11 @@ async function runWorkerKaelAssistant(input: {
   secrets: EdgeAiSecrets;
   spendGate: KaelSpendGate;
   sessionMode: WorkerKaelChatCreateInput["mode"];
+  conversationScope: WorkerKaelConversationScope;
+  opportunityContext: {
+    opportunities: WorkerOpportunityAssistContext[];
+    preferences: WorkerOpportunityAssistPreferences;
+  } | null;
   sessionJobId: string | null;
   job: Record<string, unknown> | null;
   visionPhotoUrls: string[];
@@ -182,14 +225,17 @@ async function runWorkerKaelAssistant(input: {
   const needsInitialTitle = asNumber(input.session.total_turns) === 0 && !nullableString(input.session.title);
   const recentTurns = await readWorkerKaelRecentTurns(input.client, input.sessionId);
   const workerVisionFinding = await findWorkerKaelVision(input);
-  const memorySummary = await buildKaelL2L3MemorySummary(input.client, {
-    jobId: input.sessionJobId,
-    includeCustomer: false,
-    maxTotalTokens: 500,
-  });
+  const memorySummary = input.conversationScope === "opportunity_intake"
+    ? null
+    : await buildKaelL2L3MemorySummary(input.client, {
+      jobId: input.sessionJobId,
+      includeCustomer: false,
+      maxTotalTokens: 500,
+    });
   try {
     const answer = await runWorkerAssist({
       conversationMode: input.sessionMode,
+      conversationScope: input.conversationScope,
       job: input.job
         ? {
           id: asString(input.job.id), status: nullableString(input.job.status),
@@ -202,6 +248,8 @@ async function runWorkerKaelAssistant(input: {
         }
         : null,
       question: input.safeMessage, language: input.input.language, mediaRefs: input.input.media_refs,
+      opportunities: input.opportunityContext?.opportunities,
+      opportunityPreferences: input.opportunityContext?.preferences,
       reasoning: input.reasoning,
       response: input.response,
       visionFinding: workerVisionFinding, previousTurns: recentTurns,
@@ -218,6 +266,28 @@ async function runWorkerKaelAssistant(input: {
     });
     throw error;
   }
+}
+
+function emptyWorkerOpportunityAnswer(
+  question: string,
+  language: "vi" | "en",
+): WorkerAssistAnswer {
+  return {
+    schema_version: "worker_assist_answer.v1",
+    text: language === "en"
+      ? "There are no active opportunities available right now. Please check the opportunity inbox again later."
+      : "Hiện chưa có cơ hội nào còn hiệu lực. Bạn hãy kiểm tra lại Hộp cơ hội sau.",
+    session_title: buildWorkerKaelSessionTitle(question, null, language),
+    safety_notes: [],
+    redirect_scope_change: false,
+    fallback_used: false,
+    public_reasoning_summary: language === "en"
+      ? ["No active opportunity was available in the verified list."]
+      : ["Danh sách đã xác minh hiện không có cơ hội còn hiệu lực."],
+    provider_attempts: [],
+    trace: [],
+    cost_usd: 0,
+  };
 }
 
 async function findWorkerKaelVision(

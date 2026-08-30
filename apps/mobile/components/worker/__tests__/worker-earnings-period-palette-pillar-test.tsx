@@ -96,4 +96,21 @@ describe('Worker Earnings period palette contract', () => {
     }
     expect(screen.getByTestId('worker-v5-earnings-period-lens')).toBeOnTheScreen()
   })
+
+  it('starts on the validated period supplied by the Salary route', () => {
+    render(
+      <WorkerV5EarningsDashboard
+        earnings={null}
+        earningsError={null}
+        initialPeriod="year"
+        language="vi"
+        onRetry={async () => true}
+        reduceMotion
+        reduceTransparency={false}
+      />,
+    )
+
+    expect(screen.getByTestId('worker-v5-earnings-period-year').props.accessibilityState).toEqual({ selected: true })
+    expect(screen.getByTestId('worker-v5-earnings-period-month').props.accessibilityState).toEqual({ selected: false })
+  })
 })

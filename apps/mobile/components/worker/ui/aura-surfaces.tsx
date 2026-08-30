@@ -262,54 +262,6 @@ export function WorkerV5CustomerMapMintAura({
   )
 }
 
-export function WorkerV5HomeAuraBackground({ reduceTransparency = false }: { reduceTransparency?: boolean } = {}) {
-  return <FormulaMintCanvasAura reduceTransparency={reduceTransparency} scope="WorkerV5Home" testID="worker-v5-page-mint-aura" />
-}
-
-export function WorkerV5HomeHeroSourceAura() {
-  return (
-    <View pointerEvents="none" style={styles.homeCommandAura} testID="worker-v5-hero-mint-aura">
-      <Svg height="100%" preserveAspectRatio="none" viewBox="0 0 360 220" width="100%">
-        <Defs>
-          <RadialGradient id="workerV5HomeHeroSourceAuraFill" cx="84%" cy="18%" r="70%">
-            <Stop offset="0" stopColor="rgba(73,231,207,0.42)" />
-            <Stop offset="0.46" stopColor="rgba(149,246,229,0.16)" />
-            <Stop offset="0.78" stopColor="rgba(149,246,229,0)" />
-          </RadialGradient>
-          <RadialGradient id="workerV5HomeHeroSourceAuraLeft" cx="10%" cy="92%" r="66%">
-            <Stop offset="0" stopColor="rgba(83,220,206,0.24)" />
-            <Stop offset="0.72" stopColor="rgba(83,220,206,0)" />
-          </RadialGradient>
-        </Defs>
-        <Rect fill="url(#workerV5HomeHeroSourceAuraFill)" height="220" width="360" />
-        <Rect fill="url(#workerV5HomeHeroSourceAuraLeft)" height="220" width="360" />
-      </Svg>
-    </View>
-  )
-}
-
-export function WorkerV5HomeQuickActionsAura() {
-  return (
-    <View pointerEvents="none" style={styles.homeListMintAura} testID="worker-v5-list-mint-aura">
-      <Svg height="100%" preserveAspectRatio="none" viewBox="0 0 360 220" width="100%">
-        <Defs>
-          <RadialGradient id="workerV5HomeQuickAuraRight" cx="86%" cy="8%" r="64%">
-            <Stop offset="0" stopColor="rgba(80,232,210,0.28)" />
-            <Stop offset="0.62" stopColor="rgba(151,246,232,0.12)" />
-            <Stop offset="0.84" stopColor="rgba(151,246,232,0)" />
-          </RadialGradient>
-          <RadialGradient id="workerV5HomeQuickAuraLeft" cx="8%" cy="92%" r="58%">
-            <Stop offset="0" stopColor="rgba(81,216,203,0.22)" />
-            <Stop offset="0.74" stopColor="rgba(81,216,203,0)" />
-          </RadialGradient>
-        </Defs>
-        <Rect fill="url(#workerV5HomeQuickAuraRight)" height="220" width="360" />
-        <Rect fill="url(#workerV5HomeQuickAuraLeft)" height="220" width="360" />
-      </Svg>
-    </View>
-  )
-}
-
 export function WorkerV5EarningsHomeHeroAura({ testID }: { testID: string }) {
   return (
     <View pointerEvents="none" style={styles.homeCommandAura} testID={testID}>

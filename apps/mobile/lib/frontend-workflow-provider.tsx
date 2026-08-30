@@ -28,6 +28,7 @@ import type {
   KaelMemorySelfViewResponse,
   NotificationListResponse,
   WorkerCancellationRequestInput,
+  WorkerBroadcast,
   WorkerJobListResponse,
   WorkerPayoutMethod,
   WorkerPayoutMethodSaveInput,
@@ -95,6 +96,7 @@ type FrontendWorkflowActions = {
   workerRefresh: () => Promise<boolean>
   workerAcceptBroadcast: (jobId?: string) => Promise<boolean>
   workerDeclineBroadcast: () => Promise<boolean>
+  workerSelectBroadcast: (broadcastId: string) => boolean
   workerUpdateStatus: WorkerOnsiteActions['workerUpdateStatus']
   workerConfirmCashPayment: (received?: boolean) => Promise<boolean>
   requestScopeChange: (input: WorkerScopeChangeDraftInput) => Promise<boolean>
@@ -146,6 +148,9 @@ type FrontendWorkflowContextValue = {
   customerScopeDecisionBusyId: string | null
   workerEarnings: EarningsResponse | null
   workerEarningsError: string | null
+  workerBroadcasts: WorkerBroadcast[]
+  workerBroadcastsError: string | null
+  workerBroadcastsHydrated: boolean
   workerJobs: WorkerJobListResponse['jobs']
   workerJobsHydrated: boolean
   workerPerformanceInsights: WorkerPerformanceInsightsResponse | null
@@ -261,6 +266,9 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
   const {
     workerAcceptBroadcast,
     workerDeclineBroadcast,
+    workerBroadcasts,
+    workerBroadcastsError,
+    workerBroadcastsHydrated,
     workerEarnings,
     workerEarningsError,
     workerJobs,
@@ -269,6 +277,7 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
     workerPayoutMethod,
     workerProfile,
     workerRefresh,
+    workerSelectBroadcast,
     workerRequestWithdrawal,
     workerSavePayoutMethod,
     workerSubmitRegistration,
@@ -363,6 +372,7 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
     workerRefresh,
     workerAcceptBroadcast,
     workerDeclineBroadcast,
+    workerSelectBroadcast,
     workerUpdateStatus,
     workerConfirmCashPayment,
     requestScopeChange,
@@ -435,6 +445,7 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
     submitReview,
     workerAcceptBroadcast,
     workerDeclineBroadcast,
+    workerSelectBroadcast,
     workerRefresh,
     workerSavePayoutMethod,
     workerRequestWithdrawal,
@@ -561,6 +572,9 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
     customerScopeDecisionBusyId,
     workerEarnings,
     workerEarningsError,
+    workerBroadcasts,
+    workerBroadcastsError,
+    workerBroadcastsHydrated,
     workerJobs,
     workerJobsHydrated,
     workerPerformanceInsights,

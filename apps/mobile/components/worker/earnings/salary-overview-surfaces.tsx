@@ -17,11 +17,10 @@ import { getReducedTransparencyWorkerTokens, getWorkerThemeTokens, useWorkerThem
 import { formatVndDong, textByLanguage } from '../ui/format'
 import {
   buildEarningsDashboardModel,
-  WORKER_EARNINGS_PERIODS,
   type WorkerEarningsPeriod,
 } from './overview-model'
+import { WorkerEarningsPeriodSelector, workerEarningsPeriodLabel } from './period-selector'
 import { workerSalaryWorkartAssets } from './salary-assets'
-import { WorkerEarningsPeriodSelectionLens } from './period-selection-lens'
 import { styles } from './salary-overview-styles'
 
 type WorkerSalaryTokens = ReturnType<typeof getWorkerThemeTokens>
@@ -29,16 +28,6 @@ type WorkerV5EarningsUtilityIconName = Extract<LiquidNavIconName, 'activity' | '
 
 function Text({ color, style, ...props }: TextProps & { color?: string }) {
   return <RNText {...props} style={[styles.workerCustomerFontText, color ? { color } : null, style]} />
-}
-
-function periodLabel(period: WorkerEarningsPeriod, language: AppLanguage) {
-  const labels = {
-    day: textByLanguage(language, 'Ngày', 'Day'),
-    month: textByLanguage(language, 'Tháng', 'Month'),
-    week: textByLanguage(language, 'Tuần', 'Week'),
-    year: textByLanguage(language, 'Năm', 'Year'),
-  }
-  return labels[period]
 }
 
 function formatCommissionRate(rateBps: number | null | undefined) {
@@ -147,79 +136,6 @@ function MoneyRow({ label, testID, tokens, value }: { label: string; testID: str
   )
 }
 
-function PeriodSelector({
-  language,
-  period,
-  reduceMotion,
-  reduceTransparency,
-  setPeriod,
-  tokens,
-}: {
-  language: AppLanguage
-  period: WorkerEarningsPeriod
-  reduceMotion: boolean
-  reduceTransparency: boolean
-  setPeriod: (period: WorkerEarningsPeriod) => void
-  tokens: WorkerSalaryTokens
-}) {
-  const [surfaceWidth, setSurfaceWidth] = useState(0)
-  const selectedIndex = Math.max(WORKER_EARNINGS_PERIODS.indexOf(period), 0)
-
-  return (
-    <View
-      accessibilityLabel={textByLanguage(language, 'Khoảng thời gian thu nhập', 'Earnings period')}
-      accessibilityRole="tablist"
-      style={[styles.periodSelector, surface(tokens)]}
-      testID="worker-v5-earnings-period-tabs"
-    >
-      <View
-        onLayout={({ nativeEvent: { layout } }) => setSurfaceWidth(layout.width)}
-        style={styles.periodSelectorRail}
-      >
-        <WorkerEarningsPeriodSelectionLens
-          colors={{
-            bloom: tokens.glassHighlight,
-            border: tokens.borderStrong,
-            fill: tokens.glassStrong,
-            innerBorder: tokens.border,
-            shadow: tokens.glassFloatShadow,
-            sheen: tokens.glassHighlight,
-            topLight: tokens.glassHighlight,
-          }}
-          itemCount={WORKER_EARNINGS_PERIODS.length}
-          reduceMotion={reduceMotion}
-          reduceTransparency={reduceTransparency}
-          selectedIndex={selectedIndex}
-          surfaceWidth={surfaceWidth}
-        />
-        {WORKER_EARNINGS_PERIODS.map((item) => {
-          const active = item === period
-          return (
-            <Pressable
-              accessibilityRole="tab"
-              accessibilityState={{ selected: active }}
-              key={item}
-              onPress={() => setPeriod(item)}
-              style={({ pressed }) => [
-                styles.periodButton,
-                active && {
-                  backgroundColor: reduceTransparency ? tokens.glassStrong : 'transparent',
-                  borderColor: tokens.borderStrong,
-                  borderWidth: reduceTransparency ? 1 : 0,
-                },
-                pressed && !reduceMotion ? styles.pressed : null,
-              ]}
-              testID={`worker-v5-earnings-period-${item}`}
-            >
-              <Text color={active ? tokens.primary : tokens.muted} style={[styles.periodLabel, active && styles.periodLabelActive]}>{periodLabel(item, language)}</Text>
-            </Pressable>
-          )
-        })}
-      </View>
-    </View>
-  )
-}
-
 function EarningsChart({
   language,
   model,
@@ -231,7 +147,7 @@ function EarningsChart({
   period: WorkerEarningsPeriod
   tokens: WorkerSalaryTokens
 }) {
-  const points = model.points.slice(-7)
+  const points = model.visiblePoints
   const maximum = Math.max(...points.map((point) => point.value), 0)
   const isReady = model.state === 'ready' && maximum > 0
   const chartLabel = model.state === 'pending'
@@ -244,7 +160,7 @@ function EarningsChart({
     <View accessibilityLabel={chartLabel} accessibilityRole="image" accessibilityState={{ busy: model.state === 'pending' }} style={[styles.chartCard, surface(tokens)]} testID="worker-v5-earnings-chart">
       <View style={styles.sectionHeader}>
         <Text color={tokens.text} style={styles.cardTitle}>{textByLanguage(language, 'Dòng tiền sau phí', 'Cash flow after fees')}</Text>
-        <Text color={tokens.muted} style={styles.sectionMeta}>{periodLabel(period, language)}</Text>
+        <Text color={tokens.muted} style={styles.sectionMeta}>{workerEarningsPeriodLabel(period, language)}</Text>
       </View>
       {isReady ? (
         <View style={styles.chartBars}>
@@ -286,6 +202,7 @@ function SalaryHeroWorkartWash({ surfaceColor }: { surfaceColor: string }) {
 export function WorkerV5EarningsDashboard({
   earningsError,
   earnings,
+  initialPeriod = 'month',
   language,
   onRetry,
   reduceMotion,
@@ -293,12 +210,13 @@ export function WorkerV5EarningsDashboard({
 }: {
   earnings: EarningsResponse | null | undefined
   earningsError: string | null
+  initialPeriod?: WorkerEarningsPeriod
   language: AppLanguage
   onRetry: () => Promise<boolean>
   reduceMotion: boolean
   reduceTransparency: boolean
 }) {
-  const [period, setPeriod] = useState<WorkerEarningsPeriod>('month')
+  const [period, setPeriod] = useState<WorkerEarningsPeriod>(initialPeriod)
   const themeMode = useWorkerThemeMode()
   const baseTokens = getWorkerThemeTokens(themeMode)
   const tokens = reduceTransparency ? getReducedTransparencyWorkerTokens(baseTokens) : baseTokens
@@ -339,7 +257,7 @@ export function WorkerV5EarningsDashboard({
       <View style={styles.periodSection}>
         <View style={styles.sectionHeader}>
           <Text color={tokens.text} style={styles.sectionTitle}>{textByLanguage(language, 'Thu nhập theo kỳ', 'Income by period')}</Text>
-          <Text color={tokens.muted} style={styles.sectionMeta}>{periodLabel(period, language)}</Text>
+          <Text color={tokens.muted} style={styles.sectionMeta}>{workerEarningsPeriodLabel(period, language)}</Text>
         </View>
         {!earnings || earningsError ? <WorkerV5EarningsDataNotice
           error={earningsError}
@@ -349,14 +267,20 @@ export function WorkerV5EarningsDashboard({
           retryTestID="worker-v5-earnings-retry"
           testID="worker-v5-earnings-error"
         /> : null}
-        <PeriodSelector language={language} period={period} reduceMotion={reduceMotion} reduceTransparency={reduceTransparency} setPeriod={setPeriod} tokens={tokens} />
-        <EarningsChart language={language} model={earningsError ? { ...model, state: 'empty' } : model} period={period} tokens={tokens} />
+        <WorkerEarningsPeriodSelector
+          language={language}
+          onPeriodChange={setPeriod}
+          period={period}
+          reduceMotion={reduceMotion}
+          reduceTransparency={reduceTransparency}
+        />
+        <EarningsChart language={language} model={!earnings && earningsError ? { ...model, state: 'empty' } : model} period={period} tokens={tokens} />
       </View>
 
       <View accessibilityLabel={textByLanguage(language, 'Tóm tắt thu nhập', 'Earnings summary')} style={[styles.card, surface(tokens)]} testID="worker-v5-earnings-summary">
         <View style={styles.sectionHeader}>
           <Text color={tokens.text} style={styles.cardTitle}>{textByLanguage(language, 'Tóm tắt kỳ này', 'This period')}</Text>
-          <Text color={tokens.muted} style={styles.sectionMeta}>{periodLabel(period, language)}</Text>
+          <Text color={tokens.muted} style={styles.sectionMeta}>{workerEarningsPeriodLabel(period, language)}</Text>
         </View>
         <View style={[styles.metricGrid, { borderColor: tokens.border }]}>
           {metrics.map((metric) => <MetricCell key={metric.id} metric={metric} testID={metric.id === 'total' ? 'worker-v5-earnings-metric-total-value' : undefined} tokens={tokens} />)}

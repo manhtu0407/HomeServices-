@@ -1,5 +1,6 @@
 import type { AppLanguage } from '@/lib/app-language'
 
+import { resolveWorkerEarningsPeriod } from '../earnings/overview-model'
 import { getWorkerV5Screen } from './screens'
 import type {
   WorkerDockActive,
@@ -43,6 +44,7 @@ export function routeForWorkerV5Screen(
   const auditRole = firstRouteParam(params.ns_audit_role)
   const jobId = validatedWorkerV5JobId(firstRouteParam(params.job_id))
   const language = firstRouteParam(params.ns_worker_lang)
+  const earningsPeriod = firstRouteParam(params.ns_worker_earnings_period)
   const prototype = firstRouteParam(params.ns_worker_prototype)
   const workerStage = firstRouteParam(params.ns_worker_stage)
 
@@ -50,6 +52,9 @@ export function routeForWorkerV5Screen(
   if (jobId) query.push(`job_id=${encodeURIComponent(jobId)}`)
   if (language === 'en' || language === 'vi') {
     query.push(`ns_worker_lang=${language}`)
+  }
+  if (screen.section === 'earnings' && earningsPeriod && resolveWorkerEarningsPeriod(earningsPeriod) === earningsPeriod) {
+    query.push(`ns_worker_earnings_period=${earningsPeriod}`)
   }
   if (
     (prototype === 'worker-jobs-rebuild-v1' && screen.section === 'jobs')

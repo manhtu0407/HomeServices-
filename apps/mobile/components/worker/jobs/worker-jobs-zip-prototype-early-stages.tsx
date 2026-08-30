@@ -2,10 +2,11 @@ import { Image } from 'expo-image'
 import { useState } from 'react'
 import { Pressable, View } from 'react-native'
 import { useLocalSearchParams, useRouter } from 'expo-router'
-
 import type { LocalDeal } from '@nestscout/shared'
 import { color } from '@/design/theme'
 import { localizedServiceLabel, type AppLanguage } from '@/lib/app-language'
+import type { WorkerBroadcast } from '@/lib/api-types'
+import { workerBroadcastToSnapshot } from '@/lib/frontend-workflow/snapshots'
 import { firstRouteParam, routeForWorkerV5Screen } from '../dock/routing'
 import { requireWorkerV5Screen } from '../dock/screens'
 import { WorkerV5BoundaryNote } from '../ui/metrics-surfaces'
@@ -44,6 +45,7 @@ export function WorkerJobsLegacyPrototypeOpportunityCard({
   previewJob,
   reduceTransparency,
   selected,
+  testID = 'worker-v5-opportunity-card',
 }: {
   currentDeal: LocalDeal | null
   language: AppLanguage
@@ -51,6 +53,7 @@ export function WorkerJobsLegacyPrototypeOpportunityCard({
   previewJob?: WorkerJobsLegacyPrototypePreviewJob | null
   reduceTransparency: boolean
   selected: boolean
+  testID?: string
 }) {
   const isIncoming = currentDeal?.status === 'broadcasting' && currentDeal.broadcast?.status === 'sent'
   const service = currentDeal ? localizedServiceLabel(currentDeal.draft.serviceType, language) : textByLanguage(language, 'Cơ hội công việc', 'Job opportunity')
@@ -108,11 +111,67 @@ export function WorkerJobsLegacyPrototypeOpportunityCard({
       accessibilityState={{ selected }}
       onPress={onSelect}
       style={({ pressed }) => [prototypeStyles.opportunityCard, selected && { borderColor: color.brand.primary, borderWidth: 2 }, pressed && { opacity: 0.88 }]}
-      testID="worker-v5-opportunity-card"
+      testID={testID}
     >
       {copy}{artworkView}
     </Pressable>
   )
+}
+
+function broadcastDeal(broadcast: WorkerBroadcast): LocalDeal {
+  const snapshot = workerBroadcastToSnapshot(broadcast)
+  return {
+    backendStatus: 'broadcasting',
+    broadcast: {
+      ...snapshot,
+      fullAddressLabel: null,
+      fullAddressVisible: false,
+      prebrief: snapshot.prebrief ?? [],
+    },
+    createdAt: broadcast.sent_at ?? broadcast.expires_at ?? '',
+    draft: {
+      addressLabel: snapshot.generalArea,
+      description: broadcast.scope_summary ?? broadcast.problem_summary ?? '',
+      districtLabel: snapshot.generalArea,
+      inferredProblemLabel: null,
+      mediaCount: broadcast.media_count,
+      needsServiceChoice: false,
+      problemChips: broadcast.problem_summary ? [broadcast.problem_summary] : [],
+      serviceType: broadcast.service_type,
+      source: 'booking',
+      timeChoice: 'now',
+      unsupportedServiceLabel: null,
+    },
+    estimate: null,
+    finalPrice: null,
+    id: broadcast.job_id,
+    matchingState: null,
+    payment: null,
+    scheduledAt: broadcast.scheduled_at,
+    scopeChange: null,
+    status: 'broadcasting',
+  }
+}
+
+function activeInboxBroadcasts(broadcasts: WorkerBroadcast[]) {
+  const now = Date.now()
+  return broadcasts
+    .filter((broadcast) => {
+      const expiresAt = broadcast.expires_at ? Date.parse(broadcast.expires_at) : Number.NaN
+      const quoteExpiresAt = Date.parse(broadcast.original_scope_price_quote.expires_at)
+      return broadcast.status === 'sent'
+        && Number.isFinite(expiresAt)
+        && expiresAt > now
+        && Number.isFinite(quoteExpiresAt)
+        && quoteExpiresAt > now
+    })
+    .sort((left, right) => {
+      const expiryDifference = Date.parse(left.expires_at ?? '') - Date.parse(right.expires_at ?? '')
+      if (expiryDifference !== 0) return expiryDifference
+      const sentDifference = Date.parse(right.sent_at ?? '') - Date.parse(left.sent_at ?? '')
+      return sentDifference !== 0 ? sentDifference : left.broadcast_id.localeCompare(right.broadcast_id)
+    })
+    .slice(0, 20)
 }
 
 function WorkerJobsStageTwoInfoGroup({ iconNames, rows, testID, title, tokens }: {
@@ -207,6 +266,8 @@ export function WorkerJobsLegacyPrototypeOpportunityInboxBody({
   const [selectedMissionId, setSelectedMissionId] = useState<string | null>(null)
   const deal = runtime.state.deal
   const currentDeal = workerV5JobsDestinationScreenId(deal) === '2.1-opportunity-inbox' ? null : deal
+  const cachedBroadcasts = runtime.workerBroadcasts ?? []
+  const inboxBroadcasts = activeInboxBroadcasts(cachedBroadcasts)
   const previewJob = prototypeMode && !currentDeal && firstRouteParam(params.ns_worker_jobs_variant) === 'available' ? workerJobsLegacyPrototypePreviewJob : null
   const displayedJobId = currentDeal?.id ?? previewJob?.id ?? null
   const isIncoming = Boolean(previewJob) || (currentDeal?.status === 'broadcasting' && currentDeal.broadcast?.status === 'sent')
@@ -217,6 +278,14 @@ export function WorkerJobsLegacyPrototypeOpportunityInboxBody({
     ns_worker_prototype: params.ns_worker_prototype,
   }
   const openCurrentWork = () => {
+    if (inboxBroadcasts.length > 0 && selectedMissionId) {
+      if (!runtime.actions.workerSelectBroadcast(selectedMissionId)) {
+        void runtime.actions.workerRefresh()
+        return
+      }
+      router.replace(routeForWorkerV5Screen(requireWorkerV5Screen('2.2-offer-detail'), routeParams) as never)
+      return
+    }
     if (currentDeal) {
       router.replace(routeForWorkerV5Screen(requireWorkerV5Screen(workerV5JobsDestinationScreenId(currentDeal)), routeParams) as never)
       return
@@ -227,8 +296,29 @@ export function WorkerJobsLegacyPrototypeOpportunityInboxBody({
 
   return (
     <View style={prototypeStyles.opportunityInboxNew} testID="worker-v5-opportunity-inbox-handoff">
-      <WorkerJobsLegacyPrototypeOpportunityCard currentDeal={currentDeal} language={language} onSelect={displayedJobId ? () => setSelectedMissionId(displayedJobId) : undefined} previewJob={previewJob} reduceTransparency={reduceTransparency} selected={isSelected} />
-      {displayedJobId && !isSelected ? (
+      {inboxBroadcasts.length > 0 ? inboxBroadcasts.map((broadcast) => {
+        const selected = selectedMissionId === broadcast.broadcast_id
+        return (
+          <WorkerJobsLegacyPrototypeOpportunityCard
+            currentDeal={broadcastDeal(broadcast)}
+            key={broadcast.broadcast_id}
+            language={language}
+            onSelect={() => {
+              if (runtime.actions.workerSelectBroadcast(broadcast.broadcast_id)) {
+                setSelectedMissionId(broadcast.broadcast_id)
+              } else {
+                void runtime.actions.workerRefresh()
+              }
+            }}
+            reduceTransparency={reduceTransparency}
+            selected={selected}
+            testID={`worker-v5-opportunity-card-${broadcast.broadcast_id}`}
+          />
+        )
+      }) : (
+        <WorkerJobsLegacyPrototypeOpportunityCard currentDeal={currentDeal} language={language} onSelect={displayedJobId ? () => setSelectedMissionId(displayedJobId) : undefined} previewJob={previewJob} reduceTransparency={reduceTransparency} selected={isSelected} />
+      )}
+      {(inboxBroadcasts.length > 0 || displayedJobId) && !selectedMissionId ? (
         <Text style={prototypeStyles.opportunitySelectionHintNew} testID="worker-v5-opportunity-selection-hint">
           {textByLanguage(language, 'Chọn công việc để xem chi tiết.', 'Select the job to review details.')}
         </Text>
@@ -236,13 +326,13 @@ export function WorkerJobsLegacyPrototypeOpportunityInboxBody({
       <WorkerJobsLegacyPrototypeOpportunityActions
         language={language}
         onKael={openKaelIntake}
-        onPrimary={isSelected ? openCurrentWork : undefined}
-        primary={isSelected
-          ? isIncoming
+        onPrimary={selectedMissionId || isSelected ? openCurrentWork : undefined}
+        primary={selectedMissionId
+          ? inboxBroadcasts.length > 0 || isIncoming
             ? textByLanguage(language, 'Xem & nhận việc', 'Review and accept')
             : textByLanguage(language, 'Tiếp tục công việc', 'Continue work')
           : textByLanguage(language, 'Chọn công việc để tiếp tục', 'Select a job to continue')}
-        primaryDisabled={!displayedJobId || !isSelected}
+        primaryDisabled={inboxBroadcasts.length > 0 ? !selectedMissionId : !displayedJobId || !isSelected}
         reduceTransparency={reduceTransparency}
       />
     </View>

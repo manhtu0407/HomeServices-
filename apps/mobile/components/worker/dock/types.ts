@@ -75,6 +75,7 @@ export type WorkerV5RouteParams = {
   ns_payment_step?: string | string[]
   ns_scope_mode?: string | string[]
   ns_worker_lang?: string | string[]
+  ns_worker_earnings_period?: string | string[]
   ns_worker_prototype?: string | string[]
   ns_worker_return_to?: string | string[]
   ns_worker_screen?: string | string[]
