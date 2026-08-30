@@ -1,24 +1,15 @@
-# Stop the local Supabase stack.
-# Every 'up' in the docs has a matching 'down'. Leaving containers running
-# overnight on a 16 GB machine is a real cost, not a cosmetic one.
-
-[CmdletBinding()]
-param(
-  # The CLI keeps the database volume by default so a restart is fast.
-  # Pass -Purge to drop it and reclaim the disk.
-  [switch]$Purge
-)
+# Stop the Supabase CLI-owned local stack without deleting its database volume.
 
 $ErrorActionPreference = "Stop"
-$here = Split-Path -Parent $MyInvocation.MyCommand.Path
-$repoRoot = (Resolve-Path (Join-Path $here "..\..")).Path
+if ($args.Count -gt 0) {
+  [Console]::Error.WriteLine("down: no arguments are accepted")
+  exit 2
+}
 
+$repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path
 Push-Location $repoRoot
 try {
-  $supabaseArgs = @("stop")
-  if ($Purge) { $supabaseArgs += "--no-backup" }
-
-  & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $repoRoot "scripts\run-supabase.ps1") @supabaseArgs
+  & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $repoRoot "scripts\run-supabase.ps1") stop
   exit $LASTEXITCODE
 } finally {
   Pop-Location

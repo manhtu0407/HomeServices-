@@ -15,11 +15,11 @@ dblink_db_user="supabase_admin"
 
 while [ $# -gt 0 ]; do
   case "$1" in
-    --container) container="$2"; shift 2 ;;
-    --filter) filter="$2"; shift 2 ;;
+    --container) [ $# -ge 2 ] || { echo "run-sql-tests: --container requires a value" >&2; exit 2; }; container="$2"; shift 2 ;;
+    --filter) [ $# -ge 2 ] || { echo "run-sql-tests: --filter requires a value" >&2; exit 2; }; filter="$2"; shift 2 ;;
     --stop-on-first-failure) stop_on_first_failure=1; shift ;;
-    --db-user) db_user="$2"; shift 2 ;;
-    --dblink-db-user) dblink_db_user="$2"; shift 2 ;;
+    --db-user) [ $# -ge 2 ] || { echo "run-sql-tests: --db-user requires a value" >&2; exit 2; }; db_user="$2"; shift 2 ;;
+    --dblink-db-user) [ $# -ge 2 ] || { echo "run-sql-tests: --dblink-db-user requires a value" >&2; exit 2; }; dblink_db_user="$2"; shift 2 ;;
     *) echo "run-sql-tests: unknown argument '$1'" >&2; exit 2 ;;
   esac
 done
@@ -40,19 +40,28 @@ if [ ! -d "$test_dir" ]; then
   exit 1
 fi
 
+mapfile -t files < <(find "$test_dir" -maxdepth 1 -type f -name "$filter" | sort)
+discovered=${#files[@]}
+if [ "$discovered" -eq 0 ]; then
+  echo "no SQL verification files matched filter '$filter'"
+  echo "sql verification: discovered=0 executed=0 passed=0 failed=0 stopped_early=false"
+  exit 2
+fi
+
 # The container must already be up; starting it here would hide the fact that a
 # caller skipped the doctor gate.
-if ! docker ps --filter "name=$container" --format '{{.Names}}' 2>/dev/null | grep -qF "$container"; then
+if ! docker ps --filter "name=$container" --format '{{.Names}}' 2>/dev/null | grep -qxF "$container"; then
   echo "container '$container' is not running. Run 'pnpm db:local:up' first."
   exit 1
 fi
 
 passed=0
 failed_files=()
-total=0
+executed=0
+stopped_early=false
 
-while IFS= read -r file; do
-  total=$((total + 1))
+for file in "${files[@]}"; do
+  executed=$((executed + 1))
   name=$(basename "$file")
   if grep -qE '\bdblink_(connect|send_query|disconnect)\b' "$file"; then
     # Local loopback uses trust auth, so dblink must be created by the local
@@ -73,12 +82,15 @@ while IFS= read -r file; do
     failed_files+=("$name")
     echo "FAIL  $name"
     printf '%s\n' "$output" | sed 's/^/      /'
-    if [ "$stop_on_first_failure" -eq 1 ]; then break; fi
+    if [ "$stop_on_first_failure" -eq 1 ]; then
+      [ "$executed" -lt "$discovered" ] && stopped_early=true
+      break
+    fi
   fi
-done < <(find "$test_dir" -maxdepth 1 -type f -name "$filter" | sort)
+done
 
 echo
-echo "sql verification: $passed passed / ${#failed_files[@]} failed / $total total"
+echo "sql verification: discovered=$discovered executed=$executed passed=$passed failed=${#failed_files[@]} stopped_early=$stopped_early"
 
 if [ "${#failed_files[@]}" -gt 0 ]; then
   echo

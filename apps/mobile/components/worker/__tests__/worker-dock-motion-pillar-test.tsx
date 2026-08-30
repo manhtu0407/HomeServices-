@@ -32,7 +32,7 @@ import {
 export const PILLAR = {
   id: 'P08-worker-dock-motion',
   invariant:
-    'the worker dock exposes four labelled tabs with exactly one selected, and neither Reduce Motion nor Reduce Transparency removes a tab or its selected state',
+    'the worker dock exposes four labelled tabs with exactly one selected, never restores route-following decoration, and neither Reduce Motion nor Reduce Transparency removes a tab or its selected state',
   authority: [
     'governance/protocols/frontend-test.md G4 (Reduce Motion, Reduce Transparency)',
     'governance/design/runtime.md (motion is decoration, never the carrier of state)',
@@ -41,7 +41,7 @@ export const PILLAR = {
   layer: 'ui-visual',
   siblings: ['P07-worker-verification-states', 'P06-payment-unlock-gate'],
   mutation:
-    'drop `accessibilityState={{ selected }}` from WorkerV5DockTabButton — the single-selected-tab cases turn red',
+    'restore a route-following lens, shimmer, or caustic layer — the static-selection cases turn red',
 } as const satisfies PillarManifest
 
 const TAB_LABELS_VI = ['Trang chủ', 'Công việc', 'Thu nhập', 'Hồ sơ']
@@ -187,9 +187,9 @@ describe('WorkerRebuildDockOverlay', () => {
     for (const id of ['home', 'jobs', 'earnings', 'profile']) {
       expect(screen.getByTestId(`worker-v5-dock-${id}-icon`)).toBeTruthy()
     }
-    expect(screen.getByTestId('worker-v5-dock-lens')).toBeTruthy()
-    expect(screen.getByTestId('worker-v5-dock-shimmer')).toBeTruthy()
-    expect(screen.getByTestId('worker-v5-dock-caustic')).toBeTruthy()
+    expect(screen.queryByTestId('worker-v5-dock-lens')).toBeNull()
+    expect(screen.queryByTestId('worker-v5-dock-shimmer')).toBeNull()
+    expect(screen.queryByTestId('worker-v5-dock-caustic')).toBeNull()
     expect(screen.getByTestId('worker-v5-kael-accessory')).toBeTruthy()
   })
 
