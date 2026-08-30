@@ -8,7 +8,7 @@ import {
   WORKER_EARNINGS_PERIODS,
   type WorkerEarningsPeriod,
 } from '../earnings/overview-model'
-import { workerEarningsPeriodLabel } from '../earnings/period-selector'
+import { workerEarningsPeriodLabel } from '../earnings/period-label'
 import { formatVndDong, textByLanguage } from '../ui/format'
 import type { AppLanguage } from '@/lib/app-language'
 import type { EarningsResponse } from '@/lib/api-types'

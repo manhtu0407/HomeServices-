@@ -19,7 +19,8 @@ import {
   buildEarningsDashboardModel,
   type WorkerEarningsPeriod,
 } from './overview-model'
-import { WorkerEarningsPeriodSelector, workerEarningsPeriodLabel } from './period-selector'
+import { workerEarningsPeriodLabel } from './period-label'
+import { WorkerEarningsPeriodSelector } from './period-selector'
 import { workerSalaryWorkartAssets } from './salary-assets'
 import { styles } from './salary-overview-styles'
 
