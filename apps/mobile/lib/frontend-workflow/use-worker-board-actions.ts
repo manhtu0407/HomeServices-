@@ -208,7 +208,6 @@ export function useWorkerBoardActions({
       if (!profile.success) return setRemoteError(profile.error)
 
       setWorkerEarningsError(earnings.success ? null : localizeWorkflowError(earnings.error, language))
-      const nextEarnings = earnings.success ? earnings.data : null
       const nextPerformanceInsights = performanceInsights.success ? performanceInsights.data : null
       const pendingAvailabilityPreference = workerAvailabilityPreferenceRef.current?.sessionUserId === sessionUserId
         ? workerAvailabilityPreferenceRef.current.value
@@ -222,6 +221,7 @@ export function useWorkerBoardActions({
       setWorkerRemoteState((current) => {
         const currentProfile = current.sessionUserId === sessionUserId ? current.profile : null
         const currentEarnings = current.sessionUserId === sessionUserId ? current.earnings : null
+        const nextEarnings = earnings.success ? earnings.data : currentEarnings
         const currentJobs = current.sessionUserId === sessionUserId ? current.jobs : []
         const currentPerformanceInsights = current.sessionUserId === sessionUserId ? current.performanceInsights : null
         const currentPayoutMethod = current.sessionUserId === sessionUserId ? current.payoutMethod : null

@@ -393,6 +393,7 @@ describe('Production Worker Home absorption', () => {
   it('keeps Production independent from Prototype fixtures and removes the old visual shell', () => {
     const productionSource = readFileSync(resolve(__dirname, '../home/worker-home-production-surface.tsx'), 'utf8')
     const earningsSource = readFileSync(resolve(__dirname, '../home/worker-home-production-earnings-card.tsx'), 'utf8')
+    const profileSource = readFileSync(resolve(__dirname, '../profile/production-overview-surfaces.tsx'), 'utf8')
     const workerAssetsSource = readFileSync(resolve(__dirname, '../ui/worker-v5-icon-assets.ts'), 'utf8')
     const flowSource = readFileSync(resolve(__dirname, '../worker-v5-flow.tsx'), 'utf8')
 
@@ -402,6 +403,9 @@ describe('Production Worker Home absorption', () => {
     expect(workerAssetsSource).toContain("homeWorkerHero: require('@/assets/worker-image-icons/home-worker-hero-workart.png')")
     expect(flowSource).toContain("from './home/worker-home-production-surface'")
     expect(flowSource).not.toContain('WorkerHomeRebuildSurface')
+    expect(flowSource).toContain('headerState.usesEarningsOverviewHandoff || headerState.usesOpportunityInboxHandoff ? null')
+    expect(profileSource).not.toContain('styles.screenTitle')
+    expect(profileSource).not.toContain('`${testIDPrefix}-title`')
     expect(productionSource).toContain('Math.min(Math.max(width - 34, 0), 394)')
     expect(productionSource).toContain("safeAreaLight: { backgroundColor: '#FFFFFF' }")
     expect(productionSource).not.toMatch(/surface: \{[^}]*backgroundColor/)

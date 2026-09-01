@@ -1,0 +1,62 @@
+import type { ImageSourcePropType } from 'react-native'
+
+export const workerIncomeDashboardAssets = {
+  background: require('../../../assets/worker-income-dashboard/background-field.png') as ImageSourcePropType,
+  orb: require('../../../assets/worker-income-dashboard/orb-surface.png') as ImageSourcePropType,
+} as const
+
+export const workerIncomeDashboardTokens = {
+  layout: {
+    contentInset: 13,
+    lowerContentOffset: 16,
+    maxWidth: 520,
+    overviewBottomClearance: 126,
+    orbActionWidth: 120,
+    orbSideClearance: 56,
+    orbWidth: 212,
+    panelHeight: 64,
+    panelRadius: 14,
+    periodHeight: 50,
+    screenGutter: 16,
+    stageHeight: 510,
+    utilityIconSize: 28,
+  },
+  colors: {
+    border: 'rgba(255,255,255,0.60)',
+    borderSoft: 'rgba(220,222,232,0.37)',
+    cashGlassEnd: 'rgba(255,255,255,0.66)',
+    cashGlassStart: 'rgba(255,255,255,0.79)',
+    cashGlassStop: 'rgba(255,255,255,0.72)',
+    cashViolet: '#AD91FF',
+    chartGlow: 'rgba(137,88,248,0.18)',
+    contentSurface: '#FBFAFF',
+    green: '#36C99B',
+    greenStrong: '#35BD92',
+    ink: '#172F3F',
+    inkStrong: '#0A3042',
+    inkValue: '#102F40',
+    muted: '#77838F',
+    mutedSoft: '#898F99',
+    opaqueTint: '#F7F4FF',
+    page: '#FFFFFF',
+    purple: '#8A5DF5',
+    purpleBorder: 'rgba(150,105,249,0.70)',
+    purpleBorderOpaque: '#9669F9',
+    purpleStrong: '#8658F6',
+    selectedGlass: 'rgba(255,255,255,0.73)',
+    statsGlassEnd: 'rgba(255,255,255,0.30)',
+    statsGlassStart: 'rgba(255,255,255,0.42)',
+    transparent: 'transparent',
+    violetAura: '#8D5BFF',
+    white: '#FFFFFF',
+    whiteSoft: 'rgba(255,255,255,0.24)',
+  },
+  motion: {
+    ambientHalfCycleMs: 8500,
+    fadeInMs: 180,
+    pressScale: 0.98,
+  },
+  shadows: {
+    selectedPeriod: '0 4px 4.5px rgba(121,83,227,0.065)',
+  },
+} as const

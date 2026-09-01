@@ -15,7 +15,7 @@ type PeriodSelectionLensColors = {
 }
 
 const LENS_INSET = 2
-const LENS_RADIUS = 14
+const LENS_RADIUS = 21
 
 export function WorkerEarningsPeriodSelectionLens({
   colors,
@@ -154,7 +154,7 @@ const styles = StyleSheet.create({
     width: 14,
   },
   topLight: {
-    borderRadius: 14,
+    borderRadius: LENS_RADIUS,
     height: 8,
     left: 8,
     opacity: 0.42,

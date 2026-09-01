@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Pressable, Text, View } from 'react-native'
+import { Pressable, StyleSheet, Text, View } from 'react-native'
 
 import type { AppLanguage } from '@/lib/app-language'
 
@@ -8,7 +8,6 @@ import { textByLanguage } from '../ui/format'
 import { WorkerEarningsPeriodSelectionLens } from './period-selection-lens'
 import { workerEarningsPeriodLabel } from './period-label'
 import { WORKER_EARNINGS_PERIODS, type WorkerEarningsPeriod } from './overview-model'
-import { styles } from './salary-overview-styles'
 
 export function WorkerEarningsPeriodSelector({
   language,
@@ -35,17 +34,18 @@ export function WorkerEarningsPeriodSelector({
     <View
       accessibilityLabel={textByLanguage(language, 'Khoảng thời gian thu nhập', 'Earnings period')}
       accessibilityRole="tablist"
-      style={[styles.periodSelector, { backgroundColor: tokens.raised, borderColor: tokens.border }]}
+      style={[styles.container, { backgroundColor: tokens.raised, borderColor: tokens.border }]}
       testID={`${testIDPrefix}-period-tabs`}
     >
       <View
         onLayout={({ nativeEvent: { layout } }) => setSurfaceWidth(layout.width)}
-        style={styles.periodSelectorRail}
+        style={styles.rail}
+        testID={`${testIDPrefix}-period-rail`}
       >
         <WorkerEarningsPeriodSelectionLens
           colors={{
             bloom: tokens.glassHighlight,
-            border: tokens.borderStrong,
+            border: tokens.primary,
             fill: tokens.glassStrong,
             innerBorder: tokens.border,
             shadow: tokens.glassFloatShadow,
@@ -59,28 +59,41 @@ export function WorkerEarningsPeriodSelector({
           surfaceWidth={surfaceWidth}
           testID={`${testIDPrefix}-period-lens`}
         />
-        {WORKER_EARNINGS_PERIODS.map((item) => {
-          const active = item === period
+        {WORKER_EARNINGS_PERIODS.map((candidate) => {
+          const selected = period === candidate
           return (
             <Pressable
+              accessibilityLabel={workerEarningsPeriodLabel(candidate, language)}
               accessibilityRole="tab"
-              accessibilityState={{ selected: active }}
-              key={item}
-              onPress={() => onPeriodChange(item)}
+              accessibilityState={{ selected }}
+              key={candidate}
+              onPress={() => onPeriodChange(candidate)}
               style={({ pressed }) => [
-                styles.periodButton,
-                active && {
-                  backgroundColor: reduceTransparency ? tokens.glassStrong : 'transparent',
-                  borderColor: tokens.borderStrong,
-                  borderWidth: reduceTransparency ? 1 : 0,
-                },
-                pressed && !reduceMotion ? styles.pressed : null,
+                styles.button,
+                selected && reduceTransparency ? {
+                  backgroundColor: tokens.glassStrong,
+                  borderColor: tokens.primary,
+                  borderWidth: 1,
+                } : null,
+                pressed && !reduceMotion ? styles.buttonPressed : null,
               ]}
-              testID={`${testIDPrefix}-period-${item}`}
+              testID={`${testIDPrefix}-period-${candidate}`}
             >
-              <Text style={[styles.workerCustomerFontText, styles.periodLabel, { color: active ? tokens.primary : tokens.muted }, active && styles.periodLabelActive]}>
-                {workerEarningsPeriodLabel(item, language)}
-              </Text>
+              <View
+                pointerEvents="none"
+                style={styles.visual}
+                testID={`${testIDPrefix}-period-${candidate}-visual`}
+              >
+                <Text
+                  style={[
+                    styles.label,
+                    { color: selected ? tokens.primary : tokens.muted },
+                    selected ? styles.labelSelected : null,
+                  ]}
+                >
+                  {workerEarningsPeriodLabel(candidate, language)}
+                </Text>
+              </View>
             </Pressable>
           )
         })}
@@ -88,3 +101,37 @@ export function WorkerEarningsPeriodSelector({
     </View>
   )
 }
+
+const styles = StyleSheet.create({
+  container: {
+    borderRadius: 25,
+    borderWidth: 1,
+    height: 50,
+    overflow: 'hidden',
+    padding: 2,
+    position: 'relative',
+    width: '100%',
+  },
+  rail: { flex: 1, flexDirection: 'row', minHeight: 44, position: 'relative' },
+  button: {
+    alignItems: 'center',
+    backgroundColor: 'transparent',
+    borderColor: 'transparent',
+    borderRadius: 21,
+    borderWidth: 0,
+    flex: 1,
+    justifyContent: 'center',
+    minHeight: 44,
+    position: 'relative',
+    zIndex: 2,
+  },
+  buttonPressed: { opacity: 0.88, transform: [{ scale: 0.976 }] },
+  visual: { alignItems: 'center', justifyContent: 'center', minHeight: 44, width: '100%' },
+  label: {
+    fontSize: 13,
+    fontWeight: '600',
+    letterSpacing: 0.15,
+    lineHeight: 17,
+  },
+  labelSelected: { fontWeight: '700', transform: [{ translateY: -1 }] },
+})

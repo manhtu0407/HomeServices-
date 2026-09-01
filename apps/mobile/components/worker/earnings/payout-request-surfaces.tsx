@@ -17,7 +17,6 @@ import {
 import type { useFrontendWorkflow } from '@/lib/frontend-workflow-provider'
 
 import { WorkerV5SingleSourceActionButton } from '../jobs/advisory-surfaces'
-import { WorkerV5FormulaMintCardAura } from '../ui/aura-surfaces'
 import { textByLanguage } from '../ui/format'
 import { WorkerV5PrimaryButtonFill } from '../ui/primitives-surfaces'
 import { WorkerV5EarningsDataNotice } from './salary-overview-surfaces'
@@ -123,12 +122,7 @@ export function WorkerV5PayoutRequest({
 
   return (
     <View style={[styles.card, reduceTransparency && styles.opaqueCard]} testID="worker-v5-payout-request">
-      <WorkerV5FormulaMintCardAura
-        reduceTransparency={reduceTransparency}
-        scope="PayoutRequest"
-        testID="worker-v5-payout-request-formula-mint-aura"
-      />
-      <View style={styles.balanceBlock}>
+      <View style={styles.balanceBlock} testID="worker-v5-payout-balance-block">
         <Text style={styles.balanceLabel}>{textByLanguage(language, 'SỐ DƯ CÓ THỂ RÚT', 'WITHDRAWABLE BALANCE')}</Text>
         <Text style={styles.balanceValue} testID="worker-v5-payout-available-balance">
           {earningsError
