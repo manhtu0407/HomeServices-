@@ -172,7 +172,6 @@ import {
 } from '../ui/aura-surfaces'
 import { workerV5CapturedIconAssets } from '../ui/worker-v5-icon-assets'
 import { WorkerV5DetailRail } from '../ui/worker-v5-detail-rail'
-import { workerSalaryWorkartAssets } from '../earnings/salary-assets'
 
 function buildWorkerProfile(overrides: Partial<WorkerProfileResponse> = {}): WorkerProfileResponse {
   return {
@@ -1095,6 +1094,7 @@ describe('Worker runtime surface wiring', () => {
 
     expect(screen.queryByText('Một luồng công việc')).toBeNull()
     expect(screen.queryByText('Kael đã lọc theo kỹ năng, bán kính và lịch trống')).toBeNull()
+    expect(screen.queryByText('Công việc')).toBeNull()
     expect(screen.getByTestId('worker-v5-opportunity-card')).toBeOnTheScreen()
     expect(screen.getByTestId('worker-v5-opportunity-inbox-handoff')).toBeOnTheScreen()
   })
@@ -3220,12 +3220,18 @@ describe('Worker runtime surface wiring', () => {
     })
   })
 
-  it('gives the earnings overview title a small left inset', () => {
+  it('removes duplicate Earnings headings while preserving the dashboard', () => {
     buildWorkflow()
 
-    render(<WorkerEarningsSurface />)
+    const overview = render(<WorkerEarningsSurface />)
 
-    expect(screen.getByTestId('worker-v5-earnings-overview-title')).toHaveStyle({ marginLeft: 8 })
+    expect(screen.queryByTestId('worker-v5-earnings-overview-title')).toBeNull()
+    expect(screen.queryByTestId('worker-v5-income-dashboard-title')).toBeNull()
+    expect(screen.getByTestId('worker-v5-earnings-dashboard')).toBeOnTheScreen()
+    overview.unmount()
+
+    render(<WorkerRebuildDockOverlay active="earnings" />)
+    expect(within(screen.getByTestId('worker-v5-dock-earnings')).getByText('Thu nhập')).toBeOnTheScreen()
   })
 
   it('removes every Worker header info icon without removing the primary navigation', () => {
@@ -3304,6 +3310,8 @@ describe('Worker runtime surface wiring', () => {
 
     render(<WorkerProfileSurface />)
 
+    expect(screen.queryByTestId('worker-v5-profile-title')).toBeNull()
+    expect(screen.getAllByText('Hồ sơ thợ')).toHaveLength(1)
     expect(screen.getByTestId('worker-v5-profile-header-name')).toHaveTextContent('Worker Test')
     expect(screen.getByTestId('worker-v5-profile-identity-card')).toBeOnTheScreen()
     expect(screen.queryByTestId('worker-v5-profile-identity-formula-mint-aura')).toBeNull()
@@ -3431,25 +3439,41 @@ describe('Worker runtime surface wiring', () => {
     expect(screen.getByTestId('worker-v5-earnings-dashboard')).toBeOnTheScreen()
     expect(screen.getByTestId('worker-v5-earnings-chart')).toBeOnTheScreen()
     expect(screen.getByTestId('worker-v5-earnings-period-month').props.accessibilityState).toMatchObject({ selected: true })
-    expect(screen.getByTestId('worker-v5-earnings-metric-total-value')).toHaveTextContent('500.000đ')
+    expect(screen.getByTestId('worker-v5-earnings-metric-total-value')).toHaveTextContent('620.000đ')
     expect(screen.getByTestId('worker-v5-earnings-metric-withdrawn-value')).toHaveTextContent('0đ')
     expect(screen.getByTestId('worker-v5-earnings-metric-fee-value')).toHaveTextContent('120.000đ')
     expect(screen.getByTestId('worker-v5-earnings-utility-history')).toBeOnTheScreen()
     expect(screen.getByTestId('worker-v5-earnings-utility-account')).toBeOnTheScreen()
     expect(screen.getByTestId('worker-v5-earnings-utility-commission')).toBeOnTheScreen()
-    expect(screen.getByTestId('worker-v5-earnings-hero')).toBeOnTheScreen()
-    expect(screen.getByTestId('worker-v5-earnings-hero-workart').props.source).toBe(workerSalaryWorkartAssets.hero)
+    expect(screen.getByTestId('worker-v5-income-dashboard-card')).toBeOnTheScreen()
+    expect(screen.getByTestId('worker-v5-income-dashboard-background')).toBeOnTheScreen()
+    expect(screen.getByTestId('worker-v5-income-dashboard-orb')).toBeOnTheScreen()
+    expect(screen.queryByTestId('worker-v5-income-dashboard-notifications')).toBeNull()
     expect(screen.getByTestId('worker-v5-earnings-metric-available-value')).toHaveTextContent('1.200.000đ')
+    expect(StyleSheet.flatten(screen.getByTestId('worker-v5-scroll').props.contentContainerStyle)).toMatchObject({
+      paddingBottom: 0,
+      paddingHorizontal: 0,
+      paddingTop: 0,
+    })
+    expect(StyleSheet.flatten(screen.getByTestId('worker-v5-earnings-production-content').props.style)).toMatchObject({
+      backgroundColor: '#FFFFFF',
+      gap: 14,
+      paddingBottom: 158,
+      paddingHorizontal: 29,
+      paddingTop: 16,
+    })
+    expect(screen.getByTestId('worker-v5-earnings-production-background')).toBeOnTheScreen()
+    expect(screen.queryByText('Quản lý thu nhập')).toBeNull()
     expect(screen.queryByTestId('worker-v5-earnings-transactions')).toBeNull()
     expect(screen.queryByText('Sau phí nền tảng')).toBeNull()
     expect(screen.queryByText('Số dư đã ghi có trên ứng dụng')).toBeNull()
 
     fireEvent.press(screen.getByTestId('worker-v5-earnings-period-day'))
     expect(screen.getByTestId('worker-v5-earnings-period-day').props.accessibilityState).toMatchObject({ selected: true })
-    expect(screen.getByTestId('worker-v5-earnings-metric-total-value')).toHaveTextContent('320.000đ')
+    expect(screen.getByTestId('worker-v5-earnings-metric-total-value')).toHaveTextContent('400.000đ')
 
     fireEvent.press(screen.getByTestId('worker-v5-earnings-utility-history'))
-    expect(mockReplace).toHaveBeenCalledWith('/(worker)/earnings?ns_worker_screen=4.2-ledger-detail')
+    expect(mockReplace).toHaveBeenCalledWith('/(worker)/earnings?ns_worker_screen=4.2-ledger-detail&ns_worker_earnings_period=month')
   })
 
   it('uses the Production Salary surface even when the retired Prototype query is present', () => {
@@ -3463,8 +3487,8 @@ describe('Worker runtime surface wiring', () => {
     const overview = render(<WorkerEarningsSurface />)
 
     expect(screen.getByTestId('worker-v5-earnings-dashboard')).toBeOnTheScreen()
-    expect(screen.getByTestId('worker-v5-earnings-hero-workart')).toBeOnTheScreen()
-    expect(screen.getByTestId('worker-v5-earnings-metric-total-value')).toHaveTextContent('500.000đ')
+    expect(screen.getByTestId('worker-v5-income-dashboard-card')).toBeOnTheScreen()
+    expect(screen.getByTestId('worker-v5-earnings-metric-total-value')).toHaveTextContent('620.000đ')
     expect(screen.queryByTestId('worker-salary-redesign-prototype')).toBeNull()
 
     fireEvent.press(screen.getByTestId('worker-v5-earnings-period-day'))
@@ -3560,6 +3584,11 @@ describe('Worker runtime surface wiring', () => {
 
     render(<WorkerEarningsSurface />)
 
+    fireEvent.press(screen.getByTestId('worker-v5-income-dashboard-orb-withdraw'))
+    expect(mockReplace).toHaveBeenCalledWith('/(worker)/earnings?ns_worker_screen=4.3-payout-request')
+    expect(screen.queryByTestId('worker-v5-earnings-withdraw-action')).toBeNull()
+    mockReplace.mockClear()
+
     fireEvent.press(screen.getByTestId('worker-v5-earnings-utility-history'))
     expect(mockReplace).toHaveBeenCalledWith('/(worker)/earnings?ns_worker_screen=4.2-ledger-detail')
     mockReplace.mockClear()
@@ -3571,9 +3600,6 @@ describe('Worker runtime surface wiring', () => {
     fireEvent.press(screen.getByTestId('worker-v5-earnings-utility-commission'))
     expect(mockReplace).toHaveBeenCalledWith('/(worker)/earnings?ns_worker_screen=4.5-commission-policy')
 
-    mockReplace.mockClear()
-    fireEvent.press(screen.getByTestId('worker-v5-earnings-withdraw-action'))
-    expect(mockReplace).toHaveBeenCalledWith('/(worker)/earnings?ns_worker_screen=4.3-payout-request')
   })
 
   it('distinguishes pending earnings from a hydrated zero ledger', () => {
@@ -3593,6 +3619,7 @@ describe('Worker runtime surface wiring', () => {
     expect(screen.getByTestId('worker-v5-earnings-metric-available-value')).toHaveTextContent('Đang tải…')
     expect(screen.getByTestId('worker-v5-earnings-chart').props.accessibilityLabel).toBe('Đang tải biểu đồ thu nhập')
     expect(screen.getByTestId('worker-v5-earnings-chart').props.accessibilityState).toMatchObject({ busy: true })
+    expect(screen.queryByText('Đang tải dữ liệu thu nhập…')).toBeNull()
     expect(screen.queryByText('Chờ dữ liệu thật')).toBeNull()
     expect(screen.queryByText('Biểu đồ chỉ dùng số liệu đã đối soát.')).toBeNull()
     pending.unmount()
@@ -3621,7 +3648,7 @@ describe('Worker runtime surface wiring', () => {
     buildWorkflow({ workerEarnings: buildSettledEarnings() })
     view.rerender(<WorkerEarningsSurface />)
     expect(screen.getByTestId('worker-v5-earnings-amount')).toHaveTextContent('1.200.000đ')
-    expect(screen.getByTestId('worker-v5-earnings-metric-total-value')).toHaveTextContent('500.000đ')
+    expect(screen.getByTestId('worker-v5-earnings-metric-total-value')).toHaveTextContent('620.000đ')
     expect(screen.getByTestId('worker-v5-earnings-metric-fee-value')).toHaveTextContent('120.000đ')
   })
 
@@ -3674,16 +3701,15 @@ describe('Worker runtime surface wiring', () => {
     expect(mockReplace).toHaveBeenCalledWith('/(worker)/earnings?ns_worker_screen=4.1-earnings-overview')
   })
 
-  it('opens the withdrawal request screen from the earnings overview', () => {
+  it('opens the withdrawal request screen only from the orb action on the earnings overview', () => {
     buildWorkflow({ workerEarnings: buildSettledEarnings() })
     mockRouteParams = { ns_worker_screen: '4.1-earnings-overview' }
 
     render(<WorkerEarningsSurface />)
-    const withdrawAction = screen.getByTestId('worker-v5-earnings-withdraw-action')
-    expect(withdrawAction.props.accessibilityState).toMatchObject({ disabled: false })
-    expect(within(withdrawAction).getByText('Tạo yêu cầu rút tiền')).toBeOnTheScreen()
-    expect(screen.getByTestId('worker-v5-earnings-withdrawal-area')).toBeOnTheScreen()
-    expect(within(withdrawAction).queryByTestId('worker-v5-earnings-withdraw-action-icon')).toBeNull()
+    const withdrawAction = screen.getByTestId('worker-v5-income-dashboard-orb-withdraw')
+    expect(screen.queryByTestId('worker-v5-earnings-withdraw-action')).toBeNull()
+    expect(screen.queryByTestId('worker-v5-earnings-withdrawal-area')).toBeNull()
+    expect(screen.queryByText('Tạo yêu cầu rút tiền')).toBeNull()
     fireEvent.press(withdrawAction)
     expect(mockReplace).toHaveBeenCalledWith('/(worker)/earnings?ns_worker_screen=4.3-payout-request')
   })
@@ -3706,7 +3732,13 @@ describe('Worker runtime surface wiring', () => {
     render(<WorkerEarningsSurface />)
 
     expect(screen.getByTestId('worker-v5-payout-request')).toBeOnTheScreen()
-    expect(screen.getByTestId('worker-v5-payout-request-formula-mint-aura')).toBeOnTheScreen()
+    expect(screen.queryByTestId('worker-v5-payout-request-formula-mint-aura')).toBeNull()
+    expect(StyleSheet.flatten(screen.getByTestId('worker-v5-payout-request').props.style)).toMatchObject({
+      backgroundColor: '#FFFFFF',
+    })
+    expect(StyleSheet.flatten(screen.getByTestId('worker-v5-payout-balance-block').props.style)).toMatchObject({
+      backgroundColor: '#FFFFFF',
+    })
     expect(screen.getByText('Techcombank · **** 6789')).toBeOnTheScreen()
     expect(screen.getByTestId('worker-v5-payout-submit').props.accessibilityState).toMatchObject({ disabled: true })
 
@@ -4116,7 +4148,7 @@ describe('Worker runtime surface wiring', () => {
 
     mockRouteParams = { ns_worker_screen: '4.3-payout-request' }
     const payoutRequest = render(<WorkerEarningsSurface />)
-    expect(screen.getByTestId('worker-v5-payout-request-formula-mint-aura')).toBeOnTheScreen()
+    expect(screen.queryByTestId('worker-v5-payout-request-formula-mint-aura')).toBeNull()
     payoutRequest.unmount()
 
     mockRouteParams = { ns_worker_screen: '4.5-commission-policy' }

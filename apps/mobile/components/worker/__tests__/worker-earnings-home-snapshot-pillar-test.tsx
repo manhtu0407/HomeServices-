@@ -5,6 +5,7 @@ import { routeForWorkerV5Screen } from '../dock/routing'
 import { requireWorkerV5Screen } from '../dock/screens'
 import {
   buildEarningsDashboardModel,
+  buildWorkerEarningsTrend,
   buildWorkerEarningsSnapshot,
   resolveWorkerEarningsPeriod,
 } from '../earnings/overview-model'
@@ -12,7 +13,7 @@ import {
 export const PILLAR = {
   id: 'P55-worker-home-earnings-snapshot',
   invariant:
-    'Worker Home and Salary derive period net income, paid-job count, elapsed chart buckets, available balance, and honest unavailable states from one EarningsResponse model',
+    'Worker Home and Salary derive period gross and net income, previous-calendar-period comparison, elapsed chart geometry, available balance, and honest unavailable states from one EarningsResponse model',
   authority: [
     'governance/RULES.md #8 (no fake earnings or silent degradation)',
     'governance/structures/worker-workflow.md B2 and B8 (real earnings rows only)',
@@ -22,7 +23,7 @@ export const PILLAR = {
   layer: 'unit',
   siblings: ['P24-worker-earnings-period-palette', 'P35-worker-earnings-fail-closed'],
   mutation:
-    'restore full future period keys or coalesce an unavailable response to zero — elapsed-bucket or unavailable-state assertions turn red',
+    'compare against a fabricated zero outside the loaded range, stop using HCMC calendar boundaries, or coalesce an unavailable response to zero — comparison, boundary, or unavailable-state assertions turn red',
 } as const satisfies PillarManifest
 
 function buildEarnings(): EarningsResponse {
@@ -149,6 +150,78 @@ describe('Worker earnings dashboard model', () => {
 
     expect(monday.points.map((point) => point.dateKey)).toEqual(['2026-07-27'])
     expect(january.points.map((point) => point.dateKey)).toEqual(['2026-01'])
+  })
+
+  it('compares gross income with the prior complete calendar period without inventing a baseline', () => {
+    const positive = buildEarningsDashboardModel(buildEarnings(), 'day', referenceDate)
+    const negative = buildEarningsDashboardModel({
+      ...buildEarnings(),
+      daily_earnings: buildEarnings().daily_earnings.map((row) => row.date === '2026-07-28'
+        ? { ...row, gross_earnings: 500_000, net_earnings: 420_000, platform_fee_total: 80_000 }
+        : row),
+    }, 'day', referenceDate)
+    const flat = buildEarningsDashboardModel({
+      ...buildEarnings(),
+      daily_earnings: buildEarnings().daily_earnings.map((row) => row.date === '2026-07-28'
+        ? { ...row, gross_earnings: 400_000, net_earnings: 320_000, platform_fee_total: 80_000 }
+        : row),
+    }, 'day', referenceDate)
+    const zeroBaseline = buildEarningsDashboardModel({
+      ...buildEarnings(),
+      daily_earnings: buildEarnings().daily_earnings.filter((row) => row.date !== '2026-07-28'),
+    }, 'day', referenceDate)
+    const missing = buildEarningsDashboardModel(buildEarnings(), 'year', referenceDate)
+
+    withPillarContext(PILLAR, () => {
+      expect(positive.comparison).toEqual({ direction: 'increase', percentage: 82, previousGrossEarnings: 220_000, state: 'available' })
+      expect(negative.comparison).toEqual({ direction: 'decrease', percentage: -20, previousGrossEarnings: 500_000, state: 'available' })
+      expect(flat.comparison).toEqual({ direction: 'flat', percentage: 0, previousGrossEarnings: 400_000, state: 'available' })
+      expect(zeroBaseline.comparison).toEqual({ previousGrossEarnings: 0, state: 'zero-baseline' })
+      expect(missing.comparison).toEqual({ state: 'missing-baseline' })
+    }, 'a missing prior calendar period must remain unavailable instead of becoming a fake percentage')
+  })
+
+  it('uses the Hồ Chí Minh date boundary when the UTC date is still the previous year', () => {
+    const earnings = {
+      ...buildEarnings(),
+      daily_earnings: [
+        { date: '2026-12-31', gross_earnings: 100_000, net_earnings: 80_000, paid_job_count: 1, platform_fee_total: 20_000 },
+        { date: '2027-01-01', gross_earnings: 150_000, net_earnings: 120_000, paid_job_count: 1, platform_fee_total: 30_000 },
+      ],
+      from_date: '2026-12-31',
+      to_date: '2027-01-01',
+    }
+    const model = buildEarningsDashboardModel(earnings, 'day', new Date('2026-12-31T17:05:00.000Z'))
+
+    expect(model.points.map((point) => point.dateKey)).toEqual(['2027-01-01'])
+    expect(model.comparison).toEqual({ direction: 'increase', percentage: 50, previousGrossEarnings: 100_000, state: 'available' })
+  })
+
+  it('builds deterministic trend geometry for zero, one, and multiple points', () => {
+    const point = (dateKey: string, value: number) => ({
+      dateKey,
+      grossEarnings: value,
+      netEarnings: value,
+      paidJobCount: value > 0 ? 1 : 0,
+      platformFee: 0,
+      value,
+    })
+
+    expect(buildWorkerEarningsTrend([])).toBeNull()
+    expect(buildWorkerEarningsTrend([point('2026-07-29', 320_000)])).toEqual({
+      endX: 112,
+      endY: 17.5,
+      path: 'M 3 17.5 L 112 17.5',
+    })
+    expect(buildWorkerEarningsTrend([
+      point('2026-07-27', 0),
+      point('2026-07-28', 100_000),
+      point('2026-07-29', 50_000),
+    ])).toEqual({
+      endX: 112,
+      endY: 17.5,
+      path: 'M 3 32 L 57.5 3 L 112 17.5',
+    })
   })
 
   it('validates and preserves the selected period in Salary replacement routes', () => {

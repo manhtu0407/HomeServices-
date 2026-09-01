@@ -7,7 +7,7 @@ export const styles = StyleSheet.create({
     ...typography.body,
   },
   opaqueCard: {
-    backgroundColor: color.mint.white,
+    backgroundColor: color.surface.base,
   },
   card: {
     backgroundColor: color.surface.base,
@@ -20,7 +20,7 @@ export const styles = StyleSheet.create({
     ...shadow.soft,
   },
   balanceBlock: {
-    backgroundColor: color.surface.mint,
+    backgroundColor: color.surface.base,
     borderColor: color.surface.stroke,
     borderRadius: 18,
     borderWidth: 1,
