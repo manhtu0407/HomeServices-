@@ -336,6 +336,9 @@ export class Stage1SyntheticReleaseSmoke {
       input.expectedMode,
       contract.priceReasoningReceiptId,
     )
+    await this.api(input.actors.worker, 'POST', '/workers/me/matching-heartbeat', undefined, {
+      idempotencyKey: randomUUID(),
+    })
     const acceptedAt = performance.now()
     const confirmation = await this.api(input.actors.customer, 'POST', `/kael/chat/${sessionId}/confirm`, {
       confirmation_kind: contract.confirmationKind,

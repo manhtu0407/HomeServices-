@@ -146,4 +146,19 @@ describe('Stage 1 production release workflow', () => {
     expect(smoke.match(/stage1-synthetic-intentional-not-found/gu)?.length,
       pillarWhy(PILLAR, 'routing 404 is only one supplemental safe-error case')).toBe(1)
   })
+
+  it('renews Worker reachability after intake and immediately before Customer confirmation', () => {
+    const readiness = smoke.indexOf('const ready = await this.createReadySession')
+    const confirmationGuard = smoke.indexOf('await this.assertConfirmationMismatch', readiness)
+    const heartbeat = smoke.indexOf("'/workers/me/matching-heartbeat'", confirmationGuard)
+    const confirmation = smoke.indexOf('`/kael/chat/${sessionId}/confirm`', confirmationGuard)
+    expect(readiness, pillarWhy(PILLAR, 'the potentially long intake precedes the final reachability proof'))
+      .toBeGreaterThan(0)
+    expect(confirmationGuard, pillarWhy(PILLAR, 'the rejected confirmation guard precedes the real mutation'))
+      .toBeGreaterThan(readiness)
+    expect(heartbeat, pillarWhy(PILLAR, 'Worker foreground proof is refreshed after intake completes'))
+      .toBeGreaterThan(confirmationGuard)
+    expect(confirmation, pillarWhy(PILLAR, 'Customer confirmation follows the fresh Worker heartbeat'))
+      .toBeGreaterThan(heartbeat)
+  })
 })
