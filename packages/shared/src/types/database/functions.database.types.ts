@@ -338,6 +338,32 @@ export type DatabaseFunctions = {
           ok: boolean
         }[]
       }
+      admin_decide_payment_reconciliation_v2: {
+        Args: {
+          p_actor_id: string
+          p_amount_received?: number
+          p_bank_reference_hash?: string
+          p_bank_reference_suffix?: string
+          p_client_request_id: string
+          p_credited_at?: string
+          p_decision: string
+          p_expected_version: number
+          p_payment_order_id: string
+          p_reason_code?: string
+        }
+        Returns: {
+          error_code: string
+          event_id_out: string
+          generated_at_out: string
+          hold_until: string
+          job_id: string
+          ok: boolean
+          outcome: string
+          payment_status: string
+          status: string
+          version_out: number
+        }[]
+      }
       admin_draft_price_baseline: {
         Args: {
           p_actor_id: string
@@ -470,32 +496,6 @@ export type DatabaseFunctions = {
               isSetofReturn: true
             }
           }
-      admin_decide_payment_reconciliation_v2: {
-        Args: {
-          p_actor_id: string
-          p_amount_received?: number
-          p_bank_reference_hash?: string
-          p_bank_reference_suffix?: string
-          p_client_request_id: string
-          p_credited_at?: string
-          p_decision: string
-          p_expected_version: number
-          p_payment_order_id: string
-          p_reason_code?: string
-        }
-        Returns: {
-          error_code: string
-          event_id_out: string
-          generated_at_out: string
-          hold_until: string
-          job_id: string
-          ok: boolean
-          outcome: string
-          payment_status: string
-          status: string
-          version_out: number
-        }[]
-      }
       admin_fail_operator_provisioning: {
         Args: {
           p_failure_code: string
@@ -3004,6 +3004,19 @@ export type DatabaseFunctions = {
           snapshot_id: string
         }[]
       }
+      record_platform_bank_balance_snapshot_idempotent: {
+        Args: {
+          p_actor_id: string
+          p_balance_vnd: number
+          p_client_request_id: string
+          p_observed_at: string
+        }
+        Returns: {
+          balance_vnd: number
+          observed_at: string
+          snapshot_id: string
+        }[]
+      }
       record_stage1_attested_synthetic_smoke: {
         Args: {
           p_auto_quote_passed: boolean
@@ -3088,19 +3101,6 @@ export type DatabaseFunctions = {
           p_worker_offer_visible_ms: number
         }
         Returns: string
-      }
-      record_platform_bank_balance_snapshot_idempotent: {
-        Args: {
-          p_actor_id: string
-          p_balance_vnd: number
-          p_client_request_id: string
-          p_observed_at: string
-        }
-        Returns: {
-          balance_vnd: number
-          observed_at: string
-          snapshot_id: string
-        }[]
       }
       record_worker_app_active_minute: {
         Args: { p_worker_id: string }
