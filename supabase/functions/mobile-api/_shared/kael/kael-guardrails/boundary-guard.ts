@@ -290,6 +290,37 @@ function containsKeyword(normalized: string, keyword: string): boolean {
   return pattern.test(normalized);
 }
 
+// SERVICE_KEYWORDS nests entries, so "vòi sen" matches both voi and voi sen and one noun phrase
+// reads as two independent pieces of evidence. The mismatch threshold wants distinct evidence, so
+// it has to count where in the text a match landed, not how many list entries fired.
+function keywordSpan(
+  normalized: string,
+  keyword: string,
+): { start: number; end: number } | null {
+  const pattern = new RegExp(
+    `(?:^|[^a-z0-9])(${escapeRegExp(keyword)})(?:[^a-z0-9]|$)`,
+  );
+  const match = pattern.exec(normalized);
+  if (!match || match.index === undefined) return null;
+  const start = match.index + match[0].indexOf(match[1]);
+  return { start, end: start + match[1].length };
+}
+
+function countDistinctSpans(spans: readonly { start: number; end: number }[]): number {
+  const sorted = [...spans].sort((a, b) => a.start - b.start || b.end - a.end);
+  let count = 0;
+  let reach = -1;
+  for (const span of sorted) {
+    if (span.start >= reach) {
+      count += 1;
+      reach = span.end;
+    } else if (span.end > reach) {
+      reach = span.end;
+    }
+  }
+  return count;
+}
+
 function isSupportedWaterPumpMention(normalized: string): boolean {
   return IN_SCOPE_PLUMBING_PUMP_KEYWORDS.some((keyword) =>
     containsKeyword(normalized, keyword)
@@ -378,12 +409,16 @@ export function detectServiceMismatch(
   };
   const signals: string[] = [];
   for (const service of SUPPORTED_SERVICES) {
+    const spans: Array<{ start: number; end: number }> = [];
     for (const keyword of SERVICE_KEYWORDS[service]) {
-      if (containsKeyword(normalized, keyword)) {
-        hits[service]++;
-        if (hits[service] <= 2) signals.push(`match:${service}:${keyword}`);
+      const span = keywordSpan(normalized, keyword);
+      if (!span) continue;
+      spans.push(span);
+      if (signals.filter((s) => s.startsWith(`match:${service}:`)).length < 2) {
+        signals.push(`match:${service}:${keyword}`);
       }
     }
+    hits[service] = countDistinctSpans(spans);
   }
   const selectedHits = hits[selectedService];
   let suggestedService: ServiceType | null = null;
@@ -408,7 +443,14 @@ export function detectServiceMismatch(
 
 function serviceMismatchAssertionText(text: string): string {
   return normalize(text)
-    .replace(/\bkhong (?:di|dau|sua|lam) (?:day )?dien\b/g, " ")
+    // A trade named only to rule it out is not evidence for that trade. The stripper covered four
+    // electrical verbs, so "khong doi duong ong" still counted as plumbing and routed a fixture
+    // swap away from the handyman who was asked for it.
+    .replace(/\bkhong (?:di|dau|sua|lam|doi|thay|dung|can|lien quan(?: den)?)\b[^.;,]*/g, " ")
+    // A trade named only as a suspected hazard behind the wall is not a request for that trade
+    // either. Both strips push the same way: less evidence means the mismatch fires less often,
+    // and letting the model read an ambiguous message beats declining it at the door.
+    .replace(/\b(?:nghi(?: co| ngo| la)?|coi chung|can than|tranh)\b[^.;,]*/g, " ")
     .replace(/\b(?:no|not) (?:electrical|wiring) work\b/g, " ")
     .replace(/\s+/g, " ")
     .trim();
@@ -498,7 +540,13 @@ export function evaluateMessageBoundary(
   // legacy keyword gate remains byte-for-byte available when the flag is off.
   if (electricalPolicyEnabled) return { ok: true };
 
-  const outOfScope = detectOutOfScope(
+  // detectOutOfScope carries an escape for electrical infrastructure, but this call erased the
+  // argument that reaches it, so the one guard written to stop a live fault being declined could
+  // never run on the electrical path. The argument stays erased for the keyword gate itself, which
+  // is deliberately byte-for-byte legacy; only the escape is restored.
+  const electricalHazard = selectedService === "electrical" &&
+    hasElectricalInfrastructureContext(trimmed);
+  const outOfScope = electricalHazard ? { detected: false, signals: [] } : detectOutOfScope(
     trimmed,
     selectedService === "electrical" ? undefined : selectedService ?? undefined,
   );
@@ -546,7 +594,7 @@ function classifySemanticPromptInjection(
   if (/\bnhap vai\b.*\b(?:quan tri vien|admin|nguoi kiem duyet)\b/.test(normalizedText)) {
     signals.push("roleplay_admin");
   }
-  if (/\b(?:huong dan|chi dan|lenh|quy tac)\s+an\b/.test(normalizedText)) {
+  if (/\b(?:huong dan|chi dan|lenh|quy tac)\s+an\b(?!\s+(?:toan|ninh)\b)/.test(normalizedText)) {
     signals.push("hidden_instruction_request");
   }
   if (/\b(?:xuat|in|doc|tra ve)\b.*\b(?:toan bo|day du)\b.*\b(?:system|prompt|quy tac)\b/.test(normalizedText)) {
