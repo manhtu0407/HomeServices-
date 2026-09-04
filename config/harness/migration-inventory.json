@@ -5,7 +5,7 @@
     "immutableThroughVersion": "20260805090000",
     "sha256": "7d4ac8a8227452e357caa11a21ece9099c80112712dba9a250114d0761a90275"
   },
-  "migrationCount": 335,
+  "migrationCount": 336,
   "migrationEquivalences": {
     "version": "1.0.0",
     "groups": [
@@ -74,7 +74,7 @@
       }
     ]
   },
-  "migrationsSha256": "fac47c527bee67913e63bef8b6a51aa5cd98403eec43409c0f758f4148d8c9d7",
+  "migrationsSha256": "2ee6b8e57f33564bcd79a51fbf525ba24addd7176f4aba68a1aeb5562639dabb",
   "databaseTypes": {
     "file": "packages/shared/src/types/database",
     "sha256": "60bffa61b514329fbd24e8454b117b86509e85366604ef279f4107e066400542"
@@ -2424,6 +2424,13 @@
       "file": "supabase/migrations/20260830152000_enable_worker_kael_opportunity_intake.sql",
       "sha256": "2dfa610ac0bbefe08d9e8a9919a64a82565f5778ea7b3b6245c2d5a823efd665",
       "bytes": 3222
+    },
+    {
+      "version": "20260904113000",
+      "name": "stage1_price_governance_lifecycle_compatibility",
+      "file": "supabase/migrations/20260904113000_stage1_price_governance_lifecycle_compatibility.sql",
+      "sha256": "27db18d932ad986150cb767a71d1af14a2b36b81fb6589dc7ecc174c7ed502c0",
+      "bytes": 5625
     }
   ]
 }

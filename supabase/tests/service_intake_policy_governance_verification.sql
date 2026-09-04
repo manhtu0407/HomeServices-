@@ -173,8 +173,21 @@ begin
     select 1 from public.price_baselines pb where pb.service_problem_id = v_price.service_problem_id
       and pb.district_code = v_price.district_code and pb.complexity = v_price.complexity
       and pb.version = v_price_version.version and pb.price_evidence = v_price.price_evidence
+      and pb.lifecycle = 'active' and pb.supersedes_id = v_price.id
   ) then
     raise exception 'governed publish did not atomically update legacy runtime baseline';
+  end if;
+  if not exists (
+    select 1 from public.price_baselines pb
+    where pb.id = v_price.id and pb.lifecycle = 'superseded'
+  ) or (
+    select count(*) from public.price_baselines pb
+    where pb.service_problem_id = v_price.service_problem_id
+      and pb.district_code = v_price.district_code
+      and pb.complexity = v_price.complexity
+      and pb.lifecycle = 'active'
+  ) <> 1 then
+    raise exception 'governed publish must preserve history with exactly one active baseline';
   end if;
 
   v_weak_evidence := jsonb_build_object('schema_version', 'baseline_price_evidence.v1', 'sources', jsonb_build_array(v_price.price_evidence -> 'sources' -> 0));
