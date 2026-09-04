@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, useState, type Dispatch, type RefObject } from 'react'
 import {
   toLocalDealStatus,
+  type MatchingDeliveryReceipt,
+  type QuoteMode,
   type LocalWorkflowAction,
   type LocalWorkflowState,
   type UserRole,
@@ -12,7 +14,11 @@ import {
 import type { AppLanguage } from '../app-language'
 import type {
   EarningsResponse,
+  WorkerBroadcast,
   WorkerJobListResponse,
+  WorkerBroadcastProposalInput,
+  WorkerBroadcastProposalResponse,
+  WorkerBroadcastProposalAction,
   WorkerPayoutMethod,
   WorkerPayoutMethodSaveInput,
   WorkerPerformanceInsightsResponse,
@@ -23,8 +29,10 @@ import type {
 import { workerService } from '../services'
 import { uploadWorkerAvatar, type WorkerAvatarDraft } from '../worker-avatar-upload'
 import { localizeWorkflowError } from './errors'
+import { isWorkerBroadcastProposalAction, validateWorkerProposal } from './worker-proposal'
 import {
   sameWorkerEarnings,
+  sameWorkerBroadcasts,
   sameWorkerJobs,
   sameWorkerPayoutMethod,
   sameWorkerPerformanceInsights,
@@ -45,6 +53,9 @@ import { dealToSnapshot, workerBroadcastToSnapshot, workerJobToSnapshot } from '
 const WORKER_STARTUP_REFRESH_RETRY_DELAYS_MS = [1_000, 3_000] as const
 
 type WorkerRemoteState = {
+  broadcasts: WorkerBroadcast[]
+  broadcastsError: string | null
+  broadcastsHydrated: boolean
   earnings: EarningsResponse | null
   jobs: WorkerJobListResponse['jobs']
   jobsHydrated: boolean
@@ -55,7 +66,22 @@ type WorkerRemoteState = {
   withdrawalRequests: WorkerWithdrawalRequest[]
 }
 
+export type WorkerMatchingDeliveryView = {
+  confirmedRecipientCount: number | null
+  receipt: MatchingDeliveryReceipt
+}
+
+export type WorkerProposalOpportunityView = {
+  broadcastId: string
+  proposalAction: WorkerBroadcastProposalAction
+  quoteMode: QuoteMode | null
+  result: WorkerBroadcastProposalResponse | null
+}
+
 const initialWorkerRemoteState: WorkerRemoteState = {
+  broadcasts: [],
+  broadcastsError: null,
+  broadcastsHydrated: false,
   earnings: null,
   jobs: [],
   jobsHydrated: false,
@@ -72,7 +98,7 @@ type WorkerBoardActionsInput = {
   refreshCurrentJob: () => Promise<boolean>
   role: UserRole | null
   sessionUserId: string | null
-  setRemoteError: (error: string) => false
+  setRemoteError: (error: string, code?: string) => false
   stateRef: RefObject<LocalWorkflowState>
 }
 
@@ -87,11 +113,17 @@ export function useWorkerBoardActions({
 }: WorkerBoardActionsInput) {
   const workerAvailabilityPreferenceRef = useRef<{ sessionUserId: string | null; value: boolean } | null>(null)
   const workerRefreshRequestIdRef = useRef(0)
-  const workerRefreshInFlightRef = useRef(false)
+  const workerRefreshInFlightRequestIdRef = useRef<number | null>(null)
   const workerActivityHeartbeatBusyRef = useRef(false)
+  const workerProposalInFlightRef = useRef<string | null>(null)
   const [workerRemoteState, setWorkerRemoteState] = useState<WorkerRemoteState>(initialWorkerRemoteState)
   const [workerEarningsError, setWorkerEarningsError] = useState<string | null>(null)
+  const [workerMatchingDelivery, setWorkerMatchingDelivery] = useState<WorkerMatchingDeliveryView | null>(null)
+  const [workerProposalOpportunity, setWorkerProposalOpportunity] = useState<WorkerProposalOpportunityView | null>(null)
   const workerProfile = workerRemoteState.sessionUserId === sessionUserId ? workerRemoteState.profile : null
+  const workerBroadcasts = workerRemoteState.sessionUserId === sessionUserId ? workerRemoteState.broadcasts : []
+  const workerBroadcastsError = workerRemoteState.sessionUserId === sessionUserId ? workerRemoteState.broadcastsError : null
+  const workerBroadcastsHydrated = workerRemoteState.sessionUserId === sessionUserId && workerRemoteState.broadcastsHydrated
   const workerEarnings = workerRemoteState.sessionUserId === sessionUserId ? workerRemoteState.earnings : null
   const workerJobs = workerRemoteState.sessionUserId === sessionUserId ? workerRemoteState.jobs : []
   const workerJobsHydrated = workerRemoteState.sessionUserId === sessionUserId && workerRemoteState.jobsHydrated
@@ -99,13 +131,18 @@ export function useWorkerBoardActions({
   const workerPayoutMethod = workerRemoteState.sessionUserId === sessionUserId ? workerRemoteState.payoutMethod : null
 
   const workerWithdrawalRequests = workerRemoteState.sessionUserId === sessionUserId ? workerRemoteState.withdrawalRequests : []
+  useEffect(() => {
+    workerRefreshRequestIdRef.current += 1
+    workerRefreshInFlightRequestIdRef.current = null
+  }, [role, sessionUserId])
+
   const workerRefresh = useCallback(async () => {
     if (role !== 'worker' && role !== 'admin') return true
-    if (workerRefreshInFlightRef.current) return true
-    workerRefreshInFlightRef.current = true
+    if (workerRefreshInFlightRequestIdRef.current !== null) return true
+    const workerRefreshRequestId = workerRefreshRequestIdRef.current + 1
+    workerRefreshRequestIdRef.current = workerRefreshRequestId
+    workerRefreshInFlightRequestIdRef.current = workerRefreshRequestId
     try {
-      const workerRefreshRequestId = workerRefreshRequestIdRef.current + 1
-      workerRefreshRequestIdRef.current = workerRefreshRequestId
       const isCurrentWorkerRefresh = () => workerRefreshRequestIdRef.current === workerRefreshRequestId
 
       const profileRequest = workerService.getProfile()
@@ -119,28 +156,67 @@ export function useWorkerBoardActions({
         : Promise.resolve({ success: true as const, data: { requests: [] } })
       const broadcastsRequest = workerService.getBroadcasts()
       const jobsRequest = workerService.getJobs()
+      const matchingHeartbeatRequest = role === 'worker'
+        ? workerService.sendMatchingHeartbeat()
+        : Promise.resolve({ success: true as const })
 
       // Reconcile assigned work and offers together. An active assigned job is
       // authoritative and must never be replaced by an offer during refresh.
       const [broadcasts, jobs] = await Promise.all([broadcastsRequest, jobsRequest])
       if (!isCurrentWorkerRefresh()) return true
       const nextBroadcast = broadcasts.success ? broadcasts.data.broadcasts[0] : undefined
-      let workflowError = broadcasts.success ? null : broadcasts.error
-      if (jobs.success) {
-        setWorkerRemoteState((current) => {
-          const currentJobs = current.sessionUserId === sessionUserId ? current.jobs : []
-          if (current.sessionUserId === sessionUserId && current.jobsHydrated && sameWorkerJobs(currentJobs, jobs.data.jobs)) return current
-          return {
-            earnings: current.sessionUserId === sessionUserId ? current.earnings : null,
-            jobs: jobs.data.jobs,
-            jobsHydrated: true,
-            performanceInsights: current.sessionUserId === sessionUserId ? current.performanceInsights : null,
-            payoutMethod: current.sessionUserId === sessionUserId ? current.payoutMethod : null,
-            profile: current.sessionUserId === sessionUserId ? current.profile : null,
-            sessionUserId,
-            withdrawalRequests: current.sessionUserId === sessionUserId ? current.withdrawalRequests : [],
+      if (broadcasts.success) {
+        setWorkerMatchingDelivery(nextBroadcast?.delivery_receipt
+          ? {
+              confirmedRecipientCount: nextBroadcast.confirmed_recipient_count ?? null,
+              receipt: nextBroadcast.delivery_receipt,
+            }
+          : null)
+        setWorkerProposalOpportunity((current) => {
+          if (nextBroadcast && isWorkerBroadcastProposalAction(nextBroadcast.proposal_action)) {
+            return {
+              broadcastId: nextBroadcast.broadcast_id,
+              proposalAction: nextBroadcast.proposal_action,
+              quoteMode: nextBroadcast.quote_mode ?? null,
+              result: current?.broadcastId === nextBroadcast.broadcast_id ? current.result : null,
+            }
           }
+          return current?.result ? current : null
         })
+      }
+      let workflowError = broadcasts.success ? null : broadcasts.error
+      setWorkerRemoteState((current) => {
+        const sameOwner = current.sessionUserId === sessionUserId
+        const currentBroadcasts = sameOwner ? current.broadcasts : []
+        const currentJobs = sameOwner ? current.jobs : []
+        const nextBroadcasts = broadcasts.success ? broadcasts.data.broadcasts : currentBroadcasts
+        const nextJobs = jobs.success ? jobs.data.jobs : currentJobs
+        const nextBroadcastsError = broadcasts.success
+          ? null
+          : localizeWorkflowError(broadcasts.error, language)
+        if (
+          sameOwner
+          && current.broadcastsHydrated === (broadcasts.success || current.broadcastsHydrated)
+          && current.jobsHydrated === (jobs.success || current.jobsHydrated)
+          && current.broadcastsError === nextBroadcastsError
+          && sameWorkerBroadcasts(currentBroadcasts, nextBroadcasts)
+          && sameWorkerJobs(currentJobs, nextJobs)
+        ) return current
+        return {
+          broadcasts: nextBroadcasts,
+          broadcastsError: nextBroadcastsError,
+          broadcastsHydrated: broadcasts.success || (sameOwner && current.broadcastsHydrated),
+          earnings: sameOwner ? current.earnings : null,
+          jobs: nextJobs,
+          jobsHydrated: jobs.success || (sameOwner && current.jobsHydrated),
+          performanceInsights: sameOwner ? current.performanceInsights : null,
+          payoutMethod: sameOwner ? current.payoutMethod : null,
+          profile: sameOwner ? current.profile : null,
+          sessionUserId,
+          withdrawalRequests: sameOwner ? current.withdrawalRequests : [],
+        }
+      })
+      if (jobs.success) {
         const activeJob = jobs.data.jobs.find((job) => isWorkerCurrentJobStatus(job.status))
         const currentJobId = getRemoteJobId(stateRef.current)
         const currentJob = currentJobId ? jobs.data.jobs.find((job) => job.id === currentJobId) : undefined
@@ -170,12 +246,12 @@ export function useWorkerBoardActions({
         performanceInsightsRequest,
         payoutMethodRequest,
         withdrawalRequestsRequest,
+        matchingHeartbeatRequest,
       ])
       if (!isCurrentWorkerRefresh()) return true
       if (!profile.success) return setRemoteError(profile.error)
 
       setWorkerEarningsError(earnings.success ? null : localizeWorkflowError(earnings.error, language))
-      const nextEarnings = earnings.success ? earnings.data : null
       const nextPerformanceInsights = performanceInsights.success ? performanceInsights.data : null
       const pendingAvailabilityPreference = workerAvailabilityPreferenceRef.current?.sessionUserId === sessionUserId
         ? workerAvailabilityPreferenceRef.current.value
@@ -189,6 +265,7 @@ export function useWorkerBoardActions({
       setWorkerRemoteState((current) => {
         const currentProfile = current.sessionUserId === sessionUserId ? current.profile : null
         const currentEarnings = current.sessionUserId === sessionUserId ? current.earnings : null
+        const nextEarnings = earnings.success ? earnings.data : currentEarnings
         const currentJobs = current.sessionUserId === sessionUserId ? current.jobs : []
         const currentPerformanceInsights = current.sessionUserId === sessionUserId ? current.performanceInsights : null
         const currentPayoutMethod = current.sessionUserId === sessionUserId ? current.payoutMethod : null
@@ -207,6 +284,9 @@ export function useWorkerBoardActions({
         return current.sessionUserId === sessionUserId && sameProfile && sameEarnings && samePerformanceInsights && samePayoutMethod && sameWithdrawalRequests
           ? current
           : {
+              broadcasts: current.sessionUserId === sessionUserId ? current.broadcasts : [],
+              broadcastsError: current.sessionUserId === sessionUserId ? current.broadcastsError : null,
+              broadcastsHydrated: current.sessionUserId === sessionUserId ? current.broadcastsHydrated : false,
               earnings: nextEarnings,
               jobs: currentJobs,
               jobsHydrated: current.sessionUserId === sessionUserId ? current.jobsHydrated : false,
@@ -222,7 +302,9 @@ export function useWorkerBoardActions({
       if (workflowError) return setRemoteError(workflowError)
       return true
     } finally {
-      workerRefreshInFlightRef.current = false
+      if (workerRefreshInFlightRequestIdRef.current === workerRefreshRequestId) {
+        workerRefreshInFlightRequestIdRef.current = null
+      }
     }
   }, [dispatch, language, role, sessionUserId, setRemoteError, stateRef])
 
@@ -244,6 +326,9 @@ export function useWorkerBoardActions({
     const updated = await workerService.updateServiceArea(input)
     if (!updated.success) return setRemoteError(updated.error)
     setWorkerRemoteState((current) => ({
+      broadcasts: current.sessionUserId === sessionUserId ? current.broadcasts : [],
+      broadcastsError: current.sessionUserId === sessionUserId ? current.broadcastsError : null,
+      broadcastsHydrated: current.sessionUserId === sessionUserId ? current.broadcastsHydrated : false,
       earnings: current.sessionUserId === sessionUserId ? current.earnings : null,
       jobs: current.sessionUserId === sessionUserId ? current.jobs : [],
       jobsHydrated: current.sessionUserId === sessionUserId ? current.jobsHydrated : false,
@@ -263,6 +348,9 @@ export function useWorkerBoardActions({
     const updated = await workerService.updateServicePreferences(input)
     if (!updated.success) return setRemoteError(updated.error)
     setWorkerRemoteState((current) => ({
+      broadcasts: current.sessionUserId === sessionUserId ? current.broadcasts : [],
+      broadcastsError: current.sessionUserId === sessionUserId ? current.broadcastsError : null,
+      broadcastsHydrated: current.sessionUserId === sessionUserId ? current.broadcastsHydrated : false,
       earnings: current.sessionUserId === sessionUserId ? current.earnings : null,
       jobs: current.sessionUserId === sessionUserId ? current.jobs : [],
       jobsHydrated: current.sessionUserId === sessionUserId ? current.jobsHydrated : false,
@@ -331,6 +419,12 @@ export function useWorkerBoardActions({
 
     const existing = stateRef.current.deal
     if (existing?.broadcast) {
+      if (accepted.data.delivery_receipt) {
+        setWorkerMatchingDelivery((current) => ({
+          confirmedRecipientCount: current?.confirmedRecipientCount ?? null,
+          receipt: accepted.data.delivery_receipt!,
+        }))
+      }
       dispatch({
         type: 'hydrate_remote_job',
         workerGate: 'remote_backend',
@@ -359,6 +453,75 @@ export function useWorkerBoardActions({
     }
     return true
   }, [dispatch, refreshCurrentJob, setRemoteError, stateRef])
+
+  const workerMarkBroadcastSeen = useCallback(async (broadcastId: string) => {
+    const seen = await workerService.markBroadcastSeen(broadcastId)
+    if (!seen.success) return false
+    setWorkerMatchingDelivery((current) => current?.receipt.broadcast_id === broadcastId
+      ? { ...current, receipt: seen.data.delivery_receipt }
+      : current)
+    return true
+  }, [])
+
+  const workerSubmitBroadcastProposal = useCallback(async (input: WorkerBroadcastProposalInput) => {
+    const opportunity = workerProposalOpportunity
+    if (
+      !opportunity
+      || opportunity.proposalAction === 'accept_priced_offer'
+      || workerProposalInFlightRef.current
+    ) return false
+    const validated = validateWorkerProposal(opportunity.proposalAction, {
+      priceMaxText: input.price_max === null || input.price_max === undefined ? '' : String(input.price_max),
+      priceMinText: input.price_min === null || input.price_min === undefined ? '' : String(input.price_min),
+      scopeSummary: input.scope_summary,
+    })
+    if (!validated.success) return setRemoteError('', validated.code)
+    workerProposalInFlightRef.current = opportunity.broadcastId
+    try {
+      const submitted = await workerService.submitBroadcastProposal(
+        opportunity.broadcastId,
+        validated.input,
+      )
+      if (!submitted.success) return setRemoteError(submitted.error, submitted.code)
+      setWorkerProposalOpportunity((current) => current?.broadcastId === submitted.data.broadcast_id
+        ? { ...current, result: submitted.data }
+        : current)
+      return true
+    } finally {
+      workerProposalInFlightRef.current = null
+    }
+  }, [setRemoteError, workerProposalOpportunity])
+
+  const workerSelectBroadcast = useCallback((broadcastId: string) => {
+    const cachedBroadcasts = workerRemoteState.sessionUserId === sessionUserId
+      ? workerRemoteState.broadcasts
+      : []
+    const selected = cachedBroadcasts.find((broadcast) => broadcast.broadcast_id === broadcastId)
+    const now = Date.now()
+    const expiresAt = selected?.expires_at ? Date.parse(selected.expires_at) : Number.NaN
+    const quoteExpiresAt = selected?.original_scope_price_quote?.expires_at
+      ? Date.parse(selected.original_scope_price_quote.expires_at)
+      : Number.NaN
+    if (!selected || selected.status !== 'sent' || !Number.isFinite(expiresAt) || expiresAt <= now) return false
+    const requiresQuote = !selected.proposal_action || selected.proposal_action === 'accept_priced_offer'
+    if (requiresQuote && (!Number.isFinite(quoteExpiresAt) || quoteExpiresAt <= now)) return false
+    dispatch({ type: 'hydrate_remote_broadcast', broadcast: workerBroadcastToSnapshot(selected) })
+    setWorkerMatchingDelivery(selected.delivery_receipt
+      ? {
+          confirmedRecipientCount: selected.confirmed_recipient_count ?? null,
+          receipt: selected.delivery_receipt,
+        }
+      : null)
+    setWorkerProposalOpportunity(isWorkerBroadcastProposalAction(selected.proposal_action)
+      ? {
+          broadcastId: selected.broadcast_id,
+          proposalAction: selected.proposal_action,
+          quoteMode: selected.quote_mode ?? null,
+          result: null,
+        }
+      : null)
+    return true
+  }, [dispatch, sessionUserId, workerRemoteState.broadcasts, workerRemoteState.sessionUserId])
 
   const workerDeclineBroadcast = useCallback(async () => {
     const jobId = getRemoteJobId(stateRef.current)
@@ -449,18 +612,26 @@ export function useWorkerBoardActions({
   return {
     workerAcceptBroadcast,
     workerDeclineBroadcast,
+    workerBroadcasts,
+    workerBroadcastsError,
+    workerBroadcastsHydrated,
     workerEarnings,
     workerEarningsError,
     workerJobs,
     workerJobsHydrated,
+    workerMarkBroadcastSeen,
+    workerMatchingDelivery,
     workerPerformanceInsights,
     workerPayoutMethod,
     workerProfile,
+    workerProposalOpportunity,
     workerRefresh,
+    workerSelectBroadcast,
     workerRequestWithdrawal,
     workerSavePayoutMethod,
     workerSubmitRegistration,
     workerSaveRegistrationDraft,
+    workerSubmitBroadcastProposal,
     workerUpdateAvailability,
     workerUpdateServiceArea,
     workerUpdateServicePreferences,

@@ -112,7 +112,6 @@ const readWorkerSurfaceLayer = () =>
         && !normalized.endsWith('/components/worker/earnings/payout-method-styles.ts')
         && !normalized.endsWith('/components/worker/earnings/payout-request-styles.ts')
         && !normalized.endsWith('/components/worker/earnings/payout-styles.ts')
-        && !normalized.endsWith('/components/worker/home/action-styles.ts')
         && !normalized.endsWith('/components/worker/home/opportunity-styles.ts')
         && !normalized.endsWith('/components/worker/profile/body-styles.ts')
         && !normalized.endsWith('/components/worker/profile/header-styles.ts')
@@ -1074,7 +1073,7 @@ describe('prototype runtime cleanup', () => {
     expect(restoredWorker).toContain('export function WorkerHomeSurface')
     expect(restoredWorkerDock).toContain('export function WorkerRebuildDockOverlay')
     expect(restoredWorkerDock).toContain('export function WorkerDockLayoutProvider')
-    expect(read('components/worker/home/screen-surfaces.tsx')).toContain('worker-v5-screen-1.1-worker-home')
+    expect(read('components/worker/home/worker-home-production-surface.tsx')).toContain('worker-v5-screen-1.1-worker-home')
     expect(restoredWorkerDock).toContain('worker-v5-dock-overlay')
     expect(exists('components/rebuild/rebuild-surfaces.tsx')).toBe(false)
     expect(restoredSources).not.toContain("from '../customer-surfaces'")
@@ -1154,7 +1153,7 @@ describe('worker V5/XanhSM aligned shell surfaces', () => {
     expect(src).toContain('export function WorkerChatSurface')
     expect(src).toContain('export function WorkerEarningsSurface')
     expect(src).toContain('export function WorkerProfileSurface')
-    expect(read('components/worker/home/screen-surfaces.tsx')).toContain('testID="worker-v5-screen-1.1-worker-home"')
+    expect(read('components/worker/home/worker-home-production-surface.tsx')).toContain('testID="worker-v5-screen-1.1-worker-home"')
     expect(workerV5).toContain('testID={`worker-v5-screen-${screen.id}`}')
     expect(workerDock).toContain('export function WorkerRebuildDockOverlay')
   })
@@ -1213,7 +1212,7 @@ describe('worker V5/XanhSM aligned shell surfaces', () => {
     // negative assertions below would silently stop covering extracted code otherwise.
     const workerFlow = [
       read('components/worker/worker-v5-flow.tsx'),
-      read('components/worker/home/screen-surfaces.tsx'),
+      read('components/worker/home/worker-home-production-surface.tsx'),
       read('components/worker/chat/orb-screen-surfaces.tsx'),
       read('components/worker/chat/kael-body-surfaces.tsx'),
     ].join('\n')
@@ -1321,7 +1320,7 @@ describe('worker V5/XanhSM aligned shell surfaces', () => {
     expect(workerFlow).toContain('reduceTransparency={glass.reduceTransparency}')
     expect(workerFlow).toContain('scope={formulaPageAuraTarget.scope}')
     expect(workerFlow).toContain('testID={formulaPageAuraTarget.testID}')
-    expect(read('components/worker/home/screen-surfaces.tsx')).toContain('<WorkerV5HomeAuraBackground reduceTransparency={glass.reduceTransparency} />')
+    expect(read('components/worker/home/worker-home-production-surface.tsx')).toContain("safeAreaLight: { backgroundColor: '#FFFFFF' }")
     expect(workerFlow).toContain('scope="KaelOrbCustomerPage"')
     expect(workerFlow).toContain('reduceTransparency={reduceTransparency}')
     expect(workerFlow).toContain('testID="worker-v5-kael-orb-background-mint-aura"')

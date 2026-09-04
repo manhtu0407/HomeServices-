@@ -3,6 +3,12 @@ import { existsSync, readFileSync, readdirSync, writeFileSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { join as joinDatabaseTypes } from '../split-database-types.mjs'
+import {
+  canonicalMigrationEntries,
+  resolveHostedMigrationState,
+  semanticMigrationSource,
+  validateMigrationEquivalences,
+} from './migration-history.mjs'
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..')
 const MIGRATION_ROOT = 'supabase/migrations'
@@ -13,6 +19,7 @@ const INVENTORY_PATH = 'config/harness/migration-inventory.json'
 // releases, and a change would invalidate every release already recorded.
 const TYPES_PATH = 'packages/shared/src/types/database'
 const BASELINE_PATH = 'config/harness/migration-baseline.json'
+const EQUIVALENCES_PATH = 'config/harness/migration-equivalences.json'
 const normalizeSource = (value) => value.replace(/\r\n/gu, '\n')
 
 export function buildMigrationInventory(options = {}) {
@@ -33,14 +40,28 @@ export function buildMigrationInventory(options = {}) {
     }
   })
   const baseline = readHistoricalBaseline(root)
+  const migrationEquivalences = JSON.parse(readFileSync(resolve(root, EQUIVALENCES_PATH), 'utf8'))
+  const equivalenceProblems = validateMigrationEquivalences(migrationEquivalences, entries)
+  for (const group of migrationEquivalences.groups ?? []) {
+    for (const version of group.versions ?? []) {
+      const entry = entries.find((candidate) => candidate.version === version)
+      if (!entry) continue
+      const source = readFileSync(resolve(root, entry.file), 'utf8')
+      if (digest(semanticMigrationSource(source)) !== group.semanticSha256) {
+        equivalenceProblems.push(`migration equivalence semantic digest mismatch: ${version}`)
+      }
+    }
+  }
+  if (equivalenceProblems.length) throw new Error(equivalenceProblems.join('; '))
   return {
-    version: '1.0.0',
+    version: '1.1.0',
     historicalBaseline: {
       file: BASELINE_PATH,
       immutableThroughVersion: baseline.immutableThroughVersion,
       sha256: baseline.migrationsSha256,
     },
     migrationCount: entries.length,
+    migrationEquivalences,
     migrationsSha256: digest(entries.map((entry) => `${entry.version}:${entry.name}:${entry.sha256}\n`).join('')),
     databaseTypes: {
       file: TYPES_PATH,
@@ -118,25 +139,16 @@ export function compareRemoteMigrations(inventory, remote) {
   const problems = []
   const remoteEntries = Array.isArray(remote) ? remote : remote.migrations
   if (!Array.isArray(remoteEntries)) return ['remote migration snapshot is not an array']
-  const expectedVersions = inventory.entries.map((entry) => entry.version)
-  const suppliedVersions = remoteEntries.map((entry) => String(entry?.version ?? entry?.id ?? ''))
-  if (suppliedVersions.some((version) => !version)) {
-    problems.push('remote migration snapshot contains an entry without a version')
+  let state
+  try {
+    state = resolveHostedMigrationState(inventory, remoteEntries)
+  } catch (error) {
+    return [error instanceof Error ? error.message : String(error)]
   }
-  const actualVersions = suppliedVersions
-    .filter(Boolean)
-  const expectedSet = new Set(expectedVersions)
-  const actualSet = new Set(actualVersions)
-  if (actualSet.size !== actualVersions.length) {
-    problems.push('remote migration history contains duplicate versions')
-  }
-  const missing = expectedVersions.filter((version) => !actualSet.has(version))
-  const unknown = actualVersions.filter((version) => !expectedSet.has(version))
+  const missing = canonicalMigrationEntries(inventory)
+    .map((entry) => entry.version)
+    .filter((version) => !state.appliedCanonicalVersions.has(version))
   if (missing.length) problems.push(`remote is missing migrations: ${missing.join(', ')}`)
-  if (unknown.length) problems.push(`remote has unknown migrations: ${unknown.join(', ')}`)
-  if (actualVersions.join('\n') !== [...actualVersions].sort().join('\n')) {
-    problems.push('remote migration history is out of order')
-  }
   return problems
 }
 

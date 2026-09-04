@@ -34,6 +34,13 @@ import { api } from '../api'
 import { supabase } from '../supabase'
 
 const mockGetSession = supabase?.auth.getSession as jest.Mock
+const emptyResponseMeta = {
+  operationId: null,
+  releaseId: null,
+  runId: null,
+  supportCode: null,
+  traceId: null,
+}
 
 describe('mobile API response guard', () => {
   beforeAll(() => {
@@ -186,6 +193,7 @@ describe('mobile API response guard', () => {
       success: false,
       error: 'Phản hồi từ hệ thống không hợp lệ',
       code: 'INVALID_RESPONSE',
+      meta: emptyResponseMeta,
       status: 200,
     })
     expect(mockFetch).toHaveBeenCalledTimes(1)
@@ -207,6 +215,7 @@ describe('mobile API response guard', () => {
       success: false,
       error: 'Lỗi không xác định',
       code: 'INVALID_REQUEST',
+      meta: emptyResponseMeta,
       status: 400,
     })
   })
@@ -227,6 +236,7 @@ describe('mobile API response guard', () => {
       success: false,
       error: 'Yêu cầu này đang được xử lý',
       code: 'REQUEST_IN_PROGRESS',
+      meta: emptyResponseMeta,
       status: 409,
     })
   })
@@ -248,6 +258,7 @@ describe('mobile API response guard', () => {
       success: false,
       error: 'Lỗi không xác định',
       code: 'VALIDATION',
+      meta: emptyResponseMeta,
       status: 400,
     })
   })
@@ -270,6 +281,7 @@ describe('mobile API response guard', () => {
       success: false,
       error: 'Không tìm thấy yêu cầu',
       code: 'HTTP_404',
+      meta: emptyResponseMeta,
       status: 404,
     })
   })

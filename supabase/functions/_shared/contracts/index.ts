@@ -40,6 +40,7 @@ export * from "./worker.ts";
 export * from "./customer.ts";
 export * from "./payment.ts";
 export * from "./admin-operator.ts";
+export * from "./stage1-reliability.ts";
 export {
   customerCancellationRequestSchema,
   disputeAdminDecisionSchema,

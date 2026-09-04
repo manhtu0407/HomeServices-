@@ -1,4 +1,4 @@
-import { act, renderHook } from '@testing-library/react-native'
+import { act, renderHook, waitFor } from '@testing-library/react-native'
 
 import { createCustomerKaelRequestGuard } from '../kael-chat/customer-kael-state-scope'
 import { useCustomerKaelDecisionActions } from '../kael-chat/use-customer-kael-decision-actions'
@@ -12,6 +12,19 @@ jest.mock('@/lib/services', () => ({
     confirm: (...args: unknown[]) => mockConfirmEstimate(...args),
     sendTurn: (...args: unknown[]) => mockSendKaelTurn(...args),
   },
+}))
+
+jest.mock('@/lib/frontend-workflow/confirmation-recovery', () => ({
+  clearPendingConfirmation: jest.fn(async () => undefined),
+  getOrCreatePendingConfirmation: jest.fn(async (sessionId: string) => ({
+    idempotencyKey: 'confirm:test-idempotency-key',
+    operation: null,
+    sessionId,
+    supportCode: null,
+    updatedAt: '2026-08-23T00:00:00.000Z',
+  })),
+  readPendingConfirmation: jest.fn(async () => null),
+  writePendingConfirmation: jest.fn(async () => undefined),
 }))
 
 function decisionHarness(agenticAdjustmentText = '') {
@@ -165,12 +178,13 @@ describe('customer Kael decision concurrency', () => {
       secondConfirm = result.current.confirmAgenticEstimate()
     })
 
-    expect(mockConfirmEstimate).toHaveBeenCalledTimes(1)
+    await waitFor(() => expect(mockConfirmEstimate).toHaveBeenCalledTimes(1))
     await act(async () => {
       rejectConfirm(new Error('network unavailable'))
       await Promise.all([firstConfirm, secondConfirm])
     })
-    expect(harness.conversation.setError).toHaveBeenCalledWith('Chưa thể hoàn tất lựa chọn này. Vui lòng thử lại.')
+    expect(harness.conversation.setError).not.toHaveBeenCalledWith('Chưa thể hoàn tất lựa chọn này. Vui lòng thử lại.')
+    expect(result.current.confirmationReconciling).toBe(true)
     expect(harness.chatUi.setConfirmingAgenticEstimate).toHaveBeenLastCalledWith(false)
 
     mockConfirmEstimate.mockResolvedValueOnce({ error: 'not confirmed', success: false })
@@ -234,10 +248,12 @@ describe('customer Kael decision concurrency', () => {
     expect(mockConfirmEstimate).toHaveBeenCalledWith(
       'session-a',
       {
+        confirmation_kind: 'priced_offer',
         price_reasoning_receipt_id: 'receipt_kael_price_20260811_01',
         matching_mode: 'prompt_if_saved',
       },
       'customer-session-token',
+      'confirm:test-idempotency-key',
     )
     expect(harness.workflow.actions.hydrateRemoteJobById).toHaveBeenCalledWith(
       'job-confirmed',

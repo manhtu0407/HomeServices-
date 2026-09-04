@@ -26,6 +26,10 @@ type KaelChatPostPipelineInput = {
   readonly sessionId: string;
   readonly ctx: {
     readonly user: { readonly id: string };
+    readonly environment?: string;
+    readonly releaseId?: string;
+    readonly deploymentId?: string;
+    readonly clientContractEpoch?: number;
   };
   readonly requestId: string;
   readonly pipeline: PipelineResult;
@@ -110,14 +114,18 @@ export async function handleKaelChatPipelineOutcome(
     district,
     currentCostUsd,
     previousAnalysisReceipt,
+    environment: input.ctx.environment,
+    releaseId: input.ctx.releaseId,
+    deploymentId: input.ctx.deploymentId,
+    clientContractEpoch: input.ctx.clientContractEpoch,
   });
 }
 
-async function recordKaelChatPipelineApiCalls(
+export async function recordKaelChatPipelineApiCalls(
   client: DbClient,
   requestId: string,
   sessionId: string,
-  pipeline: PipelineResult,
+  pipeline: Pick<PipelineResult, "stageLogs">,
 ) {
   await logApiCalls(
     client,

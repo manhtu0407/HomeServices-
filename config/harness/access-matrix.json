@@ -2,8 +2,8 @@
   "version": "1.0.0",
   "source": {
     "migrationRoot": "supabase/migrations",
-    "migrationCount": 287,
-    "migrationDigest": "e317c94d07584f6a20d98b18c1c1cffc71453dbad1a9dfa65ab589c81ffd3020"
+    "migrationCount": 336,
+    "migrationDigest": "dbfe5f34fed46b02d6190190138037659253fdc7e0880ea18f4f56001fe26a88"
   },
   "actors": [
     "anonymous",
@@ -15,6 +15,22 @@
     "service_role"
   ],
   "tables": [
+    {
+      "name": "admin_finance_mutation_receipts",
+      "classification": "internal",
+      "rlsEnabled": true,
+      "actorCommands": {
+        "anonymous": [],
+        "authenticated": []
+      },
+      "serviceRole": [
+        "select",
+        "insert",
+        "update",
+        "delete"
+      ],
+      "realtime": false
+    },
     {
       "name": "admin_finance_tax_policies",
       "classification": "internal",
@@ -112,6 +128,86 @@
       "realtime": false
     },
     {
+      "name": "admin_price_evidence_packages",
+      "classification": "internal",
+      "rlsEnabled": true,
+      "actorCommands": {
+        "anonymous": [],
+        "authenticated": []
+      },
+      "serviceRole": [
+        "select",
+        "insert",
+        "update",
+        "delete"
+      ],
+      "realtime": false
+    },
+    {
+      "name": "admin_support_case_notes",
+      "classification": "internal",
+      "rlsEnabled": true,
+      "actorCommands": {
+        "anonymous": [],
+        "authenticated": []
+      },
+      "serviceRole": [
+        "select",
+        "insert",
+        "update",
+        "delete"
+      ],
+      "realtime": false
+    },
+    {
+      "name": "admin_support_case_preparations",
+      "classification": "internal",
+      "rlsEnabled": true,
+      "actorCommands": {
+        "anonymous": [],
+        "authenticated": []
+      },
+      "serviceRole": [
+        "select",
+        "insert",
+        "update",
+        "delete"
+      ],
+      "realtime": false
+    },
+    {
+      "name": "admin_system_mutation_receipts",
+      "classification": "internal",
+      "rlsEnabled": true,
+      "actorCommands": {
+        "anonymous": [],
+        "authenticated": []
+      },
+      "serviceRole": [
+        "select",
+        "insert",
+        "update",
+        "delete"
+      ],
+      "realtime": false
+    },
+    {
+      "name": "admin_team_mutation_receipts",
+      "classification": "internal",
+      "rlsEnabled": true,
+      "actorCommands": {
+        "anonymous": [],
+        "authenticated": []
+      },
+      "serviceRole": [
+        "select",
+        "insert",
+        "update",
+        "delete"
+      ],
+      "realtime": false
+    },
+    {
       "name": "admin_worker_application_reviews",
       "classification": "internal",
       "rlsEnabled": true,
@@ -189,6 +285,38 @@
         "delete"
       ],
       "realtime": true
+    },
+    {
+      "name": "confirmation_operation_receipts",
+      "classification": "internal",
+      "rlsEnabled": true,
+      "actorCommands": {
+        "anonymous": [],
+        "authenticated": []
+      },
+      "serviceRole": [
+        "select",
+        "insert",
+        "update",
+        "delete"
+      ],
+      "realtime": false
+    },
+    {
+      "name": "confirmation_operations",
+      "classification": "internal",
+      "rlsEnabled": true,
+      "actorCommands": {
+        "anonymous": [],
+        "authenticated": []
+      },
+      "serviceRole": [
+        "select",
+        "insert",
+        "update",
+        "delete"
+      ],
+      "realtime": false
     },
     {
       "name": "customer_account_deletion_requests",
@@ -1863,6 +1991,54 @@
       "realtime": false
     },
     {
+      "name": "matching_operations",
+      "classification": "internal",
+      "rlsEnabled": true,
+      "actorCommands": {
+        "anonymous": [],
+        "authenticated": []
+      },
+      "serviceRole": [
+        "select",
+        "insert",
+        "update",
+        "delete"
+      ],
+      "realtime": false
+    },
+    {
+      "name": "matching_push_provider_tickets",
+      "classification": "internal",
+      "rlsEnabled": true,
+      "actorCommands": {
+        "anonymous": [],
+        "authenticated": []
+      },
+      "serviceRole": [
+        "select",
+        "insert",
+        "update",
+        "delete"
+      ],
+      "realtime": false
+    },
+    {
+      "name": "matching_recipient_deliveries",
+      "classification": "internal",
+      "rlsEnabled": true,
+      "actorCommands": {
+        "anonymous": [],
+        "authenticated": []
+      },
+      "serviceRole": [
+        "select",
+        "insert",
+        "update",
+        "delete"
+      ],
+      "realtime": false
+    },
+    {
       "name": "notifications",
       "classification": "actor-scoped",
       "rlsEnabled": true,
@@ -1886,6 +2062,54 @@
     },
     {
       "name": "platform_bank_balance_snapshots",
+      "classification": "internal",
+      "rlsEnabled": true,
+      "actorCommands": {
+        "anonymous": [],
+        "authenticated": []
+      },
+      "serviceRole": [
+        "select",
+        "insert",
+        "update",
+        "delete"
+      ],
+      "realtime": false
+    },
+    {
+      "name": "price_baseline_governance_audit",
+      "classification": "internal",
+      "rlsEnabled": true,
+      "actorCommands": {
+        "anonymous": [],
+        "authenticated": []
+      },
+      "serviceRole": [
+        "select",
+        "insert",
+        "update",
+        "delete"
+      ],
+      "realtime": false
+    },
+    {
+      "name": "price_baseline_governance_heads",
+      "classification": "internal",
+      "rlsEnabled": true,
+      "actorCommands": {
+        "anonymous": [],
+        "authenticated": []
+      },
+      "serviceRole": [
+        "select",
+        "insert",
+        "update",
+        "delete"
+      ],
+      "realtime": false
+    },
+    {
+      "name": "price_baseline_versions",
       "classification": "internal",
       "rlsEnabled": true,
       "actorCommands": {
@@ -2053,6 +2277,70 @@
       "realtime": false
     },
     {
+      "name": "service_intake_policies",
+      "classification": "internal",
+      "rlsEnabled": true,
+      "actorCommands": {
+        "anonymous": [],
+        "authenticated": []
+      },
+      "serviceRole": [
+        "select",
+        "insert",
+        "update",
+        "delete"
+      ],
+      "realtime": false
+    },
+    {
+      "name": "service_intake_policy_audit",
+      "classification": "internal",
+      "rlsEnabled": true,
+      "actorCommands": {
+        "anonymous": [],
+        "authenticated": []
+      },
+      "serviceRole": [
+        "select",
+        "insert",
+        "update",
+        "delete"
+      ],
+      "realtime": false
+    },
+    {
+      "name": "service_intake_policy_floors",
+      "classification": "internal",
+      "rlsEnabled": true,
+      "actorCommands": {
+        "anonymous": [],
+        "authenticated": []
+      },
+      "serviceRole": [
+        "select",
+        "insert",
+        "update",
+        "delete"
+      ],
+      "realtime": false
+    },
+    {
+      "name": "service_intake_policy_heads",
+      "classification": "internal",
+      "rlsEnabled": true,
+      "actorCommands": {
+        "anonymous": [],
+        "authenticated": []
+      },
+      "serviceRole": [
+        "select",
+        "insert",
+        "update",
+        "delete"
+      ],
+      "realtime": false
+    },
+    {
       "name": "service_knowledge_boxes",
       "classification": "actor-scoped",
       "rlsEnabled": true,
@@ -2097,6 +2385,22 @@
       "realtime": false
     },
     {
+      "name": "service_taxonomy_revisions",
+      "classification": "internal",
+      "rlsEnabled": true,
+      "actorCommands": {
+        "anonymous": [],
+        "authenticated": []
+      },
+      "serviceRole": [
+        "select",
+        "insert",
+        "update",
+        "delete"
+      ],
+      "realtime": false
+    },
+    {
       "name": "source_trust_registry",
       "classification": "actor-scoped",
       "rlsEnabled": true,
@@ -2105,6 +2409,136 @@
         "authenticated": [
           "all"
         ]
+      },
+      "serviceRole": [
+        "select",
+        "insert",
+        "update",
+        "delete"
+      ],
+      "realtime": false
+    },
+    {
+      "name": "stage1_production_acceptance_notes",
+      "classification": "internal",
+      "rlsEnabled": true,
+      "actorCommands": {
+        "anonymous": [],
+        "authenticated": []
+      },
+      "serviceRole": [
+        "select",
+        "insert",
+        "update",
+        "delete"
+      ],
+      "realtime": false
+    },
+    {
+      "name": "stage1_release_control_events",
+      "classification": "internal",
+      "rlsEnabled": true,
+      "actorCommands": {
+        "anonymous": [],
+        "authenticated": []
+      },
+      "serviceRole": [
+        "select",
+        "insert",
+        "update",
+        "delete"
+      ],
+      "realtime": false
+    },
+    {
+      "name": "stage1_release_controls",
+      "classification": "internal",
+      "rlsEnabled": true,
+      "actorCommands": {
+        "anonymous": [],
+        "authenticated": []
+      },
+      "serviceRole": [
+        "select",
+        "insert",
+        "update",
+        "delete"
+      ],
+      "realtime": false
+    },
+    {
+      "name": "stage1_smoke_deployment_attestations",
+      "classification": "internal",
+      "rlsEnabled": true,
+      "actorCommands": {
+        "anonymous": [],
+        "authenticated": []
+      },
+      "serviceRole": [
+        "select",
+        "insert",
+        "update",
+        "delete"
+      ],
+      "realtime": false
+    },
+    {
+      "name": "stage1_source_deployment_attestations",
+      "classification": "internal",
+      "rlsEnabled": true,
+      "actorCommands": {
+        "anonymous": [],
+        "authenticated": []
+      },
+      "serviceRole": [
+        "select",
+        "insert",
+        "update",
+        "delete"
+      ],
+      "realtime": false
+    },
+    {
+      "name": "stage1_synthetic_smoke_receipts",
+      "classification": "internal",
+      "rlsEnabled": true,
+      "actorCommands": {
+        "anonymous": [],
+        "authenticated": []
+      },
+      "serviceRole": [
+        "select",
+        "insert",
+        "update",
+        "delete"
+      ],
+      "realtime": false
+    },
+    {
+      "name": "synthetic_matching_cohort_members",
+      "classification": "actor-scoped",
+      "rlsEnabled": true,
+      "actorCommands": {
+        "anonymous": [],
+        "authenticated": [
+          "select"
+        ]
+      },
+      "serviceRole": [
+        "select",
+        "insert",
+        "update",
+        "delete"
+      ],
+      "realtime": false
+    },
+    {
+      "name": "synthetic_matching_cohorts",
+      "classification": "internal",
+      "rlsEnabled": true,
+      "actorCommands": {
+        "anonymous": [],
+        "authenticated": []
       },
       "serviceRole": [
         "select",
@@ -2295,6 +2729,22 @@
       "realtime": false
     },
     {
+      "name": "worker_matching_proposals",
+      "classification": "internal",
+      "rlsEnabled": true,
+      "actorCommands": {
+        "anonymous": [],
+        "authenticated": []
+      },
+      "serviceRole": [
+        "select",
+        "insert",
+        "update",
+        "delete"
+      ],
+      "realtime": false
+    },
+    {
       "name": "worker_payment_ledger",
       "classification": "actor-scoped",
       "rlsEnabled": true,
@@ -2439,9 +2889,29 @@
         "delete"
       ],
       "realtime": false
+    },
+    {
+      "name": "workflow_outbox",
+      "classification": "internal",
+      "rlsEnabled": true,
+      "actorCommands": {
+        "anonymous": [],
+        "authenticated": []
+      },
+      "serviceRole": [
+        "select",
+        "insert",
+        "update",
+        "delete"
+      ],
+      "realtime": false
     }
   ],
   "views": [
+    {
+      "name": "admin_model_health_daily",
+      "securityInvoker": true
+    },
     {
       "name": "customer_overview",
       "securityInvoker": true
@@ -2471,6 +2941,10 @@
       "securityInvoker": true
     },
     {
+      "name": "stage1_current_production_acceptance",
+      "securityInvoker": true
+    },
+    {
       "name": "worker_overview",
       "securityInvoker": true
     },
@@ -2481,6 +2955,14 @@
   ],
   "functions": [
     {
+      "signature": "abort_stage1_release_canary(text, text, text, text)",
+      "securityDefiner": true,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
       "signature": "accept_broadcast_atomic(uuid, uuid, uuid)",
       "securityDefiner": false,
       "fixedSearchPath": true,
@@ -2490,6 +2972,22 @@
     },
     {
       "signature": "accept_broadcast_atomic(uuid, uuid)",
+      "securityDefiner": false,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
+      "signature": "accept_priced_broadcast_durable_atomic(uuid, uuid, uuid)",
+      "securityDefiner": false,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
+      "signature": "acknowledge_matching_push_delivery(uuid, uuid, uuid, timestamp with time zone)",
       "securityDefiner": false,
       "fixedSearchPath": true,
       "executeRoles": [
@@ -2522,6 +3020,22 @@
     },
     {
       "signature": "activate_job_broadcast_batch_atomic(uuid, uuid[], uuid, timestamp with time zone, timestamp with time zone)",
+      "securityDefiner": true,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
+      "signature": "activate_job_broadcast_batch_durable_atomic(uuid, uuid[], uuid, timestamp with time zone, timestamp with time zone)",
+      "securityDefiner": true,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
+      "signature": "admin_apply_service_taxonomy_revision(uuid, service_type, integer, uuid, text, jsonb, jsonb)",
       "securityDefiner": true,
       "fixedSearchPath": true,
       "executeRoles": [
@@ -2567,7 +3081,23 @@
       ]
     },
     {
+      "signature": "admin_claim_payment_reconciliation_atomic(uuid, uuid, integer, uuid, text)",
+      "securityDefiner": true,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
       "signature": "admin_claim_worker_withdrawal_atomic(uuid, uuid)",
+      "securityDefiner": true,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
+      "signature": "admin_claim_worker_withdrawal_v2(uuid, uuid, integer, uuid, text)",
       "securityDefiner": true,
       "fixedSearchPath": true,
       "executeRoles": [
@@ -2593,6 +3123,38 @@
     {
       "signature": "admin_decide_dispute_atomic(uuid, uuid, text, integer, integer, text, text, text)",
       "securityDefiner": false,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
+      "signature": "admin_decide_payment_reconciliation_v2(uuid, uuid, integer, uuid, text, integer, text, text, timestamp with time zone, text)",
+      "securityDefiner": true,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
+      "signature": "admin_draft_price_baseline(uuid, uuid, text, complexity_level, integer, integer, integer, text, jsonb, text)",
+      "securityDefiner": true,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
+      "signature": "admin_draft_service_intake_policy(uuid, uuid, integer, service_quote_mode, jsonb, jsonb, jsonb, jsonb, jsonb, jsonb, text)",
+      "securityDefiner": true,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
+      "signature": "admin_draft_service_intake_policy(uuid, uuid, integer, service_quote_mode, jsonb, jsonb, jsonb, jsonb, jsonb, text)",
+      "securityDefiner": true,
       "fixedSearchPath": true,
       "executeRoles": [
         "service_role"
@@ -2639,6 +3201,14 @@
       ]
     },
     {
+      "signature": "admin_finance_transaction_detail(uuid, uuid)",
+      "securityDefiner": true,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
       "signature": "admin_finance_transactions_page(uuid, timestamp with time zone, timestamp with time zone, integer, timestamp with time zone, uuid, text, service_type, text)",
       "securityDefiner": true,
       "fixedSearchPath": true,
@@ -2671,7 +3241,47 @@
       ]
     },
     {
+      "signature": "admin_preview_service_intake_policy_v2(uuid, integer)",
+      "securityDefiner": true,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
+      "signature": "admin_preview_service_intake_policy(uuid, integer)",
+      "securityDefiner": true,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
+      "signature": "admin_publish_price_baseline_version(uuid, uuid, uuid, timestamp with time zone, integer, uuid, text)",
+      "securityDefiner": true,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
       "signature": "admin_reject_learning_candidate(uuid, uuid, text)",
+      "securityDefiner": true,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
+      "signature": "admin_release_payment_reconciliation_atomic(uuid, uuid, integer, uuid, text)",
+      "securityDefiner": true,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
+      "signature": "admin_release_worker_withdrawal_v2(uuid, uuid, integer, uuid, text)",
       "securityDefiner": true,
       "fixedSearchPath": true,
       "executeRoles": [
@@ -2687,7 +3297,23 @@
       ]
     },
     {
+      "signature": "admin_resolve_worker_withdrawal_v2(uuid, uuid, integer, uuid, text, text, text, boolean, text)",
+      "securityDefiner": true,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
       "signature": "admin_retire_finance_tax_policy(uuid, uuid, text)",
+      "securityDefiner": true,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
+      "signature": "admin_retire_price_baseline(uuid, uuid, integer, uuid, text)",
       "securityDefiner": true,
       "fixedSearchPath": true,
       "executeRoles": [
@@ -2719,7 +3345,31 @@
       ]
     },
     {
+      "signature": "admin_review_worker_payout_method_v2(uuid, uuid, integer, uuid, text, text)",
+      "securityDefiner": true,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
       "signature": "admin_review_worker_profile_atomic(uuid, uuid, text, text)",
+      "securityDefiner": true,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
+      "signature": "admin_revoke_learning_rule_atomic(uuid, uuid, integer, integer, uuid, text)",
+      "securityDefiner": true,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
+      "signature": "admin_rollback_learning_rule_atomic(uuid, uuid, integer, integer, uuid, text)",
       "securityDefiner": true,
       "fixedSearchPath": true,
       "executeRoles": [
@@ -2743,6 +3393,22 @@
       ]
     },
     {
+      "signature": "admin_set_sub_admin_access_v2_atomic(uuid, uuid, text, text[], text)",
+      "securityDefiner": true,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
+      "signature": "admin_set_sub_admin_access_v3_atomic(uuid, uuid, text, text[], text, integer, uuid)",
+      "securityDefiner": true,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
       "signature": "admin_set_worker_access_atomic(uuid, uuid, text, text)",
       "securityDefiner": true,
       "fixedSearchPath": true,
@@ -2759,7 +3425,31 @@
       ]
     },
     {
+      "signature": "admin_transition_price_baseline(uuid, uuid, integer, text, text)",
+      "securityDefiner": true,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
+      "signature": "admin_transition_service_intake_policy(uuid, uuid, integer, text, text)",
+      "securityDefiner": true,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
       "signature": "admin_update_finance_tax_policy_draft(uuid, uuid, jsonb)",
+      "securityDefiner": true,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
+      "signature": "admin_update_support_case_preparation_atomic(uuid, text, uuid, integer, uuid, text, text, jsonb, text)",
       "securityDefiner": true,
       "fixedSearchPath": true,
       "executeRoles": [
@@ -2815,6 +3505,14 @@
       ]
     },
     {
+      "signature": "apply_matching_push_provider_receipt(uuid, text, text)",
+      "securityDefiner": false,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
       "signature": "apply_scope_change_database_effect_atomic(uuid, uuid, uuid, uuid, uuid)",
       "securityDefiner": true,
       "fixedSearchPath": true,
@@ -2847,8 +3545,36 @@
       ]
     },
     {
+      "signature": "assert_intake_policy_floor(service_type, jsonb, jsonb, jsonb, jsonb, jsonb)",
+      "securityDefiner": true,
+      "fixedSearchPath": true,
+      "executeRoles": []
+    },
+    {
+      "signature": "assert_stage1_governance_admin(uuid)",
+      "securityDefiner": true,
+      "fixedSearchPath": true,
+      "executeRoles": []
+    },
+    {
+      "signature": "attest_stage1_source_deployment(text, text, text, text, integer, text, text, text, boolean, boolean, text, text, text)",
+      "securityDefiner": true,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
       "signature": "auto_promote_learning_candidate_atomic(uuid)",
       "securityDefiner": true,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
+      "signature": "begin_harness_authorized_request(uuid, uuid, uuid, text, text, text, text, text, text, uuid, text, text, boolean, text, text, text)",
+      "securityDefiner": false,
       "fixedSearchPath": true,
       "executeRoles": [
         "service_role"
@@ -2872,6 +3598,14 @@
     },
     {
       "signature": "begin_job_matching_preference_atomic(uuid, uuid, integer, jsonb)",
+      "securityDefiner": true,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
+      "signature": "bind_synthetic_matching_cohort(text, uuid[], uuid[])",
       "securityDefiner": true,
       "fixedSearchPath": true,
       "executeRoles": [
@@ -2933,6 +3667,20 @@
       "executeRoles": [
         "service_role"
       ]
+    },
+    {
+      "signature": "claim_confirmation_matching_outbox_batch(text, integer, integer)",
+      "securityDefiner": true,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
+      "signature": "claim_confirmation_matching_outbox(uuid, uuid, integer)",
+      "securityDefiner": false,
+      "fixedSearchPath": true,
+      "executeRoles": []
     },
     {
       "signature": "claim_job_broadcast_retry_atomic(uuid, uuid, uuid, integer)",
@@ -2999,6 +3747,14 @@
       ]
     },
     {
+      "signature": "claim_matching_push_provider_tickets(uuid, integer)",
+      "securityDefiner": false,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
       "signature": "claim_saved_worker_fallback_atomic(uuid, text, uuid)",
       "securityDefiner": true,
       "fixedSearchPath": true,
@@ -3040,6 +3796,14 @@
     },
     {
       "signature": "cleanup_orphan_analyzing_jobs(timestamp with time zone)",
+      "securityDefiner": false,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
+      "signature": "cleanup_synthetic_matching_cohort(text)",
       "securityDefiner": false,
       "fixedSearchPath": true,
       "executeRoles": [
@@ -3143,6 +3907,14 @@
       ]
     },
     {
+      "signature": "configure_stage1_release_canary(text, text, text, text, text)",
+      "securityDefiner": true,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
       "signature": "confirm_kael_chat_atomic(uuid, uuid, text)",
       "securityDefiner": false,
       "fixedSearchPath": true,
@@ -3152,6 +3924,36 @@
     },
     {
       "signature": "confirm_kael_chat_atomic(uuid, uuid)",
+      "securityDefiner": false,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
+      "signature": "confirm_kael_chat_durable_atomic_v2(uuid, uuid, text, text, text)",
+      "securityDefiner": false,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
+      "signature": "confirm_kael_chat_durable_atomic(uuid, uuid, text, text, text)",
+      "securityDefiner": false,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
+      "signature": "confirm_kael_chat_durable_authorized_v3(uuid, uuid, text, text, text, uuid, uuid, text, text, text, text, text, text, boolean, text, text)",
+      "securityDefiner": false,
+      "fixedSearchPath": true,
+      "executeRoles": []
+    },
+    {
+      "signature": "confirm_kael_chat_durable_authorized_v4(uuid, uuid, text, text, text, uuid, uuid, text, text, text, text, text, text, boolean, text, text, integer)",
       "securityDefiner": false,
       "fixedSearchPath": true,
       "executeRoles": [
@@ -3171,6 +3973,14 @@
       "securityDefiner": true,
       "fixedSearchPath": true,
       "executeRoles": []
+    },
+    {
+      "signature": "confirm_worker_matching_proposal_atomic(uuid, uuid, uuid)",
+      "securityDefiner": false,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
     },
     {
       "signature": "consume_job_media_uploads(uuid, uuid, text[], timestamp with time zone)",
@@ -3277,6 +4087,14 @@
       ]
     },
     {
+      "signature": "expire_worker_matching_deliveries(uuid, timestamp with time zone)",
+      "securityDefiner": false,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
       "signature": "fail_harness_idempotency(uuid, text)",
       "securityDefiner": true,
       "fixedSearchPath": true,
@@ -3303,6 +4121,14 @@
     {
       "signature": "finalize_kael_ai_spend(bigint, numeric, text)",
       "securityDefiner": true,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
+      "signature": "finish_harness_authorized_request(uuid, uuid, text, text, text, text, text, text, boolean, text, text, integer)",
+      "securityDefiner": false,
       "fixedSearchPath": true,
       "executeRoles": [
         "service_role"
@@ -3341,6 +4167,14 @@
       ]
     },
     {
+      "signature": "get_confirmation_matching_outbox_health()",
+      "securityDefiner": true,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
       "signature": "get_customer_profile_insights_aggregate(uuid)",
       "securityDefiner": false,
       "fixedSearchPath": true,
@@ -3357,6 +4191,14 @@
       ]
     },
     {
+      "signature": "get_kael_confirmation_operation(uuid, uuid)",
+      "securityDefiner": false,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
       "signature": "get_kael_provider_spend_today()",
       "securityDefiner": true,
       "fixedSearchPath": true,
@@ -3366,6 +4208,14 @@
     },
     {
       "signature": "get_worker_current_commission_tier(uuid)",
+      "securityDefiner": false,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
+      "signature": "get_worker_earnings_summary_v2(uuid, timestamp with time zone, timestamp with time zone, numeric)",
       "securityDefiner": false,
       "fixedSearchPath": true,
       "executeRoles": [
@@ -3409,6 +4259,12 @@
       "executeRoles": []
     },
     {
+      "signature": "guard_synthetic_matching_identity()",
+      "securityDefiner": true,
+      "fixedSearchPath": true,
+      "executeRoles": []
+    },
+    {
       "signature": "guard_verified_scope_change_approval()",
       "securityDefiner": false,
       "fixedSearchPath": true,
@@ -3439,6 +4295,14 @@
       ]
     },
     {
+      "signature": "list_confirmation_matching_outbox_incidents(integer)",
+      "securityDefiner": true,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
       "signature": "maintain_manual_bank_payment_holds(integer)",
       "securityDefiner": true,
       "fixedSearchPath": true,
@@ -3449,6 +4313,20 @@
     {
       "signature": "mark_harness_idempotency_reconcile_required(uuid, text)",
       "securityDefiner": true,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
+      "signature": "mark_matching_delivery_delivered(uuid)",
+      "securityDefiner": false,
+      "fixedSearchPath": true,
+      "executeRoles": []
+    },
+    {
+      "signature": "mark_matching_delivery_seen(uuid, uuid)",
+      "securityDefiner": false,
       "fixedSearchPath": true,
       "executeRoles": [
         "service_role"
@@ -3535,12 +4413,46 @@
       ]
     },
     {
+      "signature": "price_evidence_has_quorum(jsonb)",
+      "securityDefiner": false,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
       "signature": "promote_learning_candidate(text, text, text, text[], jsonb, jsonb, service_type, text, text, numeric, integer, uuid, text, uuid, text)",
       "securityDefiner": true,
       "fixedSearchPath": true,
       "executeRoles": [
         "service_role"
       ]
+    },
+    {
+      "signature": "promote_stage1_release_atomic(text, text, text, bigint, text)",
+      "securityDefiner": true,
+      "fixedSearchPath": true,
+      "executeRoles": []
+    },
+    {
+      "signature": "promote_stage1_release_attested_atomic(text, text, text, bigint, text, text, text, text, text)",
+      "securityDefiner": true,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
+      "signature": "protect_price_baseline_version_content()",
+      "securityDefiner": false,
+      "fixedSearchPath": true,
+      "executeRoles": []
+    },
+    {
+      "signature": "protect_service_intake_policy_content()",
+      "securityDefiner": false,
+      "fixedSearchPath": true,
+      "executeRoles": []
     },
     {
       "signature": "queue_learning_candidate_manual_review(uuid, text, text, text, text, text, jsonb)",
@@ -3568,6 +4480,14 @@
     },
     {
       "signature": "recognize_customer_payment_claim(uuid, uuid)",
+      "securityDefiner": true,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
+      "signature": "reconcile_stale_stage1_release_canary(text, text, bigint, text)",
       "securityDefiner": true,
       "fixedSearchPath": true,
       "executeRoles": [
@@ -3663,8 +4583,24 @@
       ]
     },
     {
+      "signature": "record_matching_push_provider_ticket(uuid, uuid, timestamp with time zone, text)",
+      "securityDefiner": false,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
       "signature": "record_normal_transaction_memory_atomic(uuid, uuid)",
       "securityDefiner": false,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
+      "signature": "record_platform_bank_balance_snapshot_idempotent(uuid, integer, timestamp with time zone, uuid)",
+      "securityDefiner": true,
       "fixedSearchPath": true,
       "executeRoles": [
         "service_role"
@@ -3677,6 +4613,28 @@
       "executeRoles": [
         "service_role"
       ]
+    },
+    {
+      "signature": "record_stage1_attested_synthetic_smoke(text, text, text, text, smallint, boolean, boolean, boolean, boolean, boolean, integer, integer, integer, numeric, integer, integer, integer, text, text, text, text, text, text)",
+      "securityDefiner": true,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
+      "signature": "record_stage1_production_acceptance_note(text, text, text, integer, integer, text, text, text, integer, integer, integer, text, text, text, text)",
+      "securityDefiner": true,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
+      "signature": "record_stage1_synthetic_smoke(text, text, text, text, smallint, boolean, boolean, boolean, boolean, boolean, integer, integer, integer, numeric, integer, integer, integer, text, text)",
+      "securityDefiner": true,
+      "fixedSearchPath": true,
+      "executeRoles": []
     },
     {
       "signature": "record_worker_app_active_minute(uuid)",
@@ -3705,6 +4663,14 @@
     {
       "signature": "record_worker_kael_qa_atomic(uuid, uuid, text, jsonb, timestamp with time zone)",
       "securityDefiner": true,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
+      "signature": "record_worker_matching_heartbeat(uuid, timestamp with time zone)",
+      "securityDefiner": false,
       "fixedSearchPath": true,
       "executeRoles": [
         "service_role"
@@ -3741,6 +4707,12 @@
       "executeRoles": [
         "service_role"
       ]
+    },
+    {
+      "signature": "reject_stage1_release_evidence_mutation()",
+      "securityDefiner": true,
+      "fixedSearchPath": true,
+      "executeRoles": []
     },
     {
       "signature": "reject_worker_candidate_atomic(uuid, uuid, uuid)",
@@ -3887,6 +4859,20 @@
       ]
     },
     {
+      "signature": "resolve_stage1_release_lane_attested(text, text, uuid, text)",
+      "securityDefiner": true,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
+      "signature": "resolve_stage1_release_lane(text, text, uuid)",
+      "securityDefiner": true,
+      "fixedSearchPath": true,
+      "executeRoles": []
+    },
+    {
       "signature": "respond_to_direct_worker_payment(uuid, uuid, text, boolean)",
       "securityDefiner": true,
       "fixedSearchPath": true,
@@ -3927,6 +4913,14 @@
       ]
     },
     {
+      "signature": "rollback_stage1_active_release_atomic(text, text, text, bigint, text)",
+      "securityDefiner": true,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
       "signature": "save_job_incident_scope_price_quote_atomic(uuid, uuid, uuid, integer, uuid, jsonb, timestamp with time zone)",
       "securityDefiner": true,
       "fixedSearchPath": true,
@@ -3944,6 +4938,22 @@
     },
     {
       "signature": "select_direct_worker_payment(uuid, uuid, text)",
+      "securityDefiner": true,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
+      "signature": "service_intake_evidence_requirements_valid(service_quote_mode, jsonb)",
+      "securityDefiner": false,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
+      "signature": "service_problem_has_policy_price_evidence(uuid, jsonb)",
       "securityDefiner": true,
       "fixedSearchPath": true,
       "executeRoles": [
@@ -3975,6 +4985,20 @@
       ]
     },
     {
+      "signature": "settle_confirmation_matching_operation(uuid, text, text)",
+      "securityDefiner": false,
+      "fixedSearchPath": true,
+      "executeRoles": []
+    },
+    {
+      "signature": "settle_confirmation_matching_outbox_claim(uuid, uuid, uuid, text, text)",
+      "securityDefiner": true,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
       "signature": "start_harness_idempotency_execution(uuid)",
       "securityDefiner": true,
       "fixedSearchPath": true,
@@ -3992,6 +5016,22 @@
     },
     {
       "signature": "submit_review_atomic(uuid, uuid, integer, text[], text)",
+      "securityDefiner": false,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
+      "signature": "submit_worker_matching_proposal_atomic(uuid, uuid, text, integer, integer)",
+      "securityDefiner": false,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
+      "signature": "submit_worker_matching_proposal_atomic(uuid, uuid, uuid, text, integer, integer)",
       "securityDefiner": false,
       "fixedSearchPath": true,
       "executeRoles": [
@@ -4081,6 +5121,30 @@
     {
       "signature": "validate_scope_change_evidence_refs(uuid, uuid, text[])",
       "securityDefiner": true,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
+      "signature": "verify_kael_matching_maintainer_secret(text)",
+      "securityDefiner": true,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
+      "signature": "verify_synthetic_matching_cohort_cleanup(text)",
+      "securityDefiner": false,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
+      "signature": "verify_synthetic_matching_cohort_isolation(text)",
+      "securityDefiner": false,
       "fixedSearchPath": true,
       "executeRoles": [
         "service_role"

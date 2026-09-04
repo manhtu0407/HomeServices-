@@ -8,6 +8,7 @@ export type HarnessTraceClient = {
 export type HarnessTraceContext = Readonly<{
   traceId: string;
   runId: string;
+  operationId?: string;
   parentRunId: string | null;
   turnId: string | null;
   toolCallId: string | null;
@@ -33,6 +34,7 @@ export function createHarnessTraceContext(input: {
   readonly request?: Request;
   readonly traceId?: string | null;
   readonly runId?: string | null;
+  readonly operationId?: string | null;
   readonly parentRunId?: string | null;
   readonly turnId?: string | null;
   readonly toolCallId?: string | null;
@@ -52,6 +54,7 @@ export function createHarnessTraceContext(input: {
   return Object.freeze({
     traceId: validUuid(input.traceId ?? header("x-trace-id") ?? header("x-harness-trace-id") ?? header("x-request-id")) ?? crypto.randomUUID(),
     runId: validUuid(input.runId ?? header("x-run-id") ?? header("x-harness-run-id")) ?? crypto.randomUUID(),
+    operationId: validUuid(input.operationId ?? header("x-operation-id")) ?? crypto.randomUUID(),
     parentRunId: validUuid(input.parentRunId ?? header("x-parent-run-id") ?? header("x-harness-parent-run-id")),
     turnId: validUuid(input.turnId ?? header("x-turn-id") ?? header("x-harness-turn-id")),
     toolCallId: validUuid(input.toolCallId ?? header("x-tool-call-id") ?? header("x-harness-tool-call-id")),
@@ -210,6 +213,91 @@ export async function finishHarnessRun(
   }
 }
 
+export async function beginHarnessAuthorizedRequest(
+  trace: HarnessTraceContext,
+  input: {
+    readonly actorRole: string | null;
+    readonly routeKind: string;
+    readonly capability: string;
+    readonly risk: string;
+    readonly operationClass: string;
+    readonly privileged: boolean;
+    readonly confirmationGate: string;
+    readonly resourceType: string;
+    readonly resourceId?: string | null;
+  },
+): Promise<boolean> {
+  if (!trace.client?.rpc || !trace.actorIdHash) return false;
+  const resourceIdHash = input.resourceId
+    ? await hashHarnessIdentifier(input.resourceId)
+    : null;
+  try {
+    const { data, error } = await trace.client.rpc(
+      "begin_harness_authorized_request",
+      {
+        p_run_id: trace.runId,
+        p_trace_id: trace.traceId,
+        p_parent_run_id: trace.parentRunId,
+        p_actor_id_hash: trace.actorIdHash,
+        p_actor_role: input.actorRole ?? trace.actorRole,
+        p_route_kind: boundedText(input.routeKind, 160),
+        p_capability: boundedText(input.capability, 220),
+        p_environment: trace.environment,
+        p_release_id: trace.releaseId,
+        p_job_id: trace.jobId,
+        p_risk: boundedText(input.risk, 80),
+        p_operation_class: boundedText(input.operationClass, 80),
+        p_privileged: input.privileged,
+        p_confirmation_gate: boundedText(input.confirmationGate, 80),
+        p_resource_type: boundedText(input.resourceType, 80),
+        p_resource_id_hash: resourceIdHash,
+      },
+    );
+    return !error && data === true;
+  } catch {
+    return false;
+  }
+}
+
+export async function finishHarnessAuthorizedRequest(
+  trace: HarnessTraceContext,
+  input: {
+    readonly actorRole: string | null;
+    readonly routeKind: string;
+    readonly capability: string;
+    readonly privileged: boolean;
+    readonly resourceType: string;
+    readonly resourceId?: string | null;
+  },
+): Promise<boolean> {
+  if (!trace.client?.rpc || !trace.actorIdHash) return false;
+  const resourceIdHash = input.resourceId
+    ? await hashHarnessIdentifier(input.resourceId)
+    : null;
+  try {
+    const { data, error } = await trace.client.rpc(
+      "finish_harness_authorized_request",
+      {
+        p_run_id: trace.runId,
+        p_trace_id: trace.traceId,
+        p_actor_id_hash: trace.actorIdHash,
+        p_actor_role: input.actorRole ?? trace.actorRole,
+        p_route_kind: boundedText(input.routeKind, 160),
+        p_capability: boundedText(input.capability, 220),
+        p_environment: trace.environment,
+        p_release_id: trace.releaseId,
+        p_privileged: input.privileged,
+        p_resource_type: boundedText(input.resourceType, 80),
+        p_resource_id_hash: resourceIdHash,
+        p_duration_ms: Math.max(0, Date.now() - trace.startedAtMs),
+      },
+    );
+    return !error && data === true;
+  } catch {
+    return false;
+  }
+}
+
 export async function recordHarnessPrivilegedOperation(
   trace: HarnessTraceContext | undefined,
   input: {
@@ -252,9 +340,13 @@ export async function recordHarnessPrivilegedOperation(
 }
 
 export function harnessTraceHeaders(trace: HarnessTraceContext): Headers {
+  const supportCode = trace.traceId.replaceAll("-", "").slice(-8).toUpperCase();
   return new Headers({
     "x-trace-id": trace.traceId,
     "x-run-id": trace.runId,
+    "x-operation-id": trace.operationId ?? trace.runId,
+    "x-release-id": trace.releaseId,
+    "x-support-code": supportCode,
     "x-harness-release-id": trace.releaseId,
     ...(trace.turnId ? { "x-turn-id": trace.turnId } : {}),
     ...(trace.toolCallId ? { "x-tool-call-id": trace.toolCallId } : {}),

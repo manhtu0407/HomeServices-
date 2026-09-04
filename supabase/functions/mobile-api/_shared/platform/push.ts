@@ -1,9 +1,8 @@
 import { checkRateLimit, type RateLimitConfig } from "./rate-limit.ts";
 import {
-  createBufferedResponse,
-  readResponseBytesBounded,
   readResponseJsonBounded,
 } from "../../../_shared/network.ts";
+import { fetchPushProviderWithTimeout } from "./push-http.ts";
 import { boundedCanonicalProviderCode } from "./provider-boundary.ts";
 import {
   acquireDependencyPermit,
@@ -52,7 +51,7 @@ export type PushPayload = {
 };
 
 export type PushResult = {
-  delivered: number;
+  submitted: number;
   failed: number;
   errors: string[];
   replayed?: boolean;
@@ -64,12 +63,25 @@ export type PushDeliveryOptions = {
   releaseId?: string;
   operationId?: string;
   idempotencyKey?: string;
+  matchingDeliveryId?: string;
+};
+
+export type PushReceiptReconciliationResult = {
+  checked: number;
+  providerHandoffs: number;
+  failed: number;
+  staleTokenReceipts: number;
+  tokensDisabled: number;
+  unresolved: number;
 };
 
 const EXPO_PUSH_URL = "https://exp.host/--/api/v2/push/send";
+const EXPO_PUSH_RECEIPTS_URL = "https://exp.host/--/api/v2/push/getReceipts";
 const EXPO_BATCH_SIZE = 100;
+const EXPO_RECEIPT_BATCH_SIZE = 50;
 const EXPO_PUSH_MAX_RESPONSE_BYTES = 1024 * 1024;
 const EXPO_TICKET_ERROR_MAX_LENGTH = 64;
+const EXPO_TICKET_ID_MAX_LENGTH = 200;
 const PUSH_RATE_LIMIT: RateLimitConfig = {
   maxTokens: 5,
   refillRate: 5,
@@ -80,6 +92,12 @@ type PushTokenRow = {
   id: string;
   user_id: string;
   push_token: string;
+  updated_at: string;
+};
+
+type MatchingPushReceiptClaim = {
+  providerTicketRowId: string;
+  providerTicketId: string;
 };
 
 export async function sendPushToUser(
@@ -100,6 +118,7 @@ type PreparedPushDelivery = {
   reservationId: string | null;
   permit: PushDependencyPermit;
   allowedUserIds: string[];
+  matchingDeliveryId: string | null;
   result: PushResult;
 };
 
@@ -113,7 +132,7 @@ export async function sendPushToUsers(
   if (uniqueUserIds.length === 0) return emptyResult();
 
   const prepared = await preparePushDelivery(client, uniqueUserIds, payload, options);
-  if ("delivered" in prepared) return prepared;
+  if ("submitted" in prepared) return prepared;
   const tokenResult = await loadPushTokens(client, prepared.allowedUserIds);
   if (tokenResult.error) return await pushTokenLookupFailure(prepared, tokenResult.error);
   const rows = (tokenResult.data ?? [])
@@ -126,14 +145,115 @@ export async function sendPushToUsers(
       "IDEMPOTENCY_EXECUTION_UNAVAILABLE",
     );
     return {
-      delivered: prepared.result.delivered,
+      submitted: prepared.result.submitted,
       failed: prepared.result.failed + prepared.allowedUserIds.length,
       errors: [...prepared.result.errors, "IDEMPOTENCY_EXECUTION_UNAVAILABLE"],
       degraded: true,
     };
   }
-  const result = await deliverPushBatches(client, rows, payload, prepared.result);
+  const result = await deliverPushBatches(
+    client,
+    rows,
+    payload,
+    prepared.matchingDeliveryId,
+    prepared.result,
+  );
   return settlePushDelivery(prepared, result);
+}
+
+export async function reconcileMatchingPushReceipts(
+  client: PushDbClient,
+  workerId: string,
+): Promise<PushReceiptReconciliationResult> {
+  const result = emptyReceiptReconciliationResult();
+  if (!client.rpc || !workerId) return result;
+
+  let claimResult: { data: unknown; error: unknown };
+  try {
+    claimResult = await client.rpc("claim_matching_push_provider_tickets", {
+      p_worker_id: workerId,
+      p_limit: EXPO_RECEIPT_BATCH_SIZE,
+    });
+  } catch {
+    console.warn("mobile-api push receipt claim failed", { workerId });
+    return result;
+  }
+  if (claimResult.error) {
+    console.warn("mobile-api push receipt claim failed", { workerId });
+    return result;
+  }
+
+  const claims = (Array.isArray(claimResult.data) ? claimResult.data : [])
+    .map(asMatchingPushReceiptClaim)
+    .filter((claim): claim is MatchingPushReceiptClaim => claim !== null);
+  result.checked = claims.length;
+  if (claims.length === 0) return result;
+
+  let response: Response;
+  try {
+    response = await fetchPushProviderWithTimeout(
+      EXPO_PUSH_RECEIPTS_URL,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids: claims.map((claim) => claim.providerTicketId) }),
+      },
+      10_000,
+      EXPO_PUSH_MAX_RESPONSE_BYTES,
+    );
+  } catch {
+    console.warn("mobile-api Expo push receipt request failed", { count: claims.length });
+    result.unresolved = claims.length;
+    return result;
+  }
+  if (!response.ok) {
+    console.warn("mobile-api Expo push receipt HTTP failure", {
+      count: claims.length,
+      status: response.status,
+    });
+    result.unresolved = claims.length;
+    return result;
+  }
+
+  const parsed = await readResponseJsonBounded(
+    response,
+    EXPO_PUSH_MAX_RESPONSE_BYTES,
+  ).catch(() => null);
+  const receipts = asRecord(asRecord(parsed)?.data) ?? {};
+  for (const claim of claims) {
+    const receipt = asRecord(receipts[claim.providerTicketId]);
+    if (!receipt) {
+      result.unresolved += 1;
+      continue;
+    }
+    const providerStatus = receipt.status;
+    if (providerStatus !== "ok" && providerStatus !== "error") {
+      result.unresolved += 1;
+      continue;
+    }
+    const providerErrorCode = providerStatus === "error"
+      ? boundedCanonicalProviderCode(
+        asRecord(receipt.details)?.error,
+        EXPO_TICKET_ERROR_MAX_LENGTH,
+      ) ?? "UNKNOWN_PUSH_RECEIPT_ERROR"
+      : null;
+    const applied = await applyMatchingPushProviderReceipt(
+      client,
+      claim.providerTicketRowId,
+      providerStatus,
+      providerErrorCode,
+    );
+    if (!applied) {
+      result.unresolved += 1;
+      continue;
+    }
+    if (applied.outcome === "provider_handoff") result.providerHandoffs += 1;
+    else if (applied.outcome === "stale_token") result.staleTokenReceipts += 1;
+    else if (applied.outcome === "failed") result.failed += 1;
+    else result.unresolved += 1;
+    if (applied.tokenDisabled) result.tokensDisabled += 1;
+  }
+  return result;
 }
 
 async function preparePushDelivery(
@@ -165,7 +285,7 @@ async function preparePushDelivery(
   }
   if (reservation.state === "in_progress") {
     return {
-      delivered: 0,
+      submitted: 0,
       failed: uniqueUserIds.length,
       errors: ["IDEMPOTENCY_IN_PROGRESS"],
       replayed: true,
@@ -174,7 +294,7 @@ async function preparePushDelivery(
   }
   if (reservation.state === "reconcile_required") {
     return {
-      delivered: 0,
+      submitted: 0,
       failed: uniqueUserIds.length,
       errors: ["IDEMPOTENCY_RECONCILE_REQUIRED"],
       replayed: true,
@@ -182,11 +302,11 @@ async function preparePushDelivery(
     };
   }
   if (reservation.state === "conflict") {
-    return { delivered: 0, failed: uniqueUserIds.length, errors: ["IDEMPOTENCY_CONFLICT"] };
+    return { submitted: 0, failed: uniqueUserIds.length, errors: ["IDEMPOTENCY_CONFLICT"] };
   }
   if (reservation.state === "unavailable" && environment !== "local") {
     return {
-      delivered: 0,
+      submitted: 0,
       failed: uniqueUserIds.length,
       errors: ["IDEMPOTENCY_UNAVAILABLE"],
       degraded: true,
@@ -202,7 +322,7 @@ async function preparePushDelivery(
   if (!permit.allowed) {
     await failHarnessIdempotency(client, reservationId, "PUSH_CIRCUIT_OPEN");
     return {
-      delivered: 0,
+      submitted: 0,
       failed: uniqueUserIds.length,
       errors: ["PUSH_CIRCUIT_OPEN"],
       degraded: true,
@@ -221,6 +341,7 @@ async function preparePushDelivery(
     reservationId,
     permit,
     allowedUserIds: rate.allowedUserIds,
+    matchingDeliveryId: options.matchingDeliveryId?.trim() || null,
     result: rate.result,
   };
 }
@@ -250,7 +371,7 @@ async function loadPushTokens(
   return dbQuery<Array<Record<string, unknown>>>(
     client
       .from("device_push_tokens")
-      .select("id, user_id, push_token")
+      .select("id, user_id, push_token, updated_at")
       .in("user_id", userIds)
       .eq("enabled", true)
       .eq("permission_status", "granted"),
@@ -270,7 +391,7 @@ async function pushTokenLookupFailure(
     "TOKEN_LOOKUP_FAILED",
   );
   return {
-    delivered: prepared.result.delivered,
+    submitted: prepared.result.submitted,
     failed: prepared.result.failed + prepared.allowedUserIds.length,
     errors: [...prepared.result.errors, "TOKEN_LOOKUP_FAILED"],
     degraded: true,
@@ -291,11 +412,17 @@ async function deliverPushBatches(
   client: PushDbClient,
   rows: PushTokenRow[],
   payload: PushPayload,
+  matchingDeliveryId: string | null,
   result: PushResult,
 ): Promise<PushResult> {
   for (const batch of chunk(rows, EXPO_BATCH_SIZE)) {
-    const batchResult = await sendExpoBatch(client, batch, payload);
-    result.delivered += batchResult.delivered;
+    const batchResult = await sendExpoBatch(
+      client,
+      batch,
+      payload,
+      matchingDeliveryId,
+    );
+    result.submitted += batchResult.submitted;
     result.failed += batchResult.failed;
     result.errors.push(...batchResult.errors);
   }
@@ -360,15 +487,21 @@ async function sendExpoBatch(
   client: PushDbClient,
   rows: PushTokenRow[],
   payload: PushPayload,
+  matchingDeliveryId: string | null,
 ): Promise<PushResult> {
   if (rows.length === 0) return emptyResult();
 
   let attempt = 0;
   let lastResult: PushResult = emptyResult();
   while (attempt < EXPO_PUSH_MAX_ATTEMPTS) {
-    const attemptResult = await sendExpoBatchOnce(client, rows, payload);
+    const attemptResult = await sendExpoBatchOnce(
+      client,
+      rows,
+      payload,
+      matchingDeliveryId,
+    );
     const shouldRetry =
-      attemptResult.delivered === 0 &&
+      attemptResult.submitted === 0 &&
       attemptResult.errors.some(
         (code) => code === "EXPO_REQUEST_FAILED" || /^HTTP_5\d\d$/.test(code),
       ) &&
@@ -391,19 +524,31 @@ async function sendExpoBatchOnce(
   client: PushDbClient,
   rows: PushTokenRow[],
   payload: PushPayload,
+  matchingDeliveryId: string | null,
 ): Promise<PushResult> {
   const messages = rows.map((row) => ({
     to: row.push_token,
     title: payload.title,
     body: payload.body,
-    data: payload.data ? safePushData(payload.data) : undefined,
+    data: payload.data || matchingDeliveryId
+      ? safePushData({
+        ...(payload.data ?? {}),
+        ...(matchingDeliveryId
+          ? {
+            matching_delivery_id: matchingDeliveryId,
+            device_push_token_id: row.id,
+            device_push_token_updated_at: row.updated_at,
+          }
+          : {}),
+      })
+      : undefined,
     sound: payload.sound ?? undefined,
     badge: payload.badge,
   }));
 
   let response: Response;
   try {
-    response = await fetchWithTimeout(
+    response = await fetchPushProviderWithTimeout(
       EXPO_PUSH_URL,
       {
         method: "POST",
@@ -411,11 +556,12 @@ async function sendExpoBatchOnce(
         body: JSON.stringify(messages),
       },
       10_000,
+      EXPO_PUSH_MAX_RESPONSE_BYTES,
     );
   } catch {
     console.warn("mobile-api Expo push request failed", { count: rows.length });
     return {
-      delivered: 0,
+      submitted: 0,
       failed: rows.length,
       errors: ["EXPO_REQUEST_FAILED"],
     };
@@ -424,7 +570,7 @@ async function sendExpoBatchOnce(
   if (!response.ok) {
     console.warn("mobile-api Expo push HTTP failure", { status: response.status });
     return {
-      delivered: 0,
+      submitted: 0,
       failed: rows.length,
       errors: [`HTTP_${response.status}`],
     };
@@ -437,11 +583,26 @@ async function sendExpoBatchOnce(
   const envelope = asRecord(parsed);
   const tickets = Array.isArray(envelope?.data) ? envelope.data : [];
   const result = emptyResult();
-  const tokenDisableWrites: Promise<void>[] = [];
-  rows.forEach((row, index) => {
+  await Promise.all(rows.map(async (row, index) => {
     const ticket = asRecord(tickets[index]);
     if (ticket?.status === "ok") {
-      result.delivered += 1;
+      const providerTicketId = boundedProviderTicketId(ticket.id);
+      if (!providerTicketId) {
+        result.failed += 1;
+        result.errors.push("UNKNOWN_PUSH_TICKET");
+        return;
+      }
+      if (matchingDeliveryId && !(await recordMatchingPushProviderTicket(
+        client,
+        matchingDeliveryId,
+        row,
+        providerTicketId,
+      ))) {
+        result.failed += 1;
+        result.errors.push("PUSH_TICKET_PERSIST_FAILED");
+        return;
+      }
+      result.submitted += 1;
       return;
     }
 
@@ -453,14 +614,60 @@ async function sendExpoBatchOnce(
     const errorCode = providerErrorCode ?? "UNKNOWN_PUSH_ERROR";
     result.errors.push(errorCode);
     if (errorCode === "DeviceNotRegistered") {
-      tokenDisableWrites.push(disablePushToken(client, row.id));
+      await disablePushToken(client, row.id, row.updated_at);
     }
-  });
-  await Promise.all(tokenDisableWrites);
+  }));
   return result;
 }
 
-async function disablePushToken(client: PushDbClient, tokenId: string) {
+async function recordMatchingPushProviderTicket(
+  client: PushDbClient,
+  matchingDeliveryId: string,
+  token: PushTokenRow,
+  providerTicketId: string,
+): Promise<boolean> {
+  if (!client.rpc) return false;
+  try {
+    const result = await client.rpc("record_matching_push_provider_ticket", {
+      p_delivery_id: matchingDeliveryId,
+      p_device_push_token_id: token.id,
+      p_device_push_token_updated_at: token.updated_at,
+      p_provider_ticket_id: providerTicketId,
+    });
+    const row = Array.isArray(result.data) ? result.data[0] : result.data;
+    return !result.error && asRecord(row)?.recorded === true;
+  } catch {
+    return false;
+  }
+}
+
+async function applyMatchingPushProviderReceipt(
+  client: PushDbClient,
+  providerTicketRowId: string,
+  providerStatus: "ok" | "error",
+  providerErrorCode: string | null,
+): Promise<{ outcome: string; tokenDisabled: boolean } | null> {
+  if (!client.rpc) return null;
+  try {
+    const result = await client.rpc("apply_matching_push_provider_receipt", {
+      p_provider_ticket_row_id: providerTicketRowId,
+      p_provider_status: providerStatus,
+      p_provider_error_code: providerErrorCode,
+    });
+    const row = asRecord(Array.isArray(result.data) ? result.data[0] : result.data);
+    const outcome = typeof row?.outcome === "string" ? row.outcome : null;
+    if (result.error || !outcome) return null;
+    return { outcome, tokenDisabled: row?.token_disabled === true };
+  } catch {
+    return null;
+  }
+}
+
+async function disablePushToken(
+  client: PushDbClient,
+  tokenId: string,
+  tokenUpdatedAt: string,
+) {
   const disabled = await dbQuery(
     client
       .from("device_push_tokens")
@@ -469,6 +676,7 @@ async function disablePushToken(client: PushDbClient, tokenId: string) {
         last_seen_at: new Date().toISOString(),
       })
       .eq("id", tokenId)
+      .eq("updated_at", tokenUpdatedAt)
       .select("id")
       .maybeSingle(),
   );
@@ -492,8 +700,28 @@ function asPushTokenRow(row: Record<string, unknown>): PushTokenRow | null {
   const id = typeof row.id === "string" ? row.id : "";
   const userId = typeof row.user_id === "string" ? row.user_id : "";
   const pushToken = typeof row.push_token === "string" ? row.push_token : "";
-  if (!id || !userId || !pushToken) return null;
-  return { id, user_id: userId, push_token: pushToken };
+  const updatedAt = typeof row.updated_at === "string" ? row.updated_at : "";
+  if (!id || !userId || !pushToken || !updatedAt) return null;
+  return { id, user_id: userId, push_token: pushToken, updated_at: updatedAt };
+}
+
+function asMatchingPushReceiptClaim(value: unknown): MatchingPushReceiptClaim | null {
+  const row = asRecord(value);
+  const providerTicketRowId = typeof row?.provider_ticket_row_id === "string"
+    ? row.provider_ticket_row_id
+    : "";
+  const providerTicketId = boundedProviderTicketId(row?.provider_ticket_id);
+  return providerTicketRowId && providerTicketId
+    ? { providerTicketRowId, providerTicketId }
+    : null;
+}
+
+function boundedProviderTicketId(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const normalized = value.trim();
+  return normalized.length > 0 && normalized.length <= EXPO_TICKET_ID_MAX_LENGTH
+    ? normalized
+    : null;
 }
 
 function asRecord(value: unknown): Record<string, unknown> | null {
@@ -537,39 +765,18 @@ function readRuntimeEnv(name: string): string | undefined {
 }
 
 function emptyResult(): PushResult {
-  return { delivered: 0, failed: 0, errors: [] };
+  return { submitted: 0, failed: 0, errors: [] };
 }
 
-async function fetchWithTimeout(
-  url: string,
-  init: RequestInit,
-  ms: number,
-): Promise<Response> {
-  const controller = new AbortController();
-  let timer: ReturnType<typeof setTimeout> | undefined;
-  const timeout = new Promise<never>((_, reject) => {
-    timer = setTimeout(() => {
-      controller.abort();
-      reject(new Error(`Timeout after ${ms}ms`));
-    }, ms);
-  });
-  try {
-    const response = await Promise.race([
-      fetch(url, {
-        ...init,
-        redirect: "error",
-        signal: controller.signal,
-      }),
-      timeout,
-    ]);
-    const bytes = await Promise.race([
-      readResponseBytesBounded(response, EXPO_PUSH_MAX_RESPONSE_BYTES),
-      timeout,
-    ]);
-    return createBufferedResponse(response, bytes);
-  } finally {
-    if (timer !== undefined) clearTimeout(timer);
-  }
+function emptyReceiptReconciliationResult(): PushReceiptReconciliationResult {
+  return {
+    checked: 0,
+    providerHandoffs: 0,
+    failed: 0,
+    staleTokenReceipts: 0,
+    tokensDisabled: 0,
+    unresolved: 0,
+  };
 }
 
 async function dbQuery<T = unknown>(

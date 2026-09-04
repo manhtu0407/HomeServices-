@@ -140,6 +140,16 @@ export async function dispatchWorkerRoute(
     }
     case "workers.broadcasts":
       return services.listWorkerBroadcasts(ctx);
+    case "workers.matchingHeartbeat":
+      return services.recordWorkerMatchingHeartbeat(ctx);
+    case "workers.broadcastSeen":
+      return services.markWorkerBroadcastSeen(ctx, route.broadcastId);
+    case "workers.broadcastProposal":
+      return services.submitWorkerMatchingProposal(
+        ctx,
+        route.broadcastId,
+        workerMatchingProposalInput(await readJson(request)),
+      );
     case "workers.jobs":
       return services.listWorkerJobs(ctx);
     case "workers.payoutMethod.get":
@@ -179,4 +189,35 @@ export async function dispatchWorkerRoute(
     }
   }
   return assertNever(route);
+}
+
+function workerMatchingProposalInput(value: unknown) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    apiFailure("VALIDATION", "Đề xuất phạm vi không hợp lệ", 400);
+  }
+  const record = value as Record<string, unknown>;
+  if (
+    Object.keys(record).some((key) =>
+      key !== "scope_summary" && key !== "price_min" && key !== "price_max"
+    ) ||
+    typeof record.scope_summary !== "string" ||
+    record.scope_summary.trim().length < 3 ||
+    record.scope_summary.trim().length > 2000 ||
+    !nullablePositiveInteger(record.price_min) ||
+    !nullablePositiveInteger(record.price_max) ||
+    typeof record.price_min === "number" && typeof record.price_max === "number" &&
+      record.price_max < record.price_min
+  ) {
+    apiFailure("VALIDATION", "Đề xuất phạm vi không hợp lệ", 400);
+  }
+  return {
+    scope_summary: record.scope_summary.trim(),
+    price_min: typeof record.price_min === "number" ? record.price_min : null,
+    price_max: typeof record.price_max === "number" ? record.price_max : null,
+  };
+}
+
+function nullablePositiveInteger(value: unknown) {
+  return value === undefined || value === null ||
+    typeof value === "number" && Number.isSafeInteger(value) && value > 0;
 }

@@ -59,9 +59,11 @@ export function WorkerV5NavButton({
 
 export function WorkerV5PrimaryButtonFill({
   disabled,
+  testID = 'worker-v5-primary-gradient',
   variant = 'default',
 }: {
   disabled: boolean
+  testID?: string
   variant?: 'default' | 'source'
 }) {
   if (disabled) return null
@@ -71,11 +73,12 @@ export function WorkerV5PrimaryButtonFill({
   const gradientStops = variant === 'source'
     ? [0, 0.48, 1] as const
     : component.button.primary.gradientStops
+  const gradientId = `${testID}-fill-${variant}`
   return (
-    <Svg pointerEvents="none" style={StyleSheet.absoluteFill} viewBox="0 0 100 56" preserveAspectRatio="none" testID="worker-v5-primary-gradient">
+    <Svg pointerEvents="none" style={StyleSheet.absoluteFill} viewBox="0 0 100 56" preserveAspectRatio="none" testID={testID}>
       <Defs>
         <LinearGradient
-          id={`worker-v5-primary-gradient-fill-${variant}`}
+          id={gradientId}
           x1="0"
           x2="1"
           y1="0"
@@ -86,7 +89,7 @@ export function WorkerV5PrimaryButtonFill({
           ))}
         </LinearGradient>
       </Defs>
-      <Rect x="0" y="0" width="100" height="56" rx={variant === 'source' ? '0' : '26'} fill={`url(#worker-v5-primary-gradient-fill-${variant})`} />
+      <Rect x="0" y="0" width="100" height="56" rx={variant === 'source' ? '0' : '26'} fill={`url(#${gradientId})`} />
     </Svg>
   )
 }

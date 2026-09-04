@@ -1,4 +1,7 @@
-import { localizeKaelRequestFailure } from '../kael-chat/customer-kael-chat-helpers'
+import {
+  appendKaelSupportCode,
+  localizeKaelRequestFailure,
+} from '../kael-chat/customer-kael-chat-helpers'
 
 describe('localizeKaelRequestFailure', () => {
   it('does not claim that the case moved forward for an invalid confirmation state', () => {
@@ -72,4 +75,25 @@ describe('localizeKaelRequestFailure', () => {
       )
     },
   )
+
+  it('maps the compatibility gate and preserves the safe support code', () => {
+    const failure = {
+      code: 'CLIENT_UPDATE_REQUIRED',
+      error: 'private compatibility detail',
+      meta: { supportCode: 'A1B2C3D4' },
+    }
+
+    expect(localizeKaelRequestFailure(failure, 'vi')).toBe(
+      'Phiên bản ứng dụng chưa khớp với dịch vụ. Hãy cập nhật hoặc mở lại ứng dụng. Mã hỗ trợ: A1B2C3D4.',
+    )
+    expect(localizeKaelRequestFailure(failure, 'en')).toBe(
+      'The app release does not match the service. Update or reopen the app. Support code: A1B2C3D4.',
+    )
+  })
+
+  it('does not duplicate a support code when a decision path appends it again', () => {
+    const message = 'Kael đang đối soát. Mã hỗ trợ: A1B2C3D4.'
+
+    expect(appendKaelSupportCode(message, 'vi', 'A1B2C3D4')).toBe(message)
+  })
 })

@@ -8,6 +8,8 @@ import type {
 } from '../constants'
 import type { LocalPaymentStatus } from '../mobile-workflow'
 import type { ApartmentAccessProfileInput, KaelChatProgress } from '../validation'
+import type { ConfirmationOperationReceipt, IntakeCoverage, QuoteMode } from '../contracts/stage1-reliability'
+export type { MatchingPushDeliveryAckResponse } from './matching-delivery-responses'
 import type { WorkflowResponses } from './workflow-responses'
 import type {
   BaselinePriceEvidenceReceiptResponse,
@@ -216,6 +218,12 @@ export type KaelChatNextAction =
   | 'confirmed'
   | 'ask_question'
   | 'request_evidence'
+  | 'collect_required'
+  | 'offer_review'
+  | 'rfq_review'
+  | 'inspection_review'
+  | 'blocked'
+  | 'reconcile_confirmation'
 
 export type KaelIntakeConfirmation = {
   version: 1
@@ -312,6 +320,10 @@ export type KaelChatSession = {
   total_cost_usd: number
   next_action: KaelChatNextAction
   intake_confirmation?: KaelIntakeConfirmation | null
+  quote_mode?: QuoteMode
+  policy_version?: number | null
+  intake_coverage?: IntakeCoverage | null
+  confirmation_operation?: ConfirmationOperationReceipt | null
 }
 
 export type KaelChatResponse = {

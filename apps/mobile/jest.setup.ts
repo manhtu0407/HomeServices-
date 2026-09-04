@@ -51,6 +51,16 @@ jest.mock('expo-blur', () => {
   }
 })
 
+jest.mock('expo-image-picker', () => ({
+  MediaTypeOptions: { All: 'All', Images: 'Images', Videos: 'Videos' },
+  getCameraPermissionsAsync: jest.fn(async () => ({ granted: true, status: 'granted' })),
+  getMediaLibraryPermissionsAsync: jest.fn(async () => ({ granted: true, status: 'granted' })),
+  launchCameraAsync: jest.fn(async () => ({ assets: [], canceled: true })),
+  launchImageLibraryAsync: jest.fn(async () => ({ assets: [], canceled: true })),
+  requestCameraPermissionsAsync: jest.fn(async () => ({ granted: true, status: 'granted' })),
+  requestMediaLibraryPermissionsAsync: jest.fn(async () => ({ granted: true, status: 'granted' })),
+}))
+
 jest.mock('expo-audio', () => ({
   AudioModule: {
     requestRecordingPermissionsAsync: jest.fn(async () => ({ granted: true })),
@@ -83,6 +93,12 @@ jest.mock('expo-speech-recognition', () => ({
     supportsOnDeviceRecognition: jest.fn(() => true),
   },
   useSpeechRecognitionEvent: jest.fn(),
+}))
+
+jest.mock('expo-image-picker', () => ({
+  MediaTypeOptions: { Images: 'Images' },
+  launchImageLibraryAsync: jest.fn(async () => ({ assets: [], canceled: true })),
+  requestMediaLibraryPermissionsAsync: jest.fn(async () => ({ granted: true })),
 }))
 
 // Accessibility prefs are environmental. Default them to "off" in tests so the

@@ -201,7 +201,7 @@ const viCopy: EntryAccessCopy = {
     register: 'Đăng ký',
     remember: 'Ghi nhớ đăng nhập',
     submit: 'Đăng nhập',
-    title: 'Welcome Back..!',
+    title: 'Chào mừng trở lại!',
     topbar: 'Đăng nhập',
   },
   onboarding: {
@@ -424,10 +424,43 @@ const englishRoleGateGreetingVariants: Readonly<
   ],
 }
 
+const vietnameseRoleGateGreetingVariants: Readonly<
+  Record<RoleGateGreetingPeriod, readonly RoleGateGreeting[]>
+> = {
+  morning: [
+    { headline: 'Chào buổi sáng, mình bắt đầu nhé!' },
+    { headline: 'Một ngày mới nhẹ nhàng hơn!' },
+    { headline: 'Sẵn sàng khi bạn sẵn sàng!' },
+    { headline: 'Cùng xử lý việc cần thiết nhé!' },
+    { headline: 'Kael ở đây để hỗ trợ bạn!' },
+  ],
+  midday: [
+    { headline: 'Mình cùng giải quyết từng việc nhé!' },
+    { headline: 'Một bước nhỏ cho ngày nhẹ hơn!' },
+    { headline: 'Hôm nay bạn cần hỗ trợ việc gì?' },
+    { headline: 'Cùng dành chỗ cho điều tốt hơn!' },
+    { headline: 'Bắt đầu từ điều quan trọng nhất nhé!' },
+  ],
+  afternoon: [
+    { headline: 'Chào buổi chiều, mình bắt đầu nhé!' },
+    { headline: 'Rất vui được gặp bạn!' },
+    { headline: 'Cùng làm mọi việc dễ dàng hơn!' },
+    { headline: 'Một bước tốt đẹp bắt đầu từ đây!' },
+    { headline: 'Mình nên bắt đầu từ đâu nhỉ?' },
+  ],
+  evening: [
+    { headline: 'Chào buổi tối, cứ thong thả nhé!' },
+    { headline: 'Một buổi tối nhẹ nhàng hơn!' },
+    { headline: 'Cùng hoàn tất một việc nhé!' },
+    { headline: 'Khoảng lặng cho điều quan trọng!' },
+    { headline: 'Kael luôn sẵn sàng hỗ trợ bạn!' },
+  ],
+}
+
 export const roleGateGreetingVariants: Readonly<
   Record<AppLanguage, Readonly<Record<RoleGateGreetingPeriod, readonly RoleGateGreeting[]>>>
 > = {
-  vi: englishRoleGateGreetingVariants,
+  vi: vietnameseRoleGateGreetingVariants,
   en: englishRoleGateGreetingVariants,
 }
 

@@ -1,18 +1,26 @@
-import type { KaelChatTurnInput, LocalDeal } from '@nestscout/shared'
+import type { ConfirmationOperationReceipt, KaelChatConfirmInput, KaelChatTurnInput, LocalDeal } from '@nestscout/shared'
 import type { useRouter } from 'expo-router'
-import { useRef } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { AppState } from 'react-native'
 
 import type { AppLanguage } from '@/lib/app-language'
 import type { KaelChatResponse } from '@/lib/api-types'
 import { generateClientRequestId } from '@/lib/client-request-id'
 import type { useFrontendWorkflow } from '@/lib/frontend-workflow-provider'
 import { kaelAssistantService, kaelChatService } from '@/lib/services'
+import {
+  clearPendingConfirmation,
+  getOrCreatePendingConfirmation,
+  readPendingConfirmation,
+  writePendingConfirmation,
+} from '@/lib/frontend-workflow/confirmation-recovery'
 
 import {
   clearPendingKaelChatDraft,
   setPendingKaelChatDraft,
 } from '../kael-chat/pending-intake'
 import {
+  appendKaelSupportCode,
   formatAssistantAnswer,
   localizeKaelRequestFailure,
   makeAssistantTurnId,
@@ -98,6 +106,10 @@ export function useCustomerKaelDecisionActions({
   const { startProcessLines, stopProcessLines } = processController
   const decisionOwnerKey = `${chat?.session.id ?? 'no-session'}:${deal?.id ?? 'no-case'}`
   const decisionOperationRef = useRef<{ kind: string; ownerKey: string } | null>(null)
+  const pendingConfirmationRef = useRef<Awaited<ReturnType<typeof getOrCreatePendingConfirmation>> | null>(null)
+  const [confirmationReconciling, setConfirmationReconciling] = useState(false)
+  const [pendingConfirmationSessionId, setPendingConfirmationSessionId] = useState<string | null>(null)
+  const [confirmationSupportCode, setConfirmationSupportCode] = useState<string | null>(null)
   const beginDecisionOperation = (kind: string) => {
     if (decisionOperationRef.current?.ownerKey === decisionOwnerKey) return null
     const operation = { kind, ownerKey: decisionOwnerKey }
@@ -110,6 +122,78 @@ export function useCustomerKaelDecisionActions({
   const decisionFailure = language === 'vi'
     ? 'Chưa thể hoàn tất lựa chọn này. Vui lòng thử lại.'
     : 'This choice could not be completed. Try again.'
+
+  const applyConfirmationOperation = useCallback(async (receipt: ConfirmationOperationReceipt) => {
+    const sessionId = chat?.session.id
+    if (!sessionId || receipt.session_id !== sessionId) return
+    setConfirmationSupportCode(receipt.support_code)
+    setChat((current) => current ? {
+      ...current,
+      session: {
+        ...current.session,
+        confirmation_operation: receipt,
+        job_id: receipt.job_id ?? current.session.job_id,
+        ...(receipt.job_id ? { next_action: 'confirmed' as const, status: 'confirmed' as const } : {}),
+      },
+    } : current)
+    if (receipt.terminal) {
+      pendingConfirmationRef.current = null
+      setPendingConfirmationSessionId(null)
+      setConfirmationReconciling(false)
+      await clearPendingConfirmation(sessionId)
+    } else {
+      const pending = await getOrCreatePendingConfirmation(sessionId)
+      const updated = {
+        ...pending,
+        operation: receipt,
+        supportCode: receipt.support_code,
+        updatedAt: receipt.updated_at,
+      }
+      pendingConfirmationRef.current = updated
+      setPendingConfirmationSessionId(updated.sessionId)
+      setConfirmationReconciling(true)
+      await writePendingConfirmation(updated)
+    }
+    if (receipt.job_id && typeof workflow.actions.hydrateRemoteJobById === 'function') {
+      const hydration = sessionAccessToken
+        ? workflow.actions.hydrateRemoteJobById(receipt.job_id, sessionAccessToken)
+        : workflow.actions.hydrateRemoteJobById(receipt.job_id)
+      void hydration.catch(() => undefined)
+    }
+  }, [chat?.session.id, sessionAccessToken, setChat, workflow.actions])
+
+  const reconcileConfirmation = useCallback(async () => {
+    const sessionId = chat?.session.id
+    if (!sessionId) return
+    const pending = pendingConfirmationRef.current?.sessionId === sessionId
+      ? pendingConfirmationRef.current
+      : await readPendingConfirmation(sessionId)
+    if (!pending) return
+    pendingConfirmationRef.current = pending
+    setPendingConfirmationSessionId(pending.sessionId)
+    setConfirmationReconciling(true)
+    setConfirmationSupportCode(pending.supportCode)
+    const operation = await kaelChatService.getConfirmationOperation(sessionId, sessionAccessToken)
+    if (operation.success) {
+      await applyConfirmationOperation(operation.data.operation)
+      return
+    }
+    if (operation.status !== 404) return
+    const refreshed = await kaelChatService.get(sessionId, sessionAccessToken)
+    if (refreshed.success && refreshed.data.session.confirmation_operation) {
+      await applyConfirmationOperation(refreshed.data.session.confirmation_operation)
+    }
+  }, [applyConfirmationOperation, chat?.session.id, sessionAccessToken])
+
+  useEffect(() => {
+    const sessionId = chat?.session.id
+    if (!sessionId) return
+    void reconcileConfirmation()
+    const subscription = AppState.addEventListener('change', (state) => {
+      if (state === 'active') void reconcileConfirmation()
+    })
+    return () => subscription.remove()
+  }, [chat?.session.id, reconcileConfirmation])
 
   const confirmIntakeInformation = async () => {
     const confirmation = chat?.session.intake_confirmation
@@ -222,9 +306,16 @@ export function useCustomerKaelDecisionActions({
   }
 
   const confirmAgenticEstimate = async () => {
-    if (!chat?.session.id || !chatEstimate || confirmingAgenticEstimate) return
-    const priceReasoningReceiptId = chatEstimate.price_reasoning_receipt?.receipt_id
-    if (!priceReasoningReceiptId) {
+    if (!chat?.session.id || confirmingAgenticEstimate) return
+    const quoteMode = chat.session.quote_mode ?? 'kael_auto_quote'
+    const confirmationKind: NonNullable<KaelChatConfirmInput['confirmation_kind']> = quoteMode === 'rfq'
+      ? 'rfq_request'
+      : quoteMode === 'inspection_only'
+        ? 'inspection_request'
+        : 'priced_offer'
+    if (quoteMode === 'blocked' || chat.session.intake_coverage?.order_eligible === false) return
+    const priceReasoningReceiptId = chatEstimate?.price_reasoning_receipt?.receipt_id
+    if (confirmationKind === 'priced_offer' && !priceReasoningReceiptId) {
       setError(language === 'vi'
         ? 'Kael chưa có biên nhận phân tích giá hợp lệ cho đề nghị này.'
         : 'Kael does not yet have a valid price reasoning receipt for this offer.')
@@ -240,49 +331,99 @@ export function useCustomerKaelDecisionActions({
     setAgenticRejectOpen(false)
     setAgenticRejectReason('')
     setError(null)
-    const processPrompt = language === 'vi'
-      ? 'Đã xác nhận đề xuất. Kael đang mở công việc thật.'
-      : 'Estimate confirmed. Kael is opening the real job.'
+    const processPrompt = quoteMode === 'rfq'
+      ? (language === 'vi'
+          ? 'Đã gửi yêu cầu báo giá. Kael đang ghi nhận trên hệ thống.'
+          : 'Quote request sent. Kael is recording it on the system.')
+      : quoteMode === 'inspection_only'
+        ? (language === 'vi'
+            ? 'Đã gửi yêu cầu khảo sát. Kael đang ghi nhận trên hệ thống.'
+            : 'Inspection request sent. Kael is recording it on the system.')
+        : (language === 'vi'
+            ? 'Đã xác nhận đề nghị giá. Kael đang mở công việc thật.'
+            : 'Price offer confirmed. Kael is opening the real job.')
     const processDone = startProcessLines(processPrompt, {
-      complexity: chatEstimate.complexity ?? null,
+      complexity: chatEstimate?.complexity ?? null,
       mediaCount: totalMediaRefs(turns),
       mode: mode === 'case' ? 'case' : 'normal',
       serviceType: chat.session.service_type,
     })
     let confirmedJobId: string | null = null
     try {
+      const pending = pendingConfirmationRef.current?.sessionId === chat.session.id
+        ? pendingConfirmationRef.current
+        : await getOrCreatePendingConfirmation(chat.session.id)
+      pendingConfirmationRef.current = pending
+      setPendingConfirmationSessionId(pending.sessionId)
+      const confirmInput = {
+        confirmation_kind: confirmationKind,
+        matching_mode: 'prompt_if_saved' as const,
+        ...(priceReasoningReceiptId ? { price_reasoning_receipt_id: priceReasoningReceiptId } : {}),
+      }
       const confirmed = sessionAccessToken
         ? await kaelChatService.confirm(
             chat.session.id,
-            {
-              price_reasoning_receipt_id: priceReasoningReceiptId,
-              matching_mode: 'prompt_if_saved',
-            },
+            confirmInput,
             sessionAccessToken,
+            pending.idempotencyKey,
           )
-        : await kaelChatService.confirm(chat.session.id, {
-            price_reasoning_receipt_id: priceReasoningReceiptId,
-            matching_mode: 'prompt_if_saved',
-          })
+        : await kaelChatService.confirm(chat.session.id, confirmInput, undefined, pending.idempotencyKey)
       if (!kaelRequestGuard.isCurrent(requestToken)) return
       if (!confirmed.success) {
         stopProcessLines()
-        setError(localizeKaelRequestFailure(confirmed, language))
+        if (isAmbiguousConfirmationFailure(confirmed)) {
+          const updated = {
+            ...pending,
+            supportCode: confirmed.meta?.supportCode ?? pending.supportCode,
+            updatedAt: new Date().toISOString(),
+          }
+          pendingConfirmationRef.current = updated
+          setPendingConfirmationSessionId(updated.sessionId)
+          setConfirmationSupportCode(updated.supportCode)
+          setConfirmationReconciling(true)
+          await writePendingConfirmation(updated)
+          return
+        }
+        pendingConfirmationRef.current = null
+        setPendingConfirmationSessionId(null)
+        setConfirmationReconciling(false)
+        await clearPendingConfirmation(chat.session.id)
+        setError(appendKaelSupportCode(
+          localizeKaelRequestFailure(confirmed, language),
+          language,
+          confirmed.meta?.supportCode,
+        ))
         return
       }
+      if (confirmed.data.operation) await applyConfirmationOperation(confirmed.data.operation)
       await processDone
       if (!kaelRequestGuard.isCurrent(requestToken)) return
       const jobId = confirmed.data.job_id
       confirmedJobId = jobId
-      setChat((current) => current ? {
-        ...current,
-        session: {
-          ...current.session,
-          job_id: jobId,
-          next_action: 'confirmed',
-          status: 'confirmed',
-        },
-      } : current)
+      if (!confirmed.data.operation || confirmed.data.operation.terminal) {
+        pendingConfirmationRef.current = null
+        setPendingConfirmationSessionId(null)
+        setConfirmationReconciling(false)
+        await clearPendingConfirmation(chat.session.id)
+      }
+      if (jobId) {
+        setChat((current) => current ? {
+          ...current,
+          session: {
+            ...current.session,
+            job_id: jobId,
+            next_action: 'confirmed',
+            status: 'confirmed',
+          },
+        } : current)
+      }
+      if (confirmed.data.operation?.state === 'no_reachable_worker') {
+        setError(appendKaelSupportCode(
+          localizeKaelRequestFailure({ code: 'NO_REACHABLE_WORKER', error: '' }, language),
+          language,
+          confirmed.data.operation.support_code,
+        ))
+      }
       if (jobId && typeof workflow.actions.hydrateRemoteJobById === 'function') {
         // The destination can rehydrate from jobId, so a stale cache must not turn a confirmed job into a failed action.
         const hydration = sessionAccessToken
@@ -295,7 +436,11 @@ export function useCustomerKaelDecisionActions({
         router.replace(`/(customer)/kael-chat?mode=case&jobId=${encodeURIComponent(jobId)}` as never)
       }
     } catch {
-      if (kaelRequestGuard.isCurrent(requestToken) && !confirmedJobId) setError(decisionFailure)
+      if (kaelRequestGuard.isCurrent(requestToken) && !confirmedJobId) {
+        setConfirmationReconciling(true)
+        const pending = pendingConfirmationRef.current
+        if (pending) await writePendingConfirmation({ ...pending, updatedAt: new Date().toISOString() })
+      }
     } finally {
       finishDecisionOperation(operation)
       if (kaelRequestGuard.isCurrent(requestToken)) {
@@ -568,6 +713,10 @@ export function useCustomerKaelDecisionActions({
   }
 
   return {
+    confirmationReconciling: confirmationReconciling && pendingConfirmationSessionId === chat?.session.id,
+    confirmationSupportCode: pendingConfirmationSessionId === chat?.session.id
+      ? confirmationSupportCode
+      : null,
     confirmIntakeInformation,
     confirmAgenticEstimate,
     confirmCaseCompletion,
@@ -579,4 +728,14 @@ export function useCustomerKaelDecisionActions({
     submitAgenticSchedule,
     submitCaseQuoteRejectReason,
   }
+}
+
+function isAmbiguousConfirmationFailure(result: { code?: string; status?: number }) {
+  return result.status === 0
+    || (typeof result.status === 'number' && result.status >= 500)
+    || result.code === 'TIMEOUT'
+    || result.code === 'NETWORK_ERROR'
+    || result.code === 'INVALID_RESPONSE'
+    || result.code === 'RESPONSE_TOO_LARGE'
+    || result.code === 'IDEMPOTENCY_RECONCILE_REQUIRED'
 }

@@ -1,7 +1,7 @@
 import { apiFailure } from "../../platform/api-failure.ts";
 import type { MobileApiContext } from "../../platform/auth.ts";
 import { nullableString } from "../../platform/coercions.ts";
-import { db, dbQuery } from "../../platform/db.ts";
+import { dbQuery, workflowDb } from "../../platform/db.ts";
 import {
   calculateKaelWorkResponseScore,
   isWorkerPerformanceResolvedIncidentCase,
@@ -90,7 +90,7 @@ type WorkerPerformanceInsightAggregate = {
 
 export async function getWorkerPerformanceInsights(ctx: MobileApiContext) {
   const result = await dbQuery<Array<Record<string, unknown>>>(
-    db(ctx).rpc("get_worker_performance_insights_aggregate", {
+    workflowDb(ctx).rpc("get_worker_performance_insights_aggregate", {
       p_worker_id: ctx.user.id,
     }),
   );

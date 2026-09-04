@@ -2,18 +2,24 @@ import { asJobStatus, asString, asServiceType, nullableNumber, nullableString } 
 import { db, dbQuery, type DbClient } from "../../platform/db.ts";
 import { apiFailure } from "../../platform/api-failure.ts";
 import type { MobileApiContext } from "../../platform/auth.ts";
+import {
+  resolveSyntheticActorScope,
+  scopeQueryToSyntheticActor,
+} from "../../platform/synthetic-cohort.ts";
 import { resolveWorkerAvatarUrl } from "../worker/avatar.ts";
 
 const CUSTOMER_SERVICE_HISTORY_STATUSES = ["paid", "reviewed", "cancelled"];
 
 export async function listCustomerServiceHistory(ctx: MobileApiContext) {
   const client = db(ctx);
+  const actorScope = await resolveSyntheticActorScope(client, ctx.user.id, "customer");
+  const jobsQuery = client
+    .from("jobs")
+    .select("id, service_type, status, worker_id, final_price, completed_at, paid_at, reviewed_at, cancelled_at, created_at")
+    .eq("customer_id", ctx.user.id)
+    .in("status", CUSTOMER_SERVICE_HISTORY_STATUSES);
   const result = await dbQuery<Array<Record<string, unknown>>>(
-    client
-      .from("jobs")
-      .select("id, service_type, status, worker_id, final_price, completed_at, paid_at, reviewed_at, cancelled_at, created_at")
-      .eq("customer_id", ctx.user.id)
-      .in("status", CUSTOMER_SERVICE_HISTORY_STATUSES)
+    scopeQueryToSyntheticActor(jobsQuery, actorScope)
       .order("updated_at", { ascending: false }),
   );
   if (result.error) {
@@ -31,7 +37,10 @@ export async function listCustomerServiceHistory(ctx: MobileApiContext) {
       client.from("profiles").select("id, full_name, avatar_url").in("id", workerIds),
     ),
     dbQuery<Array<Record<string, unknown>>>(
-      client.from("customer_favorite_workers").select("worker_id").eq("customer_id", ctx.user.id).in("worker_id", workerIds),
+      scopeQueryToSyntheticActor(
+        client.from("customer_favorite_workers").select("worker_id").eq("customer_id", ctx.user.id).in("worker_id", workerIds),
+        actorScope,
+      ),
     ),
   ]);
   if (profileResult.error || favoriteResult.error) {

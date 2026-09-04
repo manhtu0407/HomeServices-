@@ -1204,6 +1204,11 @@ export const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 18,
   },
+  earningsOverviewScrollContent: {
+    paddingBottom: 0,
+    paddingHorizontal: 0,
+    paddingTop: 0,
+  },
   customerConfirmationWait: {
     gap: 12,
     paddingHorizontal: 8,

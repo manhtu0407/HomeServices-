@@ -82,7 +82,7 @@ export async function computeEarnings(
   range: EarningsRange = {},
 ): Promise<EarningsSummary> {
   const { data: rows, error } = await withDbTimeout(
-    supabase.rpc('get_worker_earnings_summary', {
+    supabase.rpc('get_worker_earnings_summary_v2', {
       p_worker_id: workerId,
       ...(range.from == null ? {} : { p_from: range.from }),
       ...(range.to == null ? {} : { p_to: range.to }),

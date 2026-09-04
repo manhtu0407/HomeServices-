@@ -85,10 +85,6 @@ export function WorkerV5ProfileProductionSurface({
             { width: frameWidth },
           ]}
         >
-          <Text style={[styles.screenTitle, { color: tokens.text }]} testID={`${testIDPrefix}-title`}>
-            {textByLanguage(language, 'Hồ sơ thợ', 'Worker profile')}
-          </Text>
-
           <View
             style={[styles.identityCard, { backgroundColor: tokens.raised, borderColor: tokens.border }]}
             testID={`${testIDPrefix}-identity-card`}
@@ -457,11 +453,6 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     maxWidth: '100%',
     minWidth: 0,
-  },
-  screenTitle: {
-    ...typography.title1,
-    fontWeight: '500',
-    marginBottom: 0,
   },
   identityCard: {
     alignItems: 'center',

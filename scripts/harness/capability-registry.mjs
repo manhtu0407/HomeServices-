@@ -61,6 +61,12 @@ const SERVER_OWNED_KAEL_MEDIA_ROUTE_KINDS = new Set([
   'kael.chat.mediaRevoke',
   'kael.chat.mediaUpload',
 ])
+// Recovery receipts use a service-only RPC after the route binds the session
+// owner. They remain database reads: hosted GETs must not require a write
+// idempotency key merely because their DB client is privileged.
+const SERVER_OWNED_DATABASE_READ_ROUTE_KINDS = new Set([
+  'kael.chat.operation',
+])
 const repoPath = (value) => value.split(sep).join('/')
 const normalizeSource = (value) => value.replace(/\r\n/gu, '\n')
 
@@ -74,7 +80,7 @@ export function buildCapabilityRegistry(options = {}) {
     const roleAliases = roleAliasesFor(source)
     for (const { kind, index } of declaredKinds(source)) {
       const window = routeDescriptorWindow(source, index)
-      const method = /\bmethod:\s*["'](GET|POST|PATCH|DELETE)["']/u.exec(window)?.[1] ?? null
+      const method = /\bmethod:\s*["'](GET|POST|PUT|PATCH|DELETE)["']/u.exec(window)?.[1] ?? null
       const roleBlock = /\broles:\s*\[([^\]]*)\]/u.exec(window)?.[1] ?? ''
       const literalRoles = [...roleBlock.matchAll(/["'](customer|worker|admin|admin_operator)["']/gu)]
         .map((item) => item[1])
@@ -171,7 +177,8 @@ function policyFor(input) {
       input.kind === 'workerApplications.submit' ||
       SERVER_OWNED_KAEL_AI_ROUTE_KINDS.has(input.kind) ||
       SERVER_OWNED_CUSTOMER_CONVERSATION_CATALOG_ROUTE_KINDS.has(input.kind) ||
-      SERVER_OWNED_KAEL_MEDIA_ROUTE_KINDS.has(input.kind)
+      SERVER_OWNED_KAEL_MEDIA_ROUTE_KINDS.has(input.kind) ||
+      SERVER_OWNED_DATABASE_READ_ROUTE_KINDS.has(input.kind)
     ),
     resourceType: resourceTypeFor(input.kind),
     // Admin control endpoints are privileged monitoring/operations paths. Their identifiers
@@ -223,6 +230,7 @@ function sideEffectFor(operationClass) {
 }
 
 function confirmationFor(kind) {
+  if (kind.startsWith('admin.operations.scopeChanges.')) return 'none'
   if (/paymentIntent|cashPaymentConfirm|stagingPaymentConfirm/iu.test(kind)) return 'payment'
   if (/scope\.decide|scopeChange/iu.test(kind)) return 'scope_change'
   if (/confirmCompletion/iu.test(kind)) return 'completion'

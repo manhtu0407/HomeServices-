@@ -24,7 +24,7 @@ const vietnameseTunableGuidanceLabels = {
 const vietnameseForbiddenCategoryLabels = {
   fear_language: 'Ngôn ngữ gây hoang mang',
   absolute_claims: 'Khẳng định tuyệt đối',
-  ai_self_reference: 'Tự xưng mang tính kỹ thuật',
+  ai_self_reference: 'Cách Kael tự giới thiệu',
   casual_slang: 'Tiếng lóng hoặc cách nói suồng sã',
   buzzwords: 'Từ ngữ sáo rỗng',
   accusatory_in_dispute: 'Cách nói quy kết khi có tranh chấp',

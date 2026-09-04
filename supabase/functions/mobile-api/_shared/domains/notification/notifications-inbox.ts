@@ -9,6 +9,7 @@ import type { MobileApiContext } from "../../platform/auth.ts";
 import type {
   DevicePushTokenInput,
   EdgeDevicePushTokenUnregisterInput,
+  EdgeMatchingPushDeliveryAckInput,
 } from "../../../../_shared/domain.ts";
 
 export async function listNotifications(ctx: MobileApiContext) {
@@ -163,5 +164,35 @@ export async function unregisterDevicePushToken(
     token_id: nullableString(row.token_id),
     unregistered: asBoolean(row.unregistered_out),
     updated_at: asString(row.updated_at_ts),
+  };
+}
+
+export async function acknowledgeMatchingPushDelivery(
+  ctx: MobileApiContext,
+  input: EdgeMatchingPushDeliveryAckInput,
+) {
+  const result = await dbQuery<Array<Record<string, unknown>>>(
+    db(ctx).rpc("acknowledge_matching_push_delivery", {
+      p_delivery_id: input.matching_delivery_id,
+      p_worker_id: ctx.user.id,
+      p_device_push_token_id: input.device_push_token_id,
+      p_device_push_token_updated_at: input.device_push_token_updated_at,
+    }),
+  );
+  if (result.error) {
+    apiFailure("DB_ERROR", "Không thể xác nhận thiết bị đã nhận yêu cầu", 500);
+  }
+  const row = result.data?.[0];
+  if (!row || typeof row.id !== "string" || typeof row.delivered_at !== "string") {
+    apiFailure(
+      "DELIVERY_ACK_REJECTED",
+      "Yêu cầu đã hết hạn hoặc không còn thuộc thiết bị này",
+      409,
+    );
+  }
+  return {
+    acknowledged: true as const,
+    delivery_id: row.id,
+    delivered_at: row.delivered_at,
   };
 }

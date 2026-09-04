@@ -1,6 +1,7 @@
 import { api } from '../api'
 import type {
   AdminFinanceBalanceSnapshotInput,
+  AdminFinanceBalanceSnapshotListResponse,
   AdminFinanceBalanceSnapshotResponse,
   AdminFinanceCsvExportResponse,
   AdminFinanceOverviewResponse,
@@ -14,6 +15,7 @@ import type {
   AdminFinanceTaxPolicyRetireInput,
   AdminFinanceTransactionFilters,
   AdminFinanceTransactionListResponse,
+  AdminFinanceTransactionDetailResponse,
   AdminViewAiCostListResponse,
   AdminViewActor,
   AdminViewDisputeListResponse,
@@ -22,6 +24,10 @@ import type {
   AdminViewManagerNominationCancellationResponse,
   AdminViewManagerNominationResponse,
   AdminViewOperationsResponse,
+  AdminViewEvidenceAccessInput,
+  AdminViewEvidenceAccessResponse,
+  AdminViewOverviewDetailKey,
+  AdminViewOverviewDetailsResponse,
   AdminViewOperatorProvisionInput,
   AdminViewOperatorProvisionResponse,
   AdminViewOperatorResetPasswordResponse,
@@ -29,18 +35,33 @@ import type {
   AdminViewPayoutMethodDecisionResponse,
   AdminViewPayoutMethodDetailResponse,
   AdminViewPayoutMethodListResponse,
+  AdminViewSensitivePayoutAccessInput,
+  AdminViewSensitivePayoutAccessResponse,
   AdminViewPriceBaselineListResponse,
   AdminViewSubAdminAccessInput,
   AdminViewSubAdminAccessResponse,
   AdminViewSubAdminAccountSearchResponse,
+  AdminViewSubAdminListInput,
   AdminViewSubAdminListResponse,
+  AdminViewScopeChangeDetailResponse,
+  AdminViewScopeChangeListInput,
+  AdminViewScopeChangeListResponse,
+  AdminViewSupportCaseDetailResponse,
+  AdminViewSupportCaseListInput,
+  AdminViewSupportCaseListResponse,
+  AdminViewSupportCaseSource,
+  AdminViewSupportPreparation,
+  AdminViewSupportPreparationInput,
   AdminViewTransactionDetailResponse,
   AdminViewTransactionListResponse,
   AdminViewWithdrawalRequestClaimResponse,
+  AdminViewWithdrawalRequestClaimInput,
   AdminViewWithdrawalRequestDetailResponse,
   AdminViewWithdrawalRequestListResponse,
   AdminViewWithdrawalRequestResolveInput,
   AdminViewWithdrawalRequestResolveResponse,
+  AdminViewWithdrawalRequestReleaseInput,
+  AdminViewWithdrawalRequestReleaseResponse,
   AdminViewWorkerAccessInput,
   AdminViewWorkerAccessResponse,
   AdminViewWorkerApplicationDecisionInput,
@@ -55,8 +76,107 @@ import type {
   AdminPaymentReconciliationDecisionInput,
   AdminPaymentReconciliationDecisionResponse,
   AdminPaymentReconciliationListResponse,
-  AdminPaymentReconciliationStatus,
+  AdminPaymentReconciliationListInput,
+  AdminPaymentReconciliationDetailResponse,
+  AdminPaymentReconciliationClaimInput,
+  AdminPaymentReconciliationReleaseInput,
+  AdminPaymentReconciliationAssignmentResponse,
 } from '../api-types/admin'
+import type {
+  AdminSystemEvidencePackage,
+  AdminSystemLearningActionInput,
+  AdminSystemLearningDetailResponse,
+  AdminSystemLearningListResponse,
+  AdminSystemLearningPreviewResponse,
+  AdminSystemListInput,
+  AdminSystemModelHealthDetailResponse,
+  AdminSystemModelHealthResponse,
+  AdminSystemMutationInput,
+  AdminSystemPriceDetailResponse,
+  AdminSystemPriceListResponse,
+  AdminSystemPriceMutationInput,
+  AdminSystemPriceValidationResponse,
+  AdminSystemReceipt,
+  AdminSystemTaxonomyDetailResponse,
+  AdminSystemTaxonomyListResponse,
+  AdminSystemTaxonomyMutationInput,
+  AdminSystemTaxonomyValidationResponse,
+} from '../api-types/admin-system'
+
+export type AdminGovernanceActionInput = { expected_revision: number; reason: string }
+export type AdminGovernanceCapabilities = { read: boolean; draft: boolean; approve: boolean; publish: boolean }
+export type AdminPolicyEvidenceRequirements = {
+  minimum_source_count: number
+  minimum_high_trust_source_count: number
+  requires_active_baseline: boolean
+}
+export type AdminIntakePolicy = {
+  id: string
+  service_problem_id: string
+  service_type: string
+  problem_slug: string
+  version: number
+  status: 'draft' | 'approved' | 'active' | 'retired'
+  quote_mode: 'kael_auto_quote' | 'rfq' | 'inspection_only' | 'blocked'
+  tier_a_fields: string[]
+  tier_b_slots: { key: string; enabled: boolean; required_for_quote: boolean }[]
+  question_overrides: Record<string, { vi: string; en: string }>
+  safety_requirements: string[]
+  capability_requirements: string[]
+  evidence_requirements: AdminPolicyEvidenceRequirements
+  service_intake_policy_heads: { revision: number; active_version: number | null }
+}
+export type AdminIntakePolicyListResponse = { capabilities: AdminGovernanceCapabilities; policies: AdminIntakePolicy[] }
+export type AdminIntakePolicyPreview = {
+  policy_id: string
+  service_type: string
+  problem_slug: string
+  version: number
+  revision: number
+  quote_mode: AdminIntakePolicy['quote_mode']
+  missing_tier_a: string[]
+  missing_tier_b: string[]
+  order_eligible: boolean
+  quote_eligible: boolean
+  safety_requirements: string[]
+  capability_requirements: string[]
+  evidence_requirements: AdminPolicyEvidenceRequirements
+}
+export type AdminIntakePolicyDraftInput = Omit<AdminIntakePolicy, 'id' | 'service_problem_id' | 'service_type' | 'problem_slug' | 'version' | 'status' | 'service_intake_policy_heads'> & {
+  expected_revision: number
+  problem_id: string
+  reason: string
+}
+export type AdminPriceBaselineVersion = {
+  id: string
+  service_problem_id: string
+  service_type: string
+  district_code: string
+  complexity: 'small' | 'medium' | 'large'
+  version: number
+  status: AdminIntakePolicy['status']
+  price_min: number
+  price_max: number
+  source: string
+  price_evidence: Record<string, unknown>
+  price_baseline_governance_heads: { revision: number; active_version: number | null }
+}
+export type AdminPriceBaselineVersionListResponse = {
+  baselines: AdminPriceBaselineVersion[]
+  capabilities: AdminGovernanceCapabilities
+  evidence_quorum: { minimum_distinct_domains: number; schema_version: string }
+}
+export type AdminPriceBaselineDraftInput = {
+  problem_id: string
+  district_code: string
+  complexity: AdminPriceBaselineVersion['complexity']
+  expected_revision: number
+  price_min: number
+  price_max: number
+  source: string
+  price_evidence: Record<string, unknown>
+  reason: string
+}
 
 function adminGovernancePath(path: string, params: AdminViewGovernanceListInput) {
   const searchParams = new URLSearchParams()
@@ -81,6 +201,24 @@ function adminFinancePath(path: string, params: AdminFinanceTransactionFilters |
   return `${path}${query ? `?${query}` : ''}`
 }
 
+function adminOperationsPath(path: string, params: AdminViewScopeChangeListInput | AdminViewSupportCaseListInput) {
+  const searchParams = new URLSearchParams()
+  for (const [key, value] of Object.entries(params)) {
+    if (value !== undefined && value !== '') searchParams.set(key, String(value))
+  }
+  const query = searchParams.toString()
+  return `${path}${query ? `?${query}` : ''}`
+}
+
+function adminSystemPath(path: string, params: AdminSystemListInput = {}) {
+  const searchParams = new URLSearchParams()
+  for (const [key, value] of Object.entries(params)) {
+    if (value !== undefined && value !== '') searchParams.set(key, String(value))
+  }
+  const query = searchParams.toString()
+  return `${path}${query ? `?${query}` : ''}`
+}
+
 export const adminControlService = {
   getActor() {
     return api.get<AdminViewActor>('/admin/actor')
@@ -88,6 +226,64 @@ export const adminControlService = {
 
   getOperations() {
     return api.get<AdminViewOperationsResponse>('/admin/operations')
+  },
+
+  listScopeChanges(params: AdminViewScopeChangeListInput = {}) {
+    return api.get<AdminViewScopeChangeListResponse>(adminOperationsPath('/admin/operations/scope-changes', params))
+  },
+
+  getScopeChange(scopeChangeId: string) {
+    return api.get<AdminViewScopeChangeDetailResponse>(
+      `/admin/operations/scope-changes/${encodeURIComponent(scopeChangeId)}`,
+    )
+  },
+
+  createScopeChangeEvidenceAccess(scopeChangeId: string, input: AdminViewEvidenceAccessInput) {
+    return api.post<AdminViewEvidenceAccessResponse>(
+      `/admin/operations/scope-changes/${encodeURIComponent(scopeChangeId)}/evidence-access`,
+      input,
+    )
+  },
+
+  listSupportCases(params: AdminViewSupportCaseListInput = {}) {
+    return api.get<AdminViewSupportCaseListResponse>(adminOperationsPath('/admin/operations/support-cases', params))
+  },
+
+  getSupportCase(source: AdminViewSupportCaseSource, caseId: string) {
+    return api.get<AdminViewSupportCaseDetailResponse>(
+      `/admin/operations/support-cases/${encodeURIComponent(source)}/${encodeURIComponent(caseId)}`,
+    )
+  },
+
+  updateSupportCasePreparation(
+    source: AdminViewSupportCaseSource,
+    caseId: string,
+    input: AdminViewSupportPreparationInput,
+  ) {
+    return api.put<AdminViewSupportPreparation>(
+      `/admin/operations/support-cases/${encodeURIComponent(source)}/${encodeURIComponent(caseId)}/preparation`,
+      input,
+    )
+  },
+
+  createSupportCaseEvidenceAccess(
+    source: AdminViewSupportCaseSource,
+    caseId: string,
+    input: AdminViewEvidenceAccessInput,
+  ) {
+    return api.post<AdminViewEvidenceAccessResponse>(
+      `/admin/operations/support-cases/${encodeURIComponent(source)}/${encodeURIComponent(caseId)}/evidence-access`,
+      input,
+    )
+  },
+
+  getOverviewDetails(params: { key: AdminViewOverviewDetailKey; limit?: number; cursor?: string }) {
+    const searchParams = new URLSearchParams({
+      key: params.key,
+      limit: String(params.limit ?? 5),
+    })
+    if (params.cursor) searchParams.set('cursor', params.cursor)
+    return api.get<AdminViewOverviewDetailsResponse>(`/admin/overview/details?${searchParams.toString()}`)
   },
 
   listDisputes(params: AdminViewGovernanceListInput = {}) {
@@ -104,6 +300,98 @@ export const adminControlService = {
 
   listLearningRules(params: AdminViewGovernanceListInput = {}) {
     return api.get<AdminViewLearningRuleListResponse>(adminGovernancePath('/admin/governance/learning-rules', params))
+  },
+
+  listIntakePolicies() {
+    return api.get<AdminIntakePolicyListResponse>('/admin/governance/intake-policies')
+  },
+
+  previewIntakePolicy(input: { problem_id: string; version?: number; provided_fields: string[]; provided_slots: string[] }) {
+    return api.post<AdminIntakePolicyPreview>('/admin/governance/intake-policies/preview', input)
+  },
+
+  createIntakePolicyDraft(input: AdminIntakePolicyDraftInput) {
+    return api.post<AdminIntakePolicy>('/admin/governance/intake-policies/drafts', input)
+  },
+
+  transitionIntakePolicy(policyId: string, action: 'approve' | 'publish' | 'rollback', input: AdminGovernanceActionInput) {
+    return api.post<AdminIntakePolicy>(`/admin/governance/intake-policies/${encodeURIComponent(policyId)}/${action}`, input)
+  },
+
+  listPriceBaselineVersions() {
+    return api.get<AdminPriceBaselineVersionListResponse>('/admin/governance/price-baseline-versions')
+  },
+
+  createPriceBaselineDraft(input: AdminPriceBaselineDraftInput) {
+    return api.post<AdminPriceBaselineVersion>('/admin/governance/price-baseline-versions/drafts', input)
+  },
+
+  transitionPriceBaseline(versionId: string, action: 'approve' | 'publish' | 'rollback', input: AdminGovernanceActionInput) {
+    return api.post<AdminPriceBaselineVersion>(`/admin/governance/price-baseline-versions/${encodeURIComponent(versionId)}/${action}`, input)
+  },
+
+  listSystemPriceBaselines(params: AdminSystemListInput = {}) {
+    return api.get<AdminSystemPriceListResponse>(adminSystemPath('/admin/system/price-baselines', params))
+  },
+
+  getSystemPriceBaseline(baselineId: string) {
+    return api.get<AdminSystemPriceDetailResponse>(`/admin/system/price-baselines/${encodeURIComponent(baselineId)}`)
+  },
+
+  listSystemEvidencePackages(params: AdminSystemListInput = {}) {
+    return api.get<{ generated_at: string; records: AdminSystemEvidencePackage[] }>(adminSystemPath('/admin/system/price-evidence-packages', params))
+  },
+
+  validateSystemPriceBaseline(input: AdminSystemPriceMutationInput) {
+    return api.post<AdminSystemPriceValidationResponse>('/admin/system/price-baselines/validate', input)
+  },
+
+  publishSystemPriceBaseline(input: AdminSystemPriceMutationInput) {
+    return api.post<AdminSystemReceipt>('/admin/system/price-baselines/versions', input)
+  },
+
+  retireSystemPriceBaseline(baselineId: string, input: AdminSystemMutationInput) {
+    return api.post<AdminSystemReceipt>(`/admin/system/price-baselines/${encodeURIComponent(baselineId)}/retire`, input)
+  },
+
+  getSystemTaxonomy(params: AdminSystemListInput = {}) {
+    return api.get<AdminSystemTaxonomyListResponse>(adminSystemPath('/admin/system/taxonomy', params))
+  },
+
+  getSystemTaxonomyDetail(serviceType: string) {
+    return api.get<AdminSystemTaxonomyDetailResponse>(`/admin/system/taxonomy/${encodeURIComponent(serviceType)}`)
+  },
+
+  validateSystemTaxonomy(serviceType: string, input: AdminSystemTaxonomyMutationInput) {
+    return api.post<AdminSystemTaxonomyValidationResponse>(`/admin/system/taxonomy/${encodeURIComponent(serviceType)}/validate`, input)
+  },
+
+  updateSystemTaxonomy(serviceType: string, input: AdminSystemTaxonomyMutationInput) {
+    return api.put<AdminSystemReceipt>(`/admin/system/taxonomy/${encodeURIComponent(serviceType)}`, input)
+  },
+
+  listSystemLearningRules(params: AdminSystemListInput = {}) {
+    return api.get<AdminSystemLearningListResponse>(adminSystemPath('/admin/system/learning-rules', params))
+  },
+
+  getSystemLearningRule(ruleId: string) {
+    return api.get<AdminSystemLearningDetailResponse>(`/admin/system/learning-rules/${encodeURIComponent(ruleId)}`)
+  },
+
+  previewSystemLearningAction(ruleId: string, action: 'rollback' | 'revoke', input: AdminSystemLearningActionInput) {
+    return api.post<AdminSystemLearningPreviewResponse>(`/admin/system/learning-rules/${encodeURIComponent(ruleId)}/${action}-preview`, input)
+  },
+
+  applySystemLearningAction(ruleId: string, action: 'rollback' | 'revoke', input: AdminSystemLearningActionInput) {
+    return api.post<AdminSystemReceipt>(`/admin/system/learning-rules/${encodeURIComponent(ruleId)}/${action}`, input)
+  },
+
+  listSystemModelHealth(params: AdminSystemListInput = {}) {
+    return api.get<AdminSystemModelHealthResponse>(adminSystemPath('/admin/system/model-health', params))
+  },
+
+  getSystemModelHealthDetail(detailKey: string) {
+    return api.get<AdminSystemModelHealthDetailResponse>(`/admin/system/model-health/details?key=${encodeURIComponent(detailKey)}`)
   },
 
   listWorkerApplications(params: {
@@ -185,17 +473,36 @@ export const adminControlService = {
     return api.get<AdminViewTransactionDetailResponse>(`/admin/transactions/${encodeURIComponent(jobId)}`)
   },
 
-  listPaymentReconciliations(params: {
-    status?: AdminPaymentReconciliationStatus
-    limit?: number
-    offset?: number
-  } = {}) {
+  listPaymentReconciliations(params: AdminPaymentReconciliationListInput = {}) {
     const searchParams = new URLSearchParams()
     if (params.status) searchParams.set('status', params.status)
     if (params.limit !== undefined) searchParams.set('limit', String(params.limit))
-    if (params.offset !== undefined) searchParams.set('offset', String(params.offset))
+    if (params.cursor) searchParams.set('cursor', params.cursor)
+    if (params.payment_method) searchParams.set('payment_method', params.payment_method)
+    if (params.assignment) searchParams.set('assignment', params.assignment)
+    if (params.query) searchParams.set('query', params.query)
     const query = searchParams.toString()
     return api.get<AdminPaymentReconciliationListResponse>(`/admin/payment-reconciliations${query ? `?${query}` : ''}`)
+  },
+
+  getPaymentReconciliation(paymentOrderId: string) {
+    return api.get<AdminPaymentReconciliationDetailResponse>(
+      `/admin/payment-reconciliations/${encodeURIComponent(paymentOrderId)}`,
+    )
+  },
+
+  claimPaymentReconciliation(paymentOrderId: string, input: AdminPaymentReconciliationClaimInput) {
+    return api.post<AdminPaymentReconciliationAssignmentResponse>(
+      `/admin/payment-reconciliations/${encodeURIComponent(paymentOrderId)}/claim`,
+      input,
+    )
+  },
+
+  releasePaymentReconciliation(paymentOrderId: string, input: AdminPaymentReconciliationReleaseInput) {
+    return api.post<AdminPaymentReconciliationAssignmentResponse>(
+      `/admin/payment-reconciliations/${encodeURIComponent(paymentOrderId)}/release`,
+      input,
+    )
   },
 
   decidePaymentReconciliation(paymentOrderId: string, input: AdminPaymentReconciliationDecisionInput) {
@@ -219,12 +526,20 @@ export const adminControlService = {
     return api.get<AdminFinanceTransactionListResponse>(adminFinancePath('/admin/finance/transactions', params))
   },
 
+  getFinanceTransaction(jobId: string) {
+    return api.get<AdminFinanceTransactionDetailResponse>(`/admin/finance/transactions/${encodeURIComponent(jobId)}`)
+  },
+
   exportFinanceCsv(params: AdminFinanceTransactionFilters) {
     return api.get<AdminFinanceCsvExportResponse>(adminFinancePath('/admin/finance/export.csv', params))
   },
 
   listFinanceTaxPolicies() {
     return api.get<AdminFinanceTaxPolicyListResponse>('/admin/finance/tax-policies')
+  },
+
+  getFinanceTaxPolicy(policyId: string) {
+    return api.get<AdminFinanceTaxPolicy>(`/admin/finance/tax-policies/${encodeURIComponent(policyId)}`)
   },
 
   createFinanceTaxPolicyDraft(input: AdminFinanceTaxPolicyDraftInput) {
@@ -247,21 +562,34 @@ export const adminControlService = {
     return api.post<AdminFinanceBalanceSnapshotResponse>('/admin/finance/balance-snapshots', input)
   },
 
+  listFinanceBalanceSnapshots() {
+    return api.get<AdminFinanceBalanceSnapshotListResponse>('/admin/finance/balance-snapshots')
+  },
+
   listPayoutMethods(params: {
     status?: 'pending_verification' | 'verified' | 'rejected' | 'all'
     limit?: number
-    offset?: number
+    cursor?: string
+    query?: string
   } = {}) {
     const searchParams = new URLSearchParams()
     if (params.status) searchParams.set('status', params.status)
     if (params.limit !== undefined) searchParams.set('limit', String(params.limit))
-    if (params.offset !== undefined) searchParams.set('offset', String(params.offset))
+    if (params.cursor) searchParams.set('cursor', params.cursor)
+    if (params.query) searchParams.set('query', params.query)
     const query = searchParams.toString()
     return api.get<AdminViewPayoutMethodListResponse>(`/admin/payout-methods${query ? `?${query}` : ''}`)
   },
 
   getPayoutMethod(payoutMethodId: string) {
     return api.get<AdminViewPayoutMethodDetailResponse>(`/admin/payout-methods/${encodeURIComponent(payoutMethodId)}`)
+  },
+
+  accessPayoutMethodSensitive(payoutMethodId: string, input: AdminViewSensitivePayoutAccessInput) {
+    return api.post<AdminViewSensitivePayoutAccessResponse>(
+      `/admin/payout-methods/${encodeURIComponent(payoutMethodId)}/sensitive-access`,
+      input,
+    )
   },
 
   decidePayoutMethod(payoutMethodId: string, input: AdminViewPayoutMethodDecisionInput) {
@@ -272,14 +600,18 @@ export const adminControlService = {
   },
 
   listWithdrawalRequests(params: {
+    assignment?: 'all' | 'mine' | 'unassigned'
     status?: 'pending' | 'processing' | 'paid' | 'rejected' | 'failed' | 'all'
     limit?: number
-    offset?: number
+    cursor?: string
+    query?: string
   } = {}) {
     const searchParams = new URLSearchParams()
+    if (params.assignment) searchParams.set('assignment', params.assignment)
     if (params.status) searchParams.set('status', params.status)
     if (params.limit !== undefined) searchParams.set('limit', String(params.limit))
-    if (params.offset !== undefined) searchParams.set('offset', String(params.offset))
+    if (params.cursor) searchParams.set('cursor', params.cursor)
+    if (params.query) searchParams.set('query', params.query)
     const query = searchParams.toString()
     return api.get<AdminViewWithdrawalRequestListResponse>(`/admin/withdrawal-requests${query ? `?${query}` : ''}`)
   },
@@ -290,9 +622,24 @@ export const adminControlService = {
     )
   },
 
-  claimWithdrawalRequest(withdrawalRequestId: string) {
+  accessWithdrawalSensitive(withdrawalRequestId: string, input: AdminViewSensitivePayoutAccessInput) {
+    return api.post<AdminViewSensitivePayoutAccessResponse>(
+      `/admin/withdrawal-requests/${encodeURIComponent(withdrawalRequestId)}/sensitive-access`,
+      input,
+    )
+  },
+
+  claimWithdrawalRequest(withdrawalRequestId: string, input: AdminViewWithdrawalRequestClaimInput) {
     return api.post<AdminViewWithdrawalRequestClaimResponse>(
       `/admin/withdrawal-requests/${encodeURIComponent(withdrawalRequestId)}/claim`,
+      input,
+    )
+  },
+
+  releaseWithdrawalRequest(withdrawalRequestId: string, input: AdminViewWithdrawalRequestReleaseInput) {
+    return api.post<AdminViewWithdrawalRequestReleaseResponse>(
+      `/admin/withdrawal-requests/${encodeURIComponent(withdrawalRequestId)}/release`,
+      input,
     )
   },
 
@@ -303,8 +650,12 @@ export const adminControlService = {
     )
   },
 
-  listSubAdmins() {
-    return api.get<AdminViewSubAdminListResponse>('/admin/sub-admins')
+  listSubAdmins(input: AdminViewSubAdminListInput = {}) {
+    const searchParams = new URLSearchParams()
+    if (input.limit !== undefined) searchParams.set('limit', String(input.limit))
+    if (input.cursor) searchParams.set('cursor', input.cursor)
+    const query = searchParams.toString()
+    return api.get<AdminViewSubAdminListResponse>(`/admin/sub-admins${query ? `?${query}` : ''}`)
   },
 
   provisionOperator(input: AdminViewOperatorProvisionInput) {

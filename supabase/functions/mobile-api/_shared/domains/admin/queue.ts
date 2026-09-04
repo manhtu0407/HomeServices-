@@ -3,6 +3,7 @@ import type { MobileApiContext } from "../../platform/auth.ts";
 import { db, dbQuery } from "../../platform/db.ts";
 import { nullableRecord, nullableString } from "../../platform/coercions.ts";
 import { scrubSensitiveForLLM } from "../../kael/index.ts";
+import { scopeQueryToRealTraffic } from "../../platform/synthetic-cohort.ts";
 
 const QUEUE_STATUSES = Object.freeze(["open", "acknowledged", "resolved", "cancelled"] as const);
 const ESCALATION_LEVELS = Object.freeze(["soft", "hard"] as const);
@@ -74,13 +75,13 @@ export async function listKaelAdminQueue(
   assertAdmin(ctx);
   const fromIndex = (input.page - 1) * input.limit;
   const toIndex = fromIndex + input.limit;
-  let query = db(ctx)
+  let query = scopeQueryToRealTraffic(db(ctx)
     .from("kael_admin_queue")
     .select(
       "id,job_id,queue_type,priority,status,escalation_level,reason_code,response_summary,safe_metadata,created_at,updated_at,resolved_at,resolved_by,resolution_note",
     )
     .order("created_at", { ascending: false })
-    .range(fromIndex, toIndex);
+    .range(fromIndex, toIndex));
   if (input.status) query = query.eq("status", input.status);
   if (input.escalationLevel) query = query.eq("escalation_level", input.escalationLevel);
   if (input.from) query = query.gte("created_at", input.from);
@@ -111,7 +112,7 @@ export async function resolveKaelAdminQueue(
   }
   const resolvedAt = new Date().toISOString();
   const result = await dbQuery<Record<string, unknown>>(
-    db(ctx)
+    scopeQueryToRealTraffic(db(ctx)
       .from("kael_admin_queue")
       .update({
         status: "resolved",
@@ -119,7 +120,7 @@ export async function resolveKaelAdminQueue(
         resolved_at: resolvedAt,
         resolution_note: input.note ?? null,
       })
-      .eq("id", queueId)
+      .eq("id", queueId))
       .in("status", ["open", "acknowledged"])
       .select(
         "id,job_id,queue_type,priority,status,escalation_level,reason_code,response_summary,safe_metadata,created_at,updated_at,resolved_at,resolved_by,resolution_note",

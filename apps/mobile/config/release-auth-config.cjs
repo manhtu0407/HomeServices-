@@ -2,6 +2,7 @@ const { Buffer } = require('node:buffer')
 const { resolve } = require('node:path')
 
 const PRODUCTION_SUPABASE_ORIGIN = 'https://iwevizmsedyqozxlawwl.supabase.co'
+const STAGING_SUPABASE_ORIGIN = 'https://xyylanuyflrjzbjzhqfl.supabase.co'
 
 function assertReleaseAuthConfig({
   apiBaseUrl,
@@ -26,6 +27,9 @@ function assertReleaseAuthConfig({
   }
   if (buildProfile === 'production' && supabase.origin !== PRODUCTION_SUPABASE_ORIGIN) {
     throw new Error('Production EAS builds must target the production Supabase project.')
+  }
+  if (buildProfile === 'preview' && supabase.origin !== STAGING_SUPABASE_ORIGIN) {
+    throw new Error('Preview EAS builds must target the staging Supabase project.')
   }
 }
 

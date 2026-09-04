@@ -100,7 +100,7 @@ describe('mobile-api auth schema compatibility', () => {
     expect(single).toHaveBeenCalledTimes(1)
   })
 
-  it('checks a pending operator through the service-owned activation RPC', async () => {
+  it('checks a pending admin operator through the service-owned activation RPC', async () => {
     const rpc = vi.fn(async (name: string) => {
       if (name !== 'get_admin_operator_activation_status') {
         throw new Error(`unexpected RPC: ${name}`)
@@ -125,7 +125,7 @@ describe('mobile-api auth schema compatibility', () => {
           select: vi.fn(() => ({
             eq: vi.fn(() => ({
               single: vi.fn(async () => ({
-                data: { role: 'customer', account_state: 'active' },
+                data: { role: 'admin', account_state: 'active' },
                 error: null,
               })),
             })),
@@ -141,12 +141,46 @@ describe('mobile-api auth schema compatibility', () => {
     } as never, createClient as never)
     const result = await authenticate(new Request('https://api.example.test/services', {
       headers: { Authorization: 'Bearer customer-session-token' },
-    }), ['customer'])
+    }), ['admin'])
 
     expect(result).toMatchObject({ success: false, status: 403 })
     expect(rpc).toHaveBeenCalledWith('get_admin_operator_activation_status', {
       p_actor_id: '11111111-1111-4111-8111-111111111111',
     })
+  })
+
+  it('does not query admin activation state for a customer request', async () => {
+    const rpc = vi.fn()
+    createClient.mockReturnValue({
+      auth: {
+        getUser: vi.fn(async () => ({
+          data: { user: { id: '11111111-1111-4111-8111-111111111111' } },
+          error: null,
+        })),
+      },
+      from: vi.fn(() => ({
+        select: vi.fn(() => ({
+          eq: vi.fn(() => ({
+            single: vi.fn(async () => ({
+              data: { role: 'customer', account_state: 'active' },
+              error: null,
+            })),
+          })),
+        })),
+      })),
+      rpc,
+    })
+
+    const authenticate = createEdgeAuthenticator({
+      supabaseUrl: 'https://staging.example.test',
+      supabaseSecretKey: 'service-role-key',
+    } as never, createClient as never)
+    const result = await authenticate(new Request('https://api.example.test/services', {
+      headers: { Authorization: 'Bearer customer-session-token' },
+    }), ['customer'])
+
+    expect(result).toMatchObject({ success: true, role: 'customer' })
+    expect(rpc).not.toHaveBeenCalled()
   })
 
   it('creates server-owned trace lineage for an authenticated actor', async () => {

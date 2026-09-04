@@ -2,6 +2,7 @@
 
 export type DatabaseEnums = {
 /* @slice:begin enums */
+      admin_governance_status: "draft" | "approved" | "active" | "retired"
       api_provider: "anthropic" | "perplexity" | "deepseek"
       broadcast_status:
         | "pending"
@@ -62,6 +63,11 @@ export type DatabaseEnums = {
         | "approved_by_customer"
         | "rejected_by_customer"
         | "cancelled"
+      service_quote_mode:
+        | "kael_auto_quote"
+        | "rfq"
+        | "inspection_only"
+        | "blocked"
       service_type:
         | "electrical"
         | "plumbing"
@@ -87,6 +93,7 @@ export const Constants = {
   },
   public: {
     Enums: {
+      admin_governance_status: ["draft", "approved", "active", "retired"],
       api_provider: ["anthropic", "perplexity", "deepseek"],
       broadcast_status: [
         "pending",
@@ -152,6 +159,12 @@ export const Constants = {
         "approved_by_customer",
         "rejected_by_customer",
         "cancelled",
+      ],
+      service_quote_mode: [
+        "kael_auto_quote",
+        "rfq",
+        "inspection_only",
+        "blocked",
       ],
       service_type: [
         "electrical",

@@ -5,6 +5,24 @@ import type { Database } from './schema.database.types'
 
 export type DatabaseViews = {
 /* @slice:begin views */
+      admin_model_health_daily: {
+        Row: {
+          avg_latency_ms: number | null
+          call_count: number | null
+          day: string | null
+          failure_count: number | null
+          failure_kind: string | null
+          fallback_count: number | null
+          model: string | null
+          p95_latency_ms: number | null
+          provider: Database["public"]["Enums"]["api_provider"] | null
+          purpose: string | null
+          success_count: number | null
+          total_cost_usd: number | null
+          updated_at: string | null
+        }
+        Relationships: []
+      }
       customer_overview: {
         Row: {
           bookings_30d: number | null
@@ -167,6 +185,31 @@ export type DatabaseViews = {
           total_cost_usd: number | null
         }
         Relationships: []
+      }
+      stage1_current_production_acceptance: {
+        Row: {
+          acceptance_status: string | null
+          cleanup_receipt_sha256: string | null
+          cohort_id: string | null
+          created_at: string | null
+          environment: string | null
+          hosted_state_sha256: string | null
+          note_sha256: string | null
+          production_ui_receipt_sha256: string | null
+          production_ui_source_sha256: string | null
+          promotion_packet_sha256: string | null
+          release_id: string | null
+          summary_vi: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stage1_production_acceptance_notes_release_id_fkey"
+            columns: ["release_id"]
+            isOneToOne: true
+            referencedRelation: "harness_releases"
+            referencedColumns: ["release_id"]
+          },
+        ]
       }
       worker_overview: {
         Row: {

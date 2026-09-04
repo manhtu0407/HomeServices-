@@ -3,7 +3,7 @@
 // customer candidate decision, and worker decline. Address release starts only after confirmation.
 
 import { asServiceType, asString, nullableNumber, nullableString } from "../../platform/coercions.ts";
-import { db, dbQuery } from "../../platform/db.ts";
+import { db, dbQuery, workflowDb } from "../../platform/db.ts";
 import { logJobEvent } from "../../platform/audit.ts";
 import {
   createBroadcasts,
@@ -45,7 +45,7 @@ export async function confirmSearch(
   const job = await requireJobAccess(client, jobId, ctx, {
     requiredRole: "customer",
     select:
-      "id, status, customer_id, worker_id, service_type, address_district, kael_problem_identified, kael_price_min, kael_price_max, final_price",
+      "id, status, customer_id, worker_id, service_type, address_district, kael_problem_identified, kael_price_min, kael_price_max, final_price, quote_mode",
   });
   if (
     job.status === "broadcasting" &&
@@ -102,7 +102,9 @@ async function prepareSearchBroadcast(input: {
     }
     return { retryingExistingSearch, rollbackStatus: null, district };
   }
-  if (confirmedPriceCap === null || confirmedPriceCap <= 0) {
+  const permitsUnpricedMatching = input.job.quote_mode === "rfq" ||
+    input.job.quote_mode === "inspection_only";
+  if (!permitsUnpricedMatching && (confirmedPriceCap === null || confirmedPriceCap <= 0)) {
     apiFailure("KAEL_PRICE_MISSING", "Kael chưa chốt được giá tạm tính nên chưa thể tìm thợ", 409);
   }
   const transition = autonomyDecision
@@ -177,7 +179,7 @@ async function executeSearchBroadcast(input: {
       );
     }
     const broadcast = await createBroadcasts(
-      input.client,
+      workflowDb(input.ctx),
       input.jobId,
       input.job.service_type as ServiceType,
       input.district,
@@ -286,7 +288,7 @@ async function executeSearchBroadcast(input: {
   if (!input.retryingExistingSearch) return sendBroadcast();
 
   const claimResult = await runWithBroadcastRetryLease(
-    input.client,
+    workflowDb(input.ctx),
     input.jobId,
     input.ctx.user.id,
     sendBroadcast,

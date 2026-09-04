@@ -6,6 +6,8 @@ name: comment-discipline
 
 on:
   pull_request:
+  push:
+    branches: [main]
   workflow_dispatch:
 
 permissions:
@@ -30,5 +32,5 @@ jobs:
         if: github.event_name == 'pull_request'
         run: node scripts/check-comment-discipline.mjs --diff "origin/${{ github.base_ref }}"
       - name: Full-repo report (manual run)
-        if: github.event_name == 'workflow_dispatch'
+        if: github.event_name != 'pull_request'
         run: node scripts/check-comment-discipline.mjs

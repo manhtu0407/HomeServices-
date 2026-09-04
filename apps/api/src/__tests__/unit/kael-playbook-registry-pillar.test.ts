@@ -64,10 +64,10 @@ describe("Kael playbook registry", () => {
     );
     expect(getKaelPlaybook("plumbing")).toMatchObject({
       serviceType: "plumbing",
-      version: "plumbing-playbook-2026-08-27.v1",
+      version: "plumbing-playbook-2026-08-30.v3",
     });
     expect(getKaelPlaybookVersion("plumbing")).toBe(
-      "plumbing-playbook-2026-08-27.v1",
+      "plumbing-playbook-2026-08-30.v3",
     );
     expect(getKaelPlaybook("plumbing")?.segment.length).toBeGreaterThan(1000);
     for (const service of services) {
@@ -118,7 +118,7 @@ describe("Kael playbook registry", () => {
       expect(electricalSystem.content).not.toContain("ELECTRICAL DIAGNOSIS PLAYBOOK");
       expect(kaelIntakeDiagnosisPromptVersion("plumbing")).toBe("2026-08-15.v3");
       expect(plumbingObservation?.playbookVersion).toBe(
-        "plumbing-playbook-2026-08-27.v1",
+        "plumbing-playbook-2026-08-30.v3",
       );
     } finally {
       vi.unstubAllGlobals();

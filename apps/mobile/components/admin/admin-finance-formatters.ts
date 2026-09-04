@@ -2,10 +2,14 @@ export function createFinanceFormatters(language: 'vi' | 'en', unavailable: stri
   const locale = language === 'vi' ? 'vi-VN' : 'en-US'
   return {
     formatCount(value: number | null | undefined) {
-      return new Intl.NumberFormat(locale, { maximumFractionDigits: 0 }).format(value ?? 0)
+      return value === null || value === undefined
+        ? unavailable
+        : new Intl.NumberFormat(locale, { maximumFractionDigits: 0 }).format(value)
     },
     formatCurrency(value: number | null) {
-      return new Intl.NumberFormat(locale, { currency: 'VND', maximumFractionDigits: 0, style: 'currency' }).format(value ?? 0)
+      return value === null
+        ? unavailable
+        : new Intl.NumberFormat(locale, { currency: 'VND', maximumFractionDigits: 0, style: 'currency' }).format(value)
     },
     formatDate(value: string | null) {
       if (!value) return unavailable
@@ -16,10 +20,14 @@ export function createFinanceFormatters(language: 'vi' | 'en', unavailable: stri
       }
     },
     formatPercent(value: number | null | undefined) {
-      return `${new Intl.NumberFormat(locale, { maximumFractionDigits: 2 }).format((value ?? 0) / 100)}%`
+      return value === null || value === undefined
+        ? unavailable
+        : `${new Intl.NumberFormat(locale, { maximumFractionDigits: 2 }).format(value / 100)}%`
     },
     formatUsd(value: number | null | undefined) {
-      return new Intl.NumberFormat(locale, { currency: 'USD', maximumFractionDigits: 4, style: 'currency' }).format(value ?? 0)
+      return value === null || value === undefined
+        ? unavailable
+        : new Intl.NumberFormat(locale, { currency: 'USD', maximumFractionDigits: 4, style: 'currency' }).format(value)
     },
   }
 }

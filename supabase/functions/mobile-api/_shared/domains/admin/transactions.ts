@@ -10,6 +10,7 @@ import { asJobStatus, asString, nullableNumber, nullableServiceType, nullableStr
 import { db, dbQuery } from "../../platform/db.ts";
 import { displayCodeFor, emptyRows, matchesTransactionQuery, suffixOf, timelineItem } from "./control-formatters.ts";
 import { requireAdminCapability } from "./control.ts";
+import { scopeQueryToRealTraffic } from "../../platform/synthetic-cohort.ts";
 
 type Row = Record<string, unknown>;
 
@@ -26,11 +27,11 @@ export async function listAdminTransactions(
   const scanLimit = input.query
     ? Math.min(250, Math.max(50, input.offset + input.limit + 1))
     : input.offset + input.limit + 1;
-  let jobsQuery = db(ctx)
+  let jobsQuery = scopeQueryToRealTraffic(db(ctx)
     .from("jobs")
     .select(ADMIN_JOB_SELECT, { count: "exact" })
     .order("updated_at", { ascending: false })
-    .range(input.query ? 0 : input.offset, (input.query ? 0 : input.offset) + scanLimit - 1);
+    .range(input.query ? 0 : input.offset, (input.query ? 0 : input.offset) + scanLimit - 1));
   if (input.payment_status !== "all") jobsQuery = jobsQuery.eq("payment_status", input.payment_status);
   const result = await dbQuery<Row[]>(jobsQuery);
   if (result.error) apiFailure("DB_ERROR", "Không thể tải danh sách giao dịch", 500);
@@ -57,7 +58,9 @@ export async function getAdminTransaction(
 ): Promise<AdminTransactionDetailResponse> {
   await requireAdminCapability(ctx, "transactions.read");
   const result = await dbQuery<Row>(
-    db(ctx).from("jobs").select(ADMIN_JOB_SELECT).eq("id", jobId).maybeSingle(),
+    scopeQueryToRealTraffic(
+      db(ctx).from("jobs").select(ADMIN_JOB_SELECT).eq("id", jobId),
+    ).maybeSingle(),
   );
   if (result.error) apiFailure("DB_ERROR", "Không thể tải giao dịch", 500);
   if (!result.data) apiFailure("NOT_FOUND", "Không tìm thấy giao dịch", 404);

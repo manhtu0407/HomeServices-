@@ -81,7 +81,12 @@ export async function notifyBroadcastWorkers(
   serviceType: ServiceType,
   district: string,
   expiresAt: string,
-  targets: Array<{ workerId: string; broadcastId: string }>,
+  targets: Array<{
+    workerId: string;
+    broadcastId: string;
+    deliveryId?: string;
+    operationId?: string;
+  }>,
 ) {
   if (targets.length === 0) return;
   const body = `${serviceLabel(serviceType)} - ${districtLabel(district)}`;
@@ -106,41 +111,52 @@ export async function notifyBroadcastWorkers(
     if (result.status === "rejected" || result.value.error) {
       console.warn("mobile-api worker notification insert failed", {
         jobId,
-        workerId: targets[index]?.workerId,
+        recipientOrdinal: index,
       });
     }
   });
 
   const pushResults = await Promise.allSettled(
     targets.map((target) =>
-      sendPushToUser(client, target.workerId, {
-        title: "Có yêu cầu mới gần bạn",
-        body,
-        data: {
-          event_type: "broadcast_received",
-          job_id: jobId,
-          broadcast_id: target.broadcastId,
-          deep_link: `/(worker)/jobs?broadcast_id=${target.broadcastId}`,
+      sendPushToUser(
+        client,
+        target.workerId,
+        {
+          title: "Có yêu cầu mới gần bạn",
+          body,
+          data: {
+            event_type: "broadcast_received",
+            job_id: jobId,
+            broadcast_id: target.broadcastId,
+            deep_link: `/(worker)/jobs?broadcast_id=${target.broadcastId}`,
+          },
+          sound: "default",
         },
-        sound: "default",
-      })
+        {
+          operationId: target.operationId ?? "matching.broadcast.push",
+          idempotencyKey: target.deliveryId
+            ? `matching-delivery:${target.deliveryId}`
+            : undefined,
+          matchingDeliveryId: target.deliveryId,
+        },
+      )
     ),
   );
   pushResults.forEach((result, index) => {
-    const target = targets[index];
     if (result.status === "rejected") {
       console.warn("mobile-api worker push delivery threw", {
         jobId,
-        workerId: target?.workerId,
+        recipientOrdinal: index,
       });
       return;
     }
     if (result.value.failed > 0) {
       console.warn("mobile-api worker push delivery had failures", {
         jobId,
-        workerId: target?.workerId,
+        recipientOrdinal: index,
         failed: result.value.failed,
       });
+      return;
     }
   });
 }

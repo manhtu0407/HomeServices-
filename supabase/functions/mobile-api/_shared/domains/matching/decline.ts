@@ -1,5 +1,5 @@
 import { nullableString, relatedJob } from "../../platform/coercions.ts";
-import { db, dbQuery } from "../../platform/db.ts";
+import { db, dbQuery, workflowDb } from "../../platform/db.ts";
 import { logJobEvent } from "../../platform/audit.ts";
 import { queueKaelLearningEvent } from "../../kael/learning/audit.ts";
 import { apiFailure } from "../../platform/api-failure.ts";
@@ -49,7 +49,7 @@ export async function declineBroadcast(ctx: MobileApiContext, jobId: string) {
       apiFailure("BROADCAST_NOT_ACTIVE", "Yêu cầu này đã được xử lý", 409);
     }
     await logJobEvent(client, jobId, "broadcast_expired", ctx, null, null);
-    await reconcileFallbackAfterWorkerResponse(client, jobId, ctx.user.id, "saved_worker_expired");
+    await reconcileFallbackAfterWorkerResponse(workflowDb(ctx), jobId, ctx.user.id, "saved_worker_expired");
     apiFailure("EXPIRED", "Yêu cầu đã hết hạn", 410);
   }
 
@@ -75,7 +75,7 @@ export async function declineBroadcast(ctx: MobileApiContext, jobId: string) {
     decline_reason: "broadcast_declined",
     feedback_present: false,
   });
-  await reconcileFallbackAfterWorkerResponse(client, jobId, ctx.user.id, "saved_worker_declined");
+  await reconcileFallbackAfterWorkerResponse(workflowDb(ctx), jobId, ctx.user.id, "saved_worker_declined");
   return { job_id: jobId, declined: true as const };
 }
 

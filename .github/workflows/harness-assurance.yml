@@ -17,9 +17,12 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 20
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
       - name: Harness assurance verification
         run: node scripts/harness/verify.mjs
       - name: Structure baseline lock
@@ -32,13 +35,14 @@ jobs:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
         with:
           persist-credentials: false
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 20
-      # All four are pure node with no workspace imports, so this job skips the pnpm install
-      # the others pay for. Three of them were unenforced before it existed: --coverage had no
-      # CI step and no package script, and the node --test suites ran in no place at all — 129
-      # passing assertions that could not fail a build.
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      # Fixture suites load TypeScript through the mobile workspace, so this job needs the
+      # same frozen dependency graph as the other code-aware gates.
       - name: Source residue ratchet
         run: node scripts/check-source-residue.mjs
       - name: Protocol routing ratchet
@@ -121,17 +125,23 @@ jobs:
           node-version: 20
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - name: Prepare canonical empty-reset migration inventory
+        run: |
+          node scripts/harness/prepare-migration-workdir.mjs \
+            --empty-reset \
+            --inventory config/harness/migration-inventory.json \
+            --output artifacts/empty-reset
       - name: Start local Supabase
-        run: pnpm --filter @nestscout/api exec supabase start
+        run: pnpm --filter @nestscout/api exec supabase --workdir "$GITHUB_WORKSPACE/artifacts/empty-reset" start --exclude edge-runtime
       - name: Replay all migrations from empty state
-        run: pnpm --filter @nestscout/api exec supabase db reset --local
+        run: pnpm --filter @nestscout/api exec supabase --workdir "$GITHUB_WORKSPACE/artifacts/empty-reset" db reset --local
       - name: Run SQL verification matrix
         env:
           NESTSCOUT_TEST_DB_URL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
         run: node scripts/run.mjs docker/scripts/run-sql-tests --stop-on-first-failure
       - name: Generate database types from replayed schema
         run: |
-          pnpm --filter @nestscout/api exec supabase gen types typescript --local > /tmp/database.types.ts
+          pnpm --filter @nestscout/api exec supabase --workdir "$GITHUB_WORKSPACE/artifacts/empty-reset" gen types typescript --local > /tmp/database.types.ts
           node -e "const fs = require('node:fs'); const path = '/tmp/database.types.ts'; const text = fs.readFileSync(path, 'utf8'); fs.writeFileSync(path, text.replace(/\\n+$/u, '\\n'))"
       - name: Upload generated database types
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
@@ -153,7 +163,7 @@ jobs:
             exit 1
           fi
       - name: Supabase schema lint
-        run: pnpm --filter @nestscout/api exec supabase db lint --local
+        run: pnpm --filter @nestscout/api exec supabase --workdir "$GITHUB_WORKSPACE/artifacts/empty-reset" db lint --local --fail-on warning
       - name: Stop local Supabase
         if: always()
-        run: pnpm --filter @nestscout/api exec supabase stop --no-backup
+        run: pnpm --filter @nestscout/api exec supabase --workdir "$GITHUB_WORKSPACE/artifacts/empty-reset" stop --no-backup

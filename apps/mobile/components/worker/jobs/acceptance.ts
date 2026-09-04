@@ -1,6 +1,7 @@
 import type { LocalDeal } from '@nestscout/shared'
 
 import type { AppLanguage } from '@/lib/app-language'
+import type { WorkerBroadcastProposalAction } from '@/lib/api-types'
 
 import { textByLanguage } from '../ui/format'
 import { routeDestinationLabel } from '../ui/labels'
@@ -77,6 +78,28 @@ export function workerV5CanAcceptOpenOffer(deal: LocalDeal | null, workerGate: s
     && deal.broadcast.priceQuote
     && deal.broadcast.priceQuote.workerConfirmedAt === null,
   )
+}
+
+export function workerV5CanReviewOpenOpportunity(
+  deal: LocalDeal | null,
+  workerGate: string | null | undefined,
+  action: unknown,
+) {
+  if (
+    workerGate === 'backend_pending'
+    || deal?.broadcast?.status !== 'sent'
+    || !deal.broadcast.jobId
+  ) return false
+  if (!isProposalAction(action)) return false
+  return action === 'accept_priced_offer'
+    ? workerV5CanAcceptOpenOffer(deal, workerGate)
+    : true
+}
+
+function isProposalAction(value: unknown): value is WorkerBroadcastProposalAction {
+  return value === 'accept_priced_offer'
+    || value === 'submit_rfq_proposal'
+    || value === 'submit_inspection_scope'
 }
 
 function formatVnd(value: number) {

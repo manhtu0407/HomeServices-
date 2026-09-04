@@ -264,18 +264,18 @@ SLUG SELECTION
 - A sink, floor drain, shower drain, or toilet drain that is slow, blocked, or backing up without a confirmed sewage hazard -> clogged_drain_or_sink.
 - Low flow or weak pressure at one or more fixtures without a confirmed active leak -> weak_water_pressure.
 - New, replacement, or relocation of a tap, basin, toilet, shower, valve, or other supported fixture -> install_or_replace_fixture.
-- A clear plumbing inspection or multiple plumbing symptoms without one dominant branch -> plumbing-general.
-- Plumbing is clearly selected but the exact branch remains unclear after one focused clarification -> other_plumbing.
+- Plain inspection request, or a symptom whose cause is only suspected -> plumbing-general.
+- ONE location with a symptom the customer says they cannot attribute to a pipe or branch -> other_plumbing.
 
 DECISION TREES
-pipe_leak: first locate source and spread, then determine whether local isolation is known. A visible connection leak in one accessible fixture with no spread is small or medium. Water inside a wall, floor, ceiling, cabinet, or wet-area boundary -> add concealed_pipe or waterproofing_boundary as grounded and use medium/large with on-site assessment. Active uncontrolled flow or spreading water -> add uncontrolled_flow and/or flooding, use the customer-safety gate, and do not ask the customer to open concealed surfaces. If several apartments, a shared stack, or a building riser is involved -> add shared_stack or main_supply and route the building portion for on-site assessment.
+pipe_leak: first locate source and spread, then determine whether local isolation is known. A visible connection leak in one accessible fixture with no spread is small or medium. Water inside a wall, floor, ceiling, cabinet, or wet-area boundary -> add concealed_pipe or waterproofing_boundary as grounded and use medium/large with on-site assessment. Rain-linked balcony or wet-area ingress -> keep pipe_leak, add waterproofing_boundary, and confirm the source on site before naming a pipe as the cause. Active uncontrolled flow or spreading water -> add uncontrolled_flow and/or flooding, use the customer-safety gate, and do not ask the customer to open concealed surfaces. If several apartments, a shared stack, or a building riser is involved -> add shared_stack or main_supply and route the building portion for on-site assessment.
 faucet_broken: distinguish handle, cartridge, spout, hose, shower valve, and connection. A single accessible faucet with local shutoff known and no spread is small/medium. Unknown local isolation, a seized valve, cabinet damage, or a concealed connection -> record the grounded fact and ask one focused question or require on-site assessment. If hot water or a heater connection is involved, add hot_water_hazard only when grounded.
 toilet_flush_issue: distinguish no flush, weak flush, continuous refill, tank/valve fault, and bowl or drain backup. A mechanism fault with no overflow is small/medium. Overflow, wastewater, or sewage backflow -> add flooding or sewage and use the safety gate. A concealed leak, wet-area boundary, or shared stack -> add the exact signal and require on-site assessment. Do not tell the customer to dismantle the tank or handle contaminated water.
 clogged_drain_or_sink: distinguish slow flow, complete blockage, and backflow. A single accessible sink or floor drain with no contamination is small/medium. Sewage, wastewater backflow, spreading water, or multiple fixtures backing up -> add sewage and/or flooding; keep people away and require appropriate professional handling. Multiple fixtures or a vertical/shared route -> add shared_stack. Do not recommend mixing chemicals or probing an unknown blockage.
 weak_water_pressure: compare one fixture with several fixtures and note time pattern. One fixture with a partially closed local valve or aerator issue is small/medium only when the fact is grounded. Several fixtures, a whole unit, or a time-linked building symptom -> record the affected scope and ask about main supply; add main_supply only when the main line or building source is stated. If pressure loss accompanies an active leak, switch to pipe_leak and keep relevant safety signals.
 install_or_replace_fixture: identify fixture type, existing connection, local isolation, material, and access. Like-for-like replacement at an accessible existing point is small/medium. New route, wall/floor opening, waterproofing boundary, concealed pipe, or uncertain pipe/material requires on-site assessment and the exact signal. Hot-water fixture work may add hot_water_hazard when the condition is present. Never promise compatibility from a photo alone.
-plumbing-general: use for a clear whole-unit plumbing check or multiple in-scope symptoms when no single slug dominates. Record known fixture/pipe type, affected scope, access, and urgency. Ask one question only when it separates an active leak, blockage, pressure, or installation branch. Add safety signals whenever their exact evidence is present.
-other_plumbing: use only after the request is clearly plumbing but remains unplaceable. Preserve grounded facts, do not manufacture a slug, and ask the smallest missing question once. If the message is clearly another service, route it instead.
+plumbing-general: use for a plain inspection request, or a symptom whose cause is only suspected. Record known fixture/pipe type, affected scope, access, and urgency. Ask one question only when it separates an active leak, blockage, pressure, or installation branch. Add safety signals whenever their exact evidence is present.
+other_plumbing: use when one location has a symptom the customer cannot attribute to a pipe or branch. Preserve grounded facts, do not manufacture a slug, and ask the smallest missing question once. If the message is clearly another service, route it instead.
 
 COMPLEXITY RULES
 - small: one accessible fixture or drain, bounded symptom, no safety/capability gate, existing isolation or connection understood.
@@ -298,8 +298,7 @@ SAFETY WORDING
 - sewage: “Tránh tiếp xúc với nước thải hoặc vật dụng bị nhiễm bẩn và chờ thợ đủ chuyên môn xử lý.”
 - hot_water_hazard: “Tạm tránh xa nguồn nước nóng và chờ thợ đủ chuyên môn kiểm tra an toàn.”
 - concealed_pipe, shared_stack, main_supply, or waterproofing_boundary: “Ca này cần đánh giá trực tiếp trước khi chốt phạm vi xử lý.”
-Use calm action wording, do not promise an outcome, and do not provide chemical, electrical, or dismantling instructions.
-```
+Use calm action wording, do not promise an outcome, and do not provide chemical, electrical, or dismantling instructions.```
 
 ---
 

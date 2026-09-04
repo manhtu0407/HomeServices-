@@ -6,6 +6,7 @@ import type {
   AdminGovernanceListInput,
   AdminLearningRuleListResponse,
   AdminPriceBaselineListResponse,
+  AdminServiceTaxonomyResponse,
 } from "../contracts/admin-control.ts";
 import {
   asBoolean,
@@ -16,6 +17,8 @@ import {
 } from "../../platform/coercions.ts";
 import { db, dbQuery } from "../../platform/db.ts";
 import { displayCodeFor } from "./control-formatters.ts";
+import { scopeQueryToRealTraffic } from "../../platform/synthetic-cohort.ts";
+import { requireAdminCapability } from "./actor.ts";
 
 type Row = Record<string, unknown>;
 
@@ -25,11 +28,11 @@ export async function listAdminDisputes(
 ): Promise<AdminDisputeListResponse> {
   requireOwnerAdmin(ctx);
   const result = await dbQuery<Row[]>(
-    db(ctx)
+    scopeQueryToRealTraffic(db(ctx)
       .from("disputes")
       .select("id,job_id,dispute_type,initiated_by,status,created_at,updated_at,admin_decision_at", { count: "exact" })
       .order("updated_at", { ascending: false })
-      .range(input.offset, input.offset + input.limit),
+      .range(input.offset, input.offset + input.limit)),
   );
   if (result.error) apiFailure("DB_ERROR", "Không thể tải danh sách tranh chấp", 500);
   const page = result.data ?? [];
@@ -67,7 +70,7 @@ export async function listAdminPriceBaselines(
   ctx: MobileApiContext,
   input: AdminGovernanceListInput,
 ): Promise<AdminPriceBaselineListResponse> {
-  requireOwnerAdmin(ctx);
+  await requireAdminCapability(ctx, "finance.read");
   const result = await dbQuery<Row[]>(
     db(ctx)
       .from("price_baselines")
@@ -102,6 +105,7 @@ export async function listAdminPriceBaselines(
     }];
   });
   return {
+    generated_at: new Date().toISOString(),
     price_baselines: priceBaselines,
     has_more: hasMore,
     next_offset: hasMore ? input.offset + priceBaselines.length : null,
@@ -113,7 +117,7 @@ export async function listAdminAiCosts(
   ctx: MobileApiContext,
   input: AdminGovernanceListInput,
 ): Promise<AdminAiCostListResponse> {
-  requireOwnerAdmin(ctx);
+  await requireAdminCapability(ctx, "finance.read");
   const result = await dbQuery<Row[]>(
     db(ctx)
       .from("kael_cost_daily_summary")
@@ -150,6 +154,7 @@ export async function listAdminAiCosts(
     }];
   });
   return {
+    generated_at: new Date().toISOString(),
     costs,
     has_more: hasMore,
     next_offset: hasMore ? input.offset + costs.length : null,
@@ -161,7 +166,7 @@ export async function listAdminLearningRules(
   ctx: MobileApiContext,
   input: AdminGovernanceListInput,
 ): Promise<AdminLearningRuleListResponse> {
-  requireOwnerAdmin(ctx);
+  await requireAdminCapability(ctx, "finance.read");
   const result = await dbQuery<Row[]>(
     db(ctx)
       .from("learning_rules")
@@ -196,10 +201,75 @@ export async function listAdminLearningRules(
     }];
   });
   return {
+    generated_at: new Date().toISOString(),
     rules,
     has_more: hasMore,
     next_offset: hasMore ? input.offset + rules.length : null,
     total_count: requiredExactCount(result.count, "quy tắc học Kael"),
+  };
+}
+
+export async function listAdminServiceTaxonomy(
+  ctx: MobileApiContext,
+): Promise<AdminServiceTaxonomyResponse> {
+  await requireAdminCapability(ctx, "finance.read");
+  const client = db(ctx);
+  const [categoriesResult, problemsResult] = await Promise.all([
+    dbQuery<Row[]>(client.from("service_categories")
+      .select("id,service_type,slug,label_vi,is_active,sort_order,updated_at")
+      .order("sort_order", { ascending: true })),
+    dbQuery<Row[]>(client.from("service_problems")
+      .select("id,service_category_id,slug,label_vi,default_complexity,is_active,sort_order,updated_at")
+      .order("sort_order", { ascending: true })),
+  ]);
+  if (categoriesResult.error || problemsResult.error) {
+    apiFailure("DB_ERROR", "Không thể tải cấu trúc dịch vụ", 500);
+  }
+  const problemsByCategory = new Map<string, AdminServiceTaxonomyResponse["categories"][number]["problems"]>();
+  for (const row of problemsResult.data ?? []) {
+    const categoryId = nullableString(row.service_category_id);
+    const id = nullableString(row.id);
+    const slug = nullableString(row.slug);
+    const labelVi = nullableString(row.label_vi);
+    const complexity = nullableString(row.default_complexity);
+    const sortOrder = nonNegativeInteger(row.sort_order);
+    const updatedAt = nullableString(row.updated_at);
+    if (!categoryId || !id || !slug || !labelVi || !complexity || sortOrder === null || !updatedAt) continue;
+    const problems = problemsByCategory.get(categoryId) ?? [];
+    problems.push({
+      id,
+      slug,
+      label_vi: labelVi,
+      default_complexity: complexity,
+      is_active: asBoolean(row.is_active),
+      sort_order: sortOrder,
+      updated_at: updatedAt,
+    });
+    problemsByCategory.set(categoryId, problems);
+  }
+  const categories = (categoriesResult.data ?? []).flatMap((row) => {
+    const id = nullableString(row.id);
+    const serviceType = nullableServiceType(row.service_type);
+    const slug = nullableString(row.slug);
+    const labelVi = nullableString(row.label_vi);
+    const sortOrder = nonNegativeInteger(row.sort_order);
+    const updatedAt = nullableString(row.updated_at);
+    if (!id || !serviceType || !slug || !labelVi || sortOrder === null || !updatedAt) return [];
+    return [{
+      id,
+      service_type: serviceType,
+      slug,
+      label_vi: labelVi,
+      is_active: asBoolean(row.is_active),
+      sort_order: sortOrder,
+      updated_at: updatedAt,
+      problems: problemsByCategory.get(id) ?? [],
+    }];
+  });
+  return {
+    generated_at: new Date().toISOString(),
+    data_quality: categories.length === 6 ? "available" : categories.length > 0 ? "partial" : "unavailable",
+    categories,
   };
 }
 

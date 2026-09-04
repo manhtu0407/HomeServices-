@@ -12,6 +12,7 @@ test('builds a complete immutable release-ledger registration statement', () => 
     environment: 'production',
     gitSha: 'd'.repeat(40),
     requireCleanWorktree: false,
+    providerReadiness: productionProviderReadiness(),
   })
   const sql = buildReleaseRegistrationSql(release)
 
@@ -21,6 +22,13 @@ test('builds a complete immutable release-ledger registration statement', () => 
   assert.match(sql, /artifact->'edgeFunctions'/u)
   assert.match(sql, /operator-release-ledger/u)
 })
+
+function productionProviderReadiness() {
+  return {
+    anthropic: true, deepseek: false, durable_guards: true,
+    global_ai_enabled: true, perplexity: true, vietmap: true,
+  }
+}
 
 test('rejects an invalid release artifact and an output path outside the repository', () => {
   const invalidRelease = { environment: 'production' }

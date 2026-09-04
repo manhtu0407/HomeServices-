@@ -17,7 +17,6 @@ vi.mock('@/lib/db/query', () => ({
 import type { MobileApiContext } from '../../../../../supabase/functions/mobile-api/_shared/http'
 import { getCustomerProfileInsights } from '../../../../../supabase/functions/mobile-api/_shared/domains/customer/profile-insights'
 import { getWorkerPerformanceInsights } from '../../../../../supabase/functions/mobile-api/_shared/domains/worker/profile-insights'
-import { getWorkerEarnings } from '../../../../../supabase/functions/mobile-api/_shared/domains/worker/workers'
 import { computeEarnings } from '@/lib/workers/earnings'
 
 function rpcOnlyClient(
@@ -82,7 +81,7 @@ describe('exact aggregate RPC runtime wiring', () => {
         paidJobCount: 1_205,
       }],
     })
-    expect(rpc).toHaveBeenCalledWith('get_worker_earnings_summary', {
+    expect(rpc).toHaveBeenCalledWith('get_worker_earnings_summary_v2', {
       p_from: '2026-01-01T00:00:00.000Z',
       p_to: '2026-12-31T23:59:59.999Z',
       p_worker_id: 'worker-1',
@@ -112,11 +111,16 @@ describe('exact aggregate RPC runtime wiring', () => {
       total_spend_vnd: 750_000_000,
       total_transaction_count: 750,
     })
+    const userRpc = vi.fn(() => Promise.resolve({
+      data: null,
+      error: { code: '42501', message: 'permission denied' },
+    }))
     const ctx: MobileApiContext = {
       success: true,
       user: { id: 'customer-1' },
       role: 'customer',
-      supabase: client,
+      supabase: { from: vi.fn(), rpc: userRpc },
+      privilegedSupabase: client,
     }
 
     await expect(getCustomerProfileInsights(ctx)).resolves.toMatchObject({
@@ -129,6 +133,7 @@ describe('exact aggregate RPC runtime wiring', () => {
     expect(rpc).toHaveBeenCalledWith('get_customer_profile_insights_aggregate', {
       p_customer_id: 'customer-1',
     })
+    expect(userRpc).not.toHaveBeenCalled()
   })
 
   it('loads worker performance totals without a 500-row ceiling', async () => {
@@ -155,11 +160,16 @@ describe('exact aggregate RPC runtime wiring', () => {
       work_response_review_count: 620,
       work_response_score: 94,
     })
+    const userRpc = vi.fn(() => Promise.resolve({
+      data: null,
+      error: { code: '42501', message: 'permission denied' },
+    }))
     const ctx: MobileApiContext = {
       success: true,
       user: { id: 'worker-1' },
       role: 'worker',
-      supabase: client,
+      supabase: { from: vi.fn(), rpc: userRpc },
+      privilegedSupabase: client,
     }
 
     await expect(getWorkerPerformanceInsights(ctx)).resolves.toMatchObject({
@@ -172,5 +182,6 @@ describe('exact aggregate RPC runtime wiring', () => {
     expect(rpc).toHaveBeenCalledWith('get_worker_performance_insights_aggregate', {
       p_worker_id: 'worker-1',
     })
+    expect(userRpc).not.toHaveBeenCalled()
   })
 })

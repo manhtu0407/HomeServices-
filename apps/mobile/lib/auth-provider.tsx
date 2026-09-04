@@ -16,6 +16,7 @@ import { requestPasswordRecoveryEmail, updateRecoveredPassword } from './passwor
 import { isBoundedLoginPassword, validateNewPassword, validateSignupPassword } from './auth-password'
 import { buildLocalVisualAuditSession, getLocalVisualAuditRole } from './auth-visual-audit'
 import { clearPendingKaelChatDraft } from './pending-kael-chat-draft'
+import { clearPendingWorkerKaelDraft } from './pending-worker-kael-draft'
 import { buildCustomerProfileMetadata } from './customer-profile-metadata'
 import { inspectOAuthCallbackUrl } from './oauth-callback'
 import {
@@ -25,7 +26,7 @@ import {
   startGoogleOAuthRequest,
   subscribeToOAuthCallbackUrls,
 } from './auth-oauth-runtime'
-import { workerService } from './services'
+import { notificationService, workerService } from './services'
 import { useSessionPushRegistration } from './use-session-push-registration'
 import { getRememberedCredentialsForNativeRelaunch } from './auth-native-relaunch'
 import { useAuthRoleLookup } from './use-auth-role-lookup'
@@ -73,7 +74,9 @@ function useAuthController(): AuthState {
   const lastOAuthCallbackCodeRef = useRef<string | null>(null)
   const sessionRef = useRef<Session | null>(localVisualAuditSnapshot?.session ?? INITIAL_AUTH_SNAPSHOT.session)
   const roleRef = useRef(localVisualAuditSnapshot?.role ?? INITIAL_AUTH_SNAPSHOT.role)
-  roleRef.current = role
+  useEffect(() => {
+    roleRef.current = role
+  }, [role])
   const unregisterPushTokenForSession = useSessionPushRegistration({
     disabled: Boolean(localVisualAuditRole),
     profileReady: profileStatus === 'ready',
@@ -89,6 +92,7 @@ function useAuthController(): AuthState {
     if (previousUserId && previousUserId !== nextUserId) {
       unregisterPushTokenForSession(previousSession)
       void clearPendingKaelChatDraft(previousUserId)
+      clearPendingWorkerKaelDraft(previousUserId)
     }
     sessionRef.current = nextSession
     if (previousUserId !== nextUserId) roleLookupSequenceRef.current += 1
@@ -152,9 +156,13 @@ function useAuthController(): AuthState {
 
     const subscription = addPushNotificationResponseListener((path) => {
       pushRoute(path as never)
+    }, async (input) => {
+      const accessToken = session?.access_token
+      if (!accessToken) return
+      await notificationService.acknowledgeMatchingDelivery(input, accessToken)
     })
     return () => subscription.remove()
-  }, [localVisualAuditRole, pushRoute])
+  }, [localVisualAuditRole, pushRoute, session?.access_token])
 
   useEffect(() => {
     if (localVisualAuditRole) return () => undefined

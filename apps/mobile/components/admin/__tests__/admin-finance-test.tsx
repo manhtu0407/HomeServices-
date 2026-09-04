@@ -10,6 +10,7 @@ jest.mock('@/lib/services', () => ({
     decidePaymentReconciliation: jest.fn(),
     getFinanceOverview: jest.fn(),
     getFinanceSummary: jest.fn(),
+    getPaymentReconciliation: jest.fn(),
     exportFinanceCsv: jest.fn(),
     listFinanceTaxPolicies: jest.fn(),
     listFinanceTransactions: jest.fn(),
@@ -21,6 +22,7 @@ jest.mock('@/lib/services', () => ({
 }))
 
 const summary = {
+  generated_at: '2026-08-13T00:00:00.000Z',
   range: 'month' as const,
   from: '2026-08-01T00:00:00.000Z',
   to: '2026-09-01T00:00:00.000Z',
@@ -56,6 +58,14 @@ const draftTaxPolicy = {
   tax_type: 'vat',
   updated_at: '2026-08-13T00:00:00.000Z',
   version: 1,
+  rules: [{
+    id: 'tax-rule-1',
+    tax_type: 'vat',
+    subject: 'platform' as const,
+    basis: 'commission_retained' as const,
+    rate_bps: 500,
+    created_at: '2026-08-13T00:00:00.000Z',
+  }],
 }
 
 describe('AdminFinancePanel', () => {
@@ -65,25 +75,65 @@ describe('AdminFinancePanel', () => {
     jest.mocked(adminControlService.getFinanceSummary).mockResolvedValue({ success: true, data: summary, status: 200 })
     jest.mocked(adminControlService.approveFinanceTaxPolicy).mockResolvedValue({ success: true, data: { ...draftTaxPolicy, approved_at: '2026-08-13T01:00:00.000Z', approved_by: 'owner-1', status: 'approved' }, status: 200 })
     jest.mocked(adminControlService.createFinanceTaxPolicyDraft).mockResolvedValue({ success: true, data: draftTaxPolicy, status: 201 })
-    jest.mocked(adminControlService.listFinanceTaxPolicies).mockResolvedValue({ success: true, data: { active_policy_ids: [], tax_policies: [] }, status: 200 })
-    jest.mocked(adminControlService.listFinanceTransactions).mockResolvedValue({ success: true, data: { has_more: false, next_cursor: null, transactions: [] }, status: 200 })
+    jest.mocked(adminControlService.listFinanceTaxPolicies).mockResolvedValue({ success: true, data: { generated_at: '2026-08-13T00:00:00.000Z', active_policy_ids: [], tax_policies: [] }, status: 200 })
+    jest.mocked(adminControlService.listFinanceTransactions).mockResolvedValue({ success: true, data: { generated_at: '2026-08-13T00:00:00.000Z', has_more: false, next_cursor: null, transactions: [] }, status: 200 })
     jest.mocked(adminControlService.listPaymentReconciliations).mockResolvedValue({
       success: true,
       data: {
+        generated_at: '2026-08-13T00:00:00.000Z',
         payment_reconciliations: [{
           id: 'payment-order-1',
           job_id: 'job-1',
           payment_method: 'platform_bank_manual',
-          status: 'manual_customer_claimed',
+          status: 'manual_customer_claimed' as const,
+          display_code: 'NS-0001',
           gross_amount: 450000,
           amount_received: null,
           customer_transfer_claimed_at: '2026-08-11T10:00:00.000Z',
           response_deadline: null,
           created_at: '2026-08-11T09:00:00.000Z',
           updated_at: '2026-08-11T10:00:00.000Z',
+          assigned_to: null,
+          assigned_to_name: null,
+          assigned_at: null,
+          assigned_to_me: false,
+          version: 1,
         }],
         has_more: false,
-        next_offset: null,
+        next_cursor: null,
+        total_count: 1,
+        total_amount_vnd: 450000,
+      },
+      status: 200,
+    })
+    jest.mocked(adminControlService.getPaymentReconciliation).mockResolvedValue({
+      success: true,
+      data: {
+        customer_ref: 'C-1122AABB',
+        expected_amount_vnd: 450000,
+        generated_at: '2026-08-13T00:00:00.000Z',
+        received_amount_vnd: null,
+        reconciliation: {
+          id: 'payment-order-1',
+          job_id: 'job-1',
+          payment_method: 'platform_bank_manual',
+          status: 'manual_customer_claimed',
+          display_code: 'NS-0001',
+          gross_amount: 450000,
+          amount_received: null,
+          customer_transfer_claimed_at: '2026-08-11T10:00:00.000Z',
+          response_deadline: null,
+          created_at: '2026-08-11T09:00:00.000Z',
+          updated_at: '2026-08-11T10:00:00.000Z',
+          assigned_to: null,
+          assigned_to_name: null,
+          assigned_at: null,
+          assigned_to_me: false,
+          version: 1,
+        },
+        service_type: 'cleaning',
+        timeline: [],
+        worker_ref: 'W-3344CCDD',
       },
       status: 200,
     })
@@ -117,20 +167,29 @@ describe('AdminFinancePanel', () => {
     jest.mocked(adminControlService.listPaymentReconciliations).mockResolvedValue({
       success: true,
       data: {
+        generated_at: '2026-08-13T00:00:00.000Z',
         payment_reconciliations: [{
           id: 'direct-order-1',
           job_id: 'job-2',
           payment_method: 'direct_worker',
-          status: 'direct_awaiting_worker_confirmation',
+          status: 'direct_awaiting_worker_confirmation' as const,
+          display_code: 'NS-0002',
           gross_amount: 450000,
           amount_received: null,
           customer_transfer_claimed_at: null,
           response_deadline: '2026-08-12T10:00:00.000Z',
           created_at: '2026-08-11T09:00:00.000Z',
           updated_at: '2026-08-11T10:00:00.000Z',
+          assigned_to: null,
+          assigned_to_name: null,
+          assigned_at: null,
+          assigned_to_me: false,
+          version: 1,
         }],
         has_more: false,
-        next_offset: null,
+        next_cursor: null,
+        total_count: 1,
+        total_amount_vnd: 450000,
       },
       status: 200,
     })
@@ -143,38 +202,25 @@ describe('AdminFinancePanel', () => {
     expect(screen.queryByText('Xác nhận trả trực tiếp')).toBeNull()
   })
 
-  it('opens on the overview and exposes four accessible finance views', async () => {
+  it('keeps each capability sheet focused on its selected finance view', async () => {
     render(<AdminFinancePanel actor={{ access_level: 'operator', capabilities: ['finance.read'] }} reduceMotion reduceTransparency />)
 
     expect(await screen.findByTestId('admin-finance-view-overview')).toBeTruthy()
-    expect(screen.getByTestId('admin-finance-view-navigation-active-lens')).toBeTruthy()
-    expect(screen.getByTestId('admin-finance-view-navigation-inner-refraction')).toBeTruthy()
-    expect(screen.getByTestId('admin-finance-tab-overview').props.accessibilityState).toEqual({ selected: true })
-    expect(screen.getByTestId('admin-finance-tab-cash').props.accessibilityState).toEqual({ selected: false })
-    expect(screen.getByTestId('admin-finance-tab-commission').props.accessibilityState).toEqual({ selected: false })
-    expect(screen.getByTestId('admin-finance-tab-tax').props.accessibilityState).toEqual({ selected: false })
-
-    fireEvent.press(screen.getByTestId('admin-finance-tab-cash'))
-    expect(screen.getByTestId('admin-finance-view-cash')).toBeTruthy()
-
-    fireEvent.press(screen.getByTestId('admin-finance-tab-commission'))
-    expect(screen.getByTestId('admin-finance-view-commission')).toBeTruthy()
-
-    fireEvent.press(screen.getByTestId('admin-finance-tab-tax'))
-    expect(screen.getByTestId('admin-finance-view-tax')).toBeTruthy()
-    expect(await screen.findByTestId('admin-finance-tax-reports')).toBeTruthy()
-    expect(await screen.findByText('Chưa có chính sách thuế. Chưa có ước tính.')).toBeTruthy()
-    expect(screen.getByText('Chưa cấu hình — chưa có ước tính')).toBeTruthy()
+    expect(screen.queryByTestId('admin-finance-view-navigation')).toBeNull()
+    expect(screen.queryByTestId('admin-finance-view-cash')).toBeNull()
+    expect(screen.queryByTestId('admin-finance-view-commission')).toBeNull()
+    expect(screen.queryByTestId('admin-finance-view-tax')).toBeNull()
   })
 
-  it('renders pending commission figures as zero while synchronization is pending', async () => {
+  it('keeps pending commission figures distinct from a verified zero', async () => {
     render(<AdminFinancePanel actor={{ access_level: 'operator', capabilities: ['finance.read'] }} initialView="commission" reduceMotion reduceTransparency />)
 
     expect(await screen.findByTestId('admin-finance-view-commission')).toBeTruthy()
     expect(screen.queryByText('Chưa đủ dữ liệu')).toBeNull()
     expect(within(screen.getByTestId('admin-finance-metric-commission-collected')).getByText('0 ₫')).toBeTruthy()
-    expect(within(screen.getByTestId('admin-finance-metric-commission-rate')).getByText('0%')).toBeTruthy()
-    expect(screen.getByTestId('admin-finance-metric-commission-rate-source')).toHaveTextContent('Đang chờ đồng bộ')
+    expect(within(screen.getByTestId('admin-finance-metric-commission-rate')).getAllByText('Chưa ghi nhận').length).toBeGreaterThan(0)
+    expect(within(screen.getByTestId('admin-finance-metric-commission-rate')).queryByText('0%')).toBeNull()
+    expect(screen.getByTestId('admin-finance-metric-commission-rate-source')).toHaveTextContent('Chưa ghi nhận')
   })
 
   it('uses clear admin copy when transaction detail is unavailable', async () => {
@@ -182,7 +228,8 @@ describe('AdminFinancePanel', () => {
     render(<AdminFinancePanel actor={{ access_level: 'operator', capabilities: ['finance.read'] }} initialView="commission" reduceMotion reduceTransparency />)
 
     expect(await screen.findByTestId('admin-finance-transactions')).toBeTruthy()
-    expect(screen.getByText('Dữ liệu giao dịch chi tiết đang chờ đồng bộ.')).toBeTruthy()
+    expect(await screen.findByText('Dữ liệu giao dịch chi tiết đang chờ đồng bộ.')).toBeTruthy()
+    expect(screen.queryByText('Đang tải dữ liệu…')).toBeNull()
     expect(screen.queryByText('Không tìm thấy endpoint')).toBeNull()
   })
 
@@ -209,18 +256,15 @@ describe('AdminFinancePanel', () => {
     fireEvent.press(screen.getByTestId('admin-finance-tax-editor-submit'))
 
     await waitFor(() => expect(adminControlService.createFinanceTaxPolicyDraft).toHaveBeenCalledWith({
-      basis: 'commission_retained',
       effective_from: '2026-09-01',
       name: 'Thuế giá trị gia tăng',
-      rate_bps: 500,
+      rules: [{ basis: 'commission_retained', rate_bps: 500, subject: 'platform', tax_type: 'vat' }],
       source_reference: 'KT-2026-09',
-      subject: 'platform',
-      tax_type: 'vat',
     }))
   })
 
   it('requires Owner accounting evidence before approving a draft', async () => {
-    jest.mocked(adminControlService.listFinanceTaxPolicies).mockResolvedValue({ success: true, data: { active_policy_ids: [], tax_policies: [draftTaxPolicy] }, status: 200 })
+    jest.mocked(adminControlService.listFinanceTaxPolicies).mockResolvedValue({ success: true, data: { generated_at: '2026-08-13T00:00:00.000Z', active_policy_ids: [], tax_policies: [draftTaxPolicy] }, status: 200 })
     render(<AdminFinancePanel actor={{ access_level: 'owner', capabilities: ['finance.read', 'finance.tax.manage'] }} initialView="tax" reduceMotion reduceTransparency />)
 
     fireEvent.press(await screen.findByTestId('admin-finance-tax-approve-tax-policy-1'))
@@ -233,7 +277,7 @@ describe('AdminFinancePanel', () => {
   })
 
   it('keeps tax policy management actions hidden from a finance reader', async () => {
-    jest.mocked(adminControlService.listFinanceTaxPolicies).mockResolvedValue({ success: true, data: { active_policy_ids: [], tax_policies: [draftTaxPolicy] }, status: 200 })
+    jest.mocked(adminControlService.listFinanceTaxPolicies).mockResolvedValue({ success: true, data: { generated_at: '2026-08-13T00:00:00.000Z', active_policy_ids: [], tax_policies: [draftTaxPolicy] }, status: 200 })
     render(<AdminFinancePanel actor={{ access_level: 'operator', capabilities: ['finance.read'] }} initialView="tax" reduceMotion reduceTransparency />)
 
     await screen.findByTestId('admin-finance-tax-policy-tax-policy-1')
@@ -242,15 +286,15 @@ describe('AdminFinancePanel', () => {
     expect(screen.queryByTestId('admin-finance-tax-approve-tax-policy-1')).toBeNull()
   })
 
-  it('uses title-case finance tab names while preserving readable accessibility labels', async () => {
+  it('uses reporting-period controls without cross-capability finance tabs', async () => {
     render(<AdminFinancePanel actor={{ access_level: 'operator', capabilities: ['finance.read'] }} reduceMotion reduceTransparency />)
 
     await screen.findByTestId('admin-finance-view-overview')
-    expect(screen.getByText('Tổng quan')).toBeTruthy()
-    expect(screen.getByText('Dòng tiền & đối soát')).toBeTruthy()
-    expect(screen.getByText('Hoa hồng & chi trả')).toBeTruthy()
-    expect(screen.getByText('Thuế & báo cáo')).toBeTruthy()
-    expect(screen.getByTestId('admin-finance-tab-overview').props.accessibilityLabel).toBe('Tổng quan')
+    expect(screen.getByTestId('admin-finance-range-month')).toBeTruthy()
+    expect(screen.queryByTestId('admin-finance-tab-overview')).toBeNull()
+    expect(screen.queryByText('Dòng tiền & đối soát')).toBeNull()
+    expect(screen.queryByText('Hoa hồng & chi trả')).toBeNull()
+    expect(screen.queryByText('Thuế & báo cáo')).toBeNull()
   })
 
   it.each([
@@ -293,14 +337,14 @@ describe('AdminFinancePanel', () => {
     expect(adminControlService.listPaymentReconciliations).not.toHaveBeenCalled()
   })
 
-  it('starts unavailable overview metrics at zero and explains their source while synchronization is pending', async () => {
+  it('keeps unavailable overview metrics distinct from verified zero', async () => {
     render(<AdminFinancePanel actor={{ access_level: 'operator', capabilities: ['finance.read'] }} reduceMotion reduceTransparency />)
 
     expect(await screen.findByTestId('admin-finance-view-overview')).toBeTruthy()
-    expect(within(screen.getByTestId('admin-finance-metric-gmv')).getByText('0 ₫')).toBeTruthy()
-    expect(within(screen.getByTestId('admin-finance-metric-paid-jobs')).getByText('0')).toBeTruthy()
-    expect(within(screen.getByTestId('admin-finance-metric-business-retained')).getByText('0 ₫')).toBeTruthy()
-    expect(screen.getByTestId('admin-finance-metric-gmv-source')).toHaveTextContent('Nguồn: Khoản thanh toán hoàn tất · Đang chờ đồng bộ')
-    expect(screen.getByTestId('admin-finance-metric-business-retained-source')).toHaveTextContent('Công thức: Hoa hồng đã thu − hoàn hoặc đảo phí · Đang chờ đồng bộ')
+    expect(within(screen.getByTestId('admin-finance-metric-gmv')).getByText('Chưa ghi nhận')).toBeTruthy()
+    expect(within(screen.getByTestId('admin-finance-metric-paid-jobs')).getByText('Chưa ghi nhận')).toBeTruthy()
+    expect(within(screen.getByTestId('admin-finance-metric-business-retained')).getByText('Chưa ghi nhận')).toBeTruthy()
+    expect(screen.getByTestId('admin-finance-metric-gmv-source')).toHaveTextContent('Nguồn: Khoản thanh toán hoàn tất · Chưa ghi nhận')
+    expect(screen.getByTestId('admin-finance-metric-business-retained-source')).toHaveTextContent('Công thức: Hoa hồng đã thu − hoàn hoặc đảo phí · Chưa ghi nhận')
   })
 })

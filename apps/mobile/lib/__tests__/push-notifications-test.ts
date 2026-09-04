@@ -3,11 +3,29 @@ const mockFetch = jest.fn()
 const mockGetPermissionsAsync = jest.fn()
 const mockRequestPermissionsAsync = jest.fn()
 const mockGetExpoPushTokenAsync = jest.fn()
+const mockAddNotificationReceivedListener = jest.fn()
+const mockAddNotificationResponseReceivedListener = jest.fn()
+const mockGetLastNotificationResponseAsync = jest.fn()
 
 jest.mock('expo-notifications', () => ({
   getExpoPushTokenAsync: mockGetExpoPushTokenAsync,
   getPermissionsAsync: mockGetPermissionsAsync,
   requestPermissionsAsync: mockRequestPermissionsAsync,
+  addNotificationReceivedListener: mockAddNotificationReceivedListener,
+  addNotificationResponseReceivedListener: mockAddNotificationResponseReceivedListener,
+  getLastNotificationResponseAsync: mockGetLastNotificationResponseAsync,
+}))
+
+jest.mock('expo-constants', () => ({
+  __esModule: true,
+  default: {
+    expoConfig: {
+      extra: {
+        eas: { projectId: 'test-project-id' },
+        iosPushNotificationsEnabled: true,
+      },
+    },
+  },
 }))
 
 jest.mock('../runtime-config', () => ({
@@ -28,11 +46,19 @@ jest.mock('../supabase', () => ({
 
 import type { DevicePushTokenInput } from '../api-types'
 import { notificationService } from '../services'
-import { setupPushNotifications, toNotificationPath, unregisterPushNotifications } from '../push-notifications'
+import {
+  addPushNotificationResponseListener,
+  matchingDeliveryAckFromNotificationData,
+  setupPushNotifications,
+  toNotificationPath,
+  unregisterPushNotifications,
+} from '../push-notifications'
 
 const JOB_ID = '11111111-1111-4111-8111-111111111111'
 const SCOPE_ID = '22222222-2222-4222-8222-222222222222'
 const BROADCAST_ID = '33333333-3333-4333-8333-333333333333'
+const DELIVERY_ID = '44444444-4444-4444-8444-444444444444'
+const PUSH_TOKEN_ID = '55555555-5555-4555-8555-555555555555'
 
 describe('push notification token lifecycle', () => {
   beforeEach(() => {
@@ -41,6 +67,10 @@ describe('push notification token lifecycle', () => {
     mockGetPermissionsAsync.mockReset()
     mockRequestPermissionsAsync.mockReset()
     mockGetExpoPushTokenAsync.mockReset()
+    mockAddNotificationReceivedListener.mockReset()
+    mockAddNotificationResponseReceivedListener.mockReset()
+    mockGetLastNotificationResponseAsync.mockReset()
+    mockGetLastNotificationResponseAsync.mockResolvedValue(null)
     global.fetch = mockFetch as unknown as typeof fetch
   })
 
@@ -50,6 +80,8 @@ describe('push notification token lifecycle', () => {
 
   it('uses the departing session bearer and sends no client-controlled user id', async () => {
     mockFetch.mockResolvedValue({
+      body: null,
+      headers: { get: () => null },
       ok: true,
       status: 200,
       text: async () => JSON.stringify({
@@ -205,6 +237,58 @@ describe('push notification token lifecycle', () => {
 })
 
 describe('push notification deep-link boundary', () => {
+  it('acknowledges only a complete exact token-generation receipt', async () => {
+    type TestNotification = { request: { content: { data?: Record<string, unknown> } } }
+    let received: ((notification: TestNotification) => void) | undefined
+    let responded: ((response: { notification: TestNotification }) => void) | undefined
+    const removeReceived = jest.fn()
+    const removeResponded = jest.fn()
+    mockAddNotificationReceivedListener.mockImplementation((listener) => {
+      received = listener
+      return { remove: removeReceived }
+    })
+    mockAddNotificationResponseReceivedListener.mockImplementation((listener) => {
+      responded = listener
+      return { remove: removeResponded }
+    })
+    const openPath = jest.fn()
+    const acknowledge = jest.fn(async () => undefined)
+    const data = {
+      broadcast_id: BROADCAST_ID,
+      matching_delivery_id: DELIVERY_ID,
+      device_push_token_id: PUSH_TOKEN_ID,
+      device_push_token_updated_at: '2026-08-23T07:00:00.000Z',
+    }
+    const subscription = addPushNotificationResponseListener(openPath, acknowledge)
+
+    received?.({ request: { content: { data } } })
+    responded?.({ notification: { request: { content: { data } } } })
+    await Promise.resolve()
+
+    expect(acknowledge).toHaveBeenCalledTimes(2)
+    expect(acknowledge).toHaveBeenCalledWith({
+      matching_delivery_id: DELIVERY_ID,
+      device_push_token_id: PUSH_TOKEN_ID,
+      device_push_token_updated_at: '2026-08-23T07:00:00.000Z',
+    })
+    expect(openPath).toHaveBeenCalledWith(`/(worker)/jobs?broadcast_id=${BROADCAST_ID}`)
+    subscription.remove()
+    expect(removeReceived).toHaveBeenCalledTimes(1)
+    expect(removeResponded).toHaveBeenCalledTimes(1)
+  })
+
+  it('rejects malformed or incomplete app-level delivery acknowledgements', () => {
+    expect(matchingDeliveryAckFromNotificationData({
+      matching_delivery_id: DELIVERY_ID,
+      device_push_token_id: PUSH_TOKEN_ID,
+      device_push_token_updated_at: 'not-a-time',
+    })).toBeNull()
+    expect(matchingDeliveryAckFromNotificationData({
+      matching_delivery_id: DELIVERY_ID,
+      device_push_token_updated_at: '2026-08-23T07:00:00.000Z',
+    })).toBeNull()
+  })
+
   it('accepts only canonical in-app routes with bounded UUID parameters', () => {
     expect(toNotificationPath({
       deep_link: `/(customer)/history?scope_change=${SCOPE_ID}&job_id=${JOB_ID}`,

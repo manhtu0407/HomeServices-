@@ -211,8 +211,8 @@ insert into public.notifications (user_id, job_id, event_type, title, body) valu
 insert into public.api_logs (provider, success, purpose, safe_metadata) values
   ('perplexity', true, 'security_verification', '{"fixture":true}'::jsonb);
 
-insert into public.learning_candidates (candidate_type, affected_service, affected_problem, evidence_count, confidence, status, suggested_payload) values
-  ('price_prior_update', 'plumbing', 'plumbing-general', 5, 0.900, 'pending_evidence', '{"fixture":true}'::jsonb);
+insert into public.learning_candidates (id, candidate_type, affected_service, affected_problem, evidence_count, confidence, status, suggested_payload) values
+  ('71000000-0000-0000-0000-000000000001', 'price_prior_update', 'plumbing', 'plumbing-general', 5, 0.900, 'pending_evidence', '{"fixture":true}'::jsonb);
 
 insert into public.learning_rules (id, rule_type, affected_service, affected_problem, evidence_count, confidence, status, rule_payload) values
   ('70000000-0000-0000-0000-000000000001', 'clarification_rule', 'plumbing', 'plumbing-general', 5, 0.900, 'active', '{"fixture":true}'::jsonb);
@@ -524,7 +524,8 @@ where id in ('50000000-0000-0000-0000-000000000001', '50000000-0000-0000-0000-00
 
 insert into security_results
 select 'admin_reads_learning_candidates', '1', count(*)::text, count(*) = 1, null
-from public.learning_candidates;
+from public.learning_candidates
+where id = '71000000-0000-0000-0000-000000000001';
 
 insert into security_results
 select 'admin_reads_api_logs', '1', count(*)::text, count(*) = 1, null

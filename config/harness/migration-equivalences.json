@@ -1,0 +1,68 @@
+{
+  "version": "1.0.0",
+  "groups": [
+    {
+      "id": "account-deletion-job-media-cleanup-20260822",
+      "canonicalVersion": "20260822211500",
+      "versions": [
+        "20260822150502",
+        "20260822211500"
+      ],
+      "semanticSha256": "e1102aac221ed7c77044f76c5eb39303676400f5fe856b8ab9ec422792e1d83b"
+    },
+    {
+      "id": "synthetic-verified-final-price-boundary-20260823",
+      "canonicalVersion": "20260823182000",
+      "versions": [
+        "20260823040643",
+        "20260823182000"
+      ],
+      "semanticSha256": "f1446070edc82beb80ac9afd00e4c42ea683fd4743ac007efd81c4b042a9d35f"
+    },
+    {
+      "id": "official-match-operation-projection-20260823",
+      "canonicalVersion": "20260823183000",
+      "versions": [
+        "20260823041352",
+        "20260823183000"
+      ],
+      "semanticSha256": "c3a7ffa90a79d23c1f83ae586e2de1a70faacb44e92a479a75f228e88ce47b78"
+    },
+    {
+      "id": "service-intake-policy-evidence-requirements-20260823",
+      "canonicalVersion": "20260823184000",
+      "versions": [
+        "20260823043422",
+        "20260823184000"
+      ],
+      "semanticSha256": "a7915627b837d3eeaa5feb40f30f45214f0960ed8d317f35dd69e146650e0761"
+    },
+    {
+      "id": "confirmation-acceptance-receipt-v2-20260823",
+      "canonicalVersion": "20260823185000",
+      "versions": [
+        "20260823050437",
+        "20260823185000"
+      ],
+      "semanticSha256": "65bb2926bbd737911e2c4245ba51670aea7a31c5f412eef182aaf0f034821c08"
+    },
+    {
+      "id": "worker-salary-settlement-v2-rpc-compatibility-20260823",
+      "canonicalVersion": "20260823190000",
+      "versions": [
+        "20260823063343",
+        "20260823190000"
+      ],
+      "semanticSha256": "3df23096c65071e57646672d1d50d9942c5f94d585d33df5a981ba06c8f1c136"
+    },
+    {
+      "id": "worker-salary-settlement-v2-admin-compatibility-20260823",
+      "canonicalVersion": "20260823190100",
+      "versions": [
+        "20260823063416",
+        "20260823190100"
+      ],
+      "semanticSha256": "3939768f0a8fc0b4fd77f8e023d4de819fc8c0a0051d1ca0f863cdd7a76bc07b"
+    }
+  ]
+}

@@ -24,28 +24,28 @@ describe('role gate greeting', () => {
     expect(greeting).toEqual(variants[variants.length - 1])
   })
 
-  it('provides one shared set of twenty English greetings for both locales', () => {
-    const greetings = Object.values(roleGateGreetingVariants).flat()
-    const english = Object.values(roleGateGreetingVariantsByLanguage.en).flat()
+  it('provides twenty distinct, bounded Vietnamese greetings', () => {
+    const greetings = Object.values(roleGateGreetingVariantsByLanguage.vi).flat()
 
     expect(greetings).toHaveLength(20)
     expect(new Set(greetings.map((greeting) => greeting.headline)).size).toBe(20)
-    expect(greetings).toEqual(english)
     for (const greeting of greetings) {
       expect(greeting.headline.trim()).not.toHaveLength(0)
       expect(greeting.headline.length).toBeLessThanOrEqual(48)
-      expect(greeting.headline).toMatch(/[.!]$/)
+      expect(greeting.headline).toMatch(/[.!?]$/)
+      expect(greeting.headline).toMatch(/[À-ỹ]/u)
     }
   })
 
-  it('returns the same English greeting for vi and en', () => {
+  it('keeps Vietnamese and English greeting catalogs separate', () => {
     const vietnameseLocale = Object.values(roleGateGreetingVariantsByLanguage.vi).flat()
     const englishLocale = Object.values(roleGateGreetingVariantsByLanguage.en).flat()
+    const englishHeadlines = new Set(englishLocale.map((greeting) => greeting.headline))
 
     expect(vietnameseLocale).toHaveLength(20)
     expect(englishLocale).toHaveLength(20)
-    expect(vietnameseLocale).toEqual(englishLocale)
-    expect(selectRoleGateGreeting(new Date(2026, 6, 12, 6), () => 0, 'vi')).toEqual(
+    expect(vietnameseLocale.every((greeting) => !englishHeadlines.has(greeting.headline))).toBe(true)
+    expect(selectRoleGateGreeting(new Date(2026, 6, 12, 6), () => 0, 'vi')).not.toEqual(
       selectRoleGateGreeting(new Date(2026, 6, 12, 6), () => 0, 'en'),
     )
   })

@@ -3,6 +3,7 @@ import type { UserRole } from "../../../../_shared/domain.ts";
 export type NotificationRoute =
   | { kind: "notifications"; method: "GET"; roles: UserRole[] }
   | { kind: "notifications.deviceToken"; method: "POST"; roles: UserRole[] }
+  | { kind: "notifications.matchingDeliveryAck"; method: "POST"; roles: UserRole[] }
   | {
     kind: "notifications.deviceToken.unregister";
     method: "DELETE";
@@ -32,6 +33,13 @@ export function matchNotificationRoute(path: string, method: string): Notificati
       kind: "notifications.deviceToken",
       method: "POST",
       roles: ["customer", "worker", "admin"],
+    };
+  }
+  if (method === "POST" && path === "/notifications/matching-delivery-ack") {
+    return {
+      kind: "notifications.matchingDeliveryAck",
+      method: "POST",
+      roles: ["worker"],
     };
   }
   if (method === "DELETE" && path === "/notifications/device-token") {

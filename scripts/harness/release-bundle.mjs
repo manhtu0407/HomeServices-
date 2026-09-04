@@ -1,15 +1,24 @@
 import { execFileSync } from 'node:child_process'
 import { createHash } from 'node:crypto'
 import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs'
+import { createRequire } from 'node:module'
 import { dirname, extname, relative, resolve, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
+import { auditProductionUiCopy } from '../check-production-ui-copy.mjs'
+
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..')
+const requireFromMobile = createRequire(resolve(ROOT, 'apps/mobile/package.json'))
+const ts = requireFromMobile('typescript')
 const OUTPUT = 'artifacts/harness/release-manifest.json'
 const ENVIRONMENTS = new Set(['local', 'preview', 'staging', 'production'])
 const SOURCE_EXTENSIONS = ['.ts', '.tsx', '.js', '.mjs', '.json']
 const FUNCTION_CONFIG_NAMES = ['deno.json', 'deno.jsonc', 'deno.lock', 'import_map.json', 'import-map.json']
 const GLOBAL_RUNTIME_CONFIGS = ['supabase/config.toml']
+export const RELEASE_EDGE_FUNCTIONS = Object.freeze(['kael-matching-maintainer', 'mobile-api'])
+const PROVIDER_READINESS_KEYS = Object.freeze([
+  'anthropic', 'deepseek', 'durable_guards', 'global_ai_enabled', 'perplexity', 'vietmap',
+])
 const repoPath = (value) => value.split(sep).join('/')
 
 export function buildHarnessRelease(options = {}) {
@@ -31,17 +40,32 @@ export function buildHarnessRelease(options = {}) {
   const accessMatrixBytes = readFileSync(resolve(root, 'config/harness/access-matrix.json'))
   const reliabilityPolicyBytes = readFileSync(resolve(root, 'config/harness/reliability.json'))
   const promotionPolicyBytes = readFileSync(resolve(root, 'config/harness/promotion.json'))
-  const edge = edgeFunctionBundles(root)
+  const edge = edgeFunctionBundles(root, RELEASE_EDGE_FUNCTIONS)
   const environmentBinding = environmentBindingFor(environment)
+  const releaseSourcePaths = releaseSourceFilePaths(root)
+  const productionUiAudit = auditProductionUiCopy(root)
+  if (productionUiAudit.unsafe.length > 0) {
+    throw new Error('production release contains internal test or release terminology in visible UI copy')
+  }
+  const providerReadiness = options.providerReadiness ?? providerReadinessFromEnvironment(process.env)
   const release = {
     schemaVersion: '1.0.0',
     releaseId: '',
     environment,
     environmentBinding,
     gitSha,
+    sourceBundleSha256: digestRepoPaths(root, releaseSourcePaths),
+    mobileBuildFingerprintSha256: digestRepoPaths(root, releaseSourcePaths.filter((path) =>
+      path === 'package.json' ||
+      path === 'pnpm-lock.yaml' ||
+      path.startsWith('apps/mobile/') ||
+      path.startsWith('packages/shared/')
+    )),
+    productionUiSourceSha256: productionUiAudit.sourceSha256,
     manifestSha256: sha256(manifest),
     migrationInventorySha256: sha256(migrationInventoryBytes),
     migrationInventory,
+    migrationWatermark: migrationInventory.entries.at(-1)?.version ?? '',
     databaseTypesSha256: migrationInventory.databaseTypes.sha256,
     promptBundleSha256: digestPaths(root, [
       'packages/shared/kael/charter',
@@ -56,6 +80,19 @@ export function buildHarnessRelease(options = {}) {
       'supabase/functions/mobile-api/_shared/platform/privileged',
       'supabase/functions/mobile-api/_shared/kael/kael-guardrails',
     ]),
+    serviceIntakePolicyBundleSha256: digestRepoPaths(root, releaseSourcePaths.filter((path) =>
+      path === 'packages/shared/src/contracts/stage1-reliability.ts' ||
+      path.includes('service-intake') ||
+      path.includes('intake-policy') ||
+      path.includes('service_intake_policy')
+    )),
+    priceEvidenceBundleSha256: digestRepoPaths(root, releaseSourcePaths.filter((path) =>
+      path.includes('price-evidence') ||
+      path.includes('price_evidence') ||
+      path.includes('price-baseline') ||
+      path.includes('price_baseline') ||
+      path.includes('quote_ready_baseline')
+    )),
     runtimeConfigurationSha256: digestPaths(root, runtimeConfigurationPaths(root)),
     evaluationSuiteVersion: evaluationSuite.suite_version,
     evaluationSuiteSha256: sha256(evaluationSuiteBytes),
@@ -63,7 +100,14 @@ export function buildHarnessRelease(options = {}) {
     accessMatrixSha256: sha256(accessMatrixBytes),
     reliabilityPolicySha256: sha256(reliabilityPolicyBytes),
     promotionPolicySha256: sha256(promotionPolicyBytes),
+    providerReadiness,
+    providerReadinessFingerprintSha256: sha256(canonicalJson(providerReadiness)),
     edgeFunctions: edge.digests,
+    edgeRuntimeConfigurations: edge.runtimeConfigurations,
+    edgeBundleSha256: sha256(canonicalJson({
+      sourceClosures: edge.digests,
+      runtimeConfigurations: edge.runtimeConfigurations,
+    })),
     edgeFunctionInputs: edge.inputs,
     verificationRequirements: [
       'repository-controls',
@@ -74,6 +118,7 @@ export function buildHarnessRelease(options = {}) {
       'edge-digest-match',
       'live-provider-evaluation-if-affected',
       'readonly-production-drift',
+      'production-ui-normality',
       'compatible-rollback-target',
       'explicit-human-approval',
     ],
@@ -101,16 +146,23 @@ export function checkHarnessRelease(release) {
   const problems = []
   const shaFields = [
     'manifestSha256',
+    'sourceBundleSha256',
+    'mobileBuildFingerprintSha256',
+    'productionUiSourceSha256',
     'migrationInventorySha256',
     'databaseTypesSha256',
     'promptBundleSha256',
     'policyBundleSha256',
+    'serviceIntakePolicyBundleSha256',
+    'priceEvidenceBundleSha256',
     'runtimeConfigurationSha256',
     'evaluationSuiteSha256',
     'capabilityRegistrySha256',
     'accessMatrixSha256',
     'reliabilityPolicySha256',
     'promotionPolicySha256',
+    'providerReadinessFingerprintSha256',
+    'edgeBundleSha256',
     'bundleSha256',
   ]
   if (release.schemaVersion !== '1.0.0') problems.push('release schema version is invalid')
@@ -123,19 +175,50 @@ export function checkHarnessRelease(release) {
     if (release.releaseId !== expectedReleaseId) problems.push('release ID does not bind release contents')
   }
   for (const field of shaFields) if (!/^[0-9a-f]{64}$/u.test(release[field] ?? '')) problems.push(`${field} is invalid`)
+  if (!validProviderReadiness(release.providerReadiness) ||
+      release.providerReadinessFingerprintSha256 !== sha256(canonicalJson(release.providerReadiness))) {
+    problems.push('provider readiness evidence is invalid')
+  } else if (release.environment === 'production' &&
+      ['anthropic', 'durable_guards', 'global_ai_enabled', 'perplexity', 'vietmap']
+        .some((name) => release.providerReadiness[name] !== true)) {
+    problems.push('production provider readiness is incomplete')
+  }
   problems.push(...checkEnvironmentBinding(release.environment, release.environmentBinding))
   problems.push(...checkMigrationInventory(release.migrationInventory, release.databaseTypesSha256))
+  const expectedWatermark = release.migrationInventory?.entries?.at(-1)?.version ?? ''
+  if (release.migrationWatermark !== expectedWatermark) problems.push('release migration watermark is invalid')
   if (!release.edgeFunctions || !Object.keys(release.edgeFunctions).length) problems.push('release has no Edge function digests')
   for (const [name, digest] of Object.entries(release.edgeFunctions ?? {})) {
     if (!/^[0-9a-f]{64}$/u.test(digest)) problems.push(`Edge digest is invalid for ${name}`)
   }
   const inputNames = Object.keys(release.edgeFunctionInputs ?? {}).sort()
   const digestNames = Object.keys(release.edgeFunctions ?? {}).sort()
+  if (JSON.stringify(digestNames) !== JSON.stringify([...RELEASE_EDGE_FUNCTIONS])) {
+    problems.push('release Edge function inventory is not the Stage 1 managed set')
+  }
   if (JSON.stringify(inputNames) !== JSON.stringify(digestNames)) problems.push('Edge function input inventory does not match digest inventory')
   for (const [name, inputs] of Object.entries(release.edgeFunctionInputs ?? {})) {
     if (!Array.isArray(inputs) || !inputs.length) problems.push(`Edge input inventory is empty for ${name}`)
     else if (new Set(inputs).size !== inputs.length || JSON.stringify(inputs) !== JSON.stringify([...inputs].sort())) {
       problems.push(`Edge input inventory is not unique and sorted for ${name}`)
+    }
+  }
+  const runtimeNames = Object.keys(release.edgeRuntimeConfigurations ?? {}).sort()
+  if (JSON.stringify(runtimeNames) !== JSON.stringify(digestNames)) {
+    problems.push('Edge runtime configuration inventory does not match digest inventory')
+  }
+  for (const [name, configuration] of Object.entries(release.edgeRuntimeConfigurations ?? {})) {
+    if (!/^[0-9a-f]{64}$/u.test(configuration?.sha256 ?? '') ||
+        !Array.isArray(configuration?.inputs) || configuration.inputs.length === 0 ||
+        new Set(configuration.inputs).size !== configuration.inputs.length ||
+        JSON.stringify(configuration.inputs) !== JSON.stringify([...configuration.inputs].sort()) ||
+        typeof configuration.verifyJwt !== 'boolean' ||
+        typeof configuration.importMap !== 'boolean' ||
+        !configuration.entrypointPath?.endsWith(`supabase/functions/${name}/index.ts`) ||
+        (configuration.importMap
+          ? !configuration.importMapPath?.match(new RegExp(`supabase/functions/${name}/deno\\.jsonc?$`, 'u'))
+          : configuration.importMapPath !== null)) {
+      problems.push(`Edge runtime configuration is invalid for ${name}`)
     }
   }
   const requirements = release.verificationRequirements
@@ -150,61 +233,183 @@ export function checkHarnessRelease(release) {
   return problems
 }
 
-export function edgeFunctionBundles(rootInput = ROOT) {
+export function edgeSourceClosures(rootInput = ROOT, functionNames = RELEASE_EDGE_FUNCTIONS) {
   const root = resolve(rootInput)
   const functionsRoot = resolve(root, 'supabase/functions')
   const digests = {}
   const inputs = {}
+  const selected = new Set(functionNames)
+  if (!selected.size) throw new Error('at least one managed Edge function is required')
   for (const entry of readdirSync(functionsRoot, { withFileTypes: true })) {
-    if (!entry.isDirectory() || entry.name.startsWith('_')) continue
+    if (!entry.isDirectory() || entry.name.startsWith('_') || !selected.has(entry.name)) continue
     const functionRoot = resolve(functionsRoot, entry.name)
     const indexPath = resolve(functionRoot, 'index.ts')
     if (!existsSync(indexPath)) throw new Error(`Edge function has no index.ts: ${entry.name}`)
     const files = collectImportClosure(root, indexPath)
-    for (const configPath of runtimeConfigurationPaths(root, functionRoot)) {
-      const absolute = resolve(root, configPath)
-      if (existsSync(absolute) && statSync(absolute).isFile()) files.add(absolute)
-    }
     const sorted = [...files].sort()
     digests[entry.name] = digestFileSet(root, sorted)
     inputs[entry.name] = sorted.map((file) => repoPath(relative(root, file)))
   }
+  const missing = [...selected].filter((name) => !(name in digests))
+  if (missing.length) throw new Error(`managed Edge function source is missing: ${missing.join(', ')}`)
   return {
     digests: Object.fromEntries(Object.entries(digests).sort(([left], [right]) => left.localeCompare(right))),
     inputs: Object.fromEntries(Object.entries(inputs).sort(([left], [right]) => left.localeCompare(right))),
   }
 }
 
-function collectImportClosure(root, entryPath) {
-  const pending = [entryPath]
-  const visited = new Set()
-  while (pending.length) {
-    const file = pending.pop()
-    if (visited.has(file)) continue
-    assertInsideRoot(root, file)
-    if (!existsSync(file) || !statSync(file).isFile()) throw new Error(`missing local Edge dependency: ${repoPath(relative(root, file))}`)
-    visited.add(file)
-    if (!SOURCE_EXTENSIONS.includes(extname(file))) continue
-    const source = readFileSync(file, 'utf8')
-    for (const specifier of localImportSpecifiers(source)) {
-      const dependency = resolveLocalImport(file, specifier)
-      if (!dependency) throw new Error(`unresolved local Edge import ${specifier} from ${repoPath(relative(root, file))}`)
-      pending.push(dependency)
+export function edgeFunctionBundles(rootInput = ROOT, functionNames = RELEASE_EDGE_FUNCTIONS) {
+  const root = resolve(rootInput)
+  const source = edgeSourceClosures(root, functionNames)
+  const runtimeConfigurations = {}
+  for (const functionName of Object.keys(source.digests)) {
+    const functionRoot = resolve(root, 'supabase/functions', functionName)
+    const configurationFiles = new Set()
+    for (const configPath of runtimeConfigurationPaths(root, functionRoot)) {
+      const absolute = resolve(root, configPath)
+      if (existsSync(absolute) && statSync(absolute).isFile()) configurationFiles.add(absolute)
+    }
+    const sortedConfiguration = [...configurationFiles].sort()
+    runtimeConfigurations[functionName] = {
+      sha256: digestFileSet(root, sortedConfiguration),
+      inputs: sortedConfiguration.map((file) => repoPath(relative(root, file))),
+      ...edgeDeploymentConfiguration(root, functionName, functionRoot),
     }
   }
-  return visited
+  return {
+    ...source,
+    runtimeConfigurations: Object.fromEntries(
+      Object.entries(runtimeConfigurations).sort(([left], [right]) => left.localeCompare(right)),
+    ),
+  }
 }
 
-function localImportSpecifiers(source) {
-  const values = []
-  const patterns = [
-    /(?:import|export)\s+(?:type\s+)?(?:[\s\S]*?\s+from\s+)?["']([^"']+)["']/gu,
-    /import\s*\(\s*["']([^"']+)["']\s*\)/gu,
-  ]
-  for (const pattern of patterns) {
-    for (const match of source.matchAll(pattern)) if (match[1].startsWith('.')) values.push(match[1])
+function edgeDeploymentConfiguration(root, functionName, functionRoot) {
+  const config = readFileSync(resolve(root, 'supabase/config.toml'), 'utf8')
+  const lines = config.split(/\r?\n/u)
+  const heading = `[functions.${functionName}]`
+  const start = lines.findIndex((line) => line.trim() === heading)
+  const nextSection = start < 0
+    ? -1
+    : lines.findIndex((line, index) => index > start && line.trim().startsWith('['))
+  const section = start < 0
+    ? ''
+    : lines.slice(start + 1, nextSection < 0 ? lines.length : nextSection)
+      .join('\n')
+  const verifyJwt = !/^\s*verify_jwt\s*=\s*false\s*$/mu.test(section)
+  const entrypointPath = repoPath(relative(root, resolve(functionRoot, 'index.ts')))
+  const denoConfig = ['deno.json', 'deno.jsonc']
+    .map((name) => resolve(functionRoot, name))
+    .find((path) => existsSync(path) && statSync(path).isFile())
+  return {
+    verifyJwt,
+    entrypointPath,
+    importMap: Boolean(denoConfig),
+    importMapPath: denoConfig ? repoPath(relative(root, denoConfig)) : null,
   }
-  return [...new Set(values)].sort()
+}
+
+function collectImportClosure(root, entryPath) {
+  const pending = [entryPath]
+  const graph = new Map()
+  while (pending.length) {
+    const file = pending.pop()
+    if (graph.has(file)) continue
+    assertInsideRoot(root, file)
+    if (!existsSync(file) || !statSync(file).isFile()) throw new Error(`missing local Edge dependency: ${repoPath(relative(root, file))}`)
+    if (!SOURCE_EXTENSIONS.includes(extname(file)) || extname(file) === '.json') {
+      graph.set(file, { dependencies: [], localRuntime: true })
+      continue
+    }
+    const source = readFileSync(file, 'utf8')
+    const analysis = runtimeModuleAnalysis(file, source)
+    const dependencies = []
+    for (const specifier of analysis.specifiers) {
+      const dependency = resolveLocalImport(file, specifier)
+      if (!dependency) throw new Error(`unresolved local Edge import ${specifier} from ${repoPath(relative(root, file))}`)
+      dependencies.push(dependency)
+      pending.push(dependency)
+    }
+    graph.set(file, { dependencies, localRuntime: analysis.localRuntime })
+  }
+  const runtimeFiles = new Set(
+    [...graph.entries()].filter(([, value]) => value.localRuntime).map(([file]) => file),
+  )
+  let changed = true
+  while (changed) {
+    changed = false
+    for (const [file, value] of graph) {
+      if (!runtimeFiles.has(file) && value.dependencies.some((dependency) => runtimeFiles.has(dependency))) {
+        runtimeFiles.add(file)
+        changed = true
+      }
+    }
+  }
+  runtimeFiles.add(entryPath)
+  return runtimeFiles
+}
+
+function runtimeModuleAnalysis(file, source) {
+  const sourceFile = ts.createSourceFile(
+    file,
+    source,
+    ts.ScriptTarget.Latest,
+    true,
+    extname(file) === '.tsx' ? ts.ScriptKind.TSX : extname(file) === '.js' || extname(file) === '.mjs'
+      ? ts.ScriptKind.JS
+      : ts.ScriptKind.TS,
+  )
+  const values = []
+  let localRuntime = false
+  for (const statement of sourceFile.statements) {
+    if (ts.isImportDeclaration(statement)) {
+      if (isRuntimeImport(statement.importClause)) addLocalModule(values, statement.moduleSpecifier)
+      continue
+    }
+    if (ts.isExportDeclaration(statement)) {
+      if (isRuntimeExport(statement)) addLocalModule(values, statement.moduleSpecifier)
+      continue
+    }
+    if (ts.isInterfaceDeclaration(statement) || ts.isTypeAliasDeclaration(statement) ||
+        ts.isEmptyStatement(statement) || hasDeclareModifier(statement)) continue
+    localRuntime = true
+  }
+  const visitDynamicImports = (node) => {
+    if (ts.isCallExpression(node) && node.expression.kind === ts.SyntaxKind.ImportKeyword &&
+        node.arguments.length === 1) {
+      addLocalModule(values, node.arguments[0])
+    }
+    ts.forEachChild(node, visitDynamicImports)
+  }
+  ts.forEachChild(sourceFile, visitDynamicImports)
+  return { localRuntime, specifiers: [...new Set(values)].sort() }
+}
+
+function isRuntimeImport(clause) {
+  if (!clause) return true
+  if (clause.isTypeOnly) return false
+  if (clause.name) return true
+  if (ts.isNamespaceImport(clause.namedBindings)) return true
+  if (ts.isNamedImports(clause.namedBindings)) {
+    return clause.namedBindings.elements.some((element) => !element.isTypeOnly)
+  }
+  return false
+}
+
+function isRuntimeExport(statement) {
+  if (!statement.moduleSpecifier || statement.isTypeOnly) return false
+  if (!statement.exportClause || ts.isNamespaceExport(statement.exportClause)) return true
+  return statement.exportClause.elements.some((element) => !element.isTypeOnly)
+}
+
+function addLocalModule(values, expression) {
+  if (expression && ts.isStringLiteralLike(expression) && expression.text.startsWith('.')) {
+    values.push(expression.text)
+  }
+}
+
+function hasDeclareModifier(statement) {
+  return statement.modifiers?.some((modifier) => modifier.kind === ts.SyntaxKind.DeclareKeyword) === true
 }
 
 function resolveLocalImport(importer, specifier) {
@@ -256,7 +461,11 @@ function checkEnvironmentBinding(environment, binding) {
 
 function checkMigrationInventory(inventory, databaseTypesSha256) {
   const problems = []
-  if (!inventory || inventory.version !== '1.0.0' || !Array.isArray(inventory.entries)) return ['release migration inventory is invalid']
+  if (!inventory || inventory.version !== '1.1.0' || !Array.isArray(inventory.entries) ||
+      inventory.migrationEquivalences?.version !== '1.0.0' ||
+      !Array.isArray(inventory.migrationEquivalences?.groups)) {
+    return ['release migration inventory is invalid']
+  }
   if (inventory.entries.length !== inventory.migrationCount) problems.push('release migration inventory count is invalid')
   const versions = inventory.entries.map((entry) => entry.version)
   if (new Set(versions).size !== versions.length) problems.push('release migration inventory has duplicate versions')
@@ -279,6 +488,44 @@ function digestPaths(root, paths) {
     return statSync(absolute).isDirectory() ? collectFiles(absolute) : [absolute]
   })
   return digestFileSet(root, files)
+}
+
+function releaseSourceFilePaths(root) {
+  const output = execFileSync(
+    'git',
+    ['ls-files', '--cached', '--others', '--exclude-standard', '-z'],
+    { cwd: root, encoding: 'utf8' },
+  )
+  return output
+    .split('\0')
+    .map(repoPath)
+    .filter(Boolean)
+    .filter((path) => !path.startsWith('artifacts/') && !path.startsWith('.scratch/'))
+    .sort()
+}
+
+function digestRepoPaths(root, paths) {
+  if (!paths.length) return sha256('')
+  return digestFileSet(root, paths.map((path) => resolve(root, path)))
+}
+
+function providerReadinessFromEnvironment(environment) {
+  const enabled = (name) => Boolean(environment[name]?.trim())
+  const trueFlag = (name) => ['1', 'true', 'yes', 'on'].includes(environment[name]?.trim().toLowerCase())
+  return {
+    anthropic: enabled('ANTHROPIC_API_KEY'),
+    deepseek: enabled('DEEPSEEK_API_KEY'),
+    durable_guards: trueFlag('KAEL_DURABLE_GUARDS_ENABLED'),
+    global_ai_enabled: !trueFlag('KAEL_AI_KILL_SWITCH'),
+    perplexity: enabled('PERPLEXITY_API_KEY'),
+    vietmap: enabled('VIETMAP_API_KEY') || enabled('VIETMAP_MAPS_API_KEY'),
+  }
+}
+
+function validProviderReadiness(value) {
+  return value && typeof value === 'object' && !Array.isArray(value) &&
+    Object.keys(value).sort().join('\n') === [...PROVIDER_READINESS_KEYS].sort().join('\n') &&
+    PROVIDER_READINESS_KEYS.every((name) => typeof value[name] === 'boolean')
 }
 
 function collectFiles(directory) {

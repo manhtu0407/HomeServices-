@@ -4,18 +4,24 @@
 import { apiFailure } from "../../platform/api-failure.ts";
 import type { MobileApiContext } from "../../platform/auth.ts";
 import { db, dbQuery } from "../../platform/db.ts";
+import {
+  resolveSyntheticActorScope,
+  scopeQueryToSyntheticActor,
+} from "../../platform/synthetic-cohort.ts";
 
 export async function saveCustomerFavoriteWorker(
   ctx: MobileApiContext,
   workerId: string,
 ) {
   const client = db(ctx);
+  const actorScope = await resolveSyntheticActorScope(client, ctx.user.id, "customer");
+  const workerQuery = client.from("worker_profiles")
+    .select("id")
+    .eq("id", workerId)
+    .eq("is_approved", true)
+    .eq("is_suspended", false);
   const worker = await dbQuery<Record<string, unknown>>(
-    client.from("worker_profiles")
-      .select("id")
-      .eq("id", workerId)
-      .eq("is_approved", true)
-      .eq("is_suspended", false)
+    scopeQueryToSyntheticActor(workerQuery, actorScope)
       .maybeSingle(),
   );
   if (worker.error) apiFailure("DB_ERROR", "Không thể kiểm tra hồ sơ thợ", 500);
@@ -38,11 +44,12 @@ export async function removeCustomerFavoriteWorker(
   workerId: string,
 ) {
   const client = db(ctx);
+  const actorScope = await resolveSyntheticActorScope(client, ctx.user.id, "customer");
   const removed = await dbQuery(
-    client.from("customer_favorite_workers")
+    scopeQueryToSyntheticActor(client.from("customer_favorite_workers")
       .delete()
       .eq("customer_id", ctx.user.id)
-      .eq("worker_id", workerId),
+      .eq("worker_id", workerId), actorScope),
   );
   if (removed.error) apiFailure("DB_ERROR", "Không thể bỏ lưu thợ yêu thích", 500);
   return { worker_id: workerId, is_favorite: false as const };

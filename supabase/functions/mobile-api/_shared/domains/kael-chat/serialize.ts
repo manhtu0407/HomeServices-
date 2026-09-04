@@ -1,4 +1,8 @@
 import type { EdgeKaelCaseWorkPhase, KaelChatNextAction, KaelChatStatus } from "../../../../_shared/contracts.ts";
+import {
+  intakeCoverageSchema,
+  type EdgeIntakeCoverage,
+} from "../../../../_shared/contracts/stage1-reliability.ts";
 import { KAEL_CASE_WORK_PHASES, kaelDiagnosisScopeArtifactSchema } from "../../kael/contracts/artifact-contract.ts";
 import { kaelIntakeConfirmationSchema } from "../../kael/pipeline/intake-confirmation.ts";
 import {
@@ -119,6 +123,16 @@ export function serializeKaelSession(
   const intakeConfirmation = intakeConfirmationResult?.success
     ? intakeConfirmationResult.data
     : null;
+  const intakeCoverageResult = metadata.intake_coverage === undefined ||
+      metadata.intake_coverage === null
+    ? null
+    : intakeCoverageSchema.safeParse(metadata.intake_coverage);
+  if (intakeCoverageResult && !intakeCoverageResult.success) {
+    apiFailure("DB_ERROR", "Dữ liệu phạm vi tiếp nhận Kael không hợp lệ", 500);
+  }
+  const intakeCoverage = intakeCoverageResult?.success
+    ? intakeCoverageResult.data
+    : null;
   const rowCasePhase = typeof row.case_phase === "string" &&
       (KAEL_CASE_WORK_PHASES as readonly string[]).includes(row.case_phase)
     ? row.case_phase as EdgeKaelCaseWorkPhase
@@ -152,8 +166,12 @@ export function serializeKaelSession(
       totalCostUsd,
       diagnosisScope,
       intakeConfirmation,
+      intakeCoverage,
     ),
     intake_confirmation: intakeConfirmation,
+    quote_mode: intakeCoverage?.quote_mode,
+    policy_version: intakeCoverage?.policy_version ?? null,
+    intake_coverage: intakeCoverage,
   };
 }
 
@@ -741,12 +759,14 @@ function kaelNextAction(
   totalCostUsd: number,
   diagnosisScope?: unknown,
   intakeConfirmation?: unknown,
+  intakeCoverage?: EdgeIntakeCoverage | null,
 ): KaelChatNextAction {
   if (status === "confirmed") return "confirmed";
   if (status === "unsupported") return "unsupported";
   if (totalCostUsd >= KAEL_CHAT_HARD_COST_CAP_USD) return "budget_exceeded";
   const intake = kaelIntakeConfirmationSchema.safeParse(intakeConfirmation);
   if (intake.success && intake.data.status === "pending") return "confirm_intake";
+  if (intakeCoverage) return intakeCoverage.next_action;
   if (status === "collecting_evidence") return "collect_evidence";
   if (status === "estimate_ready") return "estimate_ready";
   const artifact = kaelDiagnosisScopeArtifactSchema.safeParse(diagnosisScope);

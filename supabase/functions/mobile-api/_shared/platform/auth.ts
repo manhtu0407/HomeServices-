@@ -36,6 +36,15 @@ export type MobileApiAuthResult =
     requestHost?: string;
     requestProjectRef?: string;
     releaseId?: string;
+    deploymentId?: string;
+    clientPlatform?: "ios" | "android";
+    clientApplicationId?: string;
+    clientBuildNumber?: number;
+    clientContractEpoch?: number;
+    clientEasBuildId?: string;
+    clientRuntimeVersion?: string;
+    clientGitSha?: string;
+    clientReleaseId?: string;
     traceId?: string;
     runId?: string;
     traceContext?: HarnessTraceContext;
@@ -53,6 +62,18 @@ export type MobileApiContext = Extract<MobileApiAuthResult, { success: true }> &
   runId?: string;
   traceContext?: HarnessTraceContext;
   releaseId?: string;
+  deploymentId?: string;
+  clientPlatform?: "ios" | "android";
+  clientApplicationId?: string;
+  clientBuildNumber?: number;
+  clientContractEpoch?: number;
+  clientEasBuildId?: string;
+  clientRuntimeVersion?: string;
+  clientGitSha?: string;
+  clientReleaseId?: string;
+  requestLifecycle?: {
+    finalizedByDomain: boolean;
+  };
 };
 
 const SUPABASE_TIMEOUT_MS = JOB_MEDIA_STORAGE_TIMEOUT_MS;
@@ -135,6 +156,7 @@ export function createEdgeAuthenticator(
       supabase,
       request,
       userData.user.id,
+      profile.role,
     );
     if (!activationGate.allowed) return activationGate.failure;
 
@@ -170,6 +192,7 @@ export function createEdgeAuthenticator(
       environment: env.harnessEnvironment?.name ?? "unknown",
       projectRef: env.harnessEnvironment?.projectRef ?? null,
       releaseId: env.releaseId ?? "unreleased",
+      deploymentId: env.harnessRelease.deploymentId ?? undefined,
       actorId: userData.user.id,
       actorRole: profile.role,
     });
@@ -196,6 +219,7 @@ export function createEdgeAuthenticator(
       role: profile.role,
       accountState,
       releaseId: env.releaseId ?? "unreleased",
+      deploymentId: env.harnessRelease.deploymentId ?? undefined,
       environment: env.harnessEnvironment?.name ?? "unknown",
       traceId: traceContext.traceId,
       runId: traceContext.runId,
@@ -233,7 +257,9 @@ async function checkAdminActivationGate(
   clientValue: unknown,
   request: Request,
   userId: string,
+  role: unknown,
 ): Promise<{ allowed: true } | { allowed: false; failure: MobileApiAuthResult }> {
+  if (role !== "admin") return { allowed: true };
   const client = clientValue as ActivationGateClient;
   const provisioning = await client.rpc("get_admin_operator_activation_status", {
     p_actor_id: userId,

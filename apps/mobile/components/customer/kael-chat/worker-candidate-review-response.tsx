@@ -60,7 +60,11 @@ function WorkerCandidateReviewContent({
   const [finalReviewOpen, setFinalReviewOpen] = useState(false)
   const displayName = candidate?.display_name?.trim() || (language === 'vi' ? 'Hồ sơ thợ' : 'Worker profile')
   const priceQuote = candidate?.original_scope_price_quote ?? null
-  const priceReady = Boolean(priceQuote?.worker_confirmed_at)
+  const workerProposal = candidate?.worker_proposal ?? null
+  const confirmationReady = Boolean(
+    priceQuote?.worker_confirmed_at || workerProposal?.status === 'proposed',
+  )
+  const confirmationCopy = candidateConfirmationCopy(displayName, priceQuote, workerProposal, language)
   const facts = candidate ? candidateFacts(candidate, language) : []
   const personalFacts = candidate ? candidatePersonalFacts(candidate, language) : []
   const paymentEligibility = candidate
@@ -74,7 +78,7 @@ function WorkerCandidateReviewContent({
 
   return (
     <CaseWorkResponse
-      controls={candidate?.status === 'proposed' && finalReviewOpen && priceReady ? (
+      controls={candidate?.status === 'proposed' && finalReviewOpen && confirmationReady ? (
         <View style={styles.finalReview} testID="customer-v21-worker-candidate-final-review">
           <View style={styles.savedHeader}>
             <Text style={[styles.savedTitle, { color: tokens.text }]}>
@@ -96,9 +100,7 @@ function WorkerCandidateReviewContent({
             workers={savedWorkers}
           />
           <Text style={[styles.notice, { color: tokens.muted }]}>
-            {language === 'vi'
-              ? `Xác nhận này ghép ${displayName} và khóa giá ${formatVnd(priceQuote!.customer_total)} cho phạm vi hiện tại. Mọi phát sinh phải có receipt mới để bạn duyệt.`
-              : `This confirms ${displayName} and locks ${formatVnd(priceQuote!.customer_total)} for the current scope. Any extra work needs a new receipt for your approval.`}
+            {confirmationCopy.notice}
           </Text>
           <View style={styles.actions}>
             <KaelButton
@@ -111,13 +113,11 @@ function WorkerCandidateReviewContent({
               variant="secondary"
             />
             <KaelButton
-              accessibilityState={{ busy, disabled: busy || !priceReady }}
-              disabled={busy || !priceReady}
+              accessibilityState={{ busy, disabled: busy || !confirmationReady }}
+              disabled={busy || !confirmationReady}
               label={busy
                 ? (language === 'vi' ? 'Đang xử lý' : 'Processing')
-                : (language === 'vi'
-                    ? `Xác nhận thợ & giá ${formatVnd(priceQuote!.customer_total)}`
-                    : `Confirm worker & ${formatVnd(priceQuote!.customer_total)}`)}
+                : confirmationCopy.finalLabel}
               onPress={onConfirm}
               size="small"
               style={styles.action}
@@ -137,17 +137,13 @@ function WorkerCandidateReviewContent({
             variant="secondary"
           />
           <KaelButton
-            accessibilityState={{ busy, disabled: busy || !priceReady }}
-            disabled={busy || !priceReady}
+            accessibilityState={{ busy, disabled: busy || !confirmationReady }}
+            disabled={busy || !confirmationReady}
             label={busy
               ? (language === 'vi' ? 'Đang xử lý' : 'Processing')
-              : priceQuote
-                ? (language === 'vi'
-                    ? `Xem thợ & giá ${formatVnd(priceQuote.customer_total)}`
-                    : `Review worker & ${formatVnd(priceQuote.customer_total)}`)
-                : (language === 'vi' ? 'Chờ Kael tải giá' : 'Waiting for Kael price')}
+              : confirmationCopy.reviewLabel}
             onPress={() => {
-              if (priceReady) setFinalReviewOpen(true)
+              if (confirmationReady) setFinalReviewOpen(true)
             }}
             size="small"
             style={styles.action}
@@ -232,6 +228,7 @@ function WorkerCandidateReviewContent({
               <CandidatePriceReceipt
                 formatCurrency={formatVnd}
                 language={language}
+                proposal={workerProposal}
                 quote={priceQuote}
                 tokens={tokens}
               />
@@ -270,6 +267,66 @@ function WorkerCandidateReviewContent({
       tokens={tokens}
     />
   )
+}
+
+function candidateConfirmationCopy(
+  displayName: string,
+  priceQuote: WorkerCandidateView['original_scope_price_quote'],
+  workerProposal: WorkerCandidateView['worker_proposal'],
+  language: AppLanguage,
+) {
+  if (priceQuote?.worker_confirmed_at) {
+    return language === 'vi'
+      ? {
+          finalLabel: `Xác nhận thợ & giá ${formatVnd(priceQuote.customer_total)}`,
+          notice: `Xác nhận này ghép ${displayName} và khóa giá ${formatVnd(priceQuote.customer_total)} cho phạm vi hiện tại. Mọi phát sinh phải có receipt mới để bạn duyệt.`,
+          reviewLabel: `Xem thợ & giá ${formatVnd(priceQuote.customer_total)}`,
+        }
+      : {
+          finalLabel: `Confirm worker & ${formatVnd(priceQuote.customer_total)}`,
+          notice: `This confirms ${displayName} and locks ${formatVnd(priceQuote.customer_total)} for the current scope. Any extra work needs a new receipt for your approval.`,
+          reviewLabel: `Review worker & ${formatVnd(priceQuote.customer_total)}`,
+        }
+  }
+  if (workerProposal?.price_min !== null && workerProposal?.price_min !== undefined &&
+    workerProposal.price_max !== null && workerProposal.price_max !== undefined) {
+    const range = `${formatVnd(workerProposal.price_min)} – ${formatVnd(workerProposal.price_max)}`
+    return language === 'vi'
+      ? {
+          finalLabel: 'Xác nhận thợ & phạm vi',
+          notice: `Xác nhận này ghép ${displayName} cho phạm vi “${workerProposal.scope_summary}”. Khoảng ${range} là đề xuất ban đầu của thợ, chưa phải giá cuối đã khóa; mọi báo giá hoặc thay đổi vẫn cần bạn duyệt.`,
+          reviewLabel: 'Xem thợ & đề xuất',
+        }
+      : {
+          finalLabel: 'Confirm worker & scope',
+          notice: `This matches ${displayName} for “${workerProposal.scope_summary}”. The ${range} range is the worker’s initial proposal, not a locked final price; you must still approve any quote or change.`,
+          reviewLabel: 'Review worker & proposal',
+        }
+  }
+  if (workerProposal) {
+    return language === 'vi'
+      ? {
+          finalLabel: 'Xác nhận thợ khảo sát',
+          notice: `Xác nhận này chỉ ghép ${displayName} để khảo sát phạm vi “${workerProposal.scope_summary}”. Bạn chưa xác nhận giá hoặc phạm vi sửa chữa; mọi báo giá sau khảo sát vẫn cần bạn duyệt.`,
+          reviewLabel: 'Xem thợ khảo sát',
+        }
+      : {
+          finalLabel: 'Confirm inspection worker',
+          notice: `This only matches ${displayName} to inspect “${workerProposal.scope_summary}”. You are not confirming a repair price or scope; you must still approve any quote after inspection.`,
+          reviewLabel: 'Review inspection worker',
+        }
+  }
+  return language === 'vi'
+    ? {
+        finalLabel: 'Chưa thể xác nhận',
+        notice: 'Dữ liệu xác nhận chưa sẵn sàng.',
+        reviewLabel: 'Chờ Kael tải giá',
+      }
+    : {
+        finalLabel: 'Cannot confirm yet',
+        notice: 'Confirmation data is not ready.',
+        reviewLabel: 'Waiting for Kael price',
+      }
 }
 
 function paymentEligibilityCopy(availability: boolean | null | undefined, language: AppLanguage) {

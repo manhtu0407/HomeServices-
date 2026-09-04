@@ -14,13 +14,17 @@ import {
   normalizeDistrict,
   type ServiceType,
 } from "../../../../_shared/domain.ts";
-import { loadWorkerAvailabilityRows } from "./query-batches.ts";
+import {
+  loadEnabledPushTokenRowsByWorker,
+  loadWorkerAvailabilityRows,
+} from "./query-batches.ts";
 import { workerAcceptsService } from "../worker/service-preferences.ts";
 import { distanceKmBetween } from "./geo.ts";
 import {
   DISINTERMEDIATION_RISK_PENALTY_THRESHOLD,
   rankEligibleWorkers,
 } from "./broadcast-ranking.ts";
+import { isCohortEligible, isWorkerReachable } from "./reachability.ts";
 import { getKaelPerformanceProfile } from "../../kael/learning/performance-profiles.ts";
 import {
   loadAllFavoriteWorkerIds,
@@ -32,7 +36,7 @@ import {
 } from "./broadcast-support.ts";
 
 const WORKER_PROJECTION =
-  "id, rating, total_jobs, service_types, selected_service_types, active_service_types, districts, home_lat, home_lng, service_radius_km, problem_specializations";
+  "id, rating, total_jobs, service_types, selected_service_types, active_service_types, districts, home_lat, home_lng, service_radius_km, problem_specializations, synthetic_cohort_id, matching_push_proven_at, matching_foreground_active_until";
 
 type WorkerRecord = Record<string, unknown>;
 type JobGeo = Awaited<ReturnType<typeof loadJobGeoForMatching>>;
@@ -75,6 +79,27 @@ export async function queryEligibleWorkers(
     const workerId = asString(worker.id);
     if (workerId) combinedCandidates.set(workerId, worker);
   }
+  const governedMatching = jobGeo?.quoteMode !== null && jobGeo?.quoteMode !== undefined;
+  const pushTokens = governedMatching
+    ? await loadEnabledPushTokenRowsByWorker(
+      client,
+      Array.from(combinedCandidates.keys()),
+    )
+    : { data: [], error: null };
+  if (pushTokens.error) {
+    console.warn("mobile-api current push-token generation lookup failed", {
+      errorCode: pushTokens.error.code,
+    });
+  }
+  const pushTokenUpdatedAts = new Map<string, string[]>();
+  for (const row of pushTokens.data ?? []) {
+    const workerId = asString(row.user_id);
+    const updatedAt = nullableString(row.updated_at);
+    if (!workerId || !updatedAt) continue;
+    const timestamps = pushTokenUpdatedAts.get(workerId) ?? [];
+    timestamps.push(updatedAt);
+    pushTokenUpdatedAts.set(workerId, timestamps);
+  }
   const qualityLocks = await loadQualityLockedWorkerIds(
     client,
     Array.from(combinedCandidates.keys()),
@@ -88,12 +113,23 @@ export async function queryEligibleWorkers(
   }
   const candidates = Array.from(combinedCandidates.values()).filter((worker) =>
     workerAcceptsService(worker, serviceType) &&
+    isCohortEligible(
+      jobGeo?.syntheticCohortId ?? null,
+      nullableString(worker.synthetic_cohort_id),
+    ) &&
+    (!governedMatching || isWorkerReachable({
+      pushProvenAt: nullableString(worker.matching_push_proven_at),
+      foregroundActiveUntil: nullableString(worker.matching_foreground_active_until),
+      currentPushTokenUpdatedAts:
+        pushTokenUpdatedAts.get(asString(worker.id)) ?? [],
+    })) &&
     !qualityLocks.workerIds.has(asString(worker.id)) &&
     !excludedWorkerIds.has(asString(worker.id)) &&
     hasEveryRequiredCapability(
       asStringArray(worker.problem_specializations),
       jobGeo?.workerRequirements ?? [],
       serviceType,
+      governedMatching,
     )
   );
   const candidateIds = candidates
@@ -178,6 +214,9 @@ async function loadMatchingCandidates(
   const candidateLimit = Math.max(limit, DEFAULT_WORKER_CANDIDATE_POOL_SIZE);
   const districtCode = normalizeDistrict(district);
   const jobGeo = options.jobId ? await loadJobGeoForMatching(client, options.jobId) : null;
+  if (options.jobId && !jobGeo) {
+    return { success: false, reason: "Không thể kiểm tra phạm vi ghép thợ" };
+  }
   const favoriteWorkerIds = await loadAllFavoriteWorkerIds(client, jobGeo?.customerId ?? null);
   const candidateWorkerIds = Array.from(new Set(
     (options.candidateWorkerIds ?? []).filter(Boolean),
@@ -266,6 +305,7 @@ function hasEveryRequiredCapability(
   workerCapabilities: string[],
   requiredCapabilities: string[],
   serviceType: ServiceType,
+  strictRequirements: boolean,
 ) {
   if (requiredCapabilities.length === 0) return true;
   const serviceCapabilityKeys = specializationKeys(
@@ -276,7 +316,7 @@ function hasEveryRequiredCapability(
   );
   // problem_specializations is global across selected services. When it has no
   // capability for this service, the selected service remains the legacy gate.
-  if (scopedCapabilities.length === 0) return true;
+  if (scopedCapabilities.length === 0) return !strictRequirements;
   const available = specializationKeys(scopedCapabilities);
   return requiredCapabilities.every((requirement) =>
     available.has(normalizeSpecializationKey(requirement))

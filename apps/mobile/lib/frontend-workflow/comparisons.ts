@@ -1,12 +1,44 @@
 import type {
   CustomerProfileInsightsResponse,
   EarningsResponse,
+  WorkerBroadcast,
   WorkerJobListResponse,
   WorkerPayoutMethod,
   WorkerPerformanceInsightsResponse,
   WorkerProfileResponse,
   WorkerWithdrawalRequest,
 } from '../api-types'
+
+export function sameWorkerBroadcasts(left: WorkerBroadcast[], right: WorkerBroadcast[]) {
+  return left.length === right.length && left.every((broadcast, index) => {
+    const next = right[index]
+    return broadcast.broadcast_id === next.broadcast_id
+      && broadcast.job_id === next.job_id
+      && broadcast.status === next.status
+      && broadcast.service_type === next.service_type
+      && broadcast.problem_summary === next.problem_summary
+      && broadcast.scope_summary === next.scope_summary
+      && broadcast.district === next.district
+      && broadcast.estimated_price_min === next.estimated_price_min
+      && broadcast.estimated_price_max === next.estimated_price_max
+      && broadcast.estimated_earning_min === next.estimated_earning_min
+      && broadcast.estimated_earning_max === next.estimated_earning_max
+      && broadcast.media_count === next.media_count
+      && broadcast.scheduled_at === next.scheduled_at
+      && broadcast.sent_at === next.sent_at
+      && broadcast.expires_at === next.expires_at
+      && broadcast.seconds_remaining === next.seconds_remaining
+      && broadcast.quote_mode === next.quote_mode
+      && broadcast.proposal_action === next.proposal_action
+      && broadcast.confirmed_recipient_count === next.confirmed_recipient_count
+      && broadcast.original_scope_price_quote?.quote_id === next.original_scope_price_quote?.quote_id
+      && broadcast.original_scope_price_quote?.expires_at === next.original_scope_price_quote?.expires_at
+      && broadcast.original_scope_price_quote?.worker_net === next.original_scope_price_quote?.worker_net
+      && broadcast.delivery_receipt?.delivery_id === next.delivery_receipt?.delivery_id
+      && broadcast.delivery_receipt?.state === next.delivery_receipt?.state
+      && broadcast.delivery_receipt?.expires_at === next.delivery_receipt?.expires_at
+  })
+}
 
 export function sameCustomerProfileInsights(left: CustomerProfileInsightsResponse | null, right: CustomerProfileInsightsResponse) {
   if (!left) return false

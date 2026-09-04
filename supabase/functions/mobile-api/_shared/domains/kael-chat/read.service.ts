@@ -5,6 +5,7 @@ import { assertKaelSessionOwnership } from "./session-store.ts";
 import { createSignedCaseWorkEvidenceUrls } from "./media-vision.ts";
 import { apiFailure } from "../../platform/api-failure.ts";
 import type { MobileApiContext } from "../../platform/auth.ts";
+import { findKaelConfirmationOperation } from "./confirmation-operation.ts";
 
 export async function getKaelChat(ctx: MobileApiContext, sessionId: string) {
   const client = db(ctx);
@@ -40,6 +41,9 @@ export async function getKaelChat(ctx: MobileApiContext, sessionId: string) {
     .reverse()
     .find((turn) => turn.content_type === "estimate")?.estimate ?? null;
   const session = serializeKaelSession(sessionResult.data, latestEstimate, turns);
+  const confirmationOperation = session.job_id
+    ? await findKaelConfirmationOperation(ctx, sessionId)
+    : null;
   const evidencePreviewCandidates = kaelEvidencePreviewCandidates(
     session.diagnosis_scope?.evidence ?? [],
   );
@@ -54,6 +58,10 @@ export async function getKaelChat(ctx: MobileApiContext, sessionId: string) {
   return {
     session: {
       ...session,
+      confirmation_operation: confirmationOperation,
+      next_action: confirmationOperation && !confirmationOperation.terminal
+        ? "reconcile_confirmation"
+        : session.next_action,
       evidence_previews: pairKaelEvidencePreviewUrls(
         evidencePreviewCandidates,
         evidencePreviewUrls,

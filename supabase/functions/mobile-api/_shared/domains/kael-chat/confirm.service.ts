@@ -1,10 +1,9 @@
-// Edge service kael-chat confirm-bridge (C4 6a, services/* split): confirmKaelChat — the customer
-// confirms a Kael chat estimate -> confirm_kael_chat_atomic creates the job -> geocode -> confirmSearch
-// (matching) with a chat-matching autonomy decision. Internal: matching-decision builder +
-// confirmed-state reader. Imported by services.ts for wiring.
+// Edge service kael-chat confirmation bridge. Governed lanes create or recover one durable
+// operation with an atomic database command; legacy lanes retain synchronous matching behavior.
+// Imported by services.ts for route wiring.
 
 import { asBoolean, asString, nullableString } from "../../platform/coercions.ts";
-import { db, dbQuery } from "../../platform/db.ts";
+import { db, dbQuery, workflowDb } from "../../platform/db.ts";
 import { mapConfirmKaelChatError } from "../../platform/domain-error-mappers.ts";
 import { geocodeConfirmedKaelJob } from "../places/geo.ts";
 import { confirmSearch } from "../matching/flow.ts";
@@ -17,12 +16,17 @@ import {
   setJobMatchingPreference,
 } from "../matching/matching-preference.ts";
 import { HCMC_SCHEDULE_VALIDATION_MESSAGE, validateFutureHcmcSchedule } from "../../platform/scheduling.ts";
-import { requireJobAccess } from "../../platform/access.ts";
 import { apiFailure } from "../../platform/api-failure.ts";
+import { requireJobAccess } from "../../platform/access.ts";
 import type { MobileApiContext } from "../../platform/auth.ts";
 import { buildKaelAutonomyDecision, kaelDiagnosisScopeArtifactSchema, type EdgeAiSecrets, type KaelAutonomyDecision } from "../../kael/index.ts";
-import { recordHarnessEvent } from "../../../../_shared/harness/trace.ts";
+import { hashHarnessIdentifier, recordHarnessEvent } from "../../../../_shared/harness/trace.ts";
 import type { EdgeKaelChatConfirmInput, JobStatus } from "../../../../_shared/domain.ts";
+import { resolveStage1RuntimeBehavior } from "../release/stage1-release-lane.ts";
+import {
+  getKaelConfirmationOperation,
+  requestDurableKaelConfirmation,
+} from "./confirmation-operation.ts";
 
 export async function confirmKaelChat(
   ctx: MobileApiContext,
@@ -31,10 +35,29 @@ export async function confirmKaelChat(
   secrets: EdgeAiSecrets,
 ) {
   const client = db(ctx);
+  const workflowClient = workflowDb(ctx);
+  const runtimeBehavior = await resolveStage1RuntimeBehavior(client, {
+    environment: ctx.environment,
+    releaseId: ctx.releaseId,
+    sessionId,
+    deploymentId: ctx.deploymentId,
+    clientContractEpoch: ctx.clientContractEpoch,
+  });
+  const confirmationKind = input.confirmation_kind ?? "priced_offer";
+  if (runtimeBehavior === "governed") {
+    return confirmGovernedKaelChat({
+      confirmationKind,
+      ctx,
+      input,
+      sessionId,
+      workflowClient,
+    });
+  }
+
   const sessionResult = await dbQuery<Record<string, unknown>>(
     client
       .from("kael_chat_sessions")
-      .select("id, job_id, customer_id, case_phase, diagnosis_scope, scheduled_at, preferred_worker_id")
+      .select("id, job_id, customer_id, case_phase, diagnosis_scope, scheduled_at, preferred_worker_id, safe_metadata")
       .eq("id", sessionId)
       .eq("customer_id", ctx.user.id)
       .maybeSingle(),
@@ -45,38 +68,145 @@ export async function confirmKaelChat(
   const diagnosisScopeResult = kaelDiagnosisScopeArtifactSchema.safeParse(
     sessionResult.data.diagnosis_scope,
   );
-  if (!diagnosisScopeResult.success) {
+  if (confirmationKind !== "priced_offer" || !diagnosisScopeResult.success) {
     apiFailure("INVALID_STATUS", "Kael chưa hoàn tất phân tích phạm vi để xác nhận báo giá", 409);
   }
-  const diagnosisScope = diagnosisScopeResult.data;
-  const scheduledAt = nullableString(sessionResult.data.scheduled_at);
+  return confirmPreviousReleaseKaelChat({
+    ctx,
+    diagnosisScope: diagnosisScopeResult.data,
+    input,
+    secrets,
+    session: sessionResult.data,
+    sessionId,
+  });
+}
+
+async function confirmGovernedKaelChat(input: {
+  confirmationKind: Exclude<EdgeKaelChatConfirmInput["confirmation_kind"], undefined>;
+  ctx: MobileApiContext;
+  input: EdgeKaelChatConfirmInput;
+  sessionId: string;
+  workflowClient: ReturnType<typeof workflowDb>;
+}) {
+  let result;
+  try {
+    const traceFinalizer = await confirmationTraceFinalizer(input.ctx);
+    result = await requestDurableKaelConfirmation(input.workflowClient, {
+      sessionId: input.sessionId,
+      customerId: input.ctx.user.id,
+      confirmationKind: input.confirmationKind,
+      priceReasoningReceiptId: input.input.price_reasoning_receipt_id ?? null,
+      ...(traceFinalizer ? { traceFinalizer } : {}),
+    });
+  } catch (error) {
+    const cause = error instanceof Error && "cause" in error
+      ? (error as Error & { cause?: { code?: unknown; message?: unknown } }).cause
+      : undefined;
+    await recordHarnessEvent(input.ctx.traceContext, {
+      eventClass: "kael.confirm.rpc_failed",
+      stage: "kael.chat.confirm",
+      status: "failed",
+      errorCode: "KAEL_CONFIRM_RPC_FAILED",
+      safeMetadata: {
+        rpc_code: safeConfirmRpcErrorCode(cause?.code),
+        rpc_subject: safeConfirmRpcFailureSubject(cause?.message),
+      },
+    });
+    if (cause && isPriceEvidenceConstraintError(cause)) {
+      apiFailure(
+        "INVALID_STATUS",
+        "Báo giá này chưa có đủ nguồn giá đã kiểm chứng. Kael cần lập lại báo giá trước khi bạn xác nhận.",
+        409,
+      );
+    }
+    if (cause && isScheduleConstraintError(cause)) {
+      apiFailure("VALIDATION", HCMC_SCHEDULE_VALIDATION_MESSAGE, 400);
+    }
+    apiFailure("DB_ERROR", "Không thể xác nhận phiên Kael", 500);
+  }
+  if (result.traceFinalized && input.ctx.requestLifecycle) {
+    input.ctx.requestLifecycle.finalizedByDomain = true;
+  }
+  if (!result.ok) {
+    mapDurableConfirmationError(result.errorCode);
+  }
+
+  const jobId = result.jobId;
+  if (!jobId) apiFailure("DB_ERROR", "Phiên Kael chưa tạo được yêu cầu", 500);
+  if (!result.operation) apiFailure("DB_ERROR", "Phiên Kael chưa tạo được tiến trình bền vững", 500);
+  return {
+    session_id: input.sessionId,
+    job_id: jobId,
+    status: (result.jobStatus ?? "awaiting_customer_confirm") as JobStatus,
+    broadcast_sent: false,
+    worker: null,
+    message: result.alreadyApplied
+      ? "Yêu cầu đã được tiếp nhận trước đó. Kael đang đồng bộ tiến trình tìm thợ."
+      : "Kael đã tiếp nhận yêu cầu và đang bắt đầu tìm thợ.",
+    matching_state: null,
+    operation: result.operation,
+  };
+}
+
+async function confirmationTraceFinalizer(ctx: MobileApiContext) {
+  const trace = ctx.traceContext;
+  const envelope = ctx.capabilityEnvelope;
+  if (!trace?.actorIdHash || !envelope || !ctx.environment || !ctx.releaseId) return null;
+  return {
+    runId: trace.runId,
+    traceId: trace.traceId,
+    actorIdHash: trace.actorIdHash,
+    actorRole: ctx.role,
+    routeKind: "kael.chat.confirm",
+    capability: envelope.capability,
+    environment: ctx.environment,
+    releaseId: ctx.releaseId,
+    privileged: envelope.privileged,
+    resourceType: envelope.resource.type,
+    resourceIdHash: envelope.resource.id
+      ? await hashHarnessIdentifier(envelope.resource.id)
+      : null,
+    durationMs: Math.max(0, Date.now() - trace.startedAtMs),
+  };
+}
+
+async function confirmPreviousReleaseKaelChat(input: {
+  ctx: MobileApiContext;
+  diagnosisScope: ReturnType<typeof kaelDiagnosisScopeArtifactSchema.parse>;
+  input: EdgeKaelChatConfirmInput;
+  secrets: EdgeAiSecrets;
+  session: Record<string, unknown>;
+  sessionId: string;
+}) {
+  const client = db(input.ctx);
+  const workflowClient = workflowDb(input.ctx);
+  const scheduledAt = nullableString(input.session.scheduled_at);
   if (
-    !nullableString(sessionResult.data.job_id) &&
+    !nullableString(input.session.job_id) &&
     (!scheduledAt || validateFutureHcmcSchedule(scheduledAt) !== null)
   ) {
     apiFailure("VALIDATION", HCMC_SCHEDULE_VALIDATION_MESSAGE, 400);
   }
-  const casePhase = sessionResult.data.case_phase;
   if (
-    (casePhase !== "offer_review" && casePhase !== "matching") ||
-    !diagnosisScope.quote_ready ||
-    diagnosisScope.quote_blockers.length > 0 ||
-    diagnosisScope.facts.needs_inspection === true ||
-    diagnosisScope.next_action.kind !== "prepare_offer"
+    (input.session.case_phase !== "offer_review" && input.session.case_phase !== "matching") ||
+    !input.diagnosisScope.quote_ready ||
+    input.diagnosisScope.quote_blockers.length > 0 ||
+    input.diagnosisScope.facts.needs_inspection === true ||
+    input.diagnosisScope.next_action.kind !== "prepare_offer"
   ) {
     apiFailure("INVALID_STATUS", "Kael chưa hoàn tất phân tích phạm vi để xác nhận báo giá", 409);
   }
   const result = await dbQuery<Array<Record<string, unknown>>>(
-    client.rpc("confirm_kael_chat_atomic", {
-      p_session_id: sessionId,
-      p_customer_id: ctx.user.id,
-      p_price_reasoning_receipt_id: input.price_reasoning_receipt_id,
+    workflowClient.rpc("confirm_kael_chat_atomic", {
+      p_session_id: input.sessionId,
+      p_customer_id: input.ctx.user.id,
+      p_price_reasoning_receipt_id: input.input.price_reasoning_receipt_id,
     }),
   );
   if (result.error) {
-    await recordHarnessEvent(ctx.traceContext, {
+    await recordHarnessEvent(input.ctx.traceContext, {
       eventClass: "kael.confirm.rpc_failed",
-      stage: "kael.chat.confirm",
+      stage: "kael.chat.confirm.previous",
       status: "failed",
       errorCode: "KAEL_CONFIRM_RPC_FAILED",
       safeMetadata: {
@@ -91,6 +221,9 @@ export async function confirmKaelChat(
         409,
       );
     }
+    if (isScheduleConstraintError(result.error)) {
+      apiFailure("VALIDATION", HCMC_SCHEDULE_VALIDATION_MESSAGE, 400);
+    }
     apiFailure("DB_ERROR", "Không thể xác nhận phiên Kael", 500);
   }
   const row = result.data?.[0];
@@ -98,18 +231,12 @@ export async function confirmKaelChat(
   if (!asBoolean(row.ok)) {
     const errorCode = nullableString(row.error_code);
     let existingJobId = nullableString(row.job_id);
-    // Safety-net. The RPC normally
-    // returns the recovered job_id on ALREADY_CONFIRMED, but if it doesn't
-    // (e.g. session marked confirmed before the row update propagated), fall
-    // back to a direct session lookup so double-confirm still resolves to
-    // 200-with-current-state instead of bubbling 409 to the user.
     if (errorCode === "ALREADY_CONFIRMED" && !existingJobId) {
       const sessionLookup = await dbQuery<{ job_id: string | null }>(
-        client
-          .from("kael_chat_sessions")
+        client.from("kael_chat_sessions")
           .select("job_id")
-          .eq("id", sessionId)
-          .eq("customer_id", ctx.user.id)
+          .eq("id", input.sessionId)
+          .eq("customer_id", input.ctx.user.id)
           .maybeSingle(),
       );
       if (sessionLookup.error) {
@@ -118,50 +245,108 @@ export async function confirmKaelChat(
       existingJobId = nullableString(sessionLookup.data?.job_id ?? null);
     }
     if (errorCode === "ALREADY_CONFIRMED" && existingJobId) {
-      const currentState = await readConfirmedKaelChatState(ctx, existingJobId);
+      const currentState = await readPreviousReleaseConfirmedState(input.ctx, existingJobId);
       if (currentState.status === "awaiting_customer_confirm") {
         return {
-          session_id: sessionId,
+          session_id: input.sessionId,
           ...(await startConfirmedKaelMatching({
-            ctx,
-            diagnosisScope,
-            input,
+            ctx: input.ctx,
+            diagnosisScope: input.diagnosisScope,
+            input: input.input,
             jobId: existingJobId,
-            preferredWorkerId: nullableString(sessionResult.data.preferred_worker_id),
-            sessionId,
+            preferredWorkerId: nullableString(input.session.preferred_worker_id),
+            sessionId: input.sessionId,
           })),
         };
       }
-      return {
-        session_id: sessionId,
-        ...currentState,
-      };
+      return { session_id: input.sessionId, ...currentState };
     }
     mapConfirmKaelChatError(errorCode);
   }
-
   const jobId = asString(row.job_id);
   if (!jobId) apiFailure("DB_ERROR", "Phiên Kael chưa tạo được yêu cầu", 500);
   await geocodeConfirmedKaelJob(
-    client,
-    sessionId,
+    workflowClient,
+    input.sessionId,
     jobId,
-    ctx.user.id,
+    input.ctx.user.id,
     nullableString(row.district_code),
-    secrets,
+    input.secrets,
   );
-  const confirmed = await startConfirmedKaelMatching({
-    ctx,
-    diagnosisScope,
-    input,
-    jobId,
-    preferredWorkerId: nullableString(sessionResult.data.preferred_worker_id),
-    sessionId,
-  });
   return {
-    session_id: sessionId,
-    ...confirmed,
+    session_id: input.sessionId,
+    ...(await startConfirmedKaelMatching({
+      ctx: input.ctx,
+      diagnosisScope: input.diagnosisScope,
+      input: input.input,
+      jobId,
+      preferredWorkerId: nullableString(input.session.preferred_worker_id),
+      sessionId: input.sessionId,
+    })),
   };
+}
+
+export async function recoverKaelConfirmationOperation(
+  ctx: MobileApiContext,
+  sessionId: string,
+  _secrets: EdgeAiSecrets,
+) {
+  return getKaelConfirmationOperation(ctx, sessionId);
+}
+
+function mapDurableConfirmationError(errorCode: string | null): never {
+  if (errorCode === "POLICY_UNAVAILABLE") {
+    apiFailure("POLICY_UNAVAILABLE", "Chính sách dịch vụ chưa sẵn sàng. Kael chưa thể nhận yêu cầu này.", 503);
+  }
+  if (errorCode === "POLICY_BLOCKED" || errorCode === "SAFETY_BLOCKED") {
+    apiFailure("POLICY_BLOCKED", "Yêu cầu cần được hỗ trợ an toàn trước khi tiếp tục.", 409);
+  }
+  if (errorCode === "TIER_A_INCOMPLETE") {
+    apiFailure("TIER_A_INCOMPLETE", "Cần bổ sung thông tin bắt buộc trước khi gửi yêu cầu.", 409);
+  }
+  if (errorCode === "CONFIRMATION_KIND_MISMATCH") {
+    apiFailure("INVALID_STATUS", "Hình thức xác nhận không khớp chính sách dịch vụ hiện tại.", 409);
+  }
+  mapConfirmKaelChatError(errorCode);
+}
+
+export async function executeConfirmedKaelMatching(input: {
+  ctx: MobileApiContext;
+  diagnosisScope: ReturnType<typeof kaelDiagnosisScopeArtifactSchema.parse> | null;
+  input: Pick<EdgeKaelChatConfirmInput, "matching_mode">;
+  jobId: string;
+  preferredWorkerId: string | null;
+  sessionId: string;
+  secrets: EdgeAiSecrets;
+}): Promise<"broadcasting" | "no_reachable_worker"> {
+  const client = db(input.ctx);
+  const geocodeStarted = performance.now();
+  await geocodeConfirmedKaelJob(
+    client,
+    input.sessionId,
+    input.jobId,
+    input.ctx.user.id,
+    null,
+    input.secrets,
+  );
+  const matchingStarted = performance.now();
+  const matched = input.diagnosisScope
+    ? await startConfirmedKaelMatching({
+      ctx: input.ctx,
+      diagnosisScope: input.diagnosisScope,
+      input: input.input,
+      jobId: input.jobId,
+      preferredWorkerId: input.preferredWorkerId,
+      sessionId: input.sessionId,
+    })
+    : await confirmSearch(input.ctx, input.jobId, { kaelSessionId: input.sessionId });
+  const state = matched.broadcast_sent ? "broadcasting" : "no_reachable_worker";
+  console.info("kael durable matching stages completed", {
+    geocode_latency_ms: Math.round(matchingStarted - geocodeStarted),
+    matching_latency_ms: Math.round(performance.now() - matchingStarted),
+    resulting_state: state,
+  });
+  return state;
 }
 
 function buildKaelChatMatchingDecision(
@@ -203,7 +388,7 @@ function buildKaelChatMatchingDecision(
 async function startConfirmedKaelMatching(input: {
   ctx: MobileApiContext;
   diagnosisScope: ReturnType<typeof kaelDiagnosisScopeArtifactSchema.parse>;
-  input: EdgeKaelChatConfirmInput;
+  input: Pick<EdgeKaelChatConfirmInput, "matching_mode">;
   jobId: string;
   preferredWorkerId: string | null;
   sessionId: string;
@@ -259,6 +444,15 @@ function isPriceEvidenceConstraintError(value: {
     value.message.includes("KAEL_PRICE_EVIDENCE_REQUIRED");
 }
 
+function isScheduleConstraintError(value: {
+  code?: unknown;
+  message?: unknown;
+}): boolean {
+  return value.code === "22023" &&
+    typeof value.message === "string" &&
+    value.message.includes("KAEL_SCHEDULE_INVALID");
+}
+
 function safeConfirmRpcErrorCode(value: unknown): string {
   return typeof value === "string" && /^[A-Za-z0-9_]{1,64}$/u.test(value)
     ? value
@@ -269,14 +463,16 @@ function safeConfirmRpcFailureSubject(value: unknown): string {
   if (typeof value !== "string") return "unknown";
   const normalized = value.toLowerCase();
   if (normalized.includes("permission denied for function")) return "function_execute";
-  if (normalized.includes("permission denied for table") || normalized.includes("permission denied for relation") || normalized.includes("permission denied for sequence")) {
-    return "data_access";
-  }
+  if (
+    normalized.includes("permission denied for table") ||
+    normalized.includes("permission denied for relation") ||
+    normalized.includes("permission denied for sequence")
+  ) return "data_access";
   if (normalized.includes("permission denied")) return "permission_other";
   return "unknown";
 }
 
-async function readConfirmedKaelChatState(
+async function readPreviousReleaseConfirmedState(
   ctx: MobileApiContext,
   jobId: string,
 ) {
@@ -289,7 +485,6 @@ async function readConfirmedKaelChatState(
   const broadcastSent = status === "broadcasting"
     ? await hasActiveBroadcast(client, jobId, new Date().toISOString())
     : false;
-
   return {
     job_id: jobId,
     status,

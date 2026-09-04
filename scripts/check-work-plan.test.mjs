@@ -54,6 +54,18 @@ test('a slice left open is caught', () => {
   assert.ok(problems.some((problem) => /still open/.test(problem)))
 })
 
+test('pending work is reported separately instead of being called closed', () => {
+  const report = reconcile({ plan: { slices: [slice(), slice({ id: 's2', status: 'pending' })] }, changed: [] })
+  assert.equal(report.closedSlices, 1)
+  assert.equal(report.pendingSlices, 1)
+  assert.equal(report.slices, 2)
+})
+
+test('an unknown status cannot silently look complete', () => {
+  const problems = problemsFor({ slices: [slice({ status: 'done-ish' })] }, [])
+  assert.ok(problems.some((problem) => /is not closed, pending, or open/.test(problem)))
+})
+
 test('a domain outside the twelve classes is caught', () => {
   const problems = problemsFor({ slices: [slice({ domain: 'chores' })] }, [])
   assert.ok(problems.some((problem) => /not one of the twelve classes/.test(problem)))

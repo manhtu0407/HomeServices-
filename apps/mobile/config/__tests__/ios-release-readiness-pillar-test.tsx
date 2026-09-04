@@ -34,16 +34,16 @@ import { setupPushNotifications } from '@/lib/push-notifications'
 export const PILLAR = {
   id: 'P37-ios-release-readiness',
   invariant:
-    'the store-bound iOS release uses one Build 44 identity and aligned metadata, purpose strings, audio posture, and push-entitlement runtime gate',
+    'the store-bound iOS release uses one Build 45 identity and aligned metadata, purpose strings, audio posture, and push-entitlement runtime gate',
   authority: [
-    'Apple App Review submission for NestScout 0.1.0 Build 44',
+    'Stage 1 reviewed release for NestScout 0.2.0 Build 45',
     'governance/RULES.md #8 (no fake or silently degraded runtime state)',
   ],
   target: 'apps/mobile/app.config.ts',
   layer: 'security-negative',
   siblings: ['P08-worker-dock-motion', 'P09-native-ios-liquid-tabs'],
   mutation:
-    'set ios.buildNumber back to 43 or let iOS push setup continue when iosPushNotificationsEnabled is false — the release identity or no-permission-call case turns red',
+    'set ios.buildNumber below 45 or let iOS push setup continue when iosPushNotificationsEnabled is false — the release identity or no-permission-call case turns red',
 } as const satisfies PillarManifest
 
 const mobileRoot = resolve(__dirname, '..', '..')
@@ -113,13 +113,13 @@ describe('iOS release readiness', () => {
     const storeConfig = readJson<StoreConfig>('store.config.json').apple
     const easConfig = readJson<EasConfig>('eas.json')
 
-    expect(evaluated.version).toBe('0.1.0')
+    expect(evaluated.version).toBe('0.2.0')
     expect(staticConfig.version).toBe(evaluated.version)
     expect(evaluated.owner).toBe('nestscout')
     expect(staticConfig.owner).toBe(evaluated.owner)
     expect(evaluated.extra?.eas?.projectId).toBe('c2fd8ae7-a6fa-4b6e-a9a0-df85b52ac94b')
     expect(staticConfig.extra?.eas?.projectId).toBe(evaluated.extra?.eas?.projectId)
-    expect(evaluated.ios?.buildNumber).toBe('44')
+    expect(evaluated.ios?.buildNumber).toBe('45')
     expect(staticConfig.ios.buildNumber).toBe(evaluated.ios?.buildNumber)
     expect(storeConfig.version).toBe(evaluated.version)
     expect(storeConfig.release.automaticRelease).toBe(false)

@@ -14,8 +14,22 @@ import {
   validatePromotionConfig,
   verifyPromotionPacket,
 } from './promotion.mjs'
+import { buildHarnessRelease } from './release-bundle.mjs'
 
 const config = JSON.parse(readFileSync(resolve('config/harness/promotion.json'), 'utf8'))
+const releaseTemplate = buildHarnessRelease({
+  environment: 'staging',
+  gitSha: 'f'.repeat(40),
+  requireCleanWorktree: false,
+  providerReadiness: {
+    anthropic: true,
+    deepseek: false,
+    durable_guards: true,
+    global_ai_enabled: true,
+    perplexity: true,
+    vietmap: true,
+  },
+})
 const release = fakeRelease('a', 'b')
 const rollbackRelease = fakeRelease('1', '2', {
   migrationInventorySha256: release.migrationInventorySha256,
@@ -198,50 +212,12 @@ test('builds a deterministic rollback control packet', () => {
 })
 
 function fakeRelease(gitSeed, behaviorSeed, overrides = {}) {
-  const databaseTypesSha256 = overrides.databaseTypesSha256 ?? '5'.repeat(64)
-  const migrationEntry = {
-    version: '20260101000000',
-    name: 'fixture',
-    file: 'supabase/migrations/20260101000000_fixture.sql',
-    sha256: '0'.repeat(64),
-  }
   const value = {
-    schemaVersion: '1.0.0',
+    ...JSON.parse(JSON.stringify(releaseTemplate)),
     releaseId: '',
-    environment: 'staging',
-    gitSha: gitSeed.repeat(40),
-    manifestSha256: '3'.repeat(64),
-    migrationInventorySha256: '4'.repeat(64),
-    databaseTypesSha256,
-    promptBundleSha256: '6'.repeat(64),
-    policyBundleSha256: '7'.repeat(64),
-    runtimeConfigurationSha256: '0'.repeat(64),
-    evaluationSuiteVersion: 'harness-eval.1.0.0',
-    evaluationSuiteSha256: '8'.repeat(64),
-    capabilityRegistrySha256: '9'.repeat(64),
-    accessMatrixSha256: 'a'.repeat(64),
-    reliabilityPolicySha256: 'b'.repeat(64),
-    promotionPolicySha256: 'c'.repeat(64),
-    environmentBinding: {
-      providerConfigurationClass: 'staging-isolated',
-      webhookConfigurationClass: 'staging-sandbox',
-    },
-    migrationInventory: {
-      version: '1.0.0',
-      migrationCount: 1,
-      migrationsSha256: sha256(`${migrationEntry.version}:${migrationEntry.name}:${migrationEntry.sha256}\n`),
-      databaseTypes: { sha256: databaseTypesSha256 },
-      entries: [migrationEntry],
-    },
-    edgeFunctions: { 'mobile-api': 'd'.repeat(64) },
-    edgeFunctionInputs: { 'mobile-api': ['supabase/functions/mobile-api/index.ts'] },
-    verificationRequirements: Array.from({ length: 10 }, (_, index) => `gate-${index + 1}`),
-    rollbackPolicy: {
-      historicalMigrationsImmutable: true,
-      schemaCorrectionMode: 'forward-migration',
-      compatibilityStrategy: 'expand-contract',
-    },
     bundleSha256: '',
+    gitSha: gitSeed.repeat(40),
+    sourceBundleSha256: sha256(`fixture-source:${behaviorSeed}`),
     ...overrides,
   }
   if (overrides.databaseTypesSha256) {

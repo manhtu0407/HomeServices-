@@ -68,6 +68,21 @@ export function loadWorkerMemoryRowsByWorker(
   )
 }
 
+export function loadEnabledPushTokenRowsByWorker(
+  client: DbClient,
+  workerIds: string[],
+) {
+  return loadRowsInWorkerIdBatches(workerIds, (workerIdBatch) =>
+    client
+      .from('device_push_tokens')
+      .select('user_id, updated_at')
+      .in('user_id', workerIdBatch)
+      .eq('enabled', true)
+      .eq('permission_status', 'granted')
+      .limit(workerIdBatch.length)
+  )
+}
+
 export function loadWorkerAvailabilityRows(
   client: DbClient,
   workerIds: string[],

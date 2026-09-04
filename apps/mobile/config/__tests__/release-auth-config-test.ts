@@ -90,6 +90,23 @@ describe('assertReleaseAuthConfig', () => {
     })).toThrow('production Supabase project')
   })
 
+  it('pins preview EAS builds to the staging Supabase project', () => {
+    const input = {
+      apiBaseUrl: 'https://xyylanuyflrjzbjzhqfl.supabase.co/functions/v1/mobile-api',
+      buildProfile: 'preview',
+      isEasBuild: true,
+      supabasePublishableKey: 'sb_publishable_test-key',
+      supabaseUrl: 'https://xyylanuyflrjzbjzhqfl.supabase.co',
+    }
+
+    expect(() => assertReleaseAuthConfig(input)).not.toThrow()
+    expect(() => assertReleaseAuthConfig({
+      ...input,
+      apiBaseUrl: 'https://iwevizmsedyqozxlawwl.supabase.co/functions/v1/mobile-api',
+      supabaseUrl: 'https://iwevizmsedyqozxlawwl.supabase.co',
+    })).toThrow('staging Supabase project')
+  })
+
   it('uses the ignored mobile staging config as a local fallback but never as an EAS build input', () => {
     const input = {
       configDir: resolve('C:/NestScout/apps/mobile'),

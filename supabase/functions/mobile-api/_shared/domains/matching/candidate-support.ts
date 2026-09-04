@@ -15,7 +15,7 @@ import {
   runWithBroadcastRetryLease,
 } from "./broadcasts.ts";
 import { asServiceType, nullableNumber, nullableString } from "../../platform/coercions.ts";
-import { dbQuery, type DbClient } from "../../platform/db.ts";
+import { dbQuery, type DbClient, workflowDb } from "../../platform/db.ts";
 import { insertUserNotification } from "../notification/notifications.ts";
 import { resolveWorkerAvatarUrl } from "../worker/avatar.ts";
 import { estimateWorkerNet, getWorkerCommissionTier } from "../payment/commission.ts";
@@ -65,7 +65,7 @@ export async function loadSafeWorkerCandidateView(
 ) {
   const result = await dbQuery<Record<string, unknown>>(
     client.from("job_worker_candidates")
-      .select("id, job_id, worker_id, broadcast_id, status, proposed_at, expires_at, customer_decided_at, original_scope_price_quote")
+      .select("id, job_id, worker_id, broadcast_id, status, proposed_at, expires_at, customer_decided_at, original_scope_price_quote, worker_matching_proposals(id, scope_summary, price_min, price_max, status)")
       .eq("id", candidateId).eq("job_id", jobId).maybeSingle(),
   );
   if (result.error || !result.data) {
@@ -128,7 +128,10 @@ export async function buildSafeWorkerCandidateView(
       workerId,
     })
     : null;
-  if (status === "proposed" && !priceQuote) {
+  const workerProposal = projectWorkerMatchingProposal(
+    relatedWorkerMatchingProposal(candidate.worker_matching_proposals),
+  );
+  if (status === "proposed" && !priceQuote && !workerProposal) {
     apiFailure(
       "PRICE_CONFIRMATION_REQUIRED",
       "Báo giá chính xác của thợ chưa sẵn sàng. Vui lòng tải lại.",
@@ -154,6 +157,44 @@ export async function buildSafeWorkerCandidateView(
     original_scope_price_quote: priceQuote
       ? projectOriginalScopePriceQuote(priceQuote)
       : null,
+    worker_proposal: workerProposal,
+  };
+}
+
+function relatedWorkerMatchingProposal(value: unknown): Record<string, unknown> | null {
+  if (Array.isArray(value)) {
+    const first = value[0];
+    return first && typeof first === "object" && !Array.isArray(first)
+      ? first as Record<string, unknown>
+      : null;
+  }
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : null;
+}
+
+function projectWorkerMatchingProposal(value: Record<string, unknown> | null) {
+  if (!value) return null;
+  const proposalId = nullableString(value.id);
+  const scopeSummary = nullableString(value.scope_summary);
+  const priceMin = nullableNumber(value.price_min);
+  const priceMax = nullableNumber(value.price_max);
+  const status = nullableString(value.status);
+  if (
+    !proposalId || !scopeSummary ||
+    (priceMin === null) !== (priceMax === null) ||
+    priceMin !== null && (priceMin <= 0 || priceMax === null || priceMax < priceMin) ||
+    status !== "proposed" && status !== "customer_confirmed" &&
+      status !== "customer_declined" && status !== "expired" && status !== "withdrawn"
+  ) {
+    apiFailure("DB_ERROR", "Dữ liệu đề xuất phạm vi không hợp lệ", 500);
+  }
+  return {
+    proposal_id: proposalId,
+    scope_summary: scopeSummary,
+    price_min: priceMin,
+    price_max: priceMax,
+    status: status as "proposed" | "customer_confirmed" | "customer_declined" | "expired" | "withdrawn",
   };
 }
 
@@ -179,12 +220,12 @@ export async function resumeMatchingAfterCandidateRejection(
   const recipients = await listBroadcastRecipientWorkerIds(client, jobId);
   if (!recipients.success) apiFailure("DB_ERROR", "Không thể tiếp tục tìm thợ", 500);
   const claimResult = await runWithBroadcastRetryLease(
-    client,
+    workflowDb(ctx),
     jobId,
     ctx.user.id,
     async () => {
       const broadcast = await createBroadcasts(
-        client,
+        workflowDb(ctx),
         jobId,
         asServiceType(job.service_type),
         district,

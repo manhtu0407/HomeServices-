@@ -163,7 +163,23 @@ async function runAndRecordIntentStage(prepared: PreparedKaelPipeline) {
     description,
     electricalPlaybookEnabled,
   });
-  const intent = reconciliation.intent;
+  const groundedProblem = input.groundedProblemSlug &&
+      reconciliation.intent.service_type !== "unsupported"
+    ? normalizeProblemSlugForService(
+      reconciliation.intent.service_type,
+      input.groundedProblemSlug,
+    )
+    : null;
+  const intent = groundedProblem && reconciliation.intent.service_type === serviceType &&
+      reconciliation.intent.scope_signal !== "out_of_scope" &&
+      reconciliation.intent.scope_signal !== "service_mismatch"
+    ? {
+      ...reconciliation.intent,
+      problem_slug: groundedProblem.slug,
+      scope_signal: "in_scope" as const,
+      suggested_service: null,
+    }
+    : reconciliation.intent;
   intentStage.attempts.forEach((attempt, index) => {
     pushPipelineStageLog(stageLogs, input, {
       stage: "intent",
@@ -300,6 +316,20 @@ async function resolveIntakeDiagnosisResult(input: {
     providerNeedsClarification: intent.needs_clarification,
     electricalPlaybookEnabled,
   });
+  const unpricedSafetyMissing = coverage.missing.filter((slot) => slot.startsWith("safety_"));
+  if (
+    (pipelineInput.intakeQuoteMode === "rfq" || pipelineInput.intakeQuoteMode === "inspection_only") &&
+    unpricedSafetyMissing.length === 0
+  ) {
+    profileFacts = coverage.facts;
+    safetySignals = mergedSafetySignals;
+    intakeObservation = buildIntakeObservation({
+      scopeSignal: "in_scope", suggestedService: null, problemSlug,
+      needsClarification: false, safetySignals, modelId: intentModelId,
+      serviceType, electricalPlaybookEnabled,
+    });
+    return { done: false as const, profileFacts, safetySignals, intakeObservation };
+  }
   if (coverage.needsClarification) {
     const firstMissing = coverage.missing[0] ?? "service_scope";
     const hasPriorProfileFact = Object.entries(pipelineInput.priorProfileFacts ?? {})

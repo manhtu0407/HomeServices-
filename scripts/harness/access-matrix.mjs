@@ -182,11 +182,15 @@ function functionInventory(source) {
 
     const acl = /^(grant|revoke)\s+(?:all|execute)\s+on\s+function\s+/iu.exec(normalized)
     if (acl) {
-      const parsed = parseFunctionReference(normalized, /function\s+/iu)
-      const current = parsed ? functions.get(parsed.signature) : null
       const roleMatch = /\s+(?:to|from)\s+([^;]+)$/iu.exec(normalized)
-      if (current && roleMatch) {
-        current.executeRoles = mutateRoles(current.executeRoles, acl[1], parseRoles(roleMatch[1]))
+      if (roleMatch) {
+        const targets = normalized.slice(acl[0].length, roleMatch.index)
+        const roles = parseRoles(roleMatch[1])
+        for (const target of splitFunctionAclTargets(targets)) {
+          const parsed = parseFunctionReference(`function ${target}`, /function\s+/iu)
+          const current = parsed ? functions.get(parsed.signature) : null
+          if (current) current.executeRoles = mutateRoles(current.executeRoles, acl[1], roles)
+        }
       }
       continue
     }
@@ -200,6 +204,31 @@ function functionInventory(source) {
   return [...functions.values()]
     .map((item) => ({ ...item, executeRoles: sortedUnique(item.executeRoles) }))
     .sort((a, b) => a.signature.localeCompare(b.signature))
+}
+
+function splitFunctionAclTargets(value) {
+  const targets = []
+  let start = 0
+  let depth = 0
+  let quoted = false
+  for (let index = 0; index < value.length; index += 1) {
+    const character = value[index]
+    if (character === '"') {
+      if (quoted && value[index + 1] === '"') index += 1
+      else quoted = !quoted
+      continue
+    }
+    if (quoted) continue
+    if (character === '(') depth += 1
+    else if (character === ')') depth = Math.max(0, depth - 1)
+    else if (character === ',' && depth === 0) {
+      targets.push(value.slice(start, index).trim())
+      start = index + 1
+    }
+  }
+  const finalTarget = value.slice(start).trim()
+  if (finalTarget) targets.push(finalTarget)
+  return targets
 }
 
 function stripLeadingSqlComments(value) {

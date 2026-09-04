@@ -1,25 +1,100 @@
 import { existsSync, readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 
-import type { PillarManifest } from '@/__tests__/pillar-manifest'
+import { render, screen, within } from '@testing-library/react-native'
+import { StyleSheet } from 'react-native'
+
+import { withPillarContext, type PillarManifest } from '@/__tests__/pillar-manifest'
+import {
+  getCustomerThemeTokens,
+  getReducedTransparencyCustomerTokens,
+  type ThemeMode,
+} from '@/components/customer/customer-theme'
+import { CustomerV21DockOverlayView } from '@/components/customer/dock/dock-stateful-surfaces'
+import type { CustomerPrimaryTab } from '@/components/customer/ui/types'
+import type { AppLanguage } from '@/lib/app-language'
+
+const mockGlassAccessibility = { reduceMotion: false, reduceTransparency: false }
+
+jest.mock('@/components/ui/accessibility-motion', () => ({
+  useGlassAccessibility: () => mockGlassAccessibility,
+}))
+
+jest.mock('react-native-safe-area-context', () => ({
+  useSafeAreaInsets: () => ({ bottom: 0, left: 0, right: 0, top: 0 }),
+}))
 
 const mobileRoot = resolve(__dirname, '..', '..')
+const CUSTOMER_NAV_ITEMS = [
+  { image: { uri: 'unused' }, key: 'home', route: '/home' },
+  { image: { uri: 'unused' }, key: 'services', route: '/services' },
+  { image: { uri: 'unused' }, key: 'activity', route: '/activity' },
+  { image: { uri: 'unused' }, key: 'profile', route: '/profile' },
+] as const
+const CUSTOMER_TAB_LABELS = {
+  en: ['Home', 'Services', 'Activity', 'Profile'],
+  vi: ['Trang chủ', 'Dịch vụ', 'Hoạt động', 'Hồ sơ'],
+} as const
 
 function readMobileSource(relativePath: string) {
   return readFileSync(resolve(mobileRoot, relativePath), 'utf8')
 }
 
+function mountCustomerDock({
+  activeTab = 'home',
+  language = 'vi',
+  mode = 'light',
+  reduceMotion = false,
+  reduceTransparency = false,
+}: {
+  activeTab?: CustomerPrimaryTab
+  language?: AppLanguage
+  mode?: ThemeMode
+  reduceMotion?: boolean
+  reduceTransparency?: boolean
+} = {}) {
+  mockGlassAccessibility.reduceMotion = reduceMotion
+  mockGlassAccessibility.reduceTransparency = reduceTransparency
+  const baseTokens = getCustomerThemeTokens(mode)
+  const tokens = reduceTransparency
+    ? getReducedTransparencyCustomerTokens(baseTokens)
+    : baseTokens
+  const rendered = render(
+    <CustomerV21DockOverlayView
+      activeTab={activeTab}
+      animatedDockScrollStyle={{}}
+      kaelActive={false}
+      language={language}
+      liquidDockWidth={309}
+      liquidNavWidth={384}
+      mode={mode}
+      navItems={[...CUSTOMER_NAV_ITEMS]}
+      onKaelPress={jest.fn()}
+      onTabPress={jest.fn()}
+      reduceMotion={reduceMotion}
+      tokens={tokens}
+    />,
+  )
+
+  return { ...rendered, tokens }
+}
+
+beforeEach(() => {
+  mockGlassAccessibility.reduceMotion = false
+  mockGlassAccessibility.reduceTransparency = false
+})
+
 export const PILLAR = {
   id: 'P09-native-ios-liquid-tabs',
-  invariant: 'Customer and Worker navigation keep the four primary routes together on the left and Kael as a sibling accessory on the right',
+  invariant: 'Production Customer and Worker navigation keep four primary routes on the left, use the Production route tints, and retain the transparent artwork-only Kael accessory on the right without route-following decoration',
   authority: [
     'customer/worker dock surfaces and the native-device regression report',
     'governance/protocols/frontend-test.md G4',
   ],
-  target: 'apps/mobile/app/(customer)/(tabs)/_layout.tsx',
+  target: 'apps/mobile/components/customer/dock/dock-stateful-surfaces.tsx',
   layer: 'ui-visual',
   siblings: ['P08-worker-dock-motion', 'P07-worker-verification-states'],
-  mutation: 'render NativeTabs.BottomAccessory or place Kael above the primary route cluster — the navigation geometry contract turns red',
+  mutation: 'restore LiquidSelectionLens or any dock shimmer, caustic, aura, or inner-refraction layer — the Production source guard turns red',
 } as const satisfies PillarManifest
 
 describe('cross-platform navigation wiring', () => {
@@ -63,10 +138,129 @@ describe('cross-platform navigation wiring', () => {
     const routeIds = [...workerDock.matchAll(/\{ icon: '[^']+', id: '([^']+)'/g)].map((match) => match[1])
 
     expect(routeIds).toEqual(['home', 'jobs', 'earnings', 'profile'])
-    expect(workerDock).toContain('itemCount={WORKER_V5_DOCK_ROUTE_ITEMS.length}')
     expect(workerDock.indexOf('<GlassSurface')).toBeLessThan(workerDock.indexOf('<KaelNavigationAccessory'))
     expect(workerDock).toContain('style={[dockStyles.dockRow')
     expect(workerDock).not.toContain('NativeKaelBottomAccessory')
+  })
+
+  it('keeps the approved static selection treatment in Production without route-following layers', () => {
+    const customerProduction = readMobileSource('components/customer/dock/dock-stateful-surfaces.tsx')
+    const workerProduction = readMobileSource('components/worker/dock/worker-v5-dock-overlay.tsx')
+
+    const productionNavigationSource = `${customerProduction}\n${workerProduction}`
+    expect(productionNavigationSource).not.toMatch(/LiquidSelectionLens|dock-lens|dock-shimmer|dock-caustic|inner-refraction/)
+    expect(existsSync(resolve(mobileRoot, 'components/customer/dock/liquid-selection-lens.tsx'))).toBe(false)
+  })
+
+  it('renders the Customer Production dock with four semantic tabs and no route-following layer', () => {
+    mountCustomerDock({ activeTab: 'profile' })
+
+    const tabs = screen.getAllByRole('tab')
+    const selectedTabs = tabs.filter((tab) => tab.props.accessibilityState?.selected === true)
+
+    expect(tabs).toHaveLength(4)
+    expect(selectedTabs).toHaveLength(1)
+    expect(selectedTabs[0]?.props.accessibilityLabel).toBe('Hồ sơ')
+    expect(screen.queryByTestId('customer-v21-dock-lens')).toBeNull()
+    expect(screen.queryByTestId('customer-v21-dock-shimmer')).toBeNull()
+    expect(screen.queryByTestId('customer-v21-dock-caustic')).toBeNull()
+    expect(screen.getByTestId('customer-v21-kael-accessory')).toBeTruthy()
+  })
+
+  it.each([
+    ['home', 'Trang chủ'],
+    ['services', 'Dịch vụ'],
+    ['activity', 'Hoạt động'],
+    ['profile', 'Hồ sơ'],
+  ] as const)('marks only the Customer %s tab selected', (activeTab, selectedLabel) => {
+    mountCustomerDock({ activeTab })
+    withPillarContext(
+      PILLAR,
+      () => {
+        const selected = CUSTOMER_TAB_LABELS.vi.filter(
+          (label) => screen.getByRole('tab', { name: label }).props.accessibilityState?.selected === true,
+        )
+        expect(selected).toEqual([selectedLabel])
+      },
+      'exactly one Customer destination may report selected',
+    )
+  })
+
+  it.each([
+    ['vi', 'Trang chủ', 'Home'],
+    ['en', 'Home', 'Trang chủ'],
+  ] as const)('renders only the %s Customer tab labels', (language, visibleHome, hiddenHome) => {
+    mountCustomerDock({ language })
+    withPillarContext(
+      PILLAR,
+      () => {
+        for (const label of CUSTOMER_TAB_LABELS[language]) {
+          expect(screen.getByRole('tab', { name: label })).toBeTruthy()
+        }
+        expect(screen.queryByRole('tab', { name: hiddenHome })).toBeNull()
+        expect(screen.getByRole('tab', { name: visibleHome })).toBeTruthy()
+      },
+      'Customer navigation must expose one language per selected mode',
+    )
+  })
+
+  it.each(['light', 'dark'] as const)('uses the Production selected tint in %s mode', (mode) => {
+    const { tokens } = mountCustomerDock({ activeTab: 'activity', mode })
+    const selectedLabelStyle = StyleSheet.flatten(
+      within(screen.getByRole('tab', { name: 'Hoạt động' })).getByText('Hoạt động').props.style,
+    )
+    const unselectedLabelStyle = StyleSheet.flatten(
+      within(screen.getByRole('tab', { name: 'Trang chủ' })).getByText('Trang chủ').props.style,
+    )
+
+    withPillarContext(
+      PILLAR,
+      () => {
+        expect(selectedLabelStyle.color).toBe(tokens.primary)
+        expect(unselectedLabelStyle.color).toBe(tokens.muted)
+      },
+      `${mode} mode must resolve selection from the Production theme tokens`,
+    )
+  })
+
+  it.each([true, false])('keeps every Customer tab and the selection when Reduce Motion is %s', (reduceMotion) => {
+    mountCustomerDock({ activeTab: 'services', reduceMotion })
+    withPillarContext(
+      PILLAR,
+      () => {
+        for (const label of CUSTOMER_TAB_LABELS.vi) {
+          expect(screen.getByRole('tab', { name: label })).toBeTruthy()
+        }
+        expect(screen.getByRole('tab', { name: 'Dịch vụ' }).props.accessibilityState?.selected).toBe(true)
+      },
+      `reduceMotion=${String(reduceMotion)} must not change Customer navigation state`,
+    )
+  })
+
+  it('uses an opaque Customer dock without losing routes under Reduce Transparency', () => {
+    const translucentRender = mountCustomerDock()
+    const translucent = StyleSheet.flatten(
+      screen.getByTestId('customer-v21-primary-dock').props.style,
+    ).backgroundColor
+
+    translucentRender.unmount()
+    const opaqueRender = mountCustomerDock({ activeTab: 'profile', reduceTransparency: true })
+    const opaque = StyleSheet.flatten(
+      screen.getByTestId('customer-v21-primary-dock').props.style,
+    ).backgroundColor
+
+    withPillarContext(
+      PILLAR,
+      () => {
+        expect(opaque).not.toBe(translucent)
+        expect(String(opaque)).not.toMatch(/rgba\([^)]*,\s*0?\.\d+\s*\)/)
+        expect(screen.getAllByRole('tab')).toHaveLength(4)
+        expect(screen.getByRole('tab', { name: 'Hồ sơ' }).props.accessibilityState?.selected).toBe(true)
+      },
+      'Reduce Transparency must keep the Customer dock complete while replacing translucent glass',
+    )
+
+    opaqueRender.unmount()
   })
 
   it('does not leave duplicate primary routes beside the native tab group', () => {

@@ -18,7 +18,13 @@ const WITHDRAWAL_STATUSES = [
 
 const paginationFields = {
   limit: z.coerce.number().int().min(1).max(50).default(25),
-  offset: z.coerce.number().int().min(0).max(5_000).default(0),
+  cursor: z.string().regex(/^[A-Za-z0-9_-]{1,512}$/).optional(),
+  query: z.string().trim().min(2).max(80).optional(),
+};
+
+const versionedMutationFields = {
+  client_request_id: z.string().uuid(),
+  expected_version: z.coerce.number().int().positive(),
 };
 
 export const adminPayoutMethodListQuerySchema = z.object({
@@ -28,10 +34,12 @@ export const adminPayoutMethodListQuerySchema = z.object({
 
 export const adminWithdrawalRequestListQuerySchema = z.object({
   ...paginationFields,
+  assignment: z.enum(["all", "mine", "unassigned"]).default("all"),
   status: z.enum(WITHDRAWAL_STATUSES).default("pending"),
 }).strict();
 
 export const adminPayoutMethodDecisionSchema = z.object({
+  ...versionedMutationFields,
   decision: z.enum(["verify", "reject"]),
   reason: z.string().trim().max(500).optional(),
 }).strict().superRefine((value, context) => {
@@ -44,8 +52,24 @@ export const adminPayoutMethodDecisionSchema = z.object({
   }
 });
 
+export const adminPayoutSensitiveAccessSchema = z.object({
+  reason: z.string().trim().min(3).max(500),
+}).strict();
+
+export const adminWithdrawalRequestClaimSchema = z.object({
+  ...versionedMutationFields,
+  takeover_reason: z.string().trim().min(3).max(500).optional(),
+}).strict();
+
+export const adminWithdrawalRequestReleaseSchema = z.object({
+  ...versionedMutationFields,
+  reason: z.string().trim().min(3).max(500),
+}).strict();
+
 export const adminWithdrawalRequestResolveSchema = z.object({
+  ...versionedMutationFields,
   decision: z.enum(["paid", "rejected", "failed"]),
+  external_transfer_confirmed: z.literal(true).optional(),
   transfer_reference: z.string().trim().max(128).optional(),
   reason: z.string().trim().max(500).optional(),
 }).strict().superRefine((value, context) => {
@@ -54,6 +78,13 @@ export const adminWithdrawalRequestResolveSchema = z.object({
       code: z.ZodIssueCode.custom,
       path: ["transfer_reference"],
       message: "A transfer reference is required for paid withdrawals.",
+    });
+  }
+  if (value.decision === "paid" && value.external_transfer_confirmed !== true) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["external_transfer_confirmed"],
+      message: "Confirm the transfer was completed outside NestScout.",
     });
   }
   if (value.decision !== "paid" && (!value.reason || value.reason.length < 3)) {
@@ -69,7 +100,8 @@ export function parseAdminPayoutMethodListQuery(url: URL) {
   return adminPayoutMethodListQuerySchema.safeParse({
     status: url.searchParams.get("status") ?? undefined,
     limit: url.searchParams.get("limit") ?? undefined,
-    offset: url.searchParams.get("offset") ?? undefined,
+    cursor: url.searchParams.get("cursor") ?? undefined,
+    query: url.searchParams.get("query") ?? undefined,
   });
 }
 
@@ -77,6 +109,7 @@ export function parseAdminWithdrawalRequestListQuery(url: URL) {
   return adminWithdrawalRequestListQuerySchema.safeParse({
     status: url.searchParams.get("status") ?? undefined,
     limit: url.searchParams.get("limit") ?? undefined,
-    offset: url.searchParams.get("offset") ?? undefined,
+    cursor: url.searchParams.get("cursor") ?? undefined,
+    query: url.searchParams.get("query") ?? undefined,
   });
 }

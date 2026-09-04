@@ -4,6 +4,11 @@
 // the single Edge home and are kept byte-equivalent to the shared canonical. A value-level parity test
 // the shared mobile-wiring parity test fails CI if the two drift. Edit both together.
 import type { ComplexityLevel, JobStatus, ServiceType } from "./domain.ts";
+import type {
+  EdgeConfirmationOperationReceipt,
+  EdgeIntakeCoverage,
+  EdgeQuoteMode,
+} from "./contracts/stage1-reliability.ts";
 
 export type KaelEstimateAnalysisReceipt = {
   schema_version: "analysis_receipt.v1";
@@ -258,7 +263,13 @@ export type KaelChatNextAction =
   | "budget_exceeded"
   | "confirmed"
   | "ask_question"
-  | "request_evidence";
+  | "request_evidence"
+  | "collect_required"
+  | "offer_review"
+  | "rfq_review"
+  | "inspection_review"
+  | "blocked"
+  | "reconcile_confirmation";
 
 export type EdgeKaelIntakeConfirmation = {
   version: 1;
@@ -362,6 +373,10 @@ export type KaelChatSession = {
   total_cost_usd: number;
   next_action: KaelChatNextAction;
   intake_confirmation?: KaelIntakeConfirmation | null;
+  quote_mode?: EdgeQuoteMode;
+  policy_version?: number | null;
+  intake_coverage?: EdgeIntakeCoverage | null;
+  confirmation_operation?: EdgeConfirmationOperationReceipt | null;
 };
 
 export type KaelChatResponse = {

@@ -18,6 +18,15 @@ export type WorkerRoute =
   | { kind: "workers.kaelTrainingConsent.set"; method: "PATCH"; roles: UserRole[] }
   | { kind: "workers.availability"; method: "PATCH"; roles: UserRole[] }
   | { kind: "workers.broadcasts"; method: "GET"; roles: UserRole[] }
+  | { kind: "workers.matchingHeartbeat"; method: "POST"; roles: UserRole[] }
+  | { kind: "workers.broadcastSeen"; method: "POST"; roles: UserRole[]; broadcastId: string }
+  | {
+    kind: "workers.broadcastProposal";
+    method: "POST";
+    roles: UserRole[];
+    broadcastId: string;
+    successStatus: 201;
+  }
   | { kind: "workers.jobs"; method: "GET"; roles: UserRole[] }
   | { kind: "workers.earnings"; method: "GET"; roles: UserRole[] }
   | { kind: "workers.payoutMethod.get"; method: "GET"; roles: UserRole[] }
@@ -105,6 +114,28 @@ export function matchWorkerRoute(path: string, method: string): WorkerRoute | nu
   }
   if (method === "GET" && path === "/workers/me/broadcasts") {
     return { kind: "workers.broadcasts", method: "GET", roles: ["worker", "admin"] };
+  }
+  if (method === "POST" && path === "/workers/me/matching-heartbeat") {
+    return { kind: "workers.matchingHeartbeat", method: "POST", roles: ["worker"] };
+  }
+  const seenMatch = path.match(/^\/workers\/me\/broadcasts\/([^/]+)\/seen$/);
+  if (method === "POST" && seenMatch?.[1]) {
+    return {
+      kind: "workers.broadcastSeen",
+      method: "POST",
+      roles: ["worker"],
+      broadcastId: seenMatch[1],
+    };
+  }
+  const proposalMatch = path.match(/^\/workers\/me\/broadcasts\/([^/]+)\/proposal$/);
+  if (method === "POST" && proposalMatch?.[1]) {
+    return {
+      kind: "workers.broadcastProposal",
+      method: "POST",
+      roles: ["worker"],
+      broadcastId: proposalMatch[1],
+      successStatus: 201,
+    };
   }
   if (method === "GET" && path === "/workers/me/jobs") {
     return { kind: "workers.jobs", method: "GET", roles: ["worker", "admin"] };

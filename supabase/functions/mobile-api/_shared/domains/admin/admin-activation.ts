@@ -100,7 +100,7 @@ function maskEmail(email: string) {
 
 function isCapability(value: string) {
   return [
-    "operations.read", "workers.read", "workers.review", "workers.manage",
+    "operations.read", "operations.triage", "workers.read", "workers.review", "workers.manage",
     "transactions.read", "finance.read", "finance.reconcile", "finance.tax.manage",
     "payouts.read", "payouts.process", "team.read",
   ].includes(value);

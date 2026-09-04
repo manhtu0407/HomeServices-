@@ -71,6 +71,7 @@ export type CoreTables = {
           request_id: string | null
           safe_metadata: Json
           success: boolean
+          synthetic_cohort_id: string | null
         }
         Insert: {
           cost_usd?: number | null
@@ -89,6 +90,7 @@ export type CoreTables = {
           request_id?: string | null
           safe_metadata?: Json
           success: boolean
+          synthetic_cohort_id?: string | null
         }
         Update: {
           cost_usd?: number | null
@@ -107,6 +109,7 @@ export type CoreTables = {
           request_id?: string | null
           safe_metadata?: Json
           success?: boolean
+          synthetic_cohort_id?: string | null
         }
         Relationships: [
           {
@@ -115,6 +118,13 @@ export type CoreTables = {
             isOneToOne: false
             referencedRelation: "jobs"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "api_logs_synthetic_cohort_id_fkey"
+            columns: ["synthetic_cohort_id"]
+            isOneToOne: false
+            referencedRelation: "synthetic_matching_cohorts"
+            referencedColumns: ["cohort_id"]
           },
         ]
       }
@@ -238,6 +248,7 @@ export type CoreTables = {
           kael_neutral_summary: string
           resolved_at: string | null
           status: string
+          synthetic_cohort_id: string | null
           updated_at: string
         }
         Insert: {
@@ -261,6 +272,7 @@ export type CoreTables = {
           kael_neutral_summary: string
           resolved_at?: string | null
           status?: string
+          synthetic_cohort_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -284,6 +296,7 @@ export type CoreTables = {
           kael_neutral_summary?: string
           resolved_at?: string | null
           status?: string
+          synthetic_cohort_id?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -321,6 +334,13 @@ export type CoreTables = {
             isOneToOne: false
             referencedRelation: "jobs"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "disputes_synthetic_cohort_id_fkey"
+            columns: ["synthetic_cohort_id"]
+            isOneToOne: false
+            referencedRelation: "synthetic_matching_cohorts"
+            referencedColumns: ["cohort_id"]
           },
         ]
       }
@@ -468,6 +488,7 @@ export type CoreTables = {
         Row: {
           account_key: string
           balance_vnd: number
+          client_request_id: string | null
           created_at: string
           entered_by: string
           id: string
@@ -476,6 +497,7 @@ export type CoreTables = {
         Insert: {
           account_key: string
           balance_vnd: number
+          client_request_id?: string | null
           created_at?: string
           entered_by: string
           id?: string
@@ -484,6 +506,7 @@ export type CoreTables = {
         Update: {
           account_key?: string
           balance_vnd?: number
+          client_request_id?: string | null
           created_at?: string
           entered_by?: string
           id?: string
@@ -503,51 +526,80 @@ export type CoreTables = {
         Row: {
           complexity: Database["public"]["Enums"]["complexity_level"]
           created_at: string
+          created_by: string | null
           district_code: string
+          effective_from: string | null
           id: string
+          lifecycle: string
           price_evidence: Json
           price_max: number
           price_min: number
+          retired_at: string | null
           service_problem_id: string
           service_type: Database["public"]["Enums"]["service_type"]
           source: string
+          supersedes_id: string | null
           updated_at: string
           version: number
         }
         Insert: {
           complexity: Database["public"]["Enums"]["complexity_level"]
           created_at?: string
+          created_by?: string | null
           district_code?: string
+          effective_from?: string | null
           id?: string
+          lifecycle?: string
           price_evidence?: Json
           price_max: number
           price_min: number
+          retired_at?: string | null
           service_problem_id: string
           service_type: Database["public"]["Enums"]["service_type"]
           source?: string
+          supersedes_id?: string | null
           updated_at?: string
           version?: number
         }
         Update: {
           complexity?: Database["public"]["Enums"]["complexity_level"]
           created_at?: string
+          created_by?: string | null
           district_code?: string
+          effective_from?: string | null
           id?: string
+          lifecycle?: string
           price_evidence?: Json
           price_max?: number
           price_min?: number
+          retired_at?: string | null
           service_problem_id?: string
           service_type?: Database["public"]["Enums"]["service_type"]
           source?: string
+          supersedes_id?: string | null
           updated_at?: string
           version?: number
         }
         Relationships: [
           {
+            foreignKeyName: "price_baselines_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "price_baselines_service_problem_id_fkey"
             columns: ["service_problem_id"]
             isOneToOne: false
             referencedRelation: "service_problems"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "price_baselines_supersedes_id_fkey"
+            columns: ["supersedes_id"]
+            isOneToOne: false
+            referencedRelation: "price_baselines"
             referencedColumns: ["id"]
           },
         ]

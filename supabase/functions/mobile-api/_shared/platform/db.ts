@@ -31,7 +31,7 @@ export type Chain = {
   lte(column: string, value: unknown): Chain;
   is(column: string, value: unknown): Chain;
   in(column: string, value: unknown[]): Chain;
-  contains(column: string, value: unknown[]): Chain;
+  contains(column: string, value: unknown): Chain;
   or(filter: string): Chain;
   order(column: string, options?: unknown): Chain;
   range(from: number, to: number): Chain;
@@ -54,15 +54,23 @@ export type DbClient = {
 export async function fetchJsonWithTimeout(
   url: string,
   init: RequestInit,
+  timeoutMs = MAPS_PROVIDER_TIMEOUT_MS,
 ): Promise<Response> {
+  const boundedTimeout = Number.isFinite(timeoutMs)
+    ? Math.max(1, Math.min(MAPS_PROVIDER_TIMEOUT_MS, Math.floor(timeoutMs)))
+    : MAPS_PROVIDER_TIMEOUT_MS;
   return fetchBufferedWithTimeout(url, { ...init, redirect: "error" }, {
     maxResponseBytes: MAPS_PROVIDER_MAX_RESPONSE_BYTES,
-    timeoutMs: MAPS_PROVIDER_TIMEOUT_MS,
+    timeoutMs: boundedTimeout,
   });
 }
 
 export function db(ctx: MobileApiContext): DbClient {
   return ctx.supabase as DbClient;
+}
+
+export function workflowDb(ctx: MobileApiContext): DbClient {
+  return (ctx.privilegedSupabase ?? ctx.supabase) as DbClient;
 }
 
 export async function dbQuery<T = unknown>(

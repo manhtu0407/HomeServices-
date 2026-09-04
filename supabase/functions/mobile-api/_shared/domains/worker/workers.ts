@@ -1,4 +1,9 @@
-export { listWorkerBroadcasts } from "./broadcasts.ts";
+export {
+  listWorkerBroadcasts,
+  markWorkerBroadcastSeen,
+  recordWorkerMatchingHeartbeat,
+  submitWorkerMatchingProposal,
+} from "./broadcasts.ts";
 export { getWorkerEarnings } from "./earnings.ts";
 export { getWorkerProfile, recordWorkerAppActiveMinute } from "./profile.ts";
 export { registerWorker, submitWorkerApplication } from "./registration.ts";

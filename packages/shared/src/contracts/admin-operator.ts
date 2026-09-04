@@ -20,6 +20,13 @@ export const adminOperatorProvisionSchema = z.object({
       message: 'Capabilities must be unique',
     })
   }
+  if (value.capabilities.includes('operations.triage') && !value.capabilities.includes('operations.read')) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['capabilities'],
+      message: 'operations.triage requires operations.read',
+    })
+  }
 }).transform((value) => ({
   ...value,
   capabilities: value.capabilities.includes('finance.read')

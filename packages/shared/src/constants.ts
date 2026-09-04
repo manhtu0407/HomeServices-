@@ -38,6 +38,7 @@ export type UserRole = (typeof USER_ROLES)[number]
 
 export const ADMIN_CAPABILITIES = Object.freeze([
   'operations.read',
+  'operations.triage',
   'workers.read',
   'workers.review',
   'workers.manage',
@@ -48,6 +49,8 @@ export const ADMIN_CAPABILITIES = Object.freeze([
   'payouts.read',
   'payouts.process',
   'team.read',
+  'system.read',
+  'system.manage',
 ] as const)
 export type AdminCapability = (typeof ADMIN_CAPABILITIES)[number]
 

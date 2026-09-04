@@ -3,7 +3,6 @@ import { describe, expect, it, vi } from 'vitest'
 import {
   approveAdminFinanceTaxPolicy,
   createAdminFinanceTaxPolicyDraft,
-  decideAdminPaymentReconciliation,
   exportAdminFinanceCsv,
   getAdminFinanceOverview,
   getAdminFinanceSummary,
@@ -243,17 +242,19 @@ describe('admin finance authority', () => {
 
     await expect(createAdminFinanceTaxPolicyDraft(ownerContext(rpc), {
       name: 'VAT services',
-      tax_type: 'vat',
-      subject: 'platform',
-      basis: 'commission_retained',
-      rate_bps: 500,
+      rules: [{
+        tax_type: 'vat',
+        subject: 'platform',
+        basis: 'commission_retained',
+        rate_bps: 500,
+      }],
       effective_from: '2026-09-01',
       source_reference: 'accountant-file-1',
     })).resolves.toMatchObject({ id: 'policy-1', status: 'draft' })
 
     expect(rpc).toHaveBeenCalledWith('admin_create_finance_tax_policy_draft', expect.objectContaining({
       p_actor_id: 'owner-1',
-      p_policy: expect.objectContaining({ rate_bps: 500 }),
+      p_policy: expect.objectContaining({ rules: [expect.objectContaining({ rate_bps: 500 })] }),
     }))
   })
 
