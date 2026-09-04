@@ -5,6 +5,11 @@ export const SOURCE_TRUST_VERSION = "source-trust-r3-2026-07-10";
 const SOURCE_TRUST_CACHE_TTL_MS = 5 * 60 * 1000;
 const SOURCE_TRUST_MIN_EFFECTIVE_SCORE = 0.5;
 
+// Perplexity rejects the entire request with HTTP 400 once search_domain_filter carries more
+// than 20 entries, so the registry is truncated to its highest-trust domains instead of being
+// sent whole. The literal list below is already sized to this limit.
+const PERPLEXITY_SEARCH_DOMAIN_LIMIT = 20;
+
 const TIER_1_SOURCE_TRUST_DOMAINS = Object.freeze([
   "btaskee.com",
   "jupviec.vn",
@@ -346,10 +351,12 @@ function buildTrustedPerplexityMarketConfig(
       row.isActive &&
       effectiveTrustScore(row) >= SOURCE_TRUST_MIN_EFFECTIVE_SCORE
     )
+    .sort((a, b) => effectiveTrustScore(b) - effectiveTrustScore(a))
     .map((row) => row.domain);
-  const domains = tier1Domains.length > 0
+  const domains = (tier1Domains.length > 0
     ? [...new Set(tier1Domains)]
-    : [...TIER_1_SOURCE_TRUST_DOMAINS];
+    : [...TIER_1_SOURCE_TRUST_DOMAINS])
+    .slice(0, PERPLEXITY_SEARCH_DOMAIN_LIMIT);
 
   return {
     model: "sonar",
