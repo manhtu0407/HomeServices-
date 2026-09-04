@@ -49,9 +49,9 @@ export async function runKaelBaselineStage(
   const baselineCandidates = baselineStage.value?.kind === "baseline"
     ? baselineStage.value.result
     : undefined;
-  if (baselineStage.status === "failed" && baselineStage.failureReason !== "TIMEOUT") {
-    throw new Error(baselineStage.failureReason ?? "baseline stage failed");
-  }
+  // A missing or failed price lookup is an honest no-price outcome. Keep it in
+  // the typed pipeline result so the intake observation survives the response
+  // boundary instead of being discarded by the outer catch path.
   const baselineResult = pickBaselineCandidate(
     baselineCandidates ?? {
       success: false,

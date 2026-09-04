@@ -174,6 +174,7 @@ async function handlePrePipelineEscalationOrCostCap(
             : "Kael chưa đủ chắc chắn để báo giá an toàn. Yêu cầu này cần người hỗ trợ xem lại thông tin đã thu thập.",
           input.earlySafetySignals,
           input.language,
+          { serviceType: input.serviceType },
         ),
         nextStatus: "active",
         metadata: {
@@ -200,6 +201,7 @@ async function handlePrePipelineEscalationOrCostCap(
           : "Kael tạm dừng phân tích thêm cho phiên này để giữ ngân sách AI an toàn. Bạn có thể đặt thợ từ ước tính đã có hoặc tạo phiên mới nếu cần.",
         input.earlySafetySignals,
         input.language,
+        { serviceType: input.serviceType },
       ),
       nextStatus: "active",
       metadata: {
@@ -231,6 +233,7 @@ async function resolvePrePipelineIntake(
         : "Bạn cho Kael biết quận ở TP.HCM để ước tính đúng khu vực và tìm thợ phù hợp.",
       input.earlySafetySignals,
       input.language,
+      { serviceType: input.serviceType },
     );
     const nextArtifact = diagnosisScopeWithQuestion(
       artifact,
@@ -253,6 +256,7 @@ async function resolvePrePipelineIntake(
     buildFocusedClarificationQuestion("symptom", input.language),
     input.earlySafetySignals,
     input.language,
+    { serviceType: input.serviceType },
   );
   const nextArtifact = diagnosisScopeWithQuestion(artifact, ["description"], question, 0.3);
   await emitPrePipelineClarification(input, nextArtifact, question, ["description"]);

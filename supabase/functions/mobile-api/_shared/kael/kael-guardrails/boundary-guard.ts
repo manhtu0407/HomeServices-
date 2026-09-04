@@ -18,7 +18,7 @@ import {
   type HardRoutingPolicyDecision,
 } from "./electrical-intake-policy.ts";
 import { KAEL_CASE_WORK_SERVICE_TYPES } from "../learning/performance-profiles.ts";
-import { isElectricalPlaybookEnabled } from "../learning/playbooks/electrical.ts";
+import { getEnabledKaelPlaybook } from "../learning/playbooks/registry.ts";
 
 export type BoundaryReason =
   | "prompt_injection"
@@ -290,6 +290,48 @@ function containsKeyword(normalized: string, keyword: string): boolean {
   return pattern.test(normalized);
 }
 
+// SERVICE_KEYWORDS nests entries, so "vòi sen" matches both voi and voi sen and one noun phrase
+// reads as two independent pieces of evidence. The mismatch threshold wants distinct evidence, so
+// it has to count where in the text a match landed, not how many list entries fired.
+function keywordSpans(
+  normalized: string,
+  keyword: string,
+): Array<{ start: number; end: number }> {
+  // Every occurrence counts: a keyword can appear in two genuinely separate phrases, and taking
+  // only the first would let "vòi sen hỏng và vòi bếp rò" read as a single faucet reference.
+  const pattern = new RegExp(
+    `(?:^|[^a-z0-9])(${escapeRegExp(keyword)})(?:[^a-z0-9]|$)`,
+    "g",
+  );
+  const spans: Array<{ start: number; end: number }> = [];
+  let match = pattern.exec(normalized);
+  while (match) {
+    const start = match.index + match[0].indexOf(match[1]);
+    const end = start + match[1].length;
+    spans.push({ start, end });
+    // The trailing boundary class consumes a character, so the next search has to resume at the
+    // end of the keyword itself or an adjacent occurrence is skipped.
+    pattern.lastIndex = end;
+    match = pattern.exec(normalized);
+  }
+  return spans;
+}
+
+function countDistinctSpans(spans: readonly { start: number; end: number }[]): number {
+  const sorted = [...spans].sort((a, b) => a.start - b.start || b.end - a.end);
+  let count = 0;
+  let reach = -1;
+  for (const span of sorted) {
+    if (span.start >= reach) {
+      count += 1;
+      reach = span.end;
+    } else if (span.end > reach) {
+      reach = span.end;
+    }
+  }
+  return count;
+}
+
 function isSupportedWaterPumpMention(normalized: string): boolean {
   return IN_SCOPE_PLUMBING_PUMP_KEYWORDS.some((keyword) =>
     containsKeyword(normalized, keyword)
@@ -378,12 +420,16 @@ export function detectServiceMismatch(
   };
   const signals: string[] = [];
   for (const service of SUPPORTED_SERVICES) {
+    const spans: Array<{ start: number; end: number }> = [];
     for (const keyword of SERVICE_KEYWORDS[service]) {
-      if (containsKeyword(normalized, keyword)) {
-        hits[service]++;
-        if (hits[service] <= 2) signals.push(`match:${service}:${keyword}`);
+      const found = keywordSpans(normalized, keyword);
+      if (found.length === 0) continue;
+      spans.push(...found);
+      if (signals.filter((s) => s.startsWith(`match:${service}:`)).length < 2) {
+        signals.push(`match:${service}:${keyword}`);
       }
     }
+    hits[service] = countDistinctSpans(spans);
   }
   const selectedHits = hits[selectedService];
   let suggestedService: ServiceType | null = null;
@@ -408,7 +454,14 @@ export function detectServiceMismatch(
 
 function serviceMismatchAssertionText(text: string): string {
   return normalize(text)
-    .replace(/\bkhong (?:di|dau|sua|lam) (?:day )?dien\b/g, " ")
+    // A trade named only to rule it out is not evidence for that trade. The stripper covered four
+    // electrical verbs, so "khong doi duong ong" still counted as plumbing and routed a fixture
+    // swap away from the handyman who was asked for it.
+    .replace(/\bkhong (?:di|dau|sua|lam|doi|thay|dung|can|lien quan(?: den)?)\b[^.;,]*/g, " ")
+    // A trade named only as a suspected hazard behind the wall is not a request for that trade
+    // either. Both strips push the same way: less evidence means the mismatch fires less often,
+    // and letting the model read an ambiguous message beats declining it at the door.
+    .replace(/\b(?:nghi(?: co| ngo| la)?|coi chung|can than|tranh)\b[^.;,]*/g, " ")
     .replace(/\b(?:no|not) (?:electrical|wiring) work\b/g, " ")
     .replace(/\s+/g, " ")
     .trim();
@@ -423,9 +476,13 @@ export function evaluateMessageBoundary(
   const language = options.language ?? "vi";
   const declineCopy = DECLINE_COPY[language];
   if (trimmed.length === 0) return { ok: true };
-  const electricalPolicyEnabled = selectedService === "electrical" &&
-    (options.electricalPlaybookEnabled ?? isElectricalPlaybookEnabled());
-  const safetySignals = electricalPolicyEnabled
+  const playbookEnabled = Boolean(
+    selectedService &&
+      getEnabledKaelPlaybook(selectedService) &&
+      (options.electricalPlaybookEnabled ?? true),
+  );
+  const electricalPolicyEnabled = selectedService === "electrical" && playbookEnabled;
+  const safetySignals = playbookEnabled && selectedService
     ? scanIntakeSafetySignals(selectedService, trimmed)
     : [];
 
@@ -448,7 +505,7 @@ export function evaluateMessageBoundary(
     const normalizedText = normalize(trimmed);
     const semanticInjection = options.injectionClassifier
       ? options.injectionClassifier({ text: trimmed, normalizedText, selectedService })
-      : classifySemanticPromptInjection(normalizedText);
+      : classifySemanticPromptInjection(normalizedText, trimmed);
     if (semanticInjection.detected) {
       return {
         ok: false,
@@ -494,7 +551,13 @@ export function evaluateMessageBoundary(
   // legacy keyword gate remains byte-for-byte available when the flag is off.
   if (electricalPolicyEnabled) return { ok: true };
 
-  const outOfScope = detectOutOfScope(
+  // detectOutOfScope carries an escape for electrical infrastructure, but this call erased the
+  // argument that reaches it, so the one guard written to stop a live fault being declined could
+  // never run on the electrical path. The argument stays erased for the keyword gate itself, which
+  // is deliberately byte-for-byte legacy; only the escape is restored.
+  const electricalHazard = selectedService === "electrical" &&
+    hasElectricalInfrastructureContext(trimmed);
+  const outOfScope = electricalHazard ? { detected: false, signals: [] } : detectOutOfScope(
     trimmed,
     selectedService === "electrical" ? undefined : selectedService ?? undefined,
   );
@@ -537,12 +600,20 @@ export function evaluateMessageBoundary(
 
 function classifySemanticPromptInjection(
   normalizedText: string,
+  rawText = "",
 ): { detected: boolean; signals: string[] } {
   const signals: string[] = [];
   if (/\bnhap vai\b.*\b(?:quan tri vien|admin|nguoi kiem duyet)\b/.test(normalizedText)) {
     signals.push("roleplay_admin");
   }
-  if (/\b(?:huong dan|chi dan|lenh|quy tac)\s+an\b/.test(normalizedText)) {
+  // Accent folding maps "an toàn" (safety) and "ẩn toàn bộ" (hide it all) onto the same
+  // "an toan", so an exemption written against the folded text waves an injection through
+  // using the very phrase it was meant to protect. It has to read the accented text, and an
+  // absent rawText leaves the rule fail-closed rather than exempting on a guess.
+  if (
+    /\b(?:huong dan|chi dan|lenh|quy tac)\s+an\b/.test(normalizedText) &&
+    !/(?:hướng dẫn|chỉ dẫn|lệnh|quy tắc)\s+an\s+(?:toàn|ninh)\b/iu.test(rawText)
+  ) {
     signals.push("hidden_instruction_request");
   }
   if (/\b(?:xuat|in|doc|tra ve)\b.*\b(?:toan bo|day du)\b.*\b(?:system|prompt|quy tac)\b/.test(normalizedText)) {

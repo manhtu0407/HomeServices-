@@ -13,6 +13,7 @@ import {
   deterministicSafetyGuidance,
   scanIntakeSafetySignals,
 } from "../kael-guardrails/electrical-intake-policy.ts";
+import { getEnabledKaelPlaybook } from "../learning/playbooks/registry.ts";
 import {
   type HcmcScheduleWindow,
   validateFutureHcmcSchedule,
@@ -327,10 +328,14 @@ function appendSafetyIssue(
   input: KaelIntakeConfirmationInput,
   description: string,
 ) {
-  const safetySignals = input.serviceType === "electrical"
+  const safetySignals = getEnabledKaelPlaybook(input.serviceType)
     ? scanIntakeSafetySignals(input.serviceType, description)
     : [];
-  const safetyMessage = deterministicSafetyGuidance(safetySignals, input.language);
+  const safetyMessage = deterministicSafetyGuidance(
+    safetySignals,
+    input.language,
+    input.serviceType,
+  );
   if (!safetyMessage) return;
   issues.push({
     code: "safety_attention",

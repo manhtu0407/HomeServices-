@@ -1,0 +1,362 @@
+[
+  {
+    "id": "synth_01",
+    "input_text_vi": "aptomat tổng vừa bật lên là nhảy ngay, tôi đã tắt hết thiết bị trong căn hộ",
+    "expected": {
+      "problem_slug": "breaker_trip",
+      "scope_signal": "in_scope",
+      "suggested_service": null,
+      "safety_signals": ["fixed_wiring", "protective_device"],
+      "needs_clarification": false,
+      "complexity": "large"
+    },
+    "difficulty": "medium",
+    "rationale": "[SYNTHETIC SELF-REVIEW] Re-trip with all loads off maps to breaker_trip with fixed-wiring and protective-device review.",
+    "detail": "Cầu dao tổng vừa bật lên là nhảy ngay dù mọi thiết bị trong căn hộ đã tắt, cần kiểm tra phần dây điện cố định."
+  },
+  {
+    "id": "synth_02",
+    "input_text_vi": "ổ điện ngoài ban công bị mưa tạt suốt đêm, khu vực còn ẩm và cầu dao tổng lại nhảy",
+    "expected": {
+      "problem_slug": "breaker_trip",
+      "scope_signal": "in_scope",
+      "suggested_service": null,
+      "safety_signals": ["water_near_power", "protective_device"],
+      "needs_clarification": false,
+      "complexity": "large"
+    },
+    "difficulty": "medium",
+    "rationale": "[SYNTHETIC SELF-REVIEW] Rain near an electrical outlet followed by breaker trip maps to the electrical breaker branch and water-near-power safety.",
+    "detail": "Ổ điện ngoài ban công bị mưa tạt suốt đêm, khu vực còn ẩm và cầu dao tổng nhảy lại ngay khi bật, cần kiểm tra đường dây lẫn thiết bị bảo vệ."
+  },
+  {
+    "id": "synth_03",
+    "input_text_vi": "cả căn hộ mất điện, hành lang vẫn sáng và cầu dao tổng đang ở vị trí bật",
+    "expected": {
+      "problem_slug": "power_outage_whole_unit",
+      "scope_signal": "in_scope",
+      "suggested_service": null,
+      "safety_signals": [],
+      "needs_clarification": true,
+      "complexity": null
+    },
+    "difficulty": "easy",
+    "rationale": "[SYNTHETIC SELF-REVIEW] Whole-unit outage with corridor power present requires the next branch question.",
+    "detail": "Toàn bộ ổ cắm và đèn trong căn hộ mất điện, hành lang vẫn sáng, aptomat tổng đang bật nhưng chưa xác định được nguồn vào."
+  },
+  {
+    "id": "synth_04",
+    "input_text_vi": "mọi phòng trong nhà đều tối, căn bên cạnh vẫn có điện nhưng tôi chưa biết CB nào bị ngắt",
+    "expected": {
+      "problem_slug": "power_outage_whole_unit",
+      "scope_signal": "in_scope",
+      "suggested_service": null,
+      "safety_signals": [],
+      "needs_clarification": true,
+      "complexity": null
+    },
+    "difficulty": "easy",
+    "rationale": "[SYNTHETIC SELF-REVIEW] All rooms are affected and the protective-device state is unknown, so clarification remains required.",
+    "detail": "Các phòng đều tối nhưng căn bên cạnh vẫn có điện, khách chưa xác định được nhánh CB nào đang ngắt và cần kiểm tra tủ điện."
+  },
+  {
+    "id": "synth_05",
+    "input_text_vi": "phòng làm việc mất cả đèn lẫn ổ cắm, phòng ngủ vẫn dùng điện bình thường",
+    "expected": {
+      "problem_slug": "power_outage_one_room",
+      "scope_signal": "in_scope",
+      "suggested_service": null,
+      "safety_signals": [],
+      "needs_clarification": true,
+      "complexity": null
+    },
+    "difficulty": "easy",
+    "rationale": "[SYNTHETIC SELF-REVIEW] A single room with both lighting and outlet loss maps to the one-room outage branch; breaker state needs clarification.",
+    "detail": "Phòng làm việc mất cả đèn lẫn ổ cắm, trong khi phòng ngủ và bếp vẫn hoạt động bình thường, chưa biết mạch nhánh có bị ngắt hay không."
+  },
+  {
+    "id": "synth_06",
+    "input_text_vi": "khu bếp tắt cả đèn và máy hút mùi, các phòng khác trong căn hộ vẫn có điện",
+    "expected": {
+      "problem_slug": "power_outage_one_room",
+      "scope_signal": "in_scope",
+      "suggested_service": null,
+      "safety_signals": [],
+      "needs_clarification": true,
+      "complexity": "medium"
+    },
+    "difficulty": "medium",
+    "rationale": "[SYNTHETIC SELF-REVIEW] One zone has multiple dead points while the rest of the unit works; the circuit-state question is still needed.",
+    "detail": "Khu bếp mất đèn và máy hút mùi, các phòng khác có điện, khách chưa kiểm tra được aptomat nhánh nên cần xác định trạng thái mạch."
+  },
+  {
+    "id": "synth_07",
+    "input_text_vi": "đèn âm trần phòng ngủ chớp tắt liên tục dù tôi đã thay bóng mới",
+    "expected": {
+      "problem_slug": "flickering_light",
+      "scope_signal": "in_scope",
+      "suggested_service": null,
+      "safety_signals": [],
+      "needs_clarification": false,
+      "complexity": "small"
+    },
+    "difficulty": "easy",
+    "rationale": "[SYNTHETIC SELF-REVIEW] Persistent single-light flicker after a bulb change maps to the small flickering-light branch.",
+    "detail": "Đèn âm trần duy nhất trong phòng ngủ chớp tắt liên tục, bóng mới không thay đổi hiện tượng và các đèn khác vẫn hoạt động."
+  },
+  {
+    "id": "synth_08",
+    "input_text_vi": "đèn bếp tối sáng mỗi lần máy giặt bắt đầu chạy",
+    "expected": {
+      "problem_slug": "flickering_light",
+      "scope_signal": "in_scope",
+      "suggested_service": null,
+      "safety_signals": [],
+      "needs_clarification": false,
+      "complexity": "medium"
+    },
+    "difficulty": "medium",
+    "rationale": "[SYNTHETIC SELF-REVIEW] Flicker correlated with a high-load appliance maps to the voltage-dip flickering branch.",
+    "detail": "Đèn bếp tối sáng đúng lúc máy giặt khởi động, hiện tượng lặp lại mỗi lần thiết bị chạy và không xuất hiện khi máy tắt."
+  },
+  {
+    "id": "synth_09",
+    "input_text_vi": "ổ cắm cạnh bàn ăn bị lung lay, phích cắm vừa chạm là tuột ra",
+    "expected": {
+      "problem_slug": "outlet_or_switch_broken",
+      "scope_signal": "in_scope",
+      "suggested_service": null,
+      "safety_signals": [],
+      "needs_clarification": false,
+      "complexity": "small"
+    },
+    "difficulty": "easy",
+    "rationale": "[SYNTHETIC SELF-REVIEW] Loose receptacle and poor plug retention map to outlet_or_switch_broken.",
+    "detail": "Ổ cắm cạnh bàn ăn bị lung lay và phích cắm tuột ra khi vừa chạm, các điểm điện khác trong phòng vẫn bình thường."
+  },
+  {
+    "id": "synth_10",
+    "input_text_vi": "công tắc đèn hành lang bấm không ăn, những đèn khác trong nhà vẫn sáng",
+    "expected": {
+      "problem_slug": "outlet_or_switch_broken",
+      "scope_signal": "in_scope",
+      "suggested_service": null,
+      "safety_signals": [],
+      "needs_clarification": false,
+      "complexity": "small"
+    },
+    "difficulty": "easy",
+    "rationale": "[SYNTHETIC SELF-REVIEW] A single failed switch with other lights working is a focused outlet-or-switch repair.",
+    "detail": "Công tắc đèn hành lang bấm không ăn nhưng những đèn khác trong căn hộ vẫn sáng ổn định, không có dấu hiệu nóng hoặc cháy."
+  },
+  {
+    "id": "synth_11",
+    "input_text_vi": "ổ cắm bếp tóe lửa và bốc mùi khét khi tôi cắm nồi cơm",
+    "expected": {
+      "problem_slug": "outlet_or_switch_broken",
+      "scope_signal": "in_scope",
+      "suggested_service": null,
+      "safety_signals": ["smoke_or_burning", "sparking", "fixed_wiring"],
+      "needs_clarification": false,
+      "complexity": "large"
+    },
+    "difficulty": "hard",
+    "rationale": "[SYNTHETIC SELF-REVIEW] A sparking, burning-smell outlet remains an outlet repair while carrying immediate safety and fixed-wiring signals.",
+    "detail": "Ổ cắm bếp tóe lửa khi cắm nồi cơm, mặt nhựa nóng chảy và còn mùi khét; khách đã ngắt khu vực, cần kiểm tra cả hộp âm tường."
+  },
+  {
+    "id": "synth_12",
+    "input_text_vi": "nhờ lắp máy hút mùi âm tủ, tôi chưa biết vị trí ổ điện hiện tại có phù hợp không",
+    "expected": {
+      "problem_slug": "install_device",
+      "scope_signal": "in_scope",
+      "suggested_service": null,
+      "safety_signals": [],
+      "needs_clarification": true,
+      "complexity": "medium"
+    },
+    "difficulty": "medium",
+    "rationale": "[SYNTHETIC SELF-REVIEW] Appliance installation is in electrical scope, but the unresolved connection path requires clarification.",
+    "detail": "Máy hút mùi âm tủ cần lắp nhưng chưa xác định điểm điện hiện tại, đường dây và khoảng trống phía sau tủ có phù hợp hay không."
+  },
+  {
+    "id": "synth_13",
+    "input_text_vi": "lắp máy nước nóng trực tiếp trong phòng tắm, cần kiểm tra tủ điện và đường dây riêng",
+    "expected": {
+      "problem_slug": "install_device",
+      "scope_signal": "in_scope",
+      "suggested_service": null,
+      "safety_signals": ["new_circuit", "distribution_board"],
+      "needs_clarification": true,
+      "complexity": "large"
+    },
+    "difficulty": "medium",
+    "rationale": "[SYNTHETIC SELF-REVIEW] High-load bathroom installation requires a dedicated-circuit and distribution-board assessment.",
+    "detail": "Máy nước nóng trực tiếp cần đường dây riêng, khách muốn kiểm tra tủ điện và khả năng chịu tải trước khi lắp trong phòng tắm."
+  },
+  {
+    "id": "synth_14",
+    "input_text_vi": "thay đèn trần cũ bằng đèn mới đúng chỗ, dây điện và công tắc đã có sẵn",
+    "expected": {
+      "problem_slug": "install_device",
+      "scope_signal": "in_scope",
+      "suggested_service": null,
+      "safety_signals": [],
+      "needs_clarification": false,
+      "complexity": "small"
+    },
+    "difficulty": "easy",
+    "rationale": "[SYNTHETIC SELF-REVIEW] Like-for-like light replacement with an existing connection path is a small installation.",
+    "detail": "Đèn trần thay đúng vị trí cũ, dây điện và công tắc đã có sẵn, chỉ cần kiểm tra thiết bị mới tương thích với điểm nối hiện tại."
+  },
+  {
+    "id": "synth_15",
+    "input_text_vi": "tôi mới nhận căn hộ, muốn kiểm tra tổng thể tủ điện và các mạch trước khi vào ở",
+    "expected": {
+      "problem_slug": "electrical-general",
+      "scope_signal": "in_scope",
+      "suggested_service": null,
+      "safety_signals": [],
+      "needs_clarification": false,
+      "complexity": "medium"
+    },
+    "difficulty": "easy",
+    "rationale": "[SYNTHETIC SELF-REVIEW] A clear whole-unit pre-occupancy inspection maps to electrical-general.",
+    "detail": "Căn hộ mới nhận cần kiểm tra tủ điện, ổ cắm và các mạch trước khi gia đình chuyển vào ở, chưa có lỗi cụ thể được báo."
+  },
+  {
+    "id": "synth_16",
+    "input_text_vi": "sau khi sửa nhà tôi muốn rà soát lại toàn bộ dây điện âm tường",
+    "expected": {
+      "problem_slug": "electrical-general",
+      "scope_signal": "in_scope",
+      "suggested_service": null,
+      "safety_signals": ["fixed_wiring", "distribution_board"],
+      "needs_clarification": false,
+      "complexity": "large"
+    },
+    "difficulty": "hard",
+    "rationale": "[SYNTHETIC SELF-REVIEW] A whole-unit inspection focused on concealed fixed wiring and the panel maps to electrical-general with two capability signals.",
+    "detail": "Sau khi sửa nhà, toàn bộ dây điện âm tường và vị trí nối cần được rà soát; tình trạng tủ điện chưa rõ nên phải kiểm tra nhiều điểm."
+  },
+  {
+    "id": "synth_17",
+    "input_text_vi": "chạm vào vỏ máy giặt thấy tê tê, dây nguồn nứt gần khu giặt còn ẩm",
+    "expected": {
+      "problem_slug": "other_electrical",
+      "scope_signal": "in_scope",
+      "suggested_service": null,
+      "safety_signals": ["exposed_live_parts", "water_near_power"],
+      "needs_clarification": false,
+      "complexity": "large"
+    },
+    "difficulty": "hard",
+    "rationale": "[SYNTHETIC SELF-REVIEW] Tingling casing with damaged insulation near moisture maps to other_electrical with two immediate hazard signals.",
+    "detail": "Vỏ máy giặt gây cảm giác tê, dây nguồn nứt gần khu giặt còn ẩm và khách chưa chạm thêm vào thiết bị để tránh nguy hiểm."
+  },
+  {
+    "id": "synth_18",
+    "input_text_vi": "dien trong nha luc duoc luc khong, toi khong biet thiet bi hay khu vuc nao gay ra",
+    "expected": {
+      "problem_slug": "other_electrical",
+      "scope_signal": "in_scope",
+      "suggested_service": null,
+      "safety_signals": [],
+      "needs_clarification": true,
+      "complexity": null
+    },
+    "difficulty": "hard",
+    "rationale": "[SYNTHETIC SELF-REVIEW] Vague intermittent electrical behavior without a localized symptom requires one focused clarification before fallback classification.",
+    "detail": "Điện trong nhà lúc có lúc không, khách chưa xác định được thiết bị hay khu vực nào gây ra và không có thêm dấu hiệu cháy hoặc tia lửa."
+  },
+  {
+    "id": "synth_19",
+    "input_text_vi": "máy lạnh chạy nhưng không mát, nhờ kiểm tra giúp tôi",
+    "expected": {
+      "problem_slug": null,
+      "scope_signal": "service_mismatch",
+      "suggested_service": "hvac",
+      "safety_signals": [],
+      "needs_clarification": false,
+      "complexity": null
+    },
+    "difficulty": "easy",
+    "rationale": "[SYNTHETIC SELF-REVIEW] Air-conditioner cooling performance belongs to hvac, not electrical.",
+    "detail": "Máy lạnh vẫn chạy nhưng không mát, mô tả tập trung vào khả năng làm lạnh của thiết bị chứ không phải đường điện trong căn hộ."
+  },
+  {
+    "id": "synth_20",
+    "input_text_vi": "ống nước dưới bồn rửa bị rò liên tục, sàn bếp đang ướt",
+    "expected": {
+      "problem_slug": null,
+      "scope_signal": "service_mismatch",
+      "suggested_service": "plumbing",
+      "safety_signals": [],
+      "needs_clarification": false,
+      "complexity": null
+    },
+    "difficulty": "easy",
+    "rationale": "[SYNTHETIC SELF-REVIEW] A sink supply leak is plumbing scope.",
+    "detail": "Ống nước dưới bồn rửa rò liên tục làm sàn bếp ướt, chưa có dấu hiệu sự cố điện hoặc thiết bị điện bị ảnh hưởng được nêu."
+  },
+  {
+    "id": "synth_21",
+    "input_text_vi": "nhờ khoan tường lắp kệ giày ở lối vào căn hộ",
+    "expected": {
+      "problem_slug": null,
+      "scope_signal": "service_mismatch",
+      "suggested_service": "handyman",
+      "safety_signals": [],
+      "needs_clarification": false,
+      "complexity": null
+    },
+    "difficulty": "easy",
+    "rationale": "[SYNTHETIC SELF-REVIEW] Wall drilling and shelf mounting without an electrical connection belongs to handyman.",
+    "detail": "Khách muốn khoan tường lắp kệ giày ở lối vào, không yêu cầu nối thêm dây, ổ cắm hay thiết bị điện nào."
+  },
+  {
+    "id": "synth_22",
+    "input_text_vi": "cả tòa nhà bị cúp điện, đèn hành lang và thang máy đều tắt",
+    "expected": {
+      "problem_slug": null,
+      "scope_signal": "out_of_scope",
+      "suggested_service": null,
+      "safety_signals": [],
+      "needs_clarification": false,
+      "complexity": null
+    },
+    "difficulty": "easy",
+    "rationale": "[SYNTHETIC SELF-REVIEW] Building-wide loss including common areas belongs to building management or utility handling.",
+    "detail": "Cả tòa nhà mất điện, đèn hành lang và thang máy đều tắt, các căn hộ khác cũng không có nguồn nên cần liên hệ BQL hoặc điện lực."
+  },
+  {
+    "id": "synth_23",
+    "input_text_vi": "muốn lắp trạm sạc ô tô điện ở khu hầm xe dùng chung của chung cư",
+    "expected": {
+      "problem_slug": null,
+      "scope_signal": "out_of_scope",
+      "suggested_service": null,
+      "safety_signals": [],
+      "needs_clarification": false,
+      "complexity": null
+    },
+    "difficulty": "easy",
+    "rationale": "[SYNTHETIC SELF-REVIEW] EV charging infrastructure in a shared building area is outside the supported apartment electrical service scope.",
+    "detail": "Trạm sạc ô tô điện dự kiến đặt tại hầm xe dùng chung của chung cư, cần BQL và đơn vị chuyên trách chứ không phải sửa điện căn hộ."
+  },
+  {
+    "id": "synth_24",
+    "input_text_vi": "cần kéo điện ba pha cho xưởng sản xuất ở khu công nghiệp",
+    "expected": {
+      "problem_slug": null,
+      "scope_signal": "out_of_scope",
+      "suggested_service": null,
+      "safety_signals": [],
+      "needs_clarification": false,
+      "complexity": null
+    },
+    "difficulty": "easy",
+    "rationale": "[SYNTHETIC SELF-REVIEW] Industrial three-phase work is outside the apartment-focused supported service scope.",
+    "detail": "Khách cần kéo điện ba pha cho xưởng sản xuất trong khu công nghiệp, công suất và địa điểm vượt khỏi phạm vi căn hộ dân dụng."
+  }
+]

@@ -4,6 +4,7 @@ import type {
   KaelPerformanceProfile,
 } from "../learning/performance-profiles.ts";
 import type { KaelEstimate } from "../contracts/types.ts";
+import { scanServiceIntakeSafetySignals } from "./service-intake-safety-policy.ts";
 
 export type RequiredSlotPolicy = {
   readonly serviceType: "electrical";
@@ -289,10 +290,10 @@ export function hasElectricalInfrastructureContext(input: string) {
 }
 
 export function scanIntakeSafetySignals(
-  selectedService: ServiceType,
+  selectedService: string,
   input: string,
 ): string[] {
-  if (selectedService !== "electrical") return [];
+  if (selectedService !== "electrical") return scanServiceIntakeSafetySignals(selectedService, input);
   const text = normalizePolicyText(input);
   const affirmative = withoutNegatedSafetySignals(text);
   const signals: string[] = [];
@@ -361,9 +362,17 @@ export function scanIntakeSafetySignals(
   return [...new Set(signals)];
 }
 
+
+
+
+
+
+
+
 export function deterministicSafetyGuidance(
   safetySignals: readonly string[],
   language: "vi" | "en",
+  serviceType: ServiceType = "electrical",
 ) {
   const criticalCount = [
     "smoke_or_burning",
@@ -371,10 +380,111 @@ export function deterministicSafetyGuidance(
     "exposed_live_parts",
     "water_near_power",
   ].filter((signal) => safetySignals.includes(signal)).length;
-  if (criticalCount > 0) {
+  if (serviceType === "electrical" && criticalCount > 0) {
     return language === "en"
       ? "Switch off the main breaker only if the panel is dry and safely reachable. Do not do so if you must approach the hazard. Do not touch, unplug, clean, or approach the affected area. Keep people away until a qualified electrician inspects it. If smoke or flames persist, leave the area and call fire emergency 114."
       : "Anh/chị chỉ ngắt aptomat tổng nếu bảng điện khô ráo và dễ tiếp cận. Không làm vậy nếu phải lại gần chỗ nguy hiểm. Không chạm, rút phích, lau dọn hoặc lại gần khu vực bị ảnh hưởng. Giữ mọi người tránh xa cho đến khi thợ điện đủ chuyên môn kiểm tra. Nếu vẫn còn khói hoặc lửa, hãy rời khu vực và gọi cứu hỏa 114.";
+  }
+  if (safetySignals.includes("sewage")) {
+    return language === "en"
+      ? "Avoid contact with wastewater or contaminated items. Keep people away and wait for a qualified plumbing professional to inspect it."
+      : "Tránh tiếp xúc với nước thải hoặc vật dụng bị nhiễm bẩn. Giữ mọi người tránh xa và chờ thợ cấp thoát nước đủ chuyên môn kiểm tra.";
+  }
+  if (safetySignals.includes("hot_water_hazard")) {
+    return language === "en"
+      ? "Stay away from the hot-water source and wait for a qualified plumbing professional to check it safely."
+      : "Tạm tránh xa nguồn nước nóng và chờ thợ cấp thoát nước đủ chuyên môn kiểm tra an toàn.";
+  }
+  if (safetySignals.includes("uncontrolled_flow") || safetySignals.includes("flooding")) {
+    return language === "en"
+      ? "Keep people away from the water and wait for a qualified plumbing professional to inspect it."
+      : "Giữ mọi người tránh xa khu vực đang có nước và chờ thợ cấp thoát nước đủ chuyên môn kiểm tra.";
+  }
+  if (serviceType === "cleaning" && safetySignals.some((signal) => [
+    "biohazard",
+    "unknown_chemical",
+    "sharp_waste",
+    "heavy_mold",
+  ].includes(signal))) {
+    if (safetySignals.includes("heavy_mold")) {
+      return language === "en"
+        ? "Do not scrape, touch, or clean the heavy mold yourself. Keep people and pets away until a qualified cleaning specialist assesses the area."
+        : "Không tự cạo, chạm hoặc lau mốc dày. Giữ người và thú nuôi tránh xa cho đến khi nhân sự vệ sinh đủ chuyên môn đánh giá khu vực.";
+    }
+    return language === "en"
+      ? "Do not touch, mix, or clean the affected material yourself. Keep people and pets away until a qualified cleaning specialist assesses the area."
+      : "Không tự chạm, pha trộn hoặc lau dọn vật chất bị ảnh hưởng. Giữ người và thú nuôi tránh xa cho đến khi nhân sự vệ sinh đủ chuyên môn đánh giá khu vực.";
+  }
+  if (serviceType === "cleaning" && safetySignals.some((signal) => [
+    "unsafe_height",
+    "fragile_surface",
+    "specialist_floor",
+    "heavy_machinery",
+  ].includes(signal))) {
+    return language === "en"
+      ? "Do not climb, move heavy equipment, or test an unfamiliar surface yourself. The job needs a qualified worker and a safe access check."
+      : "Không tự trèo, di chuyển thiết bị nặng hoặc thử trên bề mặt chưa rõ độ an toàn. Công việc cần thợ đủ chuyên môn và kiểm tra lối tiếp cận an toàn.";
+  }
+  if (serviceType === "hvac" && safetySignals.some((signal) => [
+    "burning_smell",
+    "sparking",
+    "refrigerant_suspected",
+    "unsafe_unit_access",
+  ].includes(signal))) {
+    return language === "en"
+      ? "Do not touch, open, climb to, or operate the affected air-conditioning unit. Keep people away and wait for a qualified HVAC professional to inspect it."
+      : "Không chạm, mở máy, tự trèo lên hoặc tiếp tục vận hành điều hòa bị ảnh hưởng. Giữ mọi người tránh xa và chờ thợ HVAC đủ chuyên môn kiểm tra.";
+  }
+  if (serviceType === "hvac" && safetySignals.some((signal) => [
+    "repair",
+    "sealed_system",
+    "refrigerant",
+    "control_board",
+    "height_access",
+  ].includes(signal))) {
+    return language === "en"
+      ? "The case needs a qualified HVAC worker to diagnose the unit and confirm the repair scope before any component or refrigerant work."
+      : "Trường hợp này cần thợ HVAC đủ chuyên môn chẩn đoán và xác nhận phạm vi trước khi sửa linh kiện hoặc thao tác với môi chất lạnh.";
+  }
+  if (serviceType === "upholstery" && safetySignals.some((signal) => [
+    "bio_contamination",
+    "unknown_chemical",
+    "pest_evidence",
+    "sensitive_occupant",
+  ].includes(signal))) {
+    return language === "en"
+      ? "Do not handle or apply another product to the affected fabric yourself. Keep sensitive occupants away until a qualified upholstery worker assesses the material and treatment."
+      : "Không tự xử lý hoặc bôi thêm sản phẩm lên vải bị ảnh hưởng. Giữ người nhạy cảm tránh xa cho đến khi thợ chăm sóc vải đủ chuyên môn đánh giá vật liệu và cách xử lý.";
+  }
+  if (serviceType === "upholstery" && safetySignals.some((signal) => [
+    "missing_care_label",
+    "delicate_fabric",
+    "color_transfer_risk",
+    "high_value_item",
+  ].includes(signal))) {
+    return language === "en"
+      ? "Do not wet, scrub, or apply a new chemical to the item yourself. A qualified upholstery worker must identify the material and patch-test the treatment."
+      : "Không tự làm ướt, chà mạnh hoặc bôi hóa chất mới lên vật dụng. Thợ chăm sóc vải đủ chuyên môn cần xác định vật liệu và thử phương pháp trên vùng nhỏ trước.";
+  }
+  if (serviceType === "handyman" && safetySignals.some((signal) => [
+    "load_bearing_change",
+    "concealed_electrical",
+    "concealed_plumbing",
+    "unsafe_height",
+  ].includes(signal))) {
+    return language === "en"
+      ? "Stop drilling, lifting, or climbing near the affected point. Keep the area clear until a qualified worker checks the substrate, concealed services, and access conditions."
+      : "Dừng khoan, nâng hoặc tự trèo gần vị trí bị ảnh hưởng. Giữ khu vực thông thoáng cho đến khi thợ đủ chuyên môn kiểm tra nền, đường điện/nước âm và điều kiện tiếp cận.";
+  }
+  if (serviceType === "handyman" && safetySignals.some((signal) => [
+    "regulated_electrical",
+    "regulated_plumbing",
+    "structural_work",
+    "specialist_appliance",
+  ].includes(signal))) {
+    return language === "en"
+      ? "This request crosses the minor-handyman boundary and needs the appropriate qualified specialist before work is scheduled."
+      : "Yêu cầu này vượt phạm vi sửa chữa nhỏ và cần đúng thợ chuyên môn xác nhận trước khi đặt lịch.";
   }
   return null;
 }
@@ -383,9 +493,9 @@ export function prependDeterministicSafetyGuidance(
   text: string,
   safetySignals: readonly string[],
   language: "vi" | "en",
-  options: { readonly trustedText?: boolean } = {},
+  options: { readonly trustedText?: boolean; readonly serviceType?: ServiceType } = {},
 ) {
-  const guidance = deterministicSafetyGuidance(safetySignals, language);
+  const guidance = deterministicSafetyGuidance(safetySignals, language, options.serviceType);
   if (!guidance) return text;
   if (options.trustedText === false) return guidance;
   return text.startsWith(guidance) ? text : `${guidance} ${text}`;
@@ -395,14 +505,64 @@ export function buildSafetyFirstElectricalEstimate(
   estimate: KaelEstimate,
   safetySignals: readonly string[],
   language: "vi" | "en",
+  serviceType: ServiceType = "electrical",
 ): KaelEstimate {
-  if (!deterministicSafetyGuidance(safetySignals, language)) return estimate;
-  const problemSummary = language === "en"
+  const immediateSignalsByService: Record<ServiceType, readonly string[]> = {
+    electrical: ["smoke_or_burning", "sparking", "exposed_live_parts", "water_near_power"],
+    plumbing: ["uncontrolled_flow", "flooding", "sewage", "hot_water_hazard"],
+    cleaning: ["biohazard", "unknown_chemical", "sharp_waste", "heavy_mold"],
+    hvac: ["burning_smell", "sparking", "refrigerant_suspected", "unsafe_unit_access"],
+    upholstery: ["bio_contamination", "unknown_chemical", "pest_evidence", "sensitive_occupant"],
+    handyman: ["load_bearing_change", "concealed_electrical", "concealed_plumbing", "unsafe_height"],
+  };
+  const immediateSignals = immediateSignalsByService[serviceType];
+  if (!safetySignals.some((signal) => immediateSignals.includes(signal))) return estimate;
+  const problemSummary = serviceType === "plumbing"
+    ? language === "en"
+      ? "Plumbing safety case requiring an on-site inspection by a qualified plumbing professional."
+      : "Sự cố cấp thoát nước cần thợ đủ chuyên môn kiểm tra trực tiếp."
+    : serviceType === "cleaning"
+    ? language === "en"
+      ? "Cleaning safety case requiring an on-site assessment by a qualified cleaning specialist."
+      : "Trường hợp vệ sinh có yếu tố an toàn cần nhân sự đủ chuyên môn đánh giá trực tiếp."
+    : serviceType === "hvac"
+    ? language === "en"
+      ? "HVAC safety case requiring an on-site inspection by a qualified HVAC professional."
+      : "Sự cố điều hòa có yếu tố an toàn cần thợ HVAC đủ chuyên môn kiểm tra trực tiếp."
+    : serviceType === "upholstery"
+    ? language === "en"
+      ? "Upholstery safety case requiring an on-site material and treatment assessment."
+      : "Trường hợp chăm sóc vải cần đánh giá trực tiếp vật liệu và cách xử lý an toàn."
+    : serviceType === "handyman"
+    ? language === "en"
+      ? "Handyman safety case requiring an on-site substrate and access assessment."
+      : "Công việc sửa chữa nhỏ có yếu tố an toàn cần kiểm tra trực tiếp nền và lối tiếp cận."
+    : language === "en"
     ? "Electrical hazard requiring an on-site inspection by a qualified electrician."
     : "Sự cố điện cần thợ điện đủ chuyên môn kiểm tra trực tiếp.";
-  const advisory = language === "en"
-    ? "Do not approach or touch the hazardous area. Keep people away until a qualified electrician inspects it."
-    : "Không lại gần hoặc chạm vào khu vực nguy hiểm. Giữ mọi người tránh xa cho đến khi thợ điện đủ chuyên môn kiểm tra.";
+  const advisory = deterministicSafetyGuidance(safetySignals, language, serviceType) ?? (serviceType === "plumbing"
+    ? language === "en"
+      ? "Keep people away from the affected water and wait for a qualified plumbing professional to inspect it."
+      : "Giữ mọi người tránh xa khu vực có nước và chờ thợ cấp thoát nước đủ chuyên môn kiểm tra."
+    : serviceType === "cleaning"
+    ? language === "en"
+      ? "Keep people and pets away until a qualified cleaning specialist assesses the area."
+      : "Giữ người và thú nuôi tránh xa cho đến khi nhân sự vệ sinh đủ chuyên môn đánh giá khu vực."
+    : serviceType === "hvac"
+    ? language === "en"
+      ? "Keep people away from the affected unit and wait for a qualified HVAC professional to inspect it."
+      : "Giữ mọi người tránh xa thiết bị bị ảnh hưởng và chờ thợ HVAC đủ chuyên môn kiểm tra."
+    : serviceType === "upholstery"
+    ? language === "en"
+      ? "Keep sensitive occupants away until a qualified upholstery worker assesses the item."
+      : "Giữ người nhạy cảm tránh xa cho đến khi thợ chăm sóc vải đủ chuyên môn đánh giá vật dụng."
+    : serviceType === "handyman"
+    ? language === "en"
+      ? "Keep the area clear until a qualified worker checks the substrate and access conditions."
+      : "Giữ khu vực thông thoáng cho đến khi thợ đủ chuyên môn kiểm tra nền và điều kiện tiếp cận."
+    : language === "en"
+      ? "Do not approach or touch the hazardous area. Keep people away until a qualified electrician inspects it."
+      : "Không lại gần hoặc chạm vào khu vực nguy hiểm. Giữ mọi người tránh xa cho đến khi thợ điện đủ chuyên môn kiểm tra.");
   return {
     ...estimate,
     problem_summary: problemSummary,

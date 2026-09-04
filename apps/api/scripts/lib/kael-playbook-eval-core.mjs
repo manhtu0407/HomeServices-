@@ -8,22 +8,36 @@ const SUPPORTED_SERVICES = new Set([
   'upholstery',
   'handyman',
 ])
-const KNOWN_PROBLEM_SLUGS = new Set([
-  'breaker_trip', 'electrical-general', 'flickering_light', 'install_device',
-  'other_electrical', 'outlet_or_switch_broken', 'power_outage_one_room',
-  'power_outage_whole_unit', 'clogged_drain_or_sink', 'faucet_broken',
-  'install_or_replace_fixture', 'other_plumbing', 'pipe_leak', 'plumbing-general',
-  'toilet_flush_issue', 'weak_water_pressure', 'bathroom_deep_clean',
-  'cleaning-general', 'deep_cleaning', 'kitchen_deep_clean', 'other_cleaning',
-  'post_repair_cleaning', 'standard_home_cleaning', 'window_cleaning', 'error_code',
-  'hvac-general', 'no_cooling', 'other_hvac', 'routine_hvac_cleaning',
-  'unusual_noise', 'water_leak', 'weak_cooling', 'carpet_cleaning',
-  'curtain_cleaning', 'mattress_cleaning', 'odor_or_mold', 'other_upholstery',
-  'sofa_cleaning', 'stain_treatment', 'upholstery-general', 'drill_or_mount_shelf',
-  'handyman-general', 'install_bathroom_fixture', 'install_curtain_rod',
-  'install_small_fixture', 'mount_tv_or_furniture', 'other_handyman',
-  'repair_hinge_or_handle',
-])
+export const PROBLEM_SLUGS_BY_SERVICE = Object.freeze({
+  electrical: [
+    'breaker_trip', 'electrical-general', 'flickering_light', 'install_device',
+    'other_electrical', 'outlet_or_switch_broken', 'power_outage_one_room',
+    'power_outage_whole_unit',
+  ],
+  plumbing: [
+    'clogged_drain_or_sink', 'faucet_broken', 'install_or_replace_fixture',
+    'other_plumbing', 'pipe_leak', 'plumbing-general', 'toilet_flush_issue',
+    'weak_water_pressure',
+  ],
+  cleaning: [
+    'bathroom_deep_clean', 'cleaning-general', 'deep_cleaning', 'kitchen_deep_clean',
+    'other_cleaning', 'post_repair_cleaning', 'standard_home_cleaning', 'window_cleaning',
+  ],
+  hvac: [
+    'error_code', 'hvac-general', 'no_cooling', 'other_hvac', 'routine_hvac_cleaning',
+    'unusual_noise', 'water_leak', 'weak_cooling',
+  ],
+  upholstery: [
+    'carpet_cleaning', 'curtain_cleaning', 'mattress_cleaning', 'odor_or_mold',
+    'other_upholstery', 'sofa_cleaning', 'stain_treatment', 'upholstery-general',
+  ],
+  handyman: [
+    'drill_or_mount_shelf', 'handyman-general', 'install_bathroom_fixture',
+    'install_curtain_rod', 'install_small_fixture', 'mount_tv_or_furniture',
+    'other_handyman', 'repair_hinge_or_handle', 'replace_cabinet_hinges',
+  ],
+})
+const KNOWN_PROBLEM_SLUGS = new Set(Object.values(PROBLEM_SLUGS_BY_SERVICE).flat())
 const KNOWN_SAFETY_SIGNALS = new Set([
   'smoke_or_burning', 'sparking', 'exposed_live_parts', 'water_near_power',
   'distribution_board', 'fixed_wiring', 'protective_device', 'new_circuit',
@@ -31,27 +45,44 @@ const KNOWN_SAFETY_SIGNALS = new Set([
   'shared_stack', 'main_supply', 'waterproofing_boundary', 'biohazard',
   'unknown_chemical', 'sharp_waste', 'heavy_mold', 'unsafe_height',
   'fragile_surface', 'specialist_floor', 'heavy_machinery', 'burning_smell',
-  'refrigerant_suspected', 'unsafe_unit_access', 'repair', 'sealed_system',
+  'refrigerant_suspected', 'unsafe_unit_access', 'height_access', 'repair', 'sealed_system',
   'refrigerant', 'control_board', 'bio_contamination', 'pest_evidence',
   'sensitive_occupant', 'missing_care_label', 'delicate_fabric',
   'color_transfer_risk', 'high_value_item', 'load_bearing_change',
   'concealed_electrical', 'concealed_plumbing', 'regulated_electrical',
   'regulated_plumbing', 'structural_work', 'specialist_appliance',
 ])
-const ELECTRICAL_PROBLEM_SLUGS = new Set([
-  'breaker_trip', 'electrical-general', 'flickering_light', 'install_device',
-  'other_electrical', 'outlet_or_switch_broken', 'power_outage_one_room',
-  'power_outage_whole_unit',
-])
+export const SAFETY_SIGNALS_BY_SERVICE = Object.freeze({
+  electrical: [
+    'smoke_or_burning', 'sparking', 'exposed_live_parts', 'water_near_power',
+    'distribution_board', 'fixed_wiring', 'protective_device', 'new_circuit',
+  ],
+  plumbing: [
+    'uncontrolled_flow', 'flooding', 'sewage', 'hot_water_hazard',
+    'concealed_pipe', 'shared_stack', 'main_supply', 'waterproofing_boundary',
+  ],
+  cleaning: [
+    'biohazard', 'unknown_chemical', 'sharp_waste', 'heavy_mold',
+    'unsafe_height', 'fragile_surface', 'specialist_floor', 'heavy_machinery',
+  ],
+  hvac: [
+    'burning_smell', 'sparking', 'refrigerant_suspected', 'unsafe_unit_access',
+    'repair', 'sealed_system', 'refrigerant', 'control_board', 'height_access',
+  ],
+  upholstery: [
+    'bio_contamination', 'unknown_chemical', 'pest_evidence', 'sensitive_occupant',
+    'missing_care_label', 'delicate_fabric', 'color_transfer_risk', 'high_value_item',
+  ],
+  handyman: [
+    'load_bearing_change', 'concealed_electrical', 'concealed_plumbing', 'unsafe_height',
+    'regulated_electrical', 'regulated_plumbing', 'structural_work', 'specialist_appliance',
+  ],
+})
 const IMMEDIATE_CRITICAL_SAFETY_SIGNALS = new Set([
   'smoke_or_burning', 'sparking', 'exposed_live_parts', 'water_near_power',
 ])
 const ELECTRICAL_CAPABILITY_SAFETY_SIGNALS = new Set([
   'distribution_board', 'fixed_wiring', 'protective_device', 'new_circuit',
-])
-const ELECTRICAL_SAFETY_SIGNALS = new Set([
-  ...IMMEDIATE_CRITICAL_SAFETY_SIGNALS,
-  ...ELECTRICAL_CAPABILITY_SAFETY_SIGNALS,
 ])
 const CORPUS_CASE_FIELDS = new Set([
   'id', 'input_text_vi', 'expected', 'difficulty', 'rationale', 'detail', 'user_turns',
@@ -438,10 +469,11 @@ export function normalizeEvalEvidenceForRunMode(runMode, metrics, stability) {
   }
 }
 
-export function validatePlaybookCorpus(value) {
+export function validatePlaybookCorpus(value, serviceType = 'electrical') {
   if (!Array.isArray(value) || value.length === 0) {
     throw new Error('corpus must be a non-empty array')
   }
+  if (!SUPPORTED_SERVICES.has(serviceType)) throw new Error('unsupported_playbook_service')
   const ids = new Set()
   for (const candidate of value) {
     const testCase = record(candidate)
@@ -455,7 +487,7 @@ export function validatePlaybookCorpus(value) {
     if (!['easy', 'medium', 'hard'].includes(testCase.difficulty)) {
       throw new Error(`invalid corpus difficulty: ${id}`)
     }
-    validateCorpusExpected(testCase.expected, id)
+    validateCorpusExpected(testCase.expected, id, serviceType)
     validateCorpusUserTurns(testCase.user_turns, id)
   }
   return value
@@ -801,7 +833,7 @@ function manifestEnum(value, field, allowed) {
   return value
 }
 
-function validateCorpusExpected(value, id) {
+function validateCorpusExpected(value, id, serviceType) {
   const expected = record(value)
   assertOnlyFields(expected, CORPUS_EXPECTED_FIELDS, `unknown corpus expected field: ${id}`)
   for (const field of [
@@ -835,22 +867,23 @@ function validateCorpusExpected(value, id) {
   }
   const mismatch = expected.scope_signal === 'service_mismatch'
   if (
-    (mismatch && (expected.suggested_service === null || expected.suggested_service === 'electrical')) ||
+    (mismatch && (expected.suggested_service === null || expected.suggested_service === serviceType)) ||
     (!mismatch && expected.suggested_service !== null)
   ) {
     throw new Error(`inconsistent corpus expected.suggested_service: ${id}`)
   }
   const problemSlug = Object.hasOwn(expected, 'problem_slug') ? expected.problem_slug : null
+  const serviceProblemSlugs = new Set(PROBLEM_SLUGS_BY_SERVICE[serviceType])
   if (
     problemSlug !== null &&
-    (typeof problemSlug !== 'string' || !ELECTRICAL_PROBLEM_SLUGS.has(problemSlug))
+    (typeof problemSlug !== 'string' || !serviceProblemSlugs.has(problemSlug))
   ) {
     throw new Error(`invalid corpus expected.problem_slug: ${id}`)
   }
   const acceptableSlugs = Object.hasOwn(expected, 'acceptable_problem_slugs')
     ? corpusIdentifierArray(
       expected.acceptable_problem_slugs,
-      ELECTRICAL_PROBLEM_SLUGS,
+      serviceProblemSlugs,
       'acceptable_problem_slugs',
       id,
     )
@@ -882,14 +915,14 @@ function validateCorpusExpected(value, id) {
     : 'safety_signals'
   const required = corpusIdentifierArray(
     expected[requiredField],
-    ELECTRICAL_SAFETY_SIGNALS,
+    new Set(SAFETY_SIGNALS_BY_SERVICE[serviceType]),
     requiredField,
     id,
   )
   const forbidden = Object.hasOwn(expected, 'forbidden_safety_signals')
     ? corpusIdentifierArray(
       expected.forbidden_safety_signals,
-      ELECTRICAL_SAFETY_SIGNALS,
+      new Set(SAFETY_SIGNALS_BY_SERVICE[serviceType]),
       'forbidden_safety_signals',
       id,
     )

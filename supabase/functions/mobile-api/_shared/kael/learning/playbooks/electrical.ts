@@ -6,6 +6,8 @@
 //
 // Source of truth for the reasoning is the textbook doc; regenerate this constant
 // from its Appendix A, do not hand-edit the trees here in isolation.
+import { isKaelPlaybookEnabled } from "./flags.ts";
+
 export const ELECTRICAL_PLAYBOOK_VERSION = "electrical-playbook-2026-07-16.v2";
 
 export const ELECTRICAL_PLAYBOOK_SEGMENT =
@@ -62,10 +64,5 @@ water_near_power: "Anh/chị chỉ ngắt aptomat tổng nếu bảng điện kh
 capability gate (panel/fixed wiring/new circuit): "Phần tủ điện và dây âm tường cần thợ điện có chuyên môn xử lý. Anh/chị không cần tự thao tác thêm. Bên em sẽ sắp xếp thợ phù hợp cho phần việc này."`;
 
 export function isElectricalPlaybookEnabled(): boolean {
-  const deno = (globalThis as typeof globalThis & {
-    Deno?: { env?: { get?: (key: string) => string | undefined } };
-  }).Deno;
-  const value = deno?.env?.get?.("KAEL_PLAYBOOK_ELECTRICAL_ENABLED");
-  return typeof value === "string" &&
-    ["1", "true", "yes", "on"].includes(value.trim().toLowerCase());
+  return isKaelPlaybookEnabled("electrical");
 }

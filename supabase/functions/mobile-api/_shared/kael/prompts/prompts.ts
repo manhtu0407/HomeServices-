@@ -16,7 +16,10 @@ import {
   scrubSensitiveForLLM,
   sanitizeVisionPhotoUrls,
 } from "../pipeline/utils.ts";
-import { ELECTRICAL_PLAYBOOK_SEGMENT, isElectricalPlaybookEnabled } from "../learning/playbooks/electrical.ts";
+import {
+  getKaelPlaybook,
+  isKaelPlaybookEnabled,
+} from "../learning/playbooks/registry.ts";
 import { buildRequiredSlotPolicyPrompt } from "../kael-guardrails/electrical-intake-policy.ts";
 
 const SUPPORTED_SERVICE_PROFILE_CONTRACT = KAEL_CASE_WORK_SERVICE_TYPES.map((serviceType) => {
@@ -147,7 +150,7 @@ export const KAEL_INTAKE_DIAGNOSIS_PROMPT_VERSION = "2026-08-15.v3";
 const KAEL_INTAKE_DIAGNOSIS_BASE_PROMPT_VERSION = "2026-08-15.v3-base-safety";
 
 export function kaelIntakeDiagnosisPromptVersion(serviceType: string) {
-  return serviceType === "electrical" && isElectricalPlaybookEnabled()
+  return getKaelPlaybook(serviceType) && isKaelPlaybookEnabled(serviceType)
     ? KAEL_INTAKE_DIAGNOSIS_PROMPT_VERSION
     : KAEL_INTAKE_DIAGNOSIS_BASE_PROMPT_VERSION;
 }
@@ -172,7 +175,7 @@ export function buildIntakeDiagnosisMessages(
     ? 'Good: "Is the breaker currently on/off/tripped, or did it re-trip after a reset already attempted?" / "Is the leak at one faucet or several locations?"'
     : 'Good: "Aptomat hiện đang bật/tắt/đã nhảy, hay đã nhảy lại sau lần bật lại trước đó?" / "Rò rỉ ở một vòi hay nhiều vị trí?"';
   const minimumSlotPolicyEnabled = serviceType === "electrical" &&
-    isElectricalPlaybookEnabled();
+    isKaelPlaybookEnabled("electrical");
   const missingSlotsRule = minimumSlotPolicyEnabled
     ? "- missing_slots: list only genuinely decision-critical context. Optional slots and photos never block an electrical estimate when the minimum-slot policy below is present."
     : "- missing_slots: list only genuinely missing context using exact keys from the selected profile; empty array when enough is known.";
@@ -234,7 +237,7 @@ ${profileFactsRule}
   asking for breakdowns/credentials/specifics, else "neutral".
 - Do not re-ask anything already answered earlier in the conversation.
 
-Use only the problem_slug values in the supported service profile contract above.${electricalPlaybookAddendum(serviceType)}`,
+Use only the problem_slug values in the supported service profile contract above.${kaelPlaybookAddendum(serviceType)}`,
     },
     {
       role: "user",
@@ -245,12 +248,13 @@ ${intentConversation ? `Recent conversation:\n${intentConversation}\n` : ""}Late
   ];
 }
 
-// Gate the distilled electrical playbook onto the electrical intake system
-// prompt. Off by default; enabled per-environment via KAEL_PLAYBOOK_ELECTRICAL_ENABLED
-// so the before/after eval can A/B it without a code change.
-function electricalPlaybookAddendum(serviceType: string): string {
-  if (serviceType !== "electrical" || !isElectricalPlaybookEnabled()) return "";
-  return `\n\n${buildRequiredSlotPolicyPrompt(serviceType)}\n\n${ELECTRICAL_PLAYBOOK_SEGMENT}`;
+function kaelPlaybookAddendum(serviceType: string): string {
+  const playbook = getKaelPlaybook(serviceType);
+  if (!playbook || !isKaelPlaybookEnabled(serviceType)) return "";
+  const requiredSlotPolicy = serviceType === "electrical"
+    ? `${buildRequiredSlotPolicyPrompt(serviceType)}\n\n`
+    : "";
+  return `\n\n${requiredSlotPolicy}${playbook.segment}`;
 }
 
 export function buildVisionMessages(

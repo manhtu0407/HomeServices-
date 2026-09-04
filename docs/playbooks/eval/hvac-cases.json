@@ -1,0 +1,365 @@
+[
+  {
+    "id": "hv_01",
+    "input_text_vi": "Nhờ vệ sinh một máy lạnh phòng ngủ, máy vẫn mát và không chảy nước",
+    "expected": {
+      "problem_slug": "routine_hvac_cleaning",
+      "scope_signal": "in_scope",
+      "suggested_service": null,
+      "safety_signals": [],
+      "forbidden_safety_signals": ["burning_smell", "sparking", "refrigerant_suspected"],
+      "needs_clarification": true,
+      "complexity": "small"
+    },
+    "difficulty": "easy",
+    "rationale": "Yêu cầu vệ sinh định kỳ đã rõ nhưng cần xác nhận lối tiếp cận và lịch bảo trì trước khi chốt phạm vi",
+    "detail": "Một dàn lạnh trong phòng ngủ đang hoạt động bình thường, khách chỉ muốn vệ sinh chứ chưa nêu triệu chứng lỗi."
+  },
+  {
+    "id": "hv_02",
+    "input_text_vi": "Vệ sinh cả hai máy lạnh trong căn hộ, dàn nóng ở ban công và thang máy phải đăng ký",
+    "expected": {
+      "problem_slug": "routine_hvac_cleaning",
+      "scope_signal": "in_scope",
+      "suggested_service": null,
+      "safety_signals": [],
+      "needs_clarification": true,
+      "complexity": "medium"
+    },
+    "difficulty": "easy",
+    "rationale": "Hai thiết bị và điều kiện vận chuyển làm tăng phạm vi nhưng chưa có dấu hiệu lỗi hoặc tiếp cận nguy hiểm",
+    "detail": "Khách muốn vệ sinh hai máy, dàn nóng ở ban công có lối vào trong căn hộ và ban quản lý yêu cầu đăng ký thang máy."
+  },
+  {
+    "id": "hv_03",
+    "input_text_vi": "Máy lạnh vẫn chạy nhưng phòng lâu mát hơn trước, chỉ một dàn lạnh bị",
+    "expected": {
+      "problem_slug": "weak_cooling",
+      "scope_signal": "in_scope",
+      "suggested_service": null,
+      "safety_signals": [],
+      "needs_clarification": true,
+      "complexity": "small"
+    },
+    "difficulty": "easy",
+    "rationale": "Có làm lạnh nhưng yếu ở một dàn nên nhánh chính là weak_cooling và cần tách airflow với tải nhiệt",
+    "detail": "Thiết bị vẫn bật và có gió mát nhưng phòng ngủ mất nhiều thời gian mới mát, chưa thấy nước hay mùi lạ."
+  },
+  {
+    "id": "hv_04",
+    "input_text_vi": "Máy lạnh phòng khách thổi gió nhưng không lạnh, không thấy khói hay tia lửa",
+    "expected": {
+      "problem_slug": "weak_cooling",
+      "scope_signal": "in_scope",
+      "suggested_service": null,
+      "safety_signals": [],
+      "forbidden_safety_signals": ["burning_smell", "sparking", "unsafe_unit_access"],
+      "needs_clarification": true,
+      "complexity": "small"
+    },
+    "difficulty": "medium",
+    "rationale": "Triệu chứng cooling yếu được nêu cùng phủ định safety nên không được tự gán mùi khét hoặc tia lửa",
+    "detail": "Dàn lạnh vẫn có airflow nhưng gió không đủ mát; khách xác nhận không có khói, mùi khét hoặc tia lửa."
+  },
+  {
+    "id": "hv_05",
+    "input_text_vi": "Bật máy lạnh lên thì quạt không chạy, màn hình không báo mã lỗi",
+    "expected": {
+      "problem_slug": "no_cooling",
+      "scope_signal": "in_scope",
+      "suggested_service": null,
+      "safety_signals": [],
+      "needs_clarification": true,
+      "complexity": "medium"
+    },
+    "difficulty": "medium",
+    "rationale": "Thiết bị không khởi động nhưng chưa có dấu hiệu cháy hoặc điện lộ nên giữ chẩn đoán HVAC",
+    "detail": "Máy không chạy khi bật, chưa rõ nguồn cấp riêng hay điều khiển từ xa, không có mã lỗi trên màn hình."
+  },
+  {
+    "id": "hv_06",
+    "input_text_vi": "May lanh tat mo lien tuc, lan nay khong len nguon va da co lan sua truoc",
+    "expected": {
+      "problem_slug": "no_cooling",
+      "scope_signal": "in_scope",
+      "suggested_service": null,
+      "safety_signals": ["repair"],
+      "needs_clarification": false,
+      "complexity": "large"
+    },
+    "difficulty": "hard",
+    "rationale": "Ca không dấu có tái phát và lịch sửa trước, cần chẩn đoán sâu thay vì hứa vệ sinh là khỏi",
+    "detail": "Máy lạnh tắt mở liên tục rồi không lên nguồn, trước đây đã sửa một lần nhưng khách không biết đã thay linh kiện gì."
+  },
+  {
+    "id": "hv_07",
+    "input_text_vi": "Dàn lạnh nhỏ nước xuống tủ gỗ, vẫn còn chạy và chưa lan ra sàn",
+    "expected": {
+      "problem_slug": "water_leak",
+      "scope_signal": "in_scope",
+      "suggested_service": null,
+      "safety_signals": [],
+      "needs_clarification": true,
+      "complexity": "medium"
+    },
+    "difficulty": "medium",
+    "rationale": "Nước có quan hệ rõ với dàn lạnh nhưng đã chạm đồ nội thất nên cần xác định lượng nước và tuyến thoát",
+    "detail": "Nước nhỏ từ dàn lạnh xuống mặt tủ bên dưới, máy vẫn làm mát và chưa có nước trên nền."
+  },
+  {
+    "id": "hv_08",
+    "input_text_vi": "Nước từ máy lạnh chảy qua trần thạch cao, không biết ống xả âm đi đâu",
+    "expected": {
+      "problem_slug": "water_leak",
+      "scope_signal": "in_scope",
+      "suggested_service": null,
+      "safety_signals": [],
+      "needs_clarification": false,
+      "complexity": "large"
+    },
+    "difficulty": "hard",
+    "rationale": "Rò qua trần và tuyến xả âm có thể đổi phạm vi, cần đánh giá trực tiếp và không yêu cầu khách mở trần",
+    "detail": "Trần thạch cao dưới dàn lạnh bị ướt, nước chảy theo trần và khách chưa biết đường ống thoát nằm ở đâu."
+  },
+  {
+    "id": "hv_09",
+    "input_text_vi": "Dàn lạnh kêu rè nhẹ khi tăng quạt, máy vẫn mát bình thường",
+    "expected": {
+      "problem_slug": "unusual_noise",
+      "scope_signal": "in_scope",
+      "suggested_service": null,
+      "safety_signals": [],
+      "needs_clarification": true,
+      "complexity": "small"
+    },
+    "difficulty": "medium",
+    "rationale": "Âm thanh bất thường liên quan tốc độ quạt nhưng chưa có hazard hay suy giảm cooling rõ",
+    "detail": "Tiếng rè xuất hiện khi tăng tốc độ quạt, khách muốn xác định có cần sửa hay chỉ vệ sinh."
+  },
+  {
+    "id": "hv_10",
+    "input_text_vi": "Dàn nóng rung mạnh và có tia lửa ở hộp điện, nghe tiếng lách tách",
+    "expected": {
+      "problem_slug": "unusual_noise",
+      "scope_signal": "in_scope",
+      "suggested_service": null,
+      "required_safety_signals": ["sparking"],
+      "forbidden_safety_signals": ["refrigerant_suspected"],
+      "needs_clarification": false,
+      "complexity": "large"
+    },
+    "difficulty": "hard",
+    "rationale": "Nhánh tiếng ồn bị safety override bởi tia lửa ở dàn nóng, cần dừng tiếp cận trước mọi chẩn đoán",
+    "detail": "Dàn nóng rung và phát tiếng lách tách; khách nhìn thấy tia lửa tại hộp điện của máy và chưa tự mở nắp."
+  },
+  {
+    "id": "hv_11",
+    "input_text_vi": "Màn hình dàn lạnh hiện E5, máy vẫn chạy được vài phút rồi dừng",
+    "expected": {
+      "problem_slug": "error_code",
+      "scope_signal": "in_scope",
+      "suggested_service": null,
+      "safety_signals": [],
+      "needs_clarification": true,
+      "complexity": "medium"
+    },
+    "difficulty": "medium",
+    "rationale": "Mã lỗi được ghi chính xác nhưng chưa được suy diễn thành hỏng bo hay cảm biến",
+    "detail": "Khách đọc được mã E5 trên màn hình, máy chạy khoảng vài phút rồi tự dừng; chưa biết model đầy đủ."
+  },
+  {
+    "id": "hv_12",
+    "input_text_vi": "Mã lỗi nhấp nháy không đọc rõ, thợ trước nói có thể hỏng bo mạch điều khiển",
+    "expected": {
+      "problem_slug": "error_code",
+      "scope_signal": "in_scope",
+      "suggested_service": null,
+      "required_safety_signals": ["control_board", "repair"],
+      "needs_clarification": true,
+      "complexity": "large"
+    },
+    "difficulty": "hard",
+    "rationale": "Mã không rõ và nhận định bo mạch chưa được xác minh nên phải giữ uncertainty cùng capability repair",
+    "detail": "Đèn báo nhấp nháy nhưng khách không đếm được số lần; một thợ cũ nghi bo mạch, chưa có biên bản hay linh kiện xác nhận."
+  },
+  {
+    "id": "hv_13",
+    "input_text_vi": "Hai máy lạnh cùng yếu, một máy chảy nước và chưa biết máy nào cần xử lý trước",
+    "expected": {
+      "problem_slug": "hvac-general",
+      "scope_signal": "in_scope",
+      "suggested_service": null,
+      "safety_signals": [],
+      "needs_clarification": true,
+      "complexity": "large"
+    },
+    "difficulty": "medium",
+    "rationale": "Nhiều thiết bị và hai triệu chứng cần dựng timeline theo từng unit trước khi chọn sửa hay vệ sinh",
+    "detail": "Căn hộ có hai máy, cả hai làm lạnh kém nhưng chỉ một dàn có nước; khách chưa xác định triệu chứng bắt đầu cùng lúc hay không."
+  },
+  {
+    "id": "hv_14",
+    "input_text_vi": "Ba dàn lạnh trong căn hộ dùng chung một đường xả âm, nay vừa yếu vừa có nước ở trần",
+    "expected": {
+      "problem_slug": "hvac-general",
+      "scope_signal": "in_scope",
+      "suggested_service": null,
+      "safety_signals": [],
+      "needs_clarification": false,
+      "complexity": "large"
+    },
+    "difficulty": "hard",
+    "rationale": "Ba unit và tuyến xả âm có triệu chứng liên quan, không thể tách thành vệ sinh đơn giản",
+    "detail": "Ba dàn lạnh nối vào tuyến xả âm trong trần; hai dàn yếu và nước đã xuất hiện ở vị trí trần phía dưới."
+  },
+  {
+    "id": "hv_15",
+    "input_text_vi": "Máy lạnh có vấn đề, nhờ xem giúp vì tôi chưa biết là mát yếu hay chảy nước",
+    "expected": {
+      "problem_slug": "other_hvac",
+      "scope_signal": "in_scope",
+      "suggested_service": null,
+      "safety_signals": [],
+      "needs_clarification": true,
+      "complexity": null
+    },
+    "difficulty": "hard",
+    "rationale": "Ý định HVAC rõ nhưng chưa có triệu chứng đủ để chọn slug, cần một câu hỏi phân nhánh",
+    "detail": "Khách chỉ nói máy lạnh có vấn đề và không thể xác định lỗi nằm ở cooling, nước hay tiếng ồn."
+  },
+  {
+    "id": "hv_16",
+    "input_text_vi": "Can kiem tra dieu hoa nhung mo ta khong duoc trieu chung, may van bat",
+    "expected": {
+      "problem_slug": "other_hvac",
+      "scope_signal": "in_scope",
+      "suggested_service": null,
+      "safety_signals": [],
+      "needs_clarification": true,
+      "complexity": null
+    },
+    "difficulty": "hard",
+    "rationale": "Ca không dấu giữ đúng HVAC nhưng chưa đủ dữ kiện để Kael đoán lỗi hoặc hứa kết quả",
+    "detail": "Máy vẫn bật nhưng khách không mô tả được triệu chứng cụ thể và chưa cung cấp model hay video."
+  },
+  {
+    "id": "hv_17",
+    "input_text_vi": "Ổ cắm cấp điện cho máy lạnh tóe lửa, không phải dàn lạnh bị lỗi",
+    "expected": {
+      "problem_slug": null,
+      "scope_signal": "service_mismatch",
+      "suggested_service": "electrical",
+      "safety_signals": [],
+      "needs_clarification": false,
+      "complexity": null
+    },
+    "difficulty": "easy",
+    "rationale": "Nguồn nguy hiểm nằm ở ổ cắm nên route sang electrical thay vì gán lỗi HVAC",
+    "detail": "Khách xác định tia lửa xuất hiện tại ổ cắm trên tường, dàn lạnh không có biểu hiện lỗi riêng."
+  },
+  {
+    "id": "hv_18",
+    "input_text_vi": "Nước từ ống cấp lavabo chảy vào chân tường dưới dàn lạnh, máy lạnh vẫn bình thường",
+    "expected": {
+      "problem_slug": null,
+      "scope_signal": "service_mismatch",
+      "suggested_service": "plumbing",
+      "safety_signals": [],
+      "needs_clarification": false,
+      "complexity": null
+    },
+    "difficulty": "medium",
+    "rationale": "Nguồn nước được xác định là ống lavabo và không liên quan vận hành điều hòa",
+    "detail": "Ống cấp dưới lavabo rò vào chân tường; dàn lạnh gần đó hoạt động bình thường và không nhỏ nước."
+  },
+  {
+    "id": "hv_19",
+    "input_text_vi": "Chỉ cần khoan giá đỡ cho dàn lạnh mới, không cần đấu điện hay sửa máy",
+    "expected": {
+      "problem_slug": null,
+      "scope_signal": "service_mismatch",
+      "suggested_service": "handyman",
+      "safety_signals": [],
+      "needs_clarification": false,
+      "complexity": null
+    },
+    "difficulty": "easy",
+    "rationale": "Yêu cầu là khoan lắp giá đỡ, không phải chẩn đoán hay sửa HVAC",
+    "detail": "Thiết bị chưa được đấu nối; khách chỉ muốn lắp giá đỡ cơ khí, không yêu cầu phần điện hoặc gas."
+  },
+  {
+    "id": "hv_20",
+    "input_text_vi": "Nhờ thiết kế hệ thống lạnh công nghiệp cho kho đông của nhà máy",
+    "expected": {
+      "problem_slug": null,
+      "scope_signal": "out_of_scope",
+      "suggested_service": null,
+      "safety_signals": [],
+      "needs_clarification": false,
+      "complexity": null
+    },
+    "difficulty": "easy",
+    "rationale": "Thiết kế HVAC công nghiệp không thuộc hộp dịch vụ điều hòa căn hộ",
+    "detail": "Yêu cầu là thiết kế kho đông nhà máy, không phải vệ sinh, chẩn đoán hoặc sửa máy lạnh trong căn hộ."
+  },
+  {
+    "id": "hv_21",
+    "input_text_vi": "Tủ lạnh trong bếp báo lỗi và không đông đá, cần thay máy nén",
+    "expected": {
+      "problem_slug": null,
+      "scope_signal": "out_of_scope",
+      "suggested_service": null,
+      "safety_signals": [],
+      "needs_clarification": false,
+      "complexity": null
+    },
+    "difficulty": "medium",
+    "rationale": "Thiết bị là tủ lạnh gia dụng, không được đổi thành HVAC chỉ vì có máy nén và làm lạnh",
+    "detail": "Khách nói rõ tủ lạnh không đông đá và muốn thay máy nén; không phải máy điều hòa của căn hộ."
+  },
+  {
+    "id": "hv_22",
+    "input_text_vi": "Máy lạnh yếu sau khi vệ sinh, thợ nghi xì gas và thấy vệt dầu ở đầu ống",
+    "expected": {
+      "problem_slug": "weak_cooling",
+      "scope_signal": "in_scope",
+      "suggested_service": null,
+      "required_safety_signals": ["refrigerant_suspected", "sealed_system", "refrigerant", "repair"],
+      "needs_clarification": false,
+      "complexity": "large"
+    },
+    "difficulty": "hard",
+    "rationale": "Cooling yếu kèm nghi rò gas và vệt dầu chuyển thành sealed-system capability, không nên hứa nạp gas ngay",
+    "detail": "Sau một lần vệ sinh, máy yếu hơn; người làm trước nghi xì gas vì thấy vệt dầu ở đầu ống nhưng chưa có kết quả kiểm tra kín."
+  },
+  {
+    "id": "hv_23",
+    "input_text_vi": "Dàn nóng ở mặt ngoài tầng cao, muốn sửa nhưng chỉ tiếp cận được từ mép ban công",
+    "expected": {
+      "problem_slug": "no_cooling",
+      "scope_signal": "in_scope",
+      "suggested_service": null,
+      "required_safety_signals": ["unsafe_unit_access", "height_access", "repair"],
+      "needs_clarification": false,
+      "complexity": "large"
+    },
+    "difficulty": "hard",
+    "rationale": "Khả năng tiếp cận ngoài cao là gate an toàn và capability độc lập với việc máy đang không mát",
+    "detail": "Dàn nóng đặt ở mặt ngoài tầng cao, không có sàn thao tác chắc chắn; khách muốn sửa vì máy không mát."
+  },
+  {
+    "id": "hv_24",
+    "input_text_vi": "Máy lạnh phòng làm việc có mùi khét, phát tia lửa rồi chảy nước xuống sàn",
+    "expected": {
+      "problem_slug": "water_leak",
+      "scope_signal": "in_scope",
+      "suggested_service": null,
+      "required_safety_signals": ["burning_smell", "sparking"],
+      "needs_clarification": false,
+      "complexity": "large"
+    },
+    "difficulty": "hard",
+    "rationale": "Water-leak slug không được làm mất hai hazard điện/nhiệt cần ưu tiên trong response",
+    "detail": "Nước đang xuống sàn nhưng cùng lúc khách thấy mùi khét và tia lửa từ khu vực máy, vì vậy không hỏi thêm về vệ sinh trước."
+  }
+]

@@ -1,0 +1,362 @@
+[
+  {
+    "id": "cl_holdout_01",
+    "input_text_vi": "Lau bụi, hút sàn và vệ sinh phòng khách của căn hộ nhỏ, không có thú cưng",
+    "expected": {
+      "problem_slug": "standard_home_cleaning",
+      "scope_signal": "in_scope",
+      "suggested_service": null,
+      "safety_signals": [],
+      "needs_clarification": true,
+      "complexity": "small"
+    },
+    "difficulty": "easy",
+    "rationale": "[SYNTHETIC SELF-REVIEW] Một khu vực với điều kiện thường quy là standard nhưng vẫn cần khóa area/time",
+    "detail": "Khách nêu phòng khách và không có thú cưng nhưng chưa nói vật tư hay khu vực nào cần tránh."
+  },
+  {
+    "id": "cl_holdout_02",
+    "input_text_vi": "Dọn thường xuyên ba phòng và hành lang, nhà có em bé ngủ trong phòng bên cạnh",
+    "expected": {
+      "problem_slug": "standard_home_cleaning",
+      "scope_signal": "in_scope",
+      "suggested_service": null,
+      "safety_signals": [],
+      "needs_clarification": true,
+      "complexity": "medium"
+    },
+    "difficulty": "easy",
+    "rationale": "[SYNTHETIC SELF-REVIEW] Nhiều khu vực và occupancy constraint làm tăng planning nhưng chưa có specialist hazard",
+    "detail": "Ba phòng cùng hành lang cần làm thường quy; em bé ở nhà nên cần xác nhận khung giờ và sản phẩm."
+  },
+  {
+    "id": "cl_holdout_03",
+    "input_text_vi": "Căn hộ bỏ không gần một năm, cần làm tổng vệ sinh trước ngày nhận nhà",
+    "expected": {
+      "problem_slug": "deep_cleaning",
+      "scope_signal": "in_scope",
+      "suggested_service": null,
+      "safety_signals": [],
+      "needs_clarification": true,
+      "complexity": "medium"
+    },
+    "difficulty": "easy",
+    "rationale": "[SYNTHETIC SELF-REVIEW] Thời gian bỏ trống và yêu cầu toàn căn hộ chọn deep_cleaning nhưng condition còn thiếu",
+    "detail": "Khách chưa biết bụi, nấm mốc hay chất thải có xuất hiện không và chưa cung cấp số phòng cụ thể."
+  },
+  {
+    "id": "cl_holdout_04",
+    "input_text_vi": "Tổng vệ sinh sau chuyển nhà, nhiều thùng carton và vết bẩn ở cả phòng khách lẫn bếp",
+    "expected": {
+      "problem_slug": "deep_cleaning",
+      "scope_signal": "in_scope",
+      "suggested_service": null,
+      "safety_signals": [],
+      "needs_clarification": true,
+      "complexity": "large"
+    },
+    "difficulty": "medium",
+    "rationale": "[SYNTHETIC SELF-REVIEW] Nhiều phòng, waste volume và soil condition cần xác nhận trước khi báo phạm vi",
+    "detail": "Carton và vết bẩn xuất hiện ở hai khu vực, chưa rõ khách muốn thu gom toàn bộ hay chỉ lau sau khi đã tự dọn."
+  },
+  {
+    "id": "cl_holdout_05",
+    "input_text_vi": "Vệ sinh dầu bám quanh bếp gas, gạch tường và tay nắm tủ",
+    "expected": {
+      "problem_slug": "kitchen_deep_clean",
+      "scope_signal": "in_scope",
+      "suggested_service": null,
+      "safety_signals": [],
+      "needs_clarification": true,
+      "complexity": "small"
+    },
+    "difficulty": "easy",
+    "rationale": "[SYNTHETIC SELF-REVIEW] Dầu ở các bề mặt bếp là kitchen branch và chưa có yêu cầu sửa gas/thiết bị",
+    "detail": "Khách chỉ nêu vệ sinh bề mặt và tay nắm, chưa nói hood, lưới lọc hay sản phẩm đã dùng."
+  },
+  {
+    "id": "cl_holdout_06",
+    "input_text_vi": "Bếp đóng mỡ lâu ngày, mặt bàn đá tự nhiên và cửa tủ phủ sơn dễ trầy",
+    "expected": {
+      "problem_slug": "kitchen_deep_clean",
+      "scope_signal": "in_scope",
+      "suggested_service": null,
+      "required_safety_signals": ["fragile_surface"],
+      "needs_clarification": true,
+      "complexity": "large"
+    },
+    "difficulty": "medium",
+    "rationale": "[SYNTHETIC SELF-REVIEW] Mỡ nặng đi cùng đá tự nhiên và lớp sơn nhạy làm phương pháp trở thành capability question",
+    "detail": "Mặt bàn đá tự nhiên và cửa tủ dễ trầy; khách chưa biết chất tẩy cũ đã dùng và muốn tránh hỏng bề mặt."
+  },
+  {
+    "id": "cl_holdout_07",
+    "input_text_vi": "Làm sạch cặn nước và ron đen trong phòng tắm chính, không có mùi nước thải",
+    "expected": {
+      "problem_slug": "bathroom_deep_clean",
+      "scope_signal": "in_scope",
+      "suggested_service": null,
+      "safety_signals": [],
+      "needs_clarification": true,
+      "complexity": "small"
+    },
+    "difficulty": "easy",
+    "rationale": "[SYNTHETIC SELF-REVIEW] Scale/ron trong một phòng là bathroom deep clean và mùi sewage được phủ định",
+    "detail": "Khách muốn làm cặn và ron, chưa nói vật liệu gạch, thông gió hay có người dùng phòng trong lúc làm."
+  },
+  {
+    "id": "cl_holdout_08",
+    "input_text_vi": "Bồn cầu và sàn tắm dính máu cùng chất thải sinh học, cửa phòng đã đóng",
+    "expected": {
+      "problem_slug": "bathroom_deep_clean",
+      "scope_signal": "in_scope",
+      "suggested_service": null,
+      "required_safety_signals": ["biohazard"],
+      "needs_clarification": false,
+      "complexity": "large"
+    },
+    "difficulty": "hard",
+    "rationale": "[SYNTHETIC SELF-REVIEW] Bathroom location không làm mất biohazard và phải giữ khu vực đóng, không tự lau",
+    "detail": "Máu và chất thải sinh học ở bồn cầu cùng sàn tắm; khách đã đóng cửa và không yêu cầu hướng dẫn xử lý tại nhà."
+  },
+  {
+    "id": "cl_holdout_09",
+    "input_text_vi": "Vệ sinh kính và khung cửa sổ phía trong, không cần mở cánh ra ngoài",
+    "expected": {
+      "problem_slug": "window_cleaning",
+      "scope_signal": "in_scope",
+      "suggested_service": null,
+      "safety_signals": [],
+      "needs_clarification": true,
+      "complexity": "small"
+    },
+    "difficulty": "easy",
+    "rationale": "[SYNTHETIC SELF-REVIEW] Interior window cleaning có điểm tiếp cận bounded và chưa có high-access",
+    "detail": "Khách xác nhận chỉ làm mặt trong và khung, còn số cửa và tình trạng ray chưa biết."
+  },
+  {
+    "id": "cl_holdout_10",
+    "input_text_vi": "Kính ngoài logia tầng mười cần lau, nhưng điểm đứng duy nhất là một chiếc thang không chắc",
+    "expected": {
+      "problem_slug": "window_cleaning",
+      "scope_signal": "in_scope",
+      "suggested_service": null,
+      "required_safety_signals": ["unsafe_height"],
+      "needs_clarification": false,
+      "complexity": "large"
+    },
+    "difficulty": "hard",
+    "rationale": "[SYNTHETIC SELF-REVIEW] Thang không chắc ở logia cao là unsafe_height và không được hướng dẫn tự leo",
+    "detail": "Mặt kính ngoài tầng mười không có sàn thao tác đã xác nhận; khách nêu chiếc thang không chắc là điểm duy nhất."
+  },
+  {
+    "id": "cl_holdout_11",
+    "input_text_vi": "Sau khi thay sàn, cần gom bụi và vụn vật liệu ở phòng ngủ và lối vào",
+    "expected": {
+      "problem_slug": "post_repair_cleaning",
+      "scope_signal": "in_scope",
+      "suggested_service": null,
+      "safety_signals": [],
+      "needs_clarification": true,
+      "complexity": "medium"
+    },
+    "difficulty": "medium",
+    "rationale": "[SYNTHETIC SELF-REVIEW] Cleanup sau sửa có area và waste chưa rõ nên cần hỏi volume và loại bề mặt",
+    "detail": "Vụn vật liệu ở hai khu vực sau thay sàn; chưa rõ còn keo, bụi mịn hay cạnh sắc."
+  },
+  {
+    "id": "cl_holdout_12",
+    "input_text_vi": "Dọn sau cải tạo toàn căn, khách muốn dùng máy hút và máy chà sàn công suất lớn",
+    "expected": {
+      "problem_slug": "post_repair_cleaning",
+      "scope_signal": "in_scope",
+      "suggested_service": null,
+      "required_safety_signals": ["heavy_machinery"],
+      "needs_clarification": false,
+      "complexity": "large"
+    },
+    "difficulty": "hard",
+    "rationale": "[SYNTHETIC SELF-REVIEW] Equipment requirement đã rõ là heavy_machinery và cần kiểm tra đường vận chuyển",
+    "detail": "Toàn căn vừa cải tạo, khách muốn đưa hai thiết bị công suất lớn qua lối vào nhưng chưa xác nhận thang máy."
+  },
+  {
+    "id": "cl_holdout_13",
+    "input_text_vi": "Vệ sinh phòng khách, bếp và hai toilet sau khi cho thuê, chưa rõ mức bẩn từng phòng",
+    "expected": {
+      "problem_slug": "cleaning-general",
+      "scope_signal": "in_scope",
+      "suggested_service": null,
+      "safety_signals": [],
+      "needs_clarification": true,
+      "complexity": "medium"
+    },
+    "difficulty": "medium",
+    "rationale": "[SYNTHETIC SELF-REVIEW] Nhiều room types nhưng condition chưa tách được standard/deep",
+    "detail": "Khách liệt kê bốn khu vực nhưng chưa biết có cặn, dầu, rác hay thiết bị cần vệ sinh riêng."
+  },
+  {
+    "id": "cl_holdout_14",
+    "input_text_vi": "Làm sạch toàn căn có sàn đá đặc biệt và cửa kính mỏng, bố mẹ lớn tuổi vẫn ở nhà",
+    "expected": {
+      "problem_slug": "cleaning-general",
+      "scope_signal": "in_scope",
+      "suggested_service": null,
+      "required_safety_signals": ["specialist_floor", "fragile_surface"],
+      "needs_clarification": false,
+      "complexity": "large"
+    },
+    "difficulty": "hard",
+    "rationale": "[SYNTHETIC SELF-REVIEW] Specialty floor, fragile glass, and occupancy require method/access planning",
+    "detail": "Sàn đá đặc biệt và kính mỏng cần tránh thử hóa chất đại trà; người lớn tuổi vẫn ở nhà nên cần chia khu vực."
+  },
+  {
+    "id": "cl_holdout_15",
+    "input_text_vi": "Nhà cần dọn nhưng chưa biết là vệ sinh nhà, cửa kính hay xử lý sau sửa",
+    "expected": {
+      "problem_slug": "other_cleaning",
+      "scope_signal": "in_scope",
+      "suggested_service": null,
+      "safety_signals": [],
+      "needs_clarification": true,
+      "complexity": null
+    },
+    "difficulty": "hard",
+    "rationale": "[SYNTHETIC SELF-REVIEW] Cleaning intent có nhưng ba branch khác nhau chưa được phân biệt",
+    "detail": "Khách không nêu khu vực, nguyên nhân bẩn hoặc loại bề mặt nên không được đoán post-repair."
+  },
+  {
+    "id": "cl_holdout_16",
+    "input_text_vi": "Can ve sinh giup nhung minh chua biet co bao nhieu phong va co rac dac biet khong",
+    "expected": {
+      "problem_slug": "other_cleaning",
+      "scope_signal": "in_scope",
+      "suggested_service": null,
+      "safety_signals": [],
+      "needs_clarification": true,
+      "complexity": null
+    },
+    "difficulty": "hard",
+    "rationale": "[SYNTHETIC SELF-REVIEW] Không dấu và thiếu room/waste facts phải giữ unknown, không tự gán hazard",
+    "detail": "Khách hỏi vệ sinh nhưng chưa biết số phòng và chỉ hỏi liệu có rác đặc biệt hay không."
+  },
+  {
+    "id": "cl_holdout_17",
+    "input_text_vi": "Dàn lạnh phòng ngủ nhỏ nước và cần rửa lưới, xin chuyển đúng thợ",
+    "expected": {
+      "problem_slug": null,
+      "scope_signal": "service_mismatch",
+      "suggested_service": "hvac",
+      "safety_signals": [],
+      "needs_clarification": false,
+      "complexity": null
+    },
+    "difficulty": "easy",
+    "rationale": "[SYNTHETIC SELF-REVIEW] Nguồn nước và việc rửa nằm ở air-conditioning unit, không phải home cleaning",
+    "detail": "Khách muốn xử lý dàn lạnh bị nhỏ nước; phần vệ sinh là một mode của HVAC."
+  },
+  {
+    "id": "cl_holdout_18",
+    "input_text_vi": "Vòi bếp rò và làm ướt tủ, đừng cho đội lau nhà xử lý phần nguyên nhân",
+    "expected": {
+      "problem_slug": null,
+      "scope_signal": "service_mismatch",
+      "suggested_service": "plumbing",
+      "safety_signals": [],
+      "needs_clarification": false,
+      "complexity": null
+    },
+    "difficulty": "medium",
+    "rationale": "[SYNTHETIC SELF-REVIEW] Nguyên nhân là faucet leak và phải route plumbing, phần lau chỉ là hậu quả",
+    "detail": "Vòi bếp rò nước vào tủ; khách đã chủ động tách nguyên nhân khỏi cleanup."
+  },
+  {
+    "id": "cl_holdout_19",
+    "input_text_vi": "Nệm có mùi ẩm và vết bẩn lâu ngày, cần xử lý tại phòng ngủ",
+    "expected": {
+      "problem_slug": null,
+      "scope_signal": "service_mismatch",
+      "suggested_service": "upholstery",
+      "safety_signals": [],
+      "needs_clarification": false,
+      "complexity": null
+    },
+    "difficulty": "easy",
+    "rationale": "[SYNTHETIC SELF-REVIEW] Mattress odor/stain là upholstery care chứ không phải vệ sinh phòng",
+    "detail": "Vật dụng cụ thể là nệm và vấn đề là mùi/vết bẩn trên vải, cần worker của upholstery."
+  },
+  {
+    "id": "cl_holdout_20",
+    "input_text_vi": "Nhờ xử lý chất lỏng không rõ trong thùng ở kho hàng, chưa biết có độc không",
+    "expected": {
+      "problem_slug": null,
+      "scope_signal": "out_of_scope",
+      "suggested_service": null,
+      "required_safety_signals": ["unknown_chemical"],
+      "needs_clarification": false,
+      "complexity": null
+    },
+    "difficulty": "medium",
+    "rationale": "[SYNTHETIC SELF-REVIEW] Unknown chemical trong kho là specialist cleanup, không được cho cleaner gia dụng xử lý",
+    "detail": "Chất lỏng không rõ nhãn và địa điểm kho hàng vượt home-cleaning scope; khách chưa chạm vào."
+  },
+  {
+    "id": "cl_holdout_21",
+    "input_text_vi": "Cần xử lý tổ mối và phun hóa chất cho toàn bộ tòa chung cư",
+    "expected": {
+      "problem_slug": null,
+      "scope_signal": "out_of_scope",
+      "suggested_service": null,
+      "safety_signals": [],
+      "needs_clarification": false,
+      "complexity": null
+    },
+    "difficulty": "medium",
+    "rationale": "[SYNTHETIC SELF-REVIEW] Pest control quy mô tòa nhà là specialist service, không đổi thành deep cleaning",
+    "detail": "Yêu cầu là diệt mối và phun hóa chất cho toàn tòa, không phải làm sạch bề mặt căn hộ."
+  },
+  {
+    "id": "cl_holdout_22",
+    "input_text_vi": "Tường nhà tắm mốc đen lan rộng, người thuê đã rời phòng và không dùng hóa chất",
+    "expected": {
+      "problem_slug": "bathroom_deep_clean",
+      "scope_signal": "in_scope",
+      "suggested_service": null,
+      "required_safety_signals": ["heavy_mold"],
+      "needs_clarification": false,
+      "complexity": "large"
+    },
+    "difficulty": "hard",
+    "rationale": "[SYNTHETIC SELF-REVIEW] Black mold spreading kích hoạt hazardous-material path dù occupancy đã được giảm",
+    "detail": "Mốc đen lan rộng trên tường nhà tắm; khách đã rời phòng và chưa dùng hóa chất để xử lý."
+  },
+  {
+    "id": "cl_holdout_23",
+    "input_text_vi": "Sau tháo tủ có kính vỡ, lưỡi dao và chai hóa chất mất nhãn ở hành lang",
+    "expected": {
+      "problem_slug": "post_repair_cleaning",
+      "scope_signal": "in_scope",
+      "suggested_service": null,
+      "required_safety_signals": ["sharp_waste", "unknown_chemical"],
+      "needs_clarification": false,
+      "complexity": "large"
+    },
+    "difficulty": "hard",
+    "rationale": "[SYNTHETIC SELF-REVIEW] Sharp waste và unlabeled chemical sau tháo dỡ phải được giữ cùng safety path",
+    "detail": "Hành lang có kính vỡ, lưỡi dao và chai mất nhãn; mọi người đang tránh khu vực và không tự gom."
+  },
+  {
+    "id": "cl_holdout_24",
+    "input_text_vi": "Cần lau cửa sổ cao, bảo vệ sàn gỗ tự nhiên và đưa máy hút nặng vào căn hộ",
+    "expected": {
+      "problem_slug": "window_cleaning",
+      "scope_signal": "in_scope",
+      "suggested_service": null,
+      "required_safety_signals": ["unsafe_height", "specialist_floor", "heavy_machinery"],
+      "needs_clarification": false,
+      "complexity": "large"
+    },
+    "difficulty": "hard",
+    "rationale": "[SYNTHETIC SELF-REVIEW] High window, specialty floor, and heavy equipment require a coordinated qualified plan",
+    "detail": "Cửa sổ cao, sàn gỗ tự nhiên và thiết bị nặng tạo thành ba constraint độc lập; không được tự đề xuất thang hay hóa chất."
+  }
+]

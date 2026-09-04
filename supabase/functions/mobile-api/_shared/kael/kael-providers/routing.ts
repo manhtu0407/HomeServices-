@@ -22,6 +22,22 @@ export type ChooseProviderOptions = {
 
 export type CircuitAwareProviderOptions = Omit<ChooseProviderOptions, "isCircuitOpen">;
 
+// A fallback only runs after the primary has already burned its own budget, so handing it the
+// identical deadline makes the whole chain fail as one unit whenever the cause is latency rather
+// than a dead provider. It is allowed to be more patient than the route it is rescuing.
+const FALLBACK_LATENCY_MULTIPLIER = 1.5;
+
+// RULES #10 caps any single provider call at 20s; the extra patience granted above must not be
+// able to carry a fallback past that ceiling.
+const LONGEST_PROVIDER_TIMEOUT_MS = 20_000;
+
+function fallbackLatencyBudgetMs(latencyBudgetMs: number): number {
+  return Math.min(
+    Math.round(latencyBudgetMs * FALLBACK_LATENCY_MULTIPLIER),
+    LONGEST_PROVIDER_TIMEOUT_MS,
+  );
+}
+
 // Account/provider failures cannot be repaired by changing models on the same provider.
 const PROVIDER_WIDE_FAILURE_CODES = new Set([
   "HTTP_401",
@@ -88,7 +104,7 @@ export function providerCandidatesForPurpose(
       fallbackKind: "model",
       score: 90,
       costCeilingUsd: config.costCeilingUsd,
-      latencyBudgetMs: config.latencyBudgetMs,
+      latencyBudgetMs: fallbackLatencyBudgetMs(config.latencyBudgetMs),
     });
   } else if (config.modelFallback) {
     routes.push({
@@ -98,7 +114,7 @@ export function providerCandidatesForPurpose(
       fallbackKind: "model",
       score: 90,
       costCeilingUsd: config.costCeilingUsd,
-      latencyBudgetMs: config.latencyBudgetMs,
+      latencyBudgetMs: fallbackLatencyBudgetMs(config.latencyBudgetMs),
     });
   }
   if (config.fallback) {
@@ -109,7 +125,7 @@ export function providerCandidatesForPurpose(
       fallbackKind: "provider",
       score: 80,
       costCeilingUsd: config.costCeilingUsd,
-      latencyBudgetMs: config.latencyBudgetMs,
+      latencyBudgetMs: fallbackLatencyBudgetMs(config.latencyBudgetMs),
     });
   }
   const blocked = new Set(options.blockedProviders ?? []);

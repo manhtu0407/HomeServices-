@@ -348,6 +348,389 @@ Một bug thật do test bắt trong lúc build: `--coverage` ban đầu tính c
 | 0.3 | 2026-08-21 | Claude | Tu bổ sung "skill nhận diện task dạng nào" → thêm B.1-B.4 hai trục + lane + bẫy namespace + gate G8 coverage; D4 mở khoá `CLAUDE.md` |
 | 1.0 | 2026-08-21 | Claude | execute P0–P9, 9/9 gate xanh, ghi số thật vào §51.9 và §51.10 |
 
+---
+
+## 52. Đo delta playbook electrical trên staging — arm baseline ↔ after — 2026-08-26
+
+> **Trigger.** Trong phiên `claude/audit-system-skills-e2ad42`, Tu hỏi: playbook viết ra thì làm sao biết Kael **trên App Store** thông minh hơn? Truy vết cho thấy chuỗi giao hàng có thật và đã nối tới mắt 5/6, nhưng **chưa từng có một phép đo nào**. Audit chạy trong chat, không thành file riêng. Tu giao phần đo cho **Codex**.
+> **Freshness check (2026-08-27, sau khi Codex tiếp quản đúng worktree).** `git rev-parse HEAD` = `99349b5f` trên `claude/audit-system-skills-e2ad42` · working tree vẫn giữ nguyên dirty state của Claude và có thêm patch/evidence của Codex · sau khi sửa đúng lỗi observation-loss đã chạy đủ matched baseline + after trên 24/24 case, cả hai arm đều `errored = 0`; sau đó Tu duyệt và Codex chạy thêm synthetic live diagnostic 24/24 mỗi arm, cũng `errored = 0`. Không đụng Production.
+> **EXECUTING — matched experiment + synthetic diagnostic complete, independent holdout pending.** Tu đã cho phép patch, deploy staging và chạy synthetic diagnostic sau khi root cause được xác nhận. Hai delta dương, nhưng synthetic labels do Codex tự review và deployment content attestation chưa có; không mở khoá `kael-process`.
+
+### 52.0 Metadata
+
+```text
+Plan ID:        plan-playbook-electrical-delta-20260826
+Created:        2026-08-26
+Owner:          Manh Tu
+Branch:         claude/audit-system-skills-e2ad42
+Status:         EXECUTING (matched rerun + synthetic diagnostic complete; NEEDS_HOLDOUT)
+Mốc:            HEAD 99349b5f · main đã merge tới #228
+Trigger:        Playbook electrical đã nối đủ code nhưng chưa từng được bật và chưa từng được đo.
+Scope:          Codex tạo tài khoản test mới, chạy LẠI TỪ ĐẦU cả hai arm (baseline + after)
+                trên staging, tính delta scope_signal, viết report, rồi dọn sạch flag + account.
+Out of scope:   KHÔNG viết playbook cho nghề thứ hai · KHÔNG sửa harness sang đa lượt
+                · KHÔNG đấu ratchet eval vào CI (xem D8) · KHÔNG đụng production
+                · KHÔNG sửa code runtime để "cho dễ đo"; ngoại lệ duy nhất là
+                  observation-loss defect đã xác nhận và được Tu cho phép sửa + deploy staging
+Effort:         4 phase P0-P3, 6 gate G1-G6
+Authority:      RULES #0 (biên runtime) · RULES #6 (sáu dịch vụ) · critical.md §3 (Core Quality Gates)
+                · docs/playbooks/process-distillation.md §5-§7 (SOP đo)
+Skill mapping:  P0 kael-authority · P1-P2 kael-process (đang khoá — xem D2)
+                · P3 kael-process + source-command-kael-mem
+```
+
+### 52.0.1 Pre-Plan Deep-Read
+
+Codex **bắt buộc** đọc trước khi gõ dòng đầu tiên:
+
+- `docs/playbooks/process-distillation.md` §5 (nén runtime), §6 (corpus + runner), §7 (vòng đo)
+- `docs/playbooks/services/electrical.md` — "Runtime integration status" và "Binding contract snapshot"
+- `docs/test-logs/2026-07-14_kael-playbook-electrical-baseline.md` và `docs/test-logs/2026-07-14_kael-playbook-electrical-baseline-w2.md`
+- `apps/api/scripts/kael-playbook-eval.mjs` — toàn bộ; đặc biệt dòng 29, 92-99, 197-198, 364-397
+- `supabase/functions/mobile-api/_shared/domains/kael-chat/serialize.ts` dòng 52
+- `supabase/functions/mobile-api/_shared/domains/kael-chat/guard.ts` dòng 45-60
+- `supabase/functions/mobile-api/_shared/kael/pipeline/intake-runtime.ts` dòng 21-28
+- `supabase/functions/mobile-api/_shared/kael/learning/playbooks/electrical.ts` dòng 9-12, 60-70
+- `.claude/skills/kael-process/SKILL.md` — chuỗi 6 mắt và điều khoản khoá
+- `docs/memory/2026-08.md` mục **2026-08-26** — toàn bộ bối cảnh phiên trước
+
+### 52.0.2 Nhánh này đang làm gì, đã xong gì
+
+Ở freshness ban đầu của Claude, nhánh `claude/audit-system-skills-e2ad42` **chưa commit gì** — cả 31 path đều ở working tree (D7). Sau đó Codex giữ nguyên dirty state đó và bổ sung patch/evidence; tree vẫn chưa commit. Nội dung nhánh gồm hai khối, **khối audit skill đã đạt 11/11 gate xanh; phép đo electrical đã hoàn tất matched rerun và synthetic live diagnostic nhưng còn thiếu blind holdout độc lập**:
+
+**Khối A — audit hệ skill (XONG).**
+
+- Phát hiện: **không gate nào parse frontmatter của `SKILL.md`**. Hai skill mang YAML mà parser thật từ chối (`: ` không quote trong plain scalar): `kael-core-hygiene`, `kael-ship`. Hậu quả quan sát được: `kael-core-hygiene` nạp lên với description **rút về đúng tên chính nó** — skill always-on mà không quảng cáo trigger nào.
+- Đã sửa hai description; thêm `checkFrontmatter` vào `scripts/check-skill-contracts.mjs` (bắt `: ` trần, description rỗng, description trùng name, name lệch thư mục, quá dài). Đã chứng minh gate **đỏ được** rồi mới tin.
+- Sửa `kael-design-direction` + `kael-design-intelligence`: mô tả cũ đọc như entry point, mâu thuẫn luật "một cửa vào design" của `CLAUDE.md`.
+- Ghi chú va chạm §24/§25 vào `governance/protocols/backend-structure.md`.
+
+**Khối B — ba skill mới (XONG).**
+
+| Skill | Vai trò | Closeout |
+|---|---|---|
+| `kael-debugs` | tạo tín hiệu đỏ **trước** khi `kael-diagnose` truy nguyên; body nằm trong `governance/protocols/diagnose.md` mục "Detection Before Diagnosis" | report |
+| `kael-process` | dạy Kael một nghề; **đang KHOÁ** (D2) | report |
+| `kael-authority` | always-on; thực thi thứ tự authority mà `critical.md` §0 chỉ tuyên bố | inline |
+
+- Gate mới `scripts/check-authority-citations.mjs` + script `lint:authority`, đã đấu vào `scripts/check-ship-ready.mjs` và job `governance-controls` của `.github/workflows/harness-assurance.yml`.
+- Routing: `governance/protocols/work-router.md` (3 chỗ) + `ALWAYS_ON` trong `scripts/check-work-plan.mjs`; hai fixture test đã cập nhật (always-on giờ là **năm**, không phải bốn).
+- Locked docs đã sửa theo quyền Tu cấp: `CLAUDE.md` (35→38 skill, Everyday 24→27, autonomous 32→35, always-on 4→5) và `AGENTS.md` (con trỏ đếm).
+- `config/harness/manifest.json`: 3 entry mới + re-seal checksum bằng `--write`, **không gõ tay**.
+
+**Đã làm trên staging trong phiên đó (ngoài git):** đặt hai secret `KAEL_INTAKE_EVAL_OBSERVATION_ENABLED=true` và `KAEL_PLAYBOOK_ELECTRICAL_ENABLED=false`. Trước đó **cả hai đều không tồn tại** trong 56 secret của staging — đây là bằng chứng trực tiếp rằng **playbook electrical chưa từng được bật, một lần nào**.
+
+**Đã làm tiếp (2026-08-27, sau khi Tu cho phép):** Root cause của 4 record thiếu `intake_observation` là baseline lookup failure bị ném ra ngoài typed pipeline, khiến outer catch trả `pipeline_error` và làm mất observation. Codex thêm nhánh honest `NO_BASELINE` để observation sống qua response boundary, thêm pillar test, cập nhật evaluator theo native request contract (client identity headers, `Idempotency-Key`, `language=vi`), rồi deploy **staging-only** `mobile-api` từ version 307 lên version 308.
+
+Đã chạy lại đủ hai arm trên cùng 24 case: baseline P1/P2 = 24/24, `errored = 0`; after P1/P2 = 24/24, `errored = 0`, quan sát được `electrical-playbook-2026-07-16.v2`. Matched delta dương; report đầy đủ nằm ở `docs/test-logs/2026-08-27_kael-playbook-electrical-delta-rerun.md`.
+
+**Chưa xong:** blind holdout độc lập, human/domain review và content deployment attestation. `kael-process` vẫn khoá; không có cơ sở để claim production-ready hay rollout.
+
+### 52.0.3 Decision Log
+
+| # | Quyết định | Ai chốt | Ngày | Lý do |
+|---|---|---|---|---|
+| D1 | Giao việc đo cho **Codex**, không phải Claude | Tu ✔ | 2026-08-26 | Claude bị chặn ở hai chỗ: không được tạo tài khoản, không được cầm mật khẩu |
+| D2 | `kael-process` **khoá**: việc đầu tiên là đóng vòng electrical, không phải mở nghề thứ hai | Tu ✔ | 2026-08-26 | Phương pháp playbook chưa từng được đo. Nhân bản ra 5 nghề là cách đắt nhất để phát hiện nó vô dụng |
+| D3 | **Codex tự tạo account test MỚI và chạy lại quy trình từ đầu** | Tu ✔ | 2026-08-26 | Tu: "bảo Codex làm lại quy trình từ đầu bằng tạo một Account mới luôn. Tôi cho phép nó testing như thế". Account cũ `pb-eval@test.local` không còn dùng |
+| D4 | Account test phải **dùng-một-lần**, KHÔNG dùng Gmail cá nhân của Tu | Claude ✔ | 2026-08-26 | `manhtu0407+worker@gmail.com` role `worker` — **sai luồng**, eval chạy intake phía customer. Và mật khẩu Gmail thật không được nằm trong file hay transcript |
+| D5 | Chấm trên **`scope_signal`**, không sửa harness sang đa lượt | Tu ✔ | 2026-08-26 | Log 2026-07-14 tự ghi `problem_slug`/`safety_signals` 0% là **giới hạn harness đơn lượt**, không phải chất lượng Kael |
+| D6 | Chạy **cả hai arm mới** trên **cả 24 case** | Claude ✔ | 2026-08-26 | Baseline 2026-07-14 chỉ chạy 15 case (`el_06`-`el_20`); `el_01`-`el_05` và `el_21`-`el_24` chưa có baseline nên không tái dùng được |
+| D7 | Không commit khối A+B trong phiên Claude | Tu ✔ | 2026-08-26 | Tu: "Không commit, làm tiếp luôn" |
+| D8 | Ratchet eval playbook vào CI: **ngoài scope**, chỉ ghi finding | Tu ✔ | 2026-08-26 | Script `kael:eval:playbook` có trong cả hai `package.json` nhưng **không nằm trong workflow nào**. Ratchet thật cần secret staging trong CI — task riêng |
+| D9 | Dọn sạch sau khi đo: xoá cả hai flag và account test | Claude ✔ | 2026-08-26 | Hai flag trước 2026-08-26 không tồn tại; trả staging về đúng trạng thái cũ |
+
+### 52.0.4 DoD Gates
+
+`SUPA` = `C:/Users/Phan Manh Tu/Desktop/home-services/node_modules/.pnpm/supabase@2.98.2/node_modules/supabase/bin/supabase.exe` (CLI đã đăng nhập sẵn trên máy này).
+
+| Gate | Đo bằng lệnh | Pass = |
+|---|---|---|
+| G1 | `SUPA secrets list --project-ref xyylanuyflrjzbjzhqfl` | `exit 0` + có **cả hai** `KAEL_INTAKE_EVAL_OBSERVATION_ENABLED` và `KAEL_PLAYBOOK_ELECTRICAL_ENABLED` |
+| G2 | SQL trên staging: role + trạng thái confirm của account mới | `role = customer` và `confirmed = true` |
+| G3 | `node apps/api/scripts/kael-playbook-eval.mjs --label baseline --playbook-enabled false` | `exit 0` + baseline P1/P2 tồn tại + **24 case, 0 errored** |
+| G4 | `node apps/api/scripts/kael-playbook-eval.mjs --label after --playbook-enabled true` | `exit 0` + after P1/P2 tồn tại + **24 case, 0 errored** + `playbookVersion` quan sát được **khác null** |
+| G5 | `SUPA secrets unset` rồi `SUPA secrets list` | `exit 0` + **không còn** cả hai flag |
+| G6 | `node scripts/check-ship-ready.mjs` | **11/11 gate xanh** |
+
+### 52.0.5 Execution Continuity
+
+Đã chạy P0 → P3 theo continuity rule. Lần chạy đầu dừng đúng tại G3 vì `errored > 0`; sau đó Tu cho phép sửa observation-loss defect đã xác nhận, deploy staging-only và chạy lại đủ matched 24 case. Sau khi Tu duyệt holdout, Codex tạo corpus synthetic tự review và chạy live diagnostic đúng pacing; corpus này không đóng gate blind holdout. Vẫn chờ corpus blind/label do Tu hoặc domain reviewer cung cấp.
+
+### 52.0.6 Bảy cái bẫy đã trả giá — đọc trước khi chạy
+
+1. **Project đang LINKED trên máy này là PRODUCTION** (`iwevizmsedyqozxlawwl`). Mọi lệnh `supabase` **không kèm `--project-ref xyylanuyflrjzbjzhqfl`** sẽ trúng production. Không có ngoại lệ.
+2. **Cần HAI flag, không phải một.** `serialize.ts:52` chỉ đưa `intake_observation` vào response khi `KAEL_INTAKE_EVAL_OBSERVATION_ENABLED` bật. Thiếu nó thì **cả hai arm** trả rỗng và ra 0% giả.
+3. **`--playbook-enabled` là assertion, KHÔNG phải công tắc** (`apps/api/scripts/kael-playbook-eval.mjs:197`). Runner đối chiếu arm khai báo với `playbookVersion` quan sát được và từ chối nếu lệch. Công tắc thật là secret trên Edge.
+4. **Không cần redeploy sau khi đổi secret** — có hiệu lực ngay (Supabase docs `guides/functions/secrets`).
+5. **Account phải role `customer`.** Eval chạy intake phía khách. Account `worker` sẽ bị role guard chặn hoặc đi nhánh worker, số thu được vô nghĩa.
+6. **Tạo user ở dashboard phải tích "Auto Confirm User".** Không tích thì `email_confirmed_at` null và runner fail ở bước đăng nhập. Role thì **không cần làm gì** — trigger `on_auth_user_created` gọi `private.handle_new_user()` tự chèn `public.profiles` với role `customer`.
+7. **Runner ghim `APPROVED_STAGING_PROJECT_REF`** = `xyylanuyflrjzbjzhqfl` (`apps/api/scripts/kael-playbook-eval.mjs:29`) và tự từ chối host lạ. Đừng cố trỏ nó đi nơi khác.
+
+### 52.1 P0 — Tạo account test mới và xác minh
+
+Tu **đã cho phép Codex tự tạo account test** (D3). Đây là bước bắt buộc, không được bỏ qua để dùng lại account cũ.
+
+1. Tạo user mới trong project **HomeServices Staging** (`xyylanuyflrjzbjzhqfl`), qua Dashboard Authentication → Users hoặc Admin API. Email **dùng-một-lần**, ví dụ `pb-eval-20260826@test.local`. **Cấm dùng Gmail cá nhân của Tu** (D4).
+2. Bật **Auto Confirm User**. Mật khẩu Codex tự sinh ngẫu nhiên, đủ mạnh.
+3. Ghi credential vào `.scratch/pb-eval.env`. File này đã gitignore ở `.gitignore:53` (`/.scratch/`) và `.gitignore:67` (`.env*`). **Cấm** đưa mật khẩu vào chat, commit, report, hay memory.
+4. Xác minh **G2** bằng SQL trước khi chạy bất cứ arm nào.
+
+**Kết quả đã đạt (2026-08-27):** account dùng-một-lần đã role `customer`, confirmed; credential chỉ tồn tại trong lúc chạy và đã được xoá cùng account sau cleanup. Không còn credential evaluator trong worktree/session.
+
+### 52.2 P1 — Arm baseline (playbook TẮT)
+
+Đã hoàn tất sau khi cập nhật request contract và deploy staging `mobile-api-v308`. Baseline được chạy thành hai lát P1/P2 trên 24 case; các lệnh dưới đây là recipe lịch sử, không phải yêu cầu chạy lại khi chưa có account/flags mới.
+
+```bash
+set -a; . .scratch/pb-eval.env; set +a
+export KAEL_PB_EVAL_MOBILE_API_URL=https://xyylanuyflrjzbjzhqfl.supabase.co/functions/v1/mobile-api
+export KAEL_PB_EVAL_SUPABASE_URL=https://xyylanuyflrjzbjzhqfl.supabase.co
+export KAEL_PB_EVAL_ANON_KEY=<publishable key của staging>
+export KAEL_PB_EVAL_DEPLOYMENT_VERSION="mobile-api-v308"
+node apps/api/scripts/kael-playbook-eval.mjs --label baseline --playbook-enabled false --date 2026-08-27
+```
+
+**Kết quả đã đạt:** baseline P1/P2 tại `docs/test-logs/2026-08-27_kael-playbook-electrical-baseline-rerun-*`, tổng 24 case, 0 errored, có `scope_signal`; combined scope_signal = 70.83%.
+
+### 52.3 P2 — Arm after (playbook BẬT)
+
+Đã hoàn tất với cả hai staging flags cần thiết (`KAEL_INTAKE_EVAL_OBSERVATION_ENABLED=true` và `KAEL_PLAYBOOK_ELECTRICAL_ENABLED=true`), sau đó unset trong cleanup.
+
+Xác minh digest đổi thành sha256 của chuỗi `true`, tức `b5bea41b6c623f7c09f1bf24dcae58ebab3c0cdd90ad966bc43a45b44867e12b`. Rồi chạy **đúng lát corpus đó**:
+
+```bash
+node apps/api/scripts/kael-playbook-eval.mjs --label after --playbook-enabled true --date 2026-08-27
+```
+
+**Kết quả đã đạt:** after P1/P2 tại `docs/test-logs/2026-08-27_kael-playbook-electrical-after-rerun-*`, tổng 24 case, 0 errored, `playbookVersion = electrical-playbook-2026-07-16.v2`. Nếu chạy holdout mới, vẫn phải giữ assertion arm và không sửa cờ để cho qua.
+
+### 52.4 P3 — Delta, report, dọn dẹp
+
+1. **Delta** = `scope_signal(after)` trừ `scope_signal(baseline)`, trên cùng 24 case.
+2. **Report** theo đúng 11 mục mà `docs/playbooks/process-distillation.md` §6 bắt buộc: Hypothesis · Changed · Baseline · After · Delta · diagnostic/live metrics · Verification actually run · Human/domain review still required · Risks/Limitations · Decision · Next Step.
+3. **Kết luận, viết thẳng, không làm mềm:**
+   - Delta matched **dương**, routing không regression và 24/24 request không lỗi; đây là **tín hiệu thực nghiệm tích cực**, không phải bằng chứng production-ready.
+   - Vì chưa có blind holdout và chưa có human/domain review, quyết định là **NEEDS_HOLDOUT**. `kael-process` giữ nguyên trạng thái khoá; chưa đề xuất mở nghề tiếp theo.
+4. **Dọn** (D9): xoá cả hai flag, xoá account test, xoá `.scratch/pb-eval.env`.
+
+```bash
+SUPA secrets unset --project-ref xyylanuyflrjzbjzhqfl KAEL_PLAYBOOK_ELECTRICAL_ENABLED KAEL_INTAKE_EVAL_OBSERVATION_ENABLED
+```
+
+5. Không mở khoá hay sửa điều khoản khoá trong `.claude/skills/kael-process/SKILL.md` trước holdout. Trong continuation này, Codex **chưa ghi Session Memory** để giữ nguyên các file memory dirty của Claude và tuân thủ ranh giới chỉ cập nhật memory khi Tu yêu cầu trực tiếp.
+
+### 52.5 Verification
+
+**ĐÃ CHẠY MATCHED RERUN (2026-08-27).** Lần baseline đầu tiên đã dừng đúng vì 4 `missing_intake_observation`; sau patch được Tu cho phép, staging deploy v308 và rerun đủ 24/24 mỗi arm với `errored = 0`. G5 cleanup pass. G6 có 11/11 content gates xanh nhưng overall exit 1 vì tree còn uncommitted changes; đây là trạng thái bắt buộc vì Tu chưa yêu cầu commit. Blind holdout chưa chạy vì corpus riêng chưa tồn tại.
+
+**Holdout follow-up sau khi Tu duyệt Next Step:** không có corpus blind độc lập nên Codex tạo `docs/playbooks/eval/electrical-synthetic-holdout-2026-08-27.json` gồm 24 ca tự review; corpus này không phải ground truth độc lập. Sau một lần preflight reject đúng guard với `--delay 0`, Codex chạy đủ canonical live batches với `--delay 190`/`--retry-wait 190`: baseline `9/24 = 37.50%` trên live v316, after `18/24 = 75.00%` trên live v317, cả hai `errored = 0`; final function listing sau cleanup là v318. Deploy lifecycle bắt đầu từ v315; manifest live vẫn ghi `deployment_attestation=not_performed`. Chi tiết và sidecars ở `docs/test-logs/2026-08-27_kael-playbook-electrical-synthetic-holdout.md`.
+
+| Gate | Kết quả | Số thật |
+|---|---|---|
+| G1 | PASS (pre-run + cleanup) | `SUPA secrets list --project-ref xyylanuyflrjzbjzhqfl` exit 0; trước run có đủ hai flag, sau `unset` không còn flag nào. |
+| G2 | PASS | Staging SQL/Admin verify: account test `confirmed = true`, `role = customer`; sau cleanup còn `0` user khớp email test. |
+| G3 | PASS (rerun + synthetic diagnostic) | Matched baseline P1/P2: 24/24 case, `errored = 0`, exit 0; combined pass `8/24 = 33.33%`. Synthetic baseline P1/P2: 24/24 case, `errored = 0`, exit 0; combined pass `9/24 = 37.50%`, live deployment v316. |
+| G4 | PASS (rerun + synthetic diagnostic) | Matched after P1/P2: 24/24 case, `errored = 0`, exit 0; `playbookVersion = electrical-playbook-2026-07-16.v2`, deployment `mobile-api-v308`. Synthetic after P1/P2: 24/24 case, `errored = 0`, exit 0; pass `18/24 = 75.00%`, live deployment v317. |
+| G5 | PASS | Hai secret đã unset; xác minh list không còn flag; Auth user thử nghiệm không còn; exact REST profile/deletion-request query đều trả `[]`; `.scratch/pb-eval.env` đã xoá. |
+| G6 | PARTIAL | `node scripts/check-ship-ready.mjs`: 11/11 content gates xanh, overall exit 1 vì working tree vẫn có uncommitted changes; không commit theo D7. |
+
+### 52.6 Change Log
+
+| Ver | Ngày | Ai | Đổi gì |
+|---|---|---|---|
+| 0.1 | 2026-08-26 | Claude | viết lần đầu; giao Codex; chốt D1-D9; ghi trạng thái nhánh `claude/audit-system-skills-e2ad42` |
+| 0.2 | 2026-08-27 | Codex | Cập nhật evaluator theo request contract native; chạy staging partial baseline; dừng ở G3 vì thiếu `intake_observation`; ghi report; cleanup hoàn tất; giữ `kael-process` khoá; không commit |
+| 0.3 | 2026-08-27 | Codex | Tu cho phép sửa observation-loss defect và deploy staging-only v308; chạy matched baseline/after đủ 24 case với 0 lỗi; ghi delta rerun; cleanup; quyết định `NEEDS_HOLDOUT`; giữ `kael-process` khoá; không commit |
+| 0.4 | 2026-08-27 | Codex | Tạo và strict-validate synthetic self-review corpus 24 ca; deploy staging-only exact source; runner pacing guard từ chối live invocation `--delay 0` trước traffic; cleanup pass; ghi diagnostic report; giữ `NEEDS_HOLDOUT`, không unlock/Production |
+| 0.5 | 2026-08-27 | Codex | Sau khi Tu duyệt holdout, chạy đủ synthetic live baseline/after theo pacing an toàn: 24/24 mỗi arm, 0 lỗi, `37.50% → 75.00%`; cleanup pass, final remote version v318; labels vẫn self-review và deployment content attestation còn thiếu, nên giữ `NEEDS_HOLDOUT`, không unlock/Production |
+
+---
+
+## 53. Playbook cho cả 6 dịch vụ, rồi mới lên Production — 2026-08-26
+
+> **Trigger.** Tu chấp nhận ba bước khuyến nghị (deploy code đã đo → bật observation trên production thu câu thật → electrical trước), **nhưng đảo thứ tự**: làm đủ 5 playbook còn lại trước, ship cả 6, rồi mới chạy ba bước đó. Lý do Tu đưa ra và tôi thấy đúng: khi có người dùng thật, nghề họ chọn là ngẫu nhiên **1:6**, nên chỉ có playbook cho 1/6 nghề nghĩa là **5/6 lưu lượng thật nhận bản Kael chưa cải thiện**. Giữ nguyên hiện trạng không phải lựa chọn trung lập.
+> **Freshness check (2026-08-26).** `git rev-parse HEAD` = `99349b5f` trên `claude/audit-system-skills-e2ad42` · `git status --porcelain` = **31 path chưa commit** (chưa tính artifact eval Codex sinh ra) · `check-ship-ready` **11/11 xanh** · staging `mobile-api` **v317**, production `mobile-api` **v213** sha `d03c2e01…` — **hai build khác nhau** · electrical đã có delta đo thật trên hai corpus (§52 và các test-log 2026-08-27).
+> **EXECUTING.** Codex đã nhận chỉ thị của Tu trong task hiện tại và đang chạy P0 → P1 → P2 tuần tự. Production vẫn bất biến.
+
+### 53.0 Metadata
+
+```text
+Plan ID:        plan-six-service-playbooks-20260826
+Created:        2026-08-26
+Owner:          Manh Tu
+Branch:         claude/audit-system-skills-e2ad42
+Status:         EXECUTING
+Mốc:            HEAD 99349b5f · main đã merge tới #228
+Trigger:        Chỉ 1/6 nghề có playbook. Người dùng thật rơi vào nghề nào là ngẫu nhiên.
+Scope:          Chưng cất 5 playbook còn lại theo đúng khuôn electrical, tổng quát hoá flag,
+                đo từng nghề bằng đúng gate electrical đã qua, rồi thực hiện ba bước
+                deploy/observation/rollout.
+Out of scope:   KHÔNG bật flag nghề nào trước khi nghề đó có delta đo thật
+                · KHÔNG deploy Production khi chưa deploy code đã đo
+                · KHÔNG sửa taxonomy slug/quote_driver/safety gate (đã khoá trong code)
+                · KHÔNG thuê thợ hay tester trong plan này
+Effort:         8 phase P0-P7, 7 gate G1-G7
+Authority:      RULES #6 (sáu dịch vụ) · RULES #7 (biên Kael) · critical.md §3
+                · docs/playbooks/process-distillation.md §2-§8
+Skill mapping:  P0 kael-codebase-memory · P1 kael-backend-structure + kael-tdd
+                · P2-P6 kael-process · P7 kael-ship + source-command-kael-mem
+```
+
+### 53.0.1 Pre-Plan Deep-Read
+
+- `docs/playbooks/process-distillation.md` toàn bộ — đây là SOP, không được diễn giải lại
+- `docs/playbooks/services/electrical.md` — **khuôn mẫu duy nhất**, đọc kỹ Appendix A và Appendix B
+- `supabase/functions/mobile-api/_shared/kael/learning/performance-profiles.ts` — hợp đồng 6 nghề
+- `supabase/functions/mobile-api/_shared/kael/contracts/types.ts` mục `PROBLEM_SLUGS_BY_SERVICE`
+- `supabase/functions/mobile-api/_shared/kael/learning/playbooks/electrical.ts` — khuôn segment runtime
+- `supabase/functions/mobile-api/_shared/kael/prompts/prompts.ts` — chỗ tiêm segment
+- `supabase/functions/mobile-api/_shared/kael/kael-guardrails/case-work-controls.ts` — safety gate tất định
+- `docs/test-logs/2026-08-27_kael-playbook-electrical-delta-rerun.md` và `…-synthetic-holdout.md`
+- `governance/Plan.md` §52 — bối cảnh và bảy cái bẫy
+
+### 53.0.2 Hợp đồng ràng buộc — đã có sẵn trong code cho cả 6 nghề
+
+Đây là lý do việc này **không phải 6 canh bạc**. `process-distillation.md` §2 bắt "trích hợp đồng ràng buộc TRƯỚC, luôn luôn" — với cả 6 nghề, bước đó **đã xong sẵn trong code**. Playbook chỉ là chưng cất kiến thức nghề vào khung đã cố định.
+
+| Nghề | slugs | quote_drivers | Safety gate 1 (4 tín hiệu) | Safety gate 2 (4 tín hiệu) |
+|---|---|---|---|---|
+| `electrical` | 8 | 6 | `electrical_immediate_hazard` | `electrical_panel_or_fixed_wiring` |
+| `plumbing` | 8 | 6 | `plumbing_active_damage_or_contamination` | `plumbing_concealed_or_building_system` |
+| `cleaning` | 8 | 6 | `cleaning_hazardous_material` | `cleaning_high_access_or_special_surface` |
+| `hvac` | 8 | 7 | `hvac_electrical_refrigerant_or_burning_hazard` | `hvac_repair_or_refrigerant_work` |
+| `upholstery` | 8 | 6 | `fabric_contamination_or_chemical_risk` | `fabric_unknown_or_delicate_material` |
+| `handyman` | 9 | 6 | `handyman_structural_or_concealed_service_risk` | `handyman_specialist_boundary` |
+
+Slug và tín hiệu **lấy từ code, không được bịa**. Codex trích lại bằng chính hai file nguồn ở §53.0.1 và dán vào "Binding contract snapshot" của từng playbook, đúng như `electrical.md` đã làm.
+
+### 53.0.3 Decision Log
+
+| # | Quyết định | Ai chốt | Ngày | Lý do |
+|---|---|---|---|---|
+| D1 | Làm đủ **5 playbook còn lại** trước khi lên Production | Tu ✔ | 2026-08-26 | Người dùng thật chọn nghề ngẫu nhiên 1:6; chỉ phủ 1/6 để 5/6 lưu lượng nhận bản chưa cải thiện |
+| D2 | Ba bước khuyến nghị (deploy code đã đo → observation trên production → rollout) **vẫn giữ**, chỉ **xếp sau** D1 | Tu ✔ | 2026-08-26 | Tu: "đồng ý với lời khuyên… Sau đó làm theo lời khuyên của cậu" |
+| D3 | **Mỗi nghề phải qua đúng gate đo mà electrical đã qua** trước khi bật flag của nghề đó | Claude ✔ | 2026-08-26 | Đây là điều kiện khiến D1 an toàn. "Viết 5, ship 6" không đo là 5 lần bật mù. Có D3 thì Tu được cả hai: phủ đủ 6 **và** không nghề nào lên mà chưa có số |
+| D4 | **Tổng quát hoá flag** thành một hàm nhận `serviceType`, không copy-paste 6 hàm | Claude ✔ | 2026-08-26 | `isElectricalPlaybookEnabled()` đang hardcode. Sáu bản sao là sáu chỗ để lệch nhau |
+| D5 | Không sửa taxonomy slug / quote_driver / safety gate | Claude ✔ | 2026-08-26 | Đã khoá trong code và đã được electrical kiểm chứng. Playbook chưng cất vào khung, không đổi khung |
+| D6 | Holdout tổng hợp do Codex tự gán nhãn là bằng chứng **hợp lệ nhưng không đủ** để tuyên bố generalization | Claude ✔ | 2026-08-26 | Holdout của electrical đã phá được vòng tròn **câu chữ** (ca mới hoàn toàn) nhưng không phá được vòng tròn **nhãn**. Verdict `NEEDS_HOLDOUT` giữ nguyên cho cả 6 |
+| D7 | Rủi ro của D1 được ghi nhận, không giấu | Claude ✔ | 2026-08-26 | Khuyến nghị ban đầu của tôi là electrical trước để 5 nghề sau học từ nghề đầu. Tu đảo thứ tự có lý do sản phẩm chính đáng. Rủi ro còn lại: 5 nghề không được hưởng bài học từ lần chạy production đầu tiên. D3 là cái bù |
+| D8 | Bắt đầu thực thi §53 trên đúng branch cũ, dừng báo cáo sau từng nghề | Tu ✔ | 2026-08-27 | Tu chỉ thị Codex tiếp tục theo Plan.md; giữ nguyên các gate đo, holdout và ranh giới không đụng Production |
+
+### 53.0.4 DoD Gates
+
+| Gate | Đo bằng lệnh | Pass = |
+|---|---|---|
+| G1 | `node scripts/check-ship-ready.mjs` | **11/11 xanh** sau mỗi phase |
+| G2 | `node scripts/run.mjs docker/scripts/edge-check` hoặc `deno check` với `--config` | `exit 0` cho mọi file segment mới |
+| G3 | Mỗi nghề: corpus ≥24 ca, validate bằng chính runner | `errored=0`, không slug/tín hiệu ngoài hợp đồng |
+| G4 | Mỗi nghề: arm baseline + after trên staging | `exit 0` cả hai, `playbookVersion` khác null ở arm after |
+| G5 | Mỗi nghề: delta | `scope_signal` và `required safety recall` **không giảm**; giảm thì nghề đó **không bật** |
+| G6 | Production `list_edge_functions` | version **khớp** build đã đo, không phải v213 |
+| G7 | `node scripts/check-authority-citations.mjs` | `exit 0` |
+
+### 53.0.5 Execution Continuity
+
+P0 → P1 chạy non-stop. **P2–P6 chạy tuần tự từng nghề, dừng báo cáo sau mỗi nghề** — không gộp 5 nghề mới vào một lần báo. P7 chỉ bắt đầu khi cả 5 nghề mới đã qua G5 và Electrical baseline đã được re-check dưới cùng gate.
+
+### 53.1 P0 — Rút khuôn từ electrical
+
+Đọc `docs/playbooks/services/electrical.md` và viết ra `docs/playbooks/TEMPLATE.md`: đúng những mục electrical có, bỏ hết nội dung riêng nghề điện. Mục tiêu là 5 nghề sau điền vào khuôn, không mò lại cấu trúc.
+
+**Kết quả mong đợi:** một khuôn rỗng + checklist "playbook này đã đủ chưa".
+
+### 53.2 P1 — Tổng quát hoá flag và segment (D4)
+
+1. Thay `isElectricalPlaybookEnabled()` bằng một hàm nhận `serviceType`, đọc `KAEL_PLAYBOOK_<SERVICE>_ENABLED`. **Giữ nguyên hành vi electrical** — cùng tên biến, cùng danh sách giá trị bật (`1|true|yes|on`), mặc định tắt.
+2. Đăng ký segment theo `serviceType` thay vì import cứng một file.
+3. Pillar test: mỗi nghề bật cờ riêng, không nghề nào rò sang nghề khác.
+4. **Không** đổi hành vi runtime nào khác. Đây là refactor thuần.
+
+**Rủi ro:** đây là file trên đường đi của mọi request Kael. Chạy G1 + G2 trước khi sang P2.
+
+### 53.3 P2-P6 — Năm nghề, mỗi nghề một vòng đầy đủ
+
+Thứ tự đề xuất theo mức rủi ro an toàn giảm dần: **plumbing → hvac → handyman → cleaning → upholstery**.
+
+Mỗi nghề chạy đúng vòng này, không rút gọn:
+
+1. **Chưng cất** playbook prose vào `docs/playbooks/services/<service>.md` theo khuôn P0. Binding contract snapshot **trích từ code**, không bịa.
+2. **Nén** thành segment STABLE `supabase/functions/mobile-api/_shared/kael/learning/playbooks/<service>.ts`, ~1.5–2k token, byte-ổn định để prompt cache hit.
+3. **Corpus** `docs/playbooks/eval/<service>-cases.json` ≥24 ca: đủ 8–9 slug, có `service_mismatch`, `out_of_scope`, và ca chạm **cả hai** safety gate. Tiếng Việt thật, gồm biến thể **không dấu và gõ sai**.
+4. **Holdout tổng hợp** `<service>-synthetic-holdout-<date>.json`, 24 ca **câu chữ hoàn toàn mới**, mỗi rationale đánh dấu `[SYNTHETIC SELF-REVIEW]` như electrical đã làm.
+5. **Đo**: baseline + after trên staging, cả corpus lẫn holdout. Pacing như electrical (`--delay 190 --retry-wait 190 --limit 12`, chia lát).
+6. **Report** đủ 11 mục, decision `NEEDS_HOLDOUT` (D6).
+7. **G5**: `scope_signal` và `required safety recall` không giảm. **Giảm thì nghề đó không bật, ghi lý do, đi tiếp nghề sau.**
+
+**Coverage và độ khó bắt buộc trước khi chạy live (đã được tự động hoá).** Mỗi lane phải có đúng `24` corpus + `24` holdout; mọi case phải có `detail` grounded tối thiểu 40 ký tự; mọi slug hợp đồng xuất hiện ít nhất 2 lần; có tối thiểu 3 ca `service_mismatch` và 2 ca `out_of_scope`; phân bố `easy >= 6`, `medium >= 6`, `hard >= 4`; phân bố complexity tối thiểu `small >= 4`, `medium >= 4`, `large >= 6`; mọi tín hiệu safety của service đều phải xuất hiện; phải có ca hard chạm nhiều tín hiệu safety; câu chữ corpus/holdout phải tách biệt; và Appendix A trong textbook phải parity với runtime segment. Đây là ratchet cho cả 6 lane được hỗ trợ, còn P2–P6 là vòng chưng cất của 5 lane mới, để cân bằng từ ca cơ bản tới ca suy luận nhiều tầng.
+
+**Kết quả mong đợi mỗi nghề:** một playbook, một segment, hai corpus, hai report, một delta có số.
+
+### 53.4 P7 — Ba bước lên Production (D2)
+
+Chỉ bắt đầu khi cả 5 nghề mới đã qua G5 và Electrical baseline đã được re-check dưới cùng gate.
+
+1. **Deploy code đã đo lên Production.** Production đang ở v213 sha `d03c2e01…`, khác hẳn build staging đã đo. Bật flag trên v213 là bật trên code chưa từng được đo — trong đó **thiếu bản sửa `stage-baseline.ts`** từng làm mất `intake_observation`. **G6 chặn đúng chỗ này.**
+2. **Bật `KAEL_INTAKE_EVAL_OBSERVATION_ENABLED` trên Production, playbook vẫn tắt.** Thu câu thật từ khách thật. Đây là đường tới holdout thật **không cần tuyển ai**: nhãn lấy từ kết quả thật — có ghép được thợ không, job có xong không, có phải đổi scope không. Nhãn theo kết quả thì độc lập với mọi LLM, và đó là thứ phá được vòng tròn mà D6 nêu.
+3. **Bật playbook từng nghề một**, electrical trước (nghề duy nhất đã có hai lần đo). Mỗi nghề cách nhau đủ để đọc tín hiệu thật.
+
+### 53.5 Verification
+
+**Trạng thái plumbing sau chỉ thị Skip Docker (2026-08-27):** source lane đã sẵn sàng nhưng G2/toolchain bị chặn; không chạy local stack, `pnpm edge:check`, baseline/after hoặc G5. Flag giữ OFF. Bước còn làm được ngoài Docker là thay nhãn self-review bằng nhãn độc lập và hoàn tất human/domain review; không được chuyển sang HVAC trước khi plumbing qua G2 và các gate đo bắt buộc.
+
+**CHƯA CHẠY** — Codex điền số thật. Gate nào không chạy được thì ghi "KHÔNG CHẠY ĐƯỢC + lý do" (`critical.md` §3).
+
+| Nghề | Corpus delta | Holdout delta | Safety recall trước → sau | G5 |
+|---|---|---|---|---|
+| electrical | +29.17pp (đã có) | +37.50pp (đã có) | 20% → 70% | — |
+| plumbing | — (G4 chưa chạy; G2/G3 PASS) | — (G4 chưa chạy) | — | `G2_PASS / G3_PASS / G4_BLOCKED / NEEDS_HOLDOUT` |
+| hvac | — (G4 chưa chạy; G2/G3 PASS) | — (G4 chưa chạy) | — | `G2_PASS / G3_PASS / G4_BLOCKED / NEEDS_HOLDOUT` |
+| handyman | — (G4 chưa chạy; G2/G3 PASS) | — (G4 chưa chạy) | — | `G2_PASS / G3_PASS / G4_BLOCKED / NEEDS_HOLDOUT` |
+| cleaning | — (G4 chưa chạy; G2/G3 PASS) | — (G4 chưa chạy) | — | `G2_PASS / G3_PASS / G4_BLOCKED / NEEDS_HOLDOUT` |
+| upholstery | — (G4 chưa chạy; G2/G3 PASS) | — (G4 chưa chạy) | — | `G2_PASS / G3_PASS / G4_BLOCKED / NEEDS_HOLDOUT` |
+
+**Cập nhật plumbing 2026-08-27:** P2 đã hoàn tất source lane với segment `plumbing-playbook-2026-08-27.v1`, textbook, corpus 24 ca, synthetic holdout 24 ca, strict validation và Appendix A byte parity. Codex đã restart Docker Desktop; daemon lên ở `29.7.2` và pinned Deno image đã có sẵn, nhưng `pnpm db:local:doctor` trong Next Step retry vẫn đo `3.94 GB` RAM khả dụng khi Docker chạy (sàn `4 GB`), nên không start local stack và không bypass để chạy G2. Đã đóng Claude, Edge, Settings, Discord, Douyin, Riot Client, Teams, Microsoft Copilot, ba cây Preview/Jest/ESLint cũ, OneDrive, Phone Link, Widgets, Cross-device và Acer Registration; giữ ChatGPT/Codex, system/security và runtime Codex. Final host check sau khi stop Docker là `5.12 GB` RAM trống, với `PreviewNodeCount=0`, `ClaudeProcessCount=0` và nhóm app tùy chọn mục tiêu ở `0`; hai `NvBroadcast.Container` tự tái sinh dưới NVIDIA container service nên được giữ như hạ tầng driver-adjacent, không disable service. `wsl --terminate docker-desktop` hoàn tất nhưng distro tự respawn dưới `wslservice`; Docker daemon vẫn tắt và không dùng broad `wsl --shutdown`. Do đó chưa bật flag, chưa deploy, chưa chạy `pnpm edge:check`, baseline/after và chưa tính G5. Report: `docs/test-logs/2026-08-27_kael-playbook-plumbing-source-diagnostic.md`.
+
+**Addendum hợp nhất 2026-08-27 — đóng source cho đủ 5 lane:** plumbing được giữ nguyên và audit lại theo cùng ratchet; HVAC, handyman, cleaning và upholstery đã có textbook, runtime segment, corpus 24 ca và synthetic holdout 24 ca. Coverage/parity gate xác nhận từng lane có đủ ca dễ → vừa → khó/siêu phức tạp, mismatch/out-of-scope, biến thể không dấu/gõ sai, safety signal và hard multi-signal; tất cả corpus/holdout đều đạt. Các gate local/API/pillar/static đã chạy xanh: `lint:playbooks`, `type-check:api`, `test:api` (`25 passed / 603 passed / 1 skipped`), pillar parity (`47/47`), comments, structure, workplan coverage, authority, residue và diff check. Tách scanner service-specific ra khỏi electrical policy để giữ file dưới structure ratchet; hành vi electrical được giữ nguyên.
+
+Addendum này **thay thế checkpoint plumbing-only ở trên cho phần authoring source** theo chỉ thị mới của Tu: được hoàn tất source cho các lane còn lại dù toolchain live chưa sẵn sàng. Nó không thay đổi D3: không lane nào được bật flag, đo live hay rollout trước khi qua G2, baseline/after, delta và review độc lập.
+
+**Addendum runtime gate rerun (2026-08-27, sau reboot và cleanup app):** `pnpm db:local:up` đã qua preflight ở thời điểm bắt đầu với Docker reachable, `4.63 GB` RAM khả dụng, disk/port đạt và lean Supabase stack healthy. `pnpm edge:check` chạy thật qua pinned Deno và **PASS, exit 0, `edge check passed: 6 function(s)`** — cập nhật G2 từ blocked thành PASS. `pnpm lint:playbooks` cũng **PASS** cho cả 6 lane, mỗi lane đúng `24` corpus + `24` holdout, nên G3/source ratchet đạt. `pnpm db:local:test` không chạy SQL vì guard thấy `supabase_db_nestscout` không còn running; không tính là pass hay SQL failure. Doctor rerun khi port đã rảnh đo `3.71 GB < 4 GB` và từ chối start, không bypass. Mười arm live (baseline + after cho plumbing, HVAC, handyman, cleaning, upholstery) đều dừng trước traffic vì thiếu `KAEL_PB_EVAL_MOBILE_API_URL`; G4, delta/G5 và live holdout vẫn **KHÔNG CHẠY ĐƯỢC**. `pnpm db:local:down` và Docker Desktop stop đều PASS; flag vẫn OFF, Production bất biến. Chi tiết: `docs/test-logs/2026-08-27_kael-playbook-six-service-runtime-gate.md`.
+
+**Addendum SQL retry (2026-08-27):** staging variables vẫn absent. Sau khi restart Docker, `pnpm db:local:doctor` **PASS** với `4.17 GB` RAM khả dụng, nhưng `pnpm db:local:up` **FAIL** tại health check vì `supabase_storage_nestscout` unhealthy; Supabase tự dừng stack trước khi SQL chạy. Không reset/purge volume. `pnpm db:local:down` và Docker Desktop stop PASS; SQL vẫn `UNVERIFIED`, không bypass health check.
+
+**Addendum toolchain/live 2026-08-27:** Rerun `pnpm db:local:doctor` đã thấy daemon reachable, disk và port pass, nhưng RAM khả dụng chỉ `1.85 GB < 4 GB`; doctor từ chối start local stack đúng theo stop-condition. Vì vậy G2/`pnpm edge:check`, staging baseline/after, delta/G5 và live holdout cho 5 lane **KHÔNG CHẠY ĐƯỢC**; không được suy diễn từ gate local sang native/live quality. Docker đã được stop sau lần thử; mọi flag playbook vẫn OFF, không deploy/Production mutation. Report đầy đủ: `docs/test-logs/2026-08-27_kael-playbook-five-services-source-diagnostic.md`.
+
+**Addendum local runtime closure 2026-08-28:** trên HEAD `f444cf04` tại thời điểm pre-publication, local và remote branch ref khớp nhau. `pnpm docker:version:ensure` PASS với Engine `29.7.2` / Compose `v5.4.0`; doctor PASS tại `4.26 GB` RAM khả dụng; lean Supabase stack lên healthy, migrations + seed hoàn tất; `pnpm db:local:test` PASS `54/54`; `pnpm edge:check` PASS `6/6`; `pnpm lint:playbooks` PASS lại đủ 6 lane, mỗi lane `24` corpus + `24` holdout; `pnpm test:api` PASS `603/603` với `1` skip và `pnpm type-check:api` PASS. Fresh recount giữ nguyên `7,032` dòng artifact (`1,942` Electrical + `5,090` năm lane mới). `pnpm db:local:down` và `docker desktop stop` PASS; final snapshot không còn container project, Docker/backend/dockerd, browser, Claude, Discord, Zalo, Teams hay Douyin, Codex vẫn chạy và RAM khả dụng `5.30 GB`. Trạng thái SQL được nâng từ `UNVERIFIED` thành `PASS`; G2/G3 vẫn PASS. G4/G5 vẫn **BLOCKED trước traffic** vì thiếu toàn bộ staging endpoint/customer identity và `.scratch/pb-eval.env`; không có delta mới, flag vẫn OFF, Production bất biến. Audit xác nhận pre-publication HEAD chỉ track artifact Electrical; năm lane mới khi đó vẫn chỉ có trong worktree, giải thích vì sao UI branch hiển thị thiếu trước bước publication được Tu duyệt. Chi tiết: `docs/test-logs/2026-08-27_kael-playbook-six-service-runtime-gate.md`.
+
+**Addendum scoped publication 2026-08-28:** Tu duyệt “Next Step”; commit `5d97f48d524d76a812a2340cfea97958e74e2cc4` đã push lên `origin/claude/audit-system-skills-e2ad42` với đúng 60 path allow-list (`+8,643/-223`). Remote-tree proof có đủ 6 textbook, 12 corpus/holdout và 8 runtime playbook/registry/flags; commit không thêm raw JSON sidecar. Local/remote khớp `0/0`; 70 path bẩn ngoài scope vẫn được giữ local. Publication này chỉ đóng lỗi hiển thị branch, không thay đổi G4/G5, flag hay hosted environment.
+
+### 53.6 Change Log
+
+| Ver | Ngày | Ai | Đổi gì |
+|---|---|---|---|
+| 0.1 | 2026-08-26 | Claude | viết lần đầu; D1-D7; trích hợp đồng 6 nghề từ code |
+| 0.2 | 2026-08-27 | Codex | Tu chốt bắt đầu §53; chuyển trạng thái sang EXECUTING và rút khuôn dùng chung tại `docs/playbooks/TEMPLATE.md` |
+| 0.3 | 2026-08-27 | Codex | Hoàn tất plumbing source lane: registry/flag, segment, textbook, corpus, synthetic holdout và selected-service safety path; strict validation/parity xanh; G2 bị chặn bởi Docker/Deno nên chưa bật flag, deploy hay đo live |
+| 0.4 | 2026-08-27 | Codex | Khởi động lại Docker Desktop và xác nhận pinned Deno image; `db:local:doctor` chặn đúng vì RAM khả dụng `1.85 GB < 4 GB`, không start stack, không bypass G2, giữ flag OFF |
+| 0.5 | 2026-08-27 | Codex | Dừng ba cây Preview/Jest/ESLint cũ và các app nền tùy chọn; xác nhận `5.15 GB` RAM trống, `PreviewNodeCount=0`, giữ nguyên Codex/system/security và không disable NVIDIA service hoặc bypass RAM gate |
+| 0.6 | 2026-08-27 | Codex | Chạy Next Step retry: Docker `29.7.2` + pinned Deno image PASS nhưng doctor chặn tại `3.94 GB < 4 GB`; không start stack/G2, stop Docker, terminate riêng `docker-desktop`, giữ flag OFF |
+| 0.7 | 2026-08-27 | Codex | Chốt theo chỉ thị Skip Docker: dọn lại các tiến trình Claude/Preview/app tùy chọn tự tái sinh; final targeted counts `0`, Docker daemon stopped; WSL distro respawned dưới dịch vụ hệ thống, giữ driver/security/Codex boundaries |
+| 0.8 | 2026-08-27 | Codex | Hoàn tất source cho plumbing + HVAC + handyman + cleaning + upholstery; thêm 4 lane runtime/textbook/corpus/holdout, tổng quát safety scanner, ratchet 24+24 và độ khó/complexity; local/API/pillar/static gates xanh |
+| 0.9 | 2026-08-27 | Codex | Rerun Docker doctor: daemon reachable nhưng RAM `1.85 GB < 4 GB`; dừng trước local stack, không chạy G2/live/baseline/after/G5, giữ flag OFF và ghi report 5-service |
+| 1.0 | 2026-08-27 | Codex | Sau self-review, thêm regression HVAC `sparking` để giữ guidance đúng service; coverage gate bắt buộc grounded `detail >= 40` cho mọi corpus/holdout và lấy slug/safety contract từ evaluator dùng chung |
+| 1.1 | 2026-08-27 | Codex | Rerun sau reboot: Docker preflight/stack PASS tại 4.63 GB, G2 `edge:check` PASS cho 6 functions, G3 coverage PASS 24+24 mỗi lane; SQL runner không chạy vì DB container biến mất; G4 cả 10 live arm bị chặn trước traffic vì thiếu staging URL; cleanup Docker hoàn tất, flags OFF |
+| 1.2 | 2026-08-27 | Codex | SQL retry sau restart: doctor PASS tại 4.17 GB nhưng Supabase `storage` unhealthy làm `db:local:up` exit 1 trước SQL; không reset/purge volume, down/stop PASS, SQL vẫn UNVERIFIED |
+| 1.3 | 2026-08-27 | Codex | Next Step cleanup: đóng chính xác các cây Preview/Jest tự respawn, xác nhận Docker Desktop/backend/dockerd về 0 sau force-stop; giữ Codex và system/security, không broad-shutdown hoặc unregister WSL |
+| 1.4 | 2026-08-27 | Codex | Precondition recheck: staging variables vẫn absent; doctor chặn tại 2.81 GB RAM, không start stack; doctor đánh thức Docker nên force-stop lần cuối, Docker process về 0 và Preview/Jest vẫn 0 |
+| 1.5 | 2026-08-27 | Codex | Chẩn đoán read-only Docker log: backend crash tại reparse-point `dockerInference`, WSL page-allocation/vsock errors; không xóa/reset Docker; `test:api` 603 pass/1 skipped, `type-check:api` và `lint:playbooks` PASS |
+| 1.6 | 2026-08-27 | Codex | Dọn tiếp task-owned launcher: đóng Docker `desktop start --timeout 120` tree và Expo/Jest child trees theo PID/port/path; Codex main/MCP và system/security giữ nguyên; last immediate scan không còn target |
+| 1.7 | 2026-08-27 | Codex | Sau khi RAM hồi lên `5.22 GB`, thử launch Docker Desktop một lần; `docker info` vẫn fail vì thiếu Linux engine pipe và backend lặp lỗi `dockerInference`; đóng lại Docker/WSL, không factory-reset/purge |
+| 1.8 | 2026-08-28 | Codex | Docker/runtime closure PASS trên HEAD `f444cf04`: doctor 4.26 GB, stack healthy, SQL 54/54, Edge 6/6, source ratchet 6 x (24+24), down sạch; G4/G5 vẫn blocked vì staging identity absent; xác nhận năm lane mới chưa được track nên branch UI hiển thị thiếu |
+| 1.9 | 2026-08-28 | Codex | Tu duyệt scoped publication; commit `5d97f48d` push đủ 60 Playbook/evaluator/Edge/report paths, remote tree có 6 textbook + 12 eval + 8 runtime files, raw sidecars không được thêm; giữ 70 path ngoài scope local và flags OFF |
+
+---
+
 ## 54. Việc còn lại sau khi nâng cấp `kael-docker` — 2026-08-26
 
 > **Trigger.** Tu nhờ audit và nâng cấp `kael-docker`. Phần sửa **đã xong** trong phiên

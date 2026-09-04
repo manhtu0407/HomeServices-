@@ -4,7 +4,10 @@
 import type { ServiceType } from "../../../../_shared/domain.ts";
 import { evaluateMessageBoundary, type BoundaryDecision } from "../../kael/kael-guardrails/boundary-guard.ts";
 import { isIntakeEvalObservationExposureEnabled } from "../../kael/pipeline/intake-runtime.ts";
-import { ELECTRICAL_PLAYBOOK_VERSION, isElectricalPlaybookEnabled } from "../../kael/learning/playbooks/electrical.ts";
+import {
+  getEnabledKaelPlaybook,
+  getKaelPlaybookVersion,
+} from "../../kael/learning/playbooks/registry.ts";
 import { kaelIntakeDiagnosisPromptVersion } from "../../kael/prompts/prompts.ts";
 import { isKaelAiKillSwitchEnabled } from "../../kael/kael-guardrails/spend-gate.ts";
 import {
@@ -43,7 +46,7 @@ function boundaryIntakeObservation(
   electricalPlaybookEnabled: boolean,
   persistedSafetySignals: readonly string[] = [],
 ) {
-  if (boundary.reason === "prompt_injection" || serviceType !== "electrical" ||
+  if (boundary.reason === "prompt_injection" ||
     (!electricalPlaybookEnabled && !isIntakeEvalObservationExposureEnabled())) return undefined;
   const parsed = intakeEvalObservationSchema.safeParse({
     scopeSignal: boundary.reason,
@@ -56,7 +59,9 @@ function boundaryIntakeObservation(
     ]),
     modelId: "deterministic",
     promptVersion: kaelIntakeDiagnosisPromptVersion(serviceType),
-    playbookVersion: electricalPlaybookEnabled ? ELECTRICAL_PLAYBOOK_VERSION : null,
+    playbookVersion: electricalPlaybookEnabled
+      ? getKaelPlaybookVersion(serviceType)
+      : null,
   });
   return parsed.success ? parsed.data : undefined;
 }
@@ -75,8 +80,7 @@ export async function maybeApplyKaelBoundaryGuard(
   } = { actorId: null, jobId: null },
 ): Promise<boolean> {
   if (isKaelAiKillSwitchEnabled()) return false;
-  const electricalPlaybookEnabled = serviceType === "electrical" &&
-    isElectricalPlaybookEnabled();
+  const electricalPlaybookEnabled = Boolean(getEnabledKaelPlaybook(serviceType));
   const boundary = evaluateMessageBoundary(message, serviceType, {
     semanticInjectionClassifierEnabled: true,
     language: auditContext.language,
@@ -112,6 +116,7 @@ export async function maybeApplyKaelBoundaryGuard(
         auditContext.persistedSafetySignals,
       ),
       auditContext.language ?? "vi",
+      serviceType,
     ),
     nextStatus: "unsupported",
     metadata: {

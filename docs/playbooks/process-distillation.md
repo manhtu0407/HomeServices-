@@ -76,13 +76,13 @@ Guardrails learned: this can hit session usage caps — checkpoint per section, 
 
 ## 5. Compress the runtime segment (Appendix A)
 
-- One STABLE block (no per-request interpolation) so Anthropic's prompt cache hits (Plan §43 Workstream C). Target ≈1.5–2k tokens; measure the real count at injection, do not guess.
+- One STABLE block (no per-request interpolation) so Anthropic's prompt cache hits (`governance/plan-archive/2026-05-20_workflow-enhancement.md` §43 Workstream C). Target ≈1.5–2k tokens; measure the real count at injection, do not guess.
 - It must contain: output discipline (§3), safety-scan-first rule, routing, slug selection, condensed decision trees (condition → facts/signals/complexity), complexity rules, domain context, and the verbatim safety wording.
 - Keep it byte-stable across requests or the cache never hits.
 
 ## 6. Build the eval corpus (`eval/<service>-cases.json`)
 
-- ~24 cases minimum for a sample (2 per slug + service_mismatch + out_of_scope + safety-critical); the full §43 E0 target is ~50/purpose.
+- ~24 cases minimum for a sample (2 per slug + service_mismatch + out_of_scope + safety-critical); the full E0 target in `governance/plan-archive/2026-05-20_workflow-enhancement.md` §43 is ~50/purpose.
 - Realistic Vietnamese customer messages — include no-diacritics and typo'd variants, because that is how users type.
 - Each case: `{ id, input_text_vi, expected{ problem_slug, scope_signal, suggested_service, safety_signals[], needs_clarification, complexity }, difficulty, rationale }`.
 - `expected` follows the playbook's trees, not the author's private opinion.
@@ -117,7 +117,7 @@ Guardrails learned: this can hit session usage caps — checkpoint per section, 
         └─ flat/negative            → the playbook did not teach; diagnose and revise
 ```
 
-Ratchet: each playbook/prompt change re-runs the corpus in CI (§43 Workstream E). A change that drops pass-rate > threshold fails the build, so accumulation is monotonic — you cannot silently make Kael dumber. The "memory" of getting smarter lives in git history + the rising eval baseline, both auditable. Kael has no introspective awareness of its own improvement, and that is intentional (RULES: no autonomous self-modification).
+Ratchet (PLANNED, not yet wired — `pnpm kael:eval:playbook` exists but runs in no CI workflow): each playbook/prompt change re-runs the corpus in CI (`governance/plan-archive/2026-05-20_workflow-enhancement.md` §43 Workstream E). A change that drops pass-rate > threshold fails the build, so accumulation is monotonic — you cannot silently make Kael dumber. The "memory" of getting smarter lives in git history + the rising eval baseline, both auditable. Kael has no introspective awareness of its own improvement, and that is intentional (RULES: no autonomous self-modification).
 
 ## 8. Definition of done for one distillation
 

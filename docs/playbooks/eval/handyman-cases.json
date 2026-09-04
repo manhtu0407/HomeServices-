@@ -1,0 +1,362 @@
+[
+  {
+    "id": "hm_01",
+    "input_text_vi": "Khoan lắp một kệ gỗ nhẹ vào tường bê tông phòng khách, đã có tắc kê",
+    "expected": {
+      "problem_slug": "drill_or_mount_shelf",
+      "scope_signal": "in_scope",
+      "suggested_service": null,
+      "safety_signals": [],
+      "needs_clarification": true,
+      "complexity": "small"
+    },
+    "difficulty": "easy",
+    "rationale": "Một kệ nhẹ, nền bê tông và hardware đã có là drilling task bounded nhưng còn thiếu kích thước/tải",
+    "detail": "Khách chưa nêu chiều dài kệ và trọng lượng đồ đặt lên, dù đã có tắc kê phù hợp theo họ."
+  },
+  {
+    "id": "hm_02",
+    "input_text_vi": "Khoan ba kệ nặng vào tường chưa biết là bê tông hay vách rỗng, gần hộp điện âm",
+    "expected": {
+      "problem_slug": "drill_or_mount_shelf",
+      "scope_signal": "in_scope",
+      "suggested_service": null,
+      "required_safety_signals": ["concealed_electrical"],
+      "needs_clarification": false,
+      "complexity": "large"
+    },
+    "difficulty": "hard",
+    "rationale": "Tải lớn, substrate unknown và điện âm gần điểm khoan buộc assessment trước khi chốt anchor",
+    "detail": "Ba kệ nặng sẽ đặt gần hộp điện âm; khách chưa biết cấu tạo vách và chưa được hướng dẫn khoan thử."
+  },
+  {
+    "id": "hm_03",
+    "input_text_vi": "Gắn ba móc treo khăn và một bảng số nhỏ vào tường gạch hành lang, không dùng điện hay nước",
+    "expected": {
+      "problem_slug": "install_small_fixture",
+      "scope_signal": "in_scope",
+      "suggested_service": null,
+      "safety_signals": [],
+      "needs_clarification": false,
+      "complexity": "medium"
+    },
+    "difficulty": "medium",
+    "rationale": "Nhiều phụ kiện nhỏ cùng nền gạch nhưng không có trade boundary; cần giữ scope installation thay vì suy diễn việc sửa khác",
+    "detail": "Khách nêu rõ bốn phụ kiện nhẹ, vị trí hành lang và không chạm điện/nước; vẫn cần xác nhận kích thước, điểm khoan và hardware."
+  },
+  {
+    "id": "hm_04",
+    "input_text_vi": "Cần lắp kệ, treo TV và bắt giá máy lọc nước trong bếp; chưa rõ đường ống âm",
+    "expected": {
+      "problem_slug": "handyman-general",
+      "scope_signal": "in_scope",
+      "suggested_service": null,
+      "required_safety_signals": ["concealed_plumbing", "concealed_electrical"],
+      "needs_clarification": false,
+      "complexity": "large"
+    },
+    "difficulty": "hard",
+    "rationale": "Multi-task có tải, vị trí bếp và hidden services chưa rõ nên không thể gom thành việc nhỏ thông thường",
+    "detail": "Ba hạng mục phụ thuộc substrate và đường điện/nước âm; khách chưa có bản vẽ hoặc điểm khoan an toàn."
+  },
+  {
+    "id": "hm_05",
+    "input_text_vi": "Thay bộ vòi sen bằng bộ mới đúng lỗ cũ, không đổi đường ống",
+    "expected": {
+      "problem_slug": "install_bathroom_fixture",
+      "scope_signal": "in_scope",
+      "suggested_service": null,
+      "safety_signals": [],
+      "needs_clarification": true,
+      "complexity": "small"
+    },
+    "difficulty": "easy",
+    "rationale": "Like-for-like bathroom fixture có thể thuộc handyman khi không đổi pipe boundary, nhưng cần xác nhận connection",
+    "detail": "Khách nói dùng lỗ cũ nhưng chưa gửi kích thước, loại ren, local isolation hay hardware của bộ mới."
+  },
+  {
+    "id": "hm_06",
+    "input_text_vi": "Lắp vách treo bồn rửa mới, phải mở gạch và nghi có ống nước âm phía sau",
+    "expected": {
+      "problem_slug": "install_bathroom_fixture",
+      "scope_signal": "in_scope",
+      "suggested_service": null,
+      "required_safety_signals": ["concealed_plumbing", "load_bearing_change"],
+      "needs_clarification": false,
+      "complexity": "large"
+    },
+    "difficulty": "hard",
+    "rationale": "Mở gạch và treo tải ở vị trí có ống âm chuyển like-for-like thành assessment có boundary",
+    "detail": "Vách treo chịu tải cho bồn rửa mới cần mở gạch, khách nghi tuyến ống cấp thoát nằm sau điểm lắp."
+  },
+  {
+    "id": "hm_07",
+    "input_text_vi": "Lắp một thanh rèm trong phòng ngủ, tường bê tông và vị trí đứng trên sàn",
+    "expected": {
+      "problem_slug": "install_curtain_rod",
+      "scope_signal": "in_scope",
+      "suggested_service": null,
+      "safety_signals": [],
+      "needs_clarification": true,
+      "complexity": "small"
+    },
+    "difficulty": "easy",
+    "rationale": "Curtain rod interior với substrate và access rõ là task nhỏ, còn thiếu chiều dài/hardware",
+    "detail": "Khách chưa nêu chiều dài thanh, tải rèm và đã có vít phù hợp hay chưa."
+  },
+  {
+    "id": "hm_08",
+    "input_text_vi": "Lắp ray rèm sát trần logia tầng cao, chỉ có thể đứng trên thang đặt ở mép ban công",
+    "expected": {
+      "problem_slug": "install_curtain_rod",
+      "scope_signal": "in_scope",
+      "suggested_service": null,
+      "required_safety_signals": ["unsafe_height"],
+      "needs_clarification": false,
+      "complexity": "large"
+    },
+    "difficulty": "hard",
+    "rationale": "Access ở mép ban công và thang không được xác nhận an toàn là unsafe_height, không hướng dẫn leo",
+    "detail": "Ray rèm cần lắp sát trần logia; khách nêu điểm đứng duy nhất là thang ở mép ban công tầng cao."
+  },
+  {
+    "id": "hm_09",
+    "input_text_vi": "Gắn móc treo khăn không dùng điện hay nước vào tường gạch phòng tắm",
+    "expected": {
+      "problem_slug": "install_small_fixture",
+      "scope_signal": "in_scope",
+      "suggested_service": null,
+      "safety_signals": [],
+      "needs_clarification": true,
+      "complexity": "small"
+    },
+    "difficulty": "easy",
+    "rationale": "Phụ kiện nhỏ không có trade boundary và nền gạch đã rõ",
+    "detail": "Khách chưa nêu số lượng móc và hardware, nhưng xác nhận không chạm đường điện/nước."
+  },
+  {
+    "id": "hm_10",
+    "input_text_vi": "Lắp hai đèn tường mới, cần nối dây điện âm vào công tắc hiện hữu",
+    "expected": {
+      "problem_slug": null,
+      "scope_signal": "service_mismatch",
+      "suggested_service": "electrical",
+      "safety_signals": [],
+      "needs_clarification": false,
+      "complexity": null
+    },
+    "difficulty": "medium",
+    "rationale": "Đèn có fixed wiring nên là electrical mismatch dù vật thể nhỏ",
+    "detail": "Khách nêu rõ cần nối dây âm vào công tắc, vượt install_small_fixture của handyman."
+  },
+  {
+    "id": "hm_11",
+    "input_text_vi": "Treo TV 43 inch lên tường bê tông bằng giá đã mua, dây đi nổi gọn",
+    "expected": {
+      "problem_slug": "mount_tv_or_furniture",
+      "scope_signal": "in_scope",
+      "suggested_service": null,
+      "safety_signals": [],
+      "needs_clarification": true,
+      "complexity": "medium"
+    },
+    "difficulty": "easy",
+    "rationale": "TV mounting là handyman khi substrate, bracket và cable route không có electrical alteration, còn cần xác nhận tải",
+    "detail": "Khách có giá treo và nói dây đi nổi, nhưng chưa cung cấp khối lượng TV, điểm neo và chiều cao mong muốn."
+  },
+  {
+    "id": "hm_12",
+    "input_text_vi": "Treo tủ nặng lên vách chịu lực, điểm khoan gần dây điện âm và phải làm cao quá đầu",
+    "expected": {
+      "problem_slug": "mount_tv_or_furniture",
+      "scope_signal": "in_scope",
+      "suggested_service": null,
+      "required_safety_signals": ["load_bearing_change", "concealed_electrical", "unsafe_height"],
+      "needs_clarification": false,
+      "complexity": "large"
+    },
+    "difficulty": "hard",
+    "rationale": "Tải nặng, wall structure, concealed wiring và height cùng lúc cần assessment trước mọi khoan",
+    "detail": "Tủ treo nặng cần ở cao; khách biết có dây điện âm gần đó và gọi tường là vách chịu lực."
+  },
+  {
+    "id": "hm_13",
+    "input_text_vi": "Cánh tủ bếp xệ, bản lề còn nguyên và cần chỉnh lại",
+    "expected": {
+      "problem_slug": "repair_hinge_or_handle",
+      "scope_signal": "in_scope",
+      "suggested_service": null,
+      "safety_signals": [],
+      "needs_clarification": true,
+      "complexity": "small"
+    },
+    "difficulty": "easy",
+    "rationale": "Lỗi căn chỉnh bản lề bounded, không có dấu hiệu substrate hoặc service boundary",
+    "detail": "Khách chưa nêu số cánh, kiểu bản lề và nền bắt vít có bị bung hay không."
+  },
+  {
+    "id": "hm_14",
+    "input_text_vi": "Tay nắm cửa rơi, phần gỗ quanh lỗ bắt vít bị mục và cửa chống cháy nặng",
+    "expected": {
+      "problem_slug": "repair_hinge_or_handle",
+      "scope_signal": "in_scope",
+      "suggested_service": null,
+      "required_safety_signals": ["load_bearing_change"],
+      "needs_clarification": false,
+      "complexity": "medium"
+    },
+    "difficulty": "hard",
+    "rationale": "Nền gỗ mục và cánh cửa nặng làm thay handle thành vấn đề tải/độ ổn định cần đánh giá",
+    "detail": "Tay nắm không còn bám, phần gỗ quanh lỗ mục; cánh cửa nặng nên không được hứa bắt lại cùng lỗ."
+  },
+  {
+    "id": "hm_15",
+    "input_text_vi": "Thay bốn bản lề tủ bếp cùng loại, lỗ cũ còn chắc và đã mua đủ phụ kiện",
+    "expected": {
+      "problem_slug": "replace_cabinet_hinges",
+      "scope_signal": "in_scope",
+      "suggested_service": null,
+      "safety_signals": [],
+      "needs_clarification": true,
+      "complexity": "medium"
+    },
+    "difficulty": "easy",
+    "rationale": "Nhiều bản lề nhưng hardware tương thích và substrate ổn là scope medium bounded",
+    "detail": "Khách chưa cho overlay/inset và số cánh, dù xác nhận lỗ cũ chắc và phụ kiện cùng loại."
+  },
+  {
+    "id": "hm_16",
+    "input_text_vi": "Thay bản lề cho cả tủ âm tường, gỗ bị phồng và bên trong có ống nước âm",
+    "expected": {
+      "problem_slug": "replace_cabinet_hinges",
+      "scope_signal": "in_scope",
+      "suggested_service": null,
+      "required_safety_signals": ["concealed_plumbing"],
+      "needs_clarification": false,
+      "complexity": "large"
+    },
+    "difficulty": "hard",
+    "rationale": "Substrate hỏng và concealed plumbing khiến replacement có thể đổi scope, cần on-site assessment",
+    "detail": "Tủ âm tường bị phồng quanh vùng thay bản lề; khách biết phía sau có đường nước âm."
+  },
+  {
+    "id": "hm_17",
+    "input_text_vi": "co mot viec o bep nhung toi chua ro la lap, sua hay khoan, nho tho xem giup",
+    "expected": {
+      "problem_slug": "other_handyman",
+      "scope_signal": "in_scope",
+      "suggested_service": null,
+      "safety_signals": [],
+      "needs_clarification": true,
+      "complexity": null
+    },
+    "difficulty": "medium",
+    "rationale": "Ý định handyman rõ nhưng chưa có discriminator để chọn lắp đặt, khoan hay sửa; phải giữ fallback và hỏi một câu",
+    "detail": "Khách chỉ xác nhận khu vực bếp và muốn thợ xem, chưa mô tả vật dụng, nền hoặc lỗi cụ thể."
+  },
+  {
+    "id": "hm_18",
+    "input_text_vi": "Lắp giàn treo đồ nặng, sửa bản lề và khoan xuyên vách gần trục kỹ thuật chung",
+    "expected": {
+      "problem_slug": "handyman-general",
+      "scope_signal": "in_scope",
+      "suggested_service": null,
+      "required_safety_signals": ["concealed_plumbing", "concealed_electrical", "load_bearing_change"],
+      "needs_clarification": false,
+      "complexity": "large"
+    },
+    "difficulty": "hard",
+    "rationale": "Multi-task, tải nặng và trục kỹ thuật chung tạo nhiều hidden-service hazards cần đánh giá trực tiếp",
+    "detail": "Khách muốn khoan gần trục kỹ thuật và chưa có bản vẽ; giàn treo nặng cùng bản lề là các task phụ thuộc nhau."
+  },
+  {
+    "id": "hm_19",
+    "input_text_vi": "Lắp ổ cắm mới và kéo mạch riêng cho bếp từ, chỉ nhờ thợ sửa việc nhỏ",
+    "expected": {
+      "problem_slug": null,
+      "scope_signal": "service_mismatch",
+      "suggested_service": "electrical",
+      "safety_signals": ["regulated_electrical"],
+      "needs_clarification": false,
+      "complexity": null
+    },
+    "difficulty": "easy",
+    "rationale": "New outlet and dedicated circuit are explicitly regulated electrical work",
+    "detail": "Khách gọi là việc nhỏ nhưng yêu cầu kéo mạch riêng, phải route electrical."
+  },
+  {
+    "id": "hm_20",
+    "input_text_vi": "Di dời ống cấp nước trong tường để đổi vị trí máy giặt",
+    "expected": {
+      "problem_slug": null,
+      "scope_signal": "service_mismatch",
+      "suggested_service": "plumbing",
+      "safety_signals": ["regulated_plumbing", "concealed_plumbing"],
+      "needs_clarification": false,
+      "complexity": null
+    },
+    "difficulty": "medium",
+    "rationale": "Rerouting a concealed water line is plumbing trade work, not minor mounting",
+    "detail": "Đường cấp nằm trong tường và phải di dời để đổi vị trí máy giặt, vượt boundary handyman."
+  },
+  {
+    "id": "hm_21",
+    "input_text_vi": "Máy lạnh không mát, muốn tháo bo mạch để thay thử và tiện lắp giá mới",
+    "expected": {
+      "problem_slug": null,
+      "scope_signal": "service_mismatch",
+      "suggested_service": "hvac",
+      "safety_signals": ["specialist_appliance"],
+      "needs_clarification": false,
+      "complexity": null
+    },
+    "difficulty": "medium",
+    "rationale": "Internal HVAC board fault is specialist appliance work; mounting accessory does not change dominant route",
+    "detail": "Khách muốn tháo bo mạch của máy lạnh đang không mát, không được để handyman nhận phần sửa thiết bị."
+  },
+  {
+    "id": "hm_22",
+    "input_text_vi": "Phá một phần tường chịu lực để mở cửa thông phòng khách và bếp",
+    "expected": {
+      "problem_slug": null,
+      "scope_signal": "out_of_scope",
+      "suggested_service": null,
+      "required_safety_signals": ["structural_work", "load_bearing_change"],
+      "needs_clarification": false,
+      "complexity": null
+    },
+    "difficulty": "hard",
+    "rationale": "Mở tường chịu lực là structural work ngoài minor repair và cần chuyên gia kết cấu/ban quản lý",
+    "detail": "Yêu cầu phá và mở tường chịu lực, không được hướng dẫn cắt, khoan thử hay hứa cấp phép."
+  },
+  {
+    "id": "hm_23",
+    "input_text_vi": "Tủ lạnh báo lỗi, cần mở máy thay máy nén và bo điều khiển bên trong",
+    "expected": {
+      "problem_slug": null,
+      "scope_signal": "out_of_scope",
+      "suggested_service": null,
+      "required_safety_signals": ["specialist_appliance"],
+      "needs_clarification": false,
+      "complexity": null
+    },
+    "difficulty": "medium",
+    "rationale": "Internal refrigerator repair is outside the minor installation/repair box",
+    "detail": "Khách nêu rõ tủ lạnh và linh kiện bên trong, không route thành install_small_fixture hay other_handyman."
+  },
+  {
+    "id": "hm_24",
+    "input_text_vi": "Cần gắn một vật nặng ở ban công tầng cao, gần dây điện và ống nước âm nhưng chưa rõ nên gọi thợ nào",
+    "expected": {
+      "problem_slug": "other_handyman",
+      "scope_signal": "in_scope",
+      "suggested_service": null,
+      "required_safety_signals": ["concealed_electrical", "concealed_plumbing", "unsafe_height"],
+      "needs_clarification": true,
+      "complexity": "large"
+    },
+    "difficulty": "hard",
+    "rationale": "Ý định gắn đồ thuộc handyman nhưng loại vật, điểm neo và lối tiếp cận chưa rõ; hidden services và độ cao cùng giữ nguyên",
+    "detail": "Khách nêu vật nặng, ban công tầng cao, dây điện và ống nước âm nhưng chưa biết loại giá, nền hay cách tiếp cận an toàn."
+  }
+]

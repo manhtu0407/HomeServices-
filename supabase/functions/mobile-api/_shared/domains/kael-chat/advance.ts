@@ -15,7 +15,7 @@ import {
   sanitizeUntrustedEvidenceList,
 } from "../../kael/evidence/untrusted-evidence.ts";
 import type { MobileApiContext } from "../../platform/auth.ts";
-import { isElectricalPlaybookEnabled } from "../../kael/learning/playbooks/electrical.ts";
+import { getEnabledKaelPlaybook } from "../../kael/learning/playbooks/registry.ts";
 import { db } from "../../platform/db.ts";
 import { apiFailure } from "../../platform/api-failure.ts";
 import {
@@ -53,8 +53,7 @@ export async function advanceKaelChatEstimate(
   const progressTarget = { table: "kael_chat_sessions" as const, id: sessionId };
   const llmClarificationEnabled = true;
   const language = input.language ?? "vi";
-  const electricalPlaybookEnabled = input.service_type === "electrical" &&
-    isElectricalPlaybookEnabled();
+  const electricalPlaybookEnabled = Boolean(getEnabledKaelPlaybook(input.service_type));
   const message = sanitizeForLLM(input.message ?? "");
   const safeCustomerEvidence = sanitizeCustomerCaseEvidenceText(message);
   const problemChips = sanitizeUntrustedEvidenceList(input.problem_chips ?? []);

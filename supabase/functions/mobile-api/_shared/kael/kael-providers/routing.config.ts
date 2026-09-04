@@ -52,7 +52,9 @@ const perplexity = (model = "sonar"): ProviderRoute => ({
 });
 
 export const KAEL_ROUTING_CONFIG: Record<KaelPurpose, KaelPurposeRoutingConfig> = Object.freeze({
-  intent_classification: config("intent_classification", deepseek(), anthropic(), 0.001, 4_000, true, 50),
+  // Staging telemetry over 2699 successful calls put this route at p50 3.4s / p90 4.0s / p99 5.8s,
+  // so the previous 4s budget sat on top of its own p90 and converted ordinary jitter into TIMEOUT.
+  intent_classification: config("intent_classification", deepseek(), anthropic(), 0.001, 8_000, true, 50),
   vision_analysis: config("vision_analysis", anthropic(), undefined, 0.015, 10_000, true, 1_300, {
     modelFallback: anthropic("claude-haiku-4-5-20251001"),
     escalation: {
