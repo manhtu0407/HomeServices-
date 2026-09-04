@@ -361,6 +361,8 @@ jest.mock('@/lib/services', () => ({
     claimWithdrawalRequest: jest.fn(),
     listPayoutMethods: jest.fn(),
     listPriceBaselines: jest.fn(),
+    listSupportCases: jest.fn(),
+    listSystemPriceBaselines: jest.fn(),
     listSubAdmins: jest.fn(),
     listTransactions: jest.fn(),
     listWithdrawalRequests: jest.fn(),
@@ -408,6 +410,61 @@ function mockSuccessfulLoad() {
   jest.mocked(adminControlService.listDisputes).mockResolvedValue({
     success: true,
     data: { disputes: [dispute], has_more: false, next_offset: null, total_count: 1 },
+    status: 200,
+  })
+  jest.mocked(adminControlService.listSupportCases).mockResolvedValue({
+    success: true,
+    data: {
+      counts: [{ count: 1, key: 'dispute' }],
+      generated_at: '2026-08-08T07:00:00.000Z',
+      has_more: false,
+      next_cursor: null,
+      records: [{
+        case_id: dispute.id,
+        display_code: dispute.display_code,
+        job_id: dispute.job_id,
+        priority: 'high',
+        reason_code: dispute.dispute_type,
+        service_type: 'handyman',
+        source: 'dispute',
+        source_status: dispute.status,
+        type: 'dispute',
+        updated_at: dispute.updated_at,
+      }],
+    },
+    status: 200,
+  })
+  jest.mocked(adminControlService.listSystemPriceBaselines).mockResolvedValue({
+    success: true,
+    data: {
+      data_quality: 'available',
+      generated_at: '2026-08-08T07:00:00.000Z',
+      has_more: false,
+      next_cursor: null,
+      next_offset: null,
+      records: [{
+        accepted_evidence_count: 2,
+        complexity: 'small',
+        district_code: priceBaseline.district_code,
+        effective_from: priceBaseline.updated_at,
+        evidence_quorum_met: true,
+        id: priceBaseline.id,
+        lifecycle: 'active',
+        price_max: priceBaseline.price_max,
+        price_min: priceBaseline.price_min,
+        problem_id: 'problem-handyman-shelf',
+        problem_label_en: 'Mount a shelf',
+        problem_label_vi: 'Lắp kệ',
+        problem_slug: 'mount_shelf',
+        service_label_en: 'Handyman',
+        service_label_vi: 'Sửa chữa vặt',
+        service_type: priceBaseline.service_type,
+        unit: 'job',
+        updated_at: priceBaseline.updated_at,
+        version: priceBaseline.version,
+      }],
+      summary: { active_count: 1, attention_count: 0, inactive_count: 0, quorum_count: 1 },
+    },
     status: 200,
   })
   jest.mocked(adminControlService.listPriceBaselines).mockResolvedValue({
@@ -744,7 +801,7 @@ describe('AdminSections', () => {
 
     fireEvent.press(screen.getByTestId('admin-sections-team-tab'))
     fireEvent.press(await screen.findByTestId('admin-production-capability-team-directory'))
-    expect(await screen.findByTestId('admin-sub-admin-panel')).toBeTruthy()
+    expect(await screen.findByTestId('admin-team-workspace-team-directory')).toBeTruthy()
     expect(await screen.findByText('Operations Team One')).toBeTruthy()
   })
 
@@ -765,8 +822,7 @@ describe('AdminSections', () => {
     fireEvent.press(screen.getByTestId('admin-sections-team-tab'))
     fireEvent.press(await screen.findByTestId('admin-production-capability-team-directory'))
 
-    expect(await screen.findByTestId('admin-sub-admin-panel')).toBeTruthy()
-    expect(screen.getByTestId('admin-team-owner-actions')).toBeTruthy()
+    expect(await screen.findByTestId('admin-team-workspace-team-directory')).toBeTruthy()
     expect(screen.getByText('Operations Team One')).toBeTruthy()
   })
 
@@ -838,7 +894,7 @@ describe('AdminSections', () => {
     })
   })
 
-  it('opens owner-only system monitoring with live dispute data', async () => {
+  it('opens the Production support workspace with live dispute data', async () => {
     mockSuccessfulLoad()
 
     render(<AdminSections />)
@@ -849,9 +905,8 @@ describe('AdminSections', () => {
       tab: 'admin-sections-transactions-tab',
     })
 
-    expect(await screen.findByTestId('admin-governance-panel')).toBeTruthy()
-    expect(await screen.findByText('NS-TEST-0001')).toBeTruthy()
-    expect(adminControlService.listDisputes).toHaveBeenCalledWith({ limit: 8, offset: 0 })
+    expect(await screen.findByTestId('admin-support-case-list')).toBeTruthy()
+    expect(adminControlService.listSupportCases).toHaveBeenCalled()
     expect(adminControlService.listPriceBaselines).not.toHaveBeenCalled()
     expect(adminControlService.listAiCosts).not.toHaveBeenCalled()
     expect(adminControlService.listLearningRules).not.toHaveBeenCalled()
@@ -867,11 +922,9 @@ describe('AdminSections', () => {
       section: 'system',
       tab: 'admin-sections-governance-tab',
     })
-    await screen.findByTestId('admin-governance-panel')
+    await screen.findByTestId('admin-system-price-list')
 
-    expect(await screen.findByText('Sửa chữa vặt')).toBeTruthy()
-    expect(screen.getByText('Nhỏ')).toBeTruthy()
-    expect(screen.getByText('TP. Hồ Chí Minh · Phiên bản 1')).toBeTruthy()
+    expect(adminControlService.listSystemPriceBaselines).toHaveBeenCalled()
     expect(screen.queryByText(priceBaseline.source)).toBeNull()
   })
 
@@ -1189,24 +1242,24 @@ describe('AdminSections', () => {
     await screen.findByTestId('admin-production-section-overview')
     fireEvent.press(await screen.findByTestId('admin-sections-team-tab'))
     fireEvent.press(await screen.findByTestId('admin-production-capability-team-provisioning'))
-    fireEvent.press(await screen.findByLabelText('Đề cử tài khoản đã có'))
-    fireEvent.changeText(await screen.findByLabelText('Tên hoặc số điện thoại'), 'Registered')
-    fireEvent.press(screen.getByText('Tìm tài khoản'))
+    fireEvent.press(await screen.findByTestId('admin-team-provisioning-search'))
+    const accountSearch = await screen.findAllByLabelText('Tìm tài khoản khách/thợ đã đăng ký')
+    fireEvent.changeText(accountSearch[0], 'Registered')
+    fireEvent.press(accountSearch[accountSearch.length - 1])
     fireEvent.press(await screen.findByText('Registered Account One'))
-    fireEvent.press(screen.getByText('Đề cử'))
 
     await waitFor(() => {
       expect(adminControlService.nominateManager).toHaveBeenCalledWith(subAdminCandidate.user_id)
     })
   })
 
-  it('shows an Owner nomination before opening the capability grant step', async () => {
+  it('requires review before updating an existing Admin capability set', async () => {
     mockSuccessfulLoad()
     jest.mocked(adminControlService.setSubAdminAccess).mockResolvedValue({
       success: true,
       data: {
         ok: true,
-        user_id: managerNomination.user_id,
+        user_id: subAdmin.user_id,
         status: 'active',
         role: 'admin_operator',
         capabilities: ['finance.read', 'operations.read'],
@@ -1229,19 +1282,18 @@ describe('AdminSections', () => {
     fireEvent.press(await screen.findByTestId('admin-sections-team-tab'))
     fireEvent.press(await screen.findByTestId('admin-production-capability-team-capabilities'))
 
-    expect(await screen.findByTestId(`admin-manager-nomination-${managerNomination.id}`)).toBeTruthy()
-    expect(screen.getByText('Quản lý do Owner đề cử')).toBeTruthy()
-    expect(screen.getByText('Chờ cấp quyền')).toBeTruthy()
-    fireEvent.press(screen.getByTestId(`admin-manager-nomination-${managerNomination.id}-grant`))
-    fireEvent.press(await screen.findByLabelText('Xem vận hành'))
-    fireEvent.press(await screen.findByLabelText('Lưu quyền'))
+    expect(await screen.findByTestId('admin-team-workspace-team-capabilities')).toBeTruthy()
+    fireEvent.press(screen.getByText('Operations Team One'))
+    await screen.findByLabelText('Đọc vận hành')
+    fireEvent.press(screen.getByText('Rà soát'))
+    fireEvent.press(screen.getByText('Xác nhận'))
 
     await waitFor(() => {
-      expect(adminControlService.setSubAdminAccess).toHaveBeenCalledWith(managerNomination.user_id, expect.objectContaining({
-        action: 'grant',
-        capabilities: ['finance.read', 'operations.read'],
+      expect(adminControlService.setSubAdminAccess).toHaveBeenCalledWith(subAdmin.user_id, expect.objectContaining({
+        action: 'update',
+        capabilities: subAdmin.capabilities,
         client_request_id: expect.any(String),
-        expected_version: 0,
+        expected_version: subAdmin.version,
       }))
     })
   })
@@ -1264,17 +1316,16 @@ describe('AdminSections', () => {
     fireEvent.press(screen.getByTestId('admin-sections-team-tab'))
     fireEvent.press(await screen.findByTestId('admin-production-capability-team-provisioning'))
 
-    expect(await screen.findByTestId('admin-team-owner-actions')).toBeTruthy()
-    expect(screen.getByTestId(`admin-pending-operator-${pendingOperator.id}`)).toBeTruthy()
-    expect(screen.getByTestId('admin-nominate-existing')).toBeTruthy()
-    fireEvent.press(screen.getByTestId('admin-create-operator'))
+    expect(await screen.findByTestId('admin-team-workspace-team-provisioning')).toBeTruthy()
+    expect(screen.getByText(pendingOperator.full_name)).toBeTruthy()
+    fireEvent.press(screen.getByTestId('admin-team-provisioning-create'))
     fireEvent.changeText(await screen.findByLabelText('Họ và tên'), 'Admin Account Two')
     fireEvent.changeText(screen.getByLabelText('Địa chỉ Gmail'), 'admin.two@gmail.com')
     fireEvent.changeText(screen.getByLabelText('Mật khẩu ban đầu'), 'InitialPass123!')
     fireEvent.changeText(screen.getByLabelText('Nhập lại mật khẩu'), 'InitialPass123!')
-    fireEvent.press(screen.getByLabelText('Tôi hiểu tài khoản phải đổi mật khẩu ở lần đăng nhập đầu.'))
-    const createButtons = screen.getAllByText('Tạo tài khoản quản trị')
-    fireEvent.press(createButtons[createButtons.length - 1])
+    fireEvent.press(screen.getByLabelText('Tài khoản phải đổi mật khẩu ở lần đăng nhập đầu.'))
+    fireEvent.press(screen.getByText('Rà soát'))
+    fireEvent.press(screen.getByText('Xác nhận'))
 
     await waitFor(() => {
       expect(adminControlService.provisionOperator).toHaveBeenCalledWith({
@@ -1310,7 +1361,7 @@ describe('AdminSections', () => {
     fireEvent.press(screen.getByTestId('admin-sections-team-tab'))
     fireEvent.press(await screen.findByTestId('admin-production-capability-team-directory'))
 
-    expect(await screen.findByTestId('admin-sub-admin-panel')).toBeTruthy()
+    expect(await screen.findByTestId('admin-team-workspace-team-directory')).toBeTruthy()
     expect(screen.queryByTestId('admin-team-owner-actions')).toBeNull()
     expect(screen.queryByTestId('admin-create-operator')).toBeNull()
   })

@@ -27,7 +27,7 @@ describe('Case Work phase controls', () => {
 
     expect(screen.getByTestId('customer-v21-case-work-scope-reviewing')).toBeOnTheScreen()
     expect(screen.getByText('Phần việc thợ đề nghị')).toBeOnTheScreen()
-    expect(screen.getByText('Lý do kỹ thuật thợ nêu')).toBeOnTheScreen()
+    expect(screen.getByText('Lý do thợ cung cấp')).toBeOnTheScreen()
     expect(screen.getByText('Kael đối chiếu theo dữ liệu đã nhận')).toBeOnTheScreen()
     expect(screen.getByText('Phạm vi khách đã duyệt')).toBeOnTheScreen()
     expect(screen.getByText('Điểm thay đổi cần xem xét')).toBeOnTheScreen()

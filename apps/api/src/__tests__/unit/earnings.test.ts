@@ -271,7 +271,7 @@ describe('computeEarnings', () => {
 
     expect(result.fromDate).toBe(from)
     expect(result.toDate).toBe(to)
-    expect(supabase.rpc).toHaveBeenCalledWith('get_worker_earnings_summary', {
+    expect(supabase.rpc).toHaveBeenCalledWith('get_worker_earnings_summary_v2', {
       p_worker_id: 'worker-1',
       p_from: from,
       p_to: to,
@@ -283,7 +283,7 @@ describe('computeEarnings', () => {
 
     await computeEarnings(supabase, 'worker-1')
 
-    expect(supabase.rpc).toHaveBeenCalledWith('get_worker_earnings_summary', {
+    expect(supabase.rpc).toHaveBeenCalledWith('get_worker_earnings_summary_v2', {
       p_worker_id: 'worker-1',
     })
   })

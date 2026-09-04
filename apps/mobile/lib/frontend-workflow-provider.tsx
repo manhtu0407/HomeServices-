@@ -62,7 +62,11 @@ import {
   useScopeChangeActions,
   type WorkerScopeChangeDraftInput,
 } from './frontend-workflow/use-scope-change-actions'
-import { useWorkerBoardActions } from './frontend-workflow/use-worker-board-actions'
+import {
+  useWorkerBoardActions,
+  type WorkerMatchingDeliveryView,
+  type WorkerProposalOpportunityView,
+} from './frontend-workflow/use-worker-board-actions'
 import { useWorkerOnsiteActions } from './frontend-workflow/use-worker-onsite-actions'
 import { useWorkerCandidateActions } from './frontend-workflow/use-worker-candidate-actions'
 
@@ -95,6 +99,8 @@ type FrontendWorkflowActions = {
   refreshCurrentJob: () => Promise<boolean>
   workerRefresh: () => Promise<boolean>
   workerAcceptBroadcast: (jobId?: string) => Promise<boolean>
+  workerMarkBroadcastSeen: (broadcastId: string) => Promise<boolean>
+  workerSubmitBroadcastProposal: (input: import('./api-types').WorkerBroadcastProposalInput) => Promise<boolean>
   workerDeclineBroadcast: () => Promise<boolean>
   workerSelectBroadcast: (broadcastId: string) => boolean
   workerUpdateStatus: WorkerOnsiteActions['workerUpdateStatus']
@@ -153,6 +159,8 @@ type FrontendWorkflowContextValue = {
   workerBroadcastsHydrated: boolean
   workerJobs: WorkerJobListResponse['jobs']
   workerJobsHydrated: boolean
+  workerMatchingDelivery: WorkerMatchingDeliveryView | null
+  workerProposalOpportunity: WorkerProposalOpportunityView | null
   workerPerformanceInsights: WorkerPerformanceInsightsResponse | null
   workerPayoutMethod: WorkerPayoutMethod | null
   workerProfile: WorkerProfileResponse | null
@@ -273,6 +281,9 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
     workerEarningsError,
     workerJobs,
     workerJobsHydrated,
+    workerMarkBroadcastSeen,
+    workerMatchingDelivery,
+    workerProposalOpportunity,
     workerPerformanceInsights,
     workerPayoutMethod,
     workerProfile,
@@ -282,6 +293,7 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
     workerSavePayoutMethod,
     workerSubmitRegistration,
     workerSaveRegistrationDraft,
+    workerSubmitBroadcastProposal,
     workerUpdateAvailability,
     workerUpdateServiceArea,
     workerUpdateServicePreferences,
@@ -371,6 +383,8 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
     refreshCurrentJob,
     workerRefresh,
     workerAcceptBroadcast,
+    workerMarkBroadcastSeen,
+    workerSubmitBroadcastProposal,
     workerDeclineBroadcast,
     workerSelectBroadcast,
     workerUpdateStatus,
@@ -444,6 +458,8 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
     requestWorkerCancellation,
     submitReview,
     workerAcceptBroadcast,
+    workerMarkBroadcastSeen,
+    workerSubmitBroadcastProposal,
     workerDeclineBroadcast,
     workerSelectBroadcast,
     workerRefresh,
@@ -577,6 +593,8 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
     workerBroadcastsHydrated,
     workerJobs,
     workerJobsHydrated,
+    workerMatchingDelivery,
+    workerProposalOpportunity,
     workerPerformanceInsights,
     workerPayoutMethod,
     workerProfile,

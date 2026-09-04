@@ -71,6 +71,7 @@ export type CoreTables = {
           request_id: string | null
           safe_metadata: Json
           success: boolean
+          synthetic_cohort_id: string | null
         }
         Insert: {
           cost_usd?: number | null
@@ -89,6 +90,7 @@ export type CoreTables = {
           request_id?: string | null
           safe_metadata?: Json
           success: boolean
+          synthetic_cohort_id?: string | null
         }
         Update: {
           cost_usd?: number | null
@@ -107,6 +109,7 @@ export type CoreTables = {
           request_id?: string | null
           safe_metadata?: Json
           success?: boolean
+          synthetic_cohort_id?: string | null
         }
         Relationships: [
           {
@@ -115,6 +118,13 @@ export type CoreTables = {
             isOneToOne: false
             referencedRelation: "jobs"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "api_logs_synthetic_cohort_id_fkey"
+            columns: ["synthetic_cohort_id"]
+            isOneToOne: false
+            referencedRelation: "synthetic_matching_cohorts"
+            referencedColumns: ["cohort_id"]
           },
         ]
       }
@@ -238,6 +248,7 @@ export type CoreTables = {
           kael_neutral_summary: string
           resolved_at: string | null
           status: string
+          synthetic_cohort_id: string | null
           updated_at: string
         }
         Insert: {
@@ -261,6 +272,7 @@ export type CoreTables = {
           kael_neutral_summary: string
           resolved_at?: string | null
           status?: string
+          synthetic_cohort_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -284,6 +296,7 @@ export type CoreTables = {
           kael_neutral_summary?: string
           resolved_at?: string | null
           status?: string
+          synthetic_cohort_id?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -321,6 +334,13 @@ export type CoreTables = {
             isOneToOne: false
             referencedRelation: "jobs"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "disputes_synthetic_cohort_id_fkey"
+            columns: ["synthetic_cohort_id"]
+            isOneToOne: false
+            referencedRelation: "synthetic_matching_cohorts"
+            referencedColumns: ["cohort_id"]
           },
         ]
       }

@@ -58,7 +58,9 @@ export function resolveKaelResponseSafetySignals(input: {
   readonly pipelineSafetySignals?: readonly string[];
   readonly intakeObservation?: IntakeEvalObservation;
 }) {
-  if (!input.electricalPlaybookEnabled) return [];
+  if (!input.electricalPlaybookEnabled) {
+    return [...new Set(input.pipelineSafetySignals ?? [])];
+  }
   return [...new Set([
     ...input.earlySafetySignals,
     ...(input.pipelineSafetySignals ?? []),

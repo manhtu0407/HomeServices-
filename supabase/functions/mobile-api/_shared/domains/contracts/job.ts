@@ -87,6 +87,13 @@ export type EdgeWorkerCandidateView = {
   customer_decided_at: string | null;
   direct_payment_available?: boolean | null;
   original_scope_price_quote: SafeOriginalScopePriceQuote | null;
+  worker_proposal: {
+    proposal_id: string;
+    scope_summary: string;
+    price_min: number | null;
+    price_max: number | null;
+    status: "proposed" | "customer_confirmed" | "customer_declined" | "expired" | "withdrawn";
+  } | null;
 };
 
 export type EdgeWorkerCandidateResponse = {

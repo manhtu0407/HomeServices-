@@ -23,6 +23,21 @@ export type PlatformManualBankConfig = {
   accountHolder?: string;
 };
 
+export type MobileClientPlatformCompatibility = {
+  applicationId: string;
+  minimumBuildNumber: number | null;
+  easBuildId: string | null;
+  runtimeVersion: string | null;
+};
+
+export type MobileClientCompatibility = {
+  contractEpoch: number;
+  releaseId: string;
+  gitSha: string;
+  ios: MobileClientPlatformCompatibility;
+  android: MobileClientPlatformCompatibility;
+};
+
 export type EdgeEnv = EdgeAiSecrets & {
   supabaseUrl: string;
   supabaseSecretKey: string;
@@ -30,6 +45,8 @@ export type EdgeEnv = EdgeAiSecrets & {
   harnessEnvironment: HarnessEnvironmentDescriptor;
   harnessRelease: HarnessRuntimeRelease;
   releaseId: string;
+  minimumClientBuildNumber: number | null;
+  clientCompatibility: MobileClientCompatibility;
   manualBank: PlatformManualBankConfig;
   sepayVietQr: SePayVietQrConfig;
   // S4/F1 (§38): global hard-stop for customer-facing AI during an incident.
@@ -67,6 +84,14 @@ export function readEdgeEnv(
     harnessEnvironment,
     harnessRelease,
     releaseId,
+    minimumClientBuildNumber: readPositiveInteger(getEnv("NESTSCOUT_MINIMUM_CLIENT_BUILD_NUMBER")),
+    clientCompatibility: {
+      contractEpoch: readPositiveInteger(getEnv("NESTSCOUT_STAGE1_CLIENT_CONTRACT_EPOCH")) ?? 2,
+      releaseId,
+      gitSha: harnessRelease.gitSha,
+      ios: readMobileClientPlatformCompatibility(getEnv, "IOS", "com.phanmanhtu.homeservices"),
+      android: readMobileClientPlatformCompatibility(getEnv, "ANDROID", "com.phanmanhtu.nestscout"),
+    },
     anthropicApiKey: getEnv("ANTHROPIC_API_KEY"),
     perplexityApiKey: getEnv("PERPLEXITY_API_KEY"),
     deepseekApiKey: getEnv("DEEPSEEK_API_KEY"),
@@ -92,6 +117,13 @@ export function readEdgeEnv(
     sepayVietQr: readSePayVietQrConfig(getEnv, harnessEnvironment.name),
     aiKillSwitch: readBooleanFlag(getEnv("KAEL_AI_KILL_SWITCH")),
   };
+}
+
+export function assertProductionReleaseRegistered(
+  env: Pick<EdgeEnv, "harnessEnvironment" | "harnessRelease">,
+): void {
+  if (env.harnessEnvironment.name !== "production" || env.harnessRelease.registered) return;
+  throw new Error("Production release identity is incomplete");
 }
 
 function readPlatformManualBankConfig(
@@ -204,6 +236,43 @@ function isNonEmptyStringRecord(
 function readBooleanFlag(value: string | undefined): boolean {
   return typeof value === "string" &&
     ["1", "true", "yes", "on"].includes(value.trim().toLowerCase());
+}
+
+function readMobileClientPlatformCompatibility(
+  getEnv: (name: string) => string | undefined,
+  platform: "IOS" | "ANDROID",
+  defaultApplicationId: string,
+): MobileClientPlatformCompatibility {
+  const applicationId = readBoundedText(
+    getEnv(`NESTSCOUT_STAGE1_${platform}_APPLICATION_ID`),
+    160,
+  ) ?? defaultApplicationId;
+  return {
+    applicationId,
+    minimumBuildNumber: readPositiveInteger(
+      getEnv(`NESTSCOUT_STAGE1_${platform}_MINIMUM_BUILD_NUMBER`),
+    ),
+    easBuildId: readUuid(getEnv(`NESTSCOUT_STAGE1_${platform}_EAS_BUILD_ID`)),
+    runtimeVersion: readBoundedText(
+      getEnv(`NESTSCOUT_STAGE1_${platform}_RUNTIME_VERSION`),
+      80,
+    ) ?? null,
+  };
+}
+
+function readPositiveInteger(value: string | undefined): number | null {
+  const normalized = value?.trim();
+  if (!normalized || !/^\d+$/.test(normalized)) return null;
+  const parsed = Number(normalized);
+  return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : null;
+}
+
+function readUuid(value: string | undefined): string | null {
+  const normalized = value?.trim().toLowerCase();
+  return normalized &&
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(normalized)
+    ? normalized
+    : null;
 }
 
 const envFlag = readBooleanFlag;

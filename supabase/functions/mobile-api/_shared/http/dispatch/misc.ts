@@ -2,6 +2,7 @@ import {
   customerScopeDecisionSchema,
   devicePushTokenSchema,
   devicePushTokenUnregisterSchema,
+  matchingPushDeliveryAckSchema,
   disputeAdminDecisionSchema,
   disputeCounterStatementSchema,
   placesAutocompleteSchema,
@@ -67,6 +68,11 @@ export async function dispatchMiscRoute(
       );
       if (!input.success) apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
       return services.unregisterDevicePushToken(ctx, input.data);
+    }
+    case "notifications.matchingDeliveryAck": {
+      const input = matchingPushDeliveryAckSchema.safeParse(await readJson(request));
+      if (!input.success) apiFailure("VALIDATION", "Dữ liệu xác nhận thiết bị không hợp lệ", 400);
+      return services.acknowledgeMatchingPushDelivery(ctx, input.data);
     }
     case "notifications.read":
       return services.markNotificationRead(ctx, route.notificationId);

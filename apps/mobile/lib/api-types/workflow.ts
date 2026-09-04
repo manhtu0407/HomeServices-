@@ -1,4 +1,4 @@
-import type { ComplexityLevel, JobStatus, LocalPaymentStatus, MatchingState, ScopeChangeStatus, ServiceType, UserRole } from '@nestscout/shared'
+import type { ComplexityLevel, ConfirmationOperationReceipt, JobStatus, LocalPaymentStatus, MatchingState, ScopeChangeStatus, ServiceType, UserRole } from '@nestscout/shared'
 import type { KaelChatProgress } from './kael'
 import type { AddressAccessView } from './shared'
 
@@ -11,7 +11,12 @@ export type {
 } from '@nestscout/shared'
 
 export type ConfirmKaelChatResponse = ConfirmSearchResponse & {
+  operation?: ConfirmationOperationReceipt
   session_id: string
+}
+
+export type ConfirmationOperationResponse = {
+  operation: ConfirmationOperationReceipt
 }
 
 export type JobDetailResponse = {
@@ -339,6 +344,8 @@ export type DevicePushTokenResponse = {
   enabled: boolean
   updated_at: string
 }
+
+export type { MatchingPushDeliveryAckInput, MatchingPushDeliveryAckResponse } from '@nestscout/shared'
 
 export type CustomerScopeDecisionResponse = {
   scope_change_id: string

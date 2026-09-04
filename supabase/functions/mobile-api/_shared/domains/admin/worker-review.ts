@@ -8,6 +8,7 @@ import type {
   AdminWorkerReviewDetail,
 } from "../contracts/admin-control.ts";
 import { getAdminWorkerApplication, requireAdminCapability } from "./control.ts";
+import { scopeQueryToRealTraffic } from "../../platform/synthetic-cohort.ts";
 
 type Row = Record<string, unknown>;
 type WorkerPiiClient = DbClient & {
@@ -31,9 +32,9 @@ export async function getAdminWorkerReviewDetail(
   const piiClient = ctx.supabase as WorkerPiiClient;
   const [profileResult, workerResult, historyResult, authResult] = await Promise.all([
     dbQuery<Row>(client.from("profiles").select("id,full_name,phone,created_at").eq("id", application.worker_id).maybeSingle()),
-    dbQuery<Row>(client.from("worker_profiles").select(
+    dbQuery<Row>(scopeQueryToRealTraffic(client.from("worker_profiles").select(
       "id,legal_name,date_of_birth,gender,service_types,years_experience,districts,service_radius_km,problem_specializations,cccd_front_url,cccd_back_url,selfie_url,bank_account,bank_name",
-    ).eq("id", application.worker_id).maybeSingle()),
+    ).eq("id", application.worker_id)).maybeSingle()),
     dbQuery<Row[]>(client.from("admin_worker_application_reviews").select(
       "review_stage,decision,reason,decided_by,decided_at",
     ).eq("worker_id", application.worker_id).order("decided_at", { ascending: false })),
@@ -111,13 +112,13 @@ export async function decideAdminWorkerProfile(
   input: AdminWorkerProfileDecisionInput,
 ): Promise<AdminWorkerProfileDecisionResponse> {
   await requireAdminCapability(ctx, "workers.review");
-  const accessQueue = await dbQuery<Row>(db(ctx).from("kael_admin_queue")
-    .select("actor_id").eq("id", applicationId).eq("queue_type", "worker_application_review").maybeSingle());
+  const accessQueue = await dbQuery<Row>(scopeQueryToRealTraffic(db(ctx).from("kael_admin_queue")
+    .select("actor_id").eq("id", applicationId).eq("queue_type", "worker_application_review")).maybeSingle());
   const workerId = nullableString(accessQueue.data?.actor_id);
   if (accessQueue.error || !workerId) apiFailure("NOT_FOUND", "Không tìm thấy hồ sơ thợ", 404);
-  const profileQueue = await dbQuery<Row>(db(ctx).from("kael_admin_queue")
+  const profileQueue = await dbQuery<Row>(scopeQueryToRealTraffic(db(ctx).from("kael_admin_queue")
     .select("id").eq("actor_id", workerId).eq("queue_type", "worker_profile_verification")
-    .in("status", ["open", "acknowledged"]).order("created_at", { ascending: false }).limit(1).maybeSingle());
+    .in("status", ["open", "acknowledged"]).order("created_at", { ascending: false }).limit(1)).maybeSingle());
   const queueId = nullableString(profileQueue.data?.id);
   if (profileQueue.error || !queueId) apiFailure("CONFLICT", "Hồ sơ chưa sẵn sàng để xác minh", 409);
   const result = await dbQuery<Row[]>(db(ctx).rpc("admin_review_worker_profile_atomic", {

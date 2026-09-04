@@ -86,6 +86,18 @@ import {
 } from "../../domains/admin/queue.ts";
 import { getKaelModelHealth } from "../../domains/admin/model-health.ts";
 import { listKaelEstimateAccuracy, parseKaelEstimateAccuracyInput } from "../../domains/admin/estimate-accuracy.ts";
+import {
+  draftAdminIntakePolicy,
+  draftAdminPriceBaseline,
+  listAdminIntakePolicies,
+  listAdminPriceBaselineVersions,
+  previewAdminIntakePolicy,
+  transitionAdminIntakePolicy,
+  transitionAdminPriceBaseline,
+  type IntakePolicyDraftInput,
+  type IntakePolicyPreviewInput,
+  type PriceBaselineDraftInput,
+} from "../../domains/admin/policy-governance.ts";
 import { assertNever, type AdminDispatchRoute } from "./kinds.ts";
 
 type AdminControlDispatchRoute = Extract<
@@ -235,6 +247,28 @@ async function dispatchAdminControlRoute(
       return dispatchAdminGovernance(ctx, services.listAdminAiCosts, request, "Phân trang chi phí Kael không hợp lệ");
     case "admin.governance.learningRules":
       return dispatchAdminGovernance(ctx, services.listAdminLearningRules, request, "Phân trang quy tắc học Kael không hợp lệ");
+    case "admin.governance.intakePolicies.list":
+      return listAdminIntakePolicies(ctx);
+    case "admin.governance.intakePolicies.preview":
+      return previewAdminIntakePolicy(ctx, await readJson(request) as IntakePolicyPreviewInput);
+    case "admin.governance.intakePolicies.draft":
+      return draftAdminIntakePolicy(ctx, await readJson(request) as IntakePolicyDraftInput);
+    case "admin.governance.intakePolicies.approve":
+      return transitionAdminIntakePolicy(ctx, route.policyId, "approve", await readJson(request) as { expected_revision: number; reason: string });
+    case "admin.governance.intakePolicies.publish":
+      return transitionAdminIntakePolicy(ctx, route.policyId, "publish", await readJson(request) as { expected_revision: number; reason: string });
+    case "admin.governance.intakePolicies.rollback":
+      return transitionAdminIntakePolicy(ctx, route.policyId, "rollback", await readJson(request) as { expected_revision: number; reason: string });
+    case "admin.governance.priceBaselineVersions.list":
+      return listAdminPriceBaselineVersions(ctx);
+    case "admin.governance.priceBaselineVersions.draft":
+      return draftAdminPriceBaseline(ctx, await readJson(request) as PriceBaselineDraftInput);
+    case "admin.governance.priceBaselineVersions.approve":
+      return transitionAdminPriceBaseline(ctx, route.baselineVersionId, "approve", await readJson(request) as { expected_revision: number; reason: string });
+    case "admin.governance.priceBaselineVersions.publish":
+      return transitionAdminPriceBaseline(ctx, route.baselineVersionId, "publish", await readJson(request) as { expected_revision: number; reason: string });
+    case "admin.governance.priceBaselineVersions.rollback":
+      return transitionAdminPriceBaseline(ctx, route.baselineVersionId, "rollback", await readJson(request) as { expected_revision: number; reason: string });
     case "admin.system.priceBaselines.list": {
       const input = parseAdminSystemPriceListQuery(new URL(request.url));
       if (!input.success) apiFailure("VALIDATION", "Bộ lọc giá tham chiếu không hợp lệ", 400);

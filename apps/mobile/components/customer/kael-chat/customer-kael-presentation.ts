@@ -153,10 +153,15 @@ export function deriveCustomerKaelPresentation({
       })
     : []
   const agenticAnalysisActive = agenticIntakeModeActive && chat?.session.case_phase === 'analysis'
-  const offerReviewActive = agenticIntakeModeActive &&
-    chat?.session.case_phase === 'offer_review' &&
-    chat.session.status === 'estimate_ready' &&
-    chat.session.next_action === 'estimate_ready'
+  const offerReviewActive = agenticIntakeModeActive && (
+    (
+      chat?.session.case_phase === 'offer_review' &&
+      chat.session.status === 'estimate_ready' &&
+      chat.session.next_action === 'estimate_ready'
+    )
+    || chat?.session.intake_coverage?.next_action === 'rfq_review'
+    || chat?.session.intake_coverage?.next_action === 'inspection_review'
+  )
   const serverPriceReviewBlocked = artifactNextAction?.kind === 'escalate'
   const missingCaseWorkDeal = mode === 'case' && !deal && !workIntakeActive
   const routeDraftHasStructuredOutcome = Boolean(
@@ -213,12 +218,15 @@ export function deriveCustomerKaelPresentation({
     !submittingAgenticEvidence &&
     !processLines &&
     serverRequestsEvidence
+  const confirmationKind = chat?.session.intake_coverage?.confirmation_kind
   const canConfirmAgenticEstimate = offerReviewActive && Boolean(
     chat?.session.id &&
-    chatEstimate &&
-    chatEstimate.needs_inspection !== true &&
-    chat?.session.status === 'estimate_ready' &&
-    chat?.session.next_action === 'estimate_ready',
+    chat?.session.intake_coverage?.order_eligible !== false &&
+    (
+      confirmationKind === 'rfq_request'
+      || confirmationKind === 'inspection_request'
+      || (chatEstimate && chatEstimate.needs_inspection !== true)
+    ),
   )
   const agenticEstimateConfirmed = chat?.session.status === 'confirmed' ||
     chat?.session.next_action === 'confirmed' ||

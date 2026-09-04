@@ -13,7 +13,6 @@ export default defineConfig({
       'src/__tests__/**/*-pillar.test.ts',
       'src/__tests__/kael-multi-turn-eval.test.ts',
     ],
-    passWithNoTests: true,
     environment: 'node',
   },
 })

@@ -39,6 +39,7 @@ it('places the real worker avatar before the name and shows only available perso
         birth_year: 1990,
         candidate_id: 'candidate-avatar',
         original_scope_price_quote: originalScopePriceQuote,
+        worker_proposal: null,
         customer_decided_at: null,
         display_name: 'Nguyễn An',
         expires_at: null,
@@ -92,6 +93,7 @@ it('fails closed when a proposed candidate has no worker-confirmed price receipt
         expires_at: '2026-07-11T01:10:00.000Z',
         is_favorite: false,
         original_scope_price_quote: null,
+        worker_proposal: null,
         proposed_at: '2026-07-11T01:00:00.000Z',
         rating: null,
         status: 'proposed',
@@ -122,6 +124,108 @@ it('fails closed when a proposed candidate has no worker-confirmed price receipt
   expect(onConfirm).not.toHaveBeenCalled()
 })
 
+it('lets the customer confirm an RFQ proposal without presenting it as a locked Kael price', () => {
+  const onConfirm = jest.fn()
+  const view = render(
+    <WorkerCandidateReviewResponse
+      busy={false}
+      candidate={{
+        avatar_url: null,
+        candidate_id: 'candidate-rfq',
+        customer_decided_at: null,
+        display_name: 'Nguyễn An',
+        expires_at: '2026-07-11T01:10:00.000Z',
+        is_favorite: false,
+        original_scope_price_quote: null,
+        proposed_at: '2026-07-11T01:00:00.000Z',
+        rating: null,
+        status: 'proposed',
+        total_jobs: 0,
+        verification_status: 'approved',
+        worker_id: 'worker-1',
+        worker_proposal: {
+          price_max: 260000,
+          price_min: 180000,
+          proposal_id: 'proposal-rfq',
+          scope_summary: 'Khảo sát ổ cắm chập chờn và thay linh kiện nếu được duyệt',
+          status: 'proposed',
+        },
+        years_experience: 2,
+      }}
+      error={null}
+      language="vi"
+      onConfirm={onConfirm}
+      onReject={jest.fn()}
+      onRetry={jest.fn()}
+      onRetrySavedWorkers={jest.fn()}
+      onToggleFavorite={jest.fn()}
+      savedWorkers={[]}
+      savedWorkersStatus="ready"
+      tokens={tokens}
+    />,
+  )
+
+  expect(view.getByTestId('customer-v21-worker-candidate-rfq-proposal')).toBeTruthy()
+  expect(view.getByText('180.000đ – 260.000đ')).toBeTruthy()
+  expect(view.getByText(/chưa phải giá cuối đã khóa/)).toBeTruthy()
+  expect(view.queryByTestId('customer-v21-worker-candidate-price-receipt')).toBeNull()
+  expect(view.queryByTestId('customer-v21-worker-candidate-price-blocked')).toBeNull()
+  fireEvent.press(view.getByTestId('customer-v21-worker-candidate-confirm'))
+  expect(view.getByText(/mọi báo giá hoặc thay đổi vẫn cần bạn duyệt/)).toBeTruthy()
+  fireEvent.press(view.getByTestId('customer-v21-worker-candidate-final-confirm'))
+  expect(onConfirm).toHaveBeenCalledTimes(1)
+})
+
+it('lets the customer select an inspection worker without inventing a repair price', () => {
+  const onConfirm = jest.fn()
+  const view = render(
+    <WorkerCandidateReviewResponse
+      busy={false}
+      candidate={{
+        avatar_url: null,
+        candidate_id: 'candidate-inspection',
+        customer_decided_at: null,
+        display_name: 'Nguyen An',
+        expires_at: '2026-07-11T01:10:00.000Z',
+        is_favorite: false,
+        original_scope_price_quote: null,
+        proposed_at: '2026-07-11T01:00:00.000Z',
+        rating: null,
+        status: 'proposed',
+        total_jobs: 0,
+        verification_status: 'approved',
+        worker_id: 'worker-1',
+        worker_proposal: {
+          price_max: null,
+          price_min: null,
+          proposal_id: 'proposal-inspection',
+          scope_summary: 'Inspect the indoor unit and confirm the repair scope',
+          status: 'proposed',
+        },
+        years_experience: 2,
+      }}
+      error={null}
+      language="en"
+      onConfirm={onConfirm}
+      onReject={jest.fn()}
+      onRetry={jest.fn()}
+      onRetrySavedWorkers={jest.fn()}
+      onToggleFavorite={jest.fn()}
+      savedWorkers={[]}
+      savedWorkersStatus="ready"
+      tokens={tokens}
+    />,
+  )
+
+  expect(view.getByTestId('customer-v21-worker-candidate-inspection-proposal')).toBeTruthy()
+  expect(view.getByText(/There is no repair price at this step/)).toBeTruthy()
+  expect(view.queryByText(/đ/)).toBeNull()
+  fireEvent.press(view.getByTestId('customer-v21-worker-candidate-confirm'))
+  expect(view.getByText(/not confirming a repair price or scope/)).toBeTruthy()
+  fireEvent.press(view.getByTestId('customer-v21-worker-candidate-final-confirm'))
+  expect(onConfirm).toHaveBeenCalledTimes(1)
+})
+
 it('shows only real candidate facts and keeps the address locked until confirmation', () => {
   const onConfirm = jest.fn()
   const onReject = jest.fn()
@@ -133,6 +237,7 @@ it('shows only real candidate facts and keeps the address locked until confirmat
         avatar_url: null,
         candidate_id: 'candidate-1',
         original_scope_price_quote: originalScopePriceQuote,
+        worker_proposal: null,
         customer_decided_at: null,
         display_name: 'Nguyễn An',
         expires_at: '2026-07-11T01:10:00.000Z',
@@ -182,6 +287,7 @@ it('makes unavailable protected direct payment clear before the customer chooses
         avatar_url: null,
         candidate_id: 'candidate-1',
         original_scope_price_quote: originalScopePriceQuote,
+        worker_proposal: null,
         customer_decided_at: null,
         direct_payment_available: false,
         display_name: 'Nguyễn An',
@@ -221,6 +327,7 @@ it('explains that protected direct payment is rechecked before it opens', () => 
         avatar_url: null,
         candidate_id: 'candidate-1',
         original_scope_price_quote: originalScopePriceQuote,
+        worker_proposal: null,
         customer_decided_at: null,
         direct_payment_available: true,
         display_name: 'Nguyễn An',
@@ -261,6 +368,7 @@ it('opens a final review with saved workers before confirming the candidate', ()
         avatar_url: null,
         candidate_id: 'candidate-1',
         original_scope_price_quote: originalScopePriceQuote,
+        worker_proposal: null,
         customer_decided_at: null,
         display_name: 'Nguyễn An',
         expires_at: '2026-07-11T01:10:00.000Z',
@@ -309,6 +417,7 @@ it('keeps final confirmation available when saved-worker history cannot load', (
         avatar_url: null,
         candidate_id: 'candidate-1',
         original_scope_price_quote: originalScopePriceQuote,
+        worker_proposal: null,
         customer_decided_at: null,
         display_name: 'Nguyễn An',
         expires_at: null,

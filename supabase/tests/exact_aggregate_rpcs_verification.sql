@@ -319,11 +319,14 @@ begin
     raise exception 'legacy three-argument earnings aggregate overload must not exist';
   end if;
   if to_regprocedure('public.get_worker_earnings_summary(uuid,timestamptz,timestamptz,numeric)') is null then
-    raise exception 'canonical earnings aggregate RPC is missing';
+    raise exception 'backward-compatible earnings aggregate RPC is missing';
+  end if;
+  if to_regprocedure('public.get_worker_earnings_summary_v2(uuid,timestamptz,timestamptz,numeric)') is null then
+    raise exception 'canonical versioned earnings aggregate RPC is missing';
   end if;
   if has_function_privilege(
     'authenticated',
-    to_regprocedure('public.get_worker_earnings_summary(uuid,timestamptz,timestamptz,numeric)'),
+    to_regprocedure('public.get_worker_earnings_summary_v2(uuid,timestamptz,timestamptz,numeric)'),
     'execute'
   ) then
     raise exception 'authenticated must not execute the earnings aggregate RPC';
@@ -344,14 +347,14 @@ begin
   end if;
   if not has_function_privilege(
     'service_role',
-    to_regprocedure('public.get_worker_earnings_summary(uuid,timestamptz,timestamptz,numeric)'),
+    to_regprocedure('public.get_worker_earnings_summary_v2(uuid,timestamptz,timestamptz,numeric)'),
     'execute'
   ) then
     raise exception 'service_role must execute the aggregate RPCs';
   end if;
 
   begin
-    perform public.get_worker_earnings_summary(
+    perform public.get_worker_earnings_summary_v2(
       null::uuid,
       null::timestamptz,
       null::timestamptz,
@@ -367,7 +370,7 @@ begin
   end if;
 
   select * into strict earnings
-  from public.get_worker_earnings_summary(
+  from public.get_worker_earnings_summary_v2(
     'a3100000-0000-4000-8000-000000000002',
     null::timestamptz,
     null::timestamptz,
@@ -383,7 +386,7 @@ begin
   end if;
 
   select * into strict timezone_earnings
-  from public.get_worker_earnings_summary(
+  from public.get_worker_earnings_summary_v2(
     'a3100000-0000-4000-8000-000000000004',
     null::timestamptz,
     null::timestamptz,
@@ -409,7 +412,7 @@ begin
   end if;
 
   select * into strict earnings
-  from public.get_worker_earnings_summary(
+  from public.get_worker_earnings_summary_v2(
     'a3100000-0000-4000-8000-000000000002',
     '2026-07-11T00:00:00Z',
     '2026-07-11T23:59:59Z',
@@ -473,7 +476,7 @@ begin
   end if;
 
   select * into strict earnings
-  from public.get_worker_earnings_summary(
+  from public.get_worker_earnings_summary_v2(
     'a3100000-0000-4000-8000-000000000003',
     null::timestamptz,
     null::timestamptz,

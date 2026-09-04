@@ -29,6 +29,7 @@ import {
   nullableString,
 } from "../../platform/coercions.ts";
 import { db, dbQuery } from "../../platform/db.ts";
+import { scopeQueryToRealTraffic } from "../../platform/synthetic-cohort.ts";
 
 type Row = Record<string, unknown>;
 
@@ -73,10 +74,10 @@ export async function listAdminPayoutMethods(
   input: AdminPayoutMethodListInput,
 ): Promise<AdminPayoutMethodListResponse> {
   await requireAdminCapability(ctx, "payouts.read");
-  let query = db(ctx)
+  let query = scopeQueryToRealTraffic(db(ctx)
     .from("worker_payout_methods")
     .select(PAYOUT_METHOD_SAFE_SELECT, { count: "exact" })
-    .limit(500);
+    .limit(500));
   if (input.status !== "all") query = query.eq("status", input.status);
 
   const result = await dbQuery<Row[]>(query);
@@ -110,10 +111,10 @@ export async function getAdminPayoutMethod(
 ): Promise<AdminPayoutMethodDetailResponse> {
   await requireAdminCapability(ctx, "payouts.read");
   const result = await dbQuery<Row>(
-    db(ctx)
+    scopeQueryToRealTraffic(db(ctx)
       .from("worker_payout_methods")
       .select(PAYOUT_METHOD_DETAIL_SELECT)
-      .eq("id", payoutMethodId)
+      .eq("id", payoutMethodId))
       .maybeSingle(),
   );
   if (result.error) apiFailure("DB_ERROR", "Không thể tải tài khoản nhận tiền", 500);
@@ -176,10 +177,10 @@ export async function listAdminWithdrawalRequests(
   input: AdminWithdrawalRequestListInput,
 ): Promise<AdminWithdrawalRequestListResponse> {
   await requireAdminCapability(ctx, "payouts.read");
-  let query = db(ctx)
+  let query = scopeQueryToRealTraffic(db(ctx)
     .from("worker_withdrawal_requests")
     .select(WITHDRAWAL_SAFE_SELECT, { count: "exact" })
-    .limit(500);
+    .limit(500));
   if (input.status !== "all") query = query.eq("status", input.status);
   if (input.assignment === "mine") query = query.eq("processing_by", ctx.user.id);
   if (input.assignment === "unassigned") query = query.is("processing_by", null);
@@ -212,10 +213,10 @@ export async function getAdminWithdrawalRequest(
 ): Promise<AdminWithdrawalRequestDetailResponse> {
   await requireAdminCapability(ctx, "payouts.read");
   const result = await dbQuery<Row>(
-    db(ctx)
+    scopeQueryToRealTraffic(db(ctx)
       .from("worker_withdrawal_requests")
       .select(WITHDRAWAL_DETAIL_SELECT)
-      .eq("id", withdrawalRequestId)
+      .eq("id", withdrawalRequestId))
       .maybeSingle(),
   );
   if (result.error) apiFailure("DB_ERROR", "Không thể tải chi tiết yêu cầu rút tiền", 500);

@@ -19,6 +19,7 @@ export type PrivilegedClientContext = {
   readonly environment: HarnessEnvironmentDescriptor["name"] | "unknown";
   readonly projectRef: string | null;
   readonly releaseId: string;
+  readonly deploymentId?: string;
   readonly actorId: string | null;
   readonly actorRole: UserRole | "system" | null;
 };
@@ -71,6 +72,7 @@ export function safePrivilegedClientMetadata(
       environment: context.environment,
       project_ref: context.projectRef,
       release_id: context.releaseId,
+      deployment_id: context.deploymentId ?? null,
       actor_role: context.actorRole,
     }
     : {
@@ -78,6 +80,7 @@ export function safePrivilegedClientMetadata(
       environment: "unknown",
       project_ref: null,
       release_id: "unreleased",
+      deployment_id: null,
       actor_role: null,
     };
 }

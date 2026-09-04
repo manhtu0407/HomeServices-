@@ -48,6 +48,7 @@ export type JobsTables = {
           responded_at: string | null
           sent_at: string | null
           status: Database["public"]["Enums"]["broadcast_status"]
+          synthetic_cohort_id: string | null
           worker_id: string
         }
         Insert: {
@@ -60,6 +61,7 @@ export type JobsTables = {
           responded_at?: string | null
           sent_at?: string | null
           status?: Database["public"]["Enums"]["broadcast_status"]
+          synthetic_cohort_id?: string | null
           worker_id: string
         }
         Update: {
@@ -72,6 +74,7 @@ export type JobsTables = {
           responded_at?: string | null
           sent_at?: string | null
           status?: Database["public"]["Enums"]["broadcast_status"]
+          synthetic_cohort_id?: string | null
           worker_id?: string
         }
         Relationships: [
@@ -553,6 +556,7 @@ export type JobsTables = {
           original_scope_price_quote: Json | null
           proposed_at: string
           status: string
+          synthetic_cohort_id: string | null
           updated_at: string
           worker_id: string
         }
@@ -566,6 +570,7 @@ export type JobsTables = {
           original_scope_price_quote?: Json | null
           proposed_at?: string
           status?: string
+          synthetic_cohort_id?: string | null
           updated_at?: string
           worker_id: string
         }
@@ -579,6 +584,7 @@ export type JobsTables = {
           original_scope_price_quote?: Json | null
           proposed_at?: string
           status?: string
+          synthetic_cohort_id?: string | null
           updated_at?: string
           worker_id?: string
         }
@@ -642,6 +648,7 @@ export type JobsTables = {
           geo_source: string | null
           gross_amount: number | null
           id: string
+          intake_scope_snapshot: Json | null
           kael_advisory: string | null
           kael_complexity:
             | Database["public"]["Enums"]["complexity_level"]
@@ -672,6 +679,7 @@ export type JobsTables = {
           price_context_1: Json | null
           price_context_2: Json | null
           problem_chips: string[]
+          quote_mode: Database["public"]["Enums"]["service_quote_mode"] | null
           reviewed_at: string | null
           scheduled_at: string | null
           scope_change_customer_decision: string | null
@@ -684,6 +692,7 @@ export type JobsTables = {
           service_problem_id: string | null
           service_type: Database["public"]["Enums"]["service_type"]
           status: Database["public"]["Enums"]["job_status"]
+          synthetic_cohort_id: string | null
           updated_at: string
           worker_commission_level: number | null
           worker_commission_rate_bps: number | null
@@ -718,6 +727,7 @@ export type JobsTables = {
           geo_source?: string | null
           gross_amount?: number | null
           id?: string
+          intake_scope_snapshot?: Json | null
           kael_advisory?: string | null
           kael_complexity?:
             | Database["public"]["Enums"]["complexity_level"]
@@ -748,6 +758,7 @@ export type JobsTables = {
           price_context_1?: Json | null
           price_context_2?: Json | null
           problem_chips?: string[]
+          quote_mode?: Database["public"]["Enums"]["service_quote_mode"] | null
           reviewed_at?: string | null
           scheduled_at?: string | null
           scope_change_customer_decision?: string | null
@@ -760,6 +771,7 @@ export type JobsTables = {
           service_problem_id?: string | null
           service_type: Database["public"]["Enums"]["service_type"]
           status?: Database["public"]["Enums"]["job_status"]
+          synthetic_cohort_id?: string | null
           updated_at?: string
           worker_commission_level?: number | null
           worker_commission_rate_bps?: number | null
@@ -794,6 +806,7 @@ export type JobsTables = {
           geo_source?: string | null
           gross_amount?: number | null
           id?: string
+          intake_scope_snapshot?: Json | null
           kael_advisory?: string | null
           kael_complexity?:
             | Database["public"]["Enums"]["complexity_level"]
@@ -824,6 +837,7 @@ export type JobsTables = {
           price_context_1?: Json | null
           price_context_2?: Json | null
           problem_chips?: string[]
+          quote_mode?: Database["public"]["Enums"]["service_quote_mode"] | null
           reviewed_at?: string | null
           scheduled_at?: string | null
           scope_change_customer_decision?: string | null
@@ -836,6 +850,7 @@ export type JobsTables = {
           service_problem_id?: string | null
           service_type?: Database["public"]["Enums"]["service_type"]
           status?: Database["public"]["Enums"]["job_status"]
+          synthetic_cohort_id?: string | null
           updated_at?: string
           worker_commission_level?: number | null
           worker_commission_rate_bps?: number | null

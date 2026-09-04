@@ -191,7 +191,9 @@ export function workerBroadcastToSnapshot(broadcast: WorkerBroadcastsResponse['b
     secondsRemaining: broadcast.seconds_remaining,
     estimatedPriceLabel: formatNullablePriceRange(broadcast.estimated_price_min, broadcast.estimated_price_max),
     estimatedEarningLabel: formatNullablePriceRange(broadcast.estimated_earning_min, broadcast.estimated_earning_max),
-    priceQuote: originalScopePriceQuoteFromApi(broadcast.original_scope_price_quote),
+    priceQuote: broadcast.original_scope_price_quote
+      ? originalScopePriceQuoteFromApi(broadcast.original_scope_price_quote)
+      : undefined,
     scheduledAt: broadcast.scheduled_at,
   }
 }

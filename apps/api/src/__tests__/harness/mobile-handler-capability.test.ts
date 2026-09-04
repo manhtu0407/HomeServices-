@@ -97,6 +97,7 @@ describe('mobile-api capability ingress', () => {
     expect(response.status).toBe(403)
     expect(called).toBe(false)
   })
+
 })
 
 

@@ -1,6 +1,10 @@
+import Constants from 'expo-constants'
+import { Platform } from 'react-native'
+
 import { supabase } from './supabase'
 import { mobileRuntimeConfig } from './runtime-config'
 import { generateClientRequestId } from './client-request-id'
+import type { ApiResponseMetadata } from './api-types/shared'
 import {
   readResponseTextBounded,
   ResponseBodyInvalidEncodingError,
@@ -22,6 +26,8 @@ const MAX_API_ERROR_LENGTH = 512
 const API_ERROR_CODE_PATTERN = /^[A-Z][A-Z0-9_]{0,63}$/
 const API_ERROR_CONTROL_PATTERN = /[\u0000-\u001F\u007F-\u009F\u00AD\u200B-\u200F\u2028-\u202E\u2060-\u206F\uFEFF\uFFF9-\uFFFB]/u
 const IDEMPOTENCY_KEY_PATTERN = /^[A-Za-z0-9._:-]{16,160}$/
+const RESPONSE_IDENTITY_PATTERN = /^[A-Za-z0-9._:-]{1,160}$/
+const SUPPORT_CODE_PATTERN = /^[A-Z0-9]{8}$/
 const MOBILE_API_BASE_PATH = /(?:\/functions\/v1)?\/mobile-api$/i
 const KAEL_CHAT_CONFIRM_PATH = /^\/kael\/chat\/[^/]+\/confirm$/
 const KAEL_CHAT_INTAKE_CONFIRMATION_PATH = /^\/kael\/chat\/[^/]+\/intake-confirmation$/
@@ -29,8 +35,12 @@ const CUSTOMER_KAEL_TURN_PATH = /^\/me\/kael\/conversations\/[^/]+\/turn$/
 const SCOPE_CHANGE_PREVIEW_PATH = /^\/jobs\/[^/]+\/kael-incident\/preview-scope$/
 
 export type ApiResult<T> =
-  | { success: true; data: T; status: number }
-  | { success: false; error: string; code: string; status: number }
+  | { success: true; data: T; status: number; meta?: ApiResponseMetadata }
+  | { success: false; error: string; code: string; status: number; meta?: ApiResponseMetadata }
+
+type ApiRequestOptions = {
+  idempotencyKey?: string
+}
 
 export async function getMobileApiAuthHeaders(): Promise<Record<string, string>> {
   if (!supabase) {
@@ -70,6 +80,7 @@ async function request<T>(
   path: string,
   body?: unknown,
   accessToken?: string,
+  options: ApiRequestOptions = {},
 ): Promise<ApiResult<T>> {
   if (!API_BASE_URL) {
     return {
@@ -90,12 +101,21 @@ async function request<T>(
 
   const retryBudget = isRetrySafeRequest(method, path, body) ? MAX_RETRIES : 0
   const timeoutMs = requestTimeoutMs(method, path)
-  const idempotencyKey = idempotencyKeyForRequest(method, body)
+  const idempotencyKey = idempotencyKeyForRequest(method, body, options.idempotencyKey)
+  if (options.idempotencyKey && !idempotencyKey) {
+    return {
+      success: false,
+      error: 'Mã chống trùng yêu cầu không hợp lệ',
+      code: 'IDEMPOTENCY_KEY_INVALID',
+      status: 0,
+    }
+  }
 
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
     const controller = new AbortController()
     const timeout = setTimeout(() => controller.abort(), timeoutMs)
     let responseStatus = 0
+    let responseMetadata: ApiResponseMetadata | undefined
 
     try {
       const authHeaders = accessToken === undefined
@@ -114,9 +134,11 @@ async function request<T>(
         signal: controller.signal,
       })
       responseStatus = response.status
+      responseMetadata = extractApiResponseMetadata(response.headers)
 
       const responseText = await readResponseTextBounded(response, MAX_API_RESPONSE_BYTES)
       const json = safeParseJsonObject(responseText)
+      responseMetadata = withBodySupportCode(responseMetadata, json?.support_code)
 
       if (!response.ok) {
         if (attempt < retryBudget && shouldRetryResponse(response.status, method, path)) {
@@ -128,6 +150,7 @@ async function request<T>(
           error: safeServerError(json?.error),
           code: safeServerErrorCode(json?.code, response.status),
           status: response.status,
+          meta: responseMetadata,
         }
       }
 
@@ -137,10 +160,11 @@ async function request<T>(
           error: 'Phản hồi từ hệ thống không hợp lệ',
           code: 'INVALID_RESPONSE',
           status: response.status,
+          meta: responseMetadata,
         }
       }
 
-      return { success: true, data: json as T, status: response.status }
+      return { success: true, data: json as T, status: response.status, meta: responseMetadata }
     } catch (err) {
       if (attempt < retryBudget && shouldRetryRequestError(err, method, path)) {
         await waitForRetry(method, path, attempt, isAbortError(err) ? 'TIMEOUT' : 'NETWORK_ERROR')
@@ -152,6 +176,7 @@ async function request<T>(
           error: 'Phản hồi từ hệ thống quá lớn',
           code: 'RESPONSE_TOO_LARGE',
           status: 0,
+          meta: responseMetadata,
         }
       }
       if (err instanceof ResponseBodyInvalidEncodingError) {
@@ -160,6 +185,7 @@ async function request<T>(
           error: 'Phản hồi từ hệ thống không hợp lệ',
           code: 'INVALID_RESPONSE',
           status: responseStatus,
+          meta: responseMetadata,
         }
       }
       if (isAbortError(err)) {
@@ -168,6 +194,7 @@ async function request<T>(
           error: 'Kết nối quá chậm, vui lòng thử lại',
           code: 'TIMEOUT',
           status: 0,
+          meta: responseMetadata,
         }
       }
       return {
@@ -175,6 +202,7 @@ async function request<T>(
         error: 'Không thể kết nối đến hệ thống',
         code: 'NETWORK_ERROR',
         status: 0,
+        meta: responseMetadata,
       }
     } finally {
       clearTimeout(timeout)
@@ -203,6 +231,8 @@ export const api = {
     return request<T>('GET', path, undefined, accessToken)
   },
   post: <T>(path: string, body?: unknown) => request<T>('POST', path, body),
+  postWithIdempotency: <T>(path: string, body: unknown, idempotencyKey: string) =>
+    request<T>('POST', path, body, undefined, { idempotencyKey }),
   postAuthenticated: <T>(path: string, body: unknown, accessToken: string): Promise<ApiResult<T>> => {
     if (!accessToken.trim()) {
       return Promise.resolve({
@@ -213,6 +243,22 @@ export const api = {
       })
     }
     return request<T>('POST', path, body, accessToken)
+  },
+  postAuthenticatedWithIdempotency: <T>(
+    path: string,
+    body: unknown,
+    accessToken: string,
+    idempotencyKey: string,
+  ): Promise<ApiResult<T>> => {
+    if (!accessToken.trim()) {
+      return Promise.resolve({
+        success: false,
+        error: 'Phiên đăng nhập không hợp lệ',
+        code: 'AUTH_REQUIRED',
+        status: 401,
+      })
+    }
+    return request<T>('POST', path, body, accessToken, { idempotencyKey })
   },
   patch: <T>(path: string, body?: unknown) => request<T>('PATCH', path, body),
   put: <T>(path: string, body?: unknown) => request<T>('PUT', path, body),
@@ -233,6 +279,7 @@ export const api = {
 function createMobileApiHeaders(accessToken?: string): Record<string, string> {
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
+    ...createClientReleaseHeaders(),
   }
   if (SUPABASE_PUBLISHABLE_KEY) {
     headers.apikey = SUPABASE_PUBLISHABLE_KEY
@@ -243,7 +290,7 @@ function createMobileApiHeaders(accessToken?: string): Record<string, string> {
   return headers
 }
 
-type ApiJsonObject = { error?: unknown; code?: unknown } & Record<string, unknown>
+type ApiJsonObject = { error?: unknown; code?: unknown; support_code?: unknown } & Record<string, unknown>
 
 function safeParseJsonObject(text: string): ApiJsonObject | null {
   if (!text.trim()) return {}
@@ -324,8 +371,13 @@ function hasClientRequestId(body: unknown) {
   return typeof clientRequestId === 'string' && clientRequestId.trim().length > 0
 }
 
-function idempotencyKeyForRequest(method: string, body: unknown): string | null {
+function idempotencyKeyForRequest(method: string, body: unknown, explicitKey?: string): string | null {
   if (method === 'GET' || method === 'HEAD') return null
+  if (explicitKey) {
+    const normalized = explicitKey.trim()
+    if (!IDEMPOTENCY_KEY_PATTERN.test(normalized)) return null
+    return normalized.startsWith('mobile:') ? normalized : `mobile:${normalized}`
+  }
   const bodyRequestId = typeof body === 'object' && body !== null && !Array.isArray(body)
     ? (body as Record<string, unknown>).client_request_id
     : null
@@ -336,6 +388,85 @@ function idempotencyKeyForRequest(method: string, body: unknown): string | null 
       : `mobile:${stableRequestId}`
   }
   return `mobile:${method.toLowerCase()}:${generateClientRequestId()}`
+}
+
+function createClientReleaseHeaders() {
+  const runtimeBuildInfo = mobileRuntimeConfig.runtimeBuildInfo as typeof mobileRuntimeConfig.runtimeBuildInfo & {
+    releaseId?: string
+  }
+  const releaseId = safeResponseIdentity(runtimeBuildInfo?.releaseId ?? null)
+  const gitSha = safeResponseIdentity(runtimeBuildInfo?.gitSha ?? null)
+  const contractEpoch = safeNumericHeader(runtimeBuildInfo?.contractEpoch)
+  const easBuildId = safeUuidHeader(runtimeBuildInfo?.easBuildId)
+  const runtimeVersion = safeResponseIdentity(runtimeBuildInfo?.runtimeVersion ?? null)
+  const buildNumber = Platform.OS === 'ios'
+    ? Constants.expoConfig?.ios?.buildNumber
+    : Constants.expoConfig?.android?.versionCode
+  const applicationId = Platform.OS === 'ios'
+    ? Constants.expoConfig?.ios?.bundleIdentifier
+    : Platform.OS === 'android'
+      ? Constants.expoConfig?.android?.package
+      : null
+  return {
+    ...(Platform.OS === 'ios' || Platform.OS === 'android'
+      ? { 'x-client-platform': Platform.OS }
+      : {}),
+    ...(applicationId ? { 'x-client-application-id': applicationId } : {}),
+    ...(buildNumber !== undefined && buildNumber !== null && String(buildNumber).trim()
+      ? { 'x-client-build-number': String(buildNumber).trim() }
+      : {}),
+    ...(contractEpoch ? { 'x-client-contract-epoch': contractEpoch } : {}),
+    ...(easBuildId ? { 'x-client-eas-build-id': easBuildId } : {}),
+    ...(runtimeVersion ? { 'x-client-runtime-version': runtimeVersion } : {}),
+    ...(gitSha ? { 'x-client-git-sha': gitSha } : {}),
+    ...(releaseId ? { 'x-client-release-id': releaseId } : {}),
+  }
+}
+
+function safeNumericHeader(value: string | null | undefined) {
+  const normalized = value?.trim() ?? ''
+  return /^[1-9][0-9]{0,8}$/u.test(normalized) ? normalized : null
+}
+
+function safeUuidHeader(value: string | null | undefined) {
+  const normalized = value?.trim() ?? ''
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu.test(normalized)
+    ? normalized
+    : null
+}
+
+export function extractApiResponseMetadata(headers: Pick<Headers, 'get'>): ApiResponseMetadata {
+  const releaseId = safeResponseIdentity(headers.get('x-release-id'))
+    ?? safeResponseIdentity(headers.get('x-release'))
+  const traceId = safeResponseIdentity(headers.get('x-trace-id'))
+  const runId = safeResponseIdentity(headers.get('x-run-id'))
+  const operationId = safeResponseIdentity(headers.get('x-operation-id'))
+  return {
+    operationId,
+    releaseId,
+    runId,
+    supportCode: supportCodeFromIdentity(operationId ?? traceId ?? runId),
+    traceId,
+  }
+}
+
+function withBodySupportCode(meta: ApiResponseMetadata, value: unknown): ApiResponseMetadata {
+  if (typeof value !== 'string') return meta
+  const normalized = value.trim().toUpperCase()
+  return SUPPORT_CODE_PATTERN.test(normalized) ? { ...meta, supportCode: normalized } : meta
+}
+
+function safeResponseIdentity(value: string | null) {
+  if (!value) return null
+  const normalized = value.trim()
+  return RESPONSE_IDENTITY_PATTERN.test(normalized) ? normalized : null
+}
+
+function supportCodeFromIdentity(value: string | null) {
+  if (!value) return null
+  const normalized = value.replace(/[^A-Za-z0-9]/g, '').toUpperCase()
+  if (normalized.length < 8) return null
+  return normalized.slice(-8)
 }
 
 async function waitForAbort<T>(operation: Promise<T>, signal: AbortSignal): Promise<T> {

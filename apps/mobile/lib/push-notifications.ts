@@ -1,7 +1,7 @@
 import Constants from 'expo-constants'
 import { Platform } from 'react-native'
 import type { UserRole } from '@nestscout/shared'
-import type { DevicePushTokenInput } from './api-types'
+import type { DevicePushTokenInput, MatchingPushDeliveryAckInput } from './api-types'
 import { notificationService } from './services'
 
 type PermissionStatus = DevicePushTokenInput['permission_status']
@@ -16,13 +16,16 @@ type NotificationResponse = {
     }
   }
 }
+type Notification = NotificationResponse['notification']
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 const MAX_NOTIFICATION_PATH_LENGTH = 2_048
 
 type ExpoNotificationsModule = {
   AndroidImportance?: { HIGH?: number }
+  addNotificationReceivedListener?: (listener: (notification: Notification) => void) => NotificationSubscription
   addNotificationResponseReceivedListener?: (listener: (response: NotificationResponse) => void) => NotificationSubscription
+  getLastNotificationResponseAsync?: () => Promise<NotificationResponse | null>
   getExpoPushTokenAsync: (options?: { projectId?: string }) => Promise<{ data: string }>
   getPermissionsAsync: () => Promise<{ status: PermissionStatus }>
   requestPermissionsAsync: () => Promise<{ status: PermissionStatus }>
@@ -38,20 +41,48 @@ type PushUnregisterResult =
   | { status: 'unregistered' | 'not_registered' }
   | { status: 'error'; message: string }
 
-export function addPushNotificationResponseListener(openPath: (path: string) => void): NotificationSubscription {
+export function addPushNotificationResponseListener(
+  openPath: (path: string) => void,
+  acknowledgeDelivery?: (input: MatchingPushDeliveryAckInput) => Promise<unknown>,
+): NotificationSubscription {
   if (pushNotificationsDisabledForRuntime()) {
     return { remove: () => undefined }
   }
 
   const Notifications = loadExpoNotifications()
-  if (!Notifications?.addNotificationResponseReceivedListener) {
+  if (!Notifications?.addNotificationResponseReceivedListener && !Notifications?.addNotificationReceivedListener) {
     return { remove: () => undefined }
   }
 
-  return Notifications.addNotificationResponseReceivedListener((response) => {
-    const path = toNotificationPath(response.notification.request.content.data)
-    if (path) openPath(path)
-  })
+  const subscriptions: NotificationSubscription[] = []
+  const handleData = (data: NotificationData, open: boolean) => {
+    const acknowledgement = matchingDeliveryAckFromNotificationData(data)
+    if (acknowledgement && acknowledgeDelivery) {
+      void acknowledgeDelivery(acknowledgement).catch(() => undefined)
+    }
+    if (open) {
+      const path = toNotificationPath(data)
+      if (path) openPath(path)
+    }
+  }
+  if (Notifications.addNotificationReceivedListener) {
+    subscriptions.push(Notifications.addNotificationReceivedListener((notification) => {
+      handleData(notification.request.content.data, false)
+    }))
+  }
+  if (Notifications.addNotificationResponseReceivedListener) {
+    subscriptions.push(Notifications.addNotificationResponseReceivedListener((response) => {
+      handleData(response.notification.request.content.data, true)
+    }))
+  }
+  if (Notifications.getLastNotificationResponseAsync) {
+    void Notifications.getLastNotificationResponseAsync()
+      .then((response) => {
+        if (response) handleData(response.notification.request.content.data, false)
+      })
+      .catch(() => undefined)
+  }
+  return { remove: () => subscriptions.forEach((subscription) => subscription.remove()) }
 }
 
 export async function setupPushNotifications(input: {
@@ -165,6 +196,22 @@ export function toNotificationPath(data: NotificationData) {
   }
 
   return null
+}
+
+export function matchingDeliveryAckFromNotificationData(
+  data: NotificationData,
+): MatchingPushDeliveryAckInput | null {
+  const matchingDeliveryId = readUuid(data, 'matching_delivery_id')
+  const devicePushTokenId = readUuid(data, 'device_push_token_id')
+  const devicePushTokenUpdatedAt = readString(data, 'device_push_token_updated_at')?.trim() ?? null
+  if (!matchingDeliveryId || !devicePushTokenId || !devicePushTokenUpdatedAt ||
+      !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,6})?Z$/u.test(devicePushTokenUpdatedAt) ||
+      !Number.isFinite(Date.parse(devicePushTokenUpdatedAt))) return null
+  return {
+    matching_delivery_id: matchingDeliveryId,
+    device_push_token_id: devicePushTokenId,
+    device_push_token_updated_at: devicePushTokenUpdatedAt,
+  }
 }
 
 function loadExpoNotifications(): ExpoNotificationsModule | null {

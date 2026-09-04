@@ -3,7 +3,7 @@
   "source": {
     "routeRoot": "supabase/functions/mobile-api/_shared/http/routes",
     "fileCount": 20,
-    "sha256": "35bb1a70f60892d55fe69c1bf48e7067adba892abf095c80f7dd18237d2df37d"
+    "sha256": "e05a9d24644acad4a787c0ab58fd20f54c977a7d5622fd6ebedcb4fd47dab955"
   },
   "entries": [
     {
@@ -371,6 +371,138 @@
       ]
     },
     {
+      "kind": "admin.governance.intakePolicies.approve",
+      "capability": "mobile.route.admin.governance.intakePolicies.approve",
+      "public": false,
+      "methods": [
+        "POST"
+      ],
+      "roles": [
+        "admin"
+      ],
+      "risk": "administrative",
+      "operationClass": "idempotent_write",
+      "sideEffectClass": "idempotent-write",
+      "privileged": true,
+      "resourceType": "system",
+      "requiresResourceCheck": false,
+      "confirmationGate": "none",
+      "envelopeTtlMs": 30000,
+      "sources": [
+        "supabase/functions/mobile-api/_shared/http/routes/admin-control-routes.ts"
+      ]
+    },
+    {
+      "kind": "admin.governance.intakePolicies.draft",
+      "capability": "mobile.route.admin.governance.intakePolicies.draft",
+      "public": false,
+      "methods": [
+        "POST"
+      ],
+      "roles": [
+        "admin"
+      ],
+      "risk": "administrative",
+      "operationClass": "idempotent_write",
+      "sideEffectClass": "idempotent-write",
+      "privileged": true,
+      "resourceType": "system",
+      "requiresResourceCheck": false,
+      "confirmationGate": "none",
+      "envelopeTtlMs": 30000,
+      "sources": [
+        "supabase/functions/mobile-api/_shared/http/routes/admin-control-routes.ts"
+      ]
+    },
+    {
+      "kind": "admin.governance.intakePolicies.list",
+      "capability": "mobile.route.admin.governance.intakePolicies.list",
+      "public": false,
+      "methods": [
+        "GET"
+      ],
+      "roles": [
+        "admin"
+      ],
+      "risk": "administrative",
+      "operationClass": "database_read",
+      "sideEffectClass": "read-only",
+      "privileged": true,
+      "resourceType": "system",
+      "requiresResourceCheck": false,
+      "confirmationGate": "none",
+      "envelopeTtlMs": 30000,
+      "sources": [
+        "supabase/functions/mobile-api/_shared/http/routes/admin-control-routes.ts"
+      ]
+    },
+    {
+      "kind": "admin.governance.intakePolicies.preview",
+      "capability": "mobile.route.admin.governance.intakePolicies.preview",
+      "public": false,
+      "methods": [
+        "POST"
+      ],
+      "roles": [
+        "admin"
+      ],
+      "risk": "administrative",
+      "operationClass": "idempotent_write",
+      "sideEffectClass": "idempotent-write",
+      "privileged": true,
+      "resourceType": "system",
+      "requiresResourceCheck": false,
+      "confirmationGate": "none",
+      "envelopeTtlMs": 30000,
+      "sources": [
+        "supabase/functions/mobile-api/_shared/http/routes/admin-control-routes.ts"
+      ]
+    },
+    {
+      "kind": "admin.governance.intakePolicies.publish",
+      "capability": "mobile.route.admin.governance.intakePolicies.publish",
+      "public": false,
+      "methods": [
+        "POST"
+      ],
+      "roles": [
+        "admin"
+      ],
+      "risk": "administrative",
+      "operationClass": "idempotent_write",
+      "sideEffectClass": "idempotent-write",
+      "privileged": true,
+      "resourceType": "system",
+      "requiresResourceCheck": false,
+      "confirmationGate": "none",
+      "envelopeTtlMs": 30000,
+      "sources": [
+        "supabase/functions/mobile-api/_shared/http/routes/admin-control-routes.ts"
+      ]
+    },
+    {
+      "kind": "admin.governance.intakePolicies.rollback",
+      "capability": "mobile.route.admin.governance.intakePolicies.rollback",
+      "public": false,
+      "methods": [
+        "POST"
+      ],
+      "roles": [
+        "admin"
+      ],
+      "risk": "administrative",
+      "operationClass": "idempotent_write",
+      "sideEffectClass": "idempotent-write",
+      "privileged": true,
+      "resourceType": "system",
+      "requiresResourceCheck": false,
+      "confirmationGate": "none",
+      "envelopeTtlMs": 30000,
+      "sources": [
+        "supabase/functions/mobile-api/_shared/http/routes/admin-control-routes.ts"
+      ]
+    },
+    {
       "kind": "admin.governance.learningRules",
       "capability": "mobile.route.admin.governance.learningRules",
       "public": false,
@@ -405,6 +537,116 @@
       "risk": "administrative",
       "operationClass": "database_read",
       "sideEffectClass": "read-only",
+      "privileged": true,
+      "resourceType": "system",
+      "requiresResourceCheck": false,
+      "confirmationGate": "none",
+      "envelopeTtlMs": 30000,
+      "sources": [
+        "supabase/functions/mobile-api/_shared/http/routes/admin-control-routes.ts"
+      ]
+    },
+    {
+      "kind": "admin.governance.priceBaselineVersions.approve",
+      "capability": "mobile.route.admin.governance.priceBaselineVersions.approve",
+      "public": false,
+      "methods": [
+        "POST"
+      ],
+      "roles": [
+        "admin"
+      ],
+      "risk": "administrative",
+      "operationClass": "idempotent_write",
+      "sideEffectClass": "idempotent-write",
+      "privileged": true,
+      "resourceType": "system",
+      "requiresResourceCheck": false,
+      "confirmationGate": "none",
+      "envelopeTtlMs": 30000,
+      "sources": [
+        "supabase/functions/mobile-api/_shared/http/routes/admin-control-routes.ts"
+      ]
+    },
+    {
+      "kind": "admin.governance.priceBaselineVersions.draft",
+      "capability": "mobile.route.admin.governance.priceBaselineVersions.draft",
+      "public": false,
+      "methods": [
+        "POST"
+      ],
+      "roles": [
+        "admin"
+      ],
+      "risk": "administrative",
+      "operationClass": "idempotent_write",
+      "sideEffectClass": "idempotent-write",
+      "privileged": true,
+      "resourceType": "system",
+      "requiresResourceCheck": false,
+      "confirmationGate": "none",
+      "envelopeTtlMs": 30000,
+      "sources": [
+        "supabase/functions/mobile-api/_shared/http/routes/admin-control-routes.ts"
+      ]
+    },
+    {
+      "kind": "admin.governance.priceBaselineVersions.list",
+      "capability": "mobile.route.admin.governance.priceBaselineVersions.list",
+      "public": false,
+      "methods": [
+        "GET"
+      ],
+      "roles": [
+        "admin"
+      ],
+      "risk": "administrative",
+      "operationClass": "database_read",
+      "sideEffectClass": "read-only",
+      "privileged": true,
+      "resourceType": "system",
+      "requiresResourceCheck": false,
+      "confirmationGate": "none",
+      "envelopeTtlMs": 30000,
+      "sources": [
+        "supabase/functions/mobile-api/_shared/http/routes/admin-control-routes.ts"
+      ]
+    },
+    {
+      "kind": "admin.governance.priceBaselineVersions.publish",
+      "capability": "mobile.route.admin.governance.priceBaselineVersions.publish",
+      "public": false,
+      "methods": [
+        "POST"
+      ],
+      "roles": [
+        "admin"
+      ],
+      "risk": "administrative",
+      "operationClass": "idempotent_write",
+      "sideEffectClass": "idempotent-write",
+      "privileged": true,
+      "resourceType": "system",
+      "requiresResourceCheck": false,
+      "confirmationGate": "none",
+      "envelopeTtlMs": 30000,
+      "sources": [
+        "supabase/functions/mobile-api/_shared/http/routes/admin-control-routes.ts"
+      ]
+    },
+    {
+      "kind": "admin.governance.priceBaselineVersions.rollback",
+      "capability": "mobile.route.admin.governance.priceBaselineVersions.rollback",
+      "public": false,
+      "methods": [
+        "POST"
+      ],
+      "roles": [
+        "admin"
+      ],
+      "risk": "administrative",
+      "operationClass": "idempotent_write",
+      "sideEffectClass": "idempotent-write",
       "privileged": true,
       "resourceType": "system",
       "requiresResourceCheck": false,
@@ -3300,6 +3542,29 @@
       ]
     },
     {
+      "kind": "kael.chat.operation",
+      "capability": "mobile.route.kael.chat.operation",
+      "public": false,
+      "methods": [
+        "GET"
+      ],
+      "roles": [
+        "admin",
+        "customer"
+      ],
+      "risk": "read",
+      "operationClass": "database_read",
+      "sideEffectClass": "read-only",
+      "privileged": true,
+      "resourceType": "session",
+      "requiresResourceCheck": true,
+      "confirmationGate": "none",
+      "envelopeTtlMs": 120000,
+      "sources": [
+        "supabase/functions/mobile-api/_shared/http/routes/kael-chat-session-routes.ts"
+      ]
+    },
+    {
       "kind": "kael.chat.progress",
       "capability": "mobile.route.kael.chat.progress",
       "public": false,
@@ -3906,6 +4171,29 @@
       ]
     },
     {
+      "kind": "notifications.matchingDeliveryAck",
+      "capability": "mobile.route.notifications.matchingDeliveryAck",
+      "public": false,
+      "methods": [
+        "POST"
+      ],
+      "roles": [
+        "admin",
+        "worker"
+      ],
+      "risk": "write",
+      "operationClass": "idempotent_write",
+      "sideEffectClass": "idempotent-write",
+      "privileged": false,
+      "resourceType": "notification",
+      "requiresResourceCheck": false,
+      "confirmationGate": "none",
+      "envelopeTtlMs": 120000,
+      "sources": [
+        "supabase/functions/mobile-api/_shared/http/routes/notifications.ts"
+      ]
+    },
+    {
       "kind": "notifications.read",
       "capability": "mobile.route.notifications.read",
       "public": false,
@@ -4141,6 +4429,29 @@
       ]
     },
     {
+      "kind": "workers.broadcastProposal",
+      "capability": "mobile.route.workers.broadcastProposal",
+      "public": false,
+      "methods": [
+        "POST"
+      ],
+      "roles": [
+        "admin",
+        "worker"
+      ],
+      "risk": "write",
+      "operationClass": "idempotent_write",
+      "sideEffectClass": "idempotent-write",
+      "privileged": true,
+      "resourceType": "system",
+      "requiresResourceCheck": false,
+      "confirmationGate": "none",
+      "envelopeTtlMs": 120000,
+      "sources": [
+        "supabase/functions/mobile-api/_shared/http/routes/worker.ts"
+      ]
+    },
+    {
       "kind": "workers.broadcasts",
       "capability": "mobile.route.workers.broadcasts",
       "public": false,
@@ -4154,6 +4465,29 @@
       "risk": "read",
       "operationClass": "database_read",
       "sideEffectClass": "read-only",
+      "privileged": true,
+      "resourceType": "system",
+      "requiresResourceCheck": false,
+      "confirmationGate": "none",
+      "envelopeTtlMs": 120000,
+      "sources": [
+        "supabase/functions/mobile-api/_shared/http/routes/worker.ts"
+      ]
+    },
+    {
+      "kind": "workers.broadcastSeen",
+      "capability": "mobile.route.workers.broadcastSeen",
+      "public": false,
+      "methods": [
+        "POST"
+      ],
+      "roles": [
+        "admin",
+        "worker"
+      ],
+      "risk": "write",
+      "operationClass": "idempotent_write",
+      "sideEffectClass": "idempotent-write",
       "privileged": true,
       "resourceType": "system",
       "requiresResourceCheck": false,
@@ -4491,6 +4825,29 @@
       "public": false,
       "methods": [
         "PATCH"
+      ],
+      "roles": [
+        "admin",
+        "worker"
+      ],
+      "risk": "write",
+      "operationClass": "idempotent_write",
+      "sideEffectClass": "idempotent-write",
+      "privileged": true,
+      "resourceType": "system",
+      "requiresResourceCheck": false,
+      "confirmationGate": "none",
+      "envelopeTtlMs": 120000,
+      "sources": [
+        "supabase/functions/mobile-api/_shared/http/routes/worker.ts"
+      ]
+    },
+    {
+      "kind": "workers.matchingHeartbeat",
+      "capability": "mobile.route.workers.matchingHeartbeat",
+      "public": false,
+      "methods": [
+        "POST"
       ],
       "roles": [
         "admin",

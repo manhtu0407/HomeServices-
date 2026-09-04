@@ -107,6 +107,35 @@ describe('Kael price reasoning receipt', () => {
     })).toBe(true)
   })
 
+  it('enforces the active policy evidence threshold instead of accepting a generic quorum', () => {
+    expect(hasValidatedKaelPriceEvidence({
+      baselineEvidence: null,
+      marketEvidence: {
+        acceptedSourceCount: 3,
+        highTrustSourceCount: 2,
+        quorumMet: true,
+      },
+      requirements: {
+        minimumSourceCount: 2,
+        minimumHighTrustSourceCount: 1,
+        requiresActiveBaseline: true,
+      },
+    })).toBe(false)
+    expect(hasValidatedKaelPriceEvidence({
+      baselineEvidence,
+      marketEvidence: {
+        acceptedSourceCount: 3,
+        highTrustSourceCount: 2,
+        quorumMet: true,
+      },
+      requirements: {
+        minimumSourceCount: 3,
+        minimumHighTrustSourceCount: 2,
+        requiresActiveBaseline: true,
+      },
+    })).toBe(false)
+  })
+
   it('reconciles public low and high scenarios to the deterministic estimate without inventing component prices', () => {
     const output = buildCard()
     const receipt = Reflect.get(output.card, 'price_reasoning_receipt')

@@ -7,6 +7,10 @@ import { resolveWorkerAvatarUrl } from "../worker/avatar.ts";
 import { queryEligibleWorkers } from "./broadcast-workers.ts";
 import { buildMatchingReceipt, type MatchingReceipt } from "./matching-receipt.ts";
 import { requireMatchingDistrict } from "./matching-preference-shared.ts";
+import {
+  resolveSyntheticActorScope,
+  scopeQueryToSyntheticActor,
+} from "../../platform/synthetic-cohort.ts";
 
 export async function listFavoriteWorkersForMatching(
   ctx: MobileApiContext,
@@ -17,12 +21,14 @@ export async function listFavoriteWorkersForMatching(
     requiredRole: "customer",
     select: "id, service_type, address_district",
   });
+  const actorScope = await resolveSyntheticActorScope(client, ctx.user.id, "customer");
   const district = requireMatchingDistrict(job.address_district);
+  const favoritesQuery = client
+    .from("customer_favorite_workers")
+    .select("worker_id")
+    .eq("customer_id", ctx.user.id);
   const favorites = await dbQuery<Array<Record<string, unknown>>>(
-    client
-      .from("customer_favorite_workers")
-      .select("worker_id")
-      .eq("customer_id", ctx.user.id)
+    scopeQueryToSyntheticActor(favoritesQuery, actorScope)
       .order("created_at", { ascending: false })
       .limit(20),
   );
@@ -36,7 +42,10 @@ export async function listFavoriteWorkersForMatching(
       client.from("profiles").select("id, full_name, avatar_url").in("id", workerIds),
     ),
     dbQuery<Array<Record<string, unknown>>>(
-      client.from("worker_profiles").select("id, rating, total_jobs").in("id", workerIds),
+      scopeQueryToSyntheticActor(
+        client.from("worker_profiles").select("id, rating, total_jobs").in("id", workerIds),
+        actorScope,
+      ),
     ),
     queryEligibleWorkers(
       client,
@@ -75,24 +84,28 @@ export async function hasEligibleFavoriteWorker(ctx: MobileApiContext, jobId: st
 }
 
 export async function hasSavedWorker(ctx: MobileApiContext) {
+  const client = db(ctx);
+  const actorScope = await resolveSyntheticActorScope(client, ctx.user.id, "customer");
   const result = await dbQuery<Array<Record<string, unknown>>>(
-    db(ctx)
+    scopeQueryToSyntheticActor(client
       .from("customer_favorite_workers")
       .select("worker_id")
       .eq("customer_id", ctx.user.id)
-      .limit(1),
+      .limit(1), actorScope),
   );
   if (result.error) apiFailure("DB_ERROR", "Không thể kiểm tra thợ đã lưu", 500);
   return (result.data ?? []).some((row) => Boolean(nullableString(row.worker_id)));
 }
 
 export async function isCustomerFavoriteWorker(ctx: MobileApiContext, workerId: string) {
+  const client = db(ctx);
+  const actorScope = await resolveSyntheticActorScope(client, ctx.user.id, "customer");
   const result = await dbQuery<Record<string, unknown>>(
-    db(ctx)
+    scopeQueryToSyntheticActor(client
       .from("customer_favorite_workers")
       .select("worker_id")
       .eq("customer_id", ctx.user.id)
-      .eq("worker_id", workerId)
+      .eq("worker_id", workerId), actorScope)
       .maybeSingle(),
   );
   if (result.error) apiFailure("DB_ERROR", "Không thể kiểm tra thợ đã lưu", 500);

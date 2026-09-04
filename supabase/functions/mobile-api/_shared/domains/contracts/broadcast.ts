@@ -4,6 +4,10 @@ import type {
   ServiceType,
 } from "../../../../_shared/domain.ts";
 import type { SafeOriginalScopePriceQuote } from "../matching/original-scope-price-quote.ts";
+import type {
+  EdgeMatchingDeliveryReceipt,
+  EdgeQuoteMode,
+} from "../../../../_shared/contracts/stage1-reliability.ts";
 
 export type EdgeAvailabilityToggleResponse = {
   worker_id: string;
@@ -21,12 +25,31 @@ export type EdgeAcceptBroadcastResponse = {
 
 export type EdgeDeclineBroadcastResponse = { job_id: string; declined: true };
 
+export type EdgeWorkerMatchingProposalInput = {
+  scope_summary: string;
+  price_min?: number | null;
+  price_max?: number | null;
+};
+
+export type EdgeWorkerMatchingProposalResponse = {
+  broadcast_id: string;
+  candidate_id: string;
+  proposal_id: string;
+  status: "candidate_ready";
+  already_applied: boolean;
+};
+
 export type EdgeBroadcastListResponse = {
   broadcasts: {
     broadcast_id: string;
     job_id: string;
     status: BroadcastStatus;
     service_type: ServiceType;
+    quote_mode: EdgeQuoteMode | null;
+    proposal_action:
+      | "accept_priced_offer"
+      | "submit_rfq_proposal"
+      | "submit_inspection_scope";
     problem_summary: string | null;
     district: string | null;
     estimated_price_min: number | null;
@@ -39,7 +62,8 @@ export type EdgeBroadcastListResponse = {
     sent_at: string | null;
     expires_at: string | null;
     seconds_remaining: number | null;
-    original_scope_price_quote: SafeOriginalScopePriceQuote;
+    original_scope_price_quote: SafeOriginalScopePriceQuote | null;
+    delivery_receipt?: EdgeMatchingDeliveryReceipt;
   }[];
 };
 

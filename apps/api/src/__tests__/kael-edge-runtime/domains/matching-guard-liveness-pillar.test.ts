@@ -1,4 +1,6 @@
 import { describe, expect, it } from 'vitest'
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
 
 import { installEdgeRuntimeTestHooks, makeSequenceClient } from '../harness'
 import { pillarWhy, type PillarManifest } from '../../pillar-manifest'
@@ -24,6 +26,10 @@ installEdgeRuntimeTestHooks()
 
 const JOB_ID = 'job-p21'
 const CANDIDATE_ID = 'candidate-p21'
+const candidateSource = readFileSync(
+  resolve(__dirname, '../../../../../../supabase/functions/mobile-api/_shared/domains/matching/candidate.ts'),
+  'utf8',
+)
 
 // Both RPCs answer with the row shape the domain reads: the outcome flag, the worker, whether the
 // decision was already applied, and the status the job ended up on.
@@ -37,6 +43,17 @@ function rpcAnswering(fn: string, jobStatus: string) {
         already_applied: false,
         job_status: jobStatus,
       }],
+      error: null,
+    }],
+  }, {
+    jobs: [{
+      data: {
+        id: JOB_ID,
+        status: 'worker_candidate_pending',
+        customer_id: 'customer-p21',
+        worker_id: null,
+        quote_mode: 'kael_auto_quote',
+      },
       error: null,
     }],
   })
@@ -76,6 +93,16 @@ const reject = (status: string) => {
 }
 
 describe('confirm refuses a status the RPC should not have produced', () => {
+  it('keeps status in the custom access projection before dispatching by quote mode', () => {
+    const confirmBody = candidateSource.match(
+      /export async function confirmWorkerCandidate[\s\S]*?const result =/,
+    )?.[0] ?? ''
+    expect(
+      confirmBody,
+      pillarWhy(PILLAR, 'requireJobAccess cannot validate ownership when its mandatory status field is omitted'),
+    ).toContain('select: "id, status, customer_id, quote_mode"')
+  })
+
   // The guard used to compare two string literals, so it could not fail whatever the RPC did. These
   // are the statuses a broken or racing RPC could plausibly leave behind.
   it.each(['cancelled', 'broadcasting', 'paid', 'reviewed'])(

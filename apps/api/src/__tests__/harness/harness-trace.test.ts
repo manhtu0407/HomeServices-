@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
+  beginHarnessAuthorizedRequest,
   beginHarnessRun,
   createHarnessTraceContext,
+  finishHarnessAuthorizedRequest,
   harnessTraceHeaders,
   hashHarnessIdentifier,
   recordHarnessEvent,
@@ -29,7 +31,10 @@ describe("Harness trace lineage", () => {
     expect(trace.parentRunId).toBeNull();
     expect(Object.fromEntries(harnessTraceHeaders(trace))).toEqual({
       "x-harness-release-id": "harness-test",
+      "x-operation-id": trace.operationId ?? trace.runId,
+      "x-release-id": "harness-test",
       "x-run-id": trace.runId,
+      "x-support-code": trace.traceId.replaceAll("-", "").slice(-8).toUpperCase(),
       "x-trace-id": trace.traceId,
     });
   });
@@ -130,6 +135,49 @@ describe("Harness trace lineage", () => {
     expect(calls[1]?.args).toMatchObject({
       p_turn_id: '00000000-0000-4000-8000-000000000020',
       p_tool_call_id: '00000000-0000-4000-8000-000000000021',
+    });
+  });
+
+  it("batches durable-confirmation lifecycle writes into one RPC per response edge", async () => {
+    const calls: Array<{ fn: string; args: Record<string, unknown> }> = [];
+    const client = {
+      rpc(fn: string, args: Record<string, unknown>) {
+        calls.push({ fn, args });
+        return Promise.resolve({ data: true, error: null });
+      },
+    };
+    const trace = createHarnessTraceContext({
+      releaseId: "harness-test",
+      environment: "staging",
+      actorIdHash: "a".repeat(64),
+      client,
+      now: Date.now(),
+    });
+    const lifecycle = {
+      actorRole: "customer",
+      routeKind: "kael.chat.confirm",
+      capability: "mobile.route.kael.chat.confirm",
+      privileged: true,
+      resourceType: "session",
+      resourceId: "10000000-0000-4000-8000-000000000048",
+    } as const;
+
+    await expect(beginHarnessAuthorizedRequest(trace, {
+      ...lifecycle,
+      risk: "write",
+      operationClass: "idempotent_write",
+      confirmationGate: "none",
+    })).resolves.toBe(true);
+    await expect(finishHarnessAuthorizedRequest(trace, lifecycle)).resolves.toBe(true);
+
+    expect(calls.map((call) => call.fn)).toEqual([
+      "begin_harness_authorized_request",
+      "finish_harness_authorized_request",
+    ]);
+    expect(calls[0]?.args).toMatchObject({
+      p_actor_id_hash: "a".repeat(64),
+      p_resource_id_hash: expect.stringMatching(/^[0-9a-f]{64}$/),
+      p_route_kind: "kael.chat.confirm",
     });
   });
 });

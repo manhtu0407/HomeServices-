@@ -3,6 +3,11 @@ import type {
   EdgeKaelIntakeConfirmation,
 } from "../../../../_shared/contracts.ts";
 import type { ComplexityLevel, ServiceType } from "../../../../_shared/domain.ts";
+import type {
+  EdgeConfirmationOperationReceipt,
+  EdgeIntakeCoverage,
+  EdgeQuoteMode,
+} from "../../../../_shared/contracts/stage1-reliability.ts";
 
 export type EdgeKaelEstimate = {
   service_type: ServiceType;
@@ -35,7 +40,13 @@ export type EdgeKaelChatNextAction =
   | "budget_exceeded"
   | "confirmed"
   | "ask_question"
-  | "request_evidence";
+  | "request_evidence"
+  | "collect_required"
+  | "offer_review"
+  | "rfq_review"
+  | "inspection_review"
+  | "blocked"
+  | "reconcile_confirmation";
 
 export type EdgeKaelChatTurnResponse = {
   id: string;
@@ -74,6 +85,10 @@ export type EdgeKaelChatSessionResponse = {
   total_cost_usd: number;
   next_action: EdgeKaelChatNextAction;
   intake_confirmation?: EdgeKaelIntakeConfirmation | null;
+  quote_mode?: EdgeQuoteMode;
+  policy_version?: number | null;
+  intake_coverage?: EdgeIntakeCoverage | null;
+  confirmation_operation?: EdgeConfirmationOperationReceipt | null;
 };
 
 export type EdgeKaelChatResponse = {

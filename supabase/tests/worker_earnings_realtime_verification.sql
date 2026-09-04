@@ -127,7 +127,7 @@ begin
   end if;
 
   select * into strict earnings
-  from public.get_worker_earnings_summary(
+  from public.get_worker_earnings_summary_v2(
     'e4100000-0000-4000-8000-000000000002',
     null,
     null,

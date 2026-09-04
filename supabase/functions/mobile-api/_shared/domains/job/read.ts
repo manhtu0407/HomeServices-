@@ -27,6 +27,10 @@ import { loadPaymentReceipt, parsePaymentStatus } from "./payment-receipt.ts";
 import { listCustomerServiceHistory } from "./customer-history.ts";
 import { getCurrentJobIncidentReview } from "./incident.ts";
 import { estimateWorkerNet } from "../payment/commission.ts";
+import {
+  resolveSyntheticActorScope,
+  scopeQueryToSyntheticActor,
+} from "../../platform/synthetic-cohort.ts";
 
 export { listMyPendingDecisions } from "./pending-decisions.ts";
 export { listCustomerServiceHistory, projectCustomerServiceHistoryRows } from "./customer-history.ts";
@@ -211,12 +215,14 @@ export async function listCustomerActiveJobs(
   options: { paymentRailProvider?: AvailablePaymentRailProvider | null } = {},
 ) {
   const client = db(ctx);
+  const actorScope = await resolveSyntheticActorScope(client, ctx.user.id, "customer");
+  const jobsQuery = client
+    .from("jobs")
+    .select("id")
+    .eq("customer_id", ctx.user.id)
+    .in("status", CUSTOMER_ACTIVE_JOB_STATUSES);
   const result = await dbQuery<Array<{ id: string }>>(
-    client
-      .from("jobs")
-      .select("id")
-      .eq("customer_id", ctx.user.id)
-      .in("status", CUSTOMER_ACTIVE_JOB_STATUSES)
+    scopeQueryToSyntheticActor(jobsQuery, actorScope)
       .order("created_at", { ascending: false })
       .limit(1),
   );

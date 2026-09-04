@@ -19,8 +19,9 @@ test('builds a deterministic repository migration inventory', () => {
   assert.match(first.databaseTypes.sha256, /^[0-9a-f]{64}$/)
 })
 
-test('detects missing and unknown remote migrations', () => {
+test('rejects unknown remote migrations before deriving a pending set', () => {
   const inventory = {
+    migrationEquivalences: { version: '1.0.0', groups: [] },
     entries: [
       { version: '20260101000000' },
       { version: '20260102000000' },
@@ -30,12 +31,24 @@ test('detects missing and unknown remote migrations', () => {
     { version: '20260101000000' },
     { version: '20260103000000' },
   ])
-  assert.ok(problems.some((problem) => problem.includes('missing migrations')))
-  assert.ok(problems.some((problem) => problem.includes('unknown migrations')))
+  assert.ok(problems.some((problem) => problem.includes('unknown versions')))
 })
 
-test('rejects duplicate and malformed remote migration entries', () => {
+test('reports known migrations that remain pending', () => {
   const inventory = {
+    migrationEquivalences: { version: '1.0.0', groups: [] },
+    entries: [
+      { version: '20260101000000' },
+      { version: '20260102000000' },
+    ],
+  }
+  const problems = compareRemoteMigrations(inventory, [{ version: '20260101000000' }])
+  assert.ok(problems.some((problem) => problem.includes('missing migrations')))
+})
+
+test('rejects malformed remote migration entries before any weaker comparison', () => {
+  const inventory = {
+    migrationEquivalences: { version: '1.0.0', groups: [] },
     entries: [
       { version: '20260101000000' },
       { version: '20260102000000' },
@@ -48,8 +61,22 @@ test('rejects duplicate and malformed remote migration entries', () => {
     {},
     null,
   ])
+  assert.ok(problems.some((problem) => problem.includes('invalid version')))
+})
+
+test('rejects duplicate remote migration entries', () => {
+  const inventory = {
+    migrationEquivalences: { version: '1.0.0', groups: [] },
+    entries: [
+      { version: '20260101000000' },
+      { version: '20260102000000' },
+    ],
+  }
+  const problems = compareRemoteMigrations(inventory, [
+    { version: '20260101000000' },
+    { version: '20260101000000' },
+  ])
   assert.ok(problems.some((problem) => problem.includes('duplicate versions')))
-  assert.ok(problems.some((problem) => problem.includes('without a version')))
 })
 
 

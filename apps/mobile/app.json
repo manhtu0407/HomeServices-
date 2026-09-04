@@ -3,14 +3,17 @@
     "name": "NestScout",
     "slug": "home-services",
     "owner": "nestscout",
-    "version": "0.1.0",
+    "version": "0.2.0",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
     "orientation": "portrait",
     "icon": "./assets/nestscout-aurora-nest-appstore-1024.png",
     "userInterfaceStyle": "automatic",
     "scheme": "nestscout",
     "ios": {
       "supportsTablet": false,
-      "buildNumber": "44",
+      "buildNumber": "45",
       "bundleIdentifier": "com.phanmanhtu.homeservices",
       "config": {
         "usesNonExemptEncryption": false
@@ -28,7 +31,7 @@
         "foregroundImage": "./assets/nestscout-aurora-nest-foreground-1024.png",
         "backgroundColor": "#ffffff"
       },
-      "versionCode": 3,
+      "versionCode": 4,
       "permissions": [],
       "package": "com.phanmanhtu.nestscout"
     },

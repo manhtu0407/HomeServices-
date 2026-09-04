@@ -49,7 +49,7 @@ import {
   WorkerV5WorkerRankingBody,
 } from './profile/body-surfaces'
 import { useWorkerAvatarPicker } from './profile/use-worker-avatar-picker'
-import { workerV5CanAcceptOpenOffer } from './jobs/acceptance'
+import { workerV5CanReviewOpenOpportunity } from './jobs/acceptance'
 import { isWorkerJobsRebuildScreen } from './jobs/worker-jobs-screen-registry'
 import { WorkerV5InProgressBody } from './jobs/in-progress-surfaces'
 import {
@@ -351,9 +351,17 @@ function WorkerV5ScreenSurface({ screen }: { screen: WorkerV5ScreenDefinition })
   const workflowDestinationScreenId = workerV5JobsDestinationScreenId(runtime.state.deal)
   const workflowStatus = runtime.state.deal?.backendStatus ?? runtime.state.deal?.status ?? null
   const workflowHydrationPending = runtime.state.workerGate === 'backend_pending' && !runtime.workerJobsHydrated
+  const currentProposalAction = runtime.workerProposalOpportunity
+    && runtime.workerProposalOpportunity.broadcastId === runtime.state.deal?.broadcast?.broadcastId
+    ? runtime.workerProposalOpportunity.proposalAction
+    : null
   const screenRedirectId = workflowHydrationPending
     ? null
-    : usesOfferDetailHandoff && !workerV5CanAcceptOpenOffer(runtime.state.deal, runtime.state.workerGate)
+    : usesOfferDetailHandoff && !workerV5CanReviewOpenOpportunity(
+        runtime.state.deal,
+        runtime.state.workerGate,
+        currentProposalAction,
+      )
       ? workflowDestinationScreenId
       : usesCustomerConfirmationWaitHandoff && workflowDestinationScreenId !== '2.3-customer-confirmation-wait'
         ? workflowDestinationScreenId
@@ -797,7 +805,7 @@ function WorkerV5Body({
   runtime: WorkerV5Runtime
   screen: WorkerV5ScreenDefinition
 }) {
-  if (screen.section === 'jobs' && isWorkerJobsRebuildScreen(screen.id)) return <WorkerJobsProductionHost {...{ actionBusy, language, navigateActiveJobChat, navigateJobChat, navigateNext, navigateToScreen, reduceMotion, reduceTransparency, routePreview, runRouteAction, runWorkerAction, runtime, screen }} />
+  if (screen.section === 'jobs' && screen.id !== '2.7-in-progress' && isWorkerJobsRebuildScreen(screen.id)) return <WorkerJobsProductionHost {...{ actionBusy, language, navigateActiveJobChat, navigateJobChat, navigateNext, navigateToScreen, reduceMotion, reduceTransparency, routePreview, runRouteAction, runWorkerAction, runtime, screen }} />
 
   switch (screen.id) {
     case '2.7-in-progress':

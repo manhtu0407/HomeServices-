@@ -41,7 +41,7 @@ export function useWorkerV5KaelOrbChat(
   const readOnly = isWorkerV5KaelOrbReadOnly(deal)
   const sessionJobId = mode === 'intake' && canUseWorkerV5KaelOrbSession(deal) ? jobId : null
   const hasJobKaelSessionAccess = Boolean(sessionJobId) && canUseWorkerV5KaelOrbSession(deal) && !readOnly
-  const canUseKaelSession = Boolean(workerId) && (mode === 'normal' || !sessionJobId || hasJobKaelSessionAccess)
+  const canUseKaelSession = Boolean(workerId) && (mode === 'normal' || hasJobKaelSessionAccess)
   const activeWorkerIdRef = useRef<string | null>(workerId)
   const activeModeRef = useRef<WorkerKaelChatMode>(mode)
   const localVisualAuditSessionRef = useRef(localVisualAuditSession)

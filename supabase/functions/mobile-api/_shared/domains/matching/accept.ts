@@ -1,5 +1,5 @@
 import { asJobStatus, nullableString } from "../../platform/coercions.ts";
-import { db, dbQuery } from "../../platform/db.ts";
+import { db, dbQuery, workflowDb } from "../../platform/db.ts";
 import { mapAcceptError } from "../../platform/domain-error-mappers.ts";
 import { logJobEvent } from "../../platform/audit.ts";
 import { notifyCustomerCandidateReady } from "./candidate.ts";
@@ -15,7 +15,7 @@ export async function acceptBroadcast(
 ) {
   const client = db(ctx);
   const result = await dbQuery<Array<Record<string, unknown>>>(
-    client.rpc("accept_broadcast_atomic", {
+    workflowDb(ctx).rpc("accept_priced_broadcast_durable_atomic", {
       p_job_id: jobId,
       p_worker_id: ctx.user.id,
       p_quote_id: quoteId,

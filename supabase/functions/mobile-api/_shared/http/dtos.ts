@@ -31,6 +31,8 @@ export type {
   EdgeBroadcastListResponse,
   EdgeDeclineBroadcastResponse,
   EdgeEarningsResponse,
+  EdgeWorkerMatchingProposalInput,
+  EdgeWorkerMatchingProposalResponse,
 } from "./serialize/broadcast.ts";
 export type {
   EdgeDevicePushTokenResponse,

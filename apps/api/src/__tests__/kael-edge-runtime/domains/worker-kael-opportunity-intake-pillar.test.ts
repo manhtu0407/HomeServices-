@@ -111,7 +111,14 @@ function rawBroadcast(
   suffix: string,
   expiresAt: string,
   sentAt: string,
-  options: { jobStatus?: string; quoteExpiresAt?: string; status?: string; workerId?: string } = {},
+  options: {
+    jobStatus?: string
+    quoteExpiresAt?: string
+    quoteMode?: 'kael_auto_quote' | 'rfq' | 'inspection_only'
+    status?: string
+    withoutQuote?: boolean
+    workerId?: string
+  } = {},
 ) {
   const broadcastId = `a1540000-0000-4000-8000-0000000000${suffix}`
   const jobId = `a1520000-0000-4000-8000-0000000000${suffix}`
@@ -128,16 +135,19 @@ function rawBroadcast(
       kael_worker_brief_core: {},
       photo_urls: [],
       problem_chips: ['Vệ sinh căn hộ'],
+      quote_mode: options.quoteMode ?? null,
       scheduled_at: '2099-08-31T02:00:00.000Z',
       service_type: 'cleaning',
       status: options.jobStatus ?? 'broadcasting',
     },
-    original_scope_price_quote: validQuote(
-      broadcastId,
-      jobId,
-      options.quoteExpiresAt ?? expiresAt,
-      options.workerId,
-    ),
+    original_scope_price_quote: options.withoutQuote
+      ? null
+      : validQuote(
+          broadcastId,
+          jobId,
+          options.quoteExpiresAt ?? expiresAt,
+          options.workerId,
+        ),
     sent_at: sentAt,
     status: options.status ?? 'sent',
   }
@@ -223,6 +233,31 @@ describe('P59 worker Kael opportunity-intake boundary', () => {
       'a1540000-0000-4000-8000-000000000002',
       'a1540000-0000-4000-8000-000000000001',
     ])
+  })
+
+  it('keeps RFQ without a price quote while rejecting a priced offer without its receipt', () => {
+    const now = new Date('2099-08-30T05:00:00.000Z')
+    const projected = projectWorkerBroadcastRows([
+      rawBroadcast('07', '2099-08-30T08:00:00.000Z', '2099-08-30T03:00:00.000Z', {
+        quoteMode: 'rfq',
+        withoutQuote: true,
+      }),
+      rawBroadcast('08', '2099-08-30T08:30:00.000Z', '2099-08-30T03:30:00.000Z', {
+        quoteMode: 'kael_auto_quote',
+        withoutQuote: true,
+      }),
+    ], workerId, now)
+
+    expect(projected).toHaveLength(1)
+    expect(projected[0]).toMatchObject({
+      estimated_earning_max: null,
+      estimated_earning_min: null,
+      estimated_price_max: null,
+      estimated_price_min: null,
+      original_scope_price_quote: null,
+      proposal_action: 'submit_rfq_proposal',
+      quote_mode: 'rfq',
+    })
   })
 
   it('uses opportunity guidance instead of accepted-job lifecycle guards', async () => {

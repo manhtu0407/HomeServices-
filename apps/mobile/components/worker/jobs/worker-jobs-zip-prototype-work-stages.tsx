@@ -214,6 +214,7 @@ export function WorkerJobsLegacyPrototypeStageSixBody({
           testID="worker-v5-stage-six-edit-action"
         />
         <WorkerJobsLegacyPrototypeStageActionButton
+          disabled={proposalSubmitted || !proposalReady || scopeChange.scopeQuoting}
           label={primaryLabel}
           onPress={() => void primaryAction()}
           primary
@@ -326,6 +327,7 @@ export function WorkerJobsLegacyPrototypeStageSevenBody({
           testID="worker-v5-stage-seven-message-action"
         />
         <WorkerJobsLegacyPrototypeStageActionButton
+          disabled={!approved}
           label={approved ? textByLanguage(language, 'Tiếp tục', 'Continue') : textByLanguage(language, 'Chờ khách phê duyệt', 'Waiting for customer')}
           onPress={navigateNext}
           primary

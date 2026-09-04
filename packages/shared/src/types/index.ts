@@ -113,4 +113,5 @@ export type {
   NotificationReadResponse,
   DevicePushTokenResponse,
   DevicePushTokenUnregisterResponse,
+  MatchingPushDeliveryAckResponse,
 } from './api-responses'

@@ -11,6 +11,7 @@ const mockGetPerformanceInsights = jest.fn()
 const mockGetPayoutMethod = jest.fn()
 const mockGetBroadcasts = jest.fn()
 const mockGetJobs = jest.fn()
+const mockSendMatchingHeartbeat = jest.fn()
 const mockListWithdrawalRequests = jest.fn()
 const mockGetJob = jest.fn()
 const mockListMyActiveJob = jest.fn()
@@ -77,6 +78,7 @@ jest.mock('../services', () => ({
     listWithdrawalRequests: (...args: unknown[]) => mockListWithdrawalRequests(...args),
     openKaelJobIncident: (...args: unknown[]) => mockOpenKaelJobIncident(...args),
     requestScopeChange: (...args: unknown[]) => mockRequestScopeChange(...args),
+    sendMatchingHeartbeat: (...args: unknown[]) => mockSendMatchingHeartbeat(...args),
     updateAvailability: (...args: unknown[]) => mockUpdateAvailability(...args),
     updateJobStatus: (...args: unknown[]) => mockUpdateJobStatus(...args),
   },
@@ -273,6 +275,7 @@ describe('FrontendWorkflowProvider worker bootstrap', () => {
     mockGetPayoutMethod.mockResolvedValue({ data: { payout_method: null }, success: true })
     mockGetBroadcasts.mockResolvedValue({ data: { broadcasts: [] }, success: true })
     mockGetJobs.mockResolvedValue({ data: { jobs: [] }, success: true })
+    mockSendMatchingHeartbeat.mockResolvedValue({ success: true })
     mockListWithdrawalRequests.mockResolvedValue({ data: { requests: [] }, success: true })
     mockListNotifications.mockResolvedValue({
       data: { notifications: [], unread_count: 0 },

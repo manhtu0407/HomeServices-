@@ -77,6 +77,8 @@ export async function dispatchKaelRoute(
       if (!input.success) apiFailure("VALIDATION", "Dữ liệu xác nhận không hợp lệ", 400);
       return services.confirmKaelChat(ctx, route.sessionId, input.data);
     }
+    case "kael.chat.operation":
+      return services.getKaelConfirmationOperation(ctx, route.sessionId);
     case "kael.chat.evidence": {
       const input = kaelChatEvidenceSchema.safeParse(await readJson(request));
       if (!input.success) apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);

@@ -4,40 +4,40 @@ import type { ServiceType } from "../../../../_shared/domain.ts";
 import type { KaelDiagnosisScopeArtifact } from "../../kael/contracts/artifact-contract.ts";
 import {
   buildEstimateCardOutput,
-  buildKaelMissingInfoArtifactProposal,
   buildPriceEvidenceUnavailableArtifact,
   buildProfileSafetyFlags,
   buildSafetyFirstElectricalEstimate,
   getKaelPerformanceProfile,
   kaelDiagnosisScopeArtifactSchema,
-  resolveCaseWorkEvidenceRequest,
   resolveIntakeFactCoverage,
   type PipelineResult,
   type KaelProgressTarget,
 } from "../../kael/index.ts";
-import type { PipelineStageLog } from "../../kael/contracts/types.ts";
 import {
-  parseBaselinePriceEvidenceReceipt,
   type BaselinePriceEvidenceReceipt,
 } from "../../kael/evidence/baseline-price-evidence.ts";
 import { apiFailure } from "../../platform/api-failure.ts";
 import type { DbClient } from "../../platform/db.ts";
-import { diagnosisScopeWithEvidenceRequest } from "./case-work-artifact.ts";
+import { asRecord, nullableString } from "../../platform/coercions.ts";
 import { emitKaelChatStep } from "./emit-step.ts";
 import { intakeObservationMetadata, withIntakeSafetyGuidance } from "./intake-safety.ts";
 import { appendKaelSystemTurn, updateKaelSession } from "./session-store.ts";
+import { maybeRequestEstimateEvidence } from "./estimate-request-evidence.ts";
+import { resolveStage1RuntimeBehavior } from "../release/stage1-release-lane.ts";
 import {
-  customerContextClauses,
-  customerDeclaredScope,
-  isBookingMetadataClause,
-  isCustomerInstruction,
-  isDeclaredScopeClause,
-  isDeclaredUnknownClause,
-  publicReceiptTextList,
-} from "../../kael/kael-guardrails/price-reasoning-text.ts";
+  baselineEvidenceFromStageLogs,
+  buildConfirmedWorkerScopeSummary,
+  buildKaelEstimateAnalysisEvidence,
+  buildKaelEstimateMarketEvidence,
+  hasValidatedKaelPriceEvidence,
+  type KaelEstimateMarketEvidence,
+} from "./estimate-evidence.ts";
+import {
+  loadActiveIntakePolicy,
+  publicMissingTierA,
+  type ActiveIntakePolicy,
+} from "./estimate-intake-policy.ts";
 const KAEL_CHAT_SOFT_COST_CAP_USD = 0.5;
-const CONFIRMED_WORKER_SCOPE_MAX_LENGTH = 2000;
-const PRICE_PRESSURE_CLAUSE = /\b(?:giá thấp nhất|chốt[^.]{0,40}\bgiá|lowest price|cheapest)\b/iu;
 type SuccessfulPipeline = Extract<PipelineResult, { success: true }>;
 type KaelPerformanceProfile = NonNullable<ReturnType<typeof getKaelPerformanceProfile>>;
 type FinalizeKaelChatEstimateInput = {
@@ -59,150 +59,16 @@ type FinalizeKaelChatEstimateInput = {
   readonly district: string;
   readonly currentCostUsd: number;
   readonly previousAnalysisReceipt?: Record<string, unknown>;
+  readonly environment?: string;
+  readonly releaseId?: string;
+  readonly deploymentId?: string;
+  readonly clientContractEpoch?: number;
 };
-export function buildKaelEstimateAnalysisEvidence(
-  artifact: KaelDiagnosisScopeArtifact,
-  analyzedEvidence: readonly KaelDiagnosisScopeArtifact["evidence"][number][] = artifact.evidence,
-) {
-  const visualEvidence = artifact.evidence.filter(isModelEligibleVisualEvidence);
-  const evidenceIndexByRef = new Map<
-    string,
-    { evidenceIndex: number; evidenceKind: "photo" | "video_frame" }
-  >();
-  let photoIndex = 0;
-  let videoFrameIndex = 0;
-  for (const evidence of visualEvidence) {
-    const evidenceIndex = evidence.kind === "photo" ? ++photoIndex : ++videoFrameIndex;
-    if (evidence.ref) {
-      evidenceIndexByRef.set(evidence.ref, {
-        evidenceIndex,
-        evidenceKind: evidence.kind,
-      });
-    }
-  }
-  const visualEvidenceRefs = analyzedEvidence
-    .filter(isModelEligibleVisualEvidence)
-    .flatMap((evidence) => {
-      const reference = evidence.ref ? evidenceIndexByRef.get(evidence.ref) : undefined;
-      return reference ? [reference] : [];
-    });
-  return {
-    photoCount: visualEvidence.filter((item) => item.kind === "photo").length,
-    videoFrameCount: visualEvidence.filter((item) => item.kind === "video_frame").length,
-    voiceTranscriptCount: artifact.evidence.filter((item) =>
-      item.kind === "voice_transcript" && item.model_eligible
-    ).length,
-    skipped: artifact.facts.evidence_gate_decision === "skipped",
-    visualEvidenceRefs,
-  };
-}
-function isModelEligibleVisualEvidence(
-  item: KaelDiagnosisScopeArtifact["evidence"][number],
-): item is KaelDiagnosisScopeArtifact["evidence"][number] & {
-  kind: "photo" | "video_frame";
-} {
-  return (item.kind === "photo" || item.kind === "video_frame") && item.model_eligible;
-}
-function buildKaelEstimateMarketEvidence(
-  stageLogs: readonly PipelineStageLog[],
-) {
-  const metadata = stageLogs.find((stage) => stage.stage === "market")
-    ?.safeMetadata;
-  return {
-    acceptedSourceCount: nonNegativeMetadataInteger(
-      metadata?.source_trust_accepted_source_count,
-    ),
-    highTrustSourceCount: nonNegativeMetadataInteger(
-      metadata?.source_trust_tier_1_2_count,
-    ),
-    quorumMet: typeof metadata?.source_trust_quorum_met === "boolean"
-      ? metadata.source_trust_quorum_met
-      : null,
-  };
-}
-
-function baselineEvidenceFromStageLogs(
-  stageLogs: readonly PipelineStageLog[],
-): BaselinePriceEvidenceReceipt | null {
-  return parseBaselinePriceEvidenceReceipt(
-    stageLogs.find((stage) => stage.stage === "baseline")
-      ?.safeMetadata?.baseline_price_evidence_receipt,
-  );
-}
-
-export function buildConfirmedWorkerScopeSummary(input: {
-  customerAnalysisDetail: string;
-  estimateProblemSummary: string;
-  language: "vi" | "en";
-}) {
-  const factualClauses = customerContextClauses(input.customerAnalysisDetail)
-    .map((clause) => clause.replace(
-      /,?\s*(?:hãy|khỏi|please|just)\b.*$/iu,
-      "",
-    ).trim())
-    .filter((clause) =>
-      clause.length > 0 &&
-      !isBookingMetadataClause(clause) &&
-      !PRICE_PRESSURE_CLAUSE.test(clause) &&
-      !isCustomerInstruction(clause) &&
-      !isDeclaredScopeClause(clause) &&
-      !isDeclaredUnknownClause(clause)
-    );
-  const confirmedFacts = publicReceiptTextList(
-    factualClauses,
-    input.estimateProblemSummary,
-    7,
-    260,
-  );
-  const declaredScope = customerDeclaredScope(
-    input.customerAnalysisDetail,
-    input.language,
-  );
-  const uniqueLines = new Map<string, string>();
-  for (const line of [
-    ...confirmedFacts,
-    ...declaredScope.included,
-    ...declaredScope.excluded,
-  ]) {
-    const normalized = line.replace(/\s+/g, " ").trim();
-    if (!normalized || PRICE_PRESSURE_CLAUSE.test(normalized)) continue;
-    const key = normalized.toLocaleLowerCase(input.language === "vi" ? "vi" : "en");
-    if (!uniqueLines.has(key)) uniqueLines.set(key, normalized);
-  }
-  return [...uniqueLines.values()]
-    .join("\n")
-    .slice(0, CONFIRMED_WORKER_SCOPE_MAX_LENGTH)
-    .trim();
-}
-
-type KaelEstimateMarketEvidence = ReturnType<
-  typeof buildKaelEstimateMarketEvidence
->;
-
-export function hasValidatedKaelPriceEvidence(input: {
-  baselineEvidence?: BaselinePriceEvidenceReceipt | null;
-  marketEvidence: KaelEstimateMarketEvidence;
-}) {
-  const hasVerifiedBaselineQuorum = Boolean(
-    input.baselineEvidence?.quorum_met === true &&
-      input.baselineEvidence.high_trust_source_count >=
-        input.baselineEvidence.required_quorum &&
-      input.baselineEvidence.accepted_source_count ===
-        input.baselineEvidence.sources.length,
-  );
-  const hasTrustedMarketQuorum =
-    input.marketEvidence.quorumMet === true &&
-    (input.marketEvidence.acceptedSourceCount ?? 0) >= 2 &&
-    (input.marketEvidence.highTrustSourceCount ?? 0) >= 1;
-  return hasVerifiedBaselineQuorum || hasTrustedMarketQuorum;
-}
-function nonNegativeMetadataInteger(value: unknown): number | null {
-  return typeof value === "number" &&
-      Number.isSafeInteger(value) &&
-      value >= 0
-    ? value
-    : null;
-}
+export {
+  buildConfirmedWorkerScopeSummary,
+  buildKaelEstimateAnalysisEvidence,
+  hasValidatedKaelPriceEvidence,
+} from "./estimate-evidence.ts";
 export async function finalizeKaelChatEstimate(
   input: FinalizeKaelChatEstimateInput,
 ) {
@@ -236,14 +102,52 @@ export async function finalizeKaelChatEstimate(
   if (!profile) {
     apiFailure("UNSUPPORTED_SERVICE", language === "en" ? "This service does not have a valid Case Work profile" : "Dịch vụ chưa có hồ sơ Case Work hợp lệ", 400);
   }
-  const evidenceGateDecision = artifact.facts.evidence_gate_decision;
-  if (await maybeRequestEstimateEvidence({
-    input,
-    artifact,
-    profile,
-    estimate,
-    evidenceGateDecision,
-  })) return;
+  const runtimeBehavior = await resolveStage1RuntimeBehavior(client, {
+    environment: input.environment,
+    releaseId: input.releaseId,
+    sessionId,
+    deploymentId: input.deploymentId,
+    clientContractEpoch: input.clientContractEpoch,
+  });
+  if (runtimeBehavior === "previous") {
+    await finalizePreviousReleaseEstimate({
+      input,
+      artifact,
+      profile,
+      estimate,
+      costUsd,
+    });
+    return;
+  }
+  const intakePolicy = await loadActiveIntakePolicy({
+    ...input,
+    serviceProblemId: pipeline.serviceProblemId,
+  }, estimate.problem_category);
+  if (
+    intakePolicy.safetyRequirements.some((requirement) =>
+      !profile.safety_capability_gates.some((gate) => gate.id === requirement)
+    ) ||
+    intakePolicy.capabilityRequirements.some((requirement) =>
+      !profile.worker_capabilities.includes(requirement)
+    )
+  ) {
+    apiFailure(
+      "POLICY_UNAVAILABLE",
+      language === "en"
+        ? "The active service policy is incompatible with the service profile."
+        : "Chính sách dịch vụ hiện tại không tương thích với hồ sơ dịch vụ.",
+      503,
+    );
+  }
+  if (intakePolicy.quoteMode === "blocked") {
+    apiFailure(
+      "POLICY_BLOCKED",
+      language === "en"
+        ? "This request cannot continue under the current service policy."
+        : "Yêu cầu chưa thể tiếp tục theo chính sách dịch vụ hiện tại.",
+      409,
+    );
+  }
   const profileFactCoverage = resolveIntakeFactCoverage({
     serviceType: input.service_type,
     problemSlug: estimate.problem_category,
@@ -253,12 +157,40 @@ export async function finalizeKaelChatEstimate(
     providerNeedsClarification: false,
     electricalPlaybookEnabled,
   });
+  if (intakePolicy.quoteMode !== "kael_auto_quote") {
+    await persistUnpricedRequestReview({
+      client,
+      sessionId,
+      artifact,
+      serviceProblemId: pipeline.serviceProblemId,
+      problemSummary: estimate.problem_summary,
+      customerAnalysisDetail,
+      problemChips,
+      district,
+      language,
+      policy: intakePolicy,
+      profileFactCoverage,
+      safetyFlags: buildProfileSafetyFlags(profile, responseSafetySignals, language),
+      confidence: estimate.confidence,
+      costUsd,
+    });
+    return;
+  }
+  const evidenceGateDecision = artifact.facts.evidence_gate_decision;
+  if (await maybeRequestEstimateEvidence({
+    input,
+    artifact,
+    profile,
+    estimate,
+    evidenceGateDecision,
+  })) return;
   const safetyFlags = buildProfileSafetyFlags(profile, responseSafetySignals, language);
   const marketEvidence = buildKaelEstimateMarketEvidence(pipeline.stageLogs);
   const baselineEvidence = baselineEvidenceFromStageLogs(pipeline.stageLogs);
   if (!hasValidatedKaelPriceEvidence({
     baselineEvidence,
     marketEvidence,
+    requirements: intakePolicy.evidenceRequirements,
   })) {
     const unavailableArtifact = buildPriceEvidenceUnavailableArtifact(artifact, {
       customerDetail: customerAnalysisDetail,
@@ -302,8 +234,360 @@ export async function finalizeKaelChatEstimate(
     safetyFlags,
     marketEvidence,
     baselineEvidence,
+    policy: intakePolicy,
     costUsd,
   });
+}
+
+async function finalizePreviousReleaseEstimate(input: {
+  input: FinalizeKaelChatEstimateInput;
+  artifact: KaelDiagnosisScopeArtifact;
+  profile: KaelPerformanceProfile;
+  estimate: ReturnType<typeof buildSafetyFirstElectricalEstimate>;
+  costUsd: number;
+}) {
+  const evidenceGateDecision = input.artifact.facts.evidence_gate_decision;
+  if (await maybeRequestEstimateEvidence({
+    input: input.input,
+    artifact: input.artifact,
+    profile: input.profile,
+    estimate: input.estimate,
+    evidenceGateDecision,
+  })) return;
+  const profileFactCoverage = resolveIntakeFactCoverage({
+    serviceType: input.input.service_type,
+    problemSlug: input.estimate.problem_category,
+    customerDescription: input.input.customerAnalysisDetail,
+    profileFacts: input.input.pipeline.profileFacts ?? {},
+    providerMissingSlots: [],
+    providerNeedsClarification: false,
+    electricalPlaybookEnabled: input.input.electricalPlaybookEnabled,
+  });
+  const safetyFlags = buildProfileSafetyFlags(
+    input.profile,
+    input.input.responseSafetySignals,
+    input.input.language,
+  );
+  const marketEvidence = buildKaelEstimateMarketEvidence(input.input.pipeline.stageLogs);
+  const baselineEvidence = baselineEvidenceFromStageLogs(input.input.pipeline.stageLogs);
+  if (!hasValidatedKaelPriceEvidence({ baselineEvidence, marketEvidence })) {
+    const unavailableArtifact = buildPriceEvidenceUnavailableArtifact(input.artifact, {
+      customerDetail: input.input.customerAnalysisDetail,
+      scopeSummary: input.estimate.problem_summary,
+    });
+    await emitKaelChatStep(
+      input.input.client,
+      input.input.sessionId,
+      input.input.progressTarget,
+      {
+        artifact: unavailableArtifact,
+        turn: {
+          contentType: "error",
+          text: withIntakeSafetyGuidance(
+            input.input.language === "en"
+              ? "Kael has identified the scope but does not have sufficiently grounded price evidence for this case. No estimate is shown until a verified source or an inspection supports it."
+              : "Kael đã xác định phạm vi nhưng chưa có dữ liệu giá đủ căn cứ cho trường hợp này. Kael chưa hiển thị báo giá cho tới khi có nguồn đã kiểm chứng hoặc kết quả khảo sát hỗ trợ.",
+            input.input.responseSafetySignals,
+            input.input.language,
+          ),
+          nextStatus: "active",
+          metadata: {
+            diagnosis_scope: unavailableArtifact,
+            quote_readiness: "validated_price_evidence_unavailable",
+            fallback_used: input.input.pipeline.fallbackUsed,
+            service_problem_id: input.input.pipeline.serviceProblemId,
+            ...intakeObservationMetadata(input.input.pipeline.intakeObservation),
+          },
+        },
+        progress: {
+          stage: "price_synthesis",
+          status: "failed",
+          progress: 1,
+          failureReason: "validated_price_evidence_unavailable",
+        },
+      },
+    );
+    return;
+  }
+  await persistPreviousReleaseValidatedEstimate({
+    ...input,
+    profileFactCoverage,
+    safetyFlags,
+    marketEvidence,
+    baselineEvidence,
+  });
+}
+
+async function persistPreviousReleaseValidatedEstimate(input: {
+  input: FinalizeKaelChatEstimateInput;
+  artifact: KaelDiagnosisScopeArtifact;
+  profile: KaelPerformanceProfile;
+  estimate: ReturnType<typeof buildSafetyFirstElectricalEstimate>;
+  profileFactCoverage: ReturnType<typeof resolveIntakeFactCoverage>;
+  safetyFlags: ReturnType<typeof buildProfileSafetyFlags>;
+  marketEvidence: KaelEstimateMarketEvidence;
+  baselineEvidence: BaselinePriceEvidenceReceipt | null;
+  costUsd: number;
+}) {
+  const quoteBlockers = [
+    ...input.profileFactCoverage.missing.map((driver) => `missing_profile_fact:${driver}`),
+    ...input.safetyFlags.map((flag) => `safety_gate:${flag.code}`),
+    ...(input.estimate.needs_inspection ? ["onsite_inspection_required"] : []),
+  ];
+  const quoteReady = quoteBlockers.length === 0;
+  const confirmedWorkerScope = buildConfirmedWorkerScopeSummary({
+    customerAnalysisDetail: input.input.customerAnalysisDetail,
+    estimateProblemSummary: input.estimate.problem_summary,
+    language: input.input.language,
+  });
+  const quoteReadyArtifact = kaelDiagnosisScopeArtifactSchema.parse({
+    ...input.artifact,
+    case_phase: quoteReady ? "offer_review" : "analysis",
+    facts: {
+      ...input.artifact.facts,
+      ...input.profileFactCoverage.facts,
+      latest_customer_detail: input.input.customerAnalysisDetail,
+      address_district: input.input.district,
+      problem_summary: input.estimate.problem_summary,
+      complexity: input.estimate.complexity,
+      problem_chips: input.input.problemChips,
+      needs_inspection: input.estimate.needs_inspection === true,
+      safety_signals: input.input.responseSafetySignals,
+    },
+    missing_facts: [...input.profileFactCoverage.missing],
+    evidence: input.artifact.evidence,
+    safety_flags: input.safetyFlags,
+    scope_summary: confirmedWorkerScope,
+    quote_ready: quoteReady,
+    quote_blockers: quoteBlockers,
+    worker_requirements: input.profile.worker_capabilities,
+    confidence: input.estimate.confidence,
+    next_action: quoteReady
+      ? { kind: "prepare_offer" }
+      : {
+        kind: "escalate",
+        reason: input.safetyFlags[0]?.customer_message ??
+          input.estimate.needs_inspection_reason ??
+          quoteBlockers[0] ??
+          "manual_review_required",
+      },
+    updated_at: new Date().toISOString(),
+  });
+  await updateKaelSession(input.input.client, input.input.sessionId, {
+    case_phase: quoteReady ? "offer_review" : "analysis",
+    diagnosis_scope: quoteReadyArtifact,
+  });
+  const estimateCardV3 = buildEstimateCardOutput({
+    estimate: input.estimate,
+    language: input.input.language,
+    customerScopeContext: input.input.customerAnalysisDetail,
+    priceSource: input.estimate.needs_inspection
+      ? "inspection_required"
+      : estimatePriceSourceFromStageLogs(input.input.pipeline.stageLogs),
+    baselineUsed:
+      `${input.input.service_type}:${input.input.pipeline.serviceProblemId}:${input.estimate.complexity}`,
+    baselineEvidence: input.baselineEvidence,
+    analysisEvidence: buildKaelEstimateAnalysisEvidence(
+      input.artifact,
+      input.input.vision_evidence,
+    ),
+    marketEvidence: input.marketEvidence,
+    marketSignals: input.estimate.market_signals ?? input.estimate.needs_inspection_reason,
+    needsInspectionReason: input.estimate.needs_inspection_reason,
+    previousAnalysisReceipt: input.input.previousAnalysisReceipt,
+    visionAnalysis: input.input.pipeline.visionAnalysis,
+    visionFindings: input.input.pipeline.visionAnalysis?.problemSummary,
+  });
+  await appendKaelSystemTurn(input.input.client, input.input.sessionId, {
+    contentType: "estimate",
+    text: withIntakeSafetyGuidance(
+      formatKaelEstimateText(input.estimate, input.input.language),
+      input.input.responseSafetySignals,
+      input.input.language,
+    ),
+    nextStatus: quoteReady ? "estimate_ready" : "active",
+    estimate: input.estimate,
+    costUsd: input.costUsd,
+    metadata: {
+      estimate: input.estimate,
+      estimate_card_v3: estimateCardV3,
+      artifact_proposal: estimateCardV3.artifact_proposal,
+      diagnosis_scope: quoteReadyArtifact,
+      fallback_used: input.input.pipeline.fallbackUsed,
+      service_problem_id: input.input.pipeline.serviceProblemId,
+      reference_price_min: input.input.pipeline.referencePriceMin ?? null,
+      reference_price_max: input.input.pipeline.referencePriceMax ?? null,
+      ...intakeObservationMetadata(input.input.pipeline.intakeObservation),
+      photo_count: input.input.photo_urls?.length ?? 0,
+      budget_soft_cap_reached:
+        input.input.currentCostUsd + input.costUsd >= KAEL_CHAT_SOFT_COST_CAP_USD,
+    },
+    ...(input.input.pipeline.customerSentiment
+      ? { sessionMetadata: { last_customer_sentiment: input.input.pipeline.customerSentiment } }
+      : {}),
+  });
+}
+
+export async function finalizeUnpricedStage1Intake(input: {
+  client: DbClient;
+  sessionId: string;
+  artifact: KaelDiagnosisScopeArtifact;
+  serviceProblemId: string;
+  serviceType: ServiceType;
+  customerAnalysisDetail: string;
+  problemChips: string[];
+  district: string;
+  language: "vi" | "en";
+  policy: ActiveIntakePolicy;
+  profileFacts: Record<string, string>;
+  responseSafetySignals: readonly string[];
+  costUsd: number;
+}) {
+  const profile = getKaelPerformanceProfile(input.serviceType);
+  if (!profile || (input.policy.quoteMode !== "rfq" && input.policy.quoteMode !== "inspection_only")) {
+    apiFailure("POLICY_UNAVAILABLE", "Chính sách tiếp nhận không hợp lệ", 503);
+  }
+  if (
+    input.policy.safetyRequirements.some((requirement) =>
+      !profile.safety_capability_gates.some((gate) => gate.id === requirement)
+    ) || input.policy.capabilityRequirements.some((requirement) =>
+      !profile.worker_capabilities.includes(requirement)
+    )
+  ) {
+    apiFailure("POLICY_UNAVAILABLE", "Chính sách dịch vụ không tương thích với hồ sơ dịch vụ", 503);
+  }
+  await persistUnpricedRequestReview({
+    client: input.client,
+    sessionId: input.sessionId,
+    artifact: input.artifact,
+    serviceProblemId: input.serviceProblemId,
+    problemSummary: input.customerAnalysisDetail,
+    customerAnalysisDetail: input.customerAnalysisDetail,
+    problemChips: input.problemChips,
+    district: input.district,
+    language: input.language,
+    policy: input.policy,
+    profileFactCoverage: { facts: input.profileFacts, missing: [] },
+    safetyFlags: buildProfileSafetyFlags(profile, input.responseSafetySignals, input.language),
+    confidence: input.artifact.confidence,
+    costUsd: input.costUsd,
+  });
+}
+
+async function persistUnpricedRequestReview(input: {
+  client: DbClient;
+  sessionId: string;
+  artifact: KaelDiagnosisScopeArtifact;
+  serviceProblemId: string;
+  problemSummary: string;
+  customerAnalysisDetail: string;
+  problemChips: string[];
+  district: string;
+  language: "vi" | "en";
+  policy: ActiveIntakePolicy;
+  safetyFlags: ReturnType<typeof buildProfileSafetyFlags>;
+  profileFactCoverage: { facts: Record<string, string>; missing: readonly string[] };
+  confidence: number;
+  costUsd: number;
+}) {
+  const { language, client, sessionId, customerAnalysisDetail } = input;
+  const safetyStop = input.safetyFlags.find((flag) => flag.severity === "stop");
+  const firstMissing = input.policy.missingTierA[0];
+  const orderEligible = !firstMissing && !safetyStop;
+  const scopeSummary = buildConfirmedWorkerScopeSummary({
+    customerAnalysisDetail,
+    estimateProblemSummary: input.problemSummary,
+    language,
+  });
+  const question = firstMissing
+    ? localizedPolicyQuestion(input.policy, firstMissing, language)
+    : null;
+  const artifact = kaelDiagnosisScopeArtifactSchema.parse({
+    ...input.artifact,
+    case_phase: orderEligible ? "offer_review" : "analysis",
+    facts: {
+      ...input.artifact.facts,
+      ...input.profileFactCoverage.facts,
+      latest_customer_detail: customerAnalysisDetail,
+      address_district: input.district,
+      problem_summary: input.problemSummary,
+      problem_chips: input.problemChips,
+      needs_inspection: input.policy.quoteMode === "inspection_only",
+    },
+    missing_facts: [...input.policy.missingTierA],
+    safety_flags: input.safetyFlags,
+    scope_summary: scopeSummary || input.problemSummary,
+    quote_ready: false,
+    quote_blockers: safetyStop ? [`safety_gate:${safetyStop.code}`] : input.policy.missingTierA,
+    worker_requirements: input.policy.capabilityRequirements,
+    confidence: input.confidence,
+    next_action: safetyStop
+      ? { kind: "escalate", reason: safetyStop.customer_message ?? safetyStop.code }
+      : question
+        ? { kind: "ask_question", question }
+        : { kind: "wait" },
+    updated_at: new Date().toISOString(),
+  });
+  const confirmationKind = input.policy.quoteMode === "rfq"
+    ? "rfq_request"
+    : "inspection_request";
+  const nextAction = input.policy.quoteMode === "rfq" ? "rfq_review" : "inspection_review";
+  const intakeCoverage = {
+    policy_id: input.policy.policyId,
+    policy_version: input.policy.version,
+    quote_mode: input.policy.quoteMode,
+    order_eligible: orderEligible,
+    missing_required_fields: publicMissingTierA(input.policy.missingTierA),
+    missing_enrichment_slots: input.policy.tierBSlots
+      .filter((slot) => slot.enabled === true)
+      .map((slot) => String(slot.key))
+      .filter((slot) => !input.profileFactCoverage.facts[slot]),
+    safety_blocker: safetyStop
+      ? {
+        code: safetyStop.code,
+        message_vi: safetyStop.customer_message ?? "Yêu cầu cần được kiểm tra an toàn.",
+        message_en: safetyStop.customer_message ?? "This request requires a safety review.",
+        recoverable: false,
+      }
+      : null,
+    confirmation_kind: orderEligible ? confirmationKind : "none",
+    next_action: orderEligible ? nextAction : safetyStop ? "blocked" : "collect_required",
+  };
+  await updateKaelSession(client, sessionId, {
+    case_phase: orderEligible ? "offer_review" : "analysis",
+    diagnosis_scope: artifact,
+  });
+  const readyText = input.policy.quoteMode === "rfq"
+    ? (language === "en"
+      ? "The required request details are complete. Review the scope, then send it to eligible workers for quotes. Kael is not showing a price yet."
+      : "Thông tin bắt buộc đã đủ. Bạn hãy xem lại phạm vi rồi gửi cho thợ phù hợp báo giá. Kael chưa hiển thị giá ở bước này.")
+    : (language === "en"
+      ? "The required request details are complete. Review the scope, then request an on-site inspection. Kael is not showing a price yet."
+      : "Thông tin bắt buộc đã đủ. Bạn hãy xem lại phạm vi rồi yêu cầu thợ khảo sát tại chỗ. Kael chưa hiển thị giá ở bước này.");
+  await appendKaelSystemTurn(client, sessionId, {
+    contentType: orderEligible ? "analysis" : safetyStop ? "error" : "clarification",
+    text: orderEligible ? readyText : safetyStop?.customer_message ?? question ?? readyText,
+    nextStatus: orderEligible ? "estimate_ready" : "active",
+    costUsd: input.costUsd,
+    metadata: {
+      diagnosis_scope: artifact,
+      intake_coverage: intakeCoverage,
+      service_problem_id: input.serviceProblemId,
+      quote_readiness: orderEligible ? "worker_quote_or_inspection_ready" : "tier_a_incomplete",
+    },
+    sessionMetadata: { intake_coverage: intakeCoverage },
+  });
+}
+
+function localizedPolicyQuestion(
+  policy: ActiveIntakePolicy,
+  field: string,
+  language: "vi" | "en",
+) {
+  const override = asRecord(policy.questionOverrides[field]);
+  return nullableString(override[language]) ?? (language === "en"
+    ? `Please add the required ${field.replaceAll("_", " ")}.`
+    : `Bạn vui lòng bổ sung ${field.replaceAll("_", " ")} bắt buộc.`);
 }
 
 async function persistValidatedEstimate(input: {
@@ -315,6 +599,7 @@ async function persistValidatedEstimate(input: {
   safetyFlags: ReturnType<typeof buildProfileSafetyFlags>;
   marketEvidence: KaelEstimateMarketEvidence;
   baselineEvidence: BaselinePriceEvidenceReceipt | null;
+  policy: ActiveIntakePolicy;
   costUsd: number;
 }) {
   const {
@@ -324,12 +609,20 @@ async function persistValidatedEstimate(input: {
     profileFactCoverage,
     safetyFlags,
     marketEvidence,
+    policy,
     costUsd,
   } = input;
   const { client, sessionId, pipeline, language, customerAnalysisDetail } = input.input;
+  const requiredEnrichmentSlots = policy.tierBSlots
+    .filter((slot) => slot.enabled === true && slot.required_for_quote === true)
+    .map((slot) => String(slot.key));
+  const missingRequiredEnrichment = profileFactCoverage.missing
+    .filter((field) => requiredEnrichmentSlots.includes(field));
+  const safetyStop = safetyFlags.find((flag) => flag.severity === "stop");
   const quoteBlockers = [
-    ...profileFactCoverage.missing.map((driver) => `missing_profile_fact:${driver}`),
-    ...safetyFlags.map((flag) => `safety_gate:${flag.code}`),
+    ...policy.missingTierA,
+    ...missingRequiredEnrichment.map((driver) => `missing_profile_fact:${driver}`),
+    ...(safetyStop ? [`safety_gate:${safetyStop.code}`] : []),
     ...(estimate.needs_inspection ? ["onsite_inspection_required"] : []),
   ];
   const quoteReady = quoteBlockers.length === 0;
@@ -358,7 +651,10 @@ async function persistValidatedEstimate(input: {
     scope_summary: confirmedWorkerScope,
     quote_ready: quoteReady,
     quote_blockers: quoteBlockers,
-    worker_requirements: input.profile.worker_capabilities,
+    worker_requirements: [...new Set([
+      ...input.profile.worker_capabilities,
+      ...policy.capabilityRequirements,
+    ])],
     confidence: estimate.confidence,
     next_action: quoteReady
       ? { kind: "prepare_offer" }
@@ -375,6 +671,56 @@ async function persistValidatedEstimate(input: {
     case_phase: quoteReady ? "offer_review" : "analysis",
     diagnosis_scope: quoteReadyArtifact,
   });
+  const intakeCoverage = {
+    policy_id: policy.policyId,
+    policy_version: policy.version,
+    quote_mode: policy.quoteMode,
+    order_eligible: quoteReady,
+    missing_required_fields: publicMissingTierA(policy.missingTierA),
+    missing_enrichment_slots: profileFactCoverage.missing,
+    safety_blocker: safetyStop
+      ? {
+        code: safetyStop.code,
+        message_vi: safetyStop.customer_message ?? "Yêu cầu cần được kiểm tra an toàn.",
+        message_en: safetyStop.customer_message ?? "This request requires a safety review.",
+        recoverable: false,
+      }
+      : null,
+    confirmation_kind: quoteReady ? "priced_offer" : "none",
+    next_action: quoteReady ? "offer_review" : "collect_required",
+  };
+  if (!quoteReady) {
+    const missingField = policy.missingTierA[0] ?? missingRequiredEnrichment[0];
+    const guidance = safetyStop?.customer_message ??
+      (missingField ? localizedPolicyQuestion(policy, missingField, language) : null) ??
+      estimate.needs_inspection_reason ??
+      (language === "en"
+        ? "Kael needs one more verified detail before an offer can be shown."
+        : "Kael cần thêm một thông tin đã kiểm chứng trước khi hiển thị báo giá.");
+    await appendKaelSystemTurn(client, sessionId, {
+      contentType: safetyStop ? "error" : "clarification",
+      text: withIntakeSafetyGuidance(
+        guidance,
+        input.input.responseSafetySignals,
+        language,
+      ),
+      nextStatus: "active",
+      costUsd,
+      metadata: {
+        diagnosis_scope: quoteReadyArtifact,
+        intake_coverage: intakeCoverage,
+        service_problem_id: pipeline.serviceProblemId,
+        quote_readiness: "required_intake_incomplete",
+      },
+      sessionMetadata: {
+        intake_coverage: intakeCoverage,
+        ...(pipeline.customerSentiment
+          ? { last_customer_sentiment: pipeline.customerSentiment }
+          : {}),
+      },
+    });
+    return;
+  }
   const estimateCardV3 = buildEstimateCardOutput({
     estimate,
     language,
@@ -411,6 +757,7 @@ async function persistValidatedEstimate(input: {
       estimate_card_v3: estimateCardV3,
       artifact_proposal: estimateCardV3.artifact_proposal,
       diagnosis_scope: quoteReadyArtifact,
+      intake_coverage: intakeCoverage,
       fallback_used: pipeline.fallbackUsed,
       service_problem_id: pipeline.serviceProblemId,
       // Kept beside `estimate`, not inside it: the estimate object is the customer-facing
@@ -423,64 +770,13 @@ async function persistValidatedEstimate(input: {
       budget_soft_cap_reached:
         input.input.currentCostUsd + costUsd >= KAEL_CHAT_SOFT_COST_CAP_USD,
     },
-    ...(pipeline.customerSentiment
-      ? { sessionMetadata: { last_customer_sentiment: pipeline.customerSentiment } }
-      : {}),
+    sessionMetadata: {
+      intake_coverage: intakeCoverage,
+      ...(pipeline.customerSentiment
+        ? { last_customer_sentiment: pipeline.customerSentiment }
+        : {}),
+    },
   });
 }
 
-async function maybeRequestEstimateEvidence(input: {
-  input: FinalizeKaelChatEstimateInput;
-  artifact: KaelDiagnosisScopeArtifact;
-  profile: KaelPerformanceProfile;
-  estimate: ReturnType<typeof buildSafetyFirstElectricalEstimate>;
-  evidenceGateDecision: KaelDiagnosisScopeArtifact["facts"]["evidence_gate_decision"];
-}): Promise<boolean> {
-  const evidenceRequest = resolveCaseWorkEvidenceRequest({
-    serviceType: input.input.service_type,
-    problemCategory: input.estimate.problem_category,
-    customerMessage: input.input.safeCustomerEvidence,
-    evidence: input.artifact.evidence,
-    evidenceDecision: input.evidenceGateDecision === "confirmed" || input.evidenceGateDecision === "skipped"
-      ? input.evidenceGateDecision
-      : undefined,
-    language: input.input.language,
-  });
-  if (!evidenceRequest || input.input.criticalSafetyGuidance) return false;
-  const evidenceArtifact = diagnosisScopeWithEvidenceRequest(
-    input.artifact,
-    evidenceRequest,
-    {
-      customerDetail: input.input.customerAnalysisDetail,
-      problemSummary: input.estimate.problem_summary,
-      complexity: input.estimate.complexity,
-      problemChips: input.input.problemChips,
-      workerRequirements: input.profile.worker_capabilities,
-      confidence: input.estimate.confidence,
-    },
-  );
-  await emitKaelChatStep(input.input.client, input.input.sessionId, input.input.progressTarget, {
-    artifact: evidenceArtifact,
-    turn: {
-      contentType: "clarification",
-      text: withIntakeSafetyGuidance(
-        evidenceRequest.prompt,
-        input.input.responseSafetySignals,
-        input.input.language,
-      ),
-      nextStatus: "active",
-      metadata: {
-        artifact_proposal: buildKaelMissingInfoArtifactProposal({
-          missingFields: [evidenceRequest.blocker],
-          question: evidenceRequest.prompt,
-          confidence: Math.min(input.estimate.confidence, 0.65),
-          artifactType: "ai_notes",
-        }),
-        diagnosis_scope: evidenceArtifact,
-        ...intakeObservationMetadata(input.input.pipeline.intakeObservation),
-      },
-    },
-    progress: { stage: "clarification", status: "completed", progress: 1 },
-  });
-  return true;
-}
+export { publicMissingTierA } from "./estimate-intake-policy.ts";

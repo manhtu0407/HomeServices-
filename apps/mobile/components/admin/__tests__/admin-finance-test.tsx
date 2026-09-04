@@ -212,14 +212,15 @@ describe('AdminFinancePanel', () => {
     expect(screen.queryByTestId('admin-finance-view-tax')).toBeNull()
   })
 
-  it('renders pending commission figures as zero while synchronization is pending', async () => {
+  it('keeps pending commission figures distinct from a verified zero', async () => {
     render(<AdminFinancePanel actor={{ access_level: 'operator', capabilities: ['finance.read'] }} initialView="commission" reduceMotion reduceTransparency />)
 
     expect(await screen.findByTestId('admin-finance-view-commission')).toBeTruthy()
     expect(screen.queryByText('Chưa đủ dữ liệu')).toBeNull()
     expect(within(screen.getByTestId('admin-finance-metric-commission-collected')).getByText('0 ₫')).toBeTruthy()
-    expect(within(screen.getByTestId('admin-finance-metric-commission-rate')).getByText('0%')).toBeTruthy()
-    expect(screen.getByTestId('admin-finance-metric-commission-rate-source')).toHaveTextContent('Đang chờ đồng bộ')
+    expect(within(screen.getByTestId('admin-finance-metric-commission-rate')).getAllByText('Chưa ghi nhận').length).toBeGreaterThan(0)
+    expect(within(screen.getByTestId('admin-finance-metric-commission-rate')).queryByText('0%')).toBeNull()
+    expect(screen.getByTestId('admin-finance-metric-commission-rate-source')).toHaveTextContent('Chưa ghi nhận')
   })
 
   it('uses clear admin copy when transaction detail is unavailable', async () => {
@@ -227,7 +228,8 @@ describe('AdminFinancePanel', () => {
     render(<AdminFinancePanel actor={{ access_level: 'operator', capabilities: ['finance.read'] }} initialView="commission" reduceMotion reduceTransparency />)
 
     expect(await screen.findByTestId('admin-finance-transactions')).toBeTruthy()
-    expect(screen.getByText('Dữ liệu giao dịch chi tiết đang chờ đồng bộ.')).toBeTruthy()
+    expect(await screen.findByText('Dữ liệu giao dịch chi tiết đang chờ đồng bộ.')).toBeTruthy()
+    expect(screen.queryByText('Đang tải dữ liệu…')).toBeNull()
     expect(screen.queryByText('Không tìm thấy endpoint')).toBeNull()
   })
 

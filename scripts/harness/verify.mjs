@@ -1,5 +1,5 @@
 import { spawnSync } from 'node:child_process'
-import { mkdirSync, rmSync } from 'node:fs'
+import { mkdirSync, readdirSync, rmSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -7,10 +7,13 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..')
 const NODE = process.execPath
 const ARTIFACT_ROOT = resolve(ROOT, '.scratch/harness-verification')
 
-// The `node --test` pass over the harness fixture suites is switched off; the semantic
-// ratchets below still run, and they are what gate the manifest, capability, access,
-// migration, reliability, and promotion records.
+const harnessTests = readdirSync(resolve(ROOT, 'scripts/harness'))
+  .filter((name) => name.endsWith('.test.mjs'))
+  .sort()
+  .map((name) => `scripts/harness/${name}`)
+
 const commands = [
+  ['--test', ...harnessTests],
   ['scripts/harness/check-manifest.mjs'],
   ['scripts/harness/capability-registry.mjs'],
   ['scripts/harness/check-privileged-clients.mjs'],

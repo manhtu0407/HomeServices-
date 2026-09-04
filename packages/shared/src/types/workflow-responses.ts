@@ -1,6 +1,7 @@
 import type { JobStatus } from '../constants'
 import type { LocalPaymentStatus } from '../mobile-workflow'
 import type { MatchingState } from './api-responses'
+import type { ConfirmationOperationReceipt } from '../contracts/stage1-reliability'
 
 type ConfirmSearchResponse = {
   job_id: string
@@ -25,6 +26,7 @@ type MatchingPreferenceResponse = ConfirmSearchResponse & {
 
 type ConfirmKaelChatResponse = ConfirmSearchResponse & {
   session_id: string
+  operation?: ConfirmationOperationReceipt
 }
 
 type StatusUpdateResponse = {

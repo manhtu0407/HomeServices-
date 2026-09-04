@@ -1,8 +1,10 @@
 import { StyleSheet, Text, View } from 'react-native'
 
 import type { AppLanguage } from '@/lib/app-language'
-import type { OriginalScopePriceQuote } from '@/lib/api-types'
+import type { OriginalScopePriceQuote, WorkerCandidateView } from '@/lib/api-types'
 import type { CustomerThemeTokens } from '../customer-theme'
+
+type WorkerProposal = NonNullable<WorkerCandidateView['worker_proposal']>
 
 function priceConfidenceLabel(
   confidence: 'low' | 'medium' | 'high',
@@ -17,14 +19,27 @@ function priceConfidenceLabel(
 export function CandidatePriceReceipt({
   formatCurrency,
   language,
+  proposal,
   quote,
   tokens,
 }: {
   formatCurrency: (value: number) => string
   language: AppLanguage
+  proposal: WorkerProposal | null
   quote: OriginalScopePriceQuote | null
   tokens: CustomerThemeTokens
 }) {
+  if (!quote?.worker_confirmed_at && proposal) {
+    return (
+      <WorkerProposalReceipt
+        formatCurrency={formatCurrency}
+        language={language}
+        proposal={proposal}
+        tokens={tokens}
+      />
+    )
+  }
+
   if (!quote?.worker_confirmed_at) {
     return (
       <View
@@ -99,6 +114,61 @@ export function CandidatePriceReceipt({
   )
 }
 
+function WorkerProposalReceipt({
+  formatCurrency,
+  language,
+  proposal,
+  tokens,
+}: {
+  formatCurrency: (value: number) => string
+  language: AppLanguage
+  proposal: WorkerProposal
+  tokens: CustomerThemeTokens
+}) {
+  const hasPriceRange = proposal.price_min !== null && proposal.price_max !== null
+  const priceRange = hasPriceRange
+    ? `${formatCurrency(proposal.price_min!)} – ${formatCurrency(proposal.price_max!)}`
+    : null
+  const title = hasPriceRange
+    ? (language === 'vi' ? 'Phạm vi và khoảng giá thợ đề xuất' : 'Worker-proposed scope and range')
+    : (language === 'vi' ? 'Yêu cầu khảo sát của thợ' : 'Worker inspection request')
+  const body = hasPriceRange
+    ? (language === 'vi'
+        ? 'Đây là khoảng dự kiến do thợ đề xuất từ thông tin hiện có, chưa phải giá cuối đã khóa. Sau khi kiểm tra thực tế, mọi báo giá hoặc thay đổi phạm vi vẫn cần bạn duyệt.'
+        : 'This is the worker’s estimated range from the available information, not a locked final price. After an on-site check, you must still approve any quote or scope change.')
+    : (language === 'vi'
+        ? 'Chưa có giá sửa chữa ở bước này. Xác nhận chỉ chọn thợ để khảo sát; mọi báo giá và phạm vi sửa chữa sau khảo sát vẫn cần bạn duyệt.'
+        : 'There is no repair price at this step. Confirmation only selects the worker for inspection; you must still approve the repair scope and quote afterward.')
+
+  return (
+    <View
+      accessible
+      accessibilityLabel={`${title}. ${proposal.scope_summary}. ${priceRange ?? ''} ${body}`.trim()}
+      style={[styles.priceReceipt, { backgroundColor: tokens.base, borderColor: tokens.borderStrong }]}
+      testID={hasPriceRange
+        ? 'customer-v21-worker-candidate-rfq-proposal'
+        : 'customer-v21-worker-candidate-inspection-proposal'}
+    >
+      <View style={styles.priceHeader}>
+        <View style={styles.priceHeaderCopy}>
+          <Text style={[styles.paymentTitle, { color: tokens.text }]}>{title}</Text>
+          <Text style={[styles.meta, { color: tokens.primary }]}>
+            {language === 'vi' ? 'Chờ bạn xác nhận chọn thợ' : 'Awaiting your worker selection'}
+          </Text>
+        </View>
+        {priceRange ? <Text style={[styles.proposalRange, { color: tokens.text }]}>{priceRange}</Text> : null}
+      </View>
+      <Text style={[styles.proposalScope, { color: tokens.text }]}>{proposal.scope_summary}</Text>
+      <Text style={[styles.body, { color: tokens.muted }]}>{body}</Text>
+      <Text style={[styles.priceCap, { color: tokens.primary }]}>
+        {language === 'vi'
+          ? 'Xác nhận Customer vẫn là bắt buộc trước khi ghép thợ chính thức.'
+          : 'Customer confirmation remains required before the worker is officially matched.'}
+      </Text>
+    </View>
+  )
+}
+
 function PriceReceiptRow({ label, tokens, value }: {
   label: string
   tokens: CustomerThemeTokens
@@ -124,4 +194,6 @@ const styles = StyleSheet.create({
   priceRows: { gap: 6 },
   priceTotal: { fontSize: 18, fontWeight: '800', lineHeight: 23 },
   priceValue: { flexShrink: 1, fontSize: 13, fontWeight: '700', lineHeight: 19, textAlign: 'right' },
+  proposalRange: { flexShrink: 1, fontSize: 15, fontWeight: '800', lineHeight: 21, textAlign: 'right' },
+  proposalScope: { fontSize: 13, fontWeight: '700', lineHeight: 19 },
 })

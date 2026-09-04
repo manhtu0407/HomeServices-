@@ -358,6 +358,88 @@ describe('matching-accept', () => {
     expect(selectedColumns).not.toMatch(/phone|bank_|cccd|legal_name|address_|home_lat|home_lng/)
   })
 
+  it('projects an RFQ worker proposal separately from the Kael price receipt', async () => {
+    const client = makeSequenceClient([
+      {
+        data: {
+          id: candidateJobId,
+          status: 'worker_candidate_pending',
+          customer_id: 'customer-1',
+          worker_id: null,
+          quote_mode: 'rfq',
+        },
+        error: null,
+      },
+      {
+        data: {
+          id: 'candidate-rfq',
+          job_id: candidateJobId,
+          worker_id: candidateWorkerId,
+          broadcast_id: candidateBroadcastId,
+          status: 'proposed',
+          proposed_at: '2026-07-11T00:00:00.000Z',
+          expires_at: '2099-08-15T04:10:00.000Z',
+          customer_decided_at: null,
+          original_scope_price_quote: null,
+          worker_matching_proposals: [{
+            id: 'proposal-rfq',
+            scope_summary: 'Khảo sát ổ cắm và thay linh kiện nếu khách duyệt',
+            price_min: 180_000,
+            price_max: 260_000,
+            status: 'proposed',
+          }],
+        },
+        error: null,
+      },
+      {
+        data: {
+          id: candidateWorkerId,
+          rating: null,
+          total_jobs: 0,
+          years_experience: 2,
+          verification_status: 'approved',
+          date_of_birth: null,
+          gender: null,
+        },
+        error: null,
+      },
+      {
+        data: { full_name: 'Thợ RFQ', avatar_url: null },
+        error: null,
+      },
+      { data: null, error: null },
+    ], {
+      get_direct_worker_payment_availability: [{
+        data: [{ direct_payment_available: false }],
+        error: null,
+      }],
+    })
+    const ctx: MobileApiContext = {
+      success: true,
+      user: { id: 'customer-1' },
+      role: 'customer',
+      supabase: client,
+    }
+
+    const response = await createEdgeServices({}).getWorkerCandidate(ctx, candidateJobId)
+
+    expect(response).toMatchObject({
+      candidate: {
+        candidate_id: 'candidate-rfq',
+        original_scope_price_quote: null,
+        worker_proposal: {
+          proposal_id: 'proposal-rfq',
+          scope_summary: 'Khảo sát ổ cắm và thay linh kiện nếu khách duyệt',
+          price_min: 180_000,
+          price_max: 260_000,
+          status: 'proposed',
+        },
+      },
+    })
+    expect(response.candidate?.worker_proposal).not.toHaveProperty('worker_id')
+    expect(response.candidate?.worker_proposal).not.toHaveProperty('created_at')
+  })
+
   it('keeps a retried customer worker confirmation idempotent at the Edge boundary', async () => {
     const client = makeSequenceClient([
       {

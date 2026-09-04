@@ -106,9 +106,6 @@ alter table public.worker_payment_ledger
   alter column settlement_state set not null;
 
 alter table public.worker_payment_ledger
-  drop constraint if exists worker_payment_ledger_settlement_state_check;
-
-alter table public.worker_payment_ledger
   add constraint worker_payment_ledger_settlement_state_check
   check (settlement_state in ('pending', 'customer_claimed', 'admin_verified', 'admin_rejected'));
 
@@ -735,9 +732,6 @@ alter table public.worker_withdrawal_requests
   alter column eligible_at set not null;
 
 alter table public.worker_withdrawal_requests
-  drop constraint if exists worker_withdrawal_requests_eligibility_check;
-
-alter table public.worker_withdrawal_requests
   add constraint worker_withdrawal_requests_eligibility_check
   check (eligible_at >= requested_at);
 
@@ -818,8 +812,7 @@ grant execute on function private.set_worker_withdrawal_eligible_at() to service
 revoke all on function private.enforce_worker_withdrawal_eligibility() from public, anon, authenticated;
 grant execute on function private.enforce_worker_withdrawal_eligibility() to service_role;
 
-drop function if exists public.get_worker_earnings_summary(uuid, timestamptz, timestamptz, numeric);
-create function public.get_worker_earnings_summary(
+create or replace function public.get_worker_earnings_summary_v2(
   p_worker_id uuid,
   p_from timestamptz default null,
   p_to timestamptz default null,
@@ -1016,8 +1009,8 @@ begin
 end;
 $function$;
 
-revoke execute on function public.get_worker_earnings_summary(uuid, timestamptz, timestamptz, numeric) from public, anon, authenticated;
-grant execute on function public.get_worker_earnings_summary(uuid, timestamptz, timestamptz, numeric) to service_role;
+revoke execute on function public.get_worker_earnings_summary_v2(uuid, timestamptz, timestamptz, numeric) from public, anon, authenticated;
+grant execute on function public.get_worker_earnings_summary_v2(uuid, timestamptz, timestamptz, numeric) to service_role;
 
 create or replace function public.get_admin_worker_finance_snapshot(
   p_actor_id uuid,
@@ -1059,7 +1052,7 @@ begin
   perform private.assert_finance_reader(p_actor_id);
   return query
   select summary.*
-  from public.get_worker_earnings_summary(
+  from public.get_worker_earnings_summary_v2(
     p_worker_id,
     p_from,
     p_to,

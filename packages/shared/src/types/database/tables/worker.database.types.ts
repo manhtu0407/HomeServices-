@@ -551,6 +551,87 @@ export type WorkerTables = {
           },
         ]
       }
+      worker_matching_proposals: {
+        Row: {
+          broadcast_id: string
+          candidate_id: string
+          created_at: string
+          id: string
+          job_id: string
+          price_max: number | null
+          price_min: number | null
+          scope_summary: string
+          status: string
+          synthetic_cohort_id: string | null
+          updated_at: string
+          worker_id: string
+        }
+        Insert: {
+          broadcast_id: string
+          candidate_id: string
+          created_at?: string
+          id?: string
+          job_id: string
+          price_max?: number | null
+          price_min?: number | null
+          scope_summary: string
+          status?: string
+          synthetic_cohort_id?: string | null
+          updated_at?: string
+          worker_id: string
+        }
+        Update: {
+          broadcast_id?: string
+          candidate_id?: string
+          created_at?: string
+          id?: string
+          job_id?: string
+          price_max?: number | null
+          price_min?: number | null
+          scope_summary?: string
+          status?: string
+          synthetic_cohort_id?: string | null
+          updated_at?: string
+          worker_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "worker_matching_proposals_broadcast_id_fkey"
+            columns: ["broadcast_id"]
+            isOneToOne: true
+            referencedRelation: "job_broadcasts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "worker_matching_proposals_candidate_id_fkey"
+            columns: ["candidate_id"]
+            isOneToOne: true
+            referencedRelation: "job_worker_candidates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "worker_matching_proposals_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "worker_matching_proposals_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
+            referencedRelation: "worker_overview"
+            referencedColumns: ["worker_id"]
+          },
+          {
+            foreignKeyName: "worker_matching_proposals_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
+            referencedRelation: "worker_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       worker_payment_ledger: {
         Row: {
           available_at: string | null
@@ -639,6 +720,7 @@ export type WorkerTables = {
           reviewed_at: string | null
           reviewed_by: string | null
           status: string
+          synthetic_cohort_id: string | null
           updated_at: string
           version: number
           worker_id: string
@@ -657,6 +739,7 @@ export type WorkerTables = {
           reviewed_at?: string | null
           reviewed_by?: string | null
           status?: string
+          synthetic_cohort_id?: string | null
           updated_at?: string
           version?: number
           worker_id: string
@@ -675,6 +758,7 @@ export type WorkerTables = {
           reviewed_at?: string | null
           reviewed_by?: string | null
           status?: string
+          synthetic_cohort_id?: string | null
           updated_at?: string
           version?: number
           worker_id?: string
@@ -686,6 +770,13 @@ export type WorkerTables = {
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "worker_payout_methods_synthetic_cohort_id_fkey"
+            columns: ["synthetic_cohort_id"]
+            isOneToOne: false
+            referencedRelation: "synthetic_matching_cohorts"
+            referencedColumns: ["cohort_id"]
           },
           {
             foreignKeyName: "worker_payout_methods_worker_id_fkey"
@@ -725,12 +816,15 @@ export type WorkerTables = {
           is_available: boolean
           is_suspended: boolean
           legal_name: string | null
+          matching_foreground_active_until: string | null
+          matching_push_proven_at: string | null
           problem_specializations: string[]
           rating: number
           selected_service_types: Database["public"]["Enums"]["service_type"][]
           selfie_url: string | null
           service_radius_km: number
           service_types: Database["public"]["Enums"]["service_type"][]
+          synthetic_cohort_id: string | null
           total_jobs: number
           updated_at: string
           verification_status: Database["public"]["Enums"]["worker_verification_status"]
@@ -757,12 +851,15 @@ export type WorkerTables = {
           is_available?: boolean
           is_suspended?: boolean
           legal_name?: string | null
+          matching_foreground_active_until?: string | null
+          matching_push_proven_at?: string | null
           problem_specializations?: string[]
           rating?: number
           selected_service_types?: Database["public"]["Enums"]["service_type"][]
           selfie_url?: string | null
           service_radius_km?: number
           service_types?: Database["public"]["Enums"]["service_type"][]
+          synthetic_cohort_id?: string | null
           total_jobs?: number
           updated_at?: string
           verification_status?: Database["public"]["Enums"]["worker_verification_status"]
@@ -789,12 +886,15 @@ export type WorkerTables = {
           is_available?: boolean
           is_suspended?: boolean
           legal_name?: string | null
+          matching_foreground_active_until?: string | null
+          matching_push_proven_at?: string | null
           problem_specializations?: string[]
           rating?: number
           selected_service_types?: Database["public"]["Enums"]["service_type"][]
           selfie_url?: string | null
           service_radius_km?: number
           service_types?: Database["public"]["Enums"]["service_type"][]
+          synthetic_cohort_id?: string | null
           total_jobs?: number
           updated_at?: string
           verification_status?: Database["public"]["Enums"]["worker_verification_status"]
@@ -969,6 +1069,7 @@ export type WorkerTables = {
           requested_at: string
           resolution_reason: string | null
           status: string
+          synthetic_cohort_id: string | null
           transfer_reference: string | null
           transfer_reference_hash: string | null
           transfer_reference_suffix: string | null
@@ -997,6 +1098,7 @@ export type WorkerTables = {
           requested_at?: string
           resolution_reason?: string | null
           status?: string
+          synthetic_cohort_id?: string | null
           transfer_reference?: string | null
           transfer_reference_hash?: string | null
           transfer_reference_suffix?: string | null
@@ -1025,6 +1127,7 @@ export type WorkerTables = {
           requested_at?: string
           resolution_reason?: string | null
           status?: string
+          synthetic_cohort_id?: string | null
           transfer_reference?: string | null
           transfer_reference_hash?: string | null
           transfer_reference_suffix?: string | null
@@ -1053,6 +1156,13 @@ export type WorkerTables = {
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "worker_withdrawal_requests_synthetic_cohort_id_fkey"
+            columns: ["synthetic_cohort_id"]
+            isOneToOne: false
+            referencedRelation: "synthetic_matching_cohorts"
+            referencedColumns: ["cohort_id"]
           },
           {
             foreignKeyName: "worker_withdrawal_requests_worker_id_fkey"

@@ -104,13 +104,16 @@ function activeWorkerBroadcasts(broadcasts: WorkerBroadcast[], referenceDate: Da
     .filter((broadcast) => {
       const expiresAt = validTimestamp(broadcast.expires_at)
       const quoteExpiresAt = validTimestamp(broadcast.original_scope_price_quote?.expires_at)
+      const requiresQuote = !broadcast.proposal_action || broadcast.proposal_action === 'accept_priced_offer'
       return broadcast.status === 'sent'
         && broadcast.job_id.trim().length > 0
-        && broadcast.original_scope_price_quote.quote_id.trim().length > 0
         && expiresAt !== null
         && expiresAt > now
-        && quoteExpiresAt !== null
-        && quoteExpiresAt > now
+        && (!requiresQuote || (
+          Boolean(broadcast.original_scope_price_quote?.quote_id.trim())
+          && quoteExpiresAt !== null
+          && quoteExpiresAt > now
+        ))
     })
     .sort((left, right) => {
       const expiryDifference = (validTimestamp(left.expires_at) ?? 0) - (validTimestamp(right.expires_at) ?? 0)

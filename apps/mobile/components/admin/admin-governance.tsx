@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useReducer, useRef } from 'react'
 import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native'
 
-import { color, radius, spacing, typography } from '@/design/theme'
+import { color, radius, spacing } from '@/design/theme'
 import type {
   AdminViewActor,
   AdminViewAiCostSummary,
@@ -12,10 +12,11 @@ import { type AppLanguage } from '@/lib/app-language'
 import { adminControlService } from '@/lib/services'
 
 import { AdminPagination } from './admin-pagination'
+import { AdminPolicyGovernance } from './admin-policy-governance'
 import { AdminTabNavigation } from './admin-tab-navigation'
 import { AdminText } from './admin-text'
 
-export type AdminGovernancePanelId = 'prices' | 'kael'
+export type AdminGovernancePanelId = 'prices' | 'policies' | 'kael'
 
 const PAGE_SIZE = 8
 
@@ -35,6 +36,7 @@ const copy = {
     priceEmpty: 'Chưa có nền tảng giá nào.',
     priceRange: 'Khoảng giá',
     prices: 'Nền tảng giá',
+    policies: 'Chính sách',
     provider: 'Nhà cung cấp',
     purpose: 'Mục đích',
     refresh: 'Tải lại',
@@ -60,6 +62,7 @@ const copy = {
     priceEmpty: 'No price baseline is available.',
     priceRange: 'Price range',
     prices: 'Price baselines',
+    policies: 'Policies',
     provider: 'Provider',
     purpose: 'Purpose',
     refresh: 'Refresh',
@@ -160,7 +163,9 @@ export function AdminGovernancePanel({ actor, initialPanel = 'prices', language 
     loadRequestIds[requestedPanel] = requestId
     patch({ error: null, ...(shouldBlock ? { loading: true } : {}) })
     try {
-      if (requestedPanel === 'prices') {
+      if (requestedPanel === 'policies') {
+        return
+      } else if (requestedPanel === 'prices') {
         const result = await adminControlService.listPriceBaselines({ limit: PAGE_SIZE, offset: (pricePage - 1) * PAGE_SIZE })
         if (requestId === loadRequestIds[requestedPanel] && activePanelRef.current === requestedPanel) {
           if (result.success) {
@@ -231,6 +236,7 @@ export function AdminGovernancePanel({ actor, initialPanel = 'prices', language 
     <AdminTabNavigation
       items={[
         { key: 'prices', label: labels.prices, onPress: () => patch({ activePanel: 'prices', pricePage: 1 }), selected: activePanel === 'prices', testID: 'admin-governance-prices-tab' },
+        { key: 'policies', label: labels.policies, onPress: () => patch({ activePanel: 'policies' }), selected: activePanel === 'policies', testID: 'admin-governance-policies-tab' },
         { key: 'kael', label: 'Kael', onPress: () => patch({ activePanel: 'kael', costPage: 1, rulePage: 1 }), selected: activePanel === 'kael', testID: 'admin-governance-kael-tab' },
       ]}
       testID="admin-governance-navigation"
@@ -238,7 +244,7 @@ export function AdminGovernancePanel({ actor, initialPanel = 'prices', language 
     {loading ? <View style={styles.loading}><ActivityIndicator color={color.brand.primary} /><AdminText textRole="subheadline" style={styles.loadingText}>{labels.loading}</AdminText></View> : error ? <View accessibilityRole="alert" style={styles.error}><AdminText textRole="subheadline" style={styles.errorText}>{labels.error}</AdminText><Pressable accessibilityRole="button" onPress={() => { void load() }}><AdminText textRole="headline" style={styles.retry}>{labels.refresh}</AdminText></Pressable></View> : activePanel === 'prices' ? <>
       {prices.length === 0 ? <EmptyState label={labels.priceEmpty} /> : prices.map((item) => <PriceCard item={item} key={item.id} language={language} />)}
       <Pagination hasMore={priceHasMore} language={language} loading={loading} onPageChange={(pricePage) => patch({ pricePage })} page={pricePage} prefix="admin-governance-price-page" total={priceTotal} />
-    </> : <>
+    </> : activePanel === 'policies' ? <AdminPolicyGovernance language={language} /> : <>
       <AdminText textRole="title2" style={styles.sectionTitle}>{labels.aiCosts}</AdminText>
       {costs.length === 0 ? <EmptyState label={labels.aiEmpty} /> : costs.map((item) => <CostCard item={item} key={`${item.day}:${item.provider}:${item.purpose}`} language={language} />)}
       <Pagination hasMore={costHasMore} language={language} loading={loading} onPageChange={(costPage) => patch({ costPage })} page={costPage} prefix="admin-governance-cost-page" total={costTotal} />
@@ -367,25 +373,25 @@ function formatUsd(value: number, language: AppLanguage) {
 
 const styles = StyleSheet.create({
   card: { backgroundColor: color.surface.base, borderColor: color.surface.stroke, borderRadius: radius.lg, borderWidth: 1, gap: spacing.sm, padding: spacing.lg },
-  cardMeta: { ...typography.footnote, color: color.text.secondary },
-  cardTitle: { ...typography.headline, color: color.text.strong, flex: 1, textTransform: 'capitalize' },
+  cardMeta: { color: color.text.secondary },
+  cardTitle: { color: color.text.strong, flex: 1, textTransform: 'capitalize' },
   cardTop: { alignItems: 'center', flexDirection: 'row', gap: spacing.sm, justifyContent: 'space-between' },
   empty: { alignItems: 'center', backgroundColor: color.surface.base, borderColor: color.surface.stroke, borderRadius: radius.lg, borderWidth: 1, minHeight: 88, justifyContent: 'center', padding: spacing.lg },
-  emptyText: { ...typography.callout, color: color.text.secondary, textAlign: 'center' },
+  emptyText: { color: color.text.secondary, textAlign: 'center' },
   error: { alignItems: 'center', backgroundColor: color.mint.mint50, borderColor: color.mint.mint300, borderRadius: radius.md, borderWidth: 1, gap: spacing.sm, padding: spacing.lg },
-  errorText: { ...typography.footnote, color: color.text.secondary, textAlign: 'center' },
+  errorText: { color: color.text.secondary, textAlign: 'center' },
   heading: { alignItems: 'flex-start', flexDirection: 'row', gap: spacing.md, justifyContent: 'space-between' },
   loading: { alignItems: 'center', gap: spacing.sm, minHeight: 160, justifyContent: 'center' },
-  loadingText: { ...typography.footnote, color: color.text.secondary },
+  loadingText: { color: color.text.secondary },
   metric: { flex: 1, gap: spacing.xxs, minWidth: 0 },
   metricGrid: { flexDirection: 'row', gap: spacing.sm },
-  metricLabel: { ...typography.caption, color: color.text.muted, fontWeight: '600' },
-  metricValue: { ...typography.footnote, color: color.text.strong, fontWeight: '600' },
-  pill: { ...typography.caption, backgroundColor: color.mint.mint50, borderColor: color.mint.mint300, borderRadius: radius.pill, borderWidth: 1, color: color.brand.primaryDark, fontWeight: '600', overflow: 'hidden', paddingHorizontal: spacing.sm, paddingVertical: spacing.xxs, textTransform: 'capitalize' },
+  metricLabel: { color: color.text.muted, fontWeight: '600' },
+  metricValue: { color: color.text.strong, fontWeight: '600' },
+  pill: { backgroundColor: color.mint.mint50, borderColor: color.mint.mint300, borderRadius: radius.pill, borderWidth: 1, color: color.brand.primaryDark, fontWeight: '600', overflow: 'hidden', paddingHorizontal: spacing.sm, paddingVertical: spacing.xxs, textTransform: 'capitalize' },
   refresh: { alignItems: 'center', borderColor: color.mint.mint300, borderRadius: radius.pill, borderWidth: 1, minHeight: 36, justifyContent: 'center', paddingHorizontal: spacing.md },
-  refreshText: { ...typography.footnote, color: color.brand.primaryDark, fontWeight: '600' },
-  retry: { ...typography.footnote, color: color.brand.primaryDark, fontWeight: '600' },
-  sectionTitle: { ...typography.title3, color: color.text.strong, marginTop: spacing.xs },
+  refreshText: { color: color.brand.primaryDark, fontWeight: '600' },
+  retry: { color: color.brand.primaryDark, fontWeight: '600' },
+  sectionTitle: { color: color.text.strong, marginTop: spacing.xs },
   stack: { gap: spacing.md },
-  title: { ...typography.title2, color: color.text.strong, fontWeight: '600' },
+  title: { color: color.text.strong, fontWeight: '600' },
 })

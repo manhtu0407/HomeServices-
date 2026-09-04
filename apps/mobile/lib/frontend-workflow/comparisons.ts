@@ -28,9 +28,15 @@ export function sameWorkerBroadcasts(left: WorkerBroadcast[], right: WorkerBroad
       && broadcast.sent_at === next.sent_at
       && broadcast.expires_at === next.expires_at
       && broadcast.seconds_remaining === next.seconds_remaining
-      && broadcast.original_scope_price_quote.quote_id === next.original_scope_price_quote.quote_id
-      && broadcast.original_scope_price_quote.expires_at === next.original_scope_price_quote.expires_at
-      && broadcast.original_scope_price_quote.worker_net === next.original_scope_price_quote.worker_net
+      && broadcast.quote_mode === next.quote_mode
+      && broadcast.proposal_action === next.proposal_action
+      && broadcast.confirmed_recipient_count === next.confirmed_recipient_count
+      && broadcast.original_scope_price_quote?.quote_id === next.original_scope_price_quote?.quote_id
+      && broadcast.original_scope_price_quote?.expires_at === next.original_scope_price_quote?.expires_at
+      && broadcast.original_scope_price_quote?.worker_net === next.original_scope_price_quote?.worker_net
+      && broadcast.delivery_receipt?.delivery_id === next.delivery_receipt?.delivery_id
+      && broadcast.delivery_receipt?.state === next.delivery_receipt?.state
+      && broadcast.delivery_receipt?.expires_at === next.delivery_receipt?.expires_at
   })
 }
 

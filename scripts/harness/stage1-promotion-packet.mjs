@@ -1,0 +1,314 @@
+import { createHash } from 'node:crypto'
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { dirname, relative, resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
+import { verifyReviewedMainMergeReceipt } from './github-merge-approval.mjs'
+import { verifyMobileBinaryAttestation } from './mobile-binary-attestation.mjs'
+import { RELEASE_EDGE_FUNCTIONS } from './release-bundle.mjs'
+import { verifyProductionUiNormalityReceipt } from '../check-production-ui-copy.mjs'
+
+const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..')
+const SHA256 = /^[0-9a-f]{64}$/u
+const RELEASE_ID = /^harness-[0-9a-f]{12}-[0-9a-f]{12}$/u
+const COHORT_ID = /^synthetic-stage1-[0-9a-f]{12}-[0-9a-f]{12}-[A-Za-z0-9_-]{1,48}$/u
+const REQUIRED_GATES = Object.freeze([
+  'workspace-typecheck',
+  'workspace-tests',
+  'workspace-build',
+  'security',
+  'harness',
+  'edge-deno',
+  'database-reset',
+  'sql-verification',
+  'generated-types',
+  'expand-only',
+  'hosted-drift-baseline',
+  'production-ui-normality',
+])
+
+export function buildStage1PromotionPacket(input) {
+  validateBuildInput(input)
+  const rollbackFunctions = Object.fromEntries(RELEASE_EDGE_FUNCTIONS.map((functionName) => {
+    const hostedFunction = input.previousHostedState.managedEdgeFunctions[functionName]
+    return [functionName, {
+      hostedEdgeVersion: hostedFunction.version,
+      hostedEdgeDigest: hostedFunction.ezbr_sha256,
+      sourceSha256: input.rollbackSourceSha256ByFunction[functionName],
+    }]
+  }))
+  const packet = {
+    schemaVersion: 'stage1-promotion-packet.v2',
+    packetId: `stage1-${input.release.releaseId}-${input.workflowRunId}`,
+    generatedAt: new Date(input.now ?? Date.now()).toISOString(),
+    environment: 'production',
+    projectRef: 'iwevizmsedyqozxlawwl',
+    release: {
+      releaseId: input.release.releaseId,
+      gitSha: input.release.gitSha,
+      bundleSha256: input.release.bundleSha256,
+      sourceBundleSha256: input.release.sourceBundleSha256,
+      mobileBuildFingerprintSha256: input.release.mobileBuildFingerprintSha256,
+      productionUiSourceSha256: input.release.productionUiSourceSha256,
+      edgeBundleSha256: input.release.edgeBundleSha256,
+      migrationInventorySha256: input.release.migrationInventorySha256,
+      migrationWatermark: input.release.migrationWatermark,
+      serviceIntakePolicyBundleSha256: input.release.serviceIntakePolicyBundleSha256,
+      priceEvidenceBundleSha256: input.release.priceEvidenceBundleSha256,
+      providerReadinessFingerprintSha256: input.release.providerReadinessFingerprintSha256,
+    },
+    cohortId: input.cohortId,
+    approval: input.mergeApprovalReceipt,
+    mobileBinaryAttestation: input.mobileBinaryAttestation,
+    productionUiNormality: {
+      sourceSha256: input.productionUiNormalityReceipt.sourceSha256,
+      receiptSha256: input.productionUiNormalityReceipt.receiptSha256,
+      scannedFileCount: input.productionUiNormalityReceipt.scannedFileCount,
+      unsafeVisibleCopyCount: input.productionUiNormalityReceipt.unsafeVisibleCopyCount,
+    },
+    workflowRunId: String(input.workflowRunId),
+    expandOnly: {
+      auditSha256: input.expandOnlyReceipt.auditSha256,
+      hostedWatermark: input.expandOnlyReceipt.hostedWatermark ?? null,
+      pendingWatermark: input.expandOnlyReceipt.pendingWatermark ?? null,
+      pendingMigrationCount: input.expandOnlyReceipt.pendingMigrations.length,
+    },
+    rollback: {
+      strategy: 'downloaded-hosted-edge-source-on-expanded-schema',
+      priorReleaseId: input.previousHostedState.releaseId ?? null,
+      functions: rollbackFunctions,
+      sourceVerifiedBeforeDeploy: true,
+      databaseRollbackForbidden: true,
+    },
+    passedGates: [...input.passedGates].sort(),
+    promotionRequirements: {
+      candidateCohortOnlyBeforePromotion: true,
+      consecutiveSyntheticSmokes: 3,
+      atomicPromotion: true,
+      abortKeepsRealTrafficOnPreviousLane: true,
+      rollbackDeployRequiredOnFailure: true,
+    },
+    packetSha256: '',
+  }
+  packet.packetSha256 = sha256(canonicalJson({ ...packet, packetSha256: undefined }))
+  return Object.freeze(packet)
+}
+
+export function verifyStage1PromotionPacket(packet) {
+  const problems = []
+  if (!packet || typeof packet !== 'object') return ['promotion packet is invalid']
+  if (packet.schemaVersion !== 'stage1-promotion-packet.v2') problems.push('promotion packet schema is invalid')
+  if (packet.environment !== 'production' || packet.projectRef !== 'iwevizmsedyqozxlawwl') problems.push('promotion packet target is invalid')
+  if (!RELEASE_ID.test(packet.release?.releaseId ?? '')) problems.push('promotion packet release ID is invalid')
+  if (!COHORT_ID.test(packet.cohortId ?? '')) problems.push('promotion packet cohort ID is invalid')
+  const approvalProblems = verifyReviewedMainMergeReceipt(packet.approval)
+  if (approvalProblems.length > 0 || packet.approval?.mergeCommitSha !== packet.release?.gitSha) {
+    problems.push('promotion packet merge approval is invalid')
+  }
+  if (verifyMobileBinaryAttestation(packet.mobileBinaryAttestation, packet.release).length > 0) {
+    problems.push('promotion packet mobile binary attestation is invalid')
+  }
+  for (const field of [
+    packet.release?.bundleSha256,
+    packet.release?.sourceBundleSha256,
+    packet.release?.mobileBuildFingerprintSha256,
+    packet.release?.productionUiSourceSha256,
+    packet.release?.edgeBundleSha256,
+    packet.release?.migrationInventorySha256,
+    packet.release?.serviceIntakePolicyBundleSha256,
+    packet.release?.priceEvidenceBundleSha256,
+    packet.release?.providerReadinessFingerprintSha256,
+    packet.expandOnly?.auditSha256,
+    packet.packetSha256,
+  ]) if (!SHA256.test(field ?? '')) problems.push('promotion packet contains an invalid digest')
+  if (!SHA256.test(packet.productionUiNormality?.receiptSha256 ?? '') ||
+      packet.productionUiNormality?.sourceSha256 !== packet.release?.productionUiSourceSha256 ||
+      !Number.isSafeInteger(packet.productionUiNormality?.scannedFileCount) ||
+      packet.productionUiNormality.scannedFileCount < 1 ||
+      packet.productionUiNormality?.unsafeVisibleCopyCount !== 0) {
+    problems.push('promotion packet Production UI normality evidence is invalid')
+  }
+  if (!exactFunctionSet(packet.rollback?.functions)) {
+    problems.push('promotion packet rollback function inventory is invalid')
+  } else {
+    for (const functionName of RELEASE_EDGE_FUNCTIONS) {
+      const rollbackFunction = packet.rollback.functions[functionName]
+      if (!Number.isSafeInteger(rollbackFunction?.hostedEdgeVersion) || rollbackFunction.hostedEdgeVersion < 1 ||
+          !SHA256.test(rollbackFunction?.hostedEdgeDigest ?? '') ||
+          !SHA256.test(rollbackFunction?.sourceSha256 ?? '')) {
+        problems.push(`promotion packet rollback evidence is invalid for ${functionName}`)
+      }
+    }
+  }
+  for (const gate of REQUIRED_GATES) if (!packet.passedGates?.includes(gate)) problems.push(`promotion packet is missing required release gate: ${gate}`)
+  if (packet.rollback?.strategy !== 'downloaded-hosted-edge-source-on-expanded-schema' ||
+      packet.rollback?.databaseRollbackForbidden !== true || packet.rollback?.sourceVerifiedBeforeDeploy !== true) {
+    problems.push('promotion packet rollback contract is invalid')
+  }
+  if (packet.promotionRequirements?.candidateCohortOnlyBeforePromotion !== true ||
+      packet.promotionRequirements?.consecutiveSyntheticSmokes !== 3 ||
+      packet.promotionRequirements?.atomicPromotion !== true ||
+      packet.promotionRequirements?.abortKeepsRealTrafficOnPreviousLane !== true ||
+      packet.promotionRequirements?.rollbackDeployRequiredOnFailure !== true) {
+    problems.push('promotion packet Stage 1 gates are incomplete')
+  }
+  const expected = sha256(canonicalJson({ ...packet, packetSha256: undefined }))
+  if (packet.packetSha256 !== expected) problems.push('promotion packet checksum mismatch')
+  return [...new Set(problems)]
+}
+
+function validateBuildInput(input) {
+  const release = input?.release
+  if (!RELEASE_ID.test(release?.releaseId ?? '') || release?.environment !== 'production' ||
+      !/^[0-9a-f]{40}$/u.test(release?.gitSha ?? '') || !SHA256.test(release?.bundleSha256 ?? '')) {
+    throw new Error('Stage 1 promotion requires a valid production release')
+  }
+  for (const field of [
+    'sourceBundleSha256', 'mobileBuildFingerprintSha256', 'productionUiSourceSha256', 'edgeBundleSha256',
+    'migrationInventorySha256', 'serviceIntakePolicyBundleSha256',
+    'priceEvidenceBundleSha256', 'providerReadinessFingerprintSha256',
+  ]) if (!SHA256.test(release[field] ?? '')) throw new Error(`Stage 1 release ${field} is invalid`)
+  if (release.rollbackPolicy?.historicalMigrationsImmutable !== true ||
+      release.rollbackPolicy?.schemaCorrectionMode !== 'forward-migration' ||
+      release.rollbackPolicy?.compatibilityStrategy !== 'expand-contract') {
+    throw new Error('Stage 1 release has no expand-contract rollback policy')
+  }
+  if (!COHORT_ID.test(input.cohortId ?? '') ||
+      !input.cohortId.startsWith(`synthetic-stage1-${release.releaseId.slice(8, 20)}-${release.releaseId.slice(21)}-`)) {
+    throw new Error('Stage 1 promotion cohort is invalid')
+  }
+  if (verifyReviewedMainMergeReceipt(input.mergeApprovalReceipt).length > 0 ||
+      input.mergeApprovalReceipt?.mergeCommitSha !== release.gitSha ||
+      !/^[0-9]{1,30}$/u.test(String(input.workflowRunId ?? ''))) {
+    throw new Error('reviewed merge approval identity is invalid')
+  }
+  if (verifyMobileBinaryAttestation(input.mobileBinaryAttestation, release).length > 0) {
+    throw new Error('Stage 1 promotion requires exact iOS and Android binary attestations')
+  }
+  if (!verifyProductionUiNormalityReceipt(input.productionUiNormalityReceipt) ||
+      input.productionUiNormalityReceipt.sourceSha256 !== release.productionUiSourceSha256) {
+    throw new Error('Stage 1 promotion requires exact Production UI normality evidence')
+  }
+  const expand = input.expandOnlyReceipt
+  if (expand?.environment !== 'production' || expand?.projectRef !== 'iwevizmsedyqozxlawwl' ||
+      !SHA256.test(expand?.auditSha256 ?? '') || !Array.isArray(expand?.pendingMigrations)) {
+    throw new Error('expand-only receipt target or digest is invalid')
+  }
+  if (expand.pendingMigrations.length > 0 && expand.pendingWatermark !== release.migrationWatermark) {
+    throw new Error('expand-only receipt does not reach the release migration watermark')
+  }
+  const hosted = input.previousHostedState
+  if (hosted?.environment !== 'production' || hosted?.projectRef !== 'iwevizmsedyqozxlawwl') {
+    throw new Error('hosted baseline target is invalid')
+  }
+  if (!exactFunctionSet(hosted?.managedEdgeFunctions) || !exactFunctionSet(input.rollbackSourceSha256ByFunction)) {
+    throw new Error('downloaded hosted rollback function inventory is incomplete')
+  }
+  for (const functionName of RELEASE_EDGE_FUNCTIONS) {
+    const hostedFunction = hosted.managedEdgeFunctions[functionName]
+    const expectedRuntime = release.edgeRuntimeConfigurations?.[functionName]
+    if (hostedFunction?.status !== 'ACTIVE' || !Number.isSafeInteger(hostedFunction?.version) ||
+        hostedFunction.version < 1 || !SHA256.test(hostedFunction?.ezbr_sha256 ?? '') ||
+        !SHA256.test(input.rollbackSourceSha256ByFunction[functionName] ?? '')) {
+      throw new Error(`downloaded hosted rollback source is not bound for ${functionName}`)
+    }
+    if (typeof expectedRuntime?.verifyJwt !== 'boolean' || typeof expectedRuntime?.importMap !== 'boolean' ||
+        hostedFunction.verify_jwt !== expectedRuntime.verifyJwt || hostedFunction.import_map !== expectedRuntime.importMap ||
+        !managedPathMatches(hostedFunction.entrypoint_path, expectedRuntime.entrypointPath, functionName) ||
+        (expectedRuntime.importMap
+          ? !managedPathMatches(hostedFunction.import_map_path, expectedRuntime.importMapPath, functionName)
+          : hostedFunction.import_map_path !== null)) {
+      throw new Error(`hosted rollback runtime configuration is incompatible for ${functionName}`)
+    }
+  }
+  if (!Array.isArray(input.passedGates) || new Set(input.passedGates).size !== input.passedGates.length) {
+    throw new Error('release gates must be a unique list')
+  }
+  for (const gate of REQUIRED_GATES) if (!input.passedGates.includes(gate)) throw new Error(`missing required release gate: ${gate}`)
+}
+
+function parseArgs(args) {
+  const options = {}
+  const allowed = new Set([
+    '--release', '--expand-only', '--hosted-before', '--rollback-mobile-source-sha256',
+    '--rollback-maintainer-source-sha256',
+    '--cohort', '--merge-approval', '--mobile-binary', '--production-ui-normality', '--workflow-run-id', '--gates', '--output',
+  ])
+  for (let index = 0; index < args.length; index += 1) {
+    const key = args[index]
+    if (!allowed.has(key)) throw new Error(`unknown argument: ${key}`)
+    const value = args[++index]
+    if (!value || value.startsWith('--')) throw new Error(`${key} requires a value`)
+    options[key.slice(2).replace(/-([a-z])/gu, (_, letter) => letter.toUpperCase())] = value
+  }
+  for (const key of ['release', 'expandOnly', 'hostedBefore', 'rollbackMobileSourceSha256', 'rollbackMaintainerSourceSha256', 'cohort', 'mergeApproval', 'mobileBinary', 'productionUiNormality', 'workflowRunId', 'gates', 'output']) {
+    if (!options[key]) throw new Error(`Stage 1 promotion packet option is missing: ${key}`)
+  }
+  return options
+}
+
+function resolveInsideRoot(path) {
+  const absolute = resolve(ROOT, path)
+  const local = relative(ROOT, absolute)
+  if (!local || local.startsWith('..')) throw new Error(`promotion packet path escapes repository root: ${path}`)
+  return absolute
+}
+
+function canonicalJson(value) {
+  return JSON.stringify(canonicalize(value))
+}
+
+function canonicalize(value) {
+  if (Array.isArray(value)) return value.map(canonicalize)
+  if (!value || typeof value !== 'object') return value
+  return Object.fromEntries(Object.keys(value).sort().map((key) => [key, canonicalize(value[key])]))
+}
+
+function sha256(value) {
+  return createHash('sha256').update(value).digest('hex')
+}
+
+function exactFunctionSet(value) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false
+  const expected = [...RELEASE_EDGE_FUNCTIONS].sort()
+  return Object.keys(value).sort().join('\n') === expected.join('\n')
+}
+
+function managedPathMatches(hostedPath, releasePath, functionName) {
+  if (typeof hostedPath !== 'string' || typeof releasePath !== 'string') return false
+  const normalizedHosted = hostedPath.replaceAll('\\', '/')
+  const normalizedRelease = releasePath.replaceAll('\\', '/')
+  const suffix = normalizedRelease.split(`supabase/functions/${functionName}/`).at(-1)
+  return Boolean(suffix) && (normalizedHosted === suffix || normalizedHosted.endsWith(`/${suffix}`))
+}
+
+function main() {
+  const options = parseArgs(process.argv.slice(2))
+  const packet = buildStage1PromotionPacket({
+    release: JSON.parse(readFileSync(resolveInsideRoot(options.release), 'utf8')),
+    expandOnlyReceipt: JSON.parse(readFileSync(resolveInsideRoot(options.expandOnly), 'utf8')),
+    previousHostedState: JSON.parse(readFileSync(resolveInsideRoot(options.hostedBefore), 'utf8')),
+    rollbackSourceSha256ByFunction: {
+      'mobile-api': options.rollbackMobileSourceSha256,
+      'kael-matching-maintainer': options.rollbackMaintainerSourceSha256,
+    },
+    cohortId: options.cohort,
+    mergeApprovalReceipt: JSON.parse(readFileSync(resolveInsideRoot(options.mergeApproval), 'utf8')),
+    mobileBinaryAttestation: JSON.parse(readFileSync(resolveInsideRoot(options.mobileBinary), 'utf8')),
+    productionUiNormalityReceipt: JSON.parse(readFileSync(resolveInsideRoot(options.productionUiNormality), 'utf8')),
+    workflowRunId: options.workflowRunId,
+    passedGates: options.gates.split(',').map((value) => value.trim()).filter(Boolean),
+  })
+  const problems = verifyStage1PromotionPacket(packet)
+  if (problems.length) throw new Error(problems.join('; '))
+  const output = resolveInsideRoot(options.output)
+  mkdirSync(dirname(output), { recursive: true })
+  writeFileSync(output, `${JSON.stringify(packet, null, 2)}\n`)
+  console.log(`Stage 1 promotion packet written: ${relative(ROOT, output).replaceAll('\\', '/')}`)
+}
+
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  try { main() } catch (error) {
+    console.error(error instanceof Error ? error.message : String(error))
+    process.exitCode = 1
+  }
+}

@@ -8,7 +8,6 @@ import {
   useWindowDimensions,
   type ImageSourcePropType,
 } from 'react-native'
-import { cancelAnimation, useAnimatedStyle, useSharedValue, withSequence, withSpring, withTiming } from 'react-native-reanimated'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import {
   CUSTOMER_SERVICE_IDS,
@@ -18,7 +17,6 @@ import {
 } from '@nestscout/shared'
 import { KaelButton } from '@/components/ui/kael-primitives'
 import { useDockScrollState, useDockScrollTransform } from '@/components/ui/dock-scroll-state'
-import { motionTokens } from '@/components/ui/motion-tokens'
 import { generateClientRequestId } from '@/lib/client-request-id'
 import { localizeAccountMutationError } from '@/lib/account-mutation-error'
 import { localizedProblemOptions, setAppLanguage, useAppLanguage } from '@/lib/app-language'
@@ -983,7 +981,7 @@ export function CustomerV21DockOverlay({ active }: { active: CustomerDockActive 
   const router = useRouter()
   const { width } = useWindowDimensions()
   const viewportWidth = customerViewportWidth(width)
-  const { mode, reduceMotion, reduceTransparency, tokens } = useV21Theme()
+  const { mode, reduceMotion, tokens } = useV21Theme()
   const { collapsed, resetDockScroll } = useDockScrollState()
   const animatedDockScrollStyle = useDockScrollTransform(collapsed, reduceMotion)
   // A parent-controlled active tab is external synchronization, not a local event surrogate.

@@ -5,6 +5,15 @@ import type { Database } from './schema.database.types'
 
 export type DatabaseFunctions = {
 /* @slice:begin functions */
+      abort_stage1_release_canary: {
+        Args: {
+          p_cohort_id: string
+          p_environment: string
+          p_evidence_sha256: string
+          p_release_id: string
+        }
+        Returns: boolean
+      }
       accept_broadcast_atomic:
         | {
             Args: { p_job_id: string; p_worker_id: string }
@@ -26,6 +35,45 @@ export type DatabaseFunctions = {
               ok: boolean
             }[]
           }
+      accept_priced_broadcast_durable_atomic: {
+        Args: { p_job_id: string; p_quote_id: string; p_worker_id: string }
+        Returns: {
+          already_applied: boolean
+          candidate_id: string
+          error_code: string
+          job_status: Database["public"]["Enums"]["job_status"]
+          ok: boolean
+        }[]
+      }
+      acknowledge_matching_push_delivery: {
+        Args: {
+          p_delivery_id: string
+          p_device_push_token_id: string
+          p_device_push_token_updated_at: string
+          p_worker_id: string
+        }
+        Returns: {
+          accepted_at: string | null
+          broadcast_id: string
+          created_at: string
+          delivered_at: string | null
+          expires_at: string
+          id: string
+          job_id: string
+          operation_id: string
+          seen_at: string | null
+          status: string
+          synthetic_cohort_id: string | null
+          updated_at: string
+          worker_id: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "matching_recipient_deliveries"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       acknowledge_worker_cash_payment: {
         Args: { p_job_id: string; p_received: boolean; p_worker_id: string }
         Returns: {
@@ -73,6 +121,22 @@ export type DatabaseFunctions = {
         }
         Returns: {
           id: string
+          worker_id: string
+        }[]
+      }
+      activate_job_broadcast_batch_durable_atomic: {
+        Args: {
+          p_batch_id: string
+          p_expires_at: string
+          p_job_id: string
+          p_sent_at: string
+          p_worker_ids: string[]
+        }
+        Returns: {
+          confirmed_recipient_count: number
+          delivery_id: string
+          id: string
+          operation_id: string
           worker_id: string
         }[]
       }
@@ -300,6 +364,138 @@ export type DatabaseFunctions = {
           version_out: number
         }[]
       }
+      admin_draft_price_baseline: {
+        Args: {
+          p_actor_id: string
+          p_complexity: Database["public"]["Enums"]["complexity_level"]
+          p_district_code: string
+          p_expected_revision: number
+          p_price_evidence: Json
+          p_price_max: number
+          p_price_min: number
+          p_problem_id: string
+          p_reason: string
+          p_source: string
+        }
+        Returns: {
+          approved_at: string | null
+          approved_by: string | null
+          complexity: Database["public"]["Enums"]["complexity_level"]
+          created_at: string
+          created_by: string | null
+          district_code: string
+          id: string
+          price_evidence: Json
+          price_max: number
+          price_min: number
+          published_at: string | null
+          published_by: string | null
+          reason: string
+          service_problem_id: string
+          service_type: Database["public"]["Enums"]["service_type"]
+          source: string
+          status: Database["public"]["Enums"]["admin_governance_status"]
+          updated_at: string
+          updated_by: string | null
+          version: number
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "price_baseline_versions"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      admin_draft_service_intake_policy:
+        | {
+            Args: {
+              p_actor_id: string
+              p_capability_requirements: Json
+              p_evidence_requirements: Json
+              p_expected_revision: number
+              p_problem_id: string
+              p_question_overrides: Json
+              p_quote_mode: Database["public"]["Enums"]["service_quote_mode"]
+              p_reason: string
+              p_safety_requirements: Json
+              p_tier_a_fields: Json
+              p_tier_b_slots: Json
+            }
+            Returns: {
+              approved_at: string | null
+              approved_by: string | null
+              capability_requirements: Json
+              created_at: string
+              created_by: string | null
+              evidence_requirements: Json
+              id: string
+              problem_slug: string
+              published_at: string | null
+              published_by: string | null
+              question_overrides: Json
+              quote_mode: Database["public"]["Enums"]["service_quote_mode"]
+              reason: string
+              safety_requirements: Json
+              service_problem_id: string
+              service_type: Database["public"]["Enums"]["service_type"]
+              status: Database["public"]["Enums"]["admin_governance_status"]
+              tier_a_fields: Json
+              tier_b_slots: Json
+              updated_at: string
+              updated_by: string | null
+              version: number
+            }[]
+            SetofOptions: {
+              from: "*"
+              to: "service_intake_policies"
+              isOneToOne: false
+              isSetofReturn: true
+            }
+          }
+        | {
+            Args: {
+              p_actor_id: string
+              p_capability_requirements: Json
+              p_expected_revision: number
+              p_problem_id: string
+              p_question_overrides: Json
+              p_quote_mode: Database["public"]["Enums"]["service_quote_mode"]
+              p_reason: string
+              p_safety_requirements: Json
+              p_tier_a_fields: Json
+              p_tier_b_slots: Json
+            }
+            Returns: {
+              approved_at: string | null
+              approved_by: string | null
+              capability_requirements: Json
+              created_at: string
+              created_by: string | null
+              evidence_requirements: Json
+              id: string
+              problem_slug: string
+              published_at: string | null
+              published_by: string | null
+              question_overrides: Json
+              quote_mode: Database["public"]["Enums"]["service_quote_mode"]
+              reason: string
+              safety_requirements: Json
+              service_problem_id: string
+              service_type: Database["public"]["Enums"]["service_type"]
+              status: Database["public"]["Enums"]["admin_governance_status"]
+              tier_a_fields: Json
+              tier_b_slots: Json
+              updated_at: string
+              updated_by: string | null
+              version: number
+            }[]
+            SetofOptions: {
+              from: "*"
+              to: "service_intake_policies"
+              isOneToOne: false
+              isSetofReturn: true
+            }
+          }
       admin_fail_operator_provisioning: {
         Args: {
           p_failure_code: string
@@ -388,6 +584,41 @@ export type DatabaseFunctions = {
         }[]
       }
       admin_operations_snapshot: { Args: { p_actor_id: string }; Returns: Json }
+      admin_preview_service_intake_policy: {
+        Args: { p_problem_id: string; p_version?: number }
+        Returns: {
+          capability_requirements: Json
+          policy_id: string
+          problem_slug: string
+          question_overrides: Json
+          quote_mode: Database["public"]["Enums"]["service_quote_mode"]
+          revision: number
+          safety_requirements: Json
+          service_type: Database["public"]["Enums"]["service_type"]
+          status: Database["public"]["Enums"]["admin_governance_status"]
+          tier_a_fields: Json
+          tier_b_slots: Json
+          version: number
+        }[]
+      }
+      admin_preview_service_intake_policy_v2: {
+        Args: { p_problem_id: string; p_version?: number }
+        Returns: {
+          capability_requirements: Json
+          evidence_requirements: Json
+          policy_id: string
+          problem_slug: string
+          question_overrides: Json
+          quote_mode: Database["public"]["Enums"]["service_quote_mode"]
+          revision: number
+          safety_requirements: Json
+          service_type: Database["public"]["Enums"]["service_type"]
+          status: Database["public"]["Enums"]["admin_governance_status"]
+          tier_a_fields: Json
+          tier_b_slots: Json
+          version: number
+        }[]
+      }
       admin_publish_price_baseline_version: {
         Args: {
           p_actor_id: string
@@ -756,6 +987,82 @@ export type DatabaseFunctions = {
         }
         Returns: Json
       }
+      admin_transition_price_baseline: {
+        Args: {
+          p_action: string
+          p_actor_id: string
+          p_baseline_version_id: string
+          p_expected_revision: number
+          p_reason: string
+        }
+        Returns: {
+          approved_at: string | null
+          approved_by: string | null
+          complexity: Database["public"]["Enums"]["complexity_level"]
+          created_at: string
+          created_by: string | null
+          district_code: string
+          id: string
+          price_evidence: Json
+          price_max: number
+          price_min: number
+          published_at: string | null
+          published_by: string | null
+          reason: string
+          service_problem_id: string
+          service_type: Database["public"]["Enums"]["service_type"]
+          source: string
+          status: Database["public"]["Enums"]["admin_governance_status"]
+          updated_at: string
+          updated_by: string | null
+          version: number
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "price_baseline_versions"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      admin_transition_service_intake_policy: {
+        Args: {
+          p_action: string
+          p_actor_id: string
+          p_expected_revision: number
+          p_policy_id: string
+          p_reason: string
+        }
+        Returns: {
+          approved_at: string | null
+          approved_by: string | null
+          capability_requirements: Json
+          created_at: string
+          created_by: string | null
+          evidence_requirements: Json
+          id: string
+          problem_slug: string
+          published_at: string | null
+          published_by: string | null
+          question_overrides: Json
+          quote_mode: Database["public"]["Enums"]["service_quote_mode"]
+          reason: string
+          safety_requirements: Json
+          service_problem_id: string
+          service_type: Database["public"]["Enums"]["service_type"]
+          status: Database["public"]["Enums"]["admin_governance_status"]
+          tier_a_fields: Json
+          tier_b_slots: Json
+          updated_at: string
+          updated_by: string | null
+          version: number
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "service_intake_policies"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       admin_update_finance_tax_policy_draft: {
         Args: { p_actor_id: string; p_policy: Json; p_policy_id: string }
         Returns: {
@@ -906,6 +1213,17 @@ export type DatabaseFunctions = {
           to_status: Database["public"]["Enums"]["job_status"]
         }[]
       }
+      apply_matching_push_provider_receipt: {
+        Args: {
+          p_provider_error_code?: string
+          p_provider_status: string
+          p_provider_ticket_row_id: string
+        }
+        Returns: {
+          outcome: string
+          token_disabled: boolean
+        }[]
+      }
       apply_scope_change_database_effect_atomic: {
         Args: {
           p_client_request_id: string
@@ -959,6 +1277,46 @@ export type DatabaseFunctions = {
           subject_type: string
         }[]
       }
+      assert_intake_policy_floor: {
+        Args: {
+          p_capability_requirements: Json
+          p_question_overrides: Json
+          p_safety_requirements: Json
+          p_service_type: Database["public"]["Enums"]["service_type"]
+          p_tier_a_fields: Json
+          p_tier_b_slots: Json
+        }
+        Returns: undefined
+      }
+      assert_stage1_governance_admin: {
+        Args: { p_actor_id: string }
+        Returns: undefined
+      }
+      attest_stage1_source_deployment: {
+        Args: {
+          p_deployment_id: string
+          p_edge_version: number
+          p_entrypoint_path: string
+          p_environment: string
+          p_function_name: string
+          p_hosted_bundle_sha256: string
+          p_import_map: boolean
+          p_import_map_path: string
+          p_proof_sha256: string
+          p_release_id: string
+          p_runtime_configuration_sha256: string
+          p_source_sha256: string
+          p_verify_jwt: boolean
+        }
+        Returns: {
+          attested: boolean
+          deployment_id: string
+          proof_sha256: string
+          release_id: string
+          runtime_configuration_sha256: string
+          source_sha256: string
+        }[]
+      }
       auto_promote_learning_candidate_atomic: {
         Args: { p_candidate_id: string }
         Returns: {
@@ -969,6 +1327,27 @@ export type DatabaseFunctions = {
           rule_version: number
           status: string
         }[]
+      }
+      begin_harness_authorized_request: {
+        Args: {
+          p_actor_id_hash: string
+          p_actor_role: string
+          p_capability: string
+          p_confirmation_gate: string
+          p_environment: string
+          p_job_id: string
+          p_operation_class: string
+          p_parent_run_id: string
+          p_privileged: boolean
+          p_release_id: string
+          p_resource_id_hash: string
+          p_resource_type: string
+          p_risk: string
+          p_route_kind: string
+          p_run_id: string
+          p_trace_id: string
+        }
+        Returns: boolean
       }
       begin_harness_evaluation: {
         Args: {
@@ -1011,6 +1390,17 @@ export type DatabaseFunctions = {
         Returns: {
           error_code: string
           ok: boolean
+        }[]
+      }
+      bind_synthetic_matching_cohort: {
+        Args: {
+          p_cohort_id: string
+          p_customer_ids: string[]
+          p_worker_ids: string[]
+        }
+        Returns: {
+          bound_customers: number
+          bound_workers: number
         }[]
       }
       cancel_job_after_accept_atomic: {
@@ -1084,6 +1474,37 @@ export type DatabaseFunctions = {
           hour_count: number
           minute_count: number
           reason: string
+        }[]
+      }
+      claim_confirmation_matching_outbox: {
+        Args: {
+          p_customer_id: string
+          p_lease_seconds?: number
+          p_session_id: string
+        }
+        Returns: {
+          claimed: boolean
+          job_id: string
+          operation_id: string
+          operation_state: string
+        }[]
+      }
+      claim_confirmation_matching_outbox_batch: {
+        Args: {
+          p_dispatcher_id: string
+          p_lease_seconds?: number
+          p_limit?: number
+        }
+        Returns: {
+          attempt_count: number
+          customer_id: string
+          diagnosis_scope: Json
+          job_id: string
+          lease_token: string
+          operation_id: string
+          outbox_id: string
+          preferred_worker_id: string
+          session_id: string
         }[]
       }
       claim_job_broadcast_retry_atomic: {
@@ -1208,6 +1629,13 @@ export type DatabaseFunctions = {
           transfer_claimed_at: string
         }[]
       }
+      claim_matching_push_provider_tickets: {
+        Args: { p_limit?: number; p_worker_id: string }
+        Returns: {
+          provider_ticket_id: string
+          provider_ticket_row_id: string
+        }[]
+      }
       claim_saved_worker_fallback_atomic: {
         Args: {
           p_expected_worker_id?: string
@@ -1313,6 +1741,14 @@ export type DatabaseFunctions = {
         Args: { p_cutoff?: string }
         Returns: {
           cleaned_count: number
+        }[]
+      }
+      cleanup_synthetic_matching_cohort: {
+        Args: { p_cohort_id: string }
+        Returns: {
+          cleared_workers: number
+          deleted_jobs: number
+          deleted_sessions: number
         }[]
       }
       commit_kael_ai_batch_item_result: {
@@ -1454,6 +1890,21 @@ export type DatabaseFunctions = {
           stale: boolean
         }[]
       }
+      configure_stage1_release_canary: {
+        Args: {
+          p_cohort_id: string
+          p_environment: string
+          p_expected_active_release_id: string
+          p_packet_sha256: string
+          p_release_id: string
+        }
+        Returns: {
+          active_release_id: string
+          candidate_cohort_id: string
+          candidate_release_id: string
+          revision: number
+        }[]
+      }
       confirm_kael_chat_atomic:
         | {
             Args: { p_customer_id: string; p_session_id: string }
@@ -1481,6 +1932,131 @@ export type DatabaseFunctions = {
               service_type: Database["public"]["Enums"]["service_type"]
             }[]
           }
+      confirm_kael_chat_durable_atomic: {
+        Args: {
+          p_confirmation_kind: string
+          p_customer_id: string
+          p_idempotency_key: string
+          p_price_reasoning_receipt_id?: string
+          p_session_id: string
+        }
+        Returns: {
+          accepted_at: string
+          already_applied: boolean
+          error_code: string
+          job_id: string
+          job_status: Database["public"]["Enums"]["job_status"]
+          ok: boolean
+          operation_id: string
+          operation_state: string
+          quote_mode: Database["public"]["Enums"]["service_quote_mode"]
+          receipt_id: string
+          updated_at: string
+        }[]
+      }
+      confirm_kael_chat_durable_atomic_v2: {
+        Args: {
+          p_confirmation_kind: string
+          p_customer_id: string
+          p_idempotency_key: string
+          p_price_reasoning_receipt_id?: string
+          p_session_id: string
+        }
+        Returns: {
+          accepted_at: string
+          already_applied: boolean
+          error_code: string
+          idempotency_key: string
+          job_id: string
+          job_status: Database["public"]["Enums"]["job_status"]
+          ok: boolean
+          operation_id: string
+          operation_state: string
+          quote_mode: Database["public"]["Enums"]["service_quote_mode"]
+          receipt_id: string
+          retry_after_ms: number
+          support_code: string
+          terminal: boolean
+          updated_at: string
+        }[]
+      }
+      confirm_kael_chat_durable_authorized_v3: {
+        Args: {
+          p_actor_id_hash: string
+          p_actor_role: string
+          p_capability: string
+          p_confirmation_kind: string
+          p_customer_id: string
+          p_environment: string
+          p_idempotency_key: string
+          p_price_reasoning_receipt_id: string
+          p_privileged: boolean
+          p_release_id: string
+          p_resource_id_hash: string
+          p_resource_type: string
+          p_route_kind: string
+          p_run_id: string
+          p_session_id: string
+          p_trace_id: string
+        }
+        Returns: {
+          accepted_at: string
+          already_applied: boolean
+          error_code: string
+          idempotency_key: string
+          job_id: string
+          job_status: Database["public"]["Enums"]["job_status"]
+          ok: boolean
+          operation_id: string
+          operation_state: string
+          quote_mode: Database["public"]["Enums"]["service_quote_mode"]
+          receipt_id: string
+          retry_after_ms: number
+          support_code: string
+          terminal: boolean
+          trace_finalized: boolean
+          updated_at: string
+        }[]
+      }
+      confirm_kael_chat_durable_authorized_v4: {
+        Args: {
+          p_actor_id_hash: string
+          p_actor_role: string
+          p_capability: string
+          p_confirmation_kind: string
+          p_customer_id: string
+          p_duration_ms: number
+          p_environment: string
+          p_idempotency_key: string
+          p_price_reasoning_receipt_id: string
+          p_privileged: boolean
+          p_release_id: string
+          p_resource_id_hash: string
+          p_resource_type: string
+          p_route_kind: string
+          p_run_id: string
+          p_session_id: string
+          p_trace_id: string
+        }
+        Returns: {
+          accepted_at: string
+          already_applied: boolean
+          error_code: string
+          idempotency_key: string
+          job_id: string
+          job_status: Database["public"]["Enums"]["job_status"]
+          ok: boolean
+          operation_id: string
+          operation_state: string
+          quote_mode: Database["public"]["Enums"]["service_quote_mode"]
+          receipt_id: string
+          retry_after_ms: number
+          support_code: string
+          terminal: boolean
+          trace_finalized: boolean
+          updated_at: string
+        }[]
+      }
       confirm_worker_candidate_atomic: {
         Args: {
           p_candidate_id: string
@@ -1512,6 +2088,21 @@ export type DatabaseFunctions = {
           payment_updated_at: string
           platform_fee: number
           worker_net: number
+        }[]
+      }
+      confirm_worker_matching_proposal_atomic: {
+        Args: {
+          p_candidate_id: string
+          p_customer_id: string
+          p_job_id: string
+        }
+        Returns: {
+          already_applied: boolean
+          candidate_id: string
+          error_code: string
+          job_status: Database["public"]["Enums"]["job_status"]
+          ok: boolean
+          worker_id: string
         }[]
       }
       consume_job_media_uploads: {
@@ -1700,6 +2291,10 @@ export type DatabaseFunctions = {
           spend_expired: number
         }[]
       }
+      expire_worker_matching_deliveries: {
+        Args: { p_now: string; p_worker_id: string }
+        Returns: number
+      }
       fail_harness_idempotency: {
         Args: { p_error_code: string; p_reservation_id: string }
         Returns: boolean
@@ -1738,6 +2333,23 @@ export type DatabaseFunctions = {
             }
             Returns: undefined
           }
+      finish_harness_authorized_request: {
+        Args: {
+          p_actor_id_hash: string
+          p_actor_role: string
+          p_capability: string
+          p_duration_ms: number
+          p_environment: string
+          p_privileged: boolean
+          p_release_id: string
+          p_resource_id_hash: string
+          p_resource_type: string
+          p_route_kind: string
+          p_run_id: string
+          p_trace_id: string
+        }
+        Returns: boolean
+      }
       finish_harness_evaluation: {
         Args: {
           p_artifact_sha256: string
@@ -1802,6 +2414,16 @@ export type DatabaseFunctions = {
           worker_id: string
         }[]
       }
+      get_confirmation_matching_outbox_health: {
+        Args: never
+        Returns: {
+          dead_letter_count: number
+          oldest_ready_age_seconds: number
+          processing_count: number
+          queued_count: number
+          retry_count: number
+        }[]
+      }
       get_customer_profile_insights_aggregate: {
         Args: { p_customer_id: string }
         Returns: {
@@ -1829,6 +2451,22 @@ export type DatabaseFunctions = {
           direct_payment_available: boolean
         }[]
       }
+      get_kael_confirmation_operation: {
+        Args: { p_customer_id: string; p_session_id: string }
+        Returns: {
+          accepted_at: string
+          idempotency_key: string
+          job_id: string
+          operation_id: string
+          operation_state: string
+          quote_mode: Database["public"]["Enums"]["service_quote_mode"]
+          retry_after_ms: number
+          session_id: string
+          support_code: string
+          terminal: boolean
+          updated_at: string
+        }[]
+      }
       get_kael_provider_spend_today: { Args: never; Returns: number }
       get_worker_current_commission_tier: {
         Args: { p_worker_id: string }
@@ -1838,6 +2476,33 @@ export type DatabaseFunctions = {
         }[]
       }
       get_worker_earnings_summary: {
+        Args: {
+          p_from?: string
+          p_platform_fee_rate?: number
+          p_to?: string
+          p_worker_id: string
+        }
+        Returns: {
+          available_balance: number
+          cash_commission_collected_total: number
+          cash_commission_due_total: number
+          current_commission_level: number
+          current_commission_rate_bps: number
+          daily_earnings: Json
+          from_date: string
+          gross_earnings: number
+          net_earnings: number
+          on_hold_amount: number
+          pending_payment_amount: number
+          pending_payment_count: number
+          platform_fee_total: number
+          recent_transactions: Json
+          to_date: string
+          total_jobs_paid: number
+          worker_id: string
+        }[]
+      }
+      get_worker_earnings_summary_v2: {
         Args: {
           p_from?: string
           p_platform_fee_rate?: number
@@ -1926,6 +2591,17 @@ export type DatabaseFunctions = {
         Args: { p_key: string; p_now?: string; p_scope: string }
         Returns: boolean
       }
+      list_confirmation_matching_outbox_incidents: {
+        Args: { p_limit?: number }
+        Returns: {
+          attempt_count: number
+          dead_lettered_at: string
+          last_error_code: string
+          operation_id: string
+          outbox_id: string
+          updated_at: string
+        }[]
+      }
       maintain_manual_bank_payment_holds: {
         Args: { p_limit?: number }
         Returns: {
@@ -1937,6 +2613,34 @@ export type DatabaseFunctions = {
       mark_harness_idempotency_reconcile_required: {
         Args: { p_error_code: string; p_reservation_id: string }
         Returns: boolean
+      }
+      mark_matching_delivery_delivered: {
+        Args: { p_delivery_id: string }
+        Returns: undefined
+      }
+      mark_matching_delivery_seen: {
+        Args: { p_broadcast_id: string; p_worker_id: string }
+        Returns: {
+          accepted_at: string | null
+          broadcast_id: string
+          created_at: string
+          delivered_at: string | null
+          expires_at: string
+          id: string
+          job_id: string
+          operation_id: string
+          seen_at: string | null
+          status: string
+          synthetic_cohort_id: string | null
+          updated_at: string
+          worker_id: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "matching_recipient_deliveries"
+          isOneToOne: false
+          isSetofReturn: true
+        }
       }
       match_kael_knowledge: {
         Args: {
@@ -2012,6 +2716,10 @@ export type DatabaseFunctions = {
           storage_refs: string[]
         }[]
       }
+      price_evidence_has_quorum: {
+        Args: { p_evidence: Json }
+        Returns: boolean
+      }
       promote_learning_candidate: {
         Args: {
           p_actor_id?: string
@@ -2036,6 +2744,38 @@ export type DatabaseFunctions = {
           ok: boolean
           rule_id: string
           rule_version: number
+        }[]
+      }
+      promote_stage1_release_atomic: {
+        Args: {
+          p_cohort_id: string
+          p_environment: string
+          p_expected_revision: number
+          p_packet_sha256: string
+          p_release_id: string
+        }
+        Returns: {
+          active_release_id: string
+          previous_active_release_id: string
+          revision: number
+        }[]
+      }
+      promote_stage1_release_attested_atomic: {
+        Args: {
+          p_cohort_id: string
+          p_environment: string
+          p_expected_revision: number
+          p_maintainer_deployment_id: string
+          p_maintainer_source_proof_sha256: string
+          p_mobile_deployment_id: string
+          p_mobile_source_proof_sha256: string
+          p_packet_sha256: string
+          p_release_id: string
+        }
+        Returns: {
+          active_release_id: string
+          previous_active_release_id: string
+          revision: number
         }[]
       }
       queue_learning_candidate_manual_review: {
@@ -2090,6 +2830,15 @@ export type DatabaseFunctions = {
           settlement_state: string
           status: Database["public"]["Enums"]["job_status"]
         }[]
+      }
+      reconcile_stale_stage1_release_canary: {
+        Args: {
+          p_environment: string
+          p_evidence_sha256: string
+          p_expected_candidate_release_id: string
+          p_expected_revision: number
+        }
+        Returns: boolean
       }
       record_circuit_failure: {
         Args: { p_key: string; p_kind: string; p_now?: string; p_scope: string }
@@ -2225,6 +2974,18 @@ export type DatabaseFunctions = {
           status: string
         }[]
       }
+      record_matching_push_provider_ticket: {
+        Args: {
+          p_delivery_id: string
+          p_device_push_token_id: string
+          p_device_push_token_updated_at: string
+          p_provider_ticket_id: string
+        }
+        Returns: {
+          recorded: boolean
+          ticket_row_id: string
+        }[]
+      }
       record_normal_transaction_memory_atomic: {
         Args: { p_customer_id: string; p_job_id: string }
         Returns: {
@@ -2255,6 +3016,91 @@ export type DatabaseFunctions = {
           observed_at: string
           snapshot_id: string
         }[]
+      }
+      record_stage1_attested_synthetic_smoke: {
+        Args: {
+          p_auto_quote_passed: boolean
+          p_cohort_id: string
+          p_confirm_acceptance_ms: number
+          p_duplicate_broadcast_count: number
+          p_duplicate_job_count: number
+          p_environment: string
+          p_maintainer_deployment_id: string
+          p_maintainer_source_proof_sha256: string
+          p_mobile_deployment_id: string
+          p_mobile_source_proof_sha256: string
+          p_receipt_generated_at: string
+          p_receipt_sha256: string
+          p_recovery_passed: boolean
+          p_release_id: string
+          p_release_identity_match: boolean
+          p_rfq_or_inspection_passed: boolean
+          p_run_id: string
+          p_safe_error_code_ratio: number
+          p_sequence: number
+          p_support_trace_count: number
+          p_synthetic_leak_count: number
+          p_terminal_reconcile_passed: boolean
+          p_worker_offer_visible_ms: number
+        }
+        Returns: string
+      }
+      record_stage1_production_acceptance_note: {
+        Args: {
+          p_cleanup_generated_at: string
+          p_cleanup_member_count: number
+          p_cleanup_receipt_sha256: string
+          p_cleanup_run_id: string
+          p_cleanup_worker_marker_count: number
+          p_cleanup_worker_member_count: number
+          p_cohort_id: string
+          p_hosted_state_sha256: string
+          p_promotion_packet_sha256: string
+          p_release_id: string
+          p_ui_generated_at: string
+          p_ui_receipt_sha256: string
+          p_ui_scanned_file_count: number
+          p_ui_source_sha256: string
+          p_ui_visible_literal_count: number
+        }
+        Returns: {
+          acceptance_status: string
+          cleanup_receipt_sha256: string
+          cohort_id: string
+          created_at: string
+          environment: string
+          hosted_state_sha256: string
+          note_sha256: string
+          production_ui_receipt_sha256: string
+          production_ui_source_sha256: string
+          promotion_packet_sha256: string
+          release_id: string
+          summary_vi: string
+        }[]
+      }
+      record_stage1_synthetic_smoke: {
+        Args: {
+          p_auto_quote_passed: boolean
+          p_cohort_id: string
+          p_confirm_acceptance_ms: number
+          p_duplicate_broadcast_count: number
+          p_duplicate_job_count: number
+          p_environment: string
+          p_receipt_generated_at: string
+          p_receipt_sha256: string
+          p_recovery_passed: boolean
+          p_release_id: string
+          p_release_identity_match: boolean
+          p_rfq_or_inspection_passed: boolean
+          p_run_id: string
+          p_safe_error_code_ratio: number
+          p_sequence: number
+          p_support_trace_count: number
+          p_synthetic_leak_count: number
+          p_terminal_reconcile_passed: boolean
+          p_worker_offer_visible_ms: number
+        }
+        Returns: string
       }
       record_worker_app_active_minute: {
         Args: { p_worker_id: string }
@@ -2301,6 +3147,13 @@ export type DatabaseFunctions = {
           ok: boolean
           qa_id: string
           remaining_questions: number
+        }[]
+      }
+      record_worker_matching_heartbeat: {
+        Args: { p_observed_at: string; p_worker_id: string }
+        Returns: {
+          active_until: string
+          server_time: string
         }[]
       }
       register_device_push_token_atomic: {
@@ -2648,6 +3501,23 @@ export type DatabaseFunctions = {
           reason: string
         }[]
       }
+      resolve_stage1_release_lane: {
+        Args: {
+          p_environment: string
+          p_release_id: string
+          p_session_id: string
+        }
+        Returns: string
+      }
+      resolve_stage1_release_lane_attested: {
+        Args: {
+          p_deployment_id: string
+          p_environment: string
+          p_release_id: string
+          p_session_id: string
+        }
+        Returns: string
+      }
       respond_to_direct_worker_payment: {
         Args: {
           p_actor_id: string
@@ -2720,6 +3590,20 @@ export type DatabaseFunctions = {
           rule_id: string
         }[]
       }
+      rollback_stage1_active_release_atomic: {
+        Args: {
+          p_environment: string
+          p_evidence_sha256: string
+          p_expected_previous_release_id: string
+          p_expected_revision: number
+          p_failed_release_id: string
+        }
+        Returns: {
+          active_release_id: string
+          previous_active_release_id: string
+          revision: number
+        }[]
+      }
       save_job_incident_scope_price_quote_atomic: {
         Args: {
           p_expected_revision: number
@@ -2762,6 +3646,17 @@ export type DatabaseFunctions = {
           status: Database["public"]["Enums"]["job_status"]
         }[]
       }
+      service_intake_evidence_requirements_valid: {
+        Args: {
+          p_quote_mode: Database["public"]["Enums"]["service_quote_mode"]
+          p_requirements: Json
+        }
+        Returns: boolean
+      }
+      service_problem_has_policy_price_evidence: {
+        Args: { p_problem_id: string; p_requirements: Json }
+        Returns: boolean
+      }
       set_harness_kill_switch: {
         Args: {
           p_actor_id: string
@@ -2800,6 +3695,20 @@ export type DatabaseFunctions = {
           updated_at_ts: string
         }[]
       }
+      settle_confirmation_matching_operation: {
+        Args: { p_error_code?: string; p_operation_id: string; p_state: string }
+        Returns: boolean
+      }
+      settle_confirmation_matching_outbox_claim: {
+        Args: {
+          p_error_code?: string
+          p_lease_token: string
+          p_operation_id: string
+          p_outbox_id: string
+          p_state: string
+        }
+        Returns: string
+      }
       start_harness_idempotency_execution: {
         Args: { p_reservation_id: string }
         Returns: boolean
@@ -2830,6 +3739,40 @@ export type DatabaseFunctions = {
           reviewed_at_ts: string
         }[]
       }
+      submit_worker_matching_proposal_atomic:
+        | {
+            Args: {
+              p_broadcast_id: string
+              p_price_max?: number
+              p_price_min?: number
+              p_scope_summary: string
+              p_worker_id: string
+            }
+            Returns: {
+              already_applied: boolean
+              candidate_id: string
+              error_code: string
+              ok: boolean
+              proposal_id: string
+            }[]
+          }
+        | {
+            Args: {
+              p_broadcast_id: string
+              p_job_id: string
+              p_price_max?: number
+              p_price_min?: number
+              p_scope_summary: string
+              p_worker_id: string
+            }
+            Returns: {
+              already_applied: boolean
+              candidate_id: string
+              error_code: string
+              ok: boolean
+              proposal_id: string
+            }[]
+          }
       submit_worker_registration_atomic: {
         Args: {
           p_actor_id: string
@@ -2954,6 +3897,37 @@ export type DatabaseFunctions = {
           ok: boolean
           reason: string
           validated_refs: string[]
+        }[]
+      }
+      verify_kael_matching_maintainer_secret: {
+        Args: { p_secret: string }
+        Returns: boolean
+      }
+      verify_synthetic_matching_cohort_cleanup: {
+        Args: { p_cohort_id: string }
+        Returns: {
+          active_delivery_signal_count: number
+          member_count: number
+          scenario_record_count: number
+          worker_marker_count: number
+          worker_member_count: number
+        }[]
+      }
+      verify_synthetic_matching_cohort_isolation: {
+        Args: { p_cohort_id: string }
+        Returns: {
+          admin_queue_count: number
+          analytics_leak_count: number
+          broadcast_count: number
+          cohort_id: string
+          customer_member_count: number
+          favorite_count: number
+          financial_record_count: number
+          job_count: number
+          member_count: number
+          real_surface_leak_count: number
+          session_count: number
+          worker_member_count: number
         }[]
       }
 /* @slice:end functions */
