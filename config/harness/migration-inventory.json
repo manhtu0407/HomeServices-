@@ -74,7 +74,7 @@
       }
     ]
   },
-  "migrationsSha256": "658ea29056113970e56ffd3d14a2dad2f87a052dbbb60c76a2d4ec81bc5bce9a",
+  "migrationsSha256": "fac47c527bee67913e63bef8b6a51aa5cd98403eec43409c0f758f4148d8c9d7",
   "databaseTypes": {
     "file": "packages/shared/src/types/database",
     "sha256": "60bffa61b514329fbd24e8454b117b86509e85366604ef279f4107e066400542"
@@ -2394,8 +2394,8 @@
       "version": "20260825160000",
       "name": "worker_salary_settlement_v2_hardening",
       "file": "supabase/migrations/20260825160000_worker_salary_settlement_v2_hardening.sql",
-      "sha256": "08514ec8fa31621061e67222cdc9b48abc56549a3aa21a18fb92f5cfd530cb15",
-      "bytes": 32540
+      "sha256": "d00be83820f9bc0b864b383a1b3337aaeaade009873ef675a6f43fb78a79ca3e",
+      "bytes": 34042
     },
     {
       "version": "20260825190000",

@@ -32,50 +32,78 @@ $verification$;
 do $resolve_salary_rpc_ambiguities$
 declare
   v_definition text;
+  v_rewritten text;
 begin
   select pg_catalog.pg_get_functiondef(
     'public.recognize_customer_payment_claim(uuid,uuid)'::pg_catalog.regprocedure
   ) into v_definition;
-  if pg_catalog.strpos(v_definition, 'where job_id = v_job.id') = 0
-    or pg_catalog.strpos(v_definition, 'where id = v_job.id') = 0
-    or pg_catalog.strpos(v_definition, 'and status = ''payment_pending''::public.job_status') = 0
+  v_rewritten := v_definition;
+  if pg_catalog.strpos(v_rewritten, 'where job_id = v_job.id') > 0 then
+    v_rewritten := pg_catalog.replace(
+      v_rewritten,
+      'where job_id = v_job.id',
+      'where worker_payment_ledger.job_id = v_job.id'
+    );
+  elsif pg_catalog.strpos(v_rewritten, 'where worker_payment_ledger.job_id = v_job.id') = 0
+    and pg_catalog.strpos(v_rewritten, 'where worker_ledger.job_id = v_job.id') = 0
   then
-    raise exception 'customer payment claim targets were not found';
+    raise exception 'customer payment claim ledger target was not found';
   end if;
-  v_definition := pg_catalog.replace(
-    v_definition,
-    'where job_id = v_job.id',
-    'where worker_payment_ledger.job_id = v_job.id'
-  );
-  v_definition := pg_catalog.replace(
-    v_definition,
-    'where id = v_job.id',
-    'where jobs.id = v_job.id'
-  );
-  execute pg_catalog.replace(
-    v_definition,
-    'and status = ''payment_pending''::public.job_status',
-    'and jobs.status = ''payment_pending''::public.job_status'
-  );
+  if pg_catalog.strpos(v_rewritten, 'where id = v_job.id') > 0 then
+    v_rewritten := pg_catalog.replace(
+      v_rewritten,
+      'where id = v_job.id',
+      'where jobs.id = v_job.id'
+    );
+  elsif pg_catalog.strpos(v_rewritten, 'where jobs.id = v_job.id') = 0
+    and pg_catalog.strpos(v_rewritten, 'where job_target.id = v_job.id') = 0
+  then
+    raise exception 'customer payment claim job target was not found';
+  end if;
+  if pg_catalog.strpos(v_rewritten, 'and status = ''payment_pending''::public.job_status') > 0 then
+    v_rewritten := pg_catalog.replace(
+      v_rewritten,
+      'and status = ''payment_pending''::public.job_status',
+      'and jobs.status = ''payment_pending''::public.job_status'
+    );
+  elsif pg_catalog.strpos(v_rewritten, 'and jobs.status = ''payment_pending''::public.job_status') = 0
+    and pg_catalog.strpos(v_rewritten, 'and job_target.status = ''payment_pending''::public.job_status') = 0
+  then
+    raise exception 'customer payment claim status target was not found';
+  end if;
+  if v_rewritten is distinct from v_definition then
+    execute v_rewritten;
+  end if;
 
   select pg_catalog.pg_get_functiondef(
     'public.acknowledge_worker_cash_payment(uuid,uuid,boolean)'::pg_catalog.regprocedure
   ) into v_definition;
-  if pg_catalog.strpos(v_definition, 'where id = v_job.id') = 0
-    or pg_catalog.strpos(v_definition, 'and status = ''payment_pending''::public.job_status') = 0
+  v_rewritten := v_definition;
+  if pg_catalog.strpos(v_rewritten, 'where id = v_job.id') > 0 then
+    v_rewritten := pg_catalog.replace(
+      v_rewritten,
+      'where id = v_job.id',
+      'where jobs.id = v_job.id'
+    );
+  elsif pg_catalog.strpos(v_rewritten, 'where jobs.id = v_job.id') = 0
+    and pg_catalog.strpos(v_rewritten, 'where job_target.id = v_job.id') = 0
   then
     raise exception 'worker cash acknowledgement job target was not found';
   end if;
-  v_definition := pg_catalog.replace(
-    v_definition,
-    'where id = v_job.id',
-    'where jobs.id = v_job.id'
-  );
-  execute pg_catalog.replace(
-    v_definition,
-    'and status = ''payment_pending''::public.job_status',
-    'and jobs.status = ''payment_pending''::public.job_status'
-  );
+  if pg_catalog.strpos(v_rewritten, 'and status = ''payment_pending''::public.job_status') > 0 then
+    v_rewritten := pg_catalog.replace(
+      v_rewritten,
+      'and status = ''payment_pending''::public.job_status',
+      'and jobs.status = ''payment_pending''::public.job_status'
+    );
+  elsif pg_catalog.strpos(v_rewritten, 'and jobs.status = ''payment_pending''::public.job_status') = 0
+    and pg_catalog.strpos(v_rewritten, 'and job_target.status = ''payment_pending''::public.job_status') = 0
+  then
+    raise exception 'worker cash acknowledgement status target was not found';
+  end if;
+  if v_rewritten is distinct from v_definition then
+    execute v_rewritten;
+  end if;
 end;
 $resolve_salary_rpc_ambiguities$;
 
