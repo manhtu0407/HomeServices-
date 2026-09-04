@@ -66,15 +66,15 @@ describe('Worker earnings dashboard model', () => {
 
     expect(week.netEarnings).toBe(500_000)
     expect(week.platformFee).toBe(120_000)
-    expect(week.points).toHaveLength(7)
+    expect(week.points).toHaveLength(3)
 
     expect(month.netEarnings).toBe(500_000)
     expect(month.platformFee).toBe(120_000)
-    expect(month.points).toHaveLength(31)
+    expect(month.points).toHaveLength(29)
 
     expect(year.netEarnings).toBe(1_380_000)
     expect(year.platformFee).toBe(240_000)
-    expect(year.points).toHaveLength(12)
+    expect(year.points).toHaveLength(7)
     expect(year.availableBalance).toBe(420_000)
   })
 

@@ -37,7 +37,7 @@ export function WorkerV5KaelChatBody({
   reduceTransparency: boolean
   runtime: WorkerV5Runtime
 }) {
-  const orbChat = useWorkerV5KaelOrbChat(runtime.state.deal, language, 'normal', runtime.workerJobsHydrated)
+  const orbChat = useWorkerV5KaelOrbChat(runtime.state.deal, language, 'normal')
   const sharedJobId = getWorkerV5ChatJobId(runtime.state.deal)
   if (sharedJobId) {
     return <WorkerV5SharedJobIncidentChat deal={runtime.state.deal} language={language} reduceTransparency={reduceTransparency} />
@@ -137,7 +137,7 @@ export function WorkerV5KaelJobIntakeBody({
   reduceTransparency: boolean
   runtime: WorkerV5Runtime
 }) {
-  const orbChat = useWorkerV5KaelOrbChat(runtime.state.deal, language, 'intake', runtime.workerJobsHydrated)
+  const orbChat = useWorkerV5KaelOrbChat(runtime.state.deal, language, 'intake')
   return (
     <WorkerV5PrivateKaelOrbBody
       deal={runtime.state.deal}
@@ -172,7 +172,7 @@ function WorkerV5PrivateKaelOrbBody({
       mediaCount={orbChat.mediaCount}
       mode={mode}
       onPickMedia={() => void orbChat.pickMedia()}
-      onSend={(message) => void orbChat.send(message)}
+      onSend={orbChat.send}
       reduceTransparency={reduceTransparency}
     />
   ), [language, mode, orbChat, reduceTransparency])

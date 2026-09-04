@@ -348,6 +348,8 @@ export type JobsTables = {
       job_payment_orders: {
         Row: {
           amount_received: number | null
+          assigned_at: string | null
+          assigned_to: string | null
           bank_reference_hash: string | null
           bank_reference_suffix: string | null
           client_request_id: string | null
@@ -372,12 +374,15 @@ export type JobsTables = {
           updated_at: string
           verified_at: string | null
           verified_by: string | null
+          version: number
           worker_confirmed_at: string | null
           worker_id: string
           worker_net: number
         }
         Insert: {
           amount_received?: number | null
+          assigned_at?: string | null
+          assigned_to?: string | null
           bank_reference_hash?: string | null
           bank_reference_suffix?: string | null
           client_request_id?: string | null
@@ -402,12 +407,15 @@ export type JobsTables = {
           updated_at?: string
           verified_at?: string | null
           verified_by?: string | null
+          version?: number
           worker_confirmed_at?: string | null
           worker_id: string
           worker_net?: number
         }
         Update: {
           amount_received?: number | null
+          assigned_at?: string | null
+          assigned_to?: string | null
           bank_reference_hash?: string | null
           bank_reference_suffix?: string | null
           client_request_id?: string | null
@@ -432,11 +440,19 @@ export type JobsTables = {
           updated_at?: string
           verified_at?: string | null
           verified_by?: string | null
+          version?: number
           worker_confirmed_at?: string | null
           worker_id?: string
           worker_net?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "job_payment_orders_assigned_to_fkey"
+            columns: ["assigned_to"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "job_payment_orders_customer_id_fkey"
             columns: ["customer_id"]

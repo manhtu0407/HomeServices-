@@ -24,15 +24,13 @@ If none of those apply, use lean.
 ## Start it
 
 ```bash
-powershell -NoProfile -ExecutionPolicy Bypass -File docker/scripts/up.ps1 -Profile full
+node scripts/run.mjs docker/scripts/up --profile full
 ```
 
-The doctor gate still runs. Given the extra services, consider raising the floor
-rather than lowering it:
-
-```bash
-powershell -NoProfile -ExecutionPolicy Bypass -File docker/scripts/up.ps1 -Profile full -MinRamGb 7
-```
+The doctor gate enforces **7 GB available RAM** for this profile. The floor has
+no caller override. If RAM is low, the skill may perform one safe recovery pass
+limited to exact stale task-owned helper/dev/test children, then one final
+doctor. A second recovery or app/WSL/Docker-data cleanup is not authorized.
 
 ## Stop it
 

@@ -35,9 +35,11 @@ export async function requireAdminCapability(
     apiFailure("AUTH_FORBIDDEN", "Quyền Sub Admin hiện không còn hiệu lực", 403);
   }
   const storedCapabilities = asCapabilities(result.data.capabilities);
-  const capabilities = storedCapabilities.includes("finance.read")
-    ? storedCapabilities
-    : [...storedCapabilities, "finance.read" as const];
+  const capabilities = Array.from(new Set([
+    "finance.read" as const,
+    "system.read" as const,
+    ...storedCapabilities,
+  ]));
   if (!capabilities.includes(capability)) {
     apiFailure("AUTH_FORBIDDEN", "Tài khoản chưa được cấp quyền cho thao tác này", 403);
   }

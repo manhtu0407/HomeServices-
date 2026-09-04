@@ -8,7 +8,6 @@ import {
   useWindowDimensions,
   type ImageSourcePropType,
 } from 'react-native'
-import { cancelAnimation, useAnimatedStyle, useSharedValue, withSequence, withSpring, withTiming } from 'react-native-reanimated'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import {
   CUSTOMER_SERVICE_IDS,
@@ -18,7 +17,6 @@ import {
 } from '@nestscout/shared'
 import { KaelButton } from '@/components/ui/kael-primitives'
 import { useDockScrollState, useDockScrollTransform } from '@/components/ui/dock-scroll-state'
-import { motionTokens } from '@/components/ui/motion-tokens'
 import { generateClientRequestId } from '@/lib/client-request-id'
 import { localizeAccountMutationError } from '@/lib/account-mutation-error'
 import { localizedProblemOptions, setAppLanguage, useAppLanguage } from '@/lib/app-language'
@@ -126,7 +124,6 @@ import {
   CUSTOMER_LIQUID_NAV_GAP,
   CUSTOMER_LIQUID_NAV_MAX_WIDTH,
   CUSTOMER_LIQUID_NAV_ORB_SIZE,
-  CUSTOMER_LIQUID_NAV_RAIL_PADDING,
   CUSTOMER_LIQUID_NAV_SIDE_INSET,
 } from '../dock/dock-styles'
 import { customerV21ProfileUtilityStyles as profileUtilityStyles } from '../profile/profile-utility-styles'
@@ -984,7 +981,7 @@ export function CustomerV21DockOverlay({ active }: { active: CustomerDockActive 
   const router = useRouter()
   const { width } = useWindowDimensions()
   const viewportWidth = customerViewportWidth(width)
-  const { mode, reduceMotion, reduceTransparency, tokens } = useV21Theme()
+  const { mode, reduceMotion, tokens } = useV21Theme()
   const { collapsed, resetDockScroll } = useDockScrollState()
   const animatedDockScrollStyle = useDockScrollTransform(collapsed, reduceMotion)
   // A parent-controlled active tab is external synchronization, not a local event surrogate.
@@ -993,86 +990,11 @@ export function CustomerV21DockOverlay({ active }: { active: CustomerDockActive 
 
   const liquidNavWidth = Math.min(Math.max(viewportWidth - CUSTOMER_LIQUID_NAV_SIDE_INSET * 2, 0), CUSTOMER_LIQUID_NAV_MAX_WIDTH)
   const liquidDockWidth = Math.max(liquidNavWidth - CUSTOMER_LIQUID_NAV_ORB_SIZE - CUSTOMER_LIQUID_NAV_GAP, CUSTOMER_LIQUID_NAV_DOCK_HEIGHT)
-  const selectedIndex = activeTab ? customerV21DockNavItems.findIndex((item) => item.key === activeTab) : -1
-  const settledIndex = selectedIndex >= 0 ? selectedIndex : 0
-  const lensWidth = Math.max((liquidDockWidth - CUSTOMER_LIQUID_NAV_RAIL_PADDING * 2) / customerV21DockNavItems.length, 0)
-  const previousIndexRef = useRef(settledIndex)
-  const lensX = useSharedValue(settledIndex * lensWidth)
-  const lensScaleX = useSharedValue(1)
-  const lensScaleY = useSharedValue(1)
-  const lensRadius = useSharedValue(24)
-  const lensSkew = useSharedValue(0)
-  const lensSheenX = useSharedValue(-84)
-  const lensSheenOpacity = useSharedValue(0)
-  const dockShimmerX = useSharedValue((0.18 + settledIndex * 0.22) * liquidDockWidth)
-  const dockCausticX = useSharedValue(settledIndex * lensWidth)
   const kaelActive = active === 'chat'
-  const dockCausticWidth = Math.min(118, Math.max(lensWidth + 48, 72))
-  const dockCausticLeft = (lensWidth - dockCausticWidth) / 2
-  const animatedLensStyle = useAnimatedStyle(() => ({
-    borderRadius: lensRadius.value,
-    transform: [{ translateX: lensX.value }, { scaleX: lensScaleX.value }, { scaleY: lensScaleY.value }, { skewX: `${lensSkew.value}deg` }],
-    width: lensWidth,
-  }), [lensWidth])
-  const animatedLensSheenStyle = useAnimatedStyle(() => ({
-    opacity: lensSheenOpacity.value,
-    transform: [{ translateX: lensSheenX.value }, { rotate: '-12deg' }],
-  }))
-  const animatedDockShimmerStyle = useAnimatedStyle(() => ({
-    opacity: reduceTransparency ? 0 : 0.73,
-    transform: [{ translateX: dockShimmerX.value }],
-  }), [reduceTransparency])
-  const animatedDockCausticStyle = useAnimatedStyle(() => ({
-    opacity: reduceTransparency ? 0 : 1,
-    transform: [{ translateX: dockCausticX.value }],
-  }), [reduceTransparency])
 
   useEffect(() => {
     resetDockScroll()
   }, [active, resetDockScroll])
-
-  useEffect(() => {
-    const targetX = settledIndex * lensWidth
-    const shimmerTarget = (0.18 + settledIndex * 0.22) * liquidDockWidth
-    const causticTarget = settledIndex * lensWidth
-    const delta = settledIndex - previousIndexRef.current
-
-    cancelAnimation(lensX)
-    cancelAnimation(lensScaleX)
-    cancelAnimation(lensScaleY)
-    cancelAnimation(lensRadius)
-    cancelAnimation(lensSkew)
-    cancelAnimation(lensSheenX)
-    cancelAnimation(lensSheenOpacity)
-    cancelAnimation(dockShimmerX)
-    cancelAnimation(dockCausticX)
-
-    if (reduceMotion || delta === 0) {
-      lensX.value = withTiming(targetX, { duration: 120 })
-      lensScaleX.value = 1
-      lensScaleY.value = 1
-      lensRadius.value = 24
-      lensSkew.value = 0
-      dockShimmerX.value = withTiming(shimmerTarget, { duration: 160 })
-      dockCausticX.value = withTiming(causticTarget, { duration: 160 })
-      previousIndexRef.current = settledIndex
-      return
-    }
-
-    const stretch = Math.min(1.21, 1.08 + Math.abs(delta) * 0.045)
-    const direction = Math.sign(delta)
-    lensX.value = withSpring(targetX, motionTokens.liquid.pill)
-    lensScaleX.value = withSequence(withTiming(stretch, { duration: 235 }), withSpring(0.965, motionTokens.liquid.press), withSpring(1, motionTokens.liquid.press))
-    lensScaleY.value = withSequence(withTiming(0.91, { duration: 235 }), withSpring(1.035, motionTokens.liquid.press), withSpring(1, motionTokens.liquid.press))
-    lensRadius.value = withSequence(withTiming(27, { duration: 235 }), withTiming(22, { duration: 190 }), withSpring(24, motionTokens.liquid.press))
-    lensSkew.value = withSequence(withTiming(direction * -2.2, { duration: 235 }), withTiming(0, { duration: 325 }))
-    lensSheenX.value = -84
-    lensSheenOpacity.value = withSequence(withTiming(0.84, { duration: 90 }), withTiming(0, { duration: 270 }))
-    lensSheenX.value = withTiming(84, { duration: 360 })
-    dockShimmerX.value = withTiming(shimmerTarget, { duration: 580 })
-    dockCausticX.value = withTiming(causticTarget, { duration: 560 })
-    previousIndexRef.current = settledIndex
-  }, [dockCausticX, dockShimmerX, lensRadius, lensScaleX, lensScaleY, lensSheenOpacity, lensSheenX, lensSkew, lensWidth, lensX, liquidDockWidth, reduceMotion, settledIndex])
 
   const openKael = () => {
     router.replace(customerKaelChatRoute as never)
@@ -1081,13 +1003,7 @@ export function CustomerV21DockOverlay({ active }: { active: CustomerDockActive 
   return (
     <CustomerV21DockOverlayView
       activeTab={activeTab}
-      animatedDockCausticStyle={animatedDockCausticStyle}
-      animatedDockShimmerStyle={animatedDockShimmerStyle}
       animatedDockScrollStyle={animatedDockScrollStyle}
-      animatedLensSheenStyle={animatedLensSheenStyle}
-      animatedLensStyle={animatedLensStyle}
-      dockCausticLeft={dockCausticLeft}
-      dockCausticWidth={dockCausticWidth}
       kaelActive={kaelActive}
       language={language}
       liquidDockWidth={liquidDockWidth}
@@ -1097,7 +1013,6 @@ export function CustomerV21DockOverlay({ active }: { active: CustomerDockActive 
       onKaelPress={openKael}
       onTabPress={(route) => router.replace(route as never)}
       reduceMotion={reduceMotion}
-      selectedIndex={selectedIndex}
       tokens={tokens}
     />
   )

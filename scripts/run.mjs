@@ -1,6 +1,6 @@
 import { spawnSync } from 'node:child_process'
 import { existsSync } from 'node:fs'
-import { dirname, resolve } from 'node:path'
+import { delimiter, dirname, resolve, win32 } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 // Single entrypoint for every workspace script. The runners were PowerShell-only, which made the
@@ -16,6 +16,28 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 // fail with their own name instead of a bare "powershell: not found".
 function runnerBase(runner) {
   return runner.includes('/') ? runner : `scripts/${runner}`
+}
+
+export function prepareRunnerEnv(env = process.env, platform = process.platform, directoryExists = existsSync) {
+  if (platform !== 'win32') return env
+
+  const candidates = [
+    env.LOCALAPPDATA && win32.join(env.LOCALAPPDATA, 'Programs', 'DockerDesktop', 'resources', 'bin'),
+    env.ProgramFiles && win32.join(env.ProgramFiles, 'Docker', 'Docker', 'resources', 'bin'),
+    env.ProgramW6432 && win32.join(env.ProgramW6432, 'Docker', 'Docker', 'resources', 'bin'),
+  ].filter((candidate) => candidate && directoryExists(candidate))
+  const uniqueCandidates = [...new Map(candidates.map((candidate) => [candidate.toLowerCase(), candidate])).values()]
+  if (uniqueCandidates.length === 0) return env
+
+  const pathKey = Object.keys(env).find((key) => key.toLowerCase() === 'path') ?? 'Path'
+  const currentPath = env[pathKey] ?? ''
+  const pathDelimiter = platform === 'win32' ? ';' : delimiter
+  const entries = currentPath ? currentPath.split(pathDelimiter) : []
+  const seen = new Set(entries.map((entry) => entry.toLowerCase()))
+  const additions = uniqueCandidates.filter((candidate) => !seen.has(candidate.toLowerCase()))
+  if (additions.length === 0) return env
+
+  return { ...env, [pathKey]: [...entries, ...additions].join(pathDelimiter) }
 }
 
 export function resolveInvocation(runner, forwarded, platform, repoRoot = root) {
@@ -45,7 +67,11 @@ function main() {
     return 2
   }
 
-  const result = spawnSync(invocation.command, invocation.args, { stdio: 'inherit', cwd: root })
+  const result = spawnSync(invocation.command, invocation.args, {
+    stdio: 'inherit',
+    cwd: root,
+    env: prepareRunnerEnv(),
+  })
   if (result.error) {
     console.error(`${runner} could not start: ${result.error.message}`)
     return 1

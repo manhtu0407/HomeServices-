@@ -1,5 +1,5 @@
-import { useMemo, useReducer } from 'react'
-import { ActivityIndicator, Modal, Pressable, StyleSheet, Text, View } from 'react-native'
+import { useMemo, useReducer, useRef } from 'react'
+import { ActivityIndicator, Modal, Pressable, StyleSheet, View } from 'react-native'
 import { KaelButton, KaelChip, KaelTextField } from '@/components/ui/kael-primitives'
 import { color, component, radius, shadow, spacing, typography } from '@/design/theme'
 import { adminControlService } from '@/lib/services'
@@ -13,7 +13,14 @@ import type {
 } from '@/lib/api-types/admin'
 import { isLocalDealStatus, type AdminCapability } from '@nestscout/shared'
 import { localizedStatusLabel, type AppLanguage } from '@/lib/app-language'
+import {
+  clearStableClientRequestId,
+  shouldRetainClientRequestId,
+  stableClientRequestId,
+  type PendingClientRequestId,
+} from '@/lib/client-request-id'
 import { AdminTeamOwnerActions } from './admin-team-owner-actions'
+import { AdminText } from './admin-text'
 
 type OperationPanel = 'operations' | 'workers' | 'transactions'
 
@@ -186,8 +193,11 @@ const teamCopy: Record<AppLanguage, TeamCopy> = {
       'finance.reconcile': 'Đối soát thanh toán',
       'finance.tax.manage': 'Quản lý chính sách thuế',
       'operations.read': 'Xem vận hành',
+      'operations.triage': 'Chuẩn bị hồ sơ hỗ trợ',
       'payouts.process': 'Xử lý chi trả thợ',
       'payouts.read': 'Xem chi trả thợ',
+      'system.manage': 'Quản lý dữ liệu hệ thống',
+      'system.read': 'Xem dữ liệu hệ thống',
       'team.read': 'Xem đội ngũ quản trị',
       'transactions.read': 'Xem giao dịch',
       'workers.manage': 'Tạm dừng / khôi phục thợ',
@@ -231,8 +241,11 @@ const teamCopy: Record<AppLanguage, TeamCopy> = {
       'finance.reconcile': 'Reconcile payments',
       'finance.tax.manage': 'Manage tax policies',
       'operations.read': 'View operations',
+      'operations.triage': 'Prepare support cases',
       'payouts.process': 'Process worker payouts',
       'payouts.read': 'View worker payouts',
+      'system.manage': 'Manage system data',
+      'system.read': 'View system data',
       'team.read': 'View admin team',
       'transactions.read': 'View transactions',
       'workers.manage': 'Suspend / reinstate workers',
@@ -299,12 +312,12 @@ export function AdminOperationsOverview({
     <View testID="admin-operations-overview" style={styles.stack}>
       <View style={styles.sectionHeader}>
         <View style={styles.sectionHeaderText}>
-          <Text style={styles.sectionTitle}>{copy.title}</Text>
-          <Text style={styles.subtle}>{copy.generatedAt(formatDate(snapshot.generated_at))}</Text>
+          <AdminText textRole="title2" style={styles.sectionTitle}>{copy.title}</AdminText>
+          <AdminText textRole="footnote" style={styles.subtle}>{copy.generatedAt(formatDate(snapshot.generated_at))}</AdminText>
         </View>
       </View>
 
-      <Text style={styles.blockTitle}>{copy.title}</Text>
+      <AdminText textRole="headline" style={styles.blockTitle}>{copy.title}</AdminText>
       {attention.length === 0 ? <EmptyState label={copy.empty} /> : attention.map((item) => (
         <Pressable
           key={item.key}
@@ -314,30 +327,30 @@ export function AdminOperationsOverview({
           style={styles.attentionRow}
           testID={`admin-operation-attention-${item.key}`}
         >
-          <Text style={styles.attentionLabel}>{copy.attention[item.key]}</Text>
-          <Text style={styles.attentionCount}>{item.count}</Text>
+          <AdminText textRole="subheadline" style={styles.attentionLabel}>{copy.attention[item.key]}</AdminText>
+          <AdminText numeric textRole="headline" style={styles.attentionCount}>{item.count}</AdminText>
         </Pressable>
       ))}
 
-      <Text style={styles.blockTitle}>{copy.flow}</Text>
+      <AdminText textRole="headline" style={styles.blockTitle}>{copy.flow}</AdminText>
       {snapshot.flow.length === 0 ? <EmptyState label={copy.empty} /> : <View style={styles.metricSurface}>
       {snapshot.flow.map((item) => <MetricRow key={item.status} label={isLocalDealStatus(item.status) ? localizedStatusLabel(item.status, language) : copy.unknownStatus} value={item.count} />)}
       </View>}
 
-      <Text style={styles.blockTitle}>{copy.quality.workers_in_verification}</Text>
+      <AdminText textRole="headline" style={styles.blockTitle}>{copy.quality.workers_in_verification}</AdminText>
       <View style={styles.metricSurface}>
         {snapshot.quality.map((item) => <MetricRow key={item.key} label={copy.quality[item.key]} value={item.count} />)}
       </View>
 
-      <Text style={styles.blockTitle}>{copy.audit}</Text>
+      <AdminText textRole="headline" style={styles.blockTitle}>{copy.audit}</AdminText>
       {snapshot.audit_events.length === 0 ? <EmptyState label={copy.empty} /> : <View style={styles.auditSurface}>
         {snapshot.audit_events.map((event) => (
           <View key={event.id} style={styles.auditRow}>
             <View style={styles.auditText}>
-              <Text style={styles.auditTitle}>{copy.auditAction[event.action] ?? copy.unknownAuditAction}</Text>
-              <Text style={styles.subtle}>{auditActorLabel(event.actor_name, event.actor_role, copy)} · {copy.auditContext[event.topic ?? ''] ?? copy.auditContext[event.decision] ?? copy.unknownAuditContext}</Text>
+              <AdminText textRole="headline" style={styles.auditTitle}>{copy.auditAction[event.action] ?? copy.unknownAuditAction}</AdminText>
+              <AdminText textRole="footnote" style={styles.subtle}>{auditActorLabel(event.actor_name, event.actor_role, copy)} · {copy.auditContext[event.topic ?? ''] ?? copy.auditContext[event.decision] ?? copy.unknownAuditContext}</AdminText>
             </View>
-            <Text style={styles.auditDate}>{formatDate(event.occurred_at)}</Text>
+            <AdminText textRole="footnote" style={styles.auditDate}>{formatDate(event.occurred_at)}</AdminText>
           </View>
         ))}
       </View>}
@@ -370,6 +383,7 @@ export function AdminSubAdminPanel({
 }) {
   const copy = teamCopy[language]
   const [state, dispatch] = useReducer(subAdminReducer, initialSubAdminState)
+  const pendingAccessRequest = useRef<PendingClientRequestId | null>(null)
   const {
     accounts,
     actionError,
@@ -426,19 +440,30 @@ export function AdminSubAdminPanel({
       return
     }
     dispatch({ type: 'pending_start' })
-    const result = editor.mode === 'nominate'
+    let requestFingerprint: string | null = null
+    const accessAction = editor.mode === 'nominate' ? null : editor.mode
+    const result = accessAction === null
       ? await adminControlService.nominateManager(editor.target.user_id)
-      : await adminControlService.setSubAdminAccess(editor.target.user_id, {
-        action: editor.mode,
-        capabilities: editor.mode === 'revoke'
+      : await (async () => {
+        const nextCapabilities = accessAction === 'revoke'
           ? []
-          : Array.from(new Set<AdminCapability>(['finance.read', ...capabilities])),
-        ...(editor.mode === 'revoke' ? { reason: reason.trim() } : {}),
-    })
+          : Array.from(new Set<AdminCapability>(['finance.read', ...capabilities]))
+        const expectedVersion = 'version' in editor.target ? editor.target.version : 0
+        requestFingerprint = JSON.stringify({ action: accessAction, capabilities: [...nextCapabilities].sort(), reason: reason.trim(), userId: editor.target.user_id, version: expectedVersion })
+        return adminControlService.setSubAdminAccess(editor.target.user_id, {
+          action: accessAction,
+          capabilities: nextCapabilities,
+          client_request_id: stableClientRequestId(pendingAccessRequest, requestFingerprint),
+          expected_version: expectedVersion,
+          ...(accessAction === 'revoke' ? { reason: reason.trim() } : {}),
+        })
+      })()
     if (result.success) {
+      if (requestFingerprint) clearStableClientRequestId(pendingAccessRequest, requestFingerprint)
       dispatch({ type: 'save_success', notice: copy.notice })
       await onRefresh()
     } else {
+      if (requestFingerprint && !shouldRetainClientRequestId(result)) clearStableClientRequestId(pendingAccessRequest, requestFingerprint)
       dispatch({ type: 'pending_failure', error: result.error })
     }
     if (result.success) dispatch({ type: 'pending_finish' })
@@ -468,26 +493,26 @@ export function AdminSubAdminPanel({
     <View testID="admin-sub-admin-panel" style={styles.stack}>
       <View style={styles.sectionHeader}>
         <View style={styles.sectionHeaderText}>
-          <Text style={styles.sectionTitle}>{copy.title}</Text>
-          <Text style={styles.subtle}>{copy.subtitle}</Text>
+          <AdminText textRole="title2" style={styles.sectionTitle}>{copy.title}</AdminText>
+          <AdminText textRole="footnote" style={styles.subtle}>{copy.subtitle}</AdminText>
         </View>
       </View>
-      {!isOwner && <Text style={styles.ownerOnly}>{copy.ownerOnly}</Text>}
-      {notice && <View accessibilityRole="alert" style={styles.notice}><Text style={styles.noticeText}>{notice}</Text></View>}
+      {!isOwner && <AdminText textRole="footnote" style={styles.ownerOnly}>{copy.ownerOnly}</AdminText>}
+      {notice && <View accessibilityRole="alert" style={styles.notice}><AdminText textRole="subheadline" style={styles.noticeText}>{notice}</AdminText></View>}
       {isOwner ? <AdminTeamOwnerActions capabilityLabels={copy.capabilities} language={language} onNominateExisting={openSearch} onRefresh={onRefresh} pendingAccounts={pendingAccounts} reduceMotion={reduceMotion} /> : null}
       {isOwner && <>
-        <Text style={styles.blockTitle}>{copy.nominationTitle}</Text>
-        <Text style={styles.subtle}>{copy.nominationHint}</Text>
+        <AdminText textRole="headline" style={styles.blockTitle}>{copy.nominationTitle}</AdminText>
+        <AdminText textRole="footnote" style={styles.subtle}>{copy.nominationHint}</AdminText>
         {nominations.length === 0 ? <EmptyState label={copy.nominationEmpty} /> : nominations.map((nomination) => (
           <View key={nomination.id} style={styles.memberCard} testID={`admin-manager-nomination-${nomination.id}`}>
             <View style={styles.cardHeader}>
               <View style={styles.memberTitleBlock}>
-                <Text style={styles.memberName}>{nomination.full_name ?? nomination.phone_masked ?? nomination.user_id}</Text>
-                <Text style={styles.subtle}>{copy.memberRole[nomination.role]} · {nomination.phone_masked ?? ''}</Text>
+                <AdminText textRole="headline" style={styles.memberName}>{nomination.full_name ?? nomination.phone_masked ?? nomination.user_id}</AdminText>
+                <AdminText textRole="footnote" style={styles.subtle}>{copy.memberRole[nomination.role]} · {nomination.phone_masked ?? ''}</AdminText>
               </View>
               <StatusPill label={copy.nominationPending} tone="neutral" />
             </View>
-            <Text style={styles.subtle}>{copy.nominationLabel}</Text>
+            <AdminText textRole="footnote" style={styles.subtle}>{copy.nominationLabel}</AdminText>
             <View style={styles.memberActions}>
               <KaelButton label={copy.actions.grant} onPress={() => openEditor('grant', nomination)} testID={`admin-manager-nomination-${nomination.id}-grant`} variant="primary" style={styles.memberAction} />
               <KaelButton label={copy.actions.cancelNomination} onPress={() => void cancelNomination(nomination.id)} disabled={pending} size="small" testID={`admin-manager-nomination-${nomination.id}-cancel`} variant="secondary" style={styles.memberAction} />
@@ -499,15 +524,15 @@ export function AdminSubAdminPanel({
         <View key={member.user_id} style={styles.memberCard} testID={`admin-sub-admin-${member.user_id}`}>
           <View style={styles.cardHeader}>
             <View style={styles.memberTitleBlock}>
-              <Text style={styles.memberName}>{member.full_name ?? member.phone_masked ?? member.user_id}</Text>
-              <Text style={styles.subtle}>{member.roleLabel} · {member.phone_masked ?? ''}</Text>
+              <AdminText textRole="headline" style={styles.memberName}>{member.full_name ?? member.phone_masked ?? member.user_id}</AdminText>
+              <AdminText textRole="footnote" style={styles.subtle}>{member.roleLabel} · {member.phone_masked ?? ''}</AdminText>
             </View>
             <StatusPill label={copy.status[member.status]} tone={member.status === 'active' ? 'success' : 'neutral'} />
           </View>
           <View style={styles.capabilityRow}>
-            {member.capabilities.map((capability) => <Text key={capability} style={styles.capabilityText}>{copy.capabilities[capability]}</Text>)}
+            {member.capabilities.map((capability) => <AdminText textRole="subheadline" key={capability} style={styles.capabilityText}>{copy.capabilities[capability]}</AdminText>)}
           </View>
-          <Text style={styles.subtle}>{copy.lastActivity}: {member.last_activity_at ?? '—'}</Text>
+          <AdminText textRole="footnote" style={styles.subtle}>{copy.lastActivity}: {member.last_activity_at ?? '—'}</AdminText>
           {isOwner && <View style={styles.memberActions}>
             {member.status === 'active' && <>
               <KaelButton label={copy.actions.update} onPress={() => openEditor('update', member)} variant="secondary" style={styles.memberAction} />
@@ -522,8 +547,8 @@ export function AdminSubAdminPanel({
         <View style={styles.modalBackdrop}>
           <View style={styles.modalCard}>
             {editor?.mode === 'search' ? <>
-              <Text style={styles.modalTitle}>{copy.actions.add}</Text>
-              <Text style={styles.modalSubtitle}>{copy.searchHint}</Text>
+              <AdminText textRole="title2" style={styles.modalTitle}>{copy.actions.add}</AdminText>
+              <AdminText textRole="headline" style={styles.modalSubtitle}>{copy.searchHint}</AdminText>
               <KaelTextField
                 accessibilityLabel={copy.searchLabel}
                 autoCapitalize="none"
@@ -532,19 +557,19 @@ export function AdminSubAdminPanel({
                 placeholderTextColor={color.text.muted}
                 value={searchQuery}
               />
-              {actionError && <Text accessibilityRole="alert" style={styles.actionError}>{actionError}</Text>}
+              {actionError && <AdminText textRole="subheadline" accessibilityRole="alert" style={styles.actionError}>{actionError}</AdminText>}
               <View style={styles.modalActions}>
                 <KaelButton label={copy.actions.close} onPress={closeEditor} variant="secondary" style={styles.modalAction} />
                 <KaelButton label={searching ? copy.loading : copy.actions.search} onPress={() => void search()} disabled={searching} variant="primary" style={styles.modalAction} />
               </View>
-              {searchComplete && accounts.length === 0 && <Text style={styles.emptyText}>{copy.searchEmpty}</Text>}
+              {searchComplete && accounts.length === 0 && <AdminText textRole="subheadline" style={styles.emptyText}>{copy.searchEmpty}</AdminText>}
               {accounts.map((account) => <Pressable key={account.user_id} accessibilityRole="button" accessibilityLabel={account.full_name ?? account.user_id} onPress={() => openEditor('nominate', account)} style={styles.searchResult}>
-                <Text style={styles.memberName}>{account.full_name ?? account.phone_masked ?? account.user_id}</Text>
-                <Text style={styles.subtle}>{copy.memberRole[account.role]} · {account.phone_masked ?? ''}</Text>
+                <AdminText textRole="headline" style={styles.memberName}>{account.full_name ?? account.phone_masked ?? account.user_id}</AdminText>
+                <AdminText textRole="footnote" style={styles.subtle}>{copy.memberRole[account.role]} · {account.phone_masked ?? ''}</AdminText>
               </Pressable>)}
             </> : editor && 'target' in editor ? <>
-              <Text style={styles.modalTitle}>{editor.mode === 'revoke' ? copy.actions.revoke : editor.mode === 'grant' ? copy.actions.grant : editor.mode === 'nominate' ? copy.actions.add : copy.actions.update}</Text>
-              <Text style={styles.modalSubtitle}>{editor.target.full_name ?? editor.target.phone_masked ?? editor.target.user_id}</Text>
+              <AdminText textRole="title2" style={styles.modalTitle}>{editor.mode === 'revoke' ? copy.actions.revoke : editor.mode === 'grant' ? copy.actions.grant : editor.mode === 'nominate' ? copy.actions.add : copy.actions.update}</AdminText>
+              <AdminText textRole="headline" style={styles.modalSubtitle}>{editor.target.full_name ?? editor.target.phone_masked ?? editor.target.user_id}</AdminText>
               {editor.mode === 'revoke' ? <KaelTextField
                 accessibilityLabel={copy.revokeReason}
                 multiline
@@ -552,7 +577,7 @@ export function AdminSubAdminPanel({
                 placeholder={copy.revokeReason}
                 placeholderTextColor={color.text.muted}
                 value={reason}
-              /> : editor.mode === 'nominate' ? <Text style={styles.subtle}>{copy.nominationHint}</Text> : <View style={styles.capabilityPicker}>
+              /> : editor.mode === 'nominate' ? <AdminText textRole="footnote" style={styles.subtle}>{copy.nominationHint}</AdminText> : <View style={styles.capabilityPicker}>
                 {(Object.keys(copy.capabilities) as AdminCapability[]).map((capability) => <KaelChip
                   key={capability}
                   accessibilityLabel={copy.capabilities[capability]}
@@ -563,7 +588,7 @@ export function AdminSubAdminPanel({
                   variant={capabilities.includes(capability) ? 'selected' : 'unselected'}
                 />)}
               </View>}
-              {actionError && <Text accessibilityRole="alert" style={styles.actionError}>{actionError}</Text>}
+              {actionError && <AdminText textRole="subheadline" accessibilityRole="alert" style={styles.actionError}>{actionError}</AdminText>}
               <View style={styles.modalActions}>
                 <KaelButton label={copy.actions.close} onPress={closeEditor} disabled={pending} variant="secondary" style={styles.modalAction} />
                 <KaelButton label={pending ? copy.loading : editor.mode === 'nominate' ? copy.actions.nominate : copy.actions.save} onPress={() => void save()} disabled={pending} variant={editor.mode === 'revoke' ? 'secondary' : 'primary'} style={styles.modalAction} />
@@ -649,6 +674,12 @@ function subAdminReducer(state: SubAdminState, action: SubAdminAction): SubAdmin
     case 'search_result':
       return { ...state, accounts: action.accounts, actionError: action.error, searchComplete: true, searching: false }
     case 'toggle_capability':
+      if (action.capability === 'operations.triage' && !state.capabilities.includes(action.capability)) {
+        return { ...state, capabilities: Array.from(new Set([...state.capabilities, 'operations.read', 'operations.triage'])) }
+      }
+      if (action.capability === 'operations.read' && state.capabilities.includes(action.capability)) {
+        return { ...state, capabilities: state.capabilities.filter((capability) => capability !== 'operations.read' && capability !== 'operations.triage') }
+      }
       return {
         ...state,
         capabilities: state.capabilities.includes(action.capability)
@@ -675,33 +706,33 @@ function auditActorLabel(actorName: string | null, actorRole: string, copy: Oper
 }
 
 function MetricRow({ label, value }: { label: string; value: number }) {
-  return <View style={styles.metricRow}><Text style={styles.metricLabel}>{label}</Text><Text style={styles.metricValue}>{value}</Text></View>
+  return <View style={styles.metricRow}><AdminText textRole="subheadline" style={styles.metricLabel}>{label}</AdminText><AdminText numeric textRole="headline" style={styles.metricValue}>{value}</AdminText></View>
 }
 
 function StatusPill({ label, tone }: { label: string; tone: 'success' | 'neutral' }) {
-  return <View style={[styles.statusPill, tone === 'success' && styles.statusSuccess]}><Text style={styles.statusText}>{label}</Text></View>
+  return <View style={[styles.statusPill, tone === 'success' && styles.statusSuccess]}><AdminText textRole="footnote" style={styles.statusText}>{label}</AdminText></View>
 }
 
 function LoadingState({ label }: { label: string }) {
-  return <View style={styles.loading}><ActivityIndicator color={color.brand.primary} /><Text style={styles.subtle}>{label}</Text></View>
+  return <View style={styles.loading}><ActivityIndicator color={color.brand.primary} /><AdminText textRole="subheadline" style={styles.subtle}>{label}</AdminText></View>
 }
 
 function ErrorState({ label, onRetry, retryLabel }: { label: string; onRetry: () => void; retryLabel: string }) {
-  return <View accessibilityRole="alert" style={styles.error}><Text style={styles.errorText}>{label}</Text><KaelButton label={retryLabel} onPress={onRetry} variant="secondary" /></View>
+  return <View accessibilityRole="alert" style={styles.error}><AdminText textRole="subheadline" style={styles.errorText}>{label}</AdminText><KaelButton label={retryLabel} onPress={onRetry} variant="secondary" /></View>
 }
 
 function EmptyState({ label }: { label: string }) {
-  return <View style={styles.empty}><Text style={styles.emptyText}>{label}</Text></View>
+  return <View style={styles.empty}><AdminText textRole="subheadline" style={styles.emptyText}>{label}</AdminText></View>
 }
 
 const styles = StyleSheet.create({
   actionError: { ...typography.footnote, color: color.brand.primaryDark, marginTop: spacing.sm },
   attentionCount: { ...typography.title2, color: color.brand.primaryDeep, fontVariant: ['tabular-nums'], fontWeight: '600' },
   attentionLabel: { ...typography.body, color: color.text.strong, flex: 1, fontWeight: '600' },
-  attentionRow: { alignItems: 'center', backgroundColor: color.surface.base, borderColor: color.surface.stroke, borderRadius: component.card.radius, borderWidth: 1, flexDirection: 'row', gap: spacing.md, padding: spacing.lg, ...shadow.soft },
+  attentionRow: { alignItems: 'center', backgroundColor: color.surface.base, borderColor: color.surface.stroke, borderRadius: component.card.radius, borderWidth: 1, flexDirection: 'row', gap: spacing.md, padding: spacing.lg },
   auditDate: { ...typography.caption2, color: color.text.muted, maxWidth: 110, textAlign: 'right' },
   auditRow: { alignItems: 'center', borderBottomColor: color.surface.stroke, borderBottomWidth: StyleSheet.hairlineWidth, flexDirection: 'row', gap: spacing.md, paddingVertical: spacing.md },
-  auditSurface: { backgroundColor: color.surface.base, borderColor: color.surface.stroke, borderRadius: component.card.radius, borderWidth: 1, paddingHorizontal: spacing.lg, ...shadow.soft },
+  auditSurface: { backgroundColor: color.surface.base, borderColor: color.surface.stroke, borderRadius: component.card.radius, borderWidth: 1, paddingHorizontal: spacing.lg },
   auditText: { flex: 1, gap: spacing.xs },
   auditTitle: { ...typography.label, color: color.text.strong, fontWeight: '600' },
   blockTitle: { ...typography.headline, color: color.text.strong, fontWeight: '600', marginTop: spacing.sm },
@@ -709,14 +740,14 @@ const styles = StyleSheet.create({
   capabilityRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   capabilityText: { ...typography.caption2, color: color.brand.primaryDark, fontWeight: '600' },
   cardHeader: { alignItems: 'flex-start', flexDirection: 'row', gap: spacing.md, justifyContent: 'space-between' },
-  empty: { alignItems: 'center', backgroundColor: color.surface.base, borderColor: color.surface.stroke, borderRadius: component.card.radius, borderWidth: 1, padding: spacing.xxl, ...shadow.soft },
+  empty: { alignItems: 'center', backgroundColor: color.surface.base, borderColor: color.surface.stroke, borderRadius: component.card.radius, borderWidth: 1, padding: spacing.xxl },
   emptyText: { ...typography.body, color: color.text.secondary, textAlign: 'center' },
   error: { alignItems: 'center', backgroundColor: color.surface.mint, borderColor: color.surface.strokeStrong, borderRadius: component.card.radius, borderWidth: 1, gap: spacing.md, padding: spacing.lg },
   errorText: { ...typography.body, color: color.brand.primaryDark, textAlign: 'center' },
   loading: { alignItems: 'center', gap: spacing.md, padding: spacing.xxxl },
   memberAction: { flex: 1 },
   memberActions: { flexDirection: 'row', gap: spacing.sm },
-  memberCard: { backgroundColor: color.surface.base, borderColor: color.surface.stroke, borderRadius: component.card.radius, borderWidth: 1, gap: spacing.md, padding: spacing.lg, ...shadow.soft },
+  memberCard: { backgroundColor: color.surface.base, borderColor: color.surface.stroke, borderRadius: component.card.radius, borderWidth: 1, gap: spacing.md, padding: spacing.lg },
   memberName: { ...typography.headline, color: color.text.strong, fontWeight: '600' },
   memberTitleBlock: { flex: 1, gap: spacing.xs },
   metricLabel: { ...typography.footnote, color: color.text.secondary, flex: 1 },

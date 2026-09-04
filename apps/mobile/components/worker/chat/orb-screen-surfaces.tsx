@@ -8,7 +8,9 @@ import { LiquidControlButton, LiquidSendArrowIcon } from '@/components/ui/liquid
 import { motionDuration, motionTokens } from '@/components/ui/motion-tokens'
 import { color } from '@/design/theme'
 import { type AppLanguage } from '@/lib/app-language'
+import { useAuth } from '@/lib/auth-provider'
 import { isWorkerActiveExecutionStatus } from '@/lib/frontend-workflow/helpers'
+import { takePendingWorkerKaelDraft, type PendingWorkerKaelDraftScope } from '@/lib/pending-worker-kael-draft'
 import { WorkerV5ScreenDefinition, WorkerV5ScreenId } from '../dock/types'
 import { WorkerV5CustomerCaseWideMintAura, WorkerV5SourceCardSkin } from '../ui/aura-surfaces'
 import { textByLanguage } from '../ui/format'
@@ -16,6 +18,7 @@ import { getWorkerV5ChatJobId } from '../ui/labels'
 import { styles, workerV5KaelComposerWebTextInputNoOutline } from '../worker-v5-flow-styles'
 import { WorkerV5KaelOrbCameraIcon } from './orb-camera-icon'
 import { useWorkerV5KaelOrbChat } from './use-kael-orb-chat'
+import { canUseWorkerV5KaelOrbSession } from './kael-orb-chat-model'
 import { canUseWorkerV5PrivateKaelChat } from './use-worker-kael-orb-chat'
 import type { useFrontendWorkflow } from '@/lib/frontend-workflow-provider'
 
@@ -48,7 +51,6 @@ export function WorkerV5KaelOrbScreenSurface({
   reduceTransparency,
   screen,
   surfaceStyle,
-  workerJobsHydrated,
 }: {
   deal: LocalDeal | null
   language: AppLanguage
@@ -60,8 +62,8 @@ export function WorkerV5KaelOrbScreenSurface({
   reduceTransparency: boolean
   screen: WorkerV5ScreenDefinition
   surfaceStyle: StyleProp<ViewStyle>
-  workerJobsHydrated: boolean
 }) {
+  const { session } = useAuth()
   const hasActiveExecutionCase = isWorkerActiveExecutionStatus(
     deal?.backendStatus ?? deal?.status ?? null,
   )
@@ -143,7 +145,13 @@ export function WorkerV5KaelOrbScreenSurface({
   const animatedModeTriggerStyle = useAnimatedStyle(() => ({
     opacity: modeMenuTriggerScale.value,
   }))
-  const orbChat = useWorkerV5KaelOrbChat(deal, language, mode, workerJobsHydrated)
+  const orbChat = useWorkerV5KaelOrbChat(deal, language, mode)
+  const hasJobIntakeScope = mode === 'intake' && canUseWorkerV5KaelOrbSession(deal)
+  const pendingDraftScope: PendingWorkerKaelDraftScope = mode === 'normal'
+    ? 'normal'
+    : hasJobIntakeScope
+      ? 'job'
+      : 'opportunity'
   const resetToNewSession = orbChat.resetToNewSession
   const prepareKaelSurfaceFocus = useCallback(() => {
     setModeMenuOpen(false)
@@ -181,7 +189,7 @@ export function WorkerV5KaelOrbScreenSurface({
     setSessionMenuOpen(false)
     void orbChat.openSession(sessionId)
   }
-  const hasPrivateIntakeChat = mode !== 'intake' || canUseWorkerV5PrivateKaelChat(deal)
+  const hasPrivateIntakeChat = mode !== 'intake' || !hasJobIntakeScope || canUseWorkerV5PrivateKaelChat(deal)
   const composer = useMemo(() => (
     !hasPrivateIntakeChat
       ? (
@@ -195,13 +203,16 @@ export function WorkerV5KaelOrbScreenSurface({
       : (
       <WorkerV5KaelOrbComposer
         busy={orbChat.busy}
-        key={`${mode}:${getWorkerV5ChatJobId(deal) ?? 'no-job'}:${orbChat.activeSessionId ?? 'draft'}:${chatEntryKey}`}
+        draftOwnerId={session?.user.id}
+        draftScope={pendingDraftScope}
+        key={`${session?.user.id ?? 'no-owner'}:${mode}:${pendingDraftScope}:${getWorkerV5ChatJobId(deal) ?? 'no-job'}:${orbChat.activeSessionId ?? 'draft'}:${chatEntryKey}`}
         language={language}
+        mediaEnabled={hasJobIntakeScope}
         mediaCount={orbChat.mediaCount}
         mode={mode}
         onActivityChange={setComposerActive}
         onPickMedia={() => void orbChat.pickMedia()}
-        onSend={(message) => void orbChat.send(message)}
+        onSend={orbChat.send}
         reduceTransparency={reduceTransparency}
       />
       )
@@ -209,12 +220,15 @@ export function WorkerV5KaelOrbScreenSurface({
     chatEntryKey,
     deal,
     hasPrivateIntakeChat,
+    hasJobIntakeScope,
     language,
     mode,
     navigateToScreen,
     orbChat,
+    pendingDraftScope,
     profile,
     reduceTransparency,
+    session?.user.id,
   ])
 
   return (
@@ -333,7 +347,11 @@ function WorkerV5KaelIntakeReadinessActions({
 
 export function WorkerV5KaelOrbComposer({
   busy,
+  draftOwnerId,
+  draftScope,
+  initialDraft = '',
   language,
+  mediaEnabled = true,
   mediaCount,
   mode,
   onActivityChange,
@@ -342,26 +360,35 @@ export function WorkerV5KaelOrbComposer({
   reduceTransparency,
 }: {
   busy: boolean
+  draftOwnerId?: string | null
+  draftScope?: PendingWorkerKaelDraftScope
+  initialDraft?: string
   language: AppLanguage
+  mediaEnabled?: boolean
   mediaCount: number
   mode: WorkerV5KaelOrbMode
   onActivityChange?: (active: boolean) => void
   onPickMedia: () => void
-  onSend: (message: string) => void
+  onSend: (message: string) => Promise<boolean>
   reduceTransparency: boolean
 }) {
-  const [draft, setDraft] = useState('')
+  const [draft, setDraft] = useState(() => initialDraft || (
+    draftScope
+      ? takePendingWorkerKaelDraft(draftOwnerId, mode, draftScope)?.message ?? ''
+      : ''
+  ))
   const focusedRef = useRef(false)
   const trimmedDraft = draft.trim()
   const mediaLabel = mode === 'normal'
     ? textByLanguage(language, 'Thêm ảnh cho Kael', 'Add photo for Kael')
     : textByLanguage(language, 'Thêm ảnh công việc cho Kael', 'Add work photo for Kael')
 
-  const submitDraft = () => {
+  const submitDraft = async () => {
     if (!trimmedDraft || busy) return
+    const sent = await onSend(trimmedDraft)
+    if (!sent) return
     setDraft('')
     onActivityChange?.(focusedRef.current)
-    onSend(trimmedDraft)
   }
 
   const updateDraft = (nextDraft: string) => {
@@ -388,7 +415,7 @@ export function WorkerV5KaelOrbComposer({
             <WorkerV5CustomerCaseWideMintAura scope="KaelOrbComposerWide" style={styles.kaelOrbComposerAura} testID="worker-v5-kael-orb-composer-mint-aura" />
           </>
         ) : null}
-        <LiquidControlButton
+        {mediaEnabled ? <LiquidControlButton
           accessibilityLabel={mediaLabel}
           accessibilityState={{ disabled: busy }}
           dimWhenDisabled={false}
@@ -407,7 +434,7 @@ export function WorkerV5KaelOrbComposer({
               <Text style={styles.kaelOrbComposerCameraBadgeText}>{mediaCount}</Text>
             </View>
           ) : null}
-        </LiquidControlButton>
+        </LiquidControlButton> : null}
         <KaelTextField
           accessibilityLabel={textByLanguage(language, 'Nhắn Kael', 'Message Kael')}
           inputShellStyle={styles.kaelOrbComposerInputShell}

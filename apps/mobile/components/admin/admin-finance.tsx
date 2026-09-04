@@ -1,29 +1,44 @@
 import { useCallback, useEffect, useMemo, useReducer, useRef } from 'react'
-import { Pressable, StyleSheet, Text, useWindowDimensions, View, type ViewStyle } from 'react-native'
-import Svg, { Circle, Polyline } from 'react-native-svg'
+import { Pressable, useWindowDimensions, View, type ViewStyle } from 'react-native'
 
-import { KaelButton, KaelTextField } from '@/components/ui/kael-primitives'
-import { color, component, radius, shadow, spacing, typography } from '@/design/theme'
 import type {
   AdminFinanceOverviewResponse,
   AdminFinancePeriodInput,
-  AdminFinanceRange,
-  AdminFinanceSummaryResponse,
   AdminPaymentReconciliationDecisionInput,
   AdminPaymentReconciliationSummary,
   AdminViewActor,
 } from '@/lib/api-types/admin'
 import { useAppLanguage } from '@/lib/app-language'
+import { generateClientRequestId } from '@/lib/client-request-id'
 import { adminControlService } from '@/lib/services'
-import { FinanceControls, type FinanceView } from './admin-finance-controls'
+import { FinanceControls } from './admin-finance-controls'
+import { FinanceCashView } from './admin-finance-cash-view'
 import { createFinanceFormatters } from './admin-finance-formatters'
+import { adminFinancePanelStyles as styles } from './admin-finance-panel-styles'
+import {
+  customFinancePeriod,
+  financeBreakdownLabel,
+  financeMetricItem,
+  financePendingMetricItem,
+  normalizeFinanceView,
+} from './admin-finance-overview-helpers'
+import { BreakdownCard, FinanceMetricGrid, MetricCard, TrendChart } from './admin-finance-overview-components'
+import {
+  financeReducer,
+  initialFinanceState,
+  initialReconciliationControlsState,
+  reconciliationControlsReducer,
+  type FinanceState,
+} from './admin-finance-state'
 import { ReconciliationModal } from './admin-finance-reconciliation-modal'
-import { reconciliationStatusLabel } from './admin-finance-reconciliation-status'
 import { FinanceTaxReportsPanel, FinanceTransactionsPanel } from './admin-finance-reports'
+import { AdminText } from './admin-text'
 
 const copyByLanguage = {
   vi: {
     accountBalance: 'Số dư tài khoản quan sát',
+    assignedTo: 'Người xử lý',
+    assignmentReason: 'Lý do nhận thay hoặc bỏ nhận',
     actualAmount: 'Số tiền thực nhận',
     actualBankChange: 'Biến động ngân hàng thực tế',
     bankReference: 'Mã giao dịch ngân hàng',
@@ -41,10 +56,20 @@ const copyByLanguage = {
     cashConfirm: 'Xác nhận tiền mặt và khấu trừ hoa hồng',
     cashReject: 'Từ chối xác nhận tiền mặt',
     cashConfirmationHint: 'Khách đã xác nhận nhận tiền mặt. Xác nhận sẽ ghi nhận lương thợ và chỉ khấu trừ phần hoa hồng nền tảng.',
+    claim: 'Nhận xử lý',
+    takeover: 'Nhận thay',
+    release: 'Bỏ nhận',
+    confirmDecision: 'Xác nhận quyết định',
     workerNet: 'Lương thợ được ghi nhận',
     confirmDirect: 'Xác nhận trả trực tiếp',
     confirmIncoming: 'Xác nhận tiền vào',
     customerClaimedAt: 'Khách đã báo chuyển',
+    customerReference: 'Mã khách hàng đã che',
+    workerReference: 'Mã thợ đã che',
+    serviceType: 'Dịch vụ',
+    responseDeadline: 'Hạn phản hồi',
+    detailTimeline: 'Lịch sử đối soát',
+    detailUnavailable: 'Chưa thể tải chi tiết đối soát.',
     directPayment: 'Trả trực tiếp cho thợ',
     exportUnavailable: 'Chưa có báo cáo có thể xuất cho kỳ này.',
     errorAction: 'Không thể lưu thay đổi. Dữ liệu chưa được cập nhật.',
@@ -54,6 +79,7 @@ const copyByLanguage = {
     incoming: 'Tổng tiền khách chuyển vào nền tảng',
     kaelCost: 'Chi phí Kael AI',
     load: 'Tải lại',
+    loadError: 'Không thể tải dữ liệu tài chính. Hãy thử lại.',
     noAccess: 'Tài khoản này chưa có quyền xem dữ liệu tài chính.',
     noBreakdown: 'Chưa có dữ liệu phân bổ cho kỳ này.',
     noQueue: 'Chưa có giao dịch nào cần đối soát.',
@@ -64,20 +90,34 @@ const copyByLanguage = {
     payoutOverSla: 'Yêu cầu rút tiền quá hạn xử lý',
     previousUnavailable: 'Chưa có dữ liệu kỳ trước',
     paidJobs: 'Công việc đã thanh toán',
+    partial: 'Dữ liệu một phần',
     averageOrder: 'Giá trị giao dịch trung bình',
     businessRetained: 'Doanh nghiệp thực giữ trước thuế và chi phí',
     cashView: 'Dòng tiền & đối soát',
     commissionView: 'Hoa hồng & chi trả',
     completedRefunds: 'Hoàn tiền đã hoàn tất',
     gmv: 'Tổng giá trị giao dịch',
+    generatedAt: 'Dữ liệu tạo lúc',
     netCashFlow: 'Dòng tiền ròng',
+    notAssigned: 'Chưa có người nhận xử lý',
     overview: 'Tổng quan',
     paymentMix: 'Theo phương thức thanh toán',
     period: 'Kỳ báo cáo',
     readOnly: 'Chỉ xem',
+    searchReconciliation: 'Tìm mã công việc hoặc mã thanh toán',
+    allMethods: 'Mọi phương thức',
+    bankTransfer: 'Chuyển khoản',
+    allAssignments: 'Mọi người xử lý',
+    unassigned: 'Chưa có người nhận',
+    assignedMine: 'Tôi đang xử lý',
+    loadMore: 'Tải thêm',
+    queueTotal: 'Cần xử lý',
+    resultsSection: 'Kết quả',
+    commissionSection: 'Hoa hồng',
     receiptStatus: 'Trạng thái biên nhận',
     reconcile: 'Đối soát',
     reconcileRequired: 'Cần đối soát thêm',
+    reviewDecision: 'Rà soát trước khi ghi nhận',
     reconciliationQueue: 'Hàng chờ đối soát',
     saveBalance: 'Lưu số dư quan sát',
     saveBalanceHint: 'Nhập số dư bạn đang thấy trên tài khoản ngân hàng. Kael không tự suy đoán số dư hay xác nhận giao dịch.',
@@ -109,6 +149,8 @@ const copyByLanguage = {
   },
   en: {
     accountBalance: 'Observed account balance',
+    assignedTo: 'Assigned operator',
+    assignmentReason: 'Reason for takeover or release',
     actualAmount: 'Actual amount received',
     actualBankChange: 'Actual bank movement',
     bankReference: 'Bank transaction reference',
@@ -126,10 +168,20 @@ const copyByLanguage = {
     cashConfirm: 'Confirm cash and collect commission',
     cashReject: 'Reject cash confirmation',
     cashConfirmationHint: 'The customer reported cash payment. Confirming records the worker salary and collects only the platform commission.',
+    claim: 'Claim case',
+    takeover: 'Take over',
+    release: 'Release',
+    confirmDecision: 'Confirm decision',
     workerNet: 'Worker salary recorded',
     confirmDirect: 'Confirm direct payment',
     confirmIncoming: 'Confirm incoming transfer',
     customerClaimedAt: 'Customer reported transfer',
+    customerReference: 'Masked customer reference',
+    workerReference: 'Masked worker reference',
+    serviceType: 'Service',
+    responseDeadline: 'Response deadline',
+    detailTimeline: 'Reconciliation timeline',
+    detailUnavailable: 'Reconciliation detail is unavailable.',
     directPayment: 'Paid directly to worker',
     exportUnavailable: 'No report is available to export for this period.',
     errorAction: 'The change could not be saved. The data was not updated.',
@@ -139,6 +191,7 @@ const copyByLanguage = {
     incoming: 'Customer transfers into platform',
     kaelCost: 'Kael AI cost',
     load: 'Reload',
+    loadError: 'Unable to load finance data. Please try again.',
     noAccess: 'This account does not have finance data access.',
     noBreakdown: 'No breakdown data is available for this period.',
     noQueue: 'There are no payments awaiting reconciliation.',
@@ -149,20 +202,34 @@ const copyByLanguage = {
     payoutOverSla: 'Payouts past processing target',
     previousUnavailable: 'Previous period unavailable',
     paidJobs: 'Paid jobs',
+    partial: 'Partial data',
     averageOrder: 'Average transaction value',
     businessRetained: 'Business retained before tax and operating costs',
     cashView: 'Cash & reconciliation',
     commissionView: 'Commission & payouts',
     completedRefunds: 'Completed refunds',
     gmv: 'Gross transaction value (GMV)',
+    generatedAt: 'Data generated at',
     netCashFlow: 'Net cash flow',
+    notAssigned: 'No operator assigned',
     overview: 'Overview',
     paymentMix: 'By payment method',
     period: 'Reporting period',
     readOnly: 'Read only',
+    searchReconciliation: 'Search job or payment code',
+    allMethods: 'All methods',
+    bankTransfer: 'Bank transfer',
+    allAssignments: 'All assignees',
+    unassigned: 'Unassigned',
+    assignedMine: 'Assigned to me',
+    loadMore: 'Load more',
+    queueTotal: 'Needs action',
+    resultsSection: 'Results',
+    commissionSection: 'Commission',
     receiptStatus: 'Receipt status',
     reconcile: 'Reconcile',
     reconcileRequired: 'Keep for reconciliation',
+    reviewDecision: 'Review before recording',
     reconciliationQueue: 'Reconciliation queue',
     saveBalance: 'Save observed balance',
     saveBalanceHint: 'Enter the balance you currently see in the bank account. Kael does not infer balances or confirm transactions.',
@@ -194,71 +261,18 @@ const copyByLanguage = {
   },
 } as const
 
-type FinanceCopy = (typeof copyByLanguage)[keyof typeof copyByLanguage]
-type FinanceBreakdown = { amount: number; label: string }
 type FinanceOverviewMetric = AdminFinanceOverviewResponse['metrics'][keyof AdminFinanceOverviewResponse['metrics']]
-
-type FinanceState = {
-  activeView: FinanceView
-  actualAmount: string
-  bankReference: string
-  customEditorOpen: boolean
-  customFrom: string
-  customMode: boolean
-  customTo: string
-  error: string | null
-  loading: boolean
-  notice: string | null
-  observedBalance: string
-  overview: AdminFinanceOverviewResponse | null
-  pendingAction: string | null
-  range: AdminFinanceRange
-  reason: string
-  reconciliations: AdminPaymentReconciliationSummary[]
-  selected: AdminPaymentReconciliationSummary | null
-  summary: AdminFinanceSummaryResponse | null
-}
-
-type FinanceAction = { type: 'patch'; value: Partial<FinanceState> }
-
-const initialFinanceState: FinanceState = {
-  activeView: 'overview',
-  actualAmount: '',
-  bankReference: '',
-  customEditorOpen: false,
-  customFrom: '',
-  customMode: false,
-  customTo: '',
-  error: null,
-  loading: true,
-  notice: null,
-  observedBalance: '',
-  overview: null,
-  pendingAction: null,
-  range: 'month',
-  reason: '',
-  reconciliations: [],
-  selected: null,
-  summary: null,
-}
-
-function financeReducer(state: FinanceState, action: FinanceAction): FinanceState {
-  return { ...state, ...action.value }
-}
-
-export function AdminFinancePanel({
-  actor,
-  initialView,
-  onViewChange,
-  reduceMotion,
-  reduceTransparency,
-}: {
+type AdminFinancePanelProps = {
   actor: AdminViewActor | null
   initialView?: string
-  onViewChange?: (view: FinanceView) => void
   reduceMotion: boolean
   reduceTransparency: boolean
-}) {
+}
+function useAdminFinanceController({
+  actor,
+  initialView,
+  reduceMotion,
+}: AdminFinancePanelProps) {
   const { width } = useWindowDimensions()
   const language = useAppLanguage()
   const copy = copyByLanguage[language]
@@ -268,18 +282,38 @@ export function AdminFinancePanel({
   const canApproveTax = actor?.access_level === 'owner' && canManageTax
   const [state, dispatch] = useReducer(financeReducer, { ...initialFinanceState, activeView: normalizeFinanceView(initialView) })
   const [taxRefreshKey, refreshTaxPolicies] = useReducer((value: number) => value + 1, 0)
+  const [reconciliationControls, patchReconciliationControls] = useReducer(reconciliationControlsReducer, initialReconciliationControlsState)
+  const {
+    assignment: reconciliationAssignment,
+    debouncedQuery: debouncedReconciliationQuery,
+    method: reconciliationMethod,
+    nextCursor: reconciliationNextCursor,
+    query: reconciliationQuery,
+    total: reconciliationTotal,
+  } = reconciliationControls
   const loadRequestIdRef = useRef(0)
+  const detailRequestIdRef = useRef(0)
+  const hasLoadedRef = useRef(false)
+  const backgroundLoadInFlightRef = useRef(false)
+
+  useEffect(() => {
+    const timeout = setTimeout(() => patchReconciliationControls({ debouncedQuery: reconciliationQuery.trim() }), 300)
+    return () => clearTimeout(timeout)
+  }, [reconciliationQuery])
   const patch = useCallback((value: Partial<FinanceState>) => {
     dispatch({ type: 'patch', value })
   }, [])
   const {
     activeView,
     actualAmount,
+    assignmentReason,
     bankReference,
     customEditorOpen,
     customFrom,
     customMode,
     customTo,
+    detailError,
+    detailLoading,
     error,
     loading,
     notice,
@@ -290,6 +324,7 @@ export function AdminFinancePanel({
     reason,
     reconciliations,
     selected,
+    selectedDetail,
     summary,
   } = state
   const period = useMemo<AdminFinancePeriodInput | null>(() => customMode
@@ -300,42 +335,94 @@ export function AdminFinancePanel({
     patch({ activeView: normalizeFinanceView(initialView) })
   }, [initialView, patch])
 
-  const load = useCallback(async () => {
+  const load = useCallback(async ({ blocking }: { blocking?: boolean } = {}) => {
+    const shouldBlock = blocking ?? !hasLoadedRef.current
+    if (!shouldBlock && backgroundLoadInFlightRef.current) return
+    if (!shouldBlock) backgroundLoadInFlightRef.current = true
     const requestId = loadRequestIdRef.current + 1
     loadRequestIdRef.current = requestId
     if (!canRead) {
       patch({ loading: false })
+      hasLoadedRef.current = true
+      backgroundLoadInFlightRef.current = false
       return
     }
     if (!period) {
       patch({ error: copy.invalidRange, loading: false })
+      backgroundLoadInFlightRef.current = false
       return
     }
-    patch({ error: null, loading: true })
-    const [summaryResult, overviewResult, queueResult] = await Promise.all([
-      period.range ? adminControlService.getFinanceSummary({ range: period.range, anchor: period.anchor }) : Promise.resolve(null),
-      adminControlService.getFinanceOverview(period),
-      canReconcile
-        ? adminControlService.listPaymentReconciliations({ status: 'pending', limit: 25, offset: 0 })
-        : Promise.resolve(null),
-    ])
-    if (requestId === loadRequestIdRef.current) {
-      patch({
-        error: null,
-        loading: false,
-        overview: overviewResult.success ? overviewResult.data : null,
-        reconciliations: queueResult?.success ? queueResult.data.payment_reconciliations : [],
-        summary: summaryResult?.success ? summaryResult.data : null,
-      })
+    patch({ error: null, ...(shouldBlock ? { loading: true } : {}) })
+    try {
+      const [summaryResult, overviewResult, queueResult] = await Promise.all([
+        period.range ? adminControlService.getFinanceSummary({ range: period.range, anchor: period.anchor }) : Promise.resolve(null),
+        adminControlService.getFinanceOverview(period),
+        canReconcile && activeView === 'cash'
+          ? adminControlService.listPaymentReconciliations({
+            status: 'pending',
+            limit: 25,
+            assignment: reconciliationAssignment,
+            payment_method: reconciliationMethod,
+            query: debouncedReconciliationQuery || undefined,
+          })
+          : Promise.resolve(null),
+      ])
+      if (requestId === loadRequestIdRef.current) {
+        patch({
+          error: activeView === 'cash'
+            ? ((canReconcile && queueResult && !queueResult.success) || !overviewResult.success ? copy.loadError : null)
+            : (overviewResult.success ? null : copy.loadError),
+          loading: false,
+          ...(overviewResult.success ? { overview: overviewResult.data } : {}),
+          ...(queueResult?.success ? { reconciliations: queueResult.data.payment_reconciliations } : {}),
+          ...(summaryResult?.success ? { summary: summaryResult.data } : {}),
+        })
+        if (queueResult?.success) {
+          patchReconciliationControls({
+            nextCursor: queueResult.data.next_cursor,
+            total: {
+              amount: Number.isFinite(queueResult.data.total_amount_vnd) ? queueResult.data.total_amount_vnd : null,
+              count: Number.isFinite(queueResult.data.total_count) ? queueResult.data.total_count : null,
+            },
+          })
+        }
+      }
+    } finally {
+      if (requestId === loadRequestIdRef.current) {
+        hasLoadedRef.current = true
+        backgroundLoadInFlightRef.current = false
+        patch({ loading: false })
+      }
     }
-  }, [canRead, canReconcile, copy.invalidRange, patch, period])
+  }, [activeView, canRead, canReconcile, copy.invalidRange, copy.loadError, debouncedReconciliationQuery, patch, period, reconciliationAssignment, reconciliationMethod])
+
+  const loadMoreReconciliations = useCallback(async () => {
+    if (!reconciliationNextCursor || backgroundLoadInFlightRef.current) return
+    backgroundLoadInFlightRef.current = true
+    const requestId = loadRequestIdRef.current + 1
+    loadRequestIdRef.current = requestId
+    const result = await adminControlService.listPaymentReconciliations({
+      status: 'pending',
+      limit: 25,
+      cursor: reconciliationNextCursor,
+      assignment: reconciliationAssignment,
+      payment_method: reconciliationMethod,
+      query: debouncedReconciliationQuery || undefined,
+    })
+    if (requestId === loadRequestIdRef.current && result.success) {
+      patch({ reconciliations: [...reconciliations, ...result.data.payment_reconciliations] })
+      patchReconciliationControls({ nextCursor: result.data.next_cursor })
+    }
+    if (requestId === loadRequestIdRef.current) backgroundLoadInFlightRef.current = false
+  }, [debouncedReconciliationQuery, patch, reconciliationAssignment, reconciliationMethod, reconciliationNextCursor, reconciliations])
 
   const invalidatePendingLoad = useCallback(() => {
     loadRequestIdRef.current += 1
+    backgroundLoadInFlightRef.current = false
   }, [])
 
   useEffect(() => {
-    void load()
+    void load({ blocking: !hasLoadedRef.current })
     return invalidatePendingLoad
   }, [invalidatePendingLoad, load])
 
@@ -355,17 +442,40 @@ export function AdminFinancePanel({
   const paymentBreakdown = overview?.payment_methods.flatMap((item) => item.gmv_vnd === null ? [] : [{ amount: item.gmv_vnd, label: financeBreakdownLabel(item.payment_method, 'payment', language) }]) ?? null
   const serviceBreakdown = overview?.services.flatMap((item) => item.gmv_vnd === null ? [] : [{ amount: item.gmv_vnd, label: financeBreakdownLabel(item.service_type, 'service', language) }]) ?? null
 
+  const loadReconciliationDetail = useCallback((item: AdminPaymentReconciliationSummary) => {
+    const requestId = detailRequestIdRef.current + 1
+    detailRequestIdRef.current = requestId
+    patch({ detailError: null, detailLoading: true })
+    return adminControlService.getPaymentReconciliation(item.id).then((result) => {
+      if (requestId !== detailRequestIdRef.current) return
+      if (result.success) {
+        patch({
+          actualAmount: result.data.received_amount_vnd === null ? String(result.data.expected_amount_vnd) : String(result.data.received_amount_vnd),
+          detailLoading: false,
+          selected: result.data.reconciliation,
+          selectedDetail: result.data,
+        })
+      } else {
+        patch({ detailError: copy.detailUnavailable, detailLoading: false })
+      }
+    })
+  }, [copy.detailUnavailable, patch])
+
   const openReconciliation = useCallback((item: AdminPaymentReconciliationSummary) => {
     patch({
       actualAmount: item.amount_received === null ? String(item.gross_amount) : String(item.amount_received),
+      assignmentReason: '',
       bankReference: '',
+      detailError: null,
       reason: '',
       selected: item,
+      selectedDetail: null,
     })
-  }, [patch])
+    void loadReconciliationDetail(item)
+  }, [loadReconciliationDetail, patch])
 
   const submitReconciliation = useCallback(async (decision: AdminPaymentReconciliationDecisionInput['decision']) => {
-    if (!selected) return
+    if (!selected?.assigned_to_me) return
     const isManual = selected.payment_method === 'platform_bank_manual'
     const parsedAmount = Number(actualAmount.replace(/[^0-9]/g, ''))
     if (isManual && (!Number.isSafeInteger(parsedAmount) || parsedAmount <= 0 || !bankReference.trim())) {
@@ -378,7 +488,9 @@ export function AdminFinancePanel({
     }
     patch({ error: null, pendingAction: `${selected.id}:${decision}` })
     const input: AdminPaymentReconciliationDecisionInput = {
+      client_request_id: generateClientRequestId(),
       decision,
+      expected_version: selected.version,
       ...(isManual ? {
         amount_received: parsedAmount,
         bank_reference: bankReference.trim(),
@@ -396,6 +508,48 @@ export function AdminFinancePanel({
     patch({ pendingAction: null })
   }, [actualAmount, bankReference, copy.errorAction, copy.updated, load, patch, reason, selected])
 
+  const claimReconciliation = useCallback(async () => {
+    if (!selected || (selected.assigned_to && actor?.access_level !== 'owner')) return
+    if (selected.assigned_to && assignmentReason.trim().length < 3) {
+      patch({ error: copy.errorAction })
+      return
+    }
+    patch({ error: null, pendingAction: `${selected.id}:claim` })
+    const result = await adminControlService.claimPaymentReconciliation(selected.id, {
+      client_request_id: generateClientRequestId(),
+      expected_version: selected.version,
+      ...(selected.assigned_to ? { takeover_reason: assignmentReason.trim() } : {}),
+    })
+    if (result.success) {
+      const reconciliation = { ...selected, assigned_at: result.data.assigned_at, assigned_to: result.data.assigned_to, assigned_to_me: true, version: result.data.version }
+      patch({ selected: reconciliation, selectedDetail: selectedDetail ? { ...selectedDetail, reconciliation } : null })
+    } else {
+      patch({ error: copy.errorAction })
+    }
+    patch({ pendingAction: null })
+  }, [actor?.access_level, assignmentReason, copy.errorAction, patch, selected, selectedDetail])
+
+  const releaseReconciliation = useCallback(async () => {
+    if (!selected?.assigned_to || (!selected.assigned_to_me && actor?.access_level !== 'owner')) return
+    if (assignmentReason.trim().length < 3) {
+      patch({ error: copy.errorAction })
+      return
+    }
+    patch({ error: null, pendingAction: `${selected.id}:release` })
+    const result = await adminControlService.releasePaymentReconciliation(selected.id, {
+      client_request_id: generateClientRequestId(),
+      expected_version: selected.version,
+      reason: assignmentReason.trim(),
+    })
+    if (result.success) {
+      patch({ notice: copy.updated, selected: null, selectedDetail: null })
+      await load()
+    } else {
+      patch({ error: copy.errorAction })
+    }
+    patch({ pendingAction: null })
+  }, [actor?.access_level, assignmentReason, copy.errorAction, copy.updated, load, patch, selected])
+
   const saveObservedBalance = useCallback(async () => {
     const balance = Number(observedBalance.replace(/[^0-9]/g, ''))
     if (!Number.isSafeInteger(balance) || balance < 0) {
@@ -405,6 +559,7 @@ export function AdminFinancePanel({
     patch({ error: null, pendingAction: 'snapshot' })
     const result = await adminControlService.recordFinanceBalanceSnapshot({
       balance_vnd: balance,
+      client_request_id: generateClientRequestId(),
       observed_at: new Date().toISOString(),
     })
     if (result.success) {
@@ -416,42 +571,124 @@ export function AdminFinancePanel({
     patch({ pendingAction: null })
   }, [copy.errorAction, copy.snapshotSaved, load, observedBalance, patch])
 
+  return {
+    activeView,
+    actor,
+    actualAmount,
+    assignmentReason,
+    bankReference,
+    canApproveTax,
+    canManageTax,
+    canRead,
+    canReconcile,
+    claimReconciliation,
+    commissionAccrued,
+    copy,
+    customEditorOpen,
+    customFrom,
+    customMode,
+    customTo,
+    detailError,
+    detailLoading,
+    detailRequestIdRef,
+    effectiveCommissionRateBps,
+    error,
+    formatCount,
+    formatCurrency,
+    formatDate,
+    formatPercent,
+    formatUsd,
+    language,
+    load,
+    loading,
+    loadMoreReconciliations,
+    loadReconciliationDetail,
+    metricCardStyle,
+    metricValue,
+    notice,
+    observedBalance,
+    openReconciliation,
+    overview,
+    patch,
+    patchReconciliationControls,
+    paymentBreakdown,
+    pendingAction,
+    period,
+    range,
+    reconciliationAssignment,
+    reconciliationMethod,
+    reconciliationNextCursor,
+    reconciliationQuery,
+    reconciliations,
+    reconciliationTotal,
+    reduceMotion,
+    refreshTaxPolicies,
+    releaseReconciliation,
+    reason,
+    saveObservedBalance,
+    selected,
+    selectedDetail,
+    serviceBreakdown,
+    submitReconciliation,
+    summary,
+    taxRefreshKey,
+    trendPoints,
+  }
+}
+
+export function AdminFinancePanel(props: AdminFinancePanelProps) {
+  return <FinancePanelBody controller={useAdminFinanceController(props)} />
+}
+
+function FinancePanelBody({ controller }: { controller: ReturnType<typeof useAdminFinanceController> }) {
+  const {
+    activeView, actor, actualAmount, assignmentReason, bankReference, canApproveTax, canManageTax,
+    canRead, canReconcile, claimReconciliation, commissionAccrued, copy, customEditorOpen,
+    customFrom, customMode, customTo, detailError, detailLoading, detailRequestIdRef,
+    effectiveCommissionRateBps, error, formatCount, formatCurrency, formatDate, formatPercent,
+    formatUsd, language, load, loading, loadMoreReconciliations, loadReconciliationDetail,
+    metricCardStyle, metricValue, notice, observedBalance, openReconciliation, overview, patch,
+    patchReconciliationControls, paymentBreakdown, pendingAction, period, range,
+    reconciliationAssignment, reconciliationMethod, reconciliationNextCursor, reconciliationQuery,
+    reconciliations, reconciliationTotal, reduceMotion, refreshTaxPolicies, releaseReconciliation,
+    reason, saveObservedBalance, selected, selectedDetail, serviceBreakdown, submitReconciliation,
+    summary, taxRefreshKey, trendPoints,
+  } = controller
+
   if (!canRead) {
-    return <View style={styles.accessCard} testID="admin-finance-no-access"><Text style={styles.accessText}>{copy.noAccess}</Text></View>
+    return <View style={styles.accessCard} testID="admin-finance-no-access"><AdminText textRole="subheadline" style={styles.accessText}>{copy.noAccess}</AdminText></View>
   }
 
   return <View style={styles.stack} testID="admin-finance-panel">
     <View style={styles.header}>
-      <Text style={styles.title}>{copy.title}</Text>
-      <Text style={styles.subtitle}>{copy.subtitle}</Text>
+      <AdminText textRole="headline" style={styles.title}>{copy.title}</AdminText>
+      <AdminText textRole="headline" style={styles.subtitle}>{copy.subtitle}</AdminText>
+      {overview?.generated_at || summary?.generated_at ? <AdminText textRole="footnote" style={styles.generatedAt}>
+        {copy.generatedAt}: {formatDate(overview?.generated_at ?? summary?.generated_at ?? null)}
+      </AdminText> : null}
     </View>
 
     <FinanceControls
-      activeView={activeView}
       copy={copy}
       customEditorOpen={customEditorOpen}
       customFrom={customFrom}
       customMode={customMode}
       customTo={customTo}
-      compact={width < 600}
       language={language}
       onApplyCustom={() => customFinancePeriod(customFrom, customTo) ? patch({ customEditorOpen: false, customMode: true }) : patch({ error: copy.invalidRange })}
       onChangeCustomFrom={(customFrom) => patch({ customFrom })}
       onChangeCustomTo={(customTo) => patch({ customTo })}
       onRefresh={() => { refreshTaxPolicies(); void load() }}
       onSelectRange={(range) => patch({ customEditorOpen: false, customMode: false, range })}
-      onSelectView={(nextView) => {
-        patch({ activeView: nextView })
-        onViewChange?.(nextView)
-      }}
       onToggleCustom={() => patch({ customEditorOpen: !customEditorOpen })}
       range={range}
     />
 
-    {notice ? <View accessibilityLiveRegion={reduceMotion ? 'polite' : 'none'} style={styles.notice}><Text style={styles.noticeText}>{notice}</Text><Pressable accessibilityRole="button" accessibilityLabel={copy.cancel} onPress={() => patch({ notice: null })}><Text style={styles.dismiss}>×</Text></Pressable></View> : null}
-    {error ? <View accessibilityRole="alert" style={styles.error}><Text style={styles.errorText}>{error}</Text><Pressable accessibilityRole="button" accessibilityLabel={copy.load} onPress={() => { void load() }}><Text style={styles.errorAction}>{copy.load}</Text></Pressable></View> : null}
+    {notice ? <View accessibilityLiveRegion={reduceMotion ? 'polite' : 'none'} style={styles.notice}><AdminText textRole="subheadline" style={styles.noticeText}>{notice}</AdminText><Pressable accessibilityRole="button" accessibilityLabel={copy.cancel} onPress={() => patch({ notice: null })}><AdminText textRole="headline" style={styles.dismiss}>×</AdminText></Pressable></View> : null}
+    {error ? <View accessibilityRole="alert" style={styles.error}><AdminText textRole="subheadline" style={styles.errorText}>{error}</AdminText><Pressable accessibilityRole="button" accessibilityLabel={copy.load} onPress={() => { void load() }}><AdminText textRole="subheadline" style={styles.errorAction}>{copy.load}</AdminText></Pressable></View> : null}
 
-    {loading ? <View style={styles.loading}><Text style={styles.loadingText}>{copy.load}</Text></View> : activeView === 'overview' ? <View style={styles.viewStack} testID="admin-finance-view-overview">
+    {loading ? <View style={styles.loading}><AdminText textRole="subheadline" style={styles.loadingText}>{copy.load}</AdminText></View> : activeView === 'overview' ? <View style={styles.viewStack} testID="admin-finance-view-overview">
+      <AdminText textRole="title2" style={styles.sectionTitle}>{copy.resultsSection}</AdminText>
       <FinanceMetricGrid cardStyle={metricCardStyle} items={[
         financeMetricItem('gmv', copy.gmv, copy.sourceGmv, overview?.metrics.gmv_vnd, formatCurrency, copy),
         financeMetricItem('paid-jobs', copy.paidJobs, copy.sourcePaidJobs, overview?.metrics.paid_jobs, formatCount, copy),
@@ -467,18 +704,36 @@ export function AdminFinancePanel({
         <BreakdownCard copy={copy} formatCurrency={formatCurrency} items={paymentBreakdown} title={copy.paymentMix} />
         <BreakdownCard copy={copy} formatCurrency={formatCurrency} items={serviceBreakdown} title={copy.serviceMix} />
       </View>
+      <AdminText textRole="title2" style={styles.sectionTitle}>{copy.commissionSection}</AdminText>
+      <FinanceMetricGrid cardStyle={metricCardStyle} items={[
+        financePendingMetricItem('overview-commission-accrued', copy.commissionAccrued, commissionAccrued, formatCurrency, copy),
+        financePendingMetricItem('overview-commission-collected', copy.commissionCollected, metricValue(overview?.metrics.commission_collected_vnd, summary?.commission_collected), formatCurrency, copy),
+        financePendingMetricItem('overview-commission-receivable', copy.commissionReceivable, metricValue(overview?.metrics.commission_receivable_vnd, summary?.commission_receivable), formatCurrency, copy),
+        financePendingMetricItem('overview-commission-rate', copy.commissionRate, effectiveCommissionRateBps, formatPercent, copy),
+      ]} />
+      {period ? <FinanceTransactionsPanel formatCurrency={formatCurrency} language={language} period={period} /> : null}
     </View> : activeView === 'cash' ? <FinanceCashView
       canReconcile={canReconcile}
       copy={copy}
+      formatCount={formatCount}
       formatCurrency={formatCurrency}
       formatDate={formatDate}
       metricCardStyle={metricCardStyle}
       observedBalance={observedBalance}
+      onChangeAssignment={(assignment) => patchReconciliationControls({ assignment })}
+      onChangeMethod={(method) => patchReconciliationControls({ method })}
+      onChangeQuery={(query) => patchReconciliationControls({ query })}
       onChangeObservedBalance={(observedBalance) => patch({ observedBalance })}
+      onLoadMore={() => { void loadMoreReconciliations() }}
       onOpenReconciliation={openReconciliation}
       onSaveObservedBalance={() => { void saveObservedBalance() }}
       overview={overview}
       pendingAction={pendingAction}
+      reconciliationAssignment={reconciliationAssignment}
+      reconciliationMethod={reconciliationMethod}
+      reconciliationNextCursor={reconciliationNextCursor}
+      reconciliationQuery={reconciliationQuery}
+      reconciliationTotal={reconciliationTotal}
       reconciliations={reconciliations}
       summary={summary}
     /> : activeView === 'commission' ? <View style={styles.viewStack} testID="admin-finance-view-commission">
@@ -496,290 +751,33 @@ export function AdminFinancePanel({
     </View> : <View style={styles.viewStack} testID="admin-finance-view-tax">
       {overview?.tax_policy_ids.length && overview.metrics.tax_estimate_vnd.value !== null
         ? <MetricCard label={copy.taxEstimate} style={metricCardStyle} value={formatCurrency(overview.metrics.tax_estimate_vnd.value)} />
-        : <View style={styles.emptyCard}><Text style={styles.sectionTitle}>{copy.taxStatus}</Text></View>}
+        : <View style={styles.emptyCard}><AdminText textRole="title2" style={styles.sectionTitle}>{copy.taxStatus}</AdminText></View>}
       {period ? <FinanceTaxReportsPanel canApproveTax={canApproveTax} canManageTax={canManageTax} language={language} period={period} reduceMotion={reduceMotion} refreshKey={taxRefreshKey} /> : null}
     </View>}
 
-    {canReconcile ? <ReconciliationModal
+    {canReconcile && activeView === 'cash' && selected ? <ReconciliationModal
       actualAmount={actualAmount}
+      assignmentReason={assignmentReason}
       bankReference={bankReference}
+      canTakeover={actor?.access_level === 'owner'}
       copy={copy}
+      detail={selectedDetail}
+      detailError={detailError}
+      detailLoading={detailLoading}
       formatCurrency={formatCurrency}
+      formatDate={formatDate}
       onChangeActualAmount={(actualAmount) => patch({ actualAmount })}
+      onChangeAssignmentReason={(assignmentReason) => patch({ assignmentReason })}
       onChangeBankReference={(bankReference) => patch({ bankReference })}
       onChangeReason={(reason) => patch({ reason })}
-      onClose={() => patch({ selected: null })}
+      onClaim={() => { void claimReconciliation() }}
+      onClose={() => { detailRequestIdRef.current += 1; patch({ detailError: null, detailLoading: false, selected: null, selectedDetail: null }) }}
+      onRetry={() => { void loadReconciliationDetail(selected) }}
+      onRelease={() => { void releaseReconciliation() }}
       onSubmit={(decision) => { void submitReconciliation(decision) }}
       pending={Boolean(pendingAction)}
       reason={reason}
-      reduceMotion={reduceMotion}
-      reduceTransparency={reduceTransparency}
       selected={selected}
     /> : null}
   </View>
 }
-
-function FinanceCashView({
-  canReconcile,
-  copy,
-  formatCurrency,
-  formatDate,
-  metricCardStyle,
-  observedBalance,
-  onChangeObservedBalance,
-  onOpenReconciliation,
-  onSaveObservedBalance,
-  overview,
-  pendingAction,
-  reconciliations,
-  summary,
-}: {
-  canReconcile: boolean
-  copy: FinanceCopy
-  formatCurrency: (value: number | null) => string
-  formatDate: (value: string | null) => string
-  metricCardStyle: ViewStyle
-  observedBalance: string
-  onChangeObservedBalance: (value: string) => void
-  onOpenReconciliation: (item: AdminPaymentReconciliationSummary) => void
-  onSaveObservedBalance: () => void
-  overview: AdminFinanceOverviewResponse | null
-  pendingAction: string | null
-  reconciliations: AdminPaymentReconciliationSummary[]
-  summary: AdminFinanceSummaryResponse | null
-}) {
-  return <View style={styles.viewStack} testID="admin-finance-view-cash">
-    {!canReconcile ? <View style={styles.readOnlyBadge}><Text style={styles.readOnlyText}>{copy.readOnly}</Text></View> : null}
-    <FinanceMetricGrid cardStyle={metricCardStyle} items={[
-      financePendingMetricItem('incoming', copy.incoming, summary?.platform_incoming, formatCurrency, copy),
-      financePendingMetricItem('paid-out', copy.paidOut, summary?.payout_outflow, formatCurrency, copy),
-      financePendingMetricItem('direct-payment', copy.directPayment, summary?.direct_payment_total, formatCurrency, copy),
-      financePendingMetricItem('completed-refunds', copy.completedRefunds, overview?.metrics.refund_completed_vnd.value, formatCurrency, copy),
-    ]} />
-    <View style={styles.balanceCard}>
-      <Text style={styles.sectionTitle}>{copy.accountBalance}</Text>
-      <View style={styles.balanceGrid}>
-        <PendingMetric label={copy.openingBalance} value={overview?.bank_reconciliation.opening_balance_vnd.value ?? summary?.opening_balance} formatValue={formatCurrency} copy={copy} />
-        <PendingMetric label={copy.closingBalance} value={overview?.bank_reconciliation.closing_balance_vnd.value ?? summary?.closing_balance} formatValue={formatCurrency} copy={copy} />
-        <PendingMetric label={copy.expectedBankChange} value={overview?.bank_reconciliation.expected_change_vnd.value ?? summary?.expected_bank_change} formatValue={formatCurrency} copy={copy} />
-        <PendingMetric label={copy.actualBankChange} value={overview?.bank_reconciliation.actual_change_vnd.value ?? summary?.actual_bank_change} formatValue={formatCurrency} copy={copy} />
-        <PendingMetric label={copy.variance} value={overview?.bank_reconciliation.unexplained_variance_vnd.value ?? summary?.unexplained_variance} formatValue={formatCurrency} copy={copy} />
-      </View>
-      {canReconcile ? <><Text style={styles.subtitle}>{copy.saveBalanceHint}</Text><KaelTextField
-        accessibilityLabel={copy.accountBalance}
-        keyboardType="number-pad"
-        label={copy.accountBalance}
-        onChangeText={onChangeObservedBalance}
-        placeholder="0"
-        placeholderTextColor={color.text.muted}
-        value={observedBalance}
-      />
-      <KaelButton disabled={pendingAction === 'snapshot'} label={copy.saveBalance} onPress={onSaveObservedBalance} variant="secondary" /></> : null}
-    </View>
-
-    {canReconcile ? <><View style={styles.queueHeader}>
-      <Text style={styles.sectionTitle}>{copy.reconciliationQueue}</Text>
-    </View>
-    {reconciliations.length === 0 ? <View style={styles.emptyCard}><Text style={styles.emptyText}>{copy.noQueue}</Text></View> : reconciliations.map((item) => <Pressable
-      accessibilityLabel={`${copy.reconciliationQueue}: ${item.job_id}`}
-      accessibilityRole="button"
-      key={item.id}
-      onPress={() => onOpenReconciliation(item)}
-      style={styles.reconciliationCard}
-      testID={`admin-finance-reconciliation-${item.id}`}
-    >
-      <View style={styles.reconciliationHeader}>
-        <Text style={styles.reconciliationTitle}>{item.payment_method === 'platform_bank_manual' ? copy.incoming : copy.directPayment}</Text>
-        <Text style={styles.status}>{reconciliationStatusLabel(item.status, copy)}</Text>
-      </View>
-      <Text style={styles.jobId}>{item.job_id}</Text>
-      <View style={styles.detailGrid}>
-        <Metric label={copy.actualAmount} value={formatCurrency(item.amount_received ?? item.gross_amount)} />
-        <Metric label={copy.customerClaimedAt} value={formatDate(item.customer_transfer_claimed_at)} />
-      </View>
-    </Pressable>)}</> : null}
-  </View>
-}
-
-type FinanceMetricItem = {
-  comparison?: string
-  dataSource?: string
-  direction?: FinanceOverviewMetric['direction']
-  key: string
-  label: string
-  value: string
-}
-
-function FinanceMetricGrid({ cardStyle, items }: { cardStyle: ViewStyle; items: FinanceMetricItem[] }) {
-  return <View style={styles.metricGrid}>{items.map((item) => <MetricCard comparison={item.comparison} dataSource={item.dataSource} direction={item.direction} key={item.key} label={item.label} style={cardStyle} testID={`admin-finance-metric-${item.key}`} value={item.value} />)}</View>
-}
-
-function PendingMetric({ copy, formatValue, label, value }: { copy: FinanceCopy; formatValue: (value: number | null) => string; label: string; value: number | null | undefined }) {
-  return <Metric dataSource={value === null || value === undefined ? copy.syncing : undefined} label={label} value={formatValue(value ?? null)} />
-}
-
-function MetricCard({ comparison, dataSource, direction, label, style, testID, value }: { comparison?: string; dataSource?: string; direction?: FinanceOverviewMetric['direction']; label: string; style?: ViewStyle; testID?: string; value: string }) {
-  return <View style={[styles.metricCard, style]} testID={testID}><Metric compact label={label} value={value} />{dataSource ? <Text style={styles.metricDataSource} testID={testID ? `${testID}-source` : undefined}>{dataSource}</Text> : null}{comparison ? <Text style={[styles.metricComparison, direction === 'up' ? styles.metricComparisonUp : direction === 'down' ? styles.metricComparisonDown : null]}>{comparison}</Text> : null}</View>
-}
-
-function Metric({ compact = false, dataSource, label, value }: { compact?: boolean; dataSource?: string; label: string; value: string }) {
-  return <View style={[styles.metric, compact && styles.metricCompact]}><Text style={styles.metricLabel}>{label}</Text><Text style={styles.metricValue}>{value}</Text>{dataSource ? <Text style={styles.metricDataSource}>{dataSource}</Text> : null}</View>
-}
-
-function TrendChart({ copy, points }: { copy: FinanceCopy; points: { label: string; value: number }[] | null }) {
-  if (!points?.length) return <View style={styles.emptyCard}><Text style={styles.sectionTitle}>{copy.trend}</Text><Text style={styles.emptyText}>{copy.noTrend}</Text></View>
-  const values = points.map((point) => point.value)
-  const min = Math.min(...values)
-  const spread = Math.max(Math.max(...values) - min, 1)
-  const plot = points.map((point, index) => {
-    const x = points.length === 1 ? 160 : 12 + index * (296 / (points.length - 1))
-    const y = 112 - ((point.value - min) / spread) * 88
-    return { ...point, x, y }
-  })
-  return <View style={styles.chartCard}>
-    <Text style={styles.sectionTitle}>{copy.trend}</Text>
-    <View accessibilityLabel={`${copy.trend}: ${points.map((point) => `${point.label} ${point.value}`).join(', ')}`} accessibilityRole="image">
-      <Svg height={128} viewBox="0 0 320 128" width="100%">
-        <Polyline fill="none" points={plot.map((point) => `${point.x},${point.y}`).join(' ')} stroke={color.brand.primary} strokeWidth={3} />
-        {plot.map((point) => <Circle cx={point.x} cy={point.y} fill={color.surface.base} key={`${point.label}-${point.x}`} r={4} stroke={color.brand.primary} strokeWidth={2} />)}
-      </Svg>
-    </View>
-  </View>
-}
-
-function BreakdownCard({ copy, formatCurrency, items, title }: { copy: FinanceCopy; formatCurrency: (value: number | null) => string; items: FinanceBreakdown[] | null; title: string }) {
-  const visibleItems = items?.filter((item) => item.label.trim()) ?? []
-  return <View style={styles.breakdownCard}><Text style={styles.sectionTitle}>{title}</Text>{visibleItems.length
-    ? visibleItems.map((item) => <View key={item.label} style={styles.breakdownRow}><Text style={styles.breakdownLabel}>{item.label}</Text><Text style={styles.breakdownValue}>{formatCurrency(item.amount)}</Text></View>)
-    : <Text style={styles.emptyText}>{copy.noBreakdown}</Text>}</View>
-}
-
-function normalizeFinanceView(value: string | undefined): FinanceView {
-  return value === 'cash' || value === 'commission' || value === 'tax' ? value : 'overview'
-}
-
-function financeMetricItem(
-  key: string,
-  label: string,
-  source: string,
-  metric: FinanceOverviewMetric | undefined,
-  formatValue: (value: number | null) => string,
-  copy: FinanceCopy,
-  legacyValue?: number | null,
-): FinanceMetricItem {
-  const value = metric?.value ?? legacyValue ?? null
-  const dataSource = value === null ? `${source} · ${copy.syncing}` : source
-  const formattedValue = formatValue(value ?? 0)
-  if (!metric || metric.value === null) return { dataSource, key, label, value: formattedValue }
-  if (metric.change_value === null) return { comparison: copy.previousUnavailable, dataSource, direction: 'unavailable', key, label, value: formattedValue }
-  const directionMark = metric.direction === 'up' ? '↑' : metric.direction === 'down' ? '↓' : '→'
-  const percent = metric.change_percent === null ? '' : ` · ${Math.abs(metric.change_percent).toLocaleString(undefined, { maximumFractionDigits: 1 })}%`
-  return {
-    comparison: `${directionMark} ${formatValue(Math.abs(metric.change_value))}${percent} ${copy.versusPrevious}`,
-    dataSource,
-    direction: metric.direction,
-    key,
-    label,
-    value: formattedValue,
-  }
-}
-
-function financePendingMetricItem(
-  key: string,
-  label: string,
-  value: number | null | undefined,
-  formatValue: (value: number | null) => string,
-  copy: FinanceCopy,
-): FinanceMetricItem {
-  return {
-    dataSource: value === null || value === undefined ? copy.syncing : undefined,
-    key,
-    label,
-    value: formatValue(value ?? null),
-  }
-}
-
-function financeBreakdownLabel(value: string, kind: 'payment' | 'service', language: 'vi' | 'en') {
-  const paymentLabels: Record<string, readonly [string, string]> = {
-    cash: ['Trả trực tiếp cho thợ', 'Paid directly to worker'],
-    direct_worker: ['Trả trực tiếp cho thợ', 'Paid directly to worker'],
-    platform_bank_manual: ['Chuyển khoản vào nền tảng', 'Transfer to platform'],
-    sepay_vietqr: ['Chuyển khoản vào nền tảng', 'Transfer to platform'],
-  }
-  const serviceLabels: Record<string, readonly [string, string]> = {
-    cleaning: ['Vệ sinh nhà cửa', 'Home cleaning'],
-    electrical: ['Sửa điện', 'Electrical repair'],
-    handyman: ['Sửa chữa nhỏ và lắp đặt', 'Minor repair and installation'],
-    hvac: ['Điều hòa và không khí trong nhà', 'Air conditioning and indoor air'],
-    plumbing: ['Sửa nước', 'Plumbing repair'],
-    upholstery: ['Chăm sóc sofa và đồ vải', 'Sofa and fabric care'],
-  }
-  const fallback = kind === 'payment' ? ['Phương thức khác', 'Other payment method'] : ['Dịch vụ khác', 'Other service']
-  const labels = kind === 'payment' ? paymentLabels[value] : serviceLabels[value]
-  return (labels ?? fallback)[language === 'vi' ? 0 : 1]
-}
-
-function customFinancePeriod(from: string, to: string): AdminFinancePeriodInput | null {
-  if (!validDateInput(from) || !validDateInput(to)) return null
-  const fromDate = new Date(`${from}T00:00:00+07:00`)
-  const inclusiveTo = new Date(`${to}T00:00:00+07:00`)
-  const toDate = new Date(inclusiveTo.getTime() + 86_400_000)
-  const duration = toDate.getTime() - fromDate.getTime()
-  if (!Number.isFinite(duration) || duration <= 0 || duration > 366 * 86_400_000) return null
-  return { from: fromDate.toISOString(), to: toDate.toISOString() }
-}
-
-function validDateInput(value: string) {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false
-  const [year, month, day] = value.split('-').map(Number)
-  const date = new Date(Date.UTC(year ?? 0, (month ?? 0) - 1, day))
-  return date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day
-}
-
-const styles = StyleSheet.create({
-  accessCard: { backgroundColor: color.surface.base, borderColor: color.surface.stroke, borderRadius: component.card.radius, borderWidth: 1, padding: spacing.lg },
-  accessText: { ...typography.subheadline, color: color.text.secondary },
-  balanceCard: { backgroundColor: color.surface.base, borderColor: color.surface.stroke, borderRadius: component.card.radius, borderWidth: 1, gap: spacing.md, padding: spacing.lg, ...shadow.soft },
-  balanceGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md },
-  breakdownCard: { backgroundColor: color.surface.base, borderColor: color.surface.stroke, borderRadius: component.card.radius, borderWidth: 1, flex: 1, gap: spacing.md, minWidth: 240, padding: spacing.lg },
-  breakdownGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.lg },
-  breakdownLabel: { ...typography.subheadline, color: color.text.secondary, flex: 1 },
-  breakdownRow: { alignItems: 'flex-start', flexDirection: 'row', gap: spacing.md, justifyContent: 'space-between' },
-  breakdownValue: { ...typography.label, color: color.text.strong, fontVariant: ['tabular-nums'], fontWeight: '600' },
-  chartCard: { backgroundColor: color.surface.base, borderColor: color.surface.stroke, borderRadius: component.card.radius, borderWidth: 1, gap: spacing.md, padding: spacing.lg },
-  detailGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md },
-  dismiss: { ...typography.headline, color: color.text.secondary },
-  emptyCard: { backgroundColor: color.surface.base, borderColor: color.surface.stroke, borderRadius: component.card.radius, borderWidth: 1, gap: spacing.sm, padding: spacing.lg },
-  emptyText: { ...typography.subheadline, color: color.text.secondary },
-  error: { alignItems: 'center', backgroundColor: component.chip.error.bg, borderColor: component.chip.error.border, borderRadius: radius.md, borderWidth: 1, flexDirection: 'row', gap: spacing.sm, justifyContent: 'space-between', padding: spacing.md },
-  errorAction: { ...typography.label, color: color.brand.primary, fontWeight: '600' },
-  errorText: { ...typography.footnote, color: color.text.strong, flex: 1 },
-  header: { backgroundColor: color.surface.base, borderColor: color.surface.stroke, borderRadius: component.card.radius, borderWidth: 1, gap: spacing.sm, padding: spacing.lg, ...shadow.soft },
-  jobId: { ...typography.caption2, color: color.text.muted, fontVariant: ['tabular-nums'] },
-  loading: { alignItems: 'center', backgroundColor: color.surface.base, borderColor: color.surface.stroke, borderRadius: component.card.radius, borderWidth: 1, padding: spacing.xl },
-  loadingText: { ...typography.subheadline, color: color.text.secondary },
-  metric: { flexBasis: 128, gap: spacing.xxs, minWidth: 128 },
-  metricCard: { backgroundColor: color.surface.base, borderColor: color.surface.stroke, borderRadius: component.card.radius, borderWidth: 1, flexBasis: '46%', flexGrow: 1, gap: spacing.sm, minWidth: 148, padding: spacing.md },
-  metricCompact: { flexBasis: 'auto', minWidth: 0 },
-  metricComparison: { ...typography.caption2, color: color.text.muted, marginTop: spacing.sm },
-  metricComparisonDown: { color: color.text.secondary },
-  metricComparisonUp: { color: color.brand.primaryDark },
-  metricDataSource: { ...typography.caption1, color: color.text.secondary },
-  metricGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md },
-  metricLabel: { ...typography.caption2, color: color.text.muted, fontWeight: '600' },
-  metricValue: { ...typography.headline, color: color.text.strong, fontVariant: ['tabular-nums'], fontWeight: '600' },
-  notice: { alignItems: 'center', backgroundColor: component.chip.successStatus.bg, borderColor: component.chip.successStatus.border, borderRadius: radius.md, borderWidth: 1, flexDirection: 'row', gap: spacing.sm, justifyContent: 'space-between', padding: spacing.md },
-  noticeText: { ...typography.footnote, color: color.text.strong, flex: 1 },
-  queueHeader: { marginTop: spacing.md },
-  readOnlyBadge: { alignSelf: 'flex-start', backgroundColor: color.surface.soft, borderColor: color.surface.stroke, borderRadius: radius.pill, borderWidth: 1, paddingHorizontal: spacing.md, paddingVertical: spacing.sm },
-  readOnlyText: { ...typography.label, color: color.text.secondary, fontWeight: '600' },
-  reconciliationCard: { backgroundColor: color.surface.base, borderColor: color.surface.stroke, borderRadius: component.card.radius, borderWidth: 1, gap: spacing.md, padding: spacing.lg, ...shadow.soft },
-  reconciliationHeader: { alignItems: 'flex-start', flexDirection: 'row', gap: spacing.md, justifyContent: 'space-between' },
-  reconciliationTitle: { ...typography.subheadline, color: color.text.strong, flex: 1, fontWeight: '600' },
-  sectionTitle: { ...typography.headline, color: color.text.strong, fontWeight: '600' },
-  stack: { gap: spacing.lg },
-  status: { ...typography.caption2, color: color.brand.primary, fontWeight: '600', maxWidth: '48%', textAlign: 'right' },
-  subtitle: { ...typography.subheadline, color: color.text.secondary },
-  title: { ...typography.title3, color: color.text.strong, fontWeight: '600' },
-  viewStack: { gap: spacing.lg },
-})

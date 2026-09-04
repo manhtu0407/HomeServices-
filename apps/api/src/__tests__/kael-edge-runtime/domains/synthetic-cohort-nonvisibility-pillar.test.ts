@@ -318,7 +318,6 @@ describe('real-user consumers are scoped even though Edge uses service-role', ()
     await listAdminPayoutMethods(ctxFor(payoutClient, 'admin', ADMIN_ID), {
       status: 'all',
       limit: 20,
-      offset: 0,
     })
     expect(
       operationWasRecorded(payoutClient, 'worker_payout_methods', ['is', 'synthetic_cohort_id', null]),

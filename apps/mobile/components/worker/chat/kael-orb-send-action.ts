@@ -80,7 +80,7 @@ export function createWorkerKaelOrbSendAction({
 }: WorkerKaelOrbSendActionOptions) {
   return async (message: string) => {
     const content = message.trim()
-    if (!content || busy || openingSessionId) return
+    if (!content || busy || openingSessionId) return false
     const sendRequestId = sendRequestRef.current + 1
     sendRequestRef.current = sendRequestId
     setError(null)
@@ -91,7 +91,7 @@ export function createWorkerKaelOrbSendAction({
     if (!canUseKaelSession) {
       setTurns((current) => [...current, { id: `kael-orb-${Date.now()}`, role: 'kael', text: advisoryUnavailableReply }])
       setMediaItems([])
-      return
+      return false
     }
 
     reasoningActions.begin()
@@ -123,7 +123,7 @@ export function createWorkerKaelOrbSendAction({
       if (mediaItems.length > 0) {
         if (!currentJobId) {
           setError(textByLanguage(language, 'Ảnh chỉ dùng trong cuộc trò chuyện theo công việc.', 'Photos are only available in job conversations.'))
-          return
+          return false
         }
         const uploadDrafts: LocalMediaUploadDraft[] = mediaItems.map((item) => ({
           fileName: item.fileName,
@@ -131,10 +131,10 @@ export function createWorkerKaelOrbSendAction({
           uri: item.uri,
         }))
         const uploaded = await uploadJobMediaDrafts(currentJobId, uploadDrafts, 'kael_reference')
-        if (!isCurrentSend()) return
+        if (!isCurrentSend()) return false
         if (!uploaded.success) {
           setError(uploaded.error)
-          return
+          return false
         }
         mediaRefs = uploaded.mediaRefs
       }
@@ -150,11 +150,11 @@ export function createWorkerKaelOrbSendAction({
           mode: currentMode,
           ...(currentJobId ? { job_id: currentJobId } : {}),
         })
-        if (!isCurrentSend()) return
+        if (!isCurrentSend()) return false
         if (!created.success) {
           setProgress(null)
           setError(created.error)
-          return
+          return false
         }
         if (
           created.data.session.job_id !== currentJobId
@@ -162,7 +162,7 @@ export function createWorkerKaelOrbSendAction({
         ) {
           setProgress(null)
           setError(textByLanguage(language, 'Kael chưa mở được cuộc trò chuyện riêng cho việc này.', 'Kael could not open the private work session yet.'))
-          return
+          return false
         }
         sessionId = created.data.session.id
         locallyCreatedSessionIdsRef.current.add(sessionId)
@@ -207,12 +207,12 @@ export function createWorkerKaelOrbSendAction({
         },
         onToken: () => undefined,
       })
-      if (!isCurrentSend()) return
+      if (!isCurrentSend()) return false
 
       let finalResponse = streamed.success ? streamed : null
       if (!finalResponse) {
         const recovered = await workerKaelChatService.get(sessionId)
-        if (!isCurrentSend()) return
+        if (!isCurrentSend()) return false
         if (recovered.success) finalResponse = recovered
       }
 
@@ -226,7 +226,7 @@ export function createWorkerKaelOrbSendAction({
           && activeModeRef.current === currentMode
         ) setProgress(null)
         setError(textByLanguage(language, 'Kael bỏ qua phản hồi không khớp việc hiện tại.', 'Kael ignored a response that did not match the current work.'))
-        return
+        return false
       }
 
       cacheSessionResponse(finalResponse.data)
@@ -263,5 +263,6 @@ export function createWorkerKaelOrbSendAction({
         setBusy(false)
       }
     }
+    return turnCompleted
   }
 }

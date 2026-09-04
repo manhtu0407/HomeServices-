@@ -2,11 +2,13 @@ import { existsSync, readFileSync } from 'node:fs'
 import { execFileSync } from 'node:child_process'
 import { isAbsolute, resolve } from 'node:path'
 import type { ExpoConfig, ConfigContext } from 'expo/config'
-import { withEntitlementsPlist, withXcodeProject, type ConfigPlugin } from 'expo/config-plugins'
+import { withEntitlementsPlist, withXcodeProject, type ConfigPlugin } from 'expo/config-plugins.js'
 import { assertReleaseAuthConfig, resolveMobileEnvFiles } from './config/release-auth-config.cjs'
 import { resolveClientContractEpoch } from './config/client-contract-epoch.cjs'
 
-const configDir = __dirname
+const configDir = existsSync(resolve(process.cwd(), 'app.json'))
+  ? process.cwd()
+  : resolve(process.cwd(), 'apps/mobile')
 const repoRoot = resolve(configDir, '../..')
 
 const explicitEnvFiles = (process.env.NESTSCOUT_MOBILE_ENV_FILE ?? '')

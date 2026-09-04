@@ -24,18 +24,31 @@ export async function provisionAdminOperator(
   input: EdgeAdminOperatorProvisionInput,
 ): Promise<AdminOperatorProvisionResponse> {
   requireOwner(ctx);
+  if (input.capabilities.includes("operations.triage") && !input.capabilities.includes("operations.read")) {
+    apiFailure("INVALID_INPUT", "Quyền chuẩn bị hồ sơ yêu cầu quyền xem vận hành", 400);
+  }
   const client = db(ctx);
   const authClient = ctx.supabase as AuthAdminClient;
   const begin = await dbQuery<Row[]>(client.rpc("admin_begin_operator_provisioning", {
     p_owner_id: ctx.user.id,
     p_email: input.email,
     p_full_name: input.full_name,
-    p_capabilities: input.capabilities,
+    p_capabilities: input.capabilities.filter((capability) => capability !== "operations.triage"),
   }));
   const intent = begin.data?.[0];
   if (begin.error || !intent) apiFailure("DB_ERROR", "Không thể bắt đầu tạo tài khoản quản trị", 500);
   if (intent.ok !== true) mapProvisioningError(nullableString(intent.error_code));
   const provisioningId = asString(intent.provisioning_id);
+  if (input.capabilities.includes("operations.triage")) {
+    const capabilitySync = await dbQuery(client.from("admin_operator_provisioning")
+      .update({ capabilities: input.capabilities })
+      .eq("id", provisioningId)
+      .eq("created_by", ctx.user.id));
+    if (capabilitySync.error) {
+      await markProvisioningFailed(client, ctx.user.id, provisioningId, "CAPABILITY_SYNC_FAILED");
+      apiFailure("DB_ERROR", "Không thể lưu quyền chuẩn bị hồ sơ cho tài khoản quản trị", 500);
+    }
+  }
 
   const created = await authClient.auth.admin.createUser({
     email: input.email,
@@ -162,7 +175,7 @@ function maskEmail(email: string) {
 
 function isCapability(value: string) {
   return [
-    "operations.read", "workers.read", "workers.review", "workers.manage",
+    "operations.read", "operations.triage", "workers.read", "workers.review", "workers.manage",
     "transactions.read", "finance.read", "finance.reconcile", "finance.tax.manage",
     "payouts.read", "payouts.process", "team.read",
   ].includes(value);

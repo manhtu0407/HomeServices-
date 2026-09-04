@@ -4,17 +4,22 @@
 # committed file is real schema drift and worth reading before it is accepted,
 # so -Check reports it without overwriting.
 
-[CmdletBinding()]
-param(
-  [switch]$Check
-)
-
 $ErrorActionPreference = "Stop"
+$Check = $false
+foreach ($argument in $args) {
+  if ($argument -in "-Check", "--check") {
+    $Check = $true
+  } else {
+    [Console]::Error.WriteLine("gen-types: unknown argument '$argument'")
+    exit 2
+  }
+}
+
 $here = Split-Path -Parent $MyInvocation.MyCommand.Path
 $repoRoot = (Resolve-Path (Join-Path $here "..\..")).Path
 $target = Join-Path $repoRoot "packages\shared\src\types\database"
 $splitter = Join-Path $repoRoot "scripts\split-database-types.mjs"
-$temp = Join-Path ([System.IO.Path]::GetTempPath()) "nestscout-database.types.ts"
+$temp = Join-Path ([System.IO.Path]::GetTempPath()) "nestscout-database.types.$([guid]::NewGuid().ToString('N')).ts"
 
 Push-Location $repoRoot
 try {
@@ -58,5 +63,6 @@ try {
   Write-Output "committed files overwritten. Review the diff before accepting it."
   exit $LASTEXITCODE
 } finally {
+  Remove-Item -LiteralPath $temp -Force -ErrorAction SilentlyContinue
   Pop-Location
 }

@@ -145,31 +145,33 @@ export type WorkerApplicationResponse = {
   submitted_at: string
 }
 
+export type WorkerBroadcast = {
+  broadcast_id: string
+  job_id: string
+  status: BroadcastStatus
+  service_type: ServiceType
+  problem_summary: string | null
+  scope_summary?: string | null
+  district: string | null
+  estimated_price_min: number | null
+  estimated_price_max: number | null
+  estimated_earning_min: number | null
+  estimated_earning_max: number | null
+  media_count: number
+  worker_brief_core?: Record<string, unknown> | null
+  scheduled_at: string | null
+  sent_at: string | null
+  expires_at: string | null
+  seconds_remaining: number | null
+  confirmed_recipient_count?: number | null
+  delivery_receipt?: MatchingDeliveryReceipt
+  original_scope_price_quote?: OriginalScopePriceQuote | null
+  proposal_action?: WorkerBroadcastProposalAction
+  quote_mode?: QuoteMode | null
+}
+
 export type WorkerBroadcastsResponse = {
-  broadcasts: {
-    broadcast_id: string
-    job_id: string
-    status: BroadcastStatus
-    service_type: ServiceType
-    problem_summary: string | null
-    scope_summary?: string | null
-    district: string | null
-    estimated_price_min: number | null
-    estimated_price_max: number | null
-    estimated_earning_min: number | null
-    estimated_earning_max: number | null
-    media_count: number
-    worker_brief_core?: Record<string, unknown> | null
-    scheduled_at: string | null
-    sent_at: string | null
-    expires_at: string | null
-    seconds_remaining: number | null
-    confirmed_recipient_count?: number | null
-    delivery_receipt?: MatchingDeliveryReceipt
-    original_scope_price_quote?: OriginalScopePriceQuote | null
-    proposal_action?: WorkerBroadcastProposalAction
-    quote_mode?: QuoteMode
-  }[]
+  broadcasts: WorkerBroadcast[]
 }
 
 export type BroadcastListResponse = WorkerBroadcastsResponse

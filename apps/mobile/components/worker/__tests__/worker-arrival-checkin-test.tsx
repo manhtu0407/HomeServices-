@@ -1502,7 +1502,7 @@ it('records arrival before continuing to the in-progress screen', async () => {
     render(<WorkerJobsSurface />)
     fireEvent.press(screen.getByTestId('worker-v5-case-closed-earnings-action'))
 
-    expect(mockReplace).toHaveBeenCalledWith('/(worker)/earnings?ns_worker_screen=4.1-earnings-overview')
+    expect(mockReplace).toHaveBeenCalledWith('/(worker)/earnings?ns_worker_screen=4.1-earnings-overview&ns_worker_earnings_period=month')
   })
 
   it('keeps approval and completion actions without the two removed information cards', () => {

@@ -84,7 +84,7 @@ const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
     "authorization, x-client-info, x-client-platform, x-client-application-id, x-client-build-number, x-client-contract-epoch, x-client-eas-build-id, x-client-runtime-version, x-client-git-sha, x-client-release-id, apikey, content-type, idempotency-key",
-  "Access-Control-Allow-Methods": "GET, POST, PATCH, DELETE, OPTIONS",
+  "Access-Control-Allow-Methods": "GET, POST, PUT, PATCH, DELETE, OPTIONS",
 };
 const JSON_HEADERS = {
   ...CORS_HEADERS,

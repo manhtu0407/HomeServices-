@@ -488,6 +488,7 @@ export type CoreTables = {
         Row: {
           account_key: string
           balance_vnd: number
+          client_request_id: string | null
           created_at: string
           entered_by: string
           id: string
@@ -496,6 +497,7 @@ export type CoreTables = {
         Insert: {
           account_key: string
           balance_vnd: number
+          client_request_id?: string | null
           created_at?: string
           entered_by: string
           id?: string
@@ -504,6 +506,7 @@ export type CoreTables = {
         Update: {
           account_key?: string
           balance_vnd?: number
+          client_request_id?: string | null
           created_at?: string
           entered_by?: string
           id?: string
@@ -523,51 +526,80 @@ export type CoreTables = {
         Row: {
           complexity: Database["public"]["Enums"]["complexity_level"]
           created_at: string
+          created_by: string | null
           district_code: string
+          effective_from: string | null
           id: string
+          lifecycle: string
           price_evidence: Json
           price_max: number
           price_min: number
+          retired_at: string | null
           service_problem_id: string
           service_type: Database["public"]["Enums"]["service_type"]
           source: string
+          supersedes_id: string | null
           updated_at: string
           version: number
         }
         Insert: {
           complexity: Database["public"]["Enums"]["complexity_level"]
           created_at?: string
+          created_by?: string | null
           district_code?: string
+          effective_from?: string | null
           id?: string
+          lifecycle?: string
           price_evidence?: Json
           price_max: number
           price_min: number
+          retired_at?: string | null
           service_problem_id: string
           service_type: Database["public"]["Enums"]["service_type"]
           source?: string
+          supersedes_id?: string | null
           updated_at?: string
           version?: number
         }
         Update: {
           complexity?: Database["public"]["Enums"]["complexity_level"]
           created_at?: string
+          created_by?: string | null
           district_code?: string
+          effective_from?: string | null
           id?: string
+          lifecycle?: string
           price_evidence?: Json
           price_max?: number
           price_min?: number
+          retired_at?: string | null
           service_problem_id?: string
           service_type?: Database["public"]["Enums"]["service_type"]
           source?: string
+          supersedes_id?: string | null
           updated_at?: string
           version?: number
         }
         Relationships: [
           {
+            foreignKeyName: "price_baselines_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "price_baselines_service_problem_id_fkey"
             columns: ["service_problem_id"]
             isOneToOne: false
             referencedRelation: "service_problems"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "price_baselines_supersedes_id_fkey"
+            columns: ["supersedes_id"]
+            isOneToOne: false
+            referencedRelation: "price_baselines"
             referencedColumns: ["id"]
           },
         ]

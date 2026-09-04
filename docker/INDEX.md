@@ -1,7 +1,8 @@
 # docker/ — local development stack
 
 Everything an agent needs to run this project's **database and Edge toolchain on
-this machine**, without asking Tu and without touching a hosted environment.
+this machine**. The `kael-docker` skill also routes questions that can be answered
+without a local runtime to a named hosted read-only target or exact CI evidence.
 
 This folder is the map. The commands live in the root `package.json` as
 `db:local:*` and `edge:check`; the always-on entry point is the `kael-docker`
@@ -51,29 +52,62 @@ lets `docker compose run --rm deno …` work with no `-f` flag.
 
 ## Commands
 
-All of these are aliases with a gate in front — they are not raw CLI passthrough.
+These aliases are explicit local operations. `db:local:up` always owns the doctor
+gate; the other commands validate their own invocation and target.
 
 | Command | Does |
 |---|---|
-| `pnpm db:local:doctor` | Check daemon, available RAM, disk, ports. Refuses and prints the measured number. |
+| `pnpm docker:version:ensure` | Use Docker Desktop's stable updater once when available; otherwise prove the installed Compose supports this repo's required pull-policy flags. |
+| `pnpm db:local:doctor` | One bounded 15-second daemon probe plus available RAM, disk, and ports. Profile is only `lean` or `full`. |
 | `pnpm db:local:up` | `doctor` first, then start the lean profile. |
-| `pnpm db:local:down` | Stop the stack. **Always run this when finished.** |
-| `pnpm db:local:reset` | Replay every migration from zero, then `supabase/seed.sql`. |
+| `pnpm db:local:down` | Stop the stack without deleting its database volume. **Always run this when finished.** |
+| `pnpm db:local:reset` | Replay every migration from zero with explicit `--local`, then `supabase/seed.sql`. |
 | `pnpm db:local:test` | Run the SQL verification scripts through psql in the db container. |
 | `pnpm db:local:types` | Regenerate `packages/shared/src/types/database/**` from the local schema (generates, then splits by domain). |
 | `pnpm db:local:diff` | Diff local schema against migrations. |
 | `pnpm db:local:lint` | `supabase db lint --local --fail-on warning`. |
 | `pnpm edge:check` | Type-check `supabase/functions/**` in the pinned Deno container. |
 
+The `node scripts/run.mjs …` form refreshes known per-user and system Docker CLI
+locations on Windows before dispatching a runner. This keeps an already-open
+agent process from using a stale `PATH` after Docker Desktop is installed or
+updated.
+
+On Windows, a launch is also gated by its filesystem origin. If Codex Desktop,
+an AppContainer, or a `CodexSandboxUsers` child sees `%LOCALAPPDATA%\Docker` but
+WSL/DrvFS cannot see the same path under `/mnt/c`, do not launch Docker Desktop
+through `Start-Process`, `explorer.exe`, another CLI child, or an agent-created
+broker. The state is in a packaged-app overlay that the Docker WSL backend cannot
+use. One launch from the Windows Start menu or an unsandboxed Windows shell counts
+as the authorized `1/1` launch; after it, run only the single final doctor probe.
+Do not repair ACLs/AppData or try a second brokered launch inside `kael-docker`.
+
 ### Rules that are not optional
 
-- **Run `doctor` before starting.** Available RAM is the binding constraint on a
-  16 GB machine; Supabase recommends >= 7 GB for the full service set.
+- **Resolve the Docker version before Lane A/B.** Desktop uses one bounded stable update; an
+  installation without the Desktop updater must prove `compose pull --policy` and
+  `compose run --pull`. No prerelease channel, hardcoded latest version, privileged package-manager
+  install, or automatic retry is allowed.
+- **Fail closed on a virtualized Windows launch origin.** A Windows/DrvFS path mismatch requires one
+  Start-menu or unsandboxed-shell launch by Tu; agent-brokered GUI launches do not consume extra retries.
+- **Run `doctor` before starting.** The immutable floor is 4 GB for `lean` and
+  7 GB for `full`; there is no numeric override or skip-doctor route.
+- **Run immediately when RAM passes; recover once when it does not.** The one recovery pass can stop
+  only recorded stale task-owned helper/dev/test children. Codex, Claude Code, system/security,
+  Docker components needed by the run, and user apps with possible unsaved work stay protected.
 - **Every `up` needs its `down`.** Nothing enforces this. Leaving the stack
   running overnight is a real cost.
 - **Never hand-edit `supabase/config.toml` solely to shape a profile.** Use `-x`; if a host port changes, update the runtime consumers and doctor in the same change.
 - **Never point the local stack's credentials at staging or production.** The
   local stack issues fixed, publicly-known demo JWTs.
+
+### Runtime is the completion gate
+
+A task routed through `kael-docker` is not `DONE` from source inspection, static checks, or hosted
+read-only structure alone. It needs either the relevant Lane A/B command against the current checkout
+or Lane D evidence for the exact commit with workflow URL, job URL, and the proving log/artifact. If
+the checkout is dirty and local runtime remains closed after the one recovery/final-probe cycle, the
+task is `BLOCKED`, not silently complete.
 
 ---
 
@@ -92,20 +126,16 @@ Managed with the CLI's `-x` exclusion flag, never by editing `config.toml`.
 pnpm db:local:down
 ```
 
-To also drop the database volume and reclaim its disk:
-
-```bash
-powershell -NoProfile -ExecutionPolicy Bypass -File docker/scripts/down.ps1 -Purge
-```
-
-To see what Docker is holding overall:
+To inspect what Docker is holding overall, without deleting anything:
 
 ```bash
 docker system df
 ```
 
-`docker system prune -a --volumes` is intentionally **not** in the agent
-allowlist — it destroys data outside this project. Tu runs that by hand.
+The down runner exposes no purge mode and cannot generate `--no-backup`.
+Reclaiming a volume or image requires a separate read-only ownership check and
+Tu's explicit approval of the exact target. This folder never recommends a
+global prune or treats another stack as project-owned from a port number alone.
 
 ---
 
@@ -117,7 +147,7 @@ Recorded here so a later session does not "discover" these and build them.
 |---|---|
 | `Dockerfile` for `apps/api` | Violates the hard boundary above and `RULES.md` #0 — a second runtime. |
 | Docker for Expo / mobile | Native builds need macOS and Xcode. EAS already covers this. |
-| `act` (GitHub Actions locally) | CI is three thin workflows with no type-check job and no full unit-test job. Not worth several GB. |
+| `act` (GitHub Actions locally) | Not worth several GB to re-run what CI already runs for free. `harness-assurance.yml` alone carries five jobs — including `workspace-gates` (whole-workspace type-check, test, and build) and `database-controls`, which starts Supabase, **replays every migration from empty**, runs the SQL verification matrix, regenerates the database types and fails on drift, and lints the schema — on every pull request and every push to main. A green `database-controls` run is the evidence a laptop that cannot start the stack will never produce locally. |
 | devcontainer / Codespaces | Changes Tu's whole working environment, not just adds a tool. |
 | A Node/pnpm "matches CI" box | The workflows call `node scripts/*.mjs` and `pnpm --filter … exec vitest` directly, which already run on Windows. The only real delta is OS-level path/case behavior. |
 | Converting the SQL scripts to pgTAP | They already self-assert with `raise exception`; psql runs all of them as-is. pgTAP would add format, not coverage. |
@@ -128,10 +158,10 @@ Recorded here so a later session does not "discover" these and build them.
 ## Status of the measurements
 
 The numbers this folder's docs would normally quote — image pull time, disk
-consumed, stack idle RAM — **have not been measured yet**. The measurement spike
-(`governance/Plan.md` §49 D0) was blocked before it could start: available RAM on
-this machine measured 2.76–3.22 GB against a 4 GB floor, and neither execute
-worktree has `node_modules`, so the workspace Supabase CLI cannot resolve.
+consumed, stack idle RAM — **have not been established for a successful local
+stack run**. Historical attempts crossed and fell below the 4 GB floor while the
+daemon also became unavailable; those measurements are evidence for those
+attempts only, not permission to retry or relax the gate.
 
 Nothing in this folder invents those numbers. `profiles/lean.md` marks each one
 as unmeasured. Fill them in from a real run, not from an estimate.

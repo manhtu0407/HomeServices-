@@ -107,7 +107,6 @@ function parseCachedSession(
   if (
     typeof session.id !== 'string'
     || (mode === 'normal' && jobId !== null)
-    || (mode === 'intake' && jobId === null)
     || session.mode !== mode
     || session.worker_id !== workerId
     || typeof session.started_at !== 'string'

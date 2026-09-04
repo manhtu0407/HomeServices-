@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useReducer } from 'react'
-import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from 'react-native'
+import { ActivityIndicator, Pressable, StyleSheet, TextInput, View } from 'react-native'
 
 import { color, radius, spacing, typography } from '@/design/theme'
 import type { AppLanguage } from '@/lib/app-language'
@@ -9,6 +9,8 @@ import {
   type AdminIntakePolicyPreview,
   type AdminPriceBaselineVersion,
 } from '@/lib/services/admin-control-service'
+
+import { AdminText } from './admin-text'
 
 const copy = {
   vi: {
@@ -249,13 +251,13 @@ export function AdminPolicyGovernance({ language }: { language: AppLanguage }) {
     }))
   }
 
-  if (loading) return <View style={styles.center}><ActivityIndicator color={color.brand.primary} /><Text style={styles.secondary}>{labels.loading}</Text></View>
+  if (loading) return <View style={styles.center}><ActivityIndicator color={color.brand.primary} /><AdminText textRole="subheadline" style={styles.secondary}>{labels.loading}</AdminText></View>
 
   return <View style={styles.stack} testID="admin-policy-governance">
-    <View style={styles.heading}><Text style={styles.sectionTitle}>{labels.policies}</Text><Action label={labels.refresh} onPress={() => { void load() }} /></View>
-    {error ? <Text accessibilityRole="alert" style={styles.error}>{error || labels.actionError}</Text> : null}
-    {message ? <Text accessibilityRole="alert" style={styles.success}>{message}</Text> : null}
-    {policies.length === 0 ? <Text style={styles.empty}>{labels.empty}</Text> : <>
+    <View style={styles.heading}><AdminText textRole="title2" style={styles.sectionTitle}>{labels.policies}</AdminText><Action label={labels.refresh} onPress={() => { void load() }} /></View>
+    {error ? <AdminText accessibilityRole="alert" textRole="subheadline" style={styles.error}>{error || labels.actionError}</AdminText> : null}
+    {message ? <AdminText accessibilityRole="alert" textRole="subheadline" style={styles.success}>{message}</AdminText> : null}
+    {policies.length === 0 ? <AdminText textRole="subheadline" style={styles.empty}>{labels.empty}</AdminText> : <>
       <View accessibilityRole="tablist" style={styles.chips}>
         {policies.map((policy) => <Pressable
           accessibilityRole="tab"
@@ -263,26 +265,26 @@ export function AdminPolicyGovernance({ language }: { language: AppLanguage }) {
           key={policy.id}
           onPress={() => selectPolicy(policy)}
           style={[styles.chip, policy.id === selectedPolicyId && styles.chipSelected]}
-        ><Text style={styles.chipText}>{policy.problem_slug} · v{policy.version}</Text></Pressable>)}
+        ><AdminText textRole="footnote" style={styles.chipText}>{policy.problem_slug} · v{policy.version}</AdminText></Pressable>)}
       </View>
       {selectedPolicy ? <View style={styles.card}>
-        <Text style={styles.cardTitle}>{selectedPolicy.problem_slug}</Text>
-        <Text style={styles.secondary}>{labels.version} {selectedPolicy.version} · {labels.status}: {selectedPolicy.status}</Text>
+        <AdminText textRole="headline" style={styles.cardTitle}>{selectedPolicy.problem_slug}</AdminText>
+        <AdminText textRole="footnote" style={styles.secondary}>{labels.version} {selectedPolicy.version} · {labels.status}: {selectedPolicy.status}</AdminText>
         <View style={styles.chips}>
           {([
             ['kael_auto_quote', labels.routed], ['rfq', labels.rfq], ['inspection_only', labels.inspection], ['blocked', labels.blocked],
-          ] as const).map(([mode, label]) => <Pressable key={mode} onPress={() => selectQuoteMode(mode)} style={[styles.chip, quoteMode === mode && styles.chipSelected]}><Text style={styles.chipText}>{label}</Text></Pressable>)}
+          ] as const).map(([mode, label]) => <Pressable key={mode} onPress={() => selectQuoteMode(mode)} style={[styles.chip, quoteMode === mode && styles.chipSelected]}><AdminText textRole="footnote" style={styles.chipText}>{label}</AdminText></Pressable>)}
         </View>
-        <Text style={styles.cardTitle}>{labels.evidenceLocks}</Text>
-        <Text style={styles.secondary}>{labels.sourceCount}</Text>
+        <AdminText textRole="headline" style={styles.cardTitle}>{labels.evidenceLocks}</AdminText>
+        <AdminText textRole="footnote" style={styles.secondary}>{labels.sourceCount}</AdminText>
         <TextInput accessibilityLabel={labels.sourceCount} editable={!acting} inputMode="numeric" onChangeText={(value) => updateEvidenceRequirements({ minimum_source_count: boundedCount(value) })} style={styles.input} value={String(evidenceRequirements.minimum_source_count)} />
-        <Text style={styles.secondary}>{labels.highTrustSources}</Text>
+        <AdminText textRole="footnote" style={styles.secondary}>{labels.highTrustSources}</AdminText>
         <TextInput accessibilityLabel={labels.highTrustSources} editable={!acting} inputMode="numeric" onChangeText={(value) => updateEvidenceRequirements({ minimum_high_trust_source_count: boundedCount(value) })} style={styles.input} value={String(evidenceRequirements.minimum_high_trust_source_count)} />
         <Pressable accessibilityRole="switch" accessibilityState={{ checked: evidenceRequirements.requires_active_baseline, disabled: acting || quoteMode === 'kael_auto_quote' }} disabled={acting || quoteMode === 'kael_auto_quote'} onPress={() => updateEvidenceRequirements({ requires_active_baseline: !evidenceRequirements.requires_active_baseline })} style={[styles.switchRow, quoteMode === 'kael_auto_quote' && styles.buttonMuted]}>
-          <Text style={styles.secondary}>{labels.activeBaseline}</Text><Text style={styles.switchValue}>{evidenceRequirements.requires_active_baseline ? '✓' : '○'}</Text>
+          <AdminText textRole="footnote" style={styles.secondary}>{labels.activeBaseline}</AdminText><AdminText textRole="title2" style={styles.switchValue}>{evidenceRequirements.requires_active_baseline ? '✓' : '○'}</AdminText>
         </Pressable>
-        <Text style={styles.cardTitle}>{labels.safetyLocks}</Text>
-        <Text style={styles.secondary}>{[...selectedPolicy.safety_requirements, ...selectedPolicy.capability_requirements].join(' · ')}</Text>
+        <AdminText textRole="headline" style={styles.cardTitle}>{labels.safetyLocks}</AdminText>
+        <AdminText textRole="footnote" style={styles.secondary}>{[...selectedPolicy.safety_requirements, ...selectedPolicy.capability_requirements].join(' · ')}</AdminText>
         <TextInput accessibilityLabel={labels.reason} editable={!acting} onChangeText={(value) => dispatch({ type: 'patch', patch: { reason: value } })} placeholder={labels.reason} style={styles.input} value={reason} />
         <View style={styles.actions}>
           <Action disabled={acting} label={labels.draft} onPress={draftPolicy} />
@@ -291,13 +293,13 @@ export function AdminPolicyGovernance({ language }: { language: AppLanguage }) {
           <Action disabled={acting || selectedPolicy.status !== 'retired'} label={labels.rollback} onPress={() => transitionPolicy('rollback')} />
           <Action disabled={acting} label={labels.preview} onPress={previewPolicy} />
         </View>
-        {preview ? <Text style={styles.secondary}>{labels.missing}: {[...preview.missing_tier_a, ...preview.missing_tier_b].join(', ')} · {labels.evidence}: {preview.evidence_requirements.minimum_source_count}/{preview.evidence_requirements.minimum_high_trust_source_count}</Text> : null}
+        {preview ? <AdminText textRole="footnote" style={styles.secondary}>{labels.missing}: {[...preview.missing_tier_a, ...preview.missing_tier_b].join(', ')} · {labels.evidence}: {preview.evidence_requirements.minimum_source_count}/{preview.evidence_requirements.minimum_high_trust_source_count}</AdminText> : null}
       </View> : null}
     </>}
-    <Text style={styles.sectionTitle}>{labels.pricePolicies}</Text>
+    <AdminText textRole="title2" style={styles.sectionTitle}>{labels.pricePolicies}</AdminText>
     {baselines.map((baseline) => <View key={baseline.id} style={styles.card}>
-      <Text style={styles.cardTitle}>{baseline.service_type} · {baseline.complexity}</Text>
-      <Text style={styles.secondary}>{labels.version} {baseline.version} · {labels.status}: {baseline.status} · {labels.evidence}: {evidenceCount(baseline.price_evidence)}</Text>
+      <AdminText textRole="headline" style={styles.cardTitle}>{baseline.service_type} · {baseline.complexity}</AdminText>
+      <AdminText textRole="footnote" style={styles.secondary}>{labels.version} {baseline.version} · {labels.status}: {baseline.status} · {labels.evidence}: {evidenceCount(baseline.price_evidence)}</AdminText>
       <View style={styles.actions}>
         <Action disabled={acting} label={labels.draft} onPress={() => { void run(() => adminControlService.createPriceBaselineDraft({ problem_id: baseline.service_problem_id, district_code: baseline.district_code, complexity: baseline.complexity, expected_revision: baseline.price_baseline_governance_heads.revision, price_min: baseline.price_min, price_max: baseline.price_max, source: baseline.source, price_evidence: baseline.price_evidence, reason })) }} />
         <Action disabled={acting || baseline.status !== 'draft'} label={labels.approve} onPress={() => { void run(() => adminControlService.transitionPriceBaseline(baseline.id, 'approve', { expected_revision: baseline.price_baseline_governance_heads.revision, reason })) }} />
@@ -309,7 +311,7 @@ export function AdminPolicyGovernance({ language }: { language: AppLanguage }) {
 }
 
 function Action({ disabled = false, label, onPress }: { disabled?: boolean; label: string; onPress: () => void }) {
-  return <Pressable accessibilityRole="button" disabled={disabled} onPress={onPress} style={({ pressed }) => [styles.button, (disabled || pressed) && styles.buttonMuted]}><Text style={styles.buttonText}>{label}</Text></Pressable>
+  return <Pressable accessibilityRole="button" disabled={disabled} onPress={onPress} style={({ pressed }) => [styles.button, (disabled || pressed) && styles.buttonMuted]}><AdminText textRole="headline" style={styles.buttonText}>{label}</AdminText></Pressable>
 }
 
 function evidenceCount(value: Record<string, unknown>): number {

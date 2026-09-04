@@ -1,15 +1,19 @@
-import { useCallback, useEffect, useEffectEvent, useReducer, useState } from 'react'
-import { Modal, Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native'
+import { useCallback, useEffect, useEffectEvent, useReducer } from 'react'
+import { Platform, Pressable, Share, StyleSheet, View } from 'react-native'
 
-import { KaelButton, KaelChip, KaelTextField } from '@/components/ui/kael-primitives'
+import { KaelButton, KaelTextField } from '@/components/ui/kael-primitives'
 import { color, component, spacing, typography } from '@/design/theme'
 import type {
   AdminFinancePeriodInput,
   AdminFinanceTaxPolicy,
   AdminFinanceTaxPolicyDraftInput,
   AdminFinanceTransaction,
+  AdminFinanceTransactionDetailResponse,
 } from '@/lib/api-types/admin'
+import { generateClientRequestId } from '@/lib/client-request-id'
 import { adminControlService } from '@/lib/services'
+import { FinanceChoiceChip, FinanceSecondaryButton } from './admin-finance-controls'
+import { AdminText } from './admin-text'
 
 type CommonProps = {
   formatCurrency: (value: number | null) => string
@@ -24,15 +28,45 @@ type FinanceTaxReportsProps = Omit<CommonProps, 'formatCurrency'> & {
   refreshKey: number
 }
 
-type TaxPolicyDraftForm = {
+type TaxPolicyRuleForm = {
   basis: AdminFinanceTaxPolicy['basis']
+  formKey: string
+  ratePercent: string
+  subject: AdminFinanceTaxPolicy['subject']
+  taxType: string
+}
+
+type FinanceTransactionsState = {
+  cursor: string | null
+  detail: AdminFinanceTransactionDetailResponse | null
+  detailLoading: boolean
+  error: string | null
+  loading: boolean
+  rows: AdminFinanceTransaction[]
+}
+
+type FinanceTransactionsPatch = Partial<FinanceTransactionsState> |
+  ((current: FinanceTransactionsState) => Partial<FinanceTransactionsState>)
+
+const initialFinanceTransactionsState: FinanceTransactionsState = {
+  cursor: null,
+  detail: null,
+  detailLoading: false,
+  error: null,
+  loading: true,
+  rows: [],
+}
+
+function financeTransactionsReducer(current: FinanceTransactionsState, next: FinanceTransactionsPatch) {
+  return { ...current, ...(typeof next === 'function' ? next(current) : next) }
+}
+
+type TaxPolicyDraftForm = {
   effectiveFrom: string
   effectiveTo: string
   name: string
-  ratePercent: string
+  rules: TaxPolicyRuleForm[]
   sourceReference: string
-  subject: AdminFinanceTaxPolicy['subject']
-  taxType: string
 }
 
 type TaxPolicyEditor =
@@ -44,6 +78,7 @@ type TaxPolicyEditor =
 type FinanceTaxReportsState = {
   editor: TaxPolicyEditor | null
   exporting: boolean
+  generatedAt: string | null
   loading: boolean
   notice: string | null
   policies: AdminFinanceTaxPolicy[]
@@ -57,6 +92,7 @@ type FinanceTaxReportsPatch = Partial<FinanceTaxReportsState> |
 const initialFinanceTaxReportsState: FinanceTaxReportsState = {
   editor: null,
   exporting: false,
+  generatedAt: null,
   loading: true,
   notice: null,
   policies: [],
@@ -79,6 +115,7 @@ const transactionDateFormatters = {
 const copy = {
   vi: {
     active: 'Đang hiệu lực',
+    addRule: 'Thêm quy tắc',
     actionFailed: 'Chưa thể lưu thay đổi chính sách lúc này. Vui lòng thử lại.',
     approvalEvidence: 'Mã hồ sơ kế toán đã phê duyệt',
     approvalRequired: 'Cần mã hồ sơ kế toán trước khi duyệt.',
@@ -86,6 +123,7 @@ const copy = {
     approved: 'Chính sách đã được duyệt.',
     awaitingOwner: 'Chờ Owner duyệt',
     basis: 'Cơ sở tính',
+    back: 'Quay lại danh sách',
     cancel: 'Hủy',
     create: 'Tạo bản nháp',
     draftSaved: 'Bản nháp đã được lưu.',
@@ -103,15 +141,21 @@ const copy = {
     invalidDraft: 'Hãy nhập đủ tên, mã loại thuế, tỷ lệ, ngày hiệu lực và hồ sơ nguồn hợp lệ.',
     masked: 'Mã nhận dạng đã che',
     policies: 'Chính sách thuế',
+    reports: 'Báo cáo',
+    reportingDisclaimer: 'Số liệu phục vụ đối chiếu nội bộ, không phải tư vấn thuế.',
+    generatedAt: 'Dữ liệu tạo lúc',
     retired: 'Đã ngừng',
     retire: 'Ngừng chính sách',
     retiredNotice: 'Chính sách đã được ngừng.',
+    removeRule: 'Xóa quy tắc',
     retry: 'Thử lại',
     shareFailed: 'Báo cáo đã tạo nhưng không thể mở bảng chia sẻ trên thiết bị này.',
     taxPoliciesUnavailable: 'Chưa thể tải chính sách thuế lúc này.',
     taxType: 'Mã loại thuế',
     taxRate: 'Thuế suất (%)',
+    taxRule: (index: number) => `Quy tắc ${index}`,
     transactions: 'Giao dịch trong kỳ',
+    transactionDetail: 'Chi tiết giao dịch',
     transactionsUnavailable: 'Dữ liệu giao dịch chi tiết đang chờ đồng bộ.',
     unavailable: 'Chưa có dữ liệu',
     sourceReference: 'Hồ sơ nguồn',
@@ -123,6 +167,7 @@ const copy = {
   },
   en: {
     active: 'Active',
+    addRule: 'Add rule',
     actionFailed: 'The policy change could not be saved right now. Please try again.',
     approvalEvidence: 'Approved accounting record reference',
     approvalRequired: 'An accounting record reference is required before approval.',
@@ -130,6 +175,7 @@ const copy = {
     approved: 'The policy was approved.',
     awaitingOwner: 'Awaiting Owner approval',
     basis: 'Tax basis',
+    back: 'Back to list',
     cancel: 'Cancel',
     create: 'Create draft',
     draftSaved: 'The draft was saved.',
@@ -147,15 +193,21 @@ const copy = {
     invalidDraft: 'Enter a valid name, tax type, rate, effective date, and source record.',
     masked: 'Masked identifiers',
     policies: 'Tax policies',
+    reports: 'Reports',
+    reportingDisclaimer: 'Figures are for internal reconciliation and are not tax advice.',
+    generatedAt: 'Data generated at',
     retired: 'Retired',
     retire: 'Retire policy',
     retiredNotice: 'The policy was retired.',
+    removeRule: 'Remove rule',
     retry: 'Try again',
     shareFailed: 'The report was generated, but sharing is unavailable on this device.',
     taxPoliciesUnavailable: 'Tax policy data is unavailable right now.',
     taxType: 'Tax type code',
     taxRate: 'Tax rate (%)',
+    taxRule: (index: number) => `Rule ${index}`,
     transactions: 'Transactions in period',
+    transactionDetail: 'Transaction detail',
     transactionsUnavailable: 'Detailed transaction data is waiting to sync.',
     unavailable: 'No data',
     sourceReference: 'Source record',
@@ -169,60 +221,80 @@ const copy = {
 
 export function FinanceTransactionsPanel({ formatCurrency, language, period }: CommonProps) {
   const strings = copy[language]
-  const [rows, setRows] = useState<AdminFinanceTransaction[]>([])
-  const [cursor, setCursor] = useState<string | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const [state, patch] = useReducer(financeTransactionsReducer, initialFinanceTransactionsState)
+  const { cursor, detail, detailLoading, error, loading, rows } = state
 
   const load = useCallback(async (nextCursor?: string) => {
-    setLoading(true)
-    setError(null)
+    patch({ error: null, loading: true })
     const result = await adminControlService.listFinanceTransactions({ ...period, cursor: nextCursor, limit: 25 })
     if (result.success) {
-      setRows((current) => nextCursor ? [...current, ...result.data.transactions] : result.data.transactions)
-      setCursor(result.data.next_cursor)
+      patch((current) => ({
+        cursor: result.data.next_cursor,
+        loading: false,
+        rows: nextCursor ? [...current.rows, ...result.data.transactions] : result.data.transactions,
+      }))
     } else {
-      setError(result.error)
+      patch({ error: result.error, loading: false })
     }
-    setLoading(false)
   }, [period])
 
   useEffect(() => {
-    const timer = setTimeout(() => { void load() }, 0)
-    return () => clearTimeout(timer)
+    let cancelled = false
+    void Promise.resolve().then(() => {
+      if (!cancelled) void load()
+    })
+    return () => {
+      cancelled = true
+    }
   }, [load])
+
+  const openDetail = useCallback(async (row: AdminFinanceTransaction) => {
+    patch({ detailLoading: true, error: null })
+    const result = await adminControlService.getFinanceTransaction(row.job_id)
+    patch(result.success
+      ? { detail: result.data, detailLoading: false }
+      : { detailLoading: false, error: result.error })
+  }, [])
+
+  if (detail) return <View style={styles.section} testID="admin-finance-transaction-detail">
+    <Pressable accessibilityLabel={strings.back} accessibilityRole="button" onPress={() => patch({ detail: null })} style={styles.backRow}><AdminText textRole="headline" style={styles.backText}>‹ {strings.back}</AdminText></Pressable>
+    <View style={styles.sectionHeader}><AdminText textRole="title2" style={styles.sectionTitle}>{strings.transactionDetail}</AdminText><AdminText textRole="footnote" style={styles.masked}>{strings.masked}</AdminText></View>
+    <TransactionRow formatCurrency={formatCurrency} language={language} row={detail.transaction} />
+    <View style={styles.timeline}>
+      {detail.timeline.map((event) => <View key={`${event.event_type}:${event.occurred_at}:${event.actor_ref ?? 'system'}`} style={styles.timelineRow}><View style={styles.timelineDot} /><View style={styles.timelineText}><AdminText textRole="headline" style={styles.rowTitle}>{event.event_type}</AdminText><AdminText numeric textRole="footnote" style={styles.secondary}>{event.occurred_at}{event.actor_ref ? ` · ${event.actor_ref}` : ''}</AdminText></View></View>)}
+    </View>
+  </View>
 
   return <View style={styles.section} testID="admin-finance-transactions">
     <View style={styles.sectionHeader}>
-      <Text style={styles.sectionTitle}>{strings.transactions}</Text>
-      <Text style={styles.masked}>{strings.masked}</Text>
+      <AdminText textRole="title2" style={styles.sectionTitle}>{strings.transactions}</AdminText>
+      <AdminText textRole="footnote" style={styles.masked}>{strings.masked}</AdminText>
     </View>
-    {error ? <View accessibilityRole="alert" style={styles.stateCard}><Text style={styles.error}>{strings.transactionsUnavailable}</Text><KaelButton label={strings.retry} onPress={() => { void load() }} size="small" variant="secondary" /></View>
-      : !loading && rows.length === 0 ? <View style={styles.stateCard}><Text style={styles.secondary}>{strings.emptyTransactions}</Text></View>
-        : rows.map((row) => <TransactionRow formatCurrency={formatCurrency} key={row.job_id} language={language} row={row} />)}
-    {loading ? <Text accessibilityLiveRegion="polite" style={styles.secondary}>{strings.loading}…</Text> : null}
-    {cursor && !loading ? <KaelButton label={strings.loadMore} onPress={() => { void load(cursor) }} size="small" variant="secondary" /> : null}
+    {error ? <View accessibilityRole="alert" style={styles.stateCard}><AdminText textRole="subheadline" style={styles.error}>{strings.transactionsUnavailable}</AdminText><FinanceSecondaryButton label={strings.retry} onPress={() => { void load() }} size="small" /></View>
+      : !loading && rows.length === 0 ? <View style={styles.stateCard}><AdminText textRole="subheadline" style={styles.secondary}>{strings.emptyTransactions}</AdminText></View>
+        : rows.map((row) => <TransactionRow formatCurrency={formatCurrency} key={row.job_id} language={language} onPress={() => { void openDetail(row) }} row={row} />)}
+    {loading || detailLoading ? <AdminText textRole="subheadline" accessibilityLiveRegion="polite" style={styles.secondary}>{strings.loading}…</AdminText> : null}
+    {cursor && !loading ? <FinanceSecondaryButton label={strings.loadMore} onPress={() => { void load(cursor) }} size="small" /> : null}
   </View>
 }
 
-export function FinanceTaxReportsPanel({ canApproveTax, canManageTax, language, period, reduceMotion, refreshKey }: FinanceTaxReportsProps) {
+export function FinanceTaxReportsPanel({ canApproveTax, canManageTax, language, period, refreshKey }: FinanceTaxReportsProps) {
   const strings = copy[language]
   const [state, patch] = useReducer(financeTaxReportsReducer, initialFinanceTaxReportsState)
-  const { editor, exporting, loading, notice, policies, policyError, saving } = state
+  const { editor, exporting, generatedAt, loading, notice, policies, policyError, saving } = state
 
   const loadPolicies = useCallback(async () => {
     patch({ loading: true })
     const result = await adminControlService.listFinanceTaxPolicies()
     patch(result.success
-      ? { loading: false, policies: result.data.tax_policies, policyError: false }
+      ? { generatedAt: result.data.generated_at, loading: false, policies: result.data.tax_policies, policyError: false }
       : { loading: false, policies: [], policyError: true })
   }, [])
 
   const loadPoliciesOnRefresh = useEffectEvent(loadPolicies)
 
   useEffect(() => {
-    const timer = setTimeout(() => { void loadPoliciesOnRefresh() }, 0)
-    return () => clearTimeout(timer)
+    void loadPoliciesOnRefresh()
   }, [refreshKey])
 
   const exportCsv = useCallback(async () => {
@@ -233,7 +305,7 @@ export function FinanceTaxReportsPanel({ canApproveTax, canManageTax, language, 
       return
     }
     try {
-      await Share.share({ message: result.data.csv, title: result.data.filename })
+      await shareFinanceCsvFile(result.data.csv, result.data.filename)
       patch({ notice: strings.exportReady(result.data.row_count) })
     } catch {
       patch({ notice: strings.shareFailed })
@@ -251,6 +323,36 @@ export function FinanceTaxReportsPanel({ canApproveTax, canManageTax, language, 
     patch((current) => ({
       editor: isDraftEditor(current.editor)
         ? { ...current.editor, form: { ...current.editor.form, ...next } }
+        : current.editor,
+    }))
+  }, [])
+
+  const updateDraftRule = useCallback((index: number, next: Partial<TaxPolicyRuleForm>) => {
+    patch((current) => ({
+      editor: isDraftEditor(current.editor)
+        ? {
+          ...current.editor,
+          form: {
+            ...current.editor.form,
+            rules: current.editor.form.rules.map((rule, ruleIndex) => ruleIndex === index ? { ...rule, ...next } : rule),
+          },
+        }
+        : current.editor,
+    }))
+  }, [])
+
+  const addDraftRule = useCallback(() => {
+    patch((current) => ({
+      editor: isDraftEditor(current.editor) && current.editor.form.rules.length < 20
+        ? { ...current.editor, form: { ...current.editor.form, rules: [...current.editor.form.rules, emptyTaxRuleForm()] } }
+        : current.editor,
+    }))
+  }, [])
+
+  const removeDraftRule = useCallback((index: number) => {
+    patch((current) => ({
+      editor: isDraftEditor(current.editor) && current.editor.form.rules.length > 1
+        ? { ...current.editor, form: { ...current.editor.form, rules: current.editor.form.rules.filter((_, ruleIndex) => ruleIndex !== index) } }
         : current.editor,
     }))
   }, [])
@@ -316,61 +418,95 @@ export function FinanceTaxReportsPanel({ canApproveTax, canManageTax, language, 
     patch({ saving: false })
   }, [editor, loadPolicies, strings])
 
-  return <View style={styles.section} testID="admin-finance-tax-reports">
-    <View style={styles.sectionHeader}>
-      <Text style={styles.sectionTitle}>{strings.policies}</Text>
-      {canManageTax ? <KaelButton label={strings.create} onPress={() => openDraftEditor()} size="small" testID="admin-finance-tax-create" variant="secondary" /> : null}
-    </View>
-    {notice ? <Text accessibilityLiveRegion="polite" style={styles.secondary}>{notice}</Text> : null}
-    {policyError ? <View accessibilityRole="alert" style={styles.stateCard}>
-      <Text style={styles.error}>{strings.taxPoliciesUnavailable}</Text>
-      <KaelButton label={strings.retry} onPress={() => { void loadPolicies() }} size="small" testID="admin-finance-tax-retry" variant="secondary" />
-    </View> : null}
-    {loading ? <Text style={styles.secondary}>{strings.loading}…</Text>
-      : policyError ? null
-        : policies.length === 0 ? <View style={styles.stateCard}><Text style={styles.secondary}>{strings.emptyPolicies}</Text></View>
-        : policies.map((policy) => <View key={policy.id} style={styles.policyCard} testID={`admin-finance-tax-policy-${policy.id}`}>
-          <View style={styles.sectionHeader}><Text style={styles.rowTitle}>{policy.name}</Text><Text style={styles.status}>{policyStatus(policy, strings)}</Text></View>
-          <Text style={styles.secondary}>{strings.version} {policy.version} · {(policy.rate_bps / 100).toLocaleString(language === 'vi' ? 'vi-VN' : 'en-US')}% · {taxBasisLabel(policy.basis, language)}</Text>
-          <Text style={styles.secondary}>{policy.effective_from}{policy.effective_to ? ` — ${policy.effective_to}` : ''}</Text>
-          {canManageTax && policy.source_reference ? <Text style={styles.secondary}>{strings.sourceReference}: {policy.source_reference}</Text> : null}
-          {canManageTax && policy.status === 'draft' ? <View style={styles.policyActions}>
-            <KaelButton label={strings.edit} onPress={() => openDraftEditor(policy)} size="small" testID={`admin-finance-tax-edit-${policy.id}`} variant="secondary" />
-            {canApproveTax ? <KaelButton label={strings.approve} onPress={() => patch({ editor: { approvalReference: '', kind: 'approve', policyId: policy.id } })} size="small" testID={`admin-finance-tax-approve-${policy.id}`} /> : <Text style={styles.secondary}>{strings.awaitingOwner}</Text>}
-          </View> : null}
-          {canApproveTax && policy.status === 'approved' ? <KaelButton label={strings.retire} onPress={() => patch({ editor: { kind: 'retire', policyId: policy.id, reason: '' } })} size="small" testID={`admin-finance-tax-retire-${policy.id}`} variant="secondary" /> : null}
-        </View>)}
-    <KaelButton disabled={exporting} label={strings.export} onPress={() => { void exportCsv() }} testID="admin-finance-export-csv" variant="secondary" />
-    <TaxPolicyEditorModal
+  if (editor) return <View style={styles.section} testID="admin-finance-tax-reports">
+    {notice ? <AdminText textRole="subheadline" accessibilityLiveRegion="polite" style={styles.secondary}>{notice}</AdminText> : null}
+    <TaxPolicyEditorView
+      onAddRule={addDraftRule}
       editor={editor}
       language={language}
       onClose={() => patch({ editor: null })}
+      onRemoveRule={removeDraftRule}
       onUpdateDraft={updateDraftForm}
       onUpdateEditor={updateEditor}
+      onUpdateRule={updateDraftRule}
       onSubmit={() => { void submitEditor() }}
-      reduceMotion={reduceMotion}
       saving={saving}
     />
   </View>
+
+  return <View style={styles.section} testID="admin-finance-tax-reports">
+    <View style={styles.reportSurface}>
+      <AdminText textRole="title2" style={styles.sectionTitle}>{strings.reports}</AdminText>
+      <AdminText textRole="subheadline" style={styles.secondary}>{strings.reportingDisclaimer}</AdminText>
+      {generatedAt ? <AdminText numeric textRole="footnote" style={styles.secondary}>{strings.generatedAt}: {generatedAt}</AdminText> : null}
+      <FinanceSecondaryButton disabled={exporting} label={strings.export} onPress={() => { void exportCsv() }} testID="admin-finance-export-csv" />
+    </View>
+    <View style={styles.sectionHeader}>
+      <AdminText textRole="title2" style={styles.sectionTitle}>{strings.policies}</AdminText>
+      {canManageTax ? <FinanceSecondaryButton label={strings.create} onPress={() => openDraftEditor()} size="small" testID="admin-finance-tax-create" /> : null}
+    </View>
+    {notice ? <AdminText textRole="subheadline" accessibilityLiveRegion="polite" style={styles.secondary}>{notice}</AdminText> : null}
+    {policyError ? <View accessibilityRole="alert" style={styles.stateCard}>
+      <AdminText textRole="subheadline" style={styles.error}>{strings.taxPoliciesUnavailable}</AdminText>
+      <FinanceSecondaryButton label={strings.retry} onPress={() => { void loadPolicies() }} size="small" testID="admin-finance-tax-retry" />
+    </View> : null}
+    {loading ? <AdminText textRole="subheadline" style={styles.secondary}>{strings.loading}…</AdminText>
+      : policyError ? null
+        : policies.length === 0 ? <View style={styles.stateCard}><AdminText textRole="subheadline" style={styles.secondary}>{strings.emptyPolicies}</AdminText></View>
+        : policies.map((policy) => <View key={policy.id} style={styles.policyCard} testID={`admin-finance-tax-policy-${policy.id}`}>
+          <View style={styles.sectionHeader}><AdminText textRole="headline" style={styles.rowTitle}>{policy.name}</AdminText><AdminText textRole="footnote" style={styles.status}>{policyStatus(policy, strings)}</AdminText></View>
+          <AdminText numeric textRole="footnote" style={styles.secondary}>{strings.version} {policy.version} · {policy.rules.length.toLocaleString(language === 'vi' ? 'vi-VN' : 'en-US')} {language === 'vi' ? 'quy tắc' : 'rules'}</AdminText>
+          {policy.rules.map((rule, index) => <AdminText key={rule.id} numeric textRole="footnote" style={styles.secondary}>{strings.taxRule(index + 1)} · {(rule.rate_bps / 100).toLocaleString(language === 'vi' ? 'vi-VN' : 'en-US')}% · {taxBasisLabel(rule.basis, language)}</AdminText>)}
+          <AdminText textRole="footnote" style={styles.secondary}>{policy.effective_from}{policy.effective_to ? ` — ${policy.effective_to}` : ''}</AdminText>
+          {canManageTax && policy.source_reference ? <AdminText textRole="footnote" style={styles.secondary}>{strings.sourceReference}: {policy.source_reference}</AdminText> : null}
+          {canManageTax && policy.status === 'draft' ? <View style={styles.policyActions}>
+            <FinanceSecondaryButton label={strings.edit} onPress={() => openDraftEditor(policy)} size="small" testID={`admin-finance-tax-edit-${policy.id}`} />
+            {canApproveTax ? <KaelButton label={strings.approve} onPress={() => patch({ editor: { approvalReference: '', kind: 'approve', policyId: policy.id } })} size="small" testID={`admin-finance-tax-approve-${policy.id}`} /> : <AdminText textRole="footnote" style={styles.secondary}>{strings.awaitingOwner}</AdminText>}
+          </View> : null}
+          {canApproveTax && policy.status === 'approved' ? <FinanceSecondaryButton label={strings.retire} onPress={() => patch({ editor: { kind: 'retire', policyId: policy.id, reason: '' } })} size="small" testID={`admin-finance-tax-retire-${policy.id}`} /> : null}
+        </View>)}
+  </View>
 }
 
-function TaxPolicyEditorModal({
+async function shareFinanceCsvFile(csv: string, filename: string) {
+  if (Platform.OS === 'web') {
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const anchor = document.createElement('a')
+    anchor.href = url
+    anchor.download = filename
+    anchor.click()
+    URL.revokeObjectURL(url)
+    return
+  }
+  const { File, Paths } = await import('expo-file-system')
+  const file = new File(Paths.cache, filename)
+  file.create({ overwrite: true })
+  file.write(csv)
+  await Share.share({ title: filename, url: file.uri })
+}
+
+function TaxPolicyEditorView({
   editor,
   language,
+  onAddRule,
   onClose,
+  onRemoveRule,
   onSubmit,
   onUpdateDraft,
   onUpdateEditor,
-  reduceMotion,
+  onUpdateRule,
   saving,
 }: {
   editor: TaxPolicyEditor | null
   language: 'vi' | 'en'
+  onAddRule: () => void
   onClose: () => void
+  onRemoveRule: (index: number) => void
   onSubmit: () => void
   onUpdateDraft: (next: Partial<TaxPolicyDraftForm>) => void
   onUpdateEditor: (next: TaxPolicyEditor | null | ((current: TaxPolicyEditor | null) => TaxPolicyEditor | null)) => void
-  reduceMotion: boolean
+  onUpdateRule: (index: number, next: Partial<TaxPolicyRuleForm>) => void
   saving: boolean
 }) {
   const strings = copy[language]
@@ -383,62 +519,63 @@ function TaxPolicyEditorModal({
     : editor?.kind === 'retire' ? strings.retire
       : strings.create
 
-  return <Modal animationType={reduceMotion ? 'none' : 'fade'} transparent visible={editor !== null} onRequestClose={onClose}>
-    <View style={styles.modalBackdrop}>
-      <View accessibilityViewIsModal style={styles.modalCard} testID="admin-finance-tax-editor">
-        <Text style={styles.modalTitle}>{title}</Text>
-        <ScrollView contentContainerStyle={styles.modalContent} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator>
+  if (!editor) return null
+  return <View style={styles.editorSurface} testID="admin-finance-tax-editor">
+        <AdminText textRole="title2" style={styles.modalTitle}>{title}</AdminText>
+        <View style={styles.modalContent}>
           {isDraft ? <>
             <KaelTextField label={language === 'vi' ? 'Tên chính sách' : 'Policy name'} onChangeText={(name) => onUpdateDraft({ name })} testID="admin-finance-tax-form-name" value={editor.form.name} />
-            <KaelTextField autoCapitalize="none" label={strings.taxType} onChangeText={(taxType) => onUpdateDraft({ taxType })} testID="admin-finance-tax-form-type" value={editor.form.taxType} />
-            <View style={styles.formSection}>
-              <Text style={styles.fieldLabel}>{strings.subject}</Text>
-              <View style={styles.chipRow}>
-                <KaelChip accessibilityState={{ selected: editor.form.subject === 'platform' }} label={strings.subjectPlatform} onPress={() => onUpdateDraft({ subject: 'platform' })} testID="admin-finance-tax-form-subject-platform" variant={editor.form.subject === 'platform' ? 'selected' : 'unselected'} />
-                <KaelChip accessibilityState={{ selected: editor.form.subject === 'worker' }} label={strings.subjectWorker} onPress={() => onUpdateDraft({ subject: 'worker' })} testID="admin-finance-tax-form-subject-worker" variant={editor.form.subject === 'worker' ? 'selected' : 'unselected'} />
+            {editor.form.rules.map((rule, index) => <View key={rule.formKey} style={styles.ruleSurface} testID={`admin-finance-tax-form-rule-${index}`}>
+              <View style={styles.sectionHeader}><AdminText textRole="headline" style={styles.fieldLabel}>{strings.taxRule(index + 1)}</AdminText>{editor.form.rules.length > 1 ? <FinanceSecondaryButton label={strings.removeRule} onPress={() => onRemoveRule(index)} size="small" /> : null}</View>
+              <KaelTextField autoCapitalize="none" label={strings.taxType} onChangeText={(taxType) => onUpdateRule(index, { taxType })} testID={index === 0 ? 'admin-finance-tax-form-type' : `admin-finance-tax-form-type-${index}`} value={rule.taxType} />
+              <View style={styles.formSection}>
+                <AdminText textRole="subheadline" style={styles.fieldLabel}>{strings.subject}</AdminText>
+                <View style={styles.chipRow}>
+                  <FinanceChoiceChip label={strings.subjectPlatform} onPress={() => onUpdateRule(index, { subject: 'platform' })} selected={rule.subject === 'platform'} testID={index === 0 ? 'admin-finance-tax-form-subject-platform' : `admin-finance-tax-form-subject-platform-${index}`} />
+                  <FinanceChoiceChip label={strings.subjectWorker} onPress={() => onUpdateRule(index, { subject: 'worker' })} selected={rule.subject === 'worker'} testID={index === 0 ? 'admin-finance-tax-form-subject-worker' : `admin-finance-tax-form-subject-worker-${index}`} />
+                </View>
               </View>
-            </View>
-            <View style={styles.formSection}>
-              <Text style={styles.fieldLabel}>{strings.basis}</Text>
-              <View style={styles.chipRow}>
-                {(['gmv', 'commission_collected', 'commission_retained', 'worker_net_paid'] as const).map((basis) => <KaelChip
-                  accessibilityState={{ selected: editor.form.basis === basis }}
-                  key={basis}
-                  label={taxBasisLabel(basis, language)}
-                  onPress={() => onUpdateDraft({ basis })}
-                  testID={`admin-finance-tax-form-basis-${basis}`}
-                  variant={editor.form.basis === basis ? 'selected' : 'unselected'}
-                />)}
+              <View style={styles.formSection}>
+                <AdminText textRole="subheadline" style={styles.fieldLabel}>{strings.basis}</AdminText>
+                <View style={styles.chipRow}>
+                  {(['gmv', 'commission_collected', 'commission_retained', 'worker_net_paid'] as const).map((basis) => <FinanceChoiceChip
+                    key={basis}
+                    label={taxBasisLabel(basis, language)}
+                    onPress={() => onUpdateRule(index, { basis })}
+                    selected={rule.basis === basis}
+                    testID={index === 0 ? `admin-finance-tax-form-basis-${basis}` : `admin-finance-tax-form-basis-${basis}-${index}`}
+                  />)}
+                </View>
               </View>
-            </View>
-            <KaelTextField keyboardType="decimal-pad" label={strings.taxRate} onChangeText={(ratePercent) => onUpdateDraft({ ratePercent })} testID="admin-finance-tax-form-rate" value={editor.form.ratePercent} />
+              <KaelTextField keyboardType="decimal-pad" label={strings.taxRate} onChangeText={(ratePercent) => onUpdateRule(index, { ratePercent })} testID={index === 0 ? 'admin-finance-tax-form-rate' : `admin-finance-tax-form-rate-${index}`} value={rule.ratePercent} />
+            </View>)}
+            <FinanceSecondaryButton label={strings.addRule} onPress={onAddRule} size="small" testID="admin-finance-tax-add-rule" />
             <KaelTextField autoCapitalize="none" label={strings.effectiveFrom} onChangeText={(effectiveFrom) => onUpdateDraft({ effectiveFrom })} placeholder="YYYY-MM-DD" testID="admin-finance-tax-form-effective-from" value={editor.form.effectiveFrom} />
             <KaelTextField autoCapitalize="none" label={strings.effectiveTo} onChangeText={(effectiveTo) => onUpdateDraft({ effectiveTo })} placeholder="YYYY-MM-DD" testID="admin-finance-tax-form-effective-to" value={editor.form.effectiveTo} />
             <KaelTextField autoCapitalize="none" label={strings.sourceReference} onChangeText={(sourceReference) => onUpdateDraft({ sourceReference })} testID="admin-finance-tax-form-source-reference" value={editor.form.sourceReference} />
           </> : editor?.kind === 'approve' ? <KaelTextField autoCapitalize="characters" label={strings.approvalEvidence} onChangeText={(approvalReference) => onUpdateEditor((current) => current?.kind === 'approve' ? { ...current, approvalReference } : current)} testID="admin-finance-tax-form-approval-reference" value={editor.approvalReference} />
             : editor?.kind === 'retire' ? <KaelTextField label={strings.retireReason} multiline onChangeText={(reason) => onUpdateEditor((current) => current?.kind === 'retire' ? { ...current, reason } : current)} testID="admin-finance-tax-form-retire-reason" value={editor.reason} />
               : null}
-        </ScrollView>
+        </View>
         <View style={styles.modalActions}>
-          <KaelButton label={strings.cancel} onPress={onClose} style={styles.modalAction} variant="secondary" />
+          <FinanceSecondaryButton label={strings.cancel} onPress={onClose} style={styles.modalAction} />
           <KaelButton label={submitLabel} loading={saving} onPress={onSubmit} style={styles.modalAction} testID="admin-finance-tax-editor-submit" />
         </View>
-      </View>
-    </View>
-  </Modal>
+  </View>
 }
 
 function emptyTaxPolicyForm(): TaxPolicyDraftForm {
   return {
-    basis: 'commission_retained',
     effectiveFrom: '',
     effectiveTo: '',
     name: '',
-    ratePercent: '',
+    rules: [emptyTaxRuleForm()],
     sourceReference: '',
-    subject: 'platform',
-    taxType: '',
   }
+}
+
+function emptyTaxRuleForm(): TaxPolicyRuleForm {
+  return { basis: 'commission_retained', formKey: generateClientRequestId(), ratePercent: '', subject: 'platform', taxType: '' }
 }
 
 function isDraftEditor(editor: TaxPolicyEditor | null): editor is Extract<TaxPolicyEditor, { kind: 'create' | 'edit' }> {
@@ -448,30 +585,35 @@ function isDraftEditor(editor: TaxPolicyEditor | null): editor is Extract<TaxPol
 function taxPolicyDraftInput(form: TaxPolicyDraftForm): AdminFinanceTaxPolicyDraftInput | null {
   const effectiveFrom = form.effectiveFrom.trim()
   const effectiveTo = form.effectiveTo.trim()
-  const rateBps = Math.round(Number(form.ratePercent.trim().replace(',', '.')) * 100)
-  if (!form.name.trim() || !form.taxType.trim() || !form.sourceReference.trim() || !isIsoDate(effectiveFrom) || (effectiveTo && (!isIsoDate(effectiveTo) || effectiveTo < effectiveFrom)) || !Number.isSafeInteger(rateBps) || rateBps < 1 || rateBps > 10_000) return null
+  const rules = form.rules.map((rule) => ({
+    basis: rule.basis,
+    rate_bps: Math.round(Number(rule.ratePercent.trim().replace(',', '.')) * 100),
+    subject: rule.subject,
+    tax_type: rule.taxType.trim(),
+  }))
+  if (!form.name.trim() || !form.sourceReference.trim() || rules.length < 1 || rules.some((rule) => !rule.tax_type || !Number.isSafeInteger(rule.rate_bps) || rule.rate_bps < 1 || rule.rate_bps > 10_000) || !isIsoDate(effectiveFrom) || (effectiveTo && (!isIsoDate(effectiveTo) || effectiveTo < effectiveFrom))) return null
   return {
-    basis: form.basis,
     effective_from: effectiveFrom,
     ...(effectiveTo ? { effective_to: effectiveTo } : {}),
     name: form.name.trim(),
-    rate_bps: rateBps,
+    rules,
     source_reference: form.sourceReference.trim(),
-    subject: form.subject,
-    tax_type: form.taxType.trim(),
   }
 }
 
 function taxPolicyForm(policy: AdminFinanceTaxPolicy): TaxPolicyDraftForm {
   return {
-    basis: policy.basis,
     effectiveFrom: policy.effective_from,
     effectiveTo: policy.effective_to ?? '',
     name: policy.name,
-    ratePercent: String(policy.rate_bps / 100),
+    rules: policy.rules.map((rule) => ({
+      basis: rule.basis,
+      formKey: generateClientRequestId(),
+      ratePercent: String(rule.rate_bps / 100),
+      subject: rule.subject,
+      taxType: rule.tax_type,
+    })),
     sourceReference: policy.source_reference ?? '',
-    subject: policy.subject,
-    taxType: policy.tax_type,
   }
 }
 
@@ -482,17 +624,21 @@ function isIsoDate(value: string) {
   return date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day
 }
 
-function TransactionRow({ formatCurrency, language, row }: {
+function TransactionRow({ formatCurrency, language, onPress, row }: {
   formatCurrency: (value: number | null) => string
   language: 'vi' | 'en'
+  onPress?: () => void
   row: AdminFinanceTransaction
 }) {
   const date = row.paid_at ? transactionDateFormatters[language].format(new Date(row.paid_at)) : copy[language].unavailable
-  return <Pressable accessibilityLabel={`${row.display_code}, ${formatCurrency(row.gross_amount_vnd)}`} accessibilityRole="button" style={styles.transactionCard} testID={`admin-finance-transaction-${row.job_id}`}>
-    <View style={styles.sectionHeader}><Text style={styles.rowTitle}>{row.display_code}</Text><Text style={styles.status}>{transactionStatusLabel(row.status, language)}</Text></View>
-    <Text style={styles.amount}>{formatCurrency(row.gross_amount_vnd)}</Text>
-    <Text style={styles.secondary}>{row.customer_ref}{row.worker_ref ? ` · ${row.worker_ref}` : ''} · {date}</Text>
-  </Pressable>
+  const content = <>
+    <View style={styles.sectionHeader}><AdminText textRole="headline" style={styles.rowTitle}>{row.display_code}</AdminText><AdminText textRole="footnote" style={styles.status}>{transactionStatusLabel(row.status, language)}</AdminText></View>
+    <AdminText numeric textRole="headline" style={styles.amount}>{formatCurrency(row.gross_amount_vnd)}</AdminText>
+    <AdminText textRole="footnote" style={styles.secondary}>{row.customer_ref}{row.worker_ref ? ` · ${row.worker_ref}` : ''} · {date}</AdminText>
+  </>
+  return onPress
+    ? <Pressable accessibilityLabel={`${row.display_code}, ${formatCurrency(row.gross_amount_vnd)}`} accessibilityRole="button" onPress={onPress} style={styles.transactionCard} testID={`admin-finance-transaction-${row.job_id}`}>{content}</Pressable>
+    : <View style={styles.transactionCard} testID={`admin-finance-transaction-${row.job_id}`}>{content}</View>
 }
 
 function policyStatus(policy: AdminFinanceTaxPolicy, strings: typeof copy.vi | typeof copy.en) {
@@ -519,6 +665,8 @@ function transactionStatusLabel(status: string, language: 'vi' | 'en') {
 
 const styles = StyleSheet.create({
   amount: { ...typography.headline, color: color.text.strong, fontWeight: '600' },
+  backRow: { alignSelf: 'flex-start', minHeight: 44, justifyContent: 'center' },
+  backText: { ...typography.headline, color: color.brand.primaryDark, fontWeight: '600' },
   chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   error: { ...typography.subheadline, color: color.text.strong },
   fieldLabel: { ...typography.caption2, color: color.text.secondary, fontWeight: '600' },
@@ -526,12 +674,13 @@ const styles = StyleSheet.create({
   masked: { ...typography.caption2, color: color.text.muted },
   modalAction: { flex: 1 },
   modalActions: { flexDirection: 'row', gap: spacing.sm },
-  modalBackdrop: { alignItems: 'center', backgroundColor: 'rgba(15, 48, 47, 0.36)', flex: 1, justifyContent: 'center', padding: spacing.lg },
-  modalCard: { backgroundColor: color.surface.base, borderColor: color.surface.stroke, borderRadius: component.card.largeRadius, borderWidth: 1, gap: spacing.lg, maxHeight: '88%', maxWidth: 560, padding: spacing.xl, width: '100%' },
+  editorSurface: { backgroundColor: color.surface.base, borderColor: color.surface.stroke, borderRadius: component.card.radius, borderWidth: 1, gap: spacing.lg, padding: spacing.lg, width: '100%' },
   modalContent: { gap: spacing.md },
   modalTitle: { ...typography.title2, color: color.text.strong, fontWeight: '600' },
+  ruleSurface: { borderBottomColor: color.surface.stroke, borderBottomWidth: StyleSheet.hairlineWidth, gap: spacing.md, paddingBottom: spacing.lg },
   policyActions: { alignItems: 'center', flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
-  policyCard: { backgroundColor: color.surface.base, borderColor: color.surface.stroke, borderRadius: component.card.radius, borderWidth: 1, gap: spacing.sm, padding: spacing.lg },
+  policyCard: { borderTopColor: color.surface.stroke, borderTopWidth: StyleSheet.hairlineWidth, gap: spacing.sm, paddingVertical: spacing.lg },
+  reportSurface: { gap: spacing.md },
   rowTitle: { ...typography.subheadline, color: color.text.strong, flex: 1, fontWeight: '600' },
   secondary: { ...typography.caption2, color: color.text.secondary },
   section: { gap: spacing.md },
@@ -540,4 +689,8 @@ const styles = StyleSheet.create({
   stateCard: { backgroundColor: color.surface.soft, borderRadius: component.card.radius, gap: spacing.md, padding: spacing.lg },
   status: { ...typography.caption2, color: color.brand.primary, fontWeight: '600' },
   transactionCard: { backgroundColor: color.surface.base, borderColor: color.surface.stroke, borderRadius: component.card.radius, borderWidth: 1, gap: spacing.sm, padding: spacing.lg },
+  timeline: { gap: spacing.md },
+  timelineDot: { backgroundColor: color.brand.primary, borderRadius: 4, height: 8, marginTop: spacing.xs, width: 8 },
+  timelineRow: { alignItems: 'flex-start', flexDirection: 'row', gap: spacing.sm },
+  timelineText: { flex: 1, gap: spacing.xs },
 })

@@ -211,7 +211,9 @@ export type ServiceTables = {
           created_at: string
           id: string
           is_active: boolean
+          label_en: string | null
           label_vi: string
+          revision: number
           service_type: Database["public"]["Enums"]["service_type"]
           slug: string
           sort_order: number
@@ -221,7 +223,9 @@ export type ServiceTables = {
           created_at?: string
           id?: string
           is_active?: boolean
+          label_en?: string | null
           label_vi: string
+          revision?: number
           service_type: Database["public"]["Enums"]["service_type"]
           slug: string
           sort_order?: number
@@ -231,7 +235,9 @@ export type ServiceTables = {
           created_at?: string
           id?: string
           is_active?: boolean
+          label_en?: string | null
           label_vi?: string
+          revision?: number
           service_type?: Database["public"]["Enums"]["service_type"]
           slug?: string
           sort_order?: number
@@ -534,6 +540,7 @@ export type ServiceTables = {
           default_complexity: Database["public"]["Enums"]["complexity_level"]
           id: string
           is_active: boolean
+          label_en: string | null
           label_vi: string
           service_category_id: string
           service_type: Database["public"]["Enums"]["service_type"]
@@ -546,6 +553,7 @@ export type ServiceTables = {
           default_complexity?: Database["public"]["Enums"]["complexity_level"]
           id?: string
           is_active?: boolean
+          label_en?: string | null
           label_vi: string
           service_category_id: string
           service_type: Database["public"]["Enums"]["service_type"]
@@ -558,6 +566,7 @@ export type ServiceTables = {
           default_complexity?: Database["public"]["Enums"]["complexity_level"]
           id?: string
           is_active?: boolean
+          label_en?: string | null
           label_vi?: string
           service_category_id?: string
           service_type?: Database["public"]["Enums"]["service_type"]
@@ -571,6 +580,47 @@ export type ServiceTables = {
             columns: ["service_category_id"]
             isOneToOne: false
             referencedRelation: "service_categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      service_taxonomy_revisions: {
+        Row: {
+          actor_id: string
+          after_snapshot: Json
+          before_snapshot: Json
+          created_at: string
+          id: string
+          reason: string
+          revision: number
+          service_type: Database["public"]["Enums"]["service_type"]
+        }
+        Insert: {
+          actor_id: string
+          after_snapshot: Json
+          before_snapshot: Json
+          created_at?: string
+          id?: string
+          reason: string
+          revision: number
+          service_type: Database["public"]["Enums"]["service_type"]
+        }
+        Update: {
+          actor_id?: string
+          after_snapshot?: Json
+          before_snapshot?: Json
+          created_at?: string
+          id?: string
+          reason?: string
+          revision?: number
+          service_type?: Database["public"]["Enums"]["service_type"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "service_taxonomy_revisions_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]

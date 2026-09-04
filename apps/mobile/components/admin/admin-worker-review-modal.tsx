@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useReducer } from 'react'
 import { Image } from 'expo-image'
-import { ActivityIndicator, Modal, Pressable, ScrollView, Text, View } from 'react-native'
+import { ActivityIndicator, Modal, Pressable, ScrollView, View } from 'react-native'
 
 import { KaelButton, KaelTextField } from '@/components/ui/kael-primitives'
 import { color } from '@/design/theme'
@@ -16,6 +16,7 @@ import { MetaItem, StatusPill } from './admin-section-cards'
 import { createFinanceFormatters } from './admin-finance-formatters'
 import { styles } from './admin-sections-styles'
 import { workerReviewCopy } from './admin-worker-review-copy'
+import { AdminText } from './admin-text'
 
 type WorkerReviewModalProps = {
   actionPending: string | null
@@ -127,15 +128,15 @@ export function AdminWorkerReviewModal(props: WorkerReviewModalProps) {
   return <Modal animationType={props.reduceMotion ? 'none' : 'fade'} transparent visible onRequestClose={props.onClose}>
     <View style={styles.modalBackdrop}><View style={styles.modalCard} testID="admin-worker-review-detail">
       <ModalHeader copy={props.copy} onClose={props.onClose} worker={worker} reviewCopy={reviewCopy} />
-      {loading ? <View style={styles.detailLoading}><ActivityIndicator color={color.brand.primary} /></View> : error && !detail ? <View accessibilityRole="alert" style={styles.error}><Text style={styles.errorText}>{reviewCopy.error}</Text><KaelButton label={reviewCopy.actions.retry} onPress={retryDetail} variant="secondary" /></View> : detail ? <>
-        <ScrollView style={styles.modalBodyScroll} contentContainerStyle={styles.modalScrollContent}>
+      {loading ? <View style={styles.detailLoading}><ActivityIndicator color={color.brand.primary} /></View> : error && !detail ? <View accessibilityRole="alert" style={styles.error}><AdminText textRole="subheadline" style={styles.errorText}>{reviewCopy.error}</AdminText><KaelButton label={reviewCopy.actions.retry} onPress={retryDetail} variant="secondary" /></View> : detail ? <>
+        <ScrollView style={styles.modalBodyScroll} contentContainerStyle={styles.modalScrollContent} showsVerticalScrollIndicator={false}>
           <LoginSection detail={detail} copy={props.copy} formatDate={props.formatDate} reviewCopy={reviewCopy} />
           <ChecklistSection worker={detail.application} reviewCopy={reviewCopy} />
           <FinanceSection finance={finance} error={financeError} formatDate={props.formatDate} language={props.language} loading={financeLoading} reviewCopy={reviewCopy} />
           <ProfileSections detail={detail} copy={props.copy} reviewCopy={reviewCopy} serviceLabel={props.serviceLabel} />
           <HistorySection detail={detail} formatDate={props.formatDate} reviewCopy={reviewCopy} />
         </ScrollView>
-        {error ? <Text accessibilityRole="alert" style={styles.errorText}>{error}</Text> : null}
+        {error ? <AdminText textRole="subheadline" accessibilityRole="alert" style={styles.errorText}>{error}</AdminText> : null}
         <WorkerReviewActions {...props} profilePending={profilePending} reason={reason} requestingChanges={requestingChanges} setReason={(value) => patch({ reason: value })} setRequestingChanges={(value) => patch({ requestingChanges: value })} decideProfile={decideProfile} reviewCopy={reviewCopy} />
       </> : null}
     </View></View>
@@ -144,14 +145,14 @@ export function AdminWorkerReviewModal(props: WorkerReviewModalProps) {
 
 function ModalHeader({ copy, onClose, reviewCopy, worker }: { copy: AdminSectionsCopy; onClose: () => void; reviewCopy: typeof workerReviewCopy.vi; worker: AdminViewWorkerApplicationSummary }) {
   return <View style={styles.modalHeader}>
-    <View style={styles.cardTitleBlock}><Text style={styles.modalTitle}>{worker.full_name ?? copy.notRecorded}</Text><StatusPill label={reviewCopy.stage[worker.stage]} tone={worker.stage === 'verified' ? 'success' : worker.stage === 'ready_verification' ? 'warning' : 'neutral'} /></View>
-    <Pressable accessibilityRole="button" accessibilityLabel={reviewCopy.actions.close} onPress={onClose}><Text style={styles.closeLabel}>×</Text></Pressable>
+    <View style={styles.cardTitleBlock}><AdminText textRole="title2" style={styles.modalTitle}>{worker.full_name ?? copy.notRecorded}</AdminText><StatusPill label={reviewCopy.stage[worker.stage]} tone={worker.stage === 'verified' ? 'success' : worker.stage === 'ready_verification' ? 'warning' : 'neutral'} /></View>
+    <Pressable accessibilityRole="button" accessibilityLabel={reviewCopy.actions.close} onPress={onClose}><AdminText textRole="subheadline" style={styles.closeLabel}>×</AdminText></Pressable>
   </View>
 }
 
 function LoginSection({ copy, detail, formatDate, reviewCopy }: { copy: AdminSectionsCopy; detail: AdminViewWorkerReviewDetail; formatDate: WorkerReviewModalProps['formatDate']; reviewCopy: typeof workerReviewCopy.vi }) {
   return <View style={styles.reviewSection}>
-    <Text style={styles.reviewSectionTitle}>{reviewCopy.group.login}</Text>
+    <AdminText textRole="title2" style={styles.reviewSectionTitle}>{reviewCopy.group.login}</AdminText>
     <View style={styles.metaGrid}>
       <MetaItem label={copy.labels.fullName} value={detail.login_gates.full_name ?? copy.notRecorded} />
       <MetaItem label={reviewCopy.labels.contact} value={detail.login_gates.email ?? detail.login_gates.phone ?? copy.notRecorded} />
@@ -163,8 +164,8 @@ function LoginSection({ copy, detail, formatDate, reviewCopy }: { copy: AdminSec
 
 function ChecklistSection({ reviewCopy, worker }: { reviewCopy: typeof workerReviewCopy.vi; worker: AdminViewWorkerApplicationSummary }) {
   return <View style={styles.reviewSection}>
-    <Text style={styles.reviewSectionTitle}>{reviewCopy.group.checklist}</Text>
-    <View style={styles.reviewSummary}><Text style={styles.cardTitle}>{reviewCopy.progress(worker.checklist.completed_count, worker.checklist.total_count)}</Text>{worker.checklist.missing.length > 0 ? <Text style={styles.reviewSummaryText}>{reviewCopy.missingLabel}: {worker.checklist.missing.map((field) => reviewCopy.field[field] ?? field).join(' · ')}</Text> : null}</View>
+    <AdminText textRole="title2" style={styles.reviewSectionTitle}>{reviewCopy.group.checklist}</AdminText>
+    <View style={styles.reviewSummary}><AdminText textRole="headline" style={styles.cardTitle}>{reviewCopy.progress(worker.checklist.completed_count, worker.checklist.total_count)}</AdminText>{worker.checklist.missing.length > 0 ? <AdminText textRole="subheadline" style={styles.reviewSummaryText}>{reviewCopy.missingLabel}: {worker.checklist.missing.map((field) => reviewCopy.field[field] ?? field).join(' · ')}</AdminText> : null}</View>
   </View>
 }
 
@@ -185,8 +186,8 @@ function FinanceSection({
 }) {
   const formatters = createFinanceFormatters(language, '—')
   return <View style={styles.reviewSection} testID="admin-worker-finance-snapshot">
-    <Text style={styles.reviewSectionTitle}>{reviewCopy.group.finance}</Text>
-    {loading ? <Text style={styles.reviewSummaryText}>{language === 'vi' ? 'Đang tải thông tin tài chính...' : 'Loading finance data...'}</Text> : error && !finance ? <Text style={styles.reviewSummaryText}>{reviewCopy.noFinance}</Text> : finance ? <>
+    <AdminText textRole="title2" style={styles.reviewSectionTitle}>{reviewCopy.group.finance}</AdminText>
+    {loading ? <AdminText textRole="subheadline" style={styles.reviewSummaryText}>{language === 'vi' ? 'Đang tải thông tin tài chính...' : 'Loading finance data...'}</AdminText> : error && !finance ? <AdminText textRole="subheadline" style={styles.reviewSummaryText}>{reviewCopy.noFinance}</AdminText> : finance ? <>
       <View style={styles.metaGrid}>
         <MetaItem label={language === 'vi' ? 'Có thể rút' : 'Available'} value={formatters.formatCurrency(finance.available_balance)} />
         <MetaItem label={language === 'vi' ? 'Tạm ghi nhận' : 'Provisional'} value={formatters.formatCurrency(finance.provisional_payment_amount)} />
@@ -197,18 +198,18 @@ function FinanceSection({
         <MetaItem label={language === 'vi' ? 'Đã rút' : 'Withdrawn'} value={formatters.formatCurrency(finance.withdrawn_total)} />
         <MetaItem label={language === 'vi' ? 'Chờ Admin xác minh' : 'Pending Admin review'} value={`${finance.provisional_payment_count} · ${formatters.formatCurrency(finance.provisional_payment_amount)}`} />
       </View>
-      <Text style={styles.reviewSummaryText}>{finance.withdrawal_eligible_at
+      <AdminText textRole="subheadline" style={styles.reviewSummaryText}>{finance.withdrawal_eligible_at
         ? `${language === 'vi' ? 'Mốc rút sớm nhất' : 'Earliest withdrawal eligibility'}: ${formatDate(finance.withdrawal_eligible_at)}`
-        : (language === 'vi' ? 'Không có khoản rút tiền nào đang chờ đủ thời gian.' : 'No withdrawal is waiting for eligibility.')}</Text>
-    </> : <Text style={styles.reviewSummaryText}>{reviewCopy.noFinance}</Text>}
+        : (language === 'vi' ? 'Không có khoản rút tiền nào đang chờ đủ thời gian.' : 'No withdrawal is waiting for eligibility.')}</AdminText>
+    </> : <AdminText textRole="subheadline" style={styles.reviewSummaryText}>{reviewCopy.noFinance}</AdminText>}
   </View>
 }
 
 function ProfileSections({ copy, detail, reviewCopy, serviceLabel }: { copy: AdminSectionsCopy; detail: AdminViewWorkerReviewDetail; reviewCopy: typeof workerReviewCopy.vi; serviceLabel: WorkerReviewModalProps['serviceLabel'] }) {
   const profile = detail.profile
-  if (!profile) return <View style={styles.reviewSection}><Text style={styles.reviewSectionTitle}>{reviewCopy.group.skills}</Text><Text style={styles.reviewSummaryText}>{reviewCopy.noProfile}</Text></View>
+  if (!profile) return <View style={styles.reviewSection}><AdminText textRole="title2" style={styles.reviewSectionTitle}>{reviewCopy.group.skills}</AdminText><AdminText textRole="subheadline" style={styles.reviewSummaryText}>{reviewCopy.noProfile}</AdminText></View>
   return <>
-    <View style={styles.reviewSection}><Text style={styles.reviewSectionTitle}>{reviewCopy.group.skills}</Text><View style={styles.metaGrid}>
+    <View style={styles.reviewSection}><AdminText textRole="title2" style={styles.reviewSectionTitle}>{reviewCopy.group.skills}</AdminText><View style={styles.metaGrid}>
       <MetaItem label={reviewCopy.labels.legalName} value={profile.legal_name ?? copy.notRecorded} />
       <MetaItem label={reviewCopy.labels.birthDate} value={profile.date_of_birth ?? copy.notRecorded} />
       <MetaItem label={reviewCopy.labels.services} value={profile.service_types.length ? profile.service_types.map(serviceLabel).join(' · ') : copy.notRecorded} />
@@ -217,7 +218,7 @@ function ProfileSections({ copy, detail, reviewCopy, serviceLabel }: { copy: Adm
       <MetaItem label={reviewCopy.labels.radius} value={profile.service_radius_km === null ? copy.notRecorded : `${profile.service_radius_km} km`} />
     </View></View>
     <DocumentSection detail={detail} reviewCopy={reviewCopy} />
-    <View style={styles.reviewSection}><Text style={styles.reviewSectionTitle}>{reviewCopy.group.bank}</Text><View style={styles.metaGrid}><MetaItem label={reviewCopy.labels.bank} value={profile.bank_name ?? copy.notRecorded} /><MetaItem label={reviewCopy.labels.account} value={profile.bank_account ?? copy.notRecorded} /></View></View>
+    <View style={styles.reviewSection}><AdminText textRole="title2" style={styles.reviewSectionTitle}>{reviewCopy.group.bank}</AdminText><View style={styles.metaGrid}><MetaItem label={reviewCopy.labels.bank} value={profile.bank_name ?? copy.notRecorded} /><MetaItem label={reviewCopy.labels.account} value={profile.bank_account ?? copy.notRecorded} /></View></View>
   </>
 }
 
@@ -228,11 +229,11 @@ function DocumentSection({ detail, reviewCopy }: { detail: AdminViewWorkerReview
     { key: 'cccd_back', label: reviewCopy.field.cccd_back, uri: documents?.cccd_back_url },
     { key: 'selfie', label: reviewCopy.field.selfie, uri: documents?.selfie_url },
   ].filter((item): item is { key: string; label: string; uri: string } => Boolean(item.uri))
-  return <View style={styles.reviewSection}><Text style={styles.reviewSectionTitle}>{reviewCopy.group.documents}</Text>{items.length ? <View style={styles.documentGrid}>{items.map((item) => <View key={item.key} style={styles.documentCard}><Image accessibilityLabel={item.label} contentFit="cover" source={{ uri: item.uri }} style={styles.documentImage} /><Text style={styles.documentLabel}>{item.label}</Text></View>)}</View> : <Text style={styles.reviewSummaryText}>{reviewCopy.noProfile}</Text>}</View>
+  return <View style={styles.reviewSection}><AdminText textRole="title2" style={styles.reviewSectionTitle}>{reviewCopy.group.documents}</AdminText>{items.length ? <View style={styles.documentGrid}>{items.map((item) => <View key={item.key} style={styles.documentCard}><Image accessibilityLabel={item.label} contentFit="cover" source={{ uri: item.uri }} style={styles.documentImage} /><AdminText textRole="subheadline" style={styles.documentLabel}>{item.label}</AdminText></View>)}</View> : <AdminText textRole="subheadline" style={styles.reviewSummaryText}>{reviewCopy.noProfile}</AdminText>}</View>
 }
 
 function HistorySection({ detail, formatDate, reviewCopy }: { detail: AdminViewWorkerReviewDetail; formatDate: WorkerReviewModalProps['formatDate']; reviewCopy: typeof workerReviewCopy.vi }) {
-  return <View style={styles.reviewSection}><Text style={styles.reviewSectionTitle}>{reviewCopy.group.history}</Text>{detail.history.length ? detail.history.map((item, index) => <View key={`${item.decided_at}-${index}`} style={styles.historyRow}><Text style={styles.historyDecision}>{item.stage === 'access' ? reviewCopy.group.access : reviewCopy.group.checklist} · {item.decision}</Text>{item.reason ? <Text style={styles.historyReason}>{item.reason}</Text> : null}<Text style={styles.historyReason}>{item.decided_by_name ?? '—'} · {formatDate(item.decided_at)}</Text></View>) : <Text style={styles.reviewSummaryText}>{reviewCopy.noHistory}</Text>}</View>
+  return <View style={styles.reviewSection}><AdminText textRole="title2" style={styles.reviewSectionTitle}>{reviewCopy.group.history}</AdminText>{detail.history.length ? detail.history.map((item, index) => <View key={`${item.decided_at}-${index}`} style={styles.historyRow}><AdminText textRole="subheadline" style={styles.historyDecision}>{item.stage === 'access' ? reviewCopy.group.access : reviewCopy.group.checklist} · {item.decision}</AdminText>{item.reason ? <AdminText textRole="subheadline" style={styles.historyReason}>{item.reason}</AdminText> : null}<AdminText textRole="subheadline" style={styles.historyReason}>{item.decided_by_name ?? '—'} · {formatDate(item.decided_at)}</AdminText></View>) : <AdminText textRole="subheadline" style={styles.reviewSummaryText}>{reviewCopy.noHistory}</AdminText>}</View>
 }
 
 type WorkerReviewActionsProps = WorkerReviewModalProps & {

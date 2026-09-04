@@ -49,6 +49,8 @@ jobs:
         run: node scripts/check-protocol-routes.mjs
       - name: Work-router coverage ratchet
         run: node scripts/check-work-plan.mjs --coverage
+      - name: Docker contract ratchet
+        run: node scripts/check-docker-contracts.mjs
       - name: Script fixture suites
         run: node --test scripts/*.test.mjs scripts/harness/*.test.mjs
 

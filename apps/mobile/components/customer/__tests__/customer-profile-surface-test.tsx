@@ -1310,9 +1310,9 @@ describe('CustomerV21 dock', () => {
     }
     expect(screen.getByTestId('customer-v21-kael-accessory')).toBeOnTheScreen()
     expect(screen.queryByTestId('customer-v21-dock-kael')).toBeNull()
-    expect(screen.getByTestId('customer-v21-dock-lens')).toBeOnTheScreen()
-    expect(screen.getByTestId('customer-v21-dock-shimmer')).toBeOnTheScreen()
-    expect(screen.getByTestId('customer-v21-dock-caustic')).toBeOnTheScreen()
+    expect(screen.queryByTestId('customer-v21-dock-lens')).toBeNull()
+    expect(screen.queryByTestId('customer-v21-dock-shimmer')).toBeNull()
+    expect(screen.queryByTestId('customer-v21-dock-caustic')).toBeNull()
 
     fireEvent.press(screen.getByTestId('customer-v21-dock-services'))
     expect(mockReplace).toHaveBeenCalledWith('/(customer)/booking')

@@ -105,6 +105,7 @@ jobs:
               'apps/mobile/components/kael/kael-svg-lottie-view.tsx'|\
               'apps/mobile/components/worker/earnings/overview-styles.ts'|\
               'apps/mobile/components/worker/earnings/overview-surfaces.tsx'|\
+              'apps/mobile/components/worker/earnings/salary-assets.ts'|\
               'apps/mobile/components/worker/home/opportunity-styles.ts'|\
               'apps/mobile/components/worker/home/opportunity-surfaces.tsx'|\
               'apps/mobile/components/worker/jobs/acceptance-styles.ts'|\

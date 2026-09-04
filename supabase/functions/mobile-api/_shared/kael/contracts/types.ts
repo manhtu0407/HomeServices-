@@ -19,6 +19,28 @@ export type {
 
 export type KaelDisplayLanguage = "vi" | "en";
 
+export type WorkerKaelConversationScope =
+  | "normal"
+  | "opportunity_intake"
+  | "job_intake";
+
+export type WorkerOpportunityAssistContext = {
+  readonly broadcast_id: string;
+  readonly job_id: string;
+  readonly service_type: ServiceType;
+  readonly problem_summary: string | null;
+  readonly scope_summary: string | null;
+  readonly district: string | null;
+  readonly scheduled_at: string | null;
+  readonly expires_at: string;
+  readonly media_count: number;
+};
+
+export type WorkerOpportunityAssistPreferences = {
+  readonly service_types: readonly ServiceType[];
+  readonly districts: readonly string[];
+};
+
 export const PRICE_DISCLAIMER =
   "Đây là ước tính do Kael tính theo dữ liệu hiện có. Kael có thể cập nhật khi có bằng chứng phạm vi mới.";
 export const PRICE_DISCLAIMER_EN =

@@ -22,6 +22,7 @@ import {
   type AdminSubAdminAccountCandidate,
   type AdminSubAdminAccountSearchInput,
   type AdminSubAdminAccountSearchResponse,
+  type AdminSubAdminListInput,
   type AdminSubAdminListResponse,
   type AdminSubAdminSummary,
   type AdminWorkerAccessInput,
@@ -30,7 +31,6 @@ import {
   type AdminWorkerApplicationDecisionResponse,
   type AdminWorkerApplicationListInput,
   type AdminWorkerApplicationListResponse,
-  type AdminWorkerApplicationStatus,
   type AdminWorkerApplicationSummary,
   type AdminWorkerChecklist,
   type AdminWorkerReviewStage,
@@ -44,13 +44,31 @@ import {
 import { asCapabilities, requireAdminCapability } from "./actor.ts";
 import { serializeProvisioning } from "./operator-provisioning.ts";
 import { scopeQueryToRealTraffic } from "../../platform/synthetic-cohort.ts";
+import { afterSubAdminCursor, encodeSubAdminCursor } from "./control-pagination.ts";
+import {
+  asBaselineRole,
+  asDecisionStatus,
+  asOperatorStatus,
+  asRecordArray,
+  asReviewDecision,
+  asUserRole,
+  asWorkerApplicationStatus,
+  indexById,
+  mapManagerNominationError,
+  mapSubAdminAccessError,
+  mapWorkerAccessError,
+  mapWorkerApplicationDecisionError,
+  nonNegativeInteger,
+  requireAdminOwner,
+  uniqueStrings,
+} from "./control-validation.ts";
 export { getAdminActor, requireAdminCapability } from "./actor.ts";
 const WORKER_APPLICATION_SELECT =
   "id,actor_id,status,safe_metadata,created_at,updated_at";
 const WORKER_PROFILE_SELECT =
   "id,verification_status,is_approved,is_suspended,service_types,districts,legal_name,date_of_birth,years_experience,service_radius_km,cccd_front_url,cccd_back_url,selfie_url,bank_account,bank_name";
 const OPERATOR_ACCOUNT_SELECT =
-  "user_id,baseline_role,capabilities,status,granted_at,updated_at";
+  "user_id,baseline_role,capabilities,status,version,granted_at,updated_at";
 const MANAGER_NOMINATION_SELECT =
   "id,target_user_id,baseline_role,nominated_at";
 type Row = Record<string, unknown>;
@@ -211,13 +229,15 @@ export async function setAdminWorkerAccess(
 
 export async function listAdminSubAdmins(
   ctx: MobileApiContext,
+  input: AdminSubAdminListInput,
 ): Promise<AdminSubAdminListResponse> {
   const actor = await requireAdminCapability(ctx, "team.read");
   const accountsResult = await dbQuery<Row[]>(
     db(ctx)
       .from("admin_operator_accounts")
-      .select(OPERATOR_ACCOUNT_SELECT)
-      .order("updated_at", { ascending: false }),
+      .select(OPERATOR_ACCOUNT_SELECT, { count: "exact" })
+      .order("updated_at", { ascending: false })
+      .order("user_id", { ascending: false }),
   );
   const nominationsResult = actor.access_level === "owner"
     ? await dbQuery<Row[]>(
@@ -235,7 +255,11 @@ export async function listAdminSubAdmins(
       .eq("created_by", ctx.user.id).in("status", ["pending_password_change", "failed"]).order("updated_at", { ascending: false }))
     : await emptyRows();
   if (provisioningResult.error) apiFailure("DB_ERROR", "Không thể tải tài khoản chờ kích hoạt", 500);
-  const accounts = accountsResult.data ?? [];
+  const allAccounts = accountsResult.data ?? [];
+  const accountsAfterCursor = afterSubAdminCursor(allAccounts, input.cursor);
+  const accountPage = accountsAfterCursor.slice(0, input.limit + 1);
+  const hasMore = accountPage.length > input.limit;
+  const accounts = accountPage.slice(0, input.limit);
   const nominationRows = nominationsResult.data ?? [];
   const userIds = uniqueStrings([
     ...accounts.map((account) => nullableString(account.user_id)),
@@ -271,9 +295,10 @@ export async function listAdminSubAdmins(
     const userId = nullableString(account.user_id);
     const baselineRole = asBaselineRole(account.baseline_role);
     const status = asOperatorStatus(account.status);
+    const version = nullableNumber(account.version);
     const grantedAt = nullableString(account.granted_at);
     const updatedAt = nullableString(account.updated_at);
-    if (!userId || !baselineRole || !status || !grantedAt || !updatedAt) return [];
+    if (!userId || !baselineRole || !status || !Number.isInteger(version) || version === null || version < 1 || !grantedAt || !updatedAt) return [];
     const profile = profileById.get(userId);
     return [{
       user_id: userId,
@@ -282,6 +307,7 @@ export async function listAdminSubAdmins(
       baseline_role: baselineRole,
       status,
       capabilities: asCapabilities(account.capabilities),
+      version,
       granted_at: grantedAt,
       updated_at: updatedAt,
       last_activity_at: activityByActorId.get(userId) ?? null,
@@ -306,7 +332,17 @@ export async function listAdminSubAdmins(
   const pendingAccounts = (provisioningResult.data ?? []).flatMap((row) => {
     const account = serializeProvisioning(row); return account ? [account] : [];
   });
-  return { actor, members, nominations, pending_accounts: pendingAccounts };
+  const lastAccount = accounts.at(-1);
+  return {
+    actor,
+    generated_at: new Date().toISOString(),
+    total_count: accountsResult.count ?? allAccounts.length,
+    members,
+    nominations,
+    pending_accounts: pendingAccounts,
+    has_more: hasMore,
+    next_cursor: hasMore && lastAccount ? encodeSubAdminCursor(lastAccount) : null,
+  };
 }
 export async function searchAdminSubAdminAccounts(
   ctx: MobileApiContext,
@@ -402,12 +438,14 @@ export async function setAdminSubAdminAccess(
 ): Promise<AdminSubAdminAccessResponse> {
   requireAdminOwner(ctx);
   const result = await dbQuery<Row[]>(
-    db(ctx).rpc("admin_set_sub_admin_access_atomic", {
+    db(ctx).rpc("admin_set_sub_admin_access_v3_atomic", {
       p_owner_id: ctx.user.id,
       p_target_id: userId,
       p_action: input.action,
       p_capabilities: input.capabilities,
       p_reason: input.reason ?? null,
+      p_expected_version: input.expected_version,
+      p_client_request_id: input.client_request_id,
     }),
   );
   if (result.error) apiFailure("DB_ERROR", "Không thể cập nhật quyền Sub Admin", 500);
@@ -417,7 +455,10 @@ export async function setAdminSubAdminAccess(
   const status = asOperatorStatus(row.status_out);
   const role = asUserRole(row.role_out);
   const updatedAt = nullableString(row.updated_at_out);
-  if (!status || !role || !updatedAt) {
+  const version = nullableNumber(row.version_out);
+  const eventId = nullableString(row.event_id_out);
+  const generatedAt = nullableString(row.generated_at_out);
+  if (!status || !role || !updatedAt || !Number.isInteger(version) || version === null || version < 1 || !eventId || !generatedAt) {
     apiFailure("DB_ERROR", "Cập nhật quyền Sub Admin chưa có biên nhận hợp lệ", 500);
   }
   return {
@@ -426,11 +467,15 @@ export async function setAdminSubAdminAccess(
     status,
     role,
     capabilities: asCapabilities(row.capabilities_out),
+    version,
+    event_id: eventId,
+    generated_at: generatedAt,
+    replayed: asBoolean(row.replayed_out),
     updated_at: updatedAt,
   };
 }
 
-async function buildWorkerApplicationSummaries(
+export async function buildWorkerApplicationSummaries(
   ctx: MobileApiContext,
   queueRows: Row[],
 ): Promise<AdminWorkerApplicationSummary[]> {
@@ -636,132 +681,4 @@ function serializeOperationsSnapshot(value: unknown, actor: AdminActor): AdminOp
   const generatedAt = nullableString(snapshot.generated_at);
   if (!generatedAt) apiFailure("DB_ERROR", "Dữ liệu vận hành chưa có thời điểm hợp lệ", 500);
   return { actor, generated_at: generatedAt, attention, flow, quality, audit_events: auditEvents };
-}
-function requireAdminOwner(ctx: MobileApiContext): void {
-  if (ctx.role !== "admin") {
-    apiFailure("AUTH_FORBIDDEN", "Chỉ Owner Admin mới có thể thay đổi quyền Sub Admin", 403);
-  }
-}
-function mapWorkerApplicationDecisionError(code: string | null): never {
-  if (code === "APPLICATION_NOT_FOUND") apiFailure("NOT_FOUND", "Không tìm thấy hồ sơ thợ", 404);
-  if (code === "WORKER_NOT_FOUND") apiFailure("NOT_FOUND", "Không tìm thấy tài khoản thợ", 404);
-  if (code === "ADMIN_REQUIRED") apiFailure("AUTH_FORBIDDEN", "Tài khoản chưa có quyền duyệt hồ sơ thợ", 403);
-  if (code === "INVALID_DECISION" || code === "REASON_REQUIRED") {
-    apiFailure("VALIDATION", "Quyết định hồ sơ thợ không hợp lệ", 400);
-  }
-  if (code === "ALREADY_REVIEWED") apiFailure("ALREADY_REVIEWED", "Hồ sơ thợ đã có quyết định khác", 409);
-  apiFailure("REVIEW_FAILED", "Không thể lưu quyết định hồ sơ thợ", 409);
-}
-function mapWorkerAccessError(code: string | null): never {
-  if (code === "WORKER_NOT_FOUND") apiFailure("NOT_FOUND", "Không tìm thấy tài khoản thợ", 404);
-  if (code === "WORKER_MANAGE_REQUIRED") apiFailure("AUTH_FORBIDDEN", "Tài khoản chưa có quyền quản lý thợ", 403);
-  if (code === "WORKER_NOT_APPROVED") apiFailure("CONFLICT", "Chỉ có thể tạm dừng thợ đã được duyệt", 409);
-  if (code === "INVALID_INPUT") apiFailure("VALIDATION", "Thông tin thay đổi quyền thợ không hợp lệ", 400);
-  apiFailure("WORKER_ACCESS_FAILED", "Không thể cập nhật quyền hoạt động của thợ", 409);
-}
-
-function mapSubAdminAccessError(code: string | null): never {
-  if (code === "TARGET_NOT_FOUND") apiFailure("NOT_FOUND", "Không tìm thấy tài khoản cần cấp quyền", 404);
-  if (code === "OWNER_REQUIRED") apiFailure("AUTH_FORBIDDEN", "Chỉ Owner Admin có thể thay đổi quyền Sub Admin", 403);
-  if (code === "INVALID_TARGET" || code === "OWNER_CANNOT_BE_OPERATOR" || code === "INVALID_TARGET_ROLE") {
-    apiFailure("VALIDATION", "Tài khoản này không thể trở thành Sub Admin", 400);
-  }
-  if (code === "OPERATOR_NOT_FOUND" || code === "OPERATOR_NOT_ACTIVE") {
-    apiFailure("NOT_FOUND", "Không tìm thấy Sub Admin đang hoạt động", 404);
-  }
-  if (code === "NOMINATION_REQUIRED") {
-    apiFailure("CONFLICT", "Tài khoản cần được Owner đề cử trước khi cấp quyền", 409);
-  }
-  if (code === "INVALID_INPUT" || code === "INVALID_ACTION") {
-    apiFailure("VALIDATION", "Thông tin quyền Sub Admin không hợp lệ", 400);
-  }
-  apiFailure("SUB_ADMIN_ACCESS_FAILED", "Không thể cập nhật quyền Sub Admin", 409);
-}
-
-function mapManagerNominationError(code: string | null): never {
-  if (code === "TARGET_NOT_FOUND" || code === "NOMINATION_NOT_FOUND") {
-    apiFailure("NOT_FOUND", "Không tìm thấy tài khoản hoặc đề cử quản lý", 404);
-  }
-  if (code === "OWNER_REQUIRED") {
-    apiFailure("AUTH_FORBIDDEN", "Chỉ Owner Admin có thể quản lý đề cử", 403);
-  }
-  if (code === "INVALID_TARGET" || code === "INVALID_TARGET_ROLE") {
-    apiFailure("VALIDATION", "Tài khoản này không thể được đề cử quản lý", 400);
-  }
-  if (code === "ALREADY_OPERATOR") {
-    apiFailure("CONFLICT", "Tài khoản này đã là quản trị viên phụ", 409);
-  }
-  if (code === "NOMINATION_EXISTS") {
-    apiFailure("CONFLICT", "Tài khoản này đang chờ được cấp quyền", 409);
-  }
-  if (code === "NOMINATION_OWNED_BY_ANOTHER_OWNER") {
-    apiFailure("CONFLICT", "Tài khoản này đang có đề cử quản lý khác", 409);
-  }
-  if (code === "NOMINATION_NOT_PENDING") {
-    apiFailure("CONFLICT", "Đề cử này không còn chờ cấp quyền", 409);
-  }
-  apiFailure("MANAGER_NOMINATION_FAILED", "Không thể cập nhật đề cử quản lý", 409);
-}
-
-function asWorkerApplicationStatus(value: unknown): AdminWorkerApplicationStatus | null {
-  return value === "open" || value === "acknowledged" || value === "resolved" || value === "cancelled"
-    ? value
-    : null;
-}
-
-function asDecisionStatus(
-  value: unknown,
-): Exclude<AdminWorkerApplicationStatus, "cancelled"> | null {
-  return value === "open" || value === "acknowledged" || value === "resolved"
-    ? value
-    : null;
-}
-
-function asReviewDecision(value: unknown): "approve" | "request_changes" | "reject" | null {
-  return value === "approve" || value === "request_changes" || value === "reject" ? value : null;
-}
-
-function asUserRole(value: unknown): "customer" | "worker" | "admin" | "admin_operator" | null {
-  return value === "customer" || value === "worker" || value === "admin" || value === "admin_operator"
-    ? value
-    : null;
-}
-
-function asBaselineRole(value: unknown): "customer" | "worker" | null {
-  return value === "customer" || value === "worker" ? value : null;
-}
-
-function asOperatorStatus(value: unknown): "active" | "revoked" | null {
-  return value === "active" || value === "revoked" ? value : null;
-}
-
-function asRecordArray(value: unknown): Row[] {
-  return Array.isArray(value)
-    ? value.flatMap((item) => {
-      const record = nullableRecord(item);
-      return record ? [record] : [];
-    })
-    : [];
-}
-
-function nonNegativeInteger(value: unknown): number | null {
-  const number = nullableNumber(value);
-  return number !== null && Number.isInteger(number) && number >= 0 ? number : null;
-}
-
-function requiredExactCount(value: unknown, subject: string): number {
-  const count = nonNegativeInteger(value);
-  if (count === null) apiFailure("DB_ERROR", `Không thể xác định tổng số ${subject}`, 500);
-  return count;
-}
-
-function uniqueStrings(values: Array<string | null>): string[] {
-  return Array.from(new Set(values.filter((value): value is string => Boolean(value))));
-}
-
-function indexById(rows: Row[], key = "id") {
-  return new Map(rows.flatMap((row) => {
-    const id = nullableString(row[key]);
-    return id ? [[id, row] as const] : [];
-  }));
 }

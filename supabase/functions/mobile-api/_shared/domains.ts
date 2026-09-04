@@ -97,6 +97,16 @@ import {
   setAdminSubAdminAccess,
   setAdminWorkerAccess,
 } from "./domains/admin/control.ts";
+import { getAdminOverviewDetails } from "./domains/admin/overview-details.ts";
+import {
+  createAdminScopeEvidenceAccess,
+  createAdminSupportEvidenceAccess,
+  getAdminScopeChange,
+  getAdminSupportCase,
+  listAdminScopeChanges,
+  listAdminSupportCases,
+  updateAdminSupportCasePreparation,
+} from "./domains/admin/operations-support.ts";
 import {
   decideAdminWorkerProfile,
   getAdminWorkerReviewDetail,
@@ -105,34 +115,56 @@ import {
   provisionAdminOperator,
   resetPendingAdminOperatorPassword,
 } from "./domains/admin/operator-provisioning.ts";
-import {
-  activateAdminOperator,
-  getAdminActivation,
-} from "./domains/admin/admin-activation.ts";
+import { activateAdminOperator, getAdminActivation } from "./domains/admin/admin-activation.ts";
 import {
   listAdminAiCosts,
   listAdminDisputes,
   listAdminLearningRules,
   listAdminPriceBaselines,
+  listAdminServiceTaxonomy,
 } from "./domains/admin/governance.ts";
+import {
+  applyAdminSystemLearningAction,
+  getAdminSystemLearningRule,
+  getAdminSystemModelHealthDetail,
+  getAdminSystemPriceBaseline,
+  getAdminSystemTaxonomy,
+  listAdminSystemEvidencePackages,
+  listAdminSystemLearningRules,
+  listAdminSystemModelHealth,
+  listAdminSystemPriceBaselines,
+  listAdminSystemTaxonomy,
+  previewAdminSystemLearningAction,
+  publishAdminSystemPriceBaseline,
+  retireAdminSystemPriceBaseline,
+  updateAdminSystemTaxonomy,
+  validateAdminSystemPriceBaseline,
+  validateAdminSystemTaxonomy,
+} from "./domains/admin/system.ts";
 import {
   getAdminTransaction,
   listAdminTransactions,
 } from "./domains/admin/transactions.ts";
 import {
   claimAdminWithdrawalRequest,
+  createAdminPayoutMethodSensitiveAccess,
+  createAdminWithdrawalSensitiveAccess,
   decideAdminPayoutMethod,
   getAdminPayoutMethod,
   getAdminWithdrawalRequest,
   listAdminPayoutMethods,
   listAdminWithdrawalRequests,
   resolveAdminWithdrawalRequest,
+  releaseAdminWithdrawalRequest,
 } from "./domains/admin/payout.ts";
 import {
+  claimAdminPaymentReconciliation,
   decideAdminPaymentReconciliation,
+  getAdminPaymentReconciliation,
   getAdminWorkerFinanceSnapshot,
   getAdminFinanceSummary,
   listAdminPaymentReconciliations,
+  releaseAdminPaymentReconciliation,
   recordAdminFinanceBalanceSnapshot,
 } from "./domains/admin/finance.ts";
 import {
@@ -543,10 +575,35 @@ function createAdminNotificationServices(secrets: EdgeServiceSecrets): Pick<
   | "rejectKaelLearningCandidate"
   | "getAdminActor"
   | "getAdminOperations"
+  | "getAdminOverviewDetails"
+  | "listAdminScopeChanges"
+  | "getAdminScopeChange"
+  | "createAdminScopeEvidenceAccess"
+  | "listAdminSupportCases"
+  | "getAdminSupportCase"
+  | "updateAdminSupportCasePreparation"
+  | "createAdminSupportEvidenceAccess"
   | "listAdminDisputes"
   | "listAdminPriceBaselines"
   | "listAdminAiCosts"
   | "listAdminLearningRules"
+  | "listAdminServiceTaxonomy"
+  | "listAdminSystemPriceBaselines"
+  | "getAdminSystemPriceBaseline"
+  | "listAdminSystemEvidencePackages"
+  | "validateAdminSystemPriceBaseline"
+  | "publishAdminSystemPriceBaseline"
+  | "retireAdminSystemPriceBaseline"
+  | "listAdminSystemTaxonomy"
+  | "getAdminSystemTaxonomy"
+  | "validateAdminSystemTaxonomy"
+  | "updateAdminSystemTaxonomy"
+  | "listAdminSystemLearningRules"
+  | "getAdminSystemLearningRule"
+  | "previewAdminSystemLearningAction"
+  | "applyAdminSystemLearningAction"
+  | "listAdminSystemModelHealth"
+  | "getAdminSystemModelHealthDetail"
   | "listAdminWorkerApplications"
   | "getAdminWorkerApplication"
   | "getAdminWorkerReviewDetail"
@@ -558,12 +615,18 @@ function createAdminNotificationServices(secrets: EdgeServiceSecrets): Pick<
   | "getAdminTransaction"
   | "listAdminPayoutMethods"
   | "getAdminPayoutMethod"
+  | "createAdminPayoutMethodSensitiveAccess"
   | "decideAdminPayoutMethod"
   | "listAdminWithdrawalRequests"
   | "getAdminWithdrawalRequest"
+  | "createAdminWithdrawalSensitiveAccess"
   | "claimAdminWithdrawalRequest"
+  | "releaseAdminWithdrawalRequest"
   | "resolveAdminWithdrawalRequest"
   | "listAdminPaymentReconciliations"
+  | "getAdminPaymentReconciliation"
+  | "claimAdminPaymentReconciliation"
+  | "releaseAdminPaymentReconciliation"
   | "decideAdminPaymentReconciliation"
   | "getAdminFinanceSummary"
   | "recordAdminFinanceBalanceSnapshot"
@@ -596,10 +659,35 @@ function createAdminNotificationServices(secrets: EdgeServiceSecrets): Pick<
       rejectKaelLearningCandidateAdmin(ctx, candidateId, input),
     getAdminActor,
     getAdminOperations,
+    getAdminOverviewDetails,
+    listAdminScopeChanges,
+    getAdminScopeChange,
+    createAdminScopeEvidenceAccess,
+    listAdminSupportCases,
+    getAdminSupportCase,
+    updateAdminSupportCasePreparation,
+    createAdminSupportEvidenceAccess,
     listAdminDisputes,
     listAdminPriceBaselines,
     listAdminAiCosts,
     listAdminLearningRules,
+    listAdminServiceTaxonomy,
+    listAdminSystemPriceBaselines,
+    getAdminSystemPriceBaseline,
+    listAdminSystemEvidencePackages,
+    validateAdminSystemPriceBaseline,
+    publishAdminSystemPriceBaseline,
+    retireAdminSystemPriceBaseline,
+    listAdminSystemTaxonomy,
+    getAdminSystemTaxonomy,
+    validateAdminSystemTaxonomy,
+    updateAdminSystemTaxonomy,
+    listAdminSystemLearningRules,
+    getAdminSystemLearningRule,
+    previewAdminSystemLearningAction,
+    applyAdminSystemLearningAction,
+    listAdminSystemModelHealth,
+    getAdminSystemModelHealthDetail,
     listAdminWorkerApplications,
     getAdminWorkerApplication,
     getAdminWorkerReviewDetail,
@@ -611,12 +699,18 @@ function createAdminNotificationServices(secrets: EdgeServiceSecrets): Pick<
     getAdminTransaction,
     listAdminPayoutMethods,
     getAdminPayoutMethod,
+    createAdminPayoutMethodSensitiveAccess,
     decideAdminPayoutMethod,
     listAdminWithdrawalRequests,
     getAdminWithdrawalRequest,
+    createAdminWithdrawalSensitiveAccess,
     claimAdminWithdrawalRequest,
+    releaseAdminWithdrawalRequest,
     resolveAdminWithdrawalRequest,
     listAdminPaymentReconciliations,
+    getAdminPaymentReconciliation,
+    claimAdminPaymentReconciliation,
+    releaseAdminPaymentReconciliation,
     decideAdminPaymentReconciliation,
     getAdminFinanceSummary,
     recordAdminFinanceBalanceSnapshot,
@@ -681,91 +775,3 @@ function aiRuntime(
 
 export { buildCustomerProfileInsights } from "./domains/customer/profile-insights.ts";
 export { buildWorkerPerformanceInsights } from "./domains/worker/profile-insights.ts";
-
-// Idempotent Kael chat session helpers.
-
-// Idempotent job creation helpers.
-
-// Shared boundary entry point used by both
-// createKaelChat and sendKaelChatTurn. Returns true when the message was
-// declined (caller skips downstream processing); false otherwise.
-
-// Smart clarification build a compact, PII-scrubbed conversation
-// context from recent turns and count prior Kael clarification questions so the
-// pipeline can cap re-asks (STRUCTURES.md A4 "ask 0-2 questions").
-
-// Customer mobile must resume an
-// active job from the backend after a refresh / cold start instead of showing
-// "Chưa có yêu cầu". Returns the customer's most-recent non-terminal job (same
-// shape as GET /jobs/:id) or null when none is active.
-
-// Compact the schema-validated vision result into a short
-// findings line for the worker-assist context. Bounded length; no PII (these
-// are Kael's own image observations about the physical problem).
-
-// A scope-change changes the price of the
-// deal, so it is ALWAYS confirmed by the customer — even low-risk. Kael only
-// computes and proposes the new price; it never self-approves a scope change.
-//
-// This disable is intentionally UNCONDITIONAL and independent of
-// KAEL_AUTONOMY_FULL_ENABLED (which still gates completion/payment/dispute/
-// cancellation). Re-enabling auto-approve is a product decision, not a flag
-// flip. The customer-decide path is unchanged: request_scope_change keeps the
-// job in scope_change_pending, the caller routes null here to
-// notifyCustomerScopeChangeRequested, and the customer's explicit decision goes
-// through decide_scope_change_atomic. Signature kept stable so the single caller
-// needs no change and re-enabling is a localized edit.
-
-// Persist Kael's computed scope-change estimate +
-// log the API call. Stored in scope_change_requests.kael_review (full payload)
-// and scope_change_requests.kael_computed_min/max + price_min/max (numeric
-// authoritative source). Customer A11 modal reads kael_computed_*.
-
-// Self-check the demanding-customer response text
-// before it reaches a user, so "self-check before every egress" holds for case-2 too
-// (not only worker-assist). Template responses pass through unchanged; if the text ever
-// becomes LLM-phrased and trips the guard, fall back to a neutral acknowledgement.
-
-// Edit the user-owned subset of their own Kael memory.
-// Customer can set language + a PII-scrubbed preference note; worker can set
-// language only (worker_kael_memory has no preference_summary). Kael-computed
-// fields stay untouched. Upsert so a not-yet-created memory row is fine.
-
-// The customer's pending Kael decisions. Under Kael Autonomy v2 the only thing
-// that genuinely waits on the customer is a scope-change (it changes the deal
-// price, so it is always customer-confirmed). Scoped to this customer's own jobs.
-
-// Cross-job message inbox for the customer. No realtime/RPC —
-// list recent jobs, fold in the latest message + unread count per thread. A job
-// with no messages yet is not surfaced as a thread.
-
-// A worker lobby check-in records arrival but does NOT release the
-// exact unit — it waits for the customer to tap "Cho thợ lên" (authorizeApartmentAccess).
-// Nudge the customer the moment the worker checks in so they authorize promptly instead
-// of leaving the worker waiting in the lobby. Best-effort: never blocks the status update.
-
-// §32.6: matching consumes the disintermediation risk signal as a SOFT ranking
-// penalty — never an exclusion ("không nuke worker khan hiếm vì tín hiệu yếu").
-// Threshold 2 = a single weak signal has no effect; the 15-point penalty ranks a
-// flagged worker below an equal-rating clean worker (~1.5 rating stars) without
-// removing them from the pool.
-
-// Keep Kael-owned scope-change price failures user-visible instead of DB_ERROR.
-
-// A geofence check-in must be within this radius of
-// the job's geocoded building before the exact unit is released. ~150 m absorbs HCMC
-// apartment-tower GPS drift while still blocking a release from across town. Tune here
-// if field recordings show a different real-world drift.
-
-// The customer authorizes "Cho thợ lên" — this is the
-// only path that releases the exact unit, and only after the worker has checked in.
-// Route POST /jobs/:id/access/authorize is gated to the customer (+ admin) role.
-
-// A worker check-in records arrival but does NOT
-// release the exact unit. exact_unit_released stays false (projectAddressAccess keeps the
-// worker at building_released) until the CUSTOMER authorizes via
-// POST /jobs/:id/access/authorize. This closes the "worker self-reports arrival and the
-// app reveals the unit with no customer consent" gap.
-
-// The customer authorizing entry releases the exact
-// unit — only reachable after a worker check-in (enforced in authorizeApartmentAccess).

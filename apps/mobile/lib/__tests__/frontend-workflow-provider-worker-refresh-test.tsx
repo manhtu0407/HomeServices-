@@ -1,6 +1,8 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native'
 import { AppState, Pressable, Text } from 'react-native'
 
+import type { EarningsResponse } from '../api-types'
+
 let mockAuthRole: 'admin' | 'worker' = 'admin'
 
 jest.mock('../auth-provider', () => ({
@@ -70,7 +72,7 @@ const { subscribeToWorkerEarnings: mockSubscribeToWorkerEarnings } = jest.requir
 let refreshPromise: Promise<boolean> | undefined
 
 function WorkerRefreshProbe() {
-  const { actions, state } = useFrontendWorkflow()
+  const { actions, state, workerEarnings, workerEarningsError } = useFrontendWorkflow()
   return (
     <>
       <Pressable
@@ -81,11 +83,38 @@ function WorkerRefreshProbe() {
       />
       <Text testID="worker-refresh-deal">{state.deal?.id ?? 'none'}</Text>
       <Text testID="worker-refresh-error">{state.lastError ?? 'none'}</Text>
+      <Text testID="worker-refresh-earnings">{workerEarnings?.available_balance ?? 'none'}</Text>
+      <Text testID="worker-refresh-earnings-error">{workerEarningsError ?? 'none'}</Text>
       <Text testID="worker-refresh-status">
         {state.deal ? `${state.deal.backendStatus ?? 'none'}/${state.deal.broadcast?.status ?? 'none'}` : 'none'}
       </Text>
     </>
   )
+}
+
+function buildEarningsSnapshot(): EarningsResponse {
+  return {
+    available_balance: 321_000,
+    cash_commission_collected_total: 0,
+    cash_commission_due_total: 0,
+    collateral_reserved_amount: 0,
+    current_commission_level: 1,
+    current_commission_rate_bps: 1500,
+    daily_earnings: [],
+    from_date: null,
+    gross_earnings: 0,
+    net_earnings: 0,
+    on_hold_amount: 0,
+    pending_payment_amount: 0,
+    pending_payment_count: 0,
+    platform_fee_total: 0,
+    recent_transactions: [],
+    to_date: null,
+    total_jobs_paid: 0,
+    withdrawal_reserved_amount: 0,
+    withdrawn_total: 0,
+    worker_id: 'worker_test_1',
+  }
 }
 
 function deferred<T>() {
@@ -211,6 +240,31 @@ function arrangeSuccessfulWorkerRuntime() {
     success: true,
   })
 }
+
+it('keeps the same worker earnings snapshot when a later earnings refresh fails', async () => {
+  arrangeSuccessfulWorkerRuntime()
+  mockWorkerService.getEarnings
+    .mockReset()
+    .mockResolvedValueOnce({ data: buildEarningsSnapshot(), status: 200, success: true })
+    .mockResolvedValueOnce({ code: 'UNAVAILABLE', error: 'Unavailable', status: 503, success: false })
+
+  render(
+    <FrontendWorkflowProvider>
+      <WorkerRefreshProbe />
+    </FrontendWorkflowProvider>,
+  )
+
+  fireEvent.press(screen.getByTestId('worker-refresh'))
+  await waitFor(() => expect(screen.getByTestId('worker-refresh-earnings')).toHaveTextContent('321000'))
+
+  fireEvent.press(screen.getByTestId('worker-refresh'))
+  await act(async () => {
+    await refreshPromise
+  })
+
+  expect(screen.getByTestId('worker-refresh-earnings')).toHaveTextContent('321000')
+  expect(screen.getByTestId('worker-refresh-earnings-error')).not.toHaveTextContent('none')
+})
 
 it('refreshes earnings immediately when the worker ledger changes', async () => {
   mockAuthRole = 'worker'

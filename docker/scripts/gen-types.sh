@@ -15,11 +15,13 @@ done
 repo_root=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
 target="$repo_root/packages/shared/src/types/database"
 splitter="$repo_root/scripts/split-database-types.mjs"
-temp="${TMPDIR:-/tmp}/nestscout-database.types.ts"
+temp=$(mktemp "${TMPDIR:-/tmp}/nestscout-database.types.XXXXXX.ts")
+trap 'rm -f "$temp"' EXIT
 
 cd "$repo_root"
-if ! bash "$repo_root/scripts/run-supabase.sh" gen types typescript --local > "$temp"; then
-  code=$?
+bash "$repo_root/scripts/run-supabase.sh" gen types typescript --local > "$temp"
+code=$?
+if [ "$code" -ne 0 ]; then
   echo "supabase gen types failed with exit code $code"
   exit "$code"
 fi
@@ -29,7 +31,8 @@ fi
 # byte-for-byte on the whole artifact exactly as it was when it was one file.
 if [ ! -d "$target" ]; then
   echo "no committed types at $target; splitting generated output"
-  exec node "$splitter" --write "$temp"
+  node "$splitter" --write "$temp"
+  exit $?
 fi
 
 if node "$splitter" --check-against "$temp"; then
@@ -47,4 +50,8 @@ if [ "$check_only" -eq 1 ]; then
 fi
 
 node "$splitter" --write "$temp"
-echo "committed files overwritten. Review the diff before accepting it."
+code=$?
+if [ "$code" -eq 0 ]; then
+  echo "committed files overwritten. Review the diff before accepting it."
+fi
+exit "$code"
