@@ -27,7 +27,6 @@ import { entryBrandAccessFlowStyles as styles } from './entry-brand-access-flow-
 import { NestScoutLogoMotionMark, NESTSCOUT_LOGO_MOTION_DURATION_MS } from './nestscout-logo-motion-mark'
 import { PasswordRecoveryScreen, PasswordResetScreen } from './password-recovery-screen'
 import { RoleGateScreen } from './role-gate-screen'
-import { selectRoleGateGreeting } from './role-gate-greeting'
 import { useEntryBrandAccessActions } from './use-entry-brand-access-actions'
 import type {
   EntryAccessFeatureFlags,
@@ -85,11 +84,6 @@ export function EntryBrandAccessFlow({
   const localizedError = error
     ? localizeIdentifierAvailabilityError(error, language) ?? localizeEntryAuthError(error, language, 'connectionFailed')
     : null
-  const [roleGateGreetingSelection] = useState(() => ({ now: new Date(), random: Math.random() }))
-  const roleGateGreeting = useMemo(
-    () => selectRoleGateGreeting(roleGateGreetingSelection.now, () => roleGateGreetingSelection.random, language),
-    [language, roleGateGreetingSelection],
-  )
   useEffect(() => {
     StatusBar.setStyle('dark')
     return () => {
@@ -163,7 +157,6 @@ export function EntryBrandAccessFlow({
         providerLogin={providerLogin}
         remember={remember}
         role={role}
-        roleGateGreeting={roleGateGreeting}
         setAcceptedTerms={setAcceptedTerms}
         setFullName={setFullName}
         setIdentifier={setIdentifier}
@@ -182,7 +175,7 @@ export function EntryBrandAccessFlow({
 type EntryAccessStepContentProps = {
   acceptedTerms: boolean; busy: boolean; error: string | null; remember: boolean
   chooseRole: (role: EntryRole) => void; completeOnboarding: () => void; providerLogin: (provider: 'apple' | 'google') => Promise<void>
-  copy: EntryAccessCopy; features: EntryAccessFeatureFlags; roleGateGreeting: ReturnType<typeof selectRoleGateGreeting>
+  copy: EntryAccessCopy; features: EntryAccessFeatureFlags
   fullName: string; identifier: string; notice: string | null; password: string; passwordConfirmation: string
   go: (step: EntryAccessStep) => void; setAcceptedTerms: () => void; setRemember: () => void
   language: AppLanguage; role: EntryRole; step: EntryAccessStep
@@ -197,7 +190,7 @@ function EntryAccessStepContent(props: EntryAccessStepContentProps) {
     case 'splash':
       return <SplashScreen copy={props.copy} />
     case 'role-gate':
-      return <RoleGateScreen copy={props.copy.roleGate} greeting={props.roleGateGreeting} onContinue={() => props.go('login')} onRoleChange={props.chooseRole} role={props.role} />
+      return <RoleGateScreen brandAccessibilityLabel={props.copy.accessibility.logo} copy={props.copy.roleGate} onContinue={() => props.go('login')} onRoleChange={props.chooseRole} />
     case 'login':
       return (
         <LoginScreen
