@@ -1,11 +1,25 @@
 import { useState } from 'react'
 import { fireEvent, render } from '@testing-library/react-native'
+import { type PillarManifest } from '@/__tests__/pillar-manifest'
 import { getGateLayout, NestScoutLoginGate, nextRoleAction, type Role } from '../entry-access/nestscout-login-gate'
 
 jest.mock('expo-image', () => ({ Image: require('react-native').View }))
 jest.mock('react-native-safe-area-context', () => ({
   useSafeAreaInsets: () => ({ top: 59, right: 0, bottom: 34, left: 0 }),
 }))
+
+export const PILLAR = {
+  id: 'P65-nestscout-login-gate-production',
+  invariant: 'the Production Login Gate preserves the supplied visual geometry while keeping role selection and continuation accessible',
+  authority: [
+    'supplied NestScout Login Gate source package',
+    'governance/protocols/frontend-test.md G1 (layout) and G2 (state coverage)',
+  ],
+  target: 'apps/mobile/components/auth/entry-access/nestscout-login-gate/nestscout-login-gate.tsx',
+  layer: 'ui-visual',
+  siblings: ['P64-role-gate-language-integrity', 'P42-auth-session-shell'],
+  mutation: 'replace the Production Login Gate with the retired role-card surface or remove the two-step role interaction — the layout and interaction assertions turn red',
+} as const satisfies PillarManifest
 
 function Harness({ onContinue }: { onContinue: (role: Role) => void }) {
   const [role, setRole] = useState<Role | null>(null)
