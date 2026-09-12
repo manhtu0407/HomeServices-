@@ -154,12 +154,12 @@ begin
   end if;
 
   select * into v_broadcast
-  from public.activate_job_broadcast_batch_atomic(
+  from public.activate_job_broadcast_batch_durable_atomic_v2(
     'a1520000-0000-4000-8000-000000000001',
     array['a1510000-0000-4000-8000-000000000002']::uuid[],
     'a1560000-0000-4000-8000-000000000001',
     now(),
-    now() + interval '10 minutes'
+    now() + interval '5 minutes'
   );
 
   select original_scope_price_quote into v_quote

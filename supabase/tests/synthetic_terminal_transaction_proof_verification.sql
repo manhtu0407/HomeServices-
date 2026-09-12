@@ -147,10 +147,10 @@ declare
   v_confirmed record;
 begin
   select * into v_broadcast
-  from public.activate_job_broadcast_batch_atomic(
+  from public.activate_job_broadcast_batch_durable_atomic_v2(
     'd6920000-0000-4000-8000-000000000001',
     array['d6910000-0000-4000-8000-000000000002']::uuid[],
-    'd6960000-0000-4000-8000-000000000001', now(), now() + interval '10 minutes'
+    'd6960000-0000-4000-8000-000000000001', now(), now() + interval '5 minutes'
   );
   select (original_scope_price_quote ->> 'quote_id')::uuid into v_quote_id
   from public.job_broadcasts where id = v_broadcast.id;
