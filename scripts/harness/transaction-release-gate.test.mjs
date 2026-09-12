@@ -107,21 +107,24 @@ test('EAS upload retains every tracked input used by the full-source release ide
   assert.equal(excluded.length, 0, `EAS would omit ${excluded.length} release inputs; first: ${excluded.slice(0, 5).join(', ')}`)
 })
 
-function hasRequiredGate(source) {
+function hasRequiredGate(source, mode) {
   const api = source.indexOf('--reporter=json --outputFile=../../artifacts/transactions/api-vitest.json')
   const mobile = source.indexOf('--json --outputFile=../../artifacts/transactions/mobile-jest.json')
-  const gate = source.indexOf('transaction-critical-coverage.mjs --require-behavioral')
+  const gate = source.indexOf(`transaction-critical-coverage.mjs ${mode}`)
   return api >= 0 && mobile >= 0 && gate > api && gate > mobile &&
     source.includes('--results artifacts/transactions/api-vitest.json') &&
     source.includes('--results artifacts/transactions/mobile-jest.json')
 }
 
-for (const workflow of ['kael-agentic-completeness.yml', 'release-production.yml']) {
-  test(`${workflow} requires fresh API and mobile assertions before release`, () => {
+for (const [workflow, mode] of [
+  ['kael-agentic-completeness.yml', '--require-bound-assertions'],
+  ['release-production.yml', '--require-behavioral'],
+]) {
+  test(`${workflow} requires fresh API and mobile assertions for its evidence gate`, () => {
     const source = readFileSync(resolve(root, '.github/workflows', workflow), 'utf8')
-    assert.equal(hasRequiredGate(source), true)
-    assert.equal(hasRequiredGate(source.replace('--require-behavioral', '')), false)
-    assert.equal(hasRequiredGate(source.replace('--reporter=json', '')), false)
+    assert.equal(hasRequiredGate(source, mode), true)
+    assert.equal(hasRequiredGate(source.replace(mode, ''), mode), false)
+    assert.equal(hasRequiredGate(source.replace('--reporter=json', ''), mode), false)
     if (workflow === 'release-production.yml') {
       assert.ok(source.indexOf('--require-behavioral') < source.indexOf('  production-release:'))
       assert.match(source, /production-release:[\s\S]*?needs: quality/u)

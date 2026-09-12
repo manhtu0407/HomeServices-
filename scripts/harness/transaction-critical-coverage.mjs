@@ -282,6 +282,7 @@ function validateBehavioralBindings(manifest, pillars) {
 
 export function evaluateBehavioralEvidence(manifest, reports = []) {
   const reportProblems = []
+  if (reports.length === 0) reportProblems.push('runner reports are required for assertion verification')
   const suites = []
   for (const report of reports) {
     if (report.success !== true || !Array.isArray(report.testResults)) {
@@ -313,11 +314,17 @@ export function evaluateBehavioralEvidence(manifest, reports = []) {
         } else passedTests += 1
       }
     }
+    const executionProblems = [...problems]
     if (status !== 'MAPPED') problems.push(`${status}: ${gaps.join(' ')}`)
-    return { id: entry.id, status, passedTests, requiredTests, gaps, problems }
+    return { id: entry.id, status, passedTests, requiredTests, gaps, problems, executionProblems }
   })
+  if (entries.every((entry) => entry.requiredTests === 0)) {
+    reportProblems.push('at least one reviewed assertion binding is required')
+  }
   return {
     entries,
+    executionProblems: [...reportProblems, ...entries.flatMap((entry) =>
+      entry.executionProblems.map((problem) => `${entry.id}: ${problem}`))],
     problems: [...reportProblems, ...entries.flatMap((entry) => entry.problems.map((problem) => `${entry.id}: ${problem}`))],
   }
 }
@@ -329,9 +336,11 @@ function main() {
   const problems = validateTransactionCoverage(manifest, capabilities, pillars)
   const reports = []
   let requireBehavioral = false
+  let requireBoundAssertions = false
   for (let index = 2; index < process.argv.length; index += 1) {
     const argument = process.argv[index]
     if (argument === '--require-behavioral') requireBehavioral = true
+    else if (argument === '--require-bound-assertions') requireBoundAssertions = true
     else if (argument === '--results' && process.argv[index + 1]) {
       reports.push(JSON.parse(readFileSync(resolve(process.argv[++index]), 'utf8')))
     } else problems.push(`unknown or incomplete argument: ${argument}`)
@@ -357,6 +366,14 @@ function main() {
     console.error('required behavioral proof failed (collected tests only; no hosted/native proof is implied):')
     for (const problem of evidence.problems) console.error(`  - ${problem}`)
     process.exit(1)
+  }
+  if (requireBoundAssertions) {
+    if (evidence.executionProblems.length > 0) {
+      console.error('required bound assertion execution failed:')
+      for (const problem of evidence.executionProblems) console.error(`  - ${problem}`)
+      process.exit(1)
+    }
+    console.log('bound assertion execution passed; transaction completion and hosted/native readiness are not implied')
   }
 }
 

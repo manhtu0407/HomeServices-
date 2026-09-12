@@ -120,3 +120,54 @@ test('passing bound cases do not erase explicitly remaining transaction gaps', (
   assert.equal(worker.passedTests, worker.requiredTests)
   assert.ok(worker.problems.some((problem) => problem.startsWith('PARTIAL:')))
 })
+
+test('PR assertion verification preserves completion debt without treating it as a failed test', () => {
+  const { value, report } = completeFixture()
+  const coverage = Object.values(value.behavioral_contract.bindings)[0]
+  coverage.status = 'PARTIAL'
+  coverage.gaps = ['Hosted transaction proof remains open.']
+  value.entries.push({ id: 'unmapped-route' })
+  const evidence = evaluateBehavioralEvidence(value, [report])
+  assert.deepEqual(evidence.executionProblems, [])
+  assert.equal(evidence.entries[0].status, 'PARTIAL')
+  assert.equal(evidence.entries[1].status, 'UNVERIFIED')
+  assert.equal(evidence.problems.length, 2, 'release completion must still fail on both gaps')
+})
+
+for (const outcome of ['missing', 'pending', 'skipped', 'failed', 'ambiguous', 'wrong-file', 'red-runner']) {
+  test(`PR assertion verification still rejects ${outcome} execution`, () => {
+    const { value, report } = completeFixture()
+    const coverage = Object.values(value.behavioral_contract.bindings)[0]
+    coverage.status = 'PARTIAL'
+    coverage.gaps = ['Hosted transaction proof remains open.']
+    const suite = report.testResults[0]
+    if (outcome === 'missing') suite.assertionResults.shift()
+    else if (outcome === 'ambiguous') suite.assertionResults.push({ ...suite.assertionResults[0] })
+    else if (outcome === 'wrong-file') suite.name = '/unrelated.test.ts'
+    else if (outcome === 'red-runner') report.success = false
+    else suite.assertionResults[0].status = outcome
+    assert.ok(evaluateBehavioralEvidence(value, [report]).executionProblems.length > 0)
+  })
+}
+
+test('PR assertion verification refuses absent reports and empty reviewed bindings', () => {
+  const { value, report } = completeFixture()
+  assert.ok(evaluateBehavioralEvidence(value).executionProblems.length > 0)
+  value.behavioral_contract.bindings = {}
+  assert.ok(evaluateBehavioralEvidence(value, [report]).executionProblems.length > 0)
+})
+
+test('PR and Production workflows keep different evidence obligations', () => {
+  const pr = readFileSync(resolve('.github/workflows/kael-agentic-completeness.yml'), 'utf8')
+  const release = readFileSync(resolve('.github/workflows/release-production.yml'), 'utf8')
+  assert.match(pr, /transaction-critical-coverage\.mjs --require-bound-assertions/u)
+  assert.doesNotMatch(pr, /--require-behavioral/u)
+  assert.match(release, /transaction-critical-coverage\.mjs --require-behavioral/u)
+  assert.doesNotMatch(release, /--require-bound-assertions/u)
+})
+
+test('Staging integration checks out the PR head required by its hosted release preflight', () => {
+  const integration = readFileSync(resolve('.github/workflows/integration.yml'), 'utf8')
+  assert.ok(integration.includes('ref: ${{ github.event.pull_request.head.sha || github.sha }}'))
+  assert.ok(integration.includes("EXPECTED_GIT_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || '' }}"))
+})
