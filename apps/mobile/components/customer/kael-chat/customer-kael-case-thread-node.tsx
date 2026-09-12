@@ -133,12 +133,11 @@ function CustomerKaelCaseThreadContent({
       onAuthorizeApartmentAccess={async () => {
         await workflow.actions.authorizeApartmentAccess()
       }}
-      onCreatePaymentIntent={workflow.actions.createPaymentIntent}
+      apartmentAccessState={workflow.customerApartmentAccessState}
       onCreateManualBankPaymentOrder={workflow.actions.createManualBankPaymentOrder}
       onClaimManualBankPayment={workflow.actions.claimManualBankPayment}
-      onSelectDirectWorkerPayment={workflow.actions.selectDirectWorkerPayment}
-      onRespondToDirectWorkerPayment={workflow.actions.respondToDirectWorkerPayment}
       onChooseMatchingPreference={workflow.actions.setMatchingPreference}
+      matchingSelectionState={workflow.customerMatchingSelectionState}
       onLoadSavedWorkers={workflow.actions.listFavoriteWorkersForMatching}
       onRefreshPayment={workflow.actions.refreshCurrentJob}
       onApproveQuote={() => void decisionActions.confirmCaseQuote()}

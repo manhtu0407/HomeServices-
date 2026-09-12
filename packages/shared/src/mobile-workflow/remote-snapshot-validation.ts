@@ -7,6 +7,8 @@ import {
   type ServiceType,
 } from '../constants'
 import { isLocalDealStatus } from './status'
+import { refundSummarySchema } from '../contracts/payment'
+import { apartmentAccessAuthorizationSchema, apartmentAccessAuthorizationReceiptSchema } from '../contracts/job'
 import {
   LOCAL_PAYMENT_STATUSES,
   type LocalRemoteBroadcastSnapshot,
@@ -122,6 +124,12 @@ function isOptionalEstimate(value: unknown): boolean {
 function isOptionalAddressAccess(value: unknown): boolean {
   if (value === undefined || value === null) return true
   if (!isRecord(value) || !isRecord(value.access_profile)) return false
+  const context = value.authorization_context == null ? null : apartmentAccessAuthorizationSchema.safeParse(value.authorization_context)
+  const receipt = value.authorization_receipt == null ? null : apartmentAccessAuthorizationReceiptSchema.safeParse(value.authorization_receipt)
+  if ((context && !context.success) || (receipt && !receipt.success)) return false
+  if (receipt?.success && (!context?.success || !value.exact_unit_released || !value.worker_checked_in
+    || value.release_stage !== 'unit_released' || receipt.data.worker_id !== context.data.expected_worker_id
+    || receipt.data.checked_in_at !== context.data.expected_check_in_at)) return false
   const profile = value.access_profile
   return (value.release_stage === 'area_only' || value.release_stage === 'building_released' || value.release_stage === 'unit_released') &&
     typeof value.exact_unit_released === 'boolean' &&
@@ -251,6 +259,8 @@ function isOptionalPayment(value: unknown): boolean {
     isOptionalNullableString(value.bankCode) &&
     isOptionalNullableString(value.accountHolder) &&
     isOptionalNullableString(value.accountMasked) &&
+    (value.refundDataUnavailable === undefined || typeof value.refundDataUnavailable === 'boolean') &&
+    (value.refund === undefined || value.refund === null || refundSummarySchema.safeParse(value.refund).success) &&
     isOptionalNullableString(value.updatedAt)
 }
 
@@ -351,6 +361,7 @@ export function isValidRemoteJobSnapshot(value: unknown): value is LocalRemoteJo
     )) &&
     isOptionalEstimate(job.estimate) &&
     isOptionalWorkerBroadcast(job.broadcast) &&
+    (!job.broadcast?.addressAccess?.authorization_receipt || job.broadcast.addressAccess.authorization_receipt.job_id === job.id) &&
     isOptionalScopeReview(job.scopeReview) &&
     isOptionalScopeChange(job.scopeChange) &&
     isOptionalPayment(job.payment) &&

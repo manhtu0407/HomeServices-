@@ -12,8 +12,9 @@ import { buildMobileBinaryAttestation } from './mobile-binary-attestation.mjs'
 const release = buildHarnessRelease({
   environment: 'production', gitSha: '1'.repeat(40), requireCleanWorktree: false,
   providerReadiness: {
-    anthropic: true, deepseek: false, durable_guards: true,
-    global_ai_enabled: true, perplexity: true, vietmap: true,
+    android_fcm_v1: true, anthropic: true, deepseek: false, durable_guards: true,
+    global_ai_enabled: true, ios_apns: true, perplexity: true,
+    push_receipt_reconciler: true, vietmap: true,
   },
 })
 const cohortId = `synthetic-stage1-${release.releaseId.slice(8, 20)}-${release.releaseId.slice(21)}-gh77`
@@ -68,8 +69,9 @@ function fixtures() {
     cohortId,
     mergeApprovalReceipt: buildReviewedMainMergeReceipt({
       repository: 'nestscout/app', mergeCommitSha: release.gitSha,
+      requiredReviewer: 'kouuuuuu',
       pullRequest: { number: 1, url: 'https://github.com/nestscout/app/pull/1', author: 'author', headSha: 'a'.repeat(40), mergedAt: '2026-08-23T01:00:00Z', mergedBy: 'owner' },
-      review: { id: 1, actor: 'reviewer', commitSha: 'a'.repeat(40), submittedAt: '2026-08-23T00:59:00Z' },
+      review: { id: 1, actor: 'kouuuuuu', commitSha: 'a'.repeat(40), submittedAt: '2026-08-23T00:59:00Z' },
     }),
     mobileBinaryAttestation,
     productionUiNormalityReceipt: productionUiReceipt,

@@ -1,4 +1,4 @@
-import type { BroadcastStatus, JobStatus, KaelPriceReasoningReceipt, LocalPaymentStatus, MatchingDeliveryReceipt, QuoteMode, ScopeChangeStatus, ServiceType, WorkerKaelChatMode, WorkerServiceQualityStatus, WorkerVerificationStatus } from '@nestscout/shared'
+import type { BroadcastStatus, JobStatus, KaelPriceReasoningReceipt, LocalPaymentStatus, MatchingDeliveryReceipt, QuoteMode, ScopeChangeStatus, ServiceType, WorkerApplicationStatus, WorkerKaelChatMode, WorkerReadiness, WorkerServiceQualityStatus, WorkerVerificationStatus } from '@nestscout/shared'
 import type { KaelChatProgress } from './kael'
 import type { AddressAccessView, OriginalScopePriceQuote } from './shared'
 
@@ -73,6 +73,8 @@ export type WorkerProfileResponse = {
   bank_account_masked: string | null
   bank_name: string | null
   has_cccd: boolean
+  has_cccd_front?: boolean
+  has_cccd_back?: boolean
   has_selfie: boolean
 }
 
@@ -140,10 +142,17 @@ export type WorkerPerformanceInsightsResponse = {
 }
 
 export type WorkerApplicationResponse = {
-  application_id: string
-  status: 'open'
-  submitted_at: string
+  application_id: string | null
+  status: WorkerApplicationStatus
+  submitted_at: string | null
+  decided_at: string | null
+  reason: string | null
+  can_submit: boolean
+  can_resume: boolean
+  idempotent: boolean
 }
+
+export type WorkerReadinessResponse = WorkerReadiness
 
 export type WorkerBroadcast = {
   broadcast_id: string

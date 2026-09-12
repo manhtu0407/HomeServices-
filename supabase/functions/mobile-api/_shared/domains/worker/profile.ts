@@ -112,6 +112,8 @@ export async function getWorkerProfile(ctx: MobileApiContext) {
     bank_account_masked: maskBankAccount(nullableString(worker.bank_account)),
     bank_name: nullableString(worker.bank_name),
     has_cccd: Boolean(worker.cccd_front_url && worker.cccd_back_url),
+    has_cccd_front: Boolean(worker.cccd_front_url),
+    has_cccd_back: Boolean(worker.cccd_back_url),
     has_selfie: Boolean(worker.selfie_url),
   };
 }

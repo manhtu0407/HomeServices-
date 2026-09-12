@@ -207,11 +207,27 @@ describe('Admin Operations scope and support workspaces', () => {
     expect(adminControlService.updateSupportCasePreparation).not.toHaveBeenCalled()
   })
 
+  it.each([
+    ['vi', 'Tranh chấp. NS-JOB-1. Đang mở', 'Khoản hoàn tiền được phê duyệt là nghĩa vụ cần xử lý, không phải bằng chứng đã chuyển tiền. Xem tình trạng đối soát trong mục Tài chính.'],
+    ['en', 'Dispute. NS-JOB-1. Open', 'An approved refund is an obligation to process, not proof of a transfer. Check reconciliation status in Finance.'],
+  ] as const)('distinguishes a recorded refund decision from transferred money in %s', async (language, caseLabel, disclaimer) => {
+    jest.mocked(adminControlService.getSupportCase).mockResolvedValue({
+      data: { ...supportDetail, recorded_decision: { refund_amount: 100_000 } },
+      status: 200,
+      success: true,
+    })
+    render(<AdminSupportCaseCenter actor={{ access_level: 'operator', capabilities: ['operations.read'] }} language={language} onSessionMissing={jest.fn()} />)
+    fireEvent.press(await screen.findByLabelText(caseLabel))
+    expect(await screen.findByText(disclaimer)).toBeTruthy()
+    expect(adminControlService.updateSupportCasePreparation).not.toHaveBeenCalled()
+  })
+
   it('keeps a Manager without operations.triage strictly read-only', async () => {
     render(<AdminSupportCaseCenter actor={{ access_level: 'operator', capabilities: ['finance.read', 'operations.read'] }} language="vi" onSessionMissing={jest.fn()} />)
 
     fireEvent.press(await screen.findByLabelText('Tranh chấp. NS-JOB-1. Đang mở'))
-    expect(await screen.findByText('Bạn có quyền xem nhưng chưa được cấp operations.triage để chuẩn bị hồ sơ.')).toBeTruthy()
+    expect(await screen.findByText('Bạn có quyền xem nhưng chưa được cấp quyền chuẩn bị hồ sơ.')).toBeTruthy()
+    expect(screen.queryByText(/operations\.triage/)).toBeNull()
     expect(screen.queryByText('Nhận xử lý')).toBeNull()
     expect(adminControlService.updateSupportCasePreparation).not.toHaveBeenCalled()
   })

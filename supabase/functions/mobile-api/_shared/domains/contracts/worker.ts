@@ -2,6 +2,8 @@ import type {
   JobStatus,
   ScopeChangeStatus,
   ServiceType,
+  EdgeWorkerApplicationStatus as WorkerApplicationStatus,
+  EdgeWorkerReadiness as WorkerReadiness,
   WorkerVerificationStatus,
 } from "../../../../_shared/domain.ts";
 import type {
@@ -45,10 +47,17 @@ export type EdgeWorkerRegisterResponse = {
 };
 
 export type EdgeWorkerApplicationResponse = {
-  application_id: string;
-  status: "open";
-  submitted_at: string;
+  application_id: string | null;
+  status: WorkerApplicationStatus;
+  submitted_at: string | null;
+  decided_at: string | null;
+  reason: string | null;
+  can_submit: boolean;
+  can_resume: boolean;
+  idempotent: boolean;
 };
+
+export type EdgeWorkerReadinessResponse = WorkerReadiness;
 
 export type EdgeWorkerScopeChangeResponse = {
   scope_change_id: string;
@@ -271,6 +280,8 @@ export type EdgeWorkerProfileResponse = {
   bank_account_masked: string | null;
   bank_name: string | null;
   has_cccd: boolean;
+  has_cccd_front?: boolean;
+  has_cccd_back?: boolean;
   has_selfie: boolean;
 };
 

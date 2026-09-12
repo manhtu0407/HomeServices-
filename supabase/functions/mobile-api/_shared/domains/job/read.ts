@@ -26,7 +26,8 @@ import { getCurrentScopeChange } from "./pending-decisions.ts";
 import { loadPaymentReceipt, parsePaymentStatus } from "./payment-receipt.ts";
 import { listCustomerServiceHistory } from "./customer-history.ts";
 import { getCurrentJobIncidentReview } from "./incident.ts";
-import { estimateWorkerNet } from "../payment/commission.ts";
+import { estimateWorkerNet, frozenWorkerCommissionTier } from "../payment/commission.ts";
+import { projectWorkerJobBrief } from "../worker/job-brief.ts";
 import {
   resolveSyntheticActorScope,
   scopeQueryToSyntheticActor,
@@ -85,6 +86,7 @@ export async function getJob(
   if (
     ctx.role === "customer" &&
     job.status === "broadcasting" &&
+    job.quote_mode == null &&
     (broadcastState?.active_count ?? 0) === 0
   ) {
     try {
@@ -125,7 +127,7 @@ export async function getJob(
   const estimatedWorkerNet = ctx.role === "worker" || ctx.role === "admin"
     ? nullableNumber(job.worker_net) ?? estimateWorkerNet(
       nullableNumber(job.final_price),
-      frozenCommissionTier(job),
+      frozenWorkerCommissionTier(job),
     )
     : null;
 
@@ -153,7 +155,9 @@ export async function getJob(
       kael_advisory: nullableString(job.kael_advisory),
       kael_estimate_card_v3: nullableRecord(job.kael_estimate_card_v3),
       kael_worker_brief_core: nullableRecord(job.kael_worker_brief_core),
-      kael_worker_brief_guidance: nullableRecord(job.kael_worker_brief_guidance),
+      kael_worker_brief_guidance: workerId && (ctx.role === "worker" || ctx.role === "admin")
+        ? projectWorkerJobBrief(job, workerId)
+        : null,
       kael_progress: parseKaelProgressSnapshot(job.kael_progress, jobId),
       final_price: nullableNumber(job.final_price),
       estimated_worker_net: estimatedWorkerNet,
@@ -195,19 +199,6 @@ export async function getJob(
     current_job_incident: currentJobIncident,
     current_scope_change: currentScopeChange,
   };
-}
-
-function frozenCommissionTier(job: Record<string, unknown>) {
-  const level = nullableNumber(job.worker_commission_level);
-  const rateBps = nullableNumber(job.worker_commission_rate_bps);
-  if (
-    level === null || !Number.isSafeInteger(level) || level < 1 ||
-    rateBps === null || !Number.isSafeInteger(rateBps) ||
-    rateBps < 0 || rateBps > 1_500
-  ) {
-    return null;
-  }
-  return { level, rateBps };
 }
 
 export async function listCustomerActiveJobs(

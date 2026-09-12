@@ -40,6 +40,26 @@ delete from auth.users where id in (
   'd1120000-0000-4000-8000-000000000002'
 );`,
   },
+  {
+    name: 'public_coverage_capacity_concurrency_verification.sql',
+    cleanup: `
+delete from public.jobs where customer_id in (
+  'd6710000-0000-4000-8000-000000000001',
+  'd6710000-0000-4000-8000-000000000002'
+);
+delete from public.kael_chat_sessions where id in (
+  'd6710000-0000-4000-8000-000000000101',
+  'd6710000-0000-4000-8000-000000000102'
+);
+delete from auth.users where id in (
+  'd6710000-0000-4000-8000-000000000001',
+  'd6710000-0000-4000-8000-000000000002',
+  'd6710000-0000-4000-8000-000000000011',
+  'd6710000-0000-4000-8000-000000000012',
+  'd6710000-0000-4000-8000-000000000013',
+  'd6710000-0000-4000-8000-000000000014'
+);`,
+  },
 ]
 
 function resolveInsideRoot(value) {

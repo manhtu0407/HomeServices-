@@ -41,7 +41,7 @@ export function AdminSystemModelHealthWorkspace({ language }: { language: AppLan
   const detail = useAdminSystemDetail<AdminSystemModelHealthDetailResponse>({ cacheKey: 'system-model-detail', errorMessage: labels.detailError, fetchDetail: adminControlService.getSystemModelHealthDetail, id: selectedKey })
   const selectRecord = useCallback((id: string) => setSelectedKey(id), [])
   const renderRecord = useCallback(({ item }: ListRenderItemInfo<AdminSystemModelHealthRecord>) => <AdminSystemRow
-    accessibilityLabel={`${item.provider}. ${item.model || labels.modelNotRecorded}. ${item.purpose}`}
+    accessibilityLabel={`${item.provider}. ${item.model || labels.modelNotRecorded}. ${purposeLabel(item.purpose, language)}`}
     aside={rowAside(item, view, labels)}
     id={item.detail_key}
     meta={`${item.model || labels.modelNotRecorded} · ${purposeLabel(item.purpose, language)} · ${adminSystemFormatDate(item.updated_at, language)}`}
@@ -107,11 +107,28 @@ function metricValue(value: number | null, unavailable: string) { return value =
 function latencyValue(value: number | null, unavailable: string) { return value === null ? unavailable : `${Math.round(value)} ms` }
 function safeEventKey(entry: Record<string, unknown>) { return String(entry.event_id ?? entry.id ?? entry.recorded_at ?? entry.updated_at ?? JSON.stringify(entry)) }
 function rowAside(record: AdminSystemModelHealthRecord, view: HealthView, labels: typeof copy.vi | typeof copy.en) { if (view === 'costs') return record.total_cost_usd === null ? labels.noCostRecorded : `${record.total_cost_usd.toFixed(6)} USD`; if (view === 'incidents') return record.failure_count === null ? labels.notRecorded : `${record.failure_count} ${labels.failures.toLocaleLowerCase()}`; return record.call_count === null ? labels.notRecorded : `${record.call_count} ${labels.calls.toLocaleLowerCase()}` }
-function purposeLabel(value: string, language: AppLanguage) { const known: Record<string, readonly [string, string]> = { normal_chat: ['Trò chuyện thường', 'Normal chat'], price_synthesis: ['Tổng hợp giá', 'Price synthesis'], scope_change: ['Đổi phạm vi', 'Scope change'], worker_matching: ['Ghép thợ', 'Worker matching'] }; return known[value]?.[language === 'vi' ? 0 : 1] ?? value.replaceAll('_', ' ') }
+function purposeLabel(value: string, language: AppLanguage) { const known: Record<string, readonly [string, string]> = { normal_chat: ['Trò chuyện thường', 'Normal chat'], price_synthesis: ['Tổng hợp giá', 'Price synthesis'], scope_change: ['Đổi phạm vi', 'Scope change'], worker_matching: ['Ghép thợ', 'Worker matching'] }; return known[value]?.[language === 'vi' ? 0 : 1] ?? (language === 'vi' ? 'Mục đích chưa nhận diện' : 'Unrecognized purpose') }
 
 const copy = {
   vi: {
-    averageLatency: 'Độ trễ trung bình', bucket: 'Ngày dữ liệu', calls: 'Lượt gọi', chooseRecord: 'Chọn một dòng dữ liệu để xem số liệu và sự cố đã scrub.', circuit: 'Circuit', circuitAndCost: 'Circuit và chi phí', circuitValue: { all: 'Tất cả', open: 'Đang mở', closed: 'Đang đóng' }, configured: 'Model được cấu hình', detailError: 'Không thể tải chi tiết tình trạng mô hình.', empty: 'Chưa ghi nhận lượt gọi trong phạm vi này.', event: 'Sự kiện', failureKind: 'Loại lỗi', failures: 'Lỗi', fallbacks: 'Fallback', inventory: 'Model và provider được cấu hình', latency: 'Độ trễ', loadError: 'Không thể tải tình trạng mô hình.', loading: 'Đang tải tình trạng mô hình…', loadingDetail: 'Đang tải chi tiết mô hình…', loadingMore: 'Đang tải…', loadMore: 'Xem thêm', modelNotRecorded: 'Chưa ghi nhận model', noCostRecorded: 'Chưa ghi nhận chi phí', noCosts: 'Chưa ghi nhận chi phí trong kỳ này.', noIncidents: 'Không có lỗi, fallback hoặc circuit mở được ghi nhận trong kỳ.', noSafeEvents: 'Không có mã lỗi an toàn hoặc thay đổi circuit được ghi nhận.', notRecorded: 'Chưa ghi nhận', openCircuits: 'Circuit đang mở', p95Latency: 'Độ trễ p95', readOnly: 'Workspace này chỉ đọc và không gọi thử provider khi tải lại.', retry: 'Thử lại', safeEvents: 'Sự kiện an toàn', searchPlaceholder: 'Tìm provider, model hoặc mục đích', successes: 'Thành công', totalCost: 'Chi phí đã ghi nhận', usage: 'Lượt gọi', view: { overview: 'Tổng quan', incidents: 'Sự cố', costs: 'Chi phí' },
+    averageLatency: 'Độ trễ trung bình', bucket: 'Ngày dữ liệu', calls: 'Lượt gọi',
+    chooseRecord: 'Chọn một dòng dữ liệu để xem số liệu và sự cố đã loại bỏ thông tin nhạy cảm.',
+    circuit: 'Ngắt kết nối bảo vệ', circuitAndCost: 'Ngắt kết nối bảo vệ và chi phí',
+    circuitValue: { all: 'Tất cả', open: 'Đang mở', closed: 'Đang đóng' },
+    configured: 'Mô hình được cấu hình', detailError: 'Không thể tải chi tiết tình trạng mô hình.',
+    empty: 'Chưa ghi nhận lượt gọi trong phạm vi này.', event: 'Sự kiện', failureKind: 'Loại lỗi', failures: 'Lỗi',
+    fallbacks: 'Chuyển phương án dự phòng', inventory: 'Mô hình và nhà cung cấp được cấu hình', latency: 'Độ trễ',
+    loadError: 'Không thể tải tình trạng mô hình.', loading: 'Đang tải tình trạng mô hình…',
+    loadingDetail: 'Đang tải chi tiết mô hình…', loadingMore: 'Đang tải…', loadMore: 'Xem thêm',
+    modelNotRecorded: 'Chưa ghi nhận mô hình', noCostRecorded: 'Chưa ghi nhận chi phí',
+    noCosts: 'Chưa ghi nhận chi phí trong kỳ này.',
+    noIncidents: 'Không ghi nhận lỗi, lần chuyển phương án dự phòng hoặc lần ngắt kết nối bảo vệ trong kỳ.',
+    noSafeEvents: 'Không ghi nhận mã lỗi an toàn hoặc thay đổi trạng thái ngắt kết nối bảo vệ.',
+    notRecorded: 'Chưa ghi nhận', openCircuits: 'Kết nối đang ngắt để bảo vệ', p95Latency: 'Độ trễ p95',
+    readOnly: 'Màn này chỉ đọc và không gọi thử nhà cung cấp khi tải lại.', retry: 'Thử lại',
+    safeEvents: 'Sự kiện an toàn', searchPlaceholder: 'Tìm nhà cung cấp, mô hình hoặc mục đích',
+    successes: 'Thành công', totalCost: 'Chi phí đã ghi nhận', usage: 'Lượt gọi',
+    view: { overview: 'Tổng quan', incidents: 'Sự cố', costs: 'Chi phí' },
   },
   en: {
     averageLatency: 'Average latency', bucket: 'Data day', calls: 'Calls', chooseRecord: 'Select a data row to inspect scrubbed metrics and incidents.', circuit: 'Circuit', circuitAndCost: 'Circuit and cost', circuitValue: { all: 'All', open: 'Open', closed: 'Closed' }, configured: 'Configured models', detailError: 'Unable to load model health details.', empty: 'No calls are recorded for this scope.', event: 'Event', failureKind: 'Failure kind', failures: 'Failures', fallbacks: 'Fallbacks', inventory: 'Configured models and providers', latency: 'Latency', loadError: 'Unable to load model health.', loading: 'Loading model health…', loadingDetail: 'Loading model details…', loadingMore: 'Loading…', loadMore: 'Load more', modelNotRecorded: 'Model not recorded', noCostRecorded: 'Cost not recorded', noCosts: 'No costs are recorded for this period.', noIncidents: 'No errors, fallbacks, or open circuits are recorded for this period.', noSafeEvents: 'No safe error codes or circuit changes are recorded.', notRecorded: 'Not recorded', openCircuits: 'Open circuits', p95Latency: 'p95 latency', readOnly: 'This workspace is read-only and does not probe providers on refresh.', retry: 'Retry', safeEvents: 'Safe events', searchPlaceholder: 'Search provider, model, or purpose', successes: 'Successes', totalCost: 'Recorded cost', usage: 'Usage', view: { overview: 'Overview', incidents: 'Incidents', costs: 'Costs' },

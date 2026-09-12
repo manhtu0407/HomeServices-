@@ -1,0 +1,1275 @@
+{
+  "version": "1.0.0",
+  "minimum_public_workers": 3,
+  "behavioral_contract": {
+    "default_status": "UNVERIFIED",
+    "evidence_scope": "collected_tests_only",
+    "bindings": {
+      "admin.worker-access.decision": {
+        "status": "PARTIAL",
+        "gaps": ["Public handler/domain tests with scripted DB prove receipt integrity, role/capability refusal and positive approval. Request-changes/rejection, immutable review revision, timeout/retry, actual SQL audit/concurrency, hosted Admin UI and Production proof remain open."],
+        "cases": [{
+          "id": "admin-worker-access-receipt-http",
+          "pillar": "P171-admin-worker-review-receipt",
+          "file": "apps/api/src/__tests__/kael-edge-runtime/domains/admin-worker-review-receipt-pillar.test.ts",
+          "owner": "supabase/functions/mobile-api/_shared/domains/admin/control-validation.ts",
+          "invocation": "requireWorkerReviewReceipt", "seam": "http", "actor": "admin",
+          "from": ["worker_application_pending"], "to": ["worker_access_approved"],
+          "success_tests": ["Admin Worker access review receipt acknowledges a complete receipt without copying private database fields"],
+          "denial_tests": ["Admin Worker access review receipt rejects the customer role before any review RPC", "Admin Worker access review receipt rejects foreign queue without claiming a completed review", "Admin Worker access review receipt preserves an explicit already-reviewed refusal instead of fabricating success"],
+          "recovery_tests": []
+        }]
+      },
+      "admin.worker-kyc.decision": {
+        "status": "PARTIAL",
+        "gaps": ["Collected HTTP, service and RNTL tests bind review to the displayed queue/revision and reviewer token, fence stale detail/finance/receipt responses, retain exact unknown intent within the modal and distinguish a committed decision from list-refresh failure. Local diagnostic codes are not hosted traces. Separate Staging rollback SQL proves 100 sequential replays, immutable history and new-round isolation. Multi-connection races, durable Admin close/relaunch recovery, parent Admin session/cache retirement, hosted HTTP-to-SQL, full readiness, native devices and Production proof remain open."],
+        "cases": [{
+          "id": "admin-worker-profile-receipt-http",
+          "pillar": "P171-admin-worker-review-receipt",
+          "file": "apps/api/src/__tests__/kael-edge-runtime/domains/admin-worker-review-receipt-pillar.test.ts",
+          "owner": "supabase/functions/mobile-api/_shared/domains/admin/control-validation.ts",
+          "invocation": "requireWorkerReviewReceipt", "seam": "http", "actor": "admin",
+          "from": ["worker_kyc_pending"], "to": ["worker_ready"],
+          "success_tests": ["Admin Worker profile review receipt acknowledges a complete receipt without copying private database fields"],
+          "denial_tests": ["Admin Worker profile review receipt rejects the worker role before any review RPC", "rejects a profile receipt for a Worker different from the selected application", "Admin Worker profile review receipt preserves an explicit already-reviewed refusal instead of fabricating success"],
+          "recovery_tests": []
+        }, {
+          "id": "admin-worker-profile-snapshot-http",
+          "pillar": "P172-admin-worker-review-snapshot",
+          "file": "apps/api/src/__tests__/kael-edge-runtime/domains/admin-worker-review-snapshot-pillar.test.ts",
+          "owner": "supabase/functions/mobile-api/_shared/domains/admin/worker-review.ts",
+          "invocation": "decideAdminWorkerProfile", "seam": "http", "actor": "admin",
+          "from": ["worker_kyc_pending"], "to": ["worker_ready", "worker_kyc_pending"],
+          "success_tests": ["Admin KYC exact review snapshot HTTP contract replays the selected queue without querying only open queues or substituting a new round"],
+          "denial_tests": ["Admin KYC exact review snapshot HTTP contract preserves STALE_REVIEW without a success acknowledgement"],
+          "recovery_tests": ["Admin KYC exact review snapshot HTTP contract preserves IDEMPOTENCY_CONFLICT without a success acknowledgement", "Admin KYC exact review snapshot HTTP contract reports database outage rather than claiming that the application does not exist"]
+        }, {
+          "id": "admin-worker-profile-snapshot-mobile",
+          "pillar": "P173-admin-worker-review-snapshot-ui",
+          "file": "apps/mobile/components/admin/__tests__/admin-worker-review-snapshot-pillar-test.tsx",
+          "owner": "apps/mobile/components/admin/admin-worker-review-modal.tsx",
+          "invocation": "AdminWorkerReviewModal", "seam": "ui", "actor": "admin",
+          "from": ["worker_kyc_pending"], "to": ["worker_ready", "worker_kyc_pending"],
+          "success_tests": ["submits the queue and microsecond revision displayed in the detail, not the stale list row"],
+          "denial_tests": ["does not submit without a displayed revision", "does not close the review when HTTP success contains a receipt for another Worker", "rejects mismatched detail identity before rendering private fields", "does not fetch or expose a KYC review for signed_out", "does not fetch or expose a KYC review for customer"],
+          "recovery_tests": ["fences two presses in one render before pending state can update", "keeps a thrown transport outcome honest in vi", "keeps a thrown transport outcome honest in en", "does not let an old request close the next Worker modal", "discards a detail retry that finishes after a different Worker is selected", "does not show late finance data after a selection change", "does not show late finance data after a permission change", "retains known success when refreshing the list fails and retries only the read", "freezes an unknown decision and its reason so reconciliation replays exactly the original command", "does not cancel an in-flight decision when the list returns an equivalent Worker object", "does not apply an old reviewer receipt after account switch with the same Worker selected"]
+        }, {
+          "id": "admin-worker-review-session-service",
+          "pillar": "P175-admin-worker-review-session",
+          "file": "apps/mobile/lib/__tests__/admin-worker-review-session-pillar-test.ts",
+          "owner": "apps/mobile/lib/services/admin-control-service.ts",
+          "invocation": "decideWorkerProfile", "seam": "service", "actor": "admin",
+          "from": ["worker_kyc_pending"], "to": ["worker_ready", "worker_kyc_pending"],
+          "success_tests": ["never substitutes ambient auth for a profile decision (explicit-reviewer-token)"],
+          "denial_tests": ["never substitutes ambient auth for a profile decision ()"],
+          "recovery_tests": []
+        }]
+      },
+      "worker.kyc.command.submit": {
+        "status": "PARTIAL",
+        "gaps": ["Real HTTP handler/domain tests use scripted DB receipts. Separate Staging SQL proves atomic receipt/replay and partial-document preservation; collected mobile tests cover opaque intent, draft ordering, owner fencing, partial server-draft reuse and honest failure states. Multi-connection races, hosted HTTP-to-SQL, physical native relaunch and Production evidence remain open. Unknown Storage orphan retention and support-led corrupt-journal recovery require separate proof."],
+        "cases": [{
+          "id": "worker-draft-command-submit-http",
+          "pillar": "P167-worker-registration-command-http",
+          "file": "apps/api/src/__tests__/kael-edge-runtime/domains/worker-registration-command-pillar.test.ts",
+          "owner": "supabase/functions/mobile-api/_shared/domains/worker/registration-command.ts",
+          "invocation": "submitWorkerRegistrationCommand", "seam": "http", "actor": "worker",
+          "from": ["worker_kyc_pending"], "to": ["worker_kyc_pending"],
+          "success_tests": ["Worker server-draft command public contract submits only the actor-owned revision and returns a durable receipt"],
+          "denial_tests": ["Worker server-draft command public contract denies a Customer access to the POST command"],
+          "recovery_tests": ["Worker server-draft command public contract retains a committed stale-draft rejection as a resolved command"]
+        }, {
+          "id": "worker-draft-command-mobile-intent",
+          "pillar": "P168-worker-registration-recovery",
+          "file": "apps/mobile/lib/__tests__/worker-registration-recovery-pillar-test.ts",
+          "owner": "apps/mobile/lib/frontend-workflow/worker-registration-recovery.ts",
+          "invocation": "createWorkerRegistrationRecovery", "seam": "ui", "actor": "worker",
+          "from": ["worker_kyc_pending"], "to": ["worker_kyc_pending"],
+          "success_tests": ["joins earlier draft writes before choosing the submitted revision"],
+          "denial_tests": ["never POSTs when durable storage rejects the command", "refuses a retired actor before any request or storage write"],
+          "recovery_tests": ["persists only opaque intent before POST and resumes that exact command after restart", "bounds POST replay while continuing read-only reconciliation of an unknown outcome", "keeps a transport draft-save failure distinct from local journal failure and safely retryable", "keeps a revision draft-save failure distinct from local journal failure and safely retryable"]
+        }, {
+          "id": "worker-partial-document-form",
+          "pillar": "P163-worker-registration-draft-gate",
+          "file": "apps/mobile/components/worker/__tests__/worker-registration-draft-gate-pillar-test.tsx",
+          "owner": "apps/mobile/components/worker/profile/registration-surfaces.tsx",
+          "invocation": "WorkerV5WorkerRegistrationBody", "seam": "ui", "actor": "worker",
+          "from": ["worker_kyc_pending"], "to": ["worker_kyc_pending"],
+          "success_tests": ["resumes a partially saved identity document by uploading only its missing back (vi)", "resumes a partially saved identity document by uploading only its missing back (en)"],
+          "denial_tests": ["keeps a missing document blocked when a newer profile explicitly contradicts the legacy combined flag", "does not claim a sent submission when the local journal is unavailable (vi)", "does not claim a sent submission when the local journal is unavailable (en)"],
+          "recovery_tests": ["reuploads a changed selection without reuploading the unchanged document from a refused draft", "preserves a service-only edit when the server profile refreshes before autosave", "keeps a refused draft editable without claiming a new review request was sent (vi)", "keeps a refused draft editable without claiming a new review request was sent (en)"]
+        }]
+      },
+      "worker.readiness.read": {
+        "status": "PARTIAL",
+        "gaps": ["Collected real HTTP profile projection verifies independent document flags, private-ref redaction and wrong-role refusal using a scripted DB. Separate Staging SQL verifies partial save without clearing omitted fields. This is not full readiness, current-source hosted profile recovery, native UI or Production evidence."],
+        "cases": [{
+          "id": "worker-document-presence-http",
+          "pillar": "P170-worker-document-resume",
+          "file": "apps/api/src/__tests__/kael-edge-runtime/domains/worker-document-resume-pillar.test.ts",
+          "owner": "supabase/functions/mobile-api/_shared/domains/worker/profile.ts",
+          "invocation": "getWorkerProfile", "seam": "http", "actor": "worker",
+          "from": ["authenticated", "worker_kyc_pending"], "to": ["worker_kyc_pending"],
+          "success_tests": ["worker document resume projection reports each saved document independently without private refs (true/false/true)"],
+          "denial_tests": ["worker document resume projection rejects a Customer before reading Worker KYC"],
+          "recovery_tests": ["worker document resume projection does not invent documents for a missing profile"]
+        }]
+      },
+      "worker.kyc.command.reconcile": {
+        "status": "PARTIAL",
+        "gaps": ["HTTP read tests prove actor/key receipt validation with a scripted DB. Mounted mobile hook tests prove relaunch receipt recovery and session retirement, not physical device process death or real Auth. Current-source hosted Edge, real-account auth, native recovery and Production proof remain open."],
+        "cases": [{
+          "id": "worker-draft-command-read-http",
+          "pillar": "P167-worker-registration-command-http",
+          "file": "apps/api/src/__tests__/kael-edge-runtime/domains/worker-registration-command-pillar.test.ts",
+          "owner": "supabase/functions/mobile-api/_shared/domains/worker/registration-command.ts",
+          "invocation": "getWorkerRegistrationCommand", "seam": "http", "actor": "worker",
+          "from": ["worker_kyc_pending"], "to": ["worker_kyc_pending"],
+          "success_tests": ["Worker server-draft command public contract reconciles without another mutation or copying unexpected private fields"],
+          "denial_tests": ["Worker server-draft command public contract rejects a foreign receipt on the reconciliation read", "Worker server-draft command public contract denies a Customer access to the GET command"],
+          "recovery_tests": ["Worker server-draft command public contract keeps an absent receipt unknown rather than declaring that submission failed"]
+        }, {
+          "id": "worker-draft-command-mobile-session",
+          "pillar": "P169-worker-registration-session",
+          "file": "apps/mobile/lib/__tests__/worker-registration-session-pillar-test.tsx",
+          "owner": "apps/mobile/lib/frontend-workflow/use-worker-registration-actions.ts",
+          "invocation": "useWorkerRegistrationActions", "seam": "ui", "actor": "worker",
+          "from": ["worker_kyc_pending"], "to": ["worker_kyc_pending"],
+          "success_tests": ["restores a submitted receipt on relaunch without a second submission"],
+          "denial_tests": ["retires an in-flight draft and stale callback when the account switches"],
+          "recovery_tests": []
+        }]
+      },
+      "worker.application.submit": {
+        "status": "PARTIAL",
+        "gaps": ["Collected HTTP tests execute the real handler/domain with scripted DB receipts. They prove receipt integrity and retry identity, not Supabase Auth login, concurrent SQL writes, current-source hosted onboarding or native relaunch. Approval/revision UI and Production proof remain open."],
+        "cases": [{
+          "id": "applicant-submission-receipt-http",
+          "pillar": "P161-worker-application-receipt",
+          "file": "apps/api/src/__tests__/kael-edge-runtime/domains/worker-application-receipt-pillar.test.ts",
+          "owner": "supabase/functions/mobile-api/_shared/domains/worker/registration.ts",
+          "invocation": "submitWorkerApplication", "seam": "http", "actor": "customer",
+          "from": ["worker_application_draft"], "to": ["worker_application_pending"],
+          "success_tests": ["Worker application receipt boundary acknowledges the complete pending receipt for an authenticated applicant"],
+          "denial_tests": [
+            "Worker application receipt boundary refuses missing application id instead of acknowledging a submission",
+            "Worker application receipt boundary refuses string resubmit flag instead of acknowledging a submission",
+            "Worker application receipt boundary never uses the legacy Worker exception to approve an applicant without an application"
+          ],
+          "recovery_tests": ["Worker application receipt boundary keeps the same actor and request identity when retrying an unknown database outcome"]
+        }]
+      },
+      "worker.application.read": {
+        "status": "PARTIAL",
+        "gaps": ["HTTP rehydration is actor-bound and cannot auto-submit; the DB is scripted. Separate Staging SQL proves revision lineage, but hosted HTTP-to-SQL, all application decisions, concurrent changes, native relaunch and Production evidence remain open."],
+        "cases": [{
+          "id": "applicant-readiness-recovery-http",
+          "pillar": "P71-worker-readiness-onboarding",
+          "file": "apps/api/src/__tests__/unit/worker-readiness-onboarding-pillar.test.ts",
+          "owner": "supabase/functions/mobile-api/_shared/domains/worker/readiness.ts",
+          "invocation": "getWorkerReadiness", "seam": "http", "actor": "customer",
+          "from": ["worker_application_pending"], "to": ["worker_application_draft"],
+          "success_tests": ["worker readiness and onboarding rehydrates changes-requested state through HTTP without silently resubmitting"],
+          "denial_tests": ["worker readiness and onboarding reports unavailable readiness instead of inventing a not-submitted application on DB failure"],
+          "recovery_tests": []
+        }]
+      },
+      "customer.cancellation.request": {
+        "status": "PARTIAL",
+        "gaps": ["Local real-hook tests prove actor/job fencing, token binding and read-after-timeout reconciliation. HTTP composition with scripted DB proves receipt integrity, policy-gate denial and persisted-request recovery; it is not hosted Edge-to-SQL proof. Separate Staging rollback SQL P117/P118 proves cancellation capacity/outbox retirement and atomic deduplicated Worker inbox notices, not multi-connection races. Native relaunch, audited refund handling, current-source hosted composition, physical push and Production cancellation remain unverified."],
+        "cases": [{
+          "id": "customer-cancellation-mobile-isolation",
+          "pillar": "P115-customer-job-command-isolation",
+          "file": "apps/mobile/lib/__tests__/customer-job-command-isolation-pillar-test.tsx",
+          "owner": "apps/mobile/lib/frontend-workflow/use-customer-job-actions.ts",
+          "invocation": "cancelRemoteJob", "seam": "ui", "actor": "customer",
+          "from": ["broadcasting"], "to": ["cancelled"],
+          "success_tests": ["Customer job command isolation joins duplicate cancellation presses and uses the captured Customer token"],
+          "denial_tests": [
+            "Customer job command isolation never sends a cancellation or favorite read from a retired actor callback",
+            "Customer job command isolation never sends Customer cancellation under the worker role",
+            "Customer job command isolation never sends Customer cancellation under the admin role",
+            "Customer job command isolation does not fabricate cancellation when a success response identifies another job"
+          ],
+          "recovery_tests": [
+            "Customer job command isolation keeps the job and reconciles a network-ambiguous cancellation instead of claiming failure",
+            "Customer job command isolation recovers a committed cancellation after timeout from the same authenticated job read",
+            "Customer job command isolation does not let a pre-cancellation refresh restore broadcasting after the receipt"
+          ]
+        }, {
+          "id": "customer-cancellation-http-receipt-integrity",
+          "pillar": "P116-customer-cancellation-http",
+          "file": "apps/api/src/__tests__/kael-edge-runtime/domains/customer-cancellation-http-pillar.test.ts",
+          "owner": "supabase/functions/mobile-api/_shared/domains/customer/cancellation.ts",
+          "invocation": "requestCustomerCancellation", "seam": "http", "actor": "customer",
+          "from": ["broadcasting"], "to": ["cancelled"],
+          "success_tests": [
+            "Customer cancellation HTTP receipt integrity acknowledges the validated receipt for the authenticated Customer job",
+            "Customer cancellation HTTP receipt integrity does not confuse a numeric UUID reference with personal data"
+          ],
+          "denial_tests": [
+            "Customer cancellation HTTP receipt integrity denies worker before cancellation mutation",
+            "Customer cancellation HTTP receipt integrity denies admin before cancellation mutation",
+            "Customer cancellation HTTP receipt integrity denies a different Customer before cancellation mutation",
+            "Customer cancellation HTTP receipt integrity preserves the autonomy flag denial before a policy cancellation mutation",
+            "Customer cancellation HTTP receipt integrity requires reconciliation when the atomic receipt omits the resulting job status"
+          ],
+          "recovery_tests": [
+            "Customer cancellation HTTP receipt integrity recovers the same persisted request after restart without another cancellation RPC",
+            "Customer cancellation HTTP receipt integrity recovers a concurrent committed cancellation using the authoritative conflict status",
+            "Customer cancellation HTTP receipt integrity never replaces an unknown conflict status with a default workflow state",
+            "Customer cancellation HTTP receipt integrity stops before mutation when the durable cancellation lookup is unavailable"
+          ]
+        }]
+      },
+      "customer.matching-selection": {
+        "status": "PARTIAL",
+        "gaps": ["Scripted-DB HTTP, rollback-only Staging SQL and local RNTL UI consent/persisted selection/relaunch are bound. Fallback SQL covers decline, expiry and unavailable favorites; concurrent connections, hosted Edge-to-SQL and Production/native delivery remain unverified."],
+        "cases": [{
+          "id": "customer-matching-selection-http",
+          "pillar": "P109-matching-selection-http",
+          "file": "apps/api/src/__tests__/kael-edge-runtime/domains/matching-selection-http-pillar.test.ts",
+          "owner": "supabase/functions/mobile-api/_shared/domains/matching/matching-preference-command.ts",
+          "invocation": "requestDurableMatchingPreference",
+          "seam": "http", "actor": "customer",
+          "from": ["job_created"], "to": ["matching_queued"],
+          "success_tests": [
+            "Customer durable matching selection accepts an unpriced saved-only choice and queues exactly one atomic command without delivery",
+            "Customer durable matching selection does not invent fallback consent when the client omits it"
+          ],
+          "denial_tests": [
+            "Customer durable matching selection denies admin before a selection RPC",
+            "Customer durable matching selection denies worker before a selection RPC",
+            "Customer durable matching selection rejects a invented consent receipt as an unknown outcome"
+          ],
+          "recovery_tests": []
+        }, {
+          "id": "customer-matching-selection-mobile",
+          "pillar": "P111-customer-matching-selection-mobile",
+          "file": "apps/mobile/lib/__tests__/customer-matching-selection-pillar-test.tsx",
+          "owner": "apps/mobile/lib/frontend-workflow/use-customer-job-actions.ts",
+          "invocation": "setMatchingPreference", "seam": "ui", "actor": "customer",
+          "from": ["job_created"], "to": ["matching_queued"],
+          "success_tests": ["Customer durable matching selection mobile boundary persists exact saved-only consent before POST and joins duplicate presses"],
+          "denial_tests": ["Customer durable matching selection mobile boundary does not send when persistent storage fails"],
+          "recovery_tests": ["Customer durable matching selection mobile boundary replays only identical persisted consent when a cold-start GET proves absence"]
+        }, {
+          "id": "customer-matching-consent-ui",
+          "pillar": "P114-customer-matching-consent-ui",
+          "file": "apps/mobile/components/customer/__tests__/matching-consent-pillar-test.tsx",
+          "owner": "apps/mobile/components/customer/kael-chat/finding-workers-receipt.tsx",
+          "invocation": "FindingWorkersReceipt", "seam": "ui", "actor": "customer",
+          "from": ["job_created"], "to": ["matching_queued"],
+          "success_tests": [
+            "Customer matching consent UI defaults to saved-only and never invents fallback consent",
+            "Customer matching consent UI sends fallback only after explicit opt-in in vi",
+            "Customer matching consent UI sends fallback only after explicit opt-in in en"
+          ],
+          "denial_tests": ["Customer matching consent UI locks both choices while restoring storage or reconciling saved consent"],
+          "recovery_tests": ["Customer matching consent UI shows the persisted choice instead of an editable draft after an unknown outcome"]
+        }]
+      },
+      "customer.matching-selection.read": {
+        "status": "PARTIAL",
+        "gaps": ["Public receipt reads and local RNTL cold-start/account-switch recovery are bound. Physical native relaunch, hosted Edge and Production proof remain unverified."],
+        "cases": [{
+          "id": "customer-matching-selection-receipt-http",
+          "pillar": "P109-matching-selection-http",
+          "file": "apps/api/src/__tests__/kael-edge-runtime/domains/matching-selection-http-pillar.test.ts",
+          "owner": "supabase/functions/mobile-api/_shared/domains/matching/matching-preference-command.ts",
+          "invocation": "getJobMatchingPreferenceReceipt",
+          "seam": "http", "actor": "customer",
+          "from": ["matching_queued", "recovery_required"], "to": ["official_match"],
+          "success_tests": [
+            "Customer durable matching selection recovers the exact selection receipt through GET after restart without another command"
+          ],
+          "denial_tests": [
+            "Customer durable matching selection denies admin selection receipt reads",
+            "Customer durable matching selection denies worker selection receipt reads"
+          ],
+          "recovery_tests": []
+        }, {
+          "id": "customer-matching-selection-mobile-recovery",
+          "pillar": "P111-customer-matching-selection-mobile",
+          "file": "apps/mobile/lib/__tests__/customer-matching-selection-pillar-test.tsx",
+          "owner": "apps/mobile/lib/frontend-workflow/use-customer-job-actions.ts",
+          "invocation": "useCustomerJobActions", "seam": "ui", "actor": "customer",
+          "from": ["matching_queued", "recovery_required"], "to": ["matching_queued"],
+          "success_tests": ["Customer durable matching selection mobile boundary cold start reads the exact persisted request without another POST when receipt exists"],
+          "denial_tests": ["Customer durable matching selection mobile boundary denies worker selection before storage or network"],
+          "recovery_tests": [
+            "Customer durable matching selection mobile boundary does not apply an old POST receipt to an account switched during the request",
+            "Customer durable matching selection mobile boundary carries explicit UI consent through storage and API, then locks it on relaunch after timeout"
+          ]
+        }]
+      },
+      "customer.kael-confirm": {
+        "status": "PARTIAL",
+        "gaps": [
+          "The real HTTP service is exercised with scripted RPC receipts; rollback-only Staging SQL proves persisted intent, serial replay and pending dispatch isolation. Mobile tests prove actor-scoped local consent and guarded recovery, not hosted execution. Legacy ownerless recovery, simultaneous DB races, current-source hosted Edge, native and Production proof remain open."
+        ],
+        "cases": [{
+          "id": "confirmation-matching-intent-http",
+          "pillar": "P107-confirmation-preference-http",
+          "file": "apps/api/src/__tests__/kael-edge-runtime/domains/confirmation-preference-http-pillar.test.ts",
+          "owner": "supabase/functions/mobile-api/_shared/domains/kael-chat/confirm.service.ts",
+          "invocation": "confirmKaelChat",
+          "seam": "http",
+          "actor": "customer",
+          "from": ["confirmation_pending"],
+          "to": ["job_created"],
+          "success_tests": [
+            "Customer confirmation matching intent persists prompt intent through one atomic command and returns the actual pending choice",
+            "Customer confirmation matching intent passes an absent preference as null, without inventing fallback consent"
+          ],
+          "denial_tests": [
+            "Customer confirmation matching intent denies worker before privileged confirmation",
+            "Customer confirmation matching intent denies admin before privileged confirmation"
+          ],
+          "recovery_tests": []
+        }, {
+          "id": "confirmation-durable-local-intent",
+          "pillar": "P74-customer-confirmation-relaunch-recovery",
+          "file": "apps/mobile/lib/__tests__/customer-confirmation-relaunch-pillar-test.ts",
+          "owner": "apps/mobile/lib/frontend-workflow/confirmation-recovery.ts",
+          "invocation": "getOrCreatePendingConfirmation", "seam": "ui", "actor": "customer",
+          "from": ["coverage_ready", "confirmation_pending"], "to": ["confirmation_pending"],
+          "success_tests": ["Customer confirmation relaunch recovery prepares one stable identity for 100 simultaneous confirmations"],
+          "denial_tests": [
+            "Customer confirmation relaunch recovery refuses broader or changed intent while the first confirmation outcome is unknown",
+            "Customer confirmation relaunch recovery does not treat unreadable storage as an absent command",
+            "Customer confirmation relaunch recovery preserves legacy consent whose owner cannot be authenticated locally"
+          ],
+          "recovery_tests": [
+            "Customer confirmation relaunch recovery preserves a corrupt envelope instead of deleting it and sending a fresh command",
+            "Customer confirmation relaunch recovery refuses a new command when 20 unresolved confirmations already occupy storage"
+          ]
+        }]
+      },
+      "system.matching.outbox": {
+        "status": "PARTIAL",
+        "gaps": [
+          "The real dispatcher and fallback domain execute against scripted RPC receipts; separate Staging SQL proves lease authority, immutable consent, fallback atomicity and serial replay. UI consent is bound under customer.matching-selection. Hosted Edge-to-SQL, simultaneous DB races, notification crash recovery, native and Production delivery proof remain open."
+        ],
+        "cases": [{
+          "id": "confirmation-outbox-default-processor",
+          "pillar": "P58-confirmation-outbox-dispatcher",
+          "file": "apps/api/src/__tests__/kael-edge-runtime/domains/workflow-outbox-dispatcher-pillar.test.ts",
+          "owner": "supabase/functions/mobile-api/_shared/domains/kael-chat/confirmation-outbox-dispatcher.ts",
+          "invocation": "dispatchConfirmationMatchingOutbox",
+          "seam": "system",
+          "actor": "system",
+          "from": ["matching_queued"],
+          "to": ["broadcasting", "recovery_required"],
+          "success_tests": ["confirmation matching outbox dispatcher processes a committed RFQ receipt without a diagnosis or price and notifies only its recipient"],
+          "denial_tests": [
+            "confirmation matching outbox dispatcher never enriches or notifies a foreign_job activation receipt",
+            "confirmation matching outbox dispatcher never enriches or notifies a foreign_confirmation activation receipt",
+            "confirmation matching outbox dispatcher never enriches or notifies a foreign_matching activation receipt",
+            "confirmation matching outbox dispatcher never enriches or notifies a expired activation receipt"
+          ],
+          "recovery_tests": [
+            "confirmation matching outbox dispatcher uses the real processor with a lease-bound activation for recovery_required, without legacy matching",
+            "confirmation matching outbox dispatcher uses the real processor with a lease-bound activation for lease_lost, without legacy matching"
+          ]
+        }, {
+          "id": "saved-worker-fallback-command",
+          "pillar": "P113-saved-worker-fallback-runtime",
+          "file": "apps/api/src/__tests__/kael-edge-runtime/domains/saved-worker-fallback-pillar.test.ts",
+          "owner": "supabase/functions/mobile-api/_shared/domains/matching/matching-preference-fallback.ts",
+          "invocation": "reconcileSavedWorkerFallback", "seam": "system", "actor": "system",
+          "from": ["broadcasting"], "to": ["matching_queued"],
+          "success_tests": ["Saved-worker fallback durable runtime queues only the atomic command with no inline broadcast or fake delivery"],
+          "denial_tests": ["Saved-worker fallback durable runtime preserves a server refusal without attempting broader matching"],
+          "recovery_tests": ["Saved-worker fallback durable runtime keeps an ambiguous commit recoverable without falling through to legacy matching"]
+        }]
+      },
+      "customer.direct-confirm": {
+        "status": "PARTIAL",
+        "gaps": [
+          "Scripted-DB HTTP and local RNTL persisted retry evidence are bound; hosted Edge-to-SQL execution, multi-connection concurrency, physical native and Production proof remain unverified."
+        ],
+        "cases": [
+          {
+            "id": "customer-matching-retry-http",
+            "pillar": "P104-customer-matching-retry-http",
+            "file": "apps/api/src/__tests__/kael-edge-runtime/domains/customer-matching-retry-http-pillar.test.ts",
+            "owner": "supabase/functions/mobile-api/_shared/domains/matching/customer-retry.ts",
+            "invocation": "requestJobMatchingRetry",
+            "seam": "http",
+            "actor": "customer",
+            "from": [
+              "broadcasting"
+            ],
+            "to": [
+              "matching_queued"
+            ],
+            "success_tests": [
+              "durable Customer matching retry HTTP contract accepts one atomic command and does no inline provider, job update or delivery work"
+            ],
+            "denial_tests": [
+              "durable Customer matching retry HTTP contract denies worker before even a privileged RPC",
+              "durable Customer matching retry HTTP contract denies admin before even a privileged RPC"
+            ],
+            "recovery_tests": []
+          },
+          {
+            "id": "customer-matching-retry-mobile-command",
+            "pillar": "P105-customer-matching-retry-mobile",
+            "file": "apps/mobile/lib/__tests__/customer-matching-retry-pillar-test.tsx",
+            "owner": "apps/mobile/lib/frontend-workflow/use-customer-job-actions.ts",
+            "invocation": "confirmRemoteSearch",
+            "seam": "ui",
+            "actor": "customer",
+            "from": ["broadcasting"],
+            "to": ["matching_queued"],
+            "success_tests": ["Customer durable matching retry mobile boundary persists actor, job, expected parent and stable request before the first POST; double tap joins it"],
+            "denial_tests": ["Customer durable matching retry mobile boundary does not send when durable storage fails"],
+            "recovery_tests": ["Customer durable matching retry mobile boundary replays an unknown request with identical input when GET proves the receipt is missing"]
+          }
+        ]
+      },
+      "customer.matching-retry-recovery": {
+        "status": "PARTIAL",
+        "gaps": [
+          "Scripted-DB HTTP and local RNTL persisted retry evidence are bound; hosted Edge-to-SQL execution, multi-connection concurrency, physical native and Production proof remain unverified."
+        ],
+        "cases": [
+          {
+            "id": "customer-matching-retry-read-http",
+            "pillar": "P104-customer-matching-retry-http",
+            "file": "apps/api/src/__tests__/kael-edge-runtime/domains/customer-matching-retry-http-pillar.test.ts",
+            "owner": "supabase/functions/mobile-api/_shared/domains/matching/customer-retry.ts",
+            "invocation": "getJobMatchingRetry",
+            "seam": "http",
+            "actor": "customer",
+            "from": [
+              "recovery_required"
+            ],
+            "to": [
+              "official_match"
+            ],
+            "success_tests": [
+              "durable Customer matching retry HTTP contract recovers the same operation after restart without submitting another command"
+            ],
+            "denial_tests": [
+              "durable Customer matching retry HTTP contract denies worker receipt reads as well as commands",
+              "durable Customer matching retry HTTP contract denies admin receipt reads as well as commands"
+            ],
+            "recovery_tests": []
+          },
+          {
+            "id": "customer-matching-retry-mobile-recovery",
+            "pillar": "P105-customer-matching-retry-mobile",
+            "file": "apps/mobile/lib/__tests__/customer-matching-retry-pillar-test.tsx",
+            "owner": "apps/mobile/lib/frontend-workflow/use-customer-job-actions.ts",
+            "invocation": "useCustomerJobActions",
+            "seam": "ui",
+            "actor": "customer",
+            "from": ["recovery_required"],
+            "to": ["official_match"],
+            "success_tests": ["Customer durable matching retry mobile boundary cold start reads the exact persisted request after an ambiguous POST, without a second POST when receipt exists"],
+            "denial_tests": ["Customer durable matching retry mobile boundary does not replay POST when a previously acknowledged receipt disappears"],
+            "recovery_tests": ["Customer durable matching retry mobile boundary does not mutate or hydrate the new account when the old POST finishes after an account switch"]
+          }
+        ]
+      },
+      "customer.matching-parent-read": {
+        "status": "PARTIAL",
+        "gaps": [
+          "Scripted-DB HTTP and local mobile parent validation exist; hosted Edge-to-SQL execution, multi-connection concurrency, physical native and Production proof remain unverified."
+        ],
+        "cases": [
+          {
+            "id": "customer-matching-parent-read-http",
+            "pillar": "P104-customer-matching-retry-http",
+            "file": "apps/api/src/__tests__/kael-edge-runtime/domains/customer-matching-retry-http-pillar.test.ts",
+            "owner": "supabase/functions/mobile-api/_shared/domains/matching/customer-retry.ts",
+            "invocation": "getJobMatchingOperation",
+            "seam": "http",
+            "actor": "customer",
+            "from": [
+              "broadcasting"
+            ],
+            "to": [
+              "broadcasting"
+            ],
+            "success_tests": [
+              "durable Customer matching retry HTTP contract returns the owned latest operation for the expected-parent fence, not a Worker list or supply claim"
+            ],
+            "denial_tests": [
+              "durable Customer matching retry HTTP contract cannot use an owned session to read another Customer matching parent"
+            ],
+            "recovery_tests": []
+          }
+        ]
+      },
+      "customer.completion.confirm": {
+        "status": "PARTIAL",
+        "gaps": ["The composed HTTP handler and real domain are exercised with a scripted DB client. Real SQL atomicity, client abort/relaunch, intermediate Customer confirmation, and recovery_required transitions still need bound execution evidence; this is not hosted or native proof."],
+        "cases": [{
+          "id": "customer-completion-http",
+          "pillar": "P86-customer-completion-http",
+          "file": "apps/api/src/__tests__/kael-edge-runtime/domains/customer-completion-http-pillar.test.ts",
+          "owner": "supabase/functions/mobile-api/_shared/domains/payment/manual-bank.ts",
+          "invocation": "confirmCompletionAndCreateManualBankOrder",
+          "seam": "http",
+          "actor": "customer",
+          "from": ["completion_proposed"],
+          "to": ["payment_pending"],
+          "success_tests": ["Customer completion at the public HTTP boundary creates an atomic unpaid operation and returns its durable receipt"],
+          "denial_tests": [
+            "Customer completion at the public HTTP boundary refuses the worker actor before any domain read or write",
+            "Customer completion at the public HTTP boundary refuses the admin actor before any domain read or write",
+            "Customer completion at the public HTTP boundary conceals another Customer job before the completion RPC",
+            "Customer completion at the public HTTP boundary refuses the invalid final price null before mutation",
+            "Customer completion at the public HTTP boundary refuses the invalid final price 0 before mutation",
+            "Customer completion at the public HTTP boundary refuses the invalid final price -1 before mutation",
+            "Customer completion at the public HTTP boundary refuses the invalid final price 1.5 before mutation",
+            "Customer completion at the public HTTP boundary preserves the atomic refusal repairing / COMPLETION_NOT_READY",
+            "Customer completion at the public HTTP boundary preserves the atomic refusal completed_by_worker / CUSTOMER_COMPLETION_EVIDENCE_REQUIRED",
+            "Customer completion at the public HTTP boundary preserves the atomic refusal completed_by_worker / SYNTHETIC_PAYMENT_PATH_REQUIRED",
+            "Customer completion at the public HTTP boundary fails closed when the bank provider is not enabled"
+          ],
+          "recovery_tests": ["Customer completion at the public HTTP boundary recovers the same operation on retry without issuing a second notification"]
+        }]
+      },
+      "worker.fulfillment.advance": {
+        "status": "PARTIAL",
+        "gaps": ["On-way, arrival/geofence, inspection, and their recovery transitions still need executable cases."],
+        "cases": [{
+          "id": "worker-completion-media",
+          "pillar": "P79-worker-completion-media-ownership",
+          "file": "apps/api/src/__tests__/kael-edge-runtime/domains/worker-completion-media-pillar.test.ts",
+          "owner": "supabase/functions/mobile-api/_shared/domains/job/status.ts",
+          "invocation": "updateJobStatus",
+          "seam": "http",
+          "actor": "worker",
+          "from": ["working"],
+          "to": ["completion_proposed"],
+          "success_tests": ["Worker completion media at the public HTTP boundary accepts ten attached after photos and writes exactly those refs once"],
+          "denial_tests": [
+            "Worker completion media at the public HTTP boundary rejects arbitrary remote URL before any job mutation",
+            "Worker completion media at the public HTTP boundary rejects another job before any job mutation",
+            "Worker completion media at the public HTTP boundary rejects unattached same-job ref before any job mutation",
+            "Worker completion media at the public HTTP boundary rejects an attachment owned by another Worker",
+            "Worker completion media at the public HTTP boundary rejects an attachment owned by the Customer",
+            "Worker completion media at the public HTTP boundary rejects an attachment owned by a different evidence stage",
+            "Worker completion media at the public HTTP boundary fails closed when attachment verification is unavailable",
+            "Worker completion media at the public HTTP boundary revalidates persisted refs instead of trusting a legacy completion array",
+            "Worker completion media at the public HTTP boundary refuses the Customer before changing the job",
+            "Worker completion media at the public HTTP boundary refuses an unassigned Worker before changing the job",
+            "Worker completion media at the public HTTP boundary refuses completion from an earlier workflow phase"
+          ],
+          "recovery_tests": ["Worker completion media at the public HTTP boundary returns a recoverable evidence error if the DB rejects media after the lookup"]
+        }]
+      },
+      "customer.review.submit": {
+        "status": "PARTIAL",
+        "gaps": ["The public HTTP route/DTO and reviewed-to-closed projection still need executable cases; this binding exercises the real service only."],
+        "cases": [{
+          "id": "customer-review-service",
+          "pillar": "P82-review-submission-runtime",
+          "file": "apps/api/src/__tests__/kael-edge-runtime/domains/review-submission-runtime-pillar.test.ts",
+          "owner": "supabase/functions/mobile-api/_shared/domains/payment/completion-review.ts",
+          "invocation": "submitReview",
+          "seam": "service",
+          "actor": "customer",
+          "from": ["paid"],
+          "to": ["reviewed"],
+          "success_tests": ["review P9 records normal transaction memory and thanks the customer after review"],
+          "denial_tests": [
+            "review public service authority refuses review from completed_by_worker without issuing the review RPC",
+            "review public service authority refuses review from confirmed_by_customer without issuing the review RPC",
+            "review public service authority refuses review from payment_pending without issuing the review RPC",
+            "review public service authority refuses review from cancelled without issuing the review RPC",
+            "review public service authority refuses worker worker-1 even when the job is paid",
+            "review public service authority refuses customer different-customer even when the job is paid"
+          ],
+          "recovery_tests": [
+            "review treats duplicate review RPC responses as idempotent current state when a review exists",
+            "review returns the existing review when the current job is already reviewed"
+          ]
+        }]
+      }
+    }
+  },
+  "actors": [
+    "customer",
+    "worker",
+    "admin",
+    "system"
+  ],
+  "states": [
+    "signed_out",
+    "authenticated",
+    "worker_application_draft",
+    "worker_application_pending",
+    "worker_access_approved",
+    "worker_kyc_pending",
+    "worker_ready",
+    "intake",
+    "coverage_ready",
+    "confirmation_pending",
+    "job_created",
+    "matching_queued",
+    "broadcasting",
+    "candidate_ready",
+    "official_match",
+    "scheduled",
+    "on_way",
+    "arrived",
+    "inspecting",
+    "working",
+    "scope_change_pending",
+    "completion_proposed",
+    "customer_confirmed",
+    "payment_pending",
+    "paid",
+    "reviewed",
+    "closed",
+    "cancelled",
+    "recovery_required",
+    "refund_required"
+  ],
+  "entries": [
+    {
+      "id": "customer.matching-selection",
+      "actor": "customer", "route_kind": "jobs.matchingPreference",
+      "authority": "customer_explicit", "confirmation_gate": "none",
+      "from": ["job_created"], "to": ["matching_queued", "recovery_required"],
+      "pillars": ["P109-matching-selection-http", "P110-matching-selection-sql", "P111-customer-matching-selection-mobile", "P114-customer-matching-consent-ui"]
+    },
+    {
+      "id": "customer.matching-selection.read",
+      "actor": "customer", "route_kind": "jobs.matchingPreferenceReceipt",
+      "authority": "customer_owner_read", "confirmation_gate": "none",
+      "from": ["matching_queued", "recovery_required"],
+      "to": ["matching_queued", "broadcasting", "official_match", "recovery_required"],
+      "pillars": ["P109-matching-selection-http", "P110-matching-selection-sql", "P111-customer-matching-selection-mobile"]
+    },
+    {
+      "id": "auth.customer.public-providers",
+      "actor": "customer",
+      "system_surface": "auth.customer",
+      "authority": "customer_explicit",
+      "from": ["signed_out"],
+      "to": ["authenticated"],
+      "sources": [
+        "apps/mobile/components/auth/auth-surfaces.tsx",
+        "apps/mobile/lib/auth-provider.tsx"
+      ],
+      "pillars": ["P42-auth-session-shell", "P64-role-gate-language-integrity"]
+    },
+    {
+      "id": "auth.worker.email-password",
+      "actor": "worker",
+      "system_surface": "auth.worker",
+      "authority": "worker_explicit",
+      "from": ["signed_out"],
+      "to": ["authenticated"],
+      "sources": [
+        "apps/mobile/components/auth/auth-surfaces.tsx",
+        "apps/mobile/lib/auth-provider.tsx"
+      ],
+      "pillars": ["P42-auth-session-shell", "P71-worker-readiness-onboarding"]
+    },
+    {
+      "id": "worker.application.read",
+      "actor": "customer",
+      "route_kind": "workerApplications.me",
+      "authority": "applicant_owner_read",
+      "confirmation_gate": "none",
+      "from": ["authenticated", "worker_application_pending"],
+      "to": ["worker_application_draft", "worker_application_pending", "worker_access_approved"],
+      "pillars": ["P71-worker-readiness-onboarding", "P10-per-actor-rls"]
+    },
+    {
+      "id": "worker.application.submit",
+      "actor": "customer",
+      "route_kind": "workerApplications.submit",
+      "authority": "applicant_explicit",
+      "confirmation_gate": "none",
+      "from": ["worker_application_draft"],
+      "to": ["worker_application_pending"],
+      "pillars": ["P161-worker-application-receipt", "P71-worker-readiness-onboarding", "P19-job-access-ownership"]
+    },
+    {
+      "id": "admin.worker-access.decision",
+      "actor": "admin",
+      "route_kind": "admin.workerApplications.decision",
+      "authority": "admin_audited",
+      "confirmation_gate": "none",
+      "from": ["worker_application_pending"],
+      "to": ["worker_access_approved", "worker_application_draft"],
+      "pillars": ["P71-worker-readiness-onboarding", "P53-admin-worker-controls", "P171-admin-worker-review-receipt"]
+    },
+    {
+      "id": "worker.kyc.draft",
+      "actor": "worker",
+      "route_kind": "workers.registrationDraft",
+      "authority": "worker_explicit",
+      "confirmation_gate": "none",
+      "from": ["worker_access_approved", "worker_kyc_pending"],
+      "to": ["worker_kyc_pending"],
+      "pillars": ["P71-worker-readiness-onboarding", "P07-worker-verification-states", "P164-worker-draft-receipt"]
+    },
+    {
+      "id": "worker.kyc.submit",
+      "actor": "worker",
+      "route_kind": "workers.register",
+      "authority": "worker_explicit",
+      "confirmation_gate": "none",
+      "from": ["worker_kyc_pending"],
+      "to": ["worker_kyc_pending"],
+      "pillars": ["P71-worker-readiness-onboarding", "P07-worker-verification-states", "P163-worker-registration-draft-gate", "P165-worker-verification-upload-deadline"]
+    },
+    {
+      "id": "worker.kyc.command.submit",
+      "actor": "worker",
+      "route_kind": "workers.registrationCommand.submit",
+      "authority": "worker_explicit",
+      "confirmation_gate": "none",
+      "from": ["worker_kyc_pending"],
+      "to": ["worker_kyc_pending"],
+      "pillars": ["P166-worker-registration-command-sql", "P167-worker-registration-command-http", "P168-worker-registration-recovery", "P163-worker-registration-draft-gate"]
+    },
+    {
+      "id": "worker.kyc.command.reconcile",
+      "actor": "worker",
+      "route_kind": "workers.registrationCommand.get",
+      "authority": "worker_owner_read",
+      "confirmation_gate": "none",
+      "from": ["worker_kyc_pending", "worker_ready"],
+      "to": ["worker_kyc_pending", "worker_ready"],
+      "pillars": ["P166-worker-registration-command-sql", "P167-worker-registration-command-http", "P169-worker-registration-session"]
+    },
+    {
+      "id": "admin.worker-kyc.decision",
+      "actor": "admin",
+      "route_kind": "admin.workerApplications.profileDecision",
+      "authority": "admin_audited",
+      "confirmation_gate": "none",
+      "from": ["worker_kyc_pending"],
+      "to": ["worker_ready", "worker_kyc_pending"],
+      "pillars": ["P71-worker-readiness-onboarding", "P53-admin-worker-controls", "P171-admin-worker-review-receipt", "P172-admin-worker-review-snapshot", "P173-admin-worker-review-snapshot-ui", "P174-admin-worker-review-snapshot-sql", "P175-admin-worker-review-session"]
+    },
+    {
+      "id": "worker.readiness.read",
+      "actor": "worker",
+      "route_kind": "workers.me",
+      "authority": "worker_owner_read",
+      "confirmation_gate": "none",
+      "from": ["authenticated", "worker_kyc_pending", "worker_ready"],
+      "to": ["worker_kyc_pending", "worker_ready"],
+      "pillars": ["P71-worker-readiness-onboarding", "P36-worker-route-unit-protection", "P170-worker-document-resume"]
+    },
+    {
+      "id": "customer.intake.create",
+      "actor": "customer",
+      "route_kind": "kael.chat.create",
+      "authority": "customer_explicit",
+      "confirmation_gate": "none",
+      "from": ["authenticated"],
+      "to": ["intake"],
+      "pillars": ["P46-stage1-customer-intake-mode", "P19-job-access-ownership"]
+    },
+    {
+      "id": "customer.intake.turn",
+      "actor": "customer",
+      "route_kind": "kael.chat.turn",
+      "authority": "customer_explicit",
+      "confirmation_gate": "none",
+      "from": ["intake"],
+      "to": ["intake", "coverage_ready"],
+      "pillars": ["P45-kael-intake-observation-failure", "P44-kael-service-playbook-safety", "P17-adversarial-surface-matrix"]
+    },
+    {
+      "id": "customer.coverage.read",
+      "actor": "customer",
+      "route_kind": "services.coverage",
+      "authority": "customer_owner_read",
+      "confirmation_gate": "none",
+      "from": ["intake", "coverage_ready"],
+      "to": ["coverage_ready", "recovery_required"],
+      "pillars": ["P67-public-coverage-reservation", "P50-reachable-cohort-matching"]
+    },
+    {
+      "id": "customer.kael-confirm",
+      "actor": "customer",
+      "route_kind": "kael.chat.confirm",
+      "authority": "customer_explicit",
+      "confirmation_gate": "none",
+      "from": ["coverage_ready", "confirmation_pending"],
+      "to": ["confirmation_pending", "job_created", "recovery_required"],
+      "pillars": ["P48-durable-confirmation-operation", "P67-public-coverage-reservation", "P74-customer-confirmation-relaunch-recovery", "P107-confirmation-preference-http", "P108-confirmation-preference-sql"]
+    },
+    {
+      "id": "customer.confirm-operation.read",
+      "actor": "customer",
+      "route_kind": "kael.chat.operation",
+      "authority": "customer_owner_read",
+      "confirmation_gate": "none",
+      "from": ["confirmation_pending", "recovery_required"],
+      "to": ["job_created", "matching_queued", "broadcasting", "recovery_required"],
+      "pillars": ["P48-durable-confirmation-operation", "P74-customer-confirmation-relaunch-recovery"]
+    },
+    {
+      "id": "customer.direct-confirm",
+      "actor": "customer",
+      "route_kind": "jobs.confirmSearch",
+      "authority": "customer_explicit",
+      "confirmation_gate": "offer",
+      "from": ["broadcasting", "recovery_required"],
+      "to": ["matching_queued", "recovery_required"],
+      "pillars": ["P103-customer-matching-retry-sql", "P104-customer-matching-retry-http", "P105-customer-matching-retry-mobile"]
+    },
+    {
+      "id": "customer.matching-retry-recovery",
+      "actor": "customer",
+      "route_kind": "jobs.matchingRetry",
+      "authority": "customer_explicit",
+      "confirmation_gate": "none",
+      "from": ["matching_queued", "broadcasting", "recovery_required"],
+      "to": ["matching_queued", "broadcasting", "official_match", "recovery_required"],
+      "pillars": ["P103-customer-matching-retry-sql", "P104-customer-matching-retry-http", "P105-customer-matching-retry-mobile"]
+    },
+    {
+      "id": "customer.matching-parent-read",
+      "actor": "customer",
+      "route_kind": "jobs.matchingOperation",
+      "authority": "customer_explicit",
+      "confirmation_gate": "none",
+      "from": ["broadcasting", "recovery_required"],
+      "to": ["broadcasting", "recovery_required"],
+      "pillars": ["P104-customer-matching-retry-http"]
+    },
+    {
+      "id": "system.confirmation.atomic",
+      "actor": "system",
+      "system_surface": "confirmation.atomic",
+      "authority": "system_policy_after_customer_confirmation",
+      "from": ["confirmation_pending"],
+      "to": ["job_created", "matching_queued", "recovery_required"],
+      "sources": [
+        "supabase/migrations/20260823110000_durable_confirmation_matching.sql",
+        "supabase/migrations/20260904230000_public_coverage_capacity_reservation.sql",
+        "supabase/migrations/20260905162000_confirmation_matching_intent.sql"
+      ],
+      "pillars": ["P48-durable-confirmation-operation", "P67-public-coverage-reservation"]
+    },
+    {
+      "id": "system.matching.outbox",
+      "actor": "system",
+      "system_surface": "matching.outbox",
+      "authority": "system_policy",
+      "from": ["matching_queued", "broadcasting"],
+      "to": ["broadcasting", "recovery_required", "matching_queued"],
+      "sources": [
+        "supabase/functions/kael-matching-maintainer/index.ts",
+        "supabase/functions/mobile-api/_shared/domains/kael-chat/confirmation-matching-activation.ts",
+        "supabase/migrations/20260823160000_confirmation_outbox_dispatcher.sql",
+        "supabase/migrations/20260905160000_confirmation_activation_lease_authority.sql",
+        "supabase/migrations/20260905161000_confirmation_activation_capacity_release.sql",
+        "supabase/migrations/20260905162000_confirmation_matching_intent.sql",
+        "supabase/migrations/20260905162100_confirmation_intent_dispatch_recovery.sql",
+        "supabase/migrations/20260905170000_durable_saved_worker_fallback.sql",
+        "supabase/migrations/20260905171000_unavailable_saved_worker_continuation.sql"
+      ],
+      "pillars": ["P58-confirmation-outbox-dispatcher", "P49-durable-matching-delivery", "P106-confirmation-activation-lease-sql", "P112-saved-worker-fallback-sql", "P113-saved-worker-fallback-runtime"]
+    },
+    {
+      "id": "worker.reachability.heartbeat",
+      "actor": "worker",
+      "route_kind": "workers.matchingHeartbeat",
+      "authority": "worker_explicit",
+      "confirmation_gate": "none",
+      "from": ["worker_ready"],
+      "to": ["worker_ready"],
+      "pillars": ["P50-reachable-cohort-matching", "P71-worker-readiness-onboarding"]
+    },
+    {
+      "id": "worker.push.register",
+      "actor": "worker",
+      "route_kind": "notifications.deviceToken",
+      "authority": "worker_explicit",
+      "confirmation_gate": "none",
+      "from": ["authenticated", "worker_ready"],
+      "to": ["worker_ready"],
+      "pillars": ["P57-stage1-provider-push-receipt", "P72-native-push-release-readiness"]
+    },
+    {
+      "id": "worker.push.unregister",
+      "actor": "worker",
+      "route_kind": "notifications.deviceToken.unregister",
+      "authority": "worker_explicit",
+      "confirmation_gate": "none",
+      "from": ["worker_ready"],
+      "to": ["authenticated"],
+      "pillars": ["P57-stage1-provider-push-receipt", "P72-native-push-release-readiness"]
+    },
+    {
+      "id": "system.delivery.reconcile",
+      "actor": "system",
+      "system_surface": "matching.delivery_reconcile",
+      "authority": "system_provider_receipt",
+      "from": ["broadcasting"],
+      "to": ["broadcasting", "recovery_required"],
+      "sources": [
+        "supabase/functions/kael-matching-maintainer/index.ts",
+        "supabase/functions/mobile-api/_shared/platform/push.ts"
+      ],
+      "pillars": ["P57-stage1-provider-push-receipt", "P49-durable-matching-delivery"]
+    },
+    {
+      "id": "worker.offers.read",
+      "actor": "worker",
+      "route_kind": "workers.broadcasts",
+      "authority": "worker_owner_read",
+      "confirmation_gate": "none",
+      "from": ["worker_ready", "broadcasting"],
+      "to": ["broadcasting"],
+      "pillars": ["P49-durable-matching-delivery", "P47-stage1-worker-delivery"]
+    },
+    {
+      "id": "worker.offer.seen",
+      "actor": "worker",
+      "route_kind": "workers.broadcastSeen",
+      "authority": "worker_explicit",
+      "confirmation_gate": "none",
+      "from": ["broadcasting"],
+      "to": ["broadcasting"],
+      "pillars": ["P49-durable-matching-delivery", "P47-stage1-worker-delivery"]
+    },
+    {
+      "id": "worker.delivery.ack",
+      "actor": "worker",
+      "route_kind": "notifications.matchingDeliveryAck",
+      "authority": "worker_explicit",
+      "confirmation_gate": "none",
+      "from": ["broadcasting"],
+      "to": ["broadcasting"],
+      "pillars": ["P60-matching-push-delivery-ack-route", "P62-matching-push-delivery-ack-mobile"]
+    },
+    {
+      "id": "worker.offer.accept",
+      "actor": "worker",
+      "route_kind": "jobs.accept",
+      "authority": "worker_explicit",
+      "confirmation_gate": "none",
+      "from": ["broadcasting"],
+      "to": ["candidate_ready"],
+      "pillars": ["P21-matching-guard-liveness", "P49-durable-matching-delivery"]
+    },
+    {
+      "id": "worker.offer.decline",
+      "actor": "worker",
+      "route_kind": "jobs.decline",
+      "authority": "worker_explicit",
+      "confirmation_gate": "none",
+      "from": ["broadcasting"],
+      "to": ["broadcasting"],
+      "pillars": ["P49-durable-matching-delivery", "P50-reachable-cohort-matching"]
+    },
+    {
+      "id": "customer.candidate.read",
+      "actor": "customer",
+      "route_kind": "jobs.workerCandidate",
+      "authority": "customer_owner_read",
+      "confirmation_gate": "none",
+      "from": ["candidate_ready"],
+      "to": ["candidate_ready"],
+      "pillars": ["P19-job-access-ownership", "P12-workflow-transition-composition"]
+    },
+    {
+      "id": "customer.candidate.confirm",
+      "actor": "customer",
+      "route_kind": "jobs.workerCandidateConfirm",
+      "authority": "customer_explicit",
+      "confirmation_gate": "proposed_worker",
+      "from": ["candidate_ready"],
+      "to": ["official_match", "scheduled"],
+      "pillars": ["P12-workflow-transition-composition", "P21-matching-guard-liveness"]
+    },
+    {
+      "id": "customer.candidate.reject",
+      "actor": "customer",
+      "route_kind": "jobs.workerCandidateReject",
+      "authority": "customer_explicit",
+      "confirmation_gate": "proposed_worker",
+      "from": ["candidate_ready"],
+      "to": ["broadcasting"],
+      "pillars": ["P12-workflow-transition-composition", "P21-matching-guard-liveness"]
+    },
+    {
+      "id": "customer.apartment-access.authorize",
+      "actor": "customer",
+      "route_kind": "jobs.accessAuthorize",
+      "authority": "customer_explicit",
+      "confirmation_gate": "none",
+      "from": ["official_match", "scheduled", "on_way"],
+      "to": ["scheduled", "on_way", "arrived"],
+      "pillars": ["P19-job-access-ownership", "P12-workflow-transition-composition"]
+    },
+    {
+      "id": "worker.fulfillment.advance",
+      "actor": "worker",
+      "route_kind": "jobs.status",
+      "authority": "worker_explicit",
+      "confirmation_gate": "none",
+      "from": ["scheduled", "on_way", "arrived", "inspecting", "working"],
+      "to": ["on_way", "arrived", "inspecting", "working", "completion_proposed"],
+      "pillars": ["P12-workflow-transition-composition", "P79-worker-completion-media-ownership"]
+    },
+    {
+      "id": "worker.fulfillment.media",
+      "actor": "worker",
+      "route_kind": "jobs.mediaUpload",
+      "authority": "worker_explicit",
+      "confirmation_gate": "none",
+      "from": ["arrived", "inspecting", "working", "completion_proposed"],
+      "to": ["inspecting", "working", "completion_proposed"],
+      "pillars": ["P68-completion-payment-authority", "P10-per-actor-rls"]
+    },
+    {
+      "id": "customer.fulfillment.media",
+      "actor": "customer",
+      "route_kind": "jobs.mediaUpload",
+      "authority": "customer_explicit",
+      "confirmation_gate": "none",
+      "from": ["official_match", "scope_change_pending", "completion_proposed"],
+      "to": ["scope_change_pending", "completion_proposed"],
+      "pillars": ["P19-job-access-ownership", "P10-per-actor-rls"]
+    },
+    {
+      "id": "worker.scope-change.propose",
+      "actor": "worker",
+      "route_kind": "jobs.scopeChange",
+      "authority": "worker_explicit",
+      "confirmation_gate": "scope_change",
+      "from": ["arrived", "inspecting", "working"],
+      "to": ["scope_change_pending"],
+      "pillars": ["P12-workflow-transition-composition", "P17-adversarial-surface-matrix"]
+    },
+    {
+      "id": "customer.scope-change.decide",
+      "actor": "customer",
+      "route_kind": "scope.decide",
+      "authority": "customer_explicit",
+      "confirmation_gate": "scope_change",
+      "from": ["scope_change_pending"],
+      "to": ["working", "cancelled", "recovery_required"],
+      "pillars": ["P12-workflow-transition-composition", "P19-job-access-ownership"]
+    },
+    {
+      "id": "customer.completion.confirm",
+      "actor": "customer",
+      "route_kind": "jobs.confirmCompletion",
+      "authority": "customer_explicit",
+      "confirmation_gate": "completion",
+      "from": ["completion_proposed"],
+      "to": ["customer_confirmed", "payment_pending", "recovery_required"],
+      "pillars": ["P86-customer-completion-http", "P68-completion-payment-authority", "P12-workflow-transition-composition"]
+    },
+    {
+      "id": "customer.payment-order.read",
+      "actor": "customer",
+      "route_kind": "jobs.paymentOrder",
+      "authority": "customer_explicit",
+      "confirmation_gate": "payment",
+      "from": ["customer_confirmed", "payment_pending"],
+      "to": ["payment_pending"],
+      "pillars": ["P68-completion-payment-authority", "P06-payment-unlock-gate"]
+    },
+    {
+      "id": "customer.payment-order.claim",
+      "actor": "customer",
+      "route_kind": "jobs.paymentOrderClaim",
+      "authority": "customer_explicit",
+      "confirmation_gate": "payment",
+      "from": ["payment_pending"],
+      "to": ["payment_pending"],
+      "pillars": ["P68-completion-payment-authority", "P34-admin-finance-bank-reference"]
+    },
+    {
+      "id": "admin.payment.reconciliation.read",
+      "actor": "admin",
+      "route_kind": "admin.paymentReconciliations.list",
+      "authority": "admin_audited",
+      "confirmation_gate": "none",
+      "from": ["payment_pending", "refund_required"],
+      "to": ["payment_pending", "refund_required"],
+      "pillars": ["P51-admin-finance-operations-contract", "P34-admin-finance-bank-reference"]
+    },
+    {
+      "id": "admin.payment.reconciliation.decide",
+      "actor": "admin",
+      "route_kind": "admin.paymentReconciliations.decision",
+      "authority": "admin_audited_external_receipt",
+      "confirmation_gate": "none",
+      "from": ["payment_pending", "refund_required"],
+      "to": ["paid", "payment_pending", "refund_required"],
+      "pillars": ["P51-admin-finance-operations-contract", "P34-admin-finance-bank-reference"]
+    },
+    {
+      "id": "customer.review.submit",
+      "actor": "customer",
+      "route_kind": "jobs.review",
+      "authority": "customer_explicit",
+      "confirmation_gate": "none",
+      "from": ["paid"],
+      "to": ["reviewed", "closed"],
+      "pillars": ["P68-completion-payment-authority", "P12-workflow-transition-composition", "P82-review-submission-runtime"]
+    },
+    {
+      "id": "customer.cancellation.request",
+      "actor": "customer",
+      "route_kind": "jobs.customerCancellation",
+      "authority": "customer_explicit",
+      "confirmation_gate": "none",
+      "from": ["confirmation_pending", "broadcasting", "official_match", "scheduled", "on_way", "arrived", "inspecting", "working", "scope_change_pending", "completion_proposed"],
+      "to": ["cancelled", "broadcasting", "recovery_required", "refund_required"],
+      "pillars": ["P12-workflow-transition-composition", "P70-workflow-recovery-capacity", "P115-customer-job-command-isolation", "P116-customer-cancellation-http"]
+    },
+    {
+      "id": "worker.cancellation.request",
+      "actor": "worker",
+      "route_kind": "jobs.workerCancellation",
+      "authority": "worker_explicit",
+      "confirmation_gate": "none",
+      "from": ["official_match", "scheduled", "on_way", "arrived", "inspecting", "working", "scope_change_pending"],
+      "to": ["broadcasting", "cancelled", "recovery_required"],
+      "pillars": ["P12-workflow-transition-composition", "P70-workflow-recovery-capacity"]
+    },
+    {
+      "id": "customer.dispute.open",
+      "actor": "customer",
+      "route_kind": "jobs.openDispute",
+      "authority": "customer_explicit",
+      "confirmation_gate": "none",
+      "from": ["scope_change_pending", "completion_proposed", "customer_confirmed", "payment_pending", "paid"],
+      "to": ["recovery_required", "refund_required"],
+      "pillars": ["P19-job-access-ownership", "P49-admin-operations-support"]
+    },
+    {
+      "id": "worker.dispute.open",
+      "actor": "worker",
+      "route_kind": "jobs.openDispute",
+      "authority": "worker_explicit",
+      "confirmation_gate": "none",
+      "from": ["scope_change_pending", "completion_proposed", "customer_confirmed", "payment_pending", "paid"],
+      "to": ["recovery_required", "refund_required"],
+      "pillars": ["P19-job-access-ownership", "P49-admin-operations-support"]
+    },
+    {
+      "id": "customer.dispute.counter-statement",
+      "actor": "customer",
+      "route_kind": "disputes.counterStatement",
+      "authority": "customer_explicit",
+      "confirmation_gate": "none",
+      "from": ["recovery_required", "refund_required"],
+      "to": ["recovery_required", "refund_required"],
+      "pillars": ["P19-job-access-ownership", "P49-admin-operations-support"]
+    },
+    {
+      "id": "worker.dispute.counter-statement",
+      "actor": "worker",
+      "route_kind": "disputes.counterStatement",
+      "authority": "worker_explicit",
+      "confirmation_gate": "none",
+      "from": ["recovery_required", "refund_required"],
+      "to": ["recovery_required", "refund_required"],
+      "pillars": ["P19-job-access-ownership", "P49-admin-operations-support"]
+    },
+    {
+      "id": "admin.dispute.decide",
+      "actor": "admin",
+      "route_kind": "disputes.adminDecision",
+      "authority": "admin_audited",
+      "confirmation_gate": "none",
+      "from": ["recovery_required", "refund_required"],
+      "to": ["recovery_required", "refund_required", "closed"],
+      "pillars": ["P49-admin-operations-support", "P10-per-actor-rls"]
+    },
+    {
+      "id": "admin.recovery.list",
+      "actor": "admin",
+      "route_kind": "admin.operations.recoveryCases.list",
+      "authority": "admin_audited",
+      "confirmation_gate": "none",
+      "from": ["recovery_required"],
+      "to": ["recovery_required"],
+      "pillars": ["P70-workflow-recovery-capacity", "P49-admin-operations-support"]
+    },
+    {
+      "id": "admin.recovery.detail",
+      "actor": "admin",
+      "route_kind": "admin.operations.recoveryCases.detail",
+      "authority": "admin_audited",
+      "confirmation_gate": "none",
+      "from": ["recovery_required"],
+      "to": ["recovery_required"],
+      "pillars": ["P70-workflow-recovery-capacity", "P49-admin-operations-support"]
+    },
+    {
+      "id": "admin.recovery.action",
+      "actor": "admin",
+      "route_kind": "admin.operations.recoveryCases.action",
+      "authority": "admin_audited",
+      "confirmation_gate": "none",
+      "from": ["recovery_required"],
+      "to": ["recovery_required", "broadcasting", "cancelled", "refund_required"],
+      "pillars": ["P70-workflow-recovery-capacity", "P49-admin-operations-support"]
+    },
+    {
+      "id": "system.recovery.scan",
+      "actor": "system",
+      "system_surface": "workflow.recovery_scan",
+      "authority": "system_detection_only",
+      "from": ["broadcasting", "arrived", "customer_confirmed", "payment_pending"],
+      "to": ["recovery_required"],
+      "sources": [
+        "supabase/migrations/20260904233000_workflow_recovery_capacity_reconciliation.sql",
+        "supabase/functions/mobile-api/_shared/domains/admin/workflow-recovery.ts"
+      ],
+      "pillars": ["P70-workflow-recovery-capacity", "P49-admin-operations-support"]
+    },
+    {
+      "id": "system.synthetic.terminal-payment",
+      "actor": "system",
+      "system_surface": "payment.synthetic_terminal",
+      "authority": "isolated_synthetic_service_role",
+      "from": ["payment_pending"],
+      "to": ["paid", "reviewed", "closed", "refund_required"],
+      "sources": [
+        "supabase/migrations/20260904232000_synthetic_terminal_transaction_proof.sql",
+        "apps/api/scripts/stage1-synthetic-release-smoke.mjs"
+      ],
+      "pillars": ["P69-synthetic-terminal-transaction-proof", "P54-synthetic-cohort-nonvisibility"]
+    },
+    {
+      "id": "system.release.health",
+      "actor": "system",
+      "route_kind": "harness.health",
+      "authority": "public_read_only",
+      "confirmation_gate": "none",
+      "from": ["authenticated"],
+      "to": ["authenticated", "recovery_required"],
+      "pillars": ["P53-stage1-release-integrity", "P45-stage1-response-identity"]
+    },
+    {
+      "id": "system.release.production-promotion",
+      "actor": "system",
+      "system_surface": "release.production_promotion",
+      "authority": "reviewed_main_and_three_production_smokes",
+      "from": ["reviewed"],
+      "to": ["closed"],
+      "sources": [
+        ".github/workflows/release-production.yml",
+        "scripts/harness/github-merge-approval.mjs",
+        "scripts/harness/promotion.mjs"
+      ],
+      "pillars": ["P56-stage1-production-release-workflow", "P72-native-push-release-readiness", "P55-stage1-release-cohort-canary"]
+    }
+  ]
+}

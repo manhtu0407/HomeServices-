@@ -30,11 +30,15 @@ jest.mock('../supabase', () => ({
   },
 }))
 
-import { api } from '../api'
+import { api, extractApiResponseMetadata } from '../api'
+import { customerMatchingRetryService } from '../services/customer-matching-retry'
 import { supabase } from '../supabase'
+import * as clientRequestIds from '../client-request-id'
 
 const mockGetSession = supabase?.auth.getSession as jest.Mock
 const emptyResponseMeta = {
+  clientRequestId: expect.any(String),
+  clientDiagnosticCode: expect.stringMatching(/^NSL-[A-Z0-9]{8}$/),
   operationId: null,
   releaseId: null,
   runId: null,
@@ -43,6 +47,23 @@ const emptyResponseMeta = {
 }
 
 describe('mobile API response guard', () => {
+  it('sends the durable retry body and stable header under the explicit initiating token', async () => {
+    const input = { client_request_id: '22222222-2222-4222-8222-222222222222', expected_matching_operation_id: '33333333-3333-4333-8333-333333333333' }
+    const body = { operation: { operation_id: '44444444-4444-4444-8444-444444444444' } }
+    mockFetch.mockResolvedValue({ ok: true, status: 202, body: null,
+      headers: { get: (key: string) => key === 'x-support-code' ? 'RETRY123' : null },
+      text: async () => JSON.stringify(body),
+    })
+    const result = await customerMatchingRetryService.confirmSearch('job-retry', input, 'initiating-token')
+    expect(mockGetSession).not.toHaveBeenCalled()
+    expect(mockFetch).toHaveBeenCalledTimes(1)
+    expect(mockFetch).toHaveBeenCalledWith('https://api.test/functions/v1/mobile-api/jobs/job-retry/confirm-search', expect.objectContaining({
+      method: 'POST', body: JSON.stringify(input),
+      headers: expect.objectContaining({ Authorization: 'Bearer initiating-token', 'Idempotency-Key': `mobile:${input.client_request_id}` }),
+    }))
+    expect(result).toMatchObject({ success: true, status: 202, data: body, meta: { supportCode: 'RETRY123' } })
+  })
+
   beforeAll(() => {
     global.fetch = mockFetch as typeof fetch
   })
@@ -73,6 +94,61 @@ describe('mobile API response guard', () => {
       code: 'RESPONSE_TOO_LARGE',
     })
     expect(text).not.toHaveBeenCalled()
+  })
+
+  it('uses one device diagnostic across retries without claiming a server operation', async () => {
+    jest.useFakeTimers()
+    const generated = jest.spyOn(clientRequestIds, 'generateClientRequestId')
+      .mockReturnValue('70d9b338-6444-43ad-9c41-abcda1b2c3d4')
+    jest.spyOn(console, 'warn').mockImplementation(() => undefined)
+    mockFetch.mockRejectedValue(new TypeError('network unavailable'))
+    const pending = api.get('/services')
+    await jest.runAllTimersAsync()
+    await expect(pending).resolves.toMatchObject({
+      success: false,
+      code: 'NETWORK_ERROR',
+      status: 0,
+      meta: {
+        clientRequestId: '70d9b338-6444-43ad-9c41-abcda1b2c3d4',
+        clientDiagnosticCode: 'NSL-A1B2C3D4',
+        operationId: null,
+        traceId: null,
+        runId: null,
+        supportCode: null,
+      },
+    })
+    expect(mockFetch).toHaveBeenCalledTimes(3)
+    expect(generated).toHaveBeenCalledTimes(1)
+  })
+
+  it('preserves observed server trace metadata when a later retry receives no response', async () => {
+    jest.useFakeTimers()
+    jest.spyOn(console, 'warn').mockImplementation(() => undefined)
+    mockFetch.mockResolvedValueOnce({
+      body: null,
+      headers: { get: (key: string) => key === 'x-trace-id' ? '70d9b338-6444-43ad-9c41-abcda1b2c3d4' : null },
+      ok: false,
+      status: 503,
+      text: async () => JSON.stringify({ code: 'POLICY_UNAVAILABLE', error: 'Service unavailable' }),
+    }).mockRejectedValue(new TypeError('network unavailable'))
+    const pending = api.get('/services')
+    await jest.runAllTimersAsync()
+    await expect(pending).resolves.toMatchObject({
+      success: false,
+      code: 'NETWORK_ERROR',
+      meta: { traceId: '70d9b338-6444-43ad-9c41-abcda1b2c3d4', supportCode: 'A1B2C3D4', operationId: null },
+    })
+  })
+
+  it('uses the server support header instead of deriving a different operation code', () => {
+    const headers = new Map([
+      ['x-support-code', 'ABCDEF12'],
+      ['x-trace-id', '70d9b338-6444-43ad-9c41-abcda1b2c3d4'],
+      ['x-operation-id', '70d9b338-6444-43ad-9c41-abcd11223344'],
+    ])
+    expect(extractApiResponseMetadata({ get: (key) => headers.get(key) ?? null }).supportCode).toBe('ABCDEF12')
+    headers.set('x-support-code', 'private\ninvalid')
+    expect(extractApiResponseMetadata({ get: (key) => headers.get(key) ?? null }).supportCode).toBe('A1B2C3D4')
   })
 
   it('refuses redirects for authenticated mobile API requests', async () => {

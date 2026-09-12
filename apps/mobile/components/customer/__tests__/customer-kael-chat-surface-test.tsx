@@ -11,6 +11,7 @@ import { customerV21ServiceCopy } from '../ui/copy'
 import { isLikelyKaelIntakeRequest } from '../kael-chat/customer-kael-chat-helpers'
 
 let mockRouteParams: Record<string, string> = { mode: 'normal' }
+let mockMatchingSelectionFeedback: { jobId: string; message: string } | null = null
 const mockReplace = jest.fn()
 const mockConversationCreate = jest.fn()
 const mockConversationList = jest.fn()
@@ -102,6 +103,7 @@ jest.mock('@/lib/services', () => {
 
 jest.mock('@/lib/frontend-workflow-provider', () => ({
   useFrontendWorkflow: () => ({
+    customerMatchingSelectionFeedback: mockMatchingSelectionFeedback,
     actions: { hydrateRemoteJobById: mockHydrateRemoteJobById },
     customerWorkerCandidate: null,
     customerWorkerCandidateBusy: false,
@@ -293,6 +295,7 @@ describe('active customer Kael chat surface wiring', () => {
     await AsyncStorage.clear()
     mockReplace.mockClear()
     mockRouteParams = { mode: 'normal' }
+    mockMatchingSelectionFeedback = null
     mockAuthSessionProvider = undefined
     mockWorkflowDeal = null
     mockWorkflowError = null
@@ -491,13 +494,14 @@ describe('active customer Kael chat surface wiring', () => {
   })
 
   it('renders the Worker-parity Customer shell without copying Worker semantics', async () => {
-    jest.useFakeTimers()
+    // Pin the VI copy slot; flushing every timer also advances the two-hour hero rotation.
+    jest.useFakeTimers({ now: new Date('2026-09-05T07:15:00.000Z') })
     const view = render(<CustomerKaelSurface />)
 
     try {
       await waitForConversationCatalog('normal')
       await act(async () => {
-        jest.runOnlyPendingTimers()
+        jest.advanceTimersByTime(VIRTUALIZED_LIST_UPDATE_DELAY_MS)
         await Promise.resolve()
       })
 
@@ -517,7 +521,7 @@ describe('active customer Kael chat surface wiring', () => {
         maxWidth: 240,
         textAlign: 'left',
       })
-      expect(screen.getByTestId('customer-v21-kael-empty-hero-copy').props.children).not.toMatch(/[À-ỹĐđ]/)
+      expect(screen.getByTestId('customer-v21-kael-empty-hero-copy')).toHaveTextContent('Để Kael hỗ trợ bạn...')
       expect(screen.getByTestId('customer-v21-kael-input')).toBeOnTheScreen()
       expect(StyleSheet.flatten(screen.getByTestId('customer-v21-kael-input').props.style)).toMatchObject({
         fontSize: 15,
@@ -1711,6 +1715,19 @@ describe('active customer Kael chat surface wiring', () => {
     await waitForConversationCatalog('case')
     await waitFor(() => expect(mockHydrateRemoteJobById).toHaveBeenCalledWith('job-old-session', mockAccessToken))
     expect(screen.getByText('Chưa có yêu cầu để tìm thợ')).toBeOnTheScreen()
+  })
+
+  it('keeps selection reconciliation visible only on its own case after job hydration', async () => {
+    mockRouteParams = { jobId: 'job-old-session', mode: 'case' }
+    mockWorkflowDeal = makeWorkflowDeal()
+    const message = 'Đang đối soát lựa chọn tìm thợ. Mã hỗ trợ: SELECT12'
+    mockMatchingSelectionFeedback = { jobId: mockWorkflowDeal.id, message }
+    const view = render(<CustomerKaelSurface />)
+    await waitForConversationCatalog('case')
+    expect(screen.getByText(message)).toBeOnTheScreen()
+    mockMatchingSelectionFeedback = { jobId: 'another-job', message }
+    view.rerender(<CustomerKaelSurface />)
+    expect(screen.queryByText(message)).toBeNull()
   })
 
   it('keeps Customer Preview session creation local without calling the deployed API', async () => {

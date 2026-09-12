@@ -175,19 +175,25 @@
       "type": "object",
       "additionalProperties": false,
       "required": [
+        "android_fcm_v1",
         "anthropic",
         "deepseek",
         "durable_guards",
         "global_ai_enabled",
+        "ios_apns",
         "perplexity",
+        "push_receipt_reconciler",
         "vietmap"
       ],
       "properties": {
+        "android_fcm_v1": { "type": "boolean" },
         "anthropic": { "type": "boolean" },
         "deepseek": { "type": "boolean" },
         "durable_guards": { "type": "boolean" },
         "global_ai_enabled": { "type": "boolean" },
+        "ios_apns": { "type": "boolean" },
         "perplexity": { "type": "boolean" },
+        "push_receipt_reconciler": { "type": "boolean" },
         "vietmap": { "type": "boolean" }
       }
     },

@@ -67,9 +67,6 @@ function WorkerCandidateReviewContent({
   const confirmationCopy = candidateConfirmationCopy(displayName, priceQuote, workerProposal, language)
   const facts = candidate ? candidateFacts(candidate, language) : []
   const personalFacts = candidate ? candidatePersonalFacts(candidate, language) : []
-  const paymentEligibility = candidate
-    ? paymentEligibilityCopy(candidate.direct_payment_available, language)
-    : null
   const model = buildCaseWorkResponseModel({
     language,
     phase: 'worker_candidate_review',
@@ -161,7 +158,7 @@ function WorkerCandidateReviewContent({
       ) : undefined}
       details={(
         <View style={styles.details}>
-          {!candidate && busy ? (
+          {!candidate && busy && !error ? (
             <View style={styles.loading} testID="customer-v21-worker-candidate-loading">
               <ActivityIndicator color={tokens.primary} />
               <Text style={[styles.body, { color: tokens.muted }]}>
@@ -232,17 +229,6 @@ function WorkerCandidateReviewContent({
                 quote={priceQuote}
                 tokens={tokens}
               />
-              {paymentEligibility ? (
-                <View
-                  accessible
-                  accessibilityLabel={`${paymentEligibility.title}. ${paymentEligibility.body}`}
-                  style={[styles.paymentEligibility, { backgroundColor: tokens.base, borderColor: tokens.border }]}
-                  testID={paymentEligibility.testID}
-                >
-                  <Text style={[styles.paymentTitle, { color: tokens.text }]}>{paymentEligibility.title}</Text>
-                  <Text style={[styles.body, { color: tokens.muted }]}>{paymentEligibility.body}</Text>
-                </View>
-              ) : null}
               {!finalReviewOpen ? (
                 <KaelButton
                   accessibilityState={{ disabled: busy, selected: candidate.is_favorite }}
@@ -258,7 +244,18 @@ function WorkerCandidateReviewContent({
               ) : null}
             </>
           ) : null}
-          {error ? <Text accessibilityLiveRegion="polite" style={[styles.error, { color: tokens.primary }]}>{error}</Text> : null}
+          {error ? (
+            <>
+              <Text accessibilityLiveRegion="polite" style={[styles.error, { color: tokens.primary }]}>{error}</Text>
+              <KaelButton
+                label={language === 'vi' ? 'Kiểm tra lại trạng thái' : 'Check status again'}
+                onPress={onRetry}
+                size="small"
+                testID="customer-v21-worker-candidate-reconcile"
+                variant="secondary"
+              />
+            </>
+          ) : null}
         </View>
       )}
       model={model}
@@ -279,7 +276,7 @@ function candidateConfirmationCopy(
     return language === 'vi'
       ? {
           finalLabel: `Xác nhận thợ & giá ${formatVnd(priceQuote.customer_total)}`,
-          notice: `Xác nhận này ghép ${displayName} và khóa giá ${formatVnd(priceQuote.customer_total)} cho phạm vi hiện tại. Mọi phát sinh phải có receipt mới để bạn duyệt.`,
+          notice: `Xác nhận này ghép ${displayName} và khóa giá ${formatVnd(priceQuote.customer_total)} cho phạm vi hiện tại. Mọi phát sinh phải có biên nhận mới để bạn duyệt.`,
           reviewLabel: `Xem thợ & giá ${formatVnd(priceQuote.customer_total)}`,
         }
       : {
@@ -326,46 +323,6 @@ function candidateConfirmationCopy(
         finalLabel: 'Cannot confirm yet',
         notice: 'Confirmation data is not ready.',
         reviewLabel: 'Waiting for Kael price',
-      }
-}
-
-function paymentEligibilityCopy(availability: boolean | null | undefined, language: AppLanguage) {
-  if (availability === true) {
-    return language === 'vi'
-      ? {
-          body: 'Theo điều kiện hiện tại, Kael có thể mở trả trực tiếp có bảo đảm sau khi hoàn tất. Kael sẽ kiểm tra lại mọi điều kiện trước khi mở thanh toán.',
-          testID: 'customer-v21-worker-candidate-payment-direct-available',
-          title: 'Trả trực tiếp đang đủ điều kiện',
-        }
-      : {
-          body: 'Under the current conditions, Kael can open protected direct payment after completion. Kael checks every condition again before payment opens.',
-          testID: 'customer-v21-worker-candidate-payment-direct-available',
-          title: 'Protected direct payment is currently eligible',
-        }
-  }
-  if (availability === false) {
-    return language === 'vi'
-      ? {
-          body: 'Với thợ này, Kael chưa thể mở trả trực tiếp có bảo đảm. Kael sẽ xác nhận phương thức thanh toán an toàn khi hoàn tất.',
-          testID: 'customer-v21-worker-candidate-payment-direct-unavailable',
-          title: 'Trả trực tiếp chưa được mở',
-        }
-      : {
-          body: 'For this worker, Kael cannot open protected direct payment yet. Kael confirms the safe payment method after completion.',
-          testID: 'customer-v21-worker-candidate-payment-direct-unavailable',
-          title: 'Protected direct payment is not open',
-        }
-  }
-  return language === 'vi'
-    ? {
-        body: 'Kael sẽ kiểm tra phương thức thanh toán an toàn trước khi mở bước thanh toán.',
-        testID: 'customer-v21-worker-candidate-payment-checking',
-        title: 'Phương thức thanh toán đang được xác nhận',
-      }
-    : {
-        body: 'Kael checks the safe payment method before opening the payment step.',
-        testID: 'customer-v21-worker-candidate-payment-checking',
-        title: 'Payment method is being verified',
       }
 }
 
@@ -426,8 +383,6 @@ const styles = StyleSheet.create({
   name: { ...typography.headline },
   notice: { ...typography.caption1 },
   personalFacts: { ...typography.caption1 },
-  paymentEligibility: { borderRadius: 14, borderWidth: StyleSheet.hairlineWidth, gap: 3, padding: 12 },
-  paymentTitle: { ...typography.footnote, fontWeight: '600' },
   savedHeader: { gap: 3 },
   savedTitle: { ...typography.subheadline, fontWeight: '600' },
 })

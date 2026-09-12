@@ -4,9 +4,11 @@ import {
   clientRequestIdSchema,
   normalizeDistrict,
   SERVICE_TYPES,
+  WORKER_VERIFICATION_STATUSES,
   serviceTypeSchema,
   uuidPathPattern,
 } from "./common.ts";
+import type { ServiceType, WorkerVerificationStatus } from "./common.ts";
 const workerVerificationRefSchema = (
   folder: "cccd-front" | "cccd-back" | "selfie",
 ) => z.string().max(500).regex(
@@ -17,6 +19,41 @@ const workerVerificationRefSchema = (
   `Worker verification ${folder} must be an owned private storage ref`,
 );
 
+export const workerRegistrationCommandSchema = z.object({
+  client_request_id: z.string().uuid().transform(value => value.toLowerCase()),
+  expected_draft_updated_at: z.string().datetime({ offset: true })
+    .refine(value => !/\.\d{7}/.test(value), "Draft revision supports microsecond precision"),
+}).strict();
+
+const workerRegistrationReceiptFields = {
+  operation_id: z.string().uuid(),
+  worker_id: z.string().uuid(),
+  client_request_id: z.string().uuid(),
+  draft_updated_at: z.string().datetime({ offset: true }),
+  recorded_at: z.string().datetime({ offset: true }),
+};
+
+export const workerRegistrationCommandReceiptSchema = z.discriminatedUnion("outcome", [
+  z.object({
+    ...workerRegistrationReceiptFields,
+    outcome: z.literal("submitted"), error_code: z.null(),
+    verification_status: z.literal("submitted"),
+    submitted_at: z.string().datetime({ offset: true }),
+  }),
+  z.object({
+    ...workerRegistrationReceiptFields,
+    outcome: z.literal("rejected"),
+    error_code: z.enum(["DRAFT_NOT_FOUND", "STALE_DRAFT", "DRAFT_NOT_EDITABLE",
+      "INVALID_INPUT", "ALREADY_FINALIZED", "WRITE_CONFLICT", "NOT_FOUND", "WRONG_ROLE", "NOT_OWNER"]),
+    verification_status: z.enum(WORKER_VERIFICATION_STATUSES).nullable(),
+    submitted_at: z.null(),
+  }),
+]);
+export type EdgeWorkerRegistrationCommandInput = z.infer<typeof workerRegistrationCommandSchema>;
+export type EdgeWorkerRegistrationCommandReceipt = z.infer<typeof workerRegistrationCommandReceiptSchema>;
+export type EdgeWorkerRegistrationCommandResult =
+  | { state: "unknown"; client_request_id: string }
+  | { state: "resolved"; receipt: EdgeWorkerRegistrationCommandReceipt };
 export const WORKER_KAEL_MEMORY_PREFERENCE_KEYS = Object.freeze([
   "area_preference",
   "income_preference",
@@ -41,13 +78,80 @@ export const workerKaelMemoryPreferenceUpdateSchema = z.object({
   enabled: z.boolean(),
 }).strict();
 
-function isWorkerApplicationContact(value: string): boolean {
-  const trimmed = value.trim();
-  const emailLike = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed);
-  const phoneLike = /^(?:0|\+?84)\d{8,10}$/.test(
-    trimmed.replace(/[\s.-]/g, ""),
-  );
-  return emailLike || phoneLike;
+export const WORKER_APPLICATION_STATUSES = Object.freeze([
+  "not_submitted",
+  "pending_review",
+  "changes_requested",
+  "rejected",
+  "approved",
+] as const);
+export type EdgeWorkerApplicationStatus =
+  (typeof WORKER_APPLICATION_STATUSES)[number];
+
+export const WORKER_READINESS_NEXT_ACTIONS = Object.freeze([
+  "submit_application",
+  "await_application_review",
+  "revise_application",
+  "contact_support",
+  "complete_kyc",
+  "await_kyc_review",
+  "revise_kyc",
+  "resolve_suspension",
+  "configure_services",
+  "configure_districts",
+  "declare_capabilities",
+  "enable_availability",
+  "finish_active_work",
+  "restore_reachability",
+  "ready",
+] as const);
+export type EdgeWorkerReadinessNextAction =
+  (typeof WORKER_READINESS_NEXT_ACTIONS)[number];
+
+export type EdgeWorkerKycStatus = WorkerVerificationStatus | "not_available";
+
+export type EdgeWorkerReadiness = {
+  worker_id: string;
+  application: {
+    application_id: string | null;
+    status: EdgeWorkerApplicationStatus;
+    submitted_at: string | null;
+    decided_at: string | null;
+    reason: string | null;
+    can_submit: boolean;
+    can_resume: boolean;
+  };
+  kyc: {
+    status: EdgeWorkerKycStatus;
+    missing_fields: string[];
+  };
+  services: ServiceType[];
+  districts: string[];
+  capabilities: string[];
+  availability: {
+    enabled: boolean;
+    approved: boolean;
+    suspended: boolean;
+  };
+  capacity: {
+    active_job: boolean;
+    active_candidate: boolean;
+    active_reservation: boolean;
+  };
+  reachability: {
+    status: "push_proven" | "foreground_active" | "unproven";
+    push_token_registered: boolean;
+    push_proven_at: string | null;
+    foreground_active_until: string | null;
+  };
+  ready_for_matching: boolean;
+  next_action: EdgeWorkerReadinessNextAction;
+  reason_codes: string[];
+  observed_at: string;
+};
+
+function isWorkerApplicationEmail(value: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
 }
 
 export const workerApplicationSubmitSchema = z.object({
@@ -57,13 +161,14 @@ export const workerApplicationSubmitSchema = z.object({
     .min(6)
     .max(200)
     .refine(
-      isWorkerApplicationContact,
-      "contact must be an email or Vietnam phone number",
+      isWorkerApplicationEmail,
+      "worker applications require an email address",
     ),
   language: z.enum(["vi", "en"]).default("vi"),
   source: z.enum(["auth_worker_create"]).default("auth_worker_create"),
   client_request_id: clientRequestIdSchema.optional(),
-});
+  revision_of_application_id: z.string().uuid().optional(),
+}).strict();
 
 function isRealCalendarDate(s: string): boolean {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return false;
@@ -159,7 +264,7 @@ export const workerServiceAreaUpdateSchema = z.object({
   districts: z.array(workerDistrictSchema).min(1).max(20),
   home_lat: z.number().min(-90).max(90).nullable().optional(),
   home_lng: z.number().min(-180).max(180).nullable().optional(),
-  service_radius_km: z.number().int().min(1).max(30).nullable().optional(),
+  service_radius_km: z.number().int().min(1).max(30).optional(),
 }).strict().superRefine((value, ctx) => {
   const hasLat = value.home_lat !== undefined;
   const hasLng = value.home_lng !== undefined;

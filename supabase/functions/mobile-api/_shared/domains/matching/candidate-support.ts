@@ -1,24 +1,8 @@
-import { normalizeServiceAreaDistrict } from "../../../../_shared/domain.ts";
-import { requireJobAccess } from "../../platform/access.ts";
-import { buildWorkerBriefOutput } from "../../kael/index.ts";
 import { apiFailure } from "../../platform/api-failure.ts";
-import type { MobileApiContext } from "../../platform/auth.ts";
-import { projectAddressAccess } from "../worker/apartment-access.ts";
-import { logJobEvent } from "../../platform/audit.ts";
-import {
-  createBroadcasts,
-  expireStaleBroadcasts,
-  failBroadcastRetryClaim,
-  hasActiveBroadcast,
-  isBroadcastRetryContention,
-  listBroadcastRecipientWorkerIds,
-  runWithBroadcastRetryLease,
-} from "./broadcasts.ts";
-import { asServiceType, nullableNumber, nullableString } from "../../platform/coercions.ts";
-import { dbQuery, type DbClient, workflowDb } from "../../platform/db.ts";
+import { nullableNumber, nullableString } from "../../platform/coercions.ts";
+import { dbQuery, type DbClient } from "../../platform/db.ts";
 import { insertUserNotification } from "../notification/notifications.ts";
 import { resolveWorkerAvatarUrl } from "../worker/avatar.ts";
-import { estimateWorkerNet, getWorkerCommissionTier } from "../payment/commission.ts";
 import {
   parseOriginalScopePriceQuote,
   projectOriginalScopePriceQuote,
@@ -198,81 +182,6 @@ function projectWorkerMatchingProposal(value: Record<string, unknown> | null) {
   };
 }
 
-export async function resumeMatchingAfterCandidateRejection(
-  client: DbClient,
-  ctx: MobileApiContext,
-  jobId: string,
-) {
-  const job = await requireJobAccess(client, jobId, ctx, {
-    requiredRole: "customer",
-    select: "id, status, customer_id, worker_id, service_type, address_district",
-  });
-  if (job.status !== "broadcasting") {
-    return { broadcastSent: false, message: "Quyết định này đã được xử lý." };
-  }
-  const now = new Date().toISOString();
-  await expireStaleBroadcasts(client, jobId, now);
-  if (await hasActiveBroadcast(client, jobId, now)) {
-    return { broadcastSent: true, message: "Kael đang tiếp tục tìm thợ phù hợp." };
-  }
-  const district = normalizeServiceAreaDistrict(nullableString(job.address_district) ?? "");
-  if (!district) apiFailure("VALIDATION", "Địa chỉ cần có quận TP.HCM rõ ràng", 400);
-  const recipients = await listBroadcastRecipientWorkerIds(client, jobId);
-  if (!recipients.success) apiFailure("DB_ERROR", "Không thể tiếp tục tìm thợ", 500);
-  const claimResult = await runWithBroadcastRetryLease(
-    workflowDb(ctx),
-    jobId,
-    ctx.user.id,
-    async () => {
-      const broadcast = await createBroadcasts(
-        workflowDb(ctx),
-        jobId,
-        asServiceType(job.service_type),
-        district,
-        { excludeWorkerIds: recipients.workerIds },
-      );
-      if (!broadcast.success) {
-        if (broadcast.reasonCode === "DB_ERROR") {
-          apiFailure("DB_ERROR", "Không thể tiếp tục tìm thợ", 500);
-        }
-        await logJobEvent(
-          client,
-          jobId,
-          "no_worker_found_after_candidate_rejection",
-          ctx,
-          "broadcasting",
-          null,
-          { excluded_worker_count: recipients.workerIds.length },
-        );
-        return { broadcastSent: false, message: broadcast.reason };
-      }
-      await logJobEvent(
-        client,
-        jobId,
-        "broadcast_sent_after_candidate_rejection",
-        ctx,
-        "broadcasting",
-        null,
-        {
-          batch_id: broadcast.batchId,
-          worker_count: broadcast.broadcastCount,
-          excluded_worker_count: recipients.workerIds.length,
-        },
-      );
-      return {
-        broadcastSent: true,
-        message: `Kael đã gửi yêu cầu đến ${broadcast.broadcastCount} thợ tiếp theo.`,
-      };
-    },
-  );
-  if (!claimResult.acquired) {
-    if (isBroadcastRetryContention(claimResult.reasonCode)) {
-      return { broadcastSent: false, message: "Kael đang tiếp tục tìm thợ phù hợp." };
-    }
-    failBroadcastRetryClaim(claimResult.reasonCode);
-  }
-  return claimResult.value;
-}
 
 export function mapWorkerCandidateDecisionError(errorCode: string | null): never {
   if (errorCode === "NOT_FOUND") {
@@ -292,39 +201,4 @@ export function candidateHasExpired(value: unknown) {
   if (!expiresAt) return false;
   const timestamp = Date.parse(expiresAt);
   return Number.isFinite(timestamp) && timestamp <= Date.now();
-}
-
-export async function persistWorkerBriefGuidanceAfterAccept(
-  client: DbClient,
-  jobId: string,
-) {
-  const result = await dbQuery<Record<string, unknown>>(
-    client.from("jobs")
-      .select("id, worker_id, status, service_type, kael_problem_identified, address_building, address_unit, address_floor, address_district, apartment_access_profile, apartment_access_state, kael_price_min, kael_price_max, final_price")
-      .eq("id", jobId).maybeSingle(),
-  );
-  if (result.error || !result.data) return;
-  const job = result.data;
-  const finalPrice = nullableNumber(job.final_price) ?? nullableNumber(job.kael_price_max);
-  const priceMin = nullableNumber(job.kael_price_min);
-  const workerId = nullableString(job.worker_id);
-  const commissionTier = workerId
-    ? await getWorkerCommissionTier(client, workerId)
-    : null;
-  const addressProjection = projectAddressAccess(job, "worker", { forcedStage: "building_released" });
-  const guidance = buildWorkerBriefOutput({
-    stage: "guidance",
-    serviceType: asServiceType(job.service_type),
-    problemSummary: nullableString(job.kael_problem_identified) ?? "Yêu cầu cần thợ kiểm tra",
-    district: nullableString(job.address_district),
-    fullAddress: addressProjection.fullAddress,
-    estimatedEarningMin: estimateWorkerNet(priceMin, commissionTier),
-    estimatedEarningMax: estimateWorkerNet(finalPrice, commissionTier),
-  });
-  const guidanceUpdate = await dbQuery(
-    client.from("jobs").update({ kael_worker_brief_guidance: guidance }).eq("id", jobId),
-  );
-  if (guidanceUpdate.error) {
-    console.warn("mobile-api worker brief guidance persist failed", { jobId });
-  }
 }

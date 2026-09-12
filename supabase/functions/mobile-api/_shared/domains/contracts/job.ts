@@ -1,9 +1,12 @@
 import type {
   ApartmentAccessProfileInput,
+  EdgeApartmentAccessAuthorizationInput,
+  EdgeApartmentAccessAuthorizationReceipt,
   JobStatus,
   MessageSender,
 } from "../../../../_shared/domain.ts";
 import type { EdgeKaelMatchingContracts } from "../../../../_shared/contracts.ts";
+import type { EdgeMatchingOperationSnapshot, EdgeMatchingSelectionReceipt } from "../../../../_shared/contracts/stage1-reliability.ts";
 import type {
   EdgeKaelEstimate,
 } from "./kael-chat.ts";
@@ -39,6 +42,7 @@ export type EdgeConfirmSearchResponse = {
 
 export type EdgeMatchingPreferenceResponse = EdgeConfirmSearchResponse & {
   matching_state: MatchingState;
+  selection?: EdgeMatchingSelectionReceipt;
 };
 
 export type EdgeFavoriteWorkersForMatchingResponse = FavoriteWorkersForMatchingResponse;
@@ -62,6 +66,8 @@ export type EdgeAddressAccessView = {
   release_stage: "area_only" | "building_released" | "unit_released";
   exact_unit_released: boolean;
   worker_checked_in: boolean;
+  authorization_context?: EdgeApartmentAccessAuthorizationInput | null;
+  authorization_receipt?: EdgeApartmentAccessAuthorizationReceipt | null;
   check_in_required: boolean;
   identity_check_required: boolean;
   customer_handoff_required: boolean;
@@ -100,6 +106,7 @@ export type EdgeWorkerCandidateResponse = {
   job_id: string;
   status: JobStatus;
   candidate: EdgeWorkerCandidateView | null;
+  operation?: EdgeMatchingOperationSnapshot;
 };
 
 export type EdgeConfirmWorkerCandidateResponse = EdgeWorkerCandidateResponse & {

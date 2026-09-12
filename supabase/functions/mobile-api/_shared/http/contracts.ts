@@ -1,4 +1,9 @@
 import type {
+  EdgeApartmentAccessAuthorizationInput,
+  EdgeApartmentAccessAuthorizationReceipt,
+  EdgeCandidateDecisionStatus,
+} from "../../../_shared/contracts/job.ts";
+import type {
   AvailabilityToggleInput,
   AccountDeletionRequest,
   EdgeCustomerAvatarUpdateInput,
@@ -18,6 +23,7 @@ import type {
   DisputeOpenRequestInput,
   JobCreateInput,
   EdgeJobMatchingPreferenceInput,
+  EdgeServiceCoverageReadiness,
   EdgeJobIncidentScopeProposalInput,
   EdgeJobIncidentScopePricePreviewInput,
   JobMediaAttachInput,
@@ -35,6 +41,7 @@ import type {
   PlacesAutocompleteInput,
   PlacesResolveInput,
   ReviewInput,
+  ServiceType,
   UpdateKaelMemoryInput,
   UserRole,
   WorkerApplicationSubmitInput,
@@ -75,11 +82,9 @@ import type {
   WorkerStatusUpdateInput,
 } from "../domains/contracts/worker.ts";
 import type { EdgeAccountDeletionResponse } from "../domains/contracts/account.ts";
-import type { EdgeStagingPaymentResponse } from "../domains/payment/staging.ts";
-import type { EdgePaymentIntentResponse } from "../domains/payment/sepay-vietqr.ts";
+import type { EdgeMatchingRetryRequest, EdgeMatchingRetryReceipt, EdgeMatchingOperationSnapshot, EdgeMatchingSelectionReceipt } from "../../../_shared/contracts/stage1-reliability.ts";
 import type {
-  DirectPaymentResponseInput,
-  EdgeDirectPaymentResponse,
+  EdgeCompletionPaymentResponse,
   EdgeManualBankClaimResponse,
   EdgeManualBankPaymentResponse,
   ManualBankClaimInput,
@@ -89,7 +94,6 @@ import type {
   EdgeConfirmWorkerCandidateResponse,
   EdgeAvailabilityToggleResponse,
   EdgeBroadcastListResponse,
-  EdgeConfirmCompletionResponse,
   EdgeConfirmSearchResponse,
   EdgeFavoriteWorkersForMatchingResponse,
   EdgeCreateJobResponse,
@@ -147,6 +151,7 @@ import type {
   EdgeWorkerKaelTrainingConsentResponse,
   EdgeWorkerPerformanceInsightsResponse,
   EdgeWorkerProfileResponse,
+  EdgeWorkerReadinessResponse,
   EdgeWorkerAvatarUploadResponse,
   EdgeWorkerAvatarUpdateResponse,
   EdgeWorkerActivityMinuteResponse,
@@ -254,6 +259,10 @@ export type MobileApiServices = AdminControlServices & {
   getHarnessHealth?(): Promise<Record<string, unknown>> | Record<string, unknown>;
   getKaelCharter(): Promise<KaelPublicCharterResponse> | KaelPublicCharterResponse;
   listServices(ctx: MobileApiContext): Promise<EdgeServiceCatalogResponse>;
+  getServiceCoverageReadiness(
+    ctx: MobileApiContext,
+    input: { serviceType: ServiceType; districtCode: string },
+  ): Promise<EdgeServiceCoverageReadiness>;
   placesAutocomplete(
     ctx: MobileApiContext,
     input: PlacesAutocompleteInput,
@@ -376,6 +385,10 @@ export type MobileApiServices = AdminControlServices & {
     ctx: MobileApiContext,
     jobId: string,
   ): Promise<EdgeConfirmSearchResponse>;
+  requestJobMatchingRetry(ctx: MobileApiContext, jobId: string, input: EdgeMatchingRetryRequest): Promise<{ operation: EdgeMatchingRetryReceipt }>;
+  getJobMatchingRetry(ctx: MobileApiContext, jobId: string, requestId: string): Promise<{ operation: EdgeMatchingRetryReceipt }>;
+  getJobMatchingOperation(ctx: MobileApiContext, jobId: string): Promise<{ job_id: string; operation: EdgeMatchingOperationSnapshot | null }>;
+  getJobMatchingPreferenceReceipt(ctx: MobileApiContext, jobId: string, requestId: string): Promise<{ selection: EdgeMatchingSelectionReceipt }>;
   setJobMatchingPreference(
     ctx: MobileApiContext,
     jobId: string,
@@ -398,6 +411,11 @@ export type MobileApiServices = AdminControlServices & {
     ctx: MobileApiContext,
     jobId: string,
   ): Promise<EdgeWorkerCandidateResponse>;
+  getWorkerCandidateDecision(
+    ctx: MobileApiContext,
+    jobId: string,
+    candidateId: string,
+  ): Promise<EdgeCandidateDecisionStatus>;
   confirmWorkerCandidate(
     ctx: MobileApiContext,
     jobId: string,
@@ -424,11 +442,8 @@ export type MobileApiServices = AdminControlServices & {
   authorizeApartmentAccess(
     ctx: MobileApiContext,
     jobId: string,
-  ): Promise<{
-    job_id: string;
-    release_stage: string;
-    already_authorized: boolean;
-  }>;
+    input?: EdgeApartmentAccessAuthorizationInput,
+  ): Promise<EdgeApartmentAccessAuthorizationReceipt>;
   requestScopeChange(
     ctx: MobileApiContext,
     jobId: string,
@@ -562,11 +577,7 @@ export type MobileApiServices = AdminControlServices & {
   confirmCompletion(
     ctx: MobileApiContext,
     jobId: string,
-  ): Promise<EdgeConfirmCompletionResponse>;
-  createPaymentIntent(
-    ctx: MobileApiContext,
-    jobId: string,
-  ): Promise<EdgePaymentIntentResponse | EdgeManualBankPaymentResponse>;
+  ): Promise<EdgeCompletionPaymentResponse>;
   createManualBankPaymentOrder(
     ctx: MobileApiContext,
     jobId: string,
@@ -576,24 +587,6 @@ export type MobileApiServices = AdminControlServices & {
     jobId: string,
     input: ManualBankClaimInput,
   ): Promise<EdgeManualBankClaimResponse>;
-  selectDirectWorkerPayment(
-    ctx: MobileApiContext,
-    jobId: string,
-    clientRequestId: string,
-  ): Promise<EdgeDirectPaymentResponse>;
-  respondToDirectWorkerPayment(
-    ctx: MobileApiContext,
-    jobId: string,
-    input: DirectPaymentResponseInput,
-  ): Promise<EdgeDirectPaymentResponse>;
-  confirmWorkerCashPayment(
-    ctx: MobileApiContext,
-    jobId: string,
-  ): Promise<EdgeDirectPaymentResponse>;
-  confirmStagingPayment(
-    ctx: MobileApiContext,
-    jobId: string,
-  ): Promise<EdgeStagingPaymentResponse>;
   submitReview(
     ctx: MobileApiContext,
     jobId: string,
@@ -607,6 +600,14 @@ export type MobileApiServices = AdminControlServices & {
     ctx: MobileApiContext,
     input: WorkerRegisterInput,
   ): Promise<EdgeWorkerRegisterResponse>;
+  submitWorkerRegistrationCommand(
+    ctx: MobileApiContext,
+    input: import("../../../_shared/contracts/worker.ts").EdgeWorkerRegistrationCommandInput,
+  ): Promise<import("../../../_shared/contracts/worker.ts").EdgeWorkerRegistrationCommandResult>;
+  getWorkerRegistrationCommand(
+    ctx: MobileApiContext,
+    clientRequestId: string,
+  ): Promise<import("../../../_shared/contracts/worker.ts").EdgeWorkerRegistrationCommandResult>;
   saveWorkerRegistrationDraft(
     ctx: MobileApiContext,
     input: EdgeWorkerRegistrationDraftInput,
@@ -619,6 +620,7 @@ export type MobileApiServices = AdminControlServices & {
     ctx: MobileApiContext,
     input: WorkerApplicationSubmitInput,
   ): Promise<EdgeWorkerApplicationResponse>;
+  getWorkerReadiness(ctx: MobileApiContext): Promise<EdgeWorkerReadinessResponse>;
   getMyKaelMemory(ctx: MobileApiContext): Promise<EdgeKaelMemorySelfViewResponse>;
   getWorkerKaelMemory(ctx: MobileApiContext): Promise<EdgeKaelMemorySelfViewResponse>;
   deleteMyKaelMemory(ctx: MobileApiContext): Promise<EdgeKaelMemoryDeleteResponse>;

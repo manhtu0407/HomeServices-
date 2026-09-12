@@ -31,11 +31,14 @@ type RuntimeClientPlatformIdentity = {
 };
 
 type RuntimeProviderReadiness = {
+  readonly android_fcm_v1: boolean;
   readonly anthropic: boolean;
   readonly deepseek: boolean;
   readonly durable_guards: boolean;
   readonly global_ai_enabled: boolean;
+  readonly ios_apns: boolean;
   readonly perplexity: boolean;
+  readonly push_receipt_reconciler: boolean;
   readonly vietmap: boolean;
 };
 
@@ -165,11 +168,14 @@ function readRuntimeProviderReadiness(
     getEnv(name)?.trim().toLowerCase() ?? "",
   );
   return {
+    android_fcm_v1: trueFlag("NESTSCOUT_ANDROID_FCM_V1_READY"),
     anthropic: enabled("ANTHROPIC_API_KEY"),
     deepseek: enabled("DEEPSEEK_API_KEY"),
     durable_guards: trueFlag("KAEL_DURABLE_GUARDS_ENABLED"),
     global_ai_enabled: !trueFlag("KAEL_AI_KILL_SWITCH"),
+    ios_apns: trueFlag("NESTSCOUT_IOS_APNS_READY"),
     perplexity: enabled("PERPLEXITY_API_KEY"),
+    push_receipt_reconciler: trueFlag("NESTSCOUT_PUSH_RECEIPT_RECONCILER_READY"),
     vietmap: enabled("VIETMAP_API_KEY") || enabled("VIETMAP_MAPS_API_KEY"),
   };
 }

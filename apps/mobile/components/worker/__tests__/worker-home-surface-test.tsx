@@ -489,6 +489,7 @@ function buildSettledCaseDeal(): LocalDeal {
   const deal = buildConfirmedCompletionDeal()
   return {
     ...deal,
+    backendStatus: 'paid',
     payment: {
       grossAmount: 400_000,
       platformFee: 60_000,
@@ -1032,6 +1033,25 @@ describe('Worker runtime surface wiring', () => {
 
     expect(screen.getByTestId('worker-v5-stage-eleven-amount')).toHaveTextContent('400.000 VND')
     expect(screen.getByText('Số tiền chuyển khoản')).toBeOnTheScreen()
+  })
+
+  it('does not turn a pending bank order or provisional earnings into a payment receipt', () => {
+    const deal = buildSettledCaseDeal()
+    deal.backendStatus = 'payment_pending'
+    deal.status = 'payment_pending'
+    deal.payment = deal.payment ? { ...deal.payment, status: 'pending', provider: 'platform_bank_manual' } : null
+    buildWorkflow({ deal, workerEarnings: buildSettledCaseEarnings() })
+    mockRouteParams = {
+      ns_audit_role: 'worker', ns_worker_lang: 'vi',
+      ns_worker_screen: '2.12-case-closed', ns_worker_stage: 'payment-confirmed',
+    }
+
+    render(<WorkerJobsSurface />)
+
+    expect(screen.queryByText('Thanh toán đã ghi nhận')).toBeNull()
+    expect(screen.queryByText('Khách đã xác nhận thanh toán')).toBeNull()
+    expect(screen.queryByText('Chúc mừng!')).toBeNull()
+    expect(screen.getByTestId('worker-v5-stage-eleven-amount')).toHaveTextContent('Chưa có số tiền được ghi nhận')
   })
 
   it('does not synthesize a job when the Preview inbox has no real opportunity', () => {
@@ -2862,7 +2882,19 @@ describe('Worker runtime surface wiring', () => {
     expect(screen.getByTestId('worker-v5-stage-nine-status-card')).toBeOnTheScreen()
   })
 
-  it('keeps the status marker static and lets the worker answer the direct-payment receipt', async () => {
+  it('does not record payment or unlock settlement from completion confirmation alone', () => {
+    buildWorkflow({ deal: buildConfirmedCompletionDeal() })
+    mockRouteParams = { ns_worker_screen: '2.11-completion-submitted' }
+
+    render(<WorkerJobsSurface />)
+
+    expect(screen.getByTestId('worker-v5-stage-nine-status-list')).not.toHaveTextContent('Đã ghi nhận')
+    expect(screen.getByTestId('worker-v5-completion-submitted-next-action')).toBeDisabled()
+    fireEvent.press(screen.getByTestId('worker-v5-completion-submitted-next-action'))
+    expect(mockReplace).not.toHaveBeenCalledWith('/(worker)/jobs?ns_worker_screen=2.12-case-closed')
+  })
+
+  it('keeps the status marker static and the legacy direct-payment receipt read-only', () => {
     buildWorkflow({ deal: buildCompletedByWorkerDeal() })
     mockRouteParams = { ns_worker_screen: '2.11-completion-submitted' }
     const pending = render(<WorkerJobsSurface />)
@@ -2875,11 +2907,14 @@ describe('Worker runtime surface wiring', () => {
     mockRouteParams = { ns_worker_screen: '2.11-completion-submitted' }
     const confirmed = render(<WorkerJobsSurface />)
 
-    expect(screen.getByTestId('worker-v5-completion-direct-payment-action')).toHaveTextContent('Đã nhận tiền')
+    expect(screen.queryByTestId('worker-v5-completion-direct-payment-action')).toBeNull()
+    expect(screen.queryByTestId('worker-v5-completion-direct-payment-problem')).toBeNull()
+    expect(screen.getByText('Chờ nền tảng đối soát')).toBeOnTheScreen()
+    expect(screen.getByTestId('worker-v5-completion-submitted-next-action')).toBeDisabled()
     expect(mockReplace).not.toHaveBeenCalledWith('/(worker)/jobs?ns_worker_screen=2.12-case-closed')
-    fireEvent.press(screen.getByTestId('worker-v5-completion-direct-payment-action'))
-    await waitFor(() => expect(mockWorkerConfirmCashPayment).toHaveBeenCalledWith(true))
-    expect(mockReplace).toHaveBeenCalledWith('/(worker)/jobs?ns_worker_screen=2.12-case-closed')
+    fireEvent.press(screen.getByTestId('worker-v5-completion-submitted-next-action'))
+    expect(mockWorkerConfirmCashPayment).not.toHaveBeenCalled()
+    expect(mockReplace).not.toHaveBeenCalledWith('/(worker)/jobs?ns_worker_screen=2.12-case-closed')
     confirmed.unmount()
 
     mockRouteParams = { ns_worker_screen: '2.12-case-closed' }
@@ -2889,25 +2924,26 @@ describe('Worker runtime surface wiring', () => {
     expect(screen.queryByTestId('worker-v5-case-closed-title')).toBeNull()
   })
 
-  it('keeps the job in payment when the worker reports that direct payment was not received', async () => {
+  it('keeps the legacy payment pending without restoring a worker acknowledgement mutation', () => {
     buildWorkflow({ deal: buildDirectWorkerConfirmationDeal() })
     mockRouteParams = { ns_worker_screen: '2.11-completion-submitted' }
 
     render(<WorkerJobsSurface />)
-    fireEvent.press(screen.getByTestId('worker-v5-completion-direct-payment-problem'))
-
-    await waitFor(() => expect(mockWorkerConfirmCashPayment).toHaveBeenCalledWith(false))
+    expect(screen.queryByTestId('worker-v5-completion-direct-payment-problem')).toBeNull()
+    expect(screen.getByText('Chờ nền tảng đối soát')).toBeOnTheScreen()
+    fireEvent.press(screen.getByTestId('worker-v5-completion-submitted-next-action'))
+    expect(mockWorkerConfirmCashPayment).not.toHaveBeenCalled()
     expect(mockReplace).not.toHaveBeenCalledWith('/(worker)/jobs?ns_worker_screen=2.12-case-closed')
   })
 
-  it('shows the direct-payment confirmation failure instead of leaving the worker without feedback', () => {
+  it('preserves the reconciliation error and support code without enabling legacy payment', () => {
     buildWorkflow({ deal: buildDirectWorkerConfirmationDeal() })
-    mockWorkflowValue.state.lastError = 'Không thể lưu xác nhận thanh toán trực tiếp.'
+    mockWorkflowValue.state.lastError = 'Chưa thể tải lại trạng thái thanh toán. Mã hỗ trợ: A1B2C3D4.'
     mockRouteParams = { ns_worker_screen: '2.11-completion-submitted' }
 
     render(<WorkerJobsSurface />)
 
-    expect(screen.getByText('Không thể lưu xác nhận thanh toán trực tiếp.')).toBeOnTheScreen()
+    expect(screen.getByText('Chưa thể tải lại trạng thái thanh toán. Mã hỗ trợ: A1B2C3D4.')).toBeOnTheScreen()
   })
 
   it('renders the settled case from a real recorded payment', () => {

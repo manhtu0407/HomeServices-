@@ -189,6 +189,8 @@ begin
 end;
 $$;
 
+savepoint before_worker_decision;
+
 do $$
 declare v_job_id uuid; v_delivery record; v_candidate record; v_confirm record;
   v_recovery record; v_recipient_count integer; v_sent_at timestamptz;
@@ -196,6 +198,12 @@ declare v_job_id uuid; v_delivery record; v_candidate record; v_confirm record;
 begin
   select job_id into strict v_job_id from public.kael_chat_sessions
     where id = 'd4800000-0000-4000-8000-000000000010';
+  -- This suite invokes the legacy confirmation RPC; the capacity-aware RPC owns this lease in current traffic.
+  insert into public.matching_capacity_reservations(operation_id, job_id, worker_id, service_type,
+    district_code, held_at, expires_at, synthetic_cohort_id)
+  select id, v_job_id, 'd4800000-0000-4000-8000-000000000002', 'plumbing', 'q7',
+    now(), now() + interval '5 minutes', synthetic_cohort_id
+  from public.confirmation_operations where job_id = v_job_id;
   v_sent_at := date_trunc('milliseconds', now());
   update public.worker_profiles set problem_specializations = array[]::text[]
     where id = 'd4800000-0000-4000-8000-000000000002';
@@ -360,13 +368,17 @@ begin
 end;
 $$;
 
+-- Retry failure is a separate unresolved-job scenario, not a reversal of Customer selection.
+rollback to before_worker_decision;
+
 do $$
 declare
   v_outbox_id uuid;
   v_operation_id uuid;
   v_lease_token uuid;
   v_outcome text;
-  v_retry_delay_seconds numeric;
+  v_retry_started_at timestamptz;
+  v_retry_at timestamptz;
   v_health record;
 begin
   select outbox.id, outbox.operation_id
@@ -382,13 +394,15 @@ begin
     leased_by = 'sql-dispatcher:p48-retry', lease_expires_at = now() + interval '1 minute',
     dead_lettered_at = null, last_error_code = null
   where id = v_outbox_id;
+  v_retry_started_at := clock_timestamp();
   v_outcome := public.settle_confirmation_matching_outbox_claim(
     v_outbox_id, v_lease_token, v_operation_id, 'recovery_required', 'SIMULATED_RETRY'
   );
-  select extract(epoch from outbox.next_attempt_at - now())
-  into strict v_retry_delay_seconds
+  select outbox.next_attempt_at
+  into strict v_retry_at
   from public.workflow_outbox outbox where outbox.id = v_outbox_id;
-  if v_outcome <> 'retry_scheduled' or v_retry_delay_seconds <> 4
+  if v_outcome <> 'retry_scheduled' or v_retry_at < v_retry_started_at + interval '4 seconds'
+    or v_retry_at > clock_timestamp() + interval '4 seconds'
     or (select last_error_code from public.workflow_outbox where id = v_outbox_id) <> 'SIMULATED_RETRY'
   then raise exception 'outbox exponential retry settlement failed'; end if;
 

@@ -1,8 +1,21 @@
+import type { QuoteMode } from '@nestscout/shared'
 import type { AppLanguage } from '@/lib/app-language'
 import type { KaelAssistantResponse, KaelChatResponse } from '@/lib/api-types'
 
 import { normalizeKaelRoutingText } from './case-work-display-model'
 import type { CustomerAssistantLocalTurn } from './use-customer-kael-conversation-state'
+
+export function confirmationProcessPrompt(quoteMode: Exclude<QuoteMode, 'blocked'>, language: AppLanguage) {
+  if (quoteMode === 'rfq') return language === 'vi'
+    ? 'Đang chuẩn bị gửi yêu cầu báo giá và chờ hệ thống xác nhận.'
+    : 'Preparing the quote request and waiting for the system to confirm receipt.'
+  if (quoteMode === 'inspection_only') return language === 'vi'
+    ? 'Đang chuẩn bị gửi yêu cầu khảo sát và chờ hệ thống xác nhận.'
+    : 'Preparing the inspection request and waiting for the system to confirm receipt.'
+  return language === 'vi'
+    ? 'Đang gửi xác nhận đề nghị giá và chờ hệ thống ghi nhận.'
+    : 'Sending your price confirmation and waiting for the system to record it.'
+}
 
 export function localizeKaelRequestFailure(
   failure: {

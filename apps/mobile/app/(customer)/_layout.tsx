@@ -13,6 +13,7 @@ function runtimeBuildMarkerText() {
   const sha = info.gitShortSha || (info.gitSha ? info.gitSha.slice(0, 12) : '') || 'unknown'
   const parts = [`SHA ${sha}`]
 
+  if (info.releaseId) parts.push(`Release ${info.releaseId}`)
   if (info.gitBranch) parts.push(`Branch ${info.gitBranch}`)
   if (info.easBuildProfile) parts.push(`Profile ${info.easBuildProfile}`)
   if (info.easBuildPlatform) parts.push(`Platform ${info.easBuildPlatform}`)

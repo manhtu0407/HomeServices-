@@ -1,0 +1,41 @@
+appId: ${MAESTRO_APP_ID}
+tags:
+  - worker
+  - normal-account
+---
+- launchApp:
+    clearState: true
+- extendedWaitUntil:
+    visible:
+      id: auth-role-gate-screen
+    timeout: 45000
+- takeScreenshot: worker-role-gate
+- tapOn:
+    id: auth-entry-role-worker
+- tapOn:
+    id: auth-entry-role-worker
+- extendedWaitUntil:
+    visible:
+      id: auth-login-1-4
+    timeout: 15000
+- assertNotVisible:
+    id: auth-client-google-primary
+- assertNotVisible:
+    id: auth-client-apple-secondary
+- tapOn:
+    id: auth-login-email-input
+- inputText: ${MAESTRO_WORKER_EMAIL}
+- tapOn:
+    id: auth-login-password-input
+- inputText: ${MAESTRO_WORKER_PASSWORD}
+- hideKeyboard
+- tapOn:
+    id: auth-login-submit
+- extendedWaitUntil:
+    visible:
+      id: worker-v5-screen-1.1-worker-home
+    timeout: 60000
+- assertVisible:
+    id: worker-v5-primary-dock
+- takeScreenshot: worker-home-readiness
+- stopApp

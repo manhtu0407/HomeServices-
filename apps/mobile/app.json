@@ -46,6 +46,7 @@
         }
       ],
       "expo-router",
+      "expo-notifications",
       [
         "expo-audio",
         {
@@ -80,7 +81,7 @@
       "supabaseUrl": "",
       "supabasePublishableKey": "",
       "apiBaseUrl": "",
-      "iosPushNotificationsEnabled": false,
+      "iosPushNotificationsEnabled": true,
       "eas": {
         "projectId": "c2fd8ae7-a6fa-4b6e-a9a0-df85b52ac94b"
       }

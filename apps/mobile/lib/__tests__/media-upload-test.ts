@@ -67,6 +67,16 @@ describe('localizeMediaUploadFailure', () => {
       error: 'Lỗi nội bộ nhà cung cấp',
     }, 'en')).toBe('The selected media could not be processed. Please try again.')
   })
+
+  it('keeps an upload failure traceable without exposing the storage error', () => {
+    const failure = {
+      code: 'MEDIA_UPLOAD_FAILED',
+      error: 'private storage provider detail 42',
+      meta: { supportCode: 'A1B2C3D4', operationId: null, releaseId: null, runId: null, traceId: null },
+    }
+    expect(localizeMediaUploadFailure(failure, 'vi')).toBe('Không thể tải media đã chọn lên. Vui lòng thử lại. Mã hỗ trợ: A1B2C3D4.')
+    expect(localizeMediaUploadFailure(failure, 'en')).toBe('The selected media could not be uploaded. Please try again. Support code: A1B2C3D4.')
+  })
 })
 
 const mockFetch = jest.fn()
@@ -350,13 +360,13 @@ describe('Kael chat media upload', () => {
 
     expect(result.success).toBe(true)
     expect(mockUpload.mock.calls.map((call) => call[0])).toEqual([
-      expect.stringMatching(/\/cccd-front\/[^/]+-front\.jpg$/),
-      expect.stringMatching(/\/cccd-back\/[^/]+-back\.png$/),
-      expect.stringMatching(/\/selfie\/[^/]+-selfie\.webp$/),
+      expect.stringMatching(/\/cccd-front\/[0-9a-f-]{36}\.jpg$/),
+      expect.stringMatching(/\/cccd-back\/[0-9a-f-]{36}\.png$/),
+      expect.stringMatching(/\/selfie\/[0-9a-f-]{36}\.webp$/),
     ])
   })
 
-  it('removes every ambiguous private verification path when a sibling upload fails', async () => {
+  it('removes only acknowledged private verification uploads when a sibling upload fails', async () => {
     mockUpload
       .mockResolvedValueOnce({ error: null })
       .mockResolvedValueOnce({ error: new Error('upload failed') })
@@ -369,7 +379,10 @@ describe('Kael chat media upload', () => {
     })
 
     expect(result.success).toBe(false)
-    expect(mockRemove).toHaveBeenCalledWith(mockUpload.mock.calls.map((call) => call[0]))
+    expect(mockRemove).toHaveBeenCalledWith([
+      mockUpload.mock.calls[0][0],
+      mockUpload.mock.calls[2][0],
+    ])
   })
 
   it('keeps the upload failure fail-closed when draft cleanup returns an error', async () => {
@@ -389,7 +402,7 @@ describe('Kael chat media upload', () => {
     expect(mockRemove).toHaveBeenCalledTimes(1)
   })
 
-  it('rejects an empty worker verification blob and removes every ambiguous path', async () => {
+  it('rejects an empty worker verification blob and cleans only uploaded siblings', async () => {
     mockFetch
       .mockResolvedValueOnce({ blob: async () => ({ size: 0 }), ok: true })
       .mockResolvedValueOnce({ blob: async () => ({ size: 42 }), ok: true })
@@ -404,13 +417,12 @@ describe('Kael chat media upload', () => {
     expect(result).toMatchObject({ success: false, code: 'MEDIA_READ_FAILED' })
     expect(mockUpload).toHaveBeenCalledTimes(2)
     expect(mockRemove).toHaveBeenCalledWith([
-      expect.stringMatching(/\/cccd-front\/[^/]+-front\.jpg$/),
       mockUpload.mock.calls[0][0],
       mockUpload.mock.calls[1][0],
     ])
   })
 
-  it('waits for the abortable Supabase storage deadline and cleans every ambiguous path', async () => {
+  it('waits for the abortable Supabase storage deadline without deleting its unknown object', async () => {
     jest.useFakeTimers()
     mockUpload
       .mockImplementationOnce(() => new Promise((_, reject) => {
@@ -436,7 +448,7 @@ describe('Kael chat media upload', () => {
 
     await jest.advanceTimersByTimeAsync(5_000)
     expect(result).toMatchObject({ success: false, code: 'MEDIA_UPLOAD_FAILED' })
-    expect(mockRemove).toHaveBeenCalledWith(mockUpload.mock.calls.map((call) => call[0]))
+    expect(mockRemove).toHaveBeenCalledWith(mockUpload.mock.calls.slice(1).map((call) => call[0]))
   })
 
   it.each([
@@ -594,6 +606,19 @@ describe('Kael chat media upload', () => {
       ],
     })
     expect(mockRemove).not.toHaveBeenCalled()
+  })
+
+  it.each(['intent', 'attach', 'kael'] as const)('retains server trace metadata after %s rejection and cleanup', async (stage) => {
+    const meta = { supportCode: 'A1B2C3D4', operationId: 'operation-test', releaseId: 'release-test', runId: 'run-test', traceId: 'trace-test' }
+    const failure = { success: false, status: 503, code: 'MEDIA_VALIDATION_UNAVAILABLE', error: 'private storage detail', meta }
+    if (stage === 'intent') mockCreateJobMediaUpload.mockResolvedValueOnce(failure)
+    if (stage === 'attach') mockAttachJobMedia.mockResolvedValueOnce(failure)
+    if (stage === 'kael') mockCreateMediaUpload.mockResolvedValueOnce(failure)
+    const draft = { uri: 'file:///evidence.jpg', type: 'image' as const, mimeType: 'image/jpeg' }
+    const result = stage === 'kael'
+      ? await uploadKaelChatMediaDrafts([draft])
+      : await uploadJobMediaDrafts('job-1', [draft], 'after')
+    expect(result).toMatchObject({ success: false, code: 'MEDIA_VALIDATION_UNAVAILABLE', meta })
   })
 
   it('keeps kael-chat-media uploads behind the Edge signed-upload route', async () => {

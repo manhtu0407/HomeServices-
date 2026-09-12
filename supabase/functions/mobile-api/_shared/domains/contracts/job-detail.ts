@@ -68,6 +68,7 @@ export type EdgeJobDetailResponse = {
     platform_fee: number | null;
     worker_net: number | null;
     payment_receipt: {
+      refund?: import("../../../../_shared/contracts/payment.ts").EdgeRefundSummary | null;
       method: "platform_bank_manual" | "direct_worker";
       status: string;
       gross_amount: number;

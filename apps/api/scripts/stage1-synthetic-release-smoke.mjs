@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { randomUUID } from 'node:crypto'
+import { createHash, randomUUID } from 'node:crypto'
 import { readFileSync } from 'node:fs'
 import { mkdir, writeFile } from 'node:fs/promises'
 import { dirname, relative, resolve } from 'node:path'
@@ -42,6 +42,10 @@ const AUTO_QUOTE_SMOKE_PRIORITY = Object.freeze([
 ])
 const CUSTOMER_PRESENTATION_NAME = 'Khách hàng NestScout'
 const WORKER_PRESENTATION_NAME = 'Đối tác NestScout'
+const SYNTHETIC_EVIDENCE_PNG = Buffer.from(
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
+  'base64',
+)
 
 export class Stage1SyntheticReleaseSmoke {
   constructor(config) {
@@ -162,7 +166,12 @@ export class Stage1SyntheticReleaseSmoke {
     if (error || !data.user || !data.session?.access_token) {
       throw new Error(`dedicated synthetic ${role} could not authenticate`)
     }
-    return { id: data.user.id, email: data.user.email?.toLowerCase() ?? '', accessToken: data.session.access_token }
+    return {
+      id: data.user.id,
+      email: data.user.email?.toLowerCase() ?? '',
+      accessToken: data.session.access_token,
+      client,
+    }
   }
 
   async normalizeSyntheticActorPresentation(actors) {
@@ -296,6 +305,7 @@ export class Stage1SyntheticReleaseSmoke {
   }
 
   async cleanupCohort(cohortId = this.config.cohortId) {
+    await this.removeCohortMediaObjects(cohortId)
     const { error } = await this.admin.rpc('cleanup_synthetic_matching_cohort', {
       p_cohort_id: cohortId,
     })
@@ -320,6 +330,25 @@ export class Stage1SyntheticReleaseSmoke {
     }
     this.cleanupProofs.push(normalized)
     return normalized
+  }
+
+  async removeCohortMediaObjects(cohortId) {
+    const jobs = await this.admin.from('jobs').select('id').eq('synthetic_cohort_id', cohortId)
+    if (jobs.error) throw new Error('synthetic cleanup could not resolve exact cohort jobs')
+    const jobIds = (jobs.data ?? []).map((job) => job.id).filter(Boolean)
+    if (jobIds.length === 0) return
+    const [assets, intents] = await Promise.all([
+      this.admin.from('job_media_assets').select('job_id,object_path').in('job_id', jobIds),
+      this.admin.from('job_media_upload_intents').select('job_id,object_path').in('job_id', jobIds),
+    ])
+    if (assets.error || intents.error) throw new Error('synthetic cleanup could not enumerate exact media objects')
+    const jobIdSet = new Set(jobIds)
+    const objectPaths = [...new Set([...(assets.data ?? []), ...(intents.data ?? [])]
+      .filter((row) => jobIdSet.has(row.job_id) && isExactJobMediaPath(row.job_id, row.object_path))
+      .map((row) => row.object_path))]
+    if (objectPaths.length === 0) return
+    const removed = await this.admin.storage.from('job-media').remove(objectPaths)
+    if (removed.error) throw new Error('synthetic cleanup could not remove exact cohort media objects')
   }
 
   async runScenario(input) {
@@ -459,12 +488,17 @@ export class Stage1SyntheticReleaseSmoke {
     }
     if (official.json?.status !== 'worker_matched') throw new Error('Customer confirmation did not create an official match')
 
-    const terminal = await pollUntil(async () => {
+    const officialMatch = await pollUntil(async () => {
       const operation = await this.api(input.actors.customer, 'GET', `/kael/chat/${sessionId}/operation`)
       return operation.json?.operation
     }, (operation) => operation?.state === 'official_match' && operation?.terminal === true, {
       attempts: 10,
       intervalMs: 250,
+    })
+    const terminal = await this.runFulfillmentAndTerminalProof({
+      actors: input.actors,
+      jobId,
+      scenarioKind: input.expectedMode === 'kael_auto_quote' ? 'auto_quote' : 'rfq_or_inspection',
     })
     const duplicates = await this.verifyNoScenarioDuplicates(sessionId, jobId, input.actors.worker.id)
     this.duplicateJobCount += duplicates.jobs
@@ -477,10 +511,132 @@ export class Stage1SyntheticReleaseSmoke {
       customerOperationReadsBeforeOffer,
       confirmAcceptanceMs: confirmation.durationMs,
       workerOfferVisibleMs,
-      terminal: terminal.value.state === 'official_match',
+      officialMatchReconciled: officialMatch.value.state === 'official_match',
+      fulfillmentPassed: terminal.fulfillment_passed,
+      completionPassed: terminal.completion_passed,
+      paymentPassed: terminal.payment_passed,
+      reviewPassed: terminal.review_passed,
+      terminal: terminal.job_status === 'reviewed',
     }
     this.results.push(result)
     return result
+  }
+
+  async runFulfillmentAndTerminalProof(input) {
+    const evidencePaths = []
+    await this.api(input.actors.worker, 'PATCH', `/jobs/${input.jobId}/status`, {
+      status: 'worker_on_way',
+    }, { idempotencyKey: `stage1-worker-on-way-${input.jobId}` })
+
+    const checkIn = await this.uploadSyntheticJobEvidence(
+      input.actors.worker,
+      input.jobId,
+      'access_check_in',
+    )
+    evidencePaths.push(checkIn.objectPath)
+    await this.api(input.actors.worker, 'PATCH', `/jobs/${input.jobId}/status`, {
+      status: 'arrived',
+      access_check_in: {
+        mode: 'manual_photo',
+        photo_urls: [checkIn.storageRef],
+        note: 'Ảnh fixture thuộc cohort cô lập để xác minh check-in Production.',
+        checked_in_at: new Date().toISOString(),
+      },
+    }, { idempotencyKey: `stage1-worker-arrived-${input.jobId}` })
+    await this.api(input.actors.worker, 'PATCH', `/jobs/${input.jobId}/status`, {
+      status: 'inspecting',
+    }, { idempotencyKey: `stage1-worker-inspecting-${input.jobId}` })
+    await this.api(input.actors.worker, 'PATCH', `/jobs/${input.jobId}/status`, {
+      status: 'repairing',
+    }, { idempotencyKey: `stage1-worker-repairing-${input.jobId}` })
+
+    const completion = await this.uploadSyntheticJobEvidence(
+      input.actors.worker,
+      input.jobId,
+      'after',
+    )
+    evidencePaths.push(completion.objectPath)
+    await this.api(input.actors.worker, 'PATCH', `/jobs/${input.jobId}/status`, {
+      status: 'completed_by_worker',
+      completion_notes: 'Đã hoàn tất fixture synthetic và kiểm tra lại phạm vi đã thống nhất.',
+      completion_photo_urls: [completion.storageRef],
+    }, { idempotencyKey: `stage1-worker-completed-${input.jobId}` })
+
+    const { data, error } = await this.admin.rpc('complete_synthetic_transaction_proof', {
+      p_job_id: input.jobId,
+      p_customer_id: input.actors.customer.id,
+      p_release_id: this.config.release.releaseId,
+      p_environment: this.config.environment,
+      p_cohort_id: this.config.cohortId,
+      p_run_id: this.config.runId,
+      p_sequence: this.config.sequence,
+      p_scenario_kind: input.scenarioKind,
+      p_request_id: deterministicTerminalRequestId(
+        this.config.runId,
+        this.config.sequence,
+        input.scenarioKind,
+      ),
+    })
+    const proof = data?.[0]
+    if (error || proof?.job_status !== 'reviewed' || proof?.payment_status !== 'received' ||
+        proof?.fulfillment_passed !== true || proof?.completion_passed !== true ||
+        proof?.payment_passed !== true || proof?.review_passed !== true) {
+      throw new Error(`synthetic terminal transaction proof failed (${error?.code ?? 'INVALID_RECEIPT'})`)
+    }
+
+    const rehydrated = await this.api(input.actors.customer, 'GET', `/jobs/${input.jobId}`)
+    const rehydratedJob = rehydrated.json?.job ?? rehydrated.json
+    if (rehydratedJob?.status !== 'reviewed' || rehydratedJob?.payment_status !== 'received' ||
+        rehydratedJob?.payment_provider !== 'staging_simulator') {
+      throw new Error('Customer could not rehydrate the isolated reviewed terminal state')
+    }
+    await this.revokeSyntheticJobEvidence(input.actors.worker, input.jobId, evidencePaths)
+    return proof
+  }
+
+  async uploadSyntheticJobEvidence(worker, jobId, stage) {
+    const prepared = await this.api(worker, 'POST', `/jobs/${jobId}/media-upload`, {
+      file_name: `stage1-${stage}.png`,
+      file_size_bytes: SYNTHETIC_EVIDENCE_PNG.byteLength,
+      mime_type: 'image/png',
+      stage,
+    }, { expectedStatus: 201, idempotencyKey: `stage1-media-prepare-${jobId}-${stage}` })
+    const upload = prepared.json
+    if (upload?.bucket_id !== 'job-media' || !upload.object_path || !upload.storage_ref || !upload.token) {
+      throw new Error('synthetic evidence upload receipt is incomplete')
+    }
+    const stored = await worker.client.storage.from(upload.bucket_id).uploadToSignedUrl(
+      upload.object_path,
+      upload.token,
+      SYNTHETIC_EVIDENCE_PNG,
+      { contentType: 'image/png', upsert: false },
+    )
+    if (stored.error) throw new Error('synthetic evidence could not be uploaded to private Storage')
+    const attached = await this.api(worker, 'POST', `/jobs/${jobId}/media`, {
+      assets: [{
+        object_path: upload.object_path,
+        stage,
+        mime_type: 'image/png',
+        file_size_bytes: SYNTHETIC_EVIDENCE_PNG.byteLength,
+      }],
+    }, { expectedStatus: 201, idempotencyKey: `stage1-media-attach-${jobId}-${stage}` })
+    if (!Array.isArray(attached.json?.media) ||
+        !attached.json.media.some((item) => item.object_path === upload.object_path)) {
+      throw new Error('synthetic evidence was not attached to the exact job')
+    }
+    return { objectPath: upload.object_path, storageRef: upload.storage_ref }
+  }
+
+  async revokeSyntheticJobEvidence(worker, jobId, objectPaths) {
+    if (objectPaths.length === 0) return
+    const revoked = await this.api(worker, 'POST', `/jobs/${jobId}/media-revoke`, {
+      object_paths: objectPaths,
+    }, { idempotencyKey: `stage1-media-revoke-${jobId}` })
+    if (revoked.json?.revoked_count !== objectPaths.length) {
+      throw new Error('synthetic evidence revocation did not cover every exact object path')
+    }
+    const removed = await this.admin.storage.from('job-media').remove(objectPaths)
+    if (removed.error) throw new Error('synthetic evidence objects could not be proven removed')
   }
 
   async createReadySession(customer, policy, district) {
@@ -826,6 +982,21 @@ function futureHcmcSchedule() {
     scheduledAt: `${localDate}T03:00:00.000Z`,
     window: { date: localDate, start: '10:00', end: '12:00', time_zone: 'Asia/Ho_Chi_Minh' },
   }
+}
+
+function deterministicTerminalRequestId(runId, sequence, scenarioKind) {
+  const hex = createHash('sha256')
+    .update(`stage1-terminal\n${runId}\n${sequence}\n${scenarioKind}`)
+    .digest('hex')
+    .slice(0, 32)
+  const variant = ((Number.parseInt(hex[16], 16) & 0x3) | 0x8).toString(16)
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-5${hex.slice(13, 16)}-${variant}${hex.slice(17, 20)}-${hex.slice(20)}`
+}
+
+function isExactJobMediaPath(jobId, objectPath) {
+  return typeof jobId === 'string' && typeof objectPath === 'string' &&
+    objectPath.startsWith(`${jobId}/`) &&
+    /^[0-9a-f-]{36}\/(?:before|after|kael_reference|cancellation_evidence|scope_change_evidence|access_check_in)\/[A-Za-z0-9._-]+$/iu.test(objectPath)
 }
 
 async function boundedResponseText(response, maximumBytes) {

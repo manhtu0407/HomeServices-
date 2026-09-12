@@ -30,6 +30,7 @@ export {
 export {
   selectLocalWorkflow,
 } from './selectors'
+export { isValidRemoteJobSnapshot } from './remote-snapshot-validation'
 export type {
   LocalDealStatus,
 } from './status'

@@ -9,6 +9,7 @@ import type {
 } from "../contracts/admin-control.ts";
 import { getAdminWorkerApplication, requireAdminCapability } from "./control.ts";
 import { scopeQueryToRealTraffic } from "../../platform/synthetic-cohort.ts";
+import { requireWorkerReviewReceipt } from "./control-validation.ts";
 
 type Row = Record<string, unknown>;
 type WorkerPiiClient = DbClient & {
@@ -33,7 +34,7 @@ export async function getAdminWorkerReviewDetail(
   const [profileResult, workerResult, historyResult, authResult] = await Promise.all([
     dbQuery<Row>(client.from("profiles").select("id,full_name,phone,created_at").eq("id", application.worker_id).maybeSingle()),
     dbQuery<Row>(scopeQueryToRealTraffic(client.from("worker_profiles").select(
-      "id,legal_name,date_of_birth,gender,service_types,years_experience,districts,service_radius_km,problem_specializations,cccd_front_url,cccd_back_url,selfie_url,bank_account,bank_name",
+      "id,updated_at,legal_name,date_of_birth,gender,service_types,years_experience,districts,service_radius_km,problem_specializations,cccd_front_url,cccd_back_url,selfie_url,bank_account,bank_name",
     ).eq("id", application.worker_id)).maybeSingle()),
     dbQuery<Row[]>(client.from("admin_worker_application_reviews").select(
       "review_stage,decision,reason,decided_by,decided_at",
@@ -78,6 +79,7 @@ export async function getAdminWorkerReviewDetail(
       created_at: nullableString(profileResult.data?.created_at),
     },
     profile: worker ? {
+      updated_at: nullableString(worker.updated_at),
       legal_name: nullableString(worker.legal_name),
       date_of_birth: nullableString(worker.date_of_birth),
       gender: nullableString(worker.gender),
@@ -115,27 +117,28 @@ export async function decideAdminWorkerProfile(
   const accessQueue = await dbQuery<Row>(scopeQueryToRealTraffic(db(ctx).from("kael_admin_queue")
     .select("actor_id").eq("id", applicationId).eq("queue_type", "worker_application_review")).maybeSingle());
   const workerId = nullableString(accessQueue.data?.actor_id);
-  if (accessQueue.error || !workerId) apiFailure("NOT_FOUND", "Không tìm thấy hồ sơ thợ", 404);
-  const profileQueue = await dbQuery<Row>(scopeQueryToRealTraffic(db(ctx).from("kael_admin_queue")
-    .select("id").eq("actor_id", workerId).eq("queue_type", "worker_profile_verification")
-    .in("status", ["open", "acknowledged"]).order("created_at", { ascending: false }).limit(1)).maybeSingle());
-  const queueId = nullableString(profileQueue.data?.id);
-  if (profileQueue.error || !queueId) apiFailure("CONFLICT", "Hồ sơ chưa sẵn sàng để xác minh", 409);
-  const result = await dbQuery<Row[]>(db(ctx).rpc("admin_review_worker_profile_atomic", {
+  if (accessQueue.error) apiFailure("DB_ERROR", "Không thể tải hồ sơ thợ", 500);
+  if (!workerId) apiFailure("NOT_FOUND", "Không tìm thấy hồ sơ thợ", 404);
+  const queueId = input.profile_review_queue_id;
+  const result = await dbQuery<Row[]>(db(ctx).rpc("admin_review_worker_profile_snapshot_atomic", {
     p_queue_id: queueId,
     p_admin_id: ctx.user.id,
+    p_application_id: applicationId,
+    p_expected_profile_updated_at: input.expected_profile_updated_at,
     p_decision: input.decision,
     p_reason: input.reason ?? null,
   }));
-  const row = result.data?.[0];
-  if (result.error || !row) apiFailure("DB_ERROR", "Không thể lưu quyết định xác minh", 500);
+  if (result.error) apiFailure("DB_ERROR", "Không thể lưu quyết định xác minh", 500);
+  const row = requireWorkerReviewReceipt(result.data, queueId, input.decision, workerId);
   if (row.ok !== true) mapProfileDecisionError(nullableString(row.error_code));
+  const verificationStatus = asWorkerVerificationStatus(row.verification_status);
+  if (verificationStatus !== row.verification_status) apiFailure("DB_ERROR", "Biên nhận xác minh không hợp lệ", 500);
   return {
     ok: true,
     application_id: applicationId,
-    worker_id: asString(row.worker_id) || workerId,
+    worker_id: asString(row.worker_id),
     decision: input.decision,
-    verification_status: asWorkerVerificationStatus(row.verification_status),
+    verification_status: verificationStatus,
     decided_at: asString(row.decided_at),
   };
 }
@@ -158,6 +161,8 @@ async function createDocumentLinks(client: WorkerPiiClient, worker: Row) {
 }
 
 function mapProfileDecisionError(code: string | null): never {
+  if (code === "STALE_REVIEW") apiFailure("STALE_REVIEW", "Hồ sơ đã thay đổi. Hãy tải lại và kiểm tra trước khi quyết định", 409);
+  if (code === "IDEMPOTENCY_CONFLICT") apiFailure("IDEMPOTENCY_CONFLICT", "Lần xác minh này đã có quyết định khác. Hãy tải lại lịch sử", 409);
   if (code === "WORKERS_REVIEW_REQUIRED") apiFailure("AUTH_FORBIDDEN", "Tài khoản chưa có quyền xác minh thợ", 403);
   if (code === "APPLICATION_NOT_FOUND" || code === "WORKER_NOT_FOUND") apiFailure("NOT_FOUND", "Không tìm thấy hồ sơ thợ", 404);
   if (code === "PROFILE_INCOMPLETE" || code === "VERIFICATION_FILES_INVALID") apiFailure("CONFLICT", "Hồ sơ hoặc giấy tờ xác minh chưa đầy đủ", 409);

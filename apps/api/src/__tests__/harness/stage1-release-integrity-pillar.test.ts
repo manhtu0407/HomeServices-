@@ -70,6 +70,9 @@ describe('Stage 1 release integrity', () => {
         priceEvidenceBundleSha256: digest('3'),
         providerReadinessFingerprintSha256: digest('4'),
         providerReadiness: {
+          android_fcm_v1: true,
+          ios_apns: true,
+          push_receipt_reconciler: true,
           anthropic: true,
           deepseek: false,
           durable_guards: true,
@@ -102,8 +105,11 @@ describe('Stage 1 release integrity', () => {
       service_intake_policy_bundle_sha256: digest('2'),
       price_evidence_bundle_sha256: digest('3'),
       provider_readiness_fingerprint_sha256: digest('4'),
-      provider_readiness: {
-        anthropic: true,
+     provider_readiness: {
+        android_fcm_v1: true,
+        ios_apns: true,
+        push_receipt_reconciler: true,
+       anthropic: true,
         deepseek: false,
         durable_guards: true,
         global_ai_enabled: true,

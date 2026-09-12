@@ -120,7 +120,7 @@ export function WorkerV5CaseTrailCard({
   const pendingCreditLabel = directPaymentRecorded
     ? textByLanguage(language, 'Đã ghi nhận hoa hồng trả trực tiếp', 'Direct-payment commission recorded')
     : directPaymentAwaitingAdmin
-    ? textByLanguage(language, 'Thu nhập tạm ghi nhận · chờ Admin xác minh', 'Provisional earnings · awaiting Admin verification')
+    ? textByLanguage(language, 'Thu nhập tạm ghi nhận · chờ bộ phận vận hành xác minh', 'Provisional earnings · awaiting Admin verification')
     : manualPaymentOnHold
     ? textByLanguage(language, 'Thu nhập đang giữ 24 giờ', 'Earnings held for 24 hours')
     : paymentRailIsSePay

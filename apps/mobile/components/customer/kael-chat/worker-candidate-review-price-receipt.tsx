@@ -55,7 +55,7 @@ export function CandidatePriceReceipt({
         </Text>
         <Text style={[styles.body, { color: tokens.muted }]}>
           {language === 'vi'
-            ? 'Kael cần tải lại receipt giá bất biến đã được thợ xác nhận. Công việc chưa thể ghép thợ ở trạng thái này.'
+            ? 'Kael cần tải lại biên nhận giá bất biến đã được thợ xác nhận. Công việc chưa thể ghép thợ ở trạng thái này.'
             : 'Kael must reload the immutable worker-confirmed price receipt. The job cannot be matched in this state.'}
         </Text>
       </View>
@@ -107,7 +107,7 @@ export function CandidatePriceReceipt({
       </Text>
       <Text style={[styles.priceCap, { color: tokens.primary }]}>
         {language === 'vi'
-          ? 'Chỉ áp dụng cho phạm vi hiện tại. Phát sinh vẫn bị khóa cho tới khi bạn duyệt receipt mới.'
+          ? 'Chỉ áp dụng cho phạm vi hiện tại. Phát sinh vẫn bị khóa cho tới khi bạn duyệt biên nhận mới.'
           : 'Current scope only. Extra work stays locked until you approve a new receipt.'}
       </Text>
     </View>
@@ -162,7 +162,7 @@ function WorkerProposalReceipt({
       <Text style={[styles.body, { color: tokens.muted }]}>{body}</Text>
       <Text style={[styles.priceCap, { color: tokens.primary }]}>
         {language === 'vi'
-          ? 'Xác nhận Customer vẫn là bắt buộc trước khi ghép thợ chính thức.'
+          ? 'Khách hàng vẫn phải xác nhận trước khi ghép thợ chính thức.'
           : 'Customer confirmation remains required before the worker is officially matched.'}
       </Text>
     </View>

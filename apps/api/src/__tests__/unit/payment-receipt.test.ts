@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 
 import { loadPaymentReceipt } from '../../../../../supabase/functions/mobile-api/_shared/domains/job/payment-receipt'
 
-function receiptClient(availability: boolean) {
+function receiptClient() {
   const order = {
     customer_confirmed_at: null,
     customer_transfer_claimed_at: null,
@@ -21,29 +21,23 @@ function receiptClient(availability: boolean) {
     maybeSingle: vi.fn(async () => ({ data: order, error: null })),
     select: vi.fn(() => query),
   }
-  const rpc = vi.fn(async () => ({
-    data: [{ direct_payment_available: availability }],
-    error: null,
-  }))
+  const rpc = vi.fn()
   return { client: { from: vi.fn(() => query), rpc } as never, rpc }
 }
 
-describe('payment receipt direct-payment availability', () => {
-  it('projects only a safe eligibility boolean for the owning customer', async () => {
-    const { client, rpc } = receiptClient(false)
+describe('manual-bank payment receipt', () => {
+  it('fails closed on retired direct-payment availability for the owning customer', async () => {
+    const { client, rpc } = receiptClient()
 
     await expect(loadPaymentReceipt(client, 'job-1', 'customer', 'customer-1')).resolves.toMatchObject({
       direct_payment_available: false,
       method: 'platform_bank_manual',
     })
-    expect(rpc).toHaveBeenCalledWith('get_direct_worker_payment_availability', {
-      p_customer_id: 'customer-1',
-      p_job_id: 'job-1',
-    })
+    expect(rpc).not.toHaveBeenCalled()
   })
 
   it('does not project direct-payment eligibility to the worker', async () => {
-    const { client, rpc } = receiptClient(true)
+    const { client, rpc } = receiptClient()
 
     await expect(loadPaymentReceipt(client, 'job-1', 'worker', null)).resolves.toMatchObject({
       direct_payment_available: null,

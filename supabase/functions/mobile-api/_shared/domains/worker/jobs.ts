@@ -1,11 +1,11 @@
-import { asString, asStringArray, nullableNumber, nullableRecord, nullableString } from "../../platform/coercions.ts";
+import { asString, asStringArray, nullableNumber, nullableString } from "../../platform/coercions.ts";
 import { db, dbQuery } from "../../platform/db.ts";
 import { apiFailure } from "../../platform/api-failure.ts";
 import type { MobileApiContext } from "../../platform/auth.ts";
 import type { EdgeWorkerJobListResponse } from "../contracts/worker.ts";
 import type { JobStatus, ServiceType } from "../../../../_shared/domain.ts";
 import { projectAddressAccess } from "./apartment-access.ts";
-import { buildWorkerBriefOutput } from "../../kael/index.ts";
+import { projectWorkerJobBrief } from "./job-brief.ts";
 import {
   canReleaseJobEvidenceToWorker,
   listJobEvidenceRefsByStage,
@@ -13,6 +13,7 @@ import {
 import { createSignedCaseWorkEvidenceUrls } from "../kael-chat/media-vision.ts";
 import {
   estimateWorkerNet,
+  frozenWorkerCommissionTier,
   getWorkerCommissionTier,
   type WorkerCommissionTier,
 } from "../payment/commission.ts";
@@ -23,7 +24,7 @@ import {
 } from "../../platform/synthetic-cohort.ts";
 
 const WORKER_JOB_LIST_COLUMNS =
-  "id, customer_id, display_code, status, service_type, problem_chips, description, kael_problem_identified, address_building, address_unit, address_floor, address_district, apartment_access_profile, apartment_access_state, scheduled_at, kael_price_min, kael_price_max, kael_worker_brief_guidance, final_price, worker_commission_level, worker_commission_rate_bps, payment_status, payment_provider, payment_received_at, payment_amount_received, gross_amount, platform_fee, worker_net, photo_urls, completion_notes, completion_photo_urls, created_at, matched_at, completed_at";
+  "id, customer_id, worker_id, quote_mode, display_code, status, service_type, problem_chips, description, kael_problem_identified, address_building, address_unit, address_floor, address_district, apartment_access_profile, apartment_access_state, scheduled_at, kael_price_min, kael_price_max, kael_worker_brief_core, kael_worker_brief_guidance, final_price, worker_commission_level, worker_commission_rate_bps, payment_status, payment_provider, payment_received_at, payment_amount_received, gross_amount, platform_fee, worker_net, photo_urls, completion_notes, completion_photo_urls, created_at, matched_at, completed_at";
 
 export async function listWorkerJobs(ctx: MobileApiContext) {
   const client = db(ctx);
@@ -104,8 +105,6 @@ export async function listWorkerJobs(ctx: MobileApiContext) {
         ? customerEvidenceByJob.get(jobId) ?? []
         : [];
       const finalPrice = nullableNumber(row.final_price);
-      const max = finalPrice ?? nullableNumber(row.kael_price_max);
-      const min = nullableNumber(row.kael_price_min);
       const frozenWorkerNet = nullableNumber(row.worker_net);
       const effectiveCommissionTier = commissionTierFromJob(
         row,
@@ -114,15 +113,6 @@ export async function listWorkerJobs(ctx: MobileApiContext) {
       const problemSummary = asStringArray(row.problem_chips)[0] ??
         nullableString(row.kael_problem_identified);
       const addressProjection = projectAddressAccess(row, "worker");
-      const fallbackBrief = buildWorkerBriefOutput({
-        stage: "guidance",
-        serviceType: row.service_type as ServiceType,
-        problemSummary: problemSummary ?? "Yêu cầu cần thợ kiểm tra",
-        district: nullableString(row.address_district),
-        fullAddress: addressProjection.fullAddress,
-        estimatedEarningMin: estimateWorkerNet(min, effectiveCommissionTier),
-        estimatedEarningMax: frozenWorkerNet ?? estimateWorkerNet(max, effectiveCommissionTier),
-      }).brief;
       return {
         id: jobId,
         display_code: nullableString(row.display_code),
@@ -157,8 +147,7 @@ export async function listWorkerJobs(ctx: MobileApiContext) {
         completion_photo_urls: evidenceReleased
           ? asStringArray(row.completion_photo_urls)
           : [],
-        worker_brief_guidance:
-          nullableRecord(row.kael_worker_brief_guidance) ?? fallbackBrief,
+        worker_brief_guidance: projectWorkerJobBrief(row, ctx.user.id),
         scheduled_at: nullableString(row.scheduled_at),
         created_at: asString(row.created_at),
         matched_at: nullableString(row.matched_at),
@@ -204,16 +193,7 @@ function commissionTierFromJob(
   row: Record<string, unknown>,
   fallback: WorkerCommissionTier | null,
 ): WorkerCommissionTier | null {
-  const level = nullableNumber(row.worker_commission_level);
-  const rateBps = nullableNumber(row.worker_commission_rate_bps);
-  if (
-    level !== null && Number.isSafeInteger(level) && level >= 1 &&
-    rateBps !== null && Number.isSafeInteger(rateBps) &&
-    rateBps >= 0 && rateBps <= 1_500
-  ) {
-    return { level, rateBps };
-  }
-  return fallback;
+  return frozenWorkerCommissionTier(row) ?? fallback;
 }
 
 function parseWorkerJobPaymentStatus(

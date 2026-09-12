@@ -25,7 +25,7 @@ begin
 
   foreach v_function in array array[
     'public.save_worker_registration_draft_atomic(uuid,uuid,jsonb)'::regprocedure,
-    'public.admin_review_worker_profile_atomic(uuid,uuid,text,text)'::regprocedure,
+    'public.admin_review_worker_profile_snapshot_atomic(uuid,uuid,text,text,timestamptz,uuid)'::regprocedure,
     'public.admin_begin_operator_provisioning(uuid,text,text,text[])'::regprocedure,
     'public.admin_complete_operator_provisioning(uuid,uuid,uuid)'::regprocedure,
     'public.admin_fail_operator_provisioning(uuid,uuid,text)'::regprocedure
@@ -87,6 +87,7 @@ declare
   v_metadata_user constant uuid := 'b3100000-0000-4000-8000-000000000004';
   v_access_queue constant uuid := 'b3200000-0000-4000-8000-000000000001';
   v_profile_queue uuid;
+  v_profile_revision timestamptz;
   v_provisioning uuid;
   v_retry_provisioning uuid;
   v_result record;
@@ -170,15 +171,16 @@ begin
   if v_profile_queue is null then
     raise exception 'profile submission did not enter the verification queue';
   end if;
+  select updated_at into strict v_profile_revision from public.worker_profiles where id = v_worker;
 
-  select * into v_result from public.admin_review_worker_profile_atomic(
-    v_profile_queue, v_owner, 'request_changes', null
+  select * into v_result from public.admin_review_worker_profile_snapshot_atomic(
+    v_profile_queue, v_owner, 'request_changes', null, v_profile_revision, v_access_queue
   );
   if v_result.ok is not false or v_result.error_code <> 'INVALID_DECISION' then
     raise exception 'profile change request was accepted without a reason';
   end if;
-  select * into v_result from public.admin_review_worker_profile_atomic(
-    v_profile_queue, v_owner, 'approve', null
+  select * into v_result from public.admin_review_worker_profile_snapshot_atomic(
+    v_profile_queue, v_owner, 'approve', null, v_profile_revision, v_access_queue
   );
   if v_result.ok is not true or v_result.verification_status <> 'approved' then
     raise exception 'complete worker profile was not verified';

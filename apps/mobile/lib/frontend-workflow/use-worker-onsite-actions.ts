@@ -6,8 +6,8 @@ import {
   type LocalWorkflowState,
 } from '@nestscout/shared'
 import type { WorkerCancellationRequestInput } from '../api-types'
-import { jobService, workerService } from '../services'
-import type { WorkflowErrorContext } from './errors'
+import { workerService } from '../services'
+import type { WorkflowErrorHandler } from './errors'
 import { getRemoteJobId } from './helpers'
 import { dealToSnapshot } from './snapshots'
 
@@ -26,7 +26,7 @@ type WorkerAccessCheckInInput = {
 type WorkerOnsiteActionsInput = {
   dispatch: Dispatch<LocalWorkflowAction>
   refreshCurrentJob: () => Promise<boolean>
-  setRemoteError: (error: string, code?: string, context?: WorkflowErrorContext) => false
+  setRemoteError: WorkflowErrorHandler
   stateRef: RefObject<LocalWorkflowState>
   workerRefresh: () => Promise<boolean>
 }
@@ -45,7 +45,7 @@ export function useWorkerOnsiteActions({
     const jobId = getRemoteJobId(stateRef.current)
     if (!jobId) return setRemoteError('Không có yêu cầu để cập nhật')
     const updated = await workerService.updateJobStatus(jobId, status, extras)
-    if (!updated.success) return setRemoteError(updated.error)
+    if (!updated.success) return setRemoteError(updated)
     const existing = stateRef.current.deal
     if (existing?.id === jobId) {
       dispatch({
@@ -65,21 +65,11 @@ export function useWorkerOnsiteActions({
     return true
   }, [dispatch, setRemoteError, stateRef, workerRefresh])
 
-  // Releases the exact unit after the worker's lobby check-in.
-  const authorizeApartmentAccess = useCallback(async () => {
-    const jobId = getRemoteJobId(stateRef.current)
-    if (!jobId) return setRemoteError('Không có yêu cầu để mở quyền vào căn hộ')
-    const authorized = await jobService.authorizeApartmentAccess(jobId)
-    if (!authorized.success) return setRemoteError(authorized.error)
-    await refreshCurrentJob()
-    return true
-  }, [refreshCurrentJob, setRemoteError, stateRef])
-
   const requestWorkerCancellation = useCallback(async (input: WorkerCancellationRequestInput) => {
     const jobId = getRemoteJobId(stateRef.current)
     if (!jobId) return setRemoteError('Không có yêu cầu để hủy')
     const result = await workerService.requestWorkerCancellation(jobId, input)
-    if (!result.success) return setRemoteError(result.error)
+    if (!result.success) return setRemoteError(result)
     if (result.data.status === 'approved') {
       const existing = stateRef.current.deal
       if (existing) {
@@ -108,19 +98,8 @@ export function useWorkerOnsiteActions({
     return true
   }, [dispatch, refreshCurrentJob, setRemoteError, stateRef, workerRefresh])
 
-  const workerConfirmCashPayment = useCallback(async (received = true) => {
-    const jobId = getRemoteJobId(stateRef.current)
-    if (!jobId) return setRemoteError('Không có công việc để phản hồi thanh toán trực tiếp')
-    const settled = await jobService.respondToDirectWorkerPayment(jobId, { received })
-    if (!settled.success) return setRemoteError(settled.error, settled.code, 'direct_payment_confirmation')
-    await workerRefresh()
-    return true
-  }, [setRemoteError, stateRef, workerRefresh])
-
   return {
-    authorizeApartmentAccess,
     requestWorkerCancellation,
-    workerConfirmCashPayment,
     workerUpdateStatus,
   }
 }

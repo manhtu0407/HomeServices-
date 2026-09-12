@@ -6,6 +6,7 @@ export type CaseWorkResourceRoute =
   | { kind: "jobs.mediaUpload"; method: "POST"; jobId: string; roles: UserRole[]; successStatus: 201 }
   | { kind: "jobs.mediaRevoke"; method: "POST"; jobId: string; roles: UserRole[] }
   | { kind: "jobs.workerCandidate"; method: "GET"; jobId: string; roles: UserRole[] }
+  | { kind: "jobs.workerCandidateDecision"; method: "GET"; jobId: string; candidateId: string; roles: UserRole[] }
   | { kind: "jobs.workerCandidateConfirm"; method: "POST"; jobId: string; candidateId: string; roles: UserRole[] }
   | { kind: "jobs.workerCandidateReject"; method: "POST"; jobId: string; candidateId: string; roles: UserRole[] }
   | { kind: "jobs.kaelIncidentGet"; method: "GET"; jobId: string; roles: UserRole[] }
@@ -104,6 +105,14 @@ export function matchCaseWorkResourceRoute(
       : { kind: "me.favoriteWorkerRemove", method: "DELETE", workerId, roles: ["customer"] };
   }
 
+  const receipt = path.match(/^\/jobs\/([^/]+)\/candidates\/([^/]+)\/decision$/);
+  if (method === "GET" && receipt) {
+    const jobId = decodePathSegment(receipt[1] ?? "");
+    const candidateId = decodePathSegment(receipt[2] ?? "");
+    return jobId && candidateId
+      ? { kind: "jobs.workerCandidateDecision", method: "GET", jobId, candidateId, roles: ["customer"] }
+      : null;
+  }
   const decision = path.match(/^\/jobs\/([^/]+)\/candidates\/([^/]+)\/(confirm|reject)$/);
   if (method !== "POST" || !decision) return null;
   const jobId = decodePathSegment(decision[1] ?? "");

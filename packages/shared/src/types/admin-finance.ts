@@ -294,7 +294,7 @@ export type AdminFinanceTransactionFilters = AdminFinancePeriodInput & {
   limit?: number
   payment_method?: string
   service_type?: string
-  status?: 'paid' | 'reviewed'
+  status?: 'paid' | 'reviewed' | 'cancelled'
 }
 
 export type AdminFinanceTransaction = {
@@ -325,6 +325,7 @@ export type AdminFinanceTransactionListResponse = {
 
 export type AdminFinanceTransactionDetailResponse = {
   generated_at: string
+  refund?: import('../contracts/payment').RefundSummary | null
   transaction: AdminFinanceTransaction
   timeline: Array<{
     event_type: string

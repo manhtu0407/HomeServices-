@@ -2,7 +2,6 @@ import { existsSync, readFileSync } from 'node:fs'
 import { execFileSync } from 'node:child_process'
 import { isAbsolute, resolve } from 'node:path'
 import type { ExpoConfig, ConfigContext } from 'expo/config'
-import { withEntitlementsPlist, withXcodeProject, type ConfigPlugin } from 'expo/config-plugins.js'
 import { assertReleaseAuthConfig, resolveMobileEnvFiles } from './config/release-auth-config.cjs'
 import { resolveClientContractEpoch } from './config/client-contract-epoch.cjs'
 
@@ -85,7 +84,8 @@ const nativeArchitectureConfig = { newArchEnabled: true } as unknown as Partial<
 const stagingPaymentRailEnabled = ['1', 'true', 'yes', 'on'].includes(
   fromEnv('EXPO_PUBLIC_STAGING_PAYMENT_RAIL_ENABLED').toLowerCase(),
 )
-const iosPushNotificationsEnabled = false
+const iosPushNotificationsEnabled = true
+const androidGoogleServicesFile = fromEnv('GOOGLE_SERVICES_JSON')
 const iosPurposeStrings = {
   NSCameraUsageDescription:
     'NestScout cần quyền camera nếu bạn muốn chụp ảnh đại diện thật, hiện trạng sửa chữa hoặc giấy tờ xác minh.',
@@ -127,29 +127,6 @@ const runtimeBuildInfo = {
   runtimeVersion: '0.2.0',
 }
 
-const withoutIosPushEntitlement: ConfigPlugin = (expoConfig) => {
-  const configWithoutEntitlement = withEntitlementsPlist(expoConfig, (config) => {
-    delete config.modResults['aps-environment']
-    return config
-  })
-
-  return withXcodeProject(configWithoutEntitlement, (config) => {
-    const project = config.modResults
-    const projectAttributes = project.getFirstProject()?.firstProject?.attributes as
-      | { TargetAttributes?: Record<string, { SystemCapabilities?: Record<string, unknown> }> }
-      | undefined
-
-    const targetAttributes = projectAttributes?.TargetAttributes
-    if (targetAttributes) {
-      for (const attributes of Object.values(targetAttributes)) {
-        delete attributes.SystemCapabilities?.['com.apple.Push']
-      }
-    }
-
-    return config
-  })
-}
-
 export default ({ config }: ConfigContext): ExpoConfig => ({
   ...config,
   ...nativeArchitectureConfig,
@@ -182,6 +159,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     versionCode: 4,
     permissions: [],
     package: 'com.phanmanhtu.nestscout',
+    ...(androidGoogleServicesFile ? { googleServicesFile: androidGoogleServicesFile } : {}),
   },
   plugins: [
     'expo-asset',
@@ -196,6 +174,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       },
     ],
     'expo-router',
+    'expo-notifications',
     [
       'expo-audio',
       {
@@ -228,7 +207,6 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
         locationWhenInUsePermission: iosPurposeStrings.NSLocationWhenInUseUsageDescription,
       },
     ],
-    withoutIosPushEntitlement as unknown as string,
   ],
   extra: {
     supabaseUrl,

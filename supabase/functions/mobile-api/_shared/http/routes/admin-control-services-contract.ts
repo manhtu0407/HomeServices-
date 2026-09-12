@@ -42,6 +42,11 @@ import type {
   AdminWorkerReviewDetail,
   AdminWorkerProfileDecisionInput,
   AdminWorkerProfileDecisionResponse,
+  AdminWorkflowRecoveryActionInput,
+  AdminWorkflowRecoveryActionResponse,
+  AdminWorkflowRecoveryDetailResponse,
+  AdminWorkflowRecoveryListInput,
+  AdminWorkflowRecoveryListResponse,
   EdgeAdminOperatorProvisionInput,
   AdminOperatorProvisionResponse,
   EdgeAdminOperatorResetPasswordInput,
@@ -124,6 +129,19 @@ export type AdminControlServices = {
     caseId: string,
     input: AdminEvidenceAccessInput,
   ): Promise<AdminEvidenceAccessResponse>;
+  listAdminWorkflowRecoveryCases(
+    ctx: MobileApiContext,
+    input: AdminWorkflowRecoveryListInput,
+  ): Promise<AdminWorkflowRecoveryListResponse>;
+  getAdminWorkflowRecoveryCase(
+    ctx: MobileApiContext,
+    recoveryCaseId: string,
+  ): Promise<AdminWorkflowRecoveryDetailResponse>;
+  applyAdminWorkflowRecoveryAction(
+    ctx: MobileApiContext,
+    recoveryCaseId: string,
+    input: AdminWorkflowRecoveryActionInput,
+  ): Promise<AdminWorkflowRecoveryActionResponse>;
   listAdminDisputes(ctx: MobileApiContext, input: AdminGovernanceListInput): Promise<AdminDisputeListResponse>;
   listAdminPriceBaselines(ctx: MobileApiContext, input: AdminGovernanceListInput): Promise<AdminPriceBaselineListResponse>;
   listAdminAiCosts(ctx: MobileApiContext, input: AdminGovernanceListInput): Promise<AdminAiCostListResponse>;

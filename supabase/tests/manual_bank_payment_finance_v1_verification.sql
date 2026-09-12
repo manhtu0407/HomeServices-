@@ -34,13 +34,10 @@ begin
   foreach v_function in array array[
     'public.create_manual_bank_payment_order(uuid,uuid,integer,text,text,text,timestamp with time zone)'::regprocedure,
     'public.claim_manual_bank_payment(uuid,uuid,timestamp with time zone,text)'::regprocedure,
-    'public.select_direct_worker_payment(uuid,uuid,text)'::regprocedure,
-    'public.respond_to_direct_worker_payment(uuid,uuid,text,boolean)'::regprocedure,
     'public.decide_manual_bank_payment_reconciliation(uuid,uuid,text,integer,timestamp with time zone,text,text,text)'::regprocedure,
     'public.maintain_manual_bank_payment_holds(integer)'::regprocedure,
     'public.record_platform_bank_balance_snapshot(uuid,integer,timestamp with time zone)'::regprocedure,
     'public.admin_finance_summary(uuid,timestamp with time zone,timestamp with time zone)'::regprocedure,
-    'public.get_direct_worker_payment_availability(uuid,uuid)'::regprocedure,
     'private.schedule_payment_maintainer()'::regprocedure
   ] loop
     if not exists (
@@ -80,8 +77,24 @@ begin
     'service_role',
     'public.confirm_worker_cash_payment(uuid,uuid)'::regprocedure,
     'execute'
+  ) or pg_catalog.has_function_privilege(
+    'service_role',
+    'public.select_direct_worker_payment(uuid,uuid,text)'::regprocedure,
+    'execute'
+  ) or pg_catalog.has_function_privilege(
+    'service_role',
+    'public.respond_to_direct_worker_payment(uuid,uuid,text,boolean)'::regprocedure,
+    'execute'
+  ) or pg_catalog.has_function_privilege(
+    'service_role',
+    'public.acknowledge_worker_cash_payment(uuid,uuid,boolean)'::regprocedure,
+    'execute'
+  ) or pg_catalog.has_function_privilege(
+    'service_role',
+    'public.get_direct_worker_payment_availability(uuid,uuid)'::regprocedure,
+    'execute'
   ) then
-    raise exception 'legacy unilateral cash confirmation is still executable';
+    raise exception 'legacy direct payment rail is still executable or advertised';
   end if;
 
   if not exists (

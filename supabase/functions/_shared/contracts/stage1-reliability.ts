@@ -1,8 +1,56 @@
 import { z } from "zod";
 
-import { serviceTypeSchema } from "./common.ts";
+import { JOB_STATUSES, serviceTypeSchema } from "./common.ts";
 
 const instantSchema = z.string().datetime({ offset: true });
+
+export const matchingOperationStateSchema = z.enum([
+  'queued', 'broadcasting', 'candidate_ready', 'official_match',
+  'no_reachable_worker', 'recovery_required', 'stopped',
+])
+export const matchingRetryRequestSchema = z.object({
+  client_request_id: z.string().uuid(),
+  expected_matching_operation_id: z.string().uuid(),
+}).strict()
+export const matchingOperationSnapshotSchema = z.object({
+  operation_id: z.string().uuid(),
+  state: matchingOperationStateSchema,
+  updated_at: instantSchema,
+}).strict()
+export const matchingRetryReceiptSchema = matchingOperationSnapshotSchema.extend({
+  confirmation_operation_id: z.string().uuid(),
+  job_id: z.string().uuid(),
+  request_id: z.string().uuid(),
+  parent_operation_id: z.string().uuid(),
+  support_code: z.string().regex(/^[A-Z0-9]{8}$/),
+  created_at: instantSchema,
+  broadcast_sent: z.boolean(),
+}).strict().refine((receipt) =>
+  receipt.parent_operation_id !== receipt.operation_id &&
+  (receipt.state !== 'queued' || !receipt.broadcast_sent),
+  { message: 'A queued retry cannot claim delivery or identify itself as its parent' })
+export type EdgeMatchingRetryRequest = z.infer<typeof matchingRetryRequestSchema>
+export const matchingSelectionReceiptSchema = z.object({
+  job_id: z.string().uuid(),
+  job_status: z.enum(JOB_STATUSES),
+  request_id: z.string().uuid(),
+  operation_id: z.string().uuid(),
+  confirmation_operation_id: z.string().uuid(),
+  state: matchingOperationStateSchema,
+  mode: z.enum(['general', 'saved_worker_first']),
+  preferred_worker_id: z.string().uuid().nullable(),
+  auto_general: z.boolean(),
+  selected_at: instantSchema,
+  support_code: z.string().regex(/^[A-Z0-9]{8}$/),
+  broadcast_sent: z.boolean(),
+}).strict().refine((receipt) =>
+  (receipt.mode === 'saved_worker_first') === (receipt.preferred_worker_id !== null) &&
+  (receipt.state !== 'queued' || !receipt.broadcast_sent),
+  { message: 'A queued selection cannot claim delivery and must retain its chosen target' })
+
+export type EdgeMatchingSelectionReceipt = z.infer<typeof matchingSelectionReceiptSchema>
+export type EdgeMatchingRetryReceipt = z.infer<typeof matchingRetryReceiptSchema>
+export type EdgeMatchingOperationSnapshot = z.infer<typeof matchingOperationSnapshotSchema>
 
 export const QUOTE_MODES = [
   "kael_auto_quote",
@@ -153,6 +201,52 @@ export const intakeCoverageSchema = z.object({
   }
 });
 
+export const SERVICE_COVERAGE_STATUSES = ["ready", "closed"] as const;
+export const serviceCoverageStatusSchema = z.enum(SERVICE_COVERAGE_STATUSES);
+
+export const SERVICE_COVERAGE_REASON_CODES = [
+  "READY",
+  "INSUFFICIENT_ELIGIBLE_WORKERS",
+  "COVERAGE_EVALUATION_UNAVAILABLE",
+] as const;
+export const serviceCoverageReasonCodeSchema = z.enum(SERVICE_COVERAGE_REASON_CODES);
+
+export const serviceCoverageReadinessSchema = z.object({
+  service_type: serviceTypeSchema,
+  district_code: z.string().trim().regex(/^[a-z0-9_]{2,50}$/),
+  status: serviceCoverageStatusSchema,
+  minimum_worker_count: z.literal(3),
+  eligible_reachable_worker_count: z.number().int().nonnegative(),
+  required_capabilities: z.array(z.string().trim().min(1).max(100)).max(50),
+  reason_code: serviceCoverageReasonCodeSchema,
+  checked_at: instantSchema,
+  valid_until: instantSchema,
+}).strict().superRefine((readiness, ctx) => {
+  const thresholdMet = readiness.eligible_reachable_worker_count >= readiness.minimum_worker_count;
+  const ready = readiness.status === "ready";
+  if (ready !== thresholdMet) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "public coverage is ready only when the real eligible and reachable threshold is met",
+      path: ["status"],
+    });
+  }
+  if ((ready && readiness.reason_code !== "READY") || (!ready && readiness.reason_code === "READY")) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "coverage reason must agree with readiness status",
+      path: ["reason_code"],
+    });
+  }
+  if (Date.parse(readiness.valid_until) <= Date.parse(readiness.checked_at)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "coverage validity must end after it was checked",
+      path: ["valid_until"],
+    });
+  }
+});
+
 export const CONFIRMATION_OPERATION_STATES = [
   "confirmation_pending",
   "job_created",
@@ -251,6 +345,9 @@ export type EdgeIntakeCoverageNextAction = z.infer<typeof intakeCoverageNextActi
 export type EdgeServiceIntakeRequiredField = z.infer<typeof serviceIntakeRequiredFieldSchema>;
 export type EdgeServiceIntakePolicy = z.infer<typeof serviceIntakePolicySchema>;
 export type EdgeIntakeCoverage = z.infer<typeof intakeCoverageSchema>;
+export type EdgeServiceCoverageStatus = z.infer<typeof serviceCoverageStatusSchema>;
+export type EdgeServiceCoverageReasonCode = z.infer<typeof serviceCoverageReasonCodeSchema>;
+export type EdgeServiceCoverageReadiness = z.infer<typeof serviceCoverageReadinessSchema>;
 export type EdgeConfirmationOperationState = z.infer<typeof confirmationOperationStateSchema>;
 export type EdgeConfirmationOperationReceipt = z.infer<typeof confirmationOperationReceiptSchema>;
 export type EdgeMatchingDeliveryState = z.infer<typeof matchingDeliveryStateSchema>;

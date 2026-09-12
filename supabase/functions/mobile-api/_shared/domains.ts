@@ -9,6 +9,7 @@ import {
   unregisterDevicePushToken,
 } from "./domains/notification/notifications.ts";
 import { listServices } from "./domains/catalog/catalog.ts";
+import { getServiceCoverageReadiness } from "./domains/catalog/coverage.ts";
 import { placesAutocomplete, placesResolve } from "./domains/places/geo.ts";
 import {
   getMyKaelMemory,
@@ -21,6 +22,7 @@ import {
   registerWorker,
   saveWorkerRegistrationDraft,
   getWorkerProfile,
+  getWorkerReadiness,
   recordWorkerAppActiveMinute,
   submitWorkerApplication,
   updateWorkerServiceArea,
@@ -33,6 +35,7 @@ import {
   getWorkerEarnings,
 } from "./domains/worker/workers.ts";
 import { listWorkerJobs } from "./domains/worker/jobs.ts";
+import { submitWorkerRegistrationCommand, getWorkerRegistrationCommand } from "./domains/worker/registration-command.ts";
 import { getWorkerRouteMap, getWorkerRoutePreview } from "./domains/worker/route.ts";
 import { projectAddressAccess, authorizeApartmentAccess } from "./domains/worker/apartment-access.ts";
 
@@ -44,14 +47,11 @@ import {
 
 import { decideScopeChange, requestScopeChange } from "./domains/job/scope-change/request.ts";
 import { getJobIncident, openJobIncident, previewScopeChangeFromJobIncident, proposeScopeChangeFromJobIncident } from "./domains/job/incident.ts";
-import { confirmCompletion, submitReview } from "./domains/payment/completion-review.ts";
-import { confirmStagingPayment, createStagingPaymentIntent } from "./domains/payment/staging.ts";
-import { createSePayVietQrPaymentIntent } from "./domains/payment/sepay-vietqr.ts";
+import { submitReview } from "./domains/payment/completion-review.ts";
 import {
   claimManualBankPayment,
+  confirmCompletionAndCreateManualBankOrder,
   createManualBankPaymentOrder,
-  respondToDirectWorkerPayment,
-  selectDirectWorkerPayment,
 } from "./domains/payment/manual-bank.ts";
 import { listJobMessages, listMyThreads, sendJobMessage } from "./domains/job/chat.ts";
 import { createKaelChat } from "./domains/kael-chat/create.ts";
@@ -107,6 +107,11 @@ import {
   listAdminSupportCases,
   updateAdminSupportCasePreparation,
 } from "./domains/admin/operations-support.ts";
+import {
+  applyAdminWorkflowRecoveryAction,
+  getAdminWorkflowRecoveryCase,
+  listAdminWorkflowRecoveryCases,
+} from "./domains/admin/workflow-recovery.ts";
 import {
   decideAdminWorkerProfile,
   getAdminWorkerReviewDetail,
@@ -189,12 +194,14 @@ import {
 } from "./domains/worker/avatar.ts";
 import { cancelJob, requestCustomerCancellation } from "./domains/customer/cancellation.ts";
 import { requestWorkerCancellation } from "./domains/worker/cancellation.ts";
+import { requestJobMatchingRetry, getJobMatchingRetry, getJobMatchingOperation } from "./domains/matching/customer-retry.ts";
+import { getJobMatchingPreferenceReceipt } from "./domains/matching/matching-preference-command.ts";
 import {
   acceptBroadcast,
   confirmSearch,
   declineBroadcast,
 } from "./domains/matching/flow.ts";
-import { confirmWorkerCandidate, getWorkerCandidate, rejectWorkerCandidate } from "./domains/matching/candidate.ts";
+import { confirmWorkerCandidate, getWorkerCandidate, getWorkerCandidateDecision, rejectWorkerCandidate } from "./domains/matching/candidate.ts";
 import { removeCustomerFavoriteWorker, saveCustomerFavoriteWorker } from "./domains/customer/favorite-worker.ts";
 import {
   listFavoriteWorkersForMatching,
@@ -248,6 +255,7 @@ export function createEdgeServices(secrets: EdgeServiceSecrets): MobileApiServic
 function createDiscoveryServices(secrets: EdgeServiceSecrets): Pick<
   MobileApiServices,
   | "listServices"
+  | "getServiceCoverageReadiness"
   | "placesAutocomplete"
   | "placesResolve"
   | "createJob"
@@ -258,6 +266,7 @@ function createDiscoveryServices(secrets: EdgeServiceSecrets): Pick<
 > {
   return {
     listServices,
+    getServiceCoverageReadiness,
     placesAutocomplete: (ctx, input) => placesAutocomplete(ctx, input, secrets),
     placesResolve: (ctx, input) => placesResolve(ctx, input, secrets),
     createJob: (ctx, input) => createJob(ctx, input, aiRuntime(ctx, secrets)),
@@ -336,11 +345,16 @@ function createKaelChatServices(secrets: EdgeServiceSecrets): Pick<
 function createJobWorkflowServices(secrets: EdgeServiceSecrets): Pick<
   MobileApiServices,
   | "confirmSearch"
+  | "requestJobMatchingRetry"
+  | "getJobMatchingRetry"
+  | "getJobMatchingOperation"
   | "setJobMatchingPreference"
+  | "getJobMatchingPreferenceReceipt"
   | "cancelJob"
   | "acceptBroadcast"
   | "declineBroadcast"
   | "getWorkerCandidate"
+  | "getWorkerCandidateDecision"
   | "confirmWorkerCandidate"
   | "rejectWorkerCandidate"
   | "saveCustomerFavoriteWorker"
@@ -355,11 +369,16 @@ function createJobWorkflowServices(secrets: EdgeServiceSecrets): Pick<
 > {
   return {
     confirmSearch,
+    requestJobMatchingRetry,
+    getJobMatchingRetry,
+    getJobMatchingOperation,
     setJobMatchingPreference,
+    getJobMatchingPreferenceReceipt,
     cancelJob,
     acceptBroadcast,
     declineBroadcast,
     getWorkerCandidate,
+    getWorkerCandidateDecision,
     confirmWorkerCandidate,
     rejectWorkerCandidate,
     saveCustomerFavoriteWorker,
@@ -404,13 +423,8 @@ function createWorkerWorkflowServices(secrets: EdgeServiceSecrets): Pick<
   | "sendJobMessage"
   | "decideScopeChange"
   | "confirmCompletion"
-  | "createPaymentIntent"
   | "createManualBankPaymentOrder"
   | "claimManualBankPayment"
-  | "selectDirectWorkerPayment"
-  | "respondToDirectWorkerPayment"
-  | "confirmWorkerCashPayment"
-  | "confirmStagingPayment"
   | "submitReview"
   | "submitCustomerKaelFeedback"
 > {
@@ -440,28 +454,11 @@ function createWorkerWorkflowServices(secrets: EdgeServiceSecrets): Pick<
     listJobMessages,
     sendJobMessage: (ctx, jobId, input) => sendJobMessage(ctx, jobId, input, aiRuntime(ctx, secrets)),
     decideScopeChange,
-    confirmCompletion: async (ctx, jobId) => {
-      const completion = await confirmCompletion(ctx, jobId);
-      if (secrets.manualBank?.enabled) {
-        const payment = await createManualBankPaymentOrder(ctx, jobId, secrets.manualBank);
-        return { ...completion, payment: payment.payment };
-      }
-      return completion;
-    },
-    createPaymentIntent: (ctx, jobId) => secrets.manualBank?.enabled
-      ? createManualBankPaymentOrder(ctx, jobId, secrets.manualBank)
-      : secrets.sepayVietQr?.enabled
-      ? createSePayVietQrPaymentIntent(ctx, jobId, secrets.sepayVietQr)
-      : createStagingPaymentIntent(ctx, jobId, secrets.stagingPaymentRailEnabled === true),
+    confirmCompletion: (ctx, jobId) =>
+      confirmCompletionAndCreateManualBankOrder(ctx, jobId, secrets.manualBank),
     createManualBankPaymentOrder: (ctx, jobId) =>
       createManualBankPaymentOrder(ctx, jobId, secrets.manualBank),
     claimManualBankPayment,
-    selectDirectWorkerPayment,
-    respondToDirectWorkerPayment,
-    confirmWorkerCashPayment: (ctx, jobId) =>
-      respondToDirectWorkerPayment(ctx, jobId, { received: true }),
-    confirmStagingPayment: (ctx, jobId) =>
-      confirmStagingPayment(ctx, jobId, secrets.stagingPaymentRailEnabled === true),
     submitReview,
     submitCustomerKaelFeedback,
   };
@@ -469,9 +466,9 @@ function createWorkerWorkflowServices(secrets: EdgeServiceSecrets): Pick<
 
 function configuredPaymentRailProvider(
   secrets: EdgeServiceSecrets,
-): "platform_bank_manual" | "sepay_vietqr" | null {
+): "platform_bank_manual" | null {
   if (secrets.manualBank?.enabled) return "platform_bank_manual";
-  return secrets.sepayVietQr?.enabled ? "sepay_vietqr" : null;
+  return null;
 }
 
 function createProfileServices(secrets: EdgeServiceSecrets): Pick<
@@ -481,7 +478,10 @@ function createProfileServices(secrets: EdgeServiceSecrets): Pick<
   | "activateAdminOperator"
   | "registerWorker"
   | "saveWorkerRegistrationDraft"
+  | "submitWorkerRegistrationCommand"
+  | "getWorkerRegistrationCommand"
   | "submitWorkerApplication"
+  | "getWorkerReadiness"
   | "getCustomerProfileInsights"
   | "getCustomerAvatar"
   | "createCustomerAvatarUpload"
@@ -523,7 +523,10 @@ function createProfileServices(secrets: EdgeServiceSecrets): Pick<
     activateAdminOperator,
     registerWorker,
     saveWorkerRegistrationDraft,
+    submitWorkerRegistrationCommand,
+    getWorkerRegistrationCommand,
     submitWorkerApplication,
+    getWorkerReadiness,
     getCustomerProfileInsights,
     getCustomerAvatar,
     createCustomerAvatarUpload,
@@ -583,6 +586,9 @@ function createAdminNotificationServices(secrets: EdgeServiceSecrets): Pick<
   | "getAdminSupportCase"
   | "updateAdminSupportCasePreparation"
   | "createAdminSupportEvidenceAccess"
+  | "listAdminWorkflowRecoveryCases"
+  | "getAdminWorkflowRecoveryCase"
+  | "applyAdminWorkflowRecoveryAction"
   | "listAdminDisputes"
   | "listAdminPriceBaselines"
   | "listAdminAiCosts"
@@ -667,6 +673,9 @@ function createAdminNotificationServices(secrets: EdgeServiceSecrets): Pick<
     getAdminSupportCase,
     updateAdminSupportCasePreparation,
     createAdminSupportEvidenceAccess,
+    listAdminWorkflowRecoveryCases,
+    getAdminWorkflowRecoveryCase,
+    applyAdminWorkflowRecoveryAction,
     listAdminDisputes,
     listAdminPriceBaselines,
     listAdminAiCosts,

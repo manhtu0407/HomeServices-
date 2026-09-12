@@ -123,12 +123,93 @@ export type MatchingTables = {
           },
         ]
       }
+      matching_capacity_reservations: {
+        Row: {
+          created_at: string
+          district_code: string
+          expires_at: string
+          held_at: string
+          id: string
+          job_id: string
+          operation_id: string
+          released_at: string | null
+          service_type: Database["public"]["Enums"]["service_type"]
+          status: string
+          synthetic_cohort_id: string | null
+          updated_at: string
+          worker_id: string
+        }
+        Insert: {
+          created_at?: string
+          district_code: string
+          expires_at: string
+          held_at?: string
+          id?: string
+          job_id: string
+          operation_id: string
+          released_at?: string | null
+          service_type: Database["public"]["Enums"]["service_type"]
+          status?: string
+          synthetic_cohort_id?: string | null
+          updated_at?: string
+          worker_id: string
+        }
+        Update: {
+          created_at?: string
+          district_code?: string
+          expires_at?: string
+          held_at?: string
+          id?: string
+          job_id?: string
+          operation_id?: string
+          released_at?: string | null
+          service_type?: Database["public"]["Enums"]["service_type"]
+          status?: string
+          synthetic_cohort_id?: string | null
+          updated_at?: string
+          worker_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "matching_capacity_reservations_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "matching_capacity_reservations_operation_id_fkey"
+            columns: ["operation_id"]
+            isOneToOne: false
+            referencedRelation: "confirmation_operations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "matching_capacity_reservations_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
+            referencedRelation: "worker_overview"
+            referencedColumns: ["worker_id"]
+          },
+          {
+            foreignKeyName: "matching_capacity_reservations_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
+            referencedRelation: "worker_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       matching_operations: {
         Row: {
           confirmation_operation_id: string | null
           created_at: string
           id: string
           job_id: string
+          retry_parent_operation_id: string | null
+          retry_request_id: string | null
+          retry_requested_by: string | null
+          retry_source: string
           state: string
           synthetic_cohort_id: string | null
           updated_at: string
@@ -138,6 +219,10 @@ export type MatchingTables = {
           created_at?: string
           id?: string
           job_id: string
+          retry_parent_operation_id?: string | null
+          retry_request_id?: string | null
+          retry_requested_by?: string | null
+          retry_source?: string
           state?: string
           synthetic_cohort_id?: string | null
           updated_at?: string
@@ -147,6 +232,10 @@ export type MatchingTables = {
           created_at?: string
           id?: string
           job_id?: string
+          retry_parent_operation_id?: string | null
+          retry_request_id?: string | null
+          retry_requested_by?: string | null
+          retry_source?: string
           state?: string
           synthetic_cohort_id?: string | null
           updated_at?: string
@@ -164,6 +253,27 @@ export type MatchingTables = {
             columns: ["job_id"]
             isOneToOne: false
             referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "matching_operations_retry_parent_operation_id_fkey"
+            columns: ["retry_parent_operation_id"]
+            isOneToOne: false
+            referencedRelation: "matching_operations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "matching_operations_retry_requested_by_fkey"
+            columns: ["retry_requested_by"]
+            isOneToOne: false
+            referencedRelation: "customer_overview"
+            referencedColumns: ["customer_id"]
+          },
+          {
+            foreignKeyName: "matching_operations_retry_requested_by_fkey"
+            columns: ["retry_requested_by"]
+            isOneToOne: false
+            referencedRelation: "customer_profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -384,10 +494,13 @@ export type MatchingTables = {
           lease_token: string | null
           leased_by: string | null
           next_attempt_at: string
-          operation_id: string
+          operation_id: string | null
+          replacement_matching_operation_id: string | null
+          retry_matching_operation_id: string | null
           safe_payload: Json
           status: string
           updated_at: string
+          worker_cancellation_id: string | null
         }
         Insert: {
           attempt_count?: number
@@ -400,10 +513,13 @@ export type MatchingTables = {
           lease_token?: string | null
           leased_by?: string | null
           next_attempt_at?: string
-          operation_id: string
+          operation_id?: string | null
+          replacement_matching_operation_id?: string | null
+          retry_matching_operation_id?: string | null
           safe_payload?: Json
           status?: string
           updated_at?: string
+          worker_cancellation_id?: string | null
         }
         Update: {
           attempt_count?: number
@@ -416,10 +532,13 @@ export type MatchingTables = {
           lease_token?: string | null
           leased_by?: string | null
           next_attempt_at?: string
-          operation_id?: string
+          operation_id?: string | null
+          replacement_matching_operation_id?: string | null
+          retry_matching_operation_id?: string | null
           safe_payload?: Json
           status?: string
           updated_at?: string
+          worker_cancellation_id?: string | null
         }
         Relationships: [
           {
@@ -427,6 +546,27 @@ export type MatchingTables = {
             columns: ["operation_id"]
             isOneToOne: false
             referencedRelation: "confirmation_operations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "workflow_outbox_replacement_matching_operation_id_fkey"
+            columns: ["replacement_matching_operation_id"]
+            isOneToOne: false
+            referencedRelation: "matching_operations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "workflow_outbox_retry_matching_operation_id_fkey"
+            columns: ["retry_matching_operation_id"]
+            isOneToOne: false
+            referencedRelation: "matching_operations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "workflow_outbox_worker_cancellation_id_fkey"
+            columns: ["worker_cancellation_id"]
+            isOneToOne: false
+            referencedRelation: "worker_cancellation_requests"
             referencedColumns: ["id"]
           },
         ]

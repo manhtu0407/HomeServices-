@@ -1,3 +1,4 @@
+import type { WorkflowErrorHandler } from './errors'
 import { useCallback, useEffect, useReducer, useRef } from 'react'
 import type { UserRole } from '@nestscout/shared'
 import type { NotificationListResponse } from '../api-types'
@@ -12,7 +13,7 @@ import {
 type NotificationActionsInput = {
   role: UserRole | null
   sessionUserId: string | null
-  setRemoteError: (error: string) => false
+  setRemoteError: WorkflowErrorHandler
 }
 
 export function useNotificationActions({ role, sessionUserId, setRemoteError }: NotificationActionsInput) {
@@ -35,7 +36,7 @@ export function useNotificationActions({ role, sessionUserId, setRemoteError }: 
     refreshInFlightRef.current = true
     try {
       const result = await notificationService.list()
-      if (!result.success) return setRemoteError(result.error)
+      if (!result.success) return setRemoteError(result)
       notificationsRef.current = result.data.notifications
       const readNotificationIds = new Set<string>()
       for (const item of result.data.notifications) {
@@ -55,7 +56,7 @@ export function useNotificationActions({ role, sessionUserId, setRemoteError }: 
 
   const markNotificationRead = useCallback(async (notificationId: string) => {
     const result = await notificationService.markRead(notificationId)
-    if (!result.success) return setRemoteError(result.error)
+    if (!result.success) return setRemoteError(result)
     const currentNotification = notificationsRef.current.find((item) => item.id === notificationId)
     const shouldDecrementUnread = Boolean(
       currentNotification &&

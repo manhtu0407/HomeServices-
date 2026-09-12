@@ -127,7 +127,7 @@ export async function getMatchingState(
     apiFailure("DB_ERROR", "Không thể tải biên nhận tìm thợ", 500);
   }
   if (!preference.data) return null;
-  const [broadcasts, events] = await Promise.all([
+  const [broadcasts, events, operation] = await Promise.all([
     dbQuery<Array<Record<string, unknown>>>(
       client.from("job_broadcasts")
         .select("batch_id, broadcast_at, expires_at, status")
@@ -142,11 +142,17 @@ export async function getMatchingState(
         .order("created_at", { ascending: true })
         .limit(60),
     ),
+    dbQuery<Record<string, unknown>>(
+      client.from("matching_operations").select("state").eq("job_id", jobId)
+        .order("created_at", { ascending: false }).order("id", { ascending: false })
+        .limit(1).maybeSingle(),
+    ),
   ]);
-  if (broadcasts.error || events.error) {
+  if (broadcasts.error || events.error || operation.error) {
     apiFailure("DB_ERROR", "Không thể tải biên nhận tìm thợ", 500);
   }
   return buildMatchingReceipt({
+    operationState: nullableString(operation.data?.state),
     broadcasts: (broadcasts.data ?? []).map((broadcast) => ({
       batch_id: nullableString(broadcast.batch_id),
       broadcast_at: nullableString(broadcast.broadcast_at),

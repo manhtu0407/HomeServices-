@@ -1,9 +1,29 @@
 import { nullableNumber, nullableRecord, nullableString } from "../../platform/coercions.ts";
 import { apiFailure } from "../../platform/api-failure.ts";
+import { normalizeIsoTimestamp } from "../../platform/iso-timestamp.ts";
 import type { MobileApiContext } from "../../platform/auth.ts";
 import type { AdminWorkerApplicationStatus } from "../contracts/admin-control.ts";
 
 type Row = Record<string, unknown>;
+
+export function requireWorkerReviewReceipt(
+  data: unknown,
+  queueId: string,
+  decision: string,
+  workerId?: string,
+): Row {
+  const row = Array.isArray(data) && data.length === 1 ? nullableRecord(data[0]) : null;
+  if (!row || typeof row.ok !== "boolean" || row.queue_id !== queueId.toLowerCase() || row.decision !== decision) {
+    apiFailure("DB_ERROR", "Không thể xác minh biên nhận duyệt hồ sơ", 500);
+  }
+  if (row.ok && (row.error_code !== null ||
+    typeof row.worker_id !== "string" || !/^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/.test(row.worker_id) ||
+    (workerId !== undefined && row.worker_id !== workerId.toLowerCase()) ||
+    typeof row.decided_at !== "string" || normalizeIsoTimestamp(row.decided_at) === null)) {
+    apiFailure("DB_ERROR", "Không thể xác minh biên nhận duyệt hồ sơ", 500);
+  }
+  return row;
+}
 
 export function requireAdminOwner(ctx: MobileApiContext): void {
   if (ctx.role !== "admin") {

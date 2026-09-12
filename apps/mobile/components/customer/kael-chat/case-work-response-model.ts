@@ -4,6 +4,7 @@ import { WORKFLOW_PHASES, toWorkflowPhase, type LocalDeal, type WorkflowPhase } 
 import { customerV21ServiceCopy } from '../ui/copy'
 import { formatDurationShort } from './case-work-display-model'
 import { formatVnd, isDealPaymentProtected } from './case-work-money-display-model'
+import { customerRefundDisplayModel } from './customer-refund-display-model'
 
 export type CaseWorkResponseActionKind =
   | 'apartment_access'
@@ -284,6 +285,8 @@ export function buildCaseWorkResponseModel({
   subject,
   workerName,
 }: BuildCaseWorkResponseModelInput): CaseWorkResponseModel {
+  const refund = customerRefundDisplayModel(deal?.payment, language)
+  if (refund) return { actionKind: 'none', phase, noteCopy: refund.noteCopy, noteTitle: refund.noteTitle, status: refund.status, title: refund.title }
   const copy = language === 'vi' ? VI_COPY[phase] : EN_COPY[phase]
   const dynamic = dynamicPhaseCopy({ copy, deal, language, paymentRailProvider, phase, subject, workerName })
   const legacyPaymentRecord = deal?.payment?.provider === 'staging_simulator'
@@ -502,26 +505,13 @@ function dynamicPhaseCopy({
       return language === 'vi'
         ? {
             ...copy,
-            noteCopy: 'Kael đã tạo lệnh chuyển khoản riêng cho công việc này. Bạn chỉ báo đã chuyển; Admin sẽ đối soát trước khi xác nhận thanh toán.',
+            noteCopy: 'Kael đã tạo lệnh chuyển khoản riêng cho công việc này. Bạn chỉ báo đã chuyển; bộ phận vận hành sẽ đối soát trước khi xác nhận thanh toán.',
             noteTitle: 'Thanh toán có đối soát',
           }
         : {
             ...copy,
             noteCopy: 'Kael created a transfer order for this work. Your transfer claim is reconciled by an admin before payment is confirmed.',
             noteTitle: 'Reconciled payment',
-          }
-    }
-    if (paymentRailProvider === 'sepay_vietqr') {
-      return language === 'vi'
-        ? {
-            ...copy,
-            noteCopy: 'Thanh toán VietQR đã sẵn sàng. Sau khi bạn chuyển khoản, hệ thống chỉ mở bước tiếp theo khi giao dịch được xác thực.',
-            noteTitle: 'Thanh toán an toàn',
-          }
-        : {
-            ...copy,
-            noteCopy: 'VietQR payment is ready. The next step opens only after the transfer is verified.',
-            noteTitle: 'Secure payment',
           }
     }
     return language === 'vi'

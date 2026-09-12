@@ -1,40 +1,15 @@
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
-import { Platform } from 'react-native'
 import type { ConfigContext, ExpoConfig } from 'expo/config'
 
 import type { PillarManifest } from '@/__tests__/pillar-manifest'
 
-const mockGetPermissionsAsync = jest.fn()
-const mockRequestPermissionsAsync = jest.fn()
-const mockGetExpoPushTokenAsync = jest.fn()
-const mockRegisterDeviceToken = jest.fn()
-
-jest.mock('expo/config-plugins', () => ({
-  withEntitlementsPlist: (config: ExpoConfig) => config,
-  withXcodeProject: (config: ExpoConfig) => config,
-}))
-
-jest.mock('expo-notifications', () => ({
-  getExpoPushTokenAsync: mockGetExpoPushTokenAsync,
-  getPermissionsAsync: mockGetPermissionsAsync,
-  requestPermissionsAsync: mockRequestPermissionsAsync,
-}))
-
-jest.mock('@/lib/services', () => ({
-  notificationService: {
-    registerDeviceToken: mockRegisterDeviceToken,
-    unregisterDeviceToken: jest.fn(),
-  },
-}))
-
 import createExpoConfig from '../../app.config'
-import { setupPushNotifications } from '@/lib/push-notifications'
 
 export const PILLAR = {
   id: 'P37-ios-release-readiness',
   invariant:
-    'the store-bound iOS release uses one Build 45 identity and aligned metadata, purpose strings, audio posture, and push-entitlement runtime gate',
+    'the store-bound iOS release uses one Build 45 identity and aligned metadata, purpose strings, audio posture, and an enabled notification entitlement path',
   authority: [
     'Stage 1 reviewed release for NestScout 0.2.0 Build 45',
     'governance/RULES.md #8 (no fake or silently degraded runtime state)',
@@ -43,7 +18,7 @@ export const PILLAR = {
   layer: 'security-negative',
   siblings: ['P08-worker-dock-motion', 'P09-native-ios-liquid-tabs'],
   mutation:
-    'set ios.buildNumber below 45 or let iOS push setup continue when iosPushNotificationsEnabled is false — the release identity or no-permission-call case turns red',
+    'set ios.buildNumber below 45, remove expo-notifications, or disable iosPushNotificationsEnabled — release identity or push setup turns red',
 } as const satisfies PillarManifest
 
 const mobileRoot = resolve(__dirname, '..', '..')
@@ -94,17 +69,6 @@ function pluginOptions(plugins: ExpoConfig['plugins'], name: string) {
 }
 
 describe('iOS release readiness', () => {
-  const originalPlatform = Platform.OS
-
-  beforeEach(() => {
-    jest.clearAllMocks()
-    Object.defineProperty(Platform, 'OS', { configurable: true, value: 'ios' })
-  })
-
-  afterAll(() => {
-    Object.defineProperty(Platform, 'OS', { configurable: true, value: originalPlatform })
-  })
-
   it('keeps the evaluated, static, and store release identities aligned', () => {
     const evaluated = createExpoConfig({
       config: { name: 'NestScout', slug: 'home-services' },
@@ -158,19 +122,15 @@ describe('iOS release readiness', () => {
     expect(staticLocation).toEqual(dynamicLocation)
   })
 
-  it('never asks for iOS notification permission while the release entitlement is absent', async () => {
+  it('keeps the notification plugin and iOS runtime capability enabled in both config sources', () => {
     const evaluated = createExpoConfig({
       config: { name: 'NestScout', slug: 'home-services' },
     } as ConfigContext)
+    const staticConfig = readJson<StaticExpoConfig>('app.json').expo
 
-    expect(evaluated.extra?.iosPushNotificationsEnabled).toBe(false)
-    await expect(setupPushNotifications({
-      accessToken: 'release-test-token',
-      role: 'customer',
-    })).resolves.toEqual({ status: 'unsupported' })
-    expect(mockGetPermissionsAsync).not.toHaveBeenCalled()
-    expect(mockRequestPermissionsAsync).not.toHaveBeenCalled()
-    expect(mockGetExpoPushTokenAsync).not.toHaveBeenCalled()
-    expect(mockRegisterDeviceToken).not.toHaveBeenCalled()
+    expect(evaluated.plugins).toContain('expo-notifications')
+    expect(staticConfig.plugins).toContain('expo-notifications')
+    expect(evaluated.extra?.iosPushNotificationsEnabled).toBe(true)
+    expect(staticConfig.extra?.iosPushNotificationsEnabled).toBe(true)
   })
 })

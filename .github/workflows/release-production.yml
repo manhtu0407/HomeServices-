@@ -75,12 +75,17 @@ jobs:
           mkdir -p artifacts/release
           node scripts/harness/github-merge-approval.mjs \
             --repository "$GITHUB_REPOSITORY" --merge-sha "$GITHUB_SHA" \
+            --reviewer kouuuuuu \
             --output artifacts/release/merge-approval.json
       - run: pnpm install --frozen-lockfile
       - name: Whole-workspace quality gates
         run: |
           pnpm type-check
-          pnpm test
+          mkdir -p artifacts/transactions
+          pnpm test:api --reporter=default --reporter=json --outputFile=../../artifacts/transactions/api-vitest.json
+          pnpm test:shared
+          pnpm test:mobile --runInBand --json --outputFile=../../artifacts/transactions/mobile-jest.json
+          pnpm test:sandbox
           pnpm build
           pnpm lint:comments
           pnpm lint:structure
@@ -91,6 +96,19 @@ jobs:
           pnpm skills:contracts
           pnpm runners:check
           pnpm doctor:react
+      - name: Require executed transaction behavior before release mutation
+        run: |
+          node scripts/harness/transaction-critical-coverage.mjs --require-behavioral \
+            --results artifacts/transactions/api-vitest.json \
+            --results artifacts/transactions/mobile-jest.json
+      - name: Preserve transaction runner evidence, including failures
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: release-transaction-assertions-${{ github.sha }}
+          path: artifacts/transactions/*.json
+          if-no-files-found: error
+          retention-days: 90
       - name: Harness, access, capability, migration, and release gates
         run: |
           pnpm harness:verify
@@ -208,6 +226,9 @@ jobs:
           PERPLEXITY_API_KEY: ${{ secrets.PERPLEXITY_API_KEY }}
           VIETMAP_API_KEY: ${{ secrets.VIETMAP_API_KEY }}
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+          NESTSCOUT_ANDROID_FCM_V1_READY: ${{ vars.NESTSCOUT_ANDROID_FCM_V1_READY }}
+          NESTSCOUT_IOS_APNS_READY: ${{ vars.NESTSCOUT_IOS_APNS_READY }}
+          NESTSCOUT_PUSH_RECEIPT_RECONCILER_READY: ${{ vars.NESTSCOUT_PUSH_RECEIPT_RECONCILER_READY }}
           PRODUCTION_SYNTHETIC_CUSTOMER_EMAIL: ${{ secrets.PRODUCTION_SYNTHETIC_CUSTOMER_EMAIL }}
           PRODUCTION_SYNTHETIC_CUSTOMER_PASSWORD: ${{ secrets.PRODUCTION_SYNTHETIC_CUSTOMER_PASSWORD }}
           PRODUCTION_SYNTHETIC_WORKER_EMAIL: ${{ secrets.PRODUCTION_SYNTHETIC_WORKER_EMAIL }}
@@ -221,6 +242,9 @@ jobs:
           test -n "$PERPLEXITY_API_KEY"
           test -n "$VIETMAP_API_KEY"
           test -n "$EXPO_TOKEN"
+          test "$NESTSCOUT_ANDROID_FCM_V1_READY" = "true"
+          test "$NESTSCOUT_IOS_APNS_READY" = "true"
+          test "$NESTSCOUT_PUSH_RECEIPT_RECONCILER_READY" = "true"
           test -n "$PRODUCTION_SYNTHETIC_CUSTOMER_EMAIL"
           test -n "$PRODUCTION_SYNTHETIC_CUSTOMER_PASSWORD"
           test -n "$PRODUCTION_SYNTHETIC_WORKER_EMAIL"
@@ -237,6 +261,7 @@ jobs:
           mkdir -p artifacts/release
           node scripts/harness/github-merge-approval.mjs \
             --repository "$GITHUB_REPOSITORY" --merge-sha "$GITHUB_SHA" \
+            --reviewer kouuuuuu \
             --output artifacts/release/merge-approval.json
       - name: Build immutable production release manifest
         env:
@@ -246,6 +271,9 @@ jobs:
           VIETMAP_API_KEY: ${{ secrets.VIETMAP_API_KEY }}
           KAEL_DURABLE_GUARDS_ENABLED: ${{ vars.KAEL_DURABLE_GUARDS_ENABLED }}
           KAEL_AI_KILL_SWITCH: ${{ vars.KAEL_AI_KILL_SWITCH }}
+          NESTSCOUT_ANDROID_FCM_V1_READY: ${{ vars.NESTSCOUT_ANDROID_FCM_V1_READY }}
+          NESTSCOUT_IOS_APNS_READY: ${{ vars.NESTSCOUT_IOS_APNS_READY }}
+          NESTSCOUT_PUSH_RECEIPT_RECONCILER_READY: ${{ vars.NESTSCOUT_PUSH_RECEIPT_RECONCILER_READY }}
         run: |
           mkdir -p artifacts/release artifacts/harness
           node scripts/check-production-ui-copy.mjs --output artifacts/release/production-ui-normality.json

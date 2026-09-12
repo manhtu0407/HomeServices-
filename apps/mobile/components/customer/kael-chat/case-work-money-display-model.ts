@@ -1,6 +1,8 @@
 import type { AppLanguage } from '@/lib/app-language'
 import type { LocalDeal, LocalScopeChange } from '@nestscout/shared'
 
+export { isDealPaymentProtected, isPaymentProtectedStatus } from '@/lib/frontend-workflow/payment-proof'
+
 const NUMBER_FORMATTER_BY_LANGUAGE: Record<AppLanguage, Intl.NumberFormat> = {
   en: new Intl.NumberFormat('en-US'),
   vi: new Intl.NumberFormat('vi-VN'),
@@ -16,18 +18,6 @@ export function formatNumber(value: number, language: AppLanguage) {
 
 export function formatVnd(value: number, language: AppLanguage) {
   return `${formatNumber(value, language)}đ`
-}
-
-export function isPaymentProtectedStatus(status: NonNullable<LocalDeal['payment']>['status']) {
-  return status === 'received' || status === 'cash_confirmed' || status === 'reconciled'
-}
-
-export function isDealPaymentProtected(deal: LocalDeal) {
-  return Boolean(
-    deal.payment &&
-    (deal.status === 'paid' || deal.status === 'reviewed') &&
-    isPaymentProtectedStatus(deal.payment.status),
-  )
 }
 
 export function paymentLedgerConfirmationStep(protectedPayment: boolean, language: AppLanguage) {

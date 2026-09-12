@@ -2,7 +2,7 @@ import type { EdgeWorkerRegistrationDraftInput } from "../../../../_shared/domai
 import { apiFailure } from "../../platform/api-failure.ts";
 import { db, dbQuery, normalizeWorkerDistricts } from "../../platform/db.ts";
 import type { MobileApiContext } from "../../platform/auth.ts";
-import { asString, asWorkerVerificationStatus, nullableString } from "../../platform/coercions.ts";
+import { normalizeIsoTimestamp } from "../../platform/iso-timestamp.ts";
 
 export async function saveWorkerRegistrationDraft(
   ctx: MobileApiContext,
@@ -32,8 +32,8 @@ export async function saveWorkerRegistrationDraft(
       p_draft: draft,
     }),
   );
-  const row = result.data?.[0];
-  if (result.error || !row) {
+  const row = Array.isArray(result.data) && result.data.length === 1 ? result.data[0] : null;
+  if (result.error || !row || typeof row.ok !== "boolean" || row.worker_id !== ctx.user.id) {
     console.warn("mobile-api worker draft RPC failed", {
       userId: ctx.user.id,
       errorCode: result.error?.code,
@@ -41,15 +41,20 @@ export async function saveWorkerRegistrationDraft(
     apiFailure("DB_ERROR", "Không thể tự lưu hồ sơ", 500);
   }
   if (!row.ok) {
-    const code = nullableString(row.error_code);
+    const code = row.error_code;
     if (code === "WORKER_ACCESS_REQUIRED") apiFailure("FORBIDDEN", "Tài khoản chưa được duyệt vào khu vực thợ", 403);
     if (code === "DRAFT_NOT_EDITABLE") apiFailure("CONFLICT", "Hồ sơ hiện không thể chỉnh sửa", 409);
-    apiFailure("VALIDATION", "Dữ liệu hồ sơ không hợp lệ", 400);
+    if (code === "INVALID_INPUT") apiFailure("VALIDATION", "Dữ liệu hồ sơ không hợp lệ", 400);
+    apiFailure("DB_ERROR", "Không thể tự lưu hồ sơ", 500);
+  }
+  if (row.error_code !== null || row.verification_status !== "draft" ||
+    typeof row.updated_at !== "string" || normalizeIsoTimestamp(row.updated_at) === null) {
+    apiFailure("DB_ERROR", "Không thể xác nhận việc lưu hồ sơ", 500);
   }
   return {
-    worker_id: asString(row.worker_id),
-    verification_status: asWorkerVerificationStatus(row.verification_status),
-    updated_at: asString(row.updated_at),
+    worker_id: row.worker_id,
+    verification_status: "draft" as const,
+    updated_at: row.updated_at,
   };
 }
 

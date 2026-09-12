@@ -15,7 +15,7 @@
     "id": "CONFIRM-001",
     "class": "confirmation",
     "assertion": "route_requires_confirmation",
-    "route_kind": "jobs.paymentIntent",
+    "route_kind": "jobs.paymentOrder",
     "confirmation_gate": "payment"
   },
   {
@@ -31,6 +31,13 @@
     "assertion": "route_requires_confirmation",
     "route_kind": "scope.decide",
     "confirmation_gate": "scope_change"
+  },
+  {
+    "id": "CONFIRM-004",
+    "class": "confirmation",
+    "assertion": "route_requires_confirmation",
+    "route_kind": "jobs.paymentOrderClaim",
+    "confirmation_gate": "payment"
   },
   {
     "id": "SAFETY-001",

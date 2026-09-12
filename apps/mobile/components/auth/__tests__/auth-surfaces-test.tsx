@@ -12,9 +12,22 @@ const mockSignUpWithIdentifier = jest.fn(async (): Promise<{ success: boolean; e
 const mockRequestPasswordRecovery = jest.fn(async () => ({ success: true }))
 const mockCompletePasswordRecovery = jest.fn(async () => ({ success: true }))
 const mockSignOut = jest.fn(async () => undefined)
+const workerReadiness = (status: 'not_submitted' | 'pending_review' | 'changes_requested' | 'rejected' | 'approved', reason: string | null = null) => ({
+  success: true,
+  readiness: {
+    application: {
+      application_id: status === 'not_submitted' ? null : '11111111-1111-4111-8111-111111111111',
+      reason,
+      status,
+    },
+  },
+})
+const mockGetWorkerReadiness = jest.fn(async () => workerReadiness('pending_review'))
 const mockSubmitWorkerApplication = jest.fn(async (): Promise<{
+  applicationId?: string
   success: boolean
   error?: string
+  status?: 'not_submitted' | 'pending_review' | 'changes_requested' | 'rejected' | 'approved'
 }> => ({ success: true }))
 const mockUpdateCustomerProfile = jest.fn(async () => ({ success: true }))
 let mockAuthOverride: Record<string, unknown> = {}
@@ -54,6 +67,7 @@ jest.mock('@/lib/auth-provider', () => ({
     signInWithPassword: mockSignInWithPassword,
     signUpWithIdentifier: mockSignUpWithIdentifier,
     signOut: mockSignOut,
+    getWorkerReadiness: mockGetWorkerReadiness,
     submitWorkerApplication: mockSubmitWorkerApplication,
     updateCustomerProfile: mockUpdateCustomerProfile,
     ...mockAuthOverride,
@@ -105,6 +119,7 @@ beforeEach(() => {
   mockLanguage = 'vi'
   mockRouteParams = {}
   jest.clearAllMocks()
+  mockGetWorkerReadiness.mockResolvedValue(workerReadiness('pending_review'))
   mockGetRememberedAuthIdentifier.mockResolvedValue(null)
   mockGetRememberedAuthCredentials.mockResolvedValue(null)
 })
@@ -966,7 +981,7 @@ describe('LoginRoleSurface', () => {
     })
   })
 
-  it('creates a worker account from a phone input before submitting the worker application', async () => {
+  it('creates a worker account from an email before submitting the worker application', async () => {
     mockRouteParams = { stage: '1.3', role: 'worker' }
     render(<LoginRoleSurface />)
 
@@ -974,7 +989,9 @@ describe('LoginRoleSurface', () => {
     fireEvent.press(screen.getByTestId('auth-entry-role-worker'))
     fireEvent.press(screen.getByTestId('auth-client-register-email'))
     fireEvent.changeText(screen.getByTestId('auth-register-name-input'), 'Worker One')
-    fireEvent.changeText(screen.getByTestId('auth-register-email-input'), '0912345678')
+    expect(screen.getByText('Thư điện tử')).toBeOnTheScreen()
+    expect(screen.getByTestId('auth-register-email-input')).toHaveProp('placeholder', 'ten@vidu.vn')
+    fireEvent.changeText(screen.getByTestId('auth-register-email-input'), 'worker@example.com')
     fireEvent.changeText(screen.getByTestId('auth-register-password-input'), 'secret123')
     fireEvent.changeText(screen.getByTestId('auth-register-password-confirmation-input'), 'secret123')
     fireEvent.press(screen.getByTestId('auth-register-terms'))
@@ -982,11 +999,11 @@ describe('LoginRoleSurface', () => {
 
     await waitFor(() => expect(mockSignUpWithIdentifier).toHaveBeenCalledWith({
       displayName: 'Worker One',
-      identifier: '0912345678',
+      identifier: 'worker@example.com',
       password: 'secret123',
     }))
     expect(mockSubmitWorkerApplication).toHaveBeenCalledWith({
-      contact: '0912345678',
+      contact: 'worker@example.com',
       language: 'vi',
     })
   })
@@ -1024,8 +1041,8 @@ describe('LoginRoleSurface', () => {
     expect(screen.queryByTestId('auth-client-facebook-secondary')).toBeNull()
 
     fireEvent.press(screen.getByTestId('auth-client-register-email'))
-    expect(screen.getByText('Gmail hoặc SĐT')).toBeOnTheScreen()
-    expect(screen.getByTestId('auth-register-email-input')).toHaveProp('placeholder', 'ten@vidu.vn hoặc 090 123 4567')
+    expect(screen.getByText('Thư điện tử')).toBeOnTheScreen()
+    expect(screen.getByTestId('auth-register-email-input')).toHaveProp('placeholder', 'ten@vidu.vn')
     expect(screen.getByTestId('auth-register-password-confirmation-input')).toHaveProp('placeholder', 'Xác nhận mật khẩu')
     fireEvent.changeText(screen.getByTestId('auth-register-name-input'), 'Worker One')
     fireEvent.changeText(screen.getByTestId('auth-register-email-input'), 'worker@example.com')
@@ -1048,6 +1065,7 @@ describe('LoginRoleSurface', () => {
 
   it('submits the deferred worker application after customer-role login', async () => {
     mockSignInWithPassword.mockResolvedValueOnce({ success: true, role: 'customer' })
+    mockGetWorkerReadiness.mockResolvedValueOnce(workerReadiness('not_submitted'))
     mockAuthOverride = {
       profileStatus: 'ready',
       role: 'customer',
@@ -1065,13 +1083,46 @@ describe('LoginRoleSurface', () => {
       contact: 'worker@example.com',
       language: 'vi',
     })
-    fireEvent.press(screen.getByTestId('auth-onboarding-start'))
-
-    await waitFor(() => {
-      expect(screen.getByText('Hồ sơ thợ đã được gửi xét duyệt. NestScout sẽ liên hệ trước khi cấp quyền thợ.')).toBeOnTheScreen()
-    })
+    expect(screen.getByText('Hồ sơ ứng tuyển đang được xem xét. Hệ thống sẽ không tự gửi thêm hồ sơ trùng lặp.')).toBeOnTheScreen()
     expect(screen.queryByText('Tài khoản đã được xác nhận, nhưng hồ sơ thợ chưa được gửi. Vui lòng thử lại sau.')).toBeNull()
     expect(mockReplace).not.toHaveBeenCalled()
+  })
+
+  it('resubmits a changes-requested application only after explicit worker confirmation', async () => {
+    mockSignInWithPassword.mockResolvedValueOnce({ success: true, role: 'customer' })
+    mockGetWorkerReadiness.mockResolvedValue(workerReadiness('changes_requested', 'Bổ sung khu vực phục vụ.'))
+    mockSubmitWorkerApplication.mockResolvedValueOnce({
+      applicationId: '22222222-2222-4222-8222-222222222222',
+      status: 'pending_review',
+      success: true,
+    })
+    mockAuthOverride = {
+      profileStatus: 'ready',
+      role: 'customer',
+      session: { user: { app_metadata: {}, email: 'worker@example.com', user_metadata: {} } },
+    }
+    mockRouteParams = { stage: '1.4', role: 'worker' }
+    render(<LoginRoleSurface />)
+
+    fireEvent.changeText(screen.getByTestId('auth-login-email-input'), 'worker@example.com')
+    fireEvent.changeText(screen.getByTestId('auth-login-password-input'), 'secret123')
+    fireEvent.press(screen.getByTestId('auth-login-submit'))
+
+    await waitFor(() => expect(screen.getByTestId('auth-onboarding-screen')).toBeOnTheScreen())
+    expect(screen.getByText('Hồ sơ ứng tuyển cần được bổ sung. Chỉ gửi lại khi bạn chủ động xác nhận.')).toBeOnTheScreen()
+    expect(screen.getByTestId('auth-worker-application-reason')).toHaveTextContent('Bổ sung khu vực phục vụ.')
+    expect(screen.getByText('Gửi lại hồ sơ xét duyệt')).toBeOnTheScreen()
+    expect(mockSubmitWorkerApplication).not.toHaveBeenCalled()
+
+    fireEvent.press(screen.getByTestId('auth-onboarding-start'))
+
+    await waitFor(() => expect(mockSubmitWorkerApplication).toHaveBeenCalledWith({
+      contact: 'worker@example.com',
+      language: 'vi',
+      revisionOfApplicationId: '11111111-1111-4111-8111-111111111111',
+    }))
+    expect(screen.getByText('Hồ sơ ứng tuyển đang được xem xét. Hệ thống sẽ không tự gửi thêm hồ sơ trùng lặp.')).toBeOnTheScreen()
+    expect(screen.getByText('Kiểm tra trạng thái')).toBeOnTheScreen()
   })
 
   it('does not duplicate a worker application when the resolved account is already a worker', async () => {
@@ -1096,6 +1147,7 @@ describe('LoginRoleSurface', () => {
 
   it('keeps a failed deferred worker application on the auth flow without a false review claim', async () => {
     mockSignInWithPassword.mockResolvedValueOnce({ success: true, role: 'customer' })
+    mockGetWorkerReadiness.mockResolvedValueOnce(workerReadiness('not_submitted'))
     mockSubmitWorkerApplication.mockResolvedValueOnce({ success: false, error: 'Không thể gửi hồ sơ lúc này.' })
     mockAuthOverride = {
       profileStatus: 'ready',
@@ -1146,11 +1198,7 @@ describe('LoginRoleSurface', () => {
     )
     expect(screen.getByTestId('auth-onboarding-screen')).toBeOnTheScreen()
 
-    fireEvent.press(screen.getByTestId('auth-onboarding-start'))
-
-    await waitFor(() => {
-      expect(screen.getByText('Hồ sơ thợ đã được gửi xét duyệt. NestScout sẽ liên hệ trước khi cấp quyền thợ.')).toBeOnTheScreen()
-    })
+    expect(screen.getByText('Hồ sơ ứng tuyển đang được xem xét. Hệ thống sẽ không tự gửi thêm hồ sơ trùng lặp.')).toBeOnTheScreen()
     expect(mockReplace).not.toHaveBeenCalledWith('/(worker)/home')
     expect(mockReplace).not.toHaveBeenCalledWith('/(customer)/home')
   })

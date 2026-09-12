@@ -14,6 +14,18 @@ function write(path, value) {
   writeFileSync(path, value)
 }
 
+test('manual bank order and transfer claim retain payment confirmation envelopes', () => {
+  const registry = buildCapabilityRegistry({ root: resolve(import.meta.dirname, '../..') })
+  for (const kind of ['jobs.paymentOrder', 'jobs.paymentOrderClaim']) {
+    const policy = registry.entries.find((entry) => entry.kind === kind)
+    assert.ok(policy, kind)
+    assert.equal(policy.confirmationGate, 'payment', kind)
+    assert.equal(policy.operationClass, 'money_impacting', kind)
+    assert.equal(policy.requiresResourceCheck, true, kind)
+    assert.equal(policy.roles.includes('worker'), false, kind)
+  }
+})
+
 test('uses the same route digest across checkout line endings', () => {
   const root = mkdtempSync(resolve(tmpdir(), 'harness-capability-'))
   try {

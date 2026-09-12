@@ -3,6 +3,8 @@ import { describe, expect, it } from 'vitest'
 import { pillarWhy, type PillarManifest } from '../pillar-manifest'
 import {
   adminFinanceBalanceSnapshotSchema,
+  adminFinanceTransactionListQuerySchema,
+  adminFinanceExportQuerySchema,
   adminPaymentReconciliationDecisionSchema,
 } from '../../../../../supabase/functions/mobile-api/_shared/http/routes/admin-finance-contract'
 import {
@@ -31,6 +33,14 @@ export const PILLAR = {
 const requestId = 'c2f2d727-3809-4e16-b31c-9a9d98302819'
 
 describe('Admin Finance money-operation contracts', () => {
+  it('accepts cancelled-history filters without inventing a refunded status', () => {
+    for (const schema of [adminFinanceTransactionListQuerySchema, adminFinanceExportQuerySchema]) {
+      expect(schema.safeParse({ range: 'month', status: 'paid' }).success).toBe(true)
+      expect(schema.safeParse({ range: 'month', status: 'cancelled' }).success).toBe(true)
+      expect(schema.safeParse({ range: 'month', status: 'refunded' }).success).toBe(false)
+    }
+  })
+
   it('requires optimistic concurrency and idempotency for reconciliation decisions', () => {
     const parsed = adminPaymentReconciliationDecisionSchema.safeParse({
       amount_received: 450_000,

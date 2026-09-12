@@ -2,7 +2,9 @@ import { jobService, kaelChatService } from './services'
 import { supabase } from './supabase'
 import * as VideoThumbnails from 'expo-video-thumbnails'
 import type { CaseWorkEvidence } from '@nestscout/shared'
-import type { JobMediaAttachInput, JobMediaStage } from './api-types'
+import type { ApiResponseMetadata, JobMediaAttachInput, JobMediaStage } from './api-types'
+import { createClientDiagnosticMetadata } from './api'
+import { appendWorkflowSupportCode } from './frontend-workflow/errors'
 import { readResponseBlobBounded, withNetworkDeadline } from './response-guard'
 
 export { uploadWorkerVerificationDrafts } from './worker-verification-upload'
@@ -20,6 +22,7 @@ type MediaUploadFailure = {
   success: false
   code?: string
   error: string
+  meta?: ApiResponseMetadata
 }
 
 const MAX_JOB_MEDIA_BYTES = 26_214_400
@@ -34,11 +37,13 @@ const JOB_MEDIA_MIME_TYPES = new Set([
 ])
 
 export function localizeMediaUploadFailure(
-  failure: { code?: string; error: string },
+  failure: Pick<MediaUploadFailure, 'code' | 'error' | 'meta'>,
   language: 'vi' | 'en',
 ) {
   const localized = mediaUploadFailureCopy[language]
-  return localized.byCode[failure.code ?? ''] ?? localized.fallback
+  const code = failure.code ?? ''
+  const message = Object.hasOwn(localized.byCode, code) ? localized.byCode[code] : localized.fallback
+  return appendWorkflowSupportCode(message, language, failure.meta)
 }
 
 const mediaUploadFailureCopy = {
@@ -79,19 +84,11 @@ export async function uploadJobMediaDrafts(
       item.type === 'audio' || item.mimeType?.trim().toLowerCase().startsWith('audio/'),
     )
   ) {
-    return {
-      success: false as const,
-      code: 'RAW_AUDIO_PRIVATE',
-      error: 'Giọng nói gốc chỉ ở trên thiết bị. Hãy gửi bản chép lời đã kiểm tra.',
-    }
+    return jobMediaFailure('RAW_AUDIO_PRIVATE', 'Giọng nói gốc chỉ ở trên thiết bị. Hãy gửi bản chép lời đã kiểm tra.')
   }
   const client = supabase
   if (!client) {
-    return {
-      success: false as const,
-      code: 'MEDIA_STORAGE_UNAVAILABLE',
-      error: 'Kho media chưa được cấu hình',
-    }
+    return jobMediaFailure('MEDIA_STORAGE_UNAVAILABLE', 'Kho media chưa được cấu hình')
   }
 
   const storageApi = client.storage.from('job-media') as unknown as {
@@ -156,7 +153,7 @@ export async function uploadJobMediaDrafts(
     }
     if (!uploadIntent.success) {
       await revokeJobMediaUploadsBestEffort(jobId, reservedObjectPaths)
-      return jobMediaFailure(uploadIntent.code, uploadIntent.error)
+      return jobMediaFailure(uploadIntent.code, uploadIntent.error, uploadIntent.meta)
     }
 
     const { object_path: objectPath, token } = uploadIntent.data
@@ -196,7 +193,7 @@ export async function uploadJobMediaDrafts(
   }
   if (!attached.success) {
     await revokeJobMediaUploadsBestEffort(jobId, reservedObjectPaths)
-    return jobMediaFailure(attached.code, attached.error)
+    return jobMediaFailure(attached.code, attached.error, attached.meta)
   }
   return {
     success: true as const,
@@ -204,8 +201,8 @@ export async function uploadJobMediaDrafts(
   }
 }
 
-function jobMediaFailure(code: string, error: string): MediaUploadFailure {
-  return { success: false, code, error }
+function jobMediaFailure(code: string, error: string, meta = createClientDiagnosticMetadata()): MediaUploadFailure {
+  return { success: false, code, error, meta }
 }
 
 async function revokeJobMediaUploadsBestEffort(jobId: string, objectPaths: string[]) {
@@ -240,19 +237,11 @@ export async function uploadKaelChatMediaDrafts(mediaItems: LocalMediaUploadDraf
     }
   }
   if (mediaItems.some((item) => item.type === 'audio' || (item.mimeType ?? '').toLowerCase().startsWith('audio/'))) {
-    return {
-      success: false as const,
-      code: 'RAW_AUDIO_PRIVATE',
-      error: 'Tệp ghi âm gốc chỉ được xử lý trên thiết bị. Hãy gửi bản chép lời đã kiểm tra.',
-    }
+    return jobMediaFailure('RAW_AUDIO_PRIVATE', 'Tệp ghi âm gốc chỉ được xử lý trên thiết bị. Hãy gửi bản chép lời đã kiểm tra.')
   }
   const client = supabase
   if (!client) {
-    return {
-      success: false as const,
-      code: 'MEDIA_STORAGE_UNAVAILABLE',
-      error: 'Kho media chưa được cấu hình',
-    }
+    return jobMediaFailure('MEDIA_STORAGE_UNAVAILABLE', 'Kho media chưa được cấu hình')
   }
 
   const storageApi = client.storage.from('kael-chat-media') as unknown as {
@@ -350,11 +339,7 @@ export async function uploadKaelChatMediaDrafts(mediaItems: LocalMediaUploadDraf
     await cleanupKaelChatMediaRefs(
       uploadResults.flatMap((result) => result.success ? [result.mediaRef] : []),
     )
-    return {
-      success: false as const,
-      code: failedUpload.code,
-      error: failedUpload.error,
-    }
+    return jobMediaFailure(failedUpload.code ?? 'MEDIA_UPLOAD_FAILED', failedUpload.error, failedUpload.meta)
   }
   return {
     success: true as const,
@@ -414,30 +399,18 @@ async function uploadKaelChatEvidenceObject(
     options.modelEligible &&
     !['image/jpeg', 'image/png', 'image/webp'].includes(mimeType)
   ) {
-    return {
-      success: false,
-      code: 'UNSUPPORTED_MEDIA',
-      error: 'Ảnh cần ở định dạng JPEG, PNG hoặc WebP để Kael phân tích',
-    }
+    return jobMediaFailure('UNSUPPORTED_MEDIA', 'Ảnh cần ở định dạng JPEG, PNG hoặc WebP để Kael phân tích')
   }
   const localBlob = await readLocalMediaBlob(item.uri, MAX_KAEL_CHAT_MEDIA_BYTES)
   if (!localBlob.success) {
-    return { success: false, code: 'MEDIA_READ_FAILED', error: 'Không thể đọc tệp media đã chọn' }
+    return jobMediaFailure('MEDIA_READ_FAILED', 'Không thể đọc tệp media đã chọn')
   }
   const fileSizeBytes = positiveUploadFileSize(localBlob.blob.size)
   if (!fileSizeBytes) {
-    return {
-      success: false,
-      code: 'MEDIA_READ_FAILED',
-      error: 'Tệp media rỗng hoặc không thể đọc',
-    }
+    return jobMediaFailure('MEDIA_READ_FAILED', 'Tệp media rỗng hoặc không thể đọc')
   }
   if (fileSizeBytes > MAX_KAEL_CHAT_MEDIA_BYTES) {
-    return {
-      success: false,
-      code: 'MEDIA_TOO_LARGE',
-      error: 'Tệp media vượt quá giới hạn dung lượng cho phép',
-    }
+    return jobMediaFailure('MEDIA_TOO_LARGE', 'Tệp media vượt quá giới hạn dung lượng cho phép')
   }
   let signedUpload: Awaited<ReturnType<typeof kaelChatService.createMediaUpload>>
   try {
@@ -448,14 +421,10 @@ async function uploadKaelChatEvidenceObject(
       file_size_bytes: fileSizeBytes,
     }))
   } catch {
-    return {
-      success: false,
-      code: 'MEDIA_UPLOAD_FAILED',
-      error: 'Không thể chuẩn bị tệp media để tải lên',
-    }
+    return jobMediaFailure('MEDIA_UPLOAD_FAILED', 'Không thể chuẩn bị tệp media để tải lên')
   }
   if (!signedUpload.success) {
-    return { success: false, code: signedUpload.code, error: signedUpload.error }
+    return jobMediaFailure(signedUpload.code, signedUpload.error, signedUpload.meta)
   }
   try {
     const { error: uploadError } = await withJobMediaUploadTimeout(storageApi.uploadToSignedUrl(
@@ -480,11 +449,7 @@ async function uploadKaelChatEvidenceObject(
     // The upload may have reached Storage before the client observed failure.
   }
   await cleanupKaelChatMediaRefs([signedUpload.data.media_ref])
-  return {
-    success: false,
-    code: 'MEDIA_UPLOAD_FAILED',
-    error: 'Không thể tải ảnh/video lên kho media',
-  }
+  return jobMediaFailure('MEDIA_UPLOAD_FAILED', 'Không thể tải ảnh/video lên kho media')
 }
 
 function kaelChatObjectPath(mediaRef: string) {
@@ -516,11 +481,7 @@ async function extractPrivateVideoFrames(
     if (drafts.length === 0) throw new Error('No video frame was generated')
     return { success: true, drafts }
   } catch {
-    return {
-      success: false,
-      code: 'VIDEO_FRAME_EXTRACTION_UNAVAILABLE',
-      error: 'Thiết bị chưa thể tách khung hình video. Video gốc vẫn ở trên thiết bị và chưa được gửi.',
-    }
+    return jobMediaFailure('VIDEO_FRAME_EXTRACTION_UNAVAILABLE', 'Thiết bị chưa thể tách khung hình video. Video gốc vẫn ở trên thiết bị và chưa được gửi.')
   }
 }
 

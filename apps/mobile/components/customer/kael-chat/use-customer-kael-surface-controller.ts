@@ -151,16 +151,21 @@ export function useCustomerKaelSurfaceController(stateScopeKey: string) {
   const hasSharedJobIncident = jobIncidentThread.messages.some((message) =>
     message.sender_role === 'kael' && message.content.startsWith('Kael Công việc:'),
   )
-  const dealScopedWorkflowError = deal ? workflow.state.lastError : null
+  const dealScopedWorkflowError = deal
+    ? (workflow.customerMatchingSelectionFeedback?.jobId === deal.id
+      ? workflow.customerMatchingSelectionFeedback.message
+      : workflow.customerMatchingRetryFeedback?.jobId === deal.id
+        ? workflow.customerMatchingRetryFeedback.message : workflow.state.lastError)
+    : null
   const visibleError = caseHydration.authRequired
     ? (language === 'vi'
       ? 'Phiên đăng nhập không còn hợp lệ. Vui lòng đăng nhập lại.'
       : 'Your sign-in session is no longer valid. Sign in again.')
-    : caseHydration.failed
+    : dealScopedWorkflowError ?? (caseHydration.failed
       ? workflow.state.lastError ?? (language === 'vi'
         ? 'Chưa thể tải công việc. Vui lòng thử lại.'
         : 'The job could not be loaded. Try again.')
-    : dealScopedWorkflowError ?? conversation.error
+    : conversation.error)
   const [initialSelectedService] = useState<ServiceType | null>(() => (
     initialPendingDraft?.serviceType ??
     serviceParam(firstParam(params.service))

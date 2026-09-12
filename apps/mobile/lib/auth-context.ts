@@ -1,6 +1,6 @@
 import { createContext } from 'react'
 import type { Session } from '@supabase/supabase-js'
-import type { UserRole } from '@nestscout/shared'
+import type { UserRole, WorkerApplicationStatus, WorkerReadiness } from '@nestscout/shared'
 
 export type ProfileStatus = 'idle' | 'loading' | 'ready' | 'profile_missing' | 'profile_error' | 'config_missing'
 
@@ -30,7 +30,8 @@ export type AuthState = {
   signUpWithIdentifier: (profile: CustomerIdentifierSignupDraft) => Promise<{ success: boolean; error?: string }>
   requestPasswordRecovery: (email: string) => Promise<{ success: boolean; error?: string }>
   completePasswordRecovery: (password: string) => Promise<{ success: boolean; error?: string }>
-  submitWorkerApplication: (draft: WorkerApplicationDraft) => Promise<{ success: boolean; error?: string; applicationId?: string }>
+  getWorkerReadiness: () => Promise<{ success: boolean; error?: string; readiness?: WorkerReadiness }>
+  submitWorkerApplication: (draft: WorkerApplicationDraft & { revisionOfApplicationId?: string }) => Promise<{ success: boolean; error?: string; applicationId?: string; status?: WorkerApplicationStatus }>
   updateCustomerProfile: (profile: CustomerProfileDraft) => Promise<{ success: boolean; error?: string }>
   updatePassword: (passwords: CustomerPasswordUpdateDraft) => Promise<{ success: boolean; error?: string }>
   signOut: () => Promise<void>
@@ -66,6 +67,7 @@ export const AuthContext = createContext<AuthState>({
   signUpWithIdentifier: async () => ({ success: false, error: 'Đăng ký chưa sẵn sàng' }),
   requestPasswordRecovery: async () => ({ success: false, error: 'Khôi phục mật khẩu chưa sẵn sàng' }),
   completePasswordRecovery: async () => ({ success: false, error: 'Đặt lại mật khẩu chưa sẵn sàng' }),
+  getWorkerReadiness: async () => ({ success: false, error: 'Trạng thái hồ sơ thợ chưa sẵn sàng' }),
   submitWorkerApplication: async () => ({ success: false, error: 'Gửi xét duyệt thợ chưa sẵn sàng' }),
   updateCustomerProfile: async () => ({ success: false, error: 'Lưu hồ sơ khách chưa sẵn sàng' }),
   updatePassword: async () => ({ success: false, error: 'Đổi mật khẩu chưa sẵn sàng' }),

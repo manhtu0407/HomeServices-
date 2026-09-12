@@ -505,10 +505,21 @@ function useAuthController(): AuthState {
     }
   }, [fetchRole, setCurrentSession])
 
-  const submitWorkerApplication = useCallback(async ({ contact, language }: WorkerApplicationDraft) => {
+  const getWorkerReadiness = useCallback(async () => {
+    try {
+      const result = await workerService.getReadiness()
+      return result.success
+        ? { success: true, readiness: result.data }
+        : { success: false, error: result.error }
+    } catch {
+      return { success: false, error: 'Không thể tải trạng thái hồ sơ thợ. Vui lòng thử lại.' }
+    }
+  }, [])
+
+  const submitWorkerApplication = useCallback(async ({ contact, language, revisionOfApplicationId }: WorkerApplicationDraft & { revisionOfApplicationId?: string }) => {
     const parsedContact = parseAuthIdentifier(contact)
-    if (!parsedContact) {
-      return { success: false, error: 'Nhập email hoặc số điện thoại để gửi xét duyệt.' }
+    if (!parsedContact || parsedContact.kind !== 'email') {
+      return { success: false, error: 'Tài khoản thợ chỉ hỗ trợ thư điện tử và mật khẩu.' }
     }
     const normalizedContact = parsedContact.value
 
@@ -517,11 +528,13 @@ function useAuthController(): AuthState {
         contact: normalizedContact,
         language,
         source: 'auth_worker_create',
+        revision_of_application_id: revisionOfApplicationId,
       })
       const result = await workerService.submitApplication({
         contact: normalizedContact,
         language,
         source: 'auth_worker_create',
+        revision_of_application_id: revisionOfApplicationId,
         client_request_id: stableClientRequestId(
           pendingWorkerApplicationRequestRef,
           requestFingerprint,
@@ -531,7 +544,11 @@ function useAuthController(): AuthState {
         return { success: false, error: result.error }
       }
       clearStableClientRequestId(pendingWorkerApplicationRequestRef, requestFingerprint)
-      return { success: true, applicationId: result.data.application_id }
+      return {
+        success: true,
+        applicationId: result.data.application_id ?? undefined,
+        status: result.data.status,
+      }
     } catch {
       return { success: false, error: 'Không thể gửi xét duyệt lúc này. Vui lòng thử lại.' }
     }
@@ -707,8 +724,8 @@ function useAuthController(): AuthState {
   }, [fetchRole, localVisualAuditRole, localVisualAuditSnapshot?.session, session?.user, setCurrentSession])
 
   const authValue = useMemo(
-    () => ({ session, role, guestMode, loading, profileStatus, authError, passwordRecoveryPending, enterGuestMode, signInWithApple, signInWithGoogle, signInWithPassword, signUpWithIdentifier, requestPasswordRecovery: requestPasswordRecoveryEmail, completePasswordRecovery, submitWorkerApplication, updateCustomerProfile, updatePassword, signOut, refreshProfile }),
-    [authError, completePasswordRecovery, enterGuestMode, guestMode, loading, passwordRecoveryPending, profileStatus, refreshProfile, role, session, signInWithApple, signInWithGoogle, signInWithPassword, signOut, signUpWithIdentifier, submitWorkerApplication, updateCustomerProfile, updatePassword],
+    () => ({ session, role, guestMode, loading, profileStatus, authError, passwordRecoveryPending, enterGuestMode, signInWithApple, signInWithGoogle, signInWithPassword, signUpWithIdentifier, requestPasswordRecovery: requestPasswordRecoveryEmail, completePasswordRecovery, getWorkerReadiness, submitWorkerApplication, updateCustomerProfile, updatePassword, signOut, refreshProfile }),
+    [authError, completePasswordRecovery, enterGuestMode, getWorkerReadiness, guestMode, loading, passwordRecoveryPending, profileStatus, refreshProfile, role, session, signInWithApple, signInWithGoogle, signInWithPassword, signOut, signUpWithIdentifier, submitWorkerApplication, updateCustomerProfile, updatePassword],
   )
 
   return authValue

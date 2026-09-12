@@ -4,6 +4,8 @@ import { StyleSheet, Text, View, type StyleProp, type TextStyle } from 'react-na
 
 import { KaelButton, KaelTextField } from '@/components/ui/kael-primitives'
 import type { AppLanguage } from '@/lib/app-language'
+import type { MatchingSelectionView } from '@/lib/frontend-workflow/use-customer-matching-selection'
+import type { ApartmentAccessView } from '@/lib/frontend-workflow/use-customer-apartment-access'
 import {
   toWorkflowPhase,
   type FavoriteWorkerForMatching,
@@ -23,16 +25,15 @@ import { CustomerPaymentRailSurface } from './customer-payment-rail-surface'
 import { FindingWorkersReceipt } from './finding-workers-receipt'
 import { ScopeChangeReviewingDetails } from './scope-change-reviewing-details'
 import { ScopeChangeProposalDetails } from './scope-change-proposal-details'
+import { ApartmentAccessControls } from './apartment-access-controls'
 
 type PaymentBusyAction =
-  | 'legacy_create'
   | 'manual_order'
   | 'manual_claim'
-  | 'direct_selection'
-  | 'direct_response'
   | null
 
 export function AgenticCaseThreadPanel({
+  apartmentAccessState,
   activityLabel,
   caseEvidenceGateActive,
   caseEvidenceGateNode,
@@ -43,13 +44,11 @@ export function AgenticCaseThreadPanel({
   confirmingCaseQuote,
   deal,
   language,
+  matchingSelectionState,
   onAcknowledgeOptions,
   onAuthorizeApartmentAccess,
-  onCreatePaymentIntent,
   onCreateManualBankPaymentOrder,
   onClaimManualBankPayment,
-  onSelectDirectWorkerPayment,
-  onRespondToDirectWorkerPayment,
   onChooseMatchingPreference,
   onLoadSavedWorkers,
   onRefreshPayment,
@@ -70,6 +69,7 @@ export function AgenticCaseThreadPanel({
   textInputStyle,
   tokens,
 }: {
+  apartmentAccessState: ApartmentAccessView
   activityLabel: string
   caseEvidenceGateActive: boolean
   caseEvidenceGateNode: ReactNode
@@ -80,13 +80,11 @@ export function AgenticCaseThreadPanel({
   confirmingCaseQuote: boolean
   deal: LocalDeal
   language: AppLanguage
+  matchingSelectionState: MatchingSelectionView
   onAcknowledgeOptions: () => void
   onAuthorizeApartmentAccess: () => Promise<void> | void
-  onCreatePaymentIntent: () => Promise<boolean>
   onCreateManualBankPaymentOrder: () => Promise<boolean>
   onClaimManualBankPayment: () => Promise<boolean>
-  onSelectDirectWorkerPayment: () => Promise<boolean>
-  onRespondToDirectWorkerPayment: (received: boolean) => Promise<boolean>
   onChooseMatchingPreference: (input: Omit<JobMatchingPreferenceInput, 'client_request_id'>) => Promise<boolean>
   onLoadSavedWorkers: () => Promise<FavoriteWorkerForMatching[] | null>
   onRefreshPayment: () => Promise<boolean>
@@ -107,7 +105,6 @@ export function AgenticCaseThreadPanel({
   textInputStyle: StyleProp<TextStyle>
   tokens: CustomerThemeTokens
 }) {
-  const [authorizingApartmentAccess, setAuthorizingApartmentAccess] = useState(false)
   const [paymentBusyAction, setPaymentBusyAction] = useState<PaymentBusyAction>(null)
   const [refreshingPayment, setRefreshingPayment] = useState(false)
   const [paymentRefreshResult, setPaymentRefreshResult] = useState<'failed' | 'success' | null>(null)
@@ -160,6 +157,9 @@ export function AgenticCaseThreadPanel({
     <FindingWorkersReceipt
       language={language}
       matchingState={deal.matchingState}
+      selectionState={matchingSelectionState.jobId === deal.id ? matchingSelectionState : {
+        jobId: deal.id, scopeKey: `${matchingSelectionState.scopeKey}:${deal.id}`, ready: false, choice: null,
+      }}
       onChoosePreference={onChooseMatchingPreference}
       onLoadSavedWorkers={onLoadSavedWorkers}
       onRetry={() => onRetryWorkerSearch()}
@@ -228,21 +228,13 @@ export function AgenticCaseThreadPanel({
             testID="customer-v21-case-retry-worker-search"
           />
         ) : apartmentAccessReady ? (
-          <KaelButton
-            accessibilityState={{ busy: authorizingApartmentAccess, disabled: authorizingApartmentAccess }}
-            disabled={authorizingApartmentAccess}
-            label={authorizingApartmentAccess
-              ? (language === 'vi' ? 'Đang xác nhận' : 'Confirming')
-              : (language === 'vi' ? 'Cho thợ lên' : 'Release unit access')}
-            onPress={() => {
-              if (authorizingApartmentAccess) return
-              setAuthorizingApartmentAccess(true)
-              void Promise.resolve()
-                .then(onAuthorizeApartmentAccess)
-                .finally(() => setAuthorizingApartmentAccess(false))
-            }}
-            size="small"
-            testID="customer-v21-case-authorize-apartment-access"
+          <ApartmentAccessControls
+            key={`${deal.id}:${deal.broadcast?.addressAccess?.authorization_context?.expected_check_in_at}`}
+            jobId={deal.id}
+            state={apartmentAccessState}
+            language={language}
+            onAuthorize={onAuthorizeApartmentAccess}
+            tokens={tokens}
           />
         ) : activityActionLabel ? (
           <KaelButton
@@ -261,20 +253,11 @@ export function AgenticCaseThreadPanel({
       <CustomerPaymentRailSurface
         deal={deal}
         language={language}
-        onCreatePaymentIntent={() => {
-          runPaymentAction('legacy_create', onCreatePaymentIntent)
-        }}
         onCreateManualBankPaymentOrder={() => {
           runPaymentAction('manual_order', onCreateManualBankPaymentOrder)
         }}
         onClaimManualBankPayment={() => {
           runPaymentAction('manual_claim', onClaimManualBankPayment)
-        }}
-        onSelectDirectWorkerPayment={() => {
-          runPaymentAction('direct_selection', onSelectDirectWorkerPayment)
-        }}
-        onRespondToDirectWorkerPayment={(received) => {
-          runPaymentAction('direct_response', () => onRespondToDirectWorkerPayment(received))
         }}
         onRefreshPayment={() => {
           if (refreshingPayment) return

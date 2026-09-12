@@ -1,7 +1,6 @@
-import { kaelDiagnosisScopeArtifactSchema, type EdgeAiSecrets } from "../../kael/index.ts";
-import type { MobileApiContext } from "../../platform/auth.ts";
+import type { EdgeAiSecrets } from "../../kael/index.ts";
 import { dbQuery, type DbClient } from "../../platform/db.ts";
-import { executeConfirmedKaelMatching } from "./confirm.service.ts";
+import { activateConfirmedMatching } from "./confirmation-matching-activation.ts";
 
 export type ConfirmationOutboxClaim = {
   outboxId: string;
@@ -79,24 +78,12 @@ async function processConfirmationOutboxClaim(
   let state: "broadcasting" | "no_reachable_worker" | "recovery_required";
   let errorCode: string | null = null;
   try {
-    const diagnosis = kaelDiagnosisScopeArtifactSchema.safeParse(claim.diagnosisScope);
-    const ctx: MobileApiContext = {
-      success: true,
-      user: { id: claim.customerId },
-      role: "customer",
-      supabase: runtime.client,
-      privilegedSupabase: runtime.client,
-      userSupabase: runtime.client,
-    };
-    state = await executeConfirmedKaelMatching({
-      ctx,
-      diagnosisScope: diagnosis.success ? diagnosis.data : null,
-      input: {},
-      jobId: claim.jobId,
-      preferredWorkerId: claim.preferredWorkerId,
-      sessionId: claim.sessionId,
-      secrets: runtime.secrets,
-    });
+    const activated = await activateConfirmedMatching(runtime.client, claim, runtime.secrets);
+    if (activated.state === "lease_lost") return "lease_lost";
+    // Settlement derives newer candidate/official/stopped authority from the locked job.
+    state = activated.state === "recovery_required" || activated.state === "no_reachable_worker"
+      ? activated.state : "broadcasting";
+    errorCode = activated.state === "recovery_required" ? activated.error_code : null;
   } catch {
     state = "recovery_required";
     errorCode = "MATCHING_RECONCILIATION_FAILED";

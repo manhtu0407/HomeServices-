@@ -34,6 +34,9 @@ export async function confirmKaelChat(
   input: EdgeKaelChatConfirmInput,
   secrets: EdgeAiSecrets,
 ) {
+  if (ctx.role !== "customer") {
+    apiFailure("FORBIDDEN", "Chỉ khách hàng được xác nhận yêu cầu của mình.", 403);
+  }
   const client = db(ctx);
   const workflowClient = workflowDb(ctx);
   const runtimeBehavior = await resolveStage1RuntimeBehavior(client, {
@@ -96,6 +99,7 @@ async function confirmGovernedKaelChat(input: {
       customerId: input.ctx.user.id,
       confirmationKind: input.confirmationKind,
       priceReasoningReceiptId: input.input.price_reasoning_receipt_id ?? null,
+      ...(input.input.matching_mode ? { matchingMode: input.input.matching_mode } : {}),
       ...(traceFinalizer ? { traceFinalizer } : {}),
     });
   } catch (error) {
@@ -134,16 +138,20 @@ async function confirmGovernedKaelChat(input: {
   const jobId = result.jobId;
   if (!jobId) apiFailure("DB_ERROR", "Phiên Kael chưa tạo được yêu cầu", 500);
   if (!result.operation) apiFailure("DB_ERROR", "Phiên Kael chưa tạo được tiến trình bền vững", 500);
+  const status = (result.jobStatus ?? "awaiting_customer_confirm") as JobStatus;
+  const matchingState = await getMatchingState(input.workflowClient, jobId, status);
   return {
     session_id: input.sessionId,
     job_id: jobId,
-    status: (result.jobStatus ?? "awaiting_customer_confirm") as JobStatus,
+    status,
     broadcast_sent: false,
     worker: null,
-    message: result.alreadyApplied
+    message: matchingState?.stage === "awaiting_choice"
+      ? "Bạn chọn cách tìm thợ trước khi Kael gửi yêu cầu."
+      : result.alreadyApplied
       ? "Yêu cầu đã được tiếp nhận trước đó. Kael đang đồng bộ tiến trình tìm thợ."
       : "Kael đã tiếp nhận yêu cầu và đang bắt đầu tìm thợ.",
-    matching_state: null,
+    matching_state: matchingState,
     operation: result.operation,
   };
 }
@@ -304,49 +312,17 @@ function mapDurableConfirmationError(errorCode: string | null): never {
   if (errorCode === "TIER_A_INCOMPLETE") {
     apiFailure("TIER_A_INCOMPLETE", "Cần bổ sung thông tin bắt buộc trước khi gửi yêu cầu.", 409);
   }
+  if (errorCode === "COVERAGE_UNAVAILABLE") {
+    apiFailure(
+      "COVERAGE_UNAVAILABLE",
+      "Khu vực này chưa còn đủ ít nhất 3 thợ phù hợp và có thể nhận yêu cầu. Kael chưa tạo công việc.",
+      409,
+    );
+  }
   if (errorCode === "CONFIRMATION_KIND_MISMATCH") {
     apiFailure("INVALID_STATUS", "Hình thức xác nhận không khớp chính sách dịch vụ hiện tại.", 409);
   }
   mapConfirmKaelChatError(errorCode);
-}
-
-export async function executeConfirmedKaelMatching(input: {
-  ctx: MobileApiContext;
-  diagnosisScope: ReturnType<typeof kaelDiagnosisScopeArtifactSchema.parse> | null;
-  input: Pick<EdgeKaelChatConfirmInput, "matching_mode">;
-  jobId: string;
-  preferredWorkerId: string | null;
-  sessionId: string;
-  secrets: EdgeAiSecrets;
-}): Promise<"broadcasting" | "no_reachable_worker"> {
-  const client = db(input.ctx);
-  const geocodeStarted = performance.now();
-  await geocodeConfirmedKaelJob(
-    client,
-    input.sessionId,
-    input.jobId,
-    input.ctx.user.id,
-    null,
-    input.secrets,
-  );
-  const matchingStarted = performance.now();
-  const matched = input.diagnosisScope
-    ? await startConfirmedKaelMatching({
-      ctx: input.ctx,
-      diagnosisScope: input.diagnosisScope,
-      input: input.input,
-      jobId: input.jobId,
-      preferredWorkerId: input.preferredWorkerId,
-      sessionId: input.sessionId,
-    })
-    : await confirmSearch(input.ctx, input.jobId, { kaelSessionId: input.sessionId });
-  const state = matched.broadcast_sent ? "broadcasting" : "no_reachable_worker";
-  console.info("kael durable matching stages completed", {
-    geocode_latency_ms: Math.round(matchingStarted - geocodeStarted),
-    matching_latency_ms: Math.round(performance.now() - matchingStarted),
-    resulting_state: state,
-  });
-  return state;
 }
 
 function buildKaelChatMatchingDecision(

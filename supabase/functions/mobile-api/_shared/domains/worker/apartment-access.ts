@@ -2,17 +2,19 @@
 // + sanitize/persist/state-builder helpers + authorizeApartmentAccess. Imported directly by services.ts.
 
 import { asJobStatus, asRecord, nullableRecord, nullableString } from "../../platform/coercions.ts";
-import { db, dbQuery, type DbClient } from "../../platform/db.ts";
-import { ACTIVE_WORKER_JOB_STATUSES } from "../../platform/job-state.ts";
+import { db, dbQuery, workflowDb, type DbClient } from "../../platform/db.ts";
 import { compactMetadata } from "../../platform/domain-utils.ts";
 import { evaluateJobChatContactGuard, normalizeGuardText } from "../job/chat-guard.ts";
 import { apiFailure } from "../../platform/api-failure.ts";
 import type { MobileApiContext } from "../../platform/auth.ts";
 import type { WorkerStatusUpdateInput } from "../contracts/worker.ts";
-import { sanitizeForLLM } from "../../../../_shared/domain.ts";
+import { sanitizeForLLM, apartmentAccessAuthorizationSchema, apartmentAccessAuthorizationReceiptSchema } from "../../../../_shared/domain.ts";
+import type {
+  EdgeApartmentAccessAuthorizationInput as ApartmentAccessAuthorizationInput,
+  EdgeApartmentAccessAuthorizationReceipt as ApartmentAccessAuthorizationReceipt,
+} from "../../../../_shared/domain.ts";
 import type { ApartmentAccessProfileInput, JobStatus } from "../../../../_shared/domain.ts";
 import { requireJobAccess } from "../../platform/access.ts";
-import { logJobEvent } from "../../platform/audit.ts";
 
 type AddressAccessStage = "area_only" | "building_released" | "unit_released";
 
@@ -29,6 +31,8 @@ type AddressAccessView = {
   release_stage: AddressAccessStage;
   exact_unit_released: boolean;
   worker_checked_in: boolean;
+  authorization_context: ApartmentAccessAuthorizationInput | null;
+  authorization_receipt: ApartmentAccessAuthorizationReceipt | null;
   check_in_required: boolean;
   identity_check_required: boolean;
   customer_handoff_required: boolean;
@@ -189,8 +193,13 @@ export function projectAddressAccess(
   const rawAddress = readAddressParts(row);
   const profile = sanitizeApartmentAccessProfile(row.apartment_access_profile);
   const state = asRecord(row.apartment_access_state);
-  const exactUnitReleased = state.exact_unit_released === true;
   const rowStatus = asJobStatus(row.job_status ?? row.status);
+  const checkInRecord = nullableRecord(state.check_in);
+  const checkInWorkerId = nullableString(checkInRecord?.worker_id);
+  const rowWorkerId = nullableString(row.worker_id);
+  const exactUnitReleased = state.exact_unit_released === true &&
+    state.customer_authorized === true && rowWorkerId !== null &&
+    checkInWorkerId === rowWorkerId && ADDRESS_BUILDING_RELEASE_STATUSES.includes(rowStatus);
   const releasedStage = exactUnitReleased
     ? "unit_released"
     : ADDRESS_BUILDING_RELEASE_STATUSES.includes(rowStatus)
@@ -198,15 +207,23 @@ export function projectAddressAccess(
     : "area_only";
   const stage = options.forcedStage ?? releasedStage;
   const evidenceMode = accessEvidenceMode(state);
-  // §32.7 (Codex review PR #66): a check-in belongs to the worker who made it — after a
-  // replacement, the previous assignee's check-in must not show as the new worker's.
-  const checkInRecord = nullableRecord(state.check_in);
-  const checkInWorkerId = nullableString(checkInRecord?.worker_id);
-  const rowWorkerId = nullableString(row.worker_id);
+  // A check-in belongs to its assignee, not to every later worker on the job.
   const workerCheckedIn =
     (state.worker_checked_in === true || checkInRecord !== null) &&
-    (checkInWorkerId === null || rowWorkerId === null ||
-      checkInWorkerId === rowWorkerId);
+    rowWorkerId !== null && checkInWorkerId === rowWorkerId &&
+    ADDRESS_BUILDING_RELEASE_STATUSES.includes(rowStatus);
+  const intent = apartmentAccessAuthorizationSchema.safeParse({
+    expected_worker_id: rowWorkerId,
+    expected_check_in_at: checkInRecord?.checked_in_at,
+  });
+  const authorizationContext = role === "customer" && workerCheckedIn && intent.success ? intent.data : null;
+  const receipt = apartmentAccessAuthorizationReceiptSchema.safeParse({
+    job_id: row.id, worker_id: state.authorized_worker_id, checked_in_at: state.authorized_check_in_at,
+    authorized_at: state.customer_authorized_at, release_stage: "unit_released", already_authorized: true,
+  });
+  const authorizationReceipt = authorizationContext && exactUnitReleased && receipt.success &&
+    receipt.data.worker_id === authorizationContext.expected_worker_id &&
+    receipt.data.checked_in_at === authorizationContext.expected_check_in_at ? receipt.data : null;
   const workerAddress = stage === "unit_released"
     ? rawAddress
     : stage === "building_released"
@@ -226,12 +243,12 @@ export function projectAddressAccess(
 
   return {
     fullAddress: role === "worker" ? workerAddress : rawAddress,
-    addressAccess: buildAddressAccessView(
+    addressAccess: { ...buildAddressAccessView(
       profile,
       role === "worker" ? stage : releasedStage,
       evidenceMode,
       workerCheckedIn,
-    ),
+    ), authorization_context: authorizationContext, authorization_receipt: authorizationReceipt },
   };
 }
 
@@ -281,22 +298,6 @@ export function buildCheckInAccessState(
   });
 }
 
-export function buildAuthorizedReleaseAccessState(previous: unknown, now: string) {
-  return compactMetadata({
-    ...asRecord(previous),
-    release_stage: "unit_released",
-    exact_unit_released: true,
-    worker_checked_in: true,
-    customer_authorized: true,
-    customer_authorized_at: now,
-    customer_authorization_required: false,
-    check_in_required: false,
-    identity_check_required: true,
-    customer_handoff_required: false,
-    unit_released_at: now,
-  });
-}
-
 function sanitizeApartmentAccessText(
   value: unknown,
   maxLength: number,
@@ -337,6 +338,8 @@ function buildAddressAccessView(
     // §32.7: the customer "Cho thợ lên" button keys on this — it must appear only
     // after a worker check-in and before the unit is released.
     worker_checked_in: workerCheckedIn,
+    authorization_context: null,
+    authorization_receipt: null,
     // §32.7 (Codex review PR #66): checked-in-but-not-yet-authorized must not keep
     // claiming a check-in is required — the stored state already says it happened.
     check_in_required: !exact && !workerCheckedIn,
@@ -379,100 +382,50 @@ function redactWorkerBuilding(value: string | null) {
   return redacted || null;
 }
 
-export async function authorizeApartmentAccess(ctx: MobileApiContext, jobId: string) {
-  const client = db(ctx);
-  const job = await requireJobAccess(client, jobId, ctx, {
-    select:
-      "id, status, customer_id, worker_id, apartment_access_profile, apartment_access_state, address_building, address_unit, address_floor, address_district",
-  });
-  // §32.7 (Codex review PR #66): the unit may only be released while the job is still
-  // running — a stale client or direct POST after cancellation/completion must not
-  // disclose the exact unit to a worker who is no longer on an active assignment.
-  if (!ACTIVE_WORKER_JOB_STATUSES.includes(job.status as JobStatus)) {
-    apiFailure(
-      "ACCESS_NOT_READY",
-      "Yêu cầu không còn hoạt động nên không thể mở quyền vào căn hộ.",
-      409,
-    );
+export async function authorizeApartmentAccess(
+  ctx: MobileApiContext, jobId: string, input?: ApartmentAccessAuthorizationInput,
+): Promise<ApartmentAccessAuthorizationReceipt> {
+  if (ctx.role !== "customer") {
+    apiFailure("AUTH_FORBIDDEN", "Chỉ khách đặt dịch vụ được cho phép vào căn hộ.", 403);
   }
-  const state = asRecord(job.apartment_access_state);
-  if (state.exact_unit_released === true) {
-    return {
-      job_id: jobId,
-      release_stage: "unit_released" as const,
-      already_authorized: true as const,
-    };
+  const intent = apartmentAccessAuthorizationSchema.safeParse(input);
+  if (!intent.success) {
+    apiFailure("CLIENT_UPDATE_REQUIRED", "Hãy cập nhật ứng dụng và tải lại yêu cầu trước khi cho phép thợ lên.", 409);
   }
-  // §32.7 (Codex review PR #66): the check-in must belong to the CURRENT worker —
-  // after a replacement, the previous assignee's check-in must not unlock the unit
-  // for the next one. Pre-binding states (no worker_id on the check-in) are rejected
-  // too; the worker simply re-checks-in (same-status check-in is supported).
-  const checkInWorkerId = nullableString(nullableRecord(state.check_in)?.worker_id);
-  const currentWorkerId = nullableString(job.worker_id);
-  const workerCheckedIn = (state.worker_checked_in === true ||
-    nullableRecord(state.check_in) !== null) &&
-    checkInWorkerId !== null && currentWorkerId !== null &&
-    checkInWorkerId === currentWorkerId;
-  if (!workerCheckedIn) {
-    apiFailure(
-      "ACCESS_NOT_READY",
-      "Thợ chưa check-in tại sảnh nên chưa thể mở căn hộ.",
-      409,
-    );
-  }
-  const now = new Date().toISOString();
-  const accessState = buildAuthorizedReleaseAccessState(state, now);
-  const updated = await dbQuery<{ id: string }>(
-    client
-      .from("jobs")
-      .update({ apartment_access_state: accessState })
-      .eq("id", jobId)
-      .select("id")
-      .maybeSingle(),
+  await requireJobAccess(db(ctx), jobId, ctx, { requiredRole: "customer", select: "id, customer_id" });
+  const result = await dbQuery<Array<Record<string, unknown>>>(
+    workflowDb(ctx).rpc("authorize_apartment_access_atomic", {
+      p_job_id: jobId, p_customer_id: ctx.user.id,
+      p_expected_worker_id: intent.data.expected_worker_id,
+      p_expected_check_in_at: intent.data.expected_check_in_at,
+    }),
   );
-  if (updated.error) {
-    apiFailure("DB_ERROR", "Không thể mở quyền vào căn hộ", 500);
-  }
-  if (!updated.data) {
-    apiFailure("NOT_FOUND", "Không tìm thấy công việc", 404);
-  }
-  await logJobEvent(
-    client,
-    jobId,
-    "apartment_access_authorized",
-    ctx,
-    job.status as JobStatus,
-    job.status as JobStatus,
-    {
-      apartment_access_release: true,
-      release_stage: "unit_released",
-      customer_authorized: true,
-    },
-  );
-  // Tell the worker the customer has authorized so the
-  // exact unit is now visible — otherwise the worker would only learn on a manual refetch.
-  // Best-effort: a notification failure must not block the authorization.
-  const workerId = nullableString(job.worker_id);
-  if (workerId) {
-    const notified = await dbQuery<Array<Record<string, unknown>>>(
-      client.rpc("insert_notification_atomic", {
-        p_user_id: workerId,
-        p_job_id: jobId,
-        p_event_type: "apartment_access_authorized",
-        p_title: "Khách đã cho phép lên",
-        p_body: "Bạn có thể xem địa chỉ căn hộ và lên gặp khách.",
-        p_safe_metadata: { release_stage: "unit_released" },
-      }),
-    );
-    if (notified.error) {
-      console.warn("mobile-api apartment access authorize notification failed", {
-        jobId,
-      });
+  if (result.error) accessAuthorizationOutcomeUnknown();
+  const row = Array.isArray(result.data) && result.data.length === 1 ? result.data[0] : null;
+  if (!row || typeof row.ok !== "boolean") accessAuthorizationOutcomeUnknown();
+  if (!row.ok) {
+    if (row.error_code === "NOT_FOUND") apiFailure("NOT_FOUND", "Không tìm thấy công việc.", 404);
+    if (row.error_code === "ACCESS_NOT_READY") {
+      apiFailure("ACCESS_NOT_READY", "Chưa thể cho phép thợ lên. Hãy tải lại trạng thái công việc.", 409);
     }
+    if (row.error_code === "ACCESS_CONTEXT_CHANGED") {
+      apiFailure("ACCESS_CONTEXT_CHANGED", "Thợ hoặc lần xác nhận đã thay đổi. Hãy kiểm tra lại trước khi cho phép thợ lên.", 409);
+    }
+    accessAuthorizationOutcomeUnknown();
   }
-  return {
-    job_id: jobId,
-    release_stage: "unit_released" as const,
-    already_authorized: false as const,
-  };
+  const receipt = apartmentAccessAuthorizationReceiptSchema.safeParse({
+    job_id: row.job_id, worker_id: row.worker_id, checked_in_at: row.checked_in_at,
+    authorized_at: row.authorized_at, already_authorized: row.already_authorized,
+    release_stage: "unit_released",
+  });
+  if (!receipt.success || row.error_code !== null || row.job_id !== jobId ||
+    row.worker_id !== intent.data.expected_worker_id ||
+    row.checked_in_at !== intent.data.expected_check_in_at) accessAuthorizationOutcomeUnknown();
+  return receipt.data;
+}
+
+function accessAuthorizationOutcomeUnknown(): never {
+  apiFailure("ACCESS_AUTHORIZATION_OUTCOME_UNKNOWN",
+    "Đang đối soát quyền vào căn hộ. Hãy tải lại công việc để kiểm tra kết quả.", 503,
+    { reconcile_required: true });
 }

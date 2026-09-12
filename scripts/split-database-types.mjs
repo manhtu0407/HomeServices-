@@ -27,7 +27,7 @@
 //   node scripts/split-database-types.mjs --count                count public tables / views / functions / enums
 //   node scripts/split-database-types.mjs --check-against <file> compare the tree to <file>
 
-import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -45,7 +45,8 @@ const BUCKET_RULES = [
   ['worker', (name) => name.startsWith('worker_')],
   ['customer', (name) => name.startsWith('customer_')],
   ['learning', (name) => name.startsWith('learning_')],
-  ['jobs', (name) => name.startsWith('job_') || name === 'jobs'],
+  ['jobs', (name) => name.startsWith('job_') || name === 'jobs' ||
+    name.startsWith('completion_payment_') || name.startsWith('workflow_recovery_')],
   ['admin', (name) => name.startsWith('admin_')],
   ['service', (name) => name.startsWith('service_') || name.startsWith('price_baseline_')],
 ]
@@ -333,9 +334,7 @@ export function verify(text) {
 
 export function write(text, root = ROOT) {
   const { slices, tableSlices, tableOrder } = split(text)
-  const dir = resolve(root, OUT_DIR)
   const tablesDir = resolve(root, TABLES_DIR)
-  rmSync(dir, { recursive: true, force: true })
   mkdirSync(tablesDir, { recursive: true })
 
   const emit = (path, contents) => writeFileSync(resolve(root, path), contents, 'utf8')

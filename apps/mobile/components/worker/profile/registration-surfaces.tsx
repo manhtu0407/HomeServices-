@@ -1,7 +1,7 @@
 import { useEffect, useReducer, useRef, type ReactNode } from 'react'
 import { Alert, Pressable, Text as RNText, View, type TextProps } from 'react-native'
 import * as ImagePicker from 'expo-image-picker'
-import { SERVICE_TYPES, type ServiceType, type WorkerRegisterInput, type WorkerRegistrationDraftInput } from '@nestscout/shared'
+import { SERVICE_TYPES, type ServiceType, type WorkerRegistrationDraftInput } from '@nestscout/shared'
 import Svg, { Circle, Path, Rect } from 'react-native-svg'
 
 import { KaelButton, KaelChip, KaelTextField } from '@/components/ui/kael-primitives'
@@ -20,6 +20,11 @@ import { styles } from './registration-styles'
 
 type WorkerV5Runtime = ReturnType<typeof useFrontendWorkflow>
 type WorkerVerificationFileSlot = 'cccdFront' | 'cccdBack' | 'selfie'
+const DOCUMENT_FIELDS = { cccdFront: 'cccd_front_url', cccdBack: 'cccd_back_url', selfie: 'selfie_url' } as const
+type DocumentUploadCache = {
+  ownerId: string
+  files: Partial<Record<WorkerVerificationFileSlot, { draft: LocalMediaUploadDraft; url: string }>>
+}
 
 type RegistrationState = {
   bankAccount: string
@@ -38,6 +43,7 @@ type RegistrationState = {
 }
 
 type RegistrationAction =
+  | { type: 'hydrate'; profile: WorkerProfileResponse }
   | { type: 'field'; field: RegistrationField; value: string }
   | { type: 'file'; file: LocalMediaUploadDraft; slot: WorkerVerificationFileSlot }
   | { type: 'service'; serviceType: ServiceType }
@@ -45,7 +51,7 @@ type RegistrationAction =
   | { type: 'submitting'; value: boolean }
   | { type: 'saveStatus'; value: RegistrationState['saveStatus'] }
 
-type RegistrationField = Exclude<keyof RegistrationState, 'files' | 'serviceTypes' | 'submitError' | 'submitting'>
+type RegistrationField = Exclude<keyof RegistrationState, 'files' | 'serviceTypes' | 'submitError' | 'submitting' | 'saveStatus'>
 
 function createRegistrationState(profile: WorkerProfileResponse | null) : RegistrationState {
   return {
@@ -61,12 +67,14 @@ function createRegistrationState(profile: WorkerProfileResponse | null) : Regist
     submitError: null,
     submitting: false,
     saveStatus: 'idle',
-    yearsExperience: profile?.years_experience ? String(profile.years_experience) : '',
+    yearsExperience: profile?.years_experience != null ? String(profile.years_experience) : '',
   }
 }
 
 function registrationReducer(state: RegistrationState, action: RegistrationAction): RegistrationState {
   switch (action.type) {
+    case 'hydrate':
+      return createRegistrationState(action.profile)
     case 'field':
       return { ...state, [action.field]: action.value, submitError: null }
     case 'file':
@@ -123,10 +131,35 @@ export function WorkerV5WorkerRegistrationBody({
 }) {
   const isDark = useWorkerThemeMode() === 'dark'
   const [state, dispatch] = useReducer(registrationReducer, profile, createRegistrationState)
-  const lastSavedDraftRef = useRef('')
-  const setField = (field: RegistrationField) => (value: string) => dispatch({ type: 'field', field, value })
+  const lastSavedDraftRef = useRef<string | null>(null)
+  if (lastSavedDraftRef.current === null) {
+    lastSavedDraftRef.current = JSON.stringify(validWorkerRegistrationDraft(createRegistrationState(profile)))
+  }
+  const submittingRef = useRef(false)
+  const editedRef = useRef(false)
+  const documentUploadRef = useRef<DocumentUploadCache | null>(null)
+  const phase = runtime.workerRegistrationRecovery?.phase ?? 'idle'
+  const savedDocuments = {
+    cccdFront: profile?.has_cccd_front ?? profile?.has_cccd ?? false,
+    cccdBack: profile?.has_cccd_back ?? profile?.has_cccd ?? false,
+    selfie: profile?.has_selfie ?? false,
+  }
+  const needsReconciliation = ['unknown', 'storage_error', 'reconciling'].includes(phase)
+  const locked = state.submitting || needsReconciliation || phase === 'saving'
+  const setField = (field: RegistrationField) => (value: string) => {
+    if (submittingRef.current || locked) return
+    editedRef.current = true
+    dispatch({ type: 'field', field, value })
+  }
 
   useEffect(() => {
+    if (!profile || editedRef.current || submittingRef.current) return
+    lastSavedDraftRef.current = JSON.stringify(validWorkerRegistrationDraft(createRegistrationState(profile)))
+    dispatch({ type: 'hydrate', profile })
+  }, [profile])
+
+  useEffect(() => {
+    if (locked || submittingRef.current) return
     const draft = validWorkerRegistrationDraft({
       bankAccount: state.bankAccount,
       bankName: state.bankName,
@@ -142,15 +175,17 @@ export function WorkerV5WorkerRegistrationBody({
     if (Object.keys(draft).length === 0 || serialized === lastSavedDraftRef.current) return
     dispatch({ type: 'saveStatus', value: 'saving' })
     const timer = setTimeout(() => {
+      if (submittingRef.current) return
       void runtime.actions.workerSaveRegistrationDraft(draft).then((saved) => {
         if (saved) lastSavedDraftRef.current = serialized
         dispatch({ type: 'saveStatus', value: saved ? 'saved' : 'error' })
       })
     }, 700)
     return () => clearTimeout(timer)
-  }, [runtime.actions, state.bankAccount, state.bankName, state.dateOfBirth, state.districts, state.legalName, state.problemSpecializations, state.serviceRadiusKm, state.serviceTypes, state.yearsExperience])
+  }, [locked, runtime.actions, state.bankAccount, state.bankName, state.dateOfBirth, state.districts, state.legalName, state.problemSpecializations, state.serviceRadiusKm, state.serviceTypes, state.yearsExperience])
 
   const pickFile = async (slot: WorkerVerificationFileSlot) => {
+    if (locked || submittingRef.current) return
     const result = await ImagePicker.launchImageLibraryAsync({
       allowsMultipleSelection: false,
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
@@ -158,7 +193,8 @@ export function WorkerV5WorkerRegistrationBody({
       selectionLimit: 1,
     })
     const asset = result.canceled ? null : result.assets[0]
-    if (!asset) return
+    if (!asset || submittingRef.current) return
+    editedRef.current = true
     dispatch({
       type: 'file',
       file: {
@@ -173,8 +209,13 @@ export function WorkerV5WorkerRegistrationBody({
   }
 
   const submit = async () => {
-    const years = Number.parseInt(state.yearsExperience, 10)
-    const radius = Number.parseInt(state.serviceRadiusKm, 10)
+    if (submittingRef.current) return
+    if (needsReconciliation) {
+      await runtime.actions.workerReconcileRegistration()
+      return
+    }
+    const years = state.yearsExperience.trim() ? Number(state.yearsExperience) : NaN
+    const radius = state.serviceRadiusKm.trim() ? Number(state.serviceRadiusKm) : NaN
     const districts = commaSeparatedValues(state.districts)
     const specializations = commaSeparatedValues(state.problemSpecializations)
     if (state.legalName.trim().length < 2 || !isPastDate(state.dateOfBirth)) {
@@ -185,45 +226,60 @@ export function WorkerV5WorkerRegistrationBody({
       dispatch({ type: 'error', value: textByLanguage(language, 'Bổ sung kinh nghiệm, khu vực, bán kính và ít nhất một dịch vụ.', 'Add experience, service area, radius, and at least one service.') })
       return
     }
-    if (!state.bankName.trim() || state.bankAccount.trim().length < 6) {
+    const reuseBank = Boolean(profile?.bank_account_masked && !state.bankAccount.trim() && state.bankName.trim() === profile.bank_name)
+    if (!reuseBank && (!state.bankName.trim() || state.bankAccount.trim().length < 6)) {
       dispatch({ type: 'error', value: textByLanguage(language, 'Nhập tên ngân hàng và số tài khoản hợp lệ.', 'Enter a valid bank name and account number.') })
       return
     }
-    if (!state.files.cccdFront || !state.files.cccdBack || !state.files.selfie) {
+    const reuseDocuments = Object.keys(state.files).length === 0
+    if ((!savedDocuments.cccdFront && !state.files.cccdFront) || (!savedDocuments.cccdBack && !state.files.cccdBack) || (!savedDocuments.selfie && !state.files.selfie)) {
       dispatch({ type: 'error', value: textByLanguage(language, 'Cần đủ ảnh mặt trước, mặt sau giấy tờ và ảnh chân dung.', 'Add the front, back, and selfie images before submitting.') })
       return
     }
 
     dispatch({ type: 'error', value: null })
+    submittingRef.current = true
     dispatch({ type: 'submitting', value: true })
     try {
-      const uploaded = await uploadWorkerVerificationDrafts({
-        cccdBack: state.files.cccdBack,
-        cccdFront: state.files.cccdFront,
-        selfie: state.files.selfie,
-      })
-      if (!uploaded.success) {
-        dispatch({ type: 'error', value: textByLanguage(language, 'Chưa thể tải giấy tờ lên. Hãy kiểm tra kết nối rồi thử lại.', 'The documents could not be uploaded. Check the connection and try again.') })
+      if (!profile?.id) {
+        dispatch({ type: 'error', value: textByLanguage(language, 'Chưa xác nhận được tài khoản sở hữu hồ sơ. Hãy chờ tải hồ sơ rồi thử lại.', 'Profile ownership is not confirmed. Wait for your profile to load and try again.') })
         return
       }
-      await runtime.actions.workerSaveRegistrationDraft(uploaded.urls)
-      const input: WorkerRegisterInput = {
-        bank_account: state.bankAccount.trim(),
-        bank_name: state.bankName.trim(),
-        cccd_back_url: uploaded.urls.cccd_back_url,
-        cccd_front_url: uploaded.urls.cccd_front_url,
+      const cache = documentUploadRef.current?.ownerId === profile.id
+        ? documentUploadRef.current : { ownerId: profile.id, files: {} } as DocumentUploadCache
+      documentUploadRef.current = cache
+      const selected = Object.entries(state.files) as [WorkerVerificationFileSlot, LocalMediaUploadDraft][]
+      const pending = selected.filter(([slot, draft]) => cache.files[slot]?.draft !== draft)
+      if (pending.length > 0) {
+        const uploaded = await uploadWorkerVerificationDrafts(Object.fromEntries(pending), profile.id)
+        if (!uploaded.success || pending.some(([slot]) => !uploaded.urls[DOCUMENT_FIELDS[slot]])) {
+          dispatch({ type: 'error', value: textByLanguage(language, 'Chưa thể tải giấy tờ lên. Hãy kiểm tra kết nối rồi thử lại.', 'The documents could not be uploaded. Check the connection and try again.') })
+          return
+        }
+        for (const [slot, draft] of pending) {
+          cache.files[slot] = { draft, url: uploaded.urls[DOCUMENT_FIELDS[slot]]! }
+        }
+      }
+      const documentRefs = Object.fromEntries(selected.map(([slot]) => [DOCUMENT_FIELDS[slot], cache.files[slot]!.url]))
+      const documentsSaved = reuseDocuments || await runtime.actions.workerSaveRegistrationDraft(documentRefs)
+      if (!documentsSaved) {
+        dispatch({ type: 'error', value: textByLanguage(language, 'Chưa xác nhận được việc lưu giấy tờ. Hãy kiểm tra kết nối rồi thử lại.', 'Document saving could not be confirmed. Check the connection and try again.') })
+        return
+      }
+      const input: WorkerRegistrationDraftInput = {
+        ...(reuseBank ? {} : { bank_account: state.bankAccount.trim(), bank_name: state.bankName.trim() }),
+        ...documentRefs,
         date_of_birth: state.dateOfBirth.trim(),
         districts,
         legal_name: state.legalName.trim(),
         problem_specializations: specializations,
         service_radius_km: radius,
         service_types: state.serviceTypes,
-        selfie_url: uploaded.urls.selfie_url,
         years_experience: years,
       }
       const saved = await runtime.actions.workerSubmitRegistration(input)
       if (!saved) {
-        dispatch({ type: 'error', value: textByLanguage(language, 'Chưa thể gửi hồ sơ. Hãy kiểm tra lại thông tin rồi thử lại.', 'The profile could not be submitted. Check the details and try again.') })
+        dispatch({ type: 'error', value: textByLanguage(language, 'Chưa xác nhận được kết quả gửi hồ sơ. Kiểm tra trạng thái trước khi thử lại.', 'Submission is not confirmed. Check the status before trying again.') })
         return
       }
       Alert.alert(
@@ -233,6 +289,7 @@ export function WorkerV5WorkerRegistrationBody({
     } catch {
       dispatch({ type: 'error', value: textByLanguage(language, 'Chưa thể gửi hồ sơ lúc này. Hãy thử lại sau.', 'The profile could not be submitted right now. Try again later.') })
     } finally {
+      submittingRef.current = false
       dispatch({ type: 'submitting', value: false })
     }
   }
@@ -261,31 +318,36 @@ export function WorkerV5WorkerRegistrationBody({
 
       <View style={styles.formGap}>
         <Field label={textByLanguage(language, 'Họ và tên', 'Legal name')}>
-          <KaelTextField accessibilityLabel={textByLanguage(language, 'Họ và tên', 'Legal name')} inputShellStyle={styles.fieldShell} onChangeText={setField('legalName')} placeholder={textByLanguage(language, 'Nhập đúng như giấy tờ', 'Enter the name on your document')} testID="worker-v5-registration-legal-name" value={state.legalName} />
+          <KaelTextField editable={!locked} accessibilityLabel={textByLanguage(language, 'Họ và tên', 'Legal name')} inputShellStyle={styles.fieldShell} onChangeText={setField('legalName')} placeholder={textByLanguage(language, 'Nhập đúng như giấy tờ', 'Enter the name on your document')} testID="worker-v5-registration-legal-name" value={state.legalName} />
         </Field>
         <View style={styles.formGap}>
           <Field label={textByLanguage(language, 'Ngày sinh', 'Date of birth')}>
-            <KaelTextField accessibilityLabel={textByLanguage(language, 'Ngày sinh', 'Date of birth')} inputShellStyle={styles.fieldShell} onChangeText={setField('dateOfBirth')} placeholder="YYYY-MM-DD" testID="worker-v5-registration-date-of-birth" value={state.dateOfBirth} />
+            <KaelTextField editable={!locked} accessibilityLabel={textByLanguage(language, 'Ngày sinh', 'Date of birth')} inputShellStyle={styles.fieldShell} onChangeText={setField('dateOfBirth')} placeholder="YYYY-MM-DD" testID="worker-v5-registration-date-of-birth" value={state.dateOfBirth} />
           </Field>
           <Field label={textByLanguage(language, 'Số năm kinh nghiệm', 'Years of experience')}>
-            <KaelTextField accessibilityLabel={textByLanguage(language, 'Số năm kinh nghiệm', 'Years of experience')} inputShellStyle={styles.fieldShell} keyboardType="number-pad" onChangeText={setField('yearsExperience')} placeholder="0" testID="worker-v5-registration-years" value={state.yearsExperience} />
+            <KaelTextField editable={!locked} accessibilityLabel={textByLanguage(language, 'Số năm kinh nghiệm', 'Years of experience')} inputShellStyle={styles.fieldShell} keyboardType="number-pad" onChangeText={setField('yearsExperience')} placeholder="0" testID="worker-v5-registration-years" value={state.yearsExperience} />
           </Field>
         </View>
         <Field label={textByLanguage(language, 'Khu vực nhận việc', 'Work area')}>
-          <KaelTextField accessibilityLabel={textByLanguage(language, 'Khu vực nhận việc', 'Work area')} inputShellStyle={styles.fieldShell} onChangeText={setField('districts')} placeholder={textByLanguage(language, 'Ví dụ: Quận 1, Bình Thạnh', 'Example: District 1, Binh Thanh')} testID="worker-v5-registration-districts" value={state.districts} />
+          <KaelTextField editable={!locked} accessibilityLabel={textByLanguage(language, 'Khu vực nhận việc', 'Work area')} inputShellStyle={styles.fieldShell} onChangeText={setField('districts')} placeholder={textByLanguage(language, 'Ví dụ: Quận 1, Bình Thạnh', 'Example: District 1, Binh Thanh')} testID="worker-v5-registration-districts" value={state.districts} />
         </Field>
         <Field label={textByLanguage(language, 'Bán kính nhận việc (km)', 'Work radius (km)')}>
-          <KaelTextField accessibilityLabel={textByLanguage(language, 'Bán kính nhận việc', 'Work radius')} inputShellStyle={styles.fieldShell} keyboardType="number-pad" onChangeText={setField('serviceRadiusKm')} placeholder="8" testID="worker-v5-registration-radius" value={state.serviceRadiusKm} />
+          <KaelTextField editable={!locked} accessibilityLabel={textByLanguage(language, 'Bán kính nhận việc', 'Work radius')} inputShellStyle={styles.fieldShell} keyboardType="number-pad" onChangeText={setField('serviceRadiusKm')} placeholder="8" testID="worker-v5-registration-radius" value={state.serviceRadiusKm} />
         </Field>
         <Field label={textByLanguage(language, 'Dịch vụ có thể nhận', 'Services you can provide')}>
           <View style={styles.serviceWrap} testID="worker-v5-registration-services">
             {SERVICE_TYPES.map((serviceType) => (
               <KaelChip
+                disabled={locked}
                 accessibilityLabel={localizedServiceLabel(serviceType, language)}
                 accessibilityState={{ selected: state.serviceTypes.includes(serviceType) }}
                 key={serviceType}
                 label={localizedServiceLabel(serviceType, language)}
-                onPress={() => dispatch({ type: 'service', serviceType })}
+                onPress={() => {
+                  if (locked || submittingRef.current) return
+                  editedRef.current = true
+                  dispatch({ type: 'service', serviceType })
+                }}
                 testID={`worker-v5-registration-service-${serviceType}`}
                 variant={state.serviceTypes.includes(serviceType) ? 'selected' : 'unselected'}
               />
@@ -293,12 +355,15 @@ export function WorkerV5WorkerRegistrationBody({
           </View>
         </Field>
         <Field label={textByLanguage(language, 'Mô tả kỹ năng chính', 'Main skills')}>
-          <KaelTextField accessibilityLabel={textByLanguage(language, 'Mô tả kỹ năng chính', 'Main skills')} inputShellStyle={styles.fieldShell} onChangeText={setField('problemSpecializations')} placeholder={textByLanguage(language, 'Ngăn cách bằng dấu phẩy', 'Separate items with commas')} testID="worker-v5-registration-specializations" value={state.problemSpecializations} />
+          <KaelTextField editable={!locked} accessibilityLabel={textByLanguage(language, 'Mô tả kỹ năng chính', 'Main skills')} inputShellStyle={styles.fieldShell} onChangeText={setField('problemSpecializations')} placeholder={textByLanguage(language, 'Ngăn cách bằng dấu phẩy', 'Separate items with commas')} testID="worker-v5-registration-specializations" value={state.problemSpecializations} />
         </Field>
         <Field label={textByLanguage(language, 'Tài khoản nhận tiền', 'Payout account')}>
           <View style={styles.formGap}>
-            <KaelTextField accessibilityLabel={textByLanguage(language, 'Tên ngân hàng', 'Bank name')} inputShellStyle={styles.fieldShell} onChangeText={setField('bankName')} placeholder={textByLanguage(language, 'Tên ngân hàng', 'Bank name')} testID="worker-v5-registration-bank-name" value={state.bankName} />
-            <KaelTextField accessibilityLabel={textByLanguage(language, 'Số tài khoản', 'Account number')} inputShellStyle={styles.fieldShell} keyboardType="number-pad" onChangeText={setField('bankAccount')} placeholder={textByLanguage(language, 'Số tài khoản', 'Account number')} secureTextEntry testID="worker-v5-registration-bank-account" value={state.bankAccount} />
+            {profile?.bank_account_masked && !state.bankAccount ? <RNText style={[styles.note, isDark ? styles.darkCopy : null]} testID="worker-v5-registration-bank-saved">
+              {textByLanguage(language, 'Đã có tài khoản nhận tiền được lưu. Chỉ nhập lại nếu muốn thay đổi.', 'A payout account is already saved. Enter new details only to change it.')}
+            </RNText> : null}
+            <KaelTextField editable={!locked} accessibilityLabel={textByLanguage(language, 'Tên ngân hàng', 'Bank name')} inputShellStyle={styles.fieldShell} onChangeText={setField('bankName')} placeholder={textByLanguage(language, 'Tên ngân hàng', 'Bank name')} testID="worker-v5-registration-bank-name" value={state.bankName} />
+            <KaelTextField editable={!locked} accessibilityLabel={textByLanguage(language, 'Số tài khoản', 'Account number')} inputShellStyle={styles.fieldShell} keyboardType="number-pad" onChangeText={setField('bankAccount')} placeholder={textByLanguage(language, 'Số tài khoản', 'Account number')} secureTextEntry testID="worker-v5-registration-bank-account" value={state.bankAccount} />
           </View>
         </Field>
       </View>
@@ -307,16 +372,19 @@ export function WorkerV5WorkerRegistrationBody({
         <RNText style={[styles.sectionTitle, isDark ? styles.darkTitle : null]}>{textByLanguage(language, 'Giấy tờ xác minh', 'Verification documents')}</RNText>
         <RNText style={[styles.note, isDark ? styles.darkCopy : null]}>{textByLanguage(language, 'Ảnh chỉ được gửi vào kho riêng để kiểm tra hồ sơ.', 'Images are sent to the private verification store for review.')}</RNText>
         <View style={styles.fileList}>
-          <VerificationFileRow dark={isDark} file={state.files.cccdFront} label={textByLanguage(language, 'Mặt trước giấy tờ', 'Document front')} onPress={() => void pickFile('cccdFront')} testID="worker-v5-registration-cccd-front" />
-          <VerificationFileRow dark={isDark} file={state.files.cccdBack} label={textByLanguage(language, 'Mặt sau giấy tờ', 'Document back')} onPress={() => void pickFile('cccdBack')} testID="worker-v5-registration-cccd-back" />
-          <VerificationFileRow dark={isDark} file={state.files.selfie} label={textByLanguage(language, 'Ảnh chân dung', 'Selfie')} onPress={() => void pickFile('selfie')} testID="worker-v5-registration-selfie" />
+          <VerificationFileRow dark={isDark} disabled={locked} language={language} saved={savedDocuments.cccdFront} file={state.files.cccdFront} label={textByLanguage(language, 'Mặt trước giấy tờ', 'Document front')} onPress={() => void pickFile('cccdFront')} testID="worker-v5-registration-cccd-front" />
+          <VerificationFileRow dark={isDark} disabled={locked} language={language} saved={savedDocuments.cccdBack} file={state.files.cccdBack} label={textByLanguage(language, 'Mặt sau giấy tờ', 'Document back')} onPress={() => void pickFile('cccdBack')} testID="worker-v5-registration-cccd-back" />
+          <VerificationFileRow dark={isDark} disabled={locked} language={language} saved={savedDocuments.selfie} file={state.files.selfie} label={textByLanguage(language, 'Ảnh chân dung', 'Selfie')} onPress={() => void pickFile('selfie')} testID="worker-v5-registration-selfie" />
         </View>
       </View>
 
       {state.submitError ? <RNText style={styles.error} testID="worker-v5-registration-error">{state.submitError}</RNText> : null}
+      {phase !== 'idle' ? <RNText accessibilityLiveRegion="polite" style={[styles.note, isDark ? styles.darkCopy : null]} testID="worker-v5-registration-recovery-status">
+        {registrationRecoveryStatus(language, phase)}
+      </RNText> : null}
       <KaelButton
-        disabled={state.submitting}
-        label={state.submitting ? textByLanguage(language, 'Đang gửi hồ sơ', 'Submitting profile') : textByLanguage(language, 'Gửi hồ sơ để kiểm tra', 'Submit for review')}
+        disabled={state.submitting || phase === 'reconciling' || phase === 'saving'}
+        label={state.submitting ? textByLanguage(language, 'Đang gửi hồ sơ', 'Submitting profile') : needsReconciliation ? textByLanguage(language, 'Kiểm tra kết quả', 'Check submission status') : textByLanguage(language, 'Gửi hồ sơ để kiểm tra', 'Submit for review')}
         loading={state.submitting}
         onPress={() => void submit()}
         style={styles.submit}
@@ -336,18 +404,37 @@ function Field({ children, label }: { children: ReactNode; label: string }) {
   )
 }
 
-function VerificationFileRow({ dark, file, label, onPress, testID }: { dark: boolean; file?: LocalMediaUploadDraft; label: string; onPress: () => void; testID: string }) {
+function registrationRecoveryStatus(language: AppLanguage, phase: WorkerV5Runtime['workerRegistrationRecovery']['phase']) {
+  switch (phase) {
+    case 'storage_error':
+      return textByLanguage(language, 'Không đọc hoặc lưu được trạng thái gửi hồ sơ trên thiết bị. Chưa thể xác nhận kết quả. Kiểm tra lại; nếu lỗi còn lặp lại, liên hệ hỗ trợ.', 'The submission state could not be read or saved on this device. The outcome is not confirmed. Check again; if the issue persists, contact support.')
+    case 'draft_error':
+      return textByLanguage(language, 'Chưa xác nhận được việc lưu hồ sơ; chưa gửi yêu cầu xét duyệt mới. Kiểm tra kết nối rồi thử lại.', 'Profile saving is not confirmed; no new review request was sent. Check your connection and try again.')
+    case 'submitted':
+      return textByLanguage(language, 'Đã có biên nhận gửi hồ sơ. Trạng thái xét duyệt được cập nhật riêng.', 'A submission receipt is available. Review status is updated separately.')
+    case 'rejected':
+      return textByLanguage(language, 'Lần gửi này chưa được chấp nhận. Kiểm tra lại hồ sơ trước khi gửi lần mới.', 'This submission was not accepted. Check your profile before submitting again.')
+    case 'unknown':
+    case 'reconciling':
+      return textByLanguage(language, 'Đang đối soát yêu cầu gửi hồ sơ. Chưa cần gửi lại giấy tờ.', 'Checking the submission outcome. Do not upload the documents again yet.')
+    default:
+      return textByLanguage(language, 'Đang lưu hồ sơ trước khi gửi.', 'Saving the profile before submission.')
+  }
+}
+
+function VerificationFileRow({ dark, disabled, language, saved, file, label, onPress, testID }: { dark: boolean; disabled: boolean; language: AppLanguage; saved?: boolean; file?: LocalMediaUploadDraft; label: string; onPress: () => void; testID: string }) {
   return (
     <Pressable
       accessibilityLabel={label}
       accessibilityRole="button"
-      accessibilityState={{ selected: Boolean(file) }}
+      accessibilityState={{ disabled, selected: Boolean(file || saved) }}
+      disabled={disabled}
       onPress={onPress}
       style={({ pressed }) => [styles.fileRow, dark ? styles.fileRowDark : null, pressed ? styles.fileRowPressed : null]}
       testID={testID}
     >
       <RNText style={[styles.fileTitle, dark ? styles.darkTitle : null]}>{label}</RNText>
-      <RNText numberOfLines={1} style={[styles.fileStatus, dark ? styles.fileStatusDark : null]}>{file?.fileName ?? 'Chọn ảnh'}</RNText>
+      <RNText style={[styles.fileStatus, dark ? styles.fileStatusDark : null]}>{file ? textByLanguage(language, 'Đã chọn ảnh', 'Image selected') : saved ? textByLanguage(language, 'Đã lưu giấy tờ', 'Document saved') : textByLanguage(language, 'Chọn ảnh', 'Choose image')}</RNText>
     </Pressable>
   )
 }
@@ -363,8 +450,8 @@ type RegistrationDraftState = Pick<RegistrationState, 'bankAccount' | 'bankName'
 
 function validWorkerRegistrationDraft(state: RegistrationDraftState): WorkerRegistrationDraftInput {
   const draft: WorkerRegistrationDraftInput = {}
-  const years = Number.parseInt(state.yearsExperience, 10)
-  const radius = Number.parseInt(state.serviceRadiusKm, 10)
+  const years = state.yearsExperience.trim() ? Number(state.yearsExperience) : NaN
+  const radius = state.serviceRadiusKm.trim() ? Number(state.serviceRadiusKm) : NaN
   const districts = commaSeparatedValues(state.districts)
   const specializations = commaSeparatedValues(state.problemSpecializations)
   if (state.legalName.trim().length >= 2) draft.legal_name = state.legalName.trim()
@@ -374,15 +461,17 @@ function validWorkerRegistrationDraft(state: RegistrationDraftState): WorkerRegi
   if (Number.isInteger(radius) && radius >= 1 && radius <= 30) draft.service_radius_km = radius
   if (state.serviceTypes.length > 0) draft.service_types = state.serviceTypes
   if (specializations.length > 0) draft.problem_specializations = specializations
-  if (state.bankName.trim().length >= 2) draft.bank_name = state.bankName.trim()
-  if (state.bankAccount.trim().length >= 6) draft.bank_account = state.bankAccount.trim()
+  if (state.bankName.trim().length >= 2 && state.bankAccount.trim().length >= 6) {
+    draft.bank_name = state.bankName.trim()
+    draft.bank_account = state.bankAccount.trim()
+  }
   return draft
 }
 
 function registrationSaveStatus(language: AppLanguage, status: RegistrationState['saveStatus']) {
   if (status === 'saving') return textByLanguage(language, 'Đang tự lưu tiến độ…', 'Saving progress…')
   if (status === 'saved') return textByLanguage(language, 'Đã tự lưu tiến độ.', 'Progress saved.')
-  if (status === 'error') return textByLanguage(language, 'Chưa lưu. Dữ liệu vẫn còn trên thiết bị.', 'Not saved. Your data remains on this device.')
+  if (status === 'error') return textByLanguage(language, 'Chưa xác nhận được việc lưu. Giữ màn hình mở và kiểm tra kết nối.', 'Saving is not confirmed. Keep this screen open and check your connection.')
   return textByLanguage(language, 'Tiến độ hợp lệ sẽ được tự lưu.', 'Valid progress is saved automatically.')
 }
 

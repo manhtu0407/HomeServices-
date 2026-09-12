@@ -1,8 +1,7 @@
-// Edge service customer-cancellation domain (C4 6a, services/* split): customer cancel flows —
-// early cancel-before-accept (cancelJob) + the Phase-0 cancellation request with autonomy gating,
-// preview, classification + worker-goodwill outcome. Imported by services.ts for wiring.
+// Paid cancellation requests preserve the paid transaction and enter audited dispute review.
 
-import { asBoolean, asCustomerCancellationAbuseSignals, asCustomerCancellationSubCase, asJobStatus, asString, nullableRecord, nullableString } from "../../platform/coercions.ts";
+import { z } from "zod";
+import { asBoolean, asCustomerCancellationAbuseSignals, asCustomerCancellationSubCase, asString, nullableRecord, nullableString } from "../../platform/coercions.ts";
 import { db, dbQuery, type DbClient } from "../../platform/db.ts";
 import { mapCancelError, mapCustomerCancellationError } from "../../platform/domain-error-mappers.ts";
 import { logJobEvent } from "../../platform/audit.ts";
@@ -15,6 +14,8 @@ import { requireNonOperatorWorkflowRole } from "../../platform/authz/workflow-ro
 import { validateWorkflowCommand, validateWorkflowTransition } from "../../workflow-orchestrator.ts";
 import { buildCustomerCancellationPhase0Outcome, buildKaelAutonomyDecision, classifyCustomerCancellationReason, customerCancellationAbuseFromSignals, recordCustomerCancellationReview, type CustomerCancellationSubCase } from "../../kael/index.ts";
 import type { JobStatus, CustomerCancellationRequestInput } from "../../../../_shared/domain.ts";
+import { JOB_STATUSES } from "../../../../_shared/domain.ts";
+import { requestPaidCancellationReview } from "../payment/refund-obligations.ts";
 
 type CustomerCancellationPreview = {
   subCase: CustomerCancellationSubCase;
@@ -22,12 +23,45 @@ type CustomerCancellationPreview = {
   to: JobStatus;
 };
 
+const cancellationReceiptSchema = z.object({
+  ok: z.literal(true), error_code: z.null(),
+  cancellation_id: z.string().uuid(), job_id_out: z.string().uuid(),
+  job_status: z.enum(["cancelled", "completed_by_worker"]),
+  sub_case: z.enum(["before_a7", "after_a7_before_worker_accept", "after_worker_accept",
+    "after_worker_completed_trigger_dispute", "scheduled_job"]),
+  reason_code: z.string().min(1), reason_category: z.string().min(1),
+  worker_id_out: z.string().uuid().nullable(), admin_review_required: z.boolean(),
+  phase0_no_monetary_penalty: z.literal(true),
+  worker_goodwill: z.record(z.string(), z.unknown()).nullable(), abuse_signals: z.array(z.string()),
+  created_at_ts: z.string().datetime({ offset: true }),
+});
+
+const existingCancellationSchema = cancellationReceiptSchema.omit({
+  ok: true, error_code: true, cancellation_id: true, job_id_out: true, job_status: true,
+  worker_id_out: true, created_at_ts: true,
+}).extend({
+  id: z.string().uuid(), job_id: z.string().uuid(), customer_id: z.string().uuid(),
+  status: z.enum(["requested", "dispute_pending"]), worker_id: z.string().uuid().nullable(),
+  created_at: z.string().datetime({ offset: true }),
+});
+
+const directCancellationReceiptSchema = z.object({
+  ok: z.literal(true), error_code: z.null(), job_status: z.literal("cancelled"),
+  cancelled_at_ts: z.string().datetime({ offset: true }),
+});
+
+function cancellationOutcomeUnknown(): never {
+  apiFailure("CANCELLATION_OUTCOME_UNKNOWN", "Chưa xác định được kết quả hủy. Vui lòng tải lại trạng thái để đối soát.",
+    503, { reconcile_required: true });
+}
+
 export async function cancelJob(ctx: MobileApiContext, jobId: string) {
   const client = db(ctx);
   const job = await requireJobAccess(client, jobId, ctx, {
     requiredRole: "customer",
     select: "id, status, customer_id",
   });
+  if (job.status === "cancelled") return { job_id: jobId, status: "cancelled" as const };
   const transition = validateWorkflowTransition({
     event: "cancel_requested",
     from: job.status as JobStatus,
@@ -41,10 +75,12 @@ export async function cancelJob(ctx: MobileApiContext, jobId: string) {
       p_customer_id: ctx.user.id,
     }),
   );
-  if (result.error) apiFailure("DB_ERROR", "Không thể hủy yêu cầu", 500);
+  if (result.error) cancellationOutcomeUnknown();
   const row = result.data?.[0];
-  if (!row) apiFailure("DB_ERROR", "Không thể hủy yêu cầu", 500);
-  if (!row.ok) mapCancelError(nullableString(row.error_code));
+  if (!row || !Array.isArray(result.data) || result.data.length !== 1) cancellationOutcomeUnknown();
+  if (row.ok === false) mapCancelError(nullableString(row.error_code));
+  const parsed = directCancellationReceiptSchema.safeParse(row);
+  if (!parsed.success) cancellationOutcomeUnknown();
 
   await logJobEvent(
     client,
@@ -54,7 +90,7 @@ export async function cancelJob(ctx: MobileApiContext, jobId: string) {
     job.status as JobStatus,
     "cancelled",
   );
-  return { job_id: jobId, status: row.job_status as JobStatus };
+  return { job_id: jobId, status: parsed.data.job_status };
 }
 
 export async function requestCustomerCancellation(
@@ -67,6 +103,9 @@ export async function requestCustomerCancellation(
     requiredRole: "customer",
     select: "id, status, customer_id, worker_id, scheduled_at",
   });
+  if (job.status === "paid" || job.status === "reviewed") {
+    return requestPaidCancellationReview(ctx, jobId, input);
+  }
   const command = validateWorkflowCommand({
     event: "customer_cancellation_requested",
     status: job.status as JobStatus,
@@ -105,26 +144,35 @@ export async function requestCustomerCancellation(
     }),
   );
   if (result.error) {
-    apiFailure("DB_ERROR", "Không thể gửi yêu cầu hủy", 500);
+    cancellationOutcomeUnknown();
   }
   const row = result.data?.[0];
-  if (!row) apiFailure("DB_ERROR", "Không thể gửi yêu cầu hủy", 500);
-  if (!row.ok) {
+  if (!row || !Array.isArray(result.data) || result.data.length !== 1) cancellationOutcomeUnknown();
+  if (row.ok === false) {
     const errorCode = nullableString(row.error_code);
     if (errorCode === "ALREADY_REQUESTED") {
+      const status = z.enum(JOB_STATUSES).safeParse(row.job_status);
+      if (!status.success) cancellationOutcomeUnknown();
       const existing = await readExistingCustomerCancellation({
         client,
         ctx,
         jobId,
         request: input,
-        jobStatus: asJobStatus(row.job_status ?? job.status),
+        jobStatus: status.data,
       });
       if (existing) return existing;
+      cancellationOutcomeUnknown();
     }
     mapCustomerCancellationError(errorCode);
   }
+  const parsed = cancellationReceiptSchema.safeParse(row);
+  if (!parsed.success || parsed.data.job_id_out !== jobId || parsed.data.reason_code !== input.reason_code ||
+    parsed.data.job_status !== (parsed.data.sub_case === "after_worker_completed_trigger_dispute"
+      ? "completed_by_worker" : "cancelled")) {
+    cancellationOutcomeUnknown();
+  }
   return finalizeCustomerCancellationRequest({
-    client, ctx, job, jobId, request: input, preAutonomy, row,
+    client, ctx, job, jobId, request: input, preAutonomy, row: parsed.data,
   });
 }
 
@@ -138,7 +186,7 @@ async function readExistingCustomerCancellation(input: {
   const existing = await dbQuery<Record<string, unknown>>(
     input.client
       .from("customer_cancellation_records")
-      .select("id, status, job_id, sub_case, reason_code, reason_category, worker_id, admin_review_required, phase0_no_monetary_penalty, worker_goodwill, abuse_signals, created_at")
+      .select("id, status, job_id, customer_id, sub_case, reason_code, reason_category, worker_id, admin_review_required, phase0_no_monetary_penalty, worker_goodwill, abuse_signals, created_at")
       .eq("job_id", input.jobId)
       .eq("customer_id", input.ctx.user.id)
       .in("status", ["requested", "dispute_pending"])
@@ -146,10 +194,16 @@ async function readExistingCustomerCancellation(input: {
       .limit(1)
       .maybeSingle(),
   );
-  if (existing.error || !existing.data) return null;
-  const cancellationId = asString(existing.data.id);
-  const subCase = asCustomerCancellationSubCase(existing.data.sub_case);
-  const reasonCode = nullableString(existing.data.reason_code) ?? input.request.reason_code;
+  if (existing.error) cancellationOutcomeUnknown();
+  if (!existing.data) return null;
+  const parsed = existingCancellationSchema.safeParse(existing.data);
+  if (!parsed.success || parsed.data.job_id !== input.jobId || parsed.data.customer_id !== input.ctx.user.id) {
+    cancellationOutcomeUnknown();
+  }
+  const record = parsed.data;
+  const cancellationId = record.id;
+  const subCase = record.sub_case;
+  const reasonCode = record.reason_code;
   await recordCustomerCancellationReview(input.client, {
     jobId: input.jobId, customerId: input.ctx.user.id, cancellationId,
   }).catch(() => {
@@ -164,16 +218,16 @@ async function readExistingCustomerCancellation(input: {
     job_status: input.jobStatus,
     sub_case: subCase,
     reason_code: reasonCode,
-    reason_category: nullableString(existing.data.reason_category) ?? "needs_admin_review",
-    admin_review_required: asBoolean(existing.data.admin_review_required),
-    phase0_no_monetary_penalty: asBoolean(existing.data.phase0_no_monetary_penalty),
-    worker_goodwill: nullableRecord(existing.data.worker_goodwill) ??
+    reason_category: record.reason_category,
+    admin_review_required: record.admin_review_required,
+    phase0_no_monetary_penalty: record.phase0_no_monetary_penalty,
+    worker_goodwill: record.worker_goodwill ??
       buildCustomerCancellationPhase0Outcome({
-        subCase, reasonCode, workerId: nullableString(existing.data.worker_id),
+        subCase, reasonCode, workerId: record.worker_id,
       }).workerGoodwill,
-    abuse_signals: asCustomerCancellationAbuseSignals(existing.data.abuse_signals),
+    abuse_signals: asCustomerCancellationAbuseSignals(record.abuse_signals),
     message: "Yêu cầu hủy đang được xử lý.",
-    created_at: asString(existing.data.created_at),
+    created_at: record.created_at,
   };
 }
 
@@ -201,8 +255,8 @@ async function finalizeCustomerCancellationRequest(input: {
   const workerIdFromRow = nullableString(input.row.worker_id_out);
   const workerGoodwill = nullableRecord(input.row.worker_goodwill) ??
     buildCustomerCancellationPhase0Outcome({ subCase, reasonCode, workerId: workerIdFromRow }).workerGoodwill;
-  const jobStatus = input.row.job_status as JobStatus | undefined;
-  const resultingJobStatus = jobStatus ?? "cancelled";
+  const jobStatus = input.row.job_status as JobStatus;
+  const resultingJobStatus = jobStatus;
   const autonomyDecision = input.preAutonomy?.decision ?? null;
   const autonomyRun = input.preAutonomy?.run ?? null;
   await logCustomerCancellationEvents({
@@ -227,7 +281,7 @@ async function finalizeCustomerCancellationRequest(input: {
     phase0_no_monetary_penalty: true, worker_goodwill: workerGoodwill, abuse_signals: abuseSignals,
     message: subCase === "after_worker_completed_trigger_dispute"
       ? "Đã ghi nhận hủy sau hoàn tất để chuyển sang kiểm tra tranh chấp."
-      : "Đã ghi nhận yêu cầu hủy. Phase 0 không tự tính phí hủy.",
+      : "Đã ghi nhận yêu cầu hủy. Không tự động tính phí hủy.",
     created_at: asString(input.row.created_at_ts),
   };
 }

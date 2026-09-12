@@ -30,9 +30,12 @@ export function buildMobileBinaryAttestation(input) {
     const artifactPath = input.artifactPaths?.[platform]
     const artifactBytes = input.artifactBytes?.[platform] ??
       (artifactPath ? readFileSync(resolveReleaseArtifactPath(ROOT, artifactPath)) : null)
-    if (!UUID.test(build?.id ?? '') || !SHA256.test(fingerprint ?? '') ||
-        !artifactBytes || !UUID.test(build.id)) {
+    const fingerprintAlgorithm = easFingerprintAlgorithm(fingerprint)
+    if (!UUID.test(build?.id ?? '') || !fingerprintAlgorithm) {
       throw new Error(`EAS ${platform} build identity or fingerprint is invalid`)
+    }
+    if (!(artifactBytes instanceof Uint8Array) || artifactBytes.byteLength === 0) {
+      throw new Error(`EAS ${platform} artifact must contain downloaded binary bytes`)
     }
     platforms[platform] = {
       easBuildId: build.id.toLowerCase(),
@@ -41,15 +44,17 @@ export function buildMobileBinaryAttestation(input) {
       buildNumber: policy.buildNumber,
       runtimeVersion: build.runtimeVersion,
       gitCommitHash: build.gitCommitHash,
-      fingerprintSha256: fingerprint.toLowerCase(),
+      easFingerprintAlgorithm: fingerprintAlgorithm,
+      easFingerprintHash: fingerprint,
       artifactSha256: sha256(artifactBytes),
+      artifactSizeBytes: artifactBytes.byteLength,
       completedAt: build.completedAt,
       distribution: 'store',
       profile: 'production',
     }
   }
   const receipt = {
-    schemaVersion: 'stage1-mobile-binary-attestation.v1',
+    schemaVersion: 'stage1-mobile-binary-attestation.v2',
     releaseId: release.releaseId,
     gitSha: release.gitSha,
     sourceFingerprintSha256: release.mobileBuildFingerprintSha256,
@@ -68,7 +73,7 @@ export function selectExactEasBuilds(release, builds) {
   const selected = {}
   for (const platform of ['ios', 'android']) {
     const policy = PLATFORM_POLICY[platform]
-    const matches = (Array.isArray(builds) ? builds : []).filter((build) =>
+    const matches = (Array.isArray(builds) ? builds : []).map(normalizeEasBuildIdentity).filter((build) =>
       normalizePlatform(build?.platform) === platform &&
       String(build?.status ?? '').toUpperCase() === 'FINISHED' &&
       String(build?.distribution ?? '').toUpperCase() === 'STORE' &&
@@ -83,7 +88,7 @@ export function selectExactEasBuilds(release, builds) {
 
 export function verifyMobileBinaryAttestation(receipt, release) {
   const problems = []
-  if (receipt?.schemaVersion !== 'stage1-mobile-binary-attestation.v1' ||
+  if (receipt?.schemaVersion !== 'stage1-mobile-binary-attestation.v2' ||
       receipt?.contractEpoch !== 2 || !/^harness-[0-9a-f]{12}-[0-9a-f]{12}$/u.test(receipt?.releaseId ?? '') ||
       !/^[0-9a-f]{40}$/u.test(receipt?.gitSha ?? '') || !SHA256.test(receipt?.sourceFingerprintSha256 ?? '') ||
       !Number.isFinite(Date.parse(receipt?.generatedAt ?? ''))) {
@@ -100,7 +105,10 @@ export function verifyMobileBinaryAttestation(receipt, release) {
         value?.appVersion !== '0.2.0' || value?.buildNumber !== policy.buildNumber ||
         value?.runtimeVersion !== '0.2.0' || value?.gitCommitHash !== receipt?.gitSha ||
         value?.distribution !== 'store' || value?.profile !== 'production' ||
-        !SHA256.test(value?.fingerprintSha256 ?? '') || !SHA256.test(value?.artifactSha256 ?? '') ||
+        !easFingerprintAlgorithm(value?.easFingerprintHash) ||
+        value?.easFingerprintAlgorithm !== easFingerprintAlgorithm(value?.easFingerprintHash) ||
+        !SHA256.test(value?.artifactSha256 ?? '') ||
+        !Number.isSafeInteger(value?.artifactSizeBytes) || value.artifactSizeBytes < 1 ||
         !Number.isFinite(Date.parse(value?.completedAt ?? ''))) {
       problems.push(`mobile ${platform} binary evidence is invalid`)
     }
@@ -115,6 +123,22 @@ export function verifyMobileBinaryAttestation(receipt, release) {
 function normalizePlatform(value) {
   const normalized = String(value ?? '').toLowerCase()
   return normalized === 'ios' || normalized === 'android' ? normalized : null
+}
+
+function normalizeEasBuildIdentity(build) {
+  if (!build || typeof build !== 'object' || Array.isArray(build)) return null
+  const runtimeVersion = Object.hasOwn(build, 'runtime') ? build.runtime?.version : build.runtimeVersion
+  const applicationIdentifier = Object.hasOwn(build, 'appIdentifier') ? build.appIdentifier : build.applicationIdentifier
+  if ((build.runtimeVersion !== undefined && build.runtimeVersion !== runtimeVersion) ||
+      (build.applicationIdentifier !== undefined && build.applicationIdentifier !== applicationIdentifier)) return null
+  return { ...build, runtimeVersion, applicationIdentifier }
+}
+
+function easFingerprintAlgorithm(value) {
+  if (typeof value !== 'string') return null
+  if (/^[0-9a-f]{40}$/u.test(value)) return 'sha1'
+  if (SHA256.test(value)) return 'sha256'
+  return null
 }
 
 function canonicalJson(value) {

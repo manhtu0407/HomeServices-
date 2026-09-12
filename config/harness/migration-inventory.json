@@ -2,10 +2,10 @@
   "version": "1.1.0",
   "historicalBaseline": {
     "file": "config/harness/migration-baseline.json",
-    "immutableThroughVersion": "20260805090000",
-    "sha256": "7d4ac8a8227452e357caa11a21ece9099c80112712dba9a250114d0761a90275"
+    "immutableThroughVersion": "20260904113000",
+    "sha256": "12da2bac288e0e718e61a27653e8cba9ffdb13b8e9900979407d41e1217b2077"
   },
-  "migrationCount": 336,
+  "migrationCount": 391,
   "migrationEquivalences": {
     "version": "1.0.0",
     "groups": [
@@ -74,10 +74,10 @@
       }
     ]
   },
-  "migrationsSha256": "2ee6b8e57f33564bcd79a51fbf525ba24addd7176f4aba68a1aeb5562639dabb",
+  "migrationsSha256": "29880b2f8d80d6643c3ebdc956a0afe9e39d6970b8d542e2b2f4517c865e6c78",
   "databaseTypes": {
     "file": "packages/shared/src/types/database",
-    "sha256": "4f764348afa10a5a0eef3665787063430cee6d0d7f2669db88f8c079d608c4a3"
+    "sha256": "86bad2d743bb893b26c071b0b3cb62481836963a885068dc43ccb4dbe47e1cf2"
   },
   "entries": [
     {
@@ -2431,6 +2431,391 @@
       "file": "supabase/migrations/20260904113000_stage1_price_governance_lifecycle_compatibility.sql",
       "sha256": "27db18d932ad986150cb767a71d1af14a2b36b81fb6589dc7ecc174c7ed502c0",
       "bytes": 5625
+    },
+    {
+      "version": "20260904230000",
+      "name": "public_coverage_capacity_reservation",
+      "file": "supabase/migrations/20260904230000_public_coverage_capacity_reservation.sql",
+      "sha256": "3f50e7a9cdc99f8f651a34cc65033ca1b7f2853ef9632d347992c44c74c14f09",
+      "bytes": 25953
+    },
+    {
+      "version": "20260904231000",
+      "name": "canonical_completion_payment_authority",
+      "file": "supabase/migrations/20260904231000_canonical_completion_payment_authority.sql",
+      "sha256": "b76f4f53238c2ec175c1b2de538fa518ce917d2c94825d8d170046db8a0c9082",
+      "bytes": 9769
+    },
+    {
+      "version": "20260904232000",
+      "name": "synthetic_terminal_transaction_proof",
+      "file": "supabase/migrations/20260904232000_synthetic_terminal_transaction_proof.sql",
+      "sha256": "22103dd8fc28907343d635e3b1196986d78449ea90a276d50274e223284b922f",
+      "bytes": 17756
+    },
+    {
+      "version": "20260904233000",
+      "name": "workflow_recovery_capacity_reconciliation",
+      "file": "supabase/migrations/20260904233000_workflow_recovery_capacity_reconciliation.sql",
+      "sha256": "4aac076be7e101cdc2ab23a68761dea184b0102607b9798344ff9e1783e5010b",
+      "bytes": 20824
+    },
+    {
+      "version": "20260904234000",
+      "name": "worker_application_readiness",
+      "file": "supabase/migrations/20260904234000_worker_application_readiness.sql",
+      "sha256": "4b4a915da542362a2404b9da91e2726a03572bc3de094acf03941db17c599af4",
+      "bytes": 5357
+    },
+    {
+      "version": "20260905100000",
+      "name": "retire_direct_payment_eligibility",
+      "file": "supabase/migrations/20260905100000_retire_direct_payment_eligibility.sql",
+      "sha256": "a6bae2f8de7174bbdf8c00af6986d6a7a41411c45e735faa2473fb63c586bb82",
+      "bytes": 132
+    },
+    {
+      "version": "20260905101000",
+      "name": "completion_media_attachment_guard",
+      "file": "supabase/migrations/20260905101000_completion_media_attachment_guard.sql",
+      "sha256": "0c81ce8e93c4ac994017ef5448c88b5915a10335322be317fd8032e345f234e4",
+      "bytes": 1628
+    },
+    {
+      "version": "20260905102000",
+      "name": "worker_cancellation_matching_outbox",
+      "file": "supabase/migrations/20260905102000_worker_cancellation_matching_outbox.sql",
+      "sha256": "13ebfc2d05dd90984456a4ff37483eff021addb1e00c8e5a3284c2d4886249f1",
+      "bytes": 26874
+    },
+    {
+      "version": "20260905103000",
+      "name": "restore_worker_memory_preference_contract",
+      "file": "supabase/migrations/20260905103000_restore_worker_memory_preference_contract.sql",
+      "sha256": "df9bf61193cb24c9bdba45033f9a0f5d8180fa2a3d32d82c302d274015100186",
+      "bytes": 1998
+    },
+    {
+      "version": "20260905104000",
+      "name": "refund_obligation_integrity",
+      "file": "supabase/migrations/20260905104000_refund_obligation_integrity.sql",
+      "sha256": "2ed4920b57f526c43aef58509841c321d6788d045a2c2e8031080d9b1009b18a",
+      "bytes": 16165
+    },
+    {
+      "version": "20260905105000",
+      "name": "scope_decision_customer_authority",
+      "file": "supabase/migrations/20260905105000_scope_decision_customer_authority.sql",
+      "sha256": "3d9c0ac2b140a9117d0575515a67c376605795e2101566ba1ee6aa9ccc7107fb",
+      "bytes": 5885
+    },
+    {
+      "version": "20260905110000",
+      "name": "coverage_edge_read_authority",
+      "file": "supabase/migrations/20260905110000_coverage_edge_read_authority.sql",
+      "sha256": "dea5759a6dde3d5a34b1fa3aa0b2186d4462e94f4990addc14b9b22fe2ad25bd",
+      "bytes": 259
+    },
+    {
+      "version": "20260905113000",
+      "name": "finance_transaction_visibility",
+      "file": "supabase/migrations/20260905113000_finance_transaction_visibility.sql",
+      "sha256": "ea701bf29717b737a620d0c0c36351833d7f892275d43fdeea702d9f1c9d81c2",
+      "bytes": 4436
+    },
+    {
+      "version": "20260905114000",
+      "name": "finance_ledger_cohort_join",
+      "file": "supabase/migrations/20260905114000_finance_ledger_cohort_join.sql",
+      "sha256": "6d7045d370bd853a81129ebe9900ff4b1b3ddef5eb98f84491e37a68303ae53a",
+      "bytes": 595
+    },
+    {
+      "version": "20260905115000",
+      "name": "matching_candidate_capacity",
+      "file": "supabase/migrations/20260905115000_matching_candidate_capacity.sql",
+      "sha256": "af2348ced272b795c45868d4823bcf9f746db12da407a8ecc0ca6f4ec89c889f",
+      "bytes": 4940
+    },
+    {
+      "version": "20260905120000",
+      "name": "matching_candidate_price_authority",
+      "file": "supabase/migrations/20260905120000_matching_candidate_price_authority.sql",
+      "sha256": "51d88216f4233e60725de05c504ba887e7f07df762dbceb66b3e6471d8e7eeb9",
+      "bytes": 2231
+    },
+    {
+      "version": "20260905123000",
+      "name": "candidate_expiry_customer_authority",
+      "file": "supabase/migrations/20260905123000_candidate_expiry_customer_authority.sql",
+      "sha256": "1ed96813a94ac3f258886f979cfe01e1c4a108baf9e98dd8875530d6827a616a",
+      "bytes": 3740
+    },
+    {
+      "version": "20260905130000",
+      "name": "confirmation_outbox_state_authority",
+      "file": "supabase/migrations/20260905130000_confirmation_outbox_state_authority.sql",
+      "sha256": "6c97dd30cac373a6a283855a04268b1ba015d08d38d30ca378a49d4d99a9b162",
+      "bytes": 4655
+    },
+    {
+      "version": "20260905133000",
+      "name": "confirmation_final_attempt_recovery",
+      "file": "supabase/migrations/20260905133000_confirmation_final_attempt_recovery.sql",
+      "sha256": "b0aeb4395ef87c5273368a7a41dc5a386e1d4b1c3e7a7eb951d10a198567d11a",
+      "bytes": 5347
+    },
+    {
+      "version": "20260905140000",
+      "name": "matching_expiry_maintenance",
+      "file": "supabase/migrations/20260905140000_matching_expiry_maintenance.sql",
+      "sha256": "d89e1cb81051e9131cdde0ba70257f3ad30d1e347c57bb549f93fa3158f0764a",
+      "bytes": 8137
+    },
+    {
+      "version": "20260905143000",
+      "name": "matching_expired_receipt_scan",
+      "file": "supabase/migrations/20260905143000_matching_expired_receipt_scan.sql",
+      "sha256": "4ada9587eb9e050226b9b82eb2d3f6ee104e5c3d5567f6181558f45cca7b610a",
+      "bytes": 3891
+    },
+    {
+      "version": "20260905150000",
+      "name": "replacement_outbox_lease_authority",
+      "file": "supabase/migrations/20260905150000_replacement_outbox_lease_authority.sql",
+      "sha256": "3da42616a24fae547a96d038d34f59f2d360788f41f12a6625c7410cc311e49c",
+      "bytes": 15924
+    },
+    {
+      "version": "20260905153000",
+      "name": "customer_matching_retry_command",
+      "file": "supabase/migrations/20260905153000_customer_matching_retry_command.sql",
+      "sha256": "2a896a40710330364d2f3ea0acb43b1d8fa51129a8170117ca97181c2bdb1da4",
+      "bytes": 15783
+    },
+    {
+      "version": "20260905154000",
+      "name": "customer_matching_retry_dispatch",
+      "file": "supabase/migrations/20260905154000_customer_matching_retry_dispatch.sql",
+      "sha256": "14937a998d1dcd9f9c2461be2374a0d5941eb05b1ee851104233bc7adf0218d6",
+      "bytes": 29868
+    },
+    {
+      "version": "20260905155000",
+      "name": "retry_matching_capacity_authority",
+      "file": "supabase/migrations/20260905155000_retry_matching_capacity_authority.sql",
+      "sha256": "c273ffa257f82cb532f806603c2a90fff0270d2368cfecdff32840ab106d96ea",
+      "bytes": 670
+    },
+    {
+      "version": "20260905160000",
+      "name": "confirmation_activation_lease_authority",
+      "file": "supabase/migrations/20260905160000_confirmation_activation_lease_authority.sql",
+      "sha256": "f52d0653f0b4800abcfdd9c5c0ea8f284ee69f2f5ae83ae596f965a92b17afb5",
+      "bytes": 10258
+    },
+    {
+      "version": "20260905161000",
+      "name": "confirmation_activation_capacity_release",
+      "file": "supabase/migrations/20260905161000_confirmation_activation_capacity_release.sql",
+      "sha256": "5bec8e7ef5962fedca0bf3b707d3b53f57f9ddc4f75c09511ceabb116f7f577b",
+      "bytes": 11026
+    },
+    {
+      "version": "20260905162000",
+      "name": "confirmation_matching_intent",
+      "file": "supabase/migrations/20260905162000_confirmation_matching_intent.sql",
+      "sha256": "aa7ba76e4b91f8815425c01c9c7083319efdce103be0cef3e7722cffcb53891f",
+      "bytes": 14160
+    },
+    {
+      "version": "20260905162100",
+      "name": "confirmation_intent_dispatch_recovery",
+      "file": "supabase/migrations/20260905162100_confirmation_intent_dispatch_recovery.sql",
+      "sha256": "06972bd3c36115f91bb31e68c64f072bf97cf5103a629ead760a1aef269690e3",
+      "bytes": 2761
+    },
+    {
+      "version": "20260905163000",
+      "name": "durable_matching_preference_selection",
+      "file": "supabase/migrations/20260905163000_durable_matching_preference_selection.sql",
+      "sha256": "d1396993f5bac0a79c788a74e0e3c076edad40d971ea8e5455032198878d63d2",
+      "bytes": 13466
+    },
+    {
+      "version": "20260905170000",
+      "name": "durable_saved_worker_fallback",
+      "file": "supabase/migrations/20260905170000_durable_saved_worker_fallback.sql",
+      "sha256": "6aad83565fc3ba93511987537edf2208973bed377aa299e55d48e020785c5959",
+      "bytes": 25825
+    },
+    {
+      "version": "20260905171000",
+      "name": "unavailable_saved_worker_continuation",
+      "file": "supabase/migrations/20260905171000_unavailable_saved_worker_continuation.sql",
+      "sha256": "bc4547d25b9aa1a176174fb2efd49421bf899def110d3bae0d2d6fa9662137a3",
+      "bytes": 13840
+    },
+    {
+      "version": "20260906010000",
+      "name": "customer_cancellation_durable_projection",
+      "file": "supabase/migrations/20260906010000_customer_cancellation_durable_projection.sql",
+      "sha256": "7cd55e6f7d803277333b628e201e8152be1627afa447108d52b6af44c94055b3",
+      "bytes": 2306
+    },
+    {
+      "version": "20260906011000",
+      "name": "customer_cancellation_durable_notification",
+      "file": "supabase/migrations/20260906011000_customer_cancellation_durable_notification.sql",
+      "sha256": "20e6ef529cd18fd976aa894afdc1efc967d734054c01a974ccda7734ca8e4aa3",
+      "bytes": 3377
+    },
+    {
+      "version": "20260906012000",
+      "name": "customer_cancellation_actor_authority",
+      "file": "supabase/migrations/20260906012000_customer_cancellation_actor_authority.sql",
+      "sha256": "7fbb1925ebfb0c0cbf41fd2d615847f6eebefb4d2d24b743ac658983f704d04e",
+      "bytes": 17628
+    },
+    {
+      "version": "20260906013000",
+      "name": "customer_cancellation_proposal_retirement",
+      "file": "supabase/migrations/20260906013000_customer_cancellation_proposal_retirement.sql",
+      "sha256": "4bb0bf55d0d41753e3e42eba97047ce7ecd7b461dd2536e1f887d7d8e2375d4b",
+      "bytes": 2055
+    },
+    {
+      "version": "20260906014000",
+      "name": "worker_proposal_replay_authority",
+      "file": "supabase/migrations/20260906014000_worker_proposal_replay_authority.sql",
+      "sha256": "8617b8638e736ac16500f4a4a471820e7875c7e90424ce7b5fe7e565ef9c9f42",
+      "bytes": 7047
+    },
+    {
+      "version": "20260906015000",
+      "name": "customer_candidate_rejection_durable",
+      "file": "supabase/migrations/20260906015000_customer_candidate_rejection_durable.sql",
+      "sha256": "16c8399b7ee400ee74ff1849b1e0d44caf40c1a4136b0f97f11448b0efb085aa",
+      "bytes": 10221
+    },
+    {
+      "version": "20260906016000",
+      "name": "candidate_confirmation_identity",
+      "file": "supabase/migrations/20260906016000_candidate_confirmation_identity.sql",
+      "sha256": "663cfb7984401035a21632e7daeff2d440812d278a3ab668b42de88d3224d7fc",
+      "bytes": 7832
+    },
+    {
+      "version": "20260906017000",
+      "name": "candidate_expiry_durable_continuation",
+      "file": "supabase/migrations/20260906017000_candidate_expiry_durable_continuation.sql",
+      "sha256": "73a1fed08f80cf7225ef066b8c12ac02a06b9af714d2d1cde6f969d6e1868be8",
+      "bytes": 13619
+    },
+    {
+      "version": "20260906018000",
+      "name": "candidate_confirmation_expiry_projection",
+      "file": "supabase/migrations/20260906018000_candidate_confirmation_expiry_projection.sql",
+      "sha256": "7ffd4bc3ba54a3c12fe67198f778127656f71e13bf28893c7836f758590f9e37",
+      "bytes": 15045
+    },
+    {
+      "version": "20260906019000",
+      "name": "unavailable_candidate_durable_projection",
+      "file": "supabase/migrations/20260906019000_unavailable_candidate_durable_projection.sql",
+      "sha256": "f18c4d4b6a7432cd65b5a6504631ea1f04d4ed09afd262134fe085108d927c94",
+      "bytes": 15884
+    },
+    {
+      "version": "20260908010000",
+      "name": "official_match_durable_projection",
+      "file": "supabase/migrations/20260908010000_official_match_durable_projection.sql",
+      "sha256": "2d9fa8cc91cd2fdb9592dc5225ed79d385c75bc76b680ec9e6d2f29f020cdf1b",
+      "bytes": 22592
+    },
+    {
+      "version": "20260908011000",
+      "name": "official_match_push_dispatch",
+      "file": "supabase/migrations/20260908011000_official_match_push_dispatch.sql",
+      "sha256": "b985c28b968e373a5005be12037a35b7414c4da55b3d3a6bd977a4af7c9bcf96",
+      "bytes": 11630
+    },
+    {
+      "version": "20260908012000",
+      "name": "apartment_access_atomic_authorization",
+      "file": "supabase/migrations/20260908012000_apartment_access_atomic_authorization.sql",
+      "sha256": "fe40c802a881c91dfcf8171bf1c4456a835b6ea5a86c8a9843646dc3e6104cc2",
+      "bytes": 6494
+    },
+    {
+      "version": "20260908013000",
+      "name": "candidate_decision_receipt",
+      "file": "supabase/migrations/20260908013000_candidate_decision_receipt.sql",
+      "sha256": "bd17731b0c5c78a12477e6ea5c4050d9386af6ff3064680de3d3dd9f365ba4ca",
+      "bytes": 5605
+    },
+    {
+      "version": "20260908014000",
+      "name": "candidate_quote_slot_immutability",
+      "file": "supabase/migrations/20260908014000_candidate_quote_slot_immutability.sql",
+      "sha256": "36394d492c8eaef6d75409d31d72265b680e6158e3a32fdec9b41e340c1c25f7",
+      "bytes": 460
+    },
+    {
+      "version": "20260909010000",
+      "name": "worker_application_revision_lineage",
+      "file": "supabase/migrations/20260909010000_worker_application_revision_lineage.sql",
+      "sha256": "61a8ec881e0c8b45e3fdddff093c3e12c82c6ffb2d900d56f30e8e08049659b8",
+      "bytes": 6422
+    },
+    {
+      "version": "20260909011000",
+      "name": "worker_kyc_submission_immutability",
+      "file": "supabase/migrations/20260909011000_worker_kyc_submission_immutability.sql",
+      "sha256": "f9bad3732ab10296d60cd6bef4d06700feb6acba97047f4acc366a995be326e3",
+      "bytes": 13310
+    },
+    {
+      "version": "20260909012000",
+      "name": "worker_service_area_review_authority",
+      "file": "supabase/migrations/20260909012000_worker_service_area_review_authority.sql",
+      "sha256": "f0ef5b20786a3e5ec5ce538d9605c569153502c0734df7e742320b04cec0102a",
+      "bytes": 5654
+    },
+    {
+      "version": "20260909013000",
+      "name": "worker_service_area_radius_contract",
+      "file": "supabase/migrations/20260909013000_worker_service_area_radius_contract.sql",
+      "sha256": "b41d735fd99e76a06e5ba809ead54bcc9faf0f7cca119f27573d8ccce1f0d458",
+      "bytes": 5800
+    },
+    {
+      "version": "20260909014000",
+      "name": "worker_service_area_numeric_radius",
+      "file": "supabase/migrations/20260909014000_worker_service_area_numeric_radius.sql",
+      "sha256": "7ef42254016c71a7ab81fc71a3f811080cef3ae9cb9cf32b170167dd1fcc02d2",
+      "bytes": 5809
+    },
+    {
+      "version": "20260909015000",
+      "name": "worker_registration_commands",
+      "file": "supabase/migrations/20260909015000_worker_registration_commands.sql",
+      "sha256": "7492acdf3792b1dc34840447f50b278845ff0e0556bf384ca2880661caf8e263",
+      "bytes": 6546
+    },
+    {
+      "version": "20260909016000",
+      "name": "worker_registration_draft_revision",
+      "file": "supabase/migrations/20260909016000_worker_registration_draft_revision.sql",
+      "sha256": "388165073d4db39cfcde5db69b60883f9b2839240b829023a7f140d6c29a26f1",
+      "bytes": 657
+    },
+    {
+      "version": "20260910164636",
+      "name": "worker_profile_review_snapshot",
+      "file": "supabase/migrations/20260910164636_worker_profile_review_snapshot.sql",
+      "sha256": "7bd67c648420169c873a4ef0c846376a9414027f91317f430766a4fc5617c185",
+      "bytes": 6967
     }
   ]
 }

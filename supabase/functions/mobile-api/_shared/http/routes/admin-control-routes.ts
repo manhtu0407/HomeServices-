@@ -18,6 +18,19 @@ export type AdminControlRoute =
     roles: AdminReadRoles;
   }
   | { kind: "admin.operations.supportCases.list"; method: "GET"; roles: AdminReadRoles }
+  | { kind: "admin.operations.recoveryCases.list"; method: "GET"; roles: AdminReadRoles }
+  | {
+    kind: "admin.operations.recoveryCases.detail";
+    method: "GET";
+    recoveryCaseId: string;
+    roles: AdminReadRoles;
+  }
+  | {
+    kind: "admin.operations.recoveryCases.action";
+    method: "POST";
+    recoveryCaseId: string;
+    roles: AdminReadRoles;
+  }
   | {
     kind: "admin.operations.supportCases.detail";
     method: "GET";
@@ -417,6 +430,33 @@ function matchAdminOperationsRoute(
   }
   if (method === "GET" && path === "/admin/operations/support-cases") {
     return { kind: "admin.operations.supportCases.list", method: "GET", roles: adminReadRoles };
+  }
+  if (method === "GET" && path === "/admin/operations/recovery-cases") {
+    return { kind: "admin.operations.recoveryCases.list", method: "GET", roles: adminReadRoles };
+  }
+  const recoveryCaseResource = path.match(
+    /^\/admin\/operations\/recovery-cases\/([^/]+)(?:\/(action))?$/,
+  );
+  if (recoveryCaseResource) {
+    const recoveryCaseId = decodeSegment(recoveryCaseResource[1] ?? "");
+    const action = recoveryCaseResource[2] ?? null;
+    if (!recoveryCaseId) return null;
+    if (method === "GET" && action === null) {
+      return {
+        kind: "admin.operations.recoveryCases.detail",
+        method: "GET",
+        recoveryCaseId,
+        roles: adminReadRoles,
+      };
+    }
+    if (method === "POST" && action === "action") {
+      return {
+        kind: "admin.operations.recoveryCases.action",
+        method: "POST",
+        recoveryCaseId,
+        roles: adminReadRoles,
+      };
+    }
   }
   const supportCaseResource = path.match(
     /^\/admin\/operations\/support-cases\/(dispute|queue)\/([^/]+)(?:\/(preparation|evidence-access))?$/,

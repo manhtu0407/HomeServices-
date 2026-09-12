@@ -1,4 +1,4 @@
-import { useMemo, useReducer, useRef } from 'react'
+import { useMemo, useReducer, useRef, useState } from 'react'
 import { ActivityIndicator, Modal, Pressable, StyleSheet, View } from 'react-native'
 import { KaelButton, KaelChip, KaelTextField } from '@/components/ui/kael-primitives'
 import { color, component, radius, shadow, spacing, typography } from '@/design/theme'
@@ -21,6 +21,7 @@ import {
 } from '@/lib/client-request-id'
 import { AdminTeamOwnerActions } from './admin-team-owner-actions'
 import { AdminText } from './admin-text'
+import { AdminWorkflowRecoveryCenter } from './admin-workflow-recovery-center'
 
 type OperationPanel = 'operations' | 'workers' | 'transactions'
 
@@ -30,6 +31,7 @@ type OperationsCopy = {
     other_admin_queue: string
     payment_attention: string
     worker_applications: string
+    workflow_recovery: string
   }
   audit: string
   auditAction: Record<string, string>
@@ -91,6 +93,7 @@ const operationsCopy: Record<AppLanguage, OperationsCopy> = {
       other_admin_queue: 'Việc vận hành cần xem',
       payment_attention: 'Thanh toán cần đối soát',
       worker_applications: 'Hồ sơ thợ cần duyệt',
+      workflow_recovery: 'Quy trình cần phục hồi',
     },
     audit: 'Nhật ký thay đổi quyền gần đây',
     auditAction: {
@@ -135,6 +138,7 @@ const operationsCopy: Record<AppLanguage, OperationsCopy> = {
       other_admin_queue: 'Operational items to review',
       payment_attention: 'Payments needing reconciliation',
       worker_applications: 'Worker applications to review',
+      workflow_recovery: 'Workflows requiring recovery',
     },
     audit: 'Recent access audit',
     auditAction: {
@@ -295,6 +299,7 @@ export function AdminOperationsOverview({
   onRetry: () => void
 }) {
   const copy = operationsCopy[language]
+  const [recoveryOpen, setRecoveryOpen] = useState(false)
   const formatDate = (value: string) => {
     try {
       return operationsDateFormatter[language].format(new Date(value))
@@ -323,7 +328,10 @@ export function AdminOperationsOverview({
           key={item.key}
           accessibilityRole="button"
           accessibilityLabel={copy.attention[item.key]}
-          onPress={() => item.target_section !== 'operations' && onOpenPanel(item.target_section)}
+          onPress={() => {
+            if (item.key === 'workflow_recovery') setRecoveryOpen(true)
+            else if (item.target_section !== 'operations') onOpenPanel(item.target_section)
+          }}
           style={styles.attentionRow}
           testID={`admin-operation-attention-${item.key}`}
         >
@@ -331,6 +339,14 @@ export function AdminOperationsOverview({
           <AdminText numeric textRole="headline" style={styles.attentionCount}>{item.count}</AdminText>
         </Pressable>
       ))}
+
+      {recoveryOpen ? (
+        <AdminWorkflowRecoveryCenter
+          actor={snapshot.actor}
+          language={language}
+          onClose={() => setRecoveryOpen(false)}
+        />
+      ) : null}
 
       <AdminText textRole="headline" style={styles.blockTitle}>{copy.flow}</AdminText>
       {snapshot.flow.length === 0 ? <EmptyState label={copy.empty} /> : <View style={styles.metricSurface}>

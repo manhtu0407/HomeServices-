@@ -1,11 +1,12 @@
 import type { LocalMediaUploadDraft } from './media-upload'
+import { generateClientRequestId } from './client-request-id'
 import { readResponseBlobBounded, withNetworkDeadline } from './response-guard'
 import { supabase } from './supabase'
 
 type WorkerVerificationDrafts = {
-  cccdFront: LocalMediaUploadDraft
-  cccdBack: LocalMediaUploadDraft
-  selfie: LocalMediaUploadDraft
+  cccdFront?: LocalMediaUploadDraft
+  cccdBack?: LocalMediaUploadDraft
+  selfie?: LocalMediaUploadDraft
 }
 
 type WorkerVerificationUrls = {
@@ -33,13 +34,16 @@ type WorkerVerificationCleanupBucket = {
 
 const MAX_WORKER_VERIFICATION_BYTES = 10 * 1024 * 1024
 const LOCAL_MEDIA_READ_TIMEOUT_MS = 15_000
+// Let the shared 65-second transport abort settle before treating the SDK outcome as unknown.
+const WORKER_VERIFICATION_UPLOAD_TIMEOUT_MS = 75_000
+const WORKER_VERIFICATION_CLEANUP_TIMEOUT_MS = 10_000
 const WORKER_VERIFICATION_MIME_TYPES = new Set([
   'image/jpeg',
   'image/png',
   'image/webp',
 ])
 
-export async function uploadWorkerVerificationDrafts(files: WorkerVerificationDrafts) {
+export async function uploadWorkerVerificationDrafts(files: WorkerVerificationDrafts, expectedOwnerId?: string) {
   const client = supabase
   if (!client) {
     return {
@@ -70,20 +74,36 @@ export async function uploadWorkerVerificationDrafts(files: WorkerVerificationDr
     }
   }
 
+  if (expectedOwnerId !== undefined && userId !== expectedOwnerId) {
+    return {
+      success: false as const,
+      code: 'AUTH_CHANGED',
+      error: 'Phiên đăng nhập đã thay đổi. Mở lại hồ sơ trước khi gửi giấy tờ.',
+    }
+  }
+
   const entries = [
     ['cccd_front_url', 'cccd-front', files.cccdFront],
     ['cccd_back_url', 'cccd-back', files.cccdBack],
     ['selfie_url', 'selfie', files.selfie],
   ] as const
-  const preparedEntries = entries.map(([field, folder, item]) => {
+  const preparedEntries = entries.flatMap(([field, folder, item]) => {
+    if (!item) return []
     const mimeType = workerVerificationMimeType(item)
-    return {
+    return [{
       field,
       item,
       mimeType,
-      objectPath: `${userId}/${folder}/${workerVerificationObjectName(item, mimeType)}`,
-    }
+      objectPath: `${userId}/${folder}/${generateClientRequestId()}${workerVerificationExtension(mimeType)}`,
+    }]
   })
+  if (preparedEntries.length === 0) {
+    return {
+      success: false as const,
+      code: 'MEDIA_REQUIRED',
+      error: 'Chọn ít nhất một ảnh giấy tờ trước khi tải lên',
+    }
+  }
   if (preparedEntries.some(({ item }) =>
     typeof item.fileSizeBytes === 'number' && item.fileSizeBytes > MAX_WORKER_VERIFICATION_BYTES
   )) {
@@ -131,10 +151,13 @@ export async function uploadWorkerVerificationDrafts(files: WorkerVerificationDr
       }
 
       try {
-        const uploaded = await bucket.upload(objectPath, localBlob.blob, {
-          contentType: mimeType,
-          upsert: false,
-        })
+        const uploaded = await withNetworkDeadline(
+          () => bucket.upload(objectPath, localBlob.blob, {
+            contentType: mimeType,
+            upsert: false,
+          }),
+          WORKER_VERIFICATION_UPLOAD_TIMEOUT_MS,
+        )
         if (uploaded.error) throw new Error('UPLOAD_FAILED')
       } catch {
         return {
@@ -153,10 +176,9 @@ export async function uploadWorkerVerificationDrafts(files: WorkerVerificationDr
   )
   const failedUpload = uploadResults.find((result) => !result.success)
   if (failedUpload && !failedUpload.success) {
-    await cleanupWorkerVerificationDrafts(
-      bucket,
-      preparedEntries.map(({ objectPath }) => objectPath),
-    )
+    // A rejected or unknown upload may name an existing object; only acknowledgements prove this batch created it.
+    const acknowledgedPaths = uploadResults.flatMap((result) => result.success ? [result.objectPath] : [])
+    if (acknowledgedPaths.length > 0) await cleanupWorkerVerificationDrafts(bucket, acknowledgedPaths)
     return {
       success: false as const,
       code: failedUpload.code ?? 'MEDIA_UPLOAD_FAILED',
@@ -168,7 +190,7 @@ export async function uploadWorkerVerificationDrafts(files: WorkerVerificationDr
   for (const result of uploadResults) {
     if (result.success) uploaded[result.field] = result.url
   }
-  if (!uploaded.cccd_front_url || !uploaded.cccd_back_url || !uploaded.selfie_url) {
+  if (preparedEntries.some(({ field }) => !uploaded[field])) {
     return {
       success: false as const,
       code: 'MEDIA_UPLOAD_FAILED',
@@ -177,7 +199,7 @@ export async function uploadWorkerVerificationDrafts(files: WorkerVerificationDr
   }
   return {
     success: true as const,
-    urls: uploaded as WorkerVerificationUrls,
+    urls: uploaded,
   }
 }
 
@@ -214,21 +236,6 @@ function workerVerificationFallbackMimeType(item: LocalMediaUploadDraft) {
   return 'image/jpeg'
 }
 
-function workerVerificationObjectName(item: LocalMediaUploadDraft, mimeType: string) {
-  const fallbackName = `verification${workerVerificationExtension(mimeType)}`
-  const rawName = (item.fileName || item.uri.split('/').pop() || fallbackName).split(/[?#]/)[0]
-  const dotIndex = rawName.lastIndexOf('.')
-  const rawBase = dotIndex > 0 ? rawName.slice(0, dotIndex) : rawName
-  const safeBase = rawBase
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^A-Za-z0-9._-]/g, '-')
-    .replace(/-+/g, '-')
-    .replace(/^[._-]+|[._-]+$/g, '')
-    .slice(0, 70) || 'verification'
-  return `${Date.now()}-${safeBase}${workerVerificationExtension(mimeType)}`
-}
-
 function workerVerificationExtension(mimeType: string) {
   if (mimeType === 'image/png') return '.png'
   if (mimeType === 'image/webp') return '.webp'
@@ -245,7 +252,10 @@ async function cleanupWorkerVerificationDrafts(
   objectPaths: string[],
 ) {
   try {
-    const removed = await bucket.remove(objectPaths)
+    const removed = await withNetworkDeadline(
+      async () => await bucket.remove(objectPaths),
+      WORKER_VERIFICATION_CLEANUP_TIMEOUT_MS,
+    )
     return !removed.error
   } catch {
     return false

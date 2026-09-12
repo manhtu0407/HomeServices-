@@ -6,6 +6,46 @@ import {
   serviceTypeSchema,
   uuidPathPattern,
 } from './common'
+export const candidateDecisionReceiptSchema = z.object({
+  job_id: z.string().uuid(),
+  candidate_id: z.string().uuid(),
+  worker_id: z.string().uuid(),
+  decision: z.enum(['confirm', 'reject']),
+  decided_at: z.string().datetime({ offset: true }),
+}).strict()
+
+export const candidateDecisionStatusSchema = z.object({
+  job_id: z.string().uuid(),
+  candidate_id: z.string().uuid(),
+  worker_id: z.string().uuid(),
+  candidate_status: z.enum(['proposed', 'customer_confirmed', 'customer_declined', 'expired', 'withdrawn']),
+  receipt: candidateDecisionReceiptSchema.nullable(),
+}).strict().refine((value) => !value.receipt || (
+  value.receipt.job_id === value.job_id && value.receipt.candidate_id === value.candidate_id
+  && value.receipt.worker_id === value.worker_id
+  && value.candidate_status === (value.receipt.decision === 'confirm' ? 'customer_confirmed' : 'customer_declined')
+))
+
+export type CandidateDecisionReceipt = z.infer<typeof candidateDecisionReceiptSchema>
+export type CandidateDecisionStatus = z.infer<typeof candidateDecisionStatusSchema>
+
+export const apartmentAccessAuthorizationSchema = z.object({
+  expected_worker_id: z.string().uuid(),
+  expected_check_in_at: z.string().datetime({ offset: true }),
+}).strict()
+
+export const apartmentAccessAuthorizationReceiptSchema = z.object({
+  job_id: z.string().uuid(),
+  worker_id: z.string().uuid(),
+  checked_in_at: z.string().datetime({ offset: true }),
+  authorized_at: z.string().datetime({ offset: true }),
+  release_stage: z.literal('unit_released'),
+  already_authorized: z.boolean(),
+}).strict()
+
+export type ApartmentAccessAuthorizationInput = z.infer<typeof apartmentAccessAuthorizationSchema>
+export type ApartmentAccessAuthorizationReceipt = z.infer<typeof apartmentAccessAuthorizationReceiptSchema>
+
 export const apartmentAccessProfileSchema = z.object({
   entry_method: z.string().max(300).optional(),
   parking_note: z.string().max(300).optional(),
@@ -52,7 +92,7 @@ export const jobMessageSendSchema = z.object({
 export const jobMatchingPreferenceSchema = z.object({
   mode: z.enum(['general', 'saved_worker_first']),
   worker_id: z.string().uuid().optional(),
-  auto_general: z.boolean().default(true),
+  auto_general: z.boolean().default(false),
   client_request_id: clientRequestIdSchema,
 }).strict().superRefine((value, ctx) => {
   if (value.mode === 'saved_worker_first' && !value.worker_id) {
@@ -67,13 +107,6 @@ export const jobMatchingPreferenceSchema = z.object({
       code: z.ZodIssueCode.custom,
       message: 'worker_id is only allowed for saved_worker_first',
       path: ['worker_id'],
-    })
-  }
-  if (!value.auto_general) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      message: 'auto_general must remain enabled for saved-worker matching',
-      path: ['auto_general'],
     })
   }
 })

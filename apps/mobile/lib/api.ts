@@ -55,13 +55,14 @@ export function mobileApiUrl(path: string) {
   return `${API_BASE_URL}${path}`
 }
 
-export function mobileApiConfigError(): ApiResult<never> | null {
+export function mobileApiConfigError(meta?: ApiResponseMetadata): ApiResult<never> | null {
   if (!API_BASE_URL) {
     return {
       success: false,
       error: 'Dịch vụ chưa được cấu hình',
       code: 'CONFIG_MISSING',
       status: 0,
+      meta: meta ?? createClientDiagnosticMetadata(),
     }
   }
   if (!MOBILE_API_BASE_PATH.test(API_BASE_URL)) {
@@ -70,6 +71,7 @@ export function mobileApiConfigError(): ApiResult<never> | null {
       error: 'Đường kết nối chưa đúng',
       code: 'CONFIG_INVALID',
       status: 0,
+      meta: meta ?? createClientDiagnosticMetadata(),
     }
   }
   return null
@@ -82,22 +84,9 @@ async function request<T>(
   accessToken?: string,
   options: ApiRequestOptions = {},
 ): Promise<ApiResult<T>> {
-  if (!API_BASE_URL) {
-    return {
-      success: false,
-      error: 'Dịch vụ chưa được cấu hình',
-      code: 'CONFIG_MISSING',
-      status: 0,
-    }
-  }
-  if (!MOBILE_API_BASE_PATH.test(API_BASE_URL)) {
-    return {
-      success: false,
-      error: 'Đường kết nối chưa đúng',
-      code: 'CONFIG_INVALID',
-      status: 0,
-    }
-  }
+  const clientMetadata = createClientDiagnosticMetadata()
+  const configError = mobileApiConfigError(clientMetadata)
+  if (configError) return configError
 
   const retryBudget = isRetrySafeRequest(method, path, body) ? MAX_RETRIES : 0
   const timeoutMs = requestTimeoutMs(method, path)
@@ -108,14 +97,15 @@ async function request<T>(
       error: 'Mã chống trùng yêu cầu không hợp lệ',
       code: 'IDEMPOTENCY_KEY_INVALID',
       status: 0,
+      meta: clientMetadata,
     }
   }
 
+  let responseMetadata = clientMetadata
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
     const controller = new AbortController()
     const timeout = setTimeout(() => controller.abort(), timeoutMs)
     let responseStatus = 0
-    let responseMetadata: ApiResponseMetadata | undefined
 
     try {
       const authHeaders = accessToken === undefined
@@ -134,7 +124,7 @@ async function request<T>(
         signal: controller.signal,
       })
       responseStatus = response.status
-      responseMetadata = extractApiResponseMetadata(response.headers)
+      responseMetadata = { ...clientMetadata, ...extractApiResponseMetadata(response.headers) }
 
       const responseText = await readResponseTextBounded(response, MAX_API_RESPONSE_BYTES)
       const json = safeParseJsonObject(responseText)
@@ -214,6 +204,7 @@ async function request<T>(
     error: 'Không thể kết nối đến hệ thống',
     code: 'NETWORK_ERROR',
     status: 0,
+    meta: responseMetadata,
   }
 }
 
@@ -261,6 +252,10 @@ export const api = {
     return request<T>('POST', path, body, accessToken, { idempotencyKey })
   },
   patch: <T>(path: string, body?: unknown) => request<T>('PATCH', path, body),
+  patchAuthenticated: <T>(path: string, body: unknown, accessToken: string): Promise<ApiResult<T>> => {
+    if (!accessToken.trim()) return Promise.resolve({ success: false, error: 'Phiên đăng nhập không hợp lệ', code: 'AUTH_REQUIRED', status: 401 })
+    return request<T>('PATCH', path, body, accessToken)
+  },
   put: <T>(path: string, body?: unknown) => request<T>('PUT', path, body),
   delete: <T>(path: string) => request<T>('DELETE', path),
   deleteAuthenticated: <T>(path: string, body: unknown, accessToken: string): Promise<ApiResult<T>> => {
@@ -435,17 +430,33 @@ function safeUuidHeader(value: string | null | undefined) {
     : null
 }
 
+export function createClientDiagnosticMetadata(): ApiResponseMetadata {
+  const clientRequestId = generateClientRequestId()
+  return {
+    clientRequestId,
+    clientDiagnosticCode: `NSL-${supportCodeFromIdentity(clientRequestId)}`,
+    operationId: null,
+    releaseId: null,
+    runId: null,
+    supportCode: null,
+    traceId: null,
+  }
+}
+
 export function extractApiResponseMetadata(headers: Pick<Headers, 'get'>): ApiResponseMetadata {
   const releaseId = safeResponseIdentity(headers.get('x-release-id'))
     ?? safeResponseIdentity(headers.get('x-release'))
   const traceId = safeResponseIdentity(headers.get('x-trace-id'))
   const runId = safeResponseIdentity(headers.get('x-run-id'))
   const operationId = safeResponseIdentity(headers.get('x-operation-id'))
+  const supportHeader = headers.get('x-support-code')?.trim().toUpperCase() ?? ''
   return {
     operationId,
     releaseId,
     runId,
-    supportCode: supportCodeFromIdentity(operationId ?? traceId ?? runId),
+    supportCode: SUPPORT_CODE_PATTERN.test(supportHeader)
+      ? supportHeader
+      : supportCodeFromIdentity(traceId ?? operationId ?? runId),
     traceId,
   }
 }

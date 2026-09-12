@@ -60,22 +60,7 @@ export type JobDetailResponse = {
     gross_amount?: number | null
     platform_fee?: number | null
     worker_net?: number | null
-    payment_receipt?: {
-      method: 'platform_bank_manual' | 'direct_worker'
-      status: string
-      gross_amount: number
-      customer_transfer_claimed_at: string | null
-      customer_transferred_at: string | null
-      response_deadline: string | null
-      hold_until: string | null
-      customer_confirmed_at: string | null
-      worker_confirmed_at: string | null
-      collateral_amount: number | null
-      direct_payment_available?: boolean | null
-      bank_code: string | null
-      account_holder: string | null
-      account_masked: string | null
-    } | null
+    payment_receipt?: import('@nestscout/shared').JobDetailResponse['job']['payment_receipt']
     completion_notes: string | null
     completion_photo_urls: string[]
     created_at: string

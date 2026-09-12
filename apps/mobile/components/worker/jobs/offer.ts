@@ -154,7 +154,7 @@ export function buildWorkerV5OfferPriceRows(
       icon: 'wallet',
       meta: textByLanguage(
         language,
-        'Khoản bạn nhận theo phạm vi hiện tại. Phần phát sinh chỉ làm sau khi khách duyệt receipt mới.',
+        'Khoản bạn nhận theo phạm vi hiện tại. Phần phát sinh chỉ làm sau khi khách duyệt biên nhận mới.',
         'Your earnings for the current scope. Extra work starts only after the customer approves a new receipt.',
       ),
       status: textByLanguage(language, 'Bạn nhận', 'You keep'),

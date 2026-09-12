@@ -21,6 +21,30 @@
         "buildType": "apk"
       }
     },
+    "native-proof-staging": {
+      "distribution": "internal",
+      "channel": "native-proof-staging",
+      "environment": "preview",
+      "ios": {
+        "simulator": true,
+        "resourceClass": "m-medium"
+      },
+      "android": {
+        "buildType": "apk"
+      }
+    },
+    "native-proof-production": {
+      "distribution": "internal",
+      "channel": "native-proof-production",
+      "environment": "production",
+      "ios": {
+        "simulator": true,
+        "resourceClass": "m-medium"
+      },
+      "android": {
+        "buildType": "apk"
+      }
+    },
     "production": {
       "autoIncrement": false,
       "channel": "production",

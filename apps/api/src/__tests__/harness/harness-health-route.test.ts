@@ -25,6 +25,9 @@ describe('Harness health route', () => {
         priceEvidenceBundleSha256: '3'.repeat(64),
         providerReadinessFingerprintSha256: '4'.repeat(64),
         providerReadiness: {
+          android_fcm_v1: true,
+          ios_apns: true,
+          push_receipt_reconciler: true,
           anthropic: true,
           deepseek: false,
           durable_guards: true,
@@ -60,8 +63,11 @@ describe('Harness health route', () => {
         source_bundle_sha256: 'd'.repeat(64),
         production_ui_source_sha256: '5'.repeat(64),
         migration_inventory_sha256: '1'.repeat(64),
-        provider_readiness: {
-          anthropic: true,
+       provider_readiness: {
+          android_fcm_v1: true,
+          ios_apns: true,
+          push_receipt_reconciler: true,
+         anthropic: true,
           deepseek: false,
           durable_guards: true,
           global_ai_enabled: true,

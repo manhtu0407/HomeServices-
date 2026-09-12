@@ -910,6 +910,56 @@ export type WorkerTables = {
           },
         ]
       }
+      worker_registration_commands: {
+        Row: {
+          client_request_id: string
+          draft_updated_at: string
+          error_code: string | null
+          operation_id: string
+          outcome: string
+          recorded_at: string
+          submitted_at: string | null
+          verification_status:
+            | Database["public"]["Enums"]["worker_verification_status"]
+            | null
+          worker_id: string
+        }
+        Insert: {
+          client_request_id: string
+          draft_updated_at: string
+          error_code?: string | null
+          operation_id?: string
+          outcome: string
+          recorded_at?: string
+          submitted_at?: string | null
+          verification_status?:
+            | Database["public"]["Enums"]["worker_verification_status"]
+            | null
+          worker_id: string
+        }
+        Update: {
+          client_request_id?: string
+          draft_updated_at?: string
+          error_code?: string | null
+          operation_id?: string
+          outcome?: string
+          recorded_at?: string
+          submitted_at?: string | null
+          verification_status?:
+            | Database["public"]["Enums"]["worker_verification_status"]
+            | null
+          worker_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "worker_registration_commands_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       worker_safety_patterns: {
         Row: {
           created_at: string

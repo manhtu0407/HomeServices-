@@ -1,7 +1,7 @@
 // Edge service completion-review domain (C4 6a, services/* split): explicit customer
 // confirm-completion + submit-review (rating -> learning + normal-transaction memory).
 
-import { asComplexityOrNull, asJobStatus, asServiceType, asString, asStringArray, nullableNumber, nullableString } from "../../platform/coercions.ts";
+import { asComplexityOrNull, asJobStatus, asServiceType, asString, nullableNumber, nullableString } from "../../platform/coercions.ts";
 import { db, dbQuery, type DbClient } from "../../platform/db.ts";
 import { mapReviewError } from "../../platform/domain-error-mappers.ts";
 import { logJobEvent, logMemoryAudit } from "../../platform/audit.ts";
@@ -39,99 +39,6 @@ type NormalTransactionMemoryInput = {
   customerId: string;
   workerId: string | null;
 };
-
-export async function confirmCompletion(ctx: MobileApiContext, jobId: string) {
-  const client = db(ctx);
-  const job = await requireJobAccess(client, jobId, ctx, {
-    requiredRole: "customer",
-    select: "id, status, customer_id, worker_id, final_price, completion_notes, completion_photo_urls",
-  });
-  if (job.status === "confirmed_by_customer" || job.status === "reviewed") {
-    return {
-      job_id: jobId,
-      status: job.status as JobStatus,
-      final_price: nullableNumber(job.final_price),
-    };
-  }
-  if (job.status !== "completed_by_worker") {
-    apiFailure(
-      "INVALID_STATUS",
-      "Trạng thái yêu cầu đã thay đổi. Vui lòng tải lại và thử lại.",
-      409,
-    );
-  }
-  const transition = validateWorkflowTransition({
-    event: "customer_confirmed_completion",
-    from: job.status as JobStatus,
-    to: "confirmed_by_customer",
-  });
-  if (!transition.valid) apiFailure("INVALID_STATUS", transition.error, 409);
-  const finalPrice = nullableNumber(job.final_price);
-  // jobs.final_price is set only by an evidence-backed, bilateral scope
-  // decision. A missing value means the payable scope is still unresolved.
-  if (finalPrice === null || finalPrice <= 0) {
-    apiFailure(
-      "INVALID_STATUS",
-      "Kael chưa chốt giá cuối cùng nên chưa thể xác nhận hoàn tất",
-      409,
-    );
-  }
-
-  const now = new Date().toISOString();
-  const updated = await dbQuery<{ id: string }>(
-    client
-      .from("jobs")
-      .update({ status: "confirmed_by_customer", confirmed_at: now })
-      .eq("id", jobId)
-      .eq("customer_id", ctx.user.id)
-      .eq("status", job.status)
-      .select("id")
-      .maybeSingle(),
-  );
-  if (updated.error) {
-    apiFailure("DB_ERROR", "Không thể xác nhận hoàn thành", 500);
-  }
-  if (!updated.data) {
-    apiFailure(
-      "STATUS_CHANGED",
-      "Trạng thái đã thay đổi. Vui lòng tải lại và thử lại.",
-      409,
-    );
-  }
-  await logJobEvent(
-    client,
-    jobId,
-    "customer_confirmed_completion",
-    ctx,
-    job.status as JobStatus,
-    "confirmed_by_customer",
-    {
-      customer_input: "accepted_completion",
-      completion_evidence: {
-        note_present: Boolean(nullableString(job.completion_notes)),
-        photo_count: asStringArray(job.completion_photo_urls).length,
-      },
-    },
-  );
-  // P9 keeps review prompting in the completion surface; A14 sends the customer notification.
-  // Kael Autonomy v2: notify worker that completion has been policy-confirmed.
-  const workerId = nullableString(job.worker_id);
-  if (workerId) {
-    await insertUserNotification(client, {
-      userId: workerId,
-      jobId,
-      eventType: "customer_confirmed_completion",
-      title: "Khách đã xác nhận hoàn tất",
-      body: "Khách đã duyệt bằng chứng hoàn tất. Đối soát thu nhập sẽ cập nhật.",
-      metadata: { final_price: finalPrice },
-    });
-  }
-  return {
-    job_id: jobId,
-    status: "confirmed_by_customer" as JobStatus,
-    final_price: finalPrice,
-  };
-}
 
 export async function submitReview(ctx: MobileApiContext, jobId: string, input: {
   rating: number;

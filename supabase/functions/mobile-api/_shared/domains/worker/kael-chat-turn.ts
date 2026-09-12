@@ -39,6 +39,7 @@ import {
 import type { WorkerKaelChatCreateInput, WorkerKaelChatTurnInput } from "../../../../_shared/domain.ts";
 import { readWorkerOpportunityAssistContext } from "./broadcasts.ts";
 import { deriveWorkerKaelConversationScope } from "./kael-chat-scope.ts";
+import { projectWorkerJobBrief } from "./job-brief.ts";
 
 export const WORKER_KAEL_SESSION_SELECT =
   "id, job_id, chat_mode, worker_id, status, title, pinned_at, started_at, closed_at, archived_at, total_turns, total_cost_usd, kael_progress, safe_metadata, created_at, updated_at";
@@ -461,9 +462,9 @@ export async function requireWorkerKaelChatJob(
     requiredRole: "worker",
     statuses: ACTIVE_WORKER_JOB_STATUSES,
     select:
-      "id, status, customer_id, worker_id, service_type, description, address_district, kael_problem_identified, kael_complexity, kael_worker_brief_core, kael_worker_brief_guidance",
+      "id, status, customer_id, worker_id, quote_mode, service_type, description, address_district, kael_problem_identified, kael_complexity, kael_price_min, kael_price_max, final_price, worker_commission_level, worker_commission_rate_bps, kael_worker_brief_core",
   });
-  return job;
+  return { ...job, kael_worker_brief_guidance: projectWorkerJobBrief(job, ctx.user.id) };
 }
 
 async function enforceWorkerKaelChatRateLimit(

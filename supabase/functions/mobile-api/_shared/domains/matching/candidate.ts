@@ -2,31 +2,58 @@
 // release locked until the owning customer confirms an exact candidate id.
 
 import type { JobStatus } from "../../../../_shared/domain.ts";
+import { candidateDecisionStatusSchema } from "../../../../_shared/contracts/job.ts";
 import { requireJobAccess } from "../../platform/access.ts";
 import { apiFailure } from "../../platform/api-failure.ts";
+import { throwMatchingCapacityError } from "../../platform/domain-error-mappers.ts";
 import type { MobileApiContext } from "../../platform/auth.ts";
 import { validateWorkflowTransition } from "../../workflow-orchestrator.ts";
-import { logJobEvent } from "../../platform/audit.ts";
 import {
   buildSafeWorkerCandidateView,
   candidateHasExpired,
   loadSafeWorkerCandidateView,
   mapWorkerCandidateDecisionError,
-  persistWorkerBriefGuidanceAfterAccept,
-  resumeMatchingAfterCandidateRejection,
 } from "./candidate-support.ts";
 import { asJobStatus, asString, nullableString } from "../../platform/coercions.ts";
 import { db, dbQuery, workflowDb } from "../../platform/db.ts";
-import { insertUserNotification, notifyCustomerWorkerMatched } from "../notification/notifications.ts";
 import { loadDirectWorkerPaymentAvailability } from "../payment/direct-payment-availability.ts";
 import { recordHarnessEvent } from "../../../../_shared/harness/trace.ts";
+import { getJobMatchingOperation } from "./customer-retry.ts";
 
 export { notifyCustomerCandidateReady } from "./candidate-support.ts";
+
+export async function getWorkerCandidateDecision(ctx: MobileApiContext, jobId: string, candidateId: string) {
+  const client = db(ctx);
+  await requireJobAccess(client, jobId, ctx, { requiredRole: "customer" });
+  const result = await dbQuery<Record<string, unknown>>(
+    client.from("job_worker_candidates")
+      .select("id, job_id, worker_id, status, customer_decision_kind, customer_decided_at")
+      .eq("id", candidateId).eq("job_id", jobId).maybeSingle(),
+  ).catch(() => candidateDecisionOutcomeUnknown());
+  if (result.error) candidateDecisionOutcomeUnknown();
+  if (!result.data) apiFailure("NOT_FOUND", "Không tìm thấy đề xuất thợ.", 404);
+  const row = result.data;
+  if (row.id !== candidateId || row.job_id !== jobId ||
+    ![null, "confirm", "reject"].includes(row.customer_decision_kind as null | string)) {
+    candidateDecisionOutcomeUnknown();
+  }
+  // Profile visibility and the latest matching round do not determine a historical decision.
+  const parsed = candidateDecisionStatusSchema.safeParse({
+    job_id: row.job_id, candidate_id: row.id, worker_id: row.worker_id, candidate_status: row.status,
+    receipt: row.customer_decision_kind === null ? null : {
+      job_id: row.job_id, candidate_id: row.id, worker_id: row.worker_id,
+      decision: row.customer_decision_kind, decided_at: row.customer_decided_at,
+    },
+  });
+  if (!parsed.success) candidateDecisionOutcomeUnknown();
+  return parsed.data;
+}
 
 export async function getWorkerCandidate(ctx: MobileApiContext, jobId: string) {
   const client = db(ctx);
   const workflowClient = workflowDb(ctx);
   const job = await requireJobAccess(client, jobId, ctx, {
+    requiredRole: "customer",
     select: "id, status, customer_id, worker_id, quote_mode",
   });
   const current = await dbQuery<Record<string, unknown>>(
@@ -40,33 +67,33 @@ export async function getWorkerCandidate(ctx: MobileApiContext, jobId: string) {
     current.data?.status === "proposed" &&
     candidateHasExpired(current.data.expires_at)
   ) {
-    const proposalMode = job.quote_mode === "rfq" || job.quote_mode === "inspection_only";
     const expired = await dbQuery<Array<Record<string, unknown>>>(
-      workflowClient.rpc(proposalMode
-        ? "confirm_worker_matching_proposal_atomic"
-        : "reject_worker_candidate_atomic", {
+      workflowClient.rpc("expire_worker_candidate_atomic", {
         p_job_id: jobId,
         p_candidate_id: asString(current.data.id),
         p_customer_id: ctx.user.id,
       }),
     );
-    const expiredRow = expired.data?.[0];
-    const proposalExpired = proposalMode && expiredRow?.ok === false &&
-      nullableString(expiredRow.error_code) === "EXPIRED" &&
-      nullableString(expiredRow.job_status) === "broadcasting";
-    if (expired.error || (!proposalExpired && expiredRow?.ok !== true)) {
-      apiFailure("STATUS_CHANGED", "Đề xuất thợ đã hết hạn. Vui lòng tải lại.", 409);
+    if (expired.error) candidateDecisionOutcomeUnknown();
+    const expiredRow = Array.isArray(expired.data) && expired.data.length === 1 ? expired.data[0] : null;
+    if (!expiredRow || typeof expiredRow.ok !== "boolean") candidateDecisionOutcomeUnknown();
+    if (expiredRow.ok === false) {
+      apiFailure("STATUS_CHANGED", "Trạng thái đề xuất thợ đã thay đổi. Vui lòng tải lại.", 409);
     }
-    await logJobEvent(client, jobId, "worker_candidate_expired", ctx,
-      "worker_candidate_pending", "broadcasting", { candidate_id: asString(current.data.id) });
-    const resumed = await resumeMatchingAfterCandidateRejection(client, ctx, jobId);
-    return {
-      job_id: jobId,
-      status: "broadcasting" as JobStatus,
-      candidate: null,
-      broadcast_sent: resumed.broadcastSent,
-      message: resumed.message,
-    };
+    if (expiredRow.candidate_id !== current.data.id || expiredRow.worker_id !== current.data.worker_id ||
+      !nullableString(expiredRow.worker_id) || expiredRow.error_code !== null ||
+      typeof expiredRow.already_applied !== "boolean") candidateDecisionOutcomeUnknown();
+    if (expiredRow.job_status !== "broadcasting") {
+      apiFailure("STATUS_CHANGED", "Trạng thái đề xuất thợ đã thay đổi. Vui lòng tải lại.", 409);
+    }
+    // Expiry projects durable state in SQL; observing it is not consent to start another round.
+    try {
+      const { operation } = await getJobMatchingOperation(ctx, jobId);
+      if (!operation) candidateDecisionOutcomeUnknown();
+      return { job_id: jobId, status: "broadcasting" as JobStatus, candidate: null, operation };
+    } catch {
+      candidateDecisionOutcomeUnknown();
+    }
   }
   const candidate = current.data
     ? await buildSafeWorkerCandidateView(client, current.data, asString(job.customer_id))
@@ -88,6 +115,9 @@ export async function confirmWorkerCandidate(
   jobId: string,
   candidateId: string,
 ) {
+  if (ctx.role !== "customer") {
+    apiFailure("AUTH_FORBIDDEN", "Chỉ khách đặt dịch vụ được quyết định thợ.", 403);
+  }
   const client = db(ctx);
   const workflowClient = workflowDb(ctx);
   const job = await requireJobAccess(client, jobId, ctx, {
@@ -105,6 +135,7 @@ export async function confirmWorkerCandidate(
     }),
   );
   if (result.error) {
+    throwMatchingCapacityError(result.error);
     await recordHarnessEvent(ctx.traceContext, {
       eventClass: "matching.candidate_confirm.rpc_failed",
       stage: "matching.candidate.confirm",
@@ -115,11 +146,9 @@ export async function confirmWorkerCandidate(
         rpc_subject: safeRpcSubject(result.error.message),
       },
     });
-    apiFailure("DB_ERROR", "Không thể xác nhận thợ", 500, {
-      reason_code: safeRpcReason(result.error.code),
-    });
+    candidateDecisionOutcomeUnknown();
   }
-  const row = result.data?.[0];
+  const row = Array.isArray(result.data) && result.data.length === 1 ? result.data[0] : null;
   if (!row) {
     await recordHarnessEvent(ctx.traceContext, {
       eventClass: "matching.candidate_confirm.empty_result",
@@ -131,29 +160,23 @@ export async function confirmWorkerCandidate(
         result_count: Array.isArray(result.data) ? result.data.length : null,
       },
     });
-    apiFailure("DB_ERROR", "Không thể xác nhận thợ", 500, {
-      reason_code: "DB_EMPTY_RESULT",
-    });
+    candidateDecisionOutcomeUnknown();
   }
-  if (!row.ok) {
+  if (typeof row.ok !== "boolean") candidateDecisionOutcomeUnknown();
+  if (row.ok === false) {
     const errorCode = nullableString(row.error_code);
-    const shouldResumeMatching = (
-      errorCode === "WORKER_NOT_ELIGIBLE" || errorCode === "EXPIRED"
-    ) && nullableString(row.job_status) === "broadcasting";
-    if (shouldResumeMatching) {
-      const eventType = errorCode === "EXPIRED"
-        ? "worker_candidate_expired"
-        : "worker_candidate_became_ineligible";
-      await logJobEvent(client, jobId, eventType, ctx,
-        "worker_candidate_pending", "broadcasting", { candidate_id: candidateId, worker_id: nullableString(row.worker_id) });
-      await resumeMatchingAfterCandidateRejection(client, ctx, jobId);
+    if (errorCode === "PRICE_QUOTE_INVALID") {
+      apiFailure("PRICE_QUOTE_INVALID", "Báo giá của thợ không còn hợp lệ. Vui lòng tải lại đề xuất.", 409);
     }
+    if (!errorCode || !["NOT_FOUND", "INVALID_STATUS", "STATUS_CHANGED", "EXPIRED",
+      "WORKER_NOT_ELIGIBLE"].includes(errorCode)) candidateDecisionOutcomeUnknown();
     mapWorkerCandidateDecisionError(errorCode);
   }
   const workerId = nullableString(row.worker_id);
-  if (!workerId) apiFailure("DB_ERROR", "Dữ liệu thợ xác nhận không hợp lệ", 500);
+  if (!workerId) candidateDecisionOutcomeUnknown();
   const alreadyApplied = row.already_applied === true;
   const returnedStatus = asJobStatus(row.job_status);
+  if (returnedStatus !== row.job_status) candidateDecisionOutcomeUnknown();
   if (!alreadyApplied) {
     // Checked against the status the RPC actually landed on, not against the one this branch
     // expects. Asserting a literal against a literal answers a question nobody asked.
@@ -163,26 +186,17 @@ export async function confirmWorkerCandidate(
       to: returnedStatus,
     });
     if (!transition.valid) apiFailure("INVALID_STATUS", transition.error, 409);
-    await logJobEvent(client, jobId, "customer_confirmed_worker", ctx,
-      "worker_candidate_pending", "worker_matched", { candidate_id: candidateId, worker_id: workerId });
-    await notifyCustomerWorkerMatched(client, jobId, workerId);
-    await insertUserNotification(client, {
-      userId: workerId,
-      jobId,
-      eventType: "customer_confirmed_worker",
-      title: "Khách đã xác nhận bạn",
-      body: "Công việc đã được ghép. Bạn có thể xem hướng dẫn và chuẩn bị di chuyển.",
-      metadata: { candidate_id: candidateId },
-    });
-    await persistWorkerBriefGuidanceAfterAccept(client, jobId);
   }
-  const candidate = await loadSafeWorkerCandidateView(client, jobId, candidateId, ctx.user.id);
-  return {
-    job_id: jobId,
-    status: asJobStatus(row.job_status),
-    candidate,
-    already_applied: alreadyApplied,
-  };
+  if (row.candidate_id !== candidateId || typeof row.already_applied !== "boolean" ||
+    row.error_code !== null) candidateDecisionOutcomeUnknown();
+  try {
+    const candidate = await loadSafeWorkerCandidateView(client, jobId, candidateId, ctx.user.id);
+    if (candidate.candidate_id !== candidateId || candidate.worker_id !== workerId ||
+      candidate.status !== "customer_confirmed") candidateDecisionOutcomeUnknown();
+    return { job_id: jobId, status: returnedStatus, candidate, already_applied: alreadyApplied };
+  } catch {
+    candidateDecisionOutcomeUnknown();
+  }
 }
 
 function safeRpcCode(value: unknown) {
@@ -201,80 +215,58 @@ function safeRpcSubject(value: unknown) {
   return "unknown";
 }
 
-function safeRpcReason(value: unknown) {
-  if (value === "42501") return "DB_PERMISSION";
-  if (value === "40001") return "DB_SERIALIZATION";
-  if (value === "23503" || value === "23514") return "DB_CONSTRAINT";
-  if (value === "42702" || value === "42703" || value === "42P01") {
-    return "DB_SCHEMA";
-  }
-  return "DB_RPC";
-}
-
 export async function rejectWorkerCandidate(
   ctx: MobileApiContext,
   jobId: string,
   candidateId: string,
 ) {
+  if (ctx.role !== "customer") {
+    apiFailure("AUTH_FORBIDDEN", "Chỉ khách đặt dịch vụ được quyết định thợ.", 403);
+  }
   const client = db(ctx);
-  const workflowClient = workflowDb(ctx);
   const result = await dbQuery<Array<Record<string, unknown>>>(
-    workflowClient.rpc("reject_worker_candidate_atomic", {
-      p_job_id: jobId,
-      p_candidate_id: candidateId,
-      p_customer_id: ctx.user.id,
+    workflowDb(ctx).rpc("reject_worker_candidate_atomic", {
+      p_job_id: jobId, p_candidate_id: candidateId, p_customer_id: ctx.user.id,
     }),
   );
-  if (result.error) apiFailure("DB_ERROR", "Không thể từ chối thợ", 500);
-  const row = result.data?.[0];
-  if (!row) apiFailure("DB_ERROR", "Không thể từ chối thợ", 500);
-  if (!row.ok) mapWorkerCandidateDecisionError(nullableString(row.error_code));
-  const workerId = nullableString(row.worker_id);
-  if (!workerId) apiFailure("DB_ERROR", "Dữ liệu thợ đề xuất không hợp lệ", 500);
-  const alreadyApplied = row.already_applied === true;
+  if (result.error) candidateDecisionOutcomeUnknown();
+  const row = Array.isArray(result.data) && result.data.length === 1 ? result.data[0] : null;
+  if (!row || typeof row.ok !== "boolean") candidateDecisionOutcomeUnknown();
+  if (row.ok === false) mapWorkerCandidateDecisionError(nullableString(row.error_code));
   const returnedStatus = asJobStatus(row.job_status);
+  if (returnedStatus !== row.job_status) candidateDecisionOutcomeUnknown();
+  const alreadyApplied = row.already_applied === true;
   if (!alreadyApplied) {
     const transition = validateWorkflowTransition({
-      event: "customer_rejected_worker",
-      from: "worker_candidate_pending",
-      to: returnedStatus,
+      event: "customer_rejected_worker", from: "worker_candidate_pending", to: returnedStatus,
     });
     if (!transition.valid) apiFailure("INVALID_STATUS", transition.error, 409);
-    await logJobEvent(client, jobId, "customer_rejected_worker", ctx,
-      "worker_candidate_pending", "broadcasting", { candidate_id: candidateId, worker_id: workerId });
-    await insertUserNotification(client, {
-      userId: workerId,
-      jobId,
-      eventType: "customer_rejected_worker",
-      title: "Khách đã chọn tìm thợ khác",
-      body: "Bạn đã được mở lại trạng thái nhận việc.",
-      metadata: { candidate_id: candidateId },
-    });
-    await dbQuery(
-      client.from("worker_matching_proposals")
-        .update({ status: "customer_declined", updated_at: new Date().toISOString() })
-        .eq("candidate_id", candidateId)
-        .eq("status", "proposed"),
-    );
   }
-  const candidate = await loadSafeWorkerCandidateView(client, jobId, candidateId, ctx.user.id);
-  if (returnedStatus !== "broadcasting") {
-    return {
-      job_id: jobId,
-      status: returnedStatus,
-      candidate,
-      already_applied: alreadyApplied,
-      broadcast_sent: false,
-      message: "Quyết định này đã được xử lý.",
-    };
+  if (row.candidate_id !== candidateId || !nullableString(row.worker_id) ||
+    typeof row.already_applied !== "boolean" || row.error_code !== null) candidateDecisionOutcomeUnknown();
+  // The command owns proposal retirement, inbox and continuation. Post-commit work is read-only.
+  try {
+    const candidate = await loadSafeWorkerCandidateView(client, jobId, candidateId, ctx.user.id);
+    const { operation } = await getJobMatchingOperation(ctx, jobId);
+    if (!operation) candidateDecisionOutcomeUnknown();
+    const message = returnedStatus !== "broadcasting"
+      ? "Quyết định này đã được xử lý."
+      : operation.state === "queued"
+      ? "Đã ghi nhận quyết định. Yêu cầu tìm thợ tiếp đang chờ xử lý."
+      : operation.state === "no_reachable_worker"
+      ? "Đã ghi nhận quyết định. Hiện chưa có thợ phù hợp có thể nhận yêu cầu."
+      : operation.state === "recovery_required"
+      ? "Đã ghi nhận quyết định. Tiến trình tìm thợ cần được kiểm tra lại."
+      : "Đã ghi nhận quyết định. Vui lòng theo dõi trạng thái yêu cầu.";
+    return { job_id: jobId, status: returnedStatus, candidate, already_applied: alreadyApplied,
+      broadcast_sent: false, operation, message };
+  } catch {
+    candidateDecisionOutcomeUnknown();
   }
-  const resumed = await resumeMatchingAfterCandidateRejection(client, ctx, jobId);
-  return {
-    job_id: jobId,
-    status: "broadcasting" as JobStatus,
-    candidate,
-    already_applied: alreadyApplied,
-    broadcast_sent: resumed.broadcastSent,
-    message: resumed.message,
-  };
+}
+
+function candidateDecisionOutcomeUnknown(): never {
+  apiFailure("CANDIDATE_DECISION_OUTCOME_UNKNOWN",
+    "Đang đối soát quyết định của bạn. Vui lòng tải lại trạng thái yêu cầu.", 503,
+    { reconcile_required: true });
 }

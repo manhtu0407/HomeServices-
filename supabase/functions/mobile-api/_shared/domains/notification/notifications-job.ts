@@ -4,10 +4,7 @@ import { districtLabel, serviceLabel } from "../../platform/labels.ts";
 import { sendPushToUser } from "../../platform/push.ts";
 import type { MobileApiContext } from "../../platform/auth.ts";
 import type { JobStatus, ServiceType } from "../../../../_shared/domain.ts";
-import {
-  type KaelAutonomyDecision,
-  NORMAL_TRANSACTION_SILENT_STATUSES,
-} from "../../kael/index.ts";
+import { NORMAL_TRANSACTION_SILENT_STATUSES } from "../../kael/index.ts";
 import { insertUserNotification } from "./notifications-events.ts";
 
 type NotificationCopy = {
@@ -26,7 +23,7 @@ const CUSTOMER_STATUS_PUSH: Partial<Record<JobStatus, NotificationCopy>> = {
     eventType: "completed_by_worker",
     title: "Thợ đã báo hoàn tất",
     body:
-      "Kael đang kiểm tra bằng chứng hoàn tất và sẽ xác nhận hoặc mở tranh chấp theo chính sách.",
+      "Vui lòng kiểm tra bằng chứng và chỉ xác nhận khi công việc đã hoàn tất đúng thỏa thuận.",
   },
 };
 
@@ -161,88 +158,6 @@ export async function notifyBroadcastWorkers(
   });
 }
 
-export async function notifyCustomerWorkerMatched(
-  client: DbClient,
-  jobId: string,
-  workerId: string,
-) {
-  const customerLookup = await dbQuery<Record<string, unknown>>(
-    client.from("jobs").select("customer_id").eq("id", jobId).single(),
-  );
-  if (customerLookup.error || !customerLookup.data) {
-    console.warn("mobile-api customer notification lookup failed", { jobId });
-    return;
-  }
-  const customerId = nullableString(customerLookup.data.customer_id);
-  if (!customerId) return;
-
-  const notification = await dbQuery<Array<Record<string, unknown>>>(
-    client.rpc("insert_notification_atomic", {
-      p_user_id: customerId,
-      p_job_id: jobId,
-      p_event_type: "worker_matched",
-      p_title: "Đã có thợ nhận việc",
-      p_body: "Thợ đang chuẩn bị, bạn có thể theo dõi trong Hoạt động.",
-      p_safe_metadata: { worker_id: workerId },
-    }),
-  );
-  if (notification.error) {
-    console.warn("mobile-api customer notification insert failed", { jobId });
-  }
-
-  const push = await sendPushToUser(client, customerId, {
-    title: "Đã có thợ nhận việc",
-    body: "Thợ đang chuẩn bị đến.",
-    data: {
-      event_type: "worker_matched",
-      job_id: jobId,
-      deep_link: `/(customer)/history?job_id=${jobId}`,
-    },
-    sound: "default",
-  });
-  if (push.failed > 0) {
-    console.warn("mobile-api customer push delivery had failures", {
-      jobId,
-      failed: push.failed,
-    });
-  }
-}
-
-export async function notifyKaelConfirmedCompletion(
-  client: DbClient,
-  jobId: string,
-  customerId: string | null,
-  workerId: string | null,
-  finalPrice: number | null,
-  decision: KaelAutonomyDecision,
-) {
-  const metadata = {
-    final_price: finalPrice,
-    autonomy_decision: decision,
-  };
-  if (customerId) {
-    await insertUserNotification(client, {
-      userId: customerId,
-      jobId,
-      eventType: "kael_confirmed_completion",
-      title: "Kael đã xác nhận hoàn tất",
-      body:
-        "Kael đã xác nhận công việc từ bằng chứng hoàn tất. Bạn có thể xem lại hoặc đánh giá trong Hoạt động.",
-      metadata,
-    });
-  }
-  if (workerId) {
-    await insertUserNotification(client, {
-      userId: workerId,
-      jobId,
-      eventType: "kael_confirmed_completion",
-      title: "Kael đã xác nhận hoàn tất",
-      body:
-        "Kael đã xác nhận công việc từ bằng chứng hoàn tất. Đối soát thu nhập sẽ cập nhật.",
-      metadata,
-    });
-  }
-}
 
 export async function notifyCustomerWorkerCheckedIn(
   client: DbClient,

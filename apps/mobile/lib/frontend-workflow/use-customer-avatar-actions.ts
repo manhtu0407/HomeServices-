@@ -1,3 +1,4 @@
+import type { WorkflowErrorHandler } from './errors'
 import { useCallback, useEffect, useState } from 'react'
 import type { UserRole } from '@nestscout/shared'
 import { uploadCustomerAvatar, type CustomerAvatarDraft } from '../customer-avatar-upload'
@@ -17,7 +18,7 @@ const initialCustomerAvatarState: CustomerAvatarState = {
 type CustomerAvatarActionsInput = {
   role: UserRole | null
   sessionUserId: string | null
-  setRemoteError: (error: string) => false
+  setRemoteError: WorkflowErrorHandler
 }
 
 export function useCustomerAvatarActions({
@@ -46,7 +47,7 @@ export function useCustomerAvatarActions({
   const customerUploadAvatar = useCallback(async (input: CustomerAvatarDraft) => {
     if (!sessionUserId) return setRemoteError('Bạn cần đăng nhập để đổi ảnh đại diện')
     const result = await uploadCustomerAvatar(input)
-    if (!result.success) return setRemoteError(result.error)
+    if (!result.success) return setRemoteError(result)
     if (!result.data.avatar_url) return setRemoteError('Không thể mở ảnh đại diện vừa cập nhật')
     setCustomerAvatarState({ avatarUrl: result.data.avatar_url, sessionUserId })
     return true

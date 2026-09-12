@@ -1,23 +1,18 @@
-// Edge service worker-cancellation domain: worker cancel-request flow with autonomy gating,
-// classification, and (on approve) apartment-access reset + replacement re-broadcast via
-// createBroadcasts. Imported by services.ts for wiring.
+// Approved cancellation and replacement work commit together; HTTP retries only recover the receipt.
 
 import { asBoolean, asJobStatus, asString, asWorkerCancellationAbuseSignals, asWorkerCancellationCategory, asWorkerCancellationReasonCode, nullableString } from "../../platform/coercions.ts";
-import { db, dbQuery, type DbClient, workflowDb } from "../../platform/db.ts";
+import { db, dbQuery, type DbClient } from "../../platform/db.ts";
 import { validateJobEvidenceRefs } from "../job/evidence-refs.ts";
 import { mapWorkerCancellationRequestError } from "../../platform/domain-error-mappers.ts";
 import { logJobEvent } from "../../platform/audit.ts";
 import { runPolicyAutonomyGate } from "../../kael/agents/autonomy-gate.ts";
-import { notifyCustomerWorkerReplacementSearch } from "../notification/notifications.ts";
-import { createBroadcasts, listBroadcastRecipientWorkerIds } from "../matching/broadcasts.ts";
 import { requireJobAccess, type JobAccessRecord } from "../../platform/access.ts";
 import { apiFailure } from "../../platform/api-failure.ts";
 import type { MobileApiContext } from "../../platform/auth.ts";
 import { requireNonOperatorWorkflowRole } from "../../platform/authz/workflow-role.ts";
 import { validateWorkflowCommand } from "../../workflow-orchestrator.ts";
 import { buildKaelAutonomyDecision, buildWorkerCancellationFallbackOptions, classifyWorkerCancellationReason, recordWorkerCancellationReview } from "../../kael/index.ts";
-import { normalizeServiceAreaDistrict } from "../../../../_shared/domain.ts";
-import type { JobStatus, ServiceType, WorkerCancellationRequestInput } from "../../../../_shared/domain.ts";
+import type { JobStatus, WorkerCancellationRequestInput } from "../../../../_shared/domain.ts";
 
 export async function requestWorkerCancellation(
   ctx: MobileApiContext,
@@ -115,6 +110,9 @@ async function readExistingWorkerCancellation(input: {
   if (existing.error || !existing.data) return null;
   const cancellationId = asString(existing.data.id);
   const cancellationStatus = nullableString(existing.data.status) ?? "reviewing_by_kael";
+  const replacement = cancellationStatus === "approved"
+    ? await recoverReplacementSearch(input.client, input.ctx.user.id, cancellationId)
+    : null;
   if (cancellationStatus === "approved") {
     await recordWorkerCancellationReview(input.client, {
       jobId: input.jobId, workerId: input.ctx.user.id, cancellationId, subCase: "explicit_cancel",
@@ -124,8 +122,8 @@ async function readExistingWorkerCancellation(input: {
   }
   return {
     cancellation_id: cancellationId, job_id: input.jobId, status: cancellationStatus,
-    job_status: input.jobStatus, broadcast_sent: false,
-    message: "Yêu cầu hủy việc đang được xử lý.", created_at: asString(existing.data.created_at),
+    job_status: replacement?.jobStatus ?? input.jobStatus, broadcast_sent: replacement?.broadcastSent ?? false,
+    message: replacement?.message ?? "Yêu cầu hủy việc đang được xử lý.", created_at: asString(existing.data.created_at),
     reason_code: asWorkerCancellationReasonCode(existing.data.reason_code) ?? "changed_mind",
     reason_category: asWorkerCancellationCategory(existing.data.reason_category) ?? "suspicious",
     admin_review_required: asBoolean(existing.data.admin_review_required),
@@ -144,8 +142,8 @@ async function finalizeWorkerCancellationRequest(input: {
 }) {
   const details = buildWorkerCancellationDetails(input.row, input.preAutonomy);
   const replacement = details.cancellationStatus === "approved"
-    ? await restartReplacementSearch(input, details.cancellationId)
-    : { broadcastSent: false, message: "Đã gửi yêu cầu hủy việc." };
+    ? await recoverReplacementSearch(input.client, input.ctx.user.id, details.cancellationId)
+    : { broadcastSent: false, message: "Đã gửi yêu cầu hủy việc.", jobStatus: input.job.status };
   await logWorkerCancellationEvents({ ...input, ...details, ...replacement });
   if (details.cancellationStatus === "approved") {
     await recordWorkerCancellationReview(input.client, {
@@ -160,7 +158,7 @@ async function finalizeWorkerCancellationRequest(input: {
   return {
     cancellation_id: details.cancellationId, job_id: input.jobId,
     status: details.cancellationStatus,
-    job_status: details.jobStatus ?? (input.job.status as JobStatus),
+    job_status: replacement.jobStatus,
     broadcast_sent: replacement.broadcastSent, message: replacement.message,
     created_at: asString(input.row.created_at_ts), reason_code: details.reasonCode,
     reason_category: details.reasonCategory,
@@ -200,43 +198,28 @@ function buildWorkerCancellationDetails(
   };
 }
 
-async function restartReplacementSearch(
-  input: Pick<Parameters<typeof finalizeWorkerCancellationRequest>[0], "client" | "ctx" | "job" | "jobId" | "row">,
+async function recoverReplacementSearch(
+  client: DbClient,
+  workerId: string,
   cancellationId: string,
 ) {
-  const accessReset = await dbQuery(
-    input.client.from("jobs").update({ apartment_access_state: {} }).eq("id", input.jobId).select("id").maybeSingle(),
-  );
-  if (accessReset.error) {
-    console.warn("mobile-api apartment access reset failed after worker cancellation", {
-      jobId: input.jobId, errorCode: accessReset.error.code,
-    });
+  const result = await dbQuery<Array<Record<string, unknown>>>(client.rpc("recover_worker_cancellation_replacement", {
+    p_cancellation_id: cancellationId, p_worker_id: workerId,
+  }));
+  const row = result.data?.[0];
+  if (result.error || !row || typeof row.broadcast_sent !== "boolean" || typeof row.replacement_state !== "string") {
+    apiFailure("DB_ERROR", "Chưa thể đối soát tiến trình tìm thợ thay thế. Vui lòng cập nhật lại trạng thái.", 500);
   }
-  let broadcastSent = false;
-  let message = "Đã hủy việc và đang tìm thợ thay thế.";
-  const district = normalizeServiceAreaDistrict(nullableString(input.row.district_code) ?? "");
-  if (district) {
-    const previousRecipients = await listBroadcastRecipientWorkerIds(input.client, input.jobId);
-    if (!previousRecipients.success) message = previousRecipients.reason;
-    else {
-      const cancelledWorkerId = nullableString(input.row.worker_id_out) ?? input.ctx.user.id;
-      const excludeWorkerIds = Array.from(new Set([cancelledWorkerId, ...previousRecipients.workerIds]));
-      const broadcast = await createBroadcasts(
-        workflowDb(input.ctx), input.jobId, input.row.service_type_out as ServiceType, district, { excludeWorkerIds },
-      );
-      broadcastSent = broadcast.success;
-      message = broadcast.success
-        ? `Đã gửi yêu cầu đến ${broadcast.broadcastCount} thợ thay thế.`
-        : broadcast.reason;
-    }
-  } else {
-    message = "Đã hủy việc nhưng địa chỉ cần có quận TP.HCM rõ ràng để tìm thợ thay thế.";
-  }
-  await notifyCustomerWorkerReplacementSearch(
-    input.client, input.jobId, nullableString(input.job.customer_id), broadcastSent,
-  );
-  void cancellationId;
-  return { broadcastSent, message };
+  const message = row.replacement_state === "recovery_required"
+    ? "Đã hủy việc. Tiến trình tìm thợ thay thế cần được hỗ trợ đối soát."
+    : row.replacement_state === "no_reachable_worker"
+    ? "Đã hủy việc. Hiện chưa có thợ thay thế phù hợp có thể nhận yêu cầu."
+    : row.broadcast_sent
+    ? "Đã hủy việc. Yêu cầu thay thế đã được tạo trong hộp việc của thợ phù hợp."
+    : row.replacement_state === "stopped"
+    ? "Đã hủy việc. Tiến trình tìm thợ thay thế đã dừng theo trạng thái công việc."
+    : "Đã hủy việc. Yêu cầu tìm thợ thay thế đã được lưu.";
+  return { broadcastSent: row.broadcast_sent, message, jobStatus: asJobStatus(row.job_status) };
 }
 
 async function logWorkerCancellationEvents(input: {

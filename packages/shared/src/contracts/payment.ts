@@ -1,5 +1,18 @@
 import { z } from 'zod'
 import { privateJobMediaRefSchema } from './common'
+
+export const refundSummarySchema = z.object({
+  state: z.enum(['review_required', 'refund_required']),
+  amount_vnd: z.number().int().positive().nullable(),
+  obligation_ids: z.array(z.string().uuid()),
+  requested_at: z.string().datetime({ offset: true }),
+  receipt_verification_available: z.literal(false),
+}).strict().refine((value) => value.state === 'refund_required'
+  ? value.amount_vnd !== null && value.obligation_ids.length > 0
+  : value.amount_vnd === null && value.obligation_ids.length === 0)
+
+export type RefundSummary = z.infer<typeof refundSummarySchema>
+
 export const reviewSchema = z.object({
   job_id: z.string().uuid(),
   rating: z.number().int().min(1).max(5),

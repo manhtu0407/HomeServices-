@@ -10,6 +10,10 @@ declare
   v_status public.worker_verification_status;
   v_approved boolean;
   v_suspended boolean;
+  v_patch jsonb;
+  v_attempt public.worker_profiles%rowtype;
+  v_before_row jsonb;
+  v_before_queue jsonb;
 begin
   insert into auth.users (
     id,
@@ -151,6 +155,67 @@ begin
      or v_after_ctid is distinct from v_before_ctid then
     raise exception 'idempotent replay performed a write';
   end if;
+
+  select to_jsonb(worker) into v_before_row
+  from public.worker_profiles as worker where worker.id = v_worker;
+  select jsonb_agg(to_jsonb(queue) order by queue.id) into v_before_queue
+  from public.kael_admin_queue as queue where queue.actor_id = v_worker;
+
+  insert into storage.objects (bucket_id, name, owner, metadata)
+  select bucket_id, replace(name, '.jpg', '-replacement.jpg'), owner, metadata
+  from storage.objects
+  where bucket_id = 'worker-verification' and owner = v_worker
+    and name in (
+      v_worker::text || '/cccd-front/front.jpg',
+      v_worker::text || '/cccd-back/back.jpg',
+      v_worker::text || '/selfie/selfie.jpg'
+    );
+
+  -- Review must observe the submitted snapshot even if a delayed client sends
+  -- another valid payload. Validate every mutable field, including owned media.
+  for v_patch in select value from jsonb_array_elements(jsonb_build_array(
+    jsonb_build_object('legal_name', 'Nguyen Van B'),
+    jsonb_build_object('date_of_birth', '1991-02-16'),
+    jsonb_build_object('gender', 'female'),
+    jsonb_build_object('service_types', array['plumbing']),
+    jsonb_build_object('years_experience', 6),
+    jsonb_build_object('districts', array['q3']),
+    jsonb_build_object('home_lat', 10.776),
+    jsonb_build_object('home_lng', 106.701),
+    jsonb_build_object('service_radius_km', 9),
+    jsonb_build_object('problem_specializations', array['pipe_leak']),
+    jsonb_build_object('cccd_front_url', replace(v_before_row->>'cccd_front_url', '.jpg', '-replacement.jpg')),
+    jsonb_build_object('cccd_back_url', replace(v_before_row->>'cccd_back_url', '.jpg', '-replacement.jpg')),
+    jsonb_build_object('selfie_url', replace(v_before_row->>'selfie_url', '.jpg', '-replacement.jpg')),
+    jsonb_build_object('bank_account', '9988776655'),
+    jsonb_build_object('bank_name', 'Techcombank')
+  )) loop
+    select * into v_attempt from jsonb_populate_record(
+      null::public.worker_profiles, v_before_row || v_patch
+    );
+    select * into v_result from public.submit_worker_registration_atomic(
+      v_worker, v_worker, v_attempt.legal_name, v_attempt.date_of_birth, v_attempt.gender,
+      v_attempt.service_types, v_attempt.years_experience, v_attempt.districts,
+      v_attempt.home_lat, v_attempt.home_lng, v_attempt.service_radius_km,
+      v_attempt.problem_specializations, v_attempt.cccd_front_url,
+      v_attempt.cccd_back_url, v_attempt.selfie_url, v_attempt.bank_account, v_attempt.bank_name
+    );
+    select ctid::text into v_after_ctid from public.worker_profiles where id = v_worker;
+    if v_result.ok is not false
+       or v_result.error_code is distinct from 'ALREADY_FINALIZED'
+       or v_result.worker_id_out is distinct from v_worker
+       or v_result.verification_status_out is distinct from 'submitted'::public.worker_verification_status
+       or v_result.idempotent_out is not false
+       or v_after_ctid is distinct from v_before_ctid
+       or (select to_jsonb(worker) from public.worker_profiles as worker where worker.id = v_worker)
+          is distinct from v_before_row
+       or (select jsonb_agg(to_jsonb(queue) order by queue.id)
+           from public.kael_admin_queue as queue where queue.actor_id = v_worker)
+          is distinct from v_before_queue then
+      raise exception 'submitted KYC payload or review queue was overwritten for field %',
+        (select jsonb_object_keys(v_patch));
+    end if;
+  end loop;
 
   -- Rejected rows remain correctable under the current B0 contract; the row
   -- lock makes their transition back to submitted atomic.

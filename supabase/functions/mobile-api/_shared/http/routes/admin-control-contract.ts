@@ -68,6 +68,8 @@ export const adminWorkerApplicationListQuerySchema = z.object({
 
 export const adminWorkerProfileDecisionSchema = z.object({
   decision: z.enum(["approve", "request_changes"]),
+  profile_review_queue_id: z.string().uuid(),
+  expected_profile_updated_at: z.iso.datetime({ offset: true }),
   reason: z.string().trim().max(1000).optional(),
 }).strict().superRefine((value, context) => {
   if (value.decision === "request_changes" && !value.reason) {
@@ -150,6 +152,20 @@ export const adminSupportPreparationSchema = z.object({
     });
   }
 });
+
+export const adminWorkflowRecoveryListQuerySchema = z.object({
+  status: z.enum(["all", "open", "acknowledged", "action_required", "resolved"]).default("all"),
+  severity: z.enum(["all", "medium", "high", "critical"]).default("all"),
+  limit: z.coerce.number().int().min(1).max(100).default(25),
+  offset: z.coerce.number().int().min(0).max(5000).default(0),
+}).strict();
+
+export const adminWorkflowRecoveryActionSchema = z.object({
+  action: z.enum(["acknowledge", "mark_contact_required", "reconcile_capacity", "resolve_verified"]),
+  reason: z.string().trim().min(3).max(500),
+  idempotency_key: z.string().uuid(),
+  expected_version: z.number().int().min(1),
+}).strict();
 
 export const adminEvidenceAccessSchema = z.object({
   evidence_id: z.string().trim().min(1).max(200),
@@ -285,6 +301,15 @@ export function parseAdminSupportCaseListQuery(url: URL) {
     assignee: url.searchParams.get("assignee") ?? undefined,
     limit: url.searchParams.get("limit") ?? undefined,
     cursor: url.searchParams.get("cursor") ?? undefined,
+  });
+}
+
+export function parseAdminWorkflowRecoveryListQuery(url: URL) {
+  return adminWorkflowRecoveryListQuerySchema.safeParse({
+    status: url.searchParams.get("status") ?? undefined,
+    severity: url.searchParams.get("severity") ?? undefined,
+    limit: url.searchParams.get("limit") ?? undefined,
+    offset: url.searchParams.get("offset") ?? undefined,
   });
 }
 

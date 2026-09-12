@@ -1,4 +1,5 @@
 import { act, renderHook, waitFor } from '@testing-library/react-native'
+import { clearPendingConfirmation, getOrCreatePendingConfirmation, writePendingConfirmation } from '@/lib/frontend-workflow/confirmation-recovery'
 
 import { createCustomerKaelRequestGuard } from '../kael-chat/customer-kael-state-scope'
 import { useCustomerKaelDecisionActions } from '../kael-chat/use-customer-kael-decision-actions'
@@ -16,9 +17,15 @@ jest.mock('@/lib/services', () => ({
 
 jest.mock('@/lib/frontend-workflow/confirmation-recovery', () => ({
   clearPendingConfirmation: jest.fn(async () => undefined),
-  getOrCreatePendingConfirmation: jest.fn(async (sessionId: string) => ({
+  getOrCreatePendingConfirmation: jest.fn(async (
+    ownerId: string,
+    sessionId: string,
+    confirmInput: Record<string, unknown>,
+  ) => ({
+    confirmInput,
     idempotencyKey: 'confirm:test-idempotency-key',
     operation: null,
+    ownerId,
     sessionId,
     supportCode: null,
     updatedAt: '2026-08-23T00:00:00.000Z',
@@ -74,7 +81,7 @@ function decisionHarness(agenticAdjustmentText = '') {
     actions: {
       confirmRemoteSearch: jest.fn(async () => false),
       customerConfirmCompletion: jest.fn(),
-      hydrateRemoteJobById: jest.fn(),
+      hydrateRemoteJobById: jest.fn(async () => false),
     },
   } as any
   const deal = {
@@ -94,6 +101,7 @@ function decisionHarness(agenticAdjustmentText = '') {
     kaelRequestGuard: createCustomerKaelRequestGuard('customer-a:job-a'),
     language: 'vi' as const,
     mode: 'case' as const,
+    pendingDraftOwnerId: 'customer-a',
     processController: {
       startProcessLines: jest.fn(async () => undefined),
       stopProcessLines: jest.fn(),
@@ -107,6 +115,7 @@ function decisionHarness(agenticAdjustmentText = '') {
 
 describe('customer Kael decision concurrency', () => {
   beforeEach(() => {
+    jest.clearAllMocks()
     mockConfirmEstimate.mockReset()
     mockSendKaelTurn.mockReset()
   })
@@ -230,6 +239,58 @@ describe('customer Kael decision concurrency', () => {
     expect(harness.conversation.setError).not.toHaveBeenCalledWith(
       'Chưa thể hoàn tất lựa chọn này. Vui lòng thử lại.',
     )
+  })
+
+  it.each([401, 403])('preserves confirmation identity when a manual retry receives an auth refusal (%s)', async (status) => {
+    const harness = decisionHarness()
+    mockConfirmEstimate.mockResolvedValueOnce({ success: false, status, code: 'AUTH_REQUIRED', error: '' })
+    const view = renderHook(() => useCustomerKaelDecisionActions(harness.input))
+    await act(async () => { await view.result.current.confirmAgenticEstimate() })
+    expect(view.result.current.confirmationReconciling).toBe(true)
+    expect(clearPendingConfirmation).not.toHaveBeenCalled()
+    expect(writePendingConfirmation).toHaveBeenCalledWith(expect.objectContaining({ idempotencyKey: 'confirm:test-idempotency-key' }))
+    view.unmount()
+  })
+
+  it.each(['rfq', 'inspection_only'])('does not announce a sent request before durable storage succeeds (%s)', async (quoteMode) => {
+    const harness = decisionHarness()
+    harness.conversation.chat.session.quote_mode = quoteMode
+    jest.mocked(getOrCreatePendingConfirmation).mockRejectedValueOnce(new Error('storage unavailable'))
+    const view = renderHook(() => useCustomerKaelDecisionActions(harness.input))
+    await act(async () => { await view.result.current.confirmAgenticEstimate() })
+    expect(mockConfirmEstimate).not.toHaveBeenCalled()
+    expect(harness.input.processController.startProcessLines).not.toHaveBeenCalledWith(
+      expect.stringMatching(/^Đã gửi/), expect.anything(),
+    )
+    expect(harness.conversation.setError).toHaveBeenCalledWith(expect.stringContaining('Chưa gửi thêm yêu cầu mới'))
+    view.unmount()
+  })
+
+  it.each([true, false])('retains recovery and opens the committed job when receipt cleanup fails (operation=%s)', async (hasOperation) => {
+    const harness = decisionHarness()
+    jest.mocked(clearPendingConfirmation).mockRejectedValueOnce(new Error('device storage unavailable'))
+    mockConfirmEstimate.mockResolvedValueOnce({
+      success: true,
+      data: {
+        session_id: 'session-a', job_id: 'job-confirmed',
+        ...(hasOperation ? { operation: {
+          session_id: 'session-a', job_id: 'job-confirmed', operation_id: 'operation-confirmed',
+          idempotency_key: 'kael-confirm:session-a:customer-a', quote_mode: 'kael_auto_quote',
+          state: 'stopped', terminal: true, support_code: 'A1B2C3D4', retry_after_ms: 0,
+          accepted_at: '2026-09-05T01:00:00.000Z', updated_at: '2026-09-05T01:00:01.000Z',
+        } } : {}),
+      },
+    })
+    const view = renderHook(() => useCustomerKaelDecisionActions(harness.input))
+    await act(async () => { await view.result.current.confirmAgenticEstimate() })
+
+    expect(view.result.current.confirmationReconciling).toBe(true)
+    expect(writePendingConfirmation).toHaveBeenCalledWith(expect.objectContaining({
+      ownerId: 'customer-a', sessionId: 'session-a', idempotencyKey: 'confirm:test-idempotency-key',
+    }))
+    expect(harness.input.router.replace).toHaveBeenCalledWith('/(customer)/kael-chat?mode=case&jobId=job-confirmed')
+    expect(harness.conversation.setError).not.toHaveBeenCalledWith(expect.stringContaining('Chưa có yêu cầu nào được gửi'))
+    view.unmount()
   })
 
   it('confirms an estimate with the rendered customer session token', async () => {

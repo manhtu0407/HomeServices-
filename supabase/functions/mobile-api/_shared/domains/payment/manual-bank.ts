@@ -35,13 +35,16 @@ export type EdgeManualBankPaymentResponse = {
   };
 };
 
+export type EdgeCompletionPaymentResponse = EdgeManualBankPaymentResponse & {
+  operation_id: string;
+  request_id: string;
+  final_price: number;
+  already_applied: boolean;
+};
+
 export type ManualBankClaimInput = {
   sending_bank?: string;
   transferred_at: string;
-};
-
-export type DirectPaymentResponseInput = {
-  received: boolean;
 };
 
 export type EdgeManualBankClaimResponse = {
@@ -53,22 +56,8 @@ export type EdgeManualBankClaimResponse = {
   salary_visible: true;
 };
 
-export type EdgeDirectPaymentResponse = {
-  job_id: string;
-  status: "payment_pending" | "paid";
-  direct_status:
-    | "awaiting_customer_confirmation"
-    | "awaiting_worker_confirmation"
-    | "awaiting_admin_confirmation"
-    | "reconcile_required"
-    | "paid";
-  collateral_amount?: number;
-  response_deadline?: string | null;
-};
-
 const PAYMENT_CODE_PATTERN = /^NS[A-Z0-9]{24}$/;
 const BANK_CODE_PATTERN = /^[A-Z0-9_-]{2,32}$/;
-const REQUEST_ID_PATTERN = /^[A-Za-z0-9._:-]{1,120}$/;
 
 export function buildManualBankPaymentInstructions(
   input: ManualBankPaymentInstructionsInput,
@@ -93,6 +82,91 @@ export function buildManualBankPaymentInstructions(
     paymentCode: input.paymentCode,
     qrImageUrl: url.toString(),
     transferContent: input.paymentCode,
+  };
+}
+
+export async function confirmCompletionAndCreateManualBankOrder(
+  ctx: MobileApiContext,
+  jobId: string,
+  config: ManualBankConfig | undefined,
+): Promise<EdgeCompletionPaymentResponse> {
+  if (ctx.role !== "customer") {
+    apiFailure("AUTH_FORBIDDEN", "Chỉ khách hàng mới có thể xác nhận hoàn tất.", 403);
+  }
+  const settings = requireManualBankSettings(config);
+  const client = ctx.supabase as DbClient;
+  const job = await requireJobAccess(client, jobId, ctx, {
+    requiredRole: "customer",
+    select: "id,status,customer_id,worker_id,final_price",
+  });
+  const finalPrice = positiveSafeInteger(job.final_price);
+  if (finalPrice === null) {
+    apiFailure("INVALID_STATUS", "Giá cuối cùng chưa hợp lệ để xác nhận hoàn tất.", 409);
+  }
+
+  const instructions = buildManualBankPaymentInstructions({
+    accountHolder: settings.accountHolder,
+    accountNumber: settings.accountNumber,
+    amount: finalPrice,
+    bankCode: settings.bankCode,
+    paymentCode: createPaymentCode(),
+  });
+  const requestId = `completion-payment:${jobId}:${ctx.user.id}`;
+  const result = await dbQuery<Array<Record<string, unknown>>>(
+    client.rpc("confirm_completion_manual_bank_atomic", {
+      p_customer_id: ctx.user.id,
+      p_expected_final_price: finalPrice,
+      p_job_id: jobId,
+      p_observed_at: new Date().toISOString(),
+      p_payment_code: instructions.paymentCode,
+      p_qr_image_url: instructions.qrImageUrl,
+      p_request_id: requestId,
+      p_transfer_content: instructions.transferContent,
+    }),
+  );
+  const row = result.data?.[0];
+  if (result.error?.code === "P0001") {
+    const reason = typeof result.error.message === "string" ? result.error.message : "";
+    if (reason.includes("CUSTOMER_COMPLETION_EVIDENCE_REQUIRED")) {
+      apiFailure("COMPLETION_EVIDENCE_REQUIRED", "Cần bằng chứng hoàn tất trước khi khách xác nhận.", 409);
+    }
+    if (reason.includes("SYNTHETIC_PAYMENT_PATH_REQUIRED")) {
+      apiFailure("AUTH_FORBIDDEN", "Luồng kiểm thử phải dùng cổng thanh toán synthetic riêng.", 403);
+    }
+    apiFailure("STATUS_CHANGED", "Trạng thái công việc đã thay đổi. Vui lòng tải lại và thử lại.", 409);
+  }
+  if (result.error || !row) {
+    apiFailure("DB_ERROR", "Không thể xác nhận hoàn tất và mở lệnh chuyển khoản.", 500);
+  }
+
+  const operationId = typeof row.operation_id === "string" ? row.operation_id : null;
+  const returnedRequestId = typeof row.request_id === "string" ? row.request_id : null;
+  const alreadyApplied = typeof row.already_applied === "boolean" ? row.already_applied : null;
+  if (!operationId || returnedRequestId !== requestId || alreadyApplied === null) {
+    apiFailure("DB_ERROR", "Biên nhận xác nhận hoàn tất không hợp lệ.", 500);
+  }
+  const payment = manualBankPaymentResponse(jobId, row);
+  if (!alreadyApplied && typeof job.worker_id === "string") {
+    await insertUserNotification(client, {
+      userId: job.worker_id,
+      jobId,
+      eventType: "customer_confirmed_completion",
+      title: "Khách đã xác nhận hoàn tất",
+      body: "Khách đã duyệt bằng chứng hoàn tất. Lệnh chuyển khoản đang chờ đối soát.",
+      metadata: { final_price: finalPrice },
+    }).catch((error) => {
+      console.warn("mobile-api completion notification enqueue failed", {
+        errorName: error instanceof Error ? error.name : typeof error,
+        jobId,
+      });
+    });
+  }
+  return {
+    ...payment,
+    operation_id: operationId,
+    request_id: requestId,
+    final_price: finalPrice,
+    already_applied: alreadyApplied,
   };
 }
 
@@ -213,85 +287,10 @@ export async function claimManualBankPayment(
   return response;
 }
 
-export async function selectDirectWorkerPayment(
-  ctx: MobileApiContext,
-  jobId: string,
-  clientRequestId: string,
-): Promise<EdgeDirectPaymentResponse> {
-  if (ctx.role !== "customer") {
-    apiFailure("AUTH_FORBIDDEN", "Chỉ khách hàng mới có thể chọn trả trực tiếp cho thợ.", 403);
-  }
-  if (!REQUEST_ID_PATTERN.test(clientRequestId)) {
-    apiFailure("VALIDATION", "Mã yêu cầu thanh toán không hợp lệ.", 400);
-  }
-  const result = await dbQuery<Array<Record<string, unknown>>>(
-    (ctx.supabase as DbClient).rpc("select_direct_worker_payment", {
-      p_client_request_id: clientRequestId,
-      p_customer_id: ctx.user.id,
-      p_job_id: jobId,
-    }),
-  );
-  const row = result.data?.[0];
-  if (result.error || !row) {
-    apiFailure("DB_ERROR", "Không thể chọn phương thức trả trực tiếp.", 500);
-  }
-  if (row.ok !== true) {
-    mapDirectPaymentError(row.error_code);
-  }
-  return parseDirectPaymentResponse(row, jobId);
-}
-
-export async function respondToDirectWorkerPayment(
-  ctx: MobileApiContext,
-  jobId: string,
-  input: DirectPaymentResponseInput,
-): Promise<EdgeDirectPaymentResponse> {
-  if (ctx.role !== "customer" && ctx.role !== "worker") {
-    apiFailure("AUTH_FORBIDDEN", "Vai trò này không thể xác nhận thanh toán trực tiếp.", 403);
-  }
-  if (typeof input.received !== "boolean") {
-    apiFailure("VALIDATION", "Xác nhận thanh toán không hợp lệ.", 400);
-  }
-  const rpcName = ctx.role === "customer" && input.received
-    ? "recognize_customer_payment_claim"
-    : ctx.role === "worker" && input.received
-      ? "acknowledge_worker_cash_payment"
-      : "respond_to_direct_worker_payment";
-  const rpcInput = rpcName === "recognize_customer_payment_claim"
-    ? { p_customer_id: ctx.user.id, p_job_id: jobId }
-    : rpcName === "acknowledge_worker_cash_payment"
-      ? { p_job_id: jobId, p_received: input.received, p_worker_id: ctx.user.id }
-      : { p_actor_id: ctx.user.id, p_actor_role: ctx.role, p_job_id: jobId, p_received: input.received };
-  const result = await dbQuery<Array<Record<string, unknown>>>(
-    (ctx.supabase as DbClient).rpc(rpcName, rpcInput),
-  );
-  const row = result.data?.[0];
-  if (result.error || !row) {
-    apiFailure("DB_ERROR", "Không thể lưu xác nhận thanh toán trực tiếp.", 500);
-  }
-  if (row.ok !== true) {
-    mapDirectPaymentError(row.error_code);
-  }
-  if (row.notification_required !== undefined && typeof row.notification_required !== "boolean") {
-    apiFailure("DB_ERROR", "Không thể lưu xác nhận thanh toán trực tiếp.", 500);
-  }
-  const response = parseDirectPaymentResponse(row, jobId);
-  if (row.notification_required === true && (response.direct_status === "reconcile_required" || response.direct_status === "awaiting_admin_confirmation")) {
-    await notifyFinanceReconciliationRequired(
-      ctx.supabase as DbClient,
-      response.job_id,
-      response.direct_status === "awaiting_admin_confirmation"
-        ? "direct_payment_admin_confirmation_required"
-        : "direct_payment_reconcile_required",
-    );
-  }
-  return response;
-}
-
 export async function notifyFinanceReconciliationRequired(
   client: DbClient,
   jobId: string,
-  reasonCode: "customer_transfer_claimed" | "direct_payment_reconcile_required" | "direct_payment_admin_confirmation_required" | "direct_payment_timeout",
+  reasonCode: "customer_transfer_claimed" | "direct_payment_timeout",
 ) {
   try {
     const [ownerResult, operatorResult] = await Promise.all([
@@ -321,10 +320,8 @@ export async function notifyFinanceReconciliationRequired(
     if (userIds.length === 0) return;
     const title = "Cần đối soát thanh toán";
     const body = reasonCode === "direct_payment_timeout"
-      ? "Một giao dịch trả trực tiếp chưa có đủ xác nhận trong thời hạn."
-      : reasonCode === "direct_payment_admin_confirmation_required"
-        ? "Khách hàng đã xác nhận thanh toán trực tiếp. Hãy xác minh trước khi ghi nhận hoàn tất."
-        : "Một giao dịch cần được đối soát trước khi Kael xác nhận thanh toán.";
+      ? "Một giao dịch trả trực tiếp cũ chưa có đủ xác nhận trong thời hạn."
+      : "Khách hàng đã báo chuyển khoản. Bộ phận vận hành cần đối soát biên nhận trước khi ghi nhận đã thanh toán.";
     await Promise.all(userIds.map((userId) => insertUserNotification(client, {
       userId,
       jobId,
@@ -369,7 +366,7 @@ function manualBankPaymentResponse(
     (paymentStatus !== "manual_qr_ready" && paymentStatus !== "manual_customer_claimed" &&
       paymentStatus !== "manual_reconcile_required" && paymentStatus !== "manual_verified") ||
     typeof row.payment_updated_at !== "string" ||
-    (row.status !== "payment_pending" && row.status !== "paid")
+    (row.status !== "payment_pending" && row.status !== "paid" && row.status !== "reviewed")
   ) {
     apiFailure("DB_ERROR", "Dữ liệu lệnh chuyển khoản không hợp lệ.", 500);
   }
@@ -385,33 +382,6 @@ function manualBankPaymentResponse(
       qr_image_url: qrImageUrl,
       updated_at: row.payment_updated_at,
     },
-  };
-}
-
-function parseDirectPaymentResponse(
-  row: Record<string, unknown>,
-  fallbackJobId: string,
-): EdgeDirectPaymentResponse {
-  const directStatus = row.direct_status;
-  if (
-    (row.status !== "payment_pending" && row.status !== "paid") ||
-    (directStatus !== "awaiting_customer_confirmation" &&
-      directStatus !== "awaiting_worker_confirmation" &&
-      directStatus !== "awaiting_admin_confirmation" &&
-      directStatus !== "reconcile_required" && directStatus !== "paid")
-  ) {
-    apiFailure("DB_ERROR", "Biên nhận thanh toán trực tiếp không hợp lệ.", 500);
-  }
-  const collateralAmount = nonnegativeSafeInteger(row.collateral_amount);
-  const responseDeadline = row.response_deadline === null || typeof row.response_deadline === "string"
-    ? row.response_deadline
-    : null;
-  return {
-    job_id: typeof row.job_id === "string" ? row.job_id : fallbackJobId,
-    status: row.status,
-    direct_status: directStatus,
-    ...(collateralAmount === null ? {} : { collateral_amount: collateralAmount }),
-    ...(responseDeadline === undefined ? {} : { response_deadline: responseDeadline }),
   };
 }
 
@@ -454,10 +424,6 @@ function positiveSafeInteger(value: unknown) {
   return typeof value === "number" && Number.isSafeInteger(value) && value > 0 ? value : null;
 }
 
-function nonnegativeSafeInteger(value: unknown) {
-  return typeof value === "number" && Number.isSafeInteger(value) && value >= 0 ? value : null;
-}
-
 function validIsoTimestamp(value: string) {
   return /^\d{4}-\d{2}-\d{2}T/.test(value) && Number.isFinite(Date.parse(value)) ? value : null;
 }
@@ -469,20 +435,4 @@ function normalizeBankCode(value: string | undefined) {
 
 function hasFinanceReconcileCapability(value: unknown) {
   return Array.isArray(value) && value.includes("finance.reconcile");
-}
-
-function mapDirectPaymentError(code: unknown): never {
-  if (code === "INSUFFICIENT_COLLATERAL") {
-    apiFailure("COLLATERAL_UNAVAILABLE", "Thanh toán trực tiếp hiện chưa khả dụng cho công việc này.", 409);
-  }
-  if (code === "PAYMENT_ALREADY_CLAIMED" || code === "PAYMENT_METHOD_LOCKED") {
-    apiFailure("STATUS_CHANGED", "Phương thức thanh toán đã thay đổi. Vui lòng tải lại.", 409);
-  }
-  if (code === "JOB_NOT_FOUND" || code === "DIRECT_PAYMENT_NOT_FOUND") {
-    apiFailure("NOT_FOUND", "Không tìm thấy lệnh thanh toán trực tiếp.", 404);
-  }
-  if (code === "AUTH_FORBIDDEN") {
-    apiFailure("AUTH_FORBIDDEN", "Bạn không có quyền xác nhận lệnh thanh toán này.", 403);
-  }
-  apiFailure("PAYMENT_FAILED", "Không thể xử lý thanh toán trực tiếp.", 409);
 }

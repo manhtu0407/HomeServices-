@@ -360,7 +360,10 @@ function compareLegacyMigrations(problems, inventoryEntries, remoteMigrations) {
 }
 
 function compareProviderReadiness(problems, release, remote) {
-  const expectedKeys = ['anthropic', 'deepseek', 'durable_guards', 'global_ai_enabled', 'perplexity', 'vietmap']
+  const expectedKeys = [
+    'android_fcm_v1', 'anthropic', 'deepseek', 'durable_guards', 'global_ai_enabled',
+    'ios_apns', 'perplexity', 'push_receipt_reconciler', 'vietmap',
+  ]
   const expected = release.providerReadiness
   const actual = remote.providerReadiness
   if (!isExactBooleanMap(expected, expectedKeys)) {

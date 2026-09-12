@@ -1,6 +1,9 @@
 import type { AppLanguage } from '../app-language'
+import type { ApiResult } from '../api'
+import type { ApiResponseMetadata } from '../api-types/shared'
 
-export type WorkflowErrorContext = 'direct_payment_confirmation' | 'direct_payment_selection'
+export type WorkflowErrorInput = string | Extract<ApiResult<never>, { success: false }>
+export type WorkflowErrorHandler = (error: WorkflowErrorInput, code?: string) => false
 
 const workflowErrorCopy: Record<AppLanguage, Record<string, string>> = {
   vi: {
@@ -20,9 +23,21 @@ const workflowErrorCopy: Record<AppLanguage, Record<string, string>> = {
     noRequestIncident: 'Không có yêu cầu để mở Kael Công việc',
     noRequestProposal: 'Không có yêu cầu để tạo đề xuất',
     noRequestAccess: 'Không có yêu cầu để mở quyền vào căn hộ',
+    accessUnknown: 'Đang đối soát quyền vào căn hộ. Chưa xác định kết quả; không cần xác nhận lại.',
+    candidateUnknown: 'Đang đối soát lựa chọn thợ. Chưa xác định kết quả; không cần chọn lại.',
+    candidateConflict: 'Đề xuất hoặc quyết định đã thay đổi. Hãy kiểm tra lại yêu cầu trước khi chọn thợ.',
+    candidateStorage: 'Chưa thể lưu hoặc đọc lựa chọn thợ trên thiết bị. Chưa gửi thêm quyết định; hãy kiểm tra lại trạng thái.',
+    candidateState: 'Chưa đồng bộ được trạng thái đề xuất và công việc mới nhất. Hãy kiểm tra lại trạng thái.',
+    candidateRecovery: 'Chưa xác định được kết quả lựa chọn thợ. Cần kiểm tra lại trạng thái hoặc liên hệ hỗ trợ; chưa gửi thêm quyết định.',
+    accessStorage: 'Chưa thể lưu hoặc đọc xác nhận vào căn hộ trên thiết bị. Hãy mở lại ứng dụng để đối soát.',
+    accessChanged: 'Thợ hoặc lượt xác nhận tại sảnh đã thay đổi. Hãy kiểm tra lại trước khi cho thợ lên.',
+    accessNotReady: 'Chưa thể cho thợ lên. Hãy tải lại và kiểm tra thợ đã xác nhận có mặt tại sảnh.',
+    accessRead: 'Đã có biên nhận cho thợ lên nhưng chưa tải được trạng thái mới nhất. Hãy tải lại để đối soát.',
     memoryAuth: 'Bạn cần đăng nhập để cập nhật bộ nhớ Kael',
     memoryConfirm: 'Không thể xác nhận cập nhật bộ nhớ Kael',
     authRequired: 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.',
+    caseWorkRequired: 'Hãy mở yêu cầu trong Kael và xác nhận đề nghị có giá hoặc yêu cầu khảo sát, báo giá trước khi gửi tới thợ.',
+    cancellationUnknown: 'Chưa xác định được kết quả hủy yêu cầu. Công việc vẫn được giữ để đối soát; hãy tải lại trạng thái trước khi thao tác tiếp.',
     jobForbidden: 'Bạn không thể tải công việc này.',
     jobMissing: 'Công việc không còn khả dụng.',
     network: 'Không thể kết nối đến hệ thống. Vui lòng thử lại.',
@@ -31,18 +46,30 @@ const workflowErrorCopy: Record<AppLanguage, Record<string, string>> = {
     receipt: 'Biên nhận xác nhận chưa hợp lệ. Hãy tải lại đề nghị rồi thử lại.',
     schedule: 'Khung giờ dịch vụ chưa hợp lệ. Hãy chọn lại thời gian.',
     policy: 'Yêu cầu chưa đáp ứng chính sách tiếp nhận hiện tại. Hãy kiểm tra thông tin bắt buộc.',
+    policyUnavailable: 'Chính sách dịch vụ chưa sẵn sàng. Vui lòng thử lại sau.',
+    coverageUnavailable: 'Dịch vụ chưa thể nhận yêu cầu tại khu vực này. Vui lòng thử lại sau.',
+    matchingCapacityUnavailable: 'Khả năng nhận việc đã thay đổi. Hãy tải lại trạng thái ghép thợ hoặc danh sách lời mời.',
+    updateRequired: 'Hãy cập nhật ứng dụng để tiếp tục.',
+    invalidJobMedia: 'Ảnh hoặc video không hợp lệ cho công việc này. Hãy tải lại bằng chứng.',
+    mediaValidationUnavailable: 'Chưa thể xác minh bằng chứng công việc. Vui lòng thử lại sau.',
+    completionEvidenceRequired: 'Cần có bằng chứng hoàn tất hợp lệ trước khi xác nhận.',
     releaseMismatch: 'Phiên bản ứng dụng chưa khớp với dịch vụ. Hãy cập nhật hoặc mở lại ứng dụng.',
     noWorker: 'Chưa có thợ phù hợp đang hoạt động. Yêu cầu vẫn được giữ để thử lại.',
-    recovery: 'Hệ thống đang đối soát yêu cầu trước đó để tránh tạo trùng.',
+    recovery: 'Yêu cầu cần được đối soát trước khi tiếp tục. Hãy tải lại trạng thái hoặc liên hệ hỗ trợ.',
+    recoveryUnavailable: 'Chưa thể đối soát yêu cầu. Hãy mở lại ứng dụng hoặc thử lại; kết quả xác nhận vẫn chưa rõ.',
+    retryQueued: 'Yêu cầu tìm lại thợ đã được tiếp nhận và đang chờ xử lý. Chưa xác nhận gửi lời mời tới thợ.',
+    retryReconciling: 'Đang đối soát yêu cầu tìm lại thợ. Chưa xác định kết quả; ứng dụng sẽ kiểm tra lại khi có kết nối.',
+    retryStorage: 'Chưa thể lưu hoặc đọc trạng thái phục hồi trên thiết bị. Kết quả tìm thợ cần được đối soát; hãy mở lại ứng dụng.',
+    retryRead: 'Đã có biên nhận tìm lại thợ nhưng chưa tải được trạng thái công việc. Hãy tải lại để đối soát.',
+    retryStopped: 'Lần tìm thợ này đã dừng. Hãy tải lại công việc để xem bước tiếp theo.',
+    selectionQueued: 'Đã ghi nhận lựa chọn tìm thợ và đang chờ xử lý. Chưa xác nhận gửi lời mời tới thợ.',
+    selectionReconciling: 'Đang đối soát lựa chọn tìm thợ. Không cần chọn lại; ứng dụng sẽ kiểm tra khi có kết nối.',
+    selectionRead: 'Đã ghi nhận lựa chọn nhưng chưa tải được trạng thái công việc. Hãy tải lại để đối soát.',
+    favoriteUnavailable: 'Thợ đã lưu hiện chưa thể nhận yêu cầu. Hãy tải lại danh sách hoặc chọn cách tìm khác.',
     proposalScope: 'Phạm vi đề xuất cần từ 3 đến 2.000 ký tự.',
     proposalPrice: 'Báo giá cần đủ hai mức giá nguyên dương hợp lệ.',
     proposalRange: 'Giá tối đa phải bằng hoặc lớn hơn giá tối thiểu.',
     proposalAction: 'Cách phản hồi lời mời này không còn hợp lệ. Hãy tải lại.',
-    directSelectionCollateralUnavailable: 'Trả trực tiếp chưa khả dụng cho công việc này. Hãy thanh toán bằng QR.',
-    directSelectionUnavailable: 'Chức năng trả trực tiếp chưa sẵn sàng. Vui lòng thử lại sau.',
-    directSelectionFailed: 'Chưa thể chọn trả trực tiếp. Vui lòng thử lại.',
-    directConfirmationUnavailable: 'Chức năng xác nhận trả trực tiếp chưa sẵn sàng. Vui lòng thử lại sau.',
-    directConfirmationFailed: 'Chưa thể ghi nhận xác nhận trả trực tiếp. Vui lòng thử lại.',
     statusChanged: 'Trạng thái công việc đã thay đổi. Hãy tải lại rồi thử lại.',
     fallback: 'Không thể cập nhật yêu cầu. Vui lòng thử lại.',
   },
@@ -63,9 +90,21 @@ const workflowErrorCopy: Record<AppLanguage, Record<string, string>> = {
     noRequestIncident: 'No request for Kael Work',
     noRequestProposal: 'No request for a proposal',
     noRequestAccess: 'No request for apartment access',
+    accessUnknown: 'Reconciling apartment access. The outcome is not yet known; no need to confirm again.',
+    candidateUnknown: 'Reconciling your worker choice. The outcome is not yet known; no need to choose again.',
+    candidateConflict: 'The proposal or decision has changed. Check your request before choosing a worker.',
+    candidateStorage: 'Your worker choice cannot be saved or read on this device. No further decision was sent; check the status again.',
+    candidateState: 'The latest proposal and job status have not synced. Check the status again.',
+    candidateRecovery: 'Your worker choice outcome is still unknown. Check the status again or contact support; no further decision was sent.',
+    accessStorage: 'Apartment access consent could not be saved or read on this device. Reopen the app to reconcile.',
+    accessChanged: 'The worker or check-in has changed. Review the current visit before releasing unit access.',
+    accessNotReady: 'Unit access cannot be released yet. Refresh and check that the worker has checked in at the lobby.',
+    accessRead: 'An access authorization receipt exists, but the latest job state could not be loaded. Refresh to reconcile.',
     memoryAuth: 'Sign in to update Kael memory',
     memoryConfirm: 'Could not confirm the Kael memory update',
     authRequired: 'Your sign-in session has expired. Sign in again.',
+    caseWorkRequired: 'Open your request in Kael and confirm the priced offer or inspection and quotation request before sending it to workers.',
+    cancellationUnknown: 'The cancellation outcome is not yet known. The job is retained for reconciliation; refresh its status before taking another action.',
     jobForbidden: 'You cannot load this job.',
     jobMissing: 'This job is no longer available.',
     network: 'Could not connect to the system. Try again.',
@@ -74,18 +113,30 @@ const workflowErrorCopy: Record<AppLanguage, Record<string, string>> = {
     receipt: 'The confirmation receipt is not valid. Refresh the offer and try again.',
     schedule: 'The service time is not valid. Choose another time.',
     policy: 'This request does not meet the current intake policy. Review the required information.',
+    policyUnavailable: 'The service policy is not ready. Try again later.',
+    coverageUnavailable: 'The service cannot accept a request in this area right now. Try again later.',
+    matchingCapacityUnavailable: 'Worker capacity has changed. Refresh the matching status or invitation list.',
+    updateRequired: 'Update the app to continue.',
+    invalidJobMedia: 'The photo or video is not valid for this job. Upload the evidence again.',
+    mediaValidationUnavailable: 'Job evidence cannot be verified right now. Try again later.',
+    completionEvidenceRequired: 'Valid completion evidence is required before confirmation.',
     releaseMismatch: 'The app release does not match the service. Update or reopen the app.',
     noWorker: 'No suitable worker is currently reachable. Your request is preserved for retry.',
-    recovery: 'The system is reconciling the previous request to prevent a duplicate.',
+    recovery: 'This request needs reconciliation before continuing. Refresh its status or contact support.',
+    recoveryUnavailable: 'The request could not be reconciled yet. Reopen the app or try again; the confirmation outcome is still unknown.',
+    retryQueued: 'The worker search retry was accepted and is queued. Worker invitation delivery is not confirmed yet.',
+    retryReconciling: 'Reconciling the worker search retry. The outcome is not known yet; the app will check again when connected.',
+    retryStorage: 'Recovery state could not be saved or read on this device. The worker search outcome needs reconciliation; reopen the app.',
+    retryRead: 'A worker search retry receipt exists, but the job status could not be loaded. Refresh to reconcile.',
+    retryStopped: 'This worker search has stopped. Refresh the job to see the next step.',
+    selectionQueued: 'Your worker search choice was recorded and is queued. Worker invitation delivery is not confirmed yet.',
+    selectionReconciling: 'Reconciling your worker search choice. No need to choose again; the app will check when connected.',
+    selectionRead: 'Your choice was recorded, but the job status could not be loaded. Refresh to reconcile.',
+    favoriteUnavailable: 'The saved worker cannot receive this request right now. Refresh the list or choose another search option.',
     proposalScope: 'Proposal scope must be between 3 and 2,000 characters.',
     proposalPrice: 'The quote needs two valid positive whole-number price bounds.',
     proposalRange: 'Maximum price must be at least the minimum price.',
     proposalAction: 'This invitation response is no longer valid. Refresh it.',
-    directSelectionCollateralUnavailable: 'Direct payment is not available for this job. Use the QR payment instead.',
-    directSelectionUnavailable: 'Direct payment is not ready yet. Try again later.',
-    directSelectionFailed: 'Could not select direct payment. Try again.',
-    directConfirmationUnavailable: 'Direct-payment confirmation is not ready yet. Try again later.',
-    directConfirmationFailed: 'Direct-payment confirmation could not be recorded. Try again.',
     statusChanged: 'The job status changed. Refresh and try again.',
     fallback: 'Could not update the request. Try again.',
   },
@@ -100,69 +151,109 @@ function createWorkflowErrorLookup() {
   }
   return lookup
 }
+const workflowErrorKeyByCode: Record<string, string> = {
+  ACCESS_AUTHORIZATION_OUTCOME_UNKNOWN: 'accessUnknown',
+  CANDIDATE_DECISION_OUTCOME_UNKNOWN: 'candidateUnknown',
+  CANDIDATE_DECISION_CONFLICT: 'candidateConflict',
+  CANDIDATE_STORAGE_UNAVAILABLE: 'candidateStorage',
+  CANDIDATE_STATE_UNAVAILABLE: 'candidateState',
+  CANDIDATE_RECOVERY_REQUIRED: 'candidateRecovery',
+  ACCESS_STORAGE_UNAVAILABLE: 'accessStorage',
+  ACCESS_CONTEXT_CHANGED: 'accessChanged',
+  ACCESS_NOT_READY: 'accessNotReady',
+  ACCESS_READ_UNAVAILABLE: 'accessRead',
+  MISSING_REASONING_RECEIPT: 'receipt',
+  PRICE_REASONING_RECEIPT_REQUIRED: 'receipt',
+  INVALID_PRICE_REASONING_RECEIPT: 'receipt',
+  SCHEDULE_REQUIRED: 'schedule',
+  SCHEDULE_INVALID: 'schedule',
+  SCHEDULE_EXPIRED: 'schedule',
+  INVALID_SCHEDULE: 'schedule',
+  INTAKE_POLICY_MISSING: 'policy',
+  POLICY_NOT_FOUND: 'policy',
+  POLICY_VERSION_MISMATCH: 'policy',
+  QUOTE_MODE_BLOCKED: 'policy',
+  POLICY_UNAVAILABLE: 'policyUnavailable',
+  COVERAGE_UNAVAILABLE: 'coverageUnavailable',
+  MATCHING_CAPACITY_UNAVAILABLE: 'matchingCapacityUnavailable',
+  MATCHING_REPLACEMENT_CAPACITY_UNAVAILABLE: 'matchingCapacityUnavailable',
+  MATCHING_RETRY_QUEUED: 'retryQueued',
+  MATCHING_RETRY_OUTCOME_UNKNOWN: 'retryReconciling',
+  MATCHING_RETRY_STORAGE_UNAVAILABLE: 'retryStorage',
+  MATCHING_RETRY_READ_UNAVAILABLE: 'retryRead',
+  MATCHING_RETRY_STOPPED: 'retryStopped',
+  MATCHING_RETRY_PARENT_CHANGED: 'statusChanged',
+  MATCHING_RETRY_NOT_READY: 'statusChanged',
+  MATCHING_RETRY_REQUEST_CONFLICT: 'recovery',
+  MATCHING_RETRY_CONFIRMATION_UNAVAILABLE: 'recovery',
+  MATCHING_PREFERENCE_PENDING: 'recovery',
+  MATCHING_PREFERENCE_QUEUED: 'selectionQueued',
+  MATCHING_PREFERENCE_OUTCOME_UNKNOWN: 'selectionReconciling',
+  MATCHING_PREFERENCE_STORAGE_UNAVAILABLE: 'retryStorage',
+  MATCHING_PREFERENCE_READ_UNAVAILABLE: 'selectionRead',
+  MATCHING_PREFERENCE_FAVORITE_UNAVAILABLE: 'favoriteUnavailable',
+  MATCHING_PREFERENCE_REQUEST_CONFLICT: 'recovery',
+  MATCHING_PREFERENCE_NOT_READY: 'statusChanged',
+  MATCHING_PREFERENCE_CONFIRMATION_UNAVAILABLE: 'recovery',
+  CLIENT_UPDATE_REQUIRED: 'updateRequired',
+  INVALID_JOB_MEDIA_REF: 'invalidJobMedia',
+  MEDIA_VALIDATION_UNAVAILABLE: 'mediaValidationUnavailable',
+  CUSTOMER_COMPLETION_EVIDENCE_REQUIRED: 'completionEvidenceRequired',
+  COMPLETION_EVIDENCE_REQUIRED: 'completionEvidenceRequired',
+  RELEASE_MISMATCH: 'releaseMismatch',
+  RELEASE_ID_MISMATCH: 'releaseMismatch',
+  MOBILE_RELEASE_MISMATCH: 'releaseMismatch',
+  CLIENT_RELEASE_MISMATCH: 'releaseMismatch',
+  RELEASE_INCOMPATIBLE: 'releaseMismatch',
+  BUILD_BELOW_MINIMUM: 'releaseMismatch',
+  NO_REACHABLE_WORKER: 'noWorker',
+  NO_WORKER_FOUND: 'noWorker',
+  RECOVERY_REQUIRED: 'recovery',
+  CONFIRMATION_RECOVERY_UNAVAILABLE: 'recoveryUnavailable',
+  CONFIRMATION_RECOVERY_REQUIRED: 'recovery',
+  UNKNOWN_CONFIRMATION_OUTCOME: 'recovery',
+  IDEMPOTENCY_RECONCILE_REQUIRED: 'recovery',
+  PROPOSAL_SCOPE_INVALID: 'proposalScope',
+  INVALID_PROPOSAL_SCOPE: 'proposalScope',
+  PROPOSAL_PRICE_REQUIRED: 'proposalPrice',
+  PROPOSAL_PRICE_FORBIDDEN: 'proposalPrice',
+  INVALID_PROPOSAL_PRICE: 'proposalPrice',
+  PROPOSAL_PRICE_RANGE_INVALID: 'proposalRange',
+  INVALID_PRICE_RANGE: 'proposalRange',
+  PROPOSAL_ACTION_INVALID: 'proposalAction',
+  INVALID_PROPOSAL_ACTION: 'proposalAction',
+  KAEL_CASE_WORK_REQUIRED: 'caseWorkRequired',
+  CANCELLATION_OUTCOME_UNKNOWN: 'cancellationUnknown',
+  AUTH_REQUIRED: 'authRequired',
+  HTTP_401: 'authRequired',
+  HTTP_403: 'jobForbidden',
+  HTTP_404: 'jobMissing',
+  NETWORK_ERROR: 'network',
+  TIMEOUT: 'timeout',
+  INVALID_RESPONSE: 'invalidResponse',
+  RESPONSE_TOO_LARGE: 'invalidResponse',
+  STATUS_CHANGED: 'statusChanged',
+}
+
 export function localizeWorkflowError(
-  error: string,
+  error: WorkflowErrorInput,
   language: AppLanguage,
-  code?: string,
-  context?: WorkflowErrorContext,
-  supportCode?: string | null,
+  localCode?: string,
 ) {
-  const codeKey = isOneOf(code, ['MISSING_REASONING_RECEIPT', 'PRICE_REASONING_RECEIPT_REQUIRED', 'INVALID_PRICE_REASONING_RECEIPT'])
-    ? 'receipt'
-    : isOneOf(code, ['SCHEDULE_REQUIRED', 'SCHEDULE_INVALID', 'SCHEDULE_EXPIRED', 'INVALID_SCHEDULE'])
-      ? 'schedule'
-      : isOneOf(code, ['INTAKE_POLICY_MISSING', 'POLICY_NOT_FOUND', 'POLICY_VERSION_MISMATCH', 'QUOTE_MODE_BLOCKED'])
-        ? 'policy'
-        : isOneOf(code, ['RELEASE_MISMATCH', 'RELEASE_ID_MISMATCH', 'MOBILE_RELEASE_MISMATCH', 'CLIENT_RELEASE_MISMATCH', 'RELEASE_INCOMPATIBLE', 'BUILD_BELOW_MINIMUM'])
-          ? 'releaseMismatch'
-          : isOneOf(code, ['NO_REACHABLE_WORKER', 'NO_WORKER_FOUND'])
-            ? 'noWorker'
-            : isOneOf(code, ['RECOVERY_REQUIRED', 'CONFIRMATION_RECOVERY_REQUIRED', 'UNKNOWN_CONFIRMATION_OUTCOME', 'IDEMPOTENCY_RECONCILE_REQUIRED'])
-              ? 'recovery'
-              : isOneOf(code, ['PROPOSAL_SCOPE_INVALID', 'INVALID_PROPOSAL_SCOPE'])
-                ? 'proposalScope'
-                : isOneOf(code, ['PROPOSAL_PRICE_REQUIRED', 'PROPOSAL_PRICE_FORBIDDEN', 'INVALID_PROPOSAL_PRICE'])
-                  ? 'proposalPrice'
-                  : isOneOf(code, ['PROPOSAL_PRICE_RANGE_INVALID', 'INVALID_PRICE_RANGE'])
-                    ? 'proposalRange'
-                    : isOneOf(code, ['PROPOSAL_ACTION_INVALID', 'INVALID_PROPOSAL_ACTION'])
-                      ? 'proposalAction'
-              : code === 'AUTH_REQUIRED' || code === 'HTTP_401'
-    ? 'authRequired'
-    : code === 'HTTP_403'
-      ? 'jobForbidden'
-      : code === 'HTTP_404'
-        ? 'jobMissing'
-        : code === 'NETWORK_ERROR'
-          ? 'network'
-          : code === 'TIMEOUT'
-            ? 'timeout'
-            : code === 'INVALID_RESPONSE' || code === 'RESPONSE_TOO_LARGE'
-              ? 'invalidResponse'
-              : code === 'STATUS_CHANGED'
-                ? 'statusChanged'
-                : context === 'direct_payment_selection' && code === 'COLLATERAL_UNAVAILABLE'
-                  ? 'directSelectionCollateralUnavailable'
-                  : context === 'direct_payment_selection' && code === 'ROUTE_NOT_FOUND'
-                    ? 'directSelectionUnavailable'
-                    : context === 'direct_payment_selection' && (code === 'DB_ERROR' || code === 'PAYMENT_FAILED')
-                      ? 'directSelectionFailed'
-                : context === 'direct_payment_confirmation' && code === 'ROUTE_NOT_FOUND'
-                  ? 'directConfirmationUnavailable'
-                  : context === 'direct_payment_confirmation' && code === 'DB_ERROR'
-                    ? 'directConfirmationFailed'
-              : null
-  if (codeKey) return withSupportCode(workflowErrorCopy[language][codeKey], language, supportCode)
-  const mappedKey = workflowErrorKeyByViMessage.get(error)
-  if (mappedKey) return withSupportCode(workflowErrorCopy[language][mappedKey], language, supportCode)
-  return withSupportCode(workflowErrorCopy[language].fallback, language, supportCode)
+  const message = typeof error === 'string' ? error : error.error
+  const metadata = typeof error === 'string' ? undefined : error.meta
+  const code = typeof error === 'string' ? localCode : error.code
+  const codeKey = code && Object.hasOwn(workflowErrorKeyByCode, code) ? workflowErrorKeyByCode[code] : null
+  const key = codeKey ?? workflowErrorKeyByViMessage.get(message) ?? 'fallback'
+  return appendWorkflowSupportCode(workflowErrorCopy[language][key], language, metadata)
 }
 
-function isOneOf(value: string | undefined, values: readonly string[]) {
-  return typeof value === 'string' && values.includes(value)
-}
-
-function withSupportCode(message: string, language: AppLanguage, supportCode?: string | null) {
-  if (!supportCode || !/^[A-Z0-9]{8}$/.test(supportCode)) return message
-  return `${message} ${language === 'vi' ? 'Mã hỗ trợ' : 'Support code'}: ${supportCode}.`
+export function appendWorkflowSupportCode(message: string, language: AppLanguage, metadata?: ApiResponseMetadata) {
+  if (metadata?.supportCode && /^[A-Z0-9]{8}$/.test(metadata.supportCode)) {
+    return `${message} ${language === 'vi' ? 'Mã hỗ trợ' : 'Support code'}: ${metadata.supportCode}.`
+  }
+  if (metadata?.clientDiagnosticCode && /^NSL-[A-Z0-9]{8}$/.test(metadata.clientDiagnosticCode)) {
+    return `${message} ${language === 'vi' ? 'Mã chẩn đoán trên thiết bị' : 'Device diagnostic code'}: ${metadata.clientDiagnosticCode}.`
+  }
+  return message
 }

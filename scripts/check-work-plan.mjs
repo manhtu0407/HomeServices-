@@ -270,10 +270,10 @@ function readJson(relative) {
   }
 }
 
-function changedPaths() {
+export function changedPaths(runGit = execFileSync) {
   let status = ''
   try {
-    status = execFileSync('git', ['status', '--porcelain=v1', '-z'], {
+    status = runGit('git', ['status', '--porcelain=v1', '-z', '--untracked-files=all'], {
       cwd: ROOT,
       encoding: 'utf8',
       maxBuffer: 1 << 28,

@@ -1,6 +1,4 @@
-// Edge service job-status domain (C4 6a, services/* split): the worker-driven status machine —
-// updateJobStatus (transition validate, geofenced check-in -> access state, completion evidence ->
-// customer confirmation gate + check-in nudge). Imported by services.ts for wiring.
+// Worker status transitions retain actor ownership, phase, and private-evidence gates.
 
 import { asStringArray, nullableNumber, nullableString } from "../../platform/coercions.ts";
 import { db, dbQuery } from "../../platform/db.ts";
@@ -23,6 +21,7 @@ import type { WorkerStatusUpdateInput } from "../contracts/worker.ts";
 import { validateWorkflowTransition } from "../../workflow-orchestrator.ts";
 import type { JobStatus } from "../../../../_shared/domain.ts";
 import { requireAttachedCheckInMedia } from "./status-check-in.ts";
+import { validateJobEvidenceRefs } from "./evidence-refs.ts";
 
 export async function updateJobStatus(
   ctx: MobileApiContext,
@@ -84,6 +83,16 @@ export async function updateJobStatus(
       .maybeSingle(),
   );
   if (updated.error) {
+    if (
+      updated.error.code === "P0001" &&
+      updated.error.message === "CUSTOMER_COMPLETION_EVIDENCE_REQUIRED"
+    ) {
+      apiFailure(
+        "INVALID_JOB_MEDIA_REF",
+        "Bằng chứng hoàn tất đã thay đổi. Vui lòng tải lại và gửi ảnh hoàn tất.",
+        409,
+      );
+    }
     apiFailure("DB_ERROR", "Không thể cập nhật trạng thái", 500);
   }
   if (!updated.data) {
@@ -155,8 +164,8 @@ async function buildJobStatusUpdate(input: {
 }) {
   const update: Record<string, unknown> = { status: input.input.status };
   let completionEvidenceForDecision: {
-    completion_notes?: string;
-    completion_photo_urls?: string[];
+    completion_notes: string;
+    completion_photo_urls: string[];
   } | null = null;
   let accessReleaseMetadata: Record<string, unknown> | null = null;
   if (input.timestampColumn) update[input.timestampColumn] = input.now;
@@ -180,6 +189,16 @@ async function buildJobStatusUpdate(input: {
   }
   if (input.input.status === "completed_by_worker") {
     completionEvidenceForDecision = buildCompletionEvidence(input.input, input.job);
+    completionEvidenceForDecision.completion_photo_urls = await validateJobEvidenceRefs(
+      input.client,
+      {
+        jobId: input.jobId,
+        ownerId: input.ctx.user.id,
+        mediaRefs: completionEvidenceForDecision.completion_photo_urls,
+        allowedStages: ["after"],
+        maxRefs: 10,
+      },
+    );
     update.completion_notes = completionEvidenceForDecision.completion_notes;
     update.completion_photo_urls = completionEvidenceForDecision.completion_photo_urls;
   }

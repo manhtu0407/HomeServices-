@@ -53,6 +53,7 @@ export function buildMatchingReceipt(input: {
   broadcasts: BroadcastRow[]
   events: MatchingEventRow[]
   now?: Date
+  operationState?: string | null
   preference: MatchingPreferenceRow | null
   status: string
 }): MatchingReceipt {
@@ -60,6 +61,7 @@ export function buildMatchingReceipt(input: {
   const batches = groupBatches(input.broadcasts)
   const activeBatch = findActiveBatch(batches, input.now ?? new Date())
   const stage = resolveStage({
+    operationState: input.operationState,
     activeBatch,
     batches,
     events: input.events,
@@ -164,6 +166,7 @@ function isSavedWorkerBatch(
 }
 
 function resolveStage(input: {
+  operationState?: string | null
   activeBatch: BroadcastBatch | null
   batches: BroadcastBatch[]
   events: MatchingEventRow[]
@@ -174,6 +177,13 @@ function resolveStage(input: {
   if (input.status === 'worker_candidate_pending') return 'candidate_ready'
   if (input.status === 'cancelled') return 'stopped'
   if (input.strategy === 'pending_choice') return 'awaiting_choice'
+  if (input.operationState === 'queued') {
+    return input.strategy === 'saved_worker_first' && !input.preference?.fallback_at
+      ? 'saved_worker_search' : 'general_search'
+  }
+  if (input.operationState === 'recovery_required') return 'recovery_required'
+  if (input.operationState === 'no_reachable_worker') return 'exhausted'
+  if (input.operationState === 'stopped') return 'stopped'
   if (input.activeBatch) {
     return receiptBatch(input.activeBatch, input.batches.findIndex((batch) => batch.batchId === input.activeBatch?.batchId) + 1, input.strategy, input.preference, input.events, new Date()).strategy === 'saved_worker'
       ? 'saved_worker_search'

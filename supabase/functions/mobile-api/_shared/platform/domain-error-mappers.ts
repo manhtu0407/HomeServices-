@@ -5,6 +5,15 @@ const KAEL_SCOPE_PRICE_ERRORS = new Set([
   "KAEL_REVIEW_MISSING",
 ]);
 
+export function throwMatchingCapacityError(error: { code?: string; message?: string } | null): void {
+  if (error?.code === "55000" && (
+    error.message === "MATCHING_CAPACITY_UNAVAILABLE" ||
+    error.message === "MATCHING_REPLACEMENT_CAPACITY_UNAVAILABLE"
+  )) {
+    apiFailure(error.message, "Khả năng nhận việc đã thay đổi. Hãy tải lại trạng thái ghép thợ.", 409);
+  }
+}
+
 export function mapConfirmKaelChatError(errorCode: string | null): never {
   if (errorCode === "NOT_FOUND") {
     apiFailure("NOT_FOUND", "Không tìm thấy phiên Kael", 404);

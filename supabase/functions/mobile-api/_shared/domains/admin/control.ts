@@ -60,6 +60,7 @@ import {
   mapWorkerApplicationDecisionError,
   nonNegativeInteger,
   requireAdminOwner,
+  requireWorkerReviewReceipt,
   uniqueStrings,
 } from "./control-validation.ts";
 export { getAdminActor, requireAdminCapability } from "./actor.ts";
@@ -76,13 +77,27 @@ export async function getAdminOperations(
   ctx: MobileApiContext,
 ): Promise<AdminOperationsResponse> {
   const actor = await requireAdminCapability(ctx, "operations.read");
-  const result = await dbQuery<unknown>(
-    db(ctx).rpc("admin_operations_snapshot", { p_actor_id: ctx.user.id }),
-  );
-  if (result.error || !result.data) {
+  const [result, recoveryResult] = await Promise.all([
+    dbQuery<unknown>(
+      db(ctx).rpc("admin_operations_snapshot", { p_actor_id: ctx.user.id }),
+    ),
+    dbQuery<Row[]>(db(ctx).from("workflow_recovery_cases")
+      .select("id", { count: "exact", head: true })
+      .in("status", ["open", "acknowledged", "action_required"])),
+  ]);
+  if (result.error || !result.data || recoveryResult.error) {
     apiFailure("DB_ERROR", "Không thể tải tình hình vận hành", 500);
   }
-  return serializeOperationsSnapshot(result.data, actor);
+  const response = serializeOperationsSnapshot(result.data, actor);
+  const recoveryCount = nonNegativeInteger(recoveryResult.count) ?? 0;
+  if (recoveryCount > 0) {
+    response.attention.push({
+      key: "workflow_recovery",
+      target_section: "operations",
+      count: recoveryCount,
+    });
+  }
+  return response;
 }
 
 export async function listAdminWorkerApplications(
@@ -170,20 +185,18 @@ export async function decideAdminWorkerApplication(
   if (result.error) {
     apiFailure("DB_ERROR", "Không thể lưu quyết định hồ sơ thợ", 500);
   }
-  const row = result.data?.[0];
-  if (!row) {
-    apiFailure("DB_ERROR", "Không thể lưu quyết định hồ sơ thợ", 500);
-  }
+  const row = requireWorkerReviewReceipt(result.data, applicationId, input.decision);
   if (row.ok !== true) mapWorkerApplicationDecisionError(nullableString(row.error_code));
 
   const role = asUserRole(row.role_out);
   const status = asDecisionStatus(row.status_out);
-  if (!role || !status || !row.decided_at) {
+  if (!role || !status || (row.verification_status_out !== null &&
+    asWorkerVerificationStatus(row.verification_status_out) !== row.verification_status_out)) {
     apiFailure("DB_ERROR", "Quyết định hồ sơ thợ chưa có biên nhận hợp lệ", 500);
   }
   return {
     ok: true,
-    application_id: asString(row.queue_id) || applicationId,
+    application_id: asString(row.queue_id),
     worker_id: asString(row.worker_id),
     decision: input.decision,
     status,
@@ -643,7 +656,7 @@ function serializeOperationsSnapshot(value: unknown, actor: AdminActor): AdminOp
     const target = item.target_section;
     const count = nonNegativeInteger(item.count);
     if (
-      (key !== "worker_applications" && key !== "payment_attention" && key !== "open_disputes" && key !== "other_admin_queue") ||
+      (key !== "worker_applications" && key !== "payment_attention" && key !== "open_disputes" && key !== "workflow_recovery" && key !== "other_admin_queue") ||
       (target !== "operations" && target !== "workers" && target !== "transactions") ||
       count === null
     ) return [];

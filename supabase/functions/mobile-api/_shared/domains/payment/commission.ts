@@ -1,9 +1,18 @@
 import { dbQuery, type DbClient } from "../../platform/db.ts";
+import { nullableNumber } from "../../platform/coercions.ts";
 
 export type WorkerCommissionTier = {
   level: number;
   rateBps: number;
 };
+
+export function frozenWorkerCommissionTier(job: Record<string, unknown>): WorkerCommissionTier | null {
+  const level = nullableNumber(job.worker_commission_level);
+  const rateBps = nullableNumber(job.worker_commission_rate_bps);
+  if (level === null || !Number.isSafeInteger(level) || level < 1 ||
+    rateBps === null || !Number.isSafeInteger(rateBps) || rateBps < 0 || rateBps > 1_500) return null;
+  return { level, rateBps };
+}
 
 /** Reads the current server policy; callers must not fall back to a fabricated rate. */
 export async function getWorkerCommissionTier(

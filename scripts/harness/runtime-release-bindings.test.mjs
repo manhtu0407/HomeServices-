@@ -1,4 +1,6 @@
 import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
+import { createRequire } from 'node:module'
 import { test } from 'node:test'
 
 import {
@@ -8,7 +10,61 @@ import {
   runtimeReleaseBindingsFromStagingRelease,
 } from './runtime-release-bindings.mjs'
 import { buildHarnessRelease } from './release-bundle.mjs'
-import { buildMobileBinaryAttestation } from './mobile-binary-attestation.mjs'
+import { buildMobileBinaryAttestation, verifyMobileBinaryAttestation } from './mobile-binary-attestation.mjs'
+import { compareDeploymentState } from './deployment-drift.mjs'
+import { canonicalMigrationEntries } from './migration-history.mjs'
+
+const requireFromMobile = createRequire(new URL('../../apps/mobile/package.json', import.meta.url))
+const ts = requireFromMobile('typescript')
+const runtimeSource = readFileSync(new URL('../../supabase/functions/_shared/harness/release.ts', import.meta.url), 'utf8')
+const runtimeModule = ts.transpileModule(runtimeSource, {
+  compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 },
+}).outputText
+const { readHarnessRuntimeRelease, harnessHealthPayload } = await import(
+  `data:text/javascript;base64,${Buffer.from(runtimeModule).toString('base64')}`
+)
+
+test('Edge health preserves the release manifest provider readiness contract without exposing credentials', () => {
+  const readiness = {
+    android_fcm_v1: true, anthropic: true, deepseek: false, durable_guards: true,
+    global_ai_enabled: true, ios_apns: true, perplexity: true,
+    push_receipt_reconciler: true, vietmap: true,
+  }
+  const release = buildHarnessRelease({ environment: 'staging', providerReadiness: readiness })
+  const environment = {
+    ...runtimeReleaseBindingsFromStagingRelease(release, stagingCompatibility()),
+    ANTHROPIC_API_KEY: 'sentinel-provider-secret',
+    PERPLEXITY_API_KEY: 'sentinel-provider-secret',
+    VIETMAP_API_KEY: 'sentinel-provider-secret',
+    KAEL_DURABLE_GUARDS_ENABLED: 'true',
+    NESTSCOUT_ANDROID_FCM_V1_READY: 'true',
+    NESTSCOUT_IOS_APNS_READY: 'true',
+    NESTSCOUT_PUSH_RECEIPT_RECONCILER_READY: 'true',
+  }
+  const runtime = readHarnessRuntimeRelease((name) => environment[name])
+  const health = harnessHealthPayload({ environment: { name: 'staging' }, release: runtime })
+  assert.deepEqual(health.release.provider_readiness, readiness,
+    'hosted Edge must emit all nine manifest fields, including each push readiness flag')
+  assert.equal(health.release.provider_readiness_fingerprint_sha256, release.providerReadinessFingerprintSha256)
+  assert.equal(health.status, 'ok')
+  assert.doesNotMatch(JSON.stringify(health), /sentinel-provider-secret/u)
+  const remoteFixture = {
+    ...release,
+    projectRef: 'xyylanuyflrjzbjzhqfl',
+    migrations: canonicalMigrationEntries(release.migrationInventory),
+    providerReadiness: health.release.provider_readiness,
+  }
+  const report = compareDeploymentState({ release, inventory: release.migrationInventory, remote: remoteFixture })
+  assert.deepEqual(report.problems, [], 'runtime health must be consumable by the strict drift verifier')
+  const staleReadiness = { ...remoteFixture.providerReadiness, ios_apns: false }
+  const staleReport = compareDeploymentState({
+    release, inventory: release.migrationInventory,
+    remote: { ...remoteFixture, providerReadiness: staleReadiness },
+  })
+  assert.equal(staleReport.ok, false)
+  assert.ok(staleReport.problems.includes('remote provider readiness fingerprint does not bind hosted readiness evidence'))
+  assert.ok(staleReport.problems.includes('provider readiness evidence mismatch'))
+})
 
 function mobileAttestation(release) {
   return buildMobileBinaryAttestation({
@@ -34,6 +90,27 @@ function mobileAttestation(release) {
   })
 }
 
+test('Edge push readiness requires explicit flags and stays false for absent or invalid values', () => {
+  const flags = {
+    android_fcm_v1: 'NESTSCOUT_ANDROID_FCM_V1_READY',
+    ios_apns: 'NESTSCOUT_IOS_APNS_READY',
+    push_receipt_reconciler: 'NESTSCOUT_PUSH_RECEIPT_RECONCILER_READY',
+  }
+  for (const [field, variable] of Object.entries(flags)) {
+    for (const value of [undefined, '', ' ', 'false', '0', 'off', 'ready', 'sentinel-provider-secret']) {
+      const runtime = readHarnessRuntimeRelease((name) => name === variable ? value : undefined)
+      assert.equal(runtime.providerReadiness[field], false, `${field} must fail closed for ${String(value)}`)
+    }
+    for (const value of ['true', '1', 'yes', 'on', ' TRUE ']) {
+      const runtime = readHarnessRuntimeRelease((name) => name === variable ? value : undefined)
+      for (const other of Object.keys(flags)) {
+        assert.equal(runtime.providerReadiness[other], other === field,
+          `enabling ${field} must not invent readiness for ${other}`)
+      }
+    }
+  }
+})
+
 function stagingCompatibility() {
   return {
     schemaVersion: 'stage1-staging-client-compatibility.v1',
@@ -58,14 +135,96 @@ function stagingCompatibility() {
   }
 }
 
+function nativeStagingCompatibility(release) {
+  const evidence = stagingCompatibility()
+  return {
+    ...evidence,
+    schemaVersion: 'stage1-staging-native-compatibility.v1',
+    source: 'eas-build-and-embedded-artifact',
+    projectId: 'c2fd8ae7-a6fa-4b6e-a9a0-df85b52ac94b',
+    releaseId: release.releaseId,
+    gitSha: release.gitSha,
+    sourceBundleSha256: release.sourceBundleSha256,
+    platforms: Object.fromEntries(Object.entries(evidence.platforms).map(([platform, value]) => [platform, {
+      ...value,
+      status: 'FINISHED',
+      distribution: 'INTERNAL',
+      buildProfile: 'native-proof-staging',
+      buildGitSha: release.gitSha,
+      completedAt: evidence.observedAt,
+      artifactSha256: 'a'.repeat(64),
+      embedded: {
+        applicationId: value.applicationId,
+        buildNumber: value.minimumBuildNumber,
+        easBuildId: value.easBuildId,
+        runtimeVersion: value.runtimeVersion,
+        contractEpoch: '2',
+        gitSha: release.gitSha,
+        releaseId: release.releaseId,
+        buildProfile: 'native-proof-staging',
+        supabaseUrl: 'https://xyylanuyflrjzbjzhqfl.supabase.co',
+        apiBaseUrl: 'https://xyylanuyflrjzbjzhqfl.supabase.co/functions/v1/mobile-api',
+      },
+    }])),
+  }
+}
+
+test('staging native builds bind only with matching release and embedded artifact identity', () => {
+  const release = buildHarnessRelease({ environment: 'staging' })
+  const evidence = nativeStagingCompatibility(release)
+  const bindings = runtimeReleaseBindingsFromStagingRelease(release, evidence)
+  assert.equal(bindings.NESTSCOUT_STAGE1_IOS_EAS_BUILD_ID, evidence.platforms.ios.easBuildId)
+  assert.equal(bindings.NESTSCOUT_STAGE1_ANDROID_EAS_BUILD_ID, evidence.platforms.android.easBuildId)
+  assert.equal(bindings.HARNESS_SOURCE_BUNDLE_SHA256, release.sourceBundleSha256)
+  assert.equal(bindingArguments(bindings).length, 22)
+})
+
+test('native staging evidence rejects unfinished, stale, mixed-target and incomplete artifacts', () => {
+  const release = buildHarnessRelease({ environment: 'staging' })
+  const original = nativeStagingCompatibility(release)
+  const reject = (mutate, label) => {
+    const evidence = structuredClone(original)
+    mutate(evidence)
+    assert.throws(() => runtimeReleaseBindingsFromStagingRelease(release, evidence),
+      /valid staging release and client compatibility evidence/u, label)
+  }
+  for (const [field, value] of Object.entries({
+    environment: 'production', projectId: 'other-project', source: 'eas-build-inventory',
+    releaseId: 'harness-other', gitSha: '0'.repeat(40), sourceBundleSha256: '0'.repeat(64),
+    contractEpoch: 1, observedAt: 'invalid',
+  })) reject((evidence) => { evidence[field] = value }, `root ${field}`)
+  for (const platform of ['ios', 'android']) {
+    reject((evidence) => { delete evidence.platforms[platform] }, `${platform} missing`)
+    for (const [field, value] of Object.entries({
+      status: 'IN_PROGRESS', artifactSha256: '', buildGitSha: '0'.repeat(40),
+      completedAt: '2999-01-01T00:00:00.000Z', distribution: 'STORE',
+      buildProfile: 'native-proof-production',
+    })) reject((evidence) => { evidence.platforms[platform][field] = value }, `${platform} ${field}`)
+    for (const field of Object.keys(original.platforms[platform].embedded)) {
+      reject((evidence) => { delete evidence.platforms[platform].embedded[field] }, `${platform} missing embedded ${field}`)
+    }
+    reject((evidence) => {
+      evidence.platforms[platform].embedded.supabaseUrl = 'https://iwevizmsedyqozxlawwl.supabase.co'
+    }, `${platform} production auth host`)
+    reject((evidence) => {
+      evidence.platforms[platform].embedded.apiBaseUrl = 'https://iwevizmsedyqozxlawwl.supabase.co/functions/v1/mobile-api'
+    }, `${platform} production API host`)
+  }
+  assert.throws(() => runtimeReleaseBindingsFromRelease(release, original), /valid production release/u,
+    'native staging evidence must never satisfy the production store-binary gate')
+  assert.ok(verifyMobileBinaryAttestation(original, release).includes('mobile binary attestation identity is invalid'),
+    'the production binary verifier itself must reject the native receipt class')
+})
+
 test('candidate bindings require the complete checksummed production release', () => {
   const release = buildHarnessRelease({
     environment: 'production',
     gitSha: '1'.repeat(40),
     requireCleanWorktree: false,
     providerReadiness: {
-      anthropic: true, deepseek: false, durable_guards: true,
-      global_ai_enabled: true, perplexity: true, vietmap: true,
+      android_fcm_v1: true, anthropic: true, deepseek: false, durable_guards: true,
+      global_ai_enabled: true, ios_apns: true, perplexity: true,
+      push_receipt_reconciler: true, vietmap: true,
     },
   })
   const bindings = runtimeReleaseBindingsFromRelease(release, mobileAttestation(release))
@@ -87,8 +246,9 @@ test('staging bindings require explicit compatibility evidence from real EAS inv
     gitSha: '1'.repeat(40),
     requireCleanWorktree: false,
     providerReadiness: {
-      anthropic: true, deepseek: true, durable_guards: true,
-      global_ai_enabled: true, perplexity: true, vietmap: true,
+      android_fcm_v1: true, anthropic: true, deepseek: true, durable_guards: true,
+      global_ai_enabled: true, ios_apns: true, perplexity: true,
+      push_receipt_reconciler: true, vietmap: true,
     },
   })
   const compatibility = stagingCompatibility()

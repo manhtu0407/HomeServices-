@@ -66,7 +66,7 @@ export function runtimeReleaseBindingsFromRelease(release, mobileBinaryAttestati
 
 export function runtimeReleaseBindingsFromStagingRelease(release, compatibilityEvidence) {
   const problems = checkHarnessRelease(release)
-  const evidenceProblems = checkStagingClientCompatibility(compatibilityEvidence)
+  const evidenceProblems = checkStagingClientCompatibility(compatibilityEvidence, release)
   if (problems.length || release.environment !== 'staging' || evidenceProblems.length > 0) {
     throw new Error(`runtime bindings require a valid staging release and client compatibility evidence: ${[
       ...problems,
@@ -132,13 +132,25 @@ function valid(value, pattern) {
   return typeof value === 'string' && pattern.test(value)
 }
 
-function checkStagingClientCompatibility(evidence) {
+function checkStagingClientCompatibility(evidence, release) {
   const problems = []
-  if (evidence?.schemaVersion !== 'stage1-staging-client-compatibility.v1') {
+  const native = evidence?.schemaVersion === 'stage1-staging-native-compatibility.v1'
+  if (!native && evidence?.schemaVersion !== 'stage1-staging-client-compatibility.v1') {
     problems.push('schemaVersion must be stage1-staging-client-compatibility.v1')
   }
   if (evidence?.environment !== 'staging') problems.push('environment must be staging')
-  if (evidence?.source !== 'eas-build-inventory') problems.push('source must be eas-build-inventory')
+  const source = native ? 'eas-build-and-embedded-artifact' : 'eas-build-inventory'
+  if (evidence?.source !== source) problems.push(`source must be ${source}`)
+  if (native) {
+    if (evidence.projectId !== 'c2fd8ae7-a6fa-4b6e-a9a0-df85b52ac94b') {
+      problems.push('native evidence must target the NestScout EAS project')
+    }
+    for (const field of ['releaseId', 'gitSha', 'sourceBundleSha256']) {
+      if (!evidence[field] || evidence[field] !== release?.[field]) {
+        problems.push(`native evidence ${field} must match the staging release`)
+      }
+    }
+  }
   if (evidence?.contractEpoch !== 2) problems.push('contractEpoch must be 2')
   const observedAt = evidence?.observedAt
   if (typeof observedAt !== 'string' || !Number.isFinite(Date.parse(observedAt)) ||
@@ -158,8 +170,37 @@ function checkStagingClientCompatibility(evidence) {
     if (!valid(value.easBuildId, UUID)) problems.push(`${platform} easBuildId must be a UUID`)
     if (!valid(value.runtimeVersion, RUNTIME_VERSION)) problems.push(`${platform} runtimeVersion is invalid`)
     if (!valid(value.buildGitSha, GIT_SHA)) problems.push(`${platform} buildGitSha must be a Git SHA`)
-    if (value.distribution !== policy.distribution) problems.push(`${platform} distribution is invalid`)
-    if (value.buildProfile !== policy.buildProfile) problems.push(`${platform} buildProfile is invalid`)
+    if (value.distribution !== (native ? 'INTERNAL' : policy.distribution)) problems.push(`${platform} distribution is invalid`)
+    if (value.buildProfile !== (native ? 'native-proof-staging' : policy.buildProfile)) problems.push(`${platform} buildProfile is invalid`)
+    if (native) problems.push(...checkNativeStagingArtifact(platform, value, evidence))
+  }
+  return problems
+}
+
+function checkNativeStagingArtifact(platform, value, evidence) {
+  const problems = []
+  if (value.status !== 'FINISHED' || !valid(value.artifactSha256, DIGEST) ||
+      !Number.isFinite(Date.parse(value.completedAt)) ||
+      Date.parse(value.completedAt) > Date.parse(evidence.observedAt)) {
+    problems.push(`${platform} requires a finished, hashed native artifact`)
+  }
+  if (value.buildGitSha !== evidence.gitSha) problems.push(`${platform} build Git SHA must match the staging release`)
+  const expected = {
+    applicationId: value.applicationId,
+    buildNumber: value.minimumBuildNumber,
+    easBuildId: value.easBuildId,
+    runtimeVersion: value.runtimeVersion,
+    contractEpoch: '2',
+    gitSha: evidence.gitSha,
+    releaseId: evidence.releaseId,
+    buildProfile: 'native-proof-staging',
+    supabaseUrl: 'https://xyylanuyflrjzbjzhqfl.supabase.co',
+    apiBaseUrl: 'https://xyylanuyflrjzbjzhqfl.supabase.co/functions/v1/mobile-api',
+  }
+  for (const [field, expectedValue] of Object.entries(expected)) {
+    if (value.embedded?.[field] !== expectedValue) {
+      problems.push(`${platform} embedded ${field} does not match staging compatibility`)
+    }
   }
   return problems
 }

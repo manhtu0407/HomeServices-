@@ -73,10 +73,10 @@ describe('assertReleaseAuthConfig', () => {
     })).toThrow('default HTTPS port')
   })
 
-  it('pins production EAS builds to the production Supabase project', () => {
+  it.each(['production', 'native-proof-production'])('pins %s EAS builds to the production Supabase project', (buildProfile) => {
     const input = {
       apiBaseUrl: 'https://iwevizmsedyqozxlawwl.supabase.co/functions/v1/mobile-api',
-      buildProfile: 'production',
+      buildProfile,
       isEasBuild: true,
       supabasePublishableKey: 'sb_publishable_test-key',
       supabaseUrl: 'https://iwevizmsedyqozxlawwl.supabase.co',
@@ -90,10 +90,10 @@ describe('assertReleaseAuthConfig', () => {
     })).toThrow('production Supabase project')
   })
 
-  it('pins preview EAS builds to the staging Supabase project', () => {
+  it.each(['preview', 'native-proof-staging'])('pins %s EAS builds to the staging Supabase project', (buildProfile) => {
     const input = {
       apiBaseUrl: 'https://xyylanuyflrjzbjzhqfl.supabase.co/functions/v1/mobile-api',
-      buildProfile: 'preview',
+      buildProfile,
       isEasBuild: true,
       supabasePublishableKey: 'sb_publishable_test-key',
       supabaseUrl: 'https://xyylanuyflrjzbjzhqfl.supabase.co',

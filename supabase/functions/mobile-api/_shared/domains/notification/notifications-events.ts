@@ -96,8 +96,8 @@ export async function notifyWorkerCustomerCancellation(
   if (!workerId) return;
   const title = "Khách đã hủy yêu cầu";
   const body = subCase === "scheduled_job"
-    ? "Khách đã hủy lịch sắp tới. Kael đã ghi nhận trong Phase 0."
-    : "Khách đã hủy sau khi bạn nhận việc. Kael đã ghi nhận goodwill Phase 0.";
+    ? "Khách đã hủy lịch sắp tới. Bạn không cần tiếp tục công việc này."
+    : "Khách đã hủy yêu cầu. Bạn không cần tiếp tục công việc này.";
 
   await insertUserNotification(client, {
     userId: workerId,

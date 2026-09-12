@@ -53,6 +53,8 @@ export type EdgeCustomerFavoriteWorkerResponse = {
 
 export type EdgeCustomerCancellationResponse = {
   cancellation_id: string;
+  dispute_id?: string;
+  refund_state?: "review_required";
   job_id: string;
   status: "requested";
   job_status: JobStatus;
