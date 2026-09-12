@@ -123,6 +123,14 @@ insert into public.matching_operations(
   'candidate_ready', 'synthetic-d690-terminal-proof'
 );
 
+-- Terminal proof starts from a capacity-backed, reachable official match.
+select * from public.record_worker_matching_heartbeat('d6910000-0000-4000-8000-000000000002', now());
+insert into public.matching_capacity_reservations(operation_id, job_id, worker_id, service_type,
+  district_code, status, held_at, expires_at, synthetic_cohort_id)
+values ('d6970000-0000-4000-8000-000000000001', 'd6920000-0000-4000-8000-000000000001',
+  'd6910000-0000-4000-8000-000000000002', 'electrical', 'q7', 'held', now(),
+  now() + interval '5 minutes', 'synthetic-d690-terminal-proof');
+
 insert into public.workflow_outbox(operation_id, event_type, status, safe_payload)
 values (
   'd6970000-0000-4000-8000-000000000001', 'matching_requested', 'processing',

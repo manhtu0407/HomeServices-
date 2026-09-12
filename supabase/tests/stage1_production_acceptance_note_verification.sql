@@ -133,6 +133,17 @@ begin
   );
 
   for v_sequence in 1..3 loop
+    -- Control-plane fixtures only; P69 exercises terminal execution separately from these rows.
+    insert into public.stage1_synthetic_transaction_proofs(
+      request_id, release_id, environment, cohort_id, run_id, sequence, scenario_kind,
+      job_fingerprint_sha256, terminal_state_sha256, reached_status,
+      fulfillment_passed, completion_passed, payment_passed, review_passed, generated_at
+    )
+    select gen_random_uuid(), v_release, 'production', v_cohort, 'sql-run', v_sequence, scenario,
+      encode(extensions.digest(v_release || ':' || v_sequence || ':' || scenario, 'sha256'), 'hex'),
+      encode(extensions.digest(v_release || ':terminal:' || v_sequence || ':' || scenario, 'sha256'), 'hex'),
+      'reviewed'::public.job_status, true, true, true, true, v_generated_at::timestamptz
+    from unnest(array['auto_quote', 'rfq_or_inspection']) as scenario;
     v_smoke_receipt := encode(extensions.digest(convert_to(concat_ws(E'\n',
       '1.0.0', v_release, 'production', v_cohort, 'sql-run',
       v_sequence::text, 'true', 'true', 'true', 'true', 'true',

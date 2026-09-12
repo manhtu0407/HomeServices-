@@ -116,6 +116,14 @@ insert into public.matching_operations(
   'candidate_ready', 'synthetic-a151-price-agreement'
 );
 
+-- A current candidate requires a reachable Worker and a lease for this operation.
+select * from public.record_worker_matching_heartbeat('a1510000-0000-4000-8000-000000000002', now());
+insert into public.matching_capacity_reservations(operation_id, job_id, worker_id, service_type,
+  district_code, status, held_at, expires_at, synthetic_cohort_id)
+values ('a1570000-0000-4000-8000-000000000001', 'a1520000-0000-4000-8000-000000000001',
+  'a1510000-0000-4000-8000-000000000002', 'electrical', 'q7', 'held', now(),
+  now() + interval '5 minutes', 'synthetic-a151-price-agreement');
+
 insert into public.workflow_outbox(
   operation_id, event_type, status, safe_payload
 ) values (

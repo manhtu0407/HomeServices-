@@ -323,6 +323,8 @@ begin
   );
   if not v_candidate.ok or not v_candidate.already_applied
   then raise exception 'worker proposal retry was not idempotent'; end if;
+  -- Each refusal retires its candidate; a subtransaction restores the independent fixture.
+  begin
   update public.worker_profiles set problem_specializations = array[]::text[]
     where id = 'd4800000-0000-4000-8000-000000000002';
   select * into v_confirm from public.confirm_worker_matching_proposal_atomic(
@@ -330,13 +332,10 @@ begin
   );
   if v_confirm.ok or v_confirm.error_code <> 'WORKER_NOT_ELIGIBLE'
   then raise exception 'zero-capability worker passed customer confirmation transition'; end if;
-  update public.jobs set status = 'worker_candidate_pending' where id = v_job_id;
-  update public.job_worker_candidates set status = 'proposed'
-    where id = v_candidate.candidate_id;
-  update public.worker_matching_proposals set status = 'proposed'
-    where candidate_id = v_candidate.candidate_id;
-  update public.matching_operations set state = 'candidate_ready' where job_id = v_job_id;
-  update public.confirmation_operations set state = 'candidate_ready' where job_id = v_job_id;
+  raise sqlstate 'ZX001' using message = 'rollback verified zero-capability refusal';
+  exception when sqlstate 'ZX001' then null;
+  end;
+  begin
   update public.worker_profiles
     set problem_specializations = array['leak_and_flow_diagnosis']::text[]
     where id = 'd4800000-0000-4000-8000-000000000002';
@@ -345,13 +344,9 @@ begin
   );
   if v_confirm.ok or v_confirm.error_code <> 'WORKER_NOT_ELIGIBLE'
   then raise exception 'partial-capability worker passed customer confirmation transition'; end if;
-  update public.jobs set status = 'worker_candidate_pending' where id = v_job_id;
-  update public.job_worker_candidates set status = 'proposed'
-    where id = v_candidate.candidate_id;
-  update public.worker_matching_proposals set status = 'proposed'
-    where candidate_id = v_candidate.candidate_id;
-  update public.matching_operations set state = 'candidate_ready' where job_id = v_job_id;
-  update public.confirmation_operations set state = 'candidate_ready' where job_id = v_job_id;
+  raise sqlstate 'ZX002' using message = 'rollback verified partial-capability refusal';
+  exception when sqlstate 'ZX002' then null;
+  end;
   update public.worker_profiles set problem_specializations =
       array['leak_and_flow_diagnosis','pipe_and_fixture_repair']::text[]
     where id = 'd4800000-0000-4000-8000-000000000002';
