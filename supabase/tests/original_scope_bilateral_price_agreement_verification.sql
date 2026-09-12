@@ -58,14 +58,14 @@ insert into public.kael_chat_sessions(
 insert into public.jobs (
   id, customer_id, service_type, service_problem_id, description,
   address_building, address_unit, address_floor, address_district, status,
-  kael_price_min, kael_price_max, kael_estimate_card_v3
+  quote_mode, kael_price_min, kael_price_max, kael_estimate_card_v3
 ) values (
   'a1520000-0000-4000-8000-000000000001',
   'a1510000-0000-4000-8000-000000000001',
   'electrical',
   (select id from public.service_problems where slug = 'electrical-general'),
   'Verified original scope fixture', 'Private Building', '1201', '12', 'q7',
-  'broadcasting', 150000, 250000,
+  'broadcasting', 'kael_auto_quote', 150000, 250000,
   jsonb_build_object(
     'card', jsonb_build_object(
       'price_source', 'baseline_with_market',
@@ -172,7 +172,8 @@ begin
     'a1510000-0000-4000-8000-000000000002'
   );
 
-  if v_quote ->> 'schema_version' <> 'original_scope_price_quote.v1'
+  if v_quote is null or v_quote_id is null
+    or v_quote ->> 'schema_version' <> 'original_scope_price_quote.v1'
     or (v_quote ->> 'customer_total')::integer <> 200000
     or (v_quote ->> 'reference_price_min')::integer <> 150000
     or (v_quote ->> 'reference_price_max')::integer <> 250000
@@ -196,7 +197,7 @@ begin
     or v_accept.job_status <> 'worker_candidate_pending'
     or v_accept.candidate_id is null
   then
-    raise exception 'worker exact-price confirmation failed';
+    raise exception 'worker exact-price confirmation failed: %', row_to_json(v_accept);
   end if;
 
   select original_scope_price_quote into v_candidate_quote
