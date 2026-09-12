@@ -133,6 +133,11 @@ jobs:
             --output artifacts/empty-reset
       - name: Start local Supabase
         run: pnpm --filter @nestscout/api exec supabase --workdir "$GITHUB_WORKSPACE/artifacts/empty-reset" start --exclude edge-runtime
+      - name: Record isolated Postgres image identity
+        run: |
+          mapfile -t databases < <(docker ps -q --filter 'name=^/supabase_db_')
+          test "${#databases[@]}" -eq 1
+          docker inspect --format '{{.Config.Image}} {{.Image}}' "${databases[0]}"
       - name: Replay all migrations from empty state
         run: pnpm --filter @nestscout/api exec supabase --workdir "$GITHUB_WORKSPACE/artifacts/empty-reset" db reset --local
       - name: Run SQL verification matrix
@@ -168,7 +173,7 @@ jobs:
         if: failure()
         run: |
           mkdir -p artifacts/database-diagnostics
-          mapfile -t databases < <(docker ps -aq --filter 'name=^/supabase_db_' --format '{{.ID}}')
+          mapfile -t databases < <(docker ps -aq --filter 'name=^/supabase_db_')
           test "${#databases[@]}" -eq 1
           docker inspect --format '{{json .State}}' "${databases[0]}" > artifacts/database-diagnostics/state.json
           docker logs --tail 200 "${databases[0]}" > artifacts/database-diagnostics/postgres.log 2>&1

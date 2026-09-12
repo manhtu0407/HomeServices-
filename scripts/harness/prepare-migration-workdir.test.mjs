@@ -1,9 +1,15 @@
 import assert from 'node:assert/strict'
+import { createHash } from 'node:crypto'
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import test from 'node:test'
 
 import {
   buildEmptyMigrationApplyPlan,
   buildMigrationApplyPlan,
+  materializeEmptyMigrationWorkdir,
+  materializeMigrationApplyWorkdir,
 } from './prepare-migration-workdir.mjs'
 
 const entries = [
@@ -72,4 +78,22 @@ test('empty reset replays one canonical migration per equivalence group', () => 
   assert.deepEqual(plan.files.map((entry) => entry.version), [
     '20260803000000', '20260804000000',
   ])
+})
+
+test('only the isolated empty-reset workdir pins the patched Postgres image', () => {
+  const root = mkdtempSync(join(tmpdir(), 'nestscout-postgres-pin-'))
+  mkdirSync(join(root, 'supabase/migrations'), { recursive: true })
+  const sql = 'select 1;\n'
+  writeFileSync(join(root, 'supabase/config.toml'), 'project_id = "fixture"\n')
+  writeFileSync(join(root, 'supabase/seed.sql'), sql)
+  writeFileSync(join(root, 'supabase/migrations/20260804000000_fixture.sql'), sql)
+  const fixtureInventory = { migrationEquivalences: { version: '1.0.0', groups: [] }, entries: [{ version: '20260804000000',
+    file: 'supabase/migrations/20260804000000_fixture.sql',
+    sha256: createHash('sha256').update(sql).digest('hex') }] }
+  materializeEmptyMigrationWorkdir({ root, output: 'empty', inventory: fixtureInventory })
+  assert.equal(readFileSync(join(root, 'empty/supabase/.temp/postgres-version'), 'utf8').trim(), '17.6.1.121')
+  materializeMigrationApplyWorkdir({ root, output: 'hosted', inventory: fixtureInventory,
+    hosted: { ...hosted, migrations: [] }, receipt: { ...receipt, pendingMigrations: fixtureInventory.entries } })
+  assert.equal(existsSync(join(root, 'hosted/supabase/.temp/postgres-version')), false)
+  assert.equal(existsSync(join(root, 'supabase/.temp/postgres-version')), false)
 })

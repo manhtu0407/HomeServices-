@@ -97,6 +97,9 @@ function materializeMigrationWorkdir(input) {
   copyFileSync(resolve(root, 'supabase/config.toml'), resolve(supabaseRoot, 'config.toml'))
   if (input.includeSeed) {
     copyFileSync(resolve(root, 'supabase/seed.sql'), resolve(supabaseRoot, 'seed.sql'))
+    // supautils <3.2.2 can crash on EXECUTE denial; keep the actual negative SQL tests intact.
+    mkdirSync(resolve(supabaseRoot, '.temp'), { recursive: true })
+    writeFileSync(resolve(supabaseRoot, '.temp/postgres-version'), '17.6.1.121\n')
   }
   for (const entry of plan.files) {
     const source = resolveInsideRoot(root, entry.file)
