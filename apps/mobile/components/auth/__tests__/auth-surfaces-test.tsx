@@ -388,28 +388,18 @@ describe('LoginRoleSurface', () => {
 
     expect(screen.getByTestId('auth-role-gate-screen')).toBeOnTheScreen()
     expect(screen.getByTestId('auth-role-gate-content')).toBeOnTheScreen()
-    expect(screen.getByTestId('auth-role-gate-decision-field')).toHaveStyle({ marginTop: 28 })
+    expect(screen.getByTestId('auth-role-gate-decision-field')).toHaveStyle({ flex: 1 })
     expect(screen.getByTestId('auth-entry-role-options')).toHaveProp('accessibilityRole', 'radiogroup')
     expect(screen.getByTestId('auth-entry-role-options')).toHaveProp('accessibilityLabel', 'Chọn vai trò')
     expect(screen.getByTestId('auth-entry-role-customer')).toBeOnTheScreen()
     expect(screen.getByTestId('auth-entry-role-worker')).toBeOnTheScreen()
-    expect(screen.getByTestId('auth-entry-role-customer-image')).toBeOnTheScreen()
-    expect(screen.getByTestId('auth-entry-role-worker-image')).toBeOnTheScreen()
-    expect(screen.getByTestId('auth-entry-role-customer-artwork-edge-blend')).toBeOnTheScreen()
-    expect(screen.getByTestId('auth-entry-role-worker-artwork-edge-blend')).toBeOnTheScreen()
-    expect(screen.getByTestId('auth-entry-role-customer-silver-edge')).toBeOnTheScreen()
-    expect(screen.getByTestId('auth-entry-role-worker-silver-edge')).toBeOnTheScreen()
-    expect(screen.getByTestId('auth-entry-role-customer-silver-edge')).toHaveStyle({ backgroundColor: 'transparent' })
-    expect(screen.getByTestId('auth-entry-role-worker-silver-edge')).toHaveStyle({ backgroundColor: 'transparent' })
-    expect(screen.getByTestId('auth-entry-role-customer-right-silver-panel')).toBeOnTheScreen()
-    expect(screen.getByTestId('auth-entry-role-worker-right-silver-panel')).toBeOnTheScreen()
-    expect(screen.getByTestId('auth-entry-role-customer-copy')).toHaveStyle({ left: '52.5%', right: 21, top: '50%', transform: [{ translateY: -14.5 }] })
-    expect(screen.getByTestId('auth-entry-role-worker-copy')).toHaveStyle({ left: '52.5%', right: 21, top: '50%', transform: [{ translateY: -14.5 }] })
-    expect(screen.queryByText('Đặt dịch vụ, trò chuyện cùng Kael và theo dõi tiến độ.')).toBeNull()
-    expect(screen.queryByText('Nhận việc, quản lý lịch và theo dõi thu nhập.')).toBeNull()
+    expect(screen.getByTestId('auth-role-gate-brand')).toBeOnTheScreen()
+    expect(screen.queryByTestId('auth-role-gate-greeting')).toBeNull()
+    expect(screen.queryByTestId('auth-entry-role-customer-image')).toBeNull()
+    expect(screen.queryByTestId('auth-entry-role-worker-image')).toBeNull()
     expect(screen.queryByTestId('auth-entry-role-customer-arrow')).toBeNull()
     expect(screen.queryByTestId('auth-entry-role-worker-arrow')).toBeNull()
-    expect(screen.getByTestId('auth-entry-role-customer')).toHaveProp('accessibilityState', { checked: false })
+    expect(screen.getByTestId('auth-entry-role-customer')).toHaveProp('accessibilityState', { selected: false, disabled: false })
     expect(screen.queryByText('Phổ biến')).toBeNull()
     expect(screen.queryByTestId('auth-entry-role-guest')).toBeNull()
     expect(mockEnterGuestMode).not.toHaveBeenCalled()
@@ -421,8 +411,9 @@ describe('LoginRoleSurface', () => {
     render(<LoginRoleSurface />)
 
     expect(screen.getByTestId('auth-entry-role-options')).toHaveProp('accessibilityLabel', 'Choose your role')
-    expect(screen.getByText('Customer')).toBeOnTheScreen()
-    expect(screen.getByText('Service partner')).toBeOnTheScreen()
+    expect(screen.getByText('Choose your path')).toBeOnTheScreen()
+    expect(screen.getByText('Customer', { includeHiddenElements: true })).toBeOnTheScreen()
+    expect(screen.getByText('Service partner', { includeHiddenElements: true })).toBeOnTheScreen()
     expect(screen.queryByText('Continue as Customer')).toBeNull()
     expect(screen.queryByTestId('auth-role-continue')).toBeNull()
     expect(screen.queryByText('Khách hàng')).toBeNull()
@@ -450,14 +441,12 @@ describe('LoginRoleSurface', () => {
     expect(customerRole).toHaveProp('accessibilityHint', 'Chạm một lần để chọn vai trò; chạm lần nữa để tiếp tục.')
     expect(screen.queryByTestId('auth-role-continue')).toBeNull()
     expect(screen.queryByText('Tiếp tục với Khách hàng')).toBeNull()
-    expect(customerRole).toHaveStyle({ borderRadius: 29, borderWidth: 1.5, minHeight: 214 })
-    expect(screen.getByTestId('auth-entry-role-customer-layout')).toHaveStyle({ width: '100%' })
-    expect(screen.getByTestId('auth-entry-role-worker-layout')).toHaveStyle({ width: '100%' })
+    expect(customerRole).toHaveStyle({ position: 'absolute' })
 
     fireEvent.press(customerRole)
     expect(screen.getByTestId('auth-role-gate-screen')).toBeOnTheScreen()
-    expect(customerRole).toHaveProp('accessibilityState', { checked: true })
-    expect(screen.getByTestId('auth-entry-role-worker')).toHaveProp('accessibilityState', { checked: false })
+    expect(customerRole).toHaveProp('accessibilityState', { selected: true, disabled: false })
+    expect(screen.getByTestId('auth-entry-role-worker')).toHaveProp('accessibilityState', { selected: false, disabled: false })
 
     fireEvent.press(customerRole)
     expect(screen.getByTestId('auth-login-screen')).toBeOnTheScreen()
@@ -469,11 +458,11 @@ describe('LoginRoleSurface', () => {
 
     const workerRole = screen.getByTestId('auth-entry-role-worker')
     expect(workerRole).toHaveProp('accessibilityHint', 'Chạm một lần để chọn vai trò; chạm lần nữa để tiếp tục.')
-    expect(workerRole).toHaveStyle({ borderRadius: 29, borderWidth: 1.5, minHeight: 214 })
+    expect(workerRole).toHaveStyle({ position: 'absolute' })
 
     fireEvent.press(workerRole)
-    expect(workerRole).toHaveProp('accessibilityState', { checked: true })
-    expect(screen.getByTestId('auth-entry-role-customer')).toHaveProp('accessibilityState', { checked: false })
+    expect(workerRole).toHaveProp('accessibilityState', { selected: true, disabled: false })
+    expect(screen.getByTestId('auth-entry-role-customer')).toHaveProp('accessibilityState', { selected: false, disabled: false })
     expect(screen.getByTestId('auth-role-gate-screen')).toBeOnTheScreen()
 
     fireEvent.press(workerRole)
@@ -647,41 +636,26 @@ describe('LoginRoleSurface', () => {
     expect(screen.queryByText('Chưa thể đăng nhập. Vui lòng thử lại.')).toBeNull()
   })
 
-  it('keeps the time-aware role greeting stable while a role is selected', () => {
+  it('renders the approved static brand gate while preserving role selection state', () => {
     mockRouteParams = { stage: '1.3' }
     render(<LoginRoleSurface />)
 
-    const headline = screen.getByTestId('auth-role-gate-greeting').props.accessibilityLabel as string
-    const greetingChildren = screen.getByTestId('auth-role-gate-greeting').props.children as { props?: { testID?: string } }[]
-    expect(screen.getByTestId('auth-role-gate-greeting-text')).toHaveStyle({ fontSize: 20, lineHeight: 26 })
-    expect(screen.getByTestId('auth-role-gate-greeting-text')).toHaveTextContent(headline)
-    expect(screen.getByTestId('auth-role-gate-greeting')).toHaveStyle({ justifyContent: 'center' })
-    expect(greetingChildren.map((child) => child.props?.testID)).toEqual([
-      'auth-role-gate-logo-slot',
-      'auth-role-gate-greeting-text',
-    ])
-    expect(screen.getByTestId('auth-role-gate-logo-slot')).toHaveStyle({ height: 26, marginRight: 4, width: 44 })
-    expect(screen.getByTestId('auth-role-gate-logo')).toHaveStyle({ height: 44, width: 44 })
-    expect(screen.queryByTestId('auth-role-gate-greeting-lead')).toBeNull()
-    expect(screen.queryByTestId('auth-role-gate-signature-shell')).toBeNull()
-    expect(screen.queryByTestId('auth-role-gate-greeting-signature')).toBeNull()
-
     const roleGateSource = readFileSync(resolve(__dirname, '../entry-access/role-gate-screen.tsx'), 'utf-8')
-    expect(roleGateSource).toContain('nestscout-aurora-nest-role-gate-transparent.png')
-    expect(roleGateSource).toContain('auth-role-gate-logo')
+    expect(roleGateSource).toContain('NestScoutLoginGate')
+    expect(roleGateSource).toContain("language === 'vi' ? 'reference' : 'native'")
+    expect(roleGateSource).not.toContain('RoleSelectionCards')
+    expect(roleGateSource).not.toContain('nestscout-aurora-nest-role-gate-transparent.png')
     expect(roleGateSource).not.toContain('KaelCoreV9')
-    expect(screen.getByTestId('auth-entry-role-customer')).toHaveStyle({ borderRadius: 29, minHeight: 214 })
-    expect(screen.getByTestId('auth-entry-role-worker')).toHaveStyle({ borderRadius: 29, minHeight: 214 })
+    expect(screen.getByTestId('auth-role-gate-brand')).toBeOnTheScreen()
+    expect(screen.queryByTestId('auth-role-gate-greeting')).toBeNull()
 
     fireEvent.press(screen.getByTestId('auth-entry-role-worker'))
-    expect(screen.getByTestId('auth-entry-role-customer')).toHaveProp('accessibilityState', { checked: false })
-    expect(screen.getByTestId('auth-entry-role-worker')).toHaveProp('accessibilityState', { checked: true })
+    expect(screen.getByTestId('auth-entry-role-customer')).toHaveProp('accessibilityState', { selected: false, disabled: false })
+    expect(screen.getByTestId('auth-entry-role-worker')).toHaveProp('accessibilityState', { selected: true, disabled: false })
 
     fireEvent.press(screen.getByTestId('auth-entry-role-customer'))
-    expect(screen.getByTestId('auth-entry-role-customer')).toHaveProp('accessibilityState', { checked: true })
-    expect(screen.getByTestId('auth-entry-role-worker')).toHaveProp('accessibilityState', { checked: false })
-
-    expect(screen.getByTestId('auth-role-gate-greeting')).toHaveProp('accessibilityLabel', headline)
+    expect(screen.getByTestId('auth-entry-role-customer')).toHaveProp('accessibilityState', { selected: true, disabled: false })
+    expect(screen.getByTestId('auth-entry-role-worker')).toHaveProp('accessibilityState', { selected: false, disabled: false })
   })
 
   it('offers Google and Apple only to customer login', async () => {

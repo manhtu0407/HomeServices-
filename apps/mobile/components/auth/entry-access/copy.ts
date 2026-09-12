@@ -136,6 +136,9 @@ export type EntryAccessCopy = Readonly<{
   roleGate: Readonly<{
     chooseRole: string
     customer: RoleCardCopy
+    footerCaption: string
+    heading: string
+    intro: string
     selectionHint: string
     worker: RoleCardCopy
   }>
@@ -264,13 +267,16 @@ const viCopy: EntryAccessCopy = {
   roleGate: {
     chooseRole: 'Chọn vai trò',
     customer: {
-      description: 'Đặt dịch vụ, trò chuyện cùng Kael và theo dõi tiến độ.',
+      description: 'Đặt dịch vụ,\nnhà luôn gọn gàng.',
       meta: 'Google · Apple · Thư điện tử/SĐT',
       title: 'Khách hàng',
     },
+    footerCaption: 'DỊCH VỤ NHÀ  •  CUỘC SỐNG TỐT HƠN',
+    heading: 'Chọn lối vào',
+    intro: 'Cùng nhau, ngôi nhà luôn ổn.',
     selectionHint: 'Chạm một lần để chọn vai trò; chạm lần nữa để tiếp tục.',
     worker: {
-      description: 'Nhận việc, quản lý lịch và theo dõi thu nhập.',
+      description: 'Nhận việc linh hoạt,\ngia tăng thu nhập.',
       meta: 'Tài khoản thợ · Xác thực hồ sơ',
       title: 'Đối tác thợ',
     },
@@ -400,13 +406,16 @@ const enCopy: EntryAccessCopy = {
   roleGate: {
     chooseRole: 'Choose your role',
     customer: {
-      description: 'Book services, chat with Kael, and track progress.',
+      description: 'Book services,\nkeep home in order.',
       meta: 'Google · Apple · Email/phone',
       title: 'Customer',
     },
+    footerCaption: 'HOME SERVICES  •  BETTER LIVING',
+    heading: 'Choose your path',
+    intro: 'Together, your home stays well.',
     selectionHint: 'Tap once to select a role; tap again to continue.',
     worker: {
-      description: 'Receive work, manage your schedule, and track earnings.',
+      description: 'Take flexible jobs,\ngrow your income.',
       meta: 'Worker account · Profile verification',
       title: 'Service partner',
     },

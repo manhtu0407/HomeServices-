@@ -75,7 +75,7 @@ jobs:
           mkdir -p artifacts/release
           node scripts/harness/github-merge-approval.mjs \
             --repository "$GITHUB_REPOSITORY" --merge-sha "$GITHUB_SHA" \
-            --reviewer kouuuuuu \
+            --reviewer kouuuuuuuuu \
             --output artifacts/release/merge-approval.json
       - run: pnpm install --frozen-lockfile
       - name: Whole-workspace quality gates
@@ -261,7 +261,7 @@ jobs:
           mkdir -p artifacts/release
           node scripts/harness/github-merge-approval.mjs \
             --repository "$GITHUB_REPOSITORY" --merge-sha "$GITHUB_SHA" \
-            --reviewer kouuuuuu \
+            --reviewer kouuuuuuuuu \
             --output artifacts/release/merge-approval.json
       - name: Build immutable production release manifest
         env:

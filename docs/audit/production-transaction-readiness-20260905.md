@@ -4,10 +4,10 @@
 
 - Worktree: `.claude/worktrees/production-agentic-readiness-20260904`.
 - Branch: `codex/production-agentic-transaction-readiness`.
-- Base/HEAD của batch chưa commit: `468c7fdc0740bbafa4ca07f7bb7a1c6e28dd1c1b`.
+- Base ban đầu của batch: `468c7fdc0740bbafa4ca07f7bb7a1c6e28dd1c1b`; candidate đã lưu tại `b7b3c239`, đang tích hợp main `5d75e268` trước publication.
 - Staging đã xác minh: `xyylanuyflrjzbjzhqfl`, HomeServices Staging, ACTIVE_HEALTHY.
 - Production mục tiêu: `iwevizmsedyqozxlawwl`. Batch này **không mutate Production**.
-- Chưa commit/push/PR/merge. Không dùng dirty root checkout để triển khai.
+- Đã commit bản review; chưa push/PR hoặc merge PR tại cập nhật ngày 12/09. Không dùng dirty root checkout để triển khai. Chi tiết tiếp nối nằm trong [test report](../test-logs/2026-09-05_production-transaction-readiness.md).
 - Đây là bằng chứng theo thời điểm, không phải tuyên bố Production-ready.
 
 Yêu cầu của Tu là bảo vệ giao dịch thật và uy tín giữa khách và thợ, không chỉ làm demo chạy được. Plan đã duyệt là thẩm quyền implementation; tài liệu Dev là đầu vào để đối chiếu, không tự cấp quyền sửa dữ liệu hay bỏ Customer confirmation. Kết luận cuối phải dựa trên Production. Không dùng CI, mock hoặc Staging thay cho native/Production proof.
@@ -33,7 +33,7 @@ Trạng thái “chưa có binding behavior” không đồng nghĩa chắc ch�
 
 P75 strict mode được wire trong PR workflow và post-merge quality job. Hai workflow tạo JSON từ API Vitest và mobile Jest ở chính checkout đang kiểm tra, rồi gọi `--require-behavioral --results ...`. Thiếu/skipped/failed/ambiguous assertion hoặc entry PARTIAL/UNVERIFIED chặn gate. Artifact vẫn được giữ khi fail. Không deploy trong PR workflow.
 
-Exact-head approval của `kouuuuuu` vẫn là điều kiện riêng. Cần lệnh merge mới từ Tu sau review; agent không merge trong batch này. Production mutation chỉ diễn ra sau quality/review gates trong pipeline, qua cohort canary và rollback. Gate đỏ hiện tại phải được sửa bằng evidence thật, không nới checker.
+Tu đã duyệt ngày 12/09 thứ tự PR → human review → isolated Production canary có rollback → trên 80% được chứng minh và tất cả gate an toàn nghiêm trọng xanh → merge. Đây là quyền publication trước final proof, không phải miễn gate hay đánh dấu Goal complete. Username reviewer chính xác đã kiểm tra qua GitHub collaborator API là `kouuuuuuuuu`, quyền write; tên viết tắt `kouuuuuu` trong Plan không khớp tài khoản repo. Hai bước release approval được sửa về đúng login, vẫn bắt current APPROVED của người khác tác giả trên exact head SHA. Gate đỏ phải được sửa bằng evidence thật, không nới checker. Pipeline hiện tại vẫn chỉ deploy sau merge; pre-merge canary chưa được wire/chạy và không được giả receipt của một PR đã merge.
 
 EAS workflow hiện mới cover đăng nhập/home, **không phải full transaction native**. Schema chính thức đã được validate trên object schema thực (không phải response envelope), deliberate invalid job type bị từ chối. Backend EAS từ chối Maestro do tài khoản cần paid plan: `BLOCKED_EAS_PLAN`. Không mua plan hoặc ngụy trang job để vượt giới hạn này.
 
