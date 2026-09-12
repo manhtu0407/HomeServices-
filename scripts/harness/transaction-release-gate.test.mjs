@@ -10,6 +10,16 @@ import { buildHarnessRelease } from './release-bundle.mjs'
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..')
 
+test('whole-workspace CI uses the same native-WebSocket-capable Node major as the release tests', () => {
+  const workflow = readFileSync(resolve(root, '.github/workflows/harness-assurance.yml'), 'utf8')
+    .replace(/\r\n/gu, '\n')
+  const workspaceJob = workflow.split('  workspace-gates:\n')[1].split('\n  database-controls:')[0]
+  const releaseWorkflow = readFileSync(resolve(root, '.github/workflows/kael-agentic-completeness.yml'), 'utf8')
+  const major = Number(workspaceJob.match(/node-version: (\d+)/u)?.[1])
+  assert.equal(major, Number(releaseWorkflow.match(/node-version: (\d+)/u)?.[1]))
+  assert.ok(major >= 22, 'the real Supabase Storage fixture must initialize without the Node 20 Realtime error')
+})
+
 function identityScript(workflow) {
   return workflow.replace(/\r\n/gu, '\n').split('        run: |')[1].split('\n\n  build_ios:')[0]
     .split('\n').slice(1).map((line) => line.replace(/^          /u, '')).join('\n')

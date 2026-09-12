@@ -4,10 +4,10 @@
 
 - Worktree: `.claude/worktrees/production-agentic-readiness-20260904`.
 - Branch: `codex/production-agentic-transaction-readiness`.
-- Base ban đầu của batch: `468c7fdc0740bbafa4ca07f7bb7a1c6e28dd1c1b`; candidate đã lưu tại `b7b3c239`, đang tích hợp main `5d75e268` trước publication.
+- Base ban đầu của batch: `468c7fdc0740bbafa4ca07f7bb7a1c6e28dd1c1b`; candidate `b7b3c239` đã tích hợp main `5d75e268` tại `6ec230fe`.
 - Staging đã xác minh: `xyylanuyflrjzbjzhqfl`, HomeServices Staging, ACTIVE_HEALTHY.
 - Production mục tiêu: `iwevizmsedyqozxlawwl`. Batch này **không mutate Production**.
-- Đã commit bản review; chưa push/PR hoặc merge PR tại cập nhật ngày 12/09. Không dùng dirty root checkout để triển khai. Chi tiết tiếp nối nằm trong [test report](../test-logs/2026-09-05_production-transaction-readiness.md).
+- Đã push bản review và mở [PR #239](https://github.com/manhtu0407/HomeServices-/pull/239), yêu cầu review từ đúng GitHub login `kouuuuuuuuu`. CI đầu tiên có 4 check xanh và 7 check đỏ; đang sửa, chưa merge hoặc deploy Production. Không dùng dirty root checkout để triển khai. Chi tiết tiếp nối nằm trong [test report](../test-logs/2026-09-05_production-transaction-readiness.md).
 - Đây là bằng chứng theo thời điểm, không phải tuyên bố Production-ready.
 
 Yêu cầu của Tu là bảo vệ giao dịch thật và uy tín giữa khách và thợ, không chỉ làm demo chạy được. Plan đã duyệt là thẩm quyền implementation; tài liệu Dev là đầu vào để đối chiếu, không tự cấp quyền sửa dữ liệu hay bỏ Customer confirmation. Kết luận cuối phải dựa trên Production. Không dùng CI, mock hoặc Staging thay cho native/Production proof.

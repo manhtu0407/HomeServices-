@@ -1,0 +1,4 @@
+# Verified SHA256 digests of saved Vitest reports, not credentials. Each exception pins one historical finding.
+b7b3c23929b5f66e72b9c148c75a7b55da9682a4:docs/test-logs/2026-09-05_production-transaction-readiness.md:generic-api-key:985
+b7b3c23929b5f66e72b9c148c75a7b55da9682a4:docs/test-logs/2026-09-05_production-transaction-readiness.md:generic-api-key:1042
+b7b3c23929b5f66e72b9c148c75a7b55da9682a4:docs/test-logs/2026-09-05_production-transaction-readiness.md:generic-api-key:1106

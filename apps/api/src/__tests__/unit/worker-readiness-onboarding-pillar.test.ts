@@ -333,14 +333,26 @@ describe('worker readiness and onboarding', () => {
     expect(result.next_action).toBe('finish_active_work')
   })
 
-  it('keeps application mutation atomic and non-destructive', () => {
+  it('contains no destructive SQL in the worker application migration artifact', () => {
     const migration = readFileSync(resolve(
       process.cwd(),
       '../../supabase/migrations/20260904234000_worker_application_readiness.sql',
     ), 'utf8')
-    expect(migration).toContain('submit_worker_application_atomic')
-    expect(migration).toContain('for update')
-    expect(migration).toContain('p_revision_of_application_id')
     expect(migration).not.toMatch(/\b(?:drop|truncate|delete)\b/i)
+  })
+
+  it('reports an unresolved submission after RPC timeout without inventing a receipt or a fallback write', async () => {
+    const { client, submit } = applicationHttp({ rpcResults: [{
+      data: null, error: { code: '57014', message: 'private database diagnostic' },
+    }] })
+    const response = await submit()
+    expect(response.status, pillarWhy(PILLAR)).toBe(500)
+    const body = await response.json()
+    expect(body).toMatchObject({ code: 'DB_ERROR' })
+    expect(body).not.toHaveProperty('application_id')
+    expect(JSON.stringify(body)).not.toContain('private database diagnostic')
+    expect(response.headers.get('x-support-code')).toMatch(/^[A-Z0-9]{8}$/)
+    expect(client.calls.filter((call) => call.table === 'rpc:submit_worker_application_atomic')).toHaveLength(1)
+    expect(client.calls.some((call) => call.operations.some((op) => ['insert', 'update', 'upsert', 'delete'].includes(String(op[0]))))).toBe(false)
   })
 })

@@ -982,7 +982,7 @@ Migration `20260906015000_customer_candidate_rejection_durable.sql` được CLI
 - Closeout query so normalized SQL source của cả hai function trong15000 với hosted prosrc: **2/2matches**; rejection là definer, notification vẫn invoker, cả hai search_path rỗng. Rerun API type-check/comments/diff sau cleanup import đềuPASS. Scratch26.96MiB; dirty root vẫn đúng hai memory files và hai QR assets ban đầu, không sửa/xóa.
 
 SHA256:
-- API report: `e25739ecf3c171da3a82be90edcf26cf0eff55b9f8fba197748cc2ddf9af96f7`.
+- Report SHA256 (Vitest): `e25739ecf3c171da3a82be90edcf26cf0eff55b9f8fba197748cc2ddf9af96f7`.
 - Migration15000: `16c8399b7ee400ee74ff1849b1e0d44caf40c1a4136b0f97f11448b0efb085aa`.
 - P119: `309ad0789b1b7580c4c4380d24f0e281aec673fe3115e1478396d9bfd68fc018`.
 - P120: `14c2d50f97876e8f31b3783ef9caebf55ae9f5efc29b07364825276db982ffa1`.
@@ -1039,7 +1039,7 @@ P97 chạy actual HTTP handler với dependency fixtures:
 
 Hashes:
 
-- API report: `f9f10e8b642f2e1cf1f217cd44d9b86213fcf724b74cebe799b1c075038ec37d`.
+- Report SHA256 (Vitest): `f9f10e8b642f2e1cf1f217cd44d9b86213fcf724b74cebe799b1c075038ec37d`.
 - 16000: `663cfb7984401035a21632e7daeff2d440812d278a3ab668b42de88d3224d7fc`.
 - 17000: `73a1fed08f80cf7225ef066b8c12ac02a06b9af714d2d1cde6f969d6e1868be8`.
 - 18000: `c98cc49c91bbd4790d81a47febe6f877b24ffb6fc10f94ac8c45be8ee21f5897`.
@@ -1103,7 +1103,7 @@ Read-only policy inspection còn thấy Admin UPDATE/DELETE policies trên job_e
 Scratch27.80MiB; root checkout giữ nguyên hai memory edits và hai QR assets ngoài scope. Không commit/push/merge. Session memory chưa ghi vì chưa có approved draft; test evidence đã lưu ở docs thay vì chỉ scratch.
 
 Hashes:
-- API report: `4d8fe2f2899de1f3d323bf90a66042b74248872826a809dc56f45878423943d6`.
+- Report SHA256 (Vitest): `4d8fe2f2899de1f3d323bf90a66042b74248872826a809dc56f45878423943d6`.
 - Migration08010000: `fe61a12f2bf8ea6f72e71733552512e9fa1c62c1fe5124739171589e5b9eeea6`.
 - P122 final: `95d95c20ad8d2243a47b12ee9c4d40455d4229b3e75aaa68a642019e9056684e`.
 
@@ -1964,3 +1964,26 @@ React Doctor changed scan với base origin/main: 65 files, exit 0 nhưng **8 fi
 Verification sau tích hợp main, 19:30–19:39: `pnpm type-check` PASS 4/4 workspace (một cache hit); `pnpm build` PASS 1/1 Next.js API build, không phải native binary. `pnpm test:api` PASS 1.333, hai hosted cases skipped do local stack không chạy; shared 125/125 PASS, sandbox PASS. `pnpm test:mobile --runInBand --silent --json --outputFile=../../.scratch/publication-main-mobile-20260912.json` terminal PASS **188 suites/1.872 tests**, zero failed/skipped, 518.711s; SHA256 20f800858f0b96c98c014fd5dfa754e07a38a313ac92b5984ddd7d6da926a312. API report publication-main-api-20260912.json SHA256 6e44052b471c17cc7b2080251339d5512a8bee633d050251481e75a23643a409. Comment discipline, structure và registry 176 PASS; git diff --cached --check PASS, không còn conflict markers. Strict behavioral chạy lại trên hai report mới vẫn exit 1: 43 UNVERIFIED/18 PARTIAL, 174/174 bound assertions PASS. Sáu workplan slice chưa hoàn thiện; giữ rõ trong PR, không đổi trạng thái để tạo PASS giả.
 
 Review integration: fixed point main 5d75e268, candidate b7b3c239 và working merge; so source theo cả hai intent của auth, generated registry từ union. Spec compliance: đạt phạm vi chuẩn bị PR/review đã được Tu duyệt, chưa đạt full Production transaction. Rules/standards: không bỏ Customer/approval/data gates, không delete file, không sửa dirty root hoặc Production. Maintainability: không thêm subsystem, dùng generator và sửa hai reviewer arguments có regression; warnings/critical evidence debt còn được ghi rõ. Publication chỉ là review candidate, không phải claim hoàn tất hoặc cho phép promote real traffic.
+
+### 2026-09-12 — PR #239 và vòng sửa CI theo bằng chứng
+
+Đã mở [PR #239](https://github.com/manhtu0407/HomeServices-/pull/239) trên head `6ec230fe719b254324b7b76e85da3c85e3eb219c`, normal review candidate, không phải merge-ready. Review request đã gửi `kouuuuuuuuu`. Không amend history, merge PR, deploy hoặc ghi dữ liệu Production. Backend worktree vẫn nối Production; workflow integration cũ vẫn chỉ được phép mutate Staging, không đổi URL sang Production để ép check xanh.
+
+CI đầu tiên đã terminal: **4 PASS / 7 FAIL**. Các lỗi được tách khỏi kết quả local trước publication:
+
+| Check / bằng chứng | Nguyên nhân và thay đổi hẹp | Bằng chứng sau sửa tại local |
+|---|---|---|
+| [Gitleaks](https://github.com/manhtu0407/HomeServices-/actions/runs/34694406588/job/103555287835) | Ba SHA256 report bị nhận thành generic-api-key do nhãn `API report`. Đối chiếu bằng Get-FileHash đúng ba JSON báo cáo; đổi nhãn thành Report SHA256 (Vitest) và thêm đúng ba fingerprint lịch sử vào `.gitleaksignore`, không miễn trừ toàn file/rule hoặc rewrite commit | Ba digest khớp file thật; chờ scanner CI xác nhận exact exceptions |
+| [Structure/security](https://github.com/manhtu0407/HomeServices-/actions/runs/34694406545/job/103555287947) | P68/P71 chứa positive SQL substring assertions. Thay bằng hành vi HTTP review/payment refusal và application timeout; giữ các SQL suite thực thi để chứng minh atomic/grants/idempotency. Negative destructive SQL scans chỉ được gọi là kiểm artifact | Hai API file: 30/30 PASS, zero pending/failure; không coi đây là SQL execution |
+| Artifact scanner Windows | CRLF làm parser bỏ bindings nên local báo 0 cảnh báo trong khi Linux có 44. Chuẩn hóa newline tại parser, không rewrite test files | Regression RED 3/4 → GREEN 4/4; scan thực 604 files: 0 banned, 44 warn, khớp CI |
+| [Whole workspace](https://github.com/manhtu0407/HomeServices-/actions/runs/34694406563/job/103555287748) | Node 20 thiếu native WebSocket khi real Supabase SDK khởi tạo. Đổi riêng workspace-gates sang Node 22 đang dùng ở agentic workflow; giữ nguyên real Storage timeout test | Workflow regression RED → GREEN; full mobile Node 22 trước đó 1.872 PASS, exact CI mới chưa chạy |
+| [Script fixtures](https://github.com/manhtu0407/HomeServices-/actions/runs/34694406563/job/103555288021) | Watchdog để sleep con giữ output pipe mở; fixture timeout ở 10 giây và cleanup có thể phá thư mục lệnh cha. Cô lập stdio/EXIT của watchdog và retire toàn cây tiến trình, không tăng timeout hay retry | POSIX runner gọi shell-function fake Docker, không daemon: RED ETIMEDOUT → PASS trong 3,313 giây; chỉ là script behavior, không SQL/Docker runtime proof |
+| [SQL matrix](https://github.com/manhtu0407/HomeServices-/actions/runs/34694406563/job/103555287770) | Empty reset PASS; SQL dừng tại account_deletion, 1/101 executed, lỗi KAEL_ONLY_MEDIA_CLEARED_APARTMENT_ACCESS_STATE. Guard mới scrub access trên cancelled jobs, fixture helper cũ lại kỳ vọng giữ access. Đặt helper fixture ở arrived, kiểm cancelled scrub riêng, kiểm active fixture thật sự có access, rồi cancel helper trước deletion eligibility | Source fix, **chưa có SQL execution sau sửa**; chờ CI isolated DB, không chạy fixture account này trên Production |
+| [Integration Staging](https://github.com/manhtu0407/HomeServices-/actions/runs/34694406535/job/103555287610) | Hosted Staging không bound exact PR head; preflight chặn trước mutation | Vẫn BLOCKED_RELEASE_BINDING. Không fake release hash, bỏ gate hoặc chuyển suite có destructive fixtures sang Production |
+| [Agentic completeness](https://github.com/manhtu0407/HomeServices-/actions/runs/34694406545/job/103555287701) | Strict behavior chưa đủ bằng chứng thực thi: 43 UNVERIFIED / 18 PARTIAL, dù 174/174 bound assertions PASS | Vẫn FAIL đúng; không đổi nhãn manifest thành completed để ép xanh |
+
+Local narrow regressions gồm artifact scanner và release workflow: 11/11 PASS. Comment discipline, structure và Docker contract ratchet PASS. Fixture Docker trên máy Windows không được dùng để vượt Application Control; POSIX function test không gọi executable Docker hoặc updater thật. Các lỗi cần hosted/native/Production proof vẫn mở. Đây là commit sửa CI sau publication đã được Tu cho phép, không phải kết luận >80% hoặc hoàn tất Goal.
+
+Lượt full harness cùng các regression mới đầu tiên có 217/219 PASS, hai lỗi source-bundle identity: trong lúc suite đang hash toàn bộ source, báo cáo này và audit header được cập nhật. Đây là lỗi tổ chức lượt test của Codex; không sửa hash verifier để chấp nhận source biến đổi. Giữ source đứng yên và chạy lại trước push. API type-check PASS; các lệnh wrapper có đọc log sau test không được lấy exit code cuối của `Get-Content` làm kết quả suite.
+
+Lượt source đứng yên đã terminal **219/219 PASS**, zero skipped/failed, 83,520 giây; log `pr239-ci-repair-scripts-stable-20260912.log`. Review bot trên head 6ec230fe còn sáu finding mới về matching retry parent, per-side KYC flags, recovery detector scheduling, push readiness bindings, severity ordering và paid cancellation receipt. Chưa đánh dấu chúng resolved; tiếp tục đối chiếu và sửa sau commit CI hẹp này. Human review vẫn chưa APPROVED.

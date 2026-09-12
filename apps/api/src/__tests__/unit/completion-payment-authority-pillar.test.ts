@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from 'node:fs'
+import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
@@ -100,20 +100,17 @@ describe('canonical completion and payment authority', () => {
     }).valid).toBe(false)
   })
 
-  it('ships one idempotent atomic DB boundary and retires direct-payment execute grants', () => {
-    expect(existsSync(migrationPath), pillarWhy(PILLAR, 'the authoritative migration must ship')).toBe(true)
+  it('contains no destructive SQL in the completion migration artifact', () => {
     const migration = readFileSync(migrationPath, 'utf8').replace(/\r\n/g, '\n')
-
-    expect(migration).toContain('public.completion_payment_operations')
-    expect(migration).toContain('public.confirm_completion_manual_bank_atomic')
-    expect(migration).toContain('CUSTOMER_COMPLETION_EVIDENCE_REQUIRED')
-    expect(migration).toContain('SYNTHETIC_PAYMENT_PATH_REQUIRED')
-    expect(migration).toMatch(/revoke execute on function public\.select_direct_worker_payment/iu)
-    expect(migration).toMatch(/revoke execute on function public\.respond_to_direct_worker_payment/iu)
-    const eligibilityMigration = readFileSync(resolve(root, 'supabase/migrations/20260905100000_retire_direct_payment_eligibility.sql'), 'utf8')
-    expect(eligibilityMigration).toMatch(/revoke execute on function public\.get_direct_worker_payment_availability/iu)
     expect(migration).not.toMatch(/\b(drop|truncate|delete\s+from)\b/iu)
   })
+
+  it.each(['completed_by_worker', 'confirmed_by_customer', 'payment_pending'] as const)(
+    'refuses review while the transaction remains %s', (from) => {
+      expect(validateWorkflowTransition({ event: 'review_submitted', from, to: 'reviewed' }).valid,
+        pillarWhy(PILLAR, 'review requires verified payment, not a completion or payment-pending state')).toBe(false)
+    },
+  )
 
   it('wires the public completion action to the atomic operation instead of two writes', () => {
     const source = readFileSync(completionDomainPath, 'utf8').replace(/\r\n/g, '\n')

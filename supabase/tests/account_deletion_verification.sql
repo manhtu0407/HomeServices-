@@ -133,7 +133,7 @@ insert into public.jobs (
     'Build 44 Kael-only helper isolation fixture',
     array['supabase://job-media/b4400000-0000-4000-8000-000000000004/kael_reference/helper.jpg'],
     '{"handoff":"must-survive-kael-only-cleanup"}'::jsonb,
-    'cancelled'::public.job_status
+    'arrived'::public.job_status
   ),
   (
     'b4400000-0000-4000-8000-000000000005',
@@ -143,7 +143,7 @@ insert into public.jobs (
     'Build 44 access helper isolation fixture',
     array['supabase://job-media/b4400000-0000-4000-8000-000000000005/access_check_in/helper.jpg'],
     '{"handoff":"must-clear-with-access-media"}'::jsonb,
-    'cancelled'::public.job_status
+    'arrived'::public.job_status
   );
 
 insert into public.job_media_assets (
@@ -269,6 +269,20 @@ begin
 
   perform pg_catalog.set_config('request.jwt.claim.role', 'service_role', true);
 
+  if exists (
+    select 1 from public.jobs
+    where id = 'b4400000-0000-4000-8000-000000000003'
+      and apartment_access_state <> '{}'::jsonb
+  ) then
+    raise exception 'CANCELLED_JOB_RETAINED_APARTMENT_ACCESS';
+  end if;
+
+  if (select count(*) from public.jobs
+      where id in ('b4400000-0000-4000-8000-000000000004', 'b4400000-0000-4000-8000-000000000005')
+        and apartment_access_state <> '{}'::jsonb) <> 2 then
+    raise exception 'ACTIVE_HELPER_ACCESS_FIXTURE_NOT_INITIALIZED';
+  end if;
+
   helper_storage_refs := private.scrub_disposable_account_job_media(
     'b4400000-0000-4000-8000-000000000006'
   );
@@ -299,6 +313,10 @@ begin
   ) then
     raise exception 'ACCESS_MEDIA_DID_NOT_CLEAR_APARTMENT_ACCESS_STATE';
   end if;
+
+  -- The helper scope is tested on active jobs; deletion eligibility still requires terminal jobs.
+  update public.jobs set status = 'cancelled'::public.job_status
+  where id in ('b4400000-0000-4000-8000-000000000004', 'b4400000-0000-4000-8000-000000000005');
 
   select request_id
   into customer_first
