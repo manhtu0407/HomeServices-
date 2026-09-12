@@ -74,7 +74,7 @@
       }
     ]
   },
-  "migrationsSha256": "e7b03ea5a7d91c0265b5979967c971938432e1a1a39ef1be06ba5cc5b184c11a",
+  "migrationsSha256": "3ea672117c5c864e9f03dd0eea7540813a12318dac4fee621c273f80d3328d62",
   "databaseTypes": {
     "file": "packages/shared/src/types/database",
     "sha256": "14921a4b3142696cb85c795b88a08f5078356d46d38f56ceafd89089eacb427e"
@@ -2457,8 +2457,8 @@
       "version": "20260904233000",
       "name": "workflow_recovery_capacity_reconciliation",
       "file": "supabase/migrations/20260904233000_workflow_recovery_capacity_reconciliation.sql",
-      "sha256": "4aac076be7e101cdc2ab23a68761dea184b0102607b9798344ff9e1783e5010b",
-      "bytes": 20824
+      "sha256": "bf04a7925daa3c6cb05e48119b4e6f2fb4af0acc5ef1afe199eb08fc73221fe8",
+      "bytes": 20769
     },
     {
       "version": "20260904234000",

@@ -422,7 +422,6 @@ declare
   v_affected integer := 0;
   v_expired integer := 0;
   v_released integer := 0;
-  v_current_reason record;
   v_now timestamptz := pg_catalog.clock_timestamp();
 begin
   if current_user <> 'service_role' then
@@ -495,7 +494,7 @@ begin
   end if;
 
   if v_action = 'resolve_verified' then
-    select reason.* into v_current_reason
+    perform 1
     from private.workflow_recovery_reason_for_job(v_case.job_id, v_now) as reason;
     if found then
       return query select false, 'CASE_STILL_STUCK', v_case.id, v_case.job_id,
