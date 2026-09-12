@@ -37,9 +37,6 @@ test('Edge health preserves the release manifest provider readiness contract wit
     PERPLEXITY_API_KEY: 'sentinel-provider-secret',
     VIETMAP_API_KEY: 'sentinel-provider-secret',
     KAEL_DURABLE_GUARDS_ENABLED: 'true',
-    NESTSCOUT_ANDROID_FCM_V1_READY: 'true',
-    NESTSCOUT_IOS_APNS_READY: 'true',
-    NESTSCOUT_PUSH_RECEIPT_RECONCILER_READY: 'true',
   }
   const runtime = readHarnessRuntimeRelease((name) => environment[name])
   const health = harnessHealthPayload({ environment: { name: 'staging' }, release: runtime })
@@ -176,7 +173,7 @@ test('staging native builds bind only with matching release and embedded artifac
   assert.equal(bindings.NESTSCOUT_STAGE1_IOS_EAS_BUILD_ID, evidence.platforms.ios.easBuildId)
   assert.equal(bindings.NESTSCOUT_STAGE1_ANDROID_EAS_BUILD_ID, evidence.platforms.android.easBuildId)
   assert.equal(bindings.HARNESS_SOURCE_BUNDLE_SHA256, release.sourceBundleSha256)
-  assert.equal(bindingArguments(bindings).length, 22)
+  assert.equal(bindingArguments(bindings).length, 25)
 })
 
 test('native staging evidence rejects unfinished, stale, mixed-target and incomplete artifacts', () => {
@@ -233,7 +230,10 @@ test('candidate bindings require the complete checksummed production release', (
   assert.equal(bindings.NESTSCOUT_ENVIRONMENT, 'production')
   assert.equal(bindings.NESTSCOUT_STAGE1_IOS_MINIMUM_BUILD_NUMBER, '45')
   assert.equal(bindings.NESTSCOUT_STAGE1_ANDROID_MINIMUM_BUILD_NUMBER, '4')
-  assert.equal(bindingArguments(bindings).length, 22)
+  assert.equal(bindingArguments(bindings).length, 25)
+  assert.equal(bindings.NESTSCOUT_IOS_APNS_READY, 'true')
+  assert.equal(bindings.NESTSCOUT_ANDROID_FCM_V1_READY, 'true')
+  assert.equal(bindings.NESTSCOUT_PUSH_RECEIPT_RECONCILER_READY, 'true')
   assert.throws(
     () => runtimeReleaseBindingsFromRelease({ ...release, bundleSha256: '0'.repeat(64) }, mobileAttestation(release)),
     /valid production release/u,
@@ -258,7 +258,7 @@ test('staging bindings require explicit compatibility evidence from real EAS inv
   assert.equal(bindings.NESTSCOUT_STAGE1_CLIENT_CONTRACT_EPOCH, '2')
   assert.equal(bindings.NESTSCOUT_STAGE1_IOS_MINIMUM_BUILD_NUMBER, '44')
   assert.equal(bindings.NESTSCOUT_STAGE1_ANDROID_EAS_BUILD_ID, compatibility.platforms.android.easBuildId)
-  assert.equal(bindingArguments(bindings).length, 22)
+  assert.equal(bindingArguments(bindings).length, 25)
 })
 
 test('staging bindings reject invented or cross-environment client evidence', () => {
@@ -313,7 +313,20 @@ test('rollback bindings preserve exact hosted identity and fail closed to unrele
   assert.equal(bindings.HARNESS_BUNDLE_SHA256, 'c'.repeat(64))
   assert.equal(bindings.HARNESS_EDGE_BUNDLE_SHA256, 'unknown')
   assert.equal(bindings.NESTSCOUT_STAGE1_IOS_EAS_BUILD_ID, '11111111-1111-4111-8111-111111111111')
-  assert.equal(bindingArguments(bindings).length, 22)
+  assert.equal(bindingArguments(bindings).length, 25)
+  assert.equal(bindings.NESTSCOUT_IOS_APNS_READY, 'false')
+  assert.equal(bindings.NESTSCOUT_ANDROID_FCM_V1_READY, 'false')
+  assert.equal(bindings.NESTSCOUT_PUSH_RECEIPT_RECONCILER_READY, 'false')
+})
+
+test('rollback restores each observed push capability instead of inheriting candidate flags', () => {
+  const bindings = runtimeReleaseBindingsFromHostedState({
+    environment: 'production', projectRef: 'iwevizmsedyqozxlawwl',
+    providerReadiness: { ios_apns: true, android_fcm_v1: false, push_receipt_reconciler: 'true' },
+  })
+  assert.equal(bindings.NESTSCOUT_IOS_APNS_READY, 'true')
+  assert.equal(bindings.NESTSCOUT_ANDROID_FCM_V1_READY, 'false')
+  assert.equal(bindings.NESTSCOUT_PUSH_RECEIPT_RECONCILER_READY, 'false')
 })
 
 test('rollback bindings reject the wrong project and shell-unsafe values', () => {

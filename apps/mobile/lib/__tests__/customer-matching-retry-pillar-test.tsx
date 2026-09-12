@@ -316,6 +316,32 @@ describe('Customer durable matching retry mobile boundary', () => {
     view.unmount()
   })
 
+  it('replaces a rejected stale-parent command only after a fresh explicit retry and persists its new identity', async () => {
+    const first = setup()
+    mockConfirmSearch.mockResolvedValueOnce({ success: false, status: 409, code: 'MATCHING_RETRY_PARENT_CHANGED', error: '' })
+    await act(async () => { await first.result.current.confirmRemoteSearch(JOB) })
+    const rejected = mockConfirmSearch.mock.calls[0][1]
+    first.unmount()
+    mockGetMatchingOperation.mockResolvedValue({ success: true, status: 200, data: {
+      job_id: JOB, operation: { operation_id: OPERATION, state: 'no_reachable_worker', updated_at: '2026-09-05T01:00:00.000Z' },
+    } })
+    const resumed = setup()
+    await act(async () => { await Promise.resolve() })
+    expect(mockConfirmSearch).toHaveBeenCalledTimes(1)
+    let savedAtPost: unknown
+    mockConfirmSearch.mockImplementation(async (_job, input) => {
+      savedAtPost = (await listMatchingRetries(OWNER))[0].request
+      return { success: true, status: 202, data: { operation: receipt(input) } }
+    })
+    await act(async () => { await resumed.result.current.confirmRemoteSearch(JOB) })
+    const replacement = mockConfirmSearch.mock.calls[1][1]
+    expect(replacement.expected_matching_operation_id).toBe(OPERATION)
+    expect(replacement.client_request_id).not.toBe(rejected.client_request_id)
+    expect(savedAtPost).toEqual(replacement)
+    expect((await listMatchingRetries(OWNER))[0].request).toEqual(replacement)
+    resumed.unmount()
+  })
+
   it('does not automatically retry a definitive coverage rejection on relaunch', async () => {
     const view = setup()
     mockConfirmSearch.mockResolvedValue({ success: false, status: 409, code: 'COVERAGE_UNAVAILABLE', error: '' })

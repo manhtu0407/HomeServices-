@@ -34,9 +34,11 @@ export function prepareMatchingRetry(ownerId: string, jobId: string, parentId: s
   return serialize(ownerId, async () => {
     const records = await readRecords(ownerId)
     const existing = records.find((record) => record.jobId === jobId)
-    // A newer explicit Customer retry may replace only a proven exhausted operation.
-    const advances = existing?.receipt?.state === 'no_reachable_worker'
-      && existing.receipt.operation_id === parentId
+    // Only an exhausted receipt or a definitive stale-parent refusal allows a new intent.
+    const advances = (existing?.receipt?.state === 'no_reachable_worker'
+      && existing.receipt.operation_id === parentId)
+      || (existing?.rejectedCode === 'MATCHING_RETRY_PARENT_CHANGED' && !existing.receipt
+        && existing.request.expected_matching_operation_id !== parentId)
     if (existing && !advances) {
       if (!existing.rejectedCode) return existing
       const resumed = { ...existing, rejectedCode: null }

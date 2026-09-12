@@ -5,7 +5,7 @@
     "immutableThroughVersion": "20260904113000",
     "sha256": "12da2bac288e0e718e61a27653e8cba9ffdb13b8e9900979407d41e1217b2077"
   },
-  "migrationCount": 391,
+  "migrationCount": 392,
   "migrationEquivalences": {
     "version": "1.0.0",
     "groups": [
@@ -74,7 +74,7 @@
       }
     ]
   },
-  "migrationsSha256": "29880b2f8d80d6643c3ebdc956a0afe9e39d6970b8d542e2b2f4517c865e6c78",
+  "migrationsSha256": "e7b03ea5a7d91c0265b5979967c971938432e1a1a39ef1be06ba5cc5b184c11a",
   "databaseTypes": {
     "file": "packages/shared/src/types/database",
     "sha256": "86bad2d743bb893b26c071b0b3cb62481836963a885068dc43ccb4dbe47e1cf2"
@@ -2816,6 +2816,13 @@
       "file": "supabase/migrations/20260910164636_worker_profile_review_snapshot.sql",
       "sha256": "7bd67c648420169c873a4ef0c846376a9414027f91317f430766a4fc5617c185",
       "bytes": 6967
+    },
+    {
+      "version": "20260912134000",
+      "name": "paid_cancellation_receipt_reason",
+      "file": "supabase/migrations/20260912134000_paid_cancellation_receipt_reason.sql",
+      "sha256": "84c434fe59d400432fd617e2450f5b8d3e7a7886cb6ff273a065ea83f39e9223",
+      "bytes": 3582
     }
   ]
 }

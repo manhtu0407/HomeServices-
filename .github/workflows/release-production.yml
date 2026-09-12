@@ -477,7 +477,7 @@ jobs:
           mapfile -t release_bindings < <(node scripts/harness/runtime-release-bindings.mjs \
             --release artifacts/release/release.json \
             --mobile-attestation artifacts/release/mobile-binary-attestation.json)
-          test "${#release_bindings[@]}" -eq 22
+          test "${#release_bindings[@]}" -eq 25
           ./apps/api/node_modules/.bin/supabase secrets set "${release_bindings[@]}" --project-ref "$PRODUCTION_PROJECT_REF"
           ./apps/api/node_modules/.bin/supabase functions deploy mobile-api --project-ref "$PRODUCTION_PROJECT_REF" --use-api --no-verify-jwt
           ./apps/api/node_modules/.bin/supabase functions deploy kael-matching-maintainer --project-ref "$PRODUCTION_PROJECT_REF" --use-api --no-verify-jwt
@@ -703,7 +703,7 @@ jobs:
           if rollback_binding_output=$(node scripts/harness/runtime-release-bindings.mjs \
               --hosted artifacts/release/hosted-before.json); then
             mapfile -t rollback_bindings <<< "$rollback_binding_output"
-            if [ "${#rollback_bindings[@]}" -eq 22 ] && \
+            if [ "${#rollback_bindings[@]}" -eq 25 ] && \
                 ./apps/api/node_modules/.bin/supabase secrets set "${rollback_bindings[@]}" \
                   --project-ref "$PRODUCTION_PROJECT_REF"; then
               echo "Rollback release identity restored"

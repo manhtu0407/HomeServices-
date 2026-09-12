@@ -28,11 +28,12 @@ const DISPUTE = 'f8800000-0000-4000-8000-000000000005'
 const OBLIGATION = 'f8800000-0000-4000-8000-000000000006'
 const TIME = '2026-09-05T00:00:00.000Z'
 
-function cancellationSetup(input: { status?: string; actorId?: string; role?: 'customer' | 'worker'; error?: { code: string; message: string } } = {}) {
+function cancellationSetup(input: { status?: string; storedReason?: string | null; actorId?: string; role?: 'customer' | 'worker'; error?: { code: string; message: string } } = {}) {
   const client = makeSequenceClient([], {
     request_paid_cancellation_review_atomic: [{ data: input.error ? null : {
       cancellation_id: CANCELLATION, dispute_id: DISPUTE, job_id: JOB,
       job_status: input.status ?? 'paid', created_at: TIME,
+      reason_code: input.storedReason === undefined ? 'pricing_disagreement_late' : input.storedReason,
     }, error: input.error ?? null }],
   }, { jobs: [{ data: {
     id: JOB, status: input.status ?? 'paid', customer_id: CUSTOMER, worker_id: WORKER,
@@ -72,6 +73,20 @@ describe('Refund obligations at existing payment boundaries', () => {
 
   it('keeps failed review persistence recoverable rather than returning a submitted state', async () => {
     const { request } = cancellationSetup({ error: { code: '08006', message: 'connection failed' } })
+    const response = await request()
+    expect(response.status).toBe(503)
+    expect(await response.json()).toMatchObject({ code: 'REFUND_REVIEW_UNAVAILABLE' })
+  })
+
+  it('returns the original persisted reason when a retry submits a different reason', async () => {
+    const { request } = cancellationSetup({ storedReason: 'other' })
+    const response = await request()
+    expect(response.status, pillarWhy(PILLAR, 'replay receipt reports persisted facts')).toBe(201)
+    expect(await response.json()).toMatchObject({ cancellation_id: CANCELLATION, reason_code: 'other' })
+  })
+
+  it.each([null, ''])('does not invent a persisted reason from an incomplete receipt (%s)', async (storedReason) => {
+    const { request } = cancellationSetup({ storedReason })
     const response = await request()
     expect(response.status).toBe(503)
     expect(await response.json()).toMatchObject({ code: 'REFUND_REVIEW_UNAVAILABLE' })

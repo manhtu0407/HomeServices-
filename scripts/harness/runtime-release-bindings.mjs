@@ -50,6 +50,17 @@ const CLIENT_BINDINGS = Object.freeze([
   ['NESTSCOUT_STAGE1_ANDROID_EAS_BUILD_ID', (receipt) => receipt.platforms.android.easBuildId],
   ['NESTSCOUT_STAGE1_ANDROID_RUNTIME_VERSION', (receipt) => receipt.platforms.android.runtimeVersion],
 ])
+const PUSH_READINESS_BINDINGS = Object.freeze([
+  ['NESTSCOUT_ANDROID_FCM_V1_READY', 'android_fcm_v1'],
+  ['NESTSCOUT_IOS_APNS_READY', 'ios_apns'],
+  ['NESTSCOUT_PUSH_RECEIPT_RECONCILER_READY', 'push_receipt_reconciler'],
+])
+
+function pushReadinessBindings(readiness) {
+  return Object.fromEntries(PUSH_READINESS_BINDINGS.map(([name, field]) => [
+    name, readiness?.[field] === true ? 'true' : 'false',
+  ]))
+}
 
 export function runtimeReleaseBindingsFromRelease(release, mobileBinaryAttestation) {
   const problems = checkHarnessRelease(release)
@@ -59,6 +70,7 @@ export function runtimeReleaseBindingsFromRelease(release, mobileBinaryAttestati
   }
   return Object.freeze({
     NESTSCOUT_ENVIRONMENT: 'production',
+    ...pushReadinessBindings(release.providerReadiness),
     ...Object.fromEntries(BINDINGS.map(([name, field]) => [name, release[field]])),
     ...Object.fromEntries(CLIENT_BINDINGS.map(([name, read]) => [name, read(mobileBinaryAttestation)])),
   })
@@ -82,6 +94,7 @@ export function runtimeReleaseBindingsFromStagingRelease(release, compatibilityE
   }
   return Object.freeze({
     NESTSCOUT_ENVIRONMENT: 'staging',
+    ...pushReadinessBindings(release.providerReadiness),
     ...Object.fromEntries(BINDINGS.map(([name, field]) => [name, release[field]])),
     ...Object.fromEntries(CLIENT_BINDINGS.map(([name, read]) => [name, read(receipt)])),
   })
@@ -100,6 +113,7 @@ export function runtimeReleaseBindingsFromHostedState(hosted) {
   }
   return Object.freeze({
     NESTSCOUT_ENVIRONMENT: 'production',
+    ...pushReadinessBindings(hosted.providerReadiness),
     ...Object.fromEntries(BINDINGS.map(([name, field]) => [name, values[field]])),
     NESTSCOUT_STAGE1_CLIENT_CONTRACT_EPOCH: String(hosted.clientCompatibility?.contractEpoch ?? 1),
     NESTSCOUT_STAGE1_IOS_APPLICATION_ID: hosted.clientCompatibility?.ios?.applicationId ?? 'legacy-unavailable',
@@ -114,7 +128,8 @@ export function runtimeReleaseBindingsFromHostedState(hosted) {
 }
 
 export function bindingArguments(bindings) {
-  const expected = new Set(['NESTSCOUT_ENVIRONMENT', ...BINDINGS.map(([name]) => name), ...CLIENT_BINDINGS.map(([name]) => name)])
+  const expected = new Set(['NESTSCOUT_ENVIRONMENT', ...BINDINGS.map(([name]) => name),
+    ...CLIENT_BINDINGS.map(([name]) => name), ...PUSH_READINESS_BINDINGS.map(([name]) => name)])
   if (!bindings || Object.keys(bindings).length !== expected.size ||
       Object.keys(bindings).some((name) => !expected.has(name))) {
     throw new Error('runtime release binding set is incomplete')

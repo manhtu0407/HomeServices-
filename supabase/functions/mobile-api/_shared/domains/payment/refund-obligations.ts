@@ -11,6 +11,7 @@ const paidCancellationReceiptSchema = z.object({
   dispute_id: z.string().uuid(),
   job_id: z.string().uuid(),
   job_status: z.enum(["paid", "reviewed"]),
+  reason_code: z.string().trim().min(1).max(100),
   created_at: z.string().datetime({ offset: true }),
 });
 
@@ -45,7 +46,7 @@ export async function requestPaidCancellationReview(
     status: "requested",
     job_status: parsed.data.job_status,
     sub_case: "after_worker_completed_trigger_dispute",
-    reason_code: input.reason_code,
+    reason_code: parsed.data.reason_code,
     reason_category: "needs_admin_review",
     admin_review_required: true,
     phase0_no_monetary_penalty: false,

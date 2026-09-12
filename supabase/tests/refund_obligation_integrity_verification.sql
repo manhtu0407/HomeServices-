@@ -124,6 +124,15 @@ begin
   v_receipt := public.request_paid_cancellation_review_atomic(
     'd8900000-0000-4000-8000-000000000101', 'd8900000-0000-4000-8000-000000000001',
     'pricing_disagreement_late', 'Đề nghị kiểm tra lại thanh toán đã ghi nhận.');
+  if v_receipt->>'reason_code' is distinct from 'pricing_disagreement_late' then
+    raise exception 'paid review receipt omitted its persisted reason';
+  end if;
+  v_replay := public.request_paid_cancellation_review_atomic(
+    'd8900000-0000-4000-8000-000000000101', 'd8900000-0000-4000-8000-000000000001',
+    'other', 'A changed retry must not rewrite the accepted review.');
+  if v_replay is distinct from v_receipt then
+    raise exception 'changed retry misrepresented the persisted paid review';
+  end if;
   for v_iteration in 1..100 loop
     v_replay := public.request_paid_cancellation_review_atomic(
       'd8900000-0000-4000-8000-000000000101', 'd8900000-0000-4000-8000-000000000001',
