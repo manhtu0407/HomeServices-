@@ -2,8 +2,11 @@ import type { UserRole } from "../../../../_shared/domain.ts";
 
 export type WorkerRoute =
   | { kind: "workerApplications.submit"; method: "POST"; roles: UserRole[]; successStatus: 201 }
+  | { kind: "workerApplications.me"; method: "GET"; roles: UserRole[] }
   | { kind: "workers.register"; method: "POST"; roles: UserRole[]; successStatus: 201 }
   | { kind: "workers.registrationDraft"; method: "PATCH"; roles: UserRole[] }
+  | { kind: "workers.registrationCommand.submit"; method: "POST"; roles: UserRole[] }
+  | { kind: "workers.registrationCommand.get"; method: "GET"; roles: UserRole[]; clientRequestId: string }
   | { kind: "workers.me"; method: "GET"; roles: UserRole[] }
   | { kind: "workers.avatarUpload"; method: "POST"; roles: UserRole[]; successStatus: 201 }
   | { kind: "workers.avatar"; method: "PATCH"; roles: UserRole[] }
@@ -44,6 +47,13 @@ export type WorkerRoute =
 // safe because every branch here is an exact literal whose third segment is never "kael" — the
 // Kael-chat matcher only owns "/workers/me/kael/chat...". The two sets cannot both match a path.
 export function matchWorkerRoute(path: string, method: string): WorkerRoute | null {
+  if (method === "GET" && path === "/worker-applications/me") {
+    return {
+      kind: "workerApplications.me",
+      method: "GET",
+      roles: ["customer", "worker", "admin"],
+    };
+  }
   if (method === "POST" && path === "/worker-applications") {
     return {
       kind: "workerApplications.submit",
@@ -62,6 +72,13 @@ export function matchWorkerRoute(path: string, method: string): WorkerRoute | nu
   }
   if (method === "PATCH" && path === "/workers/registration-draft") {
     return { kind: "workers.registrationDraft", method: "PATCH", roles: ["worker"] };
+  }
+  if (method === "POST" && path === "/workers/registration-commands") {
+    return { kind: "workers.registrationCommand.submit", method: "POST", roles: ["worker"] };
+  }
+  const commandMatch = path.match(/^\/workers\/registration-commands\/([^/]+)$/);
+  if (method === "GET" && commandMatch?.[1]) {
+    return { kind: "workers.registrationCommand.get", method: "GET", roles: ["worker"], clientRequestId: commandMatch[1] };
   }
   if (method === "GET" && path === "/workers/me") {
     return { kind: "workers.me", method: "GET", roles: ["worker", "admin"] };

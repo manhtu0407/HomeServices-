@@ -55,6 +55,7 @@ function renderReceipt(
     <FindingWorkersReceipt
       language="vi"
       matchingState={matchingState}
+      selectionState={{ jobId: 'test-job', scopeKey: 'test-owner:test-job', ready: true, choice: null }}
       onChoosePreference={onChoosePreference}
       onLoadSavedWorkers={onLoadSavedWorkers}
       onRetry={onRetry}
@@ -84,7 +85,7 @@ describe('Finding Workers receipt', () => {
 
     fireEvent.press(screen.getByTestId(`customer-v21-finding-workers-saved-select-${AVAILABLE_WORKER.id}`))
     await waitFor(() => expect(onChoosePreference).toHaveBeenCalledWith({
-      auto_general: true,
+      auto_general: false,
       mode: 'saved_worker_first',
       worker_id: AVAILABLE_WORKER.id,
     }))

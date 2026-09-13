@@ -31,6 +31,9 @@ export async function decideScopeChange(
   scopeChangeId: string,
   input: { decision: "approve" | "reject" },
 ) {
+  if (ctx.role !== "customer") {
+    apiFailure("AUTH_FORBIDDEN", "Chỉ khách hàng mới có thể quyết định thay đổi phạm vi.", 403);
+  }
   const client = db(ctx);
   const scopeRow = await dbQuery<Record<string, unknown>>(
     client

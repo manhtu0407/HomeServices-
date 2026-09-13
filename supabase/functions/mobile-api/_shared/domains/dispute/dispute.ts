@@ -1,5 +1,4 @@
-// Edge service dispute domain (C4 6a, services/* split): open / counter-statement / admin-decide,
-// each via an atomic RPC with Kael neutral-summary guarding. Imported directly by services.ts.
+// Dispute decisions are atomic; a monetary decision must preserve its verified refund obligation.
 
 import { asBoolean, asDisputePriority, asString, nullableString } from "../../platform/coercions.ts";
 import { db, dbQuery } from "../../platform/db.ts";
@@ -162,6 +161,11 @@ export async function decideDispute(
     }),
   );
   if (result.error) {
+    if (result.error.code === "P0001" && [
+      "REFUND_PAYMENT_UNVERIFIED", "REFUND_AMOUNT_EXCEEDS_PAID", "REFUND_SOURCE_CONFLICT",
+    ].includes(result.error.message ?? "")) {
+      apiFailure(result.error.message!, "Chưa thể xác nhận nghĩa vụ hoàn tiền. Hãy kiểm tra biên nhận và các quyết định trước đó.", 409);
+    }
     apiFailure("DB_ERROR", "Không thể ghi quyết định tranh chấp", 500);
   }
   const row = result.data?.[0];

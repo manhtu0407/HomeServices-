@@ -106,12 +106,20 @@ describe('Stage-1 customer intake modes', () => {
   })
 
   it('keeps the same confirmation identity when recovery state is read again', async () => {
-    const first = await getOrCreatePendingConfirmation('session-relaunch')
-    const restored = await readPendingConfirmation('session-relaunch')
+    const first = await getOrCreatePendingConfirmation('customer-relaunch', 'session-relaunch', {
+      confirmation_kind: 'rfq_request',
+      matching_mode: 'prompt_if_saved',
+    })
+    const restored = await readPendingConfirmation('customer-relaunch', 'session-relaunch')
 
     withPillarContext(PILLAR, () => {
       expect(restored?.idempotencyKey).toBe(first.idempotencyKey)
+      expect(restored?.ownerId).toBe('customer-relaunch')
       expect(restored?.sessionId).toBe('session-relaunch')
+      expect(restored?.confirmInput).toEqual({
+        confirmation_kind: 'rfq_request',
+        matching_mode: 'prompt_if_saved',
+      })
     }, 'cold-start recovery must not generate a second confirmation identity')
   })
 
@@ -149,10 +157,11 @@ describe('Stage-1 customer intake modes', () => {
       kaelRequestGuard: createCustomerKaelRequestGuard('customer-a:session-rfq-double'),
       language: 'vi' as const,
       mode: 'normal' as const,
+      pendingDraftOwnerId: 'customer-a',
       processController: { startProcessLines: jest.fn(async () => undefined), stopProcessLines: jest.fn() },
       router: { replace: jest.fn() },
       sessionAccessToken: 'session-token',
-      workflow: { actions: { hydrateRemoteJobById: jest.fn() } },
+      workflow: { actions: { hydrateRemoteJobById: jest.fn(async () => false) } },
     } as any
     const { result } = renderHook(() => useCustomerKaelDecisionActions(input))
     let first!: Promise<void>

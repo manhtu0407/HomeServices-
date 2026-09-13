@@ -52,6 +52,9 @@ describe('Admin Operations support route contract', () => {
     ['GET', 'https://edge.test/admin/operations/support-cases/dispute/dispute-1', 'admin.operations.supportCases.detail'],
     ['PUT', 'https://edge.test/admin/operations/support-cases/queue/queue-1/preparation', 'admin.operations.supportCases.preparation'],
     ['POST', 'https://edge.test/admin/operations/support-cases/dispute/dispute-1/evidence-access', 'admin.operations.supportCases.evidenceAccess'],
+    ['GET', 'https://edge.test/admin/operations/recovery-cases', 'admin.operations.recoveryCases.list'],
+    ['GET', 'https://edge.test/admin/operations/recovery-cases/recovery-1', 'admin.operations.recoveryCases.detail'],
+    ['POST', 'https://edge.test/admin/operations/recovery-cases/recovery-1/action', 'admin.operations.recoveryCases.action'],
   ] as const)('matches %s %s as %s', (method, url, kind) => {
     expect(matchRoute(new Request(url, { method }))).toMatchObject({ kind, method })
   })
@@ -89,6 +92,31 @@ describe('Admin Operations support route contract', () => {
 
     expect(response.status).toBe(400)
     expect(updateAdminSupportCasePreparation).not.toHaveBeenCalled()
+  })
+
+  it('rejects an unversioned or unreasoned recovery mutation before dispatching', async () => {
+    const applyAdminWorkflowRecoveryAction = vi.fn()
+    const handler = createMobileApiHandler({
+      authenticate: vi.fn(async () => adminAuth),
+      services: { applyAdminWorkflowRecoveryAction } as unknown as MobileApiServices,
+    })
+
+    const response = await handler(new Request(
+      'https://edge.test/admin/operations/recovery-cases/recovery-1/action',
+      {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          action: 'resolve_verified',
+          reason: '',
+          idempotency_key: 'f7000000-0000-4000-8000-000000000001',
+          expected_version: 0,
+        }),
+      },
+    ))
+
+    expect(response.status).toBe(400)
+    expect(applyAdminWorkflowRecoveryAction).not.toHaveBeenCalled()
   })
 
   it('requires operations.read whenever operations.triage is granted', () => {

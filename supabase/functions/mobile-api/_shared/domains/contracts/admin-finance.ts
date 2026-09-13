@@ -279,7 +279,7 @@ type AdminFinanceTransactionFilters = AdminFinancePeriodInput & {
   limit?: number;
   payment_method?: string;
   service_type?: string;
-  status?: "paid" | "reviewed";
+  status?: "paid" | "reviewed" | "cancelled";
 };
 
 type AdminFinanceTransaction = {
@@ -310,6 +310,7 @@ type AdminFinanceTransactionListResponse = {
 
 type AdminFinanceTransactionDetailResponse = {
   generated_at: string;
+  refund?: import("../../../../_shared/contracts/payment.ts").EdgeRefundSummary | null;
   transaction: AdminFinanceTransaction;
   timeline: Array<{ event_type: string; occurred_at: string; actor_ref: string | null }>;
 };

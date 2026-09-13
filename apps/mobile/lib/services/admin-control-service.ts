@@ -72,6 +72,11 @@ import type {
   AdminViewWorkerProfileDecisionResponse,
   AdminViewWorkerReviewDetail,
   AdminViewWorkerReviewStage,
+  AdminViewWorkflowRecoveryActionInput,
+  AdminViewWorkflowRecoveryActionResponse,
+  AdminViewWorkflowRecoveryDetailResponse,
+  AdminViewWorkflowRecoveryListInput,
+  AdminViewWorkflowRecoveryListResponse,
   AdminWorkerFinanceSnapshotResponse,
   AdminPaymentReconciliationDecisionInput,
   AdminPaymentReconciliationDecisionResponse,
@@ -201,7 +206,10 @@ function adminFinancePath(path: string, params: AdminFinanceTransactionFilters |
   return `${path}${query ? `?${query}` : ''}`
 }
 
-function adminOperationsPath(path: string, params: AdminViewScopeChangeListInput | AdminViewSupportCaseListInput) {
+function adminOperationsPath(
+  path: string,
+  params: AdminViewScopeChangeListInput | AdminViewSupportCaseListInput | AdminViewWorkflowRecoveryListInput,
+) {
   const searchParams = new URLSearchParams()
   for (const [key, value] of Object.entries(params)) {
     if (value !== undefined && value !== '') searchParams.set(key, String(value))
@@ -273,6 +281,25 @@ export const adminControlService = {
   ) {
     return api.post<AdminViewEvidenceAccessResponse>(
       `/admin/operations/support-cases/${encodeURIComponent(source)}/${encodeURIComponent(caseId)}/evidence-access`,
+      input,
+    )
+  },
+
+  listWorkflowRecoveryCases(params: AdminViewWorkflowRecoveryListInput = {}) {
+    return api.get<AdminViewWorkflowRecoveryListResponse>(
+      adminOperationsPath('/admin/operations/recovery-cases', params),
+    )
+  },
+
+  getWorkflowRecoveryCase(recoveryCaseId: string) {
+    return api.get<AdminViewWorkflowRecoveryDetailResponse>(
+      `/admin/operations/recovery-cases/${encodeURIComponent(recoveryCaseId)}`,
+    )
+  },
+
+  applyWorkflowRecoveryAction(recoveryCaseId: string, input: AdminViewWorkflowRecoveryActionInput) {
+    return api.post<AdminViewWorkflowRecoveryActionResponse>(
+      `/admin/operations/recovery-cases/${encodeURIComponent(recoveryCaseId)}/action`,
       input,
     )
   },
@@ -417,16 +444,18 @@ export const adminControlService = {
     return api.get<AdminViewWorkerApplicationSummary>(`/admin/worker-applications/${encodeURIComponent(applicationId)}`)
   },
 
-  getWorkerReviewDetail(applicationId: string) {
-    return api.get<AdminViewWorkerReviewDetail>(
-      `/admin/worker-applications/${encodeURIComponent(applicationId)}/review-detail`,
-    )
+  getWorkerReviewDetail(applicationId: string, accessToken?: string) {
+    const path = `/admin/worker-applications/${encodeURIComponent(applicationId)}/review-detail`
+    return accessToken === undefined
+      ? api.get<AdminViewWorkerReviewDetail>(path)
+      : api.getAuthenticated<AdminViewWorkerReviewDetail>(path, accessToken)
   },
 
-  decideWorkerProfile(applicationId: string, input: AdminViewWorkerProfileDecisionInput) {
-    return api.post<AdminViewWorkerProfileDecisionResponse>(
+  decideWorkerProfile(applicationId: string, input: AdminViewWorkerProfileDecisionInput, accessToken: string) {
+    return api.postAuthenticated<AdminViewWorkerProfileDecisionResponse>(
       `/admin/worker-applications/${encodeURIComponent(applicationId)}/profile-decision`,
       input,
+      accessToken,
     )
   },
 
@@ -444,14 +473,15 @@ export const adminControlService = {
     )
   },
 
-  getWorkerFinanceSnapshot(workerId: string, params: { from?: string; to?: string } = {}) {
+  getWorkerFinanceSnapshot(workerId: string, params: { from?: string; to?: string } = {}, accessToken?: string) {
     const searchParams = new URLSearchParams()
     if (params.from) searchParams.set('from', params.from)
     if (params.to) searchParams.set('to', params.to)
     const query = searchParams.toString()
-    return api.get<AdminWorkerFinanceSnapshotResponse>(
-      `/admin/workers/${encodeURIComponent(workerId)}/finance-snapshot${query ? `?${query}` : ''}`,
-    )
+    const path = `/admin/workers/${encodeURIComponent(workerId)}/finance-snapshot${query ? `?${query}` : ''}`
+    return accessToken === undefined
+      ? api.get<AdminWorkerFinanceSnapshotResponse>(path)
+      : api.getAuthenticated<AdminWorkerFinanceSnapshotResponse>(path, accessToken)
   },
 
   listTransactions(params: {

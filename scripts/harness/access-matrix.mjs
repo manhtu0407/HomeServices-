@@ -139,7 +139,7 @@ function viewInventory(source) {
   }))
 }
 
-function functionInventory(source) {
+export function functionInventory(source) {
   const functions = new Map()
   for (const statement of splitSqlStatements(source)) {
     const normalized = stripLeadingSqlComments(statement).trim()
@@ -152,7 +152,7 @@ function functionInventory(source) {
       functions.set(parsed.signature, {
         signature: parsed.signature,
         securityDefiner: /\bsecurity\s+definer\b/iu.test(normalized),
-        fixedSearchPath: /\bset\s+search_path\s*=\s*[^;]+/iu.test(normalized),
+        fixedSearchPath: /\bset\s+search_path\s*(?:=|\bto\b)\s*[^;]+/iu.test(normalized),
         executeRoles: current?.executeRoles ?? ['public'],
       })
       continue
@@ -164,7 +164,7 @@ function functionInventory(source) {
       continue
     }
 
-    if (/^alter\s+function\b/iu.test(normalized) && /\bset\s+search_path\s*=/iu.test(normalized)) {
+    if (/^alter\s+function\b/iu.test(normalized) && /\bset\s+search_path\s*(?:=|\bto\b)/iu.test(normalized)) {
       const parsed = parseFunctionReference(normalized, /function\s+/iu)
       const current = parsed ? functions.get(parsed.signature) : null
       if (current) current.fixedSearchPath = true

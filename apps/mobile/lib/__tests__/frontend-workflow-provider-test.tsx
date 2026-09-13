@@ -25,14 +25,17 @@ const mockGetCustomerInsights = jest.fn()
 const mockUploadCustomerAvatar = jest.fn()
 let mockAuth: {
   role: 'admin' | 'customer' | 'worker'
-  session: { user: { app_metadata?: { provider?: string }; id: string } }
+  session: { access_token?: string; user: { app_metadata?: { provider?: string }; id: string } }
 } = {
   role: 'worker',
   session: { user: { id: 'worker-available' } },
 }
 
 jest.mock('../auth-provider', () => ({
-  useAuth: () => mockAuth,
+  useAuth: () => ({
+    ...mockAuth,
+    session: { ...mockAuth.session, access_token: mockAuth.session.access_token ?? `token-${mockAuth.session.user.id}` },
+  }),
 }))
 
 jest.mock('../app-language', () => ({
@@ -409,6 +412,45 @@ describe('FrontendWorkflowProvider worker bootstrap', () => {
     } finally {
       jest.useRealTimers()
     }
+  })
+
+  it('does not replace a newly selected job with a late refresh of the previous job', async () => {
+    Object.defineProperty(AppState, 'currentState', { configurable: true, value: 'background' })
+    mockAuth = { role: 'customer', session: { user: { id: 'customer-1' } } }
+    const firstJob = buildCustomerJobDetail('job-first', 'worker_matched')
+    const nextJob = buildCustomerJobDetail('job-next', 'worker_matched')
+    mockGetJob.mockResolvedValueOnce({ success: true, status: 200, data: firstJob })
+    const view = render(<FrontendWorkflowProvider><WorkflowDealIdProbe /></FrontendWorkflowProvider>)
+    await waitFor(() => expect(latestWorkflowActions).not.toBeNull())
+    await act(async () => { await latestWorkflowActions!.hydrateRemoteJobById('job-first') })
+    const delayed = deferred<{ success: true; status: number; data: JobDetailResponse }>()
+    mockGetJob.mockImplementation((jobId: string) => jobId === 'job-first'
+      ? delayed.promise : Promise.resolve({ success: true, status: 200, data: nextJob }))
+    let refresh!: Promise<boolean>
+    act(() => { refresh = latestWorkflowActions!.refreshCurrentJob() })
+    await act(async () => { await latestWorkflowActions!.hydrateRemoteJobById('job-next') })
+    expect(screen.getByTestId('workflow-deal-id')).toHaveTextContent('job-next')
+    await act(async () => { delayed.resolve({ success: true, status: 200, data: firstJob }); await refresh })
+    expect(screen.getByTestId('workflow-deal-id')).toHaveTextContent('job-next')
+    view.unmount()
+  })
+
+  it('keeps the last explicit job selection when detail requests resolve in reverse order', async () => {
+    Object.defineProperty(AppState, 'currentState', { configurable: true, value: 'background' })
+    mockAuth = { role: 'customer', session: { user: { id: 'customer-1' } } }
+    const delayed = deferred<{ success: true; status: number; data: JobDetailResponse }>()
+    mockGetJob.mockReturnValueOnce(delayed.promise)
+      .mockResolvedValueOnce({ success: true, status: 200, data: buildCustomerJobDetail('job-next', 'worker_matched') })
+    const view = render(<FrontendWorkflowProvider><WorkflowDealIdProbe /></FrontendWorkflowProvider>)
+    let first!: Promise<boolean>
+    act(() => { first = latestWorkflowActions!.hydrateRemoteJobById('job-first') })
+    await act(async () => { await latestWorkflowActions!.hydrateRemoteJobById('job-next') })
+    await act(async () => {
+      delayed.resolve({ success: true, status: 200, data: buildCustomerJobDetail('job-first', 'worker_matched') })
+      expect(await first).toBe(false)
+    })
+    expect(screen.getByTestId('workflow-deal-id')).toHaveTextContent('job-next')
+    view.unmount()
   })
 
   it('does not request customer-only profile insights for an admin session', async () => {

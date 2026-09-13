@@ -66,6 +66,8 @@ export function blankWorkerProfile(workerId: string) {
     bank_account_masked: null,
     bank_name: null,
     has_cccd: false,
+    has_cccd_front: false,
+    has_cccd_back: false,
     has_selfie: false,
   };
 }

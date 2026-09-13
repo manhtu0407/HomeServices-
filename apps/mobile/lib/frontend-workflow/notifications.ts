@@ -1,5 +1,25 @@
 import type { NotificationListResponse } from '../api-types'
 
+/** RFQ workflow notifications are localized from the event, never from arbitrary server text. */
+export function localizeRfqNotification<T extends { event_type: string; title: string; body: string }>(notification: T, language: 'vi' | 'en'): T {
+  const texts: Record<string, Record<'vi' | 'en', { title: string; body: string }>> = {
+    rfq_price_proposed: {
+      vi: { title: 'Báo giá sau khảo sát', body: 'Thợ đã gửi báo giá. Vui lòng xem và xác nhận trước khi bắt đầu công việc.' },
+      en: { title: 'Post-inspection quote', body: 'The worker sent a quote. Review and approve it before work starts.' },
+    },
+    rfq_price_approved: {
+      vi: { title: 'Khách đã đồng ý báo giá', body: 'Khách đã xác nhận phạm vi và tổng giá. Bạn có thể tiếp tục công việc.' },
+      en: { title: 'Quote approved', body: 'The customer approved the scope and exact total. You may continue work.' },
+    },
+    rfq_price_rejected: {
+      vi: { title: 'Khách chưa đồng ý báo giá', body: 'Hãy trao đổi lại với khách trước khi gửi báo giá mới hoặc bắt đầu công việc.' },
+      en: { title: 'Quote not agreed', body: 'Discuss with the customer before sending another quote or starting work.' },
+    },
+  }
+  const value = texts[notification.event_type]?.[language]
+  return value ? { ...notification, ...value } : notification
+}
+
 type NotificationState = {
   notifications: NotificationListResponse['notifications']
   unreadCount: number

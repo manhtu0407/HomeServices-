@@ -89,6 +89,7 @@ export type {
   EdgeWorkerKaelTrainingConsentResponse,
   EdgeWorkerPerformanceInsightsResponse,
   EdgeWorkerProfileResponse,
+  EdgeWorkerReadinessResponse,
   EdgeWorkerRegisterResponse,
   EdgeWorkerRoutePreviewResponse,
   EdgeWorkerScopeChangeResponse,

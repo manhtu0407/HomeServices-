@@ -4,11 +4,14 @@ import test from 'node:test'
 import { collectHostedDeploymentState, compareDeploymentState } from './deployment-drift.mjs'
 
 const providerReadiness = Object.freeze({
+  android_fcm_v1: true,
   anthropic: true,
   deepseek: false,
   durable_guards: true,
   global_ai_enabled: true,
+  ios_apns: true,
   perplexity: true,
+  push_receipt_reconciler: true,
   vietmap: true,
 })
 const providerReadinessFingerprintSha256 = createHash('sha256')

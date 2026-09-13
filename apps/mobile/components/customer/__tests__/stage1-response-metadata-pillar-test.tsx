@@ -38,12 +38,16 @@ describe('Stage-1 mobile response identity', () => {
     mockFetch.mockReset()
   })
 
-  it('keeps canonical headers and a safe short support code on the result', async () => {
+  it.each([
+    ['explicit server code', 'A1B2C3D4', 'A1B2C3D4'],
+    ['trace identity fallback', null, '7F83E5C2'],
+  ])('keeps canonical headers and the %s on the result', async (_label, supportHeader, supportCode) => {
     const headers = new Map([
       ['x-release-id', 'release-2026-08-23'],
       ['x-trace-id', 'trace_7f83e5c2'],
       ['x-run-id', 'run_abcd1234'],
       ['x-operation-id', 'operation_deadbeef'],
+      ['x-support-code', supportHeader],
     ])
     mockFetch.mockResolvedValue({
       body: null,
@@ -61,7 +65,7 @@ describe('Stage-1 mobile response identity', () => {
           operationId: 'operation_deadbeef',
           releaseId: 'release-2026-08-23',
           runId: 'run_abcd1234',
-          supportCode: 'DEADBEEF',
+          supportCode,
           traceId: 'trace_7f83e5c2',
         },
         success: true,

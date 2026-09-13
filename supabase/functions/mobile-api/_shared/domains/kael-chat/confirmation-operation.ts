@@ -135,18 +135,20 @@ export async function requestDurableKaelConfirmation(
     customerId: string;
     confirmationKind: Exclude<EdgeIntakeConfirmationKind, "none">;
     priceReasoningReceiptId: string | null;
+    matchingMode?: "prompt_if_saved";
     traceFinalizer?: ConfirmationTraceFinalizer;
   },
 ): Promise<DurableConfirmationResult> {
   const idempotencyKey = buildConfirmationIdempotencyKey(input.sessionId, input.customerId);
   const result = await client.rpc(input.traceFinalizer
-    ? "confirm_kael_chat_durable_authorized_v4"
-    : "confirm_kael_chat_durable_atomic_v2", {
+    ? "confirm_kael_chat_durable_authorized_v6"
+    : "confirm_kael_chat_durable_atomic_v4", {
     p_session_id: input.sessionId,
     p_customer_id: input.customerId,
     p_idempotency_key: idempotencyKey,
     p_confirmation_kind: input.confirmationKind,
     p_price_reasoning_receipt_id: input.priceReasoningReceiptId,
+    p_matching_mode: input.matchingMode ?? null,
     ...(input.traceFinalizer
       ? {
         p_run_id: input.traceFinalizer.runId,

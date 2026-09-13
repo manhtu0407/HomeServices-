@@ -3,7 +3,7 @@
   "source": {
     "routeRoot": "supabase/functions/mobile-api/_shared/http/routes",
     "fileCount": 20,
-    "sha256": "e05a9d24644acad4a787c0ab58fd20f54c977a7d5622fd6ebedcb4fd47dab955"
+    "sha256": "8b9b2d5382eb89b886308b426bdd98819f5c38d622aa8ad22245576990c2753d"
   },
   "entries": [
     {
@@ -967,6 +967,75 @@
     {
       "kind": "admin.operations.get",
       "capability": "mobile.route.admin.operations.get",
+      "public": false,
+      "methods": [
+        "GET"
+      ],
+      "roles": [
+        "admin",
+        "admin_operator"
+      ],
+      "risk": "administrative",
+      "operationClass": "database_read",
+      "sideEffectClass": "read-only",
+      "privileged": true,
+      "resourceType": "system",
+      "requiresResourceCheck": false,
+      "confirmationGate": "none",
+      "envelopeTtlMs": 30000,
+      "sources": [
+        "supabase/functions/mobile-api/_shared/http/routes/admin-control-routes.ts"
+      ]
+    },
+    {
+      "kind": "admin.operations.recoveryCases.action",
+      "capability": "mobile.route.admin.operations.recoveryCases.action",
+      "public": false,
+      "methods": [
+        "POST"
+      ],
+      "roles": [
+        "admin",
+        "admin_operator"
+      ],
+      "risk": "administrative",
+      "operationClass": "idempotent_write",
+      "sideEffectClass": "idempotent-write",
+      "privileged": true,
+      "resourceType": "system",
+      "requiresResourceCheck": false,
+      "confirmationGate": "none",
+      "envelopeTtlMs": 30000,
+      "sources": [
+        "supabase/functions/mobile-api/_shared/http/routes/admin-control-routes.ts"
+      ]
+    },
+    {
+      "kind": "admin.operations.recoveryCases.detail",
+      "capability": "mobile.route.admin.operations.recoveryCases.detail",
+      "public": false,
+      "methods": [
+        "GET"
+      ],
+      "roles": [
+        "admin",
+        "admin_operator"
+      ],
+      "risk": "administrative",
+      "operationClass": "database_read",
+      "sideEffectClass": "read-only",
+      "privileged": true,
+      "resourceType": "system",
+      "requiresResourceCheck": false,
+      "confirmationGate": "none",
+      "envelopeTtlMs": 30000,
+      "sources": [
+        "supabase/functions/mobile-api/_shared/http/routes/admin-control-routes.ts"
+      ]
+    },
+    {
+      "kind": "admin.operations.recoveryCases.list",
+      "capability": "mobile.route.admin.operations.recoveryCases.list",
       "public": false,
       "methods": [
         "GET"
@@ -2568,29 +2637,6 @@
       ]
     },
     {
-      "kind": "jobs.cashPaymentConfirm",
-      "capability": "mobile.route.jobs.cashPaymentConfirm",
-      "public": false,
-      "methods": [
-        "POST"
-      ],
-      "roles": [
-        "admin",
-        "worker"
-      ],
-      "risk": "money",
-      "operationClass": "money_impacting",
-      "sideEffectClass": "conditional-write",
-      "privileged": true,
-      "resourceType": "job",
-      "requiresResourceCheck": true,
-      "confirmationGate": "payment",
-      "envelopeTtlMs": 30000,
-      "sources": [
-        "supabase/functions/mobile-api/_shared/http/routes/job.ts"
-      ]
-    },
-    {
       "kind": "jobs.confirmCompletion",
       "capability": "mobile.route.jobs.confirmCompletion",
       "public": false,
@@ -2692,53 +2738,6 @@
       "roles": [
         "admin",
         "worker"
-      ],
-      "risk": "write",
-      "operationClass": "idempotent_write",
-      "sideEffectClass": "idempotent-write",
-      "privileged": true,
-      "resourceType": "job",
-      "requiresResourceCheck": true,
-      "confirmationGate": "none",
-      "envelopeTtlMs": 120000,
-      "sources": [
-        "supabase/functions/mobile-api/_shared/http/routes/job.ts"
-      ]
-    },
-    {
-      "kind": "jobs.directPaymentRespond",
-      "capability": "mobile.route.jobs.directPaymentRespond",
-      "public": false,
-      "methods": [
-        "POST"
-      ],
-      "roles": [
-        "admin",
-        "customer",
-        "worker"
-      ],
-      "risk": "write",
-      "operationClass": "idempotent_write",
-      "sideEffectClass": "idempotent-write",
-      "privileged": true,
-      "resourceType": "job",
-      "requiresResourceCheck": true,
-      "confirmationGate": "none",
-      "envelopeTtlMs": 120000,
-      "sources": [
-        "supabase/functions/mobile-api/_shared/http/routes/job.ts"
-      ]
-    },
-    {
-      "kind": "jobs.directPaymentSelect",
-      "capability": "mobile.route.jobs.directPaymentSelect",
-      "public": false,
-      "methods": [
-        "POST"
-      ],
-      "roles": [
-        "admin",
-        "customer"
       ],
       "risk": "write",
       "operationClass": "idempotent_write",
@@ -2893,6 +2892,29 @@
       ]
     },
     {
+      "kind": "jobs.matchingOperation",
+      "capability": "mobile.route.jobs.matchingOperation",
+      "public": false,
+      "methods": [
+        "GET"
+      ],
+      "roles": [
+        "admin",
+        "customer"
+      ],
+      "risk": "read",
+      "operationClass": "database_read",
+      "sideEffectClass": "read-only",
+      "privileged": true,
+      "resourceType": "job",
+      "requiresResourceCheck": true,
+      "confirmationGate": "none",
+      "envelopeTtlMs": 120000,
+      "sources": [
+        "supabase/functions/mobile-api/_shared/http/routes/job.ts"
+      ]
+    },
+    {
       "kind": "jobs.matchingPreference",
       "capability": "mobile.route.jobs.matchingPreference",
       "public": false,
@@ -2906,6 +2928,52 @@
       "risk": "write",
       "operationClass": "idempotent_write",
       "sideEffectClass": "idempotent-write",
+      "privileged": true,
+      "resourceType": "job",
+      "requiresResourceCheck": true,
+      "confirmationGate": "none",
+      "envelopeTtlMs": 120000,
+      "sources": [
+        "supabase/functions/mobile-api/_shared/http/routes/job.ts"
+      ]
+    },
+    {
+      "kind": "jobs.matchingPreferenceReceipt",
+      "capability": "mobile.route.jobs.matchingPreferenceReceipt",
+      "public": false,
+      "methods": [
+        "GET"
+      ],
+      "roles": [
+        "admin",
+        "customer"
+      ],
+      "risk": "read",
+      "operationClass": "database_read",
+      "sideEffectClass": "read-only",
+      "privileged": true,
+      "resourceType": "job",
+      "requiresResourceCheck": true,
+      "confirmationGate": "none",
+      "envelopeTtlMs": 120000,
+      "sources": [
+        "supabase/functions/mobile-api/_shared/http/routes/job.ts"
+      ]
+    },
+    {
+      "kind": "jobs.matchingRetry",
+      "capability": "mobile.route.jobs.matchingRetry",
+      "public": false,
+      "methods": [
+        "GET"
+      ],
+      "roles": [
+        "admin",
+        "customer"
+      ],
+      "risk": "read",
+      "operationClass": "database_read",
+      "sideEffectClass": "read-only",
       "privileged": true,
       "resourceType": "job",
       "requiresResourceCheck": true,
@@ -3060,8 +3128,8 @@
       ]
     },
     {
-      "kind": "jobs.paymentIntent",
-      "capability": "mobile.route.jobs.paymentIntent",
+      "kind": "jobs.paymentOrder",
+      "capability": "mobile.route.jobs.paymentOrder",
       "public": false,
       "methods": [
         "POST"
@@ -3079,30 +3147,6 @@
       "confirmationGate": "payment",
       "envelopeTtlMs": 30000,
       "sources": [
-        "supabase/functions/mobile-api/_shared/http/routes/job.ts",
-        "supabase/functions/mobile-api/_shared/http/routes/staging-payment-routes.ts"
-      ]
-    },
-    {
-      "kind": "jobs.paymentOrder",
-      "capability": "mobile.route.jobs.paymentOrder",
-      "public": false,
-      "methods": [
-        "POST"
-      ],
-      "roles": [
-        "admin",
-        "customer"
-      ],
-      "risk": "write",
-      "operationClass": "idempotent_write",
-      "sideEffectClass": "idempotent-write",
-      "privileged": true,
-      "resourceType": "job",
-      "requiresResourceCheck": true,
-      "confirmationGate": "none",
-      "envelopeTtlMs": 120000,
-      "sources": [
         "supabase/functions/mobile-api/_shared/http/routes/job.ts"
       ]
     },
@@ -3117,14 +3161,14 @@
         "admin",
         "customer"
       ],
-      "risk": "write",
-      "operationClass": "idempotent_write",
-      "sideEffectClass": "idempotent-write",
+      "risk": "money",
+      "operationClass": "money_impacting",
+      "sideEffectClass": "conditional-write",
       "privileged": true,
       "resourceType": "job",
       "requiresResourceCheck": true,
-      "confirmationGate": "none",
-      "envelopeTtlMs": 120000,
+      "confirmationGate": "payment",
+      "envelopeTtlMs": 30000,
       "sources": [
         "supabase/functions/mobile-api/_shared/http/routes/job.ts"
       ]
@@ -3153,6 +3197,76 @@
       ]
     },
     {
+      "kind": "jobs.rfqPrice",
+      "capability": "mobile.route.jobs.rfqPrice",
+      "public": false,
+      "methods": [
+        "GET"
+      ],
+      "roles": [
+        "admin",
+        "customer",
+        "worker"
+      ],
+      "risk": "read",
+      "operationClass": "database_read",
+      "sideEffectClass": "read-only",
+      "privileged": true,
+      "resourceType": "job",
+      "requiresResourceCheck": true,
+      "confirmationGate": "none",
+      "envelopeTtlMs": 120000,
+      "sources": [
+        "supabase/functions/mobile-api/_shared/http/routes/job.ts"
+      ]
+    },
+    {
+      "kind": "jobs.rfqPriceDecide",
+      "capability": "mobile.route.jobs.rfqPriceDecide",
+      "public": false,
+      "methods": [
+        "POST"
+      ],
+      "roles": [
+        "admin",
+        "customer"
+      ],
+      "risk": "money",
+      "operationClass": "money_impacting",
+      "sideEffectClass": "conditional-write",
+      "privileged": true,
+      "resourceType": "job",
+      "requiresResourceCheck": true,
+      "confirmationGate": "offer",
+      "envelopeTtlMs": 30000,
+      "sources": [
+        "supabase/functions/mobile-api/_shared/http/routes/job.ts"
+      ]
+    },
+    {
+      "kind": "jobs.rfqPricePropose",
+      "capability": "mobile.route.jobs.rfqPricePropose",
+      "public": false,
+      "methods": [
+        "POST"
+      ],
+      "roles": [
+        "admin",
+        "worker"
+      ],
+      "risk": "money",
+      "operationClass": "money_impacting",
+      "sideEffectClass": "conditional-write",
+      "privileged": true,
+      "resourceType": "job",
+      "requiresResourceCheck": true,
+      "confirmationGate": "offer",
+      "envelopeTtlMs": 30000,
+      "sources": [
+        "supabase/functions/mobile-api/_shared/http/routes/job.ts"
+      ]
+    },
+    {
       "kind": "jobs.scopeChange",
       "capability": "mobile.route.jobs.scopeChange",
       "public": false,
@@ -3173,30 +3287,6 @@
       "envelopeTtlMs": 30000,
       "sources": [
         "supabase/functions/mobile-api/_shared/http/routes/job.ts"
-      ]
-    },
-    {
-      "kind": "jobs.stagingPaymentConfirm",
-      "capability": "mobile.route.jobs.stagingPaymentConfirm",
-      "public": false,
-      "methods": [
-        "POST"
-      ],
-      "roles": [
-        "admin",
-        "customer"
-      ],
-      "risk": "money",
-      "operationClass": "money_impacting",
-      "sideEffectClass": "conditional-write",
-      "privileged": true,
-      "resourceType": "job",
-      "requiresResourceCheck": true,
-      "confirmationGate": "payment",
-      "envelopeTtlMs": 30000,
-      "sources": [
-        "supabase/functions/mobile-api/_shared/http/routes/job.ts",
-        "supabase/functions/mobile-api/_shared/http/routes/staging-payment-routes.ts"
       ]
     },
     {
@@ -3287,6 +3377,29 @@
       "requiresResourceCheck": true,
       "confirmationGate": "proposed_worker",
       "envelopeTtlMs": 30000,
+      "sources": [
+        "supabase/functions/mobile-api/_shared/http/routes/case-work-resource-routes.ts"
+      ]
+    },
+    {
+      "kind": "jobs.workerCandidateDecision",
+      "capability": "mobile.route.jobs.workerCandidateDecision",
+      "public": false,
+      "methods": [
+        "GET"
+      ],
+      "roles": [
+        "admin",
+        "customer"
+      ],
+      "risk": "sensitive",
+      "operationClass": "database_read",
+      "sideEffectClass": "read-only",
+      "privileged": true,
+      "resourceType": "job",
+      "requiresResourceCheck": true,
+      "confirmationGate": "none",
+      "envelopeTtlMs": 60000,
       "sources": [
         "supabase/functions/mobile-api/_shared/http/routes/case-work-resource-routes.ts"
       ]
@@ -4313,6 +4426,53 @@
       ]
     },
     {
+      "kind": "services.coverage",
+      "capability": "mobile.route.services.coverage",
+      "public": false,
+      "methods": [
+        "GET"
+      ],
+      "roles": [
+        "admin",
+        "customer"
+      ],
+      "risk": "read",
+      "operationClass": "database_read",
+      "sideEffectClass": "read-only",
+      "privileged": false,
+      "resourceType": "system",
+      "requiresResourceCheck": false,
+      "confirmationGate": "none",
+      "envelopeTtlMs": 120000,
+      "sources": [
+        "supabase/functions/mobile-api/_shared/http/routes/misc.ts"
+      ]
+    },
+    {
+      "kind": "workerApplications.me",
+      "capability": "mobile.route.workerApplications.me",
+      "public": false,
+      "methods": [
+        "GET"
+      ],
+      "roles": [
+        "admin",
+        "customer",
+        "worker"
+      ],
+      "risk": "read",
+      "operationClass": "database_read",
+      "sideEffectClass": "read-only",
+      "privileged": false,
+      "resourceType": "system",
+      "requiresResourceCheck": false,
+      "confirmationGate": "none",
+      "envelopeTtlMs": 120000,
+      "sources": [
+        "supabase/functions/mobile-api/_shared/http/routes/worker.ts"
+      ]
+    },
+    {
       "kind": "workerApplications.submit",
       "capability": "mobile.route.workerApplications.submit",
       "public": false,
@@ -4960,6 +5120,52 @@
     {
       "kind": "workers.register",
       "capability": "mobile.route.workers.register",
+      "public": false,
+      "methods": [
+        "POST"
+      ],
+      "roles": [
+        "admin",
+        "worker"
+      ],
+      "risk": "write",
+      "operationClass": "idempotent_write",
+      "sideEffectClass": "idempotent-write",
+      "privileged": true,
+      "resourceType": "system",
+      "requiresResourceCheck": false,
+      "confirmationGate": "none",
+      "envelopeTtlMs": 120000,
+      "sources": [
+        "supabase/functions/mobile-api/_shared/http/routes/worker.ts"
+      ]
+    },
+    {
+      "kind": "workers.registrationCommand.get",
+      "capability": "mobile.route.workers.registrationCommand.get",
+      "public": false,
+      "methods": [
+        "GET"
+      ],
+      "roles": [
+        "admin",
+        "worker"
+      ],
+      "risk": "read",
+      "operationClass": "database_read",
+      "sideEffectClass": "read-only",
+      "privileged": true,
+      "resourceType": "system",
+      "requiresResourceCheck": false,
+      "confirmationGate": "none",
+      "envelopeTtlMs": 120000,
+      "sources": [
+        "supabase/functions/mobile-api/_shared/http/routes/worker.ts"
+      ]
+    },
+    {
+      "kind": "workers.registrationCommand.submit",
+      "capability": "mobile.route.workers.registrationCommand.submit",
       "public": false,
       "methods": [
         "POST"

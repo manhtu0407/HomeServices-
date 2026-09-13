@@ -1,3 +1,5 @@
+import type { WorkerApplicationStatus } from '@nestscout/shared'
+
 export type EntryAccessStep =
   | 'splash'
   | 'role-gate'
@@ -60,4 +62,9 @@ export type EntryBrandAccessFlowProps = {
   onStepChange?: (step: EntryAccessStep) => void
   onRoleChange?: (role: EntryRole) => void
   splashDurationMs?: number
+  workerApplication?: Readonly<{
+    applicationId: string | null
+    reason: string | null
+    status: WorkerApplicationStatus
+  }> | null
 }

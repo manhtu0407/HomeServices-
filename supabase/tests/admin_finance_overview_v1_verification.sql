@@ -200,14 +200,24 @@ insert into public.worker_payment_ledger (
   ('f2000000-0000-4000-8000-000000000001', 'f1000000-0000-4000-8000-000000000004', 'platform_bank_manual', 'available', 100000, 10000, 90000, 2, 1000, '2001-08-13T01:00:00Z'),
   ('f2000000-0000-4000-8000-000000000003', 'f1000000-0000-4000-8000-000000000004', 'sepay_vietqr', 'available', 300000, 30000, 270000, 2, 1000, '2001-08-13T03:00:00Z');
 
-insert into public.admin_financial_adjustments (
-  source_key, adjustment_type, job_id, worker_id, gross_refund_vnd,
-  commission_reversal_vnd, cash_outflow_vnd, reason_code, recorded_by, realized_at
-) values (
-  'finance-refund-1', 'refund', 'f2000000-0000-4000-8000-000000000001',
-  'f1000000-0000-4000-8000-000000000004', 50000, 5000, 50000,
-  'CUSTOMER_REFUND', 'f1000000-0000-4000-8000-000000000001', '2001-08-13T04:00:00Z'
-);
+-- An Admin decision without a verified outbound receipt cannot seed outgoing cash.
+do $unverified_refund$
+begin
+  begin
+    insert into public.admin_financial_adjustments (
+      source_key, adjustment_type, job_id, worker_id, gross_refund_vnd,
+      commission_reversal_vnd, cash_outflow_vnd, reason_code, recorded_by, realized_at
+    ) values (
+      'finance-refund-1', 'refund', 'f2000000-0000-4000-8000-000000000001',
+      'f1000000-0000-4000-8000-000000000004', 50000, 5000, 50000,
+      'CUSTOMER_REFUND', 'f1000000-0000-4000-8000-000000000001', '2001-08-13T04:00:00Z'
+    );
+    raise exception 'unverified refund polluted completed Finance totals';
+  exception when sqlstate 'P0001' then
+    if sqlerrm <> 'REFUND_RECEIPT_VERIFICATION_UNAVAILABLE' then raise; end if;
+  end;
+end;
+$unverified_refund$;
 
 insert into public.admin_financial_adjustments (
   source_key, adjustment_type, job_id, worker_id, worker_credit_vnd,
@@ -252,11 +262,11 @@ begin
     or (v_overview#>>'{metrics,average_order_value}')::bigint <> 200000
     or (v_overview#>>'{metrics,commission_accrued}')::bigint <> 60000
     or (v_overview#>>'{metrics,commission_collected}')::bigint <> 40000
-    or (v_overview#>>'{metrics,commission_retained}')::bigint <> 35000
-    or (v_overview#>>'{metrics,commission_receivable}')::bigint <> 15000
+    or (v_overview#>>'{metrics,commission_retained}')::bigint <> 40000
+    or (v_overview#>>'{metrics,commission_receivable}')::bigint <> 20000
     or (v_overview#>>'{metrics,platform_incoming}')::bigint <> 400000
-    or (v_overview#>>'{metrics,refund_outflow}')::bigint <> 50000
-    or (v_overview#>>'{metrics,net_cash_flow}')::bigint <> 350000
+    or (v_overview#>>'{metrics,refund_outflow}')::bigint <> 0
+    or (v_overview#>>'{metrics,net_cash_flow}')::bigint <> 400000
     or v_overview#>>'{tax,status}' <> 'unconfigured' then
     raise exception 'finance overview totals or unconfigured tax state are incorrect: %', v_overview;
   end if;
@@ -302,8 +312,8 @@ declare
 begin
   begin
     update public.admin_financial_adjustments
-    set gross_refund_vnd = 40000, cash_outflow_vnd = 40000
-    where source_key = 'finance-refund-1';
+    set worker_credit_vnd = 8000
+    where source_key = 'finance-worker-credit-1';
   exception when sqlstate 'P0001' then
     v_rejected := true;
   end;
@@ -320,11 +330,12 @@ begin
       'finance-over-refund', 'refund', 'f2000000-0000-4000-8000-000000000001',
       60000, 60000, 'OVER_REFUND', 'f1000000-0000-4000-8000-000000000001', '2001-08-13T06:00:00Z'
     );
-  exception when check_violation then
+  exception when sqlstate 'P0001' then
+    if sqlerrm <> 'REFUND_RECEIPT_VERIFICATION_UNAVAILABLE' then raise; end if;
     v_rejected := true;
   end;
   if v_rejected is not true then
-    raise exception 'cumulative refund exceeded the paid job snapshot';
+    raise exception 'a second unverified refund was counted as completed';
   end if;
 end;
 $adjustment_guards$;
@@ -419,7 +430,7 @@ begin
     '2001-08-12T17:00:00Z', '2001-08-13T17:00:00Z', 'hour'
   );
   if v_overview#>>'{tax,status}' <> 'estimated'
-    or (v_overview#>>'{tax,estimated_vnd}')::bigint <> 1750 then
+    or (v_overview#>>'{tax,estimated_vnd}')::bigint <> 2000 then
     raise exception 'approved tax policy did not produce the expected estimate: %', v_overview->'tax';
   end if;
 

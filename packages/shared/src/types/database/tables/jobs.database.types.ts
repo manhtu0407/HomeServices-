@@ -5,6 +5,71 @@ import type { Database } from '../schema.database.types'
 
 export type JobsTables = {
 /* @slice:begin tables:jobs */
+      completion_payment_operations: {
+        Row: {
+          created_at: string
+          customer_id: string
+          final_price: number
+          id: string
+          job_id: string
+          payment_order_id: string
+          request_id: string
+          response_snapshot: Json
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          customer_id: string
+          final_price: number
+          id?: string
+          job_id: string
+          payment_order_id: string
+          request_id: string
+          response_snapshot?: Json
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          customer_id?: string
+          final_price?: number
+          id?: string
+          job_id?: string
+          payment_order_id?: string
+          request_id?: string
+          response_snapshot?: Json
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "completion_payment_operations_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customer_overview"
+            referencedColumns: ["customer_id"]
+          },
+          {
+            foreignKeyName: "completion_payment_operations_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customer_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "completion_payment_operations_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: true
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "completion_payment_operations_payment_order_id_fkey"
+            columns: ["payment_order_id"]
+            isOneToOne: true
+            referencedRelation: "job_payment_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       job_broadcast_retry_claims: {
         Row: {
           claim_token: string
@@ -154,6 +219,7 @@ export type JobsTables = {
           fallback_at: string | null
           fallback_reason: string | null
           job_id: string
+          matching_operation_id: string | null
           preferred_worker_id: string | null
           selected_at: string | null
           strategy: string
@@ -166,6 +232,7 @@ export type JobsTables = {
           fallback_at?: string | null
           fallback_reason?: string | null
           job_id: string
+          matching_operation_id?: string | null
           preferred_worker_id?: string | null
           selected_at?: string | null
           strategy?: string
@@ -178,6 +245,7 @@ export type JobsTables = {
           fallback_at?: string | null
           fallback_reason?: string | null
           job_id?: string
+          matching_operation_id?: string | null
           preferred_worker_id?: string | null
           selected_at?: string | null
           strategy?: string
@@ -202,6 +270,13 @@ export type JobsTables = {
             columns: ["job_id"]
             isOneToOne: true
             referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_matching_preferences_matching_operation_id_fkey"
+            columns: ["matching_operation_id"]
+            isOneToOne: false
+            referencedRelation: "matching_operations"
             referencedColumns: ["id"]
           },
           {
@@ -545,11 +620,156 @@ export type JobsTables = {
           },
         ]
       }
+      job_refund_obligations: {
+        Row: {
+          amount_vnd: number
+          approved_by: string | null
+          created_at: string
+          id: string
+          job_id: string
+          payment_order_id: string | null
+          source_id: string
+          source_type: string
+          state: string
+          synthetic_cohort_id: string | null
+          verified_paid_amount_vnd: number
+        }
+        Insert: {
+          amount_vnd: number
+          approved_by?: string | null
+          created_at?: string
+          id?: string
+          job_id: string
+          payment_order_id?: string | null
+          source_id: string
+          source_type: string
+          state?: string
+          synthetic_cohort_id?: string | null
+          verified_paid_amount_vnd: number
+        }
+        Update: {
+          amount_vnd?: number
+          approved_by?: string | null
+          created_at?: string
+          id?: string
+          job_id?: string
+          payment_order_id?: string | null
+          source_id?: string
+          source_type?: string
+          state?: string
+          synthetic_cohort_id?: string | null
+          verified_paid_amount_vnd?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_refund_obligations_approved_by_fkey"
+            columns: ["approved_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_refund_obligations_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_refund_obligations_payment_order_id_fkey"
+            columns: ["payment_order_id"]
+            isOneToOne: false
+            referencedRelation: "job_payment_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_refund_obligations_synthetic_cohort_id_fkey"
+            columns: ["synthetic_cohort_id"]
+            isOneToOne: false
+            referencedRelation: "synthetic_matching_cohorts"
+            referencedColumns: ["cohort_id"]
+          },
+        ]
+      }
+      job_rfq_price_proposals: {
+        Row: {
+          commission_level: number
+          commission_rate_bps: number
+          created_at: string
+          currency: string
+          customer_id: string
+          customer_total: number
+          decided_at: string | null
+          id: string
+          job_id: string
+          quote_mode: Database["public"]["Enums"]["service_quote_mode"]
+          scope_summary: string
+          status: string
+          synthetic_cohort_id: string | null
+          worker_id: string
+        }
+        Insert: {
+          commission_level: number
+          commission_rate_bps: number
+          created_at?: string
+          currency?: string
+          customer_id: string
+          customer_total: number
+          decided_at?: string | null
+          id: string
+          job_id: string
+          quote_mode: Database["public"]["Enums"]["service_quote_mode"]
+          scope_summary: string
+          status?: string
+          synthetic_cohort_id?: string | null
+          worker_id: string
+        }
+        Update: {
+          commission_level?: number
+          commission_rate_bps?: number
+          created_at?: string
+          currency?: string
+          customer_id?: string
+          customer_total?: number
+          decided_at?: string | null
+          id?: string
+          job_id?: string
+          quote_mode?: Database["public"]["Enums"]["service_quote_mode"]
+          scope_summary?: string
+          status?: string
+          synthetic_cohort_id?: string | null
+          worker_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_rfq_price_proposals_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_rfq_price_proposals_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_rfq_price_proposals_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       job_worker_candidates: {
         Row: {
           broadcast_id: string | null
           created_at: string
           customer_decided_at: string | null
+          customer_decision_kind: string | null
           expires_at: string | null
           id: string
           job_id: string
@@ -564,6 +784,7 @@ export type JobsTables = {
           broadcast_id?: string | null
           created_at?: string
           customer_decided_at?: string | null
+          customer_decision_kind?: string | null
           expires_at?: string | null
           id?: string
           job_id: string
@@ -578,6 +799,7 @@ export type JobsTables = {
           broadcast_id?: string | null
           created_at?: string
           customer_decided_at?: string | null
+          customer_decision_kind?: string | null
           expires_at?: string | null
           id?: string
           job_id?: string
@@ -875,6 +1097,145 @@ export type JobsTables = {
           {
             foreignKeyName: "jobs_worker_id_fkey"
             columns: ["worker_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      workflow_recovery_action_audit: {
+        Row: {
+          action: string
+          actor_id: string | null
+          affected_reservation_count: number
+          case_version: number
+          created_at: string
+          id: string
+          idempotency_key: string
+          job_id: string
+          observed_job_state: string
+          reason: string
+          recovery_case_id: string
+          safe_metadata: Json
+        }
+        Insert: {
+          action: string
+          actor_id?: string | null
+          affected_reservation_count?: number
+          case_version: number
+          created_at?: string
+          id?: string
+          idempotency_key: string
+          job_id: string
+          observed_job_state: string
+          reason: string
+          recovery_case_id: string
+          safe_metadata?: Json
+        }
+        Update: {
+          action?: string
+          actor_id?: string | null
+          affected_reservation_count?: number
+          case_version?: number
+          created_at?: string
+          id?: string
+          idempotency_key?: string
+          job_id?: string
+          observed_job_state?: string
+          reason?: string
+          recovery_case_id?: string
+          safe_metadata?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workflow_recovery_action_audit_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "workflow_recovery_action_audit_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "workflow_recovery_action_audit_recovery_case_id_fkey"
+            columns: ["recovery_case_id"]
+            isOneToOne: false
+            referencedRelation: "workflow_recovery_cases"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      workflow_recovery_cases: {
+        Row: {
+          created_at: string
+          detected_state: string
+          first_detected_at: string
+          id: string
+          job_id: string
+          last_activity_at: string
+          last_detected_at: string
+          reason_code: string
+          resolution_note: string | null
+          resolved_at: string | null
+          resolved_by: string | null
+          safe_metadata: Json
+          severity: string
+          status: string
+          updated_at: string
+          version: number
+        }
+        Insert: {
+          created_at?: string
+          detected_state: string
+          first_detected_at: string
+          id?: string
+          job_id: string
+          last_activity_at: string
+          last_detected_at: string
+          reason_code: string
+          resolution_note?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          safe_metadata?: Json
+          severity: string
+          status?: string
+          updated_at?: string
+          version?: number
+        }
+        Update: {
+          created_at?: string
+          detected_state?: string
+          first_detected_at?: string
+          id?: string
+          job_id?: string
+          last_activity_at?: string
+          last_detected_at?: string
+          reason_code?: string
+          resolution_note?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          safe_metadata?: Json
+          severity?: string
+          status?: string
+          updated_at?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workflow_recovery_cases_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "workflow_recovery_cases_resolved_by_fkey"
+            columns: ["resolved_by"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]

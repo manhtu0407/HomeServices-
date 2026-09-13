@@ -18,7 +18,7 @@ const VALID_TRANSITIONS: Record<JobStatus, readonly JobStatus[]> = {
   repairing: ['completed_by_worker', 'scope_change_pending', 'cancelled'],
   scope_change_pending: ['worker_matched', 'worker_on_way', 'arrived', 'inspecting', 'repairing', 'cancelled'],
   completed_by_worker: ['confirmed_by_customer'],
-  confirmed_by_customer: ['payment_pending', 'reviewed'],
+  confirmed_by_customer: ['payment_pending'],
   payment_pending: ['paid'],
   paid: ['reviewed'],
   reviewed: [],

@@ -3,6 +3,7 @@ import { View } from 'react-native'
 
 import { color } from '@/design/theme'
 import type { AppLanguage } from '@/lib/app-language'
+import { isDealPaymentProtected } from '@/lib/frontend-workflow/payment-proof'
 import { formatVnd, textByLanguage } from '../ui/format'
 import { WorkerV5BoundaryNote } from '../ui/metrics-surfaces'
 import type { WorkerV5OfferDetailRow } from './offer'
@@ -22,7 +23,6 @@ export function WorkerJobsLegacyPrototypeStageNineBody({
   language,
   navigateNext,
   navigateToEvidence,
-  onRespondToDirectPayment,
   reduceTransparency,
   runtime,
 }: {
@@ -30,11 +30,11 @@ export function WorkerJobsLegacyPrototypeStageNineBody({
   language: AppLanguage
   navigateNext: () => void
   navigateToEvidence: () => void
-  onRespondToDirectPayment: (received: boolean) => void
   reduceTransparency: boolean
   runtime: WorkerJobsLegacyPrototypeRuntime
 }) {
   const deal = runtime.state.deal
+  const paymentRecorded = isDealPaymentProtected(deal)
   const sourceCount = (deal?.completionPhotoUrls?.length ?? 0) + (deal?.completionNotes?.trim() ? 1 : 0)
   const customerConfirmed = deal?.status === 'confirmed_by_customer' || deal?.status === 'payment_pending' || deal?.status === 'paid' || deal?.status === 'reviewed'
   const awaitingDirectPaymentConfirmation = deal?.payment?.provider === 'direct_worker'
@@ -75,8 +75,8 @@ export function WorkerJobsLegacyPrototypeStageNineBody({
       title: textByLanguage(language, 'Thanh toán', 'Payment'),
       meta: textByLanguage(language, 'Theo phương thức đã chọn', 'Selected payment method'),
       status: awaitingDirectPaymentConfirmation
-        ? textByLanguage(language, 'Cần xác nhận', 'Needs confirmation')
-        : customerConfirmed
+        ? textByLanguage(language, 'Cần đối soát', 'Needs reconciliation')
+        : paymentRecorded
           ? textByLanguage(language, 'Đã ghi nhận', 'Recorded')
           : textByLanguage(language, 'Đang chờ', 'Waiting'),
     },
@@ -111,27 +111,41 @@ export function WorkerJobsLegacyPrototypeStageNineBody({
         />
       </View>
 
-      {awaitingDirectPaymentConfirmation && runtime.state.lastError ? (
+      {awaitingDirectPaymentConfirmation ? (
+        <WorkerV5BoundaryNote
+          body={textByLanguage(
+            language,
+            'Phương thức thanh toán trực tiếp cũ chỉ được giữ để bộ phận vận hành đối soát. Thợ không thể tự xác nhận đã nhận tiền trong ứng dụng.',
+            'The legacy direct-payment method is retained for admin reconciliation only. A worker cannot mark it received in the app.',
+          )}
+          title={textByLanguage(language, 'Chờ nền tảng đối soát', 'Awaiting platform reconciliation')}
+        />
+      ) : null}
+
+      {runtime.state.lastError ? (
         <WorkerV5BoundaryNote
           body={runtime.state.lastError}
-          title={textByLanguage(language, 'Chưa lưu được', 'Not recorded')}
+          reduceTransparency={reduceTransparency}
+          title={textByLanguage(language, 'Chưa cập nhật được', 'Could not update')}
         />
       ) : null}
 
       <View style={prototypeStyles.stageActionRow}>
         <WorkerJobsLegacyPrototypeStageActionButton
-          label={awaitingDirectPaymentConfirmation ? textByLanguage(language, 'Báo chưa nhận', 'Report not received') : textByLanguage(language, 'Xem hồ sơ', 'View record')}
-          onPress={awaitingDirectPaymentConfirmation ? () => onRespondToDirectPayment(false) : navigateToEvidence}
-          testID={awaitingDirectPaymentConfirmation ? 'worker-v5-completion-direct-payment-problem' : 'worker-v5-completion-submitted-timeline-action'}
+          label={textByLanguage(language, 'Xem hồ sơ', 'View record')}
+          onPress={navigateToEvidence}
+          testID="worker-v5-completion-submitted-timeline-action"
         />
         <WorkerJobsLegacyPrototypeStageActionButton
-          disabled={actionBusy && awaitingDirectPaymentConfirmation}
+          disabled={!paymentRecorded || actionBusy}
           label={awaitingDirectPaymentConfirmation
-            ? actionBusy ? textByLanguage(language, 'Đang lưu', 'Saving') : textByLanguage(language, 'Đã nhận tiền', 'Payment received')
-            : customerConfirmed ? textByLanguage(language, 'Mở công việc đã hoàn tất', 'Open completed job') : textByLanguage(language, 'Chờ khách xác nhận', 'Waiting for customer')}
-          onPress={awaitingDirectPaymentConfirmation ? () => onRespondToDirectPayment(true) : navigateNext}
+            ? textByLanguage(language, 'Chờ đối soát', 'Awaiting reconciliation')
+            : paymentRecorded ? textByLanguage(language, 'Mở công việc đã hoàn tất', 'Open completed job')
+              : customerConfirmed ? textByLanguage(language, 'Chờ xác minh thanh toán', 'Awaiting payment verification')
+                : textByLanguage(language, 'Chờ khách xác nhận', 'Waiting for customer')}
+          onPress={navigateNext}
           primary
-          testID={awaitingDirectPaymentConfirmation ? 'worker-v5-completion-direct-payment-action' : 'worker-v5-completion-submitted-next-action'}
+          testID="worker-v5-completion-submitted-next-action"
         />
       </View>
     </View>
@@ -151,11 +165,12 @@ export function WorkerJobsLegacyPrototypeStageTenBody({
   runtime: WorkerJobsLegacyPrototypeRuntime
 }) {
   const deal = runtime.state.deal
-  const ledgerCredit = deal
+  const paymentRecorded = isDealPaymentProtected(deal)
+  const ledgerCredit = deal && paymentRecorded
     ? runtime.workerEarnings?.recent_transactions.find((entry) => entry.job_id === deal.id && entry.payment_state === 'available')
     : null
   const workerNet = typeof ledgerCredit?.worker_net === 'number' && ledgerCredit.worker_net > 0 ? ledgerCredit.worker_net : null
-  const directPaymentRecorded = deal?.payment?.provider === 'direct_worker' && deal.payment.status === 'direct_paid'
+  const directPaymentRecorded = paymentRecorded && deal?.payment?.provider === 'direct_worker'
   const rating = runtime.workerPerformanceInsights?.average_rating ?? runtime.workerProfile?.rating ?? null
   const hasRating = typeof rating === 'number' && rating > 0
   const rankingDelta = runtime.workerPerformanceInsights?.performance_score ?? null
@@ -251,45 +266,36 @@ export function WorkerJobsLegacyPrototypePaymentConfirmedBody({
   runtime: WorkerJobsLegacyPrototypeRuntime
 }) {
   const deal = runtime.state.deal
-  const ledgerCredit = deal
+  const paymentRecorded = isDealPaymentProtected(deal)
+  const ledgerCredit = deal && paymentRecorded
     ? runtime.workerEarnings?.recent_transactions.find((entry) => entry.job_id === deal.id && entry.payment_state === 'available')
     : null
   const workerNet = typeof ledgerCredit?.worker_net === 'number' && ledgerCredit.worker_net > 0 ? ledgerCredit.worker_net : null
   const paymentProvider = deal?.payment?.provider ?? deal?.paymentRailProvider
   const isBankTransfer = paymentProvider === 'bank_transfer' || paymentProvider === 'platform_bank_manual' || paymentProvider === 'sepay_vietqr'
-  const bankAmount = isBankTransfer && typeof deal?.payment?.amountReceived === 'number' && deal.payment.amountReceived > 0
+  const bankAmount = paymentRecorded && isBankTransfer && typeof deal?.payment?.amountReceived === 'number' && deal.payment.amountReceived > 0
     ? deal.payment.amountReceived
     : null
-  const paymentAmount = bankAmount
-    ?? workerNet
-    ?? (isBankTransfer && typeof deal?.payment?.grossAmount === 'number' && deal.payment.grossAmount > 0 ? deal.payment.grossAmount : null)
+  const paymentAmount = bankAmount ?? workerNet
   const paymentMethod = paymentProvider === 'direct_worker' || paymentProvider === 'cash'
     ? textByLanguage(language, 'Tiền mặt', 'Cash')
     : isBankTransfer
       ? textByLanguage(language, 'Chuyển khoản', 'Bank transfer')
       : textByLanguage(language, 'Đang cập nhật', 'Updating')
-  const paymentRecorded = Boolean(
-    workerNet
-      || deal?.status === 'paid'
-      || deal?.status === 'reviewed'
-      || deal?.backendStatus === 'paid'
-      || deal?.backendStatus === 'reviewed'
-      || deal?.payment?.status === 'direct_paid',
-  )
   const amountLabel = paymentAmount
     ? formatVnd(paymentAmount, language)
     : textByLanguage(language, 'Chưa có số tiền được ghi nhận', 'Amount not recorded yet')
   const rows: WorkerV5OfferDetailRow[] = [
     {
       icon: 'earnings',
-      title: isBankTransfer ? textByLanguage(language, 'Số tiền chuyển khoản', 'Bank transfer amount') : textByLanguage(language, 'Khoản nhận', 'Amount received'),
-      meta: isBankTransfer ? textByLanguage(language, 'Số tiền đã ghi nhận cho công việc', 'Recorded for this job') : textByLanguage(language, 'Từ công việc này', 'From this job'),
+      title: bankAmount ? textByLanguage(language, 'Số tiền chuyển khoản', 'Bank transfer amount') : textByLanguage(language, 'Thu nhập đã ghi sổ', 'Ledger earnings'),
+      meta: paymentRecorded ? textByLanguage(language, 'Số liệu đã được xác minh cho công việc', 'Verified for this job') : textByLanguage(language, 'Chưa có bản ghi đã xác minh', 'No verified record yet'),
       status: amountLabel,
     },
     {
       icon: 'profile',
       title: textByLanguage(language, 'Phương thức', 'Payment method'),
-      meta: textByLanguage(language, 'Khách đã xác nhận thanh toán', 'Customer confirmed payment'),
+      meta: paymentRecorded ? textByLanguage(language, 'Bản ghi thanh toán đã xác minh', 'Verified payment record') : textByLanguage(language, 'Chờ xác minh giao dịch', 'Awaiting transaction verification'),
       status: paymentMethod,
     },
   ]
@@ -298,7 +304,7 @@ export function WorkerJobsLegacyPrototypePaymentConfirmedBody({
     <View style={prototypeStyles.bodyStack} testID="worker-v5-stage-eleven-payment-confirmed">
       <View style={[prototypeStyles.offerSummaryCard, reduceTransparency && { backgroundColor: color.mint.white }]} testID="worker-v5-stage-eleven-hero">
         <View style={prototypeStyles.offerSummaryCopy}>
-          <Text style={prototypeStyles.stagePaymentKicker}>{textByLanguage(language, 'Thanh toán đã ghi nhận', 'Payment recorded')}</Text>
+          <Text style={prototypeStyles.stagePaymentKicker}>{paymentRecorded ? textByLanguage(language, 'Thanh toán đã ghi nhận', 'Payment recorded') : textByLanguage(language, 'Trạng thái thanh toán', 'Payment status')}</Text>
           <Text numberOfLines={1} style={prototypeStyles.offerSummaryTitle}>{paymentRecorded ? textByLanguage(language, 'Chúc mừng!', 'Congratulations!') : textByLanguage(language, 'Đang chờ thanh toán', 'Payment pending')}</Text>
           <Text numberOfLines={1} style={prototypeStyles.stagePaymentAmount} testID="worker-v5-stage-eleven-amount">{amountLabel}</Text>
           <Text numberOfLines={1} style={prototypeStyles.stagePaymentMeta}>{paymentMethod}</Text>

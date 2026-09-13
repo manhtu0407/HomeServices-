@@ -228,7 +228,7 @@ export const adminSectionsCopy: Record<AppLanguage, AdminSectionsCopy> = {
       manual_reconcile_required: 'Cần đối soát thủ công',
       manual_verified: 'Đã xác minh chuyển khoản',
       direct_awaiting_confirmation: 'Chờ hai bên xác nhận',
-      direct_admin_confirmation_required: 'Chờ Admin xác nhận tiền mặt',
+      direct_admin_confirmation_required: 'Chờ quản trị viên xác nhận tiền mặt',
       direct_reconcile_required: 'Thanh toán trực tiếp cần đối soát',
       direct_paid: 'Hai bên đã xác nhận thanh toán',
       received: 'Đã nhận tiền',

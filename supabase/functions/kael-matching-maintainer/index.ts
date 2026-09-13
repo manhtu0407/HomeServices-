@@ -1,8 +1,14 @@
 import { createClient } from "@supabase/supabase-js";
+import { resolveHarnessEnvironment } from "../_shared/harness/environment.ts";
+import { readHarnessRuntimeRelease } from "../_shared/harness/release.ts";
+import { reconcileExpiredMatchingLeases } from "../mobile-api/_shared/domains/matching/expiry-maintenance.ts";
 import { reconcileExpiredSavedWorkerMatches } from "../mobile-api/_shared/domains/matching/matching-preference.ts";
 import { dispatchConfirmationMatchingOutbox } from "../mobile-api/_shared/domains/kael-chat/confirmation-outbox-dispatcher.ts";
+import { dispatchWorkerReplacementOutbox } from "../mobile-api/_shared/domains/matching/replacement-outbox.ts";
 import type { EdgeAiSecrets } from "../mobile-api/_shared/kael/index.ts";
 import type { DbClient } from "../mobile-api/_shared/platform/db.ts";
+import { reconcileMatchingPushReceipts } from "../mobile-api/_shared/platform/push.ts";
+import { dispatchOfficialMatchPush } from "../mobile-api/_shared/domains/notification/official-match-push.ts";
 
 const DEFAULT_LIMIT = 50;
 
@@ -37,30 +43,79 @@ Deno.serve(async (request) => {
 
   try {
     const dbClient = client as unknown as DbClient;
-    const outbox = await dispatchConfirmationMatchingOutbox(
-      dbClient,
-      readMatchingSecrets(supabaseUrl),
-      {
-        dispatcherId: `matching-maintainer:${Deno.env.get("DENO_DEPLOYMENT_ID") ?? crypto.randomUUID()}`,
-        limit: 20,
-        leaseSeconds: 45,
+    const maintainerId = `matching-maintainer:${Deno.env.get("DENO_DEPLOYMENT_ID") ?? crypto.randomUUID()}`;
+    const release = readHarnessRuntimeRelease((name) => Deno.env.get(name));
+    const environment = resolveHarnessEnvironment({
+      url: supabaseUrl, environment: Deno.env.get("NESTSCOUT_ENVIRONMENT"),
+    }).name;
+    // Independent notification recovery must neither delay matching nor be abandoned if it fails.
+    const officialMatchPushTask = dispatchOfficialMatchPush(dbClient, {
+      environment,
+      releaseId: release.releaseId, deploymentId: release.deploymentId, dispatcherId: maintainerId,
+    }).then(
+      (result) => ({ failed: false, result }),
+      (error: unknown) => {
+        const reasonCode = error instanceof Error && /^[A-Z][A-Z0-9_]{1,63}$/u.test(error.message)
+          ? error.message : "OFFICIAL_MATCH_PUSH_DISPATCH_FAILED";
+        console.warn("official match push dispatch failed", { reason_code: reasonCode });
+        return { failed: true, result: { error_code: "OFFICIAL_MATCH_PUSH_DISPATCH_FAILED" } };
       },
     );
-    const summary = await reconcileExpiredSavedWorkerMatches(
-      dbClient,
-      DEFAULT_LIMIT,
-    );
-    console.info("kael matching maintainer completed", {
-      reconciled_count: summary.reconciled,
-      failed_count: summary.failed,
-      reason_code: "expired_saved_worker_scan",
-      confirmation_outbox_claimed: outbox.claimed,
-      confirmation_outbox_completed: outbox.completed,
-      confirmation_outbox_retry_scheduled: outbox.retryScheduled,
-      confirmation_outbox_dead_lettered: outbox.deadLettered,
-      confirmation_outbox_lease_lost: outbox.leaseLost,
-    });
-    return json({ ok: true, confirmation_outbox: outbox, saved_worker_reconcile: summary });
+    try {
+      const outbox = await dispatchConfirmationMatchingOutbox(
+        dbClient,
+        readMatchingSecrets(supabaseUrl),
+        {
+          dispatcherId: maintainerId,
+          limit: 20,
+          leaseSeconds: 45,
+        },
+      );
+      const summary = await reconcileExpiredSavedWorkerMatches(
+        dbClient,
+        DEFAULT_LIMIT,
+      );
+      const replacements = await dispatchWorkerReplacementOutbox(dbClient, { dispatcherId: maintainerId });
+      const pushReceipts = await reconcileMatchingPushReceipts(dbClient, maintainerId);
+      const matchingExpiry = await reconcileExpiredMatchingLeases(dbClient, {
+        environment,
+        releaseId: release.releaseId,
+        deploymentId: release.deploymentId,
+      });
+      const { failed: officialMatchPushFailed, result: officialMatchPush } = await officialMatchPushTask;
+      console.info("kael matching maintainer completed", {
+        official_match_push_failed: officialMatchPushFailed,
+        official_match_push: officialMatchPush,
+        reconciled_count: summary.reconciled,
+        failed_count: summary.failed,
+        reason_code: "expired_saved_worker_scan",
+        confirmation_outbox_claimed: outbox.claimed,
+        confirmation_outbox_completed: outbox.completed,
+        confirmation_outbox_retry_scheduled: outbox.retryScheduled,
+        confirmation_outbox_dead_lettered: outbox.deadLettered,
+        confirmation_outbox_lease_lost: outbox.leaseLost,
+        replacement_outbox_claimed: replacements.claimed,
+        replacement_outbox_completed: replacements.completed,
+        replacement_outbox_dead_lettered: replacements.deadLettered,
+        push_receipts_checked: pushReceipts.checked,
+        push_receipts_provider_handoffs: pushReceipts.providerHandoffs,
+        push_receipts_failed: pushReceipts.failed,
+        push_receipts_unresolved: pushReceipts.unresolved,
+        push_receipts_tokens_disabled: pushReceipts.tokensDisabled,
+        matching_expiry_reconciled: matchingExpiry.reconciled,
+      });
+      return json({
+        ok: !officialMatchPushFailed,
+        official_match_push: officialMatchPush,
+        confirmation_outbox: outbox,
+        replacement_outbox: replacements,
+        push_receipts: pushReceipts,
+        saved_worker_reconcile: summary,
+        matching_expiry: matchingExpiry,
+      }, officialMatchPushFailed ? 500 : 200);
+    } finally {
+      await officialMatchPushTask;
+    }
   } catch {
     console.error("kael matching maintainer failed", {
       reason_code: "reconcile_failed",

@@ -432,6 +432,16 @@ export type CoreTables = {
           event_type: string
           id: string
           job_id: string | null
+          push_attempt_count: number
+          push_expires_at: string | null
+          push_last_error_code: string | null
+          push_lease_expires_at: string | null
+          push_lease_token: string | null
+          push_leased_by: string | null
+          push_next_attempt_at: string | null
+          push_state: string
+          push_submitted_at: string | null
+          push_submitted_count: number
           read_at: string | null
           safe_metadata: Json
           sent_at: string | null
@@ -446,6 +456,16 @@ export type CoreTables = {
           event_type: string
           id?: string
           job_id?: string | null
+          push_attempt_count?: number
+          push_expires_at?: string | null
+          push_last_error_code?: string | null
+          push_lease_expires_at?: string | null
+          push_lease_token?: string | null
+          push_leased_by?: string | null
+          push_next_attempt_at?: string | null
+          push_state?: string
+          push_submitted_at?: string | null
+          push_submitted_count?: number
           read_at?: string | null
           safe_metadata?: Json
           sent_at?: string | null
@@ -460,6 +480,16 @@ export type CoreTables = {
           event_type?: string
           id?: string
           job_id?: string | null
+          push_attempt_count?: number
+          push_expires_at?: string | null
+          push_last_error_code?: string | null
+          push_lease_expires_at?: string | null
+          push_lease_token?: string | null
+          push_leased_by?: string | null
+          push_next_attempt_at?: string | null
+          push_state?: string
+          push_submitted_at?: string | null
+          push_submitted_count?: number
           read_at?: string | null
           safe_metadata?: Json
           sent_at?: string | null

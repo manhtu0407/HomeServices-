@@ -1,3 +1,4 @@
+import type { WorkflowErrorHandler } from './errors'
 import { useCallback, useEffect, useState } from 'react'
 import type { CustomerKaelMemoryPreferenceUpdateInput, UserRole } from '@nestscout/shared'
 import type { KaelMemorySelfViewResponse } from '../api-types'
@@ -25,7 +26,7 @@ const initialCustomerKaelMemoryState: CustomerKaelMemoryState = {
 type CustomerKaelMemoryActionsInput = {
   role: UserRole | null
   sessionUserId: string | null
-  setRemoteError: (error: string) => false
+  setRemoteError: WorkflowErrorHandler
 }
 
 export function useCustomerKaelMemoryActions({
@@ -68,7 +69,7 @@ export function useCustomerKaelMemoryActions({
     if (!sessionUserId) return setRemoteError('Bạn cần đăng nhập để cập nhật bộ nhớ Kael')
     const result = await kaelMemoryService.updateMyPreference(input)
     if (!result.success) {
-      setRemoteError(result.error)
+      setRemoteError(result)
       return {
         success: false,
         code: result.code,

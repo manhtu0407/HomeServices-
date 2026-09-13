@@ -45,7 +45,6 @@ describe('job-detail private payment receipt', () => {
         },
         error: null,
       },
-      { data: [{ direct_payment_available: false }], error: null },
     ])
     const ctx: MobileApiContext = {
       privilegedSupabase: privilegedClient,

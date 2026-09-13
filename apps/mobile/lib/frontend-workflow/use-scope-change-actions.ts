@@ -1,3 +1,4 @@
+import type { WorkflowErrorHandler } from './errors'
 import { useCallback, useRef, useState, type RefObject } from 'react'
 import type {
   CustomerScopeDecisionInput,
@@ -24,7 +25,7 @@ type ScopeChangeActionsInput = {
   pendingScopePricePreviewClientRequestRef: RefObject<PendingClientRequestId | null>
   pendingScopeProposalClientRequestRef: RefObject<PendingClientRequestId | null>
   refreshCurrentJob: () => Promise<boolean>
-  setRemoteError: (error: string) => false
+  setRemoteError: WorkflowErrorHandler
   stateRef: RefObject<LocalWorkflowState>
 }
 
@@ -53,7 +54,7 @@ export function useScopeChangeActions({
       new_description: input.new_description.trim(),
       reason: input.reason.trim(),
     })
-    if (!result.success) return setRemoteError(result.error)
+    if (!result.success) return setRemoteError(result)
     clearStableClientRequestId(pendingDirectScopeChangeClientRequestRef, requestFingerprint)
     await refreshCurrentJob()
     return true
@@ -64,7 +65,7 @@ export function useScopeChangeActions({
     if (!jobId) return false
     const result = await workerService.getKaelJobIncident(jobId)
     if (!result.success) {
-      setRemoteError(result.error)
+      setRemoteError(result)
       return false
     }
     return result.data
@@ -87,7 +88,7 @@ export function useScopeChangeActions({
       reason: input.reason.trim(),
     })
     if (!result.success) {
-      setRemoteError(result.error)
+      setRemoteError(result)
       return false
     }
     clearStableClientRequestId(pendingIncidentOpenClientRequestRef, requestFingerprint)
@@ -108,7 +109,7 @@ export function useScopeChangeActions({
       if (!shouldRetainClientRequestId(result)) {
         clearStableClientRequestId(pendingScopePricePreviewClientRequestRef, requestFingerprint)
       }
-      return setRemoteError(result.error)
+      return setRemoteError(result)
     }
     clearStableClientRequestId(pendingScopePricePreviewClientRequestRef, requestFingerprint)
     return result.data
@@ -125,7 +126,7 @@ export function useScopeChangeActions({
       ),
       quote_id: quoteId,
     })
-    if (!result.success) return setRemoteError(result.error)
+    if (!result.success) return setRemoteError(result)
     clearStableClientRequestId(pendingScopeProposalClientRequestRef, requestFingerprint)
     await refreshCurrentJob()
     return true
@@ -137,7 +138,7 @@ export function useScopeChangeActions({
     setCustomerScopeDecisionBusyId(scopeChangeId)
     try {
       const result = await jobService.decideScopeChange(scopeChangeId, input)
-      if (!result.success) return setRemoteError(result.error)
+      if (!result.success) return setRemoteError(result)
       await refreshCurrentJob()
       return true
     } finally {

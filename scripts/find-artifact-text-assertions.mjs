@@ -227,8 +227,8 @@ function caseEnd(lines, start, limit) {
   return limit
 }
 
-function analyse(file) {
-  const lines = readFileSync(file, 'utf8').split('\n')
+export function analyse(file, source = readFileSync(file, 'utf8')) {
+  const lines = source.split(/\r?\n/u)
   const constants = constantMap(lines)
   const helpers = readerHelpers(lines)
   const imported = new Set(
@@ -282,27 +282,31 @@ function analyse(file) {
   return hits
 }
 
-const files = []
-for (const dir of ROOTS) walk(resolve(root, dir), files)
-files.sort()
+function main() {
+  const files = []
+  for (const dir of ROOTS) walk(resolve(root, dir), files)
+  files.sort()
 
-const hits = files.flatMap(analyse)
-const banned = hits.filter((hit) => hit.severity === 'banned')
-const warned = hits.filter((hit) => hit.severity === 'warn')
+  const hits = files.flatMap((file) => analyse(file))
+  const banned = hits.filter((hit) => hit.severity === 'banned')
+  const warned = hits.filter((hit) => hit.severity === 'warn')
 
-for (const group of [banned, warned]) {
-  for (const hit of group) {
-    const label = hit.severity === 'banned' ? 'BANNED' : 'warn  '
-    console.log(`${label} [${hit.kind}] ${hit.file}:${hit.line}  ${hit.title}`)
+  for (const group of [banned, warned]) {
+    for (const hit of group) {
+      const label = hit.severity === 'banned' ? 'BANNED' : 'warn  '
+      console.log(`${label} [${hit.kind}] ${hit.file}:${hit.line}  ${hit.title}`)
+    }
+  }
+
+  console.log(`\n${banned.length} banned, ${warned.length} warn, across ${files.length} test files.`)
+
+  if (banned.length && !process.argv.includes('--warn')) {
+    console.error(
+      '\nAssert this at a layer that can fail for the reason the title claims: a script in ' +
+      'supabase/tests/ for database behaviour, or the shipped source for a code boundary.',
+    )
+    process.exit(1)
   }
 }
 
-console.log(`\n${banned.length} banned, ${warned.length} warn, across ${files.length} test files.`)
-
-if (banned.length && !process.argv.includes('--warn')) {
-  console.error(
-    '\nAssert this at a layer that can fail for the reason the title claims: a script in ' +
-    'supabase/tests/ for database behaviour, or the shipped source for a code boundary.',
-  )
-  process.exit(1)
-}
+if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) main()

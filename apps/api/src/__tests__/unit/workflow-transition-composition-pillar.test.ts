@@ -13,7 +13,7 @@ import {
 export const PILLAR = {
   id: 'P12-workflow-transition-composition',
   invariant:
-    'a job status changes only where the event table and the status table agree, and no event moves a job into paid except the two payment events',
+    'a job status changes only where the event table and the status table agree; only the Customer may confirm completion or start payment, and only verified payment may unlock review',
   authority: [
     'governance/RULES.md #7 (the customer confirms completion before payment begins)',
     'governance/RULES.md #0 (workflow-sensitive writes belong to the server)',
@@ -43,12 +43,9 @@ const EVENT_IS_KAEL_AUTONOMY = {
   kael_decided_scope_change: true,
   scope_change_decided: false,
   worker_completed: false,
-  kael_confirmed_completion: true,
   customer_confirmed_completion: false,
-  kael_decided_payment: true,
+  customer_started_payment: false,
   payment_confirmed: false,
-  worker_confirmed_cash_payment: false,
-  kael_decided_dispute: true,
   review_submitted: false,
   kael_processed_cancellation: true,
   cancel_requested: false,
@@ -97,7 +94,7 @@ function reachableFrom(start: JobStatus, blocked: JobStatus | null): Set<JobStat
 }
 
 describe('validateWorkflowTransition', () => {
-  it('permits at least one transition for every declared event', () => {
+  it('keeps every published event reachable and leaves retired authority events unpublished', () => {
     const dead = EVENTS.filter((event) => !ALLOWED_EDGES.some((edge) => edge.event === event))
     expect(
       dead,
@@ -133,12 +130,12 @@ describe('the payment gate', () => {
   // RULES #7 puts an explicit customer decision in front of money. In the graph that means the
   // set of events able to write `paid` is closed, and every one of them starts from a status the
   // customer has already confirmed.
-  it('admits only the two payment events into paid', () => {
+  it('admits only verified payment into paid', () => {
     const events = [...new Set(edgesInto('paid').map((edge) => edge.event))].sort()
     expect(
       events,
       pillarWhy(PILLAR, 'any third route into paid is money moving on an unreviewed path'),
-    ).toEqual(['payment_confirmed', 'worker_confirmed_cash_payment'])
+    ).toEqual(['payment_confirmed'])
   })
 
   it('enters paid only from a status the customer has already confirmed', () => {
@@ -146,7 +143,7 @@ describe('the payment gate', () => {
     expect(
       origins,
       pillarWhy(PILLAR, 'paying out of an in-progress status would skip the completion gate'),
-    ).toEqual(['confirmed_by_customer', 'payment_pending'])
+    ).toEqual(['payment_pending'])
   })
 
   it('cannot reach paid from any working status once confirmed_by_customer is blocked', () => {
@@ -168,18 +165,12 @@ describe('the payment gate', () => {
     }
   })
 
-  // A job may still end without payment — a dispute resolved for the customer does exactly that.
-  // Pinning it to the single event that is allowed to do it keeps the exception from spreading.
-  it('lets only the dispute event close a job without payment', () => {
+  it('never closes a job without verified payment', () => {
     const skips = edgesInto('reviewed').filter((edge) => edge.from !== 'paid')
     expect(
       [...new Set(skips.map((edge) => edge.event))],
       pillarWhy(PILLAR, 'closing a job unpaid is a dispute outcome, not a general shortcut'),
-    ).toEqual(['kael_decided_dispute'])
-    expect(
-      [...new Set(skips.map((edge) => edge.from))],
-      pillarWhy(PILLAR, 'the unpaid close starts from the confirmed status, not from mid-job'),
-    ).toEqual(['confirmed_by_customer'])
+    ).toEqual([])
   })
 })
 
@@ -189,7 +180,7 @@ describe('the completion gate', () => {
     expect(
       events,
       pillarWhy(PILLAR, 'confirmation is what unlocks payment, so its entry set must stay closed'),
-    ).toEqual(['customer_confirmed_completion', 'kael_confirmed_completion', 'kael_decided_dispute'])
+    ).toEqual(['customer_confirmed_completion'])
   })
 
   it('only ever confirms completion out of completed_by_worker', () => {

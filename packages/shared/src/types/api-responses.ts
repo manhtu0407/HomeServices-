@@ -390,6 +390,7 @@ export type JobDetailResponse = {
     platform_fee?: number | null
     worker_net?: number | null
     payment_receipt?: {
+      refund?: import('../contracts/payment').RefundSummary | null
       method: 'platform_bank_manual' | 'direct_worker'
       status: string
       gross_amount: number
@@ -540,6 +541,8 @@ export type WorkerProfileResponse = {
   bank_account_masked: string | null  // e.g., "****1234" — never raw
   bank_name: string | null
   has_cccd: boolean
+  has_cccd_front?: boolean
+  has_cccd_back?: boolean
   has_selfie: boolean
 }
 

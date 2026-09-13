@@ -6,6 +6,7 @@ export {
 } from "./broadcasts.ts";
 export { getWorkerEarnings } from "./earnings.ts";
 export { getWorkerProfile, recordWorkerAppActiveMinute } from "./profile.ts";
+export { getWorkerReadiness } from "./readiness.ts";
 export { registerWorker, submitWorkerApplication } from "./registration.ts";
 export { saveWorkerRegistrationDraft } from "./registration-draft.ts";
 export {

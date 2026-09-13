@@ -1,5 +1,6 @@
 export { serviceTypeSchema } from './common'
 export * from './job'
+export * from './rfq-price'
 export * from './kael-chat'
 export * from './worker'
 export * from './customer'

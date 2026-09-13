@@ -23,7 +23,13 @@ import { fetchBufferedWithTimeout } from "../../../_shared/network.ts";
 export type MobileApiAuthResult =
   | {
     success: true;
-    user: { id: string; email?: string; lastSignInAt?: string };
+    user: {
+      id: string;
+      email?: string;
+      authProvider?: string;
+      authProviders?: string[];
+      lastSignInAt?: string;
+    };
     role: UserRole;
     accountState?: "active" | "deletion_processing" | "deleted";
     supabase: unknown;
@@ -144,6 +150,16 @@ export function createEdgeAuthenticator(
       };
     }
 
+    const authProvider = boundedAuthProvider(userData.user.app_metadata?.provider);
+    const authProviders = boundedAuthProviders(userData.user.app_metadata?.providers);
+    if (profile.role === "worker" && (authProvider !== "email" || !userData.user.email)) {
+      return {
+        success: false,
+        error: "Tài khoản thợ chỉ hỗ trợ thư điện tử và mật khẩu",
+        status: 403,
+      };
+    }
+
     const userSupabase = env.supabasePublicKey
       ? createUserScopedSupabaseClient({
         url: env.supabaseUrl,
@@ -214,6 +230,8 @@ export function createEdgeAuthenticator(
       user: {
         id: userData.user.id,
         email: userData.user.email,
+        authProvider,
+        authProviders,
         lastSignInAt: userData.user.last_sign_in_at,
       },
       role: profile.role,
@@ -231,6 +249,21 @@ export function createEdgeAuthenticator(
       supabase,
     };
   };
+}
+
+function boundedAuthProvider(value: unknown): string | undefined {
+  return typeof value === "string" && /^[a-z][a-z0-9_-]{0,31}$/.test(value)
+    ? value
+    : undefined;
+}
+
+function boundedAuthProviders(value: unknown): string[] | undefined {
+  if (!Array.isArray(value)) return undefined;
+  const providers = Array.from(new Set(value.flatMap((provider) => {
+    const bounded = boundedAuthProvider(provider);
+    return bounded ? [bounded] : [];
+  })));
+  return providers.length > 0 ? providers : undefined;
 }
 
 type AuthProfile = {

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { createHash } from 'node:crypto'
-import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, resolve } from 'node:path'
 import test from 'node:test'
@@ -17,6 +17,31 @@ test('builds a deterministic repository migration inventory', () => {
   assert.equal(first.entries.length, first.migrationCount)
   assert.match(first.migrationsSha256, /^[0-9a-f]{64}$/)
   assert.match(first.databaseTypes.sha256, /^[0-9a-f]{64}$/)
+})
+
+test('published policy-evidence migrations retain their original SQL identity', () => {
+  const inventory = buildMigrationInventory()
+  for (const version of ['20260823043422', '20260823184000']) {
+    const entry = inventory.entries.find((item) => item.version === version)
+    assert.equal(entry?.sha256, 'a7915627b837d3eeaa5feb40f30f45214f0960ed8d317f35dd69e146650e0761',
+      `published policy migration ${version} must not be rewritten to make a replay succeed`)
+  }
+})
+
+test('immutable baseline covers the published release migration history', () => {
+  const baseline = JSON.parse(readFileSync(new URL('../../config/harness/migration-baseline.json', import.meta.url), 'utf8'))
+  const publishedThrough = '20260904113000'
+  assert.ok(baseline.immutableThroughVersion >= publishedThrough,
+    'the immutable baseline must protect migrations published through the Stage 1 compatibility release')
+  const protectedEntries = baseline.entries.filter((entry) => entry.version <= publishedThrough)
+  assert.equal(protectedEntries.length, 336, 'all published migration identities must be protected, not only the original baseline')
+  const inventory = buildMigrationInventory()
+  for (const entry of protectedEntries) {
+    const actual = inventory.entries.find((candidate) => candidate.version === entry.version)
+    assert.equal(actual?.file, entry.file)
+    assert.equal(actual?.sha256, entry.sha256, `published migration identity changed: ${entry.version}`)
+    assert.equal(actual?.bytes, entry.bytes)
+  }
 })
 
 test('rejects unknown remote migrations before deriving a pending set', () => {

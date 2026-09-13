@@ -1,11 +1,11 @@
 import { act, renderHook } from '@testing-library/react-native'
 import { createInitialLocalWorkflowState, type LocalWorkflowState } from '@nestscout/shared'
 
-const mockSelectDirectWorkerPayment = jest.fn()
+const mockClaimManualBankPayment = jest.fn()
 
 jest.mock('../services', () => ({
   jobService: {
-    selectDirectWorkerPayment: (...args: unknown[]) => mockSelectDirectWorkerPayment(...args),
+    claimManualBankPayment: (...args: unknown[]) => mockClaimManualBankPayment(...args),
   },
 }))
 
@@ -16,22 +16,23 @@ function paymentPendingState(): LocalWorkflowState {
     ...createInitialLocalWorkflowState(),
     deal: {
       broadcast: null,
-      id: 'job-direct-select',
+      id: 'job-manual-bank-claim',
     } as LocalWorkflowState['deal'],
   }
 }
 
 describe('useCompletionPaymentActions', () => {
   beforeEach(() => {
-    mockSelectDirectWorkerPayment.mockReset()
+    mockClaimManualBankPayment.mockReset()
   })
 
-  it('preserves a safe direct-payment selection failure code for the workflow error mapper', async () => {
-    mockSelectDirectWorkerPayment.mockResolvedValue({
-      code: 'COLLATERAL_UNAVAILABLE',
+  it('keeps a failed manual-bank claim pending without refreshing to a false success', async () => {
+    mockClaimManualBankPayment.mockResolvedValue({
+      code: 'PAYMENT_CLAIM_FAILED',
       error: 'private provider detail 42',
       status: 409,
       success: false,
+      meta: { supportCode: 'A1B2C3D4' },
     })
     const dispatch = jest.fn()
     const refreshCurrentJob = jest.fn(async () => true)
@@ -45,14 +46,17 @@ describe('useCompletionPaymentActions', () => {
     }))
 
     await act(async () => {
-      await expect(result.current.selectDirectWorkerPayment()).resolves.toBe(false)
+      await expect(result.current.claimManualBankPayment('VCB')).resolves.toBe(false)
     })
 
-    expect(setRemoteError).toHaveBeenCalledWith(
-      'private provider detail 42',
-      'COLLATERAL_UNAVAILABLE',
-      'direct_payment_selection',
-    )
+    expect(mockClaimManualBankPayment).toHaveBeenCalledWith('job-manual-bank-claim', expect.objectContaining({
+      sending_bank: 'VCB',
+      transferred_at: expect.any(String),
+    }))
+    expect(setRemoteError).toHaveBeenCalledWith(expect.objectContaining({
+      code: 'PAYMENT_CLAIM_FAILED',
+      meta: { supportCode: 'A1B2C3D4' },
+    }))
     expect(refreshCurrentJob).not.toHaveBeenCalled()
   })
 })

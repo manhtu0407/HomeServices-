@@ -10,7 +10,7 @@ export type DispatchableRoute = Exclude<Route, PublicRoute>;
 export type JobDispatchRoute = Extract<DispatchableRoute, { kind: `jobs.${string}` }>;
 export type WorkerDispatchRoute = Extract<
   DispatchableRoute,
-  { kind: `workers.${string}` | "workerApplications.submit" }
+  { kind: `workers.${string}` | `workerApplications.${string}` }
 >;
 export type MeDispatchRoute = Extract<DispatchableRoute, { kind: `me.${string}` }>;
 export type KaelDispatchRoute = Extract<DispatchableRoute, { kind: `kael.${string}` }>;
@@ -31,7 +31,7 @@ export const isJobRoute = (route: DispatchableRoute): route is JobDispatchRoute 
 
 export const isWorkerRoute = (route: DispatchableRoute): route is WorkerDispatchRoute =>
   route.kind.startsWith("workers.") ||
-  route.kind === "workerApplications.submit";
+  route.kind.startsWith("workerApplications.");
 
 export const isMeRoute = (route: DispatchableRoute): route is MeDispatchRoute =>
   route.kind.startsWith("me.");

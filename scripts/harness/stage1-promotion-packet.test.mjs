@@ -16,13 +16,15 @@ const release = Object.freeze(buildHarnessRelease({
 
 function productionProviderReadiness() {
   return {
-    anthropic: true, deepseek: false, durable_guards: true,
-    global_ai_enabled: true, perplexity: true, vietmap: true,
+    android_fcm_v1: true, anthropic: true, deepseek: false, durable_guards: true,
+    global_ai_enabled: true, ios_apns: true, perplexity: true,
+    push_receipt_reconciler: true, vietmap: true,
   }
 }
 
 const mergeApprovalReceipt = buildReviewedMainMergeReceipt({
   repository: 'nestscout/app',
+  requiredReviewer: 'kouuuuuu',
   mergeCommitSha: release.gitSha,
   pullRequest: {
     number: 205,
@@ -34,7 +36,7 @@ const mergeApprovalReceipt = buildReviewedMainMergeReceipt({
   },
   review: {
     id: 88,
-    actor: 'dev-reviewer',
+    actor: 'kouuuuuu',
     commitSha: 'a'.repeat(40),
     submittedAt: '2026-08-23T00:59:00Z',
   },
@@ -113,6 +115,8 @@ test('buildStage1PromotionPacket binds release, merge approval, rollback source,
   assert.equal(packet.rollback.functions['kael-matching-maintainer'].sourceSha256, 'f'.repeat(64))
   assert.equal(packet.expandOnly.auditSha256, 'a'.repeat(64))
   assert.equal(packet.productionUiNormality.sourceSha256, release.productionUiSourceSha256)
+  assert.ok(packet.productionUiNormality.localizedLiteralCount > 0)
+  assert.equal(packet.productionUiNormality.languageLeakageCount, 0)
   assert.match(packet.packetSha256, /^[0-9a-f]{64}$/u)
   assert.deepEqual(verifyStage1PromotionPacket(packet), [])
 })

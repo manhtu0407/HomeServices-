@@ -1,5 +1,4 @@
 import type { UserRole } from "../../../../_shared/domain.ts";
-import { matchStagingPaymentRoute } from "./staging-payment-routes.ts";
 
 export type JobCreateRoute = {
   kind: "jobs.create";
@@ -10,8 +9,14 @@ export type JobCreateRoute = {
 
 export type JobResourceRoute =
   | { kind: "jobs.get"; method: "GET"; jobId: string; roles?: UserRole[] }
-  | { kind: "jobs.confirmSearch"; method: "POST"; jobId: string; roles: UserRole[] }
-  | { kind: "jobs.matchingPreference"; method: "POST"; jobId: string; roles: UserRole[] }
+  | { kind: "jobs.rfqPrice"; method: "GET"; jobId: string; roles: UserRole[] }
+  | { kind: "jobs.rfqPricePropose"; method: "POST"; jobId: string; roles: UserRole[] }
+  | { kind: "jobs.rfqPriceDecide"; method: "POST"; jobId: string; roles: UserRole[] }
+  | { kind: "jobs.confirmSearch"; method: "POST"; jobId: string; roles: UserRole[]; successStatus: 202 }
+  | { kind: "jobs.matchingOperation"; method: "GET"; jobId: string; roles: UserRole[] }
+  | { kind: "jobs.matchingRetry"; method: "GET"; jobId: string; requestId: string; roles: UserRole[] }
+  | { kind: "jobs.matchingPreference"; method: "POST"; jobId: string; roles: UserRole[]; successStatus: 202 }
+  | { kind: "jobs.matchingPreferenceReceipt"; method: "GET"; jobId: string; requestId: string; roles: UserRole[] }
   | { kind: "jobs.cancel"; method: "POST"; jobId: string; roles: UserRole[] }
   | {
     kind: "jobs.customerCancellation";
@@ -68,13 +73,8 @@ export type JobResourceRoute =
     successStatus: 201;
   }
   | { kind: "jobs.confirmCompletion"; method: "POST"; jobId: string; roles: UserRole[] }
-  | { kind: "jobs.paymentIntent"; method: "POST"; jobId: string; roles: UserRole[] }
   | { kind: "jobs.paymentOrder"; method: "POST"; jobId: string; roles: UserRole[] }
   | { kind: "jobs.paymentOrderClaim"; method: "POST"; jobId: string; roles: UserRole[] }
-  | { kind: "jobs.directPaymentSelect"; method: "POST"; jobId: string; roles: UserRole[] }
-  | { kind: "jobs.directPaymentRespond"; method: "POST"; jobId: string; roles: UserRole[] }
-  | { kind: "jobs.cashPaymentConfirm"; method: "POST"; jobId: string; roles: UserRole[] }
-  | { kind: "jobs.stagingPaymentConfirm"; method: "POST"; jobId: string; roles: UserRole[] }
   | {
     kind: "jobs.review";
     method: "POST";
@@ -104,6 +104,25 @@ export function matchJobResourceRoute(
   method: string,
   decodePathSegment: (value: string) => string | null,
 ): JobResourceRoute | null {
+  const retryReceipt = path.match(/^\/jobs\/([^/]+)\/matching-retries\/([^/]+)$/);
+  const rfqDecision = path.match(/^\/jobs\/([^/]+)\/rfq-price\/decide$/);
+  if (method === "POST" && rfqDecision) {
+    const jobId = decodePathSegment(rfqDecision[1] ?? "");
+    return jobId ? { kind: "jobs.rfqPriceDecide", method: "POST", jobId, roles: ["customer"] } : null;
+  }
+  const preferenceReceipt = path.match(/^\/jobs\/([^/]+)\/matching-preference\/([^/]+)$/);
+  if (method === "GET" && preferenceReceipt) {
+    const jobId = decodePathSegment(preferenceReceipt[1] ?? "");
+    const requestId = decodePathSegment(preferenceReceipt[2] ?? "");
+    if (!jobId || !requestId) return null;
+    return { kind: "jobs.matchingPreferenceReceipt", method: "GET", jobId, requestId, roles: ["customer"] };
+  }
+  if (method === "GET" && retryReceipt) {
+    const jobId = decodePathSegment(retryReceipt[1] ?? "");
+    const requestId = decodePathSegment(retryReceipt[2] ?? "");
+    if (!jobId || !requestId) return null;
+    return { kind: "jobs.matchingRetry", method: "GET", jobId, requestId, roles: ["customer"] };
+  }
   const paymentOrderClaim = path.match(/^\/jobs\/([^/]+)\/payment-order\/claim$/);
   if (method === "POST" && paymentOrderClaim) {
     const paymentOrderJobId = decodePathSegment(paymentOrderClaim[1] ?? "");
@@ -116,26 +135,6 @@ export function matchJobResourceRoute(
     };
   }
 
-  const directPaymentAction = path.match(/^\/jobs\/([^/]+)\/direct-payment\/(select|respond)$/);
-  if (method === "POST" && directPaymentAction) {
-    const directPaymentJobId = decodePathSegment(directPaymentAction[1] ?? "");
-    const directPaymentOperation = directPaymentAction[2];
-    if (!directPaymentJobId) return null;
-    return directPaymentOperation === "select"
-      ? {
-        kind: "jobs.directPaymentSelect",
-        method: "POST",
-        jobId: directPaymentJobId,
-        roles: ["customer"],
-      }
-      : {
-        kind: "jobs.directPaymentRespond",
-        method: "POST",
-        jobId: directPaymentJobId,
-        roles: ["customer", "worker"],
-      };
-  }
-
   const accessAuthorize = path.match(/^\/jobs\/([^/]+)\/access\/authorize$/);
   if (method === "POST" && accessAuthorize) {
     const accessAuthorizeJobId = decodePathSegment(accessAuthorize[1] ?? "");
@@ -144,7 +143,7 @@ export function matchJobResourceRoute(
       kind: "jobs.accessAuthorize",
       method: "POST",
       jobId: accessAuthorizeJobId,
-      roles: ["customer", "admin"],
+      roles: ["customer"],
     };
   }
 
@@ -170,7 +169,8 @@ function matchJobResourceAction(
       kind: "jobs.confirmSearch",
       method: "POST",
       jobId,
-      roles: ["customer", "admin"],
+      roles: ["customer"],
+      successStatus: 202,
     };
   }
 
@@ -180,6 +180,7 @@ function matchJobResourceAction(
       method: "POST",
       jobId,
       roles: ["customer"],
+      successStatus: 202,
     };
   }
   if (action === "cancel" && method === "POST") {
@@ -287,8 +288,18 @@ function matchJobPaymentAction(
       kind: "jobs.confirmCompletion",
       method: "POST",
       jobId,
-      roles: ["customer", "admin"],
+      roles: ["customer"],
     };
+  }
+  if (action === "rfq-price" && method === "GET") {
+    return { kind: "jobs.rfqPrice", method: "GET", jobId, roles: ["customer", "worker"] };
+  }
+  if (action === "rfq-price" && method === "POST") {
+    return { kind: "jobs.rfqPricePropose", method: "POST", jobId, roles: ["worker"] };
+  }
+
+  if (action === "matching-operation" && method === "GET") {
+    return { kind: "jobs.matchingOperation", method: "GET", jobId, roles: ["customer"] };
   }
   if (action === "payment-order" && method === "POST") {
     return {
@@ -298,22 +309,12 @@ function matchJobPaymentAction(
       roles: ["customer"],
     };
   }
-  if (action === "cash-payment-confirmation" && method === "POST") {
-    return {
-      kind: "jobs.cashPaymentConfirm",
-      method: "POST",
-      jobId,
-      roles: ["worker"],
-    };
-  }
-  const stagingPaymentRoute = matchStagingPaymentRoute(action, method, jobId);
-  if (stagingPaymentRoute) return stagingPaymentRoute;
   if (action === "review" && method === "POST") {
     return {
       kind: "jobs.review",
       method: "POST",
       jobId,
-      roles: ["customer", "admin"],
+      roles: ["customer"],
       successStatus: 201,
     };
   }

@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
 import { test } from 'node:test'
 import { resolveReviewedMainMerge, verifyReviewedMainMergeReceipt } from './github-merge-approval.mjs'
 
@@ -29,46 +30,62 @@ function response(body, status = 200) {
   return { ok: status >= 200 && status < 300, status, json: async () => body }
 }
 
+test('release workflow binds both approval checks to the verified repository collaborator', async () => {
+  const workflow = readFileSync(new URL('../../.github/workflows/release-production.yml', import.meta.url), 'utf8')
+  const reviewers = [...workflow.matchAll(/--reviewer ([A-Za-z0-9-]+)/gu)].map((match) => match[1])
+  assert.deepEqual(reviewers, ['kouuuuuuuuu', 'kouuuuuuuuu'])
+  const receipt = await resolveReviewedMainMerge({
+    repository: 'nestscout/app', mergeCommitSha: mergeSha, requiredReviewer: reviewers[0], token: 't'.repeat(40),
+  }, githubFetch({ reviews: [{
+    id: 88, state: 'APPROVED', commit_id: headSha, submitted_at: '2026-08-23T00:59:00Z',
+    user: { login: 'kouuuuuuuuu', type: 'User' },
+  }] }))
+  assert.equal(receipt.review.actor, 'kouuuuuuuuu')
+})
+
 test('resolves one exact merged-main PR and separate approval on its current head', async () => {
   const receipt = await resolveReviewedMainMerge({
-    repository: 'nestscout/app', mergeCommitSha: mergeSha, token: 't'.repeat(40),
+    repository: 'nestscout/app', mergeCommitSha: mergeSha, requiredReviewer: 'kouuuuuu', token: 't'.repeat(40),
   }, githubFetch({
     reviews: [{
       id: 88,
       state: 'APPROVED',
       commit_id: headSha,
       submitted_at: '2026-08-23T00:59:00Z',
-      user: { login: 'dev-reviewer', type: 'User' },
+      user: { login: 'kouuuuuu', type: 'User' },
     }],
   }))
   assert.equal(receipt.pullRequest.number, 205)
-  assert.equal(receipt.review.actor, 'dev-reviewer')
+  assert.equal(receipt.requiredReviewer, 'kouuuuuu')
+  assert.equal(receipt.review.actor, 'kouuuuuu')
   assert.deepEqual(verifyReviewedMainMergeReceipt(receipt), [])
 })
 
 test('rejects direct pushes, stale-head approvals, self-approval, and a later non-approval', async () => {
-  const input = { repository: 'nestscout/app', mergeCommitSha: mergeSha, token: 't'.repeat(40) }
+  const input = {
+    repository: 'nestscout/app', mergeCommitSha: mergeSha, requiredReviewer: 'kouuuuuu', token: 't'.repeat(40),
+  }
   await assert.rejects(resolveReviewedMainMerge(input, githubFetch({ pulls: [] })), /exactly one merged pull request/u)
   await assert.rejects(resolveReviewedMainMerge(input, githubFetch({ reviews: [{
     id: 1, state: 'APPROVED', commit_id: 'c'.repeat(40), submitted_at: '2026-08-23T00:59:00Z',
-    user: { login: 'dev-reviewer', type: 'User' },
-  }] })), /no current human approval/u)
+    user: { login: 'kouuuuuu', type: 'User' },
+  }] })), /no current approval by kouuuuuu/u)
   await assert.rejects(resolveReviewedMainMerge(input, githubFetch({ reviews: [{
     id: 1, state: 'APPROVED', commit_id: headSha, submitted_at: '2026-08-23T00:59:00Z',
     user: { login: 'feature-author', type: 'User' },
-  }] })), /separate reviewer/u)
+  }] })), /no current approval by kouuuuuu/u)
   await assert.rejects(resolveReviewedMainMerge(input, githubFetch({ reviews: [
-    { id: 1, state: 'APPROVED', commit_id: headSha, submitted_at: '2026-08-23T00:58:00Z', user: { login: 'dev-reviewer', type: 'User' } },
-    { id: 2, state: 'CHANGES_REQUESTED', commit_id: headSha, submitted_at: '2026-08-23T00:59:00Z', user: { login: 'dev-reviewer', type: 'User' } },
-  ] })), /no current human approval/u)
+    { id: 1, state: 'APPROVED', commit_id: headSha, submitted_at: '2026-08-23T00:58:00Z', user: { login: 'kouuuuuu', type: 'User' } },
+    { id: 2, state: 'CHANGES_REQUESTED', commit_id: headSha, submitted_at: '2026-08-23T00:59:00Z', user: { login: 'kouuuuuu', type: 'User' } },
+  ] })), /no current approval by kouuuuuu/u)
 })
 
 test('checksum rejects any post-resolution PR or review mutation', async () => {
   const receipt = await resolveReviewedMainMerge({
-    repository: 'nestscout/app', mergeCommitSha: mergeSha, token: 't'.repeat(40),
+    repository: 'nestscout/app', mergeCommitSha: mergeSha, requiredReviewer: 'kouuuuuu', token: 't'.repeat(40),
   }, githubFetch({ reviews: [{
     id: 88, state: 'APPROVED', commit_id: headSha, submitted_at: '2026-08-23T00:59:00Z',
-    user: { login: 'dev-reviewer', type: 'User' },
+    user: { login: 'kouuuuuu', type: 'User' },
   }] }))
   assert.match(verifyReviewedMainMergeReceipt({
     ...receipt, review: { ...receipt.review, actor: 'another-reviewer' },

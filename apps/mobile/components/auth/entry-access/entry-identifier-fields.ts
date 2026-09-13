@@ -27,41 +27,47 @@ export function localizeIdentifierAvailabilityError(error: string, language: App
   return kind ? identifierAvailabilityError(kind, language) : null
 }
 
-export function validateIdentifierForRole(value: string, _role: EntryRole, language: AppLanguage) {
+export function validateIdentifierForRole(value: string, role: EntryRole, language: AppLanguage) {
   const error = validateAuthIdentifier(value)
+  if (!error && role === 'worker' && parseAuthIdentifier(value)?.kind !== 'email') {
+    return entryAccessCopy[language].errors.workerEmailRequired
+  }
   return error ? localizeEntryAuthError(error, language, 'invalidIdentifier') : null
 }
 
-export function validateRegistrationIdentifier(value: string, _role: EntryRole, language: AppLanguage) {
+export function validateRegistrationIdentifier(value: string, role: EntryRole, language: AppLanguage) {
   const trimmed = value.trim()
   if (!trimmed) return entryAccessCopy[language].errors.registrationDetails
 
   const identifier = parseAuthIdentifier(trimmed)
+  if (role === 'worker' && identifier?.kind !== 'email') {
+    return entryAccessCopy[language].errors.workerEmailRequired
+  }
   return identifier?.kind === 'email' || identifier?.kind === 'phone'
     ? null
     : entryAccessCopy[language].errors.invalidEmail
 }
 
-export function identifierFieldProps(value: string, _role: EntryRole, language: AppLanguage) {
+export function identifierFieldProps(value: string, role: EntryRole, language: AppLanguage) {
   const usesPhone = isPhoneIdentifierCandidate(value)
   const copy = entryAccessCopy[language].fields
   return {
-    icon: usesPhone ? 'phone' as const : 'mail' as const,
+    icon: role === 'worker' ? 'mail' as const : usesPhone ? 'phone' as const : 'mail' as const,
     keyboardType: 'default' as const,
-    label: copy.customerIdentifierLabel,
-    placeholder: copy.customerIdentifierPlaceholder,
-    textContentType: 'username' as const,
+    label: role === 'worker' ? copy.workerIdentifierLabel : copy.customerIdentifierLabel,
+    placeholder: role === 'worker' ? copy.workerIdentifierPlaceholder : copy.customerIdentifierPlaceholder,
+    textContentType: role === 'worker' ? 'emailAddress' as const : 'username' as const,
   }
 }
 
-export function registrationIdentifierFieldProps(value: string, _role: EntryRole, language: AppLanguage) {
+export function registrationIdentifierFieldProps(value: string, role: EntryRole, language: AppLanguage) {
   const usesPhone = isPhoneIdentifierCandidate(value)
   const copy = entryAccessCopy[language].fields
   return {
-    icon: usesPhone ? 'phone' as const : 'mail' as const,
+    icon: role === 'worker' ? 'mail' as const : usesPhone ? 'phone' as const : 'mail' as const,
     keyboardType: 'default' as const,
-    label: copy.customerIdentifierLabel,
-    placeholder: copy.customerIdentifierPlaceholder,
-    textContentType: 'username' as const,
+    label: role === 'worker' ? copy.workerIdentifierLabel : copy.customerIdentifierLabel,
+    placeholder: role === 'worker' ? copy.workerIdentifierPlaceholder : copy.customerIdentifierPlaceholder,
+    textContentType: role === 'worker' ? 'emailAddress' as const : 'username' as const,
   }
 }

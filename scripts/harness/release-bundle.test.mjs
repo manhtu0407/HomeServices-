@@ -46,6 +46,27 @@ test('rejects a manifest that omits release-integrity fingerprints', () => {
   assert.ok(problems.includes('sourceBundleSha256 is invalid'))
 })
 
+test('fails a Production release when either native push provider or the receipt reconciler is unproven', () => {
+  const providerReadiness = {
+    android_fcm_v1: true,
+    anthropic: true,
+    deepseek: false,
+    durable_guards: true,
+    global_ai_enabled: true,
+    ios_apns: false,
+    perplexity: true,
+    push_receipt_reconciler: true,
+    vietmap: true,
+  }
+  const release = buildHarnessRelease({
+    environment: 'production',
+    gitSha: 'e'.repeat(40),
+    providerReadiness,
+    requireCleanWorktree: false,
+  })
+  assert.ok(checkHarnessRelease(release).includes('production provider readiness is incomplete'))
+})
+
 test('keeps release artifacts inside the repository root', () => {
   const root = mkdtempSync(resolve(tmpdir(), 'harness-release-path-'))
   try {

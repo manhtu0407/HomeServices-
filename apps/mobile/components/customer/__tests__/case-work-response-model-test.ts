@@ -197,7 +197,7 @@ describe('case-work response model', () => {
 
     expect(`${model.title} ${model.status} ${model.noteTitle} ${model.noteCopy}`)
       .not.toMatch(/\bStaging\b|mô phỏng|simulation|simulated/i)
-    expect(model.title).toBe('Thanh toán chưa sẵn sàng')
+    expect(model.title).toBe('Thanh toán đang được xác minh')
     expect(model.actionKind).toBe('none')
   })
 

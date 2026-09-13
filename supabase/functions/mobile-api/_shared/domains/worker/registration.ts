@@ -1,6 +1,6 @@
-import { asString, asWorkerVerificationStatus, nullableString } from "../../platform/coercions.ts";
+import { z } from "zod";
+import { asWorkerVerificationStatus, nullableString } from "../../platform/coercions.ts";
 import { db, dbQuery, normalizeWorkerDistricts } from "../../platform/db.ts";
-import { compactMetadata } from "../../platform/domain-utils.ts";
 import { apiFailure } from "../../platform/api-failure.ts";
 import type { MobileApiContext } from "../../platform/auth.ts";
 import type {
@@ -130,111 +130,104 @@ export async function submitWorkerApplication(
   ctx: MobileApiContext,
   input: WorkerApplicationSubmitInput,
 ) {
-  const now = new Date().toISOString();
-  const client = db(ctx);
-  if (input.client_request_id) {
-    const existing = await findExistingWorkerApplication(
-      client,
-      ctx.user.id,
-      input.source,
-      input.client_request_id,
-    );
-    if (existing) return serializeWorkerApplication(existing, now);
-  }
-
-  const result = await dbQuery<WorkerApplicationQueueRow>(
-    client
-      .from("kael_admin_queue")
-      .insert({
-        actor_id: ctx.user.id,
-        actor_role: ctx.role,
-        escalation_level: "soft",
-        priority: "medium",
-        queue_type: "worker_application_review",
-        reason_code: "worker_application_submitted",
-        response_summary: "worker_application_submitted",
-        safe_metadata: compactMetadata({
-          ...workerApplicationContactMetadata(input.contact),
-          actor_id: ctx.user.id,
-          client_request_id: input.client_request_id ?? null,
-          language: input.language,
-          source: input.source,
-        }),
-        status: "open",
-      })
-      .select(WORKER_APPLICATION_QUEUE_SELECT)
-      .single(),
+  assertWorkerEmailIdentity(ctx, input.contact);
+  const result = await dbQuery<Array<WorkerApplicationRpcRow>>(
+    db(ctx).rpc("submit_worker_application_atomic", {
+      p_actor_id: ctx.user.id,
+      p_contact_suffix: workerApplicationContactSuffix(input.contact),
+      p_language: input.language,
+      p_source: input.source,
+      p_client_request_id: input.client_request_id ?? null,
+      p_revision_of_application_id: input.revision_of_application_id ?? null,
+    }),
   );
-  if (result.error?.code === "23505" && input.client_request_id) {
-    const existing = await findExistingWorkerApplication(
-      client,
-      ctx.user.id,
-      input.source,
-      input.client_request_id,
-    );
-    if (existing) return serializeWorkerApplication(existing, now);
-  }
-  if (result.error || !result.data) {
+  const row = result.data?.[0];
+  if (result.error || !row || result.data?.length !== 1) {
     apiFailure("DB_ERROR", "Không thể gửi hồ sơ ứng tuyển", 500);
   }
-  return serializeWorkerApplication(result.data, now);
-}
-
-const WORKER_APPLICATION_QUEUE_SELECT = "id, status, created_at, safe_metadata";
-
-type WorkerApplicationQueueRow = {
-  id?: unknown;
-  status?: unknown;
-  created_at?: unknown;
-  safe_metadata?: unknown;
-};
-
-async function findExistingWorkerApplication(
-  client: ReturnType<typeof db>,
-  actorId: string,
-  source: WorkerApplicationSubmitInput["source"],
-  clientRequestId: string,
-) {
-  const existing = await dbQuery<WorkerApplicationQueueRow>(
-    client
-      .from("kael_admin_queue")
-      .select(WORKER_APPLICATION_QUEUE_SELECT)
-      .eq("actor_id", actorId)
-      .eq("queue_type", "worker_application_review")
-      .eq("reason_code", "worker_application_submitted")
-      .eq("safe_metadata->>source", source)
-      .eq("safe_metadata->>client_request_id", clientRequestId)
-      .maybeSingle(),
-  );
-  if (existing.error) {
-    apiFailure("DB_ERROR", "Không thể tải hồ sơ ứng tuyển", 500);
+  if (row.ok === false) {
+    const errorCode = nullableString(row.error_code);
+    if (errorCode === "INVALID_INPUT") {
+      apiFailure("VALIDATION", "Dữ liệu hồ sơ ứng tuyển không hợp lệ", 400);
+    }
+    if (errorCode === "PROFILE_NOT_FOUND") {
+      apiFailure("NOT_FOUND", "Không tìm thấy tài khoản", 404);
+    }
+    if (errorCode === "INVALID_ROLE") {
+      apiFailure("FORBIDDEN", "Vai trò này không thể gửi hồ sơ thợ", 403);
+    }
+    apiFailure("DB_ERROR", "Không thể gửi hồ sơ ứng tuyển", 500);
   }
-  return existing.data ?? null;
-}
-
-function serializeWorkerApplication(
-  row: WorkerApplicationQueueRow,
-  fallbackSubmittedAt: string,
-) {
+  const parsed = workerApplicationReceiptSchema.safeParse(row);
+  if (!parsed.success || (parsed.data.application_id === null && ctx.role !== "worker")) {
+    apiFailure("DB_ERROR", "Chưa thể xác nhận kết quả gửi hồ sơ. Vui lòng kiểm tra lại trạng thái hồ sơ.", 500);
+  }
+  const receipt = parsed.data;
   return {
-    application_id: asString(row.id),
-    status: "open" as const,
-    submitted_at: nullableString(row.created_at) ?? fallbackSubmittedAt,
+    application_id: receipt.application_id,
+    status: receipt.status_out,
+    submitted_at: receipt.submitted_at,
+    decided_at: receipt.decided_at,
+    reason: receipt.reason_out,
+    can_submit: receipt.can_submit,
+    can_resume: receipt.can_resume,
+    idempotent: receipt.idempotent_out,
   };
 }
 
-function workerApplicationContactMetadata(contact: string) {
-  const normalized = contact.trim().toLowerCase();
-  const digits = normalized.replace(/\D/g, "");
-  if (digits.length >= 9) {
-    return {
-      contact_suffix: digits.slice(-4),
-      contact_type: "phone",
-    };
+const workerApplicationReceiptSchema = z.object({
+  ok: z.literal(true),
+  error_code: z.null(),
+  application_id: z.string().uuid().nullable(),
+  status_out: z.enum(["pending_review", "changes_requested", "rejected", "approved"]),
+  submitted_at: z.string().datetime({ offset: true }).nullable(),
+  decided_at: z.string().datetime({ offset: true }).nullable(),
+  reason_out: z.string().nullable(),
+  can_submit: z.boolean(),
+  can_resume: z.boolean(),
+  idempotent_out: z.boolean(),
+}).refine((receipt) => {
+  const revisable = receipt.status_out === "changes_requested";
+  if (receipt.can_submit !== revisable || receipt.can_resume !== revisable) return false;
+  if (!receipt.idempotent_out && receipt.status_out !== "pending_review") return false;
+  if (receipt.application_id !== null) return receipt.submitted_at !== null;
+  // Legacy approved Workers may predate the application queue; no new application is claimed.
+  return receipt.status_out === "approved" && receipt.idempotent_out &&
+    receipt.submitted_at === null && receipt.decided_at === null && receipt.reason_out === null;
+});
+
+function assertWorkerEmailIdentity(ctx: MobileApiContext, contact: string) {
+  const accountEmail = ctx.user.email?.trim().toLowerCase();
+  if (ctx.user.authProvider !== "email" || !accountEmail) {
+    apiFailure(
+      "WORKER_EMAIL_PASSWORD_REQUIRED",
+      "Tài khoản thợ chỉ hỗ trợ thư điện tử và mật khẩu",
+      403,
+    );
   }
-  const localPart = normalized.split("@")[0] ?? normalized;
-  return {
-    contact_suffix: localPart.slice(-2),
-    contact_type: "email",
-  };
+  if (contact.trim().toLowerCase() !== accountEmail) {
+    apiFailure(
+      "WORKER_EMAIL_MISMATCH",
+      "Thư điện tử ứng tuyển phải trùng với tài khoản đang đăng nhập",
+      400,
+    );
+  }
+}
+
+function workerApplicationContactSuffix(contact: string) {
+  const localPart = contact.trim().toLowerCase().split("@")[0] ?? "";
+  return localPart.slice(-2);
+}
+
+type WorkerApplicationRpcRow = {
+  ok?: unknown;
+  error_code?: unknown;
+  application_id?: unknown;
+  status_out?: unknown;
+  submitted_at?: unknown;
+  decided_at?: unknown;
+  reason_out?: unknown;
+  can_submit?: unknown;
+  can_resume?: unknown;
+  idempotent_out?: unknown;
 }

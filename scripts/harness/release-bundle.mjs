@@ -17,7 +17,8 @@ const FUNCTION_CONFIG_NAMES = ['deno.json', 'deno.jsonc', 'deno.lock', 'import_m
 const GLOBAL_RUNTIME_CONFIGS = ['supabase/config.toml']
 export const RELEASE_EDGE_FUNCTIONS = Object.freeze(['kael-matching-maintainer', 'mobile-api'])
 const PROVIDER_READINESS_KEYS = Object.freeze([
-  'anthropic', 'deepseek', 'durable_guards', 'global_ai_enabled', 'perplexity', 'vietmap',
+  'android_fcm_v1', 'anthropic', 'deepseek', 'durable_guards', 'global_ai_enabled',
+  'ios_apns', 'perplexity', 'push_receipt_reconciler', 'vietmap',
 ])
 const repoPath = (value) => value.split(sep).join('/')
 
@@ -44,8 +45,8 @@ export function buildHarnessRelease(options = {}) {
   const environmentBinding = environmentBindingFor(environment)
   const releaseSourcePaths = releaseSourceFilePaths(root)
   const productionUiAudit = auditProductionUiCopy(root)
-  if (productionUiAudit.unsafe.length > 0) {
-    throw new Error('production release contains internal test or release terminology in visible UI copy')
+  if (productionUiAudit.unsafe.length > 0 || productionUiAudit.languageLeakage.length > 0) {
+    throw new Error('production release contains unsafe or cross-language visible UI copy')
   }
   const providerReadiness = options.providerReadiness ?? providerReadinessFromEnvironment(process.env)
   const release = {
@@ -179,7 +180,10 @@ export function checkHarnessRelease(release) {
       release.providerReadinessFingerprintSha256 !== sha256(canonicalJson(release.providerReadiness))) {
     problems.push('provider readiness evidence is invalid')
   } else if (release.environment === 'production' &&
-      ['anthropic', 'durable_guards', 'global_ai_enabled', 'perplexity', 'vietmap']
+      [
+        'android_fcm_v1', 'anthropic', 'durable_guards', 'global_ai_enabled',
+        'ios_apns', 'perplexity', 'push_receipt_reconciler', 'vietmap',
+      ]
         .some((name) => release.providerReadiness[name] !== true)) {
     problems.push('production provider readiness is incomplete')
   }
@@ -513,11 +517,14 @@ function providerReadinessFromEnvironment(environment) {
   const enabled = (name) => Boolean(environment[name]?.trim())
   const trueFlag = (name) => ['1', 'true', 'yes', 'on'].includes(environment[name]?.trim().toLowerCase())
   return {
+    android_fcm_v1: trueFlag('NESTSCOUT_ANDROID_FCM_V1_READY'),
     anthropic: enabled('ANTHROPIC_API_KEY'),
     deepseek: enabled('DEEPSEEK_API_KEY'),
     durable_guards: trueFlag('KAEL_DURABLE_GUARDS_ENABLED'),
     global_ai_enabled: !trueFlag('KAEL_AI_KILL_SWITCH'),
+    ios_apns: trueFlag('NESTSCOUT_IOS_APNS_READY'),
     perplexity: enabled('PERPLEXITY_API_KEY'),
+    push_receipt_reconciler: trueFlag('NESTSCOUT_PUSH_RECEIPT_RECONCILER_READY'),
     vietmap: enabled('VIETMAP_API_KEY') || enabled('VIETMAP_MAPS_API_KEY'),
   }
 }

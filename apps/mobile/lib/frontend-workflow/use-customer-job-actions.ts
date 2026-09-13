@@ -1,39 +1,36 @@
-import { useCallback, useEffect, useRef, type Dispatch, type RefObject } from 'react'
+import type { WorkflowErrorHandler } from './errors'
+import { useCallback, useEffect, useMemo, useRef, type Dispatch, type RefObject } from 'react'
 import {
-  extractKnownDistrictLabel,
+  JOB_STATUSES,
   toLocalDealStatus,
-  type JobCreateInput,
-  type JobMatchingPreferenceInput,
   type LocalDealDraft,
   type LocalWorkflowAction,
   type LocalWorkflowState,
   type UserRole,
 } from '@nestscout/shared'
-import type { ApiResult } from '../api'
+import { createClientDiagnosticMetadata, type ApiResult } from '../api'
 import type { FavoriteWorkerForMatching, JobDetailResponse } from '../api-types'
+import type { ApiResponseMetadata } from '../api-types/shared'
 import type { AppLanguage } from '../app-language'
-import {
-  clearStableClientRequestId,
-  stableClientRequestId,
-  shouldRetainClientRequestId,
-  type PendingClientRequestId,
-} from '../client-request-id'
-import {
-  localizeMediaUploadFailure,
-  uploadJobMediaDrafts,
-  type LocalMediaUploadDraft,
-} from '../media-upload'
+import type { PendingClientRequestId } from '../client-request-id'
+import type { LocalMediaUploadDraft } from '../media-upload'
 import { jobService } from '../services'
+import {
+  clearPendingConfirmation,
+  listPendingConfirmations,
+  writePendingConfirmation,
+} from './confirmation-recovery'
+import { reconcilePendingConfirmationRequest } from './confirmation-reconciliation'
+import { useCustomerMatchingRetry } from './use-customer-matching-retry'
+import { useCustomerMatchingSelection } from './use-customer-matching-selection'
+import { useCustomerApartmentAccess } from './use-customer-apartment-access'
 import {
   defaultCustomerCancellationInput,
   getRemoteJobId,
   isAppForeground,
-  jobCreateClientRequestFingerprint,
   usesBeforeAcceptCancelEndpoint,
 } from './helpers'
 import {
-  confirmSearchToSnapshot,
-  createJobResponseToSnapshot,
   dealToSnapshot,
   jobDetailToSnapshot,
 } from './snapshots'
@@ -42,27 +39,59 @@ type CustomerJobActionsInput = {
   dispatch: Dispatch<LocalWorkflowAction>
   language: AppLanguage
   pendingJobCreateClientRequestRef: RefObject<PendingClientRequestId | null>
-  pendingMatchingPreferenceClientRequestRef: RefObject<PendingClientRequestId | null>
   role: UserRole | null
+  sessionAccessToken?: string
   sessionUserId: string | null
-  setRemoteError: (error: string) => false
+  setRemoteError: WorkflowErrorHandler
   stateRef: RefObject<LocalWorkflowState>
 }
+
+type JobReadFlight = { current: () => boolean; request: Promise<boolean> }
 
 export function useCustomerJobActions({
   dispatch,
   language,
-  pendingJobCreateClientRequestRef,
-  pendingMatchingPreferenceClientRequestRef,
   role,
+  sessionAccessToken,
   sessionUserId,
   setRemoteError,
   stateRef,
 }: CustomerJobActionsInput) {
-  const currentJobRefreshInFlightRef = useRef(false)
-  const activeJobHydrationInFlightRef = useRef(false)
+  const currentJobRefreshInFlightRef = useRef<(JobReadFlight & { jobId: string }) | null>(null)
+  const cancellationInFlightRef = useRef<(JobReadFlight & { jobId: string }) | null>(null)
+  const activeJobHydrationInFlightRef = useRef<JobReadFlight | null>(null)
+  const confirmationRecoveryInFlightRef = useRef<JobReadFlight | null>(null)
+  const selectedJobReadRef = useRef(0)
+  // An old callback must stay retired even if the same account signs in again.
+  const jobSession = useMemo(() => ({ active: false, generation: 0 }), [role, sessionUserId])
+  useEffect(() => {
+    jobSession.active = true
+    jobSession.generation += 1
+    return () => {
+      jobSession.active = false
+      jobSession.generation += 1
+    }
+  }, [jobSession])
+  const captureJobRead = useCallback(() => {
+    const generation = jobSession.generation
+    const selection = selectedJobReadRef.current
+    return () => Boolean(sessionUserId && role && jobSession.active
+      && jobSession.generation === generation && selectedJobReadRef.current === selection)
+  }, [jobSession, role, sessionUserId])
+  const reportReadFailure = useCallback((code: 'NETWORK_ERROR' | 'INVALID_RESPONSE') => setRemoteError({
+    success: false, code, error: '', status: 0, meta: createClientDiagnosticMetadata(),
+  }), [setRemoteError])
+  const { confirmRemoteSearch, customerMatchingRetryFeedback } = useCustomerMatchingRetry({
+    dispatch, language, role, sessionAccessToken, sessionUserId, setRemoteError, stateRef,
+  })
+  const { setMatchingPreference, customerMatchingSelectionFeedback, customerMatchingSelectionState } = useCustomerMatchingSelection({
+    dispatch, language, role, sessionAccessToken, sessionUserId, setRemoteError, stateRef,
+  })
+  const { authorizeApartmentAccess, customerApartmentAccessState } = useCustomerApartmentAccess({
+    dispatch, language, role, sessionAccessToken, sessionUserId, setRemoteError, stateRef,
+  })
   const hydrateJobResult = useCallback((result: ApiResult<JobDetailResponse>) => {
-    if (!result.success) return setRemoteError(result.error)
+    if (!result.success) return setRemoteError(result)
     dispatch({ type: 'hydrate_remote_job', job: jobDetailToSnapshot(result.data, role === 'worker' || role === 'admin') })
     return true
   }, [dispatch, role, setRemoteError])
@@ -70,30 +99,123 @@ export function useCustomerJobActions({
   // The caller can pass its own access token so a just-confirmed job hydrates
   // even when the shared client still holds a stale session.
   const hydrateRemoteJobById = useCallback(async (jobId: string, accessToken?: string) => {
+    const token = accessToken ?? sessionAccessToken
+    if (!captureJobRead()() || !token) return false
     if (!jobId) return setRemoteError('Chưa có yêu cầu để tải lại')
-    return hydrateJobResult(await jobService.getJob(jobId, accessToken))
-  }, [hydrateJobResult, setRemoteError])
-
-  const refreshCurrentJob = useCallback(async () => {
-    if (currentJobRefreshInFlightRef.current) return true
-    currentJobRefreshInFlightRef.current = true
+    selectedJobReadRef.current += 1
+    const current = captureJobRead()
     try {
-      const jobId = getRemoteJobId(stateRef.current)
-      if (!jobId) return setRemoteError('Chưa có yêu cầu để tải lại')
-      return hydrateJobResult(await jobService.getJob(jobId))
-    } finally {
-      currentJobRefreshInFlightRef.current = false
+      const result = await jobService.getJob(jobId, token)
+      if (!current()) return false
+      if (result.success && result.data.job?.id !== jobId) return reportReadFailure('INVALID_RESPONSE')
+      return hydrateJobResult(result)
+    } catch {
+      return current() ? reportReadFailure('NETWORK_ERROR') : false
     }
-  }, [hydrateJobResult, setRemoteError, stateRef])
+  }, [captureJobRead, hydrateJobResult, reportReadFailure, sessionAccessToken, setRemoteError])
+
+  const reconcilePendingConfirmations = useCallback(() => {
+    if (!sessionUserId || !sessionAccessToken || role !== 'customer') return Promise.resolve(false)
+    const generation = jobSession.generation
+    const recoverySelection = selectedJobReadRef.current
+    const current = () => jobSession.active && jobSession.generation === generation && isAppForeground()
+    if (!current()) return Promise.resolve(false)
+    if (confirmationRecoveryInFlightRef.current?.current()) return confirmationRecoveryInFlightRef.current.request
+    const hydrateRecoveredJob = async (jobId: string) => {
+      const visibleJobId = getRemoteJobId(stateRef.current)
+      if (current() && selectedJobReadRef.current === recoverySelection && (!visibleJobId || visibleJobId === jobId)) {
+        await hydrateRemoteJobById(jobId, sessionAccessToken)
+      }
+    }
+    const request = (async () => {
+      const pendingRecords = await listPendingConfirmations(sessionUserId)
+      let recoveredWithoutError = true
+      for (const pending of pendingRecords) {
+        if (!current()) return false
+        try {
+          const outcome = await reconcilePendingConfirmationRequest(pending, sessionAccessToken, undefined, current)
+          if (!current()) return false
+          if (outcome.kind === 'receipt') {
+            if (outcome.receipt.terminal) {
+              await clearPendingConfirmation(sessionUserId, pending.sessionId)
+            } else {
+              await writePendingConfirmation({
+                ...pending,
+                operation: outcome.receipt,
+                supportCode: outcome.receipt.support_code,
+                updatedAt: outcome.receipt.updated_at,
+              })
+            }
+            if (outcome.receipt.job_id) {
+              await hydrateRecoveredJob(outcome.receipt.job_id)
+            }
+            continue
+          }
+          if (outcome.kind === 'job') {
+            await clearPendingConfirmation(sessionUserId, pending.sessionId)
+            await hydrateRecoveredJob(outcome.jobId)
+            continue
+          }
+          if (outcome.kind === 'failure') {
+            await clearPendingConfirmation(sessionUserId, pending.sessionId)
+            continue
+          }
+          await writePendingConfirmation({
+            ...pending,
+            supportCode: outcome.supportCode,
+            updatedAt: new Date().toISOString(),
+          })
+        } catch {
+          recoveredWithoutError = false
+        }
+      }
+      if (!recoveredWithoutError && current()) return setRemoteError({
+        success: false, code: 'CONFIRMATION_RECOVERY_UNAVAILABLE', error: '', status: 0,
+        meta: createClientDiagnosticMetadata(),
+      })
+      return recoveredWithoutError && current()
+    })().catch(() => current() ? setRemoteError({
+      success: false, code: 'CONFIRMATION_RECOVERY_UNAVAILABLE', error: '', status: 0,
+      meta: createClientDiagnosticMetadata(),
+    }) : false).finally(() => {
+      if (confirmationRecoveryInFlightRef.current?.request === request) {
+        confirmationRecoveryInFlightRef.current = null
+      }
+    })
+    confirmationRecoveryInFlightRef.current = { current, request }
+    return request
+  }, [hydrateRemoteJobById, jobSession, role, sessionAccessToken, sessionUserId, setRemoteError, stateRef])
+
+  const refreshCurrentJob = useCallback(() => {
+    const inSession = captureJobRead()
+    if (!inSession() || !sessionAccessToken) return Promise.resolve(false)
+    const jobId = getRemoteJobId(stateRef.current)
+    if (!jobId) return Promise.resolve(setRemoteError('Chưa có yêu cầu để tải lại'))
+    const current = () => inSession() && getRemoteJobId(stateRef.current) === jobId
+    const flight = currentJobRefreshInFlightRef.current
+    if (flight?.jobId === jobId && flight.current()) return flight.request
+    const request = (async () => {
+      const result = await jobService.getJob(jobId, sessionAccessToken)
+      if (!current()) return false
+      if (result.success && result.data.job?.id !== jobId) return reportReadFailure('INVALID_RESPONSE')
+      return hydrateJobResult(result)
+    })().catch(() => current() ? reportReadFailure('NETWORK_ERROR') : false).finally(() => {
+      if (currentJobRefreshInFlightRef.current?.request === request) currentJobRefreshInFlightRef.current = null
+    })
+    currentJobRefreshInFlightRef.current = { jobId, current, request }
+    return request
+  }, [captureJobRead, hydrateJobResult, reportReadFailure, sessionAccessToken, setRemoteError, stateRef])
 
   // Hydrate the active job from the backend so refresh/cold start keeps the
   // backend as source of truth without noisy "no active job" banners.
-  const hydrateCustomerActiveJob = useCallback(async () => {
-    if (activeJobHydrationInFlightRef.current) return true
-    activeJobHydrationInFlightRef.current = true
-    try {
-      if (getRemoteJobId(stateRef.current)) return true
-      const result = await jobService.listMyActiveJob()
+  const hydrateCustomerActiveJob = useCallback(() => {
+    const current = captureJobRead()
+    if (!current() || !sessionAccessToken || (role !== 'customer' && role !== 'admin')) return Promise.resolve(false)
+    if (getRemoteJobId(stateRef.current)) return Promise.resolve(true)
+    if (activeJobHydrationInFlightRef.current?.current()) return activeJobHydrationInFlightRef.current.request
+    const request = (async () => {
+      const result = await jobService.listMyActiveJob(sessionAccessToken)
+      if (!current()) return false
       if (!result.success) return false
       if (!result.data.active_job) return true
       // A direct route can hydrate while this bootstrap request is in flight.
@@ -101,194 +223,157 @@ export function useCustomerJobActions({
       if (getRemoteJobId(stateRef.current)) return true
       dispatch({ type: 'hydrate_remote_job', job: jobDetailToSnapshot(result.data.active_job, false) })
       return true
-    } finally {
-      activeJobHydrationInFlightRef.current = false
-    }
-  }, [dispatch, stateRef])
+    })().catch(() => current() ? reportReadFailure('NETWORK_ERROR') : false).finally(() => {
+      if (activeJobHydrationInFlightRef.current?.request === request) activeJobHydrationInFlightRef.current = null
+    })
+    activeJobHydrationInFlightRef.current = { current, request }
+    return request
+  }, [captureJobRead, dispatch, reportReadFailure, role, sessionAccessToken, stateRef])
 
   const createRemoteJobFromDraft = useCallback(async (
-    draftOverride?: LocalDealDraft,
-    mediaItems: LocalMediaUploadDraft[] = [],
+    _draftOverride?: LocalDealDraft,
+    _mediaItems: LocalMediaUploadDraft[] = [],
   ) => {
-    const draft = draftOverride ?? stateRef.current.deal?.draft
-    if (!draft?.serviceType) return setRemoteError('Chọn một trong sáu dịch vụ NestScout hỗ trợ trước khi tạo yêu cầu')
-    if (draft.problemChips.length === 0) return setRemoteError('Chọn ít nhất một vấn đề cần xử lý')
-    if (draft.description.trim().length < 10) return setRemoteError('Mô tả cần rõ hơn trước khi gửi yêu cầu')
-    const districtLabel = extractKnownDistrictLabel(draft.districtLabel) || extractKnownDistrictLabel(draft.addressLabel)
-    if (!districtLabel) return setRemoteError('Địa chỉ cần có quận TP.HCM rõ ràng')
-
-    const requestFingerprint = jobCreateClientRequestFingerprint(draft, districtLabel)
-    const input: JobCreateInput = {
-      service_type: draft.serviceType,
-      description: draft.description.trim(),
-      problem_chips: draft.problemChips,
-      photo_urls: [],
-      address_building: draft.addressLabel.trim() || undefined,
-      address_district: districtLabel,
-      // Re-renders and retries reuse the same key so Edge returns the existing
-      // job instead of creating duplicates.
-      client_request_id: stableClientRequestId(
-        pendingJobCreateClientRequestRef,
-        requestFingerprint,
-      ),
-    }
-
-    const created = await jobService.createJob(input)
-    if (!created.success) {
-      setRemoteError(created.error)
-      return null
-    }
-    clearStableClientRequestId(pendingJobCreateClientRequestRef, requestFingerprint)
-    dispatch({ type: 'hydrate_remote_job', job: createJobResponseToSnapshot(created.data, draft) })
-    if (mediaItems.length === 0) return { jobId: created.data.job_id }
-
-    const uploaded = await uploadJobMediaDrafts(created.data.job_id, mediaItems, 'before')
-    if (!uploaded.success) {
-      const mediaError = localizeMediaUploadFailure(uploaded, language)
-      dispatch({ type: 'set_workflow_error', error: mediaError })
-      return { jobId: created.data.job_id, mediaError }
-    }
-    const refreshed = await jobService.getJob(created.data.job_id)
-    if (refreshed.success) {
-      dispatch({ type: 'hydrate_remote_job', job: jobDetailToSnapshot(refreshed.data, false) })
-    }
-    return { jobId: created.data.job_id }
-  }, [dispatch, language, pendingJobCreateClientRequestRef, setRemoteError, stateRef])
-
-  const confirmRemoteSearch = useCallback(async (jobIdOverride?: string) => {
-    const jobId = jobIdOverride ?? getRemoteJobId(stateRef.current)
-    if (!jobId) return setRemoteError('Chưa có yêu cầu để tìm thợ')
-    const confirmed = await jobService.confirmSearch(jobId)
-    if (!confirmed.success) return setRemoteError(confirmed.error)
-
-    const existing = stateRef.current.deal
-    if (existing) {
-      dispatch({
-        type: 'hydrate_remote_job',
-        job: confirmSearchToSnapshot(confirmed.data, existing),
-      })
-    }
-    if (confirmed.data.broadcast_sent) {
-      const refreshed = await jobService.getJob(jobId)
-      if (refreshed.success) {
-        dispatch({ type: 'hydrate_remote_job', job: jobDetailToSnapshot(refreshed.data, false) })
-      }
-    }
-    return true
-  }, [dispatch, setRemoteError, stateRef])
+    if (!captureJobRead()()) return false
+    // Compatibility entry points cannot bypass the durable confirmation receipt.
+    return setRemoteError({
+      success: false, code: 'KAEL_CASE_WORK_REQUIRED', error: '', status: 409,
+      meta: createClientDiagnosticMetadata(),
+    })
+  }, [captureJobRead, setRemoteError])
 
   const listFavoriteWorkersForMatching = useCallback(async (): Promise<FavoriteWorkerForMatching[] | null> => {
+    const inSession = captureJobRead()
+    if (!inSession() || role !== 'customer' || !sessionAccessToken) return null
     const jobId = getRemoteJobId(stateRef.current)
     if (!jobId) {
       setRemoteError('Chưa có yêu cầu để tải thợ đã lưu')
       return null
     }
-    const result = await jobService.listFavoriteWorkersForMatching(jobId)
-    if (!result.success) {
-      setRemoteError(result.error)
+    const current = () => inSession() && getRemoteJobId(stateRef.current) === jobId
+    try {
+      const result = await jobService.listFavoriteWorkersForMatching(jobId, sessionAccessToken)
+      if (!current()) return null
+      if (!result.success) {
+        setRemoteError(result)
+        return null
+      }
+      if (!Array.isArray(result.data?.workers)) {
+        reportReadFailure('INVALID_RESPONSE')
+        return null
+      }
+      return result.data.workers
+    } catch {
+      if (current()) reportReadFailure('NETWORK_ERROR')
       return null
     }
-    return result.data.workers
-  }, [setRemoteError, stateRef])
+  }, [captureJobRead, reportReadFailure, role, sessionAccessToken, setRemoteError, stateRef])
 
-  const setMatchingPreference = useCallback(async (
-    input: Omit<JobMatchingPreferenceInput, 'client_request_id'>,
-  ) => {
-    const jobId = getRemoteJobId(stateRef.current)
-    if (!jobId) return setRemoteError('Chưa có yêu cầu để chọn cách tìm thợ')
-    if (input.mode === 'saved_worker_first' && !input.worker_id) {
-      return setRemoteError('Chọn một thợ đã lưu trước khi tiếp tục')
-    }
-    const fingerprint = JSON.stringify({
-      auto_general: input.auto_general,
-      job_id: jobId,
-      mode: input.mode,
-      worker_id: input.worker_id ?? null,
-    })
-    const result = await jobService.setMatchingPreference(jobId, {
-      ...input,
-      client_request_id: stableClientRequestId(pendingMatchingPreferenceClientRequestRef, fingerprint),
-    })
-    if (!result.success) {
-      if (!shouldRetainClientRequestId(result)) {
-        clearStableClientRequestId(pendingMatchingPreferenceClientRequestRef, fingerprint)
-      }
-      return setRemoteError(result.error)
-    }
-    clearStableClientRequestId(pendingMatchingPreferenceClientRequestRef, fingerprint)
-    const existing = stateRef.current.deal
-    if (existing) {
-      dispatch({
-        type: 'hydrate_remote_job',
-        job: confirmSearchToSnapshot(result.data, existing),
-      })
-    }
-    return true
-  }, [dispatch, pendingMatchingPreferenceClientRequestRef, setRemoteError, stateRef])
-
-  const cancelRemoteJob = useCallback(async () => {
+  const cancelRemoteJob = useCallback(() => {
+    const inSession = captureJobRead()
+    if (!inSession() || role !== 'customer' || !sessionAccessToken) return Promise.resolve(false)
     const jobId = getRemoteJobId(stateRef.current)
     if (!jobId) {
+      selectedJobReadRef.current += 1
       dispatch({ type: 'cancel_deal' })
-      return true
+      return Promise.resolve(true)
     }
+    const current = () => inSession() && getRemoteJobId(stateRef.current) === jobId
+    const flight = cancellationInFlightRef.current
+    if (flight?.jobId === jobId && flight.current()) return flight.request
     const existing = stateRef.current.deal
-    if (existing && !usesBeforeAcceptCancelEndpoint(existing.status)) {
-      const requested = await jobService.requestCustomerCancellation(jobId, defaultCustomerCancellationInput(language))
-      if (!requested.success) return setRemoteError(requested.error)
-      const cancelledByPolicy = requested.data.job_status === 'cancelled'
+    const reportUnknown = (meta?: ApiResponseMetadata) => current() ? setRemoteError({
+      success: false, code: 'CANCELLATION_OUTCOME_UNKNOWN', error: '', status: 0,
+      meta: meta ?? createClientDiagnosticMetadata(),
+    }) : false
+    const reconcile = async (meta?: ApiResponseMetadata) => {
+      if (!current()) return false
+      reportUnknown(meta)
+      try {
+        const detail = await jobService.getJob(jobId, sessionAccessToken)
+        if (!current()) return false
+        if (detail.success && detail.data.job?.id === jobId) {
+          if (detail.data.job.status === 'cancelled') {
+            selectedJobReadRef.current += 1
+            return hydrateJobResult(detail)
+          }
+          hydrateJobResult(detail)
+        }
+      } catch {
+        // A failed read cannot prove whether the cancellation committed.
+      }
+      return reportUnknown(meta)
+    }
+    const request = (async () => {
+      const requiresReview = existing && !usesBeforeAcceptCancelEndpoint(existing.status)
+      const result = requiresReview
+        ? await jobService.requestCustomerCancellation(jobId, defaultCustomerCancellationInput(language), sessionAccessToken)
+        : await jobService.cancelJob(jobId, sessionAccessToken)
+      if (!current()) return false
+      if (!result.success) {
+        // Even a status conflict may be a replay after an earlier commit.
+        if (result.status === 0 || result.status === undefined || result.status >= 500
+          || [401, 403, 408, 409, 425, 429].includes(result.status)
+          || ['NETWORK_ERROR', 'TIMEOUT', 'INVALID_RESPONSE', 'RESPONSE_TOO_LARGE'].includes(result.code ?? '')) {
+          return reconcile(result.meta)
+        }
+        return setRemoteError(result)
+      }
+      const data = result.data
+      const status = data && 'job_status' in data ? data.job_status : data?.status
+      if (!data || data.job_id !== jobId || !status || !JOB_STATUSES.includes(status as typeof JOB_STATUSES[number])
+        || (requiresReview ? data.status !== 'requested' || !('cancellation_id' in data) || !data.cancellation_id : status !== 'cancelled')) {
+        return reconcile(result.meta)
+      }
+      if (!existing) return reconcile(result.meta)
+      const cancelledByPolicy = status === 'cancelled'
+      // Retire refreshes started before the authoritative command receipt.
+      selectedJobReadRef.current += 1
       dispatch({
         type: 'hydrate_remote_job',
         job: {
           ...dealToSnapshot(existing),
-          backendStatus: requested.data.job_status,
-          status: toLocalDealStatus(requested.data.job_status),
+          backendStatus: status as typeof JOB_STATUSES[number],
+          status: toLocalDealStatus(status as typeof JOB_STATUSES[number]),
           broadcast: existing.broadcast
-            ? {
-                ...existing.broadcast,
-                status: cancelledByPolicy ? 'cancelled' : existing.broadcast.status,
+            ? { ...existing.broadcast, status: cancelledByPolicy ? 'cancelled' : existing.broadcast.status,
                 fullAddressVisible: cancelledByPolicy ? false : existing.broadcast.fullAddressVisible,
                 fullAddressLabel: cancelledByPolicy ? null : existing.broadcast.fullAddressLabel,
-                secondsRemaining: cancelledByPolicy ? 0 : existing.broadcast.secondsRemaining,
-              }
+                secondsRemaining: cancelledByPolicy ? 0 : existing.broadcast.secondsRemaining }
             : null,
         },
       })
-      await refreshCurrentJob()
+      if (!cancelledByPolicy) await hydrateRemoteJobById(jobId, sessionAccessToken)
       return true
-    }
-    const cancelled = await jobService.cancelJob(jobId)
-    if (!cancelled.success) return setRemoteError(cancelled.error)
-    if (existing) {
-      dispatch({
-        type: 'hydrate_remote_job',
-        job: {
-          ...dealToSnapshot(existing),
-          backendStatus: cancelled.data.status,
-          status: toLocalDealStatus(cancelled.data.status),
-          broadcast: existing.broadcast
-            ? { ...existing.broadcast, status: 'cancelled', fullAddressVisible: false, fullAddressLabel: null }
-            : null,
-        },
-      })
-    }
-    return true
-  }, [dispatch, language, refreshCurrentJob, setRemoteError, stateRef])
+    })().catch(() => reconcile()).finally(() => {
+      if (cancellationInFlightRef.current?.request === request) cancellationInFlightRef.current = null
+    })
+    cancellationInFlightRef.current = { jobId, current, request }
+    return request
+  }, [captureJobRead, dispatch, hydrateJobResult, hydrateRemoteJobById, language, role, sessionAccessToken, setRemoteError, stateRef])
 
   // On customer login/cold start, hydrate the active job once; polling keeps it
   // fresh while the deal remains active.
   useEffect(() => {
     if (!sessionUserId || (role !== 'customer' && role !== 'admin')) return
-    if (isAppForeground()) void hydrateCustomerActiveJob()
-  }, [role, sessionUserId, hydrateCustomerActiveJob])
+    if (!isAppForeground()) return
+    void hydrateCustomerActiveJob()
+    if (role === 'customer') void reconcilePendingConfirmations()
+  }, [role, sessionUserId, hydrateCustomerActiveJob, reconcilePendingConfirmations])
 
   return {
+    authorizeApartmentAccess,
+    customerApartmentAccessState,
     cancelRemoteJob,
     confirmRemoteSearch,
+    customerMatchingRetryFeedback,
+    customerMatchingSelectionFeedback,
+    customerMatchingSelectionState,
     createRemoteJobFromDraft,
     hydrateCustomerActiveJob,
     hydrateRemoteJobById,
     listFavoriteWorkersForMatching,
+    reconcilePendingConfirmations,
     refreshCurrentJob,
     setMatchingPreference,
   }

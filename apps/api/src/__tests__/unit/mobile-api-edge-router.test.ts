@@ -41,6 +41,17 @@ function makeServices(overrides: Partial<MobileApiServices> = {}): MobileApiServ
       mission_values: ['Trust'],
     })),
     listServices: vi.fn(async () => ({ services: [] })),
+    getServiceCoverageReadiness: vi.fn(async () => ({
+      service_type: 'plumbing' as const,
+      district_code: 'q7',
+      status: 'ready' as const,
+      minimum_worker_count: 3 as const,
+      eligible_reachable_worker_count: 3,
+      required_capabilities: [],
+      reason_code: 'READY' as const,
+      checked_at: '2026-09-04T05:00:00.000Z',
+      valid_until: '2026-09-04T05:00:30.000Z',
+    })),
     placesAutocomplete: vi.fn(async () => ({ suggestions: [], fallback_used: false })),
     placesResolve: vi.fn(async () => ({
       fallback_used: false,
@@ -121,14 +132,22 @@ function makeServices(overrides: Partial<MobileApiServices> = {}): MobileApiServ
     getKaelConfirmationOperation: vi.fn(),
     submitKaelChatEvidence: vi.fn(),
     confirmSearch: vi.fn(),
+    requestJobMatchingRetry: vi.fn(),
+    getJobMatchingRetry: vi.fn(),
+    getJobMatchingOperation: vi.fn(),
+    getJobMatchingPreferenceReceipt: vi.fn(),
     setJobMatchingPreference: vi.fn(),
     cancelJob: vi.fn(),
     acceptBroadcast: vi.fn(),
     declineBroadcast: vi.fn(),
     getWorkerCandidate: vi.fn(),
+    getWorkerCandidateDecision: vi.fn(),
     confirmWorkerCandidate: vi.fn(),
     rejectWorkerCandidate: vi.fn(),
     updateJobStatus: vi.fn(),
+    getRfqPrice: vi.fn(),
+    proposeRfqPrice: vi.fn(),
+    decideRfqPrice: vi.fn(),
     authorizeApartmentAccess: vi.fn(),
     requestScopeChange: vi.fn(),
     getJobIncident: vi.fn(async () => ({ incident: null })),
@@ -171,22 +190,25 @@ function makeServices(overrides: Partial<MobileApiServices> = {}): MobileApiServ
     })),
     listJobMessages: vi.fn(),
     sendJobMessage: vi.fn(),    confirmCompletion: vi.fn(),
-    createPaymentIntent: vi.fn(),
     createManualBankPaymentOrder: vi.fn(),
     claimManualBankPayment: vi.fn(),
-    selectDirectWorkerPayment: vi.fn(),
-    respondToDirectWorkerPayment: vi.fn(),
-    confirmWorkerCashPayment: vi.fn(),
-    confirmStagingPayment: vi.fn(),
     submitReview: vi.fn(),
     submitCustomerKaelFeedback: vi.fn(),
     registerWorker: vi.fn(),
     saveWorkerRegistrationDraft: vi.fn(),
+    submitWorkerRegistrationCommand: vi.fn(),
+    getWorkerRegistrationCommand: vi.fn(),
     submitWorkerApplication: vi.fn(async () => ({
       application_id: 'application-1',
-      status: 'open' as const,
+      status: 'pending_review' as const,
       submitted_at: '2026-05-26T00:00:00.000Z',
+      decided_at: null,
+      reason: null,
+      can_submit: false,
+      can_resume: false,
+      idempotent: false,
     })),
+    getWorkerReadiness: vi.fn(),
     getAdminActor: vi.fn(),
     getAdminOperations: vi.fn(),
     getAdminOverviewDetails: vi.fn(),
@@ -197,6 +219,9 @@ function makeServices(overrides: Partial<MobileApiServices> = {}): MobileApiServ
     getAdminSupportCase: vi.fn(),
     updateAdminSupportCasePreparation: vi.fn(),
     createAdminSupportEvidenceAccess: vi.fn(),
+    listAdminWorkflowRecoveryCases: vi.fn(),
+    getAdminWorkflowRecoveryCase: vi.fn(),
+    applyAdminWorkflowRecoveryAction: vi.fn(),
     getAdminWorkerReviewDetail: vi.fn(),
     decideAdminWorkerProfile: vi.fn(),
     listAdminDisputes: vi.fn(),
@@ -1061,7 +1086,7 @@ describe('mobile-api Edge router contract', () => {
       },
     ))
 
-    expect(response.status).toBe(200)
+    expect(response.status).toBe(202)
     expect(setJobMatchingPreference).toHaveBeenCalledWith(
       expect.objectContaining({ role: 'customer' }),
       jobId,
@@ -1086,8 +1111,13 @@ describe('mobile-api Edge router contract', () => {
       },
     ))
 
-    expect(noFallbackResponse.status).toBe(400)
-    expect(setJobMatchingPreference).toHaveBeenCalledTimes(1)
+    expect(noFallbackResponse.status).toBe(202)
+    expect(setJobMatchingPreference).toHaveBeenCalledTimes(2)
+    expect(setJobMatchingPreference).toHaveBeenLastCalledWith(
+      expect.objectContaining({ role: 'customer' }),
+      jobId,
+      expect.objectContaining({ auto_general: false, mode: 'saved_worker_first' }),
+    )
   })
 
   it('routes worker Kael memory self-view through the worker endpoint', async () => {

@@ -7,6 +7,7 @@ import {
   matchingDeliveryStateSchema,
   quoteModeSchema,
   releaseIdentitySchema,
+  serviceCoverageReadinessSchema,
   serviceIntakePolicySchema,
 } from '../index'
 import { pillarWhy, type PillarManifest } from './pillar-manifest'
@@ -86,6 +87,39 @@ describe('Stage 1 reliability contract', () => {
       intakeCoverageSchema.safeParse(baseCoverage).success,
       pillarWhy(PILLAR, 'Tier B is optional for RFQ dispatch'),
     ).toBe(true)
+  })
+
+  it('keeps public booking readiness separate from intake completeness', () => {
+    const readyCell = {
+      service_type: 'plumbing',
+      district_code: 'q7',
+      status: 'ready',
+      minimum_worker_count: 3,
+      eligible_reachable_worker_count: 3,
+      required_capabilities: [],
+      reason_code: 'READY',
+      checked_at: '2026-09-04T05:00:00.000Z',
+      valid_until: '2026-09-04T05:00:30.000Z',
+    } as const
+
+    expect(
+      serviceCoverageReadinessSchema.safeParse(readyCell).success,
+      pillarWhy(PILLAR, 'three distinct eligible and reachable workers open one public cell'),
+    ).toBe(true)
+    expect(
+      serviceCoverageReadinessSchema.safeParse({
+        ...readyCell,
+        eligible_reachable_worker_count: 2,
+      }).success,
+      pillarWhy(PILLAR, 'intake completeness cannot disguise a cell below the public supply threshold'),
+    ).toBe(false)
+    expect(
+      serviceCoverageReadinessSchema.safeParse({
+        ...readyCell,
+        worker_ids: ['11111111-1111-4111-8111-111111111111'],
+      }).success,
+      pillarWhy(PILLAR, 'the public coverage contract must not expose worker identity'),
+    ).toBe(false)
   })
 
   it('rejects coverage that calls RFQ a priced offer', () => {

@@ -1,7 +1,7 @@
 import type { JobStatus } from '../constants'
 import type { LocalPaymentStatus } from '../mobile-workflow'
 import type { MatchingState } from './api-responses'
-import type { ConfirmationOperationReceipt } from '../contracts/stage1-reliability'
+import type { ConfirmationOperationReceipt, MatchingSelectionReceipt } from '../contracts/stage1-reliability'
 
 type ConfirmSearchResponse = {
   job_id: string
@@ -22,6 +22,7 @@ type ConfirmSearchResponse = {
 
 type MatchingPreferenceResponse = ConfirmSearchResponse & {
   matching_state: MatchingState
+  selection?: MatchingSelectionReceipt
 }
 
 type ConfirmKaelChatResponse = ConfirmSearchResponse & {
@@ -98,6 +99,8 @@ type DirectWorkerPaymentResponse = {
 
 type CustomerCancellationResponse = {
   cancellation_id: string
+  dispute_id?: string
+  refund_state?: 'review_required'
   job_id: string
   status: 'requested'
   job_status: JobStatus

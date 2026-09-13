@@ -889,16 +889,17 @@ describe('frontend workflow provider wiring', () => {
 })
 
 describe('mobile push notification wiring', () => {
-  it('keeps Expo Notifications runtime code while suppressing iOS push entitlements until provisioning is ready', () => {
+  it('keeps Expo Notifications installed and enables the native notification plugin for store builds', () => {
     const mobilePackage = JSON.parse(readFileSync(resolve(MOBILE_ROOT, 'package.json'), 'utf-8'))
     const appConfig = read('app.config.ts')
     const appJson = read('app.json')
     expect(mobilePackage.dependencies['expo-notifications']).toBe('~57.0.8')
-    expect(appConfig).toContain('withoutIosPushEntitlement')
-    expect(appConfig).toContain("delete config.modResults['aps-environment']")
-    expect(appConfig).toContain("delete attributes.SystemCapabilities?.['com.apple.Push']")
-    expect(appConfig).not.toContain("'expo-notifications'")
-    expect(appJson).not.toContain('"expo-notifications"')
+    expect(appConfig).not.toContain('withoutIosPushEntitlement')
+    expect(appConfig).not.toContain("delete config.modResults['aps-environment']")
+    expect(appConfig).not.toContain("delete attributes.SystemCapabilities?.['com.apple.Push']")
+    expect(appConfig).toContain("'expo-notifications'")
+    expect(appJson).toContain('"expo-notifications"')
+    expect(appConfig).toContain('const iosPushNotificationsEnabled = true')
   })
 
   it('registers and unregisters Expo push tokens through the authenticated mobile API wrapper', () => {

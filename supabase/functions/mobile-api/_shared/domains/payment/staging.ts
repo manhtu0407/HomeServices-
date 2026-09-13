@@ -58,7 +58,7 @@ export async function createStagingPaymentIntent(
     apiFailure("INVALID_STATUS", "Công việc chưa sẵn sàng cho bước thanh toán.", 409);
   }
   const transition = validateWorkflowTransition({
-    event: "kael_decided_payment",
+    event: "customer_started_payment",
     from: job.status,
     to: "payment_pending",
   });
@@ -104,7 +104,7 @@ export async function createStagingPaymentIntent(
   if (updated.error) apiFailure("DB_ERROR", "Không thể tạo thanh toán Staging.", 500);
   if (!updated.data) apiFailure("STATUS_CHANGED", "Trạng thái công việc đã thay đổi.", 409);
 
-  await logJobEvent(client, jobId, "kael_decided_payment", ctx, "confirmed_by_customer", "payment_pending", {
+  await logJobEvent(client, jobId, "customer_started_payment", ctx, "confirmed_by_customer", "payment_pending", {
     payment_mode: "staging_simulator",
   });
   return stagingPaymentResponse(jobId, "payment_pending", payment);

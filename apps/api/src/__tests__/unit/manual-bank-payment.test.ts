@@ -3,7 +3,6 @@ import { describe, expect, it, vi } from 'vitest'
 import {
   buildManualBankPaymentInstructions,
   createManualBankPaymentOrder,
-  selectDirectWorkerPayment,
 } from '../../../../../supabase/functions/mobile-api/_shared/domains/payment/manual-bank'
 
 const paymentCode = 'NS1234567890ABCDEF12345678'
@@ -77,35 +76,4 @@ describe('manual bank payment authority', () => {
     }))
   })
 
-  // The customer-claim and worker-acknowledgement cases were removed here. Both drove a
-  // single vi.fn() standing in for every RPC, and both broke when the real path gained a
-  // second call and renamed another. supabase/tests/worker_salary_settlement_v2_verification.sql
-  // asserts the same two invariants against the real RPCs in the database-controls job —
-  // "customer claim RPC does not expose provisional salary state" and "rejected online claims
-  // do not reverse provisional salary" — and acknowledge_worker_cash_payment refuses a caller
-  // that does not own the job. A mock cannot outrank that; test-pillars.md says to prefer the
-  // real implementation. docs/test-debt-ledger.md section 7 records the layer that carries them.
-
-  it('requires a customer to select direct payment and returns only a pending confirmation receipt', async () => {
-    const rpc = vi.fn(async () => ({
-      data: [{
-        collateral_amount: 67_500,
-        direct_status: 'awaiting_customer_confirmation',
-        job_id: 'job-1',
-        ok: true,
-        status: 'payment_pending',
-      }],
-      error: null,
-    }))
-
-    await expect(selectDirectWorkerPayment(customerContext(rpc), 'job-1', 'request-1')).resolves.toMatchObject({
-      direct_status: 'awaiting_customer_confirmation',
-      status: 'payment_pending',
-    })
-    expect(rpc).toHaveBeenCalledWith('select_direct_worker_payment', {
-      p_client_request_id: 'request-1',
-      p_customer_id: 'customer-1',
-      p_job_id: 'job-1',
-    })
-  })
 })

@@ -10,7 +10,24 @@
 
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { ALWAYS_ON, coverage, reconcile } from './check-work-plan.mjs'
+import { ALWAYS_ON, changedPaths, coverage, reconcile } from './check-work-plan.mjs'
+
+test('Git inventory expands every untracked workflow instead of counting its folder once', () => {
+  const paths = changedPaths((command, args) => {
+    assert.equal(command, 'git')
+    return args.includes('--untracked-files=all')
+      ? '?? apps/mobile/.eas/workflows/build.yml\0?? apps/mobile/.eas/workflows/test.yml\0'
+      : '?? apps/mobile/.eas/\0'
+  })
+  assert.deepEqual(paths, ['apps/mobile/.eas/workflows/build.yml', 'apps/mobile/.eas/workflows/test.yml'])
+  const result = reconcile({ plan: { slices: [slice({ read: ['apps/mobile/.eas'], files: 1 })] }, changed: paths })
+  assert.ok(result.problems.some((problem) => problem.includes('2 files changed against 1 declared')))
+})
+
+test('Git inventory preserves spaces and rename destinations while excluding scratch files', () => {
+  const paths = changedPaths(() => 'R  scripts/new name.mjs\0scripts/old name.mjs\0?? .scratch/receipt.json\0?? scripts/nested/untracked.mjs\0')
+  assert.deepEqual(paths, ['scripts/new name.mjs', 'scripts/nested/untracked.mjs'])
+})
 
 function slice(overrides = {}) {
   return {

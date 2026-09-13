@@ -11,9 +11,7 @@ export {
   notifyBroadcastWorkers,
   notifyCustomerJobStatus,
   notifyCustomerWorkerCheckedIn,
-  notifyCustomerWorkerMatched,
   notifyJobMessageRecipient,
-  notifyKaelConfirmedCompletion,
 } from "./notifications-job.ts";
 export {
   insertUserNotification,

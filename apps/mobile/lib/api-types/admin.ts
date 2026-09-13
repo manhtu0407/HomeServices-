@@ -45,27 +45,17 @@ export type AdminViewActor = {
   capabilities: AdminCapability[]
 }
 
-export type AdminViewOperationsResponse = {
-  actor: AdminViewActor
-  generated_at: string
-  attention: {
-    key: 'worker_applications' | 'payment_attention' | 'open_disputes' | 'other_admin_queue'
-    target_section: 'operations' | 'workers' | 'transactions'
-    count: number
-  }[]
-  flow: { status: string; count: number }[]
-  quality: { key: 'workers_suspended' | 'workers_in_verification'; count: number }[]
-  audit_events: {
-    id: string
-    actor_id: string | null
-    actor_name: string | null
-    actor_role: string
-    action: string
-    topic: string | null
-    decision: string
-    occurred_at: string
-  }[]
-}
+export type {
+  AdminViewOperationsResponse,
+  AdminViewWorkflowRecoveryStatus,
+  AdminViewWorkflowRecoverySummary,
+  AdminViewWorkflowRecoveryListInput,
+  AdminViewWorkflowRecoveryListResponse,
+  AdminViewWorkflowRecoveryActionReceipt,
+  AdminViewWorkflowRecoveryDetailResponse,
+  AdminViewWorkflowRecoveryActionInput,
+  AdminViewWorkflowRecoveryActionResponse,
+} from './admin-operations'
 
 export type AdminViewScopeChangeListInput = {
   cursor?: string
@@ -412,6 +402,7 @@ export type AdminViewWorkerReviewDetail = {
   application: AdminViewWorkerApplicationSummary
   login_gates: { email: string | null; phone: string | null; full_name: string | null; created_at: string | null }
   profile: {
+    updated_at: string | null
     legal_name: string | null
     date_of_birth: string | null
     gender: string | null
@@ -427,7 +418,12 @@ export type AdminViewWorkerReviewDetail = {
   history: { stage: 'access' | 'profile'; decision: 'approve' | 'request_changes' | 'reject'; reason: string | null; decided_at: string; decided_by_name: string | null }[]
 }
 
-export type AdminViewWorkerProfileDecisionInput = { decision: 'approve' | 'request_changes'; reason?: string }
+export type AdminViewWorkerProfileDecisionInput = {
+  decision: 'approve' | 'request_changes'
+  profile_review_queue_id: string
+  expected_profile_updated_at: string
+  reason?: string
+}
 export type AdminViewWorkerProfileDecisionResponse = {
   ok: true
   application_id: string

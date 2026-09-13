@@ -4,6 +4,7 @@ import type { CustomerKaelMode } from '../ui/types'
 
 type CustomerKaelRequestChannel =
   | 'conversation'
+  | 'confirmation-reconcile'
   | 'evidence'
   | 'message'
   | 'memory-preference'

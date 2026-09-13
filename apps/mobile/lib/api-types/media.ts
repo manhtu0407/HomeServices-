@@ -1,3 +1,5 @@
+import type { ApartmentAccessAuthorizationReceipt } from '@nestscout/shared'
+
 export type KaelChatMediaUploadResponse = {
   bucket_id: 'kael-chat-media'
   object_path: string
@@ -44,11 +46,7 @@ export type JobMediaRevokeResult = {
   deletion_pending: boolean
 }
 
-export type ApartmentAccessAuthorizeResponse = {
-  job_id: string
-  release_stage: string
-  already_authorized: boolean
-}
+export type ApartmentAccessAuthorizeResponse = ApartmentAccessAuthorizationReceipt
 
 export type JobMediaAttachResponse = {
   job_id: string

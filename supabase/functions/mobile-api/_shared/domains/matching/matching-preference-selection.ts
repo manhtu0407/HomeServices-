@@ -10,6 +10,7 @@ import { validateKaelAutonomyTransition, validateWorkflowTransition } from "../.
 import { hasActiveBroadcast, runWithBroadcastRetryLease } from "./broadcasts.ts";
 import { startGeneralBroadcast, startSavedWorkerBroadcast } from "./matching-preference-fallback.ts";
 import { getMatchingState } from "./matching-preference-read.ts";
+import { requestDurableMatchingPreference, requireMatchingCustomer } from "./matching-preference-command.ts";
 import {
   logMatchingEvent,
   requireMatchingDistrict,
@@ -122,11 +123,13 @@ export async function setJobMatchingPreference(
   jobId: string,
   input: MatchingPreferenceInput,
 ) {
+  requireMatchingCustomer(ctx);
   const client = db(ctx);
   const job = await requireJobAccess(client, jobId, ctx, {
     requiredRole: "customer",
-    select: "id, status, customer_id, service_type, address_district",
+    select: "id, status, customer_id, service_type, address_district, quote_mode",
   });
+  if (job.quote_mode != null) return requestDurableMatchingPreference(ctx, jobId, input);
   if (job.status !== "broadcasting") {
     apiFailure("INVALID_STATUS", "Yêu cầu này chưa sẵn sàng để chọn cách tìm thợ", 409);
   }

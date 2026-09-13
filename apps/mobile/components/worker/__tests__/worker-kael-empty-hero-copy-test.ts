@@ -7,15 +7,16 @@ const TWO_HOURS_MS = 2 * 60 * 60 * 1000
 const VIETNAM_DAY_START_UTC = Date.UTC(2026, 6, 13, 17)
 
 describe('Worker Kael empty hero copy', () => {
-  it.each(['normal', 'intake'] as const)('keeps twenty English Worker quotes for %s chat', (mode) => {
+  it.each(['normal', 'intake'] as const)('keeps VI and EN quotes distinct but time-aligned for %s chat', (mode) => {
     for (let slot = 0; slot < 12; slot += 1) {
       const now = new Date(VIETNAM_DAY_START_UTC + slot * TWO_HOURS_MS)
       const vietnamese = getWorkerKaelEmptyHeroCopy(mode, 'vi', now)
       const english = getWorkerKaelEmptyHeroCopy(mode, 'en', now)
 
       expect(vietnamese.slot).toBe(english.slot)
-      expect(vietnamese.text).toBe(english.text)
-      expect(vietnamese.text).not.toMatch(/[À-ỹĐđ]/)
+      expect(vietnamese.text).not.toBe(english.text)
+      expect(vietnamese.text).toMatch(/[À-ỹĐđ]/)
+      expect(vietnamese.text).not.toMatch(/\b(scope|service|request|help|details|worker|today)\b/i)
       expect(english.text).not.toMatch(/[À-ỹĐđ]/)
     }
   })
@@ -58,12 +59,17 @@ describe('Worker Kael empty hero copy', () => {
 
   it('keeps Worker quotes short and punctuated in both chat modes', () => {
     for (const mode of ['normal', 'intake'] as const) {
-      for (let slot = 0; slot < 12; slot += 1) {
-        const quote = getWorkerKaelEmptyHeroCopy(mode, 'vi', new Date(VIETNAM_DAY_START_UTC + slot * TWO_HOURS_MS)).text
-
-        expect(quote.length).toBeLessThanOrEqual(44)
-        expect(quote).toMatch(/[.!]+$/)
-        expect(quote).not.toMatch(/[À-ỹĐđ]/)
+      for (const language of ['vi', 'en'] as const) {
+        const quotes = new Set<string>()
+        for (let slot = 0; slot < 31 * 12; slot += 1) {
+          const quote = getWorkerKaelEmptyHeroCopy(mode, language, new Date(VIETNAM_DAY_START_UTC + slot * TWO_HOURS_MS)).text
+          quotes.add(quote)
+          expect(quote.length).toBeLessThanOrEqual(44)
+          expect(quote).toMatch(/[.!]+$/)
+          if (language === 'vi') expect(quote).toMatch(/[À-ỹĐđ]/)
+          else expect(quote).not.toMatch(/[À-ỹĐđ]/)
+        }
+        expect(quotes.size).toBe(20)
       }
     }
   })

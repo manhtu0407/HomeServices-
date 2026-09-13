@@ -1,4 +1,6 @@
 import type { JobStatus, ScopeChangeStatus, ServiceType } from '../constants'
+import type { RefundSummary } from '../contracts/payment'
+import type { ApartmentAccessAuthorizationInput, ApartmentAccessAuthorizationReceipt } from '../contracts/job'
 import type { MatchingState } from '../types/api-responses'
 import type { LocalDealStatus } from './status'
 
@@ -9,6 +11,8 @@ export type LocalScheduleMode = 'now_only'
 export type LocalCustomerSearchState = 'idle' | 'searching' | 'no_worker' | 'candidate' | 'matched' | 'active' | 'completed'
 
 export type LocalAddressAccess = {
+  authorization_context?: ApartmentAccessAuthorizationInput | null
+  authorization_receipt?: ApartmentAccessAuthorizationReceipt | null
   release_stage: 'area_only' | 'building_released' | 'unit_released'
   exact_unit_released: boolean
   worker_checked_in?: boolean
@@ -153,6 +157,8 @@ export type LocalDealPayment = {
   bankCode?: string | null
   accountHolder?: string | null
   accountMasked?: string | null
+  refund?: RefundSummary | null
+  refundDataUnavailable?: boolean
 }
 
 export type LocalDeal = {

@@ -33,10 +33,24 @@ jobs:
           pnpm --filter @nestscout/sandbox type-check
       - name: Run all workspace tests
         run: |
-          pnpm --filter @nestscout/api test
+          mkdir -p artifacts/transactions
+          pnpm --filter @nestscout/api test --reporter=default --reporter=json --outputFile=../../artifacts/transactions/api-vitest.json
           pnpm --filter @nestscout/shared test
-          pnpm --filter @nestscout/mobile test
+          pnpm --filter @nestscout/mobile test --runInBand --json --outputFile=../../artifacts/transactions/mobile-jest.json
           pnpm --filter @nestscout/sandbox test
+      - name: Verify bound assertions and report remaining transaction debt
+        run: |
+          node scripts/harness/transaction-critical-coverage.mjs --require-bound-assertions \
+            --results artifacts/transactions/api-vitest.json \
+            --results artifacts/transactions/mobile-jest.json
+      - name: Preserve transaction runner evidence, including failures
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: transaction-assertions-${{ github.sha }}
+          path: artifacts/transactions/*.json
+          if-no-files-found: error
+          retention-days: 30
       - name: Run deterministic Kael evaluations
         run: |
           node apps/api/scripts/kael-eval.mjs --mode deterministic --report /tmp/kael-eval.md
@@ -68,6 +82,8 @@ jobs:
           node scripts/check-skill-contracts.mjs
           node scripts/check-runner-parity.mjs
           node scripts/lint-structure.mjs
+          node scripts/check-production-ui-copy.mjs
+          node scripts/harness/transaction-critical-coverage.mjs
       - name: Run pinned Deno checks
         run: |
           image='denoland/deno:2.9.4@sha256:c777b4b225501a61074837e90a826a58f99124837824023cd60334b1e2374498'

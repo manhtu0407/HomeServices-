@@ -35,6 +35,9 @@ type EntryAuthErrorKey =
   | 'workerApplicationContact'
   | 'workerApplicationFailed'
   | 'workerApplicationNotSubmitted'
+  | 'workerApplicationRejected'
+  | 'workerChangesRequested'
+  | 'workerEmailRequired'
   | 'workerReviewPending'
 
 export type RoleGateGreeting = Readonly<{
@@ -94,6 +97,12 @@ export type EntryAccessCopy = Readonly<{
     customerLead: string
     submit: string
     title: string
+    workerApprovedLead: string
+    workerCheckStatus: string
+    workerChangesRequestedLead: string
+    workerPendingLead: string
+    workerRejectedLead: string
+    workerResubmit: string
     workerLead: string
   }>
   recovery: Readonly<{
@@ -176,9 +185,12 @@ const viCopy: EntryAccessCopy = {
     signupPasswordShort: 'Mật khẩu cần ít nhất 8 ký tự.',
     termsRequired: 'Bạn cần đồng ý với điều khoản để tiếp tục.',
     tryAgainLater: 'Yêu cầu đang bị giới hạn. Vui lòng thử lại sau.',
-    workerApplicationContact: 'Nhập thư điện tử hoặc số điện thoại để gửi xét duyệt.',
+    workerApplicationContact: 'Nhập thư điện tử để gửi xét duyệt.',
     workerApplicationFailed: 'Không thể gửi hồ sơ xét duyệt lúc này. Vui lòng thử lại.',
     workerApplicationNotSubmitted: 'Tài khoản đã được xác nhận, nhưng hồ sơ thợ chưa được gửi. Vui lòng thử lại sau.',
+    workerApplicationRejected: 'Hồ sơ ứng tuyển thợ đã bị từ chối. Liên hệ hỗ trợ nếu bạn cần làm rõ.',
+    workerChangesRequested: 'Hồ sơ ứng tuyển cần được bổ sung trước khi gửi lại.',
+    workerEmailRequired: 'Tài khoản thợ chỉ hỗ trợ thư điện tử và mật khẩu.',
     workerReviewPending: 'Hồ sơ thợ đã được gửi xét duyệt. NestScout sẽ liên hệ trước khi cấp quyền thợ.',
   },
   emailConfirmation: {
@@ -190,8 +202,8 @@ const viCopy: EntryAccessCopy = {
   fields: {
     customerIdentifierLabel: 'Gmail hoặc SĐT',
     customerIdentifierPlaceholder: 'ten@vidu.vn hoặc 090 123 4567',
-    workerIdentifierLabel: 'Gmail hoặc SĐT',
-    workerIdentifierPlaceholder: 'ten@vidu.vn hoặc 090 123 4567',
+    workerIdentifierLabel: 'Thư điện tử',
+    workerIdentifierPlaceholder: 'ten@vidu.vn',
   },
   login: {
     busy: 'Đang xử lý…',
@@ -216,6 +228,12 @@ const viCopy: EntryAccessCopy = {
     customerLead: 'Kael sẽ đồng hành từ yêu cầu đầu tiên đến khi công việc hoàn tất.',
     submit: 'Bắt đầu sử dụng',
     title: 'Chào mừng\nvề nhà.',
+    workerApprovedLead: 'Hồ sơ ứng tuyển đã được duyệt. Kiểm tra lại quyền truy cập để tiếp tục.',
+    workerCheckStatus: 'Kiểm tra trạng thái',
+    workerChangesRequestedLead: 'Hồ sơ ứng tuyển cần được bổ sung. Chỉ gửi lại khi bạn chủ động xác nhận.',
+    workerPendingLead: 'Hồ sơ ứng tuyển đang được xem xét. Hệ thống sẽ không tự gửi thêm hồ sơ trùng lặp.',
+    workerRejectedLead: 'Hồ sơ ứng tuyển đã bị từ chối. Liên hệ hỗ trợ nếu bạn cần làm rõ quyết định.',
+    workerResubmit: 'Gửi lại hồ sơ xét duyệt',
     workerLead: 'Kael sẽ hướng dẫn bạn hoàn thiện hồ sơ và bắt đầu nhận việc minh bạch.',
   },
   recovery: {
@@ -306,9 +324,12 @@ const enCopy: EntryAccessCopy = {
     signupPasswordShort: 'Password must be at least 8 characters.',
     termsRequired: 'Accept the terms to continue.',
     tryAgainLater: 'Too many requests. Please try again later.',
-    workerApplicationContact: 'Enter an email address or phone number for the application.',
+    workerApplicationContact: 'Enter an email address for the application.',
     workerApplicationFailed: 'Unable to submit the worker application. Please try again.',
     workerApplicationNotSubmitted: 'Your account is confirmed, but the worker application was not submitted. Please try again later.',
+    workerApplicationRejected: 'Your worker application was rejected. Contact support if you need clarification.',
+    workerChangesRequested: 'Your worker application needs changes before it can be resubmitted.',
+    workerEmailRequired: 'Worker accounts support email and password only.',
     workerReviewPending: 'Your worker application was submitted for review. NestScout will contact you before enabling worker access.',
   },
   emailConfirmation: {
@@ -320,8 +341,8 @@ const enCopy: EntryAccessCopy = {
   fields: {
     customerIdentifierLabel: 'Email/phone',
     customerIdentifierPlaceholder: 'email@example.com or 090 123 4567',
-    workerIdentifierLabel: 'Email/phone',
-    workerIdentifierPlaceholder: 'email@example.com or 090 123 4567',
+    workerIdentifierLabel: 'Email',
+    workerIdentifierPlaceholder: 'email@example.com',
   },
   login: {
     busy: 'Working…',
@@ -346,6 +367,12 @@ const enCopy: EntryAccessCopy = {
     customerLead: 'Kael will stay with you from the first request until the work is complete.',
     submit: 'Get started',
     title: 'Welcome\nhome.',
+    workerApprovedLead: 'Your application was approved. Check access again to continue.',
+    workerCheckStatus: 'Check status',
+    workerChangesRequestedLead: 'Your application needs changes. It is resubmitted only when you explicitly confirm.',
+    workerPendingLead: 'Your application is under review. The system will not create duplicate submissions.',
+    workerRejectedLead: 'Your application was rejected. Contact support if you need clarification.',
+    workerResubmit: 'Resubmit application',
     workerLead: 'Kael will guide you through profile verification and a transparent start to receiving work.',
   },
   recovery: {
@@ -490,6 +517,7 @@ const errorMatchers: readonly Readonly<{
   { key: 'roleUnavailable', patterns: [/không thể tải vai trò/i, /load.*account role/i] },
   { key: 'workerApplicationContact', patterns: [/nhập email.*số điện thoại.*xét duyệt/i, /email.*phone.*application/i] },
   { key: 'workerApplicationFailed', patterns: [/không thể gửi.*xét duyệt/i, /không thể gửi hồ sơ/i, /submit.*worker application/i] },
+  { key: 'workerEmailRequired', patterns: [/tài khoản thợ.*thư điện tử.*mật khẩu/i, /worker accounts?.*email.*password/i, /worker applications? require an email/i] },
   { key: 'tryAgainLater', patterns: [/rate.?limit/i, /too many requests/i, /bị giới hạn/i] },
   { key: 'appleSignInFailed', patterns: [/đăng nhập apple/i, /apple.*sign.?in/i] },
   { key: 'googleSignInFailed', patterns: [/đăng nhập google/i, /google.*sign.?in/i] },

@@ -96,6 +96,13 @@ function buildCustomerJobDetail(): JobDetailResponse {
 }
 
 describe('frontend workflow payment truth', () => {
+  it('does not invent a sent invitation from broadcasting status without a delivery snapshot', () => {
+    const data = buildCustomerJobDetail()
+    expect(jobDetailToSnapshot(data).broadcast).toBeNull()
+    data.broadcast_state = { active_count: Number.NaN, seconds_remaining: null }
+    expect(jobDetailToSnapshot(data).broadcast).toBeNull()
+  })
+
   it('preserves estimate_ready instead of turning it into a customer-confirm action', () => {
     const snapshot = workerJobToSnapshot(buildWorkerJob({ status: 'estimate_ready' }))
 

@@ -142,6 +142,11 @@ const copy = {
     masked: 'Mã nhận dạng đã che',
     policies: 'Chính sách thuế',
     reports: 'Báo cáo',
+    refundReview: 'Yêu cầu hoàn tiền đang được xem xét',
+    refundReviewDetail: 'Chưa có quyết định duyệt hoàn tiền hoặc số tiền được duyệt. Giao dịch đã thanh toán vẫn được giữ nguyên.',
+    refundRequired: 'Nghĩa vụ hoàn tiền đã được ghi nhận',
+    refundAmount: 'Số tiền cần hoàn',
+    refundPendingReceipt: 'Chưa có chứng từ hoàn tiền được xác minh. Chưa xác nhận đã chuyển tiền.',
     reportingDisclaimer: 'Số liệu phục vụ đối chiếu nội bộ, không phải tư vấn thuế.',
     generatedAt: 'Dữ liệu tạo lúc',
     retired: 'Đã ngừng',
@@ -194,6 +199,11 @@ const copy = {
     masked: 'Masked identifiers',
     policies: 'Tax policies',
     reports: 'Reports',
+    refundReview: 'Refund request under review',
+    refundReviewDetail: 'No refund or amount has been approved. The recorded payment remains unchanged.',
+    refundRequired: 'Refund obligation recorded',
+    refundAmount: 'Amount to return',
+    refundPendingReceipt: 'No verified refund receipt is available. A completed transfer has not been confirmed.',
     reportingDisclaimer: 'Figures are for internal reconciliation and are not tax advice.',
     generatedAt: 'Data generated at',
     retired: 'Retired',
@@ -260,6 +270,17 @@ export function FinanceTransactionsPanel({ formatCurrency, language, period }: C
     <Pressable accessibilityLabel={strings.back} accessibilityRole="button" onPress={() => patch({ detail: null })} style={styles.backRow}><AdminText textRole="headline" style={styles.backText}>‹ {strings.back}</AdminText></Pressable>
     <View style={styles.sectionHeader}><AdminText textRole="title2" style={styles.sectionTitle}>{strings.transactionDetail}</AdminText><AdminText textRole="footnote" style={styles.masked}>{strings.masked}</AdminText></View>
     <TransactionRow formatCurrency={formatCurrency} language={language} row={detail.transaction} />
+    {detail.refund ? <View accessibilityLiveRegion="polite" style={styles.stateCard} testID="admin-finance-refund-summary">
+      <AdminText accessibilityRole="header" textRole="headline" style={styles.sectionTitle}>
+        {detail.refund.state === 'review_required' ? strings.refundReview : strings.refundRequired}
+      </AdminText>
+      {detail.refund.state === 'refund_required' && detail.refund.amount_vnd !== null ? <AdminText numeric textRole="headline" style={styles.amount} testID="admin-finance-refund-amount">
+        {strings.refundAmount}: {formatCurrency(detail.refund.amount_vnd)}
+      </AdminText> : null}
+      <AdminText textRole="subheadline" style={styles.secondary}>
+        {detail.refund.state === 'review_required' ? strings.refundReviewDetail : strings.refundPendingReceipt}
+      </AdminText>
+    </View> : null}
     <View style={styles.timeline}>
       {detail.timeline.map((event) => <View key={`${event.event_type}:${event.occurred_at}:${event.actor_ref ?? 'system'}`} style={styles.timelineRow}><View style={styles.timelineDot} /><View style={styles.timelineText}><AdminText textRole="headline" style={styles.rowTitle}>{event.event_type}</AdminText><AdminText numeric textRole="footnote" style={styles.secondary}>{event.occurred_at}{event.actor_ref ? ` · ${event.actor_ref}` : ''}</AdminText></View></View>)}
     </View>

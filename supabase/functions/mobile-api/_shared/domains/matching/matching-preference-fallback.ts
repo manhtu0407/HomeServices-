@@ -1,4 +1,5 @@
-import { asServiceType, asString, nullableString } from "../../platform/coercions.ts";
+import { matchingRetryReceiptSchema } from "../../../../_shared/contracts/stage1-reliability.ts";
+import { asServiceType, asString, nullableRecord, nullableString } from "../../platform/coercions.ts";
 import { apiFailure } from "../../platform/api-failure.ts";
 import { dbQuery, type DbClient } from "../../platform/db.ts";
 import { insertUserNotification } from "../notification/notifications.ts";
@@ -27,6 +28,39 @@ export async function reconcileSavedWorkerFallback(
     reason: MatchingFallbackReason;
   },
 ) {
+  const job = await dbQuery<Record<string, unknown>>(
+    client.from("jobs")
+      .select("id, quote_mode, customer_id, status, service_type, address_district")
+      .eq("id", input.jobId)
+      .maybeSingle(),
+  );
+  if (job.error) return { started: false as const, reasonCode: "DB_ERROR" as const };
+  if (!job.data) return { started: false as const, reasonCode: "NOT_APPLICABLE" as const };
+  if (job.data.quote_mode != null) {
+    if (!input.expectedWorkerId) return { started: false as const, reasonCode: "NOT_APPLICABLE" as const };
+    const result = await dbQuery(client.rpc("request_job_saved_worker_fallback_atomic", {
+      p_job_id: input.jobId, p_expected_worker_id: input.expectedWorkerId,
+    }));
+    const row = nullableRecord(result.data);
+    if (result.error || !row || typeof row.claimed !== "boolean") {
+      return { started: false as const, reasonCode: "DB_ERROR" as const };
+    }
+    if (!row.claimed) return { started: false as const, reasonCode: nullableString(row.error_code) ?? "NOT_APPLICABLE" };
+    const { claimed: _claimed, reason, ...receipt } = row;
+    const parsed = matchingRetryReceiptSchema.safeParse(receipt);
+    if (!parsed.success || parsed.data.job_id !== input.jobId ||
+      !["saved_worker_declined", "saved_worker_expired", "saved_worker_unavailable"].includes(asString(reason))) {
+      return { started: false as const, reasonCode: "DB_ERROR" as const };
+    }
+    return { started: true as const, broadcast_sent: parsed.data.broadcast_sent,
+      reasonCode: parsed.data.state === "queued" ? "QUEUED" : "RECONCILED" };
+  }
+  if (input.reason === "saved_worker_expired") {
+    await expireStaleBroadcasts(client, input.jobId, new Date().toISOString());
+    if (await hasActiveBroadcast(client, input.jobId, new Date().toISOString())) {
+      return { started: false as const, reasonCode: "ACTIVE_BROADCAST" as const };
+    }
+  }
   if (!input.allowWithoutSavedBroadcast && !await hasSavedWorkerBroadcast(
     client,
     input.jobId,
@@ -49,13 +83,7 @@ export async function reconcileSavedWorkerFallback(
   if (!row.claimed) {
     return { started: false as const, reasonCode: nullableString(row.error_code) ?? "NOT_APPLICABLE" };
   }
-  const job = await dbQuery<Record<string, unknown>>(
-    client.from("jobs")
-      .select("id, customer_id, status, service_type, address_district")
-      .eq("id", input.jobId)
-      .maybeSingle(),
-  );
-  if (job.error || !job.data || job.data.status !== "broadcasting") {
+  if (job.data.status !== "broadcasting") {
     return { started: false as const, reasonCode: "INVALID_STATUS" as const };
   }
   const matchingJob = job.data;
@@ -136,10 +164,12 @@ export async function reconcileSavedWorkerFallbackForJob(
 export async function reconcileExpiredSavedWorkerMatches(client: DbClient, limit = 100) {
   const preferences = await dbQuery<Array<Record<string, unknown>>>(
     client.from("job_matching_preferences")
-      .select("job_id, preferred_worker_id")
+      .select("job_id, preferred_worker_id, jobs!inner(status)")
       .eq("strategy", "saved_worker_first")
       .eq("auto_general", true)
       .is("fallback_at", null)
+      .eq("jobs.status", "broadcasting")
+      .order("selected_at", { ascending: true })
       .limit(limit),
   );
   if (preferences.error) return { reconciled: 0, failed: 1 };
@@ -150,8 +180,6 @@ export async function reconcileExpiredSavedWorkerMatches(client: DbClient, limit
     const workerId = nullableString(preference.preferred_worker_id);
     if (!jobId || !workerId) continue;
     try {
-      await expireStaleBroadcasts(client, jobId, new Date().toISOString());
-      if (await hasActiveBroadcast(client, jobId, new Date().toISOString())) continue;
       const fallback = await reconcileSavedWorkerFallback(client, {
         expectedWorkerId: workerId,
         jobId,

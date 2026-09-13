@@ -9,6 +9,7 @@ import {
   adminEvidenceAccessSchema,
   adminSubAdminAccessSchema,
   adminSupportPreparationSchema,
+  adminWorkflowRecoveryActionSchema,
   adminWorkerAccessSchema,
   adminWorkerApplicationDecisionSchema,
   adminWorkerProfileDecisionSchema,
@@ -16,6 +17,7 @@ import {
   parseAdminOverviewDetailsQuery,
   parseAdminScopeChangeListQuery,
   parseAdminSupportCaseListQuery,
+  parseAdminWorkflowRecoveryListQuery,
   parseAdminSubAdminAccountSearchQuery,
   parseAdminSubAdminListQuery,
   parseAdminTransactionListQuery,
@@ -109,6 +111,7 @@ type AdminControlDispatchRoute = Extract<
       | "admin.overview.details"
       | `admin.operations.scopeChanges.${string}`
       | `admin.operations.supportCases.${string}`
+      | `admin.operations.recoveryCases.${string}`
       | `admin.governance.${string}`
       | `admin.system.${string}`
       | `admin.workerApplications.${string}`
@@ -136,6 +139,7 @@ function isAdminControlRoute(route: AdminDispatchRoute): route is AdminControlDi
     || route.kind === "admin.overview.details"
     || route.kind.startsWith("admin.operations.scopeChanges.")
     || route.kind.startsWith("admin.operations.supportCases.")
+    || route.kind.startsWith("admin.operations.recoveryCases.")
     || route.kind.startsWith("admin.governance.")
     || route.kind.startsWith("admin.system.")
     || route.kind.startsWith("admin.workerApplications.")
@@ -238,6 +242,18 @@ async function dispatchAdminControlRoute(
       const input = adminEvidenceAccessSchema.safeParse(await readJson(request));
       if (!input.success) apiFailure("VALIDATION", "Yêu cầu mở evidence không hợp lệ", 400);
       return services.createAdminSupportEvidenceAccess(ctx, route.source, route.caseId, input.data);
+    }
+    case "admin.operations.recoveryCases.list": {
+      const input = parseAdminWorkflowRecoveryListQuery(new URL(request.url));
+      if (!input.success) apiFailure("VALIDATION", "Bộ lọc ca phục hồi không hợp lệ", 400);
+      return services.listAdminWorkflowRecoveryCases(ctx, input.data);
+    }
+    case "admin.operations.recoveryCases.detail":
+      return services.getAdminWorkflowRecoveryCase(ctx, route.recoveryCaseId);
+    case "admin.operations.recoveryCases.action": {
+      const input = adminWorkflowRecoveryActionSchema.safeParse(await readJson(request));
+      if (!input.success) apiFailure("VALIDATION", "Hành động phục hồi không hợp lệ", 400);
+      return services.applyAdminWorkflowRecoveryAction(ctx, route.recoveryCaseId, input.data);
     }
     case "admin.governance.disputes":
       return dispatchAdminGovernance(ctx, services.listAdminDisputes, request, "Phân trang tranh chấp không hợp lệ");

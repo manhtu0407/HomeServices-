@@ -231,8 +231,9 @@ describe('Admin Team and System focused workspaces', () => {
     expect(controls).toContain('searchPlaceholder?: string')
     expect(workspaces).toContain('Tìm dịch vụ, vấn đề hoặc mã giá')
     expect(workspaces).toContain('Tìm dịch vụ hoặc nhóm vấn đề')
-    expect(workspaces).toContain('Tìm rule, phạm vi hoặc khu vực')
-    expect(workspaces).toContain('Tìm provider, model hoặc mục đích')
+    expect(workspaces).toContain('Tìm quy tắc, phạm vi hoặc khu vực')
+    expect(workspaces).toContain('Tìm nhà cung cấp, mô hình hoặc mục đích')
+    expect(workspaces).not.toMatch(/Tìm (rule|provider)/)
   })
 
   it('keeps the four System capabilities visible to Managers', () => {
@@ -249,11 +250,40 @@ describe('Admin Team and System focused workspaces', () => {
     }
   })
 
+  it.each([
+    ['vi', 'Tìm nhà cung cấp, mô hình hoặc mục đích', 'Mô hình được cấu hình', 'Chuyển phương án dự phòng', 'Ngắt kết nối bảo vệ', 'Sự cố'],
+    ['en', 'Search provider, model, or purpose', 'Configured models', 'Fallbacks', 'Circuit', 'Incidents'],
+  ] as const)('keeps model-health workflow labels in %s while preserving technical provider names', async (language, search, configured, fallback, circuit, incidents) => {
+    jest.mocked(adminControlService.listSystemModelHealth).mockResolvedValue({
+      success: true, status: 200, data: {
+        generated_at: '2026-09-05T08:00:00Z', data_quality: 'partial',
+        data_quality_sources: { inventory: 'partial', calls: 'partial', latency: 'partial', costs: 'partial', circuits: 'partial' },
+        summary: { configured_count: 1, call_count: null, failure_count: null, fallback_count: null, open_circuit_count: null, total_cost_usd: null },
+        inventory: [{ detail_key: 'model-1', configured: true, provider: 'OpenAI', model: 'test-model', purpose: 'normal_chat' }],
+        records: [], has_more: false, next_cursor: null, next_offset: null,
+      },
+    })
+    render(<AdminSystemWorkspace actor={{ access_level: 'operator', capabilities: ['system.read'] }} capability="system-model-health" language={language} />)
+    expect(await screen.findByLabelText(search)).toBeTruthy()
+    expect(screen.getByText(configured)).toBeTruthy()
+    expect(screen.getByText(fallback)).toBeTruthy()
+    expect(await screen.findByText('OpenAI · test-model')).toBeTruthy()
+    expect(screen.getByText(language === 'vi' ? 'Trò chuyện thường' : 'Normal chat')).toBeTruthy()
+    fireEvent.press(screen.getByText(incidents))
+    expect(await screen.findByText(circuit)).toBeTruthy()
+    if (language === 'vi') {
+      expect(screen.queryByText(/\b(Circuit|Fallback|Workspace|scrub|Model|provider)\b/)).toBeNull()
+    } else {
+      expect(screen.queryByText('Mô hình được cấu hình')).toBeNull()
+      expect(screen.queryByText('Ngắt kết nối bảo vệ')).toBeNull()
+    }
+  })
+
   it('lets a Manager inspect Production taxonomy detail without exposing a mutation', async () => {
     render(<AdminSystemWorkspace actor={{ access_level: 'operator', capabilities: ['system.read'] }} capability="system-taxonomy" language="vi" />)
 
     expect(screen.getByLabelText('Tìm dịch vụ hoặc nhóm vấn đề')).toBeTruthy()
-    fireEvent.press(await screen.findByLabelText('Sửa điện. 1 Problem đang áp dụng'))
+    fireEvent.press(await screen.findByLabelText('Sửa điện. 1 Nhóm vấn đề đang áp dụng'))
     expect(await screen.findByTestId('admin-system-detail')).toBeTruthy()
     expect(screen.getByText('Mất điện')).toBeTruthy()
     withPillarContext(PILLAR, () => expect(adminControlService.getSystemTaxonomy).toHaveBeenCalledTimes(1))
@@ -263,7 +293,7 @@ describe('Admin Team and System focused workspaces', () => {
   it('requires review before a system.manage actor can apply a taxonomy change', async () => {
     render(<AdminSystemWorkspace actor={{ access_level: 'owner', capabilities: ['system.read', 'system.manage'] }} capability="system-taxonomy" language="vi" />)
 
-    fireEvent.press(await screen.findByLabelText('Sửa điện. 1 Problem đang áp dụng'))
+    fireEvent.press(await screen.findByLabelText('Sửa điện. 1 Nhóm vấn đề đang áp dụng'))
     fireEvent.press(await screen.findByText('Ngừng áp dụng'))
     fireEvent.changeText(screen.getByLabelText('Lý do thay đổi'), 'Ngừng nhóm vấn đề không còn dùng')
     fireEvent.press(screen.getByText('Rà soát thay đổi'))

@@ -20,6 +20,7 @@ import {
   workerWithdrawalRequestCreateSchema,
 } from "../../../../_shared/worker-payout-contract.ts";
 import { apiFailure } from "../../platform/api-failure.ts";
+import { workerRegistrationCommandSchema } from "../../../../_shared/contracts/worker.ts";
 import { readJson } from "../read-json.ts";
 import {
   optionalWorkerRouteOrigin,
@@ -37,6 +38,16 @@ export async function dispatchWorkerRoute(
   services: MobileApiServices,
 ): Promise<unknown> {
   switch (route.kind) {
+    case "workers.registrationCommand.submit": {
+      const input = workerRegistrationCommandSchema.safeParse(await readJson(request));
+      if (!input.success) apiFailure("VALIDATION", "Lệnh gửi hồ sơ không hợp lệ", 400);
+      return services.submitWorkerRegistrationCommand(ctx, input.data);
+    }
+    case "workers.registrationCommand.get": {
+      const key = workerRegistrationCommandSchema.shape.client_request_id.safeParse(route.clientRequestId);
+      if (!key.success) apiFailure("VALIDATION", "Mã gửi hồ sơ không hợp lệ", 400);
+      return services.getWorkerRegistrationCommand(ctx, key.data);
+    }
     case "workers.register": {
       const input = workerRegisterSchema.safeParse(await readJson(request));
       if (!input.success) apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
@@ -54,6 +65,8 @@ export async function dispatchWorkerRoute(
       if (!input.success) apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
       return services.submitWorkerApplication(ctx, input.data);
     }
+    case "workerApplications.me":
+      return services.getWorkerReadiness(ctx);
     case "workers.me":
       return services.getWorkerProfile(ctx);
     case "workers.avatarUpload": {

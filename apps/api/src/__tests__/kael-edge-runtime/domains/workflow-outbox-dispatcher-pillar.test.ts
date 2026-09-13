@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 
-import { installEdgeRuntimeTestHooks } from '../harness'
+import { installEdgeRuntimeTestHooks, makeSequenceClient } from '../harness'
 import { pillarWhy, type PillarManifest } from '../../pillar-manifest'
 import {
   dispatchConfirmationMatchingOutbox,
@@ -37,7 +37,107 @@ const claim: ConfirmationOutboxClaim = {
   attemptCount: 1,
 }
 
+function processorClient(data: unknown) {
+  return makeSequenceClient([], {
+    claim_confirmation_matching_outbox_batch: [{ data: [{
+      outbox_id: claim.outboxId, lease_token: claim.leaseToken, operation_id: claim.operationId,
+      customer_id: claim.customerId, session_id: claim.sessionId, job_id: claim.jobId,
+      diagnosis_scope: null, preferred_worker_id: null, attempt_count: 1,
+    }], error: null }],
+    activate_confirmation_matching_outbox_claim: [{ data, error: null }],
+    settle_confirmation_matching_outbox_claim: [{ data: 'completed', error: null }],
+  })
+}
+
+function broadcastReceipt() {
+  return {
+    state: 'broadcasting', job_id: claim.jobId, confirmation_operation_id: claim.operationId,
+    matching_operation_id: '58100000-0000-4000-8000-000000000007',
+    service_type: 'plumbing', district: 'q7', problem_summary: 'Kiểm tra đường ống bị rò nước.',
+    expires_at: new Date(Date.now() + 300_000).toISOString(),
+    targets: [{ worker_id: '58100000-0000-4000-8000-000000000008',
+      broadcast_id: '58100000-0000-4000-8000-000000000009',
+      delivery_id: '58100000-0000-4000-8000-000000000010',
+      operation_id: '58100000-0000-4000-8000-000000000007' }],
+  }
+}
+
 describe('confirmation matching outbox dispatcher', () => {
+  it('processes a committed RFQ receipt without a diagnosis or price and notifies only its recipient', async () => {
+    const receipt = broadcastReceipt()
+    const client = processorClient(receipt)
+    const result = await dispatchConfirmationMatchingOutbox(client as never, {}, {
+      dispatcherId: 'matching-maintainer:p58-rfq',
+    })
+    expect(result).toMatchObject({ claimed: 1, completed: 1 })
+    expect(client.calls.filter((call) => call.table === 'rpc:insert_notification_atomic')).toHaveLength(1)
+    expect(client.calls.find((call) => call.table === 'rpc:insert_notification_atomic')?.operations[0][2])
+      .toMatchObject({ p_user_id: receipt.targets[0].worker_id, p_job_id: claim.jobId,
+        p_safe_metadata: { broadcast_id: receipt.targets[0].broadcast_id, expires_at: receipt.expires_at } })
+    expect(client.calls.find((call) => call.table === 'rpc:settle_confirmation_matching_outbox_claim')?.operations[0][2])
+      .toMatchObject({ p_state: 'broadcasting', p_error_code: null })
+    expect(client.calls.some((call) => call.table === 'rpc:activate_job_broadcast_batch_durable_atomic_v2'
+      || call.table === 'rpc:begin_job_matching_preference_atomic')).toBe(false)
+  })
+
+  it.each(['foreign_job', 'foreign_confirmation', 'foreign_matching', 'duplicate', 'empty', 'expired', 'unknown'])(
+    'never enriches or notifies a %s activation receipt', async (fault) => {
+      const receipt = broadcastReceipt()
+      if (fault === 'foreign_job') receipt.job_id = claim.sessionId
+      if (fault === 'foreign_confirmation') receipt.confirmation_operation_id = claim.sessionId
+      if (fault === 'foreign_matching') receipt.targets[0].operation_id = claim.sessionId
+      if (fault === 'duplicate') receipt.targets.push({ ...receipt.targets[0] })
+      if (fault === 'empty') receipt.targets = []
+      if (fault === 'expired') receipt.expires_at = new Date(Date.now() - 1).toISOString()
+      if (fault === 'unknown') receipt.state = 'fake_success'
+      const client = processorClient(receipt)
+      await dispatchConfirmationMatchingOutbox(client as never, {}, { dispatcherId: 'matching-maintainer:p58-invalid' })
+      expect(client.calls.filter((call) => !call.table.startsWith('rpc:'))).toEqual([])
+      expect(client.calls.some((call) => call.table === 'rpc:insert_notification_atomic')).toBe(false)
+      expect(client.calls.find((call) => call.table === 'rpc:settle_confirmation_matching_outbox_claim')?.operations[0][2])
+        .toMatchObject({ p_state: 'recovery_required', p_error_code: 'MATCHING_RECONCILIATION_FAILED' })
+    },
+  )
+
+  it.each(['candidate_ready', 'official_match', 'stopped'])('lets SQL settlement retain %s authority without notifications', async (state) => {
+    const client = processorClient({ state })
+    await dispatchConfirmationMatchingOutbox(client as never, {}, { dispatcherId: 'matching-maintainer:p58-terminal' })
+    expect(client.calls.filter((call) => !call.table.startsWith('rpc:'))).toEqual([])
+    expect(client.calls.some((call) => call.table === 'rpc:insert_notification_atomic')).toBe(false)
+  })
+  it.each(['no_reachable_worker', 'recovery_required', 'lease_lost'] as const)(
+    'uses the real processor with a lease-bound activation for %s, without legacy matching', async (state) => {
+      const client = makeSequenceClient([], {
+        claim_confirmation_matching_outbox_batch: [{ data: [{
+          outbox_id: claim.outboxId, lease_token: claim.leaseToken, operation_id: claim.operationId,
+          customer_id: claim.customerId, session_id: claim.sessionId, job_id: claim.jobId,
+          diagnosis_scope: null, preferred_worker_id: null, attempt_count: 1,
+        }], error: null }],
+        activate_confirmation_matching_outbox_claim: [{ data: state === 'recovery_required'
+          ? { state, error_code: 'MATCHING_PREFERENCE_PENDING' } : { state }, error: null }],
+        settle_confirmation_matching_outbox_claim: [{ data: state === 'recovery_required' ? 'retry_scheduled' : 'completed', error: null }],
+      })
+      const result = await dispatchConfirmationMatchingOutbox(client as never, {}, {
+        dispatcherId: 'matching-maintainer:p58-real-processor',
+      })
+      expect(client.calls.find((call) => call.table === 'rpc:activate_confirmation_matching_outbox_claim')?.operations)
+        .toEqual([['rpc', 'activate_confirmation_matching_outbox_claim', {
+          p_outbox_id: claim.outboxId, p_lease_token: claim.leaseToken, p_operation_id: claim.operationId,
+        }]])
+      expect(client.calls.filter((call) => !call.table.startsWith('rpc:'))).toEqual([])
+      const settlements = client.calls.filter((call) => call.table === 'rpc:settle_confirmation_matching_outbox_claim')
+      if (state === 'lease_lost') {
+        expect(settlements).toHaveLength(0)
+        expect(result.leaseLost).toBe(1)
+      } else {
+        expect(settlements[0].operations[0][2]).toMatchObject({
+          p_state: state, p_error_code: state === 'recovery_required' ? 'MATCHING_PREFERENCE_PENDING' : null,
+        })
+        expect(result).toMatchObject(state === 'recovery_required' ? { retryScheduled: 1 } : { completed: 1 })
+      }
+    },
+  )
+
   it('claims one bounded batch and reports only lease-token-settled work as completed', async () => {
     const rpc = vi.fn().mockResolvedValue({
       data: [{

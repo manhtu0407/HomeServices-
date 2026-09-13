@@ -25,10 +25,10 @@ function assertReleaseAuthConfig({
   if (mobileApi.origin !== supabase.origin) {
     throw new Error('EAS mobile-api URL must use the same Supabase origin as auth.')
   }
-  if (buildProfile === 'production' && supabase.origin !== PRODUCTION_SUPABASE_ORIGIN) {
+  if (['production', 'native-proof-production'].includes(buildProfile) && supabase.origin !== PRODUCTION_SUPABASE_ORIGIN) {
     throw new Error('Production EAS builds must target the production Supabase project.')
   }
-  if (buildProfile === 'preview' && supabase.origin !== STAGING_SUPABASE_ORIGIN) {
+  if (['preview', 'native-proof-staging'].includes(buildProfile) && supabase.origin !== STAGING_SUPABASE_ORIGIN) {
     throw new Error('Preview EAS builds must target the staging Supabase project.')
   }
 }

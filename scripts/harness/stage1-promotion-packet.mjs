@@ -63,7 +63,9 @@ export function buildStage1PromotionPacket(input) {
       sourceSha256: input.productionUiNormalityReceipt.sourceSha256,
       receiptSha256: input.productionUiNormalityReceipt.receiptSha256,
       scannedFileCount: input.productionUiNormalityReceipt.scannedFileCount,
+      localizedLiteralCount: input.productionUiNormalityReceipt.localizedLiteralCount,
       unsafeVisibleCopyCount: input.productionUiNormalityReceipt.unsafeVisibleCopyCount,
+      languageLeakageCount: input.productionUiNormalityReceipt.languageLeakageCount,
     },
     workflowRunId: String(input.workflowRunId),
     expandOnly: {
@@ -124,7 +126,10 @@ export function verifyStage1PromotionPacket(packet) {
       packet.productionUiNormality?.sourceSha256 !== packet.release?.productionUiSourceSha256 ||
       !Number.isSafeInteger(packet.productionUiNormality?.scannedFileCount) ||
       packet.productionUiNormality.scannedFileCount < 1 ||
-      packet.productionUiNormality?.unsafeVisibleCopyCount !== 0) {
+      !Number.isSafeInteger(packet.productionUiNormality?.localizedLiteralCount) ||
+      packet.productionUiNormality.localizedLiteralCount < 1 ||
+      packet.productionUiNormality?.unsafeVisibleCopyCount !== 0 ||
+      packet.productionUiNormality?.languageLeakageCount !== 0) {
     problems.push('promotion packet Production UI normality evidence is invalid')
   }
   if (!exactFunctionSet(packet.rollback?.functions)) {

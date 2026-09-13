@@ -48,6 +48,44 @@ const job = (patch: Record<string, unknown>) => ({ ...VALID_JOB, ...patch })
 const broadcast = (patch: Record<string, unknown>) => ({ ...VALID_BROADCAST, ...patch })
 
 describe('isValidRemoteJobSnapshot', () => {
+  const accessJobId = '11111111-1111-4111-8111-111111111111'
+  const accessWorkerId = '22222222-2222-4222-8222-222222222222'
+  const accessContext = { expected_worker_id: accessWorkerId, expected_check_in_at: '2026-09-08T01:00:00.000Z' }
+  const accessReceipt = { job_id: accessJobId, worker_id: accessWorkerId, checked_in_at: accessContext.expected_check_in_at,
+    authorized_at: '2026-09-08T01:01:00.000Z', release_stage: 'unit_released', already_authorized: true }
+  const accessView = { authorization_context: accessContext, authorization_receipt: accessReceipt,
+    release_stage: 'unit_released', exact_unit_released: true, worker_checked_in: true,
+    check_in_required: true, identity_check_required: true, customer_handoff_required: true,
+    evidence_mode: 'geofence', access_profile: {} }
+  it.each([
+    [{}, true],
+    [{ authorization_context: { ...accessContext, customer_id: accessJobId } }, false],
+    [{ authorization_context: null }, false],
+    [{ authorization_receipt: { ...accessReceipt, authorized_at: null } }, false],
+    [{ authorization_receipt: { ...accessReceipt, job_id: accessWorkerId } }, false],
+    [{ authorization_receipt: { ...accessReceipt, worker_id: accessJobId } }, false],
+    [{ authorization_receipt: { ...accessReceipt, checked_in_at: '2026-09-08T02:00:00.000Z' } }, false],
+    [{ exact_unit_released: false }, false],
+    [{ worker_checked_in: false }, false],
+    [{ release_stage: 'building_released' }, false],
+  ])('validates apartment receipt consistency before snapshot hydration %#', (patch, expected) => {
+    const snapshot = job({ id: accessJobId, broadcast: { ...VALID_BROADCAST, jobId: accessJobId,
+      prebrief: [], fullAddressVisible: true, fullAddressLabel: 'Căn hộ kiểm thử', addressAccess: { ...accessView, ...patch } } })
+    expect(isValidRemoteJobSnapshot(snapshot), pillarWhy(PILLAR, 'apartment consent must bind the job, worker and visit without contradictory release flags')).toBe(expected)
+  })
+
+  it.each([
+    [null, undefined, true],
+    [null, true, true],
+    [null, 'false', false],
+    [{ state: 'refunded', amount_vnd: 120_000 }, false, false],
+    [{ state: 'review_required', amount_vnd: null, obligation_ids: [], requested_at: '2026-09-05T00:00:00Z', receipt_verification_available: false }, false, true],
+  ])('validates persisted refund information %#', (refund, refundDataUnavailable, expected) => {
+    expect(isValidRemoteJobSnapshot(job({ payment: {
+      provider: null, status: 'not_started', grossAmount: null, platformFee: null, workerNet: null, refund, refundDataUnavailable,
+    } })), pillarWhy(PILLAR, 'cached refund claims must satisfy the same public schema before rehydration')).toBe(expected)
+  })
+
   it('accepts a well-formed snapshot', () => {
     expect(isValidRemoteJobSnapshot(VALID_JOB), pillarWhy(PILLAR, 'the baseline must pass')).toBe(true)
   })

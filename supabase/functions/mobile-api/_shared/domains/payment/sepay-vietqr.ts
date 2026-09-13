@@ -175,7 +175,7 @@ export async function createSePayVietQrPaymentIntent(
     apiFailure("INVALID_STATUS", "Công việc chưa sẵn sàng cho bước thanh toán.", 409);
   }
   const transition = validateWorkflowTransition({
-    event: "kael_decided_payment",
+    event: "customer_started_payment",
     from: job.status,
     to: "payment_pending",
   });

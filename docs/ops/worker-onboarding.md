@@ -1,98 +1,90 @@
-# Worker Onboarding - Operational Workflow
+# Worker Onboarding — Operational Workflow
 
-Status: Active role-promotion gap. The mobile worker verification form exists,
-but worker role promotion is still manual/admin-controlled before that form can
-submit successfully.
+Status: source workflow with two Admin gates. Hosted availability must be checked
+against the exact release and migration inventory. This document does not certify
+Production readiness; see the [transaction evidence log](../test-logs/2026-09-05_production-transaction-readiness.md).
 
-## The Constraint
+## Safety boundary
 
-The `private.handle_new_user()` trigger on `auth.users` insert hardcodes the
-role for every new user:
+All signups start as Customer. Worker intent does not grant a role through client
+metadata. Worker authentication uses email/password; Customer social login is not
+a Worker-onboarding shortcut.
 
-```sql
-begin
-  insert into public.profiles (id, role, phone)
-  values (new.id, 'customer', new.phone);
-  return new;
-end;
-```
+Do not edit profiles.role, approval flags, availability or KYC status directly in
+Studio or through service-role scripts to make onboarding appear successful.
+The previous manual-role-flip instructions are retired. Use the public mobile API
+and audited Admin decisions; synthetic SQL fixtures are not normal-account proof.
 
-Every Supabase auth signup creates a `profiles` row with `role = 'customer'`.
-In Phase 0 the mobile app uses role-first email/password auth; phone OTP is a
-later production-auth upgrade after SMS provider setup. There is no signup
-flag, no metadata pathway, and no client-driven way to elect the worker role.
+The runtime is Expo React Native → Supabase Auth → mobile-api → DB/RPC/Storage.
+Next.js reference routes are not the store app's workflow boundary.
 
-When a worker calls the mobile runtime endpoint
-`POST /functions/v1/mobile-api/workers/register`, the Edge service reads
-`profiles.role` and rejects with `WRONG_ROLE / 403` if it is not `'worker'`.
-The submission fails until role is changed. The older Next route remains a
-reference/parity path only, not the App Store / Play Store runtime backend.
+## Supported source flow
 
-## Phase 1 Manual Workflow
+API paths below are relative to /functions/v1/mobile-api.
 
-Until a self-service flow exists, admin onboards workers out of band:
+1. The applicant signs in normally and explicitly submits POST /worker-applications.
+   GET /worker-applications/me restores the current application; opening the screen
+   must not submit another application. Keep its client request ID across retries.
+2. Admin reviews the application and uses POST
+   /admin/worker-applications/:applicationId/decision. The access decision uses
+   admin_review_worker_application_atomic and requires workers.review. Approval
+   grants Worker access; it does not complete KYC or make the Worker available.
+3. The Worker completes the profile. PATCH /workers/registration-draft saves valid
+   partial information. GET /workers/me exposes saved-document presence flags,
+   not private document URLs, and masks bank information. Upload only selected
+   replacements or missing documents into the private verification bucket.
+4. Explicit submission waits for draft acknowledgement, then POSTs
+   /workers/registration-commands with a stable client_request_id and exact
+   expected_draft_updated_at. Reconcile GET
+   /workers/registration-commands/:clientRequestId after a timeout; do not invent
+   another command while its outcome is unknown. The legacy /workers/register
+   endpoint remains an expand-window compatibility path, not the new mobile flow.
+5. Admin examines /admin/worker-applications/:applicationId/review-detail and uses
+   the separate /profile-decision action for KYC. Send profile_review_queue_id from
+   the displayed application and expected_profile_updated_at from its displayed
+   profile, preserving timestamp precision. The API calls
+   admin_review_worker_profile_snapshot_atomic; the legacy mutation is internal-only.
+   The transaction checks the snapshot, records the audited decision and saves its
+   immutable receipt. Retry the same queue, revision, decision and reason to recover
+   that receipt, even after a later submission. STALE_REVIEW requires a fresh review;
+   IDEMPOTENCY_CONFLICT must not silently change the previous decision.
+   Clients missing the snapshot cannot perform KYC decisions; do not restore the
+   legacy RPC grant as a compatibility workaround. Other onboarding reads remain available.
+6. KYC approval still does not open supply. Readiness also needs the approved
+   services/districts/capabilities, no suspension or active-job/reservation blocker,
+   availability, and proven push delivery or a valid foreground heartbeat.
+   Public booking requires three distinct real eligible/reachable Workers per
+   service × district; synthetic actors do not count.
 
-1. Prospective worker contacts the platform through whatever channel
-   operations uses (Zalo, phone, in-person).
-2. Worker signs up in the app through the current role-first email/password
-   flow. `profiles.role` is set to `'customer'` by the trigger. When phone OTP
-   ships later, this same server/admin promotion rule still applies.
-3. Admin verifies identity manually (per `STRUCTURES.md` B1: admin must
-   approve worker trust before marketplace access anyway, so this step does
-   not add new work).
-4. Admin updates the row via Supabase Studio or service-role API:
+## Failure handling and current proof limits
 
-   ```sql
-   update public.profiles set role = 'worker' where id = '<auth_user_id>';
-   ```
+- Treat a missing/invalid receipt or transport timeout as an unconfirmed outcome.
+  Read the current application, profile and review history before another action.
+  Do not convert it to a fake success or repair it with direct role/state writes.
+- A partial server draft can be resumed without re-entering saved bank details or
+  uploading the whole document set. An unsaved local selection is not durable proof.
+- A local command-journal error does not mean a submission was sent. Preserve the
+  journal, retry read-only reconciliation and escalate persistent corruption.
+  Support-led corruption recovery and unknown Storage orphan retention are not yet
+  proven; this runbook does not authorize deleting those records or objects.
+- Staging rollback SQL proves 100 sequential KYC retries and old/new-round isolation.
+  Collected HTTP and RN component tests cover the displayed snapshot, double press,
+  wrong receipt identity, stale modal responses and unknown transport outcomes.
+  This is not multi-connection concurrency, durable Admin relaunch reconciliation,
+  hosted HTTP-to-SQL or physical-device proof. Those gates remain open.
+- Local HTTP/RNTL tests and rollback-only Staging SQL cannot replace native,
+  ordinary-account or Production full-transaction proof. Keep unresolved gates open.
 
-5. Worker re-opens the app and calls
-   `POST /functions/v1/mobile-api/workers/register` with the verification
-   submission. Role check now passes.
-6. Admin approves the submission (`worker_profiles.verification_status =
-   'approved'`, `is_approved = true`) per the existing B1 flow.
+## Owners and next verification
 
-This is two manual touches per worker (role flip + verification approve).
-For pre-revenue scale (< 20 workers), this is acceptable per `CLAUDE.md`
-Core Principle #2 (Bitter Lesson: simple > complex, ship first).
-
-## When to Build a Self-Service Path
-
-Build when at least one is true:
-
-- Worker onboarding volume exceeds ~5 / week
-- Admin reports the manual flip as a recurring friction point
-- A signup screen for workers ships in the mobile app
-
-## Future Designs (do not implement now)
-
-Three possible patterns, in increasing complexity. Option 1 is documented only
-as a rejected design so the project does not drift back into metadata-based
-authorization:
-
-1. **Rejected: `signup_type` metadata + smarter trigger.** Mobile passes
-   `signup_type: 'worker'` in user-controlled signup metadata and a trigger
-   sets role accordingly. **Do not build this.** Any client controls that
-   metadata, so role becomes client-controlled and violates the Supabase
-   security model. The hardened trigger always starts signups as `customer`;
-   worker promotion must be server/admin controlled.
-
-2. **Two-step Edge API.** `POST /functions/v1/mobile-api/workers/signup-intent`
-   records the intent server-side in a separate table. Admin approves the
-   intent, then a server/admin path flips the role. This has a cleaner trust
-   model but adds a new state and admin queue.
-
-3. **Separate auth realm.** Workers sign in through a different Supabase
-   project or auth flow. Highest isolation but doubles infra.
-
-Recommendation when the time comes: option 2.
-
-## Code References
-
-- Trigger: `supabase/migrations/20260517192455_harden_auth_signup_trigger.sql`
-  (search `private.handle_new_user`)
-- Runtime route: `supabase/functions/mobile-api/_shared/domains/worker/registration.ts`
-  (`registerWorker`), composed into `MobileApiServices` by `_shared/domains.ts`
-- Reference route: `apps/api/src/app/api/workers/register/route.ts`
-- Register module: `apps/api/src/lib/workers/register.ts` (line 38-43 is the
-  `WRONG_ROLE` guard)
+- Routes: supabase/functions/mobile-api/_shared/http/routes/worker.ts and
+  http/routes/admin-control-routes.ts.
+- Worker commands: domains/worker/registration-command.ts and registration-draft.ts.
+- Admin decisions: domains/admin/control.ts, worker-review.ts and control-validation.ts.
+  Domain paths are under supabase/functions/mobile-api/_shared.
+- Mobile orchestration: apps/mobile/lib/frontend-workflow/worker-registration-recovery.ts
+  and use-worker-registration-actions.ts; form: components/worker/profile/registration-surfaces.tsx.
+- Verification: P163–P174 cover distinct local/SQL seams; consult their manifests
+  and the evidence log for exact test results and missing hosted/native coverage.
+  The next release must prove the public applicant → access → KYC → readiness flow
+  without bypassing either Admin gate or ordinary-account authentication.

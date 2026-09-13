@@ -1,6 +1,8 @@
-import type { ApartmentAccessProfileInput, ComplexityLevel, ServiceType } from '@nestscout/shared'
+import type { ApartmentAccessAuthorizationInput, ApartmentAccessAuthorizationReceipt, ApartmentAccessProfileInput, ComplexityLevel, ServiceType } from '@nestscout/shared'
 
 export type ApiResponseMetadata = {
+  clientRequestId?: string
+  clientDiagnosticCode?: string
   operationId: string | null
   releaseId: string | null
   runId: string | null
@@ -21,6 +23,8 @@ export type AccountDeletionResponse = {
 }
 
 export type AddressAccessView = {
+  authorization_context?: ApartmentAccessAuthorizationInput | null
+  authorization_receipt?: ApartmentAccessAuthorizationReceipt | null
   release_stage: 'area_only' | 'building_released' | 'unit_released'
   exact_unit_released: boolean
   worker_checked_in: boolean

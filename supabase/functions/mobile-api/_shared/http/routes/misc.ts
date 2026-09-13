@@ -2,6 +2,7 @@ import type { UserRole } from "../../../../_shared/domain.ts";
 
 export type CatalogRoute =
   | { kind: "services"; method: "GET"; roles?: UserRole[] }
+  | { kind: "services.coverage"; method: "GET"; roles: UserRole[] }
   | { kind: "places.autocomplete"; method: "POST"; roles: UserRole[] }
   | { kind: "places.resolve"; method: "POST"; roles: UserRole[] };
 
@@ -14,6 +15,9 @@ export type CaseResolutionRoute =
 // routes are matched first, the case-resolution routes are among the last. Collapsing them into
 // a single call would move the case-resolution branches ahead of every route in between.
 export function matchCatalogRoute(path: string, method: string): CatalogRoute | null {
+  if (method === "GET" && path === "/services/coverage") {
+    return { kind: "services.coverage", method: "GET", roles: ["customer"] };
+  }
   if (method === "GET" && path === "/services") {
     return { kind: "services", method: "GET" };
   }
@@ -47,7 +51,7 @@ export function matchCaseResolutionRoute(
       kind: "scope.decide",
       method: "POST",
       scopeChangeId,
-      roles: ["customer", "admin"],
+      roles: ["customer"],
     };
   }
 

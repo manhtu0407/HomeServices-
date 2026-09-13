@@ -189,6 +189,8 @@ begin
 end;
 $$;
 
+savepoint before_worker_decision;
+
 do $$
 declare v_job_id uuid; v_delivery record; v_candidate record; v_confirm record;
   v_recovery record; v_recipient_count integer; v_sent_at timestamptz;
@@ -196,6 +198,12 @@ declare v_job_id uuid; v_delivery record; v_candidate record; v_confirm record;
 begin
   select job_id into strict v_job_id from public.kael_chat_sessions
     where id = 'd4800000-0000-4000-8000-000000000010';
+  -- This suite invokes the legacy confirmation RPC; the capacity-aware RPC owns this lease in current traffic.
+  insert into public.matching_capacity_reservations(operation_id, job_id, worker_id, service_type,
+    district_code, held_at, expires_at, synthetic_cohort_id)
+  select id, v_job_id, 'd4800000-0000-4000-8000-000000000002', 'plumbing', 'q7',
+    now(), now() + interval '5 minutes', synthetic_cohort_id
+  from public.confirmation_operations where job_id = v_job_id;
   v_sent_at := date_trunc('milliseconds', now());
   update public.worker_profiles set problem_specializations = array[]::text[]
     where id = 'd4800000-0000-4000-8000-000000000002';
@@ -315,6 +323,8 @@ begin
   );
   if not v_candidate.ok or not v_candidate.already_applied
   then raise exception 'worker proposal retry was not idempotent'; end if;
+  -- Each refusal retires its candidate; a subtransaction restores the independent fixture.
+  begin
   update public.worker_profiles set problem_specializations = array[]::text[]
     where id = 'd4800000-0000-4000-8000-000000000002';
   select * into v_confirm from public.confirm_worker_matching_proposal_atomic(
@@ -322,13 +332,10 @@ begin
   );
   if v_confirm.ok or v_confirm.error_code <> 'WORKER_NOT_ELIGIBLE'
   then raise exception 'zero-capability worker passed customer confirmation transition'; end if;
-  update public.jobs set status = 'worker_candidate_pending' where id = v_job_id;
-  update public.job_worker_candidates set status = 'proposed'
-    where id = v_candidate.candidate_id;
-  update public.worker_matching_proposals set status = 'proposed'
-    where candidate_id = v_candidate.candidate_id;
-  update public.matching_operations set state = 'candidate_ready' where job_id = v_job_id;
-  update public.confirmation_operations set state = 'candidate_ready' where job_id = v_job_id;
+  raise sqlstate 'ZX001' using message = 'rollback verified zero-capability refusal';
+  exception when sqlstate 'ZX001' then null;
+  end;
+  begin
   update public.worker_profiles
     set problem_specializations = array['leak_and_flow_diagnosis']::text[]
     where id = 'd4800000-0000-4000-8000-000000000002';
@@ -337,13 +344,9 @@ begin
   );
   if v_confirm.ok or v_confirm.error_code <> 'WORKER_NOT_ELIGIBLE'
   then raise exception 'partial-capability worker passed customer confirmation transition'; end if;
-  update public.jobs set status = 'worker_candidate_pending' where id = v_job_id;
-  update public.job_worker_candidates set status = 'proposed'
-    where id = v_candidate.candidate_id;
-  update public.worker_matching_proposals set status = 'proposed'
-    where candidate_id = v_candidate.candidate_id;
-  update public.matching_operations set state = 'candidate_ready' where job_id = v_job_id;
-  update public.confirmation_operations set state = 'candidate_ready' where job_id = v_job_id;
+  raise sqlstate 'ZX002' using message = 'rollback verified partial-capability refusal';
+  exception when sqlstate 'ZX002' then null;
+  end;
   update public.worker_profiles set problem_specializations =
       array['leak_and_flow_diagnosis','pipe_and_fixture_repair']::text[]
     where id = 'd4800000-0000-4000-8000-000000000002';
@@ -360,13 +363,17 @@ begin
 end;
 $$;
 
+-- Retry failure is a separate unresolved-job scenario, not a reversal of Customer selection.
+rollback to before_worker_decision;
+
 do $$
 declare
   v_outbox_id uuid;
   v_operation_id uuid;
   v_lease_token uuid;
   v_outcome text;
-  v_retry_delay_seconds numeric;
+  v_retry_started_at timestamptz;
+  v_retry_at timestamptz;
   v_health record;
 begin
   select outbox.id, outbox.operation_id
@@ -382,13 +389,15 @@ begin
     leased_by = 'sql-dispatcher:p48-retry', lease_expires_at = now() + interval '1 minute',
     dead_lettered_at = null, last_error_code = null
   where id = v_outbox_id;
+  v_retry_started_at := clock_timestamp();
   v_outcome := public.settle_confirmation_matching_outbox_claim(
     v_outbox_id, v_lease_token, v_operation_id, 'recovery_required', 'SIMULATED_RETRY'
   );
-  select extract(epoch from outbox.next_attempt_at - now())
-  into strict v_retry_delay_seconds
+  select outbox.next_attempt_at
+  into strict v_retry_at
   from public.workflow_outbox outbox where outbox.id = v_outbox_id;
-  if v_outcome <> 'retry_scheduled' or v_retry_delay_seconds <> 4
+  if v_outcome <> 'retry_scheduled' or v_retry_at < v_retry_started_at + interval '4 seconds'
+    or v_retry_at > clock_timestamp() + interval '4 seconds'
     or (select last_error_code from public.workflow_outbox where id = v_outbox_id) <> 'SIMULATED_RETRY'
   then raise exception 'outbox exponential retry settlement failed'; end if;
 

@@ -190,9 +190,9 @@ begin
   end;
 
   begin
-    update public.jobs set status = 'worker_on_way'
+    update public.jobs set status = 'payment_pending'
     where id = 'd5400000-0000-4000-8000-000000000011';
-    raise exception 'synthetic job crossed the official-match smoke boundary';
+    raise exception 'synthetic job entered payment without terminal simulator authority';
   exception when insufficient_privilege then null;
   end;
 

@@ -33,6 +33,7 @@ async function main() {
   const admin = createClient(target.projectUrl, serviceRoleKey, {
     auth: { persistSession: false, autoRefreshToken: false },
   })
+  await removeExactCohortMedia(admin, options.cohort)
   const cleanup = await admin.rpc('cleanup_synthetic_matching_cohort', {
     p_cohort_id: options.cohort,
   })
@@ -52,6 +53,31 @@ async function main() {
   await mkdir(dirname(output), { recursive: true })
   await writeFile(output, `${JSON.stringify(receipt, null, 2)}\n`)
   process.stdout.write(`Stage 1 cleanup proven: ${relative(ROOT, output).replaceAll('\\', '/')}\n`)
+}
+
+async function removeExactCohortMedia(admin, cohortId) {
+  const jobs = await admin.from('jobs').select('id').eq('synthetic_cohort_id', cohortId)
+  if (jobs.error) throw new Error('exact cohort media cleanup could not resolve jobs')
+  const jobIds = (jobs.data ?? []).map((job) => job.id).filter(Boolean)
+  if (jobIds.length === 0) return
+  const [assets, intents] = await Promise.all([
+    admin.from('job_media_assets').select('job_id,object_path').in('job_id', jobIds),
+    admin.from('job_media_upload_intents').select('job_id,object_path').in('job_id', jobIds),
+  ])
+  if (assets.error || intents.error) throw new Error('exact cohort media cleanup could not enumerate objects')
+  const jobIdSet = new Set(jobIds)
+  const objectPaths = [...new Set([...(assets.data ?? []), ...(intents.data ?? [])]
+    .filter((row) => jobIdSet.has(row.job_id) && isExactJobMediaPath(row.job_id, row.object_path))
+    .map((row) => row.object_path))]
+  if (objectPaths.length === 0) return
+  const removed = await admin.storage.from('job-media').remove(objectPaths)
+  if (removed.error) throw new Error('exact cohort media cleanup could not remove objects')
+}
+
+function isExactJobMediaPath(jobId, objectPath) {
+  return typeof jobId === 'string' && typeof objectPath === 'string' &&
+    objectPath.startsWith(`${jobId}/`) &&
+    /^[0-9a-f-]{36}\/(?:before|after|kael_reference|cancellation_evidence|scope_change_evidence|access_check_in)\/[A-Za-z0-9._-]+$/iu.test(objectPath)
 }
 
 function parseArgs(args) {

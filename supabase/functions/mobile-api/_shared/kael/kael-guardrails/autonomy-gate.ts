@@ -64,6 +64,7 @@ export type KaelAutonomyAuditClient = {
 
 const CHECK_ORDER = Object.freeze([
   "schema",
+  "human_authority",
   "state_machine",
   "permission",
   "invariants",
@@ -71,16 +72,9 @@ const CHECK_ORDER = Object.freeze([
   "confidence_calibration",
 ] as const);
 
-const HIGH_STAKES_ACTIONS = new Set<KaelAutonomyDecision["action"]>([
-  "decide_payment",
-  "decide_dispute",
-]);
 const FLAG_GATED_FULL_AUTONOMY_ACTIONS = new Set<KaelAutonomyDecision["action"]>([
   "process_cancellation",
   "decide_scope_change",
-  "confirm_completion",
-  "decide_payment",
-  "decide_dispute",
 ]);
 const HIGH_STAKES_AMOUNT_VND = 1_000_000;
 const HIGH_STAKES_CONFIDENCE_MIN = 0.82;
@@ -158,7 +152,7 @@ export function gateAutonomyDecision(input: KaelAutonomyGateInput): KaelAutonomy
     });
   }
 
-  const piiOrSecret = hasPattern(decision, PII_OR_SECRET_PATTERNS);
+  const piiOrSecret = hasPattern(decision, PII_OR_SECRET_PATTERNS, input.knownEvidenceReferences);
   if (piiOrSecret) {
     return blocked(input, "reject", "PII_OR_SECRET_DETECTED", decision, {
       invariant: "I4",
@@ -296,12 +290,19 @@ function scrubDecisionForAudit(decision: KaelAutonomyDecision | undefined): unkn
   return decision ? scrubJsonStrings(decision) : null;
 }
 
-function scrubJsonStrings(value: unknown): unknown {
-  if (typeof value === "string") return scrubKaelPiiText(value);
-  if (Array.isArray(value)) return value.map(scrubJsonStrings);
+function scrubAutonomyText(value: string): string {
+  return PII_OR_SECRET_PATTERNS.reduce((text, pattern) =>
+    text.replace(new RegExp(pattern.source, `${pattern.flags}g`), "[redacted]"), scrubKaelPiiText(value));
+}
+
+function scrubJsonStrings(value: unknown, key?: string): unknown {
+  if (typeof value === "string") {
+    return key === "reference_id" && isUuidReference(value) ? value : scrubAutonomyText(value);
+  }
+  if (Array.isArray(value)) return value.map(item => scrubJsonStrings(item));
   if (value && typeof value === "object") {
     return Object.fromEntries(
-      Object.entries(value as Record<string, unknown>).map(([key, item]) => [key, scrubJsonStrings(item)]),
+      Object.entries(value as Record<string, unknown>).map(([key, item]) => [key, scrubJsonStrings(item, key)]),
     );
   }
   return value;
@@ -344,18 +345,19 @@ function buildAudit(
   decision: KaelAutonomyDecision | null,
   metadata: Record<string, unknown> = {},
 ): KaelAutonomyGateAudit {
-  const evidenceRefs = decision ? decision.evidence.map((evidence) => evidence.reference_id) : [];
+  const evidenceRefs = decision ? decision.evidence.map(({ reference_id: reference }) =>
+    isUuidReference(reference) ? reference : scrubAutonomyText(reference)) : [];
   return {
     gate_result: gateResult,
     reason_code: reasonCode,
     from_status: input.from,
     to_status: input.to,
     action: decision?.action ?? null,
-    policy_id: decision?.policy_id ?? null,
+    policy_id: decision ? scrubAutonomyText(decision.policy_id) : null,
     resulting_event: decision?.resulting_event ?? null,
     confidence: decision?.confidence ?? null,
     evidence_refs: evidenceRefs,
-    safe_metadata: {
+    safe_metadata: scrubJsonStrings({
       check_order: [...CHECK_ORDER],
       decision_source: input.source ?? "policy",
       authority: {
@@ -369,7 +371,7 @@ function buildAudit(
         boundary_signal: input.authority.boundarySignal,
       },
       ...metadata,
-    },
+    }) as Record<string, unknown>,
   };
 }
 
@@ -410,20 +412,6 @@ function checkEvidenceSufficiency(
   if (decision.action === "decide_scope_change") {
     return requireKinds(decision, ["artifact", "system_check", "policy"], "EVIDENCE_INSUFFICIENT_DECIDE_SCOPE_CHANGE", "I2");
   }
-  if (decision.action === "confirm_completion") {
-    return requireKinds(decision, ["worker_evidence", "system_check", "policy"], "EVIDENCE_INSUFFICIENT_CONFIRM_COMPLETION", "I1");
-  }
-  if (decision.action === "decide_payment") {
-    return requireKinds(decision, ["artifact", "job_event", "policy"], "EVIDENCE_INSUFFICIENT_DECIDE_PAYMENT", "I1");
-  }
-  if (decision.action === "decide_dispute") {
-    return requireAnyKinds(
-      decision,
-      [["artifact", "job_event", "policy"], ["customer_input", "worker_evidence", "policy"]],
-      "EVIDENCE_INSUFFICIENT_DECIDE_DISPUTE",
-      "I2",
-    );
-  }
   return { ok: true };
 }
 
@@ -452,9 +440,20 @@ function requireAnyKinds(
   return { ok: false as const, reasonCode, invariant, missingKinds: [...shortest] };
 }
 
-function hasPattern(decision: KaelAutonomyDecision, patterns: readonly RegExp[]) {
+function isUuidReference(value: string) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+}
+
+function hasPattern(
+  decision: KaelAutonomyDecision, patterns: readonly RegExp[], knownReferences: readonly string[] = [],
+) {
   const evidenceText = decision.evidence
-    .flatMap((evidence) => [evidence.reference_id, evidence.summary ?? ""])
+    // Only catalogued identity fields are opaque; summaries and unknown references still face every guard.
+    .flatMap((evidence) => [
+      isUuidReference(evidence.reference_id) && knownReferences.includes(evidence.reference_id)
+        ? "" : evidence.reference_id,
+      evidence.summary ?? "",
+    ])
     .join("\n");
   const text = `${decision.policy_id}\n${decision.resulting_event}\n${evidenceText}`;
   return patterns.some((pattern) => pattern.test(text));
@@ -466,7 +465,7 @@ function isPolicyReference(referenceId: string) {
 }
 
 function isHighStakes(input: KaelAutonomyGateInput, decision: KaelAutonomyDecision) {
-  if (HIGH_STAKES_ACTIONS.has(decision.action)) return true;
+  void decision;
   return (input.amountVnd ?? 0) >= HIGH_STAKES_AMOUNT_VND;
 }
 

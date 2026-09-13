@@ -12,9 +12,6 @@ export const KAEL_AUTONOMY_ACTIONS = Object.freeze([
   'start_matching',
   'process_cancellation',
   'decide_scope_change',
-  'confirm_completion',
-  'decide_payment',
-  'decide_dispute',
 ] as const)
 
 export type KaelAutonomyAction = (typeof KAEL_AUTONOMY_ACTIONS)[number]
@@ -24,9 +21,6 @@ export const KAEL_AUTONOMY_EVENTS = Object.freeze([
   'kael_started_matching',
   'kael_processed_cancellation',
   'kael_decided_scope_change',
-  'kael_confirmed_completion',
-  'kael_decided_payment',
-  'kael_decided_dispute',
 ] as const)
 
 export type KaelAutonomyEvent = (typeof KAEL_AUTONOMY_EVENTS)[number]
@@ -78,12 +72,9 @@ export const WORKFLOW_EVENTS = Object.freeze([
   'kael_decided_scope_change',
   'scope_change_decided',
   'worker_completed',
-  'kael_confirmed_completion',
   'customer_confirmed_completion',
-  'kael_decided_payment',
+  'customer_started_payment',
   'payment_confirmed',
-  'worker_confirmed_cash_payment',
-  'kael_decided_dispute',
   'review_submitted',
   'kael_processed_cancellation',
   'cancel_requested',

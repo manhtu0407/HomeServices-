@@ -32,34 +32,17 @@ export type AdminActor = {
   capabilities: AdminControlCapability[];
 };
 
-export type AdminOperationsResponse = {
-  actor: AdminActor;
-  generated_at: string;
-  attention: Array<{
-    key:
-      | "worker_applications"
-      | "payment_attention"
-      | "open_disputes"
-      | "other_admin_queue";
-    target_section: "operations" | "workers" | "transactions";
-    count: number;
-  }>;
-  flow: Array<{ status: string; count: number }>;
-  quality: Array<{
-    key: "workers_suspended" | "workers_in_verification";
-    count: number;
-  }>;
-  audit_events: Array<{
-    id: string;
-    actor_id: string | null;
-    actor_name: string | null;
-    actor_role: string;
-    action: string;
-    topic: string | null;
-    decision: string;
-    occurred_at: string;
-  }>;
-};
+export type {
+  AdminOperationsResponse,
+  AdminWorkflowRecoveryStatus,
+  AdminWorkflowRecoverySummary,
+  AdminWorkflowRecoveryListInput,
+  AdminWorkflowRecoveryListResponse,
+  AdminWorkflowRecoveryActionReceipt,
+  AdminWorkflowRecoveryDetailResponse,
+  AdminWorkflowRecoveryActionInput,
+  AdminWorkflowRecoveryActionResponse,
+} from './admin-operations.ts'
 
 export const ADMIN_OVERVIEW_DETAIL_KEYS = [
   "coordination",
@@ -458,6 +441,7 @@ export type AdminWorkerReviewDetail = {
     created_at: string | null;
   };
   profile: {
+    updated_at: string | null;
     legal_name: string | null;
     date_of_birth: string | null;
     gender: string | null;
@@ -486,6 +470,8 @@ export type AdminWorkerReviewDetail = {
 
 export type AdminWorkerProfileDecisionInput = {
   decision: "approve" | "request_changes";
+  profile_review_queue_id: string;
+  expected_profile_updated_at: string;
   reason?: string;
 };
 

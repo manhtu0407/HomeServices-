@@ -580,7 +580,7 @@ function WorkerV5ScreenHeader({
   return <View style={[styles.headerRow, usesKaelOrbHandoff ? styles.kaelOrbCustomerHeaderRow : null, usesEarningsOverviewHandoff ? styles.earningsOverviewHeaderRow : null]}>
     {usesOpportunityInboxHandoff || usesEarningsOverviewHandoff || screen.id === '5.1-profile-overview' ? null : (
       <LiquidBackButton
-        label={language === 'vi' ? 'Quay lại worker hiện tại' : 'Back to current worker surface'}
+        label={language === 'vi' ? 'Quay lại giao diện thợ hiện tại' : 'Back to current worker surface'}
         mode={workerThemeMode}
         onPress={onBack}
         testID="worker-v5-back"

@@ -13,7 +13,6 @@ import {
   type LocalWorkflowSelectors,
   type LocalWorkflowState,
   type ReviewInput,
-  type WorkerRegisterInput,
   type WorkerRegistrationDraftInput,
   type WorkerServiceAreaUpdateInput,
   type WorkerServicePreferencesUpdateInput,
@@ -41,7 +40,7 @@ import type {
   JobIncidentScopePricePreviewResponse,
 } from './api-types'
 import { useAppLanguage } from './app-language'
-import { localizeWorkflowError, type WorkflowErrorContext } from './frontend-workflow/errors'
+import { localizeWorkflowError, type WorkflowErrorHandler } from './frontend-workflow/errors'
 import type { CustomerAvatarDraft } from './customer-avatar-upload'
 import type { WorkerAvatarDraft } from './worker-avatar-upload'
 import {
@@ -104,23 +103,19 @@ type FrontendWorkflowActions = {
   workerDeclineBroadcast: () => Promise<boolean>
   workerSelectBroadcast: (broadcastId: string) => boolean
   workerUpdateStatus: WorkerOnsiteActions['workerUpdateStatus']
-  workerConfirmCashPayment: (received?: boolean) => Promise<boolean>
   requestScopeChange: (input: WorkerScopeChangeDraftInput) => Promise<boolean>
   getKaelJobIncident: (jobIdOverride?: string) => Promise<JobIncidentResponse | false>
   openKaelJobIncident: (input: WorkerScopeChangeDraftInput) => Promise<JobIncidentResponse | false>
   previewScopeChangeFromKaelIncident: () => Promise<JobIncidentScopePricePreviewResponse | false>
   proposeScopeChangeFromKaelIncident: (quoteId: string) => Promise<boolean>
   requestWorkerCancellation: (input: WorkerCancellationRequestInput) => Promise<boolean>
-  workerSubmitRegistration: (input: WorkerRegisterInput) => Promise<boolean>
+    workerSubmitRegistration: (input: WorkerRegistrationDraftInput) => Promise<boolean>
+    workerReconcileRegistration: () => Promise<boolean>
   workerSaveRegistrationDraft: (input: WorkerRegistrationDraftInput) => Promise<boolean>
   decideScopeChange: (scopeChangeId: string, input: CustomerScopeDecisionInput) => Promise<boolean>
   customerConfirmCompletion: () => Promise<boolean>
-  createPaymentIntent: () => Promise<boolean>
   createManualBankPaymentOrder: () => Promise<boolean>
   claimManualBankPayment: (sendingBank?: string) => Promise<boolean>
-  selectDirectWorkerPayment: () => Promise<boolean>
-  respondToDirectWorkerPayment: (received: boolean) => Promise<boolean>
-  confirmStagingPayment: () => Promise<boolean>
   authorizeApartmentAccess: () => Promise<boolean>
   submitReview: (input: Omit<ReviewInput, 'job_id'>) => Promise<boolean>
   workerUpdateAvailability: (isAvailable: boolean) => Promise<boolean>
@@ -142,6 +137,10 @@ type FrontendWorkflowActions = {
 }
 
 type FrontendWorkflowContextValue = {
+  customerApartmentAccessState: ReturnType<typeof useCustomerJobActions>['customerApartmentAccessState']
+  customerMatchingRetryFeedback: ReturnType<typeof useCustomerJobActions>['customerMatchingRetryFeedback']
+  customerMatchingSelectionFeedback: ReturnType<typeof useCustomerJobActions>['customerMatchingSelectionFeedback']
+  customerMatchingSelectionState: ReturnType<typeof useCustomerJobActions>['customerMatchingSelectionState']
   state: LocalWorkflowState
   selectors: LocalWorkflowSelectors
   customerKaelMemory: KaelMemorySelfViewResponse['memory'] | null
@@ -164,6 +163,7 @@ type FrontendWorkflowContextValue = {
   workerPerformanceInsights: WorkerPerformanceInsightsResponse | null
   workerPayoutMethod: WorkerPayoutMethod | null
   workerProfile: WorkerProfileResponse | null
+  workerRegistrationRecovery: import('./frontend-workflow/worker-registration-recovery').WorkerRegistrationRecoveryView
   workerWithdrawalRequests: WorkerWithdrawalRequest[]
   notifications: NotificationListResponse['notifications']
   notificationUnreadCount: number
@@ -184,7 +184,6 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
   const remoteSessionUserId = localVisualAuditSession ? null : sessionUserId
   const stateRef = useRef(state)
   const pendingJobCreateClientRequestRef = useRef<PendingClientRequestId | null>(null)
-  const pendingMatchingPreferenceClientRequestRef = useRef<PendingClientRequestId | null>(null)
   const pendingDirectScopeChangeClientRequestRef = useRef<PendingClientRequestId | null>(null)
   const pendingIncidentOpenClientRequestRef = useRef<PendingClientRequestId | null>(null)
   const pendingScopePricePreviewClientRequestRef = useRef<PendingClientRequestId | null>(null)
@@ -199,6 +198,7 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
     workerRefresh: () => Promise<boolean>
     refreshNotifications: () => Promise<boolean>
     hydrateCustomerActiveJob: () => Promise<boolean>
+    reconcilePendingConfirmations: () => Promise<boolean>
     refreshCustomerAvatar: () => Promise<boolean>
   } | null>(null)
 
@@ -206,7 +206,6 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
     if (pendingRequestOwnerRef.current === sessionUserId) return
     pendingRequestOwnerRef.current = sessionUserId
     pendingJobCreateClientRequestRef.current = null
-    pendingMatchingPreferenceClientRequestRef.current = null
     pendingDirectScopeChangeClientRequestRef.current = null
     pendingIncidentOpenClientRequestRef.current = null
     pendingScopePricePreviewClientRequestRef.current = null
@@ -221,8 +220,8 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
   const remoteJobId = getRemoteJobId(state)
   const customerStatus = state.deal?.status
 
-  const setRemoteError = useCallback((error: string, code?: string, context?: WorkflowErrorContext) => {
-    dispatch({ type: 'set_workflow_error', error: localizeWorkflowError(error, language, code, context) })
+  const setRemoteError = useCallback<WorkflowErrorHandler>((error, code) => {
+    dispatch({ type: 'set_workflow_error', error: localizeWorkflowError(error, language, code) })
     return false
   }, [language])
 
@@ -253,19 +252,25 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
 
   const {
     cancelRemoteJob,
+    authorizeApartmentAccess,
+    customerApartmentAccessState,
     confirmRemoteSearch,
+    customerMatchingRetryFeedback,
+    customerMatchingSelectionFeedback,
+    customerMatchingSelectionState,
     createRemoteJobFromDraft,
     hydrateCustomerActiveJob,
     hydrateRemoteJobById,
     listFavoriteWorkersForMatching,
+    reconcilePendingConfirmations,
     refreshCurrentJob,
     setMatchingPreference,
   } = useCustomerJobActions({
     dispatch,
     language,
     pendingJobCreateClientRequestRef,
-    pendingMatchingPreferenceClientRequestRef,
     role: remoteRole,
+    sessionAccessToken: localVisualAuditSession ? undefined : session?.access_token,
     sessionUserId: remoteSessionUserId,
     setRemoteError,
     stateRef,
@@ -293,6 +298,8 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
     workerSavePayoutMethod,
     workerSubmitRegistration,
     workerSaveRegistrationDraft,
+    workerRegistrationRecovery,
+    workerReconcileRegistration,
     workerSubmitBroadcastProposal,
     workerUpdateAvailability,
     workerUpdateServiceArea,
@@ -305,6 +312,7 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
     refreshCurrentJob,
     role: remoteRole,
     sessionUserId: remoteSessionUserId,
+    sessionAccessToken: localVisualAuditSession ? undefined : session?.access_token,
     setRemoteError,
     stateRef,
   })
@@ -318,11 +326,12 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
     setWorkerCandidateFavorite,
   } = useWorkerCandidateActions({
     customerStatus,
-    hydrateRemoteJobById,
+    dispatch,
     language,
     remoteJobId,
     role: remoteRole,
     sessionUserId: remoteSessionUserId,
+    sessionAccessToken: localVisualAuditSession ? undefined : session?.access_token,
     stateRef,
   })
 
@@ -345,9 +354,7 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
   })
 
   const {
-    authorizeApartmentAccess,
     requestWorkerCancellation,
-    workerConfirmCashPayment,
     workerUpdateStatus,
   } = useWorkerOnsiteActions({
     dispatch,
@@ -359,12 +366,8 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
 
   const {
     claimManualBankPayment,
-    confirmStagingPayment,
     createManualBankPaymentOrder,
-    createPaymentIntent,
     customerConfirmCompletion,
-    respondToDirectWorkerPayment,
-    selectDirectWorkerPayment,
     submitReview,
   } = useCompletionPaymentActions({
     dispatch,
@@ -388,7 +391,6 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
     workerDeclineBroadcast,
     workerSelectBroadcast,
     workerUpdateStatus,
-    workerConfirmCashPayment,
     requestScopeChange,
     getKaelJobIncident,
     openKaelJobIncident,
@@ -396,15 +398,12 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
     proposeScopeChangeFromKaelIncident,
     requestWorkerCancellation,
     workerSubmitRegistration,
-    workerSaveRegistrationDraft,
+      workerSaveRegistrationDraft,
+      workerReconcileRegistration,
     decideScopeChange,
     customerConfirmCompletion,
     createManualBankPaymentOrder,
-    createPaymentIntent,
     claimManualBankPayment,
-    selectDirectWorkerPayment,
-    respondToDirectWorkerPayment,
-    confirmStagingPayment,
     authorizeApartmentAccess,
     submitReview,
     workerUpdateAvailability,
@@ -431,11 +430,7 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
     listFavoriteWorkersForMatching,
     customerConfirmCompletion,
     createManualBankPaymentOrder,
-    createPaymentIntent,
     claimManualBankPayment,
-    selectDirectWorkerPayment,
-    respondToDirectWorkerPayment,
-    confirmStagingPayment,
     decideScopeChange,
     decideWorkerCandidate,
     setWorkerCandidateFavorite,
@@ -467,12 +462,12 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
     workerRequestWithdrawal,
     workerSubmitRegistration,
     workerSaveRegistrationDraft,
+    workerReconcileRegistration,
     workerUpdateAvailability,
     workerUpdateServiceArea,
     workerUpdateServicePreferences,
     workerUploadAvatar,
     workerUpdateStatus,
-    workerConfirmCashPayment,
   ])
 
   useEffect(() => {
@@ -485,9 +480,17 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
       workerRefresh,
       refreshNotifications,
       hydrateCustomerActiveJob,
+      reconcilePendingConfirmations,
       refreshCustomerAvatar,
     }
-  }, [refreshCurrentJob, workerRefresh, refreshNotifications, hydrateCustomerActiveJob, refreshCustomerAvatar])
+  }, [
+    refreshCurrentJob,
+    workerRefresh,
+    refreshNotifications,
+    hydrateCustomerActiveJob,
+    reconcilePendingConfirmations,
+    refreshCustomerAvatar,
+  ])
 
   // Refresh immediately on foreground; polling and realtime can otherwise leave
   // a stale timeline/notification visible until their next interval/event.
@@ -501,6 +504,7 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
       if (remoteRole === 'customer' || remoteRole === 'admin') {
         if (getRemoteJobId(stateRef.current)) void live.refreshCurrentJob()
         else void live.hydrateCustomerActiveJob()
+        if (remoteRole === 'customer') void live.reconcilePendingConfirmations()
       }
       // The avatar read URL is short-lived, so re-sign it after a long background.
       if (remoteRole === 'customer') void live.refreshCustomerAvatar()
@@ -577,7 +581,11 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
 
   return {
     state,
+    customerApartmentAccessState,
     selectors,
+    customerMatchingRetryFeedback,
+    customerMatchingSelectionFeedback,
+    customerMatchingSelectionState,
     customerKaelMemory,
     customerKaelMemoryStatus,
     customerProfileInsights,
@@ -598,6 +606,7 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
     workerPerformanceInsights,
     workerPayoutMethod,
     workerProfile,
+    workerRegistrationRecovery,
     workerWithdrawalRequests,
     notifications,
     notificationUnreadCount,

@@ -100,6 +100,7 @@ type ValidateJobEvidenceRefsInput = {
   mediaRefs: string[];
   allowedStages: readonly JobEvidenceStage[];
   ownerId?: string;
+  maxRefs?: 5 | 10;
 };
 
 export async function validateJobEvidenceRefs(
@@ -108,7 +109,7 @@ export async function validateJobEvidenceRefs(
 ): Promise<string[]> {
   const normalizedRefs = [...new Set(input.mediaRefs.map((ref) => ref.trim()).filter(Boolean))];
   if (normalizedRefs.length === 0) return [];
-  if (normalizedRefs.length > 5) invalidEvidenceRef();
+  if (normalizedRefs.length > (input.maxRefs ?? 5)) invalidEvidenceRef();
 
   const allowedStages = new Set<JobEvidenceStage>(input.allowedStages);
   const expectedByPath = new Map<string, JobEvidenceStage>();

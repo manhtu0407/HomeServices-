@@ -22,6 +22,7 @@ const release = Object.freeze(buildHarnessRelease({
 const cohortId = `synthetic-stage1-${release.releaseId.slice(8, 20)}-${release.releaseId.slice(21)}-gh77`
 const mergeApprovalReceipt = buildReviewedMainMergeReceipt({
   repository: 'nestscout/app',
+  requiredReviewer: 'kouuuuuu',
   mergeCommitSha: release.gitSha,
   pullRequest: {
     number: 205,
@@ -33,7 +34,7 @@ const mergeApprovalReceipt = buildReviewedMainMergeReceipt({
   },
   review: {
     id: 88,
-    actor: 'dev-reviewer',
+    actor: 'kouuuuuu',
     commitSha: '9'.repeat(40),
     submittedAt: '2026-08-23T00:59:00Z',
   },
@@ -150,8 +151,9 @@ const maintainerSourceProof = buildEdgeSourceProof({
 
 function productionProviderReadiness() {
   return {
-    anthropic: true, deepseek: false, durable_guards: true,
-    global_ai_enabled: true, perplexity: true, vietmap: true,
+    android_fcm_v1: true, anthropic: true, deepseek: false, durable_guards: true,
+    global_ai_enabled: true, ios_apns: true, perplexity: true,
+    push_receipt_reconciler: true, vietmap: true,
   }
 }
 

@@ -39,7 +39,7 @@ export async function activateBroadcastBatch(
 ) {
   const result = await dbQuery<Array<Record<string, unknown>>>(
     client.rpc(input.durable !== false
-      ? "activate_job_broadcast_batch_durable_atomic"
+      ? "activate_job_broadcast_batch_durable_atomic_v2"
       : "activate_job_broadcast_batch_atomic", {
       p_job_id: input.jobId,
       p_worker_ids: input.workerIds,
@@ -89,22 +89,11 @@ export async function createBroadcasts(
     };
   }
   const durable = nullableString(modeResult.data.quote_mode) !== null;
-  const eligibleResult = await queryEligibleWorkers(
-    client,
-    serviceType,
-    district,
-    5,
-    { ...options, jobId },
-  );
-  if (!eligibleResult.success) {
-    return {
-      success: false as const,
-      reasonCode: "DB_ERROR" as const,
-      reason: eligibleResult.reason,
-    };
-  }
-  const eligible = eligibleResult.workers;
-  if (eligible.length === 0) {
+  const workerIdsResult = durable
+    ? await readReservedWorkerIds(client, jobId, options)
+    : await readLegacyEligibleWorkerIds(client, jobId, serviceType, district, options);
+  if (!workerIdsResult.success) return workerIdsResult;
+  if (workerIdsResult.workerIds.length === 0) {
     return {
       success: false as const,
       reasonCode: "NO_WORKER" as const,
@@ -118,7 +107,7 @@ export async function createBroadcasts(
   const batchId = crypto.randomUUID();
   const activation = await activateBroadcastBatch(client, {
     jobId,
-    workerIds: eligible.map((worker) => worker.id),
+    workerIds: workerIdsResult.workerIds,
     batchId,
     sentAt: now.toISOString(),
     expiresAt: expiresAt.toISOString(),
@@ -138,6 +127,62 @@ export async function createBroadcasts(
     batchId,
     broadcastCount: activation.targets.length,
     expiresAt: expiresAt.toISOString(),
+  };
+}
+
+async function readReservedWorkerIds(
+  client: DbClient,
+  jobId: string,
+  options: { candidateWorkerIds?: string[]; excludeWorkerIds?: string[] },
+) {
+  const result = await dbQuery<Array<Record<string, unknown>>>(
+    client.rpc("get_matching_capacity_reservation_worker_ids", {
+      p_job_id: jobId,
+    }),
+  );
+  if (result.error) {
+    return {
+      success: false as const,
+      reasonCode: "DB_ERROR" as const,
+      reason: "Không thể kiểm tra phần năng lực thợ đã được giữ chỗ",
+    };
+  }
+  const candidateIds = options.candidateWorkerIds
+    ? new Set(options.candidateWorkerIds)
+    : null;
+  const excludedIds = new Set(options.excludeWorkerIds ?? []);
+  const workerIds = [...new Set((result.data ?? [])
+    .map((row) => asString(row.worker_id))
+    .filter((workerId): workerId is string => Boolean(workerId))
+    .filter((workerId) => (!candidateIds || candidateIds.has(workerId)) && !excludedIds.has(workerId)))]
+    .slice(0, 5);
+  return { success: true as const, workerIds };
+}
+
+async function readLegacyEligibleWorkerIds(
+  client: DbClient,
+  jobId: string,
+  serviceType: ServiceType,
+  district: string,
+  options: { candidateWorkerIds?: string[]; excludeWorkerIds?: string[] },
+) {
+  const eligibleResult = await queryEligibleWorkers(
+    client,
+    serviceType,
+    district,
+    5,
+    { ...options, jobId },
+  );
+  if (!eligibleResult.success) {
+    return {
+      success: false as const,
+      reasonCode: "DB_ERROR" as const,
+      reason: eligibleResult.reason,
+    };
+  }
+  return {
+    success: true as const,
+    workerIds: eligibleResult.workers.map((worker) => worker.id),
   };
 }
 

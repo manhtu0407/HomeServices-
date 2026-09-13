@@ -17,12 +17,13 @@ import {
   jobMediaRevokeSchema,
   jobMediaUploadSchema,
 } from "../../../../_shared/job-media-contract.ts";
+import { rfqPriceProposalInputSchema, rfqPriceDecisionInputSchema } from "../../../../_shared/contracts/rfq-price.ts";
 import {
-  directWorkerPaymentResponseSchema,
-  directWorkerPaymentSelectSchema,
   manualBankPaymentClaimSchema,
 } from "../routes/payment-contract.ts";
+import { apartmentAccessAuthorizationSchema } from "../../../../_shared/contracts/job.ts";
 import { apiFailure } from "../../platform/api-failure.ts";
+import { matchingRetryRequestSchema } from "../../../../_shared/contracts/stage1-reliability.ts";
 import { readJson } from "../read-json.ts";
 import { workerStatusUpdateSchema } from "../dto/worker.ts";
 import type { MobileApiContext, MobileApiServices } from "../contracts.ts";
@@ -39,13 +40,41 @@ export async function dispatchJobRoute(
       return rejectDirectJobCreate(request);
     case "jobs.get":
       return services.getJob(ctx, route.jobId);
-    case "jobs.confirmSearch":
-      return services.confirmSearch(ctx, route.jobId);
+    case "jobs.rfqPrice":
+      return services.getRfqPrice(ctx, route.jobId);
+    case "jobs.rfqPricePropose": {
+      const input = rfqPriceProposalInputSchema.safeParse(await readJson(request));
+      if (!input.success) apiFailure("VALIDATION", "Báo giá không hợp lệ.", 400);
+      return services.proposeRfqPrice(ctx, route.jobId, input.data);
+    }
+    case "jobs.rfqPriceDecide": {
+      const input = rfqPriceDecisionInputSchema.safeParse(await readJson(request));
+      if (!input.success) apiFailure("VALIDATION", "Quyết định báo giá không hợp lệ.", 400);
+      return services.decideRfqPrice(ctx, route.jobId, input.data);
+    }
+    case "jobs.confirmSearch": {
+      if (request.body === null) {
+        apiFailure("CLIENT_UPDATE_REQUIRED", "Hãy cập nhật ứng dụng để tìm thợ lại an toàn.", 409);
+      }
+      const body = await readJson(request);
+      if (body && typeof body === "object" && !Array.isArray(body) && Object.keys(body).length === 0) {
+        apiFailure("CLIENT_UPDATE_REQUIRED", "Hãy cập nhật ứng dụng để tìm thợ lại an toàn.", 409);
+      }
+      const input = matchingRetryRequestSchema.safeParse(body);
+      if (!input.success) apiFailure("VALIDATION", "Yêu cầu tìm thợ không hợp lệ.", 400);
+      return services.requestJobMatchingRetry(ctx, route.jobId, input.data);
+    }
+    case "jobs.matchingRetry":
+      return services.getJobMatchingRetry(ctx, route.jobId, route.requestId);
+    case "jobs.matchingOperation":
+      return services.getJobMatchingOperation(ctx, route.jobId);
     case "jobs.matchingPreference": {
       const input = jobMatchingPreferenceSchema.safeParse(await readJson(request));
       if (!input.success) apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
       return services.setJobMatchingPreference(ctx, route.jobId, input.data);
     }
+    case "jobs.matchingPreferenceReceipt":
+      return services.getJobMatchingPreferenceReceipt(ctx, route.jobId, route.requestId);
     case "jobs.cancel":
       return services.cancelJob(ctx, route.jobId);
     case "jobs.customerCancellation": {
@@ -68,6 +97,8 @@ export async function dispatchJobRoute(
       return services.declineBroadcast(ctx, route.jobId);
     case "jobs.workerCandidate":
       return services.getWorkerCandidate(ctx, route.jobId);
+    case "jobs.workerCandidateDecision":
+      return services.getWorkerCandidateDecision(ctx, route.jobId, route.candidateId);
     case "jobs.workerCandidateConfirm":
       return services.confirmWorkerCandidate(ctx, route.jobId, route.candidateId);
     case "jobs.workerCandidateReject":
@@ -76,8 +107,15 @@ export async function dispatchJobRoute(
       const input = workerStatusUpdateSchema(await readJson(request), route.jobId);
       return services.updateJobStatus(ctx, route.jobId, input);
     }
-    case "jobs.accessAuthorize":
-      return services.authorizeApartmentAccess(ctx, route.jobId);
+    case "jobs.accessAuthorize": {
+      const body = request.body === null ? {} : await readJson(request);
+      if (body && typeof body === "object" && !Array.isArray(body) && Object.keys(body).length === 0) {
+        apiFailure("CLIENT_UPDATE_REQUIRED", "Hãy cập nhật ứng dụng để cho phép thợ lên an toàn.", 409);
+      }
+      const input = apartmentAccessAuthorizationSchema.safeParse(body);
+      if (!input.success) apiFailure("VALIDATION", "Dữ liệu xác nhận không hợp lệ.", 400);
+      return services.authorizeApartmentAccess(ctx, route.jobId, input.data);
+    }
     case "jobs.scopeChange": {
       const input = workerScopeChangeSchema.safeParse(await readJson(request));
       if (!input.success) apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
@@ -134,8 +172,6 @@ export async function dispatchJobRoute(
     }
     case "jobs.confirmCompletion":
       return services.confirmCompletion(ctx, route.jobId);
-    case "jobs.paymentIntent":
-      return services.createPaymentIntent(ctx, route.jobId);
     case "jobs.paymentOrder":
       return services.createManualBankPaymentOrder(ctx, route.jobId);
     case "jobs.paymentOrderClaim": {
@@ -143,20 +179,6 @@ export async function dispatchJobRoute(
       if (!input.success) apiFailure("VALIDATION", "Xác nhận chuyển khoản không hợp lệ", 400);
       return services.claimManualBankPayment(ctx, route.jobId, input.data);
     }
-    case "jobs.directPaymentSelect": {
-      const input = directWorkerPaymentSelectSchema.safeParse(await readJson(request));
-      if (!input.success) apiFailure("VALIDATION", "Yêu cầu trả trực tiếp không hợp lệ", 400);
-      return services.selectDirectWorkerPayment(ctx, route.jobId, input.data.client_request_id);
-    }
-    case "jobs.directPaymentRespond": {
-      const input = directWorkerPaymentResponseSchema.safeParse(await readJson(request));
-      if (!input.success) apiFailure("VALIDATION", "Xác nhận trả trực tiếp không hợp lệ", 400);
-      return services.respondToDirectWorkerPayment(ctx, route.jobId, input.data);
-    }
-    case "jobs.cashPaymentConfirm":
-      return services.confirmWorkerCashPayment(ctx, route.jobId);
-    case "jobs.stagingPaymentConfirm":
-      return services.confirmStagingPayment(ctx, route.jobId);
     case "jobs.review": {
       const body = await readJson(request);
       if (typeof body !== "object" || body === null || Array.isArray(body)) {

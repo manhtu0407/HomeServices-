@@ -27,7 +27,7 @@ kill_command_tree() {
 }
 
 cleanup_command() {
-  [ -n "$watchdog_pid" ] && kill "$watchdog_pid" >/dev/null 2>&1 || true
+  [ -n "$watchdog_pid" ] && kill_command_tree "$watchdog_pid" KILL
   [ -n "$command_pid" ] && kill_command_tree "$command_pid" KILL
   rm -rf "$command_dir"
 }
@@ -46,6 +46,7 @@ run_docker() {
   docker "$@" >"$out" 2>"$err" &
   command_pid=$!
   (
+    trap - EXIT
     sleep "$timeout_seconds"
     if kill -0 "$command_pid" >/dev/null 2>&1; then
       : >"$timed_out"
@@ -53,13 +54,13 @@ run_docker() {
       sleep 1
       kill_command_tree "$command_pid" KILL
     fi
-  ) &
+  ) </dev/null >/dev/null 2>&1 &
   watchdog_pid=$!
 
   wait "$command_pid"
   command_code=$?
   command_pid=""
-  kill "$watchdog_pid" >/dev/null 2>&1 || true
+  kill_command_tree "$watchdog_pid" KILL
   wait "$watchdog_pid" >/dev/null 2>&1 || true
   watchdog_pid=""
 

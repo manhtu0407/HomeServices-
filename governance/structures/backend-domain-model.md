@@ -110,7 +110,7 @@ Forbidden
 |- raw audio/video model input
 |- invented price baseline or market result
 |- unsupported service advice
-|- accepting worker-typed prices for final price decisions (Phase 2.0 2026-05-23)
+|- treating a worker quote as a Kael-computed price; RFQ/inspection proposals belong to JobLifecycleModule under RULES.md #4
 ```
 
 ### JobLifecycleModule
@@ -123,6 +123,7 @@ Responsibility
 |- KaelAutonomyDecision validation
 |- worker status updates
 |- completion states
+|- immutable RFQ/inspection price proposals and exact owning-customer decisions before repairing, with actor-bound retries and audit
 
 Forbidden
 -

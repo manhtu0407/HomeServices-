@@ -135,10 +135,6 @@ export function WorkerJobsLegacyPrototypeBody(props: WorkerJobsLegacyPrototypeBo
           language={props.language}
           navigateNext={props.navigateNext}
           navigateToEvidence={() => props.navigateToScreen('2.10-completion-evidence')}
-          onRespondToDirectPayment={(received) => void props.runWorkerAction(
-            () => props.runtime.actions.workerConfirmCashPayment(received),
-            { navigateOnSuccess: received },
-          )}
           reduceTransparency={props.reduceTransparency}
           runtime={props.runtime}
         />

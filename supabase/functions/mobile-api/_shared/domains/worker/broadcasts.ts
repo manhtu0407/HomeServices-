@@ -10,6 +10,7 @@ import {
 import { db, dbQuery, workflowDb } from "../../platform/db.ts";
 import { secondsRemaining } from "../../platform/domain-utils.ts";
 import { apiFailure } from "../../platform/api-failure.ts";
+import { throwMatchingCapacityError } from "../../platform/domain-error-mappers.ts";
 import type { MobileApiContext } from "../../platform/auth.ts";
 import type { BroadcastStatus, ServiceType } from "../../../../_shared/domain.ts";
 import { estimateWorkerNet } from "../payment/commission.ts";
@@ -234,6 +235,7 @@ export async function submitWorkerMatchingProposal(
       p_price_max: input.price_max ?? null,
     }),
   );
+  throwMatchingCapacityError(result.error);
   if (result.error) apiFailure("DB_ERROR", "Không thể gửi đề xuất phạm vi", 500);
   const row = result.data?.[0];
   if (!row) apiFailure("DB_ERROR", "Không thể gửi đề xuất phạm vi", 500);

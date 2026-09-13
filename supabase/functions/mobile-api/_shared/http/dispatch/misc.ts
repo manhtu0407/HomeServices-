@@ -7,6 +7,8 @@ import {
   disputeCounterStatementSchema,
   placesAutocompleteSchema,
   placesResolveSchema,
+  normalizeServiceAreaDistrict,
+  serviceTypeSchema,
 } from "../../../../_shared/domain.ts";
 import { apiFailure } from "../../platform/api-failure.ts";
 import { readJson } from "../read-json.ts";
@@ -22,6 +24,18 @@ export async function dispatchMiscRoute(
   switch (route.kind) {
     case "services":
       return services.listServices(ctx);
+    case "services.coverage": {
+      const url = new URL(request.url);
+      const serviceType = serviceTypeSchema.safeParse(url.searchParams.get("service_type"));
+      const districtCode = normalizeServiceAreaDistrict(url.searchParams.get("district_code"));
+      if (!serviceType.success || !districtCode) {
+        apiFailure("VALIDATION", "Dịch vụ hoặc quận TP.HCM không hợp lệ", 400);
+      }
+      return services.getServiceCoverageReadiness(ctx, {
+        serviceType: serviceType.data,
+        districtCode,
+      });
+    }
     case "places.autocomplete": {
       const input = placesAutocompleteSchema.safeParse(await readJson(request));
       if (!input.success) apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);

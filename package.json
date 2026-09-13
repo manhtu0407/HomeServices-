@@ -43,6 +43,7 @@
     "harness:manifest:hash": "node scripts/run.mjs run-node scripts/harness/hash-manifest.mjs",
     "harness:pillars:check": "node scripts/run.mjs run-node scripts/harness/pillar-registry.mjs",
     "harness:pillars:write": "node scripts/run.mjs run-node scripts/harness/pillar-registry.mjs --write",
+    "harness:transactions:check": "node scripts/run.mjs run-node scripts/harness/transaction-critical-coverage.mjs",
     "harness:capabilities:check": "node scripts/run.mjs run-node scripts/harness/capability-registry.mjs",
     "harness:capabilities:write": "node scripts/run.mjs run-node scripts/harness/capability-registry.mjs --write",
     "harness:privileged:check": "node scripts/run.mjs run-node scripts/harness/check-privileged-clients.mjs",

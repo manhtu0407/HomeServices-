@@ -1,0 +1,237 @@
+name: NestScout native account and release proof
+run_name: Native ${{ inputs.target_environment }} proof for ${{ inputs.expected_git_sha }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      target_environment:
+        type: choice
+        description: Hosted runtime exercised by the native accounts
+        required: true
+        options:
+          - staging
+          - production
+      expected_git_sha:
+        type: string
+        description: Exact 40-character Git SHA under review
+        required: true
+      release_id:
+        type: string
+        description: Immutable release ID registered for this SHA
+        required: true
+      source_bundle_sha256:
+        type: string
+        description: Source bundle hash from the immutable release manifest
+        required: true
+
+concurrency:
+  group: native-proof-${{ inputs.target_environment }}-${{ inputs.expected_git_sha }}
+  cancel_in_progress: false
+
+defaults:
+  image: sdk-57
+  tools:
+    pnpm: 10.16.1
+
+jobs:
+  prepare_identity:
+    name: Verify exact source and target
+    type: custom
+    runs_on: linux-medium
+    environment: "${{ inputs.target_environment == 'production' ? 'production' : 'preview' }}"
+    env:
+      EXPECTED_GIT_SHA: ${{ inputs.expected_git_sha }}
+      RELEASE_ID: ${{ inputs.release_id }}
+      SOURCE_BUNDLE_SHA256: ${{ inputs.source_bundle_sha256 }}
+      TARGET_ENVIRONMENT: ${{ inputs.target_environment }}
+    outputs:
+      git_sha: ${{ steps.identity.outputs.git_sha }}
+      git_short_sha: ${{ steps.identity.outputs.git_short_sha }}
+      git_branch: ${{ steps.identity.outputs.git_branch }}
+      release_id: ${{ steps.identity.outputs.release_id }}
+      source_bundle_sha256: ${{ steps.identity.outputs.source_bundle_sha256 }}
+      generated_at: ${{ steps.identity.outputs.generated_at }}
+    steps:
+      - uses: eas/checkout
+      - uses: eas/install_node_modules
+      - id: identity
+        name: Bind workflow to repository source
+        working_directory: ../..
+        run: |
+          set -eu
+          identity_stage=git_sha
+          trap 'printf "NATIVE_IDENTITY_FAILED:%s\n" "$identity_stage" >&2' ERR
+          git_sha="$(git rev-parse HEAD)"
+          printf 'NATIVE_IDENTITY_OBSERVED_GIT:%s\n' "$git_sha"
+          test "$git_sha" = "$EXPECTED_GIT_SHA"
+          identity_stage=git_branch
+          git_branch="$(git rev-parse --abbrev-ref HEAD)"
+          test -n "$git_branch"
+          identity_stage=source_hash_format
+          test "${#SOURCE_BUNDLE_SHA256}" -eq 64
+          case "$SOURCE_BUNDLE_SHA256" in *[!0-9a-f]*) false ;; esac
+          identity_stage=release_id
+          case "$RELEASE_ID" in "harness-${git_sha:0:12}-"????????????) ;; *) false ;; esac
+          if [ "$TARGET_ENVIRONMENT" = "production" ]; then
+            identity_stage=production_main
+            git fetch origin main --depth=1
+            test "$git_sha" = "$(git rev-parse origin/main)"
+          fi
+          identity_stage=source_root
+          mkdir -p .scratch/eas-native-proof
+          test -f governance/RULES.md
+          test -f supabase/config.toml
+          identity_stage=release_bundle
+          node scripts/harness/release-bundle.mjs --environment preview --output .scratch/eas-native-proof/release.json
+          computed_source="$(node -p "JSON.parse(require('node:fs').readFileSync('.scratch/eas-native-proof/release.json','utf8')).sourceBundleSha256")"
+          identity_stage=source_bundle_sha256
+          test "$computed_source" = "$SOURCE_BUNDLE_SHA256"
+          identity_stage=outputs
+          generated_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          set-output git_sha "$git_sha"
+          set-output git_short_sha "${git_sha:0:12}"
+          set-output git_branch "$git_branch"
+          set-output release_id "$RELEASE_ID"
+          set-output source_bundle_sha256 "$computed_source"
+          set-output generated_at "$generated_at"
+
+  build_ios:
+    name: Build exact iOS Simulator binary
+    needs: [prepare_identity]
+    type: build
+    environment: "${{ inputs.target_environment == 'production' ? 'production' : 'preview' }}"
+    env:
+      NESTSCOUT_BUILD_GIT_SHA: ${{ needs.prepare_identity.outputs.git_sha }}
+      NESTSCOUT_BUILD_GIT_BRANCH: ${{ needs.prepare_identity.outputs.git_branch }}
+      NESTSCOUT_BUILD_CREATED_AT: ${{ needs.prepare_identity.outputs.generated_at }}
+      NESTSCOUT_RELEASE_ID: ${{ needs.prepare_identity.outputs.release_id }}
+    params:
+      platform: ios
+      profile: "${{ inputs.target_environment == 'production' ? 'native-proof-production' : 'native-proof-staging' }}"
+      message: Native account proof ${{ needs.prepare_identity.outputs.release_id }}
+
+  build_android:
+    name: Build exact Android Emulator binary
+    needs: [prepare_identity]
+    type: build
+    environment: "${{ inputs.target_environment == 'production' ? 'production' : 'preview' }}"
+    env:
+      NESTSCOUT_BUILD_GIT_SHA: ${{ needs.prepare_identity.outputs.git_sha }}
+      NESTSCOUT_BUILD_GIT_BRANCH: ${{ needs.prepare_identity.outputs.git_branch }}
+      NESTSCOUT_BUILD_CREATED_AT: ${{ needs.prepare_identity.outputs.generated_at }}
+      NESTSCOUT_RELEASE_ID: ${{ needs.prepare_identity.outputs.release_id }}
+    params:
+      platform: android
+      profile: "${{ inputs.target_environment == 'production' ? 'native-proof-production' : 'native-proof-staging' }}"
+      message: Native account proof ${{ needs.prepare_identity.outputs.release_id }}
+
+  test_ios:
+    name: Test Customer and Worker on iOS Simulator
+    needs: [prepare_identity, build_ios]
+    type: maestro
+    environment: "${{ inputs.target_environment == 'production' ? 'production' : 'preview' }}"
+    env:
+      MAESTRO_APP_ID: com.phanmanhtu.homeservices
+      MAESTRO_EXPECTED_GIT_SHA: ${{ needs.prepare_identity.outputs.git_sha }}
+      MAESTRO_EXPECTED_GIT_SHORT_SHA: ${{ needs.prepare_identity.outputs.git_short_sha }}
+      MAESTRO_EXPECTED_RELEASE_ID: ${{ needs.prepare_identity.outputs.release_id }}
+      NATIVE_EVIDENCE_SOURCE_BUNDLE_SHA256: ${{ needs.prepare_identity.outputs.source_bundle_sha256 }}
+      NATIVE_EVIDENCE_BUILD_ID: ${{ needs.build_ios.outputs.build_id }}
+      NATIVE_EVIDENCE_WORKFLOW_ID: ${{ workflow.id }}
+      NATIVE_EVIDENCE_WORKFLOW_URL: ${{ workflow.url }}
+      NATIVE_EVIDENCE_TARGET: ${{ inputs.target_environment }}
+    params:
+      build_id: ${{ needs.build_ios.outputs.build_id }}
+      flow_path:
+        - ./.maestro/customer-login-proof.yaml
+        - ./.maestro/worker-login-proof.yaml
+      device_identifier: iPhone 16
+      record_screen: true
+      retries: 1
+      retry_failed_only: true
+      output_format: junit
+    hooks:
+      before_maestro_tests:
+        - name: Require protected normal-account credentials
+          run: test -n "$MAESTRO_CUSTOMER_EMAIL" && test -n "$MAESTRO_CUSTOMER_PASSWORD" && test -n "$MAESTRO_WORKER_EMAIL" && test -n "$MAESTRO_WORKER_PASSWORD"
+      after_maestro_tests:
+        - name: Attach exact iOS release identity
+          working_directory: ../..
+          run: |
+            node scripts/harness/native-evidence-receipt.mjs \
+              --target "$NATIVE_EVIDENCE_TARGET" \
+              --platform ios \
+              --app-id "$MAESTRO_APP_ID" \
+              --build-id "$NATIVE_EVIDENCE_BUILD_ID" \
+              --git-sha "$MAESTRO_EXPECTED_GIT_SHA" \
+              --release-id "$MAESTRO_EXPECTED_RELEASE_ID" \
+              --source-bundle-sha256 "$NATIVE_EVIDENCE_SOURCE_BUNDLE_SHA256" \
+              --workflow-id "$NATIVE_EVIDENCE_WORKFLOW_ID" \
+              --workflow-url "$NATIVE_EVIDENCE_WORKFLOW_URL" \
+              --output "$MAESTRO_TESTS_DIR/nestscout-ios-release-identity.json"
+
+  test_android:
+    name: Test Customer and Worker on Android Emulator
+    needs: [prepare_identity, build_android]
+    type: maestro
+    environment: "${{ inputs.target_environment == 'production' ? 'production' : 'preview' }}"
+    runs_on: linux-large-nested-virtualization
+    env:
+      MAESTRO_APP_ID: com.phanmanhtu.nestscout
+      MAESTRO_EXPECTED_GIT_SHA: ${{ needs.prepare_identity.outputs.git_sha }}
+      MAESTRO_EXPECTED_GIT_SHORT_SHA: ${{ needs.prepare_identity.outputs.git_short_sha }}
+      MAESTRO_EXPECTED_RELEASE_ID: ${{ needs.prepare_identity.outputs.release_id }}
+      NATIVE_EVIDENCE_SOURCE_BUNDLE_SHA256: ${{ needs.prepare_identity.outputs.source_bundle_sha256 }}
+      NATIVE_EVIDENCE_BUILD_ID: ${{ needs.build_android.outputs.build_id }}
+      NATIVE_EVIDENCE_WORKFLOW_ID: ${{ workflow.id }}
+      NATIVE_EVIDENCE_WORKFLOW_URL: ${{ workflow.url }}
+      NATIVE_EVIDENCE_TARGET: ${{ inputs.target_environment }}
+    params:
+      build_id: ${{ needs.build_android.outputs.build_id }}
+      flow_path:
+        - ./.maestro/customer-login-proof.yaml
+        - ./.maestro/worker-login-proof.yaml
+      device_identifier: pixel_6
+      android_system_image_package: system-images;android-35;google_apis_playstore;x86_64
+      record_screen: true
+      retries: 1
+      retry_failed_only: true
+      output_format: junit
+    hooks:
+      before_maestro_tests:
+        - name: Require protected normal-account credentials
+          run: test -n "$MAESTRO_CUSTOMER_EMAIL" && test -n "$MAESTRO_CUSTOMER_PASSWORD" && test -n "$MAESTRO_WORKER_EMAIL" && test -n "$MAESTRO_WORKER_PASSWORD"
+      after_maestro_tests:
+        - name: Attach exact Android release identity
+          working_directory: ../..
+          run: |
+            node scripts/harness/native-evidence-receipt.mjs \
+              --target "$NATIVE_EVIDENCE_TARGET" \
+              --platform android \
+              --app-id "$MAESTRO_APP_ID" \
+              --build-id "$NATIVE_EVIDENCE_BUILD_ID" \
+              --git-sha "$MAESTRO_EXPECTED_GIT_SHA" \
+              --release-id "$MAESTRO_EXPECTED_RELEASE_ID" \
+              --source-bundle-sha256 "$NATIVE_EVIDENCE_SOURCE_BUNDLE_SHA256" \
+              --workflow-id "$NATIVE_EVIDENCE_WORKFLOW_ID" \
+              --workflow-url "$NATIVE_EVIDENCE_WORKFLOW_URL" \
+              --output "$MAESTRO_TESTS_DIR/nestscout-android-release-identity.json"
+
+  evidence_boundary:
+    name: Record native evidence boundary
+    needs: [prepare_identity, build_ios, build_android, test_ios, test_android]
+    type: doc
+    params:
+      md: |
+        ## Exact native account proof
+
+        - Release: `${{ needs.prepare_identity.outputs.release_id }}`
+        - Git SHA: `${{ needs.prepare_identity.outputs.git_sha }}`
+        - Source bundle: `${{ needs.prepare_identity.outputs.source_bundle_sha256 }}`
+        - iOS Simulator build: `${{ needs.build_ios.outputs.build_id }}`
+        - Android Emulator build: `${{ needs.build_android.outputs.build_id }}`
+
+        Customer and Worker normal-account login, role boundaries, home surfaces, screenshots,
+        recordings, logs, and runtime identity were exercised by Maestro. This evidence does not
+        prove physical APNs/FCM delivery, background or killed-app behavior, or deep links; Dev
+        kouuuuuu must supply that separate physical-device proof before final validation.

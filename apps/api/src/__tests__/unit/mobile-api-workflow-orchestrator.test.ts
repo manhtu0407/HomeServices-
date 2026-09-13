@@ -18,8 +18,8 @@ describe('mobile-api workflow orchestrator wrapper', () => {
       ['worker_status_advanced', 'arrived', 'inspecting'],
       ['worker_status_advanced', 'inspecting', 'repairing'],
       ['worker_completed', 'repairing', 'completed_by_worker'],
-      ['kael_confirmed_completion', 'completed_by_worker', 'confirmed_by_customer'],
-      ['kael_decided_payment', 'confirmed_by_customer', 'payment_pending'],
+      ['customer_confirmed_completion', 'completed_by_worker', 'confirmed_by_customer'],
+      ['customer_started_payment', 'confirmed_by_customer', 'payment_pending'],
       ['payment_confirmed', 'payment_pending', 'paid'],
       ['review_submitted', 'paid', 'reviewed'],
     ] as const
@@ -123,15 +123,12 @@ describe('mobile-api workflow orchestrator wrapper', () => {
     }
   })
 
-  it('covers all Kael autonomy action to workflow event mappings including payment and dispute', () => {
+  it('covers every published non-confirmation Kael autonomy mapping', () => {
     const cases = [
       ['confirm_ticket', 'kael_confirmed_ticket', 'awaiting_customer_confirm', 'broadcasting'],
       ['start_matching', 'kael_started_matching', 'analyzing', 'broadcasting'],
       ['process_cancellation', 'kael_processed_cancellation', 'worker_matched', 'broadcasting'],
       ['decide_scope_change', 'kael_decided_scope_change', 'scope_change_pending', 'repairing'],
-      ['confirm_completion', 'kael_confirmed_completion', 'completed_by_worker', 'confirmed_by_customer'],
-      ['decide_payment', 'kael_decided_payment', 'confirmed_by_customer', 'payment_pending'],
-      ['decide_dispute', 'kael_decided_dispute', 'confirmed_by_customer', 'reviewed'],
     ] as const
 
     for (const [action, resulting_event, from, to] of cases) {
@@ -337,7 +334,7 @@ describe('mobile-api workflow orchestrator wrapper', () => {
 
   it('keeps customer completion as an explicit server-validated gate', () => {
     const transition = validateWorkflowTransition({
-      event: 'kael_confirmed_completion',
+      event: 'customer_confirmed_completion',
       from: 'completed_by_worker',
       to: 'confirmed_by_customer',
     })
@@ -378,11 +375,6 @@ describe('mobile-api workflow orchestrator wrapper', () => {
       from: 'payment_pending',
       to: 'paid',
     })
-    const cashConfirmed = validateWorkflowTransition({
-      event: 'worker_confirmed_cash_payment',
-      from: 'confirmed_by_customer',
-      to: 'paid',
-    })
     const phaseZeroConfirmed = validateWorkflowTransition({
       event: 'review_submitted',
       from: 'confirmed_by_customer',
@@ -399,7 +391,6 @@ describe('mobile-api workflow orchestrator wrapper', () => {
       to: 'reviewed',
     })
     expect(paymentConfirmed.valid).toBe(true)
-    expect(cashConfirmed.valid).toBe(true)
     expect(phaseZeroConfirmed.valid).toBe(false)
     expect(paid.valid).toBe(true)
     expect(paymentPending.valid).toBe(false)

@@ -87,6 +87,8 @@ export function sameWorkerProfile(left: WorkerProfileResponse | null, right: Wor
     && left.bank_account_masked === right.bank_account_masked
     && left.bank_name === right.bank_name
     && left.has_cccd === right.has_cccd
+    && left.has_cccd_front === right.has_cccd_front
+    && left.has_cccd_back === right.has_cccd_back
     && left.has_selfie === right.has_selfie
     && sameStringArray(left.service_types, right.service_types)
     && sameStringArray(left.active_service_types, right.active_service_types)

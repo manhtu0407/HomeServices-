@@ -247,13 +247,14 @@ describe('durable Kael confirmation', () => {
 
     expect(calls, pillarWhy(PILLAR, 'all durable writes belong to one atomic DB boundary')).toEqual([
       {
-        name: 'confirm_kael_chat_durable_authorized_v4',
+        name: 'confirm_kael_chat_durable_authorized_v6',
         args: {
           p_session_id: SESSION_ID,
           p_customer_id: CUSTOMER_ID,
           p_idempotency_key: `kael-confirm:${SESSION_ID}:${CUSTOMER_ID}`,
           p_confirmation_kind: 'rfq_request',
           p_price_reasoning_receipt_id: null,
+          p_matching_mode: null,
           p_run_id: '60000000-0000-4000-8000-000000000048',
           p_trace_id: '70000000-0000-4000-8000-000000000048',
           p_actor_id_hash: 'a'.repeat(64),

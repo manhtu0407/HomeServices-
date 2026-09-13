@@ -81,13 +81,29 @@ function paymentDecision(confidence: number) {
   }
 }
 
+function matchingDecision(confidence: number) {
+  return {
+    actor: 'kael_system',
+    action: 'start_matching',
+    policy_id: 'kael.autonomy.v2.customer_confirmed_matching',
+    evidence: [
+      { kind: 'artifact', reference_id: JOB_ID, summary: 'Customer-confirmed intake artifact.' },
+      { kind: 'policy', reference_id: POLICY_REF, summary: 'Matching follows Customer confirmation.' },
+    ],
+    confidence,
+    reversible: true,
+    appealable: true,
+    resulting_event: 'kael_started_matching',
+  }
+}
+
 function gateFor(confidence: number) {
   return gateAutonomyDecision({
-    decision: paymentDecision(confidence),
-    from: 'confirmed_by_customer',
-    to: 'payment_pending',
+    decision: matchingDecision(confidence),
+    from: 'analyzing',
+    to: 'broadcasting',
     authority: authority(),
-    knownEvidenceReferences: [JOB_ID, 'event-p13'],
+    knownEvidenceReferences: [JOB_ID],
     amountVnd: 2_000_000,
     featureFlags: { fullAutonomyEnabled: true },
   })
@@ -102,16 +118,77 @@ const auditInput = (gate: ReturnType<typeof gateFor>) => ({
 })
 
 describe('gateAutonomyDecision high-stakes routing', () => {
-  it('allows a confident payment decision', () => {
+  it('preserves a catalogued UUID through gating and persisted decision evidence', async () => {
+    const reference = 'c1160000-0000-4000-8000-000000000002'
+    const decision = matchingDecision(0.95)
+    const gate = gateAutonomyDecision({
+      decision: { ...decision, evidence: decision.evidence.map((item, index) =>
+        index === 0 ? { ...item, reference_id: reference } : item) },
+      from: 'analyzing', to: 'broadcasting', authority: authority(),
+      knownEvidenceReferences: [reference], featureFlags: { fullAutonomyEnabled: true },
+    })
+    expect(gate.result).toBe('allow')
+    const client = auditClient()
+    await auditKaelAutonomyGateResult(client, auditInput(gate))
+    expect(client.inserts[0].value.evidence_refs).toContain(reference)
+    expect(client.inserts[0].value.decision).toMatchObject({
+      evidence: expect.arrayContaining([expect.objectContaining({ reference_id: reference })]),
+    })
+  })
+
+  it.each([
+    ['reference_id', CUSTOMER_PHONE],
+    ['summary', CUSTOMER_PHONE],
+    ['summary', 'sk-' + 'not-a-real-secret'.repeat(2)],
+  ])('still rejects and scrubs sensitive %s content from every audit field', async (field, value) => {
+    const decision = matchingDecision(0.95)
+    const gate = gateAutonomyDecision({
+      decision: { ...decision, evidence: decision.evidence.map((item, index) =>
+        index === 0 ? { ...item, [field]: value } : item) },
+      from: 'analyzing', to: 'broadcasting', authority: authority(),
+      knownEvidenceReferences: [JOB_ID, value], featureFlags: { fullAutonomyEnabled: true },
+    })
+    expect(gate.result).toBe('reject')
+    expect(gate.audit.reason_code).toBe('PII_OR_SECRET_DETECTED')
+    const client = auditClient()
+    await auditKaelAutonomyGateResult(client, auditInput(gate))
+    expect(JSON.stringify(client.inserts)).not.toContain(value)
+  })
+
+  it('never treats an uncatalogued UUID as verified evidence', () => {
+    const decision = matchingDecision(0.95)
+    const gate = gateAutonomyDecision({
+      decision: { ...decision, evidence: decision.evidence.map((item, index) => index === 0
+        ? { ...item, reference_id: 'c1160000-0000-4000-8000-000000000002' } : item) },
+      from: 'analyzing', to: 'broadcasting', authority: authority(),
+      knownEvidenceReferences: [JOB_ID], featureFlags: { fullAutonomyEnabled: true },
+    })
+    expect(gate.result).toBe('reject')
+  })
+
+  it('does not exempt free text accompanying a catalogued UUID', () => {
+    const reference = 'c1160000-0000-4000-8000-000000000002'
+    const decision = matchingDecision(0.95)
+    const gate = gateAutonomyDecision({
+      decision: { ...decision, evidence: decision.evidence.map((item, index) => index === 0
+        ? { ...item, reference_id: reference, summary: CUSTOMER_PHONE } : item) },
+      from: 'analyzing', to: 'broadcasting', authority: authority(),
+      knownEvidenceReferences: [reference], featureFlags: { fullAutonomyEnabled: true },
+    })
+    expect(gate.result).toBe('reject')
+    expect(gate.audit.reason_code).toBe('PII_OR_SECRET_DETECTED')
+  })
+
+  it('allows a confident policy-bound matching decision after Customer confirmation', () => {
     expect(
       gateFor(0.95).result,
-      pillarWhy(PILLAR, 'a well-evidenced decision above the confidence floor must pass'),
+      pillarWhy(PILLAR, 'a well-evidenced orchestration decision above the confidence floor must pass'),
     ).toBe('allow')
   })
 
   // Below the floor a money decision is escalated rather than refused outright, so a human can
   // still act on it. Refusing would strand the job; allowing would move money on a guess.
-  it('escalates a payment decision below the confidence floor', () => {
+  it('escalates a high-value matching decision below the confidence floor', () => {
     const gate = gateFor(0.5)
     expect(
       gate.result,
@@ -121,6 +198,21 @@ describe('gateAutonomyDecision high-stakes routing', () => {
       gate.audit.reason_code,
       pillarWhy(PILLAR, 'the audit row must name why a human was pulled in'),
     ).toBe('HIGH_STAKES_LOW_CONFIDENCE')
+  })
+
+  it('never lets Kael confirm completion or decide payment', () => {
+    const gate = gateAutonomyDecision({
+      decision: paymentDecision(0.99),
+      from: 'confirmed_by_customer',
+      to: 'payment_pending',
+      authority: authority(),
+      knownEvidenceReferences: [JOB_ID, 'event-p13'],
+      amountVnd: 2_000_000,
+      featureFlags: { fullAutonomyEnabled: true },
+    })
+
+    expect(gate.result).toBe('reject')
+    expect(gate.audit.reason_code).toBe('SCHEMA_INVALID')
   })
 })
 
@@ -199,17 +291,16 @@ describe('auditKaelAutonomyGateResult', () => {
   it('keeps contact details out of both rows', async () => {
     const gate = gateAutonomyDecision({
       decision: {
-        ...paymentDecision(0.5),
+        ...matchingDecision(0.5),
         evidence: [
           { kind: 'artifact', reference_id: JOB_ID, summary: `Customer reachable on ${CUSTOMER_PHONE}.` },
-          { kind: 'job_event', reference_id: 'event-p13', summary: 'Customer confirmed completion.' },
-          { kind: 'policy', reference_id: POLICY_REF, summary: 'Payment follows a confirmed completion.' },
+          { kind: 'policy', reference_id: POLICY_REF, summary: 'Matching follows Customer confirmation.' },
         ],
       },
-      from: 'confirmed_by_customer',
-      to: 'payment_pending',
+      from: 'analyzing',
+      to: 'broadcasting',
       authority: authority(),
-      knownEvidenceReferences: [JOB_ID, 'event-p13'],
+      knownEvidenceReferences: [JOB_ID],
       amountVnd: 2_000_000,
       featureFlags: { fullAutonomyEnabled: true },
     })
@@ -249,17 +340,16 @@ describe('auditKaelAutonomyGateResult', () => {
   it('scrubs contact details out of an allowed decision too', async () => {
     const gate = gateAutonomyDecision({
       decision: {
-        ...paymentDecision(0.95),
+        ...matchingDecision(0.95),
         evidence: [
-          { kind: 'artifact', reference_id: JOB_ID, summary: 'Completion photo received.' },
-          { kind: 'job_event', reference_id: 'event-p13', summary: 'Customer confirmed completion.' },
-          { kind: 'policy', reference_id: POLICY_REF, summary: 'Payment follows a confirmed completion.' },
+          { kind: 'artifact', reference_id: JOB_ID, summary: 'Customer-confirmed intake artifact.' },
+          { kind: 'policy', reference_id: POLICY_REF, summary: 'Matching follows Customer confirmation.' },
         ],
       },
-      from: 'confirmed_by_customer',
-      to: 'payment_pending',
+      from: 'analyzing',
+      to: 'broadcasting',
       authority: authority(),
-      knownEvidenceReferences: [JOB_ID, 'event-p13'],
+      knownEvidenceReferences: [JOB_ID],
       amountVnd: 2_000_000,
       featureFlags: { fullAutonomyEnabled: true },
     })

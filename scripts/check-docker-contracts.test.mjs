@@ -25,6 +25,26 @@ function runRunner(args, options = {}) {
   })
 }
 
+function runDockerProbe(options) {
+  if (process.platform !== 'win32') return runRunner(['docker/scripts/doctor'], options)
+  const doctor = readFileSync(join(ROOT, 'docker/scripts/doctor.ps1'), 'utf8')
+  const invocation = doctor.indexOf('\n$daemon = Invoke-DockerInfoProbe')
+  assert.ok(invocation > 0, 'doctor must expose the actual probe before host-resource checks')
+  const command = `${doctor.slice(0, invocation)}
+$probe = Invoke-DockerInfoProbe
+$probe | ConvertTo-Json -Compress
+if (-not $probe.Reachable) { exit 1 }
+`
+  const powershell = join(process.env.WINDIR ?? 'C:\\Windows', 'System32/WindowsPowerShell/v1.0/powershell.exe')
+  return spawnSync(powershell, ['-NoProfile', '-NonInteractive', '-EncodedCommand', Buffer.from(command, 'utf16le').toString('base64')], {
+    cwd: ROOT,
+    encoding: 'utf8',
+    timeout: options.timeout ?? 23_000,
+    env: options.env,
+    windowsHide: true,
+  })
+}
+
 test('Windows runner discovers per-user Docker CLI without hiding an existing PATH entry', () => {
   const env = {
     Path: 'C:\\fake-docker',
@@ -574,7 +594,7 @@ test('a failing Windows daemon shim preserves its numeric exit state', (context)
 
   const fake = fakeDocker('fail')
   try {
-    const result = runRunner(['docker/scripts/doctor'], { env: fake.env })
+    const result = runDockerProbe({ env: fake.env })
     const output = combinedOutput(result)
     assert.equal(result.status, 1, output)
     assert.match(output, /unreachable \(exit 9\)/i)
@@ -593,7 +613,7 @@ test('a successful Windows daemon shim reports the daemon reachable', (context) 
 
   const fake = fakeDocker('doctor-pass')
   try {
-    const result = runRunner(['docker/scripts/doctor'], { env: fake.env })
+    const result = runRunner(['docker/scripts/doctor'], { env: fake.env, timeout: 30_000 })
     const output = combinedOutput(result)
     assert.match(output, /docker daemon\s+reachable \(server 29\.7\.2\)\s+OK/i)
     assert.doesNotMatch(output, /Docker daemon probe failed/i)
@@ -606,7 +626,7 @@ test('a hanging daemon probe is killed at the fixed timeout', { timeout: 25_000 
   const fake = fakeDocker('hang')
   try {
     const started = Date.now()
-    const result = runRunner(['docker/scripts/doctor'], { env: fake.env, timeout: 23_000 })
+    const result = runDockerProbe({ env: fake.env, timeout: 23_000 })
     const elapsed = Date.now() - started
     assert.equal(result.status, 1, combinedOutput(result))
     assert.match(combinedOutput(result), /timeout after 15 seconds/i)

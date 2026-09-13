@@ -211,9 +211,6 @@ const kaelAutonomyActionSchema = z.enum([
   "start_matching",
   "process_cancellation",
   "decide_scope_change",
-  "confirm_completion",
-  "decide_payment",
-  "decide_dispute",
 ]);
 
 const kaelAutonomyEventSchema = z.enum([
@@ -221,9 +218,6 @@ const kaelAutonomyEventSchema = z.enum([
   "kael_started_matching",
   "kael_processed_cancellation",
   "kael_decided_scope_change",
-  "kael_confirmed_completion",
-  "kael_decided_payment",
-  "kael_decided_dispute",
 ]);
 
 const kaelAutonomyEvidenceSchema = z.object({

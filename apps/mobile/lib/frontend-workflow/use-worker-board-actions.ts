@@ -6,8 +6,6 @@ import {
   type LocalWorkflowAction,
   type LocalWorkflowState,
   type UserRole,
-  type WorkerRegisterInput,
-  type WorkerRegistrationDraftInput,
   type WorkerServiceAreaUpdateInput,
   type WorkerServicePreferencesUpdateInput,
 } from '@nestscout/shared'
@@ -27,8 +25,9 @@ import type {
   WorkerWithdrawalRequestCreateInput,
 } from '../api-types'
 import { workerService } from '../services'
+import { useWorkerRegistrationActions } from './use-worker-registration-actions'
 import { uploadWorkerAvatar, type WorkerAvatarDraft } from '../worker-avatar-upload'
-import { localizeWorkflowError } from './errors'
+import { localizeWorkflowError, type WorkflowErrorHandler } from './errors'
 import { isWorkerBroadcastProposalAction, validateWorkerProposal } from './worker-proposal'
 import {
   sameWorkerEarnings,
@@ -98,7 +97,8 @@ type WorkerBoardActionsInput = {
   refreshCurrentJob: () => Promise<boolean>
   role: UserRole | null
   sessionUserId: string | null
-  setRemoteError: (error: string, code?: string) => false
+  sessionAccessToken?: string
+  setRemoteError: WorkflowErrorHandler
   stateRef: RefObject<LocalWorkflowState>
 }
 
@@ -108,6 +108,7 @@ export function useWorkerBoardActions({
   refreshCurrentJob,
   role,
   sessionUserId,
+  sessionAccessToken,
   setRemoteError,
   stateRef,
 }: WorkerBoardActionsInput) {
@@ -184,7 +185,7 @@ export function useWorkerBoardActions({
           return current?.result ? current : null
         })
       }
-      let workflowError = broadcasts.success ? null : broadcasts.error
+      let workflowError = broadcasts.success ? null : broadcasts
       setWorkerRemoteState((current) => {
         const sameOwner = current.sessionUserId === sessionUserId
         const currentBroadcasts = sameOwner ? current.broadcasts : []
@@ -193,7 +194,7 @@ export function useWorkerBoardActions({
         const nextJobs = jobs.success ? jobs.data.jobs : currentJobs
         const nextBroadcastsError = broadcasts.success
           ? null
-          : localizeWorkflowError(broadcasts.error, language)
+          : localizeWorkflowError(broadcasts, language)
         if (
           sameOwner
           && current.broadcastsHydrated === (broadcasts.success || current.broadcastsHydrated)
@@ -235,7 +236,7 @@ export function useWorkerBoardActions({
           dispatch({ type: 'mark_remote_broadcast_expired' })
         }
       } else {
-        workflowError = jobs.error
+        workflowError = jobs
       }
 
       // The post-I/O generation check prevents an older refresh from committing after a newer refresh starts.
@@ -249,9 +250,9 @@ export function useWorkerBoardActions({
         matchingHeartbeatRequest,
       ])
       if (!isCurrentWorkerRefresh()) return true
-      if (!profile.success) return setRemoteError(profile.error)
+      if (!profile.success) return setRemoteError(profile)
 
-      setWorkerEarningsError(earnings.success ? null : localizeWorkflowError(earnings.error, language))
+      setWorkerEarningsError(earnings.success ? null : localizeWorkflowError(earnings, language))
       const nextPerformanceInsights = performanceInsights.success ? performanceInsights.data : null
       const pendingAvailabilityPreference = workerAvailabilityPreferenceRef.current?.sessionUserId === sessionUserId
         ? workerAvailabilityPreferenceRef.current.value
@@ -297,8 +298,8 @@ export function useWorkerBoardActions({
               withdrawalRequests: nextWithdrawalRequests,
             }
       })
-      if (!payoutMethod.success && !workflowError) workflowError = payoutMethod.error
-      if (!withdrawalRequests.success && !workflowError) workflowError = withdrawalRequests.error
+      if (!payoutMethod.success && !workflowError) workflowError = payoutMethod
+      if (!withdrawalRequests.success && !workflowError) workflowError = withdrawalRequests
       if (workflowError) return setRemoteError(workflowError)
       return true
     } finally {
@@ -313,7 +314,7 @@ export function useWorkerBoardActions({
     options: { revalidate?: boolean } = {},
   ) => {
     const updated = await workerService.updateAvailability({ is_available: isAvailable })
-    if (!updated.success) return setRemoteError(updated.error)
+    if (!updated.success) return setRemoteError(updated)
     workerAvailabilityPreferenceRef.current = { sessionUserId, value: updated.data.is_available }
     setWorkerRemoteState((current) => current.sessionUserId === sessionUserId && current.profile
       ? { ...current, profile: { ...current.profile, is_available: updated.data.is_available } }
@@ -324,7 +325,7 @@ export function useWorkerBoardActions({
 
   const workerUpdateServiceArea = useCallback(async (input: WorkerServiceAreaUpdateInput) => {
     const updated = await workerService.updateServiceArea(input)
-    if (!updated.success) return setRemoteError(updated.error)
+    if (!updated.success) return setRemoteError(updated)
     setWorkerRemoteState((current) => ({
       broadcasts: current.sessionUserId === sessionUserId ? current.broadcasts : [],
       broadcastsError: current.sessionUserId === sessionUserId ? current.broadcastsError : null,
@@ -346,7 +347,7 @@ export function useWorkerBoardActions({
     input: WorkerServicePreferencesUpdateInput,
   ) => {
     const updated = await workerService.updateServicePreferences(input)
-    if (!updated.success) return setRemoteError(updated.error)
+    if (!updated.success) return setRemoteError(updated)
     setWorkerRemoteState((current) => ({
       broadcasts: current.sessionUserId === sessionUserId ? current.broadcasts : [],
       broadcastsError: current.sessionUserId === sessionUserId ? current.broadcastsError : null,
@@ -366,7 +367,7 @@ export function useWorkerBoardActions({
 
   const workerUploadAvatar = useCallback(async (input: WorkerAvatarDraft) => {
     const uploaded = await uploadWorkerAvatar(input)
-    if (!uploaded.success) return setRemoteError(uploaded.error)
+    if (!uploaded.success) return setRemoteError(uploaded)
     setWorkerRemoteState((current) => current.sessionUserId === sessionUserId && current.profile
       ? {
           ...current,
@@ -379,7 +380,7 @@ export function useWorkerBoardActions({
   const workerSavePayoutMethod = useCallback(async (input: WorkerPayoutMethodSaveInput) => {
     const result = await workerService.savePayoutMethod(input)
     if (!result.success) {
-      setRemoteError(result.error)
+      setRemoteError(result)
       return {
         success: false as const,
         code: result.code,
@@ -394,7 +395,7 @@ export function useWorkerBoardActions({
   const workerRequestWithdrawal = useCallback(async (input: WorkerWithdrawalRequestCreateInput) => {
     const result = await workerService.createWithdrawalRequest(input)
     if (!result.success) {
-      setRemoteError(result.error)
+      setRemoteError(result)
       return {
         success: false as const,
         code: result.code,
@@ -414,7 +415,7 @@ export function useWorkerBoardActions({
     const accepted = await workerService.acceptBroadcast(jobId, quoteId)
     if (!accepted.success) {
       if (isStaleBroadcastError(accepted.code)) dispatch({ type: 'mark_remote_broadcast_expired' })
-      return setRemoteError(accepted.error)
+      return setRemoteError(accepted)
     }
 
     const existing = stateRef.current.deal
@@ -482,7 +483,7 @@ export function useWorkerBoardActions({
         opportunity.broadcastId,
         validated.input,
       )
-      if (!submitted.success) return setRemoteError(submitted.error, submitted.code)
+      if (!submitted.success) return setRemoteError(submitted)
       setWorkerProposalOpportunity((current) => current?.broadcastId === submitted.data.broadcast_id
         ? { ...current, result: submitted.data }
         : current)
@@ -529,25 +530,21 @@ export function useWorkerBoardActions({
     const declined = await workerService.declineBroadcast(jobId)
     if (!declined.success) {
       if (isStaleBroadcastError(declined.code)) dispatch({ type: 'mark_remote_broadcast_expired' })
-      return setRemoteError(declined.error)
+      return setRemoteError(declined)
     }
     dispatch({ type: 'worker_decline_broadcast' })
     await workerRefresh()
     return true
   }, [dispatch, setRemoteError, stateRef, workerRefresh])
 
-  const workerSubmitRegistration = useCallback(async (input: WorkerRegisterInput) => {
-    const result = await workerService.register(input)
-    if (!result.success) return setRemoteError(result.error)
-    await workerRefresh()
-    return true
-  }, [setRemoteError, workerRefresh])
-
-  const workerSaveRegistrationDraft = useCallback(async (input: WorkerRegistrationDraftInput) => {
-    const result = await workerService.saveRegistrationDraft(input)
-    if (!result.success) return setRemoteError(result.error)
-    return true
-  }, [setRemoteError])
+  const {
+    workerRegistrationRecovery, workerReconcileRegistration,
+    workerSubmitRegistration, workerSaveRegistrationDraft,
+  } = useWorkerRegistrationActions({
+    ownerId: role === 'worker' ? sessionUserId : null,
+    accessToken: sessionAccessToken,
+    refresh: workerRefresh,
+  })
 
   useEffect(() => {
     if (!sessionUserId || role !== 'worker') return
@@ -631,6 +628,8 @@ export function useWorkerBoardActions({
     workerSavePayoutMethod,
     workerSubmitRegistration,
     workerSaveRegistrationDraft,
+    workerRegistrationRecovery,
+    workerReconcileRegistration,
     workerSubmitBroadcastProposal,
     workerUpdateAvailability,
     workerUpdateServiceArea,

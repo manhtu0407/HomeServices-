@@ -52,18 +52,12 @@ describe('workflow phase contract', () => {
       'start_matching',
       'process_cancellation',
       'decide_scope_change',
-      'confirm_completion',
-      'decide_payment',
-      'decide_dispute',
     ])
     expect([...KAEL_AUTONOMY_EVENTS]).toEqual([
       'kael_confirmed_ticket',
       'kael_started_matching',
       'kael_processed_cancellation',
       'kael_decided_scope_change',
-      'kael_confirmed_completion',
-      'kael_decided_payment',
-      'kael_decided_dispute',
     ])
     expect([...KAEL_AUTONOMY_EVIDENCE_KINDS]).toEqual([
       'artifact',
@@ -164,12 +158,9 @@ describe('workflow event contract', () => {
       'kael_decided_scope_change',
       'scope_change_decided',
       'worker_completed',
-      'kael_confirmed_completion',
       'customer_confirmed_completion',
-      'kael_decided_payment',
+      'customer_started_payment',
       'payment_confirmed',
-      'worker_confirmed_cash_payment',
-      'kael_decided_dispute',
       'review_submitted',
       'kael_processed_cancellation',
       'cancel_requested',
@@ -434,7 +425,7 @@ describe('workflow phase context contract', () => {
       repairing: ['repairing', 'hydrated_job', 'booking', 'worker_completed'],
       scope_change_pending: ['scope_change_pending', 'scope_change', 'scope_change', 'scope_change_decided'],
       completed_by_worker: ['completed_by_worker', 'completion_evidence', 'completion_evidence', 'customer_confirmed_completion'],
-      confirmed_by_customer: ['customer_confirmed_completion', 'completion_evidence', 'payment_decision', 'kael_decided_payment'],
+      confirmed_by_customer: ['customer_confirmed_completion', 'completion_evidence', 'payment_decision', 'customer_started_payment'],
       payment_pending: ['payment_pending', 'hydrated_job', 'payment_decision', 'payment_confirmed'],
       paid: ['paid', 'hydrated_job', 'review', 'review_submitted'],
       reviewed: ['done', 'review', 'review', null],
@@ -596,7 +587,7 @@ describe('workflow phase context contract', () => {
     expect(customerConfirmedMissingEvidence.allowedActions.submitReview).toBe(false)
     expect(customerConfirmedMissingEvidence.artifacts.completion_evidence.mode).toBe('blocked')
     expect(customerConfirmedMissingEvidence.phaseContext.blockedReason).toBe('payment_required')
-    expect(customerConfirmedMissingEvidence.phaseContext.nextExpectedEvent).toBe('kael_decided_payment')
+    expect(customerConfirmedMissingEvidence.phaseContext.nextExpectedEvent).toBe('customer_started_payment')
     expect(customerConfirmedMissingEvidence.phaseContext.sections.find((section) => section.id === 'review')?.lockedReason).toBe('payment_required')
     expect(payment.phaseContext.sections.find((section) => section.id === 'job_chat')?.visible).toBe(true)
     expect(payment.phaseContext.sections.find((section) => section.id === 'job_chat')?.lockedReason).toBe('chat_send_closed')

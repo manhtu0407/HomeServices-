@@ -1,5 +1,6 @@
 import {
   HCMC_DISTRICTS,
+  refundSummarySchema,
   buildLocalWorkerDisplayCode,
   extractKnownDistrictLabel,
   hasSpecificWorkerRouteAddress,
@@ -285,6 +286,9 @@ export function workerJobToSnapshot(job: WorkerJobListResponse['jobs'][number]):
 
 function paymentFromJob(job: JobDetailResponse['job'] | WorkerJobListResponse['jobs'][number]): LocalDealPayment | null {
   const receipt = 'payment_receipt' in job ? job.payment_receipt ?? null : null
+  const refundResult = receipt?.refund == null ? null : refundSummarySchema.safeParse(receipt.refund)
+  const refund = refundResult?.success ? refundResult.data : null
+  const refundDataUnavailable = refundResult?.success === false
   const paymentStatus = paymentStatusFromReceipt(receipt?.status)
     ?? job.payment_status
     ?? paymentStatusFromJobStatus(job.status)
@@ -306,6 +310,8 @@ function paymentFromJob(job: JobDetailResponse['job'] | WorkerJobListResponse['j
     || job.payment_qr_image_url
     || job.payment_expires_at
     || job.payment_received_at
+    || refund
+    || refundDataUnavailable
   )
   if (!hasPaymentData) return null
   return {
@@ -329,6 +335,8 @@ function paymentFromJob(job: JobDetailResponse['job'] | WorkerJobListResponse['j
     bankCode: receipt?.bank_code ?? null,
     accountHolder: receipt?.account_holder ?? null,
     accountMasked: receipt?.account_masked ?? null,
+    refund,
+    refundDataUnavailable,
   }
 }
 
@@ -473,6 +481,9 @@ function broadcastFromJobStatus(
 ) {
   if (status === 'awaiting_customer_confirm' || status === 'cancelled' || status === 'reviewed') return null
   const accepted = ['worker_matched', 'worker_on_way', 'arrived', 'inspecting', 'repairing', 'scope_change_pending', 'completed_by_worker', 'confirmed_by_customer', 'paid', 'payment_pending'].includes(status)
+  // Job state alone does not prove an outbox delivered any invitations.
+  if (status === 'broadcasting' && (!broadcastState
+    || !Number.isInteger(broadcastState.active_count) || broadcastState.active_count < 0)) return null
   const expiredBroadcast = status === 'broadcasting' && broadcastState?.active_count === 0
   const canRevealFullAddress = accepted && Boolean(releasedFullAddressLabel) && (addressAccess?.exact_unit_released ?? true)
   const stagedGeneralArea = accepted && addressAccess && addressAccess.release_stage !== 'area_only'

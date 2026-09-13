@@ -56,6 +56,7 @@ export function EntryBrandAccessFlow({
   onRoleChange,
   onStepChange,
   splashDurationMs = NESTSCOUT_LOGO_MOTION_DURATION_MS,
+  workerApplication,
 }: EntryBrandAccessFlowProps) {
   const language = useAppLanguage()
   const copy = entryAccessCopy[language]
@@ -167,6 +168,7 @@ export function EntryBrandAccessFlow({
         submitLogin={submitLogin}
         submitPasswordRecovery={submitPasswordRecovery}
         submitRegister={submitRegister}
+        workerApplication={workerApplication}
       />
     </View>
   )
@@ -183,6 +185,7 @@ type EntryAccessStepContentProps = {
   onExitPasswordRecovery?: () => Promise<void> | void
   setFullName: (value: string) => void; setIdentifier: (value: string) => void; setPassword: (value: string) => void; setPasswordConfirmation: (value: string) => void
   submitLogin: () => void; submitPasswordRecovery: () => void; submitRegister: () => void
+  workerApplication: EntryBrandAccessFlowProps['workerApplication']
 }
 
 function EntryAccessStepContent(props: EntryAccessStepContentProps) {
@@ -276,7 +279,7 @@ function EntryAccessStepContent(props: EntryAccessStepContentProps) {
         />
       )
     case 'onboarding':
-      return <OnboardingScreen busy={props.busy} copy={props.copy} error={props.error} onComplete={props.completeOnboarding} role={props.role} />
+      return <OnboardingScreen busy={props.busy} copy={props.copy} error={props.error} onComplete={props.completeOnboarding} role={props.role} workerApplication={props.workerApplication} />
   }
 }
 
@@ -426,14 +429,34 @@ function Divider({ label }: { label: string }) {
   )
 }
 
-function OnboardingScreen({ busy, copy, error, onComplete, role }: { busy: boolean; copy: EntryAccessCopy; error: string | null; onComplete: () => void; role: EntryRole }) {
+function OnboardingScreen({ busy, copy, error, onComplete, role, workerApplication }: { busy: boolean; copy: EntryAccessCopy; error: string | null; onComplete: () => void; role: EntryRole; workerApplication: EntryBrandAccessFlowProps['workerApplication'] }) {
   const [identity, activity, shield] = copy.onboarding.benefits
+  const status = role === 'worker' ? workerApplication?.status : undefined
+  const workerLead = status === 'pending_review'
+    ? copy.onboarding.workerPendingLead
+    : status === 'changes_requested'
+      ? copy.onboarding.workerChangesRequestedLead
+      : status === 'rejected'
+        ? copy.onboarding.workerRejectedLead
+        : status === 'approved'
+          ? copy.onboarding.workerApprovedLead
+          : copy.onboarding.workerLead
+  const submitLabel = status === 'changes_requested'
+    ? copy.onboarding.workerResubmit
+    : status && status !== 'not_submitted'
+      ? copy.onboarding.workerCheckStatus
+      : copy.onboarding.submit
   return (
     <Screen>
       <View style={styles.screen} testID="auth-onboarding-1-6">
         <View style={styles.onboardingHead}>
           <Text style={[styles.h1, styles.onboardingTitle]}>{normalizeTitleBreaks(copy.onboarding.title)}</Text>
-          <Text style={[styles.lead, styles.onboardingLead]}>{role === 'customer' ? copy.onboarding.customerLead : copy.onboarding.workerLead}</Text>
+          <Text style={[styles.lead, styles.onboardingLead]}>{role === 'customer' ? copy.onboarding.customerLead : workerLead}</Text>
+          {role === 'worker' && workerApplication?.reason ? (
+            <Text accessibilityLiveRegion="polite" style={[styles.lead, styles.onboardingLead]} testID="auth-worker-application-reason">
+              {workerApplication.reason}
+            </Text>
+          ) : null}
         </View>
         <KaelCoreHero compact />
         <View style={styles.benefitRow}>
@@ -443,7 +466,7 @@ function OnboardingScreen({ busy, copy, error, onComplete, role }: { busy: boole
         </View>
         {error ? <Text accessibilityLiveRegion="polite" style={styles.error}>{error}</Text> : null}
         <View style={styles.onboardingBottom}>
-          <PrimaryButton disabled={busy} label={copy.onboarding.submit} onPress={onComplete} testID="auth-onboarding-start" />
+          <PrimaryButton disabled={busy} label={submitLabel} onPress={onComplete} testID="auth-onboarding-start" />
           <View style={styles.pager}><View style={styles.pagerDot} /><View style={styles.pagerDot} /><View style={styles.pagerActive} /></View>
         </View>
       </View>

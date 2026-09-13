@@ -33,14 +33,16 @@ export async function resolveReviewedMainMerge(input, fetchImpl = fetch) {
   const approvals = [...latestByActor.values()].filter((review) =>
     review?.state === 'APPROVED' && review?.commit_id === pull?.head?.sha &&
     review?.user?.type === 'User' && !review.user.login.endsWith('[bot]') &&
-    review.user.login !== pull?.user?.login && ISO.test(review?.submitted_at ?? ''),
+    review.user.login !== pull?.user?.login && review.user.login === input.requiredReviewer &&
+    ISO.test(review?.submitted_at ?? ''),
   ).sort((left, right) => left.id - right.id)
   if (approvals.length === 0) {
-    throw new Error('merged pull request has no current human approval on its exact head SHA by a separate reviewer')
+    throw new Error(`merged pull request has no current approval by ${input.requiredReviewer} on its exact head SHA`)
   }
   const review = approvals[0]
   return buildReviewedMainMergeReceipt({
     repository: input.repository,
+    requiredReviewer: input.requiredReviewer,
     mergeCommitSha: input.mergeCommitSha,
     pullRequest: {
       number: pull.number,
@@ -61,8 +63,9 @@ export async function resolveReviewedMainMerge(input, fetchImpl = fetch) {
 
 export function buildReviewedMainMergeReceipt(input) {
   const receipt = {
-    schemaVersion: 'github-reviewed-main-merge.v1',
+    schemaVersion: 'github-reviewed-main-merge.v2',
     repository: input.repository,
+    requiredReviewer: input.requiredReviewer,
     mergeCommitSha: input.mergeCommitSha,
     baseRef: 'main',
     pullRequest: input.pullRequest,
@@ -81,7 +84,7 @@ export function buildReviewedMainMergeReceipt(input) {
 
 export function verifyReviewedMainMergeReceipt(receipt) {
   const problems = []
-  if (receipt?.schemaVersion !== 'github-reviewed-main-merge.v1' || receipt?.source !== 'github-rest-api') {
+  if (receipt?.schemaVersion !== 'github-reviewed-main-merge.v2' || receipt?.source !== 'github-rest-api') {
     problems.push('merge approval receipt schema is invalid')
   }
   if (!REPOSITORY.test(receipt?.repository ?? '') || !SHA.test(receipt?.mergeCommitSha ?? '') ||
@@ -94,7 +97,8 @@ export function verifyReviewedMainMergeReceipt(receipt) {
     problems.push('merge approval pull request identity is invalid')
   }
   const review = receipt?.review
-  if (!Number.isSafeInteger(review?.id) || review.id < 1 || !LOGIN.test(review?.actor ?? '') ||
+  if (!LOGIN.test(receipt?.requiredReviewer ?? '') || !Number.isSafeInteger(review?.id) || review.id < 1 ||
+      !LOGIN.test(review?.actor ?? '') || review?.actor !== receipt.requiredReviewer ||
       review?.state !== 'APPROVED' || !ISO.test(review?.submittedAt ?? '') ||
       review?.commitSha !== pull?.headSha || review?.actor === pull?.author) {
     problems.push('merge approval review identity is invalid')
@@ -132,6 +136,7 @@ async function fetchAllJson(baseUrl, token, fetchImpl) {
 
 function assertRequest(input) {
   if (!REPOSITORY.test(input?.repository ?? '') || !SHA.test(input?.mergeCommitSha ?? '') ||
+      !LOGIN.test(input?.requiredReviewer ?? '') ||
       typeof input?.token !== 'string' || input.token.length < 20) {
     throw new Error('GitHub merge approval request identity is invalid')
   }
@@ -149,7 +154,7 @@ function canonicalize(value) {
 
 function parseArgs(args) {
   const parsed = {}
-  const allowed = new Set(['--repository', '--merge-sha', '--output'])
+  const allowed = new Set(['--repository', '--merge-sha', '--reviewer', '--output'])
   for (let index = 0; index < args.length; index += 1) {
     const key = args[index]
     if (!allowed.has(key)) throw new Error(`unknown argument: ${key}`)
@@ -173,6 +178,7 @@ async function main() {
   const receipt = await resolveReviewedMainMerge({
     repository: args['--repository'],
     mergeCommitSha: args['--merge-sha'],
+    requiredReviewer: args['--reviewer'],
     token: process.env.GITHUB_TOKEN,
   })
   const output = resolveInsideRoot(args['--output'])

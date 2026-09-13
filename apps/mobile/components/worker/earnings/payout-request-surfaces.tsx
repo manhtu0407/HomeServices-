@@ -200,8 +200,8 @@ export function WorkerV5PayoutRequest({
             <Text style={styles.latestStatus}>{withdrawalStatusCopy(latestRequest, language, now)}</Text>
             {latestRequest.status === 'pending' && latestRequest.eligible_at ? <Text style={styles.balanceNote}>
               {Date.parse(latestRequest.eligible_at) > now
-                ? textByLanguage(language, 'Số tiền được xét sau mốc 24 giờ do máy chủ trả về; Admin vẫn phải xác minh trước khi chi trả.', 'The server-set 24-hour eligibility time must pass; Admin verification is still required before payout.')
-                : textByLanguage(language, 'Đã đủ thời gian chờ; yêu cầu vẫn cần Admin xác minh trước khi chi trả.', 'The waiting period has passed; Admin verification is still required before payout.')}
+                ? textByLanguage(language, 'Số tiền được xét sau mốc 24 giờ do máy chủ trả về; quản trị viên vẫn phải xác minh trước khi chi trả.', 'The server-set 24-hour eligibility time must pass; Admin verification is still required before payout.')
+                : textByLanguage(language, 'Đã đủ thời gian chờ; yêu cầu vẫn cần quản trị viên xác minh trước khi chi trả.', 'The waiting period has passed; Admin verification is still required before payout.')}
             </Text> : null}
           </View>
         </View>

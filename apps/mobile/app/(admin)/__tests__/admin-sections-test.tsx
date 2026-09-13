@@ -67,6 +67,7 @@ const workerReviewDetail = {
   application: readyWorkerApplication,
   login_gates: { email: 'worker@gmail.com', phone: '+84901232814', full_name: readyWorkerApplication.full_name, created_at: '2026-08-07T04:10:00.000Z' },
   profile: {
+    updated_at: '2026-08-08T04:12:00.123456+00:00',
     legal_name: 'NGUYEN VAN THO',
     date_of_birth: '1990-01-02',
     gender: null,
@@ -328,7 +329,7 @@ jest.mock('@/lib/app-language', () => ({
 jest.mock('@/lib/auth-provider', () => ({
   useAuth: () => ({
     role: 'admin',
-    session: mockAuthSessionProvider ? { user: { app_metadata: { provider: mockAuthSessionProvider } } } : null,
+    session: mockAuthSessionProvider ? { access_token: 'admin-fixture-token', user: { id: 'admin-fixture', app_metadata: { provider: mockAuthSessionProvider } } } : null,
     signOut: mockSignOut,
   }),
 }))
@@ -1040,12 +1041,15 @@ describe('AdminSections', () => {
     expect(screen.getAllByText('Ngân hàng').length).toBeGreaterThanOrEqual(1)
     expect(await screen.findByTestId('admin-worker-finance-snapshot')).toBeTruthy()
     expect(screen.getByText('Tạm ghi nhận')).toBeTruthy()
-    expect(adminControlService.getWorkerFinanceSnapshot).toHaveBeenCalledWith(readyWorkerApplication.worker_id)
+    expect(adminControlService.getWorkerFinanceSnapshot).toHaveBeenCalledWith(readyWorkerApplication.worker_id, {}, 'admin-fixture-token')
     fireEvent.press(screen.getByText('Xác minh hồ sơ'))
 
     await waitFor(() => {
-      expect(adminControlService.getWorkerReviewDetail).toHaveBeenCalledWith(readyWorkerApplication.id)
-      expect(adminControlService.decideWorkerProfile).toHaveBeenCalledWith(readyWorkerApplication.id, { decision: 'approve' })
+      expect(adminControlService.getWorkerReviewDetail).toHaveBeenCalledWith(readyWorkerApplication.id, 'admin-fixture-token')
+      expect(adminControlService.decideWorkerProfile).toHaveBeenCalledWith(readyWorkerApplication.id, {
+        decision: 'approve', profile_review_queue_id: readyWorkerApplication.profile_review_queue_id,
+        expected_profile_updated_at: workerReviewDetail.profile.updated_at,
+      }, 'admin-fixture-token')
     })
   })
 

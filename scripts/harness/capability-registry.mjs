@@ -230,7 +230,9 @@ function sideEffectFor(operationClass) {
 }
 
 function confirmationFor(kind) {
+  if (kind === 'jobs.rfqPricePropose' || kind === 'jobs.rfqPriceDecide') return 'offer'
   if (kind.startsWith('admin.operations.scopeChanges.')) return 'none'
+  if (/^jobs\.paymentOrder(?:Claim)?$/u.test(kind)) return 'payment'
   if (/paymentIntent|cashPaymentConfirm|stagingPaymentConfirm/iu.test(kind)) return 'payment'
   if (/scope\.decide|scopeChange/iu.test(kind)) return 'scope_change'
   if (/confirmCompletion/iu.test(kind)) return 'completion'

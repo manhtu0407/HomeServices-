@@ -133,6 +133,10 @@ insert into public.worker_cancellation_requests (
   '2026-07-14T07:00:00Z'
 );
 
+-- The cancellation command commits the cancelled job before inserting its receipt.
+update public.jobs set status = 'cancelled', cancelled_at = now()
+where id = 'a4200000-0000-4000-8000-000000000003';
+
 insert into public.customer_cancellation_records (
   id, job_id, customer_id, worker_id, sub_case, reason_code,
   reason_category, reason_note, status, admin_review_required,

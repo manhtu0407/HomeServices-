@@ -114,6 +114,7 @@ function overviewCopy(language: AppLanguage) {
         worker_applications: 'Worker applications',
         payment_attention: 'Payments',
         open_disputes: 'Open disputes',
+        workflow_recovery: 'Workflow recovery',
         other_admin_queue: 'Other Admin queue',
       },
       workersTitle: 'Worker team',
@@ -164,6 +165,7 @@ function overviewCopy(language: AppLanguage) {
       worker_applications: 'Hồ sơ thợ',
       payment_attention: 'Thanh toán',
       open_disputes: 'Tranh chấp đang mở',
+      workflow_recovery: 'Phục hồi quy trình',
       other_admin_queue: 'Hàng chờ quản trị khác',
     },
     workersTitle: 'Đội thợ',
@@ -623,16 +625,22 @@ function OperationsPanel({ copy, onSelectDetail, operations, tokens }: {
         tokens={tokens}
         value={String(otherCount)}
       /> : null}
-      {operations.attention.map((item) => <SummaryRow
-        accessibilityHint={copy.openSummaryHint}
-        key={item.key}
-        label={copy.attention[item.key]}
-        onPress={() => onSelectDetail({ count: item.count, key: item.key, title: copy.attention[item.key] })}
-        style={styles.snapshotMetric}
-        testID={`admin-overview-operation-${item.key}`}
-        tokens={tokens}
-        value={String(item.count)}
-      />)}
+      {operations.attention.map((item) => {
+        const key = item.key
+        if (key === 'workflow_recovery') {
+          return <MetricPair key={key} label={copy.attention[key]} tokens={tokens} value={String(item.count)} />
+        }
+        return <SummaryRow
+          accessibilityHint={copy.openSummaryHint}
+          key={key}
+          label={copy.attention[key]}
+          onPress={() => onSelectDetail({ count: item.count, key, title: copy.attention[key] })}
+          style={styles.snapshotMetric}
+          testID={`admin-overview-operation-${key}`}
+          tokens={tokens}
+          value={String(item.count)}
+        />
+      })}
     </View>
   </View>
 }

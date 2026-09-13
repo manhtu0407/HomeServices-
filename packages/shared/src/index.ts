@@ -5,6 +5,8 @@ export * from './workflow'
 export * from './service-intake'
 export * from './kael-case-work'
 export * from './contracts/stage1-reliability'
+export * from './contracts/rfq-price'
+export { refundSummarySchema, type RefundSummary } from './contracts/payment'
 export type { MatchingPushDeliveryAckInput } from './contracts/customer'
 export type {
   KaelEstimateAnalysisReceipt,
@@ -68,6 +70,14 @@ export type {
 export {
   serviceTypeSchema,
   apartmentAccessProfileSchema,
+  apartmentAccessAuthorizationSchema,
+  apartmentAccessAuthorizationReceiptSchema,
+  candidateDecisionReceiptSchema,
+  candidateDecisionStatusSchema,
+  type CandidateDecisionReceipt,
+  type CandidateDecisionStatus,
+  type ApartmentAccessAuthorizationInput,
+  type ApartmentAccessAuthorizationReceipt,
   jobCreateSchema,
   jobMatchingPreferenceSchema,
   kaelChatCreateSchema,
@@ -90,6 +100,8 @@ export {
   CUSTOMER_KAEL_MEMORY_PREFERENCE_KEYS,
   customerKaelMemoryPreferenceUpdateSchema,
   WORKER_KAEL_MEMORY_PREFERENCE_KEYS,
+  WORKER_APPLICATION_STATUSES,
+  WORKER_READINESS_NEXT_ACTIONS,
   workerKaelMemoryPreferenceUpdateSchema,
   workerApplicationSubmitSchema,
   reviewSchema,
@@ -97,6 +109,8 @@ export {
   jobMessageSendSchema,
   workerRegisterSchema,
   workerRegistrationDraftSchema,
+  workerRegistrationCommandSchema,
+  workerRegistrationCommandReceiptSchema,
   workerServiceAreaUpdateSchema,
   workerServicePreferencesUpdateSchema,
   workerAvatarUploadSchema,
@@ -156,12 +170,19 @@ export type {
   CustomerKaelMemoryPreferenceUpdateInput,
   WorkerKaelMemoryPreferenceKey,
   WorkerKaelMemoryPreferenceUpdateInput,
+  WorkerApplicationStatus,
   WorkerApplicationSubmitInput,
+  WorkerKycStatus,
+  WorkerReadiness,
+  WorkerReadinessNextAction,
   ReviewInput,
   ChatMessageInput,
   JobMessageSendInput,
   WorkerRegisterInput,
   WorkerRegistrationDraftInput,
+  WorkerRegistrationCommandInput,
+  WorkerRegistrationCommandReceipt,
+  WorkerRegistrationCommandResult,
   WorkerServiceAreaUpdateInput,
   WorkerServicePreferencesUpdateInput,
   WorkerAvatarUploadInput,

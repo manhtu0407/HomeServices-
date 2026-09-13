@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useRef } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useLocalSearchParams, useRouter } from 'expo-router'
+import type { WorkerApplicationStatus } from '@nestscout/shared'
 import { EntryBrandAccessFlow } from './entry-access/EntryBrandAccessFlow'
 import { entryAccessCopy, localizeEntryAuthError } from './entry-access/copy'
 import { localizeIdentifierAvailabilityError } from './entry-access/entry-identifier-fields'
@@ -59,8 +60,13 @@ export function LoginRoleSurface() {
   const copy = entryAccessCopy[language]
   const params = useLocalSearchParams<{ role?: EntryParam; stage?: EntryParam }>()
   const router = useRouter()
-  const workerApplicationSubmittedRef = useRef(false)
   const workerRegistrationIntentRef = useRef(false)
+  const workerIdentifierRef = useRef<string | null>(null)
+  const [workerApplication, setWorkerApplication] = useState<{
+    applicationId: string | null
+    reason: string | null
+    status: WorkerApplicationStatus
+  } | null>(null)
   const reviewStep = resolveEntryStep(params.stage)
   const initialRole = resolveEntryRole(params.role)
   const hasExplicitRole = firstParam(params.role) !== undefined
@@ -88,16 +94,39 @@ export function LoginRoleSurface() {
           router.replace('/(worker)/home' as never)
           return { success: true }
         }
-        if (workerApplicationSubmittedRef.current) {
-          return {
-            success: false,
-            error: copy.errors.workerReviewPending,
+        const readiness = await auth.getWorkerReadiness()
+        if (!readiness.success || !readiness.readiness) {
+          return { success: false, error: readiness.error ?? copy.errors.workerApplicationFailed }
+        }
+        const currentApplication = readiness.readiness.application
+        setWorkerApplication({
+          applicationId: currentApplication.application_id,
+          reason: currentApplication.reason,
+          status: currentApplication.status,
+        })
+        if (currentApplication.status === 'changes_requested') {
+          const contact = auth.session?.user.email ?? workerIdentifierRef.current
+          if (!contact || !currentApplication.application_id) {
+            return { success: false, error: copy.errors.workerEmailRequired }
           }
+          const revision = await auth.submitWorkerApplication({
+            contact,
+            language,
+            revisionOfApplicationId: currentApplication.application_id,
+          })
+          if (!revision.success) {
+            return { success: false, error: localizeEntryAuthError(revision.error, language, 'workerApplicationFailed') }
+          }
+          setWorkerApplication({
+            applicationId: revision.applicationId ?? null,
+            reason: null,
+            status: revision.status ?? 'pending_review',
+          })
+          return { success: true }
         }
-        return {
-          success: false,
-          error: copy.errors.workerApplicationNotSubmitted,
-        }
+        if (currentApplication.status === 'pending_review' || currentApplication.status === 'approved') return { success: true }
+        if (currentApplication.status === 'rejected') return { success: false, error: copy.errors.workerApplicationRejected }
+        return { success: false, error: copy.errors.workerApplicationNotSubmitted }
       }
       if (nextRole === 'customer') {
         router.replace('/(customer)/home' as never)
@@ -113,8 +142,8 @@ export function LoginRoleSurface() {
       }
     },
     onPasswordLogin: async ({ identifier, password, role }: PasswordLoginInput) => {
-      workerApplicationSubmittedRef.current = false
       workerRegistrationIntentRef.current = role === 'worker'
+      workerIdentifierRef.current = role === 'worker' ? identifier : null
       const result = await auth.signInWithPassword(identifier, password)
       if (!result.success) {
         workerRegistrationIntentRef.current = false
@@ -124,10 +153,32 @@ export function LoginRoleSurface() {
         }
       }
       if (role === 'worker' && result.role === 'customer') {
+        const readiness = await auth.getWorkerReadiness()
+        if (!readiness.success || !readiness.readiness) {
+          return {
+            success: false,
+            error: readiness.error ?? copy.errors.workerApplicationFailed,
+          }
+        }
+        const applicationStatus = readiness.readiness.application.status
+        setWorkerApplication({
+          applicationId: readiness.readiness.application.application_id,
+          reason: readiness.readiness.application.reason,
+          status: applicationStatus,
+        })
+        if (applicationStatus !== 'not_submitted') {
+          return { success: true }
+        }
         const application = await auth.submitWorkerApplication({ contact: identifier, language })
-        workerApplicationSubmittedRef.current = application.success
         return application.success
-          ? { success: true }
+          ? (() => {
+              setWorkerApplication({
+                applicationId: application.applicationId ?? null,
+                reason: null,
+                status: application.status ?? 'pending_review',
+              })
+              return { success: true }
+            })()
           : {
               success: false,
               error: localizeEntryAuthError(application.error, language, 'workerApplicationFailed'),
@@ -150,7 +201,6 @@ export function LoginRoleSurface() {
       router.replace('/(auth)/login?stage=login' as never)
     },
     onAppleLogin: async () => {
-      workerApplicationSubmittedRef.current = false
       workerRegistrationIntentRef.current = false
       const result = await auth.signInWithApple()
       return result.success
@@ -161,7 +211,6 @@ export function LoginRoleSurface() {
           }
     },
     onGoogleLogin: async () => {
-      workerApplicationSubmittedRef.current = false
       workerRegistrationIntentRef.current = false
       const result = await auth.signInWithGoogle()
       return result.success
@@ -173,8 +222,8 @@ export function LoginRoleSurface() {
     },
     onRegister: async ({ identifier, fullName, password, role }: RegistrationInput) => {
       if (role === 'worker') {
-        workerApplicationSubmittedRef.current = false
         workerRegistrationIntentRef.current = true
+        workerIdentifierRef.current = identifier
         const signup = await auth.signUpWithIdentifier({
           displayName: fullName,
           identifier,
@@ -188,16 +237,21 @@ export function LoginRoleSurface() {
           }
         }
         const result = await auth.submitWorkerApplication({ contact: identifier, language })
-        workerApplicationSubmittedRef.current = result.success
         return result.success
-          ? { success: true }
+          ? (() => {
+              setWorkerApplication({
+                applicationId: result.applicationId ?? null,
+                reason: null,
+                status: result.status ?? 'pending_review',
+              })
+              return { success: true }
+            })()
           : {
               success: false,
               error: localizeEntryAuthError(result.error, language, 'workerApplicationFailed'),
             }
       }
 
-      workerApplicationSubmittedRef.current = false
       workerRegistrationIntentRef.current = false
       const result = await auth.signUpWithIdentifier({
         displayName: fullName,
@@ -229,6 +283,7 @@ export function LoginRoleSurface() {
       key={flowKey}
       restoreRememberedRole={!hasExplicitRole}
       splashDurationMs={reviewStep === 'splash' ? 0 : undefined}
+      workerApplication={workerApplication}
     />
   )
 }

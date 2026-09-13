@@ -108,14 +108,14 @@ export const adminFinanceTransactionListQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(100).default(25),
   payment_method: z.string().regex(FINANCE_FILTER).optional(),
   service_type: z.string().regex(FINANCE_FILTER).optional(),
-  status: z.enum(["paid", "reviewed"]).optional(),
+  status: z.enum(["paid", "reviewed", "cancelled"]).optional(),
 }).strict().superRefine(validateFinancePeriod);
 
 export const adminFinanceExportQuerySchema = z.object({
   ...financePeriodFields,
   payment_method: z.string().regex(FINANCE_FILTER).optional(),
   service_type: z.string().regex(FINANCE_FILTER).optional(),
-  status: z.enum(["paid", "reviewed"]).optional(),
+  status: z.enum(["paid", "reviewed", "cancelled"]).optional(),
 }).strict().superRefine(validateFinancePeriod);
 
 export const adminFinanceTaxPolicyDraftSchema = z.object({

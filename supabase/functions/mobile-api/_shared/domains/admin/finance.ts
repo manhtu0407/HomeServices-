@@ -4,6 +4,7 @@ import type { MobileApiContext } from "../../platform/auth.ts";
 import { db, dbQuery } from "../../platform/db.ts";
 import type { AdminFinanceContracts } from "../contracts/admin-finance.ts";
 import { requireAdminCapability } from "./control.ts";
+import { loadJobRefundSummary } from "../payment/refund-obligations.ts";
 export {
   claimAdminPaymentReconciliation,
   decideAdminPaymentReconciliation,
@@ -340,6 +341,7 @@ export async function getAdminFinanceTransaction(
   if (!timeline || result.data.pii !== "masked") apiFailure("DB_ERROR", "Chi tiết giao dịch tài chính không hợp lệ", 500);
   return {
     generated_at: new Date().toISOString(),
+    refund: await loadJobRefundSummary(db(ctx), jobId, true),
     transaction: serializeFinanceTransaction(transaction),
     timeline: timeline.map((row) => ({
       event_type: requiredFinanceString(row.event_type),

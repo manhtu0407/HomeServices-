@@ -25,8 +25,9 @@ test('builds a complete immutable release-ledger registration statement', () => 
 
 function productionProviderReadiness() {
   return {
-    anthropic: true, deepseek: false, durable_guards: true,
-    global_ai_enabled: true, perplexity: true, vietmap: true,
+    android_fcm_v1: true, anthropic: true, deepseek: false, durable_guards: true,
+    global_ai_enabled: true, ios_apns: true, perplexity: true,
+    push_receipt_reconciler: true, vietmap: true,
   }
 }
 

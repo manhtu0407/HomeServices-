@@ -21,12 +21,9 @@ export type WorkflowTransitionEvent =
   | "kael_decided_scope_change"
   | "scope_change_decided"
   | "worker_completed"
-  | "kael_confirmed_completion"
   | "customer_confirmed_completion"
-  | "kael_decided_payment"
+  | "customer_started_payment"
   | "payment_confirmed"
-  | "worker_confirmed_cash_payment"
-  | "kael_decided_dispute"
   | "review_submitted"
   | "kael_processed_cancellation"
   | "cancel_requested";
@@ -144,15 +141,9 @@ const WORKFLOW_EVENT_TRANSITIONS: Record<WorkflowTransitionEvent, ReadonlyArray<
     ["scope_change_pending", "cancelled"],
   ],
   worker_completed: [["repairing", "completed_by_worker"]],
-  kael_confirmed_completion: [["completed_by_worker", "confirmed_by_customer"]],
   customer_confirmed_completion: [["completed_by_worker", "confirmed_by_customer"]],
-  kael_decided_payment: [["confirmed_by_customer", "payment_pending"]],
+  customer_started_payment: [["confirmed_by_customer", "payment_pending"]],
   payment_confirmed: [["payment_pending", "paid"]],
-  worker_confirmed_cash_payment: [["confirmed_by_customer", "paid"]],
-  kael_decided_dispute: [
-    ["completed_by_worker", "confirmed_by_customer"],
-    ["confirmed_by_customer", "reviewed"],
-  ],
   review_submitted: [["paid", "reviewed"]],
   kael_processed_cancellation: [
     ["draft", "cancelled"],
@@ -186,9 +177,6 @@ const KAEL_AUTONOMY_ACTION_EVENTS: Record<KaelAutonomyDecision["action"], readon
   start_matching: ["kael_started_matching"],
   process_cancellation: ["kael_processed_cancellation"],
   decide_scope_change: ["kael_decided_scope_change"],
-  confirm_completion: ["kael_confirmed_completion"],
-  decide_payment: ["kael_decided_payment"],
-  decide_dispute: ["kael_decided_dispute"],
 };
 
 const CUSTOMER_CANCELLATION_REQUEST_STATUSES: readonly JobStatus[] = [

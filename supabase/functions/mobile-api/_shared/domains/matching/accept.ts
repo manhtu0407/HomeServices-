@@ -1,6 +1,6 @@
 import { asJobStatus, nullableString } from "../../platform/coercions.ts";
 import { db, dbQuery, workflowDb } from "../../platform/db.ts";
-import { mapAcceptError } from "../../platform/domain-error-mappers.ts";
+import { mapAcceptError, throwMatchingCapacityError } from "../../platform/domain-error-mappers.ts";
 import { logJobEvent } from "../../platform/audit.ts";
 import { notifyCustomerCandidateReady } from "./candidate.ts";
 import { apiFailure } from "../../platform/api-failure.ts";
@@ -21,6 +21,7 @@ export async function acceptBroadcast(
       p_quote_id: quoteId,
     }),
   );
+  throwMatchingCapacityError(result.error);
   if (result.error) apiFailure("DB_ERROR", "Lỗi khi nhận yêu cầu", 500);
   const row = result.data?.[0];
   if (!row) apiFailure("DB_ERROR", "Lỗi khi nhận yêu cầu", 500);

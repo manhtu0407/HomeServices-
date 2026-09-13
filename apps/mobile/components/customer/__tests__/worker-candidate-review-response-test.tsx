@@ -279,7 +279,7 @@ it('shows only real candidate facts and keeps the address locked until confirmat
   expect(onToggleFavorite).toHaveBeenCalledWith(false)
 })
 
-it('makes unavailable protected direct payment clear before the customer chooses a worker', () => {
+it.each([false, true])('does not advertise the retired direct-payment rail when legacy availability is %s', (availability) => {
   const view = render(
     <WorkerCandidateReviewResponse
       busy={false}
@@ -289,7 +289,7 @@ it('makes unavailable protected direct payment clear before the customer chooses
         original_scope_price_quote: originalScopePriceQuote,
         worker_proposal: null,
         customer_decided_at: null,
-        direct_payment_available: false,
+        direct_payment_available: availability,
         display_name: 'Nguyễn An',
         expires_at: '2026-07-11T01:10:00.000Z',
         is_favorite: false,
@@ -314,49 +314,9 @@ it('makes unavailable protected direct payment clear before the customer chooses
     />,
   )
 
-  expect(view.getByTestId('customer-v21-worker-candidate-payment-direct-unavailable')).toBeTruthy()
-  expect(view.getByText('Trả trực tiếp chưa được mở')).toBeTruthy()
-  expect(view.getByText('Với thợ này, Kael chưa thể mở trả trực tiếp có bảo đảm. Kael sẽ xác nhận phương thức thanh toán an toàn khi hoàn tất.')).toBeTruthy()
-})
-
-it('explains that protected direct payment is rechecked before it opens', () => {
-  const view = render(
-    <WorkerCandidateReviewResponse
-      busy={false}
-      candidate={{
-        avatar_url: null,
-        candidate_id: 'candidate-1',
-        original_scope_price_quote: originalScopePriceQuote,
-        worker_proposal: null,
-        customer_decided_at: null,
-        direct_payment_available: true,
-        display_name: 'Nguyễn An',
-        expires_at: '2026-07-11T01:10:00.000Z',
-        is_favorite: false,
-        proposed_at: '2026-07-11T01:00:00.000Z',
-        rating: 4.9,
-        status: 'proposed',
-        total_jobs: 18,
-        verification_status: 'approved',
-        worker_id: 'worker-1',
-        years_experience: 3,
-      }}
-      error={null}
-      language="vi"
-      onConfirm={jest.fn()}
-      onReject={jest.fn()}
-      onRetry={jest.fn()}
-      onRetrySavedWorkers={jest.fn()}
-      onToggleFavorite={jest.fn()}
-      savedWorkers={[]}
-      savedWorkersStatus="ready"
-      tokens={tokens}
-    />,
-  )
-
-  expect(view.getByTestId('customer-v21-worker-candidate-payment-direct-available')).toBeTruthy()
-  expect(view.getByText('Trả trực tiếp đang đủ điều kiện')).toBeTruthy()
-  expect(view.getByText('Theo điều kiện hiện tại, Kael có thể mở trả trực tiếp có bảo đảm sau khi hoàn tất. Kael sẽ kiểm tra lại mọi điều kiện trước khi mở thanh toán.')).toBeTruthy()
+  expect(view.queryByTestId('customer-v21-worker-candidate-payment-direct-available')).toBeNull()
+  expect(view.queryByTestId('customer-v21-worker-candidate-payment-direct-unavailable')).toBeNull()
+  expect(view.queryByText(/trả trực tiếp/i)).toBeNull()
 })
 
 it('opens a final review with saved workers before confirming the candidate', () => {

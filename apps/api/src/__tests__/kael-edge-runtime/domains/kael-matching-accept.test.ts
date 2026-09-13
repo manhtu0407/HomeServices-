@@ -343,14 +343,7 @@ describe('matching-accept', () => {
     expect(response.candidate).not.toHaveProperty('available_balance')
     expect(response.candidate).not.toHaveProperty('worker_net')
     expect(response.candidate?.original_scope_price_quote).not.toHaveProperty('reasoning_receipt')
-    expect(client.calls).toContainEqual(expect.objectContaining({
-      table: 'rpc:get_direct_worker_payment_availability',
-      operations: [[
-        'rpc',
-        'get_direct_worker_payment_availability',
-        { p_customer_id: 'customer-1', p_job_id: candidateJobId },
-      ]],
-    }))
+    expect(client.calls.some((call) => call.table === 'rpc:get_direct_worker_payment_availability')).toBe(false)
     const selectedColumns = client.calls.flatMap((call) => call.operations)
       .filter((operation) => operation[0] === 'select')
       .map((operation) => String(operation[1]))

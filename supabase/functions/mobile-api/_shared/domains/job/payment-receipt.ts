@@ -4,6 +4,7 @@ import { apiFailure } from "../../platform/api-failure.ts";
 import type { UserRole } from "../../../../_shared/domain.ts";
 import type { EdgeJobDetailResponse } from "../contracts/job-detail.ts";
 import { loadDirectWorkerPaymentAvailability } from "../payment/direct-payment-availability.ts";
+import { loadJobRefundSummary } from "../payment/refund-obligations.ts";
 
 export async function loadPaymentReceipt(
   client: DbClient,
@@ -53,6 +54,7 @@ export async function loadPaymentReceipt(
   const account = role === "worker" ? null : paymentReceiptAccount(order.qr_image_url);
   return {
     method,
+    refund: await loadJobRefundSummary(client, jobId),
     status: asString(order.status),
     gross_amount: grossAmount,
     customer_transfer_claimed_at: nullableString(order.customer_transfer_claimed_at),

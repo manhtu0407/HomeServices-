@@ -1,4 +1,4 @@
-import { asString, nullableString } from "../../platform/coercions.ts";
+import { nullableString } from "../../platform/coercions.ts";
 import { db, dbQuery, normalizeWorkerDistricts } from "../../platform/db.ts";
 import { mapAvailabilityError } from "../../platform/domain-error-mappers.ts";
 import { apiFailure } from "../../platform/api-failure.ts";
@@ -18,29 +18,40 @@ export async function updateWorkerServiceArea(
   if (!districts) {
     apiFailure("VALIDATION", "Khu vực làm việc không hợp lệ", 400);
   }
-  const update: Record<string, unknown> = {
+  const patch: Record<string, unknown> = {
     districts,
-    updated_at: new Date().toISOString(),
   };
-  if ("home_lat" in input) update.home_lat = input.home_lat ?? null;
-  if ("home_lng" in input) update.home_lng = input.home_lng ?? null;
+  if ("home_lat" in input) patch.home_lat = input.home_lat ?? null;
+  if ("home_lng" in input) patch.home_lng = input.home_lng ?? null;
   if ("service_radius_km" in input) {
-    update.service_radius_km = input.service_radius_km ?? null;
+    patch.service_radius_km = input.service_radius_km ?? null;
   }
 
-  const result = await dbQuery<{ id: string }>(
-    db(ctx)
-      .from("worker_profiles")
-      .update(update)
-      .eq("id", ctx.user.id)
-      .select("id")
-      .maybeSingle(),
+  const result = await dbQuery<Array<Record<string, unknown>>>(
+    db(ctx).rpc("update_worker_service_area_atomic", {
+      p_actor_id: ctx.user.id,
+      p_worker_id: ctx.user.id,
+      p_patch: patch,
+    }),
   );
-  if (result.error) {
+  const row = result.data?.length === 1 ? result.data[0] : null;
+  if (result.error || !row || typeof row.ok !== "boolean") {
     apiFailure("DB_ERROR", "Không thể cập nhật khu vực làm việc", 500);
   }
-  if (!result.data) {
-    apiFailure("NOT_FOUND", "Không tìm thấy hồ sơ thợ", 404);
+  if (!row.ok) {
+    if (row.error_code === "ALREADY_FINALIZED") {
+      apiFailure("ALREADY_FINALIZED", "Hồ sơ đang được xem xét hoặc bị khóa. Chưa thể đổi khu vực làm việc.", 409);
+    }
+    if (row.error_code === "NOT_FOUND") apiFailure("NOT_FOUND", "Không tìm thấy hồ sơ thợ", 404);
+    if (row.error_code === "NOT_OWNER" || row.error_code === "WRONG_ROLE") {
+      apiFailure("FORBIDDEN", "Bạn không có quyền cập nhật hồ sơ này", 403);
+    }
+    if (row.error_code === "INVALID_INPUT") apiFailure("VALIDATION", "Khu vực làm việc không hợp lệ", 400);
+    apiFailure("DB_ERROR", "Không thể cập nhật khu vực làm việc", 500);
+  }
+  if (row.error_code !== null || row.worker_id !== ctx.user.id ||
+    typeof row.updated_at !== "string" || normalizeIsoTimestamp(row.updated_at) === null) {
+    apiFailure("DB_ERROR", "Không thể cập nhật khu vực làm việc", 500);
   }
   return getWorkerProfile(ctx);
 }
