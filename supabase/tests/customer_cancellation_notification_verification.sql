@@ -25,6 +25,9 @@ begin
   end loop;
 end;
 $fixtures$;
+insert into public.worker_profiles(id,service_types,districts,is_approved,is_available,synthetic_cohort_id)
+values('c1180000-0000-4000-8000-000000000002',array['plumbing']::public.service_type[],
+  array['q7'],true,true,'synthetic-customer-cancel-p118');
 insert into public.jobs(id,customer_id,worker_id,service_type,description,address_district,status,quote_mode)
 values('c1180000-0000-4000-8000-000000000101','c1180000-0000-4000-8000-000000000001',
   'c1180000-0000-4000-8000-000000000002','plumbing','Cancellation inbox fixture','q7','worker_matched','rfq');
@@ -130,7 +133,19 @@ end;
 $scheduled$;
 insert into public.jobs(id,customer_id,worker_id,service_type,description,address_district,status,quote_mode)
 values('c1180000-0000-4000-8000-000000000103','c1180000-0000-4000-8000-000000000001',
-  'c1180000-0000-4000-8000-000000000002','plumbing','Dispute notification fixture','q7','completed_by_worker','rfq');
+  'c1180000-0000-4000-8000-000000000002','plumbing','Dispute notification fixture','q7','inspecting','rfq');
+select public.propose_rfq_price_atomic(
+  'c1180000-0000-4000-8000-000000000103','c1180000-0000-4000-8000-000000000002',
+  'c1180000-0000-4000-8000-000000000203',220000,'Inspected fitting replacement including labor.');
+select public.decide_rfq_price_atomic(
+  'c1180000-0000-4000-8000-000000000103','c1180000-0000-4000-8000-000000000001',
+  'c1180000-0000-4000-8000-000000000203',true);
+insert into public.job_media_assets(job_id,owner_id,service_type,stage,bucket_id,object_path,mime_type)
+values('c1180000-0000-4000-8000-000000000103','c1180000-0000-4000-8000-000000000002',
+  'plumbing','after','job-media','c1180000-0000-4000-8000-000000000103/after/fixture.jpg','image/jpeg');
+update public.jobs set status='completed_by_worker',completion_notes='Completed fixture with attached evidence.',
+  completion_photo_urls=array['supabase://job-media/c1180000-0000-4000-8000-000000000103/after/fixture.jpg']
+where id='c1180000-0000-4000-8000-000000000103';
 do $dispute$
 declare v_result record;
 begin
@@ -138,7 +153,8 @@ begin
     'c1180000-0000-4000-8000-000000000103','c1180000-0000-4000-8000-000000000001','no_reason_provided',null);
   if not v_result.ok or v_result.sub_case is distinct from 'after_worker_completed_trigger_dispute'
     or v_result.job_status is distinct from 'completed_by_worker'
-    or exists(select 1 from public.notifications where job_id='c1180000-0000-4000-8000-000000000103') then
+    or exists(select 1 from public.notifications where job_id='c1180000-0000-4000-8000-000000000103'
+      and event_type='customer_cancelled_after_accept') then
     raise exception 'P118_DISPUTE_INVENTED_CANCELLATION_NOTICE';
   end if;
 end;
