@@ -633,7 +633,7 @@ export class Stage1SyntheticReleaseSmoke {
       object_paths: objectPaths,
     }, {
       idempotencyKey: `stage1-media-revoke-${jobId}`,
-      expectedSafeError: { status: 400, code: 'MEDIA_INTENT_STATE_CHANGED' },
+      expectedSafeError: { status: 400, code: 'MEDIA_INTENT_STATE_CHANGED', surface: 'attached_media_protection' },
     })
     if (refused.json?.code !== 'MEDIA_INTENT_STATE_CHANGED') {
       throw new Error('attached evidence revocation was not refused')

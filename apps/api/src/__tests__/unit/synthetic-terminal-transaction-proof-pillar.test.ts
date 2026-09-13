@@ -37,7 +37,7 @@ describe('isolated synthetic terminal transaction proof', () => {
     await smoke.assertAttachedEvidenceProtected({ id: 'worker' }, 'job', ['job/after/evidence.png'])
     expect(smoke.api).toHaveBeenCalledWith({ id: 'worker' }, 'POST', '/jobs/job/media-revoke',
       { object_paths: ['job/after/evidence.png'] }, expect.objectContaining({
-        expectedSafeError: { status: 400, code: 'MEDIA_INTENT_STATE_CHANGED' },
+        expectedSafeError: { status: 400, code: 'MEDIA_INTENT_STATE_CHANGED', surface: 'attached_media_protection' },
       }))
     expect(remove).not.toHaveBeenCalled()
   })
@@ -47,6 +47,46 @@ describe('isolated synthetic terminal transaction proof', () => {
     smoke.api = vi.fn().mockResolvedValue({ json: { revoked_count: 1 } })
     await expect(smoke.assertAttachedEvidenceProtected({ id: 'worker' }, 'job', ['job/after/evidence.png']))
       .rejects.toThrow('attached evidence revocation was not refused')
+  })
+
+  it.each([
+    { status: 400, code: 'MEDIA_INTENT_STATE_CHANGED', supportCode: 'ABC12345', valid: true },
+    { status: 200, code: 'MEDIA_INTENT_STATE_CHANGED', supportCode: 'ABC12345', valid: false },
+    { status: 500, code: 'DB_ERROR', supportCode: 'ABC12345', valid: false },
+    { status: 400, code: 'MEDIA_INTENT_STATE_CHANGED', supportCode: '', valid: false },
+  ])('verifies attached-media HTTP evidence $status/$code with the real API validator', async (result) => {
+    const releaseId = 'harness-aaaaaaaaaaaa-bbbbbbbbbbbb'
+    const traceId = '11111111-1111-4111-8111-111111111111'
+    const smoke = new Stage1SyntheticReleaseSmoke({
+      projectUrl: 'https://smoke.example.test', apiBaseUrl: 'https://smoke.example.test/functions/v1/mobile-api',
+      serviceRoleKey: 'test-only', anonKey: 'test-only',
+      release: { releaseId, gitSha: 'a'.repeat(40) },
+      clientBinary: { applicationId: 'test.app', buildNumber: 1, easBuildId: 'test-build', runtimeVersion: '1' },
+      mobileAttestation: { contractEpoch: 2 },
+    })
+    const fetch = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify({ code: result.code }), {
+      status: result.status,
+      headers: {
+        'content-type': 'application/json', 'x-release-id': releaseId, 'x-trace-id': traceId,
+        'x-run-id': traceId, 'x-operation-id': traceId, 'x-support-code': result.supportCode,
+      },
+    }))
+    try {
+      const protectedEvidence = smoke.assertAttachedEvidenceProtected({ accessToken: 'test-only' }, 'job', ['job/after/evidence.png'])
+      if (result.valid) {
+        await expect(protectedEvidence).resolves.toBeUndefined()
+        expect(smoke.safeErrorEvidence).toEqual([{
+          surface: 'attached_media_protection', status: 400, code: 'MEDIA_INTENT_STATE_CHANGED',
+          supportCode: result.supportCode, traceId,
+        }])
+      } else {
+        await expect(protectedEvidence).rejects.toThrow()
+        expect(smoke.safeErrorEvidence).toEqual([])
+      }
+      expect(fetch).toHaveBeenCalledTimes(1)
+    } finally {
+      fetch.mockRestore()
+    }
   })
 
   it('ships an append-only release, cohort, run, sequence, and scenario-bound receipt', () => {
