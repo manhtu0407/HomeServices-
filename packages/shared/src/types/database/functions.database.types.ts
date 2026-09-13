@@ -2079,17 +2079,6 @@ export type DatabaseFunctions = {
           status: Database["public"]["Enums"]["job_status"]
         }[]
       }
-      confirm_kael_chat_agentic_lab_atomic: {
-        Args: { p_customer_id: string; p_session_id: string }
-        Returns: {
-          district_code: string
-          error_code: string
-          job_id: string
-          job_status: Database["public"]["Enums"]["job_status"]
-          ok: boolean
-          service_type: Database["public"]["Enums"]["service_type"]
-        }[]
-      }
       confirm_kael_chat_atomic:
         | {
             Args: { p_customer_id: string; p_session_id: string }
@@ -2445,18 +2434,6 @@ export type DatabaseFunctions = {
           consumed_count: number
           ok: boolean
           reason: string
-        }[]
-      }
-      create_agentic_lab_payment_intent_atomic: {
-        Args: { p_customer_id: string; p_job_id: string }
-        Returns: {
-          amount_due: number
-          error_code: string
-          job_status: Database["public"]["Enums"]["job_status"]
-          ok: boolean
-          payment_code: string
-          payment_expires_at: string
-          payment_status: string
         }[]
       }
       create_manual_bank_payment_order: {
@@ -2919,14 +2896,9 @@ export type DatabaseFunctions = {
           pending_payment_amount: number
           pending_payment_count: number
           platform_fee_total: number
-          provisional_payment_amount: number
-          provisional_payment_count: number
           recent_transactions: Json
           to_date: string
           total_jobs_paid: number
-          withdrawal_eligible_at: string
-          withdrawal_reserved_amount: number
-          withdrawn_total: number
           worker_id: string
         }[]
       }
@@ -4485,22 +4457,6 @@ export type DatabaseFunctions = {
           ok: boolean
           reason: string
           validated_refs: string[]
-        }[]
-      }
-      verify_agentic_lab_payment_atomic: {
-        Args: {
-          p_amount_received: number
-          p_job_id: string
-          p_payment_code: string
-          p_provider_event_id: string
-          p_verified_by: string
-        }
-        Returns: {
-          error_code: string
-          job_status: Database["public"]["Enums"]["job_status"]
-          ok: boolean
-          payment_received_at: string
-          payment_status: string
         }[]
       }
       verify_kael_matching_maintainer_secret: {
