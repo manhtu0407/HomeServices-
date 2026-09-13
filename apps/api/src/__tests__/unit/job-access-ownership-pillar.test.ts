@@ -1,4 +1,5 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
+import { revokeJobMediaUploads } from '../../../../../supabase/functions/mobile-api/_shared/domains/job/media'
 
 import { pillarWhy, type PillarManifest } from '../pillar-manifest'
 import {
@@ -35,13 +36,16 @@ const OWNED_JOB = {
 
 // Counts every read so "refused before any database read" can be asserted rather than assumed.
 function jobClient(job: Record<string, unknown> | null, error: unknown = null) {
-  const state = { reads: 0 }
+  const state = { reads: 0, columns: '*' }
   const chain = {
-    select: () => chain,
+    select: (columns = '*') => { state.columns = columns; return chain },
     eq: () => chain,
     single: async () => {
       state.reads += 1
-      return { data: job, error }
+      const data = job && state.columns !== '*'
+        ? Object.fromEntries(state.columns.split(',').map((column) => [column.trim(), job[column.trim()]]))
+        : job
+      return { data, error }
     },
   }
   return {
@@ -53,6 +57,36 @@ function jobClient(job: Record<string, unknown> | null, error: unknown = null) {
 function ctxFor(role: string, userId: string): MobileApiContext {
   return { success: true, user: { id: userId }, role, supabase: {} } as unknown as MobileApiContext
 }
+
+describe('media revocation preserves the access projection and ownership gate', () => {
+  function fixture(userId = OWNER_WORKER, attached = false) {
+    const { client } = jobClient(OWNED_JOB)
+    const rpc = vi.fn().mockResolvedValue({ data: [{ ok: !attached,
+      reason: attached ? 'MEDIA_INTENT_STATE_CHANGED' : null,
+      revoked_paths: attached ? [] : ['job-p19/after/reserved.png'] }], error: null })
+    return { rpc, ctx: { ...ctxFor('worker', userId), supabase: { ...client, rpc } } as unknown as MobileApiContext }
+  }
+
+  it('reads mandatory status before revoking an unattached upload owned by the assigned worker', async () => {
+    const { ctx, rpc } = fixture()
+    await expect(revokeJobMediaUploads(ctx, OWNED_JOB.id, { object_paths: ['job-p19/after/reserved.png'] }))
+      .resolves.toMatchObject({ revoked_count: 1 })
+    expect(rpc).toHaveBeenCalledWith('revoke_job_media_uploads', expect.objectContaining({ p_owner_id: OWNER_WORKER }))
+  })
+
+  it('refuses another worker before the revocation RPC', async () => {
+    const { ctx, rpc } = fixture(INTRUDER)
+    await expect(revokeJobMediaUploads(ctx, OWNED_JOB.id, { object_paths: ['job-p19/after/reserved.png'] }))
+      .rejects.toMatchObject({ code: 'NOT_FOUND', status: 404 })
+    expect(rpc).not.toHaveBeenCalled()
+  })
+
+  it('keeps attached evidence non-revocable when SQL refuses the intent transition', async () => {
+    const { ctx } = fixture(OWNER_WORKER, true)
+    await expect(revokeJobMediaUploads(ctx, OWNED_JOB.id, { object_paths: ['job-p19/after/reserved.png'] }))
+      .rejects.toMatchObject({ code: 'MEDIA_INTENT_STATE_CHANGED', status: 400 })
+  })
+})
 
 describe('requireJobAccess ownership', () => {
   it('lets the owning customer through', async () => {

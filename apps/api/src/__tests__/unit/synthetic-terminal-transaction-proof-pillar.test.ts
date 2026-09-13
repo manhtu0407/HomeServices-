@@ -1,6 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
+import { Stage1SyntheticReleaseSmoke } from '../../../scripts/stage1-synthetic-release-smoke.mjs'
 
 import { pillarWhy, type PillarManifest } from '../pillar-manifest'
 
@@ -28,6 +29,26 @@ const smokePath = resolve(root, 'apps/api/scripts/stage1-synthetic-release-smoke
 const cleanupPath = resolve(root, 'apps/api/scripts/stage1-synthetic-cohort-cleanup.mjs')
 
 describe('isolated synthetic terminal transaction proof', () => {
+  it('tests attached-media refusal without deleting completion evidence through the user API', async () => {
+    const smoke = Object.create(Stage1SyntheticReleaseSmoke.prototype)
+    smoke.api = vi.fn().mockResolvedValue({ json: { code: 'MEDIA_INTENT_STATE_CHANGED' } })
+    const remove = vi.fn()
+    smoke.admin = { storage: { from: () => ({ remove }) } }
+    await smoke.assertAttachedEvidenceProtected({ id: 'worker' }, 'job', ['job/after/evidence.png'])
+    expect(smoke.api).toHaveBeenCalledWith({ id: 'worker' }, 'POST', '/jobs/job/media-revoke',
+      { object_paths: ['job/after/evidence.png'] }, expect.objectContaining({
+        expectedSafeError: { status: 400, code: 'MEDIA_INTENT_STATE_CHANGED' },
+      }))
+    expect(remove).not.toHaveBeenCalled()
+  })
+
+  it('refuses a smoke result that allowed attached evidence to be revoked', async () => {
+    const smoke = Object.create(Stage1SyntheticReleaseSmoke.prototype)
+    smoke.api = vi.fn().mockResolvedValue({ json: { revoked_count: 1 } })
+    await expect(smoke.assertAttachedEvidenceProtected({ id: 'worker' }, 'job', ['job/after/evidence.png']))
+      .rejects.toThrow('attached evidence revocation was not refused')
+  })
+
   it('ships an append-only release, cohort, run, sequence, and scenario-bound receipt', () => {
     expect(existsSync(migrationPath), pillarWhy(PILLAR, 'terminal proof migration must ship')).toBe(true)
     const migration = readFileSync(migrationPath, 'utf8').replace(/\r\n/g, '\n')

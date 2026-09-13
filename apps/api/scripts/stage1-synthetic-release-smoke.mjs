@@ -590,7 +590,7 @@ export class Stage1SyntheticReleaseSmoke {
         rehydratedJob?.payment_provider !== 'staging_simulator') {
       throw new Error('Customer could not rehydrate the isolated reviewed terminal state')
     }
-    await this.revokeSyntheticJobEvidence(input.actors.worker, input.jobId, evidencePaths)
+    await this.assertAttachedEvidenceProtected(input.actors.worker, input.jobId, evidencePaths)
     return proof
   }
 
@@ -627,16 +627,17 @@ export class Stage1SyntheticReleaseSmoke {
     return { objectPath: upload.object_path, storageRef: upload.storage_ref }
   }
 
-  async revokeSyntheticJobEvidence(worker, jobId, objectPaths) {
+  async assertAttachedEvidenceProtected(worker, jobId, objectPaths) {
     if (objectPaths.length === 0) return
-    const revoked = await this.api(worker, 'POST', `/jobs/${jobId}/media-revoke`, {
+    const refused = await this.api(worker, 'POST', `/jobs/${jobId}/media-revoke`, {
       object_paths: objectPaths,
-    }, { idempotencyKey: `stage1-media-revoke-${jobId}` })
-    if (revoked.json?.revoked_count !== objectPaths.length) {
-      throw new Error('synthetic evidence revocation did not cover every exact object path')
+    }, {
+      idempotencyKey: `stage1-media-revoke-${jobId}`,
+      expectedSafeError: { status: 400, code: 'MEDIA_INTENT_STATE_CHANGED' },
+    })
+    if (refused.json?.code !== 'MEDIA_INTENT_STATE_CHANGED') {
+      throw new Error('attached evidence revocation was not refused')
     }
-    const removed = await this.admin.storage.from('job-media').remove(objectPaths)
-    if (removed.error) throw new Error('synthetic evidence objects could not be proven removed')
   }
 
   async createReadySession(customer, policy, district) {

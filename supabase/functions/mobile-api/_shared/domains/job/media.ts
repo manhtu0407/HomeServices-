@@ -153,9 +153,7 @@ export async function revokeJobMediaUploads(
   input: JobMediaRevokeInput,
 ): Promise<JobMediaRevokeResponse> {
   const client = db(ctx);
-  await requireJobAccess(client, jobId, ctx, {
-    select: "id, customer_id, worker_id",
-  });
+  await requireJobAccess(client, jobId, ctx);
   const objectPaths = Array.from(new Set(input.object_paths));
   const revoked = await dbQuery<Array<Record<string, unknown>>>(
     client.rpc("revoke_job_media_uploads", {
