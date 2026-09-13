@@ -6,6 +6,7 @@ import { dirname, relative, resolve } from 'node:path'
 import { performance } from 'node:perf_hooks'
 import { fileURLToPath } from 'node:url'
 import { createClient } from '@supabase/supabase-js'
+import { proveSyntheticRfqAgreement } from './lib/stage1-rfq-agreement.mjs'
 
 import { checkHarnessRelease, resolveReleaseArtifactPath } from '../../../scripts/harness/release-bundle.mjs'
 import { assertReleaseTarget } from '../../../scripts/harness/release-safety.mjs'
@@ -546,6 +547,11 @@ export class Stage1SyntheticReleaseSmoke {
     await this.api(input.actors.worker, 'PATCH', `/jobs/${input.jobId}/status`, {
       status: 'inspecting',
     }, { idempotencyKey: `stage1-worker-inspecting-${input.jobId}` })
+    if (input.scenarioKind === 'rfq_or_inspection') {
+      await proveSyntheticRfqAgreement({ api: this.api.bind(this), jobId: input.jobId,
+        worker: input.actors.worker, customer: input.actors.customer,
+        requestId: deterministicTerminalRequestId(this.config.runId, this.config.sequence, 'rfq-price') })
+    }
     await this.api(input.actors.worker, 'PATCH', `/jobs/${input.jobId}/status`, {
       status: 'repairing',
     }, { idempotencyKey: `stage1-worker-repairing-${input.jobId}` })

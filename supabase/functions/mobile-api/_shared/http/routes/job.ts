@@ -9,6 +9,9 @@ export type JobCreateRoute = {
 
 export type JobResourceRoute =
   | { kind: "jobs.get"; method: "GET"; jobId: string; roles?: UserRole[] }
+  | { kind: "jobs.rfqPrice"; method: "GET"; jobId: string; roles: UserRole[] }
+  | { kind: "jobs.rfqPricePropose"; method: "POST"; jobId: string; roles: UserRole[] }
+  | { kind: "jobs.rfqPriceDecide"; method: "POST"; jobId: string; roles: UserRole[] }
   | { kind: "jobs.confirmSearch"; method: "POST"; jobId: string; roles: UserRole[]; successStatus: 202 }
   | { kind: "jobs.matchingOperation"; method: "GET"; jobId: string; roles: UserRole[] }
   | { kind: "jobs.matchingRetry"; method: "GET"; jobId: string; requestId: string; roles: UserRole[] }
@@ -102,6 +105,11 @@ export function matchJobResourceRoute(
   decodePathSegment: (value: string) => string | null,
 ): JobResourceRoute | null {
   const retryReceipt = path.match(/^\/jobs\/([^/]+)\/matching-retries\/([^/]+)$/);
+  const rfqDecision = path.match(/^\/jobs\/([^/]+)\/rfq-price\/decide$/);
+  if (method === "POST" && rfqDecision) {
+    const jobId = decodePathSegment(rfqDecision[1] ?? "");
+    return jobId ? { kind: "jobs.rfqPriceDecide", method: "POST", jobId, roles: ["customer"] } : null;
+  }
   const preferenceReceipt = path.match(/^\/jobs\/([^/]+)\/matching-preference\/([^/]+)$/);
   if (method === "GET" && preferenceReceipt) {
     const jobId = decodePathSegment(preferenceReceipt[1] ?? "");
@@ -282,6 +290,12 @@ function matchJobPaymentAction(
       jobId,
       roles: ["customer"],
     };
+  }
+  if (action === "rfq-price" && method === "GET") {
+    return { kind: "jobs.rfqPrice", method: "GET", jobId, roles: ["customer", "worker"] };
+  }
+  if (action === "rfq-price" && method === "POST") {
+    return { kind: "jobs.rfqPricePropose", method: "POST", jobId, roles: ["worker"] };
   }
 
   if (action === "matching-operation" && method === "GET") {

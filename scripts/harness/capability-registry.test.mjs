@@ -26,6 +26,17 @@ test('manual bank order and transfer claim retain payment confirmation envelopes
   }
 })
 
+test('RFQ proposal and decision remain money-impacting with Customer-only approval', () => {
+  const registry = buildCapabilityRegistry({ root: resolve(import.meta.dirname, '../..') })
+  for (const kind of ['jobs.rfqPricePropose', 'jobs.rfqPriceDecide']) {
+    const policy = registry.entries.find(entry => entry.kind === kind)
+    assert.equal(policy.operationClass, 'money_impacting')
+    assert.equal(policy.requiresResourceCheck, true)
+    assert.equal(policy.confirmationGate, 'offer')
+    assert.equal(policy.roles.includes(kind.endsWith('Decide') ? 'worker' : 'customer'), false)
+  }
+})
+
 test('uses the same route digest across checkout line endings', () => {
   const root = mkdtempSync(resolve(tmpdir(), 'harness-capability-'))
   try {

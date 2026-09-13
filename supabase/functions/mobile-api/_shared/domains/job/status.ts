@@ -83,6 +83,9 @@ export async function updateJobStatus(
       .maybeSingle(),
   );
   if (updated.error) {
+    if (updated.error.code === "23514" && updated.error.message === "RFQ_PRICE_CONFIRMATION_REQUIRED") {
+      apiFailure("RFQ_PRICE_CONFIRMATION_REQUIRED", "Cần khách xác nhận báo giá trước khi bắt đầu công việc.", 409);
+    }
     if (
       updated.error.code === "P0001" &&
       updated.error.message === "CUSTOMER_COMPLETION_EVIDENCE_REQUIRED"

@@ -360,6 +360,9 @@ function createJobWorkflowServices(secrets: EdgeServiceSecrets): Pick<
   | "saveCustomerFavoriteWorker"
   | "removeCustomerFavoriteWorker"
   | "updateJobStatus"
+  | "getRfqPrice"
+  | "proposeRfqPrice"
+  | "decideRfqPrice"
   | "authorizeApartmentAccess"
   | "requestScopeChange"
   | "getJobIncident"
@@ -384,6 +387,9 @@ function createJobWorkflowServices(secrets: EdgeServiceSecrets): Pick<
     saveCustomerFavoriteWorker,
     removeCustomerFavoriteWorker,
     updateJobStatus,
+    getRfqPrice,
+    proposeRfqPrice,
+    decideRfqPrice,
     authorizeApartmentAccess,
     requestScopeChange: (ctx, jobId, input) =>
       requestScopeChange(ctx, jobId, input, aiRuntime(ctx, secrets)),
@@ -784,3 +790,4 @@ function aiRuntime(
 
 export { buildCustomerProfileInsights } from "./domains/customer/profile-insights.ts";
 export { buildWorkerPerformanceInsights } from "./domains/worker/profile-insights.ts";
+import { getRfqPrice, proposeRfqPrice, decideRfqPrice } from "./domains/job/rfq-price.ts";

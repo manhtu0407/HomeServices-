@@ -2,8 +2,8 @@
   "version": "1.0.0",
   "source": {
     "migrationRoot": "supabase/migrations",
-    "migrationCount": 392,
-    "migrationDigest": "ccc392bd47ee6266c7a6880fe3d5fd3a8bcbbabb744653d6fb01934bb2c17c9b"
+    "migrationCount": 393,
+    "migrationDigest": "c61d757dbf51a41b23ee81c27ae3e776b9fb27d85d607e632758fae847a95083"
   },
   "actors": [
     "anonymous",
@@ -1008,6 +1008,22 @@
     },
     {
       "name": "job_refund_obligations",
+      "classification": "internal",
+      "rlsEnabled": true,
+      "actorCommands": {
+        "anonymous": [],
+        "authenticated": []
+      },
+      "serviceRole": [
+        "select",
+        "insert",
+        "update",
+        "delete"
+      ],
+      "realtime": false
+    },
+    {
+      "name": "job_rfq_price_proposals",
       "classification": "internal",
       "rlsEnabled": true,
       "actorCommands": {
@@ -4279,6 +4295,14 @@
       ]
     },
     {
+      "signature": "decide_rfq_price_atomic(uuid, uuid, uuid, boolean)",
+      "securityDefiner": true,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
       "signature": "decide_scope_change_atomic(uuid, uuid, text)",
       "securityDefiner": false,
       "fixedSearchPath": true,
@@ -4738,6 +4762,14 @@
     },
     {
       "signature": "promote_stage1_release_attested_atomic(text, text, text, bigint, text, text, text, text, text)",
+      "securityDefiner": true,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
+      "signature": "propose_rfq_price_atomic(uuid, uuid, uuid, integer, text)",
       "securityDefiner": true,
       "fixedSearchPath": true,
       "executeRoles": [

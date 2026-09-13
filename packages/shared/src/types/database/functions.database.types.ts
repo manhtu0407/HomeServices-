@@ -2079,6 +2079,17 @@ export type DatabaseFunctions = {
           status: Database["public"]["Enums"]["job_status"]
         }[]
       }
+      confirm_kael_chat_agentic_lab_atomic: {
+        Args: { p_customer_id: string; p_session_id: string }
+        Returns: {
+          district_code: string
+          error_code: string
+          job_id: string
+          job_status: Database["public"]["Enums"]["job_status"]
+          ok: boolean
+          service_type: Database["public"]["Enums"]["service_type"]
+        }[]
+      }
       confirm_kael_chat_atomic:
         | {
             Args: { p_customer_id: string; p_session_id: string }
@@ -2436,6 +2447,18 @@ export type DatabaseFunctions = {
           reason: string
         }[]
       }
+      create_agentic_lab_payment_intent_atomic: {
+        Args: { p_customer_id: string; p_job_id: string }
+        Returns: {
+          amount_due: number
+          error_code: string
+          job_status: Database["public"]["Enums"]["job_status"]
+          ok: boolean
+          payment_code: string
+          payment_expires_at: string
+          payment_status: string
+        }[]
+      }
       create_manual_bank_payment_order: {
         Args: {
           p_customer_id: string
@@ -2561,6 +2584,15 @@ export type DatabaseFunctions = {
           payment_status: string
           status: Database["public"]["Enums"]["job_status"]
         }[]
+      }
+      decide_rfq_price_atomic: {
+        Args: {
+          p_approve: boolean
+          p_customer_id: string
+          p_job_id: string
+          p_proposal_id: string
+        }
+        Returns: Json
       }
       decide_scope_change_atomic: {
         Args: {
@@ -2887,9 +2919,14 @@ export type DatabaseFunctions = {
           pending_payment_amount: number
           pending_payment_count: number
           platform_fee_total: number
+          provisional_payment_amount: number
+          provisional_payment_count: number
           recent_transactions: Json
           to_date: string
           total_jobs_paid: number
+          withdrawal_eligible_at: string
+          withdrawal_reserved_amount: number
+          withdrawn_total: number
           worker_id: string
         }[]
       }
@@ -3190,6 +3227,16 @@ export type DatabaseFunctions = {
           previous_active_release_id: string
           revision: number
         }[]
+      }
+      propose_rfq_price_atomic: {
+        Args: {
+          p_customer_total: number
+          p_job_id: string
+          p_request_id: string
+          p_scope_summary: string
+          p_worker_id: string
+        }
+        Returns: Json
       }
       queue_learning_candidate_manual_review: {
         Args: {
@@ -4438,6 +4485,22 @@ export type DatabaseFunctions = {
           ok: boolean
           reason: string
           validated_refs: string[]
+        }[]
+      }
+      verify_agentic_lab_payment_atomic: {
+        Args: {
+          p_amount_received: number
+          p_job_id: string
+          p_payment_code: string
+          p_provider_event_id: string
+          p_verified_by: string
+        }
+        Returns: {
+          error_code: string
+          job_status: Database["public"]["Enums"]["job_status"]
+          ok: boolean
+          payment_received_at: string
+          payment_status: string
         }[]
       }
       verify_kael_matching_maintainer_secret: {

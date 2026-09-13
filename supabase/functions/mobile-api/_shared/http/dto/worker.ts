@@ -40,7 +40,7 @@ export function workerStatusUpdateSchema(
   if (record.final_price !== undefined) {
     apiFailure(
       "VALIDATION",
-      "Giá cuối do Kael xác định, thợ không được nhập",
+      "Giá cuối chỉ được khóa qua báo giá đã được khách xác nhận",
       400,
     );
   }

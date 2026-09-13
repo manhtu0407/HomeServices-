@@ -1258,6 +1258,46 @@
       "pillars": ["P53-stage1-release-integrity", "P45-stage1-response-identity"]
     },
     {
+      "id": "worker.rfq-price.propose",
+      "actor": "worker",
+      "route_kind": "jobs.rfqPricePropose",
+      "authority": "assigned_worker_proposal_only",
+      "confirmation_gate": "offer",
+      "from": ["inspecting"],
+      "to": ["inspecting"],
+      "pillars": ["P177-rfq-price-agreement-sql", "P178-rfq-price-public-contract", "P179-rfq-price-mobile-recovery"]
+    },
+    {
+      "id": "customer.rfq-price.decide",
+      "actor": "customer",
+      "route_kind": "jobs.rfqPriceDecide",
+      "authority": "owning_customer_exact_proposal_consent",
+      "confirmation_gate": "offer",
+      "from": ["inspecting"],
+      "to": ["inspecting", "working"],
+      "pillars": ["P177-rfq-price-agreement-sql", "P178-rfq-price-public-contract", "P180-rfq-price-consent-ui"]
+    },
+    {
+      "id": "customer.rfq-price.reconcile",
+      "actor": "customer",
+      "route_kind": "jobs.rfqPrice",
+      "authority": "job_participant_read_only",
+      "confirmation_gate": "none",
+      "from": ["inspecting"],
+      "to": ["inspecting", "recovery_required"],
+      "pillars": ["P178-rfq-price-public-contract", "P179-rfq-price-mobile-recovery"]
+    },
+    {
+      "id": "worker.rfq-price.reconcile",
+      "actor": "worker",
+      "route_kind": "jobs.rfqPrice",
+      "authority": "job_participant_read_only",
+      "confirmation_gate": "none",
+      "from": ["inspecting"],
+      "to": ["inspecting", "recovery_required"],
+      "pillars": ["P178-rfq-price-public-contract", "P179-rfq-price-mobile-recovery"]
+    },
+    {
       "id": "system.release.production-promotion",
       "actor": "system",
       "system_surface": "release.production_promotion",

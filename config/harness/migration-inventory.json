@@ -5,7 +5,7 @@
     "immutableThroughVersion": "20260904113000",
     "sha256": "12da2bac288e0e718e61a27653e8cba9ffdb13b8e9900979407d41e1217b2077"
   },
-  "migrationCount": 392,
+  "migrationCount": 393,
   "migrationEquivalences": {
     "version": "1.0.0",
     "groups": [
@@ -74,10 +74,10 @@
       }
     ]
   },
-  "migrationsSha256": "3ea672117c5c864e9f03dd0eea7540813a12318dac4fee621c273f80d3328d62",
+  "migrationsSha256": "8c09e094ea72cafde84689b31666e34105f37de08bc04340cf688b815f8020b7",
   "databaseTypes": {
     "file": "packages/shared/src/types/database",
-    "sha256": "14921a4b3142696cb85c795b88a08f5078356d46d38f56ceafd89089eacb427e"
+    "sha256": "fcedbdf13a634228457d15edfcf5bfd60d87b3aa7120db55724b1ddef7b2d502"
   },
   "entries": [
     {
@@ -2823,6 +2823,13 @@
       "file": "supabase/migrations/20260912134000_paid_cancellation_receipt_reason.sql",
       "sha256": "84c434fe59d400432fd617e2450f5b8d3e7a7886cb6ff273a065ea83f39e9223",
       "bytes": 3582
+    },
+    {
+      "version": "20260913100000",
+      "name": "rfq_price_agreement",
+      "file": "supabase/migrations/20260913100000_rfq_price_agreement.sql",
+      "sha256": "06678054f552112f5b9b37c2c8883a80b037c4b215f7288a0438d56ebbfc87c1",
+      "bytes": 16999
     }
   ]
 }

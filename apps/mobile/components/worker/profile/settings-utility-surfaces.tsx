@@ -4,6 +4,7 @@ import { Pressable, Text as RNText, View, type TextProps } from 'react-native'
 import { PublicPrivacyPolicyLink } from '@/components/ui/public-privacy-policy-link'
 import type { AppLanguage } from '@/lib/app-language'
 import type { useFrontendWorkflow } from '@/lib/frontend-workflow-provider'
+import { localizeRfqNotification } from '@/lib/frontend-workflow/notifications'
 
 import { textByLanguage } from '../ui/format'
 import { useWorkerThemeMode } from '../worker-theme'
@@ -73,7 +74,9 @@ export function WorkerV5NotificationsBody({
             <Text style={styles.emptyTitle}>{textByLanguage(language, 'Chưa có thông báo', 'No notifications yet')}</Text>
             <Text style={styles.emptyBody}>{textByLanguage(language, 'Cập nhật về công việc hoặc tài khoản sẽ xuất hiện ở đây.', 'Work or account updates will appear here.')}</Text>
           </View>
-        ) : runtime.notifications.map((notification, index) => (
+        ) : runtime.notifications.map((entry, index) => {
+          const notification = localizeRfqNotification(entry, language)
+          return (
           <View key={notification.id}>
             {index > 0 ? <WorkerV5ProfileGroupDivider /> : null}
             <Pressable
@@ -95,7 +98,8 @@ export function WorkerV5NotificationsBody({
               <Text style={styles.notificationStatus}>{notification.status === 'read' ? textByLanguage(language, 'Đã đọc', 'Read') : textByLanguage(language, 'Chưa đọc', 'Unread')}</Text>
             </Pressable>
           </View>
-        ))}
+          )
+        })}
       </WorkerV5ProfileGroup>
     </View>
   )

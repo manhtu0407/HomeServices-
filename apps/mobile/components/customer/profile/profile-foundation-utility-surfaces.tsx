@@ -8,6 +8,7 @@ import { accountDeletionErrorMessage } from '@/lib/account-deletion-service'
 import type { NotificationListResponse } from '@/lib/api-types'
 import { generateClientRequestId } from '@/lib/client-request-id'
 import { customerAccountService } from '@/lib/services'
+import { localizeRfqNotification } from '@/lib/frontend-workflow/notifications'
 
 import type { CustomerThemeTokens, ThemeMode } from '../customer-theme'
 import { customerV21ProfileFoundationUtilityStyles as styles } from './profile-foundation-utility-styles'
@@ -164,7 +165,8 @@ export function ProfileNotificationsView({
           </View>
         ) : (
           <View style={[styles.listSurface, { backgroundColor: tokens.base, borderColor: tokens.border }]}>
-            {notifications.map((notification, index) => {
+            {notifications.map((entry, index) => {
+              const notification = localizeRfqNotification(entry, language)
               const unread = !notification.read_at
               return (
                 <View key={notification.id}>

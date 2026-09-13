@@ -55,6 +55,7 @@
   "job_payment_orders",
   "job_payment_reconciliation_events",
   "job_refund_obligations",
+  "job_rfq_price_proposals",
   "job_worker_candidates",
   "jobs",
   "kael_ab_experiments",

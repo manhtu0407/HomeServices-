@@ -7,6 +7,12 @@ export type WorkflowErrorHandler = (error: WorkflowErrorInput, code?: string) =>
 
 const workflowErrorCopy: Record<AppLanguage, Record<string, string>> = {
   vi: {
+    rfqUnknown: 'Đang đối soát báo giá. Chưa xác định kết quả; không cần gửi thêm quyết định.',
+    rfqStorage: 'Chưa thể lưu hoặc đọc báo giá trên thiết bị. Chưa gửi thêm quyết định; hãy thử đối soát lại.',
+    rfqRead: 'Chưa tải được báo giá mới nhất. Hãy thử đối soát lại.',
+    rfqInput: 'Nhập tổng giá nguyên dương và phạm vi rõ ràng từ 10 đến 2.000 ký tự.',
+    rfqChanged: 'Báo giá hoặc trạng thái công việc đã thay đổi. Hãy tải lại trước khi quyết định.',
+    rfqRequired: 'Cần khách xác nhận báo giá trước khi bắt đầu công việc.',
     noRequestRefresh: 'Chưa có yêu cầu để tải lại',
     missingService: 'Chọn một trong sáu dịch vụ NestScout hỗ trợ trước khi tạo yêu cầu',
     missingProblem: 'Chọn ít nhất một vấn đề cần xử lý',
@@ -74,6 +80,12 @@ const workflowErrorCopy: Record<AppLanguage, Record<string, string>> = {
     fallback: 'Không thể cập nhật yêu cầu. Vui lòng thử lại.',
   },
   en: {
+    rfqUnknown: 'Reconciling the quote. The outcome is unknown; do not send another decision.',
+    rfqStorage: 'The quote could not be saved or read on this device. No further decision was sent; try reconciling again.',
+    rfqRead: 'The latest quote could not be loaded. Try reconciling again.',
+    rfqInput: 'Enter a positive whole-number total and a clear scope of 10 to 2,000 characters.',
+    rfqChanged: 'The quote or job status has changed. Reload before deciding.',
+    rfqRequired: 'The customer must approve the quote before work starts.',
     noRequestRefresh: 'No request to refresh',
     missingService: 'Choose one of the six NestScout services before creating a request',
     missingProblem: 'Choose at least one problem to handle',
@@ -152,6 +164,16 @@ function createWorkflowErrorLookup() {
   return lookup
 }
 const workflowErrorKeyByCode: Record<string, string> = {
+  RFQ_PRICE_OUTCOME_UNKNOWN: 'rfqUnknown',
+  RFQ_PRICE_STORAGE_UNAVAILABLE: 'rfqStorage',
+  RFQ_PRICE_READ_UNAVAILABLE: 'rfqRead',
+  RFQ_PRICE_INVALID_INPUT: 'rfqInput',
+  RFQ_PRICE_NOT_FOUND: 'rfqChanged',
+  RFQ_PRICE_STATE_CHANGED: 'rfqChanged',
+  RFQ_PRICE_PENDING: 'rfqChanged',
+  RFQ_PRICE_REQUEST_CONFLICT: 'rfqChanged',
+  RFQ_PRICE_DECISION_CONFLICT: 'rfqChanged',
+  RFQ_PRICE_CONFIRMATION_REQUIRED: 'rfqRequired',
   ACCESS_AUTHORIZATION_OUTCOME_UNKNOWN: 'accessUnknown',
   CANDIDATE_DECISION_OUTCOME_UNKNOWN: 'candidateUnknown',
   CANDIDATE_DECISION_CONFLICT: 'candidateConflict',

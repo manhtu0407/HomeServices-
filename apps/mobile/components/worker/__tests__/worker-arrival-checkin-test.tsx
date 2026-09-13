@@ -681,12 +681,21 @@ it('records arrival before continuing to the in-progress screen', async () => {
       ...buildInProgressDeal(),
       backendStatus: 'inspecting',
       status: 'inspecting',
+      finalPrice: 220000,
     })
 
     render(<WorkerJobsSurface />)
 
     expect(screen.getByText('Bắt đầu công việc')).toBeOnTheScreen()
     expect(screen.queryByText('Bắt đầu sửa chữa')).toBeNull()
+  })
+
+  it('blocks starting unpriced work until the Customer agrees to the exact price', () => {
+    buildWorkflow({ ...buildInProgressDeal(), backendStatus: 'inspecting', status: 'inspecting', finalPrice: null })
+    render(<WorkerJobsSurface />)
+    expect(screen.getByText('Chờ khách xác nhận giá')).toBeOnTheScreen()
+    fireEvent.press(screen.getByTestId('worker-v5-phase-advance-action'))
+    expect(mockWorkflowValue.actions.workerUpdateStatus).not.toHaveBeenCalled()
   })
 
   it('rehydrates the routed job after a worker preview reload', async () => {

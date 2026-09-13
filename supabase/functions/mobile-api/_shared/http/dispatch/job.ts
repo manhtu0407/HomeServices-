@@ -17,6 +17,7 @@ import {
   jobMediaRevokeSchema,
   jobMediaUploadSchema,
 } from "../../../../_shared/job-media-contract.ts";
+import { rfqPriceProposalInputSchema, rfqPriceDecisionInputSchema } from "../../../../_shared/contracts/rfq-price.ts";
 import {
   manualBankPaymentClaimSchema,
 } from "../routes/payment-contract.ts";
@@ -39,6 +40,18 @@ export async function dispatchJobRoute(
       return rejectDirectJobCreate(request);
     case "jobs.get":
       return services.getJob(ctx, route.jobId);
+    case "jobs.rfqPrice":
+      return services.getRfqPrice(ctx, route.jobId);
+    case "jobs.rfqPricePropose": {
+      const input = rfqPriceProposalInputSchema.safeParse(await readJson(request));
+      if (!input.success) apiFailure("VALIDATION", "Báo giá không hợp lệ.", 400);
+      return services.proposeRfqPrice(ctx, route.jobId, input.data);
+    }
+    case "jobs.rfqPriceDecide": {
+      const input = rfqPriceDecisionInputSchema.safeParse(await readJson(request));
+      if (!input.success) apiFailure("VALIDATION", "Quyết định báo giá không hợp lệ.", 400);
+      return services.decideRfqPrice(ctx, route.jobId, input.data);
+    }
     case "jobs.confirmSearch": {
       if (request.body === null) {
         apiFailure("CLIENT_UPDATE_REQUIRED", "Hãy cập nhật ứng dụng để tìm thợ lại an toàn.", 409);

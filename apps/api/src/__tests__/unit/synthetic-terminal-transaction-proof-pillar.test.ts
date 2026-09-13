@@ -1,5 +1,6 @@
 import { existsSync, readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
+import { spawnSync } from 'node:child_process'
 import { describe, expect, it, vi } from 'vitest'
 import { Stage1SyntheticReleaseSmoke } from '../../../scripts/stage1-synthetic-release-smoke.mjs'
 
@@ -29,6 +30,13 @@ const smokePath = resolve(root, 'apps/api/scripts/stage1-synthetic-release-smoke
 const cleanupPath = resolve(root, 'apps/api/scripts/stage1-synthetic-cohort-cleanup.mjs')
 
 describe('isolated synthetic terminal transaction proof', () => {
+  it('collects public RFQ price-consent smoke regressions in the API runner', () => {
+    const result = spawnSync(process.execPath, ['--test', 'apps/api/scripts/lib/stage1-rfq-agreement.test.mjs'], {
+      cwd: root, encoding: 'utf8', windowsHide: true,
+    })
+    expect(result.status, pillarWhy(PILLAR, `${result.stdout}\n${result.stderr}`)).toBe(0)
+  })
+
   it('tests attached-media refusal without deleting completion evidence through the user API', async () => {
     const smoke = Object.create(Stage1SyntheticReleaseSmoke.prototype)
     smoke.api = vi.fn().mockResolvedValue({ json: { code: 'MEDIA_INTENT_STATE_CHANGED' } })

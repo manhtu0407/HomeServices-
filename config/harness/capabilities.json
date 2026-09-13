@@ -3,7 +3,7 @@
   "source": {
     "routeRoot": "supabase/functions/mobile-api/_shared/http/routes",
     "fileCount": 20,
-    "sha256": "525668405c6804bfec9c2cfb863143e4ae61920c7ccde42f719ee33a3bd626fa"
+    "sha256": "8b9b2d5382eb89b886308b426bdd98819f5c38d622aa8ad22245576990c2753d"
   },
   "entries": [
     {
@@ -3192,6 +3192,76 @@
       "requiresResourceCheck": true,
       "confirmationGate": "none",
       "envelopeTtlMs": 60000,
+      "sources": [
+        "supabase/functions/mobile-api/_shared/http/routes/job.ts"
+      ]
+    },
+    {
+      "kind": "jobs.rfqPrice",
+      "capability": "mobile.route.jobs.rfqPrice",
+      "public": false,
+      "methods": [
+        "GET"
+      ],
+      "roles": [
+        "admin",
+        "customer",
+        "worker"
+      ],
+      "risk": "read",
+      "operationClass": "database_read",
+      "sideEffectClass": "read-only",
+      "privileged": true,
+      "resourceType": "job",
+      "requiresResourceCheck": true,
+      "confirmationGate": "none",
+      "envelopeTtlMs": 120000,
+      "sources": [
+        "supabase/functions/mobile-api/_shared/http/routes/job.ts"
+      ]
+    },
+    {
+      "kind": "jobs.rfqPriceDecide",
+      "capability": "mobile.route.jobs.rfqPriceDecide",
+      "public": false,
+      "methods": [
+        "POST"
+      ],
+      "roles": [
+        "admin",
+        "customer"
+      ],
+      "risk": "money",
+      "operationClass": "money_impacting",
+      "sideEffectClass": "conditional-write",
+      "privileged": true,
+      "resourceType": "job",
+      "requiresResourceCheck": true,
+      "confirmationGate": "offer",
+      "envelopeTtlMs": 30000,
+      "sources": [
+        "supabase/functions/mobile-api/_shared/http/routes/job.ts"
+      ]
+    },
+    {
+      "kind": "jobs.rfqPricePropose",
+      "capability": "mobile.route.jobs.rfqPricePropose",
+      "public": false,
+      "methods": [
+        "POST"
+      ],
+      "roles": [
+        "admin",
+        "worker"
+      ],
+      "risk": "money",
+      "operationClass": "money_impacting",
+      "sideEffectClass": "conditional-write",
+      "privileged": true,
+      "resourceType": "job",
+      "requiresResourceCheck": true,
+      "confirmationGate": "offer",
+      "envelopeTtlMs": 30000,
       "sources": [
         "supabase/functions/mobile-api/_shared/http/routes/job.ts"
       ]

@@ -1,4 +1,5 @@
 import { useMemo } from 'react'
+import { RfqPricePanel } from '@/components/job/rfq-price-panel'
 
 import { AgenticEvidenceGateResponse } from './agentic-evidence-gate-response'
 import { CompletionReviewResponse } from './completion-review-response'
@@ -89,6 +90,11 @@ function CustomerKaelCaseThreadContent({
   ), [chatUi, conversation, deal, decisionActions, language, reduceMotion, tokens])
 
   return (
+    <>
+    {deal.status === 'inspecting' && deal.finalPrice == null ? (
+      <RfqPricePanel jobId={deal.id} actorRole="customer" language={language} tokens={tokens}
+        onChanged={workflow.actions.refreshCurrentJob} />
+    ) : null}
     <AgenticCaseThreadPanel
       activityLabel={customerV21TabCopy[language].activity}
       deal={deal}
@@ -157,5 +163,6 @@ function CustomerKaelCaseThreadContent({
       textInputStyle={[rootStyles.composerInput, customerV21WebTextInputNoOutline]}
       tokens={tokens}
     />
+    </>
   )
 }

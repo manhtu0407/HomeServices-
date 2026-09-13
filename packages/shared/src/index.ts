@@ -5,6 +5,7 @@ export * from './workflow'
 export * from './service-intake'
 export * from './kael-case-work'
 export * from './contracts/stage1-reliability'
+export * from './contracts/rfq-price'
 export { refundSummarySchema, type RefundSummary } from './contracts/payment'
 export type { MatchingPushDeliveryAckInput } from './contracts/customer'
 export type {

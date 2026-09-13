@@ -110,7 +110,9 @@ Every response or UI state containing a price estimate must include this Vietnam
 
 > "Đây là ước tính do Kael tính theo dữ liệu hiện có. Kael có thể cập nhật khi có bằng chứng phạm vi mới."
 
-Do not remove the disclaimer. Do not promise an exact price outside a server-validated Kael policy decision.
+Do not remove the disclaimer from Kael estimates. Auto-quote prices require a server-validated Kael policy decision.
+
+For `rfq` and `inspection_only` only, the assigned worker may propose an exact price and scope after inspection. This is a worker quote, not a Kael estimate. The owning customer must explicitly approve that immutable proposal before the server locks the final price or work continues. Validate actor, assignment, phase, currency/amount, proposal identity and retry identity atomically; retain the proposal and decision audit. Never infer an agreed price from a range, let an admin approve for the customer, or relabel a worker quote as source-verified Kael pricing.
 
 ---
 

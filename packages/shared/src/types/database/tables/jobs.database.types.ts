@@ -691,6 +691,79 @@ export type JobsTables = {
           },
         ]
       }
+      job_rfq_price_proposals: {
+        Row: {
+          commission_level: number
+          commission_rate_bps: number
+          created_at: string
+          currency: string
+          customer_id: string
+          customer_total: number
+          decided_at: string | null
+          id: string
+          job_id: string
+          quote_mode: Database["public"]["Enums"]["service_quote_mode"]
+          scope_summary: string
+          status: string
+          synthetic_cohort_id: string | null
+          worker_id: string
+        }
+        Insert: {
+          commission_level: number
+          commission_rate_bps: number
+          created_at?: string
+          currency?: string
+          customer_id: string
+          customer_total: number
+          decided_at?: string | null
+          id: string
+          job_id: string
+          quote_mode: Database["public"]["Enums"]["service_quote_mode"]
+          scope_summary: string
+          status?: string
+          synthetic_cohort_id?: string | null
+          worker_id: string
+        }
+        Update: {
+          commission_level?: number
+          commission_rate_bps?: number
+          created_at?: string
+          currency?: string
+          customer_id?: string
+          customer_total?: number
+          decided_at?: string | null
+          id?: string
+          job_id?: string
+          quote_mode?: Database["public"]["Enums"]["service_quote_mode"]
+          scope_summary?: string
+          status?: string
+          synthetic_cohort_id?: string | null
+          worker_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_rfq_price_proposals_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_rfq_price_proposals_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_rfq_price_proposals_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       job_worker_candidates: {
         Row: {
           broadcast_id: string | null
@@ -823,6 +896,7 @@ export type JobsTables = {
           payment_status: string
           payment_transfer_content: string | null
           payment_updated_at: string | null
+          payment_verification_reference: string | null
           photo_urls: string[]
           platform_fee: number | null
           price_context_1: Json | null
@@ -902,6 +976,7 @@ export type JobsTables = {
           payment_status?: string
           payment_transfer_content?: string | null
           payment_updated_at?: string | null
+          payment_verification_reference?: string | null
           photo_urls?: string[]
           platform_fee?: number | null
           price_context_1?: Json | null
@@ -981,6 +1056,7 @@ export type JobsTables = {
           payment_status?: string
           payment_transfer_content?: string | null
           payment_updated_at?: string | null
+          payment_verification_reference?: string | null
           photo_urls?: string[]
           platform_fee?: number | null
           price_context_1?: Json | null

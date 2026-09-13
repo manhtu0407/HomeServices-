@@ -11,8 +11,9 @@ Price principles
 -
 |- estimate before booking
 |- a confirmed offer authorizes matching against the displayed estimate ceiling; it is not yet an exact payable price
-|- Kael owns price-computation authority: jobs.final_price remains null at A7 and is locked only from a source-verified point quote that the worker confirms and the customer explicitly approves at A11
-|- worker does not enter or change final price; worker submits scope description + reason + photos and Kael recomputes
+|- Auto-quote: Kael owns price-computation authority; jobs.final_price remains null at A7 and is locked only from a source-verified point quote confirmed by both participants
+|- RFQ/inspection: after inspection the assigned worker proposes scope and an exact price; the owning customer approves that exact immutable proposal before work continues or jobs.final_price is set
+|- the RFQ exception follows RULES.md #4; neither actor writes jobs.final_price directly and a price range never implies an agreed total
 |- estimate shown as range, not exact guarantee
 |- required disclaimer on every price estimate
 |- no hardcoded VND values in source code
@@ -87,7 +88,7 @@ Forbidden pricing behavior
 -
 |- hidden price change
 |- exact guarantee
-|- worker-entered final price (Phase 2.0 2026-05-23)
+|- worker-entered final price outside the explicit RFQ/inspection proposal and customer-approval contract
 |- threshold-based or silent scope auto-apply without customer confirmation
 |- final price change without a validated server proposal plus explicit customer confirmation, or explicit admin override
 |- scope change without explicit customer confirmation, appeal path, and audit trail

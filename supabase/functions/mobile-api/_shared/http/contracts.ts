@@ -1,3 +1,5 @@
+import type { EdgeRfqPriceProposalInput as RfqPriceProposalInput, EdgeRfqPriceDecisionInput as RfqPriceDecisionInput,
+  EdgeRfqPriceProposal as RfqPriceProposal, EdgeRfqPriceStatus as RfqPriceStatus } from "../../../_shared/contracts/rfq-price.ts";
 import type {
   EdgeApartmentAccessAuthorizationInput,
   EdgeApartmentAccessAuthorizationReceipt,
@@ -434,6 +436,9 @@ export type MobileApiServices = AdminControlServices & {
     ctx: MobileApiContext,
     workerId: string,
   ): Promise<EdgeCustomerFavoriteWorkerResponse>;
+  getRfqPrice(ctx: MobileApiContext, jobId: string): Promise<RfqPriceStatus>;
+  proposeRfqPrice(ctx: MobileApiContext, jobId: string, input: RfqPriceProposalInput): Promise<RfqPriceProposal>;
+  decideRfqPrice(ctx: MobileApiContext, jobId: string, input: RfqPriceDecisionInput): Promise<RfqPriceProposal>;
   updateJobStatus(
     ctx: MobileApiContext,
     jobId: string,

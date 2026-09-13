@@ -41,7 +41,7 @@ describe('transaction-critical route coverage', () => {
       result.status,
       pillarWhy(PILLAR, `${result.stdout}\n${result.stderr}`.trim()),
     ).toBe(0)
-    expect(result.stdout).toContain('50 routes, 8 system surfaces')
+    expect(result.stdout).toContain('53 routes, 8 system surfaces')
     expect(result.stdout).toContain('behavioral verification:')
     expect(result.stdout).toContain('UNVERIFIED')
     expect(result.stdout).not.toContain('transaction-critical coverage ok')
@@ -65,7 +65,8 @@ describe('transaction-critical route coverage', () => {
       expect(manifest.states, pillarWhy(PILLAR, `missing terminal state ${state}`)).toContain(state)
     }
     expect(manifest.entries.some((entry) => entry.route_kind === 'jobs.review')).toBe(true)
-    for (const route of ['workers.registrationCommand.submit', 'workers.registrationCommand.get']) {
+    for (const route of ['workers.registrationCommand.submit', 'workers.registrationCommand.get',
+      'jobs.rfqPrice', 'jobs.rfqPricePropose', 'jobs.rfqPriceDecide']) {
       expect(manifest.entries.some(entry => entry.route_kind === route), pillarWhy(PILLAR, route)).toBe(true)
     }
     expect(manifest.entries.some((entry) => entry.system_surface === 'release.production_promotion')).toBe(true)

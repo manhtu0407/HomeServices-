@@ -1,3 +1,5 @@
+import { RfqPricePanel } from '@/components/job/rfq-price-panel'
+import { getWorkerThemeTokens, useWorkerThemeMode } from '../worker-theme'
 import { type SetStateAction, useLayoutEffect, useRef, useState } from 'react'
 import { Alert, Platform, Text as RNText, View, type TextProps } from 'react-native'
 import * as ImagePicker from 'expo-image-picker'
@@ -66,6 +68,7 @@ export function WorkerV5InProgressBody({
   styleVariant?: 'default' | 'jobs-review'
 }) {
   const params = useLocalSearchParams<WorkerV5RouteParams>()
+  const rfqTokens = getWorkerThemeTokens(useWorkerThemeMode())
   const router = useRouter()
   const deal = runtime.state.deal
   const isArrivalGateRequested = firstRouteParam(params.ns_arrival_gate) === '1'
@@ -381,6 +384,7 @@ export function WorkerV5InProgressBody({
 
   const advanceWorkPhase = async () => {
     if (phaseActionBusy || !deal) return
+    if (deal.status === 'inspecting' && !(typeof deal.finalPrice === 'number' && deal.finalPrice > 0)) return
     if (deal.status === 'repairing') {
       router.replace(`/(worker)/jobs?ns_worker_screen=2.10-completion-evidence&job_id=${currentJobId}` as never)
       return
@@ -424,8 +428,10 @@ export function WorkerV5InProgressBody({
           }
         : deal?.status === 'inspecting'
           ? {
-              disabled: phaseActionBusy,
-              label: textByLanguage(language, 'Bắt đầu công việc', 'Start work'),
+              disabled: phaseActionBusy || !(typeof deal.finalPrice === 'number' && deal.finalPrice > 0),
+              label: typeof deal.finalPrice === 'number' && deal.finalPrice > 0
+                ? textByLanguage(language, 'Bắt đầu công việc', 'Start work')
+                : textByLanguage(language, 'Chờ khách xác nhận giá', 'Waiting for price approval'),
               onPress: () => void advanceWorkPhase(),
               testID: 'worker-v5-phase-advance-action',
             }
@@ -456,6 +462,10 @@ export function WorkerV5InProgressBody({
   return (
     <View style={[styles.sectionStack, styleVariant === 'jobs-review' && styles.sectionStackJobsReview]}>
       <WorkerV5TimerCard deal={deal} language={language} reduceTransparency={reduceTransparency} sourceCount={progressItems.length} styleVariant={styleVariant} />
+      {currentJobId && deal?.status === 'inspecting' && deal.finalPrice == null ? (
+        <RfqPricePanel jobId={currentJobId} actorRole="worker" language={language} tokens={rfqTokens}
+          onChanged={runtime.actions.refreshCurrentJob} />
+      ) : null}
       <View style={styleVariant === 'jobs-review' ? styles.jobsReviewContentShell : null} testID={styleVariant === 'jobs-review' ? 'worker-v5-jobs-review-content' : undefined}>
         {progressItems.length ? (
           <WorkerV5WorkProgressBoard
