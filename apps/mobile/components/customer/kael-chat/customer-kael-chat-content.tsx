@@ -12,6 +12,11 @@ import { CustomerKaelIntakeResponseNode } from './customer-kael-intake-response-
 import { CustomerWorkerCandidateNode } from './customer-worker-candidate-node'
 import { CustomerKaelSessionMenu } from './kael-session-menu'
 import { KaelProcessLines } from './kael-process-line-view'
+import { customerKaelInlineError } from './customer-kael-error-display'
+import {
+  readCustomerKaelSessionEphemeralSummary,
+  summarizeCustomerKaelEphemeralSession,
+} from './customer-kael-ephemeral-state'
 import {
   customerV21HiddenScrollbar,
   customerV21WebTextInputNoOutline,
@@ -39,15 +44,17 @@ export function CustomerKaelChatContent({ controller }: { controller: Controller
     reduceTransparency,
     router,
     sessionCatalog,
+    stateScopeKey,
     timelineHeadline,
     tokens,
     visibleError,
   } = controller
   const composerBusy = conversation.loading || chatUi.uploadingMedia || conversations.sending
-  const canUseComposerMedia = mode === 'normal' ||
-    (mode === 'case' && !deal) ||
+  const canUseComposerMedia = mode === 'case' && (
+    !deal ||
     presentation.caseEvidenceGateActive ||
     presentation.workIntakeActive
+  )
   const composerPlaceholder = mode === 'normal'
     ? (language === 'vi' ? 'Nhập tin nhắn cho Kael...' : 'Message Kael...')
     : deal
@@ -80,7 +87,28 @@ export function CustomerKaelChatContent({ controller }: { controller: Controller
         chatUi.voiceTranscript.trim()
       )
   const showEmptyHero = !hasCurrentConversation && !conversation.loading
+  const inlineError = customerKaelInlineError(
+    visibleError,
+    mode,
+    conversation.reasoningReceipt.status,
+  )
   const { setReasoningReceipt } = conversation
+  const sessionEphemeralStateById = useMemo(() => {
+    const summaries: Record<string, ReturnType<typeof summarizeCustomerKaelEphemeralSession>> = {}
+    conversations.sessions.forEach((session) => {
+      summaries[session.id] = session.id === conversations.activeSessionId
+        ? summarizeCustomerKaelEphemeralSession({
+            composer: {
+              draft: chatUi.draft,
+              voiceTranscript: chatUi.voiceTranscript,
+            },
+            mediaDrafts: conversation.composerMediaDrafts,
+            turns: conversation.assistantTurns,
+          })
+        : readCustomerKaelSessionEphemeralSummary(stateScopeKey, session.id)
+    })
+    return summaries
+  }, [chatUi.draft, chatUi.voiceTranscript, conversation.assistantTurns, conversation.composerMediaDrafts, conversations.activeSessionId, conversations.sessions, stateScopeKey])
   const onOpenActivity = useCallback(() => {
     router.replace('/(customer)/history' as never)
   }, [router])
@@ -163,6 +191,7 @@ export function CustomerKaelChatContent({ controller }: { controller: Controller
       pendingSessionIds={conversations.pendingSessionIds}
       reduceMotion={reduceMotion}
       reduceTransparency={reduceTransparency}
+      sessionEphemeralStateById={sessionEphemeralStateById}
       sessions={conversations.sessions}
       tokens={tokens}
     />
@@ -180,6 +209,7 @@ export function CustomerKaelChatContent({ controller }: { controller: Controller
     reduceMotion,
     reduceTransparency,
     sessionCatalog,
+    sessionEphemeralStateById,
     tokens,
   ])
 
@@ -200,11 +230,12 @@ export function CustomerKaelChatContent({ controller }: { controller: Controller
         busy: composerBusy,
         canUseMedia: canUseComposerMedia,
         draft: chatUi.draft,
+        hasVoiceTranscript: Boolean(chatUi.voiceTranscript.trim()),
         mediaDraftCount: conversation.composerMediaDrafts.length,
         placeholder: composerPlaceholder,
         show: presentation.showComposer,
       }}
-      error={visibleError}
+      error={inlineError}
       hiddenScrollbarStyle={customerV21HiddenScrollbar}
       language={language}
       mode={mode}

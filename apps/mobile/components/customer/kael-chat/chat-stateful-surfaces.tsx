@@ -34,6 +34,7 @@ type Props = {
     busy: boolean
     canUseMedia: boolean
     draft: string
+    hasVoiceTranscript: boolean
     mediaDraftCount: number
     placeholder: string
     show: boolean
@@ -119,7 +120,7 @@ export function KaelChatSurfaceView({
   visibility,
   workerCandidateNode,
 }: Props) {
-  const { busy: composerBusy, canUseMedia: canUseComposerMedia, draft, mediaDraftCount: composerMediaDraftCount, placeholder: composerPlaceholder, show: showComposer } = composer
+  const { busy: composerBusy, canUseMedia: canUseComposerMedia, draft, hasVoiceTranscript, mediaDraftCount: composerMediaDraftCount, placeholder: composerPlaceholder, show: showComposer } = composer
   const { reduceMotion, reduceTransparency } = motion
   const {
     canStartNewConversation,
@@ -213,6 +214,7 @@ export function KaelChatSurfaceView({
               composerMediaDraftCount={composerMediaDraftCount}
               composerPlaceholder={composerPlaceholder}
               draft={draft}
+              hasVoiceTranscript={hasVoiceTranscript}
               language={language}
               onBlur={() => setComposerFocused(false)}
               onDraftChange={onDraftChange}

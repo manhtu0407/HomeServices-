@@ -1,6 +1,10 @@
-import { useMemo, useReducer, type Dispatch, type SetStateAction } from 'react'
+import { useCallback, useEffect, useMemo, useReducer, type Dispatch, type SetStateAction } from 'react'
 
 import type { KaelProcessLine, KaelProcessScenarioId } from './kael-process-lines'
+import {
+  readCustomerKaelComposerState,
+  rememberCustomerKaelComposerState,
+} from './customer-kael-ephemeral-state'
 
 export type KaelProcessLineRuntime = {
   activeIndex: number | null
@@ -97,10 +101,14 @@ function createSetter<Key extends keyof CustomerKaelChatUiState>(
   return (value) => dispatch({ key, value } as CustomerKaelChatUiAction)
 }
 
-export function useCustomerKaelChatUiState() {
+export function useCustomerKaelChatUiState(scopeKey?: string) {
   const [state, dispatch] = useReducer(
     customerKaelChatUiReducer,
-    initialCustomerKaelChatUiState,
+    scopeKey,
+    (key: string | undefined) => ({
+      ...initialCustomerKaelChatUiState,
+      ...(key ? readCustomerKaelComposerState(key) : {}),
+    }),
   )
   const setters = useMemo(() => ({
     setAgenticAdjustmentOpen: createSetter(dispatch, 'agenticAdjustmentOpen'),
@@ -129,5 +137,20 @@ export function useCustomerKaelChatUiState() {
     setVoiceTranscript: createSetter(dispatch, 'voiceTranscript'),
   }), [])
 
-  return { ...state, ...setters }
+  useEffect(() => {
+    if (!scopeKey) return
+    rememberCustomerKaelComposerState(scopeKey, {
+      draft: state.draft,
+      voiceTranscript: state.voiceTranscript,
+    })
+  }, [scopeKey, state.draft, state.voiceTranscript])
+  const rememberComposerState = useCallback(() => {
+    if (!scopeKey) return
+    rememberCustomerKaelComposerState(scopeKey, {
+      draft: state.draft,
+      voiceTranscript: state.voiceTranscript,
+    })
+  }, [scopeKey, state.draft, state.voiceTranscript])
+
+  return { ...state, ...setters, rememberComposerState }
 }

@@ -15,6 +15,8 @@ import type { CustomerThemeTokens } from '../customer-theme'
 import { SourceCardSkin } from '../ui/aura-surfaces'
 import { ChatComposerAura, ChatMediaCameraIcon } from './chat-surfaces'
 import { customerV21ChatStyles as chatStyles } from './chat-styles'
+import { canSubmitCustomerKaelComposer } from './customer-kael-composer-state'
+import { CUSTOMER_KAEL_MESSAGE_MAX_LENGTH } from './customer-kael-message-limits'
 
 export type RootChatStyles = {
   bodyText: StyleProp<TextStyle>
@@ -33,6 +35,7 @@ export function KaelChatComposer({
   composerMediaDraftCount,
   composerPlaceholder,
   draft,
+  hasVoiceTranscript,
   language,
   onBlur,
   onDraftChange,
@@ -49,6 +52,7 @@ export function KaelChatComposer({
   composerMediaDraftCount: number
   composerPlaceholder: string
   draft: string
+  hasVoiceTranscript: boolean
   language: AppLanguage
   onBlur: () => void
   onDraftChange: (value: string) => void
@@ -60,6 +64,12 @@ export function KaelChatComposer({
   textInputNoOutlineStyle: StyleProp<TextStyle>
   tokens: CustomerThemeTokens
 }) {
+  const canSubmit = canSubmitCustomerKaelComposer({
+    busy: composerBusy,
+    draft,
+    mediaDraftCount: canUseComposerMedia ? composerMediaDraftCount : 0,
+    voiceTranscript: hasVoiceTranscript ? 'voice' : '',
+  })
   return (
     <>
       <View
@@ -72,7 +82,9 @@ export function KaelChatComposer({
         <SourceCardSkin />
         <ChatComposerAura reduceTransparency={reduceTransparency} />
         <LiquidControlButton
-          accessibilityLabel={language === 'vi' ? 'Thêm ảnh hoặc video' : 'Add photo or video'}
+          accessibilityLabel={canUseComposerMedia
+            ? (language === 'vi' ? 'Thêm ảnh hoặc video' : 'Add photo or video')
+            : (language === 'vi' ? 'Ảnh và video dùng trong Xử lý công việc' : 'Photos and videos are for Work handling')}
           accessibilityState={{ disabled: composerBusy || !canUseComposerMedia }}
           dimWhenDisabled={false}
           disabled={composerBusy || !canUseComposerMedia}
@@ -104,6 +116,7 @@ export function KaelChatComposer({
           onChangeText={onDraftChange}
           onFocus={onFocus}
           onSubmitEditing={onSendMessage}
+          maxLength={CUSTOMER_KAEL_MESSAGE_MAX_LENGTH}
           placeholder={composerPlaceholder}
           placeholderTextColor={tokens.subtleText}
           returnKeyType="send"
@@ -114,9 +127,9 @@ export function KaelChatComposer({
         />
         <LiquidControlButton
           accessibilityLabel={language === 'vi' ? 'Gửi tin nhắn cho Kael' : 'Send message to Kael'}
-          accessibilityState={{ busy: composerBusy, disabled: composerBusy }}
+          accessibilityState={{ busy: composerBusy, disabled: !canSubmit }}
           dimWhenDisabled={false}
-          disabled={composerBusy}
+          disabled={!canSubmit}
           mode={tokens.mode}
           onPress={onSendMessage}
           size={44}

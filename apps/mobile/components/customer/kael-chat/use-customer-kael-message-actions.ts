@@ -46,8 +46,10 @@ import {
   preAgenticClarification,
   preAgenticConfirmation,
   preAgenticMissingDetails,
+  preAgenticUnsupportedService,
 } from './customer-kael-pre-agentic-copy'
 import { applyCustomerKaelReasoningEvent } from './customer-kael-reasoning-actions'
+import { customerKaelMessageLengthError } from './customer-kael-message-limits'
 import type { CustomerKaelRequestGuard } from './customer-kael-state-scope'
 import type { CustomerKaelMode } from '../ui/types'
 import type { useCustomerKaelChatUiState } from './use-customer-kael-chat-ui-state'
@@ -55,6 +57,7 @@ import type { useCustomerKaelConversationState } from './use-customer-kael-conve
 import type { useCustomerKaelConversations } from './use-customer-kael-conversations'
 import type { useKaelProcessLineController } from './use-kael-process-line-controller'
 import { reconcileCommittedKaelTurn } from './customer-kael-conversation-requests'
+import { useCustomerKaelPreAgenticState } from './use-customer-kael-pre-agentic-state'
 
 type ChatUi = ReturnType<typeof useCustomerKaelChatUiState>
 type Conversation = ReturnType<typeof useCustomerKaelConversationState>
@@ -71,12 +74,6 @@ type PendingCustomerKaelCreate = {
     mediaRefs: string[]
     photoUrls: string[]
   } | null
-}
-
-type PendingPreAgenticIntake = {
-  message: string
-  ownerKey: string
-  stage: 'clarification' | 'confirmation'
 }
 
 export function useCustomerKaelMessageActions({
@@ -109,7 +106,14 @@ export function useCustomerKaelMessageActions({
   selectedServiceRef: MutableRefObject<ServiceType | null>
 }) {
   const pendingCreateRef = useRef<PendingCustomerKaelCreate | null>(null)
-  const pendingPreAgenticIntakeRef = useRef<PendingPreAgenticIntake | null>(null)
+  const {
+    getPendingState: getPendingPreAgenticIntake,
+    ownerKey: preAgenticOwnerKey,
+    setPendingState: setPendingPreAgenticIntake,
+  } = useCustomerKaelPreAgenticState(
+    requestOwnerKey,
+    conversations?.activeSessionId ?? null,
+  )
   const sendOperationRef = useRef<{ ownerKey: string } | null>(null)
   useEffect(() => () => {
     sendOperationRef.current = null
@@ -147,13 +151,17 @@ export function useCustomerKaelMessageActions({
   const settleStreamingReply = useCallback((responseId: string) => {
     setStreamingReply((current) => current?.responseId === responseId ? null : current)
   }, [setStreamingReply])
-
   const sendMessage = async (messageOverride?: string) => {
     const submittedDraft = messageOverride ?? draft
     const reviewedVoiceTranscript = messageOverride === undefined ? voiceTranscript.trim() : ''
     const message = submittedDraft.trim() || reviewedVoiceTranscript
     const hasComposerMedia = composerMediaDrafts.length > 0
     if (!message && !hasComposerMedia && !reviewedVoiceTranscript) return
+    const messageLengthError = customerKaelMessageLengthError(message, language)
+    if (messageLengthError) {
+      setError(messageLengthError)
+      return
+    }
     if (sendOperationRef.current?.ownerKey === requestOwnerKey) return
     const sendOperation = { ownerKey: requestOwnerKey }
     sendOperationRef.current = sendOperation
@@ -271,7 +279,6 @@ export function useCustomerKaelMessageActions({
       setVoiceTranscript(messageOverride === undefined ? voiceTranscript : '')
       composerCleared = false
     }
-
     try {
       if (mode === 'normal' && conversations) {
         if (hasComposerMedia) {
@@ -469,9 +476,10 @@ export function useCustomerKaelMessageActions({
         return
       }
 
+    const pendingPreAgenticState = getPendingPreAgenticIntake()
     const pendingPreAgentic = mode === 'case' && !chat && !deal &&
-      pendingPreAgenticIntakeRef.current?.ownerKey === requestOwnerKey
-      ? pendingPreAgenticIntakeRef.current
+      pendingPreAgenticState?.ownerKey === preAgenticOwnerKey
+      ? pendingPreAgenticState
       : null
     const shouldRunPreAgentic = mode === 'case' && !chat && !deal && !selectedService
     const confirmationReply = pendingPreAgentic?.stage === 'confirmation' &&
@@ -484,9 +492,9 @@ export function useCustomerKaelMessageActions({
     const shouldUseIntake = mode === 'case' || Boolean(
       hasComposerMedia || reviewedVoiceTranscript || pendingDraft || chat || intakeIntent,
     )
-      if (!shouldUseIntake) {
-        setLoading(true)
-        setError(null)
+    if (!shouldUseIntake) {
+      setLoading(true)
+      setError(null)
       clearSubmittedComposer()
       try {
         const catalogResult = conversations
@@ -543,8 +551,19 @@ export function useCustomerKaelMessageActions({
       }
       return
     }
-
     const inferredService = selectedService ?? inferredDraft?.serviceType ?? null
+    if (shouldRunPreAgentic && inferredDraft?.unsupportedServiceLabel) {
+      setPendingPreAgenticIntake(null)
+      clearSubmittedComposer()
+      setError(null)
+      if (await revealLocalCaseExchange(
+        message,
+        preAgenticUnsupportedService(language, inferredDraft.unsupportedServiceLabel),
+      )) {
+        commitSubmittedComposer()
+      }
+      return
+    }
     const missingPreAgenticDetails = shouldRunPreAgentic
       ? preAgenticMissingDetails(inferredDraft)
       : []
@@ -552,11 +571,11 @@ export function useCustomerKaelMessageActions({
       const stage = inferredService && missingPreAgenticDetails.length === 0
         ? 'confirmation'
         : 'clarification'
-      pendingPreAgenticIntakeRef.current = {
+      setPendingPreAgenticIntake({
         message,
-        ownerKey: requestOwnerKey,
+        ownerKey: preAgenticOwnerKey,
         stage,
-      }
+      })
       clearSubmittedComposer()
       setError(null)
       const preAgenticReply = stage === 'confirmation'
@@ -568,7 +587,7 @@ export function useCustomerKaelMessageActions({
       return
     }
     if (shouldRunPreAgentic && pendingPreAgentic?.stage === 'confirmation' && !confirmationReply) {
-      pendingPreAgenticIntakeRef.current = null
+      setPendingPreAgenticIntake(null)
       setError(language === 'vi'
         ? 'Để chỉnh thông tin, hãy gửi lại mô tả đã cập nhật trong một tin nhắn mới.'
         : 'To revise the details, send the updated description as a new message.')
@@ -579,11 +598,11 @@ export function useCustomerKaelMessageActions({
         setError(preAgenticClarification(language, missingPreAgenticDetails))
         return
       }
-      pendingPreAgenticIntakeRef.current = {
+      setPendingPreAgenticIntake({
         message: intakeMessage,
-        ownerKey: requestOwnerKey,
+        ownerKey: preAgenticOwnerKey,
         stage: 'confirmation',
-      }
+      })
       clearSubmittedComposer()
       setError(null)
       if (await revealLocalCaseExchange(
@@ -734,7 +753,8 @@ export function useCustomerKaelMessageActions({
       stopProcessLines()
       setChat(result.data)
       setTurns(result.data.turns)
-      pendingPreAgenticIntakeRef.current = null
+      setAssistantTurns([])
+      setPendingPreAgenticIntake(null)
       commitSubmittedComposer()
       setComposerMediaDrafts([])
       setAgenticAdjustmentOpen(false)

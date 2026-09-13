@@ -1,4 +1,4 @@
-import { useCallback, useReducer, type Dispatch, type SetStateAction } from 'react'
+import { useCallback, useEffect, useReducer, type Dispatch, type SetStateAction } from 'react'
 
 import type { KaelChatResponse, KaelChatTurn } from '@/lib/api-types'
 import type { LocalMediaUploadDraft } from '@/lib/media-upload'
@@ -10,6 +10,13 @@ import {
 } from '@/lib/kael-reasoning-receipt'
 
 import type { CustomerKaelMode } from '../ui/types'
+import { customerKaelModeStateScopeKey } from './customer-kael-state-scope'
+import {
+  readCustomerKaelAssistantTurns,
+  readCustomerKaelMediaDrafts,
+  rememberCustomerKaelAssistantTurns,
+  rememberCustomerKaelMediaDrafts,
+} from './customer-kael-ephemeral-state'
 
 export type CustomerAssistantLocalTurn = {
   id: string
@@ -173,11 +180,21 @@ export function createCustomerKaelConversationState(input: {
   initialLoading: boolean
   initialMode: CustomerKaelMode
   pendingDraft: PendingKaelChatDraft | null
+  stateScopeKey?: string
 }): CustomerKaelConversationState {
+  const initialScopeKey = input.stateScopeKey
+    ? customerKaelModeStateScopeKey(input.stateScopeKey, input.initialMode)
+    : null
   return {
-    assistantTurns: [],
+    assistantTurns: initialScopeKey
+      ? readCustomerKaelAssistantTurns(initialScopeKey)
+      : [],
     chat: null,
-    composerMediaDrafts: input.pendingDraft?.photoDrafts ? [...input.pendingDraft.photoDrafts] : [],
+    composerMediaDrafts: input.pendingDraft
+      ? [...(input.pendingDraft.photoDrafts ?? [])]
+      : initialScopeKey
+        ? readCustomerKaelMediaDrafts(initialScopeKey)
+        : [],
     error: null,
     intakeDisplayMessage: input.pendingDraft?.message ?? null,
     loading: input.initialLoading,
@@ -195,12 +212,19 @@ export function useCustomerKaelConversationState(input: {
   initialLoading: boolean
   initialMode: CustomerKaelMode
   pendingDraft: PendingKaelChatDraft | null
+  stateScopeKey?: string
 }) {
   const [state, dispatch] = useReducer(
     customerKaelConversationReducer,
     input,
     createCustomerKaelConversationState,
   )
+  useEffect(() => {
+    if (!input.stateScopeKey) return
+    const scopeKey = customerKaelModeStateScopeKey(input.stateScopeKey, state.localMode)
+    rememberCustomerKaelAssistantTurns(scopeKey, state.assistantTurns)
+    rememberCustomerKaelMediaDrafts(scopeKey, state.composerMediaDrafts)
+  }, [input.stateScopeKey, state.assistantTurns, state.composerMediaDrafts, state.localMode])
   const setAssistantTurns: Dispatch<SetStateAction<CustomerAssistantLocalTurn[]>> = useCallback((value) => {
     dispatch({ type: 'set-assistant-turns', value })
   }, [])
@@ -255,6 +279,12 @@ export function useCustomerKaelConversationState(input: {
   const switchMode = useCallback((mode: CustomerKaelMode) => {
     dispatch({ mode, type: 'switch-mode' })
   }, [])
+  const rememberEphemeralState = useCallback(() => {
+    if (!input.stateScopeKey) return
+    const scopeKey = customerKaelModeStateScopeKey(input.stateScopeKey, state.localMode)
+    rememberCustomerKaelAssistantTurns(scopeKey, state.assistantTurns)
+    rememberCustomerKaelMediaDrafts(scopeKey, state.composerMediaDrafts)
+  }, [input.stateScopeKey, state.assistantTurns, state.composerMediaDrafts, state.localMode])
 
   return {
     ...state,
@@ -262,6 +292,7 @@ export function useCustomerKaelConversationState(input: {
     finishHydration,
     hydratePendingDraft,
     rejectHydration,
+    rememberEphemeralState,
     resolveHydration,
     setAssistantTurns,
     setChat,

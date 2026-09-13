@@ -10,7 +10,20 @@ import { initialKaelReasoningReceiptState } from '@/lib/kael-reasoning-receipt'
 import { kaelChatService } from '@/lib/services'
 
 import { clearPendingKaelChatDraft } from './pending-intake'
+import {
+  clearCustomerKaelEphemeralState,
+  clearCustomerKaelPreAgenticState,
+  clearCustomerKaelSessionEphemeralState,
+  customerKaelSessionEphemeralScopeKey,
+  readCustomerKaelAssistantTurns,
+  readCustomerKaelComposerState,
+  readCustomerKaelMediaDrafts,
+  rememberCustomerKaelAssistantTurns,
+  rememberCustomerKaelComposerState,
+  rememberCustomerKaelMediaDrafts,
+} from './customer-kael-ephemeral-state'
 import { localizeKaelRequestFailure } from './customer-kael-chat-helpers'
+import { customerKaelPreAgenticOwnerKey } from './customer-kael-state-scope'
 import type { CustomerKaelMode } from '../ui/types'
 import type { useCustomerKaelChatUiState } from './use-customer-kael-chat-ui-state'
 import type { useCustomerKaelConversationState } from './use-customer-kael-conversation-state'
@@ -42,6 +55,7 @@ export function useCustomerKaelSessionCatalog({
   routeJobId,
   router,
   selectedServiceRef,
+  stateScopeKey,
   workflowActions,
   workflowCaseDeal,
 }: {
@@ -57,6 +71,7 @@ export function useCustomerKaelSessionCatalog({
   routeJobId: string | null
   router: Router
   selectedServiceRef: MutableRefObject<ServiceType | null>
+  stateScopeKey: string
   workflowActions: WorkflowActions
   workflowCaseDeal: LocalDeal | null
 }) {
@@ -212,8 +227,32 @@ export function useCustomerKaelSessionCatalog({
     caseSessionLoadsRef.current.clear()
   }, [])
 
+  const rememberCurrentEphemeralState = useCallback(() => {
+    const sessionScopeKey = customerKaelSessionEphemeralScopeKey(
+      stateScopeKey,
+      conversations.activeSessionId,
+    )
+    rememberCustomerKaelComposerState(sessionScopeKey, {
+      draft: chatUi.draft,
+      voiceTranscript: chatUi.voiceTranscript,
+    })
+    rememberCustomerKaelAssistantTurns(sessionScopeKey, conversation.assistantTurns)
+    rememberCustomerKaelMediaDrafts(sessionScopeKey, conversation.composerMediaDrafts)
+  }, [chatUi.draft, chatUi.voiceTranscript, conversation.assistantTurns, conversation.composerMediaDrafts, conversations.activeSessionId, stateScopeKey])
+
+  const restoreEphemeralState = useCallback((sessionId: string | null) => {
+    const sessionScopeKey = customerKaelSessionEphemeralScopeKey(stateScopeKey, sessionId)
+    const composer = readCustomerKaelComposerState(sessionScopeKey)
+    chatUi.setDraft(composer.draft)
+    chatUi.setVoiceTranscript(composer.voiceTranscript)
+    conversation.setAssistantTurns(readCustomerKaelAssistantTurns(sessionScopeKey))
+    conversation.setComposerMediaDrafts(readCustomerKaelMediaDrafts(sessionScopeKey))
+  }, [chatUi, conversation, stateScopeKey])
+
   const resetConversationVisualState = useCallback(() => {
     loadGenerationRef.current += 1
+    rememberCurrentEphemeralState()
+    clearCustomerKaelEphemeralState(stateScopeKey)
     chatUi.setModeMenuOpen(false)
     chatUi.setSessionMenuOpen(false)
     chatUi.setCaseEditOpen(false)
@@ -247,7 +286,7 @@ export function useCustomerKaelSessionCatalog({
       conversation.setRouteDraftEvidencePending(false)
     }
     selectedServiceRef.current = null
-  }, [chatUi, conversation, mode, pendingDraftOwnerId, processController, selectedServiceRef])
+  }, [chatUi, conversation, mode, pendingDraftOwnerId, processController, rememberCurrentEphemeralState, selectedServiceRef, stateScopeKey])
 
   const startNewConversation = useCallback(async () => {
     if (conversation.loading || chatUi.uploadingMedia || !conversations.canCreateSession) return
@@ -279,6 +318,7 @@ export function useCustomerKaelSessionCatalog({
   const openConversation = useCallback(async (conversationId: string) => {
     const target = conversations.sessions.find((session) => session.id === conversationId)
     if (!target) return
+    const previousSessionId = conversations.activeSessionId
     const opensLinkedCaseImmediately = Boolean(target.case_session_id)
     if (
       chatUi.uploadingMedia ||
@@ -304,6 +344,7 @@ export function useCustomerKaelSessionCatalog({
     }
     const opened = await conversations.openSession(conversationId)
     if (!opened) {
+      restoreEphemeralState(previousSessionId)
       conversation.setLoading(false)
       conversation.setError(conversations.sessionsError ?? (language === 'vi'
         ? 'Chưa thể mở cuộc trò chuyện này.'
@@ -312,10 +353,12 @@ export function useCustomerKaelSessionCatalog({
     }
     if (opened.session.mode === 'normal' || !opened.session.case_session_id) {
       conversation.setLoading(false)
+      restoreEphemeralState(opened.session.id)
       return
     }
 
     await loadCatalogCaseSession(opened.session.case_session_id)
+    restoreEphemeralState(opened.session.id)
   }, [
     blankCaseWorkRoute,
     chatUi,
@@ -328,12 +371,14 @@ export function useCustomerKaelSessionCatalog({
     resetConversationVisualState,
     resolveCatalogCaseSession,
     routeJobId,
+    restoreEphemeralState,
     router,
   ])
 
   const archiveConversation = useCallback(async (conversationId: string) => {
     const target = conversations.sessions.find((session) => session.id === conversationId)
     const wasActive = conversations.activeSessionId === conversationId
+    if (wasActive) rememberCurrentEphemeralState()
     const archived = await conversations.archiveSession(conversationId)
     if (!archived) return false
 
@@ -350,13 +395,17 @@ export function useCustomerKaelSessionCatalog({
         void workflowActions.hydrateRemoteJobById(target.case_job_id)
       }
     }
+    clearCustomerKaelSessionEphemeralState(stateScopeKey, conversationId)
+    clearCustomerKaelPreAgenticState(customerKaelPreAgenticOwnerKey(stateScopeKey, conversationId))
     return true
   }, [
     blankCaseWorkRoute,
     chatUi,
     conversations,
+    rememberCurrentEphemeralState,
     resetConversationVisualState,
     router,
+    stateScopeKey,
     workflowActions,
     workflowCaseDeal?.id,
   ])
