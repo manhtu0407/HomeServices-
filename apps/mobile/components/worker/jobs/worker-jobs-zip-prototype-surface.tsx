@@ -34,6 +34,9 @@ export function WorkerJobsLegacyPrototypeBody(props: WorkerJobsLegacyPrototypeBo
       <WorkerJobsLegacyPrototypePaymentConfirmedBody
         language={props.language}
         navigateToEarnings={() => props.navigateToScreen('4.1-earnings-overview')}
+        navigateToHome={() => props.navigateToScreen('1.1-worker-home')}
+        navigateToHistory={() => props.navigateToScreen('4.2-ledger-detail')}
+        reduceMotion={props.reduceMotion}
         reduceTransparency={props.reduceTransparency}
         runtime={props.runtime}
       />

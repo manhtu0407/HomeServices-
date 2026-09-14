@@ -1012,9 +1012,90 @@ describe('Worker runtime surface wiring', () => {
 
     expect(screen.getByTestId('worker-v5-stage-eleven-payment-confirmed')).toBeOnTheScreen()
     expect(screen.getByTestId('worker-v5-stage-eleven-payment-card')).toBeOnTheScreen()
-    expect(screen.getByTestId('worker-v5-stage-eleven-amount')).toHaveTextContent('340.000 VND')
+    expect(screen.getByTestId('worker-v5-stage-eleven-amount')).toHaveTextContent('340.000 ₫')
+    expect(screen.getByTestId('stage11-job-card')).toBeOnTheScreen()
+    expect(screen.getByTestId('stage11-income-card')).toBeOnTheScreen()
+    expect(screen.getByText('Thông tin công việc')).toBeOnTheScreen()
+    expect(screen.getByText('Thông tin thanh toán')).toBeOnTheScreen()
+    expect(screen.getByText('Chi tiết thu nhập')).toBeOnTheScreen()
+    expect(screen.getByText('Cảm ơn bạn!')).toBeOnTheScreen()
+    expect(screen.getByText('Về trang chủ')).toBeOnTheScreen()
+    expect(screen.queryByTestId('stage11-back')).toBeNull()
+    expect(screen.queryByTestId('worker-v5-stage-eleven-payment-workart')).toBeNull()
     expect(screen.queryByText('Quy trình công việc')).toBeNull()
     expect(screen.queryByText('10/11')).toBeNull()
+  })
+
+  it('opens the payment disclosure and routes earnings actions to their owning screens', () => {
+    buildWorkflow({ deal: buildSettledCaseDeal(), workerEarnings: buildSettledCaseEarnings() })
+    mockRouteParams = {
+      ns_audit_role: 'worker',
+      ns_worker_lang: 'vi',
+      ns_worker_screen: '2.12-case-closed',
+      ns_worker_stage: 'payment-confirmed',
+    }
+
+    render(<WorkerJobsSurface />)
+
+    const paymentToggle = screen.getByTestId('stage11-payment-toggle')
+    expect(paymentToggle.props.accessibilityState).toMatchObject({ expanded: true })
+    fireEvent.press(paymentToggle)
+    expect(paymentToggle.props.accessibilityState).toMatchObject({ expanded: false })
+    expect(screen.queryByTestId('stage11-payment-details')).toBeNull()
+    fireEvent.press(paymentToggle)
+    expect(paymentToggle.props.accessibilityState).toMatchObject({ expanded: true })
+    expect(screen.getByTestId('stage11-payment-details')).toBeOnTheScreen()
+
+    fireEvent.press(screen.getByTestId('worker-v5-stage-eleven-earnings-action'))
+    expect(mockReplace).toHaveBeenCalledWith(expect.stringContaining('ns_worker_screen=4.1-earnings-overview'))
+  })
+
+  it('opens the transaction ledger from the empty earnings breakdown and can retry payment refresh', async () => {
+    const deal = buildSettledCaseDeal()
+    deal.backendStatus = 'payment_pending'
+    deal.status = 'payment_pending'
+    deal.payment = deal.payment ? { ...deal.payment, status: 'pending', provider: 'platform_bank_manual' } : null
+    buildWorkflow({ deal, workerEarnings: buildNoEarnings() })
+    mockRouteParams = {
+      ns_audit_role: 'worker',
+      ns_worker_lang: 'vi',
+      ns_worker_screen: '2.12-case-closed',
+      ns_worker_stage: 'payment-confirmed',
+    }
+
+    render(<WorkerJobsSurface />)
+
+    fireEvent.press(screen.getByTestId('stage11-income-history-action'))
+    expect(mockReplace).toHaveBeenCalledWith(expect.stringContaining('ns_worker_screen=4.2-ledger-detail'))
+
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('stage11-refresh'))
+    })
+    expect(mockWorkerRefresh).toHaveBeenCalledTimes(1)
+  })
+
+  it('keeps local payment metadata visible when the hydrated worker list has not matched the deal yet', () => {
+    const deal = buildSettledCaseDeal()
+    deal.payment = deal.payment ? {
+      ...deal.payment,
+      accountMasked: '•••• 2681',
+      bankCode: 'Vietcombank',
+      paymentCode: 'PAY-SETTLED-01',
+      receivedAt: '2026-07-15T09:01:00.000Z',
+    } : null
+    buildWorkflow({ deal, workerEarnings: buildSettledCaseEarnings() })
+    mockRouteParams = {
+      ns_audit_role: 'worker',
+      ns_worker_lang: 'vi',
+      ns_worker_screen: '2.12-case-closed',
+      ns_worker_stage: 'payment-confirmed',
+    }
+
+    render(<WorkerJobsSurface />)
+
+    expect(screen.getByText('Vietcombank · •••• 2681')).toBeOnTheScreen()
+    expect(screen.getByText('PAY-SETTLED-01')).toBeOnTheScreen()
+    expect(screen.getByText('16:01 · 15/07/2026')).toBeOnTheScreen()
   })
 
   it('shows the recorded bank-transfer amount as currency when the payment record has it', () => {
@@ -1031,8 +1112,9 @@ describe('Worker runtime surface wiring', () => {
 
     render(<WorkerJobsSurface />)
 
-    expect(screen.getByTestId('worker-v5-stage-eleven-amount')).toHaveTextContent('400.000 VND')
-    expect(screen.getByText('Số tiền chuyển khoản')).toBeOnTheScreen()
+    expect(screen.getByTestId('worker-v5-stage-eleven-amount')).toHaveTextContent('400.000 ₫')
+    expect(screen.getByText('Thông tin thanh toán')).toBeOnTheScreen()
+    expect(screen.queryByText('Số tiền chuyển khoản')).toBeNull()
   })
 
   it('does not turn a pending bank order or provisional earnings into a payment receipt', () => {
@@ -1040,7 +1122,7 @@ describe('Worker runtime surface wiring', () => {
     deal.backendStatus = 'payment_pending'
     deal.status = 'payment_pending'
     deal.payment = deal.payment ? { ...deal.payment, status: 'pending', provider: 'platform_bank_manual' } : null
-    buildWorkflow({ deal, workerEarnings: buildSettledCaseEarnings() })
+    buildWorkflow({ deal, workerEarnings: buildNoEarnings() })
     mockRouteParams = {
       ns_audit_role: 'worker', ns_worker_lang: 'vi',
       ns_worker_screen: '2.12-case-closed', ns_worker_stage: 'payment-confirmed',
@@ -1051,7 +1133,10 @@ describe('Worker runtime surface wiring', () => {
     expect(screen.queryByText('Thanh toán đã ghi nhận')).toBeNull()
     expect(screen.queryByText('Khách đã xác nhận thanh toán')).toBeNull()
     expect(screen.queryByText('Chúc mừng!')).toBeNull()
-    expect(screen.getByTestId('worker-v5-stage-eleven-amount')).toHaveTextContent('Chưa có số tiền được ghi nhận')
+    expect(screen.getByTestId('worker-v5-stage-eleven-amount')).toHaveTextContent('—')
+    expect(screen.getByText('Đang chờ thanh toán')).toBeOnTheScreen()
+    expect(screen.getByTestId('stage11-refresh')).toBeOnTheScreen()
+    expect(screen.queryByTestId('stage11-thanks')).toBeNull()
   })
 
   it('does not synthesize a job when the Preview inbox has no real opportunity', () => {
