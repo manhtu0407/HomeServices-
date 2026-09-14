@@ -81,7 +81,9 @@ export function WorkerJobsLegacyPrototypeBody(props: WorkerJobsLegacyPrototypeBo
         <WorkerJobsLegacyPrototypeRouteEtaBody
           actionBusy={props.actionBusy}
           language={props.language}
+          navigateActiveJobChat={props.navigateActiveJobChat}
           navigateJobChat={props.navigateJobChat}
+          navigateToScreen={props.navigateToScreen}
           prototypeMode={props.prototypeMode}
           reduceMotion={props.reduceMotion}
           reduceTransparency={props.reduceTransparency}
