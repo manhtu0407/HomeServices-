@@ -33,13 +33,9 @@ export function preAgenticClarification(language: AppLanguage, missingDetails: s
   return 'I have noted your description. Before Kael begins, please provide the service, the affected item or symptom, and the district in Ho Chi Minh City in one message. Supported services are electrical, plumbing, home cleaning, air conditioning, upholstery care, and handyman work.'
 }
 
-export function preAgenticUnsupportedService(
-  language: AppLanguage,
-  detectedLabel?: string | null,
-) {
+export function preAgenticUnsupportedService(language: AppLanguage) {
   if (language === 'vi') {
-    const detail = detectedLabel?.trim() ? ` “${detectedLabel.trim()}”` : ''
-    return `Yêu cầu${detail} hiện chưa thuộc phạm vi NestScout. NestScout đang hỗ trợ sửa điện, sửa nước, vệ sinh nhà cửa, điều hòa và không khí, sofa/nệm/rèm/thảm, cùng sửa vặt và lắp đặt nhỏ.`
+    return 'Yêu cầu này hiện chưa thuộc phạm vi NestScout. NestScout đang hỗ trợ sửa điện, sửa nước, vệ sinh nhà cửa, điều hòa và không khí, sofa/nệm/rèm/thảm, cùng sửa vặt và lắp đặt nhỏ.'
   }
   return 'This request is outside NestScout’s current service scope. NestScout supports electrical repair, plumbing repair, home cleaning, air conditioning and indoor air, sofa/mattress/curtain/carpet care, and minor repair or installation.'
 }

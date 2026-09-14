@@ -1,3 +1,4 @@
+import AsyncStorage from '@react-native-async-storage/async-storage'
 import type { CustomerAssistantLocalTurn } from './use-customer-kael-conversation-state'
 import type { LocalMediaUploadDraft } from '@/lib/media-upload'
 
@@ -19,10 +20,84 @@ export type CustomerKaelSessionEphemeralSummary = {
 }
 
 const MAX_REMEMBERED_SCOPES = 24
+const CUSTOMER_KAEL_COMPOSER_STORAGE_VERSION = 1
+const CUSTOMER_KAEL_COMPOSER_MAX_LENGTH = 5_000
+export const CUSTOMER_KAEL_COMPOSER_STORAGE_PREFIX = 'nestscout.customer.kael-composer.v1'
 const composerStateMemory = new Map<string, CustomerKaelComposerState>()
 const assistantTurnsMemory = new Map<string, CustomerAssistantLocalTurn[]>()
 const mediaDraftsMemory = new Map<string, LocalMediaUploadDraft[]>()
 const preAgenticStateMemory = new Map<string, CustomerKaelPreAgenticState>()
+let composerStorageLane: Promise<void> = Promise.resolve()
+
+type StoredCustomerKaelComposerState = {
+  state: CustomerKaelComposerState
+  version: typeof CUSTOMER_KAEL_COMPOSER_STORAGE_VERSION
+}
+
+function customerKaelComposerStorageKey(scopeKey: string) {
+  return `${CUSTOMER_KAEL_COMPOSER_STORAGE_PREFIX}.${encodeURIComponent(scopeKey)}`
+}
+
+function enqueueComposerStorageOperation<T>(operation: () => Promise<T>) {
+  const queued = composerStorageLane.then(operation, operation)
+  composerStorageLane = queued.then(() => undefined, () => undefined)
+  return queued
+}
+
+function parseStoredCustomerKaelComposerState(raw: string | null): CustomerKaelComposerState | null {
+  if (!raw) return null
+  try {
+    const parsed = JSON.parse(raw) as Partial<StoredCustomerKaelComposerState>
+    const state = parsed.state
+    if (
+      parsed.version !== CUSTOMER_KAEL_COMPOSER_STORAGE_VERSION ||
+      !state ||
+      typeof state.draft !== 'string' ||
+      typeof state.voiceTranscript !== 'string' ||
+      state.draft.length > CUSTOMER_KAEL_COMPOSER_MAX_LENGTH ||
+      state.voiceTranscript.length > CUSTOMER_KAEL_COMPOSER_MAX_LENGTH
+    ) return null
+    return { draft: state.draft, voiceTranscript: state.voiceTranscript }
+  } catch {
+    return null
+  }
+}
+
+export function persistCustomerKaelComposerState(
+  scopeKey: string,
+  state: CustomerKaelComposerState,
+) {
+  return enqueueComposerStorageOperation(async () => {
+    const key = customerKaelComposerStorageKey(scopeKey)
+    if (
+      (!state.draft && !state.voiceTranscript) ||
+      state.draft.length > CUSTOMER_KAEL_COMPOSER_MAX_LENGTH ||
+      state.voiceTranscript.length > CUSTOMER_KAEL_COMPOSER_MAX_LENGTH
+    ) {
+      await AsyncStorage.removeItem(key).catch(() => undefined)
+      return
+    }
+    const envelope: StoredCustomerKaelComposerState = {
+      state: { draft: state.draft, voiceTranscript: state.voiceTranscript },
+      version: CUSTOMER_KAEL_COMPOSER_STORAGE_VERSION,
+    }
+    await AsyncStorage.setItem(key, JSON.stringify(envelope)).catch(() => undefined)
+  })
+}
+
+export function readPersistedCustomerKaelComposerState(scopeKey: string) {
+  return enqueueComposerStorageOperation(async () => {
+    const key = customerKaelComposerStorageKey(scopeKey)
+    const raw = await AsyncStorage.getItem(key).catch(() => null)
+    const state = parseStoredCustomerKaelComposerState(raw)
+    if (raw !== null && !state) await AsyncStorage.removeItem(key).catch(() => undefined)
+    return state
+  })
+}
+
+export function flushCustomerKaelComposerStorage() {
+  return composerStorageLane
+}
 
 function trimMemory<T>(memory: Map<string, T>) {
   while (memory.size > MAX_REMEMBERED_SCOPES) {

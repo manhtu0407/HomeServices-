@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 
+import { PROBLEM_CHIPS } from '../constants'
 import { kaelChatCreateSchema, kaelChatTurnSchema } from '../contracts/kael-chat'
 import { inferLocalDealDraftFromKael, validateLocalDealDraft } from '../mobile-workflow/draft'
 import { pillarWhy, type PillarManifest } from './pillar-manifest'
@@ -28,6 +29,19 @@ describe('Kael shared input boundary', () => {
     expect(supported, pillarWhy(PILLAR, 'supported HVAC language must remain actionable')).toMatchObject({
       serviceType: 'hvac',
       unsupportedServiceLabel: null,
+    })
+  })
+
+  it('recognizes Vietnamese no-cooling synonyms in the HVAC intake', () => {
+    const draft = inferLocalDealDraftFromKael('Điều hòa phòng ngủ không lạnh ở quận 7')
+
+    withPillarContext(PILLAR, () => {
+      expect(draft).toMatchObject({
+        serviceType: 'hvac',
+        problemChips: [PROBLEM_CHIPS.hvac[2]],
+        inferredProblemLabel: PROBLEM_CHIPS.hvac[2],
+        districtLabel: 'Quận 7',
+      })
     })
   })
 

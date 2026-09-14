@@ -259,7 +259,7 @@ function inferProblemChips(normalized: string, serviceType: ServiceType): string
   if (serviceType === 'hvac') {
     if (hasAny(normalized, ['ve sinh', 'bao tri', 'cleaning', 'maintenance'])) return [PROBLEM_CHIPS.hvac[0]]
     if (hasAny(normalized, ['yeu', 'weak cooling'])) return [PROBLEM_CHIPS.hvac[1]]
-    if (hasAny(normalized, ['khong mat', 'not cooling', 'no cooling'])) return [PROBLEM_CHIPS.hvac[2]]
+    if (hasAny(normalized, ['khong mat', 'khong lanh', 'not cooling', 'no cooling', 'not cold', 'does not cool'])) return [PROBLEM_CHIPS.hvac[2]]
     if (hasAny(normalized, ['chay nuoc', 'ro nuoc', 'leak', 'leaking'])) return [PROBLEM_CHIPS.hvac[3]]
     if (hasAny(normalized, ['keu', 'tieng on', 'noise', 'noisy'])) return [PROBLEM_CHIPS.hvac[4]]
     if (hasAny(normalized, ['ma loi', 'error code'])) return [PROBLEM_CHIPS.hvac[5]]

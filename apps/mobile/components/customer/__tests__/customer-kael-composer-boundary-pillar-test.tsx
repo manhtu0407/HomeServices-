@@ -41,13 +41,12 @@ describe('Kael composer and failure boundary', () => {
   })
 
   it('declines unsupported service scope without leaking the selected language', () => {
-    const vietnamese = preAgenticUnsupportedService('vi', 'Yêu cầu này hiện chưa thuộc phạm vi NestScout.')
-    const detectedVietnamese = preAgenticUnsupportedService('vi', 'sửa xe máy')
-    const english = preAgenticUnsupportedService('en', 'Yêu cầu này hiện chưa thuộc phạm vi NestScout.')
+    const expectedVietnamese = 'Yêu cầu này hiện chưa thuộc phạm vi NestScout. NestScout đang hỗ trợ sửa điện, sửa nước, vệ sinh nhà cửa, điều hòa và không khí, sofa/nệm/rèm/thảm, cùng sửa vặt và lắp đặt nhỏ.'
+    const vietnamese = preAgenticUnsupportedService('vi')
+    const english = preAgenticUnsupportedService('en')
     withPillarContext(PILLAR, () => {
-      expect(vietnamese).toContain('chưa thuộc phạm vi')
-      expect(detectedVietnamese).toContain('chưa thuộc phạm vi')
-      expect(detectedVietnamese).toContain('sửa xe máy')
+      expect(vietnamese).toBe(expectedVietnamese)
+      expect(vietnamese).not.toContain('“')
       expect(english).toContain('outside NestScout')
       expect(english).not.toContain('Yêu cầu')
     })

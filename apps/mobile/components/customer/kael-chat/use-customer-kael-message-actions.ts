@@ -558,7 +558,7 @@ export function useCustomerKaelMessageActions({
       setError(null)
       if (await revealLocalCaseExchange(
         message,
-        preAgenticUnsupportedService(language, inferredDraft.unsupportedServiceLabel),
+        preAgenticUnsupportedService(language),
       )) {
         commitSubmittedComposer()
       }

@@ -1,8 +1,10 @@
-import { useCallback, useEffect, useMemo, useReducer, type Dispatch, type SetStateAction } from 'react'
+import { useCallback, useEffect, useMemo, useReducer, useRef, type Dispatch, type SetStateAction } from 'react'
 
 import type { KaelProcessLine, KaelProcessScenarioId } from './kael-process-lines'
 import {
   readCustomerKaelComposerState,
+  readPersistedCustomerKaelComposerState,
+  persistCustomerKaelComposerState,
   rememberCustomerKaelComposerState,
 } from './customer-kael-ephemeral-state'
 
@@ -110,6 +112,21 @@ export function useCustomerKaelChatUiState(scopeKey?: string) {
       ...(key ? readCustomerKaelComposerState(key) : {}),
     }),
   )
+  const latestComposerRef = useRef({ draft: state.draft, voiceTranscript: state.voiceTranscript })
+  latestComposerRef.current = { draft: state.draft, voiceTranscript: state.voiceTranscript }
+  const composerMutationRevisionRef = useRef(0)
+  const hydrationRevisionRef = useRef(0)
+  const hydratedScopeRef = useRef<string | null>(null)
+  const currentScopeRef = useRef(scopeKey)
+  currentScopeRef.current = scopeKey
+  const setDraft = useCallback<CustomerKaelChatUiSetter<'draft'>>((value) => {
+    composerMutationRevisionRef.current += 1
+    dispatch({ key: 'draft', value } as CustomerKaelChatUiAction)
+  }, [])
+  const setVoiceTranscript = useCallback<CustomerKaelChatUiSetter<'voiceTranscript'>>((value) => {
+    composerMutationRevisionRef.current += 1
+    dispatch({ key: 'voiceTranscript', value } as CustomerKaelChatUiAction)
+  }, [])
   const setters = useMemo(() => ({
     setAgenticAdjustmentOpen: createSetter(dispatch, 'agenticAdjustmentOpen'),
     setAgenticAdjustmentText: createSetter(dispatch, 'agenticAdjustmentText'),
@@ -125,7 +142,6 @@ export function useCustomerKaelChatUiState(scopeKey?: string) {
     setConfirmingAgenticEstimate: createSetter(dispatch, 'confirmingAgenticEstimate'),
     setConfirmingCaseQuote: createSetter(dispatch, 'confirmingCaseQuote'),
     setConfirmingCompletion: createSetter(dispatch, 'confirmingCompletion'),
-    setDraft: createSetter(dispatch, 'draft'),
     setModeMenuOpen: createSetter(dispatch, 'modeMenuOpen'),
     setRetryingWorkerSearch: createSetter(dispatch, 'retryingWorkerSearch'),
     setSessionMenuOpen: createSetter(dispatch, 'sessionMenuOpen'),
@@ -134,8 +150,40 @@ export function useCustomerKaelChatUiState(scopeKey?: string) {
     setSubmittingAgenticRejectReason: createSetter(dispatch, 'submittingAgenticRejectReason'),
     setSubmittingCaseQuoteRejectReason: createSetter(dispatch, 'submittingCaseQuoteRejectReason'),
     setUploadingMedia: createSetter(dispatch, 'uploadingMedia'),
-    setVoiceTranscript: createSetter(dispatch, 'voiceTranscript'),
   }), [])
+
+  useEffect(() => {
+    if (!scopeKey) return
+    const hydrationRevision = ++hydrationRevisionRef.current
+    const composerMutationRevision = composerMutationRevisionRef.current
+    hydratedScopeRef.current = null
+    let cancelled = false
+    void readPersistedCustomerKaelComposerState(scopeKey).then((stored) => {
+      if (
+        cancelled ||
+        hydrationRevisionRef.current !== hydrationRevision ||
+        currentScopeRef.current !== scopeKey
+      ) return
+      hydratedScopeRef.current = scopeKey
+      const current = latestComposerRef.current
+      if (current.draft || current.voiceTranscript) {
+        void persistCustomerKaelComposerState(scopeKey, current)
+        return
+      }
+      if (
+        stored &&
+        composerMutationRevisionRef.current === composerMutationRevision &&
+        !current.draft &&
+        !current.voiceTranscript
+      ) {
+        dispatch({ key: 'draft', value: stored.draft })
+        dispatch({ key: 'voiceTranscript', value: stored.voiceTranscript })
+      }
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [scopeKey])
 
   useEffect(() => {
     if (!scopeKey) return
@@ -143,14 +191,21 @@ export function useCustomerKaelChatUiState(scopeKey?: string) {
       draft: state.draft,
       voiceTranscript: state.voiceTranscript,
     })
-  }, [scopeKey, state.draft, state.voiceTranscript])
-  const rememberComposerState = useCallback(() => {
-    if (!scopeKey) return
-    rememberCustomerKaelComposerState(scopeKey, {
+    if (hydratedScopeRef.current !== scopeKey) return
+    void persistCustomerKaelComposerState(scopeKey, {
       draft: state.draft,
       voiceTranscript: state.voiceTranscript,
     })
   }, [scopeKey, state.draft, state.voiceTranscript])
+  const rememberComposerState = useCallback(() => {
+    if (!scopeKey) return
+    const composer = {
+      draft: state.draft,
+      voiceTranscript: state.voiceTranscript,
+    }
+    rememberCustomerKaelComposerState(scopeKey, composer)
+    if (hydratedScopeRef.current === scopeKey) void persistCustomerKaelComposerState(scopeKey, composer)
+  }, [scopeKey, state.draft, state.voiceTranscript])
 
-  return { ...state, ...setters, rememberComposerState }
+  return { ...state, ...setters, rememberComposerState, setDraft, setVoiceTranscript }
 }
