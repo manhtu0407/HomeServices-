@@ -4,16 +4,18 @@ import { View } from 'react-native'
 import { color } from '@/design/theme'
 import type { AppLanguage } from '@/lib/app-language'
 import { isDealPaymentProtected } from '@/lib/frontend-workflow/payment-proof'
+import { useJobMediaPreviewUrls } from '@/lib/job-media-preview'
 import { formatVnd, textByLanguage } from '../ui/format'
 import { WorkerV5BoundaryNote } from '../ui/metrics-surfaces'
 import type { WorkerV5OfferDetailRow } from './offer'
+import { StageTenContent } from './stage-ten/stage-ten-content'
+import { buildWorkerStageTenRuntime } from './stage-ten/stage-ten-runtime'
 import {
   Text,
   WorkerJobsLegacyPrototypeStageActionButton,
   type WorkerJobsLegacyPrototypeRuntime,
   workerJobsLegacyPrototypeStageElevenWorkart,
   workerJobsLegacyPrototypeStageNineWorkart,
-  workerJobsLegacyPrototypeStageTenWorkart,
 } from './worker-jobs-zip-prototype-shared'
 import { prototypeStyles } from './worker-jobs-zip-prototype-styles'
 import { WorkerJobsLegacyPrototypeOfferInfoGroup } from './worker-jobs-zip-prototype-early-stages'
@@ -164,93 +166,20 @@ export function WorkerJobsLegacyPrototypeStageTenBody({
   reduceTransparency: boolean
   runtime: WorkerJobsLegacyPrototypeRuntime
 }) {
-  const deal = runtime.state.deal
-  const paymentRecorded = isDealPaymentProtected(deal)
-  const ledgerCredit = deal && paymentRecorded
-    ? runtime.workerEarnings?.recent_transactions.find((entry) => entry.job_id === deal.id && entry.payment_state === 'available')
-    : null
-  const workerNet = typeof ledgerCredit?.worker_net === 'number' && ledgerCredit.worker_net > 0 ? ledgerCredit.worker_net : null
-  const directPaymentRecorded = paymentRecorded && deal?.payment?.provider === 'direct_worker'
-  const rating = runtime.workerPerformanceInsights?.average_rating ?? runtime.workerProfile?.rating ?? null
-  const hasRating = typeof rating === 'number' && rating > 0
-  const rankingDelta = runtime.workerPerformanceInsights?.performance_score ?? null
-  const heroTitle = workerNet
-    ? textByLanguage(language, 'Đã ghi nhận thu nhập', 'Earnings recorded')
-    : directPaymentRecorded
-      ? textByLanguage(language, 'Đã ghi nhận thanh toán', 'Payment recorded')
-      : deal
-        ? textByLanguage(language, 'Đã hoàn tất công việc', 'Job completed')
-        : textByLanguage(language, 'Chưa có công việc hoàn tất', 'No completed job')
-  const heroMeta = workerNet
-    ? textByLanguage(language, 'Khoản thu nhập đã sẵn sàng.', 'Your earnings are ready.')
-    : directPaymentRecorded
-      ? textByLanguage(language, 'Thanh toán trực tiếp đã được ghi nhận.', 'Direct payment was recorded.')
-      : deal
-        ? textByLanguage(language, 'Đang chờ dữ liệu thanh toán.', 'Payment data is still pending.')
-        : textByLanguage(language, 'Chỉ hiện khi công việc hoàn tất.', 'Shown when a job is completed.')
-  const rows: WorkerV5OfferDetailRow[] = [
-    {
-      icon: 'earnings',
-      title: textByLanguage(language, 'Thu nhập', 'Earnings'),
-      meta: workerNet ? textByLanguage(language, 'Đã ghi vào sổ thu nhập', 'Added to your earnings ledger') : textByLanguage(language, 'Chưa có số liệu khả dụng', 'No available amount yet'),
-      status: workerNet ? formatVnd(workerNet, language) : directPaymentRecorded ? textByLanguage(language, 'Đã nhận trực tiếp', 'Received directly') : textByLanguage(language, 'Đang cập nhật', 'Updating'),
-    },
-    {
-      icon: 'profile',
-      title: textByLanguage(language, 'Đánh giá', 'Rating'),
-      meta: textByLanguage(language, 'Phản hồi từ khách', 'Customer feedback'),
-      status: hasRating ? `${rating.toFixed(rating % 1 === 0 ? 0 : 1)} ★` : textByLanguage(language, 'Chưa có', 'None'),
-    },
-    {
-      icon: 'earnings',
-      title: textByLanguage(language, 'Điểm hạng', 'Ranking points'),
-      meta: textByLanguage(language, 'Cập nhật theo hiệu suất', 'Updated from performance'),
-      status: rankingDelta && rankingDelta > 0 ? `+${Math.round(rankingDelta)}` : textByLanguage(language, 'Chưa có', 'None'),
-    },
-  ]
+  const { model, photoRef } = buildWorkerStageTenRuntime(runtime, language)
+  const [photoPreview] = useJobMediaPreviewUrls([photoRef])
 
   return (
-    <View style={prototypeStyles.bodyStack} testID="worker-v5-stage-ten-prototype">
-      <View style={[prototypeStyles.stageClosedHero, reduceTransparency && { backgroundColor: color.mint.white }]} testID="worker-v5-stage-ten-hero">
-        <View style={prototypeStyles.stageClosedCopy}>
-          <Text style={prototypeStyles.stageClosedKicker}>{textByLanguage(language, 'Công việc đã hoàn tất', 'Job completed')}</Text>
-          <Text numberOfLines={2} style={prototypeStyles.stageClosedTitle}>{heroTitle}</Text>
-          <Text numberOfLines={2} style={prototypeStyles.stageClosedMeta}>{heroMeta}</Text>
-        </View>
-        <View style={prototypeStyles.stageClosedStatus}>
-          <Image
-            accessibilityIgnoresInvertColors
-            accessible={false}
-            contentFit="contain"
-            source={workerJobsLegacyPrototypeStageTenWorkart}
-            style={prototypeStyles.stageClosedStatusArtwork}
-            testID="worker-v5-stage-ten-status-workart"
-          />
-        </View>
-      </View>
-
-      <View style={[prototypeStyles.offerInfoCard, reduceTransparency && { backgroundColor: color.mint.white }]} testID="worker-v5-stage-ten-summary-card">
-        <WorkerJobsLegacyPrototypeOfferInfoGroup
-          rows={rows}
-          testID="worker-v5-stage-ten-summary-list"
-          title={textByLanguage(language, 'Tóm tắt', 'Summary')}
-        />
-      </View>
-
-      <View style={prototypeStyles.stageActionRow}>
-        <WorkerJobsLegacyPrototypeStageActionButton
-          label={textByLanguage(language, 'Xem điểm hạng', 'View ranking')}
-          onPress={navigateToRanking}
-          testID="worker-v5-case-closed-ranking-action"
-        />
-        <WorkerJobsLegacyPrototypeStageActionButton
-          label={textByLanguage(language, 'Mở thu nhập', 'Open earnings')}
-          onPress={navigateToEarnings}
-          primary
-          testID="worker-v5-case-closed-earnings-action"
-        />
-      </View>
-    </View>
+    <StageTenContent
+      actions={{
+        onEarnings: navigateToEarnings,
+        onRanking: navigateToRanking,
+      }}
+      language={language}
+      model={model}
+      photoSource={photoPreview ? { uri: photoPreview } : null}
+      reduceTransparency={reduceTransparency}
+    />
   )
 }
 

@@ -29,6 +29,10 @@ const readSource = (...segments: string[]): string =>
   readFileSync(resolve(__dirname, ...segments), 'utf8').replace(/\r\n/g, '\n')
 
 const prototypeHostSource = readSource('../jobs/worker-jobs-zip-prototype.tsx')
+const stageTenContentSource = readSource('../jobs/stage-ten/stage-ten-content.tsx')
+const stageTenPreviewSource = readSource('../../../app/worker-stage-ten-preview.tsx')
+const stageTenModelSource = readSource('../jobs/stage-ten/stage-ten-model.ts')
+const stageTenTokensSource = readSource('../jobs/stage-ten/stage-ten-tokens.ts')
 const source = [
   'worker-jobs-zip-prototype-surface.tsx',
   'worker-jobs-zip-prototype-shared.tsx',
@@ -49,6 +53,10 @@ describe('Worker Jobs ZIP Prototype', () => {
   it('reads every source with newlines normalised, so the layout assertions mean the same on Windows and CI', () => {
     for (const [name, text] of Object.entries({
       prototypeHostSource,
+      stageTenContentSource,
+      stageTenPreviewSource,
+      stageTenModelSource,
+      stageTenTokensSource,
       source,
       evidenceSource,
       advisoryStylesSource,
@@ -168,12 +176,33 @@ describe('Worker Jobs ZIP Prototype', () => {
     expect(progressSource).toContain('styles.stepStateTextJobsReview')
   })
 
-  it('keeps Stage 10 hero focused on the Workart without a duplicate status caption', () => {
-    expect(source).toContain('testID="worker-v5-stage-ten-status-workart"')
-    expect(source).toContain("stageClosedHero: {")
-    expect(source).toContain("flexWrap: 'wrap'")
-    expect(source).toContain("stageClosedStatusArtwork: {\n    flexShrink: 1,\n    height: 126,\n    maxWidth: 164,\n    width: '100%',")
-    expect(source).not.toContain('stageClosedStatusText')
+  it('keeps Stage 10 Concept B aligned to the supplied completion surface', () => {
+    expect(stageTenContentSource).not.toContain('testID="stage10-progress"')
+    expect(stageTenContentSource).not.toContain('stage10-progress-step-')
+    expect(stageTenPreviewSource).not.toContain('previewHeading')
+    expect(stageTenPreviewSource).not.toContain('previewTitle')
+    expect(stageTenPreviewSource).not.toContain('previewSubtitle')
+    expect(stageTenPreviewSource).not.toContain('showProgress')
+    expect(stageTenPreviewSource).not.toContain('__fixtures__')
+    expect(stageTenPreviewSource).not.toContain('Dữ liệu minh họa')
+    expect(stageTenContentSource).toContain('testID="worker-v5-stage-ten-status-workart"')
+    expect(stageTenContentSource).toContain('testID="stage10-job-card"')
+    expect(stageTenContentSource).toContain('testID="stage10-metric-grid"')
+    expect(stageTenContentSource).toContain('testID="stage10-summary-icon-frame"')
+    expect(stageTenContentSource).toContain('name="chart" size={s(25)}')
+    expect(stageTenContentSource).not.toContain('comparisonPercent')
+    expect(stageTenContentSource).not.toContain('rankPosition')
+    expect(stageTenContentSource).not.toContain('Khách hàng rất hài lòng!')
+    expect(stageTenContentSource).toContain('fontSize: s(21.5)')
+    expect(stageTenContentSource).toContain('lineHeight: s(24)')
+    expect(stageTenContentSource).toContain('marginTop: s(5)')
+    expect(stageTenContentSource).not.toContain('ScrollView')
+    expect(stageTenContentSource).not.toContain('SafeAreaView')
+    expect(stageTenModelSource).toContain('payment_state')
+    expect(stageTenModelSource).toContain("entry_type === 'worker_credit'")
+    expect(stageTenModelSource).not.toContain('supplement')
+    expect(stageTenModelSource).not.toContain('rankChange')
+    expect(stageTenTokensSource).toContain('referenceContentWidth: 366')
   })
 
   it('keeps payment heroes and detail rows flexible on narrow screens', () => {
