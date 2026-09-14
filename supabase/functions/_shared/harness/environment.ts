@@ -124,6 +124,12 @@ export function resolveHarnessEnvironment(
       "Remote Supabase targets require an explicit or host-derived project reference.",
     );
   }
+  if (!local && name !== "production") {
+    throw new HarnessEnvironmentError(
+      "NON_PRODUCTION_REMOTE_LOCKED",
+      "Only the registered Production Supabase backend is available; Staging and Preview remote targets are locked.",
+    );
+  }
 
   const mutationIntent = input.mutationIntent ?? "read-only";
   const mutation = resolveMutationAuthorization({

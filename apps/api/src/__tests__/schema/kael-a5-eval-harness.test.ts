@@ -82,7 +82,7 @@ describe('Kael A5 offline evaluation harness', () => {
     expect(source).toContain('KAEL_EVAL_MOBILE_API_URL')
     expect(source).toContain('KAEL_EVAL_BEARER_TOKEN')
     expect(source).toContain('KAEL_EVAL_RUN_LIVE')
-    expect(source).toContain('assertStagingOrLocalUrl')
+    expect(source).toContain('assertProductionOrLocalUrl')
     expect(source).toContain('AbortController')
     expect(source).toContain("hvac: {")
     expect(source).toContain("upholstery: {")

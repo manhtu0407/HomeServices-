@@ -6,6 +6,4 @@ param(
   [switch]$NoClear
 )
 
-$scriptRoot = if ([string]::IsNullOrWhiteSpace($PSScriptRoot)) { Split-Path -Parent $MyInvocation.MyCommand.Path } else { $PSScriptRoot }
-& (Join-Path $scriptRoot 'run-mobile-web-preview.ps1') -Environment staging -EnvFile $EnvFile -Port $Port -NoClear:$NoClear
-exit $LASTEXITCODE
+throw 'Staging backend is locked; use the Production mobile web preview runner.'

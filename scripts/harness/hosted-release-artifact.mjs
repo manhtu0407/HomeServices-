@@ -47,9 +47,7 @@ async function main() {
   const release = await readHostedReleaseArtifact({
     environment: options.environment,
     projectRef: options.projectRef,
-    projectUrl: options.environment === 'production'
-      ? 'https://iwevizmsedyqozxlawwl.supabase.co'
-      : 'https://xyylanuyflrjzbjzhqfl.supabase.co',
+    projectUrl: 'https://iwevizmsedyqozxlawwl.supabase.co',
     serviceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY,
     releaseId,
   })

@@ -41,7 +41,7 @@ describe('integration target environment guard', () => {
     expect(process.env.NESTSCOUT_ENVIRONMENT).toBe('local')
   })
 
-  it('requires explicit approval for staging mutation', () => {
+  it('rejects staging mutation because the backend is permanently locked', () => {
     process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://xyylanuyflrjzbjzhqfl.supabase.co'
     process.env.SUPABASE_SERVICE_ROLE_KEY = 'sb_secret_staging'
     process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_staging'
@@ -49,11 +49,11 @@ describe('integration target environment guard', () => {
     process.env.SUPABASE_PROJECT_REF = 'xyylanuyflrjzbjzhqfl'
 
     expect(() => resolveIntegrationTarget('staging-no-approval')).toThrow(
-      'Remote mutation is not approved for staging',
+      'Staging and Preview remote targets are locked',
     )
   })
 
-  it('accepts staging only when environment, project, approval, and release match', () => {
+  it('rejects staging even when environment, project, approval, and release match', () => {
     process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://xyylanuyflrjzbjzhqfl.supabase.co'
     process.env.SUPABASE_SERVICE_ROLE_KEY = 'sb_secret_staging'
     process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_staging'
@@ -62,10 +62,9 @@ describe('integration target environment guard', () => {
     process.env.HARNESS_REMOTE_MUTATION_APPROVAL = 'run-123'
     process.env.HARNESS_RELEASE_ID = 'sha-123'
 
-    expect(resolveIntegrationTarget('staging-approved')).toMatchObject({
-      ok: true,
-      target: { isLocal: false },
-    })
+    expect(() => resolveIntegrationTarget('staging-approved')).toThrow(
+      'Staging and Preview remote targets are locked',
+    )
   })
 
   it('rejects CI-originated production mutation even with an approval token', () => {

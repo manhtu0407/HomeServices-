@@ -4,7 +4,6 @@ import { dirname, relative, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..')
-const STAGING_REF = 'xyylanuyflrjzbjzhqfl'
 const TEST_ROOT = resolve(ROOT, 'supabase/tests')
 const OUTPUT_ROOT = resolve(ROOT, '.scratch/staging-concurrency-verification')
 
@@ -161,8 +160,7 @@ function sqlJson(value) {
 }
 
 function assertStagingLink() {
-  const linkedRef = readFileSync(resolve(ROOT, 'supabase/.temp/project-ref'), 'utf8').trim()
-  if (linkedRef !== STAGING_REF) throw new Error('linked concurrency verification is restricted to the registered Staging project')
+  throw new Error('Staging backend is locked; linked concurrency verification is unavailable.')
 }
 
 async function runLearningCrashRollbackProbe(prefix, cleanupSql) {

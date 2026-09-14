@@ -26,10 +26,8 @@ describe('native account and release proof workflow', () => {
   const workerFlow = readFileSync(resolve(root, 'apps/mobile/.maestro/worker-login-proof.yaml'), 'utf8')
   const eas = JSON.parse(readFileSync(resolve(root, 'apps/mobile/eas.json'), 'utf8'))
 
-  it('builds emulator-compatible binaries against environment-locked hosted projects', () => {
-    expect(eas.build['native-proof-staging'].ios.simulator).toBe(true)
-    expect(eas.build['native-proof-staging'].android.buildType).toBe('apk')
-    expect(eas.build['native-proof-staging'].environment).toBe('preview')
+  it('keeps emulator-compatible binaries on the registered Production environment', () => {
+    expect(eas.build['native-proof-staging']).toBeUndefined()
     expect(eas.build['native-proof-production'].ios.simulator).toBe(true)
     expect(eas.build['native-proof-production'].android.buildType).toBe('apk')
     expect(eas.build['native-proof-production'].environment).toBe('production')

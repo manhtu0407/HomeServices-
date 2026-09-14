@@ -116,17 +116,17 @@ test('rejects incomplete and ambiguous remote identity evidence', () => {
 test('collects hosted health, migration, and deployed-function evidence from live APIs', async () => {
   const calls = []
   const hosted = await collectHostedDeploymentState({
-    environment: 'staging',
-    projectRef: 'xyylanuyflrjzbjzhqfl',
+    environment: 'production',
+    projectRef: 'iwevizmsedyqozxlawwl',
     accessToken: 'test-management-token',
     fetchImpl: async (url, init = {}) => {
       calls.push({ url: String(url), method: init.method ?? 'GET' })
       if (String(url).includes('/functions/v1/mobile-api/harness/health')) {
         return jsonResponse({
-          environment: { name: 'staging', project_ref: 'xyylanuyflrjzbjzhqfl' },
+          environment: { name: 'production', project_ref: 'iwevizmsedyqozxlawwl' },
           release: {
             release_id: release.releaseId,
-            deployment_id: `${stagingProjectRef}_${mobileFunctionId}_7`,
+            deployment_id: `iwevizmsedyqozxlawwl_${mobileFunctionId}_7`,
             git_sha: release.gitSha,
             manifest_sha256: release.manifestSha256,
             bundle_sha256: release.bundleSha256,
@@ -189,7 +189,7 @@ test('collects hosted health, migration, and deployed-function evidence from liv
   })
 
   assert.equal(hosted.releaseId, release.releaseId)
-  assert.equal(hosted.deploymentId, `${stagingProjectRef}_${mobileFunctionId}_7`)
+  assert.equal(hosted.deploymentId, `iwevizmsedyqozxlawwl_${mobileFunctionId}_7`)
   assert.equal(hosted.manifestSha256, release.manifestSha256)
   assert.equal(hosted.bundleSha256, release.bundleSha256)
   assert.deepEqual(hosted.providerReadiness, release.providerReadiness)
@@ -208,6 +208,14 @@ test('collects hosted health, migration, and deployed-function evidence from liv
   assert.equal(hosted.managedEdgeFunctions['mobile-api'].entrypoint_path, 'index.ts')
   assert.deepEqual(calls.map((call) => call.method), ['GET', 'GET', 'GET', 'GET', 'POST', 'POST'])
   assert.ok(calls.every((call) => call.url.startsWith('https://')))
+})
+
+test('refuses hosted evidence collection for retired non-production targets', async () => {
+  await assert.rejects(() => collectHostedDeploymentState({
+    environment: 'staging',
+    projectRef: 'xyylanuyflrjzbjzhqfl',
+    accessToken: 'must-not-be-used',
+  }), /Production-only; Staging and Preview targets are locked/u)
 })
 
 test('rejects mutable health identity when it is not the provider-managed mobile-api deployment', () => {

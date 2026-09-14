@@ -35,7 +35,7 @@ function deferred<T>() {
   return { promise, resolve }
 }
 
-async function setup(environment: string | null = 'staging') {
+async function setup(environment: string | null = 'production') {
   const claim = deferred<{ data: unknown; error: { message: string } | null }>()
   const database = makeSequenceClient([])
   const originalRpc = database.rpc.bind(database)
@@ -46,12 +46,12 @@ async function setup(environment: string | null = 'staging') {
   })
   hooks.createClient.mockReturnValue(database)
   const values: Record<string, string> = {
-    SUPABASE_URL: 'https://xyylanuyflrjzbjzhqfl.supabase.co',
+    SUPABASE_URL: 'https://iwevizmsedyqozxlawwl.supabase.co',
     SUPABASE_SERVICE_ROLE_KEY: 'unit-test-service-key-not-a-credential',
     KAEL_MATCHING_MAINTAINER_SECRET: 'unit-test-maintainer-secret',
     HARNESS_RELEASE_ID: 'harness-126000000000-126000000000',
     ...(environment === null ? {} : { NESTSCOUT_ENVIRONMENT: environment }),
-    DENO_DEPLOYMENT_ID: 'xyylanuyflrjzbjzhqfl_c1260000-0000-4000-8000-000000000058_1',
+    DENO_DEPLOYMENT_ID: 'iwevizmsedyqozxlawwl_c1260000-0000-4000-8000-000000000058_1',
   }
   let handler: ((request: Request) => Promise<Response>) | undefined
   vi.stubGlobal('Deno', { env: { get: (name: string) => values[name] },
@@ -117,7 +117,7 @@ describe('maintainer request lifetime', () => {
       official_match_push: { error_code: 'OFFICIAL_MATCH_PUSH_DISPATCH_FAILED' } })
   })
 
-  it.each([null, 'production', 'invented'])('refuses a missing or mismatched target environment: %j', async (environment) => {
+  it.each([null, 'staging', 'preview', 'invented'])('refuses a missing or mismatched target environment: %j', async (environment) => {
     const { pending, claim } = await setup(environment)
     claim.resolve({ data: [], error: null })
     expect((await pending).status).toBe(500)

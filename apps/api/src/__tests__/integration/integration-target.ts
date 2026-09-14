@@ -2,8 +2,8 @@
  * Resolves which Supabase instance the integration suites run against.
  *
  * The local stack is the default so a developer or agent can run these without
- * reaching a shared hosted project. CI keeps pointing at staging by passing the
- * env explicitly.
+ * reaching a shared hosted project. Hosted runs are Production-only and require
+ * an explicit operator-approved target.
  *
  * The distinction this module exists to enforce: a MISSING target is a skip, a
  * DANGEROUS target is a throw. Skipping a dangerous configuration reports green
@@ -136,10 +136,10 @@ function readRemoteApproval(
   if (!environment || environment === 'local' || !projectRef || !approvalId || !releaseId) {
     return null
   }
-  if (!['preview', 'staging', 'production'].includes(environment)) return null
+  if (environment !== 'production') return null
   return {
     approvalId,
-    environment: environment as 'preview' | 'staging' | 'production',
+    environment: 'production' as const,
     projectRef,
     releaseId,
     source: read('HARNESS_APPROVAL_SOURCE') === 'operator' ? 'operator' as const : 'ci' as const,
@@ -178,9 +178,8 @@ async function isReachable(url: string, timeoutMs = 1500): Promise<boolean> {
  * Resolve and announce. A skip is logged loudly on purpose: an unannounced skip
  * is indistinguishable from a pass in CI output.
  *
- * Only the IMPLICIT local fallback is probed. An explicitly named target that
- * is unreachable stays a failure — if CI points at staging and staging is down,
- * that must go red, not quietly skip.
+ * Only the IMPLICIT local fallback is probed. An explicitly named Production
+ * target that is unreachable stays a failure and never quietly skips.
  */
 export async function resolveOrAnnounceSkip(label: string): Promise<TargetResolution> {
   const resolution = resolveIntegrationTarget(label)

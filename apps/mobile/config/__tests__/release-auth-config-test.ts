@@ -21,11 +21,11 @@ describe('assertReleaseAuthConfig', () => {
       supabaseUrl: '',
     })).not.toThrow()
     expect(() => assertReleaseAuthConfig({
-      apiBaseUrl: 'https://xyylanuyflrjzbjzhqfl.supabase.co/functions/v1/mobile-api',
+      apiBaseUrl: 'https://iwevizmsedyqozxlawwl.supabase.co/functions/v1/mobile-api',
       buildProfile: 'preview',
       isEasBuild: true,
       supabasePublishableKey: 'sb_publishable_test-key',
-      supabaseUrl: 'https://xyylanuyflrjzbjzhqfl.supabase.co',
+      supabaseUrl: 'https://iwevizmsedyqozxlawwl.supabase.co',
     })).not.toThrow()
   })
 
@@ -33,10 +33,10 @@ describe('assertReleaseAuthConfig', () => {
     const serviceRolePayload = Buffer.from(JSON.stringify({ role: 'service_role' })).toString('base64url')
     const serviceRoleJwt = `header.${serviceRolePayload}.signature`
     const base = {
-      apiBaseUrl: 'https://xyylanuyflrjzbjzhqfl.supabase.co/functions/v1/mobile-api',
+      apiBaseUrl: 'https://iwevizmsedyqozxlawwl.supabase.co/functions/v1/mobile-api',
       buildProfile: 'preview',
       isEasBuild: true,
-      supabaseUrl: 'https://xyylanuyflrjzbjzhqfl.supabase.co',
+      supabaseUrl: 'https://iwevizmsedyqozxlawwl.supabase.co',
     }
 
     expect(() => assertReleaseAuthConfig({
@@ -58,11 +58,11 @@ describe('assertReleaseAuthConfig', () => {
     const anonPayload = Buffer.from(JSON.stringify({ role: 'anon' })).toString('base64url')
     const anonJwt = `header.${anonPayload}.signature`
     const base = {
-      apiBaseUrl: 'https://xyylanuyflrjzbjzhqfl.supabase.co/functions/v1/mobile-api',
+      apiBaseUrl: 'https://iwevizmsedyqozxlawwl.supabase.co/functions/v1/mobile-api',
       buildProfile: 'preview',
       isEasBuild: true,
       supabasePublishableKey: anonJwt,
-      supabaseUrl: 'https://xyylanuyflrjzbjzhqfl.supabase.co',
+      supabaseUrl: 'https://iwevizmsedyqozxlawwl.supabase.co',
     }
 
     expect(() => assertReleaseAuthConfig(base)).not.toThrow()
@@ -87,34 +87,29 @@ describe('assertReleaseAuthConfig', () => {
       ...input,
       apiBaseUrl: 'https://xyylanuyflrjzbjzhqfl.supabase.co/functions/v1/mobile-api',
       supabaseUrl: 'https://xyylanuyflrjzbjzhqfl.supabase.co',
-    })).toThrow('production Supabase project')
+    })).toThrow('registered Production Supabase project')
   })
 
-  it.each(['preview', 'native-proof-staging'])('pins %s EAS builds to the staging Supabase project', (buildProfile) => {
+  it('rejects a stale staging target for every EAS profile', () => {
     const input = {
       apiBaseUrl: 'https://xyylanuyflrjzbjzhqfl.supabase.co/functions/v1/mobile-api',
-      buildProfile,
+      buildProfile: 'preview',
       isEasBuild: true,
       supabasePublishableKey: 'sb_publishable_test-key',
       supabaseUrl: 'https://xyylanuyflrjzbjzhqfl.supabase.co',
     }
 
-    expect(() => assertReleaseAuthConfig(input)).not.toThrow()
-    expect(() => assertReleaseAuthConfig({
-      ...input,
-      apiBaseUrl: 'https://iwevizmsedyqozxlawwl.supabase.co/functions/v1/mobile-api',
-      supabaseUrl: 'https://iwevizmsedyqozxlawwl.supabase.co',
-    })).toThrow('staging Supabase project')
+    expect(() => assertReleaseAuthConfig(input)).toThrow('Production Supabase project')
   })
 
-  it('uses the ignored mobile staging config as a local fallback but never as an EAS build input', () => {
+  it('uses the ignored mobile Production config as a local fallback but never as an EAS build input', () => {
     const input = {
       configDir: resolve('C:/NestScout/apps/mobile'),
       explicitEnvFiles: [],
       repoRoot: resolve('C:/NestScout'),
     }
 
-    expect(resolveMobileEnvFiles({ ...input, isEasBuild: false })).toContain(resolve(input.configDir, '.env.staging'))
-    expect(resolveMobileEnvFiles({ ...input, isEasBuild: true })).not.toContain(resolve(input.configDir, '.env.staging'))
+    expect(resolveMobileEnvFiles({ ...input, isEasBuild: false })).toContain(resolve(input.configDir, '.env.production'))
+    expect(resolveMobileEnvFiles({ ...input, isEasBuild: true })).not.toContain(resolve(input.configDir, '.env.production'))
   })
 })

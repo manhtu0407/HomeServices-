@@ -13,16 +13,16 @@ describe('edge-env', () => {
   it('reads current Supabase secret key JSON without exposing it to mobile code', () => {
     const env = readEdgeEnv((name) => {
       const values: Record<string, string> = {
-        SUPABASE_URL: 'https://project.supabase.co',
-        NESTSCOUT_ENVIRONMENT: 'preview',
+        SUPABASE_URL: 'https://iwevizmsedyqozxlawwl.supabase.co',
+        NESTSCOUT_ENVIRONMENT: 'production',
         SUPABASE_SECRET_KEYS: JSON.stringify({ default: 'sb_secret_test' }),
       }
       return values[name]
     })
 
-    expect(env.supabaseUrl).toBe('https://project.supabase.co')
+    expect(env.supabaseUrl).toBe('https://iwevizmsedyqozxlawwl.supabase.co')
     expect(env.supabaseSecretKey).toBe('sb_secret_test')
-    expect(env.harnessEnvironment).toMatchObject({ name: 'preview', isRemote: true })
+    expect(env.harnessEnvironment).toMatchObject({ name: 'production', isRemote: true })
     expect(env.releaseId).toBe('unreleased')
   })
 
@@ -44,8 +44,8 @@ describe('edge-env', () => {
   ])('rejects a non-object SUPABASE_SECRET_KEYS value instead of deriving a partial key', (encoded) => {
     expect(() => readEdgeEnv((name) => {
       const values: Record<string, string> = {
-        SUPABASE_URL: 'https://project.supabase.co',
-        NESTSCOUT_ENVIRONMENT: 'preview',
+        SUPABASE_URL: 'https://iwevizmsedyqozxlawwl.supabase.co',
+        NESTSCOUT_ENVIRONMENT: 'production',
         SUPABASE_SECRET_KEYS: encoded,
       }
       return values[name]
@@ -55,8 +55,8 @@ describe('edge-env', () => {
   it('accepts the APP_SECRET_KEY Edge secret name used by the linked Supabase project', () => {
     const env = readEdgeEnv((name) => {
       const values: Record<string, string> = {
-        SUPABASE_URL: 'https://project.supabase.co',
-        NESTSCOUT_ENVIRONMENT: 'preview',
+        SUPABASE_URL: 'https://iwevizmsedyqozxlawwl.supabase.co',
+        NESTSCOUT_ENVIRONMENT: 'production',
         APP_SECRET_KEY: 'sb_secret_project',
       }
       return values[name]
@@ -68,8 +68,8 @@ describe('edge-env', () => {
   it('reads the VietMap Maps key only from Edge secrets', () => {
     const env = readEdgeEnv((name) => {
       const values: Record<string, string> = {
-        SUPABASE_URL: 'https://project.supabase.co',
-        NESTSCOUT_ENVIRONMENT: 'preview',
+        SUPABASE_URL: 'https://iwevizmsedyqozxlawwl.supabase.co',
+        NESTSCOUT_ENVIRONMENT: 'production',
         APP_SECRET_KEY: 'sb_secret_project',
         VIETMAP_API_KEY: 'vietmap-test-key',
       }
@@ -82,8 +82,8 @@ describe('edge-env', () => {
   it('accepts the legacy GOOGLE_MAP_KEY Edge secret alias used by production', () => {
     const env = readEdgeEnv((name) => {
       const values: Record<string, string> = {
-        SUPABASE_URL: 'https://project.supabase.co',
-        NESTSCOUT_ENVIRONMENT: 'preview',
+        SUPABASE_URL: 'https://iwevizmsedyqozxlawwl.supabase.co',
+        NESTSCOUT_ENVIRONMENT: 'production',
         APP_SECRET_KEY: 'sb_secret_project',
         GOOGLE_MAP_KEY: 'maps-project-key',
       }
@@ -96,8 +96,8 @@ describe('edge-env', () => {
   it('reads the Section 25 R2 Perplexity source trust flag at the Edge boundary', () => {
     const env = readEdgeEnv((name) => {
       const values: Record<string, string> = {
-        SUPABASE_URL: 'https://project.supabase.co',
-        NESTSCOUT_ENVIRONMENT: 'preview',
+        SUPABASE_URL: 'https://iwevizmsedyqozxlawwl.supabase.co',
+        NESTSCOUT_ENVIRONMENT: 'production',
         APP_SECRET_KEY: 'sb_secret_project',
         KAEL_TRUST_PERPLEXITY_FILTER_ENABLED: '1',
       }
@@ -111,16 +111,16 @@ describe('edge-env', () => {
   it('keeps the B1 knowledge retrieval flag off by default and explicit at the Edge boundary', () => {
     const defaultEnv = readEdgeEnv((name) => {
       const values: Record<string, string> = {
-        SUPABASE_URL: 'https://project.supabase.co',
-        NESTSCOUT_ENVIRONMENT: 'preview',
+        SUPABASE_URL: 'https://iwevizmsedyqozxlawwl.supabase.co',
+        NESTSCOUT_ENVIRONMENT: 'production',
         APP_SECRET_KEY: 'sb_secret_project',
       }
       return values[name]
     })
     const enabledEnv = readEdgeEnv((name) => {
       const values: Record<string, string> = {
-        SUPABASE_URL: 'https://project.supabase.co',
-        NESTSCOUT_ENVIRONMENT: 'preview',
+        SUPABASE_URL: 'https://iwevizmsedyqozxlawwl.supabase.co',
+        NESTSCOUT_ENVIRONMENT: 'production',
         APP_SECRET_KEY: 'sb_secret_project',
         KAEL_OPT_KNOWLEDGE_RETRIEVAL_ENABLED: '1',
       }
@@ -134,8 +134,8 @@ describe('edge-env', () => {
   it('keeps durable guards off by default and enables them only from the Edge flag', () => {
     const read = (enabled?: string) => readEdgeEnv((name) => {
       const values: Record<string, string | undefined> = {
-        SUPABASE_URL: 'https://project.supabase.co',
-        NESTSCOUT_ENVIRONMENT: 'preview',
+        SUPABASE_URL: 'https://iwevizmsedyqozxlawwl.supabase.co',
+        NESTSCOUT_ENVIRONMENT: 'production',
         APP_SECRET_KEY: 'sb_secret_project',
         KAEL_DURABLE_GUARDS_ENABLED: enabled,
       }
@@ -150,8 +150,8 @@ describe('edge-env', () => {
   it('accepts the Section 25 R2 source trust rollout alias at the Edge boundary', () => {
     const env = readEdgeEnv((name) => {
       const values: Record<string, string> = {
-        SUPABASE_URL: 'https://project.supabase.co',
-        NESTSCOUT_ENVIRONMENT: 'preview',
+        SUPABASE_URL: 'https://iwevizmsedyqozxlawwl.supabase.co',
+        NESTSCOUT_ENVIRONMENT: 'production',
         APP_SECRET_KEY: 'sb_secret_project',
         KAEL_OPT_SOURCE_TRUST_ENABLED: 'yes',
       }
@@ -162,8 +162,8 @@ describe('edge-env', () => {
     expect(env.sourceTrustPerplexityFilterExplicit).toBe(true)
   })
 
-  it('keeps Section 25 R2 staging-on and production-off when the rollout flag is absent', () => {
-    const stagingEnv = readEdgeEnv((name) => {
+  it('locks staging and keeps the Production source-trust fallback off', () => {
+    const stagingRead = () => readEdgeEnv((name) => {
       const values: Record<string, string> = {
         SUPABASE_URL: 'https://xyylanuyflrjzbjzhqfl.supabase.co',
         NESTSCOUT_ENVIRONMENT: 'staging',
@@ -180,28 +180,24 @@ describe('edge-env', () => {
       return values[name]
     })
 
-    expect(stagingEnv.sourceTrustPerplexityFilterEnabled).toBe(true)
-    expect(stagingEnv.sourceTrustPerplexityFilterExplicit).toBe(false)
+    expect(stagingRead).toThrow('Staging and Preview remote targets are locked')
     expect(productionEnv.sourceTrustPerplexityFilterEnabled).toBe(false)
     expect(productionEnv.sourceTrustPerplexityFilterExplicit).toBe(false)
   })
 
-  it('enables the payment simulator only when both the explicit flag and staging project match', () => {
-    const read = (supabaseUrl: string, enabled?: string) => readEdgeEnv((name) => {
+  it('keeps the staging payment rail disabled on the Production backend', () => {
+    const read = (enabled?: string) => readEdgeEnv((name) => {
       const values: Record<string, string | undefined> = {
-        SUPABASE_URL: supabaseUrl,
-        NESTSCOUT_ENVIRONMENT: supabaseUrl.includes('xyylanuyflrjzbjzhqfl')
-          ? 'staging'
-          : 'production',
+        SUPABASE_URL: 'https://iwevizmsedyqozxlawwl.supabase.co',
+        NESTSCOUT_ENVIRONMENT: 'production',
         APP_SECRET_KEY: 'sb_secret_project',
         NESTSCOUT_STAGING_PAYMENT_RAIL_ENABLED: enabled,
       }
       return values[name]
     })
 
-    expect(read('https://xyylanuyflrjzbjzhqfl.supabase.co').stagingPaymentRailEnabled).toBe(false)
-    expect(read('https://xyylanuyflrjzbjzhqfl.supabase.co', 'true').stagingPaymentRailEnabled).toBe(true)
-    expect(read('https://iwevizmsedyqozxlawwl.supabase.co', 'true').stagingPaymentRailEnabled).toBe(false)
+    expect(read().stagingPaymentRailEnabled).toBe(false)
+    expect(read('true').stagingPaymentRailEnabled).toBe(false)
   })
 
   it('keeps SePay VietQR unavailable until the complete server-only configuration is present', () => {
@@ -241,7 +237,7 @@ describe('edge-env', () => {
     expect(read({ PLATFORM_MANUAL_BANK_ACCOUNT_NUMBER: undefined }).manualBank.enabled).toBe(false)
     expect(read({}).manualBank.enabled).toBe(true)
 
-    const staging = readEdgeEnv((name) => ({
+    const stagingRead = () => readEdgeEnv((name) => ({
       SUPABASE_URL: 'https://xyylanuyflrjzbjzhqfl.supabase.co',
       NESTSCOUT_ENVIRONMENT: 'staging',
       APP_SECRET_KEY: 'sb_secret_project',
@@ -250,14 +246,14 @@ describe('edge-env', () => {
       PLATFORM_MANUAL_BANK_ACCOUNT_NUMBER: '1234567890',
       PLATFORM_MANUAL_BANK_ACCOUNT_HOLDER: 'NESTSCOUT COMPANY',
     })[name])
-    expect(staging.manualBank.enabled).toBe(false)
+    expect(stagingRead).toThrow('Staging and Preview remote targets are locked')
   })
 
-  it('lets an explicit Section 25 R2 false flag override the staging fallback', () => {
+  it('keeps an explicit Section 25 R2 false flag visible on Production', () => {
     const env = readEdgeEnv((name) => {
       const values: Record<string, string> = {
-        SUPABASE_URL: 'https://xyylanuyflrjzbjzhqfl.supabase.co',
-        NESTSCOUT_ENVIRONMENT: 'staging',
+        SUPABASE_URL: 'https://iwevizmsedyqozxlawwl.supabase.co',
+        NESTSCOUT_ENVIRONMENT: 'production',
         APP_SECRET_KEY: 'sb_secret_project',
         KAEL_TRUST_PERPLEXITY_FILTER_ENABLED: 'false',
       }
@@ -288,14 +284,14 @@ describe('edge-env', () => {
     })
 
     const response = await handler(
-      new Request('https://xyylanuyflrjzbjzhqfl.supabase.co/functions/v1/mobile-api/services'),
+      new Request('https://iwevizmsedyqozxlawwl.supabase.co/functions/v1/mobile-api/services'),
     )
 
     expect(response.status).toBe(200)
     expect(seenContext).toMatchObject({
-      requestUrl: expect.stringContaining('xyylanuyflrjzbjzhqfl.supabase.co'),
-      requestHost: 'xyylanuyflrjzbjzhqfl.supabase.co',
-      requestProjectRef: 'xyylanuyflrjzbjzhqfl',
+      requestUrl: expect.stringContaining('iwevizmsedyqozxlawwl.supabase.co'),
+      requestHost: 'iwevizmsedyqozxlawwl.supabase.co',
+      requestProjectRef: 'iwevizmsedyqozxlawwl',
     })
   })
 })

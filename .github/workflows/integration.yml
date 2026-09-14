@@ -1,15 +1,6 @@
-# Integration pillar suite against staging Supabase.
+# Integration pillar suite against the isolated local Supabase stack.
 # The API runner collects only `*-pillar.test.ts`; the path filter keeps this workflow scoped
 # to real-DB invariants under apps/api/src/__tests__/integration/.
-#
-# Secrets required (Settings > Secrets and variables > Actions). The workflow fails before
-# integration tests when any required secret is absent:
-#   NEXT_PUBLIC_SUPABASE_URL            -> STAGING url https://xyylanuyflrjzbjzhqfl.supabase.co
-#                                          (the tests refuse to run if this points at prod
-#                                           iwevizmsedyqozxlawwl — built-in guard)
-#   SUPABASE_SERVICE_ROLE_KEY           -> STAGING service-role key
-#   NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY -> STAGING anon/publishable key (only the per-actor
-#                                          RLS tests need it; others run without it)
 name: integration
 
 on:
@@ -18,21 +9,20 @@ on:
   push:
     branches: [main]
   schedule:
-    # Nightly staging health check (01:00 ICT / 18:00 UTC).
+    # Nightly local contract check (01:00 ICT / 18:00 UTC).
     - cron: "0 18 * * *"
 
 permissions:
   contents: read
 
-# Serialize: the real-DB tests create and clean up shared staging rows, so never let two
-# integration runs hit staging at once.
+# Serialize local database runs so two jobs do not share a mutable stack.
 concurrency:
-  group: integration-staging
+  group: integration-local
   cancel-in-progress: false
 
 jobs:
   integration:
-    name: integration suite (staging)
+    name: integration suite (local)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
@@ -45,46 +35,20 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - name: Require staging integration secrets
-        env:
-          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
-          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-          NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
-          NESTSCOUT_ENVIRONMENT: staging
-          SUPABASE_PROJECT_REF: xyylanuyflrjzbjzhqfl
-          HARNESS_REMOTE_MUTATION_APPROVAL: ${{ github.run_id }}
-          EXPECTED_GIT_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || '' }}
+      - name: Prepare canonical empty-reset migration workdir
         run: |
-          test -n "$NEXT_PUBLIC_SUPABASE_URL"
-          test -n "$SUPABASE_SERVICE_ROLE_KEY"
-          test -n "$NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY"
-          test "$NEXT_PUBLIC_SUPABASE_URL" = "https://xyylanuyflrjzbjzhqfl.supabase.co"
-          node --input-type=module <<'NODE'
-          import { appendFileSync } from 'node:fs'
-
-          const response = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/mobile-api/harness/health`, {
-            headers: { apikey: process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY },
-            signal: AbortSignal.timeout(30_000),
-          })
-          if (!response.ok) throw new Error(`Staging release health returned HTTP ${response.status}`)
-          const health = await response.json()
-          const releaseId = health?.release?.release_id
-          if (health?.status !== 'ok' || health?.environment?.name !== 'staging' ||
-              health?.release?.registered !== true ||
-              !/^harness-[0-9a-f]{12}-[0-9a-f]{12}$/u.test(releaseId ?? '') ||
-              (process.env.EXPECTED_GIT_SHA && health?.release?.git_sha !== process.env.EXPECTED_GIT_SHA)) {
-            throw new Error('Staging is not bound to the required registered release source')
-          }
-          appendFileSync(process.env.GITHUB_ENV, `HARNESS_RELEASE_ID=${releaseId}\n`)
-          NODE
-      - name: Integration tests vs staging Supabase
+          node scripts/harness/prepare-migration-workdir.mjs \
+            --empty-reset \
+            --inventory config/harness/migration-inventory.json \
+            --output .scratch/integration-migrations
+      - name: Start isolated local Supabase
+        run: pnpm --filter @nestscout/api exec supabase start --workdir ../../.scratch/integration-migrations
+      - name: Replay migrations from empty state
+        run: pnpm --filter @nestscout/api exec supabase db reset --local --workdir ../../.scratch/integration-migrations
+      - name: Integration tests against local Supabase
         env:
-          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
-          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-          NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
-          NESTSCOUT_ENVIRONMENT: staging
-          SUPABASE_PROJECT_REF: xyylanuyflrjzbjzhqfl
-          HARNESS_REMOTE_MUTATION_APPROVAL: ${{ github.run_id }}
+          NESTSCOUT_ENVIRONMENT: local
+          EXPECTED_GIT_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || '' }}
         # Keep the explicit path and fail-on-empty flag together: the integration pillar must
         # remain collected, and this job must never report green after executing zero tests.
         run: pnpm --filter @nestscout/api exec vitest run --passWithNoTests=false src/__tests__/integration

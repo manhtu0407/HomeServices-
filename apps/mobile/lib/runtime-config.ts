@@ -51,6 +51,49 @@ function envString(...keys: string[]) {
   return ''
 }
 
+const PRODUCTION_PROJECT_REF = 'iwevizmsedyqozxlawwl'
+const LOCAL_HOSTS = new Set(['127.0.0.1', 'localhost', '[::1]', '0.0.0.0', 'host.docker.internal'])
+
+function assertRuntimeTargets(supabaseValue: string, apiValue: string) {
+  if (!supabaseValue && !apiValue) return true
+  if (!supabaseValue || !apiValue) {
+    throw new Error('Mobile runtime requires both Supabase and mobile-api targets.')
+  }
+
+  let supabase: URL
+  let api: URL
+  try {
+    supabase = new URL(supabaseValue)
+    api = new URL(apiValue)
+  } catch {
+    throw new Error('Mobile runtime Supabase targets are invalid.')
+  }
+
+  const localSupabase = LOCAL_HOSTS.has(supabase.hostname)
+  const localApi = LOCAL_HOSTS.has(api.hostname)
+  const supabasePath = supabase.pathname.replace(/\/+$/, '') || '/'
+  const apiPath = api.pathname.replace(/\/+$/, '') || '/'
+  if (
+    !['http:', 'https:'].includes(supabase.protocol) ||
+    !['http:', 'https:'].includes(api.protocol) ||
+    supabase.username || supabase.password || supabase.search || supabase.hash ||
+    api.username || api.password || api.search || api.hash ||
+    supabasePath !== '/' || apiPath !== '/functions/v1/mobile-api' ||
+    localSupabase !== localApi || supabase.origin !== api.origin
+  ) {
+    throw new Error('Mobile runtime Supabase and mobile-api targets must share one exact origin and path.')
+  }
+  if (localSupabase) return true
+  if (
+    supabase.protocol !== 'https:' ||
+    supabase.hostname !== `${PRODUCTION_PROJECT_REF}.supabase.co` ||
+    api.protocol !== 'https:'
+  ) {
+    throw new Error('Only the registered Production Supabase backend is available; this target is locked.')
+  }
+  return false
+}
+
 // Expo web injects EXPO_PUBLIC_* into the JS runtime even when a stale
 // Constants.extra payload was baked when the dev server started. Prefer the
 // runtime env so local previews do not accidentally point at placeholder
@@ -59,9 +102,12 @@ const runtimePublicAuthEnv = resolveMobilePublicAuthEnv(runtimeProcess.process?.
 const supabaseUrl = runtimePublicAuthEnv.supabaseUrl || extraString('supabaseUrl')
 const supabasePublishableKey = runtimePublicAuthEnv.supabasePublishableKey || extraString('supabasePublishableKey')
 const configuredApiBaseUrl = envString('EXPO_PUBLIC_API_BASE_URL') || extraString('apiBaseUrl')
-const stagingPaymentRailEnabled = ['1', 'true', 'yes', 'on'].includes(
+const apiBaseUrl = configuredApiBaseUrl || (supabaseUrl ? `${supabaseUrl.replace(/\/$/, '')}/functions/v1/mobile-api` : '')
+const isLocalRuntime = assertRuntimeTargets(supabaseUrl, apiBaseUrl)
+const stagingPaymentRailRequested = ['1', 'true', 'yes', 'on'].includes(
   envString('EXPO_PUBLIC_STAGING_PAYMENT_RAIL_ENABLED').toLowerCase(),
 ) || extraBoolean('stagingPaymentRailEnabled')
+const stagingPaymentRailEnabled = isLocalRuntime && stagingPaymentRailRequested
 const runtimeBuildInfoExtra = extraRecord('runtimeBuildInfo')
 const runtimeBuildInfo: RuntimeBuildInfo = {
   builtAt: envString('EXPO_PUBLIC_NESTSCOUT_BUILD_CREATED_AT') || recordString(runtimeBuildInfoExtra, 'builtAt'),
@@ -77,7 +123,7 @@ const runtimeBuildInfo: RuntimeBuildInfo = {
 }
 
 export const mobileRuntimeConfig = {
-  apiBaseUrl: configuredApiBaseUrl || (supabaseUrl ? `${supabaseUrl.replace(/\/$/, '')}/functions/v1/mobile-api` : ''),
+  apiBaseUrl,
   runtimeBuildInfo,
   stagingPaymentRailEnabled,
   supabasePublishableKey,

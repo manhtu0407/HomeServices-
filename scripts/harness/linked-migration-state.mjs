@@ -5,7 +5,6 @@ import { fileURLToPath } from 'node:url'
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..')
 const TARGETS = Object.freeze({
-  staging: 'xyylanuyflrjzbjzhqfl',
   production: 'iwevizmsedyqozxlawwl',
 })
 
@@ -24,6 +23,9 @@ export function parseLinkedMigrationList(value) {
 }
 
 function collect(options) {
+  if (options.environment !== 'production') {
+    throw new Error('Staging and non-production linked migration targets are locked.')
+  }
   const expectedRef = TARGETS[options.environment]
   const linkedRef = readFileSync(resolve(ROOT, 'supabase/.temp/project-ref'), 'utf8').trim()
   if (!expectedRef || linkedRef !== expectedRef) throw new Error('linked project does not match requested migration target')

@@ -55,17 +55,10 @@ test('planner rejects a receipt that silently omits or adds a migration', () => 
   }), /does not match hosted history/u)
 })
 
-test('catch-up mode is restricted to the exact Staging target', () => {
+test('catch-up mode is locked after the Staging backend retirement', () => {
   assert.throws(() => buildMigrationApplyPlan({
     inventory, hosted, mode: 'staging-catchup', receipt: null,
-  }), /restricted to the registered Staging project/u)
-  const plan = buildMigrationApplyPlan({
-    inventory,
-    hosted: { ...hosted, environment: 'staging', projectRef: 'xyylanuyflrjzbjzhqfl' },
-    mode: 'staging-catchup',
-    receipt: null,
-  })
-  assert.equal(plan.mode, 'staging-catchup')
+  }), /Staging migration catch-up is locked/u)
 })
 
 test('empty reset replays one canonical migration per equivalence group', () => {
