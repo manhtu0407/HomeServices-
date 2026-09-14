@@ -39,6 +39,23 @@ export function customerKaelStateScopeKey(input: {
   ])
 }
 
+export function customerKaelPreAgenticOwnerKey(requestOwnerKey: string, activeSessionId: string | null) {
+  return `${requestOwnerKey}:${activeSessionId ?? 'blank'}`
+}
+
+export function customerKaelModeStateScopeKey(stateScopeKey: string, mode: CustomerKaelMode) {
+  try {
+    const parsed = JSON.parse(stateScopeKey)
+    if (Array.isArray(parsed) && parsed.length === 5) {
+      parsed[1] = mode
+      return JSON.stringify(parsed)
+    }
+  } catch {
+    // Keep a deterministic fallback for test or legacy owners that are not JSON scopes.
+  }
+  return stateScopeKey
+}
+
 export function createCustomerKaelRequestGuard(initialScope: string): CustomerKaelRequestGuard {
   let epoch = 0
   let scope = initialScope

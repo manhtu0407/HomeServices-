@@ -23,7 +23,10 @@ import {
   isRealCaseDeal,
 } from './customer-kael-routing'
 import { deriveCustomerKaelPresentation } from './customer-kael-presentation'
-import { useCustomerKaelRequestGuard } from './customer-kael-state-scope'
+import {
+  customerKaelModeStateScopeKey,
+  useCustomerKaelRequestGuard,
+} from './customer-kael-state-scope'
 import { chatScreenModeParam, firstParam, serviceParam } from '../ui/route-params'
 import type { CustomerKaelMode } from '../ui/types'
 import { useCustomerCaseHydration } from './use-customer-case-hydration'
@@ -103,13 +106,15 @@ export function useCustomerKaelSurfaceController(stateScopeKey: string) {
     ),
     initialMode: routeDerivedMode,
     pendingDraft: initialPendingDraft,
+    stateScopeKey,
   })
   const pendingDraftLocalizedMessage = localizedPendingBookingDraftMessage(
     conversation.pendingDraft,
     language,
   )
-  const chatUi = useCustomerKaelChatUiState()
   const mode: CustomerKaelMode = conversation.localMode
+  const modeStateScopeKey = customerKaelModeStateScopeKey(stateScopeKey, mode)
+  const chatUi = useCustomerKaelChatUiState(modeStateScopeKey)
   const conversations = useCustomerKaelConversations(mode, language, {
     suppressActiveResponse: Boolean(routeHandoffId || routeSessionId),
     suppressActiveResponseUntilNewSession: routeStartsNewNormalSession,
@@ -181,7 +186,7 @@ export function useCustomerKaelSurfaceController(stateScopeKey: string) {
     evidenceOwnerKey: deal ? `${deal.id}:${deal.draft.mediaCount ?? 0}` : null,
     optionsOwnerKey: deal?.status === 'awaiting_customer_confirm' ? deal.id : null,
   })
-  const kaelRequestGuard = useCustomerKaelRequestGuard(stateScopeKey)
+  const kaelRequestGuard = useCustomerKaelRequestGuard(modeStateScopeKey)
   const processController = useKaelProcessLineController({
     caseServiceLabel,
     deal,
@@ -233,6 +238,7 @@ export function useCustomerKaelSurfaceController(stateScopeKey: string) {
     routeJobId,
     router,
     selectedServiceRef,
+    stateScopeKey: modeStateScopeKey,
     workflowActions: workflow.actions,
     workflowCaseDeal,
   })
@@ -281,7 +287,7 @@ export function useCustomerKaelSurfaceController(stateScopeKey: string) {
     language,
     mode,
     processController,
-    requestOwnerKey: stateScopeKey,
+    requestOwnerKey: modeStateScopeKey,
     selectedService,
     selectedServiceRef,
   })
@@ -318,7 +324,7 @@ export function useCustomerKaelSurfaceController(stateScopeKey: string) {
     processController,
     reduceMotion,
     router,
-    stateScopeKey,
+    stateScopeKey: modeStateScopeKey,
   })
 
   return {
@@ -342,6 +348,7 @@ export function useCustomerKaelSurfaceController(stateScopeKey: string) {
     reduceTransparency,
     router,
     sessionCatalog,
+    stateScopeKey: modeStateScopeKey,
     timelineHeadline,
     tokens,
     visibleError,
