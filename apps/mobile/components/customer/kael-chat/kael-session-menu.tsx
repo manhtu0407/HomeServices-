@@ -14,6 +14,7 @@ import { customerV21ServiceCopy } from '../ui/copy'
 import type { AppLanguage } from '@/lib/app-language'
 import type { CustomerKaelConversationMode, CustomerKaelConversationSession } from '@/lib/api-types/customer'
 import type { CustomerThemeTokens } from '../customer-theme'
+import type { CustomerKaelSessionEphemeralSummary } from './customer-kael-ephemeral-state'
 
 type Props = {
   activeSessionId: string | null
@@ -30,6 +31,7 @@ type Props = {
   pendingSessionIds: string[]
   reduceMotion: boolean
   reduceTransparency: boolean
+  sessionEphemeralStateById: Record<string, CustomerKaelSessionEphemeralSummary>
   sessions: CustomerKaelConversationSession[]
   tokens: CustomerThemeTokens
 }
@@ -49,6 +51,7 @@ export function CustomerKaelSessionMenu({
   pendingSessionIds,
   reduceMotion,
   reduceTransparency,
+  sessionEphemeralStateById,
   sessions,
   tokens,
 }: Props) {
@@ -66,8 +69,8 @@ export function CustomerKaelSessionMenu({
     setActionSessionId(null)
     setDeletingSessionId(null)
     setRenamingSessionId(session.id)
-    setDraftTitle(sessionTitle(session, language, mode))
-  }, [language, mode])
+    setDraftTitle(sessionTitle(session, language, mode, sessionEphemeralStateById[session.id]))
+  }, [language, mode, sessionEphemeralStateById])
   const beginDelete = useCallback((sessionId: string) => {
     setActionSessionId(null)
     setDeletingSessionId(sessionId)
@@ -91,7 +94,7 @@ export function CustomerKaelSessionMenu({
       copy={copy}
       deleting={deletingSessionId === session.id}
       draftTitle={draftTitle}
-      meta={sessionMeta(session, session.id === activeSessionId, language)}
+      meta={sessionMeta(session, session.id === activeSessionId, language, sessionEphemeralStateById[session.id])}
       onArchive={onArchive}
       onBeginDelete={beginDelete}
       onBeginRename={beginRename}
@@ -108,7 +111,7 @@ export function CustomerKaelSessionMenu({
       renaming={renamingSessionId === session.id}
       selected={session.id === activeSessionId}
       session={session}
-      title={sessionTitle(session, language, mode)}
+      title={sessionTitle(session, language, mode, sessionEphemeralStateById[session.id])}
       tokens={tokens}
     />
   ), [
@@ -131,6 +134,7 @@ export function CustomerKaelSessionMenu({
     reduceTransparency,
     renamingSessionId,
     saveRename,
+    sessionEphemeralStateById,
     tokens,
     toggleActions,
   ])
@@ -217,19 +221,45 @@ function SessionPlusIcon({ color }: { color: string }) {
   return <Svg height={21} testID="customer-v21-kael-session-new-plus" viewBox="0 0 24 24" width={21}><Path d="M12 5.5v13M5.5 12h13" fill="none" stroke={color} strokeLinecap="round" strokeWidth={2} /></Svg>
 }
 
-function sessionTitle(session: CustomerKaelConversationSession, language: AppLanguage, mode: CustomerKaelConversationMode) {
+function sessionTitle(
+  session: CustomerKaelConversationSession,
+  language: AppLanguage,
+  mode: CustomerKaelConversationMode,
+  ephemeral?: CustomerKaelSessionEphemeralSummary,
+) {
   if (session.title?.trim()) return session.title.trim()
+  if (ephemeral?.localPreview) {
+    const prefix = language === 'vi' ? 'Bản nháp' : 'Draft'
+    return `${prefix} · ${truncateSessionPreview(ephemeral.localPreview)}`
+  }
+  if (ephemeral?.hasUnsentDraft) return language === 'vi' ? 'Bản nháp chưa gửi' : 'Unsent draft'
   const serviceLabel = sessionServiceLabel(session, language)
   if (serviceLabel) return serviceLabel
   if (language === 'en') return mode === 'normal' ? 'Normal chat' : 'Work handling'
   return mode === 'normal' ? 'Chat thường' : 'Xử lý công việc'
 }
 
-function sessionMeta(session: CustomerKaelConversationSession, selected: boolean, language: AppLanguage) {
-  const turns = language === 'vi' ? `${session.total_turns} lượt trao đổi` : `${session.total_turns} turns`
+function sessionMeta(
+  session: CustomerKaelConversationSession,
+  selected: boolean,
+  language: AppLanguage,
+  ephemeral?: CustomerKaelSessionEphemeralSummary,
+) {
+  const totalTurns = Math.max(session.total_turns, ephemeral?.localTurnCount ?? 0)
+  const turns = language === 'vi' ? `${totalTurns} lượt trao đổi` : `${totalTurns} turns`
   const serviceLabel = session.title?.trim() ? sessionServiceLabel(session, language) : null
-  const detail = serviceLabel ? `${serviceLabel} · ${turns}` : turns
+  const provisional = ephemeral?.localTurnCount
+    ? (language === 'vi' ? 'Bản nháp' : 'Draft')
+    : ephemeral?.hasUnsentDraft
+      ? (language === 'vi' ? 'Chưa gửi' : 'Unsent')
+      : null
+  const detail = [provisional, serviceLabel, turns].filter(Boolean).join(' · ')
   return selected ? `${language === 'vi' ? 'Đang mở' : 'Open'} · ${detail}` : detail
+}
+
+function truncateSessionPreview(value: string) {
+  const normalized = value.replace(/\s+/gu, ' ').trim()
+  return normalized.length > 34 ? `${normalized.slice(0, 33)}…` : normalized
 }
 
 function sessionServiceLabel(session: CustomerKaelConversationSession, language: AppLanguage) {

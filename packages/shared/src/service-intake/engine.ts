@@ -1,6 +1,6 @@
 import { getServicePerformancePlaybook } from './catalog'
 import type { ComplexityLevel } from '../constants'
-import { jobCreateSchema } from '../validation'
+import { jobCreateSchema } from '../contracts/job'
 import type {
   AgenticPerformanceDecision,
   AgenticPerformanceInput,
