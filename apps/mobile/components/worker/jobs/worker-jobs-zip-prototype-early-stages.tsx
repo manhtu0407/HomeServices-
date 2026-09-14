@@ -22,8 +22,6 @@ import {
   type WorkerV5OfferDetailRow,
 } from './offer'
 import { buildWorkerV5AcceptReviewChecks, workerV5CanAcceptOpenOffer } from './acceptance'
-import { WorkerRequestDetailsSections } from './request-details/request-details-content'
-import { buildWorkerRequestDetailsGroups } from './request-details/request-details-model'
 import { WorkerBroadcastProposalForm } from './worker-broadcast-proposal-form'
 import { WorkerStageTwoOfferWorkart } from './worker-jobs-stage-two-workart'
 import { prototypeStyles, stageTwoStyles } from './worker-jobs-zip-prototype-styles'
@@ -34,6 +32,7 @@ import {
   type WorkerJobsLegacyPrototypeBodyProps,
   type WorkerJobsLegacyPrototypePreviewJob,
   type WorkerJobsLegacyPrototypeRuntime,
+  type WorkerJobsStageTwoIconName,
   workerJobsLegacyPrototypePreviewJob,
 } from './worker-jobs-zip-prototype-shared'
 import { WorkerMatchingDeliveryStatus } from './worker-matching-delivery-status'
@@ -77,6 +76,7 @@ export function WorkerJobsLegacyPrototypeOpportunityCard({
   const tokens = getWorkerThemeTokens(themeMode)
   const surfaceColor = reduceTransparency ? tokens.base : tokens.raised
   const workartPanelColor = tokens.mode === 'dark' ? tokens.ghost : '#E8F5F1'
+  const cardTestID = onSelect ? testID : 'worker-v5-opportunity-empty-card'
   const copy = (
     <View style={prototypeStyles.opportunityCardCopy}>
       <Text numberOfLines={2} style={prototypeStyles.opportunityCardTitle}>{title}</Text>
@@ -105,8 +105,10 @@ export function WorkerJobsLegacyPrototypeOpportunityCard({
   )
   const workartView = (
     <WorkerStageTwoOfferWorkart
+      artworkTestID={`${cardTestID}-workart`}
       deal={currentDeal}
       panelColor={workartPanelColor}
+      panelTestID={`${cardTestID}-workart-panel`}
       previewJob={previewJob ?? null}
       reduceTransparency={reduceTransparency}
       surfaceColor={surfaceColor}
@@ -218,6 +220,36 @@ function activeInboxBroadcasts(broadcasts: WorkerBroadcast[]) {
       return sentDifference !== 0 ? sentDifference : left.broadcast_id.localeCompare(right.broadcast_id)
     })
     .slice(0, 20)
+}
+
+function WorkerJobsStageTwoInfoGroup({ iconNames, rows, testID, title, tokens }: {
+  iconNames: readonly WorkerJobsStageTwoIconName[]
+  rows: readonly WorkerV5OfferDetailRow[]
+  testID: string
+  title: string
+  tokens: ReturnType<typeof getWorkerThemeTokens>
+}) {
+  return (
+    <View style={stageTwoStyles.section}>
+      <View style={stageTwoStyles.sectionHeading}>
+        <Text style={[stageTwoStyles.sectionTitle, { color: tokens.text }]}>{title}</Text>
+      </View>
+      <View style={[stageTwoStyles.sectionCard, { backgroundColor: tokens.raised, borderColor: tokens.border }]} testID={testID}>
+        {rows.map((row, index) => (
+          <View key={`${row.title}-${index}`} style={[stageTwoStyles.sectionRow, index > 0 && stageTwoStyles.sectionRowDivider, index > 0 && { borderTopColor: tokens.border }]}>
+            <View style={[stageTwoStyles.sectionIconFrame, { backgroundColor: tokens.base, borderColor: tokens.border }]}>
+              <WorkerJobsStageTwoIcon color={tokens.primary} name={iconNames[index] ?? 'request'} size={24} />
+            </View>
+            <View style={stageTwoStyles.sectionRowCopy}>
+              <Text numberOfLines={2} style={[stageTwoStyles.sectionRowTitle, { color: tokens.text }]}>{row.title}</Text>
+              <Text numberOfLines={3} style={[stageTwoStyles.sectionRowMeta, { color: tokens.muted }]}>{row.meta}</Text>
+            </View>
+            <Text numberOfLines={2} style={[stageTwoStyles.sectionRowStatus, { color: tokens.text }]}>{row.status}</Text>
+          </View>
+        ))}
+      </View>
+    </View>
+  )
 }
 
 function WorkerJobsLegacyPrototypeOpportunityActions({
@@ -526,21 +558,59 @@ export function WorkerJobsLegacyPrototypeOfferDetailBody({
     <View style={stageTwoStyles.section} testID="worker-v5-offer-detail-handoff">
       <WorkerJobsLegacyPrototypeOfferSummary deal={deal} language={language} previewJob={previewJob} reduceTransparency={reduceTransparency} showPrice={isPricedOffer || !proposalOpportunity} tokens={tokens} />
 
-      <WorkerRequestDetailsSections
-        groups={buildWorkerRequestDetailsGroups({
-          addressRows,
-          checks,
-          language,
-          priceRows,
-          requestRows,
-        }).filter((group) => isPricedOffer || !proposalOpportunity || group.key === 'request' || group.key === 'address')}
-        note={{
-          description: textByLanguage(language, 'Thời gian sẽ được cập nhật từ dữ liệu thật.', 'Timing updates from live data.'),
-          icon: 'clock',
-          testID: 'worker-v5-accept-commitment',
-          title: eta.label,
-        }}
+      <WorkerJobsStageTwoInfoGroup
+        iconNames={['home', 'service', 'photo']}
+        rows={requestRows}
+        testID="worker-v5-offer-request-list"
+        title={textByLanguage(language, 'Yêu cầu', 'Request')}
+        tokens={tokens}
       />
+      <WorkerJobsStageTwoInfoGroup
+        iconNames={['location', 'profile']}
+        rows={addressRows}
+        testID="worker-v5-offer-address-list"
+        title={textByLanguage(language, 'Địa chỉ & khách hàng', 'Address & customer')}
+        tokens={tokens}
+      />
+      {isPricedOffer || !proposalOpportunity ? (
+        <WorkerJobsStageTwoInfoGroup
+          iconNames={['price']}
+          rows={priceRows}
+          testID="worker-v5-offer-price-list"
+          title={textByLanguage(language, 'Giá dịch vụ & tiền công', 'Service price & earnings')}
+          tokens={tokens}
+        />
+      ) : null}
+
+      {isPricedOffer || !proposalOpportunity ? <View style={stageTwoStyles.section}>
+        <View style={stageTwoStyles.sectionHeading}>
+          <Text style={[stageTwoStyles.sectionTitle, { color: tokens.text }]}>{textByLanguage(language, 'Sẵn sàng nhận việc', 'Ready to accept')}</Text>
+        </View>
+        <View style={[stageTwoStyles.sectionCard, { backgroundColor: reduceTransparency ? tokens.base : tokens.raised, borderColor: tokens.border }]} testID="worker-v5-accept-checklist-card">
+          {checks.map((item, index) => {
+            const done = item.state === 'done'
+            const iconName: WorkerJobsStageTwoIconName = index === 0
+              ? 'inbox'
+              : index === 1
+                ? 'tools'
+                : index === 2
+                  ? 'shield'
+                  : 'wallet'
+            return (
+              <View key={item.label} style={[stageTwoStyles.checklistRow, index > 0 && stageTwoStyles.sectionRowDivider, index > 0 && { borderTopColor: tokens.border }]} testID={`worker-v5-accept-check-${index}`}>
+                <View style={[stageTwoStyles.sectionIconFrame, { backgroundColor: tokens.base, borderColor: tokens.border }]}>
+                  <WorkerJobsStageTwoIcon color={tokens.primary} name={iconName} size={24} />
+                </View>
+                <View style={stageTwoStyles.checklistCopy}>
+                  <Text numberOfLines={2} style={[stageTwoStyles.checklistLabel, { color: tokens.text }]}>{item.label}</Text>
+                  <Text numberOfLines={2} style={[stageTwoStyles.checklistMeta, { color: tokens.muted }]}>{item.meta}</Text>
+                </View>
+                <Text numberOfLines={2} style={[stageTwoStyles.checklistState, { color: tokens.text }]}>{done ? textByLanguage(language, 'Đạt', 'Ready') : textByLanguage(language, 'Cần xử lý', 'Needs action')}</Text>
+              </View>
+            )
+          })}
+        </View>
+      </View> : null}
 
       {proposalAction ? (
         <WorkerBroadcastProposalForm
@@ -561,6 +631,16 @@ export function WorkerJobsLegacyPrototypeOfferDetailBody({
           title={textByLanguage(language, 'Chưa cập nhật được', 'Could not update')}
         />
       ) : null}
+
+      <View style={[stageTwoStyles.etaCard, { backgroundColor: reduceTransparency ? tokens.base : tokens.raised, borderColor: tokens.border }]} testID="worker-v5-accept-commitment">
+        <View style={[stageTwoStyles.sectionIconFrame, { backgroundColor: tokens.base, borderColor: tokens.border }]}>
+          <WorkerJobsStageTwoIcon color={tokens.primary} name="time" size={24} />
+        </View>
+        <View style={stageTwoStyles.etaCopy}>
+          <Text style={[stageTwoStyles.etaTitle, { color: tokens.text }]}>{eta.label}</Text>
+          <Text style={[stageTwoStyles.etaMeta, { color: tokens.muted }]}>{textByLanguage(language, 'Thời gian sẽ được cập nhật từ dữ liệu thật.', 'Timing updates from live data.')}</Text>
+        </View>
+      </View>
 
       <View accessibilityRole="summary" style={stageTwoStyles.actionRow} testID="worker-v5-action-rail">
         <Pressable

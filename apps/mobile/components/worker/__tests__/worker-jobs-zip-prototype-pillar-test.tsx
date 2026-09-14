@@ -45,13 +45,6 @@ const source = [
   'worker-jobs-zip-prototype-stage-four-styles.ts',
 ].map((fileName) => readSource('../jobs', fileName)).join('\n')
 const workerFlowSource = readSource('../worker-v5-flow.tsx')
-const requestDetailsSource = [
-  'request-details-content.tsx',
-  'request-details-icons.tsx',
-  'request-details-model.ts',
-  'request-details-tokens.ts',
-  'request-details.types.ts',
-].map((fileName) => readSource('../jobs/request-details', fileName)).join('\n')
 const evidenceSource = readSource('../../ui/job-evidence-gallery.tsx')
 const advisoryStylesSource = readSource('../jobs/advisory-styles.ts')
 const progressSource = readSource('../jobs/progress-surfaces.tsx')
@@ -63,7 +56,6 @@ describe('Worker Jobs ZIP Prototype', () => {
       prototypeHostSource,
       source,
       workerFlowSource,
-      requestDetailsSource,
       evidenceSource,
       advisoryStylesSource,
       progressSource,
@@ -114,18 +106,30 @@ describe('Worker Jobs ZIP Prototype', () => {
     expect(ZIP_STAGE_SCREEN_IDS[10]).toBe('2.12-case-closed')
   })
 
+  it('keeps prototype stage query construction in one route helper', () => {
+    expect(prototypeHostSource).toContain('const openPrototypeStage = (stage: string) =>')
+    expect(prototypeHostSource).toContain('openPrototypeStage(targetStage)')
+  })
+
   it('keeps the payment-confirmed state conditional on Stage 11', () => {
     expect(resolveZipPrototypeSelection({ ns_worker_stage: '10' }).prototypeStage).toBeUndefined()
     expect(resolveZipPrototypeSelection({ ns_worker_stage: '11' }).prototypeStage).toBe('payment-confirmed')
     expect(resolveZipPrototypeSelection({ ns_worker_stage: 'payment-confirmed' }).prototypeStage).toBe('payment-confirmed')
   })
 
-  it('uses one section-card surface for the redesigned Stage 2 details', () => {
-    expect(source).toContain('WorkerRequestDetailsSections')
-    expect(source).toContain('buildWorkerRequestDetailsGroups')
-    expect(requestDetailsSource).toContain('testID="worker-v5-offer-section-stack"')
-    expect(requestDetailsSource).toContain('function CardHeader')
-    expect(requestDetailsSource).not.toContain('sectionIconFrame')
+  it('keeps Stage 2 details in tokenized section cards with honest workflow states', () => {
+    expect(source).toContain('WorkerJobsStageTwoInfoGroup')
+    expect(source).toContain('testID="worker-v5-offer-request-list"')
+    expect(source).toContain('testID="worker-v5-offer-address-list"')
+    expect(source).toContain('testID="worker-v5-offer-price-list"')
+    expect(source).toContain('testID="worker-v5-accept-checklist-card"')
+    expect(source).toContain('testID="worker-v5-accept-commitment"')
+    expect(source).toContain("iconNames={['home', 'service', 'photo']}")
+    expect(source).toContain("? 'inbox'")
+    expect(source).toContain(": 'wallet'")
+    expect(source).toContain('name="time" size={24}')
+    expect(source).not.toContain('WorkerRequestDetailsSections')
+    expect(source).not.toContain('buildWorkerRequestDetailsGroups')
   })
 
   it('keeps Stage 4 on the approved V3 hierarchy and the real backend boundary', () => {
@@ -152,7 +156,8 @@ describe('Worker Jobs ZIP Prototype', () => {
 
   it('uses the Booking Workart treatment on the left 40 percent of the Stage 2 summary', () => {
     expect(source).toContain('WorkerStageTwoOfferWorkart')
-    expect(source).toContain('testID="worker-v5-offer-detail-workart-panel"')
+    expect(source).toContain('panelTestID = \'worker-v5-offer-detail-workart-panel\'')
+    expect(source).toContain('testID={panelTestID}')
     expect(source).toContain('contentFit="cover"')
     expect(source).toContain("flexBasis: '40%'")
     expect(source).toContain("width: '40%'")
@@ -172,12 +177,11 @@ describe('Worker Jobs ZIP Prototype', () => {
     expect(source).toContain('...typography.title2')
   })
   it('uses distinct semantic icons for the offer, cleaning, and earnings rows', () => {
-    expect(requestDetailsSource).toContain("const REQUEST_ROW_ICONS: readonly RequestDetailsIconName[] = ['bubble', 'wrench', 'photo']")
-    expect(requestDetailsSource).toContain("const PRICE_ROW_ICONS: readonly RequestDetailsIconName[] = ['tag', 'banknote', 'wallet', 'check']")
-    expect(requestDetailsSource).toContain("const READY_ROW_ICONS: readonly RequestDetailsIconName[] = ['envelope', 'shieldCheck', 'lock', 'receipt']")
-    expect(requestDetailsSource).toContain("icon: 'clipboard'")
-    expect(requestDetailsSource).toContain("icon: 'coins'")
-    expect(requestDetailsSource).toContain("icon: 'briefcase'")
+    expect(source).toContain("iconNames={['home', 'service', 'photo']}")
+    expect(source).toContain("iconNames={['location', 'profile']}")
+    expect(source).toContain("iconNames={['price']}")
+    expect(source).toContain("? 'inbox'")
+    expect(source).toContain(": 'wallet'")
   })
 
   it('keeps direct stage review independent from workflow conditions', () => {
