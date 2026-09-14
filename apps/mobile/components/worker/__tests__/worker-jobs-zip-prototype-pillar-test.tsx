@@ -17,7 +17,7 @@ import { withPillarContext, type PillarManifest } from '@/__tests__/pillar-manif
 
 export const PILLAR = {
   id: 'P33-worker-jobs-zip-prototype',
-  invariant: 'the approved eleven-stage Jobs surface remains the single visual source for Prototype and Production, with workflow transitions and route data kept intact',
+  invariant: 'the approved eleven-stage Jobs surface remains the single visual source for Prototype and Production, with Stage 4 fidelity, workflow transitions, and backend route data kept intact',
   authority: [
     'governance/RULES.md (workflow integrity and visual consistency)',
     'governance/protocols/frontend-test.md G1 (layout) and G2 (state coverage)',
@@ -25,7 +25,7 @@ export const PILLAR = {
   target: 'apps/mobile/components/worker/jobs/worker-jobs-zip-prototype.tsx',
   layer: 'ui-visual',
   siblings: ['P22-worker-jobs-workart-alpha', 'P23-worker-jobs-empty-copy', 'P09-native-ios-liquid-tabs'],
-  mutation: 'route Production through the retired Jobs surface or change the eleven-stage screen mapping — the source and workflow assertions turn red',
+  mutation: 'remove the Stage 4 production surface, its backend map adapter, or its V3 hierarchy markers — the Stage 4 fidelity and boundary assertions turn red',
 } as const satisfies PillarManifest
 
 // The layout assertions below are multi-line substrings written with `\n`.
@@ -52,7 +52,11 @@ const source = [
   'worker-jobs-zip-prototype-style-stage-two.ts',
   'worker-jobs-stage-two-workart.tsx',
   'worker-jobs-zip-prototype-styles.ts',
+  'worker-jobs-zip-prototype-route-stage.tsx',
+  'worker-jobs-zip-prototype-stage-four.tsx',
+  'worker-jobs-zip-prototype-stage-four-styles.ts',
 ].map((fileName) => readSource('../jobs', fileName)).join('\n')
+const workerFlowSource = readSource('../worker-v5-flow.tsx')
 const requestDetailsSource = [
   'request-details-content.tsx',
   'request-details-icons.tsx',
@@ -74,6 +78,7 @@ describe('Worker Jobs ZIP Prototype', () => {
       stageTenModelSource,
       stageTenTokensSource,
       source,
+      workerFlowSource,
       requestDetailsSource,
       evidenceSource,
       advisoryStylesSource,
@@ -137,6 +142,28 @@ describe('Worker Jobs ZIP Prototype', () => {
     expect(requestDetailsSource).toContain('testID="worker-v5-offer-section-stack"')
     expect(requestDetailsSource).toContain('function CardHeader')
     expect(requestDetailsSource).not.toContain('sectionIconFrame')
+  })
+
+  it('keeps Stage 4 on the approved V3 hierarchy and the real backend boundary', () => {
+    expect(source).toContain('WorkerJobsProductionStageFour')
+    expect(source).toContain('stage4-map-hero')
+    expect(source).toContain('stage4-destination-chip')
+    expect(source).toContain('stage4-eta-sheet')
+    expect(source).toContain('stage4-destination-card')
+    expect(source).toContain('stage4-metrics')
+    expect(source).toContain('stage4-customer-card')
+    expect(source).toContain('stage4-customer-note')
+    expect(source).toContain('stage4-utility-actions')
+    expect(source).toContain('stage4-primary')
+    expect(source).toContain('WorkerV5AuthenticatedRouteMapPreview')
+    expect(source).toContain('routePreview.mapUri')
+    expect(source).toContain('runRouteAction')
+    expect(source).not.toContain('travel-work-demo')
+    expect(source).not.toContain('__fixtures__')
+    expect(source).not.toContain('stage4-refined-map-v3')
+    expect(workerFlowSource).toContain('headerState.usesTravelHandoff ? null')
+    expect(workerFlowSource).toContain("screen.id === '2.4-route-eta' || screen.id === '5.3-skills-service-area'")
+    expect(workerFlowSource).toContain('!usesRouteEtaHandoff')
   })
 
   it('uses the Booking Workart treatment on the left 40 percent of the Stage 2 summary', () => {

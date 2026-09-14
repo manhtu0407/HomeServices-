@@ -41,7 +41,7 @@ describe('Worker Production Stage 5 work-session boundary', () => {
 
   it('does not notify the customer or queue Kael learning for work-session-only updates', () => {
     const status = read('supabase/functions/mobile-api/_shared/domains/job/status.ts')
-    const notificationGate = status.indexOf('if (!isWorkSessionOnly) {\n    await notifyCustomerJobStatus')
+    const notificationGate = status.search(/if\s*\(!isWorkSessionOnly\)\s*\{\s*await notifyCustomerJobStatus/u)
     const learningGate = status.indexOf('if (input.status === "completed_by_worker")')
 
     withPillarContext(PILLAR, () => {

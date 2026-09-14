@@ -192,7 +192,7 @@ function WorkerV5ScreenSurface({ screen }: { screen: WorkerV5ScreenDefinition })
   const minHeight = Math.max(620, Math.round(height * 0.92))
   const surfaceStyle = workerThemeMode === 'dark'
     ? styles.surfaceDark
-    : screen.id === '5.3-skills-service-area' || glass.reduceTransparency ? styles.surfaceSolid : styles.surfaceGlass
+    : screen.id === '2.4-route-eta' || screen.id === '5.3-skills-service-area' || glass.reduceTransparency ? styles.surfaceSolid : styles.surfaceGlass
   const shouldShowWorkerAura = !glass.reduceTransparency && workerThemeMode === 'light'
   const usesOpportunityInboxHandoff = screen.id === '2.1-opportunity-inbox'
   const usesOfferDetailHandoff = screen.id === '2.2-offer-detail'
@@ -501,7 +501,7 @@ function WorkerV5ScreenAuras({ state }: { state: WorkerV5ScreenAuraState }) {
     usesProfileHandoff,
     usesRouteEtaHandoff,
   } = state
-  const showPageAura = shouldShowWorkerAura && !usesProfileHandoff && !usesEarningsHandoff
+  const showPageAura = shouldShowWorkerAura && !usesProfileHandoff && !usesEarningsHandoff && !usesRouteEtaHandoff
 
   return <>
     {showPageAura ? <WorkerV5CustomerFulfillmentCanvasAura reduceTransparency={reduceTransparency} scope={formulaPageAuraTarget.scope} testID={formulaPageAuraTarget.testID} /> : null}
@@ -701,7 +701,7 @@ function WorkerV5ScreenLayout({ actions, state }: { actions: WorkerV5ScreenLayou
   return <SafeAreaView style={[styles.safeArea, surfaceStyle, usesStageFiveProduction ? styles.stageFiveSafeArea : null]} testID={`worker-v5-screen-${screen.id}`}>
     {usesStageFiveProduction ? null : <WorkerV5ScreenAuras state={auraState} />}
     <ScrollView bounces={false} contentContainerStyle={[styles.scrollContent, usesStageFiveProduction ? styles.stageFiveScrollContent : null, headerState.usesEarningsOverviewHandoff ? styles.earningsOverviewScrollContent : null, usesKaelOrbHandoff ? styles.kaelOrbCustomerScrollContent : null, { minHeight }]} onScroll={actions.onDockScroll} scrollEventThrottle={16} showsVerticalScrollIndicator={false} testID="worker-v5-scroll">
-      {usesStageFiveProduction || headerState.usesEarningsOverviewHandoff || headerState.usesOpportunityInboxHandoff ? null : <WorkerV5ScreenHeader onBack={actions.onHeaderBack} onOpenJobChat={actions.onOpenJobChat} state={headerState} />}
+      {usesStageFiveProduction || headerState.usesEarningsOverviewHandoff || headerState.usesOpportunityInboxHandoff || headerState.usesTravelHandoff ? null : <WorkerV5ScreenHeader onBack={actions.onHeaderBack} onOpenJobChat={actions.onOpenJobChat} state={headerState} />}
       {!usesHandoffStage ? <View style={[styles.glassCard, reduceTransparency && styles.opaqueCard]}>
         {!reduceTransparency ? <MintAura intensity="component" style={styles.cardMintAura} testID="worker-v5-hero-mint-aura" /> : null}
         <View pointerEvents="none" style={styles.cardTopHighlight} />
