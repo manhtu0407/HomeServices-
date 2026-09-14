@@ -1042,9 +1042,9 @@ it('records arrival before continuing to the in-progress screen', async () => {
     rerender(<WorkerJobsSurface />)
 
     await waitFor(() => {
-      expect(screen.getByTestId('worker-v5-evidence-tray-tile-0')).toBeOnTheScreen()
+      expect(screen.getByTestId('worker-v5-stage-eight-fidelity')).toBeOnTheScreen()
     })
-    expect(screen.queryByText('Hồ sơ hoàn tất')).toBeNull()
+    expect(screen.queryByText('Kael đã đối chiếu phạm vi')).toBeNull()
   })
 
   it('collects real completion evidence before opening the submitted phase', async () => {
@@ -1066,18 +1066,18 @@ it('records arrival before continuing to the in-progress screen', async () => {
 
     render(<WorkerJobsSurface />)
 
-    expect(screen.getByTestId('worker-v5-completion-submit-action').props.accessibilityState).toEqual({ disabled: true })
+    expect(screen.getByTestId('worker-v5-stage-eight-fidelity-submit').props.accessibilityState).toEqual({ disabled: true, busy: false })
     fireEvent.changeText(
-      screen.getByTestId('worker-v5-completion-note-input'),
+      screen.getByTestId('worker-v5-stage-eight-fidelity-note-input'),
       'Đã khoan tường, lắp giá và kiểm tra tải an toàn.',
     )
-    fireEvent.press(screen.getByTestId('worker-v5-completion-add-photo-action'))
+    fireEvent.press(screen.getByTestId('worker-v5-stage-eight-fidelity-add-photo'))
 
     await waitFor(() => {
       expect(screen.getByText('1 ảnh')).toBeOnTheScreen()
-      expect(screen.getByTestId('worker-v5-completion-submit-action').props.accessibilityState).toEqual({ disabled: false })
+      expect(screen.getByTestId('worker-v5-stage-eight-fidelity-submit').props.accessibilityState).toEqual({ disabled: false, busy: false })
     })
-    fireEvent.press(screen.getByTestId('worker-v5-completion-submit-action'))
+    fireEvent.press(screen.getByTestId('worker-v5-stage-eight-fidelity-submit'))
 
     await waitFor(() => {
       expect(mediaUpload.uploadJobMediaDrafts).toHaveBeenCalledWith(
@@ -1532,7 +1532,7 @@ it('records arrival before continuing to the in-progress screen', async () => {
     mockRouteParams = { ns_worker_screen: '2.10-completion-evidence' }
     rerender(<WorkerJobsSurface />)
 
-    expect(screen.getByTestId('worker-v5-completion-submit-action')).toBeOnTheScreen()
+    expect(screen.getByTestId('worker-v5-stage-eight-fidelity-submit')).toBeOnTheScreen()
     expect(screen.queryByText('Kael đã đối chiếu phạm vi')).toBeNull()
     expect(screen.queryByText('Kael chỉ đối chiếu phạm vi và nguồn bằng chứng; quyền gửi vẫn là hành động rõ ràng của thợ.')).toBeNull()
   })
