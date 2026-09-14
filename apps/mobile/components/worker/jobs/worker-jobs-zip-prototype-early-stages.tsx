@@ -1,4 +1,3 @@
-import { Image } from 'expo-image'
 import { useEffect, useState } from 'react'
 import { Pressable, View } from 'react-native'
 import { useLocalSearchParams, useRouter } from 'expo-router'
@@ -35,7 +34,6 @@ import {
   type WorkerJobsLegacyPrototypeBodyProps,
   type WorkerJobsLegacyPrototypePreviewJob,
   type WorkerJobsLegacyPrototypeRuntime,
-  workerJobsLegacyPrototypeOpportunityArtwork,
   workerJobsLegacyPrototypePreviewJob,
 } from './worker-jobs-zip-prototype-shared'
 import { WorkerMatchingDeliveryStatus } from './worker-matching-delivery-status'
@@ -64,7 +62,6 @@ export function WorkerJobsLegacyPrototypeOpportunityCard({
   const isIncoming = currentDeal?.status === 'broadcasting' && currentDeal.broadcast?.status === 'sent'
   const service = currentDeal ? localizedServiceLabel(currentDeal.draft.serviceType, language) : textByLanguage(language, 'Cơ hội công việc', 'Job opportunity')
   const area = currentDeal?.broadcast?.generalArea || currentDeal?.draft.districtLabel
-  const artwork = workerJobsLegacyPrototypeOpportunityArtwork(currentDeal, previewJob)
   const title = currentDeal ? service : previewJob?.title[language] || textByLanguage(language, 'Chưa có việc phù hợp', 'No suitable job yet')
   const meta = currentDeal
     ? area || textByLanguage(language, 'Khu vực sẽ hiện khi được xác minh', 'Area appears after verification')
@@ -76,6 +73,10 @@ export function WorkerJobsLegacyPrototypeOpportunityCard({
       : previewJob?.status[language] || textByLanguage(language, 'Chưa có trạng thái thật', 'No real status yet')
   const displayTime = currentDeal ? workerV5TimeChoiceLabel(currentDeal.draft.timeChoice, language, currentDeal.scheduledAt) : previewJob?.time[language] || null
   const displayPrice = currentDeal?.broadcast?.estimatedPriceLabel || currentDeal?.estimate?.priceRangeLabel || previewJob?.price[language] || null
+  const themeMode = useWorkerThemeMode()
+  const tokens = getWorkerThemeTokens(themeMode)
+  const surfaceColor = reduceTransparency ? tokens.base : tokens.raised
+  const workartPanelColor = tokens.mode === 'dark' ? tokens.ghost : '#E8F5F1'
   const copy = (
     <View style={prototypeStyles.opportunityCardCopy}>
       <Text numberOfLines={2} style={prototypeStyles.opportunityCardTitle}>{title}</Text>
@@ -102,10 +103,19 @@ export function WorkerJobsLegacyPrototypeOpportunityCard({
       ) : null}
     </View>
   )
-  const artworkView = <Image accessibilityIgnoresInvertColors contentFit="contain" contentPosition="right center" source={artwork} style={prototypeStyles.opportunityArtwork} />
+  const workartView = (
+    <WorkerStageTwoOfferWorkart
+      deal={currentDeal}
+      panelColor={workartPanelColor}
+      previewJob={previewJob ?? null}
+      reduceTransparency={reduceTransparency}
+      surfaceColor={surfaceColor}
+    />
+  )
+  const cardSurfaceStyle = { backgroundColor: surfaceColor, borderColor: tokens.borderStrong }
 
   if (!onSelect) {
-    return <View style={[prototypeStyles.opportunityCard, reduceTransparency && { backgroundColor: color.mint.white }]} testID="worker-v5-opportunity-empty-card">{copy}{artworkView}</View>
+    return <View style={[prototypeStyles.opportunityCard, cardSurfaceStyle]} testID="worker-v5-opportunity-empty-card">{workartView}{copy}</View>
   }
 
   return (
@@ -114,10 +124,10 @@ export function WorkerJobsLegacyPrototypeOpportunityCard({
       accessibilityRole="button"
       accessibilityState={{ selected }}
       onPress={onSelect}
-      style={({ pressed }) => [prototypeStyles.opportunityCard, selected && { borderColor: color.brand.primary, borderWidth: 2 }, pressed && { opacity: 0.88 }]}
+      style={({ pressed }) => [prototypeStyles.opportunityCard, cardSurfaceStyle, selected && { borderColor: color.brand.primary, borderWidth: 2 }, pressed && { opacity: 0.88 }]}
       testID={testID}
     >
-      {copy}{artworkView}
+      {workartView}{copy}
     </Pressable>
   )
 }

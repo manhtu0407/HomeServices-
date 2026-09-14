@@ -62,25 +62,18 @@ export const prototypeCoreStyles = StyleSheet.create({
     overflow: 'hidden',
     position: 'relative',
   },
-  opportunityArtwork: {
-    alignSelf: 'stretch',
-    height: '100%',
-    marginLeft: 'auto',
-    transform: [{ translateX: 10 }],
-    width: '54%',
-  },
   opportunityCardCopy: {
     flex: 1,
     gap: 7,
     justifyContent: 'center',
-    maxWidth: '46%',
+    maxWidth: '60%',
     minHeight: 172,
     paddingHorizontal: 20,
     paddingVertical: 18,
   },
   opportunityCardTitle: {
     color: color.text.strong,
-    ...typography.title3,
+    ...typography.title2,
     fontWeight: '700',
   },
   opportunityCardMeta: {
