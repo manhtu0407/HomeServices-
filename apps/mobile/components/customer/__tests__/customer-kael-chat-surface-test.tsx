@@ -34,6 +34,17 @@ let mockJobMessages: { content: string; id: string; sender_role: 'customer' | 'k
 let mockCustomerSequence = 0
 let mockConversationSequence = 0
 let mockSessionsByMode: Record<'normal' | 'case', any[]> = { case: [], normal: [] }
+type CatalogResponse = {
+  data: { sessions: CustomerKaelConversationSession[] }
+  success: true
+}
+type PendingCatalogRequest = {
+  mode: 'normal' | 'case'
+  promise: Promise<CatalogResponse>
+  resolve: (value: CatalogResponse) => void
+  settled: boolean
+}
+const pendingCatalogRequests: PendingCatalogRequest[] = []
 
 jest.mock('@react-native-async-storage/async-storage', () => require('@react-native-async-storage/async-storage/jest/async-storage-mock'))
 
@@ -265,18 +276,69 @@ function updateMockSession(sessionId: string, patch: Record<string, unknown>) {
   throw new Error(`Missing mock conversation ${sessionId}`)
 }
 
-async function waitForConversationCatalog(mode: 'normal' | 'case') {
-  await waitFor(() => expect(mockConversationList).toHaveBeenCalledWith(mode))
-  await flushLatestConversationList()
+async function waitForConversationCatalog(mode: 'normal' | 'case', afterCallCount = 0) {
+  await waitFor(() => {
+    const matchingCalls = mockConversationList.mock.calls.filter(([calledMode]) => calledMode === mode)
+    expect(matchingCalls.length).toBeGreaterThan(afterCallCount)
+  })
+  const latestCallIndex = [...mockConversationList.mock.calls]
+    .map(([calledMode], index) => ({ calledMode, index }))
+    .reverse()
+    .find(({ calledMode }) => calledMode === mode)?.index
+  await act(async () => {
+    if (latestCallIndex !== undefined) resolvePendingCatalogAtIndex(latestCallIndex)
+    const latestRequest = latestCallIndex === undefined
+      ? undefined
+      : mockConversationList.mock.results[latestCallIndex]?.value
+    await latestRequest
+    for (let index = 0; index < 6; index += 1) await Promise.resolve()
+  })
 }
 
 async function flushLatestConversationList() {
+  const latestCallIndex = mockConversationList.mock.results.length - 1
+  const latestMode = mockConversationList.mock.calls[latestCallIndex]?.[0] as 'normal' | 'case' | undefined
+  if (latestMode) resolvePendingCatalog(latestMode)
   const latestRequest = mockConversationList.mock.results[mockConversationList.mock.results.length - 1]?.value
   await act(async () => {
     await latestRequest
-    await Promise.resolve()
-    await Promise.resolve()
+    // The service promise, hook `.then`, and hook `.finally` each settle on a
+    // separate microtask; keep their state updates inside the same act scope.
+    for (let index = 0; index < 6; index += 1) await Promise.resolve()
   })
+}
+
+function resolvePendingCatalog(mode: 'normal' | 'case') {
+  const pending = [...pendingCatalogRequests].reverse().find((request) => request.mode === mode && !request.settled)
+  if (!pending) return
+  pending.settled = true
+  pending.resolve({
+    data: { sessions: [...mockSessionsByMode[mode]] },
+    success: true,
+  })
+}
+
+function resolvePendingCatalogAtIndex(callIndex: number) {
+  const pending = pendingCatalogRequests.find((request) => (
+    request.promise === mockConversationList.mock.results[callIndex]?.value && !request.settled
+  ))
+  if (!pending) return
+  pending.settled = true
+  pending.resolve({
+    data: { sessions: [...mockSessionsByMode[pending.mode]] },
+    success: true,
+  })
+}
+
+function resolveAllPendingCatalogRequests() {
+  for (const pending of pendingCatalogRequests) {
+    if (pending.settled) continue
+    pending.settled = true
+    pending.resolve({
+      data: { sessions: [...mockSessionsByMode[pending.mode]] },
+      success: true,
+    })
+  }
 }
 
 const VIRTUALIZED_LIST_UPDATE_DELAY_MS = 60
@@ -309,6 +371,7 @@ describe('active customer Kael chat surface wiring', () => {
     clearPendingKaelChatMessage(mockCustomerId)
     mockConversationSequence = 0
     mockSessionsByMode = { case: [], normal: [] }
+    pendingCatalogRequests.length = 0
     ;[
       mockConversationCreate,
       mockConversationList,
@@ -321,10 +384,14 @@ describe('active customer Kael chat surface wiring', () => {
       mockKaelChatGet,
       mockKaelChatStreamSend,
     ].forEach((mock) => mock.mockReset())
-    mockConversationList.mockImplementation(async (mode: 'normal' | 'case') => ({
-      data: { sessions: [...mockSessionsByMode[mode]] },
-      success: true,
-    }))
+    mockConversationList.mockImplementation((mode: 'normal' | 'case') => {
+      let resolve!: (value: CatalogResponse) => void
+      const promise = new Promise<CatalogResponse>((nextResolve) => {
+        resolve = nextResolve
+      })
+      pendingCatalogRequests.push({ mode, promise, resolve, settled: false })
+      return promise
+    })
     mockConversationCreate.mockImplementation(async ({ mode, client_request_id }: { mode: 'normal' | 'case'; client_request_id: string }) => {
       mockConversationSequence += 1
       const session = makeConversationSession(mode, `conversation-${mockConversationSequence}`, client_request_id)
@@ -399,6 +466,11 @@ describe('active customer Kael chat surface wiring', () => {
   })
 
   afterEach(async () => {
+    await act(async () => {
+      resolveAllPendingCatalogRequests()
+      await Promise.resolve()
+      await Promise.resolve()
+    })
     await settleKaelChatSurfaceUpdates()
   })
 
@@ -614,6 +686,23 @@ describe('active customer Kael chat surface wiring', () => {
     await waitFor(() => expect(mockConversationCreate).toHaveBeenCalledWith(expect.objectContaining({ mode: 'normal' })))
     expect(screen.getByTestId('customer-v21-kael-input')).toHaveProp('value', '')
     expect(screen.getByTestId('customer-v21-kael-empty-hero-normal')).toBeOnTheScreen()
+  })
+
+  it('restores a mode-scoped draft when returning from Work handling', async () => {
+    render(<CustomerKaelSurface />)
+    await waitForConversationCatalog('normal')
+
+    const draft = 'Bản nháp chỉ thuộc Chat thường'
+    fireEvent.changeText(screen.getByTestId('customer-v21-kael-input'), draft)
+    fireEvent.press(screen.getByTestId('customer-v21-kael-mode-toggle'))
+    fireEvent.press(screen.getByTestId('customer-v21-chat-tab-case-work'))
+    await waitForConversationCatalog('case')
+    expect(screen.getByTestId('customer-v21-kael-input')).toHaveProp('value', '')
+
+    fireEvent.press(screen.getByTestId('customer-v21-kael-mode-toggle'))
+    fireEvent.press(screen.getByTestId('customer-v21-chat-tab-normal'))
+    await waitForConversationCatalog('normal')
+    expect(screen.getByTestId('customer-v21-kael-input')).toHaveProp('value', draft)
   })
 
   it('keeps breathing room below Customer Kael header actions when the session menu opens', async () => {
@@ -1244,6 +1333,7 @@ describe('active customer Kael chat surface wiring', () => {
     })
     mockConversationList.mockImplementationOnce(() => pendingCustomerARefresh)
     let customerARefresh!: Promise<CustomerKaelConversationSession[]>
+    const callsBeforeIdentitySwitch = mockConversationList.mock.calls.filter(([calledMode]) => calledMode === 'normal').length
     act(() => {
       customerARefresh = result.current.refreshSessions(true)
     })
@@ -1260,6 +1350,7 @@ describe('active customer Kael chat surface wiring', () => {
     ))).toBe(true)
     expect(result.current.sessions).not.toContainEqual(sessionA)
     expect(result.current.activeSessionId).toBeNull()
+    await waitForConversationCatalog('normal', callsBeforeIdentitySwitch)
     await waitFor(() => expect(result.current.sessions).toEqual([sessionB]))
 
     await act(async () => {
@@ -1316,8 +1407,13 @@ describe('active customer Kael chat surface wiring', () => {
     }
     mockSessionsByMode.case = [linkedSession]
 
+    let sync!: Promise<unknown>
+    act(() => {
+      sync = result.current.syncLinkedCaseSession('new-authoritative-case-session')
+    })
+    await waitForConversationCatalog('case', callsBeforeSync)
     await act(async () => {
-      await result.current.syncLinkedCaseSession('new-authoritative-case-session')
+      await sync
     })
 
     expect(mockConversationList).toHaveBeenCalledTimes(callsBeforeSync + 1)
@@ -1537,6 +1633,48 @@ describe('active customer Kael chat surface wiring', () => {
       service_type: 'plumbing',
     })))
   }, 30_000)
+
+  it('restores a pending pre-Agentic confirmation to its owning Case session', async () => {
+    mockRouteParams = { mode: 'case' }
+    const firstSession = makeConversationSession('case', 'pre-agentic-session-a')
+    const secondSession = makeConversationSession('case', 'pre-agentic-session-b')
+    mockSessionsByMode.case = [firstSession, secondSession]
+    render(<CustomerKaelSurface />)
+
+    await waitForConversationCatalog('case')
+    fireEvent.press(screen.getByTestId('customer-v21-kael-new-conversation'))
+    fireEvent.press(screen.getByTestId(`customer-v21-kael-session-${firstSession.id}`))
+    await waitFor(() => expect(mockConversationGet).toHaveBeenCalledWith(firstSession.id))
+
+    const input = screen.getByTestId('customer-v21-kael-input')
+    const vagueMessage = 'Chào Kael, tôi cần được hỗ trợ.'
+    fireEvent.changeText(input, vagueMessage)
+    fireEvent.press(screen.getByTestId('customer-v21-kael-send'))
+    await waitFor(() => expect(screen.getByText(/hạng mục cần hỗ trợ/)).toBeOnTheScreen(), { timeout: 8_000 })
+    fireEvent.press(screen.getByTestId('customer-v21-kael-new-conversation'))
+    expect(screen.getByText(/Bản nháp · Chào Kael/)).toBeOnTheScreen()
+    expect(screen.getByText(/Bản nháp · 2 lượt trao đổi/)).toBeOnTheScreen()
+
+    fireEvent.press(screen.getByTestId(`customer-v21-kael-session-${secondSession.id}`))
+    await waitFor(() => expect(mockConversationGet).toHaveBeenCalledWith(secondSession.id))
+    expect(screen.getByTestId('customer-v21-kael-input')).toHaveProp('value', '')
+
+    fireEvent.press(screen.getByTestId('customer-v21-kael-new-conversation'))
+    fireEvent.press(screen.getByTestId(`customer-v21-kael-session-${firstSession.id}`))
+    await waitFor(() => expect(screen.getByText(vagueMessage)).toBeOnTheScreen())
+
+    const clarification = 'Bồn rửa bếp bị rò nước ở Quận 3, cần kiểm tra sáng mai.'
+    fireEvent.changeText(screen.getByTestId('customer-v21-kael-input'), clarification)
+    fireEvent.press(screen.getByTestId('customer-v21-kael-send'))
+    await waitFor(() => expect(screen.getByText(/Nhắn “Xác nhận”/)).toBeOnTheScreen(), { timeout: 8_000 })
+
+    fireEvent.changeText(screen.getByTestId('customer-v21-kael-input'), 'Xác nhận')
+    fireEvent.press(screen.getByTestId('customer-v21-kael-send'))
+    await waitFor(() => expect(mockKaelChatCreate).toHaveBeenCalledWith(expect.objectContaining({
+      message: `${vagueMessage}\n${clarification}`,
+      service_type: 'plumbing',
+    })), { timeout: 12_000 })
+  }, 45_000)
 
   it('canonicalizes a booking handoff to its durable Case Work session route', async () => {
     await setPendingKaelChatDraft(mockCustomerId, {
@@ -2073,6 +2211,34 @@ describe('active customer Kael chat surface wiring', () => {
     expect(result.current.sessions.find((session) => session.id === first.id)?.pinned_at).toBe('2026-07-13T17:00:00.000Z')
   })
 
+  it('does not let a catalog refresh overwrite a completed session rename', async () => {
+    const session = makeConversationSession('normal', 'rename-race-session')
+    mockSessionsByMode.normal = [session]
+    const { result } = renderHook(() => useCustomerKaelConversations('normal', 'vi'))
+    await waitForConversationCatalog('normal')
+
+    let resolveRefresh!: (value: CatalogResponse) => void
+    const pendingRefresh = new Promise<CatalogResponse>((resolve) => {
+      resolveRefresh = resolve
+    })
+    mockConversationList.mockImplementationOnce(() => pendingRefresh)
+    let refresh!: Promise<CustomerKaelConversationSession[]>
+    act(() => {
+      refresh = result.current.refreshSessions(true)
+    })
+
+    await act(async () => {
+      expect(await result.current.renameSession(session.id, 'Nhà bếp')).toBe(true)
+    })
+    expect(result.current.sessions.find((item) => item.id === session.id)?.title).toBe('Nhà bếp')
+
+    await act(async () => {
+      resolveRefresh({ data: { sessions: [session] }, success: true })
+      await refresh
+    })
+    expect(result.current.sessions.find((item) => item.id === session.id)?.title).toBe('Nhà bếp')
+  })
+
   it('prefetches recent normal conversations so selecting one paints its history immediately', async () => {
     const session = makeConversationSession('normal', 'prefetched-normal-session')
     mockSessionsByMode.normal = [session]
@@ -2143,6 +2309,32 @@ describe('active customer Kael chat surface wiring', () => {
     await waitFor(() => expect(screen.getByText('Kiểm tra máy lạnh phòng ngủ')).toBeOnTheScreen())
     expect(screen.getByText('Kael đang lắng nghe.')).toBeOnTheScreen()
     expect(screen.queryByTestId('customer-v21-kael-session-menu')).toBeNull()
+  })
+
+  it('restores an unsent draft to the same session after switching between sessions', async () => {
+    const firstSession = makeConversationSession('normal', 'draft-session-a')
+    const secondSession = makeConversationSession('normal', 'draft-session-b')
+    mockSessionsByMode.normal = [firstSession, secondSession]
+    render(<CustomerKaelSurface />)
+
+    await waitForConversationCatalog('normal')
+    fireEvent.press(screen.getByTestId('customer-v21-kael-new-conversation'))
+    fireEvent.press(screen.getByTestId(`customer-v21-kael-session-${firstSession.id}`))
+    await waitFor(() => expect(mockConversationGet).toHaveBeenCalledWith(firstSession.id))
+
+    fireEvent.changeText(screen.getByTestId('customer-v21-kael-input'), 'Bản nháp riêng của phiên A')
+    fireEvent.press(screen.getByTestId('customer-v21-kael-new-conversation'))
+    fireEvent.press(screen.getByTestId(`customer-v21-kael-session-${secondSession.id}`))
+    await waitFor(() => expect(mockConversationGet).toHaveBeenCalledWith(secondSession.id))
+    expect(screen.getByTestId('customer-v21-kael-input')).toHaveProp('value', '')
+
+    fireEvent.changeText(screen.getByTestId('customer-v21-kael-input'), 'Bản nháp riêng của phiên B')
+    fireEvent.press(screen.getByTestId('customer-v21-kael-new-conversation'))
+    fireEvent.press(screen.getByTestId(`customer-v21-kael-session-${firstSession.id}`))
+    await waitFor(() => expect(screen.getByTestId('customer-v21-kael-input')).toHaveProp(
+      'value',
+      'Bản nháp riêng của phiên A',
+    ))
   })
 
   it('keeps Customer Kael isolated from Worker session services', () => {

@@ -227,6 +227,7 @@ function buildScopePendingDeal(): LocalDeal {
   return {
     ...buildInProgressDeal(),
     backendStatus: 'scope_change_pending',
+    status: 'scope_change_pending',
     scopeChange: {
       id: 'scope-change-pending',
       status: 'waiting_customer_decision',
@@ -1339,9 +1340,10 @@ it('records arrival before continuing to the in-progress screen', async () => {
 
     render(<WorkerJobsSurface />)
 
-    const primaryAction = screen.getByTestId('worker-v5-stage-seven-primary-action')
-    expect(primaryAction).toBeDisabled()
-    fireEvent.press(primaryAction)
+    fireEvent.press(screen.getByTestId('waiting-details-scope-approval'))
+
+    expect(screen.getByRole('button', { name: 'Nhắn khách' })).toBeOnTheScreen()
+    expect(screen.queryByRole('button', { name: 'Tiếp tục' })).toBeNull()
     expect(mockReplace).not.toHaveBeenCalled()
   })
 
@@ -1353,11 +1355,10 @@ it('records arrival before continuing to the in-progress screen', async () => {
 
     render(<WorkerJobsSurface />)
 
-    const primaryAction = screen.getByTestId('worker-v5-stage-seven-primary-action')
-    expect(primaryAction).not.toBeDisabled()
-    fireEvent.press(primaryAction)
+    fireEvent.press(screen.getByTestId('waiting-details-scope-approval'))
+    fireEvent.press(screen.getByRole('button', { name: 'Tiếp tục' }))
 
-    expect(mockReplace).toHaveBeenCalledWith('/(worker)/jobs?ns_worker_screen=2.7-in-progress')
+    expect(mockReplace).toHaveBeenCalledWith('/(worker)/jobs?ns_worker_screen=2.10-completion-evidence')
   })
 
   it('redirects a stale approval route after the backend resumes the real job status', async () => {
@@ -1535,7 +1536,7 @@ it('records arrival before continuing to the in-progress screen', async () => {
 
     const { rerender } = render(<WorkerJobsSurface />)
 
-    expect(screen.getByTestId('worker-v5-stage-seven-primary-action')).toBeOnTheScreen()
+    expect(screen.getByTestId('waiting-details-scope-approval')).toBeOnTheScreen()
     expect(screen.queryByText('Không tự thực hiện phần phát sinh')).toBeNull()
     expect(screen.queryByText('Hồ sơ giữ nguyên phạm vi cũ cho tới khi khách phê duyệt trên hệ thống.')).toBeNull()
 
@@ -1557,7 +1558,8 @@ it('records arrival before continuing to the in-progress screen', async () => {
     mockRouteParams = { ns_worker_screen: '2.9-approval-wait' }
 
     render(<WorkerJobsSurface />)
-    fireEvent.press(screen.getByTestId('worker-v5-stage-seven-message-action'))
+    fireEvent.press(screen.getByTestId('waiting-details-scope-approval'))
+    fireEvent.press(screen.getByRole('button', { name: 'Nhắn khách' }))
 
     expect(mockReplace).toHaveBeenCalledWith('/(worker)/chat?ns_worker_screen=3.1-kael-chat-normal')
   })

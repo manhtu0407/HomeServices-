@@ -445,10 +445,6 @@ function WorkerV5ScreenSurface({ screen }: { screen: WorkerV5ScreenDefinition })
     }
     router.replace(workerV5Routes[screen.section] as never)
   }
-  const openOfferMenu = () => {
-    openScreen(WORKER_V5_SCREENS.find((candidate) => candidate.id === '3.2-kael-job-intake') ?? nextScreen)
-  }
-
   return <WorkerV5ScreenLayout
     actions={{
       handlePrimaryAction,
@@ -462,7 +458,6 @@ function WorkerV5ScreenSurface({ screen }: { screen: WorkerV5ScreenDefinition })
       onDockScroll,
       onHeaderBack: handleHeaderBack,
       onOpenJobChat: openJobChat,
-      onOpenOfferMenu: openOfferMenu,
       onSignOut: () => void signOut(),
       openWorkerAvatarPicker,
       runRouteAction,
@@ -545,12 +540,10 @@ type WorkerV5ScreenHeaderState = {
 function WorkerV5ScreenHeader({
   onBack,
   onOpenJobChat,
-  onOpenOfferMenu,
   state,
 }: {
   onBack: () => void
   onOpenJobChat: () => void
-  onOpenOfferMenu: () => void
   state: WorkerV5ScreenHeaderState
 }) {
   const {
@@ -605,11 +598,7 @@ function WorkerV5ScreenHeader({
       ) : <Text style={[styles.phaseText, workerThemeMode === 'dark' ? styles.phaseTextDark : null]}>{phaseCopy[screen.phase][language]}</Text>}
       {showPlainTitle ? <Text style={[styles.titleText, workerThemeMode === 'dark' ? styles.titleTextDark : null]}>{title}</Text> : null}
     </View>
-    {usesOpportunityInboxHandoff || usesEarningsOverviewHandoff ? null : usesOfferDetailHandoff ? (
-      <Pressable accessibilityLabel={language === 'vi' ? 'Tùy chọn đề nghị' : 'Offer options'} accessibilityRole="button" onPress={onOpenOfferMenu} style={({ pressed }) => [styles.iconButton, pressed && !reduceMotion ? styles.pressed : null]} testID="worker-v5-offer-menu">
-        <Text style={styles.headerMenuText}>•••</Text>
-      </Pressable>
-    ) : usesRouteEtaHandoff ? (
+    {usesOpportunityInboxHandoff || usesEarningsOverviewHandoff || usesOfferDetailHandoff ? null : usesRouteEtaHandoff ? (
       <Pressable accessibilityLabel={language === 'vi' ? 'Tùy chọn di chuyển' : 'Travel options'} accessibilityRole="button" onPress={onOpenJobChat} style={({ pressed }) => [styles.iconButton, pressed && !reduceMotion ? styles.pressed : null]} testID="worker-v5-route-menu">
         <Text style={styles.headerMenuText}>•••</Text>
       </Pressable>
@@ -673,7 +662,6 @@ type WorkerV5ScreenLayoutActions = {
   onDockScroll: ReturnType<typeof useDockScrollHandler>
   onHeaderBack: () => void
   onOpenJobChat: () => void
-  onOpenOfferMenu: () => void
   onSignOut: () => void
   openWorkerAvatarPicker: () => void
   runRouteAction: () => void | Promise<void>
@@ -713,7 +701,7 @@ function WorkerV5ScreenLayout({ actions, state }: { actions: WorkerV5ScreenLayou
   return <SafeAreaView style={[styles.safeArea, surfaceStyle, usesStageFiveProduction ? styles.stageFiveSafeArea : null]} testID={`worker-v5-screen-${screen.id}`}>
     {usesStageFiveProduction ? null : <WorkerV5ScreenAuras state={auraState} />}
     <ScrollView bounces={false} contentContainerStyle={[styles.scrollContent, usesStageFiveProduction ? styles.stageFiveScrollContent : null, headerState.usesEarningsOverviewHandoff ? styles.earningsOverviewScrollContent : null, usesKaelOrbHandoff ? styles.kaelOrbCustomerScrollContent : null, { minHeight }]} onScroll={actions.onDockScroll} scrollEventThrottle={16} showsVerticalScrollIndicator={false} testID="worker-v5-scroll">
-      {usesStageFiveProduction || headerState.usesEarningsOverviewHandoff || headerState.usesOpportunityInboxHandoff ? null : <WorkerV5ScreenHeader onBack={actions.onHeaderBack} onOpenJobChat={actions.onOpenJobChat} onOpenOfferMenu={actions.onOpenOfferMenu} state={headerState} />}
+      {usesStageFiveProduction || headerState.usesEarningsOverviewHandoff || headerState.usesOpportunityInboxHandoff ? null : <WorkerV5ScreenHeader onBack={actions.onHeaderBack} onOpenJobChat={actions.onOpenJobChat} state={headerState} />}
       {!usesHandoffStage ? <View style={[styles.glassCard, reduceTransparency && styles.opaqueCard]}>
         {!reduceTransparency ? <MintAura intensity="component" style={styles.cardMintAura} testID="worker-v5-hero-mint-aura" /> : null}
         <View pointerEvents="none" style={styles.cardTopHighlight} />

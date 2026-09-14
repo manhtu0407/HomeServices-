@@ -50,8 +50,16 @@ const source = [
   'worker-jobs-zip-prototype-style-core.ts',
   'worker-jobs-zip-prototype-style-stages.ts',
   'worker-jobs-zip-prototype-style-stage-two.ts',
+  'worker-jobs-stage-two-workart.tsx',
   'worker-jobs-zip-prototype-styles.ts',
 ].map((fileName) => readSource('../jobs', fileName)).join('\n')
+const requestDetailsSource = [
+  'request-details-content.tsx',
+  'request-details-icons.tsx',
+  'request-details-model.ts',
+  'request-details-tokens.ts',
+  'request-details.types.ts',
+].map((fileName) => readSource('../jobs/request-details', fileName)).join('\n')
 const evidenceSource = readSource('../../ui/job-evidence-gallery.tsx')
 const advisoryStylesSource = readSource('../jobs/advisory-styles.ts')
 const progressSource = readSource('../jobs/progress-surfaces.tsx')
@@ -66,6 +74,7 @@ describe('Worker Jobs ZIP Prototype', () => {
       stageTenModelSource,
       stageTenTokensSource,
       source,
+      requestDetailsSource,
       evidenceSource,
       advisoryStylesSource,
       progressSource,
@@ -122,19 +131,33 @@ describe('Worker Jobs ZIP Prototype', () => {
     expect(resolveZipPrototypeSelection({ ns_worker_stage: 'payment-confirmed' }).prototypeStage).toBe('payment-confirmed')
   })
 
-  it('uses one functional icon frame scale across Stage 2', () => {
-    expect(source).toContain('height: 56')
-    expect(source).toContain('width: 56')
-    expect(source).toContain('borderRadius: 16')
-    expect(source).toContain('name={iconNames[index] ?? \'request\'} size={24}')
-    expect(source).toContain('name={iconName} size={24}')
-    expect(source).toContain('name="time" size={24}')
+  it('uses one section-card surface for the redesigned Stage 2 details', () => {
+    expect(source).toContain('WorkerRequestDetailsSections')
+    expect(source).toContain('buildWorkerRequestDetailsGroups')
+    expect(requestDetailsSource).toContain('testID="worker-v5-offer-section-stack"')
+    expect(requestDetailsSource).toContain('function CardHeader')
+    expect(requestDetailsSource).not.toContain('sectionIconFrame')
   })
 
+  it('uses the Booking Workart treatment on the left 40 percent of the Stage 2 summary', () => {
+    expect(source).toContain('WorkerStageTwoOfferWorkart')
+    expect(source).toContain('testID="worker-v5-offer-detail-workart-panel"')
+    expect(source).toContain('contentFit="cover"')
+    expect(source).toContain("flexBasis: '40%'")
+    expect(source).toContain("width: '40%'")
+    expect(source).toContain("panelColor={tokens.mode === 'dark' ? tokens.ghost : '#E8F5F1'}")
+    expect(source).toContain('surfaceColor={reduceTransparency ? tokens.base : tokens.raised}')
+    expect(source).toContain("borderRadius: 24")
+    expect(source).toContain('minHeight: 168')
+    expect(source).not.toContain("maxWidth: '56%'")
+  })
   it('uses distinct semantic icons for the offer, cleaning, and earnings rows', () => {
-    expect(source).toContain("iconNames={['home', 'service', 'photo']}")
-    expect(source).toContain("? 'inbox'")
-    expect(source).toContain(": 'wallet'")
+    expect(requestDetailsSource).toContain("const REQUEST_ROW_ICONS: readonly RequestDetailsIconName[] = ['bubble', 'wrench', 'photo']")
+    expect(requestDetailsSource).toContain("const PRICE_ROW_ICONS: readonly RequestDetailsIconName[] = ['tag', 'banknote', 'wallet', 'check']")
+    expect(requestDetailsSource).toContain("const READY_ROW_ICONS: readonly RequestDetailsIconName[] = ['envelope', 'shieldCheck', 'lock', 'receipt']")
+    expect(requestDetailsSource).toContain("icon: 'clipboard'")
+    expect(requestDetailsSource).toContain("icon: 'coins'")
+    expect(requestDetailsSource).toContain("icon: 'briefcase'")
   })
 
   it('keeps direct stage review independent from workflow conditions', () => {
