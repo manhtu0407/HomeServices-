@@ -18,7 +18,7 @@ describe('local integration workflow', () => {
     expect(workflow).toContain('Prepare canonical empty-reset migration workdir')
     expect(workflow).toContain('scripts/harness/prepare-migration-workdir.mjs')
     expect(workflow).toContain('--empty-reset')
-    expect(workflow).toContain('--workdir .scratch/integration-migrations')
+    expect(workflow).toContain('--workdir ../../.scratch/integration-migrations')
     expect(workflow).toContain('Replay migrations from empty state')
     expect(workflow).toContain('NESTSCOUT_ENVIRONMENT: local')
     expect(workflow).not.toContain('SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.')

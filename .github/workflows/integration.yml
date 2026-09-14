@@ -42,9 +42,9 @@ jobs:
             --inventory config/harness/migration-inventory.json \
             --output .scratch/integration-migrations
       - name: Start isolated local Supabase
-        run: pnpm --filter @nestscout/api exec supabase start --workdir .scratch/integration-migrations
+        run: pnpm --filter @nestscout/api exec supabase start --workdir ../../.scratch/integration-migrations
       - name: Replay migrations from empty state
-        run: pnpm --filter @nestscout/api exec supabase db reset --local --workdir .scratch/integration-migrations
+        run: pnpm --filter @nestscout/api exec supabase db reset --local --workdir ../../.scratch/integration-migrations
       - name: Integration tests against local Supabase
         env:
           NESTSCOUT_ENVIRONMENT: local
