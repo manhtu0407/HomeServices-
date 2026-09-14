@@ -65,6 +65,19 @@ async function fetchHealth(url) {
   return await response.json()
 }
 
+function assertProductionOrLocalHealthUrl(value) {
+  const url = new URL(value)
+  const isLocal = ['localhost', '127.0.0.1', '[::1]', '0.0.0.0', 'host.docker.internal'].includes(url.hostname)
+  const isProduction = url.hostname === 'iwevizmsedyqozxlawwl.supabase.co'
+  if (url.username || url.password || url.search || url.hash ||
+      (!isLocal && (url.protocol !== 'https:' || !isProduction)) ||
+      (isLocal && !['http:', 'https:'].includes(url.protocol)) ||
+      url.pathname.replace(/\/+$/u, '') !== '/functions/v1/mobile-api/harness/health') {
+    throw new Error('Hosted parity health checks are locked to local or the registered Production backend.')
+  }
+  return url.toString()
+}
+
 function parseArgs(values) {
   const options = {}
   const flags = {
@@ -93,7 +106,7 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
 
     const health = options.healthFile
       ? JSON.parse(readFileSync(resolve(root, options.healthFile), 'utf-8'))
-      : await fetchHealth(options.healthUrl)
+      : await fetchHealth(assertProductionOrLocalHealthUrl(options.healthUrl))
     const versions = readMigrationVersions(JSON.parse(readFileSync(resolve(root, options.migrations), 'utf-8')))
     const inventory = JSON.parse(readFileSync(resolve(root, INVENTORY), 'utf-8'))
 

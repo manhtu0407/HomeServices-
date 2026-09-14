@@ -2,7 +2,7 @@ const { Buffer } = require('node:buffer')
 const { resolve } = require('node:path')
 
 const PRODUCTION_SUPABASE_ORIGIN = 'https://iwevizmsedyqozxlawwl.supabase.co'
-const STAGING_SUPABASE_ORIGIN = 'https://xyylanuyflrjzbjzhqfl.supabase.co'
+const LOCAL_HOSTS = new Set(['127.0.0.1', 'localhost', '[::1]', '0.0.0.0', 'host.docker.internal'])
 
 function assertReleaseAuthConfig({
   apiBaseUrl,
@@ -14,7 +14,7 @@ function assertReleaseAuthConfig({
   if (isEasBuild && (!supabaseUrl || !supabasePublishableKey)) {
     throw new Error('EAS build requires EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY for login.')
   }
-  if (!isEasBuild) return
+  if (!supabaseUrl && !apiBaseUrl) return
 
   if (!isPublishableKey(supabasePublishableKey)) {
     throw new Error('EAS build requires a Supabase publishable or legacy anon key; server authority is forbidden.')
@@ -25,16 +25,19 @@ function assertReleaseAuthConfig({
   if (mobileApi.origin !== supabase.origin) {
     throw new Error('EAS mobile-api URL must use the same Supabase origin as auth.')
   }
-  if (['production', 'native-proof-production'].includes(buildProfile) && supabase.origin !== PRODUCTION_SUPABASE_ORIGIN) {
-    throw new Error('Production EAS builds must target the production Supabase project.')
-  }
-  if (['preview', 'native-proof-staging'].includes(buildProfile) && supabase.origin !== STAGING_SUPABASE_ORIGIN) {
-    throw new Error('Preview EAS builds must target the staging Supabase project.')
+  if (!LOCAL_HOSTS.has(supabase.hostname) && supabase.origin !== PRODUCTION_SUPABASE_ORIGIN) {
+    throw new Error(`Only the registered Production Supabase project is available; ${buildProfile || 'this'} build targets are locked.`)
   }
 }
 
 function parseSupabaseRoot(raw) {
   const url = parseUrl(raw, 'Supabase URL')
+  if (LOCAL_HOSTS.has(url.hostname)) {
+    if (!['http:', 'https:'].includes(url.protocol) || normalizePath(url.pathname) !== '/') {
+      throw new Error('Local Supabase URL must use an HTTP(S) project root.')
+    }
+    return url
+  }
   if (
     url.protocol !== 'https:' ||
     !/^[a-z0-9]{20}\.supabase\.co$/.test(url.hostname) ||
@@ -47,7 +50,9 @@ function parseSupabaseRoot(raw) {
 
 function parseMobileApi(raw) {
   const url = parseUrl(raw, 'mobile-api URL')
-  if (url.protocol !== 'https:' || normalizePath(url.pathname) !== '/functions/v1/mobile-api') {
+  if ((!LOCAL_HOSTS.has(url.hostname) && url.protocol !== 'https:') ||
+      (LOCAL_HOSTS.has(url.hostname) && !['http:', 'https:'].includes(url.protocol)) ||
+      normalizePath(url.pathname) !== '/functions/v1/mobile-api') {
     throw new Error('EAS mobile-api URL must use the exact Edge function path.')
   }
   return url
@@ -60,7 +65,7 @@ function parseUrl(raw, label) {
   } catch {
     throw new Error(`EAS ${label} is invalid.`)
   }
-  if (url.port) {
+  if (url.port && !LOCAL_HOSTS.has(url.hostname)) {
     throw new Error(`EAS ${label} must use the default HTTPS port.`)
   }
   if (url.username || url.password || url.search || url.hash) {
@@ -88,7 +93,7 @@ function isPublishableKey(raw) {
 
 function resolveMobileEnvFiles({ configDir, explicitEnvFiles, isEasBuild, repoRoot }) {
   return [
-    ...(isEasBuild ? [] : [resolve(configDir, '.env.staging')]),
+    ...(isEasBuild ? [] : [resolve(configDir, '.env.production')]),
     resolve(repoRoot, '.env'),
     resolve(repoRoot, '.env.local'),
     resolve(configDir, '.env'),

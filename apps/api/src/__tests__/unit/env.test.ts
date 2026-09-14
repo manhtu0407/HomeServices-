@@ -105,10 +105,10 @@ describe('env module', () => {
 
   describe('client env getters', () => {
     it('env.supabaseUrl returns correct value', async () => {
-      vi.stubEnv('NEXT_PUBLIC_SUPABASE_URL', 'https://abcdefghijklmnopqrst.supabase.co/')
+      vi.stubEnv('NEXT_PUBLIC_SUPABASE_URL', 'https://iwevizmsedyqozxlawwl.supabase.co/')
       vi.stubEnv('NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY', 'test-key')
       const mod = await import('@/lib/env')
-      expect(mod.env.supabaseUrl).toBe('https://abcdefghijklmnopqrst.supabase.co')
+      expect(mod.env.supabaseUrl).toBe('https://iwevizmsedyqozxlawwl.supabase.co')
     })
 
     it('env.supabasePublishableKey returns correct value', async () => {

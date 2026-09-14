@@ -3,9 +3,9 @@ import { existsSync, realpathSync } from 'node:fs'
 import { basename, dirname, isAbsolute, relative, resolve } from 'node:path'
 
 const PROJECT_REFS = {
-  staging: 'xyylanuyflrjzbjzhqfl',
   production: 'iwevizmsedyqozxlawwl',
 }
+const NON_PRODUCTION_LOCK_MESSAGE = 'Staging and non-production Supabase targets are locked; only Production is available.'
 
 export function assertLiveApproval(name, expectedValue) {
   if (process.env[name] !== expectedValue) {
@@ -14,6 +14,7 @@ export function assertLiveApproval(name, expectedValue) {
 }
 
 export function assertSupabaseTargets(environment, supabaseUrl, mobileApiUrl) {
+  if (environment !== 'production') throw new Error(NON_PRODUCTION_LOCK_MESSAGE)
   const projectRef = PROJECT_REFS[environment]
   if (!projectRef) throw new Error(`Unsupported Supabase environment: ${environment}`)
   const expectedOrigin = `https://${projectRef}.supabase.co`
@@ -30,6 +31,7 @@ export function assertSupabaseTargets(environment, supabaseUrl, mobileApiUrl) {
 }
 
 export function assertSupabaseProjectRef(environment, actualRef) {
+  if (environment !== 'production') throw new Error(NON_PRODUCTION_LOCK_MESSAGE)
   const expectedRef = PROJECT_REFS[environment]
   if (!expectedRef || String(actualRef ?? '').trim() !== expectedRef) {
     throw new Error(`Supabase workdir must use the exact ${environment} project ref ${expectedRef ?? ''}`.trim())

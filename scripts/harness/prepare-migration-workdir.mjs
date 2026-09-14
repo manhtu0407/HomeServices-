@@ -9,11 +9,11 @@ import { pendingMigrationEntries } from './release-safety.mjs'
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..')
 
 export function buildMigrationApplyPlan(input) {
+  if (input.mode === 'staging-catchup') {
+    throw new Error('Staging migration catch-up is locked; only the Production migration lane is available.')
+  }
   const expectedPending = pendingMigrationEntries(input.inventory, input.hosted.migrations)
   const stagingCatchup = input.mode === 'staging-catchup'
-  if (stagingCatchup && (input.hosted.environment !== 'staging' || input.hosted.projectRef !== 'xyylanuyflrjzbjzhqfl')) {
-    throw new Error('migration catch-up mode is restricted to the registered Staging project')
-  }
   const suppliedPending = stagingCatchup ? expectedPending : input.receipt?.pendingMigrations
   if (!Array.isArray(suppliedPending)) throw new Error('expand-only receipt has no pending migration inventory')
   const expectedIdentity = expectedPending.map((entry) => `${entry.version}:${entry.file}`)

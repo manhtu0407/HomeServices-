@@ -16,6 +16,9 @@ const PROJECT_REFS = Object.freeze({
 })
 
 export async function collectHostedDeploymentState(input) {
+  if (input?.environment !== 'production' || input.projectRef !== PROJECT_REFS.production) {
+    throw new Error('Hosted deployment evidence is Production-only; Staging and Preview targets are locked')
+  }
   const expectedRef = PROJECT_REFS[input.environment]
   if (!expectedRef || input.projectRef !== expectedRef) {
     throw new Error('hosted deployment environment and project ref do not match the registered target')

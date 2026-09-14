@@ -133,40 +133,14 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITLEAKS_CONFIG: config/security/gitleaks.toml
-      - name: Staging integration pillar
-        env:
-          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
-          NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
-          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-          NESTSCOUT_ENVIRONMENT: staging
-          SUPABASE_PROJECT_REF: xyylanuyflrjzbjzhqfl
-          HARNESS_REMOTE_MUTATION_APPROVAL: ${{ github.run_id }}
-        run: |
-          test "$NEXT_PUBLIC_SUPABASE_URL" = "https://xyylanuyflrjzbjzhqfl.supabase.co"
-          test -n "$NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY"
-          test -n "$SUPABASE_SERVICE_ROLE_KEY"
-          HARNESS_RELEASE_ID=$(node --input-type=module <<'NODE'
-          const response = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/mobile-api/harness/health`, {
-            headers: { apikey: process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY },
-            signal: AbortSignal.timeout(30_000),
-          })
-          if (!response.ok) throw new Error(`Staging release health returned HTTP ${response.status}`)
-          const health = await response.json()
-          const releaseId = health?.release?.release_id
-          if (health?.status !== 'ok' || health?.environment?.name !== 'staging' ||
-              health?.release?.registered !== true ||
-              !/^harness-[0-9a-f]{12}-[0-9a-f]{12}$/u.test(releaseId ?? '')) {
-            throw new Error('Staging has no complete registered release identity')
-          }
-          process.stdout.write(releaseId)
-          NODE
-          )
-          export HARNESS_RELEASE_ID
-          pnpm --filter @nestscout/api exec vitest run src/__tests__/integration
       - name: Start isolated local Supabase
         run: pnpm --filter @nestscout/api exec supabase start
       - name: Replay migrations from empty state
         run: pnpm --filter @nestscout/api exec supabase db reset --local
+      - name: Local integration pillar
+        env:
+          NESTSCOUT_ENVIRONMENT: local
+        run: pnpm --filter @nestscout/api exec vitest run --passWithNoTests=false src/__tests__/integration
       - name: run-sql-tests
         env:
           NESTSCOUT_TEST_DB_URL: postgresql://postgres:postgres@127.0.0.1:55322/postgres
@@ -181,7 +155,7 @@ jobs:
       - name: Record quality receipt
         run: |
           mkdir -p artifacts/release
-          node -e "require('node:fs').writeFileSync('artifacts/release/quality.json', JSON.stringify({gitSha:process.env.GITHUB_SHA,runId:process.env.GITHUB_RUN_ID,status:'passed',gates:['workspace-typecheck','workspace-tests','workspace-build','security','harness','edge-deno','database-reset','sql-verification','generated-types','staging-integration']},null,2)+'\n')"
+          node -e "require('node:fs').writeFileSync('artifacts/release/quality.json', JSON.stringify({gitSha:process.env.GITHUB_SHA,runId:process.env.GITHUB_RUN_ID,status:'passed',gates:['workspace-typecheck','workspace-tests','workspace-build','security','harness','edge-deno','database-reset','local-integration','sql-verification','generated-types']},null,2)+'\n')"
       - name: Upload quality evidence
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:

@@ -153,6 +153,7 @@ async function many(query) {
 }
 
 function loadConfig(options) {
+  assertStagingBackendLocked()
   const release = JSON.parse(readFileSync(resolveReleaseArtifactPath(ROOT, options.release), 'utf8'))
   const releaseProblems = checkHarnessRelease(release)
   if (releaseProblems.length > 0) throw new Error(`release artifact is invalid: ${releaseProblems.join('; ')}`)
@@ -191,6 +192,10 @@ function loadConfig(options) {
       runtimeVersion: options.iosRuntimeVersion,
     },
   }
+}
+
+function assertStagingBackendLocked() {
+  throw new Error('Staging backend is locked; the native persona driver is unavailable.')
 }
 
 function parseArgs(args) {

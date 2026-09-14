@@ -3,6 +3,8 @@ type EnvConfig = {
   server: string[]
 }
 
+const PRODUCTION_SUPABASE_HOST = 'iwevizmsedyqozxlawwl.supabase.co'
+
 const config: EnvConfig = {
   client: [
     'NEXT_PUBLIC_SUPABASE_URL',
@@ -59,14 +61,14 @@ function requireTrustedSupabaseUrl(): string {
   const isLoopback = url.hostname === 'localhost' || url.hostname === '127.0.0.1' ||
     url.hostname === '[::1]'
   const isHostedProject = url.protocol === 'https:' && url.port === '' &&
-    /^[a-z0-9]{20}\.supabase\.co$/.test(url.hostname)
+    url.hostname === PRODUCTION_SUPABASE_HOST
   const normalizedPath = url.pathname.replace(/\/+$/, '') || '/'
   if (
     (!isLoopback && !isHostedProject) ||
     (isLoopback && url.protocol !== 'http:' && url.protocol !== 'https:') ||
     url.username || url.password || url.search || url.hash || normalizedPath !== '/'
   ) {
-    throw new Error('Supabase URL must use an exact trusted project root')
+    throw new Error('Supabase URL must use an exact trusted project root from the local stack or registered Production project')
   }
   return url.origin
 }

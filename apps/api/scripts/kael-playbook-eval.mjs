@@ -394,6 +394,7 @@ function mockTransport(mockText) {
 }
 
 async function buildLiveConfig() {
+  assertStagingBackendLocked()
   const rawBaseUrl = requireEnv('KAEL_PB_EVAL_MOBILE_API_URL')
   const anonKey = process.env.KAEL_PB_EVAL_ANON_KEY?.trim() || null
   const email = process.env.KAEL_PB_EVAL_EMAIL?.trim()
@@ -428,6 +429,10 @@ async function buildLiveConfig() {
   }
   if (!config.bearerToken && !(await config.refresh())) throw new Error('missing_eval_auth')
   return config
+}
+
+function assertStagingBackendLocked() {
+  throw new Error('Staging backend is locked; the Staging-only playbook evaluator is unavailable.')
 }
 
 function buildLiveClientHeaders() {
@@ -662,7 +667,7 @@ function printHelp() {
 Mock contract run:
   node apps/api/scripts/kael-playbook-eval.mjs --mock <fixture.json> --label mock --date YYYY-MM-DD --repetitions 3 --allow-failures
 
-Live staging run requires KAEL_PB_EVAL_MOBILE_API_URL, KAEL_PB_EVAL_DEPLOYMENT_VERSION, an explicit --playbook-enabled arm, client identity variables KAEL_PB_EVAL_CLIENT_PLATFORM, KAEL_PB_EVAL_CLIENT_APPLICATION_ID, KAEL_PB_EVAL_CLIENT_BUILD_NUMBER, KAEL_PB_EVAL_CLIENT_CONTRACT_EPOCH, KAEL_PB_EVAL_CLIENT_EAS_BUILD_ID, KAEL_PB_EVAL_CLIENT_RUNTIME_VERSION, KAEL_PB_EVAL_CLIENT_GIT_SHA, KAEL_PB_EVAL_CLIENT_RELEASE_ID, and either KAEL_PB_EVAL_BEARER_TOKEN or KAEL_PB_EVAL_EMAIL, KAEL_PB_EVAL_PASSWORD, KAEL_PB_EVAL_SUPABASE_URL, KAEL_PB_EVAL_ANON_KEY.
+Live evaluation is locked to prevent remote Staging/Preview access; use --mock for deterministic evaluation until an explicit unlock command is issued.
 
 Flags: --mock, --label, --corpus, --report, --service (electrical|plumbing|cleaning|hvac|upholstery|handyman), --date, --delay, --offset, --limit, --max-turns, --retry-wait, --timeout, --repetitions, --district, --playbook-enabled, --allow-failures.`)
 }

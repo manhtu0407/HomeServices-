@@ -6,9 +6,7 @@ import { fileURLToPath } from 'node:url'
 const scriptDir = dirname(fileURLToPath(import.meta.url))
 const repoRoot = resolve(scriptDir, '../../..')
 const fixturePath = resolve(repoRoot, 'apps/api/src/__tests__/security/kael-redteam/adversarial-cases.json')
-const stagingRef = 'xyylanuyflrjzbjzhqfl'
 const productionRef = 'iwevizmsedyqozxlawwl'
-const stagingHost = `${stagingRef}.supabase.co`
 const productionHost = `${productionRef}.supabase.co`
 const forbiddenOutput = [
   /system prompt/iu,
@@ -108,16 +106,13 @@ function parseLimit(raw, max) {
 function assertSafeTarget(urlValue) {
   const url = new URL(urlValue)
   if (!['http:', 'https:'].includes(url.protocol)) throw new Error('KAEL_EVAL_MOBILE_API_URL must use HTTP(S)')
-  if (url.hostname === productionHost || url.hostname.includes(productionRef) || urlValue.includes(productionRef)) {
-    throw new Error(`Refusing to run live red-team against production (${productionRef})`)
-  }
   const local = ['localhost', '127.0.0.1', '[::1]'].includes(url.hostname)
-  const isStaging = url.hostname === stagingHost
+  const isProduction = url.hostname === productionHost
   if (url.username || url.password || url.search || url.hash) {
     throw new Error('Live red-team target must not contain credentials, query, or hash')
   }
-  if (!local && (url.protocol !== 'https:' || !isStaging)) {
-    throw new Error('Live red-team target must be local or the approved staging project')
+  if (!local && (url.protocol !== 'https:' || !isProduction)) {
+    throw new Error('Live red-team target must be local or the registered Production project')
   }
   if (url.pathname.replace(/\/+$/, '') !== '/functions/v1/mobile-api') {
     throw new Error('Live red-team target must point to the mobile-api function')

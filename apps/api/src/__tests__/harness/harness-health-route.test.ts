@@ -7,12 +7,12 @@ describe('Harness health route', () => {
   it('exposes public-safe environment and immutable release identity', async () => {
     const services = createEdgeServices({
       harnessEnvironment: resolveHarnessEnvironment({
-        url: 'https://xyylanuyflrjzbjzhqfl.supabase.co',
-        environment: 'staging',
+        url: 'https://iwevizmsedyqozxlawwl.supabase.co',
+        environment: 'production',
       }),
       harnessRelease: {
         releaseId: 'harness-aaaaaaaaaaaa-bbbbbbbbbbbb',
-        deploymentId: 'xyylanuyflrjzbjzhqfl_10000000-0000-4000-8000-000000000053_7',
+        deploymentId: 'iwevizmsedyqozxlawwl_10000000-0000-4000-8000-000000000053_7',
         gitSha: 'a'.repeat(40),
         manifestSha256: 'b'.repeat(64),
         bundleSha256: 'c'.repeat(64),
@@ -52,14 +52,14 @@ describe('Harness health route', () => {
       service: 'mobile-api',
       status: 'ok',
       environment: {
-        name: 'staging',
-        project_ref: 'xyylanuyflrjzbjzhqfl',
-        provider_configuration_class: 'staging-isolated',
-        webhook_configuration_class: 'staging-sandbox',
+        name: 'production',
+        project_ref: 'iwevizmsedyqozxlawwl',
+        provider_configuration_class: 'production-locked',
+        webhook_configuration_class: 'production-signed',
       },
       release: {
         release_id: 'harness-aaaaaaaaaaaa-bbbbbbbbbbbb',
-        deployment_id: 'xyylanuyflrjzbjzhqfl_10000000-0000-4000-8000-000000000053_7',
+        deployment_id: 'iwevizmsedyqozxlawwl_10000000-0000-4000-8000-000000000053_7',
         source_bundle_sha256: 'd'.repeat(64),
         production_ui_source_sha256: '5'.repeat(64),
         migration_inventory_sha256: '1'.repeat(64),

@@ -25,7 +25,7 @@ describe('privileged admin script safety', () => {
       'staging',
       'https://xyylanuyflrjzbjzhqfl.supabase.co',
       'https://xyylanuyflrjzbjzhqfl.supabase.co/functions/v1/mobile-api',
-    )).not.toThrow()
+    )).toThrow('Staging and non-production Supabase targets are locked')
     expect(() => assertSupabaseTargets(
       'production',
       'https://iwevizmsedyqozxlawwl.supabase.co/',
@@ -33,35 +33,35 @@ describe('privileged admin script safety', () => {
     )).not.toThrow()
 
     for (const attackerUrl of [
-      'https://attacker.example/xyylanuyflrjzbjzhqfl',
-      'https://xyylanuyflrjzbjzhqfl.supabase.co.attacker.example',
-      'https://xyylanuyflrjzbjzhqfl.supabase.co@attacker.example',
+      'https://attacker.example/iwevizmsedyqozxlawwl',
+      'https://iwevizmsedyqozxlawwl.supabase.co.attacker.example',
+      'https://iwevizmsedyqozxlawwl.supabase.co@attacker.example',
     ]) {
       expect(() => assertSupabaseTargets(
-        'staging',
+        'production',
         attackerUrl,
-        'https://xyylanuyflrjzbjzhqfl.supabase.co/functions/v1/mobile-api',
-      )).toThrow('exact staging Supabase origin')
+        'https://iwevizmsedyqozxlawwl.supabase.co/functions/v1/mobile-api',
+      )).toThrow('exact production Supabase origin')
     }
     expect(() => assertSupabaseTargets(
-      'staging',
-      'https://xyylanuyflrjzbjzhqfl.supabase.co',
-      'https://attacker.example/functions/v1/mobile-api?xyylanuyflrjzbjzhqfl=1',
-    )).toThrow('exact staging Supabase origin')
+      'production',
+      'https://iwevizmsedyqozxlawwl.supabase.co',
+      'https://attacker.example/functions/v1/mobile-api?iwevizmsedyqozxlawwl=1',
+    )).toThrow('exact production Supabase origin')
     expect(() => assertSupabaseTargets(
-      'staging',
-      'https://user:secret@xyylanuyflrjzbjzhqfl.supabase.co',
-      'https://xyylanuyflrjzbjzhqfl.supabase.co/functions/v1/mobile-api',
-    )).toThrow('exact staging Supabase origin')
+      'production',
+      'https://user:secret@iwevizmsedyqozxlawwl.supabase.co',
+      'https://iwevizmsedyqozxlawwl.supabase.co/functions/v1/mobile-api',
+    )).toThrow('exact production Supabase origin')
     expect(() => assertSupabaseTargets(
-      'staging',
-      'https://xyylanuyflrjzbjzhqfl.supabase.co',
-      'https://xyylanuyflrjzbjzhqfl.supabase.co/functions/v1/mobile-api?token=secret',
-    )).toThrow('exact staging Supabase origin')
+      'production',
+      'https://iwevizmsedyqozxlawwl.supabase.co',
+      'https://iwevizmsedyqozxlawwl.supabase.co/functions/v1/mobile-api?token=secret',
+    )).toThrow('exact production Supabase origin')
     expect(() => assertSupabaseTargets(
-      'staging',
-      'https://xyylanuyflrjzbjzhqfl.supabase.co',
-      'https://xyylanuyflrjzbjzhqfl.supabase.co/functions/v1/not-mobile-api',
+      'production',
+      'https://iwevizmsedyqozxlawwl.supabase.co',
+      'https://iwevizmsedyqozxlawwl.supabase.co/functions/v1/not-mobile-api',
     )).toThrow('exact mobile-api path')
   })
 
@@ -71,8 +71,8 @@ describe('privileged admin script safety', () => {
     expect(() => assertLiveApproval('TEST_PRIVILEGED_RUN', 'I_UNDERSTAND_PRODUCTION_MUTATION')).toThrow(
       'I_UNDERSTAND_PRODUCTION_MUTATION',
     )
-    expect(() => assertSupabaseProjectRef('staging', 'xyylanuyflrjzbjzhqfl')).not.toThrow()
-    expect(() => assertSupabaseProjectRef('staging', 'iwevizmsedyqozxlawwl')).toThrow('staging project ref')
+    expect(() => assertSupabaseProjectRef('production', 'iwevizmsedyqozxlawwl')).not.toThrow()
+    expect(() => assertSupabaseProjectRef('staging', 'xyylanuyflrjzbjzhqfl')).toThrow('Staging and non-production Supabase targets are locked')
     expect(readBoundedInteger('2', 'retries', 0, 2)).toBe(2)
     expect(() => readBoundedInteger('200', 'retries', 0, 2)).toThrow('between 0 and 2')
     expect(resolveWorkspacePath(repoRoot, 'docs/test-logs/report.md', 'report')).toBe(

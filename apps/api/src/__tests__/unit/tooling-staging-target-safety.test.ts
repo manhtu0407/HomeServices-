@@ -73,18 +73,19 @@ describe('PowerShell staging target safety', () => {
 
     expect(source).toContain('staging-target-safety.ps1')
     expect(source).toContain('Assert-StagingSupabaseTargets')
+    expect(source).toContain('Staging backend is locked')
     expect(source).toContain('Assert-SupabasePublishableKey')
     expect(source).not.toMatch(/\.Contains\(\$stagingRef\)|-notlike\s+"\*\$stagingRef\*"/)
   })
 
-  it.skipIf(!hasPowerShell)('accepts only the canonical staging Supabase root and mobile-api path', () => {
+  it.skipIf(!hasPowerShell)('rejects the canonical staging Supabase root after the permanent lock', () => {
     const result = validateTargets(
       'staging',
       'https://xyylanuyflrjzbjzhqfl.supabase.co',
       'https://xyylanuyflrjzbjzhqfl.supabase.co/functions/v1/mobile-api',
     )
 
-    expect(result.status, result.stderr).toBe(0)
+    expect(result.status, result.stderr).not.toBe(0)
   }, POWERSHELL_TEST_TIMEOUT_MS)
 
   it.skipIf(!hasPowerShell).each([
@@ -144,19 +145,23 @@ describe('PowerShell production target safety', () => {
   const sharedPreviewRunnerPath = resolve(__dirname, '../../../../..', 'scripts/run-mobile-web-preview.ps1')
   const sharedPreviewRunner = readFileSync(sharedPreviewRunnerPath, 'utf8')
 
-  it.each([
-    ['scripts/run-mobile-web-staging-preview.ps1', 'staging'],
-    ['scripts/run-mobile-web-production-preview.ps1', 'production'],
-  ] as const)('%s delegates to the shared preview runner for %s', (relativePath, environment) => {
-    const source = readFileSync(resolve(__dirname, '../../../../..', relativePath), 'utf8')
+  it('keeps the staging preview entry point locked', () => {
+    const source = readFileSync(resolve(__dirname, '../../../../..', 'scripts/run-mobile-web-staging-preview.ps1'), 'utf8')
+
+    expect(source).toContain('Staging backend is locked')
+    expect(source).not.toContain('run-mobile-web-preview.ps1')
+  })
+
+  it('delegates the Production preview entry point to the shared runner', () => {
+    const source = readFileSync(resolve(__dirname, '../../../../..', 'scripts/run-mobile-web-production-preview.ps1'), 'utf8')
 
     expect(source).toContain('run-mobile-web-preview.ps1')
-    expect(source).toContain(`-Environment ${environment}`)
+    expect(source).toContain('-Environment production')
   })
 
   it('keeps public environment loading and exact target guards in the shared preview runner', () => {
     expect(sharedPreviewRunner).toContain('staging-target-safety.ps1')
-    expect(sharedPreviewRunner).toContain('Assert-StagingSupabaseTargets -SupabaseUrl $supabaseUrl -MobileApiUrl $apiBase')
+    expect(sharedPreviewRunner).not.toContain('Assert-StagingSupabaseTargets -SupabaseUrl $supabaseUrl -MobileApiUrl $apiBase')
     expect(sharedPreviewRunner).toContain('Assert-ProductionSupabaseTargets -SupabaseUrl $supabaseUrl -MobileApiUrl $apiBase')
     expect(sharedPreviewRunner).toContain("Require-Env 'EXPO_PUBLIC_SUPABASE_URL'")
     expect(sharedPreviewRunner).toContain("Require-Env 'EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY'")

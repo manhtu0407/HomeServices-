@@ -10,6 +10,8 @@ const STAGING_URL = `https://${STAGING_PROJECT_REF}.supabase.co`
 const CUSTOMER_PRESENTATION_NAME = 'Khách hàng NestScout'
 const WORKER_PRESENTATION_NAME = 'Đối tác NestScout'
 
+assertStagingBackendLocked()
+
 const mode = process.argv[2]
 if (!new Set(['cleanup', 'prepare']).has(mode)) {
   throw new Error('usage: stage1-native-persona-fixture.mjs <prepare|cleanup>')
@@ -27,6 +29,10 @@ const result = mode === 'prepare'
   ? await prepareFixture()
   : await cleanupFixture()
 process.stdout.write(`${JSON.stringify(result)}\n`)
+
+function assertStagingBackendLocked() {
+  throw new Error('Staging backend is locked; the native persona fixture is unavailable.')
+}
 
 async function prepareFixture() {
   const createdIds = []
