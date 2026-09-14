@@ -102,6 +102,21 @@ export function money10(amount: number | null, language: AppLanguage = 'vi') {
     : `${new Intl.NumberFormat(language === 'vi' ? 'vi-VN' : 'en-US', { maximumFractionDigits: 0 }).format(amount)}đ`
 }
 
+const narrowGlyphs = new Set(['.', ',', ' '])
+
+/**
+ * Largest size, up to `preferred`, at which `text` fits `available` on one line. Glyph advances
+ * are a deliberately wide estimate for bold system numerals, and the system text scale is applied
+ * on top of the returned size, so it is divided out here. The result never goes below `min`: an
+ * amount that still does not fit wraps instead of being truncated.
+ */
+export function fitStageTenValueSize(text: string, available: number, preferred: number, min: number, fontScale = 1) {
+  if (!(available > 0)) return preferred
+  const ems = Array.from(text).reduce((sum, glyph) => sum + (narrowGlyphs.has(glyph) ? 0.3 : 0.64), 0)
+  const fitted = Math.floor(available / (ems * Math.max(1, fontScale)))
+  return Math.max(min, Math.min(preferred, fitted))
+}
+
 export function date10(iso: string | null, language: AppLanguage): StageTenDateParts {
   if (!iso || !dateValue(iso)) return { time: text10(language, 'Chưa có thời gian', 'Time unavailable'), date: '' }
 

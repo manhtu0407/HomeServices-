@@ -1,6 +1,14 @@
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 
+import React from 'react'
+import * as ReactNative from 'react-native'
+import { fireEvent, render, screen } from '@testing-library/react-native'
+
+import { STAGE_MIN_FONT_SIZE } from '../jobs/stage-ratio'
+import { StageTenContent } from '../jobs/stage-ten/stage-ten-content'
+import { buildStageTenModel, fitStageTenValueSize } from '../jobs/stage-ten/stage-ten-model'
+import { stageTenTokens } from '../jobs/stage-ten/stage-ten-tokens'
 import {
   ZIP_STAGE_SCREEN_IDS,
   resolveZipPrototypeSelection,
@@ -188,14 +196,14 @@ describe('Worker Jobs ZIP Prototype', () => {
     expect(stageTenContentSource).toContain('testID="worker-v5-stage-ten-status-workart"')
     expect(stageTenContentSource).toContain('testID="stage10-job-card"')
     expect(stageTenContentSource).toContain('testID="stage10-metric-grid"')
-    expect(stageTenContentSource).toContain('testID="stage10-summary-icon-frame"')
+    expect(stageTenContentSource).not.toContain('stage10-summary-icon-frame')
     expect(stageTenContentSource).toContain('name="chart" size={s(25)}')
     expect(stageTenContentSource).not.toContain('comparisonPercent')
     expect(stageTenContentSource).not.toContain('rankPosition')
     expect(stageTenContentSource).not.toContain('Khách hàng rất hài lòng!')
-    expect(stageTenContentSource).toContain('fontSize: s(21.5)')
-    expect(stageTenContentSource).toContain('lineHeight: s(24)')
-    expect(stageTenContentSource).toContain('marginTop: s(5)')
+    expect(stageTenContentSource).toContain('STAGE_REFERENCE_SCALE.stageTen')
+    expect(stageTenContentSource).toContain('preferred={21.5}')
+    expect(stageTenContentSource).toContain('marginTop={s(5)}')
     expect(stageTenContentSource).not.toContain('ScrollView')
     expect(stageTenContentSource).not.toContain('SafeAreaView')
     expect(stageTenModelSource).toContain('payment_state')
@@ -203,6 +211,67 @@ describe('Worker Jobs ZIP Prototype', () => {
     expect(stageTenModelSource).not.toContain('supplement')
     expect(stageTenModelSource).not.toContain('rankChange')
     expect(stageTenTokensSource).toContain('referenceContentWidth: 366')
+  })
+
+  it('keeps Stage 10 readable, its money uncut, and its summary icons unframed from compact phones to tablets', () => {
+    const originalScreen = ReactNative.Dimensions.get('screen')
+    const originalWindow = ReactNative.Dimensions.get('window')
+    const layout = (width: number) => ({ nativeEvent: { layout: { height: 0, width, x: 0, y: 0 } } })
+    const styleOf = (node: { props: { style?: unknown } }) =>
+      ReactNative.StyleSheet.flatten(node.props.style as ReactNative.StyleProp<ReactNative.TextStyle>) ?? {}
+    const model = buildStageTenModel({
+      averageRating: 4.8,
+      completedAt: '2026-09-14T03:15:00.000Z',
+      district: 'Quận 7',
+      jobId: 'job_stage10_fit',
+      ledger: [{ entry_type: 'worker_credit', job_id: 'job_stage10_fit', payment_state: 'available', recorded_at: '2026-09-14T03:20:00.000Z', worker_net: 1250000 }],
+      performanceScore: 92,
+      reviewCount: 12,
+      serviceType: 'hvac',
+      status: 'paid',
+    })
+
+    ReactNative.Dimensions.set({
+      screen: { fontScale: 1, height: 568, scale: 2, width: 320 },
+      window: { fontScale: 1, height: 568, scale: 2, width: 320 },
+    })
+    try {
+      render(<StageTenContent actions={{ onEarnings: jest.fn(), onRanking: jest.fn() }} language="vi" model={model} photoSource={null} />)
+      fireEvent(screen.getByTestId('worker-v5-stage-ten-prototype'), 'layout', layout(280))
+
+      withPillarContext(PILLAR, () => {
+        const sizes = screen.UNSAFE_getAllByType(ReactNative.Text).map((node) => styleOf(node).fontSize)
+        expect(Math.min(...sizes.map(Number))).toBeGreaterThanOrEqual(STAGE_MIN_FONT_SIZE)
+      }, 'a 320pt window must not render any Stage 10 text below the house minimum, whatever the card width')
+
+      withPillarContext(PILLAR, () => {
+        const income = screen.getByText('1.250.000đ')
+        const unmeasured = styleOf(income).fontSize as number
+        fireEvent(screen.getByTestId('stage10-income-frame'), 'layout', layout(82))
+        const fitted = styleOf(screen.getByText('1.250.000đ')).fontSize as number
+        expect(fitted).toBeLessThan(unmeasured)
+        expect(fitted).toBeGreaterThanOrEqual(STAGE_MIN_FONT_SIZE)
+        expect(screen.getByText('1.250.000đ').props.numberOfLines).toBeUndefined()
+        expect(fitStageTenValueSize('1.250.000đ', 0, 20, 11)).toBe(20)
+        expect(fitStageTenValueSize('1.250.000đ', 40, 20, 11)).toBe(11)
+        expect(fitStageTenValueSize('1.250.000đ', 82, 20, 11, 2)).toBeLessThan(fitStageTenValueSize('1.250.000đ', 82, 20, 11))
+      }, 'a seven-digit amount must shrink to its tile and never be truncated behind numberOfLines')
+
+      withPillarContext(PILLAR, () => {
+        const halos = new Set<unknown>([stageTenTokens.mintSoft, stageTenTokens.goldSoft])
+        const framed = screen.getByTestId('worker-v5-stage-ten-summary-card').findAll((node) => halos.has(styleOf(node).backgroundColor))
+        expect(framed).toHaveLength(0)
+        expect(screen.queryByTestId('stage10-summary-icon-frame')).toBeNull()
+      }, 'the summary chart and the three metric icons render bare, with no tinted frame behind them')
+
+      withPillarContext(PILLAR, () => {
+        const root = styleOf(screen.getByTestId('worker-v5-stage-ten-prototype'))
+        expect(root.alignSelf).toBe('center')
+        expect(root.maxWidth).toBeLessThanOrEqual(440)
+      }, 'on a tablet the completion surface stays at a readable width instead of stretching its phone geometry')
+    } finally {
+      ReactNative.Dimensions.set({ screen: originalScreen, window: originalWindow })
+    }
   })
 
   it('keeps payment heroes and detail rows flexible on narrow screens', () => {
