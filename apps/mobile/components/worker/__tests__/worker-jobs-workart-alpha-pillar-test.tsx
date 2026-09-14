@@ -70,6 +70,10 @@ describe('Worker Jobs Workart background contract', () => {
         expect(opportunityWorkart).toMatchObject({ height: '100%', width: '100%' })
         expect(bookingWorkartSource).toContain('customerV21BookingWorkartAssets')
         expect(bookingWorkartSource).toContain('contentFit="cover"')
+        expect(bookingWorkartSource).toContain('artworkTestID = \'worker-v5-offer-detail-workart\'')
+        expect(bookingWorkartSource).toContain('panelTestID = \'worker-v5-offer-detail-workart-panel\'')
+        expect(bookingWorkartSource).toContain('const gradientID = `${panelTestID}-wash`')
+        expect(bookingWorkartSource).toContain('pointerEvents="none"')
         expect(opportunityWorkart).not.toHaveProperty('backgroundColor')
         expect(offerSummaryArtwork).not.toHaveProperty('backgroundColor')
       },

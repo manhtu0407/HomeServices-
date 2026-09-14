@@ -38,9 +38,7 @@ export function workerStageTwoOfferWorkartSource(
   return previewService ? customerV21BookingWorkartAssets[previewService] : customerV21Assets.bookingJourneyWorkart
 }
 
-function WorkerStageTwoOfferWorkartWash({ reduceTransparency, surfaceColor }: { reduceTransparency: boolean; surfaceColor: string }) {
-  const gradientID = 'worker-v5-offer-detail-workart-wash'
-
+function WorkerStageTwoOfferWorkartWash({ gradientID, reduceTransparency, surfaceColor }: { gradientID: string; reduceTransparency: boolean; surfaceColor: string }) {
   return (
     <Svg
       height="100%"
@@ -64,33 +62,40 @@ function WorkerStageTwoOfferWorkartWash({ reduceTransparency, surfaceColor }: { 
 }
 
 export function WorkerStageTwoOfferWorkart({
+  artworkTestID = 'worker-v5-offer-detail-workart',
   deal,
   panelColor,
+  panelTestID = 'worker-v5-offer-detail-workart-panel',
   previewJob,
   reduceTransparency,
   surfaceColor,
 }: {
+  artworkTestID?: string
   deal: LocalDeal | null
   panelColor: string
+  panelTestID?: string
   previewJob: WorkerJobsLegacyPrototypePreviewJob | null
   reduceTransparency: boolean
   surfaceColor: string
 }) {
+  const gradientID = `${panelTestID}-wash`.replace(/[^A-Za-z0-9_-]/g, '-')
+
   return (
     <View
       accessibilityElementsHidden
       importantForAccessibility="no-hide-descendants"
-      style={[stageTwoStyles.heroWorkartPanel, { backgroundColor: panelColor, pointerEvents: 'none' }]}
-      testID="worker-v5-offer-detail-workart-panel"
+      pointerEvents="none"
+      style={[stageTwoStyles.heroWorkartPanel, { backgroundColor: panelColor }]}
+      testID={panelTestID}
     >
       <Image
         accessibilityIgnoresInvertColors
         contentFit="cover"
         source={workerStageTwoOfferWorkartSource(deal, previewJob)}
         style={stageTwoStyles.heroWorkart}
-        testID="worker-v5-offer-detail-workart"
+        testID={artworkTestID}
       />
-      <WorkerStageTwoOfferWorkartWash reduceTransparency={reduceTransparency} surfaceColor={surfaceColor} />
+      <WorkerStageTwoOfferWorkartWash gradientID={gradientID} reduceTransparency={reduceTransparency} surfaceColor={surfaceColor} />
     </View>
   )
 }
