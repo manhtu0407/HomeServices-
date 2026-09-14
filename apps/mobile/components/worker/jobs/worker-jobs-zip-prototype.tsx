@@ -50,6 +50,7 @@ export function WorkerJobsZipPrototype() {
   const language = firstRouteParam(params.ns_worker_lang) === 'en' ? 'en' : 'vi'
   const selection = useMemo(() => resolveZipPrototypeSelection(params), [params])
   const screen = selection.screen
+  const isWaitingSurface = screen.id === '2.3-customer-confirmation-wait' || screen.id === '2.9-approval-wait'
   const actionBusyRef = useRef(false)
   const [actionBusy, setActionBusy] = useState(false)
   const routePreview = useWorkerV5RoutePreview(runtime.state.deal, screen.id === '2.4-route-eta')
@@ -124,9 +125,9 @@ export function WorkerJobsZipPrototype() {
   }
 
   return (
-    <SafeAreaView style={[styles.safeArea, { backgroundColor: themeTokens.canvas }]} testID="worker-jobs-zip-prototype">
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: isWaitingSurface ? '#FCFFFE' : themeTokens.canvas }]} testID="worker-jobs-zip-prototype">
       <ScrollView
-        contentContainerStyle={styles.content}
+        contentContainerStyle={[styles.content, isWaitingSurface && { padding: 0, paddingBottom: 0 }]}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >

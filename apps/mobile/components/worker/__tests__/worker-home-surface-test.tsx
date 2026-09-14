@@ -1192,7 +1192,7 @@ describe('Worker runtime surface wiring', () => {
     render(<WorkerJobsSurface />)
 
     expect(screen.getByTestId('worker-v5-screen-2.3-customer-confirmation-wait')).toBeOnTheScreen()
-    expect(screen.getByTestId('worker-v5-customer-confirmation-wait')).toBeOnTheScreen()
+    expect(screen.getByTestId('waiting-customer-confirmation')).toBeOnTheScreen()
     expect(screen.queryByTestId('worker-v5-screen-2.7-in-progress')).toBeNull()
     expect(screen.queryByTestId('worker-v5-in-progress-scope-action')).toBeNull()
   })
@@ -1206,7 +1206,7 @@ describe('Worker runtime surface wiring', () => {
 
     render(<WorkerJobsSurface />)
 
-    expect(within(screen.getByTestId('worker-v5-customer-confirmation-wait')).queryByText('Chưa chọn')).toBeNull()
+    expect(within(screen.getByTestId('waiting-customer-confirmation')).queryByText('Chưa chọn')).toBeNull()
   })
 
   it('leaves customer confirmation after an authoritative empty worker refresh', async () => {
