@@ -162,6 +162,15 @@ describe('Worker Jobs ZIP Prototype', () => {
     expect(source).toContain('minHeight: 168')
     expect(source).not.toContain("maxWidth: '56%'")
   })
+
+  it('uses the same Booking Workart treatment for Stage 1 opportunity cards', () => {
+    expect(source).toContain('const workartView = (')
+    expect(source).toContain('panelColor={workartPanelColor}')
+    expect(source).toContain('surfaceColor={surfaceColor}')
+    expect(source).toContain('{workartView}{copy}')
+    expect(source).toContain("maxWidth: '60%'")
+    expect(source).toContain('...typography.title2')
+  })
   it('uses distinct semantic icons for the offer, cleaning, and earnings rows', () => {
     expect(requestDetailsSource).toContain("const REQUEST_ROW_ICONS: readonly RequestDetailsIconName[] = ['bubble', 'wrench', 'photo']")
     expect(requestDetailsSource).toContain("const PRICE_ROW_ICONS: readonly RequestDetailsIconName[] = ['tag', 'banknote', 'wallet', 'check']")
