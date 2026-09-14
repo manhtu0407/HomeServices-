@@ -2,9 +2,32 @@ import { StyleSheet } from 'react-native'
 
 import type { WorkerThemeTokens } from '../worker-theme'
 
+// Approved Stage 4 values from the fidelity reference; scoped here so global theme tokens stay untouched.
+export const stageFourGradient = {
+  colors: ['#2AD9B3', '#02B49B', '#009783'],
+  stops: [0, 0.58, 1],
+} as const
+
+export type StageFourPalette = ReturnType<typeof getStageFourPalette>
+
+export function getStageFourPalette(tokens: WorkerThemeTokens) {
+  const dark = tokens.mode === 'dark'
+  return {
+    ctaSubtitle: '#E4FFF9',
+    hairline: dark ? tokens.border : '#EFF3F2',
+    placeholderBorder: dark ? tokens.border : '#E6EDF1',
+    placeholderInk: dark ? tokens.subtleText : '#7F93A1',
+    placeholderSurface: dark ? tokens.depthSurface : '#F3F6F8',
+  }
+}
+
 export function createStageFourStyles(scale: number, tokens: WorkerThemeTokens) {
   const s = (value: number) => Math.round(value * scale)
   const controlSize = Math.max(44, s(44))
+  const palette = getStageFourPalette(tokens)
+  // One gap drives both sides of the ETA sheet, so it stays exactly centred between the map card and the first content card.
+  const etaSheetGap = s(28)
+  const contentStackTop = s(6)
 
   return StyleSheet.create({
     actionIcon: {
@@ -17,9 +40,10 @@ export function createStageFourStyles(scale: number, tokens: WorkerThemeTokens) 
     },
     card: {
       backgroundColor: tokens.base,
-      borderColor: tokens.border,
+      borderColor: palette.hairline,
       borderRadius: s(18),
       borderWidth: 1,
+      boxShadow: '0 2px 9px rgba(37, 73, 72, 0.035)',
       overflow: 'hidden',
     },
     cardContent: {
@@ -28,17 +52,17 @@ export function createStageFourStyles(scale: number, tokens: WorkerThemeTokens) 
     chip: {
       alignItems: 'center',
       backgroundColor: tokens.base,
-      borderColor: tokens.border,
-      borderRadius: s(19),
-      borderWidth: 1,
+      borderRadius: s(22),
+      boxShadow: '0 7px 24px rgba(29, 63, 67, 0.12)',
       flexDirection: 'row',
-      gap: s(10),
-      minHeight: Math.max(54, s(54)),
-      paddingHorizontal: s(12),
-      shadowColor: tokens.primary,
-      shadowOpacity: tokens.mode === 'dark' ? 0.12 : 0.08,
-      shadowRadius: s(12),
-      shadowOffset: { height: s(6), width: 0 },
+      gap: s(12),
+      left: s(72),
+      minHeight: Math.max(54, s(62)),
+      paddingHorizontal: s(16),
+      position: 'absolute',
+      top: s(82),
+      width: s(266),
+      zIndex: 4,
     },
     chipCopy: {
       flex: 1,
@@ -47,14 +71,18 @@ export function createStageFourStyles(scale: number, tokens: WorkerThemeTokens) 
     chipIcon: {
       alignItems: 'center',
       backgroundColor: tokens.water,
-      borderRadius: s(10),
-      height: s(34),
+      borderRadius: s(21),
+      height: s(42),
       justifyContent: 'center',
-      width: s(34),
+      width: s(42),
     },
     contentStack: {
       gap: s(6),
       paddingHorizontal: s(12),
+    },
+    customerActions: {
+      flexDirection: 'row',
+      gap: s(8),
     },
     customerBody: {
       alignItems: 'center',
@@ -74,34 +102,35 @@ export function createStageFourStyles(scale: number, tokens: WorkerThemeTokens) 
       justifyContent: 'center',
       width: s(42),
     },
-    customerTitleRow: {
+    // Square inside the card's minimum height; a longer address stretches it vertically instead of resizing it.
+    destinationArt: {
       alignItems: 'center',
-      flexDirection: 'row',
-      gap: s(3),
-      minWidth: 0,
+      alignSelf: 'stretch',
+      backgroundColor: palette.placeholderSurface,
+      borderColor: palette.placeholderBorder,
+      borderRadius: s(14),
+      borderWidth: 1,
+      gap: s(6),
+      justifyContent: 'center',
+      margin: s(8),
+      marginLeft: 0,
+      width: s(100),
     },
-    detailButton: {
-      alignItems: 'center',
+    destinationCard: {
       flexDirection: 'row',
-      gap: s(4),
-      minHeight: Math.max(44, s(28)),
-      paddingHorizontal: s(3),
-    },
-    detailButtonPosition: {
-      position: 'absolute',
-      right: s(8),
-      top: s(5),
-      zIndex: 3,
-    },
-    destinationBody: {
-      flexDirection: 'row',
-      gap: s(8),
-      minWidth: 0,
+      marginTop: contentStackTop,
+      minHeight: s(116),
+      padding: 0,
     },
     destinationCopy: {
+      marginTop: s(10),
+      minWidth: 0,
+    },
+    destinationMain: {
       flex: 1,
       minWidth: 0,
-      paddingRight: s(2),
+      padding: s(10),
+      paddingBottom: s(12),
     },
     error: {
       color: tokens.danger,
@@ -109,32 +138,16 @@ export function createStageFourStyles(scale: number, tokens: WorkerThemeTokens) 
       lineHeight: s(16),
       marginTop: s(1),
     },
-    etaDisclosure: {
-      alignItems: 'center',
-      backgroundColor: tokens.base,
-      borderColor: tokens.border,
-      borderRadius: s(17),
-      borderWidth: 1,
-      height: s(34),
-      justifyContent: 'center',
-      width: s(34),
-    },
     etaSheet: {
       backgroundColor: tokens.base,
-      borderColor: tokens.border,
+      borderColor: palette.hairline,
       borderRadius: s(21),
       borderWidth: 1,
-      bottom: 0,
-      left: s(12),
+      marginBottom: etaSheetGap - contentStackTop,
+      marginHorizontal: s(12),
       minHeight: Math.max(70, s(70)),
       paddingHorizontal: s(12),
       paddingVertical: s(8),
-      position: 'absolute',
-      right: s(12),
-      shadowColor: tokens.primary,
-      shadowOpacity: tokens.mode === 'dark' ? 0.16 : 0.10,
-      shadowRadius: s(14),
-      shadowOffset: { height: s(8), width: 0 },
       zIndex: 5,
     },
     etaSheetRow: {
@@ -146,52 +159,13 @@ export function createStageFourStyles(scale: number, tokens: WorkerThemeTokens) 
     emptyMap: {
       alignItems: 'center',
       backgroundColor: tokens.service,
-      borderRadius: s(24),
-      bottom: s(76),
       justifyContent: 'center',
-      left: s(18),
       paddingHorizontal: s(18),
-      position: 'absolute',
-      right: s(18),
-      top: s(110),
-    },
-    header: {
-      alignItems: 'center',
-      flexDirection: 'row',
-      height: s(52),
-      justifyContent: 'space-between',
-      left: s(14),
-      position: 'absolute',
-      right: s(14),
-      top: s(11),
-      zIndex: 4,
-    },
-    headerTitle: {
-      alignItems: 'center',
-      left: s(88),
-      position: 'absolute',
-      right: s(88),
-      top: 0,
-    },
-    helpButton: {
-      alignItems: 'center',
-      backgroundColor: tokens.base,
-      borderColor: tokens.border,
-      borderRadius: s(18),
-      borderWidth: 1,
-      flexDirection: 'row',
-      gap: s(7),
-      minHeight: Math.max(44, s(44)),
-      paddingHorizontal: s(13),
-      shadowColor: tokens.primary,
-      shadowOpacity: tokens.mode === 'dark' ? 0.12 : 0.08,
-      shadowRadius: s(10),
-      shadowOffset: { height: s(5), width: 0 },
     },
     hero: {
       backgroundColor: tokens.canvas,
-      marginBottom: s(0),
-      minHeight: s(372),
+      height: s(442),
+      justifyContent: 'flex-end',
       overflow: 'hidden',
       position: 'relative',
     },
@@ -206,9 +180,18 @@ export function createStageFourStyles(scale: number, tokens: WorkerThemeTokens) 
       alignItems: 'center',
       backgroundColor: tokens.base,
       borderRadius: s(22),
+      boxShadow: '0 3px 12px rgba(32, 68, 86, 0.06)',
       height: controlSize,
       justifyContent: 'center',
       width: controlSize,
+    },
+    // The live or empty map fills the whole hero above the ETA sheet, in flow so a taller sheet can never overlap it.
+    mapCanvas: {
+      borderBottomLeftRadius: s(24),
+      borderBottomRightRadius: s(24),
+      flex: 1,
+      marginBottom: etaSheetGap,
+      overflow: 'hidden',
     },
     mapImage: {
       bottom: 0,
@@ -225,29 +208,15 @@ export function createStageFourStyles(scale: number, tokens: WorkerThemeTokens) 
       minWidth: 0,
       paddingHorizontal: s(1),
     },
-    metricIcon: {
-      alignItems: 'center',
-      backgroundColor: tokens.water,
-      borderRadius: s(16),
-      height: s(31),
-      justifyContent: 'center',
-      width: s(31),
-    },
     metricStack: {
       alignItems: 'center',
       flex: 1,
       flexDirection: 'row',
       minWidth: 0,
     },
-    noteBody: {
-      alignItems: 'flex-start',
-      flexDirection: 'row',
-      gap: s(9),
-    },
-    noteCopy: {
-      flex: 1,
-      gap: s(3),
-      minWidth: 0,
+    noteCard: {
+      minHeight: s(112),
+      paddingBottom: s(12),
     },
     noteSurface: {
       alignItems: 'center',
@@ -255,22 +224,20 @@ export function createStageFourStyles(scale: number, tokens: WorkerThemeTokens) 
       borderRadius: s(13),
       flexDirection: 'row',
       gap: s(9),
-      minHeight: s(45),
-      paddingHorizontal: s(10),
-      paddingVertical: s(5),
+      marginTop: s(12),
+      minHeight: s(52),
+      paddingHorizontal: s(12),
+      paddingVertical: s(8),
     },
     primary: {
       alignItems: 'center',
       backgroundColor: tokens.primary,
       borderRadius: s(33),
+      boxShadow: '0 7px 19px rgba(0, 169, 143, 0.19)',
       height: Math.max(60, s(66)),
       justifyContent: 'center',
       marginTop: s(1),
       overflow: 'hidden',
-      shadowColor: tokens.primary,
-      shadowOpacity: tokens.mode === 'dark' ? 0.20 : 0.18,
-      shadowRadius: s(12),
-      shadowOffset: { height: s(7), width: 0 },
     },
     primaryCopy: {
       alignItems: 'center',
@@ -287,6 +254,10 @@ export function createStageFourStyles(scale: number, tokens: WorkerThemeTokens) 
       backgroundColor: tokens.canvas,
       paddingBottom: s(10),
     },
+    sectionTitle: {
+      flex: 1,
+      minWidth: 0,
+    },
     sectionTitleRow: {
       alignItems: 'center',
       flexDirection: 'row',
@@ -294,10 +265,11 @@ export function createStageFourStyles(scale: number, tokens: WorkerThemeTokens) 
     },
     smallAction: {
       alignItems: 'center',
-      backgroundColor: tokens.service,
-      borderColor: tokens.border,
+      backgroundColor: tokens.base,
+      borderColor: palette.hairline,
       borderRadius: s(14),
       borderWidth: 1,
+      boxShadow: '0 2px 8px rgba(31, 85, 82, 0.04)',
       flex: 1,
       flexDirection: 'row',
       gap: s(6),
@@ -311,9 +283,10 @@ export function createStageFourStyles(scale: number, tokens: WorkerThemeTokens) 
       marginTop: s(0),
     },
     verticalDivider: {
-      backgroundColor: tokens.border,
-      height: '64%',
+      alignSelf: 'stretch',
+      backgroundColor: palette.hairline,
       marginHorizontal: s(7),
+      marginVertical: s(4),
       width: 1,
     },
     workAction: {
