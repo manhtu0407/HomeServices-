@@ -35,10 +35,16 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - name: Prepare canonical empty-reset migration workdir
+        run: |
+          node scripts/harness/prepare-migration-workdir.mjs \
+            --empty-reset \
+            --inventory config/harness/migration-inventory.json \
+            --output .scratch/integration-migrations
       - name: Start isolated local Supabase
-        run: pnpm --filter @nestscout/api exec supabase start
+        run: pnpm --filter @nestscout/api exec supabase start --workdir .scratch/integration-migrations
       - name: Replay migrations from empty state
-        run: pnpm --filter @nestscout/api exec supabase db reset --local
+        run: pnpm --filter @nestscout/api exec supabase db reset --local --workdir .scratch/integration-migrations
       - name: Integration tests against local Supabase
         env:
           NESTSCOUT_ENVIRONMENT: local
