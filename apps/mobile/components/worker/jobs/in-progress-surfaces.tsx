@@ -1,10 +1,10 @@
 import { RfqPricePanel } from '@/components/job/rfq-price-panel'
 import { getWorkerThemeTokens, useWorkerThemeMode } from '../worker-theme'
 import { type SetStateAction, useLayoutEffect, useRef, useState } from 'react'
-import { Alert, Platform, Text as RNText, View, type TextProps } from 'react-native'
+import { Alert, KeyboardAvoidingView, Modal, Platform, Pressable, Text as RNText, TextInput, View, type TextProps } from 'react-native'
 import * as ImagePicker from 'expo-image-picker'
 import { useLocalSearchParams, useRouter } from 'expo-router'
-import { type AppLanguage } from '@/lib/app-language'
+import { localizedServiceLabel, type AppLanguage } from '@/lib/app-language'
 import { clearStableClientRequestId, stableClientRequestId } from '@/lib/client-request-id'
 import { localizeMediaUploadFailure, uploadJobMediaDrafts } from '@/lib/media-upload'
 import {
@@ -30,9 +30,19 @@ import { buildWorkerV5WorkBoardItems } from './work-board'
 import { type PendingClientRequestRef } from '@/lib/client-request-id'
 import type { useFrontendWorkflow } from '@/lib/frontend-workflow-provider'
 import { WorkerV5RouteMapStage } from './route-map-surfaces'
+import { StageFiveWork } from './stage-five/travel-work/stage-five-work'
+import type { Actions as StageFiveActions, StageFiveJobStatus, WorkModel as StageFiveWorkModel } from './stage-five/travel-work/stage-five.types'
+import { workerV5ArrivalDestinationLabel } from '../ui/route'
 
 type WorkerV5Runtime = ReturnType<typeof useFrontendWorkflow>
+type StageFiveMutableStatus = Extract<StageFiveJobStatus, 'arrived' | 'inspecting' | 'repairing'>
 const IMAGE_PICKER_TIMEOUT_MS = 45_000
+
+function parseStageFiveMillis(value: string | null | undefined) {
+  if (!value) return null
+  const millis = Date.parse(value)
+  return Number.isFinite(millis) ? millis : null
+}
 
 async function withImagePickerDeadline<T>(pickerResult: Promise<T>) {
   let timer: ReturnType<typeof setTimeout> | undefined
@@ -57,6 +67,9 @@ export function WorkerV5InProgressBody({
   onTravelAction,
   reduceTransparency,
   runtime,
+  reduceMotion = false,
+  stageFive = false,
+  onBackToTravel,
   styleVariant = 'default',
 }: {
   actionBusy: boolean
@@ -65,6 +78,9 @@ export function WorkerV5InProgressBody({
   onTravelAction: () => void
   reduceTransparency: boolean
   runtime: WorkerV5Runtime
+  reduceMotion?: boolean
+  stageFive?: boolean
+  onBackToTravel?: () => void
   styleVariant?: 'default' | 'jobs-review'
 }) {
   const params = useLocalSearchParams<WorkerV5RouteParams>()
@@ -106,6 +122,9 @@ export function WorkerV5InProgressBody({
   }>({ busy: false, notice: null })
   const setPhaseActionBusy = (busy: boolean) => setPhaseActionState((current) => ({ ...current, busy }))
   const setPhaseActionNotice = (notice: string | null) => setPhaseActionState((current) => ({ ...current, notice }))
+  const [stageFiveDetailsOpen, setStageFiveDetailsOpen] = useState(false)
+  const [stageFiveNoteOpen, setStageFiveNoteOpen] = useState(false)
+  const [stageFiveNoteDraft, setStageFiveNoteDraft] = useState('')
   const fieldEvidenceSessionRef = useRef<WorkerV5PrivateKaelSession | null>(null)
   const fieldEvidenceRequestRef = useRef<WorkerV5FieldEvidenceRequest | null>(null)
   const fieldEvidenceOperationRef = useRef<{ jobId: string; slot: number } | null>(null)
@@ -444,6 +463,46 @@ export function WorkerV5InProgressBody({
               }
             : null
 
+  const stageFiveStatus = deal && ['arrived', 'inspecting', 'repairing'].includes(deal.status)
+    ? deal.status as StageFiveMutableStatus
+    : null
+  const stageFiveAddressReleased = Boolean(
+    addressAccess && (addressAccess.release_stage === 'building_released' || addressAccess.release_stage === 'unit_released'),
+  )
+  const stageFivePhase = stageFiveStatus === 'arrived'
+    ? 'prepare'
+    : stageFiveStatus === 'inspecting'
+      ? 'working'
+      : stageFiveStatus === 'repairing'
+        ? 'inspect'
+        : stageFiveStatus === 'completed_by_worker'
+          ? 'finish'
+          : stageFiveStatus === 'completed' || stageFiveStatus === 'closed'
+            ? 'handover'
+            : null
+  const formatStageFiveTime = (value: string | null | undefined) => {
+    if (!value) return null
+    const date = new Date(value)
+    if (Number.isNaN(date.getTime())) return null
+    return date.toLocaleTimeString(language === 'vi' ? 'vi-VN' : 'en-US', { hour: '2-digit', minute: '2-digit' })
+  }
+  const openStageFiveNote = () => {
+    setStageFiveNoteDraft(deal?.workerWorkNote ?? '')
+    setStageFiveNoteOpen(true)
+  }
+  const saveStageFiveNote = async () => {
+    if (!stageFiveStatus || phaseActionBusy) return
+    setPhaseActionBusy(true)
+    try {
+      const saved = await runtime.actions.workerUpdateStatus(stageFiveStatus, {
+        work_session: { action: 'save_note', note: stageFiveNoteDraft },
+      })
+      if (saved) setStageFiveNoteOpen(false)
+    } finally {
+      setPhaseActionBusy(false)
+    }
+  }
+
   if (isAwaitingArrival) {
     return (
       <WorkerV5InProgressTravelGate
@@ -456,6 +515,133 @@ export function WorkerV5InProgressBody({
         reduceTransparency={reduceTransparency}
         routeMapComponent={WorkerV5RouteMapStage}
       />
+    )
+  }
+
+  if (stageFive) {
+    const stageFiveActions: StageFiveActions = {
+      back: {
+        enabled: true,
+        onPress: onBackToTravel ?? (() => router.replace('/(worker)/jobs?ns_worker_screen=2.4-route-eta' as never)),
+      },
+      chat: { enabled: Boolean(currentJobId), onPress: navigateJobChat },
+      call: { enabled: false, onPress: () => undefined, disabledReason: textByLanguage(language, 'Số điện thoại chỉ hiện khi quy trình cấp quyền liên hệ.', 'The phone number appears only when the workflow grants contact access.') },
+      details: { enabled: Boolean(currentJobId), onPress: () => setStageFiveDetailsOpen(true) },
+      guide: { enabled: Boolean(currentJobId), onPress: () => setStageFiveDetailsOpen(true) },
+      progress: { enabled: Boolean(currentJobId), onPress: () => setStageFiveDetailsOpen(true) },
+      photo: {
+        enabled: Boolean(currentJobId && !fieldEvidenceBusy && evidenceCount < 3),
+        onPress: () => chooseFieldEvidenceSource(Math.min(2, Math.max(0, visibleEvidenceUrls.findIndex((url) => !url)))),
+      },
+      note: { enabled: Boolean(currentJobId), onPress: openStageFiveNote },
+      scope: {
+        enabled: Boolean(currentJobId && (stageFiveStatus === 'inspecting' || stageFiveStatus === 'repairing')),
+        onPress: () => router.replace((currentJobId
+          ? `/(worker)/jobs?ns_worker_screen=2.8-scope-change&job_id=${encodeURIComponent(currentJobId)}`
+          : '/(worker)/jobs?ns_worker_screen=2.8-scope-change') as never),
+      },
+      support: { enabled: Boolean(currentJobId), onPress: navigateJobChat },
+      editArrival: {
+        enabled: Boolean(currentJobId && stageFiveStatus && ['arrived', 'inspecting', 'repairing'].includes(stageFiveStatus)),
+        onPress: () => router.replace((currentJobId
+          ? `/(worker)/jobs?ns_worker_screen=2.7-in-progress&ns_arrival_gate=1&job_id=${encodeURIComponent(currentJobId)}`
+          : '/(worker)/jobs?ns_worker_screen=2.7-in-progress&ns_arrival_gate=1') as never),
+      },
+      pause: {
+        enabled: Boolean(currentJobId && stageFiveStatus === 'repairing' && !phaseActionBusy),
+        onPress: async () => {
+          if (!stageFiveStatus || phaseActionBusy) return
+          setPhaseActionBusy(true)
+          try {
+            const updated = await runtime.actions.workerUpdateStatus('repairing', {
+              work_session: { action: deal?.workPausedAt ? 'resume' : 'pause' },
+            })
+            if (!updated) throw new Error(textByLanguage(language, 'Chưa thể cập nhật thời gian làm việc.', 'Work time could not be updated.'))
+          } finally {
+            setPhaseActionBusy(false)
+          }
+        },
+      },
+      complete: {
+        enabled: stageFiveStatus === 'repairing',
+        onPress: () => void advanceWorkPhase(),
+      },
+    }
+    const stageFiveModel: StageFiveWorkModel = {
+      jobId: currentJobId,
+      stage: 5,
+      jobStatus: stageFiveStatus,
+      serviceTitle: deal?.broadcast?.problemSummary?.trim() || deal?.draft.description?.trim() || null,
+      serviceCategory: deal ? localizedServiceLabel(deal.broadcast?.serviceType ?? deal.draft.serviceType, language) : null,
+      addressLine: stageFiveAddressReleased ? workerV5ArrivalDestinationLabel(deal, language) : null,
+      photo: deal?.customerEvidencePhotoUrls?.[0] ? { uri: deal.customerEvidencePhotoUrls[0] } : undefined,
+      arrivedLabel: formatStageFiveTime(deal?.arrivedAt),
+      startedLabel: formatStageFiveTime(deal?.workStartedAt),
+      startedAtMs: parseStageFiveMillis(deal?.workStartedAt),
+      pausedAtMs: parseStageFiveMillis(deal?.workPausedAt),
+      pausedMs: deal?.workPausedMs ?? 0,
+      phase: stageFivePhase,
+      phaseLabels: language === 'vi' ? ['Đã tới', 'Kiểm tra', 'Đang làm', 'Hồ sơ', 'Hoàn tất'] : ['Arrived', 'Inspection', 'Work in progress', 'Evidence', 'Complete'],
+      note: deal?.workerWorkNote ?? null,
+      evidenceCount,
+      canPrepareCompletion: stageFiveStatus === 'repairing',
+    }
+    return (
+      <>
+      <StageFiveWork
+          actions={stageFiveActions}
+          busy={actionBusy || fieldEvidenceBusy || phaseActionBusy}
+          language={language}
+          model={stageFiveModel}
+          reduceMotion={reduceMotion}
+        />
+        <Modal visible={stageFiveDetailsOpen} animationType={reduceMotion ? 'none' : 'slide'} onRequestClose={() => setStageFiveDetailsOpen(false)}>
+          <View style={{ flex: 1, backgroundColor: '#FFFFFF', paddingTop: 48 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingBottom: 12 }}>
+              <Text style={{ fontSize: 20, fontWeight: '700', color: '#081D36' }}>{textByLanguage(language, 'Hồ sơ công việc', 'Work details')}</Text>
+              <Pressable accessibilityRole="button" accessibilityLabel={textByLanguage(language, 'Đóng hồ sơ công việc', 'Close work details')} onPress={() => setStageFiveDetailsOpen(false)} style={{ minHeight: 44, justifyContent: 'center', paddingHorizontal: 12 }}>
+                <Text style={{ color: '#008D7B', fontWeight: '600' }}>{textByLanguage(language, 'Đóng', 'Close')}</Text>
+              </Pressable>
+            </View>
+            <View style={{ flex: 1 }}>
+              <WorkerV5InProgressBody
+                actionBusy={actionBusy}
+                language={language}
+                navigateJobChat={navigateJobChat}
+                onTravelAction={onTravelAction}
+                reduceMotion={reduceMotion}
+                reduceTransparency={reduceTransparency}
+                runtime={runtime}
+              />
+            </View>
+          </View>
+        </Modal>
+        <Modal visible={stageFiveNoteOpen} animationType={reduceMotion ? 'none' : 'slide'} transparent onRequestClose={() => setStageFiveNoteOpen(false)}>
+          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(8,29,54,0.22)' }}>
+            <View style={{ backgroundColor: '#FFFFFF', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 20, gap: 12 }}>
+              <Text style={{ color: '#081D36', fontSize: 20, fontWeight: '700' }}>{textByLanguage(language, 'Ghi chú nhanh', 'Quick note')}</Text>
+              <TextInput
+                accessibilityLabel={textByLanguage(language, 'Ghi chú nhanh', 'Quick note')}
+                autoFocus
+                multiline
+                onChangeText={setStageFiveNoteDraft}
+                placeholder={textByLanguage(language, 'Thêm ghi chú về tình trạng thực tế, vật tư sử dụng…', 'Add a note about the actual condition or materials used…')}
+                style={{ minHeight: 120, borderColor: '#E4EFF0', borderRadius: 16, borderWidth: 1, color: '#081D36', padding: 14, textAlignVertical: 'top' }}
+                testID="stage5-note-input"
+                value={stageFiveNoteDraft}
+              />
+              <View style={{ flexDirection: 'row', gap: 10 }}>
+                <Pressable accessibilityRole="button" accessibilityLabel={textByLanguage(language, 'Hủy ghi chú', 'Cancel note')} onPress={() => setStageFiveNoteOpen(false)} style={{ flex: 1, minHeight: 48, alignItems: 'center', justifyContent: 'center', borderColor: '#E4EFF0', borderRadius: 24, borderWidth: 1 }}>
+                  <Text style={{ color: '#496580', fontWeight: '600' }}>{textByLanguage(language, 'Hủy', 'Cancel')}</Text>
+                </Pressable>
+                <Pressable accessibilityRole="button" accessibilityLabel={textByLanguage(language, 'Lưu ghi chú', 'Save note')} disabled={phaseActionBusy} onPress={() => void saveStageFiveNote()} style={{ flex: 1, minHeight: 48, alignItems: 'center', justifyContent: 'center', backgroundColor: '#009F89', borderRadius: 24, opacity: phaseActionBusy ? 0.5 : 1 }}>
+                  <Text style={{ color: '#FFFFFF', fontWeight: '700' }}>{phaseActionBusy ? textByLanguage(language, 'Đang lưu…', 'Saving…') : textByLanguage(language, 'Lưu ghi chú', 'Save note')}</Text>
+                </Pressable>
+              </View>
+            </View>
+          </KeyboardAvoidingView>
+        </Modal>
+      </>
     )
   }
 

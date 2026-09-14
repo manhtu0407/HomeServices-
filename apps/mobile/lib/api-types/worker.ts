@@ -434,6 +434,11 @@ export type WorkerJobListResponse = {
     scheduled_at: string | null
     created_at: string
     matched_at: string | null
+    arrived_at?: string | null
+    work_started_at?: string | null
+    work_paused_at?: string | null
+    work_paused_ms?: number
+    worker_work_note?: string | null
     completed_at: string | null
   }[]
 }

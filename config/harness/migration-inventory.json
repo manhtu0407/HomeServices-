@@ -5,7 +5,7 @@
     "immutableThroughVersion": "20260904113000",
     "sha256": "12da2bac288e0e718e61a27653e8cba9ffdb13b8e9900979407d41e1217b2077"
   },
-  "migrationCount": 393,
+  "migrationCount": 394,
   "migrationEquivalences": {
     "version": "1.0.0",
     "groups": [
@@ -74,10 +74,10 @@
       }
     ]
   },
-  "migrationsSha256": "8c09e094ea72cafde84689b31666e34105f37de08bc04340cf688b815f8020b7",
+  "migrationsSha256": "47881bc7c0f03eb18c580b5e74da62182ea90ca04271341153dc5a170a32a51a",
   "databaseTypes": {
     "file": "packages/shared/src/types/database",
-    "sha256": "b3ac55b050a558d6cd5af9c0987ddcd459c03f0f3ae8f77d83c00e798a08e5f2"
+    "sha256": "58b99c1c3487e7b5ecbf571b508951efed370bf8dd98105ae97a953d6cad4c7f"
   },
   "entries": [
     {
@@ -2830,6 +2830,13 @@
       "file": "supabase/migrations/20260913100000_rfq_price_agreement.sql",
       "sha256": "06678054f552112f5b9b37c2c8883a80b037c4b215f7288a0438d56ebbfc87c1",
       "bytes": 16999
+    },
+    {
+      "version": "20260914090000",
+      "name": "worker_stage5_work_session",
+      "file": "supabase/migrations/20260914090000_worker_stage5_work_session.sql",
+      "sha256": "1b9d8e127d866b0519333459645658593c3d58704db9605a7b3679d999ecf282",
+      "bytes": 548
     }
   ]
 }

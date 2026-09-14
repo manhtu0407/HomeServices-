@@ -2406,4 +2406,13 @@ export const styles = StyleSheet.create({
     fontWeight: '600',
     textAlign: 'center',
   },
+  stageFiveSafeArea: {
+    backgroundColor: '#F8FEFD',
+  },
+  stageFiveScrollContent: {
+    gap: 0,
+    paddingBottom: 0,
+    paddingHorizontal: 0,
+    paddingTop: 0,
+  },
 })

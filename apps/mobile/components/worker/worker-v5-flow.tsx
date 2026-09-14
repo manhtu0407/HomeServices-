@@ -709,10 +709,11 @@ function WorkerV5ScreenLayout({ actions, state }: { actions: WorkerV5ScreenLayou
     usesTravelHandoff,
     workerKey,
   } = content
-  return <SafeAreaView style={[styles.safeArea, surfaceStyle]} testID={`worker-v5-screen-${screen.id}`}>
-    <WorkerV5ScreenAuras state={auraState} />
-    <ScrollView bounces={false} contentContainerStyle={[styles.scrollContent, headerState.usesEarningsOverviewHandoff ? styles.earningsOverviewScrollContent : null, usesKaelOrbHandoff ? styles.kaelOrbCustomerScrollContent : null, { minHeight }]} onScroll={actions.onDockScroll} scrollEventThrottle={16} showsVerticalScrollIndicator={false} testID="worker-v5-scroll">
-      {headerState.usesEarningsOverviewHandoff || headerState.usesOpportunityInboxHandoff ? null : <WorkerV5ScreenHeader onBack={actions.onHeaderBack} onOpenJobChat={actions.onOpenJobChat} onOpenOfferMenu={actions.onOpenOfferMenu} state={headerState} />}
+  const usesStageFiveProduction = screen.id === '2.7-in-progress'
+  return <SafeAreaView style={[styles.safeArea, surfaceStyle, usesStageFiveProduction ? styles.stageFiveSafeArea : null]} testID={`worker-v5-screen-${screen.id}`}>
+    {usesStageFiveProduction ? null : <WorkerV5ScreenAuras state={auraState} />}
+    <ScrollView bounces={false} contentContainerStyle={[styles.scrollContent, usesStageFiveProduction ? styles.stageFiveScrollContent : null, headerState.usesEarningsOverviewHandoff ? styles.earningsOverviewScrollContent : null, usesKaelOrbHandoff ? styles.kaelOrbCustomerScrollContent : null, { minHeight }]} onScroll={actions.onDockScroll} scrollEventThrottle={16} showsVerticalScrollIndicator={false} testID="worker-v5-scroll">
+      {usesStageFiveProduction || headerState.usesEarningsOverviewHandoff || headerState.usesOpportunityInboxHandoff ? null : <WorkerV5ScreenHeader onBack={actions.onHeaderBack} onOpenJobChat={actions.onOpenJobChat} onOpenOfferMenu={actions.onOpenOfferMenu} state={headerState} />}
       {!usesHandoffStage ? <View style={[styles.glassCard, reduceTransparency && styles.opaqueCard]}>
         {!reduceTransparency ? <MintAura intensity="component" style={styles.cardMintAura} testID="worker-v5-hero-mint-aura" /> : null}
         <View pointerEvents="none" style={styles.cardTopHighlight} />
@@ -816,8 +817,11 @@ function WorkerV5Body({
             language={language}
             navigateJobChat={navigateActiveJobChat}
             onTravelAction={() => void runRouteAction()}
+            onBackToTravel={() => navigateToScreen('2.4-route-eta')}
+            reduceMotion={reduceMotion}
             reduceTransparency={reduceTransparency}
             runtime={runtime}
+            stageFive
           />
         </View>
       )

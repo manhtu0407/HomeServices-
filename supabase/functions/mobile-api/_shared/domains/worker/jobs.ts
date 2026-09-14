@@ -24,7 +24,7 @@ import {
 } from "../../platform/synthetic-cohort.ts";
 
 const WORKER_JOB_LIST_COLUMNS =
-  "id, customer_id, worker_id, quote_mode, display_code, status, service_type, problem_chips, description, kael_problem_identified, address_building, address_unit, address_floor, address_district, apartment_access_profile, apartment_access_state, scheduled_at, kael_price_min, kael_price_max, kael_worker_brief_core, kael_worker_brief_guidance, final_price, worker_commission_level, worker_commission_rate_bps, payment_status, payment_provider, payment_received_at, payment_amount_received, gross_amount, platform_fee, worker_net, photo_urls, completion_notes, completion_photo_urls, created_at, matched_at, completed_at";
+  "id, customer_id, worker_id, quote_mode, display_code, status, service_type, problem_chips, description, kael_problem_identified, address_building, address_unit, address_floor, address_district, apartment_access_profile, apartment_access_state, scheduled_at, kael_price_min, kael_price_max, kael_worker_brief_core, kael_worker_brief_guidance, final_price, worker_commission_level, worker_commission_rate_bps, payment_status, payment_provider, payment_received_at, payment_amount_received, gross_amount, platform_fee, worker_net, photo_urls, completion_notes, completion_photo_urls, created_at, matched_at, arrived_at, work_started_at, work_paused_at, work_paused_ms, worker_work_note, completed_at";
 
 export async function listWorkerJobs(ctx: MobileApiContext) {
   const client = db(ctx);
@@ -147,6 +147,11 @@ export async function listWorkerJobs(ctx: MobileApiContext) {
         completion_photo_urls: evidenceReleased
           ? asStringArray(row.completion_photo_urls)
           : [],
+        arrived_at: nullableString(row.arrived_at),
+        work_started_at: nullableString(row.work_started_at),
+        work_paused_at: nullableString(row.work_paused_at),
+        work_paused_ms: nullableNumber(row.work_paused_ms) ?? 0,
+        worker_work_note: nullableString(row.worker_work_note),
         worker_brief_guidance: projectWorkerJobBrief(row, ctx.user.id),
         scheduled_at: nullableString(row.scheduled_at),
         created_at: asString(row.created_at),
