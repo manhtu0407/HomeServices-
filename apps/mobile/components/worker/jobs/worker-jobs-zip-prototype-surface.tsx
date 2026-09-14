@@ -68,7 +68,6 @@ export function WorkerJobsLegacyPrototypeBody(props: WorkerJobsLegacyPrototypeBo
     case '2.3-customer-confirmation-wait':
       return (
         <WorkerWaitingRuntime
-          key="stage-3-customer-confirmation"
           kind="customer-confirmation"
           language={props.language}
           runtime={props.runtime}
@@ -115,7 +114,6 @@ export function WorkerJobsLegacyPrototypeBody(props: WorkerJobsLegacyPrototypeBo
     case '2.9-approval-wait':
       return (
         <WorkerWaitingRuntime
-          key="stage-7-scope-approval"
           kind="scope-approval"
           language={props.language}
           runtime={props.runtime}
