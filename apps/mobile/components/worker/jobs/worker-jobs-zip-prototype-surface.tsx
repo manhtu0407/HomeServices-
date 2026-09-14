@@ -5,8 +5,8 @@ import {
   type WorkerJobsLegacyPrototypeStage,
 } from './worker-jobs-zip-prototype-shared'
 import { prototypeStyles } from './worker-jobs-zip-prototype-styles'
+import { WorkerWaitingRuntime } from './waiting/waiting-runtime'
 import {
-  WorkerJobsLegacyPrototypeCustomerConfirmationWaitBody,
   WorkerJobsLegacyPrototypeOfferDetailBody,
   WorkerJobsLegacyPrototypeOpportunityInboxBody,
   WorkerJobsLegacyPrototypeRouteEtaBody,
@@ -15,7 +15,6 @@ import {
   WorkerJobsLegacyPrototypeStageEightBody,
   WorkerJobsLegacyPrototypeStageFiveBody,
   WorkerJobsLegacyPrototypeStageSixBody,
-  WorkerJobsLegacyPrototypeStageSevenBody,
 } from './worker-jobs-zip-prototype-work-stages'
 import {
   WorkerJobsLegacyPrototypePaymentConfirmedBody,
@@ -34,6 +33,9 @@ export function WorkerJobsLegacyPrototypeBody(props: WorkerJobsLegacyPrototypeBo
       <WorkerJobsLegacyPrototypePaymentConfirmedBody
         language={props.language}
         navigateToEarnings={() => props.navigateToScreen('4.1-earnings-overview')}
+        navigateToHome={() => props.navigateToScreen('1.1-worker-home')}
+        navigateToHistory={() => props.navigateToScreen('4.2-ledger-detail')}
+        reduceMotion={props.reduceMotion}
         reduceTransparency={props.reduceTransparency}
         runtime={props.runtime}
       />
@@ -65,13 +67,13 @@ export function WorkerJobsLegacyPrototypeBody(props: WorkerJobsLegacyPrototypeBo
       )
     case '2.3-customer-confirmation-wait':
       return (
-        <View style={prototypeStyles.bodyStack}>
-          <WorkerJobsLegacyPrototypeCustomerConfirmationWaitBody
-            language={props.language}
-            reduceTransparency={props.reduceTransparency}
-            runtime={props.runtime}
-          />
-        </View>
+        <WorkerWaitingRuntime
+          kind="customer-confirmation"
+          language={props.language}
+          runtime={props.runtime}
+          reduceMotion={props.reduceMotion}
+          onBack={() => props.navigateToScreen('2.1-opportunity-inbox')}
+        />
       )
     case '2.4-route-eta':
       return (
@@ -111,12 +113,14 @@ export function WorkerJobsLegacyPrototypeBody(props: WorkerJobsLegacyPrototypeBo
       )
     case '2.9-approval-wait':
       return (
-        <WorkerJobsLegacyPrototypeStageSevenBody
+        <WorkerWaitingRuntime
+          kind="scope-approval"
           language={props.language}
-          navigateJobChat={props.navigateJobChat}
-          navigateNext={() => props.navigateToScreen('2.7-in-progress')}
-          reduceTransparency={props.reduceTransparency}
           runtime={props.runtime}
+          reduceMotion={props.reduceMotion}
+          onBack={() => props.navigateToScreen('2.8-scope-change')}
+          onMessage={props.navigateJobChat}
+          onContinue={props.navigateNext}
         />
       )
     case '2.10-completion-evidence':

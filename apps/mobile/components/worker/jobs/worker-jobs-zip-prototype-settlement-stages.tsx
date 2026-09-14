@@ -1,3 +1,4 @@
+import { WorkerStageElevenRuntime, type WorkerStageElevenRuntimeProps } from './stage-eleven/stage-eleven-runtime'
 import { Image } from 'expo-image'
 import { View } from 'react-native'
 
@@ -11,7 +12,6 @@ import {
   Text,
   WorkerJobsLegacyPrototypeStageActionButton,
   type WorkerJobsLegacyPrototypeRuntime,
-  workerJobsLegacyPrototypeStageElevenWorkart,
   workerJobsLegacyPrototypeStageNineWorkart,
   workerJobsLegacyPrototypeStageTenWorkart,
 } from './worker-jobs-zip-prototype-shared'
@@ -254,88 +254,6 @@ export function WorkerJobsLegacyPrototypeStageTenBody({
   )
 }
 
-export function WorkerJobsLegacyPrototypePaymentConfirmedBody({
-  language,
-  navigateToEarnings,
-  reduceTransparency,
-  runtime,
-}: {
-  language: AppLanguage
-  navigateToEarnings: () => void
-  reduceTransparency: boolean
-  runtime: WorkerJobsLegacyPrototypeRuntime
-}) {
-  const deal = runtime.state.deal
-  const paymentRecorded = isDealPaymentProtected(deal)
-  const ledgerCredit = deal && paymentRecorded
-    ? runtime.workerEarnings?.recent_transactions.find((entry) => entry.job_id === deal.id && entry.payment_state === 'available')
-    : null
-  const workerNet = typeof ledgerCredit?.worker_net === 'number' && ledgerCredit.worker_net > 0 ? ledgerCredit.worker_net : null
-  const paymentProvider = deal?.payment?.provider ?? deal?.paymentRailProvider
-  const isBankTransfer = paymentProvider === 'bank_transfer' || paymentProvider === 'platform_bank_manual' || paymentProvider === 'sepay_vietqr'
-  const bankAmount = paymentRecorded && isBankTransfer && typeof deal?.payment?.amountReceived === 'number' && deal.payment.amountReceived > 0
-    ? deal.payment.amountReceived
-    : null
-  const paymentAmount = bankAmount ?? workerNet
-  const paymentMethod = paymentProvider === 'direct_worker' || paymentProvider === 'cash'
-    ? textByLanguage(language, 'Tiền mặt', 'Cash')
-    : isBankTransfer
-      ? textByLanguage(language, 'Chuyển khoản', 'Bank transfer')
-      : textByLanguage(language, 'Đang cập nhật', 'Updating')
-  const amountLabel = paymentAmount
-    ? formatVnd(paymentAmount, language)
-    : textByLanguage(language, 'Chưa có số tiền được ghi nhận', 'Amount not recorded yet')
-  const rows: WorkerV5OfferDetailRow[] = [
-    {
-      icon: 'earnings',
-      title: bankAmount ? textByLanguage(language, 'Số tiền chuyển khoản', 'Bank transfer amount') : textByLanguage(language, 'Thu nhập đã ghi sổ', 'Ledger earnings'),
-      meta: paymentRecorded ? textByLanguage(language, 'Số liệu đã được xác minh cho công việc', 'Verified for this job') : textByLanguage(language, 'Chưa có bản ghi đã xác minh', 'No verified record yet'),
-      status: amountLabel,
-    },
-    {
-      icon: 'profile',
-      title: textByLanguage(language, 'Phương thức', 'Payment method'),
-      meta: paymentRecorded ? textByLanguage(language, 'Bản ghi thanh toán đã xác minh', 'Verified payment record') : textByLanguage(language, 'Chờ xác minh giao dịch', 'Awaiting transaction verification'),
-      status: paymentMethod,
-    },
-  ]
-
-  return (
-    <View style={prototypeStyles.bodyStack} testID="worker-v5-stage-eleven-payment-confirmed">
-      <View style={[prototypeStyles.offerSummaryCard, reduceTransparency && { backgroundColor: color.mint.white }]} testID="worker-v5-stage-eleven-hero">
-        <View style={prototypeStyles.offerSummaryCopy}>
-          <Text style={prototypeStyles.stagePaymentKicker}>{paymentRecorded ? textByLanguage(language, 'Thanh toán đã ghi nhận', 'Payment recorded') : textByLanguage(language, 'Trạng thái thanh toán', 'Payment status')}</Text>
-          <Text numberOfLines={1} style={prototypeStyles.offerSummaryTitle}>{paymentRecorded ? textByLanguage(language, 'Chúc mừng!', 'Congratulations!') : textByLanguage(language, 'Đang chờ thanh toán', 'Payment pending')}</Text>
-          <Text numberOfLines={1} style={prototypeStyles.stagePaymentAmount} testID="worker-v5-stage-eleven-amount">{amountLabel}</Text>
-          <Text numberOfLines={1} style={prototypeStyles.stagePaymentMeta}>{paymentMethod}</Text>
-        </View>
-        <Image
-          accessibilityIgnoresInvertColors
-          accessible={false}
-          contentFit="contain"
-          contentPosition="right center"
-          source={workerJobsLegacyPrototypeStageElevenWorkart}
-          style={prototypeStyles.offerSummaryArtwork}
-          testID="worker-v5-stage-eleven-payment-workart"
-        />
-      </View>
-
-      <View style={[prototypeStyles.offerInfoCard, reduceTransparency && { backgroundColor: color.mint.white }]} testID="worker-v5-stage-eleven-payment-card">
-        <WorkerJobsLegacyPrototypeOfferInfoGroup
-          rows={rows}
-          testID="worker-v5-stage-eleven-payment-list"
-          title={textByLanguage(language, 'Chi tiết nhận tiền', 'Payment details')}
-        />
-      </View>
-
-      <View style={prototypeStyles.stageActionRow}>
-        <WorkerJobsLegacyPrototypeStageActionButton
-          label={textByLanguage(language, 'Mở thu nhập', 'Open earnings')}
-          onPress={navigateToEarnings}
-          primary
-          testID="worker-v5-stage-eleven-earnings-action"
-        />
-      </View>
-    </View>
-  )
+export function WorkerJobsLegacyPrototypePaymentConfirmedBody(props: WorkerStageElevenRuntimeProps) {
+  return <WorkerStageElevenRuntime {...props} />
 }
