@@ -26,6 +26,7 @@ import { buildWorkerV5AcceptReviewChecks, workerV5CanAcceptOpenOffer } from './a
 import { WorkerRequestDetailsSections } from './request-details/request-details-content'
 import { buildWorkerRequestDetailsGroups } from './request-details/request-details-model'
 import { WorkerBroadcastProposalForm } from './worker-broadcast-proposal-form'
+import { WorkerStageTwoOfferWorkart } from './worker-jobs-stage-two-workart'
 import { prototypeStyles, stageTwoStyles } from './worker-jobs-zip-prototype-styles'
 import {
   Text,
@@ -391,10 +392,15 @@ function WorkerJobsLegacyPrototypeOfferSummary({
     ? workerV5TimeChoiceLabel(deal.draft.timeChoice, language, deal.scheduledAt)
     : previewJob?.time[language]
   const displayPrice = deal?.broadcast?.estimatedPriceLabel || deal?.estimate?.priceRangeLabel || previewJob?.price[language]
-  const artwork = workerJobsLegacyPrototypeOpportunityArtwork(deal, previewJob)
-
   return (
     <View style={[stageTwoStyles.hero, { backgroundColor: reduceTransparency ? tokens.base : tokens.raised, borderColor: tokens.borderStrong }]} testID="worker-v5-offer-detail-summary-card">
+      <WorkerStageTwoOfferWorkart
+        deal={deal}
+        panelColor={tokens.mode === 'dark' ? tokens.ghost : '#E8F5F1'}
+        previewJob={previewJob}
+        reduceTransparency={reduceTransparency}
+        surfaceColor={reduceTransparency ? tokens.base : tokens.raised}
+      />
       <View style={stageTwoStyles.heroCopy}>
         <Text numberOfLines={1} style={[stageTwoStyles.heroService, { color: tokens.text }]}>{service}</Text>
         <Text numberOfLines={2} style={[stageTwoStyles.heroArea, { color: tokens.muted }]}>{area || textByLanguage(language, 'Khu vực sẽ hiện sau khi xác minh', 'Area appears after verification')}</Text>
@@ -411,7 +417,6 @@ function WorkerJobsLegacyPrototypeOfferSummary({
           </View>
         ) : null}
       </View>
-      <Image accessibilityIgnoresInvertColors contentFit="contain" contentPosition="right center" source={artwork} style={stageTwoStyles.heroArtwork} />
     </View>
   )
 }

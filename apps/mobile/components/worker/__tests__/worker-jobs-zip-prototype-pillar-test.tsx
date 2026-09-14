@@ -38,6 +38,7 @@ const source = [
   'worker-jobs-zip-prototype-style-core.ts',
   'worker-jobs-zip-prototype-style-stages.ts',
   'worker-jobs-zip-prototype-style-stage-two.ts',
+  'worker-jobs-stage-two-workart.tsx',
   'worker-jobs-zip-prototype-styles.ts',
   'worker-jobs-zip-prototype-route-stage.tsx',
   'worker-jobs-zip-prototype-stage-four.tsx',
@@ -125,6 +126,19 @@ describe('Worker Jobs ZIP Prototype', () => {
     expect(requestDetailsSource).toContain('testID="worker-v5-offer-section-stack"')
     expect(requestDetailsSource).toContain('function CardHeader')
     expect(requestDetailsSource).not.toContain('sectionIconFrame')
+  })
+
+  it('uses the Booking Workart treatment on the left 40 percent of the Stage 2 summary', () => {
+    expect(source).toContain('WorkerStageTwoOfferWorkart')
+    expect(source).toContain('testID="worker-v5-offer-detail-workart-panel"')
+    expect(source).toContain('contentFit="cover"')
+    expect(source).toContain("flexBasis: '40%'")
+    expect(source).toContain("width: '40%'")
+    expect(source).toContain("panelColor={tokens.mode === 'dark' ? tokens.ghost : '#E8F5F1'}")
+    expect(source).toContain('surfaceColor={reduceTransparency ? tokens.base : tokens.raised}')
+    expect(source).toContain("borderRadius: 24")
+    expect(source).toContain('minHeight: 168')
+    expect(source).not.toContain("maxWidth: '56%'")
   })
 
   it('keeps Stage 4 on the approved V3 hierarchy and the real backend boundary', () => {
