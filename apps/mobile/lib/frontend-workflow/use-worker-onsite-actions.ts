@@ -23,6 +23,11 @@ type WorkerAccessCheckInInput = {
   checked_in_at?: string
 }
 
+type WorkerWorkSessionInput = {
+  action: 'pause' | 'resume' | 'save_note'
+  note?: string
+}
+
 type WorkerOnsiteActionsInput = {
   dispatch: Dispatch<LocalWorkflowAction>
   refreshCurrentJob: () => Promise<boolean>
@@ -40,7 +45,12 @@ export function useWorkerOnsiteActions({
 }: WorkerOnsiteActionsInput) {
   const workerUpdateStatus = useCallback(async (
     status: WorkerStatusUpdate,
-    extras?: { completion_notes?: string; completion_photo_urls?: string[]; access_check_in?: WorkerAccessCheckInInput },
+    extras?: {
+      completion_notes?: string
+      completion_photo_urls?: string[]
+      access_check_in?: WorkerAccessCheckInInput
+      work_session?: WorkerWorkSessionInput
+    },
   ) => {
     const jobId = getRemoteJobId(stateRef.current)
     if (!jobId) return setRemoteError('Không có yêu cầu để cập nhật')
@@ -55,6 +65,13 @@ export function useWorkerOnsiteActions({
           backendStatus: updated.data.to_status,
           completionNotes: extras?.completion_notes ?? existing.completionNotes,
           completionPhotoUrls: extras?.completion_photo_urls ?? existing.completionPhotoUrls,
+          arrivedAt: updated.data.to_status === 'arrived'
+            ? existing.arrivedAt ?? updated.data.updated_at
+            : existing.arrivedAt,
+          workStartedAt: updated.data.work_session?.started_at ?? existing.workStartedAt,
+          workPausedAt: updated.data.work_session?.paused_at ?? existing.workPausedAt,
+          workPausedMs: updated.data.work_session?.paused_ms ?? existing.workPausedMs ?? 0,
+          workerWorkNote: updated.data.work_session?.note ?? existing.workerWorkNote,
           status: toLocalDealStatus(updated.data.to_status),
         },
         workerGate: 'remote_backend',

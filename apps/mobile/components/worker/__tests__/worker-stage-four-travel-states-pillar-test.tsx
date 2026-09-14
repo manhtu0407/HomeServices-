@@ -33,7 +33,7 @@ jest.mock('../jobs/route-map-surfaces', () => {
   }
 })
 
-type RenderedNode = { props: { style?: unknown }; children: Array<RenderedNode | string> }
+type RenderedNode = { props: { style?: unknown }; children: (RenderedNode | string)[] }
 
 const lightTokens = getWorkerThemeTokens('light')
 

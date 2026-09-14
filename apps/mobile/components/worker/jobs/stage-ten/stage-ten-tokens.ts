@@ -1,0 +1,22 @@
+/** Local Concept B tokens only. They do not replace the app-wide theme. */
+export const stageTenTokens = {
+  border: '#D8E9EB',
+  buttonRadius: 17,
+  cardRadius: 15,
+  gold: '#FFB711',
+  goldSoft: '#FFF5DA',
+  hero: '#F2FAF9',
+  ink: '#082A31',
+  mint: '#008F80',
+  mintBorder: '#ACDDDA',
+  mintBright: '#21CEBE',
+  mintSoft: '#DCF6F1',
+  note: '#F3F7F8',
+  page: '#FFFFFF',
+  pill: '#D8F6F0',
+  referenceContentWidth: 366,
+  text: '#60758B',
+  subtle: '#73889C',
+  tile: '#F5F9FA',
+  tileRadius: 9,
+} as const

@@ -48,6 +48,28 @@ export function workerStatusUpdateSchema(
   const result: WorkerStatusUpdateInput = {
     status: status as WorkerStatusUpdate,
   };
+
+  if (record.work_session !== undefined) {
+    if (typeof record.work_session !== "object" || record.work_session === null || Array.isArray(record.work_session)) {
+      apiFailure("VALIDATION", "Dữ liệu phiên làm việc không hợp lệ", 400);
+    }
+    const workSession = record.work_session as Record<string, unknown>;
+    const action = workSession.action;
+    if (action !== "pause" && action !== "resume" && action !== "save_note") {
+      apiFailure("VALIDATION", "Dữ liệu phiên làm việc không hợp lệ", 400);
+    }
+    if (workSession.note !== undefined && (typeof workSession.note !== "string" || workSession.note.length > 2000)) {
+      apiFailure("VALIDATION", "Dữ liệu phiên làm việc không hợp lệ", 400);
+    }
+    if (action !== "save_note" && workSession.note !== undefined) {
+      apiFailure("VALIDATION", "Dữ liệu phiên làm việc không hợp lệ", 400);
+    }
+    result.work_session = {
+      action,
+      ...(typeof workSession.note === "string" ? { note: workSession.note.slice(0, 2000).trim() } : {}),
+    };
+  }
+
   if (typeof record.completion_notes === "string") {
     if (record.completion_notes.length > 2000) {
       apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);

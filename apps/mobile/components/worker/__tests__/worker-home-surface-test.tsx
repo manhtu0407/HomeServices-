@@ -3038,9 +3038,9 @@ describe('Worker runtime surface wiring', () => {
     render(<WorkerJobsSurface />)
 
     expect(screen.getByTestId('worker-v5-stage-ten-prototype')).toBeOnTheScreen()
-    expect(screen.getByText('Đã ghi nhận thu nhập')).toBeOnTheScreen()
-    expect(screen.getByText('Đã ghi vào sổ thu nhập')).toBeOnTheScreen()
-    expect(screen.getByText('340.000 VND')).toBeOnTheScreen()
+    expect(screen.getByText('Hoàn thiện công việc')).toBeOnTheScreen()
+    expect(screen.getByText('Đã ghi nhận')).toBeOnTheScreen()
+    expect(screen.getByText('340.000đ')).toBeOnTheScreen()
   })
 
   it('removes the requested home, jobs, earnings, and settings header utilities', () => {

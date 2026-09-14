@@ -41,6 +41,10 @@ type WorkerAccessCheckInInput = {
   note?: string
   checked_in_at?: string
 }
+type WorkerWorkSessionInput = {
+  action: 'pause' | 'resume' | 'save_note'
+  note?: string
+}
 
 export const jobService = {
   ...customerMatchingRetryService,
@@ -164,6 +168,10 @@ export const jobService = {
     completion_notes?: string
     completion_photo_urls?: string[]
     access_check_in?: WorkerAccessCheckInInput
+    work_session?: {
+      action: 'pause' | 'resume' | 'save_note'
+      note?: string
+    }
   }) {
     // worker không nhập final_price; Kael giữ authority.
     return api.patch<StatusUpdateResponse>(`/jobs/${encodeURIComponent(jobId)}/status`, {
@@ -604,6 +612,7 @@ export const workerService = {
   updateJobStatus(jobId: string, status: WorkerStatusUpdate, extras?: {
     completion_notes?: string
     completion_photo_urls?: string[]
+    work_session?: WorkerWorkSessionInput
   }) {
     // worker không nhập final_price; Kael giữ authority.
     return jobService.updateStatus(jobId, status, extras)

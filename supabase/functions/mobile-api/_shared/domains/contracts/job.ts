@@ -52,6 +52,12 @@ export type EdgeStatusUpdateResponse = {
   from_status: JobStatus;
   to_status: JobStatus;
   updated_at: string;
+  work_session?: {
+    started_at: string | null;
+    paused_at: string | null;
+    paused_ms: number;
+    note: string | null;
+  };
 };
 
 export type EdgeConfirmCompletionResponse = {

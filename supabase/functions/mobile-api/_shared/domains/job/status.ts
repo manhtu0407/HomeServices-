@@ -17,7 +17,10 @@ import {
 import { requireJobAccess } from "../../platform/access.ts";
 import { apiFailure } from "../../platform/api-failure.ts";
 import type { MobileApiContext } from "../../platform/auth.ts";
-import type { WorkerStatusUpdateInput } from "../contracts/worker.ts";
+import type {
+  WorkerStatusUpdateInput,
+  WorkerWorkSessionSnapshot,
+} from "../contracts/worker.ts";
 import { validateWorkflowTransition } from "../../workflow-orchestrator.ts";
 import type { JobStatus } from "../../../../_shared/domain.ts";
 import { requireAttachedCheckInMedia } from "./status-check-in.ts";
@@ -32,7 +35,7 @@ export async function updateJobStatus(
   const job = await requireJobAccess(client, jobId, ctx, {
     requiredRole: "worker",
     select:
-      "id, status, customer_id, worker_id, final_price, completion_notes, completion_photo_urls, apartment_access_profile, apartment_access_state, address_building, address_unit, address_floor, address_district, address_lat, address_lng",
+      "id, status, customer_id, worker_id, final_price, completion_notes, completion_photo_urls, apartment_access_profile, apartment_access_state, address_building, address_unit, address_floor, address_district, address_lat, address_lng, work_started_at, work_paused_at, work_paused_ms, worker_work_note",
   });
   if (job.status === "scope_change_pending") {
     apiFailure(
@@ -49,7 +52,11 @@ export async function updateJobStatus(
   const isSameStatusCheckIn = input.status === "arrived" &&
     job.status === "arrived" &&
     Boolean(input.access_check_in);
-  const transition = isSameStatusCheckIn ? null : validateWorkflowTransition({
+  const isSameStatusWorkSession = Boolean(input.work_session) &&
+    input.status === job.status &&
+    ["arrived", "inspecting", "repairing"].includes(input.status);
+  const isWorkSessionOnly = isSameStatusWorkSession && !isSameStatusCheckIn;
+  const transition = isSameStatusCheckIn || isSameStatusWorkSession ? null : validateWorkflowTransition({
     event: input.status === "completed_by_worker"
       ? "worker_completed"
       : "worker_status_advanced",
@@ -61,7 +68,7 @@ export async function updateJobStatus(
   }
 
   const now = new Date().toISOString();
-  const { update, completionEvidenceForDecision, accessReleaseMetadata } =
+  const { update, completionEvidenceForDecision, accessReleaseMetadata, workSession } =
     await buildJobStatusUpdate({
       client,
       ctx,
@@ -108,19 +115,23 @@ export async function updateJobStatus(
   await logJobEvent(
     client,
     jobId,
-    "worker_status_update",
+    isWorkSessionOnly ? "worker_work_session_update" : "worker_status_update",
     ctx,
     job.status as JobStatus,
-    input.status,
-    accessReleaseMetadata ?? {},
+    isWorkSessionOnly ? job.status as JobStatus : input.status,
+    isWorkSessionOnly
+      ? { action: input.work_session?.action ?? "unknown" }
+      : accessReleaseMetadata ?? {},
   );
   const finalStatus: JobStatus = input.status;
-  await notifyCustomerJobStatus(
-    client,
-    jobId,
-    nullableString(job.customer_id),
-    input.status,
-  );
+  if (!isWorkSessionOnly) {
+    await notifyCustomerJobStatus(
+      client,
+      jobId,
+      nullableString(job.customer_id),
+      input.status,
+    );
+  }
   // Worker just checked in at the lobby → prompt the customer to
   // authorize exact-unit access ("Cho thợ lên"). Distinct from the generic arrived
   // push; this one tells the customer an ACTION is needed.
@@ -153,6 +164,7 @@ export async function updateJobStatus(
     from_status: job.status as JobStatus,
     to_status: finalStatus,
     updated_at: now,
+    work_session: workSession,
   };
 }
 
@@ -172,6 +184,14 @@ async function buildJobStatusUpdate(input: {
   } | null = null;
   let accessReleaseMetadata: Record<string, unknown> | null = null;
   if (input.timestampColumn) update[input.timestampColumn] = input.now;
+  const currentWorkStartedAt = nullableString(input.job.work_started_at);
+  const startedAt = input.input.status === "repairing" &&
+      input.job.status !== "repairing" &&
+      currentWorkStartedAt === null
+    ? input.now
+    : currentWorkStartedAt;
+  if (startedAt !== currentWorkStartedAt) update.work_started_at = startedAt;
+  const workSession = applyWorkSessionUpdate(input, update, startedAt);
   if (input.input.access_check_in) {
     await validateAndApplyAccessCheckIn(input, update);
     const accessState = buildCheckInAccessState(
@@ -205,7 +225,59 @@ async function buildJobStatusUpdate(input: {
     update.completion_notes = completionEvidenceForDecision.completion_notes;
     update.completion_photo_urls = completionEvidenceForDecision.completion_photo_urls;
   }
-  return { update, completionEvidenceForDecision, accessReleaseMetadata };
+  return { update, completionEvidenceForDecision, accessReleaseMetadata, workSession };
+}
+
+function applyWorkSessionUpdate(
+  input: Parameters<typeof buildJobStatusUpdate>[0],
+  update: Record<string, unknown>,
+  startedAt: string | null,
+): WorkerWorkSessionSnapshot {
+  const currentPausedAt = nullableString(input.job.work_paused_at);
+  const currentPausedMs = nullableNumber(input.job.work_paused_ms) ?? 0;
+  const currentNote = nullableString(input.job.worker_work_note);
+  const action = input.input.work_session?.action;
+  let pausedAt = currentPausedAt;
+  let pausedMs = currentPausedMs;
+  let note = currentNote;
+
+  if (action === "save_note") {
+    if (!["arrived", "inspecting", "repairing"].includes(input.job.status as string)) {
+      apiFailure("INVALID_STATUS", "Chưa thể ghi chú ngoài phiên thực hiện công việc", 409);
+    }
+    const nextNote = input.input.work_session?.note?.trim() ?? "";
+    note = nextNote || null;
+    update.worker_work_note = note;
+  } else if (action === "pause") {
+    if (input.job.status !== "repairing" || startedAt === null || currentPausedAt !== null) {
+      apiFailure("INVALID_STATUS", "Chỉ có thể tạm dừng khi đang thực hiện công việc", 409);
+    }
+    pausedAt = input.now;
+    update.work_paused_at = pausedAt;
+  } else if (action === "resume") {
+    if (input.job.status !== "repairing" || startedAt === null || currentPausedAt === null) {
+      apiFailure("INVALID_STATUS", "Phiên làm việc hiện không ở trạng thái tạm dừng", 409);
+    }
+    const pausedAtMs = Date.parse(currentPausedAt);
+    const nowMs = Date.parse(input.now);
+    if (!Number.isFinite(pausedAtMs) || !Number.isFinite(nowMs)) {
+      apiFailure("DB_ERROR", "Không thể xác định thời gian phiên làm việc", 500);
+    }
+    pausedMs += Math.max(0, nowMs - pausedAtMs);
+    pausedAt = null;
+    update.work_paused_ms = pausedMs;
+    update.work_paused_at = null;
+  }
+
+  if (action === undefined && input.input.status === "repairing" && input.job.status !== "repairing") {
+    pausedAt = null;
+  }
+  return {
+    started_at: startedAt,
+    paused_at: pausedAt,
+    paused_ms: pausedMs,
+    note,
+  };
 }
 
 async function validateAndApplyAccessCheckIn(
