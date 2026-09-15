@@ -9,9 +9,36 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: kael-agentic-completeness-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
+  changes:
+    name: classify changed paths
+    runs-on: ubuntu-latest
+    outputs:
+      kael: ${{ steps.classify.outputs.kael }}
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+      - id: classify
+        name: Classify dependency impact
+        env:
+          CI_EVENT: ${{ github.event_name }}
+          CI_BASE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
+          CI_HEAD_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+        run: node scripts/harness/classify-ci-changes.mjs
+
   source-and-runtime:
     name: type-check, tests, eval, and Edge checks
+    needs: changes
+    if: ${{ github.event_name == 'workflow_dispatch' || needs.changes.outputs.kael == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 90
     steps:
