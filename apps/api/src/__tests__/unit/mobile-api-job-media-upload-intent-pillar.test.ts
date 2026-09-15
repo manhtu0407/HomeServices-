@@ -7,6 +7,17 @@ import {
   createJobMediaUpload,
   revokeJobMediaUploads,
 } from '../../../../../supabase/functions/mobile-api/_shared/domains/job/media'
+import type { PillarManifest } from '../pillar-manifest'
+
+export const PILLAR = {
+  id: 'P190-customer-media-upload',
+  invariant: 'Customer media upload intent and attach operations remain participant-bound and fail closed before unreserved Storage reads',
+  authority: ['governance/RULES.md #4', 'governance/RULES.md #7'],
+  target: 'supabase/functions/mobile-api/_shared/domains/job/media.ts',
+  layer: 'integration',
+  siblings: ['P19-job-access-ownership', 'P79-worker-completion-media-ownership'],
+  mutation: 'allow an unreserved object to reach Storage download or issue a signed upload token before quota reservation',
+} as const satisfies PillarManifest
 
 const JOB_ID = '11111111-1111-4111-8111-111111111111'
 
