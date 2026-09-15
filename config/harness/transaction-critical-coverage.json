@@ -283,7 +283,7 @@
       },
       "customer.rfq-price.reconcile": {
         "status": "PARTIAL",
-        "gaps": ["Collected participant-bound HTTP reads bind proposal rehydration, honest empty state and invalid-receipt recovery for the Customer. The Worker read route, hosted Edge-to-SQL, concurrent proposal changes, native relaunch and Production proof remain open."],
+        "gaps": ["Collected participant-bound HTTP reads bind proposal rehydration, honest empty state and invalid-receipt recovery for the Customer. Hosted Edge-to-SQL, concurrent proposal changes, native relaunch and Production proof remain open."],
         "cases": [{
           "id": "customer-rfq-price-reconcile-http",
           "pillar": "P178-rfq-price-public-contract",
@@ -299,7 +299,7 @@
       },
       "worker.fulfillment.media": {
         "status": "PARTIAL",
-        "gaps": ["Collected Worker completion-media HTTP tests prove exact attachment ownership, persisted-reference validation, role fencing and recoverable database errors. The Customer upload path, hosted Edge-to-SQL, Storage races, native relaunch and Production proof remain open."],
+        "gaps": ["Collected Worker completion-media HTTP tests prove exact attachment ownership, persisted-reference validation, role fencing and recoverable database errors. Hosted Edge-to-SQL, Storage races, native relaunch and Production proof remain open."],
         "cases": [{
           "id": "worker-fulfillment-media-ownership",
           "pillar": "P79-worker-completion-media-ownership",
@@ -1260,6 +1260,168 @@
             "review returns the existing review when the current job is already reviewed"
           ]
         }]
+      },
+      "customer.fulfillment.media": {
+        "status": "PARTIAL",
+        "gaps": ["Collected Customer media tests exercise the real upload-intent reservation and attach guard. Hosted Storage/RLS, native media permissions, concurrent uploads, and Production proof remain open."],
+        "cases": [{
+          "id": "customer-fulfillment-media-intent",
+          "pillar": "P190-customer-media-upload",
+          "file": "apps/api/src/__tests__/unit/mobile-api-job-media-upload-intent-pillar.test.ts",
+          "owner": "supabase/functions/mobile-api/_shared/domains/job/media.ts",
+          "invocation": "createJobMediaUpload/attachJobMedia",
+          "seam": "service",
+          "actor": "customer",
+          "from": ["completion_proposed"],
+          "to": ["completion_proposed"],
+          "success_tests": ["job media upload intent reserves quota before issuing a signed Storage upload token"],
+          "denial_tests": ["job media upload intent rejects an unreserved object before downloading its bytes"],
+          "recovery_tests": []
+        }]
+      },
+      "worker.scope-change.propose": {
+        "status": "PARTIAL",
+        "gaps": ["Collected Worker scope-change tests exercise idempotency replay, provider suppression, and durable effect draining. Hosted SQL races, real provider responses, native relaunch, and Production proof remain open."],
+        "cases": [{
+          "id": "worker-scope-change-direct-request",
+          "pillar": "P191-worker-scope-change-request",
+          "file": "apps/api/src/__tests__/unit/mobile-api-scope-change-idempotency-pillar.test.ts",
+          "owner": "supabase/functions/mobile-api/_shared/domains/job/scope-change/request.ts",
+          "invocation": "requestScopeChange",
+          "seam": "service",
+          "actor": "worker",
+          "from": ["working"],
+          "to": ["scope_change_pending"],
+          "success_tests": ["direct scope-change idempotency replays a completed response before provider work"],
+          "denial_tests": ["direct scope-change idempotency rejects REQUEST_IN_PROGRESS before provider work"],
+          "recovery_tests": []
+        }]
+      },
+      "admin.payment.reconciliation.read": {
+        "status": "PARTIAL",
+        "gaps": ["Collected Admin reconciliation tests exercise the real read projection and invalid-row refusal. Hosted Auth/capability/SQL, concurrent assignment changes, native Admin UI, and Production proof remain open."],
+        "cases": [{
+          "id": "admin-payment-reconciliation-read-projection",
+          "pillar": "P34-admin-finance-bank-reference",
+          "file": "apps/api/src/__tests__/unit/admin-finance-bank-reference-pillar.test.ts",
+          "owner": "supabase/functions/mobile-api/_shared/domains/admin/finance-reconciliation.ts",
+          "invocation": "listAdminPaymentReconciliations",
+          "seam": "service",
+          "actor": "admin",
+          "from": ["payment_pending"],
+          "to": ["payment_pending"],
+          "success_tests": ["P34 admin finance — reconciliation read projection lists an allowlisted reconciliation projection for an Admin actor"],
+          "denial_tests": ["P34 admin finance — reconciliation read projection rejects an invalid reconciliation row before exposing a response"],
+          "recovery_tests": []
+        }]
+      },
+      "customer.dispute.open": {
+        "status": "PARTIAL",
+        "gaps": ["Collected Customer dispute tests exercise the actor-bound atomic open operation and safe uncertain-outcome refusal. Hosted SQL/RLS, evidence Storage, native recovery, and Production proof remain open."],
+        "cases": [{
+          "id": "customer-dispute-open-atomic",
+          "pillar": "P189-dispute-lifecycle",
+          "file": "apps/api/src/__tests__/kael-edge-runtime/domains/dispute-lifecycle-pillar.test.ts",
+          "owner": "supabase/functions/mobile-api/_shared/domains/dispute/dispute.ts",
+          "invocation": "openDispute",
+          "seam": "service",
+          "actor": "customer",
+          "from": ["completion_proposed"],
+          "to": ["recovery_required"],
+          "success_tests": ["dispute lifecycle opens a dispute for the Customer through the atomic operation"],
+          "denial_tests": ["dispute lifecycle denies a Customer dispute when the atomic outcome is uncertain"],
+          "recovery_tests": []
+        }]
+      },
+      "worker.dispute.open": {
+        "status": "PARTIAL",
+        "gaps": ["Collected Worker dispute tests exercise the actor-bound atomic open operation and safe uncertain-outcome refusal. Hosted SQL/RLS, evidence Storage, native recovery, and Production proof remain open."],
+        "cases": [{
+          "id": "worker-dispute-open-atomic",
+          "pillar": "P189-dispute-lifecycle",
+          "file": "apps/api/src/__tests__/kael-edge-runtime/domains/dispute-lifecycle-pillar.test.ts",
+          "owner": "supabase/functions/mobile-api/_shared/domains/dispute/dispute.ts",
+          "invocation": "openDispute",
+          "seam": "service",
+          "actor": "worker",
+          "from": ["completion_proposed"],
+          "to": ["recovery_required"],
+          "success_tests": ["dispute lifecycle opens a dispute for the Worker through the atomic operation"],
+          "denial_tests": ["dispute lifecycle denies a Worker dispute when the atomic outcome is uncertain"],
+          "recovery_tests": []
+        }]
+      },
+      "customer.dispute.counter-statement": {
+        "status": "PARTIAL",
+        "gaps": ["Collected Customer counter-statement tests exercise the actor-bound atomic operation and safe uncertain-outcome refusal. Hosted SQL/RLS, concurrent statements, native recovery, and Production proof remain open."],
+        "cases": [{
+          "id": "customer-dispute-counter-statement-atomic",
+          "pillar": "P189-dispute-lifecycle",
+          "file": "apps/api/src/__tests__/kael-edge-runtime/domains/dispute-lifecycle-pillar.test.ts",
+          "owner": "supabase/functions/mobile-api/_shared/domains/dispute/dispute.ts",
+          "invocation": "submitDisputeCounterStatement",
+          "seam": "service",
+          "actor": "customer",
+          "from": ["recovery_required"],
+          "to": ["recovery_required"],
+          "success_tests": ["dispute lifecycle submits a Customer counter-statement through the atomic operation"],
+          "denial_tests": ["dispute lifecycle denies a Customer counter-statement when the atomic outcome is uncertain"],
+          "recovery_tests": []
+        }]
+      },
+      "worker.dispute.counter-statement": {
+        "status": "PARTIAL",
+        "gaps": ["Collected Worker counter-statement tests exercise the actor-bound atomic operation and safe uncertain-outcome refusal. Hosted SQL/RLS, concurrent statements, native recovery, and Production proof remain open."],
+        "cases": [{
+          "id": "worker-dispute-counter-statement-atomic",
+          "pillar": "P189-dispute-lifecycle",
+          "file": "apps/api/src/__tests__/kael-edge-runtime/domains/dispute-lifecycle-pillar.test.ts",
+          "owner": "supabase/functions/mobile-api/_shared/domains/dispute/dispute.ts",
+          "invocation": "submitDisputeCounterStatement",
+          "seam": "service",
+          "actor": "worker",
+          "from": ["recovery_required"],
+          "to": ["recovery_required"],
+          "success_tests": ["dispute lifecycle submits a Worker counter-statement through the atomic operation"],
+          "denial_tests": ["dispute lifecycle denies a Worker counter-statement when the atomic outcome is uncertain"],
+          "recovery_tests": []
+        }]
+      },
+      "admin.dispute.decide": {
+        "status": "PARTIAL",
+        "gaps": ["Collected Admin dispute tests exercise the admin-only atomic decision operation and safe uncertain-outcome refusal. Hosted refund-obligation SQL, concurrent decisions, native Admin UI, and Production proof remain open."],
+        "cases": [{
+          "id": "admin-dispute-decision-atomic",
+          "pillar": "P189-dispute-lifecycle",
+          "file": "apps/api/src/__tests__/kael-edge-runtime/domains/dispute-lifecycle-pillar.test.ts",
+          "owner": "supabase/functions/mobile-api/_shared/domains/dispute/dispute.ts",
+          "invocation": "decideDispute",
+          "seam": "service",
+          "actor": "admin",
+          "from": ["recovery_required"],
+          "to": ["closed"],
+          "success_tests": ["dispute lifecycle records an Admin dispute decision through the atomic operation"],
+          "denial_tests": ["dispute lifecycle denies an Admin dispute decision when the atomic outcome is uncertain"],
+          "recovery_tests": []
+        }]
+      },
+      "worker.rfq-price.reconcile": {
+        "status": "PARTIAL",
+        "gaps": ["Collected Worker RFQ read tests exercise participant-bound rehydration and malformed-proposal refusal. Hosted SQL/RLS, concurrent proposal changes, native relaunch, and Production proof remain open."],
+        "cases": [{
+          "id": "worker-rfq-price-read-reconcile",
+          "pillar": "P178-rfq-price-public-contract",
+          "file": "apps/api/src/__tests__/kael-edge-runtime/domains/rfq-price-public-contract-pillar.test.ts",
+          "owner": "supabase/functions/mobile-api/_shared/domains/job/rfq-price.ts",
+          "invocation": "getRfqPrice",
+          "seam": "http",
+          "actor": "worker",
+          "from": ["inspecting"],
+          "to": ["inspecting"],
+          "success_tests": ["RFQ exact price public contract rehydrates the current Worker participant-bound proposal without any mutation"],
+          "denial_tests": ["RFQ exact price public contract denies an unbound Worker RFQ proposal without mutation"],
+          "recovery_tests": []
+        }]
       }
     }
   },
@@ -1708,7 +1870,7 @@
       "confirmation_gate": "none",
       "from": ["official_match", "scope_change_pending", "completion_proposed"],
       "to": ["scope_change_pending", "completion_proposed"],
-      "pillars": ["P19-job-access-ownership", "P10-per-actor-rls"]
+      "pillars": ["P19-job-access-ownership", "P10-per-actor-rls", "P190-customer-media-upload"]
     },
     {
       "id": "worker.scope-change.propose",
@@ -1718,7 +1880,7 @@
       "confirmation_gate": "scope_change",
       "from": ["arrived", "inspecting", "working"],
       "to": ["scope_change_pending"],
-      "pillars": ["P12-workflow-transition-composition", "P17-adversarial-surface-matrix"]
+      "pillars": ["P12-workflow-transition-composition", "P17-adversarial-surface-matrix", "P191-worker-scope-change-request"]
     },
     {
       "id": "customer.scope-change.decide",
@@ -1818,7 +1980,7 @@
       "confirmation_gate": "none",
       "from": ["scope_change_pending", "completion_proposed", "customer_confirmed", "payment_pending", "paid"],
       "to": ["recovery_required", "refund_required"],
-      "pillars": ["P19-job-access-ownership", "P49-admin-operations-support"]
+      "pillars": ["P19-job-access-ownership", "P49-admin-operations-support", "P189-dispute-lifecycle"]
     },
     {
       "id": "worker.dispute.open",
@@ -1828,7 +1990,7 @@
       "confirmation_gate": "none",
       "from": ["scope_change_pending", "completion_proposed", "customer_confirmed", "payment_pending", "paid"],
       "to": ["recovery_required", "refund_required"],
-      "pillars": ["P19-job-access-ownership", "P49-admin-operations-support"]
+      "pillars": ["P19-job-access-ownership", "P49-admin-operations-support", "P189-dispute-lifecycle"]
     },
     {
       "id": "customer.dispute.counter-statement",
@@ -1838,7 +2000,7 @@
       "confirmation_gate": "none",
       "from": ["recovery_required", "refund_required"],
       "to": ["recovery_required", "refund_required"],
-      "pillars": ["P19-job-access-ownership", "P49-admin-operations-support"]
+      "pillars": ["P19-job-access-ownership", "P49-admin-operations-support", "P189-dispute-lifecycle"]
     },
     {
       "id": "worker.dispute.counter-statement",
@@ -1848,7 +2010,7 @@
       "confirmation_gate": "none",
       "from": ["recovery_required", "refund_required"],
       "to": ["recovery_required", "refund_required"],
-      "pillars": ["P19-job-access-ownership", "P49-admin-operations-support"]
+      "pillars": ["P19-job-access-ownership", "P49-admin-operations-support", "P189-dispute-lifecycle"]
     },
     {
       "id": "admin.dispute.decide",
@@ -1858,7 +2020,7 @@
       "confirmation_gate": "none",
       "from": ["recovery_required", "refund_required"],
       "to": ["recovery_required", "refund_required", "closed"],
-      "pillars": ["P49-admin-operations-support", "P10-per-actor-rls"]
+      "pillars": ["P49-admin-operations-support", "P10-per-actor-rls", "P189-dispute-lifecycle"]
     },
     {
       "id": "admin.recovery.list",

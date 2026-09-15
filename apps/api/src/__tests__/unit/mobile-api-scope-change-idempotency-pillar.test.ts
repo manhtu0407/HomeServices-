@@ -2,6 +2,17 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import type { MobileApiContext } from '../../../../../supabase/functions/mobile-api/_shared/http'
 import { createEdgeServices } from '../../../../../supabase/functions/mobile-api/_shared/domains'
+import type { PillarManifest } from '../pillar-manifest'
+
+export const PILLAR = {
+  id: 'P191-worker-scope-change-request',
+  invariant: 'Worker scope-change requests bind idempotency, durable effects, and provider work to one atomic request boundary',
+  authority: ['governance/RULES.md #4', 'governance/RULES.md #7'],
+  target: 'supabase/functions/mobile-api/_shared/domains/job/scope-change/request.ts',
+  layer: 'integration',
+  siblings: ['P12-workflow-transition-composition', 'P87-scope-change-http-authority'],
+  mutation: 'run provider work before the idempotency claim or repeat provider work after a replay, allowing duplicate Worker requests to create divergent scope changes',
+} as const satisfies PillarManifest
 
 afterEach(() => {
   vi.unstubAllGlobals()
@@ -130,6 +141,15 @@ describe('direct scope-change idempotency', () => {
       new Response(JSON.stringify({ data: [{ status: 'ok', id: 'ticket-1' }] }))
     )
     vi.stubGlobal('fetch', fetchMock)
+    vi.stubGlobal('Deno', {
+      env: {
+        get: vi.fn((name: string) => ({
+          KAEL_AUTONOMY_FULL_ENABLED: 'true',
+          NESTSCOUT_ENVIRONMENT: 'production',
+          HARNESS_RELEASE_ID: 'release-1',
+        }[name])),
+      },
+    })
     const client = makeSequenceClient([
       { data: jobRow('scope_change_pending'), error: null },
       {
@@ -154,15 +174,20 @@ describe('direct scope-change idempotency', () => {
         }],
         error: null,
       },
+      { data: { state: 'reserved', reservation_id: 'reservation-1' }, error: null },
+      { data: { allowed: true, state: 'closed', retry_after_ms: 0, probe_token: null }, error: null },
       {
         data: [{
           id: 'token-1',
           user_id: 'customer-1',
           push_token: 'ExponentPushToken[customer-1]',
+          updated_at: '2026-09-15T00:00:00.000Z',
         }],
         error: null,
       },
-      { data: [{ completed: true }], error: null },
+      { data: true, error: null },
+      { data: true, error: null },
+      { data: true, error: null },
     ])
 
     await createEdgeServices({}).requestScopeChange(context(client), 'job-1', input())
