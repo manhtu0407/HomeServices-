@@ -449,18 +449,6 @@ describe('Worker V5 arrival check-in', () => {
     expect(mockWorkflowValue.actions.workerUpdateStatus).not.toHaveBeenCalled()
   })
 
-  it('returns from in-progress to the job inbox instead of the retired route screen', async () => {
-    mockRouteParams = { ns_worker_screen: '2.7-in-progress' }
-    buildWorkflow(buildInProgressDeal())
-
-    render(<WorkerJobsSurface />)
-    fireEvent.press(screen.getByTestId('stage5-back'))
-
-    await waitFor(() => {
-      expect(mockReplace).toHaveBeenCalledWith('/(worker)/jobs?ns_worker_screen=2.4-route-eta')
-    })
-  })
-
 it('opens an already-arrived job at its real check-in step', async () => {
   mockRouteParams = {}
   buildWorkflow(buildInProgressDeal())
@@ -528,13 +516,14 @@ it('records arrival before continuing to the in-progress screen', async () => {
     render(<WorkerJobsSurface />)
 
     expect(screen.getByTestId('stage5-work')).toBeOnTheScreen()
-    expect(screen.getByText('Bước 5/11')).toBeOnTheScreen()
-    expect(screen.getByText('Tiến độ công việc')).toBeOnTheScreen()
+    expect(screen.queryByTestId('stage5-back')).toBeNull()
+    expect(screen.queryByTestId('stage5-pause')).toBeNull()
+    expect(screen.queryByText('Tiến độ công việc')).toBeNull()
     expect(screen.getByText(deal.broadcast!.problemSummary)).toBeOnTheScreen()
     expect(screen.getByTestId('stage5-photo')).toBeOnTheScreen()
     expect(screen.getByTestId('stage5-note')).toBeOnTheScreen()
     expect(screen.getByTestId('stage5-scope')).toBeOnTheScreen()
-    expect(screen.getByTestId('stage5-support')).toBeOnTheScreen()
+    expect(screen.queryByTestId('stage5-support')).toBeNull()
     expect(screen.queryByText('Đã đọc')).toBeNull()
     expect(screen.queryByText('Đang áp dụng')).toBeNull()
     fireEvent.press(screen.getByTestId('stage5-scope'))
@@ -552,7 +541,6 @@ it('records arrival before continuing to the in-progress screen', async () => {
     expect(screen.getByTestId('worker-v5-rebuilt-in-progress-session')).toBeOnTheScreen()
     expect(screen.getByTestId('stage5-work')).toBeOnTheScreen()
     expect(screen.getByTestId('stage5-scope')).toBeOnTheScreen()
-    expect(screen.getByTestId('stage5-support')).toBeOnTheScreen()
     expect(screen.queryByTestId('worker-v5-stage-five-prototype')).toBeNull()
     expect(screen.queryByTestId('worker-jobs-surface')).toBeNull()
   })
@@ -573,12 +561,16 @@ it('records arrival before continuing to the in-progress screen', async () => {
     expect(screen.queryByTestId('worker-v5-stage-five-prototype')).toBeNull()
   })
 
-  it('opens case-bound Kael from an active job instead of generic chat', () => {
+  it('opens case-bound Kael from the active job details instead of generic chat', async () => {
     mockRouteParams = { ns_worker_screen: '2.7-in-progress' }
     buildWorkflow(buildInProgressDeal())
 
     render(<WorkerJobsSurface />)
-    fireEvent.press(screen.getByTestId('stage5-support'))
+    await act(async () => {
+      fireEvent.press(screen.getByLabelText('Chi tiết công việc'))
+      await Promise.resolve()
+    })
+    fireEvent.press(screen.getByTestId('worker-v5-in-progress-kael-action'))
 
     expect(mockReplace).toHaveBeenCalledWith('/(worker)/chat?ns_worker_screen=3.2-kael-job-intake')
   })
@@ -1058,9 +1050,9 @@ it('records arrival before continuing to the in-progress screen', async () => {
     rerender(<WorkerJobsSurface />)
 
     await waitFor(() => {
-      expect(screen.getByTestId('worker-v5-evidence-tray-tile-0')).toBeOnTheScreen()
+      expect(screen.getByTestId('worker-v5-stage-eight-fidelity')).toBeOnTheScreen()
     })
-    expect(screen.queryByText('Hồ sơ hoàn tất')).toBeNull()
+    expect(screen.queryByText('Kael đã đối chiếu phạm vi')).toBeNull()
   })
 
   it('collects real completion evidence before opening the submitted phase', async () => {
@@ -1082,18 +1074,18 @@ it('records arrival before continuing to the in-progress screen', async () => {
 
     render(<WorkerJobsSurface />)
 
-    expect(screen.getByTestId('worker-v5-completion-submit-action').props.accessibilityState).toEqual({ disabled: true })
+    expect(screen.getByTestId('worker-v5-stage-eight-fidelity-submit').props.accessibilityState).toEqual({ disabled: true, busy: false })
     fireEvent.changeText(
-      screen.getByTestId('worker-v5-completion-note-input'),
+      screen.getByTestId('worker-v5-stage-eight-fidelity-note-input'),
       'Đã khoan tường, lắp giá và kiểm tra tải an toàn.',
     )
-    fireEvent.press(screen.getByTestId('worker-v5-completion-add-photo-action'))
+    fireEvent.press(screen.getByTestId('worker-v5-stage-eight-fidelity-add-photo'))
 
     await waitFor(() => {
       expect(screen.getByText('1 ảnh')).toBeOnTheScreen()
-      expect(screen.getByTestId('worker-v5-completion-submit-action').props.accessibilityState).toEqual({ disabled: false })
+      expect(screen.getByTestId('worker-v5-stage-eight-fidelity-submit').props.accessibilityState).toEqual({ disabled: false, busy: false })
     })
-    fireEvent.press(screen.getByTestId('worker-v5-completion-submit-action'))
+    fireEvent.press(screen.getByTestId('worker-v5-stage-eight-fidelity-submit'))
 
     await waitFor(() => {
       expect(mediaUpload.uploadJobMediaDrafts).toHaveBeenCalledWith(
@@ -1548,7 +1540,7 @@ it('records arrival before continuing to the in-progress screen', async () => {
     mockRouteParams = { ns_worker_screen: '2.10-completion-evidence' }
     rerender(<WorkerJobsSurface />)
 
-    expect(screen.getByTestId('worker-v5-completion-submit-action')).toBeOnTheScreen()
+    expect(screen.getByTestId('worker-v5-stage-eight-fidelity-submit')).toBeOnTheScreen()
     expect(screen.queryByText('Kael đã đối chiếu phạm vi')).toBeNull()
     expect(screen.queryByText('Kael chỉ đối chiếu phạm vi và nguồn bằng chứng; quyền gửi vẫn là hành động rõ ràng của thợ.')).toBeNull()
   })
