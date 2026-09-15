@@ -1,14 +1,17 @@
 import { WorkerStageElevenRuntime, type WorkerStageElevenRuntimeProps } from './stage-eleven/stage-eleven-runtime'
 import { Image } from 'expo-image'
 import { View } from 'react-native'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { color } from '@/design/theme'
 import type { AppLanguage } from '@/lib/app-language'
-import { isDealPaymentProtected } from '@/lib/frontend-workflow/payment-proof'
 import { useJobMediaPreviewUrls } from '@/lib/job-media-preview'
 import { formatVnd, textByLanguage } from '../ui/format'
 import { WorkerV5BoundaryNote } from '../ui/metrics-surfaces'
 import type { WorkerV5OfferDetailRow } from './offer'
+import { StageNineEmptyStage } from './stage-nine/stage-nine-empty-stage'
+import { isStageNineRecordEmpty, readStageNineRecordState } from './stage-nine/stage-nine-model'
+import { stageNineTokens } from './stage-nine/stage-nine-tokens'
 import { StageTenContent } from './stage-ten/stage-ten-content'
 import { buildWorkerStageTenRuntime } from './stage-ten/stage-ten-runtime'
 import {
@@ -25,6 +28,8 @@ export function WorkerJobsLegacyPrototypeStageNineBody({
   language,
   navigateNext,
   navigateToEvidence,
+  prototypeMode,
+  reduceMotion,
   reduceTransparency,
   runtime,
 }: {
@@ -32,18 +37,35 @@ export function WorkerJobsLegacyPrototypeStageNineBody({
   language: AppLanguage
   navigateNext: () => void
   navigateToEvidence: () => void
+  prototypeMode: boolean
+  reduceMotion: boolean
   reduceTransparency: boolean
   runtime: WorkerJobsLegacyPrototypeRuntime
 }) {
-  const deal = runtime.state.deal
-  const paymentRecorded = isDealPaymentProtected(deal)
-  const sourceCount = (deal?.completionPhotoUrls?.length ?? 0) + (deal?.completionNotes?.trim() ? 1 : 0)
-  const customerConfirmed = deal?.status === 'confirmed_by_customer' || deal?.status === 'payment_pending' || deal?.status === 'paid' || deal?.status === 'reviewed'
-  const awaitingDirectPaymentConfirmation = deal?.payment?.provider === 'direct_worker'
-    && (deal.payment.status === 'direct_awaiting_worker_confirmation'
-      || (deal.payment.status === 'direct_awaiting_confirmation' && Boolean(deal.payment.directCustomerConfirmedAt)))
-    && !deal.payment.directWorkerConfirmedAt
-  const hasSubmittedArtifact = Boolean(deal && (sourceCount > 0 || deal.completionPhotoUrls?.length || deal.completionNotes?.trim()))
+  const insets = useSafeAreaInsets()
+  const record = readStageNineRecordState(runtime.state.deal)
+  const { awaitingDirectPaymentConfirmation, customerConfirmed, hasSubmittedArtifact, paymentRecorded, sourceCount } = record
+  const updateError = runtime.state.lastError ? (
+    <WorkerV5BoundaryNote
+      body={runtime.state.lastError}
+      reduceTransparency={reduceTransparency}
+      title={textByLanguage(language, 'Chưa cập nhật được', 'Could not update')}
+    />
+  ) : null
+
+  if (isStageNineRecordEmpty(record)) {
+    return (
+      <StageNineEmptyStage
+        bottomClearance={prototypeMode ? 0 : stageNineTokens.layout.dockClearance}
+        footer={updateError}
+        language={language}
+        onSubmit={navigateToEvidence}
+        reduceMotion={reduceMotion}
+        topInset={prototypeMode ? 0 : insets.top}
+      />
+    )
+  }
+
   const heroTitle = customerConfirmed
     ? textByLanguage(language, 'Khách đã xác nhận', 'Customer confirmed')
     : hasSubmittedArtifact
@@ -124,13 +146,7 @@ export function WorkerJobsLegacyPrototypeStageNineBody({
         />
       ) : null}
 
-      {runtime.state.lastError ? (
-        <WorkerV5BoundaryNote
-          body={runtime.state.lastError}
-          reduceTransparency={reduceTransparency}
-          title={textByLanguage(language, 'Chưa cập nhật được', 'Could not update')}
-        />
-      ) : null}
+      {updateError}
 
       <View style={prototypeStyles.stageActionRow}>
         <WorkerJobsLegacyPrototypeStageActionButton

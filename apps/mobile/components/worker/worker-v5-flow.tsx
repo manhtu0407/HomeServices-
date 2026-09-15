@@ -51,6 +51,7 @@ import {
 import { useWorkerAvatarPicker } from './profile/use-worker-avatar-picker'
 import { workerV5CanReviewOpenOpportunity } from './jobs/acceptance'
 import { isWorkerJobsRebuildScreen } from './jobs/worker-jobs-screen-registry'
+import { STAGE_NINE_EMPTY_SAFE_AREA_EDGES, isStageNineEmptyScreen, stageNineHostStyles } from './jobs/stage-nine/stage-nine-host'
 import { WorkerV5InProgressBody } from './jobs/in-progress-surfaces'
 import {
   WorkerJobsProductionHost,
@@ -699,10 +700,11 @@ function WorkerV5ScreenLayout({ actions, state }: { actions: WorkerV5ScreenLayou
   } = content
   const usesStageFiveProduction = screen.id === '2.7-in-progress'
   const usesStageEightProduction = screen.id === '2.10-completion-evidence'
-  return <SafeAreaView style={[styles.safeArea, surfaceStyle, usesStageFiveProduction ? styles.stageFiveSafeArea : null]} testID={`worker-v5-screen-${screen.id}`}>
-    {usesStageFiveProduction ? null : <WorkerV5ScreenAuras state={auraState} />}
-    <ScrollView bounces={false} contentContainerStyle={[styles.scrollContent, usesStageFiveProduction ? styles.stageFiveScrollContent : null, headerState.usesEarningsOverviewHandoff ? styles.earningsOverviewScrollContent : null, usesKaelOrbHandoff ? styles.kaelOrbCustomerScrollContent : null, { minHeight }]} onScroll={actions.onDockScroll} scrollEventThrottle={16} showsVerticalScrollIndicator={false} testID="worker-v5-scroll">
-      {usesStageFiveProduction || usesStageEightProduction || headerState.usesEarningsOverviewHandoff || headerState.usesOpportunityInboxHandoff || headerState.usesTravelHandoff ? null : <WorkerV5ScreenHeader onBack={actions.onHeaderBack} onOpenJobChat={actions.onOpenJobChat} state={headerState} />}
+  const usesStageNineEmptyProduction = isStageNineEmptyScreen(screen.id, runtime.state.deal)
+  return <SafeAreaView edges={usesStageNineEmptyProduction ? STAGE_NINE_EMPTY_SAFE_AREA_EDGES : undefined} style={[styles.safeArea, surfaceStyle, usesStageFiveProduction ? styles.stageFiveSafeArea : null, usesStageNineEmptyProduction ? stageNineHostStyles.safeArea : null]} testID={`worker-v5-screen-${screen.id}`}>
+    {usesStageFiveProduction || usesStageNineEmptyProduction ? null : <WorkerV5ScreenAuras state={auraState} />}
+    <ScrollView bounces={false} contentContainerStyle={[styles.scrollContent, usesStageFiveProduction ? styles.stageFiveScrollContent : null, usesStageNineEmptyProduction ? stageNineHostStyles.scrollContent : null, headerState.usesEarningsOverviewHandoff ? styles.earningsOverviewScrollContent : null, usesKaelOrbHandoff ? styles.kaelOrbCustomerScrollContent : null, { minHeight }]} onScroll={actions.onDockScroll} scrollEventThrottle={16} showsVerticalScrollIndicator={false} testID="worker-v5-scroll">
+      {usesStageNineEmptyProduction || usesStageFiveProduction || usesStageEightProduction || headerState.usesEarningsOverviewHandoff || headerState.usesOpportunityInboxHandoff || headerState.usesTravelHandoff ? null : <WorkerV5ScreenHeader onBack={actions.onHeaderBack} onOpenJobChat={actions.onOpenJobChat} state={headerState} />}
       {!usesHandoffStage ? <View style={[styles.glassCard, reduceTransparency && styles.opaqueCard]}>
         {!reduceTransparency ? <MintAura intensity="component" style={styles.cardMintAura} testID="worker-v5-hero-mint-aura" /> : null}
         <View pointerEvents="none" style={styles.cardTopHighlight} />
