@@ -9,7 +9,7 @@ import type { Actions, WorkModel } from '../jobs/stage-five/travel-work/stage-fi
 export const PILLAR = {
   id: 'P165-worker-stage-five-production',
   invariant:
-    'Production Stage 5 renders the approved source surface while every visible job, timing, evidence, and action state comes from the real worker workflow contract',
+    'Production Stage 5 renders the approved source surface without its top navigation row, pause control, progress card, support tile, or visible title, while every visible job, timing, evidence, and action state comes from the real worker workflow contract',
   authority: [
     'governance/RULES.md (data honesty, language, and workflow integrity)',
     'governance/protocols/frontend-test.md G1-G6 (RN layout, state, accessibility, motion, and performance)',
@@ -19,7 +19,7 @@ export const PILLAR = {
   layer: 'ui-visual',
   siblings: ['P22-worker-jobs-workart-alpha', 'P23-worker-jobs-empty-copy', 'P08-worker-dock-motion'],
   mutation:
-    'replace the Stage 5 surface with a fixture-driven or non-native screen, or remove a real workflow action; the source, copy, and action assertions turn red',
+    'replace the Stage 5 surface with a fixture-driven or non-native screen, drop the photo, note, scope, or completion action, or render the removed back, call, chat, pause, or support control, step badge, progress card, or title text again; the source, copy, and action assertions turn red',
 } as const satisfies PillarManifest
 
 const model: WorkModel = {
@@ -75,24 +75,30 @@ describe('Worker Production Stage 5', () => {
       )
 
       expect(screen.getByTestId('stage5-work')).toBeOnTheScreen()
-      expect(screen.getByText('Bước 5/11')).toBeOnTheScreen()
-      expect(screen.getByText('Đang thực hiện công việc')).toBeOnTheScreen()
       expect(screen.getByText('Ổ cắm phòng khách chập chờn')).toBeOnTheScreen()
       expect(screen.getByText('Tòa A, Quận 1')).toBeOnTheScreen()
-      expect(screen.getByText('Tiến độ công việc')).toBeOnTheScreen()
       expect(screen.getByText('Chuẩn bị hồ sơ hoàn tất')).toBeOnTheScreen()
 
     }, 'the Production surface must not replace real data or callbacks with demo behavior')
 
-    for (const testID of ['stage5-pause', 'stage5-photo', 'stage5-note', 'stage5-scope', 'stage5-support', 'stage5-primary']) {
+    withPillarContext(PILLAR, () => {
+      for (const testID of ['stage5-back', 'stage5-call', 'stage5-chat', 'stage5-pause', 'stage5-support']) {
+        expect(screen.queryByTestId(testID)).toBeNull()
+      }
+      expect(screen.queryByText('Bước 5/11')).toBeNull()
+      expect(screen.queryByText('Đang thực hiện công việc')).toBeNull()
+      expect(screen.getByRole('header', { name: 'Đang thực hiện công việc' })).toBeOnTheScreen()
+      expect(screen.queryByText('Tiến độ công việc')).toBeNull()
+    }, 'Stage 5 keeps its heading for screen readers only and renders no title text, top navigation row, pause control, progress card, or support tile, even when the host wires those actions')
+
+    for (const testID of ['stage5-photo', 'stage5-note', 'stage5-scope', 'stage5-primary']) {
       await act(async () => {
         fireEvent.press(screen.getByTestId(testID))
         await Promise.resolve()
       })
     }
 
-    expect(calls).toEqual(['pause', 'photo', 'note', 'scope', 'support', 'complete'])
-    expect(screen.getByTestId('stage5-call')).toBeDisabled()
+    expect(calls).toEqual(['photo', 'note', 'scope', 'complete'])
   })
 
   it('stays honest when the backend has not released optional values yet', () => {
