@@ -9,7 +9,7 @@ import type { Actions, WorkModel } from '../jobs/stage-five/travel-work/stage-fi
 export const PILLAR = {
   id: 'P165-worker-stage-five-production',
   invariant:
-    'Production Stage 5 renders the approved source surface while every visible job, timing, evidence, and action state comes from the real worker workflow contract',
+    'Production Stage 5 renders the approved source surface without its top navigation row, pause control, progress card, support tile, or visible title, while every visible job, timing, evidence, and action state comes from the real worker workflow contract',
   authority: [
     'governance/RULES.md (data honesty, language, and workflow integrity)',
     'governance/protocols/frontend-test.md G1-G6 (RN layout, state, accessibility, motion, and performance)',
@@ -19,7 +19,7 @@ export const PILLAR = {
   layer: 'ui-visual',
   siblings: ['P22-worker-jobs-workart-alpha', 'P23-worker-jobs-empty-copy', 'P08-worker-dock-motion'],
   mutation:
-    'replace the Stage 5 surface with a fixture-driven or non-native screen, or remove a real workflow action; the source, copy, and action assertions turn red',
+    'replace the Stage 5 surface with a fixture-driven or non-native screen, drop the photo, note, scope, or completion action, or render the removed back, call, chat, pause, or support control, step badge, progress card, or title text again; the source, copy, and action assertions turn red',
 } as const satisfies PillarManifest
 
 const model: WorkModel = {
