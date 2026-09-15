@@ -39,6 +39,15 @@ describe('Worker Stage 8 Production fidelity', () => {
     }, 'Production must use the supplied body while keeping the existing shell/header ownership')
   })
 
+  it('opens Production Stage 8 on its evidence body without the shared worker header', () => {
+    const flowSource = read('../worker-v5-flow.tsx')
+
+    withPillarContext(PILLAR, () => {
+      expect(flowSource).toContain("const usesStageEightProduction = screen.id === '2.10-completion-evidence'")
+      expect(flowSource).toContain('usesStageFiveProduction || usesStageEightProduction || headerState.usesEarningsOverviewHandoff')
+    }, 'Stage 8 hides the back button, title, and subtitle while every other stage keeps the shared header')
+  })
+
   it('keeps the real B7 media and status boundary wired', () => {
     const bodySource = read('../jobs/evidence/stage-eight-production-body.tsx')
 
