@@ -82,6 +82,7 @@ import type {
   EdgeJobIncidentScopePricePreviewResponse,
   WorkerRouteOrigin,
   WorkerStatusUpdateInput,
+  WorkerWorkSessionSnapshot,
 } from "../domains/contracts/worker.ts";
 import type { EdgeAccountDeletionResponse } from "../domains/contracts/account.ts";
 import type { EdgeMatchingRetryRequest, EdgeMatchingRetryReceipt, EdgeMatchingOperationSnapshot, EdgeMatchingSelectionReceipt } from "../../../_shared/contracts/stage1-reliability.ts";

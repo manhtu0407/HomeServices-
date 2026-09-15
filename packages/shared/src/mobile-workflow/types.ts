@@ -183,6 +183,11 @@ export type LocalDeal = {
   scheduledAt?: string | null
   createdAt?: string | null
   matchedAt?: string | null
+  arrivedAt?: string | null
+  workStartedAt?: string | null
+  workPausedAt?: string | null
+  workPausedMs?: number
+  workerWorkNote?: string | null
   completedAt?: string | null
   confirmedAt?: string | null
   paidAt?: string | null
@@ -261,6 +266,11 @@ export type LocalRemoteJobSnapshot = {
   scheduledAt?: string | null
   createdAt?: string | null
   matchedAt?: string | null
+  arrivedAt?: string | null
+  workStartedAt?: string | null
+  workPausedAt?: string | null
+  workPausedMs?: number
+  workerWorkNote?: string | null
   completedAt?: string | null
   confirmedAt?: string | null
   paidAt?: string | null

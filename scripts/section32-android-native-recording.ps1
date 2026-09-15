@@ -12,6 +12,7 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+throw 'Staging backend is locked; this native recording harness is unavailable.'
 
 $stagingRef = 'xyylanuyflrjzbjzhqfl'
 $scriptRoot = if ([string]::IsNullOrWhiteSpace($PSScriptRoot)) { Split-Path -Parent $MyInvocation.MyCommand.Path } else { $PSScriptRoot }

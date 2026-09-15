@@ -227,6 +227,7 @@ function buildScopePendingDeal(): LocalDeal {
   return {
     ...buildInProgressDeal(),
     backendStatus: 'scope_change_pending',
+    status: 'scope_change_pending',
     scopeChange: {
       id: 'scope-change-pending',
       status: 'waiting_customer_decision',
@@ -293,6 +294,11 @@ function buildWorkflow(deal: LocalDeal) {
     workerEarnings: null as EarningsResponse | null,
     workerProfile: buildWorkerProfile(),
   }
+}
+
+function openStageFiveDetails() {
+  fireEvent.press(screen.getByLabelText('Chi tiết công việc'))
+  expect(screen.getByText('Hồ sơ công việc')).toBeOnTheScreen()
 }
 describe('Worker V5 arrival check-in', () => {
   beforeEach(() => {
@@ -448,10 +454,10 @@ describe('Worker V5 arrival check-in', () => {
     buildWorkflow(buildInProgressDeal())
 
     render(<WorkerJobsSurface />)
-    fireEvent.press(screen.getByTestId('worker-v5-back'))
+    fireEvent.press(screen.getByTestId('stage5-back'))
 
     await waitFor(() => {
-      expect(mockReplace).toHaveBeenCalledWith('/(worker)/jobs?ns_worker_screen=2.1-opportunity-inbox')
+      expect(mockReplace).toHaveBeenCalledWith('/(worker)/jobs?ns_worker_screen=2.4-route-eta')
     })
   })
 
@@ -510,30 +516,28 @@ it('records arrival before continuing to the in-progress screen', async () => {
     expect(screen.getByTestId('worker-v5-screen-2.1-opportunity-inbox')).toBeOnTheScreen()
   })
 
-  it('keeps in-progress focused on job actions without the removed progress chrome or evidence controls', () => {
+  it('renders the approved Stage 5 surface with real job actions and no fixture copy', () => {
     mockRouteParams = { ns_worker_screen: '2.7-in-progress' }
-    const deal = buildInProgressDeal()
+    const deal = {
+      ...buildInProgressDeal(),
+      backendStatus: 'repairing' as const,
+      status: 'repairing' as const,
+    }
     buildWorkflow(deal)
 
     render(<WorkerJobsSurface />)
 
-    expect(screen.queryByText('Tiến độ công việc')).toBeNull()
-    expect(screen.getByTestId('worker-v5-work-progress-board')).toBeOnTheScreen()
-    expect(screen.getByText('Bảng công việc').parent?.children).toHaveLength(1)
+    expect(screen.getByTestId('stage5-work')).toBeOnTheScreen()
+    expect(screen.getByText('Bước 5/11')).toBeOnTheScreen()
+    expect(screen.getByText('Tiến độ công việc')).toBeOnTheScreen()
+    expect(screen.getByText(deal.broadcast!.problemSummary)).toBeOnTheScreen()
+    expect(screen.getByTestId('stage5-photo')).toBeOnTheScreen()
+    expect(screen.getByTestId('stage5-note')).toBeOnTheScreen()
+    expect(screen.getByTestId('stage5-scope')).toBeOnTheScreen()
+    expect(screen.getByTestId('stage5-support')).toBeOnTheScreen()
     expect(screen.queryByText('Đã đọc')).toBeNull()
     expect(screen.queryByText('Đang áp dụng')).toBeNull()
-    expect(screen.getByTestId('worker-v5-step-title-0')).toHaveTextContent(deal.broadcast!.problemSummary)
-    expect(screen.getByTestId('worker-v5-step-meta-0')).toHaveTextContent('Phạm vi Kael đã đồng bộ')
-    expect(screen.getByTestId('worker-v5-step-meta-1')).toHaveTextContent('Chưa có ảnh từ khách')
-    expect(screen.getByTestId('worker-v5-step-meta-2')).toHaveTextContent('Chưa có ảnh hiện trường')
-    expect(screen.getByTestId('worker-v5-step-meta-3')).toHaveTextContent('Trạng thái đã đồng bộ')
-    expect(screen.queryByText('Đang kiểm')).toBeNull()
-    expect(screen.queryByTestId('worker-v5-evidence-picker-actions')).toBeNull()
-    expect(screen.queryByTestId('worker-v5-in-progress-camera-action')).toBeNull()
-    expect(screen.queryByTestId('worker-v5-in-progress-library-action')).toBeNull()
-    expect(screen.getByTestId('worker-v5-in-progress-scope-action')).toBeOnTheScreen()
-    expect(screen.getByTestId('worker-v5-in-progress-kael-action')).toBeOnTheScreen()
-    fireEvent.press(screen.getByTestId('worker-v5-in-progress-scope-action'))
+    fireEvent.press(screen.getByTestId('stage5-scope'))
     expect(mockReplace).toHaveBeenLastCalledWith(
       '/(worker)/jobs?ns_worker_screen=2.8-scope-change&job_id=job_test_1',
     )
@@ -546,11 +550,9 @@ it('records arrival before continuing to the in-progress screen', async () => {
     render(<WorkerJobsSurface />)
 
     expect(screen.getByTestId('worker-v5-rebuilt-in-progress-session')).toBeOnTheScreen()
-    expect(screen.getByTestId('worker-v5-timer-card')).toBeOnTheScreen()
-    expect(screen.getByTestId('worker-v5-work-progress-board')).toBeOnTheScreen()
-    expect(screen.getByTestId('worker-v5-evidence-tray')).toBeOnTheScreen()
-    expect(screen.getByTestId('worker-v5-in-progress-scope-action')).toBeOnTheScreen()
-    expect(screen.getByTestId('worker-v5-in-progress-kael-action')).toBeOnTheScreen()
+    expect(screen.getByTestId('stage5-work')).toBeOnTheScreen()
+    expect(screen.getByTestId('stage5-scope')).toBeOnTheScreen()
+    expect(screen.getByTestId('stage5-support')).toBeOnTheScreen()
     expect(screen.queryByTestId('worker-v5-stage-five-prototype')).toBeNull()
     expect(screen.queryByTestId('worker-jobs-surface')).toBeNull()
   })
@@ -567,7 +569,7 @@ it('records arrival before continuing to the in-progress screen', async () => {
     render(<WorkerJobsSurface />)
 
     expect(screen.getByTestId('worker-v5-rebuilt-in-progress-session')).toBeOnTheScreen()
-    expect(screen.getByTestId('worker-v5-timer-card')).toBeOnTheScreen()
+    expect(screen.getByTestId('stage5-work')).toBeOnTheScreen()
     expect(screen.queryByTestId('worker-v5-stage-five-prototype')).toBeNull()
   })
 
@@ -576,7 +578,7 @@ it('records arrival before continuing to the in-progress screen', async () => {
     buildWorkflow(buildInProgressDeal())
 
     render(<WorkerJobsSurface />)
-    fireEvent.press(screen.getByTestId('worker-v5-in-progress-kael-action'))
+    fireEvent.press(screen.getByTestId('stage5-support'))
 
     expect(mockReplace).toHaveBeenCalledWith('/(worker)/chat?ns_worker_screen=3.2-kael-job-intake')
   })
@@ -604,6 +606,7 @@ it('records arrival before continuing to the in-progress screen', async () => {
     })
 
     render(<WorkerJobsSurface />)
+    openStageFiveDetails()
     fireEvent.press(screen.getByTestId('worker-v5-arrival-check-in-action'))
 
     await waitFor(() => {
@@ -640,6 +643,7 @@ it('records arrival before continuing to the in-progress screen', async () => {
 
     try {
       render(<WorkerJobsSurface />)
+      openStageFiveDetails()
       fireEvent.press(screen.getByTestId('worker-v5-arrival-check-in-action'))
 
       await act(async () => {
@@ -669,6 +673,7 @@ it('records arrival before continuing to the in-progress screen', async () => {
     buildWorkflow(deal)
 
     render(<WorkerJobsSurface />)
+    openStageFiveDetails()
     fireEvent.press(screen.getByTestId('worker-v5-phase-advance-action'))
 
     await waitFor(() => {
@@ -685,6 +690,7 @@ it('records arrival before continuing to the in-progress screen', async () => {
     })
 
     render(<WorkerJobsSurface />)
+    openStageFiveDetails()
 
     expect(screen.getByText('Bắt đầu công việc')).toBeOnTheScreen()
     expect(screen.queryByText('Bắt đầu sửa chữa')).toBeNull()
@@ -693,6 +699,7 @@ it('records arrival before continuing to the in-progress screen', async () => {
   it('blocks starting unpriced work until the Customer agrees to the exact price', () => {
     buildWorkflow({ ...buildInProgressDeal(), backendStatus: 'inspecting', status: 'inspecting', finalPrice: null })
     render(<WorkerJobsSurface />)
+    openStageFiveDetails()
     expect(screen.getByText('Chờ khách xác nhận giá')).toBeOnTheScreen()
     fireEvent.press(screen.getByTestId('worker-v5-phase-advance-action'))
     expect(mockWorkflowValue.actions.workerUpdateStatus).not.toHaveBeenCalled()
@@ -731,6 +738,7 @@ it('records arrival before continuing to the in-progress screen', async () => {
     buildWorkflow(deal)
 
     render(<WorkerJobsSurface />)
+    openStageFiveDetails()
 
     expect(screen.getByTestId('worker-v5-customer-evidence-gallery-tile-0')).toBeOnTheScreen()
     expect(screen.getByTestId('worker-v5-customer-evidence-gallery-image-1').props.contentFit).toBe('contain')
@@ -763,6 +771,7 @@ it('records arrival before continuing to the in-progress screen', async () => {
     const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => undefined)
 
     render(<WorkerJobsSurface />)
+    openStageFiveDetails()
     expect(screen.getAllByTestId(/worker-v5-evidence-tray-add-mark-/)).toHaveLength(3)
     fireEvent.press(screen.getByTestId('worker-v5-evidence-tray-add-0'))
 
@@ -798,6 +807,7 @@ it('records arrival before continuing to the in-progress screen', async () => {
 
     try {
       render(<WorkerJobsSurface />)
+      openStageFiveDetails()
       fireEvent.press(screen.getByTestId('worker-v5-evidence-tray-add-0'))
 
       await waitFor(() => {
@@ -819,6 +829,7 @@ it('records arrival before continuing to the in-progress screen', async () => {
     const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => undefined)
     try {
       render(<WorkerJobsSurface />)
+      openStageFiveDetails()
 
       fireEvent.press(screen.getByTestId('worker-v5-evidence-tray-add-0'))
       const firstActions = alertSpy.mock.calls[0]?.[2] as { onPress?: () => void; text?: string }[] | undefined
@@ -870,6 +881,7 @@ it('records arrival before continuing to the in-progress screen', async () => {
     })
     const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => undefined)
     render(<WorkerJobsSurface />)
+    openStageFiveDetails()
 
     for (let attempt = 0; attempt < 2; attempt += 1) {
       fireEvent.press(screen.getByTestId(`worker-v5-evidence-tray-add-${attempt}`))
@@ -908,6 +920,7 @@ it('records arrival before continuing to the in-progress screen', async () => {
     })
     const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => undefined)
     render(<WorkerJobsSurface />)
+    openStageFiveDetails()
 
     for (let attempt = 0; attempt < 2; attempt += 1) {
       fireEvent.press(screen.getByTestId(`worker-v5-evidence-tray-add-${attempt}`))
@@ -940,6 +953,7 @@ it('records arrival before continuing to the in-progress screen', async () => {
     }))
     const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => undefined)
     const { rerender } = render(<WorkerJobsSurface />)
+    openStageFiveDetails()
 
     fireEvent.press(screen.getByTestId('worker-v5-evidence-tray-add-0'))
     const actions = alertSpy.mock.calls[0]?.[2] as { onPress?: () => void; text?: string }[] | undefined
@@ -973,6 +987,7 @@ it('records arrival before continuing to the in-progress screen', async () => {
     const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => undefined)
 
     render(<WorkerJobsSurface />)
+    openStageFiveDetails()
     fireEvent.press(screen.getByTestId('worker-v5-evidence-tray-add-1'))
     const actions = alertSpy.mock.calls[0]?.[2] as { onPress?: () => void; text?: string }[] | undefined
     const takePhoto = actions?.find((action) => action.text === 'Chụp ảnh')
@@ -995,6 +1010,7 @@ it('records arrival before continuing to the in-progress screen', async () => {
     const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => undefined)
 
     render(<WorkerJobsSurface />)
+    openStageFiveDetails()
     fireEvent.press(screen.getByTestId('worker-v5-evidence-tray-add-0'))
     const actions = alertSpy.mock.calls[0]?.[2] as { onPress?: () => void; text?: string }[] | undefined
     const selectLibrary = actions?.find((action) => action.text === 'Kho ảnh')
@@ -1324,9 +1340,10 @@ it('records arrival before continuing to the in-progress screen', async () => {
 
     render(<WorkerJobsSurface />)
 
-    const primaryAction = screen.getByTestId('worker-v5-stage-seven-primary-action')
-    expect(primaryAction).toBeDisabled()
-    fireEvent.press(primaryAction)
+    fireEvent.press(screen.getByTestId('waiting-details-scope-approval'))
+
+    expect(screen.getByRole('button', { name: 'Nhắn khách' })).toBeOnTheScreen()
+    expect(screen.queryByRole('button', { name: 'Tiếp tục' })).toBeNull()
     expect(mockReplace).not.toHaveBeenCalled()
   })
 
@@ -1338,11 +1355,10 @@ it('records arrival before continuing to the in-progress screen', async () => {
 
     render(<WorkerJobsSurface />)
 
-    const primaryAction = screen.getByTestId('worker-v5-stage-seven-primary-action')
-    expect(primaryAction).not.toBeDisabled()
-    fireEvent.press(primaryAction)
+    fireEvent.press(screen.getByTestId('waiting-details-scope-approval'))
+    fireEvent.press(screen.getByRole('button', { name: 'Tiếp tục' }))
 
-    expect(mockReplace).toHaveBeenCalledWith('/(worker)/jobs?ns_worker_screen=2.7-in-progress')
+    expect(mockReplace).toHaveBeenCalledWith('/(worker)/jobs?ns_worker_screen=2.10-completion-evidence')
   })
 
   it('redirects a stale approval route after the backend resumes the real job status', async () => {
@@ -1520,7 +1536,7 @@ it('records arrival before continuing to the in-progress screen', async () => {
 
     const { rerender } = render(<WorkerJobsSurface />)
 
-    expect(screen.getByTestId('worker-v5-stage-seven-primary-action')).toBeOnTheScreen()
+    expect(screen.getByTestId('waiting-details-scope-approval')).toBeOnTheScreen()
     expect(screen.queryByText('Không tự thực hiện phần phát sinh')).toBeNull()
     expect(screen.queryByText('Hồ sơ giữ nguyên phạm vi cũ cho tới khi khách phê duyệt trên hệ thống.')).toBeNull()
 
@@ -1542,7 +1558,8 @@ it('records arrival before continuing to the in-progress screen', async () => {
     mockRouteParams = { ns_worker_screen: '2.9-approval-wait' }
 
     render(<WorkerJobsSurface />)
-    fireEvent.press(screen.getByTestId('worker-v5-stage-seven-message-action'))
+    fireEvent.press(screen.getByTestId('waiting-details-scope-approval'))
+    fireEvent.press(screen.getByRole('button', { name: 'Nhắn khách' }))
 
     expect(mockReplace).toHaveBeenCalledWith('/(worker)/chat?ns_worker_screen=3.1-kael-chat-normal')
   })

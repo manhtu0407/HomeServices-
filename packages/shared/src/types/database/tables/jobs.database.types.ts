@@ -916,10 +916,14 @@ export type JobsTables = {
           status: Database["public"]["Enums"]["job_status"]
           synthetic_cohort_id: string | null
           updated_at: string
+          work_paused_at: string | null
+          work_paused_ms: number
+          work_started_at: string | null
           worker_commission_level: number | null
           worker_commission_rate_bps: number | null
           worker_id: string | null
           worker_net: number | null
+          worker_work_note: string | null
         }
         Insert: {
           address_building?: string | null
@@ -995,10 +999,14 @@ export type JobsTables = {
           status?: Database["public"]["Enums"]["job_status"]
           synthetic_cohort_id?: string | null
           updated_at?: string
+          work_paused_at?: string | null
+          work_paused_ms?: number
+          work_started_at?: string | null
           worker_commission_level?: number | null
           worker_commission_rate_bps?: number | null
           worker_id?: string | null
           worker_net?: number | null
+          worker_work_note?: string | null
         }
         Update: {
           address_building?: string | null
@@ -1074,10 +1082,14 @@ export type JobsTables = {
           status?: Database["public"]["Enums"]["job_status"]
           synthetic_cohort_id?: string | null
           updated_at?: string
+          work_paused_at?: string | null
+          work_paused_ms?: number
+          work_started_at?: string | null
           worker_commission_level?: number | null
           worker_commission_rate_bps?: number | null
           worker_id?: string | null
           worker_net?: number | null
+          worker_work_note?: string | null
         }
         Relationships: [
           {

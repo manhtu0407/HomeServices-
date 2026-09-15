@@ -33,6 +33,16 @@ const PACKAGES = {
 // run fails instead of reporting success. Adding an entry requires a named exit condition.
 const DECLARED_GAPS = []
 
+// These are release-critical boundary pillars, so they must remain in the owning runner's
+// collected set even when no workflow happens to name them positionally.
+const REQUIRED_COLLECTIONS = [
+  {
+    packageName: '@nestscout/shared',
+    file: 'src/__tests__/kael-chat-reliability-pillar.test.ts',
+    reason: 'Kael unsupported-service and message-length boundaries must stay collected',
+  },
+]
+
 const problems = []
 const declaredGaps = []
 
@@ -177,6 +187,13 @@ function positionalFilters(command) {
 
 const collectedByPackage = new Map()
 for (const [name, pkg] of Object.entries(PACKAGES)) collectedByPackage.set(name, collectedFiles(pkg))
+
+for (const requirement of REQUIRED_COLLECTIONS) {
+  const collected = collectedByPackage.get(requirement.packageName) ?? []
+  if (!collected.includes(requirement.file)) {
+    problems.push(`${requirement.packageName}: required collection ${requirement.file} is not collected — ${requirement.reason}`)
+  }
+}
 
 const workflows = existsSync(WORKFLOWS)
   ? readdirSync(WORKFLOWS).filter((file) => file.endsWith('.yml') || file.endsWith('.yaml'))

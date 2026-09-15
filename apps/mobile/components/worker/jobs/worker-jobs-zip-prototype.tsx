@@ -50,6 +50,7 @@ export function WorkerJobsZipPrototype() {
   const language = firstRouteParam(params.ns_worker_lang) === 'en' ? 'en' : 'vi'
   const selection = useMemo(() => resolveZipPrototypeSelection(params), [params])
   const screen = selection.screen
+  const isWaitingSurface = screen.id === '2.3-customer-confirmation-wait' || screen.id === '2.9-approval-wait'
   const actionBusyRef = useRef(false)
   const [actionBusy, setActionBusy] = useState(false)
   const routePreview = useWorkerV5RoutePreview(runtime.state.deal, screen.id === '2.4-route-eta')
@@ -57,6 +58,18 @@ export function WorkerJobsZipPrototype() {
   const currentJobId = runtime.state.deal?.broadcast?.jobId ?? runtime.state.deal?.id
   const themeTokens = getWorkerThemeTokens(workerThemeMode)
   const jobsVariant = firstRouteParam((params as WorkerJobsPrototypeRouteParams).ns_worker_jobs_variant)
+
+  const openPrototypeStage = (stage: string) => {
+    const query = [
+      `ns_worker_stage=${stage}`,
+      `ns_worker_lang=${language}`,
+      'ns_worker_prototype=worker-jobs-rebuild-v1',
+    ]
+    if (jobsVariant) query.push(`ns_worker_jobs_variant=${encodeURIComponent(jobsVariant)}`)
+    if (firstRouteParam(params.ns_audit_role) === 'worker') query.push('ns_audit_role=worker')
+    if (routeJobId ?? currentJobId) query.push(`job_id=${encodeURIComponent(routeJobId ?? currentJobId ?? '')}`)
+    router.replace(`/jobs-prototype?${query.join('&')}` as never)
+  }
 
   const openScreen = (target: WorkerV5ScreenDefinition | null) => {
     if (!target) return
@@ -68,15 +81,7 @@ export function WorkerJobsZipPrototype() {
     const targetStage = target.id === '2.12-case-closed' && selection.prototypeStage === 'payment-confirmed'
       ? '11'
       : String(ZIP_STAGE_SCREEN_IDS.indexOf(target.id) + 1)
-    const query = [
-      `ns_worker_stage=${targetStage}`,
-      `ns_worker_lang=${language}`,
-      'ns_worker_prototype=worker-jobs-rebuild-v1',
-    ]
-    if (jobsVariant) query.push(`ns_worker_jobs_variant=${encodeURIComponent(jobsVariant)}`)
-    if (firstRouteParam(params.ns_audit_role) === 'worker') query.push('ns_audit_role=worker')
-    if (routeJobId ?? currentJobId) query.push(`job_id=${encodeURIComponent(routeJobId ?? currentJobId ?? '')}`)
-    router.replace(`/jobs-prototype?${query.join('&')}` as never)
+    openPrototypeStage(targetStage)
   }
 
   const openScreenById = (id: WorkerV5ScreenId) => {
@@ -124,9 +129,9 @@ export function WorkerJobsZipPrototype() {
   }
 
   return (
-    <SafeAreaView style={[styles.safeArea, { backgroundColor: themeTokens.canvas }]} testID="worker-jobs-zip-prototype">
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: isWaitingSurface ? '#FCFFFE' : themeTokens.canvas }]} testID="worker-jobs-zip-prototype">
       <ScrollView
-        contentContainerStyle={styles.content}
+        contentContainerStyle={[styles.content, isWaitingSurface && { padding: 0, paddingBottom: 0 }]}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >

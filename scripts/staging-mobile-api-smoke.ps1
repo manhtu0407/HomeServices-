@@ -6,6 +6,7 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+throw 'Staging backend is locked; this smoke harness is unavailable.'
 $stagingRef = 'xyylanuyflrjzbjzhqfl'
 $scriptRoot = if ([string]::IsNullOrWhiteSpace($PSScriptRoot)) { Split-Path -Parent $MyInvocation.MyCommand.Path } else { $PSScriptRoot }
 $repoRoot = Resolve-Path -LiteralPath (Join-Path $scriptRoot '..')

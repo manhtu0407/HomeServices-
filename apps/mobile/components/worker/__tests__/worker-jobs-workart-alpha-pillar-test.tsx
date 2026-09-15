@@ -5,6 +5,7 @@ import { StyleSheet } from 'react-native'
 import { withPillarContext, type PillarManifest } from '@/__tests__/pillar-manifest'
 
 import { prototypeStyles } from '../jobs/worker-jobs-zip-prototype-surface'
+import { stageTwoStyles } from '../jobs/worker-jobs-zip-prototype-styles'
 
 export const PILLAR = {
   id: 'P22-worker-jobs-workart-alpha',
@@ -25,6 +26,7 @@ export const PILLAR = {
 const clientImageAsset = (fileName: string) =>
   resolve(__dirname, `../../../assets/client-image-icons/${fileName}`)
 const read = (relativePath: string) => readFileSync(resolve(__dirname, relativePath), 'utf8')
+const bookingWorkartSource = read('../jobs/worker-jobs-stage-two-workart.tsx')
 
 describe('Worker Jobs Workart background contract', () => {
   it('ships a dedicated transparent asset for every supported Jobs service', () => {
@@ -56,19 +58,23 @@ describe('Worker Jobs Workart background contract', () => {
   })
 
   it('keeps opportunity Workart full-bleed and free of a repeated tile shell', () => {
-    const opportunityArtwork = StyleSheet.flatten(prototypeStyles.opportunityArtwork)
+    const opportunityWorkart = StyleSheet.flatten(stageTwoStyles.heroWorkart)
+    const opportunityWorkartPanel = StyleSheet.flatten(stageTwoStyles.heroWorkartPanel)
     const offerSummaryArtwork = StyleSheet.flatten(prototypeStyles.offerSummaryArtwork)
 
     withPillarContext(
       PILLAR,
       () => {
         expect(StyleSheet.flatten(prototypeStyles.opportunityCard)).toMatchObject({ flexDirection: 'row', minHeight: 172 })
-        expect(opportunityArtwork).toMatchObject({
-          height: '100%',
-          transform: [{ translateX: 10 }],
-          width: '54%',
-        })
-        expect(opportunityArtwork).not.toHaveProperty('backgroundColor')
+        expect(opportunityWorkartPanel).toMatchObject({ flexBasis: '40%', width: '40%', overflow: 'hidden' })
+        expect(opportunityWorkart).toMatchObject({ height: '100%', width: '100%' })
+        expect(bookingWorkartSource).toContain('customerV21BookingWorkartAssets')
+        expect(bookingWorkartSource).toContain('contentFit="cover"')
+        expect(bookingWorkartSource).toContain('artworkTestID = \'worker-v5-offer-detail-workart\'')
+        expect(bookingWorkartSource).toContain('panelTestID = \'worker-v5-offer-detail-workart-panel\'')
+        expect(bookingWorkartSource).toContain('const gradientID = `${panelTestID}-wash`')
+        expect(bookingWorkartSource).toContain('pointerEvents="none"')
+        expect(opportunityWorkart).not.toHaveProperty('backgroundColor')
         expect(offerSummaryArtwork).not.toHaveProperty('backgroundColor')
       },
       'the Workart must sit directly on the card surface without a white tile or border shell',

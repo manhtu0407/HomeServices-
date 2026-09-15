@@ -13,9 +13,9 @@ describe('customer profile account journey display', () => {
     const afternoon = new Date(2026, 7, 17, 15, 0, 0)
     const evening = new Date(2026, 7, 17, 20, 0, 0)
 
-    expect(homeGreeting('Anh Tú', 'vi', morning)).toBe('Good morning, Anh Tú')
-    expect(homeGreeting('Anh Tú', 'vi', afternoon)).toBe('Good afternoon, Anh Tú')
-    expect(homeGreeting('Anh Tú', 'vi', evening)).toBe('Good evening, Anh Tú')
+    expect(homeGreeting('Anh Tú', 'vi', morning)).toBe('Chào buổi sáng, Anh Tú')
+    expect(homeGreeting('Anh Tú', 'vi', afternoon)).toBe('Chào buổi chiều, Anh Tú')
+    expect(homeGreeting('Anh Tú', 'vi', evening)).toBe('Chào buổi tối, Anh Tú')
     expect(homeGreeting('NestScout Customer', 'en', afternoon)).toBe('Good afternoon, NestScout Customer')
   })
 

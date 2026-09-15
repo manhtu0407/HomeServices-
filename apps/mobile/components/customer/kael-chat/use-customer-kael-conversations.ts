@@ -61,6 +61,7 @@ export function useCustomerKaelConversations(
   const sessionCreateRequestRef = useRef<Promise<CustomerKaelConversationResponse | null> | null>(null)
   const operationRequestRef = useRef(0)
   const operationLockRef = useRef<number | null>(null)
+  const catalogRevisionRef = useRef(0)
   const pendingSessionIdSetRef = useRef(new Set<string>())
   const archiveTombstones = useMemo(() => archivedSessionIdsForCatalog(catalogKey), [catalogKey])
   const [storedCatalogState, setCatalogState] = useState(() => createCatalogState(
@@ -106,6 +107,7 @@ export function useCustomerKaelConversations(
 
   const persistCatalog = useCallback((nextSessions: CustomerKaelConversationSession[]) => {
     if (!customerId || !catalogKey) return []
+    catalogRevisionRef.current += 1
     const catalogOwnerId = localVisualAuditSession
       ? visualAuditOwnerByCatalogRef.current.get(catalogKey) ?? nextSessions[0]?.customer_id ?? null
       : customerId
@@ -127,7 +129,6 @@ export function useCustomerKaelConversations(
     }
     return scoped
   }, [archiveTombstones, catalogKey, customerId, localVisualAuditSession, mode])
-
   const activateResponse = useCallback((response: CustomerKaelConversationResponse) => {
     if (
       !customerId
@@ -167,9 +168,11 @@ export function useCustomerKaelConversations(
       setCatalogStateField(setCatalogState, catalogKey, activeResponseByCatalogRef.current, 'sessionsLoading', true)
     }
     setCatalogStateField(setCatalogState, catalogKey, activeResponseByCatalogRef.current, 'sessionsError', null)
+    const refreshRevision = catalogRevisionRef.current
 
     const request = customerKaelConversationService.list(mode)
       .then((result) => {
+        if (catalogRevisionRef.current !== refreshRevision) return catalogMemory.get(catalogKey) ?? []
         if (!result.success) throw new Error('list_failed')
         const catalogOwnerId = localVisualAuditSession
           ? result.data.sessions[0]?.customer_id ?? visualAuditOwnerByCatalogRef.current.get(catalogKey) ?? null

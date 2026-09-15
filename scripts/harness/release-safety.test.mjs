@@ -27,6 +27,11 @@ test('release target requires the exact registered production project and origin
     projectRef: 'xyylanuyflrjzbjzhqfl',
     projectUrl: 'https://xyylanuyflrjzbjzhqfl.supabase.co',
   }), /registered release target/u)
+  assert.throws(() => assertReleaseTarget({
+    environment: 'staging',
+    projectRef: 'xyylanuyflrjzbjzhqfl',
+    projectUrl: 'https://xyylanuyflrjzbjzhqfl.supabase.co',
+  }), /Staging and Preview targets are locked/u)
 })
 
 test('pending migrations reject unknown history and accept only registered semantic aliases', () => {
@@ -181,7 +186,7 @@ test('expand-only audit accepts only a hosted-proven strict CHECK relaxation', (
 
 test('expand-only receipt binds the exact target, hosted watermark, and SQL bytes', () => {
   const receipt = buildExpandOnlyReceipt({
-    environment: 'staging',
+    environment: 'production',
     hostedMigrations: [],
     inventory: {
       migrationEquivalences: { version: '1.0.0', groups: [] },
@@ -190,8 +195,8 @@ test('expand-only receipt binds the exact target, hosted watermark, and SQL byte
         version: '20260823000000',
       }],
     },
-    projectRef: 'xyylanuyflrjzbjzhqfl',
-    projectUrl: 'https://xyylanuyflrjzbjzhqfl.supabase.co',
+    projectRef: 'iwevizmsedyqozxlawwl',
+    projectUrl: 'https://iwevizmsedyqozxlawwl.supabase.co',
     migrationObjectPreconditions: [{
       object_kind: 'trigger',
       schema_name: 'public',

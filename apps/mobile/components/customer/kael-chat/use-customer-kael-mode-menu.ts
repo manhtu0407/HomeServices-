@@ -9,7 +9,12 @@ import {
 
 import { motionDuration, motionTokens } from '@/components/ui/motion-tokens'
 
-import type { CustomerKaelRequestGuard } from './customer-kael-state-scope'
+import { customerKaelModeStateScopeKey, type CustomerKaelRequestGuard } from './customer-kael-state-scope'
+import {
+  readCustomerKaelAssistantTurns,
+  readCustomerKaelComposerState,
+  readCustomerKaelMediaDrafts,
+} from './customer-kael-ephemeral-state'
 import type { CustomerKaelMode } from '../ui/types'
 import type { useCustomerKaelChatUiState } from './use-customer-kael-chat-ui-state'
 import type { useCustomerKaelConversationState } from './use-customer-kael-conversation-state'
@@ -53,25 +58,39 @@ export function useCustomerKaelModeMenu({
     setCaseEditOpen,
     setDraft,
     setModeMenuOpen,
+    rememberComposerState,
     setSessionMenuOpen,
     setUploadingMedia,
     setVoiceTranscript,
   } = chatUi
-  const { switchMode } = conversation
+  const {
+    rememberEphemeralState,
+    setAssistantTurns,
+    setComposerMediaDrafts,
+    switchMode,
+  } = conversation
   const { stopProcessLines } = processController
   const opacity = useSharedValue(0)
   const scale = useSharedValue(0.96)
   const translateY = useSharedValue(-6)
 
   const switchChatMode = (nextMode: CustomerKaelMode) => {
+    rememberComposerState()
+    rememberEphemeralState()
+    const nextModeScopeKey = customerKaelModeStateScopeKey(stateScopeKey, nextMode)
+    const nextComposer = readCustomerKaelComposerState(nextModeScopeKey)
+    const nextAssistantTurns = readCustomerKaelAssistantTurns(nextModeScopeKey)
+    const nextMediaDrafts = readCustomerKaelMediaDrafts(nextModeScopeKey)
     kaelRequestGuard.setScope(`${stateScopeKey}:${nextMode}`)
     switchMode(nextMode)
+    setDraft(nextComposer.draft)
+    setVoiceTranscript(nextComposer.voiceTranscript)
+    setAssistantTurns(nextAssistantTurns)
+    setComposerMediaDrafts(nextMediaDrafts)
     setBlankCaseTransition(false)
     setModeMenuOpen(false)
     setSessionMenuOpen(false)
     setCaseEditOpen(false)
-    setDraft('')
-    setVoiceTranscript('')
     setUploadingMedia(false)
     setAgenticAdjustmentOpen(false)
     setAgenticAdjustmentText('')

@@ -58,8 +58,8 @@ describe('Harness environment descriptor', () => {
     }), 'STAGING_PROJECT_MISMATCH')
   })
 
-  it('accepts an explicitly approved staging mutation', () => {
-    const descriptor = resolveHarnessEnvironment({
+  it('locks an explicitly approved staging mutation', () => {
+    expectCode(() => resolveHarnessEnvironment({
       url: `https://${HARNESS_STAGING_PROJECT_REF}.supabase.co`,
       environment: 'staging',
       mutationIntent: 'mutate',
@@ -72,13 +72,7 @@ describe('Harness environment descriptor', () => {
         releaseId: 'release-test',
         source: 'ci',
       },
-    })
-
-    expect(descriptor.mutationAllowed).toBe(true)
-    expect(descriptor.approvalId).toBe('github-run-123')
-    expect(descriptor.providerConfigurationClass).toBe('staging-isolated')
-    expect(descriptor.webhookConfigurationClass).toBe('staging-sandbox')
-    expect(() => assertHarnessMutationAllowed(descriptor)).not.toThrow()
+    }), 'NON_PRODUCTION_REMOTE_LOCKED')
   })
 
   it('rejects an unclassified key on a remote target', () => {
@@ -112,8 +106,8 @@ describe('Harness environment descriptor', () => {
 
   it('returns safe metadata without secret values', () => {
     const descriptor = resolveHarnessEnvironment({
-      url: `https://${HARNESS_STAGING_PROJECT_REF}.supabase.co`,
-      environment: 'staging',
+      url: `https://${HARNESS_PRODUCTION_PROJECT_REF}.supabase.co`,
+      environment: 'production',
       publishableKey: 'sb_publishable_do_not_expose',
       secretKey: 'sb_secret_do_not_expose',
     })
@@ -122,7 +116,7 @@ describe('Harness environment descriptor', () => {
     expect(encoded).not.toContain('do_not_expose')
     expect(encoded).toContain('publishable')
     expect(encoded).toContain('secret')
-    expect(encoded).toContain('staging-isolated')
-    expect(encoded).toContain('staging-sandbox')
+    expect(encoded).toContain('production-locked')
+    expect(encoded).toContain('production-signed')
   })
 })

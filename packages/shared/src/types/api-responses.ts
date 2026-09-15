@@ -408,9 +408,8 @@ export type JobDetailResponse = {
     } | null
     completion_notes: string | null
     completion_photo_urls: string[]
-    created_at: string
-    matched_at: string | null
-    arrived_at: string | null
+    created_at: string; matched_at: string | null
+    arrived_at: string | null; work_started_at?: string | null; work_paused_at?: string | null; work_paused_ms?: number; worker_work_note?: string | null
     completed_at: string | null
     confirmed_at: string | null
     paid_at: string | null

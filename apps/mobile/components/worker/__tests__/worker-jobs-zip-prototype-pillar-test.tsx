@@ -1,6 +1,14 @@
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 
+import React from 'react'
+import * as ReactNative from 'react-native'
+import { fireEvent, render, screen } from '@testing-library/react-native'
+
+import { STAGE_MIN_FONT_SIZE } from '../jobs/stage-ratio'
+import { StageTenContent } from '../jobs/stage-ten/stage-ten-content'
+import { buildStageTenModel, fitStageTenValueSize } from '../jobs/stage-ten/stage-ten-model'
+import { stageTenTokens } from '../jobs/stage-ten/stage-ten-tokens'
 import {
   ZIP_STAGE_SCREEN_IDS,
   resolveZipPrototypeSelection,
@@ -29,6 +37,10 @@ const readSource = (...segments: string[]): string =>
   readFileSync(resolve(__dirname, ...segments), 'utf8').replace(/\r\n/g, '\n')
 
 const prototypeHostSource = readSource('../jobs/worker-jobs-zip-prototype.tsx')
+const stageTenContentSource = readSource('../jobs/stage-ten/stage-ten-content.tsx')
+const stageTenPreviewSource = readSource('../../../app/worker-stage-ten-preview.tsx')
+const stageTenModelSource = readSource('../jobs/stage-ten/stage-ten-model.ts')
+const stageTenTokensSource = readSource('../jobs/stage-ten/stage-ten-tokens.ts')
 const source = [
   'worker-jobs-zip-prototype-surface.tsx',
   'worker-jobs-zip-prototype-shared.tsx',
@@ -45,13 +57,6 @@ const source = [
   'worker-jobs-zip-prototype-stage-four-styles.ts',
 ].map((fileName) => readSource('../jobs', fileName)).join('\n')
 const workerFlowSource = readSource('../worker-v5-flow.tsx')
-const requestDetailsSource = [
-  'request-details-content.tsx',
-  'request-details-icons.tsx',
-  'request-details-model.ts',
-  'request-details-tokens.ts',
-  'request-details.types.ts',
-].map((fileName) => readSource('../jobs/request-details', fileName)).join('\n')
 const evidenceSource = readSource('../../ui/job-evidence-gallery.tsx')
 const advisoryStylesSource = readSource('../jobs/advisory-styles.ts')
 const progressSource = readSource('../jobs/progress-surfaces.tsx')
@@ -61,9 +66,12 @@ describe('Worker Jobs ZIP Prototype', () => {
   it('reads every source with newlines normalised, so the layout assertions mean the same on Windows and CI', () => {
     for (const [name, text] of Object.entries({
       prototypeHostSource,
+      stageTenContentSource,
+      stageTenPreviewSource,
+      stageTenModelSource,
+      stageTenTokensSource,
       source,
       workerFlowSource,
-      requestDetailsSource,
       evidenceSource,
       advisoryStylesSource,
       progressSource,
@@ -114,31 +122,30 @@ describe('Worker Jobs ZIP Prototype', () => {
     expect(ZIP_STAGE_SCREEN_IDS[10]).toBe('2.12-case-closed')
   })
 
+  it('keeps prototype stage query construction in one route helper', () => {
+    expect(prototypeHostSource).toContain('const openPrototypeStage = (stage: string) =>')
+    expect(prototypeHostSource).toContain('openPrototypeStage(targetStage)')
+  })
+
   it('keeps the payment-confirmed state conditional on Stage 11', () => {
     expect(resolveZipPrototypeSelection({ ns_worker_stage: '10' }).prototypeStage).toBeUndefined()
     expect(resolveZipPrototypeSelection({ ns_worker_stage: '11' }).prototypeStage).toBe('payment-confirmed')
     expect(resolveZipPrototypeSelection({ ns_worker_stage: 'payment-confirmed' }).prototypeStage).toBe('payment-confirmed')
   })
 
-  it('uses one section-card surface for the redesigned Stage 2 details', () => {
-    expect(source).toContain('WorkerRequestDetailsSections')
-    expect(source).toContain('buildWorkerRequestDetailsGroups')
-    expect(requestDetailsSource).toContain('testID="worker-v5-offer-section-stack"')
-    expect(requestDetailsSource).toContain('function CardHeader')
-    expect(requestDetailsSource).not.toContain('sectionIconFrame')
-  })
-
-  it('uses the Booking Workart treatment on the left 40 percent of the Stage 2 summary', () => {
-    expect(source).toContain('WorkerStageTwoOfferWorkart')
-    expect(source).toContain('testID="worker-v5-offer-detail-workart-panel"')
-    expect(source).toContain('contentFit="cover"')
-    expect(source).toContain("flexBasis: '40%'")
-    expect(source).toContain("width: '40%'")
-    expect(source).toContain("panelColor={tokens.mode === 'dark' ? tokens.ghost : '#E8F5F1'}")
-    expect(source).toContain('surfaceColor={reduceTransparency ? tokens.base : tokens.raised}')
-    expect(source).toContain("borderRadius: 24")
-    expect(source).toContain('minHeight: 168')
-    expect(source).not.toContain("maxWidth: '56%'")
+  it('keeps Stage 2 details in tokenized section cards with honest workflow states', () => {
+    expect(source).toContain('WorkerJobsStageTwoInfoGroup')
+    expect(source).toContain('testID="worker-v5-offer-request-list"')
+    expect(source).toContain('testID="worker-v5-offer-address-list"')
+    expect(source).toContain('testID="worker-v5-offer-price-list"')
+    expect(source).toContain('testID="worker-v5-accept-checklist-card"')
+    expect(source).toContain('testID="worker-v5-accept-commitment"')
+    expect(source).toContain("iconNames={['home', 'service', 'photo']}")
+    expect(source).toContain("? 'inbox'")
+    expect(source).toContain(": 'wallet'")
+    expect(source).toContain('name="time" size={24}')
+    expect(source).not.toContain('WorkerRequestDetailsSections')
+    expect(source).not.toContain('buildWorkerRequestDetailsGroups')
   })
 
   it('keeps Stage 4 on the approved V3 hierarchy and the real backend boundary', () => {
@@ -163,13 +170,34 @@ describe('Worker Jobs ZIP Prototype', () => {
     expect(workerFlowSource).toContain('!usesRouteEtaHandoff')
   })
 
+  it('uses the Booking Workart treatment on the left 40 percent of the Stage 2 summary', () => {
+    expect(source).toContain('WorkerStageTwoOfferWorkart')
+    expect(source).toContain('panelTestID = \'worker-v5-offer-detail-workart-panel\'')
+    expect(source).toContain('testID={panelTestID}')
+    expect(source).toContain('contentFit="cover"')
+    expect(source).toContain("flexBasis: '40%'")
+    expect(source).toContain("width: '40%'")
+    expect(source).toContain("panelColor={tokens.mode === 'dark' ? tokens.ghost : '#E8F5F1'}")
+    expect(source).toContain('surfaceColor={reduceTransparency ? tokens.base : tokens.raised}')
+    expect(source).toContain("borderRadius: 24")
+    expect(source).toContain('minHeight: 168')
+    expect(source).not.toContain("maxWidth: '56%'")
+  })
+
+  it('uses the same Booking Workart treatment for Stage 1 opportunity cards', () => {
+    expect(source).toContain('const workartView = (')
+    expect(source).toContain('panelColor={workartPanelColor}')
+    expect(source).toContain('surfaceColor={surfaceColor}')
+    expect(source).toContain('{workartView}{copy}')
+    expect(source).toContain("maxWidth: '60%'")
+    expect(source).toContain('...typography.title2')
+  })
   it('uses distinct semantic icons for the offer, cleaning, and earnings rows', () => {
-    expect(requestDetailsSource).toContain("const REQUEST_ROW_ICONS: readonly RequestDetailsIconName[] = ['bubble', 'wrench', 'photo']")
-    expect(requestDetailsSource).toContain("const PRICE_ROW_ICONS: readonly RequestDetailsIconName[] = ['tag', 'banknote', 'wallet', 'check']")
-    expect(requestDetailsSource).toContain("const READY_ROW_ICONS: readonly RequestDetailsIconName[] = ['envelope', 'shieldCheck', 'lock', 'receipt']")
-    expect(requestDetailsSource).toContain("icon: 'clipboard'")
-    expect(requestDetailsSource).toContain("icon: 'coins'")
-    expect(requestDetailsSource).toContain("icon: 'briefcase'")
+    expect(source).toContain("iconNames={['home', 'service', 'photo']}")
+    expect(source).toContain("iconNames={['location', 'profile']}")
+    expect(source).toContain("iconNames={['price']}")
+    expect(source).toContain("? 'inbox'")
+    expect(source).toContain(": 'wallet'")
   })
 
   it('keeps direct stage review independent from workflow conditions', () => {
@@ -219,12 +247,94 @@ describe('Worker Jobs ZIP Prototype', () => {
     expect(progressSource).toContain('styles.stepStateTextJobsReview')
   })
 
-  it('keeps Stage 10 hero focused on the Workart without a duplicate status caption', () => {
-    expect(source).toContain('testID="worker-v5-stage-ten-status-workart"')
-    expect(source).toContain("stageClosedHero: {")
-    expect(source).toContain("flexWrap: 'wrap'")
-    expect(source).toContain("stageClosedStatusArtwork: {\n    flexShrink: 1,\n    height: 126,\n    maxWidth: 164,\n    width: '100%',")
-    expect(source).not.toContain('stageClosedStatusText')
+  it('keeps Stage 10 Concept B aligned to the supplied completion surface', () => {
+    expect(stageTenContentSource).not.toContain('testID="stage10-progress"')
+    expect(stageTenContentSource).not.toContain('stage10-progress-step-')
+    expect(stageTenPreviewSource).not.toContain('previewHeading')
+    expect(stageTenPreviewSource).not.toContain('previewTitle')
+    expect(stageTenPreviewSource).not.toContain('previewSubtitle')
+    expect(stageTenPreviewSource).not.toContain('showProgress')
+    expect(stageTenPreviewSource).not.toContain('__fixtures__')
+    expect(stageTenPreviewSource).not.toContain('Dữ liệu minh họa')
+    expect(stageTenContentSource).toContain('testID="worker-v5-stage-ten-status-workart"')
+    expect(stageTenContentSource).toContain('testID="stage10-job-card"')
+    expect(stageTenContentSource).toContain('testID="stage10-metric-grid"')
+    expect(stageTenContentSource).not.toContain('stage10-summary-icon-frame')
+    expect(stageTenContentSource).toContain('name="chart" size={s(25)}')
+    expect(stageTenContentSource).not.toContain('comparisonPercent')
+    expect(stageTenContentSource).not.toContain('rankPosition')
+    expect(stageTenContentSource).not.toContain('Khách hàng rất hài lòng!')
+    expect(stageTenContentSource).toContain('STAGE_REFERENCE_SCALE.stageTen')
+    expect(stageTenContentSource).toContain('preferred={21.5}')
+    expect(stageTenContentSource).toContain('marginTop={s(5)}')
+    expect(stageTenContentSource).not.toContain('ScrollView')
+    expect(stageTenContentSource).not.toContain('SafeAreaView')
+    expect(stageTenModelSource).toContain('payment_state')
+    expect(stageTenModelSource).toContain("entry_type === 'worker_credit'")
+    expect(stageTenModelSource).not.toContain('supplement')
+    expect(stageTenModelSource).not.toContain('rankChange')
+    expect(stageTenTokensSource).toContain('referenceContentWidth: 366')
+  })
+
+  it('keeps Stage 10 readable, its money uncut, and its summary icons unframed from compact phones to tablets', () => {
+    const originalScreen = ReactNative.Dimensions.get('screen')
+    const originalWindow = ReactNative.Dimensions.get('window')
+    const layout = (width: number) => ({ nativeEvent: { layout: { height: 0, width, x: 0, y: 0 } } })
+    const styleOf = (node: { props: { style?: unknown } }) =>
+      ReactNative.StyleSheet.flatten(node.props.style as ReactNative.StyleProp<ReactNative.TextStyle>) ?? {}
+    const model = buildStageTenModel({
+      averageRating: 4.8,
+      completedAt: '2026-09-14T03:15:00.000Z',
+      district: 'Quận 7',
+      jobId: 'job_stage10_fit',
+      ledger: [{ entry_type: 'worker_credit', job_id: 'job_stage10_fit', payment_state: 'available', recorded_at: '2026-09-14T03:20:00.000Z', worker_net: 1250000 }],
+      performanceScore: 92,
+      reviewCount: 12,
+      serviceType: 'hvac',
+      status: 'paid',
+    })
+
+    ReactNative.Dimensions.set({
+      screen: { fontScale: 1, height: 568, scale: 2, width: 320 },
+      window: { fontScale: 1, height: 568, scale: 2, width: 320 },
+    })
+    try {
+      render(<StageTenContent actions={{ onEarnings: jest.fn(), onRanking: jest.fn() }} language="vi" model={model} photoSource={null} />)
+      fireEvent(screen.getByTestId('worker-v5-stage-ten-prototype'), 'layout', layout(280))
+
+      withPillarContext(PILLAR, () => {
+        const sizes = screen.UNSAFE_getAllByType(ReactNative.Text).map((node) => styleOf(node).fontSize)
+        expect(Math.min(...sizes.map(Number))).toBeGreaterThanOrEqual(STAGE_MIN_FONT_SIZE)
+      }, 'a 320pt window must not render any Stage 10 text below the house minimum, whatever the card width')
+
+      withPillarContext(PILLAR, () => {
+        const income = screen.getByText('1.250.000đ')
+        const unmeasured = styleOf(income).fontSize as number
+        fireEvent(screen.getByTestId('stage10-income-frame'), 'layout', layout(82))
+        const fitted = styleOf(screen.getByText('1.250.000đ')).fontSize as number
+        expect(fitted).toBeLessThan(unmeasured)
+        expect(fitted).toBeGreaterThanOrEqual(STAGE_MIN_FONT_SIZE)
+        expect(screen.getByText('1.250.000đ').props.numberOfLines).toBeUndefined()
+        expect(fitStageTenValueSize('1.250.000đ', 0, 20, 11)).toBe(20)
+        expect(fitStageTenValueSize('1.250.000đ', 40, 20, 11)).toBe(11)
+        expect(fitStageTenValueSize('1.250.000đ', 82, 20, 11, 2)).toBeLessThan(fitStageTenValueSize('1.250.000đ', 82, 20, 11))
+      }, 'a seven-digit amount must shrink to its tile and never be truncated behind numberOfLines')
+
+      withPillarContext(PILLAR, () => {
+        const halos = new Set<unknown>([stageTenTokens.mintSoft, stageTenTokens.goldSoft])
+        const framed = screen.getByTestId('worker-v5-stage-ten-summary-card').findAll((node) => halos.has(styleOf(node).backgroundColor))
+        expect(framed).toHaveLength(0)
+        expect(screen.queryByTestId('stage10-summary-icon-frame')).toBeNull()
+      }, 'the summary chart and the three metric icons render bare, with no tinted frame behind them')
+
+      withPillarContext(PILLAR, () => {
+        const root = styleOf(screen.getByTestId('worker-v5-stage-ten-prototype'))
+        expect(root.alignSelf).toBe('center')
+        expect(root.maxWidth).toBeLessThanOrEqual(440)
+      }, 'on a tablet the completion surface stays at a readable width instead of stretching its phone geometry')
+    } finally {
+      ReactNative.Dimensions.set({ screen: originalScreen, window: originalWindow })
+    }
   })
 
   it('keeps payment heroes and detail rows flexible on narrow screens', () => {

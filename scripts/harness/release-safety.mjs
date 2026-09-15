@@ -9,10 +9,6 @@ const RELEASE_TARGETS = Object.freeze({
     projectRef: 'iwevizmsedyqozxlawwl',
     projectUrl: 'https://iwevizmsedyqozxlawwl.supabase.co',
   }),
-  staging: Object.freeze({
-    projectRef: 'xyylanuyflrjzbjzhqfl',
-    projectUrl: 'https://xyylanuyflrjzbjzhqfl.supabase.co',
-  }),
 })
 
 const DESTRUCTIVE_SQL = Object.freeze([
@@ -26,6 +22,9 @@ const DESTRUCTIVE_SQL = Object.freeze([
 ])
 
 export function assertReleaseTarget(input) {
+  if (input?.environment !== 'production') {
+    throw new Error('Only the registered Production backend is available; Staging and Preview targets are locked.')
+  }
   const expected = RELEASE_TARGETS[input?.environment]
   const projectRef = input?.projectRef?.trim()
   const projectUrl = input?.projectUrl?.trim().replace(/\/+$/u, '')

@@ -8,7 +8,6 @@ import {
 import { buildReleaseFailureReceipt } from './release-safety.mjs'
 import { buildSyntheticSmokeReceipt } from '../../apps/api/scripts/lib/stage1-synthetic-smoke-core.mjs'
 import { buildStage1PromotionPacket } from './stage1-promotion-packet.mjs'
-import { buildReviewedMainMergeReceipt } from './github-merge-approval.mjs'
 import { buildMobileBinaryAttestation } from './mobile-binary-attestation.mjs'
 import { buildHarnessRelease } from './release-bundle.mjs'
 import { buildEdgeSourceProof } from './edge-source-proof.mjs'
@@ -20,25 +19,6 @@ const release = Object.freeze(buildHarnessRelease({
 }))
 
 const cohortId = `synthetic-stage1-${release.releaseId.slice(8, 20)}-${release.releaseId.slice(21)}-gh77`
-const mergeApprovalReceipt = buildReviewedMainMergeReceipt({
-  repository: 'nestscout/app',
-  requiredReviewer: 'kouuuuuu',
-  mergeCommitSha: release.gitSha,
-  pullRequest: {
-    number: 205,
-    url: 'https://github.com/nestscout/app/pull/205',
-    author: 'feature-author',
-    headSha: '9'.repeat(40),
-    mergedAt: '2026-08-23T01:02:03Z',
-    mergedBy: 'merge-owner',
-  },
-  review: {
-    id: 88,
-    actor: 'kouuuuuu',
-    commitSha: '9'.repeat(40),
-    submittedAt: '2026-08-23T00:59:00Z',
-  },
-})
 const mobileBinaryAttestation = buildMobileBinaryAttestation({
   release,
   builds: [
@@ -63,7 +43,6 @@ const mobileBinaryAttestation = buildMobileBinaryAttestation({
 const packet = buildStage1PromotionPacket({
   release,
   cohortId,
-  mergeApprovalReceipt,
   mobileBinaryAttestation,
   productionUiNormalityReceipt: buildProductionUiNormalityReceipt({ now: Date.parse('2026-08-23T00:00:00.000Z') }),
   workflowRunId: '77',
@@ -94,7 +73,7 @@ const packet = buildStage1PromotionPacket({
     'kael-matching-maintainer': 'f'.repeat(64),
   },
   passedGates: [
-    'workspace-typecheck', 'workspace-tests', 'workspace-build', 'security',
+    'main-branch-merge', 'workspace-typecheck', 'workspace-tests', 'workspace-build', 'security',
     'harness', 'edge-deno', 'database-reset', 'sql-verification',
     'generated-types', 'expand-only', 'hosted-drift-baseline',
     'production-ui-normality',
@@ -212,7 +191,7 @@ test('buildReleaseControlInvocation binds register and configure to immutable ev
     () => buildReleaseControlInvocation({
       action: 'configure',
       release,
-      packet: { ...packet, approval: { ...packet.approval, actor: 'tampered-reviewer' } },
+      packet: { ...packet, workflowRunId: 'tampered' },
       cohortId,
       expectedActiveReleaseId: null,
     }),

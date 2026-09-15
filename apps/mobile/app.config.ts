@@ -81,9 +81,7 @@ const vietmapDisplayKey = fromEnv('EXPO_PUBLIC_VIETMAP_DISPLAY_KEY', 'VIETMAP_DI
 const vietmapMapStyleUrl = fromEnv('EXPO_PUBLIC_VIETMAP_MAP_STYLE_URL')
 const mapProxyBaseUrl = fromEnv('EXPO_PUBLIC_MAP_PROXY_BASE_URL')
 const nativeArchitectureConfig = { newArchEnabled: true } as unknown as Partial<ExpoConfig>
-const stagingPaymentRailEnabled = ['1', 'true', 'yes', 'on'].includes(
-  fromEnv('EXPO_PUBLIC_STAGING_PAYMENT_RAIL_ENABLED').toLowerCase(),
-)
+const stagingPaymentRailEnabled = false
 const iosPushNotificationsEnabled = true
 const androidGoogleServicesFile = fromEnv('GOOGLE_SERVICES_JSON')
 const iosPurposeStrings = {

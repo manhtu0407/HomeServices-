@@ -113,7 +113,13 @@ export function useCustomerKaelEvidenceActions({
   const evidenceSubmissionRef = useRef<{ ownerKey: string } | null>(null)
 
   const pickComposerMedia = async () => {
-    if (mode !== 'normal' && mode !== 'case') return
+    if (mode === 'normal') {
+      setError(language === 'vi'
+        ? 'Để gửi ảnh hoặc video, hãy chuyển sang Xử lý công việc.'
+        : 'To send photos or videos, switch to Work handling.')
+      return
+    }
+    if (mode !== 'case') return
     const requestToken = kaelRequestGuard.begin('media-picker')
     try {
       const result = await ImagePicker.launchImageLibraryAsync({

@@ -26,7 +26,7 @@ export const PILLAR = {
 } as const satisfies PillarManifest
 
 const releaseId = 'harness-aaaaaaaaaaaa-bbbbbbbbbbbb'
-const providerDeploymentId = 'xyylanuyflrjzbjzhqfl_10000000-0000-4000-8000-000000000053_7'
+const providerDeploymentId = 'iwevizmsedyqozxlawwl_10000000-0000-4000-8000-000000000053_7'
 const digest = (seed: string) => seed.repeat(64)
 
 describe('Stage 1 release integrity', () => {
@@ -36,7 +36,7 @@ describe('Stage 1 release integrity', () => {
       NESTSCOUT_ENVIRONMENT: 'production',
       APP_SECRET_KEY: 'sb_secret_project',
     })[name])
-    const previewEnv = readEdgeEnv((name) => ({
+    const previewRead = () => readEdgeEnv((name) => ({
       SUPABASE_URL: 'https://preview-project.supabase.co',
       NESTSCOUT_ENVIRONMENT: 'preview',
       APP_SECRET_KEY: 'sb_secret_project',
@@ -46,14 +46,14 @@ describe('Stage 1 release integrity', () => {
     expect(() => assertProductionReleaseRegistered(productionEnv)).toThrow(
       'Production release identity is incomplete',
     )
-    expect(() => assertProductionReleaseRegistered(previewEnv)).not.toThrow()
+    expect(previewRead).toThrow('Staging and Preview remote targets are locked')
   })
 
   it('returns complete safe release identity from the real public route', async () => {
     const services = createEdgeServices({
       harnessEnvironment: resolveHarnessEnvironment({
-        url: 'https://xyylanuyflrjzbjzhqfl.supabase.co',
-        environment: 'staging',
+        url: 'https://iwevizmsedyqozxlawwl.supabase.co',
+        environment: 'production',
       }),
       harnessRelease: {
         releaseId,
@@ -87,7 +87,7 @@ describe('Stage 1 release integrity', () => {
       authenticate: async () => ({ success: false, error: 'unused', status: 401 }),
       services,
       releaseId,
-      environment: 'staging',
+      environment: 'production',
     })
 
     const response = await handler(new Request('https://api.example.test/harness/health'))
@@ -138,7 +138,7 @@ describe('Stage 1 release integrity', () => {
       },
       services: createEdgeServices({}),
       releaseId,
-      environment: 'staging',
+      environment: 'production',
       minimumClientBuildNumber: 45,
     })
 

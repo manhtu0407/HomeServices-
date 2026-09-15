@@ -1857,23 +1857,20 @@ describe('web preview dependencies', () => {
     expect(mobilePackage.dependencies['react-native-reanimated']).toBe('4.5.1')
   })
 
-  it('provides isolated staging and Production web preview runners that load public env without printing values', () => {
+  it('provides a Production web preview runner and keeps the legacy staging entry point locked', () => {
     expect(rootPackage.scripts['preview:mobile:web:staging']).toBe(
-      'powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-mobile-web-staging-preview.ps1',
+      'node scripts/run.mjs run-mobile-web-staging-preview',
     )
     expect(rootPackage.scripts['preview:mobile:web:production']).toBe(
-      'powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-mobile-web-production-preview.ps1',
+      'node scripts/run.mjs run-mobile-web-production-preview',
     )
-    expect(stagingPreviewScript).toContain('apps/mobile/.env.staging')
-    expect(stagingPreviewScript).toContain('-Environment staging')
+    expect(stagingPreviewScript).toContain('Staging backend is locked')
+    expect(stagingPreviewScript).not.toContain('run-mobile-web-preview.ps1')
     expect(productionPreviewScript).toContain('apps/mobile/.env.local')
     expect(productionPreviewScript).toContain('-Environment production')
     expect(sharedPreviewScript).toContain('NESTSCOUT_MOBILE_ENV_FILE')
     expect(sharedPreviewScript).toContain('EXPO_NO_DOTENV')
     expect(sharedPreviewScript).toContain('lib\\staging-target-safety.ps1')
-    expect(sharedPreviewScript).toContain(
-      'Assert-StagingSupabaseTargets -SupabaseUrl $supabaseUrl -MobileApiUrl $apiBase',
-    )
     expect(sharedPreviewScript).toContain(
       'Assert-ProductionSupabaseTargets -SupabaseUrl $supabaseUrl -MobileApiUrl $apiBase',
     )
@@ -1883,6 +1880,7 @@ describe('web preview dependencies', () => {
     expect(sharedPreviewScript).toContain('if ($AllowedNames -notcontains $name)')
     expect(sharedPreviewScript).toContain('Import-EnvFile -Path $EnvFile -AllowedNames $allowedEnvNames')
     expect(sharedPreviewScript).toContain('EXPO_PUBLIC_STAGING_PAYMENT_RAIL_ENABLED')
+    expect(sharedPreviewScript).not.toContain('Assert-StagingSupabaseTargets -SupabaseUrl $supabaseUrl -MobileApiUrl $apiBase')
     expect(sharedPreviewScript).not.toMatch(/Write-(Host|Output).*publishableKey/)
     expect(sharedPreviewScript).not.toMatch(/Write-(Host|Output).*\$value/)
   })

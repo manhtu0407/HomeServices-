@@ -24,6 +24,10 @@ export type WorkerStatusUpdateInput = {
   status: WorkerStatusUpdate;
   completion_notes?: string;
   completion_photo_urls?: string[];
+  work_session?: {
+    action: "pause" | "resume" | "save_note";
+    note?: string;
+  };
   access_check_in?: {
     mode: "geofence" | "manual_photo";
     lat?: number;
@@ -33,6 +37,13 @@ export type WorkerStatusUpdateInput = {
     note?: string;
     checked_in_at?: string;
   };
+};
+
+export type WorkerWorkSessionSnapshot = {
+  started_at: string | null;
+  paused_at: string | null;
+  paused_ms: number;
+  note: string | null;
 };
 
 export type WorkerRouteOrigin = {
@@ -209,6 +220,11 @@ export type EdgeWorkerJobListResponse = {
     scheduled_at: string | null;
     created_at: string;
     matched_at: string | null;
+    arrived_at: string | null;
+    work_started_at: string | null;
+    work_paused_at: string | null;
+    work_paused_ms: number;
+    worker_work_note: string | null;
     completed_at: string | null;
   }[];
 };

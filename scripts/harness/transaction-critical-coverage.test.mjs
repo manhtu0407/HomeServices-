@@ -166,7 +166,7 @@ test('PR and Production workflows keep different evidence obligations', () => {
   assert.doesNotMatch(release, /--require-bound-assertions/u)
 })
 
-test('Staging integration checks out the PR head required by its hosted release preflight', () => {
+test('Local integration checks out the PR head required by its release preflight', () => {
   const integration = readFileSync(resolve('.github/workflows/integration.yml'), 'utf8')
   assert.ok(integration.includes('ref: ${{ github.event.pull_request.head.sha || github.sha }}'))
   assert.ok(integration.includes("EXPECTED_GIT_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || '' }}"))

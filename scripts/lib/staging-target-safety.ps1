@@ -75,7 +75,7 @@ function Assert-StagingSupabaseTargets {
     [string]$MobileApiUrl
   )
 
-  Assert-SupabaseTargets -SupabaseUrl $SupabaseUrl -MobileApiUrl $MobileApiUrl -ProjectRef 'xyylanuyflrjzbjzhqfl' -EnvironmentName 'staging'
+  throw 'Staging Supabase backend is locked; only the registered Production backend is available.'
 }
 
 function Assert-ProductionSupabaseTargets {

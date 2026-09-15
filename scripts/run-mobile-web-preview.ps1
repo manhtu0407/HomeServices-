@@ -1,7 +1,7 @@
 [CmdletBinding()]
 param(
   [Parameter(Mandatory = $true)]
-  [ValidateSet('staging', 'production')]
+  [ValidateSet('production')]
   [string]$Environment,
   [Parameter(Mandatory = $true)]
   [string]$EnvFile,
@@ -81,19 +81,8 @@ if ([string]::IsNullOrWhiteSpace($apiBase)) {
   [Environment]::SetEnvironmentVariable('EXPO_PUBLIC_API_BASE_URL', $apiBase, 'Process')
 }
 
-switch ($Environment) {
-  'staging' {
-    Assert-StagingSupabaseTargets -SupabaseUrl $supabaseUrl -MobileApiUrl $apiBase
-  }
-  'production' {
-    Assert-ProductionSupabaseTargets -SupabaseUrl $supabaseUrl -MobileApiUrl $apiBase
-    $stagingPaymentRail = [Environment]::GetEnvironmentVariable('EXPO_PUBLIC_STAGING_PAYMENT_RAIL_ENABLED')
-    if (-not [string]::IsNullOrWhiteSpace($stagingPaymentRail) -and $stagingPaymentRail -ine 'false') {
-      throw 'Production preview requires EXPO_PUBLIC_STAGING_PAYMENT_RAIL_ENABLED to be false.'
-    }
-    [Environment]::SetEnvironmentVariable('EXPO_PUBLIC_STAGING_PAYMENT_RAIL_ENABLED', 'false', 'Process')
-  }
-}
+Assert-ProductionSupabaseTargets -SupabaseUrl $supabaseUrl -MobileApiUrl $apiBase
+[Environment]::SetEnvironmentVariable('EXPO_PUBLIC_STAGING_PAYMENT_RAIL_ENABLED', 'false', 'Process')
 Assert-SupabasePublishableKey -Value $publishableKey
 
 $env:EXPO_NO_DOTENV = '1'

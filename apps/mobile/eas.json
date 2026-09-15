@@ -8,26 +8,14 @@
       "developmentClient": true,
       "distribution": "internal",
       "channel": "development",
-      "environment": "development"
+      "environment": "production"
     },
     "preview": {
       "distribution": "internal",
       "channel": "preview",
-      "environment": "preview",
+      "environment": "production",
       "ios": {
         "simulator": false
-      },
-      "android": {
-        "buildType": "apk"
-      }
-    },
-    "native-proof-staging": {
-      "distribution": "internal",
-      "channel": "native-proof-staging",
-      "environment": "preview",
-      "ios": {
-        "simulator": true,
-        "resourceClass": "m-medium"
       },
       "android": {
         "buildType": "apk"
