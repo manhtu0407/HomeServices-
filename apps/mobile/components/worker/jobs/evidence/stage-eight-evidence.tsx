@@ -15,12 +15,12 @@ import type { AppLanguage } from '@/lib/app-language'
 
 import { textByLanguage } from '../../ui/format'
 import { stageEightAssets } from './stage-eight-assets'
+import { StageEightIcon, type StageEightIconName } from './stage-eight-icons'
 import type { StageEightEvidenceProps } from './stage-eight.types'
 
 const BASE = 420
 const C = {
   ink: '#082F29',
-  muted: '#6A7B84',
   mint: '#0E9E76',
   mintSoft: '#ECF8F4',
   mintPill: '#E2F6EF',
@@ -69,32 +69,19 @@ function SectionHeader({
   marginTop,
   right,
   scale,
-  subtitle,
   title,
 }: {
-  icon: React.ComponentProps<typeof Image>['source']
+  icon: StageEightIconName
   marginTop: number
   right?: React.ReactNode
   scale: number
-  subtitle?: string
   title: string
 }) {
   return (
     <View style={[styles.sectionHeader, { marginTop: px(marginTop, scale) }]}>
-      <View style={[styles.sectionLeft, { gap: px(9, scale) }]}>
-        <Image
-          resizeMode="contain"
-          source={icon}
-          style={{ width: px(38, scale), height: px(38, scale), flexShrink: 0 }}
-        />
-        <View style={{ flex: 1, minWidth: 0, paddingTop: px(1, scale) }}>
-          <Text style={[styles.sectionTitle, { fontSize: px(18.5, scale), lineHeight: px(22, scale) }]}>{title}</Text>
-          {subtitle ? (
-            <Text numberOfLines={1} style={[styles.sectionSub, { fontSize: px(10.2, scale), lineHeight: px(14, scale) }]}>
-              {subtitle}
-            </Text>
-          ) : null}
-        </View>
+      <View style={[styles.sectionLeft, { gap: px(8, scale) }]}>
+        <StageEightIcon color={C.mint} name={icon} size={px(32, scale)} />
+        <Text style={[styles.sectionTitle, { fontSize: px(18.5, scale), lineHeight: px(22, scale) }]}>{title}</Text>
       </View>
       {right}
     </View>
@@ -108,7 +95,6 @@ function stageCopy(language: AppLanguage) {
     completeNote: textByLanguage(language, 'Có ghi chú hoàn tất', 'Completion note'),
     completePhoto: textByLanguage(language, 'Có ảnh hoàn tất', 'Completion photo'),
     completePhotoAdded: textByLanguage(language, 'Ảnh đã được thêm vào hồ sơ.', 'Photos have been added to the record.'),
-    completePhotoSubtitle: textByLanguage(language, 'Chụp ảnh hiện trường sau khi hoàn thành công việc.', 'Take a field photo after completing the work.'),
     completePhotoTitle: textByLanguage(language, 'Ảnh hoàn tất', 'Completion photos'),
     completeRecord: textByLanguage(language, 'Gửi hồ sơ hoàn tất', 'Submit completion record'),
     completeRecordBody: textByLanguage(language, 'Thêm ảnh và ghi chú ngắn\ntrước khi gửi hồ sơ hoàn tất nhé.', 'Add a photo and short note\nbefore submitting the completion record.'),
@@ -116,7 +102,6 @@ function stageCopy(language: AppLanguage) {
     completeRecordPlaceholder: textByLanguage(language, 'Mô tả ngắn việc đã làm.', 'Briefly describe the completed work.'),
     completeRecordSending: textByLanguage(language, 'Đang gửi…', 'Sending…'),
     finalCheck: textByLanguage(language, 'Kiểm tra cuối', 'Final check'),
-    finalCheckSubtitle: textByLanguage(language, 'Hãy đảm bảo đã bổ sung đầy đủ trước khi gửi.', 'Make sure everything is complete before sending.'),
     hasEnough: textByLanguage(language, 'Đã đủ', 'Ready'),
     needsMore: textByLanguage(language, 'Cần bổ sung', 'Needs input'),
     noCompletionPhoto: textByLanguage(language, 'Chưa có ảnh hoàn tất', 'No completion photos yet'),
@@ -231,11 +216,10 @@ export function StageEightEvidenceScreen({
       </View>
 
       <SectionHeader
-        icon={stageEightAssets.camera}
+        icon="camera"
         marginTop={18}
-        right={<Text style={[styles.count, { fontSize: px(14.5, scale), lineHeight: px(18, scale), marginTop: px(7, scale) }]}>{copy.photoCount(photoCount)}</Text>}
+        right={<Text style={[styles.count, { fontSize: px(14.5, scale), lineHeight: px(18, scale), top: px(1.6, scale) }]}>{copy.photoCount(photoCount)}</Text>}
         scale={scale}
-        subtitle={copy.completePhotoSubtitle}
         title={copy.completePhotoTitle}
       />
 
@@ -267,10 +251,9 @@ export function StageEightEvidenceScreen({
       </View>
 
       <SectionHeader
-        icon={stageEightAssets.check}
+        icon="checklist"
         marginTop={20}
         scale={scale}
-        subtitle={copy.finalCheckSubtitle}
         title={copy.finalCheck}
       />
 
@@ -295,9 +278,9 @@ export function StageEightEvidenceScreen({
       </View>
 
       <SectionHeader
-        icon={stageEightAssets.note}
+        icon="note"
         marginTop={15}
-        right={<Text style={[styles.hint, { fontSize: px(10.7, scale), lineHeight: px(14, scale), marginTop: px(8, scale) }]}>{copy.noteHint}</Text>}
+        right={<Text style={[styles.hint, { fontSize: px(10.7, scale), lineHeight: px(14, scale), top: px(3.3, scale) }]}>{copy.noteHint}</Text>}
         scale={scale}
         title={copy.noteTitle}
       />
@@ -326,10 +309,9 @@ export function StageEightEvidenceScreen({
         accessibilityState={{ disabled: !canSubmit, busy: submitting }}
         disabled={!canSubmit}
         onPress={onSubmit}
-        style={[styles.submit, canSubmit && styles.submitEnabled, { marginTop: px(notice ? 8 : 13, scale), height: px(55, scale), borderRadius: px(17, scale), gap: px(8, scale) }]}
+        style={[styles.submit, canSubmit && styles.submitEnabled, { marginTop: px(notice ? 8 : 13, scale), height: px(55, scale), borderRadius: px(17, scale) }]}
         testID="worker-v5-stage-eight-fidelity-submit"
       >
-        <Image resizeMode="contain" source={stageEightAssets.plane} style={{ width: px(26, scale), height: px(26, scale), opacity: canSubmit ? 1 : 0.78 }} />
         <Text adjustsFontSizeToFit minimumFontScale={0.84} numberOfLines={1} style={[styles.submitText, canSubmit && styles.submitTextEnabled, { fontSize: px(13.8, scale), lineHeight: px(18, scale) }]}>
           {submitting ? copy.completeRecordSending : copy.completeRecord}
         </Text>
@@ -362,10 +344,9 @@ const styles = StyleSheet.create({
   eyebrow: { color: '#5B7771', fontWeight: '700', letterSpacing: 0.72 },
   heroTitle: { color: '#00332F', fontWeight: '800', letterSpacing: -0.72 },
   heroSub: { color: '#667980', fontWeight: '500', letterSpacing: -0.1 },
-  sectionHeader: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 7 },
-  sectionLeft: { flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'flex-start' },
-  sectionTitle: { color: '#071A20', fontWeight: '700', letterSpacing: -0.38 },
-  sectionSub: { color: C.muted, fontWeight: '500', marginTop: 2, letterSpacing: -0.08 },
+  sectionHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 7 },
+  sectionLeft: { flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center' },
+  sectionTitle: { color: '#071A20', flexShrink: 1, fontWeight: '700', letterSpacing: -0.38 },
   count: { color: '#08A078', fontWeight: '700' },
   upload: { position: 'relative', borderWidth: 1.3, borderStyle: 'dashed', borderColor: '#B7E5D8', flexDirection: 'row', alignItems: 'center' },
   uploadTitle: { color: '#071A20', fontWeight: '700', letterSpacing: -0.22 },
