@@ -1,7 +1,10 @@
 import { describe, expect, it, vi } from 'vitest'
 
 import { pillarWhy, type PillarManifest } from '../pillar-manifest'
-import { decideAdminPaymentReconciliation } from '../../../../../supabase/functions/mobile-api/_shared/domains/admin/finance'
+import {
+  decideAdminPaymentReconciliation,
+  listAdminPaymentReconciliations,
+} from '../../../../../supabase/functions/mobile-api/_shared/domains/admin/finance-reconciliation'
 
 export const PILLAR = {
   id: 'P34-admin-finance-bank-reference',
@@ -148,3 +151,120 @@ describe('P34 admin finance — a cash decision carries no bank fields at all', 
     ).toEqual([])
   })
 })
+
+describe('P34 admin finance — reconciliation read projection', () => {
+  it('lists an allowlisted reconciliation projection for an Admin actor', async () => {
+    const ctx = reconciliationContext({
+      id: 'payment-1',
+      job_id: 'job-1',
+      payment_method: 'platform_bank_manual',
+      status: 'manual_reconcile_required',
+      gross_amount: 450_000,
+      worker_id: 'worker-1',
+      platform_fee: 45_000,
+      worker_net: 405_000,
+      amount_received: 450_000,
+      customer_transfer_claimed_at: '2026-09-14T10:00:00.000Z',
+      response_deadline: '2099-09-14T10:00:00.000Z',
+      assigned_to: null,
+      assigned_at: null,
+      version: 2,
+      created_at: '2026-09-14T09:00:00.000Z',
+      updated_at: '2026-09-14T10:00:00.000Z',
+    }, {
+      id: 'job-1',
+      display_code: 'NS-0001',
+      service_type: 'plumbing',
+      customer_id: 'customer-1',
+    })
+
+    await expect(listAdminPaymentReconciliations(ctx, {
+      limit: 20,
+      status: 'reconcile_required',
+      payment_method: 'all',
+      assignment: 'all',
+    })).resolves.toMatchObject({
+      total_count: 1,
+      total_amount_vnd: 450_000,
+      has_more: false,
+      payment_reconciliations: [{
+        id: 'payment-1',
+        job_id: 'job-1',
+        display_code: 'NS-0001',
+        payment_method: 'platform_bank_manual',
+        assigned_to_me: false,
+      }],
+    })
+  })
+
+  it('rejects an invalid reconciliation row before exposing a response', async () => {
+    const ctx = reconciliationContext({
+      id: 'payment-1',
+      job_id: 'job-1',
+      payment_method: 'platform_bank_manual',
+      status: 'manual_reconcile_required',
+      gross_amount: 0,
+      worker_id: 'worker-1',
+      version: 2,
+      created_at: '2026-09-14T09:00:00.000Z',
+      updated_at: '2026-09-14T10:00:00.000Z',
+    }, {
+      id: 'job-1',
+      display_code: 'NS-0001',
+      service_type: 'plumbing',
+      customer_id: 'customer-1',
+    })
+
+    await expect(listAdminPaymentReconciliations(ctx, {
+      limit: 20,
+      status: 'reconcile_required',
+      payment_method: 'all',
+      assignment: 'all',
+    })).rejects.toMatchObject({ code: 'DB_ERROR', status: 500 })
+  })
+})
+
+function reconciliationContext(paymentRow: Record<string, unknown>, jobRow: Record<string, unknown>) {
+  const results = new Map<string, unknown>([
+    ['job_payment_orders', [paymentRow]],
+    ['jobs', [jobRow]],
+  ])
+  return {
+    role: 'admin',
+    user: { id: 'owner-1' },
+    supabase: {
+      from(table: string) {
+        const data = results.get(table)
+        if (data === undefined) throw new Error(`Unexpected table ${table}`)
+        return reconciliationQuery(data)
+      },
+    },
+  } as never
+}
+
+function reconciliationQuery(data: unknown) {
+  const query = {
+    select() {
+      return query
+    },
+    limit() {
+      return query
+    },
+    in() {
+      return query
+    },
+    eq() {
+      return query
+    },
+    is() {
+      return query
+    },
+    then<TResult1 = unknown, TResult2 = never>(
+      onfulfilled?: ((value: { data: unknown; error: null }) => TResult1 | PromiseLike<TResult1>) | null,
+      onrejected?: ((reason: unknown) => TResult2 | PromiseLike<TResult2>) | null,
+    ) {
+      return Promise.resolve({ data, error: null }).then(onfulfilled, onrejected)
+    },
+  }
+  return query
+}
