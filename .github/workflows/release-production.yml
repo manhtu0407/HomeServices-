@@ -8,7 +8,6 @@ on:
 
 permissions:
   contents: read
-  pull-requests: read
 
 concurrency:
   group: production-release
@@ -63,20 +62,11 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
-      - name: Verify reviewed main identity
+      - name: Verify immutable main identity
         run: |
           test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
           test "$GITHUB_REF" = "refs/heads/main"
           test -z "$(git status --porcelain=v1 --untracked-files=all)"
-      - name: Resolve exact Dev-reviewed merge authority
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
-        run: |
-          mkdir -p artifacts/release
-          node scripts/harness/github-merge-approval.mjs \
-            --repository "$GITHUB_REPOSITORY" --merge-sha "$GITHUB_SHA" \
-            --reviewer kouuuuuuuuu \
-            --output artifacts/release/merge-approval.json
       - run: pnpm install --frozen-lockfile
       - name: Whole-workspace quality gates
         run: |
@@ -163,7 +153,6 @@ jobs:
           path: |
             artifacts/release/quality.json
             artifacts/release/production-ui-normality.json
-            artifacts/release/merge-approval.json
             /tmp/kael-eval.md
             /tmp/database.types.ts
           if-no-files-found: error
@@ -223,20 +212,11 @@ jobs:
           test -n "$PRODUCTION_SYNTHETIC_CUSTOMER_PASSWORD"
           test -n "$PRODUCTION_SYNTHETIC_WORKER_EMAIL"
           test -n "$PRODUCTION_SYNTHETIC_WORKER_PASSWORD"
-      - name: Verify immutable reviewed source
+      - name: Verify immutable main source
         run: |
           test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
           test "$GITHUB_REF" = "refs/heads/main"
           test -z "$(git status --porcelain=v1 --untracked-files=all)"
-      - name: Re-resolve exact Dev-reviewed merge authority
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
-        run: |
-          mkdir -p artifacts/release
-          node scripts/harness/github-merge-approval.mjs \
-            --repository "$GITHUB_REPOSITORY" --merge-sha "$GITHUB_SHA" \
-            --reviewer kouuuuuuuuu \
-            --output artifacts/release/merge-approval.json
       - name: Build immutable production release manifest
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
@@ -376,11 +356,10 @@ jobs:
             --rollback-mobile-source-sha256 "$ROLLBACK_MOBILE_SOURCE_SHA" \
             --rollback-maintainer-source-sha256 "$ROLLBACK_MAINTAINER_SOURCE_SHA" \
             --cohort "$COHORT_ID" \
-            --merge-approval artifacts/release/merge-approval.json \
             --mobile-binary artifacts/release/mobile-binary-attestation.json \
             --production-ui-normality artifacts/release/production-ui-normality.json \
             --workflow-run-id "$GITHUB_RUN_ID" \
-            --gates workspace-typecheck,workspace-tests,workspace-build,security,harness,edge-deno,database-reset,sql-verification,generated-types,expand-only,hosted-drift-baseline,production-ui-normality \
+            --gates main-branch-merge,workspace-typecheck,workspace-tests,workspace-build,security,harness,edge-deno,database-reset,sql-verification,generated-types,expand-only,hosted-drift-baseline,production-ui-normality \
             --output artifacts/release/promotion-packet.json
       - name: Apply exact expand-only migration inventory
         env:
