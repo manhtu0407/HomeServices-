@@ -30,17 +30,11 @@ function response(body, status = 200) {
   return { ok: status >= 200 && status < 300, status, json: async () => body }
 }
 
-test('release workflow binds both approval checks to the verified repository collaborator', async () => {
+test('Production release workflow has no GitHub reviewer gate', () => {
   const workflow = readFileSync(new URL('../../.github/workflows/release-production.yml', import.meta.url), 'utf8')
-  const reviewers = [...workflow.matchAll(/--reviewer ([A-Za-z0-9-]+)/gu)].map((match) => match[1])
-  assert.deepEqual(reviewers, ['kouuuuuuuuu', 'kouuuuuuuuu'])
-  const receipt = await resolveReviewedMainMerge({
-    repository: 'nestscout/app', mergeCommitSha: mergeSha, requiredReviewer: reviewers[0], token: 't'.repeat(40),
-  }, githubFetch({ reviews: [{
-    id: 88, state: 'APPROVED', commit_id: headSha, submitted_at: '2026-08-23T00:59:00Z',
-    user: { login: 'kouuuuuuuuu', type: 'User' },
-  }] }))
-  assert.equal(receipt.review.actor, 'kouuuuuuuuu')
+  assert.doesNotMatch(workflow, /github-merge-approval\.mjs/u)
+  assert.doesNotMatch(workflow, /--reviewer\b/u)
+  assert.doesNotMatch(workflow, /merge-approval/u)
 })
 
 test('resolves one exact merged-main PR and separate approval on its current head', async () => {

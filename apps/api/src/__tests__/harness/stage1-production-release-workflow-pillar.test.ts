@@ -6,9 +6,10 @@ import { pillarWhy, type PillarManifest } from '../pillar-manifest'
 export const PILLAR = {
   id: 'P56-stage1-production-release-workflow',
   invariant:
-    'only reviewed main can run the production release; immutable provider/source and normal-UI attestation gate a clean cohort canary, three full synthetic smokes, atomic promotion, Supabase Production acceptance note, and a full-closure downloaded-source rollback',
+    'only the immutable main release lane can run the production release; provider/source and normal-UI attestation gate a clean cohort canary, three full synthetic smokes, atomic promotion, Supabase Production acceptance note, and a full-closure downloaded-source rollback',
   authority: [
     'approved Stage 1 implementation plan (post-merge release integrity)',
+    'owner-authorized Production policy (no independent GitHub reviewer gate)',
     'governance/critical.md #3 (No False Completion)',
     'governance/RULES.md #1 and #8 (safe boundaries and no fake success)',
   ],
@@ -30,13 +31,14 @@ describe('Stage 1 production release workflow', () => {
   const smoke = readFileSync(resolve(root, 'apps/api/scripts/stage1-synthetic-release-smoke.mjs'), 'utf8')
 
   it('runs only from main and never from a pull request', () => {
-    expect(workflow, pillarWhy(PILLAR, 'reviewed merge is the production authority')).toContain('branches: [main]')
+    expect(workflow, pillarWhy(PILLAR, 'main is the production release authority')).toContain('branches: [main]')
     expect(workflow, pillarWhy(PILLAR, 'PR workflows only build and test')).not.toContain('pull_request:')
     expect(workflow, pillarWhy(PILLAR, 'production job stays on main')).toContain("github.ref == 'refs/heads/main'")
-    expect(workflow, pillarWhy(PILLAR, 'manual dispatch cannot bypass reviewed merge authority')).not.toContain('workflow_dispatch:')
-    expect(workflow, pillarWhy(PILLAR, 'review evidence is resolved from GitHub')).toContain('github-merge-approval.mjs')
-    expect(workflow, pillarWhy(PILLAR, 'review evidence is bound into promotion')).toContain('--merge-approval artifacts/release/merge-approval.json')
-    expect(workflow, pillarWhy(PILLAR, 'trigger actor is not fabricated as reviewer')).not.toContain('APPROVAL_ACTOR')
+    expect(workflow, pillarWhy(PILLAR, 'manual dispatch cannot bypass the official release lane')).not.toContain('workflow_dispatch:')
+    expect(workflow, pillarWhy(PILLAR, 'the release lane is explicitly reviewerless')).not.toContain('github-merge-approval.mjs')
+    expect(workflow, pillarWhy(PILLAR, 'the release lane has no reviewer argument')).not.toMatch(/--reviewer\b/u)
+    expect(workflow, pillarWhy(PILLAR, 'reviewer evidence is not bound into promotion')).not.toContain('merge-approval')
+    expect(workflow, pillarWhy(PILLAR, 'the promotion packet records the main-branch gate')).toContain('main-branch-merge')
   })
 
   it('reruns quality, SQL, generated-type, and hosted expand-only gates before deploy', () => {

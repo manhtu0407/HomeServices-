@@ -1301,12 +1301,11 @@
       "id": "system.release.production-promotion",
       "actor": "system",
       "system_surface": "release.production_promotion",
-      "authority": "reviewed_main_and_three_production_smokes",
+      "authority": "main_merge_and_three_production_smokes",
       "from": ["reviewed"],
       "to": ["closed"],
       "sources": [
         ".github/workflows/release-production.yml",
-        "scripts/harness/github-merge-approval.mjs",
         "scripts/harness/promotion.mjs"
       ],
       "pillars": ["P56-stage1-production-release-workflow", "P72-native-push-release-readiness", "P55-stage1-release-cohort-canary"]

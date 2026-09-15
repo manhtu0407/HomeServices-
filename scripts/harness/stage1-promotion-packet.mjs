@@ -2,7 +2,6 @@ import { createHash } from 'node:crypto'
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, relative, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { verifyReviewedMainMergeReceipt } from './github-merge-approval.mjs'
 import { verifyMobileBinaryAttestation } from './mobile-binary-attestation.mjs'
 import { RELEASE_EDGE_FUNCTIONS } from './release-bundle.mjs'
 import { verifyProductionUiNormalityReceipt } from '../check-production-ui-copy.mjs'
@@ -12,6 +11,7 @@ const SHA256 = /^[0-9a-f]{64}$/u
 const RELEASE_ID = /^harness-[0-9a-f]{12}-[0-9a-f]{12}$/u
 const COHORT_ID = /^synthetic-stage1-[0-9a-f]{12}-[0-9a-f]{12}-[A-Za-z0-9_-]{1,48}$/u
 const REQUIRED_GATES = Object.freeze([
+  'main-branch-merge',
   'workspace-typecheck',
   'workspace-tests',
   'workspace-build',
@@ -37,7 +37,7 @@ export function buildStage1PromotionPacket(input) {
     }]
   }))
   const packet = {
-    schemaVersion: 'stage1-promotion-packet.v2',
+    schemaVersion: 'stage1-promotion-packet.v3',
     packetId: `stage1-${input.release.releaseId}-${input.workflowRunId}`,
     generatedAt: new Date(input.now ?? Date.now()).toISOString(),
     environment: 'production',
@@ -57,7 +57,6 @@ export function buildStage1PromotionPacket(input) {
       providerReadinessFingerprintSha256: input.release.providerReadinessFingerprintSha256,
     },
     cohortId: input.cohortId,
-    approval: input.mergeApprovalReceipt,
     mobileBinaryAttestation: input.mobileBinaryAttestation,
     productionUiNormality: {
       sourceSha256: input.productionUiNormalityReceipt.sourceSha256,
@@ -98,14 +97,11 @@ export function buildStage1PromotionPacket(input) {
 export function verifyStage1PromotionPacket(packet) {
   const problems = []
   if (!packet || typeof packet !== 'object') return ['promotion packet is invalid']
-  if (packet.schemaVersion !== 'stage1-promotion-packet.v2') problems.push('promotion packet schema is invalid')
+  if (packet.schemaVersion !== 'stage1-promotion-packet.v3') problems.push('promotion packet schema is invalid')
+  if (Object.prototype.hasOwnProperty.call(packet, 'approval')) problems.push('promotion packet contains a retired reviewer approval')
   if (packet.environment !== 'production' || packet.projectRef !== 'iwevizmsedyqozxlawwl') problems.push('promotion packet target is invalid')
   if (!RELEASE_ID.test(packet.release?.releaseId ?? '')) problems.push('promotion packet release ID is invalid')
   if (!COHORT_ID.test(packet.cohortId ?? '')) problems.push('promotion packet cohort ID is invalid')
-  const approvalProblems = verifyReviewedMainMergeReceipt(packet.approval)
-  if (approvalProblems.length > 0 || packet.approval?.mergeCommitSha !== packet.release?.gitSha) {
-    problems.push('promotion packet merge approval is invalid')
-  }
   if (verifyMobileBinaryAttestation(packet.mobileBinaryAttestation, packet.release).length > 0) {
     problems.push('promotion packet mobile binary attestation is invalid')
   }
@@ -162,6 +158,7 @@ export function verifyStage1PromotionPacket(packet) {
 }
 
 function validateBuildInput(input) {
+  if (input?.mergeApprovalReceipt !== undefined) throw new Error('Stage 1 Production promotion no longer accepts a reviewer approval receipt')
   const release = input?.release
   if (!RELEASE_ID.test(release?.releaseId ?? '') || release?.environment !== 'production' ||
       !/^[0-9a-f]{40}$/u.test(release?.gitSha ?? '') || !SHA256.test(release?.bundleSha256 ?? '')) {
@@ -181,10 +178,8 @@ function validateBuildInput(input) {
       !input.cohortId.startsWith(`synthetic-stage1-${release.releaseId.slice(8, 20)}-${release.releaseId.slice(21)}-`)) {
     throw new Error('Stage 1 promotion cohort is invalid')
   }
-  if (verifyReviewedMainMergeReceipt(input.mergeApprovalReceipt).length > 0 ||
-      input.mergeApprovalReceipt?.mergeCommitSha !== release.gitSha ||
-      !/^[0-9]{1,30}$/u.test(String(input.workflowRunId ?? ''))) {
-    throw new Error('reviewed merge approval identity is invalid')
+  if (!/^[0-9]{1,30}$/u.test(String(input.workflowRunId ?? ''))) {
+    throw new Error('Stage 1 promotion workflow run identity is invalid')
   }
   if (verifyMobileBinaryAttestation(input.mobileBinaryAttestation, release).length > 0) {
     throw new Error('Stage 1 promotion requires exact iOS and Android binary attestations')
@@ -236,7 +231,7 @@ function parseArgs(args) {
   const allowed = new Set([
     '--release', '--expand-only', '--hosted-before', '--rollback-mobile-source-sha256',
     '--rollback-maintainer-source-sha256',
-    '--cohort', '--merge-approval', '--mobile-binary', '--production-ui-normality', '--workflow-run-id', '--gates', '--output',
+    '--cohort', '--mobile-binary', '--production-ui-normality', '--workflow-run-id', '--gates', '--output',
   ])
   for (let index = 0; index < args.length; index += 1) {
     const key = args[index]
@@ -245,7 +240,7 @@ function parseArgs(args) {
     if (!value || value.startsWith('--')) throw new Error(`${key} requires a value`)
     options[key.slice(2).replace(/-([a-z])/gu, (_, letter) => letter.toUpperCase())] = value
   }
-  for (const key of ['release', 'expandOnly', 'hostedBefore', 'rollbackMobileSourceSha256', 'rollbackMaintainerSourceSha256', 'cohort', 'mergeApproval', 'mobileBinary', 'productionUiNormality', 'workflowRunId', 'gates', 'output']) {
+  for (const key of ['release', 'expandOnly', 'hostedBefore', 'rollbackMobileSourceSha256', 'rollbackMaintainerSourceSha256', 'cohort', 'mobileBinary', 'productionUiNormality', 'workflowRunId', 'gates', 'output']) {
     if (!options[key]) throw new Error(`Stage 1 promotion packet option is missing: ${key}`)
   }
   return options
@@ -297,7 +292,6 @@ function main() {
       'kael-matching-maintainer': options.rollbackMaintainerSourceSha256,
     },
     cohortId: options.cohort,
-    mergeApprovalReceipt: JSON.parse(readFileSync(resolveInsideRoot(options.mergeApproval), 'utf8')),
     mobileBinaryAttestation: JSON.parse(readFileSync(resolveInsideRoot(options.mobileBinary), 'utf8')),
     productionUiNormalityReceipt: JSON.parse(readFileSync(resolveInsideRoot(options.productionUiNormality), 'utf8')),
     workflowRunId: options.workflowRunId,

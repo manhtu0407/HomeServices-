@@ -7,7 +7,7 @@ import { pillarWhy, type PillarManifest } from '../pillar-manifest'
 export const PILLAR = {
   id: 'P72-native-push-release-readiness',
   invariant:
-    'a Production release can count remote Worker reachability only when both native push platforms, hosted receipt reconciliation, and kouuuuuu exact-head approval are fail-closed gates',
+    'a Production release can count remote Worker reachability only when both native push platforms and hosted receipt reconciliation are fail-closed gates',
   authority: [
     'governance/RULES.md #5 (real runtime evidence cannot be replaced by a source claim)',
     'governance/RULES.md #7 (human authority remains explicit)',
@@ -16,7 +16,7 @@ export const PILLAR = {
   layer: 'security-negative',
   siblings: ['P37-ios-release-readiness', 'P57-stage1-provider-push-receipt'],
   mutation:
-    'remove expo-notifications, the hosted receipt reconciler call, either provider flag, or the exact reviewer argument — the corresponding source gate turns red',
+    'remove expo-notifications, the hosted receipt reconciler call, or either provider flag — the corresponding source gate turns red',
 } as const satisfies PillarManifest
 
 const rootFile = (path: string) => readFileSync(resolve(process.cwd(), '../..', path), 'utf8')
@@ -67,13 +67,13 @@ describe('native push and Production release readiness', () => {
     }
   })
 
-  it('requires kouuuuuu approval for the exact merged head before either release phase', () => {
+  it('keeps the Production lane reviewerless without weakening native readiness gates', () => {
     const releaseWorkflow = rootFile('.github/workflows/release-production.yml')
-    const approvalHarness = rootFile('scripts/harness/github-merge-approval.mjs')
 
-    expect(releaseWorkflow.match(/--reviewer kouuuuuu/gu)).toHaveLength(2)
-    expect(approvalHarness).toContain("schemaVersion: 'github-reviewed-main-merge.v2'")
-    expect(approvalHarness).toContain('review.user.login === input.requiredReviewer')
-    expect(approvalHarness).toContain('review?.actor !== receipt.requiredReviewer')
+    expect(releaseWorkflow).toContain('branches: [main]')
+    expect(releaseWorkflow).not.toContain('github-merge-approval.mjs')
+    expect(releaseWorkflow).not.toMatch(/--reviewer\b/u)
+    expect(releaseWorkflow).not.toContain('merge-approval')
+    expect(releaseWorkflow).toContain('main-branch-merge')
   })
 })

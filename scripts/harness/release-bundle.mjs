@@ -49,6 +49,9 @@ export function buildHarnessRelease(options = {}) {
     throw new Error('production release contains unsafe or cross-language visible UI copy')
   }
   const providerReadiness = options.providerReadiness ?? providerReadinessFromEnvironment(process.env)
+  const releaseAuthorityRequirement = environment === 'production'
+    ? 'main-branch-merge'
+    : 'explicit-human-approval'
   const release = {
     schemaVersion: '1.0.0',
     releaseId: '',
@@ -121,7 +124,7 @@ export function buildHarnessRelease(options = {}) {
       'readonly-production-drift',
       'production-ui-normality',
       'compatible-rollback-target',
-      'explicit-human-approval',
+      releaseAuthorityRequirement,
     ],
     rollbackPolicy: {
       historicalMigrationsImmutable: true,

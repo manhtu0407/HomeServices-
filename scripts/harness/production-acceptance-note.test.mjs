@@ -6,7 +6,6 @@ import { buildProductionUiNormalityReceipt } from '../check-production-ui-copy.m
 import { buildHarnessRelease } from './release-bundle.mjs'
 import { buildProductionAcceptanceRpcArgs, sha256Bytes } from './production-acceptance-note.mjs'
 import { buildStage1PromotionPacket } from './stage1-promotion-packet.mjs'
-import { buildReviewedMainMergeReceipt } from './github-merge-approval.mjs'
 import { buildMobileBinaryAttestation } from './mobile-binary-attestation.mjs'
 
 const release = buildHarnessRelease({
@@ -67,19 +66,13 @@ function fixtures() {
   const promotionPacket = buildStage1PromotionPacket({
     release,
     cohortId,
-    mergeApprovalReceipt: buildReviewedMainMergeReceipt({
-      repository: 'nestscout/app', mergeCommitSha: release.gitSha,
-      requiredReviewer: 'kouuuuuu',
-      pullRequest: { number: 1, url: 'https://github.com/nestscout/app/pull/1', author: 'author', headSha: 'a'.repeat(40), mergedAt: '2026-08-23T01:00:00Z', mergedBy: 'owner' },
-      review: { id: 1, actor: 'kouuuuuu', commitSha: 'a'.repeat(40), submittedAt: '2026-08-23T00:59:00Z' },
-    }),
     mobileBinaryAttestation,
     productionUiNormalityReceipt: productionUiReceipt,
     workflowRunId: '77',
     expandOnlyReceipt: { environment: 'production', projectRef: 'iwevizmsedyqozxlawwl', auditSha256: 'a'.repeat(64), pendingWatermark: release.migrationWatermark, pendingMigrations: [{ version: release.migrationWatermark }] },
     previousHostedState: { environment: 'production', projectRef: 'iwevizmsedyqozxlawwl', managedEdgeFunctions: managedFunctions() },
     rollbackSourceSha256ByFunction: { 'mobile-api': 'd'.repeat(64), 'kael-matching-maintainer': 'f'.repeat(64) },
-    passedGates: ['workspace-typecheck', 'workspace-tests', 'workspace-build', 'security', 'harness', 'edge-deno', 'database-reset', 'sql-verification', 'generated-types', 'expand-only', 'hosted-drift-baseline', 'production-ui-normality'],
+    passedGates: ['main-branch-merge', 'workspace-typecheck', 'workspace-tests', 'workspace-build', 'security', 'harness', 'edge-deno', 'database-reset', 'sql-verification', 'generated-types', 'expand-only', 'hosted-drift-baseline', 'production-ui-normality'],
     now: 1_700_000_000_000,
   })
   const hostedState = {

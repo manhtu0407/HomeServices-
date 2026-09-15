@@ -4,7 +4,6 @@ import {
   buildStage1PromotionPacket,
   verifyStage1PromotionPacket,
 } from './stage1-promotion-packet.mjs'
-import { buildReviewedMainMergeReceipt } from './github-merge-approval.mjs'
 import { buildMobileBinaryAttestation } from './mobile-binary-attestation.mjs'
 import { buildHarnessRelease } from './release-bundle.mjs'
 import { buildProductionUiNormalityReceipt } from '../check-production-ui-copy.mjs'
@@ -21,26 +20,6 @@ function productionProviderReadiness() {
     push_receipt_reconciler: true, vietmap: true,
   }
 }
-
-const mergeApprovalReceipt = buildReviewedMainMergeReceipt({
-  repository: 'nestscout/app',
-  requiredReviewer: 'kouuuuuu',
-  mergeCommitSha: release.gitSha,
-  pullRequest: {
-    number: 205,
-    url: 'https://github.com/nestscout/app/pull/205',
-    author: 'feature-author',
-    headSha: 'a'.repeat(40),
-    mergedAt: '2026-08-23T01:02:03Z',
-    mergedBy: 'merge-owner',
-  },
-  review: {
-    id: 88,
-    actor: 'kouuuuuu',
-    commitSha: 'a'.repeat(40),
-    submittedAt: '2026-08-23T00:59:00Z',
-  },
-})
 
 const mobileBinaryAttestation = buildMobileBinaryAttestation({
   release,
@@ -67,7 +46,6 @@ const mobileBinaryAttestation = buildMobileBinaryAttestation({
 const input = Object.freeze({
   release,
   cohortId: `synthetic-stage1-${release.releaseId.slice(8, 20)}-${release.releaseId.slice(21)}-gh77`,
-  mergeApprovalReceipt,
   mobileBinaryAttestation,
   productionUiNormalityReceipt: buildProductionUiNormalityReceipt({ now: 1_700_000_000_000 }),
   workflowRunId: '987654321',
@@ -98,7 +76,7 @@ const input = Object.freeze({
     'kael-matching-maintainer': 'f'.repeat(64),
   },
   passedGates: [
-    'workspace-typecheck', 'workspace-tests', 'workspace-build', 'security',
+    'main-branch-merge', 'workspace-typecheck', 'workspace-tests', 'workspace-build', 'security',
     'harness', 'edge-deno', 'database-reset', 'sql-verification',
     'generated-types', 'expand-only', 'hosted-drift-baseline',
     'production-ui-normality',
@@ -106,8 +84,10 @@ const input = Object.freeze({
   now: 1_700_000_000_000,
 })
 
-test('buildStage1PromotionPacket binds release, merge approval, rollback source, and expand audit', () => {
+test('buildStage1PromotionPacket binds release, rollback source, and expand audit', () => {
   const packet = buildStage1PromotionPacket(input)
+  assert.equal(packet.schemaVersion, 'stage1-promotion-packet.v3')
+  assert.equal(packet.approval, undefined)
   assert.equal(packet.release.releaseId, release.releaseId)
   assert.equal(packet.rollback.functions['mobile-api'].hostedEdgeVersion, 43)
   assert.equal(packet.rollback.functions['mobile-api'].sourceSha256, 'd'.repeat(64))
@@ -133,12 +113,16 @@ test('packet creation fails when a required gate or exact target is missing', ()
     }),
     /hosted baseline target/u,
   )
+  assert.throws(
+    () => buildStage1PromotionPacket({ ...input, mergeApprovalReceipt: {} }),
+    /no longer accepts a reviewer approval receipt/u,
+  )
 })
 
 test('packet verification detects any post-build evidence mutation', () => {
   const packet = buildStage1PromotionPacket(input)
   assert.match(
-    verifyStage1PromotionPacket({ ...packet, approval: { ...packet.approval, actor: 'other' } }).join('; '),
+    verifyStage1PromotionPacket({ ...packet, workflowRunId: 'tampered' }).join('; '),
     /checksum/u,
   )
 })
