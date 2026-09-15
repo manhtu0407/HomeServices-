@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useState } from 'react'
 import type { AuthChangeEvent, Session } from '@supabase/supabase-js'
 import { Pressable, Text } from 'react-native'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native'
@@ -22,6 +22,9 @@ export const PILLAR = {
 } as const satisfies PillarManifest
 
 const mockGetSession = jest.fn()
+const mockSignInWithPassword = jest.fn()
+const mockStartAppleOAuthRequest = jest.fn()
+const mockStartGoogleOAuthRequest = jest.fn()
 const mockMaybeSingle = jest.fn()
 const mockEq = jest.fn((_column: string, value: string) => ({
   maybeSingle: () => mockMaybeSingle(value),
@@ -58,6 +61,7 @@ const mockSupabase = {
   auth: {
     getSession: mockGetSession,
     onAuthStateChange: mockOnAuthStateChange,
+    signInWithPassword: mockSignInWithPassword,
   },
   from: mockFrom,
 }
@@ -65,6 +69,15 @@ const mockSupabase = {
 jest.mock('expo-router', () => ({
   useRouter: () => ({ push: jest.fn() }),
 }))
+
+jest.mock('../auth-oauth-runtime', () => {
+  const actual = jest.requireActual('../auth-oauth-runtime') as typeof import('../auth-oauth-runtime')
+  return {
+    ...actual,
+    startAppleOAuthRequest: (...args: unknown[]) => mockStartAppleOAuthRequest(...args),
+    startGoogleOAuthRequest: (...args: unknown[]) => mockStartGoogleOAuthRequest(...args),
+  }
+})
 
 jest.mock('../supabase', () => ({
   supabase: mockSupabase,
@@ -115,6 +128,55 @@ function AuthShellHarness() {
   )
 }
 
+function AuthBindingHarness() {
+  const auth = useAuth()
+  const [result, setResult] = useState('idle')
+
+  return (
+    <>
+      <Text testID="auth-binding-result">{result}</Text>
+      <Text testID="auth-binding-session">{auth.session?.user.id ?? 'none'}</Text>
+      <Text testID="auth-binding-role">{auth.role ?? 'none'}</Text>
+      <Pressable
+        testID="auth-binding-worker-email-password"
+        onPress={() => {
+          void auth.signInWithPassword('worker@example.com', 'secret123').then((nextResult) => {
+            setResult(nextResult.success ? `worker-success:${nextResult.role ?? 'none'}` : 'worker-denied')
+          })
+        }}
+      >
+        <Text>worker email password</Text>
+      </Pressable>
+      <Pressable
+        testID="auth-binding-worker-invalid-password"
+        onPress={() => {
+          void auth.signInWithPassword('worker@example.com', 'secret123').then((nextResult) => {
+            setResult(nextResult.success ? 'worker-unexpected-success' : 'worker-denied')
+          })
+        }}
+      >
+        <Text>worker invalid password</Text>
+      </Pressable>
+      <Pressable
+        testID="auth-binding-customer-google"
+        onPress={() => {
+          void auth.signInWithGoogle().then((nextResult) => setResult(nextResult.success ? 'provider-success' : 'provider-denied'))
+        }}
+      >
+        <Text>customer Google</Text>
+      </Pressable>
+      <Pressable
+        testID="auth-binding-customer-apple"
+        onPress={() => {
+          void auth.signInWithApple().then((nextResult) => setResult(nextResult.success ? 'provider-success' : 'provider-denied'))
+        }}
+      >
+        <Text>customer Apple</Text>
+      </Pressable>
+    </>
+  )
+}
+
 function deferred<T>() {
   let resolve!: (value: T) => void
   const promise = new Promise<T>((next) => {
@@ -138,6 +200,9 @@ async function renderKnownCustomer() {
 
 beforeEach(() => {
   mockGetSession.mockReset().mockResolvedValue({ data: { session: customerSession } })
+  mockSignInWithPassword.mockReset().mockResolvedValue({ data: { session: customerSession }, error: null })
+  mockStartAppleOAuthRequest.mockReset().mockResolvedValue({ success: true })
+  mockStartGoogleOAuthRequest.mockReset().mockResolvedValue({ success: true })
   mockMaybeSingle.mockReset().mockImplementation((userId: string) => Promise.resolve({
     data: { role: userId === workerSession.user.id ? 'worker' : 'customer' },
     error: null,
@@ -178,6 +243,107 @@ describe('auth session shell gate', () => {
   ])('$name', ({ expected, input }) => {
     withPillarContext(PILLAR, () => {
       expect(isAuthShellBlocking(input)).toBe(expected)
+    })
+  })
+
+  it('auth customer public providers starts Google and Apple through the OAuth boundary', async () => {
+    mockGetSession.mockResolvedValueOnce({ data: { session: null } })
+    render(
+      <AuthProvider>
+        <AuthBindingHarness />
+      </AuthProvider>,
+    )
+
+    fireEvent.press(screen.getByTestId('auth-binding-customer-google'))
+    await waitFor(() => {
+      withPillarContext(PILLAR, () => {
+        expect(screen.getByTestId('auth-binding-result')).toHaveTextContent('provider-success')
+        expect(mockStartGoogleOAuthRequest).toHaveBeenCalledTimes(1)
+      }, 'Customer Google provider must use the shared OAuth boundary')
+    })
+
+    fireEvent.press(screen.getByTestId('auth-binding-customer-apple'))
+    await waitFor(() => {
+      withPillarContext(PILLAR, () => {
+        expect(screen.getByTestId('auth-binding-result')).toHaveTextContent('provider-success')
+        expect(mockStartAppleOAuthRequest).toHaveBeenCalledTimes(1)
+      }, 'Customer Apple provider must use the shared OAuth boundary')
+    })
+
+    act(() => {
+      mockAuthStateListener?.('SIGNED_IN', customerSession)
+    })
+    await waitFor(() => {
+      expect(screen.getByTestId('auth-binding-session')).toHaveTextContent('customer_test_1')
+      expect(screen.getByTestId('auth-binding-role')).toHaveTextContent('customer')
+    })
+  })
+
+  it('auth customer public providers denies an OAuth start without retaining a session', async () => {
+    mockGetSession.mockResolvedValueOnce({ data: { session: null } })
+    mockStartGoogleOAuthRequest.mockResolvedValueOnce({
+      success: false,
+      error: 'Không thể mở đăng nhập Google. Vui lòng thử lại sau.',
+    })
+    render(
+      <AuthProvider>
+        <AuthBindingHarness />
+      </AuthProvider>,
+    )
+
+    fireEvent.press(screen.getByTestId('auth-binding-customer-google'))
+    await waitFor(() => {
+      withPillarContext(PILLAR, () => {
+        expect(screen.getByTestId('auth-binding-result')).toHaveTextContent('provider-denied')
+        expect(screen.getByTestId('auth-binding-session')).toHaveTextContent('none')
+        expect(screen.getByTestId('auth-binding-role')).toHaveTextContent('none')
+        expect(screen.getByTestId('auth-binding-result')).not.toHaveTextContent('provider-secret')
+        expect(mockStartGoogleOAuthRequest).toHaveBeenCalledTimes(1)
+      }, 'A refused Customer provider start must remain signed out')
+    })
+  })
+
+  it('auth worker email password signs in and resolves the authenticated Worker role', async () => {
+    mockGetSession.mockResolvedValueOnce({ data: { session: null } })
+    mockSignInWithPassword.mockResolvedValueOnce({ data: { session: workerSession }, error: null })
+    render(
+      <AuthProvider>
+        <AuthBindingHarness />
+      </AuthProvider>,
+    )
+
+    fireEvent.press(screen.getByTestId('auth-binding-worker-email-password'))
+    await waitFor(() => {
+      withPillarContext(PILLAR, () => {
+        expect(screen.getByTestId('auth-binding-result')).toHaveTextContent('worker-success:worker')
+        expect(screen.getByTestId('auth-binding-session')).toHaveTextContent('worker_test_2')
+        expect(screen.getByTestId('auth-binding-role')).toHaveTextContent('worker')
+        expect(mockSignInWithPassword).toHaveBeenCalledWith({ email: 'worker@example.com', password: 'secret123' })
+      }, 'Worker email/password success must resolve the Worker role before routing')
+    })
+  })
+
+  it('auth worker email password denies invalid credentials without retaining a session', async () => {
+    mockGetSession.mockResolvedValueOnce({ data: { session: null } })
+    mockSignInWithPassword.mockResolvedValueOnce({
+      data: { session: null },
+      error: { message: 'Invalid login credentials' },
+    })
+    render(
+      <AuthProvider>
+        <AuthBindingHarness />
+      </AuthProvider>,
+    )
+
+    fireEvent.press(screen.getByTestId('auth-binding-worker-invalid-password'))
+    await waitFor(() => {
+      withPillarContext(PILLAR, () => {
+        expect(screen.getByTestId('auth-binding-result')).toHaveTextContent('worker-denied')
+        expect(screen.getByTestId('auth-binding-session')).toHaveTextContent('none')
+        expect(screen.getByTestId('auth-binding-role')).toHaveTextContent('none')
+        expect(screen.getByTestId('auth-binding-result')).not.toHaveTextContent('Invalid login credentials')
+        expect(mockSignInWithPassword).toHaveBeenCalledWith({ email: 'worker@example.com', password: 'secret123' })
+      }, 'Invalid Worker credentials must fail closed without retaining auth state')
     })
   })
 
