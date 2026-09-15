@@ -75,24 +75,30 @@ describe('Worker Production Stage 5', () => {
       )
 
       expect(screen.getByTestId('stage5-work')).toBeOnTheScreen()
-      expect(screen.getByText('Bước 5/11')).toBeOnTheScreen()
-      expect(screen.getByText('Đang thực hiện công việc')).toBeOnTheScreen()
       expect(screen.getByText('Ổ cắm phòng khách chập chờn')).toBeOnTheScreen()
       expect(screen.getByText('Tòa A, Quận 1')).toBeOnTheScreen()
-      expect(screen.getByText('Tiến độ công việc')).toBeOnTheScreen()
       expect(screen.getByText('Chuẩn bị hồ sơ hoàn tất')).toBeOnTheScreen()
 
     }, 'the Production surface must not replace real data or callbacks with demo behavior')
 
-    for (const testID of ['stage5-pause', 'stage5-photo', 'stage5-note', 'stage5-scope', 'stage5-support', 'stage5-primary']) {
+    withPillarContext(PILLAR, () => {
+      for (const testID of ['stage5-back', 'stage5-call', 'stage5-chat', 'stage5-pause', 'stage5-support']) {
+        expect(screen.queryByTestId(testID)).toBeNull()
+      }
+      expect(screen.queryByText('Bước 5/11')).toBeNull()
+      expect(screen.queryByText('Đang thực hiện công việc')).toBeNull()
+      expect(screen.getByRole('header', { name: 'Đang thực hiện công việc' })).toBeOnTheScreen()
+      expect(screen.queryByText('Tiến độ công việc')).toBeNull()
+    }, 'Stage 5 keeps its heading for screen readers only and renders no title text, top navigation row, pause control, progress card, or support tile, even when the host wires those actions')
+
+    for (const testID of ['stage5-photo', 'stage5-note', 'stage5-scope', 'stage5-primary']) {
       await act(async () => {
         fireEvent.press(screen.getByTestId(testID))
         await Promise.resolve()
       })
     }
 
-    expect(calls).toEqual(['pause', 'photo', 'note', 'scope', 'support', 'complete'])
-    expect(screen.getByTestId('stage5-call')).toBeDisabled()
+    expect(calls).toEqual(['photo', 'note', 'scope', 'complete'])
   })
 
   it('stays honest when the backend has not released optional values yet', () => {
