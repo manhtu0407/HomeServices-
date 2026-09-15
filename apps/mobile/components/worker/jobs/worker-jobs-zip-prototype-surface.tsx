@@ -72,7 +72,6 @@ export function WorkerJobsLegacyPrototypeBody(props: WorkerJobsLegacyPrototypeBo
           language={props.language}
           runtime={props.runtime}
           reduceMotion={props.reduceMotion}
-          onBack={() => props.navigateToScreen('2.1-opportunity-inbox')}
         />
       )
     case '2.4-route-eta':
@@ -120,7 +119,6 @@ export function WorkerJobsLegacyPrototypeBody(props: WorkerJobsLegacyPrototypeBo
           language={props.language}
           runtime={props.runtime}
           reduceMotion={props.reduceMotion}
-          onBack={() => props.navigateToScreen('2.8-scope-change')}
           onMessage={props.navigateJobChat}
           onContinue={props.navigateNext}
         />

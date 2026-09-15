@@ -23,7 +23,6 @@ export interface WaitingModel {
 }
 export interface WaitingAssets { hero: ImageSourcePropType; footer: ImageSourcePropType }
 export interface WaitingActions {
-  onBack: () => void
   onOpenDetails: () => void
   onDeadlineReached?: () => void
 }

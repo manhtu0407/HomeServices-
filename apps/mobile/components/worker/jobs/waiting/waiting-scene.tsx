@@ -2,10 +2,10 @@ import React from 'react'
 import { View } from 'react-native'
 import Svg, { Circle, Defs, LinearGradient, Path, RadialGradient, Rect, Stop } from 'react-native-svg'
 
-export function WaitingIcon({ kind, size = 24, color = '#073448' }: { kind: 'back' | 'forward' | 'clock'; size?: number; color?: string }) {
+export function WaitingIcon({ kind, size = 24, color = '#073448' }: { kind: 'forward' | 'clock'; size?: number; color?: string }) {
   return <Svg width={size} height={size} viewBox="0 0 24 24" accessible={false}>
     {kind === 'clock' ? <><Circle cx={12} cy={12} r={9.2} stroke={color} strokeWidth={1.8} fill="none" /><Path d="M12 6v6.2l4 2.2" fill="none" stroke={color} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" /></>
-      : <Path d={kind === 'back' ? 'M15.2 4.5 7.8 12l7.4 7.5' : 'm8.5 4.5 7.3 7.5-7.3 7.5'} stroke={color} strokeWidth={3} fill="none" strokeLinecap="round" strokeLinejoin="round" />}
+      : <Path d="m8.5 4.5 7.3 7.5-7.3 7.5" stroke={color} strokeWidth={3} fill="none" strokeLinecap="round" strokeLinejoin="round" />}
   </Svg>
 }
 export function WaitingAtmosphere({ id }: { id: string }) {

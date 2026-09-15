@@ -403,7 +403,7 @@ describe('Production Worker Home absorption', () => {
     expect(workerAssetsSource).toContain("homeWorkerHero: require('@/assets/worker-image-icons/home-worker-hero-workart.png')")
     expect(flowSource).toContain("from './home/worker-home-production-surface'")
     expect(flowSource).not.toContain('WorkerHomeRebuildSurface')
-    expect(flowSource).toContain('headerState.usesEarningsOverviewHandoff || headerState.usesOpportunityInboxHandoff || headerState.usesTravelHandoff ? null')
+    expect(flowSource).toContain("screen.section === 'jobs' || headerState.usesEarningsOverviewHandoff ? null")
     expect(profileSource).not.toContain('styles.screenTitle')
     expect(profileSource).not.toContain('`${testIDPrefix}-title`')
     expect(productionSource).toContain('Math.min(Math.max(width - 34, 0), 394)')

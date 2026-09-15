@@ -7,9 +7,9 @@ import type { WaitingSnapshot } from './waiting-model'
 import type { WaitingKind, WaitingLanguage } from './waiting.types'
 
 /** Read-only adapter. No accept / approve / status mutation from timers or navigation. */
-export function WorkerWaitingRuntime({ kind, language, runtime, onBack, onMessage, onContinue, reduceMotion, timing }: {
+export function WorkerWaitingRuntime({ kind, language, runtime, onMessage, onContinue, reduceMotion, timing }: {
   kind: WaitingKind; language: WaitingLanguage; runtime: WorkerJobsLegacyPrototypeRuntime
-  onBack: () => void; onMessage?: () => void; onContinue?: () => void; reduceMotion?: boolean
+  onMessage?: () => void; onContinue?: () => void; reduceMotion?: boolean
   timing?: WaitingSnapshot['timing']
 }) {
   const [details, setDetails] = useState(false), [busy, setBusy] = useState(false), [error, setError] = useState<string | null>(null)
@@ -27,7 +27,7 @@ export function WorkerWaitingRuntime({ kind, language, runtime, onBack, onMessag
     finally { setBusy(false) }
   }
   return <>
-    <WaitingContent model={model} language={language} reduceMotion={reduceMotion} onBack={onBack} onOpenDetails={() => setDetails(true)} />
+    <WaitingContent model={model} language={language} reduceMotion={reduceMotion} onOpenDetails={() => setDetails(true)} />
     <Modal visible={details} transparent animationType={reduceMotion ? 'none' : 'fade'} onRequestClose={() => setDetails(false)}>
       <View style={{ flex: 1, padding: 24, backgroundColor: 'rgba(6,31,37,0.2)', justifyContent: 'center' }}>
         <View style={{ backgroundColor: '#FFFFFF', borderRadius: 24, padding: 24, gap: 16 }} accessibilityViewIsModal>

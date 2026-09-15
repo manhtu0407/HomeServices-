@@ -99,7 +99,6 @@ import {
   WorkerV5SupportBody,
 } from './profile/settings-utility-surfaces'
 import { WorkerV5ServiceAreaMapCard } from './profile/service-area-map-surfaces'
-import { workerV5CaseHeaderSubtitle, workerV5OfferHeaderSubtitle, workerV5TravelHeaderSubtitle } from './jobs/header-copy'
 import { WorkerV5ProfileProductionSurface } from './profile/production-overview-surfaces'
 import { WorkerV5DeleteAccountBody } from './profile/delete-account-surfaces'
 import { useWorkerThemeMode } from './worker-theme'
@@ -207,9 +206,7 @@ function WorkerV5ScreenSurface({ screen }: { screen: WorkerV5ScreenDefinition })
     || screen.id === '4.5-commission-policy'
   const headerBackScreen = usesEarningsDetailHandoff
     ? getWorkerV5Screen('4.1-earnings-overview') ?? previousScreen
-    : usesCustomerConfirmationWaitHandoff || usesRouteEtaHandoff || usesInProgressHandoff
-      ? getWorkerV5Screen('2.1-opportunity-inbox') ?? previousScreen
-      : previousScreen
+    : previousScreen
   const usesScopeChangeHandoff = screen.id === '2.8-scope-change'
   const usesApprovalWaitHandoff = screen.id === '2.9-approval-wait'
   const usesCompletionEvidenceHandoff = screen.id === '2.10-completion-evidence'
@@ -222,10 +219,8 @@ function WorkerV5ScreenSurface({ screen }: { screen: WorkerV5ScreenDefinition })
   const hidesHeaderUtility = usesProfileHandoff
   const usesCaseExecutionHandoff = usesCustomerConfirmationWaitHandoff || usesInProgressHandoff || usesScopeChangeHandoff || usesApprovalWaitHandoff || usesCompletionEvidenceHandoff || usesCompletionSubmittedHandoff || usesCaseClosedHandoff
   const usesHandoffStage = usesOpportunityInboxHandoff || usesOfferDetailHandoff || usesTravelHandoff || usesCaseExecutionHandoff || usesKaelOrbHandoff || usesEarningsHandoff || usesProfileHandoff
-  const handoffHeaderSubtitle = usesOpportunityInboxHandoff
+  const handoffHeaderSubtitle = usesEarningsHandoff
     ? null
-    : usesEarningsHandoff
-      ? null
     : screen.id === '5.4-reliability-insights'
       ? null
     : screen.id === '5.5-account-utilities' || screen.id === '5.10-support-settings' || screen.id === '5.15-worker-delete-account'
@@ -244,19 +239,7 @@ function WorkerV5ScreenSurface({ screen }: { screen: WorkerV5ScreenDefinition })
       ? screen.id === '3.1-kael-chat-normal'
         ? textByLanguage(language, 'Chat thường · hỏi đáp & hỗ trợ nhanh', 'Normal chat · quick help')
         : textByLanguage(language, 'Tìm, lọc và giải thích cơ hội cho thợ', 'Find, filter, and explain worker opportunities')
-    : usesTravelHandoff
-      ? workerV5TravelHeaderSubtitle(runtime.state.deal, language)
-      : usesCaseClosedHandoff
-        ? null
-      : usesCustomerConfirmationWaitHandoff
-        ? workerV5OfferHeaderSubtitle(runtime.state.deal, language)
-      : usesApprovalWaitHandoff || usesCompletionSubmittedHandoff
-        ? workerV5CaseHeaderSubtitle(runtime.state.deal, language)
-      : usesInProgressHandoff
-        ? null
-      : usesCaseExecutionHandoff || usesOfferDetailHandoff
-        ? workerV5OfferHeaderSubtitle(runtime.state.deal, language)
-        : null
+      : null
 
   const displayTitle = usesKaelOrbHandoff && screen.id === '3.1-kael-chat-normal'
     ? 'Kael'
@@ -439,7 +422,7 @@ function WorkerV5ScreenSurface({ screen }: { screen: WorkerV5ScreenDefinition })
   }
 
   const handleHeaderBack = () => {
-    if (usesOfferDetailHandoff || usesTravelHandoff || usesCaseExecutionHandoff || usesEarningsHandoff) {
+    if (usesEarningsHandoff) {
       openScreen(headerBackScreen)
       return
     }
@@ -466,7 +449,7 @@ function WorkerV5ScreenSurface({ screen }: { screen: WorkerV5ScreenDefinition })
     state={{
       auraState: { formulaPageAuraTarget, reduceTransparency: glass.reduceTransparency, shouldShowWorkerAura, usesCaseExecutionHandoff, usesEarningsHandoff, usesInProgressHandoff, usesKaelOrbHandoff, usesOfferDetailHandoff, usesOpportunityInboxHandoff, usesProfileHandoff, usesRouteEtaHandoff },
       content: { accessToken: session?.access_token ?? null, actionBusy, avatarUploadBusy, earningsPeriod, language, minHeight, primaryAction, prototype, reduceMotion: glass.reduceMotion, reduceTransparency: glass.reduceTransparency, routePreview, runtime, screen, surfaceStyle, usesCaseExecutionHandoff, usesEarningsHandoff, usesHandoffStage, usesKaelOrbHandoff, usesOfferDetailHandoff, usesOpportunityInboxHandoff, usesTravelHandoff, workerKey: session?.user.id ?? 'guest-worker' },
-      headerState: { displayTitle, handoffHeaderSubtitle, hidesHeaderUtility, language, reduceMotion: glass.reduceMotion, screen, title, usesApprovalWaitHandoff, usesCaseClosedHandoff, usesCaseExecutionHandoff, usesEarningsHandoff, usesEarningsOverviewHandoff, usesKaelOrbHandoff, usesOfferDetailHandoff, usesOpportunityInboxHandoff, usesProfileHandoff, usesRouteEtaHandoff, usesTravelHandoff, workerThemeMode },
+      headerState: { displayTitle, handoffHeaderSubtitle, hidesHeaderUtility, language, reduceMotion: glass.reduceMotion, screen, title, usesEarningsHandoff, usesEarningsOverviewHandoff, usesKaelOrbHandoff, usesProfileHandoff, workerThemeMode },
       nextScreen,
       previousScreen,
     }}
@@ -523,17 +506,10 @@ type WorkerV5ScreenHeaderState = {
   reduceMotion: boolean
   screen: WorkerV5ScreenDefinition
   title: string
-  usesApprovalWaitHandoff: boolean
-  usesCaseClosedHandoff: boolean
-  usesCaseExecutionHandoff: boolean
   usesEarningsHandoff: boolean
   usesEarningsOverviewHandoff: boolean
   usesKaelOrbHandoff: boolean
-  usesOfferDetailHandoff: boolean
-  usesOpportunityInboxHandoff: boolean
   usesProfileHandoff: boolean
-  usesRouteEtaHandoff: boolean
-  usesTravelHandoff: boolean
   workerThemeMode: 'dark' | 'light'
 }
 
@@ -554,24 +530,17 @@ function WorkerV5ScreenHeader({
     reduceMotion,
     screen,
     title,
-    usesApprovalWaitHandoff,
-    usesCaseClosedHandoff,
-    usesCaseExecutionHandoff,
     usesEarningsHandoff,
     usesEarningsOverviewHandoff,
     usesKaelOrbHandoff,
-    usesOfferDetailHandoff,
-    usesOpportunityInboxHandoff,
     usesProfileHandoff,
-    usesRouteEtaHandoff,
-    usesTravelHandoff,
     workerThemeMode,
   } = state
-  const usesHandoffHeading = usesKaelOrbHandoff || usesOpportunityInboxHandoff || usesOfferDetailHandoff || usesTravelHandoff || usesCaseExecutionHandoff || usesEarningsHandoff || usesProfileHandoff
-  const showPlainTitle = !usesOpportunityInboxHandoff && !usesOfferDetailHandoff && !usesTravelHandoff && !usesCaseExecutionHandoff && !usesKaelOrbHandoff && !usesEarningsHandoff && !usesProfileHandoff
+  const usesHandoffHeading = usesKaelOrbHandoff || usesEarningsHandoff || usesProfileHandoff
+  const showPlainTitle = !usesKaelOrbHandoff && !usesEarningsHandoff && !usesProfileHandoff
 
   return <View style={[styles.headerRow, usesKaelOrbHandoff ? styles.kaelOrbCustomerHeaderRow : null, usesEarningsOverviewHandoff ? styles.earningsOverviewHeaderRow : null]}>
-    {usesOpportunityInboxHandoff || usesEarningsOverviewHandoff || screen.id === '5.1-profile-overview' ? null : (
+    {usesEarningsOverviewHandoff || screen.id === '5.1-profile-overview' ? null : (
       <LiquidBackButton
         label={language === 'vi' ? 'Quay lại giao diện thợ hiện tại' : 'Back to current worker surface'}
         mode={workerThemeMode}
@@ -580,7 +549,7 @@ function WorkerV5ScreenHeader({
       />
     )}
     <View style={styles.headerTextColumn}>
-      {usesCaseClosedHandoff ? null : usesHandoffHeading ? (
+      {usesHandoffHeading ? (
         <>
           <Text
             style={[
@@ -598,15 +567,7 @@ function WorkerV5ScreenHeader({
       ) : <Text style={[styles.phaseText, workerThemeMode === 'dark' ? styles.phaseTextDark : null]}>{phaseCopy[screen.phase][language]}</Text>}
       {showPlainTitle ? <Text style={[styles.titleText, workerThemeMode === 'dark' ? styles.titleTextDark : null]}>{title}</Text> : null}
     </View>
-    {usesOpportunityInboxHandoff || usesEarningsOverviewHandoff || usesOfferDetailHandoff ? null : usesRouteEtaHandoff ? (
-      <Pressable accessibilityLabel={language === 'vi' ? 'Tùy chọn di chuyển' : 'Travel options'} accessibilityRole="button" onPress={onOpenJobChat} style={({ pressed }) => [styles.iconButton, pressed && !reduceMotion ? styles.pressed : null]} testID="worker-v5-route-menu">
-        <Text style={styles.headerMenuText}>•••</Text>
-      </Pressable>
-    ) : usesApprovalWaitHandoff ? (
-      <Pressable accessibilityLabel={language === 'vi' ? 'Trợ giúp phê duyệt' : 'Approval help'} accessibilityRole="button" onPress={onOpenJobChat} style={({ pressed }) => [styles.iconButton, pressed && !reduceMotion ? styles.pressed : null]} testID="worker-v5-approval-help">
-        <Text style={styles.headerMenuText}>?</Text>
-      </Pressable>
-    ) : usesCaseExecutionHandoff || usesEarningsHandoff ? null : usesKaelOrbHandoff ? (
+    {usesEarningsHandoff ? null : usesKaelOrbHandoff ? (
       <Pressable accessibilityLabel={language === 'vi' ? 'Tùy chọn Kael' : 'Kael options'} accessibilityRole="button" onPress={onOpenJobChat} style={({ pressed }) => [styles.iconButton, pressed && !reduceMotion ? styles.pressed : null]} testID="worker-v5-kael-menu">
         <Text style={styles.headerMenuText}>•••</Text>
       </Pressable>
@@ -701,7 +662,7 @@ function WorkerV5ScreenLayout({ actions, state }: { actions: WorkerV5ScreenLayou
   return <SafeAreaView style={[styles.safeArea, surfaceStyle, usesStageFiveProduction ? styles.stageFiveSafeArea : null]} testID={`worker-v5-screen-${screen.id}`}>
     {usesStageFiveProduction ? null : <WorkerV5ScreenAuras state={auraState} />}
     <ScrollView bounces={false} contentContainerStyle={[styles.scrollContent, usesStageFiveProduction ? styles.stageFiveScrollContent : null, headerState.usesEarningsOverviewHandoff ? styles.earningsOverviewScrollContent : null, usesKaelOrbHandoff ? styles.kaelOrbCustomerScrollContent : null, { minHeight }]} onScroll={actions.onDockScroll} scrollEventThrottle={16} showsVerticalScrollIndicator={false} testID="worker-v5-scroll">
-      {usesStageFiveProduction || headerState.usesEarningsOverviewHandoff || headerState.usesOpportunityInboxHandoff || headerState.usesTravelHandoff ? null : <WorkerV5ScreenHeader onBack={actions.onHeaderBack} onOpenJobChat={actions.onOpenJobChat} state={headerState} />}
+      {screen.section === 'jobs' || headerState.usesEarningsOverviewHandoff ? null : <WorkerV5ScreenHeader onBack={actions.onHeaderBack} onOpenJobChat={actions.onOpenJobChat} state={headerState} />}
       {!usesHandoffStage ? <View style={[styles.glassCard, reduceTransparency && styles.opaqueCard]}>
         {!reduceTransparency ? <MintAura intensity="component" style={styles.cardMintAura} testID="worker-v5-hero-mint-aura" /> : null}
         <View pointerEvents="none" style={styles.cardTopHighlight} />

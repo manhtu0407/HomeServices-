@@ -57,20 +57,14 @@ export class WaitingContent extends React.PureComponent<WaitingContentProps, Loc
   }
   private layout = (event: LayoutChangeEvent) => { const width = Math.min(560, event.nativeEvent.layout.width); if (Math.abs(width - this.state.width) > 0.5 && width > 0) this.setState({ width }) }
   render() {
-    const { model, onBack, onOpenDetails, language = 'vi' } = this.props
+    const { model, onOpenDetails, language = 'vi' } = this.props
     const { reading } = this.state, s = this.state.width / t.width
     const copy = waitingCopy(model, reading, language), assets = waitingAssets[model.kind]
     const closed = model.state !== 'waiting'
     const size = reading.text.length > 5 ? 43 : t.type.timer
     const colors = this.props.buttonColors ?? [t.colors.buttonStart, t.colors.buttonEnd] as const
-    return <View onLayout={this.layout} style={[styles.root, { minHeight: (t.contentHeight + t.layout.bodyOffset) * s }]} testID={`waiting-${model.kind}`}>
+    return <View onLayout={this.layout} style={[styles.root, { minHeight: t.contentHeight * s }]} testID={`waiting-${model.kind}`}>
       <WaitingAtmosphere id={this.id} />
-      <View testID={`waiting-header-${model.kind}`} style={{ height: 82 * s, paddingTop: 11 * s, paddingLeft: 26 * s }}>
-        <Pressable accessibilityRole="button" accessibilityLabel={copy.back} onPress={onBack} hitSlop={8} testID={`waiting-back-${model.kind}`}
-          style={({ pressed }) => [{ width: 56 * s, height: 56 * s, minWidth: 44, minHeight: 44, borderRadius: 40, alignItems: 'center', justifyContent: 'center', backgroundColor: '#FFFFFF', borderColor: '#E8F0F4', borderWidth: 1, boxShadow: '0 3px 7px rgba(42,68,104,0.15)', opacity: pressed ? 0.75 : 1 }]}>
-          <WaitingIcon kind="back" size={26 * s} color="#173C77" />
-        </Pressable>
-      </View>
       <View testID={`waiting-body-${model.kind}`} style={{ paddingTop: t.layout.bodyOffset * s }}>
         <View style={{ height: 373 * s }} testID={`waiting-scene-${model.kind}`}>
           <Animated.View pointerEvents="none" accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={{ position: 'absolute', left: 0, top: -6 * s, opacity: this.drift.interpolate({ inputRange: [0, 1], outputRange: [1, 0.76] }), transform: [{ translateY: this.drift.interpolate({ inputRange: [0, 1], outputRange: [0, -2 * s] }) }] }}>

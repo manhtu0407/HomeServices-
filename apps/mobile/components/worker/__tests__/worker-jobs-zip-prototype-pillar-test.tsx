@@ -122,6 +122,14 @@ describe('Worker Jobs ZIP Prototype', () => {
     expect(ZIP_STAGE_SCREEN_IDS[10]).toBe('2.12-case-closed')
   })
 
+  it('renders all eleven stages without the shared worker header and its back button', () => {
+    const stageSections = ZIP_STAGE_SCREEN_IDS.map((_, index) =>
+      resolveZipPrototypeSelection({ ns_worker_stage: String(index + 1) }).screen.section)
+
+    expect(stageSections).toEqual(Array(11).fill('jobs'))
+    expect(workerFlowSource).toContain("screen.section === 'jobs' || headerState.usesEarningsOverviewHandoff ? null")
+  })
+
   it('keeps prototype stage query construction in one route helper', () => {
     expect(prototypeHostSource).toContain('const openPrototypeStage = (stage: string) =>')
     expect(prototypeHostSource).toContain('openPrototypeStage(targetStage)')
@@ -165,7 +173,7 @@ describe('Worker Jobs ZIP Prototype', () => {
     expect(source).not.toContain('travel-work-demo')
     expect(source).not.toContain('__fixtures__')
     expect(source).not.toContain('stage4-refined-map-v3')
-    expect(workerFlowSource).toContain('headerState.usesTravelHandoff ? null')
+    expect(workerFlowSource).toContain("screen.section === 'jobs' || headerState.usesEarningsOverviewHandoff ? null")
     expect(workerFlowSource).toContain("screen.id === '2.4-route-eta' || screen.id === '5.3-skills-service-area'")
     expect(workerFlowSource).toContain('!usesRouteEtaHandoff')
   })

@@ -11,7 +11,6 @@ export function waitingCopy(model: WaitingModel, reading: ClockReading, language
         : (vi ? 'Khách hàng đang xem đề xuất thay đổi.\nChỉ làm phần phát sinh sau khi khách phê duyệt.' : 'The customer is reviewing your scope proposal.\nDo not start extra work until it is approved.'),
     timer: reading.mode === 'remaining' ? (vi ? 'Phút còn lại' : 'Time remaining') : reading.mode === 'elapsed' ? (vi ? 'Thời gian đã chờ' : 'Time elapsed') : (vi ? 'Chưa có mốc thời gian' : 'Time unavailable'),
     action: vi ? 'Xem chi tiết công việc' : 'View job details',
-    back: vi ? 'Quay lại' : 'Go back',
   }
   if (model.state === 'unavailable') return { ...base, title: vi ? 'Chưa có yêu cầu đang chờ' : 'No pending request', body: vi ? 'Thông tin sẽ hiển thị khi có dữ liệu từ hệ thống.' : 'Details will appear when available from the system.' }
   if (model.state === 'approved') return { ...base, title: vi ? 'Khách đã xác nhận' : 'Customer confirmed', body: vi ? 'Mở chi tiết để xem trạng thái mới nhất.' : 'Open details to see the latest status.', timer: vi ? 'Đã có phản hồi' : 'Response received' }

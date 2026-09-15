@@ -101,7 +101,6 @@ describe('Production Worker waiting stages', () => {
   })
 
   it('renders the shared native surface and exposes only its own navigation callbacks', () => {
-    const onBack = jest.fn()
     const onOpenDetails = jest.fn()
     const model = buildWaitingModel('customer-confirmation', {
       jobId: 'job-1',
@@ -112,7 +111,6 @@ describe('Production Worker waiting stages', () => {
       <WaitingContent
         model={model}
         language="vi"
-        onBack={onBack}
         onOpenDetails={onOpenDetails}
         previewNowMs={Date.parse('2026-09-14T04:00:00.000Z')}
         reduceMotion
@@ -125,30 +123,30 @@ describe('Production Worker waiting stages', () => {
       expect(screen.getByTestId('waiting-time-customer-confirmation')).toHaveTextContent('--:--')
     }, 'Stage 3 must render the supplied waiting composition in the RN tree')
 
-    fireEvent.press(screen.getByTestId('waiting-back-customer-confirmation'))
     fireEvent.press(screen.getByTestId('waiting-details-customer-confirmation'))
 
     withPillarContext(PILLAR, () => {
-      expect(onBack).toHaveBeenCalledTimes(1)
       expect(onOpenDetails).toHaveBeenCalledTimes(1)
-    }, 'back and details remain host callbacks, not workflow mutations')
+    }, 'details remain a host callback, not a workflow mutation')
   })
 
-  it('keeps the back control at the top while offsetting the shared body composition', () => {
+  it('renders without a top back control while offsetting the shared body composition', () => {
     const model = buildWaitingModel('scope-approval', {
       jobId: 'job-1',
       jobStatus: 'scope_change_pending',
       scope: { status: 'pending', createdAt: scopeCreatedAt },
     })
 
-    render(<WaitingContent model={model} language="vi" onBack={jest.fn()} onOpenDetails={jest.fn()} reduceMotion />)
+    render(<WaitingContent model={model} language="vi" onOpenDetails={jest.fn()} reduceMotion />)
 
     const scale = 390 / waitingTokens.width
     withPillarContext(PILLAR, () => {
-      expect(screen.getByTestId('waiting-header-scope-approval')).toHaveStyle({ height: 82 * scale, paddingTop: 11 * scale })
+      expect(screen.queryByTestId('waiting-header-scope-approval')).toBeNull()
+      expect(screen.queryByTestId('waiting-back-scope-approval')).toBeNull()
+      expect(screen.queryByLabelText('Quay lại')).toBeNull()
       expect(screen.getByTestId('waiting-body-scope-approval')).toHaveStyle({ paddingTop: waitingTokens.layout.bodyOffset * scale })
-      expect(screen.getByTestId('waiting-scope-approval')).toHaveStyle({ minHeight: (waitingTokens.contentHeight + waitingTokens.layout.bodyOffset) * scale })
-    }, 'navigation stays fixed while both waiting stages share the same centered body offset')
+      expect(screen.getByTestId('waiting-scope-approval')).toHaveStyle({ minHeight: waitingTokens.contentHeight * scale })
+    }, 'both waiting stages open straight into the shared centered body with no back control')
   })
 
   it('keeps both approved artwork pairs locally resolvable', () => {
