@@ -23,7 +23,7 @@ import { WorkerJobsLegacyPrototypeStageNineBody } from '../jobs/worker-jobs-zip-
 import type { WorkerJobsLegacyPrototypeRuntime } from '../jobs/worker-jobs-zip-prototype-shared'
 
 export const PILLAR = {
-  id: 'P185-worker-stage-nine-empty-record',
+  id: 'P189-worker-stage-nine-empty-record',
   invariant:
     'Production Stage 9 replaces only its empty completion record with the approved full-screen stage (scene, quote, title, body, and a text-only call to action; no header, process link, or arrow) whose call to action opens the existing Stage 8 flow without submitting, while every submitted, customer-confirmed, or payment state keeps the status layout that reads real data',
   authority: [
