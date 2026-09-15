@@ -5,6 +5,540 @@
     "default_status": "UNVERIFIED",
     "evidence_scope": "collected_tests_only",
     "bindings": {
+      "auth.customer.public-providers": {
+        "status": "PARTIAL",
+        "gaps": ["Collected AuthProvider tests exercise the shared Google/Apple start boundary and retain signed-out state on refusal. Real provider configuration, callback exchange, hosted Auth, native browser return, and Production proof remain open."],
+        "cases": [{
+          "id": "auth-customer-public-providers-provider-boundary",
+          "pillar": "P42-auth-session-shell",
+          "file": "apps/mobile/lib/__tests__/auth-loading-gate-pillar-test.tsx",
+          "owner": "apps/mobile/lib/auth-provider.tsx",
+          "invocation": "signInWithGoogle/signInWithApple", "seam": "service", "actor": "customer",
+          "from": ["signed_out"], "to": ["authenticated"],
+          "success_tests": ["auth session shell gate auth customer public providers starts Google and Apple through the OAuth boundary"],
+          "denial_tests": ["auth session shell gate auth customer public providers denies an OAuth start without retaining a session"],
+          "recovery_tests": []
+        }]
+      },
+      "auth.worker.email-password": {
+        "status": "PARTIAL",
+        "gaps": ["Collected AuthProvider tests exercise successful Worker email/password role resolution and invalid-credential refusal. Real Supabase Auth, hosted role lookup, native relaunch, concurrent account changes, and Production proof remain open."],
+        "cases": [{
+          "id": "auth-worker-email-password-provider-boundary",
+          "pillar": "P42-auth-session-shell",
+          "file": "apps/mobile/lib/__tests__/auth-loading-gate-pillar-test.tsx",
+          "owner": "apps/mobile/lib/auth-provider.tsx",
+          "invocation": "signInWithPassword", "seam": "service", "actor": "worker",
+          "from": ["signed_out"], "to": ["authenticated"],
+          "success_tests": ["auth session shell gate auth worker email password signs in and resolves the authenticated Worker role"],
+          "denial_tests": ["auth session shell gate auth worker email password denies invalid credentials without retaining a session"],
+          "recovery_tests": []
+        }]
+      },
+      "customer.candidate.read": {
+        "status": "PARTIAL",
+        "gaps": ["Collected candidate-read HTTP tests exercise server-owned expiry projection and recoverable malformed receipts. Hosted Edge-to-SQL, concurrent candidate changes, native recovery and Production proof remain open."],
+        "cases": [{
+          "id": "customer-candidate-read-expiry-authority",
+          "pillar": "P97-candidate-expiry-authority-http",
+          "file": "apps/api/src/__tests__/kael-edge-runtime/domains/candidate-expiry-authority-http-pillar.test.ts",
+          "owner": "supabase/functions/mobile-api/_shared/domains/matching/candidate.ts",
+          "invocation": "getWorkerCandidate", "seam": "http", "actor": "customer",
+          "from": ["candidate_ready"], "to": ["candidate_ready"],
+          "success_tests": ["candidate read authority under clock skew projects rfq expiry without post-commit workflow writes"],
+          "denial_tests": ["candidate read authority under clock skew does not choose or decline a live rfq candidate when Edge thinks it expired"],
+          "recovery_tests": ["candidate read authority under clock skew keeps malformed or unreadable outcomes recoverable: {\"rpcData\":[]}"]
+        }]
+      },
+      "customer.candidate.confirm": {
+        "status": "PARTIAL",
+        "gaps": ["Collected candidate-confirm HTTP tests exercise exact receipt validation, role refusal and fresh-commit acknowledgement. Hosted Edge-to-SQL, concurrent candidate races, native relaunch and Production proof remain open."],
+        "cases": [{
+          "id": "customer-candidate-confirm-receipt",
+          "pillar": "P123-official-match-receipt-http",
+          "file": "apps/api/src/__tests__/kael-edge-runtime/domains/official-match-receipt-http-pillar.test.ts",
+          "owner": "supabase/functions/mobile-api/_shared/domains/matching/candidate.ts",
+          "invocation": "confirmWorkerCandidate", "seam": "http", "actor": "customer",
+          "from": ["candidate_ready"], "to": ["official_match", "scheduled"],
+          "success_tests": ["official-match receipt boundary recovers a valid rfq receipt"],
+          "denial_tests": ["official-match receipt boundary denies worker before the command"],
+          "recovery_tests": ["official-match receipt boundary does not misreport an uncertain committed outcome: {\"receipt\":[]}"]
+        }]
+      },
+      "customer.candidate.reject": {
+        "status": "PARTIAL",
+        "gaps": ["Collected candidate-reject HTTP tests exercise one durable command, actor refusal and unknown-outcome recovery. Hosted Edge-to-SQL, concurrent accept/decline races, native relaunch and Production proof remain open."],
+        "cases": [{
+          "id": "customer-candidate-reject-durable",
+          "pillar": "P120-candidate-rejection-durability",
+          "file": "apps/api/src/__tests__/kael-edge-runtime/domains/candidate-rejection-durability-pillar.test.ts",
+          "owner": "supabase/functions/mobile-api/_shared/domains/matching/candidate.ts",
+          "invocation": "rejectWorkerCandidate", "seam": "http", "actor": "customer",
+          "from": ["candidate_ready"], "to": ["broadcasting"],
+          "success_tests": ["durable candidate rejection boundary does not perform a second workflow write or provider dispatch after commit"],
+          "denial_tests": ["durable candidate rejection boundary denies worker before mutation"],
+          "recovery_tests": ["durable candidate rejection boundary keeps an uncertain outcome recoverable and does not disclose database errors: {\"rpcData\":[]}"]
+        }]
+      },
+      "customer.apartment-access.authorize": {
+        "status": "PARTIAL",
+        "gaps": ["Collected HTTP and native RNTL tests exercise exact check-in consent, Customer-only authorization, persisted retry and cold-start recovery. Hosted Edge-to-SQL, concurrent access races, physical native relaunch and Production proof remain open."],
+        "cases": [{
+          "id": "customer-apartment-access-authorize-receipt",
+          "pillar": "P128-apartment-access-authorization",
+          "file": "apps/api/src/__tests__/kael-edge-runtime/domains/apartment-access-authorization-pillar.test.ts",
+          "owner": "supabase/functions/mobile-api/_shared/domains/worker/apartment-access.ts",
+          "invocation": "authorizeApartmentAccess", "seam": "http", "actor": "customer",
+          "from": ["arrived"], "to": ["arrived"],
+          "success_tests": ["Customer apartment authorization intent and receipt sends the Customer and exact check-in intent to one atomic command with no direct writes"],
+          "denial_tests": ["Customer apartment authorization intent and receipt rejects worker acting as Customer before reading the job or authorizing access"],
+          "recovery_tests": ["Customer apartment authorization intent and receipt preserves a safe unknown-outcome error on timeout instead of claiming a final failure"]
+        }, {
+          "id": "customer-apartment-access-authorize-recovery",
+          "pillar": "P132-customer-apartment-access-mobile",
+          "file": "apps/mobile/lib/__tests__/customer-apartment-access-pillar-test.tsx",
+          "owner": "apps/mobile/lib/frontend-workflow/use-customer-job-actions.ts",
+          "invocation": "useCustomerJobActions.authorizeApartmentAccess", "seam": "ui", "actor": "customer",
+          "from": ["arrived"], "to": ["arrived"],
+          "success_tests": ["Customer apartment access recovery persists consent before POST and joins double presses using the captured token"],
+          "denial_tests": ["Customer apartment access recovery rejects worker before storage or network mutation"],
+          "recovery_tests": ["Customer apartment access recovery recovers an unknown committed receipt on cold start without another POST"]
+        }]
+      },
+      "customer.scope-change.decide": {
+        "status": "PARTIAL",
+        "gaps": ["Collected public HTTP scope-decision tests exercise Customer-only approval/refusal, verified-price gating and durable decision replay. Hosted Edge-to-SQL, concurrent scope races, native relaunch, full job-status projection and Production proof remain open."],
+        "cases": [{
+          "id": "customer-scope-change-decision-http",
+          "pillar": "P87-scope-change-http-authority",
+          "file": "apps/api/src/__tests__/kael-edge-runtime/domains/scope-change-http-pillar.test.ts",
+          "owner": "supabase/functions/mobile-api/_shared/domains/job/scope-change/decision.ts",
+          "invocation": "decideScopeChange", "seam": "http", "actor": "customer",
+          "from": ["scope_change_pending"], "to": ["working", "cancelled", "recovery_required"],
+          "success_tests": ["Scope change at the public HTTP boundary previews and proposes the confirmed quote then accepts the Customer decision"],
+          "denial_tests": ["Scope change at the public HTTP boundary refuses a scope decision from the worker actor"],
+          "recovery_tests": ["Scope change at the public HTTP boundary reports a duplicate decision explicitly without repeating notification effects"]
+        }]
+      },
+      "system.release.health": {
+        "status": "PARTIAL",
+        "gaps": ["Collected release-integrity tests exercise the public health receipt and fail-closed incomplete identity handling. The deployed Production health endpoint currently returns 500, provider-owned release registration, native readiness, hosted runtime convergence and Production 200 proof remain open."],
+        "cases": [{
+          "id": "system-release-health-identity",
+          "pillar": "P53-stage1-release-integrity",
+          "file": "apps/api/src/__tests__/harness/stage1-release-integrity-pillar.test.ts",
+          "owner": "supabase/functions/_shared/harness/release.ts",
+          "invocation": "harness health release identity",
+          "seam": "http", "actor": "system",
+          "from": ["authenticated"], "to": ["authenticated", "recovery_required"],
+          "success_tests": ["Stage 1 release integrity returns complete safe release identity from the real public route"],
+          "denial_tests": ["Stage 1 release integrity refuses to start Production with an incomplete release identity"],
+          "recovery_tests": []
+        }]
+      },
+      "system.release.production-promotion": {
+        "status": "PARTIAL",
+        "gaps": ["Collected workflow and native-readiness tests exercise the reviewerless main release lane, source attestation, rollback ordering and native provider gates. The last official Production run stopped at the strict behavioral gate; provider-owned identity, APNs/FCM readiness, hosted smoke evidence, promotion and final Production health 200 remain open."],
+        "cases": [{
+          "id": "system-release-production-promotion-workflow",
+          "pillar": "P56-stage1-production-release-workflow",
+          "file": "apps/api/src/__tests__/harness/stage1-production-release-workflow-pillar.test.ts",
+          "owner": ".github/workflows/release-production.yml",
+          "invocation": "official Production release workflow",
+          "seam": "system", "actor": "system",
+          "from": ["reviewed"], "to": ["closed"],
+          "success_tests": ["Stage 1 production release workflow binds before one candidate deploy and attests the exact redownloaded source before smoke"],
+          "denial_tests": ["Stage 1 production release workflow runs only from main and never from a pull request"],
+          "recovery_tests": ["Stage 1 production release workflow downloads the hosted rollback source and aborts plus redeploys it on failure"]
+        }, {
+          "id": "system-release-native-readiness-gates",
+          "pillar": "P72-native-push-release-readiness",
+          "file": "apps/api/src/__tests__/unit/native-push-release-readiness-pillar.test.ts",
+          "owner": ".github/workflows/release-production.yml",
+          "invocation": "Production native push readiness gates",
+          "seam": "system", "actor": "system",
+          "from": ["reviewed"], "to": ["closed"],
+          "success_tests": ["native push and Production release readiness enables native notification configuration without stripping iOS entitlements"],
+          "denial_tests": ["native push and Production release readiness fails Production release construction unless APNs, FCM v1, and receipt reconciliation are proven"],
+          "recovery_tests": []
+        }]
+      },
+      "admin.recovery.list": {
+        "status": "PARTIAL",
+        "gaps": ["Collected Admin route-contract tests prove the recovery list path is registered under the support boundary. The live Admin handler, capability/Auth/SQL projection, concurrent recovery changes, native UI and Production proof remain open."],
+        "cases": [{
+          "id": "admin-recovery-list-route-contract",
+          "pillar": "P49-admin-operations-support",
+          "file": "apps/api/src/__tests__/unit/admin-operations-support-pillar.test.ts",
+          "owner": "supabase/functions/mobile-api/_shared/domains/admin/operations-support.ts",
+          "invocation": "admin recovery cases list",
+          "seam": "http", "actor": "admin",
+          "from": ["recovery_required"], "to": ["recovery_required"],
+          "success_tests": ["Admin Operations support route contract matches GET https://edge.test/admin/operations/recovery-cases as admin.operations.recoveryCases.list"],
+          "denial_tests": ["Admin Operations support route contract requires operations.read whenever operations.triage is granted"],
+          "recovery_tests": []
+        }]
+      },
+      "admin.recovery.detail": {
+        "status": "PARTIAL",
+        "gaps": ["Collected Admin route-contract tests prove the recovery detail path is registered under the support boundary. The live Admin handler, capability/Auth/SQL projection, detail privacy and replay behavior, native UI and Production proof remain open."],
+        "cases": [{
+          "id": "admin-recovery-detail-route-contract",
+          "pillar": "P49-admin-operations-support",
+          "file": "apps/api/src/__tests__/unit/admin-operations-support-pillar.test.ts",
+          "owner": "supabase/functions/mobile-api/_shared/domains/admin/operations-support.ts",
+          "invocation": "admin recovery case detail",
+          "seam": "http", "actor": "admin",
+          "from": ["recovery_required"], "to": ["recovery_required"],
+          "success_tests": ["Admin Operations support route contract matches GET https://edge.test/admin/operations/recovery-cases/recovery-1 as admin.operations.recoveryCases.detail"],
+          "denial_tests": ["Admin Operations support route contract requires operations.read whenever operations.triage is granted"],
+          "recovery_tests": []
+        }]
+      },
+      "admin.recovery.action": {
+        "status": "PARTIAL",
+        "gaps": ["Collected Admin route and validation tests prove the recovery action path is registered and rejects missing version/reason before dispatch. The live audited mutation, optimistic concurrency, hosted SQL, native UI and Production proof remain open."],
+        "cases": [{
+          "id": "admin-recovery-action-route-contract",
+          "pillar": "P49-admin-operations-support",
+          "file": "apps/api/src/__tests__/unit/admin-operations-support-pillar.test.ts",
+          "owner": "supabase/functions/mobile-api/_shared/domains/admin/operations-support.ts",
+          "invocation": "admin recovery case action",
+          "seam": "http", "actor": "admin",
+          "from": ["recovery_required"], "to": ["recovery_required", "broadcasting", "cancelled", "refund_required"],
+          "success_tests": ["Admin Operations support route contract matches POST https://edge.test/admin/operations/recovery-cases/recovery-1/action as admin.operations.recoveryCases.action"],
+          "denial_tests": ["Admin Operations support route contract rejects an unversioned or unreasoned recovery mutation before dispatching"],
+          "recovery_tests": []
+        }]
+      },
+      "system.recovery.scan": {
+        "status": "PARTIAL",
+        "gaps": ["Collected recovery-capacity tests prove isolated recovery records, append-only action receipts, read-only detection and localized terminal reasons. Hosted scanner scheduling, multi-connection leases, live SQL and Production recovery evidence remain open."],
+        "cases": [{
+          "id": "system-recovery-scan-capacity-contract",
+          "pillar": "P70-workflow-recovery-capacity",
+          "file": "apps/api/src/__tests__/unit/workflow-recovery-capacity-pillar.test.ts",
+          "owner": "supabase/migrations/20260904233000_workflow_recovery_capacity_reconciliation.sql",
+          "invocation": "workflow recovery scan",
+          "seam": "system", "actor": "system",
+          "from": ["broadcasting", "arrived", "customer_confirmed", "payment_pending"], "to": ["recovery_required"],
+          "success_tests": ["workflow recovery and matching capacity reconciliation ships isolated recovery cases and append-only action receipts"],
+          "denial_tests": ["workflow recovery and matching capacity reconciliation never changes a job while detecting or administering recovery"],
+          "recovery_tests": ["workflow recovery and matching capacity reconciliation localizes every closed recovery reason and keeps system recovery read-only"]
+        }]
+      },
+      "worker.rfq-price.propose": {
+        "status": "PARTIAL",
+        "gaps": ["Collected Worker HTTP contract and mobile recovery tests bind the assigned-worker RFQ command, immutable intent, persisted retry and double-tap serialization. The SQL migration proof, hosted Edge-to-SQL, concurrent database races, native relaunch and Production evidence remain open."],
+        "cases": [{
+          "id": "worker-rfq-price-propose-http",
+          "pillar": "P178-rfq-price-public-contract",
+          "file": "apps/api/src/__tests__/kael-edge-runtime/domains/rfq-price-public-contract-pillar.test.ts",
+          "owner": "supabase/functions/mobile-api/_shared/domains/job/rfq-price.ts",
+          "invocation": "proposeRfqPrice",
+          "seam": "http", "actor": "worker",
+          "from": ["inspecting"], "to": ["inspecting"],
+          "success_tests": ["RFQ exact price public contract proposes through the assigned Worker command and redacts internal metadata"],
+          "denial_tests": ["RFQ exact price public contract rejects a proposal from customer before any command"],
+          "recovery_tests": ["RFQ exact price public contract keeps transport failure unknown and excludes database details"]
+        }, {
+          "id": "worker-rfq-price-propose-mobile-recovery",
+          "pillar": "P179-rfq-price-mobile-recovery",
+          "file": "apps/mobile/lib/__tests__/rfq-price-mobile-recovery-pillar-test.tsx",
+          "owner": "apps/mobile/lib/frontend-workflow/use-rfq-price.ts",
+          "invocation": "useRfqPrice.propose",
+          "seam": "ui", "actor": "worker",
+          "from": ["inspecting"], "to": ["inspecting"],
+          "success_tests": ["persists exactly one Worker command before sending and serializes double taps"],
+          "denial_tests": ["never sends when durable storage fails"],
+          "recovery_tests": ["recovers an unknown command after relaunch with the same intent, actor and token"]
+        }]
+      },
+      "customer.rfq-price.decide": {
+        "status": "PARTIAL",
+        "gaps": ["Collected Customer HTTP and consent-panel tests bind exact immutable proposal approval, Customer-only decision, explicit total presentation and reconciliation lockout. The RFQ SQL migration, hosted Edge-to-SQL, concurrent decision races, native relaunch and Production proof remain open."],
+        "cases": [{
+          "id": "customer-rfq-price-decide-http",
+          "pillar": "P178-rfq-price-public-contract",
+          "file": "apps/api/src/__tests__/kael-edge-runtime/domains/rfq-price-public-contract-pillar.test.ts",
+          "owner": "supabase/functions/mobile-api/_shared/domains/job/rfq-price.ts",
+          "invocation": "decideRfqPrice",
+          "seam": "http", "actor": "customer",
+          "from": ["inspecting"], "to": ["inspecting", "working"],
+          "success_tests": ["RFQ exact price public contract approves only the exact immutable proposal with the authenticated Customer"],
+          "denial_tests": ["RFQ exact price public contract rejects a decision from worker before any command"],
+          "recovery_tests": ["RFQ exact price public contract keeps transport failure unknown and excludes database details"]
+        }, {
+          "id": "customer-rfq-price-decide-consent-ui",
+          "pillar": "P180-rfq-price-consent-ui",
+          "file": "apps/mobile/components/job/__tests__/rfq-price-consent-ui-pillar-test.tsx",
+          "owner": "apps/mobile/components/job/rfq-price-panel.tsx",
+          "invocation": "RfqPricePanelView.decide",
+          "seam": "ui", "actor": "customer",
+          "from": ["inspecting"], "to": ["inspecting", "working"],
+          "success_tests": ["shows exact human quote and explicit Customer consent in light mode"],
+          "denial_tests": ["blocks further decisions during outcome reconciliation"],
+          "recovery_tests": []
+        }]
+      },
+      "customer.rfq-price.reconcile": {
+        "status": "PARTIAL",
+        "gaps": ["Collected participant-bound HTTP reads bind proposal rehydration, honest empty state and invalid-receipt recovery for the Customer. The Worker read route, hosted Edge-to-SQL, concurrent proposal changes, native relaunch and Production proof remain open."],
+        "cases": [{
+          "id": "customer-rfq-price-reconcile-http",
+          "pillar": "P178-rfq-price-public-contract",
+          "file": "apps/api/src/__tests__/kael-edge-runtime/domains/rfq-price-public-contract-pillar.test.ts",
+          "owner": "supabase/functions/mobile-api/_shared/domains/job/rfq-price.ts",
+          "invocation": "loadRfqPrice",
+          "seam": "http", "actor": "customer",
+          "from": ["inspecting"], "to": ["inspecting", "recovery_required"],
+          "success_tests": ["RFQ exact price public contract rehydrates the current participant-bound proposal without any mutation"],
+          "denial_tests": ["RFQ exact price public contract rejects a decision from worker before any command"],
+          "recovery_tests": ["RFQ exact price public contract reconciles an invalid proposal receipt null without claiming success"]
+        }]
+      },
+      "worker.fulfillment.media": {
+        "status": "PARTIAL",
+        "gaps": ["Collected Worker completion-media HTTP tests prove exact attachment ownership, persisted-reference validation, role fencing and recoverable database errors. The Customer upload path, hosted Edge-to-SQL, Storage races, native relaunch and Production proof remain open."],
+        "cases": [{
+          "id": "worker-fulfillment-media-ownership",
+          "pillar": "P79-worker-completion-media-ownership",
+          "file": "apps/api/src/__tests__/kael-edge-runtime/domains/worker-completion-media-pillar.test.ts",
+          "owner": "supabase/functions/mobile-api/_shared/domains/job/status.ts",
+          "invocation": "worker completion media upload",
+          "seam": "http", "actor": "worker",
+          "from": ["working"], "to": ["completion_proposed"],
+          "success_tests": ["Worker completion media at the public HTTP boundary accepts ten attached after photos and writes exactly those refs once"],
+          "denial_tests": ["Worker completion media at the public HTTP boundary refuses the Customer before changing the job"],
+          "recovery_tests": ["Worker completion media at the public HTTP boundary returns a recoverable evidence error if the DB rejects media after the lookup"]
+        }]
+      },
+      "system.synthetic.terminal-payment": {
+        "status": "PARTIAL",
+        "gaps": ["Collected isolated synthetic-terminal tests prove append-only cohort receipts and keep real finance/review paths fail closed. This is not real-user payment evidence, hosted Production SQL proof, provider settlement, or Production health/release proof."],
+        "cases": [{
+          "id": "system-synthetic-terminal-payment-proof",
+          "pillar": "P69-synthetic-terminal-transaction-proof",
+          "file": "apps/api/src/__tests__/unit/synthetic-terminal-transaction-proof-pillar.test.ts",
+          "owner": "supabase/migrations/20260904232000_synthetic_terminal_transaction_proof.sql",
+          "invocation": "isolated synthetic terminal payment receipt",
+          "seam": "system", "actor": "system",
+          "from": ["payment_pending"], "to": ["paid", "reviewed", "closed", "refund_required"],
+          "success_tests": ["isolated synthetic terminal transaction proof ships an append-only release, cohort, run, sequence, and scenario-bound receipt"],
+          "denial_tests": ["isolated synthetic terminal transaction proof keeps real finance and reviews fail-closed while allowing only the scoped simulator"],
+          "recovery_tests": ["isolated synthetic terminal transaction proof removes only exact cohort media objects before deleting scenario rows"]
+        }]
+      },
+      "worker.cancellation.request": {
+        "status": "PARTIAL",
+        "gaps": ["Collected Worker cancellation runtime tests exercise queued cancellation, fail-closed precommit errors, durable receipt recovery and replacement dispatch isolation. Hosted Edge-to-SQL, concurrent cancellation races, native relaunch and Production proof remain open."],
+        "cases": [{
+          "id": "worker-cancellation-request-recovery",
+          "pillar": "P83-worker-cancellation-recovery",
+          "file": "apps/api/src/__tests__/kael-edge-runtime/domains/worker-cancellation-recovery-pillar.test.ts",
+          "owner": "supabase/functions/mobile-api/_shared/domains/worker/cancellation.ts",
+          "invocation": "requestWorkerCancellation",
+          "seam": "http", "actor": "worker",
+          "from": ["official_match", "scheduled", "on_way", "arrived", "inspecting", "working", "scope_change_pending"],
+          "to": ["broadcasting", "cancelled", "recovery_required"],
+          "success_tests": ["Worker cancellation recovery runtime queues approved cancellation without running matching or claiming delivery in the HTTP request"],
+          "denial_tests": ["Worker cancellation recovery runtime rejects precommit database failure without inventing an approved cancellation"],
+          "recovery_tests": ["Worker cancellation recovery runtime recovers the same cancellation after commit succeeded but the response was lost and Worker is detached"]
+        }]
+      },
+      "customer.payment-order.read": {
+        "status": "PARTIAL",
+        "gaps": ["Collected route/source contract tests prove the public Customer payment-order path remains manual-bank-only and legacy payment records are read-only. The live handler, Auth/SQL receipt, idempotent replay, hosted Edge and Production proof remain open."],
+        "cases": [{
+          "id": "customer-payment-order-read-route-contract",
+          "pillar": "P68-completion-payment-authority",
+          "file": "apps/api/src/__tests__/unit/completion-payment-authority-pillar.test.ts",
+          "owner": "supabase/migrations/20260904231000_canonical_completion_payment_authority.sql",
+          "invocation": "public payment-order route contract",
+          "seam": "http", "actor": "customer",
+          "from": ["customer_confirmed", "payment_pending"], "to": ["payment_pending"],
+          "success_tests": ["canonical completion and payment authority keeps public mobile payment actions manual-bank-only while rendering legacy records read-only"],
+          "denial_tests": ["canonical completion and payment authority exposes Customer-only completion and no new direct-worker payment mutation"],
+          "recovery_tests": []
+        }]
+      },
+      "customer.payment-order.claim": {
+        "status": "PARTIAL",
+        "gaps": ["Collected route/source contract tests prove the Customer payment-order claim surface is retained only for the supported manual-bank flow. The live claim handler, Auth/SQL atomic receipt, replay/race behavior, hosted Edge and Production proof remain open."],
+        "cases": [{
+          "id": "customer-payment-order-claim-route-contract",
+          "pillar": "P68-completion-payment-authority",
+          "file": "apps/api/src/__tests__/unit/completion-payment-authority-pillar.test.ts",
+          "owner": "supabase/migrations/20260904231000_canonical_completion_payment_authority.sql",
+          "invocation": "public payment-order claim route contract",
+          "seam": "http", "actor": "customer",
+          "from": ["payment_pending"], "to": ["payment_pending"],
+          "success_tests": ["canonical completion and payment authority keeps public mobile payment actions manual-bank-only while rendering legacy records read-only"],
+          "denial_tests": ["canonical completion and payment authority exposes Customer-only completion and no new direct-worker payment mutation"],
+          "recovery_tests": []
+        }]
+      },
+      "admin.payment.reconciliation.decide": {
+        "status": "PARTIAL",
+        "gaps": ["Collected admin reconciliation tests prove one actor-bound decision call, bank-reference hashing/suffix minimization and cash-path field isolation. The public Admin route, hosted SQL, optimistic-concurrency races, audited UI/native flow and Production proof remain open."],
+        "cases": [{
+          "id": "admin-payment-reconciliation-decision-bank-reference",
+          "pillar": "P34-admin-finance-bank-reference",
+          "file": "apps/api/src/__tests__/unit/admin-finance-bank-reference-pillar.test.ts",
+          "owner": "supabase/functions/mobile-api/_shared/domains/admin/finance-reconciliation.ts",
+          "invocation": "decideAdminPaymentReconciliation",
+          "seam": "service", "actor": "admin",
+          "from": ["payment_pending"], "to": ["paid"],
+          "success_tests": ["P34 admin finance — the raw reference does not cross sends a full-width hash that is not the reference itself"],
+          "denial_tests": ["P34 admin finance — a cash decision carries no bank fields at all routes to the cash RPC and passes neither hash nor suffix"],
+          "recovery_tests": ["P34 admin finance — the raw reference does not cross sends null rather than an empty string when no reference was supplied"]
+        }]
+      },
+      "worker.offer.seen": {
+        "status": "PARTIAL",
+        "gaps": ["Collected Worker offer tests prove the authenticated actor is sent to one atomic seen-receipt RPC and absent receipts fail closed. Route authentication, hosted SQL, real device delivery and Production proof remain open."],
+        "cases": [{
+          "id": "worker-offer-seen-atomic-receipt",
+          "pillar": "P186-worker-offer-lifecycle",
+          "file": "apps/api/src/__tests__/kael-edge-runtime/platform/worker-offer-lifecycle-pillar.test.ts",
+          "owner": "supabase/functions/mobile-api/_shared/domains/worker/broadcasts.ts",
+          "invocation": "markWorkerBroadcastSeen", "seam": "service", "actor": "worker",
+          "from": ["broadcasting"], "to": ["broadcasting"],
+          "success_tests": ["worker offer lifecycle marks only the authenticated Worker delivery seen through one atomic RPC"],
+          "denial_tests": ["worker offer lifecycle refuses an absent seen receipt without claiming visibility"],
+          "recovery_tests": []
+        }]
+      },
+      "worker.offer.accept": {
+        "status": "PARTIAL",
+        "gaps": ["Collected Worker offer tests prove the actor-bound durable accept receipt and ineligible-worker refusal. Route authentication, hosted SQL, native customer-confirmation delivery and Production proof remain open."],
+        "cases": [{
+          "id": "worker-offer-accept-atomic-receipt",
+          "pillar": "P187-worker-offer-accept",
+          "file": "apps/api/src/__tests__/kael-edge-runtime/platform/worker-offer-accept-pillar.test.ts",
+          "owner": "supabase/functions/mobile-api/_shared/domains/matching/accept.ts",
+          "invocation": "acceptBroadcast", "seam": "service", "actor": "worker",
+          "from": ["broadcasting"], "to": ["candidate_ready"],
+          "success_tests": ["worker offer accept accepts an eligible broadcast through one durable RPC and returns only pending customer confirmation"],
+          "denial_tests": ["worker offer accept rejects an ineligible accept receipt without exposing candidate state"],
+          "recovery_tests": []
+        }]
+      },
+      "worker.offer.decline": {
+        "status": "PARTIAL",
+        "gaps": ["Collected Worker offer tests prove actor-scoped decline and stale-expiry refusal. Route authentication, hosted SQL, concurrent accept/decline races, fallback delivery and Production proof remain open."],
+        "cases": [{
+          "id": "worker-offer-decline-actor-receipt",
+          "pillar": "P188-worker-offer-decline",
+          "file": "apps/api/src/__tests__/kael-edge-runtime/platform/worker-offer-decline-pillar.test.ts",
+          "owner": "supabase/functions/mobile-api/_shared/domains/matching/decline.ts",
+          "invocation": "declineBroadcast", "seam": "service", "actor": "worker",
+          "from": ["broadcasting"], "to": ["broadcasting"],
+          "success_tests": ["worker offer decline declines a sent broadcast through an actor-scoped update and returns a durable refusal"],
+          "denial_tests": ["worker offer decline refuses a stale decline without claiming a successful offer action"],
+          "recovery_tests": []
+        }]
+      },
+      "worker.reachability.heartbeat": {
+        "status": "PARTIAL",
+        "gaps": ["Collected reachability tests exercise the server predicate for recent foreground and push proof. The authenticated heartbeat route, real token persistence, hosted Edge-to-SQL, concurrent lease refresh, and Production proof remain open."],
+        "cases": [{
+          "id": "worker-reachability-heartbeat-predicate",
+          "pillar": "P50-reachable-cohort-matching",
+          "file": "apps/api/src/__tests__/kael-edge-runtime/domains/reachable-cohort-matching-pillar.test.ts",
+          "owner": "supabase/functions/mobile-api/_shared/domains/matching/reachability.ts",
+          "invocation": "isWorkerReachable", "seam": "service", "actor": "worker",
+          "from": ["worker_ready"], "to": ["worker_ready"],
+          "success_tests": ["worker reachability and cohort isolation accepts proven push or a recent foreground heartbeat"],
+          "denial_tests": ["worker reachability and cohort isolation rejects unavailable delivery paths"],
+          "recovery_tests": []
+        }]
+      },
+      "worker.push.register": {
+        "status": "PARTIAL",
+        "gaps": ["Collected device-token domain tests prove Worker actor binding, sanitized metadata and typed atomic registration receipts. Real device permission/token acquisition, route authentication, hosted SQL, native builds and Production proof remain open."],
+        "cases": [{
+          "id": "worker-push-register-atomic-receipt",
+          "pillar": "P185-device-push-token-binding",
+          "file": "apps/api/src/__tests__/kael-edge-runtime/platform/device-push-token-binding-pillar.test.ts",
+          "owner": "supabase/functions/mobile-api/_shared/domains/notification/notifications-inbox.ts",
+          "invocation": "registerDevicePushToken", "seam": "service", "actor": "worker",
+          "from": ["authenticated"], "to": ["worker_ready"],
+          "success_tests": ["device push token actor binding registers the Worker token through one actor-bound atomic RPC"],
+          "denial_tests": ["device push token actor binding rejects a malformed registration receipt without acknowledging a token"],
+          "recovery_tests": []
+        }]
+      },
+      "worker.push.unregister": {
+        "status": "PARTIAL",
+        "gaps": ["Collected device-token domain tests prove Worker actor binding and absent-receipt refusal for atomic removal. Route authentication, real device lifecycle, hosted SQL, native sign-out and Production proof remain open."],
+        "cases": [{
+          "id": "worker-push-unregister-atomic-receipt",
+          "pillar": "P185-device-push-token-binding",
+          "file": "apps/api/src/__tests__/kael-edge-runtime/platform/device-push-token-binding-pillar.test.ts",
+          "owner": "supabase/functions/mobile-api/_shared/domains/notification/notifications-inbox.ts",
+          "invocation": "unregisterDevicePushToken", "seam": "service", "actor": "worker",
+          "from": ["worker_ready"], "to": ["authenticated"],
+          "success_tests": ["device push token actor binding unregisters only the authenticated Worker token through one atomic RPC"],
+          "denial_tests": ["device push token actor binding rejects an absent unregister receipt without claiming removal"],
+          "recovery_tests": []
+        }]
+      },
+      "system.delivery.reconcile": {
+        "status": "PARTIAL",
+        "gaps": ["Collected provider-receipt tests exercise exact token-generation handoff, stale-token refusal and unresolved recovery. Hosted maintainer scheduling, real Expo receipts, concurrent leases, native delivery and Production proof remain open."],
+        "cases": [{
+          "id": "system-delivery-reconcile-provider-receipt",
+          "pillar": "P57-stage1-provider-push-receipt",
+          "file": "apps/api/src/__tests__/kael-edge-runtime/platform/stage1-provider-push-receipt-pillar.test.ts",
+          "owner": "supabase/functions/mobile-api/_shared/platform/push.ts",
+          "invocation": "reconcileMatchingPushReceipts", "seam": "system", "actor": "system",
+          "from": ["broadcasting"], "to": ["broadcasting", "recovery_required"],
+          "success_tests": ["Stage 1 provider push receipts records a current-token provider receipt only as provider handoff"],
+          "denial_tests": ["Stage 1 provider push receipts does not convert a stale-token receipt into push proof"],
+          "recovery_tests": ["Stage 1 provider push receipts treats an omitted provider receipt as unresolved recovery, not an error"]
+        }]
+      },
+      "worker.delivery.ack": {
+        "status": "PARTIAL",
+        "gaps": ["Collected route and mobile tests bind Worker-only acknowledgement, exact token generation and malformed-payload refusal. Hosted Auth/SQL, real device-open delivery and Production proof remain open."],
+        "cases": [{
+          "id": "worker-delivery-ack-route",
+          "pillar": "P60-matching-push-delivery-ack-route",
+          "file": "apps/api/src/__tests__/kael-edge-runtime/platform/matching-push-delivery-ack-route-pillar.test.ts",
+          "owner": "supabase/functions/mobile-api/_shared/http/routes/notifications.ts",
+          "invocation": "matchNotificationRoute", "seam": "http", "actor": "worker",
+          "from": ["broadcasting"], "to": ["broadcasting"],
+          "success_tests": ["matching push delivery acknowledgement route routes an exact acknowledgement through the Worker-only API boundary"],
+          "denial_tests": ["matching push delivery acknowledgement route does not dispatch when Worker authorization fails"],
+          "recovery_tests": []
+        }, {
+          "id": "worker-delivery-ack-mobile",
+          "pillar": "P62-matching-push-delivery-ack-mobile",
+          "file": "apps/mobile/lib/__tests__/matching-push-delivery-ack-pillar-test.tsx",
+          "owner": "apps/mobile/lib/push-notifications.ts",
+          "invocation": "matchingDeliveryAckFromNotificationData", "seam": "ui", "actor": "worker",
+          "from": ["broadcasting"], "to": ["broadcasting"],
+          "success_tests": ["matching push delivery acknowledgement pillar acknowledges foreground receipt and user-open with the exact token generation"],
+          "denial_tests": ["matching push delivery acknowledgement pillar rejects incomplete, stale-shaped, or malformed app acknowledgements"],
+          "recovery_tests": []
+        }]
+      },
+      "worker.offers.read": {
+        "status": "PARTIAL",
+        "gaps": ["Collected Worker delivery projection tests bind honest queued, delivered, seen, accepted and expired states without fabricated recipient counts. The authenticated offers route, hosted read and Production proof remain open."],
+        "cases": [{
+          "id": "worker-offers-read-delivery-projection",
+          "pillar": "P47-stage1-worker-delivery",
+          "file": "apps/mobile/components/worker/__tests__/stage1-worker-delivery-pillar-test.tsx",
+          "owner": "apps/mobile/components/worker/jobs/worker-matching-delivery-status.tsx",
+          "invocation": "WorkerMatchingDeliveryStatus", "seam": "ui", "actor": "worker",
+          "from": ["worker_ready", "broadcasting"], "to": ["broadcasting"],
+          "success_tests": ["Stage-1 worker durable delivery renders the distinct queued state"],
+          "denial_tests": ["Stage-1 worker durable delivery does not render a recipient count without a server-confirmed value"],
+          "recovery_tests": ["Stage-1 worker durable delivery renders the distinct expired state"]
+        }]
+      },
       "admin.worker-access.decision": {
         "status": "PARTIAL",
         "gaps": ["Public handler/domain tests with scripted DB prove receipt integrity, role/capability refusal and positive approval. Request-changes/rejection, immutable review revision, timeout/retry, actual SQL audit/concurrency, hosted Admin UI and Production proof remain open."],
@@ -98,6 +632,46 @@
           "success_tests": ["resumes a partially saved identity document by uploading only its missing back (vi)", "resumes a partially saved identity document by uploading only its missing back (en)"],
           "denial_tests": ["keeps a missing document blocked when a newer profile explicitly contradicts the legacy combined flag", "does not claim a sent submission when the local journal is unavailable (vi)", "does not claim a sent submission when the local journal is unavailable (en)"],
           "recovery_tests": ["reuploads a changed selection without reuploading the unchanged document from a refused draft", "preserves a service-only edit when the server profile refreshes before autosave", "keeps a refused draft editable without claiming a new review request was sent (vi)", "keeps a refused draft editable without claiming a new review request was sent (en)"]
+        }]
+      },
+      "worker.kyc.draft": {
+        "status": "PARTIAL",
+        "gaps": ["Collected HTTP draft-receipt tests exercise the current handler/domain with an actor-bound scripted database receipt. The access-approved origin, real SQL and hosted Edge-to-SQL execution, concurrent replay, native relaunch, and Production proof remain open."],
+        "cases": [{
+          "id": "worker-kyc-draft-receipt-http",
+          "pillar": "P164-worker-draft-receipt",
+          "file": "apps/api/src/__tests__/kael-edge-runtime/domains/worker-draft-receipt-pillar.test.ts",
+          "owner": "supabase/functions/mobile-api/_shared/domains/worker/registration-draft.ts",
+          "invocation": "saveWorkerRegistrationDraft", "seam": "http", "actor": "worker",
+          "from": ["worker_kyc_pending"], "to": ["worker_kyc_pending"],
+          "success_tests": ["Worker draft acknowledgement returns the actor-bound draft receipt and preserves the server timestamp precision"],
+          "denial_tests": ["Worker draft acknowledgement preserves the known WORKER_ACCESS_REQUIRED refusal", "Worker draft acknowledgement preserves the known DRAFT_NOT_EDITABLE refusal", "Worker draft acknowledgement rejects malformed or unrecognized receipt 0 without fabricating saved progress"],
+          "recovery_tests": ["Worker draft acknowledgement does not expose database error text even when a success row accompanies the failure"]
+        }]
+      },
+      "worker.kyc.submit": {
+        "status": "PARTIAL",
+        "gaps": ["Collected mobile UI and Storage tests bind the Worker registration submission gate, partial-document reuse, actor ownership, and bounded upload acknowledgement. HTTP registration submission, real Auth and SQL, concurrent Storage races, hosted Edge-to-SQL execution, physical native relaunch, and Production proof remain open."],
+        "cases": [{
+          "id": "worker-kyc-submit-form-mobile",
+          "pillar": "P163-worker-registration-draft-gate",
+          "file": "apps/mobile/components/worker/__tests__/worker-registration-draft-gate-pillar-test.tsx",
+          "owner": "apps/mobile/components/worker/profile/registration-surfaces.tsx",
+          "invocation": "WorkerV5WorkerRegistrationBody", "seam": "ui", "actor": "worker",
+          "from": ["worker_kyc_pending"], "to": ["worker_kyc_pending"],
+          "success_tests": ["resumes a partially saved identity document by uploading only its missing back (vi)", "resumes a partially saved identity document by uploading only its missing back (en)"],
+          "denial_tests": ["keeps submission blocked when the document draft was not acknowledged (vi)", "keeps submission blocked when the document draft was not acknowledged (en)"],
+          "recovery_tests": ["reuploads a changed selection without reuploading the unchanged document from a refused draft", "does not claim a sent submission when the local journal is unavailable (vi)", "does not claim a sent submission when the local journal is unavailable (en)"]
+        }, {
+          "id": "worker-kyc-submit-upload-mobile",
+          "pillar": "P165-worker-verification-upload-deadline",
+          "file": "apps/mobile/lib/__tests__/worker-verification-upload-deadline-pillar-test.ts",
+          "owner": "apps/mobile/lib/worker-verification-upload.ts",
+          "invocation": "uploadWorkerVerificationDrafts", "seam": "ui", "actor": "worker",
+          "from": ["worker_kyc_pending"], "to": ["worker_kyc_pending"],
+          "success_tests": ["returns owned private refs only after all three uploads acknowledge success"],
+          "denial_tests": ["refuses an empty upload instead of acknowledging a document save"],
+          "recovery_tests": ["never changes a timed-out outcome into success when Storage replies late"]
         }]
       },
       "worker.readiness.read": {
@@ -344,6 +918,101 @@
             "Customer confirmation relaunch recovery preserves a corrupt envelope instead of deleting it and sending a fresh command",
             "Customer confirmation relaunch recovery refuses a new command when 20 unresolved confirmations already occupy storage"
           ]
+        }]
+      },
+      "customer.intake.create": {
+        "status": "PARTIAL",
+        "gaps": ["Collected Customer RNTL tests exercise the real Kael intake coverage response and confirm/recovery guard. HTTP session creation, real Auth, hosted Edge-to-SQL, concurrent session ownership, native relaunch, and Production proof remain open."],
+        "cases": [{
+          "id": "customer-intake-create-mobile",
+          "pillar": "P46-stage1-customer-intake-mode",
+          "file": "apps/mobile/components/customer/__tests__/stage1-customer-intake-mode-pillar-test.tsx",
+          "owner": "apps/mobile/components/customer/kael-chat/intake-coverage-response.tsx",
+          "invocation": "IntakeCoverageResponse", "seam": "ui", "actor": "customer",
+          "from": ["authenticated"], "to": ["intake"],
+          "success_tests": ["Stage-1 customer intake modes renders an honest Vietnamese RFQ confirmation with a callable button"],
+          "denial_tests": ["Stage-1 customer intake modes blocks confirmation and names missing Tier A information in English"],
+          "recovery_tests": ["Stage-1 customer intake modes announces reconciliation without claiming that a job was created"]
+        }]
+      },
+      "customer.intake.turn": {
+        "status": "PARTIAL",
+        "gaps": ["Collected Kael pipeline, playbook, and adversarial guard tests bind safe intake-turn behavior locally. The public HTTP turn composition, real provider response, hosted Edge-to-SQL, native conversation recovery, and Production proof remain open."],
+        "cases": [{
+          "id": "customer-intake-turn-observation-failure",
+          "pillar": "P45-kael-intake-observation-failure",
+          "file": "apps/api/src/__tests__/kael-edge-runtime/domains/kael-intake-observation-failure-pillar.test.ts",
+          "owner": "supabase/functions/mobile-api/_shared/kael/pipeline/stage-baseline.ts",
+          "invocation": "runKaelBaselineStage", "seam": "service", "actor": "customer",
+          "from": ["intake"], "to": ["intake"],
+          "success_tests": ["baseline failure observation contract returns a structured no-baseline failure with the prior observation"],
+          "denial_tests": ["baseline failure observation contract does not invent an intake observation when classification produced none"],
+          "recovery_tests": []
+        }, {
+          "id": "customer-intake-turn-adversarial-guard",
+          "pillar": "P17-adversarial-surface-matrix",
+          "file": "apps/api/src/__tests__/security/adversarial-surface-matrix-pillar.test.ts",
+          "owner": "apps/api/src/__tests__/security/kael-redteam/adversarial-cases.json",
+          "invocation": "evaluateMessageBoundary", "seam": "service", "actor": "customer",
+          "from": ["intake"], "to": ["intake"],
+          "success_tests": ["truthful identity answers are not over-blocked self-allow-001 (vi) is allowed through"],
+          "denial_tests": ["every adversarial case is refused by its owning guard inj-001 (boundary) is refused as prompt_injection"],
+          "recovery_tests": []
+        }]
+      },
+      "customer.coverage.read": {
+        "status": "PARTIAL",
+        "gaps": ["Collected Customer-only coverage handler tests verify the threshold-backed readiness route and reservation source with scripted services. Hosted Edge-to-SQL, real reachable supply, concurrent reservations, native recovery, and Production proof remain open."],
+        "cases": [{
+          "id": "customer-coverage-read-http",
+          "pillar": "P67-public-coverage-reservation",
+          "file": "apps/api/src/__tests__/unit/public-coverage-reservation-pillar.test.ts",
+          "owner": "supabase/functions/mobile-api/_shared/domains/catalog/coverage.ts",
+          "invocation": "readServiceCoverageReadiness", "seam": "http", "actor": "customer",
+          "from": ["intake"], "to": ["coverage_ready"],
+          "success_tests": ["public service coverage reservation gate exposes an authenticated Customer-only readiness route"],
+          "denial_tests": ["public service coverage reservation gate rejects missing auth and a Worker role before coverage evaluation"],
+          "recovery_tests": ["public service coverage reservation gate binds preview, confirmation, and durable fan-out to one reserved eligibility source"]
+        }]
+      },
+      "customer.confirm-operation.read": {
+        "status": "PARTIAL",
+        "gaps": ["Collected Customer recovery tests bind actor/session fencing and exact durable operation reconciliation locally. The hosted operation read, real Auth session, concurrent DB state changes, native process death, and Production proof remain open."],
+        "cases": [{
+          "id": "customer-confirm-operation-read-mobile",
+          "pillar": "P74-customer-confirmation-relaunch-recovery",
+          "file": "apps/mobile/lib/__tests__/customer-confirmation-relaunch-pillar-test.ts",
+          "owner": "apps/mobile/lib/frontend-workflow/confirmation-recovery.ts",
+          "invocation": "readPendingConfirmation", "seam": "ui", "actor": "customer",
+          "from": ["confirmation_pending", "recovery_required"], "to": ["job_created", "recovery_required"],
+          "success_tests": ["Customer confirmation relaunch recovery recovers the owned legacy session job without replaying confirmation when no operation receipt exists"],
+          "denial_tests": ["Customer confirmation relaunch recovery rejects an operation bound to a different session without overwriting the pending intent"],
+          "recovery_tests": ["Customer confirmation relaunch recovery keeps an unknown timeout pending and clears only the targeted owner record explicitly"]
+        }]
+      },
+      "system.confirmation.atomic": {
+        "status": "PARTIAL",
+        "gaps": ["Collected domain and coverage tests bind the durable confirmation receipt and reservation-enforcing activation locally. Multi-connection SQL atomicity, hosted current-source Edge, provider delivery recovery, native relaunch, and Production proof remain open."],
+        "cases": [{
+          "id": "confirmation-atomic-operation-http",
+          "pillar": "P48-durable-confirmation-operation",
+          "file": "apps/api/src/__tests__/kael-edge-runtime/domains/durable-confirmation-operation-pillar.test.ts",
+          "owner": "supabase/functions/mobile-api/_shared/domains/kael-chat/confirmation-operation.ts",
+          "invocation": "requestDurableKaelConfirmation", "seam": "system", "actor": "system",
+          "from": ["confirmation_pending"], "to": ["job_created", "matching_queued", "recovery_required"],
+          "success_tests": ["durable Kael confirmation returns the durable receipt produced by the atomic RPC"],
+          "denial_tests": ["durable Kael confirmation fails closed when the atomic boundary has no receipt"],
+          "recovery_tests": ["durable Kael confirmation derives the same non-secret idempotency key for every retry"]
+        }, {
+          "id": "confirmation-atomic-coverage-http",
+          "pillar": "P67-public-coverage-reservation",
+          "file": "apps/api/src/__tests__/unit/public-coverage-reservation-pillar.test.ts",
+          "owner": "supabase/functions/mobile-api/_shared/domains/catalog/coverage.ts",
+          "invocation": "activateBroadcastBatch", "seam": "system", "actor": "system",
+          "from": ["confirmation_pending"], "to": ["matching_queued", "recovery_required"],
+          "success_tests": ["public service coverage reservation gate uses the reservation-enforcing activation RPC for every durable batch"],
+          "denial_tests": ["public service coverage reservation gate rejects missing auth and a Worker role before coverage evaluation"],
+          "recovery_tests": ["public service coverage reservation gate binds preview, confirmation, and durable fan-out to one reserved eligibility source"]
         }]
       },
       "system.matching.outbox": {
@@ -896,7 +1565,7 @@
       "confirmation_gate": "none",
       "from": ["authenticated", "worker_ready"],
       "to": ["worker_ready"],
-      "pillars": ["P57-stage1-provider-push-receipt", "P72-native-push-release-readiness"]
+      "pillars": ["P57-stage1-provider-push-receipt", "P72-native-push-release-readiness", "P185-device-push-token-binding"]
     },
     {
       "id": "worker.push.unregister",
@@ -906,7 +1575,7 @@
       "confirmation_gate": "none",
       "from": ["worker_ready"],
       "to": ["authenticated"],
-      "pillars": ["P57-stage1-provider-push-receipt", "P72-native-push-release-readiness"]
+      "pillars": ["P57-stage1-provider-push-receipt", "P72-native-push-release-readiness", "P185-device-push-token-binding"]
     },
     {
       "id": "system.delivery.reconcile",
@@ -939,7 +1608,7 @@
       "confirmation_gate": "none",
       "from": ["broadcasting"],
       "to": ["broadcasting"],
-      "pillars": ["P49-durable-matching-delivery", "P47-stage1-worker-delivery"]
+      "pillars": ["P49-durable-matching-delivery", "P47-stage1-worker-delivery", "P186-worker-offer-lifecycle"]
     },
     {
       "id": "worker.delivery.ack",
@@ -959,7 +1628,7 @@
       "confirmation_gate": "none",
       "from": ["broadcasting"],
       "to": ["candidate_ready"],
-      "pillars": ["P21-matching-guard-liveness", "P49-durable-matching-delivery"]
+      "pillars": ["P21-matching-guard-liveness", "P49-durable-matching-delivery", "P187-worker-offer-accept"]
     },
     {
       "id": "worker.offer.decline",
@@ -969,7 +1638,7 @@
       "confirmation_gate": "none",
       "from": ["broadcasting"],
       "to": ["broadcasting"],
-      "pillars": ["P49-durable-matching-delivery", "P50-reachable-cohort-matching"]
+      "pillars": ["P49-durable-matching-delivery", "P50-reachable-cohort-matching", "P188-worker-offer-decline"]
     },
     {
       "id": "customer.candidate.read",
@@ -979,7 +1648,7 @@
       "confirmation_gate": "none",
       "from": ["candidate_ready"],
       "to": ["candidate_ready"],
-      "pillars": ["P19-job-access-ownership", "P12-workflow-transition-composition"]
+      "pillars": ["P19-job-access-ownership", "P12-workflow-transition-composition", "P97-candidate-expiry-authority-http"]
     },
     {
       "id": "customer.candidate.confirm",
@@ -989,7 +1658,7 @@
       "confirmation_gate": "proposed_worker",
       "from": ["candidate_ready"],
       "to": ["official_match", "scheduled"],
-      "pillars": ["P12-workflow-transition-composition", "P21-matching-guard-liveness"]
+      "pillars": ["P12-workflow-transition-composition", "P21-matching-guard-liveness", "P123-official-match-receipt-http"]
     },
     {
       "id": "customer.candidate.reject",
@@ -999,7 +1668,7 @@
       "confirmation_gate": "proposed_worker",
       "from": ["candidate_ready"],
       "to": ["broadcasting"],
-      "pillars": ["P12-workflow-transition-composition", "P21-matching-guard-liveness"]
+      "pillars": ["P12-workflow-transition-composition", "P21-matching-guard-liveness", "P120-candidate-rejection-durability"]
     },
     {
       "id": "customer.apartment-access.authorize",
@@ -1007,9 +1676,9 @@
       "route_kind": "jobs.accessAuthorize",
       "authority": "customer_explicit",
       "confirmation_gate": "none",
-      "from": ["official_match", "scheduled", "on_way"],
+      "from": ["official_match", "scheduled", "on_way", "arrived"],
       "to": ["scheduled", "on_way", "arrived"],
-      "pillars": ["P19-job-access-ownership", "P12-workflow-transition-composition"]
+      "pillars": ["P19-job-access-ownership", "P12-workflow-transition-composition", "P128-apartment-access-authorization", "P132-customer-apartment-access-mobile"]
     },
     {
       "id": "worker.fulfillment.advance",
@@ -1029,7 +1698,7 @@
       "confirmation_gate": "none",
       "from": ["arrived", "inspecting", "working", "completion_proposed"],
       "to": ["inspecting", "working", "completion_proposed"],
-      "pillars": ["P68-completion-payment-authority", "P10-per-actor-rls"]
+      "pillars": ["P68-completion-payment-authority", "P10-per-actor-rls", "P79-worker-completion-media-ownership"]
     },
     {
       "id": "customer.fulfillment.media",
@@ -1059,7 +1728,7 @@
       "confirmation_gate": "scope_change",
       "from": ["scope_change_pending"],
       "to": ["working", "cancelled", "recovery_required"],
-      "pillars": ["P12-workflow-transition-composition", "P19-job-access-ownership"]
+      "pillars": ["P12-workflow-transition-composition", "P19-job-access-ownership", "P87-scope-change-http-authority"]
     },
     {
       "id": "customer.completion.confirm",
@@ -1139,7 +1808,7 @@
       "confirmation_gate": "none",
       "from": ["official_match", "scheduled", "on_way", "arrived", "inspecting", "working", "scope_change_pending"],
       "to": ["broadcasting", "cancelled", "recovery_required"],
-      "pillars": ["P12-workflow-transition-composition", "P70-workflow-recovery-capacity"]
+      "pillars": ["P12-workflow-transition-composition", "P70-workflow-recovery-capacity", "P83-worker-cancellation-recovery"]
     },
     {
       "id": "customer.dispute.open",
