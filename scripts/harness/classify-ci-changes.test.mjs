@@ -64,3 +64,23 @@ test('mixed mobile and API changes cannot take a focused lane', () => {
     'apps/api/src/app/jobs/service.ts',
   ]).workspace_full, true)
 })
+
+test('a path no lane claims fails closed to every lane', () => {
+  for (const path of [
+    'scripts/run.mjs',
+    'scripts/structure-baseline.json',
+    'patches/react-native-svg@15.15.4.patch',
+    'compose.yaml',
+    '.gitattributes',
+  ]) {
+    assert.deepEqual(classifyChangedPaths([path]), allCategories(), path)
+  }
+  assert.deepEqual(classifyChangedPaths([
+    'apps/mobile/components/customer/Home.tsx',
+    'scripts/run.mjs',
+  ]), allCategories())
+})
+
+test('documentation-only changes take no conditional lane', () => {
+  assert.deepEqual(classifyChangedPaths(['docs/INDEX.md', 'README.md']), allCategories(false))
+})

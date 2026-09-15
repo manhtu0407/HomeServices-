@@ -39,8 +39,11 @@ function matchesAny(path, patterns) {
   return patterns.some((pattern) => pattern.test(path))
 }
 
-export function classifyChangedPaths(inputPaths) {
-  const paths = [...new Set((inputPaths ?? []).map(normalizePath).filter(Boolean))]
+function isDocumentationPath(path) {
+  return path.startsWith('docs/') || /^[^/]+\.md$/u.test(path)
+}
+
+function classifyClaimedPaths(paths) {
   const frontend = paths.some((path) => path.startsWith('apps/mobile/'))
   const backend = paths.some((path) => startsWithAny(path, ['apps/api/', 'supabase/functions/']))
   const shared = paths.some((path) => path.startsWith('packages/shared/'))
@@ -112,6 +115,15 @@ export function classifyChangedPaths(inputPaths) {
     workspace_full: workspaceFull,
     runtime: backend || shared || database || harness,
   }
+}
+
+export function classifyChangedPaths(inputPaths) {
+  const paths = [...new Set((inputPaths ?? []).map(normalizePath).filter(Boolean))]
+  // A gate may be skipped only for paths some lane explicitly owns; anything else runs every lane.
+  const unclaimed = paths.some((path) =>
+    !isDocumentationPath(path) && !Object.values(classifyClaimedPaths([path])).some(Boolean),
+  )
+  return unclaimed ? allCategories() : classifyClaimedPaths(paths)
 }
 
 export function allCategories(value = true) {
