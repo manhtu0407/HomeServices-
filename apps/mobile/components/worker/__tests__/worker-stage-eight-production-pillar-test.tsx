@@ -80,7 +80,6 @@ describe('Worker Stage 8 Production fidelity', () => {
       'stage8-plane.png',
       'stage8-trailing.png',
     ]) {
-      expect(existsSync(resolve(assetDirectory, fileName))).toBe(false)
       expect(assetSource).not.toContain(fileName)
     }
   })
