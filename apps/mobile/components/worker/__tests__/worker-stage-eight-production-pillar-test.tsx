@@ -39,6 +39,15 @@ describe('Worker Stage 8 Production fidelity', () => {
     }, 'Production must use the supplied body while keeping the existing shell/header ownership')
   })
 
+  it('opens Production Stage 8 on its evidence body without the shared worker header', () => {
+    const flowSource = read('../worker-v5-flow.tsx')
+
+    withPillarContext(PILLAR, () => {
+      expect(flowSource).toContain("const usesStageEightProduction = screen.id === '2.10-completion-evidence'")
+      expect(flowSource).toContain('usesStageFiveProduction || usesStageEightProduction || headerState.usesEarningsOverviewHandoff')
+    }, 'Stage 8 hides the back button, title, and subtitle while every other stage keeps the shared header')
+  })
+
   it('keeps the real B7 media and status boundary wired', () => {
     const bodySource = read('../jobs/evidence/stage-eight-production-body.tsx')
 
@@ -57,18 +66,49 @@ describe('Worker Stage 8 Production fidelity', () => {
     const assetSource = read('../jobs/evidence/stage-eight-assets.ts')
 
     for (const fileName of [
-      'stage8-camera.png',
-      'stage8-check.png',
       'stage8-hero.png',
       'stage8-logo.png',
-      'stage8-note.png',
-      'stage8-plane.png',
       'stage8-upload.png',
     ]) {
       expect(existsSync(resolve(assetDirectory, fileName))).toBe(true)
       expect(assetSource).toContain(fileName)
     }
-    expect(assetSource).not.toContain('stage8-trailing.png')
+    for (const fileName of [
+      'stage8-camera.png',
+      'stage8-check.png',
+      'stage8-note.png',
+      'stage8-plane.png',
+      'stage8-trailing.png',
+    ]) {
+      expect(assetSource).not.toContain(fileName)
+    }
+  })
+
+  it('draws bare vector section icons and keeps the submit action text-only', () => {
+    const evidenceSource = read('../jobs/evidence/stage-eight-evidence.tsx')
+
+    render(
+      <StageEightEvidenceScreen
+        embedded
+        language="vi"
+        note=""
+        onAddPhoto={jest.fn()}
+        onSubmit={jest.fn()}
+        photoCount={0}
+        showWorkflowHeader={false}
+      />,
+    )
+
+    withPillarContext(PILLAR, () => {
+      expect(evidenceSource).toContain('<StageEightIcon color={C.mint} name={icon}')
+      expect(evidenceSource).toContain("sectionLeft: { flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center' }")
+      expect(evidenceSource).not.toContain('stageEightAssets.plane')
+      expect(screen.getByText('Ảnh hoàn tất')).toBeTruthy()
+      expect(screen.getByText('Kiểm tra cuối')).toBeTruthy()
+      expect(screen.queryByText('Chụp ảnh hiện trường sau khi hoàn thành công việc.')).toBeNull()
+      expect(screen.queryByText('Hãy đảm bảo đã bổ sung đầy đủ trước khi gửi.')).toBeNull()
+      expect(screen.getByTestId('worker-v5-stage-eight-fidelity-submit')).toHaveTextContent('Gửi hồ sơ hoàn tất', { exact: true })
+    }, 'section headers pair a bare mint glyph with a centered title, and the submit action carries no icon')
   })
 
   it('does not expose the excluded strip when embedded in Production', () => {
