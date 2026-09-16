@@ -698,13 +698,16 @@ function WorkerV5ScreenLayout({ actions, state }: { actions: WorkerV5ScreenLayou
     usesTravelHandoff,
     workerKey,
   } = content
+  const scopeMode = firstRouteParam(useLocalSearchParams<WorkerV5RouteParams>().ns_scope_mode)
   const usesStageFiveProduction = screen.id === '2.7-in-progress'
+  // The scope editor keeps the shared header: its back button is the only way out of that form.
+  const usesStageSixProduction = screen.id === '2.8-scope-change' && scopeMode !== 'edit'
   const usesStageEightProduction = screen.id === '2.10-completion-evidence'
   const usesStageNineEmptyProduction = isStageNineEmptyScreen(screen.id, runtime.state.deal)
   return <SafeAreaView edges={usesStageNineEmptyProduction ? STAGE_NINE_EMPTY_SAFE_AREA_EDGES : undefined} style={[styles.safeArea, surfaceStyle, usesStageFiveProduction ? styles.stageFiveSafeArea : null, usesStageNineEmptyProduction ? stageNineHostStyles.safeArea : null]} testID={`worker-v5-screen-${screen.id}`}>
     {usesStageFiveProduction || usesStageNineEmptyProduction ? null : <WorkerV5ScreenAuras state={auraState} />}
     <ScrollView bounces={false} contentContainerStyle={[styles.scrollContent, usesStageFiveProduction ? styles.stageFiveScrollContent : null, usesStageNineEmptyProduction ? stageNineHostStyles.scrollContent : null, headerState.usesEarningsOverviewHandoff ? styles.earningsOverviewScrollContent : null, usesKaelOrbHandoff ? styles.kaelOrbCustomerScrollContent : null, { minHeight }]} onScroll={actions.onDockScroll} scrollEventThrottle={16} showsVerticalScrollIndicator={false} testID="worker-v5-scroll">
-      {usesStageNineEmptyProduction || usesStageFiveProduction || usesStageEightProduction || headerState.usesEarningsOverviewHandoff || headerState.usesOpportunityInboxHandoff || headerState.usesTravelHandoff ? null : <WorkerV5ScreenHeader onBack={actions.onHeaderBack} onOpenJobChat={actions.onOpenJobChat} state={headerState} />}
+      {usesStageSixProduction || usesStageNineEmptyProduction || usesStageFiveProduction || usesStageEightProduction || headerState.usesEarningsOverviewHandoff || headerState.usesOpportunityInboxHandoff || headerState.usesTravelHandoff ? null : <WorkerV5ScreenHeader onBack={actions.onHeaderBack} onOpenJobChat={actions.onOpenJobChat} state={headerState} />}
       {!usesHandoffStage ? <View style={[styles.glassCard, reduceTransparency && styles.opaqueCard]}>
         {!reduceTransparency ? <MintAura intensity="component" style={styles.cardMintAura} testID="worker-v5-hero-mint-aura" /> : null}
         <View pointerEvents="none" style={styles.cardTopHighlight} />

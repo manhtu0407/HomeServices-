@@ -12,7 +12,7 @@ import { WorkerV5EvidenceTray } from './evidence-surfaces'
 import { WorkerV5ScopeEvidenceGate } from './scope-surfaces'
 import { WorkerV5PriceLines } from './shared-surfaces'
 import { WorkerV5ProgressRail } from './progress-surfaces'
-import { useWorkerV5ScopeChangeActions, type WorkerV5Runtime } from './use-worker-scope-change-actions'
+import type { WorkerV5ScopeChangeActions } from './use-worker-scope-change-actions'
 
 import { styles } from '../worker-v5-flow-styles'
 
@@ -174,18 +174,14 @@ export function WorkerV5ScopeChangeBody({
   language,
   navigateNext,
   reduceTransparency,
-  runtime,
+  scopeChange,
 }: {
   language: AppLanguage
   navigateNext: () => void
   reduceTransparency: boolean
-  runtime: WorkerV5Runtime
+  /** Shared with the Stage 6 Timeline Card so photos picked there reach this form's evidence upload. */
+  scopeChange: WorkerV5ScopeChangeActions
 }) {
-  const scopeChange = useWorkerV5ScopeChangeActions({
-    deal: runtime.state.deal,
-    language,
-    runtime,
-  })
   const primaryButtonFill = useMemo(
     () => !scopeChange.scopeSubmitDisabled ? <WorkerV5PrimaryButtonFill disabled={false} variant="source" /> : null,
     [scopeChange.scopeSubmitDisabled],

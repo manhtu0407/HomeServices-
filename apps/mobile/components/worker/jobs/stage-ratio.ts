@@ -17,6 +17,7 @@ export const STAGE_REFERENCE_SCALE = {
   travelWork: STAGE_REFERENCE_WIDTH / 446,
   evidence: STAGE_REFERENCE_WIDTH / 420,
   stageTen: (STAGE_REFERENCE_WIDTH - 32) / 366,
+  stageSix: STAGE_REFERENCE_WIDTH / 370,
   stageEleven: 1,
   requestDetails: STAGE_REFERENCE_WIDTH / 728,
 } as const

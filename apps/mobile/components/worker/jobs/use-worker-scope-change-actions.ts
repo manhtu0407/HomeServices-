@@ -16,6 +16,8 @@ import type { WorkerV5Runtime } from '../worker-v5-runtime'
 
 export type { WorkerV5Runtime } from '../worker-v5-runtime'
 
+export type WorkerV5ScopeChangeActions = ReturnType<typeof useWorkerV5ScopeChangeActions>
+
 export function useWorkerV5ScopeChangeActions({
   deal,
   hydrateIncident = true,
@@ -244,12 +246,21 @@ export function useWorkerV5ScopeChangeActions({
   }
 
   const attachScopePhotos = async () => {
-    const result = await ImagePicker.launchImageLibraryAsync({
-      allowsMultipleSelection: true,
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      quality: 0.84,
-      selectionLimit: 5,
-    })
+    let result: ImagePicker.ImagePickerResult
+    try {
+      result = await ImagePicker.launchImageLibraryAsync({
+        allowsMultipleSelection: true,
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        quality: 0.84,
+        selectionLimit: 5,
+      })
+    } catch {
+      updateScopeDraft((current) => ({
+        ...current,
+        mediaNotice: textByLanguage(language, 'Chưa thể mở ảnh lúc này. Vui lòng thử lại.', 'Photos could not be opened. Please try again.'),
+      }))
+      return
+    }
     if (result.canceled || result.assets.length === 0) return
     updateScopeDraft((current) => {
       const picked = result.assets.map((asset, index) => ({
@@ -295,6 +306,7 @@ export function useWorkerV5ScopeChangeActions({
     scopeEvidenceUrls,
     scopeMediaNotice,
     scopePhotos,
+    scopeProposing,
     scopeQuote,
     scopeQuoting,
     scopeReason,
