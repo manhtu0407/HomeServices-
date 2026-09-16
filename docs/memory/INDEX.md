@@ -57,6 +57,7 @@ If an entry is rebuilt after the fact rather than written during the session —
 
 | File | Period | Nature |
 |---|---|---|
+| [`2026-09.md`](2026-09.md) | September 2026 | first-hand |
 | [`2026-08.md`](2026-08.md) | August 2026 | first-hand from 2026-08-03 governance upgrade onward; earlier August entries reconstructed |
 | [`2026-07.md`](2026-07.md) | July 2026 | fully reconstructed 2026-08-03 from git + Plan.md |
 | [`2026-06.md`](2026-06.md) | June 2026 | first-hand |
