@@ -2953,18 +2953,23 @@ describe('Worker runtime surface wiring', () => {
     expect(screen.queryByText(/680\.000/)).toBeNull()
   })
 
-  it('uses generic system copy when no completion record exists', () => {
+  it('uses the approved full-screen stage with generic system copy when no completion record exists', async () => {
     buildWorkflow()
     mockRouteParams = { ns_worker_screen: '2.11-completion-submitted' }
 
     render(<WorkerJobsSurface />)
 
-    expect(screen.getByTestId('worker-v5-stage-nine-prototype')).toBeOnTheScreen()
-    expect(screen.getByTestId('worker-v5-stage-nine-hero')).toBeOnTheScreen()
+    expect(screen.getByTestId('worker-v5-stage-nine-empty')).toBeOnTheScreen()
     expect(screen.getByText('Chưa có hồ sơ đã gửi')).toBeOnTheScreen()
-    expect(screen.getByText('Chỉ hiện khi hệ thống ghi nhận hồ sơ hoàn tất.')).toBeOnTheScreen()
+    expect(screen.getByText('Mọi công việc tuyệt vời\nđều bắt đầu từ một hồ sơ.')).toBeOnTheScreen()
     expect(screen.queryByText(/NestScout/i)).toBeNull()
-    expect(screen.getByTestId('worker-v5-stage-nine-status-card')).toBeOnTheScreen()
+    expect(screen.queryByTestId('worker-v5-stage-nine-status-card')).toBeNull()
+    expect(screen.queryByTestId('worker-v5-back')).toBeNull()
+
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('worker-v5-stage-nine-empty-submit'))
+    })
+    expect(mockReplace).toHaveBeenCalledWith(expect.stringContaining('ns_worker_screen=2.10-completion-evidence'))
   })
 
   it('does not record payment or unlock settlement from completion confirmation alone', () => {

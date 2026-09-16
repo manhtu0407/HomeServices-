@@ -15,14 +15,37 @@ on:
 permissions:
   contents: read
 
-# Serialize local database runs so two jobs do not share a mutable stack.
+# Cancel obsolete PR runs; keep main and scheduled local database runs serialized.
 concurrency:
-  group: integration-local
-  cancel-in-progress: false
+  group: integration-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
+  changes:
+    name: classify changed paths
+    runs-on: ubuntu-latest
+    outputs:
+      integration: ${{ steps.classify.outputs.integration }}
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+      - id: classify
+        name: Classify dependency impact
+        env:
+          CI_EVENT: ${{ github.event_name }}
+          CI_BASE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
+          CI_HEAD_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+        run: node scripts/harness/classify-ci-changes.mjs
+
   integration:
     name: integration suite (local)
+    needs: changes
+    if: ${{ github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || needs.changes.outputs.integration == 'true' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4

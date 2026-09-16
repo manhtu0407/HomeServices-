@@ -128,6 +128,20 @@ describe('RFQ exact price public contract', () => {
     expect(await response.json()).toEqual({ job_id: JOB, quote_mode: 'rfq', proposal: approved })
     expect(client.calls.some(call => call.table === 'rpc:propose_rfq_price_atomic' || call.table === 'rpc:decide_rfq_price_atomic')).toBe(false)
   })
+  it('rehydrates the current Worker participant-bound proposal without any mutation', async () => {
+    const { run, client } = setup('worker', approved)
+    const response = await run('', undefined, 'GET')
+    expect(response.status).toBe(200)
+    expect(await response.json()).toEqual({ job_id: JOB, quote_mode: 'rfq', proposal: approved })
+    expect(client.calls.some(call => call.table === 'rpc:propose_rfq_price_atomic' || call.table === 'rpc:decide_rfq_price_atomic')).toBe(false)
+  })
+  it('denies an unbound Worker RFQ proposal without mutation', async () => {
+    const { run, client } = setup('worker', { ...approved, worker_id: CUSTOMER })
+    const response = await run('', undefined, 'GET')
+    expect(response.status).toBe(503)
+    expect(await response.json()).toMatchObject({ code: 'RFQ_PRICE_OUTCOME_UNKNOWN', reconcile_required: true })
+    expect(client.calls.some(call => call.table === 'rpc:propose_rfq_price_atomic' || call.table === 'rpc:decide_rfq_price_atomic')).toBe(false)
+  })
   it('returns an honest empty proposal before the Worker has sent one', async () => {
     const { run } = setup('customer', null)
     expect(await (await run('', undefined, 'GET')).json()).toEqual({ job_id: JOB, quote_mode: 'rfq', proposal: null })

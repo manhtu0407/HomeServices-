@@ -6,7 +6,15 @@ import { fileURLToPath } from 'node:url'
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const requireFromMobile = createRequire(resolve(ROOT, 'apps/mobile/package.json'))
-const ts = requireFromMobile('typescript')
+let typescriptModule = null
+
+// Loaded on first use, not at import: this module sits in the release-control import graph, and the
+// hourly reconcile action runs in a job with no workspace install, where a module-level require
+// fails before any action can run.
+function typescriptApi() {
+  typescriptModule ??= requireFromMobile('typescript')
+  return typescriptModule
+}
 const SOURCE_ROOTS = Object.freeze([
   'apps/mobile/app',
   'apps/mobile/components',
@@ -41,6 +49,7 @@ const COMMON_ENGLISH_WORDS = new Set([
 ])
 
 export function auditProductionUiCopy(rootInput = ROOT) {
+  const ts = typescriptApi()
   const root = resolve(rootInput)
   const files = SOURCE_ROOTS.flatMap((entry) => collectSourceFiles(root, entry)).sort()
   if (files.length === 0) throw new Error('production UI copy audit found no runtime source files')
@@ -152,6 +161,7 @@ export function verifyProductionUiNormalityReceipt(receipt) {
 }
 
 function isTextByLanguageCall(node) {
+  const ts = typescriptApi()
   if (node.arguments.length < 3) return false
   const expression = node.expression
   if (ts.isIdentifier(expression)) return expression.text === 'textByLanguage'
@@ -159,6 +169,7 @@ function isTextByLanguageCall(node) {
 }
 
 function conditionalLanguageSlots(node) {
+  const ts = typescriptApi()
   const condition = unwrapExpression(node.condition)
   if (!ts.isBinaryExpression(condition)) return null
   const operator = condition.operatorToken.kind
@@ -177,6 +188,7 @@ function conditionalLanguageSlots(node) {
 }
 
 function objectLanguageSlots(node) {
+  const ts = typescriptApi()
   let vi = null
   let en = null
   for (const property of node.properties) {
@@ -189,15 +201,18 @@ function objectLanguageSlots(node) {
 }
 
 function propertyName(node) {
+  const ts = typescriptApi()
   if (ts.isIdentifier(node) || ts.isStringLiteralLike(node)) return node.text
   return null
 }
 
 function localeLiteral(node) {
+  const ts = typescriptApi()
   return ts.isStringLiteralLike(node) && (node.text === 'vi' || node.text === 'en') ? node.text : null
 }
 
 function isLanguageSelector(node) {
+  const ts = typescriptApi()
   const expression = unwrapExpression(node)
   if (ts.isIdentifier(expression)) return /(?:language|locale)$/iu.test(expression.text)
   if (ts.isPropertyAccessExpression(expression)) return /(?:language|locale)$/iu.test(expression.name.text)
@@ -209,6 +224,7 @@ function oppositeLanguage(language) {
 }
 
 function unwrapExpression(node) {
+  const ts = typescriptApi()
   let current = node
   while (ts.isParenthesizedExpression(current) || ts.isAsExpression(current) ||
       ts.isTypeAssertionExpression(current) || ts.isNonNullExpression(current)) current = current.expression
@@ -216,6 +232,7 @@ function unwrapExpression(node) {
 }
 
 function staticTextLiterals(node) {
+  const ts = typescriptApi()
   const literals = []
   const visit = (current) => {
     if (ts.isStringLiteralLike(current) || ts.isTemplateHead(current) ||
@@ -281,12 +298,14 @@ function collectSourceFiles(root, entry) {
 }
 
 function visibleLiteralValue(node) {
+  const ts = typescriptApi()
   if (ts.isJsxText(node) || ts.isStringLiteralLike(node) ||
       ts.isTemplateHead(node) || ts.isTemplateMiddle(node) || ts.isTemplateTail(node)) return node.text
   return null
 }
 
 function likelyVisible(node, value) {
+  const ts = typescriptApi()
   if (/\s/u.test(value)) return true
   for (let current = node.parent; current; current = current.parent) {
     if (ts.isJsxAttribute(current)) {

@@ -142,6 +142,8 @@ export function WorkerJobsLegacyPrototypeBody(props: WorkerJobsLegacyPrototypeBo
           language={props.language}
           navigateNext={props.navigateNext}
           navigateToEvidence={() => props.navigateToScreen('2.10-completion-evidence')}
+          prototypeMode={props.prototypeMode}
+          reduceMotion={props.reduceMotion}
           reduceTransparency={props.reduceTransparency}
           runtime={props.runtime}
         />

@@ -119,4 +119,30 @@ describe('baseline failure observation contract', () => {
       pillarWhy(PILLAR, 'a failed stage still closes its provider-spend accounting path'),
     ).toHaveBeenCalledOnce()
   })
+
+  it('does not invent an intake observation when classification produced none', async () => {
+    const prepared = preparedPipeline()
+    const result = await runKaelBaselineStage(prepared, {
+      parallelRun: failedParallelRun(),
+      effectiveComplexity: 'medium',
+      referenceComplexity: 'medium',
+      mergedSafetySignals: [],
+      intakeObservation: undefined,
+    })
+
+    expect(
+      result.ok,
+      pillarWhy(PILLAR, 'a missing intake observation must not turn an unavailable baseline into success'),
+    ).toBe(false)
+    if (result.ok) throw new Error(pillarWhy(PILLAR, 'expected the baseline stage to return a failure result'))
+    expect(result.failure, pillarWhy(PILLAR, 'the failure branch must not fabricate a prior observation')).toMatchObject({
+      success: false,
+      code: 'NO_BASELINE',
+    })
+    expect(result.failure.intakeObservation, pillarWhy(PILLAR, 'an absent observation must remain absent')).toBeUndefined()
+    expect(
+      prepared.recordProviderSpendIfEnforced,
+      pillarWhy(PILLAR, 'a failed stage still closes its provider-spend accounting path'),
+    ).toHaveBeenCalledOnce()
+  })
 })

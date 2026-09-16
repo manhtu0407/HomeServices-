@@ -8,9 +8,44 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: harness-assurance-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
+  changes:
+    name: classify changed paths
+    runs-on: ubuntu-latest
+    outputs:
+      frontend: ${{ steps.classify.outputs.frontend }}
+      backend: ${{ steps.classify.outputs.backend }}
+      shared: ${{ steps.classify.outputs.shared }}
+      database: ${{ steps.classify.outputs.database }}
+      harness: ${{ steps.classify.outputs.harness }}
+      sandbox: ${{ steps.classify.outputs.sandbox }}
+      workspace: ${{ steps.classify.outputs.workspace }}
+      workspace_full: ${{ steps.classify.outputs.workspace_full }}
+      runtime: ${{ steps.classify.outputs.runtime }}
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+      - id: classify
+        name: Classify dependency impact
+        env:
+          CI_EVENT: ${{ github.event_name }}
+          CI_BASE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
+          CI_HEAD_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+        run: node scripts/harness/classify-ci-changes.mjs
+
   repository-controls:
     name: manifest, environment, capability, release, evaluation, reliability, promotion
+    needs: changes
+    if: ${{ needs.changes.result == 'success' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
@@ -30,6 +65,8 @@ jobs:
 
   governance-controls:
     name: source residue, protocol routes, work-router coverage, and script fixtures
+    needs: changes
+    if: ${{ needs.changes.result == 'success' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
@@ -56,6 +93,8 @@ jobs:
 
   runtime-controls:
     name: API and Edge runtime controls
+    needs: changes
+    if: ${{ needs.changes.outputs.runtime == 'true' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
@@ -91,7 +130,9 @@ jobs:
         run: node scripts/lint-structure.mjs
 
   workspace-gates:
-    name: whole workspace type-check, test, and build
+    name: affected workspace type-check, test, and build
+    needs: changes
+    if: ${{ needs.changes.outputs.workspace == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
@@ -104,15 +145,32 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - name: Whole workspace type-check
-        run: pnpm exec turbo --root-turbo-json config/turbo/turbo.json type-check
-      - name: Whole workspace tests
-        run: pnpm exec turbo --root-turbo-json config/turbo/turbo.json test
-      - name: Whole workspace build
-        run: pnpm exec turbo --root-turbo-json config/turbo/turbo.json build
+      - name: Focused mobile checks
+        if: ${{ needs.changes.outputs.frontend == 'true' && needs.changes.outputs.workspace_full != 'true' }}
+        run: |
+          pnpm type-check:mobile
+          pnpm test:mobile --runInBand
+      - name: Focused API checks
+        if: ${{ needs.changes.outputs.backend == 'true' && needs.changes.outputs.workspace_full != 'true' }}
+        run: |
+          pnpm type-check:api
+          pnpm test:api
+      - name: Focused sandbox checks
+        if: ${{ needs.changes.outputs.sandbox == 'true' && needs.changes.outputs.workspace_full != 'true' }}
+        run: |
+          pnpm sandbox:type-check
+          pnpm sandbox:test
+      - name: Full affected workspace gates
+        if: ${{ needs.changes.outputs.workspace_full == 'true' }}
+        run: |
+          pnpm exec turbo --root-turbo-json config/turbo/turbo.json type-check
+          pnpm exec turbo --root-turbo-json config/turbo/turbo.json test
+          pnpm exec turbo --root-turbo-json config/turbo/turbo.json build
 
   database-controls:
     name: empty reset, SQL actor matrix, and generated types
+    needs: changes
+    if: ${{ needs.changes.outputs.database == 'true' || needs.changes.outputs.harness == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:

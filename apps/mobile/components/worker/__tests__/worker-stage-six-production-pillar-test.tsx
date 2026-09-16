@@ -210,7 +210,7 @@ describe('Worker Stage 6 Production Timeline Card', () => {
 
     withPillarContext(PILLAR, () => {
       expect(flowSource).toContain("const usesStageSixProduction = screen.id === '2.8-scope-change' && scopeMode !== 'edit'")
-      expect(flowSource).toContain('usesStageSixProduction || usesStageFiveProduction || usesStageEightProduction ||')
+      expect(flowSource).toContain('{usesStageSixProduction ||')
     }, 'the Timeline Card opens without the shared back/title/subtitle header, while the scope editor keeps it as its only exit')
 
     withPillarContext(PILLAR, () => {
