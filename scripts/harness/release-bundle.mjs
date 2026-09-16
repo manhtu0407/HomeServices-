@@ -9,7 +9,15 @@ import { auditProductionUiCopy } from '../check-production-ui-copy.mjs'
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..')
 const requireFromMobile = createRequire(resolve(ROOT, 'apps/mobile/package.json'))
-const ts = requireFromMobile('typescript')
+let typescriptModule = null
+
+// Loaded on first use, not at import: release-control imports this module, and its hourly reconcile
+// action runs in a job with no workspace install, where a module-level require fails before any
+// action can run.
+function typescriptApi() {
+  typescriptModule ??= requireFromMobile('typescript')
+  return typescriptModule
+}
 const OUTPUT = 'artifacts/harness/release-manifest.json'
 const ENVIRONMENTS = new Set(['local', 'preview', 'staging', 'production'])
 const SOURCE_EXTENSIONS = ['.ts', '.tsx', '.js', '.mjs', '.json']
@@ -357,6 +365,7 @@ function collectImportClosure(root, entryPath) {
 }
 
 function runtimeModuleAnalysis(file, source) {
+  const ts = typescriptApi()
   const sourceFile = ts.createSourceFile(
     file,
     source,
@@ -393,6 +402,7 @@ function runtimeModuleAnalysis(file, source) {
 }
 
 function isRuntimeImport(clause) {
+  const ts = typescriptApi()
   if (!clause) return true
   if (clause.isTypeOnly) return false
   if (clause.name) return true
@@ -404,18 +414,21 @@ function isRuntimeImport(clause) {
 }
 
 function isRuntimeExport(statement) {
+  const ts = typescriptApi()
   if (!statement.moduleSpecifier || statement.isTypeOnly) return false
   if (!statement.exportClause || ts.isNamespaceExport(statement.exportClause)) return true
   return statement.exportClause.elements.some((element) => !element.isTypeOnly)
 }
 
 function addLocalModule(values, expression) {
+  const ts = typescriptApi()
   if (expression && ts.isStringLiteralLike(expression) && expression.text.startsWith('.')) {
     values.push(expression.text)
   }
 }
 
 function hasDeclareModifier(statement) {
+  const ts = typescriptApi()
   return statement.modifiers?.some((modifier) => modifier.kind === ts.SyntaxKind.DeclareKeyword) === true
 }
 
