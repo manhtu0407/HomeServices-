@@ -1128,6 +1128,7 @@ it('records arrival before continuing to the in-progress screen', async () => {
     }))
     mockRouteParams = { ns_scope_mode: 'edit', ns_worker_screen: '2.8-scope-change' }
     render(<WorkerJobsSurface />)
+    expect(screen.getByTestId('worker-v5-back')).toBeOnTheScreen()
     fireEvent.changeText(screen.getByTestId('worker-scope-change-new-description-input'), 'Cần thay dây cháy tại ổ cắm.')
     fireEvent.changeText(screen.getByTestId('worker-scope-change-reason-input'), 'Dây bên trong đã cháy do quá nhiệt.')
     const submitButton = screen.getByTestId('worker-scope-change-confirm-submit')
@@ -1320,10 +1321,57 @@ it('records arrival before continuing to the in-progress screen', async () => {
 
     render(<WorkerJobsSurface />)
 
+    expect(screen.queryByTestId('worker-v5-back')).toBeNull()
     const primaryAction = screen.getByTestId('worker-v5-stage-six-primary-action')
     expect(primaryAction).toBeDisabled()
     fireEvent.press(primaryAction)
     expect(mockReplace).not.toHaveBeenCalled()
+  })
+
+  it('uploads photos picked from the Timeline Card attachment tile with the scope report', async () => {
+    const deal = buildInProgressDeal()
+    const jobId = '22222222-2222-4222-8222-222222222222'
+    const scopeEvidenceRef = `supabase://job-media/${jobId}/scope_change_evidence/burnt-wire.jpg`
+    deal.id = jobId
+    if (deal.broadcast) deal.broadcast.jobId = jobId
+    buildWorkflow(deal)
+    imagePicker.launchImageLibraryAsync.mockResolvedValue({
+      assets: [{ fileName: 'burnt-wire.jpg', uri: 'file:///burnt-wire.jpg' }],
+      canceled: false,
+    })
+    mediaUpload.uploadJobMediaDrafts.mockResolvedValue({
+      mediaRefs: [scopeEvidenceRef],
+      success: true,
+    })
+    mockRouteParams = { ns_worker_screen: '2.8-scope-change' }
+
+    render(<WorkerJobsSurface />)
+    expect(screen.getByText('Chưa có')).toBeOnTheScreen()
+    fireEvent.press(screen.getByTestId('worker-v5-stage-six-attachment'))
+
+    await waitFor(() => {
+      expect(screen.getByText('1 tệp đính kèm')).toBeOnTheScreen()
+    })
+    expect(imagePicker.launchImageLibraryAsync).toHaveBeenCalledWith(expect.objectContaining({ selectionLimit: 5 }))
+    expect(mediaUpload.uploadJobMediaDrafts).not.toHaveBeenCalled()
+
+    fireEvent.press(screen.getByTestId('worker-v5-stage-six-edit-action'))
+    fireEvent.changeText(screen.getByTestId('worker-scope-change-new-description-input'), 'Cần thay dây cháy tại ổ cắm.')
+    fireEvent.changeText(screen.getByTestId('worker-scope-change-reason-input'), 'Dây bên trong đã cháy do quá nhiệt.')
+    fireEvent.press(screen.getByTestId('worker-scope-change-confirm-submit'))
+
+    await waitFor(() => {
+      expect(mediaUpload.uploadJobMediaDrafts).toHaveBeenCalledWith(
+        jobId,
+        [expect.objectContaining({ fileName: 'burnt-wire.jpg', type: 'image', uri: 'file:///burnt-wire.jpg' })],
+        'scope_change_evidence',
+      )
+    })
+    await waitFor(() => {
+      expect(mockWorkflowValue.actions.openKaelJobIncident).toHaveBeenCalledWith(expect.objectContaining({
+        photo_urls: [scopeEvidenceRef],
+      }))
+    })
   })
 
   it('keeps approval wait inert until the customer decides on the real proposal', () => {

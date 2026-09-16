@@ -109,6 +109,7 @@ export function WorkerJobsLegacyPrototypeBody(props: WorkerJobsLegacyPrototypeBo
           language={props.language}
           navigateJobChat={props.navigateJobChat}
           navigateNext={props.navigateNext}
+          reduceMotion={props.reduceMotion}
           reduceTransparency={props.reduceTransparency}
           runtime={props.runtime}
         />
