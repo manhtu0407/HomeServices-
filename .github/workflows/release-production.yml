@@ -98,9 +98,9 @@ jobs:
           pnpm skills:contracts
           pnpm runners:check
           pnpm doctor:react
-      - name: Require executed transaction behavior before release mutation
+      - name: Require all bound transaction assertions before release mutation
         run: |
-          node scripts/harness/transaction-critical-coverage.mjs --require-behavioral \
+          node scripts/harness/transaction-critical-coverage.mjs --require-bound-assertions \
             --results artifacts/transactions/api-vitest.json \
             --results artifacts/transactions/mobile-jest.json
       - name: Preserve transaction runner evidence, including failures

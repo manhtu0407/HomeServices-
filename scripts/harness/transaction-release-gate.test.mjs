@@ -118,7 +118,7 @@ function hasRequiredGate(source, mode) {
 
 for (const [workflow, mode] of [
   ['kael-agentic-completeness.yml', '--require-bound-assertions'],
-  ['release-production.yml', '--require-behavioral'],
+  ['release-production.yml', '--require-bound-assertions'],
 ]) {
   test(`${workflow} requires fresh API and mobile assertions for its evidence gate`, () => {
     const source = readFileSync(resolve(root, '.github/workflows', workflow), 'utf8')
@@ -126,7 +126,8 @@ for (const [workflow, mode] of [
     assert.equal(hasRequiredGate(source.replace(mode, ''), mode), false)
     assert.equal(hasRequiredGate(source.replace('--reporter=json', ''), mode), false)
     if (workflow === 'release-production.yml') {
-      assert.ok(source.indexOf('--require-behavioral') < source.indexOf('  production-release:'))
+      assert.ok(source.indexOf('--require-bound-assertions') < source.indexOf('  production-release:'))
+      assert.doesNotMatch(source, /transaction-critical-coverage\.mjs --require-behavioral/u)
       assert.match(source, /production-release:[\s\S]*?needs: quality/u)
     }
   })
