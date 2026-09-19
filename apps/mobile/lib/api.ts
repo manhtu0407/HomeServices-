@@ -4,6 +4,7 @@ import { Platform } from 'react-native'
 import { supabase } from './supabase'
 import { mobileRuntimeConfig } from './runtime-config'
 import { generateClientRequestId } from './client-request-id'
+import { createDevelopmentProductionPreviewCompatibilityHeaders } from './production-preview-client-compatibility'
 import type { ApiResponseMetadata } from './api-types/shared'
 import {
   readResponseTextBounded,
@@ -33,6 +34,11 @@ const KAEL_CHAT_CONFIRM_PATH = /^\/kael\/chat\/[^/]+\/confirm$/
 const KAEL_CHAT_INTAKE_CONFIRMATION_PATH = /^\/kael\/chat\/[^/]+\/intake-confirmation$/
 const CUSTOMER_KAEL_TURN_PATH = /^\/me\/kael\/conversations\/[^/]+\/turn$/
 const SCOPE_CHANGE_PREVIEW_PATH = /^\/jobs\/[^/]+\/kael-incident\/preview-scope$/
+const PRODUCTION_PREVIEW_HEADER_CACHE_MS = 30_000
+const FAILED_PRODUCTION_PREVIEW_HEADER_CACHE_MS = 3_000
+
+let productionPreviewHeadersCache: { headers: Record<string, string>; expiresAt: number } | null = null
+let pendingProductionPreviewHeaders: Promise<Record<string, string>> | null = null
 
 export type ApiResult<T> =
   | { success: true; data: T; status: number; meta?: ApiResponseMetadata }
@@ -110,7 +116,7 @@ async function request<T>(
     try {
       const authHeaders = accessToken === undefined
         ? await waitForAbort(getMobileApiAuthHeaders(), controller.signal)
-        : createMobileApiHeaders(accessToken)
+        : await waitForAbort(createMobileApiHeaders(accessToken), controller.signal)
       const headers = idempotencyKey
         ? { ...authHeaders, 'Idempotency-Key': idempotencyKey }
         : authHeaders
@@ -271,10 +277,10 @@ export const api = {
   },
 }
 
-function createMobileApiHeaders(accessToken?: string): Record<string, string> {
+async function createMobileApiHeaders(accessToken?: string): Promise<Record<string, string>> {
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
-    ...createClientReleaseHeaders(),
+    ...await createClientReleaseHeaders(),
   }
   if (SUPABASE_PUBLISHABLE_KEY) {
     headers.apikey = SUPABASE_PUBLISHABLE_KEY
@@ -385,7 +391,7 @@ function idempotencyKeyForRequest(method: string, body: unknown, explicitKey?: s
   return `mobile:${method.toLowerCase()}:${generateClientRequestId()}`
 }
 
-function createClientReleaseHeaders() {
+async function createClientReleaseHeaders() {
   const runtimeBuildInfo = mobileRuntimeConfig.runtimeBuildInfo as typeof mobileRuntimeConfig.runtimeBuildInfo & {
     releaseId?: string
   }
@@ -402,7 +408,7 @@ function createClientReleaseHeaders() {
     : Platform.OS === 'android'
       ? Constants.expoConfig?.android?.package
       : null
-  return {
+  const runtimeHeaders = {
     ...(Platform.OS === 'ios' || Platform.OS === 'android'
       ? { 'x-client-platform': Platform.OS }
       : {}),
@@ -416,6 +422,36 @@ function createClientReleaseHeaders() {
     ...(gitSha ? { 'x-client-git-sha': gitSha } : {}),
     ...(releaseId ? { 'x-client-release-id': releaseId } : {}),
   }
+  if (Platform.OS !== 'web') return runtimeHeaders
+  return { ...runtimeHeaders, ...await getDevelopmentProductionPreviewHeaders() }
+}
+
+function getDevelopmentProductionPreviewHeaders(): Promise<Record<string, string>> {
+  const now = Date.now()
+  if (productionPreviewHeadersCache && productionPreviewHeadersCache.expiresAt > now) {
+    return Promise.resolve(productionPreviewHeadersCache.headers)
+  }
+  if (pendingProductionPreviewHeaders) return pendingProductionPreviewHeaders
+
+  const runtime = globalThis as typeof globalThis & { location?: { hostname?: string } }
+  pendingProductionPreviewHeaders = createDevelopmentProductionPreviewCompatibilityHeaders({
+    development: typeof __DEV__ !== 'undefined' && __DEV__,
+    platform: Platform.OS,
+    hostname: runtime.location?.hostname ?? '',
+    apiBaseUrl: API_BASE_URL,
+    publishableKey: SUPABASE_PUBLISHABLE_KEY,
+  })
+  return pendingProductionPreviewHeaders.then((headers) => {
+    productionPreviewHeadersCache = {
+      headers,
+      expiresAt: Date.now() + (Object.keys(headers).length
+        ? PRODUCTION_PREVIEW_HEADER_CACHE_MS
+        : FAILED_PRODUCTION_PREVIEW_HEADER_CACHE_MS),
+    }
+    return headers
+  }).finally(() => {
+    pendingProductionPreviewHeaders = null
+  })
 }
 
 function safeNumericHeader(value: string | null | undefined) {

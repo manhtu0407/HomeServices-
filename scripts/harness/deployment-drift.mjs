@@ -14,6 +14,12 @@ const PROJECT_REFS = Object.freeze({
   staging: 'xyylanuyflrjzbjzhqfl',
   production: 'iwevizmsedyqozxlawwl',
 })
+const RELEASE_ID = /^harness-[0-9a-f]{12}-[0-9a-f]{12}$/u
+const GIT_SHA = /^[0-9a-f]{40}$/u
+const DEPLOYMENT_ID = new RegExp(
+  `^${PROJECT_REFS.production}_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}_[1-9][0-9]*$`,
+  'u',
+)
 
 export async function collectHostedDeploymentState(input) {
   if (input?.environment !== 'production' || input.projectRef !== PROJECT_REFS.production) {
@@ -32,7 +38,24 @@ export async function collectHostedDeploymentState(input) {
     'content-type': 'application/json',
   }
 
-  const health = await fetchJson(fetchImpl, `${projectOrigin}/functions/v1/mobile-api/harness/health`)
+  const healthResponse = await fetchImpl(`${projectOrigin}/functions/v1/mobile-api/harness/health`)
+  let health = null
+  let runtimeHealth
+  if (healthResponse?.ok) {
+    health = await healthResponse.json()
+    if (!isRegisteredProductionHealth(health, input.projectRef)) {
+      throw new Error('hosted runtime health payload is not release-ready')
+    }
+    runtimeHealth = { status: 'healthy', httpStatus: healthResponse.status ?? 200 }
+  } else if (
+    input.allowUnhealthyRuntimeBaseline === true &&
+    Number.isInteger(healthResponse?.status) &&
+    healthResponse.status >= 500 && healthResponse.status <= 599
+  ) {
+    runtimeHealth = { status: 'unhealthy', httpStatus: healthResponse.status }
+  } else {
+    throw new Error(`hosted runtime health request failed with HTTP ${healthResponse?.status ?? 'unknown'}`)
+  }
   const functions = await fetchJson(fetchImpl, `${managementOrigin}/functions`, {
     headers: managementHeaders,
   })
@@ -47,6 +70,74 @@ export async function collectHostedDeploymentState(input) {
     headers: managementHeaders,
     body: JSON.stringify({
       query: 'select version, name from supabase_migrations.schema_migrations order by version',
+      parameters: [],
+    }),
+  })
+  const releaseControlSchemaResult = await fetchJson(fetchImpl, `${managementOrigin}/database/query/read-only`, {
+    method: 'POST',
+    headers: managementHeaders,
+    body: JSON.stringify({
+      query: `
+select
+  to_regclass('public.harness_releases') is not null as harness_release_ledger_table,
+  to_regclass('public.stage1_release_controls') is not null as stage1_release_controls_table,
+  to_regclass('public.stage1_synthetic_smoke_receipts') is not null as stage1_synthetic_smoke_receipts_table,
+  to_regclass('public.stage1_release_control_events') is not null as stage1_release_control_events_table,
+  to_regclass('public.stage1_release_control_events_id_seq') is not null as stage1_release_control_events_sequence,
+  to_regclass('public.stage1_source_deployment_attestations') is not null as stage1_source_deployment_attestations_table,
+  to_regclass('public.stage1_smoke_deployment_attestations') is not null as stage1_smoke_deployment_attestations_table,
+  exists (select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+    where n.nspname = 'public' and p.proname = 'reject_stage1_release_evidence_mutation')
+    as reject_stage1_release_evidence_mutation_function,
+  exists (select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+    where n.nspname = 'public' and p.proname = 'configure_stage1_release_canary')
+    as configure_stage1_release_canary_function,
+  exists (select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+    where n.nspname = 'public' and p.proname = 'resolve_stage1_release_lane')
+    as resolve_stage1_release_lane_function,
+  exists (select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+    where n.nspname = 'public' and p.proname = 'record_stage1_synthetic_smoke')
+    as record_stage1_synthetic_smoke_function,
+  exists (select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+    where n.nspname = 'public' and p.proname = 'promote_stage1_release_atomic')
+    as promote_stage1_release_atomic_function,
+  exists (select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+    where n.nspname = 'public' and p.proname = 'abort_stage1_release_canary')
+    as abort_stage1_release_canary_function,
+  exists (select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+    where n.nspname = 'public' and p.proname = 'reconcile_stale_stage1_release_canary')
+    as reconcile_stale_stage1_release_canary_function,
+  exists (select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+    where n.nspname = 'public' and p.proname = 'rollback_stage1_active_release_atomic')
+    as rollback_stage1_active_release_atomic_function,
+  exists (select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+    where n.nspname = 'public' and p.proname = 'attest_stage1_source_deployment')
+    as attest_stage1_source_deployment_function,
+  exists (select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+    where n.nspname = 'public' and p.proname = 'record_stage1_attested_synthetic_smoke')
+    as record_stage1_attested_synthetic_smoke_function,
+  exists (select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+    where n.nspname = 'public' and p.proname = 'resolve_stage1_release_lane_attested')
+    as resolve_stage1_release_lane_attested_function,
+  exists (select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+    where n.nspname = 'public' and p.proname = 'promote_stage1_release_attested_atomic')
+    as promote_stage1_release_attested_atomic_function,
+  exists (select 1 from pg_trigger t join pg_class c on c.oid = t.tgrelid
+    join pg_namespace n on n.oid = c.relnamespace
+    where n.nspname = 'public' and not t.tgisinternal and t.tgname = 'stage1_synthetic_smoke_receipts_append_only')
+    as stage1_synthetic_smoke_receipts_trigger,
+  exists (select 1 from pg_trigger t join pg_class c on c.oid = t.tgrelid
+    join pg_namespace n on n.oid = c.relnamespace
+    where n.nspname = 'public' and not t.tgisinternal and t.tgname = 'stage1_release_control_events_append_only')
+    as stage1_release_control_events_trigger,
+  exists (select 1 from pg_trigger t join pg_class c on c.oid = t.tgrelid
+    join pg_namespace n on n.oid = c.relnamespace
+    where n.nspname = 'public' and not t.tgisinternal and t.tgname = 'stage1_source_deployment_attestations_append_only')
+    as stage1_source_deployment_attestations_trigger,
+  exists (select 1 from pg_trigger t join pg_class c on c.oid = t.tgrelid
+    join pg_namespace n on n.oid = c.relnamespace
+    where n.nspname = 'public' and not t.tgisinternal and t.tgname = 'stage1_smoke_deployment_attestations_append_only')
+    as stage1_smoke_deployment_attestations_trigger`,
       parameters: [],
     }),
   })
@@ -121,8 +212,9 @@ order by object_kind, schema_name, relation_name, object_name`,
 
   const release = health?.release ?? {}
   return {
+    runtimeHealth,
     environment: health?.environment?.name ?? input.environment,
-    projectRef: health?.environment?.project_ref ?? null,
+    projectRef: health?.environment?.project_ref ?? input.projectRef,
     releaseId: release.release_id ?? null,
     deploymentId: release.deployment_id ?? null,
     gitSha: release.git_sha ?? null,
@@ -139,6 +231,7 @@ order by object_kind, schema_name, relation_name, object_name`,
     providerReadiness: release.provider_readiness ?? null,
     clientCompatibility: release.client_compatibility ?? null,
     migrations: normalizeRows(migrationResult),
+    releaseControlSchema: normalizeRows(releaseControlSchemaResult)[0] ?? null,
     migrationObjectPreconditions: normalizeRows(migrationObjectPreconditionResult),
     managedEdgeFunctions: Object.fromEntries(normalizeRows(functions).map((item) => {
       const detail = functionDetails.get(item.slug) ?? item
@@ -155,6 +248,17 @@ order by object_kind, schema_name, relation_name, object_name`,
     }).filter(([slug]) => slug)),
     evidenceSource: 'hosted-api-and-readonly-sql',
   }
+}
+
+function isRegisteredProductionHealth(value, projectRef) {
+  const release = value?.release
+  return value?.status === 'ok' &&
+    value?.environment?.name === 'production' &&
+    value?.environment?.project_ref === projectRef &&
+    release?.registered === true &&
+    RELEASE_ID.test(release?.release_id ?? '') &&
+    GIT_SHA.test(release?.git_sha ?? '') &&
+    DEPLOYMENT_ID.test(release?.deployment_id ?? '')
 }
 
 export function compareDeploymentState(input) {

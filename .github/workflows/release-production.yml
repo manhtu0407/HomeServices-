@@ -22,6 +22,7 @@ jobs:
     environment: production
     env:
       PRODUCTION_PROJECT_REF: iwevizmsedyqozxlawwl
+      PRODUCTION_PROJECT_URL: https://iwevizmsedyqozxlawwl.supabase.co
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
         with:
@@ -29,14 +30,25 @@ jobs:
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 22
+      - name: Collect read-only Production baseline for stale-candidate reconciliation
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: |
+          mkdir -p artifacts/release
+          node scripts/harness/hosted-state.mjs \
+            --environment production \
+            --project-ref "$PRODUCTION_PROJECT_REF" \
+            --project-url "$PRODUCTION_PROJECT_URL" \
+            --allow-unhealthy-runtime-baseline \
+            --output artifacts/release/stale-reconcile-hosted.json
       - name: CAS-reconcile only a server-proven stale candidate
         env:
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.PRODUCTION_SUPABASE_SERVICE_ROLE_KEY }}
         run: |
-          mkdir -p artifacts/release
           node scripts/harness/release-control.mjs \
             --action reconcile-stale --environment production \
             --project-ref "$PRODUCTION_PROJECT_REF" \
+            --hosted-state artifacts/release/stale-reconcile-hosted.json \
             > artifacts/release/stale-reconcile.json
       - name: Upload stale-candidate reconciliation evidence
         if: always()
@@ -295,6 +307,7 @@ jobs:
             --environment production \
             --project-ref "$PRODUCTION_PROJECT_REF" \
             --project-url "$PRODUCTION_PROJECT_URL" \
+            --allow-unhealthy-runtime-baseline \
             --output artifacts/release/hosted-before.json
       - name: Reconcile a stale cancelled candidate before starting a new release
         env:
@@ -303,6 +316,7 @@ jobs:
           node scripts/harness/release-control.mjs \
             --action reconcile-stale --environment production \
             --project-ref "$PRODUCTION_PROJECT_REF" \
+            --hosted-state artifacts/release/hosted-before.json \
             > artifacts/release/stale-preflight.json
           node -e "const r=require('./artifacts/release/stale-preflight.json');if(r.mode==='candidate_not_stale')process.exit(1)"
       - name: Download and bind rollback_source
@@ -324,6 +338,7 @@ jobs:
             --environment production \
             --project-ref "$PRODUCTION_PROJECT_REF" \
             --project-url "$PRODUCTION_PROJECT_URL" \
+            --allow-unhealthy-runtime-baseline \
             --output artifacts/release/hosted-rollback-snapshot.json
           node -e "const a=require('./artifacts/release/hosted-before.json');const b=require('./artifacts/release/hosted-rollback-snapshot.json');for(const n of ['mobile-api','kael-matching-maintainer']){const x=a.managedEdgeFunctions[n];const y=b.managedEdgeFunctions[n];if(a.releaseId!==b.releaseId||x.version!==y.version||x.ezbr_sha256!==y.ezbr_sha256||x.verify_jwt!==y.verify_jwt||x.import_map!==y.import_map||x.entrypoint_path!==y.entrypoint_path||x.import_map_path!==y.import_map_path)process.exit(1)}"
           rollback_mobile_source_sha=$(node scripts/harness/edge-source-proof.mjs \
@@ -384,6 +399,7 @@ jobs:
             --environment production \
             --project-ref "$PRODUCTION_PROJECT_REF" \
             --project-url "$PRODUCTION_PROJECT_URL" \
+            --allow-unhealthy-runtime-baseline \
             --output artifacts/release/hosted-after-migrations.json
           node scripts/harness/assert-expand-only.mjs \
             --environment production \
@@ -692,6 +708,7 @@ jobs:
                 --environment production \
                 --project-ref "$PRODUCTION_PROJECT_REF" \
                 --project-url "$PRODUCTION_PROJECT_URL" \
+                --allow-unhealthy-runtime-baseline \
                 --output artifacts/release/hosted-after-rollback.json; then
               current_binding_output=$(node scripts/harness/runtime-release-bindings.mjs \
                 --hosted artifacts/release/hosted-after-rollback.json) || current_binding_output=invalid

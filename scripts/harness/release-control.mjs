@@ -9,8 +9,36 @@ import { verifySyntheticSmokeReceiptChecksum } from '../../apps/api/scripts/lib/
 import { verifyStage1PromotionPacket } from './stage1-promotion-packet.mjs'
 import { verifyEdgeSourceProof } from './edge-source-proof.mjs'
 import { verifyStage1StagingValidationPacket } from './stage1-staging-validation-packet.mjs'
+import { canonicalMigrationEntries, resolveHostedMigrationState } from './migration-history.mjs'
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..')
+const MIGRATION_INVENTORY = JSON.parse(readFileSync(resolve(ROOT, 'config/harness/migration-inventory.json'), 'utf8'))
+const RELEASE_LEDGER_MIGRATION = '20260806121000'
+const RELEASE_CONTROL_MIGRATION = '20260823130000'
+const ABSENT_RELEASE_CONTROL_FLAGS = Object.freeze([
+  'stage1_release_controls_table',
+  'stage1_synthetic_smoke_receipts_table',
+  'stage1_release_control_events_table',
+  'stage1_release_control_events_sequence',
+  'stage1_source_deployment_attestations_table',
+  'stage1_smoke_deployment_attestations_table',
+  'reject_stage1_release_evidence_mutation_function',
+  'configure_stage1_release_canary_function',
+  'resolve_stage1_release_lane_function',
+  'record_stage1_synthetic_smoke_function',
+  'promote_stage1_release_atomic_function',
+  'abort_stage1_release_canary_function',
+  'reconcile_stale_stage1_release_canary_function',
+  'rollback_stage1_active_release_atomic_function',
+  'attest_stage1_source_deployment_function',
+  'record_stage1_attested_synthetic_smoke_function',
+  'resolve_stage1_release_lane_attested_function',
+  'promote_stage1_release_attested_atomic_function',
+  'stage1_synthetic_smoke_receipts_trigger',
+  'stage1_release_control_events_trigger',
+  'stage1_source_deployment_attestations_trigger',
+  'stage1_smoke_deployment_attestations_trigger',
+])
 const ACTIONS = new Set(['abort', 'configure', 'promote', 'read', 'reconcile-stale', 'record', 'recover', 'register'])
 const SHA256 = /^[0-9a-f]{64}$/u
 const RELEASE_ID = /^harness-[0-9a-f]{12}-[0-9a-f]{12}$/u
@@ -31,6 +59,7 @@ export function parseReleaseControlArgs(args = process.argv.slice(2)) {
     expectedActiveReleaseId: undefined,
     expectedRevision: undefined,
     previousReleaseId: undefined,
+    hostedStatePath: undefined,
   }
   const strings = new Map([
     ['--action', 'action'],
@@ -44,6 +73,7 @@ export function parseReleaseControlArgs(args = process.argv.slice(2)) {
     ['--cohort-id', 'cohortId'],
     ['--expected-active-release-id', 'expectedActiveReleaseId'],
     ['--previous-release-id', 'previousReleaseId'],
+    ['--hosted-state', 'hostedStatePath'],
   ])
   for (let index = 0; index < args.length; index += 1) {
     const argument = args[index]
@@ -61,6 +91,9 @@ export function parseReleaseControlArgs(args = process.argv.slice(2)) {
   if (!ACTIONS.has(parsed.action)) throw new Error('--action must name a supported release-control action')
   if (parsed.expectedActiveReleaseId === 'none') parsed.expectedActiveReleaseId = null
   if (parsed.previousReleaseId === 'none') parsed.previousReleaseId = null
+  if (parsed.hostedStatePath && parsed.action !== 'reconcile-stale') {
+    throw new Error('--hosted-state is only valid with --action reconcile-stale')
+  }
   return parsed
 }
 
@@ -145,7 +178,9 @@ export function buildReleaseControlInvocation(input) {
 
 export async function executeReleaseControl(input, client) {
   if (input.action === 'read') return { action: 'read', result: await client.selectControl() }
-  if (input.action === 'reconcile-stale') return reconcileStaleReleaseControl(client)
+  if (input.action === 'reconcile-stale') {
+    return reconcileStaleReleaseControl(client, Date.now(), input.hostedState)
+  }
   if (input.action === 'recover') return recoverAmbiguousReleaseControl(input, client)
   const invocation = buildReleaseControlInvocation(input)
   const result = await client.rpc(invocation.name, invocation.args)
@@ -175,7 +210,16 @@ export async function executeReleaseControl(input, client) {
   return { action: input.action, result }
 }
 
-async function reconcileStaleReleaseControl(client, now = Date.now()) {
+async function reconcileStaleReleaseControl(client, now = Date.now(), hostedState) {
+  if (canSkipAbsentReleaseControlSchema(client, hostedState)) {
+    return {
+      action: 'reconcile-stale',
+      mode: 'release_control_schema_not_installed',
+      migration: RELEASE_CONTROL_MIGRATION,
+      before: null,
+      after: null,
+    }
+  }
   const before = await client.selectControl()
   if (!before?.candidate_release_id) {
     return { action: 'reconcile-stale', mode: 'no_candidate', before, after: before }
@@ -218,6 +262,27 @@ async function reconcileStaleReleaseControl(client, now = Date.now()) {
     before,
     after,
     rpcResponseAmbiguous: Boolean(rpcError),
+  }
+}
+
+function canSkipAbsentReleaseControlSchema(client, hostedState) {
+  if (hostedState?.environment !== 'production' ||
+      hostedState?.projectRef !== 'iwevizmsedyqozxlawwl' ||
+      hostedState?.evidenceSource !== 'hosted-api-and-readonly-sql' ||
+      client?.target?.environment !== 'production' ||
+      client?.target?.projectRef !== 'iwevizmsedyqozxlawwl') return false
+  const schema = hostedState.releaseControlSchema
+  if (schema?.harness_release_ledger_table !== true ||
+      ABSENT_RELEASE_CONTROL_FLAGS.some((flag) => schema?.[flag] !== false)) return false
+  try {
+    const migrationState = resolveHostedMigrationState(MIGRATION_INVENTORY, hostedState.migrations)
+    const canonicalVersions = new Set(canonicalMigrationEntries(MIGRATION_INVENTORY).map((entry) => entry.version))
+    return canonicalVersions.has(RELEASE_LEDGER_MIGRATION) &&
+      canonicalVersions.has(RELEASE_CONTROL_MIGRATION) &&
+      migrationState.appliedCanonicalVersions.has(RELEASE_LEDGER_MIGRATION) &&
+      !migrationState.appliedCanonicalVersions.has(RELEASE_CONTROL_MIGRATION)
+  } catch {
+    return false
   }
 }
 
@@ -402,6 +467,7 @@ async function main() {
   const args = parseReleaseControlArgs()
   if (!args.environment || !args.projectRef) throw new Error('--environment and --project-ref are required')
   const release = readJson(args.releasePath)
+  const hostedState = readJson(args.hostedStatePath)
   if (release && release.environment !== args.environment) throw new Error('CLI environment does not match release artifact')
   const client = createReleaseControlClient({
     environment: args.environment,
@@ -416,6 +482,7 @@ async function main() {
     receipt: readJson(args.receiptPath),
     sourceProof: readJson(args.sourceProofPath),
     maintainerSourceProof: readJson(args.maintainerSourceProofPath),
+    hostedState,
   }, client)
   process.stdout.write(`${JSON.stringify(result)}\n`)
 }
