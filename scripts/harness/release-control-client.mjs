@@ -3,6 +3,25 @@ import { assertReleaseTarget } from './release-safety.mjs'
 const SAFE_RPC_NAME = /^[a-z][a-z0-9_]{1,80}$/u
 const RELEASE_ID = /^harness-[0-9a-f]{12}-[0-9a-f]{12}$/u
 
+export const RELEASE_CONTROL_TABLE_ABSENT = 'RELEASE_CONTROL_TABLE_ABSENT'
+
+const ABSENT_TABLE_CODES = new Set(['PGRST205', '42P01'])
+const CONTROL_TABLE_MENTION = /\bpublic\.stage1_release_controls\b/u
+
+// PostgREST answers 404 + PGRST205 for a table missing from its schema cache, and 404 + 42P01
+// when the cache still lists a table Postgres no longer has. A bare 404, another table, or
+// any other status stays an ordinary failure so a wrong route or a permission fault is never
+// mistaken for "nothing installed".
+function isAbsentControlTable(status, body) {
+  if (status !== 404) return false
+  try {
+    const { code, message } = JSON.parse(body)
+    return ABSENT_TABLE_CODES.has(code) && typeof message === 'string' && CONTROL_TABLE_MENTION.test(message)
+  } catch {
+    return false
+  }
+}
+
 export function createReleaseControlClient(input) {
   const target = assertReleaseTarget(input)
   const serviceRoleKey = input.serviceRoleKey?.trim()
@@ -31,7 +50,11 @@ export function createReleaseControlClient(input) {
         { method: 'GET', headers },
       )
       const body = await response.text()
-      if (!response.ok) throw new Error(`hosted release control read failed with HTTP ${response.status}`)
+      if (!response.ok) {
+        const error = new Error(`hosted release control read failed with HTTP ${response.status}`)
+        if (isAbsentControlTable(response.status, body)) error.code = RELEASE_CONTROL_TABLE_ABSENT
+        throw error
+      }
       const rows = body ? JSON.parse(body) : []
       if (!Array.isArray(rows) || rows.length > 1) throw new Error('hosted release control response is invalid')
       return rows[0] ?? null

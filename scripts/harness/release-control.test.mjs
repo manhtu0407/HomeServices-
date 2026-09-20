@@ -12,6 +12,7 @@ import { buildMobileBinaryAttestation } from './mobile-binary-attestation.mjs'
 import { buildHarnessRelease } from './release-bundle.mjs'
 import { buildEdgeSourceProof } from './edge-source-proof.mjs'
 import { buildProductionUiNormalityReceipt } from '../check-production-ui-copy.mjs'
+import { createReleaseControlClient } from './release-control-client.mjs'
 
 const release = Object.freeze(buildHarnessRelease({
   environment: 'production', gitSha: '1'.repeat(40), requireCleanWorktree: false,
@@ -280,6 +281,63 @@ test('stale reconciliation is a CAS no-op for no candidate or a recent candidate
     }),
   })
   assert.equal(recent.mode, 'candidate_not_stale')
+})
+
+const ABSENT_TABLE_ERROR = Object.assign(
+  new Error('hosted release control read failed with HTTP 404'),
+  { code: 'RELEASE_CONTROL_TABLE_ABSENT' },
+)
+
+test('stale reconciliation reports an absent release-control table as its own mode and never mutates', async () => {
+  const calls = []
+  const result = await executeReleaseControl({ action: 'reconcile-stale' }, {
+    target: { environment: 'production' },
+    selectControl: async () => { calls.push('select'); throw ABSENT_TABLE_ERROR },
+    rpc: async () => { calls.push('rpc'); return true },
+  })
+  assert.deepEqual(result, {
+    action: 'reconcile-stale',
+    mode: 'release_control_schema_not_installed',
+    table: 'public.stage1_release_controls',
+    before: null,
+    after: null,
+  })
+  assert.deepEqual(calls, ['select'])
+})
+
+test('only reconciliation tolerates an absent control table; every other read and unclassified failure stays fatal', async () => {
+  await assert.rejects(
+    executeReleaseControl({ action: 'read' }, { selectControl: async () => { throw ABSENT_TABLE_ERROR } }),
+    /HTTP 404/u,
+  )
+  for (const message of ['HTTP 404', 'HTTP 500', 'HTTP 403']) {
+    await assert.rejects(
+      executeReleaseControl({ action: 'reconcile-stale' }, {
+        target: { environment: 'production' },
+        selectControl: async () => { throw new Error(`hosted release control read failed with ${message}`) },
+      }),
+      new RegExp(message, 'u'),
+    )
+  }
+})
+
+test('stale reconciliation over the real client skips only a table PostgREST reports as absent', async () => {
+  const clientFor = (status, body) => createReleaseControlClient({
+    environment: 'production',
+    projectRef: 'iwevizmsedyqozxlawwl',
+    projectUrl: 'https://iwevizmsedyqozxlawwl.supabase.co',
+    serviceRoleKey: 'service-role-test-only',
+    fetchImpl: async () => ({ ok: false, status, text: async () => JSON.stringify(body) }),
+  })
+  const skipped = await executeReleaseControl({ action: 'reconcile-stale' }, clientFor(404, {
+    code: 'PGRST205',
+    message: "Could not find the table 'public.stage1_release_controls' in the schema cache",
+  }))
+  assert.equal(skipped.mode, 'release_control_schema_not_installed')
+  await assert.rejects(
+    executeReleaseControl({ action: 'reconcile-stale' }, clientFor(404, { message: 'Not Found' })),
+    /HTTP 404/u,
+  )
 })
 
 test('stale reconciliation clears only the exact revision and verifies hosted state', async () => {
