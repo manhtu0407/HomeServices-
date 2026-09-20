@@ -4,7 +4,11 @@ on:
   push:
     branches: [main]
   schedule:
-    - cron: '17 * * * *'
+    # Recovers a cancelled canary. The candidate cohort is synthetic, so real users stay on the
+    # active release, and the release preflight reconciles a stale candidate itself before it
+    # starts a new one. Every run bills at least a minute, so this only bounds how long an
+    # abandoned candidate lingers.
+    - cron: '17 */6 * * *'
 
 permissions:
   contents: read
@@ -72,6 +76,10 @@ jobs:
           test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
           test "$GITHUB_REF" = "refs/heads/main"
           test -z "$(git status --porcelain=v1 --untracked-files=all)"
+      # The behavioral gate below cannot pass while any transaction entry is unmapped, and that is
+      # known from the manifest alone, so fail here instead of after the whole-workspace tests.
+      - name: Require every transaction entry to be mapped before running tests
+        run: node scripts/harness/transaction-critical-coverage.mjs --require-mapped
       - run: pnpm install --frozen-lockfile
       - name: Whole-workspace quality gates
         run: |
