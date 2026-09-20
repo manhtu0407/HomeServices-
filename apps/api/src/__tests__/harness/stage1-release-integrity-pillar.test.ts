@@ -226,11 +226,54 @@ describe('Stage 1 release integrity', () => {
     }
     expect(authenticationCalls).toBe(2)
 
+    const legacyConversationRequests = [
+      new Request('https://api.example.test/me/kael/conversations?mode=normal', {
+        method: 'GET', headers: { 'content-type': 'application/json' },
+      }),
+      new Request('https://api.example.test/me/kael/conversations', {
+        method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}',
+      }),
+      new Request('https://api.example.test/me/kael/conversations/11111111-1111-4111-8111-111111111111', {
+        method: 'GET', headers: { 'content-type': 'application/json' },
+      }),
+      new Request('https://api.example.test/me/kael/conversations/11111111-1111-4111-8111-111111111111/turn', {
+        method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}',
+      }),
+      new Request('https://api.example.test/me/kael/conversations/11111111-1111-4111-8111-111111111111/stream', {
+        method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}',
+      }),
+      new Request('https://api.example.test/me/kael/conversations/11111111-1111-4111-8111-111111111111', {
+        method: 'DELETE', headers: { 'content-type': 'application/json' },
+      }),
+    ]
+    for (const request of legacyConversationRequests) {
+      expect((await handler(request)).status).toBe(401)
+    }
+    expect(authenticationCalls).toBe(8)
+
+    const unsupportedLegacyMutation = await handler(new Request(
+      'https://api.example.test/me/kael/conversations/11111111-1111-4111-8111-111111111111', {
+        method: 'PATCH', headers: { 'content-type': 'application/json' }, body: '{}',
+      },
+    ))
+    expect(unsupportedLegacyMutation.status).toBe(426)
+    expect(authenticationCalls).toBe(8)
+
+    const partiallyIdentifiedConversation = await handler(new Request(
+      'https://api.example.test/me/kael/conversations', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', 'x-client-platform': 'ios' },
+        body: '{}',
+      },
+    ))
+    expect(partiallyIdentifiedConversation.status).toBe(426)
+    expect(authenticationCalls).toBe(8)
+
     const stale = await handler(new Request('https://api.example.test/kael/chat', {
       method: 'POST', headers: { ...headers, 'x-client-eas-build-id': '33333333-3333-4333-8333-333333333333' }, body: '{}',
     }))
     expect(stale.status).toBe(426)
     expect(await stale.json()).toMatchObject({ code: 'CLIENT_UPDATE_REQUIRED' })
-    expect(authenticationCalls).toBe(2)
+    expect(authenticationCalls).toBe(8)
   })
 })

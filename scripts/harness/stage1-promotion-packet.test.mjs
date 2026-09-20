@@ -21,9 +21,10 @@ function productionProviderReadiness() {
   }
 }
 
-const mobileBinaryAttestation = buildMobileBinaryAttestation({
-  release,
-  builds: [
+function mobileBinaryAttestationFor(release) {
+  return buildMobileBinaryAttestation({
+    release,
+    builds: [
     {
       id: '11111111-1111-4111-8111-111111111111', platform: 'IOS', status: 'FINISHED',
       distribution: 'STORE', buildProfile: 'production', gitCommitHash: release.gitSha,
@@ -39,9 +40,12 @@ const mobileBinaryAttestation = buildMobileBinaryAttestation({
       completedAt: '2026-08-23T01:01:00.000Z',
     },
   ],
-  artifactBytes: { ios: Buffer.from('ios'), android: Buffer.from('android') },
-  now: '2026-08-23T01:02:00.000Z',
-})
+    artifactBytes: { ios: Buffer.from('ios'), android: Buffer.from('android') },
+    now: '2026-08-23T01:02:00.000Z',
+  })
+}
+
+const mobileBinaryAttestation = mobileBinaryAttestationFor(release)
 
 const input = Object.freeze({
   release,
@@ -86,9 +90,10 @@ const input = Object.freeze({
 
 test('buildStage1PromotionPacket binds release, rollback source, and expand audit', () => {
   const packet = buildStage1PromotionPacket(input)
-  assert.equal(packet.schemaVersion, 'stage1-promotion-packet.v3')
+  assert.equal(packet.schemaVersion, 'stage1-promotion-packet.v4')
   assert.equal(packet.approval, undefined)
   assert.equal(packet.release.releaseId, release.releaseId)
+  assert.equal(packet.release.releaseAuthorityRequirement, 'main-branch-merge')
   assert.equal(packet.rollback.functions['mobile-api'].hostedEdgeVersion, 43)
   assert.equal(packet.rollback.functions['mobile-api'].sourceSha256, 'd'.repeat(64))
   assert.equal(packet.rollback.functions['kael-matching-maintainer'].hostedEdgeVersion, 12)
@@ -99,6 +104,30 @@ test('buildStage1PromotionPacket binds release, rollback source, and expand audi
   assert.equal(packet.productionUiNormality.languageLeakageCount, 0)
   assert.match(packet.packetSha256, /^[0-9a-f]{64}$/u)
   assert.deepEqual(verifyStage1PromotionPacket(packet), [])
+})
+
+test('requires the recovery authority recorded by the immutable release', () => {
+  const recoveryRelease = Object.freeze(buildHarnessRelease({
+    environment: 'production', gitSha: '1'.repeat(40), requireCleanWorktree: false,
+    providerReadiness: productionProviderReadiness(),
+    productionAuthority: 'operator-kael-production-recovery',
+  }))
+  const recoveryInput = {
+    ...input,
+    release: recoveryRelease,
+    cohortId: `synthetic-stage1-${recoveryRelease.releaseId.slice(8, 20)}-${recoveryRelease.releaseId.slice(21)}-gh78`,
+    mobileBinaryAttestation: mobileBinaryAttestationFor(recoveryRelease),
+    passedGates: input.passedGates.map((gate) => gate === 'main-branch-merge'
+      ? 'operator-kael-production-recovery'
+      : gate),
+  }
+  const packet = buildStage1PromotionPacket(recoveryInput)
+  assert.equal(packet.release.releaseAuthorityRequirement, 'operator-kael-production-recovery')
+  assert.deepEqual(verifyStage1PromotionPacket(packet), [])
+  assert.throws(
+    () => buildStage1PromotionPacket({ ...recoveryInput, passedGates: input.passedGates }),
+    /missing required release gate: operator-kael-production-recovery/,
+  )
 })
 
 test('packet creation fails when a required gate or exact target is missing', () => {

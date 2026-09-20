@@ -116,18 +116,25 @@ function hasRequiredGate(source, mode) {
     source.includes('--results artifacts/transactions/mobile-jest.json')
 }
 
-for (const [workflow, mode] of [
-  ['kael-agentic-completeness.yml', '--require-bound-assertions'],
-  ['release-production.yml', '--require-behavioral'],
-]) {
-  test(`${workflow} requires fresh API and mobile assertions for its evidence gate`, () => {
-    const source = readFileSync(resolve(root, '.github/workflows', workflow), 'utf8')
-    assert.equal(hasRequiredGate(source, mode), true)
-    assert.equal(hasRequiredGate(source.replace(mode, ''), mode), false)
-    assert.equal(hasRequiredGate(source.replace('--reporter=json', ''), mode), false)
-    if (workflow === 'release-production.yml') {
-      assert.ok(source.indexOf('--require-behavioral') < source.indexOf('  production-release:'))
-      assert.match(source, /production-release:[\s\S]*?needs: quality/u)
-    }
-  })
-}
+test('PR requires fresh API and mobile assertions for its evidence gate', () => {
+  const source = readFileSync(resolve(root, '.github/workflows/kael-agentic-completeness.yml'), 'utf8')
+  assert.equal(hasRequiredGate(source, '--require-bound-assertions'), true)
+  assert.equal(hasRequiredGate(source.replace('--require-bound-assertions', ''), '--require-bound-assertions'), false)
+  assert.equal(hasRequiredGate(source.replace('--reporter=json', ''), '--require-bound-assertions'), false)
+})
+
+test('normal Production requires behavioral evidence and the locked recovery lane requires bound assertions', () => {
+  const source = readFileSync(resolve(root, '.github/workflows/release-production.yml'), 'utf8')
+  const mainAuthority = source.indexOf('if [ "$RELEASE_AUTHORITY" = "main-branch-merge" ]; then')
+  const behavioralGate = source.indexOf('transaction-critical-coverage.mjs --require-behavioral')
+  const recoveryGate = source.indexOf('transaction-critical-coverage.mjs --require-bound-assertions')
+  assert.ok(mainAuthority >= 0)
+  assert.ok(behavioralGate > mainAuthority)
+  assert.ok(recoveryGate > behavioralGate)
+  assert.equal(hasRequiredGate(source, '--require-behavioral'), true)
+  assert.equal(hasRequiredGate(source, '--require-bound-assertions'), true)
+  assert.equal(hasRequiredGate(source.replace('--reporter=json', ''), '--require-behavioral'), false)
+  assert.match(source, /production-release:[\s\S]*?needs: quality/u)
+  assert.ok(behavioralGate < source.indexOf('  production-release:'))
+  assert.ok(recoveryGate < source.indexOf('  production-release:'))
+})

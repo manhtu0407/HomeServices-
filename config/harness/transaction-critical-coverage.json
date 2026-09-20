@@ -138,7 +138,7 @@
       },
       "system.release.production-promotion": {
         "status": "PARTIAL",
-        "gaps": ["Collected workflow and native-readiness tests exercise the reviewerless main release lane, source attestation, rollback ordering and native provider gates. The last official Production run stopped at the strict behavioral gate; provider-owned identity, APNs/FCM readiness, hosted smoke evidence, promotion and final Production health 200 remain open."],
+        "gaps": ["Collected workflow and native-readiness tests exercise the normal main release lane, the exact locked operator recovery dispatch, source attestation, rollback ordering and native provider gates. Provider-owned identity, APNs/FCM readiness, hosted smoke evidence, promotion and final Production health 200 remain open."],
         "cases": [{
           "id": "system-release-production-promotion-workflow",
           "pillar": "P56-stage1-production-release-workflow",
@@ -148,7 +148,7 @@
           "seam": "system", "actor": "system",
           "from": ["reviewed"], "to": ["closed"],
           "success_tests": ["Stage 1 production release workflow binds before one candidate deploy and attests the exact redownloaded source before smoke"],
-          "denial_tests": ["Stage 1 production release workflow runs only from main and never from a pull request"],
+          "denial_tests": ["Stage 1 production release workflow runs from main or the exact locked recovery dispatch and never from a pull request"],
           "recovery_tests": ["Stage 1 production release workflow downloads the hosted rollback source and aborts plus redeploys it on failure"]
         }, {
           "id": "system-release-native-readiness-gates",

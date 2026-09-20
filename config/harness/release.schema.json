@@ -9,6 +9,7 @@
     "releaseId",
     "environment",
     "environmentBinding",
+    "releaseAuthorityRequirement",
     "gitSha",
     "sourceBundleSha256",
     "mobileBuildFingerprintSha256",
@@ -53,6 +54,13 @@
         "preview",
         "staging",
         "production"
+      ]
+    },
+    "releaseAuthorityRequirement": {
+      "enum": [
+        "main-branch-merge",
+        "operator-kael-production-recovery",
+        "explicit-human-approval"
       ]
     },
     "gitSha": {

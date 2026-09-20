@@ -11,6 +11,11 @@ function parseArgs(args) {
   const options = {}
   for (let index = 0; index < args.length; index += 1) {
     const key = args[index]
+    if (key === '--allow-unhealthy-runtime-baseline') {
+      if (options.allowUnhealthyRuntimeBaseline) throw new Error(`${key} may be supplied only once`)
+      options.allowUnhealthyRuntimeBaseline = true
+      continue
+    }
     if (['--environment', '--project-ref', '--project-url', '--output'].includes(key)) {
       const value = args[++index]
       if (!value || value.startsWith('--')) throw new Error(`${key} requires a value`)
@@ -30,6 +35,7 @@ async function main() {
     accessToken: process.env.SUPABASE_ACCESS_TOKEN,
     environment: target.environment,
     projectRef: target.projectRef,
+    allowUnhealthyRuntimeBaseline: options.allowUnhealthyRuntimeBaseline === true,
   })
   const output = resolve(ROOT, options.output)
   const local = relative(ROOT, output)
@@ -38,6 +44,8 @@ async function main() {
   writeFileSync(output, `${JSON.stringify({ ...state, projectUrl: target.projectUrl }, null, 2)}\n`)
   console.log(`hosted state collected: ${state.environment}/${state.projectRef}`)
 }
+
+export { parseArgs as parseHostedStateArgs }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   main().catch((error) => {

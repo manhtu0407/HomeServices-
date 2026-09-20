@@ -67,6 +67,37 @@ test('fails a Production release when either native push provider or the receipt
   assert.ok(checkHarnessRelease(release).includes('production provider readiness is incomplete'))
 })
 
+test('binds an explicit operator recovery authority into a Production release', () => {
+  const providerReadiness = {
+    android_fcm_v1: true,
+    anthropic: true,
+    deepseek: false,
+    durable_guards: true,
+    global_ai_enabled: true,
+    ios_apns: true,
+    perplexity: true,
+    push_receipt_reconciler: true,
+    vietmap: true,
+  }
+  const release = buildHarnessRelease({
+    environment: 'production',
+    gitSha: 'f'.repeat(40),
+    providerReadiness,
+    productionAuthority: 'operator-kael-production-recovery',
+    requireCleanWorktree: false,
+  })
+  assert.equal(release.releaseAuthorityRequirement, 'operator-kael-production-recovery')
+  assert.ok(release.verificationRequirements.includes('operator-kael-production-recovery'))
+  assert.deepEqual(checkHarnessRelease(release), [])
+  const tampered = structuredClone(release)
+  tampered.releaseAuthorityRequirement = 'untrusted-branch'
+  assert.ok(checkHarnessRelease(tampered).includes('release authority requirement is invalid'))
+  assert.throws(
+    () => buildHarnessRelease({ environment: 'staging', productionAuthority: 'operator-kael-production-recovery' }),
+    /only valid for a Production release/,
+  )
+})
+
 test('keeps release artifacts inside the repository root', () => {
   const root = mkdtempSync(resolve(tmpdir(), 'harness-release-path-'))
   try {

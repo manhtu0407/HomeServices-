@@ -67,7 +67,7 @@ describe('native push and Production release readiness', () => {
     }
   })
 
-  it('keeps the Production lane reviewerless without weakening native readiness gates', () => {
+  it('keeps the normal Production lane on main and locks any operator recovery', () => {
     const releaseWorkflow = rootFile('.github/workflows/release-production.yml')
 
     expect(releaseWorkflow).toContain('branches: [main]')
@@ -75,5 +75,10 @@ describe('native push and Production release readiness', () => {
     expect(releaseWorkflow).not.toMatch(/--reviewer\b/u)
     expect(releaseWorkflow).not.toContain('merge-approval')
     expect(releaseWorkflow).toContain('main-branch-merge')
+    expect(releaseWorkflow).toContain('workflow_dispatch:')
+    expect(releaseWorkflow).toContain('kael_production_recovery:')
+    expect(releaseWorkflow).toContain("github.ref == 'refs/heads/codex/kael-chat-production-reliability'")
+    expect(releaseWorkflow).toContain("inputs.kael_production_recovery == 'RECOVER_KAEL_PRODUCTION'")
+    expect(releaseWorkflow).toContain('operator-kael-production-recovery')
   })
 })

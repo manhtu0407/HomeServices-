@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
 import { test } from 'node:test'
 import {
   buildReleaseControlInvocation,
@@ -12,6 +13,7 @@ import { buildMobileBinaryAttestation } from './mobile-binary-attestation.mjs'
 import { buildHarnessRelease } from './release-bundle.mjs'
 import { buildEdgeSourceProof } from './edge-source-proof.mjs'
 import { buildProductionUiNormalityReceipt } from '../check-production-ui-copy.mjs'
+import { canonicalMigrationEntries } from './migration-history.mjs'
 
 const release = Object.freeze(buildHarnessRelease({
   environment: 'production', gitSha: '1'.repeat(40), requireCleanWorktree: false,
@@ -154,11 +156,28 @@ test('parseReleaseControlArgs keeps secrets out of CLI and requires explicit act
     expectedActiveReleaseId: undefined,
     expectedRevision: undefined,
     previousReleaseId: undefined,
+    hostedStatePath: undefined,
   })
   assert.throws(
     () => parseReleaseControlArgs(['--action', 'read', '--service-role-key', 'secret']),
     /unknown argument/u,
   )
+})
+
+test('parseReleaseControlArgs accepts hosted evidence only for stale reconciliation', () => {
+  const parsed = parseReleaseControlArgs([
+    '--action', 'reconcile-stale',
+    '--environment', 'production',
+    '--project-ref', 'iwevizmsedyqozxlawwl',
+    '--hosted-state', 'artifacts/release/hosted-before.json',
+  ])
+  assert.equal(parsed.hostedStatePath, 'artifacts/release/hosted-before.json')
+  assert.throws(() => parseReleaseControlArgs([
+    '--action', 'read',
+    '--environment', 'production',
+    '--project-ref', 'iwevizmsedyqozxlawwl',
+    '--hosted-state', 'artifacts/release/hosted-before.json',
+  ]), /only valid with --action reconcile-stale/u)
 })
 
 test('buildReleaseControlInvocation binds register and configure to immutable evidence', () => {
@@ -280,6 +299,101 @@ test('stale reconciliation is a CAS no-op for no candidate or a recent candidate
     }),
   })
   assert.equal(recent.mode, 'candidate_not_stale')
+})
+
+test('stale reconciler skips only a fully absent release-control schema with its migration pending', async () => {
+  const inventory = JSON.parse(readFileSync(new URL('../../config/harness/migration-inventory.json', import.meta.url), 'utf8'))
+  const hostedState = {
+    environment: 'production',
+    projectRef: 'iwevizmsedyqozxlawwl',
+    evidenceSource: 'hosted-api-and-readonly-sql',
+    migrations: canonicalMigrationEntries(inventory).filter(({ version }) => ![
+      '20260823130000',
+      '20260823140000',
+    ].includes(version)),
+    releaseControlSchema: {
+      harness_release_ledger_table: true,
+      stage1_release_controls_table: false,
+      stage1_synthetic_smoke_receipts_table: false,
+      stage1_release_control_events_table: false,
+      stage1_release_control_events_sequence: false,
+      stage1_source_deployment_attestations_table: false,
+      stage1_smoke_deployment_attestations_table: false,
+      reject_stage1_release_evidence_mutation_function: false,
+      configure_stage1_release_canary_function: false,
+      resolve_stage1_release_lane_function: false,
+      record_stage1_synthetic_smoke_function: false,
+      promote_stage1_release_atomic_function: false,
+      abort_stage1_release_canary_function: false,
+      reconcile_stale_stage1_release_canary_function: false,
+      rollback_stage1_active_release_atomic_function: false,
+      attest_stage1_source_deployment_function: false,
+      record_stage1_attested_synthetic_smoke_function: false,
+      resolve_stage1_release_lane_attested_function: false,
+      promote_stage1_release_attested_atomic_function: false,
+      stage1_synthetic_smoke_receipts_trigger: false,
+      stage1_release_control_events_trigger: false,
+      stage1_source_deployment_attestations_trigger: false,
+      stage1_smoke_deployment_attestations_trigger: false,
+    },
+  }
+  const calls = []
+  const result = await executeReleaseControl({ action: 'reconcile-stale', hostedState }, {
+    target: { environment: 'production', projectRef: 'iwevizmsedyqozxlawwl' },
+    selectControl: async () => { calls.push('select'); throw new Error('HTTP 404') },
+    rpc: async () => { calls.push('rpc'); throw new Error('must not mutate') },
+  })
+  assert.equal(result.mode, 'release_control_schema_not_installed')
+  assert.deepEqual(calls, [])
+})
+
+test('stale reconciler fails closed for a partial schema or an applied control migration', async () => {
+  const inventory = JSON.parse(readFileSync(new URL('../../config/harness/migration-inventory.json', import.meta.url), 'utf8'))
+  const hostedState = {
+    environment: 'production',
+    projectRef: 'iwevizmsedyqozxlawwl',
+    evidenceSource: 'hosted-api-and-readonly-sql',
+    migrations: canonicalMigrationEntries(inventory).filter(({ version }) => version !== '20260823140000'),
+    releaseControlSchema: {
+      harness_release_ledger_table: true,
+      stage1_release_controls_table: false,
+      stage1_synthetic_smoke_receipts_table: false,
+      stage1_release_control_events_table: false,
+      stage1_release_control_events_sequence: false,
+      stage1_source_deployment_attestations_table: false,
+      stage1_smoke_deployment_attestations_table: false,
+      reject_stage1_release_evidence_mutation_function: false,
+      configure_stage1_release_canary_function: false,
+      resolve_stage1_release_lane_function: false,
+      record_stage1_synthetic_smoke_function: false,
+      promote_stage1_release_atomic_function: false,
+      abort_stage1_release_canary_function: false,
+      reconcile_stale_stage1_release_canary_function: false,
+      rollback_stage1_active_release_atomic_function: false,
+      attest_stage1_source_deployment_function: false,
+      record_stage1_attested_synthetic_smoke_function: false,
+      resolve_stage1_release_lane_attested_function: false,
+      promote_stage1_release_attested_atomic_function: false,
+      stage1_synthetic_smoke_receipts_trigger: false,
+      stage1_release_control_events_trigger: false,
+      stage1_source_deployment_attestations_trigger: false,
+      stage1_smoke_deployment_attestations_trigger: false,
+    },
+  }
+  await assert.rejects(executeReleaseControl({ action: 'reconcile-stale', hostedState }, {
+    target: { environment: 'production', projectRef: 'iwevizmsedyqozxlawwl' },
+    selectControl: async () => { throw new Error('hosted release control read failed with HTTP 404') },
+  }), /hosted release control read failed with HTTP 404/u)
+
+  hostedState.migrations = canonicalMigrationEntries(inventory).filter(({ version }) => ![
+    '20260823130000',
+    '20260823140000',
+  ].includes(version))
+  hostedState.releaseControlSchema.attest_stage1_source_deployment_function = true
+  await assert.rejects(executeReleaseControl({ action: 'reconcile-stale', hostedState }, {
+    target: { environment: 'production', projectRef: 'iwevizmsedyqozxlawwl' },
+    selectControl: async () => { throw new Error('hosted release control read failed with HTTP 404') },
+  }), /hosted release control read failed with HTTP 404/u)
 })
 
 test('stale reconciliation clears only the exact revision and verifies hosted state', async () => {

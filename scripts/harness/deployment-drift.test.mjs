@@ -123,8 +123,10 @@ test('collects hosted health, migration, and deployed-function evidence from liv
       calls.push({ url: String(url), method: init.method ?? 'GET' })
       if (String(url).includes('/functions/v1/mobile-api/harness/health')) {
         return jsonResponse({
+          status: 'ok',
           environment: { name: 'production', project_ref: 'iwevizmsedyqozxlawwl' },
           release: {
+            registered: true,
             release_id: release.releaseId,
             deployment_id: `iwevizmsedyqozxlawwl_${mobileFunctionId}_7`,
             git_sha: release.gitSha,
@@ -184,16 +186,69 @@ test('collects hosted health, migration, and deployed-function evidence from liv
           definition: null,
         }] })
       }
+      if (String(init.body ?? '').includes('stage1_release_controls')) {
+        return jsonResponse({ result: [{
+          harness_release_ledger_table: true,
+          stage1_release_controls_table: false,
+          stage1_synthetic_smoke_receipts_table: false,
+          stage1_release_control_events_table: false,
+          stage1_release_control_events_sequence: false,
+          stage1_source_deployment_attestations_table: false,
+          stage1_smoke_deployment_attestations_table: false,
+          reject_stage1_release_evidence_mutation_function: false,
+          configure_stage1_release_canary_function: false,
+          resolve_stage1_release_lane_function: false,
+          record_stage1_synthetic_smoke_function: false,
+          promote_stage1_release_atomic_function: false,
+          abort_stage1_release_canary_function: false,
+          reconcile_stale_stage1_release_canary_function: false,
+          rollback_stage1_active_release_atomic_function: false,
+          attest_stage1_source_deployment_function: false,
+          record_stage1_attested_synthetic_smoke_function: false,
+          resolve_stage1_release_lane_attested_function: false,
+          promote_stage1_release_attested_atomic_function: false,
+          stage1_synthetic_smoke_receipts_trigger: false,
+          stage1_release_control_events_trigger: false,
+          stage1_source_deployment_attestations_trigger: false,
+          stage1_smoke_deployment_attestations_trigger: false,
+        }] })
+      }
       return jsonResponse({ result: inventory.entries })
     },
   })
 
   assert.equal(hosted.releaseId, release.releaseId)
+  assert.deepEqual(hosted.runtimeHealth, { status: 'healthy', httpStatus: 200 })
   assert.equal(hosted.deploymentId, `iwevizmsedyqozxlawwl_${mobileFunctionId}_7`)
   assert.equal(hosted.manifestSha256, release.manifestSha256)
   assert.equal(hosted.bundleSha256, release.bundleSha256)
   assert.deepEqual(hosted.providerReadiness, release.providerReadiness)
   assert.deepEqual(hosted.migrations, inventory.entries)
+  assert.deepEqual(hosted.releaseControlSchema, {
+    harness_release_ledger_table: true,
+    stage1_release_controls_table: false,
+    stage1_synthetic_smoke_receipts_table: false,
+    stage1_release_control_events_table: false,
+    stage1_release_control_events_sequence: false,
+    stage1_source_deployment_attestations_table: false,
+    stage1_smoke_deployment_attestations_table: false,
+    reject_stage1_release_evidence_mutation_function: false,
+    configure_stage1_release_canary_function: false,
+    resolve_stage1_release_lane_function: false,
+    record_stage1_synthetic_smoke_function: false,
+    promote_stage1_release_atomic_function: false,
+    abort_stage1_release_canary_function: false,
+    reconcile_stale_stage1_release_canary_function: false,
+    rollback_stage1_active_release_atomic_function: false,
+    attest_stage1_source_deployment_function: false,
+    record_stage1_attested_synthetic_smoke_function: false,
+    resolve_stage1_release_lane_attested_function: false,
+    promote_stage1_release_attested_atomic_function: false,
+    stage1_synthetic_smoke_receipts_trigger: false,
+    stage1_release_control_events_trigger: false,
+    stage1_source_deployment_attestations_trigger: false,
+    stage1_smoke_deployment_attestations_trigger: false,
+  })
   assert.deepEqual(hosted.migrationObjectPreconditions, [{
     object_kind: 'trigger',
     schema_name: 'public',
@@ -206,8 +261,79 @@ test('collects hosted health, migration, and deployed-function evidence from liv
   assert.equal(hosted.managedEdgeFunctions['mobile-api'].id, mobileFunctionId)
   assert.equal(hosted.managedEdgeFunctions['mobile-api'].verify_jwt, false)
   assert.equal(hosted.managedEdgeFunctions['mobile-api'].entrypoint_path, 'index.ts')
-  assert.deepEqual(calls.map((call) => call.method), ['GET', 'GET', 'GET', 'GET', 'POST', 'POST'])
+  assert.deepEqual(calls.map((call) => call.method), ['GET', 'GET', 'GET', 'GET', 'POST', 'POST', 'POST'])
   assert.ok(calls.every((call) => call.url.startsWith('https://')))
+})
+
+test('records an explicit Production HTTP 5xx baseline only when requested', async () => {
+  const calls = []
+  const fetchImpl = async (url, init = {}) => {
+    calls.push({ url: String(url), method: init.method ?? 'GET' })
+    if (String(url).includes('/functions/v1/mobile-api/harness/health')) {
+      return jsonResponse({ message: 'Worker failed' }, 503)
+    }
+    if (String(url).endsWith('/functions')) return jsonResponse([])
+    return jsonResponse({ result: [] })
+  }
+
+  await assert.rejects(() => collectHostedDeploymentState({
+    environment: 'production',
+    projectRef: 'iwevizmsedyqozxlawwl',
+    accessToken: 'test-management-token',
+    fetchImpl,
+  }), /hosted runtime health request failed with HTTP 503/u)
+
+  const hosted = await collectHostedDeploymentState({
+    environment: 'production',
+    projectRef: 'iwevizmsedyqozxlawwl',
+    accessToken: 'test-management-token',
+    allowUnhealthyRuntimeBaseline: true,
+    fetchImpl,
+  })
+  assert.deepEqual(hosted.runtimeHealth, { status: 'unhealthy', httpStatus: 503 })
+  assert.equal(hosted.environment, 'production')
+  assert.equal(hosted.projectRef, 'iwevizmsedyqozxlawwl')
+  assert.equal(hosted.releaseId, null)
+  assert.ok(calls.some((call) => call.url.includes('/database/query/read-only')))
+})
+
+test('rejects a nominally healthy Production response with incomplete release identity', async (t) => {
+  const health = {
+    status: 'ok',
+    environment: { name: 'production', project_ref: 'iwevizmsedyqozxlawwl' },
+    release: {
+      registered: true,
+      release_id: 'harness-aaaaaaaaaaaa-bbbbbbbbbbbb',
+      git_sha: 'c'.repeat(40),
+      deployment_id: 'iwevizmsedyqozxlawwl_10000000-0000-4000-8000-000000000057_12',
+    },
+  }
+  for (const [name, patch] of [
+    ['release ID', { release_id: 'missing' }],
+    ['git SHA', { git_sha: 'bad' }],
+    ['deployment ID', { deployment_id: 'iwevizmsedyqozxlawwl_bad_12' }],
+  ]) {
+    await t.test(name, async () => {
+      await assert.rejects(() => collectHostedDeploymentState({
+        environment: 'production',
+        projectRef: 'iwevizmsedyqozxlawwl',
+        accessToken: 'test-management-token',
+        fetchImpl: async (url) => String(url).includes('/functions/v1/mobile-api/harness/health')
+          ? jsonResponse({ ...health, release: { ...health.release, ...patch } })
+          : jsonResponse({}),
+      }), /hosted runtime health payload is not release-ready/u)
+    })
+  }
+})
+
+test('does not treat Production network errors as an unhealthy HTTP baseline', async () => {
+  await assert.rejects(() => collectHostedDeploymentState({
+    environment: 'production',
+    projectRef: 'iwevizmsedyqozxlawwl',
+    accessToken: 'test-management-token',
+    allowUnhealthyRuntimeBaseline: true,
+    fetchImpl: async () => { throw new TypeError('network unavailable') },
+  }), /network unavailable/u)
 })
 
 test('refuses hosted evidence collection for retired non-production targets', async () => {
