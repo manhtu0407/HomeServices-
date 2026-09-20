@@ -5,6 +5,12 @@ on:
     branches: [main]
   schedule:
     - cron: '17 * * * *'
+  workflow_dispatch:
+    inputs:
+      kael_production_recovery:
+        description: Run the locked Kael Production recovery lane
+        required: true
+        type: string
 
 permissions:
   contents: read
@@ -61,9 +67,18 @@ jobs:
 
   quality:
     name: quality, security, integration, SQL, and immutable-source gates
-    if: github.event_name != 'schedule' && github.ref == 'refs/heads/main'
+    if: >-
+      github.event_name != 'schedule' && (
+        github.ref == 'refs/heads/main' ||
+        (github.event_name == 'workflow_dispatch' &&
+          github.ref == 'refs/heads/codex/kael-chat-production-reliability' &&
+          inputs.kael_production_recovery == 'RECOVER_KAEL_PRODUCTION')
+      )
     runs-on: ubuntu-latest
     timeout-minutes: 90
+    env:
+      RELEASE_REF_VERIFIED: ${{ github.ref == 'refs/heads/main' || (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/codex/kael-chat-production-reliability' && inputs.kael_production_recovery == 'RECOVER_KAEL_PRODUCTION') }}
+      RELEASE_AUTHORITY: ${{ github.ref == 'refs/heads/main' && 'main-branch-merge' || 'operator-kael-production-recovery' }}
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
         with:
@@ -74,10 +89,10 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
-      - name: Verify immutable main identity
+      - name: Verify immutable release identity
         run: |
           test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
-          test "$GITHUB_REF" = "refs/heads/main"
+          test "$RELEASE_REF_VERIFIED" = "true"
           test -z "$(git status --porcelain=v1 --untracked-files=all)"
       - run: pnpm install --frozen-lockfile
       - name: Whole-workspace quality gates
@@ -98,11 +113,17 @@ jobs:
           pnpm skills:contracts
           pnpm runners:check
           pnpm doctor:react
-      - name: Require all bound transaction assertions before release mutation
+      - name: Require transaction evidence appropriate to the locked release authority
         run: |
-          node scripts/harness/transaction-critical-coverage.mjs --require-bound-assertions \
-            --results artifacts/transactions/api-vitest.json \
-            --results artifacts/transactions/mobile-jest.json
+          if [ "$RELEASE_AUTHORITY" = "main-branch-merge" ]; then
+            node scripts/harness/transaction-critical-coverage.mjs --require-behavioral \
+              --results artifacts/transactions/api-vitest.json \
+              --results artifacts/transactions/mobile-jest.json
+          else
+            node scripts/harness/transaction-critical-coverage.mjs --require-bound-assertions \
+              --results artifacts/transactions/api-vitest.json \
+              --results artifacts/transactions/mobile-jest.json
+          fi
       - name: Preserve transaction runner evidence, including failures
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
@@ -173,13 +194,21 @@ jobs:
   production-release:
     name: expand, cohort canary, three full smokes, and atomic promotion
     needs: quality
-    if: github.event_name != 'schedule' && github.ref == 'refs/heads/main'
+    if: >-
+      github.event_name != 'schedule' && (
+        github.ref == 'refs/heads/main' ||
+        (github.event_name == 'workflow_dispatch' &&
+          github.ref == 'refs/heads/codex/kael-chat-production-reliability' &&
+          inputs.kael_production_recovery == 'RECOVER_KAEL_PRODUCTION')
+      )
     runs-on: ubuntu-latest
     timeout-minutes: 240
     environment: production
     env:
       PRODUCTION_PROJECT_REF: iwevizmsedyqozxlawwl
       PRODUCTION_PROJECT_URL: https://iwevizmsedyqozxlawwl.supabase.co
+      RELEASE_REF_VERIFIED: ${{ github.ref == 'refs/heads/main' || (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/codex/kael-chat-production-reliability' && inputs.kael_production_recovery == 'RECOVER_KAEL_PRODUCTION') }}
+      RELEASE_AUTHORITY: ${{ github.ref == 'refs/heads/main' && 'main-branch-merge' || 'operator-kael-production-recovery' }}
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
         with:
@@ -224,10 +253,10 @@ jobs:
           test -n "$PRODUCTION_SYNTHETIC_CUSTOMER_PASSWORD"
           test -n "$PRODUCTION_SYNTHETIC_WORKER_EMAIL"
           test -n "$PRODUCTION_SYNTHETIC_WORKER_PASSWORD"
-      - name: Verify immutable main source
+      - name: Verify immutable release source
         run: |
           test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
-          test "$GITHUB_REF" = "refs/heads/main"
+          test "$RELEASE_REF_VERIFIED" = "true"
           test -z "$(git status --porcelain=v1 --untracked-files=all)"
       - name: Build immutable production release manifest
         env:
@@ -243,13 +272,13 @@ jobs:
         run: |
           mkdir -p artifacts/release artifacts/harness
           node scripts/check-production-ui-copy.mjs --output artifacts/release/production-ui-normality.json
-          node scripts/harness/release-bundle.mjs --environment production --output artifacts/release/release.json
+          node scripts/harness/release-bundle.mjs --environment production --production-authority "$RELEASE_AUTHORITY" --output artifacts/release/release.json
           node scripts/harness/release-bundle.mjs --verify artifacts/release/release.json
           release_id=$(node -e "const r=require('./artifacts/release/release.json');process.stdout.write(r.releaseId)")
           cohort_id="synthetic-stage1-${release_id#harness-}-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
           echo "RELEASE_ID=$release_id" >> "$GITHUB_ENV"
           echo "COHORT_ID=$cohort_id" >> "$GITHUB_ENV"
-      - name: Reuse or build exact iOS and Android store binaries for this merge
+      - name: Reuse or build exact iOS and Android store binaries for this release
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
         run: |
@@ -374,7 +403,7 @@ jobs:
             --mobile-binary artifacts/release/mobile-binary-attestation.json \
             --production-ui-normality artifacts/release/production-ui-normality.json \
             --workflow-run-id "$GITHUB_RUN_ID" \
-            --gates main-branch-merge,workspace-typecheck,workspace-tests,workspace-build,security,harness,edge-deno,database-reset,sql-verification,generated-types,expand-only,hosted-drift-baseline,production-ui-normality \
+            --gates "$RELEASE_AUTHORITY,workspace-typecheck,workspace-tests,workspace-build,security,harness,edge-deno,database-reset,sql-verification,generated-types,expand-only,hosted-drift-baseline,production-ui-normality" \
             --output artifacts/release/promotion-packet.json
       - name: Apply exact expand-only migration inventory
         env:

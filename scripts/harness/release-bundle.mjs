@@ -24,6 +24,10 @@ const SOURCE_EXTENSIONS = ['.ts', '.tsx', '.js', '.mjs', '.json']
 const FUNCTION_CONFIG_NAMES = ['deno.json', 'deno.jsonc', 'deno.lock', 'import_map.json', 'import-map.json']
 const GLOBAL_RUNTIME_CONFIGS = ['supabase/config.toml']
 export const RELEASE_EDGE_FUNCTIONS = Object.freeze(['kael-matching-maintainer', 'mobile-api'])
+export const PRODUCTION_RELEASE_AUTHORITIES = Object.freeze([
+  'main-branch-merge',
+  'operator-kael-production-recovery',
+])
 const PROVIDER_READINESS_KEYS = Object.freeze([
   'android_fcm_v1', 'anthropic', 'deepseek', 'durable_guards', 'global_ai_enabled',
   'ios_apns', 'perplexity', 'push_receipt_reconciler', 'vietmap',
@@ -57,14 +61,13 @@ export function buildHarnessRelease(options = {}) {
     throw new Error('production release contains unsafe or cross-language visible UI copy')
   }
   const providerReadiness = options.providerReadiness ?? providerReadinessFromEnvironment(process.env)
-  const releaseAuthorityRequirement = environment === 'production'
-    ? 'main-branch-merge'
-    : 'explicit-human-approval'
+  const releaseAuthorityRequirement = releaseAuthorityFor(environment, options.productionAuthority)
   const release = {
     schemaVersion: '1.0.0',
     releaseId: '',
     environment,
     environmentBinding,
+    releaseAuthorityRequirement,
     gitSha,
     sourceBundleSha256: digestRepoPaths(root, releaseSourcePaths),
     mobileBuildFingerprintSha256: digestRepoPaths(root, releaseSourcePaths.filter((path) =>
@@ -145,6 +148,16 @@ export function buildHarnessRelease(options = {}) {
   release.releaseId = `harness-${gitSha.slice(0, 12)}-${behaviorHash.slice(0, 12)}`
   release.bundleSha256 = sha256(canonicalJson({ ...release, bundleSha256: undefined }))
   return release
+}
+
+function releaseAuthorityFor(environment, requestedAuthority) {
+  if (environment !== 'production') {
+    if (requestedAuthority !== undefined) throw new Error('production authority is only valid for a Production release')
+    return 'explicit-human-approval'
+  }
+  const authority = requestedAuthority ?? 'main-branch-merge'
+  if (!PRODUCTION_RELEASE_AUTHORITIES.includes(authority)) throw new Error('production release authority is invalid')
+  return authority
 }
 
 export function assertCleanReleaseWorktree(rootInput = ROOT) {
@@ -239,6 +252,20 @@ export function checkHarnessRelease(release) {
   const requirements = release.verificationRequirements
   if (!Array.isArray(requirements) || requirements.length < 10 || new Set(requirements).size !== requirements.length) {
     problems.push('release verification requirements are incomplete')
+  } else {
+    const releaseAuthorities = new Set([...PRODUCTION_RELEASE_AUTHORITIES, 'explicit-human-approval'])
+    const requiredAuthority = release.releaseAuthorityRequirement
+    const validAuthority = release.environment === 'production'
+      ? PRODUCTION_RELEASE_AUTHORITIES.includes(requiredAuthority)
+      : requiredAuthority === 'explicit-human-approval'
+    if (!validAuthority) {
+      problems.push('release authority requirement is invalid')
+    } else {
+      const listedAuthorities = requirements.filter((value) => releaseAuthorities.has(value))
+      if (listedAuthorities.length !== 1 || listedAuthorities[0] !== requiredAuthority) {
+        problems.push('release verification authority requirement is invalid')
+      }
+    }
   }
   if (release.rollbackPolicy?.historicalMigrationsImmutable !== true || release.rollbackPolicy?.schemaCorrectionMode !== 'forward-migration' || release.rollbackPolicy?.compatibilityStrategy !== 'expand-contract') {
     problems.push('release rollback policy is invalid')
@@ -610,6 +637,7 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
   const environmentIndex = process.argv.indexOf('--environment')
   const outputIndex = process.argv.indexOf('--output')
   const verifyIndex = process.argv.indexOf('--verify')
+  const productionAuthorityIndex = process.argv.indexOf('--production-authority')
   if (verifyIndex >= 0) {
     const artifact = process.argv[verifyIndex + 1]
     if (!artifact) throw new Error('--verify requires a release artifact path')
@@ -623,10 +651,15 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
   } else {
     const environment = process.argv[environmentIndex + 1]
     const output = process.argv[outputIndex + 1]
+    const productionAuthority = process.argv[productionAuthorityIndex + 1]
     if (environmentIndex >= 0 && !environment) throw new Error('--environment requires a value')
     if (outputIndex >= 0 && !output) throw new Error('--output requires a release artifact path')
+    if (productionAuthorityIndex >= 0 && (!productionAuthority || productionAuthority.startsWith('--'))) {
+      throw new Error('--production-authority requires a value')
+    }
     const release = buildHarnessRelease({
       environment: environmentIndex >= 0 ? environment : 'preview',
+      productionAuthority: productionAuthorityIndex >= 0 ? productionAuthority : undefined,
     })
     const path = resolveReleaseArtifactPath(ROOT, outputIndex >= 0 ? output : OUTPUT)
     mkdirSync(dirname(path), { recursive: true })

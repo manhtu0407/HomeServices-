@@ -157,13 +157,19 @@ test('PR assertion verification refuses absent reports and empty reviewed bindin
   assert.ok(evaluateBehavioralEvidence(value, [report]).executionProblems.length > 0)
 })
 
-test('PR and Production workflows require collected assertion evidence before release', () => {
+test('PR and recovery require bound assertions while a main Production release preserves behavioral proof', () => {
   const pr = readFileSync(resolve('.github/workflows/kael-agentic-completeness.yml'), 'utf8')
   const release = readFileSync(resolve('.github/workflows/release-production.yml'), 'utf8')
   assert.match(pr, /transaction-critical-coverage\.mjs --require-bound-assertions/u)
   assert.doesNotMatch(pr, /--require-behavioral/u)
+  const mainAuthority = release.indexOf('if [ "$RELEASE_AUTHORITY" = "main-branch-merge" ]; then')
+  const behavioralGate = release.indexOf('transaction-critical-coverage.mjs --require-behavioral')
+  const recoveryGate = release.indexOf('transaction-critical-coverage.mjs --require-bound-assertions')
+  assert.ok(mainAuthority >= 0)
+  assert.ok(behavioralGate > mainAuthority)
+  assert.ok(recoveryGate > behavioralGate)
   assert.match(release, /transaction-critical-coverage\.mjs --require-bound-assertions/u)
-  assert.doesNotMatch(release, /--require-behavioral/u)
+  assert.match(release, /transaction-critical-coverage\.mjs --require-behavioral/u)
 })
 
 test('Local integration checks out the PR head required by its release preflight', () => {

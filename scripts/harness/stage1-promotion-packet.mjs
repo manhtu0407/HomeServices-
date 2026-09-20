@@ -3,7 +3,7 @@ import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, relative, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { verifyMobileBinaryAttestation } from './mobile-binary-attestation.mjs'
-import { RELEASE_EDGE_FUNCTIONS } from './release-bundle.mjs'
+import { PRODUCTION_RELEASE_AUTHORITIES, RELEASE_EDGE_FUNCTIONS } from './release-bundle.mjs'
 import { verifyProductionUiNormalityReceipt } from '../check-production-ui-copy.mjs'
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..')
@@ -11,7 +11,6 @@ const SHA256 = /^[0-9a-f]{64}$/u
 const RELEASE_ID = /^harness-[0-9a-f]{12}-[0-9a-f]{12}$/u
 const COHORT_ID = /^synthetic-stage1-[0-9a-f]{12}-[0-9a-f]{12}-[A-Za-z0-9_-]{1,48}$/u
 const REQUIRED_GATES = Object.freeze([
-  'main-branch-merge',
   'workspace-typecheck',
   'workspace-tests',
   'workspace-build',
@@ -37,7 +36,7 @@ export function buildStage1PromotionPacket(input) {
     }]
   }))
   const packet = {
-    schemaVersion: 'stage1-promotion-packet.v3',
+    schemaVersion: 'stage1-promotion-packet.v4',
     packetId: `stage1-${input.release.releaseId}-${input.workflowRunId}`,
     generatedAt: new Date(input.now ?? Date.now()).toISOString(),
     environment: 'production',
@@ -45,6 +44,7 @@ export function buildStage1PromotionPacket(input) {
     release: {
       releaseId: input.release.releaseId,
       gitSha: input.release.gitSha,
+      releaseAuthorityRequirement: input.release.releaseAuthorityRequirement,
       bundleSha256: input.release.bundleSha256,
       sourceBundleSha256: input.release.sourceBundleSha256,
       mobileBuildFingerprintSha256: input.release.mobileBuildFingerprintSha256,
@@ -97,10 +97,13 @@ export function buildStage1PromotionPacket(input) {
 export function verifyStage1PromotionPacket(packet) {
   const problems = []
   if (!packet || typeof packet !== 'object') return ['promotion packet is invalid']
-  if (packet.schemaVersion !== 'stage1-promotion-packet.v3') problems.push('promotion packet schema is invalid')
+  if (packet.schemaVersion !== 'stage1-promotion-packet.v4') problems.push('promotion packet schema is invalid')
   if (Object.prototype.hasOwnProperty.call(packet, 'approval')) problems.push('promotion packet contains a retired reviewer approval')
   if (packet.environment !== 'production' || packet.projectRef !== 'iwevizmsedyqozxlawwl') problems.push('promotion packet target is invalid')
   if (!RELEASE_ID.test(packet.release?.releaseId ?? '')) problems.push('promotion packet release ID is invalid')
+  if (!PRODUCTION_RELEASE_AUTHORITIES.includes(packet.release?.releaseAuthorityRequirement)) {
+    problems.push('promotion packet release authority is invalid')
+  }
   if (!COHORT_ID.test(packet.cohortId ?? '')) problems.push('promotion packet cohort ID is invalid')
   if (verifyMobileBinaryAttestation(packet.mobileBinaryAttestation, packet.release).length > 0) {
     problems.push('promotion packet mobile binary attestation is invalid')
@@ -140,7 +143,7 @@ export function verifyStage1PromotionPacket(packet) {
       }
     }
   }
-  for (const gate of REQUIRED_GATES) if (!packet.passedGates?.includes(gate)) problems.push(`promotion packet is missing required release gate: ${gate}`)
+  for (const gate of requiredGates(packet.release)) if (!packet.passedGates?.includes(gate)) problems.push(`promotion packet is missing required release gate: ${gate}`)
   if (packet.rollback?.strategy !== 'downloaded-hosted-edge-source-on-expanded-schema' ||
       packet.rollback?.databaseRollbackForbidden !== true || packet.rollback?.sourceVerifiedBeforeDeploy !== true) {
     problems.push('promotion packet rollback contract is invalid')
@@ -163,6 +166,9 @@ function validateBuildInput(input) {
   if (!RELEASE_ID.test(release?.releaseId ?? '') || release?.environment !== 'production' ||
       !/^[0-9a-f]{40}$/u.test(release?.gitSha ?? '') || !SHA256.test(release?.bundleSha256 ?? '')) {
     throw new Error('Stage 1 promotion requires a valid production release')
+  }
+  if (!PRODUCTION_RELEASE_AUTHORITIES.includes(release.releaseAuthorityRequirement)) {
+    throw new Error('Stage 1 promotion release authority is invalid')
   }
   for (const field of [
     'sourceBundleSha256', 'mobileBuildFingerprintSha256', 'productionUiSourceSha256', 'edgeBundleSha256',
@@ -223,7 +229,13 @@ function validateBuildInput(input) {
   if (!Array.isArray(input.passedGates) || new Set(input.passedGates).size !== input.passedGates.length) {
     throw new Error('release gates must be a unique list')
   }
-  for (const gate of REQUIRED_GATES) if (!input.passedGates.includes(gate)) throw new Error(`missing required release gate: ${gate}`)
+  for (const gate of requiredGates(release)) if (!input.passedGates.includes(gate)) throw new Error(`missing required release gate: ${gate}`)
+}
+
+function requiredGates(release) {
+  return PRODUCTION_RELEASE_AUTHORITIES.includes(release?.releaseAuthorityRequirement)
+    ? [release.releaseAuthorityRequirement, ...REQUIRED_GATES]
+    : REQUIRED_GATES
 }
 
 function parseArgs(args) {

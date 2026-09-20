@@ -39,10 +39,14 @@ const BINDINGS = Object.freeze([
   ['HARNESS_PRICE_EVIDENCE_BUNDLE_SHA256', 'priceEvidenceBundleSha256'],
   ['HARNESS_PROVIDER_READINESS_FINGERPRINT_SHA256', 'providerReadinessFingerprintSha256'],
 ])
+const LEGACY_IOS_MINIMUM_BUILD_NUMBER = 44
 const CLIENT_BINDINGS = Object.freeze([
   ['NESTSCOUT_STAGE1_CLIENT_CONTRACT_EPOCH', () => '2'],
   ['NESTSCOUT_STAGE1_IOS_APPLICATION_ID', (receipt) => receipt.platforms.ios.applicationId],
-  ['NESTSCOUT_STAGE1_IOS_MINIMUM_BUILD_NUMBER', (receipt) => String(receipt.platforms.ios.buildNumber)],
+  ['NESTSCOUT_STAGE1_IOS_MINIMUM_BUILD_NUMBER', (receipt) => String(Math.min(
+    receipt.platforms.ios.buildNumber,
+    LEGACY_IOS_MINIMUM_BUILD_NUMBER,
+  ))],
   ['NESTSCOUT_STAGE1_IOS_EAS_BUILD_ID', (receipt) => receipt.platforms.ios.easBuildId],
   ['NESTSCOUT_STAGE1_IOS_RUNTIME_VERSION', (receipt) => receipt.platforms.ios.runtimeVersion],
   ['NESTSCOUT_STAGE1_ANDROID_APPLICATION_ID', (receipt) => receipt.platforms.android.applicationId],

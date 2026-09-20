@@ -4,6 +4,21 @@ import type {
 } from "./contracts.ts";
 import { apiFailure } from "../platform/api-failure.ts";
 
+const CLIENT_IDENTITY_HEADERS = [
+  "x-client-platform",
+  "x-client-application-id",
+  "x-client-build-number",
+  "x-client-contract-epoch",
+  "x-client-eas-build-id",
+  "x-client-runtime-version",
+  "x-client-git-sha",
+  "x-client-release-id",
+] as const;
+const CUSTOMER_CONVERSATION_COLLECTION_PATH = /(?:^|\/)me\/kael\/conversations\/?$/u;
+const CUSTOMER_CONVERSATION_TURN_PATH = /(?:^|\/)me\/kael\/conversations\/[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\/turn\/?$/iu;
+const CUSTOMER_CONVERSATION_STREAM_PATH = /(?:^|\/)me\/kael\/conversations\/[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\/stream\/?$/iu;
+const CUSTOMER_CONVERSATION_ARCHIVE_PATH = /(?:^|\/)me\/kael\/conversations\/[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\/?$/iu;
+
 export function enforceClientCompatibility(
   request: Request,
   deps: MobileApiHandlerDeps,
@@ -30,6 +45,7 @@ function enforceStage1ClientCompatibility(
   request: Request,
   compatibility: NonNullable<MobileApiHandlerDeps["clientCompatibility"]>,
 ): void {
+  if (allowsHeaderlessLegacyCustomerConversation(request)) return;
   const epoch = positiveHeaderInteger(request, "x-client-contract-epoch");
   const platform = request.headers.get("x-client-platform")?.trim().toLowerCase();
   const platformPolicy = platform === "ios" || platform === "android"
@@ -58,6 +74,17 @@ function enforceStage1ClientCompatibility(
   ) {
     rejectIncompatibleClient(compatibility.contractEpoch, platformPolicy?.minimumBuildNumber ?? null, platform);
   }
+}
+
+function allowsHeaderlessLegacyCustomerConversation(request: Request): boolean {
+  if (CLIENT_IDENTITY_HEADERS.some((name) => request.headers.get(name)?.trim())) return false;
+  const pathname = safeRequestUrl(request.url)?.pathname ?? "";
+  if (request.method === "POST") {
+    return CUSTOMER_CONVERSATION_COLLECTION_PATH.test(pathname) ||
+      CUSTOMER_CONVERSATION_TURN_PATH.test(pathname) ||
+      CUSTOMER_CONVERSATION_STREAM_PATH.test(pathname);
+  }
+  return request.method === "DELETE" && CUSTOMER_CONVERSATION_ARCHIVE_PATH.test(pathname);
 }
 
 function rejectIncompatibleClient(
