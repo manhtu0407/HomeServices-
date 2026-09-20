@@ -19,7 +19,11 @@ jobs:
     if: github.event_name == 'schedule'
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    environment: production
+    # Reads Production but changes nothing, so it must not be recorded as a deployment;
+    # otherwise a failed check here marks the whole Production environment as failed.
+    environment:
+      name: production
+      deployment: false
     env:
       PRODUCTION_PROJECT_REF: iwevizmsedyqozxlawwl
     steps:
@@ -158,27 +162,19 @@ jobs:
           if-no-files-found: error
           retention-days: 30
 
-  production-release:
-    name: expand, cohort canary, three full smokes, and atomic promotion
+  release-config-gate:
+    name: require complete encrypted Production release configuration
     needs: quality
-    if: github.event_name != 'schedule' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
-    timeout-minutes: 240
-    environment: production
-    env:
-      PRODUCTION_PROJECT_REF: iwevizmsedyqozxlawwl
-      PRODUCTION_PROJECT_URL: https://iwevizmsedyqozxlawwl.supabase.co
+    timeout-minutes: 5
+    permissions: {}
+    # Proves the release inputs exist without running repository code or third-party actions.
+    # Not recorded as a deployment: an incomplete configuration means nothing was attempted,
+    # so it must not mark the Production environment as failed.
+    environment:
+      name: production
+      deployment: false
     steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
-        with:
-          fetch-depth: 0
-          persist-credentials: false
-      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
-        with:
-          node-version: 22
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
       - name: Require complete encrypted Production release configuration
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
@@ -212,6 +208,28 @@ jobs:
           test -n "$PRODUCTION_SYNTHETIC_CUSTOMER_PASSWORD"
           test -n "$PRODUCTION_SYNTHETIC_WORKER_EMAIL"
           test -n "$PRODUCTION_SYNTHETIC_WORKER_PASSWORD"
+
+  production-release:
+    name: expand, cohort canary, three full smokes, and atomic promotion
+    needs: [quality, release-config-gate]
+    if: github.event_name != 'schedule' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    environment: production
+    env:
+      PRODUCTION_PROJECT_REF: iwevizmsedyqozxlawwl
+      PRODUCTION_PROJECT_URL: https://iwevizmsedyqozxlawwl.supabase.co
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
       - name: Verify immutable main source
         run: |
           test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
