@@ -156,10 +156,16 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITLEAKS_CONFIG: config/security/gitleaks.toml
+      - name: Prepare canonical migrations for an empty local reset
+        run: |
+          node scripts/harness/prepare-migration-workdir.mjs \
+            --empty-reset \
+            --inventory config/harness/migration-inventory.json \
+            --output artifacts/migration-empty-reset
       - name: Start isolated local Supabase
-        run: pnpm --filter @nestscout/api exec supabase start
+        run: ./apps/api/node_modules/.bin/supabase --workdir artifacts/migration-empty-reset start
       - name: Replay migrations from empty state
-        run: pnpm --filter @nestscout/api exec supabase db reset --local
+        run: ./apps/api/node_modules/.bin/supabase --workdir artifacts/migration-empty-reset db reset --local
       - name: Local integration pillar
         env:
           NESTSCOUT_ENVIRONMENT: local

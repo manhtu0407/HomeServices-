@@ -79,6 +79,30 @@ describe('Stage 1 production release workflow', () => {
       .toContain('timeout-minutes: 240')
   })
 
+  it('replays canonical migrations from an isolated empty-reset workdir', () => {
+    const prepare = workflow.indexOf('      - name: Prepare canonical migrations for an empty local reset')
+    const start = workflow.indexOf('      - name: Start isolated local Supabase')
+    const reset = workflow.indexOf('      - name: Replay migrations from empty state')
+    const localReplay = workflow.slice(
+      prepare,
+      workflow.indexOf('      - name: Local integration pillar'),
+    )
+    expect(prepare, pillarWhy(PILLAR, 'the canonical migration plan is prepared before local Supabase starts'))
+      .toBeGreaterThan(0)
+    expect(start, pillarWhy(PILLAR, 'local Supabase starts after its canonical migration plan exists'))
+      .toBeGreaterThan(prepare)
+    expect(reset, pillarWhy(PILLAR, 'local reset follows isolated Supabase startup'))
+      .toBeGreaterThan(start)
+    expect(localReplay, pillarWhy(PILLAR, 'the local reset excludes historical migration aliases'))
+      .toContain('prepare-migration-workdir.mjs')
+    expect(localReplay, pillarWhy(PILLAR, 'the local reset selects one canonical migration per equivalence group'))
+      .toContain('--empty-reset')
+    expect(localReplay, pillarWhy(PILLAR, 'the local Supabase CLI uses the prepared canonical workdir'))
+      .toContain('--workdir artifacts/migration-empty-reset')
+    expect(localReplay, pillarWhy(PILLAR, 'the raw migration directory cannot replay an out-of-order alias'))
+      .not.toContain('pnpm --filter @nestscout/api exec supabase start')
+  })
+
   it('binds before one candidate deploy and attests the exact redownloaded source before smoke', () => {
     const configure = workflow.indexOf('--action configure')
     const binding = workflow.indexOf('runtime-release-bindings.mjs')
