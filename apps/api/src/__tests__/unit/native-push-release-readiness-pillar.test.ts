@@ -50,7 +50,7 @@ describe('native push and Production release readiness', () => {
     expect(maintainer).toContain('push_receipts_failed')
   })
 
-  it('requires push readiness on the main lane while recovery records its actual push state', () => {
+  it('fails Production release construction unless APNs, FCM v1, and receipt reconciliation are proven', () => {
     const releaseBundle = rootFile('scripts/harness/release-bundle.mjs')
     const releaseWorkflow = rootFile('.github/workflows/release-production.yml')
     const configuration = releaseWorkflow.slice(
