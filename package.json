@@ -73,6 +73,7 @@
     "lint:baseline": "node scripts/run.mjs run-node scripts/check-structure-baseline.mjs",
     "lint:edge-db": "node scripts/run.mjs run-node scripts/check-edge-db-contract.mjs",
     "lint:authority": "node scripts/run.mjs run-node scripts/check-authority-citations.mjs",
+    "lint:workflow-cost": "node scripts/run.mjs run-node scripts/check-workflow-cost.mjs",
     "lint:comments": "node scripts/run.mjs run-node scripts/check-comment-discipline.mjs",
     "lint:playbooks": "node scripts/run.mjs run-node scripts/check-kael-playbook-coverage.mjs",
     "lint:production-ui-copy": "node scripts/run.mjs run-node scripts/check-production-ui-copy.mjs",
