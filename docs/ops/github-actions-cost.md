@@ -41,7 +41,7 @@ Measured from the workflow runs (`node scripts/ci-usage-report.mjs --month 2026-
 
 The caps are inferred from these crossings, not read from GitHub. The Billing page showing exactly $7.00 spent against a $9.00 budget fits a meter that stopped at a $7.00 cap before the budget was raised.
 
-- The hourly `stale-canary-reconciler` failed all 98 of its September runs, each billing a minute; the last 27 failed on Production having no release-control table. The nightly `integration` schedule re-ran, on unchanged code, the suite that already runs for every change that can affect it.
+- The hourly `stale-canary-reconciler` failed all 98 of its September runs, which billed 94 minutes. After its TypeScript import was fixed it failed on Production having no release-control table, apart from the runs a billing block refused. The nightly `integration` schedule re-ran, on unchanged code, the suite that already runs for every change that can affect it.
 
 ## What runs when
 
