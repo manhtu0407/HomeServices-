@@ -28,6 +28,40 @@ export const PILLAR = {
 const releaseId = 'harness-aaaaaaaaaaaa-bbbbbbbbbbbb'
 const providerDeploymentId = 'iwevizmsedyqozxlawwl_10000000-0000-4000-8000-000000000053_7'
 const digest = (seed: string) => seed.repeat(64)
+const kaelRecoveryEnvironment: Readonly<Record<string, string>> = {
+  SUPABASE_URL: 'https://iwevizmsedyqozxlawwl.supabase.co',
+  NESTSCOUT_ENVIRONMENT: 'production',
+  APP_SECRET_KEY: 'sb_secret_project',
+  HARNESS_RELEASE_ID: releaseId,
+  HARNESS_GIT_SHA: 'a'.repeat(40),
+  HARNESS_MANIFEST_SHA256: digest('b'),
+  HARNESS_BUNDLE_SHA256: digest('c'),
+  HARNESS_SOURCE_BUNDLE_SHA256: digest('d'),
+  HARNESS_MOBILE_BUILD_FINGERPRINT_SHA256: digest('e'),
+  HARNESS_PRODUCTION_UI_SOURCE_SHA256: digest('5'),
+  HARNESS_EDGE_BUNDLE_SHA256: digest('f'),
+  HARNESS_MIGRATION_INVENTORY_SHA256: digest('1'),
+  HARNESS_SERVICE_INTAKE_POLICY_BUNDLE_SHA256: digest('2'),
+  HARNESS_PRICE_EVIDENCE_BUNDLE_SHA256: digest('3'),
+  HARNESS_PROVIDER_READINESS_FINGERPRINT_SHA256: digest('4'),
+  NESTSCOUT_STAGE1_CLIENT_CONTRACT_EPOCH: '2',
+  NESTSCOUT_STAGE1_IOS_APPLICATION_ID: 'com.phanmanhtu.homeservices',
+  NESTSCOUT_STAGE1_IOS_MINIMUM_BUILD_NUMBER: '45',
+  NESTSCOUT_STAGE1_IOS_EAS_BUILD_ID: '11111111-1111-4111-8111-111111111111',
+  NESTSCOUT_STAGE1_IOS_RUNTIME_VERSION: '0.2.0',
+  NESTSCOUT_STAGE1_ANDROID_APPLICATION_ID: 'com.phanmanhtu.nestscout',
+  NESTSCOUT_STAGE1_ANDROID_MINIMUM_BUILD_NUMBER: '4',
+  NESTSCOUT_STAGE1_ANDROID_EAS_BUILD_ID: '22222222-2222-4222-8222-222222222222',
+  NESTSCOUT_STAGE1_ANDROID_RUNTIME_VERSION: '0.2.0',
+  NESTSCOUT_ANDROID_FCM_V1_READY: 'false',
+  NESTSCOUT_IOS_APNS_READY: 'false',
+  NESTSCOUT_PUSH_RECEIPT_RECONCILER_READY: 'false',
+  ANTHROPIC_API_KEY: 'configured',
+  KAEL_DURABLE_GUARDS_ENABLED: 'true',
+  KAEL_AI_KILL_SWITCH: 'false',
+  PERPLEXITY_API_KEY: 'configured',
+  VIETMAP_API_KEY: 'configured',
+}
 
 describe('Stage 1 release integrity', () => {
   it('refuses to start Production with an incomplete release identity', () => {
@@ -47,6 +81,23 @@ describe('Stage 1 release integrity', () => {
       'Production release identity is incomplete',
     )
     expect(previewRead).toThrow('Staging and Preview remote targets are locked')
+  })
+
+  it('starts Kael with unavailable Push providers when its runtime providers are ready', () => {
+    const productionEnv = readEdgeEnv((name) => kaelRecoveryEnvironment[name])
+
+    expect(productionEnv.harnessRelease.registered).toBe(true)
+    expect(productionEnv.harnessRelease.providerReadiness).toMatchObject({
+      android_fcm_v1: false,
+      ios_apns: false,
+      push_receipt_reconciler: false,
+      anthropic: true,
+      durable_guards: true,
+      global_ai_enabled: true,
+      perplexity: true,
+      vietmap: true,
+    })
+    expect(() => assertProductionReleaseRegistered(productionEnv)).not.toThrow()
   })
 
   it('returns complete safe release identity from the real public route', async () => {

@@ -46,7 +46,7 @@ test('rejects a manifest that omits release-integrity fingerprints', () => {
   assert.ok(problems.includes('sourceBundleSha256 is invalid'))
 })
 
-test('fails a Production release when either native push provider or the receipt reconciler is unproven', () => {
+test('keeps native push readiness mandatory for the main Production release', () => {
   const providerReadiness = {
     android_fcm_v1: true,
     anthropic: true,
@@ -67,16 +67,16 @@ test('fails a Production release when either native push provider or the receipt
   assert.ok(checkHarnessRelease(release).includes('production provider readiness is incomplete'))
 })
 
-test('binds an explicit operator recovery authority into a Production release', () => {
+test('allows the locked Kael recovery authority to record unavailable push providers truthfully', () => {
   const providerReadiness = {
-    android_fcm_v1: true,
+    android_fcm_v1: false,
     anthropic: true,
     deepseek: false,
     durable_guards: true,
     global_ai_enabled: true,
-    ios_apns: true,
+    ios_apns: false,
     perplexity: true,
-    push_receipt_reconciler: true,
+    push_receipt_reconciler: false,
     vietmap: true,
   }
   const release = buildHarnessRelease({
@@ -96,6 +96,28 @@ test('binds an explicit operator recovery authority into a Production release', 
     () => buildHarnessRelease({ environment: 'staging', productionAuthority: 'operator-kael-production-recovery' }),
     /only valid for a Production release/,
   )
+})
+
+test('does not let the locked Kael recovery authority omit a required runtime provider', () => {
+  const providerReadiness = {
+    android_fcm_v1: false,
+    anthropic: false,
+    deepseek: false,
+    durable_guards: true,
+    global_ai_enabled: true,
+    ios_apns: false,
+    perplexity: true,
+    push_receipt_reconciler: false,
+    vietmap: true,
+  }
+  const release = buildHarnessRelease({
+    environment: 'production',
+    gitSha: '1'.repeat(40),
+    providerReadiness,
+    productionAuthority: 'operator-kael-production-recovery',
+    requireCleanWorktree: false,
+  })
+  assert.ok(checkHarnessRelease(release).includes('production provider readiness is incomplete'))
 })
 
 test('keeps release artifacts inside the repository root', () => {

@@ -7,7 +7,7 @@ import { pillarWhy, type PillarManifest } from '../pillar-manifest'
 export const PILLAR = {
   id: 'P72-native-push-release-readiness',
   invariant:
-    'a Production release can count remote Worker reachability only when both native push platforms and hosted receipt reconciliation are fail-closed gates',
+    'the main Production release requires both native push platforms and hosted receipt reconciliation, while the locked Kael recovery authority records unavailable push providers without weakening its runtime-provider gate',
   authority: [
     'governance/RULES.md #5 (real runtime evidence cannot be replaced by a source claim)',
     'governance/RULES.md #7 (human authority remains explicit)',
@@ -50,9 +50,17 @@ describe('native push and Production release readiness', () => {
     expect(maintainer).toContain('push_receipts_failed')
   })
 
-  it('fails Production release construction unless APNs, FCM v1, and receipt reconciliation are proven', () => {
+  it('requires push readiness on the main lane while recovery records its actual push state', () => {
     const releaseBundle = rootFile('scripts/harness/release-bundle.mjs')
     const releaseWorkflow = rootFile('.github/workflows/release-production.yml')
+    const configuration = releaseWorkflow.slice(
+      releaseWorkflow.indexOf('Require encrypted Production configuration for the resolved authority'),
+      releaseWorkflow.indexOf('Verify immutable release source'),
+    )
+    const recoveryCase = configuration.slice(
+      configuration.indexOf('operator-kael-production-recovery)'),
+      configuration.indexOf('*)', configuration.indexOf('operator-kael-production-recovery)')),
+    )
 
     for (const readinessKey of ['android_fcm_v1', 'ios_apns', 'push_receipt_reconciler']) {
       expect(releaseBundle).toContain(readinessKey)
@@ -63,8 +71,12 @@ describe('native push and Production release readiness', () => {
       'NESTSCOUT_PUSH_RECEIPT_RECONCILER_READY',
     ]) {
       expect(releaseBundle).toContain(flag)
-      expect(releaseWorkflow).toContain(`test \"$${flag}\" = \"true\"`)
+      expect(configuration).toContain(`test \"$${flag}\" = \"true\"`)
+      expect(recoveryCase).not.toContain(`test \"$${flag}\" = \"true\"`)
     }
+    expect(configuration).toContain('case "$RELEASE_AUTHORITY" in')
+    expect(configuration).toContain('main-branch-merge)')
+    expect(configuration).toContain('operator-kael-production-recovery)')
   })
 
   it('keeps the normal Production lane on main and locks any operator recovery', () => {

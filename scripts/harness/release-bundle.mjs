@@ -32,6 +32,13 @@ const PROVIDER_READINESS_KEYS = Object.freeze([
   'android_fcm_v1', 'anthropic', 'deepseek', 'durable_guards', 'global_ai_enabled',
   'ios_apns', 'perplexity', 'push_receipt_reconciler', 'vietmap',
 ])
+const MAIN_PRODUCTION_PROVIDER_READINESS_KEYS = Object.freeze([
+  'android_fcm_v1', 'anthropic', 'durable_guards', 'global_ai_enabled',
+  'ios_apns', 'perplexity', 'push_receipt_reconciler', 'vietmap',
+])
+const KAEL_RUNTIME_PROVIDER_READINESS_KEYS = Object.freeze([
+  'anthropic', 'durable_guards', 'global_ai_enabled', 'perplexity', 'vietmap',
+])
 const repoPath = (value) => value.split(sep).join('/')
 
 export function buildHarnessRelease(options = {}) {
@@ -160,6 +167,13 @@ function releaseAuthorityFor(environment, requestedAuthority) {
   return authority
 }
 
+function requiredProviderReadinessFor(release) {
+  if (release?.environment !== 'production') return []
+  return release.releaseAuthorityRequirement === 'operator-kael-production-recovery'
+    ? KAEL_RUNTIME_PROVIDER_READINESS_KEYS
+    : MAIN_PRODUCTION_PROVIDER_READINESS_KEYS
+}
+
 export function assertCleanReleaseWorktree(rootInput = ROOT) {
   const root = resolve(rootInput)
   const status = git(root, ['status', '--porcelain=v1', '--untracked-files=all'])
@@ -203,12 +217,8 @@ export function checkHarnessRelease(release) {
   if (!validProviderReadiness(release.providerReadiness) ||
       release.providerReadinessFingerprintSha256 !== sha256(canonicalJson(release.providerReadiness))) {
     problems.push('provider readiness evidence is invalid')
-  } else if (release.environment === 'production' &&
-      [
-        'android_fcm_v1', 'anthropic', 'durable_guards', 'global_ai_enabled',
-        'ios_apns', 'perplexity', 'push_receipt_reconciler', 'vietmap',
-      ]
-        .some((name) => release.providerReadiness[name] !== true)) {
+  } else if (requiredProviderReadinessFor(release)
+      .some((name) => release.providerReadiness[name] !== true)) {
     problems.push('production provider readiness is incomplete')
   }
   problems.push(...checkEnvironmentBinding(release.environment, release.environmentBinding))
