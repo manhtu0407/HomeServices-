@@ -90,3 +90,56 @@ test('hosted release artifact read is exact, single-row, and service-role scoped
   assert.equal(requests[0].init.headers.authorization, `Bearer ${TARGET.serviceRoleKey}`)
   await assert.rejects(() => client.selectRelease('unreleased'), /ID is invalid/u)
 })
+
+const ABSENT_CONTROL_TABLE_BODIES = [
+  {
+    code: 'PGRST205',
+    message: "Could not find the table 'public.stage1_release_controls' in the schema cache",
+    details: null,
+    hint: null,
+  },
+  { code: '42P01', message: 'relation "public.stage1_release_controls" does not exist' },
+]
+
+function failingControlRead(status, body) {
+  return createReleaseControlClient({
+    ...TARGET,
+    fetchImpl: async () => ({
+      ok: false,
+      status,
+      text: async () => (typeof body === 'string' ? body : JSON.stringify(body)),
+    }),
+  }).selectControl()
+}
+
+test('a control read classifies an absent stage1_release_controls table from the exact PostgREST error', async () => {
+  for (const body of ABSENT_CONTROL_TABLE_BODIES) {
+    await assert.rejects(
+      failingControlRead(404, body),
+      (error) => error.code === 'RELEASE_CONTROL_TABLE_ABSENT' &&
+        error.message === 'hosted release control read failed with HTTP 404',
+      JSON.stringify(body),
+    )
+  }
+})
+
+test('a control read never classifies a bare 404, another table, another status, or a permission failure as absent', async () => {
+  const unrelated = [
+    [404, { message: 'Not Found' }],
+    [404, 'not json'],
+    [404, { code: 'PGRST205', message: "Could not find the table 'public.harness_releases' in the schema cache" }],
+    [404, { code: 'PGRST205', message: "Could not find the table 'public.stage1_release_controls_archive' in the schema cache" }],
+    [404, { code: 'PGRST202', message: 'Could not find the public.stage1_release_controls() function in the schema cache' }],
+    [401, { code: 'PGRST301', message: 'JWT expired' }],
+    [403, { code: '42501', message: 'permission denied for table stage1_release_controls' }],
+    [500, ABSENT_CONTROL_TABLE_BODIES[0]],
+  ]
+  for (const [status, body] of unrelated) {
+    await assert.rejects(
+      failingControlRead(status, body),
+      (error) => error.code === undefined &&
+        error.message === `hosted release control read failed with HTTP ${status}`,
+      `HTTP ${status} ${JSON.stringify(body)}`,
+    )
+  }
+})

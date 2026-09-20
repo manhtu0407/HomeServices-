@@ -42,6 +42,7 @@ jobs:
             --action reconcile-stale --environment production \
             --project-ref "$PRODUCTION_PROJECT_REF" \
             > artifacts/release/stale-reconcile.json
+          node -e "const r=require('./artifacts/release/stale-reconcile.json');if(r.mode==='release_control_schema_not_installed')console.log('::notice title=Release control not installed::Production has no '+r.table+' table, so no stale candidate can exist.')"
       - name: Upload stale-candidate reconciliation evidence
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
