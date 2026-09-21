@@ -4,6 +4,7 @@ import { dirname, relative, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { verifyMobileBinaryAttestation } from './mobile-binary-attestation.mjs'
 import { RELEASE_EDGE_FUNCTIONS } from './release-bundle.mjs'
+import { TRANSACTION_BEHAVIOR_MODE, verifyTransactionBehaviorReceipt } from './transaction-behavior-receipt.mjs'
 import { verifyProductionUiNormalityReceipt } from '../check-production-ui-copy.mjs'
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..')
@@ -25,9 +26,14 @@ const REQUIRED_GATES = Object.freeze([
   'hosted-drift-baseline',
   'production-ui-normality',
 ])
+// A verification release must also prove every bound transaction assertion ran, because its remaining
+// gaps are acknowledged rather than closed.
+const VERIFICATION_GATES = Object.freeze([...REQUIRED_GATES, 'transaction-bound-assertions'])
 
 export function buildStage1PromotionPacket(input) {
   validateBuildInput(input)
+  const verification = input.lane === 'verification'
+  const receipt = input.transactionBehaviorReceipt
   const rollbackFunctions = Object.fromEntries(RELEASE_EDGE_FUNCTIONS.map((functionName) => {
     const hostedFunction = input.previousHostedState.managedEdgeFunctions[functionName]
     return [functionName, {
@@ -42,7 +48,9 @@ export function buildStage1PromotionPacket(input) {
     generatedAt: new Date(input.now ?? Date.now()).toISOString(),
     environment: 'production',
     projectRef: 'iwevizmsedyqozxlawwl',
+    ...(verification ? { lane: 'verification' } : {}),
     release: {
+      ...(verification ? { releaseLane: 'verification' } : {}),
       releaseId: input.release.releaseId,
       gitSha: input.release.gitSha,
       bundleSha256: input.release.bundleSha256,
@@ -58,6 +66,18 @@ export function buildStage1PromotionPacket(input) {
     },
     cohortId: input.cohortId,
     mobileBinaryAttestation: input.mobileBinaryAttestation,
+    ...(verification ? {
+      transactionBehavior: {
+        mode: receipt.mode,
+        receiptSha256: receipt.receiptSha256,
+        manifestSha256: receipt.manifestSha256,
+        entryCount: receipt.entryCount,
+        partialEntryCount: receipt.partialCount,
+        boundAssertionsPassed: receipt.boundAssertions.passed,
+        boundAssertionsRequired: receipt.boundAssertions.required,
+        gapsSha256: receipt.gapsSha256,
+      },
+    } : {}),
     productionUiNormality: {
       sourceSha256: input.productionUiNormalityReceipt.sourceSha256,
       receiptSha256: input.productionUiNormalityReceipt.receiptSha256,
@@ -104,6 +124,21 @@ export function verifyStage1PromotionPacket(packet) {
   if (!COHORT_ID.test(packet.cohortId ?? '')) problems.push('promotion packet cohort ID is invalid')
   if (verifyMobileBinaryAttestation(packet.mobileBinaryAttestation, packet.release).length > 0) {
     problems.push('promotion packet mobile binary attestation is invalid')
+  }
+  const relation = packet.mobileBinaryAttestation?.binaryRelation
+  if (packet.lane === 'verification') {
+    if (packet.release?.releaseLane !== 'verification') problems.push('promotion packet verification lane requires a verification release')
+    if (relation !== 'latest_existing') problems.push('promotion packet verification lane requires the latest existing store binaries')
+    if (!validTransactionBehavior(packet.transactionBehavior)) problems.push('promotion packet transaction behavior evidence is invalid')
+    if (!packet.passedGates?.includes('transaction-bound-assertions')) problems.push('promotion packet is missing required release gate: transaction-bound-assertions')
+  } else {
+    if (packet.lane !== undefined) problems.push('promotion packet lane is invalid')
+    if (packet.release?.releaseLane !== undefined || relation !== undefined) {
+      problems.push('promotion packet strict lane requires an exact-commit release and binaries')
+    }
+    if (Object.hasOwn(packet, 'transactionBehavior')) {
+      problems.push('promotion packet strict lane cannot carry acknowledged transaction gaps')
+    }
   }
   for (const field of [
     packet.release?.bundleSha256,
@@ -160,6 +195,23 @@ export function verifyStage1PromotionPacket(packet) {
 function validateBuildInput(input) {
   if (input?.mergeApprovalReceipt !== undefined) throw new Error('Stage 1 Production promotion no longer accepts a reviewer approval receipt')
   const release = input?.release
+  const lane = input?.lane ?? 'strict'
+  if (lane !== 'strict' && lane !== 'verification') throw new Error('Stage 1 promotion lane is invalid')
+  if (lane === 'strict') {
+    if (release?.releaseLane !== undefined || input?.mobileBinaryAttestation?.binaryRelation !== undefined ||
+        input?.transactionBehaviorReceipt !== undefined) {
+      throw new Error('strict Stage 1 promotion accepts only an exact-commit release and binaries, with no acknowledged transaction gaps')
+    }
+  } else {
+    if (release?.releaseLane !== 'verification') throw new Error('verification Stage 1 promotion requires a verification-lane release')
+    if (input.mobileBinaryAttestation?.binaryRelation !== 'latest_existing') {
+      throw new Error('verification Stage 1 promotion requires the latest existing store binaries, recorded as such')
+    }
+    const receiptProblems = verifyTransactionBehaviorReceipt(input.transactionBehaviorReceipt)
+    if (receiptProblems.length > 0) {
+      throw new Error(`verification Stage 1 promotion requires a valid transaction behavior receipt: ${receiptProblems.join('; ')}`)
+    }
+  }
   if (!RELEASE_ID.test(release?.releaseId ?? '') || release?.environment !== 'production' ||
       !/^[0-9a-f]{40}$/u.test(release?.gitSha ?? '') || !SHA256.test(release?.bundleSha256 ?? '')) {
     throw new Error('Stage 1 promotion requires a valid production release')
@@ -223,7 +275,19 @@ function validateBuildInput(input) {
   if (!Array.isArray(input.passedGates) || new Set(input.passedGates).size !== input.passedGates.length) {
     throw new Error('release gates must be a unique list')
   }
-  for (const gate of REQUIRED_GATES) if (!input.passedGates.includes(gate)) throw new Error(`missing required release gate: ${gate}`)
+  for (const gate of lane === 'verification' ? VERIFICATION_GATES : REQUIRED_GATES) {
+    if (!input.passedGates.includes(gate)) throw new Error(`missing required release gate: ${gate}`)
+  }
+}
+
+function validTransactionBehavior(value) {
+  return Boolean(value) && typeof value === 'object' && !Array.isArray(value) &&
+    value.mode === TRANSACTION_BEHAVIOR_MODE &&
+    SHA256.test(value.receiptSha256 ?? '') && SHA256.test(value.manifestSha256 ?? '') && SHA256.test(value.gapsSha256 ?? '') &&
+    Number.isSafeInteger(value.entryCount) && value.entryCount >= 1 &&
+    Number.isSafeInteger(value.partialEntryCount) && value.partialEntryCount >= 0 && value.partialEntryCount <= value.entryCount &&
+    Number.isSafeInteger(value.boundAssertionsRequired) && value.boundAssertionsRequired >= 1 &&
+    value.boundAssertionsPassed === value.boundAssertionsRequired
 }
 
 function parseArgs(args) {
@@ -232,6 +296,7 @@ function parseArgs(args) {
     '--release', '--expand-only', '--hosted-before', '--rollback-mobile-source-sha256',
     '--rollback-maintainer-source-sha256',
     '--cohort', '--mobile-binary', '--production-ui-normality', '--workflow-run-id', '--gates', '--output',
+    '--lane', '--transaction-behavior',
   ])
   for (let index = 0; index < args.length; index += 1) {
     const key = args[index]
@@ -292,6 +357,10 @@ function main() {
       'kael-matching-maintainer': options.rollbackMaintainerSourceSha256,
     },
     cohortId: options.cohort,
+    lane: options.lane,
+    transactionBehaviorReceipt: options.transactionBehavior
+      ? JSON.parse(readFileSync(resolveInsideRoot(options.transactionBehavior), 'utf8'))
+      : undefined,
     mobileBinaryAttestation: JSON.parse(readFileSync(resolveInsideRoot(options.mobileBinary), 'utf8')),
     productionUiNormalityReceipt: JSON.parse(readFileSync(resolveInsideRoot(options.productionUiNormality), 'utf8')),
     workflowRunId: options.workflowRunId,

@@ -55,6 +55,9 @@
         "production"
       ]
     },
+    "releaseLane": {
+      "const": "verification"
+    },
     "gitSha": {
       "type": "string",
       "pattern": "^[0-9a-f]{40}$"
