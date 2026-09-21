@@ -1,7 +1,7 @@
 // Edge service kael-memory domain (C4 6a, services/* split): the user's own Kael memory CRUD
 // (read/edit/delete; customer L3 + worker L4) with memory-audit logging. Imported by services.ts.
 
-import { db, dbQuery } from "../../platform/db.ts";
+import { db, dbQuery, workflowDb } from "../../platform/db.ts";
 import { logMemoryAudit } from "../../platform/audit.ts";
 import { apiFailure } from "../../platform/api-failure.ts";
 import type { MobileApiContext } from "../../platform/auth.ts";
@@ -22,7 +22,9 @@ export async function getMyKaelMemory(ctx: MobileApiContext) {
       .maybeSingle(),
   );
   if (result.error) apiFailure("DB_ERROR", "Không thể tải bộ nhớ Kael", 500);
-  await logMemoryAudit(client, {
+  // kael_memory_audit accepts service_role inserts only, and logMemoryAudit swallows the refusal,
+  // so an audit written on the user client would silently never land.
+  await logMemoryAudit(workflowDb(ctx), {
     subjectType: "customer",
     subjectId: ctx.user.id,
     actorId: ctx.user.id,
@@ -46,7 +48,7 @@ export async function getWorkerKaelMemory(ctx: MobileApiContext) {
       .maybeSingle(),
   );
   if (result.error) apiFailure("DB_ERROR", "Không thể tải bộ nhớ Kael", 500);
-  await logMemoryAudit(client, {
+  await logMemoryAudit(workflowDb(ctx), {
     subjectType: "worker",
     subjectId: ctx.user.id,
     actorId: ctx.user.id,
@@ -90,7 +92,8 @@ export async function updateWorkerKaelMemoryPreference(
 }
 
 export async function deleteMyKaelMemory(ctx: MobileApiContext) {
-  const client = db(ctx);
+  // authenticated may read but not write the memory tables; every write below is keyed to ctx.user.id.
+  const client = workflowDb(ctx);
   const subjectType: "customer" | "worker" = ctx.role === "worker" ? "worker" : "customer";
   const table = subjectType === "worker" ? "worker_kael_memory" : "customer_kael_memory";
   const column = subjectType === "worker" ? "worker_id" : "customer_id";
@@ -116,7 +119,7 @@ export async function updateMyKaelMemory(
   ctx: MobileApiContext,
   input: UpdateKaelMemoryInput,
 ) {
-  const client = db(ctx);
+  const client = workflowDb(ctx);
   const now = new Date().toISOString();
 
   if (ctx.role === "worker") {
