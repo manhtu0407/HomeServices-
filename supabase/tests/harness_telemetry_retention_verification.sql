@@ -1,7 +1,7 @@
 -- @pillar id: P202-harness-telemetry-retention-sql
 -- @pillar invariant: The retention pass removes only successful, expired read-route runs together with their events and privileged operations; failed, denied, non-completed, write-route and recent runs survive, and the append-only triggers are enabled again whether the pass succeeds or aborts.
 -- @pillar authority: governance/RULES.md #8 (no silent loss of failure evidence) | supabase/migrations/20260806122000_harness_trace_lineage.sql (append-only harness evidence)
--- @pillar target: supabase/migrations/20260921153130_harness_telemetry_retention.sql
+-- @pillar target: supabase/migrations/20260921224356_harness_retention_no_temp_table.sql
 -- @pillar layer: sql
 -- @pillar siblings: P203-harness-retention-read-only-allowlist, P18-capability-registry-parity
 -- @pillar mutation: Drop the privileged-operation `denied` guard from private.prune_harness_read_telemetry; the denied-read fixture is deleted and P202 raises.

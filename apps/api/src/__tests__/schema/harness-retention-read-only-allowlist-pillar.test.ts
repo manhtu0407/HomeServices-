@@ -13,7 +13,7 @@ export const PILLAR = {
     'governance/RULES.md #8 (no silent loss of evidence)',
     'governance/RULES.md #7 (server-validated decisions keep their audit trail)',
   ],
-  target: 'supabase/migrations/20260921153130_harness_telemetry_retention.sql',
+  target: 'supabase/migrations/20260921224356_harness_retention_no_temp_table.sql',
   layer: 'static-type',
   siblings: ['P202-harness-telemetry-retention-sql', 'P18-capability-registry-parity'],
   mutation:
