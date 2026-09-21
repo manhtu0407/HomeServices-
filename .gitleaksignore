@@ -2,3 +2,10 @@
 b7b3c23929b5f66e72b9c148c75a7b55da9682a4:docs/test-logs/2026-09-05_production-transaction-readiness.md:generic-api-key:985
 b7b3c23929b5f66e72b9c148c75a7b55da9682a4:docs/test-logs/2026-09-05_production-transaction-readiness.md:generic-api-key:1042
 b7b3c23929b5f66e72b9c148c75a7b55da9682a4:docs/test-logs/2026-09-05_production-transaction-readiness.md:generic-api-key:1106
+# Verified non-credentials, each pinned to one historical finding: an A/B experiment slug (three), an empty
+# variable in the env example, and a React key prop. The full-history scan in the release job reads all of them.
+270bf7c2c10b9df10cc7b68fbde82c775d369bdc:apps/mobile/components/worker/jobs/worker-jobs-zip-prototype-surface.tsx:generic-api-key:118
+6c9d557ba968986badb43a6af5f70ee28c3b4960:apps/api/scripts/kael-ab-pricesynth.mjs:generic-api-key:6
+6c9d557ba968986badb43a6af5f70ee28c3b4960:docs/test-logs/2026-05-26_f26-ab-pricesynth-decision.md:generic-api-key:15
+7fc7d75c47c8fbd6161329c1dcca34720eb38abe:docs/test-logs/2026-05-26_p17-staging-monitoring-ab.md:generic-api-key:53
+82fdd6fc1f3576fc98ff43dbec76463cc702318e:config/env/workspace.env.example:generic-api-key:46
