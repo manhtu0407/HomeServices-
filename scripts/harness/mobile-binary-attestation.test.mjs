@@ -1,8 +1,14 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 
+import { rehash } from './fixtures/checksum.mjs'
 import { buildHarnessRelease } from './release-bundle.mjs'
-import { buildMobileBinaryAttestation, verifyMobileBinaryAttestation } from './mobile-binary-attestation.mjs'
+import {
+  buildMobileBinaryAttestation,
+  selectExactEasBuilds,
+  selectLatestEasBuilds,
+  verifyMobileBinaryAttestation,
+} from './mobile-binary-attestation.mjs'
 
 const release = buildHarnessRelease({
   environment: 'production', gitSha: 'a'.repeat(40), requireCleanWorktree: false,
@@ -116,6 +122,62 @@ test('does not invent EAS runtime identity or prefer conflicting normalized alia
   const receipt = buildMobileBinaryAttestation(attestationInput())
   receipt.platforms.ios.artifactSizeBytes = 0
   assert.ok(verifyMobileBinaryAttestation(receipt, release).includes('mobile ios binary evidence is invalid'))
+})
+
+function olderCommitInput() {
+  const input = attestationInput()
+  input.builds[0] = { ...input.builds[0], gitCommitHash: 'b'.repeat(40), completedAt: '2026-08-01T00:00:00.000Z' }
+  input.builds[1] = { ...input.builds[1], gitCommitHash: 'c'.repeat(40), completedAt: '2026-08-02T00:00:00.000Z' }
+  return input
+}
+
+test('a verification release may bind the latest existing store builds and says so', () => {
+  const input = { ...olderCommitInput(), relation: 'latest_existing' }
+  const receipt = buildMobileBinaryAttestation(input)
+  assert.equal(receipt.binaryRelation, 'latest_existing')
+  assert.equal(receipt.gitSha, release.gitSha)
+  assert.equal(receipt.platforms.ios.gitCommitHash, 'b'.repeat(40))
+  assert.equal(receipt.platforms.android.gitCommitHash, 'c'.repeat(40))
+  assert.deepEqual(verifyMobileBinaryAttestation(receipt, release), [])
+  assert.match(
+    verifyMobileBinaryAttestation({ ...receipt, binaryRelation: 'anything_else' }, release).join('; '),
+    /relation is invalid/u,
+  )
+})
+
+test('the exact relation still refuses a build of another commit, and its receipt carries no relation field', () => {
+  assert.throws(() => buildMobileBinaryAttestation(olderCommitInput()), /no exact finished EAS ios/u)
+  const exact = buildMobileBinaryAttestation(attestationInput())
+  assert.equal(Object.hasOwn(exact, 'binaryRelation'), false, 'strict receipts must stay byte-identical to before')
+  assert.throws(() => buildMobileBinaryAttestation({ ...attestationInput(), relation: 'newest' }), /unknown mobile binary relation/u)
+})
+
+test('the relation cannot be stripped or forged to launder a build of another commit, even with a recomputed checksum', () => {
+  const latest = buildMobileBinaryAttestation({ ...olderCommitInput(), relation: 'latest_existing' })
+  const stripped = { ...latest }
+  delete stripped.binaryRelation
+  assert.ok(verifyMobileBinaryAttestation(rehash(stripped), release).includes('mobile ios binary evidence is invalid'),
+    'without the relation marker a receipt claims binaries built from the release commit')
+  const exact = buildMobileBinaryAttestation(attestationInput())
+  const relabelled = rehash({ ...exact, platforms: { ...exact.platforms, ios: { ...exact.platforms.ios, gitCommitHash: 'b'.repeat(40) } } })
+  assert.ok(verifyMobileBinaryAttestation(relabelled, release).includes('mobile ios binary evidence is invalid'))
+})
+
+test('latest existing selects the newest finished store build per platform and keeps the store build policy', () => {
+  const builds = [
+    { ...build('IOS', '11111111-1111-4111-8111-111111111111', 'com.phanmanhtu.homeservices', '45'), gitCommitHash: 'b'.repeat(40), completedAt: '2026-08-01T00:00:00.000Z' },
+    { ...build('IOS', '44444444-4444-4444-8444-444444444444', 'com.phanmanhtu.homeservices', '45'), gitCommitHash: 'd'.repeat(40), completedAt: '2026-09-01T00:00:00.000Z' },
+    build('ANDROID', '22222222-2222-4222-8222-222222222222', 'com.phanmanhtu.nestscout', '4'),
+  ]
+  assert.equal(selectLatestEasBuilds(release, builds).ios.id, '44444444-4444-4444-8444-444444444444')
+  assert.equal(selectExactEasBuilds(release, builds).ios, undefined, 'no iOS build was made from the release commit')
+  for (const [field, value] of Object.entries({
+    appBuildVersion: '44', runtimeVersion: '0.1.0', applicationIdentifier: 'com.example.other',
+    status: 'IN_PROGRESS', distribution: 'INTERNAL', buildProfile: 'preview', appVersion: '0.1.0',
+  })) {
+    const mutated = builds.map((item) => (item.platform === 'IOS' ? { ...item, [field]: value } : item))
+    assert.equal(selectLatestEasBuilds(release, mutated).ios, undefined, field)
+  }
 })
 
 function productionProviderReadiness() {

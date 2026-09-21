@@ -28,6 +28,7 @@ type CustomerProfileInsightInput = {
   customerProfile: {
     building_name: string | null;
     created_at: string | null;
+    default_address: string | null;
     district: string | null;
     floor: string | null;
     unit_number: string | null;
@@ -346,7 +347,7 @@ function customerProfileSavedAddressCount(
     : 0;
   const hasPrimaryAddress = Boolean(
     profile &&
-      [profile.building_name, profile.unit_number, profile.floor, profile.district]
+      [profile.building_name, profile.unit_number, profile.floor, profile.district, profile.default_address]
         .some((value) => Boolean(value?.trim())),
   );
   return Math.max(hasPrimaryAddress ? 1 : 0, memoryCount);

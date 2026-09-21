@@ -111,19 +111,6 @@ export function profileName(metadata: Record<string, unknown> | undefined, langu
     ?? (language === 'vi' ? 'Khách NestScout' : 'NestScout customer')
 }
 
-export function initialsForName(name: string) {
-  const parts = name
-    .split(/\s+/)
-    .flatMap((part) => {
-      const trimmed = part.trim()
-      return trimmed ? [trimmed] : []
-    })
-  if (parts.length === 0) return 'NS'
-  const first = parts[0]?.[0] ?? 'N'
-  const last = parts.length > 1 ? parts[parts.length - 1]?.[0] : parts[0]?.[1]
-  return `${first}${last ?? ''}`.toLocaleUpperCase('vi-VN')
-}
-
 export function homeGreeting(name: string, language: AppLanguage, now = new Date()) {
   const hour = now.getHours()
   const moment = language === 'vi'

@@ -12,7 +12,7 @@ import {
   asStringArray,
   nullableString,
 } from "../../platform/coercions.ts";
-import { db, dbQuery } from "../../platform/db.ts";
+import { db, dbQuery, workflowDb } from "../../platform/db.ts";
 
 const ACTIVE_JOB_STATUSES = [
   "worker_matched",
@@ -43,6 +43,9 @@ export async function getWorkerReadiness(
   ctx: MobileApiContext,
 ): Promise<WorkerReadiness> {
   const client = db(ctx);
+  // The application RPC, capacity reservations and review decisions cannot be read with the
+  // caller's token; each is scoped below to the caller's own id or application.
+  const service = workflowDb(ctx);
   const observedAt = new Date().toISOString();
   const [profileResult, workerResult, applicationResult, jobResult, candidateResult, reservationResult] =
     await Promise.all([
@@ -59,7 +62,7 @@ export async function getWorkerReadiness(
           .maybeSingle(),
       ),
       dbQuery<Array<Record<string, unknown>>>(
-        client.rpc("get_current_worker_application", { p_actor_id: ctx.user.id }),
+        service.rpc("get_current_worker_application", { p_actor_id: ctx.user.id }),
       ),
       dbQuery<Array<Record<string, unknown>>>(
         client
@@ -79,7 +82,7 @@ export async function getWorkerReadiness(
           .limit(1),
       ),
       dbQuery<Array<Record<string, unknown>>>(
-        client
+        service
           .from("matching_capacity_reservations")
           .select("id")
           .eq("worker_id", ctx.user.id)
@@ -99,7 +102,7 @@ export async function getWorkerReadiness(
   const application = applicationResult.data?.[0] ?? null;
   const reviewResult = application?.id
     ? await dbQuery<Record<string, unknown>>(
-      client
+      service
         .from("admin_worker_application_reviews")
         .select("decision, reason, decided_at")
         .eq("queue_id", application.id)

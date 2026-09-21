@@ -1,7 +1,7 @@
 import type { AccountDeletionRequest } from "../../../../_shared/domain.ts";
 import { apiFailure } from "../../platform/api-failure.ts";
 import type { MobileApiContext } from "../../platform/auth.ts";
-import { db, dbQuery, type DbClient } from "../../platform/db.ts";
+import { dbQuery, workflowDb, type DbClient } from "../../platform/db.ts";
 import type { EdgeAccountDeletionResponse } from "../contracts/account.ts";
 import { removeCustomerAvatarObject } from "../worker/avatar.ts";
 
@@ -41,6 +41,9 @@ type OwnedStorageObject = {
   path: string;
 };
 
+// Deletion is service-owned: prepare and complete are service_role-only functions that re-check
+// auth.role(), auth.admin.deleteUser needs the service key, and the private buckets have no owner
+// policy. The actor is authorized in deleteAccount (role, fresh sign-in) and every id below is ctx.user.id.
 export async function deleteAccount(
   ctx: MobileApiContext,
   input: AccountDeletionRequest,
@@ -78,7 +81,7 @@ export async function deleteAccount(
     const storageRemoved = actorRole === "customer"
       ? await removeCustomerOwnedStorageObjects(ctx, request)
       : await removeWorkerOwnedStorageObjects(
-        ctx.supabase,
+        workflowDb(ctx),
         request?.storage_refs,
         ctx.user.id,
       );
@@ -90,7 +93,7 @@ export async function deleteAccount(
       );
     }
 
-    const client = ctx.supabase as AccountDeletionClient;
+    const client = workflowDb(ctx) as AccountDeletionClient;
     const { error: deletionError } = await client.auth.admin.deleteUser(
       ctx.user.id,
       true,
@@ -127,13 +130,13 @@ function prepareAccountDeletion(
 ) {
   return actorRole === "customer"
     ? dbQuery<AccountDeletionRow[]>(
-      db(ctx).rpc("prepare_customer_account_deletion_v2", {
+      workflowDb(ctx).rpc("prepare_customer_account_deletion_v2", {
         p_client_request_id: input.client_request_id,
         p_customer_id: ctx.user.id,
       }),
     )
     : dbQuery<AccountDeletionRow[]>(
-      db(ctx).rpc("prepare_worker_account_deletion", {
+      workflowDb(ctx).rpc("prepare_worker_account_deletion", {
         p_client_request_id: input.client_request_id,
         p_worker_id: ctx.user.id,
       }),
@@ -147,13 +150,13 @@ function completeAccountDeletion(
 ) {
   return actorRole === "customer"
     ? dbQuery<AccountDeletionRow[]>(
-      db(ctx).rpc("complete_customer_account_deletion", {
+      workflowDb(ctx).rpc("complete_customer_account_deletion", {
         p_client_request_id: input.client_request_id,
         p_customer_id: ctx.user.id,
       }),
     )
     : dbQuery<AccountDeletionRow[]>(
-      db(ctx).rpc("complete_worker_account_deletion", {
+      workflowDb(ctx).rpc("complete_worker_account_deletion", {
         p_client_request_id: input.client_request_id,
         p_worker_id: ctx.user.id,
       }),
@@ -177,13 +180,13 @@ async function removeCustomerOwnedStorageObjects(
   request: AccountDeletionRow | undefined,
 ) {
   const avatarRemoved = await removeCustomerAvatarObject(
-    ctx.supabase,
+    workflowDb(ctx),
     request?.avatar_storage_ref,
     ctx.user.id,
   );
   if (!avatarRemoved) return false;
   return removeOwnedStorageObjects(
-    ctx.supabase,
+    workflowDb(ctx),
     request?.storage_refs,
     (value) => customerOwnedStorageObject(value, ctx.user.id),
   );

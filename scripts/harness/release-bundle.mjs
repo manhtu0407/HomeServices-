@@ -28,12 +28,25 @@ const PROVIDER_READINESS_KEYS = Object.freeze([
   'android_fcm_v1', 'anthropic', 'deepseek', 'durable_guards', 'global_ai_enabled',
   'ios_apns', 'perplexity', 'push_receipt_reconciler', 'vietmap',
 ])
+// The hosted runtime counts a release as registered on these five alone; the three push flags are
+// release evidence only. A verification release may record them as false, and nothing else.
+const VERIFICATION_REQUIRED_PROVIDERS = Object.freeze([
+  'anthropic', 'durable_guards', 'global_ai_enabled', 'perplexity', 'vietmap',
+])
+const PRODUCTION_REQUIRED_PROVIDERS = Object.freeze([
+  'android_fcm_v1', 'anthropic', 'durable_guards', 'global_ai_enabled',
+  'ios_apns', 'perplexity', 'push_receipt_reconciler', 'vietmap',
+])
+export const RELEASE_LANES = Object.freeze(['verification'])
 const repoPath = (value) => value.split(sep).join('/')
 
 export function buildHarnessRelease(options = {}) {
   const root = resolve(options.root ?? ROOT)
   const environment = options.environment ?? 'preview'
   if (!ENVIRONMENTS.has(environment)) throw new Error(`invalid release environment: ${environment}`)
+  const lane = options.lane
+  if (lane !== undefined && !RELEASE_LANES.includes(lane)) throw new Error(`invalid release lane: ${lane}`)
+  if (lane !== undefined && environment !== 'production') throw new Error('a verification release exists only for production')
   if (environment === 'production' && options.requireCleanWorktree !== false) {
     assertCleanReleaseWorktree(root)
   }
@@ -64,6 +77,7 @@ export function buildHarnessRelease(options = {}) {
     schemaVersion: '1.0.0',
     releaseId: '',
     environment,
+    ...(lane === undefined ? {} : { releaseLane: lane }),
     environmentBinding,
     gitSha,
     sourceBundleSha256: digestRepoPaths(root, releaseSourcePaths),
@@ -180,6 +194,10 @@ export function checkHarnessRelease(release) {
   if (release.schemaVersion !== '1.0.0') problems.push('release schema version is invalid')
   if (!/^harness-[0-9a-f]{12}-[0-9a-f]{12}$/u.test(release.releaseId ?? '')) problems.push('release ID is invalid')
   if (!ENVIRONMENTS.has(release.environment)) problems.push('release environment is invalid')
+  if (release.releaseLane !== undefined &&
+      (!RELEASE_LANES.includes(release.releaseLane) || release.environment !== 'production')) {
+    problems.push('release lane is invalid')
+  }
   if (!/^[0-9a-f]{40}$/u.test(release.gitSha ?? '')) problems.push('release git SHA is invalid')
   if (typeof release.gitSha === 'string' && /^[0-9a-f]{40}$/u.test(release.gitSha)) {
     const behaviorHash = sha256(canonicalJson({ ...release, releaseId: undefined, bundleSha256: undefined }))
@@ -191,10 +209,7 @@ export function checkHarnessRelease(release) {
       release.providerReadinessFingerprintSha256 !== sha256(canonicalJson(release.providerReadiness))) {
     problems.push('provider readiness evidence is invalid')
   } else if (release.environment === 'production' &&
-      [
-        'android_fcm_v1', 'anthropic', 'durable_guards', 'global_ai_enabled',
-        'ios_apns', 'perplexity', 'push_receipt_reconciler', 'vietmap',
-      ]
+      (release.releaseLane === 'verification' ? VERIFICATION_REQUIRED_PROVIDERS : PRODUCTION_REQUIRED_PROVIDERS)
         .some((name) => release.providerReadiness[name] !== true)) {
     problems.push('production provider readiness is incomplete')
   }
@@ -623,10 +638,14 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
   } else {
     const environment = process.argv[environmentIndex + 1]
     const output = process.argv[outputIndex + 1]
+    const laneIndex = process.argv.indexOf('--lane')
+    const lane = laneIndex >= 0 ? process.argv[laneIndex + 1] : undefined
     if (environmentIndex >= 0 && !environment) throw new Error('--environment requires a value')
     if (outputIndex >= 0 && !output) throw new Error('--output requires a release artifact path')
+    if (laneIndex >= 0 && (!lane || lane.startsWith('--'))) throw new Error('--lane requires a value')
     const release = buildHarnessRelease({
       environment: environmentIndex >= 0 ? environment : 'preview',
+      lane,
     })
     const path = resolveReleaseArtifactPath(ROOT, outputIndex >= 0 ? output : OUTPUT)
     mkdirSync(dirname(path), { recursive: true })

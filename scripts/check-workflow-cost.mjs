@@ -40,6 +40,13 @@ export const EXCEPTIONS = [
     max: 240,
     reason: 'waits on EAS store builds for both platforms before it can attest the exact binaries',
   },
+  {
+    workflow: 'release-production-verification.yml',
+    job: 'production-release',
+    rule: 'timeout',
+    max: 240,
+    reason: 'the same job as the strict lane, derived from it: it waits on EAS builds for a platform that has no store build',
+  },
 ]
 
 function indentOf(line) {

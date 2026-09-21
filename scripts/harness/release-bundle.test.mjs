@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import { execFileSync } from 'node:child_process'
+import { createHash } from 'node:crypto'
 import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, resolve } from 'node:path'
@@ -65,6 +66,71 @@ test('fails a Production release when either native push provider or the receipt
     requireCleanWorktree: false,
   })
   assert.ok(checkHarnessRelease(release).includes('production provider readiness is incomplete'))
+})
+
+const readyProviders = Object.freeze({
+  android_fcm_v1: true, anthropic: true, deepseek: false, durable_guards: true,
+  global_ai_enabled: true, ios_apns: true, perplexity: true, push_receipt_reconciler: true, vietmap: true,
+})
+const pushUnready = Object.freeze({
+  ...readyProviders, android_fcm_v1: false, ios_apns: false, push_receipt_reconciler: false,
+})
+
+const builds = new Map()
+function productionRelease(providerReadiness, lane) {
+  const key = JSON.stringify([providerReadiness, lane])
+  if (!builds.has(key)) {
+    builds.set(key, buildHarnessRelease({
+      environment: 'production', gitSha: 'f'.repeat(40), providerReadiness, requireCleanWorktree: false, lane,
+    }))
+  }
+  return builds.get(key)
+}
+
+// Swaps the provider evidence and re-binds its fingerprint so only the readiness rule is exercised.
+function withProviders(release, providerReadiness) {
+  const canonical = JSON.stringify(Object.fromEntries(Object.keys(providerReadiness).sort().map((key) => [key, providerReadiness[key]])))
+  return { ...release, providerReadiness, providerReadinessFingerprintSha256: createHash('sha256').update(canonical).digest('hex') }
+}
+
+test('a verification release records unready push honestly and stays valid; a strict one does not', () => {
+  const verification = productionRelease(pushUnready, 'verification')
+  assert.equal(verification.releaseLane, 'verification')
+  assert.deepEqual(verification.providerReadiness, pushUnready, 'the manifest must not claim push readiness it lacks')
+  assert.deepEqual(checkHarnessRelease(verification), [])
+  assert.ok(checkHarnessRelease(productionRelease(pushUnready)).includes('production provider readiness is incomplete'))
+})
+
+test('the verification lane relaxes only the three push flags', () => {
+  const verification = productionRelease(pushUnready, 'verification')
+  for (const name of ['anthropic', 'durable_guards', 'global_ai_enabled', 'perplexity', 'vietmap']) {
+    const problems = checkHarnessRelease(withProviders(verification, { ...pushUnready, [name]: false }))
+    assert.ok(problems.includes('production provider readiness is incomplete'), name)
+  }
+  const optional = checkHarnessRelease(withProviders(verification, { ...pushUnready, deepseek: true }))
+  assert.equal(optional.includes('production provider readiness is incomplete'), false, 'deepseek is optional in both lanes')
+})
+
+test('the lane is part of the release identity and a strict release carries no lane field', () => {
+  const strict = productionRelease(readyProviders)
+  const verification = productionRelease(readyProviders, 'verification')
+  assert.equal(Object.hasOwn(strict, 'releaseLane'), false, 'strict manifests must stay byte-identical to before')
+  assert.notEqual(strict.releaseId, verification.releaseId)
+  assert.notEqual(strict.bundleSha256, verification.bundleSha256)
+})
+
+test('a lane cannot be forged onto a strict release or applied outside production', () => {
+  const problems = checkHarnessRelease({ ...productionRelease(pushUnready), releaseLane: 'verification' })
+  assert.ok(problems.includes('release ID does not bind release contents'), 'editing the lane must break the ID')
+  assert.ok(problems.includes('release bundle checksum mismatch'))
+  const verification = productionRelease(readyProviders, 'verification')
+  assert.ok(checkHarnessRelease({ ...verification, releaseLane: 'strict' }).includes('release lane is invalid'))
+  assert.ok(checkHarnessRelease({ ...verification, environment: 'staging' }).includes('release lane is invalid'))
+  assert.throws(() => buildHarnessRelease({ environment: 'production', gitSha: 'a'.repeat(40), lane: 'strict', requireCleanWorktree: false }), /invalid release lane/u)
+  assert.throws(
+    () => buildHarnessRelease({ environment: 'preview', gitSha: 'a'.repeat(40), lane: 'verification' }),
+    /only for production/u,
+  )
 })
 
 test('keeps release artifacts inside the repository root', () => {

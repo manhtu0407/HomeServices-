@@ -476,7 +476,7 @@ export function CustomerBookingEntryView({
         placeholder={chatPlaceholder}
         placeholderTextColor={tokens.subtleText}
         shellStyle={bookingStyles.bookingInlineTextFieldStack}
-        style={[bookingStyles.bookingInlineInput, bookingStyles.bookingWideInlineInput, bookingStyles.bookingWideDescriptionInput, bookingStyles.bookingWideDescriptionInputWeb, textInputNoOutlineStyle, invisibleTextInputScrollbarStyle, { color: tokens.text }]}
+        style={[bookingStyles.bookingInlineInput, bookingStyles.bookingWideInlineInput, bookingStyles.bookingWideDescriptionInput, bookingStyles.bookingWideDescriptionInputCenterPad, textInputNoOutlineStyle, invisibleTextInputScrollbarStyle, { color: tokens.text }]}
         testID="customer-v21-booking-description"
         textAlignVertical="center"
         value={description}

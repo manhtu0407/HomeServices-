@@ -4,7 +4,7 @@ import type {
 import { apiFailure } from "../../platform/api-failure.ts";
 import type { MobileApiContext } from "../../platform/auth.ts";
 import type { EdgeCustomerRefundAccountResponse } from "../contracts/customer.ts";
-import { db, dbQuery } from "../../platform/db.ts";
+import { db, dbQuery, workflowDb } from "../../platform/db.ts";
 import { requireRealTrafficActor } from "../../platform/synthetic-cohort.ts";
 import { nullableString } from "../../platform/coercions.ts";
 
@@ -28,7 +28,7 @@ type RefundAccountStatus = NonNullable<
 export async function getCustomerRefundAccount(
   ctx: MobileApiContext,
 ): Promise<EdgeCustomerRefundAccountResponse> {
-  await requireRealTrafficActor(db(ctx), ctx.user.id, "customer");
+  await requireRealTrafficActor(workflowDb(ctx), ctx.user.id, "customer");
   const result = await dbQuery<RefundAccountRow>(
     db(ctx)
       .from("customer_payment_methods")
@@ -50,10 +50,12 @@ export async function saveCustomerRefundAccount(
   ctx: MobileApiContext,
   input: CustomerRefundAccountSaveRequest,
 ): Promise<EdgeCustomerRefundAccountResponse> {
-  await requireRealTrafficActor(db(ctx), ctx.user.id, "customer");
+  // Membership rows have RLS with no policy, so the caller's own client would never see a synthetic
+  // actor and the guard would always pass; the RPC below is executable by service_role only.
+  await requireRealTrafficActor(workflowDb(ctx), ctx.user.id, "customer");
   // The atomic RPC validates and persists raw financial PII without returning it to the client.
   const result = await dbQuery<RefundAccountRow[]>(
-    db(ctx).rpc("upsert_customer_refund_payment_method", {
+    workflowDb(ctx).rpc("upsert_customer_refund_payment_method", {
       p_account_holder_name: input.account_holder_name.trim(),
       p_bank_account: input.bank_account.trim(),
       p_bank_key: input.bank_key,

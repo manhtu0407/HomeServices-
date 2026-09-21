@@ -196,7 +196,17 @@ export function ServiceTile({
   const { width: viewportWidth } = useWindowDimensions()
   const copy = customerV21BookingServiceCopy[language][service]
   const serviceTestID = testID ?? `customer-v21-service-${service}`
-  const homeV4Scale = Math.min(Math.max(viewportWidth - 32, 280) / 940, 1)
+  // Matches styles.scrollContent.paddingHorizontal (16 each side) and
+  // styles.homeServiceGrid.gap (9, x2 gaps between 3 columns) in shared-styles.ts.
+  // homeV4ServiceTile's 31.5% flexBasis alone can overflow the row by under 1px at
+  // this width, silently wrapping the 3rd tile to a new line — compute the exact
+  // pixel width instead of trusting percentage-plus-fixed-gap arithmetic to fit.
+  const homeV4RowWidth = Math.max(viewportWidth - 32, 0)
+  const homeV4Scale = Math.min(Math.max(homeV4RowWidth, 280) / 940, 1)
+  // The extra -1 is a sub-pixel safety margin: an exact-fit width can still
+  // round up a hair on some renderers, which is the same failure mode this fix
+  // replaces, just smaller.
+  const homeV4TileWidth = (homeV4RowWidth - 9 * 2 - 1) / 3
   const homeV4ArtworkRule = homeV4ServiceArtworkRules[service]
 
   return (
@@ -210,6 +220,7 @@ export function ServiceTile({
         styles.serviceTile,
         homeAura ? (homeV4 ? styles.homeV4ServiceTile : styles.homeAuraServiceTile) : null,
         homeAura && !homeV4 ? (fullWidth || viewportWidth < 680 ? styles.homeAuraServiceTileNarrow : styles.homeAuraServiceTileWide) : null,
+        homeV4 ? { flexBasis: homeV4TileWidth, maxWidth: homeV4TileWidth } : null,
         {
           backgroundColor: homeAura
             ? reduceTransparency || tokens.mode === 'dark' ? tokens.raised : 'transparent'

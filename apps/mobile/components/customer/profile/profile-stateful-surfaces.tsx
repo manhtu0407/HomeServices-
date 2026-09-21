@@ -1,18 +1,17 @@
 import type { ReactNode } from 'react'
 import { Image } from 'expo-image'
 import { ActivityIndicator, Pressable, Text, View, type ImageSourcePropType, type StyleProp, type TextStyle, type ViewStyle } from 'react-native'
-import Svg, { Defs, Path, Rect } from 'react-native-svg'
+import Svg, { Path } from 'react-native-svg'
 
 import { useGlassAccessibility } from '@/components/ui/accessibility-motion'
-import { AlphaStop as Stop, NativeSafeLinearGradient as LinearGradient } from '@/components/ui/svg-alpha-stop'
 
 import type { CustomerThemeTokens } from '../customer-theme'
-import { ProfileUsageRankingMark } from './profile-ranking-mark'
 import { customerV21ProfileJourneyStyles as profileJourneyStyles } from './profile-journey-styles'
 import { ProfileSettingsGlyph, type ProfileSettingsGlyphName } from './profile-settings-icons'
 import { customerV21ProfileSettingsGroupStyles as settingsGroupStyles } from './profile-settings-group-styles'
 import { ProfileAuraCard, ProfileFormulaMintSurface } from './profile-utility-surfaces'
 import { customerV21ProfileUtilityStyles as profileUtilityStyles } from './profile-utility-styles'
+import { UsageRankCard } from './usage-rank-card'
 import { customerV21SharedStyles as sharedStyles } from '../ui/shared-styles'
 import { useCustomerV21SurfaceTheme, V21TopBar } from '../ui/shared-surfaces'
 
@@ -97,6 +96,7 @@ export function CustomerProfileOverviewView({
   rankingAccessibilityLabel,
   rankingLabel,
   rankingPointsLabel,
+  rankingTagline,
   settingsGroups,
   tokens,
   topBarTitle,
@@ -114,13 +114,14 @@ export function CustomerProfileOverviewView({
   rankingAccessibilityLabel: string
   rankingLabel: string
   rankingPointsLabel: string
+  rankingTagline: string
   settingsGroups: ProfileSettingsGroupModel[]
   tokens: CustomerThemeTokens
   topBarTitle: string
   versionLabel: string | null
   rootStyles: RootProfileOverviewStyles
 }) {
-  const { reduceMotion, reduceTransparency } = useGlassAccessibility()
+  const { reduceMotion } = useGlassAccessibility()
 
   return (
     <>
@@ -210,76 +211,17 @@ export function CustomerProfileOverviewView({
         <Pressable
           accessibilityLabel={rankingAccessibilityLabel}
           accessibilityRole="button"
+          accessibilityValue={{ text: rankingPointsLabel }}
           onPress={onOpenRanking}
           testID="customer-v21-profile-ranking-cta"
         >
           {({ pressed }) => (
-            <ProfileAuraCard
-              cardStyle={[profileUtilityStyles.profileRankingEntryCard, pressed && !reduceMotion ? rootStyles.pressed : null]}
-              contentStyle={profileUtilityStyles.profileRankingEntryContent}
-              scope="OverviewRankingEntry"
-              showCardSkin={false}
-              showMintAura={false}
-              testID="customer-v21-profile-ranking-entry"
-            >
-              <View
-                style={profileUtilityStyles.profileRankingEntryVisualPanel}
-                testID="customer-v21-profile-ranking-entry-visual-panel"
-              >
-                <ProfileUsageRankingMark testID="customer-v21-profile-ranking-entry-icon" />
-              </View>
-              <View
-                pointerEvents="none"
-                style={profileUtilityStyles.profileRankingEntryFadeLayer}
-                testID="customer-v21-profile-ranking-entry-fade"
-              >
-                <Svg height="100%" preserveAspectRatio="none" viewBox="0 0 100 100" width="100%">
-                  <Defs>
-                    <LinearGradient id="customer-v21-profile-ranking-entry-fade-gradient" x1="0" x2="1" y1="0.5" y2="0.5">
-                      <Stop
-                        offset="0"
-                        stopColor={tokens.mode === 'dark' ? tokens.raised : '#F5FFFD'}
-                        stopOpacity="0"
-                      />
-                      <Stop
-                        offset="0.45"
-                        stopColor={tokens.mode === 'dark' ? tokens.raised : '#FFFFFF'}
-                        stopOpacity={reduceTransparency ? 0.5 : 0.14}
-                      />
-                      <Stop
-                        offset="0.7"
-                        stopColor={tokens.mode === 'dark' ? tokens.raised : '#FFFFFF'}
-                        stopOpacity={reduceTransparency ? 0.9 : 0.82}
-                      />
-                      <Stop
-                        offset="1"
-                        stopColor={tokens.mode === 'dark' ? tokens.raised : '#FFFFFF'}
-                        stopOpacity={reduceTransparency ? 1 : 0.96}
-                      />
-                    </LinearGradient>
-                  </Defs>
-                  <Rect fill="url(#customer-v21-profile-ranking-entry-fade-gradient)" height="100" width="100" x="0" y="0" />
-                </Svg>
-              </View>
-              <View style={profileUtilityStyles.profileRankingEntryCopy} testID="customer-v21-profile-ranking-entry-copy">
-                <Text
-                  numberOfLines={1}
-                  style={[profileUtilityStyles.profileRankingEntryTitle, { color: tokens.text }]}
-                  testID="customer-v21-profile-ranking-entry-title"
-                >
-                  {rankingLabel}
-                </Text>
-                <Text
-                  adjustsFontSizeToFit
-                  minimumFontScale={0.7}
-                  numberOfLines={1}
-                  style={[profileUtilityStyles.profileRankingEntryPoints, { color: tokens.primary }]}
-                  testID="customer-v21-profile-ranking-entry-points"
-                >
-                  {rankingPointsLabel}
-                </Text>
-              </View>
-            </ProfileAuraCard>
+            <UsageRankCard
+              statusLabel={rankingPointsLabel}
+              style={pressed && !reduceMotion ? rootStyles.pressed : null}
+              tagline={rankingTagline}
+              title={rankingLabel}
+            />
           )}
         </Pressable>
       </View>

@@ -23,6 +23,9 @@ function installSystemTypographyWebStyle() {
       font-kerning: normal;
       text-rendering: optimizeLegibility;
     }
+    #root [data-nestscout-serif] {
+      font-family: ui-serif, Cambria, Constantia, 'Iowan Old Style', Georgia, 'Times New Roman', serif !important;
+    }
   `
   document.head.appendChild(style)
 }

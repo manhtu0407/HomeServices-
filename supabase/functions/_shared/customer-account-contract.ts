@@ -84,6 +84,10 @@ export const customerPaymentMethodSaveSchema = z.object({
 export const customerRefundAccountSaveSchema = customerPaymentMethodSaveSchema
   .omit({ bank_name: true });
 
+export const customerAddressSaveSchema = z.object({
+  default_address: z.string().trim().min(1).max(300),
+}).strict();
+
 export type CustomerKaelFeedbackInput = z.infer<
   typeof customerKaelFeedbackSchema
 >;
@@ -98,3 +102,4 @@ export type CustomerPaymentMethodSaveInput = z.infer<
 export type CustomerRefundAccountSaveRequest = z.infer<
   typeof customerRefundAccountSaveSchema
 >;
+export type CustomerAddressSaveRequest = z.infer<typeof customerAddressSaveSchema>;
