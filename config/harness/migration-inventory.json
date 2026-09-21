@@ -5,7 +5,7 @@
     "immutableThroughVersion": "20260904113000",
     "sha256": "12da2bac288e0e718e61a27653e8cba9ffdb13b8e9900979407d41e1217b2077"
   },
-  "migrationCount": 394,
+  "migrationCount": 396,
   "migrationEquivalences": {
     "version": "1.0.0",
     "groups": [
@@ -74,10 +74,10 @@
       }
     ]
   },
-  "migrationsSha256": "47881bc7c0f03eb18c580b5e74da62182ea90ca04271341153dc5a170a32a51a",
+  "migrationsSha256": "498bdcb1ed8c45a158188723e9d956053456ccc9af231c115bfc1b85b4be275f",
   "databaseTypes": {
     "file": "packages/shared/src/types/database",
-    "sha256": "01ae94c905b235d852505829c1e39154880f4e8cb1acd412ecba1fa31f1c7c9e"
+    "sha256": "c8e8172c36ddf0e04e1fc7f459463d70eca6c171d00fc19df6be535fb695ef35"
   },
   "entries": [
     {
@@ -2837,6 +2837,20 @@
       "file": "supabase/migrations/20260914090000_worker_stage5_work_session.sql",
       "sha256": "1b9d8e127d866b0519333459645658593c3d58704db9605a7b3679d999ecf282",
       "bytes": 548
+    },
+    {
+      "version": "20260916100000",
+      "name": "customer_default_address_column",
+      "file": "supabase/migrations/20260916100000_customer_default_address_column.sql",
+      "sha256": "c2c54aa02d5e5871bc28633d9a4da6bf5ff2d228b7353fbb541f3a062576e1f3",
+      "bytes": 7617
+    },
+    {
+      "version": "20260916100100",
+      "name": "customer_default_address_backfill",
+      "file": "supabase/migrations/20260916100100_customer_default_address_backfill.sql",
+      "sha256": "e50788cacf5c899b9e1eac8c0c1a3e1f5027374f046b5cb2fa31a8578b0e7e47",
+      "bytes": 1142
     }
   ]
 }

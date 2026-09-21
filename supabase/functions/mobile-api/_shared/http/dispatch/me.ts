@@ -1,5 +1,6 @@
 import {
   accountDeletionRequestSchema,
+  customerAddressSaveSchema,
   customerAvatarUpdateSchema,
   customerAvatarUploadSchema,
   customerKaelFeedbackSchema,
@@ -93,6 +94,11 @@ export async function dispatchMeRoute(
       const input = customerRefundAccountSaveSchema.safeParse(await readJson(request));
       if (!input.success) apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
       return services.saveCustomerRefundAccount(ctx, input.data);
+    }
+    case "me.address.save": {
+      const input = customerAddressSaveSchema.safeParse(await readJson(request));
+      if (!input.success) apiFailure("VALIDATION", "Địa chỉ không hợp lệ", 400);
+      return services.saveCustomerAddress(ctx, input.data);
     }
     case "me.threads":
       return services.listMyThreads(ctx);

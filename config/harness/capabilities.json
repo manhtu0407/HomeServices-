@@ -3,7 +3,7 @@
   "source": {
     "routeRoot": "supabase/functions/mobile-api/_shared/http/routes",
     "fileCount": 20,
-    "sha256": "8b9b2d5382eb89b886308b426bdd98819f5c38d622aa8ad22245576990c2753d"
+    "sha256": "2c7f65c40940bc8ce6a1d94e24fa073edd3392b9a8edfa2821621a08eb9f3fb1"
   },
   "entries": [
     {
@@ -3766,6 +3766,29 @@
       "requiresResourceCheck": false,
       "confirmationGate": "none",
       "envelopeTtlMs": 60000,
+      "sources": [
+        "supabase/functions/mobile-api/_shared/http/routes/me.ts"
+      ]
+    },
+    {
+      "kind": "me.address.save",
+      "capability": "mobile.route.me.address.save",
+      "public": false,
+      "methods": [
+        "PATCH"
+      ],
+      "roles": [
+        "admin",
+        "customer"
+      ],
+      "risk": "write",
+      "operationClass": "idempotent_write",
+      "sideEffectClass": "idempotent-write",
+      "privileged": false,
+      "resourceType": "self",
+      "requiresResourceCheck": false,
+      "confirmationGate": "none",
+      "envelopeTtlMs": 120000,
       "sources": [
         "supabase/functions/mobile-api/_shared/http/routes/me.ts"
       ]
