@@ -48,6 +48,10 @@ Dated filename (`*-YYYYMMDD.md`) = a point-in-time contract/plan/audit. Undated 
 - [`ops/kael-model-health.md`](ops/kael-model-health.md) — routing audit and optional admin health probe.
 - [`ops/kael-incident-response.md`](ops/kael-incident-response.md) — kill-switch, provider, spend, unsafe-output, and escalation response.
 
+## Agent tooling
+
+- [`ops/agent-tooling.md`](ops/agent-tooling.md) — OCR review over one worktree snapshot (pinned version, Windows notes, what OCR does not scan, Stop hook, rollback) and the Headroom evaluation record.
+
 ## Load-bearing documents (do not move without care)
 
 These are referenced by locked docs or by code — moving them breaks references:

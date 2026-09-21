@@ -43,11 +43,11 @@ function isDocumentationPath(path) {
   return path.startsWith('docs/') || /^[^/]+\.md$/u.test(path)
 }
 
-const AUTHORING_PREFIXES = ['governance/', '.claude/skills/', '.claude/commands/', '.agents/skills/']
+const AUTHORING_PREFIXES = ['governance/', '.claude/skills/', '.claude/commands/', '.agents/skills/', '.opencodereview/']
 
-// Rules, skills, commands, and session memory are proven by the ratchets that always run
-// (skills sync, protocol routes, pillar registry, manifest) and are compiled or tested by
-// nothing. Hooks, settings, and launch config stay outside this set because tests read them.
+// Rules, skills, commands, review rules, and session memory are proven by the ratchets that
+// always run (skills sync, protocol routes, pillar registry, manifest) and are compiled or tested
+// by nothing. Hooks, settings, and launch config stay outside this set because tests read them.
 function isAuthoringPath(path) {
   return path === '.claude/MEMORY.md' || startsWithAny(path, AUTHORING_PREFIXES)
 }

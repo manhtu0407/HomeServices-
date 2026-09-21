@@ -93,6 +93,16 @@ Before reporting the session complete: write session memory, or state why no ent
 
 `.agents/` mirrors `skills` only, so **Codex has no `/kael-mem` command**. Codex follows the procedure in `docs/memory/INDEX.md` by hand: draft the entry, show it to Tu, and only then write the period file plus the one-line Recall Index entry. The gate is identical for both agents; only the trigger differs.
 
+## OCR Review
+
+Every change that touches code gets one OCR review pass before the final response. `scripts/ocr-review.mjs` selects what to review in the current worktree and branch (commits, staged and unstaged edits, and new files against `origin/main`, as one snapshot). The agent does the reviewing against the rules in `.opencodereview/rule.json`. Procedure: `.claude/commands/ocr-review.md`.
+
+- Claude Code: `/ocr-review`. A Stop hook (`.claude/hooks/verify-ocr-review.mjs`) asks for it once per change state when 30 or more reviewable changed lines have not been reviewed.
+- Codex has no slash commands and no hooks: run `node scripts/run.mjs run-node scripts/ocr-review.mjs plan --fetch`, follow `.claude/commands/ocr-review.md` by hand, and list the result in the `Verification:` line of the final response. Skip it only for a change with no code under `apps/`, `packages/`, `supabase/` or `scripts/`, and say so.
+- The review is report-only. Fixing the findings is a separate step Tu asks for.
+- The script keeps its snapshot objects in `.scratch/ocr/objects`: nothing is written to the repository's object database, refs, stash, index or working files, so it runs inside Codex's sandbox where `.git` is read-only. Read a snapshot's diff with the printed `diff:` command, not raw `git diff`.
+- Runbook, pinned versions, privacy switches and rollback: `docs/ops/agent-tooling.md`.
+
 ## Runtime Boundary
 
 The store-bound runtime is `Expo React Native -> Supabase Auth -> Supabase Edge Function mobile-api -> Supabase DB/RPC/Storage/Realtime -> server-side providers`.
