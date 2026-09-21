@@ -43,6 +43,15 @@ function isDocumentationPath(path) {
   return path.startsWith('docs/') || /^[^/]+\.md$/u.test(path)
 }
 
+const AUTHORING_PREFIXES = ['governance/', '.claude/skills/', '.claude/commands/', '.agents/skills/']
+
+// Rules, skills, commands, and session memory are proven by the ratchets that always run
+// (skills sync, protocol routes, pillar registry, manifest) and are compiled or tested by
+// nothing. Hooks, settings, and launch config stay outside this set because tests read them.
+function isAuthoringPath(path) {
+  return path === '.claude/MEMORY.md' || startsWithAny(path, AUTHORING_PREFIXES)
+}
+
 function classifyClaimedPaths(paths) {
   const frontend = paths.some((path) => path.startsWith('apps/mobile/'))
   const backend = paths.some((path) => startsWithAny(path, ['apps/api/', 'supabase/functions/']))
@@ -67,7 +76,6 @@ function classifyClaimedPaths(paths) {
       '.claude/',
       '.agents/',
       'config/harness/',
-      'governance/',
       'scripts/harness/',
       'docker/',
     ]) || ROOT_MANIFESTS.has(path) || /^scripts\/(?:check|lint)-[^/]+\.mjs$/u.test(path),
@@ -119,23 +127,30 @@ function classifyClaimedPaths(paths) {
 
 export function classifyChangedPaths(inputPaths) {
   const paths = [...new Set((inputPaths ?? []).map(normalizePath).filter(Boolean))]
+  const laned = paths.filter((path) => !isDocumentationPath(path) && !isAuthoringPath(path))
   // A gate may be skipped only for paths some lane explicitly owns; anything else runs every lane.
-  const unclaimed = paths.some((path) =>
-    !isDocumentationPath(path) && !Object.values(classifyClaimedPaths([path])).some(Boolean),
-  )
-  return unclaimed ? allCategories() : classifyClaimedPaths(paths)
+  const unclaimed = laned.some((path) => !Object.values(classifyClaimedPaths([path])).some(Boolean))
+  return unclaimed ? allCategories() : classifyClaimedPaths(laned)
 }
 
 export function allCategories(value = true) {
   return Object.fromEntries(CATEGORY_KEYS.map((key) => [key, value]))
 }
 
-function gitChangedPaths({ base, head }) {
+export function changedPathsArgs({ base, head }) {
   if (!head) throw new Error('CI change classification requires a head SHA')
-  const args = base && !/^0+$/u.test(base)
-    ? ['diff', '--name-only', base, head]
-    : ['diff-tree', '--root', '--no-commit-id', '--name-only', '-r', head]
-  return execFileSync('git', args, { encoding: 'utf8' }).split(/\r?\n/u).filter(Boolean)
+  // Without --no-renames a move out of a lane lists only its destination, hiding the source lane.
+  // diff-tree prints nothing for a merge commit unless told which parent to compare against, and
+  // an empty list would read as "nothing changed" and skip every lane.
+  return base && !/^0+$/u.test(base)
+    ? ['diff', '--name-only', '--no-renames', base, head]
+    : ['diff-tree', '--root', '--no-commit-id', '--name-only', '--no-renames', '-m', '--first-parent', '-r', head]
+}
+
+function gitChangedPaths({ base, head }) {
+  return execFileSync('git', changedPathsArgs({ base, head }), { encoding: 'utf8' })
+    .split(/\r?\n/u)
+    .filter(Boolean)
 }
 
 export function classifyEvent({ event, base, head, paths } = {}) {

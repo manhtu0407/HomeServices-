@@ -1,7 +1,12 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 
-import { allCategories, classifyChangedPaths, classifyEvent } from './classify-ci-changes.mjs'
+import {
+  allCategories,
+  changedPathsArgs,
+  classifyChangedPaths,
+  classifyEvent,
+} from './classify-ci-changes.mjs'
 
 test('mobile-only changes stay in the focused workspace lane', () => {
   assert.deepEqual(classifyChangedPaths(['apps/mobile/components/customer/Home.tsx']), {
@@ -83,4 +88,60 @@ test('a path no lane claims fails closed to every lane', () => {
 
 test('documentation-only changes take no conditional lane', () => {
   assert.deepEqual(classifyChangedPaths(['docs/INDEX.md', 'README.md']), allCategories(false))
+})
+
+test('rules, skills, commands, and memory take no conditional lane', () => {
+  for (const path of [
+    'governance/RULES.md',
+    'governance/protocols/test-pillars.md',
+    'governance/design/reference/signature-glass-dock.tsx',
+    '.claude/MEMORY.md',
+    '.claude/skills/kael-tdd/SKILL.md',
+    '.claude/commands/kael-mem.md',
+    '.agents/skills/kael-tdd/agents/openai.yaml',
+  ]) {
+    assert.deepEqual(classifyChangedPaths([path]), allCategories(false), path)
+  }
+})
+
+test('a regenerated pillar index does not widen a mobile-only change', () => {
+  const pillar = 'apps/mobile/components/worker/__tests__/worker-stage-six-production-pillar-test.tsx'
+  const alone = classifyChangedPaths([pillar])
+  assert.equal(alone.workspace, true)
+  assert.equal(alone.workspace_full, false)
+  assert.deepEqual(classifyChangedPaths([pillar, 'governance/protocols/test-pillars.md']), alone)
+})
+
+test('a lane-neutral path never opens a lane by naming Kael', () => {
+  for (const path of [
+    'docs/design/kael-source-trust-pricing-20260707.md',
+    '.claude/skills/kael-tdd/SKILL.md',
+    'governance/protocols/kael-anything.md',
+  ]) {
+    assert.equal(classifyChangedPaths([path]).kael, false, path)
+  }
+})
+
+test('executable agent configuration keeps full safety coverage', () => {
+  for (const path of [
+    '.claude/hooks/verify-comment-hygiene.mjs',
+    '.claude/settings.json',
+    '.claude/launch.json',
+    '.agents/notes.txt',
+  ]) {
+    const result = classifyChangedPaths([path])
+    assert.equal(result.harness, true, path)
+    assert.equal(result.workspace_full, true, path)
+    assert.equal(result.database, false, path)
+  }
+})
+
+test('both sides of a rename count as changed paths', () => {
+  assert.ok(changedPathsArgs({ base: 'a'.repeat(40), head: 'b'.repeat(40) }).includes('--no-renames'))
+  assert.ok(changedPathsArgs({ base: '0'.repeat(40), head: 'b'.repeat(40) }).includes('--no-renames'))
+})
+
+test('a merge commit with no base still lists its changes instead of an empty diff', () => {
+  const args = changedPathsArgs({ base: '0'.repeat(40), head: 'b'.repeat(40) })
+  assert.ok(args.includes('-m') && args.includes('--first-parent'))
 })

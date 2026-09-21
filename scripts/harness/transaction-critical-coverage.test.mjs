@@ -3,7 +3,12 @@ import { readFileSync } from 'node:fs'
 import { test } from 'node:test'
 import { resolve } from 'node:path'
 
-import { collectedPillars, evaluateBehavioralEvidence, validateTransactionCoverage } from './transaction-critical-coverage.mjs'
+import {
+  collectedPillars,
+  evaluateBehavioralEvidence,
+  unmappedEntries,
+  validateTransactionCoverage,
+} from './transaction-critical-coverage.mjs'
 
 const manifest = JSON.parse(readFileSync(resolve('config/harness/transaction-critical-coverage.json'), 'utf8'))
 const capabilities = JSON.parse(readFileSync(resolve('config/harness/capabilities.json'), 'utf8'))
@@ -64,6 +69,36 @@ test('catalog metadata alone leaves every transaction entry unproven', () => {
     assert.equal(entry.status, manifest.behavioral_contract.bindings[entry.id]?.status ?? 'UNVERIFIED')
   }
   assert.ok(evidence.entries.every((entry) => entry.passedTests === 0))
+})
+
+test('the mapping precheck lists exactly the entries that are not MAPPED', () => {
+  const unmapped = unmappedEntries(manifest)
+  const expected = evaluateBehavioralEvidence(manifest).entries.filter((entry) => entry.status !== 'MAPPED')
+  assert.deepEqual(unmapped.map((entry) => entry.id), expected.map((entry) => entry.id))
+  assert.ok(unmapped.every((entry) => entry.status === 'PARTIAL' || entry.status === 'UNVERIFIED'))
+})
+
+test('the mapping precheck passes only when every entry has a MAPPED binding', () => {
+  const changed = clone(manifest)
+  for (const coverage of Object.values(changed.behavioral_contract.bindings)) {
+    coverage.status = 'MAPPED'
+    coverage.gaps = []
+  }
+  const withoutBinding = changed.entries.filter((entry) => !changed.behavioral_contract.bindings[entry.id])
+  assert.deepEqual(unmappedEntries(changed).map((entry) => entry.id), withoutBinding.map((entry) => entry.id))
+  changed.entries = changed.entries.filter((entry) => changed.behavioral_contract.bindings[entry.id])
+  assert.deepEqual(unmappedEntries(changed), [])
+})
+
+test('the release quality job fails on an unmapped transaction before it spends runner time on tests', () => {
+  const release = readFileSync(resolve('.github/workflows/release-production.yml'), 'utf8')
+  const quality = release.indexOf('  quality:')
+  const mapped = release.indexOf('transaction-critical-coverage.mjs --require-mapped')
+  const install = release.indexOf('pnpm install --frozen-lockfile', quality)
+  const gates = release.indexOf('Whole-workspace quality gates')
+  assert.ok(quality >= 0 && mapped > quality, 'the precheck belongs to the quality job')
+  assert.ok(mapped < install && install < gates, 'the precheck runs before install and the whole-workspace gates')
+  assert.ok(mapped < release.indexOf('  release-config-gate:'))
 })
 
 function completeFixture() {

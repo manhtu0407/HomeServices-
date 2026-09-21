@@ -332,6 +332,14 @@ export function evaluateBehavioralEvidence(manifest, reports = []) {
   }
 }
 
+/**
+ * Entries whose behavioral binding is not MAPPED. `--require-behavioral` cannot pass while any
+ * exist, and this reads only the manifest, so a caller can learn that before running any test.
+ */
+export function unmappedEntries(manifest) {
+  return evaluateBehavioralEvidence(manifest).entries.filter((entry) => entry.status !== 'MAPPED')
+}
+
 function main() {
   const manifest = JSON.parse(readFileSync(MANIFEST_PATH, 'utf8'))
   const capabilities = JSON.parse(readFileSync(CAPABILITIES_PATH, 'utf8'))
@@ -340,10 +348,12 @@ function main() {
   const reports = []
   let requireBehavioral = false
   let requireBoundAssertions = false
+  let requireMapped = false
   for (let index = 2; index < process.argv.length; index += 1) {
     const argument = process.argv[index]
     if (argument === '--require-behavioral') requireBehavioral = true
     else if (argument === '--require-bound-assertions') requireBoundAssertions = true
+    else if (argument === '--require-mapped') requireMapped = true
     else if (argument === '--results' && process.argv[index + 1]) {
       reports.push(JSON.parse(readFileSync(resolve(process.argv[++index]), 'utf8')))
     } else problems.push(`unknown or incomplete argument: ${argument}`)
@@ -358,6 +368,19 @@ function main() {
     `${REQUIRED_ROUTE_KINDS.length} routes, ${REQUIRED_SYSTEM_SURFACES.length} system surfaces, ` +
     `${pillars.size} collected pillars`,
   )
+  if (requireMapped) {
+    const unmapped = unmappedEntries(manifest)
+    if (unmapped.length > 0) {
+      console.error(
+        `required behavioral mapping failed: ${unmapped.length} of ${manifest.entries.length} transaction entries ` +
+        'are not MAPPED, so --require-behavioral cannot pass (collected tests only; no hosted/native proof is implied):',
+      )
+      for (const entry of unmapped.slice(0, 10)) console.error(`  ${entry.status} ${entry.id}: ${entry.gaps.join(' ')}`)
+      if (unmapped.length > 10) console.error(`  ... and ${unmapped.length - 10} more`)
+      process.exit(1)
+    }
+    console.log(`behavioral mapping ok: all ${manifest.entries.length} transaction entries are MAPPED`)
+  }
   const evidence = evaluateBehavioralEvidence(manifest, reports)
   const missing = evidence.entries.filter((entry) => entry.status === 'UNVERIFIED')
   const partial = evidence.entries.filter((entry) => entry.status === 'PARTIAL')
