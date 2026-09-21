@@ -31,23 +31,34 @@ The agent reviews; OCR runs no LLM in this mode (`ocr delegate`). Procedure: `.c
 
 ### Stop hook
 
-`.claude/hooks/verify-ocr-review.mjs` asks for a review once per change state when 30 or more reviewable lines have not been reviewed. It only reads git state and runs `ocr delegate preview`, and it fails open on every infrastructure problem. The threshold is a starting value: tune `NUDGE_LINE_THRESHOLD` in `scripts/lib/ocr-review-gate.mjs` after some weeks of use. Hooks load at session start, so a new hook applies from the next session.
+`.claude/hooks/verify-ocr-review.mjs` asks for a review once per change state when 30 or more reviewable lines have not been reviewed. Apart from its own state under `.scratch/ocr` (snapshot objects and a nudge marker), it only reads git state and runs `ocr delegate preview`, and it fails open on every infrastructure problem. The threshold is a starting value: tune `NUDGE_LINE_THRESHOLD` in `scripts/lib/ocr-review-gate.mjs` after some weeks of use. Hooks load at session start, so a new hook applies from the next session.
+
+### Codex hooks
+
+Codex has hooks of its own, so the Stop hook above is Claude Code only by choice, not by necessity. As read on 2026-09-21: `codex features list` shows `hooks  stable  true` on `codex-cli 0.155.0-alpha.9.2`, and the [official documentation](https://developers.openai.com/codex/hooks) lists a `Stop` event that continues the turn on `exit 2` with a reason on stderr (the convention `.claude/hooks/verify-ocr-review.mjs` already uses), configured in `~/.codex/hooks.json` or a `[hooks]` table in `~/.codex/config.toml`, trusted by hash before it runs, with a `commandWindows` override for Windows. This repository wires none, because Codex state is user-level and the repository never contains a `.codex/` (`AGENTS.md`). Whether the existing hook script runs unchanged under Codex is not tested; wiring it edits a user-level file, so it is Tu's decision.
 
 ### What OCR does not scan
 
-Selection is OCR's own: binary, secret paths, `exclude`, `include`, an allowlist of file extensions, then default test-file patterns. Simulated over the 3,423 tracked files from OCR's three allowlist files (real CLI confirmed `.md` excluded as `unsupported_ext` and `.ts`, `.mjs` reviewable; other categories are not yet cross-checked):
+Selection is OCR's own: binary, secret paths, `exclude`, `include`, an allowlist of file extensions, then default test-file patterns. Measured with the real CLI over the 3,423 files tracked at `e2994bac`: an empty commit as `from`, the whole tree as `to`, this repository's `rule.json` applied. The numbers drift as files change; repeat the measurement when it matters.
 
 | Area | Tracked | Scanned |
 |---|---:|---:|
 | `supabase/migrations`, `supabase/tests` | 497 | 497 |
 | `supabase/functions` | 485 | 478 |
 | `scripts`, `.github` | 147 | 146 |
-| `apps/mobile` | 1,083 | 686 |
-| `packages/shared` | 117 | 77 |
-| `apps/api` | 523 | 109 |
-| `docs`, `governance`, `.claude`, `.agents` | 507 | 100 |
+| `apps/mobile` | 1,083 | 750 |
+| `packages/shared` | 117 | 63 |
+| `apps/api` | 523 | 206 |
+| `docs`, `governance`, `.claude`, `.agents` | 507 | 102 |
+| everything else | 64 | 46 |
+| **Total** | **3,423** | **2,288** |
 
-**Markdown is never scanned** (390 files: governance, docs, commands, skills, `AGENTS.md`), nor `.mts`, `.cts` or images. Every plan lists those files under "Not reviewed by OCR" so they are checked by hand or reported as unreviewed. Pillar tests are re-included by `include` in `.opencodereview/rule.json`; other test files are skipped by default.
+The 1,135 files not scanned, by OCR's own reason: 484 default test or fixture path, 410 unsupported extension, 233 binary, 8 excluded by `rule.json`. **Markdown is never scanned** (390 files: governance, docs, commands, skills, `AGENTS.md`), nor `.mts`, `.cts` or images. Every plan lists those files under "Not reviewed by OCR" so they are checked by hand or reported as unreviewed. Pillar tests are re-included by `include` in `.opencodereview/rule.json` (163 of the scanned files are there because of it); other test files are skipped by default.
+
+### Known limits
+
+- The printed `diff:` command single-quotes awkward paths in POSIX style. Spaces, `(tabs)` and `[id]` were checked in PowerShell and bash, and `$`, a backtick and `;` in bash. A path containing an apostrophe breaks that batch's command in PowerShell; no tracked path has one today.
+- Review quality is the agent's, not OCR's: delegation mode has none of OCR's bundling, reflection or line positioning, so the vendor's benchmarks do not apply. It was measured only on 8 planted defects by the agent that built the tooling.
 
 ### Review rules
 

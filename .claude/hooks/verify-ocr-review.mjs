@@ -1,9 +1,10 @@
 #!/usr/bin/env node
 // Stop hook — asks for an OCR review of the current change once per change state.
 //
-// The hook only reads git state and runs `ocr delegate preview`, which selects files and calls no
-// LLM. It blocks at most once for a given tree, and it fails open on every infrastructure problem
-// (no git, no ocr, unreadable input), so it can flag unreviewed work but can never trap a session.
+// Apart from its own state under .scratch/ocr, the hook only reads git state and runs
+// `ocr delegate preview`, which selects files and calls no LLM. It blocks at most once for a given
+// tree, and it fails open on every infrastructure problem (no git, no ocr, unreadable input), so it
+// can flag unreviewed work but can never trap a session.
 // Procedure it points at: .claude/commands/ocr-review.md. Runbook: docs/ops/agent-tooling.md.
 
 import { NUDGE_LINE_THRESHOLD, checkNudge, markNudged } from '../../scripts/lib/ocr-review-gate.mjs'
