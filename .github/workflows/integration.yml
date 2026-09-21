@@ -3,14 +3,17 @@
 # to real-DB invariants under apps/api/src/__tests__/integration/.
 name: integration
 
+# Runs on ready pull requests, weekly, and by hand. A push to main carries a tree its pull request
+# already ran this suite on, and the weekly run replays every migration from empty on main itself.
 on:
   workflow_dispatch:
   pull_request:
-  push:
-    branches: [main]
+    types: [opened, synchronize, reopened, ready_for_review]
   schedule:
-    # Nightly local contract check (01:00 ICT / 18:00 UTC).
-    - cron: "0 18 * * *"
+    # Weekly local contract check (01:00 ICT Monday / 18:00 UTC Sunday). Every code change already
+    # runs this suite on its pull request and on main, so a nightly rerun of an unchanged main
+    # only bills a full database replay to re-prove the same result.
+    - cron: "0 18 * * 0"
 
 permissions:
   contents: read
@@ -23,7 +26,9 @@ concurrency:
 jobs:
   changes:
     name: classify changed paths
+    if: ${{ github.event_name != 'pull_request' || github.event.pull_request.draft == false }}
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     outputs:
       integration: ${{ steps.classify.outputs.integration }}
     steps:
@@ -47,6 +52,7 @@ jobs:
     needs: changes
     if: ${{ github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || needs.changes.outputs.integration == 'true' }}
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
         with:

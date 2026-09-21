@@ -26,6 +26,20 @@ export const PILLAR = {
 
 const root = resolve(import.meta.dirname, '../../../../..')
 
+const NO_DEPLOYMENT_RECORD = /^ {4}environment:\n {6}name: production\n {6}deployment: false$/mu
+
+function jobBlocks(source: string): Map<string, string> {
+  const lf = source.replace(/\r\n/gu, '\n')
+  const start = lf.indexOf('\njobs:\n')
+  if (start < 0) throw new Error(pillarWhy(PILLAR, 'the release workflow has no jobs: section'))
+  const jobs = lf.slice(start + '\njobs:\n'.length)
+  const headers = [...jobs.matchAll(/^ {2}([a-z][a-z0-9-]*):$/gmu)]
+  return new Map(headers.map((header, index): [string, string] => [
+    header[1] as string,
+    jobs.slice(header.index ?? 0, headers[index + 1]?.index ?? jobs.length),
+  ]))
+}
+
 describe('Stage 1 production release workflow', () => {
   const workflow = readFileSync(resolve(root, '.github/workflows/release-production.yml'), 'utf8')
   const smoke = readFileSync(resolve(root, 'apps/api/scripts/stage1-synthetic-release-smoke.mjs'), 'utf8')
@@ -162,5 +176,40 @@ describe('Stage 1 production release workflow', () => {
       .toBeGreaterThan(confirmationGuard)
     expect(confirmation, pillarWhy(PILLAR, 'Customer confirmation follows the fresh Worker heartbeat'))
       .toBeGreaterThan(heartbeat)
+  })
+
+  it('records a Production deployment only for the job that can change Production', () => {
+    const jobs = jobBlocks(workflow)
+    const block = (id: string): string => {
+      const found = jobs.get(id)
+      if (found === undefined) throw new Error(pillarWhy(PILLAR, `job ${id} is missing from the release workflow`))
+      return found
+    }
+    const environmentJobs = [...jobs]
+      .filter(([, body]) => /^ {4}environment:/mu.test(body))
+      .map(([id]) => id)
+      .sort()
+    expect(environmentJobs, pillarWhy(PILLAR, 'a job that receives Production secrets must be added here on purpose'))
+      .toEqual(['production-release', 'release-config-gate', 'stale-canary-reconciler'])
+    for (const id of ['stale-canary-reconciler', 'release-config-gate']) {
+      expect(block(id), pillarWhy(PILLAR, `${id} never changes Production, so its failure must not flip the Production deployment status`))
+        .toMatch(NO_DEPLOYMENT_RECORD)
+    }
+
+    const release = block('production-release')
+    expect(release, pillarWhy(PILLAR, 'the job that changes Production always leaves a deployment record'))
+      .toMatch(/^ {4}environment: production$/mu)
+    expect(release).not.toContain('deployment: false')
+    expect(release, pillarWhy(PILLAR, 'the release starts only after the quality gates and the configuration gate'))
+      .toMatch(/^ {4}needs: \[quality, release-config-gate\]$/mu)
+    expect(release, pillarWhy(PILLAR, 'configuration presence is proven before the release job exists, not inside it'))
+      .not.toContain('test -n "$SUPABASE_ACCESS_TOKEN"')
+
+    const gate = block('release-config-gate')
+    expect(gate).toContain('test -n "$SUPABASE_ACCESS_TOKEN"')
+    expect(gate).toContain('test -n "$PRODUCTION_SUPABASE_SERVICE_ROLE_KEY"')
+    expect(gate, pillarWhy(PILLAR, 'the gate holds every Production secret, so it runs no repository code and no third-party action'))
+      .not.toMatch(/\buses:|\b(?:pnpm|npm|npx|node|curl)\b/u)
+    expect(gate).toMatch(/^ {4}permissions: \{\}$/mu)
   })
 })

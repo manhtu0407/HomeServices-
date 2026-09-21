@@ -230,8 +230,9 @@ describe('Worker Jobs ZIP Prototype', () => {
     expect(progressStylesSource).toContain('stepStateJobsReviewContext')
   })
 
-  it('removes the Formula Mint Aura from the ZIP Prototype progress rail only', () => {
-    expect(source).toContain('<WorkerV5ProgressRail activeStep={4} formulaAura={false}')
+  it('renders Stage 6 as the Timeline Card without the progress rail, which keeps its aura switch for other callers', () => {
+    expect(source).not.toContain('<WorkerV5ProgressRail')
+    expect(source).toContain('<StageSixTimeline')
     expect(progressSource).toContain('formulaAura = true')
     expect(progressSource).toContain('{formulaAura ? (')
   })

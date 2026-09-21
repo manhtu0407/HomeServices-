@@ -3,7 +3,11 @@ import { readFileSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { checkHarnessRelease, resolveReleaseArtifactPath } from './release-bundle.mjs'
-import { createReleaseControlClient, releaseRegistrationArgs } from './release-control-client.mjs'
+import {
+  RELEASE_CONTROL_TABLE_ABSENT,
+  createReleaseControlClient,
+  releaseRegistrationArgs,
+} from './release-control-client.mjs'
 import { verifyReleaseFailureReceiptChecksum } from './release-safety.mjs'
 import { verifySyntheticSmokeReceiptChecksum } from '../../apps/api/scripts/lib/stage1-synthetic-smoke-core.mjs'
 import { verifyStage1PromotionPacket } from './stage1-promotion-packet.mjs'
@@ -176,7 +180,21 @@ export async function executeReleaseControl(input, client) {
 }
 
 async function reconcileStaleReleaseControl(client, now = Date.now()) {
-  const before = await client.selectControl()
+  let before
+  try {
+    before = await client.selectControl()
+  } catch (error) {
+    if (error?.code !== RELEASE_CONTROL_TABLE_ABSENT) throw error
+    // A table that does not exist cannot hold a stale candidate, so there is nothing to abort.
+    // Reported as its own mode, not folded into no_candidate, so the evidence shows the schema is absent.
+    return {
+      action: 'reconcile-stale',
+      mode: 'release_control_schema_not_installed',
+      table: 'public.stage1_release_controls',
+      before: null,
+      after: null,
+    }
+  }
   if (!before?.candidate_release_id) {
     return { action: 'reconcile-stale', mode: 'no_candidate', before, after: before }
   }
