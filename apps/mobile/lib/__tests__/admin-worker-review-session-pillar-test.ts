@@ -9,7 +9,7 @@ jest.mock('../api', () => ({ api: {
 export const PILLAR = {
   id: 'P175-admin-worker-review-session',
   invariant: 'Admin KYC requests preserve explicit reviewer credentials and never fall back to another ambient account for a decision',
-  authority: ['governance/RULES.md #0', 'governance/RULES.md #19'],
+  authority: ['governance/RULES.md #0', 'governance/structures/runtime-crosscutting.md §22.3 (the access token the caller presents is the identity Edge verifies)'],
   target: 'apps/mobile/lib/services/admin-control-service.ts',
   layer: 'unit',
   siblings: ['P173-admin-worker-review-snapshot-ui'],
