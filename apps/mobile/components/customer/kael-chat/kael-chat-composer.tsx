@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import {
   ActivityIndicator,
   Text,
@@ -17,6 +18,9 @@ import { ChatComposerAura, ChatMediaCameraIcon } from './chat-surfaces'
 import { customerV21ChatStyles as chatStyles } from './chat-styles'
 import { canSubmitCustomerKaelComposer } from './customer-kael-composer-state'
 import { CUSTOMER_KAEL_MESSAGE_MAX_LENGTH } from './customer-kael-message-limits'
+
+const COMPOSER_MIN_HEIGHT = 44
+const COMPOSER_MAX_HEIGHT = 124
 
 export type RootChatStyles = {
   bodyText: StyleProp<TextStyle>
@@ -70,6 +74,13 @@ export function KaelChatComposer({
     mediaDraftCount: canUseComposerMedia ? composerMediaDraftCount : 0,
     voiceTranscript: hasVoiceTranscript ? 'voice' : '',
   })
+  const [inputHeight, setInputHeight] = useState(COMPOSER_MIN_HEIGHT)
+  useEffect(() => {
+    // A cleared draft (message sent, or removed) doesn't reliably re-fire
+    // onContentSizeChange on every platform, so the box can stay tall — reset
+    // it explicitly whenever there is nothing left to size against.
+    if (draft.length === 0) setInputHeight(COMPOSER_MIN_HEIGHT)
+  }, [draft])
   return (
     <>
       <View
@@ -112,16 +123,22 @@ export function KaelChatComposer({
           editable={!composerBusy}
           inputShellStyle={rootStyles.composerTextFieldShell}
           inputShellTestID="customer-v21-kael-input-shell"
+          multiline
           onBlur={onBlur}
           onChangeText={onDraftChange}
+          onContentSizeChange={(event) => {
+            const nextHeight = event.nativeEvent.contentSize.height
+            setInputHeight(Math.min(Math.max(nextHeight, COMPOSER_MIN_HEIGHT), COMPOSER_MAX_HEIGHT))
+          }}
           onFocus={onFocus}
           onSubmitEditing={onSendMessage}
           maxLength={CUSTOMER_KAEL_MESSAGE_MAX_LENGTH}
           placeholder={composerPlaceholder}
           placeholderTextColor={tokens.subtleText}
           returnKeyType="send"
+          scrollEnabled={inputHeight >= COMPOSER_MAX_HEIGHT}
           shellStyle={rootStyles.composerTextFieldStack}
-          style={[rootStyles.composerInput, textInputNoOutlineStyle, { color: tokens.text }]}
+          style={[rootStyles.composerInput, { height: inputHeight }, textInputNoOutlineStyle, { color: tokens.text }]}
           testID="customer-v21-kael-input"
           value={draft}
         />

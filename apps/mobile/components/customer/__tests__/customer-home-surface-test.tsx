@@ -161,6 +161,7 @@ function buildWorkflow(deal: LocalDeal | null) {
 
   mockWorkflowValue = {
     actions: {},
+    customerProfileInsights: null,
     dispatch: mockDispatch,
     notificationUnreadCount: 0,
     notifications: [],
@@ -255,7 +256,7 @@ describe('CustomerHomeSurface v2.1', () => {
       textAlignVertical: 'center',
     })
     expect(screen.getByTestId('customer-v21-top-title')).toHaveTextContent(/Chào buổi (sáng|chiều|tối), Anh Tú$/)
-    expect(screen.getByTestId('customer-v21-top-title')).toHaveStyle({ fontSize: 22, lineHeight: 28 })
+    expect(screen.getByTestId('customer-v21-top-title')).toHaveStyle({ fontSize: 13.4, lineHeight: 16 })
     expect(screen.getByText('Việc nhà có chúng tôi,\nbạn yên tâm tận hưởng')).toBeOnTheScreen()
     const heroScale = Math.min(Math.max(Dimensions.get('window').width - 32, 280) / 857, 1)
     const heroTitleStyle = StyleSheet.flatten(screen.getByText('Việc nhà có chúng tôi,\nbạn yên tâm tận hưởng').props.style)
@@ -305,11 +306,29 @@ describe('CustomerHomeSurface v2.1', () => {
     expect(screen.queryByTestId('customer-v21-home-mint-aura')).toBeNull()
     expect(screen.getByTestId('customer-v21-home-empty-card-skin')).toBeOnTheScreen()
     expect(screen.getByTestId('customer-v21-home-empty-mint-aura')).toBeOnTheScreen()
-    expect(screen.queryByTestId('customer-v21-top-avatar')).toBeNull()
+    // The Home greeting now matches Worker Home: an identity header with an
+    // avatar, a customer code line, and a real address-status row.
+    expect(screen.getByTestId('customer-v21-home-header')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-v21-home-avatar-placeholder')).toBeOnTheScreen()
+    expect(screen.getByText('Mã KH #R_TEST_1')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-v21-home-address-status')).toHaveTextContent('Chưa có địa chỉ mặc định')
     expect(screen.queryByTestId('kael-core-v9-monocle')).toBeNull()
     expect(screen.queryByText('Chưa có công việc cần xử lý')).toBeNull()
     expect(screen.queryByText('NestScout đang theo dõi công việc và đặt quyết định đúng chỗ.')).toBeNull()
     expect(screen.queryByText('Kael giúp tạo yêu cầu dịch vụ an toàn.')).toBeNull()
+  })
+
+  it('reflects the real backend address signal, not the Auth-metadata copy', () => {
+    // mockSessionMetadata.default_address is set in beforeEach — proves the
+    // status line no longer reads it (see surfaces.tsx addressStatusLabel).
+    mockWorkflowValue.customerProfileInsights = { saved_address_count: 0 }
+    const { unmount } = render(<CustomerHomeSurface />)
+    expect(screen.getByTestId('customer-v21-home-address-status')).toHaveTextContent('Chưa có địa chỉ mặc định')
+    unmount()
+
+    mockWorkflowValue.customerProfileInsights = { saved_address_count: 1 }
+    render(<CustomerHomeSurface />)
+    expect(screen.getByTestId('customer-v21-home-address-status')).toHaveTextContent('Đã có địa chỉ mặc định')
   })
 
   it('shows the six approved service paths without fake worker or rating data', () => {
@@ -397,6 +416,28 @@ describe('CustomerHomeSurface v2.1', () => {
     expect(mockDispatch).toHaveBeenCalledWith({ type: 'start_home_service', serviceType: 'electrical' })
     expect(mockReplace).toHaveBeenCalledWith('/(customer)/booking?service=electrical')
     expect(mockWorkflowValue.actions.createRemoteJobFromDraft).toBeUndefined()
+  })
+
+  it('keeps the three-column home grid from overflowing at a narrow iPhone width', () => {
+    // 320 = iPhone SE / iPhone 5 width, the narrowest iOS width this app still
+    // targets. A percentage flexBasis competing with a fixed pixel gap can
+    // overflow the row by under 1px there and silently wrap the 3rd tile —
+    // assert the exact pixel math instead, since RNTL does not run a real
+    // layout engine to catch the wrap itself.
+    const dimensionsSpy = jest.spyOn(Dimensions, 'get').mockReturnValue({ width: 320, height: 568, scale: 2, fontScale: 1 })
+
+    try {
+      render(<CustomerHomeSurface />)
+
+      const tileStyle = StyleSheet.flatten(screen.getByTestId('customer-v21-service-electrical').props.style)
+      const gap = 9 // styles.homeServiceGrid.gap in shared-styles.ts
+      const rowWidth = 320 - 32 // styles.scrollContent.paddingHorizontal, 16 each side
+
+      expect(typeof tileStyle.flexBasis).toBe('number')
+      expect(3 * (tileStyle.flexBasis as number) + 2 * gap).toBeLessThanOrEqual(rowWidth)
+    } finally {
+      dimensionsSpy.mockRestore()
+    }
   })
 
   it('opens an expansion service in the same production Basic Intake path', () => {

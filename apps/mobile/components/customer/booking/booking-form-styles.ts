@@ -116,7 +116,10 @@ export const bookingFormStyleDefinitions = {
     paddingTop: 0,
     textAlignVertical: 'center',
   },
-  bookingWideDescriptionInputWeb: Platform.OS === 'web' ? {
+  // textAlignVertical is Android-only; iOS/web ignore it and top-align multiline
+  // text inside the fixed 70pt box, so those platforms need explicit padding to
+  // land a single line at the same vertical center Android gets for free.
+  bookingWideDescriptionInputCenterPad: Platform.OS !== 'android' ? {
     paddingBottom: 0,
     paddingTop: 27.5,
   } : {},

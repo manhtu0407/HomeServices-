@@ -1,13 +1,16 @@
 import { typography } from '@/design/theme'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import Constants from 'expo-constants'
+import { Image } from 'expo-image'
 import {
+  Pressable,
   StyleSheet,
   Text,
   View,
   useWindowDimensions,
   type ImageSourcePropType,
 } from 'react-native'
+import Svg, { Path } from 'react-native-svg'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import {
   CUSTOMER_SERVICE_IDS,
@@ -19,7 +22,7 @@ import { KaelButton } from '@/components/ui/kael-primitives'
 import { useDockScrollState, useDockScrollTransform } from '@/components/ui/dock-scroll-state'
 import { generateClientRequestId } from '@/lib/client-request-id'
 import { localizeAccountMutationError } from '@/lib/account-mutation-error'
-import { localizedProblemOptions, setAppLanguage, useAppLanguage } from '@/lib/app-language'
+import { localizedProblemOptions, setAppLanguage, useAppLanguage, type AppLanguage } from '@/lib/app-language'
 import { useAuth } from '@/lib/auth-provider'
 import { useFrontendWorkflow } from '@/lib/frontend-workflow-provider'
 import { placesService } from '@/lib/services'
@@ -31,7 +34,7 @@ import {
   setPendingKaelChatDraft,
 } from '../kael-chat/pending-intake'
 import { ScopeChangeHardStopModal } from '../scope-change-modal/scope-change-hard-stop-modal'
-import { setCustomerThemeMode } from '../customer-theme'
+import { setCustomerThemeMode, type CustomerThemeTokens } from '../customer-theme'
 import { customerV21Assets, customerV21BankAssets, customerV21BookingWorkartAssets } from '../ui/assets'
 import { CustomerBookingEntryView, CustomerBookingGuestGateView } from '../booking/booking-entry-stateful-surfaces'
 import { HomeStorytellingCard } from '../home/home-storytelling-card'
@@ -55,6 +58,7 @@ import { useBookingAddressLookup, type BookingAddressSuggestion } from '../booki
 import { useCustomerMessageMemoryPreference } from '../kael-chat/use-customer-message-memory-preference'
 import { useCustomerAvatarPicker } from '../profile/use-customer-avatar-picker'
 import { ProfileProgressBar } from '../profile/profile-progress-bar'
+import { ProfileSettingsGlyph } from '../profile/profile-settings-icons'
 import { KaelChatSurface } from './kael-chat-surface'
 import { customerKaelStateScopeKey } from '../kael-chat/customer-kael-state-scope'
 import {
@@ -102,7 +106,6 @@ import {
   customerAccountJourneyDisplay,
   fairPriceStatusLabel,
   homeGreeting,
-  initialsForName,
   insightNumber,
   profileName,
   profilePanelForScreen,
@@ -197,16 +200,125 @@ function ProfileRankProcess({ label, percent, value }: { label: string; percent:
   )
 }
 
+function CustomerHomeHeader({
+  addressStatusLabel,
+  avatarUploadBusy,
+  avatarUrl,
+  customerDisplayCode,
+  displayName,
+  language,
+  onPickAvatar,
+  tokens,
+}: {
+  addressStatusLabel: string
+  avatarUploadBusy: boolean
+  avatarUrl: string | null
+  customerDisplayCode: string
+  displayName: string
+  language: AppLanguage
+  onPickAvatar: () => void
+  tokens: CustomerThemeTokens
+}) {
+  return (
+    <View style={homeHeaderStyles.header} testID="customer-v21-home-header">
+      <Pressable
+        accessibilityLabel={avatarUrl
+          ? (language === 'vi' ? 'Đổi ảnh đại diện' : 'Change profile photo')
+          : (language === 'vi' ? 'Thêm ảnh đại diện' : 'Add profile photo')}
+        accessibilityRole="button"
+        accessibilityState={{ busy: avatarUploadBusy }}
+        disabled={avatarUploadBusy}
+        onPress={onPickAvatar}
+        style={[homeHeaderStyles.avatarButton, { backgroundColor: tokens.raised, borderColor: tokens.border }]}
+      >
+        {avatarUrl ? (
+          <Image contentFit="cover" source={{ uri: avatarUrl }} style={homeHeaderStyles.avatarImage} testID="customer-v21-home-avatar" />
+        ) : (
+          <View style={homeHeaderStyles.avatarPlaceholder} testID="customer-v21-home-avatar-placeholder">
+            <ProfileSettingsGlyph color={tokens.text} name="personal" testID="customer-v21-home-avatar-placeholder-icon" />
+          </View>
+        )}
+        <View pointerEvents="none" style={[homeHeaderStyles.avatarCameraBadge, { backgroundColor: tokens.raised, borderColor: tokens.border }]}>
+          <Svg height={9} viewBox="0 0 16 16" width={9}>
+            <Path
+              d="M5.2 4.2 6.1 2.8h3.8l.9 1.4h1.6c.9 0 1.6.7 1.6 1.6v5.1c0 .9-.7 1.6-1.6 1.6H3.6c-.9 0-1.6-.7-1.6-1.6V5.8c0-.9.7-1.6 1.6-1.6h1.6ZM8 10.8a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5Z"
+              fill="none"
+              stroke={tokens.text}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={1.2}
+            />
+          </Svg>
+        </View>
+      </Pressable>
+      <View style={homeHeaderStyles.headerCopy}>
+        <Text numberOfLines={2} style={[homeHeaderStyles.headerTitle, { color: tokens.text }]} testID="customer-v21-top-title">
+          {homeGreeting(displayName, language)}
+        </Text>
+        <Text style={[homeHeaderStyles.headerMeta, { color: tokens.muted }]}>
+          {language === 'vi' ? `Mã KH ${customerDisplayCode}` : `Customer ID ${customerDisplayCode}`}
+        </Text>
+        <View style={homeHeaderStyles.statusRow}>
+          <View style={[homeHeaderStyles.statusDot, { backgroundColor: tokens.primary }]} />
+          <Text style={[homeHeaderStyles.statusLabel, { color: tokens.muted }]} testID="customer-v21-home-address-status">
+            {addressStatusLabel}
+          </Text>
+        </View>
+      </View>
+    </View>
+  )
+}
+
+// Font sizes below intentionally match Worker Home's identity header exactly
+// (worker-home-production-surface.tsx headerTitle/headerMeta/statusLabel) —
+// this card is sized as a compact identity strip, not a page hero, so it uses
+// its own small scale rather than the screen's title2 token.
+const homeHeaderStyles = StyleSheet.create({
+  avatarButton: { alignItems: 'center', borderRadius: 23, borderWidth: 1, height: 45, justifyContent: 'center', position: 'relative', width: 45 },
+  avatarCameraBadge: {
+    alignItems: 'center',
+    borderRadius: 9,
+    borderWidth: 1,
+    bottom: -1,
+    height: 18,
+    justifyContent: 'center',
+    position: 'absolute',
+    right: -1,
+    width: 18,
+  },
+  avatarImage: { borderRadius: 23, height: '100%', width: '100%' },
+  avatarPlaceholder: { alignItems: 'center', height: '100%', justifyContent: 'center', width: '100%' },
+  header: { alignItems: 'flex-start', flexDirection: 'row', gap: 10, height: 55 },
+  headerCopy: { flex: 1, paddingTop: 1 },
+  headerMeta: { fontSize: 9.8, lineHeight: 12, marginTop: 5 },
+  headerTitle: { fontSize: 13.4, fontWeight: '600', letterSpacing: -0.22, lineHeight: 16 },
+  statusDot: { borderRadius: 3, height: 6, width: 6 },
+  statusLabel: { fontSize: 9.1, lineHeight: 11 },
+  statusRow: { alignItems: 'center', flexDirection: 'row', gap: 5, marginTop: 5 },
+})
+
 export function CustomerHomeSurface() {
   const language = useAppLanguage()
   const router = useRouter()
   const workflow = useFrontendWorkflow()
   const { session } = useAuth()
   const { reduceTransparency, tokens } = useV21Theme()
+  const { avatarUploadBusy, openCustomerAvatarPicker } = useCustomerAvatarPicker({
+    language,
+    uploadAvatar: workflow.actions.customerUploadAvatar,
+  })
   const copy = customerV21CommonCopy[language]
   const deal = workflow.state.deal
   const isDraftDeal = deal?.status === 'draft'
   const displayName = profileName(session?.user.user_metadata, language)
+  const customerDisplayCode = session?.user.id
+    ? `#${session.user.id.slice(-8).toUpperCase()}`
+    : (language === 'vi' ? 'Chưa ghi nhận' : 'Unavailable')
+  // Real backend signal, not the Auth-metadata copy (see saveAddressProfile).
+  const hasDefaultAddress = Boolean(workflow.customerProfileInsights && workflow.customerProfileInsights.saved_address_count > 0)
+  const addressStatusLabel = hasDefaultAddress
+    ? (language === 'vi' ? 'Đã có địa chỉ mặc định' : 'Default address saved')
+    : (language === 'vi' ? 'Chưa có địa chỉ mặc định' : 'No default address yet')
 
   const activeCaseRoute = isDraftDeal
     ? '/(customer)/booking'
@@ -230,13 +342,15 @@ export function CustomerHomeSurface() {
 
   return (
     <V21Screen screenId="2.1-home" testID="customer-v21-home">
-      <V21TopBar
-        avatarText={initialsForName(displayName)}
-        showAvatar={false}
-        subtitle=""
-        title={homeGreeting(displayName, language)}
-        titleNumberOfLines={2}
-        titleStyle={typography.title2}
+      <CustomerHomeHeader
+        addressStatusLabel={addressStatusLabel}
+        avatarUploadBusy={avatarUploadBusy}
+        avatarUrl={workflow.customerAvatarUrl}
+        customerDisplayCode={customerDisplayCode}
+        displayName={displayName}
+        language={language}
+        onPickAvatar={openCustomerAvatarPicker}
+        tokens={tokens}
       />
 
       <HomeStorytellingCard
@@ -920,6 +1034,7 @@ export function CustomerProfileSurface() {
         rankingAccessibilityLabel={language === 'vi' ? 'Xem xếp hạng sử dụng' : 'View usage ranking'}
         rankingLabel={language === 'vi' ? 'Xếp hạng sử dụng' : 'Usage ranking'}
         rankingPointsLabel={usageRankPointsLabel}
+        rankingTagline={language === 'vi' ? 'Nhà sạch hơn · Cuộc sống tốt hơn' : 'A cleaner home · A better life'}
         rootStyles={styles}
         settingsGroups={settingsGroups}
         tokens={tokens}
@@ -1073,6 +1188,11 @@ function ProfileUtilitySection({ kind }: ProfileUtilitySectionProps) {
     setAddressSaving(true)
     setAddressMessage(null)
     try {
+      // Dual-write: Auth metadata still owns this screen's pre-fill and the secondary addresses list.
+      if (input.defaultAddress !== undefined && !(await workflow.actions.saveCustomerDefaultAddress(input.defaultAddress))) {
+        setAddressMessage(localizeAccountMutationError(null, language, 'profile'))
+        return false
+      }
       const result = await updateCustomerProfile(input)
       if (!result.success) {
         setAddressMessage(localizeAccountMutationError(result.error, language, 'profile'))
