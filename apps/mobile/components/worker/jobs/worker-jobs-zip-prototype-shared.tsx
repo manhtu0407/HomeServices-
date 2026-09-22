@@ -1,14 +1,33 @@
-import { Pressable, View, Text as RNText, type ImageSourcePropType, type TextProps } from 'react-native'
-import Svg, { Circle, Line, Path, Rect } from 'react-native-svg'
+import { Fragment, useId, useState, type ReactNode } from 'react'
+import {
+  Pressable,
+  StyleSheet,
+  View,
+  Text as RNText,
+  useWindowDimensions,
+  type ImageSourcePropType,
+  type LayoutChangeEvent,
+  type TextProps,
+  type TextStyle,
+} from 'react-native'
+import Svg, { Circle, Defs, G, Line, LinearGradient, Path, Rect, Stop } from 'react-native-svg'
 
 import type { LocalDeal } from '@nestscout/shared'
 import { color } from '@/design/theme'
 import type { AppLanguage } from '@/lib/app-language'
 import { WorkerV5PrimaryButtonFill } from '../ui/primitives-surfaces'
 import type { WorkerV5ScreenDefinition, WorkerV5ScreenId } from '../dock/types'
+import type { WorkerThemeTokens } from '../worker-theme'
+import { STAGE_MIN_TAP_SIZE, STAGE_REFERENCE_SCALE, stageFontSize, stageLineHeight } from './stage-ratio'
 import type { WorkerV5RoutePreviewState } from './use-worker-route-preview'
 import type { useFrontendWorkflow } from '@/lib/frontend-workflow-provider'
 import { prototypeStyles } from './worker-jobs-zip-prototype-styles'
+import {
+  stageTwoCardTokens,
+  stageTwoPalette,
+  type StageTwoPillTone,
+  type StageTwoTextKind,
+} from './worker-jobs-zip-prototype-style-stage-two'
 
 export type WorkerJobsLegacyPrototypeRuntime = ReturnType<typeof useFrontendWorkflow>
 
@@ -253,6 +272,410 @@ export function WorkerJobsLegacyPrototypeStageActionButton({
     >
       {primary && !isDisabled ? <WorkerV5PrimaryButtonFill disabled={false} variant="source" /> : null}
       <Text adjustsFontSizeToFit minimumFontScale={0.84} numberOfLines={1} style={[prototypeStyles.stageActionText, primary ? prototypeStyles.stageActionPrimaryText : prototypeStyles.stageActionSecondaryText, isDisabled && prototypeStyles.stageActionDisabledText]}>{label}</Text>
+    </Pressable>
+  )
+}
+
+const stageTwo = stageTwoCardTokens
+const stageTwoGeometry = stageTwo.geometry
+
+export type WorkerJobsStageTwoGlyphName =
+  | 'banknote'
+  | 'briefcase'
+  | 'bubble'
+  | 'check'
+  | 'clipboard'
+  | 'clock'
+  | 'coins'
+  | 'envelope'
+  | 'home'
+  | 'lock'
+  | 'map'
+  | 'photo'
+  | 'receipt'
+  | 'shieldCheck'
+  | 'tag'
+  | 'user'
+  | 'wallet'
+  | 'wrench'
+
+/**
+ * Every mark is stroked at one weight and drawn inside the same ink square, x and y within
+ * [3.5, 20.6], so one box size reads as one visual size. No two marks share a silhouette, which
+ * keeps a section header from being told apart from its own rows by size alone.
+ */
+const STAGE_TWO_GLYPHS: Record<WorkerJobsStageTwoGlyphName, ReactNode> = {
+  banknote: (
+    <>
+      <Rect height={12.4} rx={2.6} width={17} x={3.5} y={5.8} />
+      <Circle cx={12} cy={12} r={2.8} />
+      <Path d="M7.2 10.2v3.6M16.8 10.2v3.6" />
+    </>
+  ),
+  briefcase: (
+    <>
+      <Rect height={12.4} rx={2.6} width={16.4} x={3.8} y={7.4} />
+      <Path d="M8.8 7.4V5.6a1.8 1.8 0 0 1 1.8-1.8h2.8a1.8 1.8 0 0 1 1.8 1.8v1.8" />
+      <Path d="M3.8 12h16.4" />
+      <Path d="M10.4 12v1.8h3.2V12" />
+    </>
+  ),
+  bubble: (
+    <>
+      <Path d="M12 3.9c4.4 0 8 2.85 8 6.55s-3.6 6.55-8 6.55c-.8 0-1.58-.1-2.3-.28L5.2 20.1l1.15-3.35C4.9 15.55 4 13.2 4 10.45 4 6.75 7.6 3.9 12 3.9Z" />
+      <Path d="M9 9.7h6M9 12.6h4" />
+    </>
+  ),
+  check: (
+    <>
+      <Circle cx={12} cy={12} r={8.4} />
+      <Path d="m7.9 12.1 2.7 2.7 5.5-5.9" />
+    </>
+  ),
+  clipboard: (
+    <>
+      <Rect height={15.2} rx={2.6} width={15.6} x={4.2} y={5.2} />
+      <Path d="M9 5.2V4.3a1.6 1.6 0 0 1 1.6-1.6h2.8A1.6 1.6 0 0 1 15 4.3v.9" />
+      <Path d="M8.4 10.6h7.2M8.4 13.8h7.2M8.4 17h4.4" />
+    </>
+  ),
+  clock: (
+    <>
+      <Circle cx={12} cy={12} r={8.4} />
+      <Path d="M12 6.9V12l3.6 2.2" />
+    </>
+  ),
+  coins: (
+    <>
+      <Circle cx={9.4} cy={9.4} r={5.6} />
+      <Path d="M14.99 9.01A5.6 5.6 0 1 1 9.01 14.99" />
+      <Path d="M9.4 7.2v4.4" />
+    </>
+  ),
+  envelope: (
+    <>
+      <Rect height={14} rx={2.4} width={16.6} x={3.7} y={5} />
+      <Path d="m4.7 7 7.3 5.6 7.3-5.6" />
+    </>
+  ),
+  home: (
+    <>
+      <Path d="m3.9 10.9 8.1-6.9 8.1 6.9" />
+      <Path d="M5.9 10.1v9h12.2v-9" />
+      <Path d="M9.9 19.1v-4.9h4.2v4.9" />
+    </>
+  ),
+  lock: (
+    <>
+      <Rect height={10.4} rx={2.6} width={15.2} x={4.4} y={10} />
+      <Path d="M8 10V7.6a4 4 0 0 1 8 0V10" />
+      <Path d="M12 14v2.6" />
+    </>
+  ),
+  map: (
+    <>
+      <Path d="M3.9 6.9 9.3 4.6v12.5l-5.4 2.3V6.9Z" />
+      <Path d="M9.3 4.6l5.4 2.3v12.5L9.3 17.1V4.6Z" />
+      <Path d="M14.7 6.9l5.4-2.3v12.5l-5.4 2.3V6.9Z" />
+    </>
+  ),
+  photo: (
+    <>
+      <Rect height={14} rx={2.6} width={16.2} x={3.9} y={5} />
+      <Circle cx={8.6} cy={9.8} r={1.4} />
+      <Path d="m4.6 16.6 4.3-4.3 3 2.7 2.6-2.6 4.6 4.2" />
+    </>
+  ),
+  receipt: (
+    <>
+      <Path d="M4.6 3.7h14.8v17l-2.47-1.5-2.47 1.5-2.46-1.5-2.47 1.5-2.47-1.5L4.6 20.7V3.7Z" />
+      <Path d="M8.4 8.6h7.2M8.4 12.2h4.8" />
+    </>
+  ),
+  shieldCheck: (
+    <>
+      <Path d="M12 3.6l7.3 2.45v5.95c0 4.3-2.9 7.75-7.3 9.2-4.4-1.45-7.3-4.9-7.3-9.2V6.05L12 3.6Z" />
+      <Path d="m8.7 12.2 2.4 2.4 3.9-4.2" />
+    </>
+  ),
+  tag: (
+    <>
+      <Path d="M11.6 3.9h7.1a1.6 1.6 0 0 1 1.6 1.6v7.1a1.6 1.6 0 0 1-.47 1.13l-6.5 6.5a1.6 1.6 0 0 1-2.26 0l-7.1-7.1a1.6 1.6 0 0 1 0-2.26l6.5-6.5a1.6 1.6 0 0 1 1.13-.47Z" />
+      <Circle cx={16.2} cy={7.8} r={1.5} />
+    </>
+  ),
+  user: (
+    <>
+      <Circle cx={12} cy={8.6} r={4} />
+      <Path d="M4.4 20.2a7.6 7.6 0 0 1 15.2 0" />
+    </>
+  ),
+  wallet: (
+    <>
+      <Rect height={13} rx={2.6} width={16.8} x={3.6} y={5.6} />
+      <Path d="M3.6 9.8h16.8" />
+      <Path d="M14.6 12.6h5.8v3.6h-5.8a1.8 1.8 0 0 1 0-3.6Z" />
+    </>
+  ),
+  // The drawn wrench is 14.6 across against 16 to 17 for its neighbours; the stroke is divided by the
+  // same factor so the scale-up does not thicken it.
+  wrench: (
+    <G strokeWidth={stageTwo.stroke.glyph / 1.12} transform="translate(12 12) scale(1.12) translate(-12.19 -11.76)">
+      <Path d="M14.79 4.44a4.14 4.14 0 0 0-3.68 5.635l-5.75 5.75a1.955 1.955 0 0 0 2.76 2.76l5.75-5.75a4.14 4.14 0 0 0 5.635-3.68l-2.415 1.495-2.53-.69-.69-2.53 1.495-2.415Z" />
+    </G>
+  ),
+}
+
+export function WorkerJobsStageTwoGlyph({ color: ink, name, size, strokeWidth }: {
+  color: string
+  name: WorkerJobsStageTwoGlyphName
+  size: number
+  strokeWidth: number
+}) {
+  return (
+    <Svg height={size} pointerEvents="none" viewBox="0 0 24 24" width={size}>
+      <G fill="none" stroke={ink} strokeLinecap="round" strokeLinejoin="round" strokeWidth={strokeWidth}>
+        {STAGE_TWO_GLYPHS[name]}
+      </G>
+    </Svg>
+  )
+}
+
+export function useWorkerJobsStageTwoScale(tokens: WorkerThemeTokens) {
+  const { width: windowWidth } = useWindowDimensions()
+  const [measured, setMeasured] = useState(0)
+  const unit = (measured || windowWidth) / stageTwo.canvasWidth
+  const px = (canvasSize: number) => canvasSize * unit
+  const text = (kind: StageTwoTextKind): TextStyle => {
+    const spec = stageTwo.type[kind]
+    const fontSize = stageFontSize(spec.size, STAGE_REFERENCE_SCALE.requestDetails, windowWidth)
+    return {
+      fontSize,
+      fontWeight: spec.weight,
+      letterSpacing: (spec.tracking / spec.size) * fontSize,
+      lineHeight: stageLineHeight(fontSize, Math.max(spec.ratio, stageTwo.lineHeightFloor)),
+    }
+  }
+
+  return {
+    onLayout: (event: LayoutChangeEvent) => {
+      const next = event.nativeEvent.layout.width
+      if (next > 0 && Math.abs(next - measured) > 0.5) setMeasured(next)
+    },
+    palette: stageTwoPalette(tokens),
+    px,
+    text,
+  }
+}
+
+export type WorkerJobsStageTwoScale = ReturnType<typeof useWorkerJobsStageTwoScale>
+
+const STAGE_TWO_FILL = { left: 0, position: 'absolute', top: 0 } as const
+
+type StageTwoGradientVector = { x1: number; x2: number; y1: number; y2: number }
+
+function StageTwoGradient({ colors, locations, vector }: {
+  colors: readonly string[]
+  locations?: readonly number[]
+  vector?: StageTwoGradientVector
+}) {
+  // SVG ids are document-global on web, so each surface needs its own.
+  const id = `stageTwoGradient${useId().replace(/[^a-zA-Z0-9]/g, '')}`
+  const last = Math.max(colors.length - 1, 1)
+
+  return (
+    <Svg height="100%" pointerEvents="none" preserveAspectRatio="none" style={STAGE_TWO_FILL} width="100%">
+      <Defs>
+        <LinearGradient
+          id={id}
+          {...(vector
+            ? { gradientUnits: 'userSpaceOnUse' as const, ...vector }
+            : { x1: '0%', x2: '0%', y1: '0%', y2: '100%' })}
+        >
+          {colors.map((stopColor, index) => (
+            <Stop key={`${stopColor}-${index}`} offset={locations?.[index] ?? index / last} stopColor={stopColor} />
+          ))}
+        </LinearGradient>
+      </Defs>
+      <Rect fill={`url(#${id})`} height="100%" width="100%" />
+    </Svg>
+  )
+}
+
+export function WorkerJobsStageTwoCard({ children, scale: { palette, px }, testID }: {
+  children: ReactNode
+  scale: WorkerJobsStageTwoScale
+  testID?: string
+}) {
+  return (
+    <View
+      style={{
+        backgroundColor: palette.card,
+        borderColor: palette.cardBorder ?? undefined,
+        borderRadius: px(stageTwoGeometry.cardRadius),
+        borderWidth: palette.cardBorder ? 1 : 0,
+        boxShadow: palette.cardShadow
+          ? `0 ${px(stageTwoGeometry.cardShadowY)}px ${px(stageTwoGeometry.cardShadowBlur)}px ${palette.cardShadow}`
+          : undefined,
+        paddingBottom: px(stageTwoGeometry.cardPaddingBottom),
+        paddingHorizontal: px(stageTwoGeometry.cardPaddingX),
+        paddingTop: px(stageTwoGeometry.cardPaddingTop),
+      }}
+      testID={testID}
+    >
+      {children}
+    </View>
+  )
+}
+
+export type WorkerJobsStageTwoRowData = {
+  glyph: WorkerJobsStageTwoGlyphName
+  key: string
+  meta?: string
+  metaLines?: number
+  status?: string
+  testID?: string
+  title: string
+  tone?: StageTwoPillTone
+}
+
+export function WorkerJobsStageTwoRow({ glyph, meta, metaLines = 3, scale, status, testID, title, tone = 'neutral' }:
+  Omit<WorkerJobsStageTwoRowData, 'key'> & { scale: WorkerJobsStageTwoScale }) {
+  const { palette, px, text } = scale
+  const pill = palette.pill[tone]
+
+  return (
+    <View
+      style={{ alignItems: 'center', flexDirection: 'row', gap: px(stageTwoGeometry.contentGap), minHeight: px(stageTwoGeometry.rowHeight) }}
+      testID={testID}
+    >
+      <WorkerJobsStageTwoGlyph color={palette.glyph} name={glyph} size={px(stageTwoGeometry.glyph)} strokeWidth={stageTwo.stroke.glyph} />
+
+      <View style={{ flex: 1, minWidth: 0 }}>
+        <Text numberOfLines={2} style={[text('rowTitle'), { color: palette.rowTitle }]}>{title}</Text>
+        {meta ? (
+          <Text numberOfLines={metaLines} style={[text('rowSub'), { color: palette.rowSub, marginTop: px(stageTwoGeometry.rowSubTop) }]}>{meta}</Text>
+        ) : null}
+      </View>
+
+      {status ? (
+        <View
+          style={{
+            alignItems: 'center',
+            borderRadius: px(stageTwoGeometry.pillHeight) / 2,
+            flexShrink: 0,
+            justifyContent: 'center',
+            minHeight: px(stageTwoGeometry.pillHeight),
+            minWidth: px(stageTwoGeometry.pillMinWidth[tone]),
+            overflow: 'hidden',
+            paddingHorizontal: px(stageTwoGeometry.pillPaddingX),
+          }}
+        >
+          <StageTwoGradient colors={pill.colors} />
+          <Text numberOfLines={1} style={[text('pill'), { color: pill.text }]}>{status}</Text>
+        </View>
+      ) : null}
+    </View>
+  )
+}
+
+export function WorkerJobsStageTwoSection({ description, glyph, rows, scale, testID, title }: {
+  description: string
+  glyph: WorkerJobsStageTwoGlyphName
+  rows: readonly WorkerJobsStageTwoRowData[]
+  scale: WorkerJobsStageTwoScale
+  testID: string
+  title: string
+}) {
+  const { palette, px, text } = scale
+
+  return (
+    <WorkerJobsStageTwoCard scale={scale} testID={testID}>
+      <View style={{ alignItems: 'center', flexDirection: 'row', gap: px(stageTwoGeometry.contentGap) }}>
+        <WorkerJobsStageTwoGlyph color={palette.glyph} name={glyph} size={px(stageTwoGeometry.glyph)} strokeWidth={stageTwo.stroke.glyph} />
+        <View style={{ flex: 1, minWidth: 0 }}>
+          <Text style={[text('sectionTitle'), { color: palette.sectionTitle }]}>{title}</Text>
+          <Text style={[text('sectionSub'), { color: palette.sectionSub, marginTop: px(stageTwoGeometry.sectionSubTop) }]}>{description}</Text>
+        </View>
+      </View>
+      <View style={{ backgroundColor: palette.line, height: 1, marginBottom: px(stageTwoGeometry.dividerBottom), marginTop: px(stageTwoGeometry.dividerTop) }} />
+      {rows.map(({ key, ...row }, index) => (
+        <Fragment key={key}>
+          {index > 0 ? <View style={{ backgroundColor: palette.line, height: 1, marginVertical: px(stageTwoGeometry.rowDividerGap) }} /> : null}
+          <WorkerJobsStageTwoRow {...row} scale={scale} />
+        </Fragment>
+      ))}
+    </WorkerJobsStageTwoCard>
+  )
+}
+
+export function WorkerJobsStageTwoAction({ accessibilityLabel, disabled, label, onPress, scale, testID, variant }: {
+  accessibilityLabel: string
+  disabled: boolean
+  label: string
+  onPress: () => void
+  scale: WorkerJobsStageTwoScale
+  testID: string
+  variant: 'ghost' | 'primary'
+}) {
+  const { palette, px, text } = scale
+  const primary = variant === 'primary'
+  const height = Math.max(STAGE_MIN_TAP_SIZE, px(stageTwoGeometry.actionHeight))
+  const radius = px(stageTwoGeometry.actionRadius)
+  const width = px(stageTwoGeometry.actionPrimaryFlex)
+  // A 135deg CSS gradient has no react-native equivalent on a non-square box, so the ramp is laid
+  // out in user space along the diagonal that gives the same 45deg iso-colour lines.
+  const vector = { x1: (width - height) / 4, x2: (3 * width + height) / 4, y1: (height - width) / 4, y2: (3 * height + width) / 4 }
+  const ink = disabled ? palette.disabled.text : primary ? palette.primary.text : palette.ghost.text
+  const showFill = primary && !disabled
+
+  return (
+    <Pressable
+      accessibilityLabel={accessibilityLabel}
+      accessibilityRole="button"
+      accessibilityState={{ disabled }}
+      disabled={disabled}
+      onPress={onPress}
+      style={({ pressed }) => ({
+        alignItems: 'center',
+        backgroundColor: disabled ? palette.disabled.background : primary ? undefined : palette.ghost.background,
+        borderColor: disabled ? palette.disabled.border : palette.ghost.border,
+        borderRadius: radius,
+        borderWidth: disabled ? 1 : primary ? 0 : Math.max(1, px(2)),
+        boxShadow: disabled
+          ? undefined
+          : primary
+            ? palette.primary.glow
+              ? `0 ${px(stageTwoGeometry.actionShadowY)}px ${px(stageTwoGeometry.actionShadowBlur)}px ${palette.primary.glow}`
+              : undefined
+            : palette.ghost.highlight
+              ? `inset 0 1px 0 ${palette.ghost.highlight}`
+              : undefined,
+        flex: primary ? stageTwoGeometry.actionPrimaryFlex : stageTwoGeometry.actionGhostFlex,
+        justifyContent: 'center',
+        minHeight: height,
+        opacity: pressed && !disabled ? 0.84 : 1,
+        paddingHorizontal: px(14),
+      })}
+      testID={testID}
+    >
+      {showFill ? (
+        <View pointerEvents="none" style={[StyleSheet.absoluteFill, { borderRadius: radius, overflow: 'hidden' }]}>
+          <StageTwoGradient colors={palette.primary.colors} locations={[0, 0.42, 1]} vector={vector} />
+          {palette.primary.glow ? (
+            <View
+              style={[
+                StyleSheet.absoluteFill,
+                {
+                  borderRadius: radius,
+                  boxShadow: `inset 0 1px 1px rgba(255, 255, 255, 0.2), inset 0 ${-px(stageTwoGeometry.actionInsetY)}px ${px(stageTwoGeometry.actionInsetBlur)}px rgba(1, 90, 78, 0.08)`,
+                },
+              ]}
+            />
+          ) : null}
+        </View>
+      ) : null}
+      <Text numberOfLines={2} style={[text('action'), { color: ink, textAlign: 'center' }]}>{label}</Text>
     </Pressable>
   )
 }

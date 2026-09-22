@@ -98,7 +98,8 @@ export const customerV21ChatStyles = StyleSheet.create({
     ...typography.caption2,
     fontWeight: '600',
     marginTop: -4,
-    paddingBottom: 0,
+    // Lifts the composer and this note off the bottom edge together.
+    paddingBottom: 12,
     textAlign: 'center',
   },
   chatEmptyHero: {
@@ -167,7 +168,7 @@ export const customerV21ChatStyles = StyleSheet.create({
   },
   chatHeaderModeLabel: {
     alignSelf: 'stretch',
-    ...typography.footnote,
+    ...typography.callout,
     fontWeight: '700',
     includeFontPadding: false,
     textAlign: 'center',

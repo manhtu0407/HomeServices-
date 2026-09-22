@@ -254,7 +254,7 @@ function CustomerHomeHeader({
       </Pressable>
       <View style={homeHeaderStyles.headerCopy}>
         <Text numberOfLines={2} style={[homeHeaderStyles.headerTitle, { color: tokens.text }]} testID="customer-v21-top-title">
-          {homeGreeting(displayName, language)}
+          {homeGreeting(displayName)}
         </Text>
         <Text style={[homeHeaderStyles.headerMeta, { color: tokens.muted }]}>
           {language === 'vi' ? `Mã KH ${customerDisplayCode}` : `Customer ID ${customerDisplayCode}`}

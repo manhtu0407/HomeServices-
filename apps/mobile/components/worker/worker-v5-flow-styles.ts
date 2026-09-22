@@ -1766,7 +1766,8 @@ export const styles = StyleSheet.create({
     ...typography.caption2,
     fontWeight: '600',
     marginTop: 6,
-    paddingBottom: 0,
+    // Lifts the composer and this note off the bottom edge together.
+    paddingBottom: 12,
     textAlign: 'center',
   },
   kaelOrbComposerField: {
@@ -1970,7 +1971,7 @@ export const styles = StyleSheet.create({
   kaelOrbCustomerModeTriggerText: {
     alignSelf: 'stretch',
     color: color.text.strong,
-    ...typography.footnote,
+    ...typography.callout,
     fontWeight: '700',
     includeFontPadding: false,
     textAlign: 'center',

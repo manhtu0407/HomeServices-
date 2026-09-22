@@ -166,6 +166,7 @@ import {
 } from '../worker-surfaces'
 import { resolveWorkerV5DockActive } from '../dock/routing'
 import { WorkerRebuildDockOverlay } from '../dock/worker-v5-dock-overlay'
+import { WorkerJobsLegacyPrototypeOfferDetailBody } from '../jobs/worker-jobs-zip-prototype-early-stages'
 import {
   WORKER_V5_FORMULA_MINT_CARD_AURA_INTENSITY,
   WorkerV5FormulaMintCardAura,
@@ -1273,6 +1274,47 @@ describe('Worker runtime surface wiring', () => {
     expect(mockReplace).not.toHaveBeenCalled()
   })
 
+  it('lays the offer detail out as four section cards, each with its own header and status rows', () => {
+    buildWorkflow({ deal: buildIncomingDeal() })
+    mockRouteParams = { ns_worker_screen: '2.2-offer-detail' }
+
+    render(<WorkerJobsSurface />)
+
+    for (const [testID, title, description] of [
+      ['worker-v5-offer-request-list', 'Yêu cầu', 'Thông tin yêu cầu và hiện trạng của công việc.'],
+      ['worker-v5-offer-address-list', 'Địa chỉ & khách hàng', 'Thông tin địa chỉ và khách hàng của công việc.'],
+      ['worker-v5-offer-price-list', 'Giá dịch vụ & tiền công', 'Thông tin giá và tiền công của công việc.'],
+      ['worker-v5-accept-checklist-card', 'Sẵn sàng nhận việc', 'Các thông tin cần thiết để bắt đầu công việc.'],
+    ] as const) {
+      const card = within(screen.getByTestId(testID))
+      expect(card.getByText(title)).toBeOnTheScreen()
+      expect(card.getByText(description)).toBeOnTheScreen()
+    }
+    expect(within(screen.getByTestId('worker-v5-accept-check-0')).getAllByText(/^(Đạt|Cần xử lý)$/).length).toBeGreaterThan(0)
+  })
+
+  it('moves the empty request hint into the card header and leaves the placeholder row title-only', () => {
+    buildWorkflow({ deal: null })
+    mockRouteParams = {}
+
+    render(
+      <WorkerJobsLegacyPrototypeOfferDetailBody
+        actionBusy={false}
+        language="vi"
+        prototypeMode
+        reduceTransparency={false}
+        runWorkerAction={jest.fn()}
+        runtime={mockWorkflowValue}
+      />,
+    )
+
+    expect(screen.getAllByText('Yêu cầu sẽ hiện khi có cơ hội phù hợp.')).toHaveLength(1)
+    const request = within(screen.getByTestId('worker-v5-offer-request-list'))
+    expect(request.getByText('Yêu cầu sẽ hiện khi có cơ hội phù hợp.')).toBeOnTheScreen()
+    expect(request.getByText('Chưa có yêu cầu')).toBeOnTheScreen()
+    expect(request.getByText('Chờ')).toBeOnTheScreen()
+  })
+
   it('does not loop a cancelled deal back into the work board', () => {
     buildWorkflow({ deal: buildCancelledDeal() })
     mockRouteParams = {}
@@ -1392,7 +1434,7 @@ describe('Worker runtime surface wiring', () => {
       paddingBottom: 0,
     })
     expect(StyleSheet.flatten(screen.getByTestId('worker-v5-kael-orb-disclaimer').props.style)).toMatchObject({
-      paddingBottom: 0,
+      paddingBottom: 12,
     })
     expect(StyleSheet.flatten(screen.getByTestId('worker-v5-kael-orb-input').props.style)).toMatchObject({
       boxShadow: 'none',
@@ -1712,8 +1754,8 @@ describe('Worker runtime surface wiring', () => {
   })
 
   it.each([
-    ['Chat thường', '3.1-kael-chat-normal'],
-    ['Nhận việc', '3.2-kael-job-intake'],
+    ['Chat', '3.1-kael-chat-normal'],
+    ['Work', '3.2-kael-job-intake'],
   ])('groups session management and %s mode selection in one header capsule', (modeLabel, workerScreen) => {
     buildWorkflow()
     mockRouteParams = { ns_worker_screen: workerScreen }
@@ -1729,7 +1771,7 @@ describe('Worker runtime surface wiring', () => {
     expect(screen.getByTestId('worker-v5-kael-header-actions-liquid-layers')).toBeOnTheScreen()
     expect(headerActions.findAllByProps({ testID: 'worker-v5-kael-session-toggle' }).length).toBeGreaterThan(0)
     expect(headerActions.findAllByProps({ testID: 'worker-v5-kael-mode-toggle' }).length).toBeGreaterThan(0)
-    expect(screen.getByTestId('worker-v5-kael-active-mode')).toHaveTextContent(modeLabel)
+    expect(screen.getByTestId('worker-v5-kael-active-mode')).toHaveTextContent(new RegExp(`^${modeLabel}$`))
 
     fireEvent.press(screen.getByTestId('worker-v5-kael-session-toggle'))
     expect(screen.getByTestId('worker-v5-kael-session-menu')).toBeOnTheScreen()
@@ -1785,7 +1827,7 @@ describe('Worker runtime surface wiring', () => {
     })
     expect(StyleSheet.flatten(screen.getByTestId('worker-v5-kael-active-mode').props.style)).toMatchObject({
       alignSelf: 'stretch',
-      fontSize: 13,
+      fontSize: 16,
       includeFontPadding: false,
       textAlign: 'center',
       textAlignVertical: 'center',
@@ -1807,7 +1849,7 @@ describe('Worker runtime surface wiring', () => {
 
     render(<WorkerChatSurface />)
 
-    expect(screen.getByTestId('worker-v5-kael-active-mode')).toHaveTextContent('Chat thường')
+    expect(screen.getByTestId('worker-v5-kael-active-mode')).toHaveTextContent(/^Chat$/)
     expect(screen.queryByText('⌄')).toBeNull()
     expect(screen.queryByTestId('worker-v5-kael-mode-menu')).toBeNull()
 

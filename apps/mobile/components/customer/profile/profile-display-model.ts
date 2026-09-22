@@ -111,11 +111,10 @@ export function profileName(metadata: Record<string, unknown> | undefined, langu
     ?? (language === 'vi' ? 'Khách NestScout' : 'NestScout customer')
 }
 
-export function homeGreeting(name: string, language: AppLanguage, now = new Date()) {
+// The Customer Home greeting is English in both languages by product decision.
+export function homeGreeting(name: string, now = new Date()) {
   const hour = now.getHours()
-  const moment = language === 'vi'
-    ? hour < 12 ? 'Chào buổi sáng' : hour < 18 ? 'Chào buổi chiều' : 'Chào buổi tối'
-    : hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening'
+  const moment = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening'
   return `${moment}, ${name}`
 }
 
