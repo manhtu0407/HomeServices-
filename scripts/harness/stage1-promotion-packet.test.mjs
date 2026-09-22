@@ -131,6 +131,52 @@ test('packet creation fails when a required gate or exact target is missing', ()
   )
 })
 
+test('tolerates an out-of-order hotfix already applied past the pending watermark', () => {
+  // Mirrors a real incident: a hotfix migration landed on Production ahead of older still-pending
+  // ones, so the pending set's own watermark can never reach the release's declared final version
+  // through the plain-suffix case alone. That is safe exactly when every inventory entry between the
+  // two watermarks is already applied on the hosted target -- nothing is unaccounted for.
+  const entries = release.migrationInventory.entries
+  const pendingWatermark = entries.at(-5).version
+  const gapVersions = entries.slice(-4).map((entry) => entry.version)
+  const packet = buildStage1PromotionPacket({
+    ...input,
+    expandOnlyReceipt: {
+      ...input.expandOnlyReceipt,
+      pendingWatermark,
+      pendingMigrations: [{ version: entries[0].version, sha256: 'b'.repeat(64), file: 'supabase/migrations/fixture.sql' }],
+    },
+    previousHostedState: {
+      ...input.previousHostedState,
+      migrations: gapVersions.map((version) => ({ version, name: 'fixture' })),
+    },
+  })
+  assert.deepEqual(verifyStage1PromotionPacket(packet), [])
+})
+
+test('still refuses a genuine gap between the pending and release migration watermarks', () => {
+  const entries = release.migrationInventory.entries
+  const pendingWatermark = entries.at(-5).version
+  // Same shape as the tolerated case above, but the hosted target is missing one entry from the
+  // gap (the third-from-last), so it is neither pending nor proven applied: a real missing migration.
+  const gapVersions = entries.slice(-4).map((entry) => entry.version).filter((_, index) => index !== 1)
+  assert.throws(
+    () => buildStage1PromotionPacket({
+      ...input,
+      expandOnlyReceipt: {
+        ...input.expandOnlyReceipt,
+        pendingWatermark,
+        pendingMigrations: [{ version: entries[0].version, sha256: 'b'.repeat(64), file: 'supabase/migrations/fixture.sql' }],
+      },
+      previousHostedState: {
+        ...input.previousHostedState,
+        migrations: gapVersions.map((version) => ({ version, name: 'fixture' })),
+      },
+    }),
+    /does not reach the release migration watermark/u,
+  )
+})
+
 test('packet verification detects any post-build evidence mutation', () => {
   const packet = buildStage1PromotionPacket(input)
   assert.match(

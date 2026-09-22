@@ -245,12 +245,27 @@ function validateBuildInput(input) {
       !SHA256.test(expand?.auditSha256 ?? '') || !Array.isArray(expand?.pendingMigrations)) {
     throw new Error('expand-only receipt target or digest is invalid')
   }
-  if (expand.pendingMigrations.length > 0 && expand.pendingWatermark !== release.migrationWatermark) {
-    throw new Error('expand-only receipt does not reach the release migration watermark')
-  }
   const hosted = input.previousHostedState
   if (hosted?.environment !== 'production' || hosted?.projectRef !== 'iwevizmsedyqozxlawwl') {
     throw new Error('hosted baseline target is invalid')
+  }
+  if (expand.pendingMigrations.length > 0 && expand.pendingWatermark !== release.migrationWatermark) {
+    // Production's migration history is not always a plain contiguous suffix: an earlier hotfix can
+    // apply a newer-dated migration ahead of older ones still pending (as happened for the harness
+    // retention migrations here), which drops the newer one out of the "pending" set and caps its
+    // watermark below the release's declared final version. That is only safe when nothing between
+    // the two watermarks is missing outright, so require every inventory entry after pendingWatermark
+    // up to migrationWatermark to already be applied on the hosted target rather than refusing outright.
+    const inventoryEntries = release.migrationInventory?.entries
+    const appliedVersions = new Set((hosted?.migrations ?? []).map((row) => String(row?.version ?? '')))
+    const unaccountedTail = Array.isArray(inventoryEntries)
+      ? inventoryEntries
+        .map((entry) => String(entry?.version ?? ''))
+        .filter((version) => version > expand.pendingWatermark && version <= release.migrationWatermark && !appliedVersions.has(version))
+      : null
+    if (unaccountedTail === null || unaccountedTail.length > 0) {
+      throw new Error('expand-only receipt does not reach the release migration watermark')
+    }
   }
   if (!exactFunctionSet(hosted?.managedEdgeFunctions) || !exactFunctionSet(input.rollbackSourceSha256ByFunction)) {
     throw new Error('downloaded hosted rollback function inventory is incomplete')
