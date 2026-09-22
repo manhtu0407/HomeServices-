@@ -255,7 +255,7 @@ describe('CustomerHomeSurface v2.1', () => {
       paddingVertical: 0,
       textAlignVertical: 'center',
     })
-    expect(screen.getByTestId('customer-v21-top-title')).toHaveTextContent(/Chào buổi (sáng|chiều|tối), Anh Tú$/)
+    expect(screen.getByTestId('customer-v21-top-title')).toHaveTextContent(/Good (morning|afternoon|evening), Anh Tú$/)
     expect(screen.getByTestId('customer-v21-top-title')).toHaveStyle({ fontSize: 13.4, lineHeight: 16 })
     expect(screen.getByText('Việc nhà có chúng tôi,\nbạn yên tâm tận hưởng')).toBeOnTheScreen()
     const heroScale = Math.min(Math.max(Dimensions.get('window').width - 32, 280) / 857, 1)

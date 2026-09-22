@@ -581,7 +581,7 @@ describe('active customer Kael chat surface wiring', () => {
       expect(screen.getByTestId('customer-v21-kael-header-actions-liquid-layers')).toBeOnTheScreen()
       expect(screen.getByTestId('customer-v21-kael-new-conversation')).toBeOnTheScreen()
       expect(screen.getByTestId('customer-v21-kael-mode-toggle')).toBeOnTheScreen()
-      expect(screen.getByTestId('customer-v21-kael-active-mode')).toHaveTextContent('Chat thường')
+      expect(screen.getByTestId('customer-v21-kael-active-mode')).toHaveTextContent(/^Chat$/)
       expect(screen.getByTestId('customer-v21-kael-empty-hero-normal')).toBeOnTheScreen()
       expect(screen.getByTestId('customer-v21-kael-empty-hero-model')).toBeOnTheScreen()
       expect(screen.getByTestId('customer-v21-kael-empty-hero-copy')).toBeOnTheScreen()
@@ -621,7 +621,7 @@ describe('active customer Kael chat surface wiring', () => {
       })
       expect(StyleSheet.flatten(screen.getByTestId('customer-v21-kael-chat-disclaimer').props.style)).toMatchObject({
         marginTop: -4,
-        paddingBottom: 0,
+        paddingBottom: 12,
       })
       expect(screen.queryByTestId('customer-v21-normal-greeting-bubble')).toBeNull()
       expect(screen.queryByText(/nhận việc|cơ hội việc/i)).toBeNull()
@@ -1498,7 +1498,7 @@ describe('active customer Kael chat surface wiring', () => {
     await waitForConversationCatalog('case')
 
     expect(mockReplace).toHaveBeenCalledWith('/(customer)/kael-chat?mode=case')
-    expect(screen.getByTestId('customer-v21-kael-active-mode')).toHaveTextContent('Xử lý công việc')
+    expect(screen.getByTestId('customer-v21-kael-active-mode')).toHaveTextContent(/^Work$/)
     expect(screen.getByTestId('customer-v21-kael-empty-hero-case')).toBeOnTheScreen()
     expect(screen.getByTestId('customer-v21-kael-media-picker')).toHaveProp('accessibilityState', { disabled: false })
     expect(screen.getByTestId('customer-v21-kael-media-picker')).toHaveProp('hitSlop', 3)
@@ -1506,7 +1506,7 @@ describe('active customer Kael chat surface wiring', () => {
     expect(screen.getByTestId('customer-v21-kael-media-picker-layers')).toHaveStyle({ borderRadius: 14 })
     expect(screen.getByTestId('customer-v21-kael-media-camera-icon')).toBeOnTheScreen()
     expect(screen.getByTestId('customer-v21-kael-send-arrow')).toBeOnTheScreen()
-    expect(screen.getByTestId('customer-v21-kael-input')).toHaveProp('placeholder', 'Mô tả nhu cầu dịch vụ cho Kael...')
+    expect(screen.getByTestId('customer-v21-kael-input')).toHaveProp('placeholder', 'Mô tả nhu cầu cho Kael...')
     expect(screen.queryByText(/phân phối cơ hội|nhận việc/i)).toBeNull()
     await settleKaelChatSurfaceUpdates()
   })
@@ -1525,7 +1525,7 @@ describe('active customer Kael chat surface wiring', () => {
     })
     expect(StyleSheet.flatten(screen.getByTestId('customer-v21-kael-active-mode').props.style)).toMatchObject({
       alignSelf: 'stretch',
-      fontSize: 13,
+      fontSize: 16,
       fontWeight: '700',
       includeFontPadding: false,
       textAlign: 'center',

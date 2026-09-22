@@ -59,11 +59,11 @@ export function CustomerKaelChatContent({ controller }: { controller: Controller
     ? (language === 'vi' ? 'Nhập tin nhắn cho Kael...' : 'Message Kael...')
     : deal
       ? (language === 'vi'
-          ? 'Trao đổi với Kael về công việc này...'
-          : 'Ask Kael about this service...')
+          ? 'Hỏi Kael về việc này...'
+          : 'Ask about this service...')
       : (language === 'vi'
-          ? 'Mô tả nhu cầu dịch vụ cho Kael...'
-          : 'Describe the service you need...')
+          ? 'Mô tả nhu cầu cho Kael...'
+          : 'Describe what you need...')
   const hasCurrentConversation = mode === 'normal'
     ? Boolean(
         processController.processLines ||

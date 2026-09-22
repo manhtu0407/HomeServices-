@@ -533,6 +533,8 @@ describe('Production Worker Home absorption', () => {
     expect(screen.getByTestId('worker-home-production-surface')).toBeOnTheScreen()
     expect(screen.getByText('Hồ sơ đầy đủ')).toBeOnTheScreen()
     expect(screen.getByTestId('worker-home-production-header')).toHaveStyle({ height: 55, paddingLeft: 8, paddingRight: 11 })
+    expect(screen.getByText(/^Hello, /)).toBeOnTheScreen()
+    expect(screen.queryByText(/^Xin chào/)).toBeNull()
     expect(screen.getByTestId('worker-home-production-hero')).toHaveStyle({ height: 133, marginHorizontal: 11 })
     expect(screen.getByTestId('worker-home-production-income')).toHaveStyle({ marginHorizontal: 11, marginTop: 9 })
     expect(screen.getByTestId('worker-home-production-stats')).toHaveStyle({ height: 72, marginHorizontal: 11, marginTop: 7 })
