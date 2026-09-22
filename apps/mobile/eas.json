@@ -38,7 +38,8 @@
       "channel": "production",
       "environment": "production",
       "ios": {
-        "resourceClass": "m-medium"
+        "resourceClass": "m-medium",
+        "appleTeamId": "7S4723Q8LP"
       },
       "android": {
         "buildType": "app-bundle"
