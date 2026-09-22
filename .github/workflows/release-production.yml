@@ -273,9 +273,15 @@ jobs:
           cohort_id="synthetic-stage1-${release_id#harness-}-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
           echo "RELEASE_ID=$release_id" >> "$GITHUB_ENV"
           echo "COHORT_ID=$cohort_id" >> "$GITHUB_ENV"
+      # eas-cli resolves the Apple Developer Portal team even for App Store Connect API key auth
+      # (packages/eas-cli/src/credentials/ios/appstore/authenticate.ts authenticateWithApiKeyAsync
+      # -> resolveAppleTeamAsync), and without these two env vars it falls back to an interactive
+      # prompt that a non-interactive runner cannot answer, then silently skips profile validation.
       - name: Reuse or build exact iOS and Android store binaries for this merge
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+          EXPO_APPLE_TEAM_ID: 7S4723Q8LP
+          EXPO_APPLE_TEAM_TYPE: INDIVIDUAL
         run: |
           mkdir -p artifacts/mobile
           (cd apps/mobile && pnpm dlx eas-cli@22.0.0 project:info) \
