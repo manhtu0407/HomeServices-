@@ -235,6 +235,11 @@ test('collects a null-release baseline when the hosted health probe fails closed
     },
   })
 
+  // The caller (stage1-promotion-packet.mjs) refuses any hosted baseline whose target does not
+  // match the known Production project, so a tolerated health failure must still resolve these
+  // from the already-validated input, not fall through to null the way projectRef used to.
+  assert.equal(hosted.environment, 'production')
+  assert.equal(hosted.projectRef, 'iwevizmsedyqozxlawwl')
   assert.equal(hosted.releaseId, null)
   assert.equal(hosted.deploymentId, null)
   assert.equal(hosted.gitSha, null)

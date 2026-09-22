@@ -127,7 +127,13 @@ order by object_kind, schema_name, relation_name, object_name`,
   const release = health?.release ?? {}
   return {
     environment: health?.environment?.name ?? input.environment,
-    projectRef: health?.environment?.project_ref ?? null,
+    // Unlike `environment`, this fell back to a bare null rather than the already-validated
+    // `input.projectRef` above, so a tolerated health-probe failure (fetchHealthOrNull) produced
+    // a hosted baseline that no caller could recognize as the Production target it actually is.
+    // Unlike `environment`, this fell back to a bare null rather than the already-validated
+    // `input.projectRef` above, so a tolerated health-probe failure (fetchHealthOrNull) produced
+    // a hosted baseline that no caller could recognize as the Production target it actually is.
+    projectRef: health?.environment?.project_ref ?? input.projectRef,
     releaseId: release.release_id ?? null,
     deploymentId: release.deployment_id ?? null,
     gitSha: release.git_sha ?? null,
