@@ -210,6 +210,40 @@ test('collects hosted health, migration, and deployed-function evidence from liv
   assert.ok(calls.every((call) => call.url.startsWith('https://')))
 })
 
+test('collects a null-release baseline when the hosted health probe fails closed pre-release', async () => {
+  const calls = []
+  const hosted = await collectHostedDeploymentState({
+    environment: 'production',
+    projectRef: 'iwevizmsedyqozxlawwl',
+    accessToken: 'test-management-token',
+    fetchImpl: async (url, init = {}) => {
+      calls.push({ url: String(url), method: init.method ?? 'GET' })
+      if (String(url).includes('/functions/v1/mobile-api/harness/health')) {
+        // mobile-api's own release-identity boot check fails closed on every route pre-release,
+        // exactly the state a first-ever release must be able to start from.
+        return jsonResponse({ error: 'Production release identity is incomplete' }, 500)
+      }
+      if (String(url).endsWith('/functions')) {
+        return jsonResponse([])
+      }
+      // The Management API still answers normally for a deployed-but-crashing function: the
+      // code is uploaded and ACTIVE even though every request to it fails closed at runtime.
+      if (String(url).endsWith('/functions/mobile-api') || String(url).endsWith('/functions/kael-matching-maintainer')) {
+        return jsonResponse({ status: 'ACTIVE', verify_jwt: false, import_map: true })
+      }
+      return jsonResponse({ result: [] })
+    },
+  })
+
+  assert.equal(hosted.releaseId, null)
+  assert.equal(hosted.deploymentId, null)
+  assert.equal(hosted.gitSha, null)
+  assert.equal(hosted.manifestSha256, null)
+  assert.equal(hosted.providerReadiness, null)
+  assert.deepEqual(hosted.migrations, [])
+  assert.ok(calls.some((call) => call.url.includes('/functions/v1/mobile-api/harness/health')))
+})
+
 test('refuses hosted evidence collection for retired non-production targets', async () => {
   await assert.rejects(() => collectHostedDeploymentState({
     environment: 'staging',
