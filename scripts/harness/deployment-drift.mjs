@@ -32,7 +32,12 @@ export async function collectHostedDeploymentState(input) {
     'content-type': 'application/json',
   }
 
-  const health = await fetchJson(fetchImpl, `${projectOrigin}/functions/v1/mobile-api/harness/health`)
+  // mobile-api fails closed on every route, including this health probe, until a release
+  // registers (assertProductionReleaseRegistered) — so a genuinely absent prior deployment is
+  // an expected baseline, not a collection failure, and every field below already falls back to
+  // null when health/health.release is missing. Other calls below stay strict: a Management API
+  // failure there is a real access/token problem, not evidence of a cold start.
+  const health = await fetchHealthOrNull(fetchImpl, `${projectOrigin}/functions/v1/mobile-api/harness/health`)
   const functions = await fetchJson(fetchImpl, `${managementOrigin}/functions`, {
     headers: managementHeaders,
   })
@@ -412,6 +417,15 @@ async function fetchJson(fetchImpl, url, init) {
   const response = await fetchImpl(url, init)
   if (!response?.ok) throw new Error(`hosted deployment evidence request failed: ${response?.status ?? 'unknown'} ${url}`)
   return response.json()
+}
+
+async function fetchHealthOrNull(fetchImpl, url) {
+  try {
+    return await fetchJson(fetchImpl, url)
+  } catch (error) {
+    process.stderr.write(`hosted health probe unavailable, treating as no prior release: ${error instanceof Error ? error.message : String(error)}\n`)
+    return null
+  }
 }
 
 function normalizeRows(value) {
