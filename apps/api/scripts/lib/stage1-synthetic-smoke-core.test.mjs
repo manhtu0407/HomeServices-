@@ -210,8 +210,8 @@ test('worker offer visibility tolerates the once-a-minute matching-maintainer cr
     duplicateBroadcastCount: 0,
     safeErrorCodeRatio: 1,
     confirmAcceptanceMs: 1_100,
-    // Observed against real Production on 2026-09-23: a confirmation landing just after a
-    // kael-matching-maintainer pg_cron tick waited close to a full minute for the next one.
+    // Observed against real Production: a confirmation landing just after a kael-matching-maintainer
+    // pg_cron tick waited close to a full minute for the next one.
     workerOfferVisibleMs: 13_155,
     supportTraceCount: 14,
     now: 1_700_000_000_000,
