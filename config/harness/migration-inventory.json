@@ -5,7 +5,7 @@
     "immutableThroughVersion": "20260904113000",
     "sha256": "12da2bac288e0e718e61a27653e8cba9ffdb13b8e9900979407d41e1217b2077"
   },
-  "migrationCount": 394,
+  "migrationCount": 395,
   "migrationEquivalences": {
     "version": "1.0.0",
     "groups": [
@@ -74,7 +74,7 @@
       }
     ]
   },
-  "migrationsSha256": "47881bc7c0f03eb18c580b5e74da62182ea90ca04271341153dc5a170a32a51a",
+  "migrationsSha256": "fb1aba730828047a529a7e805a23d5d8711507f87c07849eaa759b7b616117ad",
   "databaseTypes": {
     "file": "packages/shared/src/types/database",
     "sha256": "01ae94c905b235d852505829c1e39154880f4e8cb1acd412ecba1fa31f1c7c9e"
@@ -2837,6 +2837,13 @@
       "file": "supabase/migrations/20260914090000_worker_stage5_work_session.sql",
       "sha256": "1b9d8e127d866b0519333459645658593c3d58704db9605a7b3679d999ecf282",
       "bytes": 548
+    },
+    {
+      "version": "20260921153130",
+      "name": "harness_telemetry_retention",
+      "file": "supabase/migrations/20260921153130_harness_telemetry_retention.sql",
+      "sha256": "ffa22f2343ce60293a8bdf7b0615b6eeb064125afe716c0d1288f16fa6a222c9",
+      "bytes": 4079
     }
   ]
 }
