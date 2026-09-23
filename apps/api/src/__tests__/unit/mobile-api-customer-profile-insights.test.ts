@@ -61,6 +61,7 @@ describe('customer profile insights aggregation', () => {
       customerProfile: {
         building_name: null,
         created_at: '2026-01-02T00:00:00.000Z',
+        default_address: null,
         district: null,
         floor: null,
         unit_number: null,
@@ -177,5 +178,26 @@ describe('customer profile insights aggregation', () => {
       dispute_free_rate_percent: 0,
       fair_price_status: null,
     })
+  })
+
+  it('counts a saved default_address as a real address even with the structured fields blank', () => {
+    const insights = buildCustomerProfileInsights({
+      customerId: '11111111-1111-4111-8111-111111111111',
+      customerProfile: {
+        building_name: null,
+        created_at: null,
+        default_address: 'Tòa A, Quận 7',
+        district: null,
+        floor: null,
+        unit_number: null,
+      },
+      disputes: [],
+      jobs: [],
+      kaelInteractionCount: 0,
+      reviews: [],
+      savedAddressCount: 0,
+    })
+
+    expect(insights.saved_address_count).toBe(1)
   })
 })

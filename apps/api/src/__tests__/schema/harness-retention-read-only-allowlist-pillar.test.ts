@@ -6,16 +6,16 @@ import { pillarWhy, type PillarManifest } from '../pillar-manifest'
 import { CAPABILITY_POLICIES } from '../../../../../supabase/functions/mobile-api/_shared/platform/authz/capability-registry'
 
 export const PILLAR = {
-  id: 'P202-harness-retention-read-only-allowlist',
+  id: 'P203-harness-retention-read-only-allowlist',
   invariant:
     'the harness retention pass may prune only route kinds the capability registry classifies as read-only GET routes, so a route that writes state or moves money never loses its evidence to the scheduled deletion',
   authority: [
     'governance/RULES.md #8 (no silent loss of evidence)',
     'governance/RULES.md #7 (server-validated decisions keep their audit trail)',
   ],
-  target: 'supabase/migrations/20260921153130_harness_telemetry_retention.sql',
+  target: 'supabase/migrations/20260921224356_harness_retention_no_temp_table.sql',
   layer: 'static-type',
-  siblings: ['P201-harness-telemetry-retention-sql', 'P18-capability-registry-parity'],
+  siblings: ['P202-harness-telemetry-retention-sql', 'P18-capability-registry-parity'],
   mutation:
     'add "workers.activityMinute" (a POST idempotent write) to the route array in private.prune_harness_read_telemetry — the named activityMinute case and the per-route case for it turn red',
 } as const satisfies PillarManifest

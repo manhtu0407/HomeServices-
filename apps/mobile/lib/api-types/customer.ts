@@ -119,6 +119,10 @@ export type CustomerRefundAccountSaveInput = {
   bank_key: string
 }
 
+export type CustomerAddressSaveInput = {
+  default_address: string
+}
+
 export type CustomerRefundAccountResponse = {
   refund_account: {
     id: string

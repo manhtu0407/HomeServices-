@@ -3,7 +3,7 @@
 // coupling. Imported by services.ts for wiring.
 
 import { nullableString } from "../../platform/coercions.ts";
-import { db, dbQuery } from "../../platform/db.ts";
+import { db, dbQuery, workflowDb } from "../../platform/db.ts";
 import { apiFailure } from "../../platform/api-failure.ts";
 import type { MobileApiContext } from "../../platform/auth.ts";
 import { scrubSensitiveForLLM } from "../../kael/index.ts";
@@ -137,11 +137,11 @@ export async function submitCustomerKaelFeedback(
     source: input.source,
     status: "new",
   };
+  // authenticated has no INSERT on customer_kael_feedback; the row is keyed to ctx.user.id.
+  const feedback = workflowDb(ctx).from("customer_kael_feedback");
   const query = structured
-    ? db(ctx).from("customer_kael_feedback").upsert(payload, {
-      onConflict: "customer_id,response_id",
-    })
-    : db(ctx).from("customer_kael_feedback").insert(payload);
+    ? feedback.upsert(payload, { onConflict: "customer_id,response_id" })
+    : feedback.insert(payload);
   const result = await dbQuery<Record<string, unknown>>(
     query.select("id,created_at").single(),
   );

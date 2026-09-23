@@ -7,11 +7,19 @@ import { checkHarnessRelease, resolveReleaseArtifactPath } from './release-bundl
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..')
 const SHA256 = /^[0-9a-f]{64}$/u
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu
+const GIT_SHA = /^[0-9a-f]{40}$/u
+const UUID =/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu
 const PLATFORM_POLICY = Object.freeze({
   ios: Object.freeze({ applicationId: 'com.phanmanhtu.homeservices', buildNumber: 45 }),
   android: Object.freeze({ applicationId: 'com.phanmanhtu.nestscout', buildNumber: 4 }),
 })
+
+/**
+ * `exact` binds store builds made from the release's own commit. `latest_existing` is for a verification
+ * release that ships no new store build: it binds the newest finished store build of each platform and says
+ * so in the receipt, so nothing downstream can mistake it for a build of this commit.
+ */
+export const BINARY_RELATIONS = Object.freeze(['exact', 'latest_existing'])
 
 export function buildMobileBinaryAttestation(input) {
   const release = input?.release
@@ -19,13 +27,19 @@ export function buildMobileBinaryAttestation(input) {
   if (problems.length > 0 || release.environment !== 'production') {
     throw new Error(`mobile binary attestation requires a valid production release: ${problems.join('; ')}`)
   }
+  const relation = input.relation ?? 'exact'
+  if (!BINARY_RELATIONS.includes(relation)) throw new Error(`unknown mobile binary relation: ${relation}`)
   const builds = Array.isArray(input.builds) ? input.builds : []
-  const selected = selectExactEasBuilds(release, builds)
+  const selected = relation === 'exact' ? selectExactEasBuilds(release, builds) : selectLatestEasBuilds(release, builds)
   const platforms = {}
   for (const platform of ['ios', 'android']) {
     const policy = PLATFORM_POLICY[platform]
     const build = selected[platform]
-    if (!build) throw new Error(`no exact finished EAS ${platform} store build matches this release`)
+    if (!build) {
+      throw new Error(relation === 'exact'
+        ? `no exact finished EAS ${platform} store build matches this release`
+        : `no finished EAS ${platform} store build matches the store build policy`)
+    }
     const fingerprint = build?.fingerprint?.hash ?? build?.fingerprintHash
     const artifactPath = input.artifactPaths?.[platform]
     const artifactBytes = input.artifactBytes?.[platform] ??
@@ -59,6 +73,7 @@ export function buildMobileBinaryAttestation(input) {
     gitSha: release.gitSha,
     sourceFingerprintSha256: release.mobileBuildFingerprintSha256,
     contractEpoch: 2,
+    ...(relation === 'exact' ? {} : { binaryRelation: relation }),
     platforms,
     generatedAt: new Date(input.now ?? Date.now()).toISOString(),
     receiptSha256: '',
@@ -70,6 +85,14 @@ export function buildMobileBinaryAttestation(input) {
 }
 
 export function selectExactEasBuilds(release, builds) {
+  return selectEasBuilds(release, builds, true)
+}
+
+export function selectLatestEasBuilds(release, builds) {
+  return selectEasBuilds(release, builds, false)
+}
+
+function selectEasBuilds(release, builds, requireReleaseCommit) {
   const selected = {}
   for (const platform of ['ios', 'android']) {
     const policy = PLATFORM_POLICY[platform]
@@ -77,7 +100,8 @@ export function selectExactEasBuilds(release, builds) {
       normalizePlatform(build?.platform) === platform &&
       String(build?.status ?? '').toUpperCase() === 'FINISHED' &&
       String(build?.distribution ?? '').toUpperCase() === 'STORE' &&
-      build?.buildProfile === 'production' && build?.gitCommitHash === release?.gitSha &&
+      build?.buildProfile === 'production' &&
+      (!requireReleaseCommit || build?.gitCommitHash === release?.gitSha) &&
       build?.appVersion === '0.2.0' && String(build?.appBuildVersion ?? '') === String(policy.buildNumber) &&
       build?.runtimeVersion === '0.2.0' && build?.applicationIdentifier === policy.applicationId)
       .sort((left, right) => String(right.completedAt ?? '').localeCompare(String(left.completedAt ?? '')))
@@ -98,12 +122,17 @@ export function verifyMobileBinaryAttestation(receipt, release) {
       receipt?.sourceFingerprintSha256 !== release.mobileBuildFingerprintSha256)) {
     problems.push('mobile binary attestation does not match the release')
   }
+  const exactCommit = receipt?.binaryRelation === undefined
+  if (!exactCommit && receipt.binaryRelation !== 'latest_existing') {
+    problems.push('mobile binary attestation relation is invalid')
+  }
   for (const platform of ['ios', 'android']) {
     const value = receipt?.platforms?.[platform]
     const policy = PLATFORM_POLICY[platform]
     if (!UUID.test(value?.easBuildId ?? '') || value?.applicationId !== policy.applicationId ||
         value?.appVersion !== '0.2.0' || value?.buildNumber !== policy.buildNumber ||
-        value?.runtimeVersion !== '0.2.0' || value?.gitCommitHash !== receipt?.gitSha ||
+        value?.runtimeVersion !== '0.2.0' ||
+        (exactCommit ? value?.gitCommitHash !== receipt?.gitSha : !GIT_SHA.test(value?.gitCommitHash ?? '')) ||
         value?.distribution !== 'store' || value?.profile !== 'production' ||
         !easFingerprintAlgorithm(value?.easFingerprintHash) ||
         value?.easFingerprintAlgorithm !== easFingerprintAlgorithm(value?.easFingerprintHash) ||
@@ -162,7 +191,7 @@ function parseArgs(args) {
   ])
   const parsed = {}
   for (let index = 0; index < args.length; index += 1) {
-    const field = values.get(args[index])
+    const field = args[index] === '--relation' ? 'relation' : values.get(args[index])
     if (!field) throw new Error(`unknown mobile binary attestation argument: ${args[index]}`)
     const value = args[++index]
     if (!value || value.startsWith('--')) throw new Error(`${args[index - 1]} requires a value`)
@@ -178,6 +207,7 @@ function main() {
     release: JSON.parse(readFileSync(resolveReleaseArtifactPath(ROOT, options.release), 'utf8')),
     builds: JSON.parse(readFileSync(resolveReleaseArtifactPath(ROOT, options.builds), 'utf8')),
     artifactPaths: { ios: options.iosArtifact, android: options.androidArtifact },
+    relation: options.relation,
   })
   const output = resolveReleaseArtifactPath(ROOT, options.output)
   mkdirSync(dirname(output), { recursive: true })

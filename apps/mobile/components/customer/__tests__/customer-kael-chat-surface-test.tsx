@@ -566,7 +566,7 @@ describe('active customer Kael chat surface wiring', () => {
   })
 
   it('renders the Worker-parity Customer shell without copying Worker semantics', async () => {
-    // Pin the VI copy slot; flushing every timer also advances the two-hour hero rotation.
+    // Pin the rotation slot; flushing every timer also advances the two-hour hero rotation.
     jest.useFakeTimers({ now: new Date('2026-09-05T07:15:00.000Z') })
     const view = render(<CustomerKaelSurface />)
 
@@ -581,7 +581,7 @@ describe('active customer Kael chat surface wiring', () => {
       expect(screen.getByTestId('customer-v21-kael-header-actions-liquid-layers')).toBeOnTheScreen()
       expect(screen.getByTestId('customer-v21-kael-new-conversation')).toBeOnTheScreen()
       expect(screen.getByTestId('customer-v21-kael-mode-toggle')).toBeOnTheScreen()
-      expect(screen.getByTestId('customer-v21-kael-active-mode')).toHaveTextContent('Chat thường')
+      expect(screen.getByTestId('customer-v21-kael-active-mode')).toHaveTextContent(/^Chat$/)
       expect(screen.getByTestId('customer-v21-kael-empty-hero-normal')).toBeOnTheScreen()
       expect(screen.getByTestId('customer-v21-kael-empty-hero-model')).toBeOnTheScreen()
       expect(screen.getByTestId('customer-v21-kael-empty-hero-copy')).toBeOnTheScreen()
@@ -593,7 +593,9 @@ describe('active customer Kael chat surface wiring', () => {
         maxWidth: 240,
         textAlign: 'left',
       })
-      expect(screen.getByTestId('customer-v21-kael-empty-hero-copy')).toHaveTextContent('Để Kael hỗ trợ bạn...')
+      // The mascot line is pinned English regardless of app language; only its
+      // rotation slot depends on the pinned clock above.
+      expect(screen.getByTestId('customer-v21-kael-empty-hero-copy')).toHaveTextContent('Let Kael help...')
       expect(screen.getByTestId('customer-v21-kael-input')).toBeOnTheScreen()
       expect(StyleSheet.flatten(screen.getByTestId('customer-v21-kael-input').props.style)).toMatchObject({
         fontSize: 15,
@@ -602,6 +604,9 @@ describe('active customer Kael chat surface wiring', () => {
         lineHeight: 20,
         minHeight: 44,
         paddingHorizontal: 10,
+        // (minHeight 44 - lineHeight 20) / 2 — levels the placeholder with the
+        // media and send icons at the one-line resting height.
+        paddingVertical: 12,
       })
       expect(StyleSheet.flatten(screen.getByTestId('customer-v21-kael-input-shell').props.style)).toMatchObject({
         backgroundColor: 'transparent',
@@ -616,7 +621,7 @@ describe('active customer Kael chat surface wiring', () => {
       })
       expect(StyleSheet.flatten(screen.getByTestId('customer-v21-kael-chat-disclaimer').props.style)).toMatchObject({
         marginTop: -4,
-        paddingBottom: 0,
+        paddingBottom: 12,
       })
       expect(screen.queryByTestId('customer-v21-normal-greeting-bubble')).toBeNull()
       expect(screen.queryByText(/nhận việc|cơ hội việc/i)).toBeNull()
@@ -629,6 +634,33 @@ describe('active customer Kael chat surface wiring', () => {
       })
       jest.useRealTimers()
     }
+  })
+
+  it('grows the composer with the draft instead of scrolling long text sideways', async () => {
+    render(<CustomerKaelSurface />)
+    await waitForConversationCatalog('normal')
+
+    const input = screen.getByTestId('customer-v21-kael-input')
+    expect(input.props.multiline).toBe(true)
+    expect(StyleSheet.flatten(input.props.style).height).toBe(44)
+
+    fireEvent.changeText(input, 'Nhà tôi bị hỏng đường ống nước ở phòng bếp')
+    fireEvent(input, 'contentSizeChange', { nativeEvent: { contentSize: { height: 90, width: 300 } } })
+    expect(StyleSheet.flatten(screen.getByTestId('customer-v21-kael-input').props.style).height).toBe(90)
+    expect(screen.getByTestId('customer-v21-kael-input').props.scrollEnabled).toBe(false)
+
+    // A long paste should not take over the screen — it caps and scrolls internally instead.
+    fireEvent(input, 'contentSizeChange', { nativeEvent: { contentSize: { height: 400, width: 300 } } })
+    expect(StyleSheet.flatten(screen.getByTestId('customer-v21-kael-input').props.style).height).toBe(124)
+    expect(screen.getByTestId('customer-v21-kael-input').props.scrollEnabled).toBe(true)
+
+    // Clearing the draft (sent, or deleted by hand) snaps the box back down via
+    // an effect — onContentSizeChange does not reliably re-fire on every
+    // platform for that, so it needs its own render pass to take effect.
+    fireEvent.changeText(input, '')
+    await waitFor(() => {
+      expect(StyleSheet.flatten(screen.getByTestId('customer-v21-kael-input').props.style).height).toBe(44)
+    })
   })
 
   // Icon colour, size and stroke weight are props of a rendered node, and the
@@ -1466,7 +1498,7 @@ describe('active customer Kael chat surface wiring', () => {
     await waitForConversationCatalog('case')
 
     expect(mockReplace).toHaveBeenCalledWith('/(customer)/kael-chat?mode=case')
-    expect(screen.getByTestId('customer-v21-kael-active-mode')).toHaveTextContent('Xử lý công việc')
+    expect(screen.getByTestId('customer-v21-kael-active-mode')).toHaveTextContent(/^Work$/)
     expect(screen.getByTestId('customer-v21-kael-empty-hero-case')).toBeOnTheScreen()
     expect(screen.getByTestId('customer-v21-kael-media-picker')).toHaveProp('accessibilityState', { disabled: false })
     expect(screen.getByTestId('customer-v21-kael-media-picker')).toHaveProp('hitSlop', 3)
@@ -1474,7 +1506,7 @@ describe('active customer Kael chat surface wiring', () => {
     expect(screen.getByTestId('customer-v21-kael-media-picker-layers')).toHaveStyle({ borderRadius: 14 })
     expect(screen.getByTestId('customer-v21-kael-media-camera-icon')).toBeOnTheScreen()
     expect(screen.getByTestId('customer-v21-kael-send-arrow')).toBeOnTheScreen()
-    expect(screen.getByTestId('customer-v21-kael-input')).toHaveProp('placeholder', 'Mô tả nhu cầu dịch vụ cho Kael...')
+    expect(screen.getByTestId('customer-v21-kael-input')).toHaveProp('placeholder', 'Mô tả nhu cầu cho Kael...')
     expect(screen.queryByText(/phân phối cơ hội|nhận việc/i)).toBeNull()
     await settleKaelChatSurfaceUpdates()
   })
@@ -1493,7 +1525,7 @@ describe('active customer Kael chat surface wiring', () => {
     })
     expect(StyleSheet.flatten(screen.getByTestId('customer-v21-kael-active-mode').props.style)).toMatchObject({
       alignSelf: 'stretch',
-      fontSize: 13,
+      fontSize: 16,
       fontWeight: '700',
       includeFontPadding: false,
       textAlign: 'center',

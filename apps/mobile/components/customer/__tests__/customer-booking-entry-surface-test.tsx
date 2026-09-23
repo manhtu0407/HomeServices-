@@ -285,7 +285,9 @@ describe('CustomerBookingEntrySurface v2.1', () => {
     expect(descriptionStyle.maxHeight).toBe(70)
     expect(descriptionStyle.includeFontPadding).toBe(false)
     expect(descriptionStyle.lineHeight).toBe(15)
-    expect(descriptionStyle.paddingTop).toBe(0)
+    // textAlignVertical is Android-only, so iOS/web need this padding to center
+    // the single-line placeholder in the fixed 70pt box instead of top-aligning it.
+    expect(descriptionStyle.paddingTop).toBe(27.5)
     expect(descriptionStyle.textAlignVertical).toBe('center')
     expect(screen.getByTestId('customer-v21-booking-description').props.textAlignVertical).toBe('center')
     expect(screen.getByTestId('customer-v21-booking-description-icon')).toBeOnTheScreen()

@@ -67,19 +67,18 @@ export function WorkerV5KaelOrbScreenSurface({
   const hasActiveExecutionCase = isWorkerActiveExecutionStatus(
     deal?.backendStatus ?? deal?.status ?? null,
   )
+  // The Chat and Work mode names are English in both languages by product decision.
   const modeOptions = [
     {
       description: textByLanguage(language, 'Hỏi đáp và hỗ trợ nhanh', 'Quick questions and support'),
-      label: textByLanguage(language, 'Chat thường', 'Normal chat'),
+      label: 'Chat',
       value: 'normal' as const,
     },
     {
       description: hasActiveExecutionCase
         ? textByLanguage(language, 'Hỗ trợ theo công việc đang chạy', 'Support the active job')
         : textByLanguage(language, 'Lọc và chuẩn bị cơ hội phù hợp', 'Filter and prepare matching work'),
-      label: hasActiveExecutionCase
-        ? textByLanguage(language, 'Công việc', 'Work case')
-        : textByLanguage(language, 'Nhận việc', 'Job intake'),
+      label: hasActiveExecutionCase ? textByLanguage(language, 'Công việc', 'Work case') : 'Work',
       value: 'intake' as const,
     },
   ]

@@ -22,6 +22,7 @@ const mockRequestScopeChange = jest.fn()
 const mockOpenKaelJobIncident = jest.fn()
 const mockGetCustomerAvatar = jest.fn()
 const mockGetCustomerInsights = jest.fn()
+const mockSaveCustomerAddress = jest.fn()
 const mockUploadCustomerAvatar = jest.fn()
 let mockAuth: {
   role: 'admin' | 'customer' | 'worker'
@@ -60,6 +61,7 @@ jest.mock('../services', () => ({
   customerProfileService: {
     getAvatar: (...args: unknown[]) => mockGetCustomerAvatar(...args),
     getInsights: (...args: unknown[]) => mockGetCustomerInsights(...args),
+    saveAddress: (...args: unknown[]) => mockSaveCustomerAddress(...args),
   },
   jobService: {
     getJob: (...args: unknown[]) => mockGetJob(...args),
@@ -147,6 +149,40 @@ function CustomerProfileInsightsProbe() {
   return <Text testID="customer-profile-insights-points">{customerProfileInsights?.usage_rank_points ?? 'none'}</Text>
 }
 
+function CustomerAddressProbe() {
+  const { actions, customerProfileInsights } = useFrontendWorkflow()
+  useEffect(() => {
+    latestWorkflowActions = actions
+  }, [actions])
+  return <Text testID="customer-saved-address-count">{customerProfileInsights?.saved_address_count ?? 'none'}</Text>
+}
+
+function customerInsightsFixture(savedAddressCount: number) {
+  return {
+    active_service_days: 0,
+    active_streak_days: 0,
+    completed_service_count: 0,
+    customer_id: 'customer-1',
+    dispute_free_rate_percent: 0,
+    fair_price_service_count: 0,
+    fair_price_status: null,
+    kael_interaction_count: 0,
+    member_since: null,
+    money_protection_score: 0,
+    positive_review_rate_percent: 0,
+    preferred_service_count: 0,
+    price_savings_vnd: 0,
+    protected_transaction_count: 0,
+    protected_value_vnd: 0,
+    reviewed_service_count: 0,
+    saved_address_count: savedAddressCount,
+    total_spend_vnd: 0,
+    total_transaction_count: 0,
+    usage_rank_level: 0,
+    usage_rank_points: 0,
+  }
+}
+
 function deferred<T>() {
   let resolve!: (value: T) => void
   const promise = new Promise<T>((nextResolve) => {
@@ -229,6 +265,7 @@ describe('FrontendWorkflowProvider worker bootstrap', () => {
     })
     mockGetCustomerInsights.mockReset()
     mockGetCustomerInsights.mockResolvedValue({ error: 'not needed for this regression', success: false })
+    mockSaveCustomerAddress.mockReset()
     mockUploadCustomerAvatar.mockReset()
     mockUploadCustomerAvatar.mockResolvedValue({
       data: {
@@ -523,6 +560,83 @@ describe('FrontendWorkflowProvider worker bootstrap', () => {
     )
 
     expect(view.getByTestId('customer-profile-insights-points')).toHaveTextContent('none')
+  })
+
+  it('saves the customer default address through the workflow owner and applies the returned snapshot', async () => {
+    mockAuth = {
+      role: 'customer',
+      session: { user: { id: 'customer-1' } },
+    }
+    mockGetCustomerInsights.mockResolvedValueOnce({ data: customerInsightsFixture(0), status: 200, success: true })
+    mockSaveCustomerAddress.mockResolvedValueOnce({ data: customerInsightsFixture(1), status: 200, success: true })
+    const view = render(
+      <FrontendWorkflowProvider>
+        <CustomerAddressProbe />
+      </FrontendWorkflowProvider>,
+    )
+    await waitFor(() => {
+      expect(view.getByTestId('customer-saved-address-count')).toHaveTextContent('0')
+    })
+    const refreshesBeforeSave = mockGetCustomerInsights.mock.calls.length
+
+    let saved: boolean | undefined
+    await act(async () => {
+      saved = await latestWorkflowActions?.saveCustomerDefaultAddress('Tòa A, Quận 7')
+    })
+
+    expect(saved).toBe(true)
+    // The Edge schema is strict, so the body must be exactly this one key.
+    expect(mockSaveCustomerAddress).toHaveBeenCalledTimes(1)
+    expect(mockSaveCustomerAddress).toHaveBeenCalledWith({ default_address: 'Tòa A, Quận 7' })
+    expect(view.getByTestId('customer-saved-address-count')).toHaveTextContent('1')
+    expect(mockGetCustomerInsights).toHaveBeenCalledTimes(refreshesBeforeSave)
+  })
+
+  it('reports failure and keeps the cached snapshot when the backend refuses the default address', async () => {
+    mockAuth = {
+      role: 'customer',
+      session: { user: { id: 'customer-1' } },
+    }
+    mockGetCustomerInsights.mockResolvedValueOnce({ data: customerInsightsFixture(0), status: 200, success: true })
+    mockSaveCustomerAddress.mockResolvedValueOnce({ code: 'DB_ERROR', error: 'Chưa thể lưu địa chỉ mặc định', status: 500, success: false })
+    const view = render(
+      <FrontendWorkflowProvider>
+        <CustomerAddressProbe />
+      </FrontendWorkflowProvider>,
+    )
+    await waitFor(() => {
+      expect(view.getByTestId('customer-saved-address-count')).toHaveTextContent('0')
+    })
+
+    let saved: boolean | undefined
+    await act(async () => {
+      saved = await latestWorkflowActions?.saveCustomerDefaultAddress('Tòa A, Quận 7')
+    })
+
+    expect(saved).toBe(false)
+    expect(mockSaveCustomerAddress).toHaveBeenCalledTimes(1)
+    expect(view.getByTestId('customer-saved-address-count')).toHaveTextContent('0')
+  })
+
+  it.each(['admin', 'worker'] as const)('never saves a customer default address for a %s session', async (role) => {
+    mockAuth = {
+      role,
+      session: { user: { id: `${role}-1` } },
+    }
+    render(
+      <FrontendWorkflowProvider>
+        <CustomerAddressProbe />
+      </FrontendWorkflowProvider>,
+    )
+    await waitFor(() => expect(latestWorkflowActions).not.toBeNull())
+
+    let saved: boolean | undefined
+    await act(async () => {
+      saved = await latestWorkflowActions?.saveCustomerDefaultAddress('Tòa A, Quận 7')
+    })
+
+    expect(saved).toBe(false)
+    expect(mockSaveCustomerAddress).not.toHaveBeenCalled()
   })
 
   it('hydrates and updates the signed customer avatar through the workflow owner', async () => {

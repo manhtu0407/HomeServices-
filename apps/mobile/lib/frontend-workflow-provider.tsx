@@ -129,6 +129,7 @@ type FrontendWorkflowActions = {
   refreshCustomerKaelMemory: () => Promise<boolean>
   updateCustomerKaelMemoryPreference: (input: CustomerKaelMemoryPreferenceUpdateInput) => Promise<boolean | CustomerKaelMemoryPreferenceUpdateResult>
   refreshCustomerProfileInsights: () => Promise<boolean>
+  saveCustomerDefaultAddress: (defaultAddress: string) => Promise<boolean>
   refreshCustomerAvatar: () => Promise<boolean>
   customerUploadAvatar: (input: CustomerAvatarDraft) => Promise<boolean>
   refreshWorkerCandidate: (jobId?: string) => Promise<boolean>
@@ -242,6 +243,7 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
   const {
     customerProfileInsights,
     refreshCustomerProfileInsights,
+    saveCustomerDefaultAddress,
   } = useCustomerProfileInsightsActions({ role: remoteRole, sessionUserId: remoteSessionUserId })
 
   const {
@@ -417,6 +419,7 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
     refreshCustomerKaelMemory,
     updateCustomerKaelMemoryPreference,
     refreshCustomerProfileInsights,
+    saveCustomerDefaultAddress,
     refreshCustomerAvatar,
     customerUploadAvatar,
     refreshWorkerCandidate,
@@ -440,6 +443,7 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
     refreshNotifications,
     refreshCustomerKaelMemory,
     refreshCustomerProfileInsights,
+    saveCustomerDefaultAddress,
     refreshCustomerAvatar,
     customerUploadAvatar,
     refreshWorkerCandidate,

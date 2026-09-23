@@ -148,6 +148,7 @@ jobs:
               'apps/mobile/assets/lottie/nestscout-aurora-nest-approved-logo-transparent.png'|\
               'apps/mobile/assets/lottie/nestscout-aurora-nest-north-star-awakening.json'|\
               'apps/mobile/components/auth/entry-access/lottie-logo-mark.tsx'|\
+              'apps/mobile/components/customer/profile/profile-ranking-mark.tsx'|\
               'apps/mobile/components/customer/ui/payment-styles.ts'|\
               'apps/mobile/components/customer/ui/payment-surfaces.tsx'|\
               'apps/mobile/components/kael/kael-svg-lottie-view.tsx'|\

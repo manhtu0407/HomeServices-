@@ -409,6 +409,7 @@ export type CustomerTables = {
         Row: {
           building_name: string | null
           created_at: string
+          default_address: string | null
           district: string | null
           floor: string | null
           id: string
@@ -418,6 +419,7 @@ export type CustomerTables = {
         Insert: {
           building_name?: string | null
           created_at?: string
+          default_address?: string | null
           district?: string | null
           floor?: string | null
           id: string
@@ -427,6 +429,7 @@ export type CustomerTables = {
         Update: {
           building_name?: string | null
           created_at?: string
+          default_address?: string | null
           district?: string | null
           floor?: string | null
           id?: string

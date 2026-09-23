@@ -13,6 +13,8 @@ import {
   ZIP_STAGE_SCREEN_IDS,
   resolveZipPrototypeSelection,
 } from '../jobs/worker-jobs-zip-prototype'
+import { stageTwoCardTokens, stageTwoPalette } from '../jobs/worker-jobs-zip-prototype-style-stage-two'
+import { getWorkerThemeTokens } from '../worker-theme'
 import { withPillarContext, type PillarManifest } from '@/__tests__/pillar-manifest'
 
 export const PILLAR = {
@@ -56,6 +58,16 @@ const source = [
   'worker-jobs-zip-prototype-stage-four.tsx',
   'worker-jobs-zip-prototype-stage-four-styles.ts',
 ].map((fileName) => readSource('../jobs', fileName)).join('\n')
+const stageTwoGlyphList = (constant: string): string[] => {
+  const declaration = source.match(new RegExp(`const ${constant} = \\[([^\\]]*)\\] as const`))
+  return declaration ? [...declaration[1].matchAll(/'(\w+)'/g)].map((match) => match[1]) : []
+}
+const STAGE_TWO_ROW_GLYPH_CONSTANTS = {
+  address: stageTwoGlyphList('STAGE_TWO_ADDRESS_GLYPHS'),
+  price: stageTwoGlyphList('STAGE_TWO_PRICE_GLYPHS'),
+  ready: stageTwoGlyphList('STAGE_TWO_READY_GLYPHS'),
+  request: stageTwoGlyphList('STAGE_TWO_REQUEST_GLYPHS'),
+}
 const workerFlowSource = readSource('../worker-v5-flow.tsx')
 const evidenceSource = readSource('../../ui/job-evidence-gallery.tsx')
 const advisoryStylesSource = readSource('../jobs/advisory-styles.ts')
@@ -140,10 +152,9 @@ describe('Worker Jobs ZIP Prototype', () => {
     expect(source).toContain('testID="worker-v5-offer-price-list"')
     expect(source).toContain('testID="worker-v5-accept-checklist-card"')
     expect(source).toContain('testID="worker-v5-accept-commitment"')
-    expect(source).toContain("iconNames={['home', 'service', 'photo']}")
-    expect(source).toContain("? 'inbox'")
-    expect(source).toContain(": 'wallet'")
-    expect(source).toContain('name="time" size={24}')
+    expect(source).toContain("const STAGE_TWO_REQUEST_GLYPHS = ['bubble', 'wrench', 'photo'] as const")
+    expect(source).toContain("const STAGE_TWO_READY_GLYPHS = ['envelope', 'shieldCheck', 'lock', 'receipt'] as const")
+    expect(source).toContain('glyph="clock"')
     expect(source).not.toContain('WorkerRequestDetailsSections')
     expect(source).not.toContain('buildWorkerRequestDetailsGroups')
   })
@@ -192,12 +203,61 @@ describe('Worker Jobs ZIP Prototype', () => {
     expect(source).toContain("maxWidth: '60%'")
     expect(source).toContain('...typography.title2')
   })
-  it('uses distinct semantic icons for the offer, cleaning, and earnings rows', () => {
-    expect(source).toContain("iconNames={['home', 'service', 'photo']}")
-    expect(source).toContain("iconNames={['location', 'profile']}")
-    expect(source).toContain("iconNames={['price']}")
-    expect(source).toContain("? 'inbox'")
-    expect(source).toContain(": 'wallet'")
+  it('uses distinct semantic glyphs for the section headers and the request, address, price, and readiness rows', () => {
+    const rowGlyphs = [
+      ...STAGE_TWO_ROW_GLYPH_CONSTANTS.request,
+      ...STAGE_TWO_ROW_GLYPH_CONSTANTS.address,
+      ...STAGE_TWO_ROW_GLYPH_CONSTANTS.price,
+      ...STAGE_TWO_ROW_GLYPH_CONSTANTS.ready,
+    ]
+    const sectionGlyphs = ['clipboard', 'map', 'coins', 'briefcase']
+
+    expect(rowGlyphs.length).toBeGreaterThan(0)
+    expect(new Set(rowGlyphs).size).toBe(rowGlyphs.length)
+    for (const glyph of sectionGlyphs) {
+      expect(source).toContain(`glyph="${glyph}"`)
+      expect(rowGlyphs).not.toContain(glyph)
+    }
+    expect(source).toContain("const STAGE_TWO_ADDRESS_GLYPHS = ['home', 'user'] as const")
+    expect(source).toContain("const STAGE_TWO_PRICE_GLYPHS = ['tag', 'banknote', 'wallet', 'check'] as const")
+  })
+
+  it('draws every Stage 2 mark at one size and one weight, with no tile behind it', () => {
+    const sharedSource = readSource('../jobs/worker-jobs-zip-prototype-shared.tsx')
+    const glyphSizes = sharedSource.match(/size=\{px\(stageTwoGeometry\.glyph\)\}/g) ?? []
+    const glyphStrokes = sharedSource.match(/strokeWidth=\{stageTwo\.stroke\.glyph\}/g) ?? []
+
+    expect(glyphSizes).toHaveLength(2)
+    expect(glyphStrokes).toHaveLength(2)
+    expect(sharedSource).not.toMatch(/StageTwoTile|sectionTile|rowTile|sectionGlyph|rowGlyph/)
+    expect(Object.keys(stageTwoCardTokens.geometry)).not.toEqual(expect.arrayContaining(['rowTile', 'sectionTile']))
+    expect(stageTwoPalette(getWorkerThemeTokens('light'))).not.toHaveProperty('rowTile')
+    expect(stageTwoPalette(getWorkerThemeTokens('light'))).not.toHaveProperty('sectionTile')
+  })
+
+  it('keeps the approved Stage 2 card metrics and colours in light mode and the theme tokens in dark mode', () => {
+    const light = stageTwoPalette(getWorkerThemeTokens('light'))
+    const darkTokens = getWorkerThemeTokens('dark')
+    const dark = stageTwoPalette(darkTokens)
+
+    expect(stageTwoCardTokens.canvasWidth).toBe(728)
+    expect(stageTwoCardTokens.geometry).toMatchObject({
+      cardRadius: 29,
+      cardSpacing: 22,
+      glyph: 54,
+      pillHeight: 50,
+    })
+    expect(light).toMatchObject({
+      glyph: '#11AA8F',
+      line: '#E2EAEE',
+      sectionTitle: '#0B1D35',
+    })
+    expect(light.pill.amber.text).toBe('#C67A16')
+    expect(light.pill.mint.text).toBe('#0F8F7E')
+    expect(light.primary.colors).toEqual(['#20CBB0', '#10B896', '#06977D'])
+    expect(dark).toMatchObject({ card: darkTokens.raised, cardBorder: darkTokens.border, glyph: darkTokens.primary })
+    expect(dark.primary.glow).toBeNull()
+    expect(light.disabled.background).toBe(getWorkerThemeTokens('light').disabled)
   })
 
   it('keeps direct stage review independent from workflow conditions', () => {

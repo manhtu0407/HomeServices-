@@ -65,7 +65,7 @@ A push to `main` carries a tree its pull request already ran the heavy lanes on.
 - adds a `pull_request` workflow with no `concurrency` block that cancels superseded runs;
 - adds a `pull_request` workflow that omits `ready_for_review` from its `types` or has a job with no `needs` that does not skip drafts.
 
-A deliberate exception is added to `EXCEPTIONS` in that script with a reason. An exception that no longer excuses anything fails, so the list cannot become the hole. The only one today is `production-release`, which waits on EAS store builds.
+A deliberate exception is added to `EXCEPTIONS` in that script with a reason. An exception that no longer excuses anything fails, so the list cannot become the hole. Today there are two, both the `production-release` job, which waits on EAS store builds: one in `release-production.yml` and the same job in `release-production-verification.yml`, which is derived from it.
 
 Lane selection lives in `scripts/harness/classify-ci-changes.mjs`. Documentation, rules (`governance/**`), skills, commands, and `.claude/MEMORY.md` select no conditional lane, because the ratchets that always run already prove them and nothing compiles or tests them. Hooks, settings, workflows, `scripts/harness/**`, `config/harness/**`, and root manifests still select everything, and any path no lane claims still selects everything. Across all 3,418 tracked paths at the time of the change, only the 349 documentation, rule, skill, and command paths changed classification; no source path did.
 

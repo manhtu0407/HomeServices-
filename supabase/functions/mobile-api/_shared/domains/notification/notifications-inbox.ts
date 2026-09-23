@@ -3,7 +3,7 @@ import {
   asString,
   nullableString,
 } from "../../platform/coercions.ts";
-import { db, dbQuery } from "../../platform/db.ts";
+import { db, dbQuery, workflowDb } from "../../platform/db.ts";
 import { apiFailure } from "../../platform/api-failure.ts";
 import type { MobileApiContext } from "../../platform/auth.ts";
 import type {
@@ -65,8 +65,10 @@ export async function markNotificationRead(
   notificationId: string,
 ) {
   const readAt = new Date().toISOString();
+  // authenticated may read its own notifications but not update them; the write is scoped to
+  // ctx.user.id below.
   const result = await dbQuery<Record<string, unknown>>(
-    db(ctx)
+    workflowDb(ctx)
       .from("notifications")
       .update({ status: "read", read_at: readAt })
       .eq("id", notificationId)
@@ -98,8 +100,10 @@ export async function registerDevicePushToken(
     role: ctx.role,
     source: "expo-notifications",
   };
+  // The device-token and delivery-ack RPCs are service_role-only and take the user id as an
+  // argument, so it comes from ctx and never from the request body.
   const result = await dbQuery<Array<Record<string, unknown>>>(
-    db(ctx).rpc("register_device_push_token_atomic", {
+    workflowDb(ctx).rpc("register_device_push_token_atomic", {
       p_user_id: ctx.user.id,
       p_platform: input.platform,
       p_push_token: input.push_token,
@@ -144,7 +148,7 @@ export async function unregisterDevicePushToken(
   input: EdgeDevicePushTokenUnregisterInput,
 ) {
   const result = await dbQuery<Array<Record<string, unknown>>>(
-    db(ctx).rpc("unregister_device_push_token_atomic", {
+    workflowDb(ctx).rpc("unregister_device_push_token_atomic", {
       p_user_id: ctx.user.id,
       p_push_token: input.push_token,
     }),
@@ -172,7 +176,7 @@ export async function acknowledgeMatchingPushDelivery(
   input: EdgeMatchingPushDeliveryAckInput,
 ) {
   const result = await dbQuery<Array<Record<string, unknown>>>(
-    db(ctx).rpc("acknowledge_matching_push_delivery", {
+    workflowDb(ctx).rpc("acknowledge_matching_push_delivery", {
       p_delivery_id: input.matching_delivery_id,
       p_worker_id: ctx.user.id,
       p_device_push_token_id: input.device_push_token_id,

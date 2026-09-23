@@ -48,6 +48,10 @@ Dated filename (`*-YYYYMMDD.md`) = a point-in-time contract/plan/audit. Undated 
 - [`ops/kael-model-health.md`](ops/kael-model-health.md) — routing audit and optional admin health probe.
 - [`ops/kael-incident-response.md`](ops/kael-incident-response.md) — kill-switch, provider, spend, unsafe-output, and escalation response.
 
+## Release operations references
+
+- [`ops/harness/verification-release.md`](ops/harness/verification-release.md) — the manual verification release lane: why the strict lane cannot pass, what the lane relaxes and still enforces, what it does not prove, how to dispatch it, and what closes the acknowledged transaction gaps.
+
 ## Load-bearing documents (do not move without care)
 
 These are referenced by locked docs or by code — moving them breaks references:

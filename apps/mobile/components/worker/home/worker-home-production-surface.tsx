@@ -81,7 +81,7 @@ function Header({
         </View>
       </Pressable>
       <View style={styles.headerCopy}>
-        <Text style={[styles.headerTitle, dark && styles.textDark]}>{textByLanguage(language, `Xin chào, ${displayName}`, `Hello, ${displayName}`)}</Text>
+        <Text style={[styles.headerTitle, dark && styles.textDark]}>{`Hello, ${displayName}`}</Text>
         <Text style={[styles.headerMeta, dark && styles.mutedDark]}>{textByLanguage(language, `Mã thợ ${workerDisplayCode}`, `Worker ID ${workerDisplayCode}`)}</Text>
         <View style={styles.statusRow}>
           <View style={styles.statusDot} />
