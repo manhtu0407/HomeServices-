@@ -519,6 +519,19 @@ jobs:
               --environment production --project-ref "$PRODUCTION_PROJECT_REF" \
               --project-url "$PRODUCTION_PROJECT_URL" \
               --output artifacts/release/synthetic-actor-provision.json
+      - name: Warm the freshly deployed candidate before timed smokes
+        run: |
+          # stage1-synthetic-smoke-core.mjs enforces steady-state latency budgets
+          # (confirmAcceptanceMs <= 3000, workerOfferVisibleMs <= 10000), but the candidate Edge
+          # Function was deployed moments ago and has never served a request, so the first
+          # invocation pays a one-time cold-start cost the budgets were never meant to cover.
+          # These untimed pings absorb that cost before the timed loop below starts the clock.
+          for attempt in 1 2 3 4 5; do
+            status=$(curl -s -o /dev/null -w '%{http_code}' --max-time 30 \
+              "$PRODUCTION_PROJECT_URL/functions/v1/mobile-api/harness/health" || true)
+            echo "warm-up attempt $attempt: HTTP $status"
+            sleep 2
+          done
       - name: Run and record three consecutive full synthetic smokes
         id: smokes
         env:
