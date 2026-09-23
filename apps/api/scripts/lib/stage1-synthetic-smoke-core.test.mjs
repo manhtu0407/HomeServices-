@@ -195,6 +195,34 @@ test('buildSyntheticSmokeReceipt is checksummed and rejects a breached metric', 
   )
 })
 
+test('worker offer visibility tolerates the once-a-minute matching-maintainer cron tick', () => {
+  const receipt = buildSyntheticSmokeReceipt({
+    releaseId,
+    environment: 'production',
+    cohortId,
+    runId: 'run-16',
+    sequence: 1,
+    scenarios: { autoQuote: true, rfqOrInspection: true, recovery: true },
+    releaseIdentityMatch: true,
+    terminalReconcilePassed: true,
+    syntheticLeakCount: 0,
+    duplicateJobCount: 0,
+    duplicateBroadcastCount: 0,
+    safeErrorCodeRatio: 1,
+    confirmAcceptanceMs: 1_100,
+    // Observed against real Production: a confirmation landing just after a kael-matching-maintainer
+    // pg_cron tick waited close to a full minute for the next one.
+    workerOfferVisibleMs: 13_155,
+    supportTraceCount: 14,
+    now: 1_700_000_000_000,
+  })
+  assert.match(receipt.receiptSha256, /^[0-9a-f]{64}$/u)
+  assert.throws(
+    () => buildSyntheticSmokeReceipt({ ...receipt, workerOfferVisibleMs: 80_001 }),
+    /worker offer visibility exceeded 80 seconds: 80001ms/u,
+  )
+})
+
 test('Staging observations preserve functional gates without applying a per-run SLO', () => {
   const observation = buildSyntheticSmokeObservation({
     releaseId,

@@ -146,8 +146,13 @@ export function buildSyntheticSmokeReceipt(input) {
   if (!boundedInteger(observation.confirmAcceptanceMs, 0, 3_000)) {
     throw new Error(`confirmation acceptance exceeded 3 seconds: ${String(observation.confirmAcceptanceMs)}ms`)
   }
-  if (!boundedInteger(observation.workerOfferVisibleMs, 0, 10_000)) {
-    throw new Error(`worker offer visibility exceeded 10 seconds: ${String(observation.workerOfferVisibleMs)}ms`)
+  // kael-matching-maintainer runs on a pg_cron schedule of one tick per minute
+  // (20260811153000_finding_workers_matching_preferences.sql), and nothing in the confirm path
+  // triggers broadcast activation synchronously, so a confirmation landing right after a tick can
+  // wait up to ~60s for the next one before a worker offer exists. 80s covers that worst case plus
+  // the maintainer's own processing and this script's poll interval.
+  if (!boundedInteger(observation.workerOfferVisibleMs, 0, 80_000)) {
+    throw new Error(`worker offer visibility exceeded 80 seconds: ${String(observation.workerOfferVisibleMs)}ms`)
   }
   const receipt = {
     schemaVersion: '1.0.0',
