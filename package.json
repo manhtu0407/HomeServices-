@@ -75,6 +75,8 @@
     "lint:authority": "node scripts/run.mjs run-node scripts/check-authority-citations.mjs",
     "lint:workflow-cost": "node scripts/run.mjs run-node scripts/check-workflow-cost.mjs",
     "lint:comments": "node scripts/run.mjs run-node scripts/check-comment-discipline.mjs",
+    "lint:reuse-ladder": "node scripts/run.mjs run-node scripts/check-reuse-ladder.mjs --working",
+    "audit:reuse-ladder": "node scripts/run.mjs run-node scripts/check-reuse-ladder.mjs --audit",
     "lint:playbooks": "node scripts/run.mjs run-node scripts/check-kael-playbook-coverage.mjs",
     "lint:production-ui-copy": "node scripts/run.mjs run-node scripts/check-production-ui-copy.mjs",
     "lint:residue": "node scripts/run.mjs run-node scripts/check-source-residue.mjs",
