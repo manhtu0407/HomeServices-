@@ -5,7 +5,7 @@
     "immutableThroughVersion": "20260904113000",
     "sha256": "12da2bac288e0e718e61a27653e8cba9ffdb13b8e9900979407d41e1217b2077"
   },
-  "migrationCount": 398,
+  "migrationCount": 400,
   "migrationEquivalences": {
     "version": "1.0.0",
     "groups": [
@@ -74,7 +74,7 @@
       }
     ]
   },
-  "migrationsSha256": "5fe9c13c52206d48cd75e083bd5c1e97cdf6d69ad4f77ebca7f641b7c6641706",
+  "migrationsSha256": "e579f495ce0a8827a6d4f83c9598615603ffe075b219e839687ac1cc0263e5d4",
   "databaseTypes": {
     "file": "packages/shared/src/types/database",
     "sha256": "c8e8172c36ddf0e04e1fc7f459463d70eca6c171d00fc19df6be535fb695ef35"
@@ -2865,6 +2865,20 @@
       "file": "supabase/migrations/20260921224356_harness_retention_no_temp_table.sql",
       "sha256": "3f4bab7e7ac10b1552da1140a088d4fcd82283a2ad7fa2bc48e045ebc65e2a39",
       "bytes": 2915
+    },
+    {
+      "version": "20260923140621",
+      "name": "stage1_worker_offer_visibility_cron_budget",
+      "file": "supabase/migrations/20260923140621_stage1_worker_offer_visibility_cron_budget.sql",
+      "sha256": "e6ff55e8e7c09498c02c9352142b190ffe41b2a01ada95dd3cb4f26226936d83",
+      "bytes": 5086
+    },
+    {
+      "version": "20260923141106",
+      "name": "stage1_smoke_receipts_worker_offer_visible_ms_bound",
+      "file": "supabase/migrations/20260923141106_stage1_smoke_receipts_worker_offer_visible_ms_bound.sql",
+      "sha256": "0e06eb78cc5833cc583c7ee8910a747a893f82d06917f2eee4f88cf193cf23f2",
+      "bytes": 568
     }
   ]
 }
