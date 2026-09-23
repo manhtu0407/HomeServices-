@@ -151,19 +151,24 @@ order by object_kind, schema_name, relation_name, object_name`,
     clientCompatibility: release.client_compatibility ?? null,
     migrations: normalizeRows(migrationResult),
     migrationObjectPreconditions: normalizeRows(migrationObjectPreconditionResult),
-    managedEdgeFunctions: Object.fromEntries(normalizeRows(functions).map((item) => {
-      const detail = functionDetails.get(item.slug) ?? item
-      return [String(item.slug ?? ''), {
-      id: item.id ?? null,
-      status: item.status ?? null,
-      version: item.version ?? null,
-      ezbr_sha256: item.ezbr_sha256 ?? null,
-      verify_jwt: detail.verify_jwt ?? null,
-      import_map: detail.import_map ?? null,
-      entrypoint_path: detail.entrypoint_path ?? null,
-      import_map_path: detail.import_map_path ?? null,
-    }]
-    }).filter(([slug]) => slug)),
+    // Production hosts other Edge Functions too (kael-learning-monitor, sepay-webhook, ...); only
+    // the release-managed pair has a rollback contract, and callers such as stage1-promotion-packet.mjs
+    // require this set to match RELEASE_EDGE_FUNCTIONS exactly, not merely include it.
+    managedEdgeFunctions: Object.fromEntries(normalizeRows(functions)
+      .filter((item) => RELEASE_EDGE_FUNCTIONS.includes(item?.slug))
+      .map((item) => {
+        const detail = functionDetails.get(item.slug) ?? item
+        return [String(item.slug ?? ''), {
+        id: item.id ?? null,
+        status: item.status ?? null,
+        version: item.version ?? null,
+        ezbr_sha256: item.ezbr_sha256 ?? null,
+        verify_jwt: detail.verify_jwt ?? null,
+        import_map: detail.import_map ?? null,
+        entrypoint_path: detail.entrypoint_path ?? null,
+        import_map_path: detail.import_map_path ?? null,
+      }]
+      }).filter(([slug]) => slug)),
     evidenceSource: 'hosted-api-and-readonly-sql',
   }
 }
