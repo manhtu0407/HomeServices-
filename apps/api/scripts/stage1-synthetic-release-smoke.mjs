@@ -410,13 +410,15 @@ export class Stage1SyntheticReleaseSmoke {
 
     let offerPoll
     try {
+      // kael-matching-maintainer only activates broadcasts on its once-a-minute pg_cron tick, so
+      // this poll must outlast a worst-case ~60s wait for the next tick, not just processing time.
       offerPoll = await pollUntil(async () => {
         await this.api(input.actors.worker, 'POST', '/workers/me/matching-heartbeat', undefined, {
           idempotencyKey: randomUUID(),
         })
         const inbox = await this.api(input.actors.worker, 'GET', '/workers/me/broadcasts')
         return (inbox.json?.broadcasts ?? []).find((offer) => offer.job_id === jobId) ?? null
-      }, Boolean, { attempts: 20, intervalMs: 400 })
+      }, Boolean, { attempts: 70, intervalMs: 1_000 })
     } catch (error) {
       const diagnostic = await this.api(input.actors.customer, 'GET', `/kael/chat/${sessionId}/operation`)
       const state = diagnostic.json?.operation?.state ?? 'missing'
