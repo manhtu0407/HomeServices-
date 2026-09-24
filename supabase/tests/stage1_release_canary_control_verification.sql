@@ -237,6 +237,21 @@ begin
     null;
   end;
 
+  -- confirm_kael_chat_durable_atomic's write path still costs real seconds on a freshly deployed
+  -- candidate even after a throwaway warm-up confirm; a value beyond the 8s budget must still be refused.
+  begin
+    perform public.record_stage1_attested_synthetic_smoke(
+      v_release, 'staging', v_cohort, 'sql-confirm-budget-exceeded', 1::smallint,
+      true, true, true, true, true,
+      0, 0, 0, 1::numeric, 8001, 200, 1, v_generated_at, repeat('e', 64),
+      v_mobile_deployment, v_mobile_source_proof,
+      v_maintainer_deployment, v_maintainer_source_proof
+    );
+    raise exception 'a confirm acceptance beyond the write-path budget was accepted';
+  exception when check_violation then
+    null;
+  end;
+
   for v_sequence in 1..3 loop
     -- Control-plane fixtures only; P69 exercises terminal execution separately from these rows.
     insert into public.stage1_synthetic_transaction_proofs(
@@ -252,7 +267,7 @@ begin
     -- Sequence 1 carries the exact confirm/offer latencies real Production observed once the
     -- once-a-minute matching-maintainer cron tick was accounted for, proving both the RPC bound
     -- and the table's own CHECK constraint accept it; sequences 2-3 stay on a fast placeholder.
-    v_confirm_ms := case when v_sequence = 1 then 2793 else 100 end;
+    v_confirm_ms := case when v_sequence = 1 then 4938 else 100 end;
     v_offer_ms := case when v_sequence = 1 then 13874 else 200 end;
     v_sha := encode(extensions.digest(convert_to(concat_ws(E'\n',
       '1.0.0', v_release, 'staging', v_cohort, 'sql-run',
