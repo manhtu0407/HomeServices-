@@ -28,6 +28,7 @@ import {
   WorkerDockLayoutProvider,
   WorkerRebuildDockOverlay,
 } from '../dock/worker-v5-dock-overlay'
+import { resolveWorkerV5DockVisible } from '../dock/routing'
 
 export const PILLAR = {
   id: 'P08-worker-dock-motion',
@@ -198,5 +199,50 @@ describe('WorkerRebuildDockOverlay', () => {
 
     expect(screen.getByTestId('worker-v5-dock-earnings-icon')).toBeTruthy()
     expect(screen.getByTestId('worker-v5-dock-earnings').props.accessibilityState?.selected).toBe(true)
+  })
+
+  it.each([
+    '2.2-offer-detail',
+    '2.3-customer-confirmation-wait',
+    '2.4-route-eta',
+    '2.7-in-progress',
+    '2.8-scope-change',
+    '2.9-approval-wait',
+    '2.10-completion-evidence',
+    '2.11-completion-submitted',
+    '2.12-case-closed',
+  ])('gives way to the screen once a job case flow has opened on %s', (screenId) => {
+    withPillarContext(
+      PILLAR,
+      () => {
+        expect(resolveWorkerV5DockVisible({ ns_worker_screen: screenId })).toBe(false)
+      },
+      'a case-flow screen already carries its own back control; a second dock underneath only crowds it',
+    )
+  })
+
+  it.each([
+    ['1.1-worker-home', 'home'],
+    ['2.1-opportunity-inbox', 'jobs'],
+    ['4.1-earnings-overview', 'earnings'],
+    ['5.1-profile-overview', 'profile'],
+  ])('keeps the dock on the %s tab root', (screenId) => {
+    withPillarContext(
+      PILLAR,
+      () => {
+        expect(resolveWorkerV5DockVisible({ ns_worker_screen: screenId })).toBe(true)
+      },
+      'a tab root with no dock strands the worker with no way to switch sections',
+    )
+  })
+
+  it('keeps the dock when no explicit screen id is known yet', () => {
+    withPillarContext(
+      PILLAR,
+      () => {
+        expect(resolveWorkerV5DockVisible({})).toBe(true)
+      },
+      'an unresolved screen must not silently hide navigation',
+    )
   })
 })

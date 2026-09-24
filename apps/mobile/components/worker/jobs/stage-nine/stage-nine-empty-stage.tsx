@@ -12,9 +12,10 @@ import {
 import { Image } from 'expo-image'
 import { LinearGradient } from 'expo-linear-gradient'
 
+import { type AppleTypographyRole } from '@/design/theme'
 import type { AppLanguage } from '@/lib/app-language'
 
-import { STAGE_MAX_FONT_MULTIPLIER } from '../stage-ratio'
+import { STAGE_MAX_FONT_MULTIPLIER, stageTypography } from '../stage-ratio'
 import { stageNineAssets } from './stage-nine-assets'
 import { StageNineButtonSurface } from './stage-nine-button-surface'
 import { stageNineCopy as C } from './stage-nine-copy'
@@ -32,7 +33,7 @@ export type StageNineEmptyStageProps = {
   topInset?: number
 }
 
-type StageTypeToken = { lineHeight: number; size: number; tracking: number }
+type StageTypeToken = { role: AppleTypographyRole; weight: '400' | '600' | '700' }
 
 function StageText(props: TextProps) {
   return <Text maxFontSizeMultiplier={STAGE_MAX_FONT_MULTIPLIER} {...props} />
@@ -73,11 +74,7 @@ export function StageNineEmptyStage({
   const stageHeight = Math.max(canvasHeight + safeShift, measuredBottom) + bottomClearance
   const buttonRadius = T.layout.buttonRadius * s
   const buttonBorder = T.layout.buttonBorder * s
-  const font = (token: StageTypeToken): TextStyle => ({
-    fontSize: token.size * s,
-    letterSpacing: token.tracking * s,
-    lineHeight: token.lineHeight * s,
-  })
+  const font = (token: StageTypeToken): TextStyle => ({ ...stageTypography(token.role, window.width), fontWeight: token.weight })
 
   const onLayout = useCallback((event: LayoutChangeEvent) => {
     const next = Math.min(event.nativeEvent.layout.width, T.maxWidth)
@@ -129,7 +126,6 @@ export function StageNineEmptyStage({
             right: 30 * s,
             textAlign: 'center',
             top: y(T.layout.quoteTop),
-            transform: [{ scaleX: 1.04 }, { scaleY: 1.04 }],
           }}
           testID="worker-v5-stage-nine-empty-quote"
         >
@@ -148,10 +144,8 @@ export function StageNineEmptyStage({
             style={{
               ...font(T.typography.title),
               color: T.colors.ink,
-              fontWeight: '700',
               marginHorizontal: 10 * s,
               textAlign: 'center',
-              transform: [{ scaleX: 0.95 }, { scaleY: 1.15 }],
             }}
             testID="worker-v5-stage-nine-empty-title"
           >
@@ -165,7 +159,6 @@ export function StageNineEmptyStage({
               marginHorizontal: 5 * s,
               marginTop: T.layout.descriptionGap * s,
               textAlign: 'center',
-              transform: [{ scaleX: 0.915 }],
             }}
             testID="worker-v5-stage-nine-empty-body"
           >
@@ -210,8 +203,6 @@ export function StageNineEmptyStage({
                 style={{
                   ...font(T.typography.button),
                   color: T.colors.buttonLabel,
-                  fontWeight: '600',
-                  transform: [{ scaleX: 0.9 }, { scaleY: 1.06 }],
                 }}
                 testID="worker-v5-stage-nine-empty-submit-label"
               >

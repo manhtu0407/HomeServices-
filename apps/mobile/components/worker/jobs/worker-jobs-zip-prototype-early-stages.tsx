@@ -10,7 +10,6 @@ import { firstRouteParam, routeForWorkerV5Screen } from '../dock/routing'
 import { requireWorkerV5Screen } from '../dock/screens'
 import { WorkerV5BoundaryNote } from '../ui/metrics-surfaces'
 import { textByLanguage } from '../ui/format'
-import { workerV5DisplayCode } from '../ui/screen-labels'
 import { workerV5JobsDestinationScreenId } from '../ui/screen-navigation'
 import { workerV5TimeChoiceLabel } from '../ui/labels'
 import { buildWorkerV5AcceptEtaSignal } from '../ui/route'
@@ -43,6 +42,7 @@ import {
   workerJobsLegacyPrototypePreviewJob,
 } from './worker-jobs-zip-prototype-shared'
 import { WorkerMatchingDeliveryStatus } from './worker-matching-delivery-status'
+import { stageLayout, useStageLayout } from './stage-ratio'
 
 export { WorkerJobsLegacyPrototypeRouteEtaBody } from './worker-jobs-zip-prototype-route-stage'
 
@@ -84,8 +84,9 @@ export function WorkerJobsLegacyPrototypeOpportunityCard({
   const surfaceColor = reduceTransparency ? tokens.base : tokens.raised
   const workartPanelColor = tokens.mode === 'dark' ? tokens.ghost : '#E8F5F1'
   const cardTestID = onSelect ? testID : 'worker-v5-opportunity-empty-card'
+  const layout = useStageLayout()
   const copy = (
-    <View style={prototypeStyles.opportunityCardCopy}>
+    <View style={[prototypeStyles.opportunityCardCopy, { paddingHorizontal: layout.metric(stageLayout.cardPadding), paddingVertical: layout.metric(stageLayout.cardPadding) }]}>
       <Text numberOfLines={2} style={prototypeStyles.opportunityCardTitle}>{title}</Text>
       <Text numberOfLines={2} style={prototypeStyles.opportunityCardMeta}>{meta}</Text>
       <View style={prototypeStyles.opportunityMetaRow}>
@@ -121,7 +122,7 @@ export function WorkerJobsLegacyPrototypeOpportunityCard({
       surfaceColor={surfaceColor}
     />
   )
-  const cardSurfaceStyle = { backgroundColor: surfaceColor, borderColor: tokens.borderStrong }
+  const cardSurfaceStyle = { backgroundColor: surfaceColor, borderColor: tokens.borderStrong, borderRadius: layout.metric(stageLayout.cardRadius) }
 
   if (!onSelect) {
     return <View style={[prototypeStyles.opportunityCard, cardSurfaceStyle]} testID="worker-v5-opportunity-empty-card">{workartView}{copy}</View>
@@ -278,13 +279,15 @@ function WorkerJobsLegacyPrototypeOpportunityActions({
   primaryDisabled: boolean
   reduceTransparency: boolean
 }) {
+  const layout = useStageLayout()
+  const size = { borderRadius: layout.metric(stageLayout.buttonRadius), minHeight: layout.buttonHeight }
   return (
     <View accessibilityRole="summary" style={prototypeStyles.opportunityActions} testID="worker-v5-action-rail">
       <Pressable
         accessibilityLabel={textByLanguage(language, 'Kael nhận việc', 'Kael job intake')}
         accessibilityRole="button"
         onPress={onKael}
-        style={({ pressed }) => [prototypeStyles.opportunityAction, prototypeStyles.opportunityActionSecondary, reduceTransparency && { backgroundColor: color.mint.white }, pressed && { opacity: 0.84 }]}
+        style={({ pressed }) => [prototypeStyles.opportunityAction, size, prototypeStyles.opportunityActionSecondary, reduceTransparency && { backgroundColor: color.mint.white }, pressed && { opacity: 0.84 }]}
         testID="worker-v5-opportunity-kael-action"
       >
         <Text style={[prototypeStyles.opportunityActionText, prototypeStyles.opportunityActionSecondaryText]}>{textByLanguage(language, 'Kael nhận việc', 'Kael job intake')}</Text>
@@ -295,7 +298,7 @@ function WorkerJobsLegacyPrototypeOpportunityActions({
         accessibilityState={{ disabled: primaryDisabled }}
         disabled={primaryDisabled}
         onPress={onPrimary}
-        style={({ pressed }) => [prototypeStyles.opportunityAction, prototypeStyles.opportunityActionPrimary, primaryDisabled && prototypeStyles.opportunityActionDisabled, pressed && !primaryDisabled && { opacity: 0.84 }]}
+        style={({ pressed }) => [prototypeStyles.opportunityAction, size, prototypeStyles.opportunityActionPrimary, primaryDisabled && prototypeStyles.opportunityActionDisabled, pressed && !primaryDisabled && { opacity: 0.84 }]}
         testID="worker-v5-primary-action"
       >
         <Text style={[prototypeStyles.opportunityActionText, primaryDisabled ? prototypeStyles.opportunityActionDisabledText : prototypeStyles.opportunityActionPrimaryText]}>{primary}</Text>
@@ -455,7 +458,7 @@ function WorkerJobsLegacyPrototypeOfferSummary({
         surfaceColor={reduceTransparency ? tokens.base : tokens.raised}
       />
       <View style={stageTwoStyles.heroCopy}>
-        <Text numberOfLines={1} style={[stageTwoStyles.heroService, { color: tokens.text }]}>{service}</Text>
+        <Text numberOfLines={2} style={[stageTwoStyles.heroService, { color: tokens.text }]}>{service}</Text>
         <Text numberOfLines={2} style={[stageTwoStyles.heroArea, { color: tokens.muted }]}>{area || textByLanguage(language, 'Khu vực sẽ hiện sau khi xác minh', 'Area appears after verification')}</Text>
         <View style={stageTwoStyles.heroMeta}>
           <View style={stageTwoStyles.heroMetaItem}>
@@ -570,7 +573,7 @@ export function WorkerJobsLegacyPrototypeOfferDetailBody({
     <View onLayout={scale.onLayout} style={stageTwoStyles.section} testID="worker-v5-offer-detail-handoff">
       <WorkerJobsLegacyPrototypeOfferSummary deal={deal} language={language} previewJob={previewJob} reduceTransparency={reduceTransparency} showPrice={isPricedOffer || !proposalOpportunity} tokens={tokens} />
 
-      <View style={{ gap: scale.px(stageTwoCardTokens.geometry.cardSpacing) }}>
+      <View style={{ gap: scale.metric(stageLayout.sectionGap) }}>
         <WorkerJobsStageTwoInfoGroup
           description={deal
             ? textByLanguage(language, 'Thông tin yêu cầu và hiện trạng của công việc.', 'Request and condition details for the job.')
@@ -655,7 +658,7 @@ export function WorkerJobsLegacyPrototypeOfferDetailBody({
         />
       </WorkerJobsStageTwoCard>
 
-      <View accessibilityRole="summary" style={{ flexDirection: 'row', gap: scale.px(stageTwoCardTokens.geometry.actionGap) }} testID="worker-v5-action-rail">
+      <View accessibilityRole="summary" style={{ flexDirection: 'row', gap: scale.metric(stageLayout.componentGap) }} testID="worker-v5-action-rail">
         <WorkerJobsStageTwoAction
           accessibilityLabel={textByLanguage(language, 'Từ chối', 'Decline')}
           disabled={!canDecline || actionBusy}
@@ -677,44 +680,6 @@ export function WorkerJobsLegacyPrototypeOfferDetailBody({
           />
         ) : null}
       </View>
-    </View>
-  )
-}
-
-export function WorkerJobsLegacyPrototypeCustomerConfirmationWaitBody({
-  language,
-  reduceTransparency,
-  runtime,
-}: {
-  language: AppLanguage
-  reduceTransparency: boolean
-  runtime: WorkerJobsLegacyPrototypeRuntime
-}) {
-  const deal = runtime.state.deal
-  const serviceType = deal?.broadcast?.serviceType ?? deal?.draft.serviceType ?? null
-  const service = serviceType ? localizedServiceLabel(serviceType, language) : null
-  const code = workerV5DisplayCode(deal, language)
-
-  return (
-    <View style={prototypeStyles.bodyStack} testID="worker-v5-customer-confirmation-wait">
-      <View style={[prototypeStyles.stageSummaryCard, reduceTransparency && { backgroundColor: color.mint.white }]}>
-        <View style={prototypeStyles.stageSummaryCopy}>
-          <Text style={prototypeStyles.stageSummaryEyebrow}>{textByLanguage(language, 'Đã gửi nhận việc', 'Acceptance sent')}</Text>
-          <Text style={prototypeStyles.stageSummaryTitle}>{textByLanguage(language, 'Đang chờ khách xác nhận', 'Waiting for customer confirmation')}</Text>
-          <Text style={prototypeStyles.stageSummaryMeta}>{textByLanguage(language, 'Địa chỉ chi tiết và thao tác thi công vẫn khóa cho tới khi khách chọn bạn.', 'Exact address and execution actions stay locked until the customer confirms you.')}</Text>
-        </View>
-      </View>
-      <View style={prototypeStyles.stageSectionHeader}>
-        <Text style={prototypeStyles.stageSectionTitle}>{textByLanguage(language, 'Trạng thái việc', 'Work status')}</Text>
-        <Text style={prototypeStyles.stageSectionAction}>{textByLanguage(language, 'Đang chờ', 'Waiting')}</Text>
-      </View>
-      <View style={[prototypeStyles.stageEvidenceEmpty, reduceTransparency && { backgroundColor: color.mint.white }]}>
-        <View style={prototypeStyles.stageEvidenceEmptyIcon}>
-          <WorkerJobsLegacyPrototypeMetaIcon kind="status" size={22} />
-        </View>
-        <Text style={prototypeStyles.stageEvidenceEmptyText}>{textByLanguage(language, 'Kael sẽ mở bước di chuyển sau khi khách xác nhận bạn.', 'Kael opens travel after the customer confirms you.')}</Text>
-      </View>
-      {service || code ? <Text style={prototypeStyles.stageSummaryMeta}>{[service, code ? textByLanguage(language, `Mã việc ${code}`, `Work ${code}`) : null].filter(Boolean).join(' · ')}</Text> : null}
     </View>
   )
 }

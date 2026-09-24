@@ -49,11 +49,9 @@ describe('Worker Jobs Workart background contract', () => {
     withPillarContext(
       PILLAR,
       () => {
-        expect(existsSync(clientImageAsset('worker-stage-seven-approval-workart-transparent.png'))).toBe(true)
-        expect(opportunitySource).toContain('worker-stage-seven-approval-workart-transparent.png')
-        expect(opportunitySource).not.toContain('worker-stage-seven-approval-workart.png')
+        expect(opportunitySource).not.toContain('worker-stage-seven-approval-workart')
       },
-      'the approval-stage Workart must use the transparent asset too',
+      'the approval-stage Workart was retired — Stage 7 now renders through the shared waiting scene, not a baked image',
     )
   })
 

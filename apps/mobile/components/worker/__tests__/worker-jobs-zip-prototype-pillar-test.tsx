@@ -113,12 +113,13 @@ describe('Worker Jobs ZIP Prototype', () => {
     expect(source).toContain('worker-jobs-workart-cleaning-transparent.png')
     expect(source).toContain('worker-jobs-workart-handyman-transparent.png')
     expect(source).toContain('worker-jobs-workart-upholstery-transparent.png')
-    expect(source).toContain('worker-stage-seven-approval-workart-transparent.png')
     expect(source).toContain('worker-stage-eight-completion-record-workart-transparent.png')
     expect(source).not.toContain('client-booking-workart-cleaning-cutout.png')
     expect(source).not.toContain('client-booking-workart-handyman-cutout.png')
     expect(source).not.toContain('client-booking-workart-upholstery-cutout.png')
-    expect(source).not.toContain('worker-stage-seven-approval-workart.png')
+    // Stage Seven's own body/artwork was dead code (never reachable from the eleven-stage
+    // switch); removed with the rest of the dead-code sweep rather than kept as an unused export.
+    expect(source).not.toContain('worker-stage-seven-approval-workart')
   })
 
   it('places a transparent completion-record Workart in the Stage 8 hero', () => {
@@ -290,8 +291,8 @@ describe('Worker Jobs ZIP Prototype', () => {
     expect(progressStylesSource).toContain('stepStateJobsReviewContext')
   })
 
-  it('removes the Formula Mint Aura from the ZIP Prototype progress rail only', () => {
-    expect(source).toContain('<WorkerV5ProgressRail activeStep={4} formulaAura={false}')
+  it('keeps the Formula Mint Aura default in the shared rail and leaves it off the Stage 6 screen', () => {
+    expect(source).not.toContain('<WorkerV5ProgressRail')
     expect(progressSource).toContain('formulaAura = true')
     expect(progressSource).toContain('{formulaAura ? (')
   })
@@ -303,7 +304,7 @@ describe('Worker Jobs ZIP Prototype', () => {
     expect(progressStylesSource).toContain('height: 36')
     expect(progressStylesSource).toContain('width: 36')
     expect(progressStylesSource).toContain('borderWidth: 1')
-    expect(progressStylesSource).toContain('fontSize: 17')
+    expect(progressStylesSource).toContain('...typography.body')
     expect(progressSource).toContain('styles.stepStateTextJobsReview')
   })
 
@@ -324,8 +325,8 @@ describe('Worker Jobs ZIP Prototype', () => {
     expect(stageTenContentSource).not.toContain('comparisonPercent')
     expect(stageTenContentSource).not.toContain('rankPosition')
     expect(stageTenContentSource).not.toContain('Khách hàng rất hài lòng!')
-    expect(stageTenContentSource).toContain('STAGE_REFERENCE_SCALE.stageTen')
-    expect(stageTenContentSource).toContain('preferred={21.5}')
+    expect(stageTenContentSource).toContain('stageTypography')
+    expect(stageTenContentSource).toContain("stageTypography('title3', windowWidth).fontSize")
     expect(stageTenContentSource).toContain('marginTop={s(5)}')
     expect(stageTenContentSource).not.toContain('ScrollView')
     expect(stageTenContentSource).not.toContain('SafeAreaView')

@@ -259,10 +259,9 @@ export const styles = StyleSheet.create({
     color: color.brand.primaryDark,
   },
   stepStateTextJobsReview: {
+    ...typography.footnote,
     color: color.text.secondary,
-    fontSize: 14,
     fontWeight: '700',
-    lineHeight: 18,
     textAlign: 'center',
   },
   stepStateTextJobsReviewActive: {
@@ -274,10 +273,9 @@ export const styles = StyleSheet.create({
     fontWeight: '700',
   },
   stepStateTextJobsReviewDone: {
+    ...typography.body,
     color: color.brand.primaryDark,
-    fontSize: 17,
     fontWeight: '700',
-    lineHeight: 20,
   },
   stepTitle: {
     color: color.text.strong,

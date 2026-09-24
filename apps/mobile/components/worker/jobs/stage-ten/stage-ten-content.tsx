@@ -2,7 +2,8 @@ import { useState, type ReactNode } from 'react'
 import { Image } from 'expo-image'
 import { Pressable, StyleSheet, Text, View, useWindowDimensions, type LayoutChangeEvent } from 'react-native'
 
-import { STAGE_REFERENCE_SCALE, stageFontSize, stageLineHeight, stageTapSize } from '../stage-ratio'
+import { typography } from '@/design/theme'
+import { stageTapSize, stageTypography } from '../stage-ratio'
 import { stageTenAssets } from './stage-ten-assets'
 import { date10, fitStageTenValueSize, money10, text10 } from './stage-ten-model'
 import { StageTenGradient, StageTenIcon, type StageTenIconName } from './stage-ten-icons'
@@ -10,10 +11,11 @@ import { stageTenTokens } from './stage-ten-tokens'
 import type { StageTenActions, StageTenContentProps } from './stage-ten.types'
 
 const MAX_GEOMETRY_SCALE = 1.2
-const METRIC_VALUE_MIN_CANVAS_SIZE = 13
-
-type FontSizeFor = (canvasSize: number) => number
-type LineHeightFor = (canvasSize: number, ratio: number) => number
+/** The metric-value fit-to-width algorithm below title3 has no fixed canonical size to spread —
+ *  it lands anywhere in [footnote, title3] — so its tracking/leading scale proportionally from
+ *  title3's own ratios instead of a bespoke constant. */
+const METRIC_VALUE_TRACKING_RATIO = typography.title3.letterSpacing / typography.title3.fontSize
+const METRIC_VALUE_LINE_HEIGHT_RATIO = typography.title3.lineHeight / typography.title3.fontSize
 
 export function StageTenContent({
   actions,
@@ -35,8 +37,6 @@ export function StageTenContent({
   // stage-ratio.ts, so a narrow host keeps captions at the house minimum instead of shrinking them.
   const scale = Math.min(MAX_GEOMETRY_SCALE, width / stageTenTokens.referenceContentWidth)
   const s = (value: number) => value * scale
-  const ft: FontSizeFor = (value) => stageFontSize(value, STAGE_REFERENCE_SCALE.stageTen, windowWidth)
-  const lh: LineHeightFor = (value, ratio) => stageLineHeight(ft(value), ratio)
   const completed = model.state === 'closed'
   const dates = date10(model.job.completedAt, language)
   const tx = (vi: string, en: string) => text10(language, vi, en)
@@ -69,31 +69,25 @@ export function StageTenContent({
 
   return (
     <View onLayout={onLayout} style={[styles.root, { gap: s(10) }]} testID="worker-v5-stage-ten-prototype">
-      <View style={[card, styles.hero, { minHeight: s(156), paddingBottom: s(15), paddingHorizontal: s(14), paddingTop: s(13) }]} testID="worker-v5-stage-ten-hero">
+      <View style={[card, styles.hero, { minHeight: completed ? s(156) : undefined, paddingBottom: s(15), paddingHorizontal: s(14), paddingTop: s(completed ? 13 : 15) }]} testID="worker-v5-stage-ten-hero">
         {!reduceTransparency ? <StageTenGradient from="#F3FAFA" id="stage10-hero-gradient" to="#F0FAF8" /> : null}
-        <View style={{ height: s(50), position: 'relative' }}>
-          {completed ? (
+        {completed ? (
+          <View style={{ height: s(50), position: 'relative' }}>
             <Image
               contentFit="contain"
               source={stageTenAssets.medallion}
               style={{ height: s(51), left: s(-2), position: 'absolute', top: s(-1), width: s(91) }}
               testID="stage10-success-art"
             />
-          ) : (
-            <View style={{ alignItems: 'center', backgroundColor: stageTenTokens.mintSoft, borderRadius: s(19), height: s(38), justifyContent: 'center', marginTop: s(5), width: s(38) }}>
-              <StageTenIcon color="#79AAA5" name="info" size={s(24)} />
-            </View>
-          )}
-          {completed ? (
             <Image
               contentFit="contain"
               source={stageTenAssets.lettering}
               style={{ height: s(33), position: 'absolute', right: s(1), top: s(5), width: s(77) }}
             />
-          ) : null}
-        </View>
-        <Text accessibilityRole="header" style={[styles.heroTitle, { fontSize: ft(25.6), letterSpacing: -0.7, lineHeight: lh(25.6, 1.21), marginBottom: s(7) }]}>{title}</Text>
-        <Text style={[styles.bodyCopy, { fontSize: ft(12), lineHeight: lh(12, 1.46), paddingRight: completed ? s(96) : 0 }]}>{subtitle}</Text>
+          </View>
+        ) : null}
+        <Text accessibilityRole="header" style={[stageTypography('title1', windowWidth), styles.heroTitle, { marginBottom: s(7) }]}>{title}</Text>
+        <Text style={[stageTypography('caption1', windowWidth), styles.bodyCopy, { paddingRight: completed ? s(96) : 0 }]}>{subtitle}</Text>
         {completed ? (
           <Image
             contentFit="contain"
@@ -105,7 +99,7 @@ export function StageTenContent({
       </View>
 
       <View style={[card, { gap: s(10), padding: s(14) }]} testID="stage10-job-card">
-        <Text accessibilityRole="header" style={[styles.sectionTitle, { fontSize: ft(15), lineHeight: lh(15, 1.27) }]}>{tx('Thông tin công việc', 'Job information')}</Text>
+        <Text accessibilityRole="header" style={[stageTypography('subheadline', windowWidth), styles.sectionTitle]}>{tx('Thông tin công việc', 'Job information')}</Text>
         <View style={{ alignItems: 'stretch', flexDirection: 'row', gap: s(13) }}>
           {photoSource && !failedPhoto ? (
             <Image
@@ -119,28 +113,28 @@ export function StageTenContent({
           ) : (
             <View style={{ alignItems: 'center', backgroundColor: stageTenTokens.tile, borderRadius: s(7), gap: s(6), justifyContent: 'center', minHeight: s(94), width: s(103) }} testID="stage10-job-photo-placeholder">
               <StageTenIcon color="#8BA3AB" name="photo" size={s(25)} />
-              <Text style={{ color: stageTenTokens.text, fontSize: ft(10) }}>{tx('Chưa có ảnh', 'No photo')}</Text>
+              <Text style={{ ...stageTypography('caption2', windowWidth), color: stageTenTokens.text }}>{tx('Chưa có ảnh', 'No photo')}</Text>
             </View>
           )}
           <View style={{ flex: 1, gap: s(8), paddingTop: s(2) }}>
             <View style={{ alignItems: 'center', flexDirection: 'row', flexWrap: width < 330 ? 'wrap' : 'nowrap', gap: s(5), justifyContent: 'space-between' }}>
-              <Text selectable style={[styles.jobTitle, { flexShrink: 1, fontSize: ft(14.6), lineHeight: lh(14.6, 1.23) }]}>{model.job.title}</Text>
+              <Text selectable style={[stageTypography('subheadline', windowWidth), styles.jobTitle, { flexShrink: 1 }]}>{model.job.title}</Text>
               <View style={{ alignItems: 'center', backgroundColor: completed ? stageTenTokens.pill : stageTenTokens.note, borderRadius: s(20), flexDirection: 'row', gap: s(4), paddingHorizontal: s(8), paddingVertical: s(7) }}>
                 {completed ? (
                   <View style={{ alignItems: 'center', backgroundColor: '#169C83', borderRadius: s(8), height: s(15), justifyContent: 'center', width: s(15) }}>
                     <StageTenIcon color="white" name="check" size={s(12)} />
                   </View>
                 ) : null}
-                <Text style={{ color: completed ? stageTenTokens.mint : stageTenTokens.text, fontSize: ft(9.6), fontWeight: '600' }}>{completed ? tx('Đã hoàn tất', 'Completed') : tx('Chưa hoàn tất', 'Not complete')}</Text>
+                <Text style={{ ...stageTypography('caption2', windowWidth), color: completed ? stageTenTokens.mint : stageTenTokens.text, fontWeight: '600' }}>{completed ? tx('Đã hoàn tất', 'Completed') : tx('Chưa hoàn tất', 'Not complete')}</Text>
               </View>
             </View>
             <View style={{ alignItems: 'center', flexDirection: 'row', gap: s(7) }}>
               <StageTenIcon color="#74889A" name="pin" size={s(14)} />
-              <Text selectable style={[styles.bodyCopy, { flex: 1, fontSize: ft(11), lineHeight: lh(11, 1.36) }]}>{model.job.district ?? tx('Chưa có khu vực', 'Area unavailable')}</Text>
+              <Text selectable style={[stageTypography('caption2', windowWidth), styles.bodyCopy, { flex: 1 }]}>{model.job.district ?? tx('Chưa có khu vực', 'Area unavailable')}</Text>
             </View>
             <View style={{ alignItems: 'flex-start', flexDirection: 'row', gap: s(7) }}>
               <StageTenIcon color="#74889A" name="calendar" size={s(14)} />
-              <Text selectable style={[styles.bodyCopy, { flex: 1, fontSize: ft(11), lineHeight: lh(11, 1.45) }]}>{model.job.completedAt ? `${tx('Hoàn thành lúc', 'Completed at')} ${dates.time}\n${dates.date}` : dates.time}</Text>
+              <Text selectable style={[stageTypography('caption2', windowWidth), styles.bodyCopy, { flex: 1 }]}>{model.job.completedAt ? `${tx('Hoàn thành lúc', 'Completed at')} ${dates.time}\n${dates.date}` : dates.time}</Text>
             </View>
           </View>
         </View>
@@ -150,32 +144,32 @@ export function StageTenContent({
         <View style={{ alignItems: 'center', flexDirection: 'row', gap: s(11), paddingHorizontal: s(7) }} testID="worker-v5-stage-ten-summary-list">
           <StageTenIcon color="#26AB93" name="chart" size={s(25)} />
           <View style={{ gap: s(3) }}>
-            <Text accessibilityRole="header" style={[styles.sectionTitle, { fontSize: ft(15.5), lineHeight: lh(15.5, 1.23) }]}>{tx('Tóm tắt', 'Summary')}</Text>
-            <Text style={[styles.bodyCopy, { fontSize: ft(11), lineHeight: lh(11, 1.27) }]}>{tx('Kết quả công việc của bạn', 'Your job results')}</Text>
+            <Text accessibilityRole="header" style={[stageTypography('subheadline', windowWidth), styles.sectionTitle]}>{tx('Tóm tắt', 'Summary')}</Text>
+            <Text style={[stageTypography('caption2', windowWidth), styles.bodyCopy]}>{tx('Kết quả công việc của bạn', 'Your job results')}</Text>
           </View>
         </View>
         <View style={{ flexDirection: 'row', gap: s(6) }} testID="stage10-metric-grid">
-          <MetricTile flex={1.07} ft={ft} icon="wallet" lh={lh} scale={scale} title={tx('Thu nhập', 'Earnings')}>
-            <MetricValue fontScale={fontScale} ft={ft} lh={lh} marginTop={s(5)} missing={model.income.amount === null} preferred={21.5} testID="stage10-income" text={money10(model.income.amount, language)} />
-            <Text style={[styles.metricMeta, { fontSize: ft(9), lineHeight: lh(9, 1.44), marginTop: s(10) }]}>{model.income.amount !== null ? tx('Đã ghi nhận', 'Recorded') : model.income.state === 'held' ? tx('Đang tạm giữ', 'On hold') : model.income.state === 'reversed' ? tx('Đã điều chỉnh', 'Reversed') : model.income.state === 'missing' ? tx('Chưa ghi nhận', 'Not recorded') : tx('Đang cập nhật', 'Updating')}</Text>
+          <MetricTile flex={1.07} icon="wallet" scale={scale} title={tx('Thu nhập', 'Earnings')} windowWidth={windowWidth}>
+            <MetricValue fontScale={fontScale} marginTop={s(5)} missing={model.income.amount === null} testID="stage10-income" text={money10(model.income.amount, language)} windowWidth={windowWidth} />
+            <Text style={[stageTypography('caption2', windowWidth), styles.metricMeta, { marginTop: s(10) }]}>{model.income.amount !== null ? tx('Đã ghi nhận', 'Recorded') : model.income.state === 'held' ? tx('Đang tạm giữ', 'On hold') : model.income.state === 'reversed' ? tx('Đã điều chỉnh', 'Reversed') : model.income.state === 'missing' ? tx('Chưa ghi nhận', 'Not recorded') : tx('Đang cập nhật', 'Updating')}</Text>
           </MetricTile>
-          <MetricTile flex={1} ft={ft} gold icon="star" lh={lh} scale={scale} title={tx('Đánh giá trung bình', 'Average rating')}>
-            <MetricValue fontScale={fontScale} ft={ft} lh={lh} marginTop={s(3)} missing={model.rating.value === null} preferred={19} testID="stage10-rating" text={model.rating.value !== null ? model.rating.value.toFixed(1) : tx('Chưa ghi nhận', 'Not recorded')} />
+          <MetricTile flex={1} gold icon="star" scale={scale} title={tx('Đánh giá trung bình', 'Average rating')} windowWidth={windowWidth}>
+            <MetricValue fontScale={fontScale} marginTop={s(3)} missing={model.rating.value === null} testID="stage10-rating" text={model.rating.value !== null ? model.rating.value.toFixed(1) : tx('Chưa ghi nhận', 'Not recorded')} windowWidth={windowWidth} />
             <View style={{ flexDirection: 'row', gap: s(2), justifyContent: 'center', marginTop: s(2) }}>
               {Array.from({ length: 5 }, (_, index) => (
                 <StageTenIcon filled key={index} color={model.rating.value !== null && index < Math.round(model.rating.value) ? stageTenTokens.gold : '#DEE7E9'} name="star" size={s(11)} />
               ))}
             </View>
-            <Text style={[styles.metricMeta, { fontSize: ft(8.7), lineHeight: lh(8.7, 1.38), marginTop: s(5) }]}>{model.rating.value !== null && model.rating.reviewCount > 0 ? `${model.rating.reviewCount} ${tx('lượt đánh giá', 'reviews')}` : tx('Chưa có đánh giá', 'No reviews yet')}</Text>
+            <Text style={[stageTypography('caption2', windowWidth), styles.metricMeta, { marginTop: s(5) }]}>{model.rating.value !== null && model.rating.reviewCount > 0 ? `${model.rating.reviewCount} ${tx('lượt đánh giá', 'reviews')}` : tx('Chưa có đánh giá', 'No reviews yet')}</Text>
           </MetricTile>
-          <MetricTile flex={0.97} ft={ft} gold icon="trophy" lh={lh} scale={scale} title={tx('Điểm hiệu suất', 'Performance score')}>
-            <MetricValue fontScale={fontScale} ft={ft} lh={lh} marginTop={s(5)} missing={model.ranking.performanceScore === null} preferred={19} testID="stage10-ranking" text={model.ranking.performanceScore !== null ? String(model.ranking.performanceScore) : tx('Chưa ghi nhận', 'Not recorded')} />
-            <Text style={[styles.metricMeta, { fontSize: ft(9), lineHeight: lh(9, 1.44), marginTop: s(10) }]}>{model.ranking.performanceScore !== null ? tx('Theo hệ thống', 'System record') : tx('Chưa có dữ liệu', 'Not available')}</Text>
+          <MetricTile flex={0.97} gold icon="trophy" scale={scale} title={tx('Điểm hiệu suất', 'Performance score')} windowWidth={windowWidth}>
+            <MetricValue fontScale={fontScale} marginTop={s(5)} missing={model.ranking.performanceScore === null} testID="stage10-ranking" text={model.ranking.performanceScore !== null ? String(model.ranking.performanceScore) : tx('Chưa ghi nhận', 'Not recorded')} windowWidth={windowWidth} />
+            <Text style={[stageTypography('caption2', windowWidth), styles.metricMeta, { marginTop: s(10) }]}>{model.ranking.performanceScore !== null ? tx('Theo hệ thống', 'System record') : tx('Chưa có dữ liệu', 'Not available')}</Text>
           </MetricTile>
         </View>
         <View style={{ alignItems: 'flex-start', backgroundColor: stageTenTokens.note, borderRadius: s(9), flexDirection: 'row', gap: s(7), minHeight: s(46), padding: s(9) }} testID="stage10-data-note">
           <StageTenIcon color="#8BAEB4" name="info" size={s(15)} />
-          <Text style={[styles.bodyCopy, { flex: 1, fontSize: ft(9.4), lineHeight: lh(9.4, 1.49) }]}>{info}</Text>
+          <Text style={[stageTypography('caption2', windowWidth), styles.bodyCopy, { flex: 1 }]}>{info}</Text>
         </View>
       </View>
 
@@ -183,35 +177,35 @@ export function StageTenContent({
         <StageTenActionButton
           accessibilityLabel={tx('Xem điểm hạng', 'View ranking')}
           disabled={!actions.onRanking}
-          fontSize={ft(14.7)}
           label={tx('Xem điểm hạng', 'View ranking')}
           onPress={actions.onRanking}
           scale={scale}
           testID="worker-v5-case-closed-ranking-action"
+          windowWidth={windowWidth}
         />
         <StageTenActionButton
           accessibilityLabel={tx('Mở thu nhập', 'Open earnings')}
-          fontSize={ft(14.7)}
           label={tx('Mở thu nhập', 'Open earnings')}
           onPress={actions.onEarnings}
           primary
           scale={scale}
           testID="worker-v5-case-closed-earnings-action"
+          windowWidth={windowWidth}
         />
       </View>
     </View>
   )
 }
 
-function StageTenActionButton({ accessibilityLabel, disabled = false, fontSize, label, onPress, primary = false, scale, testID }: {
+function StageTenActionButton({ accessibilityLabel, disabled = false, label, onPress, primary = false, scale, testID, windowWidth }: {
   accessibilityLabel: string
   disabled?: boolean
-  fontSize: number
   label: string
   onPress?: StageTenActions['onEarnings']
   primary?: boolean
   scale: number
   testID: string
+  windowWidth: number
 }) {
   return (
     <Pressable
@@ -235,52 +229,52 @@ function StageTenActionButton({ accessibilityLabel, disabled = false, fontSize, 
       testID={testID}
     >
       {primary ? <StageTenGradient from="#26D4C4" id="stage10-button-gradient" to="#008776" /> : null}
-      <Text style={{ color: primary ? 'white' : '#008C80', fontSize, fontWeight: '600', position: 'relative', textAlign: 'center', zIndex: 1 }}>{label}</Text>
+      <Text style={{ ...stageTypography('subheadline', windowWidth), color: primary ? 'white' : '#008C80', fontWeight: '600', position: 'relative', textAlign: 'center', zIndex: 1 }}>{label}</Text>
     </Pressable>
   )
 }
 
-function MetricTile({ children, flex, ft, gold = false, icon, lh, scale, title }: {
+function MetricTile({ children, flex, gold = false, icon, scale, title, windowWidth }: {
   children: ReactNode
   flex: number
-  ft: FontSizeFor
   gold?: boolean
   icon: StageTenIconName
-  lh: LineHeightFor
   scale: number
   title: string
+  windowWidth: number
 }) {
-  const titleLineHeight = lh(9.4, 1.38)
+  const titleTypography = stageTypography('caption2', windowWidth)
+  const titleLineHeight = titleTypography.lineHeight as number
 
   return (
     <View style={{ alignItems: 'center', backgroundColor: stageTenTokens.tile, borderColor: '#E5EEF1', borderRadius: 9 * scale, borderWidth: 1, flex, minHeight: 125 * scale, paddingBottom: 8 * scale, paddingHorizontal: 4 * scale, paddingTop: 8 * scale }}>
       <StageTenIcon color={gold ? stageTenTokens.gold : '#25AA98'} filled name={icon} size={22 * scale} />
       {/* Two title lines stay reserved, so a label that wraps in one tile cannot push its value below the neighbouring tiles. */}
-      <Text style={{ color: stageTenTokens.text, fontSize: ft(9.4), fontWeight: '600', lineHeight: titleLineHeight, marginTop: 5 * scale, minHeight: titleLineHeight * 2, textAlign: 'center' }}>{title}</Text>
+      <Text style={{ ...titleTypography, color: stageTenTokens.text, fontWeight: '600', marginTop: 5 * scale, minHeight: titleLineHeight * 2, textAlign: 'center' }}>{title}</Text>
       {children}
     </View>
   )
 }
 
-function MetricValue({ fontScale, ft, lh, marginTop, missing, preferred, testID, text }: {
+function MetricValue({ fontScale, marginTop, missing, testID, text, windowWidth }: {
   fontScale: number
-  ft: FontSizeFor
-  lh: LineHeightFor
   marginTop: number
   missing: boolean
-  preferred: number
   testID: string
   text: string
+  windowWidth: number
 }) {
   const [available, setAvailable] = useState(0)
 
   if (missing) {
     return (
-      <Text selectable style={[styles.metricValue, { fontSize: ft(METRIC_VALUE_MIN_CANVAS_SIZE), fontWeight: '600', lineHeight: lh(METRIC_VALUE_MIN_CANVAS_SIZE, 1.3), marginTop }]} testID={testID}>{text}</Text>
+      <Text selectable style={[stageTypography('footnote', windowWidth), styles.metricValue, { fontWeight: '600', marginTop }]} testID={testID}>{text}</Text>
     )
   }
 
-  const fontSize = fitStageTenValueSize(text, available, ft(preferred), ft(METRIC_VALUE_MIN_CANVAS_SIZE), fontScale)
+  const preferred = stageTypography('title3', windowWidth).fontSize as number
+  const floor = stageTypography('footnote', windowWidth).fontSize as number
+  const fontSize = fitStageTenValueSize(text, available, preferred, floor, fontScale)
 
   return (
     <View
@@ -291,7 +285,7 @@ function MetricValue({ fontScale, ft, lh, marginTop, missing, preferred, testID,
       style={styles.metricValueFrame}
       testID={`${testID}-frame`}
     >
-      <Text selectable style={[styles.metricValue, { fontSize, letterSpacing: fontSize * -0.028, lineHeight: stageLineHeight(fontSize, 1.25), marginTop }]} testID={testID}>{text}</Text>
+      <Text selectable style={[styles.metricValue, { fontSize, letterSpacing: fontSize * METRIC_VALUE_TRACKING_RATIO, lineHeight: Math.round(fontSize * METRIC_VALUE_LINE_HEIGHT_RATIO * 10) / 10, marginTop }]} testID={testID}>{text}</Text>
     </View>
   )
 }
@@ -330,7 +324,6 @@ const styles = StyleSheet.create({
   jobTitle: {
     color: '#0B2030',
     fontWeight: '700',
-    letterSpacing: -0.2,
   },
   metricMeta: {
     color: stageTenTokens.text,
@@ -361,6 +354,5 @@ const styles = StyleSheet.create({
   sectionTitle: {
     color: stageTenTokens.ink,
     fontWeight: '700',
-    letterSpacing: -0.2,
   },
 })
