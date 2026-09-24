@@ -6,7 +6,7 @@ import type { WorkerThemeTokens } from '../worker-theme'
 export const stageTwoStyles = StyleSheet.create({
   hero: {
     alignItems: 'stretch',
-    borderRadius: 24,
+    borderRadius: 22,
     borderWidth: 1,
     flexDirection: 'row',
     minHeight: 168,
@@ -64,7 +64,7 @@ export const stageTwoStyles = StyleSheet.create({
     fontWeight: '500',
   },
   heroService: {
-    ...typography.title2,
+    ...typography.title3,
     fontWeight: '700',
   },
   heroArea: {
@@ -119,16 +119,16 @@ export const stageTwoCardTokens = {
     sectionSubTop: 8,
   },
   stroke: { glyph: 1.95 },
-  /** Vietnamese stacks a tone mark above a vowel diacritic (`Kỹ`, `Đề`), which a line box under this
-   *  ratio clips on native even though CSS lets it overflow. */
-  lineHeightFloor: 1.36,
+  /** Every mark/row/section text role, named against the app's canonical Apple type scale
+   *  (design/theme.ts) instead of a bespoke per-card size — section header now matches row
+   *  title weight (body/600) per Tu's request, both read lighter than the old title3/700. */
   type: {
-    action: { ratio: 1.2, size: 24, tracking: -0.24, weight: '700' },
-    pill: { ratio: 1.2, size: 17, tracking: -0.16, weight: '600' },
-    rowSub: { ratio: 1.28, size: 19, tracking: -0.08, weight: '500' },
-    rowTitle: { ratio: 1.13, size: 24, tracking: -0.34, weight: '600' },
-    sectionSub: { ratio: 1.24, size: 20, tracking: -0.1, weight: '500' },
-    sectionTitle: { ratio: 1.08, size: 31, tracking: -0.5, weight: '700' },
+    action: { role: 'body', weight: '700' },
+    pill: { role: 'footnote', weight: '600' },
+    rowSub: { role: 'subheadline', weight: '500' },
+    rowTitle: { role: 'body', weight: '600' },
+    sectionSub: { role: 'subheadline', weight: '500' },
+    sectionTitle: { role: 'body', weight: '600' },
   },
 } as const
 

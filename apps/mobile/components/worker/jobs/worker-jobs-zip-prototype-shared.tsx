@@ -18,7 +18,7 @@ import type { AppLanguage } from '@/lib/app-language'
 import { WorkerV5PrimaryButtonFill } from '../ui/primitives-surfaces'
 import type { WorkerV5ScreenDefinition, WorkerV5ScreenId } from '../dock/types'
 import type { WorkerThemeTokens } from '../worker-theme'
-import { STAGE_MIN_TAP_SIZE, STAGE_REFERENCE_SCALE, stageFontSize, stageLineHeight } from './stage-ratio'
+import { STAGE_MIN_TAP_SIZE, stageButtonHeight, stageLayout, stageMetric, stageTypography } from './stage-ratio'
 import type { WorkerV5RoutePreviewState } from './use-worker-route-preview'
 import type { useFrontendWorkflow } from '@/lib/frontend-workflow-provider'
 import { prototypeStyles } from './worker-jobs-zip-prototype-styles'
@@ -64,7 +64,6 @@ export const workerJobsLegacyPrototypeOpportunityCutouts = {
   upholstery: require('@/assets/client-image-icons/worker-jobs-workart-upholstery-transparent.png') as ImageSourcePropType,
 } as const
 
-export const workerJobsLegacyPrototypeStageSevenArtwork = require('@/assets/client-image-icons/worker-stage-seven-approval-workart-transparent.png') as ImageSourcePropType
 export const workerJobsLegacyPrototypeStageEightCompletionWorkart = require('@/assets/client-image-icons/worker-stage-eight-completion-record-workart-transparent.png') as ImageSourcePropType
 export const workerJobsLegacyPrototypeStageNineWorkart = require('@/assets/client-image-icons/worker-stage-nine-completion-workart.png') as ImageSourcePropType
 export const workerJobsLegacyPrototypeStageTenWorkart = require('@/assets/client-image-icons/worker-stage-ten-earnings-workart.png') as ImageSourcePropType
@@ -256,6 +255,7 @@ export function WorkerJobsLegacyPrototypeStageActionButton({
   testID: string
 }) {
   const isDisabled = Boolean(disabled)
+  const { width: windowWidth } = useWindowDimensions()
   return (
     <Pressable
       accessibilityRole="button"
@@ -271,7 +271,7 @@ export function WorkerJobsLegacyPrototypeStageActionButton({
       testID={testID}
     >
       {primary && !isDisabled ? <WorkerV5PrimaryButtonFill disabled={false} variant="source" /> : null}
-      <Text adjustsFontSizeToFit minimumFontScale={0.84} numberOfLines={1} style={[prototypeStyles.stageActionText, primary ? prototypeStyles.stageActionPrimaryText : prototypeStyles.stageActionSecondaryText, isDisabled && prototypeStyles.stageActionDisabledText]}>{label}</Text>
+      <Text adjustsFontSizeToFit minimumFontScale={0.84} numberOfLines={1} style={[stageTypography('body', windowWidth), prototypeStyles.stageActionText, primary ? prototypeStyles.stageActionPrimaryText : prototypeStyles.stageActionSecondaryText, isDisabled && prototypeStyles.stageActionDisabledText]}>{label}</Text>
     </Pressable>
   )
 }
@@ -448,13 +448,7 @@ export function useWorkerJobsStageTwoScale(tokens: WorkerThemeTokens) {
   const px = (canvasSize: number) => canvasSize * unit
   const text = (kind: StageTwoTextKind): TextStyle => {
     const spec = stageTwo.type[kind]
-    const fontSize = stageFontSize(spec.size, STAGE_REFERENCE_SCALE.requestDetails, windowWidth)
-    return {
-      fontSize,
-      fontWeight: spec.weight,
-      letterSpacing: (spec.tracking / spec.size) * fontSize,
-      lineHeight: stageLineHeight(fontSize, Math.max(spec.ratio, stageTwo.lineHeightFloor)),
-    }
+    return { ...stageTypography(spec.role, windowWidth), fontWeight: spec.weight }
   }
 
   return {
@@ -462,8 +456,10 @@ export function useWorkerJobsStageTwoScale(tokens: WorkerThemeTokens) {
       const next = event.nativeEvent.layout.width
       if (next > 0 && Math.abs(next - measured) > 0.5) setMeasured(next)
     },
+    metric: (value: number) => stageMetric(value, windowWidth),
     palette: stageTwoPalette(tokens),
     px,
+    windowWidth,
     text,
   }
 }
@@ -502,7 +498,7 @@ function StageTwoGradient({ colors, locations, vector }: {
   )
 }
 
-export function WorkerJobsStageTwoCard({ children, scale: { palette, px }, testID }: {
+export function WorkerJobsStageTwoCard({ children, scale: { metric, palette, px }, testID }: {
   children: ReactNode
   scale: WorkerJobsStageTwoScale
   testID?: string
@@ -512,14 +508,14 @@ export function WorkerJobsStageTwoCard({ children, scale: { palette, px }, testI
       style={{
         backgroundColor: palette.card,
         borderColor: palette.cardBorder ?? undefined,
-        borderRadius: px(stageTwoGeometry.cardRadius),
+        borderRadius: metric(stageLayout.cardRadius),
         borderWidth: palette.cardBorder ? 1 : 0,
         boxShadow: palette.cardShadow
           ? `0 ${px(stageTwoGeometry.cardShadowY)}px ${px(stageTwoGeometry.cardShadowBlur)}px ${palette.cardShadow}`
           : undefined,
-        paddingBottom: px(stageTwoGeometry.cardPaddingBottom),
-        paddingHorizontal: px(stageTwoGeometry.cardPaddingX),
-        paddingTop: px(stageTwoGeometry.cardPaddingTop),
+        paddingBottom: metric(stageLayout.cardPadding),
+        paddingHorizontal: metric(stageLayout.cardPadding),
+        paddingTop: metric(stageLayout.cardPadding),
       }}
       testID={testID}
     >
@@ -541,7 +537,7 @@ export type WorkerJobsStageTwoRowData = {
 
 export function WorkerJobsStageTwoRow({ glyph, meta, metaLines = 3, scale, status, testID, title, tone = 'neutral' }:
   Omit<WorkerJobsStageTwoRowData, 'key'> & { scale: WorkerJobsStageTwoScale }) {
-  const { palette, px, text } = scale
+  const { metric, palette, px, text, windowWidth } = scale
   const pill = palette.pill[tone]
 
   return (
@@ -587,7 +583,7 @@ export function WorkerJobsStageTwoSection({ description, glyph, rows, scale, tes
   testID: string
   title: string
 }) {
-  const { palette, px, text } = scale
+  const { metric, palette, px, text, windowWidth } = scale
 
   return (
     <WorkerJobsStageTwoCard scale={scale} testID={testID}>
@@ -618,10 +614,10 @@ export function WorkerJobsStageTwoAction({ accessibilityLabel, disabled, label, 
   testID: string
   variant: 'ghost' | 'primary'
 }) {
-  const { palette, px, text } = scale
+  const { metric, palette, px, text, windowWidth } = scale
   const primary = variant === 'primary'
-  const height = Math.max(STAGE_MIN_TAP_SIZE, px(stageTwoGeometry.actionHeight))
-  const radius = px(stageTwoGeometry.actionRadius)
+  const height = stageButtonHeight(windowWidth)
+  const radius = metric(stageLayout.buttonRadius)
   const width = px(stageTwoGeometry.actionPrimaryFlex)
   // A 135deg CSS gradient has no react-native equivalent on a non-square box, so the ramp is laid
   // out in user space along the diagonal that gives the same 45deg iso-colour lines.

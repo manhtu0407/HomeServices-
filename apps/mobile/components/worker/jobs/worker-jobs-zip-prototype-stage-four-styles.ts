@@ -1,6 +1,7 @@
-import { StyleSheet } from 'react-native'
+import { Dimensions, StyleSheet } from 'react-native'
 
 import type { WorkerThemeTokens } from '../worker-theme'
+import { stageButtonHeight, stageLayout, stageMetric } from './stage-ratio'
 
 // Approved Stage 4 values from the fidelity reference; scoped here so global theme tokens stay untouched.
 export const stageFourGradient = {
@@ -23,6 +24,7 @@ export function getStageFourPalette(tokens: WorkerThemeTokens) {
 
 export function createStageFourStyles(scale: number, tokens: WorkerThemeTokens) {
   const s = (value: number) => Math.round(value * scale)
+  const m = (value: number) => stageMetric(value, Dimensions.get('window').width)
   const controlSize = Math.max(44, s(44))
   const palette = getStageFourPalette(tokens)
   // One gap drives both sides of the ETA sheet, so it stays exactly centred between the map card and the first content card.
@@ -41,13 +43,13 @@ export function createStageFourStyles(scale: number, tokens: WorkerThemeTokens) 
     card: {
       backgroundColor: tokens.base,
       borderColor: palette.hairline,
-      borderRadius: s(18),
+      borderRadius: m(stageLayout.cardRadius),
       borderWidth: 1,
       boxShadow: '0 2px 9px rgba(37, 73, 72, 0.035)',
       overflow: 'hidden',
     },
     cardContent: {
-      padding: s(10),
+      padding: m(stageLayout.innerPadding),
     },
     chip: {
       alignItems: 'center',
@@ -77,8 +79,8 @@ export function createStageFourStyles(scale: number, tokens: WorkerThemeTokens) 
       width: s(42),
     },
     contentStack: {
-      gap: s(6),
-      paddingHorizontal: s(12),
+      gap: m(stageLayout.componentGap),
+      paddingHorizontal: stageLayout.gutter,
     },
     customerActions: {
       flexDirection: 'row',
@@ -134,19 +136,17 @@ export function createStageFourStyles(scale: number, tokens: WorkerThemeTokens) 
     },
     error: {
       color: tokens.danger,
-      fontSize: s(12),
-      lineHeight: s(16),
       marginTop: s(1),
     },
     etaSheet: {
       backgroundColor: tokens.base,
       borderColor: palette.hairline,
-      borderRadius: s(21),
+      borderRadius: m(stageLayout.cardRadius),
       borderWidth: 1,
       marginBottom: etaSheetGap - contentStackTop,
-      marginHorizontal: s(12),
+      marginHorizontal: stageLayout.gutter,
       minHeight: Math.max(70, s(70)),
-      paddingHorizontal: s(12),
+      paddingHorizontal: m(stageLayout.innerPadding),
       paddingVertical: s(8),
       zIndex: 5,
     },
@@ -232,9 +232,9 @@ export function createStageFourStyles(scale: number, tokens: WorkerThemeTokens) 
     primary: {
       alignItems: 'center',
       backgroundColor: tokens.primary,
-      borderRadius: s(33),
+      borderRadius: m(stageLayout.buttonRadius),
       boxShadow: '0 7px 19px rgba(0, 169, 143, 0.19)',
-      height: Math.max(60, s(66)),
+      height: stageButtonHeight(Dimensions.get('window').width),
       justifyContent: 'center',
       marginTop: s(1),
       overflow: 'hidden',
@@ -267,14 +267,14 @@ export function createStageFourStyles(scale: number, tokens: WorkerThemeTokens) 
       alignItems: 'center',
       backgroundColor: tokens.base,
       borderColor: palette.hairline,
-      borderRadius: s(14),
+      borderRadius: m(stageLayout.buttonRadius),
       borderWidth: 1,
       boxShadow: '0 2px 8px rgba(31, 85, 82, 0.04)',
       flex: 1,
       flexDirection: 'row',
       gap: s(6),
       justifyContent: 'center',
-      minHeight: Math.max(46, s(46)),
+      minHeight: stageButtonHeight(Dimensions.get('window').width),
       paddingHorizontal: s(4),
     },
     smallActionRow: {

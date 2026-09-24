@@ -1,4 +1,5 @@
 import { RfqPricePanel } from '@/components/job/rfq-price-panel'
+import { typography } from '@/design/theme'
 import { getWorkerThemeTokens, useWorkerThemeMode } from '../worker-theme'
 import { type SetStateAction, useLayoutEffect, useRef, useState } from 'react'
 import { Alert, KeyboardAvoidingView, Modal, Platform, Pressable, Text as RNText, TextInput, View, type TextProps } from 'react-native'
@@ -598,9 +599,9 @@ export function WorkerV5InProgressBody({
         <Modal visible={stageFiveDetailsOpen} animationType={reduceMotion ? 'none' : 'slide'} onRequestClose={() => setStageFiveDetailsOpen(false)}>
           <View style={{ flex: 1, backgroundColor: '#FFFFFF', paddingTop: 48 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingBottom: 12 }}>
-              <Text style={{ fontSize: 20, fontWeight: '700', color: '#081D36' }}>{textByLanguage(language, 'Hồ sơ công việc', 'Work details')}</Text>
+              <Text style={{ ...typography.title3, fontWeight: '700', color: '#081D36' }}>{textByLanguage(language, 'Hồ sơ công việc', 'Work details')}</Text>
               <Pressable accessibilityRole="button" accessibilityLabel={textByLanguage(language, 'Đóng hồ sơ công việc', 'Close work details')} onPress={() => setStageFiveDetailsOpen(false)} style={{ minHeight: 44, justifyContent: 'center', paddingHorizontal: 12 }}>
-                <Text style={{ color: '#008D7B', fontWeight: '600' }}>{textByLanguage(language, 'Đóng', 'Close')}</Text>
+                <Text style={{ ...typography.footnote, color: '#008D7B', fontWeight: '600' }}>{textByLanguage(language, 'Đóng', 'Close')}</Text>
               </Pressable>
             </View>
             <View style={{ flex: 1 }}>
@@ -619,7 +620,7 @@ export function WorkerV5InProgressBody({
         <Modal visible={stageFiveNoteOpen} animationType={reduceMotion ? 'none' : 'slide'} transparent onRequestClose={() => setStageFiveNoteOpen(false)}>
           <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(8,29,54,0.22)' }}>
             <View style={{ backgroundColor: '#FFFFFF', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 20, gap: 12 }}>
-              <Text style={{ color: '#081D36', fontSize: 20, fontWeight: '700' }}>{textByLanguage(language, 'Ghi chú nhanh', 'Quick note')}</Text>
+              <Text style={{ ...typography.title3, color: '#081D36', fontWeight: '700' }}>{textByLanguage(language, 'Ghi chú nhanh', 'Quick note')}</Text>
               <TextInput
                 accessibilityLabel={textByLanguage(language, 'Ghi chú nhanh', 'Quick note')}
                 autoFocus
@@ -632,10 +633,10 @@ export function WorkerV5InProgressBody({
               />
               <View style={{ flexDirection: 'row', gap: 10 }}>
                 <Pressable accessibilityRole="button" accessibilityLabel={textByLanguage(language, 'Hủy ghi chú', 'Cancel note')} onPress={() => setStageFiveNoteOpen(false)} style={{ flex: 1, minHeight: 48, alignItems: 'center', justifyContent: 'center', borderColor: '#E4EFF0', borderRadius: 24, borderWidth: 1 }}>
-                  <Text style={{ color: '#496580', fontWeight: '600' }}>{textByLanguage(language, 'Hủy', 'Cancel')}</Text>
+                  <Text style={{ ...typography.body, color: '#496580', fontWeight: '600' }}>{textByLanguage(language, 'Hủy', 'Cancel')}</Text>
                 </Pressable>
                 <Pressable accessibilityRole="button" accessibilityLabel={textByLanguage(language, 'Lưu ghi chú', 'Save note')} disabled={phaseActionBusy} onPress={() => void saveStageFiveNote()} style={{ flex: 1, minHeight: 48, alignItems: 'center', justifyContent: 'center', backgroundColor: '#009F89', borderRadius: 24, opacity: phaseActionBusy ? 0.5 : 1 }}>
-                  <Text style={{ color: '#FFFFFF', fontWeight: '700' }}>{phaseActionBusy ? textByLanguage(language, 'Đang lưu…', 'Saving…') : textByLanguage(language, 'Lưu ghi chú', 'Save note')}</Text>
+                  <Text style={{ ...typography.body, color: '#FFFFFF', fontWeight: '700' }}>{phaseActionBusy ? textByLanguage(language, 'Đang lưu…', 'Saving…') : textByLanguage(language, 'Lưu ghi chú', 'Save note')}</Text>
                 </Pressable>
               </View>
             </View>

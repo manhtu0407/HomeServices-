@@ -65,9 +65,7 @@ describe('worker V5 icon assets', () => {
       expect(opportunitySource).not.toContain(`client-booking-workart-${service}.png`)
     }
 
-    expect(existsSync(clientImageAsset('worker-stage-seven-approval-workart-transparent.png'))).toBe(true)
-    expect(opportunitySource).toContain('worker-stage-seven-approval-workart-transparent.png')
-    expect(opportunitySource).not.toContain('worker-stage-seven-approval-workart.png')
+    expect(opportunitySource).not.toContain('worker-stage-seven-approval-workart')
   })
 
   it('keeps the replaced worker-facing copy and the accept boundary note gone', () => {

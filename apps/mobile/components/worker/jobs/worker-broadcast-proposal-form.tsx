@@ -1,6 +1,7 @@
 import { useReducer, useRef } from 'react'
 import { Pressable, StyleSheet, TextInput, View } from 'react-native'
 
+import { typography } from '@/design/theme'
 import type { AppLanguage } from '@/lib/app-language'
 import type {
   WorkerBroadcastProposalAction,
@@ -197,15 +198,15 @@ function validationMessage(code: string, language: AppLanguage) {
 }
 
 const styles = StyleSheet.create({
-  body: { fontSize: 14, lineHeight: 20 },
+  body: { ...typography.subheadline },
   button: { alignItems: 'center', borderRadius: 16, justifyContent: 'center', minHeight: 48, paddingHorizontal: 16 },
-  buttonText: { fontSize: 15, fontWeight: '800' },
+  buttonText: { ...typography.body, fontWeight: '700' },
   card: { borderRadius: 20, borderWidth: 1, gap: 10, padding: 16 },
-  error: { fontSize: 13, lineHeight: 18 },
-  label: { fontSize: 13, fontWeight: '700' },
+  error: { ...typography.footnote },
+  label: { ...typography.footnote, fontWeight: '700' },
   priceField: { flex: 1, gap: 6 },
-  priceInput: { borderRadius: 12, borderWidth: 1, fontSize: 15, minHeight: 46, paddingHorizontal: 12 },
+  priceInput: { ...typography.subheadline, borderRadius: 12, borderWidth: 1, minHeight: 46, paddingHorizontal: 12 },
   priceRow: { flexDirection: 'row', gap: 10 },
-  scopeInput: { borderRadius: 14, borderWidth: 1, fontSize: 15, lineHeight: 21, minHeight: 104, padding: 12 },
-  title: { fontSize: 18, fontWeight: '800', lineHeight: 24 },
+  scopeInput: { ...typography.subheadline, borderRadius: 14, borderWidth: 1, minHeight: 104, padding: 12 },
+  title: { ...typography.title3, fontWeight: '700' },
 })

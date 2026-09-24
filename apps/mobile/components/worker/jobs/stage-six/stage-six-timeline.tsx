@@ -13,11 +13,12 @@ import {
 import { Image } from 'expo-image'
 import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg'
 
+import type { AppleTypographyRole } from '@/design/theme'
 import type { AppLanguage } from '@/lib/app-language'
 import { useJobMediaPreviewUrls } from '@/lib/job-media-preview'
 
 import { textByLanguage } from '../../ui/format'
-import { STAGE_MAX_FONT_MULTIPLIER, STAGE_MIN_FONT_SIZE, STAGE_MIN_TAP_SIZE, STAGE_REFERENCE_SCALE, stageFontSize, stageLineHeight, stageTapSize } from '../stage-ratio'
+import { STAGE_MAX_FONT_MULTIPLIER, STAGE_MIN_TAP_SIZE, stageTapSize, stageTypography } from '../stage-ratio'
 import { stageSixAssets } from './stage-six-assets'
 import { StageSixIcon, type StageSixIconName } from './stage-six-icons'
 import { stageSixTokens } from './stage-six-tokens'
@@ -25,7 +26,6 @@ import { stageSixTokens } from './stage-six-tokens'
 const C = stageSixTokens.colors
 
 type StageSixField = 'items' | 'reason' | 'evidence' | 'price'
-type TypeSpec = readonly [size: number, lineHeight: number, letterSpacing?: number]
 
 const LAYOUT = {
   compact: {
@@ -62,29 +62,16 @@ const LAYOUT = {
 } as const
 
 const TYPE = {
-  compact: {
-    action: [13, 16],
-    attachmentHint: [11, 13, -0.13],
-    attachmentTitle: [12, 15],
-    eyebrow: [11, 15],
-    kael: [10, 15],
-    label: [12, 16, -0.17],
-    price: [15, 20, -0.35],
-    title: [16, 22, -0.45],
-    value: [12, 17, -0.2],
-  },
-  wide: {
-    action: [12, 16],
-    attachmentHint: [9.8, 13, -0.13],
-    attachmentTitle: [11.5, 15],
-    eyebrow: [11, 15],
-    kael: [11, 15],
-    label: [11.7, 16, -0.17],
-    price: [16, 21, -0.6],
-    title: [16, 21, -0.45],
-    value: [11.4, 16, -0.15],
-  },
-} as const satisfies Record<'compact' | 'wide', Record<string, TypeSpec>>
+  action: 'footnote',
+  attachmentHint: 'caption2',
+  attachmentTitle: 'caption1',
+  eyebrow: 'caption2',
+  kael: 'caption2',
+  label: 'caption1',
+  price: 'subheadline',
+  title: 'callout',
+  value: 'caption1',
+} as const satisfies Record<string, AppleTypographyRole>
 
 export type StageSixTimelineProps = {
   attachmentCount: number
@@ -222,15 +209,10 @@ export function StageSixTimeline({
   const compact = width < stageSixTokens.compactBreakpoint || fontScale > 1.15
   const variant = compact ? 'compact' : 'wide'
   const L = LAYOUT[variant]
-  const T = TYPE[variant]
   const scale = Math.min(stageSixTokens.scaleClamp.max, Math.max(stageSixTokens.scaleClamp.min, width / stageSixTokens.referenceWidth[variant]))
   const s = (value: number) => value * scale
   const glyph = (value: number) => s(value) * stageSixTokens.glyphScale
-  // Phone type rides the shared ramp; the wide artboard only renders in previews wider than any supported phone, so its type follows geometry.
-  const type = ([size, lineHeight, letterSpacing = 0]: TypeSpec): TextStyle => {
-    const fontSize = compact ? stageFontSize(size, STAGE_REFERENCE_SCALE.stageSix, windowWidth) : Math.max(STAGE_MIN_FONT_SIZE, Math.round(s(size) * 10) / 10)
-    return { fontSize, letterSpacing: letterSpacing * (fontSize / size), lineHeight: stageLineHeight(fontSize, lineHeight / size) }
-  }
+  const type = (role: AppleTypographyRole): TextStyle => stageTypography(role, windowWidth)
   const evidence = nonNegativeCount(evidenceCount)
   const attachments = nonNegativeCount(attachmentCount)
   const editLocked = busy || !canEdit
@@ -305,8 +287,8 @@ export function StageSixTimeline({
             <StageSixIcon color={C.heroGlyph} name="clock" size={glyph(L.glyph.hero)} strokeWidth={1.9} />
           </View>
           <View style={styles.heading}>
-            <StageSixText style={[styles.eyebrow, type(T.eyebrow), { marginBottom: s(1) }]}>{textByLanguage(language, 'Đề xuất thay đổi', 'Change proposal')}</StageSixText>
-            <StageSixText accessibilityRole="header" style={[styles.title, type(T.title)]}>{textByLanguage(language, 'Phạm vi công việc', 'Work scope')}</StageSixText>
+            <StageSixText style={[styles.eyebrow, type(TYPE.eyebrow), { marginBottom: s(1) }]}>{textByLanguage(language, 'Đề xuất thay đổi', 'Change proposal')}</StageSixText>
+            <StageSixText accessibilityRole="header" style={[styles.title, type(TYPE.title)]}>{textByLanguage(language, 'Phạm vi công việc', 'Work scope')}</StageSixText>
           </View>
           <Pressable
             accessibilityLabel={textByLanguage(language, 'Kael hỗ trợ soạn đề xuất', 'Kael helps draft the proposal')}
@@ -319,7 +301,7 @@ export function StageSixTimeline({
             testID="worker-v5-stage-six-kael-action"
           >
             <StageSixIcon color={C.kael} name="sparkle" size={s(L.glyph.sparkle)} />
-            <StageSixText numberOfLines={1} style={[styles.kaelText, type(T.kael)]}>{textByLanguage(language, 'Kael hỗ trợ soạn', 'Kael drafts')}</StageSixText>
+            <StageSixText numberOfLines={1} style={[styles.kaelText, type(TYPE.kael)]}>{textByLanguage(language, 'Kael hỗ trợ soạn', 'Kael drafts')}</StageSixText>
           </Pressable>
         </View>
 
@@ -375,8 +357,8 @@ export function StageSixTimeline({
                     { minHeight: rowMinHeight },
                   ]}
                 >
-                  <StageSixText style={[styles.rowLabel, type(T.label), !compact && { width: s(LAYOUT.wide.labelWidth) }]}>{field.title}</StageSixText>
-                  <StageSixText style={[styles.rowValue, compact && styles.rowValueCompact, type(field.key === 'price' ? T.price : T.value), field.key === 'price' && styles.price]}>{field.value}</StageSixText>
+                  <StageSixText style={[styles.rowLabel, type(TYPE.label), !compact && { width: s(LAYOUT.wide.labelWidth) }]}>{field.title}</StageSixText>
+                  <StageSixText style={[styles.rowValue, compact && styles.rowValueCompact, type(field.key === 'price' ? TYPE.price : TYPE.value), field.key === 'price' && styles.price]}>{field.value}</StageSixText>
                   {index < fields.length - 1 ? <View pointerEvents="none" style={styles.rowDivider} /> : null}
                 </View>
               </Pressable>
@@ -444,10 +426,10 @@ export function StageSixTimeline({
             </View>
           )}
           <View style={[styles.attachmentCopy, { gap: s(2) }]}>
-            <StageSixText numberOfLines={1} style={[styles.attachmentTitle, type(T.attachmentTitle)]}>
+            <StageSixText numberOfLines={1} style={[styles.attachmentTitle, type(TYPE.attachmentTitle)]}>
               {attachments ? textByLanguage(language, `${attachments} tệp đính kèm`, attachments === 1 ? '1 attachment' : `${attachments} attachments`) : textByLanguage(language, 'Chưa có', 'None')}
             </StageSixText>
-            <StageSixText style={[styles.attachmentHint, type(T.attachmentHint)]}>
+            <StageSixText style={[styles.attachmentHint, type(TYPE.attachmentHint)]}>
               {attachments ? textByLanguage(language, 'Chọn lại file, ảnh', 'Choose files or photos again') : textByLanguage(language, 'Thêm file, ảnh (nếu có)', 'Add files or photos (optional)')}
             </StageSixText>
           </View>
@@ -475,7 +457,7 @@ export function StageSixTimeline({
           >
             <StageSixButtonBackground radius={s(L.button.radius)} variant="secondary" />
             <StageSixIcon color={C.secondaryInk} name="edit" size={s(L.glyph.edit)} />
-            <StageSixText numberOfLines={1} style={[styles.actionText, styles.secondaryText, type(T.action)]}>{textByLanguage(language, 'Chỉnh sửa', 'Edit')}</StageSixText>
+            <StageSixText numberOfLines={1} style={[styles.actionText, styles.secondaryText, type(TYPE.action)]}>{textByLanguage(language, 'Chỉnh sửa', 'Edit')}</StageSixText>
           </Pressable>
           <Pressable
             accessibilityLabel={primaryLabel}
@@ -501,7 +483,7 @@ export function StageSixTimeline({
                 <StageSixIcon color={C.checkGlyph} name="check" size={s(L.glyph.check)} strokeWidth={2.3} />
               </View>
             )}
-            <StageSixText numberOfLines={2} style={[styles.actionText, styles.primaryText, type(T.action)]}>{primaryLabel}</StageSixText>
+            <StageSixText numberOfLines={2} style={[styles.actionText, styles.primaryText, type(TYPE.action)]}>{primaryLabel}</StageSixText>
           </Pressable>
         </View>
       </View>

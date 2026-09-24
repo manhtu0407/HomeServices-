@@ -219,7 +219,6 @@ export const styles = StyleSheet.create({
   },
   timerLabelJobsReview: {
     color: '#718787',
-    letterSpacing: 0.2,
   },
   timerRing: {
     alignItems: 'center',

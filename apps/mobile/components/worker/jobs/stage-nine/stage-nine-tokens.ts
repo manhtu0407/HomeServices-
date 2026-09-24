@@ -36,10 +36,13 @@ export const stageNineTokens = {
     // content, so large text or an error note never ends the scroll under the floating dock.
     dockClearance: 63,
   },
+  /** Named against the app's canonical Apple type scale (design/theme.ts) instead of a bespoke
+   *  canvas size, so an empty Stage 9 reads as one system with the rest of the app. `quote` and
+   *  `button` share a role, matching how their canvas sizes were already identical (21/21). */
   typography: {
-    quote: { size: 21, lineHeight: 29, tracking: 0.1 },
-    title: { size: 26, lineHeight: 34, tracking: -0.15 },
-    body: { size: 20, lineHeight: 28, tracking: 0 },
-    button: { size: 21, lineHeight: 28, tracking: -0.25 },
+    quote: { role: 'title2', weight: '400' },
+    title: { role: 'title1', weight: '700' },
+    body: { role: 'title3', weight: '400' },
+    button: { role: 'title2', weight: '600' },
   },
 } as const

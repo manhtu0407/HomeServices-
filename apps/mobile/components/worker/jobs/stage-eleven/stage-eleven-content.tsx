@@ -1,6 +1,7 @@
 import React from 'react'
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
+import { Dimensions, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { Image } from 'expo-image'
+import { stageTypography } from '../stage-ratio'
 import { StageElevenIcon, type StageElevenIconName } from './stage-eleven-icons'
 import { StageElevenSuccess } from './stage-eleven-success'
 import { formatStageElevenDate, formatStageElevenMoney, stageElevenServiceName, text11 } from './stage-eleven-model'
@@ -56,6 +57,10 @@ export class StageElevenContent extends React.PureComponent<StageElevenContentPr
   render() {
     const { model, actions, supplement = {}, photoSource, reduceMotion, reduceTransparency, motionKey, showHeader = true } = this.props
     const language = this.props.language ?? 'vi'
+    // The reference design never resolved text against the window at all (a real bug, not a
+    // style nit — this screen was frozen at whatever size it first measured); it now goes
+    // through the same canonical scale every other stage uses.
+    const windowWidth = Dimensions.get('window').width
     const tx = (vi: string, en: string) => text11(language, vi, en)
     const confirmed = model.state === 'confirmed'
     const payout = confirmed && supplement.bankPayoutConfirmed === true
@@ -91,45 +96,48 @@ export class StageElevenContent extends React.PureComponent<StageElevenContentPr
       <View style={s.hero} testID="worker-v5-stage-eleven-hero">
         <StageElevenSuccess state={model.state} reduceMotion={reduceMotion} motionKey={motionKey ?? `${model.jobId}:${model.recordedAt}:${model.state}`}/>
         <View style={[s.successPill, !confirmed && s.pendingPill]}>
-          <Text accessibilityRole="header" accessibilityLiveRegion="polite" style={[s.successTitle, !confirmed && { color: t.warning }]}>{titles[model.state]}</Text>
+          <Text accessibilityRole="header" accessibilityLiveRegion="polite" style={[stageTypography('headline', windowWidth), s.successTitle, !confirmed && { color: t.warning }]}>{titles[model.state]}</Text>
         </View>
-        <Text selectable style={[s.amount, model.amount === null && s.amountUnknown]} testID="worker-v5-stage-eleven-amount">
+        <Text selectable style={[
+          model.amount === null ? { ...stageTypography('title2', windowWidth), fontWeight: '700' } : stageTypography('largeTitle', windowWidth, 47 / 34),
+          s.amount,
+        ]} testID="worker-v5-stage-eleven-amount">
           {model.amount === null ? (confirmed ? tx('Số tiền đang cập nhật', 'Amount unavailable') : '—') : money(model.amount)}
         </Text>
-        <Text style={s.heroSubtitle}>{amountDescription}</Text>
+        <Text style={[stageTypography('footnote', windowWidth), s.heroSubtitle]}>{amountDescription}</Text>
       </View>
 
       <View style={s.summary}>
         <Summary icon="wallet" title={payout ? tx('Đã chuyển khoản', 'Transferred') : tx('Thu nhập', 'Earnings')}
           value={confirmed ? (model.amountKind === 'worker-net' ? tx('Đã ghi nhận', 'Recorded') : tx('Xem đối soát', 'View ledger')) : tx('Đang chờ', 'Pending')}
-          onPress={actions.onEarnings} testID="worker-v5-stage-eleven-earnings-action"/>
+          onPress={actions.onEarnings} testID="worker-v5-stage-eleven-earnings-action" windowWidth={windowWidth}/>
         <Summary icon={confirmed ? 'check' : 'clock'} title={tx('Trạng thái', 'Status')}
-          value={confirmed ? tx('Đã xác nhận', 'Confirmed') : tx('Chưa xác nhận', 'Not confirmed')}/>
+          value={confirmed ? tx('Đã xác nhận', 'Confirmed') : tx('Chưa xác nhận', 'Not confirmed')} windowWidth={windowWidth}/>
         <Summary icon="receipt" title={receipt ? tx('Có biên lai', 'Receipt ready') : tx('Biên lai', 'Receipt')}
-          value={receipt ? tx('Đã lưu hệ thống', 'Stored') : tx('Chưa có tệp', 'Not available')}/>
+          value={receipt ? tx('Đã lưu hệ thống', 'Stored') : tx('Chưa có tệp', 'Not available')} windowWidth={windowWidth}/>
       </View>
 
       <Card reduceTransparency={reduceTransparency} testID="stage11-job-card">
         <View style={s.cardHeading}>
-          <View style={s.headingLabel}><StageElevenIcon name="briefcase" color={t.green} size={22} filled/><Text style={s.cardTitle}>{tx('Thông tin công việc', 'Job details')}</Text></View>
-          <Text style={s.chip}>{model.job.completed ? tx('Đã hoàn tất', 'Completed') : tx('Đang cập nhật', 'Updating')}</Text>
+          <View style={s.headingLabel}><StageElevenIcon name="briefcase" color={t.green} size={22} filled/><Text style={[stageTypography('subheadline', windowWidth), s.cardTitle]}>{tx('Thông tin công việc', 'Job details')}</Text></View>
+          <Text style={[stageTypography('caption2', windowWidth), s.chip]}>{model.job.completed ? tx('Đã hoàn tất', 'Completed') : tx('Đang cập nhật', 'Updating')}</Text>
         </View>
         <View style={s.jobRow}>
           <View style={[s.photo, this.state.compact && s.photoCompact]}>
             {photoSource && !this.state.photoFailed
               ? <Image source={photoSource} contentFit="cover" style={s.photoImage} onError={() => this.setState({ photoFailed: true })}
                   accessibilityLabel={tx('Ảnh của công việc', 'Job photograph')}/>
-              : <View style={s.photoFallback}><StageElevenIcon name="home" size={32} color="#9CB9AD"/><Text style={s.photoFallbackText}>{tx('Chưa có ảnh', 'No photo')}</Text></View>}
+              : <View style={s.photoFallback}><StageElevenIcon name="home" size={32} color="#9CB9AD"/><Text style={[stageTypography('caption2', windowWidth), s.photoFallbackText]}>{tx('Chưa có ảnh', 'No photo')}</Text></View>}
           </View>
           <View style={s.jobDetails}>
-            <Text style={s.jobName}>{stageElevenServiceName(model.job.serviceType, language)}</Text>
-            <Meta icon="pin" value={model.job.district ?? unknown}/>
-            <Meta icon="user" value={supplement.customerMaskedName ? tx(`Khách: ${supplement.customerMaskedName}`, `Customer: ${supplement.customerMaskedName}`) : tx('Thông tin khách được bảo vệ', 'Customer details protected')}/>
-            <Meta icon="calendar" value={formatStageElevenDate(model.job.completedAt, language)}/>
+            <Text style={[stageTypography('callout', windowWidth), s.jobName]}>{stageElevenServiceName(model.job.serviceType, language)}</Text>
+            <Meta icon="pin" value={model.job.district ?? unknown} windowWidth={windowWidth}/>
+            <Meta icon="user" value={supplement.customerMaskedName ? tx(`Khách: ${supplement.customerMaskedName}`, `Customer: ${supplement.customerMaskedName}`) : tx('Thông tin khách được bảo vệ', 'Customer details protected')} windowWidth={windowWidth}/>
+            <Meta icon="calendar" value={formatStageElevenDate(model.job.completedAt, language)} windowWidth={windowWidth}/>
             {hasRating ? <View style={s.rating} accessibilityLabel={tx(`Đánh giá đơn: ${supplement.jobRating} trên 5`, `Job rating: ${supplement.jobRating} out of 5`)}>
               {[0, 1, 2, 3, 4].map((i) => <StageElevenIcon key={i} name="star" size={17} color={t.gold} filled={i < Math.floor(supplement.jobRating!)}/>)}
-              <Text style={s.ratingValue}>{supplement.jobRating!.toFixed(1)}</Text>
-            </View> : <Text style={s.noRating}>{tx('Chưa có đánh giá cho đơn này', 'No review for this job yet')}</Text>}
+              <Text style={[stageTypography('subheadline', windowWidth), s.ratingValue]}>{supplement.jobRating!.toFixed(1)}</Text>
+            </View> : <Text style={[stageTypography('caption2', windowWidth), s.noRating]}>{tx('Chưa có đánh giá cho đơn này', 'No review for this job yet')}</Text>}
           </View>
         </View>
       </Card>
@@ -137,15 +145,15 @@ export class StageElevenContent extends React.PureComponent<StageElevenContentPr
       <Card reduceTransparency={reduceTransparency} testID="worker-v5-stage-eleven-payment-card">
         <Pressable style={s.disclosureHeading} onPress={() => this.setState((state) => ({ paymentExpanded: !state.paymentExpanded }))}
           accessibilityRole="button" accessibilityState={{ expanded: this.state.paymentExpanded }} accessibilityLabel={tx('Thông tin thanh toán', 'Payment information')} testID="stage11-payment-toggle">
-          <View style={s.headingLabel}><StageElevenIcon name="bank"/><Text style={s.cardTitle}>{tx('Thông tin thanh toán', 'Payment information')}</Text></View>
+          <View style={s.headingLabel}><StageElevenIcon name="bank"/><Text style={[stageTypography('subheadline', windowWidth), s.cardTitle]}>{tx('Thông tin thanh toán', 'Payment information')}</Text></View>
           <View style={{ transform: [{ rotate: this.state.paymentExpanded ? '180deg' : '0deg' }] }}><StageElevenIcon name="down" size={18}/></View>
         </Pressable>
         {this.state.paymentExpanded && <View style={s.detailRows} testID="stage11-payment-details">
-          <Detail icon="bank" label={tx('Phương thức', 'Method')} value={model.method === 'bank' ? tx('Chuyển khoản ngân hàng', 'Bank transfer') : model.method === 'cash' ? tx('Thanh toán trực tiếp', 'Direct payment') : unknown}/>
-          <Detail icon="clock" label={tx('Thời gian ghi nhận', 'Recorded at')} value={formatStageElevenDate(model.recordedAt, language)}/>
-          <Detail icon="wallet" label={tx('Tài khoản nhận', 'Receiver account')} value={supplement.receiverAccountLabel ?? unknown}/>
+          <Detail icon="bank" label={tx('Phương thức', 'Method')} value={model.method === 'bank' ? tx('Chuyển khoản ngân hàng', 'Bank transfer') : model.method === 'cash' ? tx('Thanh toán trực tiếp', 'Direct payment') : unknown} windowWidth={windowWidth}/>
+          <Detail icon="clock" label={tx('Thời gian ghi nhận', 'Recorded at')} value={formatStageElevenDate(model.recordedAt, language)} windowWidth={windowWidth}/>
+          <Detail icon="wallet" label={tx('Tài khoản nhận', 'Receiver account')} value={supplement.receiverAccountLabel ?? unknown} windowWidth={windowWidth}/>
           <View style={s.transactionRow}>
-            <View style={s.transactionValue}><Detail icon="receipt" label={tx('Mã thanh toán', 'Payment reference')} value={model.transactionCode ?? unknown}/></View>
+            <View style={s.transactionValue}><Detail icon="receipt" label={tx('Mã thanh toán', 'Payment reference')} value={model.transactionCode ?? unknown} windowWidth={windowWidth}/></View>
             {model.transactionCode && actions.onCopyTransaction && <Pressable style={s.copy} accessibilityRole="button"
               accessibilityLabel={tx('Sao chép mã thanh toán', 'Copy payment reference')}
               disabled={this.state.busy} onPress={() => void this.run(() => actions.onCopyTransaction!(model.transactionCode!), tx('Đã sao chép mã thanh toán', 'Payment reference copied'))}
@@ -155,26 +163,26 @@ export class StageElevenContent extends React.PureComponent<StageElevenContentPr
       </Card>
 
       <Card reduceTransparency={reduceTransparency} testID="stage11-income-card">
-        <View style={s.cardHeading}><View style={s.headingLabel}><StageElevenIcon name="coins"/><Text style={s.cardTitle}>{tx('Chi tiết thu nhập', 'Earnings breakdown')}</Text></View></View>
+        <View style={s.cardHeading}><View style={s.headingLabel}><StageElevenIcon name="coins"/><Text style={[stageTypography('subheadline', windowWidth), s.cardTitle]}>{tx('Chi tiết thu nhập', 'Earnings breakdown')}</Text></View></View>
         {model.income ? <View style={s.detailRows}>
-          <Detail icon="home" label={tx('Giá trị công việc', 'Job value')} value={money(model.income.gross)}/>
-          <Detail icon="wallet" label={tx('Phí nền tảng', 'Platform fee')} value={`${model.income.fee > 0 ? '−' : ''}${money(model.income.fee)}`}/>
-          <View style={s.totalRow}><Text style={s.totalLabel}>{tx('Thu nhập thực nhận', 'Net earnings')}</Text><Text selectable style={s.totalValue}>{money(model.income.net)}</Text></View>
-        </View> : <View><Text style={s.emptyCopy}>{tx('Chưa có chi tiết đối soát. Không dùng giá dịch vụ để thay cho thu nhập thực nhận.', 'Settlement breakdown is not available. The service price is not your net earnings.')}</Text>
-          <Pressable onPress={actions.onHistory} accessibilityRole="button" style={s.inlineLink} testID="stage11-income-history-action"><Text style={s.linkText}>{tx('Xem sổ thu nhập', 'Open earnings ledger')}</Text></Pressable></View>}
+          <Detail icon="home" label={tx('Giá trị công việc', 'Job value')} value={money(model.income.gross)} windowWidth={windowWidth}/>
+          <Detail icon="wallet" label={tx('Phí nền tảng', 'Platform fee')} value={`${model.income.fee > 0 ? '−' : ''}${money(model.income.fee)}`} windowWidth={windowWidth}/>
+          <View style={s.totalRow}><Text style={[stageTypography('footnote', windowWidth), s.totalLabel]}>{tx('Thu nhập thực nhận', 'Net earnings')}</Text><Text selectable style={[stageTypography('title3', windowWidth), s.totalValue]}>{money(model.income.net)}</Text></View>
+        </View> : <View><Text style={[stageTypography('caption1', windowWidth), s.emptyCopy]}>{tx('Chưa có chi tiết đối soát. Không dùng giá dịch vụ để thay cho thu nhập thực nhận.', 'Settlement breakdown is not available. The service price is not your net earnings.')}</Text>
+          <Pressable onPress={actions.onHistory} accessibilityRole="button" style={s.inlineLink} testID="stage11-income-history-action"><Text style={[stageTypography('footnote', windowWidth), s.linkText]}>{tx('Xem sổ thu nhập', 'Open earnings ledger')}</Text></Pressable></View>}
       </Card>
 
       {confirmed && <View style={s.thanks} testID="stage11-thanks">
         <View style={s.thanksIcon} accessible={false}><StageElevenIcon name="sprout" size={23} color={t.green} filled/></View>
-        <View style={s.thanksCopy}><Text style={s.thanksTitle}>{tx('Cảm ơn bạn!', 'Thank you!')}</Text>
-          <Text style={s.thanksBody}>{tx('Hẹn gặp lại ở những công việc tiếp theo.', 'See you on your next assignment.')}</Text></View>
+        <View style={s.thanksCopy}><Text style={[stageTypography('subheadline', windowWidth), s.thanksTitle]}>{tx('Cảm ơn bạn!', 'Thank you!')}</Text>
+          <Text style={[stageTypography('caption1', windowWidth), s.thanksBody]}>{tx('Hẹn gặp lại ở những công việc tiếp theo.', 'See you on your next assignment.')}</Text></View>
       </View>}
       {!confirmed && actions.onRefresh && <Button label={this.state.busy ? tx('Đang cập nhật…', 'Updating…') : tx('Kiểm tra lại thanh toán', 'Refresh payment')}
-        icon="refresh" disabled={this.state.busy} onPress={() => void this.run(actions.onRefresh!)} testID="stage11-refresh"/>}
-      {this.state.notice && <Text selectable accessibilityLiveRegion="polite" style={s.notice} testID="stage11-notice">{this.state.notice}</Text>}
+        icon="refresh" disabled={this.state.busy} onPress={() => void this.run(actions.onRefresh!)} testID="stage11-refresh" windowWidth={windowWidth}/>}
+      {this.state.notice && <Text selectable accessibilityLiveRegion="polite" style={[stageTypography('caption1', windowWidth), s.notice]} testID="stage11-notice">{this.state.notice}</Text>}
       <View style={s.actions}>
         <Button primary icon="home" label={actions.onHome ? tx('Về trang chủ', 'Back to home') : tx('Mở thu nhập', 'Open earnings')}
-          onPress={actions.onHome ?? actions.onEarnings} testID="stage11-home"/>
+          onPress={actions.onHome ?? actions.onEarnings} testID="stage11-home" windowWidth={windowWidth}/>
       </View>
     </View>
   }
@@ -189,26 +197,26 @@ export function StageElevenScreen(props: StageElevenContentProps & { bottomInset
     <StageElevenContent {...props}/>
   </ScrollView>
 }
-function Summary({ icon, title, value, onPress, testID }: { icon: StageElevenIconName; title: string; value: string; onPress?: () => void; testID?: string }) {
+function Summary({ icon, title, value, onPress, testID, windowWidth }: { icon: StageElevenIconName; title: string; value: string; onPress?: () => void; testID?: string; windowWidth: number }) {
   const body = <><StageElevenIcon name={icon} color={t.green} size={25} filled/>
-    <Text style={s.summaryTitle}>{title}</Text><Text style={s.summaryValue}>{value}</Text></>
+    <Text style={[stageTypography('caption1', windowWidth), s.summaryTitle]}>{title}</Text><Text style={[stageTypography('caption2', windowWidth), s.summaryValue]}>{value}</Text></>
   return onPress ? <Pressable style={s.summaryTile} onPress={onPress} accessibilityRole="button" testID={testID}>{body}</Pressable>
     : <View style={s.summaryTile}>{body}</View>
 }
 function Card({ children, reduceTransparency, testID }: { children: React.ReactNode; reduceTransparency?: boolean; testID?: string }) {
   return <View style={[s.card, reduceTransparency && { boxShadow: 'none' }]} testID={testID}>{children}</View>
 }
-function Meta({ icon, value }: { icon: StageElevenIconName; value: string }) {
-  return <View style={s.meta}><StageElevenIcon name={icon} size={16}/><Text selectable style={s.metaText}>{value}</Text></View>
+function Meta({ icon, value, windowWidth }: { icon: StageElevenIconName; value: string; windowWidth: number }) {
+  return <View style={s.meta}><StageElevenIcon name={icon} size={16}/><Text selectable style={[stageTypography('caption1', windowWidth), s.metaText]}>{value}</Text></View>
 }
-function Detail({ icon, label, value }: { icon: StageElevenIconName; label: string; value: string }) {
-  return <View style={s.detail}><StageElevenIcon name={icon} size={17}/><Text style={s.detailLabel}>{label}</Text><Text selectable style={s.detailValue}>{value}</Text></View>
+function Detail({ icon, label, value, windowWidth }: { icon: StageElevenIconName; label: string; value: string; windowWidth: number }) {
+  return <View style={s.detail}><StageElevenIcon name={icon} size={17}/><Text style={[stageTypography('caption1', windowWidth), s.detailLabel]}>{label}</Text><Text selectable style={[stageTypography('caption1', windowWidth), s.detailValue]}>{value}</Text></View>
 }
-function Button({ label, icon, onPress, primary, disabled, testID }: { label: string; icon: StageElevenIconName; onPress: () => void; primary?: boolean; disabled?: boolean; testID?: string }) {
+function Button({ label, icon, onPress, primary, disabled, testID, windowWidth }: { label: string; icon: StageElevenIconName; onPress: () => void; primary?: boolean; disabled?: boolean; testID?: string; windowWidth: number }) {
   return <Pressable onPress={onPress} disabled={disabled} accessibilityRole="button" accessibilityState={{ disabled: !!disabled }}
     style={({ pressed }) => [s.button, primary && s.primaryButton, disabled && s.disabled, pressed && !disabled && s.pressed]} testID={testID}>
     <StageElevenIcon name={icon} size={19} color={primary ? '#FFFFFF' : t.text} filled={!!primary}/>
-    <Text style={[s.buttonText, primary && { color: '#FFFFFF' }]}>{label}</Text>
+    <Text style={[stageTypography('footnote', windowWidth), s.buttonText, primary && { color: '#FFFFFF' }]}>{label}</Text>
   </Pressable>
 }
 const s = StyleSheet.create({
@@ -219,43 +227,42 @@ const s = StyleSheet.create({
   back: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', backgroundColor: '#F9FCFB', boxShadow: t.shadow },
   hero: { alignItems: 'center', paddingTop: 0, paddingBottom: 5 },
   successPill: { borderRadius: 99, backgroundColor: t.mintStrong, paddingVertical: 7, paddingHorizontal: 18, maxWidth: '100%' },
-  pendingPill: { backgroundColor: '#FFF6E8' }, successTitle: { fontSize: 17, lineHeight: 22, fontWeight: '600', letterSpacing: -.3, color: t.greenDark, textAlign: 'center' },
-  amount: { fontSize: 47, lineHeight: 58, fontWeight: '700', letterSpacing: -1.6, fontVariant: ['tabular-nums'], color: t.greenDeep, marginTop: 7 },
-  amountUnknown: { fontSize: 23, lineHeight: 46, letterSpacing: -.5 },
-  heroSubtitle: { fontSize: 13, lineHeight: 19, color: t.muted, textAlign: 'center', paddingHorizontal: 8, marginTop: 1 },
+  pendingPill: { backgroundColor: '#FFF6E8' }, successTitle: { fontWeight: '600', color: t.greenDark, textAlign: 'center' },
+  amount: { fontWeight: '700', fontVariant: ['tabular-nums'], color: t.greenDeep, marginTop: 7 },
+  heroSubtitle: { color: t.muted, textAlign: 'center', paddingHorizontal: 8, marginTop: 1 },
   summary: { flexDirection: 'row', gap: 9 },
   summaryTile: { flex: 1, backgroundColor: t.mint, borderRadius: 16, paddingHorizontal: 5, paddingVertical: 13, minHeight: 97, alignItems: 'center', justifyContent: 'center', gap: 5 },
-  summaryTitle: { fontSize: 12, lineHeight: 16, textAlign: 'center', fontWeight: '600', color: t.text },
-  summaryValue: { fontSize: 11, lineHeight: 15, textAlign: 'center', color: t.muted },
+  summaryTitle: { textAlign: 'center', fontWeight: '600', color: t.text },
+  summaryValue: { textAlign: 'center', color: t.muted },
   card: { backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: t.line, borderRadius: t.cardRadius, padding: 13, boxShadow: t.shadow },
   cardHeading: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 7, marginBottom: 12, minHeight: 28 },
   headingLabel: { flexDirection: 'row', alignItems: 'center', gap: 8, flexShrink: 1 },
-  cardTitle: { fontSize: 15, lineHeight: 20, fontWeight: '600', letterSpacing: -.25, color: t.text, flexShrink: 1 },
-  chip: { borderRadius: 99, backgroundColor: t.mint, color: t.greenDark, fontSize: 10, lineHeight: 15, fontWeight: '600', paddingHorizontal: 9, paddingVertical: 5, overflow: 'hidden' },
+  cardTitle: { fontWeight: '600', color: t.text, flexShrink: 1 },
+  chip: { borderRadius: 99, backgroundColor: t.mint, color: t.greenDark, fontWeight: '600', paddingHorizontal: 9, paddingVertical: 5, overflow: 'hidden' },
   jobRow: { flexDirection: 'row', gap: 12, alignItems: 'stretch' }, photo: { width: 105, minHeight: 120, borderRadius: 12, overflow: 'hidden', backgroundColor: '#F3F7F5' },
   photoCompact: { width: 84 }, photoImage: { width: '100%', height: '100%', position: 'absolute' },
-  photoFallback: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: 6 }, photoFallbackText: { fontSize: 10, color: t.muted },
-  jobDetails: { flex: 1, gap: 5 }, jobName: { fontSize: 16, lineHeight: 21, fontWeight: '600', color: t.text, letterSpacing: -.25 },
-  meta: { flexDirection: 'row', gap: 6, alignItems: 'flex-start' }, metaText: { flex: 1, fontSize: 12, lineHeight: 17, color: t.muted },
-  rating: { flexDirection: 'row', alignItems: 'center', gap: 1, marginTop: 2 }, ratingValue: { marginLeft: 6, fontSize: 15, fontWeight: '600', color: t.text },
-  noRating: { fontSize: 11, lineHeight: 16, color: t.muted },
+  photoFallback: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: 6 }, photoFallbackText: { color: t.muted },
+  jobDetails: { flex: 1, gap: 5 }, jobName: { fontWeight: '600', color: t.text },
+  meta: { flexDirection: 'row', gap: 6, alignItems: 'flex-start' }, metaText: { flex: 1, color: t.muted },
+  rating: { flexDirection: 'row', alignItems: 'center', gap: 1, marginTop: 2 }, ratingValue: { marginLeft: 6, fontWeight: '600', color: t.text },
+  noRating: { color: t.muted },
   disclosureHeading: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', minHeight: 44, marginTop: -7, marginBottom: 3 },
   detailRows: { gap: 12 }, detail: { flexDirection: 'row', alignItems: 'flex-start', gap: 7 },
-  detailLabel: { fontSize: 12, lineHeight: 18, color: t.muted, flex: 1 },
-  detailValue: { fontSize: 12, lineHeight: 18, color: t.text, textAlign: 'right', flex: 1.15, fontVariant: ['tabular-nums'] },
+  detailLabel: { color: t.muted, flex: 1 },
+  detailValue: { color: t.text, textAlign: 'right', flex: 1.15, fontVariant: ['tabular-nums'] },
   transactionRow: { flexDirection: 'row', alignItems: 'center' }, transactionValue: { flex: 1 }, copy: { width: 44, height: 44, marginVertical: -13, alignItems: 'flex-end', justifyContent: 'center' },
   totalRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderTopWidth: 1, borderTopColor: t.line, paddingTop: 12, gap: 10 },
-  totalLabel: { flexShrink: 1, fontSize: 13, lineHeight: 18, fontWeight: '600', color: t.text },
-  totalValue: { fontSize: 19, lineHeight: 24, fontWeight: '700', color: t.green, fontVariant: ['tabular-nums'] },
-  emptyCopy: { fontSize: 12, lineHeight: 19, color: t.muted }, inlineLink: { minHeight: 44, justifyContent: 'center' }, linkText: { color: t.greenDark, fontSize: 13, fontWeight: '600' },
+  totalLabel: { flexShrink: 1, fontWeight: '600', color: t.text },
+  totalValue: { fontWeight: '700', color: t.green, fontVariant: ['tabular-nums'] },
+  emptyCopy: { color: t.muted }, inlineLink: { minHeight: 44, justifyContent: 'center' }, linkText: { color: t.greenDark, fontWeight: '600' },
   // Quiet, white closing note: same content inset and typography as the cards.
   // No mint banner, oversized icon bubble, or additional card inside the card stack.
   thanks: { flexDirection: 'row', gap: 10, alignItems: 'flex-start', backgroundColor: t.canvas, paddingHorizontal: 13, paddingTop: 9, paddingBottom: 9 },
   thanksIcon: { width: 27, height: 27, alignItems: 'center', justifyContent: 'center', marginTop: 1 },
-  thanksCopy: { flex: 1, gap: 3 }, thanksTitle: { fontSize: 15, lineHeight: 20, fontWeight: '600', letterSpacing: -.25, color: t.text }, thanksBody: { fontSize: 12, lineHeight: 18, color: t.muted },
+  thanksCopy: { flex: 1, gap: 3 }, thanksTitle: { fontWeight: '600', color: t.text }, thanksBody: { color: t.muted },
   actions: { gap: 9, marginTop: 1 },
   button: { minHeight: 47, paddingHorizontal: 11, paddingVertical: 10, borderRadius: 24, borderWidth: 1, borderColor: '#DCE5EC', backgroundColor: '#FFFFFF', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7 },
-  primaryButton: { minHeight: 52, backgroundColor: '#00956D', borderColor: '#00956D' }, buttonText: { fontSize: 13, lineHeight: 18, fontWeight: '600', color: t.text, flexShrink: 1, textAlign: 'center' },
+  primaryButton: { minHeight: 52, backgroundColor: '#00956D', borderColor: '#00956D' }, buttonText: { fontWeight: '600', color: t.text, flexShrink: 1, textAlign: 'center' },
   disabled: { opacity: .45 }, pressed: { opacity: .76, transform: [{ scale: .985 }] },
-  notice: { fontSize: 12, lineHeight: 18, color: t.greenDark, paddingVertical: 6 },
+  notice: { color: t.greenDark, paddingVertical: 6 },
 })

@@ -1,12 +1,14 @@
 import React from 'react'
-import { AccessibilityInfo, Animated, AppState, Easing, Image, Pressable, StyleSheet, Text, View } from 'react-native'
+import { AccessibilityInfo, Animated, AppState, Dimensions, Easing, Image, Pressable, StyleSheet, Text, View } from 'react-native'
 import type { AppStateStatus, LayoutChangeEvent } from 'react-native'
+import { color } from '@/design/theme'
+import { stageButtonHeight, stageLayout, stageMetric, stageTypography } from '../stage-ratio'
 import { waitingAssets } from './waiting-assets'
 import { waitingCopy } from './waiting-copy'
 import { clockAnchor, epochNow, readWaitingClock } from './waiting-time'
 import type { ClockReading } from './waiting-time'
 import type { ClockAnchor, WaitingContentProps } from './waiting.types'
-import { WaitingAtmosphere, WaitingButtonFill, WaitingIcon, WaitingParticles, WaitingRing } from './waiting-scene'
+import { WaitingAtmosphere, WaitingButtonFill, WaitingClockIcon, WaitingParticles, WaitingRing } from './waiting-scene'
 import { waitingTokens as t } from './waiting-tokens'
 
 type LocalState = { width: number; reading: ClockReading; reduced: boolean; foreground: boolean }
@@ -57,22 +59,25 @@ export class WaitingContent extends React.PureComponent<WaitingContentProps, Loc
   }
   private layout = (event: LayoutChangeEvent) => { const width = Math.min(560, event.nativeEvent.layout.width); if (Math.abs(width - this.state.width) > 0.5 && width > 0) this.setState({ width }) }
   render() {
-    const { model, onBack, onOpenDetails, language = 'vi' } = this.props
+    const { model, onOpenDetails, language = 'vi' } = this.props
     const { reading } = this.state, s = this.state.width / t.width
     const copy = waitingCopy(model, reading, language), assets = waitingAssets[model.kind]
     const closed = model.state !== 'waiting'
-    const size = reading.text.length > 5 ? 43 : t.type.timer
+    // Text resolves against the real window width, not the measured/capped card width `s`
+    // uses for layout, so the app's Apple type scale never shrinks relative to other screens.
+    const windowWidth = Dimensions.get('window').width
+    const timerScale = reading.text.length > 5 ? t.timerScale.long : t.timerScale.short
+    const timerStyle = stageTypography('largeTitle', windowWidth, timerScale)
     const colors = this.props.buttonColors ?? [t.colors.buttonStart, t.colors.buttonEnd] as const
-    return <View onLayout={this.layout} style={[styles.root, { minHeight: (t.contentHeight + t.layout.bodyOffset) * s }]} testID={`waiting-${model.kind}`}>
+    // The design floor alone leaves the near-white atmosphere short of a tall device's actual
+    // bottom edge; the same 620/0.92 floor worker-v5-flow.tsx gives its own ScrollView keeps this
+    // screen's own background reaching that edge instead of handing off to a mismatched parent fill.
+    const viewportMinHeight = Math.max(620, Math.round(Dimensions.get('window').height * 0.92))
+    const minHeight = Math.max((t.contentHeight + t.layout.bodyOffset) * s, viewportMinHeight)
+    return <View onLayout={this.layout} style={[styles.root, { minHeight }]} testID={`waiting-${model.kind}`}>
       <WaitingAtmosphere id={this.id} />
-      <View testID={`waiting-header-${model.kind}`} style={{ height: 82 * s, paddingTop: 11 * s, paddingLeft: 26 * s }}>
-        <Pressable accessibilityRole="button" accessibilityLabel={copy.back} onPress={onBack} hitSlop={8} testID={`waiting-back-${model.kind}`}
-          style={({ pressed }) => [{ width: 56 * s, height: 56 * s, minWidth: 44, minHeight: 44, borderRadius: 40, alignItems: 'center', justifyContent: 'center', backgroundColor: '#FFFFFF', borderColor: '#E8F0F4', borderWidth: 1, boxShadow: '0 3px 7px rgba(42,68,104,0.15)', opacity: pressed ? 0.75 : 1 }]}>
-          <WaitingIcon kind="back" size={26 * s} color="#173C77" />
-        </Pressable>
-      </View>
       <View testID={`waiting-body-${model.kind}`} style={{ paddingTop: t.layout.bodyOffset * s }}>
-        <View style={{ height: 373 * s }} testID={`waiting-scene-${model.kind}`}>
+        <View style={{ height: 410 * s }} testID={`waiting-scene-${model.kind}`}>
           <Animated.View pointerEvents="none" accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={{ position: 'absolute', left: 0, top: -6 * s, opacity: this.drift.interpolate({ inputRange: [0, 1], outputRange: [1, 0.76] }), transform: [{ translateY: this.drift.interpolate({ inputRange: [0, 1], outputRange: [0, -2 * s] }) }] }}>
             <WaitingParticles scale={s} id={this.id}/>
           </Animated.View>
@@ -82,26 +87,25 @@ export class WaitingContent extends React.PureComponent<WaitingContentProps, Loc
           <Animated.View pointerEvents="none" style={{ position: 'absolute', top: (model.kind === 'customer-confirmation' ? 72 : 67) * s, left: (model.kind === 'customer-confirmation' ? 182 : 194) * s, width: (model.kind === 'customer-confirmation' ? 225 : 207) * s, height: 166 * s, transform: [{ translateY: this.drift.interpolate({ inputRange: [0, 1], outputRange: [0, -2 * s] }) }] }}>
             <Image source={assets.hero} resizeMode="contain" style={{ width: '100%', height: '100%' }} accessible={false} />
           </Animated.View>
-          <View style={{ position: 'absolute', top: 243 * s, left: 26 * s, right: 26 * s, alignItems: 'center' }} accessible accessibilityLabel={`${copy.timer}: ${closed ? '--:--' : reading.text}`}>
-            <Text selectable testID={`waiting-time-${model.kind}`} style={{ color: t.colors.text, fontWeight: '600', fontVariant: ['tabular-nums'], fontSize: size * s, lineHeight: 63 * s, letterSpacing: -0.3 * s, textAlign: 'center' }} maxFontSizeMultiplier={1.15}>{closed ? '--:--' : reading.text}</Text>
-            <View style={{ marginTop: 1 * s, flexDirection: 'row', alignItems: 'center', gap: 5 * s }}>
-              <WaitingIcon kind="clock" size={21 * s} color="#00C79A"/><Text style={{ fontSize: 17 * s, lineHeight: 25 * s, color: '#00BF97' }} maxFontSizeMultiplier={1.3}>{copy.timer}</Text>
+          <View style={{ position: 'absolute', top: 231 * s, left: 26 * s, right: 26 * s, alignItems: 'center' }} accessible accessibilityLabel={`${copy.timer}: ${closed ? '--:--' : reading.text}`}>
+            <Text selectable testID={`waiting-time-${model.kind}`} style={{ ...timerStyle, color: t.colors.text, fontWeight: '600', fontVariant: ['tabular-nums'], textAlign: 'center' }} maxFontSizeMultiplier={1.15}>{closed ? '--:--' : reading.text}</Text>
+            <View style={{ marginTop: 36 * s, flexDirection: 'row', alignItems: 'center', gap: 5 * s }}>
+              <WaitingClockIcon size={21 * s} color="#00C79A"/><Text style={{ ...stageTypography(t.type.timerLabel.role, windowWidth), fontWeight: t.type.timerLabel.weight, color: color.brand.primary }} maxFontSizeMultiplier={1.3}>{copy.timer}</Text>
             </View>
           </View>
         </View>
-        <View style={{ paddingHorizontal: 28 * s, marginTop: 14 * s, alignItems: 'center' }}>
-          <Text accessibilityRole="header" style={{ fontSize: t.type.heading * s, lineHeight: 37 * s, fontWeight: '700', color: t.colors.text, letterSpacing: -0.65 * s, textAlign: 'center' }}>{copy.title}</Text>
-          <Text style={{ fontSize: t.type.body * s, lineHeight: 28 * s, fontWeight: '400', color: t.colors.secondary, letterSpacing: -0.47 * s, textAlign: 'center', marginTop: 6 * s }}>{copy.body}</Text>
+        <View style={{ marginTop: 14 * s, alignItems: 'center' }}>
+          <Text accessibilityRole="header" style={{ ...stageTypography(t.type.heading.role, windowWidth), fontWeight: t.type.heading.weight, color: t.colors.text, textAlign: 'center' }}>{copy.title}</Text>
+          <Text style={{ ...stageTypography(t.type.body.role, windowWidth), fontWeight: t.type.body.weight, color: t.colors.secondary, textAlign: 'center', marginTop: 6 * s }}>{copy.body}</Text>
         </View>
-        <View pointerEvents="none" accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={{ marginTop: 23 * s, height: 157 * s }}>
+        <View pointerEvents="none" accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={{ marginTop: 12 * s, height: 110 * s }}>
           <Image source={assets.footer} resizeMode="stretch" style={{ width: '100%', height: '100%' }}/>
         </View>
-        <View style={{ marginTop: 2 * s, paddingHorizontal: 26 * s, paddingBottom: 59 * s }}>
+        <View style={{ marginTop: 2 * s, paddingBottom: stageMetric(stageLayout.sectionGap, windowWidth) }}>
           <Pressable onPress={onOpenDetails} accessibilityRole="button" accessibilityLabel={copy.action} testID={`waiting-details-${model.kind}`}
-            style={({ pressed }) => [{ height: 80 * s, minHeight: 48, borderRadius: 42 * s, alignItems: 'center', justifyContent: 'center', boxShadow: '0 8px 19px rgba(0,199,158,0.23)', transform: [{ scale: pressed ? 0.987 : 1 }] }]}>
+            style={({ pressed }) => [{ height: stageButtonHeight(windowWidth), borderRadius: stageMetric(stageLayout.buttonRadius, windowWidth), alignItems: 'center', justifyContent: 'center', boxShadow: '0 8px 19px rgba(0,199,158,0.23)', transform: [{ scale: pressed ? 0.987 : 1 }] }]}>
             <WaitingButtonFill id={this.id} colors={colors}/>
-            <Text style={{ position: 'relative', zIndex: 1, fontSize: t.type.button * s, lineHeight: 34 * s, color: '#FFFFFF', fontWeight: '600', textAlign: 'center', letterSpacing: -0.3 * s }} maxFontSizeMultiplier={1.15}>{copy.action}</Text>
-            <View pointerEvents="none" style={{ position: 'absolute', right: 31 * s }}><WaitingIcon kind="forward" size={25 * s} color="#FFFFFF"/></View>
+            <Text style={{ ...stageTypography(t.type.button.role, windowWidth), position: 'relative', zIndex: 1, color: '#FFFFFF', fontWeight: t.type.button.weight, textAlign: 'center' }} maxFontSizeMultiplier={1.15}>{copy.action}</Text>
           </Pressable>
         </View>
       </View>
