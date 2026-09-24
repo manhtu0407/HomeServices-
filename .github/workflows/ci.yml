@@ -269,6 +269,11 @@ jobs:
               # tracked path stay blocked by the catch-all below.
               apps/api/src/__tests__/*|packages/shared/src/__tests__/*)
                 ;;
+              # Folded into this workflow, which runs every gate they ran.
+              '.github/workflows/comment-discipline.yml'|'.github/workflows/harness-assurance.yml'|\
+              '.github/workflows/integration.yml'|'.github/workflows/kael-agentic-completeness.yml'|\
+              '.github/workflows/security.yml')
+                ;;
               # Retired UI surfaces/assets are intentionally removed by this
               # publication and replaced by the current production surfaces.
               # Keep the exception exact so unrelated product deletions remain blocked.
