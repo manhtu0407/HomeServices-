@@ -3498,22 +3498,43 @@ export type DatabaseFunctions = {
         Returns: string
       }
       record_stage1_production_acceptance_note: {
-        Args: {
-          p_cleanup_generated_at: string
-          p_cleanup_member_count: number
-          p_cleanup_receipt_sha256: string
-          p_cleanup_run_id: string
-          p_cleanup_worker_marker_count: number
-          p_cleanup_worker_member_count: number
-          p_cohort_id: string
-          p_hosted_state_sha256: string
-          p_promotion_packet_sha256: string
-          p_release_id: string
-          p_ui_generated_at: string
-          p_ui_receipt_sha256: string
-          p_ui_scanned_file_count: number
-          p_ui_source_sha256: string
-          p_ui_visible_literal_count: number
+        Args:
+          | {
+            p_cleanup_generated_at: string
+            p_cleanup_member_count: number
+            p_cleanup_receipt_sha256: string
+            p_cleanup_run_id: string
+            p_cleanup_worker_marker_count: number
+            p_cleanup_worker_member_count: number
+            p_cohort_id: string
+            p_hosted_state_sha256: string
+            p_promotion_packet_sha256: string
+            p_release_id: string
+            p_ui_generated_at: string
+            p_ui_receipt_sha256: string
+            p_ui_scanned_file_count: number
+            p_ui_source_sha256: string
+            p_ui_visible_literal_count: number
+            }
+          | {
+            p_cleanup_generated_at: string
+            p_cleanup_member_count: number
+            p_cleanup_receipt_sha256: string
+            p_cleanup_run_id: string
+            p_cleanup_worker_marker_count: number
+            p_cleanup_worker_member_count: number
+            p_cohort_id: string
+            p_hosted_state_sha256: string
+            p_promotion_packet_sha256: string
+            p_release_id: string
+            p_ui_generated_at: string
+            p_ui_language_leakage_count: number
+            p_ui_localized_literal_count: number
+            p_ui_receipt_sha256: string
+            p_ui_scanned_file_count: number
+            p_ui_source_sha256: string
+            p_ui_visible_literal_count: number
+            }
         }
         Returns: {
           acceptance_status: string

@@ -68,6 +68,8 @@ export function buildProductionAcceptanceRpcArgs(input) {
     p_cleanup_receipt_sha256: input.cleanupReceipt.receiptSha256,
     p_hosted_state_sha256: input.hostedStateSha256,
     p_promotion_packet_sha256: input.promotionPacket.packetSha256,
+    p_ui_localized_literal_count: input.productionUiReceipt.localizedLiteralCount,
+    p_ui_language_leakage_count: input.productionUiReceipt.languageLeakageCount,
   })
 }
 
