@@ -5,7 +5,7 @@
     "immutableThroughVersion": "20260904113000",
     "sha256": "12da2bac288e0e718e61a27653e8cba9ffdb13b8e9900979407d41e1217b2077"
   },
-  "migrationCount": 404,
+  "migrationCount": 405,
   "migrationEquivalences": {
     "version": "1.0.0",
     "groups": [
@@ -74,7 +74,7 @@
       }
     ]
   },
-  "migrationsSha256": "d424993a4d2cbb406088708595854241a298a1b57752be57fc25870805f6801f",
+  "migrationsSha256": "7a2c47ee257735c6d97040ea6fe8f6f8ddc285823aedead1e4951a484e0c2e46",
   "databaseTypes": {
     "file": "packages/shared/src/types/database",
     "sha256": "7d9679494986efbf7dcf5781da3c0ee9ea8d7061353691827d01c3d5bb961dd0"
@@ -2907,6 +2907,13 @@
       "file": "supabase/migrations/20260924140943_notification_missing_job_no_fk_failure.sql",
       "sha256": "9a8310a2b73059b0c60dab93cc830f540ed204573cc8eaa0f37600d1dd42fbc5",
       "bytes": 4411
+    },
+    {
+      "version": "20260924231604",
+      "name": "rls_initplan_policy_consolidation",
+      "file": "supabase/migrations/20260924231604_rls_initplan_policy_consolidation.sql",
+      "sha256": "4eb05ee01ac333c185b074756d6775cef0a1782bc2ad37d51a4e3df937c38c0d",
+      "bytes": 3150
     }
   ]
 }
