@@ -5,7 +5,7 @@
     "immutableThroughVersion": "20260904113000",
     "sha256": "12da2bac288e0e718e61a27653e8cba9ffdb13b8e9900979407d41e1217b2077"
   },
-  "migrationCount": 401,
+  "migrationCount": 402,
   "migrationEquivalences": {
     "version": "1.0.0",
     "groups": [
@@ -74,10 +74,10 @@
       }
     ]
   },
-  "migrationsSha256": "633a318b58c0afcb99c239147fe5a4147b2172ff44fdb04a830304a15bce3799",
+  "migrationsSha256": "26a13557eecf2020d88cffcdbb776ef82fdd47c7891f001dc85a4f4074a38872",
   "databaseTypes": {
     "file": "packages/shared/src/types/database",
-    "sha256": "c8e8172c36ddf0e04e1fc7f459463d70eca6c171d00fc19df6be535fb695ef35"
+    "sha256": "a2614b867bb03ed4138449f5b98d1078d7d9121bf5397ec69efa0aa0d3a95c2a"
   },
   "entries": [
     {
@@ -2886,6 +2886,13 @@
       "file": "supabase/migrations/20260924044057_stage1_confirm_acceptance_ms_bound.sql",
       "sha256": "10c161228bb1084ca50ccbf9ac594862f4530214eedcf6c8070536f85963386c",
       "bytes": 5264
+    },
+    {
+      "version": "20260924063250",
+      "name": "stage1_acceptance_note_ui_receipt_v2",
+      "file": "supabase/migrations/20260924063250_stage1_acceptance_note_ui_receipt_v2.sql",
+      "sha256": "c1ebf2873485ba0d8c675093e23bdaafbdd9ab6c3a81950c4863a485c2028943",
+      "bytes": 10004
     }
   ]
 }
