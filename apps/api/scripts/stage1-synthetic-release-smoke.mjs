@@ -79,11 +79,13 @@ export class Stage1SyntheticReleaseSmoke {
     await this.assertReleaseMismatch(actors.customer)
     this.currentStage = 'checking_role_boundary'
     await this.assertRoleBoundary(actors.worker)
-    this.currentStage = 'binding_permanent_cohort'
-    await this.preparePermanentCohort()
     this.currentStage = 'loading_worker_and_policies'
     const worker = await this.loadEligibleWorker(actors.worker.id)
     const policies = await this.selectScenarioPolicies(worker.serviceTypes, worker.capabilities)
+    this.currentStage = 'warming_confirm_path'
+    await this.warmConfirmPath(actors, worker.district, policies.autoQuote)
+    this.currentStage = 'binding_permanent_cohort'
+    await this.preparePermanentCohort()
 
     this.currentStage = 'running_auto_quote'
     const auto = await this.runScenario({
@@ -762,6 +764,28 @@ export class Stage1SyntheticReleaseSmoke {
       expectedSafeError: { status: 403, code: 'AUTH_FORBIDDEN', surface: 'worker_customer_boundary' },
       idempotencyKey: randomUUID(),
     })
+  }
+
+  async warmConfirmPath(actors, district, policy) {
+    // confirm_kael_chat_durable_atomic's write tail (job insert, workflow_outbox, matching_operations)
+    // is never exercised by createReadySession's own read-heavy turns, so the first real confirm call
+    // in a scenario pays a one-time cold-start cost on a freshly deployed candidate. A real confirm
+    // through a throwaway cohort, cleaned up immediately via the same exact-cleanup RPC every real
+    // scenario already relies on, primes that path without leaving any lasting data.
+    await this.bindCohort()
+    const ready = await this.createReadySession(actors.customer, policy, district)
+    const contract = assertScenarioReady(ready.response, policy.quote_mode)
+    const sessionId = ready.response.session.id
+    await this.api(actors.customer, 'POST', `/kael/chat/${sessionId}/confirm`, {
+      confirmation_kind: contract.confirmationKind,
+      ...(contract.priceReasoningReceiptId
+        ? { price_reasoning_receipt_id: contract.priceReasoningReceiptId }
+        : {}),
+    }, {
+      expectedStatus: 202,
+      idempotencyKey: `stage1-warm-confirm-${sessionId}`,
+    })
+    await this.cleanupCohort()
   }
 
   async assertConfirmationMismatch(actor, sessionId, quoteMode, priceReasoningReceiptId) {
