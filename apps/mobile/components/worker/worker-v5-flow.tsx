@@ -694,9 +694,11 @@ function WorkerV5ScreenLayout({ actions, state }: { actions: WorkerV5ScreenLayou
   } = content
   const usesStageThreeWaitingProduction = screen.id === '2.3-customer-confirmation-wait'
   const usesStageSevenWaitingProduction = screen.id === '2.9-approval-wait'
-  const usesStageSixProduction = screen.id === '2.8-scope-change'
   const usesCaseClosedProduction = screen.id === '2.12-case-closed'
+  const scopeMode = firstRouteParam(useLocalSearchParams<WorkerV5RouteParams>().ns_scope_mode)
   const usesStageFiveProduction = screen.id === '2.7-in-progress'
+  // The scope editor keeps the shared header: its back button is the only way out of that form.
+  const usesStageSixProduction = screen.id === '2.8-scope-change' && scopeMode !== 'edit'
   const usesStageEightProduction = screen.id === '2.10-completion-evidence'
   const usesStageNineEmptyProduction = isStageNineEmptyScreen(screen.id, runtime.state.deal)
   return <SafeAreaView edges={usesStageNineEmptyProduction ? STAGE_NINE_EMPTY_SAFE_AREA_EDGES : undefined} style={[styles.safeArea, surfaceStyle, usesStageFiveProduction ? styles.stageFiveSafeArea : null, usesStageNineEmptyProduction ? stageNineHostStyles.safeArea : null]} testID={`worker-v5-screen-${screen.id}`}>

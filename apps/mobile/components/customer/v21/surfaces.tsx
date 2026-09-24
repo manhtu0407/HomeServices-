@@ -59,6 +59,7 @@ import { useCustomerMessageMemoryPreference } from '../kael-chat/use-customer-me
 import { useCustomerAvatarPicker } from '../profile/use-customer-avatar-picker'
 import { ProfileProgressBar } from '../profile/profile-progress-bar'
 import { ProfileSettingsGlyph } from '../profile/profile-settings-icons'
+import { homeAddressStatusLabel } from './home-address-status'
 import { KaelChatSurface } from './kael-chat-surface'
 import { customerKaelStateScopeKey } from '../kael-chat/customer-kael-state-scope'
 import {
@@ -288,7 +289,7 @@ const homeHeaderStyles = StyleSheet.create({
   },
   avatarImage: { borderRadius: 23, height: '100%', width: '100%' },
   avatarPlaceholder: { alignItems: 'center', height: '100%', justifyContent: 'center', width: '100%' },
-  header: { alignItems: 'flex-start', flexDirection: 'row', gap: 10, height: 55 },
+  header: { alignItems: 'flex-start', flexDirection: 'row', gap: 10, minHeight: 55 },
   headerCopy: { flex: 1, paddingTop: 1 },
   headerMeta: { fontSize: 9.8, lineHeight: 12, marginTop: 5 },
   headerTitle: { fontSize: 13.4, fontWeight: '600', letterSpacing: -0.22, lineHeight: 16 },
@@ -315,10 +316,7 @@ export function CustomerHomeSurface() {
     ? `#${session.user.id.slice(-8).toUpperCase()}`
     : (language === 'vi' ? 'Chưa ghi nhận' : 'Unavailable')
   // Real backend signal, not the Auth-metadata copy (see saveAddressProfile).
-  const hasDefaultAddress = Boolean(workflow.customerProfileInsights && workflow.customerProfileInsights.saved_address_count > 0)
-  const addressStatusLabel = hasDefaultAddress
-    ? (language === 'vi' ? 'Đã có địa chỉ mặc định' : 'Default address saved')
-    : (language === 'vi' ? 'Chưa có địa chỉ mặc định' : 'No default address yet')
+  const addressStatusLabel = homeAddressStatusLabel(workflow.customerProfileInsights, language)
 
   const activeCaseRoute = isDraftDeal
     ? '/(customer)/booking'

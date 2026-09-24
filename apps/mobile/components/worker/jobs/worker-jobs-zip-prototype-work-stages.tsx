@@ -11,6 +11,7 @@ import { workerV5PrivateKaelMediaName } from '../chat/use-worker-kael-orb-chat'
 import { WorkerV5EvidenceTray } from './evidence-surfaces'
 import { WorkerV5InProgressBody } from './in-progress-surfaces'
 import { WorkerV5ScopeChangeBody } from './scope-change-body-surfaces'
+import { StageSixTimeline } from './stage-six/stage-six-timeline'
 import { useWorkerV5ScopeChangeActions } from './use-worker-scope-change-actions'
 import {
   Text,
@@ -19,8 +20,6 @@ import {
   type WorkerJobsLegacyPrototypeRuntime,
   workerJobsLegacyPrototypeStageEightCompletionWorkart,
 } from './worker-jobs-zip-prototype-shared'
-import { WorkerJobsScopeEmptyCard } from './worker-jobs-zip-prototype-scope-empty'
-import { useStageSixText } from './worker-jobs-zip-prototype-scope-type'
 import { prototypeStyles } from './worker-jobs-zip-prototype-styles'
 
 export function WorkerJobsLegacyPrototypeStageFiveBody({
@@ -113,37 +112,24 @@ export function WorkerJobsLegacyPrototypeStageSixBody({
   language,
   navigateJobChat,
   navigateNext,
+  reduceMotion,
   reduceTransparency,
   runtime,
 }: {
   language: AppLanguage
   navigateJobChat: () => void
   navigateNext: () => void
+  reduceMotion: boolean
   reduceTransparency: boolean
   runtime: WorkerJobsLegacyPrototypeRuntime
 }) {
   const scopeChange = useWorkerV5ScopeChangeActions({ deal: runtime.state.deal, language, runtime })
-  const text = useStageSixText()
   if (scopeChange.scopeEvidenceOpen) {
-    return <View style={prototypeStyles.bodyStack}><WorkerV5ScopeChangeBody language={language} navigateNext={navigateNext} reduceTransparency={reduceTransparency} runtime={runtime} /></View>
+    return <View style={prototypeStyles.bodyStack}><WorkerV5ScopeChangeBody language={language} navigateNext={navigateNext} reduceTransparency={reduceTransparency} scopeChange={scopeChange} /></View>
   }
 
   const proposalSubmitted = scopeChange.jobIncident?.status === 'scope_proposed'
   const proposalReady = scopeChange.jobIncident?.status === 'ready_for_scope_proposal'
-  const proposalRows = [
-    {
-      label: textByLanguage(language, 'Hạng mục bổ sung', 'Additional scope'),
-      value: scopeChange.scope?.requestedDescription || textByLanguage(language, 'Chưa có bản nháp thật', 'No real draft'),
-    },
-    {
-      label: textByLanguage(language, 'Lý do', 'Reason'),
-      value: scopeChange.scope?.reason || textByLanguage(language, 'Chưa có lý do thật', 'No real reason'),
-    },
-    {
-      label: textByLanguage(language, 'Bằng chứng', 'Evidence'),
-      value: scopeChange.evidenceCount ? textByLanguage(language, `${scopeChange.evidenceCount} ảnh`, `${scopeChange.evidenceCount} photos`) : textByLanguage(language, 'Chưa có ảnh', 'No photos'),
-    },
-  ]
   const totalValue = scopeChange.scopeQuote
     ? formatVnd(scopeChange.scopeQuote.customer_total, language)
     : scopeChange.price
@@ -165,60 +151,27 @@ export function WorkerJobsLegacyPrototypeStageSixBody({
 
   return (
     <View style={prototypeStyles.bodyStack} testID="worker-v5-stage-six-prototype">
-      <View style={[prototypeStyles.stageProposalCard, reduceTransparency && { backgroundColor: color.mint.white }]} testID="worker-v5-stage-six-proposal-card">
-        <View style={prototypeStyles.stageProposalHeader}>
-          <View style={prototypeStyles.stageProposalIcon}>
-            <WorkerJobsLegacyPrototypeMetaIcon kind="status" size={28} />
-          </View>
-          <View style={prototypeStyles.stageProposalHeaderCopy}>
-            <Text style={[prototypeStyles.stageProposalKicker, text('kicker')]}>{textByLanguage(language, 'Đề xuất thay đổi', 'Change proposal')}</Text>
-            <Text style={[prototypeStyles.stageProposalTitle, text('title')]}>{textByLanguage(language, 'Phạm vi công việc', 'Work scope')}</Text>
-          </View>
-          <Text style={[prototypeStyles.stageProposalAction, text('action')]}>{textByLanguage(language, 'Kael hỗ trợ soạn', 'Kael drafts')}</Text>
-        </View>
-        {proposalRows.map((row) => (
-          <View key={row.label} style={prototypeStyles.stageProposalRow}>
-            <Text numberOfLines={1} style={[prototypeStyles.stageProposalLabel, text('label')]}>{row.label}</Text>
-            <Text numberOfLines={2} style={[prototypeStyles.stageProposalValue, text('value')]}>{row.value}</Text>
-          </View>
-        ))}
-        <View style={[prototypeStyles.stageProposalRow, prototypeStyles.stageProposalRowLast]}>
-          <Text style={[prototypeStyles.stageProposalLabel, text('label')]}>{textByLanguage(language, 'Khoảng giá', 'Price range')}</Text>
-          <Text numberOfLines={2} style={[prototypeStyles.stageProposalValue, prototypeStyles.stageProposalTotalValue, text('total')]}>{totalValue}</Text>
-        </View>
-      </View>
+      <StageSixTimeline
+        attachmentCount={scopeChange.scopeEvidenceUrls.length}
+        attachmentPreviews={scopeChange.scopeEvidenceUrls}
+        busy={scopeChange.scopeQuoting || scopeChange.scopeProposing}
+        canEdit={!secondaryDisabled}
+        evidenceCount={scopeChange.evidenceCount}
+        itemSummary={scopeChange.scope?.requestedDescription}
+        language={language}
+        onAddAttachment={() => void scopeChange.onAddPhotos()}
+        onAskKael={navigateJobChat}
+        onEdit={scopeChange.onOpenScopeEditPath}
+        onPrimary={() => void primaryAction()}
+        priceLabel={totalValue}
+        primaryDisabled={proposalSubmitted || !proposalReady || scopeChange.scopeQuoting}
+        primaryLabel={primaryLabel}
+        reason={scopeChange.scope?.reason}
+        reduceMotion={reduceMotion}
+      />
 
-      {scopeChange.scopeEvidenceUrls.length > 0 ? (
-        <WorkerV5EvidenceTray
-          emptyLabel={textByLanguage(language, 'Chưa có', 'None')}
-          language={language}
-          reduceTransparency={reduceTransparency}
-          stageLabel={textByLanguage(language, 'Bằng chứng đổi phạm vi', 'Scope-change evidence')}
-          urls={scopeChange.scopeEvidenceUrls}
-        />
-      ) : (
-        <WorkerJobsScopeEmptyCard language={language} />
-      )}
-
-      <View style={prototypeStyles.stageActionRow}>
-        <WorkerJobsLegacyPrototypeStageActionButton
-          disabled={secondaryDisabled}
-          label={textByLanguage(language, 'Chỉnh sửa', 'Edit')}
-          onPress={scopeChange.onOpenScopeEditPath}
-          testID="worker-v5-stage-six-edit-action"
-        />
-        <WorkerJobsLegacyPrototypeStageActionButton
-          disabled={proposalSubmitted || !proposalReady || scopeChange.scopeQuoting}
-          label={primaryLabel}
-          onPress={() => void primaryAction()}
-          primary
-          testID="worker-v5-stage-six-primary-action"
-        />
-      </View>
-
-      {scopeChange.scopeMediaNotice ? <Text style={[prototypeStyles.stageSummaryMeta, text('note')]}>{scopeChange.scopeMediaNotice}</Text> : null}
-      {proposalSubmitted ? <Text style={[prototypeStyles.stageSummaryMeta, text('note')]}>{textByLanguage(language, 'Khách đang xem đề xuất.', 'The customer is reviewing the proposal.')}</Text> : null}
-      {!proposalSubmitted && !proposalReady && scopeChange.hasScopeSubmission ? <WorkerJobsLegacyPrototypeStageActionButton label={textByLanguage(language, 'Hỏi Kael', 'Ask Kael')} onPress={navigateJobChat} testID="worker-v5-stage-six-kael-action" /> : null}
+      {scopeChange.scopeMediaNotice ? <Text style={prototypeStyles.stageSummaryMeta}>{scopeChange.scopeMediaNotice}</Text> : null}
+      {proposalSubmitted ? <Text style={prototypeStyles.stageSummaryMeta}>{textByLanguage(language, 'Khách đang xem đề xuất.', 'The customer is reviewing the proposal.')}</Text> : null}
     </View>
   )
 }

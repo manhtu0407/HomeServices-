@@ -311,11 +311,19 @@ describe('CustomerHomeSurface v2.1', () => {
     expect(screen.getByTestId('customer-v21-home-header')).toBeOnTheScreen()
     expect(screen.getByTestId('customer-v21-home-avatar-placeholder')).toBeOnTheScreen()
     expect(screen.getByText('Mã KH #R_TEST_1')).toBeOnTheScreen()
-    expect(screen.getByTestId('customer-v21-home-address-status')).toHaveTextContent('Chưa có địa chỉ mặc định')
+    expect(screen.getByTestId('customer-v21-home-address-status')).toHaveTextContent('Đang tải địa chỉ mặc định')
     expect(screen.queryByTestId('kael-core-v9-monocle')).toBeNull()
     expect(screen.queryByText('Chưa có công việc cần xử lý')).toBeNull()
     expect(screen.queryByText('NestScout đang theo dõi công việc và đặt quyết định đúng chỗ.')).toBeNull()
     expect(screen.queryByText('Kael giúp tạo yêu cầu dịch vụ an toàn.')).toBeNull()
+  })
+
+  it('does not present an unloaded address signal as a confirmed absence', () => {
+    mockWorkflowValue.customerProfileInsights = null
+    render(<CustomerHomeSurface />)
+    const status = screen.getByTestId('customer-v21-home-address-status')
+    expect(status).toHaveTextContent('Đang tải địa chỉ mặc định')
+    expect(status).not.toHaveTextContent('Chưa có địa chỉ mặc định')
   })
 
   it('reflects the real backend address signal, not the Auth-metadata copy', () => {

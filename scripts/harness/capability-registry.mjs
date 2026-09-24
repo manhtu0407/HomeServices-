@@ -67,6 +67,25 @@ const SERVER_OWNED_KAEL_MEDIA_ROUTE_KINDS = new Set([
 const SERVER_OWNED_DATABASE_READ_ROUTE_KINDS = new Set([
   'kael.chat.operation',
 ])
+// The caller's token cannot write these tables or run their RPCs, so the Edge function performs the
+// mutation with the service client while every key still comes from ctx.user.id. Classifying the
+// route as privileged leaves harness_privileged_operations evidence for each call and refuses the
+// request when that evidence cannot be recorded.
+const SERVER_OWNED_USER_WRITE_ROUTE_KINDS = new Set([
+  'me.accountDeletion',
+  'me.address.save',
+  'me.avatarUpdate',
+  'me.avatarUpload',
+  'me.favoriteWorkerSave',
+  'me.kaelFeedback',
+  'me.kaelMemory.delete',
+  'me.kaelMemory.update',
+  'me.refundAccount.save',
+  'notifications.deviceToken',
+  'notifications.deviceToken.unregister',
+  'notifications.matchingDeliveryAck',
+  'notifications.read',
+])
 const repoPath = (value) => value.split(sep).join('/')
 const normalizeSource = (value) => value.replace(/\r\n/gu, '\n')
 
@@ -178,7 +197,8 @@ function policyFor(input) {
       SERVER_OWNED_KAEL_AI_ROUTE_KINDS.has(input.kind) ||
       SERVER_OWNED_CUSTOMER_CONVERSATION_CATALOG_ROUTE_KINDS.has(input.kind) ||
       SERVER_OWNED_KAEL_MEDIA_ROUTE_KINDS.has(input.kind) ||
-      SERVER_OWNED_DATABASE_READ_ROUTE_KINDS.has(input.kind)
+      SERVER_OWNED_DATABASE_READ_ROUTE_KINDS.has(input.kind) ||
+      SERVER_OWNED_USER_WRITE_ROUTE_KINDS.has(input.kind)
     ),
     resourceType: resourceTypeFor(input.kind),
     // Admin control endpoints are privileged monitoring/operations paths. Their identifiers

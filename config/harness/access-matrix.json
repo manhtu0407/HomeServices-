@@ -2,8 +2,8 @@
   "version": "1.0.0",
   "source": {
     "migrationRoot": "supabase/migrations",
-    "migrationCount": 396,
-    "migrationDigest": "3076eb3e61a3c53bdca9f7fd3e746d2586a7cf0f015c2c6b3c6f4de7ac805da5"
+    "migrationCount": 402,
+    "migrationDigest": "066ce14d07d3bef41563997d4cd33e38ff363d08a56dd9c0e5136af9c7e5fe21"
   },
   "actors": [
     "anonymous",
@@ -4974,6 +4974,14 @@
     },
     {
       "signature": "record_stage1_attested_synthetic_smoke(text, text, text, text, smallint, boolean, boolean, boolean, boolean, boolean, integer, integer, integer, numeric, integer, integer, integer, text, text, text, text, text, text)",
+      "securityDefiner": true,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
+      "signature": "record_stage1_production_acceptance_note(text, text, text, integer, integer, text, text, text, integer, integer, integer, text, text, text, text, integer, integer)",
       "securityDefiner": true,
       "fixedSearchPath": true,
       "executeRoles": [

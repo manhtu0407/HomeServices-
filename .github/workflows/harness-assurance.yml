@@ -2,6 +2,7 @@ name: harness-assurance
 
 on:
   pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
   push:
     branches: [main]
 
@@ -15,7 +16,13 @@ concurrency:
 jobs:
   changes:
     name: classify changed paths
+    # Only a ready pull request selects the conditional lanes. A skipped job skips every job that
+    # needs it, so a draft pull request and a push to main run the always-on controls alone: the
+    # tree a push carries was verified on its pull request, and release-production is the
+    # post-merge gate.
+    if: ${{ github.event_name == 'pull_request' && github.event.pull_request.draft == false }}
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     outputs:
       frontend: ${{ steps.classify.outputs.frontend }}
       backend: ${{ steps.classify.outputs.backend }}
@@ -42,11 +49,16 @@ jobs:
           CI_HEAD_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
         run: node scripts/harness/classify-ci-changes.mjs
 
-  repository-controls:
-    name: manifest, environment, capability, release, evaluation, reliability, promotion
-    needs: changes
-    if: ${{ needs.changes.result == 'success' }}
+  governance-controls:
+    name: repository, governance, and runtime controls
+    if: ${{ github.event_name != 'pull_request' || github.event.pull_request.draft == false }}
     runs-on: ubuntu-latest
+    timeout-minutes: 30
+    # Every script-level control shares one job because each job bills a whole minute and spends
+    # about a third of it on checkout and dependency install. Steps after the first run even when
+    # an earlier one fails, so one run still reports every failing control. It classifies its own
+    # change set rather than needing the changes job: a job that needs a skipped job is skipped
+    # too, and these controls must still run on a push to main.
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
         with:
@@ -57,76 +69,71 @@ jobs:
         with:
           node-version: 20
           cache: pnpm
+      # Fixture suites load TypeScript through the mobile workspace, so this job needs the
+      # same frozen dependency graph as the other code-aware gates.
       - run: pnpm install --frozen-lockfile
+      - id: classify
+        name: Classify dependency impact
+        if: ${{ github.event_name == 'pull_request' }}
+        env:
+          CI_EVENT: ${{ github.event_name }}
+          CI_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          CI_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: node scripts/harness/classify-ci-changes.mjs
       - name: Harness assurance verification
         run: node scripts/harness/verify.mjs
       - name: Structure baseline lock
+        if: ${{ !cancelled() }}
         run: node scripts/check-structure-baseline.mjs
-
-  governance-controls:
-    name: source residue, protocol routes, work-router coverage, and script fixtures
-    needs: changes
-    if: ${{ needs.changes.result == 'success' }}
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
-        with:
-          persist-credentials: false
-      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
-        with:
-          node-version: 20
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      # Fixture suites load TypeScript through the mobile workspace, so this job needs the
-      # same frozen dependency graph as the other code-aware gates.
       - name: Source residue ratchet
+        if: ${{ !cancelled() }}
         run: node scripts/check-source-residue.mjs
       - name: Protocol routing ratchet
+        if: ${{ !cancelled() }}
         run: node scripts/check-protocol-routes.mjs
       - name: Work-router coverage ratchet
+        if: ${{ !cancelled() }}
         run: node scripts/check-work-plan.mjs --coverage
       - name: Docker contract ratchet
+        if: ${{ !cancelled() }}
         run: node scripts/check-docker-contracts.mjs
+      # Reads governance/design/runtime.md, which no conditional lane runs for, so it stays here.
+      - name: Design adapter ratchet
+        if: ${{ !cancelled() }}
+        run: node scripts/design/check-design-adapters.mjs
+      - name: Workflow cost ratchet
+        if: ${{ !cancelled() }}
+        run: node scripts/check-workflow-cost.mjs
       - name: Script fixture suites
+        if: ${{ !cancelled() }}
         run: node --test scripts/*.test.mjs scripts/harness/*.test.mjs
-
-  runtime-controls:
-    name: API and Edge runtime controls
-    needs: changes
-    if: ${{ needs.changes.outputs.runtime == 'true' }}
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
-        with:
-          persist-credentials: false
-      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
-        with:
-          node-version: 20
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
       - name: API type-check
+        if: ${{ !cancelled() && steps.classify.outputs.runtime == 'true' }}
         run: pnpm --filter @nestscout/api type-check
       # Names only what apps/api/vitest.config.mts collects. The six files this step used to
       # list are outside the pillar glob, so they were never run and the step reported success
       # over them; docs/audit/test-collection-analysis-20260820.md records which layer carries
       # each invariant now. scripts/check-test-collection.mjs fails if a path is added back.
       - name: Harness runtime tests
+        if: ${{ !cancelled() && steps.classify.outputs.runtime == 'true' }}
         run: pnpm --filter @nestscout/api exec vitest run --passWithNoTests=false src/__tests__/harness
       - name: Edge function type-check
+        if: ${{ !cancelled() && steps.classify.outputs.runtime == 'true' }}
         run: node scripts/run.mjs docker/scripts/edge-check
       - name: Test collection ratchet
+        if: ${{ !cancelled() && steps.classify.outputs.runtime == 'true' }}
         run: node scripts/check-test-collection.mjs
       - name: Comment discipline
+        if: ${{ !cancelled() && steps.classify.outputs.runtime == 'true' }}
         run: node scripts/check-comment-discipline.mjs
       - name: Skill contract ratchet
+        if: ${{ !cancelled() && steps.classify.outputs.runtime == 'true' }}
         run: node scripts/check-skill-contracts.mjs
       - name: Runner parity ratchet
+        if: ${{ !cancelled() && steps.classify.outputs.runtime == 'true' }}
         run: node scripts/check-runner-parity.mjs
-      - name: Design adapter ratchet
-        run: node scripts/design/check-design-adapters.mjs
       - name: Structure ratchet
+        if: ${{ !cancelled() && steps.classify.outputs.runtime == 'true' }}
         run: node scripts/lint-structure.mjs
 
   workspace-gates:
@@ -134,7 +141,7 @@ jobs:
     needs: changes
     if: ${{ needs.changes.outputs.workspace == 'true' }}
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
         with:
@@ -172,7 +179,7 @@ jobs:
     needs: changes
     if: ${{ needs.changes.outputs.database == 'true' || needs.changes.outputs.harness == 'true' }}
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
         with:

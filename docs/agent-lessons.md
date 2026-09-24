@@ -1,5 +1,13 @@
 # Home Services Agent Lessons
 
+## 2026-09-21 - Every push to a pull request is billed, and a billing block looks like a code failure
+
+- **CI minutes are metered and a spending limit blocks everything.** CI was blocked five times in six days in September. Jobs that fail within seconds having run no steps, with the annotation "spending limit needs to be increased", are a billing block, not a code fault; rerunning them proves nothing.
+- **One push costs 20 to 40 minutes**, because lanes are chosen by the whole pull request diff, not the last commit, and each job rounds up to a whole minute. Iterate in a **draft** pull request (CI skips drafts), batch commits, run `pnpm ship:check` first, and push once per review round.
+- **Check headroom before a burst of pushes:** `node scripts/ci-usage-report.mjs --month <YYYY-MM> --budget <cap>`. Only the account owner can read the plan and budget, so pass the cap as an argument. With fewer than three full pushes of headroom, stop and tell Tu.
+- **Never add a cron above four runs a day.** `pnpm lint:workflow-cost` fails it. Availability monitoring belongs on an external uptime service; a `*/15` cron is 672 billed runs a week.
+- The whole model, measurements, and runbook are in `docs/ops/github-actions-cost.md`.
+
 ## 2026-08-21 - Editing a skill, and the checksum that goes with it
 
 - **Editing any `SKILL.md` invalidates its recorded checksum.** `config/harness/manifest.json` stores a `git-blob-sha1` per skill, so a perfectly intended edit turns `harness:manifest:check` red. The sequence after touching a skill is: `pnpm skills:sync` (mirror to `.agents/`), then `pnpm harness:manifest:write` (record the new hash), then `pnpm harness:manifest:check`. Do **not** hand-edit the hex in the JSON — that is how it gets typed wrong or skipped.

@@ -5,7 +5,7 @@
     "immutableThroughVersion": "20260904113000",
     "sha256": "12da2bac288e0e718e61a27653e8cba9ffdb13b8e9900979407d41e1217b2077"
   },
-  "migrationCount": 396,
+  "migrationCount": 402,
   "migrationEquivalences": {
     "version": "1.0.0",
     "groups": [
@@ -74,10 +74,10 @@
       }
     ]
   },
-  "migrationsSha256": "498bdcb1ed8c45a158188723e9d956053456ccc9af231c115bfc1b85b4be275f",
+  "migrationsSha256": "26a13557eecf2020d88cffcdbb776ef82fdd47c7891f001dc85a4f4074a38872",
   "databaseTypes": {
     "file": "packages/shared/src/types/database",
-    "sha256": "c8e8172c36ddf0e04e1fc7f459463d70eca6c171d00fc19df6be535fb695ef35"
+    "sha256": "a2614b867bb03ed4138449f5b98d1078d7d9121bf5397ec69efa0aa0d3a95c2a"
   },
   "entries": [
     {
@@ -2851,6 +2851,48 @@
       "file": "supabase/migrations/20260916100100_customer_default_address_backfill.sql",
       "sha256": "e50788cacf5c899b9e1eac8c0c1a3e1f5027374f046b5cb2fa31a8578b0e7e47",
       "bytes": 1142
+    },
+    {
+      "version": "20260921153130",
+      "name": "harness_telemetry_retention",
+      "file": "supabase/migrations/20260921153130_harness_telemetry_retention.sql",
+      "sha256": "ffa22f2343ce60293a8bdf7b0615b6eeb064125afe716c0d1288f16fa6a222c9",
+      "bytes": 4079
+    },
+    {
+      "version": "20260921224356",
+      "name": "harness_retention_no_temp_table",
+      "file": "supabase/migrations/20260921224356_harness_retention_no_temp_table.sql",
+      "sha256": "3f4bab7e7ac10b1552da1140a088d4fcd82283a2ad7fa2bc48e045ebc65e2a39",
+      "bytes": 2915
+    },
+    {
+      "version": "20260923140621",
+      "name": "stage1_worker_offer_visibility_cron_budget",
+      "file": "supabase/migrations/20260923140621_stage1_worker_offer_visibility_cron_budget.sql",
+      "sha256": "e6ff55e8e7c09498c02c9352142b190ffe41b2a01ada95dd3cb4f26226936d83",
+      "bytes": 5086
+    },
+    {
+      "version": "20260923141106",
+      "name": "stage1_smoke_receipts_worker_offer_visible_ms_bound",
+      "file": "supabase/migrations/20260923141106_stage1_smoke_receipts_worker_offer_visible_ms_bound.sql",
+      "sha256": "0e06eb78cc5833cc583c7ee8910a747a893f82d06917f2eee4f88cf193cf23f2",
+      "bytes": 568
+    },
+    {
+      "version": "20260924044057",
+      "name": "stage1_confirm_acceptance_ms_bound",
+      "file": "supabase/migrations/20260924044057_stage1_confirm_acceptance_ms_bound.sql",
+      "sha256": "10c161228bb1084ca50ccbf9ac594862f4530214eedcf6c8070536f85963386c",
+      "bytes": 5264
+    },
+    {
+      "version": "20260924063250",
+      "name": "stage1_acceptance_note_ui_receipt_v2",
+      "file": "supabase/migrations/20260924063250_stage1_acceptance_note_ui_receipt_v2.sql",
+      "sha256": "c1ebf2873485ba0d8c675093e23bdaafbdd9ab6c3a81950c4863a485c2028943",
+      "bytes": 10004
     }
   ]
 }

@@ -76,6 +76,14 @@ const RECEIPT_DOWNLOAD_STEP = String.raw`      - name: Fetch the transaction beh
           path: artifacts/transactions-receipt
 `
 
+// The strict quality job fails fast while any catalog entry is not MAPPED. The verification lane releases while
+// entries are PARTIAL and records each open gap in a checksummed receipt, so it must not carry that step.
+const REQUIRE_MAPPED_STEP = String.raw`      # The behavioral gate below cannot pass while any transaction entry is unmapped, and that is
+      # known from the manifest alone, so fail here instead of after the whole-workspace tests.
+      - name: Require every transaction entry to be mapped before running tests
+        run: node scripts/harness/transaction-critical-coverage.mjs --require-mapped
+`
+
 const STRICT_GATES = 'main-branch-merge,workspace-typecheck,workspace-tests,workspace-build,security,harness,edge-deno,database-reset,sql-verification,generated-types,expand-only,hosted-drift-baseline,production-ui-normality'
 
 export function deriveVerificationWorkflow(strictText) {
@@ -87,12 +95,7 @@ export function deriveVerificationWorkflow(strictText) {
     'name: release-production-verification',
     '',
   ].join('\n'))
-  text = replaceOnce(text, String.raw`on:
-  push:
-    branches: [main]
-  schedule:
-    - cron: '17 * * * *'
-`, [
+  text = replaceTopLevelBlock(text, 'on:\n', '\npermissions:\n', [
     'on:',
     '  workflow_dispatch:',
     '    inputs:',
@@ -112,7 +115,8 @@ export function deriveVerificationWorkflow(strictText) {
   const strictGuard = "    if: github.event_name != 'schedule' && github.ref == 'refs/heads/main'\n"
   text = replaceOnce(text, `    name: quality, security, integration, SQL, and immutable-source gates\n${strictGuard}`,
     `    name: quality, security, integration, SQL, and immutable-source gates\n${dispatchGuard}`)
-  text = replaceOnce(text, `    needs: quality\n${strictGuard}`, `    needs: quality\n${dispatchGuard}`)
+  text = replaceOnce(text, `    needs: [quality, release-config-gate]\n${strictGuard}`, `    needs: [quality, release-config-gate]\n${dispatchGuard}`)
+  text = replaceOnce(text, REQUIRE_MAPPED_STEP, '')
 
   text = replaceOnce(text, expression(STRICT_TRANSACTION_STEPS), expression(VERIFICATION_TRANSACTION_STEPS))
   text = replaceOnce(text, 'name: stage1-quality-${{ github.run_id }}', 'name: stage1-verification-quality-${{ github.run_id }}')
@@ -163,6 +167,17 @@ function reuseLatestStoreBinaries(step) {
     '--builds artifacts/mobile/eas-builds.json --mode missing \\\n            --relation latest_existing)\n          if [ -n "$missing" ]; then')
   return replaceOnce(next, '--builds artifacts/mobile/eas-builds.json --mode missing)"',
     '--builds artifacts/mobile/eas-builds.json --mode missing \\\n            --relation latest_existing)"')
+}
+
+// Replaces from a top-level key up to the next one, so an edit to the strict schedule or to the comments inside
+// its trigger block does not break the derivation.
+function replaceTopLevelBlock(text, startMarker, endMarker, replacement) {
+  const start = text.indexOf(`\n${startMarker}`) + 1
+  const end = text.indexOf(endMarker, start)
+  if (start < 1 || end < 0 || text.indexOf(`\n${startMarker}`, start) >= 0) {
+    throw new Error(`strict workflow no longer contains exactly one top-level block: ${startMarker.trim()}`)
+  }
+  return text.slice(0, start) + replacement + text.slice(end)
 }
 
 function replaceOnce(text, from, to) {

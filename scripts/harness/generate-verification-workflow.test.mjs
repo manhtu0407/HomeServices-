@@ -94,7 +94,8 @@ test('it keeps every strict gate that still applies and says what it acknowledge
     '--lane verification',
     '--transaction-behavior artifacts/transactions-receipt/transaction-behavior-receipt.json',
     ',transaction-bound-assertions',
-    'supabase db reset --local',
+    'supabase --workdir "$GITHUB_WORKSPACE/artifacts/empty-reset" db reset --local',
+    'node scripts/harness/prepare-migration-workdir.mjs \\\n            --empty-reset',
     'run-sql-tests',
     'gitleaks/gitleaks-action',
     'deployment-drift.mjs',
@@ -128,15 +129,34 @@ test('every action is pinned to a full commit SHA and no step persists credentia
 test('the strict workflow is untouched by the verification lane', () => {
   for (const kept of [
     'branches: [main]',
-    "cron: '17 * * * *'",
     '--require-behavioral',
+    '--require-mapped',
     'eas-cli@22.0.0 build --platform',
     'stale-canary-reconciler',
     'name: release-production\n',
   ]) assert.ok(strict.includes(kept), kept)
+  assert.match(strict, /^\s+- cron: '[^']+'$/mu, 'the strict workflow keeps a schedule trigger, whatever its cadence')
   for (const absent of ['--lane', 'latest_existing', 'workflow_dispatch', 'transaction-behavior-receipt', 'release-production-verification', 'verification-transaction']) {
     assert.equal(strict.includes(absent), false, absent)
   }
+})
+
+test('the verification lane does not carry the strict fail-fast on unmapped transaction entries', () => {
+  assert.equal(verification.includes('--require-mapped'), false, 'PARTIAL entries are the reason this lane exists')
+  assert.ok(verification.includes('--require-bound-assertions'), 'bound assertions must still have executed and passed')
+})
+
+test('derivation does not depend on the strict schedule cadence or the comments in its trigger block', () => {
+  const retimed = strict.replace(/^(\s+- cron: )'[^']+'$/mu, "$1'5 4 * * 1'")
+  assert.notEqual(retimed, strict)
+  const derived = deriveVerificationWorkflow(retimed)
+  assert.equal(derived, verification)
+  assert.equal(derived.includes('cron'), false)
+  assert.match(derived, /^on:\n  workflow_dispatch:\n/mu)
+})
+
+test('derivation refuses a strict workflow that lost its trigger block', () => {
+  assert.throws(() => deriveVerificationWorkflow(strict.replace('\non:\n', '\ntriggers:\n')), /top-level block/u)
 })
 
 test('derivation refuses a strict workflow whose anchors have drifted', () => {

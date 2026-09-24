@@ -291,8 +291,9 @@ describe('Worker Jobs ZIP Prototype', () => {
     expect(progressStylesSource).toContain('stepStateJobsReviewContext')
   })
 
-  it('keeps the Formula Mint Aura default in the shared rail and leaves it off the Stage 6 screen', () => {
+  it('renders Stage 6 as the Timeline Card without the progress rail, which keeps its aura switch for other callers', () => {
     expect(source).not.toContain('<WorkerV5ProgressRail')
+    expect(source).toContain('<StageSixTimeline')
     expect(progressSource).toContain('formulaAura = true')
     expect(progressSource).toContain('{formulaAura ? (')
   })

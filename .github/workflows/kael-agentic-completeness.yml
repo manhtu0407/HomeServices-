@@ -1,9 +1,12 @@
 name: kael-agentic-completeness
 
+# Runs on ready pull requests, weekly, and by hand. A push to main carries a tree its pull request
+# already ran this suite on, and the weekly run repeats the whole-workspace tests and evals on main.
 on:
   pull_request:
-  push:
-    branches: [main]
+    types: [opened, synchronize, reopened, ready_for_review]
+  schedule:
+    - cron: '30 18 * * 0'
   workflow_dispatch:
 
 permissions:
@@ -16,7 +19,9 @@ concurrency:
 jobs:
   changes:
     name: classify changed paths
+    if: ${{ github.event_name != 'pull_request' || github.event.pull_request.draft == false }}
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     outputs:
       kael: ${{ steps.classify.outputs.kael }}
     steps:
@@ -40,7 +45,7 @@ jobs:
     needs: changes
     if: ${{ github.event_name == 'workflow_dispatch' || needs.changes.outputs.kael == 'true' }}
     runs-on: ubuntu-latest
-    timeout-minutes: 90
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
         with:
@@ -143,6 +148,7 @@ jobs:
               'apps/mobile/assets/lottie/nestscout-aurora-nest-approved-logo-transparent.png'|\
               'apps/mobile/assets/lottie/nestscout-aurora-nest-north-star-awakening.json'|\
               'apps/mobile/components/auth/entry-access/lottie-logo-mark.tsx'|\
+              'apps/mobile/components/customer/profile/profile-ranking-mark.tsx'|\
               'apps/mobile/components/customer/ui/payment-styles.ts'|\
               'apps/mobile/components/customer/ui/payment-surfaces.tsx'|\
               'apps/mobile/components/kael/kael-svg-lottie-view.tsx'|\

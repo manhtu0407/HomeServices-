@@ -3,68 +3,6 @@ import { StyleSheet } from 'react-native'
 import { color, typography } from '@/design/theme'
 
 export const prototypeStageStyles = StyleSheet.create({
-  stageProposalCard: {
-    backgroundColor: color.surface.base,
-    borderColor: color.surface.strokeStrong,
-    borderRadius: 24,
-    borderWidth: 1,
-    gap: 8,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-  },
-  stageProposalHeader: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    gap: 10,
-    minHeight: 44,
-  },
-  stageProposalIcon: {
-    alignItems: 'center',
-    borderColor: color.surface.strokeStrong,
-    borderRadius: 14,
-    borderWidth: 1,
-    height: 44,
-    justifyContent: 'center',
-    width: 44,
-  },
-  stageProposalHeaderCopy: {
-    flex: 1,
-    gap: 1,
-    minWidth: 0,
-  },
-  stageProposalKicker: {
-    color: color.text.secondary,
-  },
-  stageProposalTitle: {
-    color: color.text.strong,
-  },
-  stageProposalAction: {
-    color: color.brand.primaryDark,
-    textAlign: 'right',
-  },
-  stageProposalRow: {
-    alignItems: 'center',
-    borderBottomColor: color.surface.stroke,
-    borderBottomWidth: 1,
-    flexDirection: 'row',
-    gap: 12,
-    minHeight: 48,
-    paddingVertical: 8,
-  },
-  stageProposalRowLast: {
-    borderBottomWidth: 0,
-  },
-  stageProposalLabel: {
-    color: color.text.secondary,
-  },
-  stageProposalValue: {
-    color: color.text.strong,
-    flex: 1,
-    textAlign: 'right',
-  },
-  stageProposalTotalValue: {
-    color: color.brand.primaryDark,
-  },
   stageCompletionHero: {
     alignItems: 'center',
     backgroundColor: color.surface.base,

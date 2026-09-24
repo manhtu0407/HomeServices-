@@ -4,7 +4,11 @@ on:
   push:
     branches: [main]
   schedule:
-    - cron: '17 * * * *'
+    # Recovers a cancelled canary. The candidate cohort is synthetic, so real users stay on the
+    # active release, and the release preflight reconciles a stale candidate itself before it
+    # starts a new one. Every run bills at least a minute, so this only bounds how long an
+    # abandoned candidate lingers.
+    - cron: '17 */6 * * *'
 
 permissions:
   contents: read
@@ -19,7 +23,11 @@ jobs:
     if: github.event_name == 'schedule'
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    environment: production
+    # Reads Production but changes nothing, so it must not be recorded as a deployment;
+    # otherwise a failed check here marks the whole Production environment as failed.
+    environment:
+      name: production
+      deployment: false
     env:
       PRODUCTION_PROJECT_REF: iwevizmsedyqozxlawwl
     steps:
@@ -38,6 +46,7 @@ jobs:
             --action reconcile-stale --environment production \
             --project-ref "$PRODUCTION_PROJECT_REF" \
             > artifacts/release/stale-reconcile.json
+          node -e "const r=require('./artifacts/release/stale-reconcile.json');if(r.mode==='release_control_schema_not_installed')console.log('::notice title=Release control not installed::Production has no '+r.table+' table, so no stale candidate can exist.')"
       - name: Upload stale-candidate reconciliation evidence
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
@@ -67,6 +76,10 @@ jobs:
           test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
           test "$GITHUB_REF" = "refs/heads/main"
           test -z "$(git status --porcelain=v1 --untracked-files=all)"
+      # The behavioral gate below cannot pass while any transaction entry is unmapped, and that is
+      # known from the manifest alone, so fail here instead of after the whole-workspace tests.
+      - name: Require every transaction entry to be mapped before running tests
+        run: node scripts/harness/transaction-critical-coverage.mjs --require-mapped
       - run: pnpm install --frozen-lockfile
       - name: Whole-workspace quality gates
         run: |
@@ -123,10 +136,19 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITLEAKS_CONFIG: config/security/gitleaks.toml
+      # supabase start on the raw directory replays every migration file by name, including the older
+      # copies of an equivalence group that refer to objects a later file creates. The pull-request lanes
+      # replay the canonical inventory instead, and so must this job.
+      - name: Prepare canonical empty-reset migration workdir
+        run: |
+          node scripts/harness/prepare-migration-workdir.mjs \
+            --empty-reset \
+            --inventory config/harness/migration-inventory.json \
+            --output artifacts/empty-reset
       - name: Start isolated local Supabase
-        run: pnpm --filter @nestscout/api exec supabase start
+        run: pnpm --filter @nestscout/api exec supabase --workdir "$GITHUB_WORKSPACE/artifacts/empty-reset" start
       - name: Replay migrations from empty state
-        run: pnpm --filter @nestscout/api exec supabase db reset --local
+        run: pnpm --filter @nestscout/api exec supabase --workdir "$GITHUB_WORKSPACE/artifacts/empty-reset" db reset --local
       - name: Local integration pillar
         env:
           NESTSCOUT_ENVIRONMENT: local
@@ -137,11 +159,11 @@ jobs:
         run: node scripts/run.mjs docker/scripts/run-sql-tests --stop-on-first-failure
       - name: Generated database types and schema lint
         run: |
-          pnpm --filter @nestscout/api exec supabase gen types typescript --local > /tmp/database.types.ts
+          pnpm --filter @nestscout/api exec supabase --workdir "$GITHUB_WORKSPACE/artifacts/empty-reset" gen types typescript --local > /tmp/database.types.ts
           node -e "const fs=require('node:fs');const p='/tmp/database.types.ts';const t=fs.readFileSync(p,'utf8');fs.writeFileSync(p,t.replace(/\\n+$/u,'\\n'))"
           node scripts/split-database-types.mjs --join > /tmp/rejoined.types.ts
           cmp /tmp/rejoined.types.ts /tmp/database.types.ts
-          pnpm --filter @nestscout/api exec supabase db lint --local --fail-on warning
+          pnpm --filter @nestscout/api exec supabase --workdir "$GITHUB_WORKSPACE/artifacts/empty-reset" db lint --local --fail-on warning
       - name: Record quality receipt
         run: |
           mkdir -p artifacts/release
@@ -158,27 +180,19 @@ jobs:
           if-no-files-found: error
           retention-days: 30
 
-  production-release:
-    name: expand, cohort canary, three full smokes, and atomic promotion
+  release-config-gate:
+    name: require complete encrypted Production release configuration
     needs: quality
-    if: github.event_name != 'schedule' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
-    timeout-minutes: 240
-    environment: production
-    env:
-      PRODUCTION_PROJECT_REF: iwevizmsedyqozxlawwl
-      PRODUCTION_PROJECT_URL: https://iwevizmsedyqozxlawwl.supabase.co
+    timeout-minutes: 5
+    permissions: {}
+    # Proves the release inputs exist without running repository code or third-party actions.
+    # Not recorded as a deployment: an incomplete configuration means nothing was attempted,
+    # so it must not mark the Production environment as failed.
+    environment:
+      name: production
+      deployment: false
     steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
-        with:
-          fetch-depth: 0
-          persist-credentials: false
-      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
-        with:
-          node-version: 22
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
       - name: Require complete encrypted Production release configuration
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
@@ -212,6 +226,28 @@ jobs:
           test -n "$PRODUCTION_SYNTHETIC_CUSTOMER_PASSWORD"
           test -n "$PRODUCTION_SYNTHETIC_WORKER_EMAIL"
           test -n "$PRODUCTION_SYNTHETIC_WORKER_PASSWORD"
+
+  production-release:
+    name: expand, cohort canary, three full smokes, and atomic promotion
+    needs: [quality, release-config-gate]
+    if: github.event_name != 'schedule' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    environment: production
+    env:
+      PRODUCTION_PROJECT_REF: iwevizmsedyqozxlawwl
+      PRODUCTION_PROJECT_URL: https://iwevizmsedyqozxlawwl.supabase.co
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
       - name: Verify immutable main source
         run: |
           test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
@@ -237,9 +273,15 @@ jobs:
           cohort_id="synthetic-stage1-${release_id#harness-}-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
           echo "RELEASE_ID=$release_id" >> "$GITHUB_ENV"
           echo "COHORT_ID=$cohort_id" >> "$GITHUB_ENV"
+      # eas-cli resolves the Apple Developer Portal team even for App Store Connect API key auth
+      # (packages/eas-cli/src/credentials/ios/appstore/authenticate.ts authenticateWithApiKeyAsync
+      # -> resolveAppleTeamAsync), and without these two env vars it falls back to an interactive
+      # prompt that a non-interactive runner cannot answer, then silently skips profile validation.
       - name: Reuse or build exact iOS and Android store binaries for this merge
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+          EXPO_APPLE_TEAM_ID: 7S4723Q8LP
+          EXPO_APPLE_TEAM_TYPE: INDIVIDUAL
         run: |
           mkdir -p artifacts/mobile
           (cd apps/mobile && pnpm dlx eas-cli@22.0.0 project:info) \
@@ -502,6 +544,19 @@ jobs:
               --environment production --project-ref "$PRODUCTION_PROJECT_REF" \
               --project-url "$PRODUCTION_PROJECT_URL" \
               --output artifacts/release/synthetic-actor-provision.json
+      - name: Warm the freshly deployed candidate before timed smokes
+        run: |
+          # stage1-synthetic-smoke-core.mjs enforces steady-state latency budgets
+          # (confirmAcceptanceMs <= 3000, workerOfferVisibleMs <= 10000), but the candidate Edge
+          # Function was deployed moments ago and has never served a request, so the first
+          # invocation pays a one-time cold-start cost the budgets were never meant to cover.
+          # These untimed pings absorb that cost before the timed loop below starts the clock.
+          for attempt in 1 2 3 4 5; do
+            status=$(curl -s -o /dev/null -w '%{http_code}' --max-time 30 \
+              "$PRODUCTION_PROJECT_URL/functions/v1/mobile-api/harness/health" || true)
+            echo "warm-up attempt $attempt: HTTP $status"
+            sleep 2
+          done
       - name: Run and record three consecutive full synthetic smokes
         id: smokes
         env:
