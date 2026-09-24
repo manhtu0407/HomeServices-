@@ -5,7 +5,7 @@
     "immutableThroughVersion": "20260904113000",
     "sha256": "12da2bac288e0e718e61a27653e8cba9ffdb13b8e9900979407d41e1217b2077"
   },
-  "migrationCount": 402,
+  "migrationCount": 403,
   "migrationEquivalences": {
     "version": "1.0.0",
     "groups": [
@@ -74,10 +74,10 @@
       }
     ]
   },
-  "migrationsSha256": "26a13557eecf2020d88cffcdbb776ef82fdd47c7891f001dc85a4f4074a38872",
+  "migrationsSha256": "3b6d67797ef4a68120422367897b8a5aed52bd3f9d9fc427cdd3a83d97840728",
   "databaseTypes": {
     "file": "packages/shared/src/types/database",
-    "sha256": "a2614b867bb03ed4138449f5b98d1078d7d9121bf5397ec69efa0aa0d3a95c2a"
+    "sha256": "7d9679494986efbf7dcf5781da3c0ee9ea8d7061353691827d01c3d5bb961dd0"
   },
   "entries": [
     {
@@ -2893,6 +2893,13 @@
       "file": "supabase/migrations/20260924063250_stage1_acceptance_note_ui_receipt_v2.sql",
       "sha256": "c1ebf2873485ba0d8c675093e23bdaafbdd9ab6c3a81950c4863a485c2028943",
       "bytes": 10004
+    },
+    {
+      "version": "20260924121719",
+      "name": "claim_due_matching_push_provider_tickets",
+      "file": "supabase/migrations/20260924121719_claim_due_matching_push_provider_tickets.sql",
+      "sha256": "1652a701da5dfe09ed3d1e3aa408f0abcc1eb1d8ced98051f45003a1222b6cdc",
+      "bytes": 1979
     }
   ]
 }

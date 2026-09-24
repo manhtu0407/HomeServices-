@@ -1603,6 +1603,13 @@ export type DatabaseFunctions = {
           session_id: string
         }[]
       }
+      claim_due_matching_push_provider_tickets: {
+        Args: { p_limit?: number }
+        Returns: {
+          provider_ticket_id: string
+          provider_ticket_row_id: string
+        }[]
+      }
       claim_job_broadcast_retry_atomic: {
         Args: {
           p_claim_token: string
