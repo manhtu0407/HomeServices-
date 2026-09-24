@@ -3,7 +3,12 @@ import { describe, expect, it, vi } from 'vitest'
 import { pillarWhy, type PillarManifest } from '../../pillar-manifest'
 import { type MobileApiContext } from '../../../../../../supabase/functions/mobile-api/_shared/http'
 import { createEdgeServices } from '../../../../../../supabase/functions/mobile-api/_shared/domains'
-import { attachDefaultJobMediaStorage, installEdgeRuntimeTestHooks, makeSequenceClient } from '../harness'
+import {
+  attachDefaultJobMediaStorage,
+  installEdgeRuntimeTestHooks,
+  makeSequenceClient,
+  type QueryResult,
+} from '../harness'
 
 export const PILLAR = {
   id: 'P205-job-media-insert-outcome',
@@ -20,9 +25,9 @@ installEdgeRuntimeTestHooks()
 
 const JOB_ID = '11111111-1111-4111-8111-111111111111'
 const OBJECT_PATH = `${JOB_ID}/before/photo.jpg`
-const TIMEOUT = { data: null, error: { code: 'DB_TIMEOUT', message: 'AbortError' } }
+const TIMEOUT: QueryResult = { data: null, error: { code: 'DB_TIMEOUT', message: 'AbortError' } }
 
-function attachWithInsertTimeout(reread: { data: unknown; error: unknown }) {
+function attachWithInsertTimeout(reread: QueryResult) {
   const client = makeSequenceClient([
     {
       data: {
