@@ -467,7 +467,7 @@ function WorkerV5ScreenSurface({ screen }: { screen: WorkerV5ScreenDefinition })
     state={{
       auraState: { formulaPageAuraTarget, reduceTransparency: glass.reduceTransparency, shouldShowWorkerAura, usesCaseExecutionHandoff, usesEarningsHandoff, usesInProgressHandoff, usesKaelOrbHandoff, usesOfferDetailHandoff, usesOpportunityInboxHandoff, usesProfileHandoff, usesRouteEtaHandoff },
       content: { accessToken: session?.access_token ?? null, actionBusy, avatarUploadBusy, earningsPeriod, language, minHeight, primaryAction, prototype, reduceMotion: glass.reduceMotion, reduceTransparency: glass.reduceTransparency, routePreview, runtime, screen, surfaceStyle, usesCaseExecutionHandoff, usesEarningsHandoff, usesHandoffStage, usesKaelOrbHandoff, usesOfferDetailHandoff, usesOpportunityInboxHandoff, usesTravelHandoff, workerKey: session?.user.id ?? 'guest-worker' },
-      headerState: { displayTitle, handoffHeaderSubtitle, hidesHeaderUtility, language, reduceMotion: glass.reduceMotion, screen, title, usesApprovalWaitHandoff, usesCaseClosedHandoff, usesCaseExecutionHandoff, usesEarningsHandoff, usesEarningsOverviewHandoff, usesKaelOrbHandoff, usesOfferDetailHandoff, usesOpportunityInboxHandoff, usesProfileHandoff, usesRouteEtaHandoff, usesTravelHandoff, workerThemeMode },
+      headerState: { displayTitle, handoffHeaderSubtitle, hidesHeaderUtility, language, reduceMotion: glass.reduceMotion, screen, title, usesCaseClosedHandoff, usesCaseExecutionHandoff, usesEarningsHandoff, usesEarningsOverviewHandoff, usesKaelOrbHandoff, usesOfferDetailHandoff, usesOpportunityInboxHandoff, usesProfileHandoff, usesRouteEtaHandoff, usesTravelHandoff, workerThemeMode },
       nextScreen,
       previousScreen,
     }}
@@ -524,7 +524,6 @@ type WorkerV5ScreenHeaderState = {
   reduceMotion: boolean
   screen: WorkerV5ScreenDefinition
   title: string
-  usesApprovalWaitHandoff: boolean
   usesCaseClosedHandoff: boolean
   usesCaseExecutionHandoff: boolean
   usesEarningsHandoff: boolean
@@ -555,7 +554,6 @@ function WorkerV5ScreenHeader({
     reduceMotion,
     screen,
     title,
-    usesApprovalWaitHandoff,
     usesCaseClosedHandoff,
     usesCaseExecutionHandoff,
     usesEarningsHandoff,
@@ -602,10 +600,6 @@ function WorkerV5ScreenHeader({
     {usesOpportunityInboxHandoff || usesEarningsOverviewHandoff || usesOfferDetailHandoff ? null : usesRouteEtaHandoff ? (
       <Pressable accessibilityLabel={language === 'vi' ? 'Tùy chọn di chuyển' : 'Travel options'} accessibilityRole="button" onPress={onOpenJobChat} style={({ pressed }) => [styles.iconButton, pressed && !reduceMotion ? styles.pressed : null]} testID="worker-v5-route-menu">
         <Text style={styles.headerMenuText}>•••</Text>
-      </Pressable>
-    ) : usesApprovalWaitHandoff ? (
-      <Pressable accessibilityLabel={language === 'vi' ? 'Trợ giúp phê duyệt' : 'Approval help'} accessibilityRole="button" onPress={onOpenJobChat} style={({ pressed }) => [styles.iconButton, pressed && !reduceMotion ? styles.pressed : null]} testID="worker-v5-approval-help">
-        <Text style={styles.headerMenuText}>?</Text>
       </Pressable>
     ) : usesCaseExecutionHandoff || usesEarningsHandoff ? null : usesKaelOrbHandoff ? (
       <Pressable accessibilityLabel={language === 'vi' ? 'Tùy chọn Kael' : 'Kael options'} accessibilityRole="button" onPress={onOpenJobChat} style={({ pressed }) => [styles.iconButton, pressed && !reduceMotion ? styles.pressed : null]} testID="worker-v5-kael-menu">
@@ -698,6 +692,9 @@ function WorkerV5ScreenLayout({ actions, state }: { actions: WorkerV5ScreenLayou
     usesTravelHandoff,
     workerKey,
   } = content
+  const usesStageThreeWaitingProduction = screen.id === '2.3-customer-confirmation-wait'
+  const usesStageSevenWaitingProduction = screen.id === '2.9-approval-wait'
+  const usesCaseClosedProduction = screen.id === '2.12-case-closed'
   const scopeMode = firstRouteParam(useLocalSearchParams<WorkerV5RouteParams>().ns_scope_mode)
   const usesStageFiveProduction = screen.id === '2.7-in-progress'
   // The scope editor keeps the shared header: its back button is the only way out of that form.
@@ -707,7 +704,7 @@ function WorkerV5ScreenLayout({ actions, state }: { actions: WorkerV5ScreenLayou
   return <SafeAreaView edges={usesStageNineEmptyProduction ? STAGE_NINE_EMPTY_SAFE_AREA_EDGES : undefined} style={[styles.safeArea, surfaceStyle, usesStageFiveProduction ? styles.stageFiveSafeArea : null, usesStageNineEmptyProduction ? stageNineHostStyles.safeArea : null]} testID={`worker-v5-screen-${screen.id}`}>
     {usesStageFiveProduction || usesStageNineEmptyProduction ? null : <WorkerV5ScreenAuras state={auraState} />}
     <ScrollView bounces={false} contentContainerStyle={[styles.scrollContent, usesStageFiveProduction ? styles.stageFiveScrollContent : null, usesStageNineEmptyProduction ? stageNineHostStyles.scrollContent : null, headerState.usesEarningsOverviewHandoff ? styles.earningsOverviewScrollContent : null, usesKaelOrbHandoff ? styles.kaelOrbCustomerScrollContent : null, { minHeight }]} onScroll={actions.onDockScroll} scrollEventThrottle={16} showsVerticalScrollIndicator={false} testID="worker-v5-scroll">
-      {usesStageSixProduction || usesStageNineEmptyProduction || usesStageFiveProduction || usesStageEightProduction || headerState.usesEarningsOverviewHandoff || headerState.usesOpportunityInboxHandoff || headerState.usesTravelHandoff ? null : <WorkerV5ScreenHeader onBack={actions.onHeaderBack} onOpenJobChat={actions.onOpenJobChat} state={headerState} />}
+      {usesStageNineEmptyProduction || usesStageThreeWaitingProduction || usesStageSevenWaitingProduction || usesStageSixProduction || usesCaseClosedProduction || usesStageFiveProduction || usesStageEightProduction || headerState.usesEarningsOverviewHandoff || headerState.usesOpportunityInboxHandoff || headerState.usesTravelHandoff ? null : <WorkerV5ScreenHeader onBack={actions.onHeaderBack} onOpenJobChat={actions.onOpenJobChat} state={headerState} />}
       {!usesHandoffStage ? <View style={[styles.glassCard, reduceTransparency && styles.opaqueCard]}>
         {!reduceTransparency ? <MintAura intensity="component" style={styles.cardMintAura} testID="worker-v5-hero-mint-aura" /> : null}
         <View pointerEvents="none" style={styles.cardTopHighlight} />

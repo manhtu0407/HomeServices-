@@ -2,6 +2,8 @@ import { StyleSheet } from 'react-native'
 
 import { color, typography } from '@/design/theme'
 
+import { stageLayout } from './stage-ratio'
+
 export const prototypeCoreStyles = StyleSheet.create({
   bodyStack: {
     gap: 16,
@@ -10,20 +12,20 @@ export const prototypeCoreStyles = StyleSheet.create({
     ...typography.body,
   },
   opportunityInboxNew: {
-    gap: 12,
+    gap: stageLayout.sectionGap,
   },
   opportunityActions: {
     flexDirection: 'row',
-    gap: 12,
+    gap: stageLayout.componentGap,
   },
   opportunityAction: {
     alignItems: 'center',
-    borderRadius: 18,
+    borderRadius: stageLayout.buttonRadius,
     borderWidth: 1,
     flex: 1,
     justifyContent: 'center',
-    minHeight: 54,
-    paddingHorizontal: 14,
+    minHeight: stageLayout.buttonHeight,
+    paddingHorizontal: stageLayout.innerPadding,
   },
   opportunityActionSecondary: {
     backgroundColor: 'rgba(255,255,255,0.76)',
@@ -55,7 +57,7 @@ export const prototypeCoreStyles = StyleSheet.create({
     alignItems: 'stretch',
     backgroundColor: color.surface.base,
     borderColor: color.surface.strokeStrong,
-    borderRadius: 26,
+    borderRadius: stageLayout.cardRadius,
     borderWidth: 1,
     flexDirection: 'row',
     minHeight: 172,
@@ -68,8 +70,8 @@ export const prototypeCoreStyles = StyleSheet.create({
     justifyContent: 'center',
     maxWidth: '60%',
     minHeight: 172,
-    paddingHorizontal: 20,
-    paddingVertical: 18,
+    paddingHorizontal: stageLayout.cardPadding,
+    paddingVertical: stageLayout.cardPadding,
   },
   opportunityCardTitle: {
     color: color.text.strong,
@@ -570,7 +572,6 @@ export const prototypeCoreStyles = StyleSheet.create({
     borderColor: color.surface.stroke,
   },
   stageActionText: {
-    ...typography.body,
     fontWeight: '600',
     textAlign: 'center',
   },

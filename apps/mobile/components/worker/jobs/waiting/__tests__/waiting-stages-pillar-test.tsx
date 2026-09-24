@@ -1,4 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react-native'
+import { Dimensions } from 'react-native'
 
 import { withPillarContext, type PillarManifest } from '@/__tests__/pillar-manifest'
 import { waitingCopy } from '../waiting-copy'
@@ -100,8 +101,7 @@ describe('Production Worker waiting stages', () => {
     }, 'Stage 7 is not the completion-review stage')
   })
 
-  it('renders the shared native surface and exposes only its own navigation callbacks', () => {
-    const onBack = jest.fn()
+  it('renders the shared native surface and exposes only its own onOpenDetails callback', () => {
     const onOpenDetails = jest.fn()
     const model = buildWaitingModel('customer-confirmation', {
       jobId: 'job-1',
@@ -112,7 +112,6 @@ describe('Production Worker waiting stages', () => {
       <WaitingContent
         model={model}
         language="vi"
-        onBack={onBack}
         onOpenDetails={onOpenDetails}
         previewNowMs={Date.parse('2026-09-14T04:00:00.000Z')}
         reduceMotion
@@ -125,30 +124,59 @@ describe('Production Worker waiting stages', () => {
       expect(screen.getByTestId('waiting-time-customer-confirmation')).toHaveTextContent('--:--')
     }, 'Stage 3 must render the supplied waiting composition in the RN tree')
 
-    fireEvent.press(screen.getByTestId('waiting-back-customer-confirmation'))
     fireEvent.press(screen.getByTestId('waiting-details-customer-confirmation'))
 
     withPillarContext(PILLAR, () => {
-      expect(onBack).toHaveBeenCalledTimes(1)
       expect(onOpenDetails).toHaveBeenCalledTimes(1)
-    }, 'back and details remain host callbacks, not workflow mutations')
+    }, 'details remains a host callback, not a workflow mutation')
   })
 
-  it('keeps the back control at the top while offsetting the shared body composition', () => {
+  it('has no back control of its own; both stages are a system-owned dead end with no worker navigation', () => {
     const model = buildWaitingModel('scope-approval', {
       jobId: 'job-1',
       jobStatus: 'scope_change_pending',
       scope: { status: 'pending', createdAt: scopeCreatedAt },
     })
 
-    render(<WaitingContent model={model} language="vi" onBack={jest.fn()} onOpenDetails={jest.fn()} reduceMotion />)
+    render(<WaitingContent model={model} language="vi" onOpenDetails={jest.fn()} reduceMotion />)
+
+    withPillarContext(PILLAR, () => {
+      expect(screen.queryByTestId('waiting-header-scope-approval')).toBeNull()
+      expect(screen.queryByTestId('waiting-back-scope-approval')).toBeNull()
+    }, 'the host screen owns leaving this surface, not a control drawn inside it')
+  })
+
+  it('offsets the shared body composition by the approved design amount', () => {
+    const dimensionsSpy = jest.spyOn(Dimensions, 'get').mockReturnValue({ fontScale: 1, height: 500, scale: 1, width: 390 })
+    const model = buildWaitingModel('scope-approval', {
+      jobId: 'job-1',
+      jobStatus: 'scope_change_pending',
+      scope: { status: 'pending', createdAt: scopeCreatedAt },
+    })
+
+    render(<WaitingContent model={model} language="vi" onOpenDetails={jest.fn()} reduceMotion />)
 
     const scale = 390 / waitingTokens.width
     withPillarContext(PILLAR, () => {
-      expect(screen.getByTestId('waiting-header-scope-approval')).toHaveStyle({ height: 82 * scale, paddingTop: 11 * scale })
       expect(screen.getByTestId('waiting-body-scope-approval')).toHaveStyle({ paddingTop: waitingTokens.layout.bodyOffset * scale })
       expect(screen.getByTestId('waiting-scope-approval')).toHaveStyle({ minHeight: (waitingTokens.contentHeight + waitingTokens.layout.bodyOffset) * scale })
-    }, 'navigation stays fixed while both waiting stages share the same centered body offset')
+    }, 'both waiting stages share the same centered body offset, on a device short enough that the design floor still wins')
+    dimensionsSpy.mockRestore()
+  })
+
+  it('stretches its own background to the bottom of a tall device instead of stopping short', () => {
+    const dimensionsSpy = jest.spyOn(Dimensions, 'get').mockReturnValue({ fontScale: 1, height: 1200, scale: 1, width: 390 })
+    const model = buildWaitingModel('customer-confirmation', {
+      jobId: 'job-1',
+      jobStatus: 'worker_candidate_pending',
+    })
+
+    render(<WaitingContent model={model} language="vi" onOpenDetails={jest.fn()} reduceMotion />)
+
+    withPillarContext(PILLAR, () => {
+      expect(screen.getByTestId('waiting-customer-confirmation')).toHaveStyle({ minHeight: Math.round(1200 * 0.92) })
+    }, 'a tall viewport must not leave a mismatched blank strip below the approved artwork')
+    dimensionsSpy.mockRestore()
   })
 
   it('keeps both approved artwork pairs locally resolvable', () => {

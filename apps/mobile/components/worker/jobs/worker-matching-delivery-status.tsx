@@ -1,6 +1,7 @@
 import type { MatchingDeliveryReceipt } from '@nestscout/shared'
 import { StyleSheet, Text, View } from 'react-native'
 
+import { typography } from '@/design/theme'
 import type { AppLanguage } from '@/lib/app-language'
 
 const DELIVERY_STATE_COPY = {
@@ -47,6 +48,6 @@ export function WorkerMatchingDeliveryStatus({
 
 const styles = StyleSheet.create({
   container: { backgroundColor: '#F2F7F5', borderColor: '#C9DDD5', borderRadius: 14, borderWidth: 1, gap: 3, paddingHorizontal: 12, paddingVertical: 9 },
-  detail: { color: '#52645D', fontSize: 12, lineHeight: 17 },
-  status: { color: '#123B31', fontSize: 13, fontWeight: '800', lineHeight: 18 },
+  detail: { ...typography.caption1, color: '#52645D' },
+  status: { ...typography.footnote, color: '#123B31', fontWeight: '700' },
 })

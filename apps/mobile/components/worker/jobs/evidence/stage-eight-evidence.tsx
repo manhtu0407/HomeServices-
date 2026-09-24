@@ -11,8 +11,10 @@ import {
   View,
 } from 'react-native'
 
+import { type AppleTypographyRole } from '@/design/theme'
 import type { AppLanguage } from '@/lib/app-language'
 
+import { stageTypography } from '../stage-ratio'
 import { textByLanguage } from '../../ui/format'
 import { stageEightAssets } from './stage-eight-assets'
 import { StageEightIcon, type StageEightIconName } from './stage-eight-icons'
@@ -34,7 +36,7 @@ function px(value: number, scale: number) {
   return value * scale
 }
 
-function StepPill({ label, active, scale, width }: { label: string; active?: boolean; scale: number; width: number }) {
+function StepPill({ label, active, scale, width, windowWidth }: { label: string; active?: boolean; scale: number; width: number; windowWidth: number }) {
   return (
     <View
       style={[
@@ -53,8 +55,8 @@ function StepPill({ label, active, scale, width }: { label: string; active?: boo
         minimumFontScale={0.9}
         numberOfLines={1}
         style={[
+          stageTypography('caption1', windowWidth),
           styles.stepText,
-          { fontSize: px(12.2, scale), lineHeight: px(15, scale) },
           active && styles.stepTextActive,
         ]}
       >
@@ -70,18 +72,20 @@ function SectionHeader({
   right,
   scale,
   title,
+  windowWidth,
 }: {
   icon: StageEightIconName
   marginTop: number
   right?: React.ReactNode
   scale: number
   title: string
+  windowWidth: number
 }) {
   return (
     <View style={[styles.sectionHeader, { marginTop: px(marginTop, scale) }]}>
       <View style={[styles.sectionLeft, { gap: px(8, scale) }]}>
         <StageEightIcon color={C.mint} name={icon} size={px(32, scale)} />
-        <Text style={[styles.sectionTitle, { fontSize: px(18.5, scale), lineHeight: px(22, scale) }]}>{title}</Text>
+        <Text style={[stageTypography('body', windowWidth), styles.sectionTitle]}>{title}</Text>
       </View>
       {right}
     </View>
@@ -97,7 +101,6 @@ function stageCopy(language: AppLanguage) {
     completePhotoAdded: textByLanguage(language, 'Ảnh đã được thêm vào hồ sơ.', 'Photos have been added to the record.'),
     completePhotoTitle: textByLanguage(language, 'Ảnh hoàn tất', 'Completion photos'),
     completeRecord: textByLanguage(language, 'Gửi hồ sơ hoàn tất', 'Submit completion record'),
-    completeRecordBody: textByLanguage(language, 'Thêm ảnh và ghi chú ngắn\ntrước khi gửi hồ sơ hoàn tất nhé.', 'Add a photo and short note\nbefore submitting the completion record.'),
     completeRecordEmpty: textByLanguage(language, 'Chưa có hồ sơ\nhoàn tất', 'No completion record\nyet'),
     completeRecordPlaceholder: textByLanguage(language, 'Mô tả ngắn việc đã làm.', 'Briefly describe the completed work.'),
     completeRecordSending: textByLanguage(language, 'Đang gửi…', 'Sending…'),
@@ -105,8 +108,7 @@ function stageCopy(language: AppLanguage) {
     hasEnough: textByLanguage(language, 'Đã đủ', 'Ready'),
     needsMore: textByLanguage(language, 'Cần bổ sung', 'Needs input'),
     noCompletionPhoto: textByLanguage(language, 'Chưa có ảnh hoàn tất', 'No completion photos yet'),
-    noCompletionPhotoSubtitle: textByLanguage(language, 'Thêm một ảnh hoặc nhiều ảnh\ntrước khi gửi hồ sơ.', 'Add one or more photos\nbefore submitting the record.'),
-    noteHint: textByLanguage(language, 'Mô tả ngắn gọn, rõ ràng', 'Keep it short and clear'),
+    noCompletionPhotoSubtitle: textByLanguage(language, 'Thêm ảnh trước khi gửi.', 'Add photos before sending.'),
     noteSubtitle: textByLanguage(language, 'Mô tả ngắn những việc bạn đã làm.', 'Briefly describe what you did.'),
     noteTitle: textByLanguage(language, 'Ghi chú hoàn tất', 'Completion note'),
     completionPhotoCount: (count: number) => textByLanguage(language, `${count} ảnh hoàn tất`, `${count} completion photos`),
@@ -161,7 +163,7 @@ export function StageEightEvidenceScreen({
             </Pressable>
             <View style={[styles.brand, { gap: px(7, scale) }]}>
               <Image resizeMode="contain" source={stageEightAssets.logo} style={{ width: px(27, scale), height: px(26, scale) }} />
-              <Text style={[styles.brandText, { fontSize: px(17.5, scale), lineHeight: px(21, scale) }]}>NestScout</Text>
+              <Text style={[stageTypography('body', width), styles.brandText]}>NestScout</Text>
             </View>
           </View>
           <View
@@ -176,9 +178,9 @@ export function StageEightEvidenceScreen({
               },
             ]}
           >
-            <StepPill label={resolvedPreviousStepLabel} scale={scale} width={124} />
-            <StepPill active label={resolvedCurrentStepLabel} scale={scale} width={138} />
-            <StepPill label={resolvedNextStepLabel} scale={scale} width={123} />
+            <StepPill label={resolvedPreviousStepLabel} scale={scale} width={124} windowWidth={width} />
+            <StepPill active label={resolvedCurrentStepLabel} scale={scale} width={138} windowWidth={width} />
+            <StepPill label={resolvedNextStepLabel} scale={scale} width={123} windowWidth={width} />
           </View>
         </>
       ) : null}
@@ -197,9 +199,8 @@ export function StageEightEvidenceScreen({
         testID="worker-v5-stage-eight-fidelity-hero"
       >
         <View style={{ width: px(205, scale), zIndex: 2 }}>
-          <Text style={[styles.eyebrow, { fontSize: px(10, scale), lineHeight: px(13, scale) }]}>{copy.completeKicker}</Text>
-          <Text style={[styles.heroTitle, { fontSize: px(26, scale), lineHeight: px(29, scale), marginTop: px(7, scale) }]}>{copy.completeRecordEmpty}</Text>
-          <Text style={[styles.heroSub, { fontSize: px(13, scale), lineHeight: px(18, scale), marginTop: px(9, scale) }]}>{copy.completeRecordBody}</Text>
+          <Text style={[stageTypography('caption2', width), styles.eyebrow]}>{copy.completeKicker}</Text>
+          <Text style={[stageTypography('title2', width), styles.heroTitle, { marginTop: px(7, scale) }]}>{copy.completeRecordEmpty}</Text>
         </View>
         <Image
           resizeMode="cover"
@@ -218,9 +219,10 @@ export function StageEightEvidenceScreen({
       <SectionHeader
         icon="camera"
         marginTop={18}
-        right={<Text style={[styles.count, { fontSize: px(14.5, scale), lineHeight: px(18, scale), top: px(1.6, scale) }]}>{copy.photoCount(photoCount)}</Text>}
+        right={<Text style={[stageTypography('footnote', width), styles.count, { top: px(1.6, scale) }]}>{copy.photoCount(photoCount)}</Text>}
         scale={scale}
         title={copy.completePhotoTitle}
+        windowWidth={width}
       />
 
       <View
@@ -229,10 +231,10 @@ export function StageEightEvidenceScreen({
       >
         <Image resizeMode="contain" source={stageEightAssets.upload} style={{ width: px(56, scale), height: px(56, scale), flexShrink: 0 }} />
         <View style={{ flex: 1, minWidth: 0, paddingRight: px(118, scale) }}>
-          <Text style={[styles.uploadTitle, { fontSize: px(13.2, scale), lineHeight: px(17, scale) }]}>
+          <Text style={[stageTypography('footnote', width), styles.uploadTitle]}>
             {hasPhoto ? copy.completionPhotoCount(photoCount) : copy.noCompletionPhoto}
           </Text>
-          <Text style={[styles.uploadSub, { fontSize: px(10.4, scale), lineHeight: px(14, scale), marginTop: px(4, scale) }]}>
+          <Text style={[stageTypography('caption2', width), styles.uploadSub, { marginTop: px(4, scale) }]}>
             {hasPhoto ? copy.completePhotoAdded : copy.noCompletionPhotoSubtitle}
           </Text>
         </View>
@@ -242,11 +244,11 @@ export function StageEightEvidenceScreen({
           accessibilityState={{ disabled: submitting }}
           disabled={submitting}
           onPress={onAddPhoto}
-          style={[styles.addButton, { position: 'absolute', right: px(13, scale), height: px(40, scale), width: px(109, scale), borderRadius: px(20, scale), paddingHorizontal: px(10, scale), gap: px(5, scale) }]}
+          style={[styles.addButton, { position: 'absolute', right: px(13, scale), height: px(40, scale), width: px(109, scale), borderRadius: px(20, scale), paddingHorizontal: px(6, scale), gap: px(3, scale) }]}
           testID="worker-v5-stage-eight-fidelity-add-photo"
         >
           <Text style={{ color: C.mint, fontSize: px(19, scale), lineHeight: px(20, scale) }}>＋</Text>
-          <Text style={[styles.addText, { fontSize: px(12.3, scale), lineHeight: px(15, scale) }]}>{copy.addPhoto}</Text>
+          <Text adjustsFontSizeToFit minimumFontScale={0.92} numberOfLines={1} style={[stageTypography('caption1', width), styles.addText]}>{copy.addPhoto}</Text>
         </Pressable>
       </View>
 
@@ -255,6 +257,7 @@ export function StageEightEvidenceScreen({
         marginTop={20}
         scale={scale}
         title={copy.finalCheck}
+        windowWidth={width}
       />
 
       <View style={[styles.checkCard, { marginTop: px(13, scale), height: px(120, scale), borderRadius: px(15, scale), paddingHorizontal: px(12, scale) }]} testID="worker-v5-stage-eight-fidelity-final-check">
@@ -264,14 +267,14 @@ export function StageEightEvidenceScreen({
         ].map((item, index) => (
           <View key={item.index} style={[styles.checkRow, { height: px(59.5, scale), gap: px(11, scale) }, index === 1 && styles.checkRowBorder]}>
             <View style={[styles.num, { width: px(32, scale), height: px(32, scale), borderRadius: px(16, scale) }]}>
-              <Text style={[styles.numText, { fontSize: px(14, scale), lineHeight: px(17, scale) }]}>{item.index}</Text>
+              <Text style={[stageTypography('footnote', width), styles.numText]}>{item.index}</Text>
             </View>
             <View style={{ flex: 1, minWidth: 0 }}>
-              <Text style={[styles.checkTitle, { fontSize: px(13.5, scale), lineHeight: px(16, scale) }]}>{item.title}</Text>
-              <Text numberOfLines={1} style={[styles.checkSub, { fontSize: px(10.3, scale), lineHeight: px(14, scale) }]}>{item.sub}</Text>
+              <Text style={[stageTypography('footnote', width), styles.checkTitle]}>{item.title}</Text>
+              <Text numberOfLines={1} style={[stageTypography('caption2', width), styles.checkSub]}>{item.sub}</Text>
             </View>
             <View style={[styles.statusPill, item.ok && styles.statusOk, { minWidth: px(76, scale), borderRadius: px(15, scale), paddingHorizontal: px(9, scale), paddingVertical: px(7, scale) }]}>
-              <Text style={[styles.statusText, item.ok && styles.statusTextOk, { fontSize: px(10.3, scale), lineHeight: px(13, scale) }]}>{item.ok ? copy.hasEnough : copy.needsMore}</Text>
+              <Text style={[stageTypography('caption2', width), styles.statusText, item.ok && styles.statusTextOk]}>{item.ok ? copy.hasEnough : copy.needsMore}</Text>
             </View>
           </View>
         ))}
@@ -280,9 +283,9 @@ export function StageEightEvidenceScreen({
       <SectionHeader
         icon="note"
         marginTop={15}
-        right={<Text style={[styles.hint, { fontSize: px(10.7, scale), lineHeight: px(14, scale), top: px(3.3, scale) }]}>{copy.noteHint}</Text>}
         scale={scale}
         title={copy.noteTitle}
+        windowWidth={width}
       />
 
       <View style={[styles.noteBox, { marginTop: px(8, scale), height: px(88, scale), borderRadius: px(15, scale), paddingHorizontal: px(14, scale), paddingTop: px(12, scale) }]} testID="worker-v5-stage-eight-fidelity-note">
@@ -294,15 +297,15 @@ export function StageEightEvidenceScreen({
           onChangeText={onNoteChange}
           placeholder={copy.completeRecordPlaceholder}
           placeholderTextColor="#81929A"
-          style={[styles.input, { fontSize: px(13.2, scale), lineHeight: px(18, scale) }]}
+          style={[stageTypography('footnote', width), styles.input]}
           testID="worker-v5-stage-eight-fidelity-note-input"
           textAlignVertical="top"
           value={note}
         />
-        <Text style={[styles.counter, { fontSize: px(10.5, scale), right: px(11, scale), bottom: px(9, scale) }]}>{note.length}/500</Text>
+        <Text style={[stageTypography('caption2', width), styles.counter, { right: px(11, scale), bottom: px(9, scale) }]}>{note.length}/500</Text>
       </View>
 
-      {notice ? <Text accessibilityLiveRegion="polite" style={[styles.notice, { fontSize: px(11, scale), lineHeight: px(15, scale) }]}>{notice}</Text> : null}
+      {notice ? <Text accessibilityLiveRegion="polite" style={[stageTypography('caption2', width), styles.notice]}>{notice}</Text> : null}
 
       <Pressable
         accessibilityRole="button"
@@ -312,7 +315,7 @@ export function StageEightEvidenceScreen({
         style={[styles.submit, canSubmit && styles.submitEnabled, { marginTop: px(notice ? 8 : 13, scale), height: px(55, scale), borderRadius: px(17, scale) }]}
         testID="worker-v5-stage-eight-fidelity-submit"
       >
-        <Text adjustsFontSizeToFit minimumFontScale={0.84} numberOfLines={1} style={[styles.submitText, canSubmit && styles.submitTextEnabled, { fontSize: px(13.8, scale), lineHeight: px(18, scale) }]}>
+        <Text adjustsFontSizeToFit minimumFontScale={0.84} numberOfLines={1} style={[stageTypography('body', width), styles.submitText, canSubmit && styles.submitTextEnabled]}>
           {submitting ? copy.completeRecordSending : copy.completeRecord}
         </Text>
       </Pressable>
@@ -334,22 +337,21 @@ const styles = StyleSheet.create({
   topRow: { position: 'relative', alignItems: 'center', justifyContent: 'center' },
   back: { position: 'absolute', alignItems: 'center', justifyContent: 'center' },
   brand: { flexDirection: 'row', alignItems: 'center' },
-  brandText: { color: '#1F4C43', fontWeight: '700', letterSpacing: -0.35 },
+  brandText: { color: '#1F4C43', fontWeight: '700' },
   stepsWrap: { flexDirection: 'row', borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#EDF0F1' },
   stepPill: { borderWidth: 1, borderColor: '#DBE4E7', backgroundColor: '#FFFFFF', justifyContent: 'center', alignItems: 'center' },
   stepPillActive: { backgroundColor: '#DEF4ED', borderColor: '#66C7A6' },
-  stepText: { color: '#75848B', fontWeight: '600', letterSpacing: -0.2 },
+  stepText: { color: '#75848B', fontWeight: '600' },
   stepTextActive: { color: '#0C9A71' },
   hero: { backgroundColor: C.mintSoft, flexDirection: 'row', overflow: 'hidden' },
-  eyebrow: { color: '#5B7771', fontWeight: '700', letterSpacing: 0.72 },
-  heroTitle: { color: '#00332F', fontWeight: '800', letterSpacing: -0.72 },
-  heroSub: { color: '#667980', fontWeight: '500', letterSpacing: -0.1 },
+  eyebrow: { color: '#5B7771', fontWeight: '700' },
+  heroTitle: { color: '#00332F', fontWeight: '700' },
   sectionHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 7 },
   sectionLeft: { flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center' },
-  sectionTitle: { color: '#071A20', flexShrink: 1, fontWeight: '700', letterSpacing: -0.38 },
+  sectionTitle: { color: '#071A20', flexShrink: 1, fontWeight: '700' },
   count: { color: '#08A078', fontWeight: '700' },
   upload: { position: 'relative', borderWidth: 1.3, borderStyle: 'dashed', borderColor: '#B7E5D8', flexDirection: 'row', alignItems: 'center' },
-  uploadTitle: { color: '#071A20', fontWeight: '700', letterSpacing: -0.22 },
+  uploadTitle: { color: '#071A20', fontWeight: '700' },
   uploadSub: { color: '#667980', fontWeight: '500' },
   addButton: { borderWidth: 1.2, borderColor: '#59C4A5', flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
   addText: { color: C.mint, fontWeight: '700' },
@@ -358,13 +360,12 @@ const styles = StyleSheet.create({
   checkRowBorder: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: '#E9EDEF' },
   num: { backgroundColor: C.mintPill, alignItems: 'center', justifyContent: 'center' },
   numText: { color: '#0F9C74', fontWeight: '700' },
-  checkTitle: { color: '#071A20', fontWeight: '700', letterSpacing: -0.2 },
+  checkTitle: { color: '#071A20', fontWeight: '700' },
   checkSub: { color: '#687A82', fontWeight: '500', marginTop: 2 },
   statusPill: { backgroundColor: C.dangerBg, alignItems: 'center', justifyContent: 'center' },
   statusText: { color: C.danger, fontWeight: '700' },
   statusOk: { backgroundColor: '#E4F6EE' },
   statusTextOk: { color: '#0F956D' },
-  hint: { color: '#71818A', fontWeight: '500' },
   noteBox: { borderWidth: 1, borderColor: '#D6E0E4', position: 'relative' },
   input: {
     borderColor: 'transparent',
@@ -383,6 +384,6 @@ const styles = StyleSheet.create({
   notice: { alignSelf: 'stretch', color: '#B34A46', fontWeight: '600', marginTop: 8, paddingHorizontal: 4 },
   submit: { backgroundColor: C.disabledBg, flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
   submitEnabled: { backgroundColor: '#17B48B' },
-  submitText: { color: C.disabled, fontWeight: '800', letterSpacing: -0.15 },
+  submitText: { color: C.disabled, fontWeight: '700' },
   submitTextEnabled: { color: '#FFFFFF' },
 })
