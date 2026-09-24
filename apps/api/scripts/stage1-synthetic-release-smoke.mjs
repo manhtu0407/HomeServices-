@@ -776,6 +776,11 @@ export class Stage1SyntheticReleaseSmoke {
     const ready = await this.createReadySession(actors.customer, policy, district)
     const contract = assertScenarioReady(ready.response, policy.quote_mode)
     const sessionId = ready.response.session.id
+    // eligible_matching_worker_ids requires matching_foreground_active_until >= now for a worker
+    // with no proven push token, exactly like every real scenario's own pre-confirm heartbeat below.
+    await this.api(actors.worker, 'POST', '/workers/me/matching-heartbeat', undefined, {
+      idempotencyKey: randomUUID(),
+    })
     await this.api(actors.customer, 'POST', `/kael/chat/${sessionId}/confirm`, {
       confirmation_kind: contract.confirmationKind,
       ...(contract.priceReasoningReceiptId
