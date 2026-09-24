@@ -34,6 +34,7 @@ None of these are detectable by a script, and every one of them has shipped in t
 
 - Do not push or open a PR unless Tu asked for it in the current conversation (`governance/critical.md` §3 Git Rule).
 - Do not present `ship:check` as equivalent to CI. It runs the pure-node gates; type-check, tests, build, Edge `deno check`, and the SQL matrix are not among them.
+- CI minutes are metered (`docs/ops/github-actions-cost.md`). Open the PR as a draft (`gh pr create --draft`), which runs nothing, and batch the fixes locally. Check `mergeStateStatus` is not `CONFLICTING`, then mark it ready once (`gh pr ready`). Every later push re-runs the whole PR, 15 to 20 minutes.
 - Do not widen or disable a gate to make this pass. A red gate is the finding.
 - A gate that could not run is reported, never omitted.
 

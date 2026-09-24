@@ -193,7 +193,7 @@ test('PR assertion verification refuses absent reports and empty reviewed bindin
 })
 
 test('PR and Production workflows keep different evidence obligations', () => {
-  const pr = readFileSync(resolve('.github/workflows/kael-agentic-completeness.yml'), 'utf8')
+  const pr = readFileSync(resolve('.github/workflows/ci.yml'), 'utf8')
   const release = readFileSync(resolve('.github/workflows/release-production.yml'), 'utf8')
   assert.match(pr, /transaction-critical-coverage\.mjs --require-bound-assertions/u)
   assert.doesNotMatch(pr, /--require-behavioral/u)
@@ -202,7 +202,7 @@ test('PR and Production workflows keep different evidence obligations', () => {
 })
 
 test('Local integration checks out the PR head required by its release preflight', () => {
-  const integration = readFileSync(resolve('.github/workflows/integration.yml'), 'utf8')
+  const integration = readFileSync(resolve('.github/workflows/ci.yml'), 'utf8')
   assert.ok(integration.includes('ref: ${{ github.event.pull_request.head.sha || github.sha }}'))
   assert.ok(integration.includes("EXPECTED_GIT_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || '' }}"))
 })

@@ -5,7 +5,7 @@
     "immutableThroughVersion": "20260904113000",
     "sha256": "12da2bac288e0e718e61a27653e8cba9ffdb13b8e9900979407d41e1217b2077"
   },
-  "migrationCount": 403,
+  "migrationCount": 404,
   "migrationEquivalences": {
     "version": "1.0.0",
     "groups": [
@@ -74,7 +74,7 @@
       }
     ]
   },
-  "migrationsSha256": "3b6d67797ef4a68120422367897b8a5aed52bd3f9d9fc427cdd3a83d97840728",
+  "migrationsSha256": "d424993a4d2cbb406088708595854241a298a1b57752be57fc25870805f6801f",
   "databaseTypes": {
     "file": "packages/shared/src/types/database",
     "sha256": "7d9679494986efbf7dcf5781da3c0ee9ea8d7061353691827d01c3d5bb961dd0"
@@ -2900,6 +2900,13 @@
       "file": "supabase/migrations/20260924121719_claim_due_matching_push_provider_tickets.sql",
       "sha256": "1652a701da5dfe09ed3d1e3aa408f0abcc1eb1d8ced98051f45003a1222b6cdc",
       "bytes": 1979
+    },
+    {
+      "version": "20260924140943",
+      "name": "notification_missing_job_no_fk_failure",
+      "file": "supabase/migrations/20260924140943_notification_missing_job_no_fk_failure.sql",
+      "sha256": "9a8310a2b73059b0c60dab93cc830f540ed204573cc8eaa0f37600d1dd42fbc5",
+      "bytes": 4411
     }
   ]
 }

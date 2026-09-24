@@ -1,5 +1,11 @@
 # Home Services Agent Lessons
 
+## 2026-09-24 - One CI workflow, one pass per gate, and the pushes that burned the month
+
+- **The five pull-request workflows are now one `ci.yml`** with three jobs: `controls` always, then `workspace` and `database` when the paths select them. Before the merge, one push that touched two harness scripts billed 36 minutes, because the whole-workspace type-check ran three times, the tests twice, and the Deno checks twice. A new gate goes into the one job that owns it, never into a second workflow.
+- **What burned September was agent behaviour, not only duplication.** One session pushed about 12 pull requests two or three times each, waited on a `CONFLICTING` pull request that never gets CI, and dispatched the Production release lane repeatedly (28 to 58 minutes each). Open pull requests as drafts, check `mergeStateStatus` before waiting, fix locally, mark ready once, and diagnose a failed smoke before dispatching again.
+- **The strict `release-production` lane is paused by the repository variable `NESTSCOUT_STRICT_RELEASE_ENABLED`.** Pillar P56 forbids a manual dispatch for it, so its push trigger stays and its jobs skip for free while the variable is unset. Do not set the variable until `transaction-critical-coverage.mjs --require-mapped` can pass.
+
 ## 2026-09-21 - Every push to a pull request is billed, and a billing block looks like a code failure
 
 - **CI minutes are metered and a spending limit blocks everything.** CI was blocked five times in six days in September. Jobs that fail within seconds having run no steps, with the annotation "spending limit needs to be increased", are a billing block, not a code fault; rerunning them proves nothing.

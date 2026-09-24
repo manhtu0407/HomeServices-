@@ -351,7 +351,7 @@ function goodFiles() {
         'docker:version:ensure': 'node scripts/run.mjs docker/scripts/ensure-version',
       },
     }),
-    '.github/workflows/harness-assurance.yml': '- name: Docker contract ratchet\n  run: node scripts/check-docker-contracts.mjs',
+    '.github/workflows/ci.yml': '- name: Docker contract ratchet\n  run: node scripts/check-docker-contracts.mjs',
     'config/harness/manifest.json': JSON.stringify({
       entries: [{
         id: 'kael-docker',

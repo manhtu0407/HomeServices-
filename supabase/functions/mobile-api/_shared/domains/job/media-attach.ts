@@ -220,12 +220,33 @@ async function persistJobMediaRows(input: {
   if (rowsToInsert.length > 0) {
     const inserted = await dbQuery(input.client.from("job_media_assets").insert(rowsToInsert).select("id"));
     if (inserted.error) {
-      const cleanupPaths = await failJobMediaIntents(
-        input.client, input.jobId, input.ctx.user.id, rowsToInsert.map((row) => row.object_path),
-      );
-      if (storage) await removeJobMediaObjectsBestEffort(storage, cleanupPaths);
+      const insertedPaths = rowsToInsert.map((row) => row.object_path);
+      const outcome = await readJobMediaInsertOutcome(input.client, input.jobId, insertedPaths);
+      // A client-side timeout can land after the insert committed; those rows now reference the
+      // stored objects, so the attach stands and nothing may be cleaned up.
+      if (outcome === "committed") return { rowsToInsert, responseRows };
+      // Only a confirmed absent insert may release intents and delete the uploaded objects.
+      if (outcome === "absent") {
+        const cleanupPaths = await failJobMediaIntents(
+          input.client, input.jobId, input.ctx.user.id, insertedPaths,
+        );
+        if (storage) await removeJobMediaObjectsBestEffort(storage, cleanupPaths);
+      }
       apiFailure("DB_ERROR", "Không thể lưu thông tin media", 500);
     }
   }
   return { rowsToInsert, responseRows };
+}
+
+async function readJobMediaInsertOutcome(
+  client: ReturnType<typeof db>,
+  jobId: string,
+  objectPaths: string[],
+): Promise<"committed" | "absent" | "unknown"> {
+  const stored = await dbQuery<Array<Record<string, unknown>>>(
+    client.from("job_media_assets").select("object_path").eq("job_id", jobId).in("object_path", objectPaths),
+  );
+  if (stored.error || !Array.isArray(stored.data)) return "unknown";
+  if (stored.data.length === 0) return "absent";
+  return stored.data.length === objectPaths.length ? "committed" : "unknown";
 }

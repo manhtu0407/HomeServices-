@@ -112,7 +112,8 @@ export function deriveVerificationWorkflow(strictText) {
   text = text.slice(0, reconcilerStart) + text.slice(qualityStart)
 
   const dispatchGuard = `    if: github.ref == 'refs/heads/main' && inputs.confirm == '${CONFIRMATION_PHRASE}'\n`
-  const strictGuard = "    if: github.event_name != 'schedule' && github.ref == 'refs/heads/main'\n"
+  // The strict lane's enable switch pauses automatic releases only; the dispatch lane needs no switch.
+  const strictGuard = "    if: github.event_name != 'schedule' && github.ref == 'refs/heads/main' && vars.NESTSCOUT_STRICT_RELEASE_ENABLED == 'true'\n"
   text = replaceOnce(text, `    name: quality, security, integration, SQL, and immutable-source gates\n${strictGuard}`,
     `    name: quality, security, integration, SQL, and immutable-source gates\n${dispatchGuard}`)
   text = replaceOnce(text, `    needs: [quality, release-config-gate]\n${strictGuard}`, `    needs: [quality, release-config-gate]\n${dispatchGuard}`)
