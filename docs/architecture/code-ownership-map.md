@@ -143,7 +143,7 @@ Three gates hold the split honest, and all three read the artifact through the s
 single file:
 
 - `node scripts/split-database-types.mjs --check-against <generated>` — rejoins the tree and compares it byte
-  for byte, which is what `.github/workflows/harness-assurance.yml` runs after replaying every migration.
+  for byte, which is what the `database` job of `.github/workflows/ci.yml` runs after replaying every migration.
 - `config/harness/migration-inventory.json → databaseTypes.sha256` — hashes the rejoined bytes.
   `scripts/harness/promotion.mjs` compares that value across releases, so it must not change when only the
   file layout changes.

@@ -35,7 +35,7 @@ describe('Production UI language normality', () => {
   }, 15_000)
 
   it('keeps the same fail-closed audit in PR and post-merge release workflows', () => {
-    const prWorkflow = readFileSync(resolve(root, '.github/workflows/kael-agentic-completeness.yml'), 'utf8')
+    const prWorkflow = readFileSync(resolve(root, '.github/workflows/ci.yml'), 'utf8')
     const releaseWorkflow = readFileSync(resolve(root, '.github/workflows/release-production.yml'), 'utf8')
     const audit = readFileSync(resolve(root, 'scripts/check-production-ui-copy.mjs'), 'utf8')
     expect(prWorkflow, pillarWhy(PILLAR, 'PR ratchet')).toContain('node scripts/check-production-ui-copy.mjs')

@@ -97,7 +97,7 @@ lint:comments on this change: clean / <violations>
 
 - `pnpm lint:comments` — full report (`scripts/check-comment-discipline.mjs`). `--diff <ref>` judges only lines added versus a ref (CI ratchet); `--working` judges only the current uncommitted change (Stop hook).
 - The `comment-hygiene` Stop hook (`.claude/hooks/verify-comment-hygiene.mjs`) re-runs `--working` when code under `apps/`, `packages/`, or `supabase/functions/` changed, and blocks a false "done" on a new violation. It is wired in `.claude/settings.json`, so it fires for Claude Code only; Codex has no hook and runs `pnpm lint:comments --working` by hand.
-- The `comment-discipline` CI job (`.github/workflows/comment-discipline.yml`) blocks new banner comments on the lines a PR adds.
+- The `Comment discipline` step of the `controls` job in `.github/workflows/ci.yml` blocks banner comments anywhere in the repository, which covers the lines a PR adds.
 
 All three are going-forward ratchets. Legacy files are cleaned when next touched, never in one mass rewrite.
 

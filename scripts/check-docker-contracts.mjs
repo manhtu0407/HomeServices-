@@ -26,7 +26,7 @@ export const DOCKER_CONTRACT_FILES = [
   'docker/profiles/full.md',
   'docker/INDEX.md',
   'package.json',
-  '.github/workflows/harness-assurance.yml',
+  '.github/workflows/ci.yml',
   'config/harness/manifest.json',
 ]
 
@@ -266,7 +266,7 @@ export function dockerContractProblems(files) {
   requireText(
     problems,
     files,
-    '.github/workflows/harness-assurance.yml',
+    '.github/workflows/ci.yml',
     [/Docker contract ratchet/i, /node scripts\/check-docker-contracts\.mjs/i],
     'the Docker contract ratchet must run in CI',
   )

@@ -1,0 +1,426 @@
+# Pull request, main, and weekly CI in one workflow. Private-repository minutes bill per job,
+# rounded up to a whole minute, and every job pays its own checkout and dependency install, so
+# each gate runs exactly once and the lanes share jobs: `controls` always runs, `workspace` and
+# `database` run when the change set reaches them. A push to main carries a tree its pull request
+# already verified, so it runs `controls` only. Billing model and runbook:
+# docs/ops/github-actions-cost.md.
+name: ci
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+  push:
+    branches: [main]
+  schedule:
+    # Weekly full run of every lane on main (01:00 ICT Monday / 18:00 UTC Sunday).
+    - cron: "0 18 * * 0"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  # gitleaks-action (pull request mode) reads the pull request's commit list through the API.
+  pull-requests: read
+
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  controls:
+    name: secret scan, classification, and repository controls
+    # A draft pull request runs nothing; iterate locally and mark it ready once.
+    if: ${{ github.event_name != 'pull_request' || github.event.pull_request.draft == false }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    outputs:
+      frontend: ${{ steps.classify.outputs.frontend }}
+      backend: ${{ steps.classify.outputs.backend }}
+      shared: ${{ steps.classify.outputs.shared }}
+      database: ${{ steps.classify.outputs.database }}
+      harness: ${{ steps.classify.outputs.harness }}
+      sandbox: ${{ steps.classify.outputs.sandbox }}
+      security: ${{ steps.classify.outputs.security }}
+      integration: ${{ steps.classify.outputs.integration }}
+      kael: ${{ steps.classify.outputs.kael }}
+      workspace: ${{ steps.classify.outputs.workspace }}
+      workspace_full: ${{ steps.classify.outputs.workspace_full }}
+      runtime: ${{ steps.classify.outputs.runtime }}
+    # Steps after the first run even when an earlier one fails, so one run reports every failing
+    # control.
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Run gitleaks
+        uses: gitleaks/gitleaks-action@ff98106e4c7b2bc287b24eaf42907196329070c7 # v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_CONFIG: config/security/gitleaks.toml
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+        if: ${{ !cancelled() }}
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        if: ${{ !cancelled() }}
+        with:
+          node-version: 22
+          cache: pnpm
+      # Fixture suites load TypeScript through the mobile workspace.
+      - run: pnpm install --frozen-lockfile
+        if: ${{ !cancelled() }}
+      - id: classify
+        name: Classify dependency impact
+        if: ${{ !cancelled() }}
+        env:
+          CI_EVENT: ${{ github.event_name }}
+          CI_BASE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
+          CI_HEAD_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+        run: node scripts/harness/classify-ci-changes.mjs
+      - name: Harness assurance verification
+        if: ${{ !cancelled() }}
+        run: node scripts/harness/verify.mjs
+      - name: Harness manifest semantic check
+        if: ${{ !cancelled() }}
+        run: node scripts/harness/check-manifest.mjs
+      - name: Structure baseline lock
+        if: ${{ !cancelled() }}
+        run: node scripts/check-structure-baseline.mjs
+      - name: Structure ratchet
+        if: ${{ !cancelled() }}
+        run: node scripts/lint-structure.mjs
+      - name: Source residue ratchet
+        if: ${{ !cancelled() }}
+        run: node scripts/check-source-residue.mjs
+      - name: Protocol routing ratchet
+        if: ${{ !cancelled() }}
+        run: node scripts/check-protocol-routes.mjs
+      - name: Work-router coverage ratchet
+        if: ${{ !cancelled() }}
+        run: node scripts/check-work-plan.mjs --coverage
+      - name: Docker contract ratchet
+        if: ${{ !cancelled() }}
+        run: node scripts/check-docker-contracts.mjs
+      # Reads governance/design/runtime.md, which no conditional lane runs for, so it stays here.
+      - name: Design adapter ratchet
+        if: ${{ !cancelled() }}
+        run: node scripts/design/check-design-adapters.mjs
+      - name: Workflow cost ratchet
+        if: ${{ !cancelled() }}
+        run: node scripts/check-workflow-cost.mjs
+      # The full-repository report is a superset of the added-lines check.
+      - name: Comment discipline
+        if: ${{ !cancelled() }}
+        run: node scripts/check-comment-discipline.mjs
+      - name: Skills single-source check
+        if: ${{ !cancelled() }}
+        run: node scripts/check-skills-sync.mjs
+      - name: Skill contract ratchet
+        if: ${{ !cancelled() }}
+        run: node scripts/check-skill-contracts.mjs
+      - name: Runner parity ratchet
+        if: ${{ !cancelled() }}
+        run: node scripts/check-runner-parity.mjs
+      - name: Test collection ratchet
+        if: ${{ !cancelled() }}
+        run: node scripts/check-test-collection.mjs
+      - name: Artifact-text assertion ratchet
+        if: ${{ !cancelled() }}
+        run: node scripts/find-artifact-text-assertions.mjs
+      - name: Pillar registry ratchet
+        if: ${{ !cancelled() }}
+        run: node scripts/harness/pillar-registry.mjs
+      - name: Production UI copy audit
+        if: ${{ !cancelled() }}
+        run: node scripts/check-production-ui-copy.mjs
+      - name: Transaction-critical coverage report
+        if: ${{ !cancelled() }}
+        run: node scripts/harness/transaction-critical-coverage.mjs
+      - name: Script fixture suites
+        if: ${{ !cancelled() }}
+        run: node --test scripts/*.test.mjs scripts/harness/*.test.mjs
+
+  workspace:
+    name: type-check, tests, build, Kael evals, and Edge checks
+    needs: controls
+    # Runs after a failed control too, so one push reports controls and tests together.
+    if: ${{ !cancelled() && github.event_name != 'push' && (needs.controls.outputs.workspace == 'true' || needs.controls.outputs.kael == 'true' || needs.controls.outputs.security == 'true') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      # One type-check and one test pass: every workspace when the change crosses workspaces or
+      # reaches Kael, otherwise only the workspace it touched.
+      FULL: ${{ needs.controls.outputs.workspace_full == 'true' || needs.controls.outputs.kael == 'true' }}
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Focused mobile checks
+        if: ${{ env.FULL != 'true' && needs.controls.outputs.frontend == 'true' }}
+        run: |
+          pnpm type-check:mobile
+          pnpm test:mobile --runInBand
+      - name: Focused API checks
+        if: ${{ !cancelled() && env.FULL != 'true' && needs.controls.outputs.backend == 'true' }}
+        run: |
+          pnpm type-check:api
+          pnpm test:api
+      - name: Focused sandbox checks
+        if: ${{ !cancelled() && env.FULL != 'true' && needs.controls.outputs.sandbox == 'true' }}
+        run: |
+          pnpm sandbox:type-check
+          pnpm sandbox:test
+      # Names the security-negative pillars, which is what the runners collect. A full run already
+      # executes them inside the API and shared suites.
+      # scripts/check-test-collection.mjs fails if a non-collected filter is added back.
+      - name: Security guardrail tests
+        if: ${{ !cancelled() && env.FULL != 'true' && needs.controls.outputs.security == 'true' }}
+        run: |
+          pnpm --filter @nestscout/api exec vitest run --passWithNoTests=false \
+            bounded-response-read-pillar \
+            job-access-ownership-pillar \
+            adversarial-surface-matrix-pillar \
+            kael-inbound-safety-pillar \
+            harness-metadata-allowlist-pillar \
+            kael-prompt-fingerprint-pillar \
+            kael-request-provenance-pillar
+          pnpm --filter @nestscout/shared exec vitest run --passWithNoTests=false \
+            kael-pii-scrub-pillar \
+            remote-snapshot-validation-pillar
+      - name: Type-check all workspaces
+        if: ${{ env.FULL == 'true' }}
+        run: |
+          pnpm --filter @nestscout/api type-check
+          pnpm --filter @nestscout/shared type-check
+          pnpm --filter @nestscout/mobile type-check
+          pnpm --filter @nestscout/sandbox type-check
+      - name: Run all workspace tests
+        if: ${{ env.FULL == 'true' }}
+        run: |
+          mkdir -p artifacts/transactions
+          pnpm --filter @nestscout/api test --reporter=default --reporter=json --outputFile=../../artifacts/transactions/api-vitest.json
+          pnpm --filter @nestscout/shared test
+          pnpm --filter @nestscout/mobile test --runInBand --json --outputFile=../../artifacts/transactions/mobile-jest.json
+          pnpm --filter @nestscout/sandbox test
+      - name: Verify bound assertions and report remaining transaction debt
+        if: ${{ env.FULL == 'true' }}
+        run: |
+          node scripts/harness/transaction-critical-coverage.mjs --require-bound-assertions \
+            --results artifacts/transactions/api-vitest.json \
+            --results artifacts/transactions/mobile-jest.json
+      - name: Preserve transaction runner evidence, including failures
+        if: ${{ always() && env.FULL == 'true' }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: transaction-assertions-${{ github.sha }}
+          path: artifacts/transactions/*.json
+          if-no-files-found: error
+          retention-days: 30
+      - name: Build affected workspaces
+        if: ${{ needs.controls.outputs.workspace_full == 'true' }}
+        run: pnpm exec turbo --root-turbo-json config/turbo/turbo.json build
+      - name: Run deterministic Kael evaluations
+        if: ${{ !cancelled() && needs.controls.outputs.kael == 'true' }}
+        run: |
+          node apps/api/scripts/kael-eval.mjs --mode deterministic --report /tmp/kael-eval.md
+          node apps/api/scripts/kael-multi-turn-eval.mjs
+      - name: Verify live tooling refuses unsafe or incomplete configuration
+        if: ${{ !cancelled() && needs.controls.outputs.kael == 'true' }}
+        run: |
+          node apps/api/scripts/kael-model-health.mjs --list
+          node apps/api/scripts/kael-model-health.mjs --self-test
+          if node apps/api/scripts/kael-model-health.mjs >/tmp/model-health.log 2>&1; then
+            cat /tmp/model-health.log
+            echo 'model-health must refuse live I/O without credentials' >&2
+            exit 1
+          fi
+          grep -E 'Missing .*API_KEY' /tmp/model-health.log
+          if node apps/api/scripts/kael-live-redteam.mjs >/tmp/live-redteam.log 2>&1; then
+            cat /tmp/live-redteam.log
+            echo 'live red-team must require explicit opt-in' >&2
+            exit 1
+          fi
+          grep -F 'KAEL_REDTEAM_RUN_LIVE=yes' /tmp/live-redteam.log
+      # Every canonical Edge function, through the pinned Deno image in compose.yaml.
+      - name: Edge function type-check
+        if: ${{ !cancelled() && (needs.controls.outputs.runtime == 'true' || needs.controls.outputs.kael == 'true') }}
+        run: node scripts/run.mjs docker/scripts/edge-check
+      - name: Confirm protected boundaries
+        if: ${{ !cancelled() && github.event_name == 'pull_request' && needs.controls.outputs.kael == 'true' }}
+        run: |
+          test -z "$(git diff --name-only "origin/${{ github.base_ref }}"...HEAD -- apps/api/src/app/admin/kael-learning)"
+          while IFS= read -r deleted_file; do
+            case "$deleted_file" in
+              'apps/mobile/app/(admin)/dashboard.tsx'|'apps/mobile/app/(admin)/__tests__/admin-dashboard-test.tsx')
+                ;;
+              # Replaced, not dropped: the generated artifact now lives split across
+              # packages/shared/src/types/database/**, and scripts/split-database-types.mjs
+              # rejoins it byte for byte. Drops out of this list once the split is on main.
+              'packages/shared/src/types/database.types.ts')
+                ;;
+              # Removing a test is a reviewable act, not a silent one: the diff
+              # shows it and docs/test-debt-ledger.md records what each removal
+              # gave up. Unlisted product code, the admin surface, and every other
+              # tracked path stay blocked by the catch-all below.
+              apps/api/src/__tests__/*|packages/shared/src/__tests__/*)
+                ;;
+              # Retired UI surfaces/assets are intentionally removed by this
+              # publication and replaced by the current production surfaces.
+              # Keep the exception exact so unrelated product deletions remain blocked.
+              'apps/mobile/assets/lottie/nestscout-aurora-nest-approved-logo-transparent.png'|\
+              'apps/mobile/assets/lottie/nestscout-aurora-nest-north-star-awakening.json'|\
+              'apps/mobile/components/auth/entry-access/lottie-logo-mark.tsx'|\
+              'apps/mobile/components/customer/profile/profile-ranking-mark.tsx'|\
+              'apps/mobile/components/customer/ui/payment-styles.ts'|\
+              'apps/mobile/components/customer/ui/payment-surfaces.tsx'|\
+              'apps/mobile/components/kael/kael-svg-lottie-view.tsx'|\
+              'apps/mobile/components/worker/earnings/overview-styles.ts'|\
+              'apps/mobile/components/worker/earnings/overview-surfaces.tsx'|\
+              'apps/mobile/components/worker/earnings/salary-assets.ts'|\
+              'apps/mobile/components/worker/home/opportunity-styles.ts'|\
+              'apps/mobile/components/worker/home/opportunity-surfaces.tsx'|\
+              'apps/mobile/components/worker/jobs/acceptance-styles.ts'|\
+              'apps/mobile/components/worker/jobs/acceptance-surfaces.tsx'|\
+              'apps/mobile/components/worker/jobs/completion-bodies.tsx'|\
+              'apps/mobile/components/worker/jobs/completion-evidence-screen-body.tsx'|\
+              'apps/mobile/components/worker/jobs/inbox-offer-surfaces.tsx'|\
+              'apps/mobile/components/worker/jobs/offer-styles.ts'|\
+              'apps/mobile/components/worker/jobs/offer-surfaces.tsx'|\
+              'apps/mobile/components/worker/jobs/worker-jobs-legacy-prototype-body.tsx'|\
+              'apps/mobile/components/worker/jobs/worker-jobs-legacy-prototype-contracts.ts'|\
+              'apps/mobile/components/worker/jobs/worker-jobs-legacy-prototype-host.tsx'|\
+              'apps/mobile/components/worker/jobs/worker-jobs-legacy-prototype-offer-route.tsx'|\
+              'apps/mobile/components/worker/jobs/worker-jobs-legacy-prototype-opportunity.tsx'|\
+              'apps/mobile/components/worker/jobs/worker-jobs-legacy-prototype-settlement.tsx'|\
+              'apps/mobile/components/worker/jobs/worker-jobs-legacy-prototype-shared.tsx'|\
+              'apps/mobile/components/worker/jobs/worker-jobs-legacy-prototype-stages.tsx'|\
+              'apps/mobile/components/worker/jobs/worker-jobs-legacy-prototype-style-part-a.ts'|\
+              'apps/mobile/components/worker/jobs/worker-jobs-legacy-prototype-style-part-b.ts'|\
+              'apps/mobile/components/worker/jobs/worker-jobs-legacy-prototype-styles.ts'|\
+              'apps/mobile/components/worker/jobs/worker-jobs-legacy-prototype-surface.tsx')
+                ;;
+              '')
+                ;;
+              *)
+                echo "tracked file deletion detected: $deleted_file" >&2
+                exit 1
+                ;;
+            esac
+          done < <(git diff --name-only --diff-filter=D "origin/${{ github.base_ref }}"...HEAD)
+
+  database:
+    name: empty reset, SQL matrix, generated types, and integration suite
+    needs: controls
+    if: ${{ !cancelled() && github.event_name != 'push' && (needs.controls.outputs.database == 'true' || needs.controls.outputs.harness == 'true' || needs.controls.outputs.integration == 'true') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      DB_LANE: ${{ needs.controls.outputs.database == 'true' || needs.controls.outputs.harness == 'true' }}
+      INTEGRATION_LANE: ${{ needs.controls.outputs.integration == 'true' }}
+    # One local Supabase serves the schema checks and the integration suite. It checks out the
+    # pull request head because the integration suite's release preflight binds that exact SHA;
+    # release-production reruns the schema gates on the merged main tree before any deploy.
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Prepare canonical empty-reset migration workdir
+        run: |
+          node scripts/harness/prepare-migration-workdir.mjs \
+            --empty-reset \
+            --inventory config/harness/migration-inventory.json \
+            --output .scratch/ci-migrations
+      - name: Start isolated local Supabase
+        run: |
+          # The integration suite needs the full stack; the schema checks do not need Edge.
+          exclude=()
+          if [ "$INTEGRATION_LANE" != 'true' ]; then exclude=(--exclude edge-runtime); fi
+          pnpm --filter @nestscout/api exec supabase start --workdir ../../.scratch/ci-migrations "${exclude[@]}"
+      - name: Record isolated Postgres image identity
+        run: |
+          mapfile -t databases < <(docker ps -q --filter 'name=^/supabase_db_')
+          test "${#databases[@]}" -eq 1
+          docker inspect --format '{{.Config.Image}} {{.Image}}' "${databases[0]}"
+      - id: reset
+        name: Replay migrations from empty state
+        run: pnpm --filter @nestscout/api exec supabase db reset --local --workdir ../../.scratch/ci-migrations
+      - name: Run SQL verification matrix
+        if: ${{ env.DB_LANE == 'true' }}
+        env:
+          NESTSCOUT_TEST_DB_URL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
+        # Keep the existing matrix intact and report every failure in one CI pass.
+        run: node scripts/run.mjs docker/scripts/run-sql-tests
+      - name: Generate database types from replayed schema
+        if: ${{ !cancelled() && env.DB_LANE == 'true' && steps.reset.outcome == 'success' }}
+        run: |
+          pnpm --filter @nestscout/api exec supabase gen types typescript --local --workdir ../../.scratch/ci-migrations > /tmp/database.types.ts
+          node -e "const fs = require('node:fs'); const path = '/tmp/database.types.ts'; const text = fs.readFileSync(path, 'utf8'); fs.writeFileSync(path, text.replace(/\\n+$/u, '\\n'))"
+      - name: Upload generated database types
+        if: ${{ !cancelled() && env.DB_LANE == 'true' && steps.reset.outcome == 'success' }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: harness-database-types
+          path: /tmp/database.types.ts
+          if-no-files-found: error
+          retention-days: 1
+      - name: Generated type drift check
+        if: ${{ !cancelled() && env.DB_LANE == 'true' && steps.reset.outcome == 'success' }}
+        # The artifact is committed split across packages/shared/src/types/database/**.
+        # Rejoining it and comparing bytes keeps this check exactly as strong as the
+        # single-file cmp it replaces; --check-against only makes the failure readable.
+        run: |
+          node scripts/split-database-types.mjs --join > /tmp/rejoined.types.ts
+          if ! cmp -s /tmp/rejoined.types.ts /tmp/database.types.ts; then
+            echo "Generated database types differ from the committed split tree."
+            node scripts/split-database-types.mjs --check-against /tmp/database.types.ts || true
+            diff --unified=3 /tmp/rejoined.types.ts /tmp/database.types.ts | head -400 || true
+            exit 1
+          fi
+      - name: Supabase schema lint
+        if: ${{ !cancelled() && env.DB_LANE == 'true' && steps.reset.outcome == 'success' }}
+        run: pnpm --filter @nestscout/api exec supabase db lint --local --fail-on warning --workdir ../../.scratch/ci-migrations
+      # Not every SQL verification file rolls back, so the integration suite starts from a fresh
+      # replay rather than whatever the matrix left behind.
+      - id: integration_reset
+        name: Replay migrations again for the integration suite
+        if: ${{ !cancelled() && env.DB_LANE == 'true' && env.INTEGRATION_LANE == 'true' && steps.reset.outcome == 'success' }}
+        run: pnpm --filter @nestscout/api exec supabase db reset --local --workdir ../../.scratch/ci-migrations
+      - name: Integration tests against local Supabase
+        if: ${{ !cancelled() && env.INTEGRATION_LANE == 'true' && steps.reset.outcome == 'success' && steps.integration_reset.outcome != 'failure' }}
+        env:
+          NESTSCOUT_ENVIRONMENT: local
+          EXPECTED_GIT_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || '' }}
+        # Keep the explicit path and fail-on-empty flag together: the integration pillar must
+        # remain collected, and this step must never report green after executing zero tests.
+        run: pnpm --filter @nestscout/api exec vitest run --passWithNoTests=false src/__tests__/integration
+      - name: Preserve isolated Postgres diagnostics on failure
+        if: failure()
+        run: |
+          mkdir -p artifacts/database-diagnostics
+          mapfile -t databases < <(docker ps -aq --filter 'name=^/supabase_db_')
+          test "${#databases[@]}" -eq 1
+          docker inspect --format '{{json .State}}' "${databases[0]}" > artifacts/database-diagnostics/state.json
+          docker logs --tail 200 "${databases[0]}" > artifacts/database-diagnostics/postgres.log 2>&1
+      - name: Upload isolated Postgres diagnostics
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: database-diagnostics-${{ github.sha }}
+          path: artifacts/database-diagnostics/
+          if-no-files-found: warn
+          retention-days: 3
+      - name: Stop local Supabase
+        if: always()
+        run: pnpm --filter @nestscout/api exec supabase stop --no-backup --workdir ../../.scratch/ci-migrations

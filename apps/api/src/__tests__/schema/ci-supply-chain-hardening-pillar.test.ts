@@ -16,7 +16,7 @@ export const PILLAR = {
   layer: 'security-negative',
   siblings: ['P56-stage1-production-release-workflow', 'P53-stage1-release-integrity'],
   mutation:
-    'replace the 40-hex SHA of any `uses:` in any workflow with a tag such as `v4`, or delete one `persist-credentials: false` from any checkout — exactly the case named for that workflow turns red and no other case in this pillar moves, including for harness-assurance, kael-agentic-completeness and release-production, which the earlier version of this test never read',
+    'replace the 40-hex SHA of any `uses:` in any workflow with a tag such as `v4`, or delete one `persist-credentials: false` from any checkout — exactly the case named for that workflow turns red and no other case in this pillar moves, including for ci and both release lanes',
 } as const satisfies PillarManifest
 
 const root = resolve(__dirname, '../../../../..')
@@ -72,8 +72,8 @@ describe('CI supply-chain hardening', () => {
   })
 
   it('runs the secret scan with full history on every pull request and push', () => {
-    const security = readWorkflow('security.yml')
-    expect(security, pillarWhy(PILLAR, 'security.yml no longer runs gitleaks')).toMatch(/uses:\s*gitleaks\/gitleaks-action@[a-f0-9]{40}/u)
+    const security = readWorkflow('ci.yml')
+    expect(security, pillarWhy(PILLAR, 'ci.yml no longer runs gitleaks')).toMatch(/uses:\s*gitleaks\/gitleaks-action@[a-f0-9]{40}/u)
     expect(security, pillarWhy(PILLAR, 'the scan must use the repository rule set')).toMatch(/GITLEAKS_CONFIG:\s*config\/security\/gitleaks\.toml/u)
     expect(security, pillarWhy(PILLAR, 'a shallow checkout hides the history the scan exists to read')).toMatch(/fetch-depth:\s*0/u)
     expect(security, pillarWhy(PILLAR, 'the scan must run on pull requests')).toMatch(/^\s+pull_request:/mu)

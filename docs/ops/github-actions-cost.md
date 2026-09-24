@@ -41,6 +41,7 @@ Measured from the workflow runs (`node scripts/ci-usage-report.mjs --month 2026-
 
 The caps are inferred from these crossings, not read from GitHub. The Billing page showing exactly $7.00 spent against a $9.00 budget fits a meter that stopped at a $7.00 cap before the budget was raised.
 
+- **By 24 September the month stood at 5,054 billable minutes** ($18.32 overage, about $26 projected), with 96 jobs refused on six days. The costliest items were `harness-assurance` on pull requests (1,764 minutes, 18.4 per run), `release-production-verification` (673), `harness-assurance` on pushes to `main` (591), and `kael-agentic-completeness` on pull requests (591). One push to a pull request that only touched two `scripts/harness` files billed 36 minutes, because the whole-workspace type-check ran three times, the whole-workspace tests twice, the Deno checks twice, and every job paid its own checkout and install. That is why the five pull-request workflows were folded into `ci.yml` (below).
 - The hourly `stale-canary-reconciler` failed all 98 of its September runs, which billed 94 minutes. After its TypeScript import was fixed it failed on Production having no release-control table, apart from the runs a billing block refused. The nightly `integration` schedule re-ran, on unchanged code, the suite that already runs for every change that can affect it.
 
 ## What runs when
@@ -48,16 +49,24 @@ The caps are inferred from these crossings, not read from GitHub. The Billing pa
 | Event | Runs | Does not run |
 |---|---|---|
 | Push to a draft pull request | nothing | everything |
-| Push to a ready pull request, or marking a draft ready | the always-on controls (`comment-discipline`, `security`, `harness-assurance/governance-controls`) plus the lanes the changed paths select | lanes no changed path selects |
-| Push to `main` | the always-on controls and `release-production` | every conditional lane |
-| Sunday 18:00 and 18:30 UTC, on `main` | `integration` (database replay and suite) and `kael-agentic-completeness` (whole-workspace tests and evals) | |
-| Every six hours, on `main` | the stale-canary reconciler | |
+| Push to a ready pull request, or marking a draft ready | `ci` job `controls` (secret scan, classification, every ratchet once), plus `workspace` and `database` when the changed paths select them | lanes no changed path selects |
+| Push to `main` | `ci` job `controls` only | `workspace`, `database`, and `release-production` unless its switch is on (below) |
+| Sunday 18:00 UTC, on `main` | `ci` with every lane: whole-workspace type-check, tests, build, Kael evals, Edge checks, database replay, SQL matrix, generated types, integration suite | |
+| Daily 03:17 UTC, on `main` | the stale-canary reconciler | |
+
+`ci.yml` has three jobs, and each gate runs in exactly one of them:
+
+- `controls` always runs (except on drafts). It does the gitleaks scan, one `pnpm install`, the path classification the other jobs read, and every script-level ratchet, including the comment-discipline full report, which is a superset of the added-lines check.
+- `workspace` does one type-check and one test pass. It covers all four workspaces when the change crosses workspaces or reaches Kael (with the JSON reports the transaction gate binds), and only the touched workspace otherwise. It also runs the build, the Kael deterministic evals, one Edge `deno check` of every function, and the protected-boundary check.
+- `database` starts one local Supabase for the empty-reset replay, the SQL matrix, the generated-type drift check, the schema lint, and the integration suite. It replays again before the suite, because not every SQL verification file rolls back. It checks out the pull request head, because the suite's release preflight binds that SHA; `release-production` reruns the schema gates on the merged tree before any deploy.
+
+**The strict release lane is paused by a switch.** `release-production` still triggers on every push to `main` (pillar P56 forbids a manual dispatch for it). Its jobs run only when the repository variable `NESTSCOUT_STRICT_RELEASE_ENABLED` is `true`. While transaction entries are unmapped its gate cannot pass, so the variable stays unset, every job is skipped at no cost, and `main` no longer shows a red run per merge. The dispatch lane `release-production-verification` is the release path meanwhile. Set the variable (Settings, then Secrets and variables, then Actions, then Variables) once the strict gate can pass.
 
 A push to `main` carries a tree its pull request already ran the heavy lanes on. What still runs there is what a merge can break without conflicting: the registries and ratchets (pillar ids, manifests, structure baseline), the secret scan, and the release gate. `release-production` is the post-merge authority once its gate can pass; until then nothing is deployed from `main`, and the weekly runs catch a semantic conflict between two pull requests that each passed alone. Reinstate the conditional lanes on pushes if the release gate is ever disabled or weakened.
 
 ## Guardrails
 
-`node scripts/check-workflow-cost.mjs` (`pnpm lint:workflow-cost`) runs in the always-on `governance-controls` job and fails a change that:
+`node scripts/check-workflow-cost.mjs` (`pnpm lint:workflow-cost`) runs in the always-on `ci` `controls` job and fails a change that:
 
 - leaves a job without a literal `timeout-minutes`, or sets one above 90, because a hung job otherwise bills to the 360-minute default;
 - adds a schedule that fires more than 28 times a week. Availability monitoring belongs on an external uptime service, not on metered runner minutes; a `*/15` cron is 672 runs a week;
@@ -69,7 +78,7 @@ A deliberate exception is added to `EXCEPTIONS` in that script with a reason. An
 
 Lane selection lives in `scripts/harness/classify-ci-changes.mjs`. Documentation, rules (`governance/**`), skills, commands, and `.claude/MEMORY.md` select no conditional lane, because the ratchets that always run already prove them and nothing compiles or tests them. Hooks, settings, workflows, `scripts/harness/**`, `config/harness/**`, and root manifests still select everything, and any path no lane claims still selects everything. Across all 3,418 tracked paths at the time of the change, only the 349 documentation, rule, skill, and command paths changed classification; no source path did.
 
-Cheap script-level controls share one job per workflow, because each job bills a whole minute and spends about a third of it on checkout and dependency install. `release-production` fails its `quality` job in seconds with `transaction-critical-coverage.mjs --require-mapped` while any transaction entry is unmapped, instead of after the whole-workspace tests; the gate that follows cannot pass in that state, so the conclusion is the same and arrives roughly 7 minutes earlier per push to `main`.
+Cheap script-level controls share one job, because each job bills a whole minute and spends about a third of it on checkout and dependency install. `release-production` fails its `quality` job in seconds with `transaction-critical-coverage.mjs --require-mapped` while any transaction entry is unmapped, instead of after the whole-workspace tests; the gate that follows cannot pass in that state, so the conclusion is the same and arrives roughly 7 minutes earlier per push to `main`.
 
 CI supply-chain hardening is a collected pillar (`P194-ci-supply-chain-hardening`): every action pinned to a full SHA, no checkout keeping its token, and a secret scan that reads full history, skips no path, and runs on pull requests and pushes.
 
@@ -81,6 +90,9 @@ Every push to a ready pull request re-runs the lanes chosen by the whole pull re
 - Batch commits and push once per review round. Run `pnpm ship:check` before pushing.
 - Before a burst of pushes, run `node scripts/ci-usage-report.mjs --month <YYYY-MM> --budget <cap>`. If fewer than three full pushes of headroom remain, stop and tell Tu instead of pushing.
 - A failing run is not a reason to rerun it repeatedly, and jobs that fail in seconds having run no steps are a billing block, not a code fault.
+- Check `gh pr view <n> --json mergeStateStatus` before waiting on checks. A `CONFLICTING` pull request gets no CI at all, so waiting on it only burns session time.
+- Do not re-dispatch `release-production-verification` after a failed smoke until the failure is diagnosed. Each run bills 28 to 58 minutes.
+- When a billing block appears, run the report above and give Tu the real figures. Do not guess.
 
 ## Measuring
 
@@ -105,7 +117,6 @@ The budget a month needs is `included + budget / rate` minutes, so a target of M
 
 These need a decision or a larger change.
 
-- **Fold `integration` and `kael-agentic-completeness` into `harness-assurance`.** It removes two classification jobs and lets one database replay and one set of workspace tests serve all three, an estimated 7 minutes per full run. It is deferred because tests and gates hard-code those workflow names, and `kael-agentic-completeness` produces the test-result files that the transaction gate binds to; it needs CI budget to iterate on.
 - **GitHub Pro** includes 3,000 minutes and lists protected branches for private repositories (both per GitHub's plan documentation), and this repository currently has no branch protection. It costs less than the Free overage once monthly usage passes about 2,000 plus its monthly price divided by $0.006 minutes. The price was not verifiable from the pages checked; read it on the billing page. Only the account owner can change the plan.
 - **`eas build --wait` occupies a runner while the store build runs**, up to the 240-minute ceiling. It has not run because the release gate has never passed.
 
