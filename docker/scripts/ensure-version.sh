@@ -8,6 +8,7 @@ fi
 
 command_timeout_seconds=15
 update_timeout_seconds=300
+diagnostic_limit=2048
 command_dir=$(mktemp -d)
 command_pid=""
 watchdog_pid=""
@@ -75,6 +76,24 @@ run_docker() {
   fi
 }
 
+limit_diagnostic() {
+  local value="$1"
+  local limit="$2"
+  local tail_limit
+
+  value=$(printf '%s' "$value" | tr '\r\n\t' '   ' | sed 's/[[:space:]][[:space:]]*/ /g; s/^ //; s/ $//')
+  if [ -z "$value" ]; then
+    printf '(empty)'
+    return
+  fi
+
+  if [ "${#value}" -gt "$limit" ]; then
+    tail_limit=$((limit - 14))
+    value="[truncated] ${value: -$tail_limit}"
+  fi
+  printf '%s' "$value"
+}
+
 write_summary() {
   printf 'docker_version=%s\n' "$1"
   printf 'compose_version=%s\n' "$2"
@@ -111,7 +130,9 @@ if [ "$command_code" -eq 0 ]; then
   update_attempts=1
   run_docker "$update_timeout_seconds" desktop update --quiet
   if [ "$command_code" -ne 0 ]; then
-    echo "ensure-version: stable Docker Desktop update failed ($command_stderr); no automatic retry" >&2
+    update_stdout=$(limit_diagnostic "$command_stdout" "$diagnostic_limit")
+    update_stderr=$(limit_diagnostic "$command_stderr" "$diagnostic_limit")
+    echo "ensure-version: stable Docker Desktop update failed (exit $command_code; stdout=$update_stdout; stderr=$update_stderr); no automatic retry" >&2
     write_summary "$docker_version" "$compose_version" "$strategy" "failed" "$update_attempts"
     exit 1
   fi

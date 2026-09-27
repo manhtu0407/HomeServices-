@@ -2,6 +2,7 @@ $ErrorActionPreference = "Stop"
 
 $CommandTimeoutSeconds = 15
 $UpdateTimeoutSeconds = 300
+$UpdateDiagnosticLimit = 2048
 
 if ($args.Count -ne 0) {
   [Console]::Error.WriteLine("ensure-version: no arguments are accepted")
@@ -87,6 +88,25 @@ function Invoke-DockerCommand {
   }
 }
 
+function Bound-Diagnostic {
+  param(
+    [AllowEmptyString()][string]$Text,
+    [ValidateRange(16, 8192)][int]$Limit = 2048
+  )
+
+  if ([string]::IsNullOrWhiteSpace($Text)) {
+    return "(empty)"
+  }
+
+  $normalized = [regex]::Replace($Text, '\s+', ' ').Trim()
+  if ($normalized.Length -le $Limit) {
+    return $normalized
+  }
+
+  $tailLength = $Limit - 14
+  return "[truncated] $($normalized.Substring($normalized.Length - $tailLength))"
+}
+
 function Write-VersionSummary {
   param(
     [string]$DockerVersion,
@@ -129,8 +149,9 @@ if ($desktopHelp.ExitCode -eq 0) {
   $updateAttempts = 1
   $update = Invoke-DockerCommand -Arguments @("desktop", "update", "--quiet") -TimeoutSeconds $UpdateTimeoutSeconds
   if ($update.ExitCode -ne 0) {
-    $detail = if ($update.Stderr) { $update.Stderr } else { "exit $($update.ExitCode)" }
-    [Console]::Error.WriteLine("ensure-version: stable Docker Desktop update failed ($detail); no automatic retry")
+    $stdoutDetail = Bound-Diagnostic -Text $update.Stdout -Limit $UpdateDiagnosticLimit
+    $stderrDetail = Bound-Diagnostic -Text $update.Stderr -Limit $UpdateDiagnosticLimit
+    [Console]::Error.WriteLine("ensure-version: stable Docker Desktop update failed (exit $($update.ExitCode); stdout=$stdoutDetail; stderr=$stderrDetail); no automatic retry")
     Write-VersionSummary -DockerVersion $dockerVersion.Stdout -ComposeVersion $composeVersion.Stdout -Strategy $strategy -Result "failed" -UpdateAttempts $updateAttempts
     exit 1
   }
