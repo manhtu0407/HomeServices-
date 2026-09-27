@@ -26,9 +26,11 @@ function allowStop(note) {
 }
 
 const raw = await readStdin()
+if (!raw.trim()) allowStop('empty hook payload; not blocking')
+
 let input = {}
 try {
-  input = raw ? JSON.parse(raw) : {}
+  input = JSON.parse(raw)
 } catch {
   allowStop('unreadable hook payload; not blocking')
 }

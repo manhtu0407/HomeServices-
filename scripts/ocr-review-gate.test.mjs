@@ -9,6 +9,7 @@ import { fileURLToPath } from 'node:url'
 
 import {
   NUDGE_LINE_THRESHOLD,
+  OCR_PROCESS_TIMEOUT_MS,
   buildBatches,
   buildPlan,
   checkNudge,
@@ -19,6 +20,7 @@ import {
   markReviewed,
   objectsDir,
   ocrInvocation,
+  quotePath,
   readState,
   renderPlan,
   resolveBase,
@@ -185,14 +187,36 @@ test('snapshot objects live in a private store, invisible to the repository obje
 
 test('a snapshot never captures secret-shaped files or the review state directory', () => {
   const { work } = project()
-  for (const secret of ['.env', '.env.local', 'keys/server.pem', 'id_rsa', '.npmrc', '.scratch/ocr/state.json']) write(work, secret, 'x' + NL)
+  const secrets = ['.env', '.env.local', 'keys/server.pem', 'id_rsa', '.npmrc', '.ssh/id_ed25519', 'nested/.ssh/id_ed25519', '.scratch/ocr/state.json']
+  for (const secret of secrets) write(work, secret, 'x' + NL)
   write(work, 'src/ok.ts', 'export const ok = 1' + NL)
 
   const files = treeFiles(work, takeSnapshot(work).snapshot)
 
   assert.ok(files.includes('src/ok.ts'))
-  for (const secret of ['.env', '.env.local', 'keys/server.pem', 'id_rsa', '.npmrc', '.scratch/ocr/state.json']) {
+  for (const secret of secrets) {
     assert.ok(!files.includes(secret), `${secret} must not be in the snapshot`)
+  }
+})
+
+test('a snapshot removes tracked secret-shaped files from its private index without changing the worktree', () => {
+  const { work } = project()
+  const secrets = ['.env', '.env.local', 'keys/server.pem', 'id_rsa', 'nested/id_rsa.pub', '.npmrc', '.ssh/id_ed25519', 'nested/.ssh/id_ed25519', '.scratch/ocr/state.json']
+  for (const secret of secrets) write(work, secret, `committed ${secret}` + NL)
+  run(work, ['add', '-f', '.scratch/ocr/state.json'])
+  commitAll(work, 'tracked secret-shaped files')
+  for (const secret of secrets) write(work, secret, `working ${secret}` + NL)
+  write(work, 'src/ok.ts', 'export const ok = 1' + NL)
+  const before = fingerprint(work)
+
+  const snapshot = takeSnapshot(work).snapshot
+  const files = treeFiles(work, snapshot)
+
+  assert.deepEqual(fingerprint(work), before)
+  assert.ok(files.includes('src/ok.ts'))
+  for (const secret of secrets) {
+    assert.ok(!files.includes(secret), `${secret} must not be in the snapshot`)
+    assert.equal(readFileSync(join(work, secret), 'utf8'), `working ${secret}` + NL)
   }
 })
 
@@ -399,8 +423,21 @@ test('diff commands quote paths that a shell would otherwise split, expand or re
   assert.ok(diffLine.includes("'apps/mobile/app/(tabs)/index.tsx'"))
   assert.ok(diffLine.includes("'apps/api/src/app/api/jobs/[id]/accept/route.ts'"))
   assert.ok(diffLine.includes("'notes with space.ts'"))
-  assert.ok(diffLine.includes("'it'\\''s.ts'"))
+  assert.ok(diffLine.includes(quotePath("it's.ts")))
   assert.ok(diffLine.endsWith(' src/plain.ts'), 'a plain path stays unquoted')
+})
+
+test('diff paths escape apostrophes for PowerShell and POSIX shells', () => {
+  assert.equal(quotePath("it's.ts", 'win32'), "'it''s.ts'")
+  assert.equal(quotePath("it's.ts", 'linux'), "'it'\\''s.ts'")
+})
+
+test('the Stop hook timeout exceeds the OCR subprocess timeout', () => {
+  const settings = JSON.parse(readFileSync(join(ROOT, '.claude', 'settings.json'), 'utf8'))
+  const hook = settings.hooks.Stop.flatMap((group) => group.hooks).find((entry) => entry.command.includes('verify-ocr-review.mjs'))
+
+  assert.ok(hook, 'the OCR Stop hook must remain configured')
+  assert.ok(hook.timeout * 1000 > OCR_PROCESS_TIMEOUT_MS, 'the host timeout must leave room for the OCR subprocess')
 })
 
 test('ocr is launched through node when the npm layout or an override is found, never through a shell shim', () => {
@@ -494,6 +531,14 @@ test('the Stop hook fails open on unreadable input, missing repo or missing ocr'
     env: { ...process.env, CLAUDE_PROJECT_DIR: work, OCR_BIN: join(sandbox, 'missing.js') },
   })
   assert.equal(result.status, 0)
+})
+
+test('the Stop hook fails open on empty input even when the project would trigger a nudge', () => {
+  const { work } = project()
+  write(work, 'src/big.ts', lines(NUDGE_LINE_THRESHOLD + 5))
+
+  assert.equal(runHook(work, '').status, 0)
+  assert.equal(runHook(work, ' \r\n ').status, 0)
 })
 
 test('the command line plans, records a review, and then reports nothing new', () => {

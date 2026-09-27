@@ -5,6 +5,7 @@ import { delimiter, dirname, join, resolve } from 'node:path'
 export const NUDGE_LINE_THRESHOLD = 30
 export const BATCH_MAX_FILES = 8
 export const BATCH_MAX_LINES = 800
+export const OCR_PROCESS_TIMEOUT_MS = 120000
 
 const SUPPORTED_SCHEMA = '1'
 const RULE_CHUNK = 60
@@ -21,18 +22,19 @@ const SNAPSHOT_ENV = {
   GIT_COMMITTER_DATE: '2000-01-01T00:00:00+00:00',
 }
 
-// Secret-shaped paths are kept out of the snapshot even when .gitignore misses them, and the
-// state directory is excluded so recording a review never changes the tree it recorded. The
-// state directory needs the **/ form: git add rejects a literal pathspec that names an ignored
-// directory, which is exactly what .scratch is in this repository.
-const SNAPSHOT_EXCLUDES = [
-  ':(exclude,glob)**/.scratch/**',
-  ':(exclude,glob)**/.env',
-  ':(exclude,glob)**/.env.*',
-  ':(exclude,glob)**/*.pem',
-  ':(exclude,glob)**/id_rsa*',
-  ':(exclude,glob)**/.npmrc',
+// Secret-shaped paths are removed from the private index and excluded from additions. The
+// **/ form also matches root-level files and lets Git skip ignored .scratch contents.
+const SNAPSHOT_OMITTED_GLOBS = [
+  '**/.scratch/**',
+  '**/.ssh/**',
+  '**/.env',
+  '**/.env.*',
+  '**/*.pem',
+  '**/id_rsa*',
+  '**/.npmrc',
 ]
+const SNAPSHOT_OMITTED_PATHS = SNAPSHOT_OMITTED_GLOBS.map((pattern) => `:(top,glob)${pattern}`)
+const SNAPSHOT_EXCLUDES = SNAPSHOT_OMITTED_GLOBS.map((pattern) => `:(exclude,top,glob)${pattern}`)
 
 export class OcrUnavailableError extends Error {}
 
@@ -131,6 +133,7 @@ export function takeSnapshot(root, { parent } = {}) {
   try {
     const head = commitOf(root, 'HEAD')
     if (head) git(root, ['read-tree', head], env)
+    git(root, ['rm', '--cached', '--ignore-unmatch', '--', ...SNAPSHOT_OMITTED_PATHS], env)
     git(root, ['add', '-A', '--', '.', ...SNAPSHOT_EXCLUDES], env)
     const tree = git(root, ['write-tree'], env)
     const chain = parent ?? head
@@ -191,7 +194,7 @@ function runOcr(root, args) {
     cwd: root,
     encoding: 'utf8',
     maxBuffer: 1 << 28,
-    timeout: 120000,
+    timeout: OCR_PROCESS_TIMEOUT_MS,
     windowsHide: true,
     stdio: ['ignore', 'pipe', 'pipe'],
     env: { ...process.env, ...withSnapshotObjects(root) },
@@ -329,7 +332,11 @@ export function buildPlan(cwd, { base, full = false, fetch = false } = {}) {
 // Route groups like (tabs) and dynamic segments like [id] are real paths in this repo, and the
 // printed commands are copied into a shell, so anything outside the plain set is single-quoted.
 const PLAIN_PATH = /^[A-Za-z0-9_@%+=:,./-]+$/
-const quotePath = (path) => (PLAIN_PATH.test(path) ? path : `'${path.split("'").join("'\\''")}'`)
+export function quotePath(path, platform = process.platform) {
+  if (PLAIN_PATH.test(path)) return path
+  const escaped = platform === 'win32' ? path.split("'").join("''") : path.split("'").join("'\\''")
+  return `'${escaped}'`
+}
 
 export function renderPlan(plan) {
   const out = []
@@ -355,7 +362,7 @@ export function renderPlan(plan) {
         const file = plan.reviewable.find((entry) => entry.path === path)
         out.push(`- ${path} (${file.status}, +${file.insertions}/-${file.deletions})`)
       }
-      out.push('', `diff: node scripts/run.mjs run-node scripts/ocr-review.mjs diff --from ${plan.mergeBase} --to ${plan.snapshot} ${batch.files.map(quotePath).join(' ')}`, '')
+      out.push('', `diff: node scripts/run.mjs run-node scripts/ocr-review.mjs diff --from ${plan.mergeBase} --to ${plan.snapshot} ${batch.files.map((path) => quotePath(path)).join(' ')}`, '')
     }
     for (const group of plan.groups) {
       out.push(`## Rule group ${group.group_id} (${group.source}: ${group.pattern})`, '', String(group.rule ?? '').trim(), '')

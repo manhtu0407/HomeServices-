@@ -57,7 +57,7 @@ The 1,135 files not scanned, by OCR's own reason: 484 default test or fixture pa
 
 ### Known limits
 
-- The printed `diff:` command single-quotes awkward paths in POSIX style. Spaces, `(tabs)` and `[id]` were checked in PowerShell and bash, and `$`, a backtick and `;` in bash. A path containing an apostrophe breaks that batch's command in PowerShell; no tracked path has one today.
+- The printed `diff:` command uses shell-specific quoting: PowerShell doubles apostrophes inside single-quoted paths, while POSIX shells close, escape, and reopen the quote. Spaces, `(tabs)`, and `[id]` were checked in PowerShell and bash; `$`, backticks, and `;` were checked in bash. Apostrophe escaping is tested for both formats and round-tripped in PowerShell.
 - Review quality is the agent's, not OCR's: delegation mode has none of OCR's bundling, reflection or line positioning, so the vendor's benchmarks do not apply. It was measured only on 8 planted defects by the agent that built the tooling.
 
 ### Review rules
@@ -67,7 +67,8 @@ The 1,135 files not scanned, by OCR's own reason: 484 default test or fixture pa
 ### Privacy
 
 - OCR makes no LLM call in delegation mode. Telemetry is off by default. It writes only under `~/.opencodereview`.
-- OCR excludes secret paths (`.env.*`, `.npmrc`, `id_rsa`, `.ssh/`) from review; the snapshot also refuses them, so they never enter the snapshot's object store. A tracked file that matches these patterns keeps its committed content in the snapshot, so an edit to it is not captured or reviewed.
+- OCR excludes secret paths (`.env*`, `.npmrc`, `*.pem`, `id_rsa*`, `.ssh/`) from review. Before taking a snapshot, the private index drops those paths and `.scratch/`, including tracked entries; additions use the same exclusions. This keeps their content out of the snapshot tree while leaving the source index and worktree unchanged.
+- The Claude Stop hook allows 150 seconds; its OCR subprocess is bounded at 120 seconds, leaving time for snapshot and hook work around the subprocess.
 - Codex runs shell commands through `powershell.exe -Command`. The documented form `node scripts/run.mjs run-node scripts/ocr-review.mjs ...` works there because `node.exe` is signed and `run.mjs` starts PowerShell with `-ExecutionPolicy Bypass`; calling `ocr` directly from PowerShell does not.
 - `codex exec -C <new directory>` with write access makes Codex add a `trust_level = "trusted"` entry for that directory to `~/.codex/config.toml`. Remove such entries after throwaway experiments.
 
