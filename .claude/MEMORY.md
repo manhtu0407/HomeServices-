@@ -8,6 +8,7 @@ The active Recall Index is intentionally short. Full entry detail lives in `docs
 
 ## Recall Index -> `docs/memory/2026-09.md`
 
+- **2026-09-27** Committed Codex's OCR verification + fixes (a91f3cd7, dd80b516), caught a real regression first — Codex's apostrophe-quoting fix picked PowerShell escaping via `process.platform`, but Claude Code's Bash tool is also win32 on Windows, so it silently mis-quoted for bash too; fixed via `MSYSTEM` detection, separate commit, test proven non-tautological by reverting it.
 - **2026-09-27** OCR Snapshot Mode follow-up fixes — Stop fail-open, secret-safe snapshots, PowerShell quoting, and aligned 150s/120s timeouts; 24/24 tests plus lint and OCR review passed; branch remains uncommitted.
 - **2026-09-27** OCR Snapshot Mode Codex verification, Plan §56 P0-P5 — G1 35/35; G2-G7 pass; blind G8 8/8 exact with 0/3 false positives; version/fetch caveats and tool findings recorded in audit report.
 - **2026-09-21** OCR review over one worktree snapshot; Headroom evaluated, not wired — unified OCR mode verified against real OCR and the Codex sandbox; Claude Desktop can never be proxied.
