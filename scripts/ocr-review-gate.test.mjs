@@ -20,6 +20,7 @@ import {
   markReviewed,
   objectsDir,
   ocrInvocation,
+  printingPlatform,
   quotePath,
   readState,
   renderPlan,
@@ -423,13 +424,46 @@ test('diff commands quote paths that a shell would otherwise split, expand or re
   assert.ok(diffLine.includes("'apps/mobile/app/(tabs)/index.tsx'"))
   assert.ok(diffLine.includes("'apps/api/src/app/api/jobs/[id]/accept/route.ts'"))
   assert.ok(diffLine.includes("'notes with space.ts'"))
-  assert.ok(diffLine.includes(quotePath("it's.ts")))
+  assert.ok(diffLine.includes(quotePath("it's.ts", printingPlatform())), 'apostrophe quoting matches the shell renderPlan actually prints for')
   assert.ok(diffLine.endsWith(' src/plain.ts'), 'a plain path stays unquoted')
 })
 
 test('diff paths escape apostrophes for PowerShell and POSIX shells', () => {
   assert.equal(quotePath("it's.ts", 'win32'), "'it''s.ts'")
   assert.equal(quotePath("it's.ts", 'linux'), "'it'\\''s.ts'")
+})
+
+test('printing quotes for Git Bash even where process.platform reports win32', () => {
+  // Claude Code's Bash tool and Codex's `powershell.exe -Command` are both win32 Node processes on
+  // Windows, so process.platform cannot tell renderPlan which shell will run the printed line. Only
+  // MSYSTEM (set by Git Bash/MSYS2, not by PowerShell) tells them apart.
+  assert.equal(printingPlatform('win32', { MSYSTEM: 'MINGW64' }), 'linux', 'Git Bash on Windows prints POSIX quoting')
+  assert.equal(printingPlatform('win32', {}), 'win32', 'a plain win32 process (Codex/PowerShell) prints PowerShell quoting')
+  assert.equal(printingPlatform('darwin', {}), 'darwin', 'a non-Windows platform is unaffected')
+
+  const plan = {
+    repo: { root: '/repo', branch: 'feature', linkedWorktree: false },
+    base: 'origin/main',
+    mergeBase: 'a'.repeat(40),
+    from: 'origin/main',
+    incremental: false,
+    reason: 'full review requested',
+    snapshot: 'b'.repeat(40),
+    warnings: [],
+    reviewable: [{ path: "it's.ts", status: 'modified', insertions: 1, deletions: 0 }],
+    excluded: [],
+    unlisted: [],
+    groups: [{ group_id: 1, source: 'project', pattern: '**', rule: 'R', files: ["it's.ts"] }],
+    batches: [{ id: 1, groupId: 1, source: 'project', pattern: '**', files: ["it's.ts"], lines: 1 }],
+    totals: { reviewable: 1, excluded: 0, lines: 1 },
+  }
+  const diffLine = renderPlan(plan)
+    .split(NL)
+    .find((line) => line.startsWith('diff: '))
+  // renderPlan quotes for whatever shell this test process is actually running under, so the
+  // expectation is derived the same way renderPlan derives it, not hardcoded to one shell.
+  const expected = quotePath("it's.ts", printingPlatform())
+  assert.ok(diffLine.includes(expected), diffLine)
 })
 
 test('the Stop hook timeout exceeds the OCR subprocess timeout', () => {

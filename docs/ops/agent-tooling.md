@@ -58,6 +58,7 @@ The 1,135 files not scanned, by OCR's own reason: 484 default test or fixture pa
 ### Known limits
 
 - The printed `diff:` command uses shell-specific quoting: PowerShell doubles apostrophes inside single-quoted paths, while POSIX shells close, escape, and reopen the quote. Spaces, `(tabs)`, and `[id]` were checked in PowerShell and bash; `$`, backticks, and `;` were checked in bash. Apostrophe escaping is tested for both formats and round-tripped in PowerShell.
+- The shell to quote for is picked by `MSYSTEM`, not raw `process.platform`: on this Windows machine, Claude Code's Bash tool and Codex's `powershell.exe -Command` both run Node with `process.platform === 'win32'`, so that alone cannot tell them apart. Git Bash/MSYS2 sets `MSYSTEM` on launch; PowerShell does not. A first version of the shell-aware fix used bare `process.platform` and defaulted to PowerShell quoting for both agents, which is silently wrong in bash (`'it''s.ts'` parses as `its.ts`, no error) rather than loudly wrong as before.
 - Review quality is the agent's, not OCR's: delegation mode has none of OCR's bundling, reflection or line positioning, so the vendor's benchmarks do not apply. It was measured only on 8 planted defects by the agent that built the tooling.
 
 ### Review rules

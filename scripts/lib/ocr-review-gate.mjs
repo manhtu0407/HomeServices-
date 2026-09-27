@@ -338,6 +338,14 @@ export function quotePath(path, platform = process.platform) {
   return `'${escaped}'`
 }
 
+// `process.platform` alone cannot tell which shell will run the printed line: on Windows, Claude
+// Code's Bash tool and Codex's `powershell.exe -Command` are both win32 Node processes, and an
+// apostrophe quoted for the wrong one is not a parse error in Git Bash, it is a silently truncated
+// path ('it''s.ts' -> its.ts). MSYSTEM is set by Git Bash/MSYS2 on launch and by nothing else here.
+export function printingPlatform(platform = process.platform, env = process.env) {
+  return platform === 'win32' && env.MSYSTEM ? 'linux' : platform
+}
+
 export function renderPlan(plan) {
   const out = []
   const kind = plan.repo.linkedWorktree ? 'linked worktree' : 'main checkout'
@@ -362,7 +370,8 @@ export function renderPlan(plan) {
         const file = plan.reviewable.find((entry) => entry.path === path)
         out.push(`- ${path} (${file.status}, +${file.insertions}/-${file.deletions})`)
       }
-      out.push('', `diff: node scripts/run.mjs run-node scripts/ocr-review.mjs diff --from ${plan.mergeBase} --to ${plan.snapshot} ${batch.files.map((path) => quotePath(path)).join(' ')}`, '')
+      const shell = printingPlatform()
+      out.push('', `diff: node scripts/run.mjs run-node scripts/ocr-review.mjs diff --from ${plan.mergeBase} --to ${plan.snapshot} ${batch.files.map((path) => quotePath(path, shell)).join(' ')}`, '')
     }
     for (const group of plan.groups) {
       out.push(`## Rule group ${group.group_id} (${group.source}: ${group.pattern})`, '', String(group.rule ?? '').trim(), '')
