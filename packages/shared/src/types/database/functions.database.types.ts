@@ -1603,6 +1603,13 @@ export type DatabaseFunctions = {
           session_id: string
         }[]
       }
+      claim_due_matching_push_provider_tickets: {
+        Args: { p_limit?: number }
+        Returns: {
+          provider_ticket_id: string
+          provider_ticket_row_id: string
+        }[]
+      }
       claim_job_broadcast_retry_atomic: {
         Args: {
           p_claim_token: string
@@ -3497,39 +3504,75 @@ export type DatabaseFunctions = {
         }
         Returns: string
       }
-      record_stage1_production_acceptance_note: {
-        Args: {
-          p_cleanup_generated_at: string
-          p_cleanup_member_count: number
-          p_cleanup_receipt_sha256: string
-          p_cleanup_run_id: string
-          p_cleanup_worker_marker_count: number
-          p_cleanup_worker_member_count: number
-          p_cohort_id: string
-          p_hosted_state_sha256: string
-          p_promotion_packet_sha256: string
-          p_release_id: string
-          p_ui_generated_at: string
-          p_ui_receipt_sha256: string
-          p_ui_scanned_file_count: number
-          p_ui_source_sha256: string
-          p_ui_visible_literal_count: number
-        }
-        Returns: {
-          acceptance_status: string
-          cleanup_receipt_sha256: string
-          cohort_id: string
-          created_at: string
-          environment: string
-          hosted_state_sha256: string
-          note_sha256: string
-          production_ui_receipt_sha256: string
-          production_ui_source_sha256: string
-          promotion_packet_sha256: string
-          release_id: string
-          summary_vi: string
-        }[]
-      }
+      record_stage1_production_acceptance_note:
+        | {
+            Args: {
+              p_cleanup_generated_at: string
+              p_cleanup_member_count: number
+              p_cleanup_receipt_sha256: string
+              p_cleanup_run_id: string
+              p_cleanup_worker_marker_count: number
+              p_cleanup_worker_member_count: number
+              p_cohort_id: string
+              p_hosted_state_sha256: string
+              p_promotion_packet_sha256: string
+              p_release_id: string
+              p_ui_generated_at: string
+              p_ui_receipt_sha256: string
+              p_ui_scanned_file_count: number
+              p_ui_source_sha256: string
+              p_ui_visible_literal_count: number
+            }
+            Returns: {
+              acceptance_status: string
+              cleanup_receipt_sha256: string
+              cohort_id: string
+              created_at: string
+              environment: string
+              hosted_state_sha256: string
+              note_sha256: string
+              production_ui_receipt_sha256: string
+              production_ui_source_sha256: string
+              promotion_packet_sha256: string
+              release_id: string
+              summary_vi: string
+            }[]
+          }
+        | {
+            Args: {
+              p_cleanup_generated_at: string
+              p_cleanup_member_count: number
+              p_cleanup_receipt_sha256: string
+              p_cleanup_run_id: string
+              p_cleanup_worker_marker_count: number
+              p_cleanup_worker_member_count: number
+              p_cohort_id: string
+              p_hosted_state_sha256: string
+              p_promotion_packet_sha256: string
+              p_release_id: string
+              p_ui_generated_at: string
+              p_ui_language_leakage_count: number
+              p_ui_localized_literal_count: number
+              p_ui_receipt_sha256: string
+              p_ui_scanned_file_count: number
+              p_ui_source_sha256: string
+              p_ui_visible_literal_count: number
+            }
+            Returns: {
+              acceptance_status: string
+              cleanup_receipt_sha256: string
+              cohort_id: string
+              created_at: string
+              environment: string
+              hosted_state_sha256: string
+              note_sha256: string
+              production_ui_receipt_sha256: string
+              production_ui_source_sha256: string
+              promotion_packet_sha256: string
+              release_id: string
+              summary_vi: string
+            }[]
+          }
       record_stage1_synthetic_smoke: {
         Args: {
           p_auto_quote_passed: boolean

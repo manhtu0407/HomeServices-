@@ -1,4 +1,5 @@
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react-native'
+import { StyleSheet } from 'react-native'
 let mockSessionMetadata: Record<string, unknown>
 let mockCustomerKaelMemory: any
 let mockCustomerAvatarUrl: string | null
@@ -7,6 +8,7 @@ let mockPanelParam: string | undefined
 let mockScreenParam: string | undefined
 let mockSectionParam: string | undefined
 let mockUtilityParam: string | undefined
+let mockAppLanguage: 'en' | 'vi'
 let mockThemeMode: 'dark' | 'light'
 let mockNotificationUnreadCount: number
 let mockNotifications: {
@@ -32,6 +34,7 @@ const mockGetRefundAccount = jest.fn()
 const mockSaveRefundAccount = jest.fn()
 const mockDeleteAccount = jest.fn()
 const mockCustomerUploadAvatar = jest.fn()
+const mockSaveCustomerDefaultAddress = jest.fn()
 
 jest.mock('@react-native-async-storage/async-storage', () => require('@react-native-async-storage/async-storage/jest/async-storage-mock'))
 
@@ -80,6 +83,7 @@ jest.mock('@/lib/frontend-workflow-provider', () => ({
       customerUploadAvatar: mockCustomerUploadAvatar,
       markNotificationRead: mockMarkNotificationRead,
       refreshNotifications: mockRefreshNotifications,
+      saveCustomerDefaultAddress: mockSaveCustomerDefaultAddress,
       updateCustomerKaelMemoryPreference: mockUpdateCustomerKaelMemoryPreference,
     },
     customerAvatarUrl: mockCustomerAvatarUrl,
@@ -138,7 +142,7 @@ jest.mock('@/lib/app-language', () => {
   return {
     ...actual,
     setAppLanguage: (...args: unknown[]) => mockSetAppLanguage(...args),
-    useAppLanguage: () => 'vi',
+    useAppLanguage: () => mockAppLanguage,
   }
 })
 
@@ -184,6 +188,8 @@ beforeEach(() => {
   mockRefreshNotifications.mockResolvedValue(true)
   mockMarkNotificationRead.mockReset()
   mockMarkNotificationRead.mockResolvedValue(true)
+  mockSaveCustomerDefaultAddress.mockReset()
+  mockSaveCustomerDefaultAddress.mockResolvedValue(true)
   mockGetRefundAccount.mockReset()
   mockGetRefundAccount.mockResolvedValue({ data: { refund_account: null }, status: 200, success: true })
   mockSaveRefundAccount.mockReset()
@@ -231,6 +237,7 @@ beforeEach(() => {
   mockPanelParam = undefined
   mockScreenParam = undefined
   mockSectionParam = undefined
+  mockAppLanguage = 'vi'
   mockThemeMode = 'light'
   mockUtilityParam = undefined
   mockNotificationUnreadCount = 0
@@ -260,41 +267,21 @@ describe('CustomerProfileSurface v2.1', () => {
     expect(screen.queryByTestId('customer-v21-profile-protection-card')).toBeNull()
     expect(screen.getByTestId('customer-v21-profile-ranking-entry')).toBeOnTheScreen()
     expect(screen.queryByTestId('customer-v21-profile-overviewrankingentry-card-skin')).toBeNull()
-    expect(screen.getByTestId('customer-v21-profile-ranking-entry-visual-panel')).toHaveStyle({
-      flex: 1,
-      height: '100%',
-      overflow: 'visible',
-      paddingHorizontal: 0,
-      position: 'relative',
-    })
-    expect(screen.getByTestId('customer-v21-profile-ranking-entry-fade')).toHaveStyle({ left: '20%', width: '65%' })
     expect(screen.queryByTestId('customer-v21-profile-overviewrankingentry-wide-mint-aura')).toBeNull()
     expect(screen.queryByTestId('customer-v21-profile-overviewrankingentry-mint-aura')).toBeNull()
-    expect(screen.getByTestId('customer-v21-profile-ranking-entry-icon')).toBeOnTheScreen()
-    expect(screen.getByTestId('customer-v21-profile-ranking-entry-icon-image')).toBeOnTheScreen()
-    expect(screen.getByTestId('customer-v21-profile-ranking-entry-icon-image')).toHaveStyle({
-      height: '100%',
-      transform: [{ scale: 2 }],
-      width: '100%',
-    })
-    expect(screen.getByTestId('customer-v21-profile-ranking-entry-title')).toHaveStyle({
-      fontSize: 18,
-      fontWeight: '600',
-      lineHeight: 23,
-    })
+    expect(screen.getByTestId('customer-v21-profile-ranking-entry-art')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-v21-profile-ranking-entry-leaf')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-v21-profile-ranking-entry-title')).toHaveTextContent('Xếp hạng sử dụng')
+    // The tagline is decorative and hidden from the screen reader, so queries must opt in to see it.
+    expect(screen.getByTestId('customer-v21-profile-ranking-entry-tagline', { includeHiddenElements: true })).toHaveTextContent(/Nhà sạch hơn/)
     expect(screen.queryByText('Kael đánh giá từ dữ liệu sử dụng thật.')).toBeNull()
     expect(screen.queryByTestId('customer-v21-profile-ranking-entry-chevron')).toBeNull()
     const rankingEntry = screen.getByTestId('customer-v21-profile-ranking-entry')
     expect(within(rankingEntry).queryByTestId('customer-v21-profile-ranking-entry-signals')).toBeNull()
     expect(screen.getByTestId('customer-v21-profile-ranking-entry-points')).toHaveTextContent('Chưa có')
-    expect(screen.getByTestId('customer-v21-profile-ranking-entry-points')).toHaveStyle({
-      fontSize: 20,
-      fontWeight: '700',
-      lineHeight: 25,
-    })
+    expect(screen.getByTestId('customer-v21-profile-ranking-entry-points')).toHaveStyle({ fontWeight: '600', textAlign: 'center' })
     expect(screen.queryByTestId('customer-v21-profile-ranking-entry-progress')).toBeNull()
     expect(screen.queryByTestId('customer-v21-profile-ranking-entry-progress-flag')).toBeNull()
-    expect(screen.getByTestId('customer-v21-profile-ranking-entry-copy')).toHaveStyle({ gap: 0, justifyContent: 'center', marginLeft: 20, paddingLeft: 32, paddingRight: 12, paddingVertical: 12 })
     expect(screen.queryByTestId('customer-v21-profile-ranking-entry-status')).toBeNull()
     expect(screen.queryByTestId('customer-v21-top-avatar')).toBeNull()
     expect(screen.queryByText('⚙')).toBeNull()
@@ -320,6 +307,26 @@ describe('CustomerProfileSurface v2.1', () => {
     expect(renderedOrder.indexOf('customer-v21-profile-ranking-entry')).toBeLessThan(
       renderedOrder.indexOf('customer-v21-profile-settings-groups'),
     )
+  })
+
+  it('reads the usage ranking entry as one button that carries its status, in English without Vietnamese copy', () => {
+    mockAppLanguage = 'en'
+    mockCustomerProfileInsights = { usage_rank_level: 2, usage_rank_points: 620 }
+
+    render(<CustomerProfileSurface />)
+
+    const button = screen.getByTestId('customer-v21-profile-ranking-cta')
+    expect(button).toHaveAccessibilityValue({ text: '620 / 1,000 points' })
+    expect(screen.getByRole('button', { name: 'View usage ranking' })).toBe(button)
+    expect(screen.getByTestId('customer-v21-profile-ranking-entry-title')).toHaveTextContent('Usage ranking')
+    expect(screen.getByTestId('customer-v21-profile-ranking-entry-points')).toHaveTextContent('620 / 1,000 points')
+    expect(screen.getByTestId('customer-v21-profile-ranking-entry-tagline', { includeHiddenElements: true })).toHaveTextContent(/A cleaner home/)
+    expect(
+      within(screen.getByTestId('customer-v21-profile-ranking-entry')).queryByText(
+        /[ăâđêôơưáàảãạấầẩẫậắằẳẵặéèẻẽẹếềểễệíìỉĩịóòỏõọốồổỗộớờởỡợúùủũụứừửữựýỳỷỹỵ]/iu,
+        { includeHiddenElements: true },
+      ),
+    ).toBeNull()
   })
 
   it('keeps an empty classic frame and lets the customer choose a real profile photo', async () => {
@@ -861,6 +868,9 @@ describe('CustomerProfileSurface v2.1', () => {
     expect(screen.getByTestId('customer-v21-profile-address-hub')).toHaveTextContent(/Chưa lưu/)
     fireEvent.press(screen.getByTestId('customer-v21-profile-default-address-save'))
 
+    // The real backend column is written first — updateCustomerProfile (Auth
+    // metadata) only follows once that succeeds.
+    await waitFor(() => expect(mockSaveCustomerDefaultAddress).toHaveBeenCalledWith('Tòa C, Quận 7'))
     await waitFor(() => expect(mockUpdateCustomerProfile).toHaveBeenCalledWith(expect.objectContaining({
       defaultAddress: 'Tòa C, Quận 7',
       savedAddresses: ['Tòa B, Quận 7'],
@@ -877,10 +887,39 @@ describe('CustomerProfileSurface v2.1', () => {
 
     fireEvent.press(screen.getByTestId('customer-v21-profile-secondary-address-default-1'))
 
+    await waitFor(() => expect(mockSaveCustomerDefaultAddress).toHaveBeenCalledWith('Tòa B, Quận 7'))
     await waitFor(() => expect(mockUpdateCustomerProfile).toHaveBeenCalledWith(expect.objectContaining({
       defaultAddress: 'Tòa B, Quận 7',
       savedAddresses: ['Tòa B, Quận 7', 'Tòa D, Quận 7'],
     })))
+  })
+
+  it('does not touch Auth metadata when the real backend address save fails', async () => {
+    mockUtilityParam = 'address'
+    mockSessionMetadata = { default_address: 'Tòa A, Quận 7', saved_addresses: [] }
+    mockSaveCustomerDefaultAddress.mockResolvedValueOnce(false)
+
+    render(<CustomerProfileSurface />)
+
+    fireEvent.changeText(screen.getByTestId('customer-v21-profile-default-address-input'), 'Tòa C, Quận 7')
+    fireEvent.press(screen.getByTestId('customer-v21-profile-default-address-save'))
+
+    await waitFor(() => expect(mockSaveCustomerDefaultAddress).toHaveBeenCalledWith('Tòa C, Quận 7'))
+    expect(mockUpdateCustomerProfile).not.toHaveBeenCalled()
+  })
+
+  it('lets the secondary-address input shrink so the Save button never overflows the row', () => {
+    mockUtilityParam = 'address'
+
+    render(<CustomerProfileSurface />)
+
+    const inputStyle = StyleSheet.flatten(screen.getByTestId('customer-v21-profile-secondary-address-input').props.style)
+    // flex:1 alone keeps an implicit min-width equal to the placeholder's
+    // content width, so the row can render wider than the screen and push
+    // the Save button off the right edge. minWidth:0 is what actually lets
+    // the input shrink to make room for it.
+    expect(inputStyle.flex).toBe(1)
+    expect(inputStyle.minWidth).toBe(0)
   })
 
   it('opens personal details as a standalone form and preserves the real save action', async () => {

@@ -38,6 +38,8 @@ declare
   v_promoted record;
   v_receipt uuid;
   v_sequence smallint;
+  v_confirm_ms integer;
+  v_offer_ms integer;
   v_rolled_back record;
   v_generated_at constant text := '2026-08-23T00:00:00.000Z';
   v_sha text;
@@ -220,6 +222,36 @@ begin
     null;
   end;
 
+  -- kael-matching-maintainer's once-a-minute pg_cron tick can make a real worker-offer wait land
+  -- anywhere up to ~60s after confirm; a value beyond the old 10s budget must still be refused.
+  begin
+    perform public.record_stage1_attested_synthetic_smoke(
+      v_release, 'staging', v_cohort, 'sql-cron-budget-exceeded', 1::smallint,
+      true, true, true, true, true,
+      0, 0, 0, 1::numeric, 100, 80001, 1, v_generated_at, repeat('e', 64),
+      v_mobile_deployment, v_mobile_source_proof,
+      v_maintainer_deployment, v_maintainer_source_proof
+    );
+    raise exception 'a worker-offer wait beyond the cron-tick budget was accepted';
+  exception when check_violation then
+    null;
+  end;
+
+  -- confirm_kael_chat_durable_atomic's write path still costs real seconds on a freshly deployed
+  -- candidate even after a throwaway warm-up confirm; a value beyond the 8s budget must still be refused.
+  begin
+    perform public.record_stage1_attested_synthetic_smoke(
+      v_release, 'staging', v_cohort, 'sql-confirm-budget-exceeded', 1::smallint,
+      true, true, true, true, true,
+      0, 0, 0, 1::numeric, 8001, 200, 1, v_generated_at, repeat('e', 64),
+      v_mobile_deployment, v_mobile_source_proof,
+      v_maintainer_deployment, v_maintainer_source_proof
+    );
+    raise exception 'a confirm acceptance beyond the write-path budget was accepted';
+  exception when check_violation then
+    null;
+  end;
+
   for v_sequence in 1..3 loop
     -- Control-plane fixtures only; P69 exercises terminal execution separately from these rows.
     insert into public.stage1_synthetic_transaction_proofs(
@@ -232,15 +264,20 @@ begin
       encode(extensions.digest(v_release || ':terminal:' || v_sequence || ':' || scenario, 'sha256'), 'hex'),
       'reviewed'::public.job_status, true, true, true, true, v_generated_at::timestamptz
     from unnest(array['auto_quote', 'rfq_or_inspection']) as scenario;
+    -- Sequence 1 carries the exact confirm/offer latencies real Production observed once the
+    -- once-a-minute matching-maintainer cron tick was accounted for, proving both the RPC bound
+    -- and the table's own CHECK constraint accept it; sequences 2-3 stay on a fast placeholder.
+    v_confirm_ms := case when v_sequence = 1 then 4938 else 100 end;
+    v_offer_ms := case when v_sequence = 1 then 13874 else 200 end;
     v_sha := encode(extensions.digest(convert_to(concat_ws(E'\n',
       '1.0.0', v_release, 'staging', v_cohort, 'sql-run',
       v_sequence::text, 'true', 'true', 'true', 'true', 'true',
-      '0', '0', '0', '1', '100', '200', '1', v_generated_at
+      '0', '0', '0', '1', v_confirm_ms::text, v_offer_ms::text, '1', v_generated_at
     ), 'UTF8'), 'sha256'), 'hex');
     v_receipt := public.record_stage1_attested_synthetic_smoke(
       v_release, 'staging', v_cohort, 'sql-run', v_sequence::smallint,
       true, true, true, true, true,
-      0, 0, 0, 1::numeric, 100, 200, 1, v_generated_at, v_sha,
+      0, 0, 0, 1::numeric, v_confirm_ms, v_offer_ms, 1, v_generated_at, v_sha,
       v_mobile_deployment, v_mobile_source_proof,
       v_maintainer_deployment, v_maintainer_source_proof
     );

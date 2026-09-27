@@ -168,7 +168,7 @@ describe('Worker Stage 9 empty completion record', () => {
       expect(styleOf(screen.getByTestId('worker-v5-stage-nine-empty-quote')).top).toBe(141)
       expect(styleOf(screen.getByTestId('worker-v5-stage-nine-empty-scene')).height).toBeCloseTo(672.887, 2)
       expect(styleOf(screen.getByTestId('worker-v5-stage-nine-empty-submit'))).toMatchObject({ borderRadius: 40, height: 76, marginHorizontal: 25, marginTop: 38 })
-      expect(styleOf(screen.getByTestId('worker-v5-stage-nine-empty-submit-label')).transform).toEqual([{ scaleX: 0.9 }, { scaleY: 1.06 }])
+      expect(styleOf(screen.getByTestId('worker-v5-stage-nine-empty-submit-label')).transform).toBeUndefined()
       expect(styleOf(screen.getByTestId('worker-v5-stage-nine-empty-stage')).height).toBe(1055 + 63)
     }, 'removals keep every remaining element at its reference position, and the call-to-action label centres once the arrow is gone')
 
@@ -204,7 +204,7 @@ describe('Worker Stage 9 empty completion record', () => {
 
     withPillarContext(PILLAR, () => {
       expect(flowSource).toContain('const usesStageNineEmptyProduction = isStageNineEmptyScreen(screen.id, runtime.state.deal)')
-      expect(flowSource).toContain('usesStageNineEmptyProduction || usesStageFiveProduction || usesStageEightProduction || headerState.usesEarningsOverviewHandoff')
+      expect(flowSource).toContain('usesStageNineEmptyProduction || usesStageThreeWaitingProduction || usesStageSevenWaitingProduction || usesStageSixProduction || usesCaseClosedProduction || usesStageFiveProduction || usesStageEightProduction || headerState.usesEarningsOverviewHandoff')
       expect(flowSource).toContain('edges={usesStageNineEmptyProduction ? STAGE_NINE_EMPTY_SAFE_AREA_EDGES : undefined}')
       expect(STAGE_NINE_EMPTY_SAFE_AREA_EDGES).not.toContain('top')
       expect(isStageNineEmptyScreen('2.11-completion-submitted', null)).toBe(true)

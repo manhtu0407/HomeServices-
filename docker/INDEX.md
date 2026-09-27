@@ -101,13 +101,17 @@ Do not repair ACLs/AppData or try a second brokered launch inside `kael-docker`.
 - **Never point the local stack's credentials at staging or production.** The
   local stack issues fixed, publicly-known demo JWTs.
 
-### Runtime is the completion gate
+### Evidence follows the question
 
-A task routed through `kael-docker` is not `DONE` from source inspection, static checks, or hosted
-read-only structure alone. It needs either the relevant Lane A/B command against the current checkout
-or Lane D evidence for the exact commit with workflow URL, job URL, and the proving log/artifact. If
-the checkout is dirty and local runtime remains closed after the one recovery/final-probe cycle, the
-task is `BLOCKED`, not silently complete.
+- Lane C may close an exact structure question when the named hosted target and read-only query fully
+  answer it. Lane C cannot prove behavior or types.
+- Behavior and type questions need Lane A/B execution against the current checkout or Lane D evidence
+  for the exact commit with workflow URL, job URL, and the proving log/artifact.
+- Source inspection and static checks may close source/static acceptance claims only. They do not
+  prove database behavior.
+- When local runtime is closed, source/static work can continue independently. Use C/D only for
+  questions those lanes answer. If acceptance still needs unavailable Lane A/B proof and no exact
+  Lane D evidence exists, report `BLOCKED` with the missing proof.
 
 ---
 
@@ -147,7 +151,7 @@ Recorded here so a later session does not "discover" these and build them.
 |---|---|
 | `Dockerfile` for `apps/api` | Violates the hard boundary above and `RULES.md` #0 — a second runtime. |
 | Docker for Expo / mobile | Native builds need macOS and Xcode. EAS already covers this. |
-| `act` (GitHub Actions locally) | Not worth several GB to re-run what CI already runs for free. `harness-assurance.yml` alone carries the heavy lanes — including `workspace-gates` (type-check, test, and build of the affected workspaces) and `database-controls`, which starts Supabase, **replays every migration from empty**, runs the SQL verification matrix, regenerates the database types and fails on drift, and lints the schema — on pull requests and pushes to main whenever the changed paths select them. A green `database-controls` run is the evidence a laptop that cannot start the stack will never produce locally. |
+| `act` (GitHub Actions locally) | Not worth several GB to re-run what CI already runs for free. `ci.yml` carries the heavy lanes — `workspace` (type-check, test, and build of the affected workspaces) and `database`, which starts Supabase, **replays every migration from empty**, runs the SQL verification matrix, regenerates the database types and fails on drift, lints the schema, and runs the integration suite — on ready pull requests whenever the changed paths select them, and weekly on main. A green `database` run is the evidence a laptop that cannot start the stack will never produce locally. |
 | devcontainer / Codespaces | Changes Tu's whole working environment, not just adds a tool. |
 | A Node/pnpm "matches CI" box | The workflows call `node scripts/*.mjs` and `pnpm --filter … exec vitest` directly, which already run on Windows. The only real delta is OS-level path/case behavior. |
 | Converting the SQL scripts to pgTAP | They already self-assert with `raise exception`; psql runs all of them as-is. pgTAP would add format, not coverage. |

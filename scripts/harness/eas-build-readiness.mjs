@@ -3,7 +3,7 @@ import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 import { checkHarnessRelease, resolveReleaseArtifactPath } from './release-bundle.mjs'
-import { selectExactEasBuilds } from './mobile-binary-attestation.mjs'
+import { BINARY_RELATIONS, selectExactEasBuilds, selectLatestEasBuilds } from './mobile-binary-attestation.mjs'
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..')
 
@@ -11,7 +11,7 @@ function parseArgs(args) {
   const options = {}
   for (let index = 0; index < args.length; index += 1) {
     const key = args[index]
-    if (!['--release', '--builds', '--mode', '--platform'].includes(key)) throw new Error(`unknown EAS readiness argument: ${key}`)
+    if (!['--release', '--builds', '--mode', '--platform', '--relation'].includes(key)) throw new Error(`unknown EAS readiness argument: ${key}`)
     const value = args[++index]
     if (!value || value.startsWith('--')) throw new Error(`${key} requires a value`)
     options[key.slice(2)] = value
@@ -22,6 +22,9 @@ function parseArgs(args) {
   if (options.mode !== 'missing' && !['ios', 'android'].includes(options.platform)) {
     throw new Error('EAS readiness artifact/build lookup requires ios or android')
   }
+  if (options.relation !== undefined && !BINARY_RELATIONS.includes(options.relation)) {
+    throw new Error('EAS readiness relation must be exact or latest_existing')
+  }
   return options
 }
 
@@ -31,7 +34,9 @@ function main() {
   const problems = checkHarnessRelease(release)
   if (problems.length > 0 || release.environment !== 'production') throw new Error('EAS readiness release is invalid')
   const builds = JSON.parse(readFileSync(resolveReleaseArtifactPath(ROOT, options.builds), 'utf8'))
-  const selected = selectExactEasBuilds(release, builds)
+  const selected = options.relation === 'latest_existing'
+    ? selectLatestEasBuilds(release, builds)
+    : selectExactEasBuilds(release, builds)
   if (options.mode === 'missing') {
     process.stdout.write(`${['ios', 'android'].filter((platform) => !selected[platform]).join(',')}\n`)
     return

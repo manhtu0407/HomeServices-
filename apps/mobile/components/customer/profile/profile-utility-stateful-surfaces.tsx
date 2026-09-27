@@ -147,7 +147,7 @@ export function ProfileUtilityAddressView({
               onChangeText={onSecondaryAddressChange}
               placeholder={language === 'vi' ? 'Thêm địa chỉ phụ' : 'Add secondary address'}
               placeholderTextColor={tokens.subtleText}
-              style={[profileUtilityStyles.profileAddressSimpleInput, rootStyles.flex, textInputNoOutlineStyle, { backgroundColor: tokens.base, borderColor: tokens.border, color: tokens.text }]}
+              style={[profileUtilityStyles.profileAddressSimpleInput, rootStyles.flex, { minWidth: 0 }, textInputNoOutlineStyle, { backgroundColor: tokens.base, borderColor: tokens.border, color: tokens.text }]}
               testID="customer-v21-profile-secondary-address-input"
               value={secondaryAddressDraft}
             />

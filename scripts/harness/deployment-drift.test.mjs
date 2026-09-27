@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import { createHash } from 'node:crypto'
 import test from 'node:test'
 import { collectHostedDeploymentState, compareDeploymentState } from './deployment-drift.mjs'
+import { RELEASE_EDGE_FUNCTIONS } from './release-bundle.mjs'
 
 const providerReadiness = Object.freeze({
   android_fcm_v1: true,
@@ -208,6 +209,77 @@ test('collects hosted health, migration, and deployed-function evidence from liv
   assert.equal(hosted.managedEdgeFunctions['mobile-api'].entrypoint_path, 'index.ts')
   assert.deepEqual(calls.map((call) => call.method), ['GET', 'GET', 'GET', 'GET', 'POST', 'POST'])
   assert.ok(calls.every((call) => call.url.startsWith('https://')))
+})
+
+test('collects a null-release baseline when the hosted health probe fails closed pre-release', async () => {
+  const calls = []
+  const hosted = await collectHostedDeploymentState({
+    environment: 'production',
+    projectRef: 'iwevizmsedyqozxlawwl',
+    accessToken: 'test-management-token',
+    fetchImpl: async (url, init = {}) => {
+      calls.push({ url: String(url), method: init.method ?? 'GET' })
+      if (String(url).includes('/functions/v1/mobile-api/harness/health')) {
+        // mobile-api's own release-identity boot check fails closed on every route pre-release,
+        // exactly the state a first-ever release must be able to start from.
+        return jsonResponse({ error: 'Production release identity is incomplete' }, 500)
+      }
+      if (String(url).endsWith('/functions')) {
+        return jsonResponse([])
+      }
+      // The Management API still answers normally for a deployed-but-crashing function: the
+      // code is uploaded and ACTIVE even though every request to it fails closed at runtime.
+      if (String(url).endsWith('/functions/mobile-api') || String(url).endsWith('/functions/kael-matching-maintainer')) {
+        return jsonResponse({ status: 'ACTIVE', verify_jwt: false, import_map: true })
+      }
+      return jsonResponse({ result: [] })
+    },
+  })
+
+  // The caller (stage1-promotion-packet.mjs) refuses any hosted baseline whose target does not
+  // match the known Production project, so a tolerated health failure must still resolve these
+  // from the already-validated input, not fall through to null the way projectRef used to.
+  assert.equal(hosted.environment, 'production')
+  assert.equal(hosted.projectRef, 'iwevizmsedyqozxlawwl')
+  assert.equal(hosted.releaseId, null)
+  assert.equal(hosted.deploymentId, null)
+  assert.equal(hosted.gitSha, null)
+  assert.equal(hosted.manifestSha256, null)
+  assert.equal(hosted.providerReadiness, null)
+  assert.deepEqual(hosted.migrations, [])
+  assert.ok(calls.some((call) => call.url.includes('/functions/v1/mobile-api/harness/health')))
+})
+
+test('scopes the managed edge function set to the release-managed pair on a Production project hosting others too', async () => {
+  const hosted = await collectHostedDeploymentState({
+    environment: 'production',
+    projectRef: 'iwevizmsedyqozxlawwl',
+    accessToken: 'test-management-token',
+    fetchImpl: async (url, init = {}) => {
+      if (String(url).includes('/functions/v1/mobile-api/harness/health')) {
+        return jsonResponse({ error: 'Production release identity is incomplete' }, 500)
+      }
+      // Production hosts several other Edge Functions the release does not manage.
+      if (String(url).endsWith('/functions')) {
+        return jsonResponse([
+          { slug: 'mobile-api', status: 'ACTIVE', version: 215 },
+          { slug: 'kael-matching-maintainer', status: 'ACTIVE', version: 7 },
+          { slug: 'kael-learning-monitor', status: 'ACTIVE', version: 7 },
+          { slug: 'sepay-webhook', status: 'ACTIVE', version: 7 },
+          { slug: 'kael-media-retention', status: 'ACTIVE', version: 5 },
+          { slug: 'payment-maintainer', status: 'ACTIVE', version: 2 },
+          { slug: 'map-proxy-spike', status: 'ACTIVE', version: 2 },
+        ])
+      }
+      if (String(url).endsWith('/functions/mobile-api') || String(url).endsWith('/functions/kael-matching-maintainer')) {
+        return jsonResponse({ status: 'ACTIVE', verify_jwt: false, import_map: true })
+      }
+      return jsonResponse({ result: [] })
+    },
+  })
+
+  assert.deepEqual(Object.keys(hosted.managedEdgeFunctions).sort(), [...RELEASE_EDGE_FUNCTIONS].sort())
+  assert.equal(hosted.managedEdgeFunctions['kael-learning-monitor'], undefined)
 })
 
 test('refuses hosted evidence collection for retired non-production targets', async () => {

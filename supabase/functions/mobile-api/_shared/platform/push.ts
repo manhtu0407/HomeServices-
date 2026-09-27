@@ -163,23 +163,23 @@ export async function sendPushToUsers(
 
 export async function reconcileMatchingPushReceipts(
   client: PushDbClient,
-  workerId: string,
+  dispatcherId: string,
 ): Promise<PushReceiptReconciliationResult> {
   const result = emptyReceiptReconciliationResult();
-  if (!client.rpc || !workerId) return result;
+  if (!client.rpc || !dispatcherId) return result;
 
+  // The dispatcher id names the maintainer, not a recipient: the claim spans every recipient.
   let claimResult: { data: unknown; error: unknown };
   try {
-    claimResult = await client.rpc("claim_matching_push_provider_tickets", {
-      p_worker_id: workerId,
+    claimResult = await client.rpc("claim_due_matching_push_provider_tickets", {
       p_limit: EXPO_RECEIPT_BATCH_SIZE,
     });
   } catch {
-    console.warn("mobile-api push receipt claim failed", { workerId });
+    console.warn("mobile-api push receipt claim failed", { dispatcherId });
     return result;
   }
   if (claimResult.error) {
-    console.warn("mobile-api push receipt claim failed", { workerId });
+    console.warn("mobile-api push receipt claim failed", { dispatcherId });
     return result;
   }
 

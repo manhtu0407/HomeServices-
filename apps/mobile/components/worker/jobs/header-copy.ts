@@ -6,7 +6,7 @@ import { workerV5DisplayCode } from '../ui/screen-labels'
 export function workerV5OfferHeaderSubtitle(deal: LocalDeal | null, language: AppLanguage) {
   const code = workerV5DisplayCode(deal, language)
   if (code) return textByLanguage(language, `Mã việc ${code}`, `Work ${code}`)
-  return textByLanguage(language, 'Đề nghị từ dữ liệu thật', 'Offer from real data')
+  return null
 }
 
 export function workerV5CaseHeaderSubtitle(deal: LocalDeal | null, language: AppLanguage) {

@@ -19,7 +19,6 @@ import {
   WorkerJobsLegacyPrototypeStageActionButton,
   type WorkerJobsLegacyPrototypeRuntime,
   workerJobsLegacyPrototypeStageEightCompletionWorkart,
-  workerJobsLegacyPrototypeStageSevenArtwork,
 } from './worker-jobs-zip-prototype-shared'
 import { prototypeStyles } from './worker-jobs-zip-prototype-styles'
 
@@ -173,115 +172,6 @@ export function WorkerJobsLegacyPrototypeStageSixBody({
 
       {scopeChange.scopeMediaNotice ? <Text style={prototypeStyles.stageSummaryMeta}>{scopeChange.scopeMediaNotice}</Text> : null}
       {proposalSubmitted ? <Text style={prototypeStyles.stageSummaryMeta}>{textByLanguage(language, 'Khách đang xem đề xuất.', 'The customer is reviewing the proposal.')}</Text> : null}
-    </View>
-  )
-}
-
-export function WorkerJobsLegacyPrototypeStageSevenBody({
-  language,
-  navigateJobChat,
-  navigateNext,
-  reduceTransparency,
-  runtime,
-}: {
-  language: AppLanguage
-  navigateJobChat: () => void
-  navigateNext: () => void
-  reduceTransparency: boolean
-  runtime: WorkerJobsLegacyPrototypeRuntime
-}) {
-  const deal = runtime.state.deal
-  const scope = deal?.scopeChange ?? null
-  const approved = scope?.status === 'approved_by_customer'
-  const rejected = scope?.status === 'rejected_by_customer' || scope?.status === 'cancelled'
-  const kaelDone = scope?.kaelProgress?.status === 'completed'
-  const proposalTitle = scope?.requestedDescription?.trim() || textByLanguage(language, 'Chờ dữ liệu thật', 'Waiting for real data')
-  const proposalMeta = scope
-    ? textByLanguage(language, 'Kael đã kiểm tra. Chờ khách quyết định.', 'Kael checked the request. Waiting for the customer.')
-    : textByLanguage(language, 'Chưa có đề xuất thật để hiển thị.', 'No real proposal to display yet.')
-  const statusLabel = approved
-    ? textByLanguage(language, 'Đã duyệt', 'Approved')
-    : rejected
-      ? textByLanguage(language, 'Đã đóng', 'Closed')
-      : textByLanguage(language, 'Chờ khách duyệt', 'Waiting for customer')
-  const timelineRows: { meta: string; state: 'active' | 'done' | 'todo'; title: string }[] = [
-    {
-      meta: scope ? textByLanguage(language, 'Đề xuất đã gửi', 'Proposal sent') : textByLanguage(language, 'Chưa có dữ liệu thật', 'No real data yet'),
-      state: scope ? 'done' : 'todo',
-      title: textByLanguage(language, 'Bạn gửi đề xuất', 'You sent the proposal'),
-    },
-    {
-      meta: kaelDone ? textByLanguage(language, 'Đã kiểm tra ràng buộc', 'Constraints checked') : textByLanguage(language, 'Chưa có kết quả kiểm tra', 'No review result yet'),
-      state: kaelDone ? 'done' : scope ? 'active' : 'todo',
-      title: textByLanguage(language, 'Kael kiểm tra', 'Kael checks'),
-    },
-    {
-      meta: approved
-        ? textByLanguage(language, 'Khách đã duyệt', 'Customer approved')
-        : rejected
-          ? textByLanguage(language, 'Yêu cầu đã đóng', 'Request closed')
-          : textByLanguage(language, 'Chờ khách quyết định', 'Waiting for customer decision'),
-      state: approved || rejected ? 'done' : scope ? 'active' : 'todo',
-      title: textByLanguage(language, 'Khách phê duyệt', 'Customer reviews'),
-    },
-    {
-      meta: approved ? textByLanguage(language, 'Có thể tiếp tục', 'Ready to continue') : textByLanguage(language, 'Sau khi có quyết định', 'After a decision'),
-      state: approved ? 'active' : 'todo',
-      title: textByLanguage(language, 'Tiếp tục công việc', 'Continue work'),
-    },
-  ]
-
-  return (
-    <View style={prototypeStyles.bodyStack} testID="worker-v5-stage-seven-prototype">
-      <View style={[prototypeStyles.stageSevenHero, reduceTransparency && { backgroundColor: color.mint.white }]} testID="worker-v5-stage-seven-hero">
-        <View style={prototypeStyles.stageSevenCopy}>
-          <Text style={prototypeStyles.stageSevenKicker}>{textByLanguage(language, 'Trạng thái đề xuất', 'Proposal status')}</Text>
-          <Text numberOfLines={2} style={prototypeStyles.stageSevenTitle}>{proposalTitle}</Text>
-          <Text numberOfLines={2} style={prototypeStyles.stageSevenMeta}>{proposalMeta}</Text>
-          <View style={prototypeStyles.stageSevenStatus}>
-            <WorkerJobsLegacyPrototypeMetaIcon kind="status" size={18} />
-            <Text style={prototypeStyles.stageSevenStatusText}>{statusLabel}</Text>
-          </View>
-        </View>
-        <Image contentFit="contain" source={workerJobsLegacyPrototypeStageSevenArtwork} style={prototypeStyles.stageSevenArtwork} />
-      </View>
-
-      <View style={prototypeStyles.stageSectionHeader}>
-        <Text style={prototypeStyles.stageSectionTitle}>{textByLanguage(language, 'Trạng thái yêu cầu', 'Request status')}</Text>
-        <Text style={prototypeStyles.stageSectionAction}>{textByLanguage(language, 'Theo thời gian thực', 'Live')}</Text>
-      </View>
-
-      <View style={prototypeStyles.stageTimelineCard} testID="worker-v5-stage-seven-timeline">
-        {timelineRows.map((row, index) => (
-          <View key={row.title} style={prototypeStyles.stageTimelineItem}>
-            <View style={prototypeStyles.stageTimelineMarkerColumn}>
-              <View style={[prototypeStyles.stageTimelineMarker, row.state === 'done' && prototypeStyles.stageTimelineMarkerDone, row.state === 'active' && prototypeStyles.stageTimelineMarkerActive]}>
-                <Text style={[prototypeStyles.stageTimelineMarkerText, row.state === 'done' && prototypeStyles.stageTimelineMarkerTextDone]}>{row.state === 'done' ? '✓' : index + 1}</Text>
-              </View>
-              {index < timelineRows.length - 1 ? <View style={prototypeStyles.stageTimelineConnector} /> : null}
-            </View>
-            <View style={prototypeStyles.stageTimelineCopy}>
-              <Text style={prototypeStyles.stageTimelineTitle}>{row.title}</Text>
-              <Text numberOfLines={2} style={prototypeStyles.stageTimelineMeta}>{row.meta}</Text>
-            </View>
-          </View>
-        ))}
-      </View>
-
-      <View style={prototypeStyles.stageActionRow}>
-        <WorkerJobsLegacyPrototypeStageActionButton
-          label={textByLanguage(language, 'Nhắn khách', 'Message customer')}
-          onPress={navigateJobChat}
-          testID="worker-v5-stage-seven-message-action"
-        />
-        <WorkerJobsLegacyPrototypeStageActionButton
-          disabled={!approved}
-          label={approved ? textByLanguage(language, 'Tiếp tục', 'Continue') : textByLanguage(language, 'Chờ khách phê duyệt', 'Waiting for customer')}
-          onPress={navigateNext}
-          primary
-          testID="worker-v5-stage-seven-primary-action"
-        />
-      </View>
     </View>
   )
 }

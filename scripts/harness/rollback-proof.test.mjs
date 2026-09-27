@@ -87,6 +87,34 @@ test('rejects a missing redeploy or migration history rewrite', () => {
   assert.match(report.problems.join('\n'), /rewrote or reordered/u)
 })
 
+test('accepts hosted deploy paths that differ only by the redeployed version', () => {
+  const value = input()
+  const hostedPath = (functionId, version, name, file) =>
+    `file:///tmp/user_fn_iwevizmsedyqozxlawwl_${functionId}_${version}/source/supabase/functions/${name}/${file}`
+  const mobileId = '7d0946b9-aa63-42d3-b4d6-f1615a2c4d05'
+  const maintainerId = 'f762b8fd-821c-4607-ac7f-8c46bb5a8c9a'
+  for (const [state, mobileVersion, maintainerVersion] of [
+    [value.hostedBefore, 265, 57],
+    [value.hostedAfter, 269, 61],
+  ]) {
+    Object.assign(state.managedEdgeFunctions['mobile-api'], {
+      version: mobileVersion,
+      entrypoint_path: hostedPath(mobileId, mobileVersion, 'mobile-api', 'index.ts'),
+      import_map_path: hostedPath(mobileId, mobileVersion, 'mobile-api', 'deno.json'),
+    })
+    Object.assign(state.managedEdgeFunctions['kael-matching-maintainer'], {
+      version: maintainerVersion,
+      entrypoint_path: hostedPath(maintainerId, maintainerVersion, 'kael-matching-maintainer', 'index.ts'),
+      import_map_path: hostedPath(maintainerId, maintainerVersion, 'kael-matching-maintainer', 'deno.json'),
+    })
+  }
+  assert.deepEqual(verifyRollbackProof(value).problems, [])
+
+  value.hostedAfter.managedEdgeFunctions['mobile-api'].entrypoint_path =
+    hostedPath(mobileId, 269, 'mobile-api', 'other.ts')
+  assert.match(verifyRollbackProof(value).problems.join('\n'), /mobile-api runtime configuration/u)
+})
+
 test('normalizes a legacy unreleased hosted identity on both sides', () => {
   const value = input()
   for (const state of [value.hostedBefore, value.hostedAfter]) {

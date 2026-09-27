@@ -14,6 +14,7 @@ export type MeRoute =
   | { kind: "me.accountDeletion"; method: "POST"; roles: UserRole[] }
   | { kind: "me.refundAccount"; method: "GET"; roles: UserRole[] }
   | { kind: "me.refundAccount.save"; method: "PATCH"; roles: UserRole[] }
+  | { kind: "me.address.save"; method: "PATCH"; roles: UserRole[] }
   | { kind: "me.threads"; method: "GET"; roles: UserRole[] }
   | {
     kind: "me.kaelFeedback";
@@ -69,6 +70,9 @@ export function matchMeRoute(path: string, method: string): MeRoute | null {
   }
   if (method === "PATCH" && path === "/me/refund-account") {
     return { kind: "me.refundAccount.save", method: "PATCH", roles: ["customer"] };
+  }
+  if (method === "PATCH" && path === "/me/address") {
+    return { kind: "me.address.save", method: "PATCH", roles: ["customer"] };
   }
   if (method === "GET" && path === "/me/threads") {
     return { kind: "me.threads", method: "GET", roles: ["customer", "admin"] };

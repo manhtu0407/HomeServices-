@@ -3,7 +3,7 @@
 
 import { apiFailure } from "../../platform/api-failure.ts";
 import type { MobileApiContext } from "../../platform/auth.ts";
-import { db, dbQuery } from "../../platform/db.ts";
+import { db, dbQuery, workflowDb } from "../../platform/db.ts";
 import {
   resolveSyntheticActorScope,
   scopeQueryToSyntheticActor,
@@ -13,7 +13,10 @@ export async function saveCustomerFavoriteWorker(
   ctx: MobileApiContext,
   workerId: string,
 ) {
-  const client = db(ctx);
+  // Service client end to end: a customer cannot read worker_profiles, and the upsert is
+  // INSERT .. ON CONFLICT DO UPDATE, which needs UPDATE on a table authenticated may only
+  // insert into and delete from. The row is keyed to ctx.user.id and the worker is checked here.
+  const client = workflowDb(ctx);
   const actorScope = await resolveSyntheticActorScope(client, ctx.user.id, "customer");
   const workerQuery = client.from("worker_profiles")
     .select("id")

@@ -105,7 +105,16 @@ function validActiveFunction(value) {
 
 function sameRuntimeConfiguration(before, after) {
   return before.verify_jwt === after.verify_jwt && before.import_map === after.import_map &&
-    before.entrypoint_path === after.entrypoint_path && before.import_map_path === after.import_map_path
+    deployPath(before.entrypoint_path) === deployPath(after.entrypoint_path) &&
+    deployPath(before.import_map_path) === deployPath(after.import_map_path)
+}
+
+// Hosted paths live under /tmp/user_fn_<ref>_<function id>_<version>/, and a rollback must raise the
+// version, so only that deploy-version segment is ignored; project, function, and file must still match.
+function deployPath(path) {
+  return typeof path === 'string'
+    ? path.replace(/\/user_fn_([a-z0-9]+)_([0-9a-f-]{36})_\d+\//u, '/user_fn_$1_$2_version/')
+    : path
 }
 
 function migrationVersions(rows, problems, label) {

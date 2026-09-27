@@ -190,6 +190,36 @@ test('classifies server-owned Kael AI routes as privileged provider operations',
   }
 })
 
+test('marks user-scoped mutations that run on the service client as privileged so each call is audited', () => {
+  const entries = Object.fromEntries(buildCapabilityRegistry().entries.map((entry) => [entry.kind, entry]))
+
+  for (const kind of [
+    'me.accountDeletion',
+    'me.address.save',
+    'me.avatarUpdate',
+    'me.avatarUpload',
+    'me.favoriteWorkerSave',
+    'me.kaelFeedback',
+    'me.kaelMemory.delete',
+    'me.kaelMemory.update',
+    'me.refundAccount.save',
+    'notifications.deviceToken',
+    'notifications.deviceToken.unregister',
+    'notifications.matchingDeliveryAck',
+    'notifications.read',
+  ]) {
+    assert.ok(entries[kind], `${kind} is not a route`)
+    assert.equal(entries[kind].privileged, true, `${kind} writes with the service client and must leave privileged evidence`)
+    assert.notEqual(entries[kind].risk, 'read', kind)
+  }
+
+  // These stay on the caller's token: the read is bounded by row-level security, or the write already works
+  // under it, so classifying them as privileged would only widen the client they use.
+  for (const kind of ['me.favoriteWorkerRemove', 'me.jobs.active', 'me.profileInsights', 'notifications']) {
+    assert.equal(entries[kind].privileged, false, kind)
+  }
+})
+
 test('marks customer catalog routes that reconcile or mutate service-owned rows as privileged', () => {
   const root = mkdtempSync(resolve(tmpdir(), 'harness-capability-customer-catalog-'))
   try {

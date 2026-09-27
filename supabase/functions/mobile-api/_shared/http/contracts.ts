@@ -659,6 +659,7 @@ export type MobileApiServices = AdminControlServices & {
     ctx: MobileApiContext,
     input: CustomerRefundAccountSaveRequest,
   ): Promise<EdgeCustomerRefundAccountResponse>;
+  saveCustomerAddress(ctx: MobileApiContext, input: { default_address: string }): Promise<EdgeCustomerProfileInsightsResponse>;
   deleteAccount?(
     ctx: MobileApiContext,
     input: AccountDeletionRequest,

@@ -295,6 +295,7 @@ function makeServices(overrides: Partial<MobileApiServices> = {}): MobileApiServ
     updateCustomerAvatar: vi.fn(),
     getCustomerRefundAccount: vi.fn(async () => ({ refund_account: null })),
     saveCustomerRefundAccount: vi.fn(async () => ({ refund_account: null })),
+    saveCustomerAddress: vi.fn(),
     getWorkerProfile: vi.fn(),
     createWorkerAvatarUpload: vi.fn(),
     updateWorkerAvatar: vi.fn(),

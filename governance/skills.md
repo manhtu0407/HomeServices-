@@ -4,6 +4,7 @@ Sources:
 
 - https://github.com/multica-ai/andrej-karpathy-skills
 - https://github.com/addyosmani/agent-skills
+- https://ponytail.dev/, https://github.com/DietrichGebert/ponytail (Reuse-Before-Build Ladder, debt ledger, and audit report, Core Skill 2)
 
 Purpose: project-local operating rules for AI coding agents working in this repo. These rules are adapted from Karpathy-inspired guidelines and the production workflow discipline in `addyosmani/agent-skills`, then tightened for NestScout: ship toward the first real transaction, avoid needless complexity, keep diffs small, and verify with evidence.
 
@@ -62,6 +63,18 @@ Rules:
 - No configuration systems for values that are not yet variable in practice.
 - No defensive branches for impossible states unless they protect money, auth, secrets, booking, or user trust.
 - If a 200-line solution can be 50 lines without losing clarity, simplify it.
+
+Reuse-Before-Build Ladder — adapted from ponytail.dev. Before writing any new function, module, or dependency, answer these in order; stop at the first "yes" and reuse what you found instead of writing new code:
+
+1. Does this need to exist at all? (Core Skill 1 — state the real need.)
+2. Is it already implemented somewhere in this codebase? Search `packages/shared` and the relevant domain module before writing anything.
+3. Does the language runtime or framework already provide it? (TypeScript/Node stdlib, Expo/React Native, Next.js, the Supabase client.)
+4. Does the platform provide a native feature for it? (An Expo/RN built-in API, a Supabase RPC/Storage/Realtime primitive, a Postgres built-in function.)
+5. Does an already-installed dependency in `package.json` already cover it?
+6. Can a single-line/minimal-viable form solve it without a new abstraction?
+7. Only when all six are "no": write the smallest new code that solves the current problem.
+
+If steps 2-5 turn up a candidate and you write new code anyway, that is debt, not a violation — log the reason in `docs/reuse-ladder-debt.md` before reporting done (ponytail's `/ponytail-debt`). `pnpm audit:reuse-ladder` reports every exported function/class name declared in more than one file across the repo (ponytail's `/ponytail-audit`) — a bloat signal, not a ratchet; read the hits, do not blind-merge them. Reviewing a diff for over-engineering or speculative generality (ponytail's `/ponytail-review`) is already the `kael-review` protocol's Long-Term Maintainability axis (`governance/critical.md` section 8) — do not build a second review pass for it.
 
 Complexity is allowed only when it buys something concrete:
 
@@ -238,9 +251,10 @@ Before editing:
 
 1. What exactly is the user asking?
 2. What is the smallest change that satisfies it?
-3. What assumptions could be wrong?
-4. What files must change, and which files must not?
-5. What command proves the change works?
+3. Search first: does this already exist in the codebase, the stdlib/framework, a native platform feature, or an installed dependency? Name where you searched (Reuse-Before-Build Ladder, above).
+4. What assumptions could be wrong?
+5. What files must change, and which files must not?
+6. What command proves the change works?
 
 While editing:
 
@@ -271,6 +285,7 @@ Scope:
 
 Constraints:
 - Keep changes surgical.
+- Search for reuse before writing new code (codebase -> stdlib/framework -> native platform feature -> installed dependency).
 - Prefer simplest working implementation.
 - Follow existing project patterns.
 - Do not touch unrelated files.

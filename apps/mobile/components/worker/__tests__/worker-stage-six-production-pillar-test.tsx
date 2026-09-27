@@ -210,7 +210,7 @@ describe('Worker Stage 6 Production Timeline Card', () => {
 
     withPillarContext(PILLAR, () => {
       expect(flowSource).toContain("const usesStageSixProduction = screen.id === '2.8-scope-change' && scopeMode !== 'edit'")
-      expect(flowSource).toContain('{usesStageSixProduction ||')
+      expect(flowSource).toContain('|| usesStageSixProduction ||')
     }, 'the Timeline Card opens without the shared back/title/subtitle header, while the scope editor keeps it as its only exit')
 
     withPillarContext(PILLAR, () => {
@@ -275,12 +275,10 @@ describe('Worker Stage 6 Production Timeline Card', () => {
 
   it('scales the approved phone artboard with the device instead of fixed pixels', () => {
     const timelineSource = read('../jobs/stage-six/stage-six-timeline.tsx')
-    const ratioSource = read('../jobs/stage-ratio.ts')
 
     withPillarContext(PILLAR, () => {
-      expect(ratioSource).toContain('stageSix: STAGE_REFERENCE_WIDTH / 370,')
       expect(stageSixTokens.referenceWidth.compact).toBe(370)
-      expect(timelineSource).toContain('stageFontSize(size, STAGE_REFERENCE_SCALE.stageSix, windowWidth)')
+      expect(timelineSource).toContain('stageTypography(role, windowWidth)')
       expect(timelineSource).toContain('width / stageSixTokens.referenceWidth[variant]')
       expect(timelineSource).toContain('const buttonMinHeight = stageTapSize(L.button.height, scale)')
     }, 'phone geometry is the 370pt artboard times the device ratio, and type resolves through the shared stage-ratio ramp')

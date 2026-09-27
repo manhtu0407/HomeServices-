@@ -87,6 +87,13 @@ export function resolveWorkerV5DockActive(pathname: string, params: WorkerV5Rout
   return 'home'
 }
 
+/** Once a worker has opened a specific job's case flow (offer detail through case closed), the
+ *  dock gives way to that screen's own navigation; only the opportunity list keeps the tab bar. */
+export function resolveWorkerV5DockVisible(params: WorkerV5RouteParams): boolean {
+  const explicitScreen = getWorkerV5Screen(firstRouteParam(params.ns_worker_screen))
+  return !(explicitScreen?.section === 'jobs' && explicitScreen.phase !== 'discover')
+}
+
 function resolveWorkerV5JobsScreenId(params: WorkerV5RouteParams): WorkerV5ScreenId {
   const auditSurface = firstRouteParam(params.ns_audit_surface)
   const tab = firstRouteParam(params.tab)

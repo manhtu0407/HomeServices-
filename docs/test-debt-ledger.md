@@ -229,7 +229,7 @@ Two things made this debt easy to accumulate, and both still hold:
 
 Cause 1 is still open, and it is the one that matters more: as long as the SQL layer cannot be run on a Linux or macOS machine, the rule tells a contributor their only reachable option does not count, without giving them a reachable one.
 
-**CI note.** `.github/workflows/kael-agentic-completeness.yml` blocks every tracked-file deletion outside an allowlist. That guard is correct and it caught this work; the allowlist now covers `apps/api/src/__tests__/` and `packages/shared/src/__tests__/`, on the grounds that a deleted test is visible in the diff and recorded here. Product code, the admin surface, and every other path stay blocked.
+**CI note.** The protected-boundary step in `.github/workflows/ci.yml` (formerly `kael-agentic-completeness.yml`) blocks every tracked-file deletion outside an allowlist. That guard is correct and it caught this work; the allowlist now covers `apps/api/src/__tests__/` and `packages/shared/src/__tests__/`, on the grounds that a deleted test is visible in the diff and recorded here. Product code, the admin surface, and every other path stay blocked.
 
 ## What still counts as a legitimate text assertion
 

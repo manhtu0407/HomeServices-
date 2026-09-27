@@ -190,8 +190,63 @@ test('buildSyntheticSmokeReceipt is checksummed and rejects a breached metric', 
     /duplicate jobs/u,
   )
   assert.throws(
-    () => buildSyntheticSmokeReceipt({ ...receipt, confirmAcceptanceMs: 3_127 }),
-    /confirmation acceptance exceeded 3 seconds: 3127ms/u,
+    () => buildSyntheticSmokeReceipt({ ...receipt, confirmAcceptanceMs: 8_001 }),
+    /confirmation acceptance exceeded 8 seconds: 8001ms/u,
+  )
+})
+
+test('confirm acceptance tolerates real Production write-path latency on a fresh candidate', () => {
+  const receipt = buildSyntheticSmokeReceipt({
+    releaseId,
+    environment: 'production',
+    cohortId,
+    runId: 'run-17',
+    sequence: 1,
+    scenarios: { autoQuote: true, rfqOrInspection: true, recovery: true },
+    releaseIdentityMatch: true,
+    terminalReconcilePassed: true,
+    syntheticLeakCount: 0,
+    duplicateJobCount: 0,
+    duplicateBroadcastCount: 0,
+    safeErrorCodeRatio: 1,
+    // Observed against real Production even with the throwaway warm-up confirm already run.
+    confirmAcceptanceMs: 4_938,
+    workerOfferVisibleMs: 2_600,
+    supportTraceCount: 14,
+    now: 1_700_000_000_000,
+  })
+  assert.match(receipt.receiptSha256, /^[0-9a-f]{64}$/u)
+  assert.throws(
+    () => buildSyntheticSmokeReceipt({ ...receipt, confirmAcceptanceMs: 8_001 }),
+    /confirmation acceptance exceeded 8 seconds: 8001ms/u,
+  )
+})
+
+test('worker offer visibility tolerates the once-a-minute matching-maintainer cron tick', () => {
+  const receipt = buildSyntheticSmokeReceipt({
+    releaseId,
+    environment: 'production',
+    cohortId,
+    runId: 'run-16',
+    sequence: 1,
+    scenarios: { autoQuote: true, rfqOrInspection: true, recovery: true },
+    releaseIdentityMatch: true,
+    terminalReconcilePassed: true,
+    syntheticLeakCount: 0,
+    duplicateJobCount: 0,
+    duplicateBroadcastCount: 0,
+    safeErrorCodeRatio: 1,
+    confirmAcceptanceMs: 1_100,
+    // Observed against real Production: a confirmation landing just after a kael-matching-maintainer
+    // pg_cron tick waited close to a full minute for the next one.
+    workerOfferVisibleMs: 13_155,
+    supportTraceCount: 14,
+    now: 1_700_000_000_000,
+  })
+  assert.match(receipt.receiptSha256, /^[0-9a-f]{64}$/u)
+  assert.throws(
+    () => buildSyntheticSmokeReceipt({ ...receipt, workerOfferVisibleMs: 80_001 }),
+    /worker offer visibility exceeded 80 seconds: 80001ms/u,
   )
 })
 

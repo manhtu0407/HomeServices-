@@ -5,7 +5,7 @@
     "immutableThroughVersion": "20260904113000",
     "sha256": "12da2bac288e0e718e61a27653e8cba9ffdb13b8e9900979407d41e1217b2077"
   },
-  "migrationCount": 394,
+  "migrationCount": 405,
   "migrationEquivalences": {
     "version": "1.0.0",
     "groups": [
@@ -74,10 +74,10 @@
       }
     ]
   },
-  "migrationsSha256": "47881bc7c0f03eb18c580b5e74da62182ea90ca04271341153dc5a170a32a51a",
+  "migrationsSha256": "7a2c47ee257735c6d97040ea6fe8f6f8ddc285823aedead1e4951a484e0c2e46",
   "databaseTypes": {
     "file": "packages/shared/src/types/database",
-    "sha256": "01ae94c905b235d852505829c1e39154880f4e8cb1acd412ecba1fa31f1c7c9e"
+    "sha256": "7d9679494986efbf7dcf5781da3c0ee9ea8d7061353691827d01c3d5bb961dd0"
   },
   "entries": [
     {
@@ -2837,6 +2837,83 @@
       "file": "supabase/migrations/20260914090000_worker_stage5_work_session.sql",
       "sha256": "1b9d8e127d866b0519333459645658593c3d58704db9605a7b3679d999ecf282",
       "bytes": 548
+    },
+    {
+      "version": "20260916100000",
+      "name": "customer_default_address_column",
+      "file": "supabase/migrations/20260916100000_customer_default_address_column.sql",
+      "sha256": "c2c54aa02d5e5871bc28633d9a4da6bf5ff2d228b7353fbb541f3a062576e1f3",
+      "bytes": 7617
+    },
+    {
+      "version": "20260916100100",
+      "name": "customer_default_address_backfill",
+      "file": "supabase/migrations/20260916100100_customer_default_address_backfill.sql",
+      "sha256": "e50788cacf5c899b9e1eac8c0c1a3e1f5027374f046b5cb2fa31a8578b0e7e47",
+      "bytes": 1142
+    },
+    {
+      "version": "20260921153130",
+      "name": "harness_telemetry_retention",
+      "file": "supabase/migrations/20260921153130_harness_telemetry_retention.sql",
+      "sha256": "ffa22f2343ce60293a8bdf7b0615b6eeb064125afe716c0d1288f16fa6a222c9",
+      "bytes": 4079
+    },
+    {
+      "version": "20260921224356",
+      "name": "harness_retention_no_temp_table",
+      "file": "supabase/migrations/20260921224356_harness_retention_no_temp_table.sql",
+      "sha256": "3f4bab7e7ac10b1552da1140a088d4fcd82283a2ad7fa2bc48e045ebc65e2a39",
+      "bytes": 2915
+    },
+    {
+      "version": "20260923140621",
+      "name": "stage1_worker_offer_visibility_cron_budget",
+      "file": "supabase/migrations/20260923140621_stage1_worker_offer_visibility_cron_budget.sql",
+      "sha256": "e6ff55e8e7c09498c02c9352142b190ffe41b2a01ada95dd3cb4f26226936d83",
+      "bytes": 5086
+    },
+    {
+      "version": "20260923141106",
+      "name": "stage1_smoke_receipts_worker_offer_visible_ms_bound",
+      "file": "supabase/migrations/20260923141106_stage1_smoke_receipts_worker_offer_visible_ms_bound.sql",
+      "sha256": "0e06eb78cc5833cc583c7ee8910a747a893f82d06917f2eee4f88cf193cf23f2",
+      "bytes": 568
+    },
+    {
+      "version": "20260924044057",
+      "name": "stage1_confirm_acceptance_ms_bound",
+      "file": "supabase/migrations/20260924044057_stage1_confirm_acceptance_ms_bound.sql",
+      "sha256": "10c161228bb1084ca50ccbf9ac594862f4530214eedcf6c8070536f85963386c",
+      "bytes": 5264
+    },
+    {
+      "version": "20260924063250",
+      "name": "stage1_acceptance_note_ui_receipt_v2",
+      "file": "supabase/migrations/20260924063250_stage1_acceptance_note_ui_receipt_v2.sql",
+      "sha256": "c1ebf2873485ba0d8c675093e23bdaafbdd9ab6c3a81950c4863a485c2028943",
+      "bytes": 10004
+    },
+    {
+      "version": "20260924121719",
+      "name": "claim_due_matching_push_provider_tickets",
+      "file": "supabase/migrations/20260924121719_claim_due_matching_push_provider_tickets.sql",
+      "sha256": "1652a701da5dfe09ed3d1e3aa408f0abcc1eb1d8ced98051f45003a1222b6cdc",
+      "bytes": 1979
+    },
+    {
+      "version": "20260924140943",
+      "name": "notification_missing_job_no_fk_failure",
+      "file": "supabase/migrations/20260924140943_notification_missing_job_no_fk_failure.sql",
+      "sha256": "9a8310a2b73059b0c60dab93cc830f540ed204573cc8eaa0f37600d1dd42fbc5",
+      "bytes": 4411
+    },
+    {
+      "version": "20260924231604",
+      "name": "rls_initplan_policy_consolidation",
+      "file": "supabase/migrations/20260924231604_rls_initplan_policy_consolidation.sql",
+      "sha256": "4eb05ee01ac333c185b074756d6775cef0a1782bc2ad37d51a4e3df937c38c0d",
+      "bytes": 3150
     }
   ]
 }

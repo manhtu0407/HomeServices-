@@ -18,7 +18,6 @@ import { KaelCoreV9 } from '@/components/ui/kael-core-v9'
 import { useAppLanguage } from '@/lib/app-language'
 import { entryAccessCopy } from '../copy'
 import { entryTheme } from '../theme'
-import { EntryIcon } from './icons'
 
 type AccessibilityPreferences = {
   reduceMotion: boolean
@@ -150,8 +149,9 @@ export function PrimaryButton({
         <Rect width="100%" height="100%" rx="24" fill="url(#primaryGradient)" />
         <Rect width="100%" height="100%" rx="24" fill="url(#buttonLight)" />
       </Svg>
-      <Text style={styles.primaryLabel}>{label}</Text>
-      <EntryIcon color="#FFFFFF" name="arrow-right" size={16} />
+      <View style={styles.primaryLabelSlot}>
+        <Text style={styles.primaryLabel}>{label}</Text>
+      </View>
     </Pressable>
   )
 }
@@ -209,17 +209,14 @@ const styles = StyleSheet.create({
   kaelCoreHeroCompact: { height: 278 },
   pressed: { opacity: 0.78 },
   primaryButton: {
-    alignItems: 'center',
     borderColor: 'rgba(255,255,255,0.68)',
     borderRadius: 24,
     borderWidth: 1,
-    flexDirection: 'row',
-    gap: 9,
     height: 52,
-    justifyContent: 'center',
     overflow: 'hidden',
     width: '100%',
     ...entryTheme.shadow.primary,
   },
   primaryLabel: { ...entryTheme.typography.subheadline, color: entryTheme.color.text.inverse, fontWeight: '600' },
+  primaryLabelSlot: { ...StyleSheet.absoluteFill, alignItems: 'center', justifyContent: 'center' },
 })

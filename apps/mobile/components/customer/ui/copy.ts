@@ -136,7 +136,7 @@ export const customerV21CommonCopy: Localized<{
 }> = {
   en: {
     activeCase: 'Active work',
-    caseWork: 'Work handling',
+    caseWork: 'Work',
     chatPlaceholder: 'Briefly describe what needs handling',
     chatTitle: 'Kael Chat',
     createDraft: 'Send draft to Kael',
@@ -152,7 +152,7 @@ export const customerV21CommonCopy: Localized<{
     homeTitle: 'What needs attention today?',
     intakeTitle: 'Find and book service',
     mediaTitle: 'Media and voice intake',
-    normalChat: 'Normal Chat',
+    normalChat: 'Chat',
     paymentLocked: 'Waiting for payment.',
     profileTitle: 'Customer profile',
     startService: 'Start service',
@@ -160,7 +160,8 @@ export const customerV21CommonCopy: Localized<{
   },
   vi: {
     activeCase: 'Công việc đang xử lý',
-    caseWork: 'Xử lý công việc',
+    // The Kael mode names stay English in Vietnamese by product decision.
+    caseWork: 'Work',
     chatPlaceholder: 'Mô tả ngắn việc bạn cần xử lý',
     chatTitle: 'Trò chuyện với Kael',
     createDraft: 'Gửi nháp cho Kael',
@@ -176,7 +177,7 @@ export const customerV21CommonCopy: Localized<{
     homeTitle: 'Hôm nay nhà bạn cần xử lý gì?',
     intakeTitle: 'Tìm & đặt dịch vụ',
     mediaTitle: 'Ảnh, video và ghi chú giọng nói',
-    normalChat: 'Chat thường',
+    normalChat: 'Chat',
     paymentLocked: 'Chờ thanh toán.',
     profileTitle: 'Hồ sơ khách hàng',
     startService: 'Bắt đầu dịch vụ',

@@ -79,7 +79,7 @@ describe('Stage 1 provider push receipts', () => {
       data: { 'expo-ticket-57': { status: 'ok' } },
     }))))
     const client = makeSequenceClient([], {
-      claim_matching_push_provider_tickets: [{
+      claim_due_matching_push_provider_tickets: [{
         data: [{
           provider_ticket_row_id: 'ticket-row-57',
           provider_ticket_id: 'expo-ticket-57',
@@ -106,12 +106,31 @@ describe('Stage 1 provider push receipts', () => {
     expect(client.calls.some((call) => call.table === 'rpc:mark_matching_delivery_delivered')).toBe(false)
   })
 
+  it('claims every due receipt without binding the maintainer id as a recipient worker', async () => {
+    const client = makeSequenceClient([], {
+      claim_due_matching_push_provider_tickets: [{ data: [], error: null }],
+    })
+
+    await expect(reconcileMatchingPushReceipts(
+      client as unknown as Parameters<typeof reconcileMatchingPushReceipts>[0],
+      'matching-maintainer:iwevizmsedyqozxlawwl_f762b8fd_57',
+    )).resolves.toMatchObject({ checked: 0 })
+    expect(
+      client.calls,
+      pillarWhy(PILLAR, 'a non-UUID maintainer id sent as p_worker_id fails the uuid cast on every tick'),
+    ).toContainEqual({
+      table: 'rpc:claim_due_matching_push_provider_tickets',
+      operations: [['rpc', 'claim_due_matching_push_provider_tickets', { p_limit: 50 }]],
+    })
+    expect(client.calls.some((call) => call.table === 'rpc:claim_matching_push_provider_tickets')).toBe(false)
+  })
+
   it('does not convert a stale-token receipt into push proof', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({
       data: { 'expo-ticket-stale-57': { status: 'ok' } },
     }))))
     const client = makeSequenceClient([], {
-      claim_matching_push_provider_tickets: [{
+      claim_due_matching_push_provider_tickets: [{
         data: [{
           provider_ticket_row_id: 'ticket-row-stale-57',
           provider_ticket_id: 'expo-ticket-stale-57',
@@ -143,7 +162,7 @@ describe('Stage 1 provider push receipts', () => {
       },
     }))))
     const client = makeSequenceClient([], {
-      claim_matching_push_provider_tickets: [{
+      claim_due_matching_push_provider_tickets: [{
         data: [{
           provider_ticket_row_id: 'ticket-row-error-57',
           provider_ticket_id: 'expo-ticket-error-57',
@@ -180,7 +199,7 @@ describe('Stage 1 provider push receipts', () => {
   it('treats an omitted provider receipt as unresolved recovery, not an error', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ data: {} }))))
     const client = makeSequenceClient([], {
-      claim_matching_push_provider_tickets: [{
+      claim_due_matching_push_provider_tickets: [{
         data: [{
           provider_ticket_row_id: 'ticket-row-missing-57',
           provider_ticket_id: 'expo-ticket-missing-57',

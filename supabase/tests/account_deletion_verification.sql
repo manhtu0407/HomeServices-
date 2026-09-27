@@ -52,19 +52,21 @@ set
   phone = '+84944000002'
 where id = 'b4400000-0000-4000-8000-000000000002';
 
-insert into public.customer_profiles (id, building_name, unit_number, floor, district)
+insert into public.customer_profiles (id, building_name, unit_number, floor, district, default_address)
 values (
   'b4400000-0000-4000-8000-000000000001',
   'Build 44 Tower',
   '44',
   '4',
-  'Quận 1'
+  'Quận 1',
+  'Build 44 Tower, Quận 1'
 )
 on conflict (id) do update set
   building_name = excluded.building_name,
   unit_number = excluded.unit_number,
   floor = excluded.floor,
-  district = excluded.district;
+  district = excluded.district,
+  default_address = excluded.default_address;
 
 insert into public.worker_profiles (
   id,
@@ -389,6 +391,21 @@ begin
       )
   ) then
     raise exception 'CUSTOMER_PROFILE_NOT_SCRUBBED';
+  end if;
+
+  if exists (
+    select 1
+    from public.customer_profiles customer_profile
+    where customer_profile.id = 'b4400000-0000-4000-8000-000000000001'
+      and (
+        customer_profile.building_name is not null
+        or customer_profile.unit_number is not null
+        or customer_profile.floor is not null
+        or customer_profile.district is not null
+        or customer_profile.default_address is not null
+      )
+  ) then
+    raise exception 'CUSTOMER_ADDRESS_NOT_SCRUBBED';
   end if;
 
   select request_id

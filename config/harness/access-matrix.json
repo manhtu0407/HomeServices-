@@ -2,8 +2,8 @@
   "version": "1.0.0",
   "source": {
     "migrationRoot": "supabase/migrations",
-    "migrationCount": 394,
-    "migrationDigest": "b49e92e28bffa3d6f29c5fc6c759e00905299032d65353c040049453b73fbc00"
+    "migrationCount": 405,
+    "migrationDigest": "2a80aed08fb6020136ee4ac51802ad9cdbb902d7e647d0ba3fd2937af945faba"
   },
   "actors": [
     "anonymous",
@@ -3869,6 +3869,14 @@
       "executeRoles": []
     },
     {
+      "signature": "claim_due_matching_push_provider_tickets(integer)",
+      "securityDefiner": false,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
       "signature": "claim_job_broadcast_retry_atomic(uuid, uuid, uuid, integer)",
       "securityDefiner": true,
       "fixedSearchPath": true,
@@ -4974,6 +4982,14 @@
     },
     {
       "signature": "record_stage1_attested_synthetic_smoke(text, text, text, text, smallint, boolean, boolean, boolean, boolean, boolean, integer, integer, integer, numeric, integer, integer, integer, text, text, text, text, text, text)",
+      "securityDefiner": true,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
+      "signature": "record_stage1_production_acceptance_note(text, text, text, integer, integer, text, text, text, integer, integer, integer, text, text, text, text, integer, integer)",
       "securityDefiner": true,
       "fixedSearchPath": true,
       "executeRoles": [

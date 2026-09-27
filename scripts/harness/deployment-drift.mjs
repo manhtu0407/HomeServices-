@@ -32,7 +32,12 @@ export async function collectHostedDeploymentState(input) {
     'content-type': 'application/json',
   }
 
-  const health = await fetchJson(fetchImpl, `${projectOrigin}/functions/v1/mobile-api/harness/health`)
+  // mobile-api fails closed on every route, including this health probe, until a release
+  // registers (assertProductionReleaseRegistered) — so a genuinely absent prior deployment is
+  // an expected baseline, not a collection failure, and every field below already falls back to
+  // null when health/health.release is missing. Other calls below stay strict: a Management API
+  // failure there is a real access/token problem, not evidence of a cold start.
+  const health = await fetchHealthOrNull(fetchImpl, `${projectOrigin}/functions/v1/mobile-api/harness/health`)
   const functions = await fetchJson(fetchImpl, `${managementOrigin}/functions`, {
     headers: managementHeaders,
   })
@@ -122,7 +127,13 @@ order by object_kind, schema_name, relation_name, object_name`,
   const release = health?.release ?? {}
   return {
     environment: health?.environment?.name ?? input.environment,
-    projectRef: health?.environment?.project_ref ?? null,
+    // Unlike `environment`, this fell back to a bare null rather than the already-validated
+    // `input.projectRef` above, so a tolerated health-probe failure (fetchHealthOrNull) produced
+    // a hosted baseline that no caller could recognize as the Production target it actually is.
+    // Unlike `environment`, this fell back to a bare null rather than the already-validated
+    // `input.projectRef` above, so a tolerated health-probe failure (fetchHealthOrNull) produced
+    // a hosted baseline that no caller could recognize as the Production target it actually is.
+    projectRef: health?.environment?.project_ref ?? input.projectRef,
     releaseId: release.release_id ?? null,
     deploymentId: release.deployment_id ?? null,
     gitSha: release.git_sha ?? null,
@@ -140,19 +151,24 @@ order by object_kind, schema_name, relation_name, object_name`,
     clientCompatibility: release.client_compatibility ?? null,
     migrations: normalizeRows(migrationResult),
     migrationObjectPreconditions: normalizeRows(migrationObjectPreconditionResult),
-    managedEdgeFunctions: Object.fromEntries(normalizeRows(functions).map((item) => {
-      const detail = functionDetails.get(item.slug) ?? item
-      return [String(item.slug ?? ''), {
-      id: item.id ?? null,
-      status: item.status ?? null,
-      version: item.version ?? null,
-      ezbr_sha256: item.ezbr_sha256 ?? null,
-      verify_jwt: detail.verify_jwt ?? null,
-      import_map: detail.import_map ?? null,
-      entrypoint_path: detail.entrypoint_path ?? null,
-      import_map_path: detail.import_map_path ?? null,
-    }]
-    }).filter(([slug]) => slug)),
+    // Production hosts other Edge Functions too (kael-learning-monitor, sepay-webhook, ...); only
+    // the release-managed pair has a rollback contract, and callers such as stage1-promotion-packet.mjs
+    // require this set to match RELEASE_EDGE_FUNCTIONS exactly, not merely include it.
+    managedEdgeFunctions: Object.fromEntries(normalizeRows(functions)
+      .filter((item) => RELEASE_EDGE_FUNCTIONS.includes(item?.slug))
+      .map((item) => {
+        const detail = functionDetails.get(item.slug) ?? item
+        return [String(item.slug ?? ''), {
+        id: item.id ?? null,
+        status: item.status ?? null,
+        version: item.version ?? null,
+        ezbr_sha256: item.ezbr_sha256 ?? null,
+        verify_jwt: detail.verify_jwt ?? null,
+        import_map: detail.import_map ?? null,
+        entrypoint_path: detail.entrypoint_path ?? null,
+        import_map_path: detail.import_map_path ?? null,
+      }]
+      }).filter(([slug]) => slug)),
     evidenceSource: 'hosted-api-and-readonly-sql',
   }
 }
@@ -412,6 +428,15 @@ async function fetchJson(fetchImpl, url, init) {
   const response = await fetchImpl(url, init)
   if (!response?.ok) throw new Error(`hosted deployment evidence request failed: ${response?.status ?? 'unknown'} ${url}`)
   return response.json()
+}
+
+async function fetchHealthOrNull(fetchImpl, url) {
+  try {
+    return await fetchJson(fetchImpl, url)
+  } catch (error) {
+    process.stderr.write(`hosted health probe unavailable, treating as no prior release: ${error instanceof Error ? error.message : String(error)}\n`)
+    return null
+  }
 }
 
 function normalizeRows(value) {

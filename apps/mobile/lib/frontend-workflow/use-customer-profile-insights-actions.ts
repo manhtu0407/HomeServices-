@@ -62,8 +62,19 @@ export function useCustomerProfileInsightsActions({
     return () => clearTimeout(refreshTimer)
   }, [role, sessionUserId, refreshCustomerProfileInsights])
 
+  const saveCustomerDefaultAddress = useCallback(async (defaultAddress: string) => {
+    if (!sessionUserId || role !== 'customer') return false
+    const result = await customerProfileService.saveAddress({ default_address: defaultAddress })
+    if (!result.success) return false
+    // The PATCH already returns a fresh insights snapshot, so apply it
+    // directly instead of triggering a second refresh round trip.
+    setCustomerProfileInsightsState({ insights: result.data, sessionUserId })
+    return true
+  }, [role, sessionUserId])
+
   return {
     customerProfileInsights,
     refreshCustomerProfileInsights,
+    saveCustomerDefaultAddress,
   }
 }

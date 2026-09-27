@@ -9,7 +9,7 @@ import {
 import { apiFailure } from "../../platform/api-failure.ts";
 import type { MobileApiContext } from "../../platform/auth.ts";
 import { checkRateLimit, type RateLimitConfig } from "../../platform/rate-limit.ts";
-import { db, dbQuery } from "../../platform/db.ts";
+import { db, dbQuery, workflowDb } from "../../platform/db.ts";
 import { inspectJobMediaContent } from "../job/media-content.ts";
 import { nullableString } from "../../platform/coercions.ts";
 
@@ -91,7 +91,7 @@ async function createProfileAvatarUpload<BucketId extends ProfileAvatarBucketId>
     apiFailure("RATE_LIMITED", "Bạn đã đổi ảnh quá nhiều lần. Vui lòng thử lại sau.", 429);
   }
 
-  const bucket = requireProfileAvatarBucket(ctx.supabase, bucketId);
+  const bucket = requireProfileAvatarBucket(workflowDb(ctx), bucketId);
   const objectPath = `${ctx.user.id}/${crypto.randomUUID()}.${extensionForMime(input.mime_type)}`;
   const signed = await bucket.createSignedUploadUrl(objectPath);
   const signedUrl = signed.data?.signedUrl ?? signed.data?.signed_url;
@@ -123,7 +123,7 @@ export async function getCustomerAvatar(ctx: MobileApiContext) {
 
   return {
     customer_id: ctx.user.id,
-    avatar_url: await resolveCustomerAvatarUrl(ctx.supabase, result.data.avatar_url),
+    avatar_url: await resolveCustomerAvatarUrl(workflowDb(ctx), result.data.avatar_url),
     updated_at: nullableString(result.data.updated_at),
   };
 }
@@ -173,7 +173,10 @@ async function updateProfileAvatar(
     apiFailure("VALIDATION", "Ảnh đại diện không thuộc tài khoản này", 400);
   }
 
-  const bucket = requireProfileAvatarBucket(ctx.supabase, bucketId);
+  // Customer routes reach this on the caller's own client, which has no policy on the private avatar
+  // buckets and no UPDATE on profiles (20260518032000). The object path above is bound to ctx.user.id,
+  // so the storage reads and the profile write run on the service client.
+  const bucket = requireProfileAvatarBucket(workflowDb(ctx), bucketId);
   const downloaded = await bucket.download(objectPath);
   if (downloaded.error || !downloaded.data) {
     apiFailure("STORAGE_ERROR", "Không thể kiểm tra ảnh đại diện", 400);
@@ -193,7 +196,7 @@ async function updateProfileAvatar(
     apiFailure("UNSUPPORTED_MEDIA", "Ảnh đại diện phải là JPEG, PNG hoặc WebP hợp lệ", 400);
   }
 
-  const client = db(ctx);
+  const client = workflowDb(ctx);
   const previous = await dbQuery<Record<string, unknown>>(
     client.from("profiles").select("avatar_url").eq("id", ctx.user.id).maybeSingle(),
   );
@@ -214,7 +217,7 @@ async function updateProfileAvatar(
   }
 
   signedAvatarCache.delete(input.avatar_ref);
-  const avatarUrl = await resolveProfileAvatarUrl(ctx.supabase, input.avatar_ref, bucketId);
+  const avatarUrl = await resolveProfileAvatarUrl(workflowDb(ctx), input.avatar_ref, bucketId);
   if (!avatarUrl) {
     apiFailure("STORAGE_ERROR", "Không thể mở ảnh đại diện vừa cập nhật", 500);
   }

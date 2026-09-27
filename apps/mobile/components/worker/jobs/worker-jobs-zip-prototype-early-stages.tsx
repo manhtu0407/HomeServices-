@@ -10,7 +10,6 @@ import { firstRouteParam, routeForWorkerV5Screen } from '../dock/routing'
 import { requireWorkerV5Screen } from '../dock/screens'
 import { WorkerV5BoundaryNote } from '../ui/metrics-surfaces'
 import { textByLanguage } from '../ui/format'
-import { workerV5DisplayCode } from '../ui/screen-labels'
 import { workerV5JobsDestinationScreenId } from '../ui/screen-navigation'
 import { workerV5TimeChoiceLabel } from '../ui/labels'
 import { buildWorkerV5AcceptEtaSignal } from '../ui/route'
@@ -25,17 +24,25 @@ import { buildWorkerV5AcceptReviewChecks, workerV5CanAcceptOpenOffer } from './a
 import { WorkerBroadcastProposalForm } from './worker-broadcast-proposal-form'
 import { WorkerStageTwoOfferWorkart } from './worker-jobs-stage-two-workart'
 import { prototypeStyles, stageTwoStyles } from './worker-jobs-zip-prototype-styles'
+import { stageTwoCardTokens, type StageTwoPillTone } from './worker-jobs-zip-prototype-style-stage-two'
 import {
   Text,
   WorkerJobsLegacyPrototypeMetaIcon,
+  WorkerJobsStageTwoAction,
+  WorkerJobsStageTwoCard,
   WorkerJobsStageTwoIcon,
+  WorkerJobsStageTwoRow,
+  WorkerJobsStageTwoSection,
   type WorkerJobsLegacyPrototypeBodyProps,
   type WorkerJobsLegacyPrototypePreviewJob,
   type WorkerJobsLegacyPrototypeRuntime,
-  type WorkerJobsStageTwoIconName,
+  type WorkerJobsStageTwoGlyphName,
+  type WorkerJobsStageTwoScale,
+  useWorkerJobsStageTwoScale,
   workerJobsLegacyPrototypePreviewJob,
 } from './worker-jobs-zip-prototype-shared'
 import { WorkerMatchingDeliveryStatus } from './worker-matching-delivery-status'
+import { stageLayout, useStageLayout } from './stage-ratio'
 
 export { WorkerJobsLegacyPrototypeRouteEtaBody } from './worker-jobs-zip-prototype-route-stage'
 
@@ -77,8 +84,9 @@ export function WorkerJobsLegacyPrototypeOpportunityCard({
   const surfaceColor = reduceTransparency ? tokens.base : tokens.raised
   const workartPanelColor = tokens.mode === 'dark' ? tokens.ghost : '#E8F5F1'
   const cardTestID = onSelect ? testID : 'worker-v5-opportunity-empty-card'
+  const layout = useStageLayout()
   const copy = (
-    <View style={prototypeStyles.opportunityCardCopy}>
+    <View style={[prototypeStyles.opportunityCardCopy, { paddingHorizontal: layout.metric(stageLayout.cardPadding), paddingVertical: layout.metric(stageLayout.cardPadding) }]}>
       <Text numberOfLines={2} style={prototypeStyles.opportunityCardTitle}>{title}</Text>
       <Text numberOfLines={2} style={prototypeStyles.opportunityCardMeta}>{meta}</Text>
       <View style={prototypeStyles.opportunityMetaRow}>
@@ -114,7 +122,7 @@ export function WorkerJobsLegacyPrototypeOpportunityCard({
       surfaceColor={surfaceColor}
     />
   )
-  const cardSurfaceStyle = { backgroundColor: surfaceColor, borderColor: tokens.borderStrong }
+  const cardSurfaceStyle = { backgroundColor: surfaceColor, borderColor: tokens.borderStrong, borderRadius: layout.metric(stageLayout.cardRadius) }
 
   if (!onSelect) {
     return <View style={[prototypeStyles.opportunityCard, cardSurfaceStyle]} testID="worker-v5-opportunity-empty-card">{workartView}{copy}</View>
@@ -222,33 +230,37 @@ function activeInboxBroadcasts(broadcasts: WorkerBroadcast[]) {
     .slice(0, 20)
 }
 
-function WorkerJobsStageTwoInfoGroup({ iconNames, rows, testID, title, tokens }: {
-  iconNames: readonly WorkerJobsStageTwoIconName[]
+const STAGE_TWO_REQUEST_GLYPHS = ['bubble', 'wrench', 'photo'] as const
+const STAGE_TWO_ADDRESS_GLYPHS = ['home', 'user'] as const
+const STAGE_TWO_PRICE_GLYPHS = ['tag', 'banknote', 'wallet', 'check'] as const
+const STAGE_TWO_READY_GLYPHS = ['envelope', 'shieldCheck', 'lock', 'receipt'] as const
+
+function WorkerJobsStageTwoInfoGroup({ description, glyph, rowGlyphs, rows, scale, testID, title, tone }: {
+  description: string
+  glyph: WorkerJobsStageTwoGlyphName
+  rowGlyphs: readonly WorkerJobsStageTwoGlyphName[]
   rows: readonly WorkerV5OfferDetailRow[]
+  scale: WorkerJobsStageTwoScale
   testID: string
   title: string
-  tokens: ReturnType<typeof getWorkerThemeTokens>
+  tone: StageTwoPillTone
 }) {
   return (
-    <View style={stageTwoStyles.section}>
-      <View style={stageTwoStyles.sectionHeading}>
-        <Text style={[stageTwoStyles.sectionTitle, { color: tokens.text }]}>{title}</Text>
-      </View>
-      <View style={[stageTwoStyles.sectionCard, { backgroundColor: tokens.raised, borderColor: tokens.border }]} testID={testID}>
-        {rows.map((row, index) => (
-          <View key={`${row.title}-${index}`} style={[stageTwoStyles.sectionRow, index > 0 && stageTwoStyles.sectionRowDivider, index > 0 && { borderTopColor: tokens.border }]}>
-            <View style={[stageTwoStyles.sectionIconFrame, { backgroundColor: tokens.base, borderColor: tokens.border }]}>
-              <WorkerJobsStageTwoIcon color={tokens.primary} name={iconNames[index] ?? 'request'} size={24} />
-            </View>
-            <View style={stageTwoStyles.sectionRowCopy}>
-              <Text numberOfLines={2} style={[stageTwoStyles.sectionRowTitle, { color: tokens.text }]}>{row.title}</Text>
-              <Text numberOfLines={3} style={[stageTwoStyles.sectionRowMeta, { color: tokens.muted }]}>{row.meta}</Text>
-            </View>
-            <Text numberOfLines={2} style={[stageTwoStyles.sectionRowStatus, { color: tokens.text }]}>{row.status}</Text>
-          </View>
-        ))}
-      </View>
-    </View>
+    <WorkerJobsStageTwoSection
+      description={description}
+      glyph={glyph}
+      rows={rows.map((row, index) => ({
+        glyph: rowGlyphs[index] ?? rowGlyphs[rowGlyphs.length - 1],
+        key: `${row.title}-${index}`,
+        meta: row.meta,
+        status: row.status,
+        title: row.title,
+        tone,
+      }))}
+      scale={scale}
+      testID={testID}
+      title={title}
+    />
   )
 }
 
@@ -267,13 +279,15 @@ function WorkerJobsLegacyPrototypeOpportunityActions({
   primaryDisabled: boolean
   reduceTransparency: boolean
 }) {
+  const layout = useStageLayout()
+  const size = { borderRadius: layout.metric(stageLayout.buttonRadius), minHeight: layout.buttonHeight }
   return (
     <View accessibilityRole="summary" style={prototypeStyles.opportunityActions} testID="worker-v5-action-rail">
       <Pressable
         accessibilityLabel={textByLanguage(language, 'Kael nhận việc', 'Kael job intake')}
         accessibilityRole="button"
         onPress={onKael}
-        style={({ pressed }) => [prototypeStyles.opportunityAction, prototypeStyles.opportunityActionSecondary, reduceTransparency && { backgroundColor: color.mint.white }, pressed && { opacity: 0.84 }]}
+        style={({ pressed }) => [prototypeStyles.opportunityAction, size, prototypeStyles.opportunityActionSecondary, reduceTransparency && { backgroundColor: color.mint.white }, pressed && { opacity: 0.84 }]}
         testID="worker-v5-opportunity-kael-action"
       >
         <Text style={[prototypeStyles.opportunityActionText, prototypeStyles.opportunityActionSecondaryText]}>{textByLanguage(language, 'Kael nhận việc', 'Kael job intake')}</Text>
@@ -284,7 +298,7 @@ function WorkerJobsLegacyPrototypeOpportunityActions({
         accessibilityState={{ disabled: primaryDisabled }}
         disabled={primaryDisabled}
         onPress={onPrimary}
-        style={({ pressed }) => [prototypeStyles.opportunityAction, prototypeStyles.opportunityActionPrimary, primaryDisabled && prototypeStyles.opportunityActionDisabled, pressed && !primaryDisabled && { opacity: 0.84 }]}
+        style={({ pressed }) => [prototypeStyles.opportunityAction, size, prototypeStyles.opportunityActionPrimary, primaryDisabled && prototypeStyles.opportunityActionDisabled, pressed && !primaryDisabled && { opacity: 0.84 }]}
         testID="worker-v5-primary-action"
       >
         <Text style={[prototypeStyles.opportunityActionText, primaryDisabled ? prototypeStyles.opportunityActionDisabledText : prototypeStyles.opportunityActionPrimaryText]}>{primary}</Text>
@@ -444,7 +458,7 @@ function WorkerJobsLegacyPrototypeOfferSummary({
         surfaceColor={reduceTransparency ? tokens.base : tokens.raised}
       />
       <View style={stageTwoStyles.heroCopy}>
-        <Text numberOfLines={1} style={[stageTwoStyles.heroService, { color: tokens.text }]}>{service}</Text>
+        <Text numberOfLines={2} style={[stageTwoStyles.heroService, { color: tokens.text }]}>{service}</Text>
         <Text numberOfLines={2} style={[stageTwoStyles.heroArea, { color: tokens.muted }]}>{area || textByLanguage(language, 'Khu vực sẽ hiện sau khi xác minh', 'Area appears after verification')}</Text>
         <View style={stageTwoStyles.heroMeta}>
           <View style={stageTwoStyles.heroMetaItem}>
@@ -508,6 +522,7 @@ export function WorkerJobsLegacyPrototypeOfferDetailBody({
 }) {
   const themeMode = useWorkerThemeMode()
   const tokens = getWorkerThemeTokens(themeMode)
+  const scale = useWorkerJobsStageTwoScale(tokens)
   const params = useLocalSearchParams<{
     ns_audit_role?: string | string[]
     ns_worker_jobs_variant?: string | string[]
@@ -555,62 +570,64 @@ export function WorkerJobsLegacyPrototypeOfferDetailBody({
   const confirmAccept = () => void runWorkerAction(() => runtime.actions.workerAcceptBroadcast(deal?.broadcast?.jobId))
 
   return (
-    <View style={stageTwoStyles.section} testID="worker-v5-offer-detail-handoff">
+    <View onLayout={scale.onLayout} style={stageTwoStyles.section} testID="worker-v5-offer-detail-handoff">
       <WorkerJobsLegacyPrototypeOfferSummary deal={deal} language={language} previewJob={previewJob} reduceTransparency={reduceTransparency} showPrice={isPricedOffer || !proposalOpportunity} tokens={tokens} />
 
-      <WorkerJobsStageTwoInfoGroup
-        iconNames={['home', 'service', 'photo']}
-        rows={requestRows}
-        testID="worker-v5-offer-request-list"
-        title={textByLanguage(language, 'Yêu cầu', 'Request')}
-        tokens={tokens}
-      />
-      <WorkerJobsStageTwoInfoGroup
-        iconNames={['location', 'profile']}
-        rows={addressRows}
-        testID="worker-v5-offer-address-list"
-        title={textByLanguage(language, 'Địa chỉ & khách hàng', 'Address & customer')}
-        tokens={tokens}
-      />
-      {isPricedOffer || !proposalOpportunity ? (
+      <View style={{ gap: scale.metric(stageLayout.sectionGap) }}>
         <WorkerJobsStageTwoInfoGroup
-          iconNames={['price']}
-          rows={priceRows}
-          testID="worker-v5-offer-price-list"
-          title={textByLanguage(language, 'Giá dịch vụ & tiền công', 'Service price & earnings')}
-          tokens={tokens}
+          description={deal
+            ? textByLanguage(language, 'Thông tin yêu cầu và hiện trạng của công việc.', 'Request and condition details for the job.')
+            : requestRows[0].meta}
+          glyph="clipboard"
+          rowGlyphs={STAGE_TWO_REQUEST_GLYPHS}
+          rows={deal ? requestRows : requestRows.map((row) => ({ ...row, meta: '' }))}
+          scale={scale}
+          testID="worker-v5-offer-request-list"
+          title={textByLanguage(language, 'Yêu cầu', 'Request')}
+          tone="neutral"
         />
-      ) : null}
-
-      {isPricedOffer || !proposalOpportunity ? <View style={stageTwoStyles.section}>
-        <View style={stageTwoStyles.sectionHeading}>
-          <Text style={[stageTwoStyles.sectionTitle, { color: tokens.text }]}>{textByLanguage(language, 'Sẵn sàng nhận việc', 'Ready to accept')}</Text>
-        </View>
-        <View style={[stageTwoStyles.sectionCard, { backgroundColor: reduceTransparency ? tokens.base : tokens.raised, borderColor: tokens.border }]} testID="worker-v5-accept-checklist-card">
-          {checks.map((item, index) => {
-            const done = item.state === 'done'
-            const iconName: WorkerJobsStageTwoIconName = index === 0
-              ? 'inbox'
-              : index === 1
-                ? 'tools'
-                : index === 2
-                  ? 'shield'
-                  : 'wallet'
-            return (
-              <View key={item.label} style={[stageTwoStyles.checklistRow, index > 0 && stageTwoStyles.sectionRowDivider, index > 0 && { borderTopColor: tokens.border }]} testID={`worker-v5-accept-check-${index}`}>
-                <View style={[stageTwoStyles.sectionIconFrame, { backgroundColor: tokens.base, borderColor: tokens.border }]}>
-                  <WorkerJobsStageTwoIcon color={tokens.primary} name={iconName} size={24} />
-                </View>
-                <View style={stageTwoStyles.checklistCopy}>
-                  <Text numberOfLines={2} style={[stageTwoStyles.checklistLabel, { color: tokens.text }]}>{item.label}</Text>
-                  <Text numberOfLines={2} style={[stageTwoStyles.checklistMeta, { color: tokens.muted }]}>{item.meta}</Text>
-                </View>
-                <Text numberOfLines={2} style={[stageTwoStyles.checklistState, { color: tokens.text }]}>{done ? textByLanguage(language, 'Đạt', 'Ready') : textByLanguage(language, 'Cần xử lý', 'Needs action')}</Text>
-              </View>
-            )
-          })}
-        </View>
-      </View> : null}
+        <WorkerJobsStageTwoInfoGroup
+          description={textByLanguage(language, 'Thông tin địa chỉ và khách hàng của công việc.', 'Address and customer details for the job.')}
+          glyph="map"
+          rowGlyphs={STAGE_TWO_ADDRESS_GLYPHS}
+          rows={addressRows}
+          scale={scale}
+          testID="worker-v5-offer-address-list"
+          title={textByLanguage(language, 'Địa chỉ & khách hàng', 'Address & customer')}
+          tone="neutral"
+        />
+        {isPricedOffer || !proposalOpportunity ? (
+          <WorkerJobsStageTwoInfoGroup
+            description={textByLanguage(language, 'Thông tin giá và tiền công của công việc.', 'Price and earnings details for the job.')}
+            glyph="coins"
+            rowGlyphs={STAGE_TWO_PRICE_GLYPHS}
+            rows={priceRows}
+            scale={scale}
+            testID="worker-v5-offer-price-list"
+            title={textByLanguage(language, 'Giá dịch vụ & tiền công', 'Service price & earnings')}
+            tone="mint"
+          />
+        ) : null}
+        {isPricedOffer || !proposalOpportunity ? (
+          <WorkerJobsStageTwoSection
+            description={textByLanguage(language, 'Các thông tin cần thiết để bắt đầu công việc.', 'What you need before starting the job.')}
+            glyph="briefcase"
+            rows={checks.map((item, index) => ({
+              glyph: STAGE_TWO_READY_GLYPHS[index] ?? 'receipt',
+              key: item.label,
+              meta: item.meta,
+              metaLines: 2,
+              status: item.state === 'done' ? textByLanguage(language, 'Đạt', 'Ready') : textByLanguage(language, 'Cần xử lý', 'Needs action'),
+              testID: `worker-v5-accept-check-${index}`,
+              title: item.label,
+              tone: item.state === 'done' ? 'mint' : 'amber',
+            }))}
+            scale={scale}
+            testID="worker-v5-accept-checklist-card"
+            title={textByLanguage(language, 'Sẵn sàng nhận việc', 'Ready to accept')}
+          />
+        ) : null}
+      </View>
 
       {proposalAction ? (
         <WorkerBroadcastProposalForm
@@ -632,78 +649,37 @@ export function WorkerJobsLegacyPrototypeOfferDetailBody({
         />
       ) : null}
 
-      <View style={[stageTwoStyles.etaCard, { backgroundColor: reduceTransparency ? tokens.base : tokens.raised, borderColor: tokens.border }]} testID="worker-v5-accept-commitment">
-        <View style={[stageTwoStyles.sectionIconFrame, { backgroundColor: tokens.base, borderColor: tokens.border }]}>
-          <WorkerJobsStageTwoIcon color={tokens.primary} name="time" size={24} />
-        </View>
-        <View style={stageTwoStyles.etaCopy}>
-          <Text style={[stageTwoStyles.etaTitle, { color: tokens.text }]}>{eta.label}</Text>
-          <Text style={[stageTwoStyles.etaMeta, { color: tokens.muted }]}>{textByLanguage(language, 'Thời gian sẽ được cập nhật từ dữ liệu thật.', 'Timing updates from live data.')}</Text>
-        </View>
-      </View>
+      <WorkerJobsStageTwoCard scale={scale} testID="worker-v5-accept-commitment">
+        <WorkerJobsStageTwoRow
+          glyph="clock"
+          meta={textByLanguage(language, 'Thời gian sẽ được cập nhật từ dữ liệu thật.', 'Timing updates from live data.')}
+          scale={scale}
+          title={eta.label}
+        />
+      </WorkerJobsStageTwoCard>
 
-      <View accessibilityRole="summary" style={stageTwoStyles.actionRow} testID="worker-v5-action-rail">
-        <Pressable
+      <View accessibilityRole="summary" style={{ flexDirection: 'row', gap: scale.metric(stageLayout.componentGap) }} testID="worker-v5-action-rail">
+        <WorkerJobsStageTwoAction
           accessibilityLabel={textByLanguage(language, 'Từ chối', 'Decline')}
-          accessibilityRole="button"
-          accessibilityState={{ disabled: !canDecline || actionBusy }}
           disabled={!canDecline || actionBusy}
+          label={actionBusy ? textByLanguage(language, 'Đang xử lý', 'Working') : textByLanguage(language, 'Từ chối', 'Decline')}
           onPress={declineOffer}
-          style={({ pressed }) => [stageTwoStyles.actionButton, { backgroundColor: reduceTransparency ? tokens.base : tokens.raised, borderColor: tokens.borderStrong }, (!canDecline || actionBusy) && { backgroundColor: tokens.disabled, borderColor: tokens.border }, pressed && canDecline && !actionBusy && { opacity: 0.84 }]}
+          scale={scale}
           testID="worker-v5-offer-decline-action"
-        >
-          <Text style={[stageTwoStyles.actionLabel, { color: !canDecline || actionBusy ? tokens.subtleText : tokens.primary }]}>{actionBusy ? textByLanguage(language, 'Đang xử lý', 'Working') : textByLanguage(language, 'Từ chối', 'Decline')}</Text>
-        </Pressable>
-        {isPricedOffer || !proposalOpportunity ? <Pressable
-          accessibilityLabel={textByLanguage(language, 'Xác nhận giá và nhận việc', 'Confirm price and accept')}
-          accessibilityRole="button"
-          accessibilityState={{ disabled: !canAccept || actionBusy }}
-          disabled={!canAccept || actionBusy}
-          onPress={confirmAccept}
-          style={({ pressed }) => [stageTwoStyles.actionButton, { backgroundColor: tokens.primary, borderColor: tokens.primary }, (!canAccept || actionBusy) && { backgroundColor: tokens.disabled, borderColor: tokens.border }, pressed && canAccept && !actionBusy && { opacity: 0.84 }]}
-          testID="worker-v5-accept-confirm-action"
-        >
-          <Text style={[stageTwoStyles.actionLabel, { color: !canAccept || actionBusy ? tokens.subtleText : tokens.primaryText }]}>{actionBusy ? textByLanguage(language, 'Đang xác nhận giá', 'Confirming price') : textByLanguage(language, 'Xác nhận giá & nhận việc', 'Confirm price & accept')}</Text>
-        </Pressable> : null}
+          variant="ghost"
+        />
+        {isPricedOffer || !proposalOpportunity ? (
+          <WorkerJobsStageTwoAction
+            accessibilityLabel={textByLanguage(language, 'Xác nhận giá và nhận việc', 'Confirm price and accept')}
+            disabled={!canAccept || actionBusy}
+            label={actionBusy ? textByLanguage(language, 'Đang xác nhận giá', 'Confirming price') : textByLanguage(language, 'Xác nhận giá & nhận việc', 'Confirm price & accept')}
+            onPress={confirmAccept}
+            scale={scale}
+            testID="worker-v5-accept-confirm-action"
+            variant="primary"
+          />
+        ) : null}
       </View>
-    </View>
-  )
-}
-
-export function WorkerJobsLegacyPrototypeCustomerConfirmationWaitBody({
-  language,
-  reduceTransparency,
-  runtime,
-}: {
-  language: AppLanguage
-  reduceTransparency: boolean
-  runtime: WorkerJobsLegacyPrototypeRuntime
-}) {
-  const deal = runtime.state.deal
-  const serviceType = deal?.broadcast?.serviceType ?? deal?.draft.serviceType ?? null
-  const service = serviceType ? localizedServiceLabel(serviceType, language) : null
-  const code = workerV5DisplayCode(deal, language)
-
-  return (
-    <View style={prototypeStyles.bodyStack} testID="worker-v5-customer-confirmation-wait">
-      <View style={[prototypeStyles.stageSummaryCard, reduceTransparency && { backgroundColor: color.mint.white }]}>
-        <View style={prototypeStyles.stageSummaryCopy}>
-          <Text style={prototypeStyles.stageSummaryEyebrow}>{textByLanguage(language, 'Đã gửi nhận việc', 'Acceptance sent')}</Text>
-          <Text style={prototypeStyles.stageSummaryTitle}>{textByLanguage(language, 'Đang chờ khách xác nhận', 'Waiting for customer confirmation')}</Text>
-          <Text style={prototypeStyles.stageSummaryMeta}>{textByLanguage(language, 'Địa chỉ chi tiết và thao tác thi công vẫn khóa cho tới khi khách chọn bạn.', 'Exact address and execution actions stay locked until the customer confirms you.')}</Text>
-        </View>
-      </View>
-      <View style={prototypeStyles.stageSectionHeader}>
-        <Text style={prototypeStyles.stageSectionTitle}>{textByLanguage(language, 'Trạng thái việc', 'Work status')}</Text>
-        <Text style={prototypeStyles.stageSectionAction}>{textByLanguage(language, 'Đang chờ', 'Waiting')}</Text>
-      </View>
-      <View style={[prototypeStyles.stageEvidenceEmpty, reduceTransparency && { backgroundColor: color.mint.white }]}>
-        <View style={prototypeStyles.stageEvidenceEmptyIcon}>
-          <WorkerJobsLegacyPrototypeMetaIcon kind="status" size={22} />
-        </View>
-        <Text style={prototypeStyles.stageEvidenceEmptyText}>{textByLanguage(language, 'Kael sẽ mở bước di chuyển sau khi khách xác nhận bạn.', 'Kael opens travel after the customer confirms you.')}</Text>
-      </View>
-      {service || code ? <Text style={prototypeStyles.stageSummaryMeta}>{[service, code ? textByLanguage(language, `Mã việc ${code}`, `Work ${code}`) : null].filter(Boolean).join(' · ')}</Text> : null}
     </View>
   )
 }

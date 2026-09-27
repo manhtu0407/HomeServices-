@@ -98,7 +98,8 @@ export const customerV21ChatStyles = StyleSheet.create({
     ...typography.caption2,
     fontWeight: '600',
     marginTop: -4,
-    paddingBottom: 0,
+    // Lifts the composer and this note off the bottom edge together.
+    paddingBottom: 12,
     textAlign: 'center',
   },
   chatEmptyHero: {
@@ -167,7 +168,7 @@ export const customerV21ChatStyles = StyleSheet.create({
   },
   chatHeaderModeLabel: {
     alignSelf: 'stretch',
-    ...typography.footnote,
+    ...typography.callout,
     fontWeight: '700',
     includeFontPadding: false,
     textAlign: 'center',
@@ -335,7 +336,10 @@ export const customerV21KaelChatRootStyles = StyleSheet.create({
     ...typography.footnote,
   },
   composer: {
-    alignItems: 'center',
+    // flex-end, not center: the input grows taller as the draft wraps to more
+    // lines, and the media/send buttons should stay pinned to the bottom edge
+    // instead of drifting toward the middle of the taller row.
+    alignItems: 'flex-end',
     borderRadius: 26,
     borderWidth: 1,
     flexDirection: 'row',
@@ -347,6 +351,11 @@ export const customerV21KaelChatRootStyles = StyleSheet.create({
     ...typography.subheadline,
     minHeight: 44,
     paddingHorizontal: 10,
+    // A multiline TextInput does not vertically center its text on its own —
+    // browsers and iOS both top-align it — so this padding is what actually
+    // levels the placeholder with the icons at the one-line resting height.
+    // (44 minHeight - 20 lineHeight) / 2.
+    paddingVertical: 12,
     position: 'relative',
     zIndex: 1,
   },
