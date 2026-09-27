@@ -1,6 +1,6 @@
 ---
 name: kael-docker
-description: "Route a database or Edge verification question to the narrowest evidence lane, ensure Docker is latest stable or capability-compatible before local work, and require relevant runtime proof before calling the task done. Use for Docker, Compose, local Supabase, migrations, reset, SQL/RLS/trigger/constraint verification, generated database types, and deno check under supabase/functions."
+description: "Route a database or Edge verification question to the narrowest evidence lane, update Docker Desktop through its stable CLI when available, and require runtime proof only when the question needs it. Use for Docker, Compose, local Supabase, migrations, reset, SQL/RLS/trigger/constraint verification, generated database types, and deno check under supabase/functions."
 ---
 
 # kael-docker
@@ -41,12 +41,15 @@ Docker and Compose versions, then takes one of two routes:
   succeeds. Do not select beta, test, preview, or another prerelease channel.
 - When the Desktop updater is unavailable, accept the existing Engine/Compose installation as
   **suitable** only when Compose proves the `pull --policy` and `run --pull` capabilities this repo
-  requires. This is a compatibility result, not a claim that the installation is globally latest.
+  requires. This is a compatibility result, not a claim that Docker Engine is globally latest.
 
-Do not hardcode a “latest” version number, install through a privileged package manager, or retry a
-failed update. A failed or timed-out update closes Lane A and B for this attempt. Version work never
-authorizes an additional manual Docker Desktop restart, WSL/AppData edits, Docker-data repair, or a
-prerelease channel.
+Automatic updates apply only to Docker Desktop stable through the official CLI. For standalone Docker
+Engine or Compose, record the version and required capabilities; do not invoke a privileged package
+manager or claim it is latest. Do not hardcode a “latest” version number or retry a failed update. A
+failed or timed-out Desktop update closes Lane A and B for this attempt and reports its exit code plus
+bounded output from both `stdout` and `stderr`. Continue source/static work that does not need the
+runtime. Version work never authorizes an additional manual Docker Desktop restart, WSL/AppData edits,
+Docker-data repair, or a prerelease channel.
 
 ## Preconditions
 
@@ -151,8 +154,9 @@ allowed. Sequence: doctor → up → reset → test or types → down.
 
 ## Degraded lane
 
-When the local-runtime gate is closed, continue only through Lane C or D if one answers the question.
-Do not disguise degraded evidence as local execution.
+When the local-runtime gate is closed, continue independent source/static work and use Lane C or D
+when that lane directly answers the question. Do not stop work that does not need Docker, and do not
+disguise degraded evidence as local execution.
 
 ### Lane C — named hosted read-only target
 
@@ -161,8 +165,10 @@ migration-list, policy, trigger, and row-count reads are allowed. DDL, DML, RPC 
 deployment, or destructive verification is forbidden. Hosted mutation belongs to `kael-supabase`
 under its own authority.
 
-Lane C cannot prove behavior merely because a constraint or policy exists. Its result must identify
-the target and remain `PARTIAL` or `UNVERIFIED` for any behavioral claim.
+Lane C can close an exact `structure` question as `PASS` and `Task status: DONE` when the named
+read-only target and query fully answer that question. Lane C cannot prove behavior or types merely
+because a constraint, policy, or signature exists; mark those claims `PARTIAL` or `UNVERIFIED` unless
+Lane A/B or exact Lane D evidence proves them.
 
 ### Lane D — exact CI or prior execution evidence
 
@@ -177,20 +183,23 @@ A green workflow badge alone is insufficient. A SQL count can prove the discover
 that commit only when the job log identifies the reset, runner, totals, and successful status. Static
 inspection of a SQL file may say “assertion exists, execution unverified”; it may not say “covered”.
 
-## Runtime completion gate
+## Evidence-specific completion
 
-For every task routed through this skill, runtime evidence is mandatory before `Task status: DONE`.
-Source inspection, a static ratchet, Lane C alone, a green badge, or a run for another commit cannot
-close the task. Use exactly one relevant proof route:
+Choose proof for each requested claim; runtime is required only when that claim needs runtime:
 
-- Lane A or B executes the requested behavior or type check against the current checkout; or
-- Lane D supplies the exact commit SHA, workflow URL, job URL, and log or artifact that proves the
-  requested outcome.
+- `structure`: Lane C on the exact named hosted target may close the question when its read-only
+  evidence fully answers it.
+- `behavior` or `types`: Lane A/B must execute against the current checkout, or Lane D must prove the
+  exact commit SHA through its workflow, job, and relevant log or artifact.
+- A source/static acceptance question may close from source inspection and its matching static check.
+  That evidence answers only source or contract claims; it does not prove a database ran.
 
-If the checkout has uncommitted changes, CI for an older commit cannot prove them. If local runtime
-is closed and no exact CI evidence exists, keep useful source work but report `Task status: BLOCKED`.
-Prioritizing task completion means moving promptly to the valid runtime lane and producing evidence;
-it never means looping on Docker, repeatedly reclaiming RAM, or widening host-repair authority.
+When an updater failure or another precondition closes local runtime, record the local-runtime state
+as `BLOCKED`, continue independent source/static work, and use C/D only for claims those lanes answer.
+If requested acceptance still needs unavailable Lane A/B evidence and no exact Lane D evidence exists,
+report `Task status: BLOCKED` with the missing proof. If all requested acceptance is answered by a
+valid non-runtime lane or source/static evidence, the task may be `DONE` while local runtime is
+`BLOCKED` or `NOT REQUIRED`. An older CI run never proves uncommitted changes.
 
 ## Edge selection contract
 
@@ -231,16 +240,19 @@ Docker version/current target:
 Attempt count:
 RAM recovery:
 Commands run:
-Runtime evidence:
+Runtime evidence: <lane-specific proof, or NOT REQUIRED>
+Local-runtime state: READY | BLOCKED | NOT REQUIRED
 Result: PASS | PARTIAL | UNVERIFIED
 Task status: DONE | BLOCKED
 Stop reason:
 Unanswered:
 ```
 
-`PASS` means the chosen lane proved the exact question. `PARTIAL` means valid evidence answered only
-part of it. `UNVERIFIED` means no valid lane produced evidence. For Lane C, name the read-only target.
-For Lane D, include SHA, workflow/job URLs, and the relevant log. For Lane A/B, include each bounded
-attempt count, the final Docker/Compose version result, RAM recovery decision, runtime command, and
-why the route stopped. `DONE` requires relevant runtime evidence; otherwise use `BLOCKED`, even when
-the source edit itself is useful. Never claim completion from an unrun command or a closed lane.
+`PASS` means the chosen evidence route fully answered the exact question. `PARTIAL` means valid
+evidence answered only part of it. `UNVERIFIED` means no valid route produced evidence. For Lane C,
+name the read-only target. For Lane D, include SHA, workflow/job URLs, and the relevant log. For Lane
+A/B, include each bounded attempt count, the final Docker/Compose version result, RAM recovery
+decision, runtime command, and why the route stopped. Mark runtime evidence `NOT REQUIRED` when the
+question is fully answered without local execution; otherwise include lane-specific proof. `DONE`
+means all requested acceptance claims are answered. Use `BLOCKED` when a required proof route is
+unavailable; never claim completion from an unrun command or a closed lane.

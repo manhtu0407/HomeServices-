@@ -113,6 +113,7 @@ function fakeDocker(mode) {
   const directory = mkdtempSync(join(tmpdir(), 'nestscout-fake-docker-'))
   const log = join(directory, 'calls.log')
   const pidFile = join(directory, 'pid.txt')
+  const updatedFlag = join(directory, 'updated.flag')
   const path = join(directory, process.platform === 'win32' ? 'docker.cmd' : 'docker')
 
   if (process.platform === 'win32') {
@@ -125,6 +126,14 @@ function fakeDocker(mode) {
       'if "%NESTSCOUT_FAKE_DOCKER_MODE%"=="version-pass" if "%1 %2 %3"=="desktop update --quiet" goto version_desktop_current',
       'if "%NESTSCOUT_FAKE_DOCKER_MODE%"=="version-pass" if "%1 %2 %3"=="compose pull --help" goto version_pull_help',
       'if "%NESTSCOUT_FAKE_DOCKER_MODE%"=="version-pass" if "%1 %2 %3"=="compose run --help" goto version_run_help',
+      'if "%NESTSCOUT_FAKE_DOCKER_MODE%"=="version-update" if "%1"=="--version" if exist "%NESTSCOUT_FAKE_DOCKER_UPDATED%" goto version_pass_docker',
+      'if "%NESTSCOUT_FAKE_DOCKER_MODE%"=="version-update" if "%1"=="--version" goto version_suitable_docker',
+      'if "%NESTSCOUT_FAKE_DOCKER_MODE%"=="version-update" if "%1 %2"=="compose version" if exist "%NESTSCOUT_FAKE_DOCKER_UPDATED%" goto version_pass_compose',
+      'if "%NESTSCOUT_FAKE_DOCKER_MODE%"=="version-update" if "%1 %2"=="compose version" goto version_suitable_compose',
+      'if "%NESTSCOUT_FAKE_DOCKER_MODE%"=="version-update" if "%1 %2 %3"=="desktop update --help" goto version_desktop_help',
+      'if "%NESTSCOUT_FAKE_DOCKER_MODE%"=="version-update" if "%1 %2 %3"=="desktop update --quiet" goto version_desktop_update',
+      'if "%NESTSCOUT_FAKE_DOCKER_MODE%"=="version-update" if "%1 %2 %3"=="compose pull --help" goto version_pull_help',
+      'if "%NESTSCOUT_FAKE_DOCKER_MODE%"=="version-update" if "%1 %2 %3"=="compose run --help" goto version_run_help',
       'if "%NESTSCOUT_FAKE_DOCKER_MODE%"=="version-suitable" if "%1"=="--version" goto version_suitable_docker',
       'if "%NESTSCOUT_FAKE_DOCKER_MODE%"=="version-suitable" if "%1 %2"=="compose version" goto version_suitable_compose',
       'if "%NESTSCOUT_FAKE_DOCKER_MODE%"=="version-suitable" if "%1 %2 %3"=="desktop update --help" goto version_desktop_unavailable',
@@ -134,6 +143,10 @@ function fakeDocker(mode) {
       'if "%NESTSCOUT_FAKE_DOCKER_MODE%"=="version-fail" if "%1 %2"=="compose version" goto version_suitable_compose',
       'if "%NESTSCOUT_FAKE_DOCKER_MODE%"=="version-fail" if "%1 %2 %3"=="desktop update --help" goto version_desktop_help',
       'if "%NESTSCOUT_FAKE_DOCKER_MODE%"=="version-fail" if "%1 %2 %3"=="desktop update --quiet" goto version_desktop_failure',
+      'if "%NESTSCOUT_FAKE_DOCKER_MODE%"=="version-fail-stdout" if "%1"=="--version" goto version_suitable_docker',
+      'if "%NESTSCOUT_FAKE_DOCKER_MODE%"=="version-fail-stdout" if "%1 %2"=="compose version" goto version_suitable_compose',
+      'if "%NESTSCOUT_FAKE_DOCKER_MODE%"=="version-fail-stdout" if "%1 %2 %3"=="desktop update --help" goto version_desktop_help',
+      'if "%NESTSCOUT_FAKE_DOCKER_MODE%"=="version-fail-stdout" if "%1 %2 %3"=="desktop update --quiet" goto version_desktop_failure_stdout',
       'if "%NESTSCOUT_FAKE_DOCKER_MODE%"=="doctor-pass" if "%1"=="info" (echo 29.7.2& exit /b 0)',
       'if "%NESTSCOUT_FAKE_DOCKER_MODE%"=="hang" powershell -NoProfile -Command "$PID | Set-Content -LiteralPath $env:NESTSCOUT_FAKE_DOCKER_PID; Start-Sleep -Seconds 60"',
       'if "%NESTSCOUT_FAKE_DOCKER_MODE%"=="sql" if "%1"=="ps" (echo supabase_db_nestscout& exit /b 0)',
@@ -158,11 +171,18 @@ function fakeDocker(mode) {
       ':version_desktop_current',
       'echo Docker Desktop is current',
       'exit /b 0',
+      ':version_desktop_update',
+      'type nul > "%NESTSCOUT_FAKE_DOCKER_UPDATED%"',
+      'echo Docker Desktop updated',
+      'exit /b 0',
       ':version_desktop_unavailable',
       'echo desktop updater unavailable 1>&2',
       'exit /b 9',
       ':version_desktop_failure',
       'echo simulated update failure 1>&2',
+      'exit /b 9',
+      ':version_desktop_failure_stdout',
+      'echo simulated stdout-only update failure',
       'exit /b 9',
       ':version_pull_help',
       'echo Options: --policy string',
@@ -182,14 +202,20 @@ function fakeDocker(mode) {
       'case "$NESTSCOUT_FAKE_DOCKER_MODE:$*" in',
       '  version-pass:--version) echo "Docker version 29.7.2"; exit 0 ;;',
       '  version-suitable:--version|version-fail:--version) echo "Docker version 28.5.1"; exit 0 ;;',
+      '  version-update:--version) if [ -f "$NESTSCOUT_FAKE_DOCKER_UPDATED" ]; then echo "Docker version 29.7.2"; else echo "Docker version 28.5.1"; fi; exit 0 ;;',
+      '  version-fail-stdout:--version) echo "Docker version 28.5.1"; exit 0 ;;',
       '  version-pass:compose\\ version) echo "Docker Compose version v2.40.0"; exit 0 ;;',
       '  version-suitable:compose\\ version|version-fail:compose\\ version) echo "Docker Compose version v2.39.4"; exit 0 ;;',
+      '  version-update:compose\\ version) if [ -f "$NESTSCOUT_FAKE_DOCKER_UPDATED" ]; then echo "Docker Compose version v2.40.0"; else echo "Docker Compose version v2.39.4"; fi; exit 0 ;;',
+      '  version-fail-stdout:compose\\ version) echo "Docker Compose version v2.39.4"; exit 0 ;;',
       '  version-suitable:desktop\\ update\\ --help) echo "desktop updater unavailable" >&2; exit 9 ;;',
-      '  version-pass:desktop\\ update\\ --help|version-fail:desktop\\ update\\ --help) echo "Usage: docker desktop update [OPTIONS]"; exit 0 ;;',
+      '  version-pass:desktop\\ update\\ --help|version-fail:desktop\\ update\\ --help|version-update:desktop\\ update\\ --help|version-fail-stdout:desktop\\ update\\ --help) echo "Usage: docker desktop update [OPTIONS]"; exit 0 ;;',
       '  version-pass:desktop\\ update\\ --quiet) echo "Docker Desktop is current"; exit 0 ;;',
       '  version-fail:desktop\\ update\\ --quiet) echo "simulated update failure" >&2; exit 9 ;;',
-      '  version-pass:compose\\ pull\\ --help|version-suitable:compose\\ pull\\ --help) echo "Options: --policy string"; exit 0 ;;',
-      '  version-pass:compose\\ run\\ --help|version-suitable:compose\\ run\\ --help) echo "Options: --pull string"; exit 0 ;;',
+      '  version-fail-stdout:desktop\\ update\\ --quiet) echo "simulated stdout-only update failure"; exit 9 ;;',
+      '  version-update:desktop\\ update\\ --quiet) : > "$NESTSCOUT_FAKE_DOCKER_UPDATED"; echo "Docker Desktop updated"; exit 0 ;;',
+      '  version-pass:compose\\ pull\\ --help|version-suitable:compose\\ pull\\ --help|version-update:compose\\ pull\\ --help) echo "Options: --policy string"; exit 0 ;;',
+      '  version-pass:compose\\ run\\ --help|version-suitable:compose\\ run\\ --help|version-update:compose\\ run\\ --help) echo "Options: --pull string"; exit 0 ;;',
       'esac',
       'if [ "$NESTSCOUT_FAKE_DOCKER_MODE" = hang ]; then',
       '  echo $$ > "$NESTSCOUT_FAKE_DOCKER_PID"',
@@ -217,6 +243,7 @@ function fakeDocker(mode) {
     NESTSCOUT_FAKE_DOCKER_LOG: log,
     NESTSCOUT_FAKE_DOCKER_MODE: mode,
     NESTSCOUT_FAKE_DOCKER_PID: pidFile,
+    NESTSCOUT_FAKE_DOCKER_UPDATED: updatedFlag,
   })
 
   return {
@@ -258,17 +285,21 @@ function goodFiles() {
       'Codex Desktop AppContainer CodexSandboxUsers',
       'WSL/DrvFS mismatch means the skill must not launch Docker Desktop',
       'Windows Start menu or an unsandboxed Windows shell',
-      'runtime evidence is mandatory before Task status: DONE',
-      'Lane A or B executes the current checkout',
-      'Lane D supplies the exact commit SHA, workflow URL, job URL',
-      'uncommitted changes cannot prove an older commit',
-      'Runtime evidence:',
+      'Lane C can close an exact `structure` question as `PASS` and `Task status: DONE` when it fully answers the question.',
+      'Lane C cannot prove behavior or types.',
+      'When the local-runtime gate is closed, continue independent source/static work.',
+      'If requested acceptance still needs unavailable Lane A/B evidence and no exact Lane D evidence exists, report Task status: BLOCKED.',
+      'Lane A/B must execute against the current checkout',
+      'Lane D must prove the exact commit SHA through its workflow, job, and relevant log or artifact',
+      'An older CI run never proves uncommitted changes.',
+      'Local-runtime state: READY | BLOCKED | NOT REQUIRED',
+      'Runtime evidence: <lane-specific proof, or NOT REQUIRED>',
       'Task status: DONE | BLOCKED',
       'Attempt count:',
       'Stop reason:',
       'Result: PASS | PARTIAL | UNVERIFIED',
     ].join('\n'),
-    '.claude/skills/kael-docker/agents/openai.yaml': 'short_description: "Route database and Edge verification with version and runtime gates"',
+    '.claude/skills/kael-docker/agents/openai.yaml': 'short_description: "Route database and Edge verification with Docker version updates and lane-specific evidence"',
     'scripts/run.mjs': [
       'prepareRunnerEnv',
       'LOCALAPPDATA',
@@ -293,6 +324,13 @@ function goodFiles() {
     'docker/scripts/ensure-version.ps1': [
       '$UpdateTimeoutSeconds = 300',
       "$update = Invoke-DockerCommand -Arguments @('desktop', 'update', '--quiet') -TimeoutSeconds $UpdateTimeoutSeconds",
+      '$UpdateDiagnosticLimit = 2048',
+      'function Bound-Diagnostic',
+      'if ($normalized.Length -le $Limit)',
+      '$normalized.Substring($normalized.Length - $tailLength)',
+      'Bound-Diagnostic -Text $update.Stdout -Limit $UpdateDiagnosticLimit',
+      'Bound-Diagnostic -Text $update.Stderr -Limit $UpdateDiagnosticLimit',
+      'update failed (exit $($update.ExitCode); stdout=$stdoutDetail; stderr=$stderrDetail)',
       '$process.WaitForExit($UpdateTimeoutSeconds * 1000)',
       'taskkill /PID $process.Id /T /F',
       "@('compose', 'pull', '--help')",
@@ -301,6 +339,14 @@ function goodFiles() {
     'docker/scripts/ensure-version.sh': [
       'update_timeout_seconds=300',
       'docker desktop update --quiet',
+      'diagnostic_limit=2048',
+      'limit_diagnostic() {',
+      'if [ "${#value}" -gt "$limit" ]; then',
+      'value="[truncated] ${value: -$tail_limit}"',
+      'limit_diagnostic "$command_stdout" "$diagnostic_limit"',
+      'limit_diagnostic "$command_stderr" "$diagnostic_limit"',
+      'update failed (exit $command_code; stdout=$update_stdout; stderr=$update_stderr)',
+      'update failed (exit $command_code',
       'kill_command_tree "$command_pid" TERM',
       'docker compose pull --help',
       'docker compose run --help',
@@ -343,6 +389,8 @@ function goodFiles() {
       'WSL/DrvFS mismatch means do not launch Docker Desktop',
       'Windows Start menu or an unsandboxed Windows shell',
       'single final doctor probe',
+      'Lane C may close an exact structure question',
+      'When local runtime is closed, source/static work can continue independently.',
     ].join('\n'),
     'package.json': JSON.stringify({
       scripts: {
@@ -355,7 +403,8 @@ function goodFiles() {
     'config/harness/manifest.json': JSON.stringify({
       entries: [{
         id: 'kael-docker',
-        purpose: 'Route database and Edge verification through evidence, bounded version selection, and required runtime completion.',
+        purpose: 'Route database and Edge verification through Docker Desktop stable version selection and lane-specific evidence.',
+        trigger: 'Docker or database tasks choose lane-specific evidence, including Lane C for exact structure questions.',
         allowedEnvironments: ['local', 'preview', 'staging', 'production'],
       }],
     }),
@@ -424,13 +473,31 @@ test('missing Edge configuration is invalid selection, never an environment retr
   assert.match(dockerContractProblems(files).join('\n'), /strict Edge selection/i)
 })
 
-test('version retry loops and runtime-free completion are rejected', () => {
+test('version retry loops and universal runtime gates are rejected', () => {
   const files = goodFiles()
   files['docker/scripts/ensure-version.sh'] += '\nfor attempt in 1 2; do docker desktop update --quiet; done'
-  files['.claude/skills/kael-docker/SKILL.md'] = files['.claude/skills/kael-docker/SKILL.md'].replace('Runtime evidence:', 'Static evidence:')
+  files['.claude/skills/kael-docker/SKILL.md'] += '\nFor every task routed through this skill, runtime evidence is mandatory before Task status: DONE.'
   const report = dockerContractProblems(files).join('\n')
   assert.match(report, /must not retry/i)
-  assert.match(report, /runtime completion/i)
+  assert.match(report, /lane-aware completion/i)
+})
+
+test('the Docker contract requires independent source work to continue when runtime is closed', () => {
+  const files = goodFiles()
+  files['.claude/skills/kael-docker/SKILL.md'] = files['.claude/skills/kael-docker/SKILL.md']
+    .replace('When the local-runtime gate is closed, continue independent source/static work.', 'Stop all work when the local-runtime gate is closed.')
+  assert.match(dockerContractProblems(files).join('\n'), /lane-aware completion/i)
+})
+
+test('unbounded updater failure diagnostics are rejected for both runners', () => {
+  const files = goodFiles()
+  files['docker/scripts/ensure-version.ps1'] = files['docker/scripts/ensure-version.ps1']
+    .replace('$normalized.Substring($normalized.Length - $tailLength)', '$normalized')
+  files['docker/scripts/ensure-version.sh'] = files['docker/scripts/ensure-version.sh']
+    .replace('value="[truncated] ${value: -$tail_limit}"', 'value="$value"')
+  const report = dockerContractProblems(files).join('\n')
+  assert.match(report, /ensure-version\.ps1.*bounded stable update/i)
+  assert.match(report, /ensure-version\.sh.*bounded stable update/i)
 })
 
 test('sandboxed Windows GUI launch workarounds are rejected', () => {
@@ -481,6 +548,22 @@ test('Desktop stable update is attempted exactly once before capability proof', 
   }
 })
 
+test('successful Desktop update re-reads Docker and Compose versions', () => {
+  const fake = fakeDocker('version-update')
+  try {
+    const result = runRunner(['docker/scripts/ensure-version'], { env: fake.env })
+    assert.equal(result.status, 0, combinedOutput(result))
+    assert.match(combinedOutput(result), /docker_version=Docker version 29\.7\.2/i)
+    assert.match(combinedOutput(result), /compose_version=Docker Compose version v2\.40\.0/i)
+    const calls = readFileSync(fake.log, 'utf8').trim().split(/\r?\n/)
+    assert.equal(calls.filter((call) => call === '--version').length, 2)
+    assert.equal(calls.filter((call) => call === 'compose version').length, 2)
+    assert.equal(calls.filter((call) => call === 'desktop update --quiet').length, 1)
+  } finally {
+    rmSync(fake.directory, { recursive: true, force: true })
+  }
+})
+
 test('an install without Desktop updater is accepted only when Compose is suitable', () => {
   const fake = fakeDocker('version-suitable')
   try {
@@ -501,6 +584,27 @@ test('a failed Desktop update fails closed after one attempt', () => {
     const result = runRunner(['docker/scripts/ensure-version'], { env: fake.env })
     assert.equal(result.status, 1, combinedOutput(result))
     assert.match(combinedOutput(result), /update_attempts=1/i)
+    assert.match(combinedOutput(result), /no automatic retry/i)
+    assert.match(combinedOutput(result), /simulated update failure/i)
+    assert.match(combinedOutput(result), /exit 9/i)
+    assert.match(combinedOutput(result), /stdout=\(empty\)/i)
+    assert.match(combinedOutput(result), /stderr=simulated update failure/i)
+    const calls = readFileSync(fake.log, 'utf8').trim().split(/\r?\n/)
+    assert.equal(calls.filter((call) => call === 'desktop update --quiet').length, 1)
+  } finally {
+    rmSync(fake.directory, { recursive: true, force: true })
+  }
+})
+
+test('a stdout-only Desktop updater failure keeps its diagnostic and exit code', () => {
+  const fake = fakeDocker('version-fail-stdout')
+  try {
+    const result = runRunner(['docker/scripts/ensure-version'], { env: fake.env })
+    assert.equal(result.status, 1, combinedOutput(result))
+    assert.match(combinedOutput(result), /simulated stdout-only update failure/i)
+    assert.match(combinedOutput(result), /exit 9/i)
+    assert.match(combinedOutput(result), /stdout=simulated stdout-only update failure/i)
+    assert.match(combinedOutput(result), /stderr=\(empty\)/i)
     assert.match(combinedOutput(result), /no automatic retry/i)
     const calls = readFileSync(fake.log, 'utf8').trim().split(/\r?\n/)
     assert.equal(calls.filter((call) => call === 'desktop update --quiet').length, 1)

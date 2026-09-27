@@ -101,13 +101,17 @@ Do not repair ACLs/AppData or try a second brokered launch inside `kael-docker`.
 - **Never point the local stack's credentials at staging or production.** The
   local stack issues fixed, publicly-known demo JWTs.
 
-### Runtime is the completion gate
+### Evidence follows the question
 
-A task routed through `kael-docker` is not `DONE` from source inspection, static checks, or hosted
-read-only structure alone. It needs either the relevant Lane A/B command against the current checkout
-or Lane D evidence for the exact commit with workflow URL, job URL, and the proving log/artifact. If
-the checkout is dirty and local runtime remains closed after the one recovery/final-probe cycle, the
-task is `BLOCKED`, not silently complete.
+- Lane C may close an exact structure question when the named hosted target and read-only query fully
+  answer it. Lane C cannot prove behavior or types.
+- Behavior and type questions need Lane A/B execution against the current checkout or Lane D evidence
+  for the exact commit with workflow URL, job URL, and the proving log/artifact.
+- Source inspection and static checks may close source/static acceptance claims only. They do not
+  prove database behavior.
+- When local runtime is closed, source/static work can continue independently. Use C/D only for
+  questions those lanes answer. If acceptance still needs unavailable Lane A/B proof and no exact
+  Lane D evidence exists, report `BLOCKED` with the missing proof.
 
 ---
 
