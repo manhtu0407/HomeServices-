@@ -412,6 +412,7 @@ function buildRepairingDeal(): LocalDeal {
   const deal = buildAcceptedDeal()
   return {
     ...deal,
+    backendStatus: 'repairing',
     status: 'repairing',
   }
 }
@@ -1325,26 +1326,27 @@ describe('Worker runtime surface wiring', () => {
     expect(screen.getByTestId('worker-v5-primary-action')).toBeDisabled()
   })
 
-  it('shows the accepted destination inside the merged travel state', () => {
+  it('shows an accepted job on the Stage 4 travel screen', () => {
     const deal = { ...buildAcceptedDeal(), createdAt: '2026-07-10T00:00:00.000Z' }
     buildWorkflow({ deal })
-    mockRouteParams = { ns_worker_screen: '2.7-in-progress' }
-
-    render(<WorkerJobsSurface />)
-
-    expect(screen.getByTestId('worker-v5-route-map-panel')).toBeOnTheScreen()
-    expect(screen.getByTestId('worker-v5-info-cell-value-2')).toHaveTextContent('Sửa điện')
-    expect(screen.getByTestId('worker-v5-info-cell-label-2')).toHaveTextContent(deal.broadcast!.problemSummary)
-  })
-
-  it('redirects the retired Route and ETA route into in-progress', async () => {
-    buildWorkflow({ deal: buildAcceptedDeal() })
     mockRouteParams = { ns_worker_screen: '2.4-route-eta' }
 
     render(<WorkerJobsSurface />)
 
+    expect(screen.getByTestId('worker-v5-screen-2.4-route-eta')).toBeOnTheScreen()
+    expect(screen.getByTestId('stage4-destination-card')).toBeOnTheScreen()
+    expect(screen.getByTestId('stage4-primary')).toHaveTextContent(/Bắt đầu di chuyển/)
+    expect(mockReplace).not.toHaveBeenCalled()
+  })
+
+  it('redirects a matched job from the in-progress route to Stage 4 travel', async () => {
+    buildWorkflow({ deal: buildAcceptedDeal() })
+    mockRouteParams = { ns_worker_screen: '2.7-in-progress' }
+
+    render(<WorkerJobsSurface />)
+
     await waitFor(() => {
-      expect(mockReplace).toHaveBeenCalledWith('/(worker)/jobs?ns_worker_screen=2.7-in-progress')
+      expect(mockReplace).toHaveBeenCalledWith('/(worker)/jobs?ns_worker_screen=2.4-route-eta')
     })
   })
 
@@ -1365,7 +1367,7 @@ describe('Worker runtime surface wiring', () => {
     fireEvent.press(screen.getByTestId('worker-v5-kael-orb-open-opportunity'))
 
     await waitFor(() => {
-      expect(mockReplace).toHaveBeenCalledWith('/(worker)/jobs?ns_worker_screen=2.7-in-progress')
+      expect(mockReplace).toHaveBeenCalledWith('/(worker)/jobs?ns_worker_screen=2.4-route-eta')
     })
   })
 
@@ -3078,16 +3080,15 @@ describe('Worker runtime surface wiring', () => {
     expect(screen.getByText('Chưa thể tải lại trạng thái thanh toán. Mã hỗ trợ: A1B2C3D4.')).toBeOnTheScreen()
   })
 
-  it('renders the settled case from a real recorded payment', () => {
+  it('opens the payment-received stage from a real recorded payment', () => {
     buildWorkflow({ deal: buildSettledCaseDeal(), workerEarnings: buildSettledCaseEarnings() })
     mockRouteParams = { ns_worker_screen: '2.12-case-closed' }
 
     render(<WorkerJobsSurface />)
 
-    expect(screen.getByTestId('worker-v5-stage-ten-prototype')).toBeOnTheScreen()
-    expect(screen.getByText('Hoàn thiện công việc')).toBeOnTheScreen()
-    expect(screen.getByText('Đã ghi nhận')).toBeOnTheScreen()
-    expect(screen.getByText('340.000đ')).toBeOnTheScreen()
+    expect(screen.getByTestId('worker-v5-stage-eleven-payment-confirmed')).toBeOnTheScreen()
+    expect(screen.queryByTestId('worker-v5-stage-ten-prototype')).toBeNull()
+    expect(screen.getByTestId('worker-v5-stage-eleven-amount')).toHaveTextContent(/340\.000/)
   })
 
   it('removes the requested home, jobs, earnings, and settings header utilities', () => {
@@ -4088,8 +4089,8 @@ describe('Worker runtime surface wiring', () => {
     expect(screen.getByTestId('worker-v5-opportunity-inbox-handoff')).toBeOnTheScreen()
     opportunity.unmount()
 
-    buildWorkflow({ deal: buildAcceptedDeal() })
-    mockRouteParams = { ns_worker_screen: '2.7-in-progress' }
+    buildWorkflow({ deal: buildArrivedDeal() })
+    mockRouteParams = { ns_worker_screen: '2.7-in-progress', ns_arrival_gate: '1' }
     const activeRoute = render(<WorkerJobsSurface />)
     ;[0, 1, 2].forEach((index) => {
       expect(screen.getByTestId(`worker-v5-info-cell-ActiveRoute-formula-mint-aura-${index}`)).toBeOnTheScreen()

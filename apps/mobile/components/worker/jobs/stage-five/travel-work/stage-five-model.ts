@@ -23,7 +23,7 @@ export function canStartTravel(m: JourneyModel): boolean {
   return !!m.jobId && m.addressReleased && m.jobStatus === 'worker_matched'
 }
 export function canPrepareCompletion(m: WorkModel): boolean {
-  return !!m.jobId && m.jobStatus === 'repairing' && m.canPrepareCompletion
+  return !!m.jobId && m.jobStatus === 'repairing' && m.primaryEnabled
 }
 export function emptyJourney(): JourneyModel {
   return { stage:4, jobId:null, jobStatus:null, addressReleased:false, destinationTitle:null, development:null,
@@ -33,5 +33,5 @@ export function emptyJourney(): JourneyModel {
 export function emptyWork(): WorkModel {
   return {stage:5,jobId:null,jobStatus:null,serviceTitle:null,serviceCategory:null,addressLine:null,
     arrivedLabel:null,startedLabel:null,startedAtMs:null,pausedAtMs:null,pausedMs:0,phase:null,note:null,
-    evidenceCount:0,canPrepareCompletion:false}
+    evidenceCount:0,primaryLabel:null,primaryEnabled:false}
 }

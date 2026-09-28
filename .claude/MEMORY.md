@@ -10,6 +10,7 @@ The active Recall Index is intentionally short. Full entry detail lives in `docs
 
 ## Recall Index -> `docs/memory/2026-09.md`
 
+- **2026-09-28** Worker Jobs 11-stage flow restored (PR #292): flow test vs pre-redesign `b7b3c239` showed #253/#261 regressions (S5 steps hidden in a sheet, S6 back gone) plus older gaps (S4 `2.4` unreachable, S11 prototype-only, no worker realtime); all fixed and mutation-checked; gaps: no device run, candidate-stage realtime RLS unverified, S4 shows no job summary.
 - **2026-09-27** Merged PR #290 (OCR Snapshot Mode + Codex's fixes): reconciled 48 commits of drift with a real merge (not rebase), 4 conflicts all "keep both sides" and verified lossless by header count; all 3 `ci.yml` jobs passed for real; `release-production` correctly stayed `skipped` (strict lane still paused); merge commit `5bb9df2a`.
 - **2026-09-27** Committed Codex's OCR verification + fixes (a91f3cd7, dd80b516), caught a real regression first — Codex's apostrophe-quoting fix picked PowerShell escaping via `process.platform`, but Claude Code's Bash tool is also win32 on Windows, so it silently mis-quoted for bash too; fixed via `MSYSTEM` detection, separate commit, test proven non-tautological by reverting it.
 - **2026-09-27** OCR Snapshot Mode follow-up fixes — Stop fail-open, secret-safe snapshots, PowerShell quoting, and aligned 150s/120s timeouts; 24/24 tests plus lint and OCR review passed; branch remains uncommitted.
