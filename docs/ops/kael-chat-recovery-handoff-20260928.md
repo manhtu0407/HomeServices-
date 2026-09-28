@@ -1,6 +1,6 @@
 # Kael Chat Recovery Handoff — 2026-09-28
 
-**Status:** ACTIVE — the reliability goal is not complete.
+**Status:** CODE COMPLETE (PR #293) — end-to-end Kael reply on Production still unverified; see "Claude Code continuation" below.
 **Goal:** 01a0df81-2cf4-74b1-a7bd-69df536e5585
 **Branch:** codex/kael-chat-previews-20260927
 **Checkout:** C:/Users/Phan Manh Tu/.codex/worktrees/kael-chat-previews/home-services
@@ -97,3 +97,23 @@ The following results were recorded on this branch before this documentation-onl
 - Completed this continuation: a bounded read-only Production log/source audit. No code was edited by the auditor. Its evidence is recorded above; the root agent owns integration and the next implementation/review loop.
 - Next: kael-diagnose and kael-tdd for any reproduced send failure; kael-frontend-test for direct Preview UI checks; kael-backend-structure, kael-backend-parity, kael-supabase, and kael-security-sweep for any further backend/auth/migration changes; kael-review before completion.
 - Handoff workflow: preserve branch/worktree identity, inspect diff before editing, reproduce one failure at a time, keep roles in independent Preview tabs, protect Production from test writes, and update this note with only observed results.
+
+## Claude Code continuation — observed results
+
+- **Root cause:** every Preview write to Production returned 426 from `enforceStage1ClientCompatibility` (web has no released client identity). The gate stays. Preview audit mode cannot show a Kael reply.
+- **Fixed with tests (red → green → mutation):** P248 web presence writes, P249/P250 web chat guard, P251 Worker mode pill, P205 composer height, Customer delete confirm width, plus Codex's three red gates (structure ratchet, pillar index, P76 copy).
+- **Backend proof:** P252 (Customer and Worker chat turn over the real handler, 426 for web) and P253 (session create/pin/rename/archive, foreign sessions refused).
+- **Verification on the merged head:** mobile 215 suites / 2114 tests, api 1518 (+2 skipped), shared 129, type-check ×3, `deno check` 6/6, structure/comments/pillars/access/migrations/manifest, `ship:check` 10/10.
+
+### Monitoring log (Production, read-only)
+
+| Time (UTC) | Result |
+|---|---|
+| 2026-09-28 04:40 (T1) | Clean since the fix window: no 5xx, no runtime errors, `mobile-api` v275 |
+| 2026-09-28 08:35 | Clean. Noise only: `GET /me/jobs/history` 401 from web audit Preview (History screen has no audit guard), `admin/discipline/*` 404 for routes absent from the repo. `kael-matching-maintainer` 316/316 OK since 00:40 |
+
+### Still open
+- Real Kael reply on Production needs a released iOS/Android build.
+- `mobile-api` is still v275 (hand deploy, release id `harness-645c907…`); redeploy through the release pipeline.
+- P246/P221 unproven on Production until real traffic; SQL P247 not run here.
+- 10 uncollected Case Work tests are red on `main` as well; separate task.
