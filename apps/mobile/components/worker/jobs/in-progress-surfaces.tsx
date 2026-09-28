@@ -621,7 +621,7 @@ export function WorkerV5InProgressBody({
           <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(8,29,54,0.22)' }}>
             <View style={{ backgroundColor: '#FFFFFF', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 20, gap: 12 }}>
               <Text style={{ ...typography.title3, color: '#081D36', fontWeight: '700' }}>{textByLanguage(language, 'Ghi chú nhanh', 'Quick note')}</Text>
-              <TextInput
+              <TextInput spellCheck={false}
                 accessibilityLabel={textByLanguage(language, 'Ghi chú nhanh', 'Quick note')}
                 autoFocus
                 multiline

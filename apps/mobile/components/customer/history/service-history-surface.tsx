@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useReducer } from 'react'
+import { useCallback, useEffect, useMemo, useReducer, useState } from 'react'
 import { Image } from 'expo-image'
 import {
   ActivityIndicator,
@@ -29,6 +29,9 @@ import { CaseWideMintAura, SourceCardSkin, ZipMintAura } from '../ui/aura-surfac
 import { customerV21Assets } from '../ui/assets'
 import { customerV21ServiceCopy } from '../ui/copy'
 import { ProfileSettingsGlyph } from '../profile/profile-settings-icons'
+import { CustomerCompensationSection } from '../compensation/compensation-section'
+import { ActiveWorkEntry, type ActiveWorkSummary } from '../report/worker-report-entry'
+import { WorkerReportSheet } from '../report/worker-report-sheet'
 import { ServiceHistoryFilterRail, type HistoryFilter } from './service-history-filter-rail'
 import { customerV21SharedStyles as sharedStyles } from '../ui/shared-styles'
 import { AssetTile, EmptyState, V21Card, V21Screen, useCustomerV21SurfaceTheme } from '../ui/shared-surfaces'
@@ -212,9 +215,11 @@ function HistoryCardAura({
 }
 
 export function CustomerServiceHistorySurface({
+  activeWork = null,
   onOpenDetail,
   onRebook,
 }: {
+  activeWork?: ActiveWorkSummary | null
   onOpenDetail: (item: CustomerServiceHistoryItem) => void
   onRebook: (item: CustomerServiceHistoryItem) => void
 }) {
@@ -223,6 +228,7 @@ export function CustomerServiceHistorySurface({
   const { width: viewportWidth } = useWindowDimensions()
   const contentWidth = Math.max(0, Math.min(viewportWidth - 32, 560))
   const [historyState, dispatch] = useReducer(historyReducer, initialHistoryState)
+  const [reportJobId, setReportJobId] = useState<string | null>(null)
   const { favoriteWorkerIdsInFlight, filter, items, loadFailed, loading, supportingJobId } = historyState
 
   const load = useCallback(async () => {
@@ -314,6 +320,7 @@ export function CustomerServiceHistorySurface({
       [
         { text: language === 'vi' ? 'Để sau' : 'Not now', style: 'cancel' },
         { text: language === 'vi' ? 'Mở yêu cầu hỗ trợ' : 'Open support request', onPress: () => void submitSupport(item) },
+        { text: language === 'vi' ? 'Báo cáo thợ vi phạm' : 'Report the worker', onPress: () => setReportJobId(item.id) },
       ],
     )
   }
@@ -329,6 +336,8 @@ export function CustomerServiceHistorySurface({
           {items.length > 0 ? `${items.length}` : ''}
         </Text>
       </View>
+
+      <CustomerCompensationSection language={language} tokens={tokens} />
 
       <ServiceHistoryFilterRail onSelect={(nextFilter) => dispatch({ type: 'filter', filter: nextFilter })} selected={filter} />
 
@@ -353,6 +362,7 @@ export function CustomerServiceHistorySurface({
           </View>
         </View>
       </View>
+      {activeWork ? <ActiveWorkEntry language={language} summary={activeWork} tokens={tokens} /> : null}
 
       {loading ? (
         <V21Card style={[styles.loadingCard, styles.historyAuraCard]} testID="customer-v21-history-loading">
@@ -455,6 +465,9 @@ export function CustomerServiceHistorySurface({
         </View>
       )}
       </View>
+      {reportJobId ? (
+        <WorkerReportSheet jobId={reportJobId} language={language} onClose={() => setReportJobId(null)} visible />
+      ) : null}
     </V21Screen>
   )
 }

@@ -1,7 +1,7 @@
 // Keep admin navigation separate so privileged actions cannot trigger
 // customer or worker workflow side effects.
 import { Redirect, Stack } from 'expo-router'
-import { ActivityIndicator, View } from 'react-native'
+import { AppLoadingShell } from '@/components/ui/app-loading-shell'
 import { useAuth } from '@/lib/auth-provider'
 import { isAuthShellBlocking } from '@/lib/auth-loading-gate'
 import { useAdminActivation } from '@/lib/admin-activation-provider'
@@ -13,11 +13,7 @@ export default function AdminLayout() {
   const activationShellBlocking = Boolean(session && activation.loading && !activation.status)
 
   if (authShellBlocking || activationShellBlocking) {
-    return (
-      <View style={{ alignItems: 'center', flex: 1, justifyContent: 'center' }}>
-        <ActivityIndicator size="large" />
-      </View>
-    )
+    return <AppLoadingShell />
   }
 
   if (!session) {

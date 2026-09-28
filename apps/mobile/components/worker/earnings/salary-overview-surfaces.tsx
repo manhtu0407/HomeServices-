@@ -13,7 +13,7 @@ import type { WorkerEarningsPeriod } from './overview-model'
 import { styles } from './salary-overview-styles'
 
 type WorkerSalaryTokens = ReturnType<typeof getWorkerThemeTokens>
-type WorkerV5EarningsUtilityIconName = Extract<LiquidNavIconName, 'activity' | 'document' | 'earnings' | 'withdrawal'>
+type WorkerV5EarningsUtilityIconName = Extract<LiquidNavIconName, 'activity' | 'balance' | 'document' | 'earnings' | 'withdrawal'>
 
 function Text({ color, style, ...props }: TextProps & { color?: string }) {
   return <RNText {...props} style={[styles.workerCustomerFontText, color ? { color } : null, style]} />
@@ -182,22 +182,26 @@ function WorkerV5EarningsUtilityRow({
 
 export function WorkerV5EarningsUtilities({
   accountIcon,
+  ambassadorIcon,
   commissionIcon,
   commissionRateBps,
   historyIcon,
   language,
   onOpenAccount,
+  onOpenAmbassador,
   onOpenCommission,
   onOpenHistory,
   reduceMotion,
   reduceTransparency,
 }: {
   accountIcon: WorkerV5EarningsUtilityIconName
+  ambassadorIcon: WorkerV5EarningsUtilityIconName
   commissionIcon: WorkerV5EarningsUtilityIconName
   commissionRateBps?: number | null
   historyIcon: WorkerV5EarningsUtilityIconName
   language: AppLanguage
   onOpenAccount: () => void
+  onOpenAmbassador: () => void
   onOpenCommission: () => void
   onOpenHistory: () => void
   reduceMotion: boolean
@@ -216,6 +220,8 @@ export function WorkerV5EarningsUtilities({
         <WorkerV5EarningsUtilityRow detail={textByLanguage(language, 'Nơi nhận tiền của bạn', 'Where you receive funds')} icon={accountIcon} onPress={onOpenAccount} reduceMotion={reduceMotion} testID="worker-v5-earnings-utility-account" title={textByLanguage(language, 'Tài khoản nhận tiền', 'Receiving account')} tokens={tokens} />
         <View style={[styles.divider, { backgroundColor: tokens.border }]} />
         <WorkerV5EarningsUtilityRow detail={commissionRate ? textByLanguage(language, `Mức hiện tại ${commissionRate}`, `Current rate ${commissionRate}`) : textByLanguage(language, 'Theo giao dịch', 'Per transaction')} icon={commissionIcon} onPress={onOpenCommission} reduceMotion={reduceMotion} testID="worker-v5-earnings-utility-commission" title={textByLanguage(language, 'Chính sách hoa hồng', 'Commission policy')} tokens={tokens} />
+        <View style={[styles.divider, { backgroundColor: tokens.border }]} />
+        <WorkerV5EarningsUtilityRow detail={textByLanguage(language, 'Mã mời, điểm và mốc thưởng', 'Invite code, points and milestones')} icon={ambassadorIcon} onPress={onOpenAmbassador} reduceMotion={reduceMotion} testID="worker-v5-earnings-utility-ambassador" title={textByLanguage(language, 'Thưởng đại sứ', 'Ambassador rewards')} tokens={tokens} />
       </View>
     </View>
   )

@@ -34,6 +34,7 @@ type TaxPolicyRuleForm = {
   ratePercent: string
   subject: AdminFinanceTaxPolicy['subject']
   taxType: string
+  thresholdVnd: string
 }
 
 type FinanceTransactionsState = {
@@ -477,7 +478,7 @@ export function FinanceTaxReportsPanel({ canApproveTax, canManageTax, language, 
         : policies.map((policy) => <View key={policy.id} style={styles.policyCard} testID={`admin-finance-tax-policy-${policy.id}`}>
           <View style={styles.sectionHeader}><AdminText textRole="headline" style={styles.rowTitle}>{policy.name}</AdminText><AdminText textRole="footnote" style={styles.status}>{policyStatus(policy, strings)}</AdminText></View>
           <AdminText numeric textRole="footnote" style={styles.secondary}>{strings.version} {policy.version} · {policy.rules.length.toLocaleString(language === 'vi' ? 'vi-VN' : 'en-US')} {language === 'vi' ? 'quy tắc' : 'rules'}</AdminText>
-          {policy.rules.map((rule, index) => <AdminText key={rule.id} numeric textRole="footnote" style={styles.secondary}>{strings.taxRule(index + 1)} · {(rule.rate_bps / 100).toLocaleString(language === 'vi' ? 'vi-VN' : 'en-US')}% · {taxBasisLabel(rule.basis, language)}</AdminText>)}
+          {policy.rules.map((rule, index) => <AdminText key={rule.id} numeric textRole="footnote" style={styles.secondary}>{strings.taxRule(index + 1)} · {(rule.rate_bps / 100).toLocaleString(language === 'vi' ? 'vi-VN' : 'en-US')}% · {taxBasisLabel(rule.basis, language)}{rule.applies_at_or_above_vnd != null ? ` · ${language === 'vi' ? 'từ' : 'from'} ${rule.applies_at_or_above_vnd.toLocaleString(language === 'vi' ? 'vi-VN' : 'en-US')} VND` : ''}</AdminText>)}
           <AdminText textRole="footnote" style={styles.secondary}>{policy.effective_from}{policy.effective_to ? ` — ${policy.effective_to}` : ''}</AdminText>
           {canManageTax && policy.source_reference ? <AdminText textRole="footnote" style={styles.secondary}>{strings.sourceReference}: {policy.source_reference}</AdminText> : null}
           {canManageTax && policy.status === 'draft' ? <View style={styles.policyActions}>
@@ -559,7 +560,7 @@ function TaxPolicyEditorView({
               <View style={styles.formSection}>
                 <AdminText textRole="subheadline" style={styles.fieldLabel}>{strings.basis}</AdminText>
                 <View style={styles.chipRow}>
-                  {(['gmv', 'commission_collected', 'commission_retained', 'worker_net_paid'] as const).map((basis) => <FinanceChoiceChip
+                  {(['gmv', 'commission_collected', 'commission_retained', 'worker_net_paid', 'worker_bonus'] as const).map((basis) => <FinanceChoiceChip
                     key={basis}
                     label={taxBasisLabel(basis, language)}
                     onPress={() => onUpdateRule(index, { basis })}
@@ -568,6 +569,7 @@ function TaxPolicyEditorView({
                   />)}
                 </View>
               </View>
+              {rule.basis === 'worker_bonus' ? <KaelTextField keyboardType="number-pad" label={language === 'vi' ? 'Chỉ khấu trừ khi thưởng từ (VND, để trống nếu áp dụng mọi khoản)' : 'Withhold only at or above (VND, blank for every payout)'} onChangeText={(thresholdVnd) => onUpdateRule(index, { thresholdVnd: thresholdVnd.replace(/D/g, '') })} testID={`admin-finance-tax-form-threshold-${index}`} value={rule.thresholdVnd} /> : null}
               <KaelTextField keyboardType="decimal-pad" label={strings.taxRate} onChangeText={(ratePercent) => onUpdateRule(index, { ratePercent })} testID={index === 0 ? 'admin-finance-tax-form-rate' : `admin-finance-tax-form-rate-${index}`} value={rule.ratePercent} />
             </View>)}
             <FinanceSecondaryButton label={strings.addRule} onPress={onAddRule} size="small" testID="admin-finance-tax-add-rule" />
@@ -596,7 +598,7 @@ function emptyTaxPolicyForm(): TaxPolicyDraftForm {
 }
 
 function emptyTaxRuleForm(): TaxPolicyRuleForm {
-  return { basis: 'commission_retained', formKey: generateClientRequestId(), ratePercent: '', subject: 'platform', taxType: '' }
+  return { basis: 'commission_retained', formKey: generateClientRequestId(), ratePercent: '', subject: 'platform', taxType: '', thresholdVnd: '' }
 }
 
 function isDraftEditor(editor: TaxPolicyEditor | null): editor is Extract<TaxPolicyEditor, { kind: 'create' | 'edit' }> {
@@ -611,6 +613,7 @@ function taxPolicyDraftInput(form: TaxPolicyDraftForm): AdminFinanceTaxPolicyDra
     rate_bps: Math.round(Number(rule.ratePercent.trim().replace(',', '.')) * 100),
     subject: rule.subject,
     tax_type: rule.taxType.trim(),
+    ...(rule.basis === 'worker_bonus' && rule.thresholdVnd ? { applies_at_or_above_vnd: Number(rule.thresholdVnd) } : {}),
   }))
   if (!form.name.trim() || !form.sourceReference.trim() || rules.length < 1 || rules.some((rule) => !rule.tax_type || !Number.isSafeInteger(rule.rate_bps) || rule.rate_bps < 1 || rule.rate_bps > 10_000) || !isIsoDate(effectiveFrom) || (effectiveTo && (!isIsoDate(effectiveTo) || effectiveTo < effectiveFrom))) return null
   return {
@@ -633,6 +636,7 @@ function taxPolicyForm(policy: AdminFinanceTaxPolicy): TaxPolicyDraftForm {
       ratePercent: String(rule.rate_bps / 100),
       subject: rule.subject,
       taxType: rule.tax_type,
+      thresholdVnd: rule.applies_at_or_above_vnd == null ? '' : String(rule.applies_at_or_above_vnd),
     })),
     sourceReference: policy.source_reference ?? '',
   }
@@ -674,6 +678,7 @@ function taxBasisLabel(basis: AdminFinanceTaxPolicy['basis'], language: 'vi' | '
     commission_retained: ['Hoa hồng thực giữ', 'Commission retained'],
     gmv: ['Tổng giá trị giao dịch', 'Gross transaction value'],
     worker_net_paid: ['Thu nhập thợ đã chi', 'Worker net paid'],
+    worker_bonus: ['Thưởng cho thợ', 'Worker bonus'],
   } as const
   return labels[basis][language === 'vi' ? 0 : 1]
 }

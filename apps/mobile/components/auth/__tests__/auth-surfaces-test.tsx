@@ -374,7 +374,6 @@ describe('LoginRoleSurface', () => {
 
     expect(screen.getByTestId('auth-role-gate-screen')).toBeOnTheScreen()
     fireEvent.press(screen.getByTestId('auth-entry-role-customer'))
-    fireEvent.press(screen.getByTestId('auth-entry-role-customer'))
 
     await waitFor(() => {
       expect(screen.getByTestId('auth-login-email-input')).toHaveProp('value', 'tu@example.com')
@@ -420,8 +419,6 @@ describe('LoginRoleSurface', () => {
     expect(screen.queryByText('Đối tác thợ')).toBeNull()
 
     fireEvent.press(screen.getByTestId('auth-entry-role-customer'))
-    expect(screen.getByTestId('auth-role-gate-screen')).toBeOnTheScreen()
-    fireEvent.press(screen.getByTestId('auth-entry-role-customer'))
 
     expect(screen.getByTestId('auth-login-submit')).toHaveTextContent('Sign in')
     expect(screen.getByText('Welcome Back..!')).toBeOnTheScreen()
@@ -433,37 +430,29 @@ describe('LoginRoleSurface', () => {
     expect(screen.queryByText('Ghi nhớ đăng nhập')).toBeNull()
   })
 
-  it('selects on the first tap and enters on the second tap of the selected role', () => {
+  it('enters the customer role on a single tap', () => {
     mockRouteParams = { stage: '1.3' }
     render(<LoginRoleSurface />)
 
     const customerRole = screen.getByTestId('auth-entry-role-customer')
-    expect(customerRole).toHaveProp('accessibilityHint', 'Chạm một lần để chọn vai trò; chạm lần nữa để tiếp tục.')
+    expect(customerRole).toHaveProp('accessibilityHint', 'Chạm để tiếp tục với vai trò này.')
     expect(screen.queryByTestId('auth-role-continue')).toBeNull()
     expect(screen.queryByText('Tiếp tục với Khách hàng')).toBeNull()
     expect(customerRole).toHaveStyle({ position: 'absolute' })
 
     fireEvent.press(customerRole)
-    expect(screen.getByTestId('auth-role-gate-screen')).toBeOnTheScreen()
-    expect(customerRole).toHaveProp('accessibilityState', { selected: true, disabled: false })
-    expect(screen.getByTestId('auth-entry-role-worker')).toHaveProp('accessibilityState', { selected: false, disabled: false })
-
-    fireEvent.press(customerRole)
     expect(screen.getByTestId('auth-login-screen')).toBeOnTheScreen()
+    expect(screen.queryByTestId('auth-role-gate-screen')).toBeNull()
+    expect(screen.getByTestId('auth-client-google-primary')).toBeOnTheScreen()
   })
 
-  it('selects and enters the worker role through the same two-step interaction', () => {
+  it('enters the worker role on a single tap', () => {
     mockRouteParams = { stage: '1.3' }
     render(<LoginRoleSurface />)
 
     const workerRole = screen.getByTestId('auth-entry-role-worker')
-    expect(workerRole).toHaveProp('accessibilityHint', 'Chạm một lần để chọn vai trò; chạm lần nữa để tiếp tục.')
+    expect(workerRole).toHaveProp('accessibilityHint', 'Chạm để tiếp tục với vai trò này.')
     expect(workerRole).toHaveStyle({ position: 'absolute' })
-
-    fireEvent.press(workerRole)
-    expect(workerRole).toHaveProp('accessibilityState', { selected: true, disabled: false })
-    expect(screen.getByTestId('auth-entry-role-customer')).toHaveProp('accessibilityState', { selected: false, disabled: false })
-    expect(screen.getByTestId('auth-role-gate-screen')).toBeOnTheScreen()
 
     fireEvent.press(workerRole)
     expect(screen.getByTestId('auth-login-screen')).toBeOnTheScreen()
@@ -557,7 +546,6 @@ describe('LoginRoleSurface', () => {
     render(<LoginRoleSurface />)
 
     fireEvent.press(screen.getByTestId('auth-entry-role-worker'))
-    fireEvent.press(screen.getByTestId('auth-entry-role-worker'))
     fireEvent.press(screen.getByTestId('auth-client-register-email'))
 
     expect(screen.getByText('Tạo hồ sơ đối tác.')).toBeOnTheScreen()
@@ -571,7 +559,6 @@ describe('LoginRoleSurface', () => {
     mockRouteParams = { stage: '1.3', role: 'worker' }
     render(<LoginRoleSurface />)
 
-    fireEvent.press(screen.getByTestId('auth-entry-role-worker'))
     fireEvent.press(screen.getByTestId('auth-entry-role-worker'))
     fireEvent.press(screen.getByTestId('auth-client-register-email'))
     fireEvent.changeText(screen.getByTestId('auth-register-name-input'), 'Worker One')
@@ -636,7 +623,7 @@ describe('LoginRoleSurface', () => {
     expect(screen.queryByText('Chưa thể đăng nhập. Vui lòng thử lại.')).toBeNull()
   })
 
-  it('renders the approved static brand gate while preserving role selection state', () => {
+  it('renders the approved static brand gate with no pre-selected role', () => {
     mockRouteParams = { stage: '1.3' }
     render(<LoginRoleSurface />)
 
@@ -649,12 +636,7 @@ describe('LoginRoleSurface', () => {
     expect(screen.getByTestId('auth-role-gate-brand')).toBeOnTheScreen()
     expect(screen.queryByTestId('auth-role-gate-greeting')).toBeNull()
 
-    fireEvent.press(screen.getByTestId('auth-entry-role-worker'))
     expect(screen.getByTestId('auth-entry-role-customer')).toHaveProp('accessibilityState', { selected: false, disabled: false })
-    expect(screen.getByTestId('auth-entry-role-worker')).toHaveProp('accessibilityState', { selected: true, disabled: false })
-
-    fireEvent.press(screen.getByTestId('auth-entry-role-customer'))
-    expect(screen.getByTestId('auth-entry-role-customer')).toHaveProp('accessibilityState', { selected: true, disabled: false })
     expect(screen.getByTestId('auth-entry-role-worker')).toHaveProp('accessibilityState', { selected: false, disabled: false })
   })
 
@@ -729,7 +711,6 @@ describe('LoginRoleSurface', () => {
     })
 
     expect(screen.getByTestId('auth-role-gate-screen')).toBeOnTheScreen()
-    fireEvent.press(screen.getByTestId('auth-entry-role-customer'))
     fireEvent.press(screen.getByTestId('auth-entry-role-customer'))
 
     await waitFor(() => {
@@ -960,7 +941,6 @@ describe('LoginRoleSurface', () => {
     render(<LoginRoleSurface />)
 
     fireEvent.press(screen.getByTestId('auth-entry-role-worker'))
-    fireEvent.press(screen.getByTestId('auth-entry-role-worker'))
     fireEvent.press(screen.getByTestId('auth-client-register-email'))
     fireEvent.changeText(screen.getByTestId('auth-register-name-input'), 'Worker One')
     expect(screen.getByText('Thư điện tử')).toBeOnTheScreen()
@@ -1005,7 +985,6 @@ describe('LoginRoleSurface', () => {
     mockRouteParams = { stage: '1.3', role: 'worker' }
     render(<LoginRoleSurface />)
 
-    fireEvent.press(screen.getByTestId('auth-entry-role-worker'))
     fireEvent.press(screen.getByTestId('auth-entry-role-worker'))
 
     expect(screen.getByTestId('auth-login-screen')).toBeOnTheScreen()
@@ -1152,7 +1131,6 @@ describe('LoginRoleSurface', () => {
     render(<LoginRoleSurface />)
 
     fireEvent.press(screen.getByTestId('auth-entry-role-worker'))
-    fireEvent.press(screen.getByTestId('auth-entry-role-worker'))
     fireEvent.press(screen.getByTestId('auth-client-register-email'))
     fireEvent.changeText(screen.getByTestId('auth-register-name-input'), 'Worker One')
     fireEvent.changeText(screen.getByTestId('auth-register-email-input'), 'worker@example.com')
@@ -1188,7 +1166,6 @@ describe('LoginRoleSurface', () => {
       jest.advanceTimersByTime(1550)
       jest.advanceTimersByTime(2650)
     })
-    fireEvent.press(screen.getByTestId('auth-entry-role-worker'))
     fireEvent.press(screen.getByTestId('auth-entry-role-worker'))
     fireEvent.press(screen.getByTestId('auth-client-register-email'))
     fireEvent.changeText(screen.getByTestId('auth-register-name-input'), 'Worker One')

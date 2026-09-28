@@ -177,20 +177,22 @@ describe('Admin Production section registry', () => {
     }, 'moving payouts under Finance must not remove a payout-only operator from their authorized surface')
   })
 
-  it('keeps Overview dedicated and defines the 20 real capabilities for the five specialist sections', () => {
+  it('keeps Overview dedicated and defines the 22 real capabilities for the five specialist sections', () => {
     withPillarContext(PILLAR, () => {
       for (const language of ['vi', 'en'] as const) {
         const sections = adminProductionPresentationCopy[language].sections
         const capabilityIds = sections.flatMap((section) => section.capabilities.map((capability) => capability.id))
         expect(sections.map((section) => section.id)).toEqual(ADMIN_PRODUCTION_SECTIONS.map((section) => section.id))
         expect(sections.find((section) => section.id === 'overview')).toMatchObject({ capabilities: [], workstreams: [] })
-        expect(capabilityIds).toHaveLength(20)
-        expect(new Set(capabilityIds).size).toBe(20)
+        expect(capabilityIds).toHaveLength(22)
+        expect(new Set(capabilityIds).size).toBe(22)
         expect(capabilityIds).toEqual(expect.arrayContaining([
           'operations-scope-change',
           'system-taxonomy',
           'team-provisioning',
           'finance-reconciliation',
+          'workers-discipline',
+          'workers-ambassador',
         ]))
       }
     }, 'Production must preserve the approved information architecture while real services remain the only data source')

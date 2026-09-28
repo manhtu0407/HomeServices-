@@ -11,9 +11,9 @@ function Text({ style, ...props }: TextProps) {
   return <RNText {...props} style={[styles.workerCustomerFontText, style]} />
 }
 
-function commissionRate(rateBps: number | null | undefined) {
+function commissionRates(rateBps: number | null | undefined) {
   if (typeof rateBps !== 'number' || !Number.isFinite(rateBps)) return null
-  return `${rateBps / 100}%`
+  return { fee: `${rateBps / 100}%`, kept: `${(10000 - rateBps) / 100}%` }
 }
 
 function PolicyPoint({ children }: { children: string }) {
@@ -34,8 +34,7 @@ export function WorkerV5CommissionPolicy({
   language: AppLanguage
   reduceTransparency: boolean
 }) {
-  const currentRate = commissionRate(earnings?.current_commission_rate_bps)
-  const level = earnings?.current_commission_level
+  const rates = commissionRates(earnings?.current_commission_rate_bps)
 
   return (
     <View
@@ -49,25 +48,29 @@ export function WorkerV5CommissionPolicy({
       />
       <View style={styles.rateHeader}>
         <View style={styles.rateCopy}>
-          <Text style={styles.eyebrow}>{textByLanguage(language, 'MỨC CỦA BẠN', 'YOUR RATE')}</Text>
+          <Text style={styles.eyebrow}>{textByLanguage(language, 'PHÍ NỀN TẢNG', 'PLATFORM FEE')}</Text>
           <Text style={styles.rateValue}>
-            {currentRate ?? textByLanguage(language, 'Đang cập nhật', 'Updating')}
+            {rates?.fee ?? textByLanguage(language, 'Đang cập nhật', 'Updating')}
           </Text>
-        {level ? (
           <Text style={styles.rateMeta}>
-            {textByLanguage(language, `Bậc hiện tại: ${level}`, `Current level: ${level}`)}
+            {textByLanguage(language, 'Cố định cho mọi công việc', 'Fixed for every job')}
           </Text>
-        ) : null}
-      </View>
+        </View>
       </View>
 
-      <Text style={styles.sectionTitle}>{textByLanguage(language, 'Vì sao mức khởi điểm là 15%?', 'Why does the starting rate begin at 15%?')}</Text>
+      <Text style={styles.sectionTitle}>{textByLanguage(language, 'Phí nền tảng dùng để làm gì?', 'What does the platform fee pay for?')}</Text>
       <Text style={styles.paragraph}>
-        {textByLanguage(
-          language,
-          'Khoản này được tính trên giá công việc đã chốt. 85% còn lại thuộc về thợ. NestScout dùng phần 15% để duy trì những việc cần thiết giúp mỗi công việc diễn ra rõ ràng và an toàn hơn.',
-          'This amount is calculated from the confirmed job price. The remaining 85% belongs to the worker. NestScout uses the 15% to keep each job clear and safer.',
-        )}
+        {rates
+          ? textByLanguage(
+            language,
+            `Phí được tính trên giá công việc đã chốt. ${rates.kept} còn lại thuộc về thợ. NestScout dùng phần ${rates.fee} để duy trì những việc cần thiết giúp mỗi công việc diễn ra rõ ràng và an toàn hơn.`,
+            `The fee is calculated from the confirmed job price. The remaining ${rates.kept} belongs to the worker. NestScout uses the ${rates.fee} to keep each job clear and safer.`,
+          )
+          : textByLanguage(
+            language,
+            'Phí được tính trên giá công việc đã chốt; phần còn lại thuộc về thợ.',
+            'The fee is calculated from the confirmed job price; the rest belongs to the worker.',
+          )}
       </Text>
       <View style={styles.pointList}>
         <PolicyPoint>{textByLanguage(language, 'Tìm và kết nối khách có nhu cầu phù hợp với kỹ năng của thợ.', 'Find customers whose needs match the worker’s skills.')}</PolicyPoint>
@@ -76,20 +79,20 @@ export function WorkerV5CommissionPolicy({
       </View>
 
       <View style={styles.progressCard}>
-        <Text style={styles.progressTitle}>{textByLanguage(language, 'Làm tốt để giữ lại nhiều hơn', 'Do good work and keep more')}</Text>
+        <Text style={styles.progressTitle}>{textByLanguage(language, 'Thưởng thay cho giảm phí', 'Rewards instead of fee cuts')}</Text>
         <Text style={styles.progressCopy}>
           {textByLanguage(
             language,
-            'Càng làm việc đều, hoàn thành nhiều công việc, đến đúng hẹn và giữ đánh giá tốt, cơ hội lên bậc cao hơn càng lớn. Khi bậc cao hơn được áp dụng, tỷ lệ hoa hồng có thể giảm để bạn giữ lại nhiều hơn từ những công việc tiếp theo.',
-            'Consistent work, more completed jobs, on-time arrival, and strong ratings improve the chance of reaching a higher level. When a higher level applies, the commission rate may decrease so you keep more from future jobs.',
+            'Phí nền tảng không đổi theo bậc hay số việc. Thay vào đó, NestScout thưởng theo mốc khi khách bạn mang về tiếp tục đặt và thanh toán dịch vụ trong app.',
+            'The platform fee does not change with level or job count. Instead, NestScout pays milestone rewards when customers you bring in keep booking and paying in the app.',
           )}
         </Text>
       </View>
       <Text style={styles.footnote}>
         {textByLanguage(
           language,
-          'Mức áp dụng cho mỗi công việc được giữ nguyên từ lúc khoản thanh toán được ghi nhận; việc đổi bậc sau đó không làm thay đổi giao dịch cũ.',
-          'The rate applied to a job is fixed when its payment is recorded; a later level change does not alter past transactions.',
+          'Mức phí của mỗi công việc được ghi lại lúc khoản thanh toán được ghi nhận và không thay đổi về sau.',
+          'The fee for each job is recorded when its payment is recorded and does not change afterwards.',
         )}
       </Text>
     </View>

@@ -289,7 +289,7 @@ export function StageEightEvidenceScreen({
       />
 
       <View style={[styles.noteBox, { marginTop: px(8, scale), height: px(88, scale), borderRadius: px(15, scale), paddingHorizontal: px(14, scale), paddingTop: px(12, scale) }]} testID="worker-v5-stage-eight-fidelity-note">
-        <TextInput
+        <TextInput spellCheck={false}
           accessibilityLabel={copy.noteTitle}
           editable={!submitting}
           maxLength={500}

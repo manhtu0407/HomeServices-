@@ -88,11 +88,14 @@ describe('Apple permission behavior', () => {
     withPillarContext(PILLAR, () => {
       expect(cameraRequestSources).toEqual([])
       expect(cameraResolverSources).toEqual([
+        'components/job/evidence-photo-slots.tsx',
         'components/profile/use-profile-avatar-picker.ts',
         'components/worker/jobs/in-progress-surfaces.tsx',
       ])
       const profileSource = sourceByPath.get('components/profile/use-profile-avatar-picker.ts') ?? ''
       const fieldEvidenceSource = sourceByPath.get('components/worker/jobs/in-progress-surfaces.tsx') ?? ''
+      const compensationSource = sourceByPath.get('components/job/evidence-photo-slots.tsx') ?? ''
+      expect(compensationSource).toMatch(/source === 'camera'[\s\S]*resolveUserInitiatedCameraPermission[\s\S]*shouldOfferCameraSettings/)
       expect(profileSource).toMatch(
         /selectProfileAvatar[\s\S]*source === 'camera'[\s\S]*resolveUserInitiatedCameraPermission/,
       )

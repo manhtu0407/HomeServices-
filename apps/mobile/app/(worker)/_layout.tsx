@@ -1,7 +1,6 @@
 import { Redirect } from 'expo-router'
 import { Stack } from 'expo-router/stack'
-import { ActivityIndicator, View } from 'react-native'
-import { color } from '@/design/theme'
+import { AppLoadingShell } from '@/components/ui/app-loading-shell'
 import { useAuth } from '@/lib/auth-provider'
 import { isAuthShellBlocking } from '@/lib/auth-loading-gate'
 import { useAdminActivation } from '@/lib/admin-activation-provider'
@@ -13,11 +12,7 @@ export default function WorkerLayout() {
   const activationShellBlocking = Boolean(session && activation.loading && !activation.status)
 
   if (authShellBlocking || activationShellBlocking) {
-    return (
-      <View style={{ alignItems: 'center', flex: 1, justifyContent: 'center' }}>
-        <ActivityIndicator color={color.brand.primary} size="large" />
-      </View>
-    )
+    return <AppLoadingShell />
   }
 
   if (!session) {
