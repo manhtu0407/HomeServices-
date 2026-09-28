@@ -3080,16 +3080,15 @@ describe('Worker runtime surface wiring', () => {
     expect(screen.getByText('Chưa thể tải lại trạng thái thanh toán. Mã hỗ trợ: A1B2C3D4.')).toBeOnTheScreen()
   })
 
-  it('renders the settled case from a real recorded payment', () => {
+  it('opens the payment-received stage from a real recorded payment', () => {
     buildWorkflow({ deal: buildSettledCaseDeal(), workerEarnings: buildSettledCaseEarnings() })
     mockRouteParams = { ns_worker_screen: '2.12-case-closed' }
 
     render(<WorkerJobsSurface />)
 
-    expect(screen.getByTestId('worker-v5-stage-ten-prototype')).toBeOnTheScreen()
-    expect(screen.getByText('Hoàn thiện công việc')).toBeOnTheScreen()
-    expect(screen.getByText('Đã ghi nhận')).toBeOnTheScreen()
-    expect(screen.getByText('340.000đ')).toBeOnTheScreen()
+    expect(screen.getByTestId('worker-v5-stage-eleven-payment-confirmed')).toBeOnTheScreen()
+    expect(screen.queryByTestId('worker-v5-stage-ten-prototype')).toBeNull()
+    expect(screen.getByTestId('worker-v5-stage-eleven-amount')).toHaveTextContent(/340\.000/)
   })
 
   it('removes the requested home, jobs, earnings, and settings header utilities', () => {
