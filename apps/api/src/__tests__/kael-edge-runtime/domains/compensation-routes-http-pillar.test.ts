@@ -8,7 +8,7 @@ import { pillarWhy, type PillarManifest } from '../../pillar-manifest'
 import { installEdgeRuntimeTestHooks, makeSequenceClient } from '../harness'
 
 export const PILLAR = {
-  id: 'P231-compensation-edge-routes',
+  id: 'P280-compensation-edge-routes',
   invariant:
     'each side of a compensation negotiation acts only as itself: the customer opens and answers from the customer routes, the worker answers from the worker route, the role and actor id sent to the database come from the session, a counter without an amount is refused before any RPC, claim photos are issued and accepted only under the own case prefix of the customer, an admin reads the refund account and records a payout only with workers.discipline.manage, and a balance that cannot cover the amount is a named 409',
   authority: [
@@ -18,7 +18,7 @@ export const PILLAR = {
   ],
   target: 'supabase/functions/mobile-api/_shared/domains/program/compensation.ts',
   layer: 'integration',
-  siblings: ['P232-compensation-mediation-sql', 'P221-discipline-edge-routes'],
+  siblings: ['P281-compensation-mediation-sql', 'P270-discipline-edge-routes'],
   mutation:
     'send p_actor_role from the request body instead of the session role, or drop INSUFFICIENT_WORKER_BALANCE from NAMED_FAILURES — the role or balance case turns red',
 } as const satisfies PillarManifest

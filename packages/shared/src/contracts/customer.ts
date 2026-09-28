@@ -4,6 +4,7 @@ import {
   WORKER_AVATAR_MAX_BYTES,
   workerAvatarUploadSchema,
 } from './worker'
+import { kaelChatVisionMediaRefSchema } from './kael-chat'
 export const customerKaelConversationModeSchema = z.enum(['normal', 'case'])
 
 export const customerKaelConversationCreateSchema = z.object({
@@ -15,6 +16,10 @@ export const customerKaelConversationTurnSchema = z.object({
   message: z.string().trim().min(1).max(2000),
   language: z.enum(['vi', 'en']).default('vi'),
   client_request_id: z.string().uuid(),
+  media_refs: z.array(kaelChatVisionMediaRefSchema).max(5).optional().refine(
+    (mediaRefs) => mediaRefs === undefined || new Set(mediaRefs).size === mediaRefs.length,
+    'Customer normal chat media_refs must be unique',
+  ),
 }).strict()
 
 export const customerKaelConversationRenameSchema = z.object({

@@ -8,7 +8,7 @@ import { ambassadorService } from '@/lib/services/ambassador-service'
 import { WorkerV5Ambassador } from '../ambassador-surfaces'
 
 export const PILLAR = {
-  id: 'P224-ambassador-screen-honest',
+  id: 'P273-ambassador-screen-honest',
   invariant:
     'the ambassador screen shows only server numbers: no point count before the summary loads, points and milestone gaps from the ledger and the approved program, redemption only for affordable milestones behind a confirming second tap and only once the bonus tax policy is ready, a receipt with gross, withheld and net, and a retried redemption reuses its request id so points are never spent twice',
   authority: [
@@ -17,7 +17,7 @@ export const PILLAR = {
   ],
   target: 'apps/mobile/components/worker/earnings/ambassador-surfaces.tsx',
   layer: 'ui-visual',
-  siblings: ['P213-redemption-idempotent-balance-sql', 'P217-ambassador-edge-routes'],
+  siblings: ['P262-redemption-idempotent-balance-sql', 'P266-ambassador-edge-routes'],
   mutation:
     'render summary?.points_milli ?? 0 while loading, drop the confirm step in pressRedeem, or generate a new client request id on every redeem attempt — the loading, confirm or replay case turns red',
 } as const satisfies PillarManifest

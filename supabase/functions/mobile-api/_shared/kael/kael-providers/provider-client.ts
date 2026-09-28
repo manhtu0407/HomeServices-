@@ -7,6 +7,14 @@ import {
 import { providerAdapterFor, providerStreamRequestFor } from "./provider-adapter.ts";
 import { readProviderSseResponse } from "./provider-stream.ts";
 import {
+  bindRequestAbort,
+  isAbortError,
+  requestCancelled,
+  requestCancelledError,
+  throwIfRequestAborted,
+  waitForProviderRetry,
+} from "./provider-cancellation.ts";
+import {
   prepareAiProviderCall,
   type PreparedAiProviderCall,
 } from "./provider-preflight.ts";
@@ -41,8 +49,24 @@ export async function callAI(
   gate?: KaelSpendGate,
   options: CallAIOptions = {},
 ): Promise<AIResponse | AIError> {
+  if (secrets.requestSignal?.aborted) return requestCancelled(request.provider);
   const prepared = await prepareAiProviderCall(request, secrets, gate);
   if ("success" in prepared) return prepared;
+  if (secrets.requestSignal?.aborted) {
+    if (gate) {
+      await finalizeAiSpend(gate.client, {
+        reservationId: prepared.reservationId,
+        actorId: gate.actorId,
+        purpose: request.purpose ?? "unknown",
+        actualUsd: 0,
+        runId: secrets.harnessTrace?.runId,
+        traceId: secrets.harnessTrace?.traceId,
+        releaseId: secrets.harnessTrace?.releaseId,
+        providerAttemptId: prepared.providerAttemptId,
+      });
+    }
+    return requestCancelled(request.provider);
+  }
   return executePreparedAiProviderCall(request, secrets, gate, options, prepared);
 }
 
@@ -57,8 +81,24 @@ export async function callAIStream(
   gate: KaelSpendGate | undefined,
   options: CallAIStreamOptions,
 ): Promise<AIResponse | AIStreamError> {
+  if (secrets.requestSignal?.aborted) return { ...requestCancelled(request.provider), streamStarted: false };
   const prepared = await prepareAiProviderCall(request, secrets, gate);
   if ("success" in prepared) return { ...prepared, streamStarted: false };
+  if (secrets.requestSignal?.aborted) {
+    if (gate) {
+      await finalizeAiSpend(gate.client, {
+        reservationId: prepared.reservationId,
+        actorId: gate.actorId,
+        purpose: request.purpose ?? "unknown",
+        actualUsd: 0,
+        runId: secrets.harnessTrace?.runId,
+        traceId: secrets.harnessTrace?.traceId,
+        releaseId: secrets.harnessTrace?.releaseId,
+        providerAttemptId: prepared.providerAttemptId,
+      });
+    }
+    return { ...requestCancelled(request.provider), streamStarted: false };
+  }
   return executePreparedAiProviderStreamCall(request, secrets, gate, options, prepared);
 }
 
@@ -238,6 +278,10 @@ async function runProviderAttempts(
   let lastError: unknown;
   let attemptsStarted = 0;
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    if (context.secrets.requestSignal?.aborted) {
+      lastError = requestCancelledError();
+      break;
+    }
     if (attempt > 0) {
       const delay = Math.min(1000 * Math.pow(2, attempt - 1), 10_000);
       console.warn("AI retry", {
@@ -246,7 +290,12 @@ async function runProviderAttempts(
         attempt,
         backoffMs: delay,
       });
-      await new Promise((resolve) => setTimeout(resolve, delay));
+      try {
+        await waitForProviderRetry(delay, context.secrets.requestSignal);
+      } catch (error) {
+        lastError = error;
+        break;
+      }
     }
     const outcome = await executeProviderAttempt(context, attemptsStarted + 1);
     attemptsStarted = outcome.attemptNumber;
@@ -268,6 +317,10 @@ async function runProviderStreamAttempts(
   let lastError: unknown;
   let attemptsStarted = 0;
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    if (context.secrets.requestSignal?.aborted) {
+      lastError = requestCancelledError();
+      break;
+    }
     if (attempt > 0) {
       const delay = Math.min(1000 * Math.pow(2, attempt - 1), 10_000);
       console.warn("AI stream retry", {
@@ -276,7 +329,12 @@ async function runProviderStreamAttempts(
         attempt,
         backoffMs: delay,
       });
-      await new Promise((resolve) => setTimeout(resolve, delay));
+      try {
+        await waitForProviderRetry(delay, context.secrets.requestSignal);
+      } catch (error) {
+        lastError = error;
+        break;
+      }
     }
     const outcome = await executeProviderStreamAttempt(
       context,
@@ -304,6 +362,7 @@ async function executeProviderAttempt(
 ): Promise<ProviderAttemptOutcome> {
   const { request, secrets, prepared, gate, options } = context;
   const controller = new AbortController();
+  const unbindRequestAbort = bindRequestAbort(secrets.requestSignal, controller);
   const attemptStartEventId = crypto.randomUUID();
   await recordHarnessEvent(secrets.harnessTrace, {
     eventId: attemptStartEventId,
@@ -327,6 +386,7 @@ async function executeProviderAttempt(
       context.timeout,
       controller,
     );
+    throwIfRequestAborted(secrets.requestSignal);
     console.info(
       options.deferCircuitSuccess
         ? "AI provider transport success; structured validation pending"
@@ -402,6 +462,8 @@ async function executeProviderAttempt(
       errorCode: providerErrorCode(error),
     });
     return { attemptNumber, error };
+  } finally {
+    unbindRequestAbort();
   }
 }
 
@@ -413,6 +475,7 @@ async function executeProviderStreamAttempt(
 ): Promise<ProviderAttemptOutcome> {
   const { request, secrets, prepared, gate, options } = context;
   const controller = new AbortController();
+  const unbindRequestAbort = bindRequestAbort(secrets.requestSignal, controller);
   const attemptEventId = crypto.randomUUID();
   await recordHarnessEvent(secrets.harnessTrace, {
     eventId: attemptEventId,
@@ -440,6 +503,7 @@ async function executeProviderStreamAttempt(
       context.timeout,
       controller,
     );
+    throwIfRequestAborted(secrets.requestSignal);
     console.info(
       options.deferCircuitSuccess
         ? "AI provider stream transport success; structured validation pending"
@@ -515,6 +579,8 @@ async function executeProviderStreamAttempt(
       errorCode: providerErrorCode(error),
     });
     return { attemptNumber, error };
+  } finally {
+    unbindRequestAbort();
   }
 }
 
@@ -524,6 +590,26 @@ async function finalizeProviderFailure(
   attemptsStarted: number,
 ): Promise<AIError> {
   const { request, secrets, prepared, gate } = context;
+  if (secrets.requestSignal?.aborted || isAbortError(lastError)) {
+    if (gate) {
+      await finalizeAiSpend(gate.client, {
+        reservationId: prepared.reservationId,
+        actorId: gate.actorId,
+        purpose: request.purpose ?? "unknown",
+        actualUsd: prepared.estimatedCostPerAttemptUsd * attemptsStarted,
+        runId: secrets.harnessTrace?.runId,
+        traceId: secrets.harnessTrace?.traceId,
+        releaseId: secrets.harnessTrace?.releaseId,
+        providerAttemptId: prepared.providerAttemptId,
+      });
+    }
+    return {
+      success: false,
+      provider: request.provider,
+      code: "REQUEST_CANCELLED",
+      error: "REQUEST_CANCELLED",
+    };
+  }
   const httpStatus = lastError instanceof ProviderHttpError
     ? lastError.status
     : undefined;

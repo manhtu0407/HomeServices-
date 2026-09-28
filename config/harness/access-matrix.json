@@ -2,8 +2,8 @@
   "version": "1.0.0",
   "source": {
     "migrationRoot": "supabase/migrations",
-    "migrationCount": 423,
-    "migrationDigest": "d024948c473b67e30f01fa15ccbc61dc98e1e7766200a7c99da10d73af56180f"
+    "migrationCount": 424,
+    "migrationDigest": "d65594cce0a2166ef7dcacb9f05a725173ced19b3612deaab65158d1a35213e2"
   },
   "actors": [
     "anonymous",
@@ -4133,6 +4133,14 @@
     },
     {
       "signature": "append_customer_kael_conversation_exchange(uuid, uuid, uuid, text, text)",
+      "securityDefiner": false,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
+      "signature": "append_customer_kael_conversation_exchange(uuid, uuid, uuid, text, text[], text)",
       "securityDefiner": false,
       "fixedSearchPath": true,
       "executeRoles": [

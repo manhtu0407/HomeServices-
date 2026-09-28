@@ -220,6 +220,7 @@ async function createRequestState(
     releaseId: actorContext.releaseId,
     environment: actorContext.environment,
     requestLifecycle: { finalizedByDomain: false },
+    signal: request.signal,
   };
   return {
     request,

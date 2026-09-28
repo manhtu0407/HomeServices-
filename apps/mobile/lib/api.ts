@@ -3,6 +3,7 @@ import { Platform } from 'react-native'
 
 import { supabase } from './supabase'
 import { mobileRuntimeConfig } from './runtime-config'
+import { releaseClientPlatform } from './release-client-platform'
 import { generateClientRequestId } from './client-request-id'
 import type { ApiResponseMetadata } from './api-types/shared'
 import {
@@ -40,6 +41,7 @@ export type ApiResult<T> =
 
 type ApiRequestOptions = {
   idempotencyKey?: string
+  signal?: AbortSignal
 }
 
 export async function getMobileApiAuthHeaders(): Promise<Record<string, string>> {
@@ -91,6 +93,15 @@ async function request<T>(
   const retryBudget = isRetrySafeRequest(method, path, body) ? MAX_RETRIES : 0
   const timeoutMs = requestTimeoutMs(method, path)
   const idempotencyKey = idempotencyKeyForRequest(method, body, options.idempotencyKey)
+  if (options.signal?.aborted) {
+    return {
+      success: false,
+      error: 'Yêu cầu đã dừng',
+      code: 'REQUEST_CANCELLED',
+      status: 0,
+      meta: clientMetadata,
+    }
+  }
   if (options.idempotencyKey && !idempotencyKey) {
     return {
       success: false,
@@ -104,6 +115,9 @@ async function request<T>(
   let responseMetadata = clientMetadata
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
     const controller = new AbortController()
+    const forwardAbort = () => controller.abort()
+    options.signal?.addEventListener('abort', forwardAbort, { once: true })
+    if (options.signal?.aborted) forwardAbort()
     const timeout = setTimeout(() => controller.abort(), timeoutMs)
     let responseStatus = 0
 
@@ -156,6 +170,15 @@ async function request<T>(
 
       return { success: true, data: json as T, status: response.status, meta: responseMetadata }
     } catch (err) {
+      if (options.signal?.aborted) {
+        return {
+          success: false,
+          error: 'Yêu cầu đã dừng',
+          code: 'REQUEST_CANCELLED',
+          status: 0,
+          meta: responseMetadata,
+        }
+      }
       if (attempt < retryBudget && shouldRetryRequestError(err, method, path)) {
         await waitForRetry(method, path, attempt, isAbortError(err) ? 'TIMEOUT' : 'NETWORK_ERROR')
         continue
@@ -196,6 +219,7 @@ async function request<T>(
       }
     } finally {
       clearTimeout(timeout)
+      options.signal?.removeEventListener('abort', forwardAbort)
     }
   }
 
@@ -221,7 +245,7 @@ export const api = {
     }
     return request<T>('GET', path, undefined, accessToken)
   },
-  post: <T>(path: string, body?: unknown) => request<T>('POST', path, body),
+  post: <T>(path: string, body?: unknown, options?: ApiRequestOptions) => request<T>('POST', path, body, undefined, options),
   postWithIdempotency: <T>(path: string, body: unknown, idempotencyKey: string) =>
     request<T>('POST', path, body, undefined, { idempotencyKey }),
   postAuthenticated: <T>(path: string, body: unknown, accessToken: string): Promise<ApiResult<T>> => {
@@ -402,10 +426,9 @@ function createClientReleaseHeaders() {
     : Platform.OS === 'android'
       ? Constants.expoConfig?.android?.package
       : null
+  const platform = releaseClientPlatform()
   return {
-    ...(Platform.OS === 'ios' || Platform.OS === 'android'
-      ? { 'x-client-platform': Platform.OS }
-      : {}),
+    ...(platform ? { 'x-client-platform': platform } : {}),
     ...(applicationId ? { 'x-client-application-id': applicationId } : {}),
     ...(buildNumber !== undefined && buildNumber !== null && String(buildNumber).trim()
       ? { 'x-client-build-number': String(buildNumber).trim() }

@@ -6,7 +6,7 @@ import type { EarningsResponse } from '@/lib/api-types'
 import { WorkerV5CommissionPolicy } from '../commission-policy-surfaces'
 
 export const PILLAR = {
-  id: 'P210-commission-copy-fixed-rate',
+  id: 'P259-commission-copy-fixed-rate',
   invariant:
     'the worker commission policy shows the platform fee the server reports as fixed for every job, derives the worker share from that same rate, and never promises a level-based fee reduction or shows a commission level',
   authority: [
@@ -15,7 +15,7 @@ export const PILLAR = {
   ],
   target: 'apps/mobile/components/worker/earnings/commission-policy-surfaces.tsx',
   layer: 'ui-visual',
-  siblings: ['P24-worker-earnings-period-palette', 'P209-commission-tiers-service-only-sql'],
+  siblings: ['P24-worker-earnings-period-palette', 'P258-commission-tiers-service-only-sql'],
   mutation:
     'restore the "Bậc hiện tại" line or the "Làm tốt để giữ lại nhiều hơn" level-reduction card, or hardcode 85% in the paragraph — the no-level, no-reduction or server-rate cases turn red',
 } as const satisfies PillarManifest

@@ -4,7 +4,7 @@ import { getCustomerProfileInsights } from '../../../../../supabase/functions/mo
 import { pillarWhy, type PillarManifest } from '../pillar-manifest'
 
 export const PILLAR = {
-  id: 'P227-customer-usage-rank-ledger',
+  id: 'P276-customer-usage-rank-ledger',
   invariant:
     'the customer usage rank reads only the membership ledger that paid in-app orders move: Kael chats, reviews and unpaid jobs add nothing, the level and its thresholds come from one server step, and a failed ledger read fails the request instead of showing a zero rank',
   authority: [
@@ -13,7 +13,7 @@ export const PILLAR = {
   ],
   target: 'supabase/functions/mobile-api/_shared/domains/customer/profile-insights.ts',
   layer: 'unit',
-  siblings: ['P215-customer-membership-ledger-sql', 'P226-customer-invite-rank-report'],
+  siblings: ['P264-customer-membership-ledger-sql', 'P275-customer-invite-rank-report'],
   mutation:
     'feed kael_interaction_count or completed_service_count back into usageRankPoints, or treat a failed membership read as zero points — the busy-but-unpaid or fail-closed case turns red',
 } as const satisfies PillarManifest

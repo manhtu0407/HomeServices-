@@ -1,10 +1,10 @@
--- @pillar id: P212-milestone-cap-sql
+-- @pillar id: P261-milestone-cap-sql
 -- @pillar invariant: No ambassador program version can be approved if any milestone, at the highest multiplier, pays back more than 60% of the commission its points stand for, or if milestones do not grow in both points and reward; the editor cannot approve their own draft, an approved version cannot be edited, and only one version is approved at a time
 -- @pillar authority: governance/RULES.md #7 | Tu 2026-09-25: NestScout keeps at least 40% of referred commission
 -- @pillar target: supabase/migrations/20260925110000_ambassador_program_config.sql
 -- @pillar layer: sql
--- @pillar siblings: P211-ambassador-accrual-sql
--- @pillar mutation: Change the 6000 in private.ambassador_program_violations to 7000; the 60.0001% draft reports no violation and P212 raises P212_VIOLATION_NOT_REPORTED (observed)
+-- @pillar siblings: P260-ambassador-accrual-sql
+-- @pillar mutation: Change the 6000 in private.ambassador_program_violations to 7000; the 60.0001% draft reports no violation and P212 raises P261_VIOLATION_NOT_REPORTED (observed)
 
 begin;
 set local statement_timeout = '30s';
@@ -43,7 +43,7 @@ declare
 begin
   begin
     perform public.admin_save_ambassador_program_draft(v_outsider, pg_temp.program(10000000));
-    raise exception 'P212_OUTSIDER_SAVED';
+    raise exception 'P261_OUTSIDER_SAVED';
   exception when sqlstate 'P0001' then
     if sqlerrm <> 'ADMIN_CAPABILITY_REQUIRED' then raise; end if;
   end;
@@ -51,11 +51,11 @@ begin
   -- 10,000,001 VND for 2,000 points at 1.2x is 60.0001% of 20,000,000 VND commission.
   v_draft := public.admin_save_ambassador_program_draft(v_editor, pg_temp.program(10000001));
   if jsonb_array_length(v_draft->'violations') = 0 then
-    raise exception 'P212_VIOLATION_NOT_REPORTED';
+    raise exception 'P261_VIOLATION_NOT_REPORTED';
   end if;
   begin
     perform public.admin_approve_ambassador_program(v_approver, (v_draft->>'id')::uuid);
-    raise exception 'P212_CAP_NOT_ENFORCED';
+    raise exception 'P261_CAP_NOT_ENFORCED';
   exception when sqlstate '23514' then
     if sqlerrm <> 'AMBASSADOR_PROGRAM_INVALID' then raise; end if;
   end;
@@ -63,11 +63,11 @@ begin
   -- The same draft at exactly 60% passes, but not for the person who wrote it.
   v_draft := public.admin_save_ambassador_program_draft(v_editor, pg_temp.program(10000000));
   if jsonb_array_length(v_draft->'violations') <> 0 then
-    raise exception 'P212_BOUNDARY_REJECTED: %', v_draft->'violations';
+    raise exception 'P261_BOUNDARY_REJECTED: %', v_draft->'violations';
   end if;
   begin
     perform public.admin_approve_ambassador_program(v_editor, (v_draft->>'id')::uuid);
-    raise exception 'P212_SELF_APPROVAL_ALLOWED';
+    raise exception 'P261_SELF_APPROVAL_ALLOWED';
   exception when sqlstate 'P0001' then
     if sqlerrm <> 'AMBASSADOR_PROGRAM_SELF_APPROVAL' then raise; end if;
   end;
@@ -76,18 +76,18 @@ begin
   if (select count(*) from public.ambassador_program_versions where status = 'approved') <> 1
      or (select status from public.ambassador_program_versions where id = v_seed_id) <> 'retired'
      or (select status from public.ambassador_program_versions where id = (v_draft->>'id')::uuid) <> 'approved' then
-    raise exception 'P212_APPROVAL_STATE_WRONG';
+    raise exception 'P261_APPROVAL_STATE_WRONG';
   end if;
 
   begin
     update public.ambassador_program_versions set link_months = 24 where id = (v_draft->>'id')::uuid;
-    raise exception 'P212_APPROVED_EDITED';
+    raise exception 'P261_APPROVED_EDITED';
   exception when sqlstate 'P0001' then
     if sqlerrm <> 'AMBASSADOR_PROGRAM_IMMUTABLE' then raise; end if;
   end;
   begin
     update public.ambassador_milestones set reward_vnd = 99000000 where version_id = (v_draft->>'id')::uuid and rank = 2;
-    raise exception 'P212_APPROVED_MILESTONE_EDITED';
+    raise exception 'P261_APPROVED_MILESTONE_EDITED';
   exception when sqlstate 'P0001' then
     if sqlerrm <> 'AMBASSADOR_PROGRAM_NOT_DRAFT' then raise; end if;
   end;
@@ -102,7 +102,7 @@ begin
   v_program := jsonb_set(v_program, '{milestones,1,reward_vnd}', '15000');
   v_draft := public.admin_save_ambassador_program_draft('c2120000-0000-4000-8000-000000000001', v_program);
   if not (v_draft->'violations') ? 'NOT_INCREASING_RANK_2' then
-    raise exception 'P212_NON_INCREASING_ACCEPTED: %', v_draft->'violations';
+    raise exception 'P261_NON_INCREASING_ACCEPTED: %', v_draft->'violations';
   end if;
 end;
 $monotonic$;

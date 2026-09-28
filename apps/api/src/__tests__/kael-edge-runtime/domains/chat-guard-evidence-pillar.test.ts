@@ -5,7 +5,7 @@ import { pillarWhy, type PillarManifest } from '../../pillar-manifest'
 import { installEdgeRuntimeTestHooks, makeSequenceClient } from '../harness'
 
 export const PILLAR = {
-  id: 'P208-chat-guard-evidence-retained',
+  id: 'P257-chat-guard-evidence-retained',
   invariant:
     'when the job-chat contact guard redacts a message, the original text and the matched rules are written to chat_guard_redaction_evidence through the service client while the chat row keeps only the redacted placeholder; a clean message writes no evidence, and a failed evidence write never blocks the chat',
   authority: [

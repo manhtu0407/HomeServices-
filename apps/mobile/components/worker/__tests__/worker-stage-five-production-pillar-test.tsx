@@ -9,7 +9,7 @@ import type { Actions, WorkModel } from '../jobs/stage-five/travel-work/stage-fi
 export const PILLAR = {
   id: 'P165-worker-stage-five-production',
   invariant:
-    'Production Stage 5 renders the approved source surface without its top navigation row, pause control, progress card, support tile, or visible title, while every visible job, timing, evidence, and action state comes from the real worker workflow contract',
+    'Production Stage 5 renders the approved source surface without its top navigation row, pause control, progress card, support tile, or visible title, while every visible job, timing, evidence, and action state, including the step-aware primary action, comes from the real worker workflow contract',
   authority: [
     'governance/RULES.md (data honesty, language, and workflow integrity)',
     'governance/protocols/frontend-test.md G1-G6 (RN layout, state, accessibility, motion, and performance)',
@@ -19,7 +19,7 @@ export const PILLAR = {
   layer: 'ui-visual',
   siblings: ['P22-worker-jobs-workart-alpha', 'P23-worker-jobs-empty-copy', 'P08-worker-dock-motion'],
   mutation:
-    'replace the Stage 5 surface with a fixture-driven or non-native screen, drop the photo, note, scope, or completion action, or render the removed back, call, chat, pause, or support control, step badge, progress card, or title text again; the source, copy, and action assertions turn red',
+    'replace the Stage 5 surface with a fixture-driven or non-native screen, drop the photo, note, scope, or completion action, hardcode the primary label instead of the host workflow step, or render the removed back, call, chat, pause, or support control, step badge, progress card, or title text again; the source, copy, and action assertions turn red',
 } as const satisfies PillarManifest
 
 const model: WorkModel = {
@@ -38,7 +38,8 @@ const model: WorkModel = {
   phaseLabels: ['Đã tới', 'Kiểm tra', 'Đang làm', 'Hồ sơ', 'Hoàn tất'],
   note: null,
   evidenceCount: 1,
-  canPrepareCompletion: true,
+  primaryLabel: null,
+  primaryEnabled: true,
 }
 
 function makeActions(calls: string[]): Actions {
@@ -101,6 +102,43 @@ describe('Worker Production Stage 5', () => {
     expect(calls).toEqual(['photo', 'note', 'scope', 'complete'])
   })
 
+  it('labels and gates the primary action with the host workflow step', async () => {
+    const calls: string[] = []
+
+    withPillarContext(PILLAR, () => {
+      render(
+        <StageFiveWork
+          actions={makeActions(calls)}
+          model={{ ...model, jobStatus: 'arrived', primaryLabel: 'Bắt đầu kiểm tra', notice: 'Chưa thể hoàn tất check-in lúc này. Vui lòng thử lại.' }}
+          nowMs={Date.parse('2026-09-14T03:02:00.000Z')}
+          reduceMotion
+        />,
+      )
+
+      expect(screen.getByTestId('stage5-primary')).toHaveTextContent('Bắt đầu kiểm tra')
+      expect(screen.queryByText('Chuẩn bị hồ sơ hoàn tất')).toBeNull()
+      expect(screen.getByText('Chưa thể hoàn tất check-in lúc này. Vui lòng thử lại.')).toBeOnTheScreen()
+    }, 'the primary label and failure notice must come from the host workflow step, not fixed completion copy')
+
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('stage5-primary'))
+      await Promise.resolve()
+    })
+    expect(calls).toEqual(['complete'])
+
+    screen.rerender(
+      <StageFiveWork
+        actions={makeActions(calls)}
+        model={{ ...model, jobStatus: 'arrived', primaryLabel: 'Chờ khách cho thợ lên', primaryEnabled: false }}
+        nowMs={Date.parse('2026-09-14T03:02:00.000Z')}
+        reduceMotion
+      />,
+    )
+    withPillarContext(PILLAR, () => {
+      expect(screen.getByTestId('stage5-primary')).toBeDisabled()
+    }, 'a step the backend has not opened yet must stay disabled')
+  })
+
   it('stays honest when the backend has not released optional values yet', () => {
     withPillarContext(PILLAR, () => {
       render(
@@ -117,7 +155,7 @@ describe('Worker Production Stage 5', () => {
             startedLabel: null,
             startedAtMs: null,
             phase: null,
-            canPrepareCompletion: false,
+            primaryEnabled: false,
           }}
           nowMs={Date.parse('2026-09-14T03:02:00.000Z')}
           reduceMotion

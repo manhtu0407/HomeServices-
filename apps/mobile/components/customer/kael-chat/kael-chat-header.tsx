@@ -16,7 +16,6 @@ type AnimatedViewStyle = ComponentProps<typeof Animated.View>['style']
 
 export function CustomerKaelChatHeader({
   animatedModeMenuStyle,
-  canStartNewConversation,
   caseWorkLabel,
   language,
   mode,
@@ -33,7 +32,6 @@ export function CustomerKaelChatHeader({
   tokens,
 }: {
   animatedModeMenuStyle: AnimatedViewStyle
-  canStartNewConversation: boolean
   caseWorkLabel: string
   language: AppLanguage
   mode: CustomerKaelMode
@@ -100,15 +98,11 @@ export function CustomerKaelChatHeader({
           <KaelLiquidPressable
             accessibilityLabel={language === 'vi' ? 'Mở danh sách cuộc trò chuyện' : 'Open conversation list'}
             accessibilityRole="button"
-            accessibilityState={{ disabled: !canStartNewConversation, expanded: sessionMenuOpen }}
-            disabled={!canStartNewConversation}
+            accessibilityState={{ expanded: sessionMenuOpen }}
             onPress={onToggleSessionMenu}
             reduceMotion={reduceMotion}
             selected={sessionMenuOpen}
-            style={[
-              styles.chatHeaderNewConversation,
-              !canStartNewConversation ? styles.chatHeaderNewConversationDisabled : null,
-            ]}
+            style={styles.chatHeaderNewConversation}
             testID="customer-v21-kael-new-conversation"
           >
             <ChatNewConversationIcon color={tokens.text} />

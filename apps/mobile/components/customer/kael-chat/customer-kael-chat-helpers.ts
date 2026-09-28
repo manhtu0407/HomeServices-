@@ -98,6 +98,7 @@ export function localizeKaelRequestFailure(
       break
     case 'AI_DISABLED':
     case 'NO_PROVIDER_AVAILABLE':
+    case 'VISION_UNAVAILABLE':
     case 'MEDIA_VALIDATION_UNAVAILABLE':
       message = copy.unavailable
       break

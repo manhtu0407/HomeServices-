@@ -1,9 +1,10 @@
 import { readFileSync } from 'fs'
 import { resolve } from 'path'
 import { act, fireEvent, render, renderHook, screen, waitFor } from '@testing-library/react-native'
-import { StyleSheet, Text } from 'react-native'
+import { Platform, StyleSheet, Text } from 'react-native'
 import type { LocalDeal } from '@nestscout/shared'
 
+import { color } from '@/design/theme'
 import type { CustomerKaelConversationSession } from '@/lib/api-types/customer'
 import { clearPendingKaelChatMessage, stagePendingKaelChatMessage } from '@/lib/pending-kael-chat-message'
 import { setPendingKaelChatDraft } from '@/lib/pending-kael-chat-draft'
@@ -593,9 +594,7 @@ describe('active customer Kael chat surface wiring', () => {
         maxWidth: 240,
         textAlign: 'left',
       })
-      // The mascot line is pinned English regardless of app language; only its
-      // rotation slot depends on the pinned clock above.
-      expect(screen.getByTestId('customer-v21-kael-empty-hero-copy')).toHaveTextContent('Let Kael help...')
+      expect(screen.getByTestId('customer-v21-kael-empty-hero-copy')).toHaveTextContent('Để Kael hỗ trợ bạn...')
       expect(screen.getByTestId('customer-v21-kael-input')).toBeOnTheScreen()
       expect(StyleSheet.flatten(screen.getByTestId('customer-v21-kael-input').props.style)).toMatchObject({
         fontSize: 15,
@@ -603,7 +602,7 @@ describe('active customer Kael chat surface wiring', () => {
         letterSpacing: -0.23,
         lineHeight: 20,
         minHeight: 44,
-        paddingHorizontal: 10,
+        paddingHorizontal: 4,
         // (minHeight 44 - lineHeight 20) / 2 — levels the placeholder with the
         // media and send icons at the one-line resting height.
         paddingVertical: 12,
@@ -637,7 +636,7 @@ describe('active customer Kael chat surface wiring', () => {
   })
 
   it('grows the composer with the draft instead of scrolling long text sideways', async () => {
-    render(<CustomerKaelSurface />)
+    const view = render(<CustomerKaelSurface />)
     await waitForConversationCatalog('normal')
 
     const input = screen.getByTestId('customer-v21-kael-input')
@@ -720,6 +719,19 @@ describe('active customer Kael chat surface wiring', () => {
     expect(screen.getByTestId('customer-v21-kael-empty-hero-normal')).toBeOnTheScreen()
   })
 
+  it('keeps the session list reachable when creating a conversation is unavailable', () => {
+    mockCustomerId = ''
+    render(<CustomerKaelSurface />)
+
+    const sessionMenuTrigger = screen.getByTestId('customer-v21-kael-new-conversation')
+    expect(sessionMenuTrigger).not.toBeDisabled()
+
+    fireEvent.press(sessionMenuTrigger)
+
+    expect(screen.getByTestId('customer-v21-kael-session-menu')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-v21-kael-session-new')).toBeDisabled()
+  })
+
   it('restores a mode-scoped draft when returning from Work handling', async () => {
     render(<CustomerKaelSurface />)
     await waitForConversationCatalog('normal')
@@ -791,8 +803,35 @@ describe('active customer Kael chat surface wiring', () => {
       expect.any(String),
       expect.objectContaining({ message: 'Hey' }),
       expect.objectContaining({ onResponseDelta: expect.any(Function) }),
+      expect.any(AbortSignal),
     ))
     expect(screen.getByTestId('customer-v21-kael-input')).toHaveProp('value', '')
+  })
+
+  it('names the compatibility block instead of creating or streaming from a web client', async () => {
+    const originalPlatform = Platform.OS
+    Object.defineProperty(Platform, 'OS', { configurable: true, value: 'web' })
+    try {
+      render(<CustomerKaelSurface />)
+      await waitForConversationCatalog('normal')
+
+      fireEvent.changeText(screen.getByTestId('customer-v21-kael-input'), 'Máy lạnh chảy nước')
+      fireEvent.press(screen.getByTestId('customer-v21-kael-send'))
+
+      expect(await screen.findByText('Phiên bản NestScout hiện tại chưa tương thích với dịch vụ. Hãy cập nhật hoặc mở bản ứng dụng đã phát hành để tiếp tục.')).toBeOnTheScreen()
+      expect(screen.getByTestId('customer-v21-kael-input')).toHaveProp('value', 'Máy lạnh chảy nước')
+      expect(mockConversationCreate).not.toHaveBeenCalled()
+      expect(mockConversationSendTurn).not.toHaveBeenCalled()
+
+      fireEvent.press(screen.getByTestId('customer-v21-kael-new-conversation'))
+      fireEvent.press(screen.getByTestId('customer-v21-kael-session-new'))
+      await act(async () => {
+        await Promise.resolve()
+      })
+      expect(mockConversationCreate).not.toHaveBeenCalled()
+    } finally {
+      Object.defineProperty(Platform, 'OS', { configurable: true, value: originalPlatform })
+    }
   })
 
   it('turns a Home search handoff into a fresh normal session with the exact customer message', async () => {
@@ -811,6 +850,7 @@ describe('active customer Kael chat surface wiring', () => {
       'conversation-1',
       expect.objectContaining({ message }),
       expect.objectContaining({ onResponseDelta: expect.any(Function) }),
+      expect.any(AbortSignal),
     ))
     expect(await screen.findByText(message)).toBeOnTheScreen()
   })
@@ -986,6 +1026,7 @@ describe('active customer Kael chat surface wiring', () => {
       expect.any(String),
       expect.objectContaining({ message: 'Hey' }),
       expect.objectContaining({ onResponseDelta: expect.any(Function) }),
+      expect.any(AbortSignal),
     ))
     expect(mockConversationSendTurn).toHaveBeenCalledTimes(1)
     expect(screen.getByTestId('customer-v21-kael-input')).toHaveProp('value', '')
@@ -1084,6 +1125,43 @@ describe('active customer Kael chat surface wiring', () => {
     expect(result.current.activeSessionId).toBe('rapid-session')
   })
 
+  it('refuses pin, rename, and archive while a turn is in flight', async () => {
+    const { result } = renderHook(() => useCustomerKaelConversations('normal', 'vi'))
+    await waitForConversationCatalog('normal')
+    await act(async () => {
+      await result.current.startNewSession()
+    })
+    const sessionId = result.current.activeSessionId!
+    let resolveTurn!: (value: unknown) => void
+    mockConversationSendTurn.mockImplementationOnce(() => new Promise((resolve) => {
+      resolveTurn = resolve
+    }))
+    let turn!: Promise<unknown>
+    act(() => {
+      turn = result.current.sendConversationTurn('Máy lạnh chảy nước')
+    })
+    await waitFor(() => expect(mockConversationSendTurn).toHaveBeenCalledTimes(1))
+
+    let outcomes: boolean[] = []
+    await act(async () => {
+      outcomes = await Promise.all([
+        result.current.archiveSession(sessionId),
+        result.current.renameSession(sessionId, 'Đổi giữa chừng'),
+        result.current.setSessionPinned(sessionId, true),
+      ])
+    })
+    expect(outcomes).toEqual([false, false, false])
+    expect(mockConversationArchive).not.toHaveBeenCalled()
+    expect(mockConversationRename).not.toHaveBeenCalled()
+    expect(mockConversationPin).not.toHaveBeenCalled()
+    expect(result.current.activeSessionId).toBe(sessionId)
+
+    await act(async () => {
+      resolveTurn({ code: 'CLIENT_UPDATE_REQUIRED', error: 'x', status: 426, success: false })
+      await turn
+    })
+  })
+
   it('restores the active committed conversation on a cold catalog mount', async () => {
     const session = makeConversationSession('normal', 'restored-stream-session')
     const response = {
@@ -1167,6 +1245,7 @@ describe('active customer Kael chat surface wiring', () => {
       result.current.activeSessionId,
       expect.objectContaining({ message: 'Tôi muốn hỏi trước khi đặt dịch vụ' }),
       expect.objectContaining({ onResponseDelta: expect.any(Function) }),
+      undefined,
     )
     expect(result.current.turns.map((turn) => turn.text_content)).toEqual([
       'Tôi muốn hỏi trước khi đặt dịch vụ',
@@ -1453,7 +1532,7 @@ describe('active customer Kael chat surface wiring', () => {
     expect(result.current.activeSessionId).toBe('new-case-catalog')
   })
 
-  it('keeps a catalog-load error inside the menu when creating a new conversation fails', async () => {
+  it('surfaces the Production client-compatibility error when creating a new conversation fails', async () => {
     mockConversationList.mockResolvedValue({
       code: 'DB_ERROR',
       error: 'catalog unavailable',
@@ -1461,9 +1540,9 @@ describe('active customer Kael chat surface wiring', () => {
       success: false,
     })
     mockConversationCreate.mockResolvedValueOnce({
-      code: 'DB_ERROR',
-      error: 'create unavailable',
-      status: 500,
+      code: 'CLIENT_UPDATE_REQUIRED',
+      error: 'client compatibility rejected',
+      status: 426,
       success: false,
     })
     render(<CustomerKaelSurface />)
@@ -1475,7 +1554,9 @@ describe('active customer Kael chat surface wiring', () => {
     fireEvent.press(screen.getByTestId('customer-v21-kael-session-new'))
 
     await waitFor(() => expect(mockConversationCreate).toHaveBeenCalledWith(expect.objectContaining({ mode: 'normal' })))
-    await waitFor(() => expect(screen.getByText('Chưa thể tạo cuộc trò chuyện mới.')).toBeOnTheScreen())
+    await waitFor(() => expect(screen.getByText(
+      'Phiên bản NestScout hiện tại chưa tương thích với dịch vụ. Hãy cập nhật hoặc mở bản ứng dụng đã phát hành để tiếp tục.',
+    )).toBeOnTheScreen())
     expect(screen.queryByText('Chưa tải được các cuộc trò chuyện. Vui lòng thử lại.')).toBeNull()
   })
 
@@ -1483,6 +1564,15 @@ describe('active customer Kael chat surface wiring', () => {
     const view = render(<CustomerKaelSurface />)
 
     await waitForConversationCatalog('normal')
+
+    const cameraIcon = view.UNSAFE_getByProps({ testID: 'customer-v21-kael-media-camera-icon' })
+    const normalModeCameraStrokes = cameraIcon
+      .findAll((node) => typeof node.props.stroke === 'string')
+      .map((node) => node.props.stroke)
+    expect(screen.getByTestId('customer-v21-kael-media-picker')).toHaveProp('accessibilityState', { disabled: false })
+    expect(screen.getByTestId('customer-v21-kael-media-picker')).toHaveProp('accessibilityLabel', 'Thêm ảnh')
+    expect(cameraIcon.props).toMatchObject({ size: 27 })
+    expect(normalModeCameraStrokes).toContain(color.text.strong)
 
     fireEvent.press(screen.getByTestId('customer-v21-kael-mode-toggle'))
 
@@ -1501,9 +1591,25 @@ describe('active customer Kael chat surface wiring', () => {
     expect(screen.getByTestId('customer-v21-kael-active-mode')).toHaveTextContent(/^Work$/)
     expect(screen.getByTestId('customer-v21-kael-empty-hero-case')).toBeOnTheScreen()
     expect(screen.getByTestId('customer-v21-kael-media-picker')).toHaveProp('accessibilityState', { disabled: false })
+    const workModeCameraIcon = view.UNSAFE_getByProps({ testID: 'customer-v21-kael-media-camera-icon' })
+    expect(workModeCameraIcon.props).toMatchObject({ size: 27 })
+    const workModeCameraStrokes = workModeCameraIcon
+      .findAll((node) => typeof node.props.stroke === 'string')
+      .map((node) => node.props.stroke)
+    expect(workModeCameraStrokes).toContain(color.text.strong)
     expect(screen.getByTestId('customer-v21-kael-media-picker')).toHaveProp('hitSlop', 3)
-    expect(screen.getByTestId('customer-v21-kael-media-picker-surface')).toHaveStyle({ borderRadius: 14, height: 38, width: 38 })
-    expect(screen.getByTestId('customer-v21-kael-media-picker-layers')).toHaveStyle({ borderRadius: 14 })
+    expect(screen.getByTestId('customer-v21-kael-composer-frame')).toHaveStyle({ minHeight: 56, paddingHorizontal: 8, paddingVertical: 5 })
+    expect(screen.getByTestId('customer-v21-kael-media-picker')).toHaveStyle({ borderRadius: 22, height: 44, width: 44 })
+    expect(screen.getByTestId('customer-v21-kael-send')).toHaveStyle({ borderRadius: 22, height: 44, width: 44 })
+    fireEvent.changeText(screen.getByTestId('customer-v21-kael-input'), 'Mô tả nhu cầu cần gửi')
+    expect(screen.getByTestId('customer-v21-kael-send')).toHaveStyle({
+      backgroundColor: color.mint.white,
+      borderColor: color.surface.stroke,
+    })
+    const sendArrowStrokes = view.UNSAFE_getByProps({ testID: 'customer-v21-kael-send-arrow' })
+      .findAll((node) => typeof node.props.stroke === 'string')
+      .map((node) => node.props.stroke)
+    expect(sendArrowStrokes).toContain(color.text.strong)
     expect(screen.getByTestId('customer-v21-kael-media-camera-icon')).toBeOnTheScreen()
     expect(screen.getByTestId('customer-v21-kael-send-arrow')).toBeOnTheScreen()
     expect(screen.getByTestId('customer-v21-kael-input')).toHaveProp('placeholder', 'Mô tả nhu cầu cho Kael...')
@@ -1916,7 +2022,7 @@ describe('active customer Kael chat surface wiring', () => {
       status: 401,
       success: false,
     })
-    render(<CustomerKaelSurface />)
+    const view = render(<CustomerKaelSurface />)
 
     await waitFor(() => expect(screen.getByTestId('customer-v21-kael-empty-hero-normal')).toBeOnTheScreen())
     expect(mockConversationList).not.toHaveBeenCalled()
@@ -1927,6 +2033,140 @@ describe('active customer Kael chat surface wiring', () => {
     expect(mockConversationCreate).not.toHaveBeenCalled()
     expect(screen.queryByText('Chưa tải được các cuộc trò chuyện. Vui lòng thử lại.')).toBeNull()
     expect(screen.queryByText('Chưa thể tạo cuộc trò chuyện mới.')).toBeNull()
+
+    const input = screen.getByTestId('customer-v21-kael-input')
+    fireEvent.changeText(input, 'Kiểm tra Preview audit')
+    fireEvent.press(screen.getByTestId('customer-v21-kael-send'))
+
+    expect(await screen.findByText('Chế độ xem trước chỉ dùng để kiểm tra giao diện. Đăng nhập tài khoản khách hàng thật để gửi tin nhắn.')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-v21-kael-input')).toHaveProp('value', 'Kiểm tra Preview audit')
+    expect(mockConversationSendTurn).not.toHaveBeenCalled()
+
+    mockRouteParams = { mode: 'case', ns_audit_role: 'customer' }
+    view.rerender(<CustomerKaelSurface />)
+    await waitFor(() => expect(screen.getByTestId('customer-v21-screen-2.5-chat-case')).toBeOnTheScreen())
+    const workInput = screen.getByTestId('customer-v21-kael-input')
+    fireEvent.changeText(workInput, 'Kiểm tra Preview audit trong Xử lý công việc')
+    fireEvent.press(screen.getByTestId('customer-v21-kael-send'))
+
+    expect(await screen.findByText('Chế độ xem trước chỉ dùng để kiểm tra giao diện. Đăng nhập tài khoản khách hàng thật để gửi tin nhắn.')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-v21-kael-input')).toHaveProp('value', 'Kiểm tra Preview audit trong Xử lý công việc')
+    expect(mockKaelChatStreamSend).not.toHaveBeenCalled()
+    expect(mockJobChatSend).not.toHaveBeenCalled()
+  })
+
+  it('keeps Customer Preview session pin, rename, and archive local without calling the deployed API', async () => {
+    mockAuthSessionProvider = 'local-visual-audit'
+    mockCustomerId = 'local-visual-audit-customer'
+    mockRouteParams = { mode: 'normal', ns_audit_role: 'customer' }
+    mockConversationList.mockResolvedValue({
+      code: 'AUTH_MISSING',
+      error: 'Phiên đăng nhập hết hạn',
+      status: 401,
+      success: false,
+    })
+    mockConversationCreate.mockResolvedValue({
+      code: 'AUTH_MISSING',
+      error: 'Phiên đăng nhập hết hạn',
+      status: 401,
+      success: false,
+    })
+    mockConversationPin.mockResolvedValue({
+      code: 'AUTH_MISSING',
+      error: 'Phiên đăng nhập hết hạn',
+      status: 401,
+      success: false,
+    })
+    mockConversationRename.mockResolvedValue({
+      code: 'AUTH_MISSING',
+      error: 'Phiên đăng nhập hết hạn',
+      status: 401,
+      success: false,
+    })
+    mockConversationArchive.mockResolvedValue({
+      code: 'AUTH_MISSING',
+      error: 'Phiên đăng nhập hết hạn',
+      status: 401,
+      success: false,
+    })
+    const { result } = renderHook(() => useCustomerKaelConversations('normal', 'vi'))
+    let sessionId = ''
+
+    await act(async () => {
+      const created = await result.current.startNewSession()
+      expect(created).not.toBeNull()
+      sessionId = created!.session.id
+    })
+    await act(async () => {
+      expect(await result.current.setSessionPinned(sessionId, true)).toBe(true)
+    })
+    expect(result.current.sessions.find((item) => item.id === sessionId)?.pinned_at).not.toBeNull()
+
+    await act(async () => {
+      expect(await result.current.renameSession(sessionId, 'Kitchen follow-up')).toBe(true)
+    })
+    expect(result.current.sessions.find((item) => item.id === sessionId)?.title).toBe('Kitchen follow-up')
+
+    await act(async () => {
+      expect(await result.current.archiveSession(sessionId)).toBe(true)
+    })
+    expect(result.current.sessions.map((item) => item.id)).not.toContain(sessionId)
+    expect(mockConversationList).not.toHaveBeenCalled()
+    expect(mockConversationCreate).not.toHaveBeenCalled()
+    expect(mockConversationPin).not.toHaveBeenCalled()
+    expect(mockConversationRename).not.toHaveBeenCalled()
+    expect(mockConversationArchive).not.toHaveBeenCalled()
+  })
+
+  it('explains a Production release mismatch instead of reporting a disconnected chat', async () => {
+    mockConversationCreate.mockResolvedValue({
+      code: 'CLIENT_UPDATE_REQUIRED',
+      error: 'client compatibility rejected',
+      status: 426,
+      success: false,
+    })
+    const { result } = renderHook(() => useCustomerKaelConversations('normal', 'vi'))
+    await waitForConversationCatalog('normal')
+
+    await act(async () => {
+      expect(await result.current.startNewSession()).toBeNull()
+    })
+
+    expect(result.current.sessionsError).toContain('chưa tương thích với dịch vụ')
+  })
+
+  it('restores session state and names the Production compatibility block for pin, rename, and delete', async () => {
+    const session = makeConversationSession('normal', 'blocked-session')
+    const rejected = {
+      code: 'CLIENT_UPDATE_REQUIRED',
+      error: 'client compatibility rejected',
+      status: 426,
+      success: false as const,
+    }
+    mockSessionsByMode.normal = [session]
+    mockConversationPin.mockResolvedValue(rejected)
+    mockConversationRename.mockResolvedValue(rejected)
+    mockConversationArchive.mockResolvedValue(rejected)
+    const { result } = renderHook(() => useCustomerKaelConversations('normal', 'vi'))
+    await waitForConversationCatalog('normal')
+
+    await act(async () => {
+      expect(await result.current.setSessionPinned(session.id, true)).toBe(false)
+    })
+    expect(result.current.sessions.find((item) => item.id === session.id)?.pinned_at).toBeNull()
+    expect(result.current.sessionsError).toContain('chưa tương thích với dịch vụ')
+
+    await act(async () => {
+      expect(await result.current.renameSession(session.id, 'Nhà bếp')).toBe(false)
+    })
+    expect(result.current.sessions.find((item) => item.id === session.id)?.title).toBeNull()
+    expect(result.current.sessionsError).toContain('chưa tương thích với dịch vụ')
+
+    await act(async () => {
+      expect(await result.current.archiveSession(session.id)).toBe(false)
+    })
+    expect(result.current.sessions.map((item) => item.id)).toContain(session.id)
+    expect(result.current.sessionsError).toContain('chưa tương thích với dịch vụ')
   })
 
   it('keeps mode catalogs separate and runs pin, rename, and delete on Customer sessions', async () => {
@@ -1946,6 +2186,17 @@ describe('active customer Kael chat surface wiring', () => {
 
     expect(screen.getByTestId('customer-v21-kael-session-normal-session')).toBeOnTheScreen()
     expect(screen.queryByTestId('customer-v21-kael-session-case-session')).toBeNull()
+    expect(StyleSheet.flatten(screen.getByTestId('customer-v21-kael-session-normal-session').props.style)).toMatchObject({
+      minWidth: 0,
+      zIndex: 0,
+    })
+    expect(StyleSheet.flatten(screen.getByTestId('customer-v21-kael-session-actions-normal-session').props.style)).toMatchObject({
+      flexShrink: 0,
+      minHeight: 44,
+      minWidth: 44,
+      width: 44,
+      zIndex: 2,
+    })
 
     fireEvent.press(screen.getByTestId('customer-v21-kael-session-actions-normal-session'))
     fireEvent.press(screen.getByTestId('customer-v21-kael-session-pin-normal-session'))
@@ -1955,12 +2206,24 @@ describe('active customer Kael chat surface wiring', () => {
     fireEvent.press(screen.getByTestId('customer-v21-kael-session-actions-normal-session'))
     fireEvent.press(screen.getByTestId('customer-v21-kael-session-rename-normal-session'))
     await waitFor(() => expect(screen.getByTestId('customer-v21-kael-session-title-input')).toBeOnTheScreen())
+    const renameMenuStyle = StyleSheet.flatten(screen.getByTestId('customer-v21-kael-session-menu-shell').props.style)
+    const renameListStyle = StyleSheet.flatten(screen.getByTestId('customer-v21-kael-session-list').props.style)
+    const renameInput = screen.getByTestId('customer-v21-kael-session-title-input')
+    expect(renameMenuStyle.width).toBe('92%')
+    expect(renameMenuStyle.maxWidth).toBeLessThanOrEqual(440)
+    expect(renameListStyle.maxHeight).toBeGreaterThan(138)
+    expect(renameListStyle.maxHeight).toBeLessThanOrEqual(240)
+    expect(renameInput.props.selectTextOnFocus).toBeFalsy()
+    expect(StyleSheet.flatten(renameInput.props.style)).toMatchObject({ flex: 1, minWidth: 0, width: '100%' })
     fireEvent.changeText(screen.getByTestId('customer-v21-kael-session-title-input'), 'Nhà bếp')
     fireEvent.press(screen.getByTestId('customer-v21-kael-session-title-save'))
     await waitFor(() => expect(mockConversationRename).toHaveBeenCalledWith('normal-session', { title: 'Nhà bếp' }))
 
     fireEvent.press(screen.getByTestId('customer-v21-kael-session-actions-normal-session'))
     fireEvent.press(screen.getByTestId('customer-v21-kael-session-delete-normal-session'))
+    const deleteMenuStyle = StyleSheet.flatten(screen.getByTestId('customer-v21-kael-session-menu-shell').props.style)
+    expect(deleteMenuStyle.width).toBe('92%')
+    expect(deleteMenuStyle.maxWidth).toBeLessThanOrEqual(440)
     fireEvent.press(screen.getByTestId('customer-v21-kael-session-delete-confirm-action-normal-session'))
     await waitFor(() => expect(mockConversationArchive).toHaveBeenCalledWith('normal-session', false))
     expect(screen.queryByTestId('customer-v21-kael-session-normal-session')).toBeNull()

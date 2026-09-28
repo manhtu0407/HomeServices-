@@ -103,7 +103,7 @@ export async function getJob(
     }
   }
   const matchingState = ctx.role === "customer" || ctx.role === "admin"
-    ? await getMatchingState(client, jobId, asString(job.status))
+    ? await getMatchingState(client, jobId, asString(job.status), privilegedClient)
     : null;
   const evidenceReleased = ctx.role !== "worker" ||
     canReleaseJobEvidenceToWorker(job.status, job.matched_at);

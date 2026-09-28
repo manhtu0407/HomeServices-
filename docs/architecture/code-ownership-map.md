@@ -77,8 +77,8 @@ Customer UI must not fabricate workers, prices, ratings, queue counts, route/map
 | B6 scope change request | worker JobRoom | `WorkerJobsSurface` | `requestScopeChange` | `POST /jobs/:id/scope-change` | `validation.test.ts`, scope-change tests |
 | B7 completion evidence | worker JobRoom | `WorkerJobsSurface`, media upload UI | `workerUpdateStatus`, `uploadJobMediaDrafts` | `PATCH /jobs/:id/status`, `POST /jobs/:id/media` | media/static wiring tests |
 | B8 earnings | `apps/mobile/app/(worker)/earnings.tsx` | `WorkerEarningsSurface` | `workerRefresh`, worker earnings state | `GET /workers/me/earnings` | earnings API tests, mobile wiring tests |
-| B8 ambassador rewards (4.6) | `apps/mobile/app/(worker)/earnings.tsx` | `WorkerV5Ambassador` (`components/worker/earnings/ambassador-surfaces.tsx`) | `useWorkerAmbassador`, `lib/services/ambassador-service.ts` | `GET /workers/me/ambassador`, `POST /workers/me/ambassador/code`, `POST /workers/me/ambassador/redemptions` | P211-P217, P224 |
-| B8 rules and violations (4.7) | `apps/mobile/app/(worker)/earnings.tsx` | `WorkerV5Violations` (`components/worker/discipline/`) | `useWorkerViolations`, `lib/services/discipline-service.ts` | `GET /workers/me/violations`, `POST /workers/me/violations/:id/appeal-uploads`, `POST /workers/me/violations/:id/appeal` | P218-P221, P225 |
+| B8 ambassador rewards (4.6) | `apps/mobile/app/(worker)/earnings.tsx` | `WorkerV5Ambassador` (`components/worker/earnings/ambassador-surfaces.tsx`) | `useWorkerAmbassador`, `lib/services/ambassador-service.ts` | `GET /workers/me/ambassador`, `POST /workers/me/ambassador/code`, `POST /workers/me/ambassador/redemptions` | P260-P266, P273 |
+| B8 rules and violations (4.7) | `apps/mobile/app/(worker)/earnings.tsx` | `WorkerV5Violations` (`components/worker/discipline/`) | `useWorkerViolations`, `lib/services/discipline-service.ts` | `GET /workers/me/violations`, `POST /workers/me/violations/:id/appeal-uploads`, `POST /workers/me/violations/:id/appeal` | P267-P270, P274 |
 
 Worker UI must preserve address privacy before accept, avoid fake earnings, and show verification/approval blockers honestly.
 

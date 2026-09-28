@@ -1,10 +1,10 @@
--- @pillar id: P214-referral-claim-window-sql
+-- @pillar id: P263-referral-claim-window-sql
 -- @pillar invariant: A customer can claim a worker's invite code only while new — inside the claim window, before any paid order, with no open link — a repeat claim of the same code is a no-op, a second worker's code is refused, and every attempt, accepted or not, is recorded and rate-limited
 -- @pillar authority: governance/RULES.md #8 | Tu 2026-09-25: workers bring new customers into the app
 -- @pillar target: supabase/migrations/20260925111000_ambassador_referral_links.sql
 -- @pillar layer: sql
--- @pillar siblings: P211-ambassador-accrual-sql
--- @pillar mutation: Remove the ALREADY_TRANSACTED branch from claim_referral_code; an existing paying customer is claimed and P214 raises P214_EXISTING_CUSTOMER_CLAIMED
+-- @pillar siblings: P260-ambassador-accrual-sql
+-- @pillar mutation: Remove the ALREADY_TRANSACTED branch from claim_referral_code; an existing paying customer is claimed and P214 raises P263_EXISTING_CUSTOMER_CLAIMED
 
 begin;
 set local statement_timeout = '30s';
@@ -44,38 +44,38 @@ declare
 begin
   if v_code_a !~ '^[A-HJ-NP-Z2-9]{8}$' or v_code_a = v_code_b
      or public.ensure_worker_referral_code('c2140000-0000-4000-8000-000000000001') <> v_code_a then
-    raise exception 'P214_CODE_NOT_STABLE';
+    raise exception 'P263_CODE_NOT_STABLE';
   end if;
 
   select * into v_result from public.claim_referral_code(v_new, 'NOPE1234');
-  if v_result.outcome <> 'CODE_NOT_FOUND' then raise exception 'P214_UNKNOWN_CODE: %', v_result.outcome; end if;
+  if v_result.outcome <> 'CODE_NOT_FOUND' then raise exception 'P263_UNKNOWN_CODE: %', v_result.outcome; end if;
 
   select * into v_result from public.claim_referral_code(v_new, lower(v_code_a));
   if v_result.outcome <> 'LINKED' or v_result.worker_id <> 'c2140000-0000-4000-8000-000000000001' then
-    raise exception 'P214_VALID_CLAIM_REFUSED: %', v_result.outcome;
+    raise exception 'P263_VALID_CLAIM_REFUSED: %', v_result.outcome;
   end if;
   if (select expires_at from public.customer_worker_links where id = v_result.link_id)
      <> (select created_at from public.profiles where id = v_new) + interval '12 months' then
-    raise exception 'P214_LINK_NOT_TWELVE_MONTHS_FROM_SIGNUP';
+    raise exception 'P263_LINK_NOT_TWELVE_MONTHS_FROM_SIGNUP';
   end if;
 
   select * into v_result from public.claim_referral_code(v_new, v_code_a);
-  if v_result.outcome <> 'ALREADY_LINKED' then raise exception 'P214_REPEAT_NOT_IDEMPOTENT: %', v_result.outcome; end if;
+  if v_result.outcome <> 'ALREADY_LINKED' then raise exception 'P263_REPEAT_NOT_IDEMPOTENT: %', v_result.outcome; end if;
 
   select * into v_result from public.claim_referral_code(v_new, v_code_b);
-  if v_result.outcome <> 'LINKED_TO_OTHER_WORKER' then raise exception 'P214_SECOND_WORKER_ACCEPTED: %', v_result.outcome; end if;
+  if v_result.outcome <> 'LINKED_TO_OTHER_WORKER' then raise exception 'P263_SECOND_WORKER_ACCEPTED: %', v_result.outcome; end if;
 
   select * into v_result from public.claim_referral_code('c2140000-0000-4000-8000-000000000004', v_code_a);
-  if v_result.outcome <> 'CLAIM_WINDOW_CLOSED' then raise exception 'P214_OLD_CUSTOMER_CLAIMED: %', v_result.outcome; end if;
+  if v_result.outcome <> 'CLAIM_WINDOW_CLOSED' then raise exception 'P263_OLD_CUSTOMER_CLAIMED: %', v_result.outcome; end if;
 
   select * into v_result from public.claim_referral_code('c2140000-0000-4000-8000-000000000005', v_code_a);
-  if v_result.outcome <> 'ALREADY_TRANSACTED' then raise exception 'P214_EXISTING_CUSTOMER_CLAIMED: %', v_result.outcome; end if;
+  if v_result.outcome <> 'ALREADY_TRANSACTED' then raise exception 'P263_EXISTING_CUSTOMER_CLAIMED: %', v_result.outcome; end if;
 
   select * into v_result from public.claim_referral_code('c2140000-0000-4000-8000-000000000002', v_code_a);
-  if v_result.outcome <> 'NOT_CUSTOMER' then raise exception 'P214_WORKER_CLAIMED: %', v_result.outcome; end if;
+  if v_result.outcome <> 'NOT_CUSTOMER' then raise exception 'P263_WORKER_CLAIMED: %', v_result.outcome; end if;
 
   if (select count(*) from public.referral_claim_attempts where customer_id = v_new) <> 4 then
-    raise exception 'P214_ATTEMPTS_NOT_RECORDED';
+    raise exception 'P263_ATTEMPTS_NOT_RECORDED';
   end if;
 end;
 $claims$;
@@ -90,7 +90,7 @@ begin
   end loop;
   select * into v_result from public.claim_referral_code(v_customer,
     public.ensure_worker_referral_code('c2140000-0000-4000-8000-000000000001'));
-  if v_result.outcome <> 'RATE_LIMITED' then raise exception 'P214_NOT_RATE_LIMITED: %', v_result.outcome; end if;
+  if v_result.outcome <> 'RATE_LIMITED' then raise exception 'P263_NOT_RATE_LIMITED: %', v_result.outcome; end if;
 end;
 $rate_limit$;
 

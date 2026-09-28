@@ -12,7 +12,7 @@ import { AdminDisciplineWorkspace } from '../admin-discipline-workspace'
 import { AdminWorkerIdentityNumber } from '../admin-worker-identity-number'
 
 export const PILLAR = {
-  id: 'P228-admin-program-discipline',
+  id: 'P277-admin-program-discipline',
   invariant:
     'the admin program editor previews the same 60% cap the database enforces and will not offer approval while the server reports a violation; a discipline decision needs a written reason, only a customer report can be marked fabricated, a withdrawal hold is extended only with an authority reference, a compensation transfer is recorded only for an agreed amount and with a bank reference, and the CCCD field accepts exactly 12 digits before anything is sent',
   authority: [
@@ -21,7 +21,7 @@ export const PILLAR = {
   ],
   target: 'apps/mobile/components/admin/admin-discipline-workspace.tsx',
   layer: 'ui-visual',
-  siblings: ['P212-milestone-cap-sql', 'P221-discipline-edge-routes', 'P222-identity-hmac-no-plaintext'],
+  siblings: ['P261-milestone-cap-sql', 'P270-discipline-edge-routes', 'P271-identity-hmac-no-plaintext'],
   mutation:
     'change the preview divisor so 60.01% reads as allowed, drop the reason length check on the confirm button, or show the fabricated action for a detector case — the cap, reason or fabricated case turns red',
 } as const satisfies PillarManifest

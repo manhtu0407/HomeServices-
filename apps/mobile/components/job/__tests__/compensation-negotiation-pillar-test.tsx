@@ -7,7 +7,7 @@ import { WorkerCompensationSection } from '@/components/worker/discipline/compen
 import { compensationService, type CompensationNegotiation } from '@/lib/services/compensation-service'
 
 export const PILLAR = {
-  id: 'P233-compensation-negotiation-ui',
+  id: 'P282-compensation-negotiation-ui',
   invariant:
     'a customer without a confirmed damage case sees no compensation surface; a claim is sent only with an amount inside the policy range and a written description; each side sees answer controls only on its own turn; a worker is never offered an accept or a counter the balance cannot cover; and a closed negotiation points the customer to the authorities instead of NestScout deciding; claim photos (up to three) are shown to the worker, and a customer without a refund account is told where to add one',
   authority: [
@@ -16,7 +16,7 @@ export const PILLAR = {
   ],
   target: 'apps/mobile/components/job/compensation-negotiation.tsx',
   layer: 'ui-visual',
-  siblings: ['P231-compensation-edge-routes', 'P232-compensation-mediation-sql'],
+  siblings: ['P280-compensation-edge-routes', 'P281-compensation-mediation-sql'],
   mutation:
     'drop the maxOfferVnd bound from the counter check, or show the accept button while the balance is short — the worker balance case turns red',
 } as const satisfies PillarManifest

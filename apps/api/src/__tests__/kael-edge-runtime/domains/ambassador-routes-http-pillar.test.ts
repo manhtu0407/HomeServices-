@@ -8,7 +8,7 @@ import { pillarWhy, type PillarManifest } from '../../pillar-manifest'
 import { installEdgeRuntimeTestHooks, makeSequenceClient } from '../harness'
 
 export const PILLAR = {
-  id: 'P217-ambassador-edge-routes',
+  id: 'P266-ambassador-edge-routes',
   invariant:
     'the ambassador routes act only for their own actor role, call the program RPCs through the service client keyed to the authenticated user, refuse a malformed or over-specified body before any RPC, turn every RPC refusal into a named 4xx, and fail a malformed RPC number with a 500 instead of showing the worker a zero',
   authority: [
@@ -17,7 +17,7 @@ export const PILLAR = {
   ],
   target: 'supabase/functions/mobile-api/_shared/domains/program/worker-ambassador.ts',
   layer: 'integration',
-  siblings: ['P213-redemption-idempotent-balance-sql', 'P216-ambassador-contract-twins'],
+  siblings: ['P262-redemption-idempotent-balance-sql', 'P265-ambassador-contract-twins'],
   mutation:
     'replace workflowDb(ctx) with ctx.userSupabase in redeemAmbassadorMilestone, or map an unknown redeem error_code to a 200 — the service-client or named-refusal case turns red',
 } as const satisfies PillarManifest

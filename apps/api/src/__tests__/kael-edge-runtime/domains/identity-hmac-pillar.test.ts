@@ -9,7 +9,7 @@ import { pillarWhy, type PillarManifest } from '../../pillar-manifest'
 import { installEdgeRuntimeTestHooks, makeSequenceClient } from '../harness'
 
 export const PILLAR = {
-  id: 'P222-identity-hmac-no-plaintext',
+  id: 'P271-identity-hmac-no-plaintext',
   invariant:
     'a CCCD, phone number or sign-in email reaches the database only as a keyed SHA-256 digest (plus the CCCD last four); the plaintext never appears in any RPC argument, table write or log line, one subscriber written as +84 or 0 and one Gmail account spelled with dots, +tags or googlemail.com each yield one digest, a CCCD is not recorded without the worker contact digests, and a missing or short IDENTITY_HMAC_KEY fails closed with 503 before anything is written',
   authority: [
@@ -19,7 +19,7 @@ export const PILLAR = {
   ],
   target: 'supabase/functions/mobile-api/_shared/domains/program/identity-hmac.ts',
   layer: 'integration',
-  siblings: ['P221-discipline-edge-routes', 'P219-appeal-restores-exactly-sql'],
+  siblings: ['P270-discipline-edge-routes', 'P268-appeal-restores-exactly-sql'],
   mutation:
     'pass input.cccd_number as p_cccd_hmac, or drop the key-length check in identityKey — the plaintext or fail-closed case turns red',
 } as const satisfies PillarManifest

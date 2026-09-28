@@ -1,10 +1,10 @@
--- @pillar id: P211-ambassador-accrual-sql
+-- @pillar id: P260-ambassador-accrual-sql
 -- @pillar invariant: Ambassador points accrue only from orders paid in the app and only to the worker the customer is linked to — by invite code, or by a second paid in-app order with the same worker — even when another worker did the job; direct payments, unlinked orders and orders after a link expires earn nothing, a rerun of the sweep adds nothing, and a reversed payment takes back exactly what it earned
 -- @pillar authority: governance/RULES.md #7, #8 | Tu 2026-09-25: worker ambassador program, 1 point = 10,000 VND commission
 -- @pillar target: supabase/migrations/20260925114000_ambassador_accrual_sweep.sql
 -- @pillar layer: sql
--- @pillar siblings: P212-milestone-cap-sql, P213-redemption-idempotent-balance-sql, P214-referral-claim-window-sql
--- @pillar mutation: Drop both the ledger payment_provider and the payment-order payment_method conditions from the sweep; the direct-payment order accrues and P211 raises P211_WRONG_PROCESSED_COUNT
+-- @pillar siblings: P261-milestone-cap-sql, P262-redemption-idempotent-balance-sql, P263-referral-claim-window-sql
+-- @pillar mutation: Drop both the ledger payment_provider and the payment-order payment_method conditions from the sweep; the direct-payment order accrues and P211 raises P260_WRONG_PROCESSED_COUNT
 
 begin;
 set local statement_timeout = '60s';
@@ -82,7 +82,7 @@ begin
   v_code := public.ensure_worker_referral_code(v_worker_a);
   select * into v_claim from public.claim_referral_code(v_invited, v_code);
   if v_claim.outcome <> 'LINKED' then
-    raise exception 'P211_CLAIM_FAILED: %', v_claim.outcome;
+    raise exception 'P260_CLAIM_FAILED: %', v_claim.outcome;
   end if;
 
   -- Invited customer's order is done by worker B; the inviting worker A earns 60,000 / 10,000 = 6 points.
@@ -99,21 +99,21 @@ begin
 
   v_result := private.accrue_program_points(100);
   if (v_result->>'processed')::integer <> 3 then
-    raise exception 'P211_WRONG_PROCESSED_COUNT: %', v_result;
+    raise exception 'P260_WRONG_PROCESSED_COUNT: %', v_result;
   end if;
 
   if pg_temp.points(v_worker_a) <> 6000 then
-    raise exception 'P211_INVITER_NOT_CREDITED: %', pg_temp.points(v_worker_a);
+    raise exception 'P260_INVITER_NOT_CREDITED: %', pg_temp.points(v_worker_a);
   end if;
   if pg_temp.points(v_worker_b) <> 0 then
-    raise exception 'P211_UNLINKED_ORDER_EARNED: %', pg_temp.points(v_worker_b);
+    raise exception 'P260_UNLINKED_ORDER_EARNED: %', pg_temp.points(v_worker_b);
   end if;
   if exists (select 1 from public.worker_ambassador_point_entries where job_id = 'c2110000-0000-4000-8000-000000000103') then
-    raise exception 'P211_DIRECT_PAYMENT_EARNED';
+    raise exception 'P260_DIRECT_PAYMENT_EARNED';
   end if;
   if not exists (select 1 from public.customer_worker_links
                  where customer_id = v_expired and end_reason = 'expired') then
-    raise exception 'P211_EXPIRED_LINK_NOT_CLOSED';
+    raise exception 'P260_EXPIRED_LINK_NOT_CLOSED';
   end if;
 
   perform pg_temp.paid_job('c2110000-0000-4000-8000-000000000105', v_self, v_worker_b, 200000, 30000, 'platform_bank_manual');
@@ -123,28 +123,28 @@ begin
     where customer_id = v_self and worker_id = v_worker_b and source = 'rebook' and ended_at is null
       and formed_by_job_id = 'c2110000-0000-4000-8000-000000000105'
   ) then
-    raise exception 'P211_REBOOK_LINK_NOT_FORMED: %', v_result;
+    raise exception 'P260_REBOOK_LINK_NOT_FORMED: %', v_result;
   end if;
   if pg_temp.points(v_worker_b) <> 3000 then
-    raise exception 'P211_REBOOK_ORDER_NOT_CREDITED: %', pg_temp.points(v_worker_b);
+    raise exception 'P260_REBOOK_ORDER_NOT_CREDITED: %', pg_temp.points(v_worker_b);
   end if;
 
   v_before := (select count(*) from public.worker_ambassador_point_entries);
   v_result := private.accrue_program_points(100);
   if (select count(*) from public.worker_ambassador_point_entries) <> v_before
      or (v_result->>'processed')::integer <> 0 then
-    raise exception 'P211_RERUN_NOT_IDEMPOTENT: %', v_result;
+    raise exception 'P260_RERUN_NOT_IDEMPOTENT: %', v_result;
   end if;
 
   update public.worker_payment_ledger set payment_state = 'reversed'
   where job_id = 'c2110000-0000-4000-8000-000000000101';
   v_result := private.accrue_program_points(100);
   if pg_temp.points(v_worker_a) <> 0 or (v_result->>'reversed')::integer <> 1 then
-    raise exception 'P211_REVERSAL_WRONG: % %', pg_temp.points(v_worker_a), v_result;
+    raise exception 'P260_REVERSAL_WRONG: % %', pg_temp.points(v_worker_a), v_result;
   end if;
   v_result := private.accrue_program_points(100);
   if pg_temp.points(v_worker_a) <> 0 then
-    raise exception 'P211_REVERSAL_REPEATED';
+    raise exception 'P260_REVERSAL_REPEATED';
   end if;
 end;
 $scenario$;
@@ -153,7 +153,7 @@ do $append_only$
 begin
   begin
     delete from public.worker_ambassador_point_entries;
-    raise exception 'P211_ENTRIES_DELETED';
+    raise exception 'P260_ENTRIES_DELETED';
   exception when sqlstate 'P0001' then
     if sqlerrm <> 'APPEND_ONLY_TABLE' then raise; end if;
   end;

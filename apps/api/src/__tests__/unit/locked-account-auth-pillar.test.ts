@@ -9,7 +9,7 @@ import {
 import { pillarWhy, type PillarManifest } from '../pillar-manifest'
 
 export const PILLAR = {
-  id: 'P223-locked-account-deletion-only',
+  id: 'P272-locked-account-deletion-only',
   invariant:
     'an account locked for a verified fabricated report is refused on every Edge route with an honest message, except POST /me/account-deletion; it reaches the actor context as locked rather than being normalised to active, so the capability policy refuses it a second time on anything but deletion',
   authority: [
@@ -19,7 +19,7 @@ export const PILLAR = {
   ],
   target: 'supabase/functions/mobile-api/_shared/platform/auth.ts',
   layer: 'unit',
-  siblings: ['P219-appeal-restores-exactly-sql', 'P221-discipline-edge-routes'],
+  siblings: ['P268-appeal-restores-exactly-sql', 'P270-discipline-edge-routes'],
   mutation:
     'map "locked" back to "active" in normalizeAccountState, or drop the locked clause from the auth gate — the context-state or refusal case turns red',
 } as const satisfies PillarManifest

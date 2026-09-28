@@ -148,11 +148,11 @@ Compensation by agreement (Tu, 2026-09-28)
 |- a worker can neither offer nor accept more than the withdrawable balance covers, so NestScout never advances money
 |- both sides accepting the same amount is the worker's written consent: the amount is reserved from the balance at once, then an admin transfers it to the customer's Profile refund account (customer_payment_methods; the full number is revealed only for a reserved payout and every reveal is logged as compensation_payee_viewed) and records the bank reference
 |- no agreement or a missed deadline ends the negotiation; the customer is pointed to the authorities
-|- code: 20260925126000_compensation_mediation.sql, domains/program/compensation.ts; tests P231-P233
+|- code: 20260925126000_compensation_mediation.sql, domains/program/compensation.ts; tests P280-P282
 
 Reply reminders, not penalties (Tu, 2026-09-28)
 -
 |- a customer message unanswered for reply_nudge_minutes (15) while the worker is waiting to depart or closing the job reminds the worker (inbox + push) and tells the customer Kael has done so
 |- skipped while driving (worker_on_way) or on site (arrived, inspecting, repairing, scope change)
-|- worker_reply_nudges rows are the measurement a future slow-response rule must be calibrated on after real transactions; no reminder opens a case (P229, P230)
+|- worker_reply_nudges rows are the measurement a future slow-response rule must be calibrated on after real transactions; no reminder opens a case (P278, P279)
 ```

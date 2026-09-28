@@ -122,8 +122,15 @@ export function dockerContractProblems(files) {
     files,
     'docker/scripts/ensure-version.ps1',
     [
+      /UpdateDiagnosticLimit\s*=\s*2048/i,
+      /function\s+Bound-Diagnostic/i,
+      /\$normalized\.Length\s+-le\s+\$Limit/i,
+      /Substring\(\$normalized\.Length\s+-\s+\$tailLength\)/i,
       /UpdateTimeoutSeconds\s*=\s*300/i,
       /desktop[^\n]*update[^\n]*--quiet/i,
+      /Bound-Diagnostic\s+-Text\s+\$update\.Stdout/i,
+      /Bound-Diagnostic\s+-Text\s+\$update\.Stderr/i,
+      /update failed \(exit \$\(\$update\.ExitCode\); stdout=/i,
       /WaitForExit\([^\n]*TimeoutSeconds/i,
       /taskkill|Stop-Process/i,
       /compose[^\n]*pull[^\n]*--help/i,
@@ -136,8 +143,15 @@ export function dockerContractProblems(files) {
     files,
     'docker/scripts/ensure-version.sh',
     [
+      /diagnostic_limit=2048/i,
+      /limit_diagnostic\(\)/i,
+      /\$\{#value\}.*-gt\s+"\$limit"/i,
+      /value="\[truncated\] \$\{value: -\$tail_limit\}"/i,
       /update_timeout_seconds=300/i,
       /desktop update --quiet/i,
+      /limit_diagnostic\s+"\$command_stdout"\s+"\$diagnostic_limit"/i,
+      /limit_diagnostic\s+"\$command_stderr"\s+"\$diagnostic_limit"/i,
+      /update failed \(exit \$command_code; stdout=/i,
       /kill_command_tree/i,
       /compose pull --help/i,
       /compose run --help/i,
@@ -147,6 +161,7 @@ export function dockerContractProblems(files) {
   for (const path of ['docker/scripts/ensure-version.ps1', 'docker/scripts/ensure-version.sh']) {
     rejectText(problems, files, path, /beta|test channel|preview channel/i, 'prerelease Docker channels are forbidden')
     rejectText(problems, files, path, /for\s+attempt|while\s+true|retrying|updateAttempts\s*=\s*[2-9]/i, 'Docker version updates must not retry')
+    requireText(problems, files, path, [/update failed[^\n]*exit/i, /stdout=/i, /stderr=/i], 'updater failures must report the exit code and bounded stdout/stderr diagnostics')
   }
 
   requireText(problems, files, 'docker/scripts/up.ps1', [/doctor\.ps1/i, /run-supabase\.ps1/i], 'up must run doctor before one Supabase start')
@@ -218,17 +233,28 @@ export function dockerContractProblems(files) {
       /Codex Desktop[\s\S]{0,120}AppContainer[\s\S]{0,120}CodexSandboxUsers/i,
       /WSL\/DrvFS[\s\S]{0,180}must not launch Docker Desktop/i,
       /Windows Start menu or an unsandboxed Windows shell/i,
-      /runtime evidence is mandatory before[^\n]*DONE/i,
-      /Lane A or B executes/i,
-      /Lane D supplies the exact commit SHA, workflow URL, job URL/i,
-      /uncommitted changes[\s\S]{0,120}cannot prove/i,
-      /Runtime evidence:/i,
+      /Lane C can close an exact `structure` question as `PASS` and `Task status: DONE`/i,
+      /Lane C cannot prove behavior or types/i,
+      /When the local-runtime gate is closed, continue independent source\/static work/i,
+      /If requested acceptance still needs unavailable Lane A\/B evidence[\s\S]{0,100}no exact Lane D evidence exists/i,
+      /Lane A\/B must execute/i,
+      /Lane D must prove the[\s\S]{0,60}exact commit SHA/i,
+      /An older CI run never proves uncommitted changes/i,
+      /Local-runtime state: READY \| BLOCKED \| NOT REQUIRED/i,
+      /Runtime evidence: <lane-specific proof, or NOT REQUIRED>/i,
       /Task status:\s*DONE \| BLOCKED/i,
       /Attempt count:/i,
       /Stop reason:/i,
       /PASS \| PARTIAL \| UNVERIFIED/i,
     ],
-    'the skill must carry bounded version, safe RAM recovery, exact runtime completion, and closeout contracts',
+    'the skill must carry bounded version, safe RAM recovery, lane-aware completion, and closeout contracts',
+  )
+  rejectText(
+    problems,
+    files,
+    '.claude/skills/kael-docker/SKILL.md',
+    /For every task routed through this skill, runtime evidence is mandatory before/i,
+    'the skill must use lane-aware completion and must not require runtime evidence for every task regardless of its question',
   )
   requireText(
     problems,
@@ -239,6 +265,8 @@ export function dockerContractProblems(files) {
       /WSL\/DrvFS[\s\S]{0,220}do not launch Docker Desktop/i,
       /Windows Start menu or an unsandboxed Windows shell/i,
       /single final doctor probe/i,
+      /Lane C may close an exact structure question/i,
+      /When local runtime is closed, source\/static work can continue independently/i,
     ],
     'the Docker map must document the sandboxed Windows launch boundary',
   )
@@ -246,8 +274,8 @@ export function dockerContractProblems(files) {
     problems,
     files,
     '.claude/skills/kael-docker/agents/openai.yaml',
-    [/Route/i, /database/i, /Edge/i, /version/i, /runtime/i],
-    'the descriptor must advertise question-first routing, version selection, and runtime completion',
+    [/Route/i, /database/i, /Edge/i, /version/i, /lane-specific evidence/i],
+    'the descriptor must advertise question-first routing, version selection, and lane-specific evidence',
   )
 
   const pkg = parseJson(problems, files, 'package.json')
@@ -284,8 +312,11 @@ export function dockerContractProblems(files) {
       for (const environment of ['local', 'preview', 'staging', 'production']) {
         if (!environments.has(environment)) problems.push(`config/harness/manifest.json: kael-docker is missing ${environment} from allowedEnvironments`)
       }
-      if (!/(route|evidence)/i.test(entry.purpose ?? '') || !/version/i.test(entry.purpose ?? '') || !/runtime/i.test(entry.purpose ?? '')) {
-        problems.push('config/harness/manifest.json: kael-docker purpose must describe evidence routing, version selection, and runtime completion')
+      if (!/(route|evidence)/i.test(entry.purpose ?? '') || !/version/i.test(entry.purpose ?? '') || !/Docker Desktop stable/i.test(entry.purpose ?? '') || !/lane-specific evidence/i.test(entry.purpose ?? '')) {
+        problems.push('config/harness/manifest.json: kael-docker purpose must describe Docker Desktop stable version selection and lane-specific evidence')
+      }
+      if (!/lane-specific evidence/i.test(entry.trigger ?? '') || !/Lane C/i.test(entry.trigger ?? '')) {
+        problems.push('config/harness/manifest.json: kael-docker trigger must route to lane-specific evidence, including Lane C')
       }
     }
   }

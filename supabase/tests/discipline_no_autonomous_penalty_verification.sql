@@ -1,10 +1,10 @@
--- @pillar id: P218-no-penalty-without-admin-sql
+-- @pillar id: P267-no-penalty-without-admin-sql
 -- @pillar invariant: The violation detectors only file proposals — once each, however often they run — and never debit or forfeit points, freeze, strike, ban or suspend a worker; the only automatic effect is the level-1 matching down-rank, which disappears when an admin dismisses the case
 -- @pillar authority: governance/structures/do-not-build-now.md section 21 (no autonomous worker punishment) | Tu 2026-09-25: system proposes, admin confirms with one tap
 -- @pillar target: supabase/migrations/20260925123000_violation_detectors.sql
 -- @pillar layer: sql
--- @pillar siblings: P219-appeal-restores-exactly-sql, P207-suspension-blocks-matching-sql
--- @pillar mutation: Make private.propose_violation_case insert a penalty_debit point entry for level 2 and above; the detector run debits points and P218 raises P218_DETECTOR_PUNISHED (observed)
+-- @pillar siblings: P268-appeal-restores-exactly-sql, P256-suspension-blocks-matching-sql
+-- @pillar mutation: Make private.propose_violation_case insert a penalty_debit point entry for level 2 and above; the detector run debits points and P218 raises P267_DETECTOR_PUNISHED (observed)
 
 begin;
 set local statement_timeout = '60s';
@@ -74,39 +74,39 @@ begin
      or not exists (select 1 from public.worker_violation_cases where violation_code = 'cancel_after_accept_no_reason')
      or not exists (select 1 from public.worker_violation_cases where violation_code = 'off_app_dealing')
      or not exists (select 1 from public.worker_violation_cases where violation_code = 'self_booking') then
-    raise exception 'P218_DETECTORS_INCOMPLETE: %', v_result;
+    raise exception 'P267_DETECTORS_INCOMPLETE: %', v_result;
   end if;
 
   if private.worker_ambassador_points_balance(v_worker) <> 30000
      or exists (select 1 from public.worker_ambassador_point_entries where worker_id = v_worker and case_id is not null)
      or exists (select 1 from public.worker_discipline_entries where worker_id = v_worker and entry_kind <> 'matching_deprioritize')
      or (select is_suspended from public.worker_profiles where id = v_worker) then
-    raise exception 'P218_DETECTOR_PUNISHED';
+    raise exception 'P267_DETECTOR_PUNISHED';
   end if;
 
   select * into v_state from private.worker_discipline_state(v_worker);
   if v_state.banned or v_state.network_frozen_until is not null or v_state.strikes_12m <> 0 or v_state.withdrawal_hold then
-    raise exception 'P218_DETECTOR_PUNISHED';
+    raise exception 'P267_DETECTOR_PUNISHED';
   end if;
   -- An open serious case pauses redemption until its decision deadline; it is not a penalty.
   if v_state.redemption_frozen_until is null
      or v_state.redemption_frozen_until > now() + interval '73 hours' then
-    raise exception 'P218_PENDING_FREEZE_WRONG: %', v_state.redemption_frozen_until;
+    raise exception 'P267_PENDING_FREEZE_WRONG: %', v_state.redemption_frozen_until;
   end if;
   if not exists (select 1 from public.list_matching_deprioritized_workers(array[v_worker])) then
-    raise exception 'P218_L1_SIGNAL_MISSING';
+    raise exception 'P267_L1_SIGNAL_MISSING';
   end if;
 
   v_result := private.detect_worker_violations();
   if (v_result->>'proposed')::integer <> 0 then
-    raise exception 'P218_DUPLICATE_PROPOSALS: %', v_result;
+    raise exception 'P267_DUPLICATE_PROPOSALS: %', v_result;
   end if;
 
   perform public.admin_decide_violation_case('c2180000-0000-4000-8000-000000000003',
     (select id from public.worker_violation_cases where violation_code = 'late_arrival'),
     'dismiss', 'Kẹt xe có xác nhận từ khách hàng.');
   if exists (select 1 from public.list_matching_deprioritized_workers(array[v_worker])) then
-    raise exception 'P218_DISMISSED_SIGNAL_REMAINS';
+    raise exception 'P267_DISMISSED_SIGNAL_REMAINS';
   end if;
 end;
 $detectors$;

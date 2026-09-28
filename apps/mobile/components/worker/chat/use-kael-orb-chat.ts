@@ -4,6 +4,7 @@ import type { AppLanguage } from '@/lib/app-language'
 import type { WorkerKaelChatResponse, WorkerKaelChatSession } from '@/lib/api-types'
 import { useAuth } from '@/lib/auth-provider'
 import { generateClientRequestId } from '@/lib/client-request-id'
+import { localizeKaelConversationFailure, unreleasedClientKaelCopy } from '@/lib/kael-conversation-failure'
 import { initialKaelReasoningReceiptState } from '@/lib/kael-reasoning-receipt'
 import { workerKaelChatService } from '@/lib/services'
 import { textByLanguage } from '../ui/format'
@@ -49,6 +50,7 @@ export function useWorkerV5KaelOrbChat(
   const sessionRef = useRef<WorkerV5KaelOrbSession | null>(null)
   const sessionCacheRef = useRef(new Map<string, WorkerKaelChatResponse>())
   const sessionLoadPromiseRef = useRef(new Map<string, Promise<WorkerKaelChatResponse | null>>())
+  const sessionLoadFailureRef = useRef(new Map<string, { code: string; status: number; meta?: { supportCode?: string | null } }>())
   const removedSessionIdsRef = useRef(new Set<string>())
   const locallyCreatedSessionIdsRef = useRef(new Set<string>())
   const locallyUpdatedSessionIdsRef = useRef(new Set<string>())
@@ -171,13 +173,17 @@ export function useWorkerV5KaelOrbChat(
     const inFlight = sessionLoadPromiseRef.current.get(sessionId)
     if (inFlight) return inFlight
 
+    sessionLoadFailureRef.current.delete(sessionId)
     const requestEntry: { promise: Promise<WorkerKaelChatResponse | null> } = {
       promise: Promise.resolve(null),
     }
     requestEntry.promise = workerKaelChatService.get(sessionId).then((loaded) => {
+      if (!loaded.success) {
+        sessionLoadFailureRef.current.set(sessionId, loaded)
+        return null
+      }
       if (
-        !loaded.success
-        || loaded.data.session.job_id !== requestedJobId
+        loaded.data.session.job_id !== requestedJobId
         || loaded.data.session.mode !== requestedMode
         || activeOwnerRef.current !== requestedOwner
         || activeJobIdRef.current !== requestedJobId
@@ -185,8 +191,12 @@ export function useWorkerV5KaelOrbChat(
         || removedSessionIdsRef.current.has(sessionId)
       ) return null
       sessionCacheRef.current.set(sessionId, loaded.data)
+      sessionLoadFailureRef.current.delete(sessionId)
       return loaded.data
-    }).catch(() => null).finally(() => {
+    }).catch(() => {
+      sessionLoadFailureRef.current.set(sessionId, { code: 'NETWORK_ERROR', status: 0 })
+      return null
+    }).finally(() => {
       if (sessionLoadPromiseRef.current.get(sessionId) === requestEntry.promise) {
         sessionLoadPromiseRef.current.delete(sessionId)
       }
@@ -245,6 +255,7 @@ export function useWorkerV5KaelOrbChat(
     sendRequestRef.current += 1
     sessionCacheRef.current.clear()
     sessionLoadPromiseRef.current.clear()
+    sessionLoadFailureRef.current.clear()
     pendingSessionIdsRef.current = []
     sessionRef.current = null
 
@@ -298,7 +309,11 @@ export function useWorkerV5KaelOrbChat(
             && activeModeRef.current === requestedMode
             && !sessionCatalogReadyRef.current
           ) {
-            setActiveField('sessionsError', textByLanguage(language, 'Chưa tải được các cuộc trò chuyện Kael. Vui lòng thử lại.', 'Kael conversations could not be loaded. Please try again.'))
+            setActiveField('sessionsError', localizeKaelConversationFailure(
+              listed,
+              language,
+              textByLanguage(language, 'Chưa tải được các cuộc trò chuyện Kael. Vui lòng thử lại.', 'Kael conversations could not be loaded. Please try again.'),
+            ))
           }
           return
         }
@@ -362,6 +377,11 @@ export function useWorkerV5KaelOrbChat(
       setSessionsError(textByLanguage(language, 'Chưa thể tạo cuộc trò chuyện này.', 'This conversation cannot be created right now.'))
       return false
     }
+    const unreleasedClientCopy = localVisualAuditSession ? null : unreleasedClientKaelCopy(language)
+    if (unreleasedClientCopy) {
+      setSessionsError(unreleasedClientCopy)
+      return false
+    }
     reasoningActions.reset()
     const requestId = openRequestRef.current + 1
     openRequestRef.current = requestId
@@ -392,7 +412,11 @@ export function useWorkerV5KaelOrbChat(
         || activeModeRef.current !== requestedMode
       ) return false
       if (!created.success) {
-        setSessionsError(textByLanguage(language, 'Chưa thể tạo cuộc trò chuyện Kael mới. Vui lòng thử lại.', 'A new Kael conversation could not be created. Please try again.'))
+        setSessionsError(localizeKaelConversationFailure(
+          created,
+          language,
+          textByLanguage(language, 'Chưa thể tạo cuộc trò chuyện Kael mới. Vui lòng thử lại.', 'A new Kael conversation could not be created. Please try again.'),
+        ))
         return false
       }
       if (
@@ -440,7 +464,14 @@ export function useWorkerV5KaelOrbChat(
         || activeModeRef.current !== requestedMode
       ) return false
       if (!loaded) {
-        setSessionsError(textByLanguage(language, 'Chưa thể mở cuộc trò chuyện này. Vui lòng thử lại.', 'This Kael conversation could not be opened. Please try again.'))
+        const failure = sessionLoadFailureRef.current.get(sessionId)
+        setSessionsError(failure
+          ? localizeKaelConversationFailure(
+              failure,
+              language,
+              textByLanguage(language, 'Chưa thể mở cuộc trò chuyện này. Vui lòng thử lại.', 'This Kael conversation could not be opened. Please try again.'),
+            )
+          : textByLanguage(language, 'Chưa thể mở cuộc trò chuyện này. Vui lòng thử lại.', 'This Kael conversation could not be opened. Please try again.'))
         return false
       }
       if (
@@ -507,9 +538,19 @@ export function useWorkerV5KaelOrbChat(
     setSessionsError(null)
     removeSessionSummary(sessionId)
     if (wasActive) resetToNewSession()
+    let failureMessage = textByLanguage(language, 'Chưa thể xóa cuộc trò chuyện khỏi danh sách. Vui lòng thử lại.', 'This conversation could not be removed from your list. Please try again.')
     try {
+      if (localVisualAuditSessionRef.current) {
+        if (activeOwnerRef.current !== requestedOwner) return true
+        locallyCreatedSessionIdsRef.current.delete(sessionId)
+        locallyUpdatedSessionIdsRef.current.delete(sessionId)
+        return true
+      }
       const archived = await workerKaelChatService.archive(sessionId)
-      if (!archived.success) throw new Error('archive_failed')
+      if (!archived.success) {
+        failureMessage = localizeKaelConversationFailure(archived, language, failureMessage)
+        throw new Error('archive_failed')
+      }
       if (activeOwnerRef.current !== requestedOwner) return true
       locallyCreatedSessionIdsRef.current.delete(sessionId)
       locallyUpdatedSessionIdsRef.current.delete(sessionId)
@@ -524,7 +565,7 @@ export function useWorkerV5KaelOrbChat(
         commitSessionSummary(targetSession)
         if (cached) cacheSessionResponse(cached)
         if (wasActive && cached) activateWorkerV5KaelOrbSession(cached)
-        setSessionsError(textByLanguage(language, 'Chưa thể xóa cuộc trò chuyện khỏi danh sách. Vui lòng thử lại.', 'This conversation could not be removed from your list. Please try again.'))
+        setSessionsError(failureMessage)
       }
       return false
     } finally {
@@ -549,16 +590,21 @@ export function useWorkerV5KaelOrbChat(
       || !trimmedTitle
     ) return false
     const optimisticSession = { ...targetSession, title: trimmedTitle }
-    locallyUpdatedSessionIdsRef.current.add(sessionId)
+    if (!localVisualAuditSessionRef.current) locallyUpdatedSessionIdsRef.current.add(sessionId)
     setSessionPending(sessionId, true)
     setSessionsError(null)
     applySessionUpdate(optimisticSession)
+    let failureMessage = textByLanguage(language, 'Chưa thể đổi tên cuộc trò chuyện. Tên cũ đã được khôi phục.', 'This conversation could not be renamed. Its previous name was restored.')
     try {
+      if (localVisualAuditSessionRef.current) return true
       const renamed = await workerKaelChatService.rename(sessionId, { title: trimmedTitle })
       if (
         !renamed.success
         || !workerKaelSessionMatchesScope(renamed.data.session, requestedJobId, requestedMode)
-      ) throw new Error('rename_failed')
+      ) {
+        if (!renamed.success) failureMessage = localizeKaelConversationFailure(renamed, language, failureMessage)
+        throw new Error('rename_failed')
+      }
       if (
         activeOwnerRef.current !== requestedOwner || activeJobIdRef.current !== requestedJobId
         || activeModeRef.current !== requestedMode
@@ -574,7 +620,7 @@ export function useWorkerV5KaelOrbChat(
       ) {
         locallyUpdatedSessionIdsRef.current.delete(sessionId)
         applySessionUpdate(targetSession)
-        setSessionsError(textByLanguage(language, 'Chưa thể đổi tên cuộc trò chuyện. Tên cũ đã được khôi phục.', 'This conversation could not be renamed. Its previous name was restored.'))
+        setSessionsError(failureMessage)
       }
       return false
     } finally {
@@ -595,17 +641,22 @@ export function useWorkerV5KaelOrbChat(
       ...targetSession,
       pinned_at: pinned ? new Date().toISOString() : null,
     }
-    locallyUpdatedSessionIdsRef.current.add(sessionId)
+    if (!localVisualAuditSessionRef.current) locallyUpdatedSessionIdsRef.current.add(sessionId)
     setSessionPending(sessionId, true)
     setSessionsError(null)
     applySessionUpdate(optimisticSession)
+    let failureMessage = textByLanguage(language, 'Chưa thể đổi trạng thái ghim. Trạng thái cũ đã được khôi phục.', 'The pin state could not be changed. Its previous state was restored.')
     try {
+      if (localVisualAuditSessionRef.current) return true
       const updated = await workerKaelChatService.setPinned(sessionId, { pinned })
       if (
         !updated.success
         || updated.data.session.job_id !== requestedJobId
         || updated.data.session.mode !== requestedMode
-      ) throw new Error('pin_failed')
+      ) {
+        if (!updated.success) failureMessage = localizeKaelConversationFailure(updated, language, failureMessage)
+        throw new Error('pin_failed')
+      }
       if (
         activeOwnerRef.current !== requestedOwner || activeJobIdRef.current !== requestedJobId
         || activeModeRef.current !== requestedMode
@@ -621,7 +672,7 @@ export function useWorkerV5KaelOrbChat(
       ) {
         locallyUpdatedSessionIdsRef.current.delete(sessionId)
         applySessionUpdate(targetSession)
-        setSessionsError(textByLanguage(language, 'Chưa thể đổi trạng thái ghim. Trạng thái cũ đã được khôi phục.', 'The pin state could not be changed. Its previous state was restored.'))
+        setSessionsError(failureMessage)
       }
       return false
     } finally {
@@ -652,6 +703,8 @@ export function useWorkerV5KaelOrbChat(
     cacheSessionResponse,
     canUseKaelSession,
     commitSessionSummary,
+    getCachedSessionResponse: (sessionId) => sessionCacheRef.current.get(sessionId),
+    isLocalVisualAuditSession: localVisualAuditSession,
     language,
     locallyCreatedSessionIdsRef,
     mediaItems,

@@ -1,6 +1,17 @@
 import { typography } from '@/design/theme'
 import { Image } from 'expo-image'
-import { Pressable, StyleSheet, Text, View } from 'react-native'
+import { useMemo } from 'react'
+import {
+  FlatList,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+  type ListRenderItemInfo,
+  type StyleProp,
+  type TextStyle,
+  type ViewStyle,
+} from 'react-native'
 
 import type { AppLanguage } from '@/lib/app-language'
 import type { LocalMediaUploadDraft } from '@/lib/media-upload'
@@ -12,15 +23,51 @@ export function MediaDraftPreviewTray({
   drafts,
   language,
   onRemove,
+  variant = 'case',
   tokens,
 }: {
   busy: boolean
   drafts: LocalMediaUploadDraft[]
   language: AppLanguage
   onRemove: (index: number) => void
+  variant?: 'case' | 'composer-images'
   tokens: CustomerThemeTokens
 }) {
+  const imageDrafts = useMemo(() => drafts.flatMap((draft, index) => {
+    if (draft.type !== 'image') return []
+    return [{
+      accessibilityLabel: language === 'vi' ? 'Ảnh đã chọn' : 'Selected photo',
+      accessibilityState: { disabled: busy },
+      frameStyle: [styles.composerImageFrame, { borderColor: tokens.border }],
+      imageSource: { uri: draft.uri },
+      index,
+      key: `${draft.uri}:${index}`,
+      onRemove: () => onRemove(index),
+      removeAccessibilityLabel: language === 'vi' ? 'Xóa ảnh đã chọn' : 'Remove selected photo',
+      removeButtonStyle: [styles.composerRemoveButton, { backgroundColor: tokens.raised, borderColor: tokens.border }],
+      removeTextStyle: [styles.composerRemoveText, { color: tokens.text }],
+    }]
+  }), [busy, drafts, language, onRemove, tokens.border, tokens.raised, tokens.text])
+
   if (drafts.length === 0) return null
+
+  if (variant === 'composer-images') {
+    if (imageDrafts.length === 0) return null
+
+    return (
+      <FlatList
+        contentContainerStyle={styles.composerImageRailContent}
+        data={imageDrafts}
+        horizontal
+        keyExtractor={keyComposerImageDraft}
+        showsHorizontalScrollIndicator={false}
+        renderItem={renderComposerImageDraft}
+        style={styles.composerImageRail}
+        testID="customer-kael-composer-image-rail"
+      />
+    )
+  }
+
   const includesVideo = drafts.some((draft) => draft.type === 'video')
 
   return (
@@ -67,7 +114,90 @@ export function MediaDraftPreviewTray({
   )
 }
 
+type ComposerImageDraftRow = {
+  accessibilityLabel: string
+  accessibilityState: { disabled: boolean }
+  frameStyle: StyleProp<ViewStyle>
+  imageSource: { uri: string }
+  index: number
+  key: string
+  onRemove: () => void
+  removeAccessibilityLabel: string
+  removeButtonStyle: StyleProp<ViewStyle>
+  removeTextStyle: StyleProp<TextStyle>
+}
+
+function keyComposerImageDraft(item: ComposerImageDraftRow) {
+  return item.key
+}
+
+function renderComposerImageDraft({ item }: ListRenderItemInfo<ComposerImageDraftRow>) {
+  const { key, ...props } = item
+  return <ComposerImageDraftRowView key={key} {...props} />
+}
+
+function ComposerImageDraftRowView({
+  accessibilityLabel,
+  accessibilityState,
+  frameStyle,
+  imageSource,
+  index,
+  onRemove,
+  removeAccessibilityLabel,
+  removeButtonStyle,
+  removeTextStyle,
+}: ComposerImageDraftRow) {
+  return (
+    <View style={frameStyle}>
+      <Image
+        accessibilityIgnoresInvertColors
+        accessibilityLabel={accessibilityLabel}
+        accessible
+        contentFit="cover"
+        source={imageSource}
+        style={styles.composerImage}
+        testID={`customer-kael-composer-image-${index}`}
+      />
+      <Pressable
+        accessibilityLabel={removeAccessibilityLabel}
+        accessibilityRole="button"
+        accessibilityState={accessibilityState}
+        disabled={accessibilityState.disabled}
+        hitSlop={7}
+        onPress={onRemove}
+        style={removeButtonStyle}
+        testID={`customer-kael-media-draft-remove-${index}`}
+      >
+        <Text style={removeTextStyle}>×</Text>
+      </Pressable>
+    </View>
+  )
+}
+
 const styles = StyleSheet.create({
+  composerImage: { borderRadius: 15, height: 112, width: 112 },
+  composerImageFrame: {
+    borderRadius: 16,
+    borderWidth: 1,
+    height: 114,
+    marginRight: 10,
+    position: 'relative',
+    width: 114,
+  },
+  composerImageRail: { flexGrow: 0, maxHeight: 126, width: '100%' },
+  composerImageRailContent: { alignItems: 'center', paddingHorizontal: 5, paddingVertical: 7 },
+  composerRemoveButton: {
+    alignItems: 'center',
+    borderRadius: 15,
+    borderWidth: 1,
+    height: 30,
+    justifyContent: 'center',
+    position: 'absolute',
+    right: -6,
+    top: -6,
+    width: 30,
+  },
+  composerRemoveText: { fontSize: 22, fontWeight: '500', lineHeight: 24, marginTop: -2 },
   disclosure: { ...typography.caption2 },
   previewImage: { borderRadius: 8, height: 40, width: 40 },
   previewItem: { alignItems: 'center', borderRadius: 12, borderWidth: 1, flexDirection: 'row', gap: 9, padding: 7 },

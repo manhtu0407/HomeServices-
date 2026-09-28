@@ -1,10 +1,10 @@
--- @pillar id: P215-customer-membership-ledger-sql
+-- @pillar id: P264-customer-membership-ledger-sql
 -- @pillar invariant: Customer membership points come only from orders paid in the app — one entry per order at the configured VND per point, nothing for unpaid or directly paid jobs or for Kael chats — and a reversed payment takes the same points back
 -- @pillar authority: governance/RULES.md #8 | Tu 2026-09-25: rebuild customer membership points on a ledger
 -- @pillar target: supabase/migrations/20260925113000_customer_membership_ledger.sql
 -- @pillar layer: sql
--- @pillar siblings: P211-ambassador-accrual-sql
--- @pillar mutation: Accrue membership points before the paid-in-app filters in private.accrue_program_points; the unpaid job earns and P215 raises P215_POINTS_WRONG
+-- @pillar siblings: P260-ambassador-accrual-sql
+-- @pillar mutation: Accrue membership points before the paid-in-app filters in private.accrue_program_points; the unpaid job earns and P215 raises P264_POINTS_WRONG
 
 begin;
 set local statement_timeout = '30s';
@@ -60,17 +60,17 @@ begin
   perform private.accrue_program_points(100);
   v_summary := public.get_customer_membership_summary(v_customer);
   if (v_summary->>'points')::integer <> 40 then
-    raise exception 'P215_POINTS_WRONG: %', v_summary->>'points';
+    raise exception 'P264_POINTS_WRONG: %', v_summary->>'points';
   end if;
   if (select count(*) from public.customer_membership_point_entries where customer_id = v_customer) <> 1 then
-    raise exception 'P215_EXTRA_ENTRIES';
+    raise exception 'P264_EXTRA_ENTRIES';
   end if;
 
   update public.worker_payment_ledger set payment_state = 'reversed'
   where job_id = 'c2150000-0000-4000-8000-000000000101';
   perform private.accrue_program_points(100);
   if (public.get_customer_membership_summary(v_customer)->>'points')::integer <> 0 then
-    raise exception 'P215_REVERSAL_MISSING';
+    raise exception 'P264_REVERSAL_MISSING';
   end if;
 end;
 $membership$;

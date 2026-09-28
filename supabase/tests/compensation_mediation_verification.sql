@@ -1,10 +1,10 @@
--- @pillar id: P232-compensation-mediation-sql
+-- @pillar id: P281-compensation-mediation-sql
 -- @pillar invariant: Only the customer of a confirmed damage case can open a compensation claim; the two sides answer in turn within the deadline and a bounded number of offers; a worker can neither offer nor accept more than their balance covers, so NestScout never advances money; claim photos must sit under the customer's own case prefix; agreement reserves exactly the agreed amount from the worker's withdrawable balance once, retries are replays, and the reservation can only move to paid with a transfer reference and is never deleted; the admin reads the customer's Profile refund account only for a reserved payout, and each read is logged
 -- @pillar authority: governance/RULES.md #7 | Tu 2026-09-28: compensation by agreement both sides accept; held money leaves only with the worker's consent or an authority decision
 -- @pillar target: supabase/migrations/20260925126000_compensation_mediation.sql
 -- @pillar layer: sql
--- @pillar siblings: P231-compensation-edge-routes, P206-withdrawable-balance-single-owner-sql, P219-appeal-restores-exactly-sql
--- @pillar mutation: Drop the balance check on accept in respond_compensation; accepting 2,000,000 against an 850,000 balance succeeds and P232 raises P232_OVER_BALANCE_AGREED
+-- @pillar siblings: P280-compensation-edge-routes, P255-withdrawable-balance-single-owner-sql, P268-appeal-restores-exactly-sql
+-- @pillar mutation: Drop the balance check on accept in respond_compensation; accepting 2,000,000 against an 850,000 balance succeeds and P232 raises P281_OVER_BALANCE_AGREED
 
 begin;
 set local statement_timeout = '60s';
@@ -63,56 +63,56 @@ declare
   v_negotiation uuid;
   v_before bigint := (select withdrawable_vnd from private.worker_withdrawable_balance('c2320000-0000-4000-8000-000000000001'));
 begin
-  if v_before <> 850000 then raise exception 'P232_FIXTURE_BALANCE got %', v_before; end if;
+  if v_before <> 850000 then raise exception 'P281_FIXTURE_BALANCE got %', v_before; end if;
 
   begin
     perform public.open_compensation_claim(v_customer, 'c2320000-0000-4000-8000-000000000202', 500000, 'Đòi bồi thường tinh thần.', '{}');
-    raise exception 'P232_HARASSMENT_PRICED';
+    raise exception 'P281_HARASSMENT_PRICED';
   exception when others then if sqlerrm <> 'COMPENSATION_NOT_ALLOWED' then raise; end if;
   end;
   begin
     perform public.open_compensation_claim('c2320000-0000-4000-8000-000000000004', v_case, 500000, 'Không phải khách của vụ này.', '{}');
-    raise exception 'P232_STRANGER_CLAIMED';
+    raise exception 'P281_STRANGER_CLAIMED';
   exception when others then if sqlerrm <> 'CASE_NOT_FOUND' then raise; end if;
   end;
   begin
     perform public.open_compensation_claim(v_customer, v_case, 5, 'Số tiền quá nhỏ để hợp lệ.', '{}');
-    raise exception 'P232_TINY_AMOUNT_ACCEPTED';
+    raise exception 'P281_TINY_AMOUNT_ACCEPTED';
   exception when others then if sqlerrm <> 'INVALID_COMPENSATION_INPUT' then raise; end if;
   end;
 
   begin
     perform public.open_compensation_claim(v_customer, v_case, 2000000, 'Bồn rửa vỡ, hóa đơn thay mới 2 triệu.',
       array['compensation/c2320000-0000-4000-8000-000000000004/c2320000-0000-4000-8000-000000000201/c2320000-0000-4000-8000-000000000301.jpg']);
-    raise exception 'P232_FOREIGN_PHOTO_ACCEPTED';
+    raise exception 'P281_FOREIGN_PHOTO_ACCEPTED';
   exception when others then if sqlerrm <> 'INVALID_COMPENSATION_INPUT' then raise; end if;
   end;
   v_result := public.open_compensation_claim(v_customer, v_case, 2000000, 'Bồn rửa vỡ, hóa đơn thay mới 2 triệu.', array['compensation/c2320000-0000-4000-8000-000000000002/c2320000-0000-4000-8000-000000000201/c2320000-0000-4000-8000-000000000301.jpg']);
   v_negotiation := (v_result->>'id')::uuid;
   if v_result->>'status' <> 'awaiting_worker' or pg_catalog.jsonb_array_length(v_result->'evidence_paths') <> 1
      or (public.open_compensation_claim(v_customer, v_case, 2000000, 'Bồn rửa vỡ, hóa đơn thay mới 2 triệu.', array['compensation/c2320000-0000-4000-8000-000000000002/c2320000-0000-4000-8000-000000000201/c2320000-0000-4000-8000-000000000301.jpg'])->>'id')::uuid <> v_negotiation then
-    raise exception 'P232_CLAIM_NOT_OPENED_ONCE';
+    raise exception 'P281_CLAIM_NOT_OPENED_ONCE';
   end if;
 
   begin
     perform public.respond_compensation(v_customer, 'customer', v_negotiation, 'accept', null, null);
-    raise exception 'P232_ANSWERED_OUT_OF_TURN';
+    raise exception 'P281_ANSWERED_OUT_OF_TURN';
   exception when others then if sqlerrm <> 'COMPENSATION_NOT_YOUR_TURN' then raise; end if;
   end;
   begin
     perform public.respond_compensation(v_worker, 'worker', v_negotiation, 'accept', null, null);
-    raise exception 'P232_OVER_BALANCE_AGREED';
+    raise exception 'P281_OVER_BALANCE_AGREED';
   exception when others then if sqlerrm <> 'INSUFFICIENT_WORKER_BALANCE' then raise; end if;
   end;
   begin
     perform public.respond_compensation(v_worker, 'worker', v_negotiation, 'counter', 900000, 'Tôi trả tối đa được như vầy.');
-    raise exception 'P232_OVER_BALANCE_OFFERED';
+    raise exception 'P281_OVER_BALANCE_OFFERED';
   exception when others then if sqlerrm <> 'INSUFFICIENT_WORKER_BALANCE' then raise; end if;
   end;
 
   v_result := public.respond_compensation(v_worker, 'worker', v_negotiation, 'counter', 600000, 'Tôi chịu phần bồn rửa.');
   if v_result->>'status' <> 'awaiting_customer' or (v_result->>'current_amount_vnd')::integer <> 600000 then
-    raise exception 'P232_COUNTER_NOT_RECORDED';
+    raise exception 'P281_COUNTER_NOT_RECORDED';
   end if;
   v_result := public.respond_compensation(v_customer, 'customer', v_negotiation, 'accept', null, null);
   perform public.respond_compensation(v_customer, 'customer', v_negotiation, 'accept', null, null);
@@ -120,12 +120,12 @@ begin
      or (select count(*) from public.worker_compensation_payouts where negotiation_id = v_negotiation) <> 1
      or (select withdrawable_vnd from private.worker_withdrawable_balance(v_worker)) <> v_before - 600000
      or (select compensation_vnd from private.worker_withdrawable_balance(v_worker)) <> 600000 then
-    raise exception 'P232_AGREEMENT_NOT_RESERVED_ONCE';
+    raise exception 'P281_AGREEMENT_NOT_RESERVED_ONCE';
   end if;
 
   if (public.admin_get_compensation_payee(v_admin, v_negotiation)->'account') <> 'null'::jsonb
      or (public.get_customer_compensation(v_customer)->>'refund_account_ready')::boolean then
-    raise exception 'P232_PAYEE_INVENTED';
+    raise exception 'P281_PAYEE_INVENTED';
   end if;
   insert into public.customer_payment_methods (customer_id, bank_key, bank_name, account_holder_name, bank_account, bank_account_masked)
   values (v_customer, 'vietcombank', 'Vietcombank', 'NGUYEN VAN KHACH', '0123456789', '**** 6789');
@@ -134,12 +134,12 @@ begin
   if v_result->'account'->>'bank_account' <> '0123456789'
      or not (public.get_customer_compensation(v_customer)->>'refund_account_ready')::boolean
      or not exists (select 1 from public.worker_violation_case_events where case_id = v_case and event_kind = 'compensation_payee_viewed') then
-    raise exception 'P232_PAYEE_NOT_READ';
+    raise exception 'P281_PAYEE_NOT_READ';
   end if;
 
   begin
     perform public.admin_record_compensation_paid(v_admin, v_negotiation, ' ');
-    raise exception 'P232_PAID_WITHOUT_REFERENCE';
+    raise exception 'P281_PAID_WITHOUT_REFERENCE';
   exception when others then if sqlerrm <> 'INVALID_COMPENSATION_INPUT' then raise; end if;
   end;
   v_result := public.admin_record_compensation_paid(v_admin, v_negotiation, 'VCB-778899');
@@ -147,16 +147,16 @@ begin
   if v_result->'payout'->>'status' <> 'paid'
      or not exists (select 1 from public.worker_violation_case_events where case_id = v_case and event_kind = 'compensation_released')
      or (select withdrawable_vnd from private.worker_withdrawable_balance(v_worker)) <> v_before - 600000 then
-    raise exception 'P232_PAYOUT_NOT_RECORDED';
+    raise exception 'P281_PAYOUT_NOT_RECORDED';
   end if;
   begin
     perform public.admin_record_compensation_paid(v_admin, v_negotiation, 'VCB-000000');
-    raise exception 'P232_PAID_TWICE';
+    raise exception 'P281_PAID_TWICE';
   exception when others then if sqlerrm <> 'COMPENSATION_ALREADY_PAID' then raise; end if;
   end;
   begin
     delete from public.worker_compensation_payouts where negotiation_id = v_negotiation;
-    raise exception 'P232_PAYOUT_DELETED';
+    raise exception 'P281_PAYOUT_DELETED';
   exception when others then if sqlerrm <> 'COMPENSATION_PAYOUT_IMMUTABLE' then raise; end if;
   end;
 end;
@@ -172,11 +172,11 @@ begin
     'c2320000-0000-4000-8000-000000000202', 200000, 'Thợ thu thêm tiền mặt ngoài app.', '{}')->>'id')::uuid;
   update public.compensation_negotiations set respond_by = now() - interval '1 minute' where id = v_negotiation;
   if private.compensation_json(v_negotiation)->>'status' <> 'expired' then
-    raise exception 'P232_DEADLINE_NOT_SHOWN';
+    raise exception 'P281_DEADLINE_NOT_SHOWN';
   end if;
   begin
     perform public.respond_compensation('c2320000-0000-4000-8000-000000000001', 'worker', v_negotiation, 'accept', null, null);
-    raise exception 'P232_ANSWERED_AFTER_DEADLINE';
+    raise exception 'P281_ANSWERED_AFTER_DEADLINE';
   exception when others then if sqlerrm <> 'COMPENSATION_EXPIRED' then raise; end if;
   end;
 end;

@@ -1,5 +1,5 @@
 import { useCallback, useRef, useState } from 'react'
-import { FlatList, Pressable, Text, View } from 'react-native'
+import { FlatList, Pressable, Text, useWindowDimensions, View } from 'react-native'
 import type { WorkerKaelChatMode } from '@nestscout/shared'
 
 import { LiquidSurfaceOverlay } from '@/components/ui/liquid-back-button'
@@ -29,6 +29,10 @@ export type WorkerV5KaelSessionMenuProps = {
   sessions: WorkerKaelChatSession[]
 }
 
+type WorkerV5KaelSessionListProps = WorkerV5KaelSessionMenuProps & {
+  onRenameEditorOpenChange: (open: boolean) => void
+}
+
 export function WorkerV5KaelSessionList({
   activeSessionId,
   canCreate,
@@ -36,6 +40,7 @@ export function WorkerV5KaelSessionList({
   language,
   loading,
   mode,
+  onRenameEditorOpenChange,
   onArchive,
   onCreate,
   onPin,
@@ -45,12 +50,13 @@ export function WorkerV5KaelSessionList({
   reduceMotion,
   reduceTransparency,
   sessions,
-}: WorkerV5KaelSessionMenuProps) {
+}: WorkerV5KaelSessionListProps) {
   const [actionSessionId, setActionSessionId] = useState<string | null>(null)
   const [deletingSessionId, setDeletingSessionId] = useState<string | null>(null)
   const [renamingSessionId, setRenamingSessionId] = useState<string | null>(null)
   const [draftTitle, setDraftTitle] = useState('')
   const sessionListRef = useRef<FlatList<WorkerKaelChatSession>>(null)
+  const { height: windowHeight } = useWindowDimensions()
   const copy = sessionMenuCopy(language, mode)
 
   const scrollToSession = useCallback((sessionId: string) => {
@@ -62,24 +68,28 @@ export function WorkerV5KaelSessionList({
     setActionSessionId(null)
     setDeletingSessionId(null)
     setRenamingSessionId(session.id)
+    onRenameEditorOpenChange(true)
     setDraftTitle(sessionTitle(session, language))
     scrollToSession(session.id)
-  }, [language, scrollToSession])
+  }, [language, onRenameEditorOpenChange, scrollToSession])
   const openActions = useCallback((sessionId: string, open: boolean) => {
     setRenamingSessionId(null)
     setDeletingSessionId(null)
+    onRenameEditorOpenChange(false)
     setActionSessionId(open ? null : sessionId)
     if (!open) scrollToSession(sessionId)
-  }, [scrollToSession])
+  }, [onRenameEditorOpenChange, scrollToSession])
   const beginDelete = useCallback((sessionId: string) => {
     setActionSessionId(null)
     setDeletingSessionId(sessionId)
+    onRenameEditorOpenChange(false)
     scrollToSession(sessionId)
-  }, [scrollToSession])
+  }, [onRenameEditorOpenChange, scrollToSession])
   const cancelRename = useCallback(() => {
     setRenamingSessionId(null)
     setDraftTitle('')
-  }, [])
+    onRenameEditorOpenChange(false)
+  }, [onRenameEditorOpenChange])
   const cancelDelete = useCallback(() => setDeletingSessionId(null), [])
   const saveRename = useCallback(() => {
     const sessionId = renamingSessionId
@@ -87,8 +97,9 @@ export function WorkerV5KaelSessionList({
     if (!sessionId || title.length === 0 || title.length > 64 || pendingSessionIds.includes(sessionId)) return
     setRenamingSessionId(null)
     setDraftTitle('')
+    onRenameEditorOpenChange(false)
     void onRename(sessionId, title)
-  }, [draftTitle, onRename, pendingSessionIds, renamingSessionId])
+  }, [draftTitle, onRename, onRenameEditorOpenChange, pendingSessionIds, renamingSessionId])
   const renderSession = useCallback(({ item: session }: { item: WorkerKaelChatSession }) => (
     <WorkerV5KaelSessionRow
       actionOpen={actionSessionId === session.id}
@@ -182,7 +193,13 @@ export function WorkerV5KaelSessionList({
           ref={sessionListRef}
           renderItem={renderSession}
           showsVerticalScrollIndicator={false}
-          style={styles.sessionListViewport}
+          style={[
+            styles.sessionListViewport,
+            renamingSessionId ? styles.sessionListViewportExpanded : null,
+            renamingSessionId
+              ? { maxHeight: Math.min(240, Math.max(120, windowHeight - 220)) }
+              : null,
+          ]}
           testID="worker-v5-kael-session-list"
         />
       ) : null}

@@ -5,7 +5,7 @@
     "immutableThroughVersion": "20260904113000",
     "sha256": "12da2bac288e0e718e61a27653e8cba9ffdb13b8e9900979407d41e1217b2077"
   },
-  "migrationCount": 405,
+  "migrationCount": 406,
   "migrationEquivalences": {
     "version": "1.0.0",
     "groups": [
@@ -74,10 +74,10 @@
       }
     ]
   },
-  "migrationsSha256": "7a2c47ee257735c6d97040ea6fe8f6f8ddc285823aedead1e4951a484e0c2e46",
+  "migrationsSha256": "3dcb4f2535c2dc7dd8c3d2931c4343d7d819356870aa89c9420ad94dc80a00bc",
   "databaseTypes": {
     "file": "packages/shared/src/types/database",
-    "sha256": "7d9679494986efbf7dcf5781da3c0ee9ea8d7061353691827d01c3d5bb961dd0"
+    "sha256": "e5837680e05ca64a7cb5fb0a0e635e7fa7681da2adf92ef8c2410bf39ec69e96"
   },
   "entries": [
     {
@@ -2914,6 +2914,13 @@
       "file": "supabase/migrations/20260924231604_rls_initplan_policy_consolidation.sql",
       "sha256": "4eb05ee01ac333c185b074756d6775cef0a1782bc2ad37d51a4e3df937c38c0d",
       "bytes": 3150
+    },
+    {
+      "version": "20260927182024",
+      "name": "customer_kael_conversation_image_refs",
+      "file": "supabase/migrations/20260927182024_customer_kael_conversation_image_refs.sql",
+      "sha256": "664e4d1cb52e4451b3ea63291c469ca280a6ccbdf75a1836ca5ecfc924fbf377",
+      "bytes": 3699
     }
   ]
 }

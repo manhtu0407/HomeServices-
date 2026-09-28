@@ -13,7 +13,7 @@ import { ActiveWorkCard, ActiveWorkEntry, isWorkerAtWorkStatus } from '../report
 import { WorkerReportSheet } from '../report/worker-report-sheet'
 
 export const PILLAR = {
-  id: 'P226-customer-invite-rank-report',
+  id: 'P275-customer-invite-rank-report',
   invariant:
     'a customer invite code survives signup and is claimed once, kept only while a later attempt could still succeed; the usage rank shows server ledger points against server thresholds, never a fixed 1,000-point cycle; and a worker report needs a category and a real statement, warns that a false report locks the account, and points a harm report to 113',
   authority: [
@@ -22,7 +22,7 @@ export const PILLAR = {
   ],
   target: 'apps/mobile/lib/referral/use-claim-pending-invite.ts',
   layer: 'ui-visual',
-  siblings: ['P214-referral-claim-window-sql', 'P215-customer-membership-ledger-sql', 'P221-discipline-edge-routes'],
+  siblings: ['P263-referral-claim-window-sql', 'P264-customer-membership-ledger-sql', 'P270-discipline-edge-routes'],
   mutation:
     'clear the pending code on RATE_LIMITED, restore the "% 1000" cycle in membershipRank, or enable the report submit without a category — the retry, threshold or report case turns red',
 } as const satisfies PillarManifest

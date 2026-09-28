@@ -8,6 +8,11 @@ import type {
 } from '@/lib/api-types/customer'
 import { useAuth } from '@/lib/auth-provider'
 import { generateClientRequestId } from '@/lib/client-request-id'
+import {
+  isAmbiguousKaelConversationFailure,
+  kaelConversationOutcomeUncertainCopy,
+  localizeKaelConversationFailure,
+} from '@/lib/kael-conversation-failure'
 import { customerKaelConversationService } from '@/lib/services'
 
 import {
@@ -20,7 +25,6 @@ import {
   sortSessions,
   upsertSession,
 } from './customer-kael-conversation-catalog'
-import { createLocalVisualAuditConversation } from './customer-kael-local-visual-audit'
 import {
   fetchCustomerConversation,
   isAmbiguousConversationTurnFailure,
@@ -40,6 +44,7 @@ import {
   forwardCustomerKaelStreamEvent,
   type CustomerKaelTurnStreamOptions,
 } from './customer-kael-conversation-stream-options'
+import { useCustomerKaelSessionStarter } from './use-customer-kael-session-starter'
 
 export function useCustomerKaelConversations(
   mode: CustomerKaelConversationMode,
@@ -173,7 +178,22 @@ export function useCustomerKaelConversations(
     const request = customerKaelConversationService.list(mode)
       .then((result) => {
         if (catalogRevisionRef.current !== refreshRevision) return catalogMemory.get(catalogKey) ?? []
-        if (!result.success) throw new Error('list_failed')
+        if (!result.success) {
+          if (activeKeyRef.current === catalogKey && !catalogMemory.has(catalogKey)) {
+            setCatalogStateField(
+              setCatalogState,
+              catalogKey,
+              activeResponseByCatalogRef.current,
+              'sessionsError',
+              localizeKaelConversationFailure(
+                result,
+                language,
+                copy(language, 'Chưa tải được các cuộc trò chuyện. Vui lòng thử lại.', 'Conversations could not be loaded. Please try again.'),
+              ),
+            )
+          }
+          return catalogMemory.get(catalogKey) ?? []
+        }
         const catalogOwnerId = localVisualAuditSession
           ? result.data.sessions[0]?.customer_id ?? visualAuditOwnerByCatalogRef.current.get(catalogKey) ?? null
           : customerId
@@ -293,106 +313,24 @@ export function useCustomerKaelConversations(
       })
   }, [catalogKey, customerId, matchesCatalogCustomer, mode, sessions])
 
-  const resetToBlank = useCallback(() => {
-    operationRequestRef.current += 1
-    operationLockRef.current = null
-    sessionCreateRequestRef.current = null
-    if (catalogKey) activeResponseByCatalogRef.current.set(catalogKey, null)
-    if (customerId && catalogKey && !localVisualAuditSession) {
-      void writeCustomerKaelSessionCatalog(
-        customerId,
-        mode,
-        catalogMemory.get(catalogKey) ?? [],
-        null,
-      )
-    }
-    patchCatalogState(setCatalogState, catalogKey, activeResponseByCatalogRef.current, {
-      activeResponse: null,
-      creatingSession: false,
-      openingSessionId: null,
-      sending: false,
-      sessionsError: null,
-    })
-  }, [catalogKey, customerId, localVisualAuditSession, mode])
-
-  const startNewSession = useCallback((clientRequestId = generateClientRequestId()) => {
-    if (!customerId || !catalogKey) return Promise.resolve(null)
-    const inFlight = sessionCreateRequestRef.current
-    if (inFlight) return inFlight
-    if (operationLockRef.current !== null) return Promise.resolve(null)
-    const requestId = operationRequestRef.current + 1
-    operationRequestRef.current = requestId
-    operationLockRef.current = requestId
-    patchCatalogState(setCatalogState, catalogKey, activeResponseByCatalogRef.current, {
-      creatingSession: true,
-      sessionsError: null,
-    })
-    let request!: Promise<CustomerKaelConversationResponse | null>
-    request = (async () => {
-      try {
-        const created = localVisualAuditSession
-          ? { data: createLocalVisualAuditConversation(customerId, mode, clientRequestId), success: true as const }
-          : await customerKaelConversationService.create({
-            client_request_id: clientRequestId,
-            mode,
-          })
-        if (
-          !created.success
-          || operationRequestRef.current !== requestId
-          || activeKeyRef.current !== catalogKey
-          || !matchesCatalogCustomer(created.data.session.customer_id)
-          || created.data.session.mode !== mode
-        ) {
-          if (!created.success && activeKeyRef.current === catalogKey) {
-            setCatalogStateField(
-              setCatalogState,
-              catalogKey,
-              activeResponseByCatalogRef.current,
-              'sessionsError',
-              copy(language, 'Chưa thể tạo cuộc trò chuyện mới.', 'A new conversation could not be created.'),
-            )
-          }
-          return null
-        }
-        activateResponse(created.data)
-        return created.data
-      } catch {
-        if (activeKeyRef.current === catalogKey) {
-          setCatalogStateField(
-            setCatalogState,
-            catalogKey,
-            activeResponseByCatalogRef.current,
-            'sessionsError',
-            copy(language, 'Chưa thể tạo cuộc trò chuyện mới.', 'A new conversation could not be created.'),
-          )
-        }
-        return null
-      } finally {
-        if (operationLockRef.current === requestId) {
-          operationLockRef.current = null
-          if (activeKeyRef.current === catalogKey) {
-            setCatalogStateField(setCatalogState, catalogKey, activeResponseByCatalogRef.current, 'creatingSession', false)
-          }
-        }
-        if (sessionCreateRequestRef.current === request) sessionCreateRequestRef.current = null
-      }
-    })()
-    sessionCreateRequestRef.current = request
-    return request
-  }, [activateResponse, catalogKey, customerId, language, localVisualAuditSession, matchesCatalogCustomer, mode])
-
-  const ensureActiveSession = useCallback(async (clientRequestId?: string) => {
-    if (visibleResponse) return visibleResponse
-    const currentResponse = catalogKey ? activeResponseByCatalogRef.current.get(catalogKey) : null
-    if (
-      !options.suppressActiveResponse &&
-      !suppressInitialActiveResponse &&
-      currentResponse?.session.mode === mode
-    ) return currentResponse
-    const inFlight = sessionCreateRequestRef.current
-    if (inFlight) return inFlight
-    return startNewSession(clientRequestId)
-  }, [catalogKey, mode, options.suppressActiveResponse, startNewSession, suppressInitialActiveResponse, visibleResponse])
+  const { ensureActiveSession, resetToBlank, startNewSession } = useCustomerKaelSessionStarter({
+    activateResponse,
+    activeKeyRef,
+    activeResponseByCatalogRef,
+    catalogKey,
+    customerId,
+    language,
+    localVisualAuditSession,
+    matchesCatalogCustomer,
+    mode,
+    operationLockRef,
+    operationRequestRef,
+    options,
+    sessionCreateRequestRef,
+    setCatalogState,
+    suppressInitialActiveResponse,
+    visibleResponse,
+  })
 
   const openSession = useCallback(async (sessionId: string) => {
     if (!customerId || !catalogKey) return null
@@ -443,7 +381,11 @@ export function useCustomerKaelConversations(
             catalogKey,
             activeResponseByCatalogRef.current,
             'sessionsError',
-            copy(language, 'Chưa thể mở cuộc trò chuyện này.', 'This conversation could not be opened.'),
+            localizeKaelConversationFailure(
+              loaded ?? { code: 'NETWORK_ERROR', status: 0 },
+              language,
+              copy(language, 'Chưa thể mở cuộc trò chuyện này.', 'This conversation could not be opened.'),
+            ),
           )
         }
         return null
@@ -476,10 +418,26 @@ export function useCustomerKaelConversations(
     options?: CustomerKaelTurnStreamOptions,
   ) => {
     const content = message.trim()
-    if (!content) return null
+    if (!content && !options?.mediaRefs?.length) return null
+    if (localVisualAuditSession) {
+      setCatalogStateField(
+        setCatalogState,
+        catalogKey,
+        activeResponseByCatalogRef.current,
+        'sessionsError',
+        copy(language,
+          'Chế độ xem trước chỉ dùng để kiểm tra giao diện. Đăng nhập tài khoản khách hàng thật để gửi tin nhắn.',
+          'Preview audit mode is for visual checks only. Sign in with a real Customer account to send messages.'),
+      )
+      return null
+    }
+    if (options?.signal?.aborted) return null
     if (operationLockRef.current !== null && !sessionCreateRequestRef.current) return null
     const target = await ensureActiveSession()
-    if (!target || target.session.mode !== mode || operationLockRef.current !== null) return null
+    if (
+      !target || target.session.mode !== mode || operationLockRef.current !== null ||
+      options?.signal?.aborted
+    ) return null
     if (target.session.case_session_id) {
       setCatalogStateField(
         setCatalogState,
@@ -504,6 +462,7 @@ export function useCustomerKaelConversations(
         client_request_id: clientRequestId,
         language,
         message: content,
+        ...(options?.mediaRefs?.length ? { media_refs: [...options.mediaRefs] } : {}),
       }
       const isCurrentStream = () => (
         operationRequestRef.current === requestId
@@ -530,10 +489,24 @@ export function useCustomerKaelConversations(
             options?.onReasoning,
           ),
         },
+        options?.signal,
       )
-      const sent = !streamed.success && streamed.code === 'STREAM_UNSUPPORTED'
-        ? await customerKaelConversationService.sendTurn(targetId, turnInput)
+      const sent = !streamed.success && streamed.code === 'STREAM_UNSUPPORTED' && !options?.signal?.aborted
+        ? await customerKaelConversationService.sendTurn(targetId, turnInput, options?.signal)
         : streamed
+      if (!sent.success && sent.code === 'REQUEST_CANCELLED') {
+        const committed = await recoverCommittedConversationTurn(targetId, clientRequestId)
+        if (
+          committed && operationRequestRef.current === requestId
+          && activeModeRef.current === mode && activeKeyRef.current === catalogKey
+        ) {
+          options?.onResponseCommitted?.()
+          activateResponse(committed)
+          return committed
+        }
+        options?.onOutcomeUncertain?.()
+        return null
+      }
       const committed = sent.success
         ? sent.data
         : isAmbiguousConversationTurnFailure(sent)
@@ -545,13 +518,22 @@ export function useCustomerKaelConversations(
         || activeModeRef.current !== mode
         || activeKeyRef.current !== catalogKey
       ) {
+        if (committed || (!sent.success && isAmbiguousKaelConversationFailure(sent))) options?.onOutcomeUncertain?.()
         if (!committed && operationRequestRef.current === requestId && activeKeyRef.current === catalogKey) {
           setCatalogStateField(
             setCatalogState,
             catalogKey,
             activeResponseByCatalogRef.current,
             'sessionsError',
-            copy(language, 'Kael chưa thể trả lời lúc này.', 'Kael could not reply right now.'),
+            !sent.success && isAmbiguousKaelConversationFailure(sent)
+              ? kaelConversationOutcomeUncertainCopy(language)
+              : !sent.success
+                ? localizeKaelConversationFailure(
+                    sent,
+                    language,
+                    copy(language, 'Kael chưa thể trả lời lúc này.', 'Kael could not reply right now.'),
+                  )
+                : copy(language, 'Kael chưa thể trả lời lúc này.', 'Kael could not reply right now.'),
           )
         }
         return null
@@ -560,13 +542,14 @@ export function useCustomerKaelConversations(
       activateResponse(committed)
       return committed
     } catch {
+      options?.onOutcomeUncertain?.()
       if (operationRequestRef.current === requestId && activeKeyRef.current === catalogKey) {
         setCatalogStateField(
           setCatalogState,
           catalogKey,
           activeResponseByCatalogRef.current,
           'sessionsError',
-          copy(language, 'Kael chưa thể trả lời lúc này.', 'Kael could not reply right now.'),
+          kaelConversationOutcomeUncertainCopy(language),
         )
       }
       return null
@@ -578,10 +561,12 @@ export function useCustomerKaelConversations(
         }
       }
     }
-  }, [activateResponse, catalogKey, ensureActiveSession, language, mode])
+  }, [activateResponse, catalogKey, ensureActiveSession, language, localVisualAuditSession, mode])
 
   const archiveSession = useCallback(async (sessionId: string) => {
     const target = sessions.find((session) => session.id === sessionId)
+    // A turn in flight holds the operation lock; archiving under it would race the server append.
+    if (operationLockRef.current !== null) return false
     if (!target || target.mode !== mode || !matchesCatalogCustomer(target.customer_id) || pendingSessionIdSetRef.current.has(sessionId)) return false
     const previous = sessions
     const linkedCaseWork = Boolean(target.case_session_id)
@@ -598,12 +583,29 @@ export function useCustomerKaelConversations(
       persistCatalog(previous.filter((session) => session.id !== sessionId))
       if (visibleResponse?.session.id === sessionId) resetToBlank()
     }
+    let failureMessage = copy(language, 'Chưa thể xóa cuộc trò chuyện.', 'This conversation could not be removed.')
     try {
+      if (localVisualAuditSession) {
+        if (linkedCaseWork) {
+          persistCatalog((catalogKey ? catalogMemory.get(catalogKey) ?? sessions : sessions)
+            .filter((session) => session.id !== sessionId))
+          if (visibleResponse?.session.id === sessionId) resetToBlank()
+        }
+        responseMemory.delete(sessionId)
+        return true
+      }
       const archived = await customerKaelConversationService.archive(
         sessionId,
         linkedCaseWork,
       )
-      if (!archived.success) throw new Error('archive_failed')
+      if (!archived.success) {
+        failureMessage = localizeKaelConversationFailure(
+          archived,
+          language,
+          failureMessage,
+        )
+        throw new Error('archive_failed')
+      }
       if (linkedCaseWork) {
         persistCatalog((catalogKey ? catalogMemory.get(catalogKey) ?? sessions : sessions)
           .filter((session) => session.id !== sessionId))
@@ -625,7 +627,7 @@ export function useCustomerKaelConversations(
           catalogKey,
           activeResponseByCatalogRef.current,
           'sessionsError',
-          copy(language, 'Chưa thể xóa cuộc trò chuyện.', 'This conversation could not be removed.'),
+          failureMessage,
         )
       }
       return false
@@ -641,57 +643,16 @@ export function useCustomerKaelConversations(
         )
       }
     }
-  }, [archiveTombstones, catalogKey, language, matchesCatalogCustomer, mode, persistCatalog, resetToBlank, sessions, visibleResponse?.session.id])
+  }, [archiveTombstones, catalogKey, language, localVisualAuditSession, matchesCatalogCustomer, mode, persistCatalog, resetToBlank, sessions, visibleResponse?.session.id])
 
-  const renameSession = useCallback(async (sessionId: string, title: string) => {
-    const trimmed = title.trim()
+  const updateSessionMetadata = useCallback(async (
+    sessionId: string,
+    localPatch: Pick<Partial<CustomerKaelConversationSession>, 'pinned_at' | 'title'>,
+    request: () => ReturnType<typeof customerKaelConversationService.rename>,
+    fallbackFailure: string,
+  ) => {
     const target = sessions.find((session) => session.id === sessionId)
-    if (!target || !trimmed || target.mode !== mode || !matchesCatalogCustomer(target.customer_id) || pendingSessionIdSetRef.current.has(sessionId)) return false
-    pendingSessionIdSetRef.current.add(sessionId)
-    setCatalogStateField(
-      setCatalogState,
-      catalogKey,
-      activeResponseByCatalogRef.current,
-      'pendingSessionIds',
-      (current) => [...new Set([...current, sessionId])],
-    )
-    try {
-      const renamed = await customerKaelConversationService.rename(sessionId, { title: trimmed })
-      if (!renamed.success) throw new Error('rename_failed')
-      responseMemory.set(sessionId, renamed.data)
-      persistCatalog(upsertSession(
-        catalogKey ? catalogMemory.get(catalogKey) ?? [] : sessions,
-        renamed.data.session,
-      ))
-      if (visibleResponse?.session.id === sessionId) activateResponse(renamed.data)
-      return true
-    } catch {
-      if (activeKeyRef.current === catalogKey) {
-        setCatalogStateField(
-          setCatalogState,
-          catalogKey,
-          activeResponseByCatalogRef.current,
-          'sessionsError',
-          copy(language, 'Chưa thể đổi tên cuộc trò chuyện.', 'This conversation could not be renamed.'),
-        )
-      }
-      return false
-    } finally {
-      pendingSessionIdSetRef.current.delete(sessionId)
-      if (activeKeyRef.current === catalogKey) {
-        setCatalogStateField(
-          setCatalogState,
-          catalogKey,
-          activeResponseByCatalogRef.current,
-          'pendingSessionIds',
-          (current) => current.filter((id) => id !== sessionId),
-        )
-      }
-    }
-  }, [activateResponse, catalogKey, language, matchesCatalogCustomer, mode, persistCatalog, sessions, visibleResponse?.session.id])
-
-  const setSessionPinned = useCallback(async (sessionId: string, pinned: boolean) => {
-    const target = sessions.find((session) => session.id === sessionId)
+    if (operationLockRef.current !== null) return false
     if (!target || target.mode !== mode || !matchesCatalogCustomer(target.customer_id) || pendingSessionIdSetRef.current.has(sessionId)) return false
     pendingSessionIdSetRef.current.add(sessionId)
     setCatalogStateField(
@@ -701,9 +662,26 @@ export function useCustomerKaelConversations(
       'pendingSessionIds',
       (current) => [...new Set([...current, sessionId])],
     )
+    let failureMessage = fallbackFailure
     try {
-      const updated = await customerKaelConversationService.setPinned(sessionId, { pinned })
-      if (!updated.success) throw new Error('pin_failed')
+      if (localVisualAuditSession) {
+        const updatedSession = { ...target, ...localPatch, updated_at: new Date().toISOString() }
+        const cached = responseMemory.get(sessionId)
+        if (cached) responseMemory.set(sessionId, { ...cached, session: updatedSession })
+        persistCatalog(upsertSession(
+          catalogKey ? catalogMemory.get(catalogKey) ?? sessions : sessions,
+          updatedSession,
+        ))
+        if (visibleResponse?.session.id === sessionId && cached) {
+          activateResponse({ ...cached, session: updatedSession })
+        }
+        return true
+      }
+      const updated = await request()
+      if (!updated.success) {
+        failureMessage = localizeKaelConversationFailure(updated, language, failureMessage)
+        throw new Error('session_update_failed')
+      }
       responseMemory.set(sessionId, updated.data)
       persistCatalog(upsertSession(
         catalogKey ? catalogMemory.get(catalogKey) ?? [] : sessions,
@@ -718,7 +696,7 @@ export function useCustomerKaelConversations(
           catalogKey,
           activeResponseByCatalogRef.current,
           'sessionsError',
-          copy(language, 'Chưa thể đổi trạng thái ghim.', 'The pin state could not be changed.'),
+          failureMessage,
         )
       }
       return false
@@ -734,7 +712,25 @@ export function useCustomerKaelConversations(
         )
       }
     }
-  }, [activateResponse, catalogKey, language, matchesCatalogCustomer, mode, persistCatalog, sessions, visibleResponse?.session.id])
+  }, [activateResponse, catalogKey, language, localVisualAuditSession, matchesCatalogCustomer, mode, persistCatalog, sessions, visibleResponse?.session.id])
+
+  const renameSession = useCallback(async (sessionId: string, title: string) => {
+    const trimmed = title.trim()
+    if (!trimmed) return false
+    return updateSessionMetadata(
+      sessionId,
+      { title: trimmed },
+      () => customerKaelConversationService.rename(sessionId, { title: trimmed }),
+      copy(language, 'Chưa thể đổi tên cuộc trò chuyện.', 'This conversation could not be renamed.'),
+    )
+  }, [language, updateSessionMetadata])
+
+  const setSessionPinned = useCallback(async (sessionId: string, pinned: boolean) => updateSessionMetadata(
+    sessionId,
+    { pinned_at: pinned ? new Date().toISOString() : null },
+    () => customerKaelConversationService.setPinned(sessionId, { pinned }),
+    copy(language, 'Chưa thể đổi trạng thái ghim.', 'The pin state could not be changed.'),
+  ), [language, updateSessionMetadata])
 
   const syncLinkedCaseSession = useCallback(async (caseSessionId: string) => {
     if (mode !== 'case' || !customerId || !catalogKey) return null
@@ -774,6 +770,7 @@ export function useCustomerKaelConversations(
     canCreateSession: Boolean(customerId) && !creatingSession && !openingSessionId && !sending,
     creatingSession,
     ensureActiveSession,
+    isLocalVisualAuditSession: localVisualAuditSession,
     openSession,
     openingSessionId,
     pendingSessionIds,
@@ -795,6 +792,7 @@ export function useCustomerKaelConversations(
     creatingSession,
     customerId,
     ensureActiveSession,
+    localVisualAuditSession,
     openSession,
     openingSessionId,
     pendingSessionIds,

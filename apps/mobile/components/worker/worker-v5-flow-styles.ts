@@ -1726,8 +1726,6 @@ export const styles = StyleSheet.create({
   },
   kaelOrbComposerCard: {
     alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.92)',
-    borderColor: 'rgba(255,255,255,0.92)',
     borderRadius: 26,
     borderWidth: 1,
     flexDirection: 'row',
@@ -1736,7 +1734,6 @@ export const styles = StyleSheet.create({
     overflow: 'hidden',
     padding: 8,
     position: 'relative',
-    boxShadow: '0 10px 24px rgba(5,155,138,0.10)',
   },
   kaelOrbComposerCameraButton: {
     alignItems: 'center',
@@ -1948,7 +1945,7 @@ export const styles = StyleSheet.create({
     flexDirection: 'row',
     height: 44,
     justifyContent: 'center',
-    width: 114,
+    minWidth: 114,
   },
   kaelOrbCustomerModeTriggerOpen: {
     backgroundColor: 'transparent',
@@ -1961,7 +1958,7 @@ export const styles = StyleSheet.create({
   kaelOrbCustomerModeTriggerPressTarget: {
     alignItems: 'center',
     alignSelf: 'stretch',
-    flex: 1,
+    flexGrow: 1,
     justifyContent: 'center',
     outlineColor: 'transparent',
     outlineStyle: 'solid',

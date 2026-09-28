@@ -786,6 +786,7 @@ function aiRuntime(
     : undefined;
   return {
     ...secrets,
+    ...(ctx.signal ? { requestSignal: ctx.signal } : {}),
     ...(secrets.durableGuardsEnabled
       ? { durableGuardClient: (ctx.privilegedSupabase ?? ctx.supabase) as EdgeGuardClient }
       : {}),

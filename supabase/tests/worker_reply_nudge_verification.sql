@@ -1,10 +1,10 @@
--- @pillar id: P230-worker-reply-nudge-sql
+-- @pillar id: P279-worker-reply-nudge-sql
 -- @pillar invariant: A customer message left unanswered past the policy window in a stage where the worker is neither driving nor in the apartment produces exactly one reminder: one nudge row, one Kael line the customer sees and one inbox entry for the worker. A reply, a driving or on-site stage, or a message already reminded produces none, and no reminder ever opens a violation case
 -- @pillar authority: governance/structures/do-not-build-now.md section 21 | Tu 2026-09-28: remind the worker before any slow-response penalty; both sides treated fairly
 -- @pillar target: supabase/migrations/20260925125000_worker_reply_nudges.sql
 -- @pillar layer: sql
--- @pillar siblings: P229-worker-reply-nudge-push, P218-no-penalty-without-admin-sql
--- @pillar mutation: Drop the worker-reply NOT EXISTS from claim_worker_reply_nudges; the answered job is reminded and P230 raises P230_ANSWERED_JOB_NUDGED
+-- @pillar siblings: P278-worker-reply-nudge-push, P267-no-penalty-without-admin-sql
+-- @pillar mutation: Drop the worker-reply NOT EXISTS from claim_worker_reply_nudges; the answered job is reminded and P230 raises P279_ANSWERED_JOB_NUDGED
 
 begin;
 set local statement_timeout = '60s';
@@ -54,33 +54,33 @@ declare
 begin
   select count(*) into v_claimed from public.claim_worker_reply_nudges(50);
   if v_claimed <> 1 then
-    raise exception 'P230_EXPECTED_ONE_REMINDER got %', v_claimed;
+    raise exception 'P279_EXPECTED_ONE_REMINDER got %', v_claimed;
   end if;
   if not exists (select 1 from public.worker_reply_nudges where job_id = 'c2300000-0000-4000-8000-000000000101') then
-    raise exception 'P230_DUE_JOB_NOT_NUDGED';
+    raise exception 'P279_DUE_JOB_NOT_NUDGED';
   end if;
   if exists (select 1 from public.worker_reply_nudges where job_id = 'c2300000-0000-4000-8000-000000000104') then
-    raise exception 'P230_ANSWERED_JOB_NUDGED';
+    raise exception 'P279_ANSWERED_JOB_NUDGED';
   end if;
   if exists (select 1 from public.worker_reply_nudges
              where job_id in ('c2300000-0000-4000-8000-000000000102', 'c2300000-0000-4000-8000-000000000103')) then
-    raise exception 'P230_DRIVING_OR_ON_SITE_NUDGED';
+    raise exception 'P279_DRIVING_OR_ON_SITE_NUDGED';
   end if;
   if (select count(*) from public.chat_messages
       where job_id = 'c2300000-0000-4000-8000-000000000101' and sender_role = 'kael') <> 1 then
-    raise exception 'P230_CUSTOMER_NOT_TOLD';
+    raise exception 'P279_CUSTOMER_NOT_TOLD';
   end if;
   if (select count(*) from public.notifications
       where user_id = 'c2300000-0000-4000-8000-000000000001' and event_type = 'worker_reply_nudge') <> 1 then
-    raise exception 'P230_WORKER_INBOX_MISSING';
+    raise exception 'P279_WORKER_INBOX_MISSING';
   end if;
 
   select count(*) into v_claimed from public.claim_worker_reply_nudges(50);
   if v_claimed <> 0 then
-    raise exception 'P230_REMINDED_TWICE';
+    raise exception 'P279_REMINDED_TWICE';
   end if;
   if (select count(*) from public.worker_violation_cases) <> v_cases_before then
-    raise exception 'P230_REMINDER_OPENED_A_CASE';
+    raise exception 'P279_REMINDER_OPENED_A_CASE';
   end if;
 end;
 $nudge$;

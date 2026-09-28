@@ -7,7 +7,7 @@ import type { useWorkerViolations } from '@/lib/frontend-workflow/use-worker-vio
 import { WorkerV5Violations } from '../violation-surfaces'
 
 export const PILLAR = {
-  id: 'P225-violations-screen-due-process',
+  id: 'P274-violations-screen-due-process',
   invariant:
     'the worker violation screen states every penalty number from the live policy row, says a proposed case carries no penalty yet, marks restored consequences, offers an appeal only inside the appeal window with the days left, and will not send an appeal whose reason is shorter than the server minimum',
   authority: [
@@ -16,7 +16,7 @@ export const PILLAR = {
   ],
   target: 'apps/mobile/components/worker/discipline/violation-surfaces.tsx',
   layer: 'ui-visual',
-  siblings: ['P221-discipline-edge-routes', 'P219-appeal-restores-exactly-sql'],
+  siblings: ['P270-discipline-edge-routes', 'P268-appeal-restores-exactly-sql'],
   mutation:
     'hardcode "20 điểm" in levelRules, show the appeal form for an expired deadline, or enable submit below 20 characters — the policy, window or reason case turns red',
 } as const satisfies PillarManifest

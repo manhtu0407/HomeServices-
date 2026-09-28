@@ -5,7 +5,7 @@ import * as shared from '../contracts/ambassador'
 import * as edge from '../../../../supabase/functions/_shared/contracts/ambassador'
 
 export const PILLAR = {
-  id: 'P216-ambassador-contract-twins',
+  id: 'P265-ambassador-contract-twins',
   invariant:
     'the shared and Edge ambassador request contracts are twins: every redeem, referral-claim and program-draft payload that one accepts the other accepts, and every payload one refuses the other refuses',
   authority: [
@@ -14,7 +14,7 @@ export const PILLAR = {
   ],
   target: 'supabase/functions/_shared/contracts/ambassador.ts',
   layer: 'static-type',
-  siblings: ['P213-redemption-idempotent-balance-sql', 'P212-milestone-cap-sql'],
+  siblings: ['P262-redemption-idempotent-balance-sql', 'P261-milestone-cap-sql'],
   mutation:
     'drop .strict() from the Edge ambassadorRedeemSchema, or widen multiplier_bps to 15000 in only one twin — the extra-field or out-of-range case disagrees and turns red',
 } as const satisfies PillarManifest

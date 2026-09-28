@@ -1,10 +1,10 @@
--- @pillar id: P206-withdrawable-balance-single-owner-sql
+-- @pillar id: P255-withdrawable-balance-single-owner-sql
 -- @pillar invariant: The worker safety balance, the earnings summary, the withdrawal RPC with its insert trigger, and the admin finance overview all report the same withdrawable amount — available ledger credit minus admin-rejected rows, plus admin worker credits, minus held collateral and pending or paid withdrawals — before and after a withdrawal
 -- @pillar authority: governance/RULES.md #7, #8 | Plan moonlit-singing-phoenix Phase 0.1: six divergent balance formulas
 -- @pillar target: supabase/migrations/20260925100000_worker_withdrawable_balance_unification.sql
 -- @pillar layer: sql
--- @pillar siblings: P209-commission-tiers-service-only-sql
--- @pillar mutation: Drop the collateral term from private.worker_withdrawable_balance or restore the earnings summary's private formula; the collateral fixture makes the numbers diverge and P206 raises P206_BALANCES_DIVERGE
+-- @pillar siblings: P258-commission-tiers-service-only-sql
+-- @pillar mutation: Drop the collateral term from private.worker_withdrawable_balance or restore the earnings summary's private formula; the collateral fixture makes the numbers diverge and P206 raises P255_BALANCES_DIVERGE
 
 begin;
 set local statement_timeout = '30s';
@@ -113,10 +113,10 @@ begin
   select * into v_row from p206_readings where label = 'before';
   -- 850,000 available + 7,000 admin credit - 45,000 held collateral; the rejected row is excluded.
   if v_row.helper <> 812000 then
-    raise exception 'P206_HELPER_WRONG: %', v_row.helper;
+    raise exception 'P255_HELPER_WRONG: %', v_row.helper;
   end if;
   if v_row.safety <> v_row.helper or v_row.earnings <> v_row.helper or v_row.overview <> v_row.helper then
-    raise exception 'P206_BALANCES_DIVERGE: helper % safety % earnings % overview %',
+    raise exception 'P255_BALANCES_DIVERGE: helper % safety % earnings % overview %',
       v_row.helper, v_row.safety, v_row.earnings, v_row.overview;
   end if;
 end;
@@ -130,18 +130,18 @@ declare
 begin
   select * into v_result from public.create_worker_withdrawal_request(v_worker, 900000, gen_random_uuid());
   if v_result.ok or v_result.error_code <> 'INSUFFICIENT_BALANCE' or v_result.available_balance_before_vnd_out <> 812000 then
-    raise exception 'P206_OVERDRAW_NOT_REFUSED: % %', v_result.error_code, v_result.available_balance_before_vnd_out;
+    raise exception 'P255_OVERDRAW_NOT_REFUSED: % %', v_result.error_code, v_result.available_balance_before_vnd_out;
   end if;
 
   select * into v_result from public.create_worker_withdrawal_request(v_worker, 300000, gen_random_uuid());
   if not v_result.ok or v_result.available_balance_before_vnd_out <> 812000 then
-    raise exception 'P206_WITHDRAWAL_SNAPSHOT_WRONG: % %', v_result.error_code, v_result.available_balance_before_vnd_out;
+    raise exception 'P255_WITHDRAWAL_SNAPSHOT_WRONG: % %', v_result.error_code, v_result.available_balance_before_vnd_out;
   end if;
 
   perform pg_temp.p206_read('after');
   select * into v_row from p206_readings where label = 'after';
   if v_row.helper <> 512000 or v_row.safety <> 512000 or v_row.earnings <> 512000 or v_row.overview <> 512000 then
-    raise exception 'P206_BALANCES_DIVERGE_AFTER: helper % safety % earnings % overview %',
+    raise exception 'P255_BALANCES_DIVERGE_AFTER: helper % safety % earnings % overview %',
       v_row.helper, v_row.safety, v_row.earnings, v_row.overview;
   end if;
 end;

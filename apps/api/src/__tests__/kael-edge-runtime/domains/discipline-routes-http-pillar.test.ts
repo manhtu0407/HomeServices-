@@ -8,7 +8,7 @@ import { pillarWhy, type PillarManifest } from '../../pillar-manifest'
 import { installEdgeRuntimeTestHooks, makeSequenceClient } from '../harness'
 
 export const PILLAR = {
-  id: 'P221-discipline-edge-routes',
+  id: 'P270-discipline-edge-routes',
   invariant:
     'the discipline routes act only for their own actor role, reach the discipline RPCs through the service client keyed to the authenticated user, refuse a malformed body before any RPC, never show the accused worker the reporter statement, extend a withdrawal hold only with an authority reference, let a Sub Admin decide only with workers.discipline.manage, and turn every named RPC refusal into a precise 4xx instead of a 500',
   authority: [
@@ -18,7 +18,7 @@ export const PILLAR = {
   ],
   target: 'supabase/functions/mobile-api/_shared/domains/program/admin-discipline.ts',
   layer: 'integration',
-  siblings: ['P218-no-penalty-without-admin-sql', 'P219-appeal-restores-exactly-sql', 'P217-ambassador-edge-routes'],
+  siblings: ['P267-no-penalty-without-admin-sql', 'P268-appeal-restores-exactly-sql', 'P266-ambassador-edge-routes'],
   mutation:
     'drop requireAdminCapability from decideAdminViolationCase, or remove CASE_ALREADY_DECIDED from NAMED_FAILURES — the capability or named-refusal case turns red',
 } as const satisfies PillarManifest

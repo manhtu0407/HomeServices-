@@ -6,7 +6,7 @@ import { dispatchWorkerReplyNudges } from '../../../../../../supabase/functions/
 import { hashReliabilityValue } from '../../../../../../supabase/functions/_shared/harness/reliability'
 
 export const PILLAR = {
-  id: 'P229-worker-reply-nudge-push',
+  id: 'P278-worker-reply-nudge-push',
   invariant:
     'a claimed reply reminder is pushed only to the job\'s worker, once per reminder under a stable idempotency key, carries no chat text, and a failed push is counted instead of failing the maintainer run or being reported as sent',
   authority: [
@@ -15,7 +15,7 @@ export const PILLAR = {
   ],
   target: 'supabase/functions/mobile-api/_shared/domains/notification/worker-reply-nudge.ts',
   layer: 'integration',
-  siblings: ['P125-official-match-push-runtime', 'P230-worker-reply-nudge-sql'],
+  siblings: ['P125-official-match-push-runtime', 'P279-worker-reply-nudge-sql'],
   mutation:
     'drop the idempotencyKey from the push options, or count a failed push as pushed — the idempotency or failure case turns red',
 } as const satisfies PillarManifest
