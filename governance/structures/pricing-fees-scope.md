@@ -31,8 +31,8 @@ Current business model:
 Commission model
 -
 |- customer pays the explicitly confirmed final service price through the configured payment rail
-|- Level 1 worker commission is 15% of that frozen service price
-|- higher worker levels may receive a lower commission only from a server-managed policy row with stronger qualification thresholds
+|- the platform fee is a fixed 15% of that frozen service price for every worker, at every level (Tu, 2026-09-25)
+|- the rate lives in a service-only policy row and reaches the app through the earnings DTO; copy never hardcodes it or promises a level-based reduction
 |- the job and worker ledger freeze the applied rate when payment intent is created; later tier changes never rewrite that transaction
 |- no additional customer platform fee or bank payout may be implied unless a separately approved payment policy and provider flow exist
 ```
@@ -43,10 +43,27 @@ Example only:
 Example job: 300,000 VND
 -
 |- customer pays 300,000 VND
-|- Level 1 worker in-app credit is 255,000 VND
+|- worker in-app credit is 255,000 VND
 |- platform commission is 45,000 VND
 |- AI cost tracked separately
 ```
+
+### Ambassador Rewards (instead of fee cuts)
+
+```text
+Ambassador program (Tu, 2026-09-25)
+-
+|- 1 point = 10,000 VND of platform fee from paid in-app orders by the worker's linked customers
+|- a customer links by invite code (within the claim window, before any paid order) or by a second paid in-app job with the same worker; one active link, 12 months
+|- orders done by another worker for a linked customer still credit the linked worker
+|- milestones are a versioned config: draft -> approve, approver differs from editor
+|- no milestone at the highest network multiplier may pay more than 60% of the fee its points represent; a database trigger enforces it
+|- no activation bonus: it would break the cap and make fake customers profitable
+|- redemption credits the withdrawable balance after withholding under an approved worker_bonus tax policy; with no approved policy, redemption fails closed
+|- unredeemed points never expire; forfeited points are cancelled, never booked as revenue
+```
+
+Customer membership points come from the same paid-in-app ledger (one entry per paid order, reversed on refund) and carry zero-cost benefits only.
 
 ### Scope Change
 

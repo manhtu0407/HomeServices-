@@ -12,6 +12,10 @@ Admin workflows
 |- worker approval queue
 |- worker profile review
 |- worker suspension/reinstatement
+|- CCCD entry at worker approval (required before the first approval)
+|- discipline queue: confirm, dismiss or mark fabricated; one-tap L5 suspension; appeal decisions; identity blocklist (workers.discipline.manage)
+|- ambassador program editor with a live 60% cap preview; approval by a second administrator (workers.bonus.manage)
+|- worker_bonus tax rule with an optional threshold in the finance tax editor
 |- price baseline management
 |- job monitor
 |- scope change monitor
@@ -29,6 +33,8 @@ Human control required
 -
 |- worker approval
 |- worker suspension
+|- every worker penalty (the system only proposes)
+|- ambassador program versions
 |- dispute resolution
 |- service expansion
 |- payment policy changes
