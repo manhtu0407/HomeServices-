@@ -4,7 +4,7 @@ import type { AppLanguage } from '@/lib/app-language'
 import type { WorkerKaelChatResponse, WorkerKaelChatSession } from '@/lib/api-types'
 import { useAuth } from '@/lib/auth-provider'
 import { generateClientRequestId } from '@/lib/client-request-id'
-import { localizeKaelConversationFailure } from '@/lib/kael-conversation-failure'
+import { localizeKaelConversationFailure, unreleasedClientKaelCopy } from '@/lib/kael-conversation-failure'
 import { initialKaelReasoningReceiptState } from '@/lib/kael-reasoning-receipt'
 import { workerKaelChatService } from '@/lib/services'
 import { textByLanguage } from '../ui/format'
@@ -375,6 +375,11 @@ export function useWorkerV5KaelOrbChat(
     const requestedOwner = owner
     if (!requestedWorkerId || !canUseKaelSession || busy || creatingSession || openingSessionId) {
       setSessionsError(textByLanguage(language, 'Chưa thể tạo cuộc trò chuyện này.', 'This conversation cannot be created right now.'))
+      return false
+    }
+    const unreleasedClientCopy = localVisualAuditSession ? null : unreleasedClientKaelCopy(language)
+    if (unreleasedClientCopy) {
+      setSessionsError(unreleasedClientCopy)
       return false
     }
     reasoningActions.reset()

@@ -6,7 +6,7 @@ import type {
   CustomerKaelConversationResponse,
 } from '@/lib/api-types/customer'
 import { generateClientRequestId } from '@/lib/client-request-id'
-import { localizeKaelConversationFailure } from '@/lib/kael-conversation-failure'
+import { localizeKaelConversationFailure, unreleasedClientKaelCopy } from '@/lib/kael-conversation-failure'
 import { customerKaelConversationService } from '@/lib/services'
 
 import { customerConversationCopy as copy } from './customer-kael-conversation-catalog'
@@ -86,6 +86,18 @@ export function useCustomerKaelSessionStarter({
     const inFlight = sessionCreateRequestRef.current
     if (inFlight) return inFlight
     if (operationLockRef.current !== null) return Promise.resolve(null)
+    const unreleasedClientCopy = localVisualAuditSession ? null : unreleasedClientKaelCopy(language)
+    if (unreleasedClientCopy) {
+      setCatalogStateField(
+        setCatalogState,
+        catalogKey,
+        activeResponseByCatalogRef.current,
+        'sessionsError',
+        unreleasedClientCopy,
+      )
+      onFailure?.(unreleasedClientCopy)
+      return Promise.resolve(null)
+    }
     const requestId = operationRequestRef.current + 1
     operationRequestRef.current = requestId
     operationLockRef.current = requestId

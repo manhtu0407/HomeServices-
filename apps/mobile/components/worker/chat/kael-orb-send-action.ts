@@ -8,6 +8,7 @@ import {
   isAmbiguousKaelConversationFailure,
   kaelConversationOutcomeUncertainCopy,
   localizeKaelConversationFailure,
+  unreleasedClientKaelCopy,
 } from '@/lib/kael-conversation-failure'
 import { uploadJobMediaDrafts, type LocalMediaUploadDraft } from '@/lib/media-upload'
 import { workerKaelChatService } from '@/lib/services'
@@ -96,6 +97,11 @@ export function createWorkerKaelOrbSendAction({
         'Chế độ xem trước chỉ dùng để kiểm tra giao diện. Đăng nhập tài khoản thợ thật để gửi tin nhắn.',
         'Preview audit mode is for visual checks only. Sign in with a real Worker account to send messages.',
       ))
+      return false
+    }
+    const unreleasedClientCopy = unreleasedClientKaelCopy(language)
+    if (unreleasedClientCopy) {
+      setError(unreleasedClientCopy)
       return false
     }
     const sendRequestId = sendRequestRef.current + 1

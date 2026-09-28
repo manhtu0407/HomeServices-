@@ -1,4 +1,5 @@
 import type { AppLanguage } from './app-language'
+import { releaseClientPlatform } from './release-client-platform'
 
 type KaelConversationFailure = {
   code?: string
@@ -56,6 +57,11 @@ export function localizeKaelConversationFailure(
     message += language === 'vi' ? ` Mã hỗ trợ: ${supportCode}.` : ` Support code: ${supportCode}.`
   }
   return message
+}
+
+/** The 426 copy, returned before sending a Kael write from a client mobile-api always refuses. */
+export function unreleasedClientKaelCopy(language: AppLanguage): string | null {
+  return releaseClientPlatform() ? null : localizeKaelConversationFailure({ status: 426 }, language, '')
 }
 
 export function isAmbiguousKaelConversationFailure(failure: KaelConversationFailure) {

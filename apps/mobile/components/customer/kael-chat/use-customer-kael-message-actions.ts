@@ -3,6 +3,7 @@ import { inferLocalDealDraftFromKael } from '@nestscout/shared'
 import { useCallback, useEffect, useRef, type MutableRefObject } from 'react'
 
 import type { AppLanguage } from '@/lib/app-language'
+import { unreleasedClientKaelCopy } from '@/lib/kael-conversation-failure'
 import type { KaelStreamResponseDeltaEvent } from '@/lib/kael-stream'
 import {
   appendLegacyKaelResponseDelta,
@@ -174,6 +175,11 @@ export function useCustomerKaelMessageActions({
       setError(language === 'vi'
         ? 'Chế độ xem trước chỉ dùng để kiểm tra giao diện. Đăng nhập tài khoản khách hàng thật để gửi tin nhắn.'
         : 'Preview audit mode is for visual checks only. Sign in with a real Customer account to send messages.')
+      return
+    }
+    const unreleasedClientCopy = unreleasedClientKaelCopy(language)
+    if (unreleasedClientCopy) {
+      setError(unreleasedClientCopy)
       return
     }
     if (sendOperationRef.current?.ownerKey === requestOwnerKey) return

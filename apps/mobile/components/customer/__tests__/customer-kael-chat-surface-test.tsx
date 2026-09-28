@@ -1,7 +1,7 @@
 import { readFileSync } from 'fs'
 import { resolve } from 'path'
 import { act, fireEvent, render, renderHook, screen, waitFor } from '@testing-library/react-native'
-import { StyleSheet, Text } from 'react-native'
+import { Platform, StyleSheet, Text } from 'react-native'
 import type { LocalDeal } from '@nestscout/shared'
 
 import { color } from '@/design/theme'
@@ -806,6 +806,32 @@ describe('active customer Kael chat surface wiring', () => {
       expect.any(AbortSignal),
     ))
     expect(screen.getByTestId('customer-v21-kael-input')).toHaveProp('value', '')
+  })
+
+  it('names the compatibility block instead of creating or streaming from a web client', async () => {
+    const originalPlatform = Platform.OS
+    Object.defineProperty(Platform, 'OS', { configurable: true, value: 'web' })
+    try {
+      render(<CustomerKaelSurface />)
+      await waitForConversationCatalog('normal')
+
+      fireEvent.changeText(screen.getByTestId('customer-v21-kael-input'), 'Máy lạnh chảy nước')
+      fireEvent.press(screen.getByTestId('customer-v21-kael-send'))
+
+      expect(await screen.findByText('Phiên bản NestScout hiện tại chưa tương thích với dịch vụ. Hãy cập nhật hoặc mở bản ứng dụng đã phát hành để tiếp tục.')).toBeOnTheScreen()
+      expect(screen.getByTestId('customer-v21-kael-input')).toHaveProp('value', 'Máy lạnh chảy nước')
+      expect(mockConversationCreate).not.toHaveBeenCalled()
+      expect(mockConversationSendTurn).not.toHaveBeenCalled()
+
+      fireEvent.press(screen.getByTestId('customer-v21-kael-new-conversation'))
+      fireEvent.press(screen.getByTestId('customer-v21-kael-session-new'))
+      await act(async () => {
+        await Promise.resolve()
+      })
+      expect(mockConversationCreate).not.toHaveBeenCalled()
+    } finally {
+      Object.defineProperty(Platform, 'OS', { configurable: true, value: originalPlatform })
+    }
   })
 
   it('turns a Home search handoff into a fresh normal session with the exact customer message', async () => {
