@@ -1,5 +1,5 @@
 import { asString, nullableString } from "../../platform/coercions.ts";
-import { dbQuery, type DbClient } from "../../platform/db.ts";
+import { dbQuery, type DbClient, workflowDb } from "../../platform/db.ts";
 import type { JobChatContactGuard } from "./chat-guard.ts";
 import { apiFailure } from "../../platform/api-failure.ts";
 import type { MobileApiContext } from "../../platform/auth.ts";
@@ -20,6 +20,14 @@ export async function maybeHandleJobChatContactGuard(
   guard: JobChatContactGuard,
 ) {
   if (!guard.flagged) return;
+  await retainRedactionEvidence(workflowDb(ctx), {
+    job_id: asString(job.id),
+    message_id: messageId,
+    sender_id: ctx.user.id,
+    sender_role: ctx.role,
+    original_body: guard.originalContent,
+    matched_rules: guard.signals,
+  });
   await insertKaelJobMessage(
     client,
     asString(job.id),
@@ -34,6 +42,30 @@ export async function maybeHandleJobChatContactGuard(
     signals: guard.signals,
     workerId: ctx.user.id,
   });
+}
+
+// The chat row keeps only the redacted text, so this is the one place an admin can later
+// read what was actually sent when reviewing an off-app case. A failed write must not block
+// the chat, but it is logged because it leaves that case without evidence.
+async function retainRedactionEvidence(
+  client: DbClient,
+  row: {
+    job_id: string;
+    message_id: string;
+    sender_id: string;
+    sender_role: string;
+    original_body: string;
+    matched_rules: string[];
+  },
+) {
+  const result = await dbQuery(client.from("chat_guard_redaction_evidence").insert(row));
+  if (result.error) {
+    console.warn("mobile-api chat redaction evidence write failed", {
+      jobId: row.job_id,
+      messageId: row.message_id,
+      errorCode: result.error.code,
+    });
+  }
 }
 
 async function recordWorkerDisintermediationRisk(

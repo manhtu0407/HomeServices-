@@ -2,8 +2,8 @@
   "version": "1.0.0",
   "source": {
     "migrationRoot": "supabase/migrations",
-    "migrationCount": 405,
-    "migrationDigest": "2a80aed08fb6020136ee4ac51802ad9cdbb902d7e647d0ba3fd2937af945faba"
+    "migrationCount": 423,
+    "migrationDigest": "d024948c473b67e30f01fa15ccbc61dc98e1e7766200a7c99da10d73af56180f"
   },
   "actors": [
     "anonymous",
@@ -242,6 +242,54 @@
       "realtime": false
     },
     {
+      "name": "ambassador_milestones",
+      "classification": "internal",
+      "rlsEnabled": true,
+      "actorCommands": {
+        "anonymous": [],
+        "authenticated": []
+      },
+      "serviceRole": [
+        "select",
+        "insert",
+        "update",
+        "delete"
+      ],
+      "realtime": false
+    },
+    {
+      "name": "ambassador_multiplier_tiers",
+      "classification": "internal",
+      "rlsEnabled": true,
+      "actorCommands": {
+        "anonymous": [],
+        "authenticated": []
+      },
+      "serviceRole": [
+        "select",
+        "insert",
+        "update",
+        "delete"
+      ],
+      "realtime": false
+    },
+    {
+      "name": "ambassador_program_versions",
+      "classification": "internal",
+      "rlsEnabled": true,
+      "actorCommands": {
+        "anonymous": [],
+        "authenticated": []
+      },
+      "serviceRole": [
+        "select",
+        "insert",
+        "update",
+        "delete"
+      ],
+      "realtime": false
+    },
+    {
       "name": "api_logs",
       "classification": "actor-scoped",
       "rlsEnabled": true,
@@ -252,6 +300,22 @@
         "authenticated": [
           "select"
         ]
+      },
+      "serviceRole": [
+        "select",
+        "insert",
+        "update",
+        "delete"
+      ],
+      "realtime": false
+    },
+    {
+      "name": "chat_guard_redaction_evidence",
+      "classification": "internal",
+      "rlsEnabled": true,
+      "actorCommands": {
+        "anonymous": [],
+        "authenticated": []
       },
       "serviceRole": [
         "select",
@@ -285,6 +349,38 @@
         "delete"
       ],
       "realtime": true
+    },
+    {
+      "name": "compensation_negotiations",
+      "classification": "internal",
+      "rlsEnabled": true,
+      "actorCommands": {
+        "anonymous": [],
+        "authenticated": []
+      },
+      "serviceRole": [
+        "select",
+        "insert",
+        "update",
+        "delete"
+      ],
+      "realtime": false
+    },
+    {
+      "name": "compensation_offers",
+      "classification": "internal",
+      "rlsEnabled": true,
+      "actorCommands": {
+        "anonymous": [],
+        "authenticated": []
+      },
+      "serviceRole": [
+        "select",
+        "insert",
+        "update",
+        "delete"
+      ],
+      "realtime": false
     },
     {
       "name": "completion_payment_operations",
@@ -447,6 +543,22 @@
       "realtime": false
     },
     {
+      "name": "customer_membership_point_entries",
+      "classification": "internal",
+      "rlsEnabled": true,
+      "actorCommands": {
+        "anonymous": [],
+        "authenticated": []
+      },
+      "serviceRole": [
+        "select",
+        "insert",
+        "update",
+        "delete"
+      ],
+      "realtime": false
+    },
+    {
       "name": "customer_payment_methods",
       "classification": "actor-scoped",
       "rlsEnabled": true,
@@ -501,6 +613,22 @@
         "authenticated": [
           "select"
         ]
+      },
+      "serviceRole": [
+        "select",
+        "insert",
+        "update",
+        "delete"
+      ],
+      "realtime": false
+    },
+    {
+      "name": "customer_worker_links",
+      "classification": "internal",
+      "rlsEnabled": true,
+      "actorCommands": {
+        "anonymous": [],
+        "authenticated": []
       },
       "serviceRole": [
         "select",
@@ -847,6 +975,22 @@
         "authenticated": [
           "select"
         ]
+      },
+      "serviceRole": [
+        "select",
+        "insert",
+        "update",
+        "delete"
+      ],
+      "realtime": false
+    },
+    {
+      "name": "identity_blocklist",
+      "classification": "internal",
+      "rlsEnabled": true,
+      "actorCommands": {
+        "anonymous": [],
+        "authenticated": []
       },
       "serviceRole": [
         "select",
@@ -2239,6 +2383,38 @@
       "realtime": false
     },
     {
+      "name": "program_accrual_marks",
+      "classification": "internal",
+      "rlsEnabled": true,
+      "actorCommands": {
+        "anonymous": [],
+        "authenticated": []
+      },
+      "serviceRole": [
+        "select",
+        "insert",
+        "update",
+        "delete"
+      ],
+      "realtime": false
+    },
+    {
+      "name": "referral_claim_attempts",
+      "classification": "internal",
+      "rlsEnabled": true,
+      "actorCommands": {
+        "anonymous": [],
+        "authenticated": []
+      },
+      "serviceRole": [
+        "select",
+        "insert",
+        "update",
+        "delete"
+      ],
+      "realtime": false
+    },
+    {
       "name": "reviews",
       "classification": "actor-scoped",
       "rlsEnabled": true,
@@ -2645,6 +2821,54 @@
       "realtime": false
     },
     {
+      "name": "worker_ambassador_point_entries",
+      "classification": "internal",
+      "rlsEnabled": true,
+      "actorCommands": {
+        "anonymous": [],
+        "authenticated": []
+      },
+      "serviceRole": [
+        "select",
+        "insert",
+        "update",
+        "delete"
+      ],
+      "realtime": false
+    },
+    {
+      "name": "worker_bonus_clawbacks",
+      "classification": "internal",
+      "rlsEnabled": true,
+      "actorCommands": {
+        "anonymous": [],
+        "authenticated": []
+      },
+      "serviceRole": [
+        "select",
+        "insert",
+        "update",
+        "delete"
+      ],
+      "realtime": false
+    },
+    {
+      "name": "worker_bonus_redemptions",
+      "classification": "internal",
+      "rlsEnabled": true,
+      "actorCommands": {
+        "anonymous": [],
+        "authenticated": []
+      },
+      "serviceRole": [
+        "select",
+        "insert",
+        "update",
+        "delete"
+      ],
+      "realtime": false
+    },
+    {
       "name": "worker_cancellation_reason_taxonomy",
       "classification": "actor-scoped",
       "rlsEnabled": true,
@@ -2727,7 +2951,8 @@
       "actorCommands": {
         "anonymous": [],
         "authenticated": [
-          "all"
+          "all",
+          "select"
         ]
       },
       "serviceRole": [
@@ -2739,7 +2964,71 @@
       "realtime": false
     },
     {
+      "name": "worker_compensation_payouts",
+      "classification": "internal",
+      "rlsEnabled": true,
+      "actorCommands": {
+        "anonymous": [],
+        "authenticated": []
+      },
+      "serviceRole": [
+        "select",
+        "insert",
+        "update",
+        "delete"
+      ],
+      "realtime": false
+    },
+    {
       "name": "worker_direct_payment_collateral_reservations",
+      "classification": "internal",
+      "rlsEnabled": true,
+      "actorCommands": {
+        "anonymous": [],
+        "authenticated": []
+      },
+      "serviceRole": [
+        "select",
+        "insert",
+        "update",
+        "delete"
+      ],
+      "realtime": false
+    },
+    {
+      "name": "worker_discipline_entries",
+      "classification": "internal",
+      "rlsEnabled": true,
+      "actorCommands": {
+        "anonymous": [],
+        "authenticated": []
+      },
+      "serviceRole": [
+        "select",
+        "insert",
+        "update",
+        "delete"
+      ],
+      "realtime": false
+    },
+    {
+      "name": "worker_discipline_policy",
+      "classification": "internal",
+      "rlsEnabled": true,
+      "actorCommands": {
+        "anonymous": [],
+        "authenticated": []
+      },
+      "serviceRole": [
+        "select",
+        "insert",
+        "update",
+        "delete"
+      ],
+      "realtime": false
+    },
+    {
+      "name": "worker_identity_numbers",
       "classification": "internal",
       "rlsEnabled": true,
       "actorCommands": {
@@ -2901,7 +3190,39 @@
       "realtime": false
     },
     {
+      "name": "worker_referral_codes",
+      "classification": "internal",
+      "rlsEnabled": true,
+      "actorCommands": {
+        "anonymous": [],
+        "authenticated": []
+      },
+      "serviceRole": [
+        "select",
+        "insert",
+        "update",
+        "delete"
+      ],
+      "realtime": false
+    },
+    {
       "name": "worker_registration_commands",
+      "classification": "internal",
+      "rlsEnabled": true,
+      "actorCommands": {
+        "anonymous": [],
+        "authenticated": []
+      },
+      "serviceRole": [
+        "select",
+        "insert",
+        "update",
+        "delete"
+      ],
+      "realtime": false
+    },
+    {
+      "name": "worker_reply_nudges",
       "classification": "internal",
       "rlsEnabled": true,
       "actorCommands": {
@@ -2961,6 +3282,70 @@
         "authenticated": [
           "select"
         ]
+      },
+      "serviceRole": [
+        "select",
+        "insert",
+        "update",
+        "delete"
+      ],
+      "realtime": false
+    },
+    {
+      "name": "worker_suspension_events",
+      "classification": "internal",
+      "rlsEnabled": true,
+      "actorCommands": {
+        "anonymous": [],
+        "authenticated": []
+      },
+      "serviceRole": [
+        "select",
+        "insert",
+        "update",
+        "delete"
+      ],
+      "realtime": false
+    },
+    {
+      "name": "worker_violation_appeals",
+      "classification": "internal",
+      "rlsEnabled": true,
+      "actorCommands": {
+        "anonymous": [],
+        "authenticated": []
+      },
+      "serviceRole": [
+        "select",
+        "insert",
+        "update",
+        "delete"
+      ],
+      "realtime": false
+    },
+    {
+      "name": "worker_violation_case_events",
+      "classification": "internal",
+      "rlsEnabled": true,
+      "actorCommands": {
+        "anonymous": [],
+        "authenticated": []
+      },
+      "serviceRole": [
+        "select",
+        "insert",
+        "update",
+        "delete"
+      ],
+      "realtime": false
+    },
+    {
+      "name": "worker_violation_cases",
+      "classification": "internal",
+      "rlsEnabled": true,
+      "actorCommands": {
+        "anonymous": [],
+        "authenticated": []
       },
       "serviceRole": [
         "select",
@@ -3201,6 +3586,14 @@
       ]
     },
     {
+      "signature": "admin_approve_ambassador_program(uuid, uuid)",
+      "securityDefiner": true,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
       "signature": "admin_approve_finance_tax_policy(uuid, uuid, text)",
       "securityDefiner": true,
       "fixedSearchPath": true,
@@ -3295,6 +3688,22 @@
       ]
     },
     {
+      "signature": "admin_decide_violation_appeal(uuid, uuid, text, text)",
+      "securityDefiner": true,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
+      "signature": "admin_decide_violation_case(uuid, uuid, text, text, integer, jsonb)",
+      "securityDefiner": true,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
       "signature": "admin_draft_price_baseline(uuid, uuid, text, complexity_level, integer, integer, integer, text, jsonb, text)",
       "securityDefiner": true,
       "fixedSearchPath": true,
@@ -3312,6 +3721,14 @@
     },
     {
       "signature": "admin_draft_service_intake_policy(uuid, uuid, integer, service_quote_mode, jsonb, jsonb, jsonb, jsonb, jsonb, text)",
+      "securityDefiner": true,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
+      "signature": "admin_extend_withdrawal_hold(uuid, uuid, text, timestamp with time zone)",
       "securityDefiner": true,
       "fixedSearchPath": true,
       "executeRoles": [
@@ -3375,7 +3792,63 @@
       ]
     },
     {
+      "signature": "admin_get_ambassador_program(uuid)",
+      "securityDefiner": true,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
+      "signature": "admin_get_compensation_payee(uuid, uuid)",
+      "securityDefiner": true,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
+      "signature": "admin_get_violation_case(uuid, uuid)",
+      "securityDefiner": true,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
+      "signature": "admin_lift_identity_block(uuid, uuid, text)",
+      "securityDefiner": true,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
+      "signature": "admin_list_compensation(uuid)",
+      "securityDefiner": true,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
       "signature": "admin_list_finance_tax_policies(uuid)",
+      "securityDefiner": true,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
+      "signature": "admin_list_identity_blocks(uuid)",
+      "securityDefiner": true,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
+      "signature": "admin_list_violation_cases(uuid, text)",
       "securityDefiner": true,
       "fixedSearchPath": true,
       "executeRoles": [
@@ -3416,6 +3889,14 @@
     },
     {
       "signature": "admin_publish_price_baseline_version(uuid, uuid, uuid, timestamp with time zone, integer, uuid, text)",
+      "securityDefiner": true,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
+      "signature": "admin_record_compensation_paid(uuid, uuid, text)",
       "securityDefiner": true,
       "fixedSearchPath": true,
       "executeRoles": [
@@ -3541,6 +4022,14 @@
       ]
     },
     {
+      "signature": "admin_save_ambassador_program_draft(uuid, jsonb)",
+      "securityDefiner": true,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
       "signature": "admin_save_finance_tax_policy_draft(uuid, uuid, text, integer, text, text, date, date, jsonb)",
       "securityDefiner": true,
       "fixedSearchPath": true,
@@ -3574,6 +4063,22 @@
     },
     {
       "signature": "admin_set_worker_access_atomic(uuid, uuid, text, text)",
+      "securityDefiner": true,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
+      "signature": "admin_set_worker_identity_number(uuid, uuid, text, text, text, text)",
+      "securityDefiner": true,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
+      "signature": "admin_suspend_worker_for_case(uuid, uuid, text)",
       "securityDefiner": true,
       "fixedSearchPath": true,
       "executeRoles": [
@@ -3831,6 +4336,14 @@
       ]
     },
     {
+      "signature": "check_identity_blocklist(jsonb)",
+      "securityDefiner": true,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
       "signature": "check_kael_ai_spend(uuid, numeric, numeric, numeric, numeric)",
       "securityDefiner": true,
       "fixedSearchPath": true,
@@ -3957,6 +4470,14 @@
       ]
     },
     {
+      "signature": "claim_referral_code(uuid, text)",
+      "securityDefiner": true,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
       "signature": "claim_saved_worker_fallback_atomic(uuid, text, uuid)",
       "securityDefiner": true,
       "fixedSearchPath": true,
@@ -3998,6 +4519,14 @@
     },
     {
       "signature": "claim_worker_replacement_outbox_batch(text, integer, integer)",
+      "securityDefiner": true,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
+      "signature": "claim_worker_reply_nudges(integer)",
       "securityDefiner": true,
       "fixedSearchPath": true,
       "executeRoles": [
@@ -4265,6 +4794,14 @@
       ]
     },
     {
+      "signature": "create_worker_report(uuid, uuid, text, text)",
+      "securityDefiner": true,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
       "signature": "create_worker_vietqr_payment_intent(uuid, uuid, integer, text, text, text, timestamp with time zone)",
       "securityDefiner": true,
       "fixedSearchPath": true,
@@ -4345,6 +4882,14 @@
     {
       "signature": "enqueue_worker_no_show_reviews(timestamp with time zone)",
       "securityDefiner": false,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
+      "signature": "ensure_worker_referral_code(uuid)",
+      "securityDefiner": true,
       "fixedSearchPath": true,
       "executeRoles": [
         "service_role"
@@ -4471,6 +5016,22 @@
       ]
     },
     {
+      "signature": "get_customer_compensation(uuid)",
+      "securityDefiner": true,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
+      "signature": "get_customer_membership_summary(uuid)",
+      "securityDefiner": true,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
       "signature": "get_customer_profile_insights_aggregate(uuid)",
       "securityDefiner": false,
       "fixedSearchPath": true,
@@ -4533,6 +5094,22 @@
       ]
     },
     {
+      "signature": "get_worker_ambassador_summary(uuid)",
+      "securityDefiner": true,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
+      "signature": "get_worker_compensation(uuid)",
+      "securityDefiner": true,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
       "signature": "get_worker_current_commission_tier(uuid)",
       "securityDefiner": false,
       "fixedSearchPath": true,
@@ -4574,6 +5151,14 @@
     },
     {
       "signature": "get_worker_registration_command(uuid, uuid)",
+      "securityDefiner": true,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
+      "signature": "get_worker_violations(uuid)",
       "securityDefiner": true,
       "fixedSearchPath": true,
       "executeRoles": [
@@ -4637,6 +5222,14 @@
       ]
     },
     {
+      "signature": "list_matching_deprioritized_workers(uuid[])",
+      "securityDefiner": true,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
       "signature": "maintain_manual_bank_payment_holds(integer)",
       "securityDefiner": true,
       "fixedSearchPath": true,
@@ -4693,6 +5286,14 @@
     {
       "signature": "notify_worker_account_approved()",
       "securityDefiner": false,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
+      "signature": "open_compensation_claim(uuid, uuid, integer, text, text[])",
+      "securityDefiner": true,
       "fixedSearchPath": true,
       "executeRoles": [
         "service_role"
@@ -5059,6 +5660,14 @@
       ]
     },
     {
+      "signature": "redeem_ambassador_milestone(uuid, uuid, uuid)",
+      "securityDefiner": true,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
       "signature": "register_device_push_token_atomic(uuid, text, text, text, jsonb)",
       "securityDefiner": false,
       "fixedSearchPath": true,
@@ -5295,6 +5904,14 @@
       "executeRoles": []
     },
     {
+      "signature": "respond_compensation(uuid, text, uuid, text, integer, text)",
+      "securityDefiner": true,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
       "signature": "respond_to_direct_worker_payment(uuid, uuid, text, boolean)",
       "securityDefiner": true,
       "fixedSearchPath": true,
@@ -5443,6 +6060,14 @@
     {
       "signature": "submit_review_atomic(uuid, uuid, integer, text[], text)",
       "securityDefiner": false,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
+      "signature": "submit_violation_appeal(uuid, uuid, text, text[])",
+      "securityDefiner": true,
       "fixedSearchPath": true,
       "executeRoles": [
         "service_role"
@@ -5608,6 +6233,10 @@
     },
     {
       "id": "customer-avatars",
+      "storageObjectPolicyCount": 0
+    },
+    {
+      "id": "discipline-evidence",
       "storageObjectPolicyCount": 0
     },
     {

@@ -2,6 +2,7 @@ import { z } from "zod";
 
 export const ADMIN_OPERATOR_CAPABILITIES = [
   "operations.read", "operations.triage", "workers.read", "workers.review", "workers.manage",
+  "workers.bonus.manage", "workers.discipline.manage",
   "transactions.read", "finance.read", "finance.reconcile",
   "finance.tax.manage", "payouts.read", "payouts.process", "team.read", "system.read", "system.manage",
 ] as const;

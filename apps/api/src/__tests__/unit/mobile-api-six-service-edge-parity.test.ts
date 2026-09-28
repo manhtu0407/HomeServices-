@@ -148,6 +148,7 @@ describe('Edge six-service domain parity', () => {
       customerProfile: null,
       disputes: [],
       kaelInteractionCount: 0,
+      membershipPoints: 0,
       jobs: SIX_SERVICES.map((service, index) => ({
         id: `job-${index}`,
         status: 'completed_by_worker',

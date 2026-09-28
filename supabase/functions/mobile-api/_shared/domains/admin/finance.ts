@@ -721,6 +721,7 @@ function serializeTaxRule(row: Row, policyId: string, fallbackSubject: AdminFina
     subject,
     basis,
     rate_bps: rateBps,
+    applies_at_or_above_vnd: nonnegativeInteger(row.applies_at_or_above_vnd),
     created_at: nullableString(row.rule_created_at) ?? nullableString(row.created_at) ?? fallbackCreatedAt,
   };
 }
@@ -780,7 +781,7 @@ function asTaxSubject(value: unknown): AdminFinanceTaxPolicy["subject"] | null {
 }
 
 function asTaxBasis(value: unknown): AdminFinanceTaxPolicy["basis"] | null {
-  return value === "gmv" || value === "commission_collected" || value === "commission_retained" || value === "worker_net_paid" ? value : null;
+  return value === "gmv" || value === "commission_collected" || value === "commission_retained" || value === "worker_net_paid" || value === "worker_bonus" ? value : null;
 }
 
 function asTaxPolicyStatus(value: unknown): AdminFinanceTaxPolicy["status"] | null {

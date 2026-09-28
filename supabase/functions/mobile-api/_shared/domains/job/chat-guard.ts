@@ -1,5 +1,6 @@
 export type JobChatContactGuard = {
   flagged: boolean;
+  originalContent: string;
   redactedContent: string;
   signals: string[];
 };
@@ -36,6 +37,7 @@ export function evaluateJobChatContactGuard(
     .map((entry) => entry.id);
   return {
     flagged: signals.length > 0,
+    originalContent: content,
     redactedContent: JOB_CHAT_CONTACT_REDACTED,
     signals,
   };

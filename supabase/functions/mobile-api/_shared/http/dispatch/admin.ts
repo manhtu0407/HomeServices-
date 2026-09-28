@@ -2,6 +2,14 @@ import { priceSynthesisAbCaseSchema } from "../../platform/kael-contracts.ts";
 import {
   adminOperatorProvisionSchema,
   adminOperatorResetPasswordSchema,
+  ambassadorProgramDraftSchema,
+  appealDecisionSchema,
+  compensationPaidSchema,
+  identityBlockLiftSchema,
+  violationDecisionSchema,
+  violationSuspendSchema,
+  withdrawalHoldExtendSchema,
+  workerIdentityNumberSchema,
 } from "../../../../_shared/domain.ts";
 import { apiFailure } from "../../platform/api-failure.ts";
 import { readJson } from "../read-json.ts";
@@ -164,6 +172,60 @@ export async function dispatchAdminRoute(
   }
 
   switch (route.kind) {
+    case "admin.discipline.cases":
+      return services.listAdminViolationCases(ctx, new URL(request.url).searchParams.get("status"));
+    case "admin.discipline.case":
+      return services.getAdminViolationCase(ctx, route.caseId);
+    case "admin.discipline.decide": {
+      const input = violationDecisionSchema.safeParse(await readJson(request));
+      if (!input.success) apiFailure("VALIDATION", "Quyết định cần lựa chọn và lý do rõ ràng", 400);
+      return services.decideAdminViolationCase(ctx, route.caseId, input.data);
+    }
+    case "admin.discipline.suspend": {
+      const input = violationSuspendSchema.safeParse(await readJson(request));
+      if (!input.success) apiFailure("VALIDATION", "Cần lý do đình chỉ rõ ràng", 400);
+      return services.suspendWorkerForCase(ctx, route.caseId, input.data);
+    }
+    case "admin.discipline.holdExtend": {
+      const input = withdrawalHoldExtendSchema.safeParse(await readJson(request));
+      if (!input.success) apiFailure("VALIDATION", "Cần số hồ sơ của cơ quan có thẩm quyền và ngày hết hạn", 400);
+      return services.extendWithdrawalHold(ctx, route.caseId, input.data);
+    }
+    case "admin.discipline.appealDecide": {
+      const input = appealDecisionSchema.safeParse(await readJson(request));
+      if (!input.success) apiFailure("VALIDATION", "Quyết định khiếu nại cần lý do rõ ràng", 400);
+      return services.decideViolationAppeal(ctx, route.caseId, input.data);
+    }
+    case "admin.compensation.list":
+      return services.listAdminCompensation(ctx);
+    case "admin.compensation.payee":
+      return services.getCompensationPayee(ctx, route.negotiationId);
+    case "admin.compensation.paid": {
+      const input = compensationPaidSchema.safeParse(await readJson(request));
+      if (!input.success) apiFailure("VALIDATION", "Cần mã giao dịch chuyển khoản", 400);
+      return services.recordCompensationPaid(ctx, route.negotiationId, input.data);
+    }
+    case "admin.discipline.blocklist":
+      return services.listIdentityBlocks(ctx);
+    case "admin.discipline.blocklistLift": {
+      const input = identityBlockLiftSchema.safeParse(await readJson(request));
+      if (!input.success) apiFailure("VALIDATION", "Cần lý do gỡ chặn rõ ràng", 400);
+      return services.liftIdentityBlock(ctx, route.blockId, input.data);
+    }
+    case "admin.discipline.identityNumber": {
+      const input = workerIdentityNumberSchema.safeParse(await readJson(request));
+      if (!input.success) apiFailure("VALIDATION", "Số CCCD phải gồm 12 chữ số", 400);
+      return services.setWorkerIdentityNumber(ctx, route.workerId, input.data);
+    }
+    case "admin.ambassadorProgram.get":
+      return services.getAdminAmbassadorProgram(ctx);
+    case "admin.ambassadorProgram.saveDraft": {
+      const input = ambassadorProgramDraftSchema.safeParse(await readJson(request));
+      if (!input.success) apiFailure("VALIDATION", "Cấu hình chương trình thưởng không hợp lệ", 400);
+      return services.saveAdminAmbassadorProgramDraft(ctx, input.data);
+    }
+    case "admin.ambassadorProgram.approve":
+      return services.approveAdminAmbassadorProgram(ctx, route.versionId);
     case "admin.marketCache.invalidate":
       return services.invalidateMarketCache(ctx, marketCacheInvalidateInput(await readJson(request)));
     case "admin.kaelAb.priceSynthesis": {

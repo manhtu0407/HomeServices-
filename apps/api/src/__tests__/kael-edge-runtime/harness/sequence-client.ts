@@ -24,6 +24,9 @@ export function makeSequenceClient(
       if (table === 'job_matching_preferences') {
         return makeQuery(call, [{ data: null, error: null }])
       }
+      if (table === 'chat_guard_redaction_evidence') {
+        return makeQuery(call, [{ data: null, error: null }])
+      }
       return makeQuery(call, results)
     },
     rpc(name: string, args?: Record<string, unknown>) {
@@ -37,6 +40,13 @@ export function makeSequenceClient(
       // orthogonal to the .from() result sequence. Return a valid reservation so
       // test callers exercise the durable fail-closed contract without consuming
       // sequenced query results. Other RPC names still draw from the sequence.
+      // The discipline matching signal is read on every ranking; it is orthogonal to the
+      // sequenced results and returns nobody deprioritized unless a test overrides it.
+      if (name === 'list_matching_deprioritized_workers') {
+        const call: QueryCall = { table: `rpc:${name}`, operations: [['rpc', name, args]] }
+        calls.push(call)
+        return makeQuery(call, [{ data: [], error: null }])
+      }
       if (
         name === 'reserve_kael_ai_spend' || name === 'finalize_kael_ai_spend' ||
         name === 'check_kael_ai_spend' || name === 'record_kael_ai_spend'

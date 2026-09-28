@@ -12,6 +12,8 @@ export const ADMIN_CAPABILITY_VALUES = [
   "workers.read",
   "workers.review",
   "workers.manage",
+  "workers.bonus.manage",
+  "workers.discipline.manage",
   "transactions.read",
   "finance.read",
   "finance.reconcile",

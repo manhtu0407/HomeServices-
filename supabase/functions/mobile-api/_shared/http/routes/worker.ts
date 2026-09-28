@@ -35,6 +35,14 @@ export type WorkerRoute =
   | { kind: "workers.payoutMethod.get"; method: "GET"; roles: UserRole[] }
   | { kind: "workers.payoutMethod.save"; method: "PATCH"; roles: UserRole[] }
   | { kind: "workers.withdrawalRequests.list"; method: "GET"; roles: UserRole[] }
+  | { kind: "workers.ambassador.get"; method: "GET"; roles: UserRole[] }
+  | { kind: "workers.violations.list"; method: "GET"; roles: UserRole[] }
+  | { kind: "workers.compensation.list"; method: "GET"; roles: UserRole[] }
+  | { kind: "workers.compensation.respond"; method: "POST"; roles: UserRole[]; negotiationId: string }
+  | { kind: "workers.violations.appealUpload"; method: "POST"; roles: UserRole[]; caseId: string; successStatus: 201 }
+  | { kind: "workers.violations.appeal"; method: "POST"; roles: UserRole[]; caseId: string }
+  | { kind: "workers.ambassador.code"; method: "POST"; roles: UserRole[] }
+  | { kind: "workers.ambassador.redeem"; method: "POST"; roles: UserRole[]; successStatus: 201 }
   | {
     kind: "workers.withdrawalRequests.create";
     method: "POST";
@@ -165,6 +173,32 @@ export function matchWorkerRoute(path: string, method: string): WorkerRoute | nu
   }
   if (method === "PATCH" && path === "/workers/me/payout-method") {
     return { kind: "workers.payoutMethod.save", method: "PATCH", roles: ["worker"] };
+  }
+  if (method === "GET" && path === "/workers/me/compensation") {
+    return { kind: "workers.compensation.list", method: "GET", roles: ["worker"] };
+  }
+  const compensationResponse = path.match(/^\/workers\/me\/compensation\/([0-9a-f-]{36})\/response$/);
+  if (compensationResponse && method === "POST") {
+    return { kind: "workers.compensation.respond", method: "POST", roles: ["worker"], negotiationId: compensationResponse[1] ?? "" };
+  }
+  if (method === "GET" && path === "/workers/me/violations") {
+    return { kind: "workers.violations.list", method: "GET", roles: ["worker"] };
+  }
+  const violationAction = path.match(/^\/workers\/me\/violations\/([0-9a-f-]{36})\/(appeal-uploads|appeal)$/);
+  if (violationAction && method === "POST") {
+    const caseId = violationAction[1] ?? "";
+    return violationAction[2] === "appeal"
+      ? { kind: "workers.violations.appeal", method: "POST", roles: ["worker"], caseId }
+      : { kind: "workers.violations.appealUpload", method: "POST", roles: ["worker"], caseId, successStatus: 201 };
+  }
+  if (method === "GET" && path === "/workers/me/ambassador") {
+    return { kind: "workers.ambassador.get", method: "GET", roles: ["worker"] };
+  }
+  if (method === "POST" && path === "/workers/me/ambassador/code") {
+    return { kind: "workers.ambassador.code", method: "POST", roles: ["worker"] };
+  }
+  if (method === "POST" && path === "/workers/me/ambassador/redemptions") {
+    return { kind: "workers.ambassador.redeem", method: "POST", roles: ["worker"], successStatus: 201 };
   }
   if (method === "GET" && path === "/workers/me/withdrawal-requests") {
     return { kind: "workers.withdrawalRequests.list", method: "GET", roles: ["worker"] };

@@ -332,8 +332,9 @@ type AdminFinanceTaxRule = {
   id: string;
   tax_type: string;
   subject: "platform" | "worker";
-  basis: "gmv" | "commission_collected" | "commission_retained" | "worker_net_paid";
+  basis: "gmv" | "commission_collected" | "commission_retained" | "worker_net_paid" | "worker_bonus";
   rate_bps: number;
+  applies_at_or_above_vnd: number | null;
   created_at: string;
 };
 
@@ -343,7 +344,7 @@ type AdminFinanceTaxPolicy = {
   name: string;
   tax_type: string;
   subject: "platform" | "worker";
-  basis: "gmv" | "commission_collected" | "commission_retained" | "worker_net_paid";
+  basis: "gmv" | "commission_collected" | "commission_retained" | "worker_net_paid" | "worker_bonus";
   rate_bps: number;
   status: "draft" | "approved" | "retired";
   effective_from: string;

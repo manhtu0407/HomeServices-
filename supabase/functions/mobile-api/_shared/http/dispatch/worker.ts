@@ -1,4 +1,8 @@
 import {
+  ambassadorRedeemSchema,
+  appealEvidenceUploadSchema,
+  appealSubmitSchema,
+  compensationResponseSchema,
   availabilityToggleSchema,
   workerApplicationSubmitSchema,
   workerAvatarUpdateSchema,
@@ -171,6 +175,34 @@ export async function dispatchWorkerRoute(
       const input = workerPayoutMethodSaveSchema.safeParse(await readJson(request));
       if (!input.success) apiFailure("VALIDATION", "Tài khoản nhận tiền không hợp lệ", 400);
       return services.saveWorkerPayoutMethod(ctx, input.data);
+    }
+    case "workers.compensation.list":
+      return services.listWorkerCompensation(ctx);
+    case "workers.compensation.respond": {
+      const input = compensationResponseSchema.safeParse(await readJson(request));
+      if (!input.success) apiFailure("VALIDATION", "Phản hồi bồi thường chưa hợp lệ", 400);
+      return services.respondCompensation(ctx, route.negotiationId, input.data);
+    }
+    case "workers.violations.list":
+      return services.listWorkerViolations(ctx);
+    case "workers.violations.appealUpload": {
+      const input = appealEvidenceUploadSchema.safeParse(await readJson(request));
+      if (!input.success) apiFailure("VALIDATION", "Loại tệp bằng chứng không hợp lệ", 400);
+      return services.createAppealEvidenceUpload(ctx, route.caseId, input.data);
+    }
+    case "workers.violations.appeal": {
+      const input = appealSubmitSchema.safeParse(await readJson(request));
+      if (!input.success) apiFailure("VALIDATION", "Khiếu nại cần lý do rõ ràng", 400);
+      return services.submitViolationAppeal(ctx, route.caseId, input.data);
+    }
+    case "workers.ambassador.get":
+      return services.getWorkerAmbassadorSummary(ctx);
+    case "workers.ambassador.code":
+      return services.ensureWorkerReferralCode(ctx);
+    case "workers.ambassador.redeem": {
+      const input = ambassadorRedeemSchema.safeParse(await readJson(request));
+      if (!input.success) apiFailure("VALIDATION", "Yêu cầu đổi thưởng không hợp lệ", 400);
+      return services.redeemAmbassadorMilestone(ctx, input.data);
     }
     case "workers.withdrawalRequests.list":
       return services.listWorkerWithdrawalRequests(ctx);

@@ -26,6 +26,13 @@ export type JobResourceRoute =
     successStatus: 201;
   }
   | {
+    kind: "jobs.workerReport";
+    method: "POST";
+    jobId: string;
+    roles: UserRole[];
+    successStatus: 201;
+  }
+  | {
     kind: "jobs.openDispute";
     method: "POST";
     jobId: string;
@@ -203,6 +210,9 @@ function matchJobResourceAction(
       roles: ["customer", "admin"],
       successStatus: 201,
     };
+  }
+  if (action === "worker-reports" && method === "POST" && path.endsWith("/worker-reports")) {
+    return { kind: "jobs.workerReport", method: "POST", jobId, roles: ["customer"], successStatus: 201 };
   }
   if (action === "disputes" && method === "POST" && path.endsWith("/disputes")) {
     return {

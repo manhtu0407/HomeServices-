@@ -24,9 +24,36 @@ export type MeRoute =
   }
   | { kind: "me.jobs.active"; method: "GET"; roles: UserRole[] }
   | { kind: "me.jobs.history"; method: "GET"; roles: UserRole[] }
-  | { kind: "me.favoriteWorkers.matching"; method: "GET"; roles: UserRole[] };
+  | { kind: "me.favoriteWorkers.matching"; method: "GET"; roles: UserRole[] }
+  | { kind: "me.membership"; method: "GET"; roles: UserRole[] }
+  | { kind: "me.referralClaim"; method: "POST"; roles: UserRole[] }
+  | { kind: "me.compensation.list"; method: "GET"; roles: UserRole[] }
+  | { kind: "me.compensation.claim"; method: "POST"; roles: UserRole[]; caseId: string; successStatus: 201 }
+  | { kind: "me.compensation.upload"; method: "POST"; roles: UserRole[]; caseId: string; successStatus: 201 }
+  | { kind: "me.compensation.respond"; method: "POST"; roles: UserRole[]; negotiationId: string };
 
 export function matchMeRoute(path: string, method: string): MeRoute | null {
+  if (method === "GET" && path === "/me/membership") {
+    return { kind: "me.membership", method: "GET", roles: ["customer"] };
+  }
+  if (method === "POST" && path === "/me/referral-claims") {
+    return { kind: "me.referralClaim", method: "POST", roles: ["customer"] };
+  }
+  if (method === "GET" && path === "/me/compensation") {
+    return { kind: "me.compensation.list", method: "GET", roles: ["customer"] };
+  }
+  const compensationClaim = path.match(/^\/me\/compensation\/cases\/([0-9a-f-]{36})$/);
+  if (compensationClaim && method === "POST") {
+    return { kind: "me.compensation.claim", method: "POST", roles: ["customer"], caseId: compensationClaim[1] ?? "", successStatus: 201 };
+  }
+  const compensationUpload = path.match(/^\/me\/compensation\/cases\/([0-9a-f-]{36})\/uploads$/);
+  if (compensationUpload && method === "POST") {
+    return { kind: "me.compensation.upload", method: "POST", roles: ["customer"], caseId: compensationUpload[1] ?? "", successStatus: 201 };
+  }
+  const compensationResponse = path.match(/^\/me\/compensation\/([0-9a-f-]{36})\/response$/);
+  if (compensationResponse && method === "POST") {
+    return { kind: "me.compensation.respond", method: "POST", roles: ["customer"], negotiationId: compensationResponse[1] ?? "" };
+  }
   if (method === "GET" && path === "/me/admin-activation") {
     return { kind: "me.adminActivation", method: "GET", roles: ["customer", "admin_operator"] };
   }
