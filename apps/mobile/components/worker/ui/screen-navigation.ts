@@ -6,7 +6,7 @@ export function workerV5JobsDestinationScreenId(deal: LocalDeal | null): WorkerV
   const status = deal.backendStatus ?? deal.status
   if (deal.status === 'broadcasting' && deal.broadcast?.status === 'sent') return '2.2-offer-detail'
   if (status === 'worker_candidate_pending') return '2.3-customer-confirmation-wait'
-  if (status === 'worker_matched' || status === 'worker_on_way') return '2.7-in-progress'
+  if (status === 'worker_matched' || status === 'worker_on_way') return '2.4-route-eta'
   if (status === 'arrived' || status === 'inspecting' || status === 'repairing') return '2.7-in-progress'
   if (status === 'scope_change_pending') return '2.9-approval-wait'
   if (status === 'completed_by_worker' || status === 'confirmed_by_customer') return '2.11-completion-submitted'

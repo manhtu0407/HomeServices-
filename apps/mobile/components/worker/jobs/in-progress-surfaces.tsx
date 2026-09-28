@@ -520,6 +520,16 @@ export function WorkerV5InProgressBody({
   }
 
   if (stageFive) {
+    // An unpriced inspection needs the worker's post-inspection quote, which lives in the details sheet.
+    const stageFivePrimary = stageFiveStatus === 'inspecting' && deal?.finalPrice == null
+      ? {
+          enabled: Boolean(currentJobId),
+          label: textByLanguage(language, 'Báo giá sau khảo sát', 'Post-inspection quote'),
+          onPress: () => setStageFiveDetailsOpen(true),
+        }
+      : phaseAction
+        ? { enabled: !phaseAction.disabled, label: phaseAction.label, onPress: phaseAction.onPress }
+        : null
     const stageFiveActions: StageFiveActions = {
       back: {
         enabled: true,
@@ -564,8 +574,8 @@ export function WorkerV5InProgressBody({
         },
       },
       complete: {
-        enabled: stageFiveStatus === 'repairing',
-        onPress: () => void advanceWorkPhase(),
+        enabled: Boolean(stageFivePrimary?.enabled),
+        onPress: stageFivePrimary?.onPress ?? (() => undefined),
       },
     }
     const stageFiveModel: StageFiveWorkModel = {
@@ -585,7 +595,10 @@ export function WorkerV5InProgressBody({
       phaseLabels: language === 'vi' ? ['Đã tới', 'Kiểm tra', 'Đang làm', 'Hồ sơ', 'Hoàn tất'] : ['Arrived', 'Inspection', 'Work in progress', 'Evidence', 'Complete'],
       note: deal?.workerWorkNote ?? null,
       evidenceCount,
-      canPrepareCompletion: stageFiveStatus === 'repairing',
+      primaryLabel: stageFivePrimary?.label ?? null,
+      primaryEnabled: Boolean(stageFivePrimary?.enabled),
+      // Once checked in, the notice is the success receipt and the waiting label already says it.
+      notice: phaseAction?.testID === 'worker-v5-arrival-check-in-action' ? visiblePhaseActionNotice : null,
     }
     return (
       <>

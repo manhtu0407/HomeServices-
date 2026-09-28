@@ -13,6 +13,13 @@ const completeStates = new Set(['completed_by_worker', 'confirmed_by_customer', 
 const paidStates = new Set(['paid', 'reviewed'])
 const blockedStates = new Set(['failed', 'payment_failed', 'manual_rejected', 'direct_disputed', 'refunded', 'reversed'])
 
+/** True only for a recorded paid status or a confirmed direct payment; an amount alone never counts. */
+export function isStageElevenPaymentRecorded(input: Pick<StageElevenInput, 'status' | 'backendStatus' | 'paymentStatus'>): boolean {
+  return paidStates.has(input.status ?? '')
+    || paidStates.has(input.backendStatus ?? '')
+    || input.paymentStatus === 'direct_paid'
+}
+
 /** Pure projection: viewing Stage 11 never marks a payment as paid. */
 export function buildStageElevenModel(input: StageElevenInput): StageElevenModel {
   const jobId = clean(input.jobId)
@@ -34,9 +41,7 @@ export function buildStageElevenModel(input: StageElevenInput): StageElevenModel
   const held = ledger?.payment_state === 'on_hold'
     || input.paymentStatus === 'direct_admin_confirmation_required'
   const ledgerAvailable = ledger?.payment_state === 'available' && validMoney(ledger.worker_net)
-  const paymentRecorded = paidStates.has(input.status ?? '')
-    || paidStates.has(input.backendStatus ?? '')
-    || input.paymentStatus === 'direct_paid'
+  const paymentRecorded = isStageElevenPaymentRecorded(input)
   const state = !jobId ? 'missing' : failed ? 'failed' : held ? 'held'
     : ledgerAvailable || paymentRecorded ? 'confirmed' : 'pending'
   const directAmount = validMoney(input.amountReceived) && input.amountReceived > 0 ? input.amountReceived

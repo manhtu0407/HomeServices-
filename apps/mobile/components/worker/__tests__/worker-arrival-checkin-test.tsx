@@ -343,22 +343,28 @@ describe('Worker V5 arrival check-in', () => {
     buildWorkflow(buildOnWayDeal())
   })
 
-  it('keeps travel details inside in-progress until the worker confirms arrival', () => {
+  it('keeps a traveling worker on the Stage 4 travel screen until arrival is confirmed', async () => {
+    mockRouteParams = { ns_worker_screen: '2.4-route-eta' }
     render(<WorkerJobsSurface />)
 
-    expect(screen.getByTestId('worker-v5-screen-2.7-in-progress')).toBeOnTheScreen()
-    expect(screen.getByTestId('worker-v5-route-map-panel')).toBeOnTheScreen()
-    expect(screen.getByTestId('worker-v5-eta-summary-card')).toBeOnTheScreen()
-    expect(screen.getByTestId('worker-v5-eta-lens-value')).not.toHaveTextContent(/^0$/)
-    expect(screen.getByTestId('worker-v5-eta-lens-label')).toHaveTextContent('dữ liệu')
-    expect(screen.getByTestId('worker-v5-route-arrival-action')).toBeOnTheScreen()
-    expect(screen.getByText('Xác nhận đã tới')).toBeOnTheScreen()
-    expect(screen.queryByTestId('worker-v5-route-pre-arrival-scope-action')).toBeNull()
-    expect(screen.queryByText('Điều chỉnh trước khi đến')).toBeNull()
+    expect(screen.getByTestId('worker-v5-screen-2.4-route-eta')).toBeOnTheScreen()
+    expect(screen.getByTestId('stage4-map-hero')).toBeOnTheScreen()
+    expect(screen.getByTestId('stage4-eta-sheet')).toBeOnTheScreen()
+    expect(screen.getByTestId('stage4-primary')).toHaveTextContent(/Xác nhận đã tới/)
+    expect(screen.queryByTestId('stage5-work')).toBeNull()
     expect(screen.queryByTestId('worker-v5-work-progress-board')).toBeNull()
     expect(screen.queryByTestId('worker-v5-evidence-tray')).toBeNull()
     expect(screen.queryByTestId('worker-jobs-surface')).toBeNull()
     expect(screen.queryByTestId('worker-v5-checkin-hero')).toBeNull()
+    expect(mockReplace).not.toHaveBeenCalled()
+  })
+
+  it('hands a traveling job on the in-progress route back to Stage 4 travel', async () => {
+    render(<WorkerJobsSurface />)
+
+    await waitFor(() => {
+      expect(mockReplace).toHaveBeenCalledWith('/(worker)/jobs?ns_worker_screen=2.4-route-eta')
+    })
   })
 
   it('renders the building route, distance, and ETA while the unit remains protected', async () => {
@@ -376,6 +382,7 @@ describe('Worker V5 arrival check-in', () => {
     dealWithoutRouteCoordinates.broadcast!.fullAddressLabel = null
     dealWithoutRouteCoordinates.broadcast!.fullAddressVisible = false
     buildWorkflow(dealWithoutRouteCoordinates)
+    mockRouteParams = { ns_worker_screen: '2.4-route-eta' }
     render(<WorkerJobsSurface />)
 
     await waitFor(() => {
@@ -387,14 +394,9 @@ describe('Worker V5 arrival check-in', () => {
 
     await waitFor(() => {
       expect(screen.getByTestId('worker-v5-route-map-live-image')).toBeOnTheScreen()
-      expect(screen.getByText('Di chuyển trong 12 phút')).toBeOnTheScreen()
-      expect(screen.getByText('Quãng đường thật · 3,2 km')).toBeOnTheScreen()
-      expect(screen.getByTestId('worker-v5-info-cell-value-0')).toHaveTextContent('3,2 km')
-      expect(screen.getByTestId('worker-v5-info-cell-value-1')).toHaveTextContent('12 phút')
-      expect(screen.getByTestId('worker-v5-info-cell-value-2')).toHaveTextContent('Sửa điện')
-      expect(screen.getByTestId('worker-v5-info-cell-label-2')).toHaveTextContent(
-        dealWithoutRouteCoordinates.broadcast!.problemSummary,
-      )
+      expect(screen.getByTestId('stage4-eta-sheet')).toHaveTextContent(/Bạn sẽ đến trong 12 phút/)
+      expect(screen.getByTestId('stage4-metrics')).toHaveTextContent(/3,2 km/)
+      expect(screen.getByTestId('stage4-metrics')).toHaveTextContent(/12 phút/)
     })
     expect(screen.queryByText('Chờ dữ liệu thật')).toBeNull()
     expect(dealWithoutRouteCoordinates.broadcast!.fullAddressVisible).toBe(false)
@@ -421,6 +423,7 @@ describe('Worker V5 arrival check-in', () => {
   it('settles the route-map preview when auth headers cannot be loaded', async () => {
     location.requestForegroundPermissionsAsync.mockResolvedValue({ granted: true })
     mockGetMobileApiAuthHeaders.mockRejectedValue(new Error('session storage failed'))
+    mockRouteParams = { ns_worker_screen: '2.4-route-eta' }
 
     render(<WorkerJobsSurface />)
 
@@ -473,9 +476,10 @@ it('labels an arrived job by its real workflow state instead of as a new offer',
 })
 
 it('records arrival before continuing to the in-progress screen', async () => {
+    mockRouteParams = { ns_worker_screen: '2.4-route-eta' }
     render(<WorkerJobsSurface />)
 
-    fireEvent.press(screen.getByTestId('worker-v5-route-arrival-action'))
+    fireEvent.press(screen.getByTestId('stage4-primary'))
 
     await waitFor(() => {
       expect(mockWorkflowValue.actions.workerUpdateStatus).toHaveBeenCalledWith('arrived')
@@ -483,16 +487,17 @@ it('records arrival before continuing to the in-progress screen', async () => {
     })
   })
 
-  it('starts travel without leaving the in-progress section', async () => {
+  it('starts travel without leaving the Stage 4 travel screen', async () => {
     buildWorkflow(buildMatchedDeal())
+    mockRouteParams = { ns_worker_screen: '2.4-route-eta' }
     render(<WorkerJobsSurface />)
 
-    expect(screen.getByText('Bắt đầu di chuyển')).toBeOnTheScreen()
-    fireEvent.press(screen.getByTestId('worker-v5-route-arrival-action'))
+    expect(screen.getByTestId('stage4-primary')).toHaveTextContent(/Bắt đầu di chuyển/)
+    fireEvent.press(screen.getByTestId('stage4-primary'))
 
     await waitFor(() => {
       expect(mockWorkflowValue.actions.workerUpdateStatus).toHaveBeenCalledWith('worker_on_way')
-      expect(mockReplace).toHaveBeenCalledWith('/(worker)/jobs?ns_worker_screen=2.7-in-progress')
+      expect(mockReplace).toHaveBeenCalledWith('/(worker)/jobs?ns_worker_screen=2.4-route-eta')
     })
   })
 
@@ -1321,7 +1326,7 @@ it('records arrival before continuing to the in-progress screen', async () => {
 
     render(<WorkerJobsSurface />)
 
-    expect(screen.queryByTestId('worker-v5-back')).toBeNull()
+    expect(screen.getByTestId('worker-v5-back')).toBeOnTheScreen()
     const primaryAction = screen.getByTestId('worker-v5-stage-six-primary-action')
     expect(primaryAction).toBeDisabled()
     fireEvent.press(primaryAction)

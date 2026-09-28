@@ -116,6 +116,9 @@ export function useWorkerBoardActions({
   const workerAvailabilityPreferenceRef = useRef<{ sessionUserId: string | null; value: boolean } | null>(null)
   const workerRefreshRequestIdRef = useRef(0)
   const workerRefreshInFlightRequestIdRef = useRef<number | null>(null)
+  // A trigger that lands mid-refresh may carry a change the running pass already read past.
+  const workerRefreshQueuedRef = useRef(false)
+  const workerRefreshRef = useRef<(() => Promise<boolean>) | null>(null)
   const workerActivityHeartbeatBusyRef = useRef(false)
   const workerProposalInFlightRef = useRef<string | null>(null)
   const [workerRemoteState, setWorkerRemoteState] = useState<WorkerRemoteState>(initialWorkerRemoteState)
@@ -136,11 +139,15 @@ export function useWorkerBoardActions({
   useEffect(() => {
     workerRefreshRequestIdRef.current += 1
     workerRefreshInFlightRequestIdRef.current = null
+    workerRefreshQueuedRef.current = false
   }, [role, sessionUserId])
 
   const workerRefresh = useCallback(async () => {
     if (role !== 'worker' && role !== 'admin') return true
-    if (workerRefreshInFlightRequestIdRef.current !== null) return true
+    if (workerRefreshInFlightRequestIdRef.current !== null) {
+      workerRefreshQueuedRef.current = true
+      return true
+    }
     const workerRefreshRequestId = workerRefreshRequestIdRef.current + 1
     workerRefreshRequestIdRef.current = workerRefreshRequestId
     workerRefreshInFlightRequestIdRef.current = workerRefreshRequestId
@@ -306,9 +313,14 @@ export function useWorkerBoardActions({
     } finally {
       if (workerRefreshInFlightRequestIdRef.current === workerRefreshRequestId) {
         workerRefreshInFlightRequestIdRef.current = null
+        if (workerRefreshQueuedRef.current) {
+          workerRefreshQueuedRef.current = false
+          void workerRefreshRef.current?.().catch(() => undefined)
+        }
       }
     }
   }, [dispatch, language, role, sessionUserId, setRemoteError, stateRef])
+  workerRefreshRef.current = workerRefresh
 
   const workerUpdateAvailability = useCallback(async (
     isAvailable: boolean,
