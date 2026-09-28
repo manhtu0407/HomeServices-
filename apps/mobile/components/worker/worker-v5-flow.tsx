@@ -938,7 +938,7 @@ function WorkerV5Body({
     case '5.11-worker-availability':
       return <WorkerV5ScheduleBody language={language} onOpenProfileSetup={() => navigateToScreen('5.7-verification-documents')} reduceMotion={reduceMotion} reduceTransparency={reduceTransparency} runtime={runtime} />
     case '5.12-worker-notifications':
-      return <WorkerV5NotificationsBody language={language} navigateToJob={navigateToJob} runtime={runtime} />
+      return <WorkerV5NotificationsBody language={language} navigateToJob={navigateToJob} navigateToViolations={() => navigateToScreen('4.7-violations')} runtime={runtime} />
     case '5.13-worker-support':
       return <WorkerV5SupportBody language={language} navigateToJobs={navigateToJobs} navigateToKael={navigateSupportKael} />
     case '5.14-worker-policies':

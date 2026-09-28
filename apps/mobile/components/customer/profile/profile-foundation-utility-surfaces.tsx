@@ -9,6 +9,7 @@ import type { NotificationListResponse } from '@/lib/api-types'
 import { generateClientRequestId } from '@/lib/client-request-id'
 import { customerAccountService } from '@/lib/services'
 import { localizeRfqNotification } from '@/lib/frontend-workflow/notifications'
+import { isCustomerCompensationNotification } from '@/lib/program-notification-routes'
 
 import type { CustomerThemeTokens, ThemeMode } from '../customer-theme'
 import { customerV21ProfileFoundationUtilityStyles as styles } from './profile-foundation-utility-styles'
@@ -100,6 +101,7 @@ export function ProfileNotificationsView({
   language,
   notifications,
   onMarkRead,
+  onOpenCompensation,
   onOpenRelatedWork,
   onRefresh,
   tokens,
@@ -108,6 +110,7 @@ export function ProfileNotificationsView({
   language: AppLanguage
   notifications: CustomerNotification[]
   onMarkRead: (notificationId: string) => Promise<boolean>
+  onOpenCompensation: () => void
   onOpenRelatedWork: (jobId: string) => void
   onRefresh: () => Promise<boolean>
   tokens: CustomerThemeTokens
@@ -125,7 +128,9 @@ export function ProfileNotificationsView({
     if (!notification.read_at) {
       await onMarkRead(notification.id)
     }
-    if (notification.job_id) {
+    if (isCustomerCompensationNotification(notification.event_type)) {
+      onOpenCompensation()
+    } else if (notification.job_id) {
       onOpenRelatedWork(notification.job_id)
     }
   }
@@ -171,9 +176,11 @@ export function ProfileNotificationsView({
               return (
                 <View key={notification.id}>
                   <Pressable
-                    accessibilityHint={notification.job_id
-                      ? (language === 'vi' ? 'Mở công việc liên quan' : 'Open the related job')
-                      : undefined}
+                    accessibilityHint={isCustomerCompensationNotification(notification.event_type)
+                      ? (language === 'vi' ? 'Mở mục bồi thường' : 'Open compensation')
+                      : notification.job_id
+                        ? (language === 'vi' ? 'Mở công việc liên quan' : 'Open the related job')
+                        : undefined}
                     accessibilityLabel={`${notification.title}. ${unread
                       ? (language === 'vi' ? 'Chưa đọc' : 'Unread')
                       : (language === 'vi' ? 'Đã đọc' : 'Read')}`}

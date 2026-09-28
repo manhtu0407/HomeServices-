@@ -2,8 +2,8 @@
   "version": "1.0.0",
   "source": {
     "migrationRoot": "supabase/migrations",
-    "migrationCount": 424,
-    "migrationDigest": "d65594cce0a2166ef7dcacb9f05a725173ced19b3612deaab65158d1a35213e2"
+    "migrationCount": 425,
+    "migrationDigest": "4549d8025ec0d90735735acb641c9094c762f776d048d271941af44d51cc44e3"
   },
   "actors": [
     "anonymous",
@@ -2399,6 +2399,22 @@
       "realtime": false
     },
     {
+      "name": "program_push_receipts",
+      "classification": "internal",
+      "rlsEnabled": true,
+      "actorCommands": {
+        "anonymous": [],
+        "authenticated": []
+      },
+      "serviceRole": [
+        "select",
+        "insert",
+        "update",
+        "delete"
+      ],
+      "realtime": false
+    },
+    {
       "name": "referral_claim_attempts",
       "classification": "internal",
       "rlsEnabled": true,
@@ -2951,8 +2967,7 @@
       "actorCommands": {
         "anonymous": [],
         "authenticated": [
-          "all",
-          "select"
+          "all"
         ]
       },
       "serviceRole": [
@@ -4471,6 +4486,14 @@
     },
     {
       "signature": "claim_official_match_push(text, text, text, text, integer)",
+      "securityDefiner": true,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
+      "signature": "claim_program_pushes(integer)",
       "securityDefiner": true,
       "fixedSearchPath": true,
       "executeRoles": [

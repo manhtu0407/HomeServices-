@@ -10,6 +10,7 @@ import type { DbClient } from "../mobile-api/_shared/platform/db.ts";
 import { reconcileMatchingPushReceipts } from "../mobile-api/_shared/platform/push.ts";
 import { dispatchOfficialMatchPush } from "../mobile-api/_shared/domains/notification/official-match-push.ts";
 import { dispatchWorkerReplyNudges } from "../mobile-api/_shared/domains/notification/worker-reply-nudge.ts";
+import { dispatchProgramPushes } from "../mobile-api/_shared/domains/notification/program-push.ts";
 
 const DEFAULT_LIMIT = 50;
 
@@ -87,6 +88,9 @@ Deno.serve(async (request) => {
       const replyNudges = await dispatchWorkerReplyNudges(dbClient, {
         limit: 50, environment, releaseId: release.releaseId,
       }).catch(() => ({ claimed: 0, pushed: 0, pushFailed: 0, error_code: "REPLY_NUDGE_DISPATCH_FAILED" }));
+      const programPushes = await dispatchProgramPushes(dbClient, {
+        limit: 50, environment, releaseId: release.releaseId,
+      }).catch(() => ({ claimed: 0, pushed: 0, pushFailed: 0, malformed: 0, error_code: "PROGRAM_PUSH_DISPATCH_FAILED" }));
       const { failed: officialMatchPushFailed, result: officialMatchPush } = await officialMatchPushTask;
       console.info("kael matching maintainer completed", {
         official_match_push_failed: officialMatchPushFailed,
@@ -109,6 +113,7 @@ Deno.serve(async (request) => {
         push_receipts_tokens_disabled: pushReceipts.tokensDisabled,
         matching_expiry_reconciled: matchingExpiry.reconciled,
         reply_nudges: replyNudges,
+        program_pushes: programPushes,
       });
       return json({
         ok: !officialMatchPushFailed,
@@ -119,6 +124,7 @@ Deno.serve(async (request) => {
         saved_worker_reconcile: summary,
         matching_expiry: matchingExpiry,
         reply_nudges: replyNudges,
+        program_pushes: programPushes,
       }, officialMatchPushFailed ? 500 : 200);
     } finally {
       await officialMatchPushTask;

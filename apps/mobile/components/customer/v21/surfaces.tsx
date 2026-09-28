@@ -28,6 +28,7 @@ import { useFrontendWorkflow } from '@/lib/frontend-workflow-provider'
 import { placesService } from '@/lib/services'
 import { bookingServiceIdFromRoute, performanceProfileForBooking, productionServiceForBooking } from '@/lib/kael-performance-intake'
 import { stagePendingKaelChatMessage } from '@/lib/pending-kael-chat-message'
+import { customerCompensationRoute } from '@/lib/program-notification-routes'
 import type { CustomerProfileInsightsResponse, CustomerServiceHistoryItem } from '@/lib/api-types'
 import {
   readPendingKaelChatDraft,
@@ -931,6 +932,7 @@ export function CustomerProfileSurface() {
               language={language}
               notifications={workflow.notifications}
               onMarkRead={workflow.actions.markNotificationRead}
+              onOpenCompensation={() => router.replace(customerCompensationRoute as never)}
               onOpenRelatedWork={(jobId) => router.replace(
                 `/(customer)/history?job_id=${encodeURIComponent(jobId)}&source=profile-notifications` as never,
               )}

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { StyleSheet, Text, View } from 'react-native'
+import { Pressable, StyleSheet, Text, View } from 'react-native'
 
 import {
   CompensationNegotiationPanel,
@@ -18,21 +18,40 @@ import { violationLabel } from './violation-copy'
 const palette = { text: color.text.strong, muted: color.text.secondary, border: color.surface.stroke, accent: color.text.strong }
 
 // A customer's compensation request reaches the worker here, next to the case it comes from.
-// Nothing leaves the worker's balance until the worker has pressed accept on an amount.
+// Nothing leaves the worker's balance until the worker has pressed accept on an amount. A failed
+// load shows a retry row, so a pending request with a deadline is never hidden by a network error.
 export function WorkerCompensationSection({ language }: { language: AppLanguage }) {
   const { session } = useAuth()
   const accessToken = session?.access_token ?? ''
   const [data, setData] = useState<WorkerCompensation | null>(null)
+  const [loadFailed, setLoadFailed] = useState(false)
 
   const load = useCallback(async () => {
+    if (!accessToken) return
     const result = await compensationService.listForWorker(accessToken)
-    if (result.success) setData(result.data)
+    if (result.success) {
+      setData(result.data)
+      setLoadFailed(false)
+    } else {
+      setLoadFailed(true)
+      console.warn('worker compensation load failed', { code: result.code, status: result.status })
+    }
   }, [accessToken])
 
   useEffect(() => {
     void load()
   }, [load])
 
+  if (!data && loadFailed) {
+    return (
+      <View style={styles.card} testID="worker-v5-compensation-unavailable">
+        <Text style={styles.sectionTitle}>{textByLanguage(language, 'Chưa tải được đề nghị bồi thường', 'Compensation requests did not load')}</Text>
+        <Pressable accessibilityRole="button" onPress={() => void load()} style={({ pressed }) => [styles.secondaryButton, pressed && styles.pressed]} testID="worker-v5-compensation-retry">
+          <Text style={styles.secondaryLabel}>{textByLanguage(language, 'Thử lại', 'Try again')}</Text>
+        </Pressable>
+      </View>
+    )
+  }
   if (!data || data.negotiations.length === 0) return null
   return (
     <View style={styles.stack} testID="worker-v5-compensation">

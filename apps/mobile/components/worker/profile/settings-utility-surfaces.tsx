@@ -5,6 +5,7 @@ import { PublicPrivacyPolicyLink } from '@/components/ui/public-privacy-policy-l
 import type { AppLanguage } from '@/lib/app-language'
 import type { useFrontendWorkflow } from '@/lib/frontend-workflow-provider'
 import { localizeRfqNotification } from '@/lib/frontend-workflow/notifications'
+import { isWorkerViolationNotification } from '@/lib/program-notification-routes'
 
 import { textByLanguage } from '../ui/format'
 import { useWorkerThemeMode } from '../worker-theme'
@@ -33,10 +34,12 @@ function notificationTime(value: string, language: AppLanguage) {
 export function WorkerV5NotificationsBody({
   language,
   navigateToJob,
+  navigateToViolations,
   runtime,
 }: {
   language: AppLanguage
   navigateToJob: (jobId: string) => void
+  navigateToViolations: () => void
   runtime: WorkerV5Runtime
 }) {
   const [openingNotificationId, setOpeningNotificationId] = useState<string | null>(null)
@@ -51,7 +54,8 @@ export function WorkerV5NotificationsBody({
     setOpeningNotificationId(notification.id)
     try {
       if (notification.status !== 'read') await runtime.actions.markNotificationRead(notification.id)
-      if (notification.job_id) navigateToJob(notification.job_id)
+      if (isWorkerViolationNotification(notification.event_type)) navigateToViolations()
+      else if (notification.job_id) navigateToJob(notification.job_id)
     } finally {
       setOpeningNotificationId(null)
     }

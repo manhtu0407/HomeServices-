@@ -5,7 +5,7 @@
     "immutableThroughVersion": "20260904113000",
     "sha256": "12da2bac288e0e718e61a27653e8cba9ffdb13b8e9900979407d41e1217b2077"
   },
-  "migrationCount": 424,
+  "migrationCount": 425,
   "migrationEquivalences": {
     "version": "1.0.0",
     "groups": [
@@ -74,7 +74,7 @@
       }
     ]
   },
-  "migrationsSha256": "f8aa0b7c4bb740c0e3e81429d78076b60cfb091e5d07b4537793e87d680a7f96",
+  "migrationsSha256": "b297952d14c10548d8354bdd114fb87433a2e653dcaadea1c17f7b2c2825aff9",
   "databaseTypes": {
     "file": "packages/shared/src/types/database",
     "sha256": "e5837680e05ca64a7cb5fb0a0e635e7fa7681da2adf92ef8c2410bf39ec69e96"
@@ -2940,8 +2940,8 @@
       "version": "20260928102000",
       "name": "chat_guard_evidence_retention",
       "file": "supabase/migrations/20260928102000_chat_guard_evidence_retention.sql",
-      "sha256": "2a32c5e6ecaf47313bfc534157eeb937fa313d644260fea24f18ebaea87b73cb",
-      "bytes": 3485
+      "sha256": "f62744c90f7a1f8b8595855a4b7fc790fedb83acf140f844bd4d6a2a21ad273f",
+      "bytes": 3817
     },
     {
       "version": "20260928103000",
@@ -3047,6 +3047,13 @@
       "file": "supabase/migrations/20260928126000_compensation_mediation.sql",
       "sha256": "6ec5ed2a529546732208abb8bbf528f0592e0b4f511c093bf8f1d0eb7d42cfe4",
       "bytes": 30778
+    },
+    {
+      "version": "20260928127000",
+      "name": "program_push_receipts",
+      "file": "supabase/migrations/20260928127000_program_push_receipts.sql",
+      "sha256": "fef7da4f85946e5c1109c01ab0a2e1c692d9d7c52e745c82a82db99cb933a771",
+      "bytes": 3106
     }
   ]
 }

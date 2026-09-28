@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { StyleSheet, Text, View } from 'react-native'
+import { Pressable, StyleSheet, Text, View } from 'react-native'
 
 import {
   CompensationNegotiationPanel,
@@ -25,21 +25,42 @@ import type { CustomerThemeTokens } from '../customer-theme'
 const MIN_NOTE = 10
 
 // Shown in history only while the customer has a confirmed damage case; renders nothing
-// otherwise, so a customer without a problem never sees the word "compensation".
+// otherwise, so a customer without a problem never sees the word "compensation". A failed load
+// shows a retry row instead of nothing, so an open case is never hidden by a network error.
 export function CustomerCompensationSection({ language, tokens }: { language: AppLanguage; tokens: CustomerThemeTokens }) {
   const { session } = useAuth()
   const accessToken = session?.access_token ?? ''
   const [data, setData] = useState<CustomerCompensation | null>(null)
+  const [loadFailed, setLoadFailed] = useState(false)
 
   const load = useCallback(async () => {
+    if (!accessToken) return
     const result = await compensationService.listForCustomer(accessToken)
-    if (result.success) setData(result.data)
+    if (result.success) {
+      setData(result.data)
+      setLoadFailed(false)
+    } else {
+      setLoadFailed(true)
+      console.warn('customer compensation load failed', { code: result.code, status: result.status })
+    }
   }, [accessToken])
 
   useEffect(() => {
     void load()
   }, [load])
 
+  if (!data && loadFailed) {
+    return (
+      <View style={[styles.card, styles.retryRow, { backgroundColor: tokens.raised, borderColor: tokens.border }]} testID="customer-compensation-unavailable">
+        <Text style={[styles.meta, styles.retryText, { color: tokens.muted }]}>
+          {language === 'vi' ? 'Chưa tải được mục bồi thường' : 'Compensation did not load'}
+        </Text>
+        <Pressable accessibilityRole="button" hitSlop={8} onPress={() => void load()} testID="customer-compensation-retry">
+          <Text style={[styles.meta, styles.retryAction, { color: tokens.primary }]}>{language === 'vi' ? 'Thử lại' : 'Try again'}</Text>
+        </Pressable>
+      </View>
+    )
+  }
   if (!data || data.items.length === 0) return null
   const palette = { text: tokens.text, muted: tokens.muted, border: tokens.border, accent: tokens.primary }
   return (
@@ -193,5 +214,17 @@ const styles = StyleSheet.create({
   form: {
     gap: 8,
     marginTop: 4,
+  },
+  retryRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 14,
+  },
+  retryText: {
+    flex: 1,
+  },
+  retryAction: {
+    fontWeight: '600',
   },
 })
