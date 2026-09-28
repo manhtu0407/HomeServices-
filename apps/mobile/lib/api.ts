@@ -3,6 +3,7 @@ import { Platform } from 'react-native'
 
 import { supabase } from './supabase'
 import { mobileRuntimeConfig } from './runtime-config'
+import { releaseClientPlatform } from './release-client-platform'
 import { generateClientRequestId } from './client-request-id'
 import type { ApiResponseMetadata } from './api-types/shared'
 import {
@@ -425,10 +426,9 @@ function createClientReleaseHeaders() {
     : Platform.OS === 'android'
       ? Constants.expoConfig?.android?.package
       : null
+  const platform = releaseClientPlatform()
   return {
-    ...(Platform.OS === 'ios' || Platform.OS === 'android'
-      ? { 'x-client-platform': Platform.OS }
-      : {}),
+    ...(platform ? { 'x-client-platform': platform } : {}),
     ...(applicationId ? { 'x-client-application-id': applicationId } : {}),
     ...(buildNumber !== undefined && buildNumber !== null && String(buildNumber).trim()
       ? { 'x-client-build-number': String(buildNumber).trim() }

@@ -24,6 +24,7 @@ import type {
   WorkerWithdrawalRequest,
   WorkerWithdrawalRequestCreateInput,
 } from '../api-types'
+import { releaseClientPlatform } from '../release-client-platform'
 import { workerService } from '../services'
 import { useWorkerRegistrationActions } from './use-worker-registration-actions'
 import { uploadWorkerAvatar, type WorkerAvatarDraft } from '../worker-avatar-upload'
@@ -157,7 +158,7 @@ export function useWorkerBoardActions({
         : Promise.resolve({ success: true as const, data: { requests: [] } })
       const broadcastsRequest = workerService.getBroadcasts()
       const jobsRequest = workerService.getJobs()
-      const matchingHeartbeatRequest = role === 'worker'
+      const matchingHeartbeatRequest = role === 'worker' && releaseClientPlatform()
         ? workerService.sendMatchingHeartbeat()
         : Promise.resolve({ success: true as const })
 
@@ -579,7 +580,7 @@ export function useWorkerBoardActions({
   }, [role, sessionUserId, workerRefresh])
 
   useEffect(() => {
-    if (!sessionUserId || role !== 'worker') return
+    if (!sessionUserId || role !== 'worker' || !releaseClientPlatform()) return
     let cancelled = false
     const interval = setInterval(() => {
       if (!isAppForeground() || workerActivityHeartbeatBusyRef.current) return
