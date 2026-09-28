@@ -1325,7 +1325,7 @@ it('records arrival before continuing to the in-progress screen', async () => {
 
     render(<WorkerJobsSurface />)
 
-    expect(screen.queryByTestId('worker-v5-back')).toBeNull()
+    expect(screen.getByTestId('worker-v5-back')).toBeOnTheScreen()
     const primaryAction = screen.getByTestId('worker-v5-stage-six-primary-action')
     expect(primaryAction).toBeDisabled()
     fireEvent.press(primaryAction)
