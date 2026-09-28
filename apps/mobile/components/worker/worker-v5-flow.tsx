@@ -334,7 +334,7 @@ function WorkerV5ScreenSurface({ screen }: { screen: WorkerV5ScreenDefinition })
     setActionBusy(true)
     try {
       const ok = await runtime.actions.workerUpdateStatus(nextStatus)
-      if (ok) openScreenById('2.7-in-progress')
+      if (ok) openScreenById(nextStatus === 'arrived' ? '2.7-in-progress' : '2.4-route-eta')
     } finally {
       actionBusyRef.current = false
       setActionBusy(false)
