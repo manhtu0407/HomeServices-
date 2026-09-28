@@ -83,6 +83,13 @@ export async function sendCustomerNormalTurn({
   setLoading(true)
   setError(null)
   let uploadedMediaRefs: string[] = []
+  // Once the turn is sent, only a definite refusal may revoke its photos: a committed
+  // turn stores their refs, and retention removes the ones no turn ever used.
+  let sendStarted = false
+  let outcomeUncertain = false
+  const revokeUnusedMedia = () => sendStarted && outcomeUncertain
+    ? Promise.resolve()
+    : cleanupKaelChatMediaRefs(uploadedMediaRefs)
   try {
     if (hasComposerMedia) {
       setUploadingMedia(true)
@@ -109,9 +116,11 @@ export async function sendCustomerNormalTurn({
       }
       uploadedMediaRefs = uploaded.mediaRefs
     }
+    sendStarted = true
     const result = await conversations.sendConversationTurn(message, {
       mediaRefs: uploadedMediaRefs,
       signal: abortSignal,
+      onOutcomeUncertain: () => { outcomeUncertain = true },
       onResponseCommitted,
       onResponseDelta,
       onResponseEvent,
@@ -119,7 +128,7 @@ export async function sendCustomerNormalTurn({
     })
     if (!isRequestCurrent()) return
     if (abortSignal.aborted && !result) {
-      await cleanupKaelChatMediaRefs(uploadedMediaRefs)
+      await revokeUnusedMedia()
       restoreComposer()
       setPendingNormalMessage(null)
       resetReasoningReceipt()
@@ -127,7 +136,7 @@ export async function sendCustomerNormalTurn({
       return
     }
     if (!result) {
-      await cleanupKaelChatMediaRefs(uploadedMediaRefs)
+      await revokeUnusedMedia()
       restoreComposer()
       setPendingNormalMessage(null)
       const failureMessage = conversations.sessionsError ?? (language === 'vi'
@@ -151,7 +160,8 @@ export async function sendCustomerNormalTurn({
     commitComposer()
     if (hasComposerMedia) clearMediaDrafts()
   } catch {
-    await cleanupKaelChatMediaRefs(uploadedMediaRefs)
+    if (sendStarted) outcomeUncertain = true
+    await revokeUnusedMedia()
     if (!isRequestCurrent()) return
     restoreComposer()
     setPendingNormalMessage(null)

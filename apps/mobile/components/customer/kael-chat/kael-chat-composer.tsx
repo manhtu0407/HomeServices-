@@ -55,6 +55,7 @@ export function KaelChatComposer({
   onSendMessage,
   onStopMessage,
   rootStyles,
+  stopAvailable = true,
   textInputNoOutlineStyle,
   tokens,
 }: {
@@ -75,6 +76,8 @@ export function KaelChatComposer({
   onSendMessage: () => void
   onStopMessage: () => void
   rootStyles: RootChatStyles
+  /** False while the busy request has no cancellation path; Stop must not claim to cancel it. */
+  stopAvailable?: boolean
   textInputNoOutlineStyle: StyleProp<TextStyle>
   tokens: CustomerThemeTokens
 }) {
@@ -191,11 +194,13 @@ export function KaelChatComposer({
         />
         <Pressable
           accessibilityLabel={composerBusy
-            ? (language === 'vi' ? 'Dừng phản hồi' : 'Stop response')
+            ? stopAvailable
+              ? (language === 'vi' ? 'Dừng phản hồi' : 'Stop response')
+              : (language === 'vi' ? 'Kael đang xử lý' : 'Kael is working')
             : (language === 'vi' ? 'Gửi tin nhắn cho Kael' : 'Send message to Kael')}
           accessibilityRole="button"
-          accessibilityState={{ busy: composerBusy, disabled: !composerBusy && !canSubmit }}
-          disabled={!composerBusy && !canSubmit}
+          accessibilityState={{ busy: composerBusy, disabled: composerBusy ? !stopAvailable : !canSubmit }}
+          disabled={composerBusy ? !stopAvailable : !canSubmit}
           onPress={composerBusy ? onStopMessage : onSendMessage}
           style={({ pressed }) => [
             rootStyles.sendButton,
@@ -213,7 +218,7 @@ export function KaelChatComposer({
           ]}
           testID="customer-v21-kael-send"
         >
-          {composerBusy
+          {composerBusy && stopAvailable
             ? (
               <View
                 style={{

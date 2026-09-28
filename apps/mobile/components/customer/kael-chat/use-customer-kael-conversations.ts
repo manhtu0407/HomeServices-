@@ -504,6 +504,7 @@ export function useCustomerKaelConversations(
           activateResponse(committed)
           return committed
         }
+        options?.onOutcomeUncertain?.()
         return null
       }
       const committed = sent.success
@@ -517,6 +518,7 @@ export function useCustomerKaelConversations(
         || activeModeRef.current !== mode
         || activeKeyRef.current !== catalogKey
       ) {
+        if (committed || (!sent.success && isAmbiguousKaelConversationFailure(sent))) options?.onOutcomeUncertain?.()
         if (!committed && operationRequestRef.current === requestId && activeKeyRef.current === catalogKey) {
           setCatalogStateField(
             setCatalogState,
@@ -540,6 +542,7 @@ export function useCustomerKaelConversations(
       activateResponse(committed)
       return committed
     } catch {
+      options?.onOutcomeUncertain?.()
       if (operationRequestRef.current === requestId && activeKeyRef.current === catalogKey) {
         setCatalogStateField(
           setCatalogState,
@@ -562,6 +565,8 @@ export function useCustomerKaelConversations(
 
   const archiveSession = useCallback(async (sessionId: string) => {
     const target = sessions.find((session) => session.id === sessionId)
+    // A turn in flight holds the operation lock; archiving under it would race the server append.
+    if (operationLockRef.current !== null) return false
     if (!target || target.mode !== mode || !matchesCatalogCustomer(target.customer_id) || pendingSessionIdSetRef.current.has(sessionId)) return false
     const previous = sessions
     const linkedCaseWork = Boolean(target.case_session_id)
@@ -647,6 +652,7 @@ export function useCustomerKaelConversations(
     fallbackFailure: string,
   ) => {
     const target = sessions.find((session) => session.id === sessionId)
+    if (operationLockRef.current !== null) return false
     if (!target || target.mode !== mode || !matchesCatalogCustomer(target.customer_id) || pendingSessionIdSetRef.current.has(sessionId)) return false
     pendingSessionIdSetRef.current.add(sessionId)
     setCatalogStateField(

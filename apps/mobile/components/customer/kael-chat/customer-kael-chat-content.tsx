@@ -188,7 +188,9 @@ export function CustomerKaelChatContent({ controller }: { controller: Controller
       onPin={conversations.setSessionPinned}
       onRename={conversations.renameSession}
       onSelect={(conversationId) => void sessionCatalog.openConversation(conversationId)}
-      pendingSessionIds={conversations.pendingSessionIds}
+      pendingSessionIds={conversations.busy
+        ? conversations.sessions.map((session) => session.id)
+        : conversations.pendingSessionIds}
       reduceMotion={reduceMotion}
       reduceTransparency={reduceTransparency}
       sessionEphemeralStateById={sessionEphemeralStateById}
@@ -197,6 +199,7 @@ export function CustomerKaelChatContent({ controller }: { controller: Controller
     />
   ), [
     conversations.activeSessionId,
+    conversations.busy,
     conversations.canCreateSession,
     conversations.pendingSessionIds,
     conversations.sessions,

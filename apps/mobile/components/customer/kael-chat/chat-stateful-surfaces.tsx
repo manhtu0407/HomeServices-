@@ -230,6 +230,7 @@ export function KaelChatSurfaceView({
               onSendMessage={onSendMessage}
               onStopMessage={onStopMessage}
               rootStyles={rootStyles}
+              stopAvailable={mode === 'normal'}
               textInputNoOutlineStyle={textInputNoOutlineStyle}
               tokens={tokens}
             />

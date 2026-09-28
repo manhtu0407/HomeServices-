@@ -18,12 +18,12 @@ import { preAgenticUnsupportedService } from '../kael-chat/customer-kael-pre-age
 
 export const PILLAR = {
   id: 'P205-kael-composer-and-failure-boundary',
-  invariant: 'Kael never submits an empty composer, never sends a message beyond the shared 5000-character boundary, keeps text close to the camera, resets the text field after a draft is cleared and keeps its measured height across same-size edits, previews normal-chat images without filenames and with accessible X removal controls, allows image analysis while keeping video in Work handling, renders a 27px dark-toned media icon in a 44px touch target, uses a pale liquid-glass send and stop surface with accessible themed controls, and renders one user-facing failure copy',
+  invariant: 'Kael never submits an empty composer, never sends a message beyond the shared 5000-character boundary, keeps text close to the camera, resets the text field after a draft is cleared and keeps its measured height across same-size edits, previews normal-chat images without filenames and with accessible X removal controls, allows image analysis while keeping video in Work handling, renders a 27px dark-toned media icon in a 44px touch target, uses a pale liquid-glass send and stop surface with accessible themed controls, offers Stop only when the busy request can be cancelled, and renders one user-facing failure copy',
   authority: ['governance/RULES.md #3, #6, and #7', 'governance/protocols/frontend-test.md G3 and G4'],
   target: 'apps/mobile/components/customer/kael-chat/kael-chat-composer.tsx',
   layer: 'unit',
   siblings: ['P104-kael-ephemeral-state-scope', 'P75-transaction-critical-route-coverage'],
-  mutation: 'allow whitespace submission, lower the UI boundary without the contract constant, widen spacing between the camera and text field, retain stale input height after the parent clears a draft, collapse a measured multi-line draft on an edit that keeps its line count, render normal-chat filenames instead of in-composer thumbnails with X controls, disable normal-chat image picking, enlarge the composer media icon past 27px, color the enabled camera teal instead of matching the dark send glyph, replace the pale light-theme send surface with a saturated fill or low-contrast icon, restore the thick stop ring, disable the busy stop action, render an inline failure beside the receipt, or mix VI and EN decline copy; an assertion fails',
+  mutation: 'allow whitespace submission, lower the UI boundary without the contract constant, widen spacing between the camera and text field, retain stale input height after the parent clears a draft, collapse a measured multi-line draft on an edit that keeps its line count, render normal-chat filenames instead of in-composer thumbnails with X controls, disable normal-chat image picking, enlarge the composer media icon past 27px, color the enabled camera teal instead of matching the dark send glyph, replace the pale light-theme send surface with a saturated fill or low-contrast icon, restore the thick stop ring, disable the busy stop action, show Stop for a busy request that cannot be cancelled, render an inline failure beside the receipt, or mix VI and EN decline copy; an assertion fails',
 } as const satisfies PillarManifest
 
 const rootStyles: RootChatStyles = {
@@ -45,6 +45,7 @@ function renderComposer(
   allowVideoSelection = true,
   composerMediaDrafts: LocalMediaUploadDraft[] = [],
   onRemoveComposerMediaDraft = () => undefined,
+  stopAvailable = true,
 ) {
   const props = {
     allowVideoSelection,
@@ -64,6 +65,7 @@ function renderComposer(
     onSendMessage: () => undefined,
     onStopMessage,
     rootStyles,
+    stopAvailable,
     textInputNoOutlineStyle: {},
     tokens: getCustomerThemeTokens(mode),
   }
@@ -91,6 +93,20 @@ describe('Kael composer and failure boundary', () => {
         width: 12,
       })
     })
+  })
+
+  it('shows a disabled working state instead of Stop when the busy request cannot be cancelled', () => {
+    withPillarContext(PILLAR, () => {
+      const onStopMessage = jest.fn()
+      renderComposer('light', false, true, onStopMessage, true, [], () => undefined, false)
+      const button = screen.getByTestId('customer-v21-kael-send')
+
+      expect(button).toHaveProp('accessibilityLabel', 'Kael đang xử lý')
+      expect(button).toHaveProp('accessibilityState', { busy: true, disabled: true })
+      expect(screen.queryByTestId('customer-v21-kael-stop-square')).toBeNull()
+      fireEvent.press(button)
+      expect(onStopMessage).not.toHaveBeenCalled()
+    }, 'Work handling has no cancellable request, so Stop must not claim to cancel it')
   })
 
   it('allows normal-chat image analysis and uses a 27px camera within a 44px touch target', () => {

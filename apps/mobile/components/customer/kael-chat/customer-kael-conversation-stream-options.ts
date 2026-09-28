@@ -7,6 +7,8 @@ export type CustomerKaelTurnStreamOptions = {
   signal?: AbortSignal
   onReasoning?: (event: KaelReasoningStreamEvent) => void
   onResponseCommitted?: () => void
+  /** No turn is returned, yet the server may have committed it (or did, for a superseded request). */
+  onOutcomeUncertain?: () => void
   onResponseDelta?: (event: KaelStreamResponseDeltaEvent) => void
   onResponseEvent?: (event: KaelResponseStreamEvent) => void
 }

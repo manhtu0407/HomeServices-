@@ -1125,6 +1125,43 @@ describe('active customer Kael chat surface wiring', () => {
     expect(result.current.activeSessionId).toBe('rapid-session')
   })
 
+  it('refuses pin, rename, and archive while a turn is in flight', async () => {
+    const { result } = renderHook(() => useCustomerKaelConversations('normal', 'vi'))
+    await waitForConversationCatalog('normal')
+    await act(async () => {
+      await result.current.startNewSession()
+    })
+    const sessionId = result.current.activeSessionId!
+    let resolveTurn!: (value: unknown) => void
+    mockConversationSendTurn.mockImplementationOnce(() => new Promise((resolve) => {
+      resolveTurn = resolve
+    }))
+    let turn!: Promise<unknown>
+    act(() => {
+      turn = result.current.sendConversationTurn('Máy lạnh chảy nước')
+    })
+    await waitFor(() => expect(mockConversationSendTurn).toHaveBeenCalledTimes(1))
+
+    let outcomes: boolean[] = []
+    await act(async () => {
+      outcomes = await Promise.all([
+        result.current.archiveSession(sessionId),
+        result.current.renameSession(sessionId, 'Đổi giữa chừng'),
+        result.current.setSessionPinned(sessionId, true),
+      ])
+    })
+    expect(outcomes).toEqual([false, false, false])
+    expect(mockConversationArchive).not.toHaveBeenCalled()
+    expect(mockConversationRename).not.toHaveBeenCalled()
+    expect(mockConversationPin).not.toHaveBeenCalled()
+    expect(result.current.activeSessionId).toBe(sessionId)
+
+    await act(async () => {
+      resolveTurn({ code: 'CLIENT_UPDATE_REQUIRED', error: 'x', status: 426, success: false })
+      await turn
+    })
+  })
+
   it('restores the active committed conversation on a cold catalog mount', async () => {
     const session = makeConversationSession('normal', 'restored-stream-session')
     const response = {
