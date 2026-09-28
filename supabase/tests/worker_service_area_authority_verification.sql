@@ -166,6 +166,10 @@ begin
     end if;
   end loop;
 
+  -- First approval requires the CCCD number the admin reads off the ID photo (20260925121000).
+  insert into public.worker_identity_numbers (worker_id, cccd_hmac, cccd_last4, entered_by)
+  values (v_worker, repeat('c7', 32), '6789', v_worker)
+  on conflict (worker_id) do nothing;
   foreach v_status in array array['draft','rejected','approved']::public.worker_verification_status[] loop
     update public.worker_profiles set verification_status=v_status, is_approved=(v_status='approved'),
       is_suspended=false, districts=array['q1'], home_lat=10.775, home_lng=106.7, service_radius_km=8 where id=v_worker;

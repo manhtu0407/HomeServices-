@@ -66,6 +66,9 @@ begin
   select id into strict v_queue from public.kael_admin_queue
     where actor_id = v_worker and queue_type = 'worker_profile_verification' and status = 'open';
   select updated_at into strict v_revision from public.worker_profiles where id = v_worker;
+  -- First approval requires the CCCD number the admin reads off the ID photo (20260925121000).
+  insert into public.worker_identity_numbers (worker_id, cccd_hmac, cccd_last4, entered_by)
+  values (v_worker, repeat('c7', 32), '6789', v_owner);
 
   insert into public.synthetic_matching_cohorts (cohort_id) values ('synthetic-admin-review-d7800000');
   insert into auth.users (id, aud, role, email, raw_app_meta_data, raw_user_meta_data, created_at, updated_at)

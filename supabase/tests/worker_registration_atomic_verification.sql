@@ -303,6 +303,10 @@ begin
 
   -- Admin-first is one legal serialization outcome: the registration waits on
   -- the same row and must observe the final approval instead of reopening it.
+  -- First approval requires the CCCD number the admin reads off the ID photo (20260925121000).
+  insert into public.worker_identity_numbers (worker_id, cccd_hmac, cccd_last4, entered_by)
+  values (v_worker, repeat('c7', 32), '6789', v_worker)
+  on conflict (worker_id) do nothing;
   update public.worker_profiles
   set
     verification_status = 'approved'::public.worker_verification_status,
@@ -380,6 +384,10 @@ begin
     '7788990011', 'Vietcombank'
   );
 
+  -- First approval requires the CCCD number the admin reads off the ID photo (20260925121000).
+  insert into public.worker_identity_numbers (worker_id, cccd_hmac, cccd_last4, entered_by)
+  values (v_worker, repeat('c7', 32), '6789', v_worker)
+  on conflict (worker_id) do nothing;
   update public.worker_profiles
   set
     verification_status = 'approved'::public.worker_verification_status,
