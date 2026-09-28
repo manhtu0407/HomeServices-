@@ -132,6 +132,40 @@ describe('Worker job-status realtime while waiting on a customer decision', () =
     },
   )
 
+  it('re-reads worker jobs when a job-status event lands during an in-flight refresh', async () => {
+    let onJobStatus: (() => void) | undefined
+    mockSubscribeToJobStatus.mockImplementation((_jobId: string, onUpdate: () => void) => {
+      onJobStatus = onUpdate
+      return { unsubscribe: jest.fn(async () => 'ok') }
+    })
+    mockWorkerService.getJobs.mockResolvedValue({ data: { jobs: [buildWorkerJob('worker_candidate_pending')] }, status: 200, success: true })
+    render(
+      <FrontendWorkflowProvider>
+        <Probe />
+      </FrontendWorkflowProvider>,
+    )
+    fireEvent.press(screen.getByTestId('worker-refresh'))
+    await waitFor(() => expect(screen.getByTestId('worker-deal-status')).toHaveTextContent(`${ACTIVE_JOB_ID}/worker_candidate_pending`))
+
+    let releaseProfile!: (value: unknown) => void
+    mockWorkerService.getProfile.mockImplementationOnce(() => new Promise((resolve) => { releaseProfile = resolve }))
+    mockWorkerService.getJobs.mockResolvedValue({ data: { jobs: [buildWorkerJob('worker_matched')] }, status: 200, success: true })
+    fireEvent.press(screen.getByTestId('worker-refresh'))
+    const readsBeforeEvent = mockWorkerService.getJobs.mock.calls.length
+    await act(async () => {
+      onJobStatus?.()
+      await Promise.resolve()
+    })
+    expect(mockWorkerService.getJobs.mock.calls.length).toBe(readsBeforeEvent)
+
+    await act(async () => {
+      releaseProfile({ code: 'UNAVAILABLE', error: 'Unavailable', status: 503, success: false })
+      await Promise.resolve()
+    })
+
+    await waitFor(() => expect(mockWorkerService.getJobs.mock.calls.length).toBe(readsBeforeEvent + 1))
+  })
+
   it('refreshes the worker runtime on a job-status event and unsubscribes once the job leaves the live set', async () => {
     const unsubscribe = jest.fn(async () => 'ok')
     let onJobStatus: (() => void) | undefined

@@ -597,7 +597,8 @@ export function WorkerV5InProgressBody({
       evidenceCount,
       primaryLabel: stageFivePrimary?.label ?? null,
       primaryEnabled: Boolean(stageFivePrimary?.enabled),
-      notice: visiblePhaseActionNotice,
+      // Once checked in, the notice is the success receipt and the waiting label already says it.
+      notice: phaseAction?.testID === 'worker-v5-arrival-check-in-action' ? visiblePhaseActionNotice : null,
     }
     return (
       <>
