@@ -307,6 +307,18 @@ begin
       return;
     end if;
 
+    -- A confirmed discipline ban, or an open harm case suspended pending review, is lifted only
+    -- through the discipline flow; a general reinstate must not route around that decision.
+    if exists (select 1 from private.worker_discipline_state(p_worker_id) as state where state.banned)
+       or exists (
+         select 1 from public.worker_violation_cases as open_case
+         where open_case.worker_id = p_worker_id and open_case.status = 'proposed'
+           and open_case.suspended_pending_review
+       ) then
+      return query select false, 'DISCIPLINE_HOLD_ACTIVE'::text, p_worker_id, v_worker.verification_status, true, null::timestamptz;
+      return;
+    end if;
+
     perform private.lift_worker_suspension(p_worker_id, 'reinstate', 'admin', v_reason, p_actor_id);
   end if;
 

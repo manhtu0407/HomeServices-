@@ -74,7 +74,7 @@
       }
     ]
   },
-  "migrationsSha256": "49e30f827e608294b12656bbd48e179cff497a8b93aac051777ef75fbd63d28c",
+  "migrationsSha256": "a34c977d0d1066b5cbaaa8b9afd1d3b97fe601779ae719a1f37861e2be8fb1de",
   "databaseTypes": {
     "file": "packages/shared/src/types/database",
     "sha256": "54bbf52ff17ad72f29b0a560c9332eb44949d3dcad394a2abdef495a33a196fc"
@@ -2933,8 +2933,8 @@
       "version": "20260928101000",
       "name": "worker_suspension_effectiveness",
       "file": "supabase/migrations/20260928101000_worker_suspension_effectiveness.sql",
-      "sha256": "41b62bc53520137c3eda0575417e935fcf9789d320bb00bf60ff11da49be3a08",
-      "bytes": 15187
+      "sha256": "1b47915dc26cd3cf0123f3a6900c1a2a7b05d5f2191466134589e1ea5615e7c9",
+      "bytes": 15872
     },
     {
       "version": "20260928102000",
@@ -2947,8 +2947,8 @@
       "version": "20260928103000",
       "name": "commission_tiers_service_only",
       "file": "supabase/migrations/20260928103000_commission_tiers_service_only.sql",
-      "sha256": "a07e44aba9a186a398ac3eca05518ebda253f8e5c91a56d7f7bfceb5a130ad10",
-      "bytes": 673
+      "sha256": "ae33b67243fa95cd92d12fbeaec33ce5f561d403928502a616b5dc212a8f91cd",
+      "bytes": 1146
     },
     {
       "version": "20260928110000",
@@ -2961,8 +2961,8 @@
       "version": "20260928111000",
       "name": "ambassador_referral_links",
       "file": "supabase/migrations/20260928111000_ambassador_referral_links.sql",
-      "sha256": "8f92e6e1c612681a72cd52e27bf2927d088452264134b2fce8e802cf4f1fe8ab",
-      "bytes": 10752
+      "sha256": "351975af21f728d8b43d4cf207da2f4320a9884416bca08cea99369d674d7797",
+      "bytes": 10747
     },
     {
       "version": "20260928112000",
@@ -2982,8 +2982,8 @@
       "version": "20260928114000",
       "name": "ambassador_accrual_sweep",
       "file": "supabase/migrations/20260928114000_ambassador_accrual_sweep.sql",
-      "sha256": "cf7d066679c0b357711aa3ec92d881593074bb1d8471143480f10e1bbca754f5",
-      "bytes": 8462
+      "sha256": "a27a940f93389521110d6277ec4c69349524127d136edb2fd50327143e4c0e53",
+      "bytes": 8866
     },
     {
       "version": "20260928115000",
@@ -3017,15 +3017,15 @@
       "version": "20260928122000",
       "name": "worker_discipline_decisions",
       "file": "supabase/migrations/20260928122000_worker_discipline_decisions.sql",
-      "sha256": "7106503614480433b6ef546e9c8ac21c695bd93dd4629827edf182149a101231",
-      "bytes": 44777
+      "sha256": "b6e40722fc3bde8fac5c4b41fdc037a2b604755e47de598d65f042f6b802e85f",
+      "bytes": 47841
     },
     {
       "version": "20260928123000",
       "name": "violation_detectors",
       "file": "supabase/migrations/20260928123000_violation_detectors.sql",
-      "sha256": "54c5eeee569aa4a0b32484260b32665ead339e1d6b0850b071a0dc6c7302f7a0",
-      "bytes": 8029
+      "sha256": "171a76f5b5cb89c8db14c46b582ae909ffffe71d098e3f21394ebf3a842d3759",
+      "bytes": 8183
     },
     {
       "version": "20260928124000",
@@ -3045,8 +3045,8 @@
       "version": "20260928126000",
       "name": "compensation_mediation",
       "file": "supabase/migrations/20260928126000_compensation_mediation.sql",
-      "sha256": "6ec5ed2a529546732208abb8bbf528f0592e0b4f511c093bf8f1d0eb7d42cfe4",
-      "bytes": 30778
+      "sha256": "4573f5a078f023a9b05ef9e95aa4443c625103a52f295682825ead0e92f11ac7",
+      "bytes": 31535
     },
     {
       "version": "20260928127000",

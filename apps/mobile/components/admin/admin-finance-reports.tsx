@@ -569,7 +569,7 @@ function TaxPolicyEditorView({
                   />)}
                 </View>
               </View>
-              {rule.basis === 'worker_bonus' ? <KaelTextField keyboardType="number-pad" label={language === 'vi' ? 'Chỉ khấu trừ khi thưởng từ (VND, để trống nếu áp dụng mọi khoản)' : 'Withhold only at or above (VND, blank for every payout)'} onChangeText={(thresholdVnd) => onUpdateRule(index, { thresholdVnd: thresholdVnd.replace(/D/g, '') })} testID={`admin-finance-tax-form-threshold-${index}`} value={rule.thresholdVnd} /> : null}
+              {rule.basis === 'worker_bonus' ? <KaelTextField keyboardType="number-pad" label={language === 'vi' ? 'Chỉ khấu trừ khi thưởng từ (VND, để trống nếu áp dụng mọi khoản)' : 'Withhold only at or above (VND, blank for every payout)'} onChangeText={(thresholdVnd) => onUpdateRule(index, { thresholdVnd: thresholdVnd.replace(/\D/g, '') })} testID={`admin-finance-tax-form-threshold-${index}`} value={rule.thresholdVnd} /> : null}
               <KaelTextField keyboardType="decimal-pad" label={strings.taxRate} onChangeText={(ratePercent) => onUpdateRule(index, { ratePercent })} testID={index === 0 ? 'admin-finance-tax-form-rate' : `admin-finance-tax-form-rate-${index}`} value={rule.ratePercent} />
             </View>)}
             <FinanceSecondaryButton label={strings.addRule} onPress={onAddRule} size="small" testID="admin-finance-tax-add-rule" />
@@ -613,7 +613,7 @@ function taxPolicyDraftInput(form: TaxPolicyDraftForm): AdminFinanceTaxPolicyDra
     rate_bps: Math.round(Number(rule.ratePercent.trim().replace(',', '.')) * 100),
     subject: rule.subject,
     tax_type: rule.taxType.trim(),
-    ...(rule.basis === 'worker_bonus' && rule.thresholdVnd ? { applies_at_or_above_vnd: Number(rule.thresholdVnd) } : {}),
+    ...(rule.basis === 'worker_bonus' && /^\d+$/.test(rule.thresholdVnd) ? { applies_at_or_above_vnd: Number(rule.thresholdVnd) } : {}),
   }))
   if (!form.name.trim() || !form.sourceReference.trim() || rules.length < 1 || rules.some((rule) => !rule.tax_type || !Number.isSafeInteger(rule.rate_bps) || rule.rate_bps < 1 || rule.rate_bps > 10_000) || !isIsoDate(effectiveFrom) || (effectiveTo && (!isIsoDate(effectiveTo) || effectiveTo < effectiveFrom))) return null
   return {

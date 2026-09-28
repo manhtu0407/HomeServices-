@@ -242,7 +242,7 @@ begin
     customer_id, worker_id, source, program_version_id, formed_at, expires_at
   ) values (
     p_customer_id, v_worker_id, 'invite_code', v_program.id, pg_catalog.now(),
-    v_customer.created_at + pg_catalog.make_interval(months => v_program.link_months)
+    pg_catalog.now() + pg_catalog.make_interval(months => v_program.link_months)
   ) returning id into v_link_id;
 
   return query select v_outcome, v_link_id, v_worker_id;

@@ -7,6 +7,7 @@ import { ProfileNotificationsView } from '@/components/customer/profile/profile-
 import { WorkerCompensationSection } from '@/components/worker/discipline/compensation-section'
 import { WorkerV5NotificationsBody } from '@/components/worker/profile/settings-utility-surfaces'
 import { customerCompensationRoute, workerViolationsRoute } from '@/lib/program-notification-routes'
+import { localizeRfqNotification } from '@/lib/frontend-workflow/notifications'
 import { toNotificationPath } from '@/lib/push-notifications'
 import { compensationService } from '@/lib/services/compensation-service'
 
@@ -110,6 +111,16 @@ describe(`${PILLAR.id}: inbox taps`, () => {
 
     fireEvent.press(screen.getByTestId('worker-v5-notification-w2'))
     await waitFor(() => expect(navigateToJob).toHaveBeenCalledWith(JOB_ID))
+  })
+})
+
+describe(`${PILLAR.id}: English copy`, () => {
+  it('renders program notices in English from the event type, and leaves Vietnamese text as written', () => {
+    const notice = { event_type: 'compensation_agreed', title: 'Hai bên đã thống nhất bồi thường', body: 'NestScout sẽ chuyển khoản.' }
+    withPillarContext(PILLAR, () => {
+      expect(localizeRfqNotification(notice, 'en').title).toBe('Compensation agreed')
+      expect(localizeRfqNotification(notice, 'vi')).toEqual(notice)
+    })
   })
 })
 

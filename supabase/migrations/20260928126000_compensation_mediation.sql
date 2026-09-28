@@ -532,7 +532,12 @@ begin
       'worker_id', negotiation.worker_id
     ) order by (negotiation.status = 'agreed') desc, negotiation.updated_at desc)
     from (
-      select * from public.compensation_negotiations order by updated_at desc limit 100
+      -- Agreed but unpaid rows first, so a reserved payout is never pushed out of the list.
+      select negotiation_row.*
+      from public.compensation_negotiations as negotiation_row
+      left join public.worker_compensation_payouts as payout on payout.negotiation_id = negotiation_row.id
+      order by (payout.status is not distinct from 'reserved') desc, negotiation_row.updated_at desc
+      limit 100
     ) as negotiation
   ), '[]'::jsonb));
 end;
@@ -601,6 +606,14 @@ begin
       return private.compensation_json(p_negotiation_id);
     end if;
     raise exception 'COMPENSATION_ALREADY_PAID' using errcode = 'P0001';
+  end if;
+  -- A transfer needs a destination; recording one without it would notify the customer and
+  -- settle the worker's reservation for money that never moved.
+  if not exists (
+    select 1 from public.customer_payment_methods as method
+    where method.customer_id = v_payout.customer_id and method.is_default and method.status <> 'rejected'
+  ) then
+    raise exception 'COMPENSATION_PAYEE_MISSING' using errcode = 'P0001';
   end if;
 
   update public.worker_compensation_payouts

@@ -522,6 +522,8 @@ declare
   v_link public.customer_worker_links%rowtype;
   v_link_id text;
   v_clawback public.worker_bonus_clawbacks%rowtype;
+  v_block public.identity_blocklist%rowtype;
+  v_other_case uuid;
 begin
   perform private.assert_admin_capability(p_actor_id, 'workers.discipline.manage');
   if p_decision not in ('upheld', 'overturned') or pg_catalog.char_length(v_reason) not between 10 and 2000 then
@@ -590,9 +592,28 @@ begin
         );
       end if;
     end loop;
-    update public.identity_blocklist
-    set lifted_at = pg_catalog.now(), lifted_by = p_actor_id, lift_reason = v_reason
-    where case_id = p_case_id and lifted_at is null;
+    -- One active row blocks a digest, so a second confirmed harm case that covers the same
+    -- identity may have no row of its own; the block moves to that case instead of lifting.
+    for v_block in
+      select * from public.identity_blocklist where case_id = p_case_id and lifted_at is null
+    loop
+      select other.id into v_other_case
+      from public.worker_violation_cases as other
+      left join public.worker_identity_numbers as identity on identity.worker_id = other.worker_id
+      where other.id <> p_case_id and other.level = 5 and other.status = 'confirmed'
+        and other.appeal_status <> 'overturned'
+        and (other.worker_id = v_case.worker_id
+          or v_block.value_hmac in (identity.cccd_hmac, identity.phone_hmac, identity.email_hmac))
+      order by other.decided_at
+      limit 1;
+      if v_other_case is not null then
+        update public.identity_blocklist set case_id = v_other_case where id = v_block.id;
+      else
+        update public.identity_blocklist
+        set lifted_at = pg_catalog.now(), lifted_by = p_actor_id, lift_reason = v_reason
+        where id = v_block.id;
+      end if;
+    end loop;
   end if;
 
   insert into public.worker_violation_case_events (case_id, event_kind, actor_id, detail)
@@ -639,6 +660,18 @@ begin
   select * into v_job from public.jobs where id = p_job_id and customer_id = p_customer_id;
   if not found or v_job.worker_id is null then
     raise exception 'JOB_NOT_REPORTABLE' using errcode = 'P0001';
+  end if;
+  -- After a reassignment the job row names only the latest worker, not necessarily the one the
+  -- customer saw; that report goes through support rather than risk a case against the wrong person.
+  if exists (
+       select 1 from public.job_worker_candidates as candidate
+       where candidate.job_id = p_job_id and candidate.status = 'customer_confirmed'
+         and candidate.worker_id <> v_job.worker_id
+     ) or exists (
+       select 1 from public.worker_cancellation_requests as cancellation
+       where cancellation.job_id = p_job_id and cancellation.worker_id <> v_job.worker_id
+     ) then
+    raise exception 'JOB_WORKER_CHANGED' using errcode = 'P0001';
   end if;
   if (select count(*) from public.worker_violation_cases
       where reporter_id = p_customer_id and created_at > pg_catalog.now() - interval '1 day') >= 5 then
@@ -839,6 +872,31 @@ begin
 end;
 $function$;
 
+-- A discipline hold also stops payouts already requested: an admin cannot move a request to
+-- processing or paid while the hold is live, whichever payout path is used.
+create or replace function private.enforce_withdrawal_hold_on_payout()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $function$
+begin
+  if new.status in ('processing', 'paid') and new.status is distinct from old.status
+     and exists (
+       select 1 from private.worker_discipline_state(new.worker_id) as state where state.withdrawal_hold
+     ) then
+    raise exception 'WITHDRAWAL_HOLD_ACTIVE' using errcode = 'P0001';
+  end if;
+  return new;
+end;
+$function$;
+
+revoke all on function private.enforce_withdrawal_hold_on_payout() from public, anon, authenticated;
+
+create trigger worker_withdrawal_requests_discipline_hold
+before update of status on public.worker_withdrawal_requests
+for each row execute function private.enforce_withdrawal_hold_on_payout();
+
 create or replace function public.get_worker_violations(p_worker_id uuid)
 returns jsonb
 language sql
@@ -849,7 +907,7 @@ as $function$
   select coalesce(pg_catalog.jsonb_agg(private.violation_case_json(violation.id) order by violation.created_at desc), '[]'::jsonb)
   from (
     select id, created_at from public.worker_violation_cases
-    where worker_id = p_worker_id and status in ('proposed', 'confirmed') and level >= 2
+    where worker_id = p_worker_id and status in ('proposed', 'confirmed')
     order by created_at desc
     limit 50
   ) as violation;
@@ -912,9 +970,13 @@ begin
         'created_at', evidence.created_at
       ) order by evidence.created_at)
       from public.chat_guard_redaction_evidence as evidence
+      -- Only the messages the case was built on: the detector's snapshot ids, or for a customer
+      -- report the messages in that job. Other customers' chats never appear here.
       where evidence.sender_id = v_case.worker_id
         and evidence.original_body is not null
-        and evidence.created_at > v_case.created_at - interval '60 days'
+        and case when pg_catalog.jsonb_typeof(v_case.evidence->'chat_evidence_ids') = 'array'
+          then evidence.id::text in (select pg_catalog.jsonb_array_elements_text(v_case.evidence->'chat_evidence_ids'))
+          else evidence.job_id is not distinct from v_case.job_id end
     ), '[]'::jsonb) else '[]'::jsonb end,
     'events', coalesce((
       select pg_catalog.jsonb_agg(pg_catalog.jsonb_build_object(

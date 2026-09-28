@@ -158,6 +158,15 @@ export async function createCompensationEvidenceUpload(
   input: EdgeCompensationEvidenceUploadInput,
 ): Promise<EdgeCompensationEvidenceUpload> {
   await requireRole(ctx, "customer");
+  // A signed URL is issued only for the caller's own eligible case with no claim yet, so an
+  // arbitrary case id cannot be used to park files in the evidence bucket.
+  const cases = await dbQuery<unknown>(
+    workflowDb(ctx).rpc("get_customer_compensation", { p_customer_id: ctx.user.id }),
+  );
+  if (cases.error || !isRecord(cases.data)) apiFailure("DB_ERROR", "Chưa thể kiểm tra vụ việc", 500);
+  const open = recordArray(cases.data.items, "compensation.items")
+    .some((item) => item.case_id === caseId && item.negotiation === null);
+  if (!open) apiFailure("COMPENSATION_NOT_ALLOWED", "Vụ việc này không nhận thêm ảnh bồi thường", 409);
   const path = `compensation/${ctx.user.id}/${caseId}/${crypto.randomUUID()}.${EXTENSIONS[input.content_type]}`;
   const signed = await evidenceBucket(ctx).createSignedUploadUrl(path);
   const signedUrl = signed.data?.signedUrl ?? signed.data?.signed_url;

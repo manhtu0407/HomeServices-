@@ -105,7 +105,7 @@ export function AdminCompensationDetail({ item, language, onBack, onChanged }: {
         testID="admin-compensation-reference"
         value={reference}
       />
-      <KaelButton disabled={reference.trim().length < 3 || pending} label={vi ? 'Ghi nhận đã chuyển khoản' : 'Record transfer'} onPress={() => { void recordPaid() }} testID="admin-compensation-paid" variant="primary" />
+      <KaelButton disabled={reference.trim().length < 3 || pending || !payee?.account} label={vi ? 'Ghi nhận đã chuyển khoản' : 'Record transfer'} onPress={() => { void recordPaid() }} testID="admin-compensation-paid" variant="primary" />
     </> : null}
     {notice ? <AdminText accessibilityRole="alert" textRole="subheadline">{notice}</AdminText> : null}
   </AdminSystemDetailScroll>

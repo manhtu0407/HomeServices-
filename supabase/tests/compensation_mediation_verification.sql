@@ -127,6 +127,13 @@ begin
      or (public.get_customer_compensation(v_customer)->>'refund_account_ready')::boolean then
     raise exception 'P281_PAYEE_INVENTED';
   end if;
+  -- Nothing can be recorded as paid while the customer has no account to receive it.
+  begin
+    perform public.admin_record_compensation_paid(v_admin, v_negotiation, 'VCB-000001');
+    raise exception 'P281_PAID_WITHOUT_PAYEE';
+  exception when sqlstate 'P0001' then
+    if sqlerrm <> 'COMPENSATION_PAYEE_MISSING' then raise; end if;
+  end;
   insert into public.customer_payment_methods (customer_id, bank_key, bank_name, account_holder_name, bank_account, bank_account_masked)
   values (v_customer, 'vietcombank', 'Vietcombank', 'NGUYEN VAN KHACH', '0123456789', '**** 6789');
   -- Read first: the event the read writes is only visible to the next statement.

@@ -80,6 +80,16 @@ describe('Customer invite claim', () => {
     expect(claim).toHaveBeenLastCalledWith('KX7M4Q2P', 'customer-token')
   })
 
+  it('keeps the code after an expired token or rate limiting', async () => {
+    await savePendingInvite('KX7M4Q2P')
+    for (const status of [401, 429]) {
+      claim.mockResolvedValueOnce({ success: false, status, code: 'RETRY', error: '' })
+      await claimPendingInvite('customer-token')
+      const kept = await loadPendingInvite()
+      withPillarContext(PILLAR, () => expect(kept).toBe('KX7M4Q2P'))
+    }
+  })
+
   it('drops a code the server refuses outright', async () => {
     await savePendingInvite('KX7M4Q2P')
     claim.mockResolvedValueOnce({ success: false, status: 400, code: 'VALIDATION', error: '' })

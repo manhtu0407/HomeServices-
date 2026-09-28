@@ -119,7 +119,8 @@ describe(`${PILLAR.id}: compensation routes`, () => {
   })
 
   it('hands out upload URLs only under the signed-in customer and the case in the path', async () => {
-    const { call, storageCalls } = setup('customer', {})
+    const openCase = { data: { policy, refund_account_ready: true, items: [{ case_id: CASE_ID, negotiation: null }] }, error: null }
+    const { call, storageCalls } = setup('customer', { get_customer_compensation: [openCase, openCase] })
     const response = await call('POST', `/me/compensation/cases/${CASE_ID}/uploads`, { content_type: 'image/png' })
     const body = await response.json()
     expect(response.status, pillarWhy(PILLAR, JSON.stringify(body))).toBe(201)
@@ -127,6 +128,15 @@ describe(`${PILLAR.id}: compensation routes`, () => {
     expect(storageCalls[0]?.[0]).toBe('upload')
     const video = await call('POST', `/me/compensation/cases/${CASE_ID}/uploads`, { content_type: 'video/mp4' })
     expect(video.status, pillarWhy(PILLAR, 'claims take photos only')).toBe(400)
+  })
+
+  it('signs no upload for a case that is not the customer\'s open compensation case', async () => {
+    const { call, storageCalls } = setup('customer', {
+      get_customer_compensation: [{ data: { policy, refund_account_ready: true, items: [] }, error: null }],
+    })
+    const response = await call('POST', `/me/compensation/cases/${CASE_ID}/uploads`, { content_type: 'image/png' })
+    expect(response.status, pillarWhy(PILLAR, 'an arbitrary case id cannot park files in the bucket')).toBe(409)
+    expect(storageCalls).toHaveLength(0)
   })
 
   it('shows the admin the customer refund account only through the capability-checked payee route', async () => {

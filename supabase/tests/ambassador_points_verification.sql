@@ -136,6 +136,9 @@ begin
     raise exception 'P260_RERUN_NOT_IDEMPOTENT: %', v_result;
   end if;
 
+  -- The program is paused (no approved version) when the payment is reversed; the points it
+  -- earned are still taken back.
+  update public.ambassador_program_versions set status = 'retired', retired_at = now() where status = 'approved';
   update public.worker_payment_ledger set payment_state = 'reversed'
   where job_id = 'c2110000-0000-4000-8000-000000000101';
   v_result := private.accrue_program_points(100);

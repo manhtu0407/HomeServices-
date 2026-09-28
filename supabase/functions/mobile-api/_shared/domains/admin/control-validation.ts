@@ -46,6 +46,9 @@ export function mapWorkerAccessError(code: string | null): never {
   if (code === "WORKER_NOT_FOUND") apiFailure("NOT_FOUND", "Không tìm thấy tài khoản thợ", 404);
   if (code === "WORKER_MANAGE_REQUIRED") apiFailure("AUTH_FORBIDDEN", "Tài khoản chưa có quyền quản lý thợ", 403);
   if (code === "WORKER_NOT_APPROVED") apiFailure("CONFLICT", "Chỉ có thể tạm dừng thợ đã được duyệt", 409);
+  if (code === "DISCIPLINE_HOLD_ACTIVE") {
+    apiFailure("DISCIPLINE_HOLD_ACTIVE", "Thợ đang bị khóa bởi quyết định xử lý vi phạm; mở lại qua mục Vi phạm", 409);
+  }
   if (code === "INVALID_INPUT") apiFailure("VALIDATION", "Thông tin thay đổi quyền thợ không hợp lệ", 400);
   apiFailure("WORKER_ACCESS_FAILED", "Không thể cập nhật quyền hoạt động của thợ", 409);
 }

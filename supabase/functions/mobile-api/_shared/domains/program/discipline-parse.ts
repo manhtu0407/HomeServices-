@@ -99,6 +99,7 @@ const NAMED_FAILURES: Array<[string, string, string, number]> = [
   ["INVALID_DECISION_INPUT", "VALIDATION", "Quyết định cần lý do rõ ràng", 400],
   ["INVALID_REPORT_INPUT", "VALIDATION", "Báo cáo chưa hợp lệ", 400],
   ["JOB_NOT_REPORTABLE", "INVALID_STATUS", "Chỉ báo cáo được thợ đã nhận công việc của bạn", 409],
+  ["JOB_WORKER_CHANGED", "JOB_WORKER_CHANGED", "Công việc này đã đổi thợ; hãy báo qua mục Hỗ trợ để NestScout xác định đúng người", 409],
   ["REPORT_RATE_LIMITED", "RATE_LIMITED", "Bạn đã gửi quá nhiều báo cáo hôm nay", 429],
   ["IDENTITY_BLOCKLISTED", "IDENTITY_BLOCKLISTED", "Danh tính này đã bị chặn do vi phạm nghiêm trọng", 409],
   ["INVALID_IDENTITY_INPUT", "VALIDATION", "Số CCCD không hợp lệ", 400],
@@ -114,6 +115,7 @@ const NAMED_FAILURES: Array<[string, string, string, number]> = [
   ["COMPENSATION_NO_COUNTERS_LEFT", "INVALID_STATUS", "Đã hết lượt đề xuất; chỉ còn đồng ý hoặc từ chối", 409],
   ["INSUFFICIENT_WORKER_BALANCE", "INSUFFICIENT_BALANCE", "Số dư của thợ không đủ cho mức bồi thường này", 409],
   ["COMPENSATION_NOT_AGREED", "INVALID_STATUS", "Hai bên chưa thống nhất mức bồi thường", 409],
+  ["COMPENSATION_PAYEE_MISSING", "PAYEE_MISSING", "Khách chưa có tài khoản hoàn tiền; chưa thể ghi nhận chuyển khoản", 409],
   ["COMPENSATION_ALREADY_PAID", "INVALID_STATUS", "Khoản bồi thường này đã được ghi nhận chuyển với mã khác", 409],
 ];
 

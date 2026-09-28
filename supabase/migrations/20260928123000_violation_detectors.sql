@@ -75,7 +75,9 @@ begin
     select job.id, job.worker_id, job.customer_id, job.scheduled_at
     from public.jobs as job
     where job.worker_id is not null
-      and job.status = 'worker_matched'::public.job_status
+      -- A worker who set off (worker_on_way) but never arrived is a no-show too.
+      and job.status in ('worker_matched'::public.job_status, 'worker_on_way'::public.job_status)
+      and job.arrived_at is null
       and private.job_arrival_deadline(job.id, job.scheduled_at)
         < pg_catalog.now() - pg_catalog.make_interval(mins => v_policy.no_show_grace_minutes)
       and job.scheduled_at > pg_catalog.now() - interval '7 days'

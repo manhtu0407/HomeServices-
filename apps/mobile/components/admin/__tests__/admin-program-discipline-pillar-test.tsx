@@ -173,6 +173,28 @@ describe('Admin compensation transfers', () => {
     fireEvent.press(screen.getByTestId('admin-compensation-paid'))
     await waitFor(() => expect(service.recordCompensationPaid).toHaveBeenCalledWith('n1', 'VCB-778899'))
   })
+
+  it('never records a transfer while the customer has no refund account', async () => {
+    service.listViolationCases.mockResolvedValue({ success: true, status: 200, data: { cases: [] } } as never)
+    const agreed = {
+      id: 'n2', case_id: 'c7', job_id: 'j', violation_code: 'theft', worker_name: 'Thợ A', worker_id: 'w1', customer_name: 'Khách B',
+      status: 'agreed' as const, current_amount_vnd: 600000, respond_by: '2026-10-01T00:00:00Z', offers_left: 2, agreed_at: '2026-09-28T01:00:00Z',
+      payout: { status: 'reserved' as const, amount_vnd: 600000, paid_at: null }, offers: [], evidence: [],
+    }
+    service.listCompensation.mockResolvedValue({ success: true, status: 200, data: { negotiations: [agreed] } } as never)
+    service.listIdentityBlocks.mockResolvedValue({ success: true, status: 200, data: { blocks: [] } } as never)
+    service.getCompensationPayee.mockResolvedValue({ success: true, status: 200, data: { account: null } } as never)
+    service.recordCompensationPaid.mockClear()
+    render(<AdminDisciplineWorkspace language="vi" />)
+    fireEvent.press(screen.getByText('Bồi thường'))
+    fireEvent.press(await screen.findByText('Lấy tài sản của khách'))
+    fireEvent.press(await screen.findByTestId('admin-compensation-show-payee'))
+    await waitFor(() => expect(screen.getByTestId('admin-compensation-no-payee')).toBeOnTheScreen())
+    fireEvent.changeText(screen.getByTestId('admin-compensation-reference'), 'VCB-000001')
+    withPillarContext(PILLAR, () => expect(screen.getByTestId('admin-compensation-paid').props.accessibilityState).toMatchObject({ disabled: true }))
+    fireEvent.press(screen.getByTestId('admin-compensation-paid'))
+    expect(service.recordCompensationPaid).not.toHaveBeenCalled()
+  })
 })
 
 describe('Admin CCCD entry', () => {

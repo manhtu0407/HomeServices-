@@ -50,13 +50,15 @@ begin
   select * into v_result from public.claim_referral_code(v_new, 'NOPE1234');
   if v_result.outcome <> 'CODE_NOT_FOUND' then raise exception 'P263_UNKNOWN_CODE: %', v_result.outcome; end if;
 
+  -- Signed up five days ago: the link still runs a full 12 months from the claim.
+  update public.profiles set created_at = now() - interval '5 days' where id = v_new;
   select * into v_result from public.claim_referral_code(v_new, lower(v_code_a));
   if v_result.outcome <> 'LINKED' or v_result.worker_id <> 'c2140000-0000-4000-8000-000000000001' then
     raise exception 'P263_VALID_CLAIM_REFUSED: %', v_result.outcome;
   end if;
   if (select expires_at from public.customer_worker_links where id = v_result.link_id)
-     <> (select created_at from public.profiles where id = v_new) + interval '12 months' then
-    raise exception 'P263_LINK_NOT_TWELVE_MONTHS_FROM_SIGNUP';
+     <> now() + interval '12 months' then
+    raise exception 'P263_LINK_NOT_TWELVE_MONTHS_FROM_CLAIM';
   end if;
 
   select * into v_result from public.claim_referral_code(v_new, v_code_a);
