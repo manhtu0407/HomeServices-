@@ -160,6 +160,20 @@ describe('Kael composer and failure boundary', () => {
     }, 'a two-line draft must not collapse to one line and scroll its first line out of view')
   })
 
+  it('keeps a measurement that arrives before a restored draft renders', () => {
+    withPillarContext(PILLAR, () => {
+      const composer = renderComposer('light')
+      const input = screen.getByTestId('customer-v21-kael-input')
+
+      composer.rerenderDraft('')
+      fireEvent(input, 'contentSizeChange', {
+        nativeEvent: { contentSize: { height: 64, width: 300 } },
+      })
+      composer.rerenderDraft('Xin chào Kael, máy lạnh nhà tôi chảy nước')
+      expect(input).toHaveStyle({ height: 64 })
+    }, 'web measures a restored draft before the parent renders it; that height must not be discarded')
+  })
+
   it('shows normal-chat image thumbnails inside the composer with X removal and no filename text', () => {
     withPillarContext(PILLAR, () => {
       const onRemoveComposerMediaDraft = jest.fn()
