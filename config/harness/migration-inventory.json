@@ -74,7 +74,7 @@
       }
     ]
   },
-  "migrationsSha256": "b297952d14c10548d8354bdd114fb87433a2e653dcaadea1c17f7b2c2825aff9",
+  "migrationsSha256": "33e981475deeb7fa591bd9d382d72e8b545dbf5fed54f49f50753f530f58c27c",
   "databaseTypes": {
     "file": "packages/shared/src/types/database",
     "sha256": "e5837680e05ca64a7cb5fb0a0e635e7fa7681da2adf92ef8c2410bf39ec69e96"
@@ -2926,8 +2926,8 @@
       "version": "20260928100000",
       "name": "worker_withdrawable_balance_unification",
       "file": "supabase/migrations/20260928100000_worker_withdrawable_balance_unification.sql",
-      "sha256": "c915f2eb71ff8f28d3ab168d42d59cd6dfba4cd423179c41426d8a789423a1db",
-      "bytes": 31717
+      "sha256": "61d0b7dc5a72f33e0624dfab69c6190b80911848187c36adcbdfc368faa09717",
+      "bytes": 32314
     },
     {
       "version": "20260928101000",
@@ -2968,8 +2968,8 @@
       "version": "20260928112000",
       "name": "ambassador_points_and_redemptions",
       "file": "supabase/migrations/20260928112000_ambassador_points_and_redemptions.sql",
-      "sha256": "9a88cf031e3e4e23ea03055b31f1b584e1f9d142d4f6081d3189d275e100da32",
-      "bytes": 29578
+      "sha256": "336b24533d5fcd70f7c3897dde5c05c1101d74c49a8617f90ab4d62a129fdace",
+      "bytes": 29845
     },
     {
       "version": "20260928113000",
@@ -2996,8 +2996,8 @@
       "version": "20260928116000",
       "name": "admin_capabilities_bonus_discipline",
       "file": "supabase/migrations/20260928116000_admin_capabilities_bonus_discipline.sql",
-      "sha256": "4c5f4a996b6aed380c5ecf1696087614a0e19fb61d6aa230774f84191ae06302",
-      "bytes": 7294
+      "sha256": "f10dc013351f34c2ced7014f52383a1a355a56d975dfadf859805a11a30d5a08",
+      "bytes": 10387
     },
     {
       "version": "20260928120000",
@@ -3017,15 +3017,15 @@
       "version": "20260928122000",
       "name": "worker_discipline_decisions",
       "file": "supabase/migrations/20260928122000_worker_discipline_decisions.sql",
-      "sha256": "cad38b93247f9ed14d6fb4256778dc167a8ff8e72c7519d69337ec183f7142f8",
-      "bytes": 43881
+      "sha256": "7106503614480433b6ef546e9c8ac21c695bd93dd4629827edf182149a101231",
+      "bytes": 44777
     },
     {
       "version": "20260928123000",
       "name": "violation_detectors",
       "file": "supabase/migrations/20260928123000_violation_detectors.sql",
-      "sha256": "4f235a291b0a3ee8bfe74aba6da8e0fdd570b5b8ab33589dcf9efa6de667d598",
-      "bytes": 6910
+      "sha256": "54c5eeee569aa4a0b32484260b32665ead339e1d6b0850b071a0dc6c7302f7a0",
+      "bytes": 8029
     },
     {
       "version": "20260928124000",

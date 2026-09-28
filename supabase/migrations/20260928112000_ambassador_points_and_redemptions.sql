@@ -199,7 +199,12 @@ begin
       select enum_value::text from pg_catalog.enum_range(null::public.service_type) as enum_value
     ));
 
+  -- Bonus withholding reads one rule per policy, so a second worker_bonus rule would be ignored.
   if v_rule_count <> pg_catalog.jsonb_array_length(p_rules)
+    or (
+      select count(*) from pg_catalog.jsonb_to_recordset(p_rules) as rule(calculation_basis text)
+      where rule.calculation_basis = 'worker_bonus'
+    ) > 1
     or exists (
       select 1
       from pg_catalog.jsonb_to_recordset(p_rules) as rule(tax_code text, service_type text)

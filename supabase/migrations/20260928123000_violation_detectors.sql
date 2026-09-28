@@ -17,6 +17,26 @@ as $function$
   from (select pg_catalog.regexp_replace(coalesce(p_phone, ''), '[^0-9]', '', 'g') as digits) as source;
 $function$;
 
+-- A booking promises a window, not a minute: scheduled_at is the window start, and the worker
+-- is on time anywhere inside it. The window end comes from the job's Kael session; a job without
+-- one is measured from scheduled_at.
+create or replace function private.job_arrival_deadline(p_job_id uuid, p_scheduled_at timestamptz)
+returns timestamptz
+language sql
+stable
+security definer
+set search_path = ''
+as $function$
+  select coalesce((
+    select ((session.safe_metadata->'schedule_window'->>'date') || ' '
+      || (session.safe_metadata->'schedule_window'->>'end'))::timestamp at time zone 'Asia/Ho_Chi_Minh'
+    from public.kael_chat_sessions as session
+    where session.job_id = p_job_id
+      and session.safe_metadata->'schedule_window'->>'date' ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'
+      and session.safe_metadata->'schedule_window'->>'end' ~ '^([01][0-9]|2[0-3]):[0-5][0-9]$'
+  ), p_scheduled_at);
+$function$;
+
 create or replace function private.detect_worker_violations()
 returns jsonb
 language plpgsql
@@ -40,7 +60,8 @@ begin
     from public.jobs as job
     where job.worker_id is not null
       and job.scheduled_at is not null
-      and job.arrived_at > job.scheduled_at + pg_catalog.make_interval(mins => v_policy.late_arrival_grace_minutes)
+      and job.arrived_at > private.job_arrival_deadline(job.id, job.scheduled_at)
+        + pg_catalog.make_interval(mins => v_policy.late_arrival_grace_minutes)
       and job.arrived_at > pg_catalog.now() - interval '7 days'
   loop
     perform private.propose_violation_case(
@@ -55,7 +76,8 @@ begin
     from public.jobs as job
     where job.worker_id is not null
       and job.status = 'worker_matched'::public.job_status
-      and job.scheduled_at < pg_catalog.now() - pg_catalog.make_interval(mins => v_policy.no_show_grace_minutes)
+      and private.job_arrival_deadline(job.id, job.scheduled_at)
+        < pg_catalog.now() - pg_catalog.make_interval(mins => v_policy.no_show_grace_minutes)
       and job.scheduled_at > pg_catalog.now() - interval '7 days'
   loop
     perform private.propose_violation_case(
@@ -143,6 +165,7 @@ as $function$
     );
 $function$;
 
+revoke all on function private.job_arrival_deadline(uuid, timestamptz) from public, anon, authenticated;
 revoke all on function private.detect_worker_violations() from public, anon, authenticated;
 revoke all on function public.list_matching_deprioritized_workers(uuid[]) from public, anon, authenticated;
 grant execute on function private.detect_worker_violations() to service_role;

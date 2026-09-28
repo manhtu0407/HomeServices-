@@ -167,6 +167,23 @@ as $function$
   where violation.id = p_case_id and policy.id = 1;
 $function$;
 
+-- A case that no longer stands only lifts the suspension when nothing else holds the worker:
+-- another confirmed ban, or another open harm case suspended pending review.
+create or replace function private.worker_may_resume(p_worker_id uuid, p_case_id uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = ''
+as $function$
+  select not (select state.banned from private.worker_discipline_state(p_worker_id) as state)
+    and not exists (
+      select 1 from public.worker_violation_cases as other
+      where other.worker_id = p_worker_id and other.id <> p_case_id
+        and other.status = 'proposed' and other.suspended_pending_review
+    );
+$function$;
+
 create or replace function public.admin_decide_violation_case(
   p_actor_id uuid,
   p_case_id uuid,
@@ -231,7 +248,7 @@ begin
     from public.worker_discipline_entries as entry
     where entry.case_id = p_case_id and entry.entry_kind <> 'restore'
       and not exists (select 1 from public.worker_discipline_entries as restore where restore.restores_entry_id = entry.id);
-    if v_case.suspended_pending_review then
+    if v_case.suspended_pending_review and private.worker_may_resume(v_case.worker_id, p_case_id) then
       perform private.lift_worker_suspension(v_case.worker_id, 'reinstate', 'admin', v_reason, p_actor_id);
     end if;
     if p_decision = 'fabricated_report' and v_case.reporter_id is not null then
@@ -561,7 +578,7 @@ begin
             );
           end if;
         end loop;
-      elsif v_entry.entry_kind = 'ban' then
+      elsif v_entry.entry_kind = 'ban' and private.worker_may_resume(v_entry.worker_id, p_case_id) then
         perform private.lift_worker_suspension(v_entry.worker_id, 'reinstate', 'admin', v_reason, p_actor_id);
       elsif v_entry.entry_kind = 'bonus_clawback' then
         select * into v_clawback from public.worker_bonus_clawbacks where id = (v_entry.detail->>'clawback_id')::uuid;
@@ -641,6 +658,7 @@ begin
 end;
 $function$;
 
+revoke all on function private.worker_may_resume(uuid, uuid) from public, anon, authenticated;
 revoke all on function private.propose_violation_case(uuid, uuid, uuid, text, text, uuid, text, jsonb, text) from public, anon, authenticated;
 revoke all on function private.forfeit_all_points(uuid, uuid, uuid) from public, anon, authenticated;
 revoke all on function private.ban_worker_for_case(uuid, uuid, uuid, smallint) from public, anon, authenticated;

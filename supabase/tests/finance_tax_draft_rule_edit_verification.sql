@@ -1,5 +1,5 @@
 -- @pillar id: P283-tax-draft-rules-edit-in-place-sql
--- @pillar invariant: Saving an existing tax policy draft updates its saved rules in place and adds new ones, never deleting a row; a save that leaves out a saved rule is refused with TAX_RULE_REMOVAL_NEEDS_NEW_DRAFT and changes nothing
+-- @pillar invariant: Saving an existing tax policy draft updates its saved rules in place and adds new ones, never deleting a row; a save that leaves out a saved rule is refused with TAX_RULE_REMOVAL_NEEDS_NEW_DRAFT and changes nothing; a policy may carry at most one worker_bonus rule
 -- @pillar authority: governance/RULES.md #7 | Plan moonlit-singing-phoenix R1: the release gate forbids DELETE in stored SQL
 -- @pillar target: supabase/migrations/20260928112000_ambassador_points_and_redemptions.sql
 -- @pillar layer: sql
@@ -23,6 +23,18 @@ declare
   v_bonus_rule_id uuid;
   v_rejected boolean := false;
 begin
+  -- Withholding reads one bonus rule per policy, so a second one is refused rather than ignored.
+  begin
+    perform public.admin_save_finance_tax_policy_draft(
+      v_admin, null, 'worker_tax_p283_two', 1, 'Hai quy tắc thưởng', 'worker', '2030-01-01', null,
+      '[{"tax_code":"pit_a","label":"Thuế A","calculation_basis":"worker_bonus","rate_bps":1000},
+        {"tax_code":"pit_b","label":"Thuế B","calculation_basis":"worker_bonus","rate_bps":500}]'::jsonb
+    );
+    raise exception 'P283_TWO_BONUS_RULES_ACCEPTED';
+  exception when sqlstate '22023' then
+    if sqlerrm <> 'INVALID_TAX_RULE_INPUT' then raise; end if;
+  end;
+
   v_policy := public.admin_save_finance_tax_policy_draft(
     v_admin, null, 'worker_tax_p283', 1, 'Thuế thợ thử nghiệm', 'worker', '2030-01-01', null,
     '[{"tax_code":"pit_bonus","label":"Thuế thưởng","calculation_basis":"worker_bonus","rate_bps":1000,"applies_at_or_above_vnd":2000000},

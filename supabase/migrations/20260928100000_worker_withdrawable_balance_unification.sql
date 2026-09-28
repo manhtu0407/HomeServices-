@@ -627,6 +627,16 @@ begin
         when 'commission_retained' then (calculated.metrics->>'commission_retained')::bigint
         when 'platform_commission' then (calculated.metrics->>'commission_retained')::bigint
         when 'worker_net' then (calculated.metrics->>'worker_net_paid')::bigint
+        -- Bonus withholding applies to redeemed rewards (worker_bonus_redemptions, created in
+        -- 20260928112000), never to job income: the basis is what was actually withheld against.
+        when 'worker_bonus' then (
+          select coalesce(sum(redemption.reward_vnd), 0)::bigint
+          from public.worker_bonus_redemptions as redemption
+          where redemption.tax_policy_id = calculated.policy_id
+            and redemption.tax_withheld_vnd > 0
+            and redemption.created_at >= calculated.rule_from
+            and redemption.created_at < calculated.rule_to
+        )
         else (calculated.metrics->>'worker_net_paid')::bigint
       end as basis_vnd
     from calculated

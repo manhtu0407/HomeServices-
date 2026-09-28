@@ -165,4 +165,90 @@ begin
 end;
 $function$;
 
+-- The team screen grants through v3, which validates through this v2 wrapper first; it carries
+-- its own capability list, so the two program capabilities have to be added here as well.
+create or replace function public.admin_set_sub_admin_access_v2_atomic(
+  p_owner_id uuid,
+  p_target_id uuid,
+  p_action text,
+  p_capabilities text[] default '{}',
+  p_reason text default null
+)
+returns table(
+  ok boolean,
+  error_code text,
+  user_id uuid,
+  status_out text,
+  role_out public.user_role,
+  capabilities_out text[],
+  updated_at_out timestamptz
+)
+language plpgsql
+security definer
+set search_path = ''
+as $function$
+declare
+  v_result record;
+  v_capabilities text[] := coalesce(p_capabilities, '{}'::text[]);
+  v_base_capabilities text[];
+begin
+  if pg_catalog.cardinality(v_capabilities) > 14
+    or exists (
+      select 1 from pg_catalog.unnest(v_capabilities) as capability
+      where capability not in (
+        'operations.read', 'operations.triage',
+        'workers.read', 'workers.review', 'workers.manage',
+        'transactions.read', 'finance.read', 'finance.reconcile',
+        'finance.tax.manage', 'payouts.read', 'payouts.process', 'team.read',
+        'workers.bonus.manage', 'workers.discipline.manage'
+      )
+    )
+    or (select count(*) from pg_catalog.unnest(v_capabilities))
+      <> (select count(distinct capability) from pg_catalog.unnest(v_capabilities) as capability)
+    or ('operations.triage' = any(v_capabilities) and not ('operations.read' = any(v_capabilities)))
+  then
+    return query select false, 'INVALID_INPUT', p_target_id, null::text,
+      null::public.user_role, '{}'::text[], null::timestamptz;
+    return;
+  end if;
+
+  select coalesce(array_agg(capability order by ordinal), '{}'::text[])
+  into v_base_capabilities
+  from unnest(v_capabilities) with ordinality as item(capability, ordinal)
+  where capability <> 'operations.triage';
+
+  select * into v_result
+  from public.admin_set_sub_admin_access_atomic(
+    p_owner_id,
+    p_target_id,
+    p_action,
+    v_base_capabilities,
+    p_reason
+  );
+
+  if v_result.ok is distinct from true then
+    return query select v_result.ok, v_result.error_code, v_result.user_id,
+      v_result.status_out, v_result.role_out, v_result.capabilities_out,
+      v_result.updated_at_out;
+    return;
+  end if;
+
+  if p_action in ('grant', 'update') and 'operations.triage' = any(v_capabilities) then
+    update public.admin_operator_accounts as operator_account
+    set capabilities = array_append(operator_account.capabilities, 'operations.triage')
+    where operator_account.user_id = p_target_id
+      and not ('operations.triage' = any(operator_account.capabilities));
+  end if;
+
+  return query
+  select v_result.ok, v_result.error_code, v_result.user_id,
+    v_result.status_out, v_result.role_out,
+    coalesce(operator_account.capabilities, v_result.capabilities_out),
+    coalesce(operator_account.updated_at, v_result.updated_at_out)
+  from (select 1) as singleton
+  left join public.admin_operator_accounts as operator_account
+    on operator_account.user_id = p_target_id;
+end;
+$function$;
+
 commit;

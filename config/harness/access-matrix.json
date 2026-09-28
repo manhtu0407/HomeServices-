@@ -3,7 +3,7 @@
   "source": {
     "migrationRoot": "supabase/migrations",
     "migrationCount": 425,
-    "migrationDigest": "4549d8025ec0d90735735acb641c9094c762f776d048d271941af44d51cc44e3"
+    "migrationDigest": "aa81f50154239bb6452ef119646c6d6b4c3878baa89d79730034ea8605c13347"
   },
   "actors": [
     "anonymous",

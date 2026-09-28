@@ -1,5 +1,5 @@
 -- @pillar id: P262-redemption-idempotent-balance-sql
--- @pillar invariant: Redeeming a milestone consumes exactly its points once per client request, withholds tax only through an approved worker_bonus tax policy (refusing when none exists), raises the withdrawable balance by exactly the net amount, and refuses a suspended worker, a missing balance or a reused request id for a different milestone
+-- @pillar invariant: Redeeming a milestone consumes exactly its points once per client request, withholds tax only through an approved worker_bonus tax policy (refusing when none exists), raises the withdrawable balance by exactly the net amount, and refuses a suspended worker, a missing balance or a reused request id for a different milestone; the finance overview estimates bonus withholding from the redeemed rewards it applied to
 -- @pillar authority: governance/RULES.md #7 | Tu 2026-09-25: bonus goes to the withdrawable balance, withheld per the tax policy
 -- @pillar target: supabase/migrations/20260928112000_ambassador_points_and_redemptions.sql
 -- @pillar layer: sql
@@ -103,6 +103,19 @@ begin
   if (select withdrawable_vnd from private.worker_withdrawable_balance(v_worker)) <> v_balance_before + 3620000
      or (select available_balance from public.get_worker_payment_safety_balance(v_worker)) <> v_balance_before + 3620000 then
     raise exception 'P262_BALANCE_NOT_CREDITED';
+  end if;
+
+  -- The finance overview estimates bonus withholding from the redeemed rewards it applied to,
+  -- never from job income.
+  if not exists (
+    select 1 from pg_catalog.jsonb_array_elements(public.admin_finance_overview(
+      'c2130000-0000-4000-8000-000000000002', now() - interval '1 hour', now() + interval '1 hour', 'hour'
+    )->'tax'->'rules') as rule
+    where rule->>'calculation_basis' = 'worker_bonus'
+      and (rule->>'basis_vnd')::bigint = 4000000
+      and (rule->>'estimated_vnd')::bigint = 400000
+  ) then
+    raise exception 'P262_BONUS_TAX_ESTIMATE_WRONG';
   end if;
 
   select * into v_result from public.redeem_ambassador_milestone(v_worker, pg_temp.milestone(1), gen_random_uuid());
