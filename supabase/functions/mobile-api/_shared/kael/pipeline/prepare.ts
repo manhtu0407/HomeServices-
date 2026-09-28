@@ -76,6 +76,7 @@ export async function prepareKaelPipeline(
   const electricalIntake = resolveElectricalIntakeRuntime({
     intakeDiagnosisEnabled: input.intakeDiagnosisEnabled === true,
     serviceType,
+    actorId: input.actorId,
     problemChips,
     description,
     priorSafetySignals: input.priorSafetySignals,
@@ -96,6 +97,7 @@ export async function prepareKaelPipeline(
       safetySignals: deterministicSafetySignals,
       modelId: "deterministic",
       serviceType,
+      actorId: input.actorId,
       electricalPlaybookEnabled,
     });
     const hardRouteMessage = hardRoute.scopeSignal === "out_of_scope"

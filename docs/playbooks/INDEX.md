@@ -1,5 +1,7 @@
 # Kael Playbooks
 
+**Production-only checkpoint (2026-09-26):** Production is currently `ACTIVE_HEALTHY` and the latest recorded mobile-api runtime is HTTP 200, but no valid current-source six-service receipts or independent outcome labels exist. Activation remains blocked by Goal-source/Production release and migration identity drift (398 Production migrations vs 336 files in the Goal checkout), three false full-Production provider-readiness fields, and missing six-service evidence. All playbook and observation flags remain absent/default-off. The static corpus and synthetic holdout each contain 24 fixtures/service, but a near-clone was found in every corpus/holdout pair and labels are marked `[SYNTHETIC SELF-REVIEW]`; this does not prove independent generalization. Historical Staging evidence below remains historical and was not re-used. Latest RAM sample was 0.42 GiB at 23:51Z, below the Docker gate. See the [current continuation audit](../test-logs/2026-09-22_plan55-production-only-continuation.md).
+
 Distilled reasoning that teaches Kael how to think about each service — the "teaching channel" from the 2026-07 thread. Not model training: we compress a senior specialist's diagnosis into procedures a cheap runtime model executes the same way every time, then prove the gain with an eval.
 
 **Start here:** [`process-distillation.md`](process-distillation.md) — the step-by-step SOP for producing or revising a playbook. Follow it every time; do not freestyle. Use [`TEMPLATE.md`](TEMPLATE.md) for the service textbook shape.

@@ -70,7 +70,7 @@
     "design:check": "node scripts/run.mjs run-node scripts/design/check-design-adapters.mjs",
     "lint:structure": "node scripts/run.mjs run-node scripts/lint-structure.mjs",
     "lint:baseline": "node scripts/run.mjs run-node scripts/check-structure-baseline.mjs",
-    "lint:edge-db": "node scripts/run.mjs run-node scripts/check-edge-db-contract.mjs",
+    "lint:edge-db": "node scripts/run.mjs run-node --test scripts/check-edge-db-contract.test.mjs && node scripts/run.mjs run-node scripts/check-edge-db-contract.mjs",
     "lint:authority": "node scripts/run.mjs run-node scripts/check-authority-citations.mjs",
     "lint:comments": "node scripts/run.mjs run-node scripts/check-comment-discipline.mjs",
     "lint:playbooks": "node scripts/run.mjs run-node scripts/check-kael-playbook-coverage.mjs",

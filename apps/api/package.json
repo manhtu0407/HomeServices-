@@ -9,7 +9,7 @@
     "lint": "eslint",
     "kael:eval": "node scripts/kael-eval.mjs",
     "kael:eval:playbook": "node scripts/kael-playbook-eval.mjs",
-    "test": "vitest run",
+    "test": "vitest run && node ../../scripts/run.mjs run-node --test apps/api/scripts/lib/kael-playbook-eval-targets.test.mjs",
     "test:watch": "vitest",
     "type-check": "tsc --noEmit",
     "kael:eval:multi-turn": "node scripts/kael-multi-turn-eval.mjs",

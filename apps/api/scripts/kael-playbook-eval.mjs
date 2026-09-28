@@ -516,6 +516,7 @@ async function writeReports(input) {
     '```json',
     JSON.stringify(input.manifest, null, 2),
     '```',
+    `<!-- plan55-eval-metrics-sha256:${sha256(JSON.stringify(input.metrics))} -->`,
     '',
     diagnosticHeading,
     '',

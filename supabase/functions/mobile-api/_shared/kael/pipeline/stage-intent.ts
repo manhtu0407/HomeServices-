@@ -85,6 +85,7 @@ export async function runKaelIntentStage(prepared: PreparedKaelPipeline) {
           safetySignals: mergedSafetySignals,
           modelId: intentModelId,
           serviceType,
+          actorId: input.actorId,
           electricalPlaybookEnabled,
         })
         : undefined,
@@ -139,7 +140,7 @@ async function runAndRecordIntentStage(prepared: PreparedKaelPipeline) {
     run: () => input.intakeDiagnosisEnabled
       ? diagnoseIntake(
         serviceType, problemChips, modelDescription, secrets, spendGate,
-        input.conversationContext, language, electricalPlaybookEnabled,
+        input.conversationContext, language, electricalPlaybookEnabled, input.actorId,
       )
       : classifyIntent(
         serviceType, problemChips, modelDescription, secrets, spendGate, electricalPlaybookEnabled,
@@ -188,7 +189,7 @@ async function runAndRecordIntentStage(prepared: PreparedKaelPipeline) {
         index === intentStage.attempts.length - 1,
     }, {
       promptVersion: input.intakeDiagnosisEnabled
-        ? kaelIntakeDiagnosisPromptVersion(serviceType)
+        ? kaelIntakeDiagnosisPromptVersion(serviceType, input.actorId)
         : undefined,
     });
   });
@@ -302,7 +303,7 @@ async function resolveIntakeDiagnosisResult(input: {
         intakeObservation: buildIntakeObservation({
           scopeSignal: "service_mismatch", suggestedService, problemSlug: null,
           needsClarification: false, safetySignals: mergedSafetySignals,
-          modelId: intentModelId, serviceType, electricalPlaybookEnabled,
+          modelId: intentModelId, serviceType, actorId: prepared.input.actorId, electricalPlaybookEnabled,
         }),
       },
     };
@@ -326,7 +327,7 @@ async function resolveIntakeDiagnosisResult(input: {
     intakeObservation = buildIntakeObservation({
       scopeSignal: "in_scope", suggestedService: null, problemSlug,
       needsClarification: false, safetySignals, modelId: intentModelId,
-      serviceType, electricalPlaybookEnabled,
+      serviceType, actorId: prepared.input.actorId, electricalPlaybookEnabled,
     });
     return { done: false as const, profileFacts, safetySignals, intakeObservation };
   }
@@ -361,7 +362,7 @@ async function resolveIntakeDiagnosisResult(input: {
         intakeObservation: buildIntakeObservation({
           scopeSignal: "in_scope", suggestedService: null, problemSlug,
           needsClarification: true, safetySignals: mergedSafetySignals,
-          modelId: intentModelId, serviceType, electricalPlaybookEnabled,
+          modelId: intentModelId, serviceType, actorId: prepared.input.actorId, electricalPlaybookEnabled,
         }),
       },
     };
@@ -371,7 +372,7 @@ async function resolveIntakeDiagnosisResult(input: {
   intakeObservation = buildIntakeObservation({
     scopeSignal: "in_scope", suggestedService: null, problemSlug,
     needsClarification: false, safetySignals, modelId: intentModelId,
-    serviceType, electricalPlaybookEnabled,
+    serviceType, actorId: prepared.input.actorId, electricalPlaybookEnabled,
   });
   return { done: false as const, profileFacts, safetySignals, intakeObservation };
 }

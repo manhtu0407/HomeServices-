@@ -2,20 +2,17 @@
 // function the target database does not have; when it does, the endpoint 500s in
 // production while every local gate stays green.
 //
-// Extraction runs in two passes because call sites come in two shapes:
-//   client.rpc("name", args)   -> literal, resolved with certainty
-//   client.rpc(rpcName, args)  -> identifier, resolved only when `const rpcName =`
-//                                 sits in the same file (ternary chains included)
-// A name arriving through a function parameter or an object property cannot be
-// resolved this way. Those sites are counted and printed as residue: a partial
-// scan reported as a full one would be silent degradation (governance/RULES.md #8).
-//
-// The database half is supplied, not fetched, so this runs with no credentials and
-// no network. `--emit-sql` prints the query; feed its result back via `--functions`.
+// The TypeScript AST scanner resolves literals, conditional branches, immutable
+// local constants, and parameters whose complete call sites are statically known.
+// It deliberately retains any expression with a dynamic or unobserved path as
+// residue. The database half is supplied, not fetched, so this runs without
+// credentials or network; `--emit-sql` prints the exact read-only query.
 
 import { readdirSync, readFileSync, existsSync } from 'node:fs'
 import { resolve, dirname, relative, extname } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import ts from 'typescript'
+import { createRpcExpressionResolver } from './lib/edge-db-rpc-expression.mjs'
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const EDGE_ROOT = 'supabase/functions'
@@ -41,62 +38,48 @@ function walk(dir, acc) {
   return acc
 }
 
-// Pull the initializer of `const <ident> =` and return every RPC-shaped literal in
-// it. Ternary chains span lines, so accumulation runs to the statement terminator.
-function resolveIdentifier(lines, ident) {
-  const declaration = new RegExp(`(?:const|let)\\s+${ident}\\s*(?::[^=]+)?=`)
-  for (let index = 0; index < lines.length; index += 1) {
-    if (!declaration.test(lines[index])) continue
-    let text = lines[index].split('=').slice(1).join('=')
-    let cursor = index
-    while (!text.trimEnd().endsWith(';') && cursor + 1 < lines.length && cursor - index < 40) {
-      cursor += 1
-      text += '\n' + lines[cursor]
-    }
-    // A ternary picking an rpc name also compares against role and status literals.
-    // Those sit on the right of a comparison operator and are operands, never the
-    // chosen name, so dropping them is what keeps "customer" out of the results.
-    const results = text.replace(/(===?|!==?)\s*(["'])[^"'\n]*\2/g, '$1')
-    const found = [...results.matchAll(/["']([^"'\n]+)["']/g)]
-      .map((match) => match[1])
-      .filter((value) => RPC_NAME.test(value))
-    if (found.length) return found
-  }
-  return null
-}
-
 function scan(files) {
   const called = new Map()
   const unresolved = []
-  for (const file of files) {
-    const source = readFileSync(file, 'utf-8')
-    if (!source.includes('.rpc(')) continue
-    const lines = source.split(/\r?\n/)
-    // Scanned over the whole file rather than line by line: the first argument is often
-    // on the line after `.rpc(`, and a line-bounded scan reports those as unreadable
-    // while quietly not counting the name at all.
-    //
-    // Three outcomes. A bare identifier is only treated as a name to resolve when the
-    // next token closes the argument; `plan.claimRpc` and `getName()` are expressions
-    // this cannot follow, so they land in the residue instead of having the literals
-    // around them swept up as if they were rpc names.
-    for (const match of source.matchAll(/\.rpc\(\s*/g)) {
-      const site = `${rel(file)}:${source.slice(0, match.index).split('\n').length}`
-      const argument = source.slice(match.index + match[0].length, match.index + match[0].length + 80)
-      const literal = /^(["'])([^"']+)\1/.exec(argument)
-      if (literal) {
-        record(called, literal[2], site, 'literal')
-        continue
+  const sourceFiles = files.map((file) => ts.createSourceFile(
+    file,
+    readFileSync(file, 'utf-8'),
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TS,
+  ))
+  const resolveRpcNames = createRpcExpressionResolver(sourceFiles)
+
+  for (const sourceFile of sourceFiles) {
+    const source = sourceFile.text
+    if (sourceFile.parseDiagnostics.length) {
+      for (const match of source.matchAll(/\.rpc(?:\?\.)?\s*\(/g)) {
+        const site = `${rel(sourceFile.fileName)}:${source.slice(0, match.index).split('\n').length}`
+        const expression = source.slice(match.index + match[0].length).split(/[\n,]/)[0].trim() || '…'
+        unresolved.push({ site, expression: expression.slice(0, 256) })
       }
-      const identifier = /^([A-Za-z_$][\w$]*)\s*[,)]/.exec(argument)
-      if (!identifier) {
-        unresolved.push({ site, expression: argument.split(/[,\n]/)[0].trim() || '…' })
-        continue
-      }
-      const resolved = resolveIdentifier(lines, identifier[1])
-      if (resolved) for (const name of resolved) record(called, name, site, 'resolved')
-      else unresolved.push({ site, expression: identifier[1] })
+      continue
     }
+
+    function visit(node) {
+      if (ts.isCallExpression(node) && ts.isPropertyAccessExpression(node.expression) &&
+        node.expression.name.text === 'rpc') {
+        const site = `${rel(sourceFile.fileName)}:${sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile)).line + 1}`
+        const argument = node.arguments[0]
+        const names = argument ? resolveRpcNames(argument) : null
+        if (names?.length && names.every((name) => RPC_NAME.test(name))) {
+          const how = ts.isStringLiteralLike(argument) ? 'literal' : 'resolved'
+          for (const name of names) record(called, name, site, how)
+        } else {
+          unresolved.push({
+            site,
+            expression: argument?.getText(sourceFile).slice(0, 256) || '…',
+          })
+        }
+      }
+      ts.forEachChild(node, visit)
+    }
+    visit(sourceFile)
   }
   return { called, unresolved }
 }
@@ -147,12 +130,11 @@ if (options.emitSql) {
   process.exit(0)
 }
 
-// The residue is printed on every path, including the clean one. A scan that hides
-// what it could not read teaches the reader it covered everything.
+// Residue is printed on every path so a partial scan cannot imply full coverage.
 const residue = [...new Map(unresolved.map((item) => [item.site, item])).values()]
 const summary = () => {
   const literal = [...called.values()].filter((entry) => entry.how === 'literal').length
-  console.log(`rpc names found: ${names.length} (${literal} literal, ${names.length - literal} resolved from a local const)`)
+  console.log(`rpc names found: ${names.length} (${literal} literal, ${names.length - literal} statically resolved)`)
   console.log(`unscannable call sites: ${residue.length}`)
   for (const item of residue) console.log(`  - ${item.site} calls .rpc(${item.expression}, …)`)
 }
@@ -166,29 +148,41 @@ if (!options.functions) {
 }
 
 const raw = JSON.parse(readFileSync(resolve(root, options.functions), 'utf-8'))
-const rows = Array.isArray(raw) ? raw : (raw.rows ?? raw.result ?? [])
-const present = new Set(
-  rows.map((row) => (typeof row === 'string' ? row : row.proname ?? row.name ?? row.routine_name)).filter(Boolean),
-)
-if (!present.size) {
-  console.error(`--functions file held no function names: ${options.functions}`)
-  process.exit(1)
+const rows = Array.isArray(raw)
+  ? raw
+  : raw && typeof raw === 'object' && Array.isArray(raw.rows)
+    ? raw.rows
+    : raw && typeof raw === 'object' && Array.isArray(raw.result)
+      ? raw.result
+      : null
+if (!rows) {
+  console.error(`--functions file must contain an array of missing RPC rows: ${options.functions}`)
+  process.exit(2)
 }
 
-const missing = names.filter((name) => !present.has(name))
+const missing = []
+for (const row of rows) {
+  const name = typeof row === 'string' ? row : row?.missing_in_database
+  if (typeof name !== 'string' || !RPC_NAME.test(name) || !called.has(name)) {
+    console.error(`--functions file contains an invalid or unexpected missing RPC row: ${options.functions}`)
+    process.exit(2)
+  }
+  missing.push(name)
+}
+const missingNames = [...new Set(missing)].sort()
 if (options.json) {
-  console.log(JSON.stringify({ called: names, missing, unresolved: residue }, null, 2))
-  process.exit(missing.length ? 1 : 0)
+  console.log(JSON.stringify({ called: names, missing: missingNames, unresolved: residue }, null, 2))
+  process.exit(missingNames.length ? 1 : 0)
 }
 
 summary()
 console.log('')
-if (!missing.length) {
+if (!missingNames.length) {
   console.log(`all ${names.length} scannable rpc names exist in the target database`)
   process.exit(0)
 }
-console.error(`edge code calls ${missing.length} function(s) the target database does not have:`)
-for (const name of missing) {
+console.error(`edge code calls ${missingNames.length} function(s) the target database does not have:`)
+for (const name of missingNames) {
   console.error(`  - ${name}`)
   for (const site of called.get(name).sites) console.error(`      ${site}`)
 }

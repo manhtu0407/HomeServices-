@@ -32,7 +32,7 @@ export const PILLAR = {
     'service-role reads keep real actors on rows whose synthetic cohort is null, keep synthetic actors inside their exact cohort, and fail closed when cohort identity cannot be resolved',
   authority: [
     'governance/RULES.md #8 (fake success and silent degradation are forbidden)',
-    'governance/STRUCTURES.md §22.3 (service-role access stays behind Edge ownership guards)',
+    'governance/structures/runtime-crosscutting.md §22.3 (service-role access stays behind Edge ownership guards)',
     'Approved Stage 1 plan §3 (synthetic actors never appear in real-user queries, analytics, favorites, or payouts)',
   ],
   target: 'supabase/functions/mobile-api/_shared/platform/synthetic-cohort.ts',
