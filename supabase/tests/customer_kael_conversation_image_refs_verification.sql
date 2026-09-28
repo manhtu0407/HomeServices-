@@ -83,10 +83,10 @@ reset role;
 
 do $constraints$
 declare
-  v_image_refs text[] := array(
+  v_image_refs text[] := array[
     'supabase://kael-chat-media/d2470000-0000-4000-8000-000000000001/kael-chat/model_vision/room-1.jpg',
     'supabase://kael-chat-media/d2470000-0000-4000-8000-000000000001/kael-chat/model_vision/room-2.jpg'
-  );
+  ];
   v_too_many_refs text[] := array[
     'supabase://kael-chat-media/d2470000-0000-4000-8000-000000000001/kael-chat/model_vision/room-1.jpg',
     'supabase://kael-chat-media/d2470000-0000-4000-8000-000000000001/kael-chat/model_vision/room-2.jpg',
