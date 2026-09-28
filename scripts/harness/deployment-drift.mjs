@@ -69,9 +69,11 @@ with requested_triggers(object_kind, schema_name, relation_name, object_name) as
     ('trigger', 'public', 'worker_withdrawal_requests', 'worker_withdrawal_requests_eligibility_guard')
 ), requested_constraints(object_kind, schema_name, relation_name, object_name) as (
   values
+    ('constraint', 'public', 'admin_finance_tax_rules', 'admin_finance_tax_rules_calculation_basis_check'),
     ('constraint', 'public', 'job_payment_orders', 'job_payment_orders_status_check'),
     ('constraint', 'public', 'job_payment_reconciliation_events', 'job_payment_reconciliation_events_event_type_check'),
     ('constraint', 'public', 'jobs', 'jobs_payment_status_check'),
+    ('constraint', 'public', 'profiles', 'profiles_account_state_check'),
     ('constraint', 'public', 'worker_payment_ledger', 'worker_payment_ledger_payment_provider_check')
 ), object_state as (
 select requested.object_kind,

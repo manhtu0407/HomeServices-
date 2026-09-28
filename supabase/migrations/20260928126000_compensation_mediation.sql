@@ -106,10 +106,9 @@ create trigger worker_compensation_payouts_synthetic_guard
 before insert on public.worker_compensation_payouts
 for each row execute function private.guard_real_traffic_finance();
 
--- The balance owner gains one column, so the function is recreated rather than replaced.
-drop function private.worker_withdrawable_balance(uuid);
-
-create function private.worker_withdrawable_balance(p_worker_id uuid)
+-- Reserved and paid compensation leaves the worker balance. The balance owner keeps its shape so
+-- every caller is untouched; the compensation total is read from its own helper below.
+create or replace function private.worker_withdrawable_balance(p_worker_id uuid)
 returns table (
   ledger_available_vnd bigint,
   admin_credit_vnd bigint,
@@ -118,8 +117,7 @@ returns table (
   collateral_reserved_vnd bigint,
   pending_withdrawals_vnd bigint,
   paid_withdrawals_vnd bigint,
-  withdrawable_vnd bigint,
-  compensation_vnd bigint
+  withdrawable_vnd bigint
 )
 language plpgsql
 stable
@@ -197,13 +195,24 @@ begin
     v_collateral,
     v_pending,
     v_paid,
-    greatest(0::bigint, v_ledger + v_admin_credit + v_bonus - v_cash_commission - v_collateral - v_pending - v_paid - v_compensation),
-    v_compensation;
+    greatest(0::bigint, v_ledger + v_admin_credit + v_bonus - v_cash_commission - v_collateral - v_pending - v_paid - v_compensation);
 end;
 $function$;
 
-revoke all on function private.worker_withdrawable_balance(uuid) from public, anon, authenticated;
-grant execute on function private.worker_withdrawable_balance(uuid) to service_role;
+create or replace function private.worker_compensation_reserved_vnd(p_worker_id uuid)
+returns bigint
+language sql
+stable
+security definer
+set search_path = ''
+as $function$
+  select coalesce(sum(payout.amount_vnd), 0)::bigint
+  from public.worker_compensation_payouts as payout
+  where payout.worker_id = p_worker_id;
+$function$;
+
+revoke all on function private.worker_compensation_reserved_vnd(uuid) from public, anon, authenticated;
+grant execute on function private.worker_compensation_reserved_vnd(uuid) to service_role;
 
 -- A negotiation past its deadline reads as expired; nothing needs to rewrite the row.
 create or replace function private.compensation_json(p_negotiation_id uuid)

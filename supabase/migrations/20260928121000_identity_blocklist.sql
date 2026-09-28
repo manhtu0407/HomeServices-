@@ -173,7 +173,6 @@ $function$;
 
 revoke all on function private.enforce_worker_identity_on_approval() from public, anon, authenticated;
 
-drop trigger if exists worker_profiles_identity_on_approval on public.worker_profiles;
 create trigger worker_profiles_identity_on_approval
 before update of verification_status on public.worker_profiles
 for each row

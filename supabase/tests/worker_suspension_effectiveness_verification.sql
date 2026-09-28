@@ -1,10 +1,10 @@
 -- @pillar id: P256-suspension-blocks-matching-sql
 -- @pillar invariant: Every suspension path sets the matching gate (is_suspended, not approved, unavailable) with an end date and an append-only event; a timed suspension lifts itself when it ends, and reinstating clears the end date
 -- @pillar authority: governance/RULES.md #7 | Plan moonlit-singing-phoenix Phase 0.2: a dispute suspension previously left the worker matchable
--- @pillar target: supabase/migrations/20260925101000_worker_suspension_effectiveness.sql
+-- @pillar target: supabase/migrations/20260928101000_worker_suspension_effectiveness.sql
 -- @pillar layer: sql
 -- @pillar siblings: P204-notification-missing-job-sql
--- @pillar mutation: Restore the old dispute branch that only sets verification_status = 'suspended'; is_suspended stays false and P207 raises P256_DISPUTE_NOT_SUSPENDED
+-- @pillar mutation: Restore the old dispute branch that only sets verification_status = 'suspended'; is_suspended stays false and P256 raises P256_DISPUTE_NOT_SUSPENDED
 
 begin;
 set local statement_timeout = '20s';

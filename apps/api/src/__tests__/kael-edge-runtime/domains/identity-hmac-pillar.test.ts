@@ -15,7 +15,7 @@ export const PILLAR = {
   authority: [
     'governance/RULES.md #3, #7',
     'Tu 2026-09-25: CCCD + phone blocklist stored hashed',
-    'supabase/migrations/20260925121000_identity_blocklist.sql',
+    'supabase/migrations/20260928121000_identity_blocklist.sql',
   ],
   target: 'supabase/functions/mobile-api/_shared/domains/program/identity-hmac.ts',
   layer: 'integration',

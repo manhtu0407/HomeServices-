@@ -9,7 +9,7 @@ export const PILLAR = {
     'the customer usage rank reads only the membership ledger that paid in-app orders move: Kael chats, reviews and unpaid jobs add nothing, the level and its thresholds come from one server step, and a failed ledger read fails the request instead of showing a zero rank',
   authority: [
     'governance/RULES.md #8',
-    'supabase/migrations/20260925113000_customer_membership_ledger.sql',
+    'supabase/migrations/20260928113000_customer_membership_ledger.sql',
   ],
   target: 'supabase/functions/mobile-api/_shared/domains/customer/profile-insights.ts',
   layer: 'unit',

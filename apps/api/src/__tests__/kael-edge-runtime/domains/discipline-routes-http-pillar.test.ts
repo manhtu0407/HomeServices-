@@ -14,7 +14,7 @@ export const PILLAR = {
   authority: [
     'governance/RULES.md #0, #7, #8',
     'governance/structures/do-not-build-now.md §21',
-    'supabase/migrations/20260925122000_worker_discipline_decisions.sql',
+    'supabase/migrations/20260928122000_worker_discipline_decisions.sql',
   ],
   target: 'supabase/functions/mobile-api/_shared/domains/program/admin-discipline.ts',
   layer: 'integration',

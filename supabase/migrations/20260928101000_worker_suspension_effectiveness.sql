@@ -38,7 +38,6 @@ begin
 end;
 $function$;
 
-drop trigger if exists worker_suspension_events_immutable on public.worker_suspension_events;
 create trigger worker_suspension_events_immutable
 before update or delete on public.worker_suspension_events
 for each row execute function private.prevent_worker_suspension_event_mutation();

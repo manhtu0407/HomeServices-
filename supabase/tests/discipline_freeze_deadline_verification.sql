@@ -1,10 +1,10 @@
 -- @pillar id: P269-freeze-deadline-auto-unfreeze-sql
 -- @pillar invariant: An open level-3-or-higher case blocks redemption only until its admin decision deadline; once the deadline passes undecided, redemption opens again without any admin action, and a level-1 or level-2 proposal never blocks it
 -- @pillar authority: Tu 2026-09-25: pending serious case freezes redemption with an admin deadline, overdue auto-unfreezes
--- @pillar target: supabase/migrations/20260925120000_worker_discipline_foundation.sql
+-- @pillar target: supabase/migrations/20260928120000_worker_discipline_foundation.sql
 -- @pillar layer: sql
 -- @pillar siblings: P267-no-penalty-without-admin-sql, P262-redemption-idempotent-balance-sql
--- @pillar mutation: Drop "and decision_deadline_at > now()" from the pending CTE in private.worker_discipline_state; the overdue case keeps redemption frozen and P220 raises P269_OVERDUE_STILL_FROZEN
+-- @pillar mutation: Drop "and decision_deadline_at > now()" from the pending CTE in private.worker_discipline_state; the overdue case keeps redemption frozen and P269 raises P269_OVERDUE_STILL_FROZEN
 
 begin;
 set local statement_timeout = '30s';

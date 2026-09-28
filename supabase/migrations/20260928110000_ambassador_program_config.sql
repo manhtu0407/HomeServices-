@@ -37,7 +37,7 @@ grant execute on function private.assert_admin_capability(uuid, text) to service
 create table public.ambassador_program_versions (
   id uuid primary key default gen_random_uuid(),
   version integer not null unique check (version > 0),
-  status text not null default 'draft' check (status in ('draft', 'approved', 'retired')),
+  status text not null default 'draft' check (status in ('draft', 'approved', 'retired', 'superseded')),
   commission_vnd_per_point integer not null check (commission_vnd_per_point between 1000 and 1000000),
   customer_vnd_per_point integer not null check (customer_vnd_per_point between 1000 and 1000000),
   link_months smallint not null check (link_months between 1 and 36),
@@ -55,6 +55,7 @@ create table public.ambassador_program_versions (
     (status = 'draft' and approved_at is null and retired_at is null)
     or (status = 'approved' and approved_at is not null and retired_at is null)
     or (status = 'retired' and approved_at is not null and retired_at is not null)
+    or (status = 'superseded' and approved_at is null and retired_at is not null)
   )
 );
 
@@ -330,8 +331,9 @@ begin
 end;
 $function$;
 
--- One open draft at a time; saving replaces its milestones and multipliers wholesale so the
--- editor never has to reconcile partial edits.
+-- One open draft at a time. Saving marks the open draft superseded and writes a fresh draft
+-- with the full milestone and multiplier set, so rows are only ever added, never rewritten, and
+-- the editor never has to reconcile partial edits.
 create or replace function public.admin_save_ambassador_program_draft(p_actor_id uuid, p_program jsonb)
 returns jsonb
 language plpgsql
@@ -351,37 +353,23 @@ begin
     raise exception 'INVALID_AMBASSADOR_PROGRAM_INPUT' using errcode = '22023';
   end if;
 
-  select * into v_draft from public.ambassador_program_versions where status = 'draft' for update;
+  update public.ambassador_program_versions
+  set status = 'superseded', retired_at = pg_catalog.now()
+  where status = 'draft';
 
-  if not found then
-    insert into public.ambassador_program_versions (
-      version, commission_vnd_per_point, customer_vnd_per_point, link_months,
-      network_window_days, rebook_min_jobs, invite_claim_days, created_by
-    ) values (
-      (select coalesce(max(version), 0) + 1 from public.ambassador_program_versions),
-      (p_program->>'commission_vnd_per_point')::integer,
-      (p_program->>'customer_vnd_per_point')::integer,
-      (p_program->>'link_months')::smallint,
-      (p_program->>'network_window_days')::smallint,
-      (p_program->>'rebook_min_jobs')::smallint,
-      (p_program->>'invite_claim_days')::smallint,
-      p_actor_id
-    ) returning * into v_draft;
-  else
-    update public.ambassador_program_versions
-    set commission_vnd_per_point = (p_program->>'commission_vnd_per_point')::integer,
-        customer_vnd_per_point = (p_program->>'customer_vnd_per_point')::integer,
-        link_months = (p_program->>'link_months')::smallint,
-        network_window_days = (p_program->>'network_window_days')::smallint,
-        rebook_min_jobs = (p_program->>'rebook_min_jobs')::smallint,
-        invite_claim_days = (p_program->>'invite_claim_days')::smallint,
-        created_by = p_actor_id
-    where id = v_draft.id
-    returning * into v_draft;
-
-    delete from public.ambassador_milestones where version_id = v_draft.id;
-    delete from public.ambassador_multiplier_tiers where version_id = v_draft.id;
-  end if;
+  insert into public.ambassador_program_versions (
+    version, commission_vnd_per_point, customer_vnd_per_point, link_months,
+    network_window_days, rebook_min_jobs, invite_claim_days, created_by
+  ) values (
+    (select coalesce(max(version), 0) + 1 from public.ambassador_program_versions),
+    (p_program->>'commission_vnd_per_point')::integer,
+    (p_program->>'customer_vnd_per_point')::integer,
+    (p_program->>'link_months')::smallint,
+    (p_program->>'network_window_days')::smallint,
+    (p_program->>'rebook_min_jobs')::smallint,
+    (p_program->>'invite_claim_days')::smallint,
+    p_actor_id
+  ) returning * into v_draft;
 
   insert into public.ambassador_milestones (version_id, rank, title_vi, title_en, points_required, reward_vnd)
   select v_draft.id, milestone.rank, pg_catalog.btrim(milestone.title_vi), pg_catalog.btrim(milestone.title_en),

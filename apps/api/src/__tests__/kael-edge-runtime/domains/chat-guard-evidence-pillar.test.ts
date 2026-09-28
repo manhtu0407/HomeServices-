@@ -11,7 +11,7 @@ export const PILLAR = {
   authority: [
     'governance/RULES.md #8',
     'Plan moonlit-singing-phoenix Phase 0.3 (an off-app case needs evidence an admin can review)',
-    'supabase/migrations/20260925102000_chat_guard_evidence_retention.sql',
+    'supabase/migrations/20260928102000_chat_guard_evidence_retention.sql',
   ],
   target: 'supabase/functions/mobile-api/_shared/domains/job/chat-support.ts',
   layer: 'integration',

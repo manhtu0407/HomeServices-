@@ -238,6 +238,9 @@ export async function updateAdminFinanceTaxPolicyDraft(
     p_policy_id: policyId,
     p_policy: input,
   }));
+  if (result.error?.message?.includes("TAX_RULE_REMOVAL_NEEDS_NEW_DRAFT")) {
+    apiFailure("INVALID_STATUS", "Không thể bỏ quy tắc khỏi bản nháp đã lưu. Hãy tạo bản nháp mới.", 409);
+  }
   const policy = result.data ? groupTaxPolicyRows(result.data)[0] : null;
   if (result.error || !policy) apiFailure("DB_ERROR", "Không thể cập nhật bản nháp chính sách thuế", 500);
   return policy;

@@ -1,10 +1,10 @@
 -- @pillar id: P260-ambassador-accrual-sql
 -- @pillar invariant: Ambassador points accrue only from orders paid in the app and only to the worker the customer is linked to — by invite code, or by a second paid in-app order with the same worker — even when another worker did the job; direct payments, unlinked orders and orders after a link expires earn nothing, a rerun of the sweep adds nothing, and a reversed payment takes back exactly what it earned
 -- @pillar authority: governance/RULES.md #7, #8 | Tu 2026-09-25: worker ambassador program, 1 point = 10,000 VND commission
--- @pillar target: supabase/migrations/20260925114000_ambassador_accrual_sweep.sql
+-- @pillar target: supabase/migrations/20260928114000_ambassador_accrual_sweep.sql
 -- @pillar layer: sql
 -- @pillar siblings: P261-milestone-cap-sql, P262-redemption-idempotent-balance-sql, P263-referral-claim-window-sql
--- @pillar mutation: Drop both the ledger payment_provider and the payment-order payment_method conditions from the sweep; the direct-payment order accrues and P211 raises P260_WRONG_PROCESSED_COUNT
+-- @pillar mutation: Drop both the ledger payment_provider and the payment-order payment_method conditions from the sweep; the direct-payment order accrues and P260 raises P260_WRONG_PROCESSED_COUNT
 
 begin;
 set local statement_timeout = '60s';

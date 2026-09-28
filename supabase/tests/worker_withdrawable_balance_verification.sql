@@ -1,10 +1,10 @@
 -- @pillar id: P255-withdrawable-balance-single-owner-sql
 -- @pillar invariant: The worker safety balance, the earnings summary, the withdrawal RPC with its insert trigger, and the admin finance overview all report the same withdrawable amount — available ledger credit minus admin-rejected rows, plus admin worker credits, minus held collateral and pending or paid withdrawals — before and after a withdrawal
 -- @pillar authority: governance/RULES.md #7, #8 | Plan moonlit-singing-phoenix Phase 0.1: six divergent balance formulas
--- @pillar target: supabase/migrations/20260925100000_worker_withdrawable_balance_unification.sql
+-- @pillar target: supabase/migrations/20260928100000_worker_withdrawable_balance_unification.sql
 -- @pillar layer: sql
 -- @pillar siblings: P258-commission-tiers-service-only-sql
--- @pillar mutation: Drop the collateral term from private.worker_withdrawable_balance or restore the earnings summary's private formula; the collateral fixture makes the numbers diverge and P206 raises P255_BALANCES_DIVERGE
+-- @pillar mutation: Drop the collateral term from private.worker_withdrawable_balance or restore the earnings summary's private formula; the collateral fixture makes the numbers diverge and P255 raises P255_BALANCES_DIVERGE
 
 begin;
 set local statement_timeout = '30s';

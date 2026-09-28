@@ -1,10 +1,10 @@
 -- @pillar id: P262-redemption-idempotent-balance-sql
 -- @pillar invariant: Redeeming a milestone consumes exactly its points once per client request, withholds tax only through an approved worker_bonus tax policy (refusing when none exists), raises the withdrawable balance by exactly the net amount, and refuses a suspended worker, a missing balance or a reused request id for a different milestone
 -- @pillar authority: governance/RULES.md #7 | Tu 2026-09-25: bonus goes to the withdrawable balance, withheld per the tax policy
--- @pillar target: supabase/migrations/20260925112000_ambassador_points_and_redemptions.sql
+-- @pillar target: supabase/migrations/20260928112000_ambassador_points_and_redemptions.sql
 -- @pillar layer: sql
 -- @pillar siblings: P255-withdrawable-balance-single-owner-sql, P261-milestone-cap-sql
--- @pillar mutation: Drop the bonus term from private.worker_withdrawable_balance; the redeemed net never reaches the balance and P213 raises P262_BALANCE_NOT_CREDITED
+-- @pillar mutation: Drop the bonus term from private.worker_withdrawable_balance; the redeemed net never reaches the balance and P262 raises P262_BALANCE_NOT_CREDITED
 
 begin;
 set local statement_timeout = '30s';

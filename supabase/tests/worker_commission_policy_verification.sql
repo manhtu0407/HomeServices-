@@ -1,7 +1,7 @@
 -- @pillar id: P258-commission-tiers-service-only-sql
 -- @pillar invariant: The 15% platform fee cannot be changed by a signed-in account: authenticated admins may read worker_commission_tiers but every insert, update or delete is refused, and the seeded level-1 rate stays 1500 bps
 -- @pillar authority: governance/RULES.md #7 | Tu 2026-09-25: commission fixed at 15%
--- @pillar target: supabase/migrations/20260925103000_commission_tiers_service_only.sql
+-- @pillar target: supabase/migrations/20260928103000_commission_tiers_service_only.sql
 -- @pillar layer: sql
 -- @pillar siblings: P10-per-actor-rls
 -- @pillar mutation: Re-grant insert, update, delete on worker_commission_tiers to authenticated; the admin update succeeds and P209 raises

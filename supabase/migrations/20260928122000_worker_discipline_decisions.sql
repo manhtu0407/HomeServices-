@@ -18,11 +18,6 @@ alter table public.worker_violation_appeals enable row level security;
 revoke all on table public.worker_violation_appeals from public, anon, authenticated;
 grant select, insert, update on table public.worker_violation_appeals to service_role;
 
--- A clawback may record money already withdrawn as a receivable with no balance deduction.
-alter table public.worker_bonus_clawbacks drop constraint if exists worker_bonus_clawbacks_amount_vnd_check;
-alter table public.worker_bonus_clawbacks add constraint worker_bonus_clawbacks_amount_vnd_check
-  check (amount_vnd >= 0 and amount_vnd + receivable_vnd > 0);
-
 create or replace function private.propose_violation_case(
   p_worker_id uuid,
   p_customer_id uuid,
@@ -900,6 +895,7 @@ begin
       ) order by evidence.created_at)
       from public.chat_guard_redaction_evidence as evidence
       where evidence.sender_id = v_case.worker_id
+        and evidence.original_body is not null
         and evidence.created_at > v_case.created_at - interval '60 days'
     ), '[]'::jsonb) else '[]'::jsonb end,
     'events', coalesce((

@@ -162,8 +162,6 @@ alter table public.worker_bonus_clawbacks
   add constraint worker_bonus_clawbacks_reversal_shape
     check ((clawback_kind = 'reversal') = (reverses_clawback_id is not null));
 
-drop function if exists private.worker_discipline_state(uuid);
-
 create or replace function private.worker_discipline_state(p_worker_id uuid)
 returns table (
   redemption_frozen_until timestamptz,

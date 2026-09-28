@@ -1,10 +1,10 @@
 -- @pillar id: P267-no-penalty-without-admin-sql
 -- @pillar invariant: The violation detectors only file proposals — once each, however often they run — and never debit or forfeit points, freeze, strike, ban or suspend a worker; the only automatic effect is the level-1 matching down-rank, which disappears when an admin dismisses the case
 -- @pillar authority: governance/structures/do-not-build-now.md section 21 (no autonomous worker punishment) | Tu 2026-09-25: system proposes, admin confirms with one tap
--- @pillar target: supabase/migrations/20260925123000_violation_detectors.sql
+-- @pillar target: supabase/migrations/20260928123000_violation_detectors.sql
 -- @pillar layer: sql
 -- @pillar siblings: P268-appeal-restores-exactly-sql, P256-suspension-blocks-matching-sql
--- @pillar mutation: Make private.propose_violation_case insert a penalty_debit point entry for level 2 and above; the detector run debits points and P218 raises P267_DETECTOR_PUNISHED (observed)
+-- @pillar mutation: Make private.propose_violation_case insert a penalty_debit point entry for level 2 and above; the detector run debits points and P267 raises P267_DETECTOR_PUNISHED (observed)
 
 begin;
 set local statement_timeout = '60s';

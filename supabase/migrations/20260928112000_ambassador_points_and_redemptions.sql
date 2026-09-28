@@ -63,12 +63,14 @@ create table public.worker_bonus_clawbacks (
   id uuid primary key default gen_random_uuid(),
   worker_id uuid not null references public.worker_profiles(id) on delete restrict,
   redemption_id uuid not null references public.worker_bonus_redemptions(id) on delete restrict,
-  amount_vnd integer not null check (amount_vnd > 0),
+  amount_vnd integer not null,
   receivable_vnd integer not null default 0 check (receivable_vnd >= 0),
   case_id uuid,
   decided_by uuid not null references public.profiles(id) on delete restrict,
   reason text not null check (pg_catalog.char_length(reason) between 3 and 1000),
-  created_at timestamptz not null default now()
+  created_at timestamptz not null default now(),
+  -- A clawback may record money already withdrawn as a receivable with no balance deduction.
+  constraint worker_bonus_clawbacks_amount_vnd_check check (amount_vnd >= 0 and amount_vnd + receivable_vnd > 0)
 );
 
 alter table public.worker_ambassador_point_entries enable row level security;
@@ -237,7 +239,36 @@ begin
     where id = p_policy_id
     returning * into v_policy;
 
-    delete from public.admin_finance_tax_rules where policy_id = p_policy_id;
+    -- Saved rules are edited in place and never removed, so a rule dropped from the editor
+    -- needs a fresh draft instead of silently disappearing from this one.
+    if exists (
+      select 1 from public.admin_finance_tax_rules as existing
+      where existing.policy_id = p_policy_id
+        and not exists (
+          select 1 from pg_catalog.jsonb_to_recordset(p_rules) as rule(tax_code text, service_type text)
+          where rule.tax_code = existing.tax_code
+            and rule.service_type is not distinct from existing.service_type::text
+        )
+    ) then
+      raise exception 'TAX_RULE_REMOVAL_NEEDS_NEW_DRAFT' using errcode = 'P0001';
+    end if;
+
+    update public.admin_finance_tax_rules as existing
+    set label = pg_catalog.btrim(rule.label),
+        calculation_basis = rule.calculation_basis,
+        rate_bps = rule.rate_bps,
+        applies_at_or_above_vnd = rule.applies_at_or_above_vnd
+    from pg_catalog.jsonb_to_recordset(p_rules) as rule(
+      tax_code text,
+      label text,
+      calculation_basis text,
+      rate_bps integer,
+      service_type text,
+      applies_at_or_above_vnd integer
+    )
+    where existing.policy_id = p_policy_id
+      and existing.tax_code = rule.tax_code
+      and existing.service_type::text is not distinct from rule.service_type;
   end if;
 
   insert into public.admin_finance_tax_rules (
@@ -258,6 +289,12 @@ begin
     rate_bps integer,
     service_type text,
     applies_at_or_above_vnd integer
+  )
+  where not exists (
+    select 1 from public.admin_finance_tax_rules as existing
+    where existing.policy_id = v_policy.id
+      and existing.tax_code = rule.tax_code
+      and existing.service_type::text is not distinct from rule.service_type
   );
 
   insert into public.kael_permission_audit (
@@ -308,20 +345,23 @@ as $function$
   limit 1;
 $function$;
 
--- Placeholder until the discipline ledger exists: nobody is frozen or banned.
+-- Placeholder until the discipline ledger exists: nobody is frozen or banned. It already has the
+-- final shape so the discipline migration can replace its body without dropping it.
 create or replace function private.worker_discipline_state(p_worker_id uuid)
 returns table (
   redemption_frozen_until timestamptz,
   network_frozen_until timestamptz,
   withdrawal_hold boolean,
-  banned boolean
+  banned boolean,
+  matching_penalty_until timestamptz,
+  strikes_12m integer
 )
 language sql
 stable
 security definer
 set search_path = ''
 as $function$
-  select null::timestamptz, null::timestamptz, false, false;
+  select null::timestamptz, null::timestamptz, false, false, null::timestamptz, 0;
 $function$;
 
 create or replace function private.worker_ambassador_points_balance(p_worker_id uuid)

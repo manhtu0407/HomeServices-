@@ -135,7 +135,7 @@ Due process
 
 Evidence
 -
-|- chat-guard keeps the original of every redacted message for 180 days (service-only table) as off-app evidence
+|- chat-guard keeps the original of every redacted message for 180 days (service-only table) as off-app evidence; after that the text is scrubbed in place and the row stays as a record
 |- appeal files live in the private discipline-evidence bucket behind signed URLs
 |- CCCD numbers, phones and sign-in emails are stored only as HMAC-SHA256 digests keyed by IDENTITY_HMAC_KEY (Edge only) plus the CCCD last four
 |- Gmail spellings fold to one digest (dots and +tags dropped, googlemail.com = gmail.com); the first approval checks all three digests against the blocklist
@@ -148,7 +148,7 @@ Compensation by agreement (Tu, 2026-09-28)
 |- a worker can neither offer nor accept more than the withdrawable balance covers, so NestScout never advances money
 |- both sides accepting the same amount is the worker's written consent: the amount is reserved from the balance at once, then an admin transfers it to the customer's Profile refund account (customer_payment_methods; the full number is revealed only for a reserved payout and every reveal is logged as compensation_payee_viewed) and records the bank reference
 |- no agreement or a missed deadline ends the negotiation; the customer is pointed to the authorities
-|- code: 20260925126000_compensation_mediation.sql, domains/program/compensation.ts; tests P280-P282
+|- code: 20260928126000_compensation_mediation.sql, domains/program/compensation.ts; tests P280-P282
 
 Reply reminders, not penalties (Tu, 2026-09-28)
 -

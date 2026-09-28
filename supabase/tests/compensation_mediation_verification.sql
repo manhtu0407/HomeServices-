@@ -1,10 +1,10 @@
 -- @pillar id: P281-compensation-mediation-sql
 -- @pillar invariant: Only the customer of a confirmed damage case can open a compensation claim; the two sides answer in turn within the deadline and a bounded number of offers; a worker can neither offer nor accept more than their balance covers, so NestScout never advances money; claim photos must sit under the customer's own case prefix; agreement reserves exactly the agreed amount from the worker's withdrawable balance once, retries are replays, and the reservation can only move to paid with a transfer reference and is never deleted; the admin reads the customer's Profile refund account only for a reserved payout, and each read is logged
 -- @pillar authority: governance/RULES.md #7 | Tu 2026-09-28: compensation by agreement both sides accept; held money leaves only with the worker's consent or an authority decision
--- @pillar target: supabase/migrations/20260925126000_compensation_mediation.sql
+-- @pillar target: supabase/migrations/20260928126000_compensation_mediation.sql
 -- @pillar layer: sql
 -- @pillar siblings: P280-compensation-edge-routes, P255-withdrawable-balance-single-owner-sql, P268-appeal-restores-exactly-sql
--- @pillar mutation: Drop the balance check on accept in respond_compensation; accepting 2,000,000 against an 850,000 balance succeeds and P232 raises P281_OVER_BALANCE_AGREED
+-- @pillar mutation: Drop the balance check on accept in respond_compensation; accepting 2,000,000 against an 850,000 balance succeeds and P281 raises P281_OVER_BALANCE_AGREED
 
 begin;
 set local statement_timeout = '60s';
@@ -119,7 +119,7 @@ begin
   if v_result->>'status' <> 'agreed'
      or (select count(*) from public.worker_compensation_payouts where negotiation_id = v_negotiation) <> 1
      or (select withdrawable_vnd from private.worker_withdrawable_balance(v_worker)) <> v_before - 600000
-     or (select compensation_vnd from private.worker_withdrawable_balance(v_worker)) <> 600000 then
+     or private.worker_compensation_reserved_vnd(v_worker) <> 600000 then
     raise exception 'P281_AGREEMENT_NOT_RESERVED_ONCE';
   end if;
 

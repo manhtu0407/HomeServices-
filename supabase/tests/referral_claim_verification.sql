@@ -1,10 +1,10 @@
 -- @pillar id: P263-referral-claim-window-sql
 -- @pillar invariant: A customer can claim a worker's invite code only while new — inside the claim window, before any paid order, with no open link — a repeat claim of the same code is a no-op, a second worker's code is refused, and every attempt, accepted or not, is recorded and rate-limited
 -- @pillar authority: governance/RULES.md #8 | Tu 2026-09-25: workers bring new customers into the app
--- @pillar target: supabase/migrations/20260925111000_ambassador_referral_links.sql
+-- @pillar target: supabase/migrations/20260928111000_ambassador_referral_links.sql
 -- @pillar layer: sql
 -- @pillar siblings: P260-ambassador-accrual-sql
--- @pillar mutation: Remove the ALREADY_TRANSACTED branch from claim_referral_code; an existing paying customer is claimed and P214 raises P263_EXISTING_CUSTOMER_CLAIMED
+-- @pillar mutation: Remove the ALREADY_TRANSACTED branch from claim_referral_code; an existing paying customer is claimed and P263 raises P263_EXISTING_CUSTOMER_CLAIMED
 
 begin;
 set local statement_timeout = '30s';

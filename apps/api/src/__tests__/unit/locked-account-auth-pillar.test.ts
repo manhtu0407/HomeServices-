@@ -15,7 +15,7 @@ export const PILLAR = {
   authority: [
     'governance/RULES.md #3, #8',
     'Tu 2026-09-25: fabricated customer report locks the account, deletion still allowed',
-    'supabase/migrations/20260925120000_worker_discipline_foundation.sql',
+    'supabase/migrations/20260928120000_worker_discipline_foundation.sql',
   ],
   target: 'supabase/functions/mobile-api/_shared/platform/auth.ts',
   layer: 'unit',

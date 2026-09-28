@@ -1,10 +1,10 @@
 -- @pillar id: P279-worker-reply-nudge-sql
 -- @pillar invariant: A customer message left unanswered past the policy window in a stage where the worker is neither driving nor in the apartment produces exactly one reminder: one nudge row, one Kael line the customer sees and one inbox entry for the worker. A reply, a driving or on-site stage, or a message already reminded produces none, and no reminder ever opens a violation case
 -- @pillar authority: governance/structures/do-not-build-now.md section 21 | Tu 2026-09-28: remind the worker before any slow-response penalty; both sides treated fairly
--- @pillar target: supabase/migrations/20260925125000_worker_reply_nudges.sql
+-- @pillar target: supabase/migrations/20260928125000_worker_reply_nudges.sql
 -- @pillar layer: sql
 -- @pillar siblings: P278-worker-reply-nudge-push, P267-no-penalty-without-admin-sql
--- @pillar mutation: Drop the worker-reply NOT EXISTS from claim_worker_reply_nudges; the answered job is reminded and P230 raises P279_ANSWERED_JOB_NUDGED
+-- @pillar mutation: Drop the worker-reply NOT EXISTS from claim_worker_reply_nudges; the answered job is claimed too and P279 raises P279_EXPECTED_ONE_REMINDER got 2 (observed)
 
 begin;
 set local statement_timeout = '60s';

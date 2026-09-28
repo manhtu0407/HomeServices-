@@ -1,10 +1,10 @@
 -- @pillar id: P264-customer-membership-ledger-sql
 -- @pillar invariant: Customer membership points come only from orders paid in the app — one entry per order at the configured VND per point, nothing for unpaid or directly paid jobs or for Kael chats — and a reversed payment takes the same points back
 -- @pillar authority: governance/RULES.md #8 | Tu 2026-09-25: rebuild customer membership points on a ledger
--- @pillar target: supabase/migrations/20260925113000_customer_membership_ledger.sql
+-- @pillar target: supabase/migrations/20260928113000_customer_membership_ledger.sql
 -- @pillar layer: sql
 -- @pillar siblings: P260-ambassador-accrual-sql
--- @pillar mutation: Accrue membership points before the paid-in-app filters in private.accrue_program_points; the unpaid job earns and P215 raises P264_POINTS_WRONG
+-- @pillar mutation: Accrue membership points before the paid-in-app filters in private.accrue_program_points; the unpaid job earns and P264 raises P264_POINTS_WRONG
 
 begin;
 set local statement_timeout = '30s';

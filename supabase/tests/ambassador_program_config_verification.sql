@@ -1,10 +1,10 @@
 -- @pillar id: P261-milestone-cap-sql
--- @pillar invariant: No ambassador program version can be approved if any milestone, at the highest multiplier, pays back more than 60% of the commission its points stand for, or if milestones do not grow in both points and reward; the editor cannot approve their own draft, an approved version cannot be edited, and only one version is approved at a time
+-- @pillar invariant: No ambassador program version can be approved if any milestone, at the highest multiplier, pays back more than 60% of the commission its points stand for, or if milestones do not grow in both points and reward; the editor cannot approve their own draft, an approved version cannot be edited, a new save supersedes the open draft rather than deleting it, and only one version is approved at a time
 -- @pillar authority: governance/RULES.md #7 | Tu 2026-09-25: NestScout keeps at least 40% of referred commission
--- @pillar target: supabase/migrations/20260925110000_ambassador_program_config.sql
+-- @pillar target: supabase/migrations/20260928110000_ambassador_program_config.sql
 -- @pillar layer: sql
 -- @pillar siblings: P260-ambassador-accrual-sql
--- @pillar mutation: Change the 6000 in private.ambassador_program_violations to 7000; the 60.0001% draft reports no violation and P212 raises P261_VIOLATION_NOT_REPORTED (observed)
+-- @pillar mutation: Change the 6000 in private.ambassador_program_violations to 7000; the 60.0001% draft reports no violation and P261 raises P261_VIOLATION_NOT_REPORTED (observed)
 
 begin;
 set local statement_timeout = '30s';
@@ -39,6 +39,7 @@ declare
   v_approver constant uuid := 'c2120000-0000-4000-8000-000000000002';
   v_outsider constant uuid := 'c2120000-0000-4000-8000-000000000003';
   v_draft jsonb;
+  v_first_id uuid;
   v_seed_id uuid := (select id from public.ambassador_program_versions where status = 'approved');
 begin
   begin
@@ -60,8 +61,22 @@ begin
     if sqlerrm <> 'AMBASSADOR_PROGRAM_INVALID' then raise; end if;
   end;
 
+  v_first_id := (v_draft->>'id')::uuid;
   -- The same draft at exactly 60% passes, but not for the person who wrote it.
   v_draft := public.admin_save_ambassador_program_draft(v_editor, pg_temp.program(10000000));
+  -- A second save supersedes the open draft instead of deleting its rows: one draft stays open,
+  -- the old one keeps its milestones as a record, and it can no longer be approved.
+  if (select count(*) from public.ambassador_program_versions where status = 'draft') <> 1
+     or (select status from public.ambassador_program_versions where id = v_first_id) <> 'superseded'
+     or not exists (select 1 from public.ambassador_milestones where version_id = v_first_id) then
+    raise exception 'P261_DRAFT_NOT_SUPERSEDED';
+  end if;
+  begin
+    perform public.admin_approve_ambassador_program(v_approver, v_first_id);
+    raise exception 'P261_SUPERSEDED_DRAFT_APPROVED';
+  exception when sqlstate 'P0001' then
+    if sqlerrm <> 'AMBASSADOR_PROGRAM_NOT_DRAFT' then raise; end if;
+  end;
   if jsonb_array_length(v_draft->'violations') <> 0 then
     raise exception 'P261_BOUNDARY_REJECTED: %', v_draft->'violations';
   end if;

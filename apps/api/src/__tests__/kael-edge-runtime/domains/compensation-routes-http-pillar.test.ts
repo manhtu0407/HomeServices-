@@ -14,7 +14,7 @@ export const PILLAR = {
   authority: [
     'governance/RULES.md #0, #7, #8',
     'Tu 2026-09-28: compensation by agreement both sides accept; NestScout never advances money',
-    'supabase/migrations/20260925126000_compensation_mediation.sql',
+    'supabase/migrations/20260928126000_compensation_mediation.sql',
   ],
   target: 'supabase/functions/mobile-api/_shared/domains/program/compensation.ts',
   layer: 'integration',

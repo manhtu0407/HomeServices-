@@ -1,10 +1,10 @@
 -- @pillar id: P268-appeal-restores-exactly-sql
 -- @pillar invariant: A confirmed level-3 case forfeits every unredeemed point, ends the link to that customer, freezes redemption and the network tier and adds a strike; an overturned appeal restores exactly those points, the link, the tier and the strike. A second strike bans, a banned worker may still withdraw earned income unless a harm case holds it for the policy period (longer only with a recorded authority reference), a harm case can suspend at once and is lifted if dismissed, a verified harm case blocks the recorded CCCD, phone and sign-in email so none of them can be used again, and a fabricated report locks the reporter
 -- @pillar authority: governance/RULES.md #7 | Tu 2026-09-25: 5-level discipline, 7-day appeal, 100% restore, never deduct earned income
--- @pillar target: supabase/migrations/20260925122000_worker_discipline_decisions.sql
+-- @pillar target: supabase/migrations/20260928122000_worker_discipline_decisions.sql
 -- @pillar layer: sql
 -- @pillar siblings: P267-no-penalty-without-admin-sql, P260-ambassador-accrual-sql
--- @pillar mutation: Skip the appeal_restore point entry in admin_decide_violation_appeal; the overturned case leaves the balance at zero and P219 raises P268_POINTS_NOT_RESTORED
+-- @pillar mutation: Skip the appeal_restore point entry in admin_decide_violation_appeal; the overturned case leaves the balance at zero and P268 raises P268_POINTS_NOT_RESTORED
 
 begin;
 set local statement_timeout = '60s';
