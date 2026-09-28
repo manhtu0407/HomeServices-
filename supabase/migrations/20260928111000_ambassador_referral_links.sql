@@ -173,6 +173,7 @@ begin
       if v_attempt >= 5 then raise; end if;
     end;
   end loop;
+  return v_code;
 end;
 $function$;
 

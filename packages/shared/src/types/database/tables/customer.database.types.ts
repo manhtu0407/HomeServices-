@@ -342,6 +342,68 @@ export type CustomerTables = {
           },
         ]
       }
+      customer_membership_point_entries: {
+        Row: {
+          created_at: string
+          customer_id: string
+          entry_kind: string
+          id: string
+          job_id: string
+          points: number
+          program_version_id: string
+          source_ledger_id: string
+        }
+        Insert: {
+          created_at?: string
+          customer_id: string
+          entry_kind: string
+          id?: string
+          job_id: string
+          points: number
+          program_version_id: string
+          source_ledger_id: string
+        }
+        Update: {
+          created_at?: string
+          customer_id?: string
+          entry_kind?: string
+          id?: string
+          job_id?: string
+          points?: number
+          program_version_id?: string
+          source_ledger_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_membership_point_entries_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_membership_point_entries_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_membership_point_entries_program_version_id_fkey"
+            columns: ["program_version_id"]
+            isOneToOne: false
+            referencedRelation: "ambassador_program_versions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_membership_point_entries_source_ledger_id_fkey"
+            columns: ["source_ledger_id"]
+            isOneToOne: false
+            referencedRelation: "worker_payment_ledger"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       customer_payment_methods: {
         Row: {
           account_holder_name: string
@@ -484,6 +546,94 @@ export type CustomerTables = {
             columns: ["customer_id"]
             isOneToOne: true
             referencedRelation: "customer_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      customer_worker_links: {
+        Row: {
+          case_id: string | null
+          customer_id: string
+          end_reason: string | null
+          ended_at: string | null
+          ended_by: string | null
+          expires_at: string
+          formed_at: string
+          formed_by_job_id: string | null
+          id: string
+          program_version_id: string
+          source: string
+          worker_id: string
+        }
+        Insert: {
+          case_id?: string | null
+          customer_id: string
+          end_reason?: string | null
+          ended_at?: string | null
+          ended_by?: string | null
+          expires_at: string
+          formed_at?: string
+          formed_by_job_id?: string | null
+          id?: string
+          program_version_id: string
+          source: string
+          worker_id: string
+        }
+        Update: {
+          case_id?: string | null
+          customer_id?: string
+          end_reason?: string | null
+          ended_at?: string | null
+          ended_by?: string | null
+          expires_at?: string
+          formed_at?: string
+          formed_by_job_id?: string | null
+          id?: string
+          program_version_id?: string
+          source?: string
+          worker_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_worker_links_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_worker_links_ended_by_fkey"
+            columns: ["ended_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_worker_links_formed_by_job_id_fkey"
+            columns: ["formed_by_job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_worker_links_program_version_id_fkey"
+            columns: ["program_version_id"]
+            isOneToOne: false
+            referencedRelation: "ambassador_program_versions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_worker_links_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
+            referencedRelation: "worker_overview"
+            referencedColumns: ["worker_id"]
+          },
+          {
+            foreignKeyName: "customer_worker_links_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
+            referencedRelation: "worker_profiles"
             referencedColumns: ["id"]
           },
         ]

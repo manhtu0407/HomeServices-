@@ -74,10 +74,10 @@
       }
     ]
   },
-  "migrationsSha256": "33e981475deeb7fa591bd9d382d72e8b545dbf5fed54f49f50753f530f58c27c",
+  "migrationsSha256": "49e30f827e608294b12656bbd48e179cff497a8b93aac051777ef75fbd63d28c",
   "databaseTypes": {
     "file": "packages/shared/src/types/database",
-    "sha256": "e5837680e05ca64a7cb5fb0a0e635e7fa7681da2adf92ef8c2410bf39ec69e96"
+    "sha256": "54bbf52ff17ad72f29b0a560c9332eb44949d3dcad394a2abdef495a33a196fc"
   },
   "entries": [
     {
@@ -2954,15 +2954,15 @@
       "version": "20260928110000",
       "name": "ambassador_program_config",
       "file": "supabase/migrations/20260928110000_ambassador_program_config.sql",
-      "sha256": "89f19bdbf2b8ca5358f71985e74145a6f6334b51de053d2a059119ca27a91f5c",
-      "bytes": 19486
+      "sha256": "a33368938b6d58408344a4bf9c9313613dcee86e256b4a97eec7c92388513a4b",
+      "bytes": 19580
     },
     {
       "version": "20260928111000",
       "name": "ambassador_referral_links",
       "file": "supabase/migrations/20260928111000_ambassador_referral_links.sql",
-      "sha256": "5320844e887e4a4cd1e1afb1261ba393515f8b956f5cb10a588d21b689d36e59",
-      "bytes": 10735
+      "sha256": "8f92e6e1c612681a72cd52e27bf2927d088452264134b2fce8e802cf4f1fe8ab",
+      "bytes": 10752
     },
     {
       "version": "20260928112000",

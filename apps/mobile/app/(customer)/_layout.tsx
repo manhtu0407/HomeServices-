@@ -94,6 +94,7 @@ export default function CustomerLayout() {
         <Stack.Screen name="kael" options={{ headerShown: false }} />
         <Stack.Screen name="kael-chat" options={{ headerShown: false }} />
         <Stack.Screen name="current-job-prototype" options={{ headerShown: false }} />
+        <Stack.Screen name="profile-ranking-prototype" options={{ headerShown: false }} />
       </Stack>
       <CustomerRuntimeBuildMarker />
     </View>

@@ -209,6 +209,10 @@ export type DatabaseFunctions = {
           version: number
         }[]
       }
+      admin_approve_ambassador_program: {
+        Args: { p_actor_id: string; p_version_id: string }
+        Returns: Json
+      }
       admin_approve_finance_tax_policy: {
         Args: {
           p_accountant_approval_reference: string
@@ -413,6 +417,26 @@ export type DatabaseFunctions = {
           version_out: number
         }[]
       }
+      admin_decide_violation_appeal: {
+        Args: {
+          p_actor_id: string
+          p_case_id: string
+          p_decision: string
+          p_reason: string
+        }
+        Returns: Json
+      }
+      admin_decide_violation_case: {
+        Args: {
+          p_actor_id: string
+          p_blocklist?: Json
+          p_case_id: string
+          p_clawback_vnd?: number
+          p_decision: string
+          p_reason: string
+        }
+        Returns: Json
+      }
       admin_draft_price_baseline: {
         Args: {
           p_actor_id: string
@@ -545,6 +569,15 @@ export type DatabaseFunctions = {
               isSetofReturn: true
             }
           }
+      admin_extend_withdrawal_hold: {
+        Args: {
+          p_actor_id: string
+          p_authority_reference: string
+          p_case_id: string
+          p_hold_until: string
+        }
+        Returns: Json
+      }
       admin_fail_operator_provisioning: {
         Args: {
           p_failure_code: string
@@ -600,6 +633,23 @@ export type DatabaseFunctions = {
         }
         Returns: Json
       }
+      admin_get_ambassador_program: {
+        Args: { p_actor_id: string }
+        Returns: Json
+      }
+      admin_get_compensation_payee: {
+        Args: { p_actor_id: string; p_negotiation_id: string }
+        Returns: Json
+      }
+      admin_get_violation_case: {
+        Args: { p_actor_id: string; p_case_id: string }
+        Returns: Json
+      }
+      admin_lift_identity_block: {
+        Args: { p_actor_id: string; p_block_id: string; p_reason: string }
+        Returns: Json
+      }
+      admin_list_compensation: { Args: { p_actor_id: string }; Returns: Json }
       admin_list_finance_tax_policies: {
         Args: { p_actor_id: string }
         Returns: {
@@ -620,6 +670,14 @@ export type DatabaseFunctions = {
           updated_at: string
           version: number
         }[]
+      }
+      admin_list_identity_blocks: {
+        Args: { p_actor_id: string }
+        Returns: Json
+      }
+      admin_list_violation_cases: {
+        Args: { p_actor_id: string; p_status: string }
+        Returns: Json
       }
       admin_nominate_manager_atomic: {
         Args: { p_owner_id: string; p_target_id: string }
@@ -687,6 +745,14 @@ export type DatabaseFunctions = {
           replayed: boolean
           resource_id: string
         }[]
+      }
+      admin_record_compensation_paid: {
+        Args: {
+          p_actor_id: string
+          p_negotiation_id: string
+          p_transfer_reference: string
+        }
+        Returns: Json
       }
       admin_reject_learning_candidate: {
         Args: { p_admin_id: string; p_candidate_id: string; p_reason: string }
@@ -956,6 +1022,10 @@ export type DatabaseFunctions = {
           resource_id: string
         }[]
       }
+      admin_save_ambassador_program_draft: {
+        Args: { p_actor_id: string; p_program: Json }
+        Returns: Json
+      }
       admin_save_finance_tax_policy_draft: {
         Args: {
           p_actor_id: string
@@ -1045,6 +1115,21 @@ export type DatabaseFunctions = {
           verification_status_out: Database["public"]["Enums"]["worker_verification_status"]
           worker_id: string
         }[]
+      }
+      admin_set_worker_identity_number: {
+        Args: {
+          p_actor_id: string
+          p_cccd_hmac: string
+          p_cccd_last4: string
+          p_email_hmac?: string
+          p_phone_hmac?: string
+          p_worker_id: string
+        }
+        Returns: Json
+      }
+      admin_suspend_worker_for_case: {
+        Args: { p_actor_id: string; p_case_id: string; p_reason: string }
+        Returns: Json
       }
       admin_transition_finance_tax_policy: {
         Args: {
@@ -1546,6 +1631,7 @@ export type DatabaseFunctions = {
           ok: boolean
         }[]
       }
+      check_identity_blocklist: { Args: { p_digests: Json }; Returns: string[] }
       check_kael_ai_spend: {
         Args: {
           p_actor_id: string
@@ -1768,6 +1854,25 @@ export type DatabaseFunctions = {
           user_id: string
         }[]
       }
+      claim_program_pushes: {
+        Args: { p_limit: number }
+        Returns: {
+          body: string
+          event_type: string
+          notification_id: string
+          recipient_role: string
+          title: string
+          user_id: string
+        }[]
+      }
+      claim_referral_code: {
+        Args: { p_code: string; p_customer_id: string }
+        Returns: {
+          link_id: string
+          outcome: string
+          worker_id: string
+        }[]
+      }
       claim_saved_worker_fallback_atomic: {
         Args: {
           p_expected_worker_id?: string
@@ -1878,6 +1983,14 @@ export type DatabaseFunctions = {
         Returns: {
           lease_token: string
           outbox_id: string
+        }[]
+      }
+      claim_worker_reply_nudges: {
+        Args: { p_limit: number }
+        Returns: {
+          job_id: string
+          nudge_id: string
+          worker_id: string
         }[]
       }
       cleanup_orphan_analyzing_jobs: {
@@ -2476,6 +2589,15 @@ export type DatabaseFunctions = {
           status: Database["public"]["Enums"]["job_status"]
         }[]
       }
+      create_worker_report: {
+        Args: {
+          p_customer_id: string
+          p_job_id: string
+          p_statement: string
+          p_violation_code: string
+        }
+        Returns: Json
+      }
       create_worker_vietqr_payment_intent: {
         Args: {
           p_customer_id: string
@@ -2625,6 +2747,10 @@ export type DatabaseFunctions = {
           reason_code: string
           worker_id_out: string
         }[]
+      }
+      ensure_worker_referral_code: {
+        Args: { p_worker_id: string }
+        Returns: string
       }
       expire_harness_reliability_reservations: {
         Args: never
@@ -2803,6 +2929,14 @@ export type DatabaseFunctions = {
           status: string
         }[]
       }
+      get_customer_compensation: {
+        Args: { p_customer_id: string }
+        Returns: Json
+      }
+      get_customer_membership_summary: {
+        Args: { p_customer_id: string }
+        Returns: Json
+      }
       get_customer_profile_insights_aggregate: {
         Args: { p_customer_id: string }
         Returns: {
@@ -2887,6 +3021,11 @@ export type DatabaseFunctions = {
           valid_until: string
         }[]
       }
+      get_worker_ambassador_summary: {
+        Args: { p_worker_id: string }
+        Returns: Json
+      }
+      get_worker_compensation: { Args: { p_worker_id: string }; Returns: Json }
       get_worker_current_commission_tier: {
         Args: { p_worker_id: string }
         Returns: {
@@ -3010,6 +3149,7 @@ export type DatabaseFunctions = {
           isSetofReturn: true
         }
       }
+      get_worker_violations: { Args: { p_worker_id: string }; Returns: Json }
       increment_kael_market_cache_hit: {
         Args: { p_cache_id: string }
         Returns: undefined
@@ -3041,6 +3181,12 @@ export type DatabaseFunctions = {
           operation_id: string
           outbox_id: string
           updated_at: string
+        }[]
+      }
+      list_matching_deprioritized_workers: {
+        Args: { p_worker_ids: string[] }
+        Returns: {
+          worker_id: string
         }[]
       }
       maintain_manual_bank_payment_holds: {
@@ -3106,6 +3252,16 @@ export type DatabaseFunctions = {
       normalize_hcmc_district_code: {
         Args: { p_input: string }
         Returns: string
+      }
+      open_compensation_claim: {
+        Args: {
+          p_amount_vnd: number
+          p_case_id: string
+          p_customer_id: string
+          p_evidence_paths: string[]
+          p_note: string
+        }
+        Returns: Json
       }
       open_dispute_atomic: {
         Args: {
@@ -3671,6 +3827,23 @@ export type DatabaseFunctions = {
           replacement_state: string
         }[]
       }
+      redeem_ambassador_milestone: {
+        Args: {
+          p_client_request_id: string
+          p_milestone_id: string
+          p_worker_id: string
+        }
+        Returns: {
+          error_code: string
+          net_vnd: number
+          ok: boolean
+          points_left_milli: number
+          redemption_id: string
+          replayed: boolean
+          reward_vnd: number
+          tax_withheld_vnd: number
+        }[]
+      }
       register_device_push_token_atomic: {
         Args: {
           p_permission_status: string
@@ -4066,6 +4239,17 @@ export type DatabaseFunctions = {
         }
         Returns: string
       }
+      respond_compensation: {
+        Args: {
+          p_action: string
+          p_actor_id: string
+          p_actor_role: string
+          p_amount_vnd: number
+          p_negotiation_id: string
+          p_note: string
+        }
+        Returns: Json
+      }
       respond_to_direct_worker_payment: {
         Args: {
           p_actor_id: string
@@ -4295,6 +4479,15 @@ export type DatabaseFunctions = {
           review_id: string
           reviewed_at_ts: string
         }[]
+      }
+      submit_violation_appeal: {
+        Args: {
+          p_case_id: string
+          p_evidence_paths: string[]
+          p_reason: string
+          p_worker_id: string
+        }
+        Returns: Json
       }
       submit_worker_application_atomic: {
         Args: {

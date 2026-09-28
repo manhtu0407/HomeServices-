@@ -103,7 +103,7 @@ as $function$
 declare
   v_version public.ambassador_program_versions%rowtype;
   v_max_multiplier integer;
-  v_problems text[] := '{}';
+  v_problems text[] := '{}'::text[];
   v_prev_points integer;
   v_prev_reward integer;
   v_prev_multiplier integer;
@@ -118,7 +118,7 @@ begin
   from public.ambassador_multiplier_tiers where version_id = p_version_id;
 
   if not exists (select 1 from public.ambassador_milestones where version_id = p_version_id) then
-    v_problems := v_problems || 'NO_MILESTONES';
+    v_problems := pg_catalog.array_append(v_problems, 'NO_MILESTONES');
   end if;
 
   for v_row in
@@ -126,12 +126,12 @@ begin
   loop
     if v_row.reward_vnd::numeric * v_max_multiplier
        > v_row.points_required::numeric * v_version.commission_vnd_per_point * 6000 then
-      v_problems := v_problems || ('CAP_EXCEEDED_RANK_' || v_row.rank);
+      v_problems := pg_catalog.array_append(v_problems, 'CAP_EXCEEDED_RANK_' || v_row.rank);
     end if;
     if v_prev_points is not null and (
       v_row.points_required <= v_prev_points or v_row.reward_vnd <= v_prev_reward
     ) then
-      v_problems := v_problems || ('NOT_INCREASING_RANK_' || v_row.rank);
+      v_problems := pg_catalog.array_append(v_problems, 'NOT_INCREASING_RANK_' || v_row.rank);
     end if;
     v_prev_points := v_row.points_required;
     v_prev_reward := v_row.reward_vnd;
@@ -141,7 +141,7 @@ begin
     select * from public.ambassador_multiplier_tiers where version_id = p_version_id order by min_active_customers
   loop
     if v_prev_multiplier is not null and v_row.multiplier_bps <= v_prev_multiplier then
-      v_problems := v_problems || ('MULTIPLIER_NOT_INCREASING_' || v_row.min_active_customers);
+      v_problems := pg_catalog.array_append(v_problems, 'MULTIPLIER_NOT_INCREASING_' || v_row.min_active_customers);
     end if;
     v_prev_multiplier := v_row.multiplier_bps;
   end loop;
