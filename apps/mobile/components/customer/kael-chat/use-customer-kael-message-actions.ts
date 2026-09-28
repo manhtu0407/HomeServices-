@@ -57,6 +57,7 @@ import type { useCustomerKaelConversationState } from './use-customer-kael-conve
 import type { useCustomerKaelConversations } from './use-customer-kael-conversations'
 import type { useKaelProcessLineController } from './use-kael-process-line-controller'
 import { reconcileCommittedKaelTurn } from './customer-kael-conversation-requests'
+import { sendCustomerNormalTurn } from './customer-kael-normal-turn-send'
 import { useCustomerKaelPreAgenticState } from './use-customer-kael-pre-agentic-state'
 
 type ChatUi = ReturnType<typeof useCustomerKaelChatUiState>
@@ -115,7 +116,10 @@ export function useCustomerKaelMessageActions({
     conversations?.activeSessionId ?? null,
   )
   const sendOperationRef = useRef<{ ownerKey: string } | null>(null)
+  const sendAbortControllerRef = useRef<AbortController | null>(null)
   useEffect(() => () => {
+    sendAbortControllerRef.current?.abort()
+    sendAbortControllerRef.current = null
     sendOperationRef.current = null
   }, [])
   const {
@@ -154,17 +158,29 @@ export function useCustomerKaelMessageActions({
   const sendMessage = async (messageOverride?: string) => {
     const submittedDraft = messageOverride ?? draft
     const reviewedVoiceTranscript = messageOverride === undefined ? voiceTranscript.trim() : ''
-    const message = submittedDraft.trim() || reviewedVoiceTranscript
     const hasComposerMedia = composerMediaDrafts.length > 0
+    const message = submittedDraft.trim()
+      || reviewedVoiceTranscript
+      || (mode === 'normal' && hasComposerMedia
+        ? (language === 'vi' ? 'Phân tích ảnh này' : 'Please analyze this photo')
+        : '')
     if (!message && !hasComposerMedia && !reviewedVoiceTranscript) return
     const messageLengthError = customerKaelMessageLengthError(message, language)
     if (messageLengthError) {
       setError(messageLengthError)
       return
     }
+    if (conversations?.isLocalVisualAuditSession) {
+      setError(language === 'vi'
+        ? 'Chế độ xem trước chỉ dùng để kiểm tra giao diện. Đăng nhập tài khoản Customer thật để gửi tin nhắn.'
+        : 'Preview audit mode is for visual checks only. Sign in with a real Customer account to send messages.')
+      return
+    }
     if (sendOperationRef.current?.ownerKey === requestOwnerKey) return
     const sendOperation = { ownerKey: requestOwnerKey }
     sendOperationRef.current = sendOperation
+    const sendAbortController = new AbortController()
+    sendAbortControllerRef.current = sendAbortController
     const requestToken = kaelRequestGuard.begin('message')
     let ownedStreamingTurnId: string | null = null
     let legacyStreamingTurnId: string | null = null
@@ -281,62 +297,39 @@ export function useCustomerKaelMessageActions({
     }
     try {
       if (mode === 'normal' && conversations) {
-        if (hasComposerMedia) {
-          setError(language === 'vi'
-            ? 'Ảnh và video được xử lý trong mục Xử lý công việc.'
-            : 'Photos and videos are handled in Work handling.')
-          return
-        }
-        setPendingNormalMessage(message)
-        setReasoningReceipt((current) => kaelReasoningReceiptReducer(current, { type: 'begin' }))
-        clearSubmittedComposer()
-        setLoading(true)
-        setError(null)
-        try {
-          const result = await conversations.sendConversationTurn(message, {
-            onResponseCommitted: () => {
-              setPendingNormalMessage(null)
-            },
-            onResponseDelta: appendStreamingReply,
-            onResponseEvent: applyStreamingResponseEvent,
-            onReasoning: applyStreamingReasoningEvent,
-          })
-          if (!kaelRequestGuard.isCurrent(requestToken)) return
-          if (result) {
-            if (!receivedReasoningTerminal) {
-              if (activeReasoningReceiptId) {
-                const incompleteReceiptMessage = language === 'vi'
-                  ? 'Kael đã nhận được phản hồi, nhưng biên nhận xử lý chưa hoàn tất.'
-                  : 'Kael received a reply, but the processing receipt did not finish.'
-                setReasoningReceipt((current) => kaelReasoningReceiptReducer(current, {
-                  message: incompleteReceiptMessage,
-                  type: 'fail',
-                }))
-              } else {
-                setReasoningReceipt((current) => kaelReasoningReceiptReducer(current, { type: 'reset' }))
-              }
-            }
-            completeLegacyStreamingReply()
-            retainStreamingReply = receivedResponseTerminal
-            commitSubmittedComposer()
-          } else {
-            restoreSubmittedComposer()
-            setPendingNormalMessage(null)
-            const failureMessage = conversations.sessionsError ?? (language === 'vi'
-              ? 'Kael chưa thể trả lời lúc này.'
-              : 'Kael could not reply right now.')
-            setReasoningReceipt((current) => kaelReasoningReceiptReducer(current, {
-              message: failureMessage,
-              type: 'fail',
-            }))
-            setError(failureMessage)
-          }
-        } finally {
-          if (kaelRequestGuard.isCurrent(requestToken)) {
-            setLoading(false)
-            stopProcessLines()
-          }
-        }
+        await sendCustomerNormalTurn({
+          abortSignal: sendAbortController.signal,
+          beginReasoningReceipt: () => setReasoningReceipt((current) => kaelReasoningReceiptReducer(current, { type: 'begin' })),
+          clearComposer: clearSubmittedComposer,
+          clearMediaDrafts: () => setComposerMediaDrafts([]),
+          commitComposer: commitSubmittedComposer,
+          completeLegacyStreamingReply,
+          conversations,
+          failReasoningReceipt: (receiptMessage) => setReasoningReceipt((current) => kaelReasoningReceiptReducer(current, {
+            message: receiptMessage,
+            type: 'fail',
+          })),
+          getActiveReasoningReceiptId: () => activeReasoningReceiptId,
+          getReceivedReasoningTerminal: () => receivedReasoningTerminal,
+          getReceivedResponseTerminal: () => receivedResponseTerminal,
+          hasComposerMedia,
+          isRequestCurrent: () => kaelRequestGuard.isCurrent(requestToken),
+          language,
+          mediaDrafts: composerMediaDrafts,
+          message,
+          onReasoning: applyStreamingReasoningEvent,
+          onResponseCommitted: () => setPendingNormalMessage(null),
+          onResponseDelta: appendStreamingReply,
+          onResponseEvent: applyStreamingResponseEvent,
+          onRetainStreamingReply: (retain) => { retainStreamingReply = retain },
+          resetReasoningReceipt: () => setReasoningReceipt((current) => kaelReasoningReceiptReducer(current, { type: 'reset' })),
+          restoreComposer: restoreSubmittedComposer,
+          setError,
+          setLoading,
+          setPendingNormalMessage,
+          setUploadingMedia,
+          stopProcessLines,
+        })
         return
       }
 
@@ -800,7 +793,9 @@ export function useCustomerKaelMessageActions({
     } finally {
       if (!retainStreamingReply) clearCurrentOwnedStreamingReply()
       if (sendOperationRef.current === sendOperation) sendOperationRef.current = null
+      if (sendAbortControllerRef.current === sendAbortController) sendAbortControllerRef.current = null
     }
   }
-  return { sendMessage, settleStreamingReply }
+  const cancelMessage = () => sendAbortControllerRef.current?.abort()
+  return { cancelMessage, sendMessage, settleStreamingReply }
 }

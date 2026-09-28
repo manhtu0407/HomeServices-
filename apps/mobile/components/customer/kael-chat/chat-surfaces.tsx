@@ -40,8 +40,8 @@ export function ChatBubble({
   )
 }
 
-export function ChatMediaCameraIcon({ color }: { color: string }) {
-  return <LiquidNavIcon color={color} name="camera" selected size={20} style={styles.chatMediaCameraIcon} testID="customer-v21-kael-media-camera-icon" />
+export function ChatMediaCameraIcon({ color, size = 20 }: { color: string; size?: number }) {
+  return <LiquidNavIcon color={color} name="camera" selected size={size} testID="customer-v21-kael-media-camera-icon" />
 }
 
 export function ChatModeSwitchAura({ reduceTransparency }: { reduceTransparency: boolean }) {

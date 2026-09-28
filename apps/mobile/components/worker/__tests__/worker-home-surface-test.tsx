@@ -1376,8 +1376,10 @@ describe('Worker runtime surface wiring', () => {
     render(<WorkerChatSurface />)
 
     expect(screen.getByTestId('worker-v5-kael-active-mode')).toHaveTextContent('Công việc')
-    expect(screen.getByText(/Trạng thái hiện tại: Thợ đã đến/)).toBeOnTheScreen()
-    expect(screen.getByText(/check-in bằng ảnh tại sảnh/)).toBeOnTheScreen()
+    expect(screen.getByTestId('worker-v5-kael-empty-hero-copy'))
+      .toHaveTextContent(/You are working on .* Current status: .* Complete the lobby photo check-in/)
+    expect(screen.getByTestId('worker-v5-kael-orb-input'))
+      .toHaveProp('placeholder', 'Nhập tin nhắn cho Kael...')
   })
 
   it('sends the matched-job intake message through the private worker Kael session', async () => {
@@ -1558,7 +1560,7 @@ describe('Worker runtime surface wiring', () => {
     })
 
     expect(screen.getByTestId('worker-v5-kael-orb-live-thread')).toBeOnTheScreen()
-    expect(screen.getByText(/Kael đang không kết nối được/)).toBeOnTheScreen()
+    expect(screen.getByText('Kael chưa thể hoàn tất phản hồi này.')).toBeOnTheScreen()
     expect(screen.getByTestId('worker-v5-kael-reasoning-receipt-toggle'))
       .toHaveProp('accessibilityState', { busy: false, expanded: false })
     expect(screen.getByText('Suy nghĩ bị gián đoạn')).toBeOnTheScreen()
@@ -1749,13 +1751,13 @@ describe('Worker runtime surface wiring', () => {
     fireEvent.changeText(screen.getByTestId('worker-v5-kael-orb-input'), 'Kiểm tra tạo phiên Kael')
     fireEvent.press(screen.getByTestId('worker-v5-kael-orb-send'))
 
-    expect(await screen.findByText('Không thể tạo phiên Kael cho thợ')).toBeOnTheScreen()
+    expect(await screen.findByText('Chưa thể mở cuộc trò chuyện riêng cho việc này.')).toBeOnTheScreen()
     expect(mockWorkerKaelChatService.streamTurn).not.toHaveBeenCalled()
   })
 
   it.each([
-    ['Chat', '3.1-kael-chat-normal'],
-    ['Work', '3.2-kael-job-intake'],
+    ['Trò chuyện', '3.1-kael-chat-normal'],
+    ['Công việc', '3.2-kael-job-intake'],
   ])('groups session management and %s mode selection in one header capsule', (modeLabel, workerScreen) => {
     buildWorkflow()
     mockRouteParams = { ns_worker_screen: workerScreen }
@@ -1849,7 +1851,7 @@ describe('Worker runtime surface wiring', () => {
 
     render(<WorkerChatSurface />)
 
-    expect(screen.getByTestId('worker-v5-kael-active-mode')).toHaveTextContent(/^Chat$/)
+    expect(screen.getByTestId('worker-v5-kael-active-mode')).toHaveTextContent(/^Trò chuyện$/)
     expect(screen.queryByText('⌄')).toBeNull()
     expect(screen.queryByTestId('worker-v5-kael-mode-menu')).toBeNull()
 
@@ -3201,7 +3203,8 @@ describe('Worker runtime surface wiring', () => {
     expect(screen.getByTestId('worker-v5-screen-3.1-kael-chat-normal')).toBeOnTheScreen()
     expect(screen.queryByTestId('worker-v5-page-mint-aura')).toBeNull()
     expect(screen.queryByTestId('worker-v5-kael-orb-page-zip-mint-aura')).toBeNull()
-    expect(screen.getByTestId('worker-v5-kael-orb-composer-mint-aura')).toBeOnTheScreen()
+    expect(screen.getByTestId('worker-v5-kael-orb-composer-frame')).toBeOnTheScreen()
+    expect(screen.queryByTestId('worker-v5-kael-orb-composer-mint-aura')).toBeNull()
     expect(screen.getByTestId('worker-v5-kael-orb-normal')).toBeOnTheScreen()
     chat.unmount()
 

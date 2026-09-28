@@ -30,7 +30,7 @@ export async function requestDurableMatchingPreference(
     || selection.auto_general !== input.auto_general) failSelection(null, true);
   let matchingState;
   try {
-    matchingState = await getMatchingState(client, jobId, selection.job_status);
+    matchingState = await getMatchingState(client, jobId, selection.job_status, client);
   } catch {
     failSelection(null, true);
   }

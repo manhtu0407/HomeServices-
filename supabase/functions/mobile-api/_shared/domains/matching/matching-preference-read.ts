@@ -116,6 +116,7 @@ export async function getMatchingState(
   client: DbClient,
   jobId: string,
   status: string,
+  matchingOperationsClient: DbClient,
 ): Promise<MatchingReceipt | null> {
   const preference = await dbQuery<Record<string, unknown>>(
     client.from("job_matching_preferences")
@@ -143,7 +144,7 @@ export async function getMatchingState(
         .limit(60),
     ),
     dbQuery<Record<string, unknown>>(
-      client.from("matching_operations").select("state").eq("job_id", jobId)
+      matchingOperationsClient.from("matching_operations").select("state").eq("job_id", jobId)
         .order("created_at", { ascending: false }).order("id", { ascending: false })
         .limit(1).maybeSingle(),
     ),

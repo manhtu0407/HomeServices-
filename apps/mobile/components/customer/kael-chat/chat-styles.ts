@@ -77,10 +77,6 @@ export const customerV21ChatStyles = StyleSheet.create({
     gap: 8,
     width: '100%',
   },
-  chatMediaCameraIcon: {
-    height: 20,
-    width: 20,
-  },
   chatComposerAura: {
     ...StyleSheet.absoluteFill,
     zIndex: 0,
@@ -93,6 +89,21 @@ export const customerV21ChatStyles = StyleSheet.create({
     shadowOffset: { height: 10, width: 0 },
     shadowOpacity: 0.10,
     shadowRadius: 24,
+  },
+  chatComposerWithImages: {
+    alignItems: 'stretch',
+    flexDirection: 'column',
+  },
+  chatComposerControls: {
+    alignItems: 'flex-end',
+    flexDirection: 'row',
+    gap: 4,
+  },
+  chatComposerControlsExpanded: {
+    flex: 1,
+  },
+  chatComposerControlsFullWidth: {
+    width: '100%',
   },
   chatComposerDisclaimer: {
     ...typography.caption2,
@@ -198,9 +209,6 @@ export const customerV21ChatStyles = StyleSheet.create({
     height: 44,
     justifyContent: 'center',
     width: 44,
-  },
-  chatHeaderNewConversationDisabled: {
-    opacity: 0.52,
   },
   chatHeaderSpacer: {
     flex: 1,
@@ -343,14 +351,15 @@ export const customerV21KaelChatRootStyles = StyleSheet.create({
     borderRadius: 26,
     borderWidth: 1,
     flexDirection: 'row',
-    gap: 10,
-    padding: 8,
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 5,
   },
   composerInput: {
     flex: 1,
     ...typography.subheadline,
     minHeight: 44,
-    paddingHorizontal: 10,
+    paddingHorizontal: 4,
     // A multiline TextInput does not vertically center its text on its own —
     // browsers and iOS both top-align it — so this padding is what actually
     // levels the placeholder with the icons at the one-line resting height.

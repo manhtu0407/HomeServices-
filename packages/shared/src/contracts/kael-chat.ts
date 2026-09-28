@@ -112,12 +112,17 @@ export const kaelChatConfirmSchema = z.object({
   }
 })
 
-const kaelChatMediaRefSchema = z.string().regex(
+export const kaelChatMediaRefSchema = z.string().regex(
   /^supabase:\/\/kael-chat-media\/(?!\.{1,2}\/)[^/\s?#]+\/kael-chat\/(?:model_vision|private_video_original)\/(?!.*(?:\.\.|\/\/))[^\s?#]+$/i,
   'Kael chat media_refs must be Supabase kael-chat-media storage refs',
 ).refine(
   (value) => !/\.(?:aac|flac|m4a|mp3|oga|opus|wav)$/i.test(value),
   'Raw audio must stay on device; submit an editable voice transcript instead',
+)
+
+export const kaelChatVisionMediaRefSchema = kaelChatMediaRefSchema.refine(
+  (value) => /\/kael-chat\/model_vision\//i.test(value),
+  'Customer normal chat accepts only private vision-image refs',
 )
 
 export const kaelChatMediaUploadSchema = z.object({

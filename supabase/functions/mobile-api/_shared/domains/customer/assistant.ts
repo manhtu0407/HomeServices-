@@ -38,6 +38,7 @@ export async function answerKaelAssistant(
   input: KaelAssistantInput,
   secrets: EdgeAiSecrets,
   options: {
+    imageUrls?: readonly string[];
     reasoning?: KaelReasoningReporter;
     response?: KaelResponseReporter;
   } = {},
@@ -104,6 +105,7 @@ export async function answerKaelAssistant(
     language: input.language,
     memorySummary,
     message: input.message,
+    imageUrls: options.imageUrls,
     reasoning: options.reasoning,
     response: options.response,
     secrets,

@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import Animated from 'react-native-reanimated'
 
 import type { AppLanguage } from '@/lib/app-language'
+import type { LocalMediaUploadDraft } from '@/lib/media-upload'
 import type { KaelReasoningReceiptState } from '@/lib/kael-reasoning-receipt'
 
 import type { CustomerThemeTokens } from '../customer-theme'
@@ -30,6 +31,7 @@ type Props = {
   caseThreadNode: ReactNode
   caseWorkLabel: string
   composerMediaNode: ReactNode
+  composerMediaDrafts: LocalMediaUploadDraft[]
   composer: {
     busy: boolean
     canUseMedia: boolean
@@ -53,7 +55,9 @@ type Props = {
   onBack: () => void
   onDraftChange: (value: string) => void
   onPickMedia: () => void
+  onRemoveComposerMediaDraft: (index: number) => void
   onSendMessage: () => void
+  onStopMessage: () => void
   onSwitchMode: (mode: CustomerKaelMode) => void
   onToggleModeMenu: () => void
   onToggleNormalReasoningReceipt: () => void
@@ -69,7 +73,6 @@ type Props = {
   timelineHeadline?: string
   tokens: CustomerThemeTokens
   visibility: {
-    canStartNewConversation: boolean
     hydratingCase: boolean
     missingCaseWorkDeal: boolean
     modeMenuOpen: boolean
@@ -91,6 +94,7 @@ export function KaelChatSurfaceView({
   caseThreadNode,
   caseWorkLabel,
   composerMediaNode,
+  composerMediaDrafts,
   composer,
   error,
   hiddenScrollbarStyle,
@@ -103,7 +107,9 @@ export function KaelChatSurfaceView({
   onBack,
   onDraftChange,
   onPickMedia,
+  onRemoveComposerMediaDraft,
   onSendMessage,
+  onStopMessage,
   onSwitchMode,
   onToggleModeMenu,
   onToggleNormalReasoningReceipt,
@@ -123,7 +129,6 @@ export function KaelChatSurfaceView({
   const { busy: composerBusy, canUseMedia: canUseComposerMedia, draft, hasVoiceTranscript, mediaDraftCount: composerMediaDraftCount, placeholder: composerPlaceholder, show: showComposer } = composer
   const { reduceMotion, reduceTransparency } = motion
   const {
-    canStartNewConversation,
     hydratingCase,
     missingCaseWorkDeal,
     modeMenuOpen,
@@ -179,7 +184,6 @@ export function KaelChatSurfaceView({
         <View style={[chatStyles.chatFrame, mode === 'case' ? historyActiveStyles.caseChatFrame : null]} testID={mode === 'normal' ? 'customer-v21-screen-2.4-chat-normal' : 'customer-v21-screen-2.5-chat-case'}>
           <CustomerKaelChatHeader
             animatedModeMenuStyle={animatedModeMenuStyle}
-            canStartNewConversation={canStartNewConversation}
             caseWorkLabel={caseWorkLabel}
             language={language}
             mode={mode}
@@ -209,9 +213,11 @@ export function KaelChatSurfaceView({
           {error ? <Text style={[rootStyles.errorText, { color: tokens.primary }]} testID="customer-v21-kael-error">{error}</Text> : null}
           {showComposer ? (
             <KaelChatComposer
+              allowVideoSelection={mode === 'case'}
               canUseComposerMedia={canUseComposerMedia}
               composerBusy={composerBusy}
               composerMediaDraftCount={composerMediaDraftCount}
+              composerMediaDrafts={mode === 'normal' ? composerMediaDrafts : []}
               composerPlaceholder={composerPlaceholder}
               draft={draft}
               hasVoiceTranscript={hasVoiceTranscript}
@@ -220,8 +226,9 @@ export function KaelChatSurfaceView({
               onDraftChange={onDraftChange}
               onFocus={() => setComposerFocused(true)}
               onPickMedia={onPickMedia}
+              onRemoveComposerMediaDraft={onRemoveComposerMediaDraft}
               onSendMessage={onSendMessage}
-              reduceTransparency={reduceTransparency}
+              onStopMessage={onStopMessage}
               rootStyles={rootStyles}
               textInputNoOutlineStyle={textInputNoOutlineStyle}
               tokens={tokens}

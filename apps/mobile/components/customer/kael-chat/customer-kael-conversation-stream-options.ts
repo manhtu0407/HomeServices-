@@ -3,6 +3,8 @@ import type { KaelResponseStreamEvent } from '@/lib/kael-response-stream'
 import type { KaelReasoningStreamEvent } from '@/lib/kael-reasoning-receipt'
 
 export type CustomerKaelTurnStreamOptions = {
+  mediaRefs?: readonly string[]
+  signal?: AbortSignal
   onReasoning?: (event: KaelReasoningStreamEvent) => void
   onResponseCommitted?: () => void
   onResponseDelta?: (event: KaelStreamResponseDeltaEvent) => void

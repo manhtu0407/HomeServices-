@@ -1181,6 +1181,7 @@ export type DatabaseFunctions = {
           p_conversation_id: string
           p_customer_id: string
           p_customer_text: string
+          p_media_refs: string[]
           p_kael_text: string
         }
         Returns: number

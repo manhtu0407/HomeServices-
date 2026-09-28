@@ -573,6 +573,7 @@ export type EdgeGuardClient = {
 };
 
 export type EdgeAiSecrets = {
+  requestSignal?: AbortSignal;
   supabaseUrl?: string;
   anthropicApiKey?: string;
   perplexityApiKey?: string;

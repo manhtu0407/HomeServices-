@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import {
-  ActivityIndicator,
+  Pressable,
   Text,
   View,
   type StyleProp,
@@ -8,13 +8,17 @@ import {
   type ViewStyle,
 } from 'react-native'
 
-import { LiquidControlButton, LiquidSendArrowIcon } from '@/components/ui/liquid-back-button'
+import { GlassSurface } from '@/components/ui/glass-surface'
+import { LiquidSendArrowIcon } from '@/components/ui/liquid-back-button'
+import { useGlassAccessibility } from '@/components/ui/accessibility-motion'
 import { KaelTextField } from '@/components/ui/kael-primitives'
+import { color } from '@/design/theme'
 import type { AppLanguage } from '@/lib/app-language'
+import type { LocalMediaUploadDraft } from '@/lib/media-upload'
 
 import type { CustomerThemeTokens } from '../customer-theme'
-import { SourceCardSkin } from '../ui/aura-surfaces'
-import { ChatComposerAura, ChatMediaCameraIcon } from './chat-surfaces'
+import { ChatMediaCameraIcon } from './chat-surfaces'
+import { MediaDraftPreviewTray } from './media-draft-preview-tray'
 import { customerV21ChatStyles as chatStyles } from './chat-styles'
 import { canSubmitCustomerKaelComposer } from './customer-kael-composer-state'
 import { CUSTOMER_KAEL_MESSAGE_MAX_LENGTH } from './customer-kael-message-limits'
@@ -34,9 +38,11 @@ export type RootChatStyles = {
 }
 
 export function KaelChatComposer({
+  allowVideoSelection,
   canUseComposerMedia,
   composerBusy,
   composerMediaDraftCount,
+  composerMediaDrafts,
   composerPlaceholder,
   draft,
   hasVoiceTranscript,
@@ -45,15 +51,18 @@ export function KaelChatComposer({
   onDraftChange,
   onFocus,
   onPickMedia,
+  onRemoveComposerMediaDraft,
   onSendMessage,
-  reduceTransparency,
+  onStopMessage,
   rootStyles,
   textInputNoOutlineStyle,
   tokens,
 }: {
+  allowVideoSelection: boolean
   canUseComposerMedia: boolean
   composerBusy: boolean
   composerMediaDraftCount: number
+  composerMediaDrafts: LocalMediaUploadDraft[]
   composerPlaceholder: string
   draft: string
   hasVoiceTranscript: boolean
@@ -62,53 +71,85 @@ export function KaelChatComposer({
   onDraftChange: (value: string) => void
   onFocus: () => void
   onPickMedia: () => void
+  onRemoveComposerMediaDraft: (index: number) => void
   onSendMessage: () => void
-  reduceTransparency: boolean
+  onStopMessage: () => void
   rootStyles: RootChatStyles
   textInputNoOutlineStyle: StyleProp<TextStyle>
   tokens: CustomerThemeTokens
 }) {
+  const { reduceMotion } = useGlassAccessibility()
   const canSubmit = canSubmitCustomerKaelComposer({
     busy: composerBusy,
     draft,
     mediaDraftCount: canUseComposerMedia ? composerMediaDraftCount : 0,
     voiceTranscript: hasVoiceTranscript ? 'voice' : '',
   })
-  const [inputHeight, setInputHeight] = useState(COMPOSER_MIN_HEIGHT)
-  useEffect(() => {
-    // A cleared draft (message sent, or removed) doesn't reliably re-fire
-    // onContentSizeChange on every platform, so the box can stay tall — reset
-    // it explicitly whenever there is nothing left to size against.
-    if (draft.length === 0) setInputHeight(COMPOSER_MIN_HEIGHT)
-  }, [draft])
+  const mediaPickerEnabled = canUseComposerMedia && !composerBusy && composerMediaDraftCount < 5
+  const normalChatImageDrafts = !allowVideoSelection
+    ? composerMediaDrafts.filter((item) => item.type === 'image')
+    : []
+  const activeMediaIconColor = tokens.mode === 'light' ? color.text.strong : tokens.primaryText
+  const activeSendBackground = tokens.mode === 'light' ? color.mint.white : tokens.primary
+  const activeSendBorder = tokens.mode === 'light' ? color.surface.stroke : tokens.borderStrong
+  const activeSendForeground = tokens.mode === 'light' ? color.text.strong : tokens.primaryText
+  const [measuredInput, setMeasuredInput] = useState({ draft, height: COMPOSER_MIN_HEIGHT })
+  const inputHeight = measuredInput.draft === draft ? measuredInput.height : COMPOSER_MIN_HEIGHT
   return (
     <>
-      <View
+      <GlassSurface
+        backgroundColor={tokens.glass}
+        borderColor={tokens.glassBorder}
+        material="liquid"
+        mode={tokens.mode}
         style={[
           rootStyles.composer,
           chatStyles.chatComposer,
-          { backgroundColor: tokens.raised, borderColor: 'rgba(255,255,255,0.92)' },
+          normalChatImageDrafts.length > 0 ? chatStyles.chatComposerWithImages : null,
         ]}
+        testID="customer-v21-kael-composer-frame"
+        variant="control"
       >
-        <SourceCardSkin />
-        <ChatComposerAura reduceTransparency={reduceTransparency} />
-        <LiquidControlButton
+        {normalChatImageDrafts.length > 0 ? (
+          <MediaDraftPreviewTray
+            busy={composerBusy}
+            drafts={composerMediaDrafts}
+            language={language}
+            onRemove={onRemoveComposerMediaDraft}
+            variant="composer-images"
+            tokens={tokens}
+          />
+        ) : null}
+        <View style={[
+          chatStyles.chatComposerControls,
+          normalChatImageDrafts.length > 0
+            ? chatStyles.chatComposerControlsFullWidth
+            : chatStyles.chatComposerControlsExpanded,
+        ]}>
+        <Pressable
           accessibilityLabel={canUseComposerMedia
-            ? (language === 'vi' ? 'Thêm ảnh hoặc video' : 'Add photo or video')
+            ? allowVideoSelection
+              ? (language === 'vi' ? 'Thêm ảnh hoặc video' : 'Add photo or video')
+              : (language === 'vi' ? 'Thêm ảnh' : 'Add photo')
             : (language === 'vi' ? 'Ảnh và video dùng trong Xử lý công việc' : 'Photos and videos are for Work handling')}
-          accessibilityState={{ disabled: composerBusy || !canUseComposerMedia }}
-          dimWhenDisabled={false}
-          disabled={composerBusy || !canUseComposerMedia}
+          accessibilityRole="button"
+          accessibilityState={{ disabled: !mediaPickerEnabled }}
+          disabled={!mediaPickerEnabled}
           hitSlop={3}
-          mode={tokens.mode}
           onPress={onPickMedia}
-          radius={14}
-          size={38}
-          style={chatStyles.chatMediaButton}
+          style={({ pressed }) => [
+            chatStyles.chatMediaButton,
+            {
+              borderRadius: 22,
+              height: 44,
+              width: 44,
+            },
+            pressed && !reduceMotion ? { transform: [{ scale: 0.96 }] } : null,
+          ]}
           testID="customer-v21-kael-media-picker"
         >
-          <ChatMediaCameraIcon color={tokens.primary} />
-          {composerMediaDraftCount > 0 ? (
+          <ChatMediaCameraIcon color={mediaPickerEnabled ? activeMediaIconColor : tokens.muted} size={27} />
+          {allowVideoSelection && composerMediaDraftCount > 0 ? (
             <View
               style={[chatStyles.chatMediaBadge, { backgroundColor: tokens.primary }]}
               testID="customer-v21-kael-media-count"
@@ -118,7 +159,7 @@ export function KaelChatComposer({
               </Text>
             </View>
           ) : null}
-        </LiquidControlButton>
+        </Pressable>
         <KaelTextField
           editable={!composerBusy}
           inputShellStyle={rootStyles.composerTextFieldShell}
@@ -128,7 +169,10 @@ export function KaelChatComposer({
           onChangeText={onDraftChange}
           onContentSizeChange={(event) => {
             const nextHeight = event.nativeEvent.contentSize.height
-            setInputHeight(Math.min(Math.max(nextHeight, COMPOSER_MIN_HEIGHT), COMPOSER_MAX_HEIGHT))
+            setMeasuredInput({
+              draft,
+              height: Math.min(Math.max(nextHeight, COMPOSER_MIN_HEIGHT), COMPOSER_MAX_HEIGHT),
+            })
           }}
           onFocus={onFocus}
           onSubmitEditing={onSendMessage}
@@ -142,22 +186,53 @@ export function KaelChatComposer({
           testID="customer-v21-kael-input"
           value={draft}
         />
-        <LiquidControlButton
-          accessibilityLabel={language === 'vi' ? 'Gửi tin nhắn cho Kael' : 'Send message to Kael'}
-          accessibilityState={{ busy: composerBusy, disabled: !canSubmit }}
-          dimWhenDisabled={false}
-          disabled={!canSubmit}
-          mode={tokens.mode}
-          onPress={onSendMessage}
-          size={44}
-          style={rootStyles.sendButton}
+        <Pressable
+          accessibilityLabel={composerBusy
+            ? (language === 'vi' ? 'Dừng phản hồi' : 'Stop response')
+            : (language === 'vi' ? 'Gửi tin nhắn cho Kael' : 'Send message to Kael')}
+          accessibilityRole="button"
+          accessibilityState={{ busy: composerBusy, disabled: !composerBusy && !canSubmit }}
+          disabled={!composerBusy && !canSubmit}
+          onPress={composerBusy ? onStopMessage : onSendMessage}
+          style={({ pressed }) => [
+            rootStyles.sendButton,
+            {
+              alignItems: 'center',
+              backgroundColor: composerBusy ? activeSendBackground : canSubmit ? activeSendBackground : tokens.glassStrong,
+              borderColor: composerBusy || canSubmit ? activeSendBorder : tokens.glassBorder,
+              borderRadius: 22,
+              borderWidth: 1,
+              height: 44,
+              justifyContent: 'center',
+              width: 44,
+            },
+            pressed && !reduceMotion ? { transform: [{ scale: 0.96 }] } : null,
+          ]}
           testID="customer-v21-kael-send"
         >
           {composerBusy
-            ? <ActivityIndicator color={tokens.text} />
-            : <LiquidSendArrowIcon color={tokens.text} testID="customer-v21-kael-send-arrow" />}
-        </LiquidControlButton>
-      </View>
+            ? (
+              <View
+                style={{
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <View
+                  style={{
+                    backgroundColor: activeSendForeground,
+                    borderRadius: 2,
+                    height: 12,
+                    width: 12,
+                  }}
+                  testID="customer-v21-kael-stop-square"
+                />
+          </View>
+          )
+            : <LiquidSendArrowIcon color={canSubmit ? activeSendForeground : tokens.muted} testID="customer-v21-kael-send-arrow" />}
+        </Pressable>
+        </View>
+      </GlassSurface>
       <Text
         style={[chatStyles.chatComposerDisclaimer, { color: tokens.muted }]}
         testID="customer-v21-kael-chat-disclaimer"

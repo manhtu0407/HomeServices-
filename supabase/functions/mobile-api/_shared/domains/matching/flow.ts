@@ -76,7 +76,7 @@ export async function confirmSearch(
   });
   return {
     ...result,
-    matching_state: await getMatchingState(client, jobId, result.status),
+    matching_state: await getMatchingState(client, jobId, result.status, workflowDb(ctx)),
   };
 }
 

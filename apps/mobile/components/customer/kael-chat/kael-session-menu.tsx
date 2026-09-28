@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react'
-import { FlatList, Text, View, type ListRenderItemInfo } from 'react-native'
+import { FlatList, Text, useWindowDimensions, View, type ListRenderItemInfo } from 'react-native'
 import Svg, { Path } from 'react-native-svg'
 
 import { GlassSurface } from '@/components/ui/glass-surface'
@@ -59,6 +59,7 @@ export function CustomerKaelSessionMenu({
   const [deletingSessionId, setDeletingSessionId] = useState<string | null>(null)
   const [renamingSessionId, setRenamingSessionId] = useState<string | null>(null)
   const [draftTitle, setDraftTitle] = useState('')
+  const { height: windowHeight, width: windowWidth } = useWindowDimensions()
   const copy = sessionMenuCopy(language, mode)
   const clearDelete = useCallback(() => setDeletingSessionId(null), [])
   const clearRename = useCallback(() => {
@@ -141,7 +142,15 @@ export function CustomerKaelSessionMenu({
   const keyExtractor = useCallback((session: CustomerKaelConversationSession) => session.id, [])
 
   return (
-    <KaelLiquidReveal reduceMotion={reduceMotion} style={styles.menuPosition} testID="customer-v21-kael-session-menu-shell">
+    <KaelLiquidReveal
+      reduceMotion={reduceMotion}
+      style={[
+        styles.menuPosition,
+        renamingSessionId ? styles.menuPositionExpanded : null,
+        renamingSessionId ? { maxWidth: Math.min(440, Math.max(0, windowWidth - 28)) } : null,
+      ]}
+      testID="customer-v21-kael-session-menu-shell"
+    >
       <GlassSurface
         backgroundColor={reduceTransparency ? tokens.raised : tokens.mode === 'dark' ? 'rgba(22,29,27,0.42)' : 'rgba(255,255,255,0.18)'}
         borderColor={reduceTransparency ? tokens.border : tokens.mode === 'dark' ? 'rgba(190,210,205,0.16)' : 'rgba(255,255,255,0.72)'}
@@ -207,7 +216,13 @@ export function CustomerKaelSessionMenu({
               nestedScrollEnabled
               renderItem={renderSession}
               showsVerticalScrollIndicator={false}
-              style={styles.sessionListViewport}
+              style={[
+                styles.sessionListViewport,
+                renamingSessionId ? styles.sessionListViewportExpanded : null,
+                renamingSessionId
+                  ? { maxHeight: Math.min(240, Math.max(120, windowHeight - 220)) }
+                  : null,
+              ]}
               testID="customer-v21-kael-session-list"
             />
           ) : null}

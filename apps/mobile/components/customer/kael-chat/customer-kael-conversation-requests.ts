@@ -1,5 +1,6 @@
 import type { ApiResult } from '@/lib/api'
 import type { KaelChatResponse } from '@/lib/api-types'
+import { isAmbiguousKaelConversationFailure } from '@/lib/kael-conversation-failure'
 import { customerKaelConversationService, kaelChatService } from '@/lib/services'
 
 const responseLoadMemory = new Map<string, Promise<CustomerConversationFetchResult | null>>()
@@ -17,17 +18,9 @@ const RECONCILABLE_KAEL_STREAM_FAILURES = new Set([
 type CustomerConversationFetchResult = Awaited<ReturnType<typeof customerKaelConversationService.get>>
 
 export function isAmbiguousConversationTurnFailure(
-  result: { success: false; code: string },
+  result: { success: false; code: string; status?: number },
 ) {
-  return result.code === 'TIMEOUT' ||
-    result.code === 'NETWORK_ERROR' ||
-    result.code === 'STREAM_BODY_UNREADABLE' ||
-    result.code === 'STREAM_ENDED' ||
-    result.code === 'STREAM_INVALID_ENCODING' ||
-    result.code === 'STREAM_NETWORK' ||
-    result.code === 'STREAM_RESPONSE_TOO_LARGE' ||
-    result.code === 'STREAM_RESULT_INVALID' ||
-    result.code === 'STREAM_TIMEOUT'
+  return isAmbiguousKaelConversationFailure(result)
 }
 
 export async function recoverCommittedConversationTurn(

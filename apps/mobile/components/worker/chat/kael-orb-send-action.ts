@@ -4,6 +4,11 @@ import type { WorkerKaelChatMode } from '@nestscout/shared'
 import type { AppLanguage } from '@/lib/app-language'
 import type { KaelChatProgress, WorkerKaelChatResponse, WorkerKaelChatSession } from '@/lib/api-types'
 import { generateClientRequestId } from '@/lib/client-request-id'
+import {
+  isAmbiguousKaelConversationFailure,
+  kaelConversationOutcomeUncertainCopy,
+  localizeKaelConversationFailure,
+} from '@/lib/kael-conversation-failure'
 import { uploadJobMediaDrafts, type LocalMediaUploadDraft } from '@/lib/media-upload'
 import { workerKaelChatService } from '@/lib/services'
 import {
@@ -32,6 +37,8 @@ type WorkerKaelOrbSendActionOptions = {
   cacheSessionResponse: (response: WorkerKaelChatResponse) => void
   canUseKaelSession: boolean
   commitSessionSummary: (session: WorkerKaelChatSession) => void
+  getCachedSessionResponse: (sessionId: string) => WorkerKaelChatResponse | undefined
+  isLocalVisualAuditSession: boolean
   language: AppLanguage
   locallyCreatedSessionIdsRef: MutableRefObject<Set<string>>
   mediaItems: WorkerV5KaelOrbMediaPreview[]
@@ -60,6 +67,8 @@ export function createWorkerKaelOrbSendAction({
   cacheSessionResponse,
   canUseKaelSession,
   commitSessionSummary,
+  getCachedSessionResponse,
+  isLocalVisualAuditSession,
   language,
   locallyCreatedSessionIdsRef,
   mediaItems,
@@ -81,6 +90,14 @@ export function createWorkerKaelOrbSendAction({
   return async (message: string) => {
     const content = message.trim()
     if (!content || busy || openingSessionId) return false
+    if (isLocalVisualAuditSession) {
+      setError(textByLanguage(
+        language,
+        'Chế độ xem trước chỉ dùng để kiểm tra giao diện. Đăng nhập tài khoản Worker thật để gửi tin nhắn.',
+        'Preview audit mode is for visual checks only. Sign in with a real Worker account to send messages.',
+      ))
+      return false
+    }
     const sendRequestId = sendRequestRef.current + 1
     sendRequestRef.current = sendRequestId
     setError(null)
@@ -110,8 +127,8 @@ export function createWorkerKaelOrbSendAction({
     let receivedReasoningTerminal = false
     const interruptedMessage = textByLanguage(
       language,
-      'Kael đang không kết nối được. Không có hành động nào được ghi vào việc.',
-      'Kael is unavailable. No work action was written.',
+      'Kael chưa thể hoàn tất phản hồi này.',
+      'Kael could not complete this reply yet.',
     )
     const incompleteReceiptMessage = textByLanguage(
       language,
@@ -143,6 +160,15 @@ export function createWorkerKaelOrbSendAction({
         && sessionRef.current.mode === currentMode
         ? sessionRef.current.sessionId
         : null
+      let previousTurnIds = new Set<string>()
+      let hasSessionBaseline = false
+      if (sessionId) {
+        const cachedResponse = getCachedSessionResponse(sessionId)
+        if (cachedResponse) {
+          previousTurnIds = new Set(cachedResponse.turns.map((turn) => turn.id))
+          hasSessionBaseline = true
+        }
+      }
       if (!sessionId) {
         const created = await workerKaelChatService.create({
           client_request_id: generateClientRequestId(),
@@ -153,7 +179,11 @@ export function createWorkerKaelOrbSendAction({
         if (!isCurrentSend()) return false
         if (!created.success) {
           setProgress(null)
-          setError(created.error)
+          setError(localizeKaelConversationFailure(
+            created,
+            language,
+            textByLanguage(language, 'Chưa thể mở cuộc trò chuyện riêng cho việc này.', 'Kael could not open the private work session yet.'),
+          ))
           return false
         }
         if (
@@ -165,6 +195,8 @@ export function createWorkerKaelOrbSendAction({
           return false
         }
         sessionId = created.data.session.id
+        previousTurnIds = new Set(created.data.turns.map((turn) => turn.id))
+        hasSessionBaseline = true
         locallyCreatedSessionIdsRef.current.add(sessionId)
         cacheSessionResponse(created.data)
         sessionRef.current = { jobId: currentJobId, mode: currentMode, sessionId }
@@ -179,12 +211,13 @@ export function createWorkerKaelOrbSendAction({
         }
       }
 
-      const streamed = await workerKaelChatService.streamTurn(sessionId, {
+      const turnInput = {
         client_request_id: generateClientRequestId(),
         language,
         media_refs: mediaRefs,
         message: content,
-      }, {
+      }
+      const streamed = await workerKaelChatService.streamTurn(sessionId, turnInput, {
         onStage: (event) => {
           if (!isCurrentSend()) return
           setProgress(event.progress)
@@ -209,22 +242,46 @@ export function createWorkerKaelOrbSendAction({
       })
       if (!isCurrentSend()) return false
 
-      let finalResponse = streamed.success ? streamed : null
-      if (!finalResponse) {
+      const sent = !streamed.success && streamed.code === 'STREAM_UNSUPPORTED'
+        ? await workerKaelChatService.sendTurn(sessionId, turnInput)
+        : streamed
+      if (!isCurrentSend()) return false
+
+      let finalResponse = sent.success ? sent : null
+      if (!finalResponse && !sent.success && isAmbiguousKaelConversationFailure(sent)) {
         const recovered = await workerKaelChatService.get(sessionId)
         if (!isCurrentSend()) return false
-        if (recovered.success) finalResponse = recovered
+        if (
+          recovered.success
+          && hasSessionBaseline
+          && recovered.data.session.id === sessionId
+          && hasNewWorkerKaelReply(recovered.data, previousTurnIds, content)
+        ) finalResponse = recovered
       }
 
-      if (
-        !finalResponse
-        || finalResponse.data.session.job_id !== currentJobId
-        || finalResponse.data.session.mode !== currentMode
-      ) {
+      if (!finalResponse) {
         if (
           activeJobIdRef.current === currentJobId
           && activeModeRef.current === currentMode
         ) setProgress(null)
+        setStreamingReply(null)
+        setError(!sent.success && isAmbiguousKaelConversationFailure(sent)
+          ? kaelConversationOutcomeUncertainCopy(language)
+          : !sent.success
+            ? localizeKaelConversationFailure(
+                sent,
+                language,
+                textByLanguage(language, 'Kael chưa thể trả lời lúc này. Vui lòng thử lại.', 'Kael could not reply right now. Please try again.'),
+              )
+            : textByLanguage(language, 'Kael chưa thể xác nhận phản hồi mới.', 'Kael could not confirm a new reply.'))
+        return false
+      }
+      if (
+        finalResponse.data.session.job_id !== currentJobId
+        || finalResponse.data.session.mode !== currentMode
+      ) {
+        if (activeJobIdRef.current === currentJobId && activeModeRef.current === currentMode) setProgress(null)
+        setStreamingReply(null)
         setError(textByLanguage(language, 'Kael bỏ qua phản hồi không khớp việc hiện tại.', 'Kael ignored a response that did not match the current work.'))
         return false
       }
@@ -265,4 +322,21 @@ export function createWorkerKaelOrbSendAction({
     }
     return turnCompleted
   }
+}
+
+function hasNewWorkerKaelReply(
+  response: WorkerKaelChatResponse,
+  previousTurnIds: Set<string>,
+  submittedText: string,
+) {
+  const newTurns = response.turns.filter((turn) => !previousTurnIds.has(turn.id))
+  let submittedTurnIndex = -1
+  for (const turn of newTurns) {
+    if (turn.role === 'worker' && turn.text_content?.trim() === submittedText && turn.turn_index > submittedTurnIndex) {
+      submittedTurnIndex = turn.turn_index
+    }
+  }
+  return submittedTurnIndex >= 0 && newTurns.some((turn) => (
+    turn.role === 'kael' && turn.turn_index > submittedTurnIndex
+  ))
 }

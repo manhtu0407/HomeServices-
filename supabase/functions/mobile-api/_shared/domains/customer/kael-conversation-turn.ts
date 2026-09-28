@@ -21,6 +21,8 @@ import {
 } from "../../platform/coercions.ts";
 import { db, dbQuery, type DbClient } from "../../platform/db.ts";
 import { answerKaelAssistant } from "./assistant.ts";
+import { buildKaelVisionValidationEvidence, createSignedVisionUrls } from "../kael-chat/media-vision.ts";
+import { validateAndConsumeKaelChatEvidenceMediaRefs } from "../kael-chat/media-upload.ts";
 import { cancelJob, requestCustomerCancellation } from "./cancellation.ts";
 import type {
   EdgeCustomerKaelConversationCaseAction,
@@ -36,7 +38,7 @@ import {
 export const CUSTOMER_CONVERSATION_SELECT =
   "id, customer_id, chat_mode, case_session_id, client_request_id, title, pinned_at, archived_at, total_turns, created_at, updated_at";
 const CUSTOMER_CONVERSATION_TURN_SELECT =
-  "id, conversation_id, customer_id, client_request_id, turn_index, role, text_content, created_at";
+  "id, conversation_id, customer_id, client_request_id, turn_index, role, text_content, media_refs, created_at";
 export const CUSTOMER_CASE_CATALOG_JOB_STATUSES: JobStatus[] = [
   "awaiting_customer_confirm",
   "broadcasting",
@@ -130,11 +132,29 @@ export async function sendCustomerKaelConversationTurn(
     return existingResponse;
   }
 
+  const requestedMediaRefs = input.media_refs ?? [];
+  if (requestedMediaRefs.length > 0 && conversationMode !== "normal") {
+    apiFailure(
+      "NORMAL_CHAT_MEDIA_ONLY",
+      input.language === "en"
+        ? "Image analysis is available in normal chat only."
+        : "Phân tích ảnh chỉ dùng trong Chat thường.",
+      400,
+    );
+  }
+  throwIfCustomerConversationAborted(ctx.signal, secrets.requestSignal);
+  const mediaRefs = requestedMediaRefs.length > 0
+    ? await validateAndConsumeKaelChatEvidenceMediaRefs(ctx, requestedMediaRefs, ctx.user.id)
+    : [];
+  const visionEvidence = buildKaelVisionValidationEvidence([], mediaRefs);
+  const imageUrls = await createSignedVisionUrls(ctx, visionEvidence, ctx.user.id);
+
   const answer = await answerKaelAssistant(ctx, {
     language: input.language,
     message: input.message,
     surface: "customer_normal",
-  }, secrets, { reasoning: options.reasoning, response: options.response });
+  }, secrets, { imageUrls, reasoning: options.reasoning, response: options.response });
+  throwIfCustomerConversationAborted(ctx.signal, secrets.requestSignal);
   const customerText = (
     conversationMode === "case"
       ? sanitizeCustomerCaseEvidenceText(input.message)
@@ -160,6 +180,7 @@ export async function sendCustomerKaelConversationTurn(
       p_conversation_id: conversationId,
       p_customer_id: ctx.user.id,
       p_customer_text: customerText,
+      p_media_refs: mediaRefs,
       p_kael_text: kaelText,
     }),
   );
@@ -390,8 +411,24 @@ function serializeCustomerConversationTurn(
     turn_index: asNumber(row.turn_index),
     role,
     text_content: asString(row.text_content),
+    media_refs: role === "customer" ? customerConversationMediaRefs(row.media_refs) : [],
     created_at: asString(row.created_at),
   };
+}
+
+function customerConversationMediaRefs(value: unknown): string[] {
+  if (!Array.isArray(value) || value.length > 5) return [];
+  return value.filter((entry): entry is string =>
+    typeof entry === "string" &&
+    /^supabase:\/\/kael-chat-media\/(?!\.{1,2}\/)[^/\s?#]+\/kael-chat\/model_vision\/(?!.*(?:\.\.|\/\/))[^\s?#]+$/i.test(entry)
+  );
+}
+
+function throwIfCustomerConversationAborted(...signals: Array<AbortSignal | undefined>) {
+  if (!signals.some((signal) => signal?.aborted)) return;
+  const error = new Error("Customer Kael conversation request was cancelled");
+  error.name = "AbortError";
+  throw error;
 }
 
 function asCustomerConversationMode(value: unknown): EdgeCustomerKaelConversationMode {

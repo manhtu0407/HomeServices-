@@ -50,11 +50,11 @@ export function CustomerKaelChatContent({ controller }: { controller: Controller
     visibleError,
   } = controller
   const composerBusy = conversation.loading || chatUi.uploadingMedia || conversations.sending
-  const canUseComposerMedia = mode === 'case' && (
+  const canUseComposerMedia = mode === 'normal' || (mode === 'case' && (
     !deal ||
     presentation.caseEvidenceGateActive ||
     presentation.workIntakeActive
-  )
+  ))
   const composerPlaceholder = mode === 'normal'
     ? (language === 'vi' ? 'Nhập tin nhắn cho Kael...' : 'Message Kael...')
     : deal
@@ -155,7 +155,7 @@ export function CustomerKaelChatContent({ controller }: { controller: Controller
     () => <CustomerAgenticEstimateNode controller={controller} />,
     [controller],
   )
-  const composerMediaNode = useMemo(() => (
+  const composerMediaNode = useMemo(() => mode === 'case' ? (
     <MediaDraftPreviewTray
       busy={composerBusy}
       drafts={conversation.composerMediaDrafts}
@@ -164,7 +164,7 @@ export function CustomerKaelChatContent({ controller }: { controller: Controller
         current.filter((_, currentIndex) => currentIndex !== index))}
       tokens={tokens}
     />
-  ), [composerBusy, conversation, language, tokens])
+  ) : null, [composerBusy, conversation, language, mode, tokens])
   const processLinesNode = useMemo(() => (
     processController.processLines ? (
       <>
@@ -226,6 +226,7 @@ export function CustomerKaelChatContent({ controller }: { controller: Controller
       caseThreadNode={caseThreadNode}
       caseWorkLabel={copy.caseWork}
       composerMediaNode={composerMediaNode}
+      composerMediaDrafts={conversation.composerMediaDrafts}
       composer={{
         busy: composerBusy,
         canUseMedia: canUseComposerMedia,
@@ -246,7 +247,10 @@ export function CustomerKaelChatContent({ controller }: { controller: Controller
       onBack={() => router.replace('/(customer)/home' as never)}
       onDraftChange={chatUi.setDraft}
       onPickMedia={evidenceActions.pickComposerMedia}
+      onRemoveComposerMediaDraft={(index) => conversation.setComposerMediaDrafts((current) =>
+        current.filter((_, currentIndex) => currentIndex !== index))}
       onSendMessage={() => void messageActions.sendMessage()}
+      onStopMessage={messageActions.cancelMessage}
       onSwitchMode={modeMenu.switchChatMode}
       onToggleModeMenu={modeMenu.toggleModeMenu}
       onToggleNormalReasoningReceipt={onToggleNormalReasoningReceipt}
@@ -262,7 +266,6 @@ export function CustomerKaelChatContent({ controller }: { controller: Controller
       timelineHeadline={timelineHeadline}
       tokens={tokens}
       visibility={{
-        canStartNewConversation: conversations.canCreateSession,
         hydratingCase: caseHydration.hydrating && !deal,
         missingCaseWorkDeal: presentation.missingCaseWorkDeal,
         modeMenuOpen: chatUi.modeMenuOpen,
