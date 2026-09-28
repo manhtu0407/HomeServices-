@@ -93,7 +93,7 @@ export function createWorkerKaelOrbSendAction({
     if (isLocalVisualAuditSession) {
       setError(textByLanguage(
         language,
-        'Chế độ xem trước chỉ dùng để kiểm tra giao diện. Đăng nhập tài khoản Worker thật để gửi tin nhắn.',
+        'Chế độ xem trước chỉ dùng để kiểm tra giao diện. Đăng nhập tài khoản thợ thật để gửi tin nhắn.',
         'Preview audit mode is for visual checks only. Sign in with a real Worker account to send messages.',
       ))
       return false

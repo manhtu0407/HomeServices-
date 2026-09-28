@@ -172,7 +172,7 @@ export function useCustomerKaelMessageActions({
     }
     if (conversations?.isLocalVisualAuditSession) {
       setError(language === 'vi'
-        ? 'Chế độ xem trước chỉ dùng để kiểm tra giao diện. Đăng nhập tài khoản Customer thật để gửi tin nhắn.'
+        ? 'Chế độ xem trước chỉ dùng để kiểm tra giao diện. Đăng nhập tài khoản khách hàng thật để gửi tin nhắn.'
         : 'Preview audit mode is for visual checks only. Sign in with a real Customer account to send messages.')
       return
     }

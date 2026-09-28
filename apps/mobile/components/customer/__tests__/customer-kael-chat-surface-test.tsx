@@ -1975,7 +1975,7 @@ describe('active customer Kael chat surface wiring', () => {
     fireEvent.changeText(input, 'Kiểm tra Preview audit')
     fireEvent.press(screen.getByTestId('customer-v21-kael-send'))
 
-    expect(await screen.findByText('Chế độ xem trước chỉ dùng để kiểm tra giao diện. Đăng nhập tài khoản Customer thật để gửi tin nhắn.')).toBeOnTheScreen()
+    expect(await screen.findByText('Chế độ xem trước chỉ dùng để kiểm tra giao diện. Đăng nhập tài khoản khách hàng thật để gửi tin nhắn.')).toBeOnTheScreen()
     expect(screen.getByTestId('customer-v21-kael-input')).toHaveProp('value', 'Kiểm tra Preview audit')
     expect(mockConversationSendTurn).not.toHaveBeenCalled()
 
@@ -1986,7 +1986,7 @@ describe('active customer Kael chat surface wiring', () => {
     fireEvent.changeText(workInput, 'Kiểm tra Preview audit trong Xử lý công việc')
     fireEvent.press(screen.getByTestId('customer-v21-kael-send'))
 
-    expect(await screen.findByText('Chế độ xem trước chỉ dùng để kiểm tra giao diện. Đăng nhập tài khoản Customer thật để gửi tin nhắn.')).toBeOnTheScreen()
+    expect(await screen.findByText('Chế độ xem trước chỉ dùng để kiểm tra giao diện. Đăng nhập tài khoản khách hàng thật để gửi tin nhắn.')).toBeOnTheScreen()
     expect(screen.getByTestId('customer-v21-kael-input')).toHaveProp('value', 'Kiểm tra Preview audit trong Xử lý công việc')
     expect(mockKaelChatStreamSend).not.toHaveBeenCalled()
     expect(mockJobChatSend).not.toHaveBeenCalled()
