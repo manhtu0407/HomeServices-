@@ -171,15 +171,13 @@ export function useCustomerKaelMessageActions({
       setError(messageLengthError)
       return
     }
-    if (conversations?.isLocalVisualAuditSession) {
-      setError(language === 'vi'
+    const blockedSendCopy = conversations?.isLocalVisualAuditSession
+      ? (language === 'vi'
         ? 'Chế độ xem trước chỉ dùng để kiểm tra giao diện. Đăng nhập tài khoản khách hàng thật để gửi tin nhắn.'
         : 'Preview audit mode is for visual checks only. Sign in with a real Customer account to send messages.')
-      return
-    }
-    const unreleasedClientCopy = unreleasedClientKaelCopy(language)
-    if (unreleasedClientCopy) {
-      setError(unreleasedClientCopy)
+      : unreleasedClientKaelCopy(language)
+    if (blockedSendCopy) {
+      setError(blockedSendCopy)
       return
     }
     if (sendOperationRef.current?.ownerKey === requestOwnerKey) return
