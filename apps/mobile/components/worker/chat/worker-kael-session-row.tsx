@@ -160,7 +160,6 @@ export function WorkerV5KaelSessionRow({
             onSubmitEditing={onSaveRename}
             placeholder={copy.renamePlaceholder}
             returnKeyType="done"
-            selectTextOnFocus
             style={styles.renameInput}
             testID="worker-v5-kael-session-title-input"
             value={draftTitle}

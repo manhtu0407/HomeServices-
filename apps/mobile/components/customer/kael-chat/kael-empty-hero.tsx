@@ -28,10 +28,7 @@ export function CustomerKaelEmptyHero({
 }) {
   const [now, setNow] = useState(() => new Date())
   const [heroHeight, setHeroHeight] = useState(0)
-  // The rotating mascot line stays English in every app language by product
-  // decision; only this copy is pinned — the accessibility labels below still
-  // follow the real `language` prop.
-  const copy = getCustomerKaelEmptyHeroCopy(mode, 'en', now)
+  const copy = getCustomerKaelEmptyHeroCopy(mode, language, now)
 
   useEffect(() => {
     const timer = setTimeout(() => {

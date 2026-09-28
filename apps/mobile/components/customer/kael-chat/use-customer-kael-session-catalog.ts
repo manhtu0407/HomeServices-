@@ -293,12 +293,18 @@ export function useCustomerKaelSessionCatalog({
     chatUi.setBlankCaseTransition(mode === 'case')
     resetConversationVisualState()
     conversations.resetToBlank()
-    const created = await conversations.startNewSession()
+    let createFailure: string | null = null
+    const created = await conversations.startNewSession(
+      undefined,
+      (message) => {
+        createFailure = message
+      },
+    )
     if (!created) {
       chatUi.setBlankCaseTransition(false)
-      conversation.setError(language === 'vi'
+      conversation.setError(createFailure ?? (language === 'vi'
         ? 'Chưa thể tạo cuộc trò chuyện mới.'
-        : 'A new conversation could not be created.')
+        : 'A new conversation could not be created.'))
       return
     }
     router.replace(mode === 'case' ? blankCaseWorkRoute as never : normalChatRoute as never)

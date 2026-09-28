@@ -3,8 +3,12 @@ import type { KaelResponseStreamEvent } from '@/lib/kael-response-stream'
 import type { KaelReasoningStreamEvent } from '@/lib/kael-reasoning-receipt'
 
 export type CustomerKaelTurnStreamOptions = {
+  mediaRefs?: readonly string[]
+  signal?: AbortSignal
   onReasoning?: (event: KaelReasoningStreamEvent) => void
   onResponseCommitted?: () => void
+  /** No turn is returned, yet the server may have committed it (or did, for a superseded request). */
+  onOutcomeUncertain?: () => void
   onResponseDelta?: (event: KaelStreamResponseDeltaEvent) => void
   onResponseEvent?: (event: KaelResponseStreamEvent) => void
 }

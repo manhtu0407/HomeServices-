@@ -12,7 +12,7 @@ export const PILLAR = {
   authority: ['governance/RULES.md #3 and #6', 'packages/shared/src/contracts/kael-chat.ts'],
   target: 'packages/shared/src/mobile-workflow/draft.ts and packages/shared/src/contracts/kael-chat.ts',
   layer: 'unit',
-  siblings: ['P181-kael-composer-and-failure-boundary', 'P104-kael-ephemeral-state-scope'],
+  siblings: ['P205-kael-composer-and-failure-boundary', 'P104-kael-ephemeral-state-scope'],
   mutation: 'remove unsupported-service detection, allow an unsupported draft through validation, or loosen the whitespace/5000-character schema boundary; a collected assertion fails',
 } as const satisfies PillarManifest
 

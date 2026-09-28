@@ -22,13 +22,16 @@ type AdminActivationContextValue = {
 const AdminActivationContext = createContext<AdminActivationContextValue | null>(null)
 
 export function AdminActivationProvider({ children }: { children: ReactNode }) {
-  const { session, signOut } = useAuth()
+  const { session, role, signOut } = useAuth()
+  const localVisualAuditSession = session?.user.app_metadata?.provider === 'local-visual-audit'
+  const activationUnavailable = localVisualAuditSession || (role !== 'customer' && role !== 'admin_operator')
   const [status, setStatus] = useState<AdminActivationStatus | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [resolvedUserId, setResolvedUserId] = useState<string | null>(null)
+  const [resolvedSessionKey, setResolvedSessionKey] = useState<string | null>(null)
+  const sessionKey = session ? `${session.user.id}:${role ?? 'unknown'}` : null
 
-  const applyResult = useCallback((result: ApiResult<AdminActivationStatus>, userId: string) => {
+  const applyResult = useCallback((result: ApiResult<AdminActivationStatus>, resolvedKey: string) => {
     if (result.success) {
       setStatus(result.data)
       setError(null)
@@ -38,32 +41,30 @@ export function AdminActivationProvider({ children }: { children: ReactNode }) {
     } else {
       setError(result.error)
     }
-    setResolvedUserId(userId)
+    setResolvedSessionKey(resolvedKey)
   }, [])
 
   const refresh = useCallback(async () => {
-    if (!session) {
-      setStatus(null)
-      setResolvedUserId(null)
-      setLoading(false)
-      return
-    }
+    if (!session || activationUnavailable || !sessionKey) return
     setLoading(true)
     const result = await api.get<AdminActivationStatus>('/me/admin-activation')
-    applyResult(result, session.user.id)
+    applyResult(result, sessionKey)
     setLoading(false)
-  }, [applyResult, session])
+  }, [activationUnavailable, applyResult, session, sessionKey])
 
   useEffect(() => {
-    if (!session) return
+    if (!session || activationUnavailable || !sessionKey) return
     let cancelled = false
     void api.get<AdminActivationStatus>('/me/admin-activation').then((result) => {
-      if (!cancelled) applyResult(result, session.user.id)
+      if (!cancelled) applyResult(result, sessionKey)
     })
     return () => { cancelled = true }
-  }, [applyResult, session])
+  }, [activationUnavailable, applyResult, session, sessionKey])
 
   const activate = useCallback(async (input: AdminOperatorActivationInput) => {
+    if (!session || role !== 'customer' || localVisualAuditSession) {
+      return false
+    }
     setLoading(true)
     const result = await api.post<{ ok: true }>('/me/admin-activation', input)
     if (!result.success) {
@@ -73,15 +74,17 @@ export function AdminActivationProvider({ children }: { children: ReactNode }) {
     }
     await signOut()
     setStatus(null)
-    setResolvedUserId(null)
+    setResolvedSessionKey(null)
     setError(null)
     setLoading(false)
     return true
-  }, [signOut])
+  }, [localVisualAuditSession, role, session, signOut])
 
-  const unresolvedSession = Boolean(session && resolvedUserId !== session.user.id)
-  const visibleStatus = session && !unresolvedSession ? status : null
-  const value = useMemo(() => ({ activate, error, loading: loading || unresolvedSession, refresh, status: visibleStatus }), [activate, error, loading, refresh, unresolvedSession, visibleStatus])
+  const unresolvedSession = Boolean(session && !activationUnavailable && resolvedSessionKey !== sessionKey)
+  const visibleStatus = session && !activationUnavailable && !unresolvedSession ? status : null
+  const visibleError = session && !activationUnavailable && !unresolvedSession ? error : null
+  const visibleLoading = Boolean(session && !activationUnavailable && (loading || unresolvedSession))
+  const value = useMemo(() => ({ activate, error: visibleError, loading: visibleLoading, refresh, status: visibleStatus }), [activate, refresh, visibleError, visibleLoading, visibleStatus])
   return <AdminActivationContext value={value}>{children}</AdminActivationContext>
 }
 

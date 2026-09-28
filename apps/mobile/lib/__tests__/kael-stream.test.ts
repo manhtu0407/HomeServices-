@@ -470,6 +470,14 @@ describe('Kael SSE parser', () => {
     }
 
     expect(isWorkerKaelStreamResult(valid)).toBe(true)
+    expect(isWorkerKaelStreamResult({
+      ...valid,
+      session: { ...valid.session, job_id: null },
+    })).toBe(true)
+    expect(isWorkerKaelStreamResult({
+      ...valid,
+      session: { ...valid.session, job_id: 42 },
+    })).toBe(false)
     expect(isWorkerKaelStreamResult({ ...valid, turns: {} })).toBe(false)
     expect(isWorkerKaelStreamResult({
       ...valid,

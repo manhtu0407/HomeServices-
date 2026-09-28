@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { apiFailure } from "../../platform/api-failure.ts";
 import type {
   AIRequest,
   EdgeAiSecrets,
@@ -40,6 +41,7 @@ import {
   type ProviderChoice,
 } from "../kael-providers/routing.ts";
 import { maxTokensForPurpose } from "../kael-providers/routing.config.ts";
+import { providerAdapterFor } from "../kael-providers/provider-adapter.ts";
 import { guardOutput } from "../kael-guardrails/output-gateway.ts";
 import {
   auditKaelGuardrailTrip,
@@ -100,6 +102,7 @@ type AssistantClient = Parameters<typeof retrieveKaelKnowledgeContextIfEnabled>[
 export type CustomerAssistantInput = {
   readonly actorId?: string | null;
   readonly message: string;
+  readonly imageUrls?: readonly string[];
   readonly language?: KaelPromptLanguage;
   readonly serviceType?: ServiceType | null;
   readonly surface?: CustomerAssistantSurface;
@@ -222,11 +225,10 @@ export async function runCustomerAssistant(
     );
   }
 
-  const boundedLifecycleAnswer = resolveBoundedServiceLifecycleAnswer(
-    topic,
-    cleanQuestion,
-    language,
-  );
+  const hasImages = Boolean(input.imageUrls?.length);
+  const boundedLifecycleAnswer = hasImages
+    ? null
+    : resolveBoundedServiceLifecycleAnswer(topic, cleanQuestion, language);
   if (boundedLifecycleAnswer) {
     return buildCustomerWorkflowAssistantAnswer(
       boundedLifecycleAnswer,
@@ -243,7 +245,7 @@ export async function runCustomerAssistant(
     question: workflowQuestion,
     language,
   });
-  if (workflowAnswer) {
+  if (!hasImages && workflowAnswer) {
     return buildCustomerWorkflowAssistantAnswer(
       workflowAnswer,
       surface,
@@ -271,8 +273,11 @@ export async function runCustomerAssistant(
       status: "completed",
     });
   }
-  const routes = customerAssistantProviderRoutes(surface, cleanQuestion);
+  const routes = customerAssistantProviderRoutes(surface, cleanQuestion).filter((route) =>
+    !hasImages || providerAdapterFor(route.provider).capabilities.vision
+  );
   if (routes.length === 0) {
+    if (hasImages) return failImageAnalysis(language);
     trace.push(buildCustomerAssistantNoProviderTrace(surface));
     return buildFallbackCustomerAssistantAnswer(
       fallbackText(language, topic),
@@ -349,6 +354,7 @@ async function resolveCustomerAssistantProviders(
   serviceType: ReturnType<typeof inferAssistantServiceType>,
   registerHint: ReturnType<typeof buildRegisterHint>,
 ): Promise<CustomerAssistantAnswer> {
+  const hasImages = Boolean(input.imageUrls?.length)
   const spendGate = createRuntimeKaelSpendGate(
     input.client as SpendGateClient,
     input.actorId ?? null,
@@ -368,8 +374,9 @@ async function resolveCustomerAssistantProviders(
       knowledgePrompt: knowledge?.promptContext ?? null,
       memorySummary: input.memorySummary ?? null,
       registerHint,
+      imageUrls: input.imageUrls,
     });
-    const streamObserver = input.response && !input.callAI
+    const streamObserver = !hasImages && input.response && !input.callAI
       ? createCustomerResponseStreamObserver(input, language, surface, topic)
       : null;
     const result = streamObserver
@@ -388,6 +395,11 @@ async function resolveCustomerAssistantProviders(
         input.callAI,
       );
     if (!result.success) {
+      if (result.code === "REQUEST_CANCELLED") {
+        const cancellation = new Error("Customer Kael response was cancelled");
+        cancellation.name = "AbortError";
+        throw cancellation;
+      }
       const schemaResponse = result.code === "SCHEMA_INVALID"
         ? result.response
         : undefined;
@@ -466,6 +478,7 @@ async function resolveCustomerAssistantProviders(
     });
   }
 
+  if (input.imageUrls?.length) return failImageAnalysis(language);
   return buildFallbackCustomerAssistantAnswer(
     fallbackText(language, topic),
     topic,
@@ -473,6 +486,16 @@ async function resolveCustomerAssistantProviders(
     true,
     deterministicSafetyNotes(language, topic),
     trace,
+  );
+}
+
+function failImageAnalysis(language: KaelPromptLanguage): never {
+  apiFailure(
+    "VISION_UNAVAILABLE",
+    language === "en"
+      ? "Kael could not analyze this photo right now. Please try again."
+      : "Kael chưa thể phân tích ảnh lúc này. Vui lòng thử lại.",
+    503,
   );
 }
 
@@ -495,6 +518,7 @@ async function resolveSuccessfulCustomerAssistantProvider(input: {
     input.topic,
   );
   if (checked.used_fallback || !checked.allowed) {
+    if (input.input.imageUrls?.length) return failImageAnalysis(input.language);
     await auditCustomerAssistantGuardTrip(input.input, input.surface, input.route, checked);
     input.trace.push(buildCustomerAssistantProviderTrace(input.surface, input.route, "error", {
       code: checked.reason ?? "SELF_CHECK_FALLBACK",

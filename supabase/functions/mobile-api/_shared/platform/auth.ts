@@ -80,6 +80,7 @@ export type MobileApiContext = Extract<MobileApiAuthResult, { success: true }> &
   requestLifecycle?: {
     finalizedByDomain: boolean;
   };
+  signal?: AbortSignal;
 };
 
 const SUPABASE_TIMEOUT_MS = JOB_MEDIA_STORAGE_TIMEOUT_MS;

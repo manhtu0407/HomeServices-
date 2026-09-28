@@ -140,6 +140,45 @@ function useLinkedCaseMessageHarness() {
   return { chatUi, conversation, messageActions }
 }
 
+function useCustomerKaelNormalConversationHarness() {
+  const chatUi = useCustomerKaelChatUiState()
+  const conversation = useCustomerKaelConversationState({
+    initialLoading: false,
+    initialMode: 'normal',
+    pendingDraft: null,
+    stateScopeKey: 'customer-a:normal-image',
+  })
+  const jobIncidentThread = useJobChatThread(null, false, 'vi')
+  const kaelRequestGuard = useCustomerKaelRequestGuard('customer-a:normal-image')
+  const selectedServiceRef = useRef<ServiceType | null>(null)
+  const conversations = {
+    sendConversationTurn: (...args: unknown[]) => mockCatalogSendTurn(...args),
+    sessionsError: null,
+  } as unknown as NonNullable<Parameters<typeof useCustomerKaelMessageActions>[0]['conversations']>
+  const messageActions = useCustomerKaelMessageActions({
+    chatUi,
+    conversation,
+    conversations,
+    deal: null,
+    hasSharedJobIncident: false,
+    jobIncidentThread,
+    kaelRequestGuard,
+    language: 'vi',
+    mode: 'normal',
+    processController: {
+      processLines: null,
+      startBackendProcessLines: jest.fn(),
+      startProcessLines: jest.fn(async () => undefined),
+      stopProcessLines: jest.fn(),
+      updateBackendProcessProgress: jest.fn(),
+    } as unknown as Parameters<typeof useCustomerKaelMessageActions>[0]['processController'],
+    requestOwnerKey: 'customer-a:normal-image',
+    selectedService: null,
+    selectedServiceRef,
+  })
+  return { chatUi, conversation, messageActions }
+}
+
 describe('customer Kael create idempotency', () => {
   beforeEach(() => {
     mockCleanupKaelChatMediaRefs.mockReset()
@@ -214,6 +253,66 @@ describe('customer Kael create idempotency', () => {
     expect(mockUploadKaelChatMediaDrafts).toHaveBeenCalledTimes(1)
     expect(mockCleanupKaelChatMediaRefs).not.toHaveBeenCalled()
     expect(mockKaelChatCreate.mock.calls[1][0]).toEqual(mockKaelChatCreate.mock.calls[0][0])
+  })
+
+  it('uploads a normal-chat image and uses a short prompt when no text was entered', async () => {
+    const mediaRef = 'supabase://kael-chat-media/customer-a/kael-chat/model_vision/photo-normal.jpg'
+    const selectedImage = {
+      fileName: 'private-photo.jpg',
+      mimeType: 'image/jpeg',
+      type: 'image' as const,
+      uri: 'file:///private-photo.jpg',
+    }
+    mockUploadKaelChatMediaDrafts.mockResolvedValue({
+      evidenceItems: [],
+      mediaRefs: [mediaRef],
+      success: true,
+      urls: [],
+    })
+    mockCatalogSendTurn.mockResolvedValue({ turns: [] })
+    const { result } = renderHook(() => useCustomerKaelNormalConversationHarness())
+    act(() => result.current.conversation.setComposerMediaDrafts([selectedImage]))
+
+    await act(async () => {
+      await result.current.messageActions.sendMessage()
+    })
+
+    expect(mockUploadKaelChatMediaDrafts).toHaveBeenCalledWith([selectedImage])
+    expect(mockCatalogSendTurn).toHaveBeenCalledWith(
+      'Phân tích ảnh này',
+      expect.objectContaining({ mediaRefs: [mediaRef], signal: expect.any(AbortSignal) }),
+    )
+    expect(result.current.conversation.composerMediaDrafts).toEqual([])
+  })
+
+  it('keeps a normal-chat image when Stop is pressed during upload', async () => {
+    const mediaRef = 'supabase://kael-chat-media/customer-a/kael-chat/model_vision/photo-stopped.jpg'
+    let resolveUpload!: (value: unknown) => void
+    mockUploadKaelChatMediaDrafts.mockImplementationOnce(() => new Promise((resolve) => {
+      resolveUpload = resolve
+    }))
+    const selectedImage = {
+      fileName: 'private-photo.jpg',
+      mimeType: 'image/jpeg',
+      type: 'image' as const,
+      uri: 'file:///private-photo.jpg',
+    }
+    const { result } = renderHook(() => useCustomerKaelNormalConversationHarness())
+    act(() => result.current.conversation.setComposerMediaDrafts([selectedImage]))
+    let send!: Promise<void>
+    act(() => {
+      send = result.current.messageActions.sendMessage()
+      result.current.messageActions.cancelMessage()
+    })
+
+    await act(async () => {
+      resolveUpload({ mediaRefs: [mediaRef], success: true, urls: [] })
+      await send
+    })
+
+    expect(mockCatalogSendTurn).not.toHaveBeenCalled()
+    expect(mockCleanupKaelChatMediaRefs).toHaveBeenCalledWith([mediaRef])
+    expect(result.current.conversation.composerMediaDrafts).toEqual([selectedImage])
   })
 
   it('starts only one Kael request when send is called twice in one render', async () => {

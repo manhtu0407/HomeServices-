@@ -182,7 +182,6 @@ export function CustomerKaelSessionRow({
             onSubmitEditing={onSaveRename}
             placeholder={copy.renamePlaceholder}
             returnKeyType="done"
-            selectTextOnFocus
             style={styles.renameInput}
             testID="customer-v21-kael-session-title-input"
             value={draftTitle}

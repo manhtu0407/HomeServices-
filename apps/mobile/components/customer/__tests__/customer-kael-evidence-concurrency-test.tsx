@@ -36,7 +36,7 @@ jest.mock('@/lib/services', () => ({
   },
 }))
 
-function evidenceHarness(agenticEvidenceReason = 'Không có ảnh hiện trạng lúc này') {
+function evidenceHarness(agenticEvidenceReason = 'Không có ảnh hiện trạng lúc này', mode: 'case' | 'normal' = 'case') {
   const caseUi = {
     clearCaseEvidenceDraft: jest.fn(),
     setSubmittingCaseEvidence: jest.fn(),
@@ -88,7 +88,7 @@ function evidenceHarness(agenticEvidenceReason = 'Không có ảnh hiện trạn
     hydrateRemoteJobById: mockHydrateRemoteJobById,
     kaelRequestGuard: createCustomerKaelRequestGuard('customer-a:session-a'),
     language: 'vi' as const,
-    mode: 'case' as const,
+    mode,
     pendingDraftLocalizedMessage: null,
     pendingDraftOwnerId: 'customer-a',
     processController,
@@ -341,5 +341,39 @@ describe('customer Kael evidence concurrency', () => {
     expect(mockRequestMediaLibraryPermissions).not.toHaveBeenCalled()
     expect(mockLaunchImageLibrary).toHaveBeenCalledTimes(1)
     expect(harness.conversation.setComposerMediaDrafts).toHaveBeenCalledTimes(1)
+  })
+
+  it('opens an image-only picker for normal chat and ignores any returned video assets', async () => {
+    mockLaunchImageLibrary.mockResolvedValueOnce({
+      assets: [
+        {
+          duration: null,
+          fileName: 'room-photo.png',
+          fileSize: 2048,
+          mimeType: 'image/png',
+          type: 'image',
+          uri: 'file:///room-photo.png',
+        },
+        {
+          duration: 5000,
+          fileName: 'room-video.mp4',
+          fileSize: 4096,
+          mimeType: 'video/mp4',
+          type: 'video',
+          uri: 'file:///room-video.mp4',
+        },
+      ],
+      canceled: false,
+    })
+    const harness = evidenceHarness(undefined, 'normal')
+    const { result } = renderHook(() => useCustomerKaelEvidenceActions(harness.input))
+
+    await act(async () => {
+      await result.current.pickComposerMedia()
+    })
+
+    expect(mockLaunchImageLibrary).toHaveBeenCalledWith(expect.objectContaining({ mediaTypes: ['images'] }))
+    const updateDrafts = harness.conversation.setComposerMediaDrafts.mock.calls[0][0]
+    expect(updateDrafts([])).toEqual([expect.objectContaining({ type: 'image', uri: 'file:///room-photo.png' })])
   })
 })

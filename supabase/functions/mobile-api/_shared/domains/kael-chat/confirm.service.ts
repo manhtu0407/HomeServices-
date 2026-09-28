@@ -139,7 +139,7 @@ async function confirmGovernedKaelChat(input: {
   if (!jobId) apiFailure("DB_ERROR", "Phiên Kael chưa tạo được yêu cầu", 500);
   if (!result.operation) apiFailure("DB_ERROR", "Phiên Kael chưa tạo được tiến trình bền vững", 500);
   const status = (result.jobStatus ?? "awaiting_customer_confirm") as JobStatus;
-  const matchingState = await getMatchingState(input.workflowClient, jobId, status);
+  const matchingState = await getMatchingState(input.workflowClient, jobId, status, input.workflowClient);
   return {
     session_id: input.sessionId,
     job_id: jobId,
@@ -467,6 +467,6 @@ async function readPreviousReleaseConfirmedState(
     broadcast_sent: broadcastSent,
     worker: null,
     message: "Phiên Kael đã được xác nhận. Đang đồng bộ trạng thái hiện tại.",
-    matching_state: await getMatchingState(client, jobId, status),
+    matching_state: await getMatchingState(client, jobId, status, workflowDb(ctx)),
   };
 }

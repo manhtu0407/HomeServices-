@@ -1,6 +1,7 @@
 import type { KaelDiagnosisScopeArtifact } from "../../kael/index.ts";
 import { apiFailure } from "../../platform/api-failure.ts";
 import type { MobileApiContext } from "../../platform/auth.ts";
+import { dbQuery, workflowDb } from "../../platform/db.ts";
 import {
   KAEL_CHAT_MEDIA_BUCKET,
   KAEL_CHAT_MEDIA_REF_PATTERN,
@@ -57,13 +58,25 @@ export async function createSignedVisionUrls(
   }
   const bucket = storage.from(KAEL_CHAT_MEDIA_BUCKET);
   const storagePrefix = `supabase://${KAEL_CHAT_MEDIA_BUCKET}/`;
-  const signedUrls: string[] = [];
-
-  for (const evidence of visionEvidence) {
+  const objectPaths = visionEvidence.map((evidence) => {
     const match = evidence.ref?.match(KAEL_CHAT_MEDIA_REF_PATTERN);
     if (!match || match[1] !== sessionOwnerId || match[2] !== "model_vision") {
       apiFailure("INVALID_MEDIA_REF", "Khung hình gửi Kael không hợp lệ", 400);
     }
+    return evidence.ref!.slice(storagePrefix.length);
+  });
+  const intentsByPath = await loadKaelChatMediaIntents(ctx, objectPaths);
+  if (objectPaths.some((objectPath) => isExpiredKaelChatMediaIntent(intentsByPath.get(objectPath)))) {
+    apiFailure(
+      "MEDIA_INTENT_EXPIRED",
+      "Ảnh đã hết hạn hoặc không còn sẵn sàng. Vui lòng tải lại ảnh.",
+      400,
+    );
+  }
+
+  const signedUrls: string[] = [];
+
+  for (const evidence of visionEvidence) {
     const objectPath = evidence.ref!.slice(storagePrefix.length);
     const signed = await bucket.createSignedUrl(objectPath, 5 * 60, {
       transform: {
@@ -112,6 +125,22 @@ export async function createSignedCaseWorkEvidenceUrls(
   const storage = (storageClient as KaelMediaStorage).storage;
   const bucket = storage?.from(KAEL_CHAT_MEDIA_BUCKET);
   const storagePrefix = `supabase://${KAEL_CHAT_MEDIA_BUCKET}/`;
+  const objectPaths = refs.flatMap((mediaRef) => {
+    const match = mediaRef.match(KAEL_CHAT_MEDIA_REF_PATTERN);
+    return sessionOwnerId && match?.[1] === sessionOwnerId &&
+        match[2] === "model_vision"
+      ? [mediaRef.slice(storagePrefix.length)]
+      : [];
+  });
+  if (objectPaths.length === 0) {
+    return refs.filter((mediaRef) => !mediaRef.startsWith(storagePrefix));
+  }
+  if (!bucket) {
+    apiFailure("STORAGE_NOT_CONFIGURED", "Kho media chưa được cấu hình", 500);
+  }
+
+  // Retention removes expired object bytes while preserving readable chat turns.
+  const intentsByPath = await loadKaelChatMediaIntents(ctx, objectPaths);
 
   const resolved = await Promise.all(refs.map(async (mediaRef) => {
     if (!mediaRef.startsWith(storagePrefix)) return mediaRef;
@@ -126,9 +155,12 @@ export async function createSignedCaseWorkEvidenceUrls(
       return null;
     }
 
+    const objectPath = mediaRef.slice(storagePrefix.length);
+    if (isExpiredKaelChatMediaIntent(intentsByPath.get(objectPath))) return null;
+
     try {
       const signed = await bucket.createSignedUrl(
-        mediaRef.slice(storagePrefix.length),
+        objectPath,
         KAEL_CASE_WORK_EVIDENCE_URL_EXPIRES_IN_SECONDS,
         {
           transform: {
@@ -146,6 +178,44 @@ export async function createSignedCaseWorkEvidenceUrls(
   }));
 
   return resolved.filter((mediaRef): mediaRef is string => Boolean(mediaRef));
+}
+
+function isExpiredKaelChatMediaIntent(intent: Record<string, unknown> | undefined) {
+  if (!intent || typeof intent.status !== "string") return true;
+  if (
+    (intent.status !== "reserved" && intent.status !== "consumed") ||
+    (intent.cleaned_at !== null && intent.cleaned_at !== undefined)
+  ) {
+    return true;
+  }
+  const deleteAfter = typeof intent.delete_after === "string"
+    ? Date.parse(intent.delete_after)
+    : Number.NaN;
+  return !Number.isFinite(deleteAfter) || deleteAfter <= Date.now();
+}
+
+async function loadKaelChatMediaIntents(
+  ctx: MobileApiContext,
+  objectPaths: readonly string[],
+) {
+  const intents = await dbQuery<Array<Record<string, unknown>>>(
+    workflowDb(ctx)
+      .from("kael_chat_media_upload_intents")
+      .select("object_path, status, cleaned_at, delete_after")
+      .in("object_path", [...new Set(objectPaths)]),
+  );
+  if (intents.error) {
+    apiFailure(
+      "MEDIA_VALIDATION_UNAVAILABLE",
+      "Chưa thể kiểm tra thời hạn lưu trữ của bằng chứng. Vui lòng thử lại.",
+      503,
+    );
+  }
+  return new Map(
+    (intents.data ?? []).flatMap((row) =>
+      typeof row.object_path === "string" ? [[row.object_path, row] as const] : []
+    ),
+  );
 }
 
 export function isTrustedKaelVisionTransformPayload(

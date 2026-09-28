@@ -85,7 +85,7 @@ export async function beginMatchingPreferencePrompt(
     options.autonomyDecision ? { autonomy_decision: options.autonomyDecision } : {},
   );
   await logMatchingEvent(client, jobId, "matching_preference_pending");
-  return requireMatchingState(client, jobId, "broadcasting");
+  return requireMatchingState(client, jobId, "broadcasting", workflowDb(ctx));
 }
 
 export async function ensureGeneralMatchingPreference(
@@ -162,6 +162,7 @@ export async function setJobMatchingPreference(
   if (!result.acquired) {
     return matchingPreferenceResponse(
       client,
+      workflowDb(ctx),
       jobId,
       job.status as JobStatus,
       false,
@@ -170,6 +171,7 @@ export async function setJobMatchingPreference(
   }
   return matchingPreferenceResponse(
     client,
+    workflowDb(ctx),
     jobId,
     job.status as JobStatus,
     result.value.broadcast_sent,
@@ -179,6 +181,7 @@ export async function setJobMatchingPreference(
 
 async function matchingPreferenceResponse(
   client: DbClient,
+  matchingOperationsClient: DbClient,
   jobId: string,
   status: JobStatus,
   broadcastSent: boolean,
@@ -190,12 +193,17 @@ async function matchingPreferenceResponse(
     broadcast_sent: broadcastSent,
     worker: null,
     message,
-    matching_state: await requireMatchingState(client, jobId, status),
+    matching_state: await requireMatchingState(client, jobId, status, matchingOperationsClient),
   };
 }
 
-async function requireMatchingState(client: DbClient, jobId: string, status: string) {
-  const matchingState = await getMatchingState(client, jobId, status);
+async function requireMatchingState(
+  client: DbClient,
+  jobId: string,
+  status: string,
+  matchingOperationsClient: DbClient,
+) {
+  const matchingState = await getMatchingState(client, jobId, status, matchingOperationsClient);
   if (!matchingState) {
     apiFailure("DB_ERROR", "Không thể tải biên nhận tìm thợ", 500);
   }

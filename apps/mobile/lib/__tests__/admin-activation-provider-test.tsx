@@ -15,7 +15,7 @@ jest.mock('../api', () => ({
 }))
 
 jest.mock('../auth-provider', () => ({
-  useAuth: () => ({ session: mockSession, signOut: mockSignOut }),
+  useAuth: () => ({ session: mockSession, role: 'customer', signOut: mockSignOut }),
 }))
 
 import { AdminActivationProvider, useAdminActivation } from '../admin-activation-provider'

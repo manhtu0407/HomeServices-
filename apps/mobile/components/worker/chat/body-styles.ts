@@ -5,6 +5,7 @@ export const styles = StyleSheet.create({
     flex: 1,
     gap: 10,
     minHeight: 0,
+    position: 'relative',
   },
   kaelOrbCustomerTranscript: {
     flexGrow: 1,
@@ -21,6 +22,22 @@ export const styles = StyleSheet.create({
   },
   kaelOrbCustomerTranscriptScroll: {
     flex: 1,
+  },
+  kaelOrbLatestButton: {
+    alignItems: 'center',
+    borderRadius: 18,
+    borderWidth: 1,
+    bottom: 86,
+    justifyContent: 'center',
+    minHeight: 36,
+    minWidth: 84,
+    paddingHorizontal: 14,
+    position: 'absolute',
+    right: 12,
+    zIndex: 10,
+  },
+  kaelOrbLatestButtonText: {
+    fontWeight: '600',
   },
   kaelOrbChatBody: {
     gap: 8,

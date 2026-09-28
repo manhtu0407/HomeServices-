@@ -113,38 +113,36 @@ export function useCustomerKaelEvidenceActions({
   const evidenceSubmissionRef = useRef<{ ownerKey: string } | null>(null)
 
   const pickComposerMedia = async () => {
-    if (mode === 'normal') {
-      setError(language === 'vi'
-        ? 'Để gửi ảnh hoặc video, hãy chuyển sang Xử lý công việc.'
-        : 'To send photos or videos, switch to Work handling.')
-      return
-    }
-    if (mode !== 'case') return
+    if (mode !== 'normal' && mode !== 'case') return
+    if (composerMediaDrafts.length >= 5) return
+    const imageOnly = mode === 'normal'
     const requestToken = kaelRequestGuard.begin('media-picker')
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
         allowsMultipleSelection: true,
-        mediaTypes: chatComposerMediaTypes,
+        mediaTypes: imageOnly ? ['images'] : chatComposerMediaTypes,
         preferredAssetRepresentationMode: 'compatible' as ImagePicker.UIImagePickerPreferredAssetRepresentationMode,
         quality: 0.86,
         selectionLimit: Math.max(1, 5 - composerMediaDrafts.length),
       })
       if (result.canceled || !kaelRequestGuard.isCurrent(requestToken)) return
-      const drafts: LocalMediaUploadDraft[] = result.assets.map((asset) => ({
-        uri: asset.uri,
-        type: mediaDraftTypeFromPickerAsset(asset),
-        fileName: asset.fileName ?? asset.uri.split('/').pop(),
-        mimeType: asset.mimeType ?? undefined,
-        fileSizeBytes: asset.fileSize ?? undefined,
-        durationMillis: asset.duration ?? undefined,
-      }))
+      const drafts: LocalMediaUploadDraft[] = result.assets
+        .map((asset) => ({
+          uri: asset.uri,
+          type: mediaDraftTypeFromPickerAsset(asset),
+          fileName: asset.fileName ?? asset.uri.split('/').pop(),
+          mimeType: asset.mimeType ?? undefined,
+          fileSizeBytes: asset.fileSize ?? undefined,
+          durationMillis: asset.duration ?? undefined,
+        }))
+        .filter((draft) => !imageOnly || draft.type === 'image')
       setComposerMediaDrafts((current) => mergeMediaDrafts(current, drafts, 5))
       setError(null)
     } catch {
       if (kaelRequestGuard.isCurrent(requestToken)) {
         setError(language === 'vi'
-          ? 'Chưa thể mở thư viện ảnh/video lúc này. Vui lòng thử lại.'
-          : 'Could not open the media library right now. Please try again.')
+          ? imageOnly ? 'Chưa thể mở thư viện ảnh lúc này. Vui lòng thử lại.' : 'Chưa thể mở thư viện ảnh/video lúc này. Vui lòng thử lại.'
+          : imageOnly ? 'Could not open the photo library right now. Please try again.' : 'Could not open the media library right now. Please try again.')
       }
     }
   }
