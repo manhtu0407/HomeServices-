@@ -60,7 +60,7 @@ export function WorkerReportSheet({
   const [category, setCategory] = useState<CustomerReportableViolation | null>(null)
   const [statement, setStatement] = useState('')
   const [sending, setSending] = useState(false)
-  const [result, setResult] = useState<'sent' | 'offline' | 'signed_out' | 'failed' | 'rate_limited' | 'not_reportable' | null>(null)
+  const [result, setResult] = useState<'sent' | 'offline' | 'signed_out' | 'failed' | 'rate_limited' | 'not_reportable' | 'worker_changed' | null>(null)
   const vi = language === 'vi'
   const canSend = category !== null && statement.trim().length >= MIN_STATEMENT && !sending && result !== 'sent'
 
@@ -72,6 +72,7 @@ export function WorkerReportSheet({
     if (response.success) setResult('sent')
     else if (response.code === 'RATE_LIMITED') setResult('rate_limited')
     else if (response.code === 'INVALID_STATUS') setResult('not_reportable')
+    else if (response.code === 'JOB_WORKER_CHANGED') setResult('worker_changed')
     // Each cause gets its own instruction: a signed-out customer checking the Wi-Fi fixes nothing.
     else if (response.code === 'AUTH_REQUIRED' || response.status === 401) setResult('signed_out')
     else if (response.code === 'NETWORK_ERROR' || response.code === 'TIMEOUT') setResult('offline')
@@ -142,6 +143,8 @@ export function WorkerReportSheet({
                     ? (vi ? 'Bạn đã gửi quá nhiều báo cáo hôm nay.' : 'You have sent too many reports today.')
                     : result === 'not_reportable'
                       ? (vi ? 'Chỉ báo cáo được thợ đã nhận công việc của bạn.' : 'You can only report the worker who took your job.')
+                    : result === 'worker_changed'
+                      ? (vi ? 'Công việc này đã đổi thợ. Hãy báo qua mục Hỗ trợ để NestScout xác định đúng người.' : 'This job changed workers. Report it through Support so NestScout identifies the right person.')
                       : result === 'signed_out'
                         ? (vi ? 'Phiên đăng nhập đã hết hạn. Đăng nhập lại rồi gửi báo cáo.' : 'Your session has expired. Sign in again, then send the report.')
                         : result === 'offline'

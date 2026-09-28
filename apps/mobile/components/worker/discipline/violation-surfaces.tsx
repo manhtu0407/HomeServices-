@@ -163,7 +163,10 @@ function CaseCard({ controller, item, language }: { controller: ViolationsContro
       ) : null}
       {item.status === 'proposed' ? (
         <Text style={styles.ruleBody}>
-          {textByLanguage(language, `Chưa có hình phạt nào được áp dụng. Quản trị viên sẽ xem xét trước ${formatDate(item.decision_deadline_at, language)}.`, `No penalty applies yet. An administrator will review by ${formatDate(item.decision_deadline_at, language)}.`)}
+          {item.consequences.some((consequence) => !consequence.restored)
+            // A level-1 proposal lowers the matching rank at once; saying "no penalty" would be untrue.
+            ? textByLanguage(language, `Thứ hạng nhận việc tạm giảm trong lúc chờ xem xét; chưa có hình phạt nào khác. Quản trị viên sẽ xem xét trước ${formatDate(item.decision_deadline_at, language)}.`, `Your job ranking is lowered while this is reviewed; nothing else applies yet. An administrator will review by ${formatDate(item.decision_deadline_at, language)}.`)
+            : textByLanguage(language, `Chưa có hình phạt nào được áp dụng. Quản trị viên sẽ xem xét trước ${formatDate(item.decision_deadline_at, language)}.`, `No penalty applies yet. An administrator will review by ${formatDate(item.decision_deadline_at, language)}.`)}
         </Text>
       ) : null}
       {item.consequences.length > 0 ? (
