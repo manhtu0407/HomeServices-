@@ -93,8 +93,15 @@ export function KaelChatComposer({
   const activeSendBackground = tokens.mode === 'light' ? color.mint.white : tokens.primary
   const activeSendBorder = tokens.mode === 'light' ? color.surface.stroke : tokens.borderStrong
   const activeSendForeground = tokens.mode === 'light' ? color.text.strong : tokens.primaryText
-  const [measuredInput, setMeasuredInput] = useState({ draft, height: COMPOSER_MIN_HEIGHT })
-  const inputHeight = measuredInput.draft === draft ? measuredInput.height : COMPOSER_MIN_HEIGHT
+  const [measuredHeight, setMeasuredHeight] = useState(COMPOSER_MIN_HEIGHT)
+  const [hadDraft, setHadDraft] = useState(Boolean(draft))
+  // Measurement survives edits that keep the line count: native fires no new
+  // contentSize event for them, and web can fire it before the new draft renders.
+  if (hadDraft !== Boolean(draft)) {
+    setHadDraft(Boolean(draft))
+    if (!draft) setMeasuredHeight(COMPOSER_MIN_HEIGHT)
+  }
+  const inputHeight = draft ? measuredHeight : COMPOSER_MIN_HEIGHT
   return (
     <>
       <GlassSurface
@@ -169,10 +176,7 @@ export function KaelChatComposer({
           onChangeText={onDraftChange}
           onContentSizeChange={(event) => {
             const nextHeight = event.nativeEvent.contentSize.height
-            setMeasuredInput({
-              draft,
-              height: Math.min(Math.max(nextHeight, COMPOSER_MIN_HEIGHT), COMPOSER_MAX_HEIGHT),
-            })
+            setMeasuredHeight(Math.min(Math.max(nextHeight, COMPOSER_MIN_HEIGHT), COMPOSER_MAX_HEIGHT))
           }}
           onFocus={onFocus}
           onSubmitEditing={onSendMessage}

@@ -18,12 +18,12 @@ import { preAgenticUnsupportedService } from '../kael-chat/customer-kael-pre-age
 
 export const PILLAR = {
   id: 'P205-kael-composer-and-failure-boundary',
-  invariant: 'Kael never submits an empty composer, never sends a message beyond the shared 5000-character boundary, keeps text close to the camera, resets the text field after a draft is cleared, previews normal-chat images without filenames and with accessible X removal controls, allows image analysis while keeping video in Work handling, renders a 27px dark-toned media icon in a 44px touch target, uses a pale liquid-glass send and stop surface with accessible themed controls, and renders one user-facing failure copy',
+  invariant: 'Kael never submits an empty composer, never sends a message beyond the shared 5000-character boundary, keeps text close to the camera, resets the text field after a draft is cleared and keeps its measured height across same-size edits, previews normal-chat images without filenames and with accessible X removal controls, allows image analysis while keeping video in Work handling, renders a 27px dark-toned media icon in a 44px touch target, uses a pale liquid-glass send and stop surface with accessible themed controls, and renders one user-facing failure copy',
   authority: ['governance/RULES.md #3, #6, and #7', 'governance/protocols/frontend-test.md G3 and G4'],
   target: 'apps/mobile/components/customer/kael-chat/kael-chat-composer.tsx',
   layer: 'unit',
   siblings: ['P104-kael-ephemeral-state-scope', 'P75-transaction-critical-route-coverage'],
-  mutation: 'allow whitespace submission, lower the UI boundary without the contract constant, widen spacing between the camera and text field, retain stale input height after the parent clears a draft, render normal-chat filenames instead of in-composer thumbnails with X controls, disable normal-chat image picking, enlarge the composer media icon past 27px, color the enabled camera teal instead of matching the dark send glyph, replace the pale light-theme send surface with a saturated fill or low-contrast icon, restore the thick stop ring, disable the busy stop action, render an inline failure beside the receipt, or mix VI and EN decline copy; an assertion fails',
+  mutation: 'allow whitespace submission, lower the UI boundary without the contract constant, widen spacing between the camera and text field, retain stale input height after the parent clears a draft, collapse a measured multi-line draft on an edit that keeps its line count, render normal-chat filenames instead of in-composer thumbnails with X controls, disable normal-chat image picking, enlarge the composer media icon past 27px, color the enabled camera teal instead of matching the dark send glyph, replace the pale light-theme send surface with a saturated fill or low-contrast icon, restore the thick stop ring, disable the busy stop action, render an inline failure beside the receipt, or mix VI and EN decline copy; an assertion fails',
 } as const satisfies PillarManifest
 
 const rootStyles: RootChatStyles = {
@@ -143,6 +143,21 @@ describe('Kael composer and failure boundary', () => {
       composer.rerenderDraft('New draft')
       expect(input).toHaveStyle({ height: 44 })
     }, 'clearing a sent draft must not leave the next message in a stale tall input')
+  })
+
+  it('keeps the measured height while an edit leaves the line count unchanged', () => {
+    withPillarContext(PILLAR, () => {
+      const composer = renderComposer('light')
+      const input = screen.getByTestId('customer-v21-kael-input')
+
+      fireEvent(input, 'contentSizeChange', {
+        nativeEvent: { contentSize: { height: 64, width: 300 } },
+      })
+      expect(input).toHaveStyle({ height: 64 })
+
+      composer.rerenderDraft('Xin chào Kael!')
+      expect(input).toHaveStyle({ height: 64 })
+    }, 'a two-line draft must not collapse to one line and scroll its first line out of view')
   })
 
   it('shows normal-chat image thumbnails inside the composer with X removal and no filename text', () => {

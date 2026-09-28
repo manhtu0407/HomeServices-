@@ -1813,14 +1813,14 @@ describe('Worker runtime surface wiring', () => {
       alignItems: 'center',
       height: 44,
       justifyContent: 'center',
-      width: 114,
+      minWidth: 114,
     })
     expect(
       StyleSheet.flatten(screen.getByTestId('worker-v5-kael-mode-toggle').props.style),
     ).toMatchObject({
       alignItems: 'center',
       alignSelf: 'stretch',
-      flex: 1,
+      flexGrow: 1,
       justifyContent: 'center',
       outlineColor: 'transparent',
       outlineStyle: 'solid',

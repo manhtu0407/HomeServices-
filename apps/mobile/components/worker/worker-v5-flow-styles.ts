@@ -1945,7 +1945,7 @@ export const styles = StyleSheet.create({
     flexDirection: 'row',
     height: 44,
     justifyContent: 'center',
-    width: 114,
+    minWidth: 114,
   },
   kaelOrbCustomerModeTriggerOpen: {
     backgroundColor: 'transparent',
@@ -1958,7 +1958,7 @@ export const styles = StyleSheet.create({
   kaelOrbCustomerModeTriggerPressTarget: {
     alignItems: 'center',
     alignSelf: 'stretch',
-    flex: 1,
+    flexGrow: 1,
     justifyContent: 'center',
     outlineColor: 'transparent',
     outlineStyle: 'solid',
