@@ -57,11 +57,13 @@ import {
   WorkerJobsProductionHost,
 } from './jobs/worker-jobs-production-host'
 import {
+  WorkerV5AmbassadorBody,
   WorkerV5CommissionPolicyBody,
   WorkerV5EarningsOverviewBody,
   WorkerV5PayoutRequestBody,
   WorkerV5ReceivingAccountBody,
   WorkerV5TransactionHistoryBody,
+  WorkerV5ViolationsBody,
 } from './earnings/body-surfaces'
 import { resolveWorkerEarningsPeriod, type WorkerEarningsPeriod } from './earnings/overview-model'
 import { useWorkerV5RoutePreview, type WorkerV5RoutePreviewState } from './jobs/use-worker-route-preview'
@@ -206,7 +208,10 @@ function WorkerV5ScreenSurface({ screen }: { screen: WorkerV5ScreenDefinition })
     || screen.id === '4.3-payout-request'
     || screen.id === '4.4-payout-method'
     || screen.id === '4.5-commission-policy'
-  const headerBackScreen = usesEarningsDetailHandoff
+    || screen.id === '4.6-ambassador'
+  const headerBackScreen = screen.id === '4.7-violations'
+    ? getWorkerV5Screen('4.6-ambassador') ?? previousScreen
+    : usesEarningsDetailHandoff
     ? getWorkerV5Screen('4.1-earnings-overview') ?? previousScreen
     : usesCustomerConfirmationWaitHandoff || usesRouteEtaHandoff || usesInProgressHandoff
       ? getWorkerV5Screen('2.1-opportunity-inbox') ?? previousScreen
@@ -217,7 +222,7 @@ function WorkerV5ScreenSurface({ screen }: { screen: WorkerV5ScreenDefinition })
   const usesCompletionSubmittedHandoff = screen.id === '2.11-completion-submitted'
   const usesCaseClosedHandoff = screen.id === '2.12-case-closed'
   const usesKaelOrbHandoff = screen.id === '3.1-kael-chat-normal' || screen.id === '3.2-kael-job-intake'
-  const usesEarningsHandoff = screen.id === '4.1-earnings-overview' || screen.id === '4.2-ledger-detail' || screen.id === '4.3-payout-request' || screen.id === '4.4-payout-method' || screen.id === '4.5-commission-policy'
+  const usesEarningsHandoff = screen.id === '4.1-earnings-overview' || screen.id === '4.2-ledger-detail' || screen.id === '4.3-payout-request' || screen.id === '4.4-payout-method' || screen.id === '4.5-commission-policy' || screen.id === '4.6-ambassador' || screen.id === '4.7-violations'
   const usesEarningsOverviewHandoff = screen.id === '4.1-earnings-overview'
   const usesProfileHandoff = screen.id === '5.1-profile-overview' || screen.id === '5.15-worker-delete-account' || screen.id === '5.2-worker-ranking' || screen.id === '5.3-skills-service-area' || screen.id === '5.4-reliability-insights' || screen.id === '5.5-account-utilities' || screen.id === '5.6-agent-memory-preferences' || screen.id === '5.7-verification-documents' || screen.id === '5.9-reviews-feedback' || screen.id === '5.10-support-settings' || screen.id === '5.11-worker-availability' || screen.id === '5.12-worker-notifications' || screen.id === '5.13-worker-support' || screen.id === '5.14-worker-policies'
   const hidesHeaderUtility = usesProfileHandoff
@@ -858,6 +863,10 @@ function WorkerV5Body({
           runtime={runtime}
         />
       )
+    case '4.6-ambassador':
+      return <WorkerV5AmbassadorBody language={language} navigateToScreen={navigateToScreen} />
+    case '4.7-violations':
+      return <WorkerV5ViolationsBody language={language} />
     case '5.1-profile-overview':
       return (
         <WorkerV5ProfileOverviewBody
@@ -929,7 +938,7 @@ function WorkerV5Body({
     case '5.11-worker-availability':
       return <WorkerV5ScheduleBody language={language} onOpenProfileSetup={() => navigateToScreen('5.7-verification-documents')} reduceMotion={reduceMotion} reduceTransparency={reduceTransparency} runtime={runtime} />
     case '5.12-worker-notifications':
-      return <WorkerV5NotificationsBody language={language} navigateToJob={navigateToJob} runtime={runtime} />
+      return <WorkerV5NotificationsBody language={language} navigateToJob={navigateToJob} navigateToViolations={() => navigateToScreen('4.7-violations')} runtime={runtime} />
     case '5.13-worker-support':
       return <WorkerV5SupportBody language={language} navigateToJobs={navigateToJobs} navigateToKael={navigateSupportKael} />
     case '5.14-worker-policies':
@@ -1027,6 +1036,8 @@ function getWorkerV5PrimaryAction(
     case '4.3-payout-request':
     case '4.4-payout-method':
     case '4.5-commission-policy':
+    case '4.6-ambassador':
+    case '4.7-violations':
       return null
     case '5.1-profile-overview':
       return null
@@ -1132,6 +1143,10 @@ function buildHeroLine(screen: WorkerV5ScreenDefinition, runtime: WorkerV5Runtim
       return textByLanguage(language, 'Quản lý tài khoản nhận tiền', 'Manage payout account')
     case '4.5-commission-policy':
       return textByLanguage(language, 'Hiểu rõ mức hoa hồng đang áp dụng', 'Understand the current commission rate')
+    case '4.6-ambassador':
+      return textByLanguage(language, 'Mang khách về app, tích điểm, đổi thưởng', 'Bring customers to the app, earn points, redeem rewards')
+    case '4.7-violations':
+      return textByLanguage(language, 'Quy định rõ ràng và quyền khiếu nại', 'Clear rules and the right to appeal')
     case '5.1-profile-overview':
       return runtime.workerProfile?.legal_name || textByLanguage(language, 'Hồ sơ thợ', 'Worker profile')
     case '5.2-worker-ranking':
@@ -1266,9 +1281,13 @@ function buildHeroBody(screen: WorkerV5ScreenDefinition, runtime: WorkerV5Runtim
     case '4.5-commission-policy':
       return textByLanguage(
         language,
-        'Mức khởi điểm là 15%; bậc cao hơn có thể được áp dụng mức thấp hơn khi đáp ứng điều kiện.',
-        'The starting rate is 15%; higher levels may receive a lower rate after meeting the requirements.',
+        'Phí nền tảng cố định cho mọi công việc; NestScout thưởng theo mốc thay cho giảm phí.',
+        'The platform fee is fixed for every job; NestScout pays milestone rewards instead of fee cuts.',
       )
+    case '4.6-ambassador':
+      return textByLanguage(language, 'Điểm chỉ đến từ đơn thanh toán trong app; đổi thưởng được khấu trừ thuế theo quy định.', 'Points come only from paid in-app orders; rewards are subject to tax withholding.')
+    case '4.7-violations':
+      return textByLanguage(language, 'Hệ thống đề xuất, quản trị viên xác nhận; bạn luôn được khiếu nại.', 'The system proposes, an administrator confirms; you can always appeal.')
     case '5.1-profile-overview':
       return textByLanguage(
         language,

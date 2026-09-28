@@ -26,6 +26,7 @@ import { FindingWorkersReceipt } from './finding-workers-receipt'
 import { ScopeChangeReviewingDetails } from './scope-change-reviewing-details'
 import { ScopeChangeProposalDetails } from './scope-change-proposal-details'
 import { ApartmentAccessControls } from './apartment-access-controls'
+import { isWorkerAtWorkStatus, WorkerReportButton } from '../report/worker-report-entry'
 
 type PaymentBusyAction =
   | 'manual_order'
@@ -177,12 +178,22 @@ export function AgenticCaseThreadPanel({
   ) : null
   const apartmentAccessReady = model.actionKind === 'apartment_access'
   const activityActionLabel = phase === 'done' || phase === 'cancelled' ? activityLabel : null
+  // While a worker is on the job the customer can always reach the report, next to whatever
+  // decision the current step asks for.
+  const withWorkerReport = (controls: ReactNode) => isWorkerAtWorkStatus(deal.status)
+    ? (
+      <View style={styles.reportStack}>
+        {controls}
+        <WorkerReportButton jobId={deal.id} language={language} testID="customer-v21-case-work-report-worker" />
+      </View>
+    )
+    : controls
 
   return (
     <View style={styles.phaseStack} testID="customer-v21-case-work-thread">
       {phaseHistory}
       <CaseWorkResponse
-        controls={pendingScopeChange ? (
+        controls={withWorkerReport(pendingScopeChange ? (
           <View style={styles.actions}>
             <KaelButton
               label={language === 'vi' ? 'Từ chối' : 'Decline'}
@@ -244,7 +255,7 @@ export function AgenticCaseThreadPanel({
             testID="customer-v21-case-open-activity"
             variant="secondary"
           />
-        ) : undefined}
+        ) : undefined)}
         details={scopeReviewingDetails ?? scopeProposalDetails ?? matchingReceipt}
         model={model}
         reduceMotion={reduceMotion}
@@ -478,6 +489,10 @@ const styles = StyleSheet.create({
   },
   actions: {
     flexDirection: 'row',
+    gap: 10,
+  },
+  reportStack: {
+    alignItems: 'flex-start',
     gap: 10,
   },
   phaseHistory: {

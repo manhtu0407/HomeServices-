@@ -9,6 +9,7 @@ describe('customer profile insights aggregation', () => {
       customerProfile: null,
       disputes: [],
       kaelInteractionCount: 0,
+      membershipPoints: 0,
       jobs: [
         {
           id: 'job-1',
@@ -70,6 +71,7 @@ describe('customer profile insights aggregation', () => {
         { job_id: 'job-3', status: 'admin_review' },
       ],
       kaelInteractionCount: 4,
+      membershipPoints: 0,
       jobs: [
         {
           id: 'job-1',
@@ -153,6 +155,7 @@ describe('customer profile insights aggregation', () => {
       disputes: [],
       jobs: [],
       kaelInteractionCount: 0,
+      membershipPoints: 0,
       reviews: [],
       savedAddressCount: 0,
     })
@@ -194,6 +197,7 @@ describe('customer profile insights aggregation', () => {
       disputes: [],
       jobs: [],
       kaelInteractionCount: 0,
+      membershipPoints: 0,
       reviews: [],
       savedAddressCount: 0,
     })

@@ -350,7 +350,7 @@ export type AdminFinanceCsvExportResponse = {
 export type AdminFinanceTaxPolicyStatus = 'draft' | 'approved' | 'retired'
 export type AdminFinanceTaxType = string
 export type AdminFinanceTaxSubject = 'platform' | 'worker'
-export type AdminFinanceTaxBasis = 'gmv' | 'commission_collected' | 'commission_retained' | 'worker_net_paid'
+export type AdminFinanceTaxBasis = 'gmv' | 'commission_collected' | 'commission_retained' | 'worker_net_paid' | 'worker_bonus'
 
 export type AdminFinanceTaxRule = {
   id: string
@@ -358,6 +358,7 @@ export type AdminFinanceTaxRule = {
   subject: AdminFinanceTaxSubject
   basis: AdminFinanceTaxBasis
   rate_bps: number
+  applies_at_or_above_vnd?: number | null
   created_at: string
 }
 
@@ -382,7 +383,7 @@ export type AdminFinanceTaxPolicy = {
 
 export type AdminFinanceTaxPolicyDraftInput = {
   name: string
-  rules: Array<Pick<AdminFinanceTaxRule, 'tax_type' | 'subject' | 'basis' | 'rate_bps'>>
+  rules: Array<Pick<AdminFinanceTaxRule, 'tax_type' | 'subject' | 'basis' | 'rate_bps' | 'applies_at_or_above_vnd'>>
   effective_from: string
   effective_to?: string
   source_reference: string

@@ -20,6 +20,13 @@ type Notification = NotificationResponse['notification']
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 const MAX_NOTIFICATION_PATH_LENGTH = 2_048
+const isUuid = (value: string) => UUID_PATTERN.test(value)
+// Each push path accepts only these query keys, each with an exact value check.
+const NOTIFICATION_PATH_PARAMS: Record<string, Record<string, (value: string) => boolean>> = {
+  '/(customer)/history': { job_id: isUuid, scope_change: isUuid, section: (value) => value === 'compensation' },
+  '/(worker)/jobs': { broadcast_id: isUuid, job_id: isUuid },
+  '/(worker)/earnings': { ns_worker_screen: (value) => value === '4.7-violations' },
+}
 
 type ExpoNotificationsModule = {
   AndroidImportance?: { HIGH?: number }
@@ -235,18 +242,15 @@ function normalizeNotificationPath(value: string | null) {
     const queryIndex = withoutScheme.indexOf('?')
     const rawPath = queryIndex === -1 ? withoutScheme : withoutScheme.slice(0, queryIndex)
     if (rawPath !== parsed.pathname) return null
-    const allowedKeys = parsed.pathname === '/(customer)/history'
-      ? new Set(['job_id', 'scope_change'])
-      : parsed.pathname === '/(worker)/jobs'
-        ? new Set(['broadcast_id', 'job_id'])
-        : null
+    const allowedKeys = Object.hasOwn(NOTIFICATION_PATH_PARAMS, parsed.pathname) ? NOTIFICATION_PATH_PARAMS[parsed.pathname] : null
     if (!allowedKeys) return null
     for (const key of parsed.searchParams.keys()) {
       const values = parsed.searchParams.getAll(key)
-      if (!allowedKeys.has(key) || values.length !== 1 || !UUID_PATTERN.test(values[0] ?? '')) return null
+      const accepts = Object.hasOwn(allowedKeys, key) ? allowedKeys[key] : null
+      if (!accepts || values.length !== 1 || !accepts(values[0] ?? '')) return null
     }
     const canonical = new URLSearchParams()
-    for (const key of allowedKeys) {
+    for (const key of Object.keys(allowedKeys)) {
       const value = parsed.searchParams.get(key)
       if (value) canonical.set(key, value)
     }

@@ -1,7 +1,6 @@
-import { useState } from 'react'
 import { fireEvent, render } from '@testing-library/react-native'
 import { type PillarManifest } from '@/__tests__/pillar-manifest'
-import { getGateLayout, NestScoutLoginGate, nextRoleAction, type Role } from '../entry-access/nestscout-login-gate'
+import { getGateLayout, NestScoutLoginGate } from '../entry-access/nestscout-login-gate'
 
 jest.mock('expo-image', () => ({ Image: require('react-native').View }))
 jest.mock('react-native-safe-area-context', () => ({
@@ -18,22 +17,8 @@ export const PILLAR = {
   target: 'apps/mobile/components/auth/entry-access/nestscout-login-gate/nestscout-login-gate.tsx',
   layer: 'ui-visual',
   siblings: ['P64-role-gate-language-integrity', 'P42-auth-session-shell'],
-  mutation: 'replace the Production Login Gate with the retired role-card surface or remove the two-step role interaction — the layout and interaction assertions turn red',
+  mutation: 'replace the Production Login Gate with the retired role-card surface or make a role press anything but an immediate continue — the layout and interaction assertions turn red',
 } as const satisfies PillarManifest
-
-function Harness({ onContinue }: { onContinue: (role: Role) => void }) {
-  const [role, setRole] = useState<Role | null>(null)
-
-  return (
-    <NestScoutLoginGate
-      selectedRole={role}
-      onRolePress={next => {
-        if (nextRoleAction(role, next) === 'continue') onContinue(next)
-        else setRole(next)
-      }}
-    />
-  )
-}
 
 describe('Approved NestScout role gate', () => {
   it('scales the app crop to the available width and preserves its source origin', () => {
@@ -46,16 +31,16 @@ describe('Approved NestScout role gate', () => {
     expect(layout.scrollNeeded).toBe(false)
   })
 
-  it('selects once and continues on the second press; switching role does not continue', () => {
-    const onContinue = jest.fn()
-    const view = render(<Harness onContinue={onContinue} />)
+  it('reports the pressed role on the first tap, once per press', () => {
+    const onRolePress = jest.fn()
+    const view = render(<NestScoutLoginGate onRolePress={onRolePress} />)
 
+    fireEvent.press(view.getByTestId('auth-entry-role-worker'))
+    expect(onRolePress).toHaveBeenCalledTimes(1)
+    expect(onRolePress).toHaveBeenLastCalledWith('worker')
     fireEvent.press(view.getByTestId('auth-entry-role-customer'))
-    expect(onContinue).not.toHaveBeenCalled()
-    fireEvent.press(view.getByTestId('auth-entry-role-worker'))
-    expect(onContinue).not.toHaveBeenCalled()
-    fireEvent.press(view.getByTestId('auth-entry-role-worker'))
-    expect(onContinue).toHaveBeenCalledWith('worker')
+    expect(onRolePress).toHaveBeenCalledTimes(2)
+    expect(onRolePress).toHaveBeenLastCalledWith('customer')
   })
 
   it('exposes the two roles as real buttons and blocks interaction while disabled', () => {

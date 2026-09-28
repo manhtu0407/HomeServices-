@@ -42,6 +42,7 @@ import {
   matchesWorkerApplicationQuery,
 } from "./control-formatters.ts";
 import { asCapabilities, requireAdminCapability } from "./actor.ts";
+import { failIdentityGate } from "./identity-gate.ts";
 import { serializeProvisioning } from "./operator-provisioning.ts";
 import { scopeQueryToRealTraffic } from "../../platform/synthetic-cohort.ts";
 import { afterSubAdminCursor, encodeSubAdminCursor } from "./control-pagination.ts";
@@ -183,6 +184,7 @@ export async function decideAdminWorkerApplication(
     }),
   );
   if (result.error) {
+    failIdentityGate(result.error.message);
     apiFailure("DB_ERROR", "Không thể lưu quyết định hồ sơ thợ", 500);
   }
   const row = requireWorkerReviewReceipt(result.data, applicationId, input.decision);

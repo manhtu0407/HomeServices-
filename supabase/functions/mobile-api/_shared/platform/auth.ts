@@ -31,7 +31,7 @@ export type MobileApiAuthResult =
       lastSignInAt?: string;
     };
     role: UserRole;
-    accountState?: "active" | "deletion_processing" | "deleted";
+    accountState?: "active" | "deletion_processing" | "deleted" | "locked";
     supabase: unknown;
     privilegedSupabase?: unknown;
     userSupabase?: unknown;
@@ -179,14 +179,19 @@ export function createEdgeAuthenticator(
 
     const accountDeletionRetry = request.method === "POST" &&
       new URL(request.url).pathname.endsWith("/me/account-deletion");
+    // A locked account (a verified fabricated report) keeps exactly one door open: asking
+    // for its own deletion.
     if (
       profile.account_state !== "active" &&
-      !(profile.account_state === "deletion_processing" && accountDeletionRetry)
+      !(profile.account_state === "deletion_processing" && accountDeletionRetry) &&
+      !(profile.account_state === "locked" && accountDeletionRetry)
     ) {
       return {
         success: false,
         error: profile.account_state === "deleted"
           ? "Tài khoản này đã được xóa"
+          : profile.account_state === "locked"
+          ? "Tài khoản đã bị khóa do báo cáo sai sự thật. Bạn vẫn có thể yêu cầu xóa tài khoản."
           : "Tài khoản đang được xử lý xóa",
         status: 403,
       };
@@ -323,8 +328,8 @@ function timeoutFetch(input: RequestInfo | URL, init: RequestInit = {}) {
 
 function normalizeAccountState(
   value: unknown,
-): "active" | "deletion_processing" | "deleted" {
-  return value === "deletion_processing" || value === "deleted"
+): "active" | "deletion_processing" | "deleted" | "locked" {
+  return value === "deletion_processing" || value === "deleted" || value === "locked"
     ? value
     : "active";
 }

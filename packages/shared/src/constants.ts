@@ -42,6 +42,8 @@ export const ADMIN_CAPABILITIES = Object.freeze([
   'workers.read',
   'workers.review',
   'workers.manage',
+  'workers.bonus.manage',
+  'workers.discipline.manage',
   'transactions.read',
   'finance.read',
   'finance.reconcile',

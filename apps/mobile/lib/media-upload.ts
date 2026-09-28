@@ -507,7 +507,7 @@ function formatMediaTimestamp(durationMillis: number) {
   return `${String(minutes).padStart(2, '0')}:${String(seconds % 60).padStart(2, '0')}`
 }
 
-async function readLocalMediaBlob(
+export async function readLocalMediaBlob(
   uri: string,
   maxBytes: number,
 ): Promise<{ success: true; blob: Blob } | { success: false }> {

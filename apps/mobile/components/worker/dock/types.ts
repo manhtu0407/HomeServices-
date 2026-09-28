@@ -40,6 +40,8 @@ export type WorkerV5ScreenId =
   | '4.3-payout-request'
   | '4.4-payout-method'
   | '4.5-commission-policy'
+  | '4.6-ambassador'
+  | '4.7-violations'
   | '5.1-profile-overview'
   | '5.15-worker-delete-account'
   | '5.2-worker-ranking'

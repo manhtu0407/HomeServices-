@@ -11,12 +11,14 @@ import {
 export const DISINTERMEDIATION_RISK_PENALTY_THRESHOLD = 2;
 const DISINTERMEDIATION_RISK_SCORE_PENALTY = 15;
 const FAVORITE_WORKER_SCORE_BONUS = 25;
+const DISCIPLINE_MATCHING_SCORE_PENALTY = 15;
 
 export function rankEligibleWorkers(
   workers: Array<Record<string, unknown>>,
   jobGeo: Awaited<ReturnType<typeof loadJobGeoForMatching>>,
   riskCounts: Map<string, number> = new Map(),
   favoriteWorkerIds: Set<string> = new Set(),
+  disciplineDeprioritizedIds: Set<string> = new Set(),
 ) {
   return workers
     .map((worker) => {
@@ -43,13 +45,17 @@ export function rankEligibleWorkers(
       const favoriteBonus = favoriteWorkerIds.has(asString(worker.id))
         ? FAVORITE_WORKER_SCORE_BONUS
         : 0;
+      const disciplinePenalty = disciplineDeprioritizedIds.has(asString(worker.id))
+        ? DISCIPLINE_MATCHING_SCORE_PENALTY
+        : 0;
       return {
         worker,
         rating,
         totalJobs,
         score: rating * 10 + (specializationMatch ? 20 : 0) + favoriteBonus +
           distanceScore -
-          riskPenalty,
+          riskPenalty -
+          disciplinePenalty,
       };
     })
     .sort((left, right) =>

@@ -5,7 +5,7 @@
     "immutableThroughVersion": "20260904113000",
     "sha256": "12da2bac288e0e718e61a27653e8cba9ffdb13b8e9900979407d41e1217b2077"
   },
-  "migrationCount": 406,
+  "migrationCount": 425,
   "migrationEquivalences": {
     "version": "1.0.0",
     "groups": [
@@ -74,10 +74,10 @@
       }
     ]
   },
-  "migrationsSha256": "3dcb4f2535c2dc7dd8c3d2931c4343d7d819356870aa89c9420ad94dc80a00bc",
+  "migrationsSha256": "a34c977d0d1066b5cbaaa8b9afd1d3b97fe601779ae719a1f37861e2be8fb1de",
   "databaseTypes": {
     "file": "packages/shared/src/types/database",
-    "sha256": "e5837680e05ca64a7cb5fb0a0e635e7fa7681da2adf92ef8c2410bf39ec69e96"
+    "sha256": "54bbf52ff17ad72f29b0a560c9332eb44949d3dcad394a2abdef495a33a196fc"
   },
   "entries": [
     {
@@ -2921,6 +2921,139 @@
       "file": "supabase/migrations/20260927182024_customer_kael_conversation_image_refs.sql",
       "sha256": "664e4d1cb52e4451b3ea63291c469ca280a6ccbdf75a1836ca5ecfc924fbf377",
       "bytes": 3699
+    },
+    {
+      "version": "20260928100000",
+      "name": "worker_withdrawable_balance_unification",
+      "file": "supabase/migrations/20260928100000_worker_withdrawable_balance_unification.sql",
+      "sha256": "61d0b7dc5a72f33e0624dfab69c6190b80911848187c36adcbdfc368faa09717",
+      "bytes": 32314
+    },
+    {
+      "version": "20260928101000",
+      "name": "worker_suspension_effectiveness",
+      "file": "supabase/migrations/20260928101000_worker_suspension_effectiveness.sql",
+      "sha256": "1b47915dc26cd3cf0123f3a6900c1a2a7b05d5f2191466134589e1ea5615e7c9",
+      "bytes": 15872
+    },
+    {
+      "version": "20260928102000",
+      "name": "chat_guard_evidence_retention",
+      "file": "supabase/migrations/20260928102000_chat_guard_evidence_retention.sql",
+      "sha256": "f62744c90f7a1f8b8595855a4b7fc790fedb83acf140f844bd4d6a2a21ad273f",
+      "bytes": 3817
+    },
+    {
+      "version": "20260928103000",
+      "name": "commission_tiers_service_only",
+      "file": "supabase/migrations/20260928103000_commission_tiers_service_only.sql",
+      "sha256": "ae33b67243fa95cd92d12fbeaec33ce5f561d403928502a616b5dc212a8f91cd",
+      "bytes": 1146
+    },
+    {
+      "version": "20260928110000",
+      "name": "ambassador_program_config",
+      "file": "supabase/migrations/20260928110000_ambassador_program_config.sql",
+      "sha256": "a33368938b6d58408344a4bf9c9313613dcee86e256b4a97eec7c92388513a4b",
+      "bytes": 19580
+    },
+    {
+      "version": "20260928111000",
+      "name": "ambassador_referral_links",
+      "file": "supabase/migrations/20260928111000_ambassador_referral_links.sql",
+      "sha256": "351975af21f728d8b43d4cf207da2f4320a9884416bca08cea99369d674d7797",
+      "bytes": 10747
+    },
+    {
+      "version": "20260928112000",
+      "name": "ambassador_points_and_redemptions",
+      "file": "supabase/migrations/20260928112000_ambassador_points_and_redemptions.sql",
+      "sha256": "336b24533d5fcd70f7c3897dde5c05c1101d74c49a8617f90ab4d62a129fdace",
+      "bytes": 29845
+    },
+    {
+      "version": "20260928113000",
+      "name": "customer_membership_ledger",
+      "file": "supabase/migrations/20260928113000_customer_membership_ledger.sql",
+      "sha256": "4846172ba5555be3f5b4819980c03f8cecf4f474fca5d76f2d9662fd0af6488f",
+      "bytes": 3583
+    },
+    {
+      "version": "20260928114000",
+      "name": "ambassador_accrual_sweep",
+      "file": "supabase/migrations/20260928114000_ambassador_accrual_sweep.sql",
+      "sha256": "a27a940f93389521110d6277ec4c69349524127d136edb2fd50327143e4c0e53",
+      "bytes": 8866
+    },
+    {
+      "version": "20260928115000",
+      "name": "worker_bonus_tax_rule_threshold",
+      "file": "supabase/migrations/20260928115000_worker_bonus_tax_rule_threshold.sql",
+      "sha256": "bc209dd3eb372bec5009bc57ab4d502b2bc58f3c829cfd8fbe44f9da7b11e141",
+      "bytes": 7883
+    },
+    {
+      "version": "20260928116000",
+      "name": "admin_capabilities_bonus_discipline",
+      "file": "supabase/migrations/20260928116000_admin_capabilities_bonus_discipline.sql",
+      "sha256": "f10dc013351f34c2ced7014f52383a1a355a56d975dfadf859805a11a30d5a08",
+      "bytes": 10387
+    },
+    {
+      "version": "20260928120000",
+      "name": "worker_discipline_foundation",
+      "file": "supabase/migrations/20260928120000_worker_discipline_foundation.sql",
+      "sha256": "6f91218704f0d090014850bfed834f3c4eff620fba64274c3ca04607adcf9c25",
+      "bytes": 15064
+    },
+    {
+      "version": "20260928121000",
+      "name": "identity_blocklist",
+      "file": "supabase/migrations/20260928121000_identity_blocklist.sql",
+      "sha256": "03ff65639ef58a037373df1a012a02c2e0e614d7c8c0a4fe8b9d395130014bd1",
+      "bytes": 8691
+    },
+    {
+      "version": "20260928122000",
+      "name": "worker_discipline_decisions",
+      "file": "supabase/migrations/20260928122000_worker_discipline_decisions.sql",
+      "sha256": "b6e40722fc3bde8fac5c4b41fdc037a2b604755e47de598d65f042f6b802e85f",
+      "bytes": 47841
+    },
+    {
+      "version": "20260928123000",
+      "name": "violation_detectors",
+      "file": "supabase/migrations/20260928123000_violation_detectors.sql",
+      "sha256": "171a76f5b5cb89c8db14c46b582ae909ffffe71d098e3f21394ebf3a842d3759",
+      "bytes": 8183
+    },
+    {
+      "version": "20260928124000",
+      "name": "discipline_evidence_bucket",
+      "file": "supabase/migrations/20260928124000_discipline_evidence_bucket.sql",
+      "sha256": "70263d7b8fa62ed9ed359be5b0ce483a4cc270133e031d16d4aab09ffcbb79c6",
+      "bytes": 708
+    },
+    {
+      "version": "20260928125000",
+      "name": "worker_reply_nudges",
+      "file": "supabase/migrations/20260928125000_worker_reply_nudges.sql",
+      "sha256": "2793640c8fecd3e6efd6b2ca3d04764e82320b612637836790b3fe361053a2f4",
+      "bytes": 4471
+    },
+    {
+      "version": "20260928126000",
+      "name": "compensation_mediation",
+      "file": "supabase/migrations/20260928126000_compensation_mediation.sql",
+      "sha256": "4573f5a078f023a9b05ef9e95aa4443c625103a52f295682825ead0e92f11ac7",
+      "bytes": 31535
+    },
+    {
+      "version": "20260928127000",
+      "name": "program_push_receipts",
+      "file": "supabase/migrations/20260928127000_program_push_receipts.sql",
+      "sha256": "fef7da4f85946e5c1109c01ab0a2e1c692d9d7c52e745c82a82db99cb933a771",
+      "bytes": 3106
     }
   ]
 }

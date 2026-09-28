@@ -1,11 +1,13 @@
 import { Redirect } from 'expo-router'
 import { Stack } from 'expo-router/stack'
 import { useMemo, useState } from 'react'
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native'
+import { Pressable, StyleSheet, Text, View } from 'react-native'
+import { AppLoadingShell } from '@/components/ui/app-loading-shell'
 import { useAuth } from '@/lib/auth-provider'
 import { isAuthShellBlocking } from '@/lib/auth-loading-gate'
 import { useAdminActivation } from '@/lib/admin-activation-provider'
-import { color, typography } from '@/design/theme'
+import { useClaimPendingInvite } from '@/lib/referral/use-claim-pending-invite'
+import { typography } from '@/design/theme'
 import { mobileRuntimeConfig } from '@/lib/runtime-config'
 
 function runtimeBuildMarkerText() {
@@ -56,15 +58,12 @@ function CustomerRuntimeBuildMarker() {
 export default function CustomerLayout() {
   const { guestMode, loading, profileStatus, role, session } = useAuth()
   const activation = useAdminActivation()
+  useClaimPendingInvite(session?.access_token, role === 'customer')
   const authShellBlocking = isAuthShellBlocking({ guestMode, loading, profileStatus, role, session })
   const activationShellBlocking = Boolean(session && activation.loading && !activation.status)
 
   if (authShellBlocking || activationShellBlocking) {
-    return (
-      <View style={{ alignItems: 'center', flex: 1, justifyContent: 'center' }}>
-        <ActivityIndicator color={color.brand.primary} size="large" />
-      </View>
-    )
+    return <AppLoadingShell />
   }
 
   if (!session && !guestMode) {

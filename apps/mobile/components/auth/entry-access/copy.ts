@@ -274,7 +274,7 @@ const viCopy: EntryAccessCopy = {
     footerCaption: 'DỊCH VỤ NHÀ  •  CUỘC SỐNG TỐT HƠN',
     heading: 'Chọn lối vào',
     intro: 'Cùng nhau, ngôi nhà luôn ổn.',
-    selectionHint: 'Chạm một lần để chọn vai trò; chạm lần nữa để tiếp tục.',
+    selectionHint: 'Chạm để tiếp tục với vai trò này.',
     worker: {
       description: 'Nhận việc linh hoạt,\ngia tăng thu nhập.',
       meta: 'Tài khoản thợ · Xác thực hồ sơ',
@@ -413,7 +413,7 @@ const enCopy: EntryAccessCopy = {
     footerCaption: 'HOME SERVICES  •  BETTER LIVING',
     heading: 'Choose your path',
     intro: 'Together, your home stays well.',
-    selectionHint: 'Tap once to select a role; tap again to continue.',
+    selectionHint: 'Tap to continue with this role.',
     worker: {
       description: 'Take flexible jobs,\ngrow your income.',
       meta: 'Worker account · Profile verification',

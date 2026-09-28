@@ -82,6 +82,55 @@ function Asset({ name }: { name: AssetKey }) {
   )
 }
 
+// The backdrop is a fixed-ratio crop, so a taller viewport leaves bands above and below it.
+// Each band repeats the backdrop's outermost rows stretched to the band height, so the
+// artwork reads as one continuous surface instead of a stage floating on a flat fill.
+const EDGE_SOURCE_ROWS = 2
+
+function BackdropEdge({
+  edge,
+  height,
+  width,
+  scale,
+  stageHeight,
+  name,
+}: {
+  edge: 'top' | 'bottom'
+  height: number
+  width: number
+  scale: number
+  stageHeight: number
+  name: AssetKey
+}) {
+  if (height <= 0) return null
+  const stretchedHeight = stageHeight * (height / (EDGE_SOURCE_ROWS * scale))
+
+  return (
+    <View
+      pointerEvents="none"
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants"
+      style={{ width, height, overflow: 'hidden' }}
+      testID={`auth-role-gate-backdrop-edge-${edge}`}
+    >
+      <Image
+        source={ASSETS[name]}
+        accessible={false}
+        contentFit="fill"
+        transition={0}
+        cachePolicy="memory"
+        style={{
+          position: 'absolute',
+          left: 0,
+          width,
+          height: stretchedHeight,
+          ...(edge === 'top' ? { top: 0 } : { bottom: 0 }),
+        }}
+      />
+    </View>
+  )
+}
+
 function BrandMark({
   scale,
   originX,
@@ -250,7 +299,7 @@ export function NestScoutLoginGate({
   mode = 'app',
   textMode = 'reference',
   copy = EMPTY_COPY,
-  accessibilityHint = 'Chạm để chọn vai trò. Chạm lại vai trò đã chọn để tiếp tục.',
+  accessibilityHint = 'Chạm để tiếp tục với vai trò này.',
   brandAccessibilityLabel = DESIGN.brand.label,
   safeAreaInsets,
   maxContentWidth = 480,
@@ -277,6 +326,9 @@ export function NestScoutLoginGate({
     maxContentWidth,
   )
   const { scale, originX, originY, stageWidth, stageHeight, safe } = layout
+  const backdrop: AssetKey = mode === 'reference' ? 'reference-backdrop' : 'app-backdrop'
+  const topBand = safe.top + layout.extraTop
+  const bottomBand = Math.max(safe.bottom, viewport.height - topBand - stageHeight)
 
   return (
     <View
@@ -291,15 +343,14 @@ export function NestScoutLoginGate({
         automaticallyAdjustContentInsets={false}
         contentContainerStyle={{
           minHeight: viewport.height,
-          paddingTop: safe.top + layout.extraTop,
-          paddingBottom: safe.bottom + layout.extraTop + 20 * scale,
           paddingLeft: safe.left,
           paddingRight: safe.right,
           alignItems: 'center',
         }}
       >
+        <BackdropEdge edge="top" height={topBand} width={stageWidth} scale={scale} stageHeight={stageHeight} name={backdrop} />
         <View style={{ width: stageWidth, height: stageHeight, position: 'relative', overflow: 'hidden' }}>
-          <Asset name={mode === 'reference' ? 'reference-backdrop' : 'app-backdrop'} />
+          <Asset name={backdrop} />
           <BrandMark
             accessibilityLabel={brandAccessibilityLabel}
             originX={originX}
@@ -333,6 +384,7 @@ export function NestScoutLoginGate({
             />
           ))}
         </View>
+        <BackdropEdge edge="bottom" height={bottomBand} width={stageWidth} scale={scale} stageHeight={stageHeight} name={backdrop} />
       </ScrollView>
     </View>
   )

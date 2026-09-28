@@ -108,6 +108,7 @@ Purpose
 Admin checks
 -
 |- identity
+|- CCCD number typed by the reviewer (stored as a keyed digest + last four, recorded together with the worker phone and sign-in email digests); the first approval is refused without it or when any of the three is blocklisted
 |- skill category
 |- working area
 |- bank information

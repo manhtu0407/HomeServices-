@@ -73,9 +73,17 @@ begin
     'public.create_worker_withdrawal_request(uuid,integer,uuid)'::regprocedure
   );
   if v_definition not like '%pg_advisory_xact_lock%'
-     or v_definition not like '%status in (''pending'', ''processing'', ''paid'')%'
+     or v_definition not like '%private.worker_withdrawable_balance(p_worker_id)%'
      or v_definition not like '%PAYOUT_METHOD_NOT_VERIFIED%' then
     raise exception 'worker withdrawal creation no longer reserves balance or requires a verified payout method';
+  end if;
+
+  v_definition := pg_catalog.pg_get_functiondef(
+    'private.worker_withdrawable_balance(uuid)'::regprocedure
+  );
+  if v_definition not like '%request.status in (''pending'', ''processing'')%'
+     or v_definition not like '%request.status = ''paid''%' then
+    raise exception 'the withdrawable balance no longer reserves pending and paid withdrawals';
   end if;
 
   v_definition := pg_catalog.pg_get_functiondef(

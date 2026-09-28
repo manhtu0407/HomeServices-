@@ -345,7 +345,7 @@ describe('Worker Earnings period palette contract', () => {
     expect(screen.getByText('Chưa phát sinh thu nhập trong kỳ đã chọn')).toBeOnTheScreen()
   })
 
-  it('keeps only the orb withdrawal entry and the three existing utility routes below the rebuilt overview', () => {
+  it('keeps only the orb withdrawal entry and the four utility routes below the rebuilt overview', () => {
     const navigateToScreen = jest.fn()
     const runtime = {
       actions: { workerRefresh: jest.fn(async () => true) },
@@ -398,7 +398,7 @@ describe('Worker Earnings period palette contract', () => {
     })
     expect(StyleSheet.flatten(screen.getByTestId('worker-v5-earnings-utilities').props.style)).not.toHaveProperty('shadowOpacity')
     expect(StyleSheet.flatten(screen.getByTestId('worker-v5-earnings-utilities').props.style)).not.toHaveProperty('elevation')
-    for (const testID of ['history', 'account', 'commission']) {
+    for (const testID of ['history', 'account', 'commission', 'ambassador']) {
       const row = screen.getByTestId(`worker-v5-earnings-utility-${testID}`)
       const rowStyle = typeof row.props.style === 'function' ? row.props.style({ pressed: false }) : row.props.style
       expect(StyleSheet.flatten(rowStyle)).toMatchObject({ minHeight: 68 })
@@ -422,12 +422,14 @@ describe('Worker Earnings period palette contract', () => {
     fireEvent.press(screen.getByTestId('worker-v5-earnings-utility-history'))
     fireEvent.press(screen.getByTestId('worker-v5-earnings-utility-account'))
     fireEvent.press(screen.getByTestId('worker-v5-earnings-utility-commission'))
+    fireEvent.press(screen.getByTestId('worker-v5-earnings-utility-ambassador'))
 
     expect(navigateToScreen.mock.calls).toEqual([
       ['4.3-payout-request'],
       ['4.2-ledger-detail'],
       ['4.4-payout-method'],
       ['4.5-commission-policy'],
+      ['4.6-ambassador'],
     ])
   })
 

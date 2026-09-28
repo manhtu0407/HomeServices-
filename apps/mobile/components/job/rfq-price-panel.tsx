@@ -74,11 +74,11 @@ export function RfqPricePanelView({ actorRole, language, tokens, state }: {
       </> : state.loaded ? <Text style={textStyle}>{c.empty}</Text> : null}
       {actorRole === 'worker' && state.loaded && (!proposal || proposal.status === 'rejected') ? <>
         <Text style={textStyle}>{c.total}</Text>
-        <TextInput accessibilityLabel={c.total} testID="rfq-price-input" value={price} onChangeText={setPrice}
+        <TextInput spellCheck={false} accessibilityLabel={c.total} testID="rfq-price-input" value={price} onChangeText={setPrice}
           editable={!disabled} keyboardType="number-pad" maxLength={10}
           style={[styles.input, { color: tokens.text, borderColor: tokens.borderStrong }]} />
         <Text style={textStyle}>{c.scope}</Text>
-        <TextInput accessibilityLabel={c.scope} testID="rfq-scope-input" value={scope} onChangeText={setScope}
+        <TextInput spellCheck={false} accessibilityLabel={c.scope} testID="rfq-scope-input" value={scope} onChangeText={setScope}
           editable={!disabled} multiline maxLength={2000} textAlignVertical="top"
           style={[styles.input, styles.scope, { color: tokens.text, borderColor: tokens.borderStrong }]} />
         {button(c.send, () => state.propose(/^[1-9][0-9]*$/.test(price) ? Number(price) : NaN, scope), 'rfq-price-send')}

@@ -4156,7 +4156,8 @@ describe('Worker runtime surface wiring', () => {
     mockRouteParams = { ns_worker_screen: '4.5-commission-policy' }
     const commissionPolicy = render(<WorkerEarningsSurface />)
     expect(screen.queryByText('Mức khởi điểm 15%')).toBeNull()
-    expect(screen.getByText(/Làm tốt để giữ lại nhiều hơn/)).toBeOnTheScreen()
+    expect(screen.getByText(/Thưởng thay cho giảm phí/)).toBeOnTheScreen()
+    expect(screen.queryByText(/Bậc hiện tại/)).toBeNull()
     commissionPolicy.unmount()
 
     mockRouteParams = { ns_worker_screen: '4.4-payout-method' }

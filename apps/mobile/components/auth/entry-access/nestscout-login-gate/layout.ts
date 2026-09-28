@@ -41,7 +41,3 @@ export function getGateLayout(
 }
 
 export type Role = 'customer' | 'worker'
-
-export function nextRoleAction(selected: Role | null, next: Role): 'select' | 'continue' {
-  return selected === next ? 'continue' : 'select'
-}

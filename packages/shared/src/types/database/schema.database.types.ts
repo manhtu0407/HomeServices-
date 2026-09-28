@@ -12,6 +12,7 @@ import type { JobsTables } from './tables/jobs.database.types'
 import type { KaelTables } from './tables/kael.database.types'
 import type { LearningTables } from './tables/learning.database.types'
 import type { MatchingTables } from './tables/matching.database.types'
+import type { ProgramTables } from './tables/program.database.types'
 import type { ServiceTables } from './tables/service.database.types'
 import type { WorkerTables } from './tables/worker.database.types'
 import type { DatabaseViews } from './views.database.types'
@@ -27,6 +28,7 @@ export type Database = DatabasePreamble & {
       KaelTables &
       LearningTables &
       MatchingTables &
+      ProgramTables &
       ServiceTables &
       WorkerTables
     Views: DatabaseViews

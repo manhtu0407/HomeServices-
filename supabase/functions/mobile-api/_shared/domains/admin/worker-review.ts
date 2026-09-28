@@ -8,6 +8,7 @@ import type {
   AdminWorkerReviewDetail,
 } from "../contracts/admin-control.ts";
 import { getAdminWorkerApplication, requireAdminCapability } from "./control.ts";
+import { failIdentityGate } from "./identity-gate.ts";
 import { scopeQueryToRealTraffic } from "../../platform/synthetic-cohort.ts";
 import { requireWorkerReviewReceipt } from "./control-validation.ts";
 
@@ -128,7 +129,10 @@ export async function decideAdminWorkerProfile(
     p_decision: input.decision,
     p_reason: input.reason ?? null,
   }));
-  if (result.error) apiFailure("DB_ERROR", "Không thể lưu quyết định xác minh", 500);
+  if (result.error) {
+    failIdentityGate(result.error.message);
+    apiFailure("DB_ERROR", "Không thể lưu quyết định xác minh", 500);
+  }
   const row = requireWorkerReviewReceipt(result.data, queueId, input.decision, workerId);
   if (row.ok !== true) mapProfileDecisionError(nullableString(row.error_code));
   const verificationStatus = asWorkerVerificationStatus(row.verification_status);

@@ -5,6 +5,10 @@ import {
   customerAvatarUploadSchema,
   customerKaelFeedbackSchema,
   customerRefundAccountSaveSchema,
+  referralClaimSchema,
+  compensationClaimSchema,
+  compensationEvidenceUploadSchema,
+  compensationResponseSchema,
   updateKaelMemorySchema,
   adminOperatorActivationSchema,
 } from "../../../../_shared/domain.ts";
@@ -20,6 +24,30 @@ export async function dispatchMeRoute(
   services: MobileApiServices,
 ): Promise<unknown> {
   switch (route.kind) {
+    case "me.membership":
+      return services.getCustomerMembership(ctx);
+    case "me.referralClaim": {
+      const input = referralClaimSchema.safeParse(await readJson(request));
+      if (!input.success) apiFailure("VALIDATION", "Mã mời không hợp lệ", 400);
+      return services.claimReferralCode(ctx, input.data);
+    }
+    case "me.compensation.list":
+      return services.listCustomerCompensation(ctx);
+    case "me.compensation.claim": {
+      const input = compensationClaimSchema.safeParse(await readJson(request));
+      if (!input.success) apiFailure("VALIDATION", "Đề nghị bồi thường cần số tiền và mô tả thiệt hại", 400);
+      return services.openCompensationClaim(ctx, route.caseId, input.data);
+    }
+    case "me.compensation.upload": {
+      const input = compensationEvidenceUploadSchema.safeParse(await readJson(request));
+      if (!input.success) apiFailure("VALIDATION", "Chỉ nhận ảnh JPG hoặc PNG", 400);
+      return services.createCompensationEvidenceUpload(ctx, route.caseId, input.data);
+    }
+    case "me.compensation.respond": {
+      const input = compensationResponseSchema.safeParse(await readJson(request));
+      if (!input.success) apiFailure("VALIDATION", "Phản hồi bồi thường chưa hợp lệ", 400);
+      return services.respondCompensation(ctx, route.negotiationId, input.data);
+    }
     case "me.adminActivation":
       return services.getAdminActivation(ctx);
     case "me.adminActivation.activate": {

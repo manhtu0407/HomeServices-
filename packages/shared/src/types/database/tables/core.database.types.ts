@@ -128,6 +128,64 @@ export type CoreTables = {
           },
         ]
       }
+      chat_guard_redaction_evidence: {
+        Row: {
+          created_at: string
+          id: string
+          job_id: string
+          matched_rules: string[]
+          message_id: string
+          original_body: string | null
+          scrubbed_at: string | null
+          sender_id: string
+          sender_role: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          job_id: string
+          matched_rules: string[]
+          message_id: string
+          original_body?: string | null
+          scrubbed_at?: string | null
+          sender_id: string
+          sender_role: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          job_id?: string
+          matched_rules?: string[]
+          message_id?: string
+          original_body?: string | null
+          scrubbed_at?: string | null
+          sender_id?: string
+          sender_role?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_guard_redaction_evidence_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chat_guard_redaction_evidence_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: true
+            referencedRelation: "chat_messages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chat_guard_redaction_evidence_sender_id_fkey"
+            columns: ["sender_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       chat_messages: {
         Row: {
           content: string
@@ -643,6 +701,8 @@ export type CoreTables = {
           deletion_requested_at: string | null
           full_name: string | null
           id: string
+          locked_at: string | null
+          locked_case_id: string | null
           phone: string | null
           role: Database["public"]["Enums"]["user_role"]
           updated_at: string
@@ -655,6 +715,8 @@ export type CoreTables = {
           deletion_requested_at?: string | null
           full_name?: string | null
           id: string
+          locked_at?: string | null
+          locked_case_id?: string | null
           phone?: string | null
           role: Database["public"]["Enums"]["user_role"]
           updated_at?: string
@@ -667,11 +729,21 @@ export type CoreTables = {
           deletion_requested_at?: string | null
           full_name?: string | null
           id?: string
+          locked_at?: string | null
+          locked_case_id?: string | null
           phone?: string | null
           role?: Database["public"]["Enums"]["user_role"]
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "profiles_locked_case_id_fkey"
+            columns: ["locked_case_id"]
+            isOneToOne: false
+            referencedRelation: "worker_violation_cases"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       reviews: {
         Row: {

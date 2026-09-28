@@ -48,6 +48,8 @@ import { AdminOverviewDashboard, type AdminOverviewOpenTarget } from './admin-ov
 import { AdminOverviewDetailWorklist } from './admin-overview-detail-worklist'
 import { AdminScopeChangeMonitor } from './admin-scope-change-monitor'
 import { AdminSupportCaseCenter } from './admin-support-case-center'
+import { AdminAmbassadorProgramWorkspace } from './admin-ambassador-program-workspace'
+import { AdminDisciplineWorkspace } from './admin-discipline-workspace'
 import { AdminSystemWorkspace } from './admin-system-workspace'
 import { AdminTeamWorkspace } from './admin-team-workspace'
 import { AdminText } from './admin-text'
@@ -684,6 +686,10 @@ function AdminCapabilityWorkspace({ actions, actor, capability, copy, financeVie
           <AdminPagination hasMore={workersHasMore} labels={copy.pagination} loading={loading || refreshing} onPageChange={(workerPage) => patch({ workerPage })} page={workerPage} pageTestIDPrefix="admin-worker-page" pageSize={WORKERS_PER_PAGE} testID="admin-worker-pagination" totalCount={workersTotalCount} />
         </>}
       </>
+    case 'workers-discipline':
+      return <AdminDisciplineWorkspace language={language} />
+    case 'workers-ambassador':
+      return <AdminAmbassadorProgramWorkspace language={language} />
     case 'finance-overview':
     case 'finance-reconciliation':
     case 'finance-tax': {

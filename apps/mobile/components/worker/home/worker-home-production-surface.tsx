@@ -147,7 +147,7 @@ function Hero({
           >
             <WorkerHomeProductionIcon color="#536B7F" name="search" size={15.5} />
           </Pressable>
-          <TextInput
+          <TextInput spellCheck={false}
             accessibilityHint={textByLanguage(language, 'Nội dung chỉ được điền sẵn trong Kael và chưa tự gửi.', 'The text is only prefilled in Kael and is not sent automatically.')}
             accessibilityLabel={placeholder}
             maxLength={1_200}
