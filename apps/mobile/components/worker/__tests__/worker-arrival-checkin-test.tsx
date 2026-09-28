@@ -354,6 +354,7 @@ describe('Worker V5 arrival check-in', () => {
     expect(screen.queryByTestId('stage5-work')).toBeNull()
     expect(screen.queryByTestId('worker-v5-work-progress-board')).toBeNull()
     expect(screen.queryByTestId('worker-v5-evidence-tray')).toBeNull()
+    expect(screen.queryByTestId('worker-jobs-surface')).toBeNull()
     expect(screen.queryByTestId('worker-v5-checkin-hero')).toBeNull()
     expect(mockReplace).not.toHaveBeenCalled()
   })
