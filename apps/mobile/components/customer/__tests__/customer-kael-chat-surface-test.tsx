@@ -2184,6 +2184,9 @@ describe('active customer Kael chat surface wiring', () => {
 
     fireEvent.press(screen.getByTestId('customer-v21-kael-session-actions-normal-session'))
     fireEvent.press(screen.getByTestId('customer-v21-kael-session-delete-normal-session'))
+    const deleteMenuStyle = StyleSheet.flatten(screen.getByTestId('customer-v21-kael-session-menu-shell').props.style)
+    expect(deleteMenuStyle.width).toBe('92%')
+    expect(deleteMenuStyle.maxWidth).toBeLessThanOrEqual(440)
     fireEvent.press(screen.getByTestId('customer-v21-kael-session-delete-confirm-action-normal-session'))
     await waitFor(() => expect(mockConversationArchive).toHaveBeenCalledWith('normal-session', false))
     expect(screen.queryByTestId('customer-v21-kael-session-normal-session')).toBeNull()

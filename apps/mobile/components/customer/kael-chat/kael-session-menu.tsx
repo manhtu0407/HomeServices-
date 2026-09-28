@@ -61,6 +61,7 @@ export function CustomerKaelSessionMenu({
   const [draftTitle, setDraftTitle] = useState('')
   const { height: windowHeight, width: windowWidth } = useWindowDimensions()
   const copy = sessionMenuCopy(language, mode)
+  const rowEditorOpen = Boolean(renamingSessionId || deletingSessionId)
   const clearDelete = useCallback(() => setDeletingSessionId(null), [])
   const clearRename = useCallback(() => {
     setRenamingSessionId(null)
@@ -146,8 +147,8 @@ export function CustomerKaelSessionMenu({
       reduceMotion={reduceMotion}
       style={[
         styles.menuPosition,
-        renamingSessionId ? styles.menuPositionExpanded : null,
-        renamingSessionId ? { maxWidth: Math.min(440, Math.max(0, windowWidth - 28)) } : null,
+        rowEditorOpen ? styles.menuPositionExpanded : null,
+        rowEditorOpen ? { maxWidth: Math.min(440, Math.max(0, windowWidth - 28)) } : null,
       ]}
       testID="customer-v21-kael-session-menu-shell"
     >
