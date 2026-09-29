@@ -112,7 +112,6 @@ import {
   profilePanelForScreen,
   profilePanelParam,
   profileScreenParam,
-  profileStageSubtitle,
   profileSettingsSectionParam,
   profileUtilityParam,
   profileUtilityTitle,
@@ -961,7 +960,6 @@ export function CustomerProfileSurface() {
             />
           )}
           onBack={() => router.replace(directProfileBackPath as never)}
-          subtitle=""
         />
       </V21Screen>
     )
@@ -988,7 +986,6 @@ export function CustomerProfileSurface() {
             setSelectedPanel('overview')
             router.replace('/(customer)/profile' as never)
           }}
-          subtitle={profileStageSubtitle(profileScreenId, language)}
         />
       </V21Screen>
     )

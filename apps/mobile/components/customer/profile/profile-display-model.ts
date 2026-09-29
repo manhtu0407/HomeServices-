@@ -79,16 +79,6 @@ export function fairPriceStatusLabel(
   return fallback
 }
 
-export function profileStageSubtitle(screenId: CustomerV21ScreenId, language: AppLanguage) {
-  if (screenId === '6.2-usage-ranking') {
-    return ''
-  }
-  if (screenId === '6.3-protect-money') {
-    return language === 'vi' ? 'Đúng giá, đúng quy trình và minh bạch' : 'Fair price, proper workflow, transparent'
-  }
-  return language === 'vi' ? 'Tài khoản, bảo vệ và các tiện ích phụ' : 'Account, protection, and utilities'
-}
-
 export function formatWorkerJobs(value: number | null | undefined, language: AppLanguage) {
   if (typeof value !== 'number' || !Number.isFinite(value) || value < 0) {
     return language === 'vi' ? 'Chưa có dữ liệu' : 'Data pending'
