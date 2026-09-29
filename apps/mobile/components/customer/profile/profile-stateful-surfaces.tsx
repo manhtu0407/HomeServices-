@@ -49,9 +49,11 @@ type ProfileAccountJourneyModel = {
 export function CustomerProfileSubscreenView({
   body,
   onBack,
+  subtitle,
 }: {
   body: ReactNode
   onBack: () => void
+  subtitle: string
 }) {
   const { tokens } = useCustomerV21SurfaceTheme()
 
@@ -65,7 +67,7 @@ export function CustomerProfileSubscreenView({
             ]
           : undefined}
         onBack={onBack}
-        subtitle=""
+        subtitle={subtitle}
         testID="customer-v21-profile-subscreen-topbar"
         title=""
       />
