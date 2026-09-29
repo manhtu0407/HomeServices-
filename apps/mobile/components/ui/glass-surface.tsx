@@ -11,6 +11,8 @@ type GlassSurfaceProps = {
   children: ReactNode
   material?: GlassMaterial
   mode?: GlassMode
+  // Keep the native Liquid Glass untinted; backgroundColor then feeds only the fallbacks.
+  nativeUntinted?: boolean
   onLayout?: ViewProps['onLayout']
   showEdgeHighlight?: boolean
   style?: StyleProp<ViewStyle>
@@ -18,7 +20,7 @@ type GlassSurfaceProps = {
   variant: GlassVariant
 }
 
-export function GlassSurface({ backgroundColor, borderColor, children, material = 'standard', mode = 'light', onLayout, showEdgeHighlight = true, style, testID, variant }: GlassSurfaceProps) {
+export function GlassSurface({ backgroundColor, borderColor, children, material = 'standard', mode = 'light', nativeUntinted = false, onLayout, showEdgeHighlight = true, style, testID, variant }: GlassSurfaceProps) {
   const { reduceTransparency } = useGlassAccessibility()
   const surfaceStyle = createGlassSurfaceStyle({ backgroundColor, borderColor, material, mode, reduceTransparency, variant })
   const webNavBackingStyle = Platform.OS === 'web' && variant === 'nav' && !reduceTransparency
@@ -46,7 +48,8 @@ export function GlassSurface({ backgroundColor, borderColor, children, material 
     // Apple "Adopting Liquid Glass": reduce custom backgrounds in tab bars and let the system set
     // the appearance, which also keeps the person's Liquid Glass look setting in charge. The
     // background colour then only feeds the blur and solid fallbacks below.
-    const nativeStyle = variant === 'nav' ? [composedStyle, styles.nativeNavBackground] : composedStyle
+    const untinted = nativeUntinted || variant === 'nav'
+    const nativeStyle = untinted ? [composedStyle, styles.nativeUntintedBackground] : composedStyle
     return (
       <GlassView
         colorScheme={glassColorSchemeByMode[mode]}
@@ -55,7 +58,7 @@ export function GlassSurface({ backgroundColor, borderColor, children, material 
         onLayout={onLayout}
         style={nativeStyle}
         testID={testID}
-        tintColor={variant === 'nav' ? undefined : backgroundColor}
+        tintColor={untinted ? undefined : backgroundColor}
       >
         {children}
       </GlassView>
@@ -149,7 +152,7 @@ const styles = StyleSheet.create({
     top: 1,
     zIndex: 1,
   },
-  nativeNavBackground: {
+  nativeUntintedBackground: {
     backgroundColor: 'transparent',
   },
   surface: {

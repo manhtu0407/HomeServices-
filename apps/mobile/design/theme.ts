@@ -527,6 +527,21 @@ export const liquidTabLensTheme = {
   },
 } as const
 
+// Liquid Glass pop-up menu: glass that grows into a menu reads as thicker material with a deeper
+// shadow (WWDC25 "Meet Liquid Glass"); a pressed row gets the neutral menu highlight.
+export const liquidPopUpMenuTheme = {
+  light: {
+    fallbackFill: 'rgba(252,253,253,0.96)',
+    rowPressed: 'rgba(28,40,38,0.08)',
+    shadow: '0 18px 44px rgba(13,40,36,0.22)',
+  },
+  dark: {
+    fallbackFill: 'rgba(30,38,35,0.96)',
+    rowPressed: 'rgba(235,245,242,0.12)',
+    shadow: '0 20px 48px rgba(0,0,0,0.5)',
+  },
+} as const
+
 export const glassSurfaceTheme = {
   shadowByVariant: {
     nav: {
