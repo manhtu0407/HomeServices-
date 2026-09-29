@@ -67,7 +67,6 @@ function mountCustomerDock({
       language={language}
       liquidDockWidth={309}
       liquidNavWidth={384}
-      mode={mode}
       navItems={[...CUSTOMER_NAV_ITEMS]}
       onKaelPress={jest.fn()}
       onTabPress={jest.fn()}
@@ -86,7 +85,7 @@ beforeEach(() => {
 
 export const PILLAR = {
   id: 'P09-native-ios-liquid-tabs',
-  invariant: 'Production Customer and Worker navigation keep four primary routes on the left, use the Production route tints, and retain the transparent artwork-only Kael accessory on the right without route-following decoration',
+  invariant: 'Production Customer and Worker navigation keep four primary routes on one glass plane with a single selection lens, use the Production route tints, and keep the artwork-only Kael accessory outside that plane as its sibling in the same row, with no ambient decoration (shimmer, caustic, aura, refraction)',
   authority: [
     'customer/worker dock surfaces and the native-device regression report',
     'governance/protocols/frontend-test.md G4',
@@ -94,7 +93,7 @@ export const PILLAR = {
   target: 'apps/mobile/components/customer/dock/dock-stateful-surfaces.tsx',
   layer: 'ui-visual',
   siblings: ['P08-worker-dock-motion', 'P07-worker-verification-states'],
-  mutation: 'restore LiquidSelectionLens or any dock shimmer, caustic, aura, or inner-refraction layer — the Production source guard turns red',
+  mutation: 'render the Kael accessory inside the tab plane (or above the row), or add a dock shimmer, caustic, aura, or refraction layer — the row-geometry or decoration case turns red',
 } as const satisfies PillarManifest
 
 describe('cross-platform navigation wiring', () => {
@@ -122,15 +121,32 @@ describe('cross-platform navigation wiring', () => {
     expect(workerTabs).toContain('WorkerRebuildDockOverlay')
   })
 
-  it('keeps Kael as a sibling to the primary route cluster inside the same row', () => {
-    const customerDock = readMobileSource('components/customer/dock/dock-stateful-surfaces.tsx')
-    const workerDock = readMobileSource('components/worker/dock/worker-v5-dock-overlay.tsx')
+  it('renders Kael as a sibling of the tab plane in the same row, never inside or above it', () => {
+    mountCustomerDock({ activeTab: 'home' })
+    const row = screen.getByTestId('customer-v21-liquid-navigation')
+    const plane = screen.getByTestId('customer-v21-primary-dock-plane')
+    const kael = screen.getByTestId('customer-v21-kael-accessory')
+    const ancestors = (element: typeof kael) => {
+      const chain: (typeof kael)[] = []
+      for (let node = element.parent; node; node = node.parent) chain.push(node)
+      return chain
+    }
     const customerStyles = readMobileSource('components/customer/dock/dock-styles.ts')
 
-    expect(customerDock.indexOf('testID="customer-v21-primary-dock"')).toBeLessThan(customerDock.indexOf('testID="customer-v21-kael-accessory"'))
-    expect(workerDock.indexOf('testID="worker-v5-primary-dock"')).toBeLessThan(workerDock.indexOf('testID="worker-v5-kael-accessory"'))
-    expect(customerStyles).toContain('dockRow:')
-    expect(customerStyles).toContain("flexDirection: 'row'")
+    withPillarContext(
+      PILLAR,
+      () => {
+        expect(ancestors(within(plane).getAllByRole('tab')[0])).toContain(plane)
+        expect(ancestors(kael)).not.toContain(plane)
+        expect(ancestors(kael)).toContain(row)
+        expect(ancestors(plane)).toContain(row)
+        expect(within(plane).queryByTestId('customer-v21-kael-accessory')).toBeNull()
+        expect(within(plane).getAllByRole('tab')).toHaveLength(4)
+        expect(customerStyles).toContain('dockRow:')
+        expect(customerStyles).toContain("flexDirection: 'row'")
+      },
+      'Tu: the upgrade must never turn the Kael mascot beside the four tabs into a separate bar above them',
+    )
   })
 
   it('keeps exactly four Worker routes on the left and Kael on the same row to the right', () => {
@@ -138,21 +154,24 @@ describe('cross-platform navigation wiring', () => {
     const routeIds = [...workerDock.matchAll(/\{ icon: '[^']+', id: '([^']+)'/g)].map((match) => match[1])
 
     expect(routeIds).toEqual(['home', 'jobs', 'earnings', 'profile'])
-    expect(workerDock.indexOf('<GlassSurface')).toBeLessThan(workerDock.indexOf('<KaelNavigationAccessory'))
+    expect(workerDock.indexOf('<LiquidTabPlane')).toBeGreaterThan(-1)
+    expect(workerDock.indexOf('<LiquidTabPlane')).toBeLessThan(workerDock.indexOf('<KaelNavigationAccessory'))
     expect(workerDock).toContain('style={[dockStyles.dockRow')
     expect(workerDock).not.toContain('NativeKaelBottomAccessory')
   })
 
-  it('keeps the approved static selection treatment in Production without route-following layers', () => {
-    const customerProduction = readMobileSource('components/customer/dock/dock-stateful-surfaces.tsx')
-    const workerProduction = readMobileSource('components/worker/dock/worker-v5-dock-overlay.tsx')
+  it('keeps a single selection lens and no ambient dock decoration', () => {
+    const navigationSource = [
+      'components/customer/dock/dock-stateful-surfaces.tsx',
+      'components/customer/dock/liquid-tab-plane.tsx',
+      'components/worker/dock/worker-v5-dock-overlay.tsx',
+    ].map(readMobileSource).join('\n')
 
-    const productionNavigationSource = `${customerProduction}\n${workerProduction}`
-    expect(productionNavigationSource).not.toMatch(/LiquidSelectionLens|dock-lens|dock-shimmer|dock-caustic|inner-refraction/)
+    expect(navigationSource).not.toMatch(/shimmer|caustic|aura|refraction|LiquidSelectionLens/i)
     expect(existsSync(resolve(mobileRoot, 'components/customer/dock/liquid-selection-lens.tsx'))).toBe(false)
   })
 
-  it('renders the Customer Production dock with four semantic tabs and no route-following layer', () => {
+  it('renders the Customer Production dock with four semantic tabs and one selection lens', () => {
     mountCustomerDock({ activeTab: 'profile' })
 
     const tabs = screen.getAllByRole('tab')
@@ -161,7 +180,7 @@ describe('cross-platform navigation wiring', () => {
     expect(tabs).toHaveLength(4)
     expect(selectedTabs).toHaveLength(1)
     expect(selectedTabs[0]?.props.accessibilityLabel).toBe('Hồ sơ')
-    expect(screen.queryByTestId('customer-v21-dock-lens')).toBeNull()
+    expect(screen.getAllByTestId('customer-v21-primary-dock-lens')).toHaveLength(1)
     expect(screen.queryByTestId('customer-v21-dock-shimmer')).toBeNull()
     expect(screen.queryByTestId('customer-v21-dock-caustic')).toBeNull()
     expect(screen.getByTestId('customer-v21-kael-accessory')).toBeTruthy()
@@ -217,9 +236,9 @@ describe('cross-platform navigation wiring', () => {
       PILLAR,
       () => {
         expect(selectedLabelStyle.color).toBe(tokens.primary)
-        expect(unselectedLabelStyle.color).toBe(tokens.muted)
+        expect(unselectedLabelStyle.color).toBe(tokens.text)
       },
-      `${mode} mode must resolve selection from the Production theme tokens`,
+      `${mode} mode: accent on the selected tab only, highest-contrast label colour elsewhere (Apple HIG Materials)`,
     )
   })
 

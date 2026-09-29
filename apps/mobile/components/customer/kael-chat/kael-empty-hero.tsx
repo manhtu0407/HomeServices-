@@ -28,7 +28,8 @@ export function CustomerKaelEmptyHero({
 }) {
   const [now, setNow] = useState(() => new Date())
   const [heroHeight, setHeroHeight] = useState(0)
-  const copy = getCustomerKaelEmptyHeroCopy(mode, language, now)
+  // The greeting line is English in both app languages, matching Worker (product decision).
+  const copy = getCustomerKaelEmptyHeroCopy(mode, 'en', now)
 
   useEffect(() => {
     const timer = setTimeout(() => {

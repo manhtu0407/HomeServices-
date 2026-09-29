@@ -163,8 +163,8 @@ describe('Kael chat evidence media retention', () => {
     const createSignedUrl = vi.fn(async () => ({ data: { signedUrl: 'https://storage.example.test/image.jpg' }, error: null }))
     Object.assign(client, { storage: { from: vi.fn(() => ({ createSignedUrl })) } })
     vi.stubGlobal('fetch', vi.fn(async () => new Response(
-      new Uint8Array([0xff, 0xd8, 0xff]),
-      { headers: { 'content-type': 'image/jpeg', 'content-length': '3' } },
+      new Uint8Array([0xff, 0xd8, 0xff, 0xda, 0x00, 0x08, 0x01, 0x01, 0x00, 0x00, 0x3f, 0x00, 0xff, 0xd9]),
+      { headers: { 'content-type': 'image/jpeg', 'content-length': '14' } },
     )))
 
     await expect(

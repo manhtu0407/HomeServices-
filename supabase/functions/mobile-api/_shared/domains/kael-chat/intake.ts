@@ -100,9 +100,9 @@ export async function prepareInitialKaelChatIntake(
     initialEvidenceItems.flatMap((evidence) => evidence.ref ? [evidence.ref] : []),
     ctx.user.id,
   );
-  // Decode/transform every model-visible image before creating any durable
-  // session or artifact. Consumed intents are retry-safe, so a transient
-  // transform failure cannot leave a poisoned case-work record behind.
+  // Check every model-visible image before creating any durable session or
+  // artifact. Consumed intents are retry-safe, so a transient check failure
+  // cannot leave a poisoned case-work record behind.
   const initialSignedVisionUrls = await createSignedVisionUrls(
     ctx,
     initialEvidenceItems,

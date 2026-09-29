@@ -7,6 +7,7 @@ import {
   KAEL_CHAT_MEDIA_REF_PATTERN,
   type KaelMediaStorage,
 } from "./media-upload.ts";
+import { scanVisionImageLocation } from "./vision-image-metadata.ts";
 
 const KAEL_CASE_WORK_EVIDENCE_URL_EXPIRES_IN_SECONDS = 15 * 60;
 export function buildKaelVisionValidationEvidence(
@@ -78,14 +79,7 @@ export async function createSignedVisionUrls(
 
   for (const evidence of visionEvidence) {
     const objectPath = evidence.ref!.slice(storagePrefix.length);
-    const signed = await bucket.createSignedUrl(objectPath, 5 * 60, {
-      transform: {
-        width: 1600,
-        height: 1600,
-        resize: "contain",
-        quality: 82,
-      },
-    });
+    const signed = await bucket.createSignedUrl(objectPath, 5 * 60);
     if (signed.error || !signed.data?.signedUrl) {
       apiFailure(
         "MEDIA_VALIDATION_UNAVAILABLE",
@@ -93,7 +87,7 @@ export async function createSignedVisionUrls(
         503,
       );
     }
-    const trusted = await inspectTrustedKaelVisionTransform(signed.data.signedUrl);
+    const trusted = await inspectTrustedKaelVisionImage(signed.data.signedUrl);
     if (trusted === "invalid") {
       apiFailure("INVALID_MEDIA_CONTENT", "Tệp gửi cho Kael không phải ảnh hợp lệ", 400);
     }
@@ -162,14 +156,6 @@ export async function createSignedCaseWorkEvidenceUrls(
       const signed = await bucket.createSignedUrl(
         objectPath,
         KAEL_CASE_WORK_EVIDENCE_URL_EXPIRES_IN_SECONDS,
-        {
-          transform: {
-            width: 1200,
-            height: 1200,
-            resize: "contain",
-            quality: 82,
-          },
-        },
       );
       return signed.error || !signed.data?.signedUrl ? null : signed.data.signedUrl;
     } catch {
@@ -218,7 +204,7 @@ async function loadKaelChatMediaIntents(
   );
 }
 
-export function isTrustedKaelVisionTransformPayload(
+export function isTrustedKaelVisionImagePayload(
   contentType: string | null,
   bytes: Uint8Array,
 ) {
@@ -237,15 +223,18 @@ export function isTrustedKaelVisionTransformPayload(
   return false;
 }
 
-export async function inspectTrustedKaelVisionTransform(
+// Reads only the head of the stored original: enough for the signature and every metadata
+// segment that precedes the image data, never the whole photo.
+const VISION_IMAGE_HEAD_BYTES = 256 * 1024;
+
+export async function inspectTrustedKaelVisionImage(
   signedUrl: string,
 ): Promise<"valid" | "invalid" | "unavailable"> {
-  const signatureBytes = 16;
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 5_000);
   try {
     const response = await fetch(signedUrl, {
-      headers: { Range: `bytes=0-${signatureBytes - 1}` },
+      headers: { Range: `bytes=0-${VISION_IMAGE_HEAD_BYTES - 1}` },
       redirect: "error",
       signal: controller.signal,
     });
@@ -254,23 +243,42 @@ export async function inspectTrustedKaelVisionTransform(
       return response.status >= 400 && response.status < 500 ? "invalid" : "unavailable";
     }
     const contentLength = Number(response.headers.get("content-length"));
-    if (Number.isFinite(contentLength) && contentLength > signatureBytes) {
+    if (Number.isFinite(contentLength) && contentLength > VISION_IMAGE_HEAD_BYTES) {
       await response.body.cancel().catch(() => undefined);
       return "unavailable";
     }
-    const reader = response.body.getReader();
-    const next = await reader.read();
-    await reader.cancel().catch(() => undefined);
-    if (next.done || !next.value?.length) return "invalid";
-    return isTrustedKaelVisionTransformPayload(
-        response.headers.get("content-type"),
-        next.value.slice(0, signatureBytes),
-      )
-      ? "valid"
-      : "invalid";
+    const head = await readHead(response.body, VISION_IMAGE_HEAD_BYTES);
+    const contentType = response.headers.get("content-type");
+    if (!isTrustedKaelVisionImagePayload(contentType, head)) return "invalid";
+    const mimeType = contentType?.split(";", 1)[0]?.trim().toLowerCase() ?? "";
+    return scanVisionImageLocation(mimeType, head) === "clean" ? "valid" : "invalid";
   } catch {
     return "unavailable";
   } finally {
     clearTimeout(timeout);
   }
+}
+
+async function readHead(body: ReadableStream<Uint8Array>, maxBytes: number) {
+  const reader = body.getReader();
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  try {
+    while (total < maxBytes) {
+      const next = await reader.read();
+      if (next.done) break;
+      const chunk = next.value.subarray(0, maxBytes - total);
+      chunks.push(chunk);
+      total += chunk.byteLength;
+    }
+  } finally {
+    await reader.cancel().catch(() => undefined);
+  }
+  const head = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) {
+    head.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return head;
 }

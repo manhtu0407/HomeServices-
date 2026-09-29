@@ -5,7 +5,7 @@
     "immutableThroughVersion": "20260904113000",
     "sha256": "12da2bac288e0e718e61a27653e8cba9ffdb13b8e9900979407d41e1217b2077"
   },
-  "migrationCount": 425,
+  "migrationCount": 426,
   "migrationEquivalences": {
     "version": "1.0.0",
     "groups": [
@@ -74,7 +74,7 @@
       }
     ]
   },
-  "migrationsSha256": "a34c977d0d1066b5cbaaa8b9afd1d3b97fe601779ae719a1f37861e2be8fb1de",
+  "migrationsSha256": "1c6ec381e52d1ad1d2bd55f98aad94308fe4e154cb33286d55f840f3a4a4923c",
   "databaseTypes": {
     "file": "packages/shared/src/types/database",
     "sha256": "54bbf52ff17ad72f29b0a560c9332eb44949d3dcad394a2abdef495a33a196fc"
@@ -3054,6 +3054,13 @@
       "file": "supabase/migrations/20260928127000_program_push_receipts.sql",
       "sha256": "fef7da4f85946e5c1109c01ab0a2e1c692d9d7c52e745c82a82db99cb933a771",
       "bytes": 3106
+    },
+    {
+      "version": "20260929100000",
+      "name": "worker_kael_general_chat_images",
+      "file": "supabase/migrations/20260929100000_worker_kael_general_chat_images.sql",
+      "sha256": "2371dfd30e9160d8cbba76179a044ffc137cd4d7c59d86f2bb03a250fc59f8c1",
+      "bytes": 12998
     }
   ]
 }

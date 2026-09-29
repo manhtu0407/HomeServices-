@@ -62,6 +62,7 @@ export function useWorkerV5KaelOrbChat(
   const sessionCatalogOwnerKeyRef = useRef<string | null>(catalogKey)
   const openRequestRef = useRef(0)
   const sendRequestRef = useRef(0)
+  const sendAbortControllerRef = useRef<AbortController | null>(null)
   const sessionListRequestRef = useRef<WorkerV5KaelSessionListRequest | null>(null)
   const ownerKey = JSON.stringify([workerId, sessionJobId, mode, localVisualAuditSession])
   const {
@@ -688,13 +689,14 @@ export function useWorkerV5KaelOrbChat(
 
   const pickMedia = () => pickWorkerKaelMedia({
     busy,
-    hasJobKaelSessionAccess,
+    canAttachPhoto: mode === 'normal' || hasJobKaelSessionAccess,
     language,
     openingSessionId,
     setMediaItems,
   })
 
   const send = async (message: string) => createWorkerKaelOrbSendAction({
+    abortControllerRef: sendAbortControllerRef,
     activeJobIdRef,
     activeModeRef,
     activeOwnerRef,
@@ -724,6 +726,8 @@ export function useWorkerV5KaelOrbChat(
     setTurns,
   })(message)
 
+  const stopMessage = () => sendAbortControllerRef.current?.abort()
+
   return {
     activeSessionId,
     archiveSession,
@@ -748,8 +752,12 @@ export function useWorkerV5KaelOrbChat(
     sessions,
     sessionsError,
     sessionsLoading,
+    sending: busy,
     setSessionPinned,
     startNewSession,
+    // Stop matches Customer: only the advisory Chat may be cut short; Work turns run to the end.
+    stopAvailable: mode === 'normal',
+    stopMessage,
     toggleReasoningReceipt: reasoningActions.toggle,
   }
 }

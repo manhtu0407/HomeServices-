@@ -24,10 +24,10 @@ export function matchCaseWorkResourceRoute(
   decodePathSegment: (value: string) => string | null,
 ): CaseWorkResourceRoute | null {
   if (method === "POST" && path === "/kael/chat/media-upload") {
-    return { kind: "kael.chat.mediaUpload", method: "POST", roles: ["customer", "admin"] };
+    return { kind: "kael.chat.mediaUpload", method: "POST", roles: ["customer", "worker", "admin"] };
   }
   if (method === "POST" && path === "/kael/chat/media-revoke") {
-    return { kind: "kael.chat.mediaRevoke", method: "POST", roles: ["customer", "admin"] };
+    return { kind: "kael.chat.mediaRevoke", method: "POST", roles: ["customer", "worker", "admin"] };
   }
 
   const mediaUpload = path.match(/^\/jobs\/([^/]+)\/media-upload$/);

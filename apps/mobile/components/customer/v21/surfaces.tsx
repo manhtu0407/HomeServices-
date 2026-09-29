@@ -1094,7 +1094,7 @@ export function CustomerV21DockOverlay({ active }: { active: CustomerDockActive 
   const router = useRouter()
   const { width } = useWindowDimensions()
   const viewportWidth = customerViewportWidth(width)
-  const { mode, reduceMotion, tokens } = useV21Theme()
+  const { reduceMotion, tokens } = useV21Theme()
   const { collapsed, resetDockScroll } = useDockScrollState()
   const animatedDockScrollStyle = useDockScrollTransform(collapsed, reduceMotion)
   // A parent-controlled active tab is external synchronization, not a local event surrogate.
@@ -1121,7 +1121,6 @@ export function CustomerV21DockOverlay({ active }: { active: CustomerDockActive 
       language={language}
       liquidDockWidth={liquidDockWidth}
       liquidNavWidth={liquidNavWidth}
-      mode={mode}
       navItems={customerV21DockNavItems}
       onKaelPress={openKael}
       onTabPress={(route) => router.replace(route as never)}

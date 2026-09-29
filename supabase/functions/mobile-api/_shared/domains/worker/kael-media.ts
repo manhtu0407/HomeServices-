@@ -1,5 +1,5 @@
 // Worker Kael private-media boundary: bind a reference to the active worker and
-// job, mint a short transformed URL, and convert vision output into untrusted,
+// job, mint a short signed URL, and convert vision output into untrusted,
 // direct-verification-only evidence for the advisory service.
 
 import { sanitizeForLLM } from "../../../../_shared/domain.ts";
@@ -10,7 +10,7 @@ import type { MobileApiContext } from "../../platform/auth.ts";
 import { validateJobMediaPath } from "../../platform/job-media.ts";
 import { nullableString } from "../../platform/coercions.ts";
 import { type DbClient, dbQuery } from "../../platform/db.ts";
-import { inspectTrustedKaelVisionTransform } from "../kael-chat/media-vision.ts";
+import { inspectTrustedKaelVisionImage } from "../kael-chat/media-vision.ts";
 
 const WORKER_KAEL_MEDIA_PREFIX = "supabase://job-media/";
 
@@ -18,9 +18,6 @@ type WorkerKaelVisionStorageBucket = {
   createSignedUrl(
     path: string,
     expiresIn: number,
-    options: {
-      transform: { width: number; height: number; resize: "contain"; quality: number };
-    },
   ): Promise<{ data: { signedUrl?: string } | null; error: unknown }>;
 };
 
@@ -141,19 +138,12 @@ export async function prepareWorkerKaelVisionUrls(
   const bucket = storage.from("job-media");
   const signedUrls: string[] = [];
   for (const objectPath of objectPaths) {
-    const signed = await bucket.createSignedUrl(objectPath, 5 * 60, {
-      transform: {
-        width: 1600,
-        height: 1600,
-        resize: "contain",
-        quality: 82,
-      },
-    });
+    const signed = await bucket.createSignedUrl(objectPath, 5 * 60);
     const signedUrl = signed.data?.signedUrl;
     if (signed.error || !signedUrl) {
       apiFailure("MEDIA_VALIDATION_UNAVAILABLE", "Chưa thể đọc media hiện trường an toàn", 503);
     }
-    const trusted = await inspectTrustedKaelVisionTransform(signedUrl);
+    const trusted = await inspectTrustedKaelVisionImage(signedUrl);
     if (trusted === "invalid") {
       apiFailure("INVALID_MEDIA_CONTENT", "Media hiện trường không phải ảnh hợp lệ", 400);
     }

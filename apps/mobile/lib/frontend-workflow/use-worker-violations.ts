@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 
 import type { DisciplinePolicyView, WorkerViolationCaseView } from '../api-types/program'
 import { useAuth } from '../auth-provider'
-import { readLocalMediaBlob } from '../media-upload'
+import { readLocalMediaBytes } from '../media-upload'
 import { disciplineService } from '../services/discipline-service'
 import { supabase } from '../supabase'
 
@@ -16,7 +16,7 @@ type SignedUploadBucket = {
   uploadToSignedUrl: (
     path: string,
     token: string,
-    body: Blob,
+    body: Uint8Array,
     options?: { contentType?: string; upsert?: boolean },
   ) => Promise<{ error: unknown }>
 }
@@ -53,11 +53,11 @@ export function useWorkerViolations() {
     if (!bucket) return { success: false as const, code: 'MEDIA_STORAGE_UNAVAILABLE' }
     const paths: string[] = []
     for (const image of images.slice(0, MAX_APPEAL_IMAGES)) {
-      const local = await readLocalMediaBlob(image.uri, MAX_APPEAL_IMAGE_BYTES)
+      const local = await readLocalMediaBytes(image.uri, MAX_APPEAL_IMAGE_BYTES)
       if (!local.success) return { success: false as const, code: 'MEDIA_READ_FAILED' }
       const intent = await disciplineService.createAppealUpload(caseId, image.mimeType, accessToken)
       if (!intent.success) return { success: false as const, code: intent.code }
-      const uploaded = await bucket.uploadToSignedUrl(intent.data.path, intent.data.token, local.blob, {
+      const uploaded = await bucket.uploadToSignedUrl(intent.data.path, intent.data.token, local.bytes, {
         contentType: image.mimeType,
         upsert: false,
       })

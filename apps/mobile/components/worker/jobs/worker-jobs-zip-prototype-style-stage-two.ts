@@ -12,10 +12,14 @@ export const stageTwoStyles = StyleSheet.create({
     minHeight: 168,
     overflow: 'hidden',
   },
+  // Out of flow on purpose: an in-flow '100%' height inside this auto-height panel resolves
+  // against the nearest definite-height ancestor on native Yoga and stretches the whole card.
   heroWorkart: {
-    alignSelf: 'stretch',
-    height: '100%',
-    width: '100%',
+    bottom: 0,
+    left: 0,
+    position: 'absolute',
+    right: 0,
+    top: 0,
   },
   heroWorkartPanel: {
     alignSelf: 'stretch',

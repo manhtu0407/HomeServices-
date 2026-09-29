@@ -5,7 +5,7 @@ import { type LocalDeal } from '@nestscout/shared'
 import { useFocusEffect } from 'expo-router'
 import { KaelButton, KaelTextField } from '@/components/ui/kael-primitives'
 import { GlassSurface } from '@/components/ui/glass-surface'
-import { LiquidSendArrowIcon } from '@/components/ui/liquid-back-button'
+import { KaelSendStopGlyph } from '@/components/ui/kael-send-stop-glyph'
 import { motionDuration, motionTokens } from '@/components/ui/motion-tokens'
 import { color } from '@/design/theme'
 import { type AppLanguage } from '@/lib/app-language'
@@ -70,7 +70,7 @@ export function WorkerV5KaelOrbScreenSurface({
   const modeOptions = [
     {
       description: textByLanguage(language, 'Hỏi đáp và hỗ trợ nhanh', 'Quick questions and support'),
-      label: textByLanguage(language, 'Trò chuyện', 'Chat'),
+      label: 'Chat',
       value: 'normal' as const,
     },
     {
@@ -79,7 +79,7 @@ export function WorkerV5KaelOrbScreenSurface({
         : textByLanguage(language, 'Lọc và chuẩn bị cơ hội phù hợp', 'Filter and prepare matching work'),
       label: hasActiveExecutionCase
         ? textByLanguage(language, 'Công việc', 'Work case')
-        : textByLanguage(language, 'Công việc', 'Work'),
+        : 'Work',
       value: 'intake' as const,
     },
   ]
@@ -207,14 +207,17 @@ export function WorkerV5KaelOrbScreenSurface({
         draftScope={pendingDraftScope}
         key={`${session?.user.id ?? 'no-owner'}:${mode}:${pendingDraftScope}:${getWorkerV5ChatJobId(deal) ?? 'no-job'}:${orbChat.activeSessionId ?? 'draft'}:${chatEntryKey}`}
         language={language}
-        mediaEnabled={hasJobIntakeScope}
+        mediaEnabled={hasJobIntakeScope || mode === 'normal'}
         mediaCount={orbChat.mediaCount}
         mode={mode}
         onActivityChange={setComposerActive}
         onPickMedia={() => void orbChat.pickMedia()}
         onSend={orbChat.send}
+        onStop={orbChat.stopMessage}
         reduceMotion={reduceMotion}
         reduceTransparency={reduceTransparency}
+        sending={orbChat.sending}
+        stopAvailable={orbChat.stopAvailable}
       />
       )
   ), [
@@ -359,8 +362,11 @@ export function WorkerV5KaelOrbComposer({
   onActivityChange,
   onPickMedia,
   onSend,
+  onStop,
   reduceMotion,
   reduceTransparency,
+  sending = false,
+  stopAvailable = false,
 }: {
   busy: boolean
   draftOwnerId?: string | null
@@ -373,8 +379,11 @@ export function WorkerV5KaelOrbComposer({
   onActivityChange?: (active: boolean) => void
   onPickMedia: () => void
   onSend: (message: string) => Promise<boolean>
+  onStop?: () => void
   reduceMotion: boolean
   reduceTransparency: boolean
+  sending?: boolean
+  stopAvailable?: boolean
 }) {
   const [draft, setDraft] = useState(() => initialDraft || (
     draftScope
@@ -383,6 +392,8 @@ export function WorkerV5KaelOrbComposer({
   ))
   const focusedRef = useRef(false)
   const trimmedDraft = draft.trim()
+  const stopping = sending && stopAvailable && Boolean(onStop)
+  const canSubmit = !busy && Boolean(trimmedDraft)
   const mediaLabel = mode === 'normal'
     ? textByLanguage(language, 'Thêm ảnh cho Kael', 'Add photo for Kael')
     : textByLanguage(language, 'Thêm ảnh công việc cho Kael', 'Add work photo for Kael')
@@ -431,18 +442,15 @@ export function WorkerV5KaelOrbComposer({
           style={({ pressed }) => [
             styles.kaelOrbComposerCameraButton,
             {
-              backgroundColor: color.mint.mint50,
-              borderColor: color.surface.stroke,
-              borderRadius: 14,
-              borderWidth: 1,
-              height: 38,
-              width: 38,
+              borderRadius: 22,
+              height: 44,
+              width: 44,
             },
             pressed && !reduceMotion ? { transform: [{ scale: 0.96 }] } : null,
           ]}
           testID="worker-v5-kael-orb-camera"
         >
-          <WorkerV5KaelOrbCameraIcon color={color.brand.primaryDark} />
+          <WorkerV5KaelOrbCameraIcon color={busy ? color.text.muted : color.text.strong} size={27} />
           {mediaCount > 0 ? (
             <View style={styles.kaelOrbComposerCameraBadge} testID="worker-v5-kael-orb-camera-count">
               <Text style={styles.kaelOrbComposerCameraBadgeText}>{mediaCount}</Text>
@@ -466,15 +474,17 @@ export function WorkerV5KaelOrbComposer({
           value={draft}
         />
         <Pressable
-          accessibilityLabel={textByLanguage(language, 'Gửi tin nhắn cho Kael', 'Send message to Kael')}
+          accessibilityLabel={stopping
+            ? textByLanguage(language, 'Dừng phản hồi', 'Stop response')
+            : textByLanguage(language, 'Gửi tin nhắn cho Kael', 'Send message to Kael')}
           accessibilityRole="button"
-          accessibilityState={{ busy, disabled: busy || !trimmedDraft }}
-          disabled={busy || !trimmedDraft}
-          onPress={submitDraft}
+          accessibilityState={{ busy, disabled: !stopping && !canSubmit }}
+          disabled={!stopping && !canSubmit}
+          onPress={stopping ? onStop : submitDraft}
           style={({ pressed }) => [
             styles.kaelOrbSendButton,
             {
-              backgroundColor: busy || !trimmedDraft ? color.surface.soft : color.brand.primary,
+              backgroundColor: stopping || canSubmit ? color.brand.primary : color.surface.soft,
               borderColor: color.surface.stroke,
               borderRadius: 22,
               borderWidth: 1,
@@ -485,9 +495,12 @@ export function WorkerV5KaelOrbComposer({
           ]}
           testID="worker-v5-kael-orb-send"
         >
-          <LiquidSendArrowIcon
-            color={busy || !trimmedDraft ? color.text.muted : color.text.inverse}
-            testID="worker-v5-kael-orb-send-arrow"
+          <KaelSendStopGlyph
+            arrowColor={canSubmit ? color.text.inverse : color.text.muted}
+            reduceMotion={reduceMotion}
+            stopColor={color.text.inverse}
+            stopping={stopping}
+            testIDPrefix="worker-v5-kael-orb"
           />
         </Pressable>
       </GlassSurface>
