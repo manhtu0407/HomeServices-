@@ -5,7 +5,8 @@ import type { CaseWorkEvidence } from '@nestscout/shared'
 import type { ApiResponseMetadata, JobMediaAttachInput, JobMediaStage } from './api-types'
 import { createClientDiagnosticMetadata } from './api'
 import { appendWorkflowSupportCode } from './frontend-workflow/errors'
-import { readResponseBlobBounded, withNetworkDeadline } from './response-guard'
+import { readResponseBytesBounded, withNetworkDeadline } from './response-guard'
+import { reencodeVisionImage } from './vision-image-reencode'
 
 export { uploadWorkerVerificationDrafts } from './worker-verification-upload'
 
@@ -95,14 +96,21 @@ export async function uploadJobMediaDrafts(
     uploadToSignedUrl: (
       path: string,
       token: string,
-      fileBody: Blob,
+      fileBody: Uint8Array,
       fileOptions?: { contentType?: string; upsert?: boolean },
     ) => Promise<{ error: unknown }>
   }
   const reservedObjectPaths: string[] = []
   const uploadedAssets: JobMediaAttachInput['assets'] = []
 
-  for (const [index, item] of mediaItems.slice(0, 5).entries()) {
+  for (const [index, pickedItem] of mediaItems.slice(0, 5).entries()) {
+    const item = stage === 'kael_reference' && pickedItem.type === 'image'
+      ? await reencodeVisionImage(pickedItem)
+      : pickedItem
+    if (!item) {
+      await revokeJobMediaUploadsBestEffort(jobId, reservedObjectPaths)
+      return jobMediaFailure('MEDIA_READ_FAILED', 'Không thể đọc tệp media đã chọn')
+    }
     if (
       typeof item.fileSizeBytes === 'number' &&
       Number.isFinite(item.fileSizeBytes) &&
@@ -124,12 +132,12 @@ export async function uploadJobMediaDrafts(
       )
     }
 
-    const localBlob = await readLocalMediaBlob(item.uri, MAX_JOB_MEDIA_BYTES)
-    if (!localBlob.success) {
+    const localFile = await readLocalMediaBytes(item.uri, MAX_JOB_MEDIA_BYTES)
+    if (!localFile.success) {
       await revokeJobMediaUploadsBestEffort(jobId, reservedObjectPaths)
       return jobMediaFailure('MEDIA_READ_FAILED', 'Không thể đọc tệp media đã chọn')
     }
-    const fileSizeBytes = positiveUploadFileSize(localBlob.blob.size)
+    const fileSizeBytes = positiveUploadFileSize(localFile.bytes.byteLength)
     if (!fileSizeBytes) {
       await revokeJobMediaUploadsBestEffort(jobId, reservedObjectPaths)
       return jobMediaFailure('MEDIA_READ_FAILED', 'Tệp media rỗng hoặc không thể đọc')
@@ -163,7 +171,7 @@ export async function uploadJobMediaDrafts(
         storageApi.uploadToSignedUrl(
           objectPath,
           token,
-          localBlob.blob,
+          localFile.bytes,
           { contentType: mimeType, upsert: false },
         ),
       )
@@ -248,7 +256,7 @@ export async function uploadKaelChatMediaDrafts(mediaItems: LocalMediaUploadDraf
     uploadToSignedUrl: (
       path: string,
       token: string,
-      fileBody: Blob,
+      fileBody: Uint8Array,
       fileOptions?: { contentType?: string; upsert?: boolean },
     ) => Promise<{ error: unknown }>
     remove?: (paths: string[]) => Promise<{ error: unknown }>
@@ -382,11 +390,11 @@ async function uploadKaelChatEvidenceObject(
     uploadToSignedUrl: (
       path: string,
       token: string,
-      fileBody: Blob,
+      fileBody: Uint8Array,
       fileOptions?: { contentType?: string; upsert?: boolean },
     ) => Promise<{ error: unknown }>
   },
-  item: LocalMediaUploadDraft,
+  pickedItem: LocalMediaUploadDraft,
   index: number,
   options: KaelEvidenceObjectOptions,
 ): Promise<{
@@ -394,6 +402,10 @@ async function uploadKaelChatEvidenceObject(
   evidence: CaseWorkEvidence
   mediaRef: string
 } | MediaUploadFailure> {
+  const item = options.modelEligible ? await reencodeVisionImage(pickedItem) : pickedItem
+  if (!item) {
+    return jobMediaFailure('MEDIA_READ_FAILED', 'Không thể đọc tệp media đã chọn')
+  }
   const mimeType = mimeTypeForUpload(item)
   if (
     options.modelEligible &&
@@ -401,11 +413,11 @@ async function uploadKaelChatEvidenceObject(
   ) {
     return jobMediaFailure('UNSUPPORTED_MEDIA', 'Ảnh cần ở định dạng JPEG, PNG hoặc WebP để Kael phân tích')
   }
-  const localBlob = await readLocalMediaBlob(item.uri, MAX_KAEL_CHAT_MEDIA_BYTES)
-  if (!localBlob.success) {
+  const localFile = await readLocalMediaBytes(item.uri, MAX_KAEL_CHAT_MEDIA_BYTES)
+  if (!localFile.success) {
     return jobMediaFailure('MEDIA_READ_FAILED', 'Không thể đọc tệp media đã chọn')
   }
-  const fileSizeBytes = positiveUploadFileSize(localBlob.blob.size)
+  const fileSizeBytes = positiveUploadFileSize(localFile.bytes.byteLength)
   if (!fileSizeBytes) {
     return jobMediaFailure('MEDIA_READ_FAILED', 'Tệp media rỗng hoặc không thể đọc')
   }
@@ -430,7 +442,7 @@ async function uploadKaelChatEvidenceObject(
     const { error: uploadError } = await withJobMediaUploadTimeout(storageApi.uploadToSignedUrl(
       signedUpload.data.object_path,
       signedUpload.data.token,
-      localBlob.blob,
+      localFile.bytes,
       { contentType: mimeType, upsert: false },
     ))
     if (!uploadError) {
@@ -507,10 +519,12 @@ function formatMediaTimestamp(durationMillis: number) {
   return `${String(minutes).padStart(2, '0')}:${String(seconds % 60).padStart(2, '0')}`
 }
 
-export async function readLocalMediaBlob(
+// Uploads send these bytes, never a Blob: storage-js turns a Blob into multipart and ignores
+// contentType, and Expo fetch gives a file:// read no content-type, so Storage sees text/plain.
+export async function readLocalMediaBytes(
   uri: string,
   maxBytes: number,
-): Promise<{ success: true; blob: Blob } | { success: false }> {
+): Promise<{ success: true; bytes: Uint8Array } | { success: false }> {
   try {
     return await withNetworkDeadline(async (signal) => {
       const response = await fetch(uri, { signal })
@@ -520,7 +534,7 @@ export async function readLocalMediaBlob(
       }
       return {
         success: true as const,
-        blob: await readResponseBlobBounded(response, maxBytes),
+        bytes: await readResponseBytesBounded(response, maxBytes),
       }
     }, LOCAL_MEDIA_READ_TIMEOUT_MS)
   } catch {

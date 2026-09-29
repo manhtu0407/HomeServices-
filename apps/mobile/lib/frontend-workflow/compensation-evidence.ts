@@ -1,4 +1,4 @@
-import { readLocalMediaBlob } from '../media-upload'
+import { readLocalMediaBytes } from '../media-upload'
 import { compensationService } from '../services/compensation-service'
 import { supabase } from '../supabase'
 
@@ -12,7 +12,7 @@ type SignedUploadBucket = {
   uploadToSignedUrl: (
     path: string,
     token: string,
-    body: Blob,
+    body: Uint8Array,
     options?: { contentType?: string; upsert?: boolean },
   ) => Promise<{ error: unknown }>
 }
@@ -25,11 +25,11 @@ export async function uploadCompensationPhotos(caseId: string, photos: Compensat
   if (!bucket) return { success: false as const, code: 'MEDIA_STORAGE_UNAVAILABLE' }
   const paths: string[] = []
   for (const photo of photos.slice(0, MAX_COMPENSATION_PHOTOS)) {
-    const local = await readLocalMediaBlob(photo.uri, MAX_PHOTO_BYTES)
+    const local = await readLocalMediaBytes(photo.uri, MAX_PHOTO_BYTES)
     if (!local.success) return { success: false as const, code: 'MEDIA_READ_FAILED' }
     const intent = await compensationService.createEvidenceUpload(caseId, photo.mimeType, accessToken)
     if (!intent.success) return { success: false as const, code: intent.code }
-    const uploaded = await bucket.uploadToSignedUrl(intent.data.path, intent.data.token, local.blob, {
+    const uploaded = await bucket.uploadToSignedUrl(intent.data.path, intent.data.token, local.bytes, {
       contentType: photo.mimeType,
       upsert: false,
     })

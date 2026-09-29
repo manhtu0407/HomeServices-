@@ -1,6 +1,6 @@
 import type { LocalMediaUploadDraft } from './media-upload'
 import { generateClientRequestId } from './client-request-id'
-import { readResponseBlobBounded, withNetworkDeadline } from './response-guard'
+import { readResponseBytesBounded, withNetworkDeadline } from './response-guard'
 import { supabase } from './supabase'
 
 type WorkerVerificationDrafts = {
@@ -126,15 +126,15 @@ export async function uploadWorkerVerificationDrafts(files: WorkerVerificationDr
   const bucket = client.storage.from('worker-verification')
   const uploadResults = await Promise.all(
     preparedEntries.map(async ({ field, item, mimeType, objectPath }): Promise<WorkerVerificationUploadResult> => {
-      const localBlob = await readWorkerVerificationBlob(item.uri)
-      if (!localBlob.success) {
+      const localFile = await readWorkerVerificationBytes(item.uri)
+      if (!localFile.success) {
         return {
           success: false,
           code: 'MEDIA_READ_FAILED',
           error: 'Không thể đọc file xác minh đã chọn',
         }
       }
-      const fileSizeBytes = positiveFileSize(localBlob.blob.size)
+      const fileSizeBytes = positiveFileSize(localFile.bytes.byteLength)
       if (!fileSizeBytes) {
         return {
           success: false,
@@ -152,7 +152,7 @@ export async function uploadWorkerVerificationDrafts(files: WorkerVerificationDr
 
       try {
         const uploaded = await withNetworkDeadline(
-          () => bucket.upload(objectPath, localBlob.blob, {
+          () => bucket.upload(objectPath, localFile.bytes, {
             contentType: mimeType,
             upsert: false,
           }),
@@ -203,7 +203,8 @@ export async function uploadWorkerVerificationDrafts(files: WorkerVerificationDr
   }
 }
 
-async function readWorkerVerificationBlob(uri: string) {
+// Raw bytes for the same reason as readLocalMediaBytes: a Blob upload reaches Storage as text/plain.
+async function readWorkerVerificationBytes(uri: string) {
   try {
     return await withNetworkDeadline(async (signal) => {
       const response = await fetch(uri, { signal })
@@ -213,7 +214,7 @@ async function readWorkerVerificationBlob(uri: string) {
       }
       return {
         success: true as const,
-        blob: await readResponseBlobBounded(response, MAX_WORKER_VERIFICATION_BYTES),
+        bytes: await readResponseBytesBounded(response, MAX_WORKER_VERIFICATION_BYTES),
       }
     }, LOCAL_MEDIA_READ_TIMEOUT_MS)
   } catch {
