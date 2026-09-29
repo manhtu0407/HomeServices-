@@ -1,6 +1,6 @@
 // Private Kael media boundary: durable upload reservations, ownership checks,
-// trusted Storage image transforms, and retention cleanup. Raw video originals
-// remain private evidence; only decoded/re-encoded image outputs reach a model.
+// and retention cleanup. Raw video originals remain private evidence; only images
+// the server has checked for location metadata reach a model.
 
 import type {
   EdgeKaelChatMediaRevokeInput,
@@ -23,14 +23,6 @@ export type KaelMediaStorage = {
       createSignedUrl(
         path: string,
         expiresIn: number,
-        options?: {
-          transform?: {
-            width: number;
-            height: number;
-            resize: "contain";
-            quality: number;
-          };
-        },
       ): Promise<{
         data: { signedUrl?: string } | null;
         error: unknown;

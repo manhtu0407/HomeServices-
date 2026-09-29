@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest'
 
 import {
   buildKaelVisionValidationEvidence,
-  inspectTrustedKaelVisionTransform,
-  isTrustedKaelVisionTransformPayload,
+  inspectTrustedKaelVisionImage,
+  isTrustedKaelVisionImagePayload,
 } from '../../../../../supabase/functions/mobile-api/_shared/domains/kael-chat/media-vision'
 
 describe('Kael trusted model-vision transform gate', () => {
@@ -35,7 +35,7 @@ describe('Kael trusted model-vision transform gate', () => {
     ['image/png', new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])],
     ['image/webp', new TextEncoder().encode('RIFF0000WEBP')],
   ])('accepts a decoded Storage transform payload for %s', (contentType, bytes) => {
-    expect(isTrustedKaelVisionTransformPayload(contentType as string, bytes as Uint8Array)).toBe(true)
+    expect(isTrustedKaelVisionImagePayload(contentType as string, bytes as Uint8Array)).toBe(true)
   })
 
   it.each([
@@ -44,7 +44,7 @@ describe('Kael trusted model-vision transform gate', () => {
     ['image/gif', new TextEncoder().encode('GIF89a000000')],
     ['image/heic', new Uint8Array([0, 0, 0, 0, ...new TextEncoder().encode('ftypheic')])],
   ])('rejects non-transform or unsupported payloads', (contentType, bytes) => {
-    expect(isTrustedKaelVisionTransformPayload(contentType as string, bytes as Uint8Array)).toBe(false)
+    expect(isTrustedKaelVisionImagePayload(contentType as string, bytes as Uint8Array)).toBe(false)
   })
 
   it('rejects a JPEG-prefix polyglot when the trusted decoder refuses the source', async () => {
@@ -54,7 +54,7 @@ describe('Kael trusted model-vision transform gate', () => {
       status: 422,
     })
     try {
-      await expect(inspectTrustedKaelVisionTransform('https://storage.test/transform')).resolves.toBe('invalid')
+      await expect(inspectTrustedKaelVisionImage('https://storage.test/transform')).resolves.toBe('invalid')
     } finally {
       globalThis.fetch = previousFetch
     }
@@ -65,19 +65,19 @@ describe('Kael trusted model-vision transform gate', () => {
     let requestInit: RequestInit | undefined
     globalThis.fetch = async (_url, init) => {
       requestInit = init
-      return new Response(new Uint8Array([0xff, 0xd8, 0xff, 0xe0]), {
+      return new Response(new Uint8Array([0xff, 0xd8, 0xff, 0xda, 0x00, 0x08, 0x01, 0x01, 0x00, 0x00, 0x3f, 0x00]), {
         headers: {
-          'content-length': '4',
-          'content-range': 'bytes 0-3/1024',
+          'content-length': '12',
+          'content-range': 'bytes 0-11/1024',
           'content-type': 'image/jpeg',
         },
         status: 206,
       })
     }
     try {
-      await expect(inspectTrustedKaelVisionTransform('https://storage.test/transform'))
+      await expect(inspectTrustedKaelVisionImage('https://storage.test/transform'))
         .resolves.toBe('valid')
-      expect(new Headers(requestInit?.headers).get('range')).toBe('bytes=0-15')
+      expect(new Headers(requestInit?.headers).get('range')).toBe('bytes=0-262143')
     } finally {
       globalThis.fetch = previousFetch
     }
