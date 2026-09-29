@@ -594,7 +594,7 @@ describe('active customer Kael chat surface wiring', () => {
         maxWidth: 240,
         textAlign: 'left',
       })
-      expect(screen.getByTestId('customer-v21-kael-empty-hero-copy')).toHaveTextContent('Để Kael hỗ trợ bạn...')
+      expect(screen.getByTestId('customer-v21-kael-empty-hero-copy')).toHaveTextContent('Let Kael help...')
       expect(screen.getByTestId('customer-v21-kael-input')).toBeOnTheScreen()
       expect(StyleSheet.flatten(screen.getByTestId('customer-v21-kael-input').props.style)).toMatchObject({
         fontSize: 15,
@@ -1601,6 +1601,10 @@ describe('active customer Kael chat surface wiring', () => {
     expect(screen.getByTestId('customer-v21-kael-composer-frame')).toHaveStyle({ minHeight: 56, paddingHorizontal: 8, paddingVertical: 5 })
     expect(screen.getByTestId('customer-v21-kael-media-picker')).toHaveStyle({ borderRadius: 22, height: 44, width: 44 })
     expect(screen.getByTestId('customer-v21-kael-send')).toHaveStyle({ borderRadius: 22, height: 44, width: 44 })
+    expect(screen.getByTestId('customer-v21-kael-send')).toHaveStyle({
+      backgroundColor: color.surface.soft,
+      borderColor: color.surface.stroke,
+    })
     fireEvent.changeText(screen.getByTestId('customer-v21-kael-input'), 'Mô tả nhu cầu cần gửi')
     expect(screen.getByTestId('customer-v21-kael-send')).toHaveStyle({
       backgroundColor: color.mint.white,

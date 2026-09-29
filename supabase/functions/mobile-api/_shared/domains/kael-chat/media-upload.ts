@@ -64,6 +64,10 @@ export async function createKaelChatMediaUpload(
   ) {
     apiFailure("UNSUPPORTED_MEDIA", "Bằng chứng gốc riêng tư phải là video", 400);
   }
+  // Workers send photos to Kael's general chat only; private video originals are customer evidence.
+  if (ctx.role === "worker" && input.purpose !== "model_vision") {
+    apiFailure("UNSUPPORTED_MEDIA", "Kael chỉ nhận ảnh trong cuộc trò chuyện này", 400);
+  }
 
   const storage = (ctx.supabase as KaelMediaStorage).storage;
   if (!storage) {

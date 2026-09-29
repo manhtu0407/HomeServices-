@@ -8,7 +8,7 @@ import { workerV5KaelOrbMediaName, type WorkerV5KaelOrbMediaPreview } from './ka
 
 type WorkerKaelMediaPickerOptions = {
   busy: boolean
-  hasJobKaelSessionAccess: boolean
+  canAttachPhoto: boolean
   language: AppLanguage
   openingSessionId: string | null
   setMediaItems: (action: SetStateAction<WorkerV5KaelOrbMediaPreview[]>) => void
@@ -16,13 +16,13 @@ type WorkerKaelMediaPickerOptions = {
 
 export async function pickWorkerKaelMedia({
   busy,
-  hasJobKaelSessionAccess,
+  canAttachPhoto,
   language,
   openingSessionId,
   setMediaItems,
 }: WorkerKaelMediaPickerOptions) {
   if (busy || openingSessionId) return
-  if (!hasJobKaelSessionAccess) {
+  if (!canAttachPhoto) {
     Alert.alert('Kael', textByLanguage(language, 'Cần việc đang thực hiện để gửi ảnh cho Kael.', 'Active work is needed to send a photo to Kael.'))
     return
   }

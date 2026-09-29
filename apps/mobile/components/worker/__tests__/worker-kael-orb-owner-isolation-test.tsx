@@ -409,7 +409,7 @@ describe('worker Kael orb owner isolation', () => {
     })
 
     expect(sent).toBe(true)
-    expect(mockWorkerKaelChatSendTurn).toHaveBeenCalledWith('session-general', expect.objectContaining({ message: 'Hello Kael' }))
+    expect(mockWorkerKaelChatSendTurn).toHaveBeenCalledWith('session-general', expect.objectContaining({ message: 'Hello Kael' }), expect.any(AbortSignal))
     expect(mockWorkerKaelChatSendTurn.mock.calls[0][1].client_request_id)
       .toBe(mockWorkerKaelChatStreamTurn.mock.calls[0][1].client_request_id)
     expect(result.current.liveTurns.map((turn) => turn.text)).toContain('Hello. How can I help?')

@@ -235,12 +235,13 @@ export async function streamWorkerKaelChatTurn(
   sessionId: string,
   input: WorkerKaelChatTurnInput,
   handlers: WorkerKaelChatStreamHandlers = {},
+  signal?: AbortSignal,
 ): Promise<ApiResult<WorkerKaelChatResponse>> {
   return streamKaelTurn(`/workers/me/kael/chat/${encodeURIComponent(sessionId)}/stream`, input, handlers, {
     httpErrorField: 'message',
     httpFallbackCode: () => 'STREAM_HTTP',
     httpFallbackMessage: 'Kael stream failed.',
-  }, isWorkerKaelStreamResult)
+  }, isWorkerKaelStreamResult, signal)
 }
 
 type StreamHandlers<T> = {

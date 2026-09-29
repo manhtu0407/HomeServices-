@@ -1404,6 +1404,7 @@ describe('Worker runtime surface wiring', () => {
         'worker-kael-session-1',
         expect.objectContaining({ language: 'vi', media_refs: [], message: 'Tôi nên chuẩn bị dụng cụ gì?' }),
         expect.any(Object),
+        expect.any(AbortSignal),
       )
     })
     expect(await screen.findByText('Kael saved this advisory. Keep the next step inside the app.')).toBeOnTheScreen()
@@ -1758,8 +1759,8 @@ describe('Worker runtime surface wiring', () => {
   })
 
   it.each([
-    ['Trò chuyện', '3.1-kael-chat-normal'],
-    ['Công việc', '3.2-kael-job-intake'],
+    ['Chat', '3.1-kael-chat-normal'],
+    ['Work', '3.2-kael-job-intake'],
   ])('groups session management and %s mode selection in one header capsule', (modeLabel, workerScreen) => {
     buildWorkflow()
     mockRouteParams = { ns_worker_screen: workerScreen }
@@ -1853,7 +1854,7 @@ describe('Worker runtime surface wiring', () => {
 
     render(<WorkerChatSurface />)
 
-    expect(screen.getByTestId('worker-v5-kael-active-mode')).toHaveTextContent(/^Trò chuyện$/)
+    expect(screen.getByTestId('worker-v5-kael-active-mode')).toHaveTextContent(/^Chat$/)
     expect(screen.queryByText('⌄')).toBeNull()
     expect(screen.queryByTestId('worker-v5-kael-mode-menu')).toBeNull()
 
@@ -2367,6 +2368,7 @@ describe('Worker runtime surface wiring', () => {
         'worker-kael-session-1',
         expect.objectContaining({ message: 'Chuẩn bị dụng cụ ngay' }),
         expect.any(Object),
+        expect.any(AbortSignal),
       )
     })
     expect(await screen.findByText('Kael saved this advisory. Keep the next step inside the app.')).toBeOnTheScreen()
@@ -2933,20 +2935,24 @@ describe('Worker runtime surface wiring', () => {
         'worker-kael-session-new',
         expect.objectContaining({ message: 'Tin nhắn đầu tiên của phiên mới' }),
         expect.any(Object),
+        expect.any(AbortSignal),
       )
     })
     expect(mockWorkerKaelChatService.create).toHaveBeenCalledTimes(1)
   })
 
-  it('refuses a Kael orb photo attach without an active work session', () => {
+  it('offers the Kael orb photo picker in general Chat without an active work session', async () => {
     buildWorkflow()
     mockRouteParams = { ns_worker_screen: '3.1-kael-chat-normal' }
+    const imagePicker = jest.requireMock('expo-image-picker')
 
     render(<WorkerChatSurface />)
-    expect(screen.queryByTestId('worker-v5-kael-orb-camera')).toBeNull()
     expect(screen.getByTestId('worker-v5-kael-orb-send-arrow')).toBeOnTheScreen()
-    const imagePicker = jest.requireMock('expo-image-picker')
-    expect(imagePicker.launchImageLibraryAsync).not.toHaveBeenCalled()
+    fireEvent.press(screen.getByTestId('worker-v5-kael-orb-camera'))
+
+    await waitFor(() => {
+      expect(imagePicker.launchImageLibraryAsync).toHaveBeenCalledTimes(1)
+    })
   })
 
   it('opens Kael job intake from the work board without losing the current opportunity', async () => {

@@ -434,12 +434,15 @@ export const workerKaelChatService = {
     return api.get<WorkerKaelChatResponse>(`/workers/me/kael/chat/${encodeURIComponent(sessionId)}`)
   },
 
-  sendTurn(sessionId: string, input: WorkerKaelChatTurnInput) {
-    return api.post<WorkerKaelChatResponse>(`/workers/me/kael/chat/${encodeURIComponent(sessionId)}`, input)
+  sendTurn(sessionId: string, input: WorkerKaelChatTurnInput, signal?: AbortSignal) {
+    const path = `/workers/me/kael/chat/${encodeURIComponent(sessionId)}`
+    return signal
+      ? api.post<WorkerKaelChatResponse>(path, input, { signal })
+      : api.post<WorkerKaelChatResponse>(path, input)
   },
 
-  streamTurn(sessionId: string, input: WorkerKaelChatTurnInput, handlers?: WorkerKaelChatStreamHandlers) {
-    return streamWorkerKaelChatTurn(sessionId, input, handlers)
+  streamTurn(sessionId: string, input: WorkerKaelChatTurnInput, handlers?: WorkerKaelChatStreamHandlers, signal?: AbortSignal) {
+    return streamWorkerKaelChatTurn(sessionId, input, handlers, signal)
   },
 
   submitFeedback(input: WorkerKaelFeedbackInput) {

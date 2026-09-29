@@ -10,7 +10,7 @@ import {
   localizeKaelConversationFailure,
   unreleasedClientKaelCopy,
 } from '@/lib/kael-conversation-failure'
-import { uploadJobMediaDrafts, type LocalMediaUploadDraft } from '@/lib/media-upload'
+import { cleanupKaelChatMediaRefs, uploadJobMediaDrafts, uploadKaelChatMediaDrafts, type LocalMediaUploadDraft } from '@/lib/media-upload'
 import { workerKaelChatService } from '@/lib/services'
 import {
   initialKaelResponseStreamState,
@@ -30,6 +30,7 @@ import { textByLanguage } from '../ui/format'
 type ReasoningActions = ReturnType<typeof createWorkerKaelReasoningActions>
 
 type WorkerKaelOrbSendActionOptions = {
+  abortControllerRef: MutableRefObject<AbortController | null>
   activeJobIdRef: MutableRefObject<string | null>
   activeModeRef: MutableRefObject<WorkerKaelChatMode>
   activeOwnerRef: MutableRefObject<{ key: string }>
@@ -60,6 +61,7 @@ type WorkerKaelOrbSendActionOptions = {
 }
 
 export function createWorkerKaelOrbSendAction({
+  abortControllerRef,
   activeJobIdRef,
   activeModeRef,
   activeOwnerRef,
@@ -109,7 +111,8 @@ export function createWorkerKaelOrbSendAction({
     setError(null)
     reasoningActions.reset()
     setStreamingReply(null)
-    setTurns((current) => [...current, { id: `worker-orb-${Date.now()}`, role: 'worker', text: content }])
+    const workerTurnId = `worker-orb-${Date.now()}`
+    setTurns((current) => [...current, { id: workerTurnId, role: 'worker', text: content }])
 
     if (!canUseKaelSession) {
       setTurns((current) => [...current, { id: `kael-orb-${Date.now()}`, role: 'kael', text: advisoryUnavailableReply }])
@@ -119,6 +122,20 @@ export function createWorkerKaelOrbSendAction({
 
     reasoningActions.begin()
     setBusy(true)
+    const abortController = new AbortController()
+    abortControllerRef.current = abortController
+    const { signal } = abortController
+    let cancelled = false
+    // Stop before Kael committed anything: the draft stays in the composer, so the local bubble goes.
+    const cancelSend = () => {
+      cancelled = true
+      setTurns((current) => current.filter((turn) => turn.id !== workerTurnId))
+      setStreamingReply(null)
+      if (activeJobIdRef.current === currentJobId && activeModeRef.current === currentMode) setProgress(null)
+      setError(null)
+      reasoningActions.reset()
+      return false
+    }
     const currentJobId = sessionJobId
     const currentMode = mode
     const currentOwner = owner
@@ -144,7 +161,7 @@ export function createWorkerKaelOrbSendAction({
     try {
       let mediaRefs: string[] = []
       if (mediaItems.length > 0) {
-        if (!currentJobId) {
+        if (!currentJobId && currentMode !== 'normal') {
           setError(textByLanguage(language, 'Ảnh chỉ dùng trong cuộc trò chuyện theo công việc.', 'Photos are only available in job conversations.'))
           return false
         }
@@ -153,11 +170,19 @@ export function createWorkerKaelOrbSendAction({
           type: 'image',
           uri: item.uri,
         }))
-        const uploaded = await uploadJobMediaDrafts(currentJobId, uploadDrafts, 'kael_reference')
+        // A job conversation files photos with the job; general chat keeps them in the worker's own
+        // Kael chat media, which re-encodes them and is checked for location data by the server.
+        const uploaded = currentJobId
+          ? await uploadJobMediaDrafts(currentJobId, uploadDrafts, 'kael_reference')
+          : await uploadKaelChatMediaDrafts(uploadDrafts)
         if (!isCurrentSend()) return false
         if (!uploaded.success) {
           setError(uploaded.error)
           return false
+        }
+        if (signal.aborted) {
+          if (!currentJobId) await cleanupKaelChatMediaRefs(uploaded.mediaRefs)
+          return cancelSend()
         }
         mediaRefs = uploaded.mediaRefs
       }
@@ -217,6 +242,10 @@ export function createWorkerKaelOrbSendAction({
         }
       }
 
+      if (signal.aborted) {
+        if (mediaRefs.length > 0 && !currentJobId) await cleanupKaelChatMediaRefs(mediaRefs)
+        return cancelSend()
+      }
       const turnInput = {
         client_request_id: generateClientRequestId(),
         language,
@@ -245,15 +274,35 @@ export function createWorkerKaelOrbSendAction({
           ))
         },
         onToken: () => undefined,
-      })
+      }, signal)
       if (!isCurrentSend()) return false
 
-      const sent = !streamed.success && streamed.code === 'STREAM_UNSUPPORTED'
-        ? await workerKaelChatService.sendTurn(sessionId, turnInput)
+      const sent = !streamed.success && streamed.code === 'STREAM_UNSUPPORTED' && !signal.aborted
+        ? await workerKaelChatService.sendTurn(sessionId, turnInput, signal)
         : streamed
       if (!isCurrentSend()) return false
 
       let finalResponse = sent.success ? sent : null
+      if (!sent.success && sent.code === 'REQUEST_CANCELLED') {
+        // The server may have committed the turn before the stop reached it: show it if it did.
+        const recovered = await workerKaelChatService.get(sessionId)
+        if (!isCurrentSend()) return false
+        if (
+          !recovered.success
+          || recovered.data.session.id !== sessionId
+          || !hasSessionBaseline
+          || !hasSubmittedWorkerTurn(recovered.data, previousTurnIds, content)
+        ) return cancelSend()
+        if (!hasNewWorkerKaelReply(recovered.data, previousTurnIds, content)) {
+          cancelled = true
+          setStreamingReply(null)
+          reasoningActions.reset()
+          setError(kaelConversationOutcomeUncertainCopy(language))
+          return false
+        }
+        finalResponse = recovered
+      }
+
       if (!finalResponse && !sent.success && isAmbiguousKaelConversationFailure(sent)) {
         const recovered = await workerKaelChatService.get(sessionId)
         if (!isCurrentSend()) return false
@@ -321,13 +370,24 @@ export function createWorkerKaelOrbSendAction({
         setError(interruptedMessage)
       }
     } finally {
+      if (abortControllerRef.current === abortController) abortControllerRef.current = null
       if (sendRequestRef.current === sendRequestId) {
-        if (!turnCompleted) reasoningActions.fail(interruptedMessage)
+        if (!turnCompleted && !cancelled) reasoningActions.fail(interruptedMessage)
         setBusy(false)
       }
     }
     return turnCompleted
   }
+}
+
+function hasSubmittedWorkerTurn(
+  response: WorkerKaelChatResponse,
+  previousTurnIds: Set<string>,
+  submittedText: string,
+) {
+  return response.turns.some((turn) => (
+    !previousTurnIds.has(turn.id) && turn.role === 'worker' && turn.text_content?.trim() === submittedText
+  ))
 }
 
 function hasNewWorkerKaelReply(

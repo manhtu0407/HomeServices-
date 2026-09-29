@@ -9,7 +9,7 @@ import {
 } from 'react-native'
 
 import { GlassSurface } from '@/components/ui/glass-surface'
-import { LiquidSendArrowIcon } from '@/components/ui/liquid-back-button'
+import { KaelSendStopGlyph } from '@/components/ui/kael-send-stop-glyph'
 import { useGlassAccessibility } from '@/components/ui/accessibility-motion'
 import { KaelTextField } from '@/components/ui/kael-primitives'
 import { color } from '@/design/theme'
@@ -96,6 +96,9 @@ export function KaelChatComposer({
   const activeSendBackground = tokens.mode === 'light' ? color.mint.white : tokens.primary
   const activeSendBorder = tokens.mode === 'light' ? color.surface.stroke : tokens.borderStrong
   const activeSendForeground = tokens.mode === 'light' ? color.text.strong : tokens.primaryText
+  // The idle send button is a visible soft disc, the same as the Worker composer's.
+  const idleSendBackground = tokens.mode === 'light' ? color.surface.soft : tokens.glassStrong
+  const idleSendBorder = tokens.mode === 'light' ? color.surface.stroke : tokens.glassBorder
   // Measurement survives edits that keep the line count: native fires no new
   // contentSize event for them, and web can fire it before the new draft renders.
   const [measuredInput, setMeasuredInput] = useState({ hasDraft: Boolean(draft), height: COMPOSER_MIN_HEIGHT })
@@ -206,8 +209,8 @@ export function KaelChatComposer({
             rootStyles.sendButton,
             {
               alignItems: 'center',
-              backgroundColor: composerBusy ? activeSendBackground : canSubmit ? activeSendBackground : tokens.glassStrong,
-              borderColor: composerBusy || canSubmit ? activeSendBorder : tokens.glassBorder,
+              backgroundColor: composerBusy || canSubmit ? activeSendBackground : idleSendBackground,
+              borderColor: composerBusy || canSubmit ? activeSendBorder : idleSendBorder,
               borderRadius: 22,
               borderWidth: 1,
               height: 44,
@@ -218,26 +221,13 @@ export function KaelChatComposer({
           ]}
           testID="customer-v21-kael-send"
         >
-          {composerBusy && stopAvailable
-            ? (
-              <View
-                style={{
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                <View
-                  style={{
-                    backgroundColor: activeSendForeground,
-                    borderRadius: 2,
-                    height: 12,
-                    width: 12,
-                  }}
-                  testID="customer-v21-kael-stop-square"
-                />
-          </View>
-          )
-            : <LiquidSendArrowIcon color={canSubmit ? activeSendForeground : tokens.muted} testID="customer-v21-kael-send-arrow" />}
+          <KaelSendStopGlyph
+            arrowColor={canSubmit ? activeSendForeground : tokens.muted}
+            reduceMotion={reduceMotion}
+            stopColor={activeSendForeground}
+            stopping={composerBusy && stopAvailable}
+            testIDPrefix="customer-v21-kael"
+          />
         </Pressable>
         </View>
       </GlassSurface>
