@@ -80,7 +80,7 @@ begin
     return;
   end if;
   if v_session.worker_id is distinct from p_worker_id
-    or v_session.chat_mode <> 'normal'
+    or v_session.chat_mode not in ('normal', 'intake')
     or v_session.job_id is not null
   then
     return query select false, 'AUTH_FORBIDDEN'::text, false, false,
@@ -89,6 +89,12 @@ begin
   end if;
   if v_session.status <> 'active' then
     return query select false, 'INVALID_STATUS'::text, false, false,
+      null::uuid, null::uuid, null::uuid, null::integer, null::timestamptz;
+    return;
+  end if;
+  -- Job-less photos belong to the general chat only; opportunity intake stays text.
+  if pg_catalog.cardinality(p_media_refs) > 0 and v_session.chat_mode <> 'normal' then
+    return query select false, 'INVALID_INPUT'::text, false, false,
       null::uuid, null::uuid, null::uuid, null::integer, null::timestamptz;
     return;
   end if;
