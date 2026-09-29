@@ -26,10 +26,7 @@ describe('customer avatar upload', () => {
   beforeEach(() => {
     jest.clearAllMocks()
     jest.spyOn(global, 'fetch').mockResolvedValue({
-      blob: async () => new Blob(
-        [new Uint8Array([0xff, 0xd8, 0xff, 0xd9])],
-        { type: 'image/jpeg' },
-      ),
+      arrayBuffer: async () => new Uint8Array([0xff, 0xd8, 0xff, 0xd9]).buffer,
       ok: true,
     } as Response)
     mockCreateAvatarUpload.mockResolvedValue({
@@ -80,7 +77,7 @@ describe('customer avatar upload', () => {
     expect(mockUploadToSignedUrl).toHaveBeenCalledWith(
       'customer-1/avatar.jpg',
       'signed-token',
-      expect.any(Blob),
+      expect.any(ArrayBuffer),
       { contentType: 'image/jpeg', upsert: false },
     )
     expect(mockUpdateAvatar).toHaveBeenCalledWith({

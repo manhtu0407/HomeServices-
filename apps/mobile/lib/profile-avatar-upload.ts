@@ -53,11 +53,11 @@ export async function uploadProfileAvatar<Response extends ProfileAvatarResponse
     return failure('UNSUPPORTED_MEDIA', 'Ảnh đại diện phải là JPEG, PNG hoặc WebP')
   }
 
-  const localBlob = await readLocalBlob(draft.uri)
-  if (!localBlob) {
+  const localBytes = await readLocalBytes(draft.uri)
+  if (!localBytes) {
     return failure('MEDIA_READ_FAILED', 'Không thể đọc ảnh đại diện đã chọn')
   }
-  const fileSizeBytes = localBlob.size
+  const fileSizeBytes = localBytes.byteLength
   if (fileSizeBytes <= 0 || fileSizeBytes > WORKER_AVATAR_MAX_BYTES) {
     return failure('PAYLOAD_TOO_LARGE', 'Ảnh đại diện phải nhỏ hơn hoặc bằng 5 MB')
   }
@@ -69,10 +69,12 @@ export async function uploadProfileAvatar<Response extends ProfileAvatarResponse
   })
   if (!prepared.success) return prepared
 
+  // Raw bytes, not a Blob: storage-js sends a Blob as multipart and ignores contentType, and a
+  // file:// Blob on iOS has no type, so Storage reads the part as text/plain and refuses it.
   const uploaded = await supabase.storage.from(prepared.data.bucket_id).uploadToSignedUrl(
     prepared.data.object_path,
     prepared.data.token,
-    localBlob,
+    localBytes,
     { contentType: mimeType, upsert: false },
   )
   if (uploaded.error) {
@@ -82,11 +84,11 @@ export async function uploadProfileAvatar<Response extends ProfileAvatarResponse
   return service.updateAvatar({ avatar_ref: prepared.data.avatar_ref })
 }
 
-async function readLocalBlob(uri: string) {
+async function readLocalBytes(uri: string) {
   try {
     const response = await fetch(uri)
     if (!response.ok) return null
-    return await response.blob()
+    return await response.arrayBuffer()
   } catch {
     return null
   }
