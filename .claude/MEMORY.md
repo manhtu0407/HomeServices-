@@ -10,6 +10,8 @@ The active Recall Index is intentionally short. Full entry detail lives in `docs
 
 ## Recall Index -> `docs/memory/2026-09.md`
 
+- **2026-09-29** Kael Chat parity: Worker `Chat`/`Work`, Customer hero in English, Worker general-chat photos end to end (roles, worker `model_vision` only, claim migration `20260929100000`), P294/P295; Worker Chat real stop + shared ChatGPT-style send/stop glyph, P296. Needs migration apply + Edge deploy + build.
+- **2026-09-29** Worker Home period picker -> reusable `LiquidPopUpButton` (HIG Pop-up buttons + WWDC25 284 morph-from-button menu, checkmark, outside tap / VoiceOver escape), P293; jest `measureInWindow` mock never calls back — answer it via the instance.
 - **2026-09-29** Tab bar resting state aligned to Apple docs read first-hand (DS-010..015 in the source ledger; DocC JSON endpoint trick): filled glyphs, neutral platter, `tokens.text` labels, no custom tint on native nav glass; "Hoạt động" truncation = 68.25pt cell vs 64pt cap + padding, fixed (10pt, full width, adjustsFontSizeToFit).
 - **2026-09-29** Tab bar motion: Tu chose the custom dock (4 tabs + Kael mascot in one row, no NativeTabs) over native `UITabBar`; shared `LiquidTabPlane` adds a lift/drag/stretch selection lens (P292), P09 rewritten to check Kael's row placement on the rendered tree (old guard was vacuous). Web-preview verified only; no device run, no haptics.
 - **2026-09-29** Kael chat photo `MEDIA_READ_FAILED`: RN `new Blob([bytes])` throws; fixed by the bytes reader (P290 stream case). Transforms are Pro-only (org on Free): per Tu, device re-encode (`expo-image-manipulator`, new build) + Edge signs originals and refuses GPS metadata (P291). Needs Edge deploy + new build.
