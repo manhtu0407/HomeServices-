@@ -79,7 +79,6 @@ import {
 import { CustomerV21DockOverlayView } from '../dock/dock-stateful-surfaces'
 import {
   customerV21CommonCopy,
-  customerV21ScreenTitles,
   customerV21ServiceCopy,
   customerV21StatusCopy,
 } from '../ui/copy'
@@ -114,9 +113,7 @@ import {
   profilePanelParam,
   profileScreenParam,
   profileSettingsSectionParam,
-  profileStageSubtitle,
   profileUtilityParam,
-  profileUtilitySubtitle,
   profileUtilityTitle,
   protectedTransactionLabel,
   rankLabel,
@@ -963,19 +960,6 @@ export function CustomerProfileSurface() {
             />
           )}
           onBack={() => router.replace(directProfileBackPath as never)}
-          subtitle={directProfileUtility === 'address'
-            || directProfileUtility === 'appearance'
-            || directProfileUtility === 'language'
-            || directProfileUtility === 'legal'
-            || directProfileUtility === 'memory'
-            || directProfileUtility === 'notifications'
-            || directProfileUtility === 'password'
-            || directProfileUtility === 'personal-details'
-            || directProfileUtility === 'support'
-            ? ''
-            : profileUtilitySubtitle(directProfileUtility, language)}
-          title={profileUtilityTitle(directProfileUtility, language)}
-          titleStyle={directProfileUtility === 'address' ? profileUtilityStyles.profileAddressUtilityTitle : undefined}
         />
       </V21Screen>
     )
@@ -1002,8 +986,6 @@ export function CustomerProfileSurface() {
             setSelectedPanel('overview')
             router.replace('/(customer)/profile' as never)
           }}
-          subtitle={profileStageSubtitle(profileScreenId, language)}
-          title={customerV21ScreenTitles[language][profileScreenId]}
         />
       </V21Screen>
     )
@@ -1036,7 +1018,6 @@ export function CustomerProfileSurface() {
         rootStyles={styles}
         settingsGroups={settingsGroups}
         tokens={tokens}
-        topBarTitle={language === 'vi' ? 'Hồ sơ khách hàng' : 'Customer profile'}
         versionLabel={Constants.expoConfig?.version
           ? (language === 'vi'
               ? `Phiên bản ${Constants.expoConfig.version}`

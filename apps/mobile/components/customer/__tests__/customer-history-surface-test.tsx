@@ -150,15 +150,8 @@ describe('CustomerHistorySurface service history', () => {
     })
 
     expect(screen.queryByTestId('customer-v21-top-title')).toBeNull()
-    expect(screen.getByText('Hoạt động gần đây')).toBeOnTheScreen()
-    expect(screen.getByTestId('customer-v21-history-title')).toHaveStyle({
-      fontSize: 20,
-      fontWeight: '400',
-      includeFontPadding: true,
-      lineHeight: 25,
-      minHeight: 25,
-      textAlign: 'left',
-    })
+    expect(screen.queryByText('Hoạt động gần đây')).toBeNull()
+    expect(screen.queryByTestId('customer-v21-history-title')).toBeNull()
     expect(screen.getByText('Sửa điện')).toBeOnTheScreen()
     expect(screen.getAllByText('Anh Minh')).toHaveLength(2)
     expect(screen.getByText('320.000 ₫')).toBeOnTheScreen()

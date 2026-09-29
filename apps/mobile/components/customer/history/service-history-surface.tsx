@@ -33,7 +33,6 @@ import { CustomerCompensationSection } from '../compensation/compensation-sectio
 import { ActiveWorkEntry, type ActiveWorkSummary } from '../report/worker-report-entry'
 import { WorkerReportSheet } from '../report/worker-report-sheet'
 import { ServiceHistoryFilterRail, type HistoryFilter } from './service-history-filter-rail'
-import { customerV21SharedStyles as sharedStyles } from '../ui/shared-styles'
 import { AssetTile, EmptyState, V21Card, V21Screen, useCustomerV21SurfaceTheme } from '../ui/shared-surfaces'
 import { customerV21ServiceHistoryStyles as styles } from './service-history-styles'
 
@@ -328,15 +327,6 @@ export function CustomerServiceHistorySurface({
   return (
     <V21Screen screenId="2.6-case-overview" testID="customer-v21-activity">
       <View style={[styles.screenContent, { width: contentWidth }]}>
-      <View style={styles.historySectionHeader}>
-        <Text style={[sharedStyles.screenTitle, { color: tokens.text }]} testID="customer-v21-history-title">
-          {language === 'vi' ? 'Hoạt động gần đây' : 'Recent activity'}
-        </Text>
-        <Text style={[styles.historyCount, { color: tokens.muted }]}>
-          {items.length > 0 ? `${items.length}` : ''}
-        </Text>
-      </View>
-
       <CustomerCompensationSection language={language} tokens={tokens} />
 
       <ServiceHistoryFilterRail onSelect={(nextFilter) => dispatch({ type: 'filter', filter: nextFilter })} selected={filter} />

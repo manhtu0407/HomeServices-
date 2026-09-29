@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { Image } from 'expo-image'
-import { ActivityIndicator, Pressable, Text, View, type ImageSourcePropType, type StyleProp, type TextStyle, type ViewStyle } from 'react-native'
+import { ActivityIndicator, Pressable, Text, View, type ImageSourcePropType, type StyleProp, type ViewStyle } from 'react-native'
 import Svg, { Path } from 'react-native-svg'
 
 import { useGlassAccessibility } from '@/components/ui/accessibility-motion'
@@ -12,7 +12,6 @@ import { customerV21ProfileSettingsGroupStyles as settingsGroupStyles } from './
 import { ProfileAuraCard, ProfileFormulaMintSurface } from './profile-utility-surfaces'
 import { customerV21ProfileUtilityStyles as profileUtilityStyles } from './profile-utility-styles'
 import { UsageRankCard } from './usage-rank-card'
-import { customerV21SharedStyles as sharedStyles } from '../ui/shared-styles'
 import { useCustomerV21SurfaceTheme, V21TopBar } from '../ui/shared-surfaces'
 
 type RootProfileOverviewStyles = {
@@ -50,15 +49,9 @@ type ProfileAccountJourneyModel = {
 export function CustomerProfileSubscreenView({
   body,
   onBack,
-  subtitle,
-  title,
-  titleStyle,
 }: {
   body: ReactNode
   onBack: () => void
-  subtitle: string
-  title: string
-  titleStyle?: StyleProp<TextStyle>
 }) {
   const { tokens } = useCustomerV21SurfaceTheme()
 
@@ -72,10 +65,9 @@ export function CustomerProfileSubscreenView({
             ]
           : undefined}
         onBack={onBack}
-        subtitle={subtitle}
+        subtitle=""
         testID="customer-v21-profile-subscreen-topbar"
-        title={title}
-        titleStyle={titleStyle}
+        title=""
       />
       <View style={profileUtilityStyles.profileSubscreenBody} testID="customer-v21-profile-subscreen-body">
         {body}
@@ -99,7 +91,6 @@ export function CustomerProfileOverviewView({
   rankingTagline,
   settingsGroups,
   tokens,
-  topBarTitle,
   versionLabel,
   rootStyles,
 }: {
@@ -117,7 +108,6 @@ export function CustomerProfileOverviewView({
   rankingTagline: string
   settingsGroups: ProfileSettingsGroupModel[]
   tokens: CustomerThemeTokens
-  topBarTitle: string
   versionLabel: string | null
   rootStyles: RootProfileOverviewStyles
 }) {
@@ -125,14 +115,6 @@ export function CustomerProfileOverviewView({
 
   return (
     <>
-      <V21TopBar
-        containerStyle={profileUtilityStyles.profileOverviewTopBar}
-        showAvatar={false}
-        subtitle=""
-        title={topBarTitle}
-        titleStyle={sharedStyles.screenTitle}
-      />
-
       <ProfileAuraCard cardStyle={profileUtilityStyles.profileOverviewHeroCard} contentStyle={profileUtilityStyles.profileHeroLarge} scope="OverviewHero" showMintAura={false} testID="customer-v21-profile-hero">
         <Pressable
           accessibilityHint={avatarAccessibilityHint}

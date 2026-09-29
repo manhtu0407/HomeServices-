@@ -197,14 +197,8 @@ describe('CustomerBookingEntrySurface v2.1', () => {
     render(<CustomerBookingEntrySurface />)
 
     expect(screen.queryByTestId('customer-v21-selected-service')).toBeNull()
-    expect(screen.getByTestId('customer-v21-top-title')).toHaveStyle({
-      fontSize: 20,
-      fontWeight: '400',
-      includeFontPadding: true,
-      lineHeight: 25,
-      minHeight: 25,
-      textAlign: 'left',
-    })
+    expect(screen.queryByTestId('customer-v21-top-title')).toBeNull()
+    expect(screen.queryByText('Tạo yêu cầu dịch vụ')).toBeNull()
     expect(screen.getByTestId('customer-v21-booking-address')).toHaveProp('value', '')
     expect(screen.getByTestId('customer-v21-booking-description')).toHaveProp('value', '')
   })

@@ -128,10 +128,6 @@ export const customerV21ServiceHistoryStyles = StyleSheet.create({
     position: 'relative',
     zIndex: 1,
   },
-  historyCount: {
-    ...typography.footnote,
-    fontWeight: '600',
-  },
   historyGroup: {
     gap: 9,
   },
@@ -165,13 +161,6 @@ export const customerV21ServiceHistoryStyles = StyleSheet.create({
   historyList: {
     gap: 18,
     marginTop: 4,
-  },
-  historySectionHeader: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    gap: 10,
-    justifyContent: 'space-between',
-    marginTop: 18,
   },
   loadingCard: {
     gap: 0,
