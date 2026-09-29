@@ -65,7 +65,6 @@ describe('Worker Jobs Workart background contract', () => {
       () => {
         expect(StyleSheet.flatten(prototypeStyles.opportunityCard)).toMatchObject({ flexDirection: 'row', minHeight: 172 })
         expect(opportunityWorkartPanel).toMatchObject({ flexBasis: '40%', width: '40%', overflow: 'hidden' })
-        expect(opportunityWorkart).toMatchObject({ height: '100%', width: '100%' })
         expect(bookingWorkartSource).toContain('customerV21BookingWorkartAssets')
         expect(bookingWorkartSource).toContain('contentFit="cover"')
         expect(bookingWorkartSource).toContain('artworkTestID = \'worker-v5-offer-detail-workart\'')
@@ -76,6 +75,19 @@ describe('Worker Jobs Workart background contract', () => {
         expect(offerSummaryArtwork).not.toHaveProperty('backgroundColor')
       },
       'the Workart must sit directly on the card surface without a white tile or border shell',
+    )
+  })
+
+  it('keeps the Workart image out of flow so the card height comes from its copy', () => {
+    const opportunityWorkart = StyleSheet.flatten(stageTwoStyles.heroWorkart)
+
+    withPillarContext(
+      PILLAR,
+      () => {
+        expect(opportunityWorkart).toMatchObject({ position: 'absolute', top: 0, right: 0, bottom: 0, left: 0 })
+        expect(opportunityWorkart).not.toHaveProperty('height')
+      },
+      'an in-flow image with height "100%" inside the auto-height panel resolves against the nearest definite-height ancestor on native Yoga (not on web), so the Stage 1 card grew to screen height and pushed its actions off-screen',
     )
   })
 })
