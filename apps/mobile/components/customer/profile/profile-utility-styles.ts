@@ -223,9 +223,6 @@ export const customerV21ProfileUtilityStyles = StyleSheet.create({
     justifyContent: 'center',
     width: 48,
   },
-  profileAddressUtilityTitle: {
-    fontWeight: '400',
-  },
   profileAvatarEditBadge: {
     alignItems: 'center',
     borderRadius: 999,

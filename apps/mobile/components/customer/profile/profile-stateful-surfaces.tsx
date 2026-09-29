@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { Image } from 'expo-image'
-import { ActivityIndicator, Pressable, Text, View, type ImageSourcePropType, type StyleProp, type TextStyle, type ViewStyle } from 'react-native'
+import { ActivityIndicator, Pressable, Text, View, type ImageSourcePropType, type StyleProp, type ViewStyle } from 'react-native'
 import Svg, { Path } from 'react-native-svg'
 
 import { useGlassAccessibility } from '@/components/ui/accessibility-motion'
@@ -49,15 +49,9 @@ type ProfileAccountJourneyModel = {
 export function CustomerProfileSubscreenView({
   body,
   onBack,
-  subtitle,
-  title,
-  titleStyle,
 }: {
   body: ReactNode
   onBack: () => void
-  subtitle: string
-  title: string
-  titleStyle?: StyleProp<TextStyle>
 }) {
   const { tokens } = useCustomerV21SurfaceTheme()
 
@@ -71,10 +65,9 @@ export function CustomerProfileSubscreenView({
             ]
           : undefined}
         onBack={onBack}
-        subtitle={subtitle}
+        subtitle=""
         testID="customer-v21-profile-subscreen-topbar"
-        title={title}
-        titleStyle={titleStyle}
+        title=""
       />
       <View style={profileUtilityStyles.profileSubscreenBody} testID="customer-v21-profile-subscreen-body">
         {body}

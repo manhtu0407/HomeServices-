@@ -695,7 +695,7 @@ describe('CustomerProfileSurface v2.1', () => {
     render(<CustomerProfileSurface />)
 
     expect(screen.getByTestId('customer-v21-profile-utility-payment-screen')).toBeOnTheScreen()
-    expect(screen.getByText('Hoàn tiền')).toBeOnTheScreen()
+    expect(screen.queryByText('Hoàn tiền')).toBeNull()
     expect(screen.queryByText('Ngân hàng mặc định và nơi nhận tiền')).toBeNull()
     expect(screen.getByTestId('customer-v21-profile-payment-status-icon')).toBeOnTheScreen()
     expect(screen.getByTestId('customer-v21-profile-payment-status-icon-glyph')).toBeOnTheScreen()
@@ -853,7 +853,8 @@ describe('CustomerProfileSurface v2.1', () => {
 
     render(<CustomerProfileSurface />)
 
-    expect(screen.getByTestId('customer-v21-top-title')).toHaveStyle({ fontWeight: '400' })
+    expect(screen.getByTestId('customer-v21-top-title')).toBeEmptyElement()
+    expect(screen.getByLabelText('Back')).toBeOnTheScreen()
     expect(screen.getByTestId('customer-v21-profile-utility-address-screen')).toBeOnTheScreen()
     expect(screen.queryByTestId('customer-v21-profile-address-settings')).toBeNull()
     expect(screen.queryByText('Địa chỉ dùng cho đặt dịch vụ')).toBeNull()
@@ -1196,7 +1197,8 @@ describe('CustomerProfileSurface v2.1', () => {
     render(<CustomerProfileSurface />)
 
     expect(screen.getByTestId('customer-v21-profile-utility-legal-screen')).toBeOnTheScreen()
-    expect(screen.getByTestId('customer-v21-top-title')).toHaveTextContent('Điều khoản & Chính sách')
+    expect(screen.getByTestId('customer-v21-top-title')).toBeEmptyElement()
+    expect(screen.getByLabelText('Back')).toBeOnTheScreen()
     expect(screen.getByText('Hiểu rõ trước khi sử dụng')).toBeOnTheScreen()
     expect(screen.queryByLabelText('Điều khoản và chính sách')).toBeNull()
     expect(screen.queryByTestId('customer-v21-profile-legal-important-formula-mint-aura')).toBeNull()
