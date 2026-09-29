@@ -6,10 +6,12 @@ import { getCustomerThemeTokens, getReducedTransparencyCustomerTokens } from '@/
 import { liquidTabLensTheme } from '@/design/theme'
 import { LiquidTabPlane, type LiquidTabItem } from '@/components/customer/dock/liquid-tab-plane'
 import {
+  createLiquidTouchSession,
   LIQUID_LENS_LIFT_SCALE,
   liquidLensDragX,
   liquidLensRestX,
   liquidLensStretch,
+  liquidPendingAfterRoute,
   liquidTabIndexAt,
   liquidTabWidth,
 } from '@/components/customer/dock/liquid-tab-plane-model'
@@ -106,6 +108,57 @@ describe('liquid tab plane geometry', () => {
       },
       'an uncapped stretch turns a fast swipe into a smeared bar instead of a liquid drop',
     )
+  })
+})
+
+describe('liquid tab plane selection and touch', () => {
+  it('spends a pending selection once the route moves, so an old tab cannot resurrect it', () => {
+    const pending = { index: 0, routedIndex: 1 }
+    withPillarContext(
+      PILLAR,
+      () => {
+        expect(liquidPendingAfterRoute(pending, 1)).toBe(pending)
+        expect(liquidPendingAfterRoute(pending, 0)).toBeNull()
+        expect(liquidPendingAfterRoute(liquidPendingAfterRoute(pending, 0), 1)).toBeNull()
+        expect(liquidPendingAfterRoute(pending, 2)).toBeNull()
+      },
+      'Codex review: a Home CTA routing back to Services showed the stale Home lens',
+    )
+  })
+
+  it('replays a release that lands before the plane is measured instead of dropping the tap', () => {
+    const touch = createLiquidTouchSession()
+    touch.grant(200)
+    expect(touch.release(200, 0)).toEqual({ held: true })
+    const next = touch.measured({ originX: 40, scale: 2 })
+    withPillarContext(
+      PILLAR,
+      () => {
+        expect(next).toEqual({ press: null, release: { localX: 80, velocity: 0 } })
+      },
+      'Codex review: a quick tap released before measureInWindow answered never selected the tab',
+    )
+    touch.grant(100)
+    expect(touch.measured({ originX: 0, scale: 1 })).toEqual({ press: 100, release: null })
+    expect(touch.release(150, 1)).toEqual({ held: false, localX: 150 })
+  })
+
+  it('moves the lens without a sweep under Reduce Motion', () => {
+    const reanimated = jest.requireMock('react-native-reanimated') as { withTiming: (...args: unknown[]) => unknown }
+    const timing = jest.spyOn(reanimated, 'withTiming')
+    const base = getCustomerThemeTokens('light')
+    const view = render(<LiquidTabPlane items={ITEMS} onSelect={jest.fn()} reduceMotion reduceTransparency={false} selectedKey="home" testID="plane" tokens={base} width={geometry.width} />)
+    timing.mockClear()
+    view.rerender(<LiquidTabPlane items={ITEMS} onSelect={jest.fn()} reduceMotion reduceTransparency={false} selectedKey="profile" testID="plane" tokens={base} width={geometry.width} />)
+    const target = liquidLensRestX(3, geometry)
+    withPillarContext(
+      PILLAR,
+      () => {
+        expect(timing.mock.calls.some((call) => call[0] === target)).toBe(false)
+      },
+      'AGENTS.md: Reduce Motion removes the selection sweep; only opacity may ease',
+    )
+    timing.mockRestore()
   })
 })
 

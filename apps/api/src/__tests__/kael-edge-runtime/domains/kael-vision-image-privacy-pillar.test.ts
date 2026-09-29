@@ -52,9 +52,18 @@ function pngChunk(type: string, data: number[]) {
   return [...u32be(data.length), ...ascii(type), ...data, 0, 0, 0, 0]
 }
 function png(...chunks: number[][]) {
-  const header = pngChunk('IHDR', [...u32be(1), ...u32be(1), 8, 2, 0, 0, 0])
-  return new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, ...header, ...chunks.flat(), ...pngChunk('IDAT', [0x78, 0x9c]), ...pngChunk('IEND', [])])
+  return pngAround(chunks, [])
 }
+function pngAround(before: number[][], after: number[][], withEnd = true) {
+  const header = pngChunk('IHDR', [...u32be(1), ...u32be(1), 8, 2, 0, 0, 0])
+  return new Uint8Array([
+    0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, ...header, ...before.flat(),
+    ...pngChunk('IDAT', [0x78, 0x9c]), ...after.flat(), ...(withEnd ? pngChunk('IEND', []) : []),
+  ])
+}
+// iTXt: keyword NUL, compression flag, method, language NUL, translated keyword NUL, text.
+const iTxt = (compressed: boolean, text: number[]) => pngChunk('iTXt', [...ascii('XML:com.adobe.xmp'), 0, compressed ? 1 : 0, 0, 0, 0, ...text])
+const GPS_XMP = '<x:xmpmeta><rdf:Description exif:GPSLatitude="10,46.5N"/></x:xmpmeta>'
 
 function webp(chunkType: 'VP8 ' | 'VP8X', flags = 0) {
   const chunk = chunkType === 'VP8X'
@@ -79,6 +88,10 @@ describe('Kael model-vision image privacy without Storage transforms', () => {
     ['a JPEG with an EXIF GPS IFD', jpeg(exifSegment(GPS_TIFF)), 'image/jpeg'],
     ['a JPEG with GPS in XMP', jpeg(xmpSegment('<x:xmpmeta><rdf:Description exif:GPSLatitude="10,46.5N"/></x:xmpmeta>')), 'image/jpeg'],
     ['a PNG with an eXIf GPS IFD', png(pngChunk('eXIf', GPS_TIFF)), 'image/png'],
+    ['a PNG whose XMP is in a compressed zTXt chunk', png(pngChunk('zTXt', [...ascii('XML:com.adobe.xmp'), 0, 0, 0x78, 0x9c, 0x01])), 'image/png'],
+    ['a PNG whose XMP is in a compressed iTXt chunk', png(iTxt(true, [0x78, 0x9c, 0x01])), 'image/png'],
+    ['a PNG with GPS text after its image data', pngAround([], [pngChunk('tEXt', [...ascii('XML:com.adobe.xmp'), 0, ...ascii(GPS_XMP)])]), 'image/png'],
+    ['a PNG cut off before IEND', pngAround([], [], false), 'image/png'],
     ['a WebP that declares EXIF metadata', webp('VP8X', 0x08), 'image/webp'],
     ['a JPEG whose scan never starts', new Uint8Array([0xff, 0xd8, 0xff]), 'image/jpeg'],
   ])('refuses %s', async (_label, bytes, contentType) => {
@@ -93,6 +106,7 @@ describe('Kael model-vision image privacy without Storage transforms', () => {
     ['a re-encoded JPEG with only an orientation tag', jpeg(exifSegment(ORIENTATION_TIFF)), 'image/jpeg'],
     ['a plain JPEG', jpeg(), 'image/jpeg'],
     ['a PNG without metadata', png(), 'image/png'],
+    ['a PNG with uncompressed XMP that names no location', png(iTxt(false, ascii('<x:xmpmeta><rdf:Description tiff:Orientation="1"/></x:xmpmeta>'))), 'image/png'],
     ['a simple WebP', webp('VP8 '), 'image/webp'],
   ])('accepts %s', async (_label, bytes, contentType) => {
     stubImage(bytes, contentType)

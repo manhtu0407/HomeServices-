@@ -14,12 +14,15 @@ import {
 } from './dock-styles'
 import { LiquidNavFilledIcon, type LiquidNavFilledIconName } from './liquid-nav-filled-icons'
 import {
+  createLiquidTouchSession,
   LIQUID_LENS_LIFT_SCALE,
   liquidLensDragX,
   liquidLensRestX,
   liquidLensStretch,
+  liquidPendingAfterRoute,
   liquidTabIndexAt,
   liquidTabWidth,
+  type LiquidPendingSelection,
   type LiquidTabGeometry,
 } from './liquid-tab-plane-model'
 
@@ -60,10 +63,12 @@ export function LiquidTabPlane<Key extends string>({
   const tabWidth = liquidTabWidth(geometry)
   const selectedIndex = selectedKey === null ? null : Math.max(items.findIndex((item) => item.key === selectedKey), 0)
   // A released lens rests on its target until the route catches up; any route change ends that.
-  const [pending, setPending] = useState<{ index: number; routedIndex: number | null } | null>(null)
+  const [pending, setPending] = useState<LiquidPendingSelection | null>(null)
+  const livePending = liquidPendingAfterRoute(pending, selectedIndex)
+  if (pending !== livePending) setPending(livePending)
   const [hoverIndex, setHoverIndex] = useState<number | null>(null)
   const [commit, setCommit] = useState({ count: 0, index: -1 })
-  const restIndex = pending && pending.routedIndex === selectedIndex ? pending.index : selectedIndex
+  const restIndex = livePending ? livePending.index : selectedIndex
   const tintIndex = hoverIndex ?? restIndex
   const lensTheme = liquidTabLensTheme[tokens.mode]
 
@@ -74,8 +79,7 @@ export function LiquidTabPlane<Key extends string>({
   const stretchY = useSharedValue(1)
   const visible = useSharedValue(restIndex === null ? 0 : 1)
   const wrapperRef = useRef<View>(null)
-  const frameRef = useRef<{ originX: number; scale: number } | null>(null)
-  const pendingTouchRef = useRef<number | null>(null)
+  const [touch] = useState(createLiquidTouchSession)
   const gestureRef = useRef({ dragging: false, startIndex: 0 })
 
   const settleTo = (index: number | null, travelTabs: number, velocity: number) => {
@@ -88,7 +92,8 @@ export function LiquidTabPlane<Key extends string>({
     if (index === null) return
     const target = liquidLensRestX(index, geometry)
     if (reduceMotion) {
-      lensX.value = withTiming(target, { duration: motionDuration(160, true) })
+      // Reduce Motion: the lens moves without a sweep; only its opacity eases.
+      lensX.value = target
       stretchX.value = 1
       stretchY.value = 1
       return
@@ -99,11 +104,6 @@ export function LiquidTabPlane<Key extends string>({
     stretchY.value = withSequence(withTiming(scaleY, { duration: 110 }), withSpring(1, motionTokens.liquid.pill))
   }
 
-
-  const toLocalX = (pageX: number) => {
-    const frame = frameRef.current
-    return frame ? (pageX - frame.originX) / frame.scale : null
-  }
 
   const pressAt = (localX: number) => {
     const index = liquidTabIndexAt(localX, geometry)
@@ -141,7 +141,7 @@ export function LiquidTabPlane<Key extends string>({
 
   const cancel = () => {
     gestureRef.current = { dragging: false, startIndex: gestureRef.current.startIndex }
-    pendingTouchRef.current = null
+    touch.cancel()
     setHoverIndex(null)
     settleTo(restIndex, 0, 0)
   }
@@ -159,24 +159,21 @@ export function LiquidTabPlane<Key extends string>({
     Object.assign(responder, {
       cancel,
       grant: (pageX: number) => {
-        pendingTouchRef.current = pageX
-        frameRef.current = null
+        touch.grant(pageX)
         // The dock row scales while the page scrolls, so the plane is measured on every touch.
         wrapperRef.current?.measureInWindow((originX, _y, measuredWidth) => {
-          frameRef.current = { originX, scale: width > 0 && measuredWidth > 0 ? measuredWidth / width : 1 }
-          const latest = pendingTouchRef.current
-          const localX = latest === null ? null : toLocalX(latest)
-          if (localX !== null) pressAt(localX)
+          const next = touch.measured({ originX, scale: width > 0 && measuredWidth > 0 ? measuredWidth / width : 1 })
+          if (next.release) release(next.release.localX, next.release.velocity)
+          else if (next.press !== null) pressAt(next.press)
         })
       },
       move: (pageX: number) => {
-        pendingTouchRef.current = pageX
-        const localX = toLocalX(pageX)
+        const localX = touch.move(pageX)
         if (localX !== null && gestureRef.current.dragging) dragTo(localX)
       },
       release: (pageX: number, velocity: number) => {
-        release(toLocalX(pageX), velocity)
-        pendingTouchRef.current = null
+        const result = touch.release(pageX, velocity)
+        if (!result.held) release(result.localX, velocity)
       },
       settle: (index: number | null) => settleTo(index, 0, 0),
     })

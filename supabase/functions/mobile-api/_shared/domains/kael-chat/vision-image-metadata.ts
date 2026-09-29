@@ -46,22 +46,30 @@ function scanJpeg(bytes: Uint8Array): VisionImageLocationScan {
   return "incomplete";
 }
 
+// PNG text and EXIF chunks may sit before or after the image data, so an image is clean only once
+// IEND is read. Compressed text (zTXt, or iTXt with its compression flag) is refused unread: its
+// payload would have to be inflated to show that it names no location.
 function scanPng(bytes: Uint8Array): VisionImageLocationScan {
   let offset = 8;
   while (offset + 8 <= bytes.length) {
     const length = readUint32(bytes, offset, false);
     const type = latin1(bytes.subarray(offset + 4, offset + 8));
-    if (type === "IDAT" || type === "IEND") return "clean";
+    if (type === "IEND") return "clean";
     const end = offset + 12 + length;
     if (end > bytes.length) return "incomplete";
     const data = bytes.subarray(offset + 8, offset + 8 + length);
     if (type === "eXIf" && tiffHasGps(data)) return "location";
-    if ((type === "iTXt" || type === "tEXt" || type === "zTXt") && XMP_LOCATION_PATTERN.test(latin1(data))) {
-      return "location";
-    }
+    if (type === "zTXt" || (type === "iTXt" && iTxtIsCompressed(data))) return "location";
+    if ((type === "iTXt" || type === "tEXt") && XMP_LOCATION_PATTERN.test(latin1(data))) return "location";
     offset = end;
   }
   return "incomplete";
+}
+
+// iTXt: keyword, NUL, then the compression flag byte.
+function iTxtIsCompressed(data: Uint8Array) {
+  const keywordEnd = data.indexOf(0);
+  return keywordEnd < 0 || keywordEnd + 1 >= data.length || data[keywordEnd + 1] !== 0;
 }
 
 function scanWebp(bytes: Uint8Array): VisionImageLocationScan {

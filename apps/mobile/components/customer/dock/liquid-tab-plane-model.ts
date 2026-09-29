@@ -38,3 +38,58 @@ export function liquidLensStretch(travelTabs: number, releaseVelocity = 0) {
 }
 
 export const LIQUID_LENS_LIFT_SCALE = 1.14
+
+export type LiquidPendingSelection = { index: number; routedIndex: number | null }
+
+// A released lens rests on its target only while the route still shows the tab it left. Once
+// the route moves (to the target or anywhere else) the pending choice is spent, so a later
+// return to the old tab cannot resurrect it.
+export function liquidPendingAfterRoute(pending: LiquidPendingSelection | null, selectedIndex: number | null) {
+  return pending && pending.routedIndex === selectedIndex ? pending : null
+}
+
+export type LiquidTouchFrame = { originX: number; scale: number }
+
+// Each touch is resolved against the plane measured for that touch (the dock row scales while
+// the page scrolls). A release that lands before the measurement is held and replayed when the
+// measurement arrives, so a quick tap is never dropped.
+export function createLiquidTouchSession() {
+  let frame: LiquidTouchFrame | null = null
+  let latestX: number | null = null
+  let held: { pageX: number; velocity: number } | null = null
+  const toLocal = (pageX: number) => (frame ? (pageX - frame.originX) / frame.scale : null)
+  return {
+    cancel() {
+      latestX = null
+      held = null
+    },
+    grant(pageX: number) {
+      frame = null
+      latestX = pageX
+      held = null
+    },
+    measured(next: LiquidTouchFrame): { press: number | null; release: { localX: number; velocity: number } | null } {
+      frame = next
+      if (held) {
+        const release = { localX: (held.pageX - next.originX) / next.scale, velocity: held.velocity }
+        held = null
+        latestX = null
+        return { press: null, release }
+      }
+      return { press: latestX === null ? null : toLocal(latestX), release: null }
+    },
+    move(pageX: number) {
+      latestX = pageX
+      return toLocal(pageX)
+    },
+    release(pageX: number, velocity: number): { held: true } | { held: false; localX: number } {
+      latestX = null
+      const localX = toLocal(pageX)
+      if (localX === null) {
+        held = { pageX, velocity }
+        return { held: true }
+      }
+      return { held: false, localX }
+    },
+  }
+}
