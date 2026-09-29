@@ -1,6 +1,8 @@
 import { createContext, use, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import type { NativeScrollEvent, NativeSyntheticEvent } from 'react-native'
-import { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated'
+import { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated'
+
+import { motionTokens } from './motion-tokens'
 
 import {
   createDockScrollState,
@@ -61,8 +63,8 @@ export function useDockScrollTransform(collapsed: boolean, reduceMotion: boolean
 
   useEffect(() => {
     const compact = collapsed && !reduceMotion
-    scale.value = withTiming(compact ? 0.94 : 1, { duration: 180 })
-    translateY.value = withTiming(compact ? 4 : 0, { duration: 180 })
+    scale.value = withSpring(compact ? 0.94 : 1, motionTokens.liquid.press)
+    translateY.value = withSpring(compact ? 4 : 0, motionTokens.liquid.press)
   }, [collapsed, reduceMotion, scale, translateY])
 
   return useAnimatedStyle(() => ({

@@ -507,6 +507,26 @@ export const customerTheme = {
   },
 } as const
 
+// Selection lens of the liquid tab bar: a neutral platter at rest (colour stays on the selected
+// icon and label, per Apple's "be judicious with color in controls and navigation"), clear lifted
+// glass while a finger holds or drags it. Reduce Transparency uses statusSurface instead.
+export const liquidTabLensTheme = {
+  light: {
+    restFill: 'rgba(28,40,38,0.09)',
+    restBorder: 'rgba(28,40,38,0)',
+    liftFill: 'rgba(255,255,255,0.62)',
+    liftBorder: 'rgba(255,255,255,0.96)',
+    liftShadow: '0 10px 24px rgba(13,70,65,0.20)',
+  },
+  dark: {
+    restFill: 'rgba(235,245,242,0.13)',
+    restBorder: 'rgba(235,245,242,0)',
+    liftFill: 'rgba(230,244,240,0.18)',
+    liftBorder: 'rgba(230,244,240,0.34)',
+    liftShadow: '0 12px 28px rgba(0,0,0,0.44)',
+  },
+} as const
+
 export const glassSurfaceTheme = {
   shadowByVariant: {
     nav: {

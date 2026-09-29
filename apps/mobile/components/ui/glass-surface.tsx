@@ -43,15 +43,19 @@ export function GlassSurface({ backgroundColor, borderColor, children, material 
   // module is missing on some iOS 26 betas, where using GlassView crashes.
   if (!reduceTransparency && isLiquidGlassAvailable() && isGlassEffectAPIAvailable()) {
     if (__DEV__) warnIfGlassOpacityFlattened(style)
+    // Apple "Adopting Liquid Glass": reduce custom backgrounds in tab bars and let the system set
+    // the appearance, which also keeps the person's Liquid Glass look setting in charge. The
+    // background colour then only feeds the blur and solid fallbacks below.
+    const nativeStyle = variant === 'nav' ? [composedStyle, styles.nativeNavBackground] : composedStyle
     return (
       <GlassView
         colorScheme={glassColorSchemeByMode[mode]}
         glassEffectStyle={glassStyleByVariant[variant]}
         isInteractive={variant === 'control' || variant === 'nav'}
         onLayout={onLayout}
-        style={composedStyle}
+        style={nativeStyle}
         testID={testID}
-        tintColor={backgroundColor}
+        tintColor={variant === 'nav' ? undefined : backgroundColor}
       >
         {children}
       </GlassView>
@@ -144,6 +148,9 @@ const styles = StyleSheet.create({
     right: 14,
     top: 1,
     zIndex: 1,
+  },
+  nativeNavBackground: {
+    backgroundColor: 'transparent',
   },
   surface: {
     position: 'relative',
