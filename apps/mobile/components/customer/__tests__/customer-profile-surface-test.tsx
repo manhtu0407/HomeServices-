@@ -250,15 +250,8 @@ describe('CustomerProfileSurface v2.1', () => {
 
     render(<CustomerProfileSurface />)
 
-    expect(screen.getByTestId('customer-v21-top-title')).toHaveTextContent('Hồ sơ khách hàng')
-    expect(screen.getByTestId('customer-v21-top-title')).toHaveStyle({
-      fontSize: 20,
-      fontWeight: '400',
-      includeFontPadding: true,
-      lineHeight: 25,
-      minHeight: 25,
-      textAlign: 'left',
-    })
+    expect(screen.queryByTestId('customer-v21-top-title')).toBeNull()
+    expect(screen.queryByText('Hồ sơ khách hàng')).toBeNull()
     expect(screen.queryByTestId('customer-v21-top-subtitle')).toBeNull()
     expect(screen.getByTestId('customer-v21-profile-name')).toHaveTextContent('Phan Mạnh Tú')
     expect(screen.queryByTestId('customer-v21-profile-completed')).toBeNull()

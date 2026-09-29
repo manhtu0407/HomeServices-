@@ -1036,7 +1036,6 @@ export function CustomerProfileSurface() {
         rootStyles={styles}
         settingsGroups={settingsGroups}
         tokens={tokens}
-        topBarTitle={language === 'vi' ? 'Hồ sơ khách hàng' : 'Customer profile'}
         versionLabel={Constants.expoConfig?.version
           ? (language === 'vi'
               ? `Phiên bản ${Constants.expoConfig.version}`

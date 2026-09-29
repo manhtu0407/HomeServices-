@@ -317,10 +317,6 @@ export const customerV21ProfileUtilityStyles = StyleSheet.create({
     minWidth: 0,
     paddingTop: 4,
   },
-  profileOverviewTopBar: {
-    gap: 0,
-    minHeight: 58,
-  },
   profileOverviewHeroCard: {
     borderColor: 'rgba(255,255,255,0.96)',
     borderRadius: 18,

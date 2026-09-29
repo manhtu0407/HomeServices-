@@ -12,7 +12,6 @@ import { customerV21ProfileSettingsGroupStyles as settingsGroupStyles } from './
 import { ProfileAuraCard, ProfileFormulaMintSurface } from './profile-utility-surfaces'
 import { customerV21ProfileUtilityStyles as profileUtilityStyles } from './profile-utility-styles'
 import { UsageRankCard } from './usage-rank-card'
-import { customerV21SharedStyles as sharedStyles } from '../ui/shared-styles'
 import { useCustomerV21SurfaceTheme, V21TopBar } from '../ui/shared-surfaces'
 
 type RootProfileOverviewStyles = {
@@ -99,7 +98,6 @@ export function CustomerProfileOverviewView({
   rankingTagline,
   settingsGroups,
   tokens,
-  topBarTitle,
   versionLabel,
   rootStyles,
 }: {
@@ -117,7 +115,6 @@ export function CustomerProfileOverviewView({
   rankingTagline: string
   settingsGroups: ProfileSettingsGroupModel[]
   tokens: CustomerThemeTokens
-  topBarTitle: string
   versionLabel: string | null
   rootStyles: RootProfileOverviewStyles
 }) {
@@ -125,14 +122,6 @@ export function CustomerProfileOverviewView({
 
   return (
     <>
-      <V21TopBar
-        containerStyle={profileUtilityStyles.profileOverviewTopBar}
-        showAvatar={false}
-        subtitle=""
-        title={topBarTitle}
-        titleStyle={sharedStyles.screenTitle}
-      />
-
       <ProfileAuraCard cardStyle={profileUtilityStyles.profileOverviewHeroCard} contentStyle={profileUtilityStyles.profileHeroLarge} scope="OverviewHero" showMintAura={false} testID="customer-v21-profile-hero">
         <Pressable
           accessibilityHint={avatarAccessibilityHint}
