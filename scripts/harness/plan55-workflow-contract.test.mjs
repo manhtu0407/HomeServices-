@@ -7,6 +7,7 @@ const servicePath = '.github/workflows/plan55-production-canary-service.yml'
 const release = readFileSync(releasePath, 'utf8')
 const service = readFileSync(servicePath, 'utf8')
 const sourceAttestation = readFileSync('apps/api/scripts/lib/kael-playbook-production-attestation.mjs', 'utf8')
+const apiPackage = JSON.parse(readFileSync('apps/api/package.json', 'utf8'))
 
 function needsFor(job) {
   const match = new RegExp(`^  ${job}:\\r?\\n    needs: (.+)$`, 'mu').exec(release)
@@ -45,7 +46,7 @@ test('service workflow preserves the fixed serialized order and one complete, cl
     assert.match(release, new RegExp(`service: ${serviceName}\\r?\\n`, 'u'))
   }
   assert.deepEqual(needsFor('validate-six-receipts'), ['deploy_guard_off', ...ordered])
-  assert.match(service, /timeout-minutes: 360/u)
+  assert.match(service, /timeout-minutes: 90/u)
   assert.match(service, /--run --service "\$PLAN55_SERVICE"/u)
   assert.match(service, /BLOCKED_UNVERIFIED/u)
   assert.match(service, /records\/\*\*/u)
@@ -75,4 +76,21 @@ test('service workflow preserves the fixed serialized order and one complete, cl
 test('release workflows are covered by the deployed evaluator source attestation', () => {
   assert.match(sourceAttestation, /'\.github\/workflows\/plan55-production-only\.yml'/u)
   assert.match(sourceAttestation, /'\.github\/workflows\/plan55-production-canary-service\.yml'/u)
+})
+
+test('API JSON evidence is emitted by Vitest without dropping the Node contract suite', () => {
+  assert.equal(apiPackage.scripts.test, 'pnpm run test:vitest && pnpm run test:node')
+  assert.equal(apiPackage.scripts['test:vitest'], 'vitest run')
+  assert.match(apiPackage.scripts['test:node'], /node \.\.\/\.\.\/scripts\/run\.mjs run-node --test/u)
+
+  for (const path of [
+    '.github/workflows/ci.yml',
+    '.github/workflows/plan55-production-only.yml',
+    '.github/workflows/release-production.yml',
+    '.github/workflows/release-production-verification.yml',
+  ]) {
+    const workflow = readFileSync(path, 'utf8')
+    assert.match(workflow, /pnpm --filter @nestscout\/api test:vitest --reporter=default --reporter=json/u, path)
+    assert.match(workflow, /pnpm --filter @nestscout\/api test:node/u, path)
+  }
 })

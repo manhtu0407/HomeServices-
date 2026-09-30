@@ -22,7 +22,7 @@ jobs:
   quality-and-preflight:
     if: github.ref == 'refs/heads/codex/plan55-production-base-645c907e' && inputs.source_sha == github.sha
     runs-on: ubuntu-latest
-    timeout-minutes: 120
+    timeout-minutes: 90
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
         with:
@@ -67,7 +67,8 @@ jobs:
           mkdir -p artifacts/transactions artifacts/release
           pnpm type-check
           mkdir -p artifacts/transactions
-          pnpm test:api --reporter=default --reporter=json --outputFile=../../artifacts/transactions/api-vitest.json
+          pnpm --filter @nestscout/api test:vitest --reporter=default --reporter=json --outputFile=../../artifacts/transactions/api-vitest.json
+          pnpm --filter @nestscout/api test:node
           pnpm test:shared
           pnpm test:mobile --runInBand --json --outputFile=../../artifacts/transactions/mobile-jest.json
           pnpm test:sandbox
