@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import test from 'node:test'
+import { apiTestCommandPlan } from '../../apps/api/scripts/test-runner.mjs'
 
 const releasePath = '.github/workflows/plan55-production-only.yml'
 const servicePath = '.github/workflows/plan55-production-canary-service.yml'
@@ -79,18 +80,29 @@ test('release workflows are covered by the deployed evaluator source attestation
 })
 
 test('API JSON evidence is emitted by Vitest without dropping the Node contract suite', () => {
-  assert.equal(apiPackage.scripts.test, 'pnpm run test:vitest && pnpm run test:node')
+  assert.equal(apiPackage.scripts.test, 'node scripts/test-runner.mjs')
   assert.equal(apiPackage.scripts['test:vitest'], 'vitest run')
   assert.match(apiPackage.scripts['test:node'], /node \.\.\/\.\.\/scripts\/run\.mjs run-node --test/u)
+
+  const reporterArgs = ['--reporter=default', '--reporter=json', '--outputFile=../../artifacts/transactions/api-vitest.json']
+  const plan = apiTestCommandPlan(reporterArgs)
+  assert.deepEqual(plan.vitestArgs, ['run', ...reporterArgs])
+  assert.ok(!plan.nodeRunnerArgs.some((argument) => reporterArgs.includes(argument)))
 
   for (const path of [
     '.github/workflows/ci.yml',
     '.github/workflows/plan55-production-only.yml',
-    '.github/workflows/release-production.yml',
-    '.github/workflows/release-production-verification.yml',
   ]) {
     const workflow = readFileSync(path, 'utf8')
     assert.match(workflow, /pnpm --filter @nestscout\/api test:vitest --reporter=default --reporter=json/u, path)
     assert.match(workflow, /pnpm --filter @nestscout\/api test:node/u, path)
+  }
+
+  for (const path of [
+    '.github/workflows/release-production.yml',
+    '.github/workflows/release-production-verification.yml',
+  ]) {
+    const workflow = readFileSync(path, 'utf8')
+    assert.match(workflow, /pnpm test:api --reporter=default --reporter=json/u, path)
   }
 })

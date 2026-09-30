@@ -10,7 +10,7 @@
     "kael:eval": "node scripts/kael-eval.mjs",
     "kael:eval:playbook": "node scripts/kael-playbook-eval.mjs",
     "kael:playbook:production-canary": "node scripts/kael-playbook-production-canary.mjs",
-    "test": "pnpm run test:vitest && pnpm run test:node",
+    "test": "node scripts/test-runner.mjs",
     "test:vitest": "vitest run",
     "test:node": "node ../../scripts/run.mjs run-node --test apps/api/scripts/lib/kael-playbook-eval-targets.test.mjs apps/api/scripts/lib/plan55-independent-holdout-review.test.mjs apps/api/scripts/lib/plan55-production-canary-core.test.mjs apps/api/scripts/lib/plan55-production-canary-checkpoint-store.test.mjs apps/api/scripts/lib/plan55-production-canary-operations.test.mjs apps/api/scripts/lib/plan55-production-release-preflight.test.mjs scripts/check-edge-db-contract.test.mjs scripts/harness/runtime-release-bindings.test.mjs scripts/harness/plan55-workflow-contract.test.mjs",
     "test:watch": "vitest",

@@ -43,8 +43,7 @@ jobs:
         run: |
           pnpm type-check
           mkdir -p artifacts/transactions
-          pnpm --filter @nestscout/api test:vitest --reporter=default --reporter=json --outputFile=../../artifacts/transactions/api-vitest.json
-          pnpm --filter @nestscout/api test:node
+          pnpm test:api --reporter=default --reporter=json --outputFile=../../artifacts/transactions/api-vitest.json
           pnpm test:shared
           pnpm test:mobile --runInBand --json --outputFile=../../artifacts/transactions/mobile-jest.json
           pnpm test:sandbox
