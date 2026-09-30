@@ -65,6 +65,7 @@ export const PLAN55_RUNTIME_SOURCE_PATHS = Object.freeze([
 ])
 
 export const PLAN55_EVALUATOR_PATHS = Object.freeze([
+  '.github/workflows/ci.yml',
   '.github/workflows/plan55-production-only.yml',
   '.github/workflows/plan55-production-canary-service.yml',
   'apps/api/scripts/kael-playbook-production-canary.mjs',

@@ -1,12 +1,29 @@
 name: Plan 55 Production-only release and canary
 
 on:
-  workflow_dispatch:
+  workflow_call:
     inputs:
       source_sha:
         description: Exact merged source SHA on the pinned Production-base branch
         required: true
         type: string
+    secrets:
+      ANTHROPIC_API_KEY:
+        required: false
+      DEEPSEEK_API_KEY:
+        required: false
+      EXPO_TOKEN:
+        required: false
+      PERPLEXITY_API_KEY:
+        required: false
+      PRODUCTION_SUPABASE_ANON_KEY:
+        required: false
+      PRODUCTION_SUPABASE_SERVICE_ROLE_KEY:
+        required: false
+      SUPABASE_ACCESS_TOKEN:
+        required: false
+      VIETMAP_API_KEY:
+        required: false
 
 permissions:
   actions: read
