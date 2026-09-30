@@ -355,28 +355,50 @@ export function createRunManifest(input) {
   const deploymentVersionSource = manifestEnum(
     input.deployment_version_source,
     'deployment_version_source',
-    ['local_mock_constant', 'operator_supplied'],
+    ['local_mock_constant', 'operator_supplied', 'production_health_payload'],
   )
+  const gitShaScope = manifestEnum(
+    input.git_sha_scope,
+    'git_sha_scope',
+    ['local_base_commit', 'deployed_production_release'],
+  )
+  const deploymentAttestation = manifestEnum(
+    input.deployment_attestation,
+    'deployment_attestation',
+    ['not_performed', 'production_runtime_source_attestation'],
+  )
+  const sourceScope = manifestEnum(
+    input.source_scope,
+    'source_scope',
+    ['local_curated_source_set', 'production_attested_runtime_and_local_slice_source'],
+  )
+  const sourceAttestationSha256 = input.source_attestation_sha256 === undefined
+    ? null
+    : manifestHash(input.source_attestation_sha256, 'source_attestation_sha256')
   if (
     runMode === 'mock' &&
     (deploymentVersion !== 'local-mock' || deploymentVersionSource !== 'local_mock_constant')
   ) {
     throw new Error('invalid manifest.mock_deployment_provenance')
   }
-  if (runMode === 'live' && deploymentVersionSource !== 'operator_supplied') {
+  if (runMode === 'live' && !['operator_supplied', 'production_health_payload'].includes(deploymentVersionSource)) {
     throw new Error('invalid manifest.live_deployment_provenance')
+  }
+  const productionAttested = deploymentAttestation === 'production_runtime_source_attestation'
+  if (productionAttested !== (sourceAttestationSha256 !== null) ||
+      (productionAttested && (runMode !== 'live' ||
+        deploymentVersionSource !== 'production_health_payload' ||
+        gitShaScope !== 'deployed_production_release' ||
+        sourceScope !== 'production_attested_runtime_and_local_slice_source'))) {
+    throw new Error('invalid manifest.production_source_attestation')
   }
 
   return {
     git_sha: manifestString(input.git_sha, 'git_sha'),
-    git_sha_scope: manifestEnum(input.git_sha_scope, 'git_sha_scope', ['local_base_commit']),
+    git_sha_scope: gitShaScope,
     deployment_version: deploymentVersion,
     deployment_version_source: deploymentVersionSource,
-    deployment_attestation: manifestEnum(
-      input.deployment_attestation,
-      'deployment_attestation',
-      ['not_performed'],
-    ),
+    deployment_attestation: deploymentAttestation,
     model_id: manifestString(input.model_id, 'model_id'),
     model_ids: manifestStringArray(input.model_ids, 'model_ids'),
     provider: manifestEnum(input.provider, 'provider', ['unobserved']),
@@ -396,7 +418,8 @@ export function createRunManifest(input) {
     ),
     playbook_source_path: manifestRepoPath(input.playbook_source_path, 'playbook_source_path'),
     source_tree_hash: manifestHash(input.source_tree_hash, 'source_tree_hash'),
-    source_scope: manifestEnum(input.source_scope, 'source_scope', ['local_curated_source_set']),
+    source_scope: sourceScope,
+    ...(sourceAttestationSha256 === null ? {} : { source_attestation_sha256: sourceAttestationSha256 }),
     source_files: manifestRepoPathArray(input.source_files, 'source_files'),
     source_hash_algorithm: manifestEnum(
       input.source_hash_algorithm,

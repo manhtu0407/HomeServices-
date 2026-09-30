@@ -171,6 +171,7 @@ async function persistIncomingKaelChatTurn(input: {
     message,
     asServiceType(input.session.service_type),
     asStringArray(previousMetadata.intake_safety_signals),
+    input.ctx.user.id,
   );
   const qaCount = asNumber(previousMetadata.demanding_customer_qa_count) + 1;
   const metadata = buildIncomingKaelChatMetadata(
@@ -309,6 +310,7 @@ async function handleIncomingKaelChatTurnBoundary(input: {
     input.persisted.message,
     serviceType,
     input.persisted.persistedSafetySignals,
+    input.ctx.user.id,
   )) return false;
   return maybeHandleDemandingCustomerKaelChatTurn(input.client, {
     sessionId: input.sessionId,

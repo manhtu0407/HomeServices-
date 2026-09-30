@@ -16,6 +16,8 @@
 import { readdirSync, readFileSync, existsSync } from 'node:fs'
 import { resolve, dirname, relative, extname } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import ts from 'typescript'
+import { createRpcExpressionResolver } from './lib/edge-db-rpc-expression.mjs'
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const EDGE_ROOT = 'supabase/functions'
@@ -41,62 +43,38 @@ function walk(dir, acc) {
   return acc
 }
 
-// Pull the initializer of `const <ident> =` and return every RPC-shaped literal in
-// it. Ternary chains span lines, so accumulation runs to the statement terminator.
-function resolveIdentifier(lines, ident) {
-  const declaration = new RegExp(`(?:const|let)\\s+${ident}\\s*(?::[^=]+)?=`)
-  for (let index = 0; index < lines.length; index += 1) {
-    if (!declaration.test(lines[index])) continue
-    let text = lines[index].split('=').slice(1).join('=')
-    let cursor = index
-    while (!text.trimEnd().endsWith(';') && cursor + 1 < lines.length && cursor - index < 40) {
-      cursor += 1
-      text += '\n' + lines[cursor]
-    }
-    // A ternary picking an rpc name also compares against role and status literals.
-    // Those sit on the right of a comparison operator and are operands, never the
-    // chosen name, so dropping them is what keeps "customer" out of the results.
-    const results = text.replace(/(===?|!==?)\s*(["'])[^"'\n]*\2/g, '$1')
-    const found = [...results.matchAll(/["']([^"'\n]+)["']/g)]
-      .map((match) => match[1])
-      .filter((value) => RPC_NAME.test(value))
-    if (found.length) return found
-  }
-  return null
-}
-
 function scan(files) {
+  const sourceFiles = files.map((file) => ts.createSourceFile(
+    file,
+    readFileSync(file, 'utf-8'),
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TS,
+  ))
   const called = new Map()
   const unresolved = []
-  for (const file of files) {
-    const source = readFileSync(file, 'utf-8')
-    if (!source.includes('.rpc(')) continue
-    const lines = source.split(/\r?\n/)
-    // Scanned over the whole file rather than line by line: the first argument is often
-    // on the line after `.rpc(`, and a line-bounded scan reports those as unreadable
-    // while quietly not counting the name at all.
-    //
-    // Three outcomes. A bare identifier is only treated as a name to resolve when the
-    // next token closes the argument; `plan.claimRpc` and `getName()` are expressions
-    // this cannot follow, so they land in the residue instead of having the literals
-    // around them swept up as if they were rpc names.
-    for (const match of source.matchAll(/\.rpc\(\s*/g)) {
-      const site = `${rel(file)}:${source.slice(0, match.index).split('\n').length}`
-      const argument = source.slice(match.index + match[0].length, match.index + match[0].length + 80)
-      const literal = /^(["'])([^"']+)\1/.exec(argument)
-      if (literal) {
-        record(called, literal[2], site, 'literal')
-        continue
+  const resolveRpcNames = createRpcExpressionResolver(sourceFiles)
+
+  for (const sourceFile of sourceFiles) {
+    function visit(node) {
+      if (ts.isCallExpression(node) && ts.isPropertyAccessExpression(node.expression) &&
+        node.expression.name.text === 'rpc') {
+        const argument = node.arguments[0]
+        const names = argument ? resolveRpcNames(argument) : null
+        const site = `${rel(sourceFile.fileName)}:${sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile)).line + 1}`
+        if (names?.length && names.every((name) => RPC_NAME.test(name))) {
+          const how = ts.isStringLiteralLike(argument) ? 'literal' : 'resolved'
+          for (const name of names) record(called, name, site, how)
+        } else {
+          unresolved.push({
+            site,
+            expression: argument?.getText(sourceFile).slice(0, 256) || '…',
+          })
+        }
       }
-      const identifier = /^([A-Za-z_$][\w$]*)\s*[,)]/.exec(argument)
-      if (!identifier) {
-        unresolved.push({ site, expression: argument.split(/[,\n]/)[0].trim() || '…' })
-        continue
-      }
-      const resolved = resolveIdentifier(lines, identifier[1])
-      if (resolved) for (const name of resolved) record(called, name, site, 'resolved')
-      else unresolved.push({ site, expression: identifier[1] })
+      ts.forEachChild(node, visit)
     }
+    visit(sourceFile)
   }
   return { called, unresolved }
 }
@@ -111,9 +89,9 @@ function record(called, name, site, how) {
 
 function buildSql(names) {
   const list = names.map((name) => `'${name}'`).join(',')
-  return `select c.name as missing_in_database
+  return `select c.name as name
 from (select unnest(array[${list}]::text[]) as name) c
-where not exists (
+where exists (
   select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace
   where n.nspname = 'public' and p.proname = c.name
 )
@@ -162,7 +140,7 @@ if (!options.functions) {
   console.log('')
   console.log('no --functions given, so nothing was compared against a database.')
   console.log(`run \`node ${rel(resolve(root, 'scripts/check-edge-db-contract.mjs'))} --emit-sql\` and feed the result back with --functions.`)
-  process.exit(0)
+  process.exit(residue.length ? 1 : 0)
 }
 
 const raw = JSON.parse(readFileSync(resolve(root, options.functions), 'utf-8'))
@@ -170,22 +148,17 @@ const rows = Array.isArray(raw) ? raw : (raw.rows ?? raw.result ?? [])
 const present = new Set(
   rows.map((row) => (typeof row === 'string' ? row : row.proname ?? row.name ?? row.routine_name)).filter(Boolean),
 )
-if (!present.size) {
-  console.error(`--functions file held no function names: ${options.functions}`)
-  process.exit(1)
-}
-
 const missing = names.filter((name) => !present.has(name))
 if (options.json) {
   console.log(JSON.stringify({ called: names, missing, unresolved: residue }, null, 2))
-  process.exit(missing.length ? 1 : 0)
+  process.exit(missing.length || residue.length ? 1 : 0)
 }
 
 summary()
 console.log('')
 if (!missing.length) {
   console.log(`all ${names.length} scannable rpc names exist in the target database`)
-  process.exit(0)
+  process.exit(residue.length ? 1 : 0)
 }
 console.error(`edge code calls ${missing.length} function(s) the target database does not have:`)
 for (const name of missing) {

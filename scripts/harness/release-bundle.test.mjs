@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { execFileSync } from 'node:child_process'
 import { createHash } from 'node:crypto'
-import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, resolve } from 'node:path'
 import test from 'node:test'
@@ -72,9 +72,40 @@ const readyProviders = Object.freeze({
   android_fcm_v1: true, anthropic: true, deepseek: false, durable_guards: true,
   global_ai_enabled: true, ios_apns: true, perplexity: true, push_receipt_reconciler: true, vietmap: true,
 })
+const plan55ActiveClientCompatibility = Object.freeze({
+  gitSha: '645c907e178f21ddde24a72501e6c8449d6720f9',
+  releaseId: 'harness-645c907e178f-f426155f83de',
+  contractEpoch: 2,
+  ios: Object.freeze({
+    applicationId: 'com.phanmanhtu.homeservices',
+    minimumBuildNumber: 45,
+    easBuildId: '11111111-1111-4111-8111-111111111111',
+    runtimeVersion: '0.2.0',
+  }),
+  android: Object.freeze({
+    applicationId: 'com.phanmanhtu.nestscout',
+    minimumBuildNumber: 4,
+    easBuildId: '22222222-2222-4222-8222-222222222222',
+    runtimeVersion: '0.2.0',
+  }),
+})
 const pushUnready = Object.freeze({
   ...readyProviders, android_fcm_v1: false, ios_apns: false, push_receipt_reconciler: false,
 })
+
+function hostedBeforeBytes(root = resolve('.')) {
+  const policy = JSON.parse(readFileSync(resolve(root, 'config/harness/plan55-production-only-policy.json'), 'utf8'))
+  const inventory = JSON.parse(readFileSync(resolve(root, 'config/harness/migration-inventory.json'), 'utf8'))
+  return Buffer.from(`${JSON.stringify({
+    environment: 'production',
+    projectRef: policy.projectRef,
+    releaseId: policy.productionSourceBase.releaseId,
+    gitSha: policy.productionSourceBase.sha,
+    releaseLane: 'verification',
+    clientCompatibility: plan55ActiveClientCompatibility,
+    migrations: inventory.entries.slice(0, 3).map(({ version, name }) => ({ version, name })),
+  }, null, 2)}\n`)
+}
 
 const builds = new Map()
 function productionRelease(providerReadiness, lane) {
@@ -82,6 +113,7 @@ function productionRelease(providerReadiness, lane) {
   if (!builds.has(key)) {
     builds.set(key, buildHarnessRelease({
       environment: 'production', gitSha: 'f'.repeat(40), providerReadiness, requireCleanWorktree: false, lane,
+      ...(lane === 'plan55-production-only' ? { hostedBeforeBytes: hostedBeforeBytes() } : {}),
     }))
   }
   return builds.get(key)
@@ -117,6 +149,90 @@ test('the lane is part of the release identity and a strict release carries no l
   assert.equal(Object.hasOwn(strict, 'releaseLane'), false, 'strict manifests must stay byte-identical to before')
   assert.notEqual(strict.releaseId, verification.releaseId)
   assert.notEqual(strict.bundleSha256, verification.bundleSha256)
+})
+
+test('Plan 55 Production-only release lane replaces only the Staging dependency with explicit pre-canary gates', () => {
+  const plan55 = productionRelease(readyProviders, 'plan55-production-only')
+  assert.equal(plan55.environment, 'production')
+  assert.equal(plan55.releaseLane, 'plan55-production-only')
+  assert.ok(plan55.verificationRequirements.includes('plan55-production-source-merge'))
+  assert.ok(plan55.verificationRequirements.includes('plan55-exact-production-base-ancestry'))
+  assert.ok(!plan55.verificationRequirements.includes('main-branch-merge'))
+  assert.ok(plan55.verificationRequirements.includes('plan55-actor-scoped-guard-tests'))
+  assert.ok(plan55.verificationRequirements.includes('plan55-canary-runner-tests'))
+  assert.ok(plan55.verificationRequirements.includes('plan55-independent-holdout-freeze'))
+  assert.ok(!plan55.verificationRequirements.includes('staging-migration-match'))
+  assert.deepEqual(plan55.activeClientCompatibility, plan55ActiveClientCompatibility)
+  assert.deepEqual(checkHarnessRelease(plan55), [])
+  assert.ok(checkHarnessRelease({ ...plan55, activeClientCompatibility: { ...plan55ActiveClientCompatibility, gitSha: '0'.repeat(40) } })
+    .includes('Plan 55 release does not preserve the exact active Production client identity'))
+  const missingGuardGate = {
+    ...plan55,
+    verificationRequirements: plan55.verificationRequirements.filter((gate) => gate !== 'plan55-actor-scoped-guard-tests'),
+  }
+  assert.ok(checkHarnessRelease(missingGuardGate).includes('release verification requirements do not match the selected lane'))
+  const missingBaseGate = {
+    ...plan55,
+    verificationRequirements: plan55.verificationRequirements.filter((gate) => gate !== 'plan55-exact-production-base-ancestry'),
+  }
+  assert.ok(checkHarnessRelease(missingBaseGate).includes('release verification requirements do not match the selected lane'))
+})
+
+test('Plan 55 release derives active client identity only from the exact hosted-before snapshot', () => {
+  const base = {
+    environment: 'production',
+    gitSha: 'f'.repeat(40),
+    providerReadiness: readyProviders,
+    requireCleanWorktree: false,
+    lane: 'plan55-production-only',
+  }
+  assert.throws(() => buildHarnessRelease(base), /requires a hosted-before snapshot/u)
+  assert.throws(() => buildHarnessRelease({
+    ...base, activeClientCompatibility: plan55ActiveClientCompatibility, hostedBeforeBytes: hostedBeforeBytes(),
+  }),
+    /derived from hosted-before/u)
+  const exactHostedBefore = hostedBeforeBytes()
+  const forgedHostedState = JSON.parse(hostedBeforeBytes().toString('utf8'))
+  forgedHostedState.clientCompatibility = {
+    ...forgedHostedState.clientCompatibility,
+    ios: { ...forgedHostedState.clientCompatibility.ios, easBuildId: '33333333-3333-4333-8333-333333333333' },
+  }
+  const forgedSnapshotRelease = buildHarnessRelease({
+    ...base,
+    hostedBeforeBytes: Buffer.from(`${JSON.stringify(forgedHostedState, null, 2)}\n`),
+  })
+  assert.ok(checkHarnessRelease(forgedSnapshotRelease, { hostedBeforeBytes: exactHostedBefore })
+    .includes('Plan 55 hosted-before bytes do not match the release snapshot'))
+})
+
+test('Plan 55 release generation requires an exact hosted-before snapshot and binds its applied inventory', () => {
+  const base = {
+    environment: 'production',
+    gitSha: 'f'.repeat(40),
+    providerReadiness: readyProviders,
+    requireCleanWorktree: false,
+    lane: 'plan55-production-only',
+  }
+  assert.throws(() => buildHarnessRelease(base), /requires a hosted-before snapshot/u)
+  const release = buildHarnessRelease({ ...base, hostedBeforeBytes: hostedBeforeBytes() })
+  assert.equal(release.plan55AppliedMigrationSnapshot.appliedMigrationCount, 3)
+  assert.equal(release.migrationInventory.migrationCount, 3)
+  assert.match(release.plan55AppliedMigrationSnapshot.hostedStateSha256, /^[0-9a-f]{64}$/u)
+  assert.deepEqual(checkHarnessRelease(release), [])
+  const exactHostedBefore = hostedBeforeBytes()
+  assert.deepEqual(checkHarnessRelease(release, { hostedBeforeBytes: exactHostedBefore }), [])
+  const alteredHostedState = JSON.parse(exactHostedBefore.toString('utf8'))
+  alteredHostedState.clientCompatibility.ios.easBuildId = '33333333-3333-4333-8333-333333333333'
+  assert.ok(checkHarnessRelease(release, {
+    hostedBeforeBytes: Buffer.from(`${JSON.stringify(alteredHostedState, null, 2)}\n`),
+  }).includes('Plan 55 hosted-before bytes do not match the release snapshot'))
+  assert.ok(checkHarnessRelease({
+    ...release,
+    plan55AppliedMigrationSnapshot: {
+      ...release.plan55AppliedMigrationSnapshot,
+      sourceGitSha: '0'.repeat(40),
+    },
+  }).includes('Plan 55 applied migration snapshot is not tied to the policy Production base'))
 })
 
 test('a lane cannot be forged onto a strict release or applied outside production', () => {

@@ -1,0 +1,291 @@
+name: Plan 55 single Production service
+
+on:
+  workflow_call:
+    inputs:
+      service:
+        description: One service in the fixed Plan 55 order
+        required: true
+        type: string
+      source_sha:
+        description: Exact merged Production source SHA
+        required: true
+        type: string
+      release_artifact_id:
+        description: Immutable artifact containing the verified deployed release identity
+        required: true
+        type: string
+      prior_artifact_ids:
+        description: Immutable artifacts for all prior completed services
+        required: false
+        default: ''
+        type: string
+    outputs:
+      canary_artifact_id:
+        description: Immutable artifact containing this service's checkpoint and evidence
+        value: ${{ jobs.canary.outputs.artifact_id }}
+
+permissions:
+  actions: read
+  checks: read
+  contents: read
+  pull-requests: read
+
+jobs:
+  canary:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    environment: production
+    env:
+      PRODUCTION_PROJECT_REF: iwevizmsedyqozxlawwl
+      PRODUCTION_PROJECT_URL: https://iwevizmsedyqozxlawwl.supabase.co
+    outputs:
+      artifact_id: ${{ steps.service-artifact.outputs.artifact-id }}
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          ref: ${{ inputs.source_sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          artifact-ids: ${{ inputs.release_artifact_id }}
+          path: artifacts/release
+      - name: Find this service's latest cleaned checkpoint from an earlier attempt
+        id: resume
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PLAN55_SERVICE: ${{ inputs.service }}
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE' >> "$GITHUB_OUTPUT"
+          const service = process.env.PLAN55_SERVICE
+          const runId = process.env.GITHUB_RUN_ID
+          const attempt = Number(process.env.GITHUB_RUN_ATTEMPT)
+          if (!/^(hvac|handyman|cleaning|upholstery|plumbing|electrical)$/.test(service ?? '') ||
+              !/^\d+$/.test(runId ?? '') || !Number.isSafeInteger(attempt) || attempt < 1 ||
+              !/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(process.env.GITHUB_REPOSITORY ?? '')) {
+            process.stderr.write('plan55_resume_identity_invalid\n')
+            process.exit(1)
+          }
+          try {
+            const artifacts = []
+            for (let page = 1; page <= 10; page += 1) {
+              const url = new URL(`https://api.github.com/repos/${process.env.GITHUB_REPOSITORY}/actions/runs/${runId}/artifacts`)
+              url.searchParams.set('per_page', '100')
+              url.searchParams.set('page', String(page))
+              const response = await fetch(url, {
+                headers: {
+                  accept: 'application/vnd.github+json',
+                  authorization: `Bearer ${process.env.GH_TOKEN}`,
+                  'x-github-api-version': '2022-11-28',
+                },
+              })
+              if (!response.ok) throw new Error('artifact list request failed')
+              const body = await response.json()
+              if (!Array.isArray(body.artifacts)) throw new Error('artifact list response invalid')
+              artifacts.push(...body.artifacts)
+              if (body.artifacts.length < 100) break
+              if (page === 10) throw new Error('artifact list pagination exceeded')
+            }
+            const candidatesFor = (prefix) => artifacts.flatMap((artifact) => {
+              const match = new RegExp(`^${prefix}(\\d+)-${service}$`).exec(artifact.name ?? '')
+              if (!match || artifact.expired || !Number.isSafeInteger(Number(artifact.id)) ||
+                  Number(match[1]) >= attempt) return []
+              return [{ id: Number(artifact.id), attempt: Number(match[1]), createdAt: artifact.created_at ?? '' }]
+            }).sort((left, right) => right.attempt - left.attempt || right.createdAt.localeCompare(left.createdAt))
+            const checkpoints = candidatesFor(`plan55-service-${runId}-`)
+            const starts = candidatesFor(`plan55-start-${runId}-`)
+            const latestStart = starts[0]
+            if (latestStart && !checkpoints.some(({ attempt: checkpointAttempt }) => checkpointAttempt === latestStart.attempt)) {
+              process.stderr.write('plan55_resume_checkpoint_unverified\n')
+              process.exit(1)
+            }
+            const selected = checkpoints[0]
+            process.stdout.write(`artifact_id=${selected?.id ?? ''}\n`)
+            process.stdout.write(`previous_attempt=${selected?.attempt ?? ''}\n`)
+          } catch {
+            process.stderr.write('plan55_resume_artifact_lookup_failed\n')
+            process.exitCode = 1
+          }
+          NODE
+      - name: Restore this service's prior attempt checkpoint
+        if: steps.resume.outputs.artifact_id != ''
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          run-id: ${{ github.run_id }}
+          github-token: ${{ github.token }}
+          artifact-ids: ${{ steps.resume.outputs.artifact_id }}
+          merge-multiple: true
+          path: .
+      - name: Reject an earlier attempt unless its complete cleaned receipt is recoverable
+        if: steps.resume.outputs.artifact_id != ''
+        env:
+          PLAN55_SERVICE: ${{ inputs.service }}
+          PLAN55_SOURCE_SHA: ${{ inputs.source_sha }}
+          PLAN55_PREVIOUS_ATTEMPT: ${{ steps.resume.outputs.previous_attempt }}
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          import { readFileSync } from 'node:fs'
+          import { resolve } from 'node:path'
+          const service = process.env.PLAN55_SERVICE
+          const sourceSha = process.env.PLAN55_SOURCE_SHA?.toLowerCase()
+          const runId = process.env.GITHUB_RUN_ID
+          const attempt = process.env.PLAN55_PREVIOUS_ATTEMPT
+          const fail = () => {
+            process.stderr.write('plan55_resume_prior_attempt_not_reusable\n')
+            process.exit(1)
+          }
+          if (!/^[a-f0-9]{40}$/i.test(sourceSha ?? '') ||
+              !/^(hvac|handyman|cleaning|upholstery|plumbing|electrical)$/.test(service ?? '') ||
+              !/^\d+$/.test(runId ?? '') || !/^\d+$/.test(attempt ?? '')) fail()
+          let record
+          try {
+            const path = resolve('.scratch/plan55-production-canary/attempts', sourceSha, service,
+              `attempt-${runId}-${attempt}.json`)
+            record = JSON.parse(readFileSync(path, 'utf8'))
+          } catch {
+            fail()
+          }
+          const release = JSON.parse(readFileSync('artifacts/release/release.json', 'utf8'))
+          const serviceResult = record?.result?.services?.[0]
+          const cleanup = serviceResult?.cleanup
+          const tables = ['profiles', 'customer_profiles', 'customer_account_deletion_requests',
+            'kael_chat_sessions', 'kael_chat_turns']
+          if (record?.schema !== 'plan55-service-attempt/v1' || record.status !== 'RECEIPT_RECORDED' ||
+              record.source_sha !== sourceSha || record.service !== service || record.exit_code !== 0 ||
+              record.result?.services?.length !== 1 || serviceResult.service !== service ||
+              serviceResult.source_sha !== sourceSha || serviceResult.release_id !== release.releaseId ||
+              !['G5_PASSED', 'G5_FAILED_SERVICE_OFF'].includes(serviceResult.status) ||
+              serviceResult.slice_count !== 8 || serviceResult.case_count !== 96 || serviceResult.error_count !== 0 ||
+              cleanup?.canaryFlag !== 'absent' || cleanup?.canaryActorId !== 'absent' ||
+              cleanup?.authStatus !== 404 || cleanup?.orphanWorkers !== 0 ||
+              !cleanup.rows || tables.some((table) => cleanup.rows[table] !== 0)) fail()
+          NODE
+      - name: Restore only the already completed service receipts
+        if: inputs.service != 'hvac'
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          artifact-ids: ${{ inputs.prior_artifact_ids }}
+          merge-multiple: true
+          path: .
+      - name: Mark this service attempt before any Production account or traffic action
+        env:
+          PLAN55_SERVICE: ${{ inputs.service }}
+          PLAN55_SOURCE_SHA: ${{ inputs.source_sha }}
+        run: |
+          set -euo pipefail
+          marker_dir=".scratch/plan55-production-canary/attempts/$PLAN55_SOURCE_SHA/$PLAN55_SERVICE"
+          mkdir -p "$marker_dir"
+          node --input-type=module <<'NODE'
+          import { writeFileSync } from 'node:fs'
+          import { resolve } from 'node:path'
+          const sourceSha = process.env.PLAN55_SOURCE_SHA
+          const service = process.env.PLAN55_SERVICE
+          if (!/^[a-f0-9]{40}$/i.test(sourceSha ?? '') ||
+              !/^(hvac|handyman|cleaning|upholstery|plumbing|electrical)$/.test(service ?? '')) process.exit(1)
+          const marker = {
+            schema: 'plan55-service-start/v1',
+            source_sha: sourceSha.toLowerCase(),
+            service,
+          }
+          const path = resolve('.scratch/plan55-production-canary/attempts', sourceSha, service,
+            `started-${process.env.GITHUB_RUN_ID}-${process.env.GITHUB_RUN_ATTEMPT}.json`)
+          writeFileSync(path, `${JSON.stringify(marker)}\n`, { flag: 'wx', mode: 0o600 })
+          NODE
+      - name: Preserve the service start marker before canary execution
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: plan55-start-${{ github.run_id }}-${{ github.run_attempt }}-${{ inputs.service }}
+          path: .scratch/plan55-production-canary/attempts/${{ inputs.source_sha }}/${{ inputs.service }}/started-${{ github.run_id }}-${{ github.run_attempt }}.json
+          if-no-files-found: error
+          include-hidden-files: true
+          retention-days: 90
+      - name: Run one service and capture only a scrubbed receipt or safe failure code
+        env:
+          PLAN55_SERVICE: ${{ inputs.service }}
+          PLAN55_SOURCE_SHA: ${{ inputs.source_sha }}
+          PLAN55_PRODUCTION_CANARY_OPT_IN: RUN_ONE_SYNTHETIC_ACTOR_SERVICE
+          SUPABASE_URL: https://iwevizmsedyqozxlawwl.supabase.co
+          PRODUCTION_SUPABASE_ANON_KEY: ${{ secrets.PRODUCTION_SUPABASE_ANON_KEY }}
+          PRODUCTION_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.PRODUCTION_SUPABASE_SERVICE_ROLE_KEY }}
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test "$GITHUB_SHA" = "$PLAN55_SOURCE_SHA"
+          case "$PLAN55_SERVICE" in hvac|handyman|cleaning|upholstery|plumbing|electrical) ;; *) exit 1 ;; esac
+          node --input-type=module <<'NODE'
+          import { readFileSync } from 'node:fs'
+          const release = JSON.parse(readFileSync('artifacts/release/release.json', 'utf8'))
+          const hosted = JSON.parse(readFileSync('artifacts/release/hosted-guard-deployed.json', 'utf8'))
+          if (release.gitSha !== process.env.GITHUB_SHA || release.releaseLane !== 'plan55-production-only' ||
+              hosted.gitSha !== process.env.GITHUB_SHA || hosted.releaseId !== release.releaseId ||
+              hosted.projectRef !== 'iwevizmsedyqozxlawwl') process.exit(1)
+          NODE
+          mkdir -p ".scratch/plan55-production-canary/attempts/$GITHUB_SHA/$PLAN55_SERVICE"
+          raw_attempt_dir="$(mktemp -d "$RUNNER_TEMP/plan55-canary-${PLAN55_SERVICE}.XXXXXX")"
+          result_file="$raw_attempt_dir/result.json"
+          error_file="$raw_attempt_dir/stderr.txt"
+          set +e
+          node apps/api/scripts/kael-playbook-production-canary.mjs --run --service "$PLAN55_SERVICE" \
+            > "$result_file" 2> "$error_file"
+          exit_code=$?
+          set -e
+          export PLAN55_EXIT_CODE="$exit_code" PLAN55_RESULT_FILE="$result_file" PLAN55_ERROR_FILE="$error_file"
+          node --input-type=module <<'NODE'
+          import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+          import { dirname, resolve } from 'node:path'
+          const service = process.env.PLAN55_SERVICE
+          const sourceSha = process.env.PLAN55_SOURCE_SHA
+          const code = Number(process.env.PLAN55_EXIT_CODE)
+          if (!/^[a-f0-9]{40}$/i.test(sourceSha ?? '') ||
+              !/^(hvac|handyman|cleaning|upholstery|plumbing|electrical)$/.test(service ?? '') ||
+              !Number.isSafeInteger(code) || code < 0 || code > 255) process.exit(1)
+          let result = null
+          if (code === 0) {
+            result = JSON.parse(readFileSync(process.env.PLAN55_RESULT_FILE, 'utf8'))
+            if (result.services?.length !== 1 || result.services[0].service !== service ||
+                !['G5_PASSED', 'G5_FAILED_SERVICE_OFF'].includes(result.services[0].status)) process.exit(1)
+          }
+          const rawCode = readFileSync(process.env.PLAN55_ERROR_FILE, 'utf8').trim().split(/\r?\n/).at(-1) ?? ''
+          const failureCode = rawCode.match(/^(plan55_[a-z0-9_]+)(?::.*)?$/i)?.[1] ?? 'plan55_canary_unverified'
+          const record = {
+            schema: 'plan55-service-attempt/v1',
+            source_sha: sourceSha.toLowerCase(),
+            service,
+            status: code === 0 ? 'RECEIPT_RECORDED' : 'BLOCKED_UNVERIFIED',
+            ...(code === 0 ? { result } : { error_code: failureCode }),
+            exit_code: code,
+          }
+          const path = resolve('.scratch/plan55-production-canary/attempts', sourceSha, service,
+            `attempt-${process.env.GITHUB_RUN_ID}-${process.env.GITHUB_RUN_ATTEMPT}.json`)
+          mkdirSync(dirname(path), { recursive: true })
+          writeFileSync(path, `${JSON.stringify(record, null, 2)}\n`, { flag: 'wx' })
+          NODE
+          if [ "$exit_code" -ne 0 ]; then
+            code=$(tail -n 1 "$error_file" | sed -nE 's/^(plan55_[a-zA-Z0-9_]+)(:.*)?$/\1/p' || true)
+            echo "::error title=Plan 55 service BLOCKED/UNVERIFIED::$PLAN55_SERVICE ${code:-plan55_canary_unverified}"
+            exit "$exit_code"
+          fi
+      - name: Preserve this service receipt and attempt evidence
+        id: service-artifact
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: plan55-service-${{ github.run_id }}-${{ github.run_attempt }}-${{ inputs.service }}
+          path: |
+            .scratch/plan55-production-canary/records/**
+            .scratch/plan55-production-canary/attempts/**
+            docs/test-logs/plan55/${{ inputs.source_sha }}/${{ inputs.service }}/**
+          if-no-files-found: error
+          include-hidden-files: true
+          retention-days: 90

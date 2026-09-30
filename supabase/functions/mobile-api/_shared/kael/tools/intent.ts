@@ -177,6 +177,7 @@ export async function diagnoseIntake(
   conversationContext?: string,
   language: "vi" | "en" = "vi",
   electricalPlaybookEnabled = false,
+  actorId?: string | null,
 ): Promise<
   | { success: true; intent: IntentResult; attempts: IntentAttemptLog[] }
   | {
@@ -192,6 +193,7 @@ export async function diagnoseIntake(
     description,
     conversationContext ? scrubCustomerCaseContextForLLM(conversationContext) : undefined,
     language,
+    actorId,
   );
   const attempts: IntentAttemptLog[] = [];
   const blockedProviders = new Set<AIProvider>();

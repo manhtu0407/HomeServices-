@@ -63,6 +63,7 @@ export function resolveKaelChatProblemChips(
 }
 
 function buildBookingIntakeConfirmation(input: {
+  actorId: string;
   intake: KaelChatCreateInput;
   description: string;
   problemChips: readonly string[];
@@ -71,6 +72,7 @@ function buildBookingIntakeConfirmation(input: {
 }) {
   if (input.intake.intake_source !== "booking") return null;
   return buildKaelIntakeConfirmation({
+    actorId: input.actorId,
     serviceType: input.intake.service_type,
     profileId: input.intake.profile_id!,
     description: input.description,
@@ -117,6 +119,7 @@ export async function prepareInitialKaelChatIntake(
     sanitizeForLLM(inputForSession.intake_description ?? inputForSession.message ?? ""),
   );
   const intakeConfirmation = buildBookingIntakeConfirmation({
+    actorId: ctx.user.id,
     intake: inputForSession,
     description: intakeDescription,
     problemChips: safeProblemChips,
