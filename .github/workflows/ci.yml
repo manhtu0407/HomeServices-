@@ -176,7 +176,7 @@ jobs:
           PLAN55_SOURCE_SHA: ${{ inputs.plan55_source_sha }}
         run: |
           set -euo pipefail
-          test "$GITHUB_REF" = "refs/heads/codex/plan55-production-base-645c907e"
+          test "$GITHUB_REF" = "refs/heads/codex/plan55-production-base-645c907e-review"
           if [[ ! "$PLAN55_SOURCE_SHA" =~ ^[a-f0-9]{40}$ ]]; then
             exit 1
           fi

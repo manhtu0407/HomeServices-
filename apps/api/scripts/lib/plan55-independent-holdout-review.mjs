@@ -379,7 +379,7 @@ async function readGithubCheckRuns(execFileSyncImpl, cwd, commitSha) {
 function isExpectedProductionSourceBase() {
   const { branch, sha, releaseId } = PLAN55_PRODUCTION_SOURCE_BASE
   return GIT_SHA_PATTERN.test(sha ?? '') &&
-    branch === `codex/plan55-production-base-${String(sha).slice(0, 8)}` &&
+    branch === `codex/plan55-production-base-${String(sha).slice(0, 8)}-review` &&
     new RegExp(`^harness-${String(sha).slice(0, 12)}-[a-f0-9]{12}$`, 'u').test(releaseId ?? '')
 }
 
@@ -394,7 +394,8 @@ function isVerifiedMergedProductionPullRequest(pullRequest, number, sourceSha, m
     GIT_SHA_PATTERN.test(pullRequest.head?.sha ?? '') &&
     String(mergeCommit?.sha ?? '').toLowerCase() === sourceSha &&
     Array.isArray(mergeCommit?.parents) &&
-    String(mergeCommit.parents[0]?.sha ?? '').toLowerCase() === PLAN55_PRODUCTION_SOURCE_BASE.sha
+    String(mergeCommit.parents[0]?.sha ?? '').toLowerCase() === PLAN55_PRODUCTION_SOURCE_BASE.sha &&
+    String(mergeCommit.parents[1]?.sha ?? '').toLowerCase() === String(pullRequest.head.sha).toLowerCase()
 }
 
 function parseJsonFile(value) {

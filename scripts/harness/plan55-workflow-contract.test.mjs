@@ -54,7 +54,7 @@ test('Plan 55 release is dispatch-only, pinned to the exact Production-base merg
     expectWorkflowMatch(release, new RegExp(`^      ${secretName}:\\r?\\n        required: false$`, 'mu'),
       `reusable release must declare ${secretName} as an optional caller secret for structured preflight`)
   }
-  expectWorkflowMatch(release, /refs\/heads\/codex\/plan55-production-base-645c907e/u,
+  expectWorkflowMatch(release, /refs\/heads\/codex\/plan55-production-base-645c907e-review/u,
     'release must stay pinned to the approved Production-base branch')
   expectWorkflowMatch(release, /inputs\.source_sha == github\.sha/u,
     'release input must match the dispatched commit')
@@ -80,7 +80,7 @@ test('Plan 55 can be dispatched through the registered CI workflow without rerun
     'source guard must run only for an explicit manual Plan 55 dispatch')
   expectWorkflowMatch(guard, /PLAN55_SOURCE_SHA: \$\{\{ inputs\.plan55_source_sha \}\}/u,
     'guard must validate the supplied SHA')
-  expectWorkflowMatch(guard, /refs\/heads\/codex\/plan55-production-base-645c907e/u,
+  expectWorkflowMatch(guard, /refs\/heads\/codex\/plan55-production-base-645c907e-review/u,
     'guard must reject non-Production-base refs')
   expectWorkflowMatch(guard, /test "\$PLAN55_SOURCE_SHA" = "\$GITHUB_SHA"/u,
     'guard must reject stale or substituted SHAs')

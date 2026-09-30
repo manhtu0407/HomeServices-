@@ -17,7 +17,7 @@ const repository = 'manhtu0407/HomeServices-'
 const sourceSha = 'a'.repeat(40)
 const reviewedHeadSha = 'b'.repeat(40)
 const productionBaseSha = '645c907e178f21ddde24a72501e6c8449d6720f9'
-const productionBaseBranch = 'codex/plan55-production-base-645c907e'
+const productionBaseBranch = 'codex/plan55-production-base-645c907e-review'
 const hash = (value) => createHash('sha256').update(value).digest('hex')
 const identityHash = (id) => `sha256:${hash(String(id))}`
 const guardPath = 'supabase/functions/mobile-api/_shared/kael/learning/playbooks/flags.ts'
@@ -196,6 +196,9 @@ test('independent holdout proof rejects fabricated, stale, author, and untrusted
     mergeCommit: { ...fixture.mergeCommit, parents: [{ sha: 'c'.repeat(40) }, { sha: reviewedHeadSha }] },
   }), { message: 'plan55_preflight_independent_holdout_unverified' })
   assert.throws(() => verify({
+    mergeCommit: { ...fixture.mergeCommit, parents: [{ sha: productionBaseSha }, { sha: 'c'.repeat(40) }] },
+  }), { message: 'plan55_preflight_independent_holdout_unverified' })
+  assert.throws(() => verify({
     proof: {
       ...fixture.proof,
       review_evidence: { ...fixture.proof.review_evidence, production_source_base_sha: '0'.repeat(40) },
@@ -203,6 +206,12 @@ test('independent holdout proof rejects fabricated, stale, author, and untrusted
   }), { message: 'plan55_preflight_independent_holdout_unverified' })
   assert.throws(() => verify({
     pullRequest: { ...fixture.pullRequest, base: { ...fixture.pullRequest.base, ref: 'main' } },
+  }), { message: 'plan55_preflight_independent_holdout_unverified' })
+  assert.throws(() => verify({
+    pullRequest: {
+      ...fixture.pullRequest,
+      base: { ...fixture.pullRequest.base, ref: 'codex/plan55-production-base-645c907e' },
+    },
   }), { message: 'plan55_preflight_independent_holdout_unverified' })
   assert.throws(() => verify({
     reviews: fixture.reviews.map((review, index) => index === 1

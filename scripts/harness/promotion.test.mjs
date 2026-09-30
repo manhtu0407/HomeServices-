@@ -95,7 +95,7 @@ test('Plan 55 has a separate fail-closed Production-only transition policy with 
   assert.deepEqual(validatePromotionConfig(policy, { root: resolve('.') }), [])
   assert.equal(policy.projectRef, 'iwevizmsedyqozxlawwl')
   assert.deepEqual(policy.productionSourceBase, {
-    branch: 'codex/plan55-production-base-645c907e',
+    branch: 'codex/plan55-production-base-645c907e-review',
     sha: '645c907e178f21ddde24a72501e6c8449d6720f9',
     releaseId: 'harness-645c907e178f-f426155f83de',
   })
