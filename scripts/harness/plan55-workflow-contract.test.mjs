@@ -1,0 +1,203 @@
+import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
+import test from 'node:test'
+import { apiTestCommandPlan } from '../../apps/api/scripts/test-runner.mjs'
+
+const releasePath = '.github/workflows/plan55-production-only.yml'
+const servicePath = '.github/workflows/plan55-production-canary-service.yml'
+const ciPath = '.github/workflows/ci.yml'
+const release = readFileSync(releasePath, 'utf8')
+const service = readFileSync(servicePath, 'utf8')
+const ci = readFileSync(ciPath, 'utf8')
+const sourceAttestation = readFileSync('apps/api/scripts/lib/kael-playbook-production-attestation.mjs', 'utf8')
+const apiPackage = JSON.parse(readFileSync('apps/api/package.json', 'utf8'))
+
+function needsFor(job) {
+  const match = new RegExp(`^  ${job}:\\r?\\n    needs: (.+)$`, 'mu').exec(release)
+  assert.ok(match, `workflow must declare needs for ${job}`)
+  const value = match[1].trim()
+  return value.startsWith('[')
+    ? value.slice(1, -1).split(',').map((item) => item.trim())
+    : [value]
+}
+
+function jobBlock(workflow, name) {
+  const header = new RegExp(`^  ${name}:\\r?\\n`, 'mu')
+  const match = header.exec(workflow)
+  assert.ok(match, `workflow must declare ${name}`)
+  const rest = workflow.slice(match.index + match[0].length)
+  const nextJob = /^  [A-Za-z0-9_-]+:/mu.exec(rest)
+  return nextJob ? rest.slice(0, nextJob.index) : rest
+}
+
+function expectWorkflowMatch(workflow, pattern, message) {
+  assert.ok(pattern.test(workflow), message)
+}
+
+test('Plan 55 release is dispatch-only, pinned to the exact Production-base merge, and never targets Staging', () => {
+  expectWorkflowMatch(release, /^on:\r?\n  workflow_call:/mu, 'release must be callable by the registered CI workflow')
+  assert.ok(!/^  (?:push|pull_request|schedule|workflow_dispatch):/mu.test(release),
+    'release must not auto-start or depend on default-branch dispatch registration')
+  expectWorkflowMatch(release, /workflow_call:[\s\S]*?inputs:[\s\S]*?source_sha:/u,
+    'reusable release must require the exact source SHA')
+  const secretNames = [
+    'ANTHROPIC_API_KEY',
+    'DEEPSEEK_API_KEY',
+    'EXPO_TOKEN',
+    'PERPLEXITY_API_KEY',
+    'PRODUCTION_SUPABASE_ANON_KEY',
+    'PRODUCTION_SUPABASE_SERVICE_ROLE_KEY',
+    'SUPABASE_ACCESS_TOKEN',
+    'VIETMAP_API_KEY',
+  ]
+  for (const secretName of secretNames) {
+    expectWorkflowMatch(release, new RegExp(`^      ${secretName}:\\r?\\n        required: false$`, 'mu'),
+      `reusable release must declare ${secretName} as an optional caller secret for structured preflight`)
+  }
+  expectWorkflowMatch(release, /refs\/heads\/codex\/plan55-production-base-645c907e/u,
+    'release must stay pinned to the approved Production-base branch')
+  expectWorkflowMatch(release, /inputs\.source_sha == github\.sha/u,
+    'release input must match the dispatched commit')
+  expectWorkflowMatch(release, /test "\$\(git show -s --format=%P/u,
+    'release must verify its merge parent')
+  assert.doesNotMatch(`${release}\n${service}`, /staging/iu)
+})
+
+test('Plan 55 can be dispatched through the registered CI workflow without rerunning its other lanes', () => {
+  const controls = jobBlock(ci, 'controls')
+  const guard = jobBlock(ci, 'plan55-dispatch-guard')
+  const caller = jobBlock(ci, 'plan55-production-only')
+  const workspace = jobBlock(ci, 'workspace')
+  const database = jobBlock(ci, 'database')
+
+  expectWorkflowMatch(ci, /^  workflow_dispatch:\r?\n    inputs:\r?\n      plan55_source_sha:/mu,
+    'registered CI workflow must accept an optional Plan 55 source SHA')
+  expectWorkflowMatch(ci, /plan55_source_sha:[\s\S]*?required: false[\s\S]*?type: string/u,
+    'Plan 55 source SHA must remain an optional string so ordinary CI dispatches are unchanged')
+  expectWorkflowMatch(controls, /if:[^\r\n]*inputs\.plan55_source_sha == ''/u,
+    'Plan 55 dispatch must skip ordinary controls')
+  expectWorkflowMatch(guard, /if:[^\r\n]*github\.event_name == 'workflow_dispatch'[^\r\n]*inputs\.plan55_source_sha != ''/u,
+    'source guard must run only for an explicit manual Plan 55 dispatch')
+  expectWorkflowMatch(guard, /PLAN55_SOURCE_SHA: \$\{\{ inputs\.plan55_source_sha \}\}/u,
+    'guard must validate the supplied SHA')
+  expectWorkflowMatch(guard, /refs\/heads\/codex\/plan55-production-base-645c907e/u,
+    'guard must reject non-Production-base refs')
+  expectWorkflowMatch(guard, /test "\$PLAN55_SOURCE_SHA" = "\$GITHUB_SHA"/u,
+    'guard must reject stale or substituted SHAs')
+  expectWorkflowMatch(guard, /\[\[ ! "\$PLAN55_SOURCE_SHA" =~ \^\[a-f0-9\]\{40\}\$ \]\]/u,
+    'guard must require a full hexadecimal commit SHA')
+  expectWorkflowMatch(caller, /needs: plan55-dispatch-guard/u,
+    'release call must depend on the source guard')
+  expectWorkflowMatch(caller, /if:[^\r\n]*github\.event_name == 'workflow_dispatch'[^\r\n]*inputs\.plan55_source_sha != ''[^\r\n]*needs\.plan55-dispatch-guard\.result == 'success'/u,
+    'reusable release must require an explicit dispatch, non-empty SHA, and successful exact-ref guard')
+  expectWorkflowMatch(caller, /uses: \.\/\.github\/workflows\/plan55-production-only\.yml/u,
+    'registered CI workflow must call the local reusable release')
+  expectWorkflowMatch(caller, /source_sha: \$\{\{ inputs\.plan55_source_sha \}\}/u,
+    'release call must pass the exact guarded SHA')
+  assert.doesNotMatch(caller, /secrets: inherit/u,
+    'reusable release must not inherit unrelated caller secrets')
+  for (const secretName of [
+    'ANTHROPIC_API_KEY',
+    'DEEPSEEK_API_KEY',
+    'EXPO_TOKEN',
+    'PERPLEXITY_API_KEY',
+    'PRODUCTION_SUPABASE_ANON_KEY',
+    'PRODUCTION_SUPABASE_SERVICE_ROLE_KEY',
+    'SUPABASE_ACCESS_TOKEN',
+    'VIETMAP_API_KEY',
+  ]) {
+    expectWorkflowMatch(caller, new RegExp(`^      ${secretName}: \\$\\{\\{ secrets\\.${secretName} \\}\\}$`, 'mu'),
+      `reusable release must receive only its declared ${secretName} secret`)
+  }
+  expectWorkflowMatch(caller, /actions: read[\s\S]*?checks: read[\s\S]*?contents: read[\s\S]*?pull-requests: read/u,
+    'reusable release must receive its declared read-only token permissions')
+  expectWorkflowMatch(database, /needs: controls/u,
+    'ordinary SQL lane must remain behind controls')
+  expectWorkflowMatch(workspace, /inputs\.plan55_source_sha == ''/u,
+    'ordinary workspace lane must skip a Plan 55 dispatch')
+  expectWorkflowMatch(database, /inputs\.plan55_source_sha == ''/u,
+    'ordinary SQL lane must skip a Plan 55 dispatch')
+})
+
+test('guard deploy is rollback-protected, deploys only mobile-api, and applies no migration or global service flag', () => {
+  assert.match(release, /plan55-production-release-preflight\.mjs/u)
+  assert.match(release, /runtime-release-bindings\.mjs/u)
+  assert.match(release, /functions deploy mobile-api/u)
+  assert.match(release, /rollback\(\)/u)
+  assert.match(release, /hosted-after-rollback\.json/u)
+  assert.doesNotMatch(release, /functions deploy kael-matching-maintainer/u)
+  assert.doesNotMatch(release, /\bdb push\b/u)
+  assert.doesNotMatch(release, /KAEL_PLAYBOOK_(?:HVAC|HANDYMAN|CLEANING|UPHOLSTERY|PLUMBING|ELECTRICAL)_ENABLED/u)
+})
+
+test('service workflow preserves the fixed serialized order and one complete, cleaned receipt per job', () => {
+  const ordered = ['hvac', 'handyman', 'cleaning', 'upholstery', 'plumbing', 'electrical']
+  for (const [index, serviceName] of ordered.entries()) {
+    const expectedNeeds = ['deploy_guard_off', ...ordered.slice(0, index)]
+    assert.deepEqual(needsFor(serviceName), expectedNeeds, `${serviceName} must wait for the release and all prior services`)
+    assert.match(release, new RegExp(`service: ${serviceName}\\r?\\n`, 'u'))
+  }
+  assert.deepEqual(needsFor('validate-six-receipts'), ['deploy_guard_off', ...ordered])
+  assert.match(service, /timeout-minutes: 90/u)
+  assert.match(service, /--run --service "\$PLAN55_SERVICE"/u)
+  assert.match(service, /BLOCKED_UNVERIFIED/u)
+  assert.match(service, /records\/\*\*/u)
+  assert.match(service, /actions\/runs\/\$\{runId\}\/artifacts/u)
+  assert.match(service, /steps\.resume\.outputs\.artifact_id/u)
+  assert.match(service, /plan55-start-\$\{runId\}-/u)
+  assert.match(service, /plan55_resume_checkpoint_unverified/u)
+  assert.match(service, /Reject an earlier attempt unless its complete cleaned receipt is recoverable/u)
+  assert.match(service, /plan55_resume_prior_attempt_not_reusable/u)
+  assert.match(service, /previous_attempt=\$\{selected\?\.attempt/u)
+  assert.match(service, /cleanup\?\.canaryFlag !== 'absent'/u)
+  assert.match(service, /cleanup\?\.authStatus !== 404/u)
+  assert.match(service, /plan55-service-start\/v1/u)
+  assert.match(service, /include-hidden-files: true/u)
+  assert.ok(service.indexOf('name: Preserve the service start marker before canary execution') <
+    service.indexOf('name: Run one service and capture only a scrubbed receipt or safe failure code'))
+  assert.match(service, /result_file="\$raw_attempt_dir\/result\.json"/u)
+  assert.match(service, /error_file="\$raw_attempt_dir\/stderr\.txt"/u)
+  assert.match(release, /--checkpoint-status/u)
+  assert.match(release, /--run \\\r?\n/u)
+  assert.match(release, /G5_FAILED_SERVICE_OFF/u)
+  assert.match(release, /cleanup\?\.reused !== true/u)
+  assert.match(release, /item\.slice_count !== 8 \|\| item\.case_count !== 96 \|\| item\.error_count !== 0/u)
+  assert.doesNotMatch(release, /item\.slices\?/u)
+})
+
+test('release workflows are covered by the deployed evaluator source attestation', () => {
+  expectWorkflowMatch(sourceAttestation, /'\.github\/workflows\/ci\.yml'/u,
+    'Plan 55 dispatch control must be bound to the evaluator attestation')
+  expectWorkflowMatch(sourceAttestation, /'\.github\/workflows\/plan55-production-only\.yml'/u,
+    'release workflow must be included in the evaluator attestation')
+  expectWorkflowMatch(sourceAttestation, /'\.github\/workflows\/plan55-production-canary-service\.yml'/u,
+    'service workflow must be included in the evaluator attestation')
+})
+
+test('API JSON evidence is emitted by Vitest without dropping the Node contract suite', () => {
+  assert.equal(apiPackage.scripts.test, 'node scripts/test-runner.mjs')
+  assert.equal(apiPackage.scripts['test:vitest'], 'vitest run')
+  assert.match(apiPackage.scripts['test:node'], /node \.\.\/\.\.\/scripts\/run\.mjs run-node --test/u)
+
+  const reporterArgs = ['--reporter=default', '--reporter=json', '--outputFile=../../artifacts/transactions/api-vitest.json']
+  const plan = apiTestCommandPlan(reporterArgs)
+  assert.deepEqual(plan.vitestArgs, ['run', ...reporterArgs])
+  assert.ok(!plan.nodeRunnerArgs.some((argument) => reporterArgs.includes(argument)))
+
+  for (const path of [
+    '.github/workflows/ci.yml',
+    '.github/workflows/plan55-production-only.yml',
+  ]) {
+    const workflow = readFileSync(path, 'utf8')
+    assert.match(workflow, /pnpm --filter @nestscout\/api test:vitest --reporter=default --reporter=json/u, path)
+    assert.match(workflow, /pnpm --filter @nestscout\/api test:node/u, path)
+  }
+
+  for (const path of [
+    '.github/workflows/release-production.yml',
+    '.github/workflows/release-production-verification.yml',
+  ]) {
+    const workflow = readFileSync(path, 'utf8')
+    assert.match(workflow, /pnpm test:api --reporter=default --reporter=json/u, path)
+  }
+})

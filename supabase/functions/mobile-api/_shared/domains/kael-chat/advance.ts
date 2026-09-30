@@ -53,7 +53,9 @@ export async function advanceKaelChatEstimate(
   const progressTarget = { table: "kael_chat_sessions" as const, id: sessionId };
   const llmClarificationEnabled = true;
   const language = input.language ?? "vi";
-  const electricalPlaybookEnabled = Boolean(getEnabledKaelPlaybook(input.service_type));
+  const electricalPlaybookEnabled = Boolean(
+    getEnabledKaelPlaybook(input.service_type, ctx.user.id),
+  );
   const message = sanitizeForLLM(input.message ?? "");
   const safeCustomerEvidence = sanitizeCustomerCaseEvidenceText(message);
   const problemChips = sanitizeUntrustedEvidenceList(input.problem_chips ?? []);
@@ -61,6 +63,7 @@ export async function advanceKaelChatEstimate(
     message,
     input.service_type,
     input.persisted_safety_signals,
+    ctx.user.id,
   );
   const prePipeline = await prepareKaelChatPrePipeline({
     client,

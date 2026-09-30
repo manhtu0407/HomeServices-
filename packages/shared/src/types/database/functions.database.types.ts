@@ -1175,16 +1175,28 @@ export type DatabaseFunctions = {
           version_out: number
         }[]
       }
-      append_customer_kael_conversation_exchange: {
-        Args: {
-          p_client_request_id: string
-          p_conversation_id: string
-          p_customer_id: string
-          p_customer_text: string
-          p_kael_text: string
-        }
-        Returns: number
-      }
+      append_customer_kael_conversation_exchange:
+        | {
+            Args: {
+              p_client_request_id: string
+              p_conversation_id: string
+              p_customer_id: string
+              p_customer_text: string
+              p_kael_text: string
+            }
+            Returns: number
+          }
+        | {
+            Args: {
+              p_client_request_id: string
+              p_conversation_id: string
+              p_customer_id: string
+              p_customer_text: string
+              p_kael_text: string
+              p_media_refs: string[]
+            }
+            Returns: number
+          }
       append_harness_evaluation_sample: {
         Args: {
           p_authorization_bypass: boolean

@@ -3,7 +3,12 @@ import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 import { checkHarnessRelease, resolveReleaseArtifactPath } from './release-bundle.mjs'
-import { BINARY_RELATIONS, selectExactEasBuilds, selectLatestEasBuilds } from './mobile-binary-attestation.mjs'
+import {
+  BINARY_RELATIONS,
+  selectActiveProductionEasBuilds,
+  selectExactEasBuilds,
+  selectLatestEasBuilds,
+} from './mobile-binary-attestation.mjs'
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..')
 
@@ -23,7 +28,7 @@ function parseArgs(args) {
     throw new Error('EAS readiness artifact/build lookup requires ios or android')
   }
   if (options.relation !== undefined && !BINARY_RELATIONS.includes(options.relation)) {
-    throw new Error('EAS readiness relation must be exact or latest_existing')
+    throw new Error(`EAS readiness relation must be one of: ${BINARY_RELATIONS.join(', ')}`)
   }
   return options
 }
@@ -34,15 +39,17 @@ function main() {
   const problems = checkHarnessRelease(release)
   if (problems.length > 0 || release.environment !== 'production') throw new Error('EAS readiness release is invalid')
   const builds = JSON.parse(readFileSync(resolveReleaseArtifactPath(ROOT, options.builds), 'utf8'))
-  const selected = options.relation === 'latest_existing'
-    ? selectLatestEasBuilds(release, builds)
-    : selectExactEasBuilds(release, builds)
+  const selected = options.relation === 'active_production'
+    ? selectActiveProductionEasBuilds(release, builds)
+    : options.relation === 'latest_existing'
+      ? selectLatestEasBuilds(release, builds)
+      : selectExactEasBuilds(release, builds)
   if (options.mode === 'missing') {
     process.stdout.write(`${['ios', 'android'].filter((platform) => !selected[platform]).join(',')}\n`)
     return
   }
   const build = selected[options.platform]
-  if (!build) throw new Error(`exact ${options.platform} EAS build is missing`)
+  if (!build) throw new Error(`${options.relation ?? 'exact'} ${options.platform} EAS build is missing`)
   if (options.mode === 'build-id') {
     process.stdout.write(`${build.id}\n`)
     return

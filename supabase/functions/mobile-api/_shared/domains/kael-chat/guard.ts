@@ -45,6 +45,7 @@ function boundaryIntakeObservation(
   serviceType: ServiceType,
   electricalPlaybookEnabled: boolean,
   persistedSafetySignals: readonly string[] = [],
+  actorId?: string | null,
 ) {
   if (boundary.reason === "prompt_injection" ||
     (!electricalPlaybookEnabled && !isIntakeEvalObservationExposureEnabled())) return undefined;
@@ -56,9 +57,9 @@ function boundaryIntakeObservation(
     safetySignals: persistentKaelSafetySignals("", serviceType, [
       ...persistedSafetySignals,
       ...(boundary.safetySignals ?? []),
-    ]),
+    ], actorId),
     modelId: "deterministic",
-    promptVersion: kaelIntakeDiagnosisPromptVersion(serviceType),
+    promptVersion: kaelIntakeDiagnosisPromptVersion(serviceType, actorId),
     playbookVersion: electricalPlaybookEnabled
       ? getKaelPlaybookVersion(serviceType)
       : null,
@@ -80,8 +81,11 @@ export async function maybeApplyKaelBoundaryGuard(
   } = { actorId: null, jobId: null },
 ): Promise<boolean> {
   if (isKaelAiKillSwitchEnabled()) return false;
-  const electricalPlaybookEnabled = Boolean(getEnabledKaelPlaybook(serviceType));
+  const electricalPlaybookEnabled = Boolean(
+    getEnabledKaelPlaybook(serviceType, auditContext.actorId),
+  );
   const boundary = evaluateMessageBoundary(message, serviceType, {
+    actorId: auditContext.actorId,
     semanticInjectionClassifierEnabled: true,
     language: auditContext.language,
     electricalPlaybookEnabled,
@@ -114,6 +118,7 @@ export async function maybeApplyKaelBoundaryGuard(
         message,
         serviceType,
         auditContext.persistedSafetySignals,
+        auditContext.actorId,
       ),
       auditContext.language ?? "vi",
       serviceType,
@@ -127,6 +132,7 @@ export async function maybeApplyKaelBoundaryGuard(
         serviceType,
         electricalPlaybookEnabled,
         auditContext.persistedSafetySignals,
+        auditContext.actorId,
       )),
       ...(boundary.suggestedService
         ? { suggested_service: boundary.suggestedService }

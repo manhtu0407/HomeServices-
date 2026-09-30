@@ -149,8 +149,11 @@ Description: ${description}`,
 export const KAEL_INTAKE_DIAGNOSIS_PROMPT_VERSION = "2026-08-15.v3";
 const KAEL_INTAKE_DIAGNOSIS_BASE_PROMPT_VERSION = "2026-08-15.v3-base-safety";
 
-export function kaelIntakeDiagnosisPromptVersion(serviceType: string) {
-  return getKaelPlaybook(serviceType) && isKaelPlaybookEnabled(serviceType)
+export function kaelIntakeDiagnosisPromptVersion(
+  serviceType: string,
+  actorId?: string | null,
+) {
+  return getKaelPlaybook(serviceType) && isKaelPlaybookEnabled(serviceType, actorId)
     ? KAEL_INTAKE_DIAGNOSIS_PROMPT_VERSION
     : KAEL_INTAKE_DIAGNOSIS_BASE_PROMPT_VERSION;
 }
@@ -165,6 +168,7 @@ export function buildIntakeDiagnosisMessages(
   description: string,
   conversationContext?: string,
   language: "vi" | "en" = "vi",
+  actorId?: string | null,
 ): AIMessage[] {
   const responseLanguage = language === "en" ? "English" : "Vietnamese";
   const intentDescription = maskExplicitlyExcludedScopeForIntent(description);
@@ -175,7 +179,7 @@ export function buildIntakeDiagnosisMessages(
     ? 'Good: "Is the breaker currently on/off/tripped, or did it re-trip after a reset already attempted?" / "Is the leak at one faucet or several locations?"'
     : 'Good: "Aptomat hiện đang bật/tắt/đã nhảy, hay đã nhảy lại sau lần bật lại trước đó?" / "Rò rỉ ở một vòi hay nhiều vị trí?"';
   const minimumSlotPolicyEnabled = serviceType === "electrical" &&
-    isKaelPlaybookEnabled("electrical");
+    isKaelPlaybookEnabled("electrical", actorId);
   const missingSlotsRule = minimumSlotPolicyEnabled
     ? "- missing_slots: list only genuinely decision-critical context. Optional slots and photos never block an electrical estimate when the minimum-slot policy below is present."
     : "- missing_slots: list only genuinely missing context using exact keys from the selected profile; empty array when enough is known.";
@@ -237,7 +241,7 @@ ${profileFactsRule}
   asking for breakdowns/credentials/specifics, else "neutral".
 - Do not re-ask anything already answered earlier in the conversation.
 
-Use only the problem_slug values in the supported service profile contract above.${kaelPlaybookAddendum(serviceType)}`,
+Use only the problem_slug values in the supported service profile contract above.${kaelPlaybookAddendum(serviceType, actorId)}`,
     },
     {
       role: "user",
@@ -248,9 +252,9 @@ ${intentConversation ? `Recent conversation:\n${intentConversation}\n` : ""}Late
   ];
 }
 
-function kaelPlaybookAddendum(serviceType: string): string {
+function kaelPlaybookAddendum(serviceType: string, actorId?: string | null): string {
   const playbook = getKaelPlaybook(serviceType);
-  if (!playbook || !isKaelPlaybookEnabled(serviceType)) return "";
+  if (!playbook || !isKaelPlaybookEnabled(serviceType, actorId)) return "";
   const requiredSlotPolicy = serviceType === "electrical"
     ? `${buildRequiredSlotPolicyPrompt(serviceType)}\n\n`
     : "";

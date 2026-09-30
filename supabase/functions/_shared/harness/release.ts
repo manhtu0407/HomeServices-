@@ -14,8 +14,11 @@ export type HarnessRuntimeRelease = {
   readonly serviceIntakePolicyBundleSha256: string;
   readonly priceEvidenceBundleSha256: string;
   readonly providerReadinessFingerprintSha256: string;
+  readonly releaseLane?: 'verification' | 'plan55-production-only';
   readonly providerReadiness?: RuntimeProviderReadiness;
   readonly clientCompatibility?: {
+    readonly gitSha: string;
+    readonly releaseId: string;
     readonly contractEpoch: number | null;
     readonly ios: RuntimeClientPlatformIdentity;
     readonly android: RuntimeClientPlatformIdentity;
@@ -60,8 +63,21 @@ export function readHarnessRuntimeRelease(
   const serviceIntakePolicyBundleSha256 = readDigest(getEnv("HARNESS_SERVICE_INTAKE_POLICY_BUNDLE_SHA256"), 64) ?? "unknown";
   const priceEvidenceBundleSha256 = readDigest(getEnv("HARNESS_PRICE_EVIDENCE_BUNDLE_SHA256"), 64) ?? "unknown";
   const providerReadinessFingerprintSha256 = readDigest(getEnv("HARNESS_PROVIDER_READINESS_FINGERPRINT_SHA256"), 64) ?? "unknown";
+  const rawReleaseLane = getEnv("HARNESS_RELEASE_LANE")?.trim();
+  const environmentName = getEnv("NESTSCOUT_ENVIRONMENT")?.trim();
+  const releaseLane = rawReleaseLane === "verification" || rawReleaseLane === "plan55-production-only"
+    ? rawReleaseLane
+    : undefined;
+  const releaseLaneValid = !rawReleaseLane || (environmentName === "production" && releaseLane !== undefined);
+  const activeClientGitSha = readDigest(getEnv("HARNESS_CLIENT_COMPAT_GIT_SHA"), 40);
+  const activeClientReleaseId = readValue(getEnv("HARNESS_CLIENT_COMPAT_RELEASE_ID"), 128);
+  const plan55ClientIdentityValid = rawReleaseLane !== "plan55-production-only" ||
+    (activeClientGitSha !== null && activeClientReleaseId !== null &&
+      new RegExp(`^harness-${activeClientGitSha.slice(0, 12)}-[0-9a-f]{12}$`, "i").test(activeClientReleaseId));
   const providerReadiness = readRuntimeProviderReadiness(getEnv);
   const clientCompatibility = {
+    gitSha: rawReleaseLane === "plan55-production-only" ? activeClientGitSha ?? "unknown" : gitSha,
+    releaseId: rawReleaseLane === "plan55-production-only" ? activeClientReleaseId ?? "unreleased" : releaseId,
     contractEpoch: readPositiveInteger(getEnv("NESTSCOUT_STAGE1_CLIENT_CONTRACT_EPOCH")),
     ios: readRuntimeClientPlatform(getEnv, "IOS"),
     android: readRuntimeClientPlatform(getEnv, "ANDROID"),
@@ -93,10 +109,12 @@ export function readHarnessRuntimeRelease(
     serviceIntakePolicyBundleSha256,
     priceEvidenceBundleSha256,
     providerReadinessFingerprintSha256,
+    ...(releaseLane ? { releaseLane } : {}),
     providerReadiness,
     clientCompatibility,
     registered: releaseId !== "unreleased" && requiredDigests.every((value) => value !== "unknown") &&
-      runtimeClientCompatibilityComplete(clientCompatibility) && providerRuntimeReady(providerReadiness),
+      runtimeClientCompatibilityComplete(clientCompatibility) && providerRuntimeReady(providerReadiness) &&
+      releaseLaneValid && plan55ClientIdentityValid,
   });
 }
 
@@ -130,6 +148,7 @@ export function harnessHealthPayload(input: {
       provider_readiness_fingerprint_sha256: input.release.providerReadinessFingerprintSha256,
       provider_readiness: input.release.providerReadiness ?? null,
       client_compatibility: input.release.clientCompatibility ?? null,
+      release_lane: input.release.releaseLane ?? null,
       registered: input.release.registered,
     },
   } as const;
@@ -155,7 +174,9 @@ function readRuntimeClientPlatform(
 }
 
 function runtimeClientCompatibilityComplete(value: NonNullable<HarnessRuntimeRelease["clientCompatibility"]>): boolean {
-  return value.contractEpoch === 2 && [value.ios, value.android].every((platform) =>
+  return /^[0-9a-f]{40}$/i.test(value.gitSha) &&
+    /^harness-[0-9a-f]{12}-[0-9a-f]{12}$/i.test(value.releaseId) &&
+    value.contractEpoch === 2 && [value.ios, value.android].every((platform) =>
     Boolean(platform.applicationId && platform.minimumBuildNumber && platform.easBuildId && platform.runtimeVersion)
   );
 }

@@ -87,8 +87,8 @@ export function readEdgeEnv(
     minimumClientBuildNumber: readPositiveInteger(getEnv("NESTSCOUT_MINIMUM_CLIENT_BUILD_NUMBER")),
     clientCompatibility: {
       contractEpoch: readPositiveInteger(getEnv("NESTSCOUT_STAGE1_CLIENT_CONTRACT_EPOCH")) ?? 2,
-      releaseId,
-      gitSha: harnessRelease.gitSha,
+      releaseId: harnessRelease.clientCompatibility?.releaseId ?? releaseId,
+      gitSha: harnessRelease.clientCompatibility?.gitSha ?? harnessRelease.gitSha,
       ios: readMobileClientPlatformCompatibility(getEnv, "IOS", "com.phanmanhtu.homeservices"),
       android: readMobileClientPlatformCompatibility(getEnv, "ANDROID", "com.phanmanhtu.nestscout"),
     },

@@ -55,9 +55,12 @@ export function getKaelPlaybookVersion(serviceType: string): string | null {
   return getKaelPlaybook(serviceType)?.version ?? null;
 }
 
-export function getEnabledKaelPlaybook(serviceType: string): KaelPlaybookDefinition | null {
+export function getEnabledKaelPlaybook(
+  serviceType: string,
+  actorId?: string | null,
+): KaelPlaybookDefinition | null {
   const playbook = getKaelPlaybook(serviceType);
-  return playbook && isKaelPlaybookEnabled(serviceType) ? playbook : null;
+  return playbook && isKaelPlaybookEnabled(serviceType, actorId) ? playbook : null;
 }
 
 export { isKaelPlaybookEnabled } from "./flags.ts";

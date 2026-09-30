@@ -114,6 +114,7 @@ export async function decideKaelIntakeConfirmation(
   // Re-check time-sensitive fields at the confirmation boundary, not only
   // when the route first created the session.
   const refreshedConfirmation = buildKaelIntakeConfirmation({
+    actorId: ctx.user.id,
     serviceType: confirmation.intake.service_type,
     profileId: confirmation.intake.profile_id,
     description: confirmation.intake.description,
@@ -178,6 +179,7 @@ async function advanceConfirmedIntakeEstimate(
     confirmation.intake.description,
     serviceType,
     asStringArray(metadata.intake_safety_signals),
+    ctx.user.id,
   );
   await advanceKaelChatEstimate(ctx, sessionId, {
     service_type: serviceType,

@@ -1,0 +1,115 @@
+{
+  "policyId": "plan55-production-only",
+  "schemaVersion": "plan55-production-only-policy.v1",
+  "environment": "production",
+  "projectRef": "iwevizmsedyqozxlawwl",
+  "releaseLane": "plan55-production-only",
+  "productionSourceBase": {
+    "branch": "codex/plan55-production-base-645c907e",
+    "sha": "645c907e178f21ddde24a72501e6c8449d6720f9",
+    "releaseId": "harness-645c907e178f-f426155f83de"
+  },
+  "states": [
+    "assembled",
+    "verified",
+    "guard_deployed_off",
+    "service_canary",
+    "service_cleanup",
+    "receipts_validated",
+    "paired_wave_1",
+    "paired_wave_2",
+    "paired_wave_3",
+    "production",
+    "aborted",
+    "rolled_back"
+  ],
+  "allowed_transitions": [
+    ["assembled", "verified"],
+    ["verified", "guard_deployed_off"],
+    ["verified", "aborted"],
+    ["guard_deployed_off", "service_canary"],
+    ["guard_deployed_off", "aborted"],
+    ["service_canary", "service_cleanup"],
+    ["service_canary", "aborted"],
+    ["service_cleanup", "service_canary"],
+    ["service_cleanup", "receipts_validated"],
+    ["service_cleanup", "aborted"],
+    ["receipts_validated", "paired_wave_1"],
+    ["receipts_validated", "aborted"],
+    ["paired_wave_1", "paired_wave_2"],
+    ["paired_wave_1", "aborted"],
+    ["paired_wave_2", "paired_wave_3"],
+    ["paired_wave_2", "aborted"],
+    ["paired_wave_3", "production"],
+    ["paired_wave_3", "aborted"],
+    ["production", "rolled_back"],
+    ["aborted", "rolled_back"]
+  ],
+  "serviceOrder": ["hvac", "handyman", "cleaning", "upholstery", "plumbing", "electrical"],
+  "slicesPerService": 8,
+  "casesPerSlice": 12,
+  "serviceConcurrency": 1,
+  "globalServiceFlags": "absent",
+  "realCustomerTraffic": false,
+  "cleanupBeforeNextService": true,
+  "stagingAllowed": false,
+  "requiredGatesByTarget": {
+    "verified": [
+      "plan55-production-source-merge",
+      "plan55-exact-production-base-ancestry",
+      "workspace-typecheck",
+      "workspace-tests",
+      "workspace-build",
+      "security",
+      "harness",
+      "edge-deno",
+      "sql-verification",
+      "generated-types",
+      "hosted-drift-baseline",
+      "production-ui-normality",
+      "compatible-rollback-target",
+      "plan55-production-target-attestation",
+      "plan55-actor-scoped-guard-tests",
+      "plan55-canary-runner-tests",
+      "plan55-source-lock",
+      "plan55-independent-holdout-freeze",
+      "plan55-rollback-preflight"
+    ],
+    "guard_deployed_off": [
+      "plan55-runtime-source-match",
+      "plan55-guard-deployed",
+      "plan55-all-global-flags-off",
+      "plan55-provider-readiness",
+      "plan55-no-migration"
+    ],
+    "service_canary": [
+      "plan55-auth-admin-verified",
+      "plan55-synthetic-actor-created",
+      "plan55-actor-scope-verified",
+      "plan55-disposable-worker-isolated"
+    ],
+    "service_cleanup": [
+      "plan55-service-slice-integrity-pass",
+      "plan55-service-g5-safety-pass",
+      "plan55-service-cleanup-pass"
+    ],
+    "receipts_validated": [
+      "plan55-six-current-source-receipts",
+      "plan55-six-cleanup-passes",
+      "plan55-independent-cohort-outcome"
+    ],
+    "paired_wave_1": [
+      "plan55-docker-sql-edge-gates",
+      "plan55-hosted-drift-pass",
+      "plan55-full-production-readiness",
+      "plan55-exact-binary-release-attestation",
+      "plan55-publication-packet",
+      "plan55-rollback-drill"
+    ],
+    "paired_wave_2": ["plan55-paired-wave-1-pass"],
+    "paired_wave_3": ["plan55-paired-wave-2-pass"],
+    "production": ["plan55-paired-wave-3-pass", "plan55-post-rollout-cohort-pass"],
+    "aborted": [],
+    "rolled_back": ["plan55-rollback-executed"]
+  }
+}

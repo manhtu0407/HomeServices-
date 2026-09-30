@@ -144,7 +144,7 @@ function parseJobs(block) {
   for (const line of block.lines) {
     const id = indentOf(line) === base ? /^\s*([A-Za-z0-9_-]+):\s*$/u.exec(line) : null
     if (id) {
-      current = { id: id[1], runsOn: null, timeout: null, callsWorkflow: false, hasNeeds: false, condition: null }
+      current = { id: id[1], runsOn: null, timeout: null, callsWorkflow: false, workflowRef: null, hasNeeds: false, condition: null }
       jobs.push(current)
       condition = null
       continue
@@ -167,9 +167,16 @@ function parseJobs(block) {
         current.condition = ''
         condition = current
       }
-    } else current.callsWorkflow = true
+    } else {
+      current.callsWorkflow = true
+      current.workflowRef = stripValue(field[2])
+    }
   }
   return jobs
+}
+
+function localWorkflowName(reference) {
+  return /^\.\/\.github\/workflows\/([A-Za-z0-9_.-]+\.ya?ml)$/u.exec(reference ?? '')?.[1] ?? null
 }
 
 function expand(field, min, max) {
@@ -218,6 +225,7 @@ export function checkWorkflows({ files, exceptions = EXCEPTIONS }) {
   const problems = []
   const schedules = []
   const facts = new Map()
+  const workflowFiles = new Map(files.map((file) => [file.name, file.text]))
   let jobCount = 0
 
   if (files.length === 0) problems.push(`no workflows found under ${WORKFLOWS}`)
@@ -236,7 +244,7 @@ export function checkWorkflows({ files, exceptions = EXCEPTIONS }) {
       problems.push(`${name}: no jobs found — cost cannot be proven for a workflow that cannot be read`)
       continue
     }
-    jobCount += jobs.length
+    jobCount += jobs.filter((job) => !job.callsWorkflow).length
 
     const trigger = onBlock ? parseTriggers(onBlock) : { triggers: new Set(), crons: [], readable: false }
     if (!trigger.readable) problems.push(`${name}: the on: block is not in a form this check can read`)
@@ -272,7 +280,25 @@ export function checkWorkflows({ files, exceptions = EXCEPTIONS }) {
 
     for (const job of jobs) {
       if (job.callsWorkflow) {
-        problems.push(`${name} job ${job.id}: calls a reusable workflow, whose cost this check cannot read`)
+        const reusableName = localWorkflowName(job.workflowRef)
+        const reusableText = reusableName ? workflowFiles.get(reusableName) : null
+        if (!reusableName || !reusableText) {
+          problems.push(`${name} job ${job.id}: reusable workflow '${job.workflowRef}' cannot be proven from local workflow files`)
+        } else {
+          const reusableBlocks = topLevelBlocks(reusableText)
+          const reusableOn = reusableBlocks.find((block) => block.key === 'on' || block.key === "'on'" || block.key === 'true')
+          const reusableTriggers = reusableOn ? parseTriggers(reusableOn) : { triggers: new Set(), readable: false }
+          if (!reusableTriggers.readable || !reusableTriggers.triggers.has('workflow_call')) {
+            problems.push(`${name} job ${job.id}: ${reusableName} does not declare workflow_call`)
+          }
+        }
+
+        if (isPullRequest && !job.hasNeeds && !/\bdraft\b/u.test(job.condition ?? '')) {
+          problems.push(
+            `${name} job ${job.id}: runs on draft pull requests — start its if with ` +
+            "github.event_name != 'pull_request' || github.event.pull_request.draft == false",
+          )
+        }
         continue
       }
       if (!job.runsOn || !STANDARD_LINUX_RUNNER.test(job.runsOn)) {
