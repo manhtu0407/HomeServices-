@@ -147,6 +147,63 @@ export function buildPlan55CanaryRunConfig(slice) {
   })
 }
 
+const PLAN55_CANARY_CLI_PATH = 'apps/api/scripts/kael-playbook-production-canary.mjs'
+
+function readPlan55ProcessTable() {
+  if (process.platform !== 'linux') throw new Error('plan55_canary_orphan_worker_unverified')
+  try {
+    return execFileSync('ps', ['-ww', '-eo', 'pid=,args='], {
+      encoding: 'utf8',
+      timeout: 5_000,
+      maxBuffer: 1 << 20,
+      stdio: ['ignore', 'pipe', 'ignore'],
+    })
+  } catch {
+    throw new Error('plan55_canary_orphan_worker_unverified')
+  }
+}
+
+export function countCurrentPlan55CanaryProcesses() {
+  return countPlan55CanaryProcesses(readPlan55ProcessTable())
+}
+
+export function countPlan55CanaryProcesses(processTable, currentPid = process.pid) {
+  const failClosed = () => new Error('plan55_canary_orphan_worker_unverified')
+  if (typeof processTable !== 'string' || !Number.isSafeInteger(currentPid) || currentPid < 1) {
+    throw failClosed()
+  }
+  const rows = processTable.split(/\r?\n/u)
+  while (rows.at(-1) === '') rows.pop()
+  if (rows.length === 0) throw failClosed()
+
+  const seenPids = new Set()
+  let foundCurrentProcess = false
+  let canaryProcesses = 0
+  for (const row of rows) {
+    const match = /^\s*(\d+)\s+(\S(?:.*\S)?)\s*$/u.exec(row)
+    if (!match) throw failClosed()
+    const pid = Number(match[1])
+    if (!Number.isSafeInteger(pid) || pid < 1 || seenPids.has(pid)) throw failClosed()
+    seenPids.add(pid)
+
+    if (pid === currentPid) {
+      foundCurrentProcess = true
+      continue
+    }
+    const tokens = match[2].match(/"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|\S+/gu) ?? []
+    const isCanaryProcess = tokens.some((rawToken) => {
+      const quoted = rawToken.length >= 2 &&
+        ((rawToken.startsWith('"') && rawToken.endsWith('"')) ||
+          (rawToken.startsWith("'") && rawToken.endsWith("'")))
+      const token = (quoted ? rawToken.slice(1, -1) : rawToken).replaceAll('\\', '/')
+      return token === PLAN55_CANARY_CLI_PATH || token.endsWith(`/${PLAN55_CANARY_CLI_PATH}`)
+    })
+    if (isCanaryProcess) canaryProcesses += 1
+  }
+  if (!foundCurrentProcess) throw failClosed()
+  return canaryProcesses
+}
+
 export async function createPlan55ProductionCanaryOperations({
   env = process.env,
   fetchImpl = fetch,
@@ -155,11 +212,13 @@ export async function createPlan55ProductionCanaryOperations({
   holdoutReviewEvidenceProvider = createPlan55GithubReviewEvidenceProvider(),
   checkpointRoot = resolve(REPO_ROOT, '.scratch/plan55-production-canary'),
   artifactRoot = resolve(REPO_ROOT, 'docs/test-logs/plan55'),
+  processTableReader = readPlan55ProcessTable,
   sleep = (milliseconds) => new Promise((resolveSleep) => setTimeout(resolveSleep, milliseconds)),
   clock = () => new Date(),
 } = {}) {
   const credentials = assertPlan55ProductionCanaryEnvironment(env)
-  if (typeof fetchImpl !== 'function' || typeof sleep !== 'function' || typeof clock !== 'function') {
+  if (typeof fetchImpl !== 'function' || typeof processTableReader !== 'function' ||
+      typeof sleep !== 'function' || typeof clock !== 'function') {
     throw new Error('plan55_canary_adapter_configuration_invalid')
   }
 
@@ -291,10 +350,17 @@ export async function createPlan55ProductionCanaryOperations({
     if (!(await boundedFetch.waitForIdle()) || boundedFetch.activeRequestCount() !== 0) {
       throw new Error('plan55_canary_orphan_worker_unverified')
     }
+    let orphanWorkers
+    try {
+      orphanWorkers = countPlan55CanaryProcesses(processTableReader())
+    } catch {
+      throw new Error('plan55_canary_orphan_worker_unverified')
+    }
+    if (orphanWorkers !== 0) throw new Error('plan55_canary_orphan_worker_unverified')
     if (enabledService === service) enabledService = null
     setupCleanupActorId = null
     setupCleanupActorIdentityUnknown = false
-    return { ...proof, orphanWorkers: boundedFetch.activeRequestCount() }
+    return { ...proof, orphanWorkers }
   }
 
   return Object.freeze({

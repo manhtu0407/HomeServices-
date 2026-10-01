@@ -11,7 +11,8 @@ import {
   assertPlan55ProductionCanaryEnvironment,
   buildPlan55CanaryRunConfig,
   createPlan55BoundedFetch,
-  createPlan55ProductionCanaryOperations,
+  createPlan55ProductionCanaryOperations as createProductionCanaryOperations,
+  countCurrentPlan55CanaryProcesses,
   readPlan55CleanupStartMarker,
 } from './plan55-production-canary-operations.mjs'
 import {
@@ -33,6 +34,13 @@ import { buildPlan55ServiceSlices } from './plan55-production-canary-core.mjs'
 const REPO_ROOT = resolve(fileURLToPath(new URL('../../../..', import.meta.url)))
 const CLI_PATH = resolve(REPO_ROOT, 'apps/api/scripts/kael-playbook-production-canary.mjs')
 
+function createPlan55ProductionCanaryOperations(options) {
+  return createProductionCanaryOperations({
+    ...options,
+    processTableReader: options.processTableReader ?? (() => `${process.pid} node --test`),
+  })
+}
+
 function validEnvironment() {
   return {
     PLAN55_PRODUCTION_CANARY_OPT_IN: 'RUN_ONE_SYNTHETIC_ACTOR_SERVICE',
@@ -47,6 +55,12 @@ function validEnvironment() {
 function identityHash(id) {
   return `sha256:${createHash('sha256').update(String(id)).digest('hex')}`
 }
+
+test('Linux process snapshot uses the runner process table and sees no extra canary CLI', {
+  skip: process.platform !== 'linux',
+}, () => {
+  assert.equal(countCurrentPlan55CanaryProcesses(), 0)
+})
 
 function buildSourceAttestation(sourceSha) {
   const gitBlobSha = '1'.repeat(40)
@@ -780,6 +794,7 @@ test('cleanup retries transient deletion visibility and proves scoped flags, Aut
   const actorId = '123e4567-e89b-42d3-a456-426614174000'
   let deleteFlagAttempts = 0
   let authReads = 0
+  let processTable = `${process.pid} node --test`
   const managementDeletes = []
   const health = {
     service: 'mobile-api',
@@ -853,6 +868,7 @@ test('cleanup retries transient deletion visibility and proves scoped flags, Aut
     fetchImpl,
     sleep: async () => {},
     checkpointRoot: rootDir,
+    processTableReader: () => processTable,
     clientFactory: (_url, key) => key.includes('service-role') || key.startsWith('test-service')
       ? admin
       : { auth: {} },
@@ -867,11 +883,19 @@ test('cleanup retries transient deletion visibility and proves scoped flags, Aut
     attempt: 1,
     actor_id: actorId,
   }
-  const proof = await operations.cleanupAbandonedService({
+  const cleanup = () => operations.cleanupAbandonedService({
     service: 'hvac',
     actorId,
     startMarker,
   })
+  processTable = `${process.pid} node --test\n${process.pid + 1} node apps/api/scripts/kael-playbook-production-canary.mjs --service hvac`
+  await assert.rejects(cleanup(), { message: 'plan55_canary_orphan_worker_unverified' })
+  processTable = 'malformed process row'
+  await assert.rejects(cleanup(), { message: 'plan55_canary_orphan_worker_unverified' })
+  processTable = `${process.pid + 2} node --test`
+  await assert.rejects(cleanup(), { message: 'plan55_canary_orphan_worker_unverified' })
+  processTable = `${process.pid} node --test\n${process.pid + 2} node apps/api/scripts/kael-playbook-production-canary.mjs.backup`
+  const proof = await cleanup()
   assert.deepEqual(proof, {
     globalFlags: 'absent',
     canaryFlag: 'absent',
@@ -893,9 +917,9 @@ test('cleanup retries transient deletion visibility and proves scoped flags, Aut
       notifications_as_user: 0,
     },
   })
-  assert.equal(deleteFlagAttempts, 2)
+  assert.ok(deleteFlagAttempts >= 2)
   assert.ok(authReads >= 2)
-  assert.deepEqual(managementDeletes, Array.from({ length: 2 }, () => [
+  assert.deepEqual(managementDeletes, Array.from({ length: deleteFlagAttempts }, () => [
     'KAEL_PLAYBOOK_HVAC_CANARY_ENABLED',
     'KAEL_PLAYBOOK_HVAC_CANARY_USER_ID',
   ]))
