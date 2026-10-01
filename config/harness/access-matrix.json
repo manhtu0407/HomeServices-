@@ -2,8 +2,8 @@
   "version": "1.0.0",
   "source": {
     "migrationRoot": "supabase/migrations",
-    "migrationCount": 426,
-    "migrationDigest": "6e2319f9cf0ee2835b88e7af6c2eb316eef6def4a13c702a2090062f6ae7d6a0"
+    "migrationCount": 427,
+    "migrationDigest": "80e59e1e147c7a64cf17330d7ea2cf35e1da8fb4e189e1172afeacbbf9661504"
   },
   "actors": [
     "anonymous",

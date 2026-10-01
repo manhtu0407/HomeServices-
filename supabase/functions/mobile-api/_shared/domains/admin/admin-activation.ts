@@ -103,6 +103,7 @@ function isCapability(value: string) {
     "operations.read", "operations.triage", "workers.read", "workers.review", "workers.manage",
     "transactions.read", "finance.read", "finance.reconcile", "finance.tax.manage",
     "payouts.read", "payouts.process", "team.read", "workers.bonus.manage", "workers.discipline.manage",
+    "system.read", "system.manage",
   ].includes(value);
 }
 

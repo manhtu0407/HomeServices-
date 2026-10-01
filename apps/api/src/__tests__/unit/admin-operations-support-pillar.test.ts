@@ -18,7 +18,9 @@ import {
 } from '../../../../../supabase/functions/mobile-api/_shared/domains/admin/operations-support'
 import { matchRoute } from '../../../../../supabase/functions/mobile-api/_shared/http/routes'
 import { adminSubAdminAccessSchema } from '../../../../../supabase/functions/mobile-api/_shared/http/routes/admin-control-contract'
-import { adminOperatorProvisionSchema } from '../../../../../supabase/functions/_shared/contracts/admin-operator'
+import { ADMIN_OPERATOR_CAPABILITIES, adminOperatorProvisionSchema } from '../../../../../supabase/functions/_shared/contracts/admin-operator'
+import { serializeProvisioning } from '../../../../../supabase/functions/mobile-api/_shared/domains/admin/operator-provisioning'
+import { activateAdminOperator } from '../../../../../supabase/functions/mobile-api/_shared/domains/admin/admin-activation'
 
 export const PILLAR = {
   id: 'P49-admin-operations-support',
@@ -141,6 +143,50 @@ describe('Admin Operations support route contract', () => {
       client_request_id: 'f6600000-0000-4000-8000-000000000003',
       expected_version: 2,
     }).success).toBe(true)
+  })
+
+  it('accepts and returns every current operator capability', () => {
+    const parsed = adminOperatorProvisionSchema.safeParse({
+      capabilities: [...ADMIN_OPERATOR_CAPABILITIES],
+      email: 'manager@gmail.com',
+      full_name: 'Manager QA',
+      initial_password: 'Password123!',
+    })
+
+    expect(parsed.success).toBe(true)
+    expect(serializeProvisioning({
+      id: '11111111-1111-4111-8111-111111111111',
+      full_name: 'Manager QA',
+      email: 'manager@gmail.com',
+      status: 'pending_password_change',
+      capabilities: [...ADMIN_OPERATOR_CAPABILITIES],
+      created_at: '2026-10-01T00:00:00.000Z',
+      updated_at: '2026-10-01T00:00:00.000Z',
+    })?.capabilities).toEqual([...ADMIN_OPERATOR_CAPABILITIES])
+  })
+
+  it('returns every granted capability after first-login activation', async () => {
+    const actorId = '11111111-1111-4111-8111-111111111111'
+    const rpc = vi.fn()
+      .mockResolvedValueOnce({ data: [{ email: 'manager@gmail.com', status: 'pending_password_change' }], error: null })
+      .mockResolvedValueOnce({
+        data: [{ ok: true, capabilities_out: [...ADMIN_OPERATOR_CAPABILITIES], activated_at: '2026-10-01T00:00:00.000Z' }],
+        error: null,
+      })
+    const auth = {
+      signInWithPassword: vi.fn().mockResolvedValue({ data: { user: { id: actorId } }, error: null }),
+      updateUser: vi.fn().mockResolvedValue({ error: null }),
+    }
+
+    const result = await activateAdminOperator({
+      role: 'customer',
+      user: { id: actorId },
+      supabase: { auth },
+      privilegedSupabase: { rpc },
+      userSupabase: { auth },
+    } as never, { current_password: 'Password123!', new_password: 'DifferentPassword123!' })
+
+    expect(result.capabilities).toEqual([...ADMIN_OPERATOR_CAPABILITIES])
   })
 })
 
