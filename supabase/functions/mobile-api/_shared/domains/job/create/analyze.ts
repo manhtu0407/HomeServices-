@@ -37,6 +37,7 @@ export async function analyzeJobOrFail(input: {
   const jobIntakeSafetySignals = resolveElectricalIntakeRuntime({
     intakeDiagnosisEnabled: false,
     serviceType: request.service_type,
+    actorId: ctx.user.id,
     problemChips: request.problem_chips,
     description: request.description,
   }).safetySignals;

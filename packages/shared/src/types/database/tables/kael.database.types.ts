@@ -934,6 +934,7 @@ export type KaelTables = {
           created_at: string
           customer_id: string
           id: string
+          media_refs: string[]
           role: string
           text_content: string
           turn_index: number
@@ -944,6 +945,7 @@ export type KaelTables = {
           created_at?: string
           customer_id: string
           id?: string
+          media_refs?: string[]
           role: string
           text_content: string
           turn_index: number
@@ -954,6 +956,7 @@ export type KaelTables = {
           created_at?: string
           customer_id?: string
           id?: string
+          media_refs?: string[]
           role?: string
           text_content?: string
           turn_index?: number

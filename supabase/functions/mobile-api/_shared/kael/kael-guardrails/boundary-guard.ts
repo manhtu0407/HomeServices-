@@ -44,6 +44,7 @@ export type BoundaryInjectionClassifier = (input: {
 }) => { detected: boolean; signals: readonly string[] };
 
 export type BoundaryGuardOptions = {
+  readonly actorId?: string | null;
   readonly semanticInjectionClassifierEnabled?: boolean;
   readonly injectionClassifier?: BoundaryInjectionClassifier;
   readonly language?: "vi" | "en";
@@ -478,7 +479,7 @@ export function evaluateMessageBoundary(
   if (trimmed.length === 0) return { ok: true };
   const playbookEnabled = Boolean(
     selectedService &&
-      getEnabledKaelPlaybook(selectedService) &&
+      getEnabledKaelPlaybook(selectedService, options.actorId) &&
       (options.electricalPlaybookEnabled ?? true),
   );
   const electricalPolicyEnabled = selectedService === "electrical" && playbookEnabled;

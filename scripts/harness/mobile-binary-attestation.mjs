@@ -16,10 +16,10 @@ const PLATFORM_POLICY = Object.freeze({
 
 /**
  * `exact` binds store builds made from the release's own commit. `latest_existing` is for a verification
- * release that ships no new store build: it binds the newest finished store build of each platform and says
- * so in the receipt, so nothing downstream can mistake it for a build of this commit.
+ * release that ships no new store build. `active_production` binds the exact EAS identities reported by
+ * the pinned Production runtime snapshot, even when the app and backend were built from different commits.
  */
-export const BINARY_RELATIONS = Object.freeze(['exact', 'latest_existing'])
+export const BINARY_RELATIONS = Object.freeze(['exact', 'latest_existing', 'active_production'])
 
 export function buildMobileBinaryAttestation(input) {
   const release = input?.release
@@ -30,15 +30,20 @@ export function buildMobileBinaryAttestation(input) {
   const relation = input.relation ?? 'exact'
   if (!BINARY_RELATIONS.includes(relation)) throw new Error(`unknown mobile binary relation: ${relation}`)
   const builds = Array.isArray(input.builds) ? input.builds : []
-  const selected = relation === 'exact' ? selectExactEasBuilds(release, builds) : selectLatestEasBuilds(release, builds)
+  const selected = relation === 'exact'
+    ? selectExactEasBuilds(release, builds)
+    : relation === 'active_production'
+      ? selectActiveProductionEasBuilds(release, builds)
+      : selectLatestEasBuilds(release, builds)
   const platforms = {}
   for (const platform of ['ios', 'android']) {
     const policy = PLATFORM_POLICY[platform]
     const build = selected[platform]
     if (!build) {
-      throw new Error(relation === 'exact'
-        ? `no exact finished EAS ${platform} store build matches this release`
-        : `no finished EAS ${platform} store build matches the store build policy`)
+      const relationLabel = relation === 'exact'
+        ? 'exact'
+        : relation === 'active_production' ? 'unique active Production' : 'latest existing'
+      throw new Error(`no ${relationLabel} finished EAS ${platform} store build matches the release`)
     }
     const fingerprint = build?.fingerprint?.hash ?? build?.fingerprintHash
     const artifactPath = input.artifactPaths?.[platform]
@@ -51,11 +56,12 @@ export function buildMobileBinaryAttestation(input) {
     if (!(artifactBytes instanceof Uint8Array) || artifactBytes.byteLength === 0) {
       throw new Error(`EAS ${platform} artifact must contain downloaded binary bytes`)
     }
+    const activeClient = release.activeClientCompatibility?.[platform]
     platforms[platform] = {
       easBuildId: build.id.toLowerCase(),
-      applicationId: policy.applicationId,
+      applicationId: relation === 'active_production' ? activeClient.applicationId : policy.applicationId,
       appVersion: build.appVersion,
-      buildNumber: policy.buildNumber,
+      buildNumber: relation === 'active_production' ? activeClient.minimumBuildNumber : policy.buildNumber,
       runtimeVersion: build.runtimeVersion,
       gitCommitHash: build.gitCommitHash,
       easFingerprintAlgorithm: fingerprintAlgorithm,
@@ -92,6 +98,33 @@ export function selectLatestEasBuilds(release, builds) {
   return selectEasBuilds(release, builds, false)
 }
 
+export function selectActiveProductionEasBuilds(release, builds) {
+  const compatibility = release?.activeClientCompatibility
+  if (release?.releaseLane !== 'plan55-production-only' || !compatibility) {
+    return Object.freeze({})
+  }
+  const selected = {}
+  for (const platform of ['ios', 'android']) {
+    const expected = compatibility[platform]
+    const policy = PLATFORM_POLICY[platform]
+    const matches = (Array.isArray(builds) ? builds : [])
+      .map(normalizeEasBuildIdentity)
+      .filter((build) =>
+        normalizePlatform(build?.platform) === platform &&
+        String(build?.status ?? '').toUpperCase() === 'FINISHED' &&
+        String(build?.distribution ?? '').toUpperCase() === 'STORE' &&
+        build?.buildProfile === 'production' &&
+        build?.id?.toLowerCase() === expected?.easBuildId?.toLowerCase() &&
+        build?.appVersion === '0.2.0' &&
+        String(build?.appBuildVersion ?? '') === String(expected?.minimumBuildNumber ?? '') &&
+        build?.runtimeVersion === expected?.runtimeVersion &&
+        build?.applicationIdentifier === expected?.applicationId &&
+        expected?.applicationId === policy.applicationId)
+    if (matches.length === 1) selected[platform] = matches[0]
+  }
+  return Object.freeze(selected)
+}
+
 function selectEasBuilds(release, builds, requireReleaseCommit) {
   const selected = {}
   for (const platform of ['ios', 'android']) {
@@ -122,16 +155,28 @@ export function verifyMobileBinaryAttestation(receipt, release) {
       receipt?.sourceFingerprintSha256 !== release.mobileBuildFingerprintSha256)) {
     problems.push('mobile binary attestation does not match the release')
   }
-  const exactCommit = receipt?.binaryRelation === undefined
-  if (!exactCommit && receipt.binaryRelation !== 'latest_existing') {
+  const relation = receipt?.binaryRelation ?? 'exact'
+  if (!BINARY_RELATIONS.includes(relation)) {
     problems.push('mobile binary attestation relation is invalid')
+  }
+  const exactCommit = relation === 'exact'
+  const activeProduction = relation === 'active_production'
+  if (release?.releaseLane === 'plan55-production-only' && !activeProduction) {
+    problems.push('Plan 55 release requires attestation of the exact active Production client binaries')
+  }
+  if (activeProduction && release?.releaseLane !== 'plan55-production-only') {
+    problems.push('active Production binary relation is reserved for the Plan 55 release lane')
   }
   for (const platform of ['ios', 'android']) {
     const value = receipt?.platforms?.[platform]
     const policy = PLATFORM_POLICY[platform]
-    if (!UUID.test(value?.easBuildId ?? '') || value?.applicationId !== policy.applicationId ||
-        value?.appVersion !== '0.2.0' || value?.buildNumber !== policy.buildNumber ||
-        value?.runtimeVersion !== '0.2.0' ||
+    const activeClient = release?.activeClientCompatibility?.[platform]
+    const expectedApplicationId = activeProduction ? activeClient?.applicationId : policy.applicationId
+    const expectedBuildNumber = activeProduction ? activeClient?.minimumBuildNumber : policy.buildNumber
+    const expectedRuntimeVersion = activeProduction ? activeClient?.runtimeVersion : '0.2.0'
+    if (!UUID.test(value?.easBuildId ?? '') || value?.applicationId !== expectedApplicationId ||
+        value?.appVersion !== '0.2.0' || value?.buildNumber !== expectedBuildNumber ||
+        value?.runtimeVersion !== expectedRuntimeVersion ||
         (exactCommit ? value?.gitCommitHash !== receipt?.gitSha : !GIT_SHA.test(value?.gitCommitHash ?? '')) ||
         value?.distribution !== 'store' || value?.profile !== 'production' ||
         !easFingerprintAlgorithm(value?.easFingerprintHash) ||
@@ -140,6 +185,13 @@ export function verifyMobileBinaryAttestation(receipt, release) {
         !Number.isSafeInteger(value?.artifactSizeBytes) || value.artifactSizeBytes < 1 ||
         !Number.isFinite(Date.parse(value?.completedAt ?? ''))) {
       problems.push(`mobile ${platform} binary evidence is invalid`)
+    }
+    if (activeProduction &&
+        (value?.easBuildId?.toLowerCase() !== activeClient?.easBuildId?.toLowerCase() ||
+         value?.applicationId !== activeClient?.applicationId ||
+         value?.buildNumber !== activeClient?.minimumBuildNumber ||
+         value?.runtimeVersion !== activeClient?.runtimeVersion)) {
+      problems.push(`mobile ${platform} attestation does not match the active Production client`)
     }
   }
   const expected = sha256(canonicalJson({ ...receipt, receiptSha256: undefined }))

@@ -15,6 +15,11 @@ on:
     # Weekly full run of every lane on main (01:00 ICT Monday / 18:00 UTC Sunday).
     - cron: "0 18 * * 0"
   workflow_dispatch:
+    inputs:
+      plan55_source_sha:
+        description: Exact merged SHA on the pinned Plan 55 Production-base branch; leave blank for ordinary CI
+        required: false
+        type: string
 
 permissions:
   contents: read
@@ -29,7 +34,7 @@ jobs:
   controls:
     name: secret scan, classification, and repository controls
     # A draft pull request runs nothing; iterate locally and mark it ready once.
-    if: ${{ github.event_name != 'pull_request' || github.event.pull_request.draft == false }}
+    if: ${{ (github.event_name != 'pull_request' || github.event.pull_request.draft == false) && inputs.plan55_source_sha == '' }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     outputs:
@@ -138,11 +143,72 @@ jobs:
         if: ${{ !cancelled() }}
         run: node --test scripts/*.test.mjs scripts/harness/*.test.mjs
 
+  plan55-actor-guard:
+    name: plan55-actor-scoped-guard-tests
+    needs: controls
+    if: ${{ !cancelled() && github.event_name == 'pull_request' && needs.controls.outputs.kael == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Run actor-scoped Production guard tests
+        run: pnpm --filter @nestscout/api exec vitest run src/__tests__/unit/kael-playbook-registry-pillar.test.ts --passWithNoTests=false
+
+  plan55-dispatch-guard:
+    name: validate exact Plan 55 source input
+    if: ${{ (github.event_name != 'pull_request' || github.event.pull_request.draft == false) && github.event_name == 'workflow_dispatch' && inputs.plan55_source_sha != '' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - name: Reject a wrong ref or stale source SHA
+        env:
+          PLAN55_SOURCE_SHA: ${{ inputs.plan55_source_sha }}
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF" = "refs/heads/codex/plan55-production-base-645c907e-review"
+          if [[ ! "$PLAN55_SOURCE_SHA" =~ ^[a-f0-9]{40}$ ]]; then
+            exit 1
+          fi
+          test "$PLAN55_SOURCE_SHA" = "$GITHUB_SHA"
+
+  plan55-production-only:
+    name: Plan 55 Production-only release and canary
+    needs: plan55-dispatch-guard
+    if: ${{ (github.event_name != 'pull_request' || github.event.pull_request.draft == false) && !cancelled() && github.event_name == 'workflow_dispatch' && inputs.plan55_source_sha != '' && needs.plan55-dispatch-guard.result == 'success' }}
+    permissions:
+      actions: read
+      checks: read
+      contents: read
+      pull-requests: read
+    uses: ./.github/workflows/plan55-production-only.yml
+    with:
+      source_sha: ${{ inputs.plan55_source_sha }}
+    secrets:
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+      EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+      PERPLEXITY_API_KEY: ${{ secrets.PERPLEXITY_API_KEY }}
+      PRODUCTION_SUPABASE_ANON_KEY: ${{ secrets.PRODUCTION_SUPABASE_ANON_KEY }}
+      PRODUCTION_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.PRODUCTION_SUPABASE_SERVICE_ROLE_KEY }}
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      VIETMAP_API_KEY: ${{ secrets.VIETMAP_API_KEY }}
+
   workspace:
     name: type-check, tests, build, Kael evals, and Edge checks
     needs: controls
     # Runs after a failed control too, so one push reports controls and tests together.
-    if: ${{ !cancelled() && github.event_name != 'push' && (needs.controls.outputs.workspace == 'true' || needs.controls.outputs.kael == 'true' || needs.controls.outputs.security == 'true') }}
+    if: ${{ !cancelled() && inputs.plan55_source_sha == '' && github.event_name != 'push' && (needs.controls.outputs.workspace == 'true' || needs.controls.outputs.kael == 'true' || needs.controls.outputs.security == 'true') }}
     runs-on: ubuntu-latest
     timeout-minutes: 45
     env:
@@ -203,7 +269,8 @@ jobs:
         if: ${{ env.FULL == 'true' }}
         run: |
           mkdir -p artifacts/transactions
-          pnpm --filter @nestscout/api test --reporter=default --reporter=json --outputFile=../../artifacts/transactions/api-vitest.json
+          pnpm --filter @nestscout/api test:vitest --reporter=default --reporter=json --outputFile=../../artifacts/transactions/api-vitest.json
+          pnpm --filter @nestscout/api test:node
           pnpm --filter @nestscout/shared test
           pnpm --filter @nestscout/mobile test --runInBand --json --outputFile=../../artifacts/transactions/mobile-jest.json
           pnpm --filter @nestscout/sandbox test
@@ -321,7 +388,7 @@ jobs:
   database:
     name: empty reset, SQL matrix, generated types, and integration suite
     needs: controls
-    if: ${{ !cancelled() && github.event_name != 'push' && (needs.controls.outputs.database == 'true' || needs.controls.outputs.harness == 'true' || needs.controls.outputs.integration == 'true') }}
+    if: ${{ !cancelled() && inputs.plan55_source_sha == '' && github.event_name != 'push' && (needs.controls.outputs.database == 'true' || needs.controls.outputs.harness == 'true' || needs.controls.outputs.integration == 'true') }}
     runs-on: ubuntu-latest
     timeout-minutes: 45
     env:

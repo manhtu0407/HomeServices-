@@ -5,6 +5,7 @@ import { test } from 'node:test'
 
 import {
   bindingArguments,
+  assertHostedRuntimeBindingsRestorable,
   runtimeReleaseBindingsFromHostedState,
   runtimeReleaseBindingsFromRelease,
   runtimeReleaseBindingsFromStagingRelease,
@@ -43,6 +44,7 @@ test('Edge health preserves the release manifest provider readiness contract wit
   assert.deepEqual(health.release.provider_readiness, readiness,
     'hosted Edge must emit all nine manifest fields, including each push readiness flag')
   assert.equal(health.release.provider_readiness_fingerprint_sha256, release.providerReadinessFingerprintSha256)
+  assert.equal(health.release.release_lane, null)
   assert.equal(health.status, 'ok')
   assert.doesNotMatch(JSON.stringify(health), /sentinel-provider-secret/u)
   const remoteFixture = {
@@ -64,26 +66,31 @@ test('Edge health preserves the release manifest provider readiness contract wit
 })
 
 function mobileAttestation(release) {
+  const compatibility = release.activeClientCompatibility
+  const active = release.releaseLane === 'plan55-production-only'
   return buildMobileBinaryAttestation({
     release,
     builds: [
       {
-        id: '11111111-1111-4111-8111-111111111111', platform: 'IOS', status: 'FINISHED',
-        distribution: 'STORE', buildProfile: 'production', gitCommitHash: release.gitSha,
-        appVersion: '0.2.0', appBuildVersion: '45', runtimeVersion: '0.2.0',
-        applicationIdentifier: 'com.phanmanhtu.homeservices', fingerprint: { hash: '1'.repeat(64) },
+        id: active ? compatibility.ios.easBuildId : '11111111-1111-4111-8111-111111111111', platform: 'IOS', status: 'FINISHED',
+        distribution: 'STORE', buildProfile: 'production', gitCommitHash: active ? '3'.repeat(40) : release.gitSha,
+        appVersion: '0.2.0', appBuildVersion: String(active ? compatibility.ios.minimumBuildNumber : 45),
+        runtimeVersion: active ? compatibility.ios.runtimeVersion : '0.2.0',
+        applicationIdentifier: active ? compatibility.ios.applicationId : 'com.phanmanhtu.homeservices', fingerprint: { hash: '1'.repeat(64) },
         completedAt: '2026-08-23T01:00:00.000Z',
       },
       {
-        id: '22222222-2222-4222-8222-222222222222', platform: 'ANDROID', status: 'FINISHED',
-        distribution: 'STORE', buildProfile: 'production', gitCommitHash: release.gitSha,
-        appVersion: '0.2.0', appBuildVersion: '4', runtimeVersion: '0.2.0',
-        applicationIdentifier: 'com.phanmanhtu.nestscout', fingerprint: { hash: '2'.repeat(64) },
+        id: active ? compatibility.android.easBuildId : '22222222-2222-4222-8222-222222222222', platform: 'ANDROID', status: 'FINISHED',
+        distribution: 'STORE', buildProfile: 'production', gitCommitHash: active ? '4'.repeat(40) : release.gitSha,
+        appVersion: '0.2.0', appBuildVersion: String(active ? compatibility.android.minimumBuildNumber : 4),
+        runtimeVersion: active ? compatibility.android.runtimeVersion : '0.2.0',
+        applicationIdentifier: active ? compatibility.android.applicationId : 'com.phanmanhtu.nestscout', fingerprint: { hash: '2'.repeat(64) },
         completedAt: '2026-08-23T01:01:00.000Z',
       },
     ],
     artifactBytes: { ios: Buffer.from('ios'), android: Buffer.from('android') },
     now: '2026-08-23T01:02:00.000Z',
+    ...(active ? { relation: 'active_production' } : {}),
   })
 }
 
@@ -240,6 +247,54 @@ test('candidate bindings require the complete checksummed production release', (
   )
 })
 
+test('Plan 55 release lane is bound through runtime health and cannot be set in Staging', () => {
+  const policy = JSON.parse(readFileSync(new URL('../../config/harness/plan55-production-only-policy.json', import.meta.url), 'utf8'))
+  const inventory = JSON.parse(readFileSync(new URL('../../config/harness/migration-inventory.json', import.meta.url), 'utf8'))
+  const hostedBeforeBytes = Buffer.from(`${JSON.stringify({
+    environment: 'production',
+    projectRef: policy.projectRef,
+    releaseId: policy.productionSourceBase.releaseId,
+    gitSha: policy.productionSourceBase.sha,
+    releaseLane: 'verification',
+    clientCompatibility: {
+      gitSha: policy.productionSourceBase.sha,
+      releaseId: policy.productionSourceBase.releaseId,
+      contractEpoch: 2,
+      ios: {
+        applicationId: 'com.phanmanhtu.homeservices', minimumBuildNumber: 45,
+        easBuildId: '11111111-1111-4111-8111-111111111111', runtimeVersion: '0.2.0',
+      },
+      android: {
+        applicationId: 'com.phanmanhtu.nestscout', minimumBuildNumber: 4,
+        easBuildId: '22222222-2222-4222-8222-222222222222', runtimeVersion: '0.2.0',
+      },
+    },
+    migrations: inventory.entries.slice(0, 3).map(({ version, name }) => ({ version, name })),
+  }, null, 2)}\n`)
+  const release = buildHarnessRelease({
+    environment: 'production',
+    lane: 'plan55-production-only',
+    gitSha: '2'.repeat(40),
+    requireCleanWorktree: false,
+    hostedBeforeBytes,
+    providerReadiness: {
+      android_fcm_v1: true, anthropic: true, deepseek: false, durable_guards: true,
+      global_ai_enabled: true, ios_apns: true, perplexity: true,
+      push_receipt_reconciler: true, vietmap: true,
+    },
+  })
+  const bindings = runtimeReleaseBindingsFromRelease(release, mobileAttestation(release))
+  assert.equal(bindings.HARNESS_RELEASE_LANE, 'plan55-production-only')
+  assert.equal(bindings.HARNESS_CLIENT_COMPAT_GIT_SHA, '645c907e178f21ddde24a72501e6c8449d6720f9')
+  assert.equal(bindings.HARNESS_CLIENT_COMPAT_RELEASE_ID, 'harness-645c907e178f-f426155f83de')
+  assert.equal(bindingArguments(bindings).length, 28)
+  assert.throws(() => runtimeReleaseBindingsFromHostedState({
+    environment: 'production',
+    projectRef: 'iwevizmsedyqozxlawwl',
+    releaseLane: 'forged',
+  }), /invalid release lane/u)
+})
+
 test('staging bindings require explicit compatibility evidence from real EAS inventory', () => {
   const release = buildHarnessRelease({
     environment: 'staging',
@@ -335,4 +390,46 @@ test('rollback bindings reject the wrong project and shell-unsafe values', () =>
     environment: 'production', projectRef: 'iwevizmsedyqozxlawwl', releaseId: 'safe',
   })
   assert.throws(() => bindingArguments({ ...bindings, HARNESS_RELEASE_ID: 'bad value' }), /unsafe value/u)
+})
+
+test('rollback preflight accepts only a complete exact hosted Production binding snapshot', () => {
+  const hosted = {
+    environment: 'production',
+    projectRef: 'iwevizmsedyqozxlawwl',
+    releaseId: 'harness-old-release',
+    gitSha: 'a'.repeat(40),
+    releaseLane: null,
+    manifestSha256: 'b'.repeat(64),
+    bundleSha256: 'c'.repeat(64),
+    sourceBundleSha256: 'd'.repeat(64),
+    mobileBuildFingerprintSha256: 'e'.repeat(64),
+    productionUiSourceSha256: 'f'.repeat(64),
+    edgeBundleSha256: '1'.repeat(64),
+    migrationInventorySha256: '2'.repeat(64),
+    serviceIntakePolicyBundleSha256: '3'.repeat(64),
+    priceEvidenceBundleSha256: '4'.repeat(64),
+    providerReadinessFingerprintSha256: '5'.repeat(64),
+    providerReadiness: {
+      android_fcm_v1: true, anthropic: true, deepseek: false, durable_guards: true,
+      global_ai_enabled: true, ios_apns: false, perplexity: true,
+      push_receipt_reconciler: false, vietmap: true,
+    },
+    clientCompatibility: {
+      contractEpoch: 2,
+      ios: { applicationId: 'com.example.ios', minimumBuildNumber: 45,
+        easBuildId: '11111111-1111-4111-8111-111111111111', runtimeVersion: '1.2.3' },
+      android: { applicationId: 'com.example.android', minimumBuildNumber: 12,
+        easBuildId: '22222222-2222-4222-8222-222222222222', runtimeVersion: '4.5.6' },
+    },
+  }
+  const result = assertHostedRuntimeBindingsRestorable(hosted)
+  assert.equal(result.bindingCount, 25)
+  assert.equal(result.bindings.HARNESS_RELEASE_ID, hosted.releaseId)
+  assert.equal(result.bindings.HARNESS_GIT_SHA, hosted.gitSha)
+  assert.throws(() => assertHostedRuntimeBindingsRestorable({ ...hosted, edgeBundleSha256: null }),
+    /exact hosted release metadata/u)
+  assert.throws(() => assertHostedRuntimeBindingsRestorable({
+    ...hosted,
+    clientCompatibility: { ...hosted.clientCompatibility, android: undefined },
+  }), /complete hosted client compatibility/u)
 })

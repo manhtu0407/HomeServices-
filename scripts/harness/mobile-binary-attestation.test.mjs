@@ -1,10 +1,13 @@
 import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
 import { test } from 'node:test'
 
 import { rehash } from './fixtures/checksum.mjs'
 import { buildHarnessRelease } from './release-bundle.mjs'
 import {
   buildMobileBinaryAttestation,
+  selectActiveProductionEasBuilds,
   selectExactEasBuilds,
   selectLatestEasBuilds,
   verifyMobileBinaryAttestation,
@@ -43,6 +46,45 @@ function attestationInput() {
     artifactBytes: { ios: Buffer.from('ios-binary'), android: Buffer.from('android-binary') },
     now,
   }
+}
+
+function plan55ReleaseAndBuilds() {
+  const policy = JSON.parse(readFileSync(resolve('config/harness/plan55-production-only-policy.json'), 'utf8'))
+  const inventory = JSON.parse(readFileSync(resolve('config/harness/migration-inventory.json'), 'utf8'))
+  const clientCompatibility = {
+    gitSha: policy.productionSourceBase.sha,
+    releaseId: policy.productionSourceBase.releaseId,
+    contractEpoch: 2,
+    ios: {
+      applicationId: 'com.phanmanhtu.homeservices', minimumBuildNumber: 46,
+      easBuildId: '33333333-3333-4333-8333-333333333333', runtimeVersion: '0.2.0',
+    },
+    android: {
+      applicationId: 'com.phanmanhtu.nestscout', minimumBuildNumber: 5,
+      easBuildId: '44444444-4444-4444-8444-444444444444', runtimeVersion: '0.2.0',
+    },
+  }
+  const hostedBeforeBytes = Buffer.from(`${JSON.stringify({
+    environment: 'production', projectRef: policy.projectRef,
+    releaseId: policy.productionSourceBase.releaseId, gitSha: policy.productionSourceBase.sha,
+    clientCompatibility, migrations: inventory.entries.slice(0, 3).map(({ version, name }) => ({ version, name })),
+  }, null, 2)}\n`)
+  const plan55Release = buildHarnessRelease({
+    environment: 'production', gitSha: 'e'.repeat(40), lane: 'plan55-production-only',
+    requireCleanWorktree: false, hostedBeforeBytes,
+    providerReadiness: productionProviderReadiness(),
+  })
+  const builds = [
+    {
+      ...build('IOS', clientCompatibility.ios.easBuildId, clientCompatibility.ios.applicationId, '46'),
+      gitCommitHash: 'a'.repeat(40), runtime: { version: clientCompatibility.ios.runtimeVersion },
+    },
+    {
+      ...build('ANDROID', clientCompatibility.android.easBuildId, clientCompatibility.android.applicationId, '5'),
+      gitCommitHash: 'b'.repeat(40), runtime: { version: clientCompatibility.android.runtimeVersion },
+    },
+  ]
+  return { release: plan55Release, builds, clientCompatibility }
 }
 
 test('binds exact EAS iOS and Android store builds plus downloaded artifact bytes', () => {
@@ -178,6 +220,50 @@ test('latest existing selects the newest finished store build per platform and k
     const mutated = builds.map((item) => (item.platform === 'IOS' ? { ...item, [field]: value } : item))
     assert.equal(selectLatestEasBuilds(release, mutated).ios, undefined, field)
   }
+})
+
+test('Plan 55 attests the exact active Production EAS builds without requiring their commit to equal the backend release SHA', () => {
+  const { release: plan55Release, builds, clientCompatibility } = plan55ReleaseAndBuilds()
+  const selected = selectActiveProductionEasBuilds(plan55Release, builds)
+  assert.equal(selected.ios.id, clientCompatibility.ios.easBuildId)
+  assert.equal(selected.android.id, clientCompatibility.android.easBuildId)
+  const receipt = buildMobileBinaryAttestation({
+    release: plan55Release,
+    builds,
+    relation: 'active_production',
+    artifactBytes: { ios: Buffer.from('active-ios'), android: Buffer.from('active-android') },
+    now,
+  })
+  assert.equal(receipt.binaryRelation, 'active_production')
+  assert.equal(receipt.platforms.ios.buildNumber, 46)
+  assert.equal(receipt.platforms.android.buildNumber, 5)
+  assert.equal(receipt.platforms.ios.gitCommitHash, 'a'.repeat(40))
+  assert.deepEqual(verifyMobileBinaryAttestation(receipt, plan55Release), [])
+})
+
+test('Plan 55 active Production binary selection rejects stale, duplicate, and mismatched identities', () => {
+  const { release: plan55Release, builds, clientCompatibility } = plan55ReleaseAndBuilds()
+  assert.equal(selectActiveProductionEasBuilds(plan55Release, [
+    { ...builds[0], id: '55555555-5555-4555-8555-555555555555' }, builds[1],
+  ]).ios, undefined)
+  assert.equal(selectActiveProductionEasBuilds(plan55Release, [...builds, builds[0]]).ios, undefined,
+    'duplicate exact EAS identities are ambiguous and fail closed')
+  assert.equal(selectActiveProductionEasBuilds(plan55Release, [
+    { ...builds[0], appBuildVersion: String(clientCompatibility.ios.minimumBuildNumber - 1) }, builds[1],
+  ]).ios, undefined)
+  const receipt = buildMobileBinaryAttestation({
+    release: plan55Release, builds, relation: 'active_production',
+    artifactBytes: { ios: Buffer.from('ios'), android: Buffer.from('android') }, now,
+  })
+  const altered = rehash({
+    ...receipt,
+    platforms: {
+      ...receipt.platforms,
+      ios: { ...receipt.platforms.ios, easBuildId: '55555555-5555-4555-8555-555555555555' },
+    },
+  })
+  assert.ok(verifyMobileBinaryAttestation(altered, plan55Release)
+    .includes('mobile ios attestation does not match the active Production client'))
 })
 
 function productionProviderReadiness() {

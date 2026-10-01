@@ -63,6 +63,6 @@ exposed_live_parts: "Anh/chị chỉ ngắt aptomat tổng nếu bảng điện 
 water_near_power: "Anh/chị chỉ ngắt aptomat tổng nếu bảng điện khô ráo và dễ tiếp cận. Không làm vậy nếu phải lại gần chỗ nguy hiểm. Không chạm, rút phích, lau dọn hoặc lại gần khu vực bị ảnh hưởng. Giữ mọi người tránh xa cho đến khi thợ điện đủ chuyên môn kiểm tra. Nếu vẫn còn khói hoặc lửa, hãy rời khu vực và gọi cứu hỏa 114."
 capability gate (panel/fixed wiring/new circuit): "Phần tủ điện và dây âm tường cần thợ điện có chuyên môn xử lý. Anh/chị không cần tự thao tác thêm. Bên em sẽ sắp xếp thợ phù hợp cho phần việc này."`;
 
-export function isElectricalPlaybookEnabled(): boolean {
-  return isKaelPlaybookEnabled("electrical");
+export function isElectricalPlaybookEnabled(actorId?: string | null): boolean {
+  return isKaelPlaybookEnabled("electrical", actorId);
 }

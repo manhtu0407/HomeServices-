@@ -1,4 +1,4 @@
-import { readdirSync, readFileSync } from 'node:fs'
+import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
@@ -24,8 +24,12 @@ const workflowDirectory = resolve(root, '.github/workflows')
 const workflowNames = readdirSync(workflowDirectory).filter((name) => /\.ya?ml$/u.test(name)).sort()
 
 const readWorkflow = (name: string) => readFileSync(resolve(workflowDirectory, name), 'utf8')
-const remoteActions = (workflow: string) =>
+const workflowUses = (workflow: string) =>
   [...workflow.matchAll(/^\s*(?:-\s*)?uses:\s*([^\s#]+)(?:\s*#.*)?$/gm)].map((match) => match[1])
+const localReusableWorkflows = (workflow: string) =>
+  workflowUses(workflow).filter((reference) => reference.startsWith('./.github/workflows/'))
+const remoteActions = (workflow: string) =>
+  workflowUses(workflow).filter((reference) => !reference.startsWith('./.github/workflows/'))
 
 const PINNED_ACTION = /^[^/\s]+\/[^@\s]+@[a-f0-9]{40}$/u
 const CHECKOUT = /^\s*(?:-\s*)?uses:\s*actions\/checkout@/u
@@ -57,6 +61,15 @@ describe('CI supply-chain hardening', () => {
   it.each(workflowNames)('%s pins every remote action to a full commit SHA', (name) => {
     for (const action of remoteActions(readWorkflow(name))) {
       expect(action, pillarWhy(PILLAR, `${name}: ${action} is not a 40-hex commit SHA, so a moved tag would run new code`)).toMatch(PINNED_ACTION)
+    }
+  })
+
+  it.each(workflowNames)('%s resolves local reusable workflows from the same source commit', (name) => {
+    for (const reference of localReusableWorkflows(readWorkflow(name))) {
+      expect(reference, pillarWhy(PILLAR, `${name}: local workflow references must stay inside .github/workflows`))
+        .toMatch(/^\.\/\.github\/workflows\/[^/]+\.ya?ml$/u)
+      expect(existsSync(resolve(root, reference)), pillarWhy(PILLAR, `${name}: local reusable workflow ${reference} is missing`))
+        .toBe(true)
     }
   })
 
