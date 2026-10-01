@@ -5,7 +5,7 @@
   "projectRef": "iwevizmsedyqozxlawwl",
   "releaseLane": "plan55-production-only",
   "productionSourceBase": {
-    "branch": "codex/plan55-production-base-645c907e-review",
+    "branch": "codex/plan55-production-base-645c907e-review-v2",
     "sha": "645c907e178f21ddde24a72501e6c8449d6720f9",
     "releaseId": "harness-645c907e178f-f426155f83de"
   },

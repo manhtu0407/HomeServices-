@@ -110,7 +110,7 @@ function validatePlan55Policy(policy) {
   if (!productionSourceBase || typeof productionSourceBase !== 'object' ||
       Array.isArray(productionSourceBase) ||
       !/^[a-f0-9]{40}$/u.test(productionSourceBase.sha ?? '') ||
-      productionSourceBase.branch !== `codex/plan55-production-base-${String(productionSourceBase.sha ?? '').slice(0, 8)}-review`) {
+      productionSourceBase.branch !== `codex/plan55-production-base-${String(productionSourceBase.sha ?? '').slice(0, 8)}-review-v2`) {
     problems.push('Plan 55 exact Production source base is invalid')
   }
   if (JSON.stringify(policy.states) !== JSON.stringify(PLAN55_STATES)) {

@@ -550,7 +550,7 @@ async function readGithubCheckRuns(execFileSyncImpl, cwd, commitSha) {
 function isExpectedProductionSourceBase() {
   const { branch, sha, releaseId } = PLAN55_PRODUCTION_SOURCE_BASE
   return GIT_SHA_PATTERN.test(sha ?? '') &&
-    branch === `codex/plan55-production-base-${String(sha).slice(0, 8)}-review` &&
+    branch === `codex/plan55-production-base-${String(sha).slice(0, 8)}-review-v2` &&
     new RegExp(`^harness-${String(sha).slice(0, 12)}-[a-f0-9]{12}$`, 'u').test(releaseId ?? '')
 }
 

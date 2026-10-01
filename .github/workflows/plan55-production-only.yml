@@ -37,7 +37,7 @@ concurrency:
 
 jobs:
   quality-and-preflight:
-    if: github.ref == 'refs/heads/codex/plan55-production-base-645c907e-review' && inputs.source_sha == github.sha
+    if: github.ref == 'refs/heads/codex/plan55-production-base-645c907e-review-v2' && inputs.source_sha == github.sha
     runs-on: ubuntu-latest
     timeout-minutes: 90
     steps:
@@ -56,7 +56,7 @@ jobs:
           PLAN55_SOURCE_SHA: ${{ inputs.source_sha }}
         run: |
           set -euo pipefail
-          test "$GITHUB_REF" = "refs/heads/codex/plan55-production-base-645c907e-review"
+          test "$GITHUB_REF" = "refs/heads/codex/plan55-production-base-645c907e-review-v2"
           test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
           test "$GITHUB_SHA" = "$PLAN55_SOURCE_SHA"
           base_sha=$(node -p "require('./config/harness/plan55-production-only-policy.json').productionSourceBase.sha")
@@ -147,7 +147,7 @@ jobs:
 
   deploy_guard_off:
     needs: quality-and-preflight
-    if: github.ref == 'refs/heads/codex/plan55-production-base-645c907e-review' && inputs.source_sha == github.sha
+    if: github.ref == 'refs/heads/codex/plan55-production-base-645c907e-review-v2' && inputs.source_sha == github.sha
     runs-on: ubuntu-latest
     timeout-minutes: 45
     environment: production
