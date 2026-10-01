@@ -47,6 +47,13 @@ export const EXCEPTIONS = [
     max: 240,
     reason: 'the same job as the strict lane, derived from it: it waits on EAS builds for a platform that has no store build',
   },
+  {
+    workflow: 'plan55-production-canary-service.yml',
+    job: 'canary',
+    rule: 'timeout',
+    max: 120,
+    reason: '96 sequential cases allow three 20-second API turns each; 120 minutes covers the 96-minute bound plus setup and cleanup',
+  },
 ]
 
 function indentOf(line) {
@@ -372,7 +379,8 @@ function main() {
     process.exit(1)
   }
   console.log(
-    `workflow cost ok: ${files.length} workflows, ${report.jobs} jobs bounded to ${MAX_TIMEOUT_MINUTES} min, ` +
+    `workflow cost ok: ${files.length} workflows, ${report.jobs} jobs checked against the ${MAX_TIMEOUT_MINUTES} min default ` +
+    `timeout and ${EXCEPTIONS.filter(({ rule }) => rule === 'timeout').length} exact job exceptions, ` +
     `${report.schedules.length} schedules within ${MAX_SCHEDULED_RUNS_PER_WEEK} runs/week`,
   )
 }

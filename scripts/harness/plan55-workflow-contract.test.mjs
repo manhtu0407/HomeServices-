@@ -120,7 +120,7 @@ test('Plan 55 can be dispatched through the registered CI workflow without rerun
 })
 
 test('the serialized canary timeout covers all paced slices and rollback removes forward-only bindings', () => {
-  assert.match(service, /^    timeout-minutes: 360$/mu)
+  assert.match(service, /^    timeout-minutes: 120$/mu)
   assert.match(release, /forward_binding_text=\$\(node scripts\/harness\/runtime-release-bindings\.mjs[\s\S]*?--mobile-attestation artifacts\/release\/mobile-binary-attestation\.json\)/u)
   assert.match(release, /supabase secrets unset "\$\{unset_bindings\[@\]\}"[\s\\]*--project-ref/u)
   assert.match(release, /baseline_binding_names\["\$\{binding%%=\*\}"\]=1/u)
@@ -158,7 +158,7 @@ test('service workflow preserves the fixed serialized order and one complete, cl
     assert.match(release, new RegExp(`service: ${serviceName}\\r?\\n`, 'u'))
   }
   assert.deepEqual(needsFor('validate-six-receipts'), ['deploy_guard_off', ...ordered])
-  assert.match(service, /timeout-minutes: 360/u)
+  assert.match(service, /timeout-minutes: 120/u)
   assert.match(service, /--run --service "\$PLAN55_SERVICE"/u)
   assert.match(service, /BLOCKED_UNVERIFIED/u)
   assert.match(service, /records\/\*\*/u)
