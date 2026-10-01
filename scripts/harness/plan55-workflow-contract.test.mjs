@@ -10,6 +10,9 @@ const release = readFileSync(releasePath, 'utf8')
 const service = readFileSync(servicePath, 'utf8')
 const ci = readFileSync(ciPath, 'utf8')
 const sourceAttestation = readFileSync('apps/api/scripts/lib/kael-playbook-production-attestation.mjs', 'utf8')
+const canaryCore = readFileSync('apps/api/scripts/lib/plan55-production-canary-core.mjs', 'utf8')
+const canaryCli = readFileSync('apps/api/scripts/kael-playbook-production-canary.mjs', 'utf8')
+const checkpointStore = readFileSync('apps/api/scripts/lib/plan55-production-canary-checkpoint-store.mjs', 'utf8')
 const apiPackage = JSON.parse(readFileSync('apps/api/package.json', 'utf8'))
 
 function needsFor(job) {
@@ -137,8 +140,12 @@ test('Plan 55 can be dispatched through the registered CI workflow without rerun
     'ordinary SQL lane must skip a Plan 55 dispatch')
 })
 
-test('the serialized canary timeout covers all paced slices and rollback removes forward-only bindings', () => {
-  assert.match(service, /^    timeout-minutes: 120$/mu)
+test('the serialized canary timeout reserves unconditional cleanup and setup time for checkpoint recovery', () => {
+  assert.match(service, /^    timeout-minutes: 360$/mu)
+  assert.match(service, /Leave 30 minutes beyond cleanup for setup, preflight, and artifact upload/u)
+  assert.match(service, /timeout-minutes: 310/u)
+  assert.match(service, /timeout-minutes: 20/u)
+  assert.equal(310 + 20 + 30, 360)
   assert.match(release, /forward_binding_text=\$\(node scripts\/harness\/runtime-release-bindings\.mjs[\s\S]*?--mobile-attestation artifacts\/release\/mobile-binary-attestation\.json\)/u)
   assert.match(release, /supabase secrets unset "\$\{unset_bindings\[@\]\}"[\s\\]*--project-ref/u)
   assert.match(release, /baseline_binding_names\["\$\{binding%%=\*\}"\]=1/u)
@@ -206,7 +213,7 @@ test('Production source attestation is bound to downloaded hosted Edge bytes and
   assert.match(operations, /expected\.function_id/u)
 })
 
-test('service workflow preserves the fixed serialized order and one complete, cleaned receipt per job', () => {
+test('service workflow preserves order and resumes only an exact-source cleaned checkpoint', () => {
   const ordered = ['hvac', 'handyman', 'cleaning', 'upholstery', 'plumbing', 'electrical']
   for (const [index, serviceName] of ordered.entries()) {
     const expectedNeeds = ['deploy_guard_off', ...ordered.slice(0, index)]
@@ -214,19 +221,51 @@ test('service workflow preserves the fixed serialized order and one complete, cl
     assert.match(release, new RegExp(`service: ${serviceName}\\r?\\n`, 'u'))
   }
   assert.deepEqual(needsFor('validate-six-receipts'), ['deploy_guard_off', ...ordered])
-  assert.match(service, /timeout-minutes: 120/u)
+  assert.match(service, /timeout-minutes: 360/u)
   assert.match(service, /--run --service "\$PLAN55_SERVICE"/u)
   assert.match(service, /BLOCKED_UNVERIFIED/u)
   assert.match(service, /records\/\*\*/u)
   assert.match(service, /actions\/runs\/\$\{runId\}\/artifacts/u)
   assert.match(service, /steps\.resume\.outputs\.artifact_id/u)
   assert.match(service, /plan55-start-\$\{runId\}-/u)
-  assert.match(service, /plan55_resume_checkpoint_unverified/u)
-  assert.match(service, /Reject an earlier attempt unless its complete cleaned receipt is recoverable/u)
+  assert.match(service, /id: started/u)
+  assert.match(service, /actor_id: actorId/u)
+  assert.match(service, /actor_id=\$\{actorId\}/u)
+  assert.match(service, /recovery_artifact_ids=\$\{starts\.map/u)
+  assert.match(service, /'--recover-interrupted',\s*'--service'/u)
+  assert.match(service, /plan55_resume_interrupted_cleanup_failed/u)
+  assert.match(service, /Resume only from an exact-source checkpoint with verified cleanup/u)
   assert.match(service, /plan55_resume_prior_attempt_not_reusable/u)
+  assert.match(service, /assertPlan55ReusableServiceAttempt/u)
+  assert.match(service, /--checkpoint-status/u)
+  assert.match(canaryCli, /--recover-interrupted/u)
+  assert.match(canaryCli, /recoverInterruptedServiceCheckpoint/u)
+  assert.match(checkpointStore, /readInterruptedServiceCheckpoint/u)
+  assert.match(checkpointStore, /recoverInterruptedServiceCheckpoint/u)
+  assert.match(service, /PLAN55_CANARY_ACTOR_ID: \$\{\{ steps\.started\.outputs\.actor_id \}\}/u)
+  assert.match(service, /timeout-minutes: 310/u)
+  assert.match(service, /name: Always remove the scoped actor flag and prove Auth and row cleanup/u)
+  assert.match(service, /if: always\(\) && steps\.started\.outputs\.actor_id != ''/u)
+  assert.match(service, /timeout-minutes: 20/u)
+  assert.match(service, /--cleanup-only --service "\$PLAN55_SERVICE" --actor-id "\$PLAN55_CANARY_ACTOR_ID"/u)
+  assert.match(service, /proof\?\.globalFlags !== 'absent'/u)
+  assert.match(service, /proof\?\.authStatus !== 404/u)
+  assert.match(service, /proof\?\.orphanWorkers !== 0/u)
+  assert.ok(service.indexOf('name: Restore this service\'s prior attempt checkpoint') <
+    service.indexOf('name: Clean interrupted actors and reconcile the restored checkpoint'))
+  assert.ok(service.indexOf('name: Clean interrupted actors and reconcile the restored checkpoint') >
+    service.indexOf('name: Restore exact actor identities from interrupted service starts'))
+  assert.match(service, /recovered-\$\{runId\}-by-\$\{process\.env\.GITHUB_RUN_ATTEMPT\}\.json/u)
+  assert.match(service, /release_id: release\.releaseId/u)
+  assert.match(service, /group: plan55-production-canary-\$\{\{ github\.repository \}\}/u)
+  assert.ok(service.indexOf('name: Always remove the scoped actor flag and prove Auth and row cleanup') >
+    service.indexOf('name: Run one service and capture only a scrubbed receipt or safe failure code'))
+  assert.ok(service.indexOf('name: Preserve this service receipt and attempt evidence') >
+    service.indexOf('name: Always remove the scoped actor flag and prove Auth and row cleanup'))
+  assert.match(canaryCore, /serviceStatus.cleanup_verified !== true/u)
+  assert.match(canaryCore, /assertPlan55Cleanup\(serviceResult\?\.cleanup\)/u)
+  assert.match(canaryCore, /checkpointStatus\.deployment\?\.source_sha/u)
   assert.match(service, /previous_attempt=\$\{selected\?\.attempt/u)
-  assert.match(service, /cleanup\?\.canaryFlag !== 'absent'/u)
-  assert.match(service, /cleanup\?\.authStatus !== 404/u)
   assert.match(service, /plan55-service-start\/v1/u)
   assert.match(service, /include-hidden-files: true/u)
   assert.ok(service.indexOf('name: Preserve the service start marker before canary execution') <
@@ -235,7 +274,9 @@ test('service workflow preserves the fixed serialized order and one complete, cl
   assert.match(service, /error_file="\$raw_attempt_dir\/stderr\.txt"/u)
   assert.match(release, /--checkpoint-status/u)
   assert.match(release, /--run \\\r?\n/u)
-  assert.match(release, /G5_FAILED_SERVICE_OFF/u)
+  assert.match(service, /G5_FAILED_SERVICE_OFF/u)
+  assert.match(release, /item\.status !== 'G5_PASSED'/u)
+  assert.doesNotMatch(release, /!\['G5_PASSED', 'G5_FAILED_SERVICE_OFF'\]\.includes\(item\.status\)/u)
   assert.match(release, /cleanup\?\.reused !== true/u)
   assert.match(release, /item\.slice_count !== 8 \|\| item\.case_count !== 96 \|\| item\.error_count !== 0/u)
   assert.doesNotMatch(release, /item\.slices\?/u)

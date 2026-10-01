@@ -27,6 +27,7 @@ import {
 } from './kael-playbook-production-attestation.mjs'
 import {
   PLAN55_SERVICE_ORDER,
+  buildPlan55ServiceSlices,
   buildPlan55ProductionClientHeaders,
   validatePlan55SliceArtifacts,
 } from './plan55-production-canary-core.mjs'
@@ -40,6 +41,7 @@ import {
 const SCRIPT_DIR = resolve(fileURLToPath(new URL('.', import.meta.url)))
 const REPO_ROOT = resolve(SCRIPT_DIR, '../../../..')
 const MANAGEMENT_ORIGIN = 'https://api.supabase.com/v1'
+const BOUNDED_RESPONSE_CLEANUP = new WeakMap()
 export const PLAN55_PRODUCTION_FLAG_NAMES = Object.freeze([
   ...PLAN55_SERVICE_ORDER.map((service) => `KAEL_PLAYBOOK_${service.toUpperCase()}_ENABLED`),
   ...PLAN55_SERVICE_ORDER.map((service) => `KAEL_PLAYBOOK_${service.toUpperCase()}_CANARY_ENABLED`),
@@ -49,6 +51,7 @@ export const PLAN55_PRODUCTION_FLAG_NAMES = Object.freeze([
 const CASE_DELAY_MS = 190_000
 const CLEANUP_RETRIES = 12
 const CLEANUP_RETRY_DELAY_MS = 500
+const REQUEST_TIMEOUT_MS = 20_000
 const MAX_TURNS = 3
 const DISTRICT = 'q7'
 const CLEANUP_TABLES = Object.freeze([
@@ -56,6 +59,13 @@ const CLEANUP_TABLES = Object.freeze([
   'customer_profiles',
   'customer_account_deletion_requests',
   'kael_chat_sessions',
+  'worker_profiles',
+  'jobs_as_customer',
+  'jobs_as_worker',
+  'job_broadcasts_as_worker',
+  'job_events_as_actor',
+  'chat_messages_as_sender',
+  'notifications_as_user',
 ])
 
 export function assertPlan55ProductionCanaryEnvironment(env = process.env) {
@@ -91,19 +101,21 @@ export async function createPlan55ProductionCanaryOperations({
     throw new Error('plan55_canary_adapter_configuration_invalid')
   }
 
-  const makeClient = clientFactory ?? await defaultClientFactory(fetchImpl)
+  const boundedFetch = createPlan55BoundedFetch(fetchImpl)
+  const makeClient = clientFactory ?? await defaultClientFactory(boundedFetch)
   const admin = makeClient(credentials.expectedUrl, credentials.serviceKey, { auth: authOptions() })
   const anonymous = makeClient(credentials.expectedUrl, credentials.anonKey, { auth: authOptions() })
   const store = createPlan55FileCheckpointStore({ rootDir: checkpointRoot, clock })
   let enabledService = null
   let setupCleanupActorId = null
+  let setupCleanupActorIdentityUnknown = false
   let verifiedClientHeaders = null
   let verifiedDeployment = null
   let verifiedSourceAttestationSha256 = null
   let verifiedSourceAttestation = null
 
   async function readHealth() {
-    const health = await readJson(fetchImpl, `${PRODUCTION_MOBILE_API_URL}/harness/health`, {
+    const health = await readJson(boundedFetch, `${PRODUCTION_MOBILE_API_URL}/harness/health`, {
       method: 'GET',
       headers: { accept: 'application/json' },
     }, 'plan55_canary_production_health_unavailable')
@@ -111,7 +123,7 @@ export async function createPlan55ProductionCanaryOperations({
   }
 
   async function readSecretNames() {
-    const body = await readJson(fetchImpl, `${MANAGEMENT_ORIGIN}/projects/${PRODUCTION_PROJECT_REF}/secrets`, {
+    const body = await readJson(boundedFetch, `${MANAGEMENT_ORIGIN}/projects/${PRODUCTION_PROJECT_REF}/secrets`, {
       method: 'GET',
       headers: managementHeaders(credentials.accessToken),
     }, 'plan55_canary_secret_inventory_unavailable')
@@ -124,7 +136,7 @@ export async function createPlan55ProductionCanaryOperations({
   async function assertCurrentHostedEdgeSource() {
     const expected = verifiedSourceAttestation?.deployed_source
     if (!expected) throw new Error('plan55_canary_deployed_edge_source_unverified')
-    const current = await readJson(fetchImpl,
+    const current = await readJson(boundedFetch,
       `${MANAGEMENT_ORIGIN}/projects/${PRODUCTION_PROJECT_REF}/functions/mobile-api`, {
         method: 'GET',
         headers: managementHeaders(credentials.accessToken),
@@ -158,6 +170,69 @@ export async function createPlan55ProductionCanaryOperations({
       throw new Error('plan55_canary_production_source_drift')
     }
     await assertCurrentHostedEdgeSource()
+  }
+
+  async function cleanupServiceOperation({ service, actor, flagMayBeEnabled }) {
+    assertService(service)
+    actor?.clearSession?.()
+    const names = scopedFlagNames(service)
+    const cleanupActorId = actor?.synthetic === true && isUuid(actor.id)
+      ? actor.id
+      : setupCleanupActorId
+    let flagCleanupFailed = false
+    if (flagMayBeEnabled || enabledService === service) {
+      try {
+        await retryCleanupMutation(
+          () => deleteScopedFlags(boundedFetch, credentials.accessToken, names),
+          'plan55_canary_scoped_flag_cleanup_failed',
+          sleep,
+        )
+      } catch {
+        flagCleanupFailed = true
+      }
+    }
+    let actorExists = false
+    let actorIdentityError = null
+    if (cleanupActorId) {
+      try {
+        actorExists = await assertSyntheticAuthActor(admin, cleanupActorId)
+      } catch (error) {
+        actorIdentityError = error
+      }
+    }
+    let actorDeleteFailed = false
+    if (cleanupActorId && actorExists) {
+      try {
+        await retryCleanupMutation(
+          () => deleteSyntheticAuthActor(admin, cleanupActorId),
+          'plan55_canary_auth_delete_failed',
+          sleep,
+        )
+      } catch {
+        actorDeleteFailed = true
+      }
+    }
+    if (flagCleanupFailed || actorIdentityError || actorDeleteFailed) {
+      if (actorIdentityError && !flagCleanupFailed && !actorDeleteFailed) throw actorIdentityError
+      throw new Error('plan55_canary_cleanup_mutation_failed')
+    }
+
+    const proof = await waitForServiceCleanupProof({
+      service,
+      actor: cleanupActorId ? { id: cleanupActorId } : null,
+      names,
+      readSecretNames,
+      admin,
+      sleep,
+      actorIdentityUnknown: setupCleanupActorIdentityUnknown,
+    })
+    if (!(await boundedFetch.waitForIdle()) || boundedFetch.activeRequestCount() !== 0) {
+      throw new Error('plan55_canary_orphan_worker_unverified')
+    }
+    if (enabledService === service) enabledService = null
+    setupCleanupActorId = null
+    setupCleanupActorIdentityUnknown = false
+    return { ...proof, orphanWorkers: boundedFetch.activeRequestCount() }
   }
 
   return Object.freeze({
@@ -231,49 +306,66 @@ export async function createPlan55ProductionCanaryOperations({
 
     async createSyntheticActor(service) {
       assertService(service)
+      const userId = typeof env.PLAN55_CANARY_ACTOR_ID === 'string'
+        ? env.PLAN55_CANARY_ACTOR_ID.toLowerCase()
+        : ''
+      if (!isUuid(userId)) throw new Error('plan55_canary_actor_id_missing')
       const email = `plan55-${service}-${randomUUID()}@example.invalid`
       const password = randomBytes(32).toString('base64url')
-      let userId = null
+      let sessionAccess = null
       try {
+        setupCleanupActorId = userId
+        setupCleanupActorIdentityUnknown = false
         const { data, error } = await admin.auth.admin.createUser({
+          id: userId,
           email,
           password,
           email_confirm: true,
           app_metadata: { role: 'customer', plan55_disposable: true },
           user_metadata: { full_name: 'Plan 55 synthetic customer' },
         })
-        if (error || !isUuid(data?.user?.id)) throw new Error('plan55_canary_actor_create_failed')
-        userId = data.user.id
+        if (error || data?.user?.id !== userId) throw new Error('plan55_canary_actor_create_failed')
         const { data: profile, error: profileError } = await waitForSyntheticProfile(admin, userId, sleep)
         if (profileError || profile?.role !== 'customer') {
           throw new Error('plan55_canary_actor_profile_not_customer')
         }
         const { data: session, error: signInError } = await anonymous.auth.signInWithPassword({ email, password })
-        if (signInError || typeof session?.session?.access_token !== 'string') {
+        if (signInError || session?.session?.user?.id !== userId) {
           throw new Error('plan55_canary_actor_sign_in_failed')
         }
+        sessionAccess = createSessionAccess(session.session, userId, anonymous, clock)
         const { data: verified, error: verifyError } = await admin.auth.admin.getUserById(userId)
-        if (verifyError || verified?.user?.app_metadata?.plan55_disposable !== true) {
+        if (verifyError || verified?.user?.id !== userId ||
+            verified?.user?.app_metadata?.role !== 'customer' ||
+            verified?.user?.app_metadata?.plan55_disposable !== true) {
           throw new Error('plan55_canary_actor_marker_unverified')
         }
         return Object.freeze({
           id: userId,
           synthetic: true,
-          accessToken: session.session.access_token,
+          getAccessToken: () => sessionAccess.getAccessToken(),
+          clearSession: () => sessionAccess?.clear(),
         })
       } catch (error) {
+        sessionAccess?.clear()
         if (userId) {
+          setupCleanupActorId = userId
+          setupCleanupActorIdentityUnknown = false
           try {
             await retryCleanupMutation(
-              () => deleteAuthActor(admin, userId),
+              () => deleteSyntheticAuthActor(admin, userId),
               'plan55_canary_actor_setup_cleanup_failed',
               sleep,
             )
             await waitForActorDeletionProof(admin, userId, sleep)
+            setupCleanupActorId = null
           } catch {
             setupCleanupActorId = userId
             throw new Error('plan55_canary_actor_setup_cleanup_failed')
           }
+        }
+        if (setupCleanupActorIdentityUnknown) {
+          throw new Error('plan55_canary_actor_cleanup_identity_unknown')
         }
         throw safeError(error, 'plan55_canary_actor_setup_failed')
       }
@@ -290,7 +382,7 @@ export async function createPlan55ProductionCanaryOperations({
         throw new Error('plan55_canary_existing_flag_prevents_mutation')
       }
       enabledService = service
-      await readJson(fetchImpl, `${MANAGEMENT_ORIGIN}/projects/${PRODUCTION_PROJECT_REF}/secrets`, {
+      await readJson(boundedFetch, `${MANAGEMENT_ORIGIN}/projects/${PRODUCTION_PROJECT_REF}/secrets`, {
         method: 'POST',
         headers: managementHeaders(credentials.accessToken, true),
         body: JSON.stringify([
@@ -306,7 +398,7 @@ export async function createPlan55ProductionCanaryOperations({
           (slice.playbookEnabled || enabledService !== null)) {
         throw new Error('plan55_canary_slice_flag_scope_mismatch')
       }
-      if (actor?.synthetic !== true || !isUuid(actor.id) || !actor.accessToken ||
+      if (actor?.synthetic !== true || !isUuid(actor.id) || typeof actor.getAccessToken !== 'function' ||
           !sameDeploymentIdentity(deployment, verifiedDeployment) ||
           !sameClientHeaders(clientHeaders, verifiedClientHeaders) ||
           sourceAttestationSha256 !== verifiedSourceAttestationSha256 ||
@@ -315,46 +407,116 @@ export async function createPlan55ProductionCanaryOperations({
       }
       await assertCurrentReleaseSource()
       return evaluateAndPersistSlice({
-        service, actor, slice, deployment, clientHeaders, fetchImpl,
+        service, actor, slice, deployment, clientHeaders, fetchImpl: boundedFetch,
         sourceAttestation, sourceAttestationSha256,
         verifyCurrentSource: assertCurrentReleaseSource,
         anonKey: credentials.anonKey, sleep, clock, artifactRoot,
       })
     },
 
-    async cleanupService({ service, actor, flagMayBeEnabled }) {
+    cleanupService: cleanupServiceOperation,
+    async cleanupAbandonedService({ service, actorId }) {
       assertService(service)
-      const names = scopedFlagNames(service)
-      const cleanupAttempts = []
-      const cleanupActorId = actor && isUuid(actor.id) ? actor.id : setupCleanupActorId
-      if (flagMayBeEnabled || enabledService === service) {
-        cleanupAttempts.push(retryCleanupMutation(
-          () => deleteScopedFlags(fetchImpl, credentials.accessToken, names),
-          'plan55_canary_scoped_flag_cleanup_failed',
-          sleep,
-        ))
-      }
-      if (cleanupActorId) cleanupAttempts.push(retryCleanupMutation(
-        () => deleteAuthActor(admin, cleanupActorId),
-        'plan55_canary_auth_delete_failed',
-        sleep,
-      ))
-      const failures = (await Promise.allSettled(cleanupAttempts))
-        .filter((result) => result.status === 'rejected')
-      if (failures.length > 0) throw new Error('plan55_canary_cleanup_mutation_failed')
-
-      const proof = await waitForServiceCleanupProof({
+      if (!isUuid(actorId)) throw new Error('plan55_canary_actor_id_invalid')
+      return cleanupServiceOperation({
         service,
-        actor: cleanupActorId ? { id: cleanupActorId } : null,
-        names,
-        readSecretNames,
-        readHealth,
-        admin,
-        sleep,
+        actor: { id: actorId.toLowerCase(), synthetic: true },
+        flagMayBeEnabled: true,
       })
-      if (enabledService === service) enabledService = null
-      setupCleanupActorId = null
-      return proof
+    },
+
+    async recoverInterruptedServiceCheckpoint({ service, deployment, runId, currentAttempt, markers }) {
+      assertService(service)
+      if (!deployment || deployment.project_ref !== PRODUCTION_PROJECT_REF ||
+          typeof deployment.release_id !== 'string' || typeof deployment.git_sha !== 'string' ||
+          !/^[a-f0-9]{40}$/iu.test(deployment.git_sha) || !/^\d+$/u.test(String(runId ?? '')) ||
+          !Number.isSafeInteger(currentAttempt) || currentAttempt < 2 ||
+          !Array.isArray(markers) || markers.length === 0) {
+        throw new Error('plan55_canary_recovery_identity_invalid')
+      }
+      const expectedSourceSha = deployment.git_sha.toLowerCase()
+      const actorIds = new Set()
+      for (const marker of markers) {
+        if (marker?.schema !== 'plan55-service-start/v1' || marker.service !== service ||
+            String(marker.source_sha ?? '').toLowerCase() !== expectedSourceSha ||
+            String(marker.run_id ?? '') !== String(runId) ||
+            !Number.isSafeInteger(marker.attempt) || marker.attempt < 1 || marker.attempt >= currentAttempt ||
+            marker.release_id !== deployment.release_id ||
+            !isUuid(marker.actor_id) || actorIds.has(marker.actor_id.toLowerCase())) {
+          throw new Error('plan55_canary_recovery_identity_invalid')
+        }
+        actorIds.add(marker.actor_id.toLowerCase())
+      }
+
+      let cleanup
+      for (const actorId of actorIds) {
+        cleanup = await this.cleanupAbandonedService({ service, actorId })
+      }
+
+      let interrupted
+      try {
+        interrupted = await store.readInterruptedServiceCheckpoint({ service, deployment })
+      } catch (error) {
+        if (error?.message !== 'plan55_checkpoint_service_not_interrupted') throw error
+        const status = await store.readVerifiedServiceStatus({ service, deployment })
+        const sourceIdentityVerified = await verifyCurrentRecoveryDeployment(deployment)
+        return Object.freeze({
+          schema: 'plan55-interrupted-service-recovery/v1',
+          service,
+          project_ref: PRODUCTION_PROJECT_REF,
+          release_id: deployment.release_id,
+          source_sha: expectedSourceSha,
+          status: 'CLEANUP_ONLY_PASS',
+          cleaned_actor_count: actorIds.size,
+          retained_slice_count: status.verifiedSliceIds.length,
+          invalidated_slice_ids: [],
+          source_identity_verified: sourceIdentityVerified,
+          cleanup,
+        })
+      }
+
+      const sourceIdentityVerified = await verifyCurrentRecoveryDeployment(deployment)
+      const slices = new Map(buildPlan55ServiceSlices(service).map((slice) => [slice.id, slice]))
+      const storedIds = new Set(interrupted.receipts.map(({ sliceId }) => sliceId))
+      const validatedReceipts = []
+      const invalidatedSliceIds = []
+      for (const receipt of interrupted.receipts) {
+        const slice = slices.get(receipt.sliceId)
+        if (!sourceIdentityVerified || !slice) {
+          invalidatedSliceIds.push(receipt.sliceId)
+          continue
+        }
+        try {
+          await verifyPersistedArtifacts({ receipt, slice, deployment, artifactRoot })
+          validatedReceipts.push(receipt)
+        } catch {
+          invalidatedSliceIds.push(receipt.sliceId)
+        }
+      }
+      for (const sliceId of interrupted.sliceIds) {
+        if (!storedIds.has(sliceId)) invalidatedSliceIds.push(sliceId)
+      }
+      const recovered = await store.recoverInterruptedServiceCheckpoint({
+        checkpoint: interrupted,
+        service,
+        deployment,
+        validatedReceipts,
+        invalidatedSliceIds,
+        cleanup,
+      })
+      return Object.freeze({
+        schema: 'plan55-interrupted-service-recovery/v1',
+        service,
+        project_ref: PRODUCTION_PROJECT_REF,
+        release_id: deployment.release_id,
+        source_sha: expectedSourceSha,
+        status: 'RECOVERY_PASS',
+        cleaned_actor_count: actorIds.size,
+        retained_slice_count: recovered.retainedSliceCount,
+        invalidated_slice_ids: recovered.invalidatedSliceIds,
+        source_identity_verified: sourceIdentityVerified,
+        cleanup,
+      })
     },
 
     loadVerifiedSliceReceipt: async (input) => {
@@ -367,6 +529,31 @@ export async function createPlan55ProductionCanaryOperations({
     persistVerifiedServiceCleanup: (input) => store.persistVerifiedServiceCleanup(input),
     beginServiceCheckpoint: (input) => store.beginServiceCheckpoint(input),
   })
+
+  async function verifyCurrentRecoveryDeployment(expectedDeployment) {
+    try {
+      const { health, deployment } = await readHealth()
+      if (health.release?.release_lane !== 'plan55-production-only' ||
+          !sameDeploymentIdentity(deployment, expectedDeployment)) return false
+      const sourceAttestation = sourceAttestationProvider
+        ? await sourceAttestationProvider()
+        : await runLocalSourceAttestor()
+      assertPlan55SourceAttestation(sourceAttestation, deployment.git_sha)
+      const clientHeaders = buildPlan55ProductionClientHeaders(health, deployment)
+      verifiedDeployment = deployment
+      verifiedClientHeaders = clientHeaders
+      verifiedSourceAttestation = sourceAttestation
+      verifiedSourceAttestationSha256 = plan55SourceAttestationSha256(sourceAttestation, deployment.git_sha)
+      await assertCurrentHostedEdgeSource()
+      return true
+    } catch {
+      verifiedDeployment = null
+      verifiedClientHeaders = null
+      verifiedSourceAttestation = null
+      verifiedSourceAttestationSha256 = null
+      return false
+    }
+  }
 }
 
 async function evaluateAndPersistSlice({ service, actor, slice, deployment, clientHeaders, sourceAttestation, sourceAttestationSha256, verifyCurrentSource, fetchImpl, anonKey, sleep, clock, artifactRoot }) {
@@ -507,7 +694,7 @@ async function evaluateAndPersistSlice({ service, actor, slice, deployment, clie
 }
 
 async function runLiveCase(fetchImpl, anonKey, actor, testCase, service, clientHeaders) {
-  let response = await postChat(fetchImpl, anonKey, actor.accessToken, {
+  let response = await postChat(fetchImpl, anonKey, actor.getAccessToken, {
     service_type: service,
     message: testCase.input_text_vi,
     problem_chips: [],
@@ -528,7 +715,7 @@ async function runLiveCase(fetchImpl, anonKey, actor, testCase, service, clientH
     const message = selected?.reply ?? (!detailUsed ? testCase.detail : null)
     if (!message) break
     detailUsed ||= !selected?.reply
-    response = await postChat(fetchImpl, anonKey, actor.accessToken, {
+    response = await postChat(fetchImpl, anonKey, actor.getAccessToken, {
       service_type: service,
       session_id: sessionId,
       message,
@@ -542,7 +729,8 @@ async function runLiveCase(fetchImpl, anonKey, actor, testCase, service, clientH
   return { response, initialObservation, clarificationTurns, turns }
 }
 
-async function postChat(fetchImpl, anonKey, accessToken, body, clientHeaders) {
+async function postChat(fetchImpl, anonKey, getAccessToken, body, clientHeaders) {
+  const accessToken = await getAccessToken()
   return readJson(fetchImpl, `${PRODUCTION_MOBILE_API_URL}/kael/chat`, {
     method: 'POST',
     headers: {
@@ -558,26 +746,46 @@ async function postChat(fetchImpl, anonKey, accessToken, body, clientHeaders) {
 }
 
 async function readActorCleanupCounts(admin, actorId) {
-  const [profiles, customerProfiles, deletionRequests, sessions] = await Promise.all([
+  const [
+    profiles,
+    customerProfiles,
+    deletionRequests,
+    sessions,
+    workerProfiles,
+    jobsAsCustomer,
+    jobsAsWorker,
+    broadcastsAsWorker,
+    eventsAsActor,
+    chatMessagesAsSender,
+    notificationsAsUser,
+  ] = await Promise.all([
     exactCount(admin, 'profiles', 'id', actorId),
     exactCount(admin, 'customer_profiles', 'id', actorId),
     exactCount(admin, 'customer_account_deletion_requests', 'customer_id', actorId),
-    exactCount(admin, 'kael_chat_sessions', 'customer_id', actorId),
+    exactRows(admin, 'kael_chat_sessions', 'customer_id', actorId),
+    exactCount(admin, 'worker_profiles', 'id', actorId),
+    exactCount(admin, 'jobs', 'customer_id', actorId),
+    exactCount(admin, 'jobs', 'worker_id', actorId),
+    exactCount(admin, 'job_broadcasts', 'worker_id', actorId),
+    exactCount(admin, 'job_events', 'actor_id', actorId),
+    exactCount(admin, 'chat_messages', 'sender_id', actorId),
+    exactCount(admin, 'notifications', 'user_id', actorId),
   ])
-  const sessionIds = sessions.data.map((row) => row.id)
-  let turns = 0
-  if (sessionIds.length > 0) {
-    const result = await admin.from('kael_chat_turns').select('id', { count: 'exact', head: true })
-      .in('session_id', sessionIds)
-    if (result.error || !Number.isSafeInteger(result.count)) throw new Error('plan55_canary_cleanup_rows_unreadable')
-    turns = result.count
-  }
+  const sessionIds = sessions.map((row) => row.id)
+  const turns = await exactCountIn(admin, 'kael_chat_turns', 'session_id', sessionIds)
   return {
     profiles,
     customer_profiles: customerProfiles,
     customer_account_deletion_requests: deletionRequests,
-    kael_chat_sessions: sessions.count,
+    kael_chat_sessions: sessions.length,
     kael_chat_turns: turns,
+    worker_profiles: workerProfiles,
+    jobs_as_customer: jobsAsCustomer,
+    jobs_as_worker: jobsAsWorker,
+    job_broadcasts_as_worker: broadcastsAsWorker,
+    job_events_as_actor: eventsAsActor,
+    chat_messages_as_sender: chatMessagesAsSender,
+    notifications_as_user: notificationsAsUser,
   }
 }
 
@@ -589,28 +797,34 @@ async function waitForServiceCleanupProof({
   readHealth,
   admin,
   sleep,
+  actorIdentityUnknown,
 }) {
   let lastFailure = 'plan55_canary_cleanup_unverified'
   for (let attempt = 0; attempt < CLEANUP_RETRIES; attempt += 1) {
     try {
-      const [secretNames, authStatus, rows, { health }] = await Promise.all([
-        readSecretNames(),
-        actor && isUuid(actor.id) ? verifyAuthActorDeleted(admin, actor.id) : Promise.resolve(404),
-        actor && isUuid(actor.id) ? readActorCleanupCounts(admin, actor.id) : Promise.resolve(zeroCleanupRows()),
-        readHealth(),
-      ])
+      const secretNames = await readSecretNames()
       const globalFlagsRemain = PLAN55_PRODUCTION_FLAG_NAMES.some((name) => secretNames.has(name))
       const canaryFlag = secretNames.has(names.enabled) ? 'enabled' : 'absent'
       const canaryActorId = secretNames.has(names.actor) ? 'configured' : 'absent'
-      const orphanWorkers = health.plan55?.cleanup?.orphan_workers
-      const proof = { canaryFlag, canaryActorId, authStatus, rows, orphanWorkers }
+      if (actorIdentityUnknown) {
+        if (globalFlagsRemain) throw new Error('plan55_canary_flag_inventory_not_clean')
+        if (canaryFlag !== 'absent' || canaryActorId !== 'absent') {
+          throw new Error('plan55_canary_flag_cleanup_unverified')
+        }
+        throw new Error('plan55_canary_auth_actor_identity_unknown')
+      }
+      const [authStatus, rows] = await Promise.all([
+        actor && isUuid(actor.id) ? verifyAuthActorDeleted(admin, actor.id) : Promise.resolve(404),
+        actor && isUuid(actor.id) ? readActorCleanupCounts(admin, actor.id) : Promise.resolve(zeroCleanupRows()),
+      ])
+      const proof = { globalFlags: globalFlagsRemain ? 'present' : 'absent', canaryFlag, canaryActorId, authStatus, rows }
       if (globalFlagsRemain) lastFailure = 'plan55_canary_flag_inventory_not_clean'
       else if (canaryFlag !== 'absent' || canaryActorId !== 'absent') lastFailure = 'plan55_canary_flag_cleanup_unverified'
       else if (authStatus !== 404) lastFailure = 'plan55_canary_auth_cleanup_unverified'
       else if (Object.values(rows).some((count) => count !== 0)) lastFailure = 'plan55_canary_cleanup_rows_pending'
-      else if (orphanWorkers !== 0) lastFailure = 'plan55_canary_orphan_worker_unverified'
       else return proof
-    } catch {
+    } catch (error) {
+      if (error instanceof Error && error.message === 'plan55_canary_auth_actor_identity_unknown') throw error
       lastFailure = 'plan55_canary_cleanup_unverified'
     }
     if (attempt + 1 < CLEANUP_RETRIES) await sleep(CLEANUP_RETRY_DELAY_MS)
@@ -651,11 +865,19 @@ async function exactCount(admin, table, column, actorId) {
   const query = admin.from(table).select(column, { count: 'exact', head: true }).eq(column, actorId)
   const result = await query
   if (result.error || !Number.isSafeInteger(result.count)) throw new Error('plan55_canary_cleanup_rows_unreadable')
-  if (table === 'kael_chat_sessions') {
-    const rows = await admin.from(table).select('id').eq(column, actorId)
-    if (rows.error || !Array.isArray(rows.data)) throw new Error('plan55_canary_cleanup_rows_unreadable')
-    return { count: result.count, data: rows.data }
-  }
+  return result.count
+}
+
+async function exactRows(admin, table, column, actorId) {
+  const result = await admin.from(table).select('id').eq(column, actorId)
+  if (result.error || !Array.isArray(result.data)) throw new Error('plan55_canary_cleanup_rows_unreadable')
+  return result.data
+}
+
+async function exactCountIn(admin, table, column, values) {
+  if (values.length === 0) return 0
+  const result = await admin.from(table).select(column, { count: 'exact', head: true }).in(column, values)
+  if (result.error || !Number.isSafeInteger(result.count)) throw new Error('plan55_canary_cleanup_rows_unreadable')
   return result.count
 }
 
@@ -668,11 +890,23 @@ async function waitForSyntheticProfile(admin, userId, sleep) {
   return { data: null, error: new Error('profile_not_created') }
 }
 
-async function deleteAuthActor(admin, userId) {
+async function deleteSyntheticAuthActor(admin, userId) {
+  if (!(await assertSyntheticAuthActor(admin, userId))) return
   const { error } = await admin.auth.admin.deleteUser(userId, false)
   if (error && error.status !== 404 && error.code !== 'user_not_found') {
     throw new Error('plan55_canary_auth_delete_failed')
   }
+}
+
+async function assertSyntheticAuthActor(admin, userId) {
+  const { data, error } = await admin.auth.admin.getUserById(userId)
+  if (error?.status === 404 || error?.code === 'user_not_found') return false
+  const user = data?.user
+  if (error || user?.id !== userId || user?.app_metadata?.role !== 'customer' ||
+      user?.app_metadata?.plan55_disposable !== true) {
+    throw new Error('plan55_canary_auth_actor_not_disposable')
+  }
+  return true
 }
 
 async function verifyAuthActorDeleted(admin, userId) {
@@ -885,6 +1119,156 @@ export async function readPlan55HoldoutAssets() {
   }
 }
 
+export function createPlan55BoundedFetch(fetchImpl, timeoutMs = REQUEST_TIMEOUT_MS) {
+  if (typeof fetchImpl !== 'function' || !Number.isSafeInteger(timeoutMs) || timeoutMs < 1) {
+    throw new Error('plan55_canary_bounded_fetch_configuration_invalid')
+  }
+  let activeRequests = 0
+  const idleWaiters = new Set()
+  const boundedFetch = async (input, init = {}) => {
+    activeRequests += 1
+    const requestSignal = init?.signal ?? input?.signal
+    const controller = new AbortController()
+    let completed = false
+    const finish = (abort = false) => {
+      if (completed) return
+      completed = true
+      activeRequests -= 1
+      clearTimeout(timer)
+      requestSignal?.removeEventListener('abort', forwardAbort)
+      if (activeRequests === 0) {
+        for (const resolveIdle of idleWaiters) resolveIdle()
+      }
+      if (abort && !controller.signal.aborted) {
+        controller.abort(new DOMException('Plan 55 response was not consumed', 'AbortError'))
+      }
+    }
+    const forwardAbort = () => controller.abort(requestSignal.reason)
+    if (requestSignal?.aborted) forwardAbort()
+    else requestSignal?.addEventListener('abort', forwardAbort, { once: true })
+    const timer = setTimeout(() => {
+      controller.abort(new DOMException('Plan 55 request timed out', 'TimeoutError'))
+    }, timeoutMs)
+    try {
+      const response = await fetchImpl(input, { ...init, signal: controller.signal })
+      if (!response || typeof response !== 'object') {
+        finish()
+        return response
+      }
+      const wrapResponse = (target) => {
+        const boundedResponse = new Proxy(target, {
+          get(responseTarget, property) {
+            const value = Reflect.get(responseTarget, property, responseTarget)
+            if (property === 'clone' && typeof value === 'function') {
+              return (...args) => wrapResponse(value.apply(responseTarget, args))
+            }
+            if (['arrayBuffer', 'blob', 'formData', 'json', 'text'].includes(property) && typeof value === 'function') {
+              return async (...args) => {
+                try {
+                  return await value.apply(responseTarget, args)
+                } finally {
+                  finish()
+                }
+              }
+            }
+            return typeof value === 'function' ? value.bind(responseTarget) : value
+          },
+        })
+        BOUNDED_RESPONSE_CLEANUP.set(boundedResponse, finish)
+        return boundedResponse
+      }
+      return wrapResponse(response)
+    } catch (error) {
+      finish()
+      throw error
+    }
+  }
+  Object.defineProperties(boundedFetch, {
+    activeRequestCount: { value: () => activeRequests },
+    waitForIdle: {
+      value: (waitMs = timeoutMs) => {
+        if (activeRequests === 0) return Promise.resolve(true)
+        return new Promise((resolveIdle) => {
+          let timer
+          const finishWait = (idle) => {
+            clearTimeout(timer)
+            idleWaiters.delete(onIdle)
+            resolveIdle(idle)
+          }
+          const onIdle = () => finishWait(true)
+          timer = setTimeout(() => finishWait(activeRequests === 0), waitMs)
+          idleWaiters.add(onIdle)
+        })
+      },
+    },
+  })
+  return boundedFetch
+}
+
+function createSessionAccess(initialSession, actorId, anonymous, clock) {
+  let tokenState = createSessionTokenState(initialSession, clock)
+  let refreshInFlight = null
+  let generation = 0
+  return {
+    async getAccessToken() {
+      if (!tokenState) throw new Error('plan55_canary_actor_session_unavailable')
+      if (tokenState.expiresAt - Math.floor(clock().getTime() / 1000) > 60) {
+        return tokenState.accessToken
+      }
+      if (!refreshInFlight) {
+        const refreshGeneration = generation
+        const refreshToken = tokenState.refreshToken
+        refreshInFlight = (async () => {
+          try {
+            const { data, error } = await anonymous.auth.refreshSession({
+              refresh_token: refreshToken,
+            })
+            const refreshed = data?.session
+            if (error || refreshed?.user?.id !== actorId) throw new Error('refresh_rejected')
+            const nextState = createSessionTokenState(refreshed, clock)
+            if (generation !== refreshGeneration) return
+            tokenState = nextState
+          } catch {
+            if (generation === refreshGeneration) tokenState = null
+            throw new Error('plan55_canary_actor_session_refresh_failed')
+          }
+        })()
+      }
+      const pendingRefresh = refreshInFlight
+      try {
+        await pendingRefresh
+      } finally {
+        if (refreshInFlight === pendingRefresh) refreshInFlight = null
+      }
+      if (!tokenState) throw new Error('plan55_canary_actor_session_refresh_failed')
+      return tokenState.accessToken
+    },
+    clear() {
+      generation += 1
+      tokenState = null
+      refreshInFlight = null
+    },
+  }
+}
+
+function createSessionTokenState(session, clock) {
+  const expiresIn = Number(session?.expires_in)
+  const fallbackExpiry = Number.isFinite(expiresIn)
+    ? Math.floor(clock().getTime() / 1000) + expiresIn
+    : Number.NaN
+  const expiresAt = Number(session?.expires_at ?? fallbackExpiry)
+  if (typeof session?.access_token !== 'string' || session.access_token.length === 0 ||
+      typeof session?.refresh_token !== 'string' || session.refresh_token.length === 0 ||
+      !Number.isSafeInteger(expiresAt)) {
+    throw new Error('plan55_canary_actor_session_invalid')
+  }
+  return {
+    accessToken: session.access_token,
+    refreshToken: session.refresh_token,
+    expiresAt,
+  }
+}
+
 async function defaultClientFactory(fetchImpl) {
   const { createClient } = await import('@supabase/supabase-js')
   return (url, key, options) => createClient(url, key, {
@@ -900,18 +1284,27 @@ async function readJson(fetchImpl, url, init, errorCode) {
       ...init,
       redirect: 'error',
       cache: 'no-store',
-      signal: AbortSignal.timeout(20_000),
     })
   } catch {
     throw new Error(errorCode)
   }
-  if (!response.ok) throw new Error(`${errorCode}_${response.status}`)
-  if (response.status === 204) return null
+  if (!response.ok) {
+    finishBoundedResponse(response, true)
+    throw new Error(`${errorCode}_${response.status}`)
+  }
+  if (response.status === 204) {
+    finishBoundedResponse(response)
+    return null
+  }
   try {
     return await response.json()
   } catch {
     throw new Error(`${errorCode}_invalid_response`)
   }
+}
+
+function finishBoundedResponse(response, abort = false) {
+  BOUNDED_RESPONSE_CLEANUP.get(response)?.(abort)
 }
 
 function managementHeaders(accessToken, json = false) {

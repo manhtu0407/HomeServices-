@@ -20,6 +20,9 @@ const sourceSha = 'a'.repeat(40)
 const reviewedHeadSha = 'b'.repeat(40)
 const productionBaseSha = '891b1e26dd9a785f05671002c5e74cb270678be4'
 const productionBaseBranch = 'codex/plan55-production-base-891b1e26-review-v2'
+const productionTargetBranch = 'main'
+const productionMergeBaseSha = 'c'.repeat(40)
+const productionTargetBranchTipSha = 'd'.repeat(40)
 const hash = (value) => createHash('sha256').update(value).digest('hex')
 const identityHash = (id) => `sha256:${hash(String(id))}`
 const guardPath = 'supabase/functions/mobile-api/_shared/kael/learning/playbooks/flags.ts'
@@ -47,7 +50,7 @@ function buildFixture() {
   const labelsHashes = [holdoutLabelsSha256, holdoutLabelsSha256]
   const reviewIds = [1101, 1102]
   const proof = {
-    schema: 'plan55-independent-holdout-proof/v2',
+    schema: 'plan55-independent-holdout-proof/v4',
     status: 'PASS',
     blinded: true,
     reviewed_by_author: false,
@@ -60,6 +63,10 @@ function buildFixture() {
       reviewed_head_sha: reviewedHeadSha,
       production_source_base_branch: productionBaseBranch,
       production_source_base_sha: productionBaseSha,
+      production_source_target_branch: productionTargetBranch,
+      production_source_target_branch_tip_sha: productionTargetBranchTipSha,
+      production_source_target_branch_ancestry_status: 'ahead',
+      production_source_base_ancestry_status: 'ahead',
       actor_guard_file_blob_sha1: guardBlobSha,
       review_ids: reviewIds,
     },
@@ -80,7 +87,7 @@ function buildFixture() {
     merged: true,
     merged_at: '2026-09-30T00:00:00Z',
     merge_commit_sha: sourceSha,
-    base: { ref: productionBaseBranch, repo: { full_name: repository } },
+    base: { ref: productionTargetBranch, sha: productionTargetBranchTipSha, repo: { full_name: repository } },
     head: { sha: reviewedHeadSha, repo: { full_name: repository } },
     user: { id: authorId },
   }
@@ -100,7 +107,17 @@ function buildFixture() {
   }))
   const mergeCommit = {
     sha: sourceSha,
-    parents: [{ sha: productionBaseSha }, { sha: reviewedHeadSha }],
+    parents: [{ sha: productionMergeBaseSha }],
+    plan55ProductionBaseComparison: {
+      status: 'ahead',
+      base_commit: { sha: productionBaseSha },
+      head_commit: { sha: sourceSha },
+    },
+    plan55TargetBranchComparison: {
+      status: 'ahead',
+      base_commit: { sha: sourceSha },
+      head_commit: { sha: productionTargetBranchTipSha },
+    },
   }
   return {
     proof, pullRequest, mergeCommit, reviews, holdoutHashes, holdoutLabelsSha256, casesByService,
@@ -193,7 +210,7 @@ function buildGithubProviderFixture(overrides = {}) {
   }
 }
 
-test('independent holdout proof is tied to the merged Production source and two real PR approvals', () => {
+test('independent holdout proof is tied to the merged Production source and current non-author PR approval', () => {
   const fixture = buildFixture()
   const verified = verifyPlan55IndependentHoldoutReviewEvidence({
     proof: fixture.proof,
@@ -209,6 +226,48 @@ test('independent holdout proof is tied to the merged Production source and two 
     verified, sourceSha, fixture.holdoutHashes, fixture.holdoutLabelsSha256,
   ), true)
   assert.deepEqual(verified.github_review_verification.review_ids, fixture.reviewIds)
+})
+
+test('one current non-author reviewer can independently attest the frozen holdout labels', () => {
+  const fixture = buildFixture()
+  const reviewId = fixture.reviewIds[0]
+  const proof = {
+    ...fixture.proof,
+    review_evidence: {
+      ...fixture.proof.review_evidence,
+      review_ids: [reviewId],
+    },
+    reviewer_attestations: fixture.proof.reviewer_attestations.filter((item) => item.review_id === reviewId),
+  }
+  const verified = verifyPlan55IndependentHoldoutReviewEvidence({
+    proof,
+    expectedSourceSha: sourceSha,
+    expectedHoldoutHashes: fixture.holdoutHashes,
+    expectedHoldoutLabelsSha256: fixture.holdoutLabelsSha256,
+    pullRequest: fixture.pullRequest,
+    mergeCommit: fixture.mergeCommit,
+    reviews: fixture.reviews.filter((review) => review.id === reviewId),
+  })
+
+  assert.equal(verified.status, 'PASS')
+  assert.deepEqual(verified.github_review_verification.review_ids, [reviewId])
+  assert.equal(assertPlan55IndependentHoldoutProof(
+    verified, sourceSha, fixture.holdoutHashes, fixture.holdoutLabelsSha256,
+  ), true)
+
+  assert.throws(() => verifyPlan55IndependentHoldoutReviewEvidence({
+    proof: {
+      ...proof,
+      review_evidence: { ...proof.review_evidence, review_ids: [] },
+      reviewer_attestations: [],
+    },
+    expectedSourceSha: sourceSha,
+    expectedHoldoutHashes: fixture.holdoutHashes,
+    expectedHoldoutLabelsSha256: fixture.holdoutLabelsSha256,
+    pullRequest: fixture.pullRequest,
+    mergeCommit: fixture.mergeCommit,
+    reviews: [],
+  }), { message: 'plan55_preflight_independent_holdout_unverified' })
 })
 
 test('holdout label digest is deterministic and bound to the expected labels', () => {
@@ -239,6 +298,14 @@ test('independent holdout proof rejects fabricated, stale, author, and untrusted
     ...overrides,
   })
 
+  const verified = verify()
+  assert.throws(() => assertPlan55IndependentHoldoutProof({
+    ...verified,
+    github_review_verification: null,
+  }, sourceSha, fixture.holdoutHashes, fixture.holdoutLabelsSha256), {
+    message: 'plan55_preflight_independent_holdout_unverified',
+  })
+
   assert.throws(() => verify({
     proof: {
       ...fixture.proof,
@@ -251,16 +318,30 @@ test('independent holdout proof rejects fabricated, stale, author, and untrusted
   assert.throws(() => verify({
     pullRequest: { ...fixture.pullRequest, merge_commit_sha: 'e'.repeat(40) },
   }), { message: 'plan55_preflight_independent_holdout_unverified' })
+  for (const parents of [
+    [{ sha: productionMergeBaseSha }],
+    [{ sha: productionMergeBaseSha }, { sha: reviewedHeadSha }],
+    [{ sha: reviewedHeadSha }],
+  ]) assert.equal(verify({ mergeCommit: { ...fixture.mergeCommit, parents } }).status, 'PASS')
   assert.throws(() => verify({
-    mergeCommit: { ...fixture.mergeCommit, parents: [{ sha: 'c'.repeat(40) }, { sha: reviewedHeadSha }] },
-  }), { message: 'plan55_preflight_independent_holdout_unverified' })
-  assert.throws(() => verify({
-    mergeCommit: { ...fixture.mergeCommit, parents: [{ sha: productionBaseSha }, { sha: 'c'.repeat(40) }] },
+    mergeCommit: { ...fixture.mergeCommit, parents: [{ sha: 'not-a-git-sha' }] },
   }), { message: 'plan55_preflight_independent_holdout_unverified' })
   assert.throws(() => verify({
     proof: {
       ...fixture.proof,
       review_evidence: { ...fixture.proof.review_evidence, production_source_base_sha: '0'.repeat(40) },
+    },
+  }), { message: 'plan55_preflight_independent_holdout_unverified' })
+  assert.throws(() => verify({
+    proof: {
+      ...fixture.proof,
+      review_evidence: { ...fixture.proof.review_evidence, production_source_target_branch: 'release/other' },
+    },
+  }), { message: 'plan55_preflight_independent_holdout_unverified' })
+  assert.throws(() => verify({
+    proof: {
+      ...fixture.proof,
+      review_evidence: { ...fixture.proof.review_evidence, production_source_base_ancestry_status: 'diverged' },
     },
   }), { message: 'plan55_preflight_independent_holdout_unverified' })
   assert.throws(() => verify({
@@ -276,7 +357,34 @@ test('independent holdout proof rejects fabricated, stale, author, and untrusted
     })),
   }), { message: 'plan55_preflight_independent_holdout_unverified' })
   assert.throws(() => verify({
-    pullRequest: { ...fixture.pullRequest, base: { ...fixture.pullRequest.base, ref: 'main' } },
+    pullRequest: { ...fixture.pullRequest, base: { ...fixture.pullRequest.base, ref: 'release/other' } },
+  }), { message: 'plan55_preflight_independent_holdout_unverified' })
+  assert.throws(() => verify({
+    mergeCommit: {
+      ...fixture.mergeCommit,
+      plan55TargetBranchComparison: {
+        ...fixture.mergeCommit.plan55TargetBranchComparison,
+        head_commit: { sha: 'e'.repeat(40) },
+      },
+    },
+  }), { message: 'plan55_preflight_independent_holdout_unverified' })
+  assert.throws(() => verify({
+    mergeCommit: {
+      ...fixture.mergeCommit,
+      plan55ProductionBaseComparison: {
+        ...fixture.mergeCommit.plan55ProductionBaseComparison,
+        status: 'diverged',
+      },
+    },
+  }), { message: 'plan55_preflight_independent_holdout_unverified' })
+  assert.throws(() => verify({
+    mergeCommit: {
+      ...fixture.mergeCommit,
+      plan55ProductionBaseComparison: {
+        ...fixture.mergeCommit.plan55ProductionBaseComparison,
+        head_commit: { sha: 'd'.repeat(40) },
+      },
+    },
   }), { message: 'plan55_preflight_independent_holdout_unverified' })
   assert.throws(() => verify({
     pullRequest: {
@@ -313,6 +421,15 @@ test('GitHub provider discovers the exact merged source, derives independent rev
       }
       if (endpoint === `repos/${repository}/commits/${sourceSha}`) {
         return JSON.stringify(fixture.mergeCommit)
+      }
+      if (endpoint === `repos/${repository}/branches/${productionTargetBranch}`) {
+        return JSON.stringify({ commit: { sha: productionTargetBranchTipSha } })
+      }
+      if (endpoint === `repos/${repository}/compare/${productionBaseSha}...${sourceSha}`) {
+        return JSON.stringify(fixture.mergeCommit.plan55ProductionBaseComparison)
+      }
+      if (endpoint === `repos/${repository}/compare/${sourceSha}...${productionTargetBranchTipSha}`) {
+        return JSON.stringify(fixture.mergeCommit.plan55TargetBranchComparison)
       }
       if (args[1] === 'repos/manhtu0407/HomeServices-/pulls/55') {
         return JSON.stringify(fixture.pullRequest)
@@ -365,12 +482,24 @@ test('GitHub provider discovers the exact merged source, derives independent rev
   assert.ok(calls.some((call) => call.args[1].includes(`/commits/${reviewedHeadSha}/check-runs?`)))
   assert.ok(calls.every((call) => call.command === 'gh' && call.options.shell === false))
   assert.ok(calls.every((call) => call.args[1].startsWith('repos/manhtu0407/HomeServices-/')))
+
+  fixture.reviews = [fixture.reviews[0]]
+  const singleReviewerResult = await provider({
+    expectedSourceSha: sourceSha,
+    expectedHoldoutHashes: fixture.holdoutHashes,
+    expectedHoldoutLabelsSha256: fixture.holdoutLabelsSha256,
+    expectedHoldoutCaseCounts: Object.fromEntries(PLAN55_SERVICE_ORDER.map((service) => [service, 24])),
+    sourceAttestation: fixture.sourceAttestation,
+  })
+  assert.equal(singleReviewerResult.proof.github_review_verification.review_ids.length, 1)
+  assert.deepEqual(singleReviewerResult.reviews, fixture.reviews)
 })
 
 test('GitHub provider fails closed when the deployed guard, merge source, latest approvals, or CI check drift', async () => {
   const fixture = buildGithubProviderFixture()
   const runProvider = async (overrides = {}) => {
     const calls = []
+    const targetBranchTipSha = overrides.targetBranchTipSha ?? productionTargetBranchTipSha
     const provider = createPlan55GithubReviewEvidenceProvider({
       cwd: 'C:/repo',
       execFileSyncImpl(command, args, options) {
@@ -381,6 +510,15 @@ test('GitHub provider fails closed when the deployed guard, merge source, latest
         }
         if (endpoint === `repos/${repository}/commits/${sourceSha}`) {
           return JSON.stringify(overrides.mergeCommit ?? fixture.mergeCommit)
+        }
+        if (endpoint === `repos/${repository}/branches/${productionTargetBranch}`) {
+          return JSON.stringify({ commit: { sha: targetBranchTipSha } })
+        }
+        if (endpoint === `repos/${repository}/compare/${productionBaseSha}...${sourceSha}`) {
+          return JSON.stringify(overrides.productionBaseComparison ?? fixture.mergeCommit.plan55ProductionBaseComparison)
+        }
+        if (endpoint === `repos/${repository}/compare/${sourceSha}...${targetBranchTipSha}`) {
+          return JSON.stringify(overrides.targetBranchComparison ?? fixture.mergeCommit.plan55TargetBranchComparison)
         }
         if (endpoint === `repos/${repository}/pulls/55`) {
           return JSON.stringify(overrides.pullRequest ?? fixture.pullRequest)
@@ -427,11 +565,31 @@ test('GitHub provider fails closed when the deployed guard, merge source, latest
     { number: 55, merge_commit_sha: sourceSha }, { number: 56, merge_commit_sha: sourceSha },
   ] }), { message: 'plan55_preflight_independent_holdout_unverified' })
   await assert.rejects(runProvider({
-    mergeCommit: { ...fixture.mergeCommit, parents: [{ sha: 'c'.repeat(40) }] },
+    pullRequest: { ...fixture.pullRequest, base: { ...fixture.pullRequest.base, ref: 'release/other' } },
+  }), { message: 'plan55_preflight_independent_holdout_unverified' })
+  await runProvider({
+    pullRequest: { ...fixture.pullRequest, base: { ...fixture.pullRequest.base, sha: 'e'.repeat(40) } },
+  })
+  await assert.rejects(runProvider({
+    productionBaseComparison: {
+      ...fixture.mergeCommit.plan55ProductionBaseComparison,
+      status: 'behind',
+    },
   }), { message: 'plan55_preflight_independent_holdout_unverified' })
   await assert.rejects(runProvider({
-    pullRequest: { ...fixture.pullRequest, base: { ...fixture.pullRequest.base, ref: 'main' } },
+    targetBranchComparison: {
+      ...fixture.mergeCommit.plan55TargetBranchComparison,
+      status: 'behind',
+    },
   }), { message: 'plan55_preflight_independent_holdout_unverified' })
+  await assert.rejects(runProvider({ targetBranchTipSha: 'not-a-git-sha' }), {
+    message: 'plan55_preflight_independent_holdout_unverified',
+  })
+  for (const parents of [
+    [{ sha: productionMergeBaseSha }],
+    [{ sha: productionMergeBaseSha }, { sha: reviewedHeadSha }],
+    [{ sha: reviewedHeadSha }],
+  ]) await runProvider({ mergeCommit: { ...fixture.mergeCommit, parents } })
   await assert.rejects(runProvider({
     checkRuns: [{ ...fixture.checkRun, conclusion: 'failure' }],
   }), { message: 'plan55_preflight_actor_guard_unverified' })
@@ -465,6 +623,15 @@ function createGithubReviewApiFixture(fixture, { reviews = fixture.reviews, chec
     }
     if (endpoint === `repos/${repository}/commits/${sourceSha}`) {
       return JSON.stringify(fixture.mergeCommit)
+    }
+    if (endpoint === `repos/${repository}/branches/${productionTargetBranch}`) {
+      return JSON.stringify({ commit: { sha: productionTargetBranchTipSha } })
+    }
+    if (endpoint === `repos/${repository}/compare/${productionBaseSha}...${sourceSha}`) {
+      return JSON.stringify(fixture.mergeCommit.plan55ProductionBaseComparison)
+    }
+    if (endpoint === `repos/${repository}/compare/${sourceSha}...${productionTargetBranchTipSha}`) {
+      return JSON.stringify(fixture.mergeCommit.plan55TargetBranchComparison)
     }
     if (endpoint === `repos/${repository}/pulls/55`) {
       return JSON.stringify(fixture.pullRequest)
@@ -519,6 +686,10 @@ test('pre-deployment holdout gate proves exact independent approvals and guard C
     reviewed_head_sha: reviewedHeadSha,
     review_count: 2,
     actor_guard_check_run_id: fixture.checkRun.id,
+    production_source_target_branch: productionTargetBranch,
+    production_source_target_branch_tip_sha: productionTargetBranchTipSha,
+    production_source_target_branch_ancestry_status: 'ahead',
+    production_source_base_ancestry_status: 'ahead',
     holdout_root_sha256: createHash('sha256')
       .update(Object.keys(fixture.holdoutHashes).sort()
         .map((service) => `${service}=${fixture.holdoutHashes[service].slice('sha256:'.length)}`)

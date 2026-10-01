@@ -40,17 +40,25 @@ function receiptFor(slice) {
 
 function cleanReceipt() {
   return {
+    globalFlags: 'absent',
     canaryFlag: 'absent',
     canaryActorId: 'absent',
     authStatus: 404,
+    orphanWorkers: 0,
     rows: {
       profiles: 0,
       customer_profiles: 0,
       customer_account_deletion_requests: 0,
       kael_chat_sessions: 0,
       kael_chat_turns: 0,
+      worker_profiles: 0,
+      jobs_as_customer: 0,
+      jobs_as_worker: 0,
+      job_broadcasts_as_worker: 0,
+      job_events_as_actor: 0,
+      chat_messages_as_sender: 0,
+      notifications_as_user: 0,
     },
-    orphanWorkers: 0,
   }
 }
 
@@ -217,6 +225,16 @@ test('Plan 55 retains the service lock and staged receipt when cleanup proof fai
     { message: 'plan55_cleanup_canary_flag_still_enabled' },
   )
   await assert.rejects(
+    store.persistVerifiedServiceCleanup({
+      checkpoint,
+      service: 'plumbing',
+      deployment,
+      slices: [receipt],
+      cleanup: { ...cleanReceipt(), globalFlags: 'present' },
+    }),
+    { message: 'plan55_cleanup_global_flags_remain' },
+  )
+  await assert.rejects(
     competitor.beginServiceCheckpoint({ service: 'plumbing', deployment, slices: [slice] }),
     { message: 'plan55_checkpoint_service_active' },
   )
@@ -224,6 +242,123 @@ test('Plan 55 retains the service lock and staged receipt when cleanup proof fai
     competitor.loadVerifiedSliceReceipt({ service: 'plumbing', slice, deployment }),
     { message: 'plan55_checkpoint_service_active' },
   )
+})
+
+test('Plan 55 interrupted recovery revalidates receipts, preserves valid slices, and releases the exact lock', async (t) => {
+  const { rootDir, store } = await makeStore(t)
+  const slices = buildPlan55ServiceSlices('hvac')
+  const firstReceipt = receiptFor(slices[0])
+  const secondReceipt = receiptFor(slices[1])
+  const firstAttempt = await store.beginServiceCheckpoint({
+    service: 'hvac', deployment, slices: [slices[0]],
+  })
+  await store.persistVerifiedSliceReceipt({
+    checkpoint: firstAttempt, service: 'hvac', slice: slices[0], deployment, receipt: firstReceipt,
+  })
+  await store.persistVerifiedServiceCleanup({
+    checkpoint: firstAttempt, service: 'hvac', deployment, slices: [firstReceipt], cleanup: cleanReceipt(),
+  })
+
+  const interruptedAttempt = await store.beginServiceCheckpoint({
+    service: 'hvac', deployment, slices: [slices[1]],
+  })
+  await store.persistVerifiedSliceReceipt({
+    checkpoint: interruptedAttempt, service: 'hvac', slice: slices[1], deployment, receipt: secondReceipt,
+  })
+  const interrupted = await store.readInterruptedServiceCheckpoint({ service: 'hvac', deployment })
+
+  assert.deepEqual(interrupted.sliceIds, [slices[1].id])
+  assert.deepEqual(interrupted.receipts.map(({ sliceId }) => sliceId), [slices[0].id, slices[1].id])
+  await store.recoverInterruptedServiceCheckpoint({
+    checkpoint: interrupted,
+    service: 'hvac',
+    deployment,
+    validatedReceipts: [firstReceipt, secondReceipt],
+    invalidatedSliceIds: [],
+    cleanup: cleanReceipt(),
+  })
+
+  assert.deepEqual(
+    (await store.readVerifiedServiceStatus({ service: 'hvac', deployment })).verifiedSliceIds,
+    [slices[0].id, slices[1].id],
+  )
+  await assert.rejects(store.readInterruptedServiceCheckpoint({ service: 'hvac', deployment }), {
+    message: 'plan55_checkpoint_service_not_interrupted',
+  })
+  assert.deepEqual(await readdir(rootDir), ['records'])
+})
+
+test('Plan 55 interrupted recovery reruns only invalidated slices and requires exact receipt accounting', async (t) => {
+  const { store } = await makeStore(t)
+  const slices = buildPlan55ServiceSlices('handyman')
+  const checkpoint = await store.beginServiceCheckpoint({
+    service: 'handyman', deployment, slices: [slices[0], slices[1]],
+  })
+  const firstReceipt = receiptFor(slices[0])
+  await store.persistVerifiedSliceReceipt({
+    checkpoint, service: 'handyman', slice: slices[0], deployment, receipt: firstReceipt,
+  })
+  const interrupted = await store.readInterruptedServiceCheckpoint({ service: 'handyman', deployment })
+
+  await assert.rejects(store.recoverInterruptedServiceCheckpoint({
+    checkpoint: interrupted,
+    service: 'handyman',
+    deployment,
+    validatedReceipts: [firstReceipt],
+    invalidatedSliceIds: [],
+    cleanup: cleanReceipt(),
+  }), { message: 'plan55_checkpoint_recovery_accounting_invalid' })
+  await assert.rejects(store.recoverInterruptedServiceCheckpoint({
+    checkpoint: interrupted,
+    service: 'handyman',
+    deployment,
+    validatedReceipts: [firstReceipt],
+    invalidatedSliceIds: [slices[1].id],
+    cleanup: { ...cleanReceipt(), globalFlags: 'present' },
+  }), { message: 'plan55_cleanup_global_flags_remain' })
+
+  await store.recoverInterruptedServiceCheckpoint({
+    checkpoint: interrupted,
+    service: 'handyman',
+    deployment,
+    validatedReceipts: [firstReceipt],
+    invalidatedSliceIds: [slices[1].id],
+    cleanup: cleanReceipt(),
+  })
+  const status = await store.readVerifiedServiceStatus({ service: 'handyman', deployment })
+  assert.deepEqual(status.verifiedSliceIds, [slices[0].id])
+  assert.equal(status.missingSliceIds.includes(slices[1].id), true)
+  const next = await store.beginServiceCheckpoint({
+    service: 'handyman', deployment, slices: [slices[1]],
+  })
+  await store.persistVerifiedServiceCleanup({
+    checkpoint: next, service: 'handyman', deployment, slices: [], cleanup: cleanReceipt(),
+  })
+})
+
+test('Plan 55 interrupted recovery refuses a lock for another service or a changed lock token', async (t) => {
+  const { rootDir, store } = await makeStore(t)
+  const hvacSlice = buildPlan55ServiceSlices('hvac')[0]
+  const checkpoint = await store.beginServiceCheckpoint({
+    service: 'hvac', deployment, slices: [hvacSlice],
+  })
+  await assert.rejects(store.readInterruptedServiceCheckpoint({ service: 'handyman', deployment }), {
+    message: 'plan55_checkpoint_lock_lost',
+  })
+
+  const interrupted = await store.readInterruptedServiceCheckpoint({ service: 'hvac', deployment })
+  const lockPath = join(rootDir, 'active.lock')
+  const lock = JSON.parse(await readFile(lockPath, 'utf8'))
+  lock.token = checkpoint.token === 'a'.repeat(36) ? 'b'.repeat(36) : 'a'.repeat(36)
+  await writeFile(lockPath, `${JSON.stringify(lock)}\n`)
+  await assert.rejects(store.recoverInterruptedServiceCheckpoint({
+    checkpoint: interrupted,
+    service: 'hvac',
+    deployment,
+    validatedReceipts: [],
+    invalidatedSliceIds: [hvacSlice.id],
+    cleanup: cleanReceipt(),
+  }), { message: 'plan55_checkpoint_lock_lost' })
 })
 
 test('Plan 55 checkpoint metrics reject free text before it reaches disk', async (t) => {
@@ -249,5 +384,6 @@ test('Plan 55 checkpoint metrics reject free text before it reaches disk', async
 
   const recordFiles = await readdir(join(rootDir, 'records'))
   const storedText = await readFile(join(rootDir, 'records', recordFiles[0]), 'utf8')
+  assert.equal(JSON.parse(storedText).body.cleanup.globalFlags, 'absent')
   assert.equal(storedText.includes('synthetic contact'), false)
 })

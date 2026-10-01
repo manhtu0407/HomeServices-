@@ -13,7 +13,9 @@ import {
   PLAN55_ACTOR_GUARD_VERIFICATION,
   PLAN55_GITHUB_REPOSITORY,
   PLAN55_GITHUB_REVIEW_VERIFICATION,
+  PLAN55_MINIMUM_INDEPENDENT_HOLDOUT_REVIEWERS,
   PLAN55_PRODUCTION_SOURCE_BASE,
+  PLAN55_PRODUCTION_SOURCE_TARGET_BRANCH,
 } from './plan55-independent-holdout-review.mjs'
 
 export const PLAN55_SERVICE_ORDER = Object.freeze([
@@ -39,6 +41,13 @@ const CLEANUP_TABLES = Object.freeze([
   'customer_account_deletion_requests',
   'kael_chat_sessions',
   'kael_chat_turns',
+  'worker_profiles',
+  'jobs_as_customer',
+  'jobs_as_worker',
+  'job_broadcasts_as_worker',
+  'job_events_as_actor',
+  'chat_messages_as_sender',
+  'notifications_as_user',
 ])
 const ACTOR_GUARD_RUNTIME_PATH = PLAN55_RUNTIME_SOURCE_PATHS[0]
 const POSITIVE_INTEGER = Number.isSafeInteger
@@ -76,6 +85,173 @@ export function buildPlan55CanaryPlan(services = PLAN55_SERVICE_ORDER) {
     service,
     slices: buildPlan55ServiceSlices(service),
   })))
+}
+
+export function buildPlan55CheckpointStatus({ deployment, statuses }) {
+  if (!deployment || typeof deployment.project_ref !== 'string' ||
+      deployment.project_ref !== PRODUCTION_PROJECT_REF ||
+      typeof deployment.release_id !== 'string' || !/^[a-f0-9]{40}$/iu.test(deployment.git_sha ?? '') ||
+      !new RegExp(`^harness-${String(deployment.git_sha).slice(0, 12)}-[a-f0-9]{12}$`, 'iu')
+        .test(deployment.release_id) ||
+      !Array.isArray(statuses) || statuses.some((status) =>
+        !PLAN55_SERVICE_ORDER.includes(status?.service) || !Array.isArray(status.verifiedSliceIds) ||
+        !Array.isArray(status.missingSliceIds) || typeof status.cleanupVerified !== 'boolean' ||
+        typeof status.complete !== 'boolean')) {
+    throw new Error('plan55_checkpoint_status_invalid')
+  }
+  assertOrderedServiceSubset(statuses.map(({ service }) => service))
+  for (const status of statuses) {
+    const expectedIds = new Set(buildPlan55ServiceSlices(status.service).map(({ id }) => id))
+    const allIds = [...status.verifiedSliceIds, ...status.missingSliceIds]
+    if (allIds.length !== expectedIds.size || new Set(allIds).size !== expectedIds.size ||
+        allIds.some((id) => !expectedIds.has(id)) ||
+        (status.verifiedSliceIds.length > 0 && !status.cleanupVerified) ||
+        status.complete !== (status.missingSliceIds.length === 0 && status.cleanupVerified)) {
+      throw new Error('plan55_checkpoint_status_invalid')
+    }
+  }
+
+  const verifiedSliceCount = statuses.reduce((sum, status) => sum + status.verifiedSliceIds.length, 0)
+  const cleanedAttemptObserved = statuses.some((status) => status.cleanupVerified)
+  return Object.freeze({
+    schema: 'plan55-production-checkpoint-status/v2',
+    scope: 'currently_served_production_release_only',
+    // A missing cleaned receipt cannot prove that a previous attempt never started: an
+    // interrupted attempt may have failed before it could persist its cleanup receipt.
+    canary_started: verifiedSliceCount > 0 ? true : null,
+    canary_attempt_cleaned: cleanedAttemptObserved,
+    canary_start_evidence: verifiedSliceCount > 0
+      ? 'clean_verified_slice_receipt_present'
+      : cleanedAttemptObserved
+        ? 'cleaned_service_attempt_present'
+        : 'not_proven_by_local_checkpoints',
+    eligibility: 'not_evaluated',
+    deployment: {
+      project_ref: deployment.project_ref,
+      release_id: deployment.release_id,
+      source_sha: deployment.git_sha,
+    },
+    verified_slice_count: verifiedSliceCount,
+    services: statuses.map((status) => ({
+      service: status.service,
+      verified_slice_count: status.verifiedSliceIds.length,
+      verified_slice_ids: status.verifiedSliceIds,
+      missing_slice_count: status.missingSliceIds.length,
+      missing_slice_ids: status.missingSliceIds,
+      cleanup_verified: status.cleanupVerified,
+      complete: status.complete,
+    })),
+  })
+}
+
+export function assertPlan55ReusableServiceAttempt({ attempt, checkpointStatus, service, sourceSha, releaseId, recovery = null }) {
+  const fail = () => { throw new Error('plan55_resume_prior_attempt_not_reusable') }
+  const expectedSourceSha = String(sourceSha ?? '').toLowerCase()
+  if (!PLAN55_SERVICE_ORDER.includes(service) || !/^[a-f0-9]{40}$/iu.test(expectedSourceSha) ||
+      typeof releaseId !== 'string' ||
+      !new RegExp(`^harness-${expectedSourceSha.slice(0, 12)}-[a-f0-9]{12}$`, 'iu').test(releaseId)) fail()
+
+  const serviceStatus = checkpointStatus?.services?.[0]
+  const expectedIds = new Set(buildPlan55ServiceSlices(service).map(({ id }) => id))
+  const verifiedIds = serviceStatus?.verified_slice_ids
+  const missingIds = serviceStatus?.missing_slice_ids
+  if (checkpointStatus?.schema !== 'plan55-production-checkpoint-status/v2' ||
+      checkpointStatus.scope !== 'currently_served_production_release_only' ||
+      checkpointStatus.canary_attempt_cleaned !== true ||
+      checkpointStatus.deployment?.project_ref !== PRODUCTION_PROJECT_REF ||
+      checkpointStatus.deployment?.release_id !== releaseId ||
+      String(checkpointStatus.deployment?.source_sha ?? '').toLowerCase() !== expectedSourceSha ||
+      !Array.isArray(checkpointStatus.services) || checkpointStatus.services.length !== 1 ||
+      serviceStatus?.service !== service ||
+      serviceStatus.cleanup_verified !== true || !Array.isArray(verifiedIds) || !Array.isArray(missingIds)) fail()
+
+  const allIds = [...verifiedIds, ...missingIds]
+  if (allIds.length !== expectedIds.size || new Set(allIds).size !== expectedIds.size ||
+      allIds.some((id) => !expectedIds.has(id)) ||
+      serviceStatus.verified_slice_count !== verifiedIds.length ||
+      serviceStatus.missing_slice_count !== missingIds.length ||
+      serviceStatus.complete !== (missingIds.length === 0) ||
+      checkpointStatus.verified_slice_count !== verifiedIds.length) fail()
+
+  const recovered = recovery === null ? false : assertReusableRecoveryProof({
+    recovery, service, sourceSha: expectedSourceSha, releaseId,
+    verifiedSliceCount: verifiedIds.length, missingSliceIds: missingIds,
+  })
+
+  if (attempt === null || attempt === undefined) {
+    return recovered ? 'cleaned_checkpoint_reusable_after_recovery' : 'clean_checkpoint_reusable'
+  }
+  if (!attempt || attempt.schema !== 'plan55-service-attempt/v1' ||
+      String(attempt.source_sha ?? '').toLowerCase() !== expectedSourceSha ||
+      attempt.service !== service || !Number.isSafeInteger(attempt.exit_code)) fail()
+
+  if (attempt.status === 'RECEIPT_RECORDED' && attempt.exit_code === 0) {
+    const result = attempt.result
+    const serviceResult = result?.services?.[0]
+    try {
+      assertPlan55Cleanup(serviceResult?.cleanup)
+    } catch {
+      fail()
+    }
+    if (result?.schema !== 'plan55-production-canary-sequence/v1' ||
+        result.project_ref !== PRODUCTION_PROJECT_REF || result.services?.length !== 1 ||
+        serviceResult?.service !== service ||
+        !['G5_PASSED', 'G5_FAILED_SERVICE_OFF'].includes(serviceResult.status) ||
+        serviceResult.slice_count !== 8 || serviceResult.case_count !== 96 || serviceResult.error_count !== 0 ||
+        String(serviceResult.source_sha ?? '').toLowerCase() !== expectedSourceSha ||
+        serviceResult.release_id !== releaseId || !serviceStatus.complete || verifiedIds.length !== 8) fail()
+    return 'complete_receipt_reusable'
+  }
+
+  if (attempt.status === 'BLOCKED_UNVERIFIED' && attempt.exit_code > 0 &&
+      (isRetryablePlan55AttemptError(attempt.error_code) ||
+        (recovered && isRetryableRecoveredCleanupError(attempt.error_code))) &&
+      (attempt.result === null || attempt.result === undefined)) {
+    return serviceStatus.complete ? 'cleaned_receipt_reusable_after_interruption' : 'cleaned_partial_receipt_reusable'
+  }
+  fail()
+}
+
+function assertReusableRecoveryProof({ recovery, service, sourceSha, releaseId, verifiedSliceCount, missingSliceIds }) {
+  const fail = () => { throw new Error('plan55_resume_prior_attempt_not_reusable') }
+  const actorHashes = recovery?.cleaned_actor_sha256
+  const invalidatedIds = recovery?.invalidated_slice_ids
+  if (recovery?.schema !== 'plan55-interrupted-service-recovery/v1' ||
+      !['RECOVERY_PASS', 'CLEANUP_ONLY_PASS'].includes(recovery.status) ||
+      recovery.service !== service || recovery.project_ref !== PRODUCTION_PROJECT_REF ||
+      recovery.release_id !== releaseId || String(recovery.source_sha ?? '').toLowerCase() !== sourceSha ||
+      recovery.source_identity_verified !== true ||
+      !Number.isSafeInteger(recovery.cleaned_actor_count) || recovery.cleaned_actor_count < 1 ||
+      !Array.isArray(actorHashes) || actorHashes.length !== recovery.cleaned_actor_count ||
+      actorHashes.some((value) => !/^[a-f0-9]{64}$/iu.test(value)) ||
+      new Set(actorHashes).size !== actorHashes.length ||
+      !Array.isArray(invalidatedIds) || new Set(invalidatedIds).size !== invalidatedIds.length ||
+      invalidatedIds.some((id) => !missingSliceIds.includes(id)) ||
+      recovery.retained_slice_count !== verifiedSliceCount) fail()
+  try {
+    assertPlan55Cleanup(recovery.cleanup)
+  } catch {
+    fail()
+  }
+  return true
+}
+
+function isRetryablePlan55AttemptError(errorCode) {
+  return errorCode === 'plan55_canary_chat_request_failed' ||
+    /^plan55_canary_chat_request_failed_(408|425|429|500|502|503|504)$/u.test(errorCode ?? '')
+}
+
+function isRetryableRecoveredCleanupError(errorCode) {
+  return new Set([
+    'plan55_canary_auth_cleanup_unverified',
+    'plan55_canary_auth_delete_failed',
+    'plan55_canary_cleanup_mutation_failed',
+    'plan55_canary_cleanup_rows_pending',
+    'plan55_canary_cleanup_unverified',
+    'plan55_canary_flag_cleanup_unverified',
+    'plan55_canary_orphan_worker_unverified',
+    'plan55_canary_scoped_flag_cleanup_failed',
+  ]).has(errorCode)
 }
 
 export function buildPlan55ProductionClientHeaders(healthPayload, deployment) {
@@ -187,7 +363,7 @@ export function assertPlan55IndependentHoldoutProof(
   const fail = () => { throw new Error('plan55_preflight_independent_holdout_unverified') }
   const evidence = proof?.review_evidence
   const verification = proof?.github_review_verification
-  if (!proof || proof.schema !== 'plan55-independent-holdout-proof/v2' ||
+  if (!proof || proof.schema !== 'plan55-independent-holdout-proof/v4' ||
       proof.status !== 'PASS' || proof.blinded !== true ||
       proof.reviewed_by_author !== false ||
       typeof proof.source_sha !== 'string' ||
@@ -198,14 +374,35 @@ export function assertPlan55IndependentHoldoutProof(
       !evidence || evidence.repository !== PLAN55_GITHUB_REPOSITORY ||
       !Number.isSafeInteger(evidence.pull_request_number) || evidence.pull_request_number < 1 ||
       typeof evidence.reviewed_head_sha !== 'string' || !/^[a-f0-9]{40}$/iu.test(evidence.reviewed_head_sha) ||
-      !Array.isArray(proof.reviewer_attestations) || proof.reviewer_attestations.length < 2 ||
-      !verification || verification.method !== PLAN55_GITHUB_REVIEW_VERIFICATION ||
+      !verification || typeof verification !== 'object' || Array.isArray(verification) ||
+      evidence.production_source_base_branch !== PLAN55_PRODUCTION_SOURCE_BASE.branch ||
+      String(evidence.production_source_base_sha ?? '').toLowerCase() !== PLAN55_PRODUCTION_SOURCE_BASE.sha ||
+      evidence.production_source_target_branch !== PLAN55_PRODUCTION_SOURCE_TARGET_BRANCH ||
+      String(evidence.production_source_target_branch_tip_sha ?? '').toLowerCase() !==
+        String(verification.production_source_target_branch_tip_sha ?? '').toLowerCase() ||
+      !/^[a-f0-9]{40}$/iu.test(evidence.production_source_target_branch_tip_sha ?? '') ||
+      !['ahead', 'identical'].includes(evidence.production_source_base_ancestry_status) ||
+      !['ahead', 'identical'].includes(evidence.production_source_target_branch_ancestry_status) ||
+      !Array.isArray(proof.reviewer_attestations) ||
+      proof.reviewer_attestations.length < PLAN55_MINIMUM_INDEPENDENT_HOLDOUT_REVIEWERS ||
+      verification.method !== PLAN55_GITHUB_REVIEW_VERIFICATION ||
       verification.repository !== PLAN55_GITHUB_REPOSITORY ||
       verification.pull_request_number !== evidence.pull_request_number ||
       String(verification.reviewed_head_sha ?? '').toLowerCase() !== evidence.reviewed_head_sha.toLowerCase() ||
       String(verification.merge_sha ?? '').toLowerCase() !== String(expectedSourceSha).toLowerCase() ||
+      verification.production_source_base_branch !== PLAN55_PRODUCTION_SOURCE_BASE.branch ||
+      String(verification.production_source_base_sha ?? '').toLowerCase() !== PLAN55_PRODUCTION_SOURCE_BASE.sha ||
+      verification.production_source_target_branch !== PLAN55_PRODUCTION_SOURCE_TARGET_BRANCH ||
+      verification.production_source_base_ancestry_status !== evidence.production_source_base_ancestry_status ||
+      verification.production_source_target_branch_ancestry_status !==
+        evidence.production_source_target_branch_ancestry_status ||
+      !['ahead', 'identical'].includes(verification.production_source_base_ancestry_status) ||
+      !['ahead', 'identical'].includes(verification.production_source_target_branch_ancestry_status) ||
        verification.holdout_labels_sha256 !== expectedHoldoutLabelsSha256 ||
-      !Array.isArray(verification.review_ids) || !Array.isArray(evidence.review_ids)) fail()
+      !Array.isArray(verification.review_ids) ||
+      verification.review_ids.length < PLAN55_MINIMUM_INDEPENDENT_HOLDOUT_REVIEWERS ||
+      !Array.isArray(evidence.review_ids) ||
+      evidence.review_ids.length < PLAN55_MINIMUM_INDEPENDENT_HOLDOUT_REVIEWERS) fail()
 
   const reviewers = new Set()
   const reviewIds = new Set()
@@ -240,6 +437,9 @@ export function assertPlan55IndependentHoldoutProof(
 
 export function assertPlan55Cleanup(value) {
   if (!value || typeof value !== 'object') throw new Error('plan55_cleanup_receipt_missing')
+  if (value.globalFlags !== 'absent') {
+    throw new Error('plan55_cleanup_global_flags_remain')
+  }
   if (value.canaryFlag !== 'absent') {
     throw new Error('plan55_cleanup_canary_flag_still_enabled')
   }

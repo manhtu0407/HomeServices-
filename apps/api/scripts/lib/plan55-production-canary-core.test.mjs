@@ -6,13 +6,18 @@ import {
   assertPlan55IndependentHoldoutProof,
   assertPlan55CanaryPreflight,
   assertPlan55Cleanup,
+  assertPlan55ReusableServiceAttempt,
   buildPlan55CanaryPlan,
+  buildPlan55CheckpointStatus,
   buildPlan55ProductionClientHeaders,
   buildPlan55ServiceSlices,
   evaluatePlan55G5,
   isSafeArtifactReceipt,
 } from './plan55-production-canary-core.mjs'
-import { PLAN55_PRODUCTION_SOURCE_BASE } from './plan55-independent-holdout-review.mjs'
+import {
+  PLAN55_PRODUCTION_SOURCE_BASE,
+  PLAN55_PRODUCTION_SOURCE_TARGET_BRANCH,
+} from './plan55-independent-holdout-review.mjs'
 import {
   PLAN55_EVALUATOR_PATHS,
   PLAN55_RUNTIME_SOURCE_PATHS,
@@ -88,6 +93,165 @@ test('canary plan is the six approved services with eight 12-case slices each', 
   }
 })
 
+test('checkpoint status separates observed case receipts from unknown or cleaned attempts', () => {
+  const deployment = {
+    project_ref: PRODUCTION_PROJECT_REF,
+    release_id: productionHealth.release.release_id,
+    git_sha: productionHealth.release.git_sha,
+  }
+  const sliceIds = buildPlan55ServiceSlices('hvac').map(({ id }) => id)
+  const missing = buildPlan55CheckpointStatus({
+    deployment,
+    statuses: [{
+      service: 'hvac', verifiedSliceIds: [], missingSliceIds: sliceIds,
+      cleanupVerified: false, complete: false,
+    }],
+  })
+  assert.equal(missing.schema, 'plan55-production-checkpoint-status/v2')
+  assert.equal(missing.canary_started, null)
+  assert.equal(missing.canary_attempt_cleaned, false)
+  assert.equal(missing.canary_start_evidence, 'not_proven_by_local_checkpoints')
+  assert.equal(missing.verified_slice_count, 0)
+
+  const recorded = buildPlan55CheckpointStatus({
+    deployment,
+    statuses: [{
+      service: 'hvac', verifiedSliceIds: [sliceIds[0]], missingSliceIds: sliceIds.slice(1),
+      cleanupVerified: true, complete: false,
+    }],
+  })
+  assert.equal(recorded.canary_started, true)
+  assert.equal(recorded.canary_attempt_cleaned, true)
+  assert.equal(recorded.canary_start_evidence, 'clean_verified_slice_receipt_present')
+  assert.equal(recorded.verified_slice_count, 1)
+
+  const cleanedWithoutSlices = buildPlan55CheckpointStatus({
+    deployment,
+    statuses: [{
+      service: 'hvac', verifiedSliceIds: [], missingSliceIds: sliceIds,
+      cleanupVerified: true, complete: false,
+    }],
+  })
+  assert.equal(cleanedWithoutSlices.canary_started, null)
+  assert.equal(cleanedWithoutSlices.canary_attempt_cleaned, true)
+  assert.equal(cleanedWithoutSlices.canary_start_evidence, 'cleaned_service_attempt_present')
+  assert.throws(() => buildPlan55CheckpointStatus({
+    deployment,
+    statuses: [{
+      service: 'hvac', verifiedSliceIds: [sliceIds[0]], missingSliceIds: sliceIds.slice(1),
+      cleanupVerified: false, complete: false,
+    }],
+  }), /checkpoint_status_invalid/u)
+})
+
+test('service retry reuses only exact-source slices with proven cleanup', () => {
+  const service = 'hvac'
+  const sourceSha = 'a'.repeat(40)
+  const releaseId = `harness-${sourceSha.slice(0, 12)}-${'b'.repeat(12)}`
+  const slices = buildPlan55ServiceSlices(service)
+  const checkpointStatus = buildPlan55CheckpointStatus({
+    deployment: { project_ref: PRODUCTION_PROJECT_REF, release_id: releaseId, git_sha: sourceSha },
+    statuses: [{
+      service,
+      verifiedSliceIds: slices.slice(0, 3).map(({ id }) => id),
+      missingSliceIds: slices.slice(3).map(({ id }) => id),
+      cleanupVerified: true,
+      complete: false,
+    }],
+  })
+  const interruptedAttempt = {
+    schema: 'plan55-service-attempt/v1',
+    source_sha: sourceSha,
+    service,
+    status: 'BLOCKED_UNVERIFIED',
+    error_code: 'plan55_canary_chat_request_failed_503',
+    exit_code: 1,
+  }
+  const recovery = {
+    schema: 'plan55-interrupted-service-recovery/v1',
+    service,
+    project_ref: PRODUCTION_PROJECT_REF,
+    release_id: releaseId,
+    source_sha: sourceSha,
+    status: 'RECOVERY_PASS',
+    cleaned_actor_count: 1,
+    cleaned_actor_sha256: ['d'.repeat(64)],
+    retained_slice_count: 3,
+    invalidated_slice_ids: [slices[3].id],
+    source_identity_verified: true,
+    cleanup: {
+      globalFlags: 'absent', canaryFlag: 'absent', canaryActorId: 'absent', authStatus: 404,
+      orphanWorkers: 0,
+      rows: {
+        profiles: 0, customer_profiles: 0, customer_account_deletion_requests: 0,
+        kael_chat_sessions: 0, kael_chat_turns: 0, worker_profiles: 0, jobs_as_customer: 0,
+        jobs_as_worker: 0, job_broadcasts_as_worker: 0, job_events_as_actor: 0,
+        chat_messages_as_sender: 0, notifications_as_user: 0,
+      },
+    },
+  }
+  assert.equal(assertPlan55ReusableServiceAttempt({
+    attempt: interruptedAttempt, checkpointStatus, service, sourceSha, releaseId,
+  }), 'cleaned_partial_receipt_reusable')
+  assert.equal(assertPlan55ReusableServiceAttempt({
+    attempt: { ...interruptedAttempt, error_code: 'plan55_canary_cleanup_mutation_failed' },
+    checkpointStatus, service, sourceSha, releaseId, recovery,
+  }), 'cleaned_partial_receipt_reusable')
+  assert.throws(() => assertPlan55ReusableServiceAttempt({
+    attempt: { ...interruptedAttempt, error_code: 'plan55_canary_production_source_drift' },
+    checkpointStatus, service, sourceSha, releaseId, recovery,
+  }), /resume_prior_attempt_not_reusable/u)
+  assert.throws(() => assertPlan55ReusableServiceAttempt({
+    attempt: interruptedAttempt,
+    checkpointStatus,
+    service,
+    sourceSha,
+    releaseId,
+    recovery: { ...recovery, cleanup: { ...recovery.cleanup, authStatus: 200 } },
+  }), /resume_prior_attempt_not_reusable/u)
+  assert.equal(assertPlan55ReusableServiceAttempt({
+    attempt: null, checkpointStatus, service, sourceSha, releaseId,
+  }), 'clean_checkpoint_reusable')
+  assert.throws(() => assertPlan55ReusableServiceAttempt({
+    attempt: interruptedAttempt,
+    checkpointStatus: {
+      ...checkpointStatus,
+      deployment: { ...checkpointStatus.deployment, source_sha: 'c'.repeat(40) },
+    },
+    service,
+    sourceSha,
+    releaseId,
+  }), /resume_prior_attempt_not_reusable/u)
+  for (const errorCode of [
+    'plan55_canary_case_failed',
+    'plan55_canary_production_source_drift',
+    'plan55_canary_actor_session_refresh_failed',
+    'plan55_canary_chat_request_failed_426',
+  ]) {
+    assert.throws(() => assertPlan55ReusableServiceAttempt({
+      attempt: { ...interruptedAttempt, error_code: errorCode },
+      checkpointStatus,
+      service,
+      sourceSha,
+      releaseId,
+    }), /resume_prior_attempt_not_reusable/u)
+  }
+  assert.equal(assertPlan55ReusableServiceAttempt({
+    attempt: { ...interruptedAttempt, error_code: 'plan55_canary_chat_request_failed' },
+    checkpointStatus, service, sourceSha, releaseId,
+  }), 'cleaned_partial_receipt_reusable')
+  assert.throws(() => assertPlan55ReusableServiceAttempt({
+    attempt: interruptedAttempt,
+    checkpointStatus: {
+      ...checkpointStatus,
+      services: [{ ...checkpointStatus.services[0], cleanup_verified: false }],
+    },
+    service,
+    sourceSha,
+    releaseId,
+  }), /resume_prior_attempt_not_reusable/u)
+})
+
 test('G5 rejects a problem-slug regression even when scope and safety are unchanged', () => {
   const service = 'upholstery'
   const slices = buildPlan55ServiceSlices(service).map((slice) => ({
@@ -137,7 +301,7 @@ test('independent holdout proof requires blinded non-author reviewers and the fr
   const sourceSha = 'a'.repeat(40)
   const digest = (char) => `sha256:${char.repeat(64)}`
   const proof = {
-    schema: 'plan55-independent-holdout-proof/v2',
+    schema: 'plan55-independent-holdout-proof/v4',
     status: 'PASS',
     blinded: true,
     reviewed_by_author: false,
@@ -148,6 +312,12 @@ test('independent holdout proof requires blinded non-author reviewers and the fr
       repository: 'manhtu0407/HomeServices-',
       pull_request_number: 55,
       reviewed_head_sha: 'b'.repeat(40),
+      production_source_base_branch: PLAN55_PRODUCTION_SOURCE_BASE.branch,
+      production_source_base_sha: PLAN55_PRODUCTION_SOURCE_BASE.sha,
+      production_source_target_branch: PLAN55_PRODUCTION_SOURCE_TARGET_BRANCH,
+      production_source_target_branch_tip_sha: 'd'.repeat(40),
+      production_source_target_branch_ancestry_status: 'ahead',
+      production_source_base_ancestry_status: 'ahead',
       review_ids: [101, 102],
     },
     reviewer_attestations: [
@@ -160,6 +330,12 @@ test('independent holdout proof requires blinded non-author reviewers and the fr
       pull_request_number: 55,
       reviewed_head_sha: 'b'.repeat(40),
       merge_sha: sourceSha,
+      production_source_base_branch: PLAN55_PRODUCTION_SOURCE_BASE.branch,
+      production_source_base_sha: PLAN55_PRODUCTION_SOURCE_BASE.sha,
+      production_source_target_branch: PLAN55_PRODUCTION_SOURCE_TARGET_BRANCH,
+      production_source_target_branch_tip_sha: 'd'.repeat(40),
+      production_source_target_branch_ancestry_status: 'ahead',
+      production_source_base_ancestry_status: 'ahead',
       holdout_labels_sha256: digest('7'),
       review_ids: [101, 102],
     },
@@ -345,7 +521,7 @@ test('canary preflight requires source-bound GitHub proof for both guard tests a
   const reviewedHeadSha = 'b'.repeat(40)
   const reviewIds = [101, 102]
   const holdoutProof = {
-    schema: 'plan55-independent-holdout-proof/v2',
+    schema: 'plan55-independent-holdout-proof/v4',
     status: 'PASS',
     blinded: true,
     reviewed_by_author: false,
@@ -356,6 +532,12 @@ test('canary preflight requires source-bound GitHub proof for both guard tests a
       repository: 'manhtu0407/HomeServices-',
       pull_request_number: pullRequestNumber,
       reviewed_head_sha: reviewedHeadSha,
+      production_source_base_branch: PLAN55_PRODUCTION_SOURCE_BASE.branch,
+      production_source_base_sha: PLAN55_PRODUCTION_SOURCE_BASE.sha,
+      production_source_target_branch: PLAN55_PRODUCTION_SOURCE_TARGET_BRANCH,
+      production_source_target_branch_tip_sha: 'd'.repeat(40),
+      production_source_target_branch_ancestry_status: 'ahead',
+      production_source_base_ancestry_status: 'ahead',
       actor_guard_file_blob_sha1: gitBlobSha,
       review_ids: reviewIds,
     },
@@ -369,6 +551,12 @@ test('canary preflight requires source-bound GitHub proof for both guard tests a
       pull_request_number: pullRequestNumber,
       reviewed_head_sha: reviewedHeadSha,
       merge_sha: sourceSha,
+      production_source_base_branch: PLAN55_PRODUCTION_SOURCE_BASE.branch,
+      production_source_base_sha: PLAN55_PRODUCTION_SOURCE_BASE.sha,
+      production_source_target_branch: PLAN55_PRODUCTION_SOURCE_TARGET_BRANCH,
+      production_source_target_branch_tip_sha: 'd'.repeat(40),
+      production_source_target_branch_ancestry_status: 'ahead',
+      production_source_base_ancestry_status: 'ahead',
       holdout_labels_sha256: digest('a'),
       review_ids: reviewIds,
     },
@@ -445,26 +633,38 @@ test('canary preflight requires source-bound GitHub proof for both guard tests a
   }), /invalid_plan55_source_attestation_fields/u)
 })
 
-test('service cleanup requires absent scoped flags, deleted Auth actor, zero residual rows and no worker', () => {
+test('service cleanup requires absent global and scoped flags, deleted Auth actor, zero residual rows and no worker', () => {
   const clean = {
+    globalFlags: 'absent',
     canaryFlag: 'absent',
     canaryActorId: 'absent',
     authStatus: 404,
+    orphanWorkers: 0,
     rows: {
       profiles: 0,
       customer_profiles: 0,
       customer_account_deletion_requests: 0,
       kael_chat_sessions: 0,
       kael_chat_turns: 0,
+      worker_profiles: 0,
+      jobs_as_customer: 0,
+      jobs_as_worker: 0,
+      job_broadcasts_as_worker: 0,
+      job_events_as_actor: 0,
+      chat_messages_as_sender: 0,
+      notifications_as_user: 0,
     },
-    orphanWorkers: 0,
   }
   assert.equal(assertPlan55Cleanup(clean), true)
   for (const invalid of [
+    { ...clean, globalFlags: 'present' },
+    { ...clean, globalFlags: undefined },
     { ...clean, canaryFlag: 'enabled' },
     { ...clean, canaryActorId: 'configured' },
     { ...clean, authStatus: 200 },
-    { ...clean, rows: { ...clean.rows, kael_chat_turns: 1 } },
+    { ...clean, orphanWorkers: undefined },
     { ...clean, orphanWorkers: 1 },
+    { ...clean, rows: { ...clean.rows, kael_chat_turns: 1 } },
+    { ...clean, rows: { ...clean.rows, worker_profiles: 1 } },
   ]) assert.throws(() => assertPlan55Cleanup(invalid))
 })

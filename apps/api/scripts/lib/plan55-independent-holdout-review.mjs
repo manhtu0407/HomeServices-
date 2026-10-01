@@ -23,7 +23,13 @@ const PLAN55_POLICY = JSON.parse(readFileSync(
   resolve(REPO_ROOT, 'config/harness/plan55-production-only-policy.json'),
   'utf8',
 ))
+export const PLAN55_MINIMUM_INDEPENDENT_HOLDOUT_REVIEWERS = PLAN55_POLICY.minimumIndependentHoldoutReviewers
 export const PLAN55_PRODUCTION_SOURCE_BASE = Object.freeze(PLAN55_POLICY.productionSourceBase ?? {})
+export const PLAN55_PRODUCTION_SOURCE_TARGET_BRANCH = PLAN55_POLICY.productionSourceTargetBranch
+if (!Number.isSafeInteger(PLAN55_MINIMUM_INDEPENDENT_HOLDOUT_REVIEWERS) ||
+    PLAN55_MINIMUM_INDEPENDENT_HOLDOUT_REVIEWERS < 1) {
+  throw new Error('plan55_policy_minimum_independent_reviewers_invalid')
+}
 const GUARD_RUNTIME_PATH = PLAN55_RUNTIME_SOURCE_PATHS[0]
 const GUARD_TEST_PATH = 'apps/api/src/__tests__/unit/kael-playbook-registry-pillar.test.ts'
 const GUARD_EVIDENCE_PATHS = Object.freeze([
@@ -146,6 +152,11 @@ export function createPlan55GithubIndependentHoldoutPreflightProvider({
       review_count: reviewVerification.review_ids.length,
       actor_guard_check_run_id: evidence.actorGuardWorkflow.checkRun.id,
       holdout_root_sha256: reviewVerification.holdout_root_sha256,
+      production_source_target_branch: reviewVerification.production_source_target_branch,
+      production_source_target_branch_tip_sha: reviewVerification.production_source_target_branch_tip_sha,
+      production_source_target_branch_ancestry_status:
+        reviewVerification.production_source_target_branch_ancestry_status,
+      production_source_base_ancestry_status: reviewVerification.production_source_base_ancestry_status,
     })
   }
 }
@@ -176,11 +187,35 @@ async function readVerifiedPlan55GithubReviewEvidence({
   const pullRequestNumber = matchingPullRequests[0].number
   const pullPath = `repos/${PLAN55_GITHUB_REPOSITORY}/pulls/${pullRequestNumber}`
   const pullRequest = readGithubJson(execFileSyncImpl, cwd, pullPath)
-  const mergeCommit = readGithubJson(
+  const sourceMergeCommit = readGithubJson(
     execFileSyncImpl,
     cwd,
     `repos/${PLAN55_GITHUB_REPOSITORY}/commits/${sourceSha}`,
   )
+  const targetBranch = readGithubJson(
+    execFileSyncImpl,
+    cwd,
+    `repos/${PLAN55_GITHUB_REPOSITORY}/branches/${PLAN55_PRODUCTION_SOURCE_TARGET_BRANCH}`,
+  )
+  const targetBranchTipSha = String(targetBranch?.commit?.sha ?? '').toLowerCase()
+  if (!GIT_SHA_PATTERN.test(targetBranchTipSha)) {
+    throw new Error('plan55_preflight_independent_holdout_unverified')
+  }
+  const productionBaseComparison = readGithubJson(
+    execFileSyncImpl,
+    cwd,
+    `repos/${PLAN55_GITHUB_REPOSITORY}/compare/${PLAN55_PRODUCTION_SOURCE_BASE.sha}...${sourceSha}`,
+  )
+  const targetBranchComparison = readGithubJson(
+    execFileSyncImpl,
+    cwd,
+    `repos/${PLAN55_GITHUB_REPOSITORY}/compare/${sourceSha}...${targetBranchTipSha}`,
+  )
+  const mergeCommit = Object.freeze({
+    ...sourceMergeCommit,
+    plan55ProductionBaseComparison: productionBaseComparison,
+    plan55TargetBranchComparison: targetBranchComparison,
+  })
   if (!isVerifiedMergedProductionPullRequest(pullRequest, pullRequestNumber, sourceSha, mergeCommit)) {
     throw new Error('plan55_preflight_independent_holdout_unverified')
   }
@@ -286,7 +321,7 @@ function buildProofFromGithubReviews({
     })
   }
   reviewerAttestations.sort((left, right) => left.review_id - right.review_id)
-  if (reviewerAttestations.length < 2) fail()
+  if (reviewerAttestations.length < PLAN55_MINIMUM_INDEPENDENT_HOLDOUT_REVIEWERS) fail()
 
   const holdoutServices = Object.keys(expectedHoldoutHashes ?? {}).sort()
   if (!isRecord(expectedHoldoutCaseCounts) ||
@@ -304,7 +339,7 @@ function buildProofFromGithubReviews({
   if (holdoutServices.some((service) => !holdouts[service]?.path)) fail()
 
   return {
-    schema: 'plan55-independent-holdout-proof/v2',
+    schema: 'plan55-independent-holdout-proof/v4',
     status: 'PASS',
     blinded: true,
     reviewed_by_author: false,
@@ -317,6 +352,11 @@ function buildProofFromGithubReviews({
       reviewed_head_sha: reviewedHeadSha,
       production_source_base_branch: PLAN55_PRODUCTION_SOURCE_BASE.branch,
       production_source_base_sha: PLAN55_PRODUCTION_SOURCE_BASE.sha,
+      production_source_target_branch: PLAN55_PRODUCTION_SOURCE_TARGET_BRANCH,
+      production_source_target_branch_tip_sha:
+        String(mergeCommit.plan55TargetBranchComparison.head_commit.sha).toLowerCase(),
+      production_source_target_branch_ancestry_status: mergeCommit.plan55TargetBranchComparison.status,
+      production_source_base_ancestry_status: mergeCommit.plan55ProductionBaseComparison.status,
       actor_guard_file_blob_sha1: actorGuardFileBlobSha.toLowerCase(),
       review_ids: reviewerAttestations.map(({ review_id }) => review_id),
     },
@@ -551,22 +591,34 @@ function isExpectedProductionSourceBase() {
   const { branch, sha, releaseId } = PLAN55_PRODUCTION_SOURCE_BASE
   return GIT_SHA_PATTERN.test(sha ?? '') &&
     branch === `codex/plan55-production-base-${String(sha).slice(0, 8)}-review-v2` &&
-    new RegExp(`^harness-${String(sha).slice(0, 12)}-[a-f0-9]{12}$`, 'u').test(releaseId ?? '')
+    new RegExp(`^harness-${String(sha).slice(0, 12)}-[a-f0-9]{12}$`, 'u').test(releaseId ?? '') &&
+    PLAN55_PRODUCTION_SOURCE_TARGET_BRANCH === 'main'
 }
 
 function isVerifiedMergedProductionPullRequest(pullRequest, number, sourceSha, mergeCommit) {
+  const reviewedHeadSha = String(pullRequest?.head?.sha ?? '').toLowerCase()
+  const comparison = mergeCommit?.plan55ProductionBaseComparison
+  const targetComparison = mergeCommit?.plan55TargetBranchComparison
   return pullRequest?.number === number && pullRequest.state === 'closed' && pullRequest.merged === true &&
     Number.isFinite(Date.parse(pullRequest.merged_at ?? '')) &&
     String(pullRequest.merge_commit_sha ?? '').toLowerCase() === sourceSha &&
     isExpectedProductionSourceBase() &&
-    pullRequest.base?.ref === PLAN55_PRODUCTION_SOURCE_BASE.branch &&
+    pullRequest.base?.ref === PLAN55_PRODUCTION_SOURCE_TARGET_BRANCH &&
     pullRequest.base?.repo?.full_name === PLAN55_GITHUB_REPOSITORY &&
     pullRequest.head?.repo?.full_name === PLAN55_GITHUB_REPOSITORY &&
-    GIT_SHA_PATTERN.test(pullRequest.head?.sha ?? '') &&
+    GIT_SHA_PATTERN.test(reviewedHeadSha) &&
     String(mergeCommit?.sha ?? '').toLowerCase() === sourceSha &&
     Array.isArray(mergeCommit?.parents) &&
-    String(mergeCommit.parents[0]?.sha ?? '').toLowerCase() === PLAN55_PRODUCTION_SOURCE_BASE.sha &&
-    String(mergeCommit.parents[1]?.sha ?? '').toLowerCase() === String(pullRequest.head.sha).toLowerCase()
+    mergeCommit.parents.length >= 1 &&
+    mergeCommit.parents.every((parent) => GIT_SHA_PATTERN.test(String(parent?.sha ?? ''))) &&
+    isRecord(comparison) &&
+    ['ahead', 'identical'].includes(comparison.status) &&
+    String(comparison.base_commit?.sha ?? '').toLowerCase() === PLAN55_PRODUCTION_SOURCE_BASE.sha &&
+    String(comparison.head_commit?.sha ?? '').toLowerCase() === sourceSha &&
+    isRecord(targetComparison) &&
+    ['ahead', 'identical'].includes(targetComparison.status) &&
+    String(targetComparison.base_commit?.sha ?? '').toLowerCase() === sourceSha &&
+    GIT_SHA_PATTERN.test(String(targetComparison.head_commit?.sha ?? ''))
 }
 
 function parseJsonFile(value) {
@@ -597,7 +649,7 @@ export function verifyPlan55IndependentHoldoutReviewEvidence({
   const fail = () => { throw new Error('plan55_preflight_independent_holdout_unverified') }
   const evidence = proof?.review_evidence
   const expectedSource = String(expectedSourceSha ?? '').toLowerCase()
-  if (!proof || proof.schema !== 'plan55-independent-holdout-proof/v2' ||
+  if (!proof || proof.schema !== 'plan55-independent-holdout-proof/v4' ||
       proof.status !== 'PASS' || proof.blinded !== true || proof.reviewed_by_author !== false ||
       !GIT_SHA_PATTERN.test(expectedSource) ||
       typeof proof.source_sha !== 'string' || proof.source_sha.toLowerCase() !== expectedSource ||
@@ -607,9 +659,19 @@ export function verifyPlan55IndependentHoldoutReviewEvidence({
       !GIT_SHA_PATTERN.test(evidence.reviewed_head_sha ?? '') ||
       evidence.production_source_base_branch !== PLAN55_PRODUCTION_SOURCE_BASE.branch ||
       String(evidence.production_source_base_sha ?? '').toLowerCase() !== PLAN55_PRODUCTION_SOURCE_BASE.sha ||
+      evidence.production_source_target_branch !== PLAN55_PRODUCTION_SOURCE_TARGET_BRANCH ||
+      evidence.production_source_base_ancestry_status !== mergeCommit?.plan55ProductionBaseComparison?.status ||
+      String(evidence.production_source_target_branch_tip_sha ?? '').toLowerCase() !==
+        String(mergeCommit?.plan55TargetBranchComparison?.head_commit?.sha ?? '').toLowerCase() ||
+      evidence.production_source_target_branch_ancestry_status !==
+        mergeCommit?.plan55TargetBranchComparison?.status ||
+      String(mergeCommit?.plan55ProductionBaseComparison?.head_commit?.sha ?? '').toLowerCase() !== expectedSource ||
+      String(mergeCommit?.plan55TargetBranchComparison?.base_commit?.sha ?? '').toLowerCase() !== expectedSource ||
       !GIT_SHA_PATTERN.test(evidence.actor_guard_file_blob_sha1 ?? '') ||
-      !Array.isArray(evidence.review_ids) || evidence.review_ids.length < 2 ||
-      !Array.isArray(proof.reviewer_attestations) || proof.reviewer_attestations.length < 2 ||
+      !Array.isArray(evidence.review_ids) ||
+      evidence.review_ids.length < PLAN55_MINIMUM_INDEPENDENT_HOLDOUT_REVIEWERS ||
+      !Array.isArray(proof.reviewer_attestations) ||
+      proof.reviewer_attestations.length < PLAN55_MINIMUM_INDEPENDENT_HOLDOUT_REVIEWERS ||
       !Array.isArray(reviews) || !isRecord(pullRequest)) fail()
 
   if (!isRecord(expectedHoldoutHashes) || Array.isArray(expectedHoldoutHashes) ||
@@ -690,7 +752,7 @@ export function verifyPlan55IndependentHoldoutReviewEvidence({
     reviewerHashes.add(attestation.reviewer_id_sha256)
     verifiedReviewIds.push(reviewId)
   }
-  if (verifiedReviewIds.length < 2) fail()
+  if (verifiedReviewIds.length < PLAN55_MINIMUM_INDEPENDENT_HOLDOUT_REVIEWERS) fail()
 
   return Object.freeze({
     ...proof,
@@ -702,6 +764,11 @@ export function verifyPlan55IndependentHoldoutReviewEvidence({
       merge_sha: expectedSource,
       production_source_base_branch: PLAN55_PRODUCTION_SOURCE_BASE.branch,
       production_source_base_sha: PLAN55_PRODUCTION_SOURCE_BASE.sha,
+      production_source_target_branch: PLAN55_PRODUCTION_SOURCE_TARGET_BRANCH,
+      production_source_target_branch_tip_sha:
+        String(mergeCommit.plan55TargetBranchComparison.head_commit.sha).toLowerCase(),
+      production_source_target_branch_ancestry_status: mergeCommit.plan55TargetBranchComparison.status,
+      production_source_base_ancestry_status: mergeCommit.plan55ProductionBaseComparison.status,
       holdout_root_sha256: holdoutRoot,
       holdout_labels_sha256: expectedHoldoutLabelsSha256,
       review_ids: Object.freeze(verifiedReviewIds.sort((left, right) => left - right)),
