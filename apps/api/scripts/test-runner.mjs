@@ -13,6 +13,7 @@ const apiNodeTests = [
   'scripts/check-edge-db-contract.test.mjs',
   'scripts/harness/runtime-release-bindings.test.mjs',
   'scripts/harness/plan55-workflow-contract.test.mjs',
+  'scripts/harness/plan55-applied-migration-inventory.test.mjs',
 ]
 
 export function apiTestCommandPlan(vitestOptions = []) {

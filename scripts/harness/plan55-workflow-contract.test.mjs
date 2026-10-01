@@ -292,14 +292,19 @@ test('release workflows are covered by the deployed evaluator source attestation
 })
 
 test('API JSON evidence is emitted by Vitest without dropping the Node contract suite', () => {
+  const migrationInventoryTest = 'scripts/harness/plan55-applied-migration-inventory.test.mjs'
   assert.equal(apiPackage.scripts.test, 'node scripts/test-runner.mjs')
   assert.equal(apiPackage.scripts['test:vitest'], 'vitest run')
   assert.match(apiPackage.scripts['test:node'], /node \.\.\/\.\.\/scripts\/run\.mjs run-node --test/u)
+  assert.ok(apiPackage.scripts['test:node'].includes(migrationInventoryTest),
+    'the applied-migration regression test must be part of the API Node suite')
 
   const reporterArgs = ['--reporter=default', '--reporter=json', '--outputFile=../../artifacts/transactions/api-vitest.json']
   const plan = apiTestCommandPlan(reporterArgs)
   assert.deepEqual(plan.vitestArgs, ['run', ...reporterArgs])
   assert.ok(!plan.nodeRunnerArgs.some((argument) => reporterArgs.includes(argument)))
+  assert.ok(plan.nodeRunnerArgs.includes(migrationInventoryTest),
+    'the API Node runner must execute the applied-migration regression test')
 
   for (const path of [
     '.github/workflows/ci.yml',

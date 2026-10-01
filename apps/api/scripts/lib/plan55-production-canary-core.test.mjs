@@ -190,8 +190,11 @@ test('service retry reuses only exact-source slices with proven cleanup', () => 
       },
     },
   }
-  assert.equal(assertPlan55ReusableServiceAttempt({
+  assert.throws(() => assertPlan55ReusableServiceAttempt({
     attempt: interruptedAttempt, checkpointStatus, service, sourceSha, releaseId,
+  }), /resume_prior_attempt_not_reusable/u)
+  assert.equal(assertPlan55ReusableServiceAttempt({
+    attempt: interruptedAttempt, checkpointStatus, service, sourceSha, releaseId, recovery,
   }), 'cleaned_partial_receipt_reusable')
   assert.equal(assertPlan55ReusableServiceAttempt({
     attempt: { ...interruptedAttempt, error_code: 'plan55_canary_cleanup_mutation_failed' },
@@ -236,9 +239,13 @@ test('service retry reuses only exact-source slices with proven cleanup', () => 
       releaseId,
     }), /resume_prior_attempt_not_reusable/u)
   }
-  assert.equal(assertPlan55ReusableServiceAttempt({
+  assert.throws(() => assertPlan55ReusableServiceAttempt({
     attempt: { ...interruptedAttempt, error_code: 'plan55_canary_chat_request_failed' },
     checkpointStatus, service, sourceSha, releaseId,
+  }), /resume_prior_attempt_not_reusable/u)
+  assert.equal(assertPlan55ReusableServiceAttempt({
+    attempt: { ...interruptedAttempt, error_code: 'plan55_canary_chat_request_failed' },
+    checkpointStatus, service, sourceSha, releaseId, recovery,
   }), 'cleaned_partial_receipt_reusable')
   assert.throws(() => assertPlan55ReusableServiceAttempt({
     attempt: interruptedAttempt,

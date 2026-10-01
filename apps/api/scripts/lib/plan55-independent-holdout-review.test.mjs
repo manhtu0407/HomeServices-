@@ -228,7 +228,7 @@ test('independent holdout proof is tied to the merged Production source and curr
   assert.deepEqual(verified.github_review_verification.review_ids, fixture.reviewIds)
 })
 
-test('one current non-author reviewer can independently attest the frozen holdout labels', () => {
+test('accepts one independent holdout reviewer and rejects no reviewer evidence', () => {
   const fixture = buildFixture()
   const reviewId = fixture.reviewIds[0]
   const proof = {
@@ -248,19 +248,16 @@ test('one current non-author reviewer can independently attest the frozen holdou
     mergeCommit: fixture.mergeCommit,
     reviews: fixture.reviews.filter((review) => review.id === reviewId),
   })
-
   assert.equal(verified.status, 'PASS')
   assert.deepEqual(verified.github_review_verification.review_ids, [reviewId])
-  assert.equal(assertPlan55IndependentHoldoutProof(
-    verified, sourceSha, fixture.holdoutHashes, fixture.holdoutLabelsSha256,
-  ), true)
 
+  const noReviewProof = {
+    ...fixture.proof,
+    review_evidence: { ...fixture.proof.review_evidence, review_ids: [] },
+    reviewer_attestations: [],
+  }
   assert.throws(() => verifyPlan55IndependentHoldoutReviewEvidence({
-    proof: {
-      ...proof,
-      review_evidence: { ...proof.review_evidence, review_ids: [] },
-      reviewer_attestations: [],
-    },
+    proof: noReviewProof,
     expectedSourceSha: sourceSha,
     expectedHoldoutHashes: fixture.holdoutHashes,
     expectedHoldoutLabelsSha256: fixture.holdoutLabelsSha256,

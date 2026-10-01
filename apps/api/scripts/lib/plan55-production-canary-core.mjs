@@ -204,8 +204,8 @@ export function assertPlan55ReusableServiceAttempt({ attempt, checkpointStatus, 
   }
 
   if (attempt.status === 'BLOCKED_UNVERIFIED' && attempt.exit_code > 0 &&
-      (isRetryablePlan55AttemptError(attempt.error_code) ||
-        (recovered && isRetryableRecoveredCleanupError(attempt.error_code))) &&
+      recovered && (isRetryablePlan55AttemptError(attempt.error_code) ||
+        isRetryableRecoveredCleanupError(attempt.error_code)) &&
       (attempt.result === null || attempt.result === undefined)) {
     return serviceStatus.complete ? 'cleaned_receipt_reusable_after_interruption' : 'cleaned_partial_receipt_reusable'
   }
