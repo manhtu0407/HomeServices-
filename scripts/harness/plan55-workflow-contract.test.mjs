@@ -34,6 +34,18 @@ function expectWorkflowMatch(workflow, pattern, message) {
   assert.ok(pattern.test(workflow), message)
 }
 
+test('protected-boundary checks compare against the current pull request base', () => {
+  const start = ci.indexOf('      - name: Confirm protected boundaries')
+  assert.notEqual(start, -1, 'CI must keep the protected-boundary check')
+  const next = ci.indexOf('\n      - name:', start + 1)
+  const protectedBoundaries = ci.slice(start, next === -1 ? ci.length : next)
+
+  expectWorkflowMatch(protectedBoundaries, /origin\/\$\{\{ github\.base_ref \}\}/u,
+    'protected-boundary comparisons must follow the current PR base after a retarget')
+  assert.doesNotMatch(protectedBoundaries, /origin\/codex\/plan55-production-base-[^\s"]+/u,
+    'protected-boundary checks must not retain a stale Plan 55 base branch')
+})
+
 test('Plan 55 release is dispatch-only, pinned to the exact Production-base merge, and never targets Staging', () => {
   expectWorkflowMatch(release, /^on:\r?\n  workflow_call:/mu, 'release must be callable by the registered CI workflow')
   assert.ok(!/^  (?:push|pull_request|schedule|workflow_dispatch):/mu.test(release),
