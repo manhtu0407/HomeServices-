@@ -194,14 +194,14 @@ export const customerV21ServiceHistoryStyles = StyleSheet.create({
   rebookButton: {
     minWidth: 84,
   },
-  historyErrorCard: {
+  historyStateCard: {
     alignItems: 'center',
     borderRadius: 26,
     paddingBottom: 22,
     paddingHorizontal: 18,
     paddingTop: 10,
   },
-  historyErrorContent: {
+  historyStateContent: {
     alignItems: 'center',
     position: 'relative',
     width: '100%',
@@ -215,16 +215,16 @@ export const customerV21ServiceHistoryStyles = StyleSheet.create({
     marginTop: -2,
     width: 48,
   },
-  historyErrorIllustration: {
+  historyStateIllustration: {
     height: 224,
     maxWidth: 340,
     width: '100%',
   },
-  historyErrorIllustrationDark: {
+  historyStateIllustrationDark: {
     backgroundColor: '#FFFFFF',
     borderRadius: 20,
   },
-  historyErrorBody: {
+  historyStateBody: {
     fontSize: 14,
     lineHeight: 20,
     marginTop: 4,
@@ -236,7 +236,7 @@ export const customerV21ServiceHistoryStyles = StyleSheet.create({
     minHeight: 44,
     minWidth: 216,
   },
-  historyErrorTitle: {
+  historyStateTitle: {
     fontSize: 18,
     fontWeight: '700',
     lineHeight: 23,

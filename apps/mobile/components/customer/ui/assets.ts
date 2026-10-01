@@ -12,7 +12,6 @@ export function isKaelCoreV9Visual(value: CustomerV21Visual): value is KaelCoreV
 
 export const customerV21Assets = {
   activity: require('@/assets/client-image-icons/client-activity-route.png') as ImageSourcePropType,
-  activityEmpty: require('@/assets/client-image-icons/client-activity-empty.png') as ImageSourcePropType,
   historyErrorWorkart: require('@/assets/customer-history/history-error-workart.png') as ImageSourcePropType,
   activityNav: require('@/assets/client-image-icons/client-activity-nav.png') as ImageSourcePropType,
   address: require('@/assets/client-image-icons/client-address.png') as ImageSourcePropType,
