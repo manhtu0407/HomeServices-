@@ -9,16 +9,16 @@ import createExpoConfig from '../../app.config'
 export const PILLAR = {
   id: 'P37-ios-release-readiness',
   invariant:
-    'the store-bound iOS release uses one Build 45 identity and aligned metadata, purpose strings, audio posture, and an enabled notification entitlement path',
+    'the store-bound iOS release uses one Build 49 identity and aligned metadata, purpose strings, audio posture, and an enabled notification entitlement path',
   authority: [
-    'Stage 1 reviewed release for NestScout 0.2.0 Build 45',
+    'apps/mobile/eas.json production profile with appVersionSource local',
     'governance/RULES.md #8 (no fake or silently degraded runtime state)',
   ],
   target: 'apps/mobile/app.config.ts',
   layer: 'security-negative',
   siblings: ['P08-worker-dock-motion', 'P09-native-ios-liquid-tabs'],
   mutation:
-    'set ios.buildNumber below 45, remove expo-notifications, or disable iosPushNotificationsEnabled — release identity or push setup turns red',
+    'set ios.buildNumber below 49, remove expo-notifications, or disable iosPushNotificationsEnabled — release identity or push setup turns red',
 } as const satisfies PillarManifest
 
 const mobileRoot = resolve(__dirname, '..', '..')
@@ -83,7 +83,7 @@ describe('iOS release readiness', () => {
     expect(staticConfig.owner).toBe(evaluated.owner)
     expect(evaluated.extra?.eas?.projectId).toBe('c2fd8ae7-a6fa-4b6e-a9a0-df85b52ac94b')
     expect(staticConfig.extra?.eas?.projectId).toBe(evaluated.extra?.eas?.projectId)
-    expect(evaluated.ios?.buildNumber).toBe('45')
+    expect(evaluated.ios?.buildNumber).toBe('49')
     expect(staticConfig.ios.buildNumber).toBe(evaluated.ios?.buildNumber)
     expect(storeConfig.version).toBe(evaluated.version)
     expect(storeConfig.release.automaticRelease).toBe(false)
