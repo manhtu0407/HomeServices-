@@ -280,6 +280,7 @@ function ProfileInsightRow({
 }
 
 export function ProfileRankingPanel({
+  membershipCard,
   metrics,
   nextRankPointsText,
   pointsText,
@@ -291,6 +292,7 @@ export function ProfileRankingPanel({
   rules,
   rulesTitle,
 }: {
+  membershipCard?: ReactNode
   metrics: ProfilePanelMetric[]
   nextRankPointsText: string | null
   pointsText: string
@@ -354,6 +356,7 @@ export function ProfileRankingPanel({
           <View style={styles.profileRankingHeroProgress} testID="customer-v21-profile-ranking-progress-slot">{progressBar}</View>
         </View>
       </ProfileAuraCard>
+      {membershipCard}
 
       <View style={styles.profileMetrics}>
         {metrics.map((metric) => (

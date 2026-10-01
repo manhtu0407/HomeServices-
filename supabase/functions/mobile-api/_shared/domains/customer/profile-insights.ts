@@ -36,6 +36,7 @@ type CustomerProfileInsightInput = {
   disputes: CustomerProfileInsightDisputeRow[];
   jobs: CustomerProfileInsightJobRow[];
   kaelInteractionCount: number;
+  membershipPoints: number;
   reviews: CustomerProfileInsightReviewRow[];
   savedAddressCount: number;
 };
@@ -54,6 +55,8 @@ type CustomerProfileInsightsResponse = {
   total_spend_vnd: number;
   usage_rank_level: number;
   usage_rank_points: number;
+  usage_rank_level_floor_points: number;
+  usage_rank_next_level_points: number | null;
   fair_price_service_count: number;
   money_protection_score: number;
   protected_value_vnd: number;
@@ -71,6 +74,7 @@ type CustomerProfileInsightAggregate = {
   fairPriceServiceCount: number;
   kaelInteractionCount: number;
   memberSince: string | null;
+  membershipPoints: number;
   positiveReviewRatePercent: number;
   preferredServiceCount: number;
   priceSavingsVnd: number;
@@ -96,6 +100,13 @@ export async function getCustomerProfileInsights(ctx: MobileApiContext) {
   if (result.error || !row) {
     apiFailure("DB_ERROR", "Không thể tải thống kê hồ sơ khách", 500);
   }
+  // The usage rank reads the membership ledger, which only paid in-app orders can move.
+  const membership = await dbQuery<Record<string, unknown>>(
+    workflowDb(ctx).rpc("get_customer_membership_summary", { p_customer_id: ctx.user.id }),
+  );
+  if (membership.error || !membership.data || typeof membership.data !== "object") {
+    apiFailure("DB_ERROR", "Không thể tải điểm thành viên", 500);
+  }
 
   return buildCustomerProfileInsightsFromAggregate({
     activeServiceDays: requiredAggregateInteger(row, "active_service_days"),
@@ -106,6 +117,7 @@ export async function getCustomerProfileInsights(ctx: MobileApiContext) {
     fairPriceServiceCount: requiredAggregateInteger(row, "fair_price_service_count"),
     kaelInteractionCount: requiredAggregateInteger(row, "kael_interaction_count"),
     memberSince: nullableString(row.member_since),
+    membershipPoints: requiredAggregateInteger(membership.data, "points"),
     positiveReviewRatePercent: requiredAggregateInteger(
       row,
       "positive_review_rate_percent",
@@ -233,6 +245,7 @@ export function buildCustomerProfileInsights(
     fairPriceServiceCount: fairPriceJobs.length,
     kaelInteractionCount,
     memberSince: customerProfileMemberSince(input.accountProfile, input.customerProfile, jobs),
+    membershipPoints: input.membershipPoints,
     positiveReviewRatePercent: customerProfilePositiveReviewRatePercent(input.reviews),
     preferredServiceCount: new Set(
       completedJobs
@@ -258,13 +271,10 @@ function buildCustomerProfileInsightsFromAggregate(
         input.totalTransactionCount) * 100,
     )
     : 0;
-  const usageRankPoints = customerProfileUsageRankPoints({
-    completedCount: input.completedServiceCount,
-    fairPriceCount: input.fairPriceServiceCount,
-    kaelInteractionCount: input.kaelInteractionCount,
-    protectedCount: input.protectedTransactionCount,
-    reviewedCount: input.reviewedServiceCount,
-  });
+  const usageRankPoints = input.membershipPoints;
+  const usageRankLevel = usageRankPoints <= 0
+    ? 0
+    : Math.min(CUSTOMER_PROFILE_USAGE_RANK_MAX, Math.floor(usageRankPoints / CUSTOMER_PROFILE_USAGE_RANK_STEP) + 1);
 
   return {
     customer_id: input.customerId,
@@ -279,10 +289,12 @@ function buildCustomerProfileInsightsFromAggregate(
     positive_review_rate_percent: input.positiveReviewRatePercent,
     price_savings_vnd: input.priceSavingsVnd,
     total_spend_vnd: input.totalSpendVnd,
-    usage_rank_level: usageRankPoints <= 0
-      ? 0
-      : Math.min(CUSTOMER_PROFILE_USAGE_RANK_MAX, Math.max(1, Math.floor(usageRankPoints / CUSTOMER_PROFILE_USAGE_RANK_STEP) + 1)),
+    usage_rank_level: usageRankLevel,
     usage_rank_points: usageRankPoints,
+    usage_rank_level_floor_points: usageRankLevel <= 1 ? 0 : (usageRankLevel - 1) * CUSTOMER_PROFILE_USAGE_RANK_STEP,
+    usage_rank_next_level_points: usageRankLevel >= CUSTOMER_PROFILE_USAGE_RANK_MAX
+      ? null
+      : Math.max(1, usageRankLevel) * CUSTOMER_PROFILE_USAGE_RANK_STEP,
     fair_price_service_count: input.fairPriceServiceCount,
     money_protection_score: customerProfileMoneyProtectionScore({
       disputedTransactionCount: input.disputedTransactionCount,
@@ -401,22 +413,6 @@ function customerProfilePositiveReviewRatePercent(
     .filter((rating): rating is number => typeof rating === "number" && Number.isFinite(rating) && rating >= 1 && rating <= 5);
   if (ratings.length === 0) return 0;
   return Math.round((ratings.filter((rating) => rating >= 4).length / ratings.length) * 100);
-}
-
-function customerProfileUsageRankPoints(input: {
-  completedCount: number;
-  fairPriceCount: number;
-  kaelInteractionCount: number;
-  protectedCount: number;
-  reviewedCount: number;
-}) {
-  const points =
-    input.completedCount * 25 +
-    input.fairPriceCount * 15 +
-    input.protectedCount * 5 +
-    input.reviewedCount * 10 +
-    Math.min(input.kaelInteractionCount, 50) * 2;
-  return Math.min(1000, Math.max(0, points));
 }
 
 function customerProfileMoneyProtectionScore(input: {

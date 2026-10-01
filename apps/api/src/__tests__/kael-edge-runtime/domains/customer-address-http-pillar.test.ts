@@ -54,6 +54,7 @@ function setup(options: {
   // Service client: the only one production lets write customer_profiles or run the aggregate.
   const service = makeSequenceClient([], {
     get_customer_profile_insights_aggregate: [{ data: [aggregateRow], error: null }],
+    get_customer_membership_summary: [{ data: { points: 0 }, error: null }],
   }, {
     customer_profiles: [{ data: null, error: options.writeError ?? null }],
   })

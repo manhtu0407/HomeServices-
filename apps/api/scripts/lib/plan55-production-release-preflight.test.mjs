@@ -9,8 +9,8 @@ import {
   inspectPlan55ProductionReleasePreflight,
 } from './plan55-production-release-preflight.mjs'
 
-const BASE_SHA = '645c907e178f21ddde24a72501e6c8449d6720f9'
-const BASE_RELEASE_ID = 'harness-645c907e178f-f426155f83de'
+const BASE_SHA = '891b1e26dd9a785f05671002c5e74cb270678be4'
+const BASE_RELEASE_ID = 'harness-891b1e26dd9a-8c7eb92a4783'
 
 function health(overrides = {}) {
   return {

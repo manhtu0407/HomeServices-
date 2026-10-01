@@ -508,12 +508,14 @@ export function CustomerBookingEntryView({
   )
   return (
     <>
-      <V21TopBar
-        showAvatar={false}
-        subtitle=""
-        title={isMediaScreen ? (language === 'vi' ? 'Kael thu thập hiện trạng' : 'Kael collects current state') : (language === 'vi' ? 'Tạo yêu cầu dịch vụ' : 'Create service request')}
-        titleStyle={sharedStyles.screenTitle}
-      />
+      {isMediaScreen ? (
+        <V21TopBar
+          showAvatar={false}
+          subtitle=""
+          title={language === 'vi' ? 'Kael thu thập hiện trạng' : 'Kael collects current state'}
+          titleStyle={sharedStyles.screenTitle}
+        />
+      ) : null}
 
       {!isMediaScreen ? (
         <BookingWorkartJourney artworkHeight={bookingJourneyArtworkHeight} copyScale={bookingCardScale} language={language} testID="customer-v21-booking-progress" tokens={tokens} />

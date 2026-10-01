@@ -1,6 +1,6 @@
 import type { UserRole } from "../../../../_shared/domain.ts";
 
-export type AccountState = "active" | "deletion_processing" | "deleted";
+export type AccountState = "active" | "deletion_processing" | "deleted" | "locked";
 
 export type ActorContext = Readonly<{
   actorId: string;
@@ -38,7 +38,7 @@ export function createActorContext(input: {
 }
 
 function normalizeAccountState(value: unknown): AccountState {
-  return value === "deletion_processing" || value === "deleted"
+  return value === "deletion_processing" || value === "deleted" || value === "locked"
     ? value
     : "active";
 }

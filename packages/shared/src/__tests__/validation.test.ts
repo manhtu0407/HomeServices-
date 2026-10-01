@@ -622,6 +622,17 @@ describe('Customer Kael conversation schemas', () => {
     })).toThrow()
   })
 
+  it('accepts only unique private vision-image refs for normal chat', () => {
+    const imageRef = `supabase://kael-chat-media/${UUID}/kael-chat/model_vision/room.jpg`
+    const videoRef = `supabase://kael-chat-media/${UUID}/kael-chat/private_video_original/room.mp4`
+    const base = { client_request_id: UUID, language: 'vi', message: 'Phân tích ảnh này' }
+
+    expect(customerKaelConversationTurnSchema.parse({ ...base, media_refs: [imageRef] }).media_refs).toEqual([imageRef])
+    expect(() => customerKaelConversationTurnSchema.parse({ ...base, media_refs: [videoRef] })).toThrow()
+    expect(() => customerKaelConversationTurnSchema.parse({ ...base, media_refs: [imageRef, imageRef] })).toThrow()
+    expect(() => customerKaelConversationTurnSchema.parse({ ...base, media_refs: Array(6).fill(imageRef) })).toThrow()
+  })
+
   it('validates rename and pin actions', () => {
     expect(customerKaelConversationRenameSchema.parse({ title: 'Nhà bếp' })).toEqual({ title: 'Nhà bếp' })
     expect(customerKaelConversationPinSchema.parse({ pinned: true })).toEqual({ pinned: true })

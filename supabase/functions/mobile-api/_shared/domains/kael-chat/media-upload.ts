@@ -1,6 +1,6 @@
 // Private Kael media boundary: durable upload reservations, ownership checks,
-// trusted Storage image transforms, and retention cleanup. Raw video originals
-// remain private evidence; only decoded/re-encoded image outputs reach a model.
+// and retention cleanup. Raw video originals remain private evidence; only images
+// the server has checked for location metadata reach a model.
 
 import type {
   EdgeKaelChatMediaRevokeInput,
@@ -23,14 +23,6 @@ export type KaelMediaStorage = {
       createSignedUrl(
         path: string,
         expiresIn: number,
-        options?: {
-          transform?: {
-            width: number;
-            height: number;
-            resize: "contain";
-            quality: number;
-          };
-        },
       ): Promise<{
         data: { signedUrl?: string } | null;
         error: unknown;
@@ -71,6 +63,10 @@ export async function createKaelChatMediaUpload(
     !mimeType.startsWith("video/")
   ) {
     apiFailure("UNSUPPORTED_MEDIA", "Bằng chứng gốc riêng tư phải là video", 400);
+  }
+  // Workers send photos to Kael's general chat only; private video originals are customer evidence.
+  if (ctx.role === "worker" && input.purpose !== "model_vision") {
+    apiFailure("UNSUPPORTED_MEDIA", "Kael chỉ nhận ảnh trong cuộc trò chuyện này", 400);
   }
 
   const storage = (ctx.supabase as KaelMediaStorage).storage;

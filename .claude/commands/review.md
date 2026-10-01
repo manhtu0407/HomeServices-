@@ -10,6 +10,7 @@ Run after implementation and before commit. This command points to the current r
 4. `governance/design.md` and `governance/protocols/frontend-test.md` for UI, motion, accessibility, and frontend gates when UI changed.
 5. `governance/protocols/ai-data-security.md` when secrets, PII, prompts, memory, model providers, logs, uploads, or Edge auth are involved.
 6. `docs/architecture/code-ownership-map.md` for any code enhancement or refactor.
+7. The output of `/ocr-review` (Codex: `scripts/ocr-review.mjs plan`) for a change that touches code. It lists the files OCR selected and the ones it did not cover, so nothing is silently skipped.
 
 ## Output
 

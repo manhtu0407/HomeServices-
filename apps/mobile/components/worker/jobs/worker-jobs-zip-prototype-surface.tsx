@@ -6,6 +6,7 @@ import {
 } from './worker-jobs-zip-prototype-shared'
 import { prototypeStyles } from './worker-jobs-zip-prototype-styles'
 import { WorkerWaitingRuntime } from './waiting/waiting-runtime'
+import { isStageElevenPaymentRecorded } from './stage-eleven/stage-eleven-model'
 import {
   WorkerJobsLegacyPrototypeOfferDetailBody,
   WorkerJobsLegacyPrototypeOpportunityInboxBody,
@@ -27,8 +28,14 @@ export { prototypeStyles }
 
 export function WorkerJobsLegacyPrototypeBody(props: WorkerJobsLegacyPrototypeBodyProps) {
   const { prototypeStage, screen } = props
+  const deal = props.runtime.state.deal
+  const paymentRecorded = isStageElevenPaymentRecorded({
+    backendStatus: deal?.backendStatus,
+    paymentStatus: deal?.payment?.status,
+    status: deal?.status,
+  })
 
-  if (screen.id === '2.12-case-closed' && prototypeStage === 'payment-confirmed') {
+  if (screen.id === '2.12-case-closed' && (prototypeStage === 'payment-confirmed' || paymentRecorded)) {
     return (
       <WorkerJobsLegacyPrototypePaymentConfirmedBody
         language={props.language}

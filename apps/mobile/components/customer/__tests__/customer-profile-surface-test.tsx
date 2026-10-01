@@ -250,15 +250,8 @@ describe('CustomerProfileSurface v2.1', () => {
 
     render(<CustomerProfileSurface />)
 
-    expect(screen.getByTestId('customer-v21-top-title')).toHaveTextContent('Hồ sơ khách hàng')
-    expect(screen.getByTestId('customer-v21-top-title')).toHaveStyle({
-      fontSize: 20,
-      fontWeight: '400',
-      includeFontPadding: true,
-      lineHeight: 25,
-      minHeight: 25,
-      textAlign: 'left',
-    })
+    expect(screen.queryByTestId('customer-v21-top-title')).toBeNull()
+    expect(screen.queryByText('Hồ sơ khách hàng')).toBeNull()
     expect(screen.queryByTestId('customer-v21-top-subtitle')).toBeNull()
     expect(screen.getByTestId('customer-v21-profile-name')).toHaveTextContent('Phan Mạnh Tú')
     expect(screen.queryByTestId('customer-v21-profile-completed')).toBeNull()
@@ -311,15 +304,15 @@ describe('CustomerProfileSurface v2.1', () => {
 
   it('reads the usage ranking entry as one button that carries its status, in English without Vietnamese copy', () => {
     mockAppLanguage = 'en'
-    mockCustomerProfileInsights = { usage_rank_level: 2, usage_rank_points: 620 }
+    mockCustomerProfileInsights = { usage_rank_level: 4, usage_rank_points: 620, usage_rank_level_floor_points: 600, usage_rank_next_level_points: 800 }
 
     render(<CustomerProfileSurface />)
 
     const button = screen.getByTestId('customer-v21-profile-ranking-cta')
-    expect(button).toHaveAccessibilityValue({ text: '620 / 1,000 points' })
+    expect(button).toHaveAccessibilityValue({ text: '620 / 800 points' })
     expect(screen.getByRole('button', { name: 'View usage ranking' })).toBe(button)
     expect(screen.getByTestId('customer-v21-profile-ranking-entry-title')).toHaveTextContent('Usage ranking')
-    expect(screen.getByTestId('customer-v21-profile-ranking-entry-points')).toHaveTextContent('620 / 1,000 points')
+    expect(screen.getByTestId('customer-v21-profile-ranking-entry-points')).toHaveTextContent('620 / 800 points')
     expect(screen.getByTestId('customer-v21-profile-ranking-entry-tagline', { includeHiddenElements: true })).toHaveTextContent(/A cleaner home/)
     expect(
       within(screen.getByTestId('customer-v21-profile-ranking-entry')).queryByText(
@@ -459,15 +452,17 @@ describe('CustomerProfileSurface v2.1', () => {
       saved_address_count: 1,
       total_spend_vnd: 0,
       total_transaction_count: 24,
-      usage_rank_level: 3,
+      usage_rank_level: 4,
       usage_rank_points: 620,
+      usage_rank_level_floor_points: 600,
+      usage_rank_next_level_points: 800,
     }
 
     const { unmount } = render(<CustomerProfileSurface />)
 
     expect(screen.queryByTestId('customer-v21-profile-completed')).toBeNull()
     expect(screen.queryByTestId('customer-v21-profile-protection-card')).toBeNull()
-    expect(screen.getByTestId('customer-v21-profile-ranking-entry-points')).toHaveTextContent(/620 \/ 1.000/)
+    expect(screen.getByTestId('customer-v21-profile-ranking-entry-points')).toHaveTextContent(/620 \/ 800/)
     expect(screen.queryByTestId('customer-v21-profile-ranking-entry-progress')).toBeNull()
     expect(screen.queryByTestId('customer-v21-profile-ranking-entry-signals')).toBeNull()
     expect(screen.getByTestId('customer-v21-profile-account-start')).toHaveTextContent('Thành viên từ 01/06/2026')
@@ -491,16 +486,16 @@ describe('CustomerProfileSurface v2.1', () => {
     expect(screen.getByTestId('customer-v21-profile-ranking-current-line')).toHaveStyle({ fontSize: 14, lineHeight: 19, marginLeft: 0, transform: [{ translateY: -2 }] })
     expect(screen.getByTestId('customer-v21-profile-ranking-hero-kicker')).toHaveStyle({ fontSize: 14, fontWeight: '700', lineHeight: 19 })
     expect(screen.getByTestId('customer-v21-profile-ranking-current-value')).toHaveStyle({ fontSize: 14, fontWeight: '700', lineHeight: 19 })
-    expect(screen.getByTestId('customer-v21-profile-ranking-current-line')).toHaveTextContent(/Hạng hiện tại:\s*3/)
+    expect(screen.getByTestId('customer-v21-profile-ranking-current-line')).toHaveTextContent(/Hạng hiện tại:\s*4/)
     expect(screen.getByTestId('customer-v21-profile-ranking-hero-body')).toHaveStyle({ fontSize: 11, lineHeight: 15 })
     expect(screen.getByTestId('customer-v21-profile-ranking-hero-body-line')).toHaveStyle({ flexDirection: 'row', gap: 4 })
     expect(screen.getByTestId('customer-v21-profile-ranking-hero-body-icon')).toBeOnTheScreen()
     expect(screen.queryByTestId('customer-v21-profile-ranking-hero-wide-mint-aura')).toBeNull()
     expect(screen.queryByTestId('customer-v21-profile-ranking-hero-mint-aura')).toBeNull()
-    expect(screen.getByTestId('customer-v21-profile-ranking-current-value')).toHaveTextContent('3')
+    expect(screen.getByTestId('customer-v21-profile-ranking-current-value')).toHaveTextContent('4')
     expect(screen.getByTestId('customer-v21-profile-ranking-progress')).toBeOnTheScreen()
-    expect(screen.getByTestId('customer-v21-profile-rank-rail-node-3')).toBeOnTheScreen()
-    expect(screen.getByTestId('customer-v21-profile-rank-rail-node-3')).toHaveStyle({ borderRadius: 6, height: 12, width: 12 })
+    expect(screen.getByTestId('customer-v21-profile-rank-rail-node-4')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-v21-profile-rank-rail-node-4')).toHaveStyle({ borderRadius: 6, height: 12, width: 12 })
     expect(screen.getByTestId('customer-v21-profile-rank-rail-track-path')).toHaveProp(
       'd',
       'M4.5 14H5.5 M14.5 14H15.5 M24.5 14H25.5 M34.5 14H35.5 M44.5 14H45.5 M54.5 14H55.5 M64.5 14H65.5 M74.5 14H75.5 M84.5 14H85.5 M94.5 14H95.5',
@@ -571,27 +566,31 @@ describe('CustomerProfileSurface v2.1', () => {
     expect(screen.queryByTestId('customer-v21-profile-score-Ranking-progress-dot')).toBeNull()
 
     mockCustomerProfileInsights = {
-      usage_rank_level: 3,
+      usage_rank_level: 2,
       usage_rank_points: 250,
+      usage_rank_level_floor_points: 200,
+      usage_rank_next_level_points: 400,
     }
     rerender(<CustomerProfileSurface />)
 
-    expect(screen.getByTestId('customer-v21-profile-ranking-current-value')).toHaveTextContent('3')
-    expect(screen.getByTestId('customer-v21-profile-rank-rail-node-3')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-v21-profile-ranking-current-value')).toHaveTextContent('2')
+    expect(screen.getByTestId('customer-v21-profile-rank-rail-node-2')).toBeOnTheScreen()
     expect(screen.getByTestId('customer-v21-profile-ranking')).toHaveTextContent(/250/)
 
     mockCustomerProfileInsights = {
-      usage_rank_level: 3,
+      usage_rank_level: 4,
       usage_rank_points: 620,
+      usage_rank_level_floor_points: 600,
+      usage_rank_next_level_points: 800,
     }
     rerender(<CustomerProfileSurface />)
 
-    expect(screen.getByTestId('customer-v21-profile-ranking-current-value')).toHaveTextContent('3')
+    expect(screen.getByTestId('customer-v21-profile-ranking-current-value')).toHaveTextContent('4')
     expect(screen.getByTestId('customer-v21-profile-ranking')).toHaveTextContent(/620/)
-    expect(screen.getByTestId('customer-v21-profile-ranking-points-total')).toHaveTextContent('620 / 1.000 điểm')
+    expect(screen.getByTestId('customer-v21-profile-ranking-points-total')).toHaveTextContent('620 / 800 điểm')
     expect(screen.getByTestId('customer-v21-profile-ranking-points-total-line')).toHaveStyle({ flexDirection: 'row', gap: 4 })
     expect(screen.getByTestId('customer-v21-profile-ranking-points-total-icon')).toBeOnTheScreen()
-    expect(screen.getByTestId('customer-v21-profile-ranking-next-points-text')).toHaveTextContent('Còn 380 điểm lên hạng 4')
+    expect(screen.getByTestId('customer-v21-profile-ranking-next-points-text')).toHaveTextContent('Còn 180 điểm lên hạng 5')
     expect(screen.getByTestId('customer-v21-profile-ranking-next-points-icon')).toBeOnTheScreen()
     expect(screen.getByTestId('customer-v21-profile-ranking-points')).toHaveStyle({ gap: 6, transform: [{ translateY: 2 }] })
     expect(screen.getByTestId('customer-v21-profile-ranking-next-points')).toHaveStyle({ flexDirection: 'row', gap: 4 })
@@ -696,7 +695,7 @@ describe('CustomerProfileSurface v2.1', () => {
     render(<CustomerProfileSurface />)
 
     expect(screen.getByTestId('customer-v21-profile-utility-payment-screen')).toBeOnTheScreen()
-    expect(screen.getByText('Hoàn tiền')).toBeOnTheScreen()
+    expect(screen.queryByText('Hoàn tiền')).toBeNull()
     expect(screen.queryByText('Ngân hàng mặc định và nơi nhận tiền')).toBeNull()
     expect(screen.getByTestId('customer-v21-profile-payment-status-icon')).toBeOnTheScreen()
     expect(screen.getByTestId('customer-v21-profile-payment-status-icon-glyph')).toBeOnTheScreen()
@@ -854,7 +853,8 @@ describe('CustomerProfileSurface v2.1', () => {
 
     render(<CustomerProfileSurface />)
 
-    expect(screen.getByTestId('customer-v21-top-title')).toHaveStyle({ fontWeight: '400' })
+    expect(screen.getByTestId('customer-v21-top-title')).toBeEmptyElement()
+    expect(screen.getByLabelText('Back')).toBeOnTheScreen()
     expect(screen.getByTestId('customer-v21-profile-utility-address-screen')).toBeOnTheScreen()
     expect(screen.queryByTestId('customer-v21-profile-address-settings')).toBeNull()
     expect(screen.queryByText('Địa chỉ dùng cho đặt dịch vụ')).toBeNull()
@@ -1197,7 +1197,8 @@ describe('CustomerProfileSurface v2.1', () => {
     render(<CustomerProfileSurface />)
 
     expect(screen.getByTestId('customer-v21-profile-utility-legal-screen')).toBeOnTheScreen()
-    expect(screen.getByTestId('customer-v21-top-title')).toHaveTextContent('Điều khoản & Chính sách')
+    expect(screen.getByTestId('customer-v21-top-title')).toBeEmptyElement()
+    expect(screen.getByLabelText('Back')).toBeOnTheScreen()
     expect(screen.getByText('Hiểu rõ trước khi sử dụng')).toBeOnTheScreen()
     expect(screen.queryByLabelText('Điều khoản và chính sách')).toBeNull()
     expect(screen.queryByTestId('customer-v21-profile-legal-important-formula-mint-aura')).toBeNull()

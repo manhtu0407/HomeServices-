@@ -233,6 +233,7 @@ import type {
 import { harnessHealthPayload } from "../../_shared/harness/release.ts";
 import type { HarnessEnvironmentDescriptor } from "../../_shared/harness/environment.ts";
 import type { HarnessRuntimeRelease } from "../../_shared/harness/release.ts";
+import { createProgramServices } from "./domains/program/services.ts";
 
 export type EdgeServiceSecrets = EdgeAiSecrets & {
   manualBank?: PlatformManualBankConfig;
@@ -250,6 +251,7 @@ export function createEdgeServices(secrets: EdgeServiceSecrets): MobileApiServic
     ...createWorkerWorkflowServices(secrets),
     ...createProfileServices(secrets),
     ...createAdminNotificationServices(secrets),
+    ...createProgramServices(),
   };
 }
 
@@ -784,6 +786,7 @@ function aiRuntime(
     : undefined;
   return {
     ...secrets,
+    ...(ctx.signal ? { requestSignal: ctx.signal } : {}),
     ...(secrets.durableGuardsEnabled
       ? { durableGuardClient: (ctx.privilegedSupabase ?? ctx.supabase) as EdgeGuardClient }
       : {}),

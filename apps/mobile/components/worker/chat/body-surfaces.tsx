@@ -1,8 +1,18 @@
-import { Fragment, useEffect, useRef, type ReactNode } from 'react'
-import { ScrollView, View, type ImageSourcePropType } from 'react-native'
+import { Fragment, useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
+import {
+  Pressable,
+  ScrollView,
+  Text,
+  View,
+  type ImageSourcePropType,
+  type NativeScrollEvent,
+  type NativeSyntheticEvent,
+} from 'react-native'
+import Animated, { FadeInDown } from 'react-native-reanimated'
 import type { LocalDeal, ServiceType } from '@nestscout/shared'
 
 import { KaelReasoningReceipt } from '@/components/ui/kael-reasoning-receipt'
+import { motionTokens } from '@/components/ui/motion-tokens'
 import { useKaelResponseStreamPresentation } from '@/components/ui/use-kael-respond-stream-presentation'
 import { color } from '@/design/theme'
 import { localizedServiceLabel, localizedStatusLabel, type AppLanguage } from '@/lib/app-language'
@@ -143,7 +153,7 @@ export function WorkerV5KaelOrbBody({
     && onToggleReasoningReceipt ? (
       <KaelReasoningReceipt
         colors={{
-          accent: color.brand.primary,
+          accent: color.brand.primaryDark,
           border: color.surface.stroke,
           mutedText: color.text.secondary,
           surface: color.surface.soft,
@@ -161,17 +171,65 @@ export function WorkerV5KaelOrbBody({
   const hasLiveThread = hasLiveTurns || Boolean(reasoningReceiptNode) || hasStreamingReply || Boolean(liveStatus) || Boolean(liveError)
   const showEmptyHero = !hasLiveTurns && !reasoningReceiptNode && !hasStreamingReply && !composerActive
   const activeJobContext = mode === 'intake' ? workerV5ActiveJobKaelContext(deal, language) : null
+  const mascotContextualCopy = mode === 'intake'
+    ? workerV5ActiveJobKaelContext(deal, 'en')?.hero ?? null
+    : null
   const transcriptRef = useRef<ScrollView>(null)
+  const autoFollowRef = useRef(true)
+  const [readerAtBottom, setReaderAtBottom] = useState(true)
+  const latestVisibleTurn = visibleTurns[visibleTurns.length - 1]
+  const receiptSteps = reasoningReceipt?.steps ?? []
+  const transcriptRevision = JSON.stringify({
+    activeSessionId,
+    error: liveError,
+    receipt: reasoningReceipt && {
+      id: reasoningReceipt.receiptId,
+      status: reasoningReceipt.status,
+      stepCount: receiptSteps.length,
+      summaryCount: reasoningReceipt.summary.length,
+    },
+    reply: [streamingReply?.responseId, streamingReply?.status, streamingReplyText.length],
+    status: liveStatus,
+    turns: [visibleTurns.length, latestVisibleTurn?.id, latestVisibleTurn?.text.length],
+  })
+  const [lastSeenTranscriptRevision, setLastSeenTranscriptRevision] = useState(transcriptRevision)
+  const newResponseAvailable = !readerAtBottom
+    && lastSeenTranscriptRevision !== transcriptRevision
+  const streamingReplyEntering = reduceMotion
+    ? undefined
+    : FadeInDown
+      .duration(motionTokens.stateChange.durationMs)
+      .withInitialValues({
+        opacity: 0,
+        transform: [{ translateY: 4 }],
+      })
 
   useEffect(() => {
     if (!activeSessionId || !hasLiveThread) return
-    transcriptRef.current?.scrollToEnd({ animated: !reduceMotion })
-  }, [activeSessionId, hasLiveThread, liveTurns.length, reduceMotion, streamingReplyText])
+    if (autoFollowRef.current) {
+      transcriptRef.current?.scrollToEnd({ animated: !reduceMotion })
+    }
+  }, [activeSessionId, hasLiveThread, reduceMotion, transcriptRevision])
 
-  const scrollToRestoredThread = () => {
-    if (!activeSessionId || !hasLiveThread) return
+  const scrollToLatest = useCallback(() => {
+    autoFollowRef.current = true
+    setReaderAtBottom(true)
+    setLastSeenTranscriptRevision(transcriptRevision)
     transcriptRef.current?.scrollToEnd({ animated: !reduceMotion })
-  }
+  }, [reduceMotion, transcriptRevision])
+
+  const handleTranscriptScroll = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent
+    const nearBottom = contentSize.height - layoutMeasurement.height - contentOffset.y <= 72
+    autoFollowRef.current = nearBottom
+    setReaderAtBottom(nearBottom)
+    if (nearBottom) setLastSeenTranscriptRevision(transcriptRevision)
+  }, [transcriptRevision])
+
+  const scrollToRestoredThread = useCallback(() => {
+    if (!activeSessionId || !hasLiveThread) return
+    if (autoFollowRef.current) transcriptRef.current?.scrollToEnd({ animated: !reduceMotion })
+  }, [activeSessionId, hasLiveThread, reduceMotion])
 
   return (
     <View style={styles.kaelOrbCustomerShell} testID={`worker-v5-kael-orb-${mode}`}>
@@ -184,14 +242,21 @@ export function WorkerV5KaelOrbBody({
         ]}
         keyboardShouldPersistTaps="handled"
         onContentSizeChange={scrollToRestoredThread}
+        onScroll={handleTranscriptScroll}
+        onScrollBeginDrag={() => {
+          if (readerAtBottom) setLastSeenTranscriptRevision(transcriptRevision)
+          autoFollowRef.current = false
+          setReaderAtBottom(false)
+        }}
         ref={transcriptRef}
+        scrollEventThrottle={32}
         showsVerticalScrollIndicator={false}
         style={styles.kaelOrbCustomerTranscriptScroll}
         testID="worker-v5-kael-orb-transcript"
       >
         {showEmptyHero ? (
           <WorkerV5KaelEmptyHero
-            contextualCopy={activeJobContext?.hero}
+            contextualCopy={mascotContextualCopy}
             language={language}
             mode={mode}
             reduceMotion={reduceMotion}
@@ -223,17 +288,39 @@ export function WorkerV5KaelOrbBody({
             ))}
             {!receiptBeforeFinalKaelTurn ? reasoningReceiptNode : null}
             {streamingReplyText ? (
-              <WorkerV5KaelOrbBubble
-                appearance={mode === 'normal' ? 'bare' : 'bubble'}
-                body={streamingReplyText}
-                speakerLabel="Kael"
-              />
+              <Animated.View
+                key={streamingReply?.responseId ?? 'worker-kael-streaming-reply'}
+                entering={streamingReplyEntering}
+                testID="worker-v5-kael-orb-streaming-reply"
+              >
+                <WorkerV5KaelOrbBubble
+                  appearance={mode === 'normal' ? 'bare' : 'bubble'}
+                  body={streamingReplyText}
+                  speakerLabel="Kael"
+                />
+              </Animated.View>
             ) : null}
             {liveStatus ? <WorkerV5KaelOrbBubble appearance={mode === 'normal' ? 'bare' : 'bubble'} body={liveStatus} speakerLabel="Kael" /> : null}
             {liveError ? <WorkerV5KaelOrbBubble appearance={mode === 'normal' ? 'bare' : 'bubble'} body={liveError} speakerLabel="Kael" /> : null}
           </View>
         ) : null}
       </ScrollView>
+      {newResponseAvailable ? (
+        <Pressable
+          accessibilityLabel={textByLanguage(language, 'Chuyển đến phần mới', 'Jump to the latest response')}
+          accessibilityRole="button"
+          onPress={scrollToLatest}
+          style={[styles.kaelOrbLatestButton, {
+            backgroundColor: color.brand.primaryDark,
+            borderColor: color.surface.stroke,
+          }]}
+          testID="worker-v5-kael-orb-jump-to-latest"
+        >
+          <Text style={[styles.kaelOrbLatestButtonText, { color: color.text.inverse }]}>
+            {textByLanguage(language, 'Phần mới', 'Latest')}
+          </Text>
+        </Pressable>
+      ) : null}
       {composer}
     </View>
   )

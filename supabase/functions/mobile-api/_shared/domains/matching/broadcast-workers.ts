@@ -28,6 +28,7 @@ import { isCohortEligible, isWorkerReachable } from "./reachability.ts";
 import { getKaelPerformanceProfile } from "../../kael/learning/performance-profiles.ts";
 import {
   loadAllFavoriteWorkerIds,
+  loadDisciplineDeprioritizedIds,
   loadJobGeoForMatching,
   loadQualityLockedWorkerIds,
   normalizeSpecializationKey,
@@ -186,6 +187,13 @@ export async function queryEligibleWorkers(
       },
     );
   }
+  const disciplineDeprioritizedIds = await loadDisciplineDeprioritizedIds(client, candidateIds);
+  if (disciplineDeprioritizedIds.size > 0) {
+    console.info("mobile-api matching soft-deprioritized workers (late arrival)", {
+      jobId: options.jobId ?? null,
+      deprioritizedCount: disciplineDeprioritizedIds.size,
+    });
+  }
   return {
     success: true as const,
     workers: rankEligibleWorkers(
@@ -196,6 +204,7 @@ export async function queryEligibleWorkers(
       jobGeo,
       riskCounts,
       favoriteWorkerIds,
+      disciplineDeprioritizedIds,
     )
       .slice(0, limit)
       .map((worker) => ({

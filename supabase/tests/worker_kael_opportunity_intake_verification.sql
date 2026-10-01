@@ -293,11 +293,11 @@ begin
     'ba400000-0000-4000-8000-000000000098',
     'ba500000-0000-4000-8000-000000000098',
     'photo_attached',
-    'Normal jobless chat must also reject media.',
+    'Normal jobless chat must reject job-scoped media.',
     array['supabase://job-media/ba600000-0000-4000-8000-000000000098/kael_reference/ref.jpg']
   );
   if v_normal_media.ok is not false or v_normal_media.error_code <> 'INVALID_INPUT' then
-    raise exception 'normal jobless chat accepted media';
+    raise exception 'normal jobless chat accepted job-scoped media';
   end if;
 
   select * into v_normal_claim
@@ -324,6 +324,61 @@ begin
   );
   if v_normal_release.released is not true or v_normal_release.discarded is not true then
     raise exception 'normal chat claim could not be discarded after regression check';
+  end if;
+
+  -- General chat takes the worker's own model-vision photos; intake and foreign refs stay refused.
+  select * into v_media
+  from public.claim_worker_kael_general_turn_atomic(
+    'ba200000-0000-4000-8000-000000000001',
+    'ba100000-0000-4000-8000-000000000001',
+    'ba400000-0000-4000-8000-000000000097',
+    'ba500000-0000-4000-8000-000000000097',
+    'photo_attached',
+    'Opportunity intake stays text only.',
+    array['supabase://kael-chat-media/ba100000-0000-4000-8000-000000000001/kael-chat/model_vision/intake.jpg']
+  );
+  if v_media.ok is not false or v_media.error_code <> 'INVALID_INPUT' then
+    raise exception 'jobless opportunity intake accepted a general-chat photo';
+  end if;
+
+  select * into v_media
+  from public.claim_worker_kael_general_turn_atomic(
+    'ba200000-0000-4000-8000-000000000002',
+    'ba100000-0000-4000-8000-000000000001',
+    'ba400000-0000-4000-8000-000000000096',
+    'ba500000-0000-4000-8000-000000000096',
+    'photo_attached',
+    'Another worker photo must not ride this chat.',
+    array['supabase://kael-chat-media/ba100000-0000-4000-8000-000000000002/kael-chat/model_vision/other.jpg']
+  );
+  if v_media.ok is not false or v_media.error_code <> 'INVALID_INPUT' then
+    raise exception 'normal jobless chat accepted another worker photo';
+  end if;
+
+  select * into v_normal_claim
+  from public.claim_worker_kael_general_turn_atomic(
+    'ba200000-0000-4000-8000-000000000002',
+    'ba100000-0000-4000-8000-000000000001',
+    'ba400000-0000-4000-8000-000000000095',
+    'ba500000-0000-4000-8000-000000000095',
+    'photo_attached',
+    'Is this socket safe?',
+    array['supabase://kael-chat-media/ba100000-0000-4000-8000-000000000001/kael-chat/model_vision/socket.jpg']
+  );
+  if v_normal_claim.ok is not true or v_normal_claim.claimed is not true then
+    raise exception 'normal jobless chat refused the worker own photo';
+  end if;
+
+  select * into v_normal_release
+  from public.release_worker_kael_chat_turn_claim_atomic(
+    v_normal_claim.request_id,
+    'ba500000-0000-4000-8000-000000000095',
+    'ba200000-0000-4000-8000-000000000002',
+    'ba100000-0000-4000-8000-000000000001',
+    true
+  );
+  if v_normal_release.released is not true or v_normal_release.discarded is not true then
+    raise exception 'normal chat photo claim could not be discarded after the check';
   end if;
 
   select * into v_job_claim

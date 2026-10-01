@@ -83,7 +83,7 @@ begin
   );
   if v_definition not like '%finance.read%'
     or v_definition not like '%finance.tax.manage%'
-    or v_definition not like '%cardinality(v_capabilities) > 11%'
+    or v_definition not like '%cardinality(v_capabilities) > 15%'
     or v_definition not like '%array_append(v_capabilities, ''finance.read'')%'
     or v_definition like '%array_append(v_capabilities, ''finance.reconcile'')%'
     or v_definition like '%array_append(v_capabilities, ''payouts.process'')%' then

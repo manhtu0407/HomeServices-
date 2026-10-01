@@ -223,9 +223,6 @@ export const customerV21ProfileUtilityStyles = StyleSheet.create({
     justifyContent: 'center',
     width: 48,
   },
-  profileAddressUtilityTitle: {
-    fontWeight: '400',
-  },
   profileAvatarEditBadge: {
     alignItems: 'center',
     borderRadius: 999,
@@ -316,10 +313,6 @@ export const customerV21ProfileUtilityStyles = StyleSheet.create({
   profileOverviewFrame: {
     minWidth: 0,
     paddingTop: 4,
-  },
-  profileOverviewTopBar: {
-    gap: 0,
-    minHeight: 58,
   },
   profileOverviewHeroCard: {
     borderColor: 'rgba(255,255,255,0.96)',

@@ -52,7 +52,11 @@ export interface WorkModel {
   phaseLabels?: readonly [string,string,string,string,string]
   note: string | null
   evidenceCount: number
-  canPrepareCompletion: boolean
+  /** The host's current workflow step; null keeps the completion copy. */
+  primaryLabel: string | null
+  primaryEnabled: boolean
+  /** Host-owned failure from the last primary step, shown in the error slot. */
+  notice?: string | null
   demo?: boolean
 }
 export interface SurfaceProps<M> {

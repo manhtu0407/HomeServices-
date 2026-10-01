@@ -12,6 +12,7 @@ import {
   workerCancellationRequestSchema,
   workerBroadcastAcceptSchema,
   workerScopeChangeSchema,
+  workerReportSchema,
 } from "../../../../_shared/domain.ts";
 import {
   jobMediaRevokeSchema,
@@ -81,6 +82,11 @@ export async function dispatchJobRoute(
       const input = customerCancellationRequestSchema.safeParse(await readJson(request));
       if (!input.success) apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
       return services.requestCustomerCancellation(ctx, route.jobId, input.data);
+    }
+    case "jobs.workerReport": {
+      const input = workerReportSchema.safeParse(await readJson(request));
+      if (!input.success) apiFailure("VALIDATION", "Báo cáo cần loại vi phạm và mô tả rõ ràng", 400);
+      return services.reportWorker(ctx, route.jobId, input.data);
     }
     case "jobs.openDispute": {
       const input = disputeOpenRequestSchema.safeParse(await readJson(request));

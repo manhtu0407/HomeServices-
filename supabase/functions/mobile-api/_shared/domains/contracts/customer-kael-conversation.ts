@@ -35,6 +35,7 @@ export type EdgeCustomerKaelConversationTurnResponse = {
   turn_index: number;
   role: "customer" | "kael" | "system";
   text_content: string;
+  media_refs?: string[];
   created_at: string;
 };
 

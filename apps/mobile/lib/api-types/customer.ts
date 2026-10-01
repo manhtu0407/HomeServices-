@@ -40,6 +40,7 @@ export type CustomerKaelConversationTurn = {
   turn_index: number
   role: 'customer' | 'kael' | 'system'
   text_content: string
+  media_refs?: string[]
   created_at: string
 }
 
@@ -82,6 +83,8 @@ export type CustomerProfileInsightsResponse = {
   total_spend_vnd: number
   usage_rank_level: number
   usage_rank_points: number
+  usage_rank_level_floor_points?: number
+  usage_rank_next_level_points?: number | null
   fair_price_service_count: number
   money_protection_score: number
   protected_value_vnd: number

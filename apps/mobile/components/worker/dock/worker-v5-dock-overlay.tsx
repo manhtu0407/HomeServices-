@@ -1,5 +1,5 @@
 import { useEffect, type ReactNode } from 'react'
-import { Platform, Pressable, Text, View, useWindowDimensions } from 'react-native'
+import { Platform, View, useWindowDimensions } from 'react-native'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import Animated from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
@@ -14,21 +14,20 @@ import {
 } from '@/components/customer/dock/dock-styles'
 import { useGlassAccessibility } from '@/components/ui/accessibility-motion'
 import { DockScrollStateProvider, useDockScrollState, useDockScrollTransform } from '@/components/ui/dock-scroll-state'
-import { GlassSurface } from '@/components/ui/glass-surface'
 import { KaelNavigationAccessory } from '@/components/ui/kael-navigation-accessory'
 
-import { LiquidNavIcon, type LiquidNavIconName } from '@/components/customer/dock/liquid-nav-icons'
+import type { LiquidNavFilledIconName } from '@/components/customer/dock/liquid-nav-filled-icons'
+import { LiquidTabPlane } from '@/components/customer/dock/liquid-tab-plane'
 import { resolveWorkerV5DockActive, resolveWorkerV5Language, workerV5Routes } from './routing'
 import type { WorkerDockActive, WorkerV5RouteParams } from './types'
 import {
   getReducedTransparencyWorkerTokens,
   getWorkerThemeTokens,
-  type WorkerThemeTokens,
   useWorkerThemeMode,
 } from '../worker-theme'
 
 const WORKER_V5_DOCK_ROUTE_ITEMS: readonly {
-  icon: LiquidNavIconName
+  icon: LiquidNavFilledIconName
   id: Exclude<WorkerDockActive, 'kael'>
   label: Record<'en' | 'vi', string>
 }[] = [
@@ -48,42 +47,6 @@ const WORKER_V5_DOCK_KAEL_ITEM: {
 
 export function WorkerDockLayoutProvider({ children }: { children: ReactNode }) {
   return <DockScrollStateProvider>{children}</DockScrollStateProvider>
-}
-
-function WorkerV5DockTabButton({
-  icon,
-  label,
-  onPress,
-  selected,
-  testID,
-  tokens,
-}: {
-  icon: LiquidNavIconName
-  label: string
-  onPress: () => void
-  selected: boolean
-  testID: string
-  tokens: WorkerThemeTokens
-}) {
-  return (
-    <Pressable
-      accessibilityLabel={label}
-      accessibilityRole="tab"
-      accessibilityState={{ selected }}
-      onPress={onPress}
-      style={({ pressed }) => [dockStyles.dockItem, pressed ? dockStyles.dockItemPressed : null]}
-      testID={testID}
-    >
-      <LiquidNavIcon
-        color={selected ? tokens.primary : tokens.muted}
-        name={icon}
-        selected={selected}
-        style={[dockStyles.dockIcon, selected ? dockStyles.dockIconActive : null]}
-        testID={`${testID}-icon`}
-      />
-      <Text numberOfLines={1} style={[dockStyles.dockLabel, selected ? dockStyles.dockLabelActive : null, { color: selected ? tokens.primary : tokens.muted }]}>{label}</Text>
-    </Pressable>
-  )
 }
 
 export function WorkerRebuildDockOverlay({ active }: { active: WorkerDockActive }) {
@@ -115,27 +78,21 @@ export function WorkerRebuildDockOverlay({ active }: { active: WorkerDockActive 
   return (
     <View pointerEvents="box-none" style={[dockStyles.dockOverlay, { bottom: Platform.OS === 'ios' ? insets.bottom + 12 : 12 }]} testID="worker-v5-dock-overlay">
       <Animated.View style={[dockStyles.dockRow, { width: liquidNavWidth }, animatedDockScrollStyle]} testID="worker-v5-liquid-navigation">
-        <GlassSurface
-          backgroundColor={tokens.glass}
-          borderColor={tokens.glassBorder}
-          material="liquid"
-          mode={tokens.mode}
-          style={[dockStyles.dockPlane, { width: liquidDockWidth }]}
+        <LiquidTabPlane
+          items={WORKER_V5_DOCK_ROUTE_ITEMS.map((item) => ({
+            icon: item.icon,
+            key: item.id,
+            label: item.label[language],
+            testID: `worker-v5-dock-${item.id}`,
+          }))}
+          onSelect={(id) => router.replace(workerV5Routes[id] as never)}
+          reduceMotion={reduceMotion}
+          reduceTransparency={reduceTransparency}
+          selectedKey={activeTab}
           testID="worker-v5-primary-dock"
-          variant="nav"
-        >
-          {WORKER_V5_DOCK_ROUTE_ITEMS.map((item) => (
-            <WorkerV5DockTabButton
-              icon={item.icon}
-              key={item.id}
-              label={item.label[language]}
-              onPress={() => router.replace(workerV5Routes[item.id] as never)}
-              selected={activeTab === item.id}
-              testID={`worker-v5-dock-${item.id}`}
-              tokens={tokens}
-            />
-          ))}
-        </GlassSurface>
+          tokens={tokens}
+          width={liquidDockWidth}
+        />
         <KaelNavigationAccessory
           accessibilityLabel={WORKER_V5_DOCK_KAEL_ITEM.label[language]}
           active={kaelActive}

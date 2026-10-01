@@ -300,7 +300,7 @@ describe('Worker Home opportunity intake', () => {
     expect(inboxSource).toContain('inboxBroadcasts.map')
     expect(inboxSource).toContain('workerSelectBroadcast')
     expect(composerSource).toContain('takePendingWorkerKaelDraft')
-    expect(composerSource).toContain('mediaEnabled={hasJobIntakeScope}')
+    expect(composerSource).toContain("mediaEnabled={hasJobIntakeScope || mode === 'normal'}")
     expect(composerSource).toContain('if (!sent) return')
     expect(composerSource).not.toMatch(/autoSend|send\(pending/i)
   })

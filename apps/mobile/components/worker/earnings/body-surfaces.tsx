@@ -3,8 +3,12 @@ import { View } from 'react-native'
 
 import type { AppLanguage } from '@/lib/app-language'
 import type { useFrontendWorkflow } from '@/lib/frontend-workflow-provider'
+import { useWorkerAmbassador } from '@/lib/frontend-workflow/use-worker-ambassador'
+import { useWorkerViolations } from '@/lib/frontend-workflow/use-worker-violations'
 
+import { WorkerV5Violations } from '../discipline/violation-surfaces'
 import type { WorkerV5ScreenId } from '../dock/types'
+import { WorkerV5Ambassador } from './ambassador-surfaces'
 import { WorkerV5CommissionPolicy } from './commission-policy-surfaces'
 import {
   WorkerV5EarningsDashboard,
@@ -58,11 +62,13 @@ export function WorkerV5EarningsOverviewBody({
         />
         <WorkerV5EarningsUtilities
           accountIcon="earnings"
+          ambassadorIcon="balance"
           commissionIcon="document"
           commissionRateBps={runtime.workerEarnings?.current_commission_rate_bps}
           historyIcon="activity"
           language={language}
           onOpenAccount={() => navigateToScreen('4.4-payout-method')}
+          onOpenAmbassador={() => navigateToScreen('4.6-ambassador')}
           onOpenCommission={() => navigateToScreen('4.5-commission-policy')}
           onOpenHistory={() => navigateToScreen('4.2-ledger-detail')}
           reduceMotion={reduceMotion}
@@ -143,4 +149,26 @@ export function WorkerV5ReceivingAccountBody({
       runtime={runtime}
     />
   )
+}
+
+export function WorkerV5AmbassadorBody({
+  language,
+  navigateToScreen,
+}: {
+  language: AppLanguage
+  navigateToScreen: (id: WorkerV5ScreenId) => void
+}) {
+  const controller = useWorkerAmbassador()
+  return (
+    <WorkerV5Ambassador
+      controller={controller}
+      language={language}
+      onOpenViolations={() => navigateToScreen('4.7-violations')}
+    />
+  )
+}
+
+export function WorkerV5ViolationsBody({ language }: { language: AppLanguage }) {
+  const controller = useWorkerViolations()
+  return <WorkerV5Violations controller={controller} language={language} />
 }

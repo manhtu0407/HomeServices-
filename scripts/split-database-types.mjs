@@ -49,6 +49,8 @@ const BUCKET_RULES = [
     name.startsWith('completion_payment_') || name.startsWith('workflow_recovery_')],
   ['admin', (name) => name.startsWith('admin_')],
   ['service', (name) => name.startsWith('service_') || name.startsWith('price_baseline_')],
+  ['program', (name) => name.startsWith('ambassador_') || name.startsWith('compensation_') ||
+    name.startsWith('program_') || name.startsWith('referral_') || name === 'identity_blocklist'],
 ]
 
 // Tables with no domain prefix. An explicit list rather than a fallback, so a new unprefixed
@@ -56,6 +58,7 @@ const BUCKET_RULES = [
 const CORE_TABLES = new Set([
   'ai_provider_routing',
   'api_logs',
+  'chat_guard_redaction_evidence',
   'chat_messages',
   'device_push_tokens',
   'disputes',

@@ -13,9 +13,6 @@ import { apiFailure } from "../../platform/api-failure.ts";
 import type { ServiceType } from "../../../../_shared/domain.ts";
 import { isWorkerServiceQualityLocked } from "../worker/service-preferences.ts";
 
-const DISINTERMEDIATION_RISK_PENALTY_THRESHOLD = 2;
-const DISINTERMEDIATION_RISK_SCORE_PENALTY = 15;
-const FAVORITE_WORKER_SCORE_BONUS = 25;
 const BROADCAST_RETRY_LEASE_SECONDS = 180;
 const BROADCAST_RETRY_CLAIM_FAILURE_CODES = [
   "ACTIVE_BROADCAST",
@@ -212,6 +209,26 @@ export function readDisintermediationRiskCounts(
     if (workerId && count > 0) counts.set(workerId, count);
   }
   return counts;
+}
+
+// A late-arrival proposal lowers a worker's rank for a while. Like the risk signal above it
+// fails open: a read error must never stop a job from being matched.
+export async function loadDisciplineDeprioritizedIds(
+  client: DbClient,
+  workerIds: string[],
+): Promise<Set<string>> {
+  if (workerIds.length === 0) return new Set();
+  const result = await dbQuery<Array<Record<string, unknown>>>(
+    client.rpc("list_matching_deprioritized_workers", { p_worker_ids: workerIds }),
+  );
+  if (result.error) {
+    console.warn("mobile-api discipline matching signal load failed", {
+      errorCode: result.error.code,
+      workerCount: workerIds.length,
+    });
+    return new Set();
+  }
+  return new Set((result.data ?? []).map((row) => asString(row.worker_id)).filter(Boolean));
 }
 
 export async function loadAllFavoriteWorkerIds(

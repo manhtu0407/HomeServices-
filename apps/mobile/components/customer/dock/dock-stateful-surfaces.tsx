@@ -3,20 +3,20 @@ import { Platform, View, type ImageSourcePropType } from 'react-native'
 import Animated from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
-import { GlassSurface } from '@/components/ui/glass-surface'
+import { useGlassAccessibility } from '@/components/ui/accessibility-motion'
 import { KaelNavigationAccessory } from '@/components/ui/kael-navigation-accessory'
 import type { AppLanguage } from '@/lib/app-language'
 
 import type { CustomerThemeTokens } from '../customer-theme'
 import { customerV21TabCopy } from '../ui/copy'
-import { CustomerV21DockTabButton } from './dock-surfaces'
 import { customerV21DockStyles as dockStyles } from './dock-styles'
-import type { LiquidNavIconName } from './liquid-nav-icons'
+import type { LiquidNavFilledIconName } from './liquid-nav-filled-icons'
+import { LiquidTabPlane } from './liquid-tab-plane'
 import type { CustomerPrimaryTab } from '../ui/types'
 
 type AnimatedViewStyle = ComponentProps<typeof Animated.View>['style']
 
-const dockIconForTab: Record<CustomerPrimaryTab, LiquidNavIconName> = {
+const dockIconForTab: Record<CustomerPrimaryTab, LiquidNavFilledIconName> = {
   activity: 'activity',
   home: 'home',
   profile: 'profile',
@@ -30,7 +30,6 @@ export function CustomerV21DockOverlayView({
   language,
   liquidDockWidth,
   liquidNavWidth,
-  mode,
   navItems,
   onKaelPress,
   onTabPress,
@@ -43,7 +42,6 @@ export function CustomerV21DockOverlayView({
   language: AppLanguage
   liquidDockWidth: number
   liquidNavWidth: number
-  mode: CustomerThemeTokens['mode']
   navItems: { image: ImageSourcePropType; key: CustomerPrimaryTab; route: string }[]
   onKaelPress: () => void
   onTabPress: (route: string) => void
@@ -51,36 +49,30 @@ export function CustomerV21DockOverlayView({
   tokens: CustomerThemeTokens
 }) {
   const insets = useSafeAreaInsets()
+  const { reduceTransparency } = useGlassAccessibility()
   const dockBottom = Platform.OS === 'ios' ? insets.bottom + 12 : 12
 
   return (
     <View pointerEvents="box-none" style={[dockStyles.dockOverlay, { bottom: dockBottom }]} testID="customer-v21-dock-overlay">
       <Animated.View style={[dockStyles.dockRow, { width: liquidNavWidth }, animatedDockScrollStyle]} testID="customer-v21-liquid-navigation">
-        <GlassSurface
-          backgroundColor={tokens.glass}
-          borderColor={tokens.glassBorder}
-          material="liquid"
-          mode={mode}
-          style={[dockStyles.dockPlane, { width: liquidDockWidth }]}
+        <LiquidTabPlane
+          items={navItems.map((item) => ({
+            icon: dockIconForTab[item.key],
+            key: item.key,
+            label: customerV21TabCopy[language][item.key],
+            testID: `customer-v21-dock-${item.key}`,
+          }))}
+          onSelect={(key) => {
+            const route = navItems.find((item) => item.key === key)?.route
+            if (route) onTabPress(route)
+          }}
+          reduceMotion={reduceMotion}
+          reduceTransparency={reduceTransparency}
+          selectedKey={activeTab}
           testID="customer-v21-primary-dock"
-          variant="nav"
-        >
-          {navItems.map((item) => {
-            const selected = activeTab === item.key
-            const label = customerV21TabCopy[language][item.key]
-            return (
-              <CustomerV21DockTabButton
-                icon={dockIconForTab[item.key]}
-                key={item.key}
-                label={label}
-                onPress={() => onTabPress(item.route)}
-                selected={selected}
-                testID={`customer-v21-dock-${item.key}`}
-                tokens={tokens}
-              />
-            )
-          })}
-        </GlassSurface>
+          tokens={tokens}
+          width={liquidDockWidth}
+        />
         <KaelNavigationAccessory
           accessibilityLabel={customerV21TabCopy[language].kael}
           active={kaelActive}

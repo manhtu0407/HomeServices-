@@ -238,6 +238,9 @@ export async function updateAdminFinanceTaxPolicyDraft(
     p_policy_id: policyId,
     p_policy: input,
   }));
+  if (result.error?.message?.includes("TAX_RULE_REMOVAL_NEEDS_NEW_DRAFT")) {
+    apiFailure("INVALID_STATUS", "Không thể bỏ quy tắc khỏi bản nháp đã lưu. Hãy tạo bản nháp mới.", 409);
+  }
   const policy = result.data ? groupTaxPolicyRows(result.data)[0] : null;
   if (result.error || !policy) apiFailure("DB_ERROR", "Không thể cập nhật bản nháp chính sách thuế", 500);
   return policy;
@@ -721,6 +724,7 @@ function serializeTaxRule(row: Row, policyId: string, fallbackSubject: AdminFina
     subject,
     basis,
     rate_bps: rateBps,
+    applies_at_or_above_vnd: nonnegativeInteger(row.applies_at_or_above_vnd),
     created_at: nullableString(row.rule_created_at) ?? nullableString(row.created_at) ?? fallbackCreatedAt,
   };
 }
@@ -780,7 +784,7 @@ function asTaxSubject(value: unknown): AdminFinanceTaxPolicy["subject"] | null {
 }
 
 function asTaxBasis(value: unknown): AdminFinanceTaxPolicy["basis"] | null {
-  return value === "gmv" || value === "commission_collected" || value === "commission_retained" || value === "worker_net_paid" ? value : null;
+  return value === "gmv" || value === "commission_collected" || value === "commission_retained" || value === "worker_net_paid" || value === "worker_bonus" ? value : null;
 }
 
 function asTaxPolicyStatus(value: unknown): AdminFinanceTaxPolicy["status"] | null {

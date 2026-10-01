@@ -38,6 +38,17 @@ function decodeUtf8(bytes: Uint8Array) {
   }
 }
 
+export async function readResponseBytesBounded(response: Response, maxBytes: number) {
+  await rejectDeclaredOversize(response, maxBytes)
+  const bytes = response.body
+    ? await readStreamBounded(response.body, maxBytes)
+    : typeof response.arrayBuffer === 'function'
+      ? new Uint8Array(await response.arrayBuffer())
+      : new Uint8Array(await (await response.blob()).arrayBuffer())
+  if (bytes.byteLength > maxBytes) throw new ResponseBodyTooLargeError(maxBytes)
+  return bytes
+}
+
 export async function readResponseBlobBounded(response: Response, maxBytes: number) {
   await rejectDeclaredOversize(response, maxBytes)
   if (response.body) {

@@ -1,5 +1,21 @@
 import type { NotificationListResponse } from '../api-types'
 
+// Discipline and compensation notices are written in Vietnamese by the database, which has no
+// per-user language; English mode renders them from the event type instead.
+const programNotificationEnglish: Record<string, { title: string; body: string }> = {
+  violation_confirmed: { title: 'Violation confirmed', body: 'See the reason and consequences in Rules & violations. You can appeal with evidence.' },
+  violation_confirmed_customer: { title: 'Your report was confirmed', body: 'If you lost money or property, you can ask the worker for compensation in History.' },
+  violation_appeal_upheld: { title: 'Appeal not accepted', body: 'The decision stands. See the reason in Rules & violations.' },
+  violation_appeal_overturned: { title: 'Appeal accepted', body: 'Your points, rank and related benefits have been restored.' },
+  withdrawal_hold_extended: { title: 'Withdrawal hold extended', body: 'An authority is handling the case, so withdrawals stay on hold. See Rules & violations.' },
+  compensation_claim_received: { title: 'Compensation request', body: 'The customer asked for compensation. Accept, counter or decline in Rules & violations before the deadline.' },
+  compensation_counter_offer: { title: 'New compensation offer', body: 'The other side proposed a different amount. Reply before the deadline.' },
+  compensation_agreed: { title: 'Compensation agreed', body: 'Both sides agreed on the amount. NestScout handles the transfer.' },
+  compensation_declined: { title: 'No compensation agreement', body: 'The other side declined. The case can be taken to the authorities.' },
+  compensation_paid: { title: 'Compensation transferred', body: 'The agreed compensation has been transferred.' },
+  worker_reply_nudge: { title: 'A customer is waiting', body: 'The customer messaged in the job room. Reply soon.' },
+}
+
 /** RFQ workflow notifications are localized from the event, never from arbitrary server text. */
 export function localizeRfqNotification<T extends { event_type: string; title: string; body: string }>(notification: T, language: 'vi' | 'en'): T {
   const texts: Record<string, Record<'vi' | 'en', { title: string; body: string }>> = {
@@ -17,6 +33,7 @@ export function localizeRfqNotification<T extends { event_type: string; title: s
     },
   }
   const value = texts[notification.event_type]?.[language]
+    ?? (language === 'en' ? programNotificationEnglish[notification.event_type] : undefined)
   return value ? { ...notification, ...value } : notification
 }
 

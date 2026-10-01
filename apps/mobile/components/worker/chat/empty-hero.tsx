@@ -30,7 +30,7 @@ export function WorkerV5KaelEmptyHero({
   const [heroHeight, setHeroHeight] = useState(0)
   const workerThemeMode = useWorkerThemeMode()
   const themeTokens = getWorkerThemeTokens(workerThemeMode)
-  const copy = contextualCopy ? { text: contextualCopy } : getWorkerKaelEmptyHeroCopy(mode, language, now)
+  const copy = contextualCopy ? { text: contextualCopy } : getWorkerKaelEmptyHeroCopy(mode, 'en', now)
 
   useEffect(() => {
     const timer = setTimeout(() => {

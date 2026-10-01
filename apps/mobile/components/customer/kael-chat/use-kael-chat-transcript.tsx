@@ -2,6 +2,7 @@ import { useMemo, type ReactNode } from 'react'
 import { ActivityIndicator } from 'react-native'
 
 import { KaelReasoningReceipt } from '@/components/ui/kael-reasoning-receipt'
+import { color } from '@/design/theme'
 import type { AppLanguage } from '@/lib/app-language'
 import type { KaelReasoningReceiptState } from '@/lib/kael-reasoning-receipt'
 import { createCompletedKaelResponseState } from '@/lib/kael-response-stream'
@@ -95,7 +96,7 @@ export function useKaelChatTranscript({
   const normalReasoningReceiptNode = useMemo(() => (
     mode === 'normal' && !pendingNormalMessage && normalReasoningReceipt.status !== 'idle' ? (
       <KaelReasoningReceipt
-        colors={{ accent: tokens.primary, border: tokens.border, mutedText: tokens.muted, surface: tokens.raised, text: tokens.text }}
+        colors={{ accent: tokens.mode === 'light' ? color.brand.primaryDark : tokens.primary, border: tokens.border, mutedText: tokens.muted, surface: tokens.raised, text: tokens.text }}
         language={language}
         onToggle={onToggleNormalReasoningReceipt}
         state={normalReasoningReceipt}
@@ -108,7 +109,7 @@ export function useKaelChatTranscript({
       <>
         <ChatBubble speaker="customer" testID="customer-v21-kael-reasoning-pending-message" text={pendingNormalMessage} tokens={tokens} />
         <KaelReasoningReceipt
-          colors={{ accent: tokens.primary, border: tokens.border, mutedText: tokens.muted, surface: tokens.raised, text: tokens.text }}
+          colors={{ accent: tokens.mode === 'light' ? color.brand.primaryDark : tokens.primary, border: tokens.border, mutedText: tokens.muted, surface: tokens.raised, text: tokens.text }}
           language={language}
           onToggle={onToggleNormalReasoningReceipt}
           state={normalReasoningReceipt}

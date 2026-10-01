@@ -31,6 +31,8 @@ import {
   buildSafeWorkerVisionFinding,
   prepareWorkerKaelVisionUrls,
 } from "./kael-media.ts";
+import { buildKaelVisionValidationEvidence, createSignedVisionUrls } from "../kael-chat/media-vision.ts";
+import { validateAndConsumeKaelChatEvidenceMediaRefs } from "../kael-chat/media-upload.ts";
 import {
   claimWorkerKaelChatTurn,
   completeWorkerKaelChatTurn,
@@ -93,7 +95,7 @@ export async function sendWorkerKaelChatTurn(
   if (!conversationScope) {
     apiFailure("WORKFLOW_STALE", "Phi\u00ean Kael kh\u00f4ng c\u00f2n h\u1ee3p l\u1ec7", 409);
   }
-  if (sessionJobId === null && input.media_refs.length > 0) {
+  if (sessionJobId === null && input.media_refs.length > 0 && sessionMode !== "normal") {
     apiFailure(
       "VALIDATION_ERROR",
       "\u1ea2nh ch\u1ec9 \u0111\u01b0\u1ee3c g\u1eedi trong cu\u1ed9c tr\u00f2 chuy\u1ec7n theo c\u00f4ng vi\u1ec7c",
@@ -105,14 +107,16 @@ export async function sendWorkerKaelChatTurn(
       await requireWorkerKaelChatJob(client, ctx, sessionJobId)
     : null;
   const safeMessage = scrubSensitiveForLLM(sanitizeForLLM(input.message));
-  const visionPhotoUrls = input.media_refs.length > 0
+  const visionPhotoUrls = input.media_refs.length === 0
+    ? []
+    : sessionJobId
     ? await prepareWorkerKaelVisionUrls(
       ctx,
       client,
-      asString(sessionJobId),
+      sessionJobId,
       input.media_refs,
     )
-    : [];
+    : await prepareWorkerGeneralChatVisionUrls(ctx, input.media_refs);
   const claimId = crypto.randomUUID();
   const claim = await claimWorkerKaelChatTurn(client, {
     claimId,
@@ -294,18 +298,20 @@ function emptyWorkerOpportunityAnswer(
 async function findWorkerKaelVision(
   input: Pick<Parameters<typeof runWorkerKaelAssistant>[0], "sessionId" | "job" | "visionPhotoUrls" | "safeMessage" | "secrets" | "spendGate" | "input">,
 ): Promise<WorkerVisionFinding | null> {
-  if (input.visionPhotoUrls.length === 0 || !input.job) return null;
+  if (input.visionPhotoUrls.length === 0) return null;
   try {
-    const visionContext = [
-      nullableString(input.job.service_type),
-      nullableString(input.job.kael_problem_identified) ?? nullableString(input.job.description),
-    ].filter((part): part is string => Boolean(part)).join(" · ");
+    const visionContext = input.job
+      ? [
+        nullableString(input.job.service_type),
+        nullableString(input.job.kael_problem_identified) ?? nullableString(input.job.description),
+      ].filter((part): part is string => Boolean(part)).join(" · ")
+      : "";
     const vision = await analyzeDescription(
       input.safeMessage, visionContext, input.visionPhotoUrls, input.secrets,
       input.spendGate, input.input.language,
     );
     return vision.success
-      ? buildSafeWorkerVisionFinding(vision.analysis, nullableString(input.job.service_type))
+      ? buildSafeWorkerVisionFinding(vision.analysis, input.job ? nullableString(input.job.service_type) : null)
       : null;
   } catch (err) {
     console.warn("worker-assist vision analysis threw; continuing without findings", {
@@ -588,4 +594,11 @@ function asWorkerKaelContentType(
     return value;
   }
   apiFailure("DB_ERROR", "Dữ liệu lượt chat Kael của thợ không hợp lệ", 500);
+}
+
+// General chat photos live in the worker's own kael-chat-media folder: the same upload intent,
+// ownership, retention and location-metadata checks as customer normal chat apply before signing.
+async function prepareWorkerGeneralChatVisionUrls(ctx: MobileApiContext, mediaRefs: string[]) {
+  const refs = await validateAndConsumeKaelChatEvidenceMediaRefs(ctx, mediaRefs, ctx.user.id);
+  return createSignedVisionUrls(ctx, buildKaelVisionValidationEvidence([], refs), ctx.user.id);
 }

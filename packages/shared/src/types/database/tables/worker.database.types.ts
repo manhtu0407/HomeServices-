@@ -55,6 +55,279 @@ export type WorkerTables = {
           },
         ]
       }
+      worker_ambassador_point_entries: {
+        Row: {
+          actor_id: string | null
+          case_id: string | null
+          commission_basis_vnd: number | null
+          created_at: string
+          customer_id: string | null
+          entry_kind: string
+          id: string
+          idempotency_key: string
+          job_id: string | null
+          link_id: string | null
+          multiplier_bps: number | null
+          points_milli: number
+          program_version_id: string | null
+          reason: string | null
+          redemption_id: string | null
+          source_ledger_id: string | null
+          worker_id: string
+        }
+        Insert: {
+          actor_id?: string | null
+          case_id?: string | null
+          commission_basis_vnd?: number | null
+          created_at?: string
+          customer_id?: string | null
+          entry_kind: string
+          id?: string
+          idempotency_key: string
+          job_id?: string | null
+          link_id?: string | null
+          multiplier_bps?: number | null
+          points_milli: number
+          program_version_id?: string | null
+          reason?: string | null
+          redemption_id?: string | null
+          source_ledger_id?: string | null
+          worker_id: string
+        }
+        Update: {
+          actor_id?: string | null
+          case_id?: string | null
+          commission_basis_vnd?: number | null
+          created_at?: string
+          customer_id?: string | null
+          entry_kind?: string
+          id?: string
+          idempotency_key?: string
+          job_id?: string | null
+          link_id?: string | null
+          multiplier_bps?: number | null
+          points_milli?: number
+          program_version_id?: string | null
+          reason?: string | null
+          redemption_id?: string | null
+          source_ledger_id?: string | null
+          worker_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "worker_ambassador_point_entries_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "worker_ambassador_point_entries_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "worker_ambassador_point_entries_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "worker_ambassador_point_entries_link_id_fkey"
+            columns: ["link_id"]
+            isOneToOne: false
+            referencedRelation: "customer_worker_links"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "worker_ambassador_point_entries_program_version_id_fkey"
+            columns: ["program_version_id"]
+            isOneToOne: false
+            referencedRelation: "ambassador_program_versions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "worker_ambassador_point_entries_source_ledger_id_fkey"
+            columns: ["source_ledger_id"]
+            isOneToOne: false
+            referencedRelation: "worker_payment_ledger"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "worker_ambassador_point_entries_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
+            referencedRelation: "worker_overview"
+            referencedColumns: ["worker_id"]
+          },
+          {
+            foreignKeyName: "worker_ambassador_point_entries_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
+            referencedRelation: "worker_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      worker_bonus_clawbacks: {
+        Row: {
+          amount_vnd: number
+          case_id: string | null
+          clawback_kind: string
+          created_at: string
+          decided_by: string
+          id: string
+          reason: string
+          receivable_vnd: number
+          redemption_id: string
+          reverses_clawback_id: string | null
+          worker_id: string
+        }
+        Insert: {
+          amount_vnd: number
+          case_id?: string | null
+          clawback_kind?: string
+          created_at?: string
+          decided_by: string
+          id?: string
+          reason: string
+          receivable_vnd?: number
+          redemption_id: string
+          reverses_clawback_id?: string | null
+          worker_id: string
+        }
+        Update: {
+          amount_vnd?: number
+          case_id?: string | null
+          clawback_kind?: string
+          created_at?: string
+          decided_by?: string
+          id?: string
+          reason?: string
+          receivable_vnd?: number
+          redemption_id?: string
+          reverses_clawback_id?: string | null
+          worker_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "worker_bonus_clawbacks_decided_by_fkey"
+            columns: ["decided_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "worker_bonus_clawbacks_redemption_id_fkey"
+            columns: ["redemption_id"]
+            isOneToOne: false
+            referencedRelation: "worker_bonus_redemptions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "worker_bonus_clawbacks_reverses_clawback_id_fkey"
+            columns: ["reverses_clawback_id"]
+            isOneToOne: true
+            referencedRelation: "worker_bonus_clawbacks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "worker_bonus_clawbacks_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
+            referencedRelation: "worker_overview"
+            referencedColumns: ["worker_id"]
+          },
+          {
+            foreignKeyName: "worker_bonus_clawbacks_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
+            referencedRelation: "worker_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      worker_bonus_redemptions: {
+        Row: {
+          client_request_id: string
+          created_at: string
+          id: string
+          milestone_id: string
+          net_vnd: number
+          points_milli: number
+          program_version_id: string
+          reward_vnd: number
+          tax_policy_id: string
+          tax_withheld_vnd: number
+          worker_id: string
+        }
+        Insert: {
+          client_request_id: string
+          created_at?: string
+          id?: string
+          milestone_id: string
+          net_vnd: number
+          points_milli: number
+          program_version_id: string
+          reward_vnd: number
+          tax_policy_id: string
+          tax_withheld_vnd: number
+          worker_id: string
+        }
+        Update: {
+          client_request_id?: string
+          created_at?: string
+          id?: string
+          milestone_id?: string
+          net_vnd?: number
+          points_milli?: number
+          program_version_id?: string
+          reward_vnd?: number
+          tax_policy_id?: string
+          tax_withheld_vnd?: number
+          worker_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "worker_bonus_redemptions_milestone_id_fkey"
+            columns: ["milestone_id"]
+            isOneToOne: false
+            referencedRelation: "ambassador_milestones"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "worker_bonus_redemptions_program_version_id_fkey"
+            columns: ["program_version_id"]
+            isOneToOne: false
+            referencedRelation: "ambassador_program_versions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "worker_bonus_redemptions_tax_policy_id_fkey"
+            columns: ["tax_policy_id"]
+            isOneToOne: false
+            referencedRelation: "admin_finance_tax_policies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "worker_bonus_redemptions_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
+            referencedRelation: "worker_overview"
+            referencedColumns: ["worker_id"]
+          },
+          {
+            foreignKeyName: "worker_bonus_redemptions_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
+            referencedRelation: "worker_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       worker_cancellation_reason_taxonomy: {
         Row: {
           admin_tunable: boolean
@@ -326,6 +599,91 @@ export type WorkerTables = {
         }
         Relationships: []
       }
+      worker_compensation_payouts: {
+        Row: {
+          amount_vnd: number
+          case_id: string
+          created_at: string
+          customer_id: string
+          id: string
+          negotiation_id: string
+          paid_at: string | null
+          paid_by: string | null
+          status: string
+          transfer_reference: string | null
+          worker_id: string
+        }
+        Insert: {
+          amount_vnd: number
+          case_id: string
+          created_at?: string
+          customer_id: string
+          id?: string
+          negotiation_id: string
+          paid_at?: string | null
+          paid_by?: string | null
+          status?: string
+          transfer_reference?: string | null
+          worker_id: string
+        }
+        Update: {
+          amount_vnd?: number
+          case_id?: string
+          created_at?: string
+          customer_id?: string
+          id?: string
+          negotiation_id?: string
+          paid_at?: string | null
+          paid_by?: string | null
+          status?: string
+          transfer_reference?: string | null
+          worker_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "worker_compensation_payouts_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "worker_violation_cases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "worker_compensation_payouts_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "worker_compensation_payouts_negotiation_id_fkey"
+            columns: ["negotiation_id"]
+            isOneToOne: true
+            referencedRelation: "compensation_negotiations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "worker_compensation_payouts_paid_by_fkey"
+            columns: ["paid_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "worker_compensation_payouts_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
+            referencedRelation: "worker_overview"
+            referencedColumns: ["worker_id"]
+          },
+          {
+            foreignKeyName: "worker_compensation_payouts_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
+            referencedRelation: "worker_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       worker_direct_payment_collateral_reservations: {
         Row: {
           collateral_amount: number
@@ -399,6 +757,199 @@ export type WorkerTables = {
             foreignKeyName: "worker_direct_payment_collateral_reservations_worker_id_fkey"
             columns: ["worker_id"]
             isOneToOne: false
+            referencedRelation: "worker_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      worker_discipline_entries: {
+        Row: {
+          actor_id: string | null
+          case_id: string
+          created_at: string
+          detail: Json
+          effective_from: string
+          effective_until: string | null
+          entry_kind: string
+          id: string
+          restores_entry_id: string | null
+          worker_id: string
+        }
+        Insert: {
+          actor_id?: string | null
+          case_id: string
+          created_at?: string
+          detail?: Json
+          effective_from?: string
+          effective_until?: string | null
+          entry_kind: string
+          id?: string
+          restores_entry_id?: string | null
+          worker_id: string
+        }
+        Update: {
+          actor_id?: string | null
+          case_id?: string
+          created_at?: string
+          detail?: Json
+          effective_from?: string
+          effective_until?: string | null
+          entry_kind?: string
+          id?: string
+          restores_entry_id?: string | null
+          worker_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "worker_discipline_entries_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "worker_discipline_entries_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "worker_violation_cases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "worker_discipline_entries_restores_entry_id_fkey"
+            columns: ["restores_entry_id"]
+            isOneToOne: true
+            referencedRelation: "worker_discipline_entries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "worker_discipline_entries_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
+            referencedRelation: "worker_overview"
+            referencedColumns: ["worker_id"]
+          },
+          {
+            foreignKeyName: "worker_discipline_entries_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
+            referencedRelation: "worker_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      worker_discipline_policy: {
+        Row: {
+          appeal_window_days: number
+          compensation_max_offers: number
+          compensation_max_vnd: number
+          compensation_min_vnd: number
+          compensation_response_days: number
+          decision_deadline_hours: number
+          id: number
+          l1_matching_days: number
+          l2_network_freeze_days: number
+          l2_points_debit: number
+          l3_freeze_days: number
+          late_arrival_grace_minutes: number
+          no_show_grace_minutes: number
+          off_app_evidence_threshold: number
+          off_app_window_days: number
+          reply_nudge_minutes: number
+          strike_window_months: number
+          updated_at: string
+          withdrawal_hold_days: number
+        }
+        Insert: {
+          appeal_window_days: number
+          compensation_max_offers?: number
+          compensation_max_vnd?: number
+          compensation_min_vnd?: number
+          compensation_response_days?: number
+          decision_deadline_hours: number
+          id?: number
+          l1_matching_days: number
+          l2_network_freeze_days: number
+          l2_points_debit: number
+          l3_freeze_days: number
+          late_arrival_grace_minutes: number
+          no_show_grace_minutes: number
+          off_app_evidence_threshold: number
+          off_app_window_days: number
+          reply_nudge_minutes: number
+          strike_window_months: number
+          updated_at?: string
+          withdrawal_hold_days: number
+        }
+        Update: {
+          appeal_window_days?: number
+          compensation_max_offers?: number
+          compensation_max_vnd?: number
+          compensation_min_vnd?: number
+          compensation_response_days?: number
+          decision_deadline_hours?: number
+          id?: number
+          l1_matching_days?: number
+          l2_network_freeze_days?: number
+          l2_points_debit?: number
+          l3_freeze_days?: number
+          late_arrival_grace_minutes?: number
+          no_show_grace_minutes?: number
+          off_app_evidence_threshold?: number
+          off_app_window_days?: number
+          reply_nudge_minutes?: number
+          strike_window_months?: number
+          updated_at?: string
+          withdrawal_hold_days?: number
+        }
+        Relationships: []
+      }
+      worker_identity_numbers: {
+        Row: {
+          cccd_hmac: string
+          cccd_last4: string
+          email_hmac: string | null
+          entered_at: string
+          entered_by: string
+          phone_hmac: string | null
+          worker_id: string
+        }
+        Insert: {
+          cccd_hmac: string
+          cccd_last4: string
+          email_hmac?: string | null
+          entered_at?: string
+          entered_by: string
+          phone_hmac?: string | null
+          worker_id: string
+        }
+        Update: {
+          cccd_hmac?: string
+          cccd_last4?: string
+          email_hmac?: string | null
+          entered_at?: string
+          entered_by?: string
+          phone_hmac?: string | null
+          worker_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "worker_identity_numbers_entered_by_fkey"
+            columns: ["entered_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "worker_identity_numbers_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: true
+            referencedRelation: "worker_overview"
+            referencedColumns: ["worker_id"]
+          },
+          {
+            foreignKeyName: "worker_identity_numbers_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: true
             referencedRelation: "worker_profiles"
             referencedColumns: ["id"]
           },
@@ -824,6 +1375,8 @@ export type WorkerTables = {
           selfie_url: string | null
           service_radius_km: number
           service_types: Database["public"]["Enums"]["service_type"][]
+          suspended_until: string | null
+          suspension_reason: string | null
           synthetic_cohort_id: string | null
           total_jobs: number
           updated_at: string
@@ -859,6 +1412,8 @@ export type WorkerTables = {
           selfie_url?: string | null
           service_radius_km?: number
           service_types?: Database["public"]["Enums"]["service_type"][]
+          suspended_until?: string | null
+          suspension_reason?: string | null
           synthetic_cohort_id?: string | null
           total_jobs?: number
           updated_at?: string
@@ -894,6 +1449,8 @@ export type WorkerTables = {
           selfie_url?: string | null
           service_radius_km?: number
           service_types?: Database["public"]["Enums"]["service_type"][]
+          suspended_until?: string | null
+          suspension_reason?: string | null
           synthetic_cohort_id?: string | null
           total_jobs?: number
           updated_at?: string
@@ -906,6 +1463,42 @@ export type WorkerTables = {
             columns: ["id"]
             isOneToOne: true
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      worker_referral_codes: {
+        Row: {
+          code: string
+          created_at: string
+          revoked_at: string | null
+          worker_id: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          revoked_at?: string | null
+          worker_id: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          revoked_at?: string | null
+          worker_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "worker_referral_codes_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: true
+            referencedRelation: "worker_overview"
+            referencedColumns: ["worker_id"]
+          },
+          {
+            foreignKeyName: "worker_referral_codes_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: true
+            referencedRelation: "worker_profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -956,6 +1549,65 @@ export type WorkerTables = {
             columns: ["worker_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      worker_reply_nudges: {
+        Row: {
+          customer_message_at: string
+          customer_message_id: string
+          id: string
+          job_id: string
+          job_status: string
+          nudged_at: string
+          worker_id: string
+        }
+        Insert: {
+          customer_message_at: string
+          customer_message_id: string
+          id?: string
+          job_id: string
+          job_status: string
+          nudged_at?: string
+          worker_id: string
+        }
+        Update: {
+          customer_message_at?: string
+          customer_message_id?: string
+          id?: string
+          job_id?: string
+          job_status?: string
+          nudged_at?: string
+          worker_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "worker_reply_nudges_customer_message_id_fkey"
+            columns: ["customer_message_id"]
+            isOneToOne: true
+            referencedRelation: "chat_messages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "worker_reply_nudges_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "worker_reply_nudges_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
+            referencedRelation: "worker_overview"
+            referencedColumns: ["worker_id"]
+          },
+          {
+            foreignKeyName: "worker_reply_nudges_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
+            referencedRelation: "worker_profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -1092,6 +1744,286 @@ export type WorkerTables = {
             foreignKeyName: "worker_stats_worker_id_fkey"
             columns: ["worker_id"]
             isOneToOne: true
+            referencedRelation: "worker_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      worker_suspension_events: {
+        Row: {
+          action: string
+          actor_id: string | null
+          created_at: string
+          id: string
+          reason: string | null
+          reference_id: string | null
+          source: string
+          until_at: string | null
+          worker_id: string
+        }
+        Insert: {
+          action: string
+          actor_id?: string | null
+          created_at?: string
+          id?: string
+          reason?: string | null
+          reference_id?: string | null
+          source: string
+          until_at?: string | null
+          worker_id: string
+        }
+        Update: {
+          action?: string
+          actor_id?: string | null
+          created_at?: string
+          id?: string
+          reason?: string | null
+          reference_id?: string | null
+          source?: string
+          until_at?: string | null
+          worker_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "worker_suspension_events_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "worker_suspension_events_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
+            referencedRelation: "worker_overview"
+            referencedColumns: ["worker_id"]
+          },
+          {
+            foreignKeyName: "worker_suspension_events_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
+            referencedRelation: "worker_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      worker_violation_appeals: {
+        Row: {
+          case_id: string
+          decided_at: string | null
+          decided_by: string | null
+          decision_reason: string | null
+          evidence_paths: string[]
+          id: string
+          reason: string
+          status: string
+          submitted_at: string
+          worker_id: string
+        }
+        Insert: {
+          case_id: string
+          decided_at?: string | null
+          decided_by?: string | null
+          decision_reason?: string | null
+          evidence_paths?: string[]
+          id?: string
+          reason: string
+          status?: string
+          submitted_at?: string
+          worker_id: string
+        }
+        Update: {
+          case_id?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          decision_reason?: string | null
+          evidence_paths?: string[]
+          id?: string
+          reason?: string
+          status?: string
+          submitted_at?: string
+          worker_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "worker_violation_appeals_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: true
+            referencedRelation: "worker_violation_cases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "worker_violation_appeals_decided_by_fkey"
+            columns: ["decided_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "worker_violation_appeals_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
+            referencedRelation: "worker_overview"
+            referencedColumns: ["worker_id"]
+          },
+          {
+            foreignKeyName: "worker_violation_appeals_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
+            referencedRelation: "worker_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      worker_violation_case_events: {
+        Row: {
+          actor_id: string | null
+          case_id: string
+          created_at: string
+          detail: Json
+          event_kind: string
+          id: string
+        }
+        Insert: {
+          actor_id?: string | null
+          case_id: string
+          created_at?: string
+          detail?: Json
+          event_kind: string
+          id?: string
+        }
+        Update: {
+          actor_id?: string | null
+          case_id?: string
+          created_at?: string
+          detail?: Json
+          event_kind?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "worker_violation_case_events_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "worker_violation_case_events_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "worker_violation_cases"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      worker_violation_cases: {
+        Row: {
+          appeal_status: string
+          created_at: string
+          customer_id: string | null
+          decided_at: string | null
+          decided_by: string | null
+          decision_deadline_at: string
+          decision_reason: string | null
+          dedupe_key: string
+          evidence: Json
+          id: string
+          job_id: string | null
+          level: number
+          reporter_id: string | null
+          source: string
+          statement: string | null
+          status: string
+          suspended_pending_review: boolean
+          updated_at: string
+          violation_code: string
+          worker_id: string
+        }
+        Insert: {
+          appeal_status?: string
+          created_at?: string
+          customer_id?: string | null
+          decided_at?: string | null
+          decided_by?: string | null
+          decision_deadline_at: string
+          decision_reason?: string | null
+          dedupe_key: string
+          evidence?: Json
+          id?: string
+          job_id?: string | null
+          level: number
+          reporter_id?: string | null
+          source: string
+          statement?: string | null
+          status?: string
+          suspended_pending_review?: boolean
+          updated_at?: string
+          violation_code: string
+          worker_id: string
+        }
+        Update: {
+          appeal_status?: string
+          created_at?: string
+          customer_id?: string | null
+          decided_at?: string | null
+          decided_by?: string | null
+          decision_deadline_at?: string
+          decision_reason?: string | null
+          dedupe_key?: string
+          evidence?: Json
+          id?: string
+          job_id?: string | null
+          level?: number
+          reporter_id?: string | null
+          source?: string
+          statement?: string | null
+          status?: string
+          suspended_pending_review?: boolean
+          updated_at?: string
+          violation_code?: string
+          worker_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "worker_violation_cases_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "worker_violation_cases_decided_by_fkey"
+            columns: ["decided_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "worker_violation_cases_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "worker_violation_cases_reporter_id_fkey"
+            columns: ["reporter_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "worker_violation_cases_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
+            referencedRelation: "worker_overview"
+            referencedColumns: ["worker_id"]
+          },
+          {
+            foreignKeyName: "worker_violation_cases_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
             referencedRelation: "worker_profiles"
             referencedColumns: ["id"]
           },

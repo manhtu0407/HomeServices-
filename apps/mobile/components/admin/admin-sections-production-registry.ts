@@ -111,7 +111,7 @@ export function resolveAdminProductionCapability(params: AdminProductionRoutePar
 
 const ADMIN_PRODUCTION_CAPABILITY_IDS: readonly AdminProductionCapabilityId[] = [
   'operations-job-monitor', 'operations-service-transactions', 'operations-scope-change', 'operations-disputes',
-  'workers-applications', 'workers-profile-review', 'workers-access', 'workers-finance',
+  'workers-applications', 'workers-profile-review', 'workers-access', 'workers-finance', 'workers-discipline', 'workers-ambassador',
   'finance-overview', 'finance-reconciliation', 'finance-payouts', 'finance-tax',
   'team-directory', 'team-provisioning', 'team-capabilities', 'team-access-audit',
   'system-price-baseline', 'system-taxonomy', 'system-learning-rules', 'system-model-health',

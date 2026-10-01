@@ -1,6 +1,7 @@
 import { Slot } from 'expo-router'
 import { useEffect } from 'react'
 import { Platform } from 'react-native'
+import { color } from '@/design/theme'
 import { AuthProvider } from '@/lib/auth-provider'
 import { AdminActivationProvider } from '@/lib/admin-activation-provider'
 import { FrontendWorkflowProvider } from '@/lib/frontend-workflow-provider'
@@ -14,6 +15,11 @@ function installSystemTypographyWebStyle() {
   const style = document.createElement('style')
   style.id = NESTSCOUT_SYSTEM_TYPOGRAPHY_WEB_STYLE_ID
   style.textContent = `
+    html,
+    body,
+    #root {
+      background-color: ${color.surface.soft};
+    }
     html,
     body,
     #root,

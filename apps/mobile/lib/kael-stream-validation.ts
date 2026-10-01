@@ -133,7 +133,7 @@ export function isWorkerKaelStreamResult(value: unknown): value is WorkerKaelCha
   const turns = response?.turns
   if (!response || !session || !Array.isArray(turns) || turns.length > 500) return false
   if (
-    !isBoundedString(session.id, 160) || !isBoundedString(session.job_id, 160) ||
+    !isBoundedString(session.id, 160) || !isNullableBoundedString(session.job_id, 160) ||
     !isBoundedString(session.worker_id, 160) || !isEnumString(session.status, WORKER_SESSION_STATUSES) ||
     !isBoundedString(session.started_at, 64) || !isNullableBoundedString(session.closed_at, 64) ||
     !isNonNegativeInteger(session.total_turns) || !isNullableProgress(session.progress)
@@ -143,6 +143,7 @@ export function isWorkerKaelStreamResult(value: unknown): value is WorkerKaelCha
 
 function isCustomerConversationTurn(value: unknown): boolean {
   const turn = asRecord(value)
+  const mediaRefs = turn?.media_refs
   return Boolean(turn) &&
     isBoundedString(turn?.id, 160) &&
     isBoundedString(turn?.conversation_id, 160) &&
@@ -150,7 +151,22 @@ function isCustomerConversationTurn(value: unknown): boolean {
     isNonNegativeInteger(turn?.turn_index) &&
     isEnumString(turn?.role, CUSTOMER_CONVERSATION_TURN_ROLES) &&
     isBoundedString(turn?.text_content, 12_000) &&
-    isBoundedString(turn?.created_at, 64)
+    isBoundedString(turn?.created_at, 64) &&
+    (mediaRefs === undefined || isCustomerConversationMediaRefs(mediaRefs))
+}
+
+function isCustomerConversationMediaRefs(value: unknown): boolean {
+  if (!Array.isArray(value) || value.length > 5) return false
+  const seen = new Set<string>()
+  return value.every((entry) => {
+    if (
+      !isBoundedString(entry, 1_000) ||
+      !/^supabase:\/\/kael-chat-media\/(?!\.{1,2}\/)[^/\s?#]+\/kael-chat\/model_vision\/(?!.*(?:\.\.|\/\/))[^\s?#]+$/i.test(entry) ||
+      seen.has(entry)
+    ) return false
+    seen.add(entry)
+    return true
+  })
 }
 
 function isCustomerTurn(value: unknown): boolean {

@@ -21,6 +21,7 @@ import { MetaItem, StatusPill } from './admin-section-cards'
 import { createFinanceFormatters } from './admin-finance-formatters'
 import { styles } from './admin-sections-styles'
 import { workerReviewCopy } from './admin-worker-review-copy'
+import { AdminWorkerIdentityNumber } from './admin-worker-identity-number'
 import { AdminText } from './admin-text'
 
 type WorkerReviewModalProps = {
@@ -205,6 +206,7 @@ function WorkerReviewSession(props: WorkerReviewModalProps & { worker: AdminView
       if (!result.success) {
         const ambiguous = Boolean(unresolved) || shouldRetainClientRequestId(result)
         const message = ambiguous ? reviewCopy.unknownOutcome
+          : result.code === 'IDENTITY_NUMBER_REQUIRED' || result.code === 'IDENTITY_BLOCKLISTED' ? result.error
           : result.code === 'STALE_REVIEW' || result.code === 'IDEMPOTENCY_CONFLICT' || result.code === 'ALREADY_REVIEWED'
             ? reviewCopy.staleReview : reviewCopy.decisionError
         patch({ error: message, supportCode: reviewSupportCode(result),
@@ -241,6 +243,7 @@ function WorkerReviewSession(props: WorkerReviewModalProps & { worker: AdminView
           <ChecklistSection worker={detail.application} reviewCopy={reviewCopy} />
           <FinanceSection finance={props.canReadFinance ? finance : null} error={props.canReadFinance ? financeError : null} formatDate={props.formatDate} language={props.language} loading={props.canReadFinance && financeLoading} reviewCopy={reviewCopy} />
           <ProfileSections detail={detail} copy={props.copy} reviewCopy={reviewCopy} serviceLabel={props.serviceLabel} />
+          {detail.application.stage === 'ready_verification' && props.canReview ? <AdminWorkerIdentityNumber language={props.language} workerId={detail.application.worker_id} /> : null}
           <HistorySection detail={detail} formatDate={props.formatDate} reviewCopy={reviewCopy} />
         </ScrollView>
         {error ? <AdminText textRole="subheadline" accessibilityRole="alert" style={styles.errorText}>{error}</AdminText> : null}

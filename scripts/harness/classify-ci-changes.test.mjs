@@ -99,6 +99,7 @@ test('rules, skills, commands, and memory take no conditional lane', () => {
     '.claude/skills/kael-tdd/SKILL.md',
     '.claude/commands/kael-mem.md',
     '.agents/skills/kael-tdd/agents/openai.yaml',
+    '.opencodereview/rule.json',
   ]) {
     assert.deepEqual(classifyChangedPaths([path]), allCategories(false), path)
   }

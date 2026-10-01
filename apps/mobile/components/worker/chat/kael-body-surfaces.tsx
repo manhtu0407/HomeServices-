@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { Text as RNText, View, type TextProps } from 'react-native'
 import { type LocalDeal } from '@nestscout/shared'
+import { useGlassAccessibility } from '@/components/ui/accessibility-motion'
 import { KaelTextField, MintAura } from '@/components/ui/kael-primitives'
 import { LiquidControlButton, LiquidSendArrowIcon } from '@/components/ui/liquid-back-button'
 import { color } from '@/design/theme'
@@ -165,6 +166,7 @@ function WorkerV5PrivateKaelOrbBody({
   orbChat: WorkerV5KaelOrbChat
   reduceTransparency: boolean
 }) {
+  const { reduceMotion } = useGlassAccessibility()
   const composer = useMemo(() => (
     <WorkerV5KaelOrbComposer
       busy={orbChat.busy}
@@ -173,9 +175,10 @@ function WorkerV5PrivateKaelOrbBody({
       mode={mode}
       onPickMedia={() => void orbChat.pickMedia()}
       onSend={orbChat.send}
+      reduceMotion={reduceMotion}
       reduceTransparency={reduceTransparency}
     />
-  ), [language, mode, orbChat, reduceTransparency])
+  ), [language, mode, orbChat, reduceMotion, reduceTransparency])
   return (
     <WorkerV5KaelOrbBody
       composer={composer}
@@ -189,6 +192,7 @@ function WorkerV5PrivateKaelOrbBody({
       onOpenOpportunity={() => navigateToScreen(workerV5JobsDestinationScreenId(deal))}
       onStreamingReplySettled={orbChat.settleStreamingReply}
       onToggleReasoningReceipt={orbChat.toggleReasoningReceipt}
+      reduceMotion={reduceMotion}
       reduceTransparency={reduceTransparency}
       reasoningReceipt={orbChat.reasoningReceipt}
       serviceIcons={workerV5OpportunityServiceIcons}

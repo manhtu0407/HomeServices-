@@ -278,8 +278,11 @@ export const kaelChatService = {
       : api.get<KaelChatResponse>(path)
   },
 
-  sendTurn(sessionId: string, input: KaelChatTurnInput) {
-    return api.post<KaelChatResponse>(`/kael/chat/${encodeURIComponent(sessionId)}`, input)
+  sendTurn(sessionId: string, input: KaelChatTurnInput, signal?: AbortSignal) {
+    const path = `/kael/chat/${encodeURIComponent(sessionId)}`
+    return signal
+      ? api.post<KaelChatResponse>(path, input, { signal })
+      : api.post<KaelChatResponse>(path, input)
   },
 
   createMediaUpload(input: {
@@ -325,8 +328,10 @@ export const kaelChatService = {
 }
 
 export const kaelAssistantService = {
-  ask(input: KaelAssistantInput) {
-    return api.post<KaelAssistantResponse>('/kael/assistant', input)
+  ask(input: KaelAssistantInput, signal?: AbortSignal) {
+    return signal
+      ? api.post<KaelAssistantResponse>('/kael/assistant', input, { signal })
+      : api.post<KaelAssistantResponse>('/kael/assistant', input)
   },
 }
 
@@ -362,16 +367,20 @@ export const customerKaelConversationService = {
     return api.patch<CustomerKaelConversationResponse>(`/me/kael/conversations/${conversationId}/pin`, input)
   },
 
-  sendTurn(conversationId: string, input: CustomerKaelConversationTurnInput) {
-    return api.post<CustomerKaelConversationResponse>(`/me/kael/conversations/${conversationId}/turn`, input)
+  sendTurn(conversationId: string, input: CustomerKaelConversationTurnInput, signal?: AbortSignal) {
+    const path = `/me/kael/conversations/${conversationId}/turn`
+    return signal
+      ? api.post<CustomerKaelConversationResponse>(path, input, { signal })
+      : api.post<CustomerKaelConversationResponse>(path, input)
   },
 
   streamTurn(
     conversationId: string,
     input: CustomerKaelConversationTurnInput,
     handlers?: CustomerKaelConversationStreamHandlers,
+    signal?: AbortSignal,
   ) {
-    return streamCustomerKaelConversationTurn(conversationId, input, handlers)
+    return streamCustomerKaelConversationTurn(conversationId, input, handlers, signal)
   },
 
   submitFeedback(input: CustomerKaelFeedbackInput) {
@@ -386,10 +395,10 @@ export const kaelChatProgressService = {
 }
 
 export const kaelChatStreamService = {
-  async sendTurn(sessionId: string, input: KaelChatTurnInput, handlers?: KaelChatStreamHandlers) {
-    const streamed = await streamKaelChatTurn(sessionId, input, handlers)
+  async sendTurn(sessionId: string, input: KaelChatTurnInput, handlers?: KaelChatStreamHandlers, signal?: AbortSignal) {
+    const streamed = await streamKaelChatTurn(sessionId, input, handlers, signal)
     return !streamed.success && streamed.code === 'STREAM_UNSUPPORTED'
-      ? kaelChatService.sendTurn(sessionId, input)
+      ? signal?.aborted ? streamed : kaelChatService.sendTurn(sessionId, input, signal)
       : streamed
   },
   async submitEvidence(sessionId: string, input: KaelChatEvidenceInput, handlers?: KaelChatStreamHandlers) {
@@ -425,12 +434,15 @@ export const workerKaelChatService = {
     return api.get<WorkerKaelChatResponse>(`/workers/me/kael/chat/${encodeURIComponent(sessionId)}`)
   },
 
-  sendTurn(sessionId: string, input: WorkerKaelChatTurnInput) {
-    return api.post<WorkerKaelChatResponse>(`/workers/me/kael/chat/${encodeURIComponent(sessionId)}`, input)
+  sendTurn(sessionId: string, input: WorkerKaelChatTurnInput, signal?: AbortSignal) {
+    const path = `/workers/me/kael/chat/${encodeURIComponent(sessionId)}`
+    return signal
+      ? api.post<WorkerKaelChatResponse>(path, input, { signal })
+      : api.post<WorkerKaelChatResponse>(path, input)
   },
 
-  streamTurn(sessionId: string, input: WorkerKaelChatTurnInput, handlers?: WorkerKaelChatStreamHandlers) {
-    return streamWorkerKaelChatTurn(sessionId, input, handlers)
+  streamTurn(sessionId: string, input: WorkerKaelChatTurnInput, handlers?: WorkerKaelChatStreamHandlers, signal?: AbortSignal) {
+    return streamWorkerKaelChatTurn(sessionId, input, handlers, signal)
   },
 
   submitFeedback(input: WorkerKaelFeedbackInput) {

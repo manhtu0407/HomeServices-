@@ -1,0 +1,66 @@
+{
+  "include": ["**/*-pillar.test.ts", "**/*-pillar-test.tsx"],
+  "exclude": ["packages/shared/src/types/database/**", "pnpm-lock.yaml", "patches/**"],
+  "rules": [
+    {
+      "path": "supabase/functions/_shared/contracts/**",
+      "merge_system_rule": true,
+      "rule": "Contract twin (governance/STRUCTURES.md section 4.5). The request/response contracts exist as two hand-maintained twins: supabase/functions/_shared/contracts/** and packages/shared/src/contracts/**. A change to one side needs the mirrored change to the other in the same diff. Flag a diff that touches only one side: drift fails the contract-parity tests."
+    },
+    {
+      "path": "packages/shared/src/contracts/**",
+      "merge_system_rule": true,
+      "rule": "Contract twin (governance/STRUCTURES.md section 4.5). The request/response contracts exist as two hand-maintained twins: packages/shared/src/contracts/** and supabase/functions/_shared/contracts/**. A change to one side needs the mirrored change to the other in the same diff. Flag a diff that touches only one side: drift fails the contract-parity tests."
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/http/**",
+      "merge_system_rule": true,
+      "rule": "Edge http layer (governance/STRUCTURES.md section 4.5). Enforce:\n- Imports run one way: http -> domains -> kael -> platform. http/ must not import kael/ directly; an endpoint that reaches the brain with no use-case in between bypasses workflow rules.\n- Handlers validate and sanitize input and apply role guards before any write or provider call (RULES.md Security Invariants: Input Validation).\n- Workflow-sensitive writes (booking, matching, scope change, completion, review, cancellation, reassignment, notification) go through a domains use-case, never inline in a route (RULES.md #0).\n- No PII, tokens, keys or raw chat text in logs (RULES.md #9). Every network call has a timeout and at most 2 retries with capped backoff (RULES.md #10)."
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/**",
+      "merge_system_rule": true,
+      "rule": "Edge domains layer (governance/STRUCTURES.md section 4.5). Enforce:\n- domains/ may reach kael/ and platform/ but never http/; a layer reaches only the layers below it.\n- db(ctx) is the caller-authenticated client. A workflow write the caller's own grants do not allow uses workflowDb(ctx), the privileged client in platform/db.ts. Flag a write path that relies on db(ctx) where the row is owned by the workflow.\n- No direct AI provider call, SDK import or provider URL. Every AI call goes through callAI in kael/kael-providers/provider-client.ts with the spend gate (RULES.md #2).\n- No fabricated fallback rows, counts, prices, ratings or worker data. Failures are logged with safe metadata and surface as an honest unavailable state (RULES.md #8).\n- No PII or secrets in logs (RULES.md #9). Every network call has a timeout and at most 2 retries (RULES.md #10)."
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/kael/**",
+      "merge_system_rule": true,
+      "rule": "Edge kael layer (governance/STRUCTURES.md section 4.5, RULES.md #2 to #7). Enforce:\n- kael/ may reach platform/ only. It must not import domains/ or http/.\n- AI providers are called only through kael/kael-providers/provider-client.ts callAI with the spend gate. Provider hosts (Anthropic, OpenAI, Perplexity, DeepSeek) appear only inside kael-providers/. Model IDs come from the per-task ladder in kael/agents/agentic-harness.ts; do not hardcode a new model ID at a call site (RULES.md #2).\n- Raw model output never reaches a user or sets workflow or money state. It is schema-validated first (RULES.md #3), and an autonomous transition carries a server-validated KaelAutonomyDecision (RULES.md #7).\n- Price content keeps the Vietnamese disclaimer (RULES.md #4). Unsupported services are politely declined, not analyzed (RULES.md #6).\n- No PII or keys in logs (RULES.md #9). Every provider call has a timeout and at most 2 retries (RULES.md #10)."
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/platform/**",
+      "merge_system_rule": true,
+      "rule": "Edge platform layer, the lowest layer (governance/STRUCTURES.md section 4.5). platform/ must not import http/, domains/ or kael/. Cross-cutting helpers stay free of workflow rules. No secrets or PII in logs or error messages (RULES.md #1, #9). Every network call has a timeout and at most 2 retries (RULES.md #10)."
+    },
+    {
+      "path": "supabase/functions/**",
+      "merge_system_rule": true,
+      "rule": "Edge function outside the mobile-api layers. Secrets come from the environment only and appear in no log, response or error (RULES.md #1, #9). A webhook or provider callback verifies its secret before it acts (see SEPAY_WEBHOOK_SECRET in RULES.md Security Invariants). Every network call has a timeout and at most 2 retries (RULES.md #10). No import from apps/api (governance/STRUCTURES.md section 4.5)."
+    },
+    {
+      "path": "supabase/migrations/**",
+      "merge_system_rule": true,
+      "rule": "Database migration (protocol kael-supabase, governance/protocols/ai-data-security.md section 14). Enforce:\n- A schema change arrives as a new migration file. A diff that modifies an existing migration is a defect unless it is provably unmerged.\n- A schema change comes with regenerated types under packages/shared/src/types/database/** and RLS positive and negative tests for each actor (customer, worker, admin) under supabase/tests/. Flag a diff that lacks either.\n- A table that stores personal data is classified (RULES.md Security Invariants: PII Handling).\n- A test that only greps SQL text proves nothing (docs/test-debt-ledger.md)."
+    },
+    {
+      "path": "apps/mobile/**",
+      "merge_system_rule": true,
+      "rule": "Expo React Native app (RULES.md #0, #1, #4, #5, #8, #9). Enforce:\n- No AI provider call, provider URL or SDK, and no server secret, service-role key or provider key in the bundle. Workflow-sensitive writes go through the mobile-api Edge function, never direct Supabase writes (RULES.md #0, #1).\n- No import from apps/api (governance/STRUCTURES.md section 4.5).\n- User-facing copy is Vietnamese by default and never mixes Vietnamese and English in one language mode (RULES.md #5). A price estimate carries the required Vietnamese disclaimer (RULES.md #4).\n- No fake data: no invented counts, ratings, earnings, worker names or prices, and no 'coming soon' shown as real product data. Use empty or unavailable states (RULES.md #8).\n- No raw hex or rgba in screens or components. Colors come from the tokens in apps/mobile/design/theme.ts (governance/design/tokens.md).\n- No PII, tokens or full raw chat text in logs (RULES.md #9)."
+    },
+    {
+      "path": "apps/api/src/lib/{kael,learning}/**",
+      "merge_system_rule": true,
+      "rule": "Frozen second brain (governance/STRUCTURES.md section 4.5). apps/api/src/lib/kael and apps/api/src/lib/learning may shrink or stay the same, never grow. Flag any added file and any net line growth in these paths. The canonical Kael brain is the Edge one under supabase/functions/mobile-api/_shared/kael/."
+    },
+    {
+      "path": "apps/api/**",
+      "merge_system_rule": true,
+      "rule": "apps/api is reference, parity, admin and support code, not the mobile runtime (RULES.md #0). Flag new user-facing product behavior added here instead of the Edge mobile-api. No secrets in code or logs (RULES.md #1, #9). Every network call has a timeout and at most 2 retries (RULES.md #10)."
+    },
+    {
+      "path": "{scripts,.claude,.github}/**",
+      "merge_system_rule": true,
+      "rule": "Repository tooling and agent configuration. No secrets, tokens or personal data in files, logs or fixtures (RULES.md #1, #9). Comments state a non-obvious WHY only: no dates, phase or plan tags, AI attribution, request narration or dead code (governance/protocols/code-hygiene.md). A workflow change must not add billed CI minutes without need: every job is billed separately and rounded up to a whole minute (docs/ops/github-actions-cost.md). Scripts run on Windows, Linux and macOS through scripts/run.mjs."
+    }
+  ]
+}

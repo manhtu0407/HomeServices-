@@ -108,7 +108,7 @@ export function HomeStorytellingCard({ language, onSearch, onSearchFocus, reduce
 
       <View style={[styles.search, { borderRadius: q(40), height: q(80), left: q(33), paddingHorizontal: q(28), right: q(33), top: q(228) }]} testID="customer-v21-home-search">
         <HomeIcon color={tokens.muted} name="search" size={q(38)} />
-        <TextInput
+        <TextInput spellCheck={false}
           accessibilityLabel={copy.searchPlaceholder}
           onChangeText={setValue}
           onFocus={onSearchFocus}

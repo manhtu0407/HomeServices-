@@ -1,6 +1,7 @@
-import { useId, type ReactNode, type Ref } from 'react'
+import { useId, useState, type ReactNode, type Ref } from 'react'
 import {
   ActivityIndicator,
+  Platform,
   Pressable,
   StyleSheet,
   Text,
@@ -34,7 +35,7 @@ const webTextInputNoOutline = {
 type KaelTextInputProps = TextInputProps & { ref?: Ref<TextInput> }
 
 export function KaelTextInput({ ref, style, ...inputProps }: KaelTextInputProps) {
-  return <TextInput {...inputProps} ref={ref} style={[webTextInputNoOutline, styles.inputFontMetrics, inputProps.multiline ? null : styles.singleLineInput, style]} />
+  return <TextInput spellCheck={false} {...inputProps} ref={ref} style={[webTextInputNoOutline, styles.inputFontMetrics, inputProps.multiline ? null : styles.singleLineInput, style]} />
 }
 
 type KaelButtonProps = {
@@ -177,17 +178,33 @@ type KaelTextFieldProps = TextInputProps & {
   shellStyle?: StyleProp<ViewStyle>
 }
 
-export function KaelTextField({ inputShellAdornment, inputShellStyle, inputShellTestID, label, labelStyle, mode = 'text', shellStyle, style, ...inputProps }: KaelTextFieldProps) {
+// A multiline field starts one line tall with equal padding, so its text sits centred like a
+// single-line field, and grows with what is typed up to a cap, then scrolls without a visible bar.
+// Native inputs grow by themselves; the web textarea is sized from its content height.
+const MULTILINE_ONE_LINE_HEIGHT = 46
+const MULTILINE_MAX_HEIGHT = 160
+
+export function KaelTextField({ inputShellAdornment, inputShellStyle, inputShellTestID, label, labelStyle, mode = 'text', onContentSizeChange, shellStyle, style, ...inputProps }: KaelTextFieldProps) {
+  const [contentHeight, setContentHeight] = useState(MULTILINE_ONE_LINE_HEIGHT)
+  const multiline = Boolean(inputProps.multiline)
+  const webHeight = multiline && Platform.OS === 'web'
+    ? { height: Math.min(MULTILINE_MAX_HEIGHT, Math.max(MULTILINE_ONE_LINE_HEIGHT, contentHeight)) }
+    : null
   return (
     <View style={[styles.fieldStack, shellStyle]}>
       {label ? <Text style={[styles.fieldLabel, labelStyle]}>{label}</Text> : null}
       <View style={[styles.inputShell, inputShellStyle]} testID={inputShellTestID}>
         {inputShellAdornment}
         {mode === 'search' ? <SearchIcon /> : null}
-        <TextInput
+        <TextInput spellCheck={false}
+          numberOfLines={multiline ? 1 : undefined}
           placeholderTextColor={component.input.placeholder}
-          style={[styles.input, webTextInputNoOutline, mode === 'search' ? styles.searchInput : null, inputProps.multiline ? null : styles.singleLineInput, style]}
+          style={[styles.input, webTextInputNoOutline, mode === 'search' ? styles.searchInput : null, multiline ? [styles.multilineInput, webHeight] : styles.singleLineInput, style]}
           {...inputProps}
+          onContentSizeChange={(event) => {
+            if (multiline) setContentHeight(event.nativeEvent.contentSize.height)
+            onContentSizeChange?.(event)
+          }}
         />
       </View>
     </View>
@@ -360,6 +377,12 @@ const styles = StyleSheet.create({
   searchInput: {
     minHeight: component.input.height - 2,
   },
+  multilineInput: {
+    maxHeight: MULTILINE_MAX_HEIGHT,
+    minHeight: 0,
+    paddingVertical: 12,
+    scrollbarWidth: 'none',
+  } as TextStyle,
   singleLineInput: {
     textAlignVertical: 'center',
   },

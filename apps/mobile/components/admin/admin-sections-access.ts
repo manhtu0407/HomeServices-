@@ -14,6 +14,8 @@ export function canAccessProductionCapability(
   if (capabilityId === 'finance-payouts') {
     return actor.capabilities.includes('payouts.read') || actor.capabilities.includes('payouts.process')
   }
+  if (capabilityId === 'workers-discipline') return actor.capabilities.includes('workers.discipline.manage')
+  if (capabilityId === 'workers-ambassador') return actor.capabilities.includes('workers.bonus.manage')
   if (capabilityId.startsWith('finance-')) {
     return actor.capabilities.includes('finance.read') || actor.capabilities.includes('finance.reconcile')
   }

@@ -28,6 +28,7 @@ import { useFrontendWorkflow } from '@/lib/frontend-workflow-provider'
 import { placesService } from '@/lib/services'
 import { bookingServiceIdFromRoute, performanceProfileForBooking, productionServiceForBooking } from '@/lib/kael-performance-intake'
 import { stagePendingKaelChatMessage } from '@/lib/pending-kael-chat-message'
+import { customerCompensationRoute } from '@/lib/program-notification-routes'
 import type { CustomerProfileInsightsResponse, CustomerServiceHistoryItem } from '@/lib/api-types'
 import {
   readPendingKaelChatDraft,
@@ -78,7 +79,6 @@ import {
 import { CustomerV21DockOverlayView } from '../dock/dock-stateful-surfaces'
 import {
   customerV21CommonCopy,
-  customerV21ScreenTitles,
   customerV21ServiceCopy,
   customerV21StatusCopy,
 } from '../ui/copy'
@@ -113,9 +113,7 @@ import {
   profilePanelParam,
   profileScreenParam,
   profileSettingsSectionParam,
-  profileStageSubtitle,
   profileUtilityParam,
-  profileUtilitySubtitle,
   profileUtilityTitle,
   protectedTransactionLabel,
   rankLabel,
@@ -130,6 +128,9 @@ import {
   CUSTOMER_LIQUID_NAV_ORB_SIZE,
   CUSTOMER_LIQUID_NAV_SIDE_INSET,
 } from '../dock/dock-styles'
+import { CustomerMembershipCard } from '../profile/membership-card'
+import { isWorkerAtWorkStatus } from '../report/worker-report-entry'
+import { membershipRank } from '../profile/membership-rank'
 import { customerV21ProfileUtilityStyles as profileUtilityStyles } from '../profile/profile-utility-styles'
 import { customerV21SurfaceContentWidth, customerV21SharedStyles as sharedStyles } from '../ui/shared-styles'
 import { type CustomerDockActive, type CustomerKaelMode, type CustomerPrimaryTab, type CustomerV21ScreenId } from '../ui/types'
@@ -792,6 +793,7 @@ export function CustomerHistorySurface() {
   return (
     <>
       <CustomerServiceHistorySurface
+        activeWork={deal && isWorkerAtWorkStatus(deal.status) ? { jobId: deal.id, onOpen: () => router.replace(customerCaseWorkRouteForDeal(deal) as never), serviceLabel: deal.draft.serviceType ? customerV21ServiceCopy[language][deal.draft.serviceType].label : copy.dataPending, statusLabel: customerV21StatusCopy[language][deal.status], workerName: deal.workerProfile?.fullName ?? null } : null}
         onOpenDetail={openHistoryDetail}
         onRebook={rebookService}
       />
@@ -858,13 +860,7 @@ export function CustomerProfileSurface() {
     ? `${formatNumber(bankOptionCount, language)} ngân hàng`
     : `${formatNumber(bankOptionCount, language)} banks`
   const messageMemoryAllowed = agenticBooleanFromMemory(workflow.customerKaelMemory, 'message_interaction_memory')
-  const usageRankPoints = typeof insights?.usage_rank_points === 'number' ? Math.max(0, insights.usage_rank_points) : null
-  const usageRankCyclePoints = usageRankPoints !== null && usageRankPoints > 0 ? (usageRankPoints % 1000 || 1000) : 0
-  const usageRankPointsLabel = usageRankPoints === null
-    ? copy.dataPending
-    : language === 'vi'
-      ? `${formatNumber(usageRankCyclePoints, language)} / 1.000 điểm`
-      : `${formatNumber(usageRankCyclePoints, language)} / 1,000 points`
+  const usageRankPointsLabel = membershipRank(insights, language).pointsLabel ?? copy.dataPending
   const settingsGroups = buildCustomerProfileSettingsGroups({
     actions: {
       deleteAccount: () => router.replace('/(customer)/profile?utility=delete-account' as never),
@@ -933,6 +929,7 @@ export function CustomerProfileSurface() {
               language={language}
               notifications={workflow.notifications}
               onMarkRead={workflow.actions.markNotificationRead}
+              onOpenCompensation={() => router.replace(customerCompensationRoute as never)}
               onOpenRelatedWork={(jobId) => router.replace(
                 `/(customer)/history?job_id=${encodeURIComponent(jobId)}&source=profile-notifications` as never,
               )}
@@ -963,19 +960,6 @@ export function CustomerProfileSurface() {
             />
           )}
           onBack={() => router.replace(directProfileBackPath as never)}
-          subtitle={directProfileUtility === 'address'
-            || directProfileUtility === 'appearance'
-            || directProfileUtility === 'language'
-            || directProfileUtility === 'legal'
-            || directProfileUtility === 'memory'
-            || directProfileUtility === 'notifications'
-            || directProfileUtility === 'password'
-            || directProfileUtility === 'personal-details'
-            || directProfileUtility === 'support'
-            ? ''
-            : profileUtilitySubtitle(directProfileUtility, language)}
-          title={profileUtilityTitle(directProfileUtility, language)}
-          titleStyle={directProfileUtility === 'address' ? profileUtilityStyles.profileAddressUtilityTitle : undefined}
         />
       </V21Screen>
     )
@@ -1002,8 +986,6 @@ export function CustomerProfileSurface() {
             setSelectedPanel('overview')
             router.replace('/(customer)/profile' as never)
           }}
-          subtitle={profileStageSubtitle(profileScreenId, language)}
-          title={customerV21ScreenTitles[language][profileScreenId]}
         />
       </V21Screen>
     )
@@ -1036,7 +1018,6 @@ export function CustomerProfileSurface() {
         rootStyles={styles}
         settingsGroups={settingsGroups}
         tokens={tokens}
-        topBarTitle={language === 'vi' ? 'Hồ sơ khách hàng' : 'Customer profile'}
         versionLabel={Constants.expoConfig?.version
           ? (language === 'vi'
               ? `Phiên bản ${Constants.expoConfig.version}`
@@ -1094,7 +1075,7 @@ export function CustomerV21DockOverlay({ active }: { active: CustomerDockActive 
   const router = useRouter()
   const { width } = useWindowDimensions()
   const viewportWidth = customerViewportWidth(width)
-  const { mode, reduceMotion, tokens } = useV21Theme()
+  const { reduceMotion, tokens } = useV21Theme()
   const { collapsed, resetDockScroll } = useDockScrollState()
   const animatedDockScrollStyle = useDockScrollTransform(collapsed, reduceMotion)
   // A parent-controlled active tab is external synchronization, not a local event surrogate.
@@ -1121,7 +1102,6 @@ export function CustomerV21DockOverlay({ active }: { active: CustomerDockActive 
       language={language}
       liquidDockWidth={liquidDockWidth}
       liquidNavWidth={liquidNavWidth}
-      mode={mode}
       navItems={customerV21DockNavItems}
       onKaelPress={openKael}
       onTabPress={(route) => router.replace(route as never)}
@@ -1433,22 +1413,13 @@ function ProfileUtilitySection({ kind }: ProfileUtilitySectionProps) {
 function ProfileRanking({ insights }: { insights: CustomerProfileInsightsResponse | null }) {
   const language = useAppLanguage()
   const copy = customerV21CommonCopy[language]
-  const rank = typeof insights?.usage_rank_level === 'number' ? Math.max(0, Math.min(5, insights.usage_rank_level)) : null
-  const points = typeof insights?.usage_rank_points === 'number' ? Math.max(0, insights.usage_rank_points) : null
+  const membership = membershipRank(insights, language)
+  const { nextRank, points, rank } = membership
   const numericRank = rank ?? 0
-  const numericPoints = points ?? 0
-  const rankCyclePoints = numericPoints > 0 ? (numericPoints % 1000 || 1000) : 0
-  const progress = Math.max(0, Math.min(100, rankCyclePoints / 10))
-  const nextRank = numericRank > 0 && numericRank < 5 ? numericRank + 1 : null
-  const remaining = nextRank ? Math.max(0, 1000 - rankCyclePoints) : 0
-  const levelProgress = numericRank > 0 && points !== null
-    ? Math.max(0, Math.min(100, (((numericRank - 1) * 1000 + rankCyclePoints) / 4000) * 100))
-    : 0
-  const levelProgressLabel = points === null
-    ? copy.dataPending
-    : language === 'vi'
-      ? `${formatNumber(rankCyclePoints, language)} / 1.000 điểm`
-      : `${formatNumber(rankCyclePoints, language)} / 1,000 points`
+  const progress = membership.progressPercent
+  const remaining = membership.pointsToNext ?? 0
+  const levelProgress = membership.levelProgressPercent
+  const levelProgressLabel = membership.pointsLabel ?? copy.dataPending
   const rankTitle = rank === null
     ? copy.dataPending
     : numericRank > 0
@@ -1485,6 +1456,7 @@ function ProfileRanking({ insights }: { insights: CustomerProfileInsightsRespons
   )
   return (
     <ProfileRankingPanel
+      membershipCard={<CustomerMembershipCard />}
       metrics={[
         { icon: 'services', label: language === 'vi' ? 'Dịch vụ đã dùng' : 'Used services', testID: 'customer-v21-profile-ranking-metric-services', value: completedCount },
         { icon: 'streak', label: language === 'vi' ? 'Chuỗi hoạt động' : 'Active streak', testID: 'customer-v21-profile-ranking-metric-streak', value: streakLabel },

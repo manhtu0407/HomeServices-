@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useReducer, useRef, type Dispatch, type SetStateAction } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useReducer, useRef, type Dispatch, type SetStateAction } from 'react'
 
 import type { KaelProcessLine, KaelProcessScenarioId } from './kael-process-lines'
 import {
@@ -113,12 +113,10 @@ export function useCustomerKaelChatUiState(scopeKey?: string) {
     }),
   )
   const latestComposerRef = useRef({ draft: state.draft, voiceTranscript: state.voiceTranscript })
-  latestComposerRef.current = { draft: state.draft, voiceTranscript: state.voiceTranscript }
   const composerMutationRevisionRef = useRef(0)
   const hydrationRevisionRef = useRef(0)
   const hydratedScopeRef = useRef<string | null>(null)
   const currentScopeRef = useRef(scopeKey)
-  currentScopeRef.current = scopeKey
   const setDraft = useCallback<CustomerKaelChatUiSetter<'draft'>>((value) => {
     composerMutationRevisionRef.current += 1
     dispatch({ key: 'draft', value } as CustomerKaelChatUiAction)
@@ -151,6 +149,11 @@ export function useCustomerKaelChatUiState(scopeKey?: string) {
     setSubmittingCaseQuoteRejectReason: createSetter(dispatch, 'submittingCaseQuoteRejectReason'),
     setUploadingMedia: createSetter(dispatch, 'uploadingMedia'),
   }), [])
+
+  useLayoutEffect(() => {
+    latestComposerRef.current = { draft: state.draft, voiceTranscript: state.voiceTranscript }
+    currentScopeRef.current = scopeKey
+  }, [scopeKey, state.draft, state.voiceTranscript])
 
   useEffect(() => {
     if (!scopeKey) return

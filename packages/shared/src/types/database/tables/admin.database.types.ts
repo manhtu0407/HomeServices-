@@ -127,6 +127,7 @@ export type AdminTables = {
       }
       admin_finance_tax_rules: {
         Row: {
+          applies_at_or_above_vnd: number | null
           calculation_basis: string
           created_at: string
           id: string
@@ -137,6 +138,7 @@ export type AdminTables = {
           tax_code: string
         }
         Insert: {
+          applies_at_or_above_vnd?: number | null
           calculation_basis: string
           created_at?: string
           id?: string
@@ -147,6 +149,7 @@ export type AdminTables = {
           tax_code: string
         }
         Update: {
+          applies_at_or_above_vnd?: number | null
           calculation_basis?: string
           created_at?: string
           id?: string

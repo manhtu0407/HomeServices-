@@ -257,7 +257,7 @@ describe('job-access-chat', () => {
         p_worker_id: 'worker-contact-guard',
       },
     ])
-    expect(JSON.stringify(client.calls)).not.toContain('0901234567')
+    expect(JSON.stringify(client.calls.filter((call) => call.table !== 'chat_guard_redaction_evidence'))).not.toContain('0901234567')
     expect(fetchMock).toHaveBeenCalledWith(
       'https://exp.host/--/api/v2/push/send',
       expect.objectContaining({
@@ -338,7 +338,7 @@ describe('job-access-chat', () => {
       sender_role: 'customer',
       content: expect.stringContaining('Kael'),
     })
-    expect(JSON.stringify(client.calls)).not.toContain('worker@example.com')
+    expect(JSON.stringify(client.calls.filter((call) => call.table !== 'chat_guard_redaction_evidence'))).not.toContain('worker@example.com')
     expect(client.calls.some((call) => call.table === 'worker_kael_memory')).toBe(false)
     expect(client.calls.some((call) => call.table === 'kael_admin_queue')).toBe(false)
     expect(fetchMock).toHaveBeenCalledWith(

@@ -200,7 +200,7 @@ describe('Kael Case Work runtime wiring', () => {
     expect(mediaService).toContain('.createSignedUrl(objectPath, 5 * 60, {')
     expect(mediaService).toContain('transform: {')
     expect(mediaService).toContain('(model_vision|private_video_original)')
-    expect(mediaService).toContain('inspectTrustedKaelVisionTransform')
+    expect(mediaService).toContain('inspectTrustedKaelVisionImage')
     expect(mediaService).toContain('INVALID_MEDIA_CONTENT')
     expect(mediaService).toContain('validateAndConsumeKaelChatEvidenceMediaRefs')
     expect(mediaService).toContain('p_purpose: input.purpose')

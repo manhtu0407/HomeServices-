@@ -73,8 +73,8 @@ const readyProviders = Object.freeze({
   global_ai_enabled: true, ios_apns: true, perplexity: true, push_receipt_reconciler: true, vietmap: true,
 })
 const plan55ActiveClientCompatibility = Object.freeze({
-  gitSha: '645c907e178f21ddde24a72501e6c8449d6720f9',
-  releaseId: 'harness-645c907e178f-f426155f83de',
+  gitSha: '891b1e26dd9a785f05671002c5e74cb270678be4',
+  releaseId: 'harness-891b1e26dd9a-8c7eb92a4783',
   contractEpoch: 2,
   ios: Object.freeze({
     applicationId: 'com.phanmanhtu.homeservices',

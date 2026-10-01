@@ -256,6 +256,7 @@ export async function claimAdminWithdrawalRequest(
       p_takeover_reason: input.takeover_reason ?? null,
     }),
   );
+  failIfWithdrawalHeld(result.error?.message);
   if (result.error || !result.data?.[0]) {
     apiFailure("DB_ERROR", "Không thể nhận xử lý yêu cầu rút tiền", 500);
   }
@@ -303,6 +304,14 @@ export async function releaseAdminWithdrawalRequest(
   };
 }
 
+// A confirmed harm case holds the worker's withdrawals; the database refuses to move a request
+// on while the hold is live, and the admin is told why instead of seeing a server error.
+function failIfWithdrawalHeld(message: string | undefined) {
+  if (message?.includes("WITHDRAWAL_HOLD_ACTIVE")) {
+    apiFailure("WITHDRAWAL_HOLD_ACTIVE", "Thợ đang bị tạm giữ rút tiền do vi phạm nghiêm trọng; chưa thể chi trả", 409);
+  }
+}
+
 export async function resolveAdminWithdrawalRequest(
   ctx: MobileApiContext,
   withdrawalRequestId: string,
@@ -324,6 +333,7 @@ export async function resolveAdminWithdrawalRequest(
       p_reason: input.reason ?? null,
     }),
   );
+  failIfWithdrawalHeld(result.error?.message);
   if (result.error || !result.data?.[0]) {
     apiFailure("DB_ERROR", "Không thể lưu kết quả chi trả", 500);
   }

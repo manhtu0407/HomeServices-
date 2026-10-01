@@ -150,15 +150,8 @@ describe('CustomerHistorySurface service history', () => {
     })
 
     expect(screen.queryByTestId('customer-v21-top-title')).toBeNull()
-    expect(screen.getByText('Hoạt động gần đây')).toBeOnTheScreen()
-    expect(screen.getByTestId('customer-v21-history-title')).toHaveStyle({
-      fontSize: 20,
-      fontWeight: '400',
-      includeFontPadding: true,
-      lineHeight: 25,
-      minHeight: 25,
-      textAlign: 'left',
-    })
+    expect(screen.queryByText('Hoạt động gần đây')).toBeNull()
+    expect(screen.queryByTestId('customer-v21-history-title')).toBeNull()
     expect(screen.getByText('Sửa điện')).toBeOnTheScreen()
     expect(screen.getAllByText('Anh Minh')).toHaveLength(2)
     expect(screen.getByText('320.000 ₫')).toBeOnTheScreen()
@@ -244,7 +237,7 @@ describe('CustomerHistorySurface service history', () => {
     expect(screen.queryByText('Vui lòng thử lại khi kết nối ổn định hơn.')).toBeNull()
   })
 
-  it('uses the selected transparent tray icon at a larger History-only size', async () => {
+  it('renders the empty state on the same card design as the unavailable state', async () => {
     mockListMyServiceHistory.mockResolvedValue({
       success: true,
       data: { service_history: [] },
@@ -253,27 +246,18 @@ describe('CustomerHistorySurface service history', () => {
 
     await waitFor(() => expect(screen.getByTestId('customer-v21-history-empty')).toBeOnTheScreen())
 
-    expect(screen.getByTestId('customer-v21-history-empty-formula-mint-aura')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-v21-history-empty-card-skin')).toBeOnTheScreen()
     expect(screen.getByTestId('customer-v21-history-empty-wide-mint-aura')).toBeOnTheScreen()
     expect(screen.getByTestId('customer-v21-history-empty-mint-aura')).toBeOnTheScreen()
-    expect(StyleSheet.flatten(screen.getByTestId('customer-v21-history-empty-asset').props.style)).toMatchObject({
-      borderWidth: 0,
-    })
-    expect(StyleSheet.flatten(screen.getByTestId('customer-v21-history-empty-asset').props.style).backgroundColor).toBeUndefined()
+    expect(screen.getByTestId('customer-v21-history-empty-workart')).toBeOnTheScreen()
+    expect(screen.getByText('Chưa có hoạt động')).toBeOnTheScreen()
+    expect(screen.getByText('Chưa có dịch vụ đã hoàn tất hoặc đã hủy.')).toBeOnTheScreen()
+    expect(screen.queryByTestId('customer-v21-history-retry')).toBeNull()
+    expect(screen.queryByTestId('customer-v21-history-error')).toBeNull()
+    expect(screen.queryByTestId('customer-v21-history-empty-asset')).toBeNull()
 
-    const assetsSource = readFileSync(resolve(__dirname, '../ui/assets.ts'), 'utf8')
     const historySurfaceSource = readFileSync(resolve(__dirname, '../history/service-history-surface.tsx'), 'utf8')
-    const sharedSurfacesSource = readFileSync(resolve(__dirname, '../ui/shared-surfaces.tsx'), 'utf8')
-
-    expect(assetsSource).toContain("activity: require('@/assets/client-image-icons/client-activity-route.png')")
-    expect(assetsSource).toContain("activityEmpty: require('@/assets/client-image-icons/client-activity-empty.png')")
-    expect(assetsSource).toContain("historyErrorWorkart: require('@/assets/customer-history/history-error-workart.png')")
-    expect(historySurfaceSource).toContain('assetSize={76}')
-    expect(historySurfaceSource).toContain('image={customerV21Assets.activityEmpty}')
     expect(historySurfaceSource).toContain('source={customerV21Assets.historyErrorWorkart}')
-    expect(sharedSurfacesSource).toContain('assetSize = 64')
-    expect(sharedSurfacesSource).toContain('size={assetSize}')
-    expect(existsSync(resolve(__dirname, '../../../assets/client-image-icons/client-activity-empty.png'))).toBe(true)
     expect(existsSync(resolve(__dirname, '../../../assets/customer-history/history-error-workart.png'))).toBe(true)
   })
 

@@ -47,6 +47,11 @@
             "type": "command",
             "command": "node \"${CLAUDE_PROJECT_DIR}/scripts/run.mjs\" run-node \"${CLAUDE_PROJECT_DIR}/.claude/hooks/verify-reuse-ladder.mjs\"",
             "timeout": 60
+          },
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PROJECT_DIR}/scripts/run.mjs\" run-node \"${CLAUDE_PROJECT_DIR}/.claude/hooks/verify-ocr-review.mjs\"",
+            "timeout": 150
           }
         ]
       }

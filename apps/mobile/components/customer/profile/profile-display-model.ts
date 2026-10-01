@@ -79,16 +79,6 @@ export function fairPriceStatusLabel(
   return fallback
 }
 
-export function profileStageSubtitle(screenId: CustomerV21ScreenId, language: AppLanguage) {
-  if (screenId === '6.2-usage-ranking') {
-    return ''
-  }
-  if (screenId === '6.3-protect-money') {
-    return language === 'vi' ? 'Đúng giá, đúng quy trình và minh bạch' : 'Fair price, proper workflow, transparent'
-  }
-  return language === 'vi' ? 'Tài khoản, bảo vệ và các tiện ích phụ' : 'Account, protection, and utilities'
-}
-
 export function formatWorkerJobs(value: number | null | undefined, language: AppLanguage) {
   if (typeof value !== 'number' || !Number.isFinite(value) || value < 0) {
     return language === 'vi' ? 'Chưa có dữ liệu' : 'Data pending'
@@ -224,15 +214,6 @@ export function profileUtilityTitle(kind: CustomerProfileUtility, language: AppL
   if (kind === 'settings') return language === 'vi' ? 'Cài đặt' : 'Settings'
   if (kind === 'support') return language === 'vi' ? 'Trợ giúp & hỗ trợ' : 'Help & support'
   return language === 'vi' ? 'Địa chỉ' : 'Addresses'
-}
-
-export function profileUtilitySubtitle(kind: CustomerProfileUtility, language: AppLanguage) {
-  if (kind === 'address') return language === 'vi' ? 'Địa chỉ dùng cho đặt dịch vụ' : 'Addresses used for booking'
-  if (kind === 'language') return language === 'vi' ? 'Chọn ngôn ngữ hiển thị' : 'Choose your display language'
-  if (kind === 'memory') return language === 'vi' ? 'Bạn quyết định điều Kael được ghi nhớ' : 'You decide what Kael may remember'
-  if (kind === 'password') return language === 'vi' ? 'Cập nhật mật khẩu đăng nhập' : 'Update your login password'
-  if (kind === 'personal-details') return language === 'vi' ? 'Tên và thông tin liên hệ' : 'Name and contact details'
-  return ''
 }
 
 export function profileScreenParam(value: string | undefined): CustomerV21ScreenId | null {

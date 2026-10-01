@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useReducer } from 'react'
+import { useCallback, useEffect, useMemo, useReducer, useState } from 'react'
 import { Image } from 'expo-image'
 import {
   ActivityIndicator,
@@ -22,16 +22,19 @@ import { motionTokens } from '@/components/ui/motion-tokens'
 import { ReduceMotionAwareEntranceView } from '@/components/ui/reduce-motion-aware-animation'
 import type { CustomerServiceHistoryItem } from '@/lib/api-types'
 import { useAppLanguage, type AppLanguage } from '@/lib/app-language'
+import { useAuth } from '@/lib/auth-provider'
 import { formatVnd } from '@/lib/format'
 import { jobService } from '@/lib/services'
 
-import { CaseWideMintAura, SourceCardSkin, ZipMintAura } from '../ui/aura-surfaces'
 import { customerV21Assets } from '../ui/assets'
 import { customerV21ServiceCopy } from '../ui/copy'
 import { ProfileSettingsGlyph } from '../profile/profile-settings-icons'
+import { CustomerCompensationSection } from '../compensation/compensation-section'
+import { ActiveWorkEntry, type ActiveWorkSummary } from '../report/worker-report-entry'
+import { WorkerReportSheet } from '../report/worker-report-sheet'
 import { ServiceHistoryFilterRail, type HistoryFilter } from './service-history-filter-rail'
-import { customerV21SharedStyles as sharedStyles } from '../ui/shared-styles'
-import { AssetTile, EmptyState, V21Card, V21Screen, useCustomerV21SurfaceTheme } from '../ui/shared-surfaces'
+import { HistoryCardAura, HistoryEmptyCard } from './service-history-state-cards'
+import { V21Card, V21Screen, useCustomerV21SurfaceTheme } from '../ui/shared-surfaces'
 import { customerV21ServiceHistoryStyles as styles } from './service-history-styles'
 
 const historyDayFormatters = {
@@ -173,48 +176,12 @@ function groupHistoryItems(items: CustomerServiceHistoryItem[], language: AppLan
   return Array.from(grouped.values())
 }
 
-function HistoryCardSkin({
-  dark,
-  testIDPrefix,
-}: {
-  dark: boolean
-  testIDPrefix: string
-}) {
-  return dark ? null : <SourceCardSkin testID={`${testIDPrefix}-card-skin`} />
-}
-
-function HistoryCardAura({
-  dark,
-  softenTopRight = false,
-  scope,
-  testIDPrefix,
-}: {
-  dark: boolean
-  softenTopRight?: boolean
-  scope: string
-  testIDPrefix: string
-}) {
-  return (
-    <>
-      <HistoryCardSkin dark={dark} testIDPrefix={testIDPrefix} />
-      <CaseWideMintAura
-        intensity={softenTopRight ? 'soft' : 'default'}
-        scope={`${scope}Wide`}
-        testID={`${testIDPrefix}-wide-mint-aura`}
-      />
-      <ZipMintAura
-        intensity={softenTopRight ? 'soft' : 'default'}
-        scope={`${scope}Fine`}
-        testID={`${testIDPrefix}-mint-aura`}
-      />
-    </>
-  )
-}
-
 export function CustomerServiceHistorySurface({
+  activeWork = null,
   onOpenDetail,
   onRebook,
 }: {
+  activeWork?: ActiveWorkSummary | null
   onOpenDetail: (item: CustomerServiceHistoryItem) => void
   onRebook: (item: CustomerServiceHistoryItem) => void
 }) {
@@ -223,9 +190,17 @@ export function CustomerServiceHistorySurface({
   const { width: viewportWidth } = useWindowDimensions()
   const contentWidth = Math.max(0, Math.min(viewportWidth - 32, 560))
   const [historyState, dispatch] = useReducer(historyReducer, initialHistoryState)
+  const [reportJobId, setReportJobId] = useState<string | null>(null)
   const { favoriteWorkerIdsInFlight, filter, items, loadFailed, loading, supportingJobId } = historyState
 
+  const { session } = useAuth()
+  const localVisualAuditSession = session?.user.app_metadata?.provider === 'local-visual-audit'
+
   const load = useCallback(async () => {
+    if (localVisualAuditSession) {
+      dispatch({ type: 'load_success', items: [] })
+      return
+    }
     dispatch({ type: 'load_start' })
     try {
       const result = await jobService.listMyServiceHistory()
@@ -237,7 +212,7 @@ export function CustomerServiceHistorySurface({
     } catch {
       dispatch({ type: 'load_failure' })
     }
-  }, [])
+  }, [localVisualAuditSession])
 
   useEffect(() => {
     const initialLoad = setTimeout(() => {
@@ -314,6 +289,7 @@ export function CustomerServiceHistorySurface({
       [
         { text: language === 'vi' ? 'Để sau' : 'Not now', style: 'cancel' },
         { text: language === 'vi' ? 'Mở yêu cầu hỗ trợ' : 'Open support request', onPress: () => void submitSupport(item) },
+        { text: language === 'vi' ? 'Báo cáo thợ vi phạm' : 'Report the worker', onPress: () => setReportJobId(item.id) },
       ],
     )
   }
@@ -321,14 +297,7 @@ export function CustomerServiceHistorySurface({
   return (
     <V21Screen screenId="2.6-case-overview" testID="customer-v21-activity">
       <View style={[styles.screenContent, { width: contentWidth }]}>
-      <View style={styles.historySectionHeader}>
-        <Text style={[sharedStyles.screenTitle, { color: tokens.text }]} testID="customer-v21-history-title">
-          {language === 'vi' ? 'Hoạt động gần đây' : 'Recent activity'}
-        </Text>
-        <Text style={[styles.historyCount, { color: tokens.muted }]}>
-          {items.length > 0 ? `${items.length}` : ''}
-        </Text>
-      </View>
+      <CustomerCompensationSection language={language} tokens={tokens} />
 
       <ServiceHistoryFilterRail onSelect={(nextFilter) => dispatch({ type: 'filter', filter: nextFilter })} selected={filter} />
 
@@ -353,6 +322,7 @@ export function CustomerServiceHistorySurface({
           </View>
         </View>
       </View>
+      {activeWork ? <ActiveWorkEntry language={language} summary={activeWork} tokens={tokens} /> : null}
 
       {loading ? (
         <V21Card style={[styles.loadingCard, styles.historyAuraCard]} testID="customer-v21-history-loading">
@@ -366,7 +336,7 @@ export function CustomerServiceHistorySurface({
         <V21Card
           style={[
             styles.historyAuraCard,
-            styles.historyErrorCard,
+            styles.historyStateCard,
             { backgroundColor: tokens.raised, borderColor: tokens.border },
           ]}
           testID="customer-v21-history-error"
@@ -377,22 +347,22 @@ export function CustomerServiceHistorySurface({
             softenTopRight
             testIDPrefix="customer-v21-history-error"
           />
-          <View style={styles.historyErrorContent}>
+          <View style={styles.historyStateContent}>
             <Image
               accessibilityIgnoresInvertColors
               accessible={false}
               contentFit="contain"
               source={customerV21Assets.historyErrorWorkart}
-              style={[styles.historyErrorIllustration, mode === 'dark' ? styles.historyErrorIllustrationDark : null]}
+              style={[styles.historyStateIllustration, mode === 'dark' ? styles.historyStateIllustrationDark : null]}
               testID="customer-v21-history-error-workart"
             />
             <View style={styles.historyErrorIconFrame} testID="customer-v21-history-error-icon">
               <HistoryErrorIcon color={tokens.primary} />
             </View>
-            <Text style={[styles.historyErrorTitle, { color: tokens.text }]} testID="customer-v21-history-error-title">
+            <Text style={[styles.historyStateTitle, { color: tokens.text }]} testID="customer-v21-history-error-title">
               {language === 'vi' ? 'Chưa tải được lịch sử dịch vụ' : 'Service history is unavailable'}
             </Text>
-            <Text style={[styles.historyErrorBody, { color: tokens.muted }]} testID="customer-v21-history-error-body">
+            <Text style={[styles.historyStateBody, { color: tokens.muted }]} testID="customer-v21-history-error-body">
               {language === 'vi'
                 ? 'Không thể tải lịch sử dịch vụ lúc này. Vui lòng kiểm tra kết nối và thử lại.'
                 : 'Service history could not load right now. Check your connection and try again.'}
@@ -412,17 +382,13 @@ export function CustomerServiceHistorySurface({
       ) : (
         <View style={styles.historyList} testID="customer-v21-history-list">
           {visibleItems.length === 0 ? (
-            <EmptyState
-              assetSize={76}
-              assetTile={AssetTile}
-              bareAsset
+            <HistoryEmptyCard
               body={filter === 'all'
                 ? (language === 'vi' ? 'Chưa có dịch vụ đã hoàn tất hoặc đã hủy.' : 'There are no completed or cancelled services yet.')
                 : (language === 'vi' ? 'Không có dịch vụ phù hợp với bộ lọc này.' : 'No services match this filter.')}
-              formulaMintAura
-              image={customerV21Assets.activityEmpty}
-              testID="customer-v21-history-empty"
+              dark={mode === 'dark'}
               title={language === 'vi' ? 'Chưa có hoạt động' : 'No activity yet'}
+              tokens={tokens}
             />
           ) : groupedItems.map((group, groupIndex) => (
             <ReduceMotionAwareEntranceView
@@ -455,6 +421,9 @@ export function CustomerServiceHistorySurface({
         </View>
       )}
       </View>
+      {reportJobId ? (
+        <WorkerReportSheet jobId={reportJobId} language={language} onClose={() => setReportJobId(null)} visible />
+      ) : null}
     </V21Screen>
   )
 }

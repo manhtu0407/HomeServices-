@@ -41,6 +41,8 @@ export * from "./customer.ts";
 export * from "./payment.ts";
 export * from "./admin-operator.ts";
 export * from "./stage1-reliability.ts";
+export * from "./ambassador.ts";
+export * from "./discipline.ts";
 export {
   customerCancellationRequestSchema,
   disputeAdminDecisionSchema,

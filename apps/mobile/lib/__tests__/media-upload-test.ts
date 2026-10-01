@@ -15,6 +15,15 @@ jest.mock('expo-video-thumbnails', () => ({
   getThumbnailAsync: (...args: unknown[]) => mockGetThumbnailAsync(...args),
 }))
 
+jest.mock('expo-image-manipulator', () => ({
+  SaveFormat: { JPEG: 'jpeg' },
+  ImageManipulator: {
+    manipulate: (uri: string) => ({
+      renderAsync: async () => ({ height: 800, saveAsync: async () => ({ uri }), width: 600 }),
+    }),
+  },
+}))
+
 jest.mock('../supabase', () => ({
   supabase: {
     auth: {
@@ -170,7 +179,7 @@ describe('Kael chat media upload', () => {
       }
     })
     mockFetch.mockResolvedValue({
-      blob: async () => ({ size: 42 }),
+      arrayBuffer: async () => new ArrayBuffer(42),
       ok: true,
     })
     mockGetThumbnailAsync.mockImplementation(async (_uri: string, options: { time: number }) => ({
@@ -212,7 +221,7 @@ describe('Kael chat media upload', () => {
     )
   })
 
-  it('fails closed when a non-compatible HEIC reaches the upload helper', async () => {
+  it('re-encodes a HEIC photo to JPEG before reserving a model-vision upload', async () => {
     const result = await uploadKaelChatMediaDrafts([
       {
         fileName: 'sink.heic',
@@ -222,17 +231,18 @@ describe('Kael chat media upload', () => {
       },
     ])
 
-    expect(result.success).toBe(false)
-    if (result.success) return
-    expect(result.code).toBe('UNSUPPORTED_MEDIA')
-    expect(mockCreateMediaUpload).not.toHaveBeenCalled()
-    expect(mockUploadToSignedUrl).not.toHaveBeenCalled()
+    expect(result.success).toBe(true)
+    expect(mockCreateMediaUpload).toHaveBeenCalledWith(expect.objectContaining({
+      file_name: 'sink.jpg',
+      mime_type: 'image/jpeg',
+      purpose: 'model_vision',
+    }))
   })
 
   it('rejects a zero-byte draft before reserving an upload intent', async () => {
     const longName = `${'ten-file-rat-dai-'.repeat(20)}.jpg?cache=1`
     mockFetch.mockResolvedValueOnce({
-      blob: async () => ({ size: 0 }),
+      arrayBuffer: async () => new ArrayBuffer(0),
       ok: true,
     })
 
@@ -404,9 +414,9 @@ describe('Kael chat media upload', () => {
 
   it('rejects an empty worker verification blob and cleans only uploaded siblings', async () => {
     mockFetch
-      .mockResolvedValueOnce({ blob: async () => ({ size: 0 }), ok: true })
-      .mockResolvedValueOnce({ blob: async () => ({ size: 42 }), ok: true })
-      .mockResolvedValueOnce({ blob: async () => ({ size: 42 }), ok: true })
+      .mockResolvedValueOnce({ arrayBuffer: async () => new ArrayBuffer(0), ok: true })
+      .mockResolvedValueOnce({ arrayBuffer: async () => new ArrayBuffer(42), ok: true })
+      .mockResolvedValueOnce({ arrayBuffer: async () => new ArrayBuffer(42), ok: true })
 
     const result = await uploadWorkerVerificationDrafts({
       cccdFront: { fileSizeBytes: 42, mimeType: 'image/jpeg', type: 'image', uri: 'file:///front.jpg' },

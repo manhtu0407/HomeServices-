@@ -13,6 +13,8 @@ export type AdminProductionCapabilityId =
   | 'workers-profile-review'
   | 'workers-access'
   | 'workers-finance'
+  | 'workers-discipline'
+  | 'workers-ambassador'
   | 'finance-overview'
   | 'finance-reconciliation'
   | 'finance-payouts'
@@ -101,12 +103,15 @@ const viSections: readonly AdminProductionSectionPresentation[] = [
     workstreams: [
       { id: 'onboarding', title: 'Hồ sơ & xác minh', capabilityIds: ['workers-applications', 'workers-profile-review'] },
       { id: 'access', title: 'Quyền & tài chính', capabilityIds: ['workers-access', 'workers-finance'] },
+      { id: 'program', title: 'Thưởng & kỷ luật', capabilityIds: ['workers-ambassador', 'workers-discipline'] },
     ],
     capabilities: [
       { id: 'workers-applications', title: 'Hồ sơ đăng ký', useWhen: 'Duyệt, yêu cầu bổ sung hoặc từ chối hồ sơ mới.', status: 'connected' },
       { id: 'workers-profile-review', title: 'Xét duyệt hồ sơ', useWhen: 'Kiểm tra giấy tờ, dịch vụ và lịch sử xét duyệt.', status: 'connected' },
       { id: 'workers-access', title: 'Trạng thái truy cập', useWhen: 'Cho phép, tạm ngưng hoặc khôi phục hoạt động.', status: 'connected' },
       { id: 'workers-finance', title: 'Tài chính liên quan', useWhen: 'Xem tình trạng tài chính để xử lý hỗ trợ.', status: 'connected' },
+      { id: 'workers-ambassador', title: 'Chương trình thưởng đại sứ', useWhen: 'Sửa mốc thưởng, xem trần 60% và duyệt phiên bản mới.', status: 'connected' },
+      { id: 'workers-discipline', title: 'Kỷ luật & vi phạm', useWhen: 'Xác nhận hoặc bác bỏ đề xuất, xét khiếu nại, quản lý danh sách chặn.', status: 'connected' },
     ],
   },
   {
@@ -183,12 +188,15 @@ const enSections: readonly AdminProductionSectionPresentation[] = [
     workstreams: [
       { id: 'onboarding', title: 'Applications and verification', capabilityIds: ['workers-applications', 'workers-profile-review'] },
       { id: 'access', title: 'Access and finance', capabilityIds: ['workers-access', 'workers-finance'] },
+      { id: 'program', title: 'Rewards and discipline', capabilityIds: ['workers-ambassador', 'workers-discipline'] },
     ],
     capabilities: [
       { id: 'workers-applications', title: 'Worker applications', useWhen: 'Approve, request changes or reject a new application.', status: 'connected' },
       { id: 'workers-profile-review', title: 'Profile review', useWhen: 'Review documents, services and decision history.', status: 'connected' },
       { id: 'workers-access', title: 'Access status', useWhen: 'Activate, suspend or reinstate a worker partner.', status: 'connected' },
       { id: 'workers-finance', title: 'Related finance', useWhen: 'Review financial context for support.', status: 'connected' },
+      { id: 'workers-ambassador', title: 'Ambassador rewards', useWhen: 'Edit milestones, check the 60% cap and approve a new version.', status: 'connected' },
+      { id: 'workers-discipline', title: 'Discipline and violations', useWhen: 'Confirm or dismiss proposals, decide appeals, manage the blocklist.', status: 'connected' },
     ],
   },
   {

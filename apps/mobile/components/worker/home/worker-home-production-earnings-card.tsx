@@ -12,7 +12,8 @@ import { workerEarningsPeriodLabel } from '../earnings/period-label'
 import { formatVndDong, textByLanguage } from '../ui/format'
 import type { AppLanguage } from '@/lib/app-language'
 import type { EarningsResponse } from '@/lib/api-types'
-import { WorkerHomeProductionIcon } from './worker-home-production-icon'
+import { LiquidPopUpButton } from '@/components/ui/liquid-pop-up-button'
+import { getWorkerThemeTokens } from '../worker-theme'
 
 function pointLabel(dateKey: string, period: WorkerEarningsPeriod, language: AppLanguage) {
   if (period === 'year') return textByLanguage(language, `T${Number(dateKey.slice(5, 7))}`, `M${Number(dateKey.slice(5, 7))}`)
@@ -85,69 +86,6 @@ function EarningsChart({
   )
 }
 
-function PeriodPicker({
-  language,
-  onChange,
-  period,
-  reduceMotion,
-  themeMode,
-}: {
-  language: AppLanguage
-  onChange: (period: WorkerEarningsPeriod) => void
-  period: WorkerEarningsPeriod
-  reduceMotion: boolean
-  themeMode: 'dark' | 'light'
-}) {
-  const [expanded, setExpanded] = useState(false)
-  const label = workerEarningsPeriodLabel(period, language)
-
-  if (!expanded) {
-    return (
-      <Pressable
-        accessibilityHint={textByLanguage(language, 'Mở bốn kỳ thu nhập', 'Open four earnings periods')}
-        accessibilityLabel={textByLanguage(language, `Kỳ thu nhập: ${label}`, `Earnings period: ${label}`)}
-        accessibilityRole="button"
-        accessibilityState={{ expanded: false }}
-        hitSlop={11}
-        onPress={() => setExpanded(true)}
-        style={({ pressed }) => [styles.periodTrigger, themeMode === 'dark' && styles.periodTriggerDark, pressed && !reduceMotion && styles.pressed]}
-        testID="worker-home-production-income-period-trigger"
-      >
-        <Text style={[styles.periodTriggerLabel, themeMode === 'dark' && styles.textDark]}>{label}</Text>
-        <WorkerHomeProductionIcon color={themeMode === 'dark' ? '#AAC0BC' : '#5B6B7C'} name="chevron-down" size={10} />
-      </Pressable>
-    )
-  }
-
-  return (
-    <View
-      accessibilityLabel={textByLanguage(language, 'Chọn kỳ thu nhập', 'Select earnings period')}
-      accessibilityRole="tablist"
-      style={[styles.periodMenu, themeMode === 'dark' && styles.periodMenuDark]}
-      testID="worker-home-production-income-period-menu"
-    >
-      {WORKER_EARNINGS_PERIODS.map((item) => {
-        const selected = item === period
-        return (
-          <Pressable
-            accessibilityRole="tab"
-            accessibilityState={{ selected }}
-            key={item}
-            onPress={() => {
-              onChange(item)
-              setExpanded(false)
-            }}
-            style={[styles.periodOption, selected && styles.periodOptionSelected]}
-            testID={`worker-home-production-income-period-${item}`}
-          >
-            <Text style={[styles.periodOptionLabel, themeMode === 'dark' && styles.mutedDark, selected && styles.periodOptionLabelSelected]}>{workerEarningsPeriodLabel(item, language)}</Text>
-          </Pressable>
-        )
-      })}
-    </View>
-  )
-}
-
 export function WorkerHomeProductionEarningsCard({
   earnings,
   earningsError,
@@ -180,7 +118,16 @@ export function WorkerHomeProductionEarningsCard({
     <View style={[styles.card, themeMode === 'dark' && styles.cardDark]} testID="worker-home-production-income">
       <View style={styles.periodHeader}>
         <Text style={[styles.title, themeMode === 'dark' && styles.textDark]}>{textByLanguage(language, 'Thu nhập theo kỳ', 'Income by period')}</Text>
-        <PeriodPicker language={language} onChange={setPeriod} period={period} reduceMotion={reduceMotion} themeMode={themeMode} />
+        <LiquidPopUpButton
+          accessibilityHint={textByLanguage(language, 'Mở bốn kỳ thu nhập', 'Open four earnings periods')}
+          accessibilityLabel={textByLanguage(language, `Kỳ thu nhập: ${workerEarningsPeriodLabel(period, language)}`, `Earnings period: ${workerEarningsPeriodLabel(period, language)}`)}
+          menuAccessibilityLabel={textByLanguage(language, 'Chọn kỳ thu nhập', 'Select earnings period')}
+          onChange={setPeriod}
+          options={WORKER_EARNINGS_PERIODS.map((item) => ({ label: workerEarningsPeriodLabel(item, language), value: item }))}
+          testID="worker-home-production-income-period"
+          tokens={getWorkerThemeTokens(themeMode)}
+          value={period}
+        />
       </View>
       <View style={[styles.content, stacked && styles.contentStacked]}>
         <View style={styles.summary}>
@@ -236,15 +183,6 @@ const styles = StyleSheet.create({
   openButtonDark: { backgroundColor: '#1E3C37', borderColor: 'rgba(174, 211, 204, 0.28)' },
   openButtonLabel: { color: '#078F7A', fontSize: 10, fontWeight: '600', lineHeight: 13 },
   periodHeader: { alignItems: 'center', flexDirection: 'row', flexWrap: 'wrap', gap: 8, justifyContent: 'space-between', minHeight: 44 },
-  periodMenu: { backgroundColor: '#F8FBFA', borderColor: '#D9E4E2', borderRadius: 16, borderWidth: 1, flexBasis: '100%', flexDirection: 'row', minHeight: 44, padding: 4, width: '100%' },
-  periodMenuDark: { backgroundColor: '#1E3C37', borderColor: 'rgba(174, 211, 204, 0.28)' },
-  periodOption: { alignItems: 'center', borderRadius: 12, flex: 1, justifyContent: 'center', minHeight: 44, minWidth: 0, paddingHorizontal: 4 },
-  periodOptionLabel: { color: '#66768A', fontSize: 11, fontWeight: '600', lineHeight: 15 },
-  periodOptionLabelSelected: { color: '#078F7A' },
-  periodOptionSelected: { backgroundColor: '#E6F7F3', borderColor: '#B9DED8', borderWidth: 1 },
-  periodTrigger: { alignItems: 'center', backgroundColor: '#FFFFFF', borderColor: '#DDE5E4', borderRadius: 9, borderWidth: 1, flexDirection: 'row', gap: 5, height: 22, justifyContent: 'center', paddingHorizontal: 9 },
-  periodTriggerDark: { backgroundColor: '#1E3C37', borderColor: 'rgba(174, 211, 204, 0.28)' },
-  periodTriggerLabel: { color: '#102437', fontSize: 8.8, lineHeight: 10 },
   pressed: { opacity: 0.78, transform: [{ scale: 0.985 }] },
   retry: { alignItems: 'center', alignSelf: 'flex-start', borderColor: '#B9DED8', borderRadius: 999, borderWidth: 1, justifyContent: 'center', minHeight: 32, paddingHorizontal: 10 },
   retryLabel: { color: '#078F7A', fontSize: 11, fontWeight: '600' },

@@ -8,8 +8,8 @@ import test from 'node:test'
 import { buildPlan55AppliedMigrationInventory } from './plan55-applied-migration-inventory.mjs'
 
 const productionRef = 'iwevizmsedyqozxlawwl'
-const sourceSha = '645c907e178f21ddde24a72501e6c8449d6720f9'
-const releaseId = 'harness-645c907e178f-f426155f83de'
+const sourceSha = '891b1e26dd9a785f05671002c5e74cb270678be4'
+const releaseId = 'harness-891b1e26dd9a-8c7eb92a4783'
 
 function fixture(t) {
   const root = mkdtempSync(resolve(tmpdir(), 'plan55-applied-migrations-'))

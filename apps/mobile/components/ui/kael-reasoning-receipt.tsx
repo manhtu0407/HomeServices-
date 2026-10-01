@@ -1,18 +1,19 @@
 import { typography } from '@/design/theme'
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
 import Animated, {
   cancelAnimation,
+  interpolateColor,
   useAnimatedStyle,
   useSharedValue,
-  withRepeat,
+  withDelay,
   withSequence,
   withTiming,
 } from 'react-native-reanimated'
 import Svg, { Path } from 'react-native-svg'
 
 import { useGlassAccessibility } from '@/components/ui/accessibility-motion'
-import { motionDuration, motionTokens } from '@/components/ui/motion-tokens'
+import { motionDuration } from '@/components/ui/motion-tokens'
 import { useKaelRespondStreamItems } from '@/components/ui/use-kael-respond-stream-presentation'
 import type { AppLanguage } from '@/lib/app-language'
 import type { KaelReasoningReceiptState } from '@/lib/kael-reasoning-receipt'
@@ -99,14 +100,26 @@ export function KaelReasoningReceipt({
       >
         <View style={styles.headerText}>
           <Text style={[styles.title, { color: colors.text }]}>{copy.title}</Text>
-          <ReceiptStatusText
-            color={colors.mutedText}
-            reduceMotion={reduceMotion}
-            running={state.status === 'running'}
-            testID={testID ? `${testID}-status` : undefined}
-          >
-            {status}
-          </ReceiptStatusText>
+          <View style={styles.statusRow}>
+            {state.status === 'running' ? (
+              <MatrixDotLoader
+                key={state.receiptId ?? 'pending'}
+                color={colors.accent}
+                reduceMotion={reduceMotion}
+                testID={testID ? `${testID}-matrix-loader` : undefined}
+              />
+            ) : null}
+            <ReceiptStatusText
+              accentColor={colors.accent}
+              color={colors.mutedText}
+              receiptId={state.receiptId}
+              reduceMotion={reduceMotion}
+              status={state.status}
+              testID={testID ? `${testID}-status` : undefined}
+            >
+              {status}
+            </ReceiptStatusText>
+          </View>
         </View>
         {elapsed ? (
           <View style={styles.elapsedSlot} testID={testID ? `${testID}-elapsed-slot` : undefined}>
@@ -164,38 +177,45 @@ export function KaelReasoningReceipt({
 }
 
 function ReceiptStatusText({
+  accentColor,
   children,
   color,
+  receiptId,
   reduceMotion,
-  running,
+  status,
   testID,
 }: {
+  accentColor: string
   children: string
   color: string
+  receiptId: string | null
   reduceMotion: boolean
-  running: boolean
+  status: KaelReasoningReceiptState['status']
   testID?: string
 }) {
-  const opacity = useSharedValue(1)
-  const animatedStyle = useAnimatedStyle(() => ({ opacity: opacity.value }))
+  const progress = useSharedValue(0)
+  const previousStatus = useRef({ receiptId, status })
+  const animatedStyle = useAnimatedStyle(() => ({
+    color: interpolateColor(progress.value, [0, 1], [color, accentColor]),
+  }))
 
   useEffect(() => {
-    cancelAnimation(opacity)
-    if (!running || reduceMotion) {
-      opacity.value = 1
+    cancelAnimation(progress)
+    const previous = previousStatus.current
+    previousStatus.current = { receiptId, status }
+    const changedToTerminal = previous.receiptId === receiptId
+      && previous.status === 'running'
+      && (status === 'complete' || status === 'failed')
+    if (!changedToTerminal || reduceMotion) {
+      progress.value = 0
       return
     }
-    const halfCycle = motionDuration(motionTokens.loading.durationMs / 2, reduceMotion)
-    opacity.value = withRepeat(
-      withSequence(
-        withTiming(0.64, { duration: halfCycle }),
-        withTiming(1, { duration: halfCycle }),
-      ),
-      -1,
-      true,
+    progress.value = withSequence(
+      withTiming(1, { duration: motionDuration(180, reduceMotion) }),
+      withTiming(0, { duration: motionDuration(240, reduceMotion) }),
     )
-    return () => cancelAnimation(opacity)
-  }, [opacity, reduceMotion, running])
+    return () => cancelAnimation(progress)
+  }, [progress, receiptId, reduceMotion, status])
 
   return (
     <Animated.Text
@@ -205,6 +225,63 @@ function ReceiptStatusText({
       {children}
     </Animated.Text>
   )
+}
+
+function MatrixDotLoader({
+  color,
+  reduceMotion,
+  testID,
+}: {
+  color: string
+  reduceMotion: boolean
+  testID?: string
+}) {
+  return (
+    <View accessible={false} style={styles.matrixLoader} testID={testID}>
+      {Array.from({ length: 16 }, (_, index) => (
+        <MatrixDot
+          color={color}
+          index={index}
+          key={index}
+          reduceMotion={reduceMotion}
+          testID={testID ? `${testID}-dot-${index}` : undefined}
+        />
+      ))}
+    </View>
+  )
+}
+
+function MatrixDot({
+  color,
+  index,
+  reduceMotion,
+  testID,
+}: {
+  color: string
+  index: number
+  reduceMotion: boolean
+  testID?: string
+}) {
+  const opacity = useSharedValue(0.34)
+  const animatedStyle = useAnimatedStyle(() => ({ opacity: opacity.value }))
+
+  useEffect(() => {
+    cancelAnimation(opacity)
+    if (reduceMotion) {
+      opacity.value = 0.34
+      return
+    }
+    opacity.value = withDelay(
+      index * 36,
+      withSequence(
+        withTiming(1, { duration: 110 }),
+        withTiming(0.34, { duration: 160 }),
+      ),
+    )
+    return () => cancelAnimation(opacity)
+  }, [index, opacity, reduceMotion])
+
+  return <Animated.View style={[styles.matrixDot, { backgroundColor: color }, animatedStyle]} testID={testID} />
 }
 
 function formatElapsed(elapsedMs: number) {
@@ -315,6 +392,26 @@ const styles = StyleSheet.create({
   },
   status: {
     ...typography.caption1,
+  },
+  statusRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 6,
+  },
+  matrixLoader: {
+    alignContent: 'center',
+    alignItems: 'center',
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 2,
+    height: 18,
+    justifyContent: 'center',
+    width: 18,
+  },
+  matrixDot: {
+    borderRadius: 1,
+    height: 3,
+    width: 3,
   },
   stepDot: {
     borderRadius: 4,

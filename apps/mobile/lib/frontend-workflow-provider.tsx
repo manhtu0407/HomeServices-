@@ -69,6 +69,21 @@ import {
 import { useWorkerOnsiteActions } from './frontend-workflow/use-worker-onsite-actions'
 import { useWorkerCandidateActions } from './frontend-workflow/use-worker-candidate-actions'
 
+// Active worker job statuses whose next change can come from the customer, Kael, or payment
+// reconciliation; the 20-second worker poll stays the fallback.
+const WORKER_LIVE_JOB_STATUSES = new Set([
+  'worker_candidate_pending',
+  'worker_matched',
+  'worker_on_way',
+  'arrived',
+  'inspecting',
+  'repairing',
+  'scope_change_pending',
+  'completed_by_worker',
+  'confirmed_by_customer',
+  'payment_pending',
+])
+
 type CustomerKaelMemoryPreferenceUpdateResult = {
   success: boolean
   code?: string
@@ -561,6 +576,22 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
       void handle?.unsubscribe()?.catch(() => {})
     }
   }, [customerTimelineActive, remoteJobId])
+
+  // RLS releases the job row to the worker once jobs.worker_id is set, so the customer's
+  // candidate confirmation is the first event a candidate-pending worker receives.
+  const workerJobLive = remoteRole === 'worker'
+    && !!remoteJobId
+    && WORKER_LIVE_JOB_STATUSES.has(state.deal?.backendStatus ?? state.deal?.status ?? '')
+
+  useEffect(() => {
+    if (!workerJobLive || !remoteJobId) return
+    const handle = subscribeToJobStatus(remoteJobId, () => {
+      void liveRefreshRef.current?.workerRefresh()
+    })
+    return () => {
+      void handle?.unsubscribe()?.catch(() => {})
+    }
+  }, [workerJobLive, remoteJobId])
 
   useEffect(() => {
     if (!customerTimelineActive) return

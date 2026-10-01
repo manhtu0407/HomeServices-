@@ -18,8 +18,8 @@ import {
 const repository = 'manhtu0407/HomeServices-'
 const sourceSha = 'a'.repeat(40)
 const reviewedHeadSha = 'b'.repeat(40)
-const productionBaseSha = '645c907e178f21ddde24a72501e6c8449d6720f9'
-const productionBaseBranch = 'codex/plan55-production-base-645c907e-review-v2'
+const productionBaseSha = '891b1e26dd9a785f05671002c5e74cb270678be4'
+const productionBaseBranch = 'codex/plan55-production-base-891b1e26-review-v2'
 const hash = (value) => createHash('sha256').update(value).digest('hex')
 const identityHash = (id) => `sha256:${hash(String(id))}`
 const guardPath = 'supabase/functions/mobile-api/_shared/kael/learning/playbooks/flags.ts'

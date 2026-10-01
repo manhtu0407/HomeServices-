@@ -175,18 +175,21 @@ export async function streamKaelChatTurn(
   sessionId: string,
   input: KaelChatTurnInput,
   handlers: KaelChatStreamHandlers = {},
+  signal?: AbortSignal,
 ): Promise<ApiResult<KaelChatResponse>> {
   return streamKaelTurn(`/kael/chat/${encodeURIComponent(sessionId)}/stream`, input, handlers, {
     httpErrorField: 'error',
     httpFallbackCode: (status) => `HTTP_${status}`,
     httpFallbackMessage: 'Kael streaming failed.',
-  }, isCustomerKaelStreamResult)
+  }, isCustomerKaelStreamResult, signal)
 }
 
 export async function streamCustomerKaelConversationTurn(
   conversationId: string,
   input: CustomerKaelConversationTurnInput,
   handlers: CustomerKaelConversationStreamHandlers = {},
+  signal?: AbortSignal,
+  streamFetch?: typeof fetch,
 ): Promise<ApiResult<CustomerKaelConversationResponse>> {
   return streamKaelTurn(
     `/me/kael/conversations/${encodeURIComponent(conversationId)}/stream`,
@@ -198,6 +201,8 @@ export async function streamCustomerKaelConversationTurn(
       httpFallbackMessage: 'Kael conversation streaming failed.',
     },
     isCustomerKaelConversationStreamResult,
+    signal,
+    streamFetch,
   )
 }
 
@@ -230,12 +235,13 @@ export async function streamWorkerKaelChatTurn(
   sessionId: string,
   input: WorkerKaelChatTurnInput,
   handlers: WorkerKaelChatStreamHandlers = {},
+  signal?: AbortSignal,
 ): Promise<ApiResult<WorkerKaelChatResponse>> {
   return streamKaelTurn(`/workers/me/kael/chat/${encodeURIComponent(sessionId)}/stream`, input, handlers, {
     httpErrorField: 'message',
     httpFallbackCode: () => 'STREAM_HTTP',
     httpFallbackMessage: 'Kael stream failed.',
-  }, isWorkerKaelStreamResult)
+  }, isWorkerKaelStreamResult, signal)
 }
 
 type StreamHandlers<T> = {
@@ -262,6 +268,8 @@ async function streamKaelTurn<T>(
     httpFallbackMessage: string
   },
   resultGuard: (value: unknown) => value is T,
+  signal?: AbortSignal,
+  streamFetch?: typeof fetch,
 ): Promise<ApiResult<T>> {
   const configError = mobileApiConfigError()
   if (configError) return configError
@@ -274,11 +282,11 @@ async function streamKaelTurn<T>(
     }
   }
 
-  const lifetime = createStreamLifetime()
+  const lifetime = createStreamLifetime(signal)
   let reader: ReadableStreamDefaultReader<Uint8Array> | null = null
   try {
-    const { fetch: expoFetch } = await import('expo/fetch')
-    const response = await waitForStreamConnection(expoFetch(mobileApiUrl(path), {
+    const fetchStream = streamFetch ?? (await import('expo/fetch')).fetch
+    const response = await waitForStreamConnection(fetchStream(mobileApiUrl(path), {
       method: 'POST',
       headers: await getMobileApiAuthHeaders(),
       body: JSON.stringify(input),
@@ -364,6 +372,14 @@ async function streamKaelTurn<T>(
       status: response.status,
     }
   } catch (error) {
+    if (signal?.aborted) {
+      return {
+        success: false,
+        error: 'Kael response stopped.',
+        code: 'REQUEST_CANCELLED',
+        status: 0,
+      }
+    }
     const code = streamFailureCode(error)
     return {
       success: false,
@@ -385,8 +401,11 @@ async function streamKaelTurn<T>(
 
 type StreamLifetime = ReturnType<typeof createStreamLifetime>
 
-function createStreamLifetime() {
+function createStreamLifetime(externalSignal?: AbortSignal) {
   const controller = new AbortController()
+  const forwardAbort = () => controller.abort(externalSignal?.reason)
+  externalSignal?.addEventListener('abort', forwardAbort, { once: true })
+  if (externalSignal?.aborted) forwardAbort()
   let timer: ReturnType<typeof setTimeout> | undefined
   const timeout = new Promise<never>((_resolve, reject) => {
     timer = setTimeout(() => {
@@ -404,6 +423,7 @@ function createStreamLifetime() {
     },
     dispose() {
       if (timer !== undefined) clearTimeout(timer)
+      externalSignal?.removeEventListener('abort', forwardAbort)
     },
   }
 }

@@ -123,8 +123,9 @@ export const adminFinanceTaxPolicyDraftSchema = z.object({
   rules: z.array(z.object({
     tax_type: z.string().trim().regex(/^[A-Za-z0-9_]{2,40}$/),
     subject: z.enum(["platform", "worker"]),
-    basis: z.enum(["gmv", "commission_collected", "commission_retained", "worker_net_paid"]),
+    basis: z.enum(["gmv", "commission_collected", "commission_retained", "worker_net_paid", "worker_bonus"]),
     rate_bps: z.coerce.number().int().min(1).max(10_000),
+    applies_at_or_above_vnd: z.number().int().min(0).max(1_000_000_000).nullable().optional(),
   }).strict()).min(1).max(20),
   effective_from: z.string().regex(DATE_ONLY),
   effective_to: z.string().regex(DATE_ONLY).optional(),

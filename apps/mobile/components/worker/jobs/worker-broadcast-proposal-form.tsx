@@ -99,7 +99,7 @@ export function WorkerBroadcastProposalForm({
       <Text style={[styles.title, { color: tokens.text }]}>{copy.title}</Text>
       <Text style={[styles.body, { color: tokens.muted }]}>{copy.body}</Text>
       <Text style={[styles.label, { color: tokens.text }]}>{copy.scopeLabel}</Text>
-      <TextInput
+      <TextInput spellCheck={false}
         accessibilityLabel={copy.scopeLabel}
         maxLength={2_000}
         multiline
@@ -115,7 +115,7 @@ export function WorkerBroadcastProposalForm({
         <View style={styles.priceRow}>
           <View style={styles.priceField}>
             <Text style={[styles.label, { color: tokens.text }]}>{copy.priceMin}</Text>
-            <TextInput
+            <TextInput spellCheck={false}
               accessibilityLabel={copy.priceMin}
               keyboardType="number-pad"
               maxLength={12}
@@ -129,7 +129,7 @@ export function WorkerBroadcastProposalForm({
           </View>
           <View style={styles.priceField}>
             <Text style={[styles.label, { color: tokens.text }]}>{copy.priceMax}</Text>
-            <TextInput
+            <TextInput spellCheck={false}
               accessibilityLabel={copy.priceMax}
               keyboardType="number-pad"
               maxLength={12}

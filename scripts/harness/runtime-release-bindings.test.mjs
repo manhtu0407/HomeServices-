@@ -285,8 +285,8 @@ test('Plan 55 release lane is bound through runtime health and cannot be set in 
   })
   const bindings = runtimeReleaseBindingsFromRelease(release, mobileAttestation(release))
   assert.equal(bindings.HARNESS_RELEASE_LANE, 'plan55-production-only')
-  assert.equal(bindings.HARNESS_CLIENT_COMPAT_GIT_SHA, '645c907e178f21ddde24a72501e6c8449d6720f9')
-  assert.equal(bindings.HARNESS_CLIENT_COMPAT_RELEASE_ID, 'harness-645c907e178f-f426155f83de')
+  assert.equal(bindings.HARNESS_CLIENT_COMPAT_GIT_SHA, '891b1e26dd9a785f05671002c5e74cb270678be4')
+  assert.equal(bindings.HARNESS_CLIENT_COMPAT_RELEASE_ID, 'harness-891b1e26dd9a-8c7eb92a4783')
   assert.equal(bindingArguments(bindings).length, 28)
   assert.throws(() => runtimeReleaseBindingsFromHostedState({
     environment: 'production',

@@ -1,6 +1,6 @@
 import { type CustomerServiceId, type ServiceType, type LocalDealStatus } from '@nestscout/shared'
 import { type AppLanguage } from '@/lib/app-language'
-import { type CustomerPrimaryTab, type CustomerV21ScreenId } from './types'
+import { type CustomerPrimaryTab } from './types'
 
 type Localized<T> = Record<AppLanguage, T>
 
@@ -185,47 +185,3 @@ export const customerV21CommonCopy: Localized<{
   },
 }
 
-export const customerV21ScreenTitles: Localized<Record<CustomerV21ScreenId, string>> = {
-  en: {
-    '2.1-home': 'Customer home',
-    '2.2-search': 'Search and book service',
-    '2.3-media': 'Media / Voice intake',
-    '2.4-chat-normal': 'Kael normal chat',
-    '2.5-chat-case': 'Kael work handling',
-    '2.6-case-overview': 'Work overview',
-    '2.7-matching': 'Matching',
-    '2.8-options': 'Options',
-    '2.9-quotes': 'Quote',
-    '3.1-payment-review': 'Payment review',
-    '3.2-payment-method': 'Payment method',
-    '3.3-payment-protected': 'Protected payment',
-    '2.10-location-eta': 'Location and ETA',
-    '2.11-live-alert': 'Worker on the way',
-    '2.12-job-accepted': 'Job accepted',
-    '2.13-job-progress': 'Job in progress',
-    '6.1-profile-overview': 'Customer profile',
-    '6.2-usage-ranking': 'Usage ranking',
-    '6.3-protect-money': 'Money protection',
-  },
-  vi: {
-    '2.1-home': 'Trang chủ khách hàng',
-    '2.2-search': 'Tìm & đặt dịch vụ',
-    '2.3-media': 'Ảnh, video và ghi chú giọng nói',
-    '2.4-chat-normal': 'Trò chuyện thường với Kael',
-    '2.5-chat-case': 'Kael xử lý công việc',
-    '2.6-case-overview': 'Tổng quan công việc',
-    '2.7-matching': 'Ghép thợ phù hợp',
-    '2.8-options': 'Tùy chọn',
-    '2.9-quotes': 'Báo giá',
-    '3.1-payment-review': 'Xác nhận thanh toán',
-    '3.2-payment-method': 'Phương thức thanh toán',
-    '3.3-payment-protected': 'Bảo vệ thanh toán',
-    '2.10-location-eta': 'Vị trí và thời gian đến',
-    '2.11-live-alert': 'Thợ đang tới',
-    '2.12-job-accepted': 'Đơn đã được xác nhận',
-    '2.13-job-progress': 'Công việc đang diễn ra',
-    '6.1-profile-overview': 'Hồ sơ khách hàng',
-    '6.2-usage-ranking': 'Xếp hạng sử dụng',
-    '6.3-protect-money': 'Bảo vệ đồng tiền',
-  },
-}

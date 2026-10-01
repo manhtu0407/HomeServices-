@@ -47,7 +47,9 @@ function context(options: {
   const upsert = vi.fn(async () => options.upsertResult ?? { data: null, error: null })
   const update = vi.fn(() => ({ eq: vi.fn(async () => ({ data: null, error: null })) }))
   const from = vi.fn(() => ({ update, upsert }))
-  const rpc = vi.fn(async () => options.rpcResult ?? { data: [aggregateRow], error: null })
+  const rpc = vi.fn(async (name: string) => name === 'get_customer_membership_summary'
+    ? { data: { points: 0 }, error: null }
+    : options.rpcResult ?? { data: [aggregateRow], error: null })
 
   // User-scoped client as production has it: authenticated holds no DML on customer_profiles
   // and no execute on the aggregate, so a double that accepted either would hide the bug.
