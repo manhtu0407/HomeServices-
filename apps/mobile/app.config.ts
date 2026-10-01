@@ -112,6 +112,7 @@ const clientContractEpoch = resolveClientContractEpoch({
   easBuildId,
   gitSha: buildGitSha,
 })
+const mobileVersion = '0.2.1'
 const runtimeBuildInfo = {
   builtAt: fromEnv('NESTSCOUT_BUILD_CREATED_AT', 'EAS_BUILD_CREATED_AT') || new Date().toISOString(),
   easBuildId,
@@ -122,7 +123,7 @@ const runtimeBuildInfo = {
   gitShortSha: buildGitSha ? buildGitSha.slice(0, 12) : '',
   releaseId: buildReleaseId,
   contractEpoch: clientContractEpoch,
-  runtimeVersion: '0.2.0',
+  runtimeVersion: mobileVersion,
 }
 
 export default ({ config }: ConfigContext): ExpoConfig => ({
@@ -131,7 +132,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   name: 'NestScout',
   slug: 'home-services',
   owner: 'nestscout',
-  version: '0.2.0',
+  version: mobileVersion,
   runtimeVersion: { policy: 'appVersion' },
   orientation: 'portrait',
   icon: './assets/nestscout-aurora-nest-appstore-1024.png',

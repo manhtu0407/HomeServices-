@@ -3,7 +3,7 @@
     "name": "NestScout",
     "slug": "home-services",
     "owner": "nestscout",
-    "version": "0.2.0",
+    "version": "0.2.1",
     "runtimeVersion": {
       "policy": "appVersion"
     },
