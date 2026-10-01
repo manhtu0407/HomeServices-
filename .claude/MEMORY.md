@@ -8,6 +8,10 @@ The active Recall Index is intentionally short. Full entry detail lives in `docs
 
 **Writing back is mandatory, not optional.** At session close, write the entry or state why the Session Memory Gate does not apply (`governance/critical.md` §3). Claude Code runs `/kael-mem`; Codex does the same steps by hand. One line here, full entry in the period file. Where things go and what belongs: [`docs/memory/INDEX.md`](../docs/memory/INDEX.md).
 
+## Recall Index -> `docs/memory/2026-10.md`
+
+- **2026-10-01** Activity tab: empty state moved onto the new card + preview shows the real empty state (P297); the compensation banner was `GET /me/compensation` 404 because Edge v275 predates PR #294. The 19 `20260928*` migrations are now applied to Production (sha256-guarded, history 419, 30 RPCs back); **Edge deploy and Docker were not done**, so the banner stays until Edge ships from `main`.
+
 ## Recall Index -> `docs/memory/2026-09.md`
 
 - **2026-09-29** Kael Chat parity: Worker `Chat`/`Work`, Customer hero in English, Worker general-chat photos end to end (roles, worker `model_vision` only, claim migration `20260929100000`), P294/P295; Worker Chat real stop + shared ChatGPT-style send/stop glyph, P296. Migration `20260929100000` applied to Production (after fixing an intake-guard revert: grep migrations by function NAME). Edge deploy + build still Tu's (no CLI here; release workflow paused).
