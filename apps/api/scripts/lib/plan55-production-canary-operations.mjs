@@ -1,7 +1,9 @@
 import { createHash, randomBytes, randomUUID } from 'node:crypto'
 import { execFileSync } from 'node:child_process'
+import { lstatSync, readFileSync } from 'node:fs'
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
-import { relative, resolve } from 'node:path'
+import { join, relative, resolve } from 'node:path'
+import { isDeepStrictEqual } from 'node:util'
 import { fileURLToPath } from 'node:url'
 
 import {
@@ -83,6 +85,66 @@ export function assertPlan55ProductionCanaryEnvironment(env = process.env) {
     throw new Error('plan55_canary_required_credentials_missing')
   }
   return Object.freeze({ expectedUrl, serviceKey, anonKey, accessToken })
+}
+
+export function readPlan55CleanupStartMarker({
+  repoRoot = REPO_ROOT,
+  env = process.env,
+  service,
+  actorId,
+} = {}) {
+  const sourceSha = String(env.PLAN55_SOURCE_SHA ?? '').toLowerCase()
+  const runId = String(env.GITHUB_RUN_ID ?? '')
+  const attempt = Number(env.GITHUB_RUN_ATTEMPT)
+  if (!PLAN55_SERVICE_ORDER.includes(service) || !isUuid(actorId) ||
+      !/^[a-f0-9]{40}$/u.test(sourceSha) || !/^\d+$/u.test(runId) ||
+      !Number.isSafeInteger(attempt) || attempt < 1) {
+    throw new Error('plan55_canary_cleanup_marker_invalid')
+  }
+
+  const root = resolve(repoRoot)
+  const releasePath = join(root, 'artifacts', 'release', 'release.json')
+  const markerPath = join(root, '.scratch', 'plan55-production-canary', 'attempts', sourceSha,
+    service, `started-${runId}-${attempt}.json`)
+  try {
+    const release = JSON.parse(readFileSync(releasePath, 'utf8'))
+    if (!isRecord(release) || release.releaseLane !== 'plan55-production-only' ||
+        String(release.gitSha ?? '').toLowerCase() !== sourceSha ||
+        !new RegExp(`^harness-${sourceSha.slice(0, 12)}-[a-f0-9]{12}$`, 'u').test(release.releaseId ?? '')) {
+      throw new Error('plan55_canary_cleanup_marker_invalid')
+    }
+    const markerStat = lstatSync(markerPath)
+    if (!markerStat.isFile() || markerStat.isSymbolicLink()) {
+      throw new Error('plan55_canary_cleanup_marker_invalid')
+    }
+    const marker = JSON.parse(readFileSync(markerPath, 'utf8'))
+    const expectedKeys = ['actor_id', 'attempt', 'release_id', 'run_id', 'schema', 'service', 'source_sha']
+    if (!isRecord(marker) || !isDeepStrictEqual(Object.keys(marker).sort(), expectedKeys) ||
+        marker.schema !== 'plan55-service-start/v1' || marker.service !== service ||
+        marker.source_sha !== sourceSha || marker.release_id !== release.releaseId ||
+        marker.run_id !== runId || marker.attempt !== attempt ||
+        marker.actor_id !== actorId.toLowerCase()) {
+      throw new Error('plan55_canary_cleanup_marker_invalid')
+    }
+    return Object.freeze({ ...marker })
+  } catch {
+    throw new Error('plan55_canary_cleanup_marker_invalid')
+  }
+}
+
+export function buildPlan55CanaryRunConfig(slice) {
+  if (!isRecord(slice) || !Number.isSafeInteger(slice.offset) || !Number.isSafeInteger(slice.limit)) {
+    throw new Error('plan55_canary_run_config_invalid')
+  }
+  return Object.freeze({
+    offset: slice.offset,
+    limit: slice.limit,
+    max_turns: MAX_TURNS,
+    retry_wait_seconds: CASE_DELAY_MS / 1000,
+    timeout_seconds: REQUEST_TIMEOUT_MS / 1000,
+    district: DISTRICT,
+    allow_failures: false,
+  })
 }
 
 export async function createPlan55ProductionCanaryOperations({
@@ -415,9 +477,16 @@ export async function createPlan55ProductionCanaryOperations({
     },
 
     cleanupService: cleanupServiceOperation,
-    async cleanupAbandonedService({ service, actorId }) {
+    async cleanupAbandonedService({ service, actorId, startMarker }) {
       assertService(service)
       if (!isUuid(actorId)) throw new Error('plan55_canary_actor_id_invalid')
+      assertCleanupStartMarker(startMarker, { service, actorId })
+      const { health, deployment } = await readHealth()
+      if (health.release?.release_lane !== 'plan55-production-only' ||
+          deployment.git_sha.toLowerCase() !== startMarker.source_sha ||
+          deployment.release_id !== startMarker.release_id) {
+        throw new Error('plan55_canary_cleanup_release_mismatch')
+      }
       return cleanupServiceOperation({
         service,
         actor: { id: actorId.toLowerCase(), synthetic: true },
@@ -449,8 +518,12 @@ export async function createPlan55ProductionCanaryOperations({
       }
 
       let cleanup
-      for (const actorId of actorIds) {
-        cleanup = await this.cleanupAbandonedService({ service, actorId })
+      for (const marker of markers) {
+        cleanup = await this.cleanupAbandonedService({
+          service,
+          actorId: marker.actor_id,
+          startMarker: marker,
+        })
       }
 
       let interrupted
@@ -634,15 +707,7 @@ async function evaluateAndPersistSlice({ service, actor, slice, deployment, clie
     started_at: startedAt,
     repetitions: 1,
     repetition_strategy: 'independent_live_sessions',
-    run_config: {
-      offset: slice.offset,
-      limit: slice.limit,
-      max_turns: MAX_TURNS,
-      retry_wait_seconds: 190,
-      timeout_seconds: 45,
-      district: DISTRICT,
-      allow_failures: false,
-    },
+    run_config: buildPlan55CanaryRunConfig(slice),
   }
   const manifest = createRunManifest(manifestInput)
   const fallbackRuns = observations.filter((item) => item.model_id === 'deterministic-fallback').length
@@ -1319,6 +1384,19 @@ function scopedFlagNames(service) {
   return {
     enabled: `KAEL_PLAYBOOK_${service.toUpperCase()}_CANARY_ENABLED`,
     actor: `KAEL_PLAYBOOK_${service.toUpperCase()}_CANARY_USER_ID`,
+  }
+}
+
+function assertCleanupStartMarker(marker, { service, actorId }) {
+  const expectedKeys = ['actor_id', 'attempt', 'release_id', 'run_id', 'schema', 'service', 'source_sha']
+  const sourceSha = String(marker?.source_sha ?? '')
+  if (!isRecord(marker) || !isDeepStrictEqual(Object.keys(marker).sort(), expectedKeys) ||
+      marker.schema !== 'plan55-service-start/v1' || marker.service !== service ||
+      sourceSha !== sourceSha.toLowerCase() || !/^[a-f0-9]{40}$/u.test(sourceSha) ||
+      !new RegExp(`^harness-${sourceSha.slice(0, 12)}-[a-f0-9]{12}$`, 'u').test(marker.release_id ?? '') ||
+      !/^\d+$/u.test(marker.run_id ?? '') || !Number.isSafeInteger(marker.attempt) || marker.attempt < 1 ||
+      !isUuid(marker.actor_id) || marker.actor_id !== actorId.toLowerCase()) {
+    throw new Error('plan55_canary_cleanup_marker_invalid')
   }
 }
 

@@ -13,7 +13,10 @@ import {
   runPlan55ServiceSequence,
 } from './lib/plan55-production-canary-core.mjs'
 import { createPlan55FileCheckpointStore } from './lib/plan55-production-canary-checkpoint-store.mjs'
-import { createPlan55ProductionCanaryOperations } from './lib/plan55-production-canary-operations.mjs'
+import {
+  createPlan55ProductionCanaryOperations,
+  readPlan55CleanupStartMarker,
+} from './lib/plan55-production-canary-operations.mjs'
 import {
   PRODUCTION_MOBILE_API_URL,
   sanitizeProductionAttestationFailureReason,
@@ -185,8 +188,9 @@ async function runProductionCanary(services) {
 }
 
 async function runCleanupOnly(service, actorId) {
+  const startMarker = readPlan55CleanupStartMarker({ service, actorId })
   const operations = await createPlan55ProductionCanaryOperations()
-  const cleanup = await operations.cleanupAbandonedService({ service, actorId })
+  const cleanup = await operations.cleanupAbandonedService({ service, actorId, startMarker })
   process.stdout.write(`${JSON.stringify({
     schema: 'plan55-service-cleanup/v1',
     status: 'CLEANUP_PASS',

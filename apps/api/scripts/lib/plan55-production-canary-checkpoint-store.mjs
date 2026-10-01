@@ -15,6 +15,7 @@ const STORE_SCHEMA = 'plan55-production-canary-checkpoint/v1'
 const LOCK_SCHEMA = 'plan55-production-canary-lock/v1'
 const HANDLE_SCHEMA = 'plan55-production-canary-lock-handle/v1'
 const RECOVERY_SCHEMA = 'plan55-production-canary-interrupted-checkpoint/v1'
+const RECOVERY_COMMIT_SCHEMA = 'plan55-production-canary-recovery-commit/v1'
 const CLEANUP_TABLES = Object.freeze([
   'profiles',
   'customer_profiles',
@@ -84,10 +85,13 @@ export function createPlan55FileCheckpointStore({
       const slices = new Map(buildPlan55ServiceSlices(service).map((slice) => [slice.id, slice]))
       const verifiedSlices = body?.verifiedSlices ?? {}
       const pendingSlices = body?.pendingSlices ?? {}
+      const recoveryCommit = body?.recoveryCommit ?? null
+      if (recoveryCommit) assertRecoveryCommit(recoveryCommit, service, identity, slices)
+      const commitMatchesLock = recoveryCommit?.lockToken === lock.token
 
       for (const [sliceId, entry] of Object.entries(verifiedSlices)) {
         const slice = slices.get(sliceId)
-        if (!slice || lock.sliceIds.includes(sliceId)) {
+        if (!slice || (lock.sliceIds.includes(sliceId) && !commitMatchesLock)) {
           throw new Error('plan55_checkpoint_integrity_failed')
         }
         assertStoredSlice(entry, slice, identity)
@@ -98,6 +102,12 @@ export function createPlan55FileCheckpointStore({
           throw new Error('plan55_checkpoint_integrity_failed')
         }
         assertStoredSlice(entry, slice, identity)
+      }
+
+      if (commitMatchesLock) {
+        assertCommittedRecoveryTransition({ recoveryCommit, lock, body, verifiedSlices })
+        await releaseInterruptedCheckpointLock(lockPath, lock)
+        throw new Error('plan55_checkpoint_service_not_interrupted')
       }
 
       const receipts = [...Object.values(verifiedSlices), ...Object.values(pendingSlices)]
@@ -171,6 +181,13 @@ export function createPlan55FileCheckpointStore({
         verifiedSlices: nextVerifiedSlices,
         pendingSlices: {},
         cleanup: sanitizeCleanup(cleanup),
+        recoveryCommit: {
+          schema: RECOVERY_COMMIT_SCHEMA,
+          lockToken: activeLock.token,
+          sliceIds: [...activeLock.sliceIds],
+          invalidatedSliceIds: [...invalidated],
+          committedAt: nowIso(clock),
+        },
         updatedAt: nowIso(clock),
       }
       await writeCheckpoint(recordsDir, identity, nextBody)
@@ -381,6 +398,44 @@ function assertStoredSlice(entry, slice, identity) {
   }
   const safeReceipt = sanitizeReceipt(entry.receipt, slice, identity)
   if (!isDeepStrictEqual(safeReceipt, entry.receipt)) {
+    throw new Error('plan55_checkpoint_integrity_failed')
+  }
+}
+
+function assertRecoveryCommit(commit, service, identity, slices) {
+  const expectedKeys = ['committedAt', 'invalidatedSliceIds', 'lockToken', 'schema', 'sliceIds']
+  if (!isRecord(commit) || !isDeepStrictEqual(Object.keys(commit).sort(), expectedKeys) ||
+      commit.schema !== RECOVERY_COMMIT_SCHEMA ||
+      typeof commit.lockToken !== 'string' ||
+      !/^[a-f0-9]{8}-[a-f0-9]{4}-[1-8][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/iu.test(commit.lockToken) ||
+      !Array.isArray(commit.sliceIds) || commit.sliceIds.length === 0 ||
+      !Array.isArray(commit.invalidatedSliceIds) || !Number.isFinite(Date.parse(commit.committedAt))) {
+    throw new Error('plan55_checkpoint_integrity_failed')
+  }
+  const seen = new Set()
+  for (const sliceId of commit.sliceIds) {
+    if (!slices.has(sliceId) || seen.has(sliceId)) throw new Error('plan55_checkpoint_integrity_failed')
+    seen.add(sliceId)
+  }
+  const invalidated = new Set()
+  for (const sliceId of commit.invalidatedSliceIds) {
+    if (!seen.has(sliceId) || invalidated.has(sliceId)) {
+      throw new Error('plan55_checkpoint_integrity_failed')
+    }
+    invalidated.add(sliceId)
+  }
+  if (identity.service !== service) throw new Error('plan55_checkpoint_integrity_failed')
+}
+
+function assertCommittedRecoveryTransition({ recoveryCommit, lock, body, verifiedSlices }) {
+  if (!isDeepStrictEqual(recoveryCommit.sliceIds, lock.sliceIds) ||
+      Object.keys(body.pendingSlices).length > 0 || !body.cleanup) {
+    throw new Error('plan55_checkpoint_integrity_failed')
+  }
+  const invalidated = new Set(recoveryCommit.invalidatedSliceIds)
+  const expectedVerified = lock.sliceIds.filter((sliceId) => !invalidated.has(sliceId)).sort()
+  const actualVerified = lock.sliceIds.filter((sliceId) => Object.hasOwn(verifiedSlices, sliceId)).sort()
+  if (!isDeepStrictEqual(actualVerified, expectedVerified)) {
     throw new Error('plan55_checkpoint_integrity_failed')
   }
 }

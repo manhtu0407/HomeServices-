@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { createHash } from 'node:crypto'
 import { spawnSync } from 'node:child_process'
-import { mkdtemp, rm } from 'node:fs/promises'
+import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -9,8 +9,10 @@ import test from 'node:test'
 
 import {
   assertPlan55ProductionCanaryEnvironment,
+  buildPlan55CanaryRunConfig,
   createPlan55BoundedFetch,
   createPlan55ProductionCanaryOperations,
+  readPlan55CleanupStartMarker,
 } from './plan55-production-canary-operations.mjs'
 import {
   PLAN55_EVALUATOR_PATHS,
@@ -251,6 +253,71 @@ test('Production canary environment fails closed on missing opt-in, credentials,
     () => assertPlan55ProductionCanaryEnvironment(missingCredential),
     { message: 'plan55_canary_required_credentials_missing' },
   )
+})
+
+test('canary request manifest timeout is the bounded-fetch deadline', () => {
+  const slice = buildPlan55ServiceSlices('hvac')[0]
+  const config = buildPlan55CanaryRunConfig(slice)
+  assert.equal(config.timeout_seconds, 20)
+  assert.deepEqual(config, {
+    offset: slice.offset,
+    limit: slice.limit,
+    max_turns: 3,
+    retry_wait_seconds: 190,
+    timeout_seconds: 20,
+    district: 'q7',
+    allow_failures: false,
+  })
+})
+
+test('cleanup start marker is loaded only from and must match its exact run identity', async (t) => {
+  const rootDir = await mkdtemp(join(tmpdir(), 'plan55-cleanup-marker-'))
+  t.after(() => rm(rootDir, { recursive: true, force: true }))
+  const sourceSha = 'a'.repeat(40)
+  const releaseId = `harness-${sourceSha.slice(0, 12)}-${'c'.repeat(12)}`
+  const actorId = validEnvironment().PLAN55_CANARY_ACTOR_ID
+  const runId = '12345'
+  const attempt = 2
+  const env = {
+    PLAN55_SOURCE_SHA: sourceSha,
+    GITHUB_RUN_ID: runId,
+    GITHUB_RUN_ATTEMPT: String(attempt),
+  }
+  const markerPath = join(rootDir, '.scratch', 'plan55-production-canary', 'attempts', sourceSha,
+    'hvac', `started-${runId}-${attempt}.json`)
+  const releasePath = join(rootDir, 'artifacts', 'release', 'release.json')
+  await mkdir(join(rootDir, '.scratch', 'plan55-production-canary', 'attempts', sourceSha, 'hvac'), { recursive: true })
+  await mkdir(join(rootDir, 'artifacts', 'release'), { recursive: true })
+  await writeFile(releasePath, JSON.stringify({
+    releaseLane: 'plan55-production-only', gitSha: sourceSha, releaseId,
+  }))
+  const marker = {
+    schema: 'plan55-service-start/v1',
+    service: 'hvac',
+    source_sha: sourceSha,
+    release_id: releaseId,
+    run_id: runId,
+    attempt,
+    actor_id: actorId,
+  }
+  await writeFile(markerPath, JSON.stringify(marker))
+  assert.deepEqual(readPlan55CleanupStartMarker({ repoRoot: rootDir, env, service: 'hvac', actorId }), marker)
+
+  for (const invalidMarker of [
+    { ...marker, service: 'plumbing' },
+    { ...marker, source_sha: 'b'.repeat(40) },
+    { ...marker, release_id: `harness-${sourceSha.slice(0, 12)}-bbbbbb` },
+    { ...marker, run_id: '54321' },
+    { ...marker, attempt: 1 },
+    { ...marker, actor_id: '123e4567-e89b-42d3-a456-426614174099' },
+    { ...marker, extra: 'not-allowed' },
+  ]) {
+    await writeFile(markerPath, JSON.stringify(invalidMarker))
+    assert.throws(
+      () => readPlan55CleanupStartMarker({ repoRoot: rootDir, env, service: 'hvac', actorId }),
+      { message: 'plan55_canary_cleanup_marker_invalid' },
+    )
+  }
 })
 
 test('Operations construct clients only for the pinned Production project', async (t) => {
@@ -724,8 +791,9 @@ test('cleanup retries transient deletion visibility and proves scoped flags, Aut
     },
     release: {
       registered: true,
+      release_lane: 'plan55-production-only',
       git_sha: 'a'.repeat(40),
-      release_id: `harness-${'a'.repeat(12)}-abcdef`,
+      release_id: `harness-${'a'.repeat(12)}-${'c'.repeat(12)}`,
       deployment_id: `${PRODUCTION_PROJECT_REF}_mobile-api_1`,
       manifest_sha256: 'b'.repeat(64),
       bundle_sha256: 'c'.repeat(64),
@@ -790,9 +858,19 @@ test('cleanup retries transient deletion visibility and proves scoped flags, Aut
       : { auth: {} },
   })
   await operations.enableActorCanary('hvac', { id: actorId, synthetic: true })
+  const startMarker = {
+    schema: 'plan55-service-start/v1',
+    service: 'hvac',
+    source_sha: health.release.git_sha,
+    release_id: health.release.release_id,
+    run_id: '12345',
+    attempt: 1,
+    actor_id: actorId,
+  }
   const proof = await operations.cleanupAbandonedService({
     service: 'hvac',
     actorId,
+    startMarker,
   })
   assert.deepEqual(proof, {
     globalFlags: 'absent',
@@ -828,16 +906,21 @@ test('abandoned cleanup fails closed before touching flags or deleting an unmark
   t.after(() => rm(rootDir, { recursive: true, force: true }))
   const actorId = validEnvironment().PLAN55_CANARY_ACTOR_ID
   let deleteUserCalls = 0
+  let networkCalls = 0
+  let authReads = 0
   const jsonResponse = (body) => new Response(JSON.stringify(body), {
     headers: { 'content-type': 'application/json' },
   })
   const admin = {
     auth: {
       admin: {
-        getUserById: async (userId) => ({
-          data: { user: { id: userId, app_metadata: { role: 'worker', plan55_disposable: false } } },
-          error: null,
-        }),
+        getUserById: async (userId) => {
+          authReads += 1
+          return {
+            data: { user: { id: userId, app_metadata: { role: 'worker', plan55_disposable: false } } },
+            error: null,
+          }
+        },
         deleteUser: async () => {
           deleteUserCalls += 1
           return { error: null }
@@ -851,6 +934,7 @@ test('abandoned cleanup fails closed before touching flags or deleting an unmark
     checkpointRoot: rootDir,
     sleep: async () => {},
     fetchImpl: async (url, init = {}) => {
+      networkCalls += 1
       if (String(url).endsWith(`/projects/${PRODUCTION_PROJECT_REF}/secrets`) && init.method === 'GET') {
         return jsonResponse([])
       }
@@ -861,13 +945,75 @@ test('abandoned cleanup fails closed before touching flags or deleting an unmark
   })
 
   await assert.rejects(operations.cleanupAbandonedService({ service: 'hvac', actorId }), {
-    message: 'plan55_canary_auth_actor_not_disposable',
+    message: 'plan55_canary_cleanup_marker_invalid',
   })
+  assert.equal(networkCalls, 0)
+  assert.equal(authReads, 0)
   assert.equal(deleteUserCalls, 0)
-  assert.deepEqual(mutations, [[
-    'KAEL_PLAYBOOK_HVAC_CANARY_ENABLED',
-    'KAEL_PLAYBOOK_HVAC_CANARY_USER_ID',
-  ]])
+  assert.deepEqual(mutations, [])
+})
+
+test('abandoned cleanup rejects a marker for a different deployed release before mutations', async (t) => {
+  const rootDir = await mkdtemp(join(tmpdir(), 'plan55-cleanup-release-mismatch-'))
+  t.after(() => rm(rootDir, { recursive: true, force: true }))
+  const actorId = validEnvironment().PLAN55_CANARY_ACTOR_ID
+  let healthReads = 0
+  let authReads = 0
+  const mutations = []
+  const releaseSha = 'a'.repeat(40)
+  const releaseId = `harness-${releaseSha.slice(0, 12)}-${'c'.repeat(12)}`
+  const health = {
+    service: 'mobile-api',
+    status: 'ok',
+    environment: {
+      project_ref: PRODUCTION_PROJECT_REF,
+      provider_configuration_class: 'production-locked',
+      webhook_configuration_class: 'production-signed',
+    },
+    release: {
+      registered: true,
+      release_lane: 'plan55-production-only',
+      git_sha: releaseSha,
+      release_id: releaseId,
+      deployment_id: `${PRODUCTION_PROJECT_REF}_mobile-api_1`,
+      manifest_sha256: 'b'.repeat(64),
+      bundle_sha256: 'c'.repeat(64),
+      source_bundle_sha256: 'd'.repeat(64),
+      edge_bundle_sha256: 'e'.repeat(64),
+    },
+  }
+  const markerSha = 'f'.repeat(40)
+  const startMarker = {
+    schema: 'plan55-service-start/v1',
+    service: 'hvac',
+    source_sha: markerSha,
+    release_id: `harness-${markerSha.slice(0, 12)}-${'d'.repeat(12)}`,
+    run_id: '12345',
+    attempt: 1,
+    actor_id: actorId,
+  }
+  const operations = await createPlan55ProductionCanaryOperations({
+    env: validEnvironment(),
+    checkpointRoot: rootDir,
+    fetchImpl: async (url, init = {}) => {
+      if (String(url) === `${PRODUCTION_MOBILE_API_URL}/harness/health`) {
+        healthReads += 1
+        return new Response(JSON.stringify(health), { headers: { 'content-type': 'application/json' } })
+      }
+      mutations.push(init.method ?? 'GET')
+      return new Response('[]', { headers: { 'content-type': 'application/json' } })
+    },
+    clientFactory: () => ({ auth: { admin: {
+      getUserById: async () => { authReads += 1; return { data: { user: null }, error: { status: 404 } } },
+      deleteUser: async () => ({ error: null }),
+    } } }),
+  })
+  await assert.rejects(operations.cleanupAbandonedService({ service: 'hvac', actorId, startMarker }), {
+    message: 'plan55_canary_cleanup_release_mismatch',
+  })
+  assert.equal(healthReads, 1)
+  assert.equal(authReads, 0)
+  assert.deepEqual(mutations, [])
 })
 
 test('interrupted recovery rejects incomplete actor or release markers before contacting Production', async (t) => {
@@ -959,7 +1105,7 @@ test('CLI accepts a single ordered service and rejects an unknown service before
     timeout: 30000,
   })
   assert.equal(cleanupMissingCredentials.status, 1)
-  assert.equal(cleanupMissingCredentials.stderr.trim(), 'plan55_canary_required_credentials_missing')
+  assert.equal(cleanupMissingCredentials.stderr.trim(), 'plan55_canary_cleanup_marker_invalid')
 
   const recoveryMissingService = spawnSync(process.execPath, [CLI_PATH, '--recover-interrupted'], {
     cwd: REPO_ROOT,
