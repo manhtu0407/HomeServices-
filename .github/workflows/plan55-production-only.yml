@@ -168,6 +168,11 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - name: Require independent holdout approval before Production changes
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PLAN55_SOURCE_SHA: ${{ inputs.source_sha }}
+        run: node apps/api/scripts/plan55-independent-holdout-preflight.mjs
       - name: Assemble exact Production release and prove rollback source
         id: assemble
         env:
@@ -258,6 +263,8 @@ jobs:
       - name: Register release metadata and deploy actor-scoped guard with every flag OFF
         id: deploy
         env:
+          GH_TOKEN: ${{ github.token }}
+          PLAN55_SOURCE_SHA: ${{ inputs.source_sha }}
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.PRODUCTION_SUPABASE_SERVICE_ROLE_KEY }}
         run: |
@@ -335,6 +342,7 @@ jobs:
             exit "$result"
           }
           trap rollback EXIT
+          node apps/api/scripts/plan55-independent-holdout-preflight.mjs
           node scripts/harness/release-control.mjs --action register --environment production \
             --project-ref "$PRODUCTION_PROJECT_REF" --release artifacts/release/release.json \
             > artifacts/release/register.json

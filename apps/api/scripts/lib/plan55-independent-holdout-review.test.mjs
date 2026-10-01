@@ -10,6 +10,7 @@ import { PLAN55_SOURCE_ASSETS } from './kael-playbook-production-attestation.mjs
 import {
   buildPlan55HoldoutReviewBody,
   createPlan55GithubReviewEvidenceProvider,
+  createPlan55GithubIndependentHoldoutPreflightProvider,
   plan55HoldoutLabelsSha256,
   verifyPlan55IndependentHoldoutReviewEvidence,
 } from './plan55-independent-holdout-review.mjs'
@@ -452,4 +453,108 @@ test('GitHub provider fails closed when the deployed guard, merge source, latest
   await assert.rejects(runProvider({ contentBlobRef: sourceSha }), {
     message: 'plan55_preflight_actor_guard_unverified',
   })
+})
+
+function createGithubReviewApiFixture(fixture, { reviews = fixture.reviews, checkRuns = [fixture.checkRun] } = {}) {
+  const calls = []
+  const execFileSyncImpl = (command, args, options) => {
+    calls.push({ command, args, options })
+    const endpoint = args[1]
+    if (endpoint === `repos/${repository}/commits/${sourceSha}/pulls?per_page=100&page=1`) {
+      return JSON.stringify([{ number: 55, merge_commit_sha: sourceSha }])
+    }
+    if (endpoint === `repos/${repository}/commits/${sourceSha}`) {
+      return JSON.stringify(fixture.mergeCommit)
+    }
+    if (endpoint === `repos/${repository}/pulls/55`) {
+      return JSON.stringify(fixture.pullRequest)
+    }
+    if (endpoint === `repos/${repository}/pulls/55/reviews?per_page=100&page=1`) {
+      return JSON.stringify(reviews)
+    }
+    if (endpoint === `repos/${repository}/commits/${reviewedHeadSha}/check-runs?per_page=100&page=1`) {
+      return JSON.stringify({ check_runs: checkRuns })
+    }
+    if (endpoint === `repos/${repository}/actions/runs/8000`) {
+      return JSON.stringify(fixture.workflowRun)
+    }
+    if (endpoint === `repos/${repository}/actions/jobs/9001`) {
+      return JSON.stringify(fixture.workflowJob)
+    }
+    if (endpoint.startsWith(`repos/${repository}/contents/`)) {
+      const [path, query] = endpoint
+        .slice(`repos/${repository}/contents/`.length)
+        .split('?ref=')
+      assert.ok([sourceSha, reviewedHeadSha].includes(query))
+      return JSON.stringify({
+        sha: fixture.blobs[path],
+        encoding: 'base64',
+        content: Buffer.from(fixture.fileContents[path]).toString('base64'),
+      })
+    }
+    throw new Error('unexpected_github_request')
+  }
+  return { calls, execFileSyncImpl }
+}
+
+test('pre-deployment holdout gate proves exact independent approvals and guard CI without deployment attestation', async () => {
+  const fixture = buildGithubProviderFixture()
+  const api = createGithubReviewApiFixture(fixture)
+  const provider = createPlan55GithubIndependentHoldoutPreflightProvider({
+    cwd: 'C:/repo',
+    execFileSyncImpl: api.execFileSyncImpl,
+  })
+  const evidence = await provider({
+    expectedSourceSha: sourceSha,
+    expectedHoldoutHashes: fixture.holdoutHashes,
+    expectedHoldoutCaseCounts: Object.fromEntries(PLAN55_SERVICE_ORDER.map((service) => [service, 24])),
+    expectedHoldoutLabelsSha256: fixture.holdoutLabelsSha256,
+  })
+
+  assert.deepEqual(evidence, {
+    schema: 'plan55-predeployment-holdout-review/v1',
+    status: 'PASS',
+    source_sha: sourceSha,
+    pull_request_number: 55,
+    reviewed_head_sha: reviewedHeadSha,
+    review_count: 2,
+    actor_guard_check_run_id: fixture.checkRun.id,
+    holdout_root_sha256: createHash('sha256')
+      .update(Object.keys(fixture.holdoutHashes).sort()
+        .map((service) => `${service}=${fixture.holdoutHashes[service].slice('sha256:'.length)}`)
+        .join('\n'))
+      .digest('hex'),
+  })
+  assert.ok(api.calls.length > 0)
+  assert.ok(api.calls.every((call) => call.command === 'gh' && call.options.shell === false))
+  assert.ok(api.calls.every((call) => call.args.length === 2 && call.args[0] === 'api'))
+  assert.doesNotMatch(JSON.stringify(evidence), /reviewer_id|401|402/u)
+
+  const missingApprovals = createGithubReviewApiFixture(fixture, {
+    reviews: fixture.reviews.map((review) => ({ ...review, state: 'COMMENTED' })),
+  })
+  const blockedProvider = createPlan55GithubIndependentHoldoutPreflightProvider({
+    cwd: 'C:/repo',
+    execFileSyncImpl: missingApprovals.execFileSyncImpl,
+  })
+  await assert.rejects(blockedProvider({
+    expectedSourceSha: sourceSha,
+    expectedHoldoutHashes: fixture.holdoutHashes,
+    expectedHoldoutCaseCounts: Object.fromEntries(PLAN55_SERVICE_ORDER.map((service) => [service, 24])),
+    expectedHoldoutLabelsSha256: fixture.holdoutLabelsSha256,
+  }), { message: 'plan55_preflight_independent_holdout_unverified' })
+
+  const failedGuardChecks = createGithubReviewApiFixture(fixture, {
+    checkRuns: [{ ...fixture.checkRun, conclusion: 'failure' }],
+  })
+  const failedCheckProvider = createPlan55GithubIndependentHoldoutPreflightProvider({
+    cwd: 'C:/repo',
+    execFileSyncImpl: failedGuardChecks.execFileSyncImpl,
+  })
+  await assert.rejects(failedCheckProvider({
+    expectedSourceSha: sourceSha,
+    expectedHoldoutHashes: fixture.holdoutHashes,
+    expectedHoldoutCaseCounts: Object.fromEntries(PLAN55_SERVICE_ORDER.map((service) => [service, 24])),
+    expectedHoldoutLabelsSha256: fixture.holdoutLabelsSha256,
+  }), { message: 'plan55_preflight_actor_guard_unverified' })
 })

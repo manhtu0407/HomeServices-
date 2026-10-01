@@ -137,6 +137,44 @@ test('guard deploy is rollback-protected, deploys only mobile-api, and applies n
   assert.doesNotMatch(release, /KAEL_PLAYBOOK_(?:HVAC|HANDYMAN|CLEANING|UPHOLSTERY|PLUMBING|ELECTRICAL)_ENABLED/u)
 })
 
+test('independent holdout approvals and guard CI are required before assembling or mutating Production', () => {
+  const deploy = jobBlock(release, 'deploy_guard_off')
+  const reviewGateIndex = deploy.indexOf('node apps/api/scripts/plan55-independent-holdout-preflight.mjs')
+  const assembleIndex = deploy.indexOf('name: Assemble exact Production release and prove rollback source')
+  const deployIndex = deploy.indexOf('functions deploy mobile-api')
+
+  assert.ok(reviewGateIndex >= 0, 'Production deploy must run the independent holdout preflight')
+  assert.ok(assembleIndex > reviewGateIndex, 'review eligibility must be established before Production release assembly')
+  assert.ok(deployIndex > assembleIndex, 'release assembly must precede the actual Edge deployment')
+  assert.match(deploy, /GH_TOKEN: \$\{\{ github\.token \}\}/u,
+    'preflight must use the workflow-scoped read-only GitHub token')
+  assert.match(deploy, /PLAN55_SOURCE_SHA: \$\{\{ inputs\.source_sha \}\}/u,
+    'preflight must validate the exact dispatched source SHA')
+  assert.match(release, /pull-requests: read/u,
+    'the workflow token must keep pull-request access read-only')
+  assert.match(release, /checks: read/u,
+    'the workflow token must keep guard-check access read-only')
+})
+
+test('holdout review is revalidated immediately before the first Production write', () => {
+  const gatePath = 'node apps/api/scripts/plan55-independent-holdout-preflight.mjs'
+  const firstGate = release.indexOf(gatePath)
+  const finalGate = release.indexOf(gatePath, firstGate + gatePath.length)
+  const register = release.indexOf('node scripts/harness/release-control.mjs --action register')
+  const deployStep = release.slice(release.indexOf('      - name: Register release metadata and deploy actor-scoped guard'))
+
+  assert.ok(firstGate >= 0 && finalGate > firstGate,
+    'review eligibility must be checked early and again after long release assembly')
+  assert.ok(register > finalGate,
+    'no release registration or secret/Edge mutation may precede the fresh review check')
+  assert.match(deployStep, /GH_TOKEN: \$\{\{ github\.token \}\}/u,
+    'the final review check must use the read-only workflow token')
+  assert.match(deployStep, /PLAN55_SOURCE_SHA: \$\{\{ inputs\.source_sha \}\}/u,
+    'the final review check must remain bound to the exact source SHA')
+  assert.match(deployStep, /trap rollback EXIT[\s\S]*?node apps\/api\/scripts\/plan55-independent-holdout-preflight\.mjs[\s\S]*?release-control\.mjs --action register/u,
+    'the immediate recheck must fail before release registration while retaining existing rollback behavior')
+})
+
 test('Production source attestation is bound to downloaded hosted Edge bytes and live deployment metadata', () => {
   const downloadIndex = release.indexOf('functions download mobile-api')
   const proofIndex = release.indexOf('production-edge-source-proof.json')

@@ -92,78 +92,139 @@ export function createPlan55GithubReviewEvidenceProvider({
     expectedHoldoutLabelsSha256,
     sourceAttestation,
   } = {}) => {
-    const sourceSha = String(expectedSourceSha ?? '').toLowerCase()
-    if (!GIT_SHA_PATTERN.test(sourceSha) || !isRecord(expectedHoldoutHashes) ||
-        !isRecord(expectedHoldoutCaseCounts) || !SHA256_PATTERN.test(expectedHoldoutLabelsSha256 ?? '')) {
-      throw new Error('plan55_preflight_independent_holdout_unverified')
-    }
-    const associatedPullRequests = await readGithubPages(
-      execFileSyncImpl,
+    const evidence = await readVerifiedPlan55GithubReviewEvidence({
       cwd,
-      `repos/${PLAN55_GITHUB_REPOSITORY}/commits/${sourceSha}/pulls`,
-    )
-    const matchingPullRequests = associatedPullRequests.filter((pullRequest) =>
-      String(pullRequest?.merge_commit_sha ?? '').toLowerCase() === sourceSha)
-    if (matchingPullRequests.length !== 1 || !Number.isSafeInteger(matchingPullRequests[0]?.number)) {
-      throw new Error('plan55_preflight_independent_holdout_unverified')
-    }
-    const pullRequestNumber = matchingPullRequests[0].number
-    const pullPath = `repos/${PLAN55_GITHUB_REPOSITORY}/pulls/${pullRequestNumber}`
-    const pullRequest = readGithubJson(execFileSyncImpl, cwd, pullPath)
-    const mergeCommit = readGithubJson(
       execFileSyncImpl,
-      cwd,
-      `repos/${PLAN55_GITHUB_REPOSITORY}/commits/${sourceSha}`,
-    )
-    if (!isVerifiedMergedProductionPullRequest(pullRequest, pullRequestNumber, sourceSha, mergeCommit)) {
-      throw new Error('plan55_preflight_independent_holdout_unverified')
-    }
-    const [reviews, checkRuns, sourceFiles] = await Promise.all([
-      readGithubPages(execFileSyncImpl, cwd, `${pullPath}/reviews`),
-      readGithubCheckRuns(execFileSyncImpl, cwd, pullRequest.head.sha),
-      readGuardSourceFiles(execFileSyncImpl, cwd, pullRequest.head.sha, sourceSha),
-    ])
-    const proof = buildProofFromGithubReviews({
-      expectedSourceSha: sourceSha,
+      expectedSourceSha,
       expectedHoldoutHashes,
       expectedHoldoutCaseCounts,
       expectedHoldoutLabelsSha256,
-      pullRequest,
-      mergeCommit,
-      reviews,
-      actorGuardFileBlobSha: sourceFiles[GUARD_RUNTIME_PATH].headSha,
     })
-    const verifiedProof = verifyPlan55IndependentHoldoutReviewEvidence({
-      proof,
-      expectedSourceSha: sourceSha,
-      expectedHoldoutHashes,
-      expectedHoldoutLabelsSha256,
-      pullRequest,
-      mergeCommit,
-      reviews,
-    })
-    const actorGuardWorkflow = await readActorGuardWorkflowEvidence(
-      execFileSyncImpl,
-      cwd,
-      checkRuns,
-      pullRequest.head.sha,
-    )
     const actorGuardProof = buildVerifiedActorGuardProof({
-      expectedSourceSha: sourceSha,
-      pullRequest,
-      checkRuns,
-      actorGuardWorkflow,
+      expectedSourceSha: evidence.sourceSha,
+      pullRequest: evidence.pullRequest,
+      checkRuns: evidence.checkRuns,
+      actorGuardWorkflow: evidence.actorGuardWorkflow,
       sourceAttestation,
-      sourceFiles,
+      sourceFiles: evidence.sourceFiles,
     })
     return Object.freeze({
-      proof: verifiedProof,
-      pullRequest,
-      mergeCommit,
-      reviews: Object.freeze(reviews),
+      proof: evidence.verifiedProof,
+      pullRequest: evidence.pullRequest,
+      mergeCommit: evidence.mergeCommit,
+      reviews: Object.freeze(evidence.reviews),
       actorGuardProof,
     })
   }
+}
+
+export function createPlan55GithubIndependentHoldoutPreflightProvider({
+  cwd = REPO_ROOT,
+  execFileSyncImpl = execFileSync,
+} = {}) {
+  return async ({
+    expectedSourceSha,
+    expectedHoldoutHashes,
+    expectedHoldoutCaseCounts,
+    expectedHoldoutLabelsSha256,
+  } = {}) => {
+    const evidence = await readVerifiedPlan55GithubReviewEvidence({
+      cwd,
+      execFileSyncImpl,
+      expectedSourceSha,
+      expectedHoldoutHashes,
+      expectedHoldoutCaseCounts,
+      expectedHoldoutLabelsSha256,
+    })
+    const reviewVerification = evidence.verifiedProof.github_review_verification
+    return Object.freeze({
+      schema: 'plan55-predeployment-holdout-review/v1',
+      status: 'PASS',
+      source_sha: evidence.sourceSha,
+      pull_request_number: evidence.pullRequest.number,
+      reviewed_head_sha: reviewVerification.reviewed_head_sha,
+      review_count: reviewVerification.review_ids.length,
+      actor_guard_check_run_id: evidence.actorGuardWorkflow.checkRun.id,
+      holdout_root_sha256: reviewVerification.holdout_root_sha256,
+    })
+  }
+}
+
+async function readVerifiedPlan55GithubReviewEvidence({
+  cwd,
+  execFileSyncImpl,
+  expectedSourceSha,
+  expectedHoldoutHashes,
+  expectedHoldoutCaseCounts,
+  expectedHoldoutLabelsSha256,
+}) {
+  const sourceSha = String(expectedSourceSha ?? '').toLowerCase()
+  if (!GIT_SHA_PATTERN.test(sourceSha) || !isRecord(expectedHoldoutHashes) ||
+      !isRecord(expectedHoldoutCaseCounts) || !SHA256_PATTERN.test(expectedHoldoutLabelsSha256 ?? '')) {
+    throw new Error('plan55_preflight_independent_holdout_unverified')
+  }
+  const associatedPullRequests = await readGithubPages(
+    execFileSyncImpl,
+    cwd,
+    `repos/${PLAN55_GITHUB_REPOSITORY}/commits/${sourceSha}/pulls`,
+  )
+  const matchingPullRequests = associatedPullRequests.filter((pullRequest) =>
+    String(pullRequest?.merge_commit_sha ?? '').toLowerCase() === sourceSha)
+  if (matchingPullRequests.length !== 1 || !Number.isSafeInteger(matchingPullRequests[0]?.number)) {
+    throw new Error('plan55_preflight_independent_holdout_unverified')
+  }
+  const pullRequestNumber = matchingPullRequests[0].number
+  const pullPath = `repos/${PLAN55_GITHUB_REPOSITORY}/pulls/${pullRequestNumber}`
+  const pullRequest = readGithubJson(execFileSyncImpl, cwd, pullPath)
+  const mergeCommit = readGithubJson(
+    execFileSyncImpl,
+    cwd,
+    `repos/${PLAN55_GITHUB_REPOSITORY}/commits/${sourceSha}`,
+  )
+  if (!isVerifiedMergedProductionPullRequest(pullRequest, pullRequestNumber, sourceSha, mergeCommit)) {
+    throw new Error('plan55_preflight_independent_holdout_unverified')
+  }
+  const [reviews, checkRuns, sourceFiles] = await Promise.all([
+    readGithubPages(execFileSyncImpl, cwd, `${pullPath}/reviews`),
+    readGithubCheckRuns(execFileSyncImpl, cwd, pullRequest.head.sha),
+    readGuardSourceFiles(execFileSyncImpl, cwd, pullRequest.head.sha, sourceSha),
+  ])
+  const proof = buildProofFromGithubReviews({
+    expectedSourceSha: sourceSha,
+    expectedHoldoutHashes,
+    expectedHoldoutCaseCounts,
+    expectedHoldoutLabelsSha256,
+    pullRequest,
+    mergeCommit,
+    reviews,
+    actorGuardFileBlobSha: sourceFiles[GUARD_RUNTIME_PATH].headSha,
+  })
+  const verifiedProof = verifyPlan55IndependentHoldoutReviewEvidence({
+    proof,
+    expectedSourceSha: sourceSha,
+    expectedHoldoutHashes,
+    expectedHoldoutLabelsSha256,
+    pullRequest,
+    mergeCommit,
+    reviews,
+  })
+  const actorGuardWorkflow = await readActorGuardWorkflowEvidence(
+    execFileSyncImpl,
+    cwd,
+    checkRuns,
+    pullRequest.head.sha,
+  )
+  assertVerifiedActorGuardWorkflow({ pullRequest, checkRuns, actorGuardWorkflow })
+  return Object.freeze({
+    sourceSha,
+    pullRequest,
+    mergeCommit,
+    reviews: Object.freeze(reviews),
+    checkRuns: Object.freeze(checkRuns),
+    sourceFiles: Object.freeze(sourceFiles),
+    verifiedProof,
+    actorGuardWorkflow,
+  })
 }
 
 function buildProofFromGithubReviews({
@@ -289,36 +350,11 @@ function buildVerifiedActorGuardProof({
       guardFile.mergeSha.toLowerCase() !== attestedGuardFile.git_blob_sha1.toLowerCase()) fail()
   assertGuardTestWiring(sourceFiles)
 
-  const matchingRuns = (Array.isArray(checkRuns) ? checkRuns : [])
-    .filter((run) => run?.name === PLAN55_ACTOR_GUARD_CHECK_NAME &&
-      String(run.head_sha ?? '').toLowerCase() === reviewedHeadSha &&
-      run.app?.slug === 'github-actions')
-    .sort((left, right) => {
-      const leftStarted = Date.parse(left.started_at ?? '')
-      const rightStarted = Date.parse(right.started_at ?? '')
-      if (leftStarted !== rightStarted) return leftStarted - rightStarted
-      return Number(left.id ?? 0) - Number(right.id ?? 0)
-    })
-  const latestRun = matchingRuns.at(-1)
-  const workflowRun = actorGuardWorkflow?.workflowRun
-  const workflowJob = actorGuardWorkflow?.workflowJob
-  const successfulTestStep = workflowJob?.steps?.find((step) =>
-    step?.name === 'Run actor-scoped Production guard tests')
-  if (!latestRun || !Number.isSafeInteger(latestRun.id) || latestRun.id < 1 ||
-      latestRun.status !== 'completed' || latestRun.conclusion !== 'success' ||
-      !Number.isFinite(Date.parse(latestRun.started_at ?? '')) ||
-      latestRun.id !== actorGuardWorkflow.checkRun?.id ||
-      workflowRun?.id !== actorGuardWorkflow.runId || workflowRun?.path !== '.github/workflows/ci.yml' ||
-      workflowRun?.event !== 'pull_request' ||
-      String(workflowRun?.head_sha ?? '').toLowerCase() !== reviewedHeadSha ||
-      workflowRun?.status !== 'completed' || workflowRun?.conclusion !== 'success' ||
-      !Number.isSafeInteger(workflowRun?.run_attempt) || workflowRun.run_attempt < 1 ||
-      workflowJob?.id !== actorGuardWorkflow.jobId || workflowJob?.run_id !== workflowRun.id ||
-      workflowJob?.run_attempt !== workflowRun.run_attempt ||
-      String(workflowJob?.head_sha ?? '').toLowerCase() !== reviewedHeadSha ||
-      workflowJob?.name !== 'plan55-actor-guard' || workflowJob?.status !== 'completed' ||
-      workflowJob?.conclusion !== 'success' || successfulTestStep?.status !== 'completed' ||
-      successfulTestStep?.conclusion !== 'success') fail()
+  const { latestRun, workflowRun, workflowJob, successfulTestStep } = assertVerifiedActorGuardWorkflow({
+    pullRequest,
+    checkRuns,
+    actorGuardWorkflow,
+  })
 
   return Object.freeze({
     source_sha: sourceSha,
@@ -349,6 +385,42 @@ function buildVerifiedActorGuardProof({
       runtime_file_blob_sha1: guardFile.mergeSha.toLowerCase(),
     }),
   })
+}
+
+function assertVerifiedActorGuardWorkflow({ pullRequest, checkRuns, actorGuardWorkflow }) {
+  const fail = () => { throw new Error('plan55_preflight_actor_guard_unverified') }
+  const reviewedHeadSha = String(pullRequest?.head?.sha ?? '').toLowerCase()
+  const matchingRuns = (Array.isArray(checkRuns) ? checkRuns : [])
+    .filter((run) => run?.name === PLAN55_ACTOR_GUARD_CHECK_NAME &&
+      String(run.head_sha ?? '').toLowerCase() === reviewedHeadSha &&
+      run.app?.slug === 'github-actions')
+    .sort((left, right) => {
+      const leftStarted = Date.parse(left.started_at ?? '')
+      const rightStarted = Date.parse(right.started_at ?? '')
+      if (leftStarted !== rightStarted) return leftStarted - rightStarted
+      return Number(left.id ?? 0) - Number(right.id ?? 0)
+    })
+  const latestRun = matchingRuns.at(-1)
+  const workflowRun = actorGuardWorkflow?.workflowRun
+  const workflowJob = actorGuardWorkflow?.workflowJob
+  const successfulTestStep = workflowJob?.steps?.find((step) =>
+    step?.name === 'Run actor-scoped Production guard tests')
+  if (!latestRun || !Number.isSafeInteger(latestRun.id) || latestRun.id < 1 ||
+      latestRun.status !== 'completed' || latestRun.conclusion !== 'success' ||
+      !Number.isFinite(Date.parse(latestRun.started_at ?? '')) ||
+      latestRun.id !== actorGuardWorkflow.checkRun?.id ||
+      workflowRun?.id !== actorGuardWorkflow.runId || workflowRun?.path !== '.github/workflows/ci.yml' ||
+      workflowRun?.event !== 'pull_request' ||
+      String(workflowRun?.head_sha ?? '').toLowerCase() !== reviewedHeadSha ||
+      workflowRun?.status !== 'completed' || workflowRun?.conclusion !== 'success' ||
+      !Number.isSafeInteger(workflowRun?.run_attempt) || workflowRun.run_attempt < 1 ||
+      workflowJob?.id !== actorGuardWorkflow.jobId || workflowJob?.run_id !== workflowRun.id ||
+      workflowJob?.run_attempt !== workflowRun.run_attempt ||
+      String(workflowJob?.head_sha ?? '').toLowerCase() !== reviewedHeadSha ||
+      workflowJob?.name !== 'plan55-actor-guard' || workflowJob?.status !== 'completed' ||
+      workflowJob?.conclusion !== 'success' || successfulTestStep?.status !== 'completed' ||
+      successfulTestStep?.conclusion !== 'success') fail()
+  return Object.freeze({ latestRun, workflowRun, workflowJob, successfulTestStep })
 }
 
 function assertGuardTestWiring(sourceFiles) {

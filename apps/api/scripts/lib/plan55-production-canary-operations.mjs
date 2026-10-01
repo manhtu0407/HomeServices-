@@ -858,7 +858,7 @@ async function runLocalSourceAttestor() {
   return attestation
 }
 
-async function readPlan55HoldoutAssets() {
+export async function readPlan55HoldoutAssets() {
   const assets = await Promise.all(PLAN55_SERVICE_ORDER.map(async (service) => {
     const path = PLAN55_SOURCE_ASSETS[service].holdout
     const bytes = await readFile(resolve(REPO_ROOT, path))
