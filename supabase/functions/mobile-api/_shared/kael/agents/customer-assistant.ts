@@ -314,6 +314,7 @@ function buildCustomerAssistantRunContext(input: CustomerAssistantInput) {
   const serviceType = input.serviceType ?? inferAssistantServiceType(cleanQuestion, input.job);
   const topic = classifyAssistantTopic(cleanQuestion, serviceType);
   const boundary = evaluateMessageBoundary(cleanQuestion, serviceType, {
+    actorId: input.actorId,
     semanticInjectionClassifierEnabled: true,
     language,
   });

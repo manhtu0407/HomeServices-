@@ -173,6 +173,7 @@ export const kaelIntakeConfirmationSchema = z.object({
 type KaelIntakeConfirmation = EdgeKaelIntakeConfirmation;
 type KaelIntakeConfirmationIssue = z.infer<typeof kaelIntakeConfirmationIssueSchema>;
 type KaelIntakeConfirmationInput = {
+  actorId?: string | null;
   serviceType: KaelCaseWorkServiceType;
   profileId: KaelPerformanceProfileId;
   description: string;
@@ -278,7 +279,10 @@ function appendBoundaryIssues(
   input: KaelIntakeConfirmationInput,
   description: string,
 ) {
-  const boundary = evaluateMessageBoundary(description, input.serviceType, { language: input.language });
+  const boundary = evaluateMessageBoundary(description, input.serviceType, {
+    actorId: input.actorId,
+    language: input.language,
+  });
   if (boundary.ok) return;
   const code = boundary.reason === "service_mismatch"
     ? "service_mismatch"
@@ -328,7 +332,7 @@ function appendSafetyIssue(
   input: KaelIntakeConfirmationInput,
   description: string,
 ) {
-  const safetySignals = getEnabledKaelPlaybook(input.serviceType)
+  const safetySignals = getEnabledKaelPlaybook(input.serviceType, input.actorId)
     ? scanIntakeSafetySignals(input.serviceType, description)
     : [];
   const safetyMessage = deterministicSafetyGuidance(

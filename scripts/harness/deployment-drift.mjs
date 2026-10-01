@@ -137,6 +137,7 @@ order by object_kind, schema_name, relation_name, object_name`,
     // a hosted baseline that no caller could recognize as the Production target it actually is.
     projectRef: health?.environment?.project_ref ?? input.projectRef,
     releaseId: release.release_id ?? null,
+    releaseLane: release.release_lane ?? null,
     deploymentId: release.deployment_id ?? null,
     gitSha: release.git_sha ?? null,
     manifestSha256: release.manifest_sha256 ?? null,

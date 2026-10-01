@@ -80,13 +80,13 @@ Deno.serve(async (request) => {
   let deletedTotal = 0;
   let retryPendingTotal = 0;
   const outcomes = await Promise.all(CLEANUP_PLANS.map(async (plan) => ({
-    plan,
+    label: plan.label,
     outcome: await processCleanupPlan(client, plan, claimToken, limit),
   })));
   const failedQueues: CleanupPlan["label"][] = [];
-  for (const { plan, outcome } of outcomes) {
+  for (const { label, outcome } of outcomes) {
     if ("error" in outcome) {
-      failedQueues.push(plan.label);
+      failedQueues.push(label);
       retryPendingTotal += outcome.retry_pending ?? 0;
       continue;
     }

@@ -6,6 +6,7 @@ import { dirname, extname, relative, resolve, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 import { auditProductionUiCopy } from '../check-production-ui-copy.mjs'
+import { buildPlan55AppliedMigrationInventory } from './plan55-applied-migration-inventory.mjs'
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..')
 const requireFromMobile = createRequire(resolve(ROOT, 'apps/mobile/package.json'))
@@ -19,6 +20,7 @@ function typescriptApi() {
   return typescriptModule
 }
 const OUTPUT = 'artifacts/harness/release-manifest.json'
+const PLAN55_POLICY_PATH = 'config/harness/plan55-production-only-policy.json'
 const ENVIRONMENTS = new Set(['local', 'preview', 'staging', 'production'])
 const SOURCE_EXTENSIONS = ['.ts', '.tsx', '.js', '.mjs', '.json']
 const FUNCTION_CONFIG_NAMES = ['deno.json', 'deno.jsonc', 'deno.lock', 'import_map.json', 'import-map.json']
@@ -37,7 +39,44 @@ const PRODUCTION_REQUIRED_PROVIDERS = Object.freeze([
   'android_fcm_v1', 'anthropic', 'durable_guards', 'global_ai_enabled',
   'ios_apns', 'perplexity', 'push_receipt_reconciler', 'vietmap',
 ])
-export const RELEASE_LANES = Object.freeze(['verification'])
+export const RELEASE_LANES = Object.freeze(['verification', 'plan55-production-only'])
+const STANDARD_VERIFICATION_REQUIREMENTS = Object.freeze([
+  'repository-controls',
+  'empty-database-reset',
+  'sql-verification',
+  'generated-types-match',
+  'staging-migration-match',
+  'edge-digest-match',
+  'live-provider-evaluation-if-affected',
+  'readonly-production-drift',
+  'production-ui-normality',
+  'compatible-rollback-target',
+])
+const PLAN55_PRODUCTION_ONLY_REQUIREMENTS = Object.freeze([
+  'repository-controls',
+  'sql-verification',
+  'generated-types-match',
+  'edge-digest-match',
+  'live-provider-evaluation-if-affected',
+  'readonly-production-drift',
+  'production-ui-normality',
+  'compatible-rollback-target',
+  'plan55-production-target-attestation',
+  'plan55-actor-scoped-guard-tests',
+  'plan55-canary-runner-tests',
+  'plan55-source-lock',
+  'plan55-independent-holdout-freeze',
+  'plan55-rollback-preflight',
+])
+function verificationRequirementsForLane(lane, releaseAuthorityRequirement) {
+  const requirements = lane === 'plan55-production-only'
+    ? PLAN55_PRODUCTION_ONLY_REQUIREMENTS
+    : STANDARD_VERIFICATION_REQUIREMENTS
+  const authorityRequirements = lane === 'plan55-production-only'
+    ? ['plan55-production-source-merge', 'plan55-exact-production-base-ancestry']
+    : [releaseAuthorityRequirement]
+  return [...requirements, ...authorityRequirements]
+}
 const repoPath = (value) => value.split(sep).join('/')
 
 export function buildHarnessRelease(options = {}) {
@@ -46,7 +85,7 @@ export function buildHarnessRelease(options = {}) {
   if (!ENVIRONMENTS.has(environment)) throw new Error(`invalid release environment: ${environment}`)
   const lane = options.lane
   if (lane !== undefined && !RELEASE_LANES.includes(lane)) throw new Error(`invalid release lane: ${lane}`)
-  if (lane !== undefined && environment !== 'production') throw new Error('a verification release exists only for production')
+  if (lane !== undefined && environment !== 'production') throw new Error('a production-only release lane exists only for production')
   if (environment === 'production' && options.requireCleanWorktree !== false) {
     assertCleanReleaseWorktree(root)
   }
@@ -54,8 +93,62 @@ export function buildHarnessRelease(options = {}) {
   if (!/^[0-9a-f]{40}$/u.test(gitSha)) throw new Error('release git SHA is invalid')
 
   const manifest = readFileSync(resolve(root, 'config/harness/manifest.json'))
-  const migrationInventoryBytes = readFileSync(resolve(root, 'config/harness/migration-inventory.json'))
-  const migrationInventory = JSON.parse(migrationInventoryBytes.toString('utf8'))
+  const plan55PolicyBytes = lane === 'plan55-production-only'
+    ? readFileSync(resolve(root, PLAN55_POLICY_PATH))
+    : null
+  const plan55Policy = plan55PolicyBytes ? JSON.parse(plan55PolicyBytes.toString('utf8')) : null
+  const hostedBeforeBytes = lane === 'plan55-production-only' ? options.hostedBeforeBytes : undefined
+  let hostedState
+  if (lane === 'plan55-production-only') {
+    if (!Buffer.isBuffer(hostedBeforeBytes) || hostedBeforeBytes.length === 0) {
+      throw new Error('Plan 55 production release requires a hosted-before snapshot')
+    }
+    try {
+      hostedState = JSON.parse(hostedBeforeBytes.toString('utf8'))
+    } catch {
+      throw new Error('Plan 55 hosted-before snapshot is invalid')
+    }
+    if (hostedState.environment !== 'production' ||
+        hostedState.projectRef !== plan55Policy.projectRef ||
+        hostedState.releaseId !== plan55Policy.productionSourceBase?.releaseId ||
+        hostedState.gitSha !== plan55Policy.productionSourceBase?.sha) {
+      throw new Error('Plan 55 hosted-before does not match the pinned Production source')
+    }
+  }
+  if (options.activeClientCompatibility !== undefined) {
+    throw new Error('Plan 55 active client identity is derived from hosted-before')
+  }
+  const activeClientCompatibility = lane === 'plan55-production-only'
+    ? validatePlan55ActiveClientCompatibility(hostedState.clientCompatibility, plan55Policy)
+    : null
+  const sourceMigrationInventoryBytes = readFileSync(resolve(root, 'config/harness/migration-inventory.json'))
+  const sourceMigrationInventory = JSON.parse(sourceMigrationInventoryBytes.toString('utf8'))
+  let migrationInventoryBytes = sourceMigrationInventoryBytes
+  let migrationInventory = sourceMigrationInventory
+  let plan55AppliedMigrationSnapshot
+  if (lane === 'plan55-production-only') {
+    migrationInventory = buildPlan55AppliedMigrationInventory({
+      root,
+      sourceInventory: sourceMigrationInventory,
+      hostedState,
+      expectedProjectRef: plan55Policy.projectRef,
+      expectedProductionBase: plan55Policy.productionSourceBase,
+    })
+    migrationInventoryBytes = Buffer.from(`${JSON.stringify(migrationInventory, null, 2)}\n`)
+    plan55AppliedMigrationSnapshot = {
+      schema: 'plan55-applied-migration-snapshot/v1',
+      environment: hostedState.environment,
+      projectRef: hostedState.projectRef,
+      sourceReleaseId: hostedState.releaseId,
+      sourceGitSha: hostedState.gitSha,
+      sourceMigrationInventorySha256: sha256(sourceMigrationInventoryBytes),
+      hostedStateSha256: sha256(hostedBeforeBytes),
+      appliedMigrationCount: migrationInventory.migrationCount,
+      appliedMigrationInventorySha256: sha256(migrationInventoryBytes),
+    }
+  } else if (options.hostedBeforeBytes !== undefined) {
+    throw new Error('hosted-before snapshots are reserved for the Plan 55 Production lane')
+  }
   const evaluationSuiteBytes = readFileSync(resolve(root, 'config/harness/evaluation.json'))
   const evaluationSuite = JSON.parse(evaluationSuiteBytes.toString('utf8'))
   const capabilityRegistryBytes = readFileSync(resolve(root, 'config/harness/capabilities.json'))
@@ -80,6 +173,8 @@ export function buildHarnessRelease(options = {}) {
     ...(lane === undefined ? {} : { releaseLane: lane }),
     environmentBinding,
     gitSha,
+    ...(activeClientCompatibility ? { activeClientCompatibility } : {}),
+    ...(plan55AppliedMigrationSnapshot ? { plan55AppliedMigrationSnapshot } : {}),
     sourceBundleSha256: digestRepoPaths(root, releaseSourcePaths),
     mobileBuildFingerprintSha256: digestRepoPaths(root, releaseSourcePaths.filter((path) =>
       path === 'package.json' ||
@@ -125,7 +220,12 @@ export function buildHarnessRelease(options = {}) {
     capabilityRegistrySha256: sha256(capabilityRegistryBytes),
     accessMatrixSha256: sha256(accessMatrixBytes),
     reliabilityPolicySha256: sha256(reliabilityPolicyBytes),
-    promotionPolicySha256: sha256(promotionPolicyBytes),
+    promotionPolicySha256: plan55PolicyBytes
+      ? sha256(canonicalJson({
+        promotion: JSON.parse(promotionPolicyBytes.toString('utf8')),
+        plan55: JSON.parse(plan55PolicyBytes.toString('utf8')),
+      }))
+      : sha256(promotionPolicyBytes),
     providerReadiness,
     providerReadinessFingerprintSha256: sha256(canonicalJson(providerReadiness)),
     edgeFunctions: edge.digests,
@@ -135,19 +235,9 @@ export function buildHarnessRelease(options = {}) {
       runtimeConfigurations: edge.runtimeConfigurations,
     })),
     edgeFunctionInputs: edge.inputs,
-    verificationRequirements: [
-      'repository-controls',
-      'empty-database-reset',
-      'sql-verification',
-      'generated-types-match',
-      'staging-migration-match',
-      'edge-digest-match',
-      'live-provider-evaluation-if-affected',
-      'readonly-production-drift',
-      'production-ui-normality',
-      'compatible-rollback-target',
-      releaseAuthorityRequirement,
-    ],
+    verificationRequirements: lane === undefined
+      ? [...STANDARD_VERIFICATION_REQUIREMENTS, releaseAuthorityRequirement]
+      : verificationRequirementsForLane(lane, releaseAuthorityRequirement),
     rollbackPolicy: {
       historicalMigrationsImmutable: true,
       schemaCorrectionMode: 'forward-migration',
@@ -167,9 +257,28 @@ export function assertCleanReleaseWorktree(rootInput = ROOT) {
   if (status) throw new Error('production release requires a clean Git worktree')
 }
 
-export function checkHarnessRelease(release) {
+export function checkHarnessRelease(release, options = {}) {
   if (!release || typeof release !== 'object' || Array.isArray(release)) return ['release artifact is invalid']
   const problems = []
+  if (release.releaseLane === 'plan55-production-only') {
+    try {
+      const expectedClientCompatibility = validatePlan55ActiveClientCompatibility(
+        release.activeClientCompatibility,
+        JSON.parse(readFileSync(resolve(ROOT, PLAN55_POLICY_PATH), 'utf8')),
+      )
+      if (JSON.stringify(canonicalize(expectedClientCompatibility)) !==
+          JSON.stringify(canonicalize(release.activeClientCompatibility))) {
+        problems.push('Plan 55 active Production client identity contains unrecognized or mismatched fields')
+      }
+    } catch {
+      problems.push('Plan 55 release does not preserve the exact active Production client identity')
+    }
+    problems.push(...checkPlan55AppliedMigrationSnapshot(release, options.hostedBeforeBytes))
+  } else if (release.activeClientCompatibility !== undefined) {
+    problems.push('active client compatibility is only valid for the Plan 55 release lane')
+  } else if (release.plan55AppliedMigrationSnapshot !== undefined) {
+    problems.push('Plan 55 applied-migration evidence is only valid for the Plan 55 release lane')
+  }
   const shaFields = [
     'manifestSha256',
     'sourceBundleSha256',
@@ -209,7 +318,9 @@ export function checkHarnessRelease(release) {
       release.providerReadinessFingerprintSha256 !== sha256(canonicalJson(release.providerReadiness))) {
     problems.push('provider readiness evidence is invalid')
   } else if (release.environment === 'production' &&
-      (release.releaseLane === 'verification' ? VERIFICATION_REQUIRED_PROVIDERS : PRODUCTION_REQUIRED_PROVIDERS)
+      (release.releaseLane === 'verification' || release.releaseLane === 'plan55-production-only'
+        ? VERIFICATION_REQUIRED_PROVIDERS
+        : PRODUCTION_REQUIRED_PROVIDERS)
         .some((name) => release.providerReadiness[name] !== true)) {
     problems.push('production provider readiness is incomplete')
   }
@@ -254,6 +365,13 @@ export function checkHarnessRelease(release) {
   const requirements = release.verificationRequirements
   if (!Array.isArray(requirements) || requirements.length < 10 || new Set(requirements).size !== requirements.length) {
     problems.push('release verification requirements are incomplete')
+  } else if (release.environment === 'production') {
+    const expectedRequirements = release.releaseLane === undefined
+      ? [...STANDARD_VERIFICATION_REQUIREMENTS, 'main-branch-merge']
+      : verificationRequirementsForLane(release.releaseLane, 'main-branch-merge')
+    if (JSON.stringify(requirements) !== JSON.stringify(expectedRequirements)) {
+      problems.push('release verification requirements do not match the selected lane')
+    }
   }
   if (release.rollbackPolicy?.historicalMigrationsImmutable !== true || release.rollbackPolicy?.schemaCorrectionMode !== 'forward-migration' || release.rollbackPolicy?.compatibilityStrategy !== 'expand-contract') {
     problems.push('release rollback policy is invalid')
@@ -261,6 +379,34 @@ export function checkHarnessRelease(release) {
   const expectedBundle = sha256(canonicalJson({ ...release, bundleSha256: undefined }))
   if (release.bundleSha256 !== expectedBundle) problems.push('release bundle checksum mismatch')
   return problems
+}
+
+function validatePlan55ActiveClientCompatibility(value, policy) {
+  const baseSha = String(policy?.productionSourceBase?.sha ?? '').toLowerCase()
+  const baseReleaseId = policy?.productionSourceBase?.releaseId
+  const fail = () => { throw new Error('Plan 55 active Production client identity is invalid') }
+  if (!/^[0-9a-f]{40}$/u.test(baseSha) ||
+      !new RegExp(`^harness-${baseSha.slice(0, 12)}-[0-9a-f]{12}$`, 'u').test(baseReleaseId ?? '') ||
+      !value || typeof value !== 'object' || Array.isArray(value) ||
+      String(value.gitSha ?? '').toLowerCase() !== baseSha ||
+      value.releaseId !== baseReleaseId ||
+      !Number.isSafeInteger(value.contractEpoch) || value.contractEpoch < 1) fail()
+  const platforms = {}
+  for (const platform of ['ios', 'android']) {
+    const client = value[platform]
+    if (!client || typeof client !== 'object' || Array.isArray(client) ||
+        typeof client.applicationId !== 'string' || !/^[A-Za-z0-9][A-Za-z0-9._:-]{1,159}$/u.test(client.applicationId) ||
+        !Number.isSafeInteger(client.minimumBuildNumber) || client.minimumBuildNumber < 1 ||
+        !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu.test(client.easBuildId ?? '') ||
+        typeof client.runtimeVersion !== 'string' || !/^[A-Za-z0-9][A-Za-z0-9._:-]{0,79}$/u.test(client.runtimeVersion)) fail()
+    platforms[platform] = Object.freeze({
+      applicationId: client.applicationId,
+      minimumBuildNumber: client.minimumBuildNumber,
+      easBuildId: client.easBuildId.toLowerCase(),
+      runtimeVersion: client.runtimeVersion,
+    })
+  }
+  return Object.freeze({ gitSha: baseSha, releaseId: baseReleaseId, contractEpoch: value.contractEpoch, ...platforms })
 }
 
 export function edgeSourceClosures(rootInput = ROOT, functionNames = RELEASE_EDGE_FUNCTIONS) {
@@ -516,6 +662,81 @@ function checkMigrationInventory(inventory, databaseTypesSha256) {
   return problems
 }
 
+function checkPlan55AppliedMigrationSnapshot(release, hostedBeforeBytes) {
+  const snapshot = release.plan55AppliedMigrationSnapshot
+  const problems = []
+  if (!snapshot || snapshot.schema !== 'plan55-applied-migration-snapshot/v1' ||
+      snapshot.environment !== 'production' || snapshot.projectRef !== 'iwevizmsedyqozxlawwl' ||
+      !/^harness-[0-9a-f]{12}-[0-9a-f]{12}$/u.test(snapshot.sourceReleaseId ?? '') ||
+      !/^[0-9a-f]{40}$/u.test(snapshot.sourceGitSha ?? '') ||
+      !/^[0-9a-f]{64}$/u.test(snapshot.sourceMigrationInventorySha256 ?? '') ||
+      !/^[0-9a-f]{64}$/u.test(snapshot.hostedStateSha256 ?? '') ||
+      !Number.isSafeInteger(snapshot.appliedMigrationCount) ||
+      !/^[0-9a-f]{64}$/u.test(snapshot.appliedMigrationInventorySha256 ?? '')) {
+    return ['Plan 55 applied migration snapshot is invalid']
+  }
+  let policy
+  let sourceInventoryBytes
+  try {
+    policy = JSON.parse(readFileSync(resolve(ROOT, PLAN55_POLICY_PATH), 'utf8'))
+    sourceInventoryBytes = readFileSync(resolve(ROOT, 'config/harness/migration-inventory.json'))
+  } catch {
+    return ['Plan 55 applied migration source evidence is unavailable']
+  }
+  if (snapshot.projectRef !== policy.projectRef ||
+      snapshot.sourceReleaseId !== policy.productionSourceBase?.releaseId ||
+      snapshot.sourceGitSha !== policy.productionSourceBase?.sha) {
+    problems.push('Plan 55 applied migration snapshot is not tied to the policy Production base')
+  }
+  if (hostedBeforeBytes !== undefined) {
+    if (!Buffer.isBuffer(hostedBeforeBytes) || sha256(hostedBeforeBytes) !== snapshot.hostedStateSha256) {
+      problems.push('Plan 55 hosted-before bytes do not match the release snapshot')
+    } else {
+      try {
+        const hostedState = JSON.parse(hostedBeforeBytes.toString('utf8'))
+        const hostedClient = validatePlan55ActiveClientCompatibility(hostedState.clientCompatibility, policy)
+        if (hostedState.environment !== 'production' || hostedState.projectRef !== policy.projectRef ||
+            hostedState.releaseId !== snapshot.sourceReleaseId || hostedState.gitSha !== snapshot.sourceGitSha ||
+            JSON.stringify(canonicalize(hostedClient)) !== JSON.stringify(canonicalize(release.activeClientCompatibility))) {
+          problems.push('Plan 55 release does not match the exact hosted-before snapshot')
+        }
+      } catch {
+        problems.push('Plan 55 hosted-before client compatibility is invalid')
+      }
+    }
+  }
+  if (snapshot.appliedMigrationCount !== release.migrationInventory?.migrationCount ||
+      snapshot.appliedMigrationInventorySha256 !== release.migrationInventorySha256) {
+    problems.push('Plan 55 applied migration snapshot does not match the release inventory')
+  }
+  if (snapshot.sourceMigrationInventorySha256 !== sha256(sourceInventoryBytes)) {
+    problems.push('Plan 55 source migration inventory identity does not match the release source')
+  }
+  const serializedAppliedInventory = Buffer.from(`${JSON.stringify(release.migrationInventory, null, 2)}\n`)
+  if (sha256(serializedAppliedInventory) !== release.migrationInventorySha256) {
+    problems.push('Plan 55 applied migration inventory digest is invalid')
+  }
+  let sourceInventory
+  try {
+    sourceInventory = JSON.parse(sourceInventoryBytes.toString('utf8'))
+  } catch {
+    return [...problems, 'Plan 55 source migration inventory is invalid']
+  }
+  const sourceEntries = new Map((sourceInventory.entries ?? []).map((entry) => [entry.version, entry]))
+  const appliedEntries = release.migrationInventory?.entries
+  if (!Array.isArray(appliedEntries) || !Array.isArray(sourceInventory.entries)) {
+    problems.push('Plan 55 applied migration entries are invalid')
+  } else {
+    for (const entry of appliedEntries) {
+      const source = sourceEntries.get(entry.version)
+      if (!source || JSON.stringify(canonicalize(source)) !== JSON.stringify(canonicalize(entry))) {
+        problems.push(`Plan 55 applied migration is not source-attested: ${entry.version ?? 'unknown'}`)
+      }
+    }
+  }
+  return problems
+}
+
 function digestPaths(root, paths) {
   const files = paths.flatMap((path) => {
     const absolute = resolve(root, path)
@@ -625,12 +846,26 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
   const environmentIndex = process.argv.indexOf('--environment')
   const outputIndex = process.argv.indexOf('--output')
   const verifyIndex = process.argv.indexOf('--verify')
+  const hostedBeforeIndex = process.argv.indexOf('--hosted-before')
   if (verifyIndex >= 0) {
     const artifact = process.argv[verifyIndex + 1]
     if (!artifact) throw new Error('--verify requires a release artifact path')
     const path = resolveReleaseArtifactPath(ROOT, artifact)
     const release = JSON.parse(readFileSync(path, 'utf8'))
-    const problems = checkHarnessRelease(release)
+    const hostedBeforePath = hostedBeforeIndex >= 0 ? process.argv[hostedBeforeIndex + 1] : undefined
+    if (hostedBeforeIndex >= 0 && (!hostedBeforePath || hostedBeforePath.startsWith('--'))) {
+      throw new Error('--hosted-before requires a path')
+    }
+    if (release.releaseLane === 'plan55-production-only' && !hostedBeforePath) {
+      throw new Error('Plan 55 verification requires --hosted-before')
+    }
+    if (release.releaseLane !== 'plan55-production-only' && hostedBeforePath) {
+      throw new Error('--hosted-before is only valid for the Plan 55 Production lane')
+    }
+    const hostedBefore = hostedBeforePath
+      ? readFileSync(resolveReleaseArtifactPath(ROOT, hostedBeforePath))
+      : undefined
+    const problems = checkHarnessRelease(release, { hostedBeforeBytes: hostedBefore })
     if (problems.length) {
       for (const problem of problems) console.error(`  - ${problem}`)
       process.exitCode = 1
@@ -640,12 +875,26 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
     const output = process.argv[outputIndex + 1]
     const laneIndex = process.argv.indexOf('--lane')
     const lane = laneIndex >= 0 ? process.argv[laneIndex + 1] : undefined
+    const hostedBeforePath = hostedBeforeIndex >= 0 ? process.argv[hostedBeforeIndex + 1] : undefined
     if (environmentIndex >= 0 && !environment) throw new Error('--environment requires a value')
     if (outputIndex >= 0 && !output) throw new Error('--output requires a release artifact path')
     if (laneIndex >= 0 && (!lane || lane.startsWith('--'))) throw new Error('--lane requires a value')
+    if (hostedBeforeIndex >= 0 && (!hostedBeforePath || hostedBeforePath.startsWith('--'))) {
+      throw new Error('--hosted-before requires a path')
+    }
+    if (lane === 'plan55-production-only' && !hostedBeforePath) {
+      throw new Error('Plan 55 production release requires --hosted-before')
+    }
+    if (lane !== 'plan55-production-only' && hostedBeforePath) {
+      throw new Error('--hosted-before is only valid for the Plan 55 Production lane')
+    }
+    const hostedBeforeBytes = hostedBeforePath
+      ? readFileSync(resolveReleaseArtifactPath(ROOT, hostedBeforePath))
+      : undefined
     const release = buildHarnessRelease({
       environment: environmentIndex >= 0 ? environment : 'preview',
       lane,
+      hostedBeforeBytes,
     })
     const path = resolveReleaseArtifactPath(ROOT, outputIndex >= 0 ? output : OUTPUT)
     mkdirSync(dirname(path), { recursive: true })

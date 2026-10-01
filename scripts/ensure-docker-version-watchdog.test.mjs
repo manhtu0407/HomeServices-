@@ -29,6 +29,7 @@ test('successful version probes retire watchdog children without retaining outpu
     cwd: root,
     input: fixture + script,
     encoding: 'utf8',
+    // The script keeps its own 15-second watchdog; this only bounds Bash startup and cleanup on Windows.
     timeout: 30_000,
     windowsHide: true,
   })

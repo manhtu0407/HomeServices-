@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import {
+  getEnabledKaelPlaybook,
   getKaelPlaybook,
   getKaelPlaybookVersion,
   isKaelPlaybookEnabled,
@@ -16,16 +17,18 @@ import {
   deterministicSafetyGuidance,
   scanIntakeSafetySignals,
 } from "../../../../../supabase/functions/mobile-api/_shared/kael/kael-guardrails/electrical-intake-policy";
+import { isElectricalPlaybookEnabled } from "../../../../../supabase/functions/mobile-api/_shared/kael/learning/playbooks/electrical";
+import { persistentKaelSafetySignals } from "../../../../../supabase/functions/mobile-api/_shared/domains/kael-chat/intake-safety";
 import { pillarWhy, type PillarManifest } from "../pillar-manifest";
 
 export const PILLAR = {
   id: 'P46-kael-playbook-registry',
-  invariant: 'only the selected enabled service playbook is injected and its version/safety path remains isolated from other services',
-  authority: ['governance/RULES.md #2 and #8', 'governance/Plan.md §53'],
-  target: 'supabase/functions/mobile-api/_shared/kael/learning/playbooks/registry.ts and kael-guardrails/electrical-intake-policy.ts',
-  layer: 'unit',
+  invariant: 'only a selected globally enabled or authenticated-actor-allowlisted service playbook is injected, and job-create safety guidance remains present for that actor',
+  authority: ['governance/RULES.md #2 and #8', 'governance/Plan.md §55'],
+  target: 'supabase/functions/mobile-api/_shared/kael/learning/playbooks/flags.ts, registry.ts, and domains/job/create/analyze.ts',
+  layer: 'security-negative',
   siblings: ['P30-kael-prompt-assembly', 'P44-kael-service-playbook-safety', 'P43-staging-service-catalog'],
-  mutation: 'inject the wrong selected-service segment, lose the plumbing version stamp, or cross-apply a cleaning safety scanner — an isolation assertion turns red',
+  mutation: 'omit the authenticated actor from the job-create safety resolver so an allowlisted actor loses deterministic hazard guidance, or let a non-allowlisted actor through the canary',
 } as const satisfies PillarManifest;
 
 const services = ["electrical", "plumbing", "hvac", "handyman", "cleaning", "upholstery"] as const;
@@ -47,6 +50,70 @@ describe("Kael playbook registry", () => {
       expect(isKaelPlaybookEnabled("cleaning")).toBe(true);
       expect(isKaelPlaybookEnabled("__proto__")).toBe(false);
       expect(isKaelPlaybookEnabled("electrical ")).toBe(false);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it("narrows an enabled canary to its configured authenticated actor even when the legacy service flag is on", () => {
+    const allowedActorId = "123e4567-e89b-42d3-a456-426614174000";
+    const otherActorId = "123e4567-e89b-42d3-a456-426614174001";
+    const values: Record<string, string> = {
+      KAEL_PLAYBOOK_PLUMBING_ENABLED: "true",
+      KAEL_PLAYBOOK_PLUMBING_CANARY_ENABLED: "true",
+      KAEL_PLAYBOOK_PLUMBING_CANARY_USER_ID: allowedActorId,
+      KAEL_PLAYBOOK_ELECTRICAL_ENABLED: "true",
+      KAEL_PLAYBOOK_ELECTRICAL_CANARY_ENABLED: "true",
+      KAEL_PLAYBOOK_ELECTRICAL_CANARY_USER_ID: allowedActorId,
+    };
+    vi.stubGlobal("Deno", {
+      env: { get: (key: string) => values[key] },
+    });
+
+    try {
+      expect(isKaelPlaybookEnabled("plumbing", allowedActorId)).toBe(true);
+      expect(isKaelPlaybookEnabled("plumbing", otherActorId)).toBe(false);
+      expect(isKaelPlaybookEnabled("plumbing")).toBe(false);
+      expect(isKaelPlaybookEnabled("plumbing", "not-a-uuid")).toBe(false);
+      expect(getEnabledKaelPlaybook("plumbing", allowedActorId)?.serviceType).toBe("plumbing");
+      expect(getEnabledKaelPlaybook("plumbing", otherActorId)).toBeNull();
+      expect(isKaelPlaybookEnabled("electrical", allowedActorId)).toBe(true);
+      expect(isElectricalPlaybookEnabled(allowedActorId)).toBe(true);
+      expect(isElectricalPlaybookEnabled(otherActorId)).toBe(false);
+      const [allowedPrompt] = buildIntakeDiagnosisMessages(
+        "plumbing", [], "Ống dưới lavabo đang rò nước", undefined, "vi", allowedActorId,
+      );
+      const [otherActorPrompt] = buildIntakeDiagnosisMessages(
+        "plumbing", [], "Ống dưới lavabo đang rò nước", undefined, "vi", otherActorId,
+      );
+      expect(allowedPrompt.content).toContain("PLUMBING DIAGNOSIS PLAYBOOK");
+      expect(otherActorPrompt.content).not.toContain("PLUMBING DIAGNOSIS PLAYBOOK");
+      expect(persistentKaelSafetySignals(
+        "Bồn cầu trào nước thải ra sàn nhà tắm", "plumbing", [], allowedActorId,
+      )).toEqual(expect.arrayContaining(["sewage", "flooding"]));
+      expect(persistentKaelSafetySignals(
+        "Bồn cầu trào nước thải ra sàn nhà tắm", "plumbing", [], otherActorId,
+      )).toEqual([]);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it("fails closed on an invalid canary flag instead of falling back to a legacy global flag", () => {
+    const allowedActorId = "123e4567-e89b-42d3-a456-426614174000";
+    vi.stubGlobal("Deno", {
+      env: {
+        get: (key: string) => ({
+          KAEL_PLAYBOOK_PLUMBING_ENABLED: "true",
+          KAEL_PLAYBOOK_PLUMBING_CANARY_ENABLED: "tru",
+          KAEL_PLAYBOOK_PLUMBING_CANARY_USER_ID: allowedActorId,
+        }[key]),
+      },
+    });
+
+    try {
+      expect(isKaelPlaybookEnabled("plumbing", allowedActorId)).toBe(false);
+      expect(getEnabledKaelPlaybook("plumbing", allowedActorId)).toBeNull();
     } finally {
       vi.unstubAllGlobals();
     }

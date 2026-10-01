@@ -56,7 +56,48 @@
       ]
     },
     "releaseLane": {
-      "const": "verification"
+      "enum": [
+        "verification",
+        "plan55-production-only"
+      ]
+    },
+    "activeClientCompatibility": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["gitSha", "releaseId", "contractEpoch", "ios", "android"],
+      "properties": {
+        "gitSha": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+        "releaseId": { "type": "string", "pattern": "^harness-[0-9a-f]{12}-[0-9a-f]{12}$" },
+        "contractEpoch": { "type": "integer", "minimum": 1 },
+        "ios": { "$ref": "#/$defs/activeClientPlatform" },
+        "android": { "$ref": "#/$defs/activeClientPlatform" }
+      }
+    },
+    "plan55AppliedMigrationSnapshot": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema",
+        "environment",
+        "projectRef",
+        "sourceReleaseId",
+        "sourceGitSha",
+        "sourceMigrationInventorySha256",
+        "hostedStateSha256",
+        "appliedMigrationCount",
+        "appliedMigrationInventorySha256"
+      ],
+      "properties": {
+        "schema": { "const": "plan55-applied-migration-snapshot/v1" },
+        "environment": { "const": "production" },
+        "projectRef": { "const": "iwevizmsedyqozxlawwl" },
+        "sourceReleaseId": { "type": "string", "pattern": "^harness-[0-9a-f]{12}-[0-9a-f]{12}$" },
+        "sourceGitSha": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+        "sourceMigrationInventorySha256": { "$ref": "#/$defs/sha256" },
+        "hostedStateSha256": { "$ref": "#/$defs/sha256" },
+        "appliedMigrationCount": { "type": "integer", "minimum": 1 },
+        "appliedMigrationInventorySha256": { "$ref": "#/$defs/sha256" }
+      }
     },
     "gitSha": {
       "type": "string",
@@ -238,7 +279,7 @@
       ],
       "properties": {
         "version": {
-          "const": "1.0.0"
+          "const": "1.1.0"
         },
         "migrationCount": {
           "type": "integer",
@@ -346,7 +387,39 @@
       }
     }
   },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "releaseLane": { "const": "plan55-production-only" }
+        },
+        "required": ["releaseLane"]
+      },
+      "then": {
+        "required": ["plan55AppliedMigrationSnapshot", "activeClientCompatibility"]
+      },
+      "else": {
+        "not": {
+          "anyOf": [
+            { "required": ["plan55AppliedMigrationSnapshot"] },
+            { "required": ["activeClientCompatibility"] }
+          ]
+        }
+      }
+    }
+  ],
   "$defs": {
+    "activeClientPlatform": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["applicationId", "minimumBuildNumber", "easBuildId", "runtimeVersion"],
+      "properties": {
+        "applicationId": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{1,159}$" },
+        "minimumBuildNumber": { "type": "integer", "minimum": 1 },
+        "easBuildId": { "type": "string", "format": "uuid" },
+        "runtimeVersion": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,79}$" }
+      }
+    },
     "sha256": {
       "type": "string",
       "pattern": "^[0-9a-f]{64}$"
