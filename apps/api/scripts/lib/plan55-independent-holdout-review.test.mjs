@@ -10,6 +10,7 @@ import { PLAN55_SOURCE_ASSETS } from './kael-playbook-production-attestation.mjs
 import {
   buildPlan55HoldoutReviewBody,
   createPlan55GithubReviewEvidenceProvider,
+  plan55HoldoutLabelsSha256,
   verifyPlan55IndependentHoldoutReviewEvidence,
 } from './plan55-independent-holdout-review.mjs'
 
@@ -35,7 +36,14 @@ function buildFixture() {
   ]))
   const authorId = 400
   const reviewerIds = [401, 402]
-  const labelsHashes = [`sha256:${'c'.repeat(64)}`, `sha256:${'d'.repeat(64)}`]
+  const casesByService = Object.fromEntries(PLAN55_SERVICE_ORDER.map((service) => [service,
+    Array.from({ length: 24 }, (_, index) => ({
+      id: `${service}-holdout-${String(index + 1).padStart(2, '0')}`,
+      expected: { scope_signal: 'in_scope', suggested_service: service },
+    })),
+  ]))
+  const holdoutLabelsSha256 = plan55HoldoutLabelsSha256(casesByService)
+  const labelsHashes = [holdoutLabelsSha256, holdoutLabelsSha256]
   const reviewIds = [1101, 1102]
   const proof = {
     schema: 'plan55-independent-holdout-proof/v2',
@@ -43,6 +51,7 @@ function buildFixture() {
     blinded: true,
     reviewed_by_author: false,
     source_sha: sourceSha,
+    holdout_labels_sha256: holdoutLabelsSha256,
     author_id_sha256: identityHash(authorId),
     review_evidence: {
       repository,
@@ -92,7 +101,10 @@ function buildFixture() {
     sha: sourceSha,
     parents: [{ sha: productionBaseSha }, { sha: reviewedHeadSha }],
   }
-  return { proof, pullRequest, mergeCommit, reviews, holdoutHashes, authorId, reviewerIds, reviewIds }
+  return {
+    proof, pullRequest, mergeCommit, reviews, holdoutHashes, holdoutLabelsSha256, casesByService,
+    authorId, reviewerIds, reviewIds,
+  }
 }
 
 function buildGithubProviderFixture(overrides = {}) {
@@ -114,8 +126,9 @@ function buildGithubProviderFixture(overrides = {}) {
       'jobs:',
       '  plan55-actor-guard:',
       '    name: plan55-actor-scoped-guard-tests',
+      "    if: ${{ !cancelled() && github.event_name == 'pull_request' && needs.controls.outputs.kael == 'true' }}",
       '    steps:',
-      '      - name: Actor-scoped guard tests',
+      '      - name: Run actor-scoped Production guard tests',
       '        run: pnpm --filter @nestscout/api exec vitest run src/__tests__/unit/kael-playbook-registry-pillar.test.ts --passWithNoTests=false',
     ].join('\n'),
   }
@@ -136,11 +149,35 @@ function buildGithubProviderFixture(overrides = {}) {
     id: 9001,
     name: 'plan55-actor-scoped-guard-tests',
     head_sha: reviewedHeadSha,
+    details_url: `https://github.com/${repository}/actions/runs/8000/job/9001`,
     status: 'completed',
     conclusion: 'success',
     started_at: '2026-09-29T10:00:00Z',
     completed_at: '2026-09-29T10:10:00Z',
     app: { slug: 'github-actions' },
+  }
+  const workflowRun = {
+    id: 8000,
+    run_attempt: 1,
+    path: '.github/workflows/ci.yml',
+    event: 'pull_request',
+    head_sha: reviewedHeadSha,
+    status: 'completed',
+    conclusion: 'success',
+  }
+  const workflowJob = {
+    id: 9001,
+    run_id: workflowRun.id,
+    run_attempt: workflowRun.run_attempt,
+    head_sha: reviewedHeadSha,
+    name: 'plan55-actor-guard',
+    status: 'completed',
+    conclusion: 'success',
+    steps: [{
+      name: 'Run actor-scoped Production guard tests',
+      status: 'completed',
+      conclusion: 'success',
+    }],
   }
   return {
     ...fixture,
@@ -149,6 +186,8 @@ function buildGithubProviderFixture(overrides = {}) {
     blobs,
     fileContents,
     checkRun,
+    workflowRun,
+    workflowJob,
     overrides,
   }
 }
@@ -159,13 +198,31 @@ test('independent holdout proof is tied to the merged Production source and two 
     proof: fixture.proof,
     expectedSourceSha: sourceSha,
     expectedHoldoutHashes: fixture.holdoutHashes,
+    expectedHoldoutLabelsSha256: fixture.holdoutLabelsSha256,
     pullRequest: fixture.pullRequest,
     mergeCommit: fixture.mergeCommit,
     reviews: fixture.reviews,
   })
 
-  assert.equal(assertPlan55IndependentHoldoutProof(verified, sourceSha, fixture.holdoutHashes), true)
+  assert.equal(assertPlan55IndependentHoldoutProof(
+    verified, sourceSha, fixture.holdoutHashes, fixture.holdoutLabelsSha256,
+  ), true)
   assert.deepEqual(verified.github_review_verification.review_ids, fixture.reviewIds)
+})
+
+test('holdout label digest is deterministic and bound to the expected labels', () => {
+  const fixture = buildFixture()
+  const reversedServices = Object.fromEntries(Object.entries(fixture.casesByService).reverse())
+  const reversedCases = Object.fromEntries(Object.entries(fixture.casesByService).map(([service, cases]) => [
+    service,
+    [...cases].reverse(),
+  ]))
+  assert.equal(plan55HoldoutLabelsSha256(reversedServices), fixture.holdoutLabelsSha256)
+  assert.equal(plan55HoldoutLabelsSha256(reversedCases), fixture.holdoutLabelsSha256)
+
+  const changedLabels = structuredClone(fixture.casesByService)
+  changedLabels[PLAN55_SERVICE_ORDER[0]][0].expected.suggested_service = 'other'
+  assert.notEqual(plan55HoldoutLabelsSha256(changedLabels), fixture.holdoutLabelsSha256)
 })
 
 test('independent holdout proof rejects fabricated, stale, author, and untrusted review evidence', () => {
@@ -174,6 +231,7 @@ test('independent holdout proof rejects fabricated, stale, author, and untrusted
     proof: fixture.proof,
     expectedSourceSha: sourceSha,
     expectedHoldoutHashes: fixture.holdoutHashes,
+    expectedHoldoutLabelsSha256: fixture.holdoutLabelsSha256,
     pullRequest: fixture.pullRequest,
     mergeCommit: fixture.mergeCommit,
     reviews: fixture.reviews,
@@ -203,6 +261,18 @@ test('independent holdout proof rejects fabricated, stale, author, and untrusted
       ...fixture.proof,
       review_evidence: { ...fixture.proof.review_evidence, production_source_base_sha: '0'.repeat(40) },
     },
+  }), { message: 'plan55_preflight_independent_holdout_unverified' })
+  assert.throws(() => verify({
+    expectedHoldoutLabelsSha256: `sha256:${'0'.repeat(64)}`,
+  }), { message: 'plan55_preflight_independent_holdout_unverified' })
+  assert.throws(() => verify({
+    reviews: fixture.reviews.map((review) => ({
+      ...review,
+      body: review.body.replace(
+        `labels_sha256=${fixture.holdoutLabelsSha256.slice('sha256:'.length)}`,
+        `labels_sha256=${'0'.repeat(64)}`,
+      ),
+    })),
   }), { message: 'plan55_preflight_independent_holdout_unverified' })
   assert.throws(() => verify({
     pullRequest: { ...fixture.pullRequest, base: { ...fixture.pullRequest.base, ref: 'main' } },
@@ -252,6 +322,12 @@ test('GitHub provider discovers the exact merged source, derives independent rev
       if (args[1] === `repos/${repository}/commits/${reviewedHeadSha}/check-runs?per_page=100&page=1`) {
         return JSON.stringify({ check_runs: [fixture.checkRun] })
       }
+      if (endpoint === `repos/${repository}/actions/runs/8000`) {
+        return JSON.stringify(fixture.workflowRun)
+      }
+      if (endpoint === `repos/${repository}/actions/jobs/9001`) {
+        return JSON.stringify(fixture.workflowJob)
+      }
       if (endpoint.startsWith(`repos/${repository}/contents/`)) {
         const [path, query] = endpoint
           .slice(`repos/${repository}/contents/`.length)
@@ -270,6 +346,7 @@ test('GitHub provider discovers the exact merged source, derives independent rev
   const result = await provider({
     expectedSourceSha: sourceSha,
     expectedHoldoutHashes: fixture.holdoutHashes,
+    expectedHoldoutLabelsSha256: fixture.holdoutLabelsSha256,
     expectedHoldoutCaseCounts: Object.fromEntries(PLAN55_SERVICE_ORDER.map((service) => [service, 24])),
     sourceAttestation: fixture.sourceAttestation,
   })
@@ -313,6 +390,12 @@ test('GitHub provider fails closed when the deployed guard, merge source, latest
         if (endpoint === `repos/${repository}/commits/${reviewedHeadSha}/check-runs?per_page=100&page=1`) {
           return JSON.stringify({ check_runs: overrides.checkRuns ?? [fixture.checkRun] })
         }
+        if (endpoint === `repos/${repository}/actions/runs/8000`) {
+          return JSON.stringify(overrides.workflowRun ?? fixture.workflowRun)
+        }
+        if (endpoint === `repos/${repository}/actions/jobs/9001`) {
+          return JSON.stringify(overrides.workflowJob ?? fixture.workflowJob)
+        }
         if (endpoint.startsWith(`repos/${repository}/contents/`)) {
           const [path, query] = endpoint
             .slice(`repos/${repository}/contents/`.length)
@@ -330,6 +413,7 @@ test('GitHub provider fails closed when the deployed guard, merge source, latest
     return provider({
       expectedSourceSha: sourceSha,
       expectedHoldoutHashes: fixture.holdoutHashes,
+      expectedHoldoutLabelsSha256: fixture.holdoutLabelsSha256,
       expectedHoldoutCaseCounts: Object.fromEntries(PLAN55_SERVICE_ORDER.map((service) => [service, 24])),
       sourceAttestation: fixture.sourceAttestation,
     })
@@ -352,6 +436,15 @@ test('GitHub provider fails closed when the deployed guard, merge source, latest
   }), { message: 'plan55_preflight_actor_guard_unverified' })
   await assert.rejects(runProvider({
     checkRuns: [{ ...fixture.checkRun, head_sha: 'c'.repeat(40) }],
+  }), { message: 'plan55_preflight_actor_guard_unverified' })
+  await assert.rejects(runProvider({
+    workflowRun: { ...fixture.workflowRun, path: '.github/workflows/unrelated.yml' },
+  }), { message: 'plan55_preflight_actor_guard_unverified' })
+  await assert.rejects(runProvider({
+    workflowJob: {
+      ...fixture.workflowJob,
+      steps: [{ name: 'Another successful step', status: 'completed', conclusion: 'success' }],
+    },
   }), { message: 'plan55_preflight_actor_guard_unverified' })
   await assert.rejects(runProvider({
     reviews: fixture.reviews.map((review) => ({ ...review, state: 'COMMENTED' })),

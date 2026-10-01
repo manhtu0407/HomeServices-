@@ -93,7 +93,7 @@ const SERVICE_NAMES = Object.freeze(Object.keys(PLAN55_SOURCE_ASSETS))
 export function assertPlan55SourceAttestation(value, expectedSourceSha) {
   const attestation = objectRecord(value, 'invalid_plan55_source_attestation')
   assertExactKeys(attestation, [
-    'schema', 'observed_at', 'endpoint', 'deployment', 'runtime_files', 'evaluator', 'services',
+    'schema', 'observed_at', 'endpoint', 'deployment', 'deployed_source', 'runtime_files', 'evaluator', 'services',
   ], 'invalid_plan55_source_attestation_fields')
   if (attestation.schema !== 'plan55-production-source-attestation/v1') {
     throw new Error('invalid_plan55_source_attestation_schema')
@@ -115,6 +115,31 @@ export function assertPlan55SourceAttestation(value, expectedSourceSha) {
   const sourceSha = requireMatch(deployment.git_sha, GIT_SHA_PATTERN, 'invalid_plan55_attestation_source_sha').toLowerCase()
   if (sourceSha !== String(expectedSourceSha).toLowerCase()) {
     throw new Error('source SHA does not match the active release')
+  }
+  const deployedSource = objectRecord(attestation.deployed_source, 'invalid_plan55_deployed_source_attestation')
+  assertExactKeys(deployedSource, [
+    'schema', 'environment', 'project_ref', 'release_id', 'deployment_id', 'function_id',
+    'edge_version', 'git_sha', 'source_sha256', 'hosted_bundle_sha256', 'runtime_configuration_sha256',
+    'verify_jwt', 'import_map', 'entrypoint_path', 'import_map_path', 'proof_sha256',
+  ], 'invalid_plan55_deployed_source_attestation_fields')
+  if (deployedSource.schema !== 'plan55-deployed-edge-source-attestation/v1' ||
+      deployedSource.environment !== 'production' || deployedSource.project_ref !== PRODUCTION_PROJECT_REF ||
+      deployedSource.release_id !== deployment.release_id || deployedSource.git_sha !== sourceSha ||
+      !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu.test(deployedSource.function_id ?? '') ||
+      !Number.isSafeInteger(deployedSource.edge_version) || deployedSource.edge_version < 1 ||
+      deployedSource.deployment_id !== `${PRODUCTION_PROJECT_REF}_${deployedSource.function_id}_${deployedSource.edge_version}`) {
+    throw new Error('plan55_deployed_source_attestation_identity_mismatch')
+  }
+  if (typeof deployedSource.verify_jwt !== 'boolean' || typeof deployedSource.import_map !== 'boolean' ||
+      typeof deployedSource.entrypoint_path !== 'string' || deployedSource.entrypoint_path.length > 500 ||
+      deployedSource.entrypoint_path.includes('..') ||
+      (deployedSource.import_map
+        ? typeof deployedSource.import_map_path !== 'string' || deployedSource.import_map_path.length > 500 || deployedSource.import_map_path.includes('..')
+        : deployedSource.import_map_path !== null)) {
+    throw new Error('plan55_deployed_source_attestation_runtime_mismatch')
+  }
+  for (const field of ['source_sha256', 'hosted_bundle_sha256', 'runtime_configuration_sha256', 'proof_sha256']) {
+    prefixedDigest(deployedSource[field], `invalid_plan55_deployed_source_${field}`)
   }
   if (attestation.endpoint !== `${PRODUCTION_MOBILE_API_URL}/harness/health`) {
     throw new Error('plan55_attestation_endpoint_mismatch')

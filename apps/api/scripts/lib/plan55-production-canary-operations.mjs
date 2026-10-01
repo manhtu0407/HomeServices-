@@ -33,6 +33,7 @@ import {
 import { createPlan55FileCheckpointStore } from './plan55-production-canary-checkpoint-store.mjs'
 import {
   createPlan55GithubReviewEvidenceProvider,
+  plan55HoldoutLabelsSha256,
   verifyPlan55IndependentHoldoutReviewEvidence,
 } from './plan55-independent-holdout-review.mjs'
 
@@ -99,6 +100,7 @@ export async function createPlan55ProductionCanaryOperations({
   let verifiedClientHeaders = null
   let verifiedDeployment = null
   let verifiedSourceAttestationSha256 = null
+  let verifiedSourceAttestation = null
 
   async function readHealth() {
     const health = await readJson(fetchImpl, `${PRODUCTION_MOBILE_API_URL}/harness/health`, {
@@ -119,8 +121,29 @@ export async function createPlan55ProductionCanaryOperations({
     return new Set(body.map((item) => item.name))
   }
 
+  async function assertCurrentHostedEdgeSource() {
+    const expected = verifiedSourceAttestation?.deployed_source
+    if (!expected) throw new Error('plan55_canary_deployed_edge_source_unverified')
+    const current = await readJson(fetchImpl,
+      `${MANAGEMENT_ORIGIN}/projects/${PRODUCTION_PROJECT_REF}/functions/mobile-api`, {
+        method: 'GET',
+        headers: managementHeaders(credentials.accessToken),
+      }, 'plan55_canary_hosted_edge_metadata_unavailable')
+    const deploymentId = isRecord(current) && current.id && current.version
+      ? `${PRODUCTION_PROJECT_REF}_${current.id}_${current.version}`
+      : null
+    if (!isRecord(current) || current.status !== 'ACTIVE' || current.id !== expected.function_id ||
+        current.version !== expected.edge_version ||
+        current.ezbr_sha256 !== expected.hosted_bundle_sha256.slice('sha256:'.length) ||
+        current.verify_jwt !== expected.verify_jwt || current.import_map !== expected.import_map ||
+        current.entrypoint_path !== expected.entrypoint_path || current.import_map_path !== expected.import_map_path ||
+        deploymentId !== expected.deployment_id) {
+      throw new Error('plan55_canary_production_source_drift')
+    }
+  }
+
   async function assertCurrentReleaseSource() {
-    if (!verifiedDeployment || !verifiedClientHeaders || !verifiedSourceAttestationSha256) {
+    if (!verifiedDeployment || !verifiedClientHeaders || !verifiedSourceAttestationSha256 || !verifiedSourceAttestation) {
       throw new Error('plan55_canary_production_source_unverified')
     }
     const { health, deployment } = await readHealth()
@@ -129,12 +152,12 @@ export async function createPlan55ProductionCanaryOperations({
         !sameClientHeaders(buildPlan55ProductionClientHeaders(health, deployment), verifiedClientHeaders)) {
       throw new Error('plan55_canary_production_source_drift')
     }
-    const attestation = sourceAttestationProvider
-      ? await sourceAttestationProvider()
-      : await runLocalSourceAttestor()
-    if (plan55SourceAttestationSha256(attestation, deployment.git_sha) !== verifiedSourceAttestationSha256) {
+    if (plan55SourceAttestationSha256(verifiedSourceAttestation, deployment.git_sha) !== verifiedSourceAttestationSha256 ||
+        verifiedSourceAttestation.deployed_source.git_sha !== deployment.git_sha ||
+        verifiedSourceAttestation.deployed_source.release_id !== deployment.release_id) {
       throw new Error('plan55_canary_production_source_drift')
     }
+    await assertCurrentHostedEdgeSource()
   }
 
   return Object.freeze({
@@ -143,6 +166,7 @@ export async function createPlan55ProductionCanaryOperations({
       verifiedClientHeaders = null
       verifiedDeployment = null
       verifiedSourceAttestationSha256 = null
+      verifiedSourceAttestation = null
       const { health, deployment } = await readHealth()
       await assertPrecedingServicesComplete(service, deployment, store)
       const [secretNames, sourceAttestation] = await Promise.all([
@@ -169,12 +193,14 @@ export async function createPlan55ProductionCanaryOperations({
         expectedSourceSha: deployment.git_sha,
         expectedHoldoutHashes: holdoutAssets.hashes,
         expectedHoldoutCaseCounts: holdoutAssets.caseCounts,
+        expectedHoldoutLabelsSha256: holdoutAssets.labelsSha256,
         sourceAttestation,
       })
       const independentHoldoutProof = verifyPlan55IndependentHoldoutReviewEvidence({
         proof: reviewEvidence?.proof,
         expectedSourceSha: deployment.git_sha,
         expectedHoldoutHashes: holdoutAssets.hashes,
+        expectedHoldoutLabelsSha256: holdoutAssets.labelsSha256,
         pullRequest: reviewEvidence?.pullRequest,
         mergeCommit: reviewEvidence?.mergeCommit,
         reviews: reviewEvidence?.reviews,
@@ -183,6 +209,7 @@ export async function createPlan55ProductionCanaryOperations({
       verifiedClientHeaders = clientHeaders
       verifiedDeployment = deployment
       verifiedSourceAttestationSha256 = sourceAttestationSha256
+      verifiedSourceAttestation = sourceAttestation
       return {
         mobileApiUrl: PRODUCTION_MOBILE_API_URL,
         supabaseUrl: credentials.expectedUrl,
@@ -196,6 +223,7 @@ export async function createPlan55ProductionCanaryOperations({
         flagStates,
         independentHoldoutProof,
         holdoutAssetHashes: holdoutAssets.hashes,
+        holdoutLabelsSha256: holdoutAssets.labelsSha256,
         deployment,
         clientHeaders,
       }
@@ -430,7 +458,11 @@ async function evaluateAndPersistSlice({ service, actor, slice, deployment, clie
     },
   }
   const manifest = createRunManifest(manifestInput)
-  const metrics = normalized.metrics
+  const fallbackRuns = observations.filter((item) => item.model_id === 'deterministic-fallback').length
+  const metrics = {
+    ...normalized.metrics,
+    provider_fallback: Object.freeze({ fallback_runs: fallbackRuns, total_runs: observations.length }),
+  }
   const stability = normalized.stability
   const raw = buildSanitizedRawArtifact(manifestInput, scored)
   const json = {
@@ -744,6 +776,7 @@ function renderMarkdown({ manifest, metrics, stability, scored, raw }) {
     `- Clarification accuracy: ${pct(metrics.by_field.needs_clarification.rate)}`,
     `- Observed clarification rate: ${pct(metrics.conversation.clarification_rate)}`,
     `- Problem-slug accuracy: ${pct(metrics.by_field.problem_slug.rate)}`,
+    `- Deterministic fallback share: ${pct(metrics.provider_fallback.fallback_runs / metrics.provider_fallback.total_runs)} (${metrics.provider_fallback.fallback_runs}/${metrics.provider_fallback.total_runs})`,
     `- Required-safety recall: ${pct(metrics.safety.required_signal_recall)} (${metrics.safety.observed_required_signals}/${metrics.safety.expected_required_signals}); misses: ${metrics.safety.required_signal_misses}`,
     `- Immediate-critical recall: ${pct(metrics.safety.immediate_critical_recall)} (${metrics.safety.observed_immediate_critical_signals}/${metrics.safety.expected_immediate_critical_signals}); misses: ${metrics.safety.immediate_critical_misses}`,
     `- Capability-signal recall: ${pct(metrics.safety.capability_recall)} (${metrics.safety.observed_capability_signals}/${metrics.safety.expected_capability_signals}); misses: ${metrics.safety.capability_misses}`,
@@ -840,11 +873,15 @@ async function readPlan55HoldoutAssets() {
         new Set(cases.map((item) => item.id)).size !== cases.length) {
       throw new Error('plan55_canary_holdout_asset_invalid')
     }
-    return [service, `sha256:${sha256(bytes)}`, cases.length]
+    return [service, `sha256:${sha256(bytes)}`, cases.length, cases]
   }))
+  const labelsSha256 = plan55HoldoutLabelsSha256(Object.fromEntries(
+    assets.map(([service, _digest, _count, cases]) => [service, cases]),
+  ))
   return {
     hashes: Object.fromEntries(assets.map(([service, digest]) => [service, digest])),
     caseCounts: Object.fromEntries(assets.map(([service, _digest, count]) => [service, count])),
+    labelsSha256,
   }
 }
 

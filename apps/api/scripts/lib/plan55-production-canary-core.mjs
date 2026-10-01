@@ -130,6 +130,7 @@ export function assertPlan55CanaryPreflight(input) {
     input.independentHoldoutProof,
     source.sourceSha,
     input.holdoutAssetHashes,
+    input.holdoutLabelsSha256,
   )
   const guard = input.actorGuardProof
   const guardVerification = guard?.verification
@@ -177,7 +178,12 @@ export function assertPlan55CanaryPreflight(input) {
   })
 }
 
-export function assertPlan55IndependentHoldoutProof(proof, expectedSourceSha, expectedHoldoutHashes) {
+export function assertPlan55IndependentHoldoutProof(
+  proof,
+  expectedSourceSha,
+  expectedHoldoutHashes,
+  expectedHoldoutLabelsSha256,
+) {
   const fail = () => { throw new Error('plan55_preflight_independent_holdout_unverified') }
   const evidence = proof?.review_evidence
   const verification = proof?.github_review_verification
@@ -186,6 +192,8 @@ export function assertPlan55IndependentHoldoutProof(proof, expectedSourceSha, ex
       proof.reviewed_by_author !== false ||
       typeof proof.source_sha !== 'string' ||
       proof.source_sha.toLowerCase() !== String(expectedSourceSha).toLowerCase() ||
+      proof.holdout_labels_sha256 !== expectedHoldoutLabelsSha256 ||
+      !/^sha256:[a-f0-9]{64}$/iu.test(expectedHoldoutLabelsSha256 ?? '') ||
       typeof proof.author_id_sha256 !== 'string' || !/^sha256:[a-f0-9]{64}$/iu.test(proof.author_id_sha256) ||
       !evidence || evidence.repository !== PLAN55_GITHUB_REPOSITORY ||
       !Number.isSafeInteger(evidence.pull_request_number) || evidence.pull_request_number < 1 ||
@@ -196,6 +204,7 @@ export function assertPlan55IndependentHoldoutProof(proof, expectedSourceSha, ex
       verification.pull_request_number !== evidence.pull_request_number ||
       String(verification.reviewed_head_sha ?? '').toLowerCase() !== evidence.reviewed_head_sha.toLowerCase() ||
       String(verification.merge_sha ?? '').toLowerCase() !== String(expectedSourceSha).toLowerCase() ||
+       verification.holdout_labels_sha256 !== expectedHoldoutLabelsSha256 ||
       !Array.isArray(verification.review_ids) || !Array.isArray(evidence.review_ids)) fail()
 
   const reviewers = new Set()
@@ -204,6 +213,7 @@ export function assertPlan55IndependentHoldoutProof(proof, expectedSourceSha, ex
     if (!attestation || !Number.isSafeInteger(attestation.review_id) || attestation.review_id < 1 ||
         typeof attestation.reviewer_id_sha256 !== 'string' ||
         !/^sha256:[a-f0-9]{64}$/iu.test(attestation.reviewer_id_sha256) ||
+        attestation.labels_sha256 !== expectedHoldoutLabelsSha256 ||
         !/^sha256:[a-f0-9]{64}$/iu.test(attestation.labels_sha256 ?? '') ||
         reviewers.has(attestation.reviewer_id_sha256) ||
         reviewIds.has(attestation.review_id) ||
@@ -282,15 +292,24 @@ export function evaluatePlan55G5({ service, slices }) {
     const after = sumG5Metrics(afterSlices.map((slice) => receipts.get(slice.id)))
 
     if (before.scopeSignal.total !== after.scopeSignal.total ||
+        before.problemSlug.total !== after.problemSlug.total ||
         before.safety.expected !== after.safety.expected) {
       throw new Error('plan55_canary_g5_expected_denominator_mismatch')
     }
 
     const scopeSignalPassed = after.scopeSignal.passed * before.scopeSignal.total >=
       before.scopeSignal.passed * after.scopeSignal.total
+    const problemSlugPassed = after.problemSlug.passed * before.problemSlug.total >=
+      before.problemSlug.passed * after.problemSlug.total
     const safetyRecallPassed = after.safety.observed * before.safety.expected >=
       before.safety.observed * after.safety.expected
-    passed &&= scopeSignalPassed && safetyRecallPassed
+    const fallbackShareDifferenceNumerator = Math.abs(
+      after.providerFallback.runs * before.providerFallback.total -
+      before.providerFallback.runs * after.providerFallback.total,
+    )
+    const fallbackSharePassed = fallbackShareDifferenceNumerator * 100 <=
+      20 * before.providerFallback.total * after.providerFallback.total
+    passed &&= scopeSignalPassed && problemSlugPassed && safetyRecallPassed && fallbackSharePassed
     deltas[dataset] = Object.freeze({
       scope_signal: Object.freeze({
         baseline: before.scopeSignal,
@@ -301,6 +320,15 @@ export function evaluatePlan55G5({ service, slices }) {
         ),
         non_decreasing: scopeSignalPassed,
       }),
+      problem_slug: Object.freeze({
+        baseline: before.problemSlug,
+        after: after.problemSlug,
+        delta: roundMetric(
+          (after.problemSlug.passed / after.problemSlug.total) -
+          (before.problemSlug.passed / before.problemSlug.total),
+        ),
+        non_decreasing: problemSlugPassed,
+      }),
       required_safety_recall: Object.freeze({
         baseline: before.safety,
         after: after.safety,
@@ -309,6 +337,15 @@ export function evaluatePlan55G5({ service, slices }) {
           (before.safety.observed / before.safety.expected),
         ),
         non_decreasing: safetyRecallPassed,
+      }),
+      provider_fallback: Object.freeze({
+        baseline: before.providerFallback,
+        after: after.providerFallback,
+        delta: roundMetric(
+          (after.providerFallback.runs / after.providerFallback.total) -
+          (before.providerFallback.runs / before.providerFallback.total),
+        ),
+        within_20pp: fallbackSharePassed,
       }),
     })
   }
@@ -355,6 +392,7 @@ export function validatePlan55SliceArtifacts({ receipt, slice, deployment, expec
     ['- Clarification accuracy:', `- Clarification accuracy: ${pct(metrics.by_field.needs_clarification.rate)}`],
     ['- Observed clarification rate:', `- Observed clarification rate: ${pct(metrics.conversation.clarification_rate)}`],
     ['- Problem-slug accuracy:', `- Problem-slug accuracy: ${pct(metrics.by_field.problem_slug.rate)}`],
+    ['- Deterministic fallback share:', `- Deterministic fallback share: ${pct(metrics.provider_fallback.fallback_runs / metrics.provider_fallback.total_runs)} (${metrics.provider_fallback.fallback_runs}/${metrics.provider_fallback.total_runs})`],
     ['- Required-safety recall:', `- Required-safety recall: ${pct(metrics.safety.required_signal_recall)} (${metrics.safety.observed_required_signals}/${metrics.safety.expected_required_signals}); misses: ${metrics.safety.required_signal_misses}`],
     ['- Immediate-critical recall:', `- Immediate-critical recall: ${pct(metrics.safety.immediate_critical_recall)} (${metrics.safety.observed_immediate_critical_signals}/${metrics.safety.expected_immediate_critical_signals}); misses: ${metrics.safety.immediate_critical_misses}`],
     ['- Capability-signal recall:', `- Capability-signal recall: ${pct(metrics.safety.capability_recall)} (${metrics.safety.observed_capability_signals}/${metrics.safety.expected_capability_signals}); misses: ${metrics.safety.capability_misses}`],
@@ -432,7 +470,14 @@ export function validatePlan55SliceArtifacts({ receipt, slice, deployment, expec
   } catch {
     fail()
   }
-  if (!isDeepStrictEqual(metrics, recomputedMetrics) ||
+  const actualFallbackRuns = raw.observations.filter((item) =>
+    item.observation?.model_id === 'deterministic-fallback').length
+  const aggregateMetrics = { ...metrics }
+  delete aggregateMetrics.provider_fallback
+  if (!isDeepStrictEqual(metrics.provider_fallback, {
+    fallback_runs: actualFallbackRuns,
+    total_runs: expectedCaseIds.length,
+  }) || !isDeepStrictEqual(aggregateMetrics, recomputedMetrics) ||
       !isDeepStrictEqual(stability, recomputedStability)) fail()
   const markdownRuns = markdown.split(/## Runs\s*\r?\n/u)[1]?.split(/\r?\n## /u)[0] ?? ''
   const markdownIds = [...markdownRuns.matchAll(/^\|\s*([^|]+?)\s*\|\s*\d+\s*\|/gmu)]
@@ -698,13 +743,26 @@ function sumG5Metrics(receipts) {
   if (!Array.isArray(receipts) || receipts.length !== REPETITIONS.length) {
     throw new Error('plan55_canary_g5_receipt_invalid')
   }
-  const total = { scopePassed: 0, scopeCases: 0, safetyObserved: 0, safetyExpected: 0 }
+  const total = {
+    scopePassed: 0,
+    scopeCases: 0,
+    problemSlugPassed: 0,
+    problemSlugCases: 0,
+    safetyObserved: 0,
+    safetyExpected: 0,
+    fallbackRuns: 0,
+    fallbackTotal: 0,
+  }
   for (const receipt of receipts) {
     const metrics = readG5SliceMetrics(receipt)
     total.scopePassed += metrics.scopeSignal.passed
     total.scopeCases += metrics.scopeSignal.total
+    total.problemSlugPassed += metrics.problemSlug.passed
+    total.problemSlugCases += metrics.problemSlug.total
     total.safetyObserved += metrics.safety.observed
     total.safetyExpected += metrics.safety.expected
+    total.fallbackRuns += metrics.providerFallback.runs
+    total.fallbackTotal += metrics.providerFallback.total
   }
   return Object.freeze({
     scopeSignal: Object.freeze({
@@ -712,32 +770,46 @@ function sumG5Metrics(receipts) {
       total: total.scopeCases,
       rate: roundMetric(total.scopePassed / total.scopeCases),
     }),
+    problemSlug: Object.freeze({
+      passed: total.problemSlugPassed,
+      total: total.problemSlugCases,
+      rate: roundMetric(total.problemSlugPassed / total.problemSlugCases),
+    }),
     safety: Object.freeze({
       observed: total.safetyObserved,
       expected: total.safetyExpected,
       recall: roundMetric(total.safetyObserved / total.safetyExpected),
     }),
+    providerFallback: Object.freeze({ runs: total.fallbackRuns, total: total.fallbackTotal }),
   })
 }
 
 function readG5SliceMetrics(receipt) {
   const scope = receipt?.metrics?.by_field?.scope_signal
+  const problemSlug = receipt?.metrics?.by_field?.problem_slug
   const safety = receipt?.metrics?.safety
+  const providerFallback = receipt?.metrics?.provider_fallback
   if (receipt?.caseCount !== CASES_PER_SLICE || receipt.errorCount !== 0 ||
       receipt.artifactIntegrity !== 'pass' ||
       !isCount(scope?.gated_cases) || scope.gated_cases !== CASES_PER_SLICE ||
       !isCount(scope?.passed) || scope.passed > scope.gated_cases ||
+      !isCount(problemSlug?.gated_cases) || problemSlug.gated_cases !== CASES_PER_SLICE ||
+      !isCount(problemSlug?.passed) || problemSlug.passed > problemSlug.gated_cases ||
       !isCount(safety?.expected_required_signals) || safety.expected_required_signals === 0 ||
       !isCount(safety?.observed_required_signals) ||
-      safety.observed_required_signals > safety.expected_required_signals) {
+      safety.observed_required_signals > safety.expected_required_signals ||
+      !isCount(providerFallback?.fallback_runs) || providerFallback.fallback_runs > CASES_PER_SLICE ||
+      providerFallback?.total_runs !== CASES_PER_SLICE) {
     throw new Error('plan55_canary_g5_receipt_invalid')
   }
   return Object.freeze({
     scopeSignal: Object.freeze({ passed: scope.passed, total: scope.gated_cases }),
+    problemSlug: Object.freeze({ passed: problemSlug.passed, total: problemSlug.gated_cases }),
     safety: Object.freeze({
       observed: safety.observed_required_signals,
       expected: safety.expected_required_signals,
     }),
+    providerFallback: Object.freeze({ runs: providerFallback.fallback_runs, total: providerFallback.total_runs }),
   })
 }
 

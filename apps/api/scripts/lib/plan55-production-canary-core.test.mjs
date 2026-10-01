@@ -9,6 +9,7 @@ import {
   buildPlan55CanaryPlan,
   buildPlan55ProductionClientHeaders,
   buildPlan55ServiceSlices,
+  evaluatePlan55G5,
   isSafeArtifactReceipt,
 } from './plan55-production-canary-core.mjs'
 import { PLAN55_PRODUCTION_SOURCE_BASE } from './plan55-independent-holdout-review.mjs'
@@ -87,6 +88,51 @@ test('canary plan is the six approved services with eight 12-case slices each', 
   }
 })
 
+test('G5 rejects a problem-slug regression even when scope and safety are unchanged', () => {
+  const service = 'upholstery'
+  const slices = buildPlan55ServiceSlices(service).map((slice) => ({
+    sliceId: slice.id,
+    caseCount: 12,
+    errorCount: 0,
+    artifactIntegrity: 'pass',
+    metrics: {
+      by_field: {
+        scope_signal: { gated_cases: 12, passed: 10 },
+        problem_slug: { gated_cases: 12, passed: slice.arm === 'after' ? 8 : 10 },
+      },
+      safety: { expected_required_signals: 12, observed_required_signals: 10 },
+      provider_fallback: { fallback_runs: 0, total_runs: 12 },
+    },
+  }))
+
+  assert.equal(evaluatePlan55G5({ service, slices }).passed, false)
+})
+
+test('G5 hard-fails when deterministic fallback share shifts by more than 20 percentage points', () => {
+  const service = 'cleaning'
+  const slices = buildPlan55ServiceSlices(service).map((slice) => ({
+    sliceId: slice.id,
+    caseCount: 12,
+    errorCount: 0,
+    artifactIntegrity: 'pass',
+    metrics: {
+      by_field: {
+        scope_signal: { gated_cases: 12, passed: 12 },
+        problem_slug: { gated_cases: 12, passed: 12 },
+      },
+      safety: { expected_required_signals: 12, observed_required_signals: 12 },
+      provider_fallback: {
+        fallback_runs: slice.arm === 'after' ? 3 : 0,
+        total_runs: 12,
+      },
+    },
+  }))
+
+  const result = evaluatePlan55G5({ service, slices })
+  assert.equal(result.passed, false)
+  assert.ok(Object.values(result.deltas).every((delta) => delta.provider_fallback.within_20pp === false))
+})
+
 test('independent holdout proof requires blinded non-author reviewers and the frozen six holdouts', () => {
   const sourceSha = 'a'.repeat(40)
   const digest = (char) => `sha256:${char.repeat(64)}`
@@ -96,6 +142,7 @@ test('independent holdout proof requires blinded non-author reviewers and the fr
     blinded: true,
     reviewed_by_author: false,
     source_sha: sourceSha,
+    holdout_labels_sha256: digest('7'),
     author_id_sha256: digest('1'),
     review_evidence: {
       repository: 'manhtu0407/HomeServices-',
@@ -104,8 +151,8 @@ test('independent holdout proof requires blinded non-author reviewers and the fr
       review_ids: [101, 102],
     },
     reviewer_attestations: [
-      { review_id: 101, reviewer_id_sha256: digest('2'), labels_sha256: digest('3') },
-      { review_id: 102, reviewer_id_sha256: digest('4'), labels_sha256: digest('5') },
+      { review_id: 101, reviewer_id_sha256: digest('2'), labels_sha256: digest('7') },
+      { review_id: 102, reviewer_id_sha256: digest('4'), labels_sha256: digest('7') },
     ],
     github_review_verification: {
       method: 'github-pull-request-review-api/v1',
@@ -113,6 +160,7 @@ test('independent holdout proof requires blinded non-author reviewers and the fr
       pull_request_number: 55,
       reviewed_head_sha: 'b'.repeat(40),
       merge_sha: sourceSha,
+      holdout_labels_sha256: digest('7'),
       review_ids: [101, 102],
     },
     holdouts: Object.fromEntries(PLAN55_SERVICE_ORDER.map((service) => [service, {
@@ -122,7 +170,7 @@ test('independent holdout proof requires blinded non-author reviewers and the fr
     }])),
   }
   const expectedHoldoutHashes = Object.fromEntries(PLAN55_SERVICE_ORDER.map((service) => [service, digest('6')]))
-  assert.equal(assertPlan55IndependentHoldoutProof(proof, sourceSha, expectedHoldoutHashes), true)
+  assert.equal(assertPlan55IndependentHoldoutProof(proof, sourceSha, expectedHoldoutHashes, digest('7')), true)
   assert.throws(() => assertPlan55IndependentHoldoutProof({ ...proof, reviewed_by_author: true }, sourceSha))
   assert.throws(() => assertPlan55IndependentHoldoutProof({
     ...proof,
@@ -235,6 +283,8 @@ test('canary preflight requires source-bound GitHub proof for both guard tests a
   const digest = (char) => `sha256:${char.repeat(64)}`
   const gitBlobSha = '1'.repeat(40)
   const runtimeDigest = digest('2')
+  const functionId = '123e4567-e89b-42d3-a456-426614174001'
+  const releaseId = `harness-${sourceSha.slice(0, 12)}-abcdef`
   const sourceAttestation = {
     schema: 'plan55-production-source-attestation/v1',
     observed_at: '2026-09-30T00:00:00.000Z',
@@ -245,13 +295,31 @@ test('canary preflight requires source-bound GitHub proof for both guard tests a
       status: 'ok',
       provider_configuration_class: 'production-locked',
       webhook_configuration_class: 'production-signed',
-      release_id: `harness-${sourceSha.slice(0, 12)}-abcdef`,
+      release_id: releaseId,
       deployment_id: `${PRODUCTION_PROJECT_REF}_mobile-api_1`,
       git_sha: sourceSha,
       manifest_sha256: digest('b'),
       bundle_sha256: digest('c'),
       source_bundle_sha256: digest('d'),
       edge_bundle_sha256: digest('e'),
+    },
+    deployed_source: {
+      schema: 'plan55-deployed-edge-source-attestation/v1',
+      environment: 'production',
+      project_ref: PRODUCTION_PROJECT_REF,
+      release_id: releaseId,
+      deployment_id: `${PRODUCTION_PROJECT_REF}_${functionId}_1`,
+      function_id: functionId,
+      edge_version: 1,
+      git_sha: sourceSha,
+      source_sha256: digest('6'),
+      hosted_bundle_sha256: digest('7'),
+      runtime_configuration_sha256: digest('8'),
+      verify_jwt: false,
+      import_map: false,
+      entrypoint_path: 'supabase/functions/mobile-api/index.ts',
+      import_map_path: null,
+      proof_sha256: digest('9'),
     },
     runtime_files: PLAN55_RUNTIME_SOURCE_PATHS.map((path) => ({
       path,
@@ -282,6 +350,7 @@ test('canary preflight requires source-bound GitHub proof for both guard tests a
     blinded: true,
     reviewed_by_author: false,
     source_sha: sourceSha,
+    holdout_labels_sha256: digest('a'),
     author_id_sha256: digest('6'),
     review_evidence: {
       repository: 'manhtu0407/HomeServices-',
@@ -291,7 +360,7 @@ test('canary preflight requires source-bound GitHub proof for both guard tests a
       review_ids: reviewIds,
     },
     reviewer_attestations: [
-      { review_id: reviewIds[0], reviewer_id_sha256: digest('7'), labels_sha256: digest('8') },
+      { review_id: reviewIds[0], reviewer_id_sha256: digest('7'), labels_sha256: digest('a') },
       { review_id: reviewIds[1], reviewer_id_sha256: digest('9'), labels_sha256: digest('a') },
     ],
     github_review_verification: {
@@ -300,6 +369,7 @@ test('canary preflight requires source-bound GitHub proof for both guard tests a
       pull_request_number: pullRequestNumber,
       reviewed_head_sha: reviewedHeadSha,
       merge_sha: sourceSha,
+      holdout_labels_sha256: digest('a'),
       review_ids: reviewIds,
     },
     holdouts: Object.fromEntries(PLAN55_SERVICE_ORDER.map((service) => [service, {
@@ -346,6 +416,7 @@ test('canary preflight requires source-bound GitHub proof for both guard tests a
     sourceAttestation,
     independentHoldoutProof: holdoutProof,
     holdoutAssetHashes: holdoutHashes,
+    holdoutLabelsSha256: digest('a'),
     actorGuardProof,
     flagStates: Object.fromEntries(flagNames.map((name) => [name, 'absent'])),
     verificationProviders: {

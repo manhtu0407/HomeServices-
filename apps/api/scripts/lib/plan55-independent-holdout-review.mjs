@@ -33,6 +33,26 @@ const GUARD_EVIDENCE_PATHS = Object.freeze([
   '.github/workflows/ci.yml',
 ])
 
+export function plan55HoldoutLabelsSha256(casesByService) {
+  const services = Object.keys(PLAN55_SOURCE_ASSETS).sort()
+  if (!isRecord(casesByService) || Array.isArray(casesByService) ||
+      Object.keys(casesByService).sort().join('\n') !== services.join('\n')) {
+    throw new Error('plan55_preflight_independent_holdout_unverified')
+  }
+  const projection = Object.fromEntries(services.map((service) => {
+    const cases = casesByService[service]
+    if (!Array.isArray(cases) || cases.length < 24 || cases.some((item) =>
+      !isRecord(item) || typeof item.id !== 'string' || !item.id.trim() || !isRecord(item.expected))) {
+      throw new Error('plan55_preflight_independent_holdout_unverified')
+    }
+    const ids = cases.map(({ id }) => id)
+    if (new Set(ids).size !== ids.length) throw new Error('plan55_preflight_independent_holdout_unverified')
+    return [service, cases.map(({ id, expected }) => ({ id, labels: expected }))
+      .sort((left, right) => left.id.localeCompare(right.id))]
+  }))
+  return `sha256:${createHash('sha256').update(canonicalJson(projection)).digest('hex')}`
+}
+
 export function buildPlan55HoldoutReviewBody({
   reviewedHeadSha,
   holdoutHashes,
@@ -69,11 +89,12 @@ export function createPlan55GithubReviewEvidenceProvider({
     expectedSourceSha,
     expectedHoldoutHashes,
     expectedHoldoutCaseCounts,
+    expectedHoldoutLabelsSha256,
     sourceAttestation,
   } = {}) => {
     const sourceSha = String(expectedSourceSha ?? '').toLowerCase()
     if (!GIT_SHA_PATTERN.test(sourceSha) || !isRecord(expectedHoldoutHashes) ||
-        !isRecord(expectedHoldoutCaseCounts)) {
+        !isRecord(expectedHoldoutCaseCounts) || !SHA256_PATTERN.test(expectedHoldoutLabelsSha256 ?? '')) {
       throw new Error('plan55_preflight_independent_holdout_unverified')
     }
     const associatedPullRequests = await readGithubPages(
@@ -106,6 +127,7 @@ export function createPlan55GithubReviewEvidenceProvider({
       expectedSourceSha: sourceSha,
       expectedHoldoutHashes,
       expectedHoldoutCaseCounts,
+      expectedHoldoutLabelsSha256,
       pullRequest,
       mergeCommit,
       reviews,
@@ -115,14 +137,22 @@ export function createPlan55GithubReviewEvidenceProvider({
       proof,
       expectedSourceSha: sourceSha,
       expectedHoldoutHashes,
+      expectedHoldoutLabelsSha256,
       pullRequest,
       mergeCommit,
       reviews,
     })
+    const actorGuardWorkflow = await readActorGuardWorkflowEvidence(
+      execFileSyncImpl,
+      cwd,
+      checkRuns,
+      pullRequest.head.sha,
+    )
     const actorGuardProof = buildVerifiedActorGuardProof({
       expectedSourceSha: sourceSha,
       pullRequest,
       checkRuns,
+      actorGuardWorkflow,
       sourceAttestation,
       sourceFiles,
     })
@@ -140,6 +170,7 @@ function buildProofFromGithubReviews({
   expectedSourceSha,
   expectedHoldoutHashes,
   expectedHoldoutCaseCounts,
+  expectedHoldoutLabelsSha256,
   pullRequest,
   mergeCommit,
   reviews,
@@ -155,7 +186,8 @@ function buildProofFromGithubReviews({
         String(expectedSourceSha ?? '').toLowerCase(),
         mergeCommit,
       ) || !pullAuthorId || !GIT_SHA_PATTERN.test(reviewedHeadSha) ||
-      !GIT_SHA_PATTERN.test(actorGuardFileBlobSha ?? '') || !Array.isArray(reviews)) fail()
+      !GIT_SHA_PATTERN.test(actorGuardFileBlobSha ?? '') ||
+      !SHA256_PATTERN.test(expectedHoldoutLabelsSha256 ?? '') || !Array.isArray(reviews)) fail()
   const holdoutRoot = holdoutRootSha256(expectedHoldoutHashes)
   const latestByReviewer = new Map()
   for (const review of reviews) {
@@ -180,7 +212,7 @@ function buildProofFromGithubReviews({
       : []
     const labelsMatch = normalizedLines[5]?.match(/^labels_sha256=([a-f0-9]{64})$/u) ?? null
     const labelsSha256 = labelsMatch ? `sha256:${labelsMatch[1].toLowerCase()}` : null
-    if (!labelsSha256 || !isAttestationBody(review.body, {
+    if (labelsSha256 !== expectedHoldoutLabelsSha256 || !isAttestationBody(review.body, {
       reviewedHeadSha,
       holdoutRoot,
       labelsSha256,
@@ -216,6 +248,7 @@ function buildProofFromGithubReviews({
     blinded: true,
     reviewed_by_author: false,
     source_sha: String(expectedSourceSha).toLowerCase(),
+    holdout_labels_sha256: expectedHoldoutLabelsSha256.toLowerCase(),
     author_id_sha256: hashIdentity(pullAuthorId),
     review_evidence: {
       repository: PLAN55_GITHUB_REPOSITORY,
@@ -235,6 +268,7 @@ function buildVerifiedActorGuardProof({
   expectedSourceSha,
   pullRequest,
   checkRuns,
+  actorGuardWorkflow,
   sourceAttestation,
   sourceFiles,
 }) {
@@ -266,9 +300,25 @@ function buildVerifiedActorGuardProof({
       return Number(left.id ?? 0) - Number(right.id ?? 0)
     })
   const latestRun = matchingRuns.at(-1)
+  const workflowRun = actorGuardWorkflow?.workflowRun
+  const workflowJob = actorGuardWorkflow?.workflowJob
+  const successfulTestStep = workflowJob?.steps?.find((step) =>
+    step?.name === 'Run actor-scoped Production guard tests')
   if (!latestRun || !Number.isSafeInteger(latestRun.id) || latestRun.id < 1 ||
       latestRun.status !== 'completed' || latestRun.conclusion !== 'success' ||
-      !Number.isFinite(Date.parse(latestRun.started_at ?? ''))) fail()
+      !Number.isFinite(Date.parse(latestRun.started_at ?? '')) ||
+      latestRun.id !== actorGuardWorkflow.checkRun?.id ||
+      workflowRun?.id !== actorGuardWorkflow.runId || workflowRun?.path !== '.github/workflows/ci.yml' ||
+      workflowRun?.event !== 'pull_request' ||
+      String(workflowRun?.head_sha ?? '').toLowerCase() !== reviewedHeadSha ||
+      workflowRun?.status !== 'completed' || workflowRun?.conclusion !== 'success' ||
+      !Number.isSafeInteger(workflowRun?.run_attempt) || workflowRun.run_attempt < 1 ||
+      workflowJob?.id !== actorGuardWorkflow.jobId || workflowJob?.run_id !== workflowRun.id ||
+      workflowJob?.run_attempt !== workflowRun.run_attempt ||
+      String(workflowJob?.head_sha ?? '').toLowerCase() !== reviewedHeadSha ||
+      workflowJob?.name !== 'plan55-actor-guard' || workflowJob?.status !== 'completed' ||
+      workflowJob?.conclusion !== 'success' || successfulTestStep?.status !== 'completed' ||
+      successfulTestStep?.conclusion !== 'success') fail()
 
   return Object.freeze({
     source_sha: sourceSha,
@@ -287,6 +337,15 @@ function buildVerifiedActorGuardProof({
       check_run_id: latestRun.id,
       check_run_name: latestRun.name,
       check_run_conclusion: latestRun.conclusion,
+      workflow_run_id: workflowRun.id,
+      workflow_run_attempt: workflowRun.run_attempt,
+      workflow_path: workflowRun.path,
+      workflow_event: workflowRun.event,
+      workflow_job_id: workflowJob.id,
+      workflow_job_name: workflowJob.name,
+      workflow_job_conclusion: workflowJob.conclusion,
+      workflow_step_name: successfulTestStep.name,
+      workflow_step_conclusion: successfulTestStep.conclusion,
       runtime_file_blob_sha1: guardFile.mergeSha.toLowerCase(),
     }),
   })
@@ -297,6 +356,11 @@ function assertGuardTestWiring(sourceFiles) {
   const guardTests = sourceFiles?.[GUARD_TEST_PATH]?.content
   const apiPackage = parseJsonFile(sourceFiles?.['apps/api/package.json']?.content)
   const ciWorkflow = sourceFiles?.['.github/workflows/ci.yml']?.content
+  const jobHeader = /^  plan55-actor-guard:\r?\n/mu.exec(ciWorkflow ?? '')
+  const jobRest = jobHeader ? (ciWorkflow ?? '').slice(jobHeader.index + jobHeader[0].length) : ''
+  const nextJob = /^  [A-Za-z0-9_-]+:/mu.exec(jobRest)
+  const job = nextJob ? jobRest.slice(0, nextJob.index) : jobRest
+  const step = /^      - name: Run actor-scoped Production guard tests\r?\n        run: (.+)$/mu.exec(job)
   if (typeof guardTests !== 'string' ||
       !guardTests.includes('narrows an enabled canary to its configured authenticated actor') ||
       !guardTests.includes('fails closed on an invalid canary flag instead of falling back to a legacy global flag') ||
@@ -304,8 +368,43 @@ function assertGuardTestWiring(sourceFiles) {
       !guardTests.includes('isKaelPlaybookEnabled("plumbing", otherActorId)).toBe(false)') ||
       !(apiPackage?.devDependencies?.vitest || apiPackage?.dependencies?.vitest) ||
       typeof ciWorkflow !== 'string' ||
-      !ciWorkflow.includes(`name: ${PLAN55_ACTOR_GUARD_CHECK_NAME}`) ||
-      !ciWorkflow.includes('pnpm --filter @nestscout/api exec vitest run src/__tests__/unit/kael-playbook-registry-pillar.test.ts --passWithNoTests=false')) fail()
+      !/^    name: plan55-actor-scoped-guard-tests\r?\n/mu.test(job) ||
+      !/^    if: \$\{\{ !cancelled\(\) && github\.event_name == 'pull_request' && needs\.controls\.outputs\.kael == 'true' \}\}$/mu.test(job) ||
+      step?.[1] !== 'pnpm --filter @nestscout/api exec vitest run src/__tests__/unit/kael-playbook-registry-pillar.test.ts --passWithNoTests=false' ||
+      PLAN55_ACTOR_GUARD_CHECK_NAME !== 'plan55-actor-scoped-guard-tests') fail()
+}
+
+async function readActorGuardWorkflowEvidence(execFileSyncImpl, cwd, checkRuns, reviewedHeadSha) {
+  const fail = () => { throw new Error('plan55_preflight_actor_guard_unverified') }
+  const matchingRuns = (Array.isArray(checkRuns) ? checkRuns : [])
+    .filter((run) => run?.name === PLAN55_ACTOR_GUARD_CHECK_NAME &&
+      String(run.head_sha ?? '').toLowerCase() === String(reviewedHeadSha).toLowerCase() &&
+      run.app?.slug === 'github-actions')
+    .sort((left, right) => {
+      const leftStarted = Date.parse(left.started_at ?? '')
+      const rightStarted = Date.parse(right.started_at ?? '')
+      if (leftStarted !== rightStarted) return leftStarted - rightStarted
+      return Number(left.id ?? 0) - Number(right.id ?? 0)
+    })
+  const checkRun = matchingRuns.at(-1)
+  let parsedUrl
+  try {
+    parsedUrl = new URL(checkRun?.details_url)
+  } catch {
+    fail()
+  }
+  const urlMatch = parsedUrl.hostname === 'github.com'
+    ? /^\/manhtu0407\/HomeServices-\/actions\/runs\/(\d+)\/job\/(\d+)$/u.exec(parsedUrl.pathname)
+    : null
+  if (!urlMatch || parsedUrl.search || parsedUrl.hash) fail()
+  const runId = Number(urlMatch[1])
+  const jobId = Number(urlMatch[2])
+  if (!Number.isSafeInteger(runId) || runId < 1 || !Number.isSafeInteger(jobId) || jobId < 1) fail()
+  const [workflowRun, workflowJob] = await Promise.all([
+    readGithubJson(execFileSyncImpl, cwd, `repos/${PLAN55_GITHUB_REPOSITORY}/actions/runs/${runId}`),
+    readGithubJson(execFileSyncImpl, cwd, `repos/${PLAN55_GITHUB_REPOSITORY}/actions/jobs/${jobId}`),
+  ])
+  return Object.freeze({ checkRun, runId, jobId, workflowRun, workflowJob })
 }
 
 async function readGuardSourceFiles(execFileSyncImpl, cwd, reviewedHeadSha, sourceSha) {
@@ -418,6 +517,7 @@ export function verifyPlan55IndependentHoldoutReviewEvidence({
   proof,
   expectedSourceSha,
   expectedHoldoutHashes,
+  expectedHoldoutLabelsSha256,
   pullRequest,
   mergeCommit,
   reviews,
@@ -429,6 +529,7 @@ export function verifyPlan55IndependentHoldoutReviewEvidence({
       proof.status !== 'PASS' || proof.blinded !== true || proof.reviewed_by_author !== false ||
       !GIT_SHA_PATTERN.test(expectedSource) ||
       typeof proof.source_sha !== 'string' || proof.source_sha.toLowerCase() !== expectedSource ||
+      proof.holdout_labels_sha256 !== expectedHoldoutLabelsSha256 ||
       evidence?.repository !== PLAN55_GITHUB_REPOSITORY ||
       !Number.isSafeInteger(evidence.pull_request_number) || evidence.pull_request_number < 1 ||
       !GIT_SHA_PATTERN.test(evidence.reviewed_head_sha ?? '') ||
@@ -441,7 +542,8 @@ export function verifyPlan55IndependentHoldoutReviewEvidence({
 
   if (!isRecord(expectedHoldoutHashes) || Array.isArray(expectedHoldoutHashes) ||
       Object.keys(expectedHoldoutHashes).length === 0 ||
-      Object.values(expectedHoldoutHashes).some((value) => !SHA256_PATTERN.test(value ?? ''))) fail()
+      Object.values(expectedHoldoutHashes).some((value) => !SHA256_PATTERN.test(value ?? '')) ||
+      !SHA256_PATTERN.test(expectedHoldoutLabelsSha256 ?? '')) fail()
   const expectedHoldoutKeys = Object.keys(expectedHoldoutHashes).sort()
   if (!isRecord(proof.holdouts) || Array.isArray(proof.holdouts) ||
       Object.keys(proof.holdouts).sort().join('\n') !== expectedHoldoutKeys.join('\n')) fail()
@@ -506,6 +608,7 @@ export function verifyPlan55IndependentHoldoutReviewEvidence({
         reviewerId === pullAuthorId ||
         hashIdentity(reviewerId) !== attestation.reviewer_id_sha256 ||
         reviewerHashes.has(attestation.reviewer_id_sha256) ||
+         attestation.labels_sha256 !== expectedHoldoutLabelsSha256 ||
         !isAttestationBody(review.body, {
           reviewedHeadSha: pullHeadSha,
           holdoutRoot,
@@ -528,6 +631,7 @@ export function verifyPlan55IndependentHoldoutReviewEvidence({
       production_source_base_branch: PLAN55_PRODUCTION_SOURCE_BASE.branch,
       production_source_base_sha: PLAN55_PRODUCTION_SOURCE_BASE.sha,
       holdout_root_sha256: holdoutRoot,
+      holdout_labels_sha256: expectedHoldoutLabelsSha256,
       review_ids: Object.freeze(verifiedReviewIds.sort((left, right) => left - right)),
     }),
   })
@@ -563,6 +667,16 @@ function holdoutRootSha256(holdoutHashes) {
     return `${service}=${digest.slice('sha256:'.length).toLowerCase()}`
   })
   return createHash('sha256').update(entries.join('\n')).digest('hex')
+}
+
+function canonicalJson(value) {
+  return JSON.stringify(canonicalValue(value))
+}
+
+function canonicalValue(value) {
+  if (Array.isArray(value)) return value.map(canonicalValue)
+  if (!value || typeof value !== 'object') return value
+  return Object.fromEntries(Object.keys(value).sort().map((key) => [key, canonicalValue(value[key])]))
 }
 
 function isAttestationBody(body, {

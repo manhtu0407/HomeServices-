@@ -119,6 +119,13 @@ test('Plan 55 can be dispatched through the registered CI workflow without rerun
     'ordinary SQL lane must skip a Plan 55 dispatch')
 })
 
+test('the serialized canary timeout covers all paced slices and rollback removes forward-only bindings', () => {
+  assert.match(service, /^    timeout-minutes: 360$/mu)
+  assert.match(release, /forward_binding_text=\$\(node scripts\/harness\/runtime-release-bindings\.mjs[\s\S]*?--mobile-attestation artifacts\/release\/mobile-binary-attestation\.json\)/u)
+  assert.match(release, /supabase secrets unset "\$\{unset_bindings\[@\]\}"[\s\\]*--project-ref/u)
+  assert.match(release, /baseline_binding_names\["\$\{binding%%=\*\}"\]=1/u)
+})
+
 test('guard deploy is rollback-protected, deploys only mobile-api, and applies no migration or global service flag', () => {
   assert.match(release, /plan55-production-release-preflight\.mjs/u)
   assert.match(release, /runtime-release-bindings\.mjs/u)
@@ -130,6 +137,19 @@ test('guard deploy is rollback-protected, deploys only mobile-api, and applies n
   assert.doesNotMatch(release, /KAEL_PLAYBOOK_(?:HVAC|HANDYMAN|CLEANING|UPHOLSTERY|PLUMBING|ELECTRICAL)_ENABLED/u)
 })
 
+test('Production source attestation is bound to downloaded hosted Edge bytes and live deployment metadata', () => {
+  const downloadIndex = release.indexOf('functions download mobile-api')
+  const proofIndex = release.indexOf('production-edge-source-proof.json')
+  const attestIndex = release.indexOf('kael-playbook-production-attest.mjs')
+  assert.ok(downloadIndex >= 0 && proofIndex > downloadIndex && attestIndex > proofIndex,
+    'deployed source must be downloaded and source-proofed before attestation')
+  assert.match(release, /edge-source-proof\.mjs --source-root artifacts\/deployed-source[\s\S]*?--verify-hosted/u)
+  assert.match(sourceAttestation, /'deployed_source'/u)
+  const operations = readFileSync('apps/api/scripts/lib/plan55-production-canary-operations.mjs', 'utf8')
+  assert.match(operations, /functions\/mobile-api[\s\S]*?current\.ezbr_sha256/u)
+  assert.match(operations, /expected\.function_id/u)
+})
+
 test('service workflow preserves the fixed serialized order and one complete, cleaned receipt per job', () => {
   const ordered = ['hvac', 'handyman', 'cleaning', 'upholstery', 'plumbing', 'electrical']
   for (const [index, serviceName] of ordered.entries()) {
@@ -138,7 +158,7 @@ test('service workflow preserves the fixed serialized order and one complete, cl
     assert.match(release, new RegExp(`service: ${serviceName}\\r?\\n`, 'u'))
   }
   assert.deepEqual(needsFor('validate-six-receipts'), ['deploy_guard_off', ...ordered])
-  assert.match(service, /timeout-minutes: 90/u)
+  assert.match(service, /timeout-minutes: 360/u)
   assert.match(service, /--run --service "\$PLAN55_SERVICE"/u)
   assert.match(service, /BLOCKED_UNVERIFIED/u)
   assert.match(service, /records\/\*\*/u)

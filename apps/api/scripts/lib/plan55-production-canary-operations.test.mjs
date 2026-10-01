@@ -46,6 +46,8 @@ function identityHash(id) {
 function buildSourceAttestation(sourceSha) {
   const gitBlobSha = '1'.repeat(40)
   const digest = `sha256:${'2'.repeat(64)}`
+  const functionId = '123e4567-e89b-42d3-a456-426614174001'
+  const releaseId = `harness-${sourceSha.slice(0, 12)}-abcdef`
   return {
     schema: 'plan55-production-source-attestation/v1',
     observed_at: '2026-09-30T00:00:00.000Z',
@@ -56,13 +58,31 @@ function buildSourceAttestation(sourceSha) {
       status: 'ok',
       provider_configuration_class: 'production-locked',
       webhook_configuration_class: 'production-signed',
-      release_id: `harness-${sourceSha.slice(0, 12)}-abcdef`,
+      release_id: releaseId,
       deployment_id: `${PRODUCTION_PROJECT_REF}_mobile-api_1`,
       git_sha: sourceSha,
       manifest_sha256: `sha256:${'b'.repeat(64)}`,
       bundle_sha256: `sha256:${'c'.repeat(64)}`,
       source_bundle_sha256: `sha256:${'d'.repeat(64)}`,
       edge_bundle_sha256: `sha256:${'e'.repeat(64)}`,
+    },
+    deployed_source: {
+      schema: 'plan55-deployed-edge-source-attestation/v1',
+      environment: 'production',
+      project_ref: PRODUCTION_PROJECT_REF,
+      release_id: releaseId,
+      deployment_id: `${PRODUCTION_PROJECT_REF}_${functionId}_1`,
+      function_id: functionId,
+      edge_version: 1,
+      git_sha: sourceSha,
+      source_sha256: digest,
+      hosted_bundle_sha256: digest,
+      runtime_configuration_sha256: digest,
+      verify_jwt: false,
+      import_map: false,
+      entrypoint_path: 'supabase/functions/mobile-api/index.ts',
+      import_map_path: null,
+      proof_sha256: digest,
     },
     runtime_files: PLAN55_RUNTIME_SOURCE_PATHS.map((path) => ({
       path,
@@ -89,6 +109,7 @@ function buildReviewEvidence({
   expectedSourceSha: sourceSha,
   expectedHoldoutHashes: holdoutHashes,
   expectedHoldoutCaseCounts: holdoutCaseCounts,
+  expectedHoldoutLabelsSha256,
   sourceAttestation,
 }) {
   const pullRequestNumber = 55
@@ -96,7 +117,7 @@ function buildReviewEvidence({
   const authorId = 400
   const reviewerIds = [401, 402]
   const reviewIds = [1101, 1102]
-  const labelsHashes = [`sha256:${'c'.repeat(64)}`, `sha256:${'d'.repeat(64)}`]
+  const labelsHashes = [expectedHoldoutLabelsSha256, expectedHoldoutLabelsSha256]
   const guardFile = sourceAttestation.runtime_files.find((file) => file.path === PLAN55_RUNTIME_SOURCE_PATHS[0])
   const actorGuardFileBlobSha = guardFile.git_blob_sha1
   const pullRequest = {
@@ -134,6 +155,7 @@ function buildReviewEvidence({
       blinded: true,
       reviewed_by_author: false,
       source_sha: sourceSha,
+      holdout_labels_sha256: expectedHoldoutLabelsSha256,
       author_id_sha256: identityHash(authorId),
       review_evidence: {
         repository: 'manhtu0407/HomeServices-',
@@ -310,6 +332,7 @@ test('preflight derives source-bound proofs without a plan55 field on public Pro
   assert.equal(providerInput.expectedSourceSha, sourceSha)
   assert.equal(Object.keys(providerInput.expectedHoldoutHashes).length, 6)
   assert.ok(Object.values(providerInput.expectedHoldoutCaseCounts).every((count) => count === 24))
+  assert.match(providerInput.expectedHoldoutLabelsSha256, /^sha256:[a-f0-9]{64}$/u)
   assert.equal(preflight.actorGuardProof.source_sha, sourceSha)
   assert.equal(preflight.independentHoldoutProof.source_sha, sourceSha)
   assert.equal(preflight.independentHoldoutProof.github_review_verification.merge_sha, sourceSha)
@@ -374,6 +397,7 @@ test('live chat requests retain the current Production client identity while att
   }
   let chatHeaders
   let sourceDrift = false
+  let hostedEdgeReads = 0
   const fetchImpl = async (url, init = {}) => {
     const target = String(url)
     if (target === `${PRODUCTION_MOBILE_API_URL}/harness/health`) {
@@ -387,6 +411,20 @@ test('live chat requests retain the current Production client identity while att
     }
     if (target.endsWith(`/projects/${PRODUCTION_PROJECT_REF}/secrets`) && init.method === 'GET') {
       return new Response('[]', { status: 200 })
+    }
+    if (target === `https://api.supabase.com/v1/projects/${PRODUCTION_PROJECT_REF}/functions/mobile-api` &&
+        init.method === 'GET') {
+      hostedEdgeReads += 1
+      return new Response(JSON.stringify({
+        status: 'ACTIVE',
+        id: '123e4567-e89b-42d3-a456-426614174001',
+        version: 1,
+        ezbr_sha256: '2'.repeat(64),
+        verify_jwt: false,
+        import_map: false,
+        entrypoint_path: 'supabase/functions/mobile-api/index.ts',
+        import_map_path: null,
+      }), { status: 200 })
     }
     if (target === `${PRODUCTION_MOBILE_API_URL}/kael/chat`) {
       chatHeaders = new Headers(init.headers)
@@ -456,6 +494,7 @@ test('live chat requests retain the current Production client identity while att
     assert.equal(chatHeaders?.get(name), value, name)
   }
   assert.equal(chatHeaders?.get('authorization'), 'Bearer synthetic-test-token')
+  assert.equal(hostedEdgeReads, 1)
 })
 
 test('cleanup retries transient deletion visibility and proves scoped flags, Auth, rows, and workers are clear', async (t) => {

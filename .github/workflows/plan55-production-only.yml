@@ -281,6 +281,32 @@ jobs:
                   ./apps/api/node_modules/.bin/supabase secrets set "${rollback_bindings[@]}" \
                     --project-ref "$PRODUCTION_PROJECT_REF" || rollback_status=1
               fi
+              if [ "$rollback_status" -eq 0 ]; then
+                forward_binding_text=$(node scripts/harness/runtime-release-bindings.mjs \
+                  --release artifacts/release/release.json \
+                  --mobile-attestation artifacts/release/mobile-binary-attestation.json) || rollback_status=1
+                if [ "$rollback_status" -eq 0 ]; then
+                  mapfile -t forward_bindings <<< "$forward_binding_text"
+                  [ "${#forward_bindings[@]}" -eq 28 ] || rollback_status=1
+                fi
+              fi
+              if [ "$rollback_status" -eq 0 ]; then
+                declare -A baseline_binding_names=()
+                for binding in "${rollback_bindings[@]}"; do
+                  baseline_binding_names["${binding%%=*}"]=1
+                done
+                unset_bindings=()
+                for binding in "${forward_bindings[@]}"; do
+                  binding_name="${binding%%=*}"
+                  if [ -z "${baseline_binding_names[$binding_name]+set}" ]; then
+                    unset_bindings+=("$binding_name")
+                  fi
+                done
+                if [ "${#unset_bindings[@]}" -gt 0 ]; then
+                  ./apps/api/node_modules/.bin/supabase secrets unset "${unset_bindings[@]}" \
+                    --project-ref "$PRODUCTION_PROJECT_REF" --yes || rollback_status=1
+                fi
+              fi
             fi
             if [ "$edge_deploy_attempted" = true ]; then
               ./apps/api/node_modules/.bin/supabase --workdir artifacts/rollback functions deploy mobile-api \
@@ -335,6 +361,15 @@ jobs:
             sleep 10
           done
           test "$matched" = true
+          mkdir -p artifacts/deployed-source/supabase
+          cp supabase/config.toml artifacts/deployed-source/supabase/config.toml
+          ./apps/api/node_modules/.bin/supabase --workdir artifacts/deployed-source functions download mobile-api \
+            --project-ref "$PRODUCTION_PROJECT_REF" --use-api
+          node scripts/harness/edge-source-proof.mjs --source-root artifacts/deployed-source \
+            --release artifacts/release/release.json --hosted artifacts/release/hosted-guard-deployed.json \
+            --function mobile-api --output artifacts/release/production-edge-source-proof.json
+          node scripts/harness/edge-source-proof.mjs --proof artifacts/release/production-edge-source-proof.json \
+            --hosted artifacts/release/hosted-guard-deployed.json --verify-hosted
           node apps/api/scripts/kael-playbook-production-attest.mjs \
             > artifacts/release/production-source-attestation.json
           node --input-type=module <<'NODE'
