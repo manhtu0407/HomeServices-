@@ -667,7 +667,7 @@ describe('LoginRoleSurface', () => {
 
   it('accepts a Vietnamese mobile number for customer login, remembers the latest identifier, and sends it as E.164', async () => {
     mockRouteParams = { stage: '1.4' }
-    mockSignInWithPassword.mockResolvedValueOnce({ success: true })
+    mockSignInWithPassword.mockResolvedValueOnce({ success: true, role: 'customer' })
     render(<LoginRoleSurface />)
 
     expect(screen.getByText('Gmail hoặc SĐT')).toBeOnTheScreen()
@@ -703,7 +703,7 @@ describe('LoginRoleSurface', () => {
       password: 'secret123',
       role: 'customer',
     })
-    mockSignInWithPassword.mockResolvedValueOnce({ success: true })
+    mockSignInWithPassword.mockResolvedValueOnce({ success: true, role: 'customer' })
     render(<LoginRoleSurface />)
 
     act(() => {
@@ -728,7 +728,7 @@ describe('LoginRoleSurface', () => {
 
   it('clears the native credential pair when the user disables remembering', async () => {
     mockRouteParams = { stage: '1.4' }
-    mockSignInWithPassword.mockResolvedValueOnce({ success: true })
+    mockSignInWithPassword.mockResolvedValueOnce({ success: true, role: 'customer' })
     render(<LoginRoleSurface />)
 
     fireEvent.changeText(screen.getByTestId('auth-login-email-input'), 'tu@example.com')
@@ -1080,11 +1080,6 @@ describe('LoginRoleSurface', () => {
 
   it('does not duplicate a worker application when the resolved account is already a worker', async () => {
     mockSignInWithPassword.mockResolvedValueOnce({ success: true, role: 'worker' })
-    mockAuthOverride = {
-      profileStatus: 'ready',
-      role: 'worker',
-      session: { user: { app_metadata: {}, user_metadata: {} } },
-    }
     mockRouteParams = { stage: '1.4', role: 'worker' }
     render(<LoginRoleSurface />)
 
@@ -1092,10 +1087,23 @@ describe('LoginRoleSurface', () => {
     fireEvent.changeText(screen.getByTestId('auth-login-password-input'), 'secret123')
     fireEvent.press(screen.getByTestId('auth-login-submit'))
 
-    await waitFor(() => expect(screen.getByTestId('auth-onboarding-screen')).toBeOnTheScreen())
+    await waitFor(() => expect(mockReplace).toHaveBeenCalledWith('/(worker)/(tabs)/home'))
     expect(mockSubmitWorkerApplication).not.toHaveBeenCalled()
-    fireEvent.press(screen.getByTestId('auth-onboarding-start'))
-    await waitFor(() => expect(mockReplace).toHaveBeenCalledWith('/(worker)/home'))
+    expect(screen.queryByTestId('auth-onboarding-screen')).toBeNull()
+  })
+
+  it('uses the server worker role even when the customer gate was selected', async () => {
+    mockSignInWithPassword.mockResolvedValueOnce({ success: true, role: 'worker' })
+    mockRouteParams = { stage: '1.4', role: 'customer' }
+    render(<LoginRoleSurface />)
+
+    fireEvent.changeText(screen.getByTestId('auth-login-email-input'), 'worker@example.com')
+    fireEvent.changeText(screen.getByTestId('auth-login-password-input'), 'secret123')
+    fireEvent.press(screen.getByTestId('auth-login-submit'))
+
+    await waitFor(() => expect(mockReplace).toHaveBeenCalledWith('/(worker)/(tabs)/home'))
+    expect(mockSubmitWorkerApplication).not.toHaveBeenCalled()
+    expect(screen.queryByTestId('auth-onboarding-screen')).toBeNull()
   })
 
   it('keeps a failed deferred worker application on the auth flow without a false review claim', async () => {

@@ -126,7 +126,7 @@ export function useEntryBrandAccessActions({
         ])
       }
       if (!isCurrentAction(actionVersion)) return
-      if (controller.role === 'worker') go('onboarding')
+      if (result.nextStep === 'onboarding') go('onboarding')
     } catch {
       if (isCurrentAction(actionVersion)) controller.setError(copy.errors.connectionFailed)
     } finally {

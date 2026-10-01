@@ -81,7 +81,7 @@ export function LoginRoleSurface() {
     if (auth.loading || auth.profileStatus === 'profile_missing') return
     if (!auth.session || !auth.role) return
     if (auth.role === 'customer') router.replace('/(customer)/home' as never)
-    if (auth.role === 'worker') router.replace('/(worker)/home' as never)
+    if (auth.role === 'worker') router.replace('/(worker)/(tabs)/home' as never)
     if (auth.role === 'admin') router.replace('/(admin)/sections' as never)
     if (auth.role === 'admin_operator') router.replace('/(admin)/sections' as never)
   }, [auth.loading, auth.passwordRecoveryPending, auth.profileStatus, auth.role, auth.session, reviewStep, router])
@@ -91,7 +91,7 @@ export function LoginRoleSurface() {
       const nextRole = auth.role ?? await auth.refreshProfile()
       if (role === 'worker') {
         if (nextRole === 'worker') {
-          router.replace('/(worker)/home' as never)
+          router.replace('/(worker)/(tabs)/home' as never)
           return { success: true }
         }
         const readiness = await auth.getWorkerReadiness()
@@ -133,7 +133,7 @@ export function LoginRoleSurface() {
         return { success: true }
       }
       if (nextRole === 'worker') {
-        router.replace('/(worker)/home' as never)
+        router.replace('/(worker)/(tabs)/home' as never)
         return { success: true }
       }
       return {
@@ -167,7 +167,7 @@ export function LoginRoleSurface() {
           status: applicationStatus,
         })
         if (applicationStatus !== 'not_submitted') {
-          return { success: true }
+          return { success: true, nextStep: 'onboarding' as const }
         }
         const application = await auth.submitWorkerApplication({ contact: identifier, language })
         return application.success
@@ -177,7 +177,7 @@ export function LoginRoleSurface() {
                 reason: null,
                 status: application.status ?? 'pending_review',
               })
-              return { success: true }
+              return { success: true, nextStep: 'onboarding' as const }
             })()
           : {
               success: false,
@@ -187,7 +187,8 @@ export function LoginRoleSurface() {
       workerRegistrationIntentRef.current = false
       if (result.role === 'admin') router.replace('/(admin)/sections' as never)
       else if (result.role === 'admin_operator') router.replace('/(admin)/sections' as never)
-      else if (role === 'customer') router.replace('/(customer)/home' as never)
+      else if (result.role === 'worker') router.replace('/(worker)/(tabs)/home' as never)
+      else if (result.role === 'customer') router.replace('/(customer)/home' as never)
       return result
     },
     onForgotPassword: async ({ email }: { email: string }) => auth.requestPasswordRecovery(email),
