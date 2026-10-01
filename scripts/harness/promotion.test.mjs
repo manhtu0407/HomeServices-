@@ -129,6 +129,13 @@ test('Plan 55 has a separate fail-closed Production-only transition policy with 
   assert.ok(validatePromotionConfig(mutableBase).includes(
     'Plan 55 exact Production source base is invalid',
   ))
+  const staleBaseBranch = {
+    ...policy,
+    productionSourceBase: { ...policy.productionSourceBase, branch: 'codex/plan55-production-base-645c907e' },
+  }
+  assert.ok(validatePromotionConfig(staleBaseBranch).includes(
+    'Plan 55 exact Production source base is invalid',
+  ))
   const missingAncestryGate = {
     ...policy,
     requiredGatesByTarget: {
