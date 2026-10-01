@@ -46,7 +46,7 @@ test('protected-boundary checks compare against the current pull request base', 
     'protected-boundary checks must not retain a stale Plan 55 base branch')
 })
 
-test('Plan 55 release is dispatch-only, pinned to the exact Production-base merge, and never targets Staging', () => {
+test('Plan 55 release dispatches from default main and enforces Production-base ancestry without targeting Staging', () => {
   expectWorkflowMatch(release, /^on:\r?\n  workflow_call:/mu, 'release must be callable by the registered CI workflow')
   assert.ok(!/^  (?:push|pull_request|schedule|workflow_dispatch):/mu.test(release),
     'release must not auto-start or depend on default-branch dispatch registration')
@@ -66,12 +66,14 @@ test('Plan 55 release is dispatch-only, pinned to the exact Production-base merg
     expectWorkflowMatch(release, new RegExp(`^      ${secretName}:\\r?\\n        required: false$`, 'mu'),
       `reusable release must declare ${secretName} as an optional caller secret for structured preflight`)
   }
-  expectWorkflowMatch(release, /refs\/heads\/codex\/plan55-production-base-891b1e26-review-v2/u,
-    'release must stay pinned to the approved Production-base branch')
+  expectWorkflowMatch(release, /refs\/heads\/main/u,
+    'release must run from the default branch so GitHub can dispatch the registered workflow')
   expectWorkflowMatch(release, /inputs\.source_sha == github\.sha/u,
     'release input must match the dispatched commit')
-  expectWorkflowMatch(release, /test "\$\(git show -s --format=%P/u,
-    'release must verify its merge parent')
+  expectWorkflowMatch(release, /git merge-base --is-ancestor "\$base_sha" "\$GITHUB_SHA"/u,
+    'release SHA must descend from the exact Production base even after main advances')
+  assert.doesNotMatch(release, /git show -s --format=%P/u,
+    'release ancestry must not assume its first parent is the Production base')
   assert.doesNotMatch(`${release}\n${service}`, /staging/iu)
 })
 
@@ -86,14 +88,18 @@ test('Plan 55 can be dispatched through the registered CI workflow without rerun
     'registered CI workflow must accept an optional Plan 55 source SHA')
   expectWorkflowMatch(ci, /plan55_source_sha:[\s\S]*?required: false[\s\S]*?type: string/u,
     'Plan 55 source SHA must remain an optional string so ordinary CI dispatches are unchanged')
+  expectWorkflowMatch(ci, /Exact merged SHA on default main descended from the pinned Production release base/u,
+    'dispatch input must describe the default-branch source used after the Plan 55 merge')
   expectWorkflowMatch(controls, /if:[^\r\n]*inputs\.plan55_source_sha == ''/u,
     'Plan 55 dispatch must skip ordinary controls')
   expectWorkflowMatch(guard, /if:[^\r\n]*github\.event_name == 'workflow_dispatch'[^\r\n]*inputs\.plan55_source_sha != ''/u,
     'source guard must run only for an explicit manual Plan 55 dispatch')
   expectWorkflowMatch(guard, /PLAN55_SOURCE_SHA: \$\{\{ inputs\.plan55_source_sha \}\}/u,
     'guard must validate the supplied SHA')
-  expectWorkflowMatch(guard, /refs\/heads\/codex\/plan55-production-base-891b1e26-review-v2/u,
-    'guard must reject non-Production-base refs')
+  expectWorkflowMatch(guard, /refs\/heads\/main/u,
+    'guard must allow only the registered default-branch workflow')
+  assert.doesNotMatch(guard, /refs\/heads\/codex\/plan55-production-base-[^\s"]+/u,
+    'dispatch guard must not target the feature-only Production-base branch')
   expectWorkflowMatch(guard, /test "\$PLAN55_SOURCE_SHA" = "\$GITHUB_SHA"/u,
     'guard must reject stale or substituted SHAs')
   expectWorkflowMatch(guard, /\[\[ ! "\$PLAN55_SOURCE_SHA" =~ \^\[a-f0-9\]\{40\}\$ \]\]/u,

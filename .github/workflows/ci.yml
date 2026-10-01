@@ -17,7 +17,7 @@ on:
   workflow_dispatch:
     inputs:
       plan55_source_sha:
-        description: Exact merged SHA on the pinned Plan 55 Production-base branch; leave blank for ordinary CI
+        description: Exact merged SHA on default main descended from the pinned Production release base; leave blank for ordinary CI
         required: false
         type: string
 
@@ -176,7 +176,7 @@ jobs:
           PLAN55_SOURCE_SHA: ${{ inputs.plan55_source_sha }}
         run: |
           set -euo pipefail
-          test "$GITHUB_REF" = "refs/heads/codex/plan55-production-base-891b1e26-review-v2"
+          test "$GITHUB_REF" = "refs/heads/main"
           if [[ ! "$PLAN55_SOURCE_SHA" =~ ^[a-f0-9]{40}$ ]]; then
             exit 1
           fi
