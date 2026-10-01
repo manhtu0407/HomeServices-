@@ -194,6 +194,7 @@ test('collects hosted health, migration, and deployed-function evidence from liv
   assert.equal(hosted.manifestSha256, release.manifestSha256)
   assert.equal(hosted.bundleSha256, release.bundleSha256)
   assert.deepEqual(hosted.providerReadiness, release.providerReadiness)
+  assert.equal(hosted.releaseLane, release.releaseLane ?? null)
   assert.deepEqual(hosted.migrations, inventory.entries)
   assert.deepEqual(hosted.migrationObjectPreconditions, [{
     object_kind: 'trigger',

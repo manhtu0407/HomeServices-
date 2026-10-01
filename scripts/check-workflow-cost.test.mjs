@@ -54,6 +54,102 @@ test('a bounded Linux workflow with cancelling concurrency raises nothing', () =
   assert.equal(report.jobs, 1)
 })
 
+test('a local reusable workflow is checked through its workflow_call definition', () => {
+  const caller = workflow({ jobs: `  prepare:
+    ${GUARD}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - run: echo ok
+  canary:
+    needs: prepare
+    uses: ./.github/workflows/service.yml` })
+  const service = `name: reusable service
+
+on:
+  workflow_call:
+
+jobs:
+  canary:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - run: echo ok
+`
+  const report = run([
+    { name: 'main.yml', text: caller },
+    { name: 'service.yml', text: service },
+  ])
+  assert.deepEqual(report.problems, [])
+  assert.equal(report.jobs, 2)
+})
+
+test('a reusable workflow with an over-budget child job is caught', () => {
+  const caller = workflow({ jobs: `  prepare:
+    ${GUARD}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - run: echo ok
+  canary:
+    needs: prepare
+    uses: ./.github/workflows/service.yml` })
+  const service = `name: reusable service
+
+on:
+  workflow_call:
+
+jobs:
+  canary:
+    runs-on: ubuntu-latest
+    timeout-minutes: ${MAX_TIMEOUT_MINUTES + 1}
+    steps:
+      - run: echo ok
+`
+  const report = run([
+    { name: 'main.yml', text: caller },
+    { name: 'service.yml', text: service },
+  ])
+  assert.match(messages(report), /service\.yml job canary: timeout-minutes 91 exceeds 90/)
+})
+
+test('a reusable workflow reference must resolve to a local workflow_call file', () => {
+  for (const ref of [
+    './.github/workflows/missing.yml',
+    'owner/repository/.github/workflows/service.yml@0123456789abcdef',
+  ]) {
+    const caller = workflow({ jobs: `  prepare:
+    ${GUARD}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - run: echo ok
+  canary:
+    needs: prepare
+    uses: ${ref}` })
+    const report = run([{ name: 'main.yml', text: caller }])
+    assert.match(messages(report), /main\.yml job canary: reusable workflow .* cannot be proven/, ref)
+  }
+})
+
+test('a local target without workflow_call cannot satisfy a reusable workflow reference', () => {
+  const caller = workflow({ jobs: `  prepare:
+    ${GUARD}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - run: echo ok
+  canary:
+    needs: prepare
+    uses: ./.github/workflows/service.yml` })
+  const service = workflow({ on: PUSH, concurrency: false })
+  const report = run([
+    { name: 'main.yml', text: caller },
+    { name: 'service.yml', text: service },
+  ])
+  assert.match(messages(report), /main\.yml job canary: service\.yml does not declare workflow_call/)
+})
+
 test('a job with no timeout-minutes is caught', () => {
   const report = run([{ name: 'a.yml', text: workflow({ jobs: `  build:
     runs-on: ubuntu-latest

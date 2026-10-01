@@ -91,6 +91,8 @@ export async function createKaelChat(
   const initialSafetySignals = persistentKaelSafetySignals(
     sanitizeForLLM(input.message ?? ""),
     input.service_type,
+    [],
+    ctx.user.id,
   );
 
   // Idempotent re-POST runs BEFORE the
@@ -258,6 +260,7 @@ async function advanceInitialKaelChatAnalysis(
     message,
     input.input.service_type,
     input.initialSafetySignals,
+    input.ctx.user.id,
   );
   const handledDemandingCustomer = safetyPath ? false : await maybeHandleDemandingCustomerKaelChatTurn(
     input.client,

@@ -13,8 +13,9 @@ export function persistentKaelSafetySignals(
   message: string,
   serviceType: ServiceType,
   persistedSafetySignals: readonly string[] = [],
+  actorId?: string | null,
 ) {
-  if (!getEnabledKaelPlaybook(serviceType)) return [];
+  if (!getEnabledKaelPlaybook(serviceType, actorId)) return [];
   const allowed = new Set(
     getKaelPerformanceProfile(serviceType)?.safety_capability_gates
       .flatMap((gate) => [...gate.trigger_signals]) ?? [],
@@ -29,11 +30,12 @@ export function requiresImmediateKaelSafetyPath(
   message: string,
   serviceType: ServiceType,
   persistedSafetySignals: readonly string[] = [],
+  actorId?: string | null,
 ) {
   return Boolean(
-    getEnabledKaelPlaybook(serviceType) &&
+    getEnabledKaelPlaybook(serviceType, actorId) &&
       deterministicSafetyGuidance(
-        persistentKaelSafetySignals(message, serviceType, persistedSafetySignals),
+        persistentKaelSafetySignals(message, serviceType, persistedSafetySignals, actorId),
         "vi",
         serviceType,
       ) !== null,

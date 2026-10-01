@@ -213,6 +213,7 @@ async function persistKaelChatEvidenceSubmission(input: {
     message,
     asServiceType(session.service_type),
     asStringArray(previousMetadata.intake_safety_signals),
+    ctx.user.id,
   );
   await persistReviewedVoiceTranscripts(
     client,

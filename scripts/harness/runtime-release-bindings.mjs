@@ -11,6 +11,10 @@ const GIT_SHA = /^[0-9a-f]{40}$/u
 const RELEASE_ID = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/u
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu
 const RUNTIME_VERSION = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,79}$/u
+const PLAN55_ACTIVE_CLIENT_BINDINGS = Object.freeze([
+  ['HARNESS_CLIENT_COMPAT_GIT_SHA', 'gitSha'],
+  ['HARNESS_CLIENT_COMPAT_RELEASE_ID', 'releaseId'],
+])
 
 const STAGING_CLIENT_POLICY = Object.freeze({
   ios: Object.freeze({
@@ -70,6 +74,10 @@ export function runtimeReleaseBindingsFromRelease(release, mobileBinaryAttestati
   }
   return Object.freeze({
     NESTSCOUT_ENVIRONMENT: 'production',
+    ...(release.releaseLane ? { HARNESS_RELEASE_LANE: release.releaseLane } : {}),
+    ...(release.releaseLane === 'plan55-production-only'
+      ? plan55ClientCompatibilityBindings(release.activeClientCompatibility)
+      : {}),
     ...pushReadinessBindings(release.providerReadiness),
     ...Object.fromEntries(BINDINGS.map(([name, field]) => [name, release[field]])),
     ...Object.fromEntries(CLIENT_BINDINGS.map(([name, read]) => [name, read(mobileBinaryAttestation)])),
@@ -108,11 +116,24 @@ export function runtimeReleaseBindingsFromHostedState(hosted) {
     releaseId: valid(hosted.releaseId, RELEASE_ID) ? hosted.releaseId : 'unreleased',
     gitSha: valid(hosted.gitSha, GIT_SHA) ? hosted.gitSha : 'unknown',
   }
+  const releaseLane = hosted.releaseLane == null ? null : validReleaseLane(hosted.releaseLane)
+  if (hosted.releaseLane != null && !releaseLane) {
+    throw new Error('rollback bindings contain an invalid release lane')
+  }
   for (const [, field] of BINDINGS.slice(2)) {
     values[field] = valid(hosted[field], DIGEST) ? hosted[field] : 'unknown'
   }
+  const activeClientCompatibility = releaseLane === 'plan55-production-only' &&
+    hosted.clientCompatibility?.gitSha && hosted.clientCompatibility?.releaseId
+    ? plan55ClientCompatibilityBindings({
+      gitSha: hosted.clientCompatibility.gitSha,
+      releaseId: hosted.clientCompatibility.releaseId,
+    })
+    : {}
   return Object.freeze({
     NESTSCOUT_ENVIRONMENT: 'production',
+    ...(releaseLane ? { HARNESS_RELEASE_LANE: releaseLane } : {}),
+    ...activeClientCompatibility,
     ...pushReadinessBindings(hosted.providerReadiness),
     ...Object.fromEntries(BINDINGS.map(([name, field]) => [name, values[field]])),
     NESTSCOUT_STAGE1_CLIENT_CONTRACT_EPOCH: String(hosted.clientCompatibility?.contractEpoch ?? 1),
@@ -127,11 +148,68 @@ export function runtimeReleaseBindingsFromHostedState(hosted) {
   })
 }
 
+export function assertHostedRuntimeBindingsRestorable(hosted) {
+  if (hosted?.environment !== 'production' || hosted?.projectRef !== 'iwevizmsedyqozxlawwl' ||
+      !valid(hosted.releaseId, RELEASE_ID) || !valid(hosted.gitSha, GIT_SHA)) {
+    throw new Error('rollback preflight requires an exact registered Production release identity')
+  }
+  for (const [, field] of BINDINGS.slice(2)) {
+    if (!valid(hosted[field], DIGEST)) {
+      throw new Error(`rollback preflight is missing exact hosted release metadata: ${field}`)
+    }
+  }
+  const readiness = hosted.providerReadiness
+  const readinessKeys = ['android_fcm_v1', 'anthropic', 'deepseek', 'durable_guards', 'global_ai_enabled',
+    'ios_apns', 'perplexity', 'push_receipt_reconciler', 'vietmap']
+  if (!readiness || typeof readiness !== 'object' || Array.isArray(readiness) ||
+      Object.keys(readiness).sort().join('\n') !== readinessKeys.sort().join('\n') ||
+      readinessKeys.some((key) => typeof readiness[key] !== 'boolean')) {
+    throw new Error('rollback preflight requires complete hosted provider readiness')
+  }
+  const compatibility = hosted.clientCompatibility
+  if (!compatibility || typeof compatibility !== 'object' || Array.isArray(compatibility) ||
+      !Number.isSafeInteger(compatibility.contractEpoch) || compatibility.contractEpoch < 1 ||
+      !['ios', 'android'].every((platform) => {
+        const value = compatibility[platform]
+        return value && typeof value === 'object' &&
+          typeof value.applicationId === 'string' && /^[A-Za-z0-9][A-Za-z0-9._:-]{1,159}$/u.test(value.applicationId) &&
+          Number.isSafeInteger(value.minimumBuildNumber) && value.minimumBuildNumber > 0 &&
+          typeof value.easBuildId === 'string' && UUID.test(value.easBuildId) &&
+          typeof value.runtimeVersion === 'string' && /^[A-Za-z0-9][A-Za-z0-9._:-]{0,79}$/u.test(value.runtimeVersion)
+      })) {
+    throw new Error('rollback preflight requires complete hosted client compatibility')
+  }
+  if (hosted.releaseLane != null && !validReleaseLane(hosted.releaseLane)) {
+    throw new Error('rollback preflight contains an invalid hosted release lane')
+  }
+  const bindings = runtimeReleaseBindingsFromHostedState(hosted)
+  const args = bindingArguments(bindings)
+  if (args.some((argument) => /(?:=unknown|=unreleased|=legacy-unavailable)$/u.test(argument)) ||
+      args.length !== (hosted.releaseLane === 'plan55-production-only' ? 28 : 25)) {
+    throw new Error('rollback preflight cannot reconstruct the exact hosted binding set')
+  }
+  return Object.freeze({ bindingCount: args.length, bindings })
+}
+
+function validReleaseLane(value) {
+  return value === 'verification' || value === 'plan55-production-only' ? value : null
+}
+
 export function bindingArguments(bindings) {
-  const expected = new Set(['NESTSCOUT_ENVIRONMENT', ...BINDINGS.map(([name]) => name),
+  const required = new Set(['NESTSCOUT_ENVIRONMENT', ...BINDINGS.map(([name]) => name),
     ...CLIENT_BINDINGS.map(([name]) => name), ...PUSH_READINESS_BINDINGS.map(([name]) => name)])
-  if (!bindings || Object.keys(bindings).length !== expected.size ||
-      Object.keys(bindings).some((name) => !expected.has(name))) {
+  const allowed = new Set([
+    ...required,
+    'HARNESS_RELEASE_LANE',
+    ...PLAN55_ACTIVE_CLIENT_BINDINGS.map(([name]) => name),
+  ])
+  const names = Object.keys(bindings ?? {})
+  const activeClientFields = PLAN55_ACTIVE_CLIENT_BINDINGS.map(([name]) => Object.hasOwn(bindings ?? {}, name))
+  if (!bindings || names.some((name) => !allowed.has(name)) ||
+      [...required].some((name) => !Object.hasOwn(bindings, name)) ||
+      (activeClientFields.some(Boolean) && !activeClientFields.every(Boolean)) ||
+      (activeClientFields.some(Boolean) && bindings.HARNESS_RELEASE_LANE !== 'plan55-production-only') ||
+      (Object.hasOwn(bindings, 'HARNESS_RELEASE_LANE') && !validReleaseLane(bindings.HARNESS_RELEASE_LANE))) {
     throw new Error('runtime release binding set is incomplete')
   }
   return Object.entries(bindings).sort(([left], [right]) => left.localeCompare(right))
@@ -141,6 +219,19 @@ export function bindingArguments(bindings) {
       }
       return `${name}=${value}`
     })
+}
+
+function plan55ClientCompatibilityBindings(value) {
+  const gitSha = String(value?.gitSha ?? '').toLowerCase()
+  const releaseId = value?.releaseId
+  if (!GIT_SHA.test(gitSha) || !RELEASE_ID.test(releaseId ?? '') ||
+      !new RegExp(`^harness-${gitSha.slice(0, 12)}-[0-9a-f]{12}$`, 'i').test(releaseId)) {
+    throw new Error('Plan 55 client compatibility must identify the pinned Production app release')
+  }
+  return Object.freeze({
+    HARNESS_CLIENT_COMPAT_GIT_SHA: gitSha,
+    HARNESS_CLIENT_COMPAT_RELEASE_ID: releaseId,
+  })
 }
 
 function valid(value, pattern) {

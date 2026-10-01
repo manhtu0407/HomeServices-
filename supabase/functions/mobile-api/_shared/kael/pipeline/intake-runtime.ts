@@ -31,13 +31,14 @@ export function isIntakeEvalObservationExposureEnabled() {
 export function resolveElectricalIntakeRuntime(input: {
   intakeDiagnosisEnabled: boolean;
   serviceType: string;
+  actorId?: string | null;
   problemChips: readonly string[];
   description: string;
   priorSafetySignals?: readonly string[];
 }) {
   const enabled = Boolean(
     getKaelPlaybook(input.serviceType) &&
-      isKaelPlaybookEnabled(input.serviceType),
+      isKaelPlaybookEnabled(input.serviceType, input.actorId),
   );
   const text = [...input.problemChips, input.description]
     .map((part) => part.trim())
@@ -145,13 +146,14 @@ export function buildIntakeObservation(input: {
   safetySignals: readonly string[];
   modelId: string;
   serviceType: string;
+  actorId?: string | null;
   electricalPlaybookEnabled: boolean;
 }): IntakeEvalObservation | undefined {
   const playbookEnabled = input.serviceType === "electrical"
     ? input.electricalPlaybookEnabled
     : Boolean(
       getKaelPlaybookVersion(input.serviceType) &&
-        isKaelPlaybookEnabled(input.serviceType),
+        isKaelPlaybookEnabled(input.serviceType, input.actorId),
     );
   if (!playbookEnabled && !isIntakeEvalObservationExposureEnabled()) {
     return undefined;
@@ -163,7 +165,7 @@ export function buildIntakeObservation(input: {
     needsClarification: input.needsClarification,
     safetySignals: [...new Set(input.safetySignals)].slice(0, 8),
     modelId: input.modelId,
-    promptVersion: kaelIntakeDiagnosisPromptVersion(input.serviceType),
+    promptVersion: kaelIntakeDiagnosisPromptVersion(input.serviceType, input.actorId),
     playbookVersion: playbookEnabled
       ? getKaelPlaybookVersion(input.serviceType)
       : null,
