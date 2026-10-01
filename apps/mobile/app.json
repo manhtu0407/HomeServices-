@@ -3,7 +3,7 @@
     "name": "NestScout",
     "slug": "home-services",
     "owner": "nestscout",
-    "version": "0.2.0",
+    "version": "0.2.1",
     "runtimeVersion": {
       "policy": "appVersion"
     },
@@ -13,7 +13,7 @@
     "scheme": "nestscout",
     "ios": {
       "supportsTablet": false,
-      "buildNumber": "45",
+      "buildNumber": "49",
       "bundleIdentifier": "com.phanmanhtu.homeservices",
       "config": {
         "usesNonExemptEncryption": false
