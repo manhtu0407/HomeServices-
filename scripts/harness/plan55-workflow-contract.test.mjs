@@ -7,17 +7,21 @@ const releasePath = '.github/workflows/plan55-production-only.yml'
 const servicePath = '.github/workflows/plan55-production-canary-service.yml'
 const finalizationPath = '.github/workflows/plan55-postreceipt-finalization.yml'
 const gateEvidencePackagePath = '.github/workflows/plan55-gate-evidence-package.yml'
+const blindHoldoutPackagePath = '.github/workflows/plan55-independent-holdout-package.yml'
 const ciPath = '.github/workflows/ci.yml'
 const release = readFileSync(releasePath, 'utf8')
 const service = readFileSync(servicePath, 'utf8')
 const finalization = readFileSync(finalizationPath, 'utf8')
 const gateEvidencePackage = readFileSync(gateEvidencePackagePath, 'utf8')
+const blindHoldoutPackage = readFileSync(blindHoldoutPackagePath, 'utf8')
 const ci = readFileSync(ciPath, 'utf8')
 const sourceAttestation = readFileSync('apps/api/scripts/lib/kael-playbook-production-attestation.mjs', 'utf8')
 const canaryCore = readFileSync('apps/api/scripts/lib/plan55-production-canary-core.mjs', 'utf8')
 const canaryCli = readFileSync('apps/api/scripts/kael-playbook-production-canary.mjs', 'utf8')
 const checkpointStore = readFileSync('apps/api/scripts/lib/plan55-production-canary-checkpoint-store.mjs', 'utf8')
 const holdoutPreflight = readFileSync('apps/api/scripts/plan55-independent-holdout-preflight.mjs', 'utf8')
+const blindHoldoutCli = readFileSync('apps/api/scripts/plan55-independent-holdout-package.mjs', 'utf8')
+const blindHoldoutBuilder = readFileSync('apps/api/scripts/lib/plan55-independent-holdout-package.mjs', 'utf8')
 const apiPackage = JSON.parse(readFileSync('apps/api/package.json', 'utf8'))
 
 function needsFor(job) {
@@ -307,6 +311,53 @@ test('release workflows are covered by the deployed evaluator source attestation
     'post-receipt finalizer must be included in the evaluator attestation')
   expectWorkflowMatch(sourceAttestation, /'\.github\/workflows\/plan55-gate-evidence-package\.yml'/u,
     'gate evidence package workflow must be included in the evaluator attestation')
+  expectWorkflowMatch(sourceAttestation, /'\.github\/workflows\/plan55-independent-holdout-package\.yml'/u,
+    'blind holdout package workflow must be included in the evaluator attestation')
+  expectWorkflowMatch(sourceAttestation, /'apps\/api\/scripts\/plan55-independent-holdout-package\.mjs'/u,
+    'blind holdout package CLI must be included in the evaluator attestation')
+  expectWorkflowMatch(sourceAttestation, /'apps\/api\/scripts\/lib\/plan55-independent-holdout-package\.mjs'/u,
+    'blind holdout package builder must be included in the evaluator attestation')
+})
+
+test('blind holdout review packaging is source-bound, read-only, and excludes label sources', () => {
+  expectWorkflowMatch(blindHoldoutPackage, /^on:\r?\n  pull_request:/mu,
+    'blind package must run for relevant same-repository pull requests')
+  expectWorkflowMatch(blindHoldoutPackage, /types: \[opened, synchronize, reopened, ready_for_review\]/u,
+    'blind package must refresh for ready and updated pull requests')
+  expectWorkflowMatch(blindHoldoutPackage, /cancel-in-progress: \$\{\{ github\.event_name == 'pull_request' \}\}/u,
+    'new PR heads must supersede older package jobs without canceling explicit source dispatches')
+  expectWorkflowMatch(blindHoldoutPackage, /github\.event\.pull_request\.draft == false/u,
+    'draft requests must not upload adjudication packages')
+  expectWorkflowMatch(blindHoldoutPackage, /github\.event\.pull_request\.head\.repo\.full_name == github\.repository/u,
+    'automatic package generation must exclude fork code and data exfiltration paths')
+  expectWorkflowMatch(blindHoldoutPackage, /python - "\$GITHUB_EVENT_PATH" "\$PLAN55_REPOSITORY"/u,
+    'automatic package generation must read the runner-provided authenticated PR event payload')
+  expectWorkflowMatch(blindHoldoutPackage, /github\.event_name == 'workflow_dispatch' && github\.ref == 'refs\/heads\/main'/u,
+    'manual package generation must be initiated only from default main')
+  expectWorkflowMatch(blindHoldoutPackage, /workflow_dispatch:[\s\S]*?reviewed_head_sha:[\s\S]*?pull_request_number:/u,
+    'blind package may be rebuilt only for an explicitly identified reviewed PR head')
+  expectWorkflowMatch(blindHoldoutPackage, /contents: read\r?\n  pull-requests: read/u,
+    'blind package workflow must not have repository write access')
+  expectWorkflowMatch(blindHoldoutPackage, /repository: \$\{\{ github\.repository \}\}[\s\S]*?ref: \$\{\{ steps\.identity\.outputs\.reviewed_head_sha \}\}/u,
+    'package must checkout the exact authenticated same-repository PR head')
+  expectWorkflowMatch(blindHoldoutPackage, /actions\/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02/u,
+    'package artifact action must be pinned')
+  expectWorkflowMatch(blindHoldoutPackage, /retention-days: 30/u,
+    'independent reviewer must have a bounded window to retrieve the package')
+  expectWorkflowMatch(blindHoldoutPackage, /gh api "repos\/\$PLAN55_REPOSITORY\/pulls\/\$INPUT_PR_NUMBER"/u,
+    'manual artifact runs must verify the PR head through the read-only GitHub API')
+  expectWorkflowMatch(blindHoldoutPackage, /pr\.get\('head', \{\}\)\.get\('sha'\) != sys\.argv\[2\]/u,
+    'manual artifact runs must reject a stale or substituted pull request head')
+  expectWorkflowMatch(blindHoldoutBuilder, /event\?\.pull_request\?\.head\?\.repo\?\.full_name === PLAN55_GITHUB_REPOSITORY/u,
+    'CLI must reject fork or wrong-repository source identities')
+  expectWorkflowMatch(blindHoldoutCli, /const checkoutHeadSha = git\(\['rev-parse', 'HEAD'\]\)/u,
+    'CLI must require the checked-out tree to equal the exact reviewed head')
+  expectWorkflowMatch(blindHoldoutCli, /const workingTreeClean = git\(\['status', '--porcelain=v1', '--untracked-files=all'\]\) === ''/u,
+    'CLI must fail closed on a dirty package source tree')
+  assert.doesNotMatch(blindHoldoutPackage, /PRODUCTION_SUPABASE|supabase db|supabase functions|functions deploy|service[_-]role/iu,
+    'blind package job must never connect to or mutate Production')
+  assert.doesNotMatch(`${blindHoldoutCli}\n${blindHoldoutBuilder}`, /SUPABASE|functions deploy|service[_-]role/iu,
+    'blind package CLI must have no Production operations')
 })
 
 test('gate evidence packaging preserves exact-source evidence and has no Production write capability', () => {

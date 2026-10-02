@@ -1,0 +1,118 @@
+name: Plan 55 blind holdout review package
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    branches: [main]
+    paths:
+      - '.github/workflows/plan55-independent-holdout-package.yml'
+      - '.github/workflows/plan55-*.yml'
+      - 'apps/api/scripts/plan55-independent-holdout-package.mjs'
+      - 'apps/api/scripts/plan55-*.mjs'
+      - 'apps/api/scripts/lib/plan55-independent-holdout-package.mjs'
+      - 'apps/api/scripts/lib/plan55-*.mjs'
+      - 'apps/api/scripts/lib/plan55-independent-holdout-review.mjs'
+      - 'apps/api/scripts/lib/kael-playbook-production-attestation.mjs'
+      - 'config/harness/plan55-production-only-policy.json'
+      - 'config/harness/plan55-*.json'
+      - 'scripts/harness/plan55-*.mjs'
+      - 'governance/Plan.md'
+      - 'docs/playbooks/eval/*.json'
+      - 'supabase/functions/mobile-api/_shared/kael/learning/playbooks/*.ts'
+      - 'supabase/functions/mobile-api/_shared/kael/learning/playbooks/flags.ts'
+      - 'apps/api/src/__tests__/unit/kael-playbook-registry-pillar.test.ts'
+  workflow_dispatch:
+    inputs:
+      reviewed_head_sha:
+        description: Exact same-repository pull request head SHA to blind and bind
+        required: true
+        type: string
+      pull_request_number:
+        description: Pull request number whose exact head is reviewed
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  pull-requests: read
+
+concurrency:
+  group: plan55-blind-holdout-${{ github.event.pull_request.number || inputs.pull_request_number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  package:
+    if: >-
+      (github.event_name != 'pull_request' || github.event.pull_request.draft == false) &&
+      ((github.event_name == 'pull_request' && github.event.pull_request.base.ref == 'main' &&
+        github.event.pull_request.head.repo.full_name == github.repository) ||
+       (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - name: Resolve the exact reviewed PR head
+        id: identity
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          INPUT_HEAD_SHA: ${{ inputs.reviewed_head_sha }}
+          INPUT_PR_NUMBER: ${{ inputs.pull_request_number }}
+          GH_TOKEN: ${{ github.token }}
+          PLAN55_REPOSITORY: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          if [[ "$EVENT_NAME" == "pull_request" ]]; then
+            python - "$GITHUB_EVENT_PATH" "$PLAN55_REPOSITORY" <<'PY' >> "$GITHUB_OUTPUT"
+          import json, sys
+          event = json.load(open(sys.argv[1], encoding='utf-8'))
+          repo = sys.argv[2]
+          pr = event.get('pull_request') or {}
+          if (event.get('repository', {}).get('full_name') != repo or
+              pr.get('base', {}).get('ref') != 'main' or
+              (pr.get('head', {}).get('repo') or {}).get('full_name') != repo):
+              raise SystemExit('plan55_holdout_pr_context_invalid')
+          print(f"reviewed_head_sha={pr['head']['sha']}")
+          print(f"pull_request_number={pr['number']}")
+          PY
+          else
+            [[ "$PLAN55_REPOSITORY" == "manhtu0407/HomeServices-" ]]
+            [[ "$INPUT_HEAD_SHA" =~ ^[a-f0-9]{40}$ ]]
+            [[ "$INPUT_PR_NUMBER" =~ ^[1-9][0-9]*$ ]]
+            gh api "repos/$PLAN55_REPOSITORY/pulls/$INPUT_PR_NUMBER" > "$RUNNER_TEMP/plan55-pr.json"
+            python - "$RUNNER_TEMP/plan55-pr.json" "$INPUT_HEAD_SHA" "$INPUT_PR_NUMBER" "$PLAN55_REPOSITORY" <<'PY' >> "$GITHUB_OUTPUT"
+          import json, sys
+          pr = json.load(open(sys.argv[1], encoding='utf-8'))
+          if (pr.get('base', {}).get('ref') != 'main' or
+              (pr.get('head', {}).get('repo') or {}).get('full_name') != sys.argv[4] or
+              pr.get('head', {}).get('sha') != sys.argv[2] or
+              str(pr.get('number')) != sys.argv[3]):
+              raise SystemExit('plan55_holdout_pr_identity_invalid')
+          print(f"reviewed_head_sha={pr['head']['sha']}")
+          print(f"pull_request_number={pr['number']}")
+          PY
+          fi
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          repository: ${{ github.repository }}
+          ref: ${{ steps.identity.outputs.reviewed_head_sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+      - name: Build the source-bound blind package
+        env:
+          PLAN55_REVIEWED_HEAD_SHA: ${{ steps.identity.outputs.reviewed_head_sha }}
+          PLAN55_PULL_REQUEST_NUMBER: ${{ steps.identity.outputs.pull_request_number }}
+        run: >-
+          node apps/api/scripts/plan55-independent-holdout-package.mjs
+          --reviewed-head-sha "$PLAN55_REVIEWED_HEAD_SHA"
+          --pull-request "$PLAN55_PULL_REQUEST_NUMBER"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: plan55-blind-holdout-${{ steps.identity.outputs.reviewed_head_sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/plan55-blind-holdout/review-package.json
+          if-no-files-found: error
+          retention-days: 30

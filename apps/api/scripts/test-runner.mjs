@@ -6,6 +6,7 @@ const packageRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const apiNodeTests = [
   'apps/api/scripts/lib/kael-playbook-eval-targets.test.mjs',
   'apps/api/scripts/lib/plan55-independent-holdout-review.test.mjs',
+  'apps/api/scripts/lib/plan55-independent-holdout-package.test.mjs',
   'apps/api/scripts/lib/plan55-production-canary-core.test.mjs',
   'apps/api/scripts/lib/plan55-production-canary-checkpoint-store.test.mjs',
   'apps/api/scripts/lib/plan55-production-canary-operations.test.mjs',
