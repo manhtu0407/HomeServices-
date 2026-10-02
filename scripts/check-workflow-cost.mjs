@@ -51,8 +51,8 @@ export const EXCEPTIONS = [
     workflow: 'plan55-production-canary-service.yml',
     job: 'canary',
     rule: 'timeout',
-    max: 120,
-    reason: '96 sequential cases allow three 20-second API turns each; 120 minutes covers the 96-minute bound plus setup and cleanup',
+    max: 360,
+    reason: '96 sequential cases use 88 explicit 190-second cooldowns plus bounded chat turns and 20-minute cleanup; the six-hour job is the GitHub-hosted ceiling needed to avoid killing cleanup',
   },
 ]
 

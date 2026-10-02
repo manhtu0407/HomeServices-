@@ -109,7 +109,7 @@ jobs:
           pnpm harness:reliability:check
           pnpm harness:promotion:check
           pnpm edge:check
-          node scripts/harness/transaction-critical-coverage.mjs --require-behavioral \
+          node scripts/harness/transaction-critical-coverage.mjs --require-bound-assertions \
             --results artifacts/transactions/api-vitest.json \
             --results artifacts/transactions/mobile-jest.json
       - name: Secret scan
@@ -512,7 +512,7 @@ jobs:
           if (status.services?.length !== 6 || status.services.some((item) => !item.complete ||
               item.verified_slice_ids?.length !== 8 || !item.cleanup_verified) ||
               g5.services?.length !== 6 || g5.services.some((item) =>
-                !['G5_PASSED', 'G5_FAILED_SERVICE_OFF'].includes(item.status) ||
+                item.status !== 'G5_PASSED' ||
                 item.slice_count !== 8 || item.case_count !== 96 || item.error_count !== 0 ||
                 item.cleanup?.reused !== true)) process.exit(1)
           NODE
