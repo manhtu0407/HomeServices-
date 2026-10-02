@@ -68,6 +68,7 @@ export const PLAN55_EVALUATOR_PATHS = Object.freeze([
   '.github/workflows/ci.yml',
   '.github/workflows/plan55-production-only.yml',
   '.github/workflows/plan55-production-canary-service.yml',
+  '.github/workflows/plan55-postreceipt-finalization.yml',
   'apps/api/scripts/kael-playbook-production-canary.mjs',
   'apps/api/scripts/kael-playbook-production-attest.mjs',
   'apps/api/scripts/lib/kael-playbook-production-attestation.mjs',

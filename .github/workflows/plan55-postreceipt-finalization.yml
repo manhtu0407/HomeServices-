@@ -1,0 +1,147 @@
+name: Plan 55 post-receipt finalization packet
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_sha:
+        description: Exact locked Plan 55 merge SHA
+        required: true
+        type: string
+      run_id:
+        description: Successful Plan 55 source workflow run that produced the input artifact
+        required: true
+        type: string
+      run_attempt:
+        description: Exact successful source workflow attempt
+        required: true
+        type: string
+      artifact_id:
+        description: Immutable finalization-input artifact ID from that run
+        required: true
+        type: string
+      target_state:
+        description: Policy state for which to build a read-only promotion packet
+        required: true
+        type: choice
+        options:
+          - receipts_validated
+          - paired_wave_1
+          - paired_wave_2
+          - paired_wave_3
+          - production
+
+permissions:
+  actions: read
+  contents: read
+
+concurrency:
+  group: plan55-postreceipt-${{ github.repository }}-${{ inputs.source_sha }}
+  cancel-in-progress: false
+
+jobs:
+  finalize-packet:
+    if: github.ref == 'refs/heads/main' && inputs.source_sha == github.sha
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      actions: read
+      contents: read
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          ref: ${{ inputs.source_sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+      - name: Confirm the locked source and Production ancestry
+        env:
+          PLAN55_SOURCE_SHA: ${{ inputs.source_sha }}
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF" = "refs/heads/main"
+          [[ "$PLAN55_SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          test "$GITHUB_SHA" = "$PLAN55_SOURCE_SHA"
+          test "$(git rev-parse HEAD)" = "$PLAN55_SOURCE_SHA"
+          test -z "$(git status --porcelain=v1 --untracked-files=all)"
+          base_sha=$(node -p "require('./config/harness/plan55-production-only-policy.json').productionSourceBase.sha")
+          git merge-base --is-ancestor "$base_sha" "$PLAN55_SOURCE_SHA"
+      - name: Verify and stage the exact-source evidence artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PLAN55_SOURCE_SHA: ${{ inputs.source_sha }}
+          PLAN55_RUN_ID: ${{ inputs.run_id }}
+          PLAN55_RUN_ATTEMPT: ${{ inputs.run_attempt }}
+          PLAN55_ARTIFACT_ID: ${{ inputs.artifact_id }}
+        run: |
+          node --input-type=module <<'NODE'
+          import { mkdirSync, writeFileSync } from 'node:fs'
+          import { dirname, resolve, sep } from 'node:path'
+          import {
+            assertPlan55FinalizationArtifactFiles,
+            downloadPlan55GitHubRunArtifact,
+          } from './scripts/harness/plan55-gate-receipts.mjs'
+          import { loadPlan55ProductionOnlyPolicy } from './scripts/harness/promotion.mjs'
+
+          const policy = loadPlan55ProductionOnlyPolicy(process.cwd())
+          const runId = Number(process.env.PLAN55_RUN_ID)
+          const runAttempt = Number(process.env.PLAN55_RUN_ATTEMPT)
+          const artifactId = Number(process.env.PLAN55_ARTIFACT_ID)
+          if (![runId, runAttempt, artifactId].every(Number.isSafeInteger)) {
+            throw new Error('Plan 55 source artifact inputs are invalid')
+          }
+          const artifact = await downloadPlan55GitHubRunArtifact({
+            repository: policy.repository,
+            trustedWorkflowPaths: policy.trustedEvidenceWorkflowPaths,
+            sourceSha: process.env.PLAN55_SOURCE_SHA,
+            artifactId,
+            artifactName: `plan55-finalization-inputs-${runId}-${runAttempt}`,
+            runId,
+            runAttempt,
+            workflowPath: '.github/workflows/plan55-production-only.yml',
+            token: process.env.GH_TOKEN,
+          })
+          assertPlan55FinalizationArtifactFiles(artifact.files)
+
+          const outputRoot = resolve('artifacts/harness')
+          for (const [name, bytes] of artifact.files) {
+            if (name.endsWith('/')) continue
+            const outputPath = resolve(outputRoot, name)
+            if (!outputPath.startsWith(`${outputRoot}${sep}`)) {
+              throw new Error('Plan 55 finalization artifact path escaped its output directory')
+            }
+            mkdirSync(dirname(outputPath), { recursive: true })
+            writeFileSync(outputPath, bytes, { flag: 'wx' })
+          }
+          NODE
+      - name: Validate promotion policy and emit a packet only
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PLAN55_TARGET_STATE: ${{ inputs.target_state }}
+          PLAN55_ACTOR: ${{ github.actor }}
+        run: |
+          set -euo pipefail
+          node scripts/harness/promotion.mjs --check-plan55
+          case "$PLAN55_TARGET_STATE" in
+            receipts_validated) from_state=service_cleanup ;;
+            paired_wave_1) from_state=receipts_validated ;;
+            paired_wave_2) from_state=paired_wave_1 ;;
+            paired_wave_3) from_state=paired_wave_2 ;;
+            production) from_state=paired_wave_3 ;;
+            *) echo "plan55_invalid_target_state" >&2; exit 1 ;;
+          esac
+          node scripts/harness/promotion.mjs --plan55 \
+            --release artifacts/harness/release-manifest.json \
+            --evaluation artifacts/harness/evaluation-report.json \
+            --gate-receipts artifacts/harness/gate-evidence-set.json \
+            --from "$from_state" --to "$PLAN55_TARGET_STATE" \
+            --approval "$PLAN55_ACTOR:$GITHUB_RUN_ID" \
+            --output artifacts/harness/promotion-packet.json
+      - name: Publish the non-deploying promotion packet
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: plan55-promotion-packet-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/harness/promotion-packet.json
+          if-no-files-found: error
+          retention-days: 90

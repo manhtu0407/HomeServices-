@@ -3,6 +3,12 @@
   "schemaVersion": "plan55-production-only-policy.v1",
   "environment": "production",
   "projectRef": "iwevizmsedyqozxlawwl",
+  "repository": "manhtu0407/HomeServices-",
+  "trustedEvidenceWorkflowPaths": [
+    ".github/workflows/ci.yml",
+    ".github/workflows/plan55-production-only.yml",
+    ".github/workflows/plan55-production-canary-service.yml"
+  ],
   "releaseLane": "plan55-production-only",
   "productionSourceBase": {
     "branch": "codex/plan55-production-base-891b1e26-review-v2",
@@ -106,10 +112,11 @@
       "plan55-full-production-readiness",
       "plan55-exact-binary-release-attestation",
       "plan55-publication-packet",
-      "plan55-rollback-drill"
+      "plan55-rollback-drill",
+      "plan55-paired-wave-1-pass"
     ],
-    "paired_wave_2": ["plan55-paired-wave-1-pass"],
-    "paired_wave_3": ["plan55-paired-wave-2-pass"],
+    "paired_wave_2": ["plan55-paired-wave-1-pass", "plan55-paired-wave-2-pass"],
+    "paired_wave_3": ["plan55-paired-wave-2-pass", "plan55-paired-wave-3-pass"],
     "production": ["plan55-paired-wave-3-pass", "plan55-post-rollout-cohort-pass"],
     "aborted": [],
     "rolled_back": ["plan55-rollback-executed"]

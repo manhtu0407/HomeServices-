@@ -63,6 +63,7 @@
     "harness:reliability:check": "node scripts/run.mjs run-node scripts/harness/reliability-registry.mjs",
     "harness:reliability:write": "node scripts/run.mjs run-node scripts/harness/reliability-registry.mjs --write",
     "harness:promotion:check": "node scripts/run.mjs run-node scripts/harness/promotion.mjs --check",
+    "harness:promotion:plan55:check": "node scripts/run.mjs run-node scripts/harness/promotion.mjs --check-plan55",
     "harness:verify": "node scripts/run.mjs run-node scripts/harness/verify.mjs",
     "ship:check": "node scripts/run.mjs run-node scripts/check-ship-ready.mjs",
     "design:intelligence": "node scripts/run.mjs run-node scripts/design/kael-design-intelligence.mjs",
