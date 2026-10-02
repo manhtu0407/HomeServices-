@@ -5,9 +5,13 @@ import { apiTestCommandPlan } from '../../apps/api/scripts/test-runner.mjs'
 
 const releasePath = '.github/workflows/plan55-production-only.yml'
 const servicePath = '.github/workflows/plan55-production-canary-service.yml'
+const finalizationPath = '.github/workflows/plan55-postreceipt-finalization.yml'
+const gateEvidencePackagePath = '.github/workflows/plan55-gate-evidence-package.yml'
 const ciPath = '.github/workflows/ci.yml'
 const release = readFileSync(releasePath, 'utf8')
 const service = readFileSync(servicePath, 'utf8')
+const finalization = readFileSync(finalizationPath, 'utf8')
+const gateEvidencePackage = readFileSync(gateEvidencePackagePath, 'utf8')
 const ci = readFileSync(ciPath, 'utf8')
 const sourceAttestation = readFileSync('apps/api/scripts/lib/kael-playbook-production-attestation.mjs', 'utf8')
 const canaryCore = readFileSync('apps/api/scripts/lib/plan55-production-canary-core.mjs', 'utf8')
@@ -284,6 +288,11 @@ test('service workflow preserves order and resumes only an exact-source cleaned 
   assert.doesNotMatch(release, /!\['G5_PASSED', 'G5_FAILED_SERVICE_OFF'\]\.includes\(item\.status\)/u)
   assert.match(release, /cleanup\?\.reused !== true/u)
   assert.match(release, /item\.slice_count !== 8 \|\| item\.case_count !== 96 \|\| item\.error_count !== 0/u)
+  assert.match(release, /\.scratch\/plan55-production-canary\/records\/\*\*/u)
+  assert.match(release, /\.scratch\/plan55-production-canary\/attempts\/\*\*/u)
+  assert.match(release, /docs\/test-logs\/plan55\/\$\{\{ inputs\.source_sha \}\}\/\r?\n/u)
+  assert.match(release, /if-no-files-found: error/u)
+  assert.match(release, /pnpm harness:promotion:plan55:check/u)
   assert.doesNotMatch(release, /item\.slices\?/u)
 })
 
@@ -294,6 +303,76 @@ test('release workflows are covered by the deployed evaluator source attestation
     'release workflow must be included in the evaluator attestation')
   expectWorkflowMatch(sourceAttestation, /'\.github\/workflows\/plan55-production-canary-service\.yml'/u,
     'service workflow must be included in the evaluator attestation')
+  expectWorkflowMatch(sourceAttestation, /'\.github\/workflows\/plan55-postreceipt-finalization\.yml'/u,
+    'post-receipt finalizer must be included in the evaluator attestation')
+  expectWorkflowMatch(sourceAttestation, /'\.github\/workflows\/plan55-gate-evidence-package\.yml'/u,
+    'gate evidence package workflow must be included in the evaluator attestation')
+})
+
+test('gate evidence packaging preserves exact-source evidence and has no Production write capability', () => {
+  expectWorkflowMatch(gateEvidencePackage, /^on:\r?\n  workflow_dispatch:/mu,
+    'evidence packaging must be explicitly dispatched')
+  expectWorkflowMatch(gateEvidencePackage, /permissions:\r?\n  actions: read\r?\n  contents: read/u,
+    'evidence packaging must be read-only')
+  expectWorkflowMatch(gateEvidencePackage, /github\.ref == 'refs\/heads\/main' && inputs\.source_sha == github\.sha/u,
+    'evidence packaging must run on the exact locked main SHA')
+  assert.match(gateEvidencePackage, /buildPlan55GateEvidenceArtifact/u)
+  assert.match(gateEvidencePackage, /downloadPlan55GitHubRunArtifact/u)
+  assert.match(gateEvidencePackage, /requiredPromotionGates\(policy, targetState\)/u)
+  assert.match(gateEvidencePackage, /hosted-before\.json/u,
+    'evidence package must verify the release against its hosted-before snapshot')
+  assert.match(gateEvidencePackage, /release-bundle\.mjs --verify artifacts\/harness\/release-manifest\.json \\\r?\n\s+--hosted-before artifacts\/harness\/hosted-before\.json/u,
+    'evidence package release verification must bind the hosted-before snapshot')
+  assert.match(gateEvidencePackage, /plan55-gate-evidence-\$\{\{ github\.run_id \}\}-\$\{\{ github\.run_attempt \}\}/u)
+  assert.doesNotMatch(gateEvidencePackage, /supabase|release-control\.mjs|functions deploy|production environment|service[_-]role/iu)
+  const policy = JSON.parse(readFileSync('config/harness/plan55-production-only-policy.json', 'utf8'))
+  assert.ok(!policy.trustedEvidenceWorkflowPaths.includes(gateEvidencePackagePath),
+    'the packager may produce aggregate artifacts but must not be trusted as a raw gate-evidence source')
+})
+
+test('post-receipt finalization consumes separately attested exact-source artifacts and cannot mutate Production', () => {
+  expectWorkflowMatch(finalization, /^on:\r?\n  workflow_dispatch:/mu,
+    'post-receipt finalization must be manually dispatched')
+  expectWorkflowMatch(finalization, /permissions:\r?\n  actions: read\r?\n  contents: read/u,
+    'post-receipt finalization must use read-only GitHub permissions')
+  assert.doesNotMatch(finalization, /^  (?:deployments|id-token|issues|pull-requests|checks):/mu,
+    'post-receipt finalization must not gain deployment or write permissions')
+  assert.match(finalization, /cancel-in-progress: false/u)
+  assert.equal((finalization.match(/downloadPlan55GitHubRunArtifact\(/gu) ?? []).length, 1,
+    'one shared provenance verifier must validate every supplied artifact')
+  assert.match(finalization, /artifactNamePrefix,\s*expectedRunId,\s*expectedRunAttempt/u)
+  assert.match(finalization, /download\(releaseArtifactId, 'plan55-release', sourceRunId, sourceRunAttempt\)/u)
+  assert.match(finalization, /download\(receiptsArtifactId, 'plan55-six-receipts', sourceRunId, sourceRunAttempt\)/u)
+  assert.match(finalization, /download\(gateEvidenceArtifactId, 'plan55-gate-evidence'/u)
+  assert.match(finalization, /const gateEvidenceWorkflow = '\.github\/workflows\/plan55-gate-evidence-package\.yml'/u)
+  assert.match(finalization, /undefined,\s*\[gateEvidenceWorkflow\]\)/u,
+    'the aggregate evidence artifact must come from its dedicated packager')
+  assert.match(finalization, /six-service receipt artifact failed exact-source validation/u)
+  assert.match(finalization, /scripts\/harness\/evaluate-release\.mjs/u)
+  assert.match(finalization, /uniqueFile\(releaseArtifact\.files, 'hosted-before\.json', 'hosted-before'\)/u,
+    'finalization must use the hosted-before snapshot from the source release artifact')
+  assert.match(finalization, /writeFileSync\(resolve\(outputRoot, 'hosted-before\.json'\), hostedBeforeBytes/u,
+    'finalization must stage the exact hosted-before snapshot before verification')
+  assert.match(finalization, /release-bundle\.mjs --verify artifacts\/harness\/release-manifest\.json \\\r?\n\s+--hosted-before artifacts\/harness\/hosted-before\.json/u,
+    'Plan 55 release verification must bind the manifest to the hosted-before snapshot')
+  assert.match(finalization, /const sourceWorkflow = '\.github\/workflows\/plan55-production-only\.yml'/u)
+  assert.match(finalization, /PLAN55_SOURCE_SHA: \$\{\{ inputs\.source_sha \}\}/u)
+  assert.match(finalization, /PLAN55_RELEASE_ARTIFACT_ID: \$\{\{ inputs\.release_artifact_id \}\}/u)
+  assert.match(finalization, /PLAN55_RECEIPTS_ARTIFACT_ID: \$\{\{ inputs\.receipts_artifact_id \}\}/u)
+  assert.match(finalization, /PLAN55_GATE_EVIDENCE_ARTIFACT_ID: \$\{\{ inputs\.gate_evidence_artifact_id \}\}/u)
+  assert.match(finalization, /test "\$GITHUB_SHA" = "\$PLAN55_SOURCE_SHA"/u)
+  const artifactVerificationStep = finalization.indexOf('name: Verify and stage the independently produced exact-source artifacts')
+  assert.ok(artifactVerificationStep >= 0 &&
+    artifactVerificationStep < finalization.indexOf('downloadPlan55GitHubRunArtifact') &&
+    finalization.indexOf('downloadPlan55GitHubRunArtifact') <
+      finalization.indexOf('name: Validate promotion policy and emit a packet only'),
+  'artifact provenance must be verified before packet creation')
+  assert.match(finalization, /--gate-receipts artifacts\/harness\/gate-evidence\/gate-evidence-set\.json/u)
+  assert.match(finalization, /actions\/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02/u)
+  assert.doesNotMatch(finalization, /SUPABASE|release-control\.mjs|supabase db|supabase functions deploy|production environment/u)
+  for (const target of ['receipts_validated', 'paired_wave_1', 'paired_wave_2', 'paired_wave_3', 'production']) {
+    assert.match(finalization, new RegExp(target, 'u'), `finalizer must support the policy state ${target}`)
+  }
 })
 
 test('API JSON evidence is emitted by Vitest without dropping the Node contract suite', () => {

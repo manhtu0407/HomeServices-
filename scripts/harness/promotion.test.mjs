@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict'
 import { createHash } from 'node:crypto'
-import { readFileSync } from 'node:fs'
-import { resolve } from 'node:path'
+import { mkdtempSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join, resolve } from 'node:path'
 import test from 'node:test'
 import {
   buildPromotionPacket,
@@ -9,7 +10,9 @@ import {
   canTransition,
   evaluateAbortThresholds,
   loadPlan55ProductionOnlyPolicy,
+  requiredPromotionGates,
   releaseCompatibilityProblems,
+  resolvePromotionPath,
   sanitizePromotionEvidence,
   simulateCanaryDecision,
   validatePromotionConfig,
@@ -18,6 +21,24 @@ import {
 import { buildHarnessRelease } from './release-bundle.mjs'
 
 const config = JSON.parse(readFileSync(resolve('config/harness/promotion.json'), 'utf8'))
+
+test('promotion CLI paths reject traversal and links escaping the repository root', (t) => {
+  const root = mkdtempSync(join(tmpdir(), 'plan55-promotion-root-'))
+  const outside = mkdtempSync(join(tmpdir(), 'plan55-promotion-outside-'))
+  t.after(() => {
+    rmSync(root, { recursive: true, force: true })
+    rmSync(outside, { recursive: true, force: true })
+  })
+  mkdirSync(join(root, '.scratch'))
+  writeFileSync(join(outside, 'release.json'), '{}\n')
+  symlinkSync(outside, join(root, 'outside-link'), process.platform === 'win32' ? 'junction' : 'dir')
+
+  assert.throws(() => resolvePromotionPath('../plan55-promotion-outside/release.json', { root }), /outside the repository/u)
+  assert.throws(() => resolvePromotionPath('outside-link/release.json', { root }), /outside the repository/u)
+  assert.throws(() => resolvePromotionPath('outside-link/packet.json', { root, mustExist: false }), /outside the repository/u)
+  assert.equal(resolvePromotionPath('.scratch/packet.json', { root, mustExist: false }), join(root, '.scratch', 'packet.json'))
+})
+
 function plan55HostedBeforeBytes(policy) {
   const inventory = JSON.parse(readFileSync(resolve('config/harness/migration-inventory.json'), 'utf8'))
   return Buffer.from(`${JSON.stringify({
@@ -41,6 +62,42 @@ function plan55HostedBeforeBytes(policy) {
     },
     migrations: inventory.entries.slice(0, 3).map(({ version, name }) => ({ version, name })),
   }, null, 2)}\n`)
+}
+
+function plan55GateReceipts(policy, release, gates, targetState) {
+  return Object.fromEntries(gates.map((gate, index) => {
+    const receipt = {
+      schemaVersion: 'plan55-gate-evidence.v1',
+      gate,
+      status: 'PASS',
+      environment: 'production',
+      projectRef: policy.projectRef,
+      policyId: policy.policyId,
+      policySha256: policy.policySha256,
+      releaseId: release.releaseId,
+      sourceSha: release.gitSha,
+      targetState,
+      evidence: { path: 'evidence.json', sha256: String(index + 1).padStart(64, '0') },
+      provenance: {
+        repository: policy.repository,
+        workflowPath: '.github/workflows/plan55-production-only.yml',
+        runId: String(100 + index),
+        runAttempt: 1,
+        workflowHeadSha: release.gitSha,
+        artifactId: 200 + index,
+        artifactName: `plan55-gate-${index}`,
+        artifactDigest: `sha256:${'f'.repeat(64)}`,
+        artifactEvidencePath: 'evidence.json',
+      },
+    }
+    const receiptBytes = Buffer.from(`${JSON.stringify(receipt)}\n`)
+    return [gate, {
+      receipt,
+      receiptSha256: createHash('sha256').update(JSON.stringify(receipt)).digest('hex'),
+      receiptFileSha256: createHash('sha256').update(receiptBytes).digest('hex'),
+      evidenceSha256: receipt.evidence.sha256,
+    }]
+  }))
 }
 const releaseTemplate = buildHarnessRelease({
   environment: 'staging',
@@ -94,6 +151,16 @@ test('Plan 55 has a separate fail-closed Production-only transition policy with 
   const policy = loadPlan55ProductionOnlyPolicy(resolve('.'))
   assert.deepEqual(validatePromotionConfig(policy, { root: resolve('.') }), [])
   assert.equal(policy.projectRef, 'iwevizmsedyqozxlawwl')
+  assert.equal(policy.repository, 'manhtu0407/HomeServices-')
+  assert.deepEqual(policy.trustedEvidenceWorkflowPaths, [
+    '.github/workflows/ci.yml',
+    '.github/workflows/plan55-production-only.yml',
+    '.github/workflows/plan55-production-canary-service.yml',
+  ])
+  assert.ok(validatePromotionConfig({
+    ...policy,
+    trustedEvidenceWorkflowPaths: ['.github/workflows/not-present.yml'],
+  }, { root: resolve('.') }).some((problem) => problem.includes('trusted evidence workflow is missing')))
   assert.deepEqual(policy.productionSourceBase, {
     branch: 'codex/plan55-production-base-891b1e26-review-v2',
     sha: '891b1e26dd9a785f05671002c5e74cb270678be4',
@@ -111,6 +178,10 @@ test('Plan 55 has a separate fail-closed Production-only transition policy with 
   assert.equal(canTransition(policy, 'verified', 'guard_deployed_off'), true)
   assert.equal(canTransition(policy, 'paired_wave_3', 'production'), true)
   assert.equal(canTransition(policy, 'service_canary', 'paired_wave_1'), false)
+  for (const wave of [1, 2, 3]) {
+    assert.ok(policy.requiredGatesByTarget[`paired_wave_${wave}`].includes(`plan55-paired-wave-${wave}-pass`))
+    assert.ok(requiredPromotionGates(policy, 'production').includes(`plan55-paired-wave-${wave}-pass`))
+  }
   assert.ok(policy.requiredGatesByTarget.production.includes('plan55-post-rollout-cohort-pass'))
   const missingHoldoutGate = {
     ...policy,
@@ -148,7 +219,7 @@ test('Plan 55 has a separate fail-closed Production-only transition policy with 
   ))
 })
 
-test('Plan 55 promotion packets bind every target gate to a checksummed receipt', () => {
+test('Plan 55 promotion packets bind every target gate to source-bound evidence receipts', () => {
   const policy = loadPlan55ProductionOnlyPolicy(resolve('.'))
   const plan55Release = buildHarnessRelease({
     environment: 'production',
@@ -170,7 +241,7 @@ test('Plan 55 promotion packets bind every target gate to a checksummed receipt'
     },
   }
   const passedGates = policy.requiredGatesByTarget.verified
-  const gateReceipts = Object.fromEntries(passedGates.map((gate, index) => [gate, String(index + 1).padStart(64, '0')]))
+  const gateReceipts = plan55GateReceipts(policy, plan55Release, passedGates, 'verified')
   const packet = buildPromotionPacket({
     root: resolve('.'), config: policy, release: plan55Release, evaluation: plan55Evaluation,
     environment: 'production', currentState: 'assembled', targetState: 'verified',
@@ -190,8 +261,37 @@ test('Plan 55 promotion packets bind every target gate to a checksummed receipt'
   assert.throws(() => buildPromotionPacket({
     root: resolve('.'), config: policy, release: plan55Release, evaluation: plan55Evaluation,
     environment: 'production', currentState: 'assembled', targetState: 'verified',
-    passedGates, gateReceipts: { ...gateReceipts, [passedGates[0]]: 'not-a-digest' }, now: 0,
-  }), /valid receipt digest/u)
+    passedGates, gateReceipts: { ...gateReceipts, [passedGates[0]]: { ...gateReceipts[passedGates[0]], receiptSha256: 'not-a-digest' } }, now: 0,
+  }), /valid source-bound receipt/u)
+  const firstGate = passedGates[0]
+  const staleReceipt = { ...gateReceipts[firstGate].receipt, sourceSha: 'b'.repeat(40) }
+  const staleRecord = {
+    ...gateReceipts[firstGate],
+    receipt: staleReceipt,
+    receiptSha256: createHash('sha256').update(JSON.stringify(staleReceipt)).digest('hex'),
+  }
+  const stalePacket = resealPacket({
+    ...packet,
+    gateReceipts: { ...packet.gateReceipts, [firstGate]: staleRecord },
+  })
+  assert.match(verifyPromotionPacket(stalePacket, policy).join('; '), /gate evidence receipt is invalid/u)
+  const alteredReceiptFileDigest = {
+    ...gateReceipts[firstGate],
+    receiptFileSha256: 'd'.repeat(64),
+  }
+  const alteredDigestPacket = resealPacket({
+    ...packet,
+    gateReceipts: { ...packet.gateReceipts, [firstGate]: alteredReceiptFileDigest },
+  })
+  assert.match(verifyPromotionPacket(alteredDigestPacket, policy).join('; '), /gate evidence receipt is invalid/u)
+  const missingReceiptPacket = resealPacket({
+    ...packet,
+    gateReceipts: {
+      ...packet.gateReceipts,
+      [firstGate]: { receiptSha256: 'a'.repeat(64), receiptFileSha256: 'b'.repeat(64), evidenceSha256: 'c'.repeat(64) },
+    },
+  })
+  assert.match(verifyPromotionPacket(missingReceiptPacket, policy).join('; '), /gate evidence receipt is invalid/u)
 })
 
 test('blocks a canary when a critical threshold fails', () => {

@@ -1,0 +1,233 @@
+name: Plan 55 exact-source gate evidence package
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_sha:
+        description: Exact locked Plan 55 merge SHA
+        required: true
+        type: string
+      source_run_id:
+        description: Successful Plan 55 Production-only run that produced the release artifact
+        required: true
+        type: string
+      source_run_attempt:
+        description: Exact successful Production-only workflow attempt
+        required: true
+        type: string
+      release_artifact_id:
+        description: Immutable plan55-release artifact ID from that run
+        required: true
+        type: string
+      target_state:
+        description: Promotion state whose complete cumulative gate inventory is packaged
+        required: true
+        type: choice
+        options:
+          - receipts_validated
+          - paired_wave_1
+          - paired_wave_2
+          - paired_wave_3
+          - production
+      evidence_artifacts_json:
+        description: JSON array of {gate, artifact_id, artifact_name_prefix, evidence_path}; one exact-source PASS artifact per required gate
+        required: true
+        type: string
+
+permissions:
+  actions: read
+  contents: read
+
+concurrency:
+  group: plan55-gate-evidence-${{ github.repository }}-${{ inputs.source_sha }}-${{ inputs.target_state }}
+  cancel-in-progress: false
+
+jobs:
+  package-evidence:
+    if: github.ref == 'refs/heads/main' && inputs.source_sha == github.sha
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      actions: read
+      contents: read
+    outputs:
+      gate_artifact_id: ${{ steps.upload.outputs.artifact-id }}
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          ref: ${{ inputs.source_sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+      - name: Confirm the locked source
+        env:
+          PLAN55_SOURCE_SHA: ${{ inputs.source_sha }}
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF" = "refs/heads/main"
+          [[ "$PLAN55_SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          test "$GITHUB_SHA" = "$PLAN55_SOURCE_SHA"
+          test "$(git rev-parse HEAD)" = "$PLAN55_SOURCE_SHA"
+          test -z "$(git status --porcelain=v1 --untracked-files=all)"
+      - name: Fetch exact-source evidence and build a provenance-only package
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PLAN55_SOURCE_SHA: ${{ inputs.source_sha }}
+          PLAN55_SOURCE_RUN_ID: ${{ inputs.source_run_id }}
+          PLAN55_SOURCE_RUN_ATTEMPT: ${{ inputs.source_run_attempt }}
+          PLAN55_RELEASE_ARTIFACT_ID: ${{ inputs.release_artifact_id }}
+          PLAN55_TARGET_STATE: ${{ inputs.target_state }}
+          PLAN55_EVIDENCE_ARTIFACTS_JSON: ${{ inputs.evidence_artifacts_json }}
+        run: |
+          node --input-type=module <<'NODE'
+          import { mkdirSync, writeFileSync } from 'node:fs'
+          import { dirname, resolve, sep } from 'node:path'
+          import {
+            buildPlan55GateEvidenceArtifact,
+            downloadPlan55GitHubRunArtifact,
+          } from './scripts/harness/plan55-gate-receipts.mjs'
+          import { loadPlan55ProductionOnlyPolicy, requiredPromotionGates } from './scripts/harness/promotion.mjs'
+
+          const policy = loadPlan55ProductionOnlyPolicy(process.cwd())
+          const sourceSha = process.env.PLAN55_SOURCE_SHA
+          const sourceRunId = Number(process.env.PLAN55_SOURCE_RUN_ID)
+          const sourceRunAttempt = Number(process.env.PLAN55_SOURCE_RUN_ATTEMPT)
+          const releaseArtifactId = Number(process.env.PLAN55_RELEASE_ARTIFACT_ID)
+          const targetState = process.env.PLAN55_TARGET_STATE
+          if (!/^[a-f0-9]{40}$/.test(sourceSha ?? '') ||
+              ![sourceRunId, sourceRunAttempt, releaseArtifactId].every((value) =>
+                Number.isSafeInteger(value) && value > 0) ||
+              !['receipts_validated', 'paired_wave_1', 'paired_wave_2', 'paired_wave_3', 'production']
+                .includes(targetState)) {
+            throw new Error('Plan 55 evidence-package inputs are invalid')
+          }
+
+          const download = (artifactId, artifactNamePrefix, expectedRunId, expectedRunAttempt,
+            trustedWorkflowPaths = policy.trustedEvidenceWorkflowPaths) => downloadPlan55GitHubRunArtifact({
+            repository: policy.repository,
+            trustedWorkflowPaths,
+            sourceSha,
+            artifactId,
+            artifactNamePrefix,
+            expectedRunId,
+            expectedRunAttempt,
+            token: process.env.GH_TOKEN,
+          })
+          const releaseArtifact = await download(releaseArtifactId, 'plan55-release',
+            sourceRunId, sourceRunAttempt, ['.github/workflows/plan55-production-only.yml'])
+          const releaseMatches = [...releaseArtifact.files].filter(([name]) =>
+            name === 'release.json' || name.endsWith('/release.json'))
+          const hostedBeforeMatches = [...releaseArtifact.files].filter(([name]) =>
+            name === 'hosted-before.json' || name.endsWith('/hosted-before.json'))
+          if (releaseArtifact.workflowPath !== '.github/workflows/plan55-production-only.yml' ||
+              releaseMatches.length !== 1 || hostedBeforeMatches.length !== 1) {
+            throw new Error('Plan 55 release artifact is missing or has an unexpected producer')
+          }
+          const release = JSON.parse(releaseMatches[0][1].toString('utf8'))
+          if (release.gitSha !== sourceSha || release.environment !== 'production' ||
+              release.releaseLane !== policy.releaseLane ||
+              !new RegExp(`^harness-${sourceSha.slice(0, 12)}-[a-f0-9]{12}$`, 'u')
+                .test(release.releaseId ?? '')) {
+            throw new Error('Plan 55 release artifact source identity is invalid')
+          }
+          const releasePath = resolve('artifacts/harness/release-manifest.json')
+          const hostedBeforePath = resolve('artifacts/harness/hosted-before.json')
+          mkdirSync(dirname(releasePath), { recursive: true })
+          writeFileSync(releasePath, releaseMatches[0][1], { flag: 'wx' })
+          writeFileSync(hostedBeforePath, hostedBeforeMatches[0][1], { flag: 'wx' })
+
+          const expectedGates = requiredPromotionGates(policy, targetState)
+          let suppliedEntries
+          try {
+            suppliedEntries = JSON.parse(process.env.PLAN55_EVIDENCE_ARTIFACTS_JSON)
+          } catch {
+            throw new Error('Plan 55 evidence artifact inventory is not valid JSON')
+          }
+          if (!Array.isArray(suppliedEntries) || suppliedEntries.length !== expectedGates.length) {
+            throw new Error('Plan 55 evidence artifact inventory is incomplete')
+          }
+          const suppliedByGate = new Map()
+          for (const entry of suppliedEntries) {
+            if (!entry || typeof entry !== 'object' || Array.isArray(entry) ||
+                Object.keys(entry).sort().join(',') !== 'artifact_id,artifact_name_prefix,evidence_path,gate' ||
+                typeof entry.gate !== 'string' || suppliedByGate.has(entry.gate) ||
+                !expectedGates.includes(entry.gate) || !Number.isSafeInteger(entry.artifact_id) ||
+                entry.artifact_id < 1 || typeof entry.artifact_name_prefix !== 'string' ||
+                !/^[A-Za-z0-9_.-]{1,96}$/u.test(entry.artifact_name_prefix) ||
+                typeof entry.evidence_path !== 'string' || entry.evidence_path.length > 512 ||
+                entry.evidence_path.includes('\\') || entry.evidence_path.startsWith('/') ||
+                entry.evidence_path.split('/').some((part) => !part || part === '.' || part === '..')) {
+              throw new Error('Plan 55 evidence artifact entry is invalid')
+            }
+            suppliedByGate.set(entry.gate, entry)
+          }
+          if (JSON.stringify([...suppliedByGate.keys()].sort()) !==
+              JSON.stringify([...expectedGates].sort())) {
+            throw new Error('Plan 55 evidence artifact gate inventory does not match policy')
+          }
+
+          const sourceEvidence = new Map()
+          for (const gate of [...expectedGates].sort()) {
+            const input = suppliedByGate.get(gate)
+            const artifact = await download(input.artifact_id, input.artifact_name_prefix)
+            const evidenceBytes = artifact.files.get(input.evidence_path)
+            if (!evidenceBytes) throw new Error(`Plan 55 source evidence file is missing: ${gate}`)
+            sourceEvidence.set(gate, {
+              evidenceBytes,
+              artifactEvidencePath: input.evidence_path,
+              artifactFiles: artifact.files,
+              provenance: {
+                repository: policy.repository,
+                workflowPath: artifact.workflowPath,
+                runId: String(artifact.runId),
+                runAttempt: artifact.runAttempt,
+                workflowHeadSha: artifact.sourceSha,
+                artifactId: artifact.artifactId,
+                artifactName: artifact.artifactName,
+                artifactDigest: artifact.artifactDigest,
+                artifactEvidencePath: input.evidence_path,
+              },
+            })
+          }
+
+          const files = buildPlan55GateEvidenceArtifact({
+            policy,
+            release,
+            targetState,
+            requiredGates: expectedGates,
+            sourceEvidence,
+          })
+          const outputRoot = resolve('artifacts/harness/gate-evidence')
+          for (const [name, bytes] of files) {
+            if (name.endsWith('/')) continue
+            const outputPath = resolve(outputRoot, name)
+            if (!outputPath.startsWith(`${outputRoot}${sep}`)) {
+              throw new Error('Plan 55 gate evidence path escaped its output directory')
+            }
+            mkdirSync(dirname(outputPath), { recursive: true })
+            writeFileSync(outputPath, bytes, { flag: 'wx' })
+          }
+          process.stdout.write(`${JSON.stringify({
+            sourceSha,
+            releaseId: release.releaseId,
+            targetState,
+            gateCount: expectedGates.length,
+            status: 'PASS_EVIDENCE_PACKAGED_NO_PRODUCTION_MUTATION',
+          })}\n`)
+          NODE
+      - name: Verify the release bundle used to bind this evidence set
+        run: |
+          set -euo pipefail
+          node scripts/harness/release-bundle.mjs --verify artifacts/harness/release-manifest.json \
+            --hosted-before artifacts/harness/hosted-before.json
+      - name: Publish exact-source gate evidence
+        id: upload
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: plan55-gate-evidence-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/harness/gate-evidence
+          if-no-files-found: error
+          include-hidden-files: true
+          retention-days: 90
