@@ -1,6 +1,6 @@
 import {
-  PLAN55_PRODUCTION_SOURCE_BASE,
   createPlan55GithubIndependentHoldoutPreflightProvider,
+  isPlan55PredeploymentHoldoutContextValid,
 } from './lib/plan55-independent-holdout-review.mjs'
 import { readPlan55HoldoutAssets } from './lib/plan55-production-canary-operations.mjs'
 
@@ -8,9 +8,12 @@ const GIT_SHA_PATTERN = /^[a-f0-9]{40}$/iu
 
 try {
   const sourceSha = String(process.env.PLAN55_SOURCE_SHA ?? '').toLowerCase()
-  const expectedRef = `refs/heads/${PLAN55_PRODUCTION_SOURCE_BASE.branch}`
-  if (!GIT_SHA_PATTERN.test(sourceSha) || sourceSha !== String(process.env.GITHUB_SHA ?? '').toLowerCase() ||
-      process.env.GITHUB_REF !== expectedRef || !process.env.GH_TOKEN) {
+  if (!GIT_SHA_PATTERN.test(sourceSha) || !isPlan55PredeploymentHoldoutContextValid({
+    sourceSha,
+    githubSha: process.env.GITHUB_SHA,
+    githubRef: process.env.GITHUB_REF,
+    githubToken: process.env.GH_TOKEN,
+  })) {
     throw new Error('plan55_predeployment_holdout_context_invalid')
   }
 
