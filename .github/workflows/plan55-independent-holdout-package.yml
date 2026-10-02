@@ -57,7 +57,6 @@ jobs:
         id: identity
         env:
           EVENT_NAME: ${{ github.event_name }}
-          EVENT_PATH: ${{ github.event_path }}
           INPUT_HEAD_SHA: ${{ inputs.reviewed_head_sha }}
           INPUT_PR_NUMBER: ${{ inputs.pull_request_number }}
           GH_TOKEN: ${{ github.token }}
@@ -65,7 +64,7 @@ jobs:
         run: |
           set -euo pipefail
           if [[ "$EVENT_NAME" == "pull_request" ]]; then
-            python - "$EVENT_PATH" "$PLAN55_REPOSITORY" <<'PY' >> "$GITHUB_OUTPUT"
+            python - "$GITHUB_EVENT_PATH" "$PLAN55_REPOSITORY" <<'PY' >> "$GITHUB_OUTPUT"
           import json, sys
           event = json.load(open(sys.argv[1], encoding='utf-8'))
           repo = sys.argv[2]

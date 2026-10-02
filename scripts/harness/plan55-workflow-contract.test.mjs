@@ -330,6 +330,8 @@ test('blind holdout review packaging is source-bound, read-only, and excludes la
     'draft requests must not upload adjudication packages')
   expectWorkflowMatch(blindHoldoutPackage, /github\.event\.pull_request\.head\.repo\.full_name == github\.repository/u,
     'automatic package generation must exclude fork code and data exfiltration paths')
+  expectWorkflowMatch(blindHoldoutPackage, /python - "\$GITHUB_EVENT_PATH" "\$PLAN55_REPOSITORY"/u,
+    'automatic package generation must read the runner-provided authenticated PR event payload')
   expectWorkflowMatch(blindHoldoutPackage, /github\.event_name == 'workflow_dispatch' && github\.ref == 'refs\/heads\/main'/u,
     'manual package generation must be initiated only from default main')
   expectWorkflowMatch(blindHoldoutPackage, /workflow_dispatch:[\s\S]*?reviewed_head_sha:[\s\S]*?pull_request_number:/u,
