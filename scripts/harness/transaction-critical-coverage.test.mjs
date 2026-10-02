@@ -201,6 +201,23 @@ test('PR and Production workflows keep different evidence obligations', () => {
   assert.doesNotMatch(release, /--require-bound-assertions/u)
 })
 
+test('Plan 55 canary requires bound assertions without moving full readiness ahead of receipts', () => {
+  const plan55 = readFileSync(resolve('.github/workflows/plan55-production-only.yml'), 'utf8')
+  const policy = JSON.parse(readFileSync(resolve('config/harness/plan55-production-only-policy.json'), 'utf8'))
+
+  assert.match(plan55, /transaction-critical-coverage\.mjs --require-bound-assertions/u)
+  assert.doesNotMatch(plan55, /transaction-critical-coverage\.mjs --require-behavioral/u)
+  assert.match(plan55, /--results artifacts\/transactions\/api-vitest\.json/u)
+  assert.match(plan55, /--results artifacts\/transactions\/mobile-jest\.json/u)
+  assert.ok(policy.requiredGatesByTarget.receipts_validated.includes('plan55-six-current-source-receipts'))
+  assert.ok(policy.requiredGatesByTarget.receipts_validated.includes('plan55-independent-cohort-outcome'))
+  assert.ok(policy.requiredGatesByTarget.paired_wave_1.includes('plan55-full-production-readiness'))
+
+  for (const stage of ['verified', 'guard_deployed_off', 'service_canary', 'service_cleanup', 'receipts_validated']) {
+    assert.ok(!policy.requiredGatesByTarget[stage].includes('plan55-full-production-readiness'), `${stage} must not require paired-wave readiness`)
+  }
+})
+
 test('Local integration checks out the PR head required by its release preflight', () => {
   const integration = readFileSync(resolve('.github/workflows/ci.yml'), 'utf8')
   assert.ok(integration.includes('ref: ${{ github.event.pull_request.head.sha || github.sha }}'))

@@ -109,7 +109,7 @@ jobs:
           pnpm harness:reliability:check
           pnpm harness:promotion:check
           pnpm edge:check
-          node scripts/harness/transaction-critical-coverage.mjs --require-behavioral \
+          node scripts/harness/transaction-critical-coverage.mjs --require-bound-assertions \
             --results artifacts/transactions/api-vitest.json \
             --results artifacts/transactions/mobile-jest.json
       - name: Secret scan
