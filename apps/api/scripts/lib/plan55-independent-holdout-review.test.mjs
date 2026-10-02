@@ -11,6 +11,7 @@ import {
   buildPlan55HoldoutReviewBody,
   createPlan55GithubReviewEvidenceProvider,
   createPlan55GithubIndependentHoldoutPreflightProvider,
+  isPlan55PredeploymentHoldoutContextValid,
   plan55HoldoutLabelsSha256,
   verifyPlan55IndependentHoldoutReviewEvidence,
 } from './plan55-independent-holdout-review.mjs'
@@ -32,6 +33,29 @@ const gitBlobSha = (value) => createHash('sha1')
   .update(value)
   .digest('hex')
 const guardBlobSha = gitBlobSha(guardSource)
+
+test('predeployment holdout context binds the merge SHA to target main, not the pinned base ref', () => {
+  const context = {
+    sourceSha,
+    githubSha: sourceSha,
+    githubRef: `refs/heads/${productionTargetBranch}`,
+    githubToken: 'read-only-workflow-token',
+  }
+
+  assert.equal(isPlan55PredeploymentHoldoutContextValid(context), true)
+  assert.equal(isPlan55PredeploymentHoldoutContextValid({
+    ...context,
+    githubRef: `refs/heads/${productionBaseBranch}`,
+  }), false)
+  assert.equal(isPlan55PredeploymentHoldoutContextValid({
+    ...context,
+    githubSha: 'e'.repeat(40),
+  }), false)
+  assert.equal(isPlan55PredeploymentHoldoutContextValid({
+    ...context,
+    githubToken: '',
+  }), false)
+})
 
 function buildFixture() {
   const holdoutHashes = Object.fromEntries(PLAN55_SERVICE_ORDER.map((service, index) => [

@@ -13,6 +13,7 @@ const sourceAttestation = readFileSync('apps/api/scripts/lib/kael-playbook-produ
 const canaryCore = readFileSync('apps/api/scripts/lib/plan55-production-canary-core.mjs', 'utf8')
 const canaryCli = readFileSync('apps/api/scripts/kael-playbook-production-canary.mjs', 'utf8')
 const checkpointStore = readFileSync('apps/api/scripts/lib/plan55-production-canary-checkpoint-store.mjs', 'utf8')
+const holdoutPreflight = readFileSync('apps/api/scripts/plan55-independent-holdout-preflight.mjs', 'utf8')
 const apiPackage = JSON.parse(readFileSync('apps/api/package.json', 'utf8'))
 
 function needsFor(job) {
@@ -179,6 +180,10 @@ test('independent holdout approvals and guard CI are required before assembling 
     'the workflow token must keep pull-request access read-only')
   assert.match(release, /checks: read/u,
     'the workflow token must keep guard-check access read-only')
+  assert.match(holdoutPreflight, /isPlan55PredeploymentHoldoutContextValid/u,
+    'the holdout CLI must use the tested workflow context guard')
+  assert.doesNotMatch(holdoutPreflight, /PLAN55_PRODUCTION_SOURCE_BASE/u,
+    'the CLI must not treat the pinned ancestry base as the workflow dispatch ref')
 })
 
 test('holdout review is revalidated immediately before the first Production write', () => {

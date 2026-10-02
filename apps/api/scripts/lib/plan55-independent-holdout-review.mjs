@@ -39,6 +39,19 @@ const GUARD_EVIDENCE_PATHS = Object.freeze([
   '.github/workflows/ci.yml',
 ])
 
+export function isPlan55PredeploymentHoldoutContextValid({
+  sourceSha,
+  githubSha,
+  githubRef,
+  githubToken,
+} = {}) {
+  const normalizedSourceSha = typeof sourceSha === 'string' ? sourceSha.toLowerCase() : ''
+  return GIT_SHA_PATTERN.test(normalizedSourceSha) &&
+    normalizedSourceSha === String(githubSha ?? '').toLowerCase() &&
+    githubRef === `refs/heads/${PLAN55_PRODUCTION_SOURCE_TARGET_BRANCH}` &&
+    typeof githubToken === 'string' && githubToken.trim().length > 0
+}
+
 export function plan55HoldoutLabelsSha256(casesByService) {
   const services = Object.keys(PLAN55_SOURCE_ASSETS).sort()
   if (!isRecord(casesByService) || Array.isArray(casesByService) ||
