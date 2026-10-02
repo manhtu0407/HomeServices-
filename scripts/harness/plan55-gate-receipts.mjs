@@ -9,6 +9,9 @@ const SHA256 = /^[a-f0-9]{64}$/u
 const GIT_SHA = /^[a-f0-9]{40}$/u
 const REPOSITORY = /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/u
 const WORKFLOW_PATH = /^\.github\/workflows\/[A-Za-z0-9_.-]+\.ya?ml$/u
+const SENSITIVE_EVIDENCE_KEY = /token|secret|password|authorization|cookie|credential|api[_-]?key|service[_-]?role|email|phone|address|description|content|prompt|image|audio|transcript|latitude|longitude|cccd|bank|message|text|question|answer|query|title|name|url|uri|unit|floor|street|ward|postal|zip|otp/iu
+const SENSITIVE_EVIDENCE_VALUE = /(?:bearer\s+[a-z0-9._~-]+|-----BEGIN [A-Z ]+PRIVATE KEY-----|eyJ[a-zA-Z0-9_-]{20,}\.[a-zA-Z0-9_-]{20,}|\b[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}\b|\b(?:\+?84|0)\d{8,10}\b)/iu
+const SAFE_EVIDENCE_VALUE = /^[A-Za-z0-9._:/+-]{1,240}$/u
 const MAX_ARTIFACT_ARCHIVE_BYTES = 64 * 1024 * 1024
 const MAX_ARTIFACT_UNCOMPRESSED_BYTES = 64 * 1024 * 1024
 const MAX_EVIDENCE_FILE_BYTES = 16 * 1024 * 1024
@@ -72,6 +75,93 @@ export function loadPlan55GateEvidenceSet(manifestPath, { policy, release, targe
       evidencePath: receipt.evidence.path,
     })]
   }))
+}
+
+export function buildPlan55GateEvidenceArtifact({
+  policy,
+  release,
+  targetState,
+  requiredGates,
+  sourceEvidence,
+}) {
+  const gates = [...new Set(requiredGates ?? [])].sort()
+  if (!Array.isArray(requiredGates) || gates.length !== requiredGates.length ||
+      !gates.length || gates.length > 256 || !(sourceEvidence instanceof Map) ||
+      sourceEvidence.size !== gates.length) {
+    throw new Error('Plan 55 gate evidence package inventory is invalid')
+  }
+
+  const files = new Map([
+    ['receipts/', Buffer.alloc(0)],
+    ['evidence/', Buffer.alloc(0)],
+  ])
+  const entries = []
+  for (const gate of gates) {
+    const supplied = sourceEvidence.get(gate)
+    const evidencePath = `evidence/${gate}.json`
+    const receiptPath = `receipts/${gate}.json`
+    if (!supplied || typeof supplied !== 'object' || !(supplied.evidenceBytes instanceof Buffer) ||
+        !isSafeArtifactPath(supplied.artifactEvidencePath) ||
+        !(supplied.artifactFiles instanceof Map) ||
+        !isTrustedGitHubArtifactProvenance(supplied.provenance, policy)) {
+      throw new Error(`Plan 55 source artifact does not prove the gate evidence: ${gate}`)
+    }
+    if (supplied.evidenceBytes.length > MAX_EVIDENCE_FILE_BYTES) {
+      throw new Error(`Plan 55 evidence file is too large: ${gate}`)
+    }
+    const archivedEvidence = supplied.artifactFiles.get(supplied.artifactEvidencePath)
+    if (!(archivedEvidence instanceof Buffer) || !archivedEvidence.equals(supplied.evidenceBytes)) {
+      throw new Error(`Plan 55 source artifact does not prove the gate evidence: ${gate}`)
+    }
+    const evidence = parseJson(supplied.evidenceBytes, `evidence for ${gate}`)
+    assertSafeGateEvidence(evidence)
+    assertEvidenceIdentity(evidence, gate, { policy, release, targetState })
+    if (supplied.provenance.workflowHeadSha !== release.gitSha) {
+      throw new Error(`Plan 55 source artifact SHA mismatch: ${gate}`)
+    }
+
+    const receipt = {
+      schemaVersion: GATE_RECEIPT_SCHEMA,
+      gate,
+      status: 'PASS',
+      environment: release.environment,
+      projectRef: policy.projectRef,
+      policyId: policy.policyId,
+      policySha256: policy.policySha256,
+      releaseId: release.releaseId,
+      sourceSha: release.gitSha,
+      targetState,
+      evidence: {
+        path: evidencePath,
+        sha256: sha256(supplied.evidenceBytes),
+        reference: `artifact://${supplied.provenance.artifactId}/${gate}`,
+      },
+      provenance: { ...supplied.provenance },
+    }
+    const receiptBytes = Buffer.from(`${JSON.stringify(receipt)}\n`)
+    files.set(evidencePath, supplied.evidenceBytes)
+    files.set(receiptPath, receiptBytes)
+    entries.push({
+      gate,
+      receiptPath,
+      receiptSha256: sha256(receiptBytes),
+    })
+  }
+
+  const manifest = {
+    schemaVersion: GATE_SET_SCHEMA,
+    policyId: policy.policyId,
+    policySha256: policy.policySha256,
+    environment: release.environment,
+    projectRef: policy.projectRef,
+    releaseId: release.releaseId,
+    sourceSha: release.gitSha,
+    targetState,
+    receipts: entries,
+  }
+  files.set('gate-evidence-set.json', Buffer.from(`${JSON.stringify(manifest)}\n`))
+  assertPlan55FinalizationArtifactFiles(files)
+  return files
 }
 
 export async function verifyPlan55GitHubArtifactProvenance(receiptSet, {
@@ -139,7 +229,8 @@ export async function verifyPlan55GitHubArtifactProvenance(receiptSet, {
     const archivedFiles = readZipFiles(archive)
     for (const receiptRecord of Object.values(receiptSet)) {
       if (receiptRecord.receipt.provenance.artifactId !== artifactId) continue
-      const archivedEvidence = archivedFiles.get(receiptRecord.evidencePath)
+      const artifactEvidencePath = receiptRecord.receipt.provenance.artifactEvidencePath
+      const archivedEvidence = archivedFiles.get(artifactEvidencePath)
       if (!archivedEvidence || !archivedEvidence.equals(receiptRecord.evidenceBytes)) {
         throw new Error(`Plan 55 evidence is not present in its attested artifact: ${artifactId}`)
       }
@@ -153,26 +244,32 @@ export async function downloadPlan55GitHubRunArtifact({
   trustedWorkflowPaths,
   sourceSha,
   artifactId,
-  artifactName,
-  runId,
-  runAttempt,
-  workflowPath,
+  artifactNamePrefix,
+  expectedRunId,
+  expectedRunAttempt,
   token,
   fetchImpl = fetch,
 }) {
   if (!REPOSITORY.test(repository ?? '') || !Array.isArray(trustedWorkflowPaths) ||
-      !trustedWorkflowPaths.includes(workflowPath) || !WORKFLOW_PATH.test(workflowPath ?? '') ||
+      trustedWorkflowPaths.length === 0 || trustedWorkflowPaths.some((path) => !WORKFLOW_PATH.test(path ?? '')) ||
       !GIT_SHA.test(sourceSha ?? '') || !Number.isSafeInteger(artifactId) || artifactId < 1 ||
-      !Number.isSafeInteger(runId) || runId < 1 || !Number.isSafeInteger(runAttempt) || runAttempt < 1 ||
-      typeof artifactName !== 'string' || !/^[A-Za-z0-9_.-]{1,128}$/u.test(artifactName) ||
+      typeof artifactNamePrefix !== 'string' || !/^[A-Za-z0-9_.-]{1,96}$/u.test(artifactNamePrefix) ||
+      ((expectedRunId !== undefined || expectedRunAttempt !== undefined) &&
+        (!Number.isSafeInteger(expectedRunId) || expectedRunId < 1 ||
+         !Number.isSafeInteger(expectedRunAttempt) || expectedRunAttempt < 1)) ||
       typeof token !== 'string' || !token.trim() || typeof fetchImpl !== 'function') {
     throw new Error('Plan 55 finalization artifact verification requires trusted exact-source inputs')
   }
 
   const artifact = await githubJson(fetchImpl, token, repository,
     `/actions/artifacts/${artifactId}`)
+  const runId = Number(artifact.workflow_run?.id)
+  if (!Number.isSafeInteger(runId) || runId < 1 ||
+      (expectedRunId !== undefined && runId !== expectedRunId)) {
+    throw new Error('Plan 55 finalization artifact identity verification failed')
+  }
   const archiveUrl = `https://api.github.com/repos/${repository}/actions/artifacts/${artifactId}/zip`
-  if (Number(artifact.id) !== artifactId || artifact.name !== artifactName ||
+  if (Number(artifact.id) !== artifactId ||
       artifact.expired !== false || Number(artifact.workflow_run?.id) !== runId ||
       artifact.workflow_run?.head_sha !== sourceSha ||
       !/^sha256:[a-f0-9]{64}$/u.test(artifact.digest ?? '') ||
@@ -181,9 +278,14 @@ export async function downloadPlan55GitHubRunArtifact({
   }
 
   const run = await githubJson(fetchImpl, token, repository, `/actions/runs/${runId}`)
-  if (Number(run.id) !== runId || Number(run.run_attempt) !== runAttempt ||
+  const runAttempt = Number(run.run_attempt)
+  const workflowPath = run.path
+  const artifactName = `${artifactNamePrefix}-${runId}-${runAttempt}`
+  if (!Number.isSafeInteger(runAttempt) || runAttempt < 1 ||
+      (expectedRunAttempt !== undefined && runAttempt !== expectedRunAttempt) ||
+      Number(run.id) !== runId || artifact.name !== artifactName ||
       run.status !== 'completed' || run.conclusion !== 'success' || run.head_sha !== sourceSha ||
-      run.path !== workflowPath || run.head_branch !== 'main' ||
+      !trustedWorkflowPaths.includes(workflowPath) || run.head_branch !== 'main' ||
       run.repository?.full_name !== repository) {
     throw new Error('Plan 55 finalization workflow-run provenance verification failed')
   }
@@ -208,6 +310,7 @@ export async function downloadPlan55GitHubRunArtifact({
     runAttempt,
     sourceSha,
     workflowPath,
+    artifactDigest: artifact.digest,
     files: readZipFiles(archive),
   })
 }
@@ -231,7 +334,7 @@ export function assertPlan55FinalizationArtifactFiles(files) {
       }
       continue
     }
-    if (!['release-manifest.json', 'evaluation-report.json', 'gate-evidence-set.json'].includes(name) &&
+    if (name !== 'gate-evidence-set.json' &&
         !/^receipts\/[a-z0-9][a-z0-9-]{0,127}\.json$/u.test(name) &&
         !/^evidence\/[a-z0-9][a-z0-9-]{0,127}\.json$/u.test(name)) {
       throw new Error('Plan 55 finalization artifact contains an unexpected file')
@@ -239,11 +342,7 @@ export function assertPlan55FinalizationArtifactFiles(files) {
     fileNames.add(name)
   }
 
-  const required = new Set([
-    'release-manifest.json',
-    'evaluation-report.json',
-    'gate-evidence-set.json',
-  ])
+  const required = new Set(['gate-evidence-set.json'])
   if ([...required].some((name) => !fileNames.has(name))) {
     throw new Error('Plan 55 finalization artifact is missing required inputs')
   }
@@ -343,7 +442,40 @@ function isGitHubArtifactProvenance(value, repository) {
     Number.isSafeInteger(value.runAttempt) && value.runAttempt > 0 &&
     Number.isSafeInteger(value.artifactId) && value.artifactId > 0 &&
     typeof value.artifactName === 'string' && /^[A-Za-z0-9_.-]{1,128}$/u.test(value.artifactName) &&
+    isSafeArtifactPath(value.artifactEvidencePath) &&
     isGitSha(value.workflowHeadSha) && /^sha256:[a-f0-9]{64}$/u.test(value.artifactDigest ?? ''))
+}
+
+function isSafeArtifactPath(value) {
+  return typeof value === 'string' && value.length <= 512 && !value.includes('\\') &&
+    !value.startsWith('/') && value.split('/').every((part) => part && part !== '.' && part !== '..')
+}
+
+function assertSafeGateEvidence(value, path = 'evidence', depth = 0) {
+  if (depth > 4) throw new Error(`${path} exceeds safe Plan 55 evidence depth`)
+  if (value === null || typeof value === 'boolean') return
+  if (typeof value === 'number') {
+    if (!Number.isFinite(value)) throw new Error(`${path} contains a non-finite number`)
+    return
+  }
+  if (typeof value === 'string') {
+    if (!SAFE_EVIDENCE_VALUE.test(value) || SENSITIVE_EVIDENCE_VALUE.test(value)) {
+      throw new Error(`${path} contains unsafe Plan 55 evidence text`)
+    }
+    return
+  }
+  if (Array.isArray(value)) {
+    if (value.length > 40) throw new Error(`${path} exceeds safe Plan 55 evidence item count`)
+    value.forEach((item, index) => assertSafeGateEvidence(item, `${path}[${index}]`, depth + 1))
+    return
+  }
+  if (!value || typeof value !== 'object') throw new Error(`${path} contains an unsupported value`)
+  for (const [key, item] of Object.entries(value)) {
+    if (key.length > 80 || SENSITIVE_EVIDENCE_KEY.test(key)) {
+      throw new Error(`${path}.${key} is not allowed in Plan 55 evidence`)
+    }
+    assertSafeGateEvidence(item, `${path}.${key}`, depth + 1)
+  }
 }
 
 function isTrustedGitHubArtifactProvenance(value, policy) {

@@ -87,6 +87,7 @@ function plan55GateReceipts(policy, release, gates, targetState) {
         artifactId: 200 + index,
         artifactName: `plan55-gate-${index}`,
         artifactDigest: `sha256:${'f'.repeat(64)}`,
+        artifactEvidencePath: 'evidence.json',
       },
     }
     const receiptBytes = Buffer.from(`${JSON.stringify(receipt)}\n`)

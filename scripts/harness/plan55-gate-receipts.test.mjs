@@ -6,6 +6,7 @@ import { join, resolve } from 'node:path'
 import test from 'node:test'
 import {
   assertPlan55FinalizationArtifactFiles,
+  buildPlan55GateEvidenceArtifact,
   downloadPlan55GitHubRunArtifact,
   loadPlan55GateEvidenceSet,
   verifyPlan55GitHubArtifactProvenance,
@@ -86,8 +87,10 @@ function makeEvidenceSet(t, overrides = {}) {
   t.after(() => rmSync(root, { recursive: true, force: true }))
   const receipts = []
   const artifactArchives = new Map()
+  const sourceEvidence = new Map()
   for (const [index, gate] of requiredGates.entries()) {
     const evidencePath = `evidence/${gate}.json`
+    const artifactEvidencePath = `source-results/${gate}.json`
     const receiptPath = `receipts/${gate}.json`
     mkdirSync(join(root, 'evidence'), { recursive: true })
     mkdirSync(join(root, 'receipts'), { recursive: true })
@@ -105,7 +108,7 @@ function makeEvidenceSet(t, overrides = {}) {
     }) + '\n')
     writeFileSync(join(root, evidencePath), evidenceBytes)
     const artifactId = 100 + index
-    const artifactBytes = zipStored([[evidencePath, evidenceBytes]])
+    const artifactBytes = zipStored([[artifactEvidencePath, evidenceBytes]])
     artifactArchives.set(artifactId, artifactBytes)
     const receipt = {
       schemaVersion: 'plan55-gate-evidence.v1',
@@ -128,9 +131,16 @@ function makeEvidenceSet(t, overrides = {}) {
         artifactId,
         artifactName: `plan55-gate-${gate}`,
         artifactDigest: `sha256:${digest(artifactBytes)}`,
+        artifactEvidencePath,
       },
       ...overrides.receipt,
     }
+    sourceEvidence.set(gate, {
+      evidenceBytes,
+      artifactEvidencePath,
+      artifactFiles: new Map([[artifactEvidencePath, evidenceBytes]]),
+      provenance: receipt.provenance,
+    })
     const receiptBytes = Buffer.from(JSON.stringify(receipt) + '\n')
     writeFileSync(join(root, receiptPath), receiptBytes)
     receipts.push({ gate, receiptPath, receiptSha256: digest(receiptBytes) })
@@ -148,8 +158,89 @@ function makeEvidenceSet(t, overrides = {}) {
   }
   const manifestPath = join(root, 'gate-evidence-set.json')
   writeFileSync(manifestPath, JSON.stringify(manifest) + '\n')
-  return { root, manifestPath, manifest, artifactArchives }
+  return { root, manifestPath, manifest, artifactArchives, sourceEvidence }
 }
+
+test('packages only source-proven, exact-target PASS evidence into a closed artifact', (t) => {
+  const { sourceEvidence } = makeEvidenceSet(t)
+  const files = buildPlan55GateEvidenceArtifact({
+    policy, release, targetState, requiredGates, sourceEvidence,
+  })
+  assert.equal(assertPlan55FinalizationArtifactFiles(files), true)
+  const manifest = JSON.parse(files.get('gate-evidence-set.json').toString('utf8'))
+  assert.equal(manifest.schemaVersion, 'plan55-gate-evidence-set.v1')
+  assert.deepEqual(manifest.receipts.map(({ gate }) => gate), [...requiredGates].sort())
+  const firstReceipt = JSON.parse(files.get(manifest.receipts[0].receiptPath).toString('utf8'))
+  assert.equal(firstReceipt.provenance.artifactEvidencePath, `source-results/${firstReceipt.gate}.json`)
+
+  const tampered = new Map(sourceEvidence)
+  const [gate, original] = tampered.entries().next().value
+  tampered.set(gate, { ...original, evidenceBytes: Buffer.from('{}\n') })
+  assert.throws(() => buildPlan55GateEvidenceArtifact({
+    policy, release, targetState, requiredGates, sourceEvidence: tampered,
+  }), /source artifact does not prove the gate evidence/u)
+})
+
+test('rejects oversized and PII-bearing source evidence before packaging', (t) => {
+  const { sourceEvidence } = makeEvidenceSet(t)
+  const [gate, original] = sourceEvidence.entries().next().value
+  const oversized = Buffer.alloc(16 * 1024 * 1024 + 1, 0x20)
+  const oversizedSet = new Map(sourceEvidence)
+  oversizedSet.set(gate, {
+    ...original,
+    evidenceBytes: oversized,
+    artifactFiles: new Map([[original.artifactEvidencePath, oversized]]),
+  })
+  assert.throws(() => buildPlan55GateEvidenceArtifact({
+    policy, release, targetState, requiredGates, sourceEvidence: oversizedSet,
+  }), /evidence file is too large/u)
+
+  const piiSet = new Map(sourceEvidence)
+  const piiEvidence = Buffer.from(JSON.stringify({
+    schemaVersion: 'plan55-gate-result.v1',
+    gate,
+    status: 'PASS',
+    environment: 'production',
+    projectRef: policy.projectRef,
+    policyId: policy.policyId,
+    policySha256: policy.policySha256,
+    releaseId: release.releaseId,
+    sourceSha: release.gitSha,
+    targetState,
+    email: 'person@example.invalid',
+  }) + '\n')
+  piiSet.set(gate, {
+    ...original,
+    evidenceBytes: piiEvidence,
+    artifactFiles: new Map([[original.artifactEvidencePath, piiEvidence]]),
+  })
+  assert.throws(() => buildPlan55GateEvidenceArtifact({
+    policy, release, targetState, requiredGates, sourceEvidence: piiSet,
+  }), /not allowed in Plan 55 evidence/u)
+
+  const freeTextSet = new Map(sourceEvidence)
+  const freeTextEvidence = Buffer.from(JSON.stringify({
+    schemaVersion: 'plan55-gate-result.v1',
+    gate,
+    status: 'PASS',
+    environment: 'production',
+    projectRef: policy.projectRef,
+    policyId: policy.policyId,
+    policySha256: policy.policySha256,
+    releaseId: release.releaseId,
+    sourceSha: release.gitSha,
+    targetState,
+    proof: '12 Nguyen Trai',
+  }) + '\n')
+  freeTextSet.set(gate, {
+    ...original,
+    evidenceBytes: freeTextEvidence,
+    artifactFiles: new Map([[original.artifactEvidencePath, freeTextEvidence]]),
+  })
+  assert.throws(() => buildPlan55GateEvidenceArtifact({
+    policy, release, targetState, requiredGates, sourceEvidence: freeTextSet,
+  }), /unsafe Plan 55 evidence text/u)
+})
 
 test('loads exact source-bound gate receipts and verifies the referenced evidence bytes', (t) => {
   const { root, manifestPath } = makeEvidenceSet(t)
@@ -434,12 +525,12 @@ test('rejects failed, stale, expired, or mismatched GitHub artifact provenance',
   }), /requires repository, token, and fetch/u)
 })
 
-test('downloads a finalization artifact only from its exact successful main-branch source run', async () => {
+test('downloads an artifact only from its exact successful main-branch source run and name prefix', async () => {
   const artifactId = 9701
   const runId = 9702
   const runAttempt = 2
   const workflowPath = '.github/workflows/plan55-production-only.yml'
-  const artifactName = `plan55-finalization-inputs-${runId}-${runAttempt}`
+  const artifactName = `plan55-release-${runId}-${runAttempt}`
   const archive = zipStored([
     ['release-manifest.json', Buffer.from('{"gitSha":"' + release.gitSha + '"}\n')],
   ])
@@ -467,10 +558,9 @@ test('downloads a finalization artifact only from its exact successful main-bran
     trustedWorkflowPaths: policy.trustedEvidenceWorkflowPaths,
     sourceSha: release.gitSha,
     artifactId,
-    artifactName,
-    runId,
-    runAttempt,
-    workflowPath,
+    artifactNamePrefix: 'plan55-release',
+    expectedRunId: runId,
+    expectedRunAttempt: runAttempt,
     token: 'test-token',
     fetchImpl: async (url, options) => {
       requests.push({ url, options })
@@ -491,12 +581,12 @@ test('downloads a finalization artifact only from its exact successful main-bran
   assert.ok(requests.every(({ options }) => options.headers.authorization === 'Bearer test-token'))
 })
 
-test('rejects finalization artifacts with wrong source, run, path, status, expiry, or checksum', async () => {
+test('rejects artifacts with wrong source, run, name, path, status, expiry, or checksum', async () => {
   const artifactId = 9711
   const runId = 9712
   const runAttempt = 1
   const workflowPath = '.github/workflows/plan55-production-only.yml'
-  const artifactName = `plan55-finalization-inputs-${runId}-${runAttempt}`
+  const artifactName = `plan55-gate-evidence-${runId}-${runAttempt}`
   const archive = zipStored([['release-manifest.json', Buffer.from('{}\n')]])
   const artifact = {
     id: artifactId,
@@ -536,10 +626,9 @@ test('rejects finalization artifacts with wrong source, run, path, status, expir
     trustedWorkflowPaths: policy.trustedEvidenceWorkflowPaths,
     sourceSha: release.gitSha,
     artifactId,
-    artifactName,
-    runId,
-    runAttempt,
-    workflowPath,
+    artifactNamePrefix: 'plan55-gate-evidence',
+    expectedRunId: runId,
+    expectedRunAttempt: runAttempt,
     token: 'test-token',
     fetchImpl,
   })
@@ -549,6 +638,12 @@ test('rejects finalization artifacts with wrong source, run, path, status, expir
   assert.equal(archiveRequested, false)
   artifactOverride = { workflow_run: { id: runId, head_sha: 'b'.repeat(40) } }
   await assert.rejects(verify(), /artifact identity verification failed/u)
+  assert.equal(archiveRequested, false)
+  artifactOverride = { workflow_run: { id: runId + 1, head_sha: release.gitSha } }
+  await assert.rejects(verify(), /artifact identity verification failed/u)
+  assert.equal(archiveRequested, false)
+  artifactOverride = { name: `plan55-untrusted-${runId}-${runAttempt}` }
+  await assert.rejects(verify(), /workflow-run provenance verification failed/u)
   assert.equal(archiveRequested, false)
   artifactOverride = {}
   runOverride = { conclusion: 'failure' }
@@ -563,12 +658,10 @@ test('rejects finalization artifacts with wrong source, run, path, status, expir
   assert.equal(archiveRequested, true)
 })
 
-test('accepts only a closed finalization file inventory with referenced receipt and evidence files', () => {
+test('accepts only a closed gate-evidence artifact inventory with referenced receipts and evidence files', () => {
   const files = new Map([
     ['receipts/', Buffer.alloc(0)],
     ['evidence/', Buffer.alloc(0)],
-    ['release-manifest.json', Buffer.from('{}\n')],
-    ['evaluation-report.json', Buffer.from('{}\n')],
     ['gate-evidence-set.json', Buffer.from(JSON.stringify({
       receipts: [{ gate: 'plan55-example-gate', receiptPath: 'receipts/plan55-example-gate.json' }],
     }))],
