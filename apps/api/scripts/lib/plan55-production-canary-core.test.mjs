@@ -215,6 +215,17 @@ test('service retry reuses only exact-source slices with proven cleanup', () => 
   assert.equal(assertPlan55ReusableServiceAttempt({
     attempt: null, checkpointStatus, service, sourceSha, releaseId,
   }), 'clean_checkpoint_reusable')
+  assert.equal(assertPlan55ReusableServiceAttempt({
+    attempt: null, checkpointStatus, service, sourceSha, releaseId, recovery,
+  }), 'cleaned_checkpoint_reusable_after_recovery')
+  assert.throws(() => assertPlan55ReusableServiceAttempt({
+    attempt: null,
+    checkpointStatus,
+    service,
+    sourceSha,
+    releaseId,
+    recovery: { ...recovery, source_identity_verified: false },
+  }), /resume_prior_attempt_not_reusable/u)
   assert.throws(() => assertPlan55ReusableServiceAttempt({
     attempt: interruptedAttempt,
     checkpointStatus: {
