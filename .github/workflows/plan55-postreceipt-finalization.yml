@@ -27,6 +27,14 @@ on:
         description: Immutable gate-evidence artifact ID containing the source-bound receipt set
         required: true
         type: string
+      cohort_id:
+        description: Safe opaque cohort ID for a paired-wave packet; never include personal data
+        required: false
+        type: string
+      observation_window_minutes:
+        description: Positive integer observation window for a paired-wave packet
+        required: false
+        type: string
       target_state:
         description: Policy state for which to build a read-only promotion packet
         required: true
@@ -224,6 +232,8 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           PLAN55_TARGET_STATE: ${{ inputs.target_state }}
           PLAN55_ACTOR: ${{ github.actor }}
+          PLAN55_COHORT_ID: ${{ inputs.cohort_id }}
+          PLAN55_OBSERVATION_WINDOW_MINUTES: ${{ inputs.observation_window_minutes }}
         run: |
           set -euo pipefail
           node scripts/harness/promotion.mjs --check-plan55
@@ -235,13 +245,31 @@ jobs:
             production) from_state=paired_wave_3 ;;
             *) echo "plan55_invalid_target_state" >&2; exit 1 ;;
           esac
+          cohort_args=()
+          case "$PLAN55_TARGET_STATE" in
+            paired_wave_1|paired_wave_2|paired_wave_3)
+              if [[ ! "$PLAN55_COHORT_ID" =~ ^plan55-cohort-[0-9a-f]{32}$ ||
+                    ! "$PLAN55_OBSERVATION_WINDOW_MINUTES" =~ ^[1-9][0-9]*$ ]]; then
+                echo "plan55_cohort_context_required" >&2
+                exit 1
+              fi
+              cohort_args+=(--cohort "$PLAN55_COHORT_ID"
+                --observation-window-minutes "$PLAN55_OBSERVATION_WINDOW_MINUTES")
+              ;;
+            *)
+              if [[ -n "$PLAN55_COHORT_ID" || -n "$PLAN55_OBSERVATION_WINDOW_MINUTES" ]]; then
+                echo "plan55_cohort_context_not_allowed" >&2
+                exit 1
+              fi
+              ;;
+          esac
           node scripts/harness/promotion.mjs --plan55 \
             --release artifacts/harness/release-manifest.json \
             --evaluation artifacts/harness/evaluation-report.json \
             --gate-receipts artifacts/harness/gate-evidence/gate-evidence-set.json \
             --from "$from_state" --to "$PLAN55_TARGET_STATE" \
             --approval "$PLAN55_ACTOR:$GITHUB_RUN_ID" \
-            --output artifacts/harness/promotion-packet.json
+            --output artifacts/harness/promotion-packet.json "${cohort_args[@]}"
       - name: Publish the non-deploying promotion packet
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:

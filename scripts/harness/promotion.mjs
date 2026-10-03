@@ -27,6 +27,8 @@ const ROLLBACK_REQUIRED_STATES = new Set([
   'canary', 'production', 'rolled_back', 'guard_deployed_off', 'service_canary',
   'service_cleanup', 'receipts_validated', 'paired_wave_1', 'paired_wave_2', 'paired_wave_3',
 ])
+const PLAN55_PAIRED_WAVE_STATES = new Set(['paired_wave_1', 'paired_wave_2', 'paired_wave_3'])
+const PLAN55_COHORT_ID = /^plan55-cohort-[0-9a-f]{32}$/u
 const PROMOTION_ENVIRONMENTS = new Set(['preview', 'staging', 'production'])
 const PLAN55_STATES = Object.freeze([
   'assembled', 'verified', 'guard_deployed_off', 'service_canary', 'service_cleanup',
@@ -313,6 +315,10 @@ export function buildPromotionPacket(input) {
   const humanApprovalId = normalizeApprovalId(input.humanApprovalId)
   if (REMOTE_STATES.has(input.targetState) && !humanApprovalId) throw new Error('remote promotion requires explicit human approval')
   if (!canTransition(input.config, input.currentState, input.targetState)) throw new Error(`promotion transition is not allowed: ${input.currentState}->${input.targetState}`)
+  if (input.config.policyId === PLAN55_POLICY_ID && PLAN55_PAIRED_WAVE_STATES.has(input.targetState) &&
+      !hasValidPlan55PairedWaveContext(input.cohort, input.observationWindowMinutes)) {
+    throw new Error('Plan 55 paired-wave packet requires a safe cohort ID and positive integer observation window')
+  }
   const requiredGates = requiredPromotionGates(input.config, input.targetState)
   const passedGates = input.passedGates ?? []
   for (const gate of requiredGates) {
@@ -380,7 +386,9 @@ export function buildPromotionPacket(input) {
       migrationInventorySha256: rollbackRelease.migrationInventorySha256,
       databaseTypesSha256: rollbackRelease.databaseTypesSha256,
     } : null,
-    cohort: input.cohort ?? null,
+    cohort: input.config.policyId === PLAN55_POLICY_ID && PLAN55_PAIRED_WAVE_STATES.has(input.targetState)
+      ? normalizePlan55CohortId(input.cohort)
+      : input.cohort ?? null,
     observationWindowMinutes: input.observationWindowMinutes ?? null,
     abortThresholds: abort.results,
     killSwitches: Object.fromEntries((input.config.kill_switches ?? []).map((id) => [id, false])),
@@ -401,6 +409,10 @@ export function verifyPromotionPacket(packet, config) {
   if (!canTransition(config, packet.fromState, packet.toState)) problems.push('promotion packet transition is invalid')
   if (config?.policyId === PLAN55_POLICY_ID && packet.environment !== 'production') {
     problems.push('Plan 55 promotion packet target is invalid')
+  }
+  if (config?.policyId === PLAN55_POLICY_ID && PLAN55_PAIRED_WAVE_STATES.has(packet.toState) &&
+      !hasValidPlan55PairedWaveContext(packet.cohort, packet.observationWindowMinutes)) {
+    problems.push('Plan 55 paired-wave packet requires a safe cohort ID and positive integer observation window')
   }
   if (!/^harness-[0-9a-f]{12}-[0-9a-f]{12}$/.test(packet.releaseId ?? '')) problems.push('promotion release ID is invalid')
   if (REMOTE_STATES.has(packet.toState) && !normalizeApprovalId(packet.humanApprovalId)) {
@@ -587,6 +599,37 @@ function normalizeApprovalId(value) {
   return normalized && normalized.length <= 120 ? normalized : null
 }
 
+function normalizePlan55CohortId(value) {
+  return typeof value === 'string' && PLAN55_COHORT_ID.test(value) ? value : null
+}
+
+function hasValidPlan55PairedWaveContext(cohort, observationWindowMinutes) {
+  const normalizedCohort = normalizePlan55CohortId(cohort)
+  return normalizedCohort !== null && normalizedCohort === cohort &&
+    Number.isSafeInteger(observationWindowMinutes) &&
+    observationWindowMinutes > 0
+}
+
+function optionalArgument(name) {
+  const indexes = process.argv.flatMap((argument, index) => argument === name ? [index] : [])
+  if (indexes.length > 1) throw new Error(`promotion command accepts ${name} only once`)
+  if (indexes.length === 0) return undefined
+  const value = process.argv[indexes[0] + 1]
+  if (typeof value !== 'string' || !value || value.startsWith('--')) {
+    throw new Error(`promotion command requires a value after ${name}`)
+  }
+  return value
+}
+
+function optionalPositiveSafeIntegerArgument(name) {
+  const value = optionalArgument(name)
+  if (value === undefined) return undefined
+  if (!/^[1-9]\d*$/u.test(value)) throw new Error(`promotion command requires a positive integer after ${name}`)
+  const parsed = Number(value)
+  if (!Number.isSafeInteger(parsed)) throw new Error(`promotion command requires a positive integer after ${name}`)
+  return parsed
+}
+
 function sha256(value) {
   return createHash('sha256').update(value).digest('hex')
 }
@@ -623,6 +666,12 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
       : undefined
     const currentState = fromIndex >= 0 ? process.argv[fromIndex + 1] : 'assembled'
     const targetState = toIndex >= 0 ? process.argv[toIndex + 1] : 'verified'
+    const cohort = optionalArgument('--cohort')
+    const observationWindowMinutes = optionalPositiveSafeIntegerArgument('--observation-window-minutes')
+    if ((!plan55Mode || !PLAN55_PAIRED_WAVE_STATES.has(targetState)) &&
+        (cohort !== undefined || observationWindowMinutes !== undefined)) {
+      throw new Error('paired-wave context is only accepted for Plan 55 paired-wave targets')
+    }
     const requiredGates = requiredPromotionGates(config, targetState)
     let gateReceipts
     if (plan55Mode) {
@@ -663,6 +712,8 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
       rollbackRelease,
       passedGates,
       gateReceipts,
+      cohort,
+      observationWindowMinutes,
     })
     mkdirSync(dirname(outputPath), { recursive: true })
     writeFileSync(outputPath, `${JSON.stringify(packet, null, 2)}\n`)

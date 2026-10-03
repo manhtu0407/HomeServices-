@@ -265,6 +265,104 @@ test('Plan 55 promotion fails closed when a required gate has no semantic verifi
   })
 })
 
+test('Plan 55 paired-wave packets require a safe cohort ID and positive observation window', () => {
+  const policy = loadPlan55ProductionOnlyPolicy(resolve('.'))
+  const plan55Release = buildHarnessRelease({
+    environment: 'production',
+    gitSha: '9'.repeat(40),
+    lane: 'plan55-production-only',
+    requireCleanWorktree: false,
+    providerReadiness: releaseTemplate.providerReadiness,
+    hostedBeforeBytes: plan55HostedBeforeBytes(policy),
+  })
+  const plan55Evaluation = {
+    ...evaluation,
+    suiteVersion: plan55Release.evaluationSuiteVersion,
+    release: plan55Release,
+    versions: {
+      promptBundleSha256: plan55Release.promptBundleSha256,
+      policyBundleSha256: plan55Release.policyBundleSha256,
+      toolManifestSha256: plan55Release.manifestSha256,
+      capabilityRegistrySha256: plan55Release.capabilityRegistrySha256,
+    },
+  }
+  const input = {
+    root: resolve('.'),
+    config: policy,
+    release: plan55Release,
+    evaluation: plan55Evaluation,
+    environment: 'production',
+    currentState: 'receipts_validated',
+    targetState: 'paired_wave_1',
+    humanApprovalId: 'approval-1',
+    rollbackRelease,
+  }
+  const safeCohort = 'plan55-cohort-0123456789abcdef0123456789abcdef'
+  const missingContext = /Plan 55 paired-wave packet requires a safe cohort ID and positive integer observation window/u
+  assert.throws(() => buildPromotionPacket(input), missingContext)
+  assert.throws(() => buildPromotionPacket({
+    ...input,
+    cohort: 'customer@example.com',
+    observationWindowMinutes: 60,
+  }), missingContext)
+  assert.throws(() => buildPromotionPacket({
+    ...input,
+    cohort: '0901234567',
+    observationWindowMinutes: 60,
+  }), missingContext)
+  assert.throws(() => buildPromotionPacket({
+    ...input,
+    cohort: 'John-Doe',
+    observationWindowMinutes: 60,
+  }), missingContext)
+  assert.throws(() => buildPromotionPacket({
+    ...input,
+    cohort: ` ${safeCohort} `,
+    observationWindowMinutes: 60,
+  }), missingContext)
+  assert.throws(() => buildPromotionPacket({
+    ...input,
+    cohort: safeCohort,
+    observationWindowMinutes: 0,
+  }), missingContext)
+  assert.throws(() => buildPromotionPacket({
+    ...input,
+    cohort: safeCohort,
+    observationWindowMinutes: 60.5,
+  }), missingContext)
+  assert.throws(() => buildPromotionPacket({
+    ...input,
+    cohort: safeCohort,
+    observationWindowMinutes: Number.MAX_SAFE_INTEGER + 1,
+  }), missingContext)
+  assert.throws(() => buildPromotionPacket({
+    ...input,
+    cohort: safeCohort,
+    observationWindowMinutes: 60,
+  }), /missing required release gate/u)
+
+  const packetContext = {
+    schemaVersion: '1.0.0',
+    environment: 'production',
+    fromState: 'receipts_validated',
+    toState: 'paired_wave_1',
+  }
+  const contextError = 'Plan 55 paired-wave packet requires a safe cohort ID and positive integer observation window'
+  for (const [cohort, observationWindowMinutes] of [
+    [null, 60],
+    ['John-Doe', 60],
+    ['plan55-cohort-a', 0],
+    ['plan55-cohort-a', '60'],
+  ]) {
+    assert.ok(verifyPromotionPacket({
+      ...packetContext, cohort, observationWindowMinutes,
+    }, policy).includes(contextError))
+  }
+  assert.ok(!verifyPromotionPacket({
+    ...packetContext, cohort: safeCohort, observationWindowMinutes: 60,
+  }, policy).includes(contextError))
+})
+
 test('blocks a canary when a critical threshold fails', () => {
   const result = evaluateAbortThresholds(config, {
     ...evaluation.metrics,

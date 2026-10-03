@@ -613,6 +613,18 @@ test('post-receipt finalization consumes separately attested exact-source artifa
   assert.match(finalization, /PLAN55_RELEASE_ARTIFACT_ID: \$\{\{ inputs\.release_artifact_id \}\}/u)
   assert.match(finalization, /PLAN55_RECEIPTS_ARTIFACT_ID: \$\{\{ inputs\.receipts_artifact_id \}\}/u)
   assert.match(finalization, /PLAN55_GATE_EVIDENCE_ARTIFACT_ID: \$\{\{ inputs\.gate_evidence_artifact_id \}\}/u)
+  assert.match(finalization, /cohort_id:\s*\n\s*description:[^\n]*\n\s*required: false\n\s*type: string/u)
+  assert.match(finalization, /observation_window_minutes:\s*\n\s*description:[^\n]*\n\s*required: false\n\s*type: string/u)
+  assert.match(finalization, /PLAN55_COHORT_ID: \$\{\{ inputs\.cohort_id \}\}/u)
+  assert.match(finalization, /PLAN55_OBSERVATION_WINDOW_MINUTES: \$\{\{ inputs\.observation_window_minutes \}\}/u)
+  assert.ok(finalization.includes('if [[ ! "$PLAN55_COHORT_ID" =~ ^plan55-cohort-[0-9a-f]{32}$ ||'),
+    'workflow input must use the same opaque cohort-ID grammar as the packet verifier')
+  assert.match(finalization, /plan55_cohort_context_required/u,
+    'paired-wave packet context must be required by the non-deploying workflow')
+  assert.match(finalization, /plan55_cohort_context_not_allowed/u,
+    'unused cohort context must be rejected for non-wave packet targets')
+  assert.match(finalization, /--cohort "\$PLAN55_COHORT_ID"/u)
+  assert.match(finalization, /--observation-window-minutes "\$PLAN55_OBSERVATION_WINDOW_MINUTES"/u)
   assert.match(finalization, /test "\$GITHUB_SHA" = "\$PLAN55_SOURCE_SHA"/u)
   const artifactVerificationStep = finalization.indexOf('name: Verify and stage the independently produced exact-source artifacts')
   assert.ok(artifactVerificationStep >= 0 &&
