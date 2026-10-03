@@ -64,6 +64,12 @@ jobs:
           test "$base_sha" = "891b1e26dd9a785f05671002c5e74cb270678be4"
           git merge-base --is-ancestor "$base_sha" "$GITHUB_SHA"
           test -z "$(git status --porcelain=v1 --untracked-files=all)"
+      - id: independent_holdout_preflight
+        name: Require independent holdout approval before Docker and long quality gates
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PLAN55_SOURCE_SHA: ${{ inputs.source_sha }}
+        run: node apps/api/scripts/plan55-independent-holdout-preflight.mjs
       - id: docker_ram_floor
         name: Require the Docker RAM floor before local SQL gates
         run: |
