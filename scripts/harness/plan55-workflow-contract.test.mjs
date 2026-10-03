@@ -2,6 +2,11 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import test from 'node:test'
 import { apiTestCommandPlan } from '../../apps/api/scripts/test-runner.mjs'
+import {
+  PLAN55_DEPLOYED_GUARD_GATES,
+  PLAN55_PREFLIGHT_GATE_CHECKS,
+  PLAN55_RELEASE_STAGE_GATES,
+} from './plan55-gate-receipts.mjs'
 
 const releasePath = '.github/workflows/plan55-production-only.yml'
 const servicePath = '.github/workflows/plan55-production-canary-service.yml'
@@ -20,6 +25,7 @@ const canaryCore = readFileSync('apps/api/scripts/lib/plan55-production-canary-c
 const canaryCli = readFileSync('apps/api/scripts/kael-playbook-production-canary.mjs', 'utf8')
 const checkpointStore = readFileSync('apps/api/scripts/lib/plan55-production-canary-checkpoint-store.mjs', 'utf8')
 const holdoutPreflight = readFileSync('apps/api/scripts/plan55-independent-holdout-preflight.mjs', 'utf8')
+const releaseGateProofs = readFileSync('scripts/harness/plan55-release-gate-proofs.mjs', 'utf8')
 const blindHoldoutCli = readFileSync('apps/api/scripts/plan55-independent-holdout-package.mjs', 'utf8')
 const blindHoldoutBuilder = readFileSync('apps/api/scripts/lib/plan55-independent-holdout-package.mjs', 'utf8')
 const apiPackage = JSON.parse(readFileSync('apps/api/package.json', 'utf8'))
@@ -160,6 +166,62 @@ test('the serialized canary timeout reserves unconditional cleanup and setup tim
   assert.match(release, /baseline_binding_names\["\$\{binding%%=\*\}"\]=1/u)
 })
 
+test('preflight gate proofs bind exact source and successful CI step outcomes before artifact upload', () => {
+  const quality = jobBlock(release, 'quality-and-preflight')
+  const proofIndex = quality.indexOf('name: Record exact-source preflight gate proofs')
+  const sourceArtifactIndex = quality.indexOf('name: Preserve source-gate evidence')
+  const proofArtifactIndex = quality.indexOf('name: Publish exact-source preflight gate proofs')
+  assert.ok(proofIndex >= 0 && sourceArtifactIndex > proofIndex && proofArtifactIndex > sourceArtifactIndex,
+    'source-bound gate proofs must be generated before the evidence artifact is uploaded')
+  const proofStep = quality.slice(proofIndex, sourceArtifactIndex)
+  assert.match(proofStep, /if: success\(\)/u,
+    'gate evidence may be generated only after the entire preflight job succeeds')
+  assert.match(proofStep, /PLAN55_SOURCE_SHA: \$\{\{ inputs\.source_sha \}\}/u)
+
+  const outcomeBindings = {
+    verify_source: 'PLAN55_VERIFY_SOURCE_OUTCOME',
+    docker_ram_floor: 'PLAN55_DOCKER_RAM_FLOOR_OUTCOME',
+    workspace_quality: 'PLAN55_WORKSPACE_QUALITY_OUTCOME',
+    production_ui_normality: 'PLAN55_PRODUCTION_UI_NORMALITY_OUTCOME',
+    secret_scan: 'PLAN55_SECRET_SCAN_OUTCOME',
+    sql_verification: 'PLAN55_SQL_VERIFICATION_OUTCOME',
+  }
+  for (const [stepId, variable] of Object.entries(outcomeBindings)) {
+    assert.match(proofStep, new RegExp(`${variable}: \\\$\\{\\{ steps\\.${stepId}\\.outcome \\}\\}`,'u'),
+      `proof generator must consume the real ${stepId} outcome`)
+  }
+  assert.equal(quality.match(/pnpm lint:production-ui-copy -- --output artifacts\/release\/production-ui-normality\.json/gu)?.length, 1,
+    'Production UI normality must run exactly once as its independently attributable gate')
+  assert.match(proofStep, /node scripts\/harness\/plan55-preflight-gate-evidence\.mjs --output artifacts\/release\/plan55-gate-evidence/u)
+  assert.deepEqual(Object.keys(PLAN55_PREFLIGHT_GATE_CHECKS).sort(), [
+    'edge-deno',
+    'generated-types',
+    'harness',
+    'plan55-actor-scoped-guard-tests',
+    'plan55-canary-runner-tests',
+    'plan55-exact-production-base-ancestry',
+    'plan55-production-source-merge',
+    'plan55-source-lock',
+    'production-ui-normality',
+    'security',
+    'sql-verification',
+    'workspace-build',
+    'workspace-tests',
+    'workspace-typecheck',
+  ])
+
+  const sourceArtifactStep = quality.slice(sourceArtifactIndex, proofArtifactIndex)
+  assert.match(sourceArtifactStep, /artifacts\/release\/production-ui-normality\.json/u,
+    'the general quality artifact must retain its original explicit release evidence path')
+  const proofArtifactStep = quality.slice(proofArtifactIndex)
+  assert.match(proofArtifactStep, /if: success\(\)/u,
+    'preflight proof artifacts must not be published after a failed quality gate')
+  assert.match(proofArtifactStep, /name: plan55-preflight-gates-\$\{\{ github\.run_id \}\}-\$\{\{ github\.run_attempt \}\}/u)
+  assert.match(proofArtifactStep, /path: artifacts\/release\/plan55-gate-evidence\//u,
+    'the dedicated artifact must preserve the proof files at an unambiguous path')
+  assert.match(proofArtifactStep, /if-no-files-found: error/u)
+})
+
 test('guard deploy is rollback-protected, deploys only mobile-api, and applies no migration or global service flag', () => {
   assert.match(release, /plan55-production-release-preflight\.mjs/u)
   assert.match(release, /runtime-release-bindings\.mjs/u)
@@ -169,6 +231,35 @@ test('guard deploy is rollback-protected, deploys only mobile-api, and applies n
   assert.doesNotMatch(release, /functions deploy kael-matching-maintainer/u)
   assert.doesNotMatch(release, /\bdb push\b/u)
   assert.doesNotMatch(release, /KAEL_PLAYBOOK_(?:HVAC|HANDYMAN|CLEANING|UPHOLSTERY|PLUMBING|ELECTRICAL)_ENABLED/u)
+})
+
+test('release-stage gate proofs bind the pinned hosted baseline and rollback before the deploy step', () => {
+  const assemble = jobBlock(release, 'deploy_guard_off')
+  const sourceFingerprint = assemble.indexOf('rollback-mobile-source-sha256.txt')
+  const proofProducer = assemble.indexOf('node scripts/harness/plan55-release-gate-proofs.mjs')
+  const deployStep = assemble.indexOf('name: Register release metadata and deploy actor-scoped guard with every flag OFF')
+  assert.ok(sourceFingerprint >= 0 && proofProducer > sourceFingerprint && deployStep > proofProducer,
+    'release proofs must be emitted only after rollback source fingerprinting and before Production deploy')
+  for (const argument of [
+    '--release artifacts/release/release.json',
+    '--hosted-before artifacts/release/hosted-before.json',
+    '--hosted-rollback-snapshot artifacts/release/hosted-rollback-snapshot.json',
+    '--rollback-mobile-source-sha256 artifacts/release/rollback-mobile-source-sha256.txt',
+  ]) assert.ok(assemble.includes(argument), `release-stage proof input is missing: ${argument}`)
+  assert.match(assemble, /--output artifacts\/release\/plan55-gate-evidence/u)
+  assert.match(release, /path: artifacts\/release/u,
+    'the exact-source release artifact must retain the generated gate proof files')
+  assert.match(releaseGateProofs, /hosted\.gitSha !== pinned\.sha/u)
+  assert.match(releaseGateProofs, /JSON\.stringify\(rollback\.migrations\) !== JSON\.stringify\(before\.migrations\)/u)
+  assert.match(releaseGateProofs, /sameMobileApiIdentity\(beforeEdge, rollbackEdge\)/u)
+  assert.doesNotMatch(releaseGateProofs, /SUPABASE_ACCESS_TOKEN|SERVICE_ROLE_KEY|process\.env\.[A-Z0-9_]*(?:TOKEN|KEY)/u,
+    'the proof generator must not consume or serialize credential values')
+  assert.deepEqual([...PLAN55_RELEASE_STAGE_GATES].sort(), [
+    'compatible-rollback-target',
+    'hosted-drift-baseline',
+    'plan55-production-target-attestation',
+    'plan55-rollback-preflight',
+  ])
 })
 
 test('independent holdout approvals and guard CI are required before assembling or mutating Production', () => {
@@ -224,6 +315,45 @@ test('Production source attestation is bound to downloaded hosted Edge bytes and
   const operations = readFileSync('apps/api/scripts/lib/plan55-production-canary-operations.mjs', 'utf8')
   assert.match(operations, /functions\/mobile-api[\s\S]*?current\.ezbr_sha256/u)
   assert.match(operations, /expected\.function_id/u)
+})
+
+test('deployed guard proofs consume only exact post-deploy Production evidence before disarming rollback', () => {
+  const assemble = jobBlock(release, 'deploy_guard_off')
+  const attestationIndex = assemble.indexOf('production-source-attestation.json')
+  const migrationCheckIndex = assemble.indexOf('JSON.stringify(hosted.migrations)', attestationIndex)
+  const preflightIndex = assemble.indexOf('node apps/api/scripts/plan55-production-release-preflight.mjs',
+    migrationCheckIndex)
+  const proofIndex = assemble.indexOf('node scripts/harness/plan55-deployed-guard-gate-proofs.mjs', preflightIndex)
+  const rollbackDisarmedIndex = assemble.indexOf('trap - EXIT', proofIndex)
+
+  assert.ok(attestationIndex >= 0 && migrationCheckIndex > attestationIndex &&
+    preflightIndex > migrationCheckIndex && proofIndex > preflightIndex &&
+    rollbackDisarmedIndex > proofIndex,
+  'live proofs must follow deployed-source attestation and migration equality while rollback remains armed')
+  for (const argument of [
+    '--release artifacts/release/release.json',
+    '--hosted-before artifacts/release/hosted-before.json',
+    '--hosted-deployed artifacts/release/hosted-guard-deployed.json',
+    '--edge-source-proof artifacts/release/production-edge-source-proof.json',
+    '--source-attestation artifacts/release/production-source-attestation.json',
+    '--release-preflight artifacts/release/production-release-preflight.json',
+    '--output artifacts/release/plan55-gate-evidence',
+  ]) assert.ok(assemble.includes(argument), `deployed guard proof input is missing: ${argument}`)
+  assert.doesNotMatch(assemble.slice(preflightIndex, rollbackDisarmedIndex),
+    /SUPABASE_ACCESS_TOKEN[^\n]*>>|SUPABASE_SERVICE_ROLE_KEY[^\n]*>>/u,
+    'proof artifacts must not serialize or print credentials')
+  assert.deepEqual([...PLAN55_DEPLOYED_GUARD_GATES].sort(), [
+    'plan55-all-global-flags-off',
+    'plan55-guard-deployed',
+    'plan55-no-migration',
+    'plan55-provider-readiness',
+    'plan55-runtime-source-match',
+  ])
+  const policy = JSON.parse(readFileSync('config/harness/plan55-production-only-policy.json', 'utf8'))
+  for (const gate of PLAN55_DEPLOYED_GUARD_GATES) {
+    assert.equal(policy.trustedEvidenceWorkflowPathsByGate[gate], '.github/workflows/ci.yml',
+      `deployed proof gate must bind to the CI caller run: ${gate}`)
+  }
 })
 
 test('service workflow preserves order and resumes only an exact-source cleaned checkpoint', () => {
@@ -290,7 +420,7 @@ test('service workflow preserves order and resumes only an exact-source cleaned 
   assert.match(service, /G5_FAILED_SERVICE_OFF/u)
   assert.match(release, /item\.status !== 'G5_PASSED'/u)
   assert.doesNotMatch(release, /!\['G5_PASSED', 'G5_FAILED_SERVICE_OFF'\]\.includes\(item\.status\)/u)
-  assert.match(release, /cleanup\?\.reused !== true/u)
+  assert.match(release, /typeof item\.cleanup\?\.reused !== 'boolean'/u)
   assert.match(release, /item\.slice_count !== 8 \|\| item\.case_count !== 96 \|\| item\.error_count !== 0/u)
   assert.match(release, /\.scratch\/plan55-production-canary\/records\/\*\*/u)
   assert.match(release, /\.scratch\/plan55-production-canary\/attempts\/\*\*/u)
@@ -369,7 +499,34 @@ test('gate evidence packaging preserves exact-source evidence and has no Product
     'evidence packaging must run on the exact locked main SHA')
   assert.match(gateEvidencePackage, /buildPlan55GateEvidenceArtifact/u)
   assert.match(gateEvidencePackage, /downloadPlan55GitHubRunArtifact/u)
+  assert.match(gateEvidencePackage, /PLAN55_RELEASE_STAGE_GATES/u)
+  assert.match(gateEvidencePackage, /PLAN55_DEPLOYED_GUARD_GATES/u)
+  assert.match(gateEvidencePackage,
+    /const releaseArtifactGates = new Set\(\[[\s\S]*?\.filter\(\(gate\) =>\s*expectedGates\.includes\(gate\)\)\)/u,
+    'deployed and pre-deploy proofs must be auto-sourced from the exact release artifact')
+  assert.match(gateEvidencePackage,
+    /externallySuppliedGates = expectedGates\.filter\(\(gate\) => !releaseArtifactGates\.has\(gate\)\)/u)
+  assert.match(gateEvidencePackage, /`plan55-gate-evidence\/\$\{gate\}\.json`/u,
+    'release-stage and deployed-guard gates must be sourced from the exact release artifact')
   assert.match(gateEvidencePackage, /requiredPromotionGates\(policy, targetState\)/u)
+  assert.match(gateEvidencePackage,
+    /sourceRunId, sourceRunAttempt, \['\.github\/workflows\/ci\.yml'\]\)/u,
+    'release artifacts from the called workflow must be bound to their actual CI caller run')
+  assert.match(gateEvidencePackage,
+    /releaseArtifact\.workflowPath !== '\.github\/workflows\/ci\.yml'/u,
+    'the evidence packager must reject artifacts not produced in the exact CI caller run')
+  const coveragePreflight = gateEvidencePackage.indexOf(
+    'assertPlan55GateEvidenceCoverage({ policy, targetState, requiredGates: expectedGates })')
+  const firstReleaseDownload = gateEvidencePackage.indexOf("download(releaseArtifactId, 'plan55-release'")
+  const firstEvidenceDownload = gateEvidencePackage.indexOf('await download(input.artifact_id, input.artifact_name_prefix)')
+  assert.ok(coveragePreflight >= 0 && coveragePreflight < firstReleaseDownload &&
+    firstReleaseDownload < firstEvidenceDownload,
+  'the full semantic-verifier inventory must fail before downloading any source artifact')
+  assert.match(gateEvidencePackage, /const downloadedArtifacts = new Map\(\)/u,
+    'multiple gate proofs from one immutable workflow artifact must share one verified download')
+  assert.match(gateEvidencePackage,
+    /const cacheKey = `\$\{input\.artifact_id\}:\$\{input\.artifact_name_prefix\}`[\s\S]*?let artifact = downloadedArtifacts\.get\(cacheKey\)[\s\S]*?if \(!artifact\)[\s\S]*?await download\(input\.artifact_id, input\.artifact_name_prefix\)[\s\S]*?downloadedArtifacts\.set\(cacheKey, artifact\)/u,
+    'the package workflow must reuse only a verified artifact with the same ID and name prefix')
   assert.match(gateEvidencePackage, /hosted-before\.json/u,
     'evidence package must verify the release against its hosted-before snapshot')
   assert.match(gateEvidencePackage, /release-bundle\.mjs --verify artifacts\/harness\/release-manifest\.json \\\r?\n\s+--hosted-before artifacts\/harness\/hosted-before\.json/u,
@@ -377,6 +534,27 @@ test('gate evidence packaging preserves exact-source evidence and has no Product
   assert.match(gateEvidencePackage, /plan55-gate-evidence-\$\{\{ github\.run_id \}\}-\$\{\{ github\.run_attempt \}\}/u)
   assert.doesNotMatch(gateEvidencePackage, /supabase|release-control\.mjs|functions deploy|production environment|service[_-]role/iu)
   const policy = JSON.parse(readFileSync('config/harness/plan55-production-only-policy.json', 'utf8'))
+  assert.match(ci, /plan55-production-only:[\s\S]*?uses: \.\/\.github\/workflows\/plan55-production-only\.yml/u,
+    'the root CI workflow must remain the caller for the reusable Production-only release')
+  for (const gate of [
+    'hosted-drift-baseline',
+    'compatible-rollback-target',
+    'plan55-production-target-attestation',
+    'plan55-rollback-preflight',
+    ...PLAN55_DEPLOYED_GUARD_GATES,
+    'plan55-service-slice-integrity-pass',
+    'plan55-service-g5-safety-pass',
+    'plan55-service-cleanup-pass',
+    'plan55-six-current-source-receipts',
+    'plan55-six-cleanup-passes',
+  ]) {
+    assert.equal(policy.trustedEvidenceWorkflowPathsByGate[gate], '.github/workflows/ci.yml',
+      `GitHub provenance for ${gate} must identify the root caller workflow`)
+  }
+  assert.ok(!policy.trustedEvidenceWorkflowPaths.includes(releasePath),
+    'the called release workflow is not a standalone GitHub workflow run')
+  assert.ok(!policy.trustedEvidenceWorkflowPaths.includes(servicePath),
+    'the called service workflow is not a standalone GitHub workflow run')
   assert.ok(!policy.trustedEvidenceWorkflowPaths.includes(gateEvidencePackagePath),
     'the packager may produce aggregate artifacts but must not be trusted as a raw gate-evidence source')
 })
@@ -406,7 +584,7 @@ test('post-receipt finalization consumes separately attested exact-source artifa
     'finalization must stage the exact hosted-before snapshot before verification')
   assert.match(finalization, /release-bundle\.mjs --verify artifacts\/harness\/release-manifest\.json \\\r?\n\s+--hosted-before artifacts\/harness\/hosted-before\.json/u,
     'Plan 55 release verification must bind the manifest to the hosted-before snapshot')
-  assert.match(finalization, /const sourceWorkflow = '\.github\/workflows\/plan55-production-only\.yml'/u)
+  assert.match(finalization, /const sourceWorkflow = '\.github\/workflows\/ci\.yml'/u)
   assert.match(finalization, /PLAN55_SOURCE_SHA: \$\{\{ inputs\.source_sha \}\}/u)
   assert.match(finalization, /PLAN55_RELEASE_ARTIFACT_ID: \$\{\{ inputs\.release_artifact_id \}\}/u)
   assert.match(finalization, /PLAN55_RECEIPTS_ARTIFACT_ID: \$\{\{ inputs\.receipts_artifact_id \}\}/u)
@@ -428,6 +606,7 @@ test('post-receipt finalization consumes separately attested exact-source artifa
 
 test('API JSON evidence is emitted by Vitest without dropping the Node contract suite', () => {
   const migrationInventoryTest = 'scripts/harness/plan55-applied-migration-inventory.test.mjs'
+  const deployedGuardProofTest = 'scripts/harness/plan55-deployed-guard-gate-proofs.test.mjs'
   assert.equal(apiPackage.scripts.test, 'node scripts/test-runner.mjs')
   assert.equal(apiPackage.scripts['test:vitest'], 'vitest run')
   assert.match(apiPackage.scripts['test:node'], /node \.\.\/\.\.\/scripts\/run\.mjs run-node --test/u)
@@ -440,6 +619,10 @@ test('API JSON evidence is emitted by Vitest without dropping the Node contract 
   assert.ok(!plan.nodeRunnerArgs.some((argument) => reporterArgs.includes(argument)))
   assert.ok(plan.nodeRunnerArgs.includes(migrationInventoryTest),
     'the API Node runner must execute the applied-migration regression test')
+  assert.ok(plan.nodeRunnerArgs.includes(deployedGuardProofTest),
+    'the API Node runner must execute the deployed-guard proof regression tests')
+  assert.ok(apiPackage.scripts['test:node'].includes(deployedGuardProofTest),
+    'the direct API Node test command must execute the deployed-guard proof regression tests')
 
   for (const path of [
     '.github/workflows/ci.yml',

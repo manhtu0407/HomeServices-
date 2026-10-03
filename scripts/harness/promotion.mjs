@@ -3,7 +3,12 @@ import { existsSync, lstatSync, mkdirSync, readFileSync, realpathSync, statSync,
 import { dirname, isAbsolute, relative, resolve, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { checkHarnessRelease } from './release-bundle.mjs'
-import { isPlan55GateReceiptRecord, loadPlan55GateEvidenceSet, verifyPlan55GitHubArtifactProvenance } from './plan55-gate-receipts.mjs'
+import {
+  assertPlan55GateEvidenceCoverage,
+  isPlan55GateReceiptRecord,
+  loadPlan55GateEvidenceSet,
+  verifyPlan55GitHubArtifactProvenance,
+} from './plan55-gate-receipts.mjs'
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..')
 const CONFIG_PATH = resolve(ROOT, 'config/harness/promotion.json')
@@ -123,6 +128,41 @@ function validatePlan55Policy(policy, root) {
         break
       }
     }
+  }
+  const expectedEvidenceWorkflowPathsByGate = {
+    'plan55-production-source-merge': '.github/workflows/ci.yml',
+    'plan55-exact-production-base-ancestry': '.github/workflows/ci.yml',
+    'plan55-source-lock': '.github/workflows/ci.yml',
+    'hosted-drift-baseline': '.github/workflows/ci.yml',
+    'compatible-rollback-target': '.github/workflows/ci.yml',
+    'plan55-production-target-attestation': '.github/workflows/ci.yml',
+    'plan55-rollback-preflight': '.github/workflows/ci.yml',
+    'plan55-runtime-source-match': '.github/workflows/ci.yml',
+    'plan55-guard-deployed': '.github/workflows/ci.yml',
+    'plan55-all-global-flags-off': '.github/workflows/ci.yml',
+    'plan55-provider-readiness': '.github/workflows/ci.yml',
+    'plan55-no-migration': '.github/workflows/ci.yml',
+    'workspace-typecheck': '.github/workflows/ci.yml',
+    'workspace-tests': '.github/workflows/ci.yml',
+    'workspace-build': '.github/workflows/ci.yml',
+    'production-ui-normality': '.github/workflows/ci.yml',
+    security: '.github/workflows/ci.yml',
+    harness: '.github/workflows/ci.yml',
+    'plan55-actor-scoped-guard-tests': '.github/workflows/ci.yml',
+    'plan55-canary-runner-tests': '.github/workflows/ci.yml',
+    'edge-deno': '.github/workflows/ci.yml',
+    'sql-verification': '.github/workflows/ci.yml',
+    'generated-types': '.github/workflows/ci.yml',
+    'plan55-service-slice-integrity-pass': '.github/workflows/ci.yml',
+    'plan55-service-g5-safety-pass': '.github/workflows/ci.yml',
+    'plan55-service-cleanup-pass': '.github/workflows/ci.yml',
+    'plan55-six-current-source-receipts': '.github/workflows/ci.yml',
+    'plan55-six-cleanup-passes': '.github/workflows/ci.yml',
+  }
+  if (JSON.stringify(policy.trustedEvidenceWorkflowPathsByGate) !==
+      JSON.stringify(expectedEvidenceWorkflowPathsByGate) ||
+      Object.values(expectedEvidenceWorkflowPathsByGate).some((path) => !trustedWorkflowPaths?.includes(path))) {
+    problems.push('Plan 55 gate-specific evidence producer map is invalid')
   }
   const productionSourceBase = policy.productionSourceBase
   if (!productionSourceBase || typeof productionSourceBase !== 'object' ||
@@ -516,6 +556,11 @@ export function requiredPromotionGates(policy, targetState) {
 
 function buildPlan55GateReceiptSet(requiredGates, suppliedReceipts, context) {
   if (requiredGates.length === 0 && suppliedReceipts === undefined) return {}
+  assertPlan55GateEvidenceCoverage({
+    policy: context.policy,
+    targetState: context.targetState,
+    requiredGates,
+  })
   if (!suppliedReceipts || typeof suppliedReceipts !== 'object' || Array.isArray(suppliedReceipts)) {
     throw new Error('Plan 55 promotion requires a source-bound gate evidence set')
   }
@@ -595,6 +640,7 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
         await verifyPlan55GitHubArtifactProvenance(gateReceipts, {
           repository: config.repository,
           trustedEvidenceWorkflowPaths: config.trustedEvidenceWorkflowPaths,
+          trustedEvidenceWorkflowPathsByGate: config.trustedEvidenceWorkflowPathsByGate,
           sourceSha: release.gitSha,
           token: process.env.GH_TOKEN ?? process.env.GITHUB_TOKEN,
         })

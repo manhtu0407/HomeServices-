@@ -63,6 +63,30 @@ const productionHealth = {
   },
 }
 
+function cleanCanaryReceipt() {
+  return {
+    globalFlags: 'absent',
+    canaryFlag: 'absent',
+    canaryActorId: 'absent',
+    authStatus: 404,
+    orphanWorkers: 0,
+    rows: {
+      profiles: 0,
+      customer_profiles: 0,
+      customer_account_deletion_requests: 0,
+      kael_chat_sessions: 0,
+      kael_chat_turns: 0,
+      worker_profiles: 0,
+      jobs_as_customer: 0,
+      jobs_as_worker: 0,
+      job_broadcasts_as_worker: 0,
+      job_events_as_actor: 0,
+      chat_messages_as_sender: 0,
+      notifications_as_user: 0,
+    },
+  }
+}
+
 test('the canary uses the pinned active client identity while attesting the newly deployed backend SHA', () => {
   const deployment = {
     git_sha: productionHealth.release.git_sha,
@@ -104,7 +128,7 @@ test('checkpoint status separates observed case receipts from unknown or cleaned
     deployment,
     statuses: [{
       service: 'hvac', verifiedSliceIds: [], missingSliceIds: sliceIds,
-      cleanupVerified: false, complete: false,
+      cleanupVerified: false, cleanup: null, complete: false,
     }],
   })
   assert.equal(missing.schema, 'plan55-production-checkpoint-status/v2')
@@ -117,7 +141,7 @@ test('checkpoint status separates observed case receipts from unknown or cleaned
     deployment,
     statuses: [{
       service: 'hvac', verifiedSliceIds: [sliceIds[0]], missingSliceIds: sliceIds.slice(1),
-      cleanupVerified: true, complete: false,
+      cleanupVerified: true, cleanup: cleanCanaryReceipt(), complete: false,
     }],
   })
   assert.equal(recorded.canary_started, true)
@@ -129,7 +153,7 @@ test('checkpoint status separates observed case receipts from unknown or cleaned
     deployment,
     statuses: [{
       service: 'hvac', verifiedSliceIds: [], missingSliceIds: sliceIds,
-      cleanupVerified: true, complete: false,
+      cleanupVerified: true, cleanup: cleanCanaryReceipt(), complete: false,
     }],
   })
   assert.equal(cleanedWithoutSlices.canary_started, null)
@@ -139,7 +163,7 @@ test('checkpoint status separates observed case receipts from unknown or cleaned
     deployment,
     statuses: [{
       service: 'hvac', verifiedSliceIds: [sliceIds[0]], missingSliceIds: sliceIds.slice(1),
-      cleanupVerified: false, complete: false,
+      cleanupVerified: false, cleanup: null, complete: false,
     }],
   }), /checkpoint_status_invalid/u)
 })
@@ -156,6 +180,7 @@ test('service retry reuses only exact-source slices with proven cleanup', () => 
       verifiedSliceIds: slices.slice(0, 3).map(({ id }) => id),
       missingSliceIds: slices.slice(3).map(({ id }) => id),
       cleanupVerified: true,
+      cleanup: cleanCanaryReceipt(),
       complete: false,
     }],
   })

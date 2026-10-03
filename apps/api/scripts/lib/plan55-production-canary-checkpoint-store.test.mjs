@@ -142,6 +142,7 @@ test('Plan 55 status reads are read-only and reuse only exact, cleaned source re
     verifiedSliceIds: [],
     missingSliceIds: slices.map(({ id }) => id),
     cleanupVerified: false,
+    cleanup: null,
     complete: false,
   }
 
@@ -169,6 +170,7 @@ test('Plan 55 status reads are read-only and reuse only exact, cleaned source re
       verifiedSliceIds: [slices[0].id],
       missingSliceIds: slices.slice(1).map(({ id }) => id),
       cleanupVerified: true,
+      cleanup: cleanReceipt(),
       complete: false,
     },
   )
