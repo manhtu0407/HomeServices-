@@ -27,7 +27,8 @@ import {
   PLAN55_PRODUCTION_SOURCE_TARGET_BRANCH,
   PLAN55_ACTOR_GUARD_CHECK_NAME,
   PLAN55_ACTOR_GUARD_VERIFICATION,
-  buildPlan55HoldoutReviewBody,
+  PLAN55_GITHUB_ATTESTATION_VERIFICATION,
+  buildPlan55HoldoutAttestationCommentBody,
 } from './plan55-independent-holdout-review.mjs'
 import { buildPlan55ServiceSlices } from './plan55-production-canary-core.mjs'
 
@@ -124,7 +125,7 @@ function buildSourceAttestation(sourceSha) {
   }
 }
 
-function buildReviewEvidence({
+function buildHoldoutAttestationEvidence({
   expectedSourceSha: sourceSha,
   expectedHoldoutHashes: holdoutHashes,
   expectedHoldoutCaseCounts: holdoutCaseCounts,
@@ -169,14 +170,13 @@ function buildReviewEvidence({
       head_commit: { sha: targetBaseSha },
     },
   }
-  const reviews = reviewerIds.map((reviewerId, index) => ({
+  const attestationComments = reviewerIds.map((reviewerId, index) => ({
     id: reviewIds[index],
     user: { id: reviewerId },
     author_association: 'COLLABORATOR',
-    state: 'APPROVED',
-    commit_id: reviewedHeadSha,
-    submitted_at: `2026-09-29T0${index + 1}:00:00Z`,
-    body: buildPlan55HoldoutReviewBody({
+    created_at: `2026-09-29T0${index + 1}:00:00Z`,
+    updated_at: `2026-09-29T0${index + 1}:00:00Z`,
+    body: buildPlan55HoldoutAttestationCommentBody({
       reviewedHeadSha,
       holdoutHashes,
       labelsSha256: labelsHashes[index],
@@ -185,7 +185,7 @@ function buildReviewEvidence({
   }))
   return {
     proof: {
-      schema: 'plan55-independent-holdout-proof/v4',
+      schema: 'plan55-independent-holdout-proof/v5',
       status: 'PASS',
       blinded: true,
       reviewed_by_author: false,
@@ -203,13 +203,33 @@ function buildReviewEvidence({
         production_source_target_branch_ancestry_status: 'ahead',
         production_source_base_ancestry_status: 'ahead',
         actor_guard_file_blob_sha1: actorGuardFileBlobSha,
-        review_ids: reviewIds,
+        attestation_comment_ids: reviewIds,
       },
       reviewer_attestations: reviewerIds.map((reviewerId, index) => ({
-        review_id: reviewIds[index],
+        comment_id: reviewIds[index],
         reviewer_id_sha256: identityHash(reviewerId),
+        author_association: 'COLLABORATOR',
         labels_sha256: labelsHashes[index],
       })),
+      github_attestation_verification: {
+        method: PLAN55_GITHUB_ATTESTATION_VERIFICATION,
+        repository: 'manhtu0407/HomeServices-',
+        pull_request_number: pullRequestNumber,
+        reviewed_head_sha: reviewedHeadSha,
+        merge_sha: sourceSha,
+        production_source_base_branch: PLAN55_PRODUCTION_SOURCE_BASE.branch,
+        production_source_base_sha: PLAN55_PRODUCTION_SOURCE_BASE.sha,
+        production_source_target_branch: PLAN55_PRODUCTION_SOURCE_TARGET_BRANCH,
+        production_source_target_branch_tip_sha: targetBaseSha,
+        production_source_target_branch_ancestry_status: 'ahead',
+        production_source_base_ancestry_status: 'ahead',
+        holdout_root_sha256: createHash('sha256')
+          .update(Object.keys(holdoutHashes).sort()
+            .map((service) => `${service}=${holdoutHashes[service].slice('sha256:'.length)}`).join('\n'))
+          .digest('hex'),
+        holdout_labels_sha256: expectedHoldoutLabelsSha256,
+        attestation_comment_ids: reviewIds,
+      },
       holdouts: Object.fromEntries(Object.keys(holdoutHashes).map((service) => [service, {
         path: PLAN55_SOURCE_ASSETS[service].holdout,
         sha256: holdoutHashes[service],
@@ -218,7 +238,7 @@ function buildReviewEvidence({
     },
     pullRequest,
     mergeCommit,
-    reviews,
+    attestationComments,
     actorGuardProof: {
       source_sha: sourceSha,
       runtime_file_path: PLAN55_RUNTIME_SOURCE_PATHS[0],
@@ -612,9 +632,9 @@ test('preflight derives source-bound proofs without a plan55 field on public Pro
       sourceAttestationReads += 1
       return sourceAttestation
     },
-    holdoutReviewEvidenceProvider: async (input) => {
+    holdoutAttestationEvidenceProvider: async (input) => {
       providerInput = input
-      return buildReviewEvidence(input)
+      return buildHoldoutAttestationEvidence(input)
     },
   })
 
@@ -626,7 +646,7 @@ test('preflight derives source-bound proofs without a plan55 field on public Pro
   assert.match(providerInput.expectedHoldoutLabelsSha256, /^sha256:[a-f0-9]{64}$/u)
   assert.equal(preflight.actorGuardProof.source_sha, sourceSha)
   assert.equal(preflight.independentHoldoutProof.source_sha, sourceSha)
-  assert.equal(preflight.independentHoldoutProof.github_review_verification.merge_sha, sourceSha)
+  assert.equal(preflight.independentHoldoutProof.github_attestation_verification.merge_sha, sourceSha)
   assert.equal(preflight.releaseLane, 'plan55-production-only')
   assert.deepEqual(preflight.clientHeaders, {
     'x-client-platform': 'ios',
@@ -730,7 +750,7 @@ test('live chat requests retain the current Production client identity while att
     sleep: async () => {},
     clientFactory: () => ({ auth: {} }),
     sourceAttestationProvider: async () => buildSourceAttestation(sourceSha),
-    holdoutReviewEvidenceProvider: async (input) => buildReviewEvidence(input),
+    holdoutAttestationEvidenceProvider: async (input) => buildHoldoutAttestationEvidence(input),
   })
   const preflight = await operations.preflight()
   const slice = buildPlan55ServiceSlices('hvac')[0]

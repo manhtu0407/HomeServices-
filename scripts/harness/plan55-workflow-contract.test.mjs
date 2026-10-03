@@ -145,8 +145,10 @@ test('Plan 55 can be dispatched through the registered CI workflow without rerun
     expectWorkflowMatch(caller, new RegExp(`^      ${secretName}: \\$\\{\\{ secrets\\.${secretName} \\}\\}$`, 'mu'),
       `reusable release must receive only its declared ${secretName} secret`)
   }
-  expectWorkflowMatch(caller, /actions: read[\s\S]*?checks: read[\s\S]*?contents: read[\s\S]*?pull-requests: read/u,
+  expectWorkflowMatch(caller, /actions: read[\s\S]*?checks: read[\s\S]*?contents: read[\s\S]*?issues: read[\s\S]*?pull-requests: read/u,
     'reusable release must receive its declared read-only token permissions')
+  expectWorkflowMatch(release, /issues: read/u,
+    'the Plan 55 release must read only the merged PR conversation for independent holdout attestations')
   expectWorkflowMatch(database, /needs: controls/u,
     'ordinary SQL lane must remain behind controls')
   expectWorkflowMatch(workspace, /inputs\.plan55_source_sha == ''/u,
@@ -264,10 +266,10 @@ test('release-stage gate proofs bind the pinned hosted baseline and rollback bef
   ])
 })
 
-test('independent holdout approval fails fast before Docker RAM and long workspace gates', () => {
+test('independent holdout attestation fails fast before Docker RAM and long workspace gates', () => {
   const quality = jobBlock(release, 'quality-and-preflight')
   const sourceIndex = quality.indexOf('id: verify_source')
-  const holdoutStepIndex = quality.indexOf('name: Require independent holdout approval before Docker and long quality gates')
+  const holdoutStepIndex = quality.indexOf('name: Require independent holdout attestation before Docker and long quality gates')
   const holdoutIndex = quality.indexOf('node apps/api/scripts/plan55-independent-holdout-preflight.mjs', holdoutStepIndex)
   const dockerIndex = quality.indexOf('id: docker_ram_floor')
   const installIndex = quality.indexOf('run: pnpm install --frozen-lockfile')
@@ -288,7 +290,7 @@ test('independent holdout approval fails fast before Docker RAM and long workspa
     'the early check must remain bound to the exact requested source')
 })
 
-test('independent holdout approvals and guard CI are required before assembling or mutating Production', () => {
+test('independent holdout attestation and guard CI are required before assembling or mutating Production', () => {
   const deploy = jobBlock(release, 'deploy_guard_off')
   const reviewGateIndex = deploy.indexOf('node apps/api/scripts/plan55-independent-holdout-preflight.mjs')
   const assembleIndex = deploy.indexOf('name: Assemble exact Production release and prove rollback source')
@@ -301,8 +303,10 @@ test('independent holdout approvals and guard CI are required before assembling 
     'preflight must use the workflow-scoped read-only GitHub token')
   assert.match(deploy, /PLAN55_SOURCE_SHA: \$\{\{ inputs\.source_sha \}\}/u,
     'preflight must validate the exact dispatched source SHA')
+  assert.match(release, /issues: read/u,
+    'the workflow token must read only the attestation comments on the exact merged PR')
   assert.match(release, /pull-requests: read/u,
-    'the workflow token must keep pull-request access read-only')
+    'the workflow token must keep pull-request metadata access read-only')
   assert.match(release, /checks: read/u,
     'the workflow token must keep guard-check access read-only')
   assert.match(holdoutPreflight, /isPlan55PredeploymentHoldoutContextValid/u,
