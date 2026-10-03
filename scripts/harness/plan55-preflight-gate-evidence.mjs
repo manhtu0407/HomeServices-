@@ -16,6 +16,7 @@ const OUTCOME_ENVIRONMENT = Object.freeze({
   production_ui_normality: 'PLAN55_PRODUCTION_UI_NORMALITY_OUTCOME',
   secret_scan: 'PLAN55_SECRET_SCAN_OUTCOME',
   sql_verification: 'PLAN55_SQL_VERIFICATION_OUTCOME',
+  independent_holdout_preflight: 'PLAN55_INDEPENDENT_HOLDOUT_PREFLIGHT_OUTCOME',
 })
 
 export { PLAN55_PREFLIGHT_GATE_CHECKS }

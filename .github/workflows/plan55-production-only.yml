@@ -157,6 +157,7 @@ jobs:
           PLAN55_PRODUCTION_UI_NORMALITY_OUTCOME: ${{ steps.production_ui_normality.outcome }}
           PLAN55_SECRET_SCAN_OUTCOME: ${{ steps.secret_scan.outcome }}
           PLAN55_SQL_VERIFICATION_OUTCOME: ${{ steps.sql_verification.outcome }}
+          PLAN55_INDEPENDENT_HOLDOUT_PREFLIGHT_OUTCOME: ${{ steps.independent_holdout_preflight.outcome }}
         run: node scripts/harness/plan55-preflight-gate-evidence.mjs --output artifacts/release/plan55-gate-evidence
       - name: Preserve source-gate evidence
         if: always()
