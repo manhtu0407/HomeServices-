@@ -23,6 +23,7 @@ const outcomes = {
   production_ui_normality: 'success',
   secret_scan: 'success',
   sql_verification: 'success',
+  independent_holdout_preflight: 'success',
 }
 
 function buildProofs(overrides = {}) {
@@ -62,6 +63,16 @@ test('emits deterministic per-gate proofs bound to the exact main run and requir
   }
 })
 
+test('binds the independent holdout freeze to its successful source-bound preflight outcome', () => {
+  const gate = 'plan55-independent-holdout-freeze'
+  assert.deepEqual(PLAN55_PREFLIGHT_GATE_CHECKS[gate], ['independent_holdout_preflight'])
+  assert.equal(policy.trustedEvidenceWorkflowPathsByGate[gate], '.github/workflows/ci.yml')
+
+  const files = buildProofs()
+  const evidence = JSON.parse(files.get(`plan55-gate-evidence/${gate}.json`).toString('utf8'))
+  assert.deepEqual(evidence.checks, [{ id: 'independent_holdout_preflight', outcome: 'success' }])
+})
+
 test('rejects non-main, stale source, missing run identity, and any failed, skipped, or unknown step outcome', () => {
   for (const overrides of [
     { githubRef: 'refs/heads/feature' },
@@ -72,8 +83,10 @@ test('rejects non-main, stale source, missing run identity, and any failed, skip
     { outcomes: { ...outcomes, secret_scan: 'skipped' } },
     { outcomes: { ...outcomes, sql_verification: 'failure' } },
     { outcomes: { ...outcomes, production_ui_normality: 'failure' } },
+    { outcomes: { ...outcomes, independent_holdout_preflight: 'failure' } },
     { outcomes: { ...outcomes, unexpected: 'success' } },
     { outcomes: Object.fromEntries(Object.entries(outcomes).filter(([id]) => id !== 'workspace_quality')) },
+    { outcomes: Object.fromEntries(Object.entries(outcomes).filter(([id]) => id !== 'independent_holdout_preflight')) },
   ]) {
     assert.throws(() => buildProofs(overrides), /Plan 55 preflight gate evidence/u)
   }

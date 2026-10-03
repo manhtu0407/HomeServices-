@@ -185,6 +185,7 @@ test('preflight gate proofs bind exact source and successful CI step outcomes be
     production_ui_normality: 'PLAN55_PRODUCTION_UI_NORMALITY_OUTCOME',
     secret_scan: 'PLAN55_SECRET_SCAN_OUTCOME',
     sql_verification: 'PLAN55_SQL_VERIFICATION_OUTCOME',
+    independent_holdout_preflight: 'PLAN55_INDEPENDENT_HOLDOUT_PREFLIGHT_OUTCOME',
   }
   for (const [stepId, variable] of Object.entries(outcomeBindings)) {
     assert.match(proofStep, new RegExp(`${variable}: \\\$\\{\\{ steps\\.${stepId}\\.outcome \\}\\}`,'u'),
@@ -200,6 +201,7 @@ test('preflight gate proofs bind exact source and successful CI step outcomes be
     'plan55-actor-scoped-guard-tests',
     'plan55-canary-runner-tests',
     'plan55-exact-production-base-ancestry',
+    'plan55-independent-holdout-freeze',
     'plan55-production-source-merge',
     'plan55-source-lock',
     'production-ui-normality',
