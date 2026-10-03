@@ -262,6 +262,30 @@ test('release-stage gate proofs bind the pinned hosted baseline and rollback bef
   ])
 })
 
+test('independent holdout approval fails fast before Docker RAM and long workspace gates', () => {
+  const quality = jobBlock(release, 'quality-and-preflight')
+  const sourceIndex = quality.indexOf('id: verify_source')
+  const holdoutStepIndex = quality.indexOf('name: Require independent holdout approval before Docker and long quality gates')
+  const holdoutIndex = quality.indexOf('node apps/api/scripts/plan55-independent-holdout-preflight.mjs', holdoutStepIndex)
+  const dockerIndex = quality.indexOf('id: docker_ram_floor')
+  const installIndex = quality.indexOf('run: pnpm install --frozen-lockfile')
+  const workspaceIndex = quality.indexOf('id: workspace_quality')
+
+  assert.ok(sourceIndex >= 0 && holdoutStepIndex > sourceIndex,
+    'exact source identity must be verified before the read-only holdout request')
+  assert.ok(holdoutIndex > holdoutStepIndex && dockerIndex > holdoutIndex &&
+    installIndex > dockerIndex && workspaceIndex > installIndex,
+  'missing independent adjudication must fail before Docker, dependency installation, and the long quality suite')
+  assert.equal(quality.slice(0, dockerIndex).match(/node apps\/api\/scripts\/plan55-independent-holdout-preflight\.mjs/gu)?.length, 1,
+    'the quality job must perform exactly one early read-only holdout check')
+
+  const earlyGate = quality.slice(holdoutStepIndex, dockerIndex)
+  assert.match(earlyGate, /GH_TOKEN: \$\{\{ github\.token \}\}/u,
+    'the early check must use only the workflow-scoped read-only token')
+  assert.match(earlyGate, /PLAN55_SOURCE_SHA: \$\{\{ inputs\.source_sha \}\}/u,
+    'the early check must remain bound to the exact requested source')
+})
+
 test('independent holdout approvals and guard CI are required before assembling or mutating Production', () => {
   const deploy = jobBlock(release, 'deploy_guard_off')
   const reviewGateIndex = deploy.indexOf('node apps/api/scripts/plan55-independent-holdout-preflight.mjs')
