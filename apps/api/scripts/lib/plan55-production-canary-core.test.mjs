@@ -28,7 +28,7 @@ import {
 import {
   PLAN55_ACTOR_GUARD_CHECK_NAME,
   PLAN55_ACTOR_GUARD_VERIFICATION,
-  PLAN55_GITHUB_REVIEW_VERIFICATION,
+  PLAN55_GITHUB_ATTESTATION_VERIFICATION,
 } from './plan55-independent-holdout-review.mjs'
 import { createRunManifest } from './kael-playbook-eval-core.mjs'
 
@@ -344,7 +344,7 @@ test('independent holdout proof requires blinded non-author reviewers and the fr
   const sourceSha = 'a'.repeat(40)
   const digest = (char) => `sha256:${char.repeat(64)}`
   const proof = {
-    schema: 'plan55-independent-holdout-proof/v4',
+    schema: 'plan55-independent-holdout-proof/v5',
     status: 'PASS',
     blinded: true,
     reviewed_by_author: false,
@@ -361,14 +361,14 @@ test('independent holdout proof requires blinded non-author reviewers and the fr
       production_source_target_branch_tip_sha: 'd'.repeat(40),
       production_source_target_branch_ancestry_status: 'ahead',
       production_source_base_ancestry_status: 'ahead',
-      review_ids: [101, 102],
+      attestation_comment_ids: [101, 102],
     },
     reviewer_attestations: [
-      { review_id: 101, reviewer_id_sha256: digest('2'), labels_sha256: digest('7') },
-      { review_id: 102, reviewer_id_sha256: digest('4'), labels_sha256: digest('7') },
+      { comment_id: 101, reviewer_id_sha256: digest('2'), author_association: 'COLLABORATOR', labels_sha256: digest('7') },
+      { comment_id: 102, reviewer_id_sha256: digest('4'), author_association: 'MEMBER', labels_sha256: digest('7') },
     ],
-    github_review_verification: {
-      method: 'github-pull-request-review-api/v1',
+    github_attestation_verification: {
+      method: 'github-pull-request-issue-comment-api/v1',
       repository: 'manhtu0407/HomeServices-',
       pull_request_number: 55,
       reviewed_head_sha: 'b'.repeat(40),
@@ -380,7 +380,7 @@ test('independent holdout proof requires blinded non-author reviewers and the fr
       production_source_target_branch_ancestry_status: 'ahead',
       production_source_base_ancestry_status: 'ahead',
       holdout_labels_sha256: digest('7'),
-      review_ids: [101, 102],
+      attestation_comment_ids: [101, 102],
     },
     holdouts: Object.fromEntries(PLAN55_SERVICE_ORDER.map((service) => [service, {
       path: PLAN55_SOURCE_ASSETS[service].holdout,
@@ -393,7 +393,7 @@ test('independent holdout proof requires blinded non-author reviewers and the fr
   assert.throws(() => assertPlan55IndependentHoldoutProof({ ...proof, reviewed_by_author: true }, sourceSha))
   assert.throws(() => assertPlan55IndependentHoldoutProof({
     ...proof,
-    github_review_verification: { ...proof.github_review_verification, merge_sha: 'c'.repeat(40) },
+    github_attestation_verification: { ...proof.github_attestation_verification, merge_sha: 'c'.repeat(40) },
   }, sourceSha))
   assert.throws(() => assertPlan55IndependentHoldoutProof({
     ...proof,
@@ -401,6 +401,13 @@ test('independent holdout proof requires blinded non-author reviewers and the fr
       proof.reviewer_attestations[0],
       { reviewer_id_sha256: proof.author_id_sha256, labels_sha256: digest('7') },
     ],
+  }, sourceSha))
+  assert.throws(() => assertPlan55IndependentHoldoutProof({
+    ...proof,
+    reviewer_attestations: proof.reviewer_attestations.map((attestation) => ({
+      ...attestation,
+      author_association: 'CONTRIBUTOR',
+    })),
   }, sourceSha))
 })
 
@@ -564,7 +571,7 @@ test('canary preflight requires source-bound GitHub proof for both guard tests a
   const reviewedHeadSha = 'b'.repeat(40)
   const reviewIds = [101, 102]
   const holdoutProof = {
-    schema: 'plan55-independent-holdout-proof/v4',
+    schema: 'plan55-independent-holdout-proof/v5',
     status: 'PASS',
     blinded: true,
     reviewed_by_author: false,
@@ -582,14 +589,14 @@ test('canary preflight requires source-bound GitHub proof for both guard tests a
       production_source_target_branch_ancestry_status: 'ahead',
       production_source_base_ancestry_status: 'ahead',
       actor_guard_file_blob_sha1: gitBlobSha,
-      review_ids: reviewIds,
+      attestation_comment_ids: reviewIds,
     },
     reviewer_attestations: [
-      { review_id: reviewIds[0], reviewer_id_sha256: digest('7'), labels_sha256: digest('a') },
-      { review_id: reviewIds[1], reviewer_id_sha256: digest('9'), labels_sha256: digest('a') },
+      { comment_id: reviewIds[0], reviewer_id_sha256: digest('7'), author_association: 'COLLABORATOR', labels_sha256: digest('a') },
+      { comment_id: reviewIds[1], reviewer_id_sha256: digest('9'), author_association: 'MEMBER', labels_sha256: digest('a') },
     ],
-    github_review_verification: {
-      method: PLAN55_GITHUB_REVIEW_VERIFICATION,
+    github_attestation_verification: {
+      method: PLAN55_GITHUB_ATTESTATION_VERIFICATION,
       repository: 'manhtu0407/HomeServices-',
       pull_request_number: pullRequestNumber,
       reviewed_head_sha: reviewedHeadSha,
@@ -601,7 +608,7 @@ test('canary preflight requires source-bound GitHub proof for both guard tests a
       production_source_target_branch_ancestry_status: 'ahead',
       production_source_base_ancestry_status: 'ahead',
       holdout_labels_sha256: digest('a'),
-      review_ids: reviewIds,
+      attestation_comment_ids: reviewIds,
     },
     holdouts: Object.fromEntries(PLAN55_SERVICE_ORDER.map((service) => [service, {
       path: PLAN55_SOURCE_ASSETS[service].holdout,

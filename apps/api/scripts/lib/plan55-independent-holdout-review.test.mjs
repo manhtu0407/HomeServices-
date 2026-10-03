@@ -8,12 +8,12 @@ import {
 } from './plan55-production-canary-core.mjs'
 import { PLAN55_SOURCE_ASSETS } from './kael-playbook-production-attestation.mjs'
 import {
-  buildPlan55HoldoutReviewBody,
-  createPlan55GithubReviewEvidenceProvider,
+  buildPlan55HoldoutAttestationCommentBody,
+  createPlan55GithubHoldoutAttestationEvidenceProvider,
   createPlan55GithubIndependentHoldoutPreflightProvider,
   isPlan55PredeploymentHoldoutContextValid,
   plan55HoldoutLabelsSha256,
-  verifyPlan55IndependentHoldoutReviewEvidence,
+  verifyPlan55IndependentHoldoutAttestationProof,
 } from './plan55-independent-holdout-review.mjs'
 
 const repository = 'manhtu0407/HomeServices-'
@@ -74,7 +74,7 @@ function buildFixture() {
   const labelsHashes = [holdoutLabelsSha256, holdoutLabelsSha256]
   const reviewIds = [1101, 1102]
   const proof = {
-    schema: 'plan55-independent-holdout-proof/v4',
+    schema: 'plan55-independent-holdout-proof/v5',
     status: 'PASS',
     blinded: true,
     reviewed_by_author: false,
@@ -92,11 +92,12 @@ function buildFixture() {
       production_source_target_branch_ancestry_status: 'ahead',
       production_source_base_ancestry_status: 'ahead',
       actor_guard_file_blob_sha1: guardBlobSha,
-      review_ids: reviewIds,
+      attestation_comment_ids: reviewIds,
     },
     reviewer_attestations: reviewerIds.map((reviewerId, index) => ({
-      review_id: reviewIds[index],
+      comment_id: reviewIds[index],
       reviewer_id_sha256: identityHash(reviewerId),
+      author_association: 'COLLABORATOR',
       labels_sha256: labelsHashes[index],
     })),
     holdouts: Object.fromEntries(PLAN55_SERVICE_ORDER.map((service) => [service, {
@@ -115,14 +116,13 @@ function buildFixture() {
     head: { sha: reviewedHeadSha, repo: { full_name: repository } },
     user: { id: authorId },
   }
-  const reviews = reviewerIds.map((reviewerId, index) => ({
+  const attestationComments = reviewerIds.map((reviewerId, index) => ({
     id: reviewIds[index],
     user: { id: reviewerId },
     author_association: 'COLLABORATOR',
-    state: 'APPROVED',
-    commit_id: reviewedHeadSha,
-    submitted_at: `2026-09-29T0${index + 1}:00:00Z`,
-    body: buildPlan55HoldoutReviewBody({
+    created_at: `2026-09-29T0${index + 1}:00:00Z`,
+    updated_at: `2026-09-29T0${index + 1}:00:00Z`,
+    body: buildPlan55HoldoutAttestationCommentBody({
       reviewedHeadSha,
       holdoutHashes,
       labelsSha256: labelsHashes[index],
@@ -144,7 +144,7 @@ function buildFixture() {
     },
   }
   return {
-    proof, pullRequest, mergeCommit, reviews, holdoutHashes, holdoutLabelsSha256, casesByService,
+    proof, pullRequest, mergeCommit, attestationComments, holdoutHashes, holdoutLabelsSha256, casesByService,
     authorId, reviewerIds, reviewIds,
   }
 }
@@ -234,60 +234,60 @@ function buildGithubProviderFixture(overrides = {}) {
   }
 }
 
-test('independent holdout proof is tied to the merged Production source and current non-author PR approval', () => {
+test('independent holdout proof is tied to the merged Production source and current nonauthor attestation comments', () => {
   const fixture = buildFixture()
-  const verified = verifyPlan55IndependentHoldoutReviewEvidence({
+  const verified = verifyPlan55IndependentHoldoutAttestationProof({
     proof: fixture.proof,
     expectedSourceSha: sourceSha,
     expectedHoldoutHashes: fixture.holdoutHashes,
     expectedHoldoutLabelsSha256: fixture.holdoutLabelsSha256,
     pullRequest: fixture.pullRequest,
     mergeCommit: fixture.mergeCommit,
-    reviews: fixture.reviews,
+    attestationComments: fixture.attestationComments,
   })
 
   assert.equal(assertPlan55IndependentHoldoutProof(
     verified, sourceSha, fixture.holdoutHashes, fixture.holdoutLabelsSha256,
   ), true)
-  assert.deepEqual(verified.github_review_verification.review_ids, fixture.reviewIds)
+  assert.deepEqual(verified.github_attestation_verification.attestation_comment_ids, fixture.reviewIds)
 })
 
-test('accepts one independent holdout reviewer and rejects no reviewer evidence', () => {
+test('accepts one independent holdout attestor and rejects missing attestation comments', () => {
   const fixture = buildFixture()
   const reviewId = fixture.reviewIds[0]
   const proof = {
     ...fixture.proof,
     review_evidence: {
       ...fixture.proof.review_evidence,
-      review_ids: [reviewId],
+      attestation_comment_ids: [reviewId],
     },
-    reviewer_attestations: fixture.proof.reviewer_attestations.filter((item) => item.review_id === reviewId),
+    reviewer_attestations: fixture.proof.reviewer_attestations.filter((item) => item.comment_id === reviewId),
   }
-  const verified = verifyPlan55IndependentHoldoutReviewEvidence({
+  const verified = verifyPlan55IndependentHoldoutAttestationProof({
     proof,
     expectedSourceSha: sourceSha,
     expectedHoldoutHashes: fixture.holdoutHashes,
     expectedHoldoutLabelsSha256: fixture.holdoutLabelsSha256,
     pullRequest: fixture.pullRequest,
     mergeCommit: fixture.mergeCommit,
-    reviews: fixture.reviews.filter((review) => review.id === reviewId),
+    attestationComments: fixture.attestationComments.filter((comment) => comment.id === reviewId),
   })
   assert.equal(verified.status, 'PASS')
-  assert.deepEqual(verified.github_review_verification.review_ids, [reviewId])
+  assert.deepEqual(verified.github_attestation_verification.attestation_comment_ids, [reviewId])
 
-  const noReviewProof = {
+  const noAttestationProof = {
     ...fixture.proof,
-    review_evidence: { ...fixture.proof.review_evidence, review_ids: [] },
+    review_evidence: { ...fixture.proof.review_evidence, attestation_comment_ids: [] },
     reviewer_attestations: [],
   }
-  assert.throws(() => verifyPlan55IndependentHoldoutReviewEvidence({
-    proof: noReviewProof,
+  assert.throws(() => verifyPlan55IndependentHoldoutAttestationProof({
+    proof: noAttestationProof,
     expectedSourceSha: sourceSha,
     expectedHoldoutHashes: fixture.holdoutHashes,
     expectedHoldoutLabelsSha256: fixture.holdoutLabelsSha256,
     pullRequest: fixture.pullRequest,
     mergeCommit: fixture.mergeCommit,
-    reviews: [],
+    attestationComments: [],
   }), { message: 'plan55_preflight_independent_holdout_unverified' })
 })
 
@@ -306,23 +306,23 @@ test('holdout label digest is deterministic and bound to the expected labels', (
   assert.notEqual(plan55HoldoutLabelsSha256(changedLabels), fixture.holdoutLabelsSha256)
 })
 
-test('independent holdout proof rejects fabricated, stale, author, and untrusted review evidence', () => {
+test('independent holdout proof rejects fabricated, stale, author, untrusted, and mismatched proof evidence', () => {
   const fixture = buildFixture()
-  const verify = (overrides = {}) => verifyPlan55IndependentHoldoutReviewEvidence({
+  const verify = (overrides = {}) => verifyPlan55IndependentHoldoutAttestationProof({
     proof: fixture.proof,
     expectedSourceSha: sourceSha,
     expectedHoldoutHashes: fixture.holdoutHashes,
     expectedHoldoutLabelsSha256: fixture.holdoutLabelsSha256,
     pullRequest: fixture.pullRequest,
     mergeCommit: fixture.mergeCommit,
-    reviews: fixture.reviews,
+    attestationComments: fixture.attestationComments,
     ...overrides,
   })
 
   const verified = verify()
   assert.throws(() => assertPlan55IndependentHoldoutProof({
     ...verified,
-    github_review_verification: null,
+    github_attestation_verification: null,
   }, sourceSha, fixture.holdoutHashes, fixture.holdoutLabelsSha256), {
     message: 'plan55_preflight_independent_holdout_unverified',
   })
@@ -330,10 +330,17 @@ test('independent holdout proof rejects fabricated, stale, author, and untrusted
   assert.throws(() => verify({
     proof: {
       ...fixture.proof,
-      reviewer_attestations: fixture.proof.reviewer_attestations.map((review) => ({
-        ...review,
+      reviewer_attestations: fixture.proof.reviewer_attestations.map((attestation) => ({
+        ...attestation,
         reviewer_id_sha256: identityHash(fixture.authorId),
       })),
+    },
+  }), { message: 'plan55_preflight_independent_holdout_unverified' })
+  assert.throws(() => verify({
+    proof: {
+      ...fixture.proof,
+      reviewer_attestations: fixture.proof.reviewer_attestations.map((attestation, index) =>
+        index === 0 ? { ...attestation, author_association: 'MEMBER' } : attestation),
     },
   }), { message: 'plan55_preflight_independent_holdout_unverified' })
   assert.throws(() => verify({
@@ -369,9 +376,9 @@ test('independent holdout proof rejects fabricated, stale, author, and untrusted
     expectedHoldoutLabelsSha256: `sha256:${'0'.repeat(64)}`,
   }), { message: 'plan55_preflight_independent_holdout_unverified' })
   assert.throws(() => verify({
-    reviews: fixture.reviews.map((review) => ({
-      ...review,
-      body: review.body.replace(
+    attestationComments: fixture.attestationComments.map((comment) => ({
+      ...comment,
+      body: comment.body.replace(
         `labels_sha256=${fixture.holdoutLabelsSha256.slice('sha256:'.length)}`,
         `labels_sha256=${'0'.repeat(64)}`,
       ),
@@ -414,25 +421,46 @@ test('independent holdout proof rejects fabricated, stale, author, and untrusted
     },
   }), { message: 'plan55_preflight_independent_holdout_unverified' })
   assert.throws(() => verify({
-    reviews: fixture.reviews.map((review, index) => index === 1
-      ? { ...review, commit_id: 'f'.repeat(40) }
-      : review),
+    attestationComments: fixture.attestationComments.map((comment, index) => index === 1
+      ? { ...comment, body: comment.body.replace(`reviewed_head_sha=${reviewedHeadSha}`, `reviewed_head_sha=${'f'.repeat(40)}`) }
+      : comment),
   }), { message: 'plan55_preflight_independent_holdout_unverified' })
   assert.throws(() => verify({
-    reviews: fixture.reviews.map((review) => ({
-      ...review,
-      body: review.body.replace(`production_source_base_sha=${productionBaseSha}`, `production_source_base_sha=${'0'.repeat(40)}`),
+    attestationComments: [
+      ...fixture.attestationComments,
+      {
+        ...fixture.attestationComments[0],
+        id: 1199,
+        created_at: '2026-09-30T03:00:00Z',
+        updated_at: '2026-09-30T03:00:00Z',
+        body: fixture.attestationComments[0].body.replace(
+          `labels_sha256=${fixture.holdoutLabelsSha256.slice('sha256:'.length)}`,
+          `labels_sha256=${'0'.repeat(64)}`,
+        ),
+      },
+    ],
+  }), { message: 'plan55_preflight_independent_holdout_unverified' })
+  assert.throws(() => verify({
+    attestationComments: [
+      ...fixture.attestationComments,
+      { ...fixture.attestationComments[0], user: { id: fixture.reviewerIds[1] } },
+    ],
+  }), { message: 'plan55_preflight_independent_holdout_unverified' })
+  assert.throws(() => verify({
+    attestationComments: fixture.attestationComments.map((comment) => ({
+      ...comment,
+      body: comment.body.replace(`production_source_base_sha=${productionBaseSha}`, `production_source_base_sha=${'0'.repeat(40)}`),
     })),
   }), { message: 'plan55_preflight_independent_holdout_unverified' })
   assert.throws(() => verify({
-    reviews: fixture.reviews.map((review) => ({ ...review, author_association: 'CONTRIBUTOR' })),
+    attestationComments: fixture.attestationComments.map((comment) => ({ ...comment, author_association: 'CONTRIBUTOR' })),
   }), { message: 'plan55_preflight_independent_holdout_unverified' })
 })
 
-test('GitHub provider discovers the exact merged source, derives independent reviews, and proves guard checks', async () => {
+test('GitHub provider discovers exact source-bound attestation comments without requiring code approval', async () => {
   const fixture = buildGithubProviderFixture()
   const calls = []
-  const provider = createPlan55GithubReviewEvidenceProvider({
+  const provider = createPlan55GithubHoldoutAttestationEvidenceProvider({
     cwd: 'C:/repo',
     execFileSyncImpl(command, args, options) {
       calls.push({ command, args, options })
@@ -455,8 +483,8 @@ test('GitHub provider discovers the exact merged source, derives independent rev
       if (args[1] === 'repos/manhtu0407/HomeServices-/pulls/55') {
         return JSON.stringify(fixture.pullRequest)
       }
-      if (args[1].endsWith('/reviews?per_page=100&page=1')) {
-        return JSON.stringify(fixture.reviews)
+      if (args[1] === `repos/${repository}/issues/55/comments?per_page=100&page=1`) {
+        return JSON.stringify(fixture.attestationComments)
       }
       if (args[1] === `repos/${repository}/commits/${reviewedHeadSha}/check-runs?per_page=100&page=1`) {
         return JSON.stringify({ check_runs: [fixture.checkRun] })
@@ -490,21 +518,24 @@ test('GitHub provider discovers the exact merged source, derives independent rev
     sourceAttestation: fixture.sourceAttestation,
   })
   assert.equal(result.proof.review_evidence.pull_request_number, 55)
-  assert.deepEqual(result.proof.review_evidence.review_ids, fixture.reviewIds)
-  assert.deepEqual(result.proof.github_review_verification.review_ids, fixture.reviewIds)
+  assert.deepEqual(result.proof.review_evidence.attestation_comment_ids, fixture.reviewIds)
+  assert.deepEqual(result.proof.github_attestation_verification.attestation_comment_ids, fixture.reviewIds)
   assert.equal(result.actorGuardProof.source_sha, sourceSha)
   assert.equal(result.actorGuardProof.runtime_file_path, fixture.guardPath)
   assert.equal(result.actorGuardProof.runtime_file_sha256, fixture.sourceAttestation.runtime_files[0].deployed_sha256)
   assert.equal(result.actorGuardProof.regression_tests_pass, true)
   assert.equal(result.actorGuardProof.verification.check_run_id, fixture.checkRun.id)
   assert.equal(result.pullRequest.number, 55)
-  assert.deepEqual(result.reviews, fixture.reviews)
+  assert.deepEqual(result.attestationComments, fixture.attestationComments)
   assert.ok(calls.some((call) => call.args[1].includes(`/commits/${sourceSha}/pulls?`)))
+  assert.ok(calls.some((call) => call.args[1] ===
+    `repos/${repository}/issues/55/comments?per_page=100&page=1`))
+  assert.ok(calls.every((call) => !call.args[1].includes('/reviews?')))
   assert.ok(calls.some((call) => call.args[1].includes(`/commits/${reviewedHeadSha}/check-runs?`)))
   assert.ok(calls.every((call) => call.command === 'gh' && call.options.shell === false))
   assert.ok(calls.every((call) => call.args[1].startsWith('repos/manhtu0407/HomeServices-/')))
 
-  fixture.reviews = [fixture.reviews[0]]
+  fixture.attestationComments = [fixture.attestationComments[0]]
   const singleReviewerResult = await provider({
     expectedSourceSha: sourceSha,
     expectedHoldoutHashes: fixture.holdoutHashes,
@@ -512,16 +543,16 @@ test('GitHub provider discovers the exact merged source, derives independent rev
     expectedHoldoutCaseCounts: Object.fromEntries(PLAN55_SERVICE_ORDER.map((service) => [service, 24])),
     sourceAttestation: fixture.sourceAttestation,
   })
-  assert.equal(singleReviewerResult.proof.github_review_verification.review_ids.length, 1)
-  assert.deepEqual(singleReviewerResult.reviews, fixture.reviews)
+  assert.equal(singleReviewerResult.proof.github_attestation_verification.attestation_comment_ids.length, 1)
+  assert.deepEqual(singleReviewerResult.attestationComments, fixture.attestationComments)
 })
 
-test('GitHub provider fails closed when the deployed guard, merge source, latest approvals, or CI check drift', async () => {
+test('GitHub provider fails closed when attestation comments, merge source, or guard CI drift', async () => {
   const fixture = buildGithubProviderFixture()
   const runProvider = async (overrides = {}) => {
     const calls = []
     const targetBranchTipSha = overrides.targetBranchTipSha ?? productionTargetBranchTipSha
-    const provider = createPlan55GithubReviewEvidenceProvider({
+    const provider = createPlan55GithubHoldoutAttestationEvidenceProvider({
       cwd: 'C:/repo',
       execFileSyncImpl(command, args, options) {
         calls.push({ command, args, options })
@@ -544,8 +575,8 @@ test('GitHub provider fails closed when the deployed guard, merge source, latest
         if (endpoint === `repos/${repository}/pulls/55`) {
           return JSON.stringify(overrides.pullRequest ?? fixture.pullRequest)
         }
-        if (endpoint.endsWith('/reviews?per_page=100&page=1')) {
-          return JSON.stringify(overrides.reviews ?? fixture.reviews)
+        if (endpoint === `repos/${repository}/issues/55/comments?per_page=100&page=1`) {
+          return JSON.stringify(overrides.attestationComments ?? fixture.attestationComments)
         }
         if (endpoint === `repos/${repository}/commits/${reviewedHeadSha}/check-runs?per_page=100&page=1`) {
           return JSON.stringify({ check_runs: overrides.checkRuns ?? [fixture.checkRun] })
@@ -626,15 +657,18 @@ test('GitHub provider fails closed when the deployed guard, merge source, latest
       steps: [{ name: 'Another successful step', status: 'completed', conclusion: 'success' }],
     },
   }), { message: 'plan55_preflight_actor_guard_unverified' })
-  await assert.rejects(runProvider({
-    reviews: fixture.reviews.map((review) => ({ ...review, state: 'COMMENTED' })),
-  }), { message: 'plan55_preflight_independent_holdout_unverified' })
+  await assert.rejects(runProvider({ attestationComments: [] }), {
+    message: 'plan55_preflight_independent_holdout_unverified',
+  })
   await assert.rejects(runProvider({ contentBlobRef: sourceSha }), {
     message: 'plan55_preflight_actor_guard_unverified',
   })
 })
 
-function createGithubReviewApiFixture(fixture, { reviews = fixture.reviews, checkRuns = [fixture.checkRun] } = {}) {
+function createGithubReviewApiFixture(fixture, {
+  attestationComments = fixture.attestationComments,
+  checkRuns = [fixture.checkRun],
+} = {}) {
   const calls = []
   const execFileSyncImpl = (command, args, options) => {
     calls.push({ command, args, options })
@@ -657,8 +691,8 @@ function createGithubReviewApiFixture(fixture, { reviews = fixture.reviews, chec
     if (endpoint === `repos/${repository}/pulls/55`) {
       return JSON.stringify(fixture.pullRequest)
     }
-    if (endpoint === `repos/${repository}/pulls/55/reviews?per_page=100&page=1`) {
-      return JSON.stringify(reviews)
+    if (endpoint === `repos/${repository}/issues/55/comments?per_page=100&page=1`) {
+      return JSON.stringify(attestationComments)
     }
     if (endpoint === `repos/${repository}/commits/${reviewedHeadSha}/check-runs?per_page=100&page=1`) {
       return JSON.stringify({ check_runs: checkRuns })
@@ -685,7 +719,7 @@ function createGithubReviewApiFixture(fixture, { reviews = fixture.reviews, chec
   return { calls, execFileSyncImpl }
 }
 
-test('pre-deployment holdout gate proves exact independent approvals and guard CI without deployment attestation', async () => {
+test('pre-deployment holdout gate proves exact independent attestation and guard CI without deployment attestation', async () => {
   const fixture = buildGithubProviderFixture()
   const api = createGithubReviewApiFixture(fixture)
   const provider = createPlan55GithubIndependentHoldoutPreflightProvider({
@@ -700,12 +734,12 @@ test('pre-deployment holdout gate proves exact independent approvals and guard C
   })
 
   assert.deepEqual(evidence, {
-    schema: 'plan55-predeployment-holdout-review/v1',
+    schema: 'plan55-predeployment-holdout-attestation/v1',
     status: 'PASS',
     source_sha: sourceSha,
     pull_request_number: 55,
     reviewed_head_sha: reviewedHeadSha,
-    review_count: 2,
+    attestation_count: 2,
     actor_guard_check_run_id: fixture.checkRun.id,
     production_source_target_branch: productionTargetBranch,
     production_source_target_branch_tip_sha: productionTargetBranchTipSha,
@@ -722,12 +756,10 @@ test('pre-deployment holdout gate proves exact independent approvals and guard C
   assert.ok(api.calls.every((call) => call.args.length === 2 && call.args[0] === 'api'))
   assert.doesNotMatch(JSON.stringify(evidence), /reviewer_id|401|402/u)
 
-  const missingApprovals = createGithubReviewApiFixture(fixture, {
-    reviews: fixture.reviews.map((review) => ({ ...review, state: 'COMMENTED' })),
-  })
+  const missingAttestations = createGithubReviewApiFixture(fixture, { attestationComments: [] })
   const blockedProvider = createPlan55GithubIndependentHoldoutPreflightProvider({
     cwd: 'C:/repo',
-    execFileSyncImpl: missingApprovals.execFileSyncImpl,
+    execFileSyncImpl: missingAttestations.execFileSyncImpl,
   })
   await assert.rejects(blockedProvider({
     expectedSourceSha: sourceSha,

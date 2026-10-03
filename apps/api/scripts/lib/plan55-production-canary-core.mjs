@@ -11,8 +11,9 @@ import {
 import {
   PLAN55_ACTOR_GUARD_CHECK_NAME,
   PLAN55_ACTOR_GUARD_VERIFICATION,
+  PLAN55_ALLOWED_HOLDOUT_ATTESTATION_ASSOCIATIONS,
   PLAN55_GITHUB_REPOSITORY,
-  PLAN55_GITHUB_REVIEW_VERIFICATION,
+  PLAN55_GITHUB_ATTESTATION_VERIFICATION,
   PLAN55_MINIMUM_INDEPENDENT_HOLDOUT_REVIEWERS,
   PLAN55_PRODUCTION_SOURCE_BASE,
   PLAN55_PRODUCTION_SOURCE_TARGET_BRANCH,
@@ -373,8 +374,8 @@ export function assertPlan55IndependentHoldoutProof(
 ) {
   const fail = () => { throw new Error('plan55_preflight_independent_holdout_unverified') }
   const evidence = proof?.review_evidence
-  const verification = proof?.github_review_verification
-  if (!proof || proof.schema !== 'plan55-independent-holdout-proof/v4' ||
+  const verification = proof?.github_attestation_verification
+  if (!proof || proof.schema !== 'plan55-independent-holdout-proof/v5' ||
       proof.status !== 'PASS' || proof.blinded !== true ||
       proof.reviewed_by_author !== false ||
       typeof proof.source_sha !== 'string' ||
@@ -396,7 +397,7 @@ export function assertPlan55IndependentHoldoutProof(
       !['ahead', 'identical'].includes(evidence.production_source_target_branch_ancestry_status) ||
       !Array.isArray(proof.reviewer_attestations) ||
       proof.reviewer_attestations.length < PLAN55_MINIMUM_INDEPENDENT_HOLDOUT_REVIEWERS ||
-      verification.method !== PLAN55_GITHUB_REVIEW_VERIFICATION ||
+      verification.method !== PLAN55_GITHUB_ATTESTATION_VERIFICATION ||
       verification.repository !== PLAN55_GITHUB_REPOSITORY ||
       verification.pull_request_number !== evidence.pull_request_number ||
       String(verification.reviewed_head_sha ?? '').toLowerCase() !== evidence.reviewed_head_sha.toLowerCase() ||
@@ -410,28 +411,29 @@ export function assertPlan55IndependentHoldoutProof(
       !['ahead', 'identical'].includes(verification.production_source_base_ancestry_status) ||
       !['ahead', 'identical'].includes(verification.production_source_target_branch_ancestry_status) ||
        verification.holdout_labels_sha256 !== expectedHoldoutLabelsSha256 ||
-      !Array.isArray(verification.review_ids) ||
-      verification.review_ids.length < PLAN55_MINIMUM_INDEPENDENT_HOLDOUT_REVIEWERS ||
-      !Array.isArray(evidence.review_ids) ||
-      evidence.review_ids.length < PLAN55_MINIMUM_INDEPENDENT_HOLDOUT_REVIEWERS) fail()
+      !Array.isArray(verification.attestation_comment_ids) ||
+      verification.attestation_comment_ids.length < PLAN55_MINIMUM_INDEPENDENT_HOLDOUT_REVIEWERS ||
+      !Array.isArray(evidence.attestation_comment_ids) ||
+      evidence.attestation_comment_ids.length < PLAN55_MINIMUM_INDEPENDENT_HOLDOUT_REVIEWERS) fail()
 
   const reviewers = new Set()
-  const reviewIds = new Set()
+  const commentIds = new Set()
   for (const attestation of proof.reviewer_attestations) {
-    if (!attestation || !Number.isSafeInteger(attestation.review_id) || attestation.review_id < 1 ||
+    if (!attestation || !Number.isSafeInteger(attestation.comment_id) || attestation.comment_id < 1 ||
         typeof attestation.reviewer_id_sha256 !== 'string' ||
         !/^sha256:[a-f0-9]{64}$/iu.test(attestation.reviewer_id_sha256) ||
+        !PLAN55_ALLOWED_HOLDOUT_ATTESTATION_ASSOCIATIONS.includes(attestation.author_association) ||
         attestation.labels_sha256 !== expectedHoldoutLabelsSha256 ||
         !/^sha256:[a-f0-9]{64}$/iu.test(attestation.labels_sha256 ?? '') ||
         reviewers.has(attestation.reviewer_id_sha256) ||
-        reviewIds.has(attestation.review_id) ||
+        commentIds.has(attestation.comment_id) ||
         attestation.reviewer_id_sha256 === proof.author_id_sha256) fail()
     reviewers.add(attestation.reviewer_id_sha256)
-    reviewIds.add(attestation.review_id)
+    commentIds.add(attestation.comment_id)
   }
   const sortIds = (values) => [...values].sort((left, right) => left - right).join(',')
-  if (sortIds(evidence.review_ids) !== sortIds(reviewIds) ||
-      sortIds(verification.review_ids) !== sortIds(reviewIds)) fail()
+  if (sortIds(evidence.attestation_comment_ids) !== sortIds(commentIds) ||
+      sortIds(verification.attestation_comment_ids) !== sortIds(commentIds)) fail()
 
   if (!expectedHoldoutHashes || typeof expectedHoldoutHashes !== 'object' ||
       !proof.holdouts || typeof proof.holdouts !== 'object' || Array.isArray(proof.holdouts) ||

@@ -190,6 +190,7 @@ jobs:
       actions: read
       checks: read
       contents: read
+      issues: read
       pull-requests: read
     uses: ./.github/workflows/plan55-production-only.yml
     with:

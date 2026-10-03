@@ -4,7 +4,7 @@ import {
   PLAN55_SOURCE_ASSETS,
 } from './kael-playbook-production-attestation.mjs'
 import {
-  buildPlan55HoldoutReviewBody,
+  buildPlan55HoldoutAttestationCommentBody,
   PLAN55_GITHUB_REPOSITORY,
   plan55HoldoutLabelsSha256,
 } from './plan55-independent-holdout-review.mjs'
@@ -73,7 +73,7 @@ export function buildPlan55BlindHoldoutPackage({
   const normalizedCases = validateCases(holdoutCasesByService)
   const labelsSha256 = plan55HoldoutLabelsSha256(holdoutCasesByService)
   const holdoutRootSha256 = hashHoldoutRoot(normalizedHoldoutHashes)
-  const independentReviewBody = buildPlan55HoldoutReviewBody({
+  const independentAttestationCommentBody = buildPlan55HoldoutAttestationCommentBody({
     reviewedHeadSha: headSha,
     holdoutHashes: normalizedHoldoutHashes,
     labelsSha256,
@@ -81,7 +81,7 @@ export function buildPlan55BlindHoldoutPackage({
   })
 
   const payload = {
-    schema: 'plan55-independent-blind-holdout-package/v1',
+    schema: 'plan55-independent-blind-holdout-package/v2',
     reviewed_head_sha: headSha,
     coverage: {
       service_count: SERVICES.length,
@@ -95,7 +95,7 @@ export function buildPlan55BlindHoldoutPackage({
     labels_sha256: labelsSha256,
     actor_guard_file_blob_sha1: guardBlobSha,
     cases_by_service: normalizedCases,
-    independent_review_body: independentReviewBody,
+    independent_attestation_comment_body: independentAttestationCommentBody,
   }
   const packageSha256 = `sha256:${createHash('sha256').update(canonicalJson(payload)).digest('hex')}`
   return Object.freeze({ ...payload, package_sha256: packageSha256 })

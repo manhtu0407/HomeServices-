@@ -35,9 +35,9 @@ import {
 } from './plan55-production-canary-core.mjs'
 import { createPlan55FileCheckpointStore } from './plan55-production-canary-checkpoint-store.mjs'
 import {
-  createPlan55GithubReviewEvidenceProvider,
+  createPlan55GithubHoldoutAttestationEvidenceProvider,
   plan55HoldoutLabelsSha256,
-  verifyPlan55IndependentHoldoutReviewEvidence,
+  verifyPlan55IndependentHoldoutAttestationProof,
 } from './plan55-independent-holdout-review.mjs'
 
 const SCRIPT_DIR = resolve(fileURLToPath(new URL('.', import.meta.url)))
@@ -209,7 +209,7 @@ export async function createPlan55ProductionCanaryOperations({
   fetchImpl = fetch,
   clientFactory,
   sourceAttestationProvider,
-  holdoutReviewEvidenceProvider = createPlan55GithubReviewEvidenceProvider(),
+  holdoutAttestationEvidenceProvider = createPlan55GithubHoldoutAttestationEvidenceProvider(),
   checkpointRoot = resolve(REPO_ROOT, '.scratch/plan55-production-canary'),
   artifactRoot = resolve(REPO_ROOT, 'docs/test-logs/plan55'),
   processTableReader = readPlan55ProcessTable,
@@ -392,21 +392,21 @@ export async function createPlan55ProductionCanaryOperations({
       assertPlan55SourceAttestation(sourceAttestation, deployment.git_sha)
       const sourceAttestationSha256 = plan55SourceAttestationSha256(sourceAttestation, deployment.git_sha)
       const holdoutAssets = await readPlan55HoldoutAssets()
-      const reviewEvidence = await holdoutReviewEvidenceProvider({
+      const attestationEvidence = await holdoutAttestationEvidenceProvider({
         expectedSourceSha: deployment.git_sha,
         expectedHoldoutHashes: holdoutAssets.hashes,
         expectedHoldoutCaseCounts: holdoutAssets.caseCounts,
         expectedHoldoutLabelsSha256: holdoutAssets.labelsSha256,
         sourceAttestation,
       })
-      const independentHoldoutProof = verifyPlan55IndependentHoldoutReviewEvidence({
-        proof: reviewEvidence?.proof,
+      const independentHoldoutProof = verifyPlan55IndependentHoldoutAttestationProof({
+        proof: attestationEvidence?.proof,
         expectedSourceSha: deployment.git_sha,
         expectedHoldoutHashes: holdoutAssets.hashes,
         expectedHoldoutLabelsSha256: holdoutAssets.labelsSha256,
-        pullRequest: reviewEvidence?.pullRequest,
-        mergeCommit: reviewEvidence?.mergeCommit,
-        reviews: reviewEvidence?.reviews,
+        pullRequest: attestationEvidence?.pullRequest,
+        mergeCommit: attestationEvidence?.mergeCommit,
+        attestationComments: attestationEvidence?.attestationComments,
       })
       if (enabledService !== null) throw new Error('plan55_canary_previous_flag_not_cleared')
       verifiedClientHeaders = clientHeaders
@@ -421,7 +421,7 @@ export async function createPlan55ProductionCanaryOperations({
         releaseLane: health.release?.release_lane,
         sourceAttestation,
         sourceAttestationSha256,
-        actorGuardProof: reviewEvidence?.actorGuardProof,
+        actorGuardProof: attestationEvidence?.actorGuardProof,
         verificationProviders,
         flagStates,
         independentHoldoutProof,
