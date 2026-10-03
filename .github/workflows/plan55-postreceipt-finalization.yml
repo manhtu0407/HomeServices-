@@ -87,12 +87,14 @@ jobs:
           PLAN55_RELEASE_ARTIFACT_ID: ${{ inputs.release_artifact_id }}
           PLAN55_RECEIPTS_ARTIFACT_ID: ${{ inputs.receipts_artifact_id }}
           PLAN55_GATE_EVIDENCE_ARTIFACT_ID: ${{ inputs.gate_evidence_artifact_id }}
+          PLAN55_TARGET_STATE: ${{ inputs.target_state }}
         run: |
           node --input-type=module <<'NODE'
           import { mkdirSync, writeFileSync } from 'node:fs'
           import { dirname, resolve, sep } from 'node:path'
           import {
             assertPlan55FinalizationArtifactFiles,
+            buildPlan55CanaryGateEvidenceFiles,
             downloadPlan55GitHubRunArtifact,
           } from './scripts/harness/plan55-gate-receipts.mjs'
           import { loadPlan55ProductionOnlyPolicy } from './scripts/harness/promotion.mjs'
@@ -109,7 +111,7 @@ jobs:
             throw new Error('Plan 55 source and evidence artifact inputs are invalid')
           }
 
-          const sourceWorkflow = '.github/workflows/plan55-production-only.yml'
+          const sourceWorkflow = '.github/workflows/ci.yml'
           const gateEvidenceWorkflow = '.github/workflows/plan55-gate-evidence-package.yml'
           const download = (artifactId, artifactNamePrefix, expectedRunId, expectedRunAttempt,
             trustedWorkflowPaths = [sourceWorkflow]) => downloadPlan55GitHubRunArtifact({
@@ -155,6 +157,10 @@ jobs:
           const aggregateBytes = uniqueFile(receiptsArtifact.files, 'six-service-g5-receipt.json', 'receipt')
           const checkpoint = JSON.parse(checkpointBytes.toString('utf8'))
           const aggregate = JSON.parse(aggregateBytes.toString('utf8'))
+          const targetState = process.env.PLAN55_TARGET_STATE
+          const expectedCanaryEvidence = buildPlan55CanaryGateEvidenceFiles({
+            policy, release, checkpoint, aggregate, targetState,
+          })
           if (checkpoint.schema !== 'plan55-production-checkpoint-status/v2' ||
               checkpoint.scope !== 'currently_served_production_release_only' ||
               checkpoint.canary_started !== true || checkpoint.canary_attempt_cleaned !== true ||
@@ -174,12 +180,18 @@ jobs:
                 service.service !== policy.serviceOrder[index] || service.status !== 'G5_PASSED' ||
                 service.slice_count !== 8 || service.case_count !== 96 || service.error_count !== 0 ||
                 service.release_id !== release.releaseId || service.source_sha !== release.gitSha ||
-                service.cleanup?.reused !== true)) {
+                typeof service.cleanup?.reused !== 'boolean')) {
             throw new Error('Plan 55 six-service receipt artifact failed exact-source validation')
           }
 
           const gateFiles = gateEvidenceArtifact.files
           assertPlan55FinalizationArtifactFiles(gateFiles)
+          for (const [gate, expectedBytes] of expectedCanaryEvidence) {
+            const actualBytes = gateFiles.get(`evidence/${gate}.json`)
+            if (!actualBytes || !actualBytes.equals(expectedBytes)) {
+              throw new Error(`Plan 55 finalization canary evidence mismatch: ${gate}`)
+            }
+          }
 
           const outputRoot = resolve('artifacts/harness')
           mkdirSync(outputRoot, { recursive: true })

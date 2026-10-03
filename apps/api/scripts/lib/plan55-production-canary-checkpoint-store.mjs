@@ -49,7 +49,7 @@ export function createPlan55FileCheckpointStore({
       const slices = buildPlan55ServiceSlices(service)
       await assertNoActiveCheckpoint(lockPath)
       const body = await readCheckpoint(recordsDir, identity)
-      if (!body) return serviceCheckpointStatus(service, slices, null)
+      if (!body) return serviceCheckpointStatus(service, slices, null, null)
       if (!body.cleanup || Object.keys(body.pendingSlices).length > 0) {
         throw new Error('plan55_checkpoint_integrity_failed')
       }
@@ -61,7 +61,7 @@ export function createPlan55FileCheckpointStore({
         if (!slice) throw new Error('plan55_checkpoint_integrity_failed')
         assertStoredSlice(entry, slice, identity)
       }
-      return serviceCheckpointStatus(service, slices, body.verifiedSlices)
+      return serviceCheckpointStatus(service, slices, body.verifiedSlices, body.cleanup)
     },
 
     async loadVerifiedSliceReceipt({ service, slice, deployment }) {
@@ -292,7 +292,7 @@ export function createPlan55FileCheckpointStore({
   })
 }
 
-function serviceCheckpointStatus(service, slices, verifiedSlices) {
+function serviceCheckpointStatus(service, slices, verifiedSlices, cleanup) {
   const verifiedSliceIds = slices
     .filter(({ id }) => verifiedSlices && Object.hasOwn(verifiedSlices, id))
     .map(({ id }) => id)
@@ -303,6 +303,7 @@ function serviceCheckpointStatus(service, slices, verifiedSlices) {
     verifiedSliceIds,
     missingSliceIds,
     cleanupVerified: verifiedSlices !== null,
+    cleanup: cleanup === null ? null : structuredClone(cleanup),
     complete: missingSliceIds.length === 0 && verifiedSlices !== null,
   }
 }

@@ -664,6 +664,7 @@ export async function createPlan55ProductionCanaryOperations({
       await verifyPersistedArtifacts({ receipt, slice: input.slice, deployment: input.deployment, artifactRoot })
       return receipt
     },
+    readVerifiedServiceStatus: (input) => store.readVerifiedServiceStatus(input),
     persistVerifiedSliceReceipt: (input) => store.persistVerifiedSliceReceipt(input),
     persistVerifiedServiceCleanup: (input) => store.persistVerifiedServiceCleanup(input),
     beginServiceCheckpoint: (input) => store.beginServiceCheckpoint(input),

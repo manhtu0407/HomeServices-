@@ -2,20 +2,69 @@ import { createHash } from 'node:crypto'
 import { readFileSync, realpathSync, statSync } from 'node:fs'
 import { dirname, isAbsolute, relative, resolve, sep } from 'node:path'
 import { inflateRawSync } from 'node:zlib'
+import {
+  assertPlan55Cleanup,
+  buildPlan55ServiceSlices,
+  PLAN55_SERVICE_ORDER,
+} from '../../apps/api/scripts/lib/plan55-production-canary-core.mjs'
+import {
+  assertPlan55ReleaseStageGateProof,
+  PLAN55_RELEASE_STAGE_GATES,
+} from './plan55-release-gate-proofs.mjs'
+import {
+  assertPlan55DeployedGuardGateProof,
+  PLAN55_DEPLOYED_GUARD_GATES,
+} from './plan55-deployed-guard-gate-proofs.mjs'
+export { PLAN55_RELEASE_STAGE_GATES }
+export { PLAN55_DEPLOYED_GUARD_GATES }
 
 const GATE_SET_SCHEMA = 'plan55-gate-evidence-set.v1'
-const GATE_RECEIPT_SCHEMA = 'plan55-gate-evidence.v1'
+const GATE_RECEIPT_SCHEMA = 'plan55-gate-evidence.v2'
 const SHA256 = /^[a-f0-9]{64}$/u
 const GIT_SHA = /^[a-f0-9]{40}$/u
 const REPOSITORY = /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/u
 const WORKFLOW_PATH = /^\.github\/workflows\/[A-Za-z0-9_.-]+\.ya?ml$/u
 const SENSITIVE_EVIDENCE_KEY = /token|secret|password|authorization|cookie|credential|api[_-]?key|service[_-]?role|email|phone|address|description|content|prompt|image|audio|transcript|latitude|longitude|cccd|bank|message|text|question|answer|query|title|name|url|uri|unit|floor|street|ward|postal|zip|otp/iu
+const SAFE_CLEANUP_COUNT_KEYS = new Set(['chat_messages_as_sender'])
 const SENSITIVE_EVIDENCE_VALUE = /(?:bearer\s+[a-z0-9._~-]+|-----BEGIN [A-Z ]+PRIVATE KEY-----|eyJ[a-zA-Z0-9_-]{20,}\.[a-zA-Z0-9_-]{20,}|\b[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}\b|\b(?:\+?84|0)\d{8,10}\b)/iu
 const SAFE_EVIDENCE_VALUE = /^[A-Za-z0-9._:/+-]{1,240}$/u
 const MAX_ARTIFACT_ARCHIVE_BYTES = 64 * 1024 * 1024
 const MAX_ARTIFACT_UNCOMPRESSED_BYTES = 64 * 1024 * 1024
 const MAX_EVIDENCE_FILE_BYTES = 16 * 1024 * 1024
 const GITHUB_REQUEST_TIMEOUT_MS = 30_000
+const CANARY_RECEIPT_GATES = new Set([
+  'plan55-service-slice-integrity-pass',
+  'plan55-service-g5-safety-pass',
+  'plan55-service-cleanup-pass',
+  'plan55-six-current-source-receipts',
+  'plan55-six-cleanup-passes',
+])
+export const PLAN55_PREFLIGHT_GATE_CHECKS = Object.freeze({
+  'plan55-production-source-merge': Object.freeze(['verify_source']),
+  'plan55-exact-production-base-ancestry': Object.freeze(['verify_source']),
+  'plan55-source-lock': Object.freeze(['verify_source']),
+  'workspace-typecheck': Object.freeze(['workspace_quality']),
+  'workspace-tests': Object.freeze(['workspace_quality']),
+  'workspace-build': Object.freeze(['workspace_quality']),
+  'production-ui-normality': Object.freeze(['production_ui_normality']),
+  security: Object.freeze(['workspace_quality', 'secret_scan']),
+  harness: Object.freeze(['workspace_quality']),
+  'plan55-actor-scoped-guard-tests': Object.freeze(['workspace_quality']),
+  'plan55-canary-runner-tests': Object.freeze(['workspace_quality']),
+  'edge-deno': Object.freeze(['workspace_quality']),
+  'sql-verification': Object.freeze(['docker_ram_floor', 'sql_verification']),
+  'generated-types': Object.freeze(['docker_ram_floor', 'sql_verification']),
+})
+const PREFLIGHT_RECEIPT_GATES = new Set(Object.keys(PLAN55_PREFLIGHT_GATE_CHECKS))
+const RELEASE_STAGE_RECEIPT_GATES = new Set(PLAN55_RELEASE_STAGE_GATES)
+const DEPLOYED_GUARD_RECEIPT_GATES = new Set(PLAN55_DEPLOYED_GUARD_GATES)
+const CANARY_EVIDENCE_TARGET_STATES = new Set([
+  'receipts_validated', 'paired_wave_1', 'paired_wave_2', 'paired_wave_3', 'production',
+])
+const PROMOTION_GATE_PHASES = Object.freeze([
+  'verified', 'guard_deployed_off', 'service_canary', 'service_cleanup',
+  'receipts_validated', 'paired_wave_1', 'paired_wave_2', 'paired_wave_3', 'production',
+])
 
 export function loadPlan55GateEvidenceSet(manifestPath, { policy, release, targetState, requiredGates }) {
   const resolvedManifest = realpathSync(resolve(manifestPath))
@@ -23,11 +72,13 @@ export function loadPlan55GateEvidenceSet(manifestPath, { policy, release, targe
   const manifest = parseJson(readFileSync(resolvedManifest), 'gate evidence set')
   const expectedGates = [...new Set(requiredGates ?? [])].sort()
   if (expectedGates.length !== (requiredGates ?? []).length ||
+      !matchesPolicyGateInventory(policy, targetState, expectedGates) ||
       manifest.schemaVersion !== GATE_SET_SCHEMA ||
       !Array.isArray(manifest.receipts) || manifest.receipts.length !== expectedGates.length) {
     throw new Error('Plan 55 gate inventory is invalid')
   }
   assertIdentity(manifest, { policy, release, targetState })
+  assertPlan55GateEvidenceCoverage({ policy, targetState, requiredGates: expectedGates })
 
   const receiptEntries = new Map()
   for (const entry of manifest.receipts) {
@@ -53,16 +104,41 @@ export function loadPlan55GateEvidenceSet(manifestPath, { policy, release, targe
     if (!receiptBytes.equals(Buffer.from(`${JSON.stringify(receipt)}\n`))) {
       throw new Error(`Plan 55 receipt serialization is invalid: ${gate}`)
     }
-    assertReceiptIdentity(receipt, gate, { policy, release, targetState })
-
     const evidencePath = resolveEvidenceFile(manifestRoot, receipt.evidence?.path, `evidence for ${gate}`)
+    const sourceEvidencePath = resolveEvidenceFile(manifestRoot, receipt.evidence?.sourcePath,
+      `source evidence for ${gate}`)
+    assertReceiptIdentity(receipt, gate, { policy, release, targetState })
     const evidenceBytes = readFileSync(evidencePath)
     if (!isSha256(receipt.evidence?.sha256) || sha256(evidenceBytes) !== receipt.evidence.sha256) {
       throw new Error(`Plan 55 evidence checksum mismatch: ${gate}`)
     }
     const evidence = parseJson(evidenceBytes, `evidence for ${gate}`)
-    assertEvidenceIdentity(evidence, gate, { policy, release, targetState })
-    if (!isTrustedGitHubArtifactProvenance(receipt.provenance, policy)) {
+    const sourceEvidenceBytes = readFileSync(sourceEvidencePath)
+    if (!isSha256(receipt.evidence?.sourceSha256) ||
+        sha256(sourceEvidenceBytes) !== receipt.evidence.sourceSha256) {
+      throw new Error(`Plan 55 source evidence checksum mismatch: ${gate}`)
+    }
+    const sourceEvidence = parseJson(sourceEvidenceBytes, `source evidence for ${gate}`)
+    assertSafeGateEvidence(sourceEvidence)
+    if (!sourceEvidenceBytes.equals(Buffer.from(`${JSON.stringify(sourceEvidence)}\n`))) {
+      throw new Error(`Plan 55 source evidence serialization is invalid: ${gate}`)
+    }
+    assertEvidenceIdentity(evidence, gate, {
+      policy, release, targetState, provenance: receipt.provenance,
+    })
+    if (PREFLIGHT_RECEIPT_GATES.has(gate) || RELEASE_STAGE_RECEIPT_GATES.has(gate) ||
+        DEPLOYED_GUARD_RECEIPT_GATES.has(gate)) {
+      if (JSON.stringify(sourceEvidence) !== JSON.stringify(evidence.proof)) {
+        throw new Error(`Plan 55 source gate proof does not match its archived evidence: ${gate}`)
+      }
+    } else if (!sourceEvidenceBytes.equals(evidenceBytes)) {
+      throw new Error(`Plan 55 source gate evidence does not match its archived evidence: ${gate}`)
+    }
+    assertGateEvidenceProducer(receipt.provenance, gate, policy)
+    if (!evidenceBytes.equals(Buffer.from(`${JSON.stringify(evidence)}\n`))) {
+      throw new Error(`Plan 55 evidence serialization is invalid: ${gate}`)
+    }
+    if (!isTrustedGitHubArtifactProvenance(receipt.provenance, policy, gate)) {
       throw new Error(`Plan 55 artifact provenance is invalid: ${gate}`)
     }
 
@@ -72,9 +148,59 @@ export function loadPlan55GateEvidenceSet(manifestPath, { policy, release, targe
       receiptFileSha256: entry.receiptSha256,
       evidenceSha256: receipt.evidence.sha256,
       evidenceBytes,
+      sourceEvidenceBytes,
+      evidenceProof: evidence,
       evidencePath: receipt.evidence.path,
     })]
   }))
+}
+
+export function inspectPlan55GateEvidenceCoverage({ policy, targetState, requiredGates }) {
+  if (!Array.isArray(requiredGates) || requiredGates.some((gate) => typeof gate !== 'string' || !gate)) {
+    throw new Error('Plan 55 gate evidence package inventory is invalid')
+  }
+  const gates = [...new Set(requiredGates)].sort()
+  if (gates.length !== requiredGates.length ||
+      !gates.length || gates.length > 256 || !matchesPolicyGateInventory(policy, targetState, gates)) {
+    throw new Error('Plan 55 gate evidence package inventory is invalid')
+  }
+
+  const semanticVerifiers = CANARY_EVIDENCE_TARGET_STATES.has(targetState)
+    ? new Set([
+      ...CANARY_RECEIPT_GATES,
+      ...PREFLIGHT_RECEIPT_GATES,
+      ...RELEASE_STAGE_RECEIPT_GATES,
+      ...DEPLOYED_GUARD_RECEIPT_GATES,
+    ])
+    : new Set()
+  const missingSemanticVerifierGates = gates.filter((gate) => !semanticVerifiers.has(gate))
+  const missingApprovedProducerGates = gates.filter((gate) => {
+    const workflowPath = policy?.trustedEvidenceWorkflowPathsByGate?.[gate]
+    return typeof workflowPath !== 'string' ||
+      !policy.trustedEvidenceWorkflowPaths?.includes(workflowPath)
+  })
+
+  return Object.freeze({
+    targetState,
+    requiredGates: Object.freeze(gates),
+    missingSemanticVerifierGates: Object.freeze(missingSemanticVerifierGates),
+    missingApprovedProducerGates: Object.freeze(missingApprovedProducerGates),
+    ready: missingSemanticVerifierGates.length === 0 && missingApprovedProducerGates.length === 0,
+  })
+}
+
+export function assertPlan55GateEvidenceCoverage(options) {
+  const coverage = inspectPlan55GateEvidenceCoverage(options)
+  if (coverage.ready) return coverage
+
+  const problems = []
+  if (coverage.missingSemanticVerifierGates.length) {
+    problems.push(`missing semantic verifiers: ${coverage.missingSemanticVerifierGates.join(', ')}`)
+  }
+  if (coverage.missingApprovedProducerGates.length) {
+    problems.push(`missing approved producers: ${coverage.missingApprovedProducerGates.join(', ')}`)
+  }
+  throw new Error(`Plan 55 gate evidence coverage is incomplete (${problems.join('; ')})`)
 }
 
 export function buildPlan55GateEvidenceArtifact({
@@ -86,14 +212,17 @@ export function buildPlan55GateEvidenceArtifact({
 }) {
   const gates = [...new Set(requiredGates ?? [])].sort()
   if (!Array.isArray(requiredGates) || gates.length !== requiredGates.length ||
-      !gates.length || gates.length > 256 || !(sourceEvidence instanceof Map) ||
+      !gates.length || gates.length > 256 || !matchesPolicyGateInventory(policy, targetState, gates) ||
+      !(sourceEvidence instanceof Map) ||
       sourceEvidence.size !== gates.length) {
     throw new Error('Plan 55 gate evidence package inventory is invalid')
   }
+  assertPlan55GateEvidenceCoverage({ policy, targetState, requiredGates: gates })
 
   const files = new Map([
     ['receipts/', Buffer.alloc(0)],
     ['evidence/', Buffer.alloc(0)],
+    ['source-results/', Buffer.alloc(0)],
   ])
   const entries = []
   for (const gate of gates) {
@@ -103,7 +232,7 @@ export function buildPlan55GateEvidenceArtifact({
     if (!supplied || typeof supplied !== 'object' || !(supplied.evidenceBytes instanceof Buffer) ||
         !isSafeArtifactPath(supplied.artifactEvidencePath) ||
         !(supplied.artifactFiles instanceof Map) ||
-        !isTrustedGitHubArtifactProvenance(supplied.provenance, policy)) {
+        !isTrustedGitHubArtifactProvenance(supplied.provenance, policy, gate)) {
       throw new Error(`Plan 55 source artifact does not prove the gate evidence: ${gate}`)
     }
     if (supplied.evidenceBytes.length > MAX_EVIDENCE_FILE_BYTES) {
@@ -113,13 +242,38 @@ export function buildPlan55GateEvidenceArtifact({
     if (!(archivedEvidence instanceof Buffer) || !archivedEvidence.equals(supplied.evidenceBytes)) {
       throw new Error(`Plan 55 source artifact does not prove the gate evidence: ${gate}`)
     }
-    const evidence = parseJson(supplied.evidenceBytes, `evidence for ${gate}`)
+    const sourcePayload = parseJson(supplied.evidenceBytes, `evidence for ${gate}`)
+    assertSafeGateEvidence(sourcePayload)
+    if (!supplied.evidenceBytes.equals(Buffer.from(`${JSON.stringify(sourcePayload)}\n`))) {
+      throw new Error(`Plan 55 evidence serialization is invalid: ${gate}`)
+    }
+    const evidence = PREFLIGHT_RECEIPT_GATES.has(gate)
+      ? wrapPlan55PreflightGateEvidence(sourcePayload, gate, {
+        policy, release, targetState, provenance: supplied.provenance,
+      })
+      : RELEASE_STAGE_RECEIPT_GATES.has(gate)
+        ? wrapPlan55ReleaseStageGateEvidence(sourcePayload, gate, {
+          policy, release, targetState, provenance: supplied.provenance,
+          sourceArtifactFiles: supplied.artifactFiles,
+        })
+        : DEPLOYED_GUARD_RECEIPT_GATES.has(gate)
+          ? wrapPlan55DeployedGuardGateEvidence(sourcePayload, gate, {
+            policy, release, targetState, provenance: supplied.provenance,
+            sourceArtifactFiles: supplied.artifactFiles,
+          })
+          : sourcePayload
     assertSafeGateEvidence(evidence)
-    assertEvidenceIdentity(evidence, gate, { policy, release, targetState })
+    assertEvidenceIdentity(evidence, gate, {
+      policy, release, targetState, provenance: supplied.provenance,
+      sourceArtifactFiles: supplied.artifactFiles,
+    })
+    assertGateEvidenceProducer(supplied.provenance, gate, policy)
     if (supplied.provenance.workflowHeadSha !== release.gitSha) {
       throw new Error(`Plan 55 source artifact SHA mismatch: ${gate}`)
     }
 
+    const sourcePath = `source-results/${gate}.json`
+    const evidenceBytes = Buffer.from(`${JSON.stringify(evidence)}\n`)
     const receipt = {
       schemaVersion: GATE_RECEIPT_SCHEMA,
       gate,
@@ -133,17 +287,21 @@ export function buildPlan55GateEvidenceArtifact({
       targetState,
       evidence: {
         path: evidencePath,
-        sha256: sha256(supplied.evidenceBytes),
+        sha256: sha256(evidenceBytes),
+        sourcePath,
+        sourceSha256: sha256(supplied.evidenceBytes),
         reference: `artifact://${supplied.provenance.artifactId}/${gate}`,
       },
       provenance: { ...supplied.provenance },
     }
     const receiptBytes = Buffer.from(`${JSON.stringify(receipt)}\n`)
-    files.set(evidencePath, supplied.evidenceBytes)
+    files.set(sourcePath, supplied.evidenceBytes)
+    files.set(evidencePath, evidenceBytes)
     files.set(receiptPath, receiptBytes)
     entries.push({
       gate,
       receiptPath,
+      sourcePath,
       receiptSha256: sha256(receiptBytes),
     })
   }
@@ -164,8 +322,46 @@ export function buildPlan55GateEvidenceArtifact({
   return files
 }
 
+export function buildPlan55CanaryGateEvidenceFiles({
+  policy, release, checkpoint, aggregate, targetState = 'receipts_validated',
+}) {
+  const proof = {
+    schemaVersion: 'plan55-canary-gate-proof.v1',
+    validatedTargetState: 'receipts_validated',
+    projectRef: policy.projectRef,
+    releaseId: release.releaseId,
+    sourceSha: release.gitSha,
+    checkpoint,
+    aggregate,
+  }
+  const files = new Map()
+  for (const gate of CANARY_RECEIPT_GATES) {
+    const evidence = {
+      schemaVersion: 'plan55-gate-result.v1',
+      gate,
+      status: 'PASS',
+      environment: release.environment,
+      projectRef: policy.projectRef,
+      policyId: policy.policyId,
+      policySha256: policy.policySha256,
+      releaseId: release.releaseId,
+      sourceSha: release.gitSha,
+      targetState,
+      proof,
+    }
+    assertSafeGateEvidence(evidence)
+    assertEvidenceIdentity(evidence, gate, {
+      policy,
+      release,
+      targetState,
+    })
+    files.set(gate, Buffer.from(`${JSON.stringify(evidence)}\n`))
+  }
+  return files
+}
+
 export async function verifyPlan55GitHubArtifactProvenance(receiptSet, {
-  repository, trustedEvidenceWorkflowPaths, sourceSha, token, fetchImpl = fetch,
+  repository, trustedEvidenceWorkflowPaths, trustedEvidenceWorkflowPathsByGate, sourceSha, token, fetchImpl = fetch,
 }) {
   if (!REPOSITORY.test(repository ?? '') || !Array.isArray(trustedEvidenceWorkflowPaths) ||
       !GIT_SHA.test(sourceSha ?? '') || typeof token !== 'string' || !token.trim() ||
@@ -173,9 +369,13 @@ export async function verifyPlan55GitHubArtifactProvenance(receiptSet, {
     throw new Error('Plan 55 GitHub artifact verification requires repository, token, and fetch')
   }
   const uniqueArtifacts = new Map()
-  for (const receiptRecord of Object.values(receiptSet ?? {})) {
+  for (const [gate, receiptRecord] of Object.entries(receiptSet ?? {})) {
     const provenance = receiptRecord?.receipt?.provenance
-    if (!isTrustedGitHubArtifactProvenance(provenance, { repository, trustedEvidenceWorkflowPaths })) {
+    if (!isTrustedGitHubArtifactProvenance(provenance, {
+      repository,
+      trustedEvidenceWorkflowPaths,
+      trustedEvidenceWorkflowPathsByGate,
+    }, gate)) {
       throw new Error('Plan 55 GitHub artifact provenance is invalid')
     }
     if (provenance.workflowHeadSha !== sourceSha) {
@@ -231,7 +431,7 @@ export async function verifyPlan55GitHubArtifactProvenance(receiptSet, {
       if (receiptRecord.receipt.provenance.artifactId !== artifactId) continue
       const artifactEvidencePath = receiptRecord.receipt.provenance.artifactEvidencePath
       const archivedEvidence = archivedFiles.get(artifactEvidencePath)
-      if (!archivedEvidence || !archivedEvidence.equals(receiptRecord.evidenceBytes)) {
+      if (!archivedEvidence || !archivedEvidence.equals(receiptRecord.sourceEvidenceBytes)) {
         throw new Error(`Plan 55 evidence is not present in its attested artifact: ${artifactId}`)
       }
     }
@@ -329,14 +529,15 @@ export function assertPlan55FinalizationArtifactFiles(files) {
       throw new Error('Plan 55 finalization artifact path is invalid')
     }
     if (directoryName !== null) {
-      if (!['receipts', 'evidence'].includes(directoryName)) {
+      if (!['receipts', 'evidence', 'source-results'].includes(directoryName)) {
         throw new Error('Plan 55 finalization artifact directory is invalid')
       }
       continue
     }
     if (name !== 'gate-evidence-set.json' &&
         !/^receipts\/[a-z0-9][a-z0-9-]{0,127}\.json$/u.test(name) &&
-        !/^evidence\/[a-z0-9][a-z0-9-]{0,127}\.json$/u.test(name)) {
+        !/^evidence\/[a-z0-9][a-z0-9-]{0,127}\.json$/u.test(name) &&
+        !/^source-results\/[a-z0-9][a-z0-9-]{0,127}\.json$/u.test(name)) {
       throw new Error('Plan 55 finalization artifact contains an unexpected file')
     }
     fileNames.add(name)
@@ -354,16 +555,20 @@ export function assertPlan55FinalizationArtifactFiles(files) {
   for (const entry of manifest.receipts) {
     if (!entry || typeof entry.gate !== 'string' || !/^[a-z0-9][a-z0-9-]{0,127}$/u.test(entry.gate) ||
         entry.receiptPath !== `receipts/${entry.gate}.json` ||
-        !fileNames.has(entry.receiptPath)) {
+        !fileNames.has(entry.receiptPath) ||
+        entry.sourcePath !== `source-results/${entry.gate}.json` || !fileNames.has(entry.sourcePath)) {
       throw new Error('Plan 55 finalization receipt path is invalid')
     }
     const receipt = parseJson(files.get(entry.receiptPath), 'finalization receipt')
     const evidencePath = receipt.evidence?.path
-    if (evidencePath !== `evidence/${entry.gate}.json` || !fileNames.has(evidencePath)) {
+    const sourcePath = receipt.evidence?.sourcePath
+    if (evidencePath !== `evidence/${entry.gate}.json` || !fileNames.has(evidencePath) ||
+        sourcePath !== `source-results/${entry.gate}.json` || !fileNames.has(sourcePath)) {
       throw new Error('Plan 55 finalization evidence path is invalid')
     }
     required.add(entry.receiptPath)
     required.add(evidencePath)
+    required.add(entry.sourcePath)
   }
   if (fileNames.size !== required.size || [...fileNames].some((name) => !required.has(name))) {
     throw new Error('Plan 55 finalization artifact has missing or unreferenced files')
@@ -378,12 +583,33 @@ export function isPlan55GateReceiptRecord(value, gate, { policy, release, target
     if (!receipt || typeof receipt !== 'object' || Array.isArray(receipt)) return false
     const serializedReceipt = JSON.stringify(receipt)
     if (typeof serializedReceipt !== 'string') return false
+    const evidenceProof = value.evidenceProof
+    const sourceEvidenceBytes = value.sourceEvidenceBytes
+    if (!evidenceProof || typeof evidenceProof !== 'object' || Array.isArray(evidenceProof)) return false
+    if (!(sourceEvidenceBytes instanceof Buffer) ||
+        sha256(sourceEvidenceBytes) !== receipt.evidence?.sourceSha256) return false
+    const sourceEvidence = parseJson(sourceEvidenceBytes, `source evidence for ${gate}`)
+    assertSafeGateEvidence(sourceEvidence)
+    if (!sourceEvidenceBytes.equals(Buffer.from(`${JSON.stringify(sourceEvidence)}\n`))) return false
+    if (PREFLIGHT_RECEIPT_GATES.has(gate) || RELEASE_STAGE_RECEIPT_GATES.has(gate) ||
+        DEPLOYED_GUARD_RECEIPT_GATES.has(gate)) {
+      if (JSON.stringify(sourceEvidence) !== JSON.stringify(evidenceProof.proof)) return false
+    } else if (!sourceEvidenceBytes.equals(Buffer.from(`${JSON.stringify(evidenceProof)}\n`))) {
+      return false
+    }
+    assertSafeGateEvidence(evidenceProof)
+    assertEvidenceIdentity(evidenceProof, gate, {
+      policy, release, targetState, provenance: receipt.provenance,
+    })
+    assertGateEvidenceProducer(receipt.provenance, gate, policy)
+    const serializedEvidence = Buffer.from(`${JSON.stringify(evidenceProof)}\n`)
     return isSha256(value.receiptSha256) && isSha256(value.receiptFileSha256) &&
       isSha256(value.evidenceSha256) && value.receiptSha256 === sha256(Buffer.from(serializedReceipt)) &&
       value.receiptFileSha256 === sha256(Buffer.from(`${serializedReceipt}\n`)) &&
       value.evidenceSha256 === receipt.evidence?.sha256 &&
+      value.evidenceSha256 === sha256(serializedEvidence) &&
       isReceiptIdentity(receipt, gate, { policy, release, targetState }) &&
-      isTrustedGitHubArtifactProvenance(receipt.provenance, policy)
+      isTrustedGitHubArtifactProvenance(receipt.provenance, policy, gate)
   } catch {
     return false
   }
@@ -420,19 +646,305 @@ function isReceiptIdentity(receipt, gate, { policy, release, targetState }) {
     receipt.sourceSha === release.gitSha && receipt.targetState === targetState &&
     receipt.evidence && typeof receipt.evidence === 'object' && !Array.isArray(receipt.evidence) &&
     typeof receipt.evidence.path === 'string' && receipt.evidence.path.length > 0 &&
-    isSha256(receipt.evidence.sha256) && receipt.provenance?.workflowHeadSha === release.gitSha &&
+    isSha256(receipt.evidence.sha256) &&
+    receipt.evidence.sourcePath === `source-results/${gate}.json` &&
+    isSha256(receipt.evidence.sourceSha256) &&
+    receipt.provenance?.workflowHeadSha === release.gitSha &&
     isGitHubArtifactProvenance(receipt.provenance, policy.repository))
 }
 
-function assertEvidenceIdentity(evidence, gate, { policy, release, targetState }) {
-  if (!evidence || typeof evidence !== 'object' || Array.isArray(evidence) ||
-      evidence.schemaVersion !== 'plan55-gate-result.v1' || evidence.gate !== gate ||
-      evidence.status !== 'PASS' || evidence.policyId !== policy.policyId ||
-      evidence.policySha256 !== policy.policySha256 || evidence.environment !== release.environment ||
-      evidence.projectRef !== policy.projectRef || evidence.releaseId !== release.releaseId ||
-      evidence.sourceSha !== release.gitSha || evidence.targetState !== targetState) {
-    throw new Error(`Plan 55 gate evidence identity mismatch: ${gate}`)
+function assertEvidenceIdentity(evidence, gate, {
+  policy, release, targetState, provenance, sourceArtifactFiles,
+}) {
+  const matches = {
+    object: Boolean(evidence && typeof evidence === 'object' && !Array.isArray(evidence)),
+    schema: evidence?.schemaVersion === 'plan55-gate-result.v1',
+    gate: evidence?.gate === gate,
+    status: evidence?.status === 'PASS',
+    policy: evidence?.policyId === policy.policyId,
+    policySha256: evidence?.policySha256 === policy.policySha256,
+    environment: evidence?.environment === release.environment,
+    projectRef: evidence?.projectRef === policy.projectRef,
+    releaseId: evidence?.releaseId === release.releaseId,
+    sourceSha: evidence?.sourceSha === release.gitSha,
+    targetState: evidence?.targetState === targetState,
   }
+  const mismatches = Object.entries(matches).filter(([, matches]) => !matches).map(([key]) => key)
+  if (mismatches.length) {
+    throw new Error(`Plan 55 gate evidence identity mismatch: ${gate} (${mismatches.join(',')})`)
+  }
+  assertGateSpecificEvidence(evidence, gate, {
+    policy, release, targetState, provenance, sourceArtifactFiles,
+  })
+}
+
+function assertGateSpecificEvidence(evidence, gate, {
+  policy, release, targetState, provenance, sourceArtifactFiles,
+}) {
+  if (!CANARY_EVIDENCE_TARGET_STATES.has(targetState) ||
+      policy.trustedEvidenceWorkflowPathsByGate?.[gate] !== '.github/workflows/ci.yml') {
+    throw new Error(`Plan 55 gate has no approved semantic evidence producer: ${gate}`)
+  }
+  if (PREFLIGHT_RECEIPT_GATES.has(gate)) {
+    assertPlan55PreflightGateProof(evidence.proof, {
+      gate, policy, release, provenance,
+    })
+    return
+  }
+  if (RELEASE_STAGE_RECEIPT_GATES.has(gate)) {
+    assertPlan55ReleaseStageGateProof(evidence.proof, {
+      gate, policy, release, provenance, sourceArtifactFiles,
+    })
+    return
+  }
+  if (DEPLOYED_GUARD_RECEIPT_GATES.has(gate)) {
+    assertPlan55DeployedGuardGateProof(evidence.proof, {
+      gate, policy, release, provenance, sourceArtifactFiles,
+    })
+    return
+  }
+  if (!CANARY_RECEIPT_GATES.has(gate)) {
+    throw new Error(`Gate has no semantic evidence verifier: ${gate}`)
+  }
+  assertSixServiceCanaryProof(evidence.proof, gate, { policy, release })
+}
+
+export function assertPlan55PreflightGateProof(proof, {
+  gate, policy, release, provenance, sourceSha, runId, runAttempt, workflowPath,
+}) {
+  const fail = () => { throw new Error(`Plan 55 preflight gate evidence contract failed: ${gate ?? 'unknown'}`) }
+  const expectedChecks = PLAN55_PREFLIGHT_GATE_CHECKS[gate]
+  const expectedSourceSha = release?.gitSha ?? sourceSha
+  const expectedWorkflowPath = provenance?.workflowPath ?? workflowPath
+  const expectedRunId = provenance?.runId ?? runId
+  const expectedRunAttempt = provenance?.runAttempt ?? runAttempt
+  const expectedKeys = [
+    'schemaVersion', 'gate', 'status', 'environment', 'projectRef', 'policyId', 'policySha256',
+    'sourceSha', 'workflowPath', 'runId', 'runAttempt', 'checks',
+  ]
+  if (!expectedChecks || !proof || typeof proof !== 'object' || Array.isArray(proof) ||
+      JSON.stringify(Object.keys(proof).sort()) !== JSON.stringify([...expectedKeys].sort()) ||
+      proof.schemaVersion !== 'plan55-preflight-gate-proof.v1' || proof.gate !== gate ||
+      proof.status !== 'PASS' || proof.environment !== 'production' ||
+      proof.environment !== policy.environment || proof.projectRef !== policy.projectRef ||
+      proof.policyId !== policy.policyId || proof.policySha256 !== policy.policySha256 ||
+      proof.sourceSha !== expectedSourceSha || !isGitSha(proof.sourceSha) ||
+      proof.workflowPath !== expectedWorkflowPath ||
+      proof.workflowPath !== policy.trustedEvidenceWorkflowPathsByGate?.[gate] ||
+      !policy.trustedEvidenceWorkflowPaths?.includes(proof.workflowPath) ||
+      proof.runId !== String(expectedRunId) || !/^[1-9]\d*$/u.test(proof.runId) ||
+      proof.runAttempt !== expectedRunAttempt || !Number.isSafeInteger(proof.runAttempt) ||
+      proof.runAttempt < 1 || !Array.isArray(proof.checks) ||
+      proof.checks.length !== expectedChecks.length) fail()
+  for (const [index, check] of expectedChecks.entries()) {
+    if (!check || typeof check !== 'string' || !proof.checks[index] ||
+        typeof proof.checks[index] !== 'object' || Array.isArray(proof.checks[index]) ||
+        JSON.stringify(Object.keys(proof.checks[index]).sort()) !== JSON.stringify(['id', 'outcome']) ||
+        proof.checks[index].id !== check || proof.checks[index].outcome !== 'success') fail()
+  }
+  return true
+}
+
+function wrapPlan55PreflightGateEvidence(proof, gate, context) {
+  assertPlan55PreflightGateProof(proof, { gate, ...context })
+  const { policy, release, targetState } = context
+  return {
+    schemaVersion: 'plan55-gate-result.v1',
+    gate,
+    status: 'PASS',
+    environment: release.environment,
+    projectRef: policy.projectRef,
+    policyId: policy.policyId,
+    policySha256: policy.policySha256,
+    releaseId: release.releaseId,
+    sourceSha: release.gitSha,
+    targetState,
+    proof,
+  }
+}
+
+function wrapPlan55ReleaseStageGateEvidence(proof, gate, context) {
+  assertPlan55ReleaseStageGateProof(proof, {
+    gate,
+    policy: context.policy,
+    release: context.release,
+    provenance: context.provenance,
+    sourceArtifactFiles: context.sourceArtifactFiles,
+  })
+  const { policy, release, targetState } = context
+  return {
+    schemaVersion: 'plan55-gate-result.v1',
+    gate,
+    status: 'PASS',
+    environment: release.environment,
+    projectRef: policy.projectRef,
+    policyId: policy.policyId,
+    policySha256: policy.policySha256,
+    releaseId: release.releaseId,
+    sourceSha: release.gitSha,
+    targetState,
+    proof,
+  }
+}
+
+function wrapPlan55DeployedGuardGateEvidence(proof, gate, context) {
+  assertPlan55DeployedGuardGateProof(proof, {
+    gate,
+    policy: context.policy,
+    release: context.release,
+    provenance: context.provenance,
+    sourceArtifactFiles: context.sourceArtifactFiles,
+  })
+  const { policy, release, targetState } = context
+  return {
+    schemaVersion: 'plan55-gate-result.v1',
+    gate,
+    status: 'PASS',
+    environment: release.environment,
+    projectRef: policy.projectRef,
+    policyId: policy.policyId,
+    policySha256: policy.policySha256,
+    releaseId: release.releaseId,
+    sourceSha: release.gitSha,
+    targetState,
+    proof,
+  }
+}
+
+function assertGateEvidenceProducer(provenance, gate, policy) {
+  const expectedWorkflow = policy.trustedEvidenceWorkflowPathsByGate?.[gate]
+  if (typeof expectedWorkflow !== 'string' ||
+      !policy.trustedEvidenceWorkflowPaths?.includes(expectedWorkflow)) {
+    throw new Error(`Gate has no approved semantic evidence producer: ${gate}`)
+  }
+  if (provenance?.workflowPath !== expectedWorkflow) {
+    throw new Error(`Gate artifact provenance is invalid: ${gate}`)
+  }
+}
+
+function assertSixServiceCanaryProof(proof, gate, { policy, release }) {
+  const fail = () => { throw new Error(`Plan 55 gate-specific evidence contract failed: ${gate}`) }
+  const checkpoint = proof?.checkpoint
+  const aggregate = proof?.aggregate
+  if (!proof || typeof proof !== 'object' || Array.isArray(proof) ||
+      proof.schemaVersion !== 'plan55-canary-gate-proof.v1' ||
+      proof.validatedTargetState !== 'receipts_validated' ||
+      proof.projectRef !== policy.projectRef || proof.releaseId !== release.releaseId ||
+      proof.sourceSha !== release.gitSha || !checkpoint || typeof checkpoint !== 'object' ||
+      !aggregate || typeof aggregate !== 'object') fail()
+  if (checkpoint.schema !== 'plan55-production-checkpoint-status/v2' ||
+      checkpoint.scope !== 'currently_served_production_release_only' ||
+      checkpoint.canary_started !== true || checkpoint.canary_attempt_cleaned !== true ||
+      checkpoint.deployment?.project_ref !== policy.projectRef ||
+      checkpoint.deployment?.source_sha !== release.gitSha ||
+      checkpoint.deployment?.release_id !== release.releaseId ||
+      checkpoint.verified_slice_count !== 48 ||
+      checkpoint.services?.length !== PLAN55_SERVICE_ORDER.length ||
+      aggregate.schema !== 'plan55-production-canary-sequence/v1' ||
+      aggregate.scope !== 'production_synthetic_actor_sequence' ||
+      aggregate.project_ref !== policy.projectRef ||
+      aggregate.status !== 'SIX_SERVICE_CANARY_PASS_PENDING_REMAINING_GATES' ||
+      aggregate.services?.length !== PLAN55_SERVICE_ORDER.length) fail()
+
+  for (const [index, service] of PLAN55_SERVICE_ORDER.entries()) {
+    const checkpointService = checkpoint.services[index]
+    const aggregateService = aggregate.services[index]
+    const expectedSliceIds = buildPlan55ServiceSlices(service).map(({ id }) => id)
+    if (!checkpointService || checkpointService.service !== service ||
+        checkpointService.complete !== true || checkpointService.cleanup_verified !== true ||
+        checkpointService.verified_slice_count !== expectedSliceIds.length ||
+        checkpointService.missing_slice_count !== 0 ||
+        JSON.stringify(checkpointService.verified_slice_ids) !== JSON.stringify(expectedSliceIds) ||
+        !Array.isArray(checkpointService.missing_slice_ids) || checkpointService.missing_slice_ids.length !== 0 ||
+        !checkpointService.cleanup ||
+        !aggregateService || aggregateService.service !== service ||
+        aggregateService.status !== 'G5_PASSED' || aggregateService.slice_count !== expectedSliceIds.length ||
+        aggregateService.case_count !== 96 || aggregateService.error_count !== 0 ||
+        aggregateService.release_id !== release.releaseId || aggregateService.source_sha !== release.gitSha ||
+        !Array.isArray(aggregateService.slices) || aggregateService.slices.length !== expectedSliceIds.length ||
+        JSON.stringify(aggregateService.slices.map(({ sliceId }) => sliceId)) !== JSON.stringify(expectedSliceIds) ||
+        aggregateService.slices.some((slice, sliceIndex) => {
+          const expectedSlice = buildPlan55ServiceSlices(service)[sliceIndex]
+          return slice.caseCount !== 12 || slice.errorCount !== 0 ||
+            slice.sourceSha !== release.gitSha ||
+            !SHA256.test(slice.sourceAttestationSha256 ?? '') ||
+            slice.corpusPath !== expectedSlice.corpusPath ||
+            slice.playbookPath !== expectedSlice.playbookPath ||
+            slice.playbookEnabled !== expectedSlice.playbookEnabled ||
+            slice.artifactIntegrity !== 'pass'
+        })) fail()
+    try {
+      assertPlan55Cleanup(checkpointService.cleanup)
+      assertPlan55Cleanup(aggregateService.cleanup)
+    } catch {
+      fail()
+    }
+    if (typeof aggregateService.cleanup.reused !== 'boolean') fail()
+    assertG5Deltas(aggregateService.g5_deltas, gate)
+  }
+}
+
+function assertG5Deltas(value, gate) {
+  const fail = () => { throw new Error(`Plan 55 gate-specific evidence contract failed: ${gate}`) }
+  for (const dataset of ['corpus', 'holdout']) {
+    const delta = value?.[dataset]
+    if (!delta) fail()
+    assertRateDelta(delta.scope_signal, 'passed', 'total', 'non_decreasing', 'rate', fail)
+    assertRateDelta(delta.problem_slug, 'passed', 'total', 'non_decreasing', 'rate', fail)
+    assertRateDelta(delta.required_safety_recall, 'observed', 'expected', 'non_decreasing', 'recall', fail)
+    if (delta.scope_signal.baseline.total !== 24 || delta.scope_signal.after.total !== 24 ||
+        delta.problem_slug.baseline.total !== 24 || delta.problem_slug.after.total !== 24 ||
+        delta.required_safety_recall.baseline.expected !== delta.required_safety_recall.after.expected ||
+        delta.provider_fallback?.baseline?.total !== 24 || delta.provider_fallback?.after?.total !== 24) fail()
+    const fallback = delta.provider_fallback
+    if (!fallback || !isValidCountPair(fallback.baseline?.runs, fallback.baseline?.total) ||
+        !isValidCountPair(fallback.after?.runs, fallback.after?.total)) fail()
+    const before = fallback.baseline.runs / fallback.baseline.total
+    const after = fallback.after.runs / fallback.after.total
+    const withinTwentyPoints = Math.abs(
+      fallback.after.runs * fallback.baseline.total - fallback.baseline.runs * fallback.after.total,
+    ) * 100 <= 20 * fallback.baseline.total * fallback.after.total
+    if (fallback.within_20pp !== withinTwentyPoints || !withinTwentyPoints ||
+        !isRoundedDelta(fallback.delta, after - before)) fail()
+  }
+}
+
+function assertRateDelta(value, countKey, totalKey, resultKey, ratioKey, fail) {
+  if (!value || !isValidCountPair(value.baseline?.[countKey], value.baseline?.[totalKey]) ||
+      !isValidCountPair(value.after?.[countKey], value.after?.[totalKey]) ||
+      value.baseline[totalKey] !== value.after[totalKey]) fail()
+  const before = value.baseline[countKey] / value.baseline[totalKey]
+  const after = value.after[countKey] / value.after[totalKey]
+  const nonDecreasing = value.after[countKey] * value.baseline[totalKey] >=
+    value.baseline[countKey] * value.after[totalKey]
+  if (value[resultKey] !== nonDecreasing || !nonDecreasing ||
+      !isRoundedDelta(value.delta, after - before) ||
+      value.baseline[ratioKey] !== roundMetric(before) ||
+      value.after[ratioKey] !== roundMetric(after)) fail()
+}
+
+function isValidCountPair(count, total) {
+  return Number.isSafeInteger(count) && count >= 0 && Number.isSafeInteger(total) && total > 0 && count <= total
+}
+
+function isRoundedDelta(value, expected) {
+  return Number.isFinite(value) && value === roundMetric(expected)
+}
+
+function roundMetric(value) {
+  return Math.round((value + Number.EPSILON) * 10_000) / 10_000
+}
+
+function matchesPolicyGateInventory(policy, targetState, gates) {
+  if (targetState === 'aborted') return gates.length === 0
+  const phases = targetState === 'rolled_back'
+    ? ['rolled_back']
+    : PROMOTION_GATE_PHASES.slice(0, PROMOTION_GATE_PHASES.indexOf(targetState) + 1)
+  if (phases.length === 0 || (targetState !== 'rolled_back' && !PROMOTION_GATE_PHASES.includes(targetState))) {
+    return false
+  }
+  const expected = [...new Set(phases.flatMap((phase) => policy?.requiredGatesByTarget?.[phase] ?? []))].sort()
+  return JSON.stringify(gates) === JSON.stringify(expected)
 }
 
 function isGitHubArtifactProvenance(value, repository) {
@@ -452,7 +964,7 @@ function isSafeArtifactPath(value) {
 }
 
 function assertSafeGateEvidence(value, path = 'evidence', depth = 0) {
-  if (depth > 4) throw new Error(`${path} exceeds safe Plan 55 evidence depth`)
+  if (depth > 12) throw new Error(`${path} exceeds safe Plan 55 evidence depth`)
   if (value === null || typeof value === 'boolean') return
   if (typeof value === 'number') {
     if (!Number.isFinite(value)) throw new Error(`${path} contains a non-finite number`)
@@ -471,17 +983,20 @@ function assertSafeGateEvidence(value, path = 'evidence', depth = 0) {
   }
   if (!value || typeof value !== 'object') throw new Error(`${path} contains an unsupported value`)
   for (const [key, item] of Object.entries(value)) {
-    if (key.length > 80 || SENSITIVE_EVIDENCE_KEY.test(key)) {
+    if (key.length > 80 ||
+        (SENSITIVE_EVIDENCE_KEY.test(key) && !SAFE_CLEANUP_COUNT_KEYS.has(key))) {
       throw new Error(`${path}.${key} is not allowed in Plan 55 evidence`)
     }
     assertSafeGateEvidence(item, `${path}.${key}`, depth + 1)
   }
 }
 
-function isTrustedGitHubArtifactProvenance(value, policy) {
+function isTrustedGitHubArtifactProvenance(value, policy, gate) {
+  const gateWorkflow = policy?.trustedEvidenceWorkflowPathsByGate?.[gate]
   return isGitHubArtifactProvenance(value, policy?.repository) &&
     Array.isArray(policy?.trustedEvidenceWorkflowPaths) &&
-    policy.trustedEvidenceWorkflowPaths.includes(value.workflowPath)
+    policy.trustedEvidenceWorkflowPaths.includes(value.workflowPath) &&
+    typeof gateWorkflow === 'string' && value.workflowPath === gateWorkflow
 }
 
 async function githubJson(fetchImpl, token, repository, path) {

@@ -96,7 +96,10 @@ export function buildPlan55CheckpointStatus({ deployment, statuses }) {
       !Array.isArray(statuses) || statuses.some((status) =>
         !PLAN55_SERVICE_ORDER.includes(status?.service) || !Array.isArray(status.verifiedSliceIds) ||
         !Array.isArray(status.missingSliceIds) || typeof status.cleanupVerified !== 'boolean' ||
-        typeof status.complete !== 'boolean')) {
+        typeof status.complete !== 'boolean' ||
+        (status.cleanupVerified
+          ? !status.cleanup || typeof status.cleanup !== 'object' || Array.isArray(status.cleanup)
+          : status.cleanup !== null))) {
     throw new Error('plan55_checkpoint_status_invalid')
   }
   assertOrderedServiceSubset(statuses.map(({ service }) => service))
@@ -108,6 +111,13 @@ export function buildPlan55CheckpointStatus({ deployment, statuses }) {
         (status.verifiedSliceIds.length > 0 && !status.cleanupVerified) ||
         status.complete !== (status.missingSliceIds.length === 0 && status.cleanupVerified)) {
       throw new Error('plan55_checkpoint_status_invalid')
+    }
+    if (status.cleanupVerified) {
+      try {
+        assertPlan55Cleanup(status.cleanup)
+      } catch {
+        throw new Error('plan55_checkpoint_status_invalid')
+      }
     }
   }
 
@@ -139,6 +149,7 @@ export function buildPlan55CheckpointStatus({ deployment, statuses }) {
       missing_slice_count: status.missingSliceIds.length,
       missing_slice_ids: status.missingSliceIds,
       cleanup_verified: status.cleanupVerified,
+      cleanup: status.cleanup === null ? null : { ...status.cleanup },
       complete: status.complete,
     })),
   })
@@ -771,7 +782,7 @@ export async function runPlan55ServiceSequence({ services = PLAN55_SERVICE_ORDER
       evaluationError = safeCode(error, 'plan55_canary_evaluation_failed')
     }
 
-    let cleanup = { passed: true, reused: missingSlices.length === 0 }
+    let cleanup = null
     if (checkpoint !== null) {
       try {
         const cleanupReceipt = await operations.cleanupService({
@@ -788,9 +799,19 @@ export async function runPlan55ServiceSequence({ services = PLAN55_SERVICE_ORDER
           cleanup: cleanupReceipt,
           checkpoint,
         })
+        cleanup = { ...cleanupReceipt, reused: false }
       } catch (error) {
         throw new Error(safeCode(error, 'plan55_canary_cleanup_failed'))
       }
+    } else {
+      const status = await operations.readVerifiedServiceStatus({ service, deployment: preflight.deployment })
+      if (!status || status.complete !== true || status.cleanupVerified !== true ||
+          status.verifiedSliceIds?.length !== plan.length || status.missingSliceIds?.length !== 0 ||
+          !status.cleanup) {
+        throw new Error('plan55_canary_reused_cleanup_unverified')
+      }
+      assertPlan55Cleanup(status.cleanup)
+      cleanup = { ...status.cleanup, reused: true }
     }
     if (evaluationError) throw new Error(evaluationError)
     const slices = plan.map((slice) => slicesById.get(slice.id))
@@ -799,6 +820,8 @@ export async function runPlan55ServiceSequence({ services = PLAN55_SERVICE_ORDER
     }
 
     const g5 = evaluatePlan55G5({ service, slices })
+    if (!cleanup) throw new Error('plan55_canary_cleanup_receipt_missing')
+    assertPlan55Cleanup(cleanup)
     results.push(Object.freeze({
       service,
       status: g5.passed ? 'G5_PASSED' : 'G5_FAILED_SERVICE_OFF',
@@ -806,6 +829,12 @@ export async function runPlan55ServiceSequence({ services = PLAN55_SERVICE_ORDER
         sliceId,
         caseCount,
         errorCount,
+        sourceSha: slicesById.get(sliceId).sourceSha,
+        sourceAttestationSha256: slicesById.get(sliceId).sourceAttestationSha256,
+        corpusPath: slicesById.get(sliceId).corpusPath,
+        playbookPath: slicesById.get(sliceId).playbookPath,
+        playbookEnabled: slicesById.get(sliceId).playbookEnabled,
+        artifactIntegrity: slicesById.get(sliceId).artifactIntegrity,
       })),
       g5: g5.deltas,
       cleanup: Object.freeze(cleanup),
@@ -913,6 +942,7 @@ function assertOperations(operations) {
     throw new Error('plan55_canary_operations_incomplete')
   }
   const checkpointOperations = [
+    'readVerifiedServiceStatus',
     'loadVerifiedSliceReceipt',
     'persistVerifiedSliceReceipt',
     'persistVerifiedServiceCleanup',

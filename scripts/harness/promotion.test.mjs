@@ -66,6 +66,20 @@ function plan55HostedBeforeBytes(policy) {
 
 function plan55GateReceipts(policy, release, gates, targetState) {
   return Object.fromEntries(gates.map((gate, index) => {
+    const evidenceProof = {
+      schemaVersion: 'plan55-gate-result.v1',
+      gate,
+      status: 'PASS',
+      environment: 'production',
+      projectRef: policy.projectRef,
+      policyId: policy.policyId,
+      policySha256: policy.policySha256,
+      releaseId: release.releaseId,
+      sourceSha: release.gitSha,
+      targetState,
+    }
+    const evidenceBytes = Buffer.from(`${JSON.stringify(evidenceProof)}\n`)
+    const evidenceSha256 = createHash('sha256').update(evidenceBytes).digest('hex')
     const receipt = {
       schemaVersion: 'plan55-gate-evidence.v1',
       gate,
@@ -77,7 +91,7 @@ function plan55GateReceipts(policy, release, gates, targetState) {
       releaseId: release.releaseId,
       sourceSha: release.gitSha,
       targetState,
-      evidence: { path: 'evidence.json', sha256: String(index + 1).padStart(64, '0') },
+      evidence: { path: 'evidence.json', sha256: evidenceSha256 },
       provenance: {
         repository: policy.repository,
         workflowPath: '.github/workflows/plan55-production-only.yml',
@@ -95,7 +109,8 @@ function plan55GateReceipts(policy, release, gates, targetState) {
       receipt,
       receiptSha256: createHash('sha256').update(JSON.stringify(receipt)).digest('hex'),
       receiptFileSha256: createHash('sha256').update(receiptBytes).digest('hex'),
-      evidenceSha256: receipt.evidence.sha256,
+      evidenceSha256,
+      evidenceProof,
     }]
   }))
 }
@@ -152,11 +167,7 @@ test('Plan 55 has a separate fail-closed Production-only transition policy with 
   assert.deepEqual(validatePromotionConfig(policy, { root: resolve('.') }), [])
   assert.equal(policy.projectRef, 'iwevizmsedyqozxlawwl')
   assert.equal(policy.repository, 'manhtu0407/HomeServices-')
-  assert.deepEqual(policy.trustedEvidenceWorkflowPaths, [
-    '.github/workflows/ci.yml',
-    '.github/workflows/plan55-production-only.yml',
-    '.github/workflows/plan55-production-canary-service.yml',
-  ])
+  assert.deepEqual(policy.trustedEvidenceWorkflowPaths, ['.github/workflows/ci.yml'])
   assert.ok(validatePromotionConfig({
     ...policy,
     trustedEvidenceWorkflowPaths: ['.github/workflows/not-present.yml'],
@@ -219,7 +230,7 @@ test('Plan 55 has a separate fail-closed Production-only transition policy with 
   ))
 })
 
-test('Plan 55 promotion packets bind every target gate to source-bound evidence receipts', () => {
+test('Plan 55 promotion fails closed when a required gate has no semantic verifier', () => {
   const policy = loadPlan55ProductionOnlyPolicy(resolve('.'))
   const plan55Release = buildHarnessRelease({
     environment: 'production',
@@ -242,56 +253,16 @@ test('Plan 55 promotion packets bind every target gate to source-bound evidence 
   }
   const passedGates = policy.requiredGatesByTarget.verified
   const gateReceipts = plan55GateReceipts(policy, plan55Release, passedGates, 'verified')
-  const packet = buildPromotionPacket({
+  assert.throws(() => buildPromotionPacket({
     root: resolve('.'), config: policy, release: plan55Release, evaluation: plan55Evaluation,
     environment: 'production', currentState: 'assembled', targetState: 'verified',
     passedGates, gateReceipts, now: 0,
+  }), (error) => {
+    assert.match(error.message, /gate evidence coverage is incomplete/u)
+    assert.ok(error.message.includes('plan55-actor-scoped-guard-tests'))
+    assert.ok(error.message.includes('plan55-independent-holdout-freeze'))
+    return true
   })
-  assert.equal(packet.policyId, 'plan55-production-only')
-  assert.equal(packet.policySha256, policy.policySha256)
-  assert.deepEqual(packet.passedGates, [...passedGates].sort())
-  assert.deepEqual(verifyPromotionPacket(packet, policy), [])
-  const changedPolicy = resealPacket({ ...packet, policySha256: '0'.repeat(64) })
-  assert.match(verifyPromotionPacket(changedPolicy, policy).join('; '), /policy binding/u)
-  assert.throws(() => buildPromotionPacket({
-    root: resolve('.'), config: policy, release: plan55Release, evaluation: plan55Evaluation,
-    environment: 'production', currentState: 'assembled', targetState: 'verified',
-    passedGates: passedGates.slice(1), gateReceipts, now: 0,
-  }), /missing required release gate/u)
-  assert.throws(() => buildPromotionPacket({
-    root: resolve('.'), config: policy, release: plan55Release, evaluation: plan55Evaluation,
-    environment: 'production', currentState: 'assembled', targetState: 'verified',
-    passedGates, gateReceipts: { ...gateReceipts, [passedGates[0]]: { ...gateReceipts[passedGates[0]], receiptSha256: 'not-a-digest' } }, now: 0,
-  }), /valid source-bound receipt/u)
-  const firstGate = passedGates[0]
-  const staleReceipt = { ...gateReceipts[firstGate].receipt, sourceSha: 'b'.repeat(40) }
-  const staleRecord = {
-    ...gateReceipts[firstGate],
-    receipt: staleReceipt,
-    receiptSha256: createHash('sha256').update(JSON.stringify(staleReceipt)).digest('hex'),
-  }
-  const stalePacket = resealPacket({
-    ...packet,
-    gateReceipts: { ...packet.gateReceipts, [firstGate]: staleRecord },
-  })
-  assert.match(verifyPromotionPacket(stalePacket, policy).join('; '), /gate evidence receipt is invalid/u)
-  const alteredReceiptFileDigest = {
-    ...gateReceipts[firstGate],
-    receiptFileSha256: 'd'.repeat(64),
-  }
-  const alteredDigestPacket = resealPacket({
-    ...packet,
-    gateReceipts: { ...packet.gateReceipts, [firstGate]: alteredReceiptFileDigest },
-  })
-  assert.match(verifyPromotionPacket(alteredDigestPacket, policy).join('; '), /gate evidence receipt is invalid/u)
-  const missingReceiptPacket = resealPacket({
-    ...packet,
-    gateReceipts: {
-      ...packet.gateReceipts,
-      [firstGate]: { receiptSha256: 'a'.repeat(64), receiptFileSha256: 'b'.repeat(64), evidenceSha256: 'c'.repeat(64) },
-    },
-  })
-  assert.match(verifyPromotionPacket(missingReceiptPacket, policy).join('; '), /gate evidence receipt is invalid/u)
 })
 
 test('blocks a canary when a critical threshold fails', () => {

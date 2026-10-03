@@ -30,7 +30,7 @@ on:
           - paired_wave_3
           - production
       evidence_artifacts_json:
-        description: JSON array of {gate, artifact_id, artifact_name_prefix, evidence_path}; one exact-source PASS artifact per required gate
+        description: JSON array of {gate, artifact_id, artifact_name_prefix, evidence_path} for required gates not auto-sourced from the exact Plan 55 release artifact
         required: true
         type: string
 
@@ -85,8 +85,11 @@ jobs:
           import { mkdirSync, writeFileSync } from 'node:fs'
           import { dirname, resolve, sep } from 'node:path'
           import {
+            assertPlan55GateEvidenceCoverage,
             buildPlan55GateEvidenceArtifact,
             downloadPlan55GitHubRunArtifact,
+            PLAN55_DEPLOYED_GUARD_GATES,
+            PLAN55_RELEASE_STAGE_GATES,
           } from './scripts/harness/plan55-gate-receipts.mjs'
           import { loadPlan55ProductionOnlyPolicy, requiredPromotionGates } from './scripts/harness/promotion.mjs'
 
@@ -103,6 +106,14 @@ jobs:
                 .includes(targetState)) {
             throw new Error('Plan 55 evidence-package inputs are invalid')
           }
+          const expectedGates = requiredPromotionGates(policy, targetState)
+          assertPlan55GateEvidenceCoverage({ policy, targetState, requiredGates: expectedGates })
+          const releaseArtifactGates = new Set([
+            ...PLAN55_RELEASE_STAGE_GATES,
+            ...PLAN55_DEPLOYED_GUARD_GATES,
+          ].filter((gate) =>
+            expectedGates.includes(gate)))
+          const externallySuppliedGates = expectedGates.filter((gate) => !releaseArtifactGates.has(gate))
 
           const download = (artifactId, artifactNamePrefix, expectedRunId, expectedRunAttempt,
             trustedWorkflowPaths = policy.trustedEvidenceWorkflowPaths) => downloadPlan55GitHubRunArtifact({
@@ -116,12 +127,12 @@ jobs:
             token: process.env.GH_TOKEN,
           })
           const releaseArtifact = await download(releaseArtifactId, 'plan55-release',
-            sourceRunId, sourceRunAttempt, ['.github/workflows/plan55-production-only.yml'])
+            sourceRunId, sourceRunAttempt, ['.github/workflows/ci.yml'])
           const releaseMatches = [...releaseArtifact.files].filter(([name]) =>
             name === 'release.json' || name.endsWith('/release.json'))
           const hostedBeforeMatches = [...releaseArtifact.files].filter(([name]) =>
             name === 'hosted-before.json' || name.endsWith('/hosted-before.json'))
-          if (releaseArtifact.workflowPath !== '.github/workflows/plan55-production-only.yml' ||
+          if (releaseArtifact.workflowPath !== '.github/workflows/ci.yml' ||
               releaseMatches.length !== 1 || hostedBeforeMatches.length !== 1) {
             throw new Error('Plan 55 release artifact is missing or has an unexpected producer')
           }
@@ -138,14 +149,13 @@ jobs:
           writeFileSync(releasePath, releaseMatches[0][1], { flag: 'wx' })
           writeFileSync(hostedBeforePath, hostedBeforeMatches[0][1], { flag: 'wx' })
 
-          const expectedGates = requiredPromotionGates(policy, targetState)
           let suppliedEntries
           try {
             suppliedEntries = JSON.parse(process.env.PLAN55_EVIDENCE_ARTIFACTS_JSON)
           } catch {
             throw new Error('Plan 55 evidence artifact inventory is not valid JSON')
           }
-          if (!Array.isArray(suppliedEntries) || suppliedEntries.length !== expectedGates.length) {
+          if (!Array.isArray(suppliedEntries) || suppliedEntries.length !== externallySuppliedGates.length) {
             throw new Error('Plan 55 evidence artifact inventory is incomplete')
           }
           const suppliedByGate = new Map()
@@ -153,7 +163,7 @@ jobs:
             if (!entry || typeof entry !== 'object' || Array.isArray(entry) ||
                 Object.keys(entry).sort().join(',') !== 'artifact_id,artifact_name_prefix,evidence_path,gate' ||
                 typeof entry.gate !== 'string' || suppliedByGate.has(entry.gate) ||
-                !expectedGates.includes(entry.gate) || !Number.isSafeInteger(entry.artifact_id) ||
+                !externallySuppliedGates.includes(entry.gate) || !Number.isSafeInteger(entry.artifact_id) ||
                 entry.artifact_id < 1 || typeof entry.artifact_name_prefix !== 'string' ||
                 !/^[A-Za-z0-9_.-]{1,96}$/u.test(entry.artifact_name_prefix) ||
                 typeof entry.evidence_path !== 'string' || entry.evidence_path.length > 512 ||
@@ -164,19 +174,18 @@ jobs:
             suppliedByGate.set(entry.gate, entry)
           }
           if (JSON.stringify([...suppliedByGate.keys()].sort()) !==
-              JSON.stringify([...expectedGates].sort())) {
+              JSON.stringify([...externallySuppliedGates].sort())) {
             throw new Error('Plan 55 evidence artifact gate inventory does not match policy')
           }
 
           const sourceEvidence = new Map()
-          for (const gate of [...expectedGates].sort()) {
-            const input = suppliedByGate.get(gate)
-            const artifact = await download(input.artifact_id, input.artifact_name_prefix)
-            const evidenceBytes = artifact.files.get(input.evidence_path)
+          const downloadedArtifacts = new Map()
+          const sourceEvidenceFrom = (artifact, evidencePath, gate) => {
+            const evidenceBytes = artifact.files.get(evidencePath)
             if (!evidenceBytes) throw new Error(`Plan 55 source evidence file is missing: ${gate}`)
-            sourceEvidence.set(gate, {
+            return {
               evidenceBytes,
-              artifactEvidencePath: input.evidence_path,
+              artifactEvidencePath: evidencePath,
               artifactFiles: artifact.files,
               provenance: {
                 repository: policy.repository,
@@ -187,9 +196,24 @@ jobs:
                 artifactId: artifact.artifactId,
                 artifactName: artifact.artifactName,
                 artifactDigest: artifact.artifactDigest,
-                artifactEvidencePath: input.evidence_path,
+                artifactEvidencePath: evidencePath,
               },
-            })
+            }
+          }
+          for (const gate of [...expectedGates].sort()) {
+            if (releaseArtifactGates.has(gate)) {
+              sourceEvidence.set(gate, sourceEvidenceFrom(
+                releaseArtifact, `plan55-gate-evidence/${gate}.json`, gate))
+              continue
+            }
+            const input = suppliedByGate.get(gate)
+            const cacheKey = `${input.artifact_id}:${input.artifact_name_prefix}`
+            let artifact = downloadedArtifacts.get(cacheKey)
+            if (!artifact) {
+              artifact = await download(input.artifact_id, input.artifact_name_prefix)
+              downloadedArtifacts.set(cacheKey, artifact)
+            }
+            sourceEvidence.set(gate, sourceEvidenceFrom(artifact, input.evidence_path, gate))
           }
 
           const files = buildPlan55GateEvidenceArtifact({

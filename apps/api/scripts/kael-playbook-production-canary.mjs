@@ -176,6 +176,7 @@ async function runProductionCanary(services) {
     services: result.services.map((service) => ({
       service: service.service,
       status: service.status,
+      slices: service.slices,
       slice_count: service.slices.length,
       case_count: service.slices.reduce((sum, slice) => sum + slice.caseCount, 0),
       error_count: service.slices.reduce((sum, slice) => sum + slice.errorCount, 0),
