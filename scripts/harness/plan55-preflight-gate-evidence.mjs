@@ -12,6 +12,7 @@ const REQUIRED_REPOSITORY = 'manhtu0407/HomeServices-'
 const OUTCOME_ENVIRONMENT = Object.freeze({
   verify_source: 'PLAN55_VERIFY_SOURCE_OUTCOME',
   docker_ram_floor: 'PLAN55_DOCKER_RAM_FLOOR_OUTCOME',
+  edge_deno: 'PLAN55_EDGE_DENO_OUTCOME',
   workspace_quality: 'PLAN55_WORKSPACE_QUALITY_OUTCOME',
   production_ui_normality: 'PLAN55_PRODUCTION_UI_NORMALITY_OUTCOME',
   secret_scan: 'PLAN55_SECRET_SCAN_OUTCOME',

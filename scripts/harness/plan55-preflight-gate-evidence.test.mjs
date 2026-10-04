@@ -19,6 +19,7 @@ const sourceSha = 'a'.repeat(40)
 const outcomes = {
   verify_source: 'success',
   docker_ram_floor: 'success',
+  edge_deno: 'success',
   workspace_quality: 'success',
   production_ui_normality: 'success',
   secret_scan: 'success',
@@ -73,6 +74,26 @@ test('binds the independent holdout freeze to its successful source-bound prefli
   assert.deepEqual(evidence.checks, [{ id: 'independent_holdout_preflight', outcome: 'success' }])
 })
 
+test('binds the Docker, Edge, and SQL release gate to three distinct successful outcomes', () => {
+  const gate = 'plan55-docker-sql-edge-gates'
+  const checkIds = ['docker_ram_floor', 'edge_deno', 'sql_verification']
+  assert.deepEqual(PLAN55_PREFLIGHT_GATE_CHECKS[gate], checkIds)
+  assert.equal(policy.trustedEvidenceWorkflowPathsByGate[gate], '.github/workflows/ci.yml')
+
+  const files = buildProofs()
+  const evidence = JSON.parse(files.get(`plan55-gate-evidence/${gate}.json`).toString('utf8'))
+  assert.deepEqual(evidence.checks, checkIds.map((id) => ({ id, outcome: 'success' })))
+
+  for (const id of checkIds) {
+    assert.throws(() => buildProofs({
+      outcomes: { ...outcomes, [id]: 'skipped' },
+    }), /Plan 55 preflight gate evidence/u)
+  }
+  assert.throws(() => buildProofs({
+    outcomes: Object.fromEntries(Object.entries(outcomes).filter(([id]) => id !== 'edge_deno')),
+  }), /Plan 55 preflight gate evidence/u)
+})
+
 test('rejects non-main, stale source, missing run identity, and any failed, skipped, or unknown step outcome', () => {
   for (const overrides of [
     { githubRef: 'refs/heads/feature' },
@@ -81,11 +102,13 @@ test('rejects non-main, stale source, missing run identity, and any failed, skip
     { runId: '0' },
     { runAttempt: 0 },
     { outcomes: { ...outcomes, secret_scan: 'skipped' } },
+    { outcomes: { ...outcomes, edge_deno: 'failure' } },
     { outcomes: { ...outcomes, sql_verification: 'failure' } },
     { outcomes: { ...outcomes, production_ui_normality: 'failure' } },
     { outcomes: { ...outcomes, independent_holdout_preflight: 'failure' } },
     { outcomes: { ...outcomes, unexpected: 'success' } },
     { outcomes: Object.fromEntries(Object.entries(outcomes).filter(([id]) => id !== 'workspace_quality')) },
+    { outcomes: Object.fromEntries(Object.entries(outcomes).filter(([id]) => id !== 'edge_deno')) },
     { outcomes: Object.fromEntries(Object.entries(outcomes).filter(([id]) => id !== 'independent_holdout_preflight')) },
   ]) {
     assert.throws(() => buildProofs(overrides), /Plan 55 preflight gate evidence/u)
@@ -107,8 +130,8 @@ test('rejects untrusted or incomplete workflow evidence policy', () => {
   }), /Plan 55 preflight gate evidence/u)
 })
 
-test('round-trips a preflight proof through its exact-source receipt artifact', (t) => {
-  const gate = 'workspace-typecheck'
+test('round-trips the combined Docker, Edge, and SQL proof through its exact-source receipt artifact', (t) => {
+  const gate = 'plan55-docker-sql-edge-gates'
   const requiredGates = [gate]
   const receiptPolicy = {
     ...policy,
