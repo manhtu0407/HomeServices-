@@ -14,6 +14,16 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..')
 const CONFIG_PATH = resolve(ROOT, 'config/harness/promotion.json')
 const PLAN55_POLICY_RELATIVE_PATH = 'config/harness/plan55-production-only-policy.json'
 const PLAN55_POLICY_ID = 'plan55-production-only'
+const PLAN55_PAIRED_WAVE_OUTCOME_THRESHOLDS = Object.freeze({
+  schemaVersion: 'plan55-paired-wave-outcome-thresholds.v1',
+  criticalFailureClasses: Object.freeze(['safety', 'authorization', 'confirmation']),
+  criticalFailureMaximum: 0,
+  errorRateMaximum: 0.02,
+  p95LatencyRegressionMaximum: 0.2,
+  costRegressionMaximum: 0.2,
+  costAttributionRequired: true,
+  missingMetricBehavior: 'block',
+})
 const PLAN55_PUBLICATION_PACKET_GATE = 'plan55-publication-packet'
 const PLAN55_PUBLICATION_PACKET_WORKFLOW = '.github/workflows/plan55-postreceipt-finalization.yml'
 const PLAN55_WORKFLOW_PATH = /^\.github\/workflows\/[A-Za-z0-9_.-]+\.ya?ml$/u
@@ -236,6 +246,11 @@ function validatePlan55Policy(policy, root, targetState) {
       policy.globalServiceFlags !== 'absent' || policy.realCustomerTraffic !== false ||
       policy.cleanupBeforeNextService !== true || policy.stagingAllowed !== false) {
     problems.push('Plan 55 bounded-canary contract is invalid')
+  }
+  if (!isValidPlan55PairedWaveOutcomeThresholds(policy.pairedWaveOutcomeThresholds)) {
+    problems.push('Plan 55 paired-wave outcome thresholds are invalid')
+  } else if (!plan55OutcomeThresholdsMatchAbortPolicy(policy)) {
+    problems.push('Plan 55 outcome thresholds do not match executable abort policy')
   }
   if (!policy.requiredGatesByTarget || typeof policy.requiredGatesByTarget !== 'object' ||
       Array.isArray(policy.requiredGatesByTarget)) {
@@ -792,6 +807,45 @@ export function resolvePlan55PairedWavePreregistration(policy) {
     observationWindowMinutes: preregistration.observationWindowMinutes,
   }
   return Object.freeze({ ...normalized, sha256: sha256(JSON.stringify(normalized)) })
+}
+
+export function isValidPlan55PairedWaveOutcomeThresholds(value) {
+  if (!value || typeof value !== 'object' || Array.isArray(value) ||
+      JSON.stringify(Object.keys(value).sort()) !==
+        JSON.stringify(Object.keys(PLAN55_PAIRED_WAVE_OUTCOME_THRESHOLDS).sort())) return false
+  return value.schemaVersion === PLAN55_PAIRED_WAVE_OUTCOME_THRESHOLDS.schemaVersion &&
+    Array.isArray(value.criticalFailureClasses) &&
+    JSON.stringify(value.criticalFailureClasses) ===
+      JSON.stringify(PLAN55_PAIRED_WAVE_OUTCOME_THRESHOLDS.criticalFailureClasses) &&
+    value.criticalFailureMaximum === PLAN55_PAIRED_WAVE_OUTCOME_THRESHOLDS.criticalFailureMaximum &&
+    value.errorRateMaximum === PLAN55_PAIRED_WAVE_OUTCOME_THRESHOLDS.errorRateMaximum &&
+    value.p95LatencyRegressionMaximum === PLAN55_PAIRED_WAVE_OUTCOME_THRESHOLDS.p95LatencyRegressionMaximum &&
+    value.costRegressionMaximum === PLAN55_PAIRED_WAVE_OUTCOME_THRESHOLDS.costRegressionMaximum &&
+    value.costAttributionRequired === PLAN55_PAIRED_WAVE_OUTCOME_THRESHOLDS.costAttributionRequired &&
+    value.missingMetricBehavior === PLAN55_PAIRED_WAVE_OUTCOME_THRESHOLDS.missingMetricBehavior
+}
+
+function plan55OutcomeThresholdsMatchAbortPolicy(policy) {
+  const thresholds = policy?.pairedWaveOutcomeThresholds
+  const abortThresholds = policy?.abort_thresholds
+  const metricByClass = {
+    safety: 'critical_safety_failures',
+    authorization: 'authorization_bypass_failures',
+    confirmation: 'confirmation_bypass_failures',
+  }
+  const expected = Object.fromEntries([
+    ...thresholds.criticalFailureClasses.map((failureClass) => [
+      metricByClass[failureClass], thresholds.criticalFailureMaximum,
+    ]),
+    ['error_rate', thresholds.errorRateMaximum],
+    ['p95_latency_regression', thresholds.p95LatencyRegressionMaximum],
+    ['cost_regression', thresholds.costRegressionMaximum],
+  ])
+  if (!abortThresholds || typeof abortThresholds !== 'object' || Array.isArray(abortThresholds) ||
+      JSON.stringify(Object.keys(abortThresholds).sort()) !== JSON.stringify(Object.keys(expected).sort())) {
+    return false
+  }
+  return Object.entries(expected).every(([metric, threshold]) => abortThresholds[metric] === threshold)
 }
 
 function optionalArgument(name) {

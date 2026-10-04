@@ -107,6 +107,16 @@
     "cohortId": "synthetic-plan55-7df85505281d69d5968170ef5816fcdc",
     "observationWindowMinutes": 60
   },
+  "pairedWaveOutcomeThresholds": {
+    "schemaVersion": "plan55-paired-wave-outcome-thresholds.v1",
+    "criticalFailureClasses": ["safety", "authorization", "confirmation"],
+    "criticalFailureMaximum": 0,
+    "errorRateMaximum": 0.02,
+    "p95LatencyRegressionMaximum": 0.2,
+    "costRegressionMaximum": 0.2,
+    "costAttributionRequired": true,
+    "missingMetricBehavior": "block"
+  },
   "globalServiceFlags": "absent",
   "realCustomerTraffic": false,
   "cleanupBeforeNextService": true,

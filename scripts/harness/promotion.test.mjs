@@ -11,6 +11,7 @@ import {
   buildRollbackPacket,
   canTransition,
   evaluateAbortThresholds,
+  isValidPlan55PairedWaveOutcomeThresholds,
   loadPlan55ProductionOnlyPolicy,
   requiredPromotionGates,
   releaseCompatibilityProblems,
@@ -250,6 +251,40 @@ test('validates transition, runbook, kill-switch, and SLO policy', () => {
   assert.deepEqual(validatePromotionConfig(config, { root: resolve('.') }), [])
   assert.equal(canTransition(config, 'verified', 'staging'), true)
   assert.equal(canTransition(config, 'assembled', 'production'), false)
+})
+
+test('Plan 55 outcome thresholds are explicit and source-bound', () => {
+  const policy = loadPlan55ProductionOnlyPolicy(resolve('.'))
+  assert.deepEqual(policy.pairedWaveOutcomeThresholds, {
+    schemaVersion: 'plan55-paired-wave-outcome-thresholds.v1',
+    criticalFailureClasses: ['safety', 'authorization', 'confirmation'],
+    criticalFailureMaximum: 0,
+    errorRateMaximum: 0.02,
+    p95LatencyRegressionMaximum: 0.2,
+    costRegressionMaximum: 0.2,
+    costAttributionRequired: true,
+    missingMetricBehavior: 'block',
+  })
+  assert.deepEqual(validatePromotionConfig(policy, { root: resolve('.') }), [])
+  assert.equal(isValidPlan55PairedWaveOutcomeThresholds(policy.pairedWaveOutcomeThresholds), true)
+  const executableThresholdDrift = {
+    ...policy,
+    abort_thresholds: { ...policy.abort_thresholds, error_rate: 0.03 },
+  }
+  assert.ok(validatePromotionConfig(executableThresholdDrift, { root: resolve('.') })
+    .includes('Plan 55 outcome thresholds do not match executable abort policy'))
+  assert.equal(isValidPlan55PairedWaveOutcomeThresholds({
+    ...policy.pairedWaveOutcomeThresholds,
+    errorRateMaximum: 0.03,
+  }), false)
+  assert.equal(isValidPlan55PairedWaveOutcomeThresholds({
+    ...policy.pairedWaveOutcomeThresholds,
+    costAttributionRequired: false,
+  }), false)
+  assert.equal(isValidPlan55PairedWaveOutcomeThresholds({
+    ...policy.pairedWaveOutcomeThresholds,
+    p95LatencyRegressionMaximum: undefined,
+  }), false)
 })
 
 test('Plan 55 has a separate fail-closed Production-only transition policy with no Staging path', () => {

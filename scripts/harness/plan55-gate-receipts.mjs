@@ -80,6 +80,9 @@ const RELEASE_STAGE_RECEIPT_GATES = new Set(PLAN55_RELEASE_STAGE_GATES)
 const DEPLOYED_GUARD_RECEIPT_GATES = new Set(PLAN55_DEPLOYED_GUARD_GATES)
 const ROLLBACK_DRILL_RECEIPT_GATES = new Set(['plan55-rollback-drill'])
 const HOSTED_DRIFT_RECEIPT_GATES = new Set(['plan55-hosted-drift-pass'])
+const PAIRED_WAVE_OUTCOME_RECEIPT_GATES = new Set([
+  'plan55-paired-wave-1-pass', 'plan55-paired-wave-2-pass', 'plan55-paired-wave-3-pass',
+])
 const CANARY_EVIDENCE_TARGET_STATES = new Set([
   'receipts_validated', 'rollback_drill', 'paired_wave_1', 'paired_wave_2', 'paired_wave_3', 'production',
 ])
@@ -200,6 +203,7 @@ export function inspectPlan55GateEvidenceCoverage({
       ...DEPLOYED_GUARD_RECEIPT_GATES,
       ...ROLLBACK_DRILL_RECEIPT_GATES,
       ...HOSTED_DRIFT_RECEIPT_GATES,
+      ...PAIRED_WAVE_OUTCOME_RECEIPT_GATES,
       ...PUBLICATION_PACKET_RECEIPT_GATES,
     ])
     : new Set()
@@ -853,10 +857,90 @@ function assertGateSpecificEvidence(evidence, gate, {
     })
     return
   }
+  if (PAIRED_WAVE_OUTCOME_RECEIPT_GATES.has(gate)) {
+    assertPlan55PairedWaveOutcomeProof(evidence.proof, {
+      gate, policy, release, targetState, provenance,
+    })
+    return
+  }
   if (!CANARY_RECEIPT_GATES.has(gate)) {
     throw new Error(`Gate has no semantic evidence verifier: ${gate}`)
   }
   assertSixServiceCanaryProof(evidence.proof, gate, { policy, release })
+}
+
+export function assertPlan55PairedWaveOutcomeProof(proof, { gate, policy, release, targetState, provenance }) {
+  const fail = () => { throw new Error(`Plan 55 paired-wave outcome evidence contract failed: ${gate}`) }
+  const waveNumber = Number(/^plan55-paired-wave-([123])-pass$/u.exec(gate)?.[1])
+  const expectedKeys = [
+    'schemaVersion', 'gate', 'status', 'environment', 'projectRef', 'policyId', 'policySha256',
+    'releaseId', 'sourceSha', 'waveNumber', 'cohortId', 'observationWindowMinutes',
+    'windowStartedAt', 'windowCompletedAt', 'metrics',
+  ].sort()
+  const preregistration = policy?.pairedWavePreregistration
+  const outcomeThresholds = policy?.pairedWaveOutcomeThresholds
+  const abortThresholds = policy?.abort_thresholds
+  const thresholdMapping = {
+    critical_safety_failures: outcomeThresholds?.criticalFailureMaximum,
+    authorization_bypass_failures: outcomeThresholds?.criticalFailureMaximum,
+    confirmation_bypass_failures: outcomeThresholds?.criticalFailureMaximum,
+    error_rate: outcomeThresholds?.errorRateMaximum,
+    p95_latency_regression: outcomeThresholds?.p95LatencyRegressionMaximum,
+    cost_regression: outcomeThresholds?.costRegressionMaximum,
+  }
+  const proofMetricByAbortMetric = {
+    critical_safety_failures: 'critical_safety_failures',
+    authorization_bypass_failures: 'authz_bypass_failures',
+    confirmation_bypass_failures: 'confirmation_bypass_failures',
+    error_rate: 'error_rate',
+    p95_latency_regression: 'p95_latency_regression',
+    cost_regression: 'cost_regression',
+  }
+  const expectedAbortMetricKeys = [
+    'critical_safety_failures', 'authorization_bypass_failures', 'confirmation_bypass_failures',
+    'error_rate', 'p95_latency_regression', 'cost_regression',
+  ].sort()
+  const expectedProofMetricKeys = Object.values(proofMetricByAbortMetric).sort()
+  const waveStateIndex = PROMOTION_GATE_PHASES.indexOf(`paired_wave_${waveNumber}`)
+  const targetStateIndex = PROMOTION_GATE_PHASES.indexOf(targetState)
+  const startedAt = typeof proof?.windowStartedAt === 'string' ? Date.parse(proof.windowStartedAt) : Number.NaN
+  const completedAt = typeof proof?.windowCompletedAt === 'string' ? Date.parse(proof.windowCompletedAt) : Number.NaN
+  const producerCompletedAt = parseGitHubTimestamp(provenance?.runUpdatedAt)
+
+  if (!Number.isInteger(waveNumber) || !proof || typeof proof !== 'object' || Array.isArray(proof) ||
+      JSON.stringify(Object.keys(proof).sort()) !== JSON.stringify(expectedKeys) ||
+      proof.schemaVersion !== 'plan55-paired-wave-outcome-proof.v1' || proof.gate !== gate ||
+      proof.status !== 'PASS' || proof.environment !== 'production' ||
+      proof.projectRef !== policy?.projectRef ||
+      proof.policyId !== policy?.policyId || proof.policySha256 !== policy?.policySha256 ||
+      proof.releaseId !== release?.releaseId || proof.sourceSha !== release?.gitSha || !isGitSha(proof.sourceSha) ||
+      proof.waveNumber !== waveNumber || targetStateIndex <= waveStateIndex ||
+      !policy?.requiredGatesByTarget?.[targetState]?.includes(gate) ||
+      !preregistration || proof.cohortId !== preregistration.cohortId ||
+      proof.observationWindowMinutes !== preregistration.observationWindowMinutes ||
+      !Number.isSafeInteger(proof.observationWindowMinutes) || proof.observationWindowMinutes <= 0 ||
+      outcomeThresholds?.schemaVersion !== 'plan55-paired-wave-outcome-thresholds.v1' ||
+      JSON.stringify(outcomeThresholds?.criticalFailureClasses) !== JSON.stringify(['safety', 'authorization', 'confirmation']) ||
+      outcomeThresholds?.costAttributionRequired !== true || outcomeThresholds?.missingMetricBehavior !== 'block' ||
+      !abortThresholds || typeof abortThresholds !== 'object' || Array.isArray(abortThresholds) ||
+      JSON.stringify(Object.keys(abortThresholds).sort()) !== JSON.stringify(expectedAbortMetricKeys) ||
+      JSON.stringify(Object.keys(thresholdMapping).sort()) !== JSON.stringify(expectedAbortMetricKeys) ||
+      Object.entries(thresholdMapping).some(([metric, threshold]) => abortThresholds[metric] !== threshold) ||
+      !proof.metrics || typeof proof.metrics !== 'object' || Array.isArray(proof.metrics) ||
+      JSON.stringify(Object.keys(proof.metrics).sort()) !== JSON.stringify(expectedProofMetricKeys) ||
+      !Number.isFinite(startedAt) || !Number.isFinite(completedAt) ||
+      new Date(startedAt).toISOString() !== proof.windowStartedAt ||
+      new Date(completedAt).toISOString() !== proof.windowCompletedAt ||
+      completedAt - startedAt < proof.observationWindowMinutes * 60_000 ||
+      producerCompletedAt === null || completedAt > producerCompletedAt) fail()
+
+  for (const [metric, threshold] of Object.entries(abortThresholds)) {
+    const actual = proof.metrics[proofMetricByAbortMetric[metric]]
+    if (!Number.isFinite(threshold) || threshold < 0 || !Number.isFinite(actual) || actual > threshold) fail()
+    if (metric === 'error_rate' && (actual < 0 || actual > 1)) fail()
+    if (metric.endsWith('_failures') && (!Number.isSafeInteger(actual) || actual < 0)) fail()
+  }
+  return true
 }
 
 export function assertPlan55PublicationPacketGateProof(proof, {

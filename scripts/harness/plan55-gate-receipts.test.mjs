@@ -9,6 +9,7 @@ import {
   assertPlan55FinalizationArtifactFiles,
   assertPlan55RollbackDrillFollowsWaveOne,
   assertPlan55PublicationPacketGateProof,
+  assertPlan55PairedWaveOutcomeProof,
   buildPlan55CanaryGateEvidenceFiles,
   buildPlan55GateEvidenceArtifact,
   downloadPlan55GitHubRunArtifact,
@@ -757,6 +758,9 @@ test('reports every missing Plan 55 verifier and producer before artifact downlo
     'plan55-six-cleanup-passes',
     'plan55-publication-packet',
     'plan55-hosted-drift-pass',
+    'plan55-paired-wave-1-pass',
+    'plan55-paired-wave-2-pass',
+    'plan55-paired-wave-3-pass',
     ...Object.keys(PLAN55_PREFLIGHT_GATE_CHECKS),
     ...PLAN55_RELEASE_STAGE_GATES,
     ...PLAN55_DEPLOYED_GUARD_GATES,
@@ -776,6 +780,15 @@ test('reports every missing Plan 55 verifier and producer before artifact downlo
   assert.ok(!coverage.missingSemanticVerifierGates.includes('workspace-typecheck'))
   assert.ok(!coverage.missingSemanticVerifierGates.includes('plan55-full-production-readiness'))
   assert.ok(coverage.requiredGates.includes('workspace-typecheck'))
+
+  const waveTwoGates = requiredPromotionGates(sourcePolicy, 'paired_wave_2')
+  const waveTwoCoverage = inspectPlan55GateEvidenceCoverage({
+    policy: sourcePolicy,
+    targetState: 'paired_wave_2',
+    requiredGates: waveTwoGates,
+  })
+  assert.ok(!waveTwoCoverage.missingSemanticVerifierGates.includes('plan55-paired-wave-1-pass'))
+  assert.ok(waveTwoCoverage.missingApprovedProducerGates.includes('plan55-paired-wave-1-pass'))
 })
 
 test('rollback drill has a dedicated semantic verifier and exact-source producer', () => {
@@ -1121,6 +1134,68 @@ test('coverage preflight names the full unsupported gate set in one error', () =
     for (const gate of coverage.missingApprovedProducerGates) assert.ok(error.message.includes(gate))
     return true
   })
+})
+
+test('paired-wave outcome proof is exact-source, preregistered, complete, and threshold-bound', () => {
+  const gate = 'plan55-paired-wave-1-pass'
+  const preregistration = sourcePolicy.pairedWavePreregistration
+  const metrics = {
+    critical_safety_failures: 0,
+    authz_bypass_failures: 0,
+    confirmation_bypass_failures: 0,
+    error_rate: 0,
+    p95_latency_regression: 0,
+    cost_regression: 0,
+  }
+  const proof = {
+    schemaVersion: 'plan55-paired-wave-outcome-proof.v1',
+    gate,
+    status: 'PASS',
+    environment: 'production',
+    projectRef: sourcePolicy.projectRef,
+    policyId: sourcePolicy.policyId,
+    policySha256: sourcePolicy.policySha256,
+    releaseId: release.releaseId,
+    sourceSha: release.gitSha,
+    waveNumber: 1,
+    cohortId: preregistration.cohortId,
+    observationWindowMinutes: preregistration.observationWindowMinutes,
+    windowStartedAt: '2026-10-01T10:00:00.000Z',
+    windowCompletedAt: '2026-10-01T11:00:00.000Z',
+    metrics,
+  }
+  const context = {
+    gate,
+    policy: sourcePolicy,
+    release,
+    targetState: 'paired_wave_2',
+    provenance: { runUpdatedAt: '2026-10-01T11:05:00.000Z' },
+  }
+
+  assert.equal(assertPlan55PairedWaveOutcomeProof(proof, context), true)
+
+  const mutations = [
+    (value) => { value.sourceSha = 'b'.repeat(40) },
+    (value) => { value.waveNumber = 2 },
+    (value) => { value.metrics.error_rate = 0.021 },
+    (value) => { value.metrics.authz_bypass_failures = 1 },
+    (value) => { delete value.metrics.cost_regression },
+    (value) => { value.windowCompletedAt = '2026-10-01T10:59:59.999Z' },
+  ]
+  for (const mutate of mutations) {
+    const altered = structuredClone(proof)
+    mutate(altered)
+    assert.throws(() => assertPlan55PairedWaveOutcomeProof(altered, context),
+      /paired-wave outcome evidence contract failed/u)
+  }
+  assert.throws(() => assertPlan55PairedWaveOutcomeProof(proof, {
+    ...context,
+    targetState: 'paired_wave_1',
+  }), /paired-wave outcome evidence contract failed/u)
+  assert.throws(() => assertPlan55PairedWaveOutcomeProof(proof, {
+    ...context,
+    provenance: { runUpdatedAt: '2026-10-01T10:59:00.000Z' },
+  }), /paired-wave outcome evidence contract failed/u)
 })
 
 test('coverage inspection rejects malformed gate inventories without partial results', () => {
