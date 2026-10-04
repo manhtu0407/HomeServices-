@@ -74,7 +74,7 @@
       }
     ]
   },
-  "migrationsSha256": "bc4bef5bc45c52550ba8437f90e7fa014a3171c2a8b81983784d4278619c386e",
+  "migrationsSha256": "87ed3fbd49549e6ba651cf6aa85c4facdf775451ea50cd001db8f8fd698c4358",
   "databaseTypes": {
     "file": "packages/shared/src/types/database",
     "sha256": "0fcc401abfcf616a7bd559a99fd2f77e080b41b7fbf48b8ad29c9c11e9688bd7"
@@ -3073,8 +3073,8 @@
       "version": "20261002160000",
       "name": "kael_normal_chat_image_foundation",
       "file": "supabase/migrations/20261002160000_kael_normal_chat_image_foundation.sql",
-      "sha256": "15f4f5ef9f2d03e29a130faf05131b557348d48295d13c3f5d5d6f9f97b700d4",
-      "bytes": 14989
+      "sha256": "b79ab65315869c6a547b7c8528863c8a1774942bf527a909bf90cccf16c083a7",
+      "bytes": 14988
     },
     {
       "version": "20261002170000",
