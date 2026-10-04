@@ -8,7 +8,8 @@ export type CustomerKaelConversationRoute =
   | { kind: "customer.kaelConversations.pin"; method: "PATCH"; conversationId: string; roles: UserRole[] }
   | { kind: "customer.kaelConversations.get"; method: "GET"; conversationId: string; roles: UserRole[] }
   | { kind: "customer.kaelConversations.stream"; method: "POST"; conversationId: string; roles: UserRole[] }
-  | { kind: "customer.kaelConversations.turn"; method: "POST"; conversationId: string; roles: UserRole[] };
+  | { kind: "customer.kaelConversations.turn"; method: "POST"; conversationId: string; roles: UserRole[] }
+  | { kind: "customer.kaelConversations.suggestions"; method: "POST"; conversationId: string; roles: UserRole[] };
 
 export function matchCustomerKaelConversationRoute(
   path: string,
@@ -53,6 +54,9 @@ export function matchCustomerKaelConversationRoute(
   }
   if (action === "stream" && method === "POST") {
     return { kind: "customer.kaelConversations.stream", method: "POST", conversationId, roles: ["customer"] };
+  }
+  if (action === "suggestions" && method === "POST") {
+    return { kind: "customer.kaelConversations.suggestions", method: "POST", conversationId, roles: ["customer"] };
   }
   return null;
 }

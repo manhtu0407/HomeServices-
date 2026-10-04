@@ -7,7 +7,7 @@ import { LiquidBackButton, LiquidSurfaceOverlay } from '@/components/ui/liquid-b
 import type { AppLanguage } from '@/lib/app-language'
 
 import type { CustomerThemeTokens } from '../customer-theme'
-import { ChatModeSwitchAura, ChatNewConversationIcon } from './chat-surfaces'
+import { ChatNewConversationIcon } from './chat-surfaces'
 import { customerV21ChatStyles as styles } from './chat-styles'
 import { KaelLiquidPressable } from './kael-liquid-pressable'
 import type { CustomerKaelMode } from '../ui/types'
@@ -140,28 +140,10 @@ export function CustomerKaelChatHeader({
           style={[
             styles.chatModeSwitch,
             styles.chatModeMenu,
-            reduceTransparency
-              ? { backgroundColor: tokens.raised, borderColor: tokens.border }
-              : {
-                backgroundColor: tokens.mode === 'dark' ? 'rgba(22,29,27,0.42)' : 'rgba(255,255,255,0.18)',
-                borderColor: tokens.mode === 'dark' ? 'rgba(190,210,205,0.16)' : 'rgba(255,255,255,0.72)',
-              },
-            !reduceTransparency ? styles.chatModeMenuLiquid : null,
             animatedModeMenuStyle,
           ]}
           testID="customer-v21-chat-mode-menu"
         >
-          {!reduceTransparency ? (
-            <>
-              <ChatModeSwitchAura reduceTransparency={reduceTransparency} />
-              <LiquidSurfaceOverlay
-                designHeight={120}
-                mode={tokens.mode}
-                radius={18}
-                testID="customer-v21-chat-mode-menu-liquid"
-              />
-            </>
-          ) : null}
           {modeOptions.map((option) => {
             const selected = mode === option.value
             return (

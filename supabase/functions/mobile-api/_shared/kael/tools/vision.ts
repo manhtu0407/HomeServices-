@@ -1,7 +1,8 @@
 import { sanitizeForLLM } from "../../../../_shared/domain.ts";
+import { z } from "zod";
 import type { AIImageContent, AIProvider, EdgeAiSecrets, ServiceType, VisionResult } from "../contracts/types.ts";
 import { visionResultSchema } from "../contracts/types.ts";
-import { buildVisionMessages } from "../prompts/prompts.ts";
+import { buildNormalChatVisionMessages, buildVisionMessages } from "../prompts/prompts.ts";
 import {
   callStructuredAI,
   hasStructuredValidationIssue,
@@ -19,6 +20,117 @@ import { sanitizeVisionPhotoUrls, scrubSensitiveForLLM } from "../pipeline/utils
 import { readResponseBytesBounded } from "../../../../_shared/network.ts";
 import { customerVisibleKaelProblemSummary } from "../language/user-facing-copy.ts";
 import { serviceReceiptCopy } from "../language/service-receipt-copy.ts";
+import type { StructuredAIInvoker } from "../kael-providers/structured-call.ts";
+import { estimateModelRequestCostUsd } from "../kael-usage/model-pricing.ts";
+
+const normalChatImageAnalysisSchema = z.object({
+  summary: z.string().trim().min(1).max(900),
+  observations: z.array(z.string().trim().min(1).max(240)).max(8),
+  readable_text: z.array(z.string().trim().min(1).max(160)).max(8),
+  uncertainties: z.array(z.string().trim().min(1).max(240)).max(8),
+}).strict();
+
+export type NormalChatImageAnalysis = z.infer<typeof normalChatImageAnalysisSchema>;
+
+export type NormalChatImageAnalysisResult =
+  | {
+    readonly success: true;
+    readonly analysis: NormalChatImageAnalysis;
+    readonly provider: "anthropic";
+    readonly model: string;
+    readonly inputTokens: number;
+    readonly outputTokens: number;
+    readonly costUsd: number;
+  }
+  | {
+    readonly success: false;
+    readonly failureReason: string;
+  };
+
+export async function analyzeNormalChatImages(
+  question: string,
+  photoUrls: readonly string[],
+  secrets: EdgeAiSecrets,
+  gate: KaelSpendGate,
+  language: "vi" | "en" = "vi",
+  invoke?: StructuredAIInvoker,
+): Promise<NormalChatImageAnalysisResult> {
+  const safePhotoUrls = sanitizeVisionPhotoUrls([...photoUrls]);
+  if (safePhotoUrls.length === 0 || safePhotoUrls.length > 5) {
+    return { success: false, failureReason: "INVALID_NORMAL_CHAT_IMAGE_COUNT" };
+  }
+  const imageBlocks = await fetchVisionImageBlocks(safePhotoUrls);
+  if (imageBlocks.length !== safePhotoUrls.length) {
+    return { success: false, failureReason: "INCOMPLETE_NORMAL_CHAT_IMAGE_READ" };
+  }
+  const routes = circuitAwareProviderCandidatesForPurpose("normal_chat_vision");
+  if (routes.length === 0) {
+    return { success: false, failureReason: "NO_NORMAL_CHAT_VISION_PROVIDER" };
+  }
+  const messages = buildNormalChatVisionMessages(
+    scrubSensitiveForLLM(sanitizeForLLM(question)).slice(0, 2000),
+    imageBlocks,
+    language,
+  );
+  const blockedProviders = new Set<AIProvider>();
+  let failureReason = "NO_NORMAL_CHAT_VISION_PROVIDER";
+
+  for (const route of routes) {
+    if (blockedProviders.has(route.provider)) continue;
+    const request = {
+      purpose: "normal_chat_vision" as const,
+      provider: route.provider,
+      model: route.model,
+      messages,
+      maxTokens: maxTokensForPurpose("normal_chat_vision", 300),
+      temperature: 0.1,
+      timeoutMs: route.latencyBudgetMs,
+      maxRetries: 0,
+    };
+    const estimatedCostUsd = estimateModelRequestCostUsd({
+      ...request,
+      at: new Date(),
+      unknownModelPolicy: "throw",
+    });
+    if (estimatedCostUsd > route.costCeilingUsd) {
+      return { success: false, failureReason: "NORMAL_CHAT_VISION_COST_LIMIT" };
+    }
+    const result = await callStructuredAI(
+      request,
+      normalChatImageAnalysisSchema,
+      secrets,
+      { ...gate, estimatedCostUsd: route.costCeilingUsd },
+      invoke,
+    );
+    if (result.success) {
+      return {
+        success: true,
+        analysis: sanitizeNormalChatImageAnalysis(result.data),
+        provider: "anthropic",
+        model: route.model,
+        inputTokens: result.usage.inputTokens,
+        outputTokens: result.usage.outputTokens,
+        costUsd: result.usage.costUsd,
+      };
+    }
+    failureReason = result.code;
+    if (shouldSkipProviderSiblingModels(result.code)) blockedProviders.add(route.provider);
+  }
+
+  return { success: false, failureReason };
+}
+
+function sanitizeNormalChatImageAnalysis(
+  analysis: NormalChatImageAnalysis,
+): NormalChatImageAnalysis {
+  const clean = (value: string) => scrubSensitiveForLLM(sanitizeForLLM(value));
+  return {
+    summary: clean(analysis.summary).slice(0, 900),
+    observations: analysis.observations.map(clean).filter(Boolean).slice(0, 8),
+    readable_text: analysis.readable_text.map(clean).filter(Boolean).slice(0, 8),
+    uncertainties: analysis.uncertainties.map(clean).filter(Boolean).slice(0, 8),
+  };
+}
 
 const VISION_BASE_MAX_TOKENS = 900;
 const VISION_EXTRA_IMAGE_MAX_TOKENS = 200;

@@ -41,7 +41,6 @@ import {
   type ProviderChoice,
 } from "../kael-providers/routing.ts";
 import { maxTokensForPurpose } from "../kael-providers/routing.config.ts";
-import { providerAdapterFor } from "../kael-providers/provider-adapter.ts";
 import { guardOutput } from "../kael-guardrails/output-gateway.ts";
 import {
   auditKaelGuardrailTrip,
@@ -68,6 +67,12 @@ import {
   fallbackText,
 } from "./customer-assistant-copy.ts";
 import {
+  customerBoundaryDetail,
+  customerExecutionLabel,
+  customerKnowledgeDetail,
+  customerRequestScopeDetail,
+} from "./customer-assistant-context-copy.ts";
+import {
   assistantSafeText,
   buildCustomerAssistantNoProviderTrace,
   buildCustomerAssistantProviderTrace,
@@ -92,6 +97,8 @@ import {
   type KaelReasoningReporter,
 } from "../reasoning-receipt.ts";
 import { type KaelResponseReporter } from "../response-stream.ts";
+import { analyzeNormalChatImages, type NormalChatImageAnalysis } from "../tools/vision.ts";
+import type { NormalChatSearchResult } from "../tools/normal-chat-search.ts";
 export type {
   CustomerAssistantJobContext,
   CustomerAssistantSurface,
@@ -103,12 +110,19 @@ export type CustomerAssistantInput = {
   readonly actorId?: string | null;
   readonly message: string;
   readonly imageUrls?: readonly string[];
+  readonly normalChatImageAnalysis?: NormalChatImageAnalysis | null;
+  readonly normalChatSearchResults?: readonly NormalChatSearchResult[] | null;
+  readonly normalChatSearchUnavailable?: boolean;
   readonly language?: KaelPromptLanguage;
   readonly serviceType?: ServiceType | null;
   readonly surface?: CustomerAssistantSurface;
   readonly job?: CustomerAssistantJobContext | null;
   readonly client?: AssistantClient | null;
   readonly memorySummary?: string | null;
+  readonly previousTurns?: readonly {
+    readonly role: "customer" | "kael";
+    readonly text: string | null;
+  }[];
   readonly secrets: EdgeAiSecrets;
   readonly reasoning?: KaelReasoningReporter;
   readonly response?: KaelResponseReporter;
@@ -124,10 +138,12 @@ export type CustomerAssistantAnswer = {
   readonly fallback_used: boolean;
   readonly public_reasoning_summary?: readonly string[];
   readonly trace?: readonly KaelSafeTraceEvent[];
+  readonly normalChatImageAnalysis?: NormalChatImageAnalysis | null;
 };
 
-const customerAssistantResponseSchema = z.preprocess(normalizeAssistantPayload, z.object({
-  answer: z.string().trim().min(1).max(900),
+function customerAssistantResponseSchema(maxAnswerLength: number) {
+  return z.preprocess((value) => normalizeAssistantPayload(value, maxAnswerLength), z.object({
+  answer: z.string().trim().min(1).max(maxAnswerLength),
   safety_notes: z.array(z.string().trim().min(1).max(180)).max(3).default([]),
   citations: z.array(z.string().trim().min(1).max(180)).max(5).default([]),
   public_reasoning_summary: z.array(
@@ -147,13 +163,15 @@ const customerAssistantResponseSchema = z.preprocess(normalizeAssistantPayload, 
     "unsupported",
     "fallback",
   ]).default("answered"),
-}).strip());
+  }).strip());
+}
 
-type CustomerAssistantProviderPayload = z.infer<typeof customerAssistantResponseSchema>;
+type CustomerAssistantProviderPayload = z.infer<ReturnType<typeof customerAssistantResponseSchema>>;
 
 export async function runCustomerAssistant(
   input: CustomerAssistantInput,
 ): Promise<CustomerAssistantAnswer> {
+  const hasImages = Boolean(input.imageUrls?.length);
   const {
     boundary,
     cleanQuestion,
@@ -184,7 +202,7 @@ export async function runCustomerAssistant(
     status: "completed",
   });
   const permission = await evaluateKaelPermissionGateWithBoundaries({
-    purpose: "educational_response",
+    purpose: surface === "customer_normal" ? "normal_chat_response" : "educational_response",
     actor: "customer",
     jobRelation: input.job ? "own_customer_job" : "none",
     action: input.job ? "read_context" : "generate_advisory",
@@ -214,7 +232,7 @@ export async function runCustomerAssistant(
     );
   }
 
-  if (!boundary.ok && (boundary.reason !== "out_of_scope" || topic !== "service_trust_safety")) {
+  if (!boundary.ok && surface !== "customer_normal" && (boundary.reason !== "out_of_scope" || topic !== "service_trust_safety")) {
     return buildFallbackCustomerAssistantAnswer(
       boundary.declineText,
       topic,
@@ -225,7 +243,31 @@ export async function runCustomerAssistant(
     );
   }
 
-  const hasImages = Boolean(input.imageUrls?.length);
+  let normalChatImageAnalysis: NormalChatImageAnalysis | null = input.normalChatImageAnalysis ?? null;
+  if (hasImages && surface === "customer_normal") {
+    const vision = await analyzeNormalChatImages(
+      cleanQuestion,
+      input.imageUrls ?? [],
+      input.secrets,
+      createRuntimeKaelSpendGate(
+        input.client as SpendGateClient,
+        input.actorId ?? null,
+        input.secrets.harnessTrace,
+      ),
+      language,
+      input.callAI,
+    );
+    if (!vision.success) {
+      apiFailure(
+        "AI_UNAVAILABLE",
+        language === "en"
+          ? "Kael could not analyze the attached image. Your message is still available to retry."
+          : "Kael chưa thể phân tích ảnh đính kèm. Tin nhắn của bạn vẫn có thể gửi lại.",
+        502,
+      );
+    }
+    normalChatImageAnalysis = vision.analysis;
+  }
   const boundedLifecycleAnswer = hasImages
     ? null
     : resolveBoundedServiceLifecycleAnswer(topic, cleanQuestion, language);
@@ -273,10 +315,17 @@ export async function runCustomerAssistant(
       status: "completed",
     });
   }
-  const routes = customerAssistantProviderRoutes(surface, cleanQuestion).filter((route) =>
-    !hasImages || providerAdapterFor(route.provider).capabilities.vision
-  );
+  const routes = customerAssistantProviderRoutes(surface, cleanQuestion);
   if (routes.length === 0) {
+    if (surface === "customer_normal") {
+      apiFailure(
+        "AI_UNAVAILABLE",
+        language === "en"
+          ? "Kael could not reply right now. Your message is still available to retry."
+          : "Kael chưa thể trả lời lúc này. Tin nhắn của bạn vẫn có thể gửi lại.",
+        503,
+      );
+    }
     if (hasImages) return failImageAnalysis(language);
     trace.push(buildCustomerAssistantNoProviderTrace(surface));
     return buildFallbackCustomerAssistantAnswer(
@@ -288,8 +337,8 @@ export async function runCustomerAssistant(
       trace,
     );
   }
-  return resolveCustomerAssistantProviders(
-    input,
+  const answer = await resolveCustomerAssistantProviders(
+    { ...input, normalChatImageAnalysis },
     language,
     surface,
     topic,
@@ -300,17 +349,24 @@ export async function runCustomerAssistant(
     serviceType,
     registerHint,
   );
+  return normalChatImageAnalysis
+    ? { ...answer, normalChatImageAnalysis }
+    : answer;
 }
 
 function buildCustomerAssistantRunContext(input: CustomerAssistantInput) {
   const language = input.language ?? "vi";
   const surface = input.surface ?? "customer_normal";
+  const hasImages = Boolean(input.imageUrls?.length);
+  const sourceMessage = input.message.trim() || (hasImages
+    ? language === "en" ? "Please analyze the attached image(s)." : "Hãy phân tích ảnh đính kèm."
+    : input.message);
   const cleanQuestion = (
     surface === "customer_case"
-      ? sanitizeCustomerCaseEvidenceText(input.message)
-      : scrubSensitiveForLLM(input.message)
+      ? sanitizeCustomerCaseEvidenceText(sourceMessage)
+      : scrubSensitiveForLLM(sourceMessage)
   ).slice(0, 2000);
-  const workflowQuestion = scrubSensitiveForLLM(input.message).slice(0, 2000);
+  const workflowQuestion = scrubSensitiveForLLM(sourceMessage).slice(0, 2000);
   const serviceType = input.serviceType ?? inferAssistantServiceType(cleanQuestion, input.job);
   const topic = classifyAssistantTopic(cleanQuestion, serviceType);
   const boundary = evaluateMessageBoundary(cleanQuestion, serviceType, {
@@ -336,11 +392,14 @@ function customerAssistantProviderRoutes(
   surface: CustomerAssistantSurface,
   cleanQuestion: string,
 ) {
-  return circuitAwareProviderCandidatesForPurpose("educational_response", {
+  return circuitAwareProviderCandidatesForPurpose(
+    surface === "customer_normal" ? "normal_chat_response" : "educational_response",
+    {
     routeProfile: surface === "customer_normal" && isSimpleNormalChatMessage(cleanQuestion)
       ? "simple_normal_chat"
       : "standard",
-  });
+    },
+  );
 }
 
 async function resolveCustomerAssistantProviders(
@@ -362,6 +421,9 @@ async function resolveCustomerAssistantProviders(
     input.secrets.harnessTrace,
   );
   const blockedProviders = new Set<string>();
+  const responseSchema = customerAssistantResponseSchema(
+    surface === "customer_normal" ? 4_000 : 900,
+  );
   for (const route of routes) {
     if (blockedProviders.has(route.provider)) continue;
     const request = buildAssistantRequest({
@@ -376,21 +438,25 @@ async function resolveCustomerAssistantProviders(
       memorySummary: input.memorySummary ?? null,
       registerHint,
       imageUrls: input.imageUrls,
+      normalChatImageAnalysis: input.normalChatImageAnalysis,
+      normalChatSearchResults: input.normalChatSearchResults,
+      normalChatSearchUnavailable: input.normalChatSearchUnavailable,
+      previousTurns: input.previousTurns,
     });
-    const streamObserver = !hasImages && input.response && !input.callAI
+    const streamObserver = surface !== "customer_normal" && !hasImages && input.response && !input.callAI
       ? createCustomerResponseStreamObserver(input, language, surface, topic)
       : null;
     const result = streamObserver
       ? await callStructuredAIStream(
         request,
-        customerAssistantResponseSchema,
+        responseSchema,
         input.secrets,
         spendGate,
         streamObserver,
       )
       : await callStructuredAI(
         request,
-        customerAssistantResponseSchema,
+        responseSchema,
         input.secrets,
         spendGate,
         input.callAI,
@@ -432,7 +498,10 @@ async function resolveCustomerAssistantProviders(
           costUsd: schemaResponse.usage.costUsd,
           fallbackUsed: true,
         }));
-        const recoveredAnswer = recoverAssistantProviderAnswer(result);
+        const recoveredAnswer = recoverAssistantProviderAnswer(
+          result,
+          surface === "customer_normal" ? 4_000 : 900,
+        );
         if (recoveredAnswer) {
           const checked = guardCustomerAssistantOutput(
             recoveredAnswer,
@@ -479,6 +548,15 @@ async function resolveCustomerAssistantProviders(
     });
   }
 
+  if (surface === "customer_normal") {
+    apiFailure(
+      "AI_UNAVAILABLE",
+      language === "en"
+        ? "Kael could not reply right now. Your message is still available to retry."
+        : "Kael chưa thể trả lời lúc này. Tin nhắn của bạn vẫn có thể gửi lại.",
+      503,
+    );
+  }
   if (input.imageUrls?.length) return failImageAnalysis(language);
   return buildFallbackCustomerAssistantAnswer(
     fallbackText(language, topic),
@@ -644,87 +722,6 @@ function completedSentencePrefix(text: string) {
   return boundary && boundary.index !== undefined
     ? text.slice(0, boundary.index + boundary[0].length).trim()
     : "";
-}
-
-function customerExecutionLabel(
-  language: KaelPromptLanguage,
-  kind: "request" | "boundary" | "knowledge" | "summary",
-) {
-  const copy = language === "en"
-    ? {
-      boundary: "Support boundary",
-      knowledge: "Related knowledge",
-      request: "Request classification",
-      summary: "Public response note",
-    }
-    : {
-      boundary: "Giới hạn hỗ trợ",
-      knowledge: "Thông tin liên quan",
-      request: "Phân loại yêu cầu",
-      summary: "Ghi chú phản hồi",
-    };
-  return copy[kind];
-}
-
-function customerRequestScopeDetail(
-  language: KaelPromptLanguage,
-  serviceType: ReturnType<typeof inferAssistantServiceType>,
-) {
-  const service = serviceType ? customerServiceLabel(language, serviceType) : null;
-  if (language === "en") {
-    return service
-      ? `The request was classified as ${service} support.`
-      : "The request was classified as general Kael support.";
-  }
-  return service
-    ? `Yêu cầu được nhận diện thuộc nhóm hỗ trợ ${service}.`
-    : "Yêu cầu được nhận diện là hỗ trợ chung của Kael.";
-}
-
-function customerBoundaryDetail(language: KaelPromptLanguage, allowed: boolean) {
-  if (language === "en") {
-    return allowed
-      ? "The request is eligible for advisory support within current boundaries."
-      : "The request needs a bounded safe response instead of general advisory support.";
-  }
-  return allowed
-    ? "Yêu cầu phù hợp để nhận hỗ trợ tư vấn trong giới hạn hiện tại."
-    : "Yêu cầu cần phản hồi an toàn có giới hạn thay vì tư vấn chung.";
-}
-
-function customerKnowledgeDetail(language: KaelPromptLanguage, citationCount: number) {
-  if (language === "en") {
-    return citationCount > 0
-      ? `Added ${citationCount} verified related knowledge source${citationCount === 1 ? "" : "s"}.`
-      : "Added verified related platform context.";
-  }
-  return citationCount > 0
-    ? `Đã bổ sung ${citationCount} nguồn thông tin liên quan đã được kiểm chứng.`
-    : "Đã bổ sung ngữ cảnh nền tảng liên quan đã được kiểm chứng.";
-}
-
-function customerServiceLabel(
-  language: KaelPromptLanguage,
-  serviceType: NonNullable<ReturnType<typeof inferAssistantServiceType>>,
-) {
-  const copy = language === "en"
-    ? {
-      cleaning: "home cleaning",
-      electrical: "electrical repair",
-      handyman: "minor handyman work",
-      hvac: "air-conditioner service",
-      plumbing: "plumbing repair",
-      upholstery: "upholstery care",
-    }
-    : {
-      cleaning: "vệ sinh nhà",
-      electrical: "sửa điện",
-      handyman: "sửa vặt và lắp đặt nhỏ",
-      hvac: "điều hòa",
-      plumbing: "sửa nước",
-      upholstery: "chăm sóc sofa, nệm, rèm hoặc thảm",
-    };
-  return copy[serviceType];
 }
 
 function customerAssistantCitations(

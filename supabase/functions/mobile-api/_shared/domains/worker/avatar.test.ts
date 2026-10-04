@@ -1,6 +1,5 @@
 import {
-  resolveApprovedWorkerSelfieUrl,
-  resolveWorkerHomeAvatarUrl,
+  resolveWorkerOwnProfileAvatarUrl,
   workerVerificationSelfieObjectPath,
 } from "./avatar.ts";
 
@@ -42,7 +41,7 @@ Deno.test("accepts only the expected worker selfie path", () => {
   );
 });
 
-Deno.test("does not sign an unapproved selfie and uses a short-lived private URL", async () => {
+Deno.test("uses the worker's own pending selfie as the private profile photo", async () => {
   const workerId = "worker-avatar-test-2";
   const selfieRef = `supabase://worker-verification/${workerId}/selfie/portrait.webp`;
   let signedCalls = 0;
@@ -68,13 +67,7 @@ Deno.test("does not sign an unapproved selfie and uses a short-lived private URL
   };
 
   expectEqual(
-    await resolveApprovedWorkerSelfieUrl(storageClient, selfieRef, workerId, false),
-    null,
-  );
-  expectEqual(signedCalls, 0);
-
-  expectEqual(
-    await resolveApprovedWorkerSelfieUrl(storageClient, selfieRef, workerId, true),
+    await resolveWorkerOwnProfileAvatarUrl(storageClient, null, selfieRef, workerId),
     "https://storage.example.test/selfie-signed",
   );
   expectEqual(signedCalls, 1);
@@ -82,7 +75,38 @@ Deno.test("does not sign an unapproved selfie and uses a short-lived private URL
   expectEqual(signedExpiry, 300);
 });
 
-Deno.test("prioritizes an explicit worker avatar over an approved selfie", async () => {
+Deno.test("does not sign another worker's selfie for the profile owner", async () => {
+  const workerId = "worker-avatar-test-foreign";
+  let signedCalls = 0;
+  const storageClient = {
+    storage: {
+      from() {
+        return {
+          createSignedUrl() {
+            signedCalls += 1;
+            return Promise.resolve({
+              data: { signedUrl: "https://storage.example.test/selfie-signed" },
+              error: null,
+            });
+          },
+        };
+      },
+    },
+  };
+
+  expectEqual(
+    await resolveWorkerOwnProfileAvatarUrl(
+      storageClient,
+      null,
+      "supabase://worker-verification/another-worker/selfie/portrait.jpg",
+      workerId,
+    ),
+    null,
+  );
+  expectEqual(signedCalls, 0);
+});
+
+Deno.test("prioritizes an explicit worker avatar over the verification selfie", async () => {
   const workerId = "worker-avatar-test-3";
   const storageClient = {
     storage: {
@@ -100,12 +124,11 @@ Deno.test("prioritizes an explicit worker avatar over an approved selfie", async
   };
 
   expectEqual(
-    await resolveWorkerHomeAvatarUrl(
+    await resolveWorkerOwnProfileAvatarUrl(
       storageClient,
       "https://storage.example.test/worker-avatar.jpg",
       `supabase://worker-verification/${workerId}/selfie/portrait.jpg`,
       workerId,
-      true,
     ),
     "https://storage.example.test/worker-avatar.jpg",
   );
@@ -126,12 +149,11 @@ Deno.test("does not use a selfie when an explicit avatar ref cannot be resolved"
   };
 
   expectEqual(
-    await resolveWorkerHomeAvatarUrl(
+    await resolveWorkerOwnProfileAvatarUrl(
       storageClient,
       `supabase://worker-avatars/${workerId}/avatar.jpg`,
       `supabase://worker-verification/${workerId}/selfie/portrait.jpg`,
       workerId,
-      true,
     ),
     null,
   );

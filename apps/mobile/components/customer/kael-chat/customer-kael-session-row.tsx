@@ -1,7 +1,6 @@
-import { Text, View } from 'react-native'
+import { Platform, Text, TextInput, View, type TextStyle } from 'react-native'
 import Svg, { Circle, Path } from 'react-native-svg'
 
-import { KaelTextField } from '@/components/ui/kael-primitives'
 import { color } from '@/design/theme'
 import type { CustomerKaelConversationSession } from '@/lib/api-types/customer'
 
@@ -9,6 +8,16 @@ import type { CustomerThemeTokens } from '../customer-theme'
 import { KaelLiquidPressable } from './kael-liquid-pressable'
 import { KaelLiquidReveal } from './kael-liquid-reveal'
 import { styles } from './kael-session-menu-styles'
+
+const inlineRenameInputWebStyle = Platform.select({
+  web: {
+    outlineColor: 'transparent',
+    outlineOffset: 0,
+    outlineStyle: 'none',
+    outlineWidth: 0,
+  } as unknown as TextStyle,
+  default: null,
+})
 
 export type CustomerKaelSessionCopy = {
   cancel: string
@@ -75,6 +84,69 @@ export function CustomerKaelSessionRow({
 }) {
   const pinned = Boolean(session.pinned_at)
   const linkedCaseWork = Boolean(session.case_session_id)
+  const titleAndMeta = (
+    <>
+      <View style={[styles.statusDot, selected ? { backgroundColor: tokens.primary } : null]} />
+      <View
+        style={[styles.sessionCopy, renaming ? styles.sessionCopyRenaming : null]}
+        testID={`customer-v21-kael-session-copy-${session.id}`}
+      >
+        <View style={styles.sessionTitleRow} testID={`customer-v21-kael-session-title-row-${session.id}`}>
+          {pinned ? <SessionPinIcon color={tokens.primary} /> : null}
+          {renaming ? (
+            <TextInput
+              accessibilityLabel={copy.renamePlaceholder}
+              autoCapitalize="sentences"
+              autoCorrect
+              spellCheck={false}
+              autoFocus
+              editable={!pending}
+              maxLength={64}
+              numberOfLines={1}
+              onChangeText={onDraftTitleChange}
+              onSubmitEditing={onSaveRename}
+              returnKeyType="done"
+              selectionColor={tokens.primary}
+              style={[styles.sessionTitle, styles.sessionTitleInput, inlineRenameInputWebStyle, { color: tokens.text }]}
+              testID="customer-v21-kael-session-title-input"
+              underlineColorAndroid="transparent"
+              value={draftTitle}
+            />
+          ) : (
+            <Text numberOfLines={1} style={[styles.sessionTitle, { color: tokens.text }]}>{title}</Text>
+          )}
+        </View>
+        <Text numberOfLines={1} style={[styles.sessionMeta, { color: tokens.muted }]}>{meta}</Text>
+      </View>
+      {renaming ? (
+        <View style={styles.inlineRenameActions} testID={`customer-v21-kael-session-rename-actions-${session.id}`}>
+          <KaelLiquidPressable
+            accessibilityLabel={copy.cancel}
+            accessibilityRole="button"
+            onPress={onCancelRename}
+            reduceMotion={reduceMotion}
+            style={styles.inlineRenameCancel}
+            testID="customer-v21-kael-session-title-cancel"
+          >
+            <Text style={[styles.inlineRenameCancelText, { color: tokens.muted }]}>{copy.cancel}</Text>
+          </KaelLiquidPressable>
+          <KaelLiquidPressable
+            accessibilityLabel={copy.save}
+            accessibilityRole="button"
+            accessibilityState={{ disabled: draftTitle.trim().length === 0 || pending }}
+            disabled={draftTitle.trim().length === 0 || pending}
+            onPress={onSaveRename}
+            reduceMotion={reduceMotion}
+            style={[styles.inlineRenameSave, { backgroundColor: tokens.primary }, draftTitle.trim().length === 0 || pending ? styles.disabled : null]}
+            testID="customer-v21-kael-session-title-save"
+          >
+            <Text style={styles.inlineRenameSaveText}>{copy.save}</Text>
+          </KaelLiquidPressable>
+        </View>
+      ) : null}
+      {!renaming && selected ? <Text style={[styles.check, { color: tokens.primary }]}>✓</Text> : null}
+    </>
+  )
   return (
     <View style={styles.sessionGroup}>
       <View
@@ -95,28 +167,26 @@ export function CustomerKaelSessionRow({
         ]}
         testID={`customer-v21-kael-session-row-${session.id}`}
       >
-        <KaelLiquidPressable
-          accessibilityLabel={title}
-          accessibilityRole="button"
-          accessibilityState={{ busy: pending, selected }}
-          disabled={pending}
-          onPress={() => onSelect(session.id)}
-          reduceMotion={reduceMotion}
-          selected={selected}
-          style={styles.sessionMain}
-          testID={`customer-v21-kael-session-${session.id}`}
-        >
-          <View style={[styles.statusDot, selected ? { backgroundColor: tokens.primary } : null]} />
-          <View style={styles.sessionCopy}>
-            <View style={styles.sessionTitleRow}>
-              {pinned ? <SessionPinIcon color={tokens.primary} /> : null}
-              <Text numberOfLines={1} style={[styles.sessionTitle, { color: tokens.text }]}>{title}</Text>
-            </View>
-            <Text numberOfLines={1} style={[styles.sessionMeta, { color: tokens.muted }]}>{meta}</Text>
+        {renaming ? (
+          <View style={styles.sessionMain} testID={`customer-v21-kael-session-${session.id}`}>
+            {titleAndMeta}
           </View>
-          {selected ? <Text style={[styles.check, { color: tokens.primary }]}>✓</Text> : null}
-        </KaelLiquidPressable>
-        <KaelLiquidPressable
+        ) : (
+          <KaelLiquidPressable
+            accessibilityLabel={title}
+            accessibilityRole="button"
+            accessibilityState={{ busy: pending, selected }}
+            disabled={pending}
+            onPress={() => onSelect(session.id)}
+            reduceMotion={reduceMotion}
+            selected={selected}
+            style={styles.sessionMain}
+            testID={`customer-v21-kael-session-${session.id}`}
+          >
+            {titleAndMeta}
+          </KaelLiquidPressable>
+        )}
+        {!renaming ? <KaelLiquidPressable
           accessibilityLabel={`${copy.more} ${title}`}
           accessibilityRole="button"
           accessibilityState={{ busy: pending, expanded: actionsOpen || deleting || renaming }}
@@ -129,7 +199,7 @@ export function CustomerKaelSessionRow({
           testID={`customer-v21-kael-session-actions-${session.id}`}
         >
           <SessionMoreIcon color={tokens.primary} />
-        </KaelLiquidPressable>
+        </KaelLiquidPressable> : null}
       </View>
 
       {actionsOpen ? (
@@ -169,33 +239,6 @@ export function CustomerKaelSessionRow({
         </KaelLiquidReveal>
       ) : null}
 
-      {renaming ? (
-        <KaelLiquidReveal reduceMotion={reduceMotion} style={[styles.renameEditor, { borderColor: tokens.border }]} testID={`customer-v21-kael-session-rename-editor-${session.id}`}>
-          <KaelTextField
-            accessibilityLabel={copy.renamePlaceholder}
-            autoCapitalize="sentences"
-            autoCorrect
-            autoFocus
-            inputShellStyle={styles.renameInputShell}
-            maxLength={64}
-            onChangeText={onDraftTitleChange}
-            onSubmitEditing={onSaveRename}
-            placeholder={copy.renamePlaceholder}
-            returnKeyType="done"
-            style={styles.renameInput}
-            testID="customer-v21-kael-session-title-input"
-            value={draftTitle}
-          />
-          <View style={styles.renameActions}>
-            <KaelLiquidPressable accessibilityRole="button" onPress={onCancelRename} reduceMotion={reduceMotion} style={styles.renameSecondary}>
-              <Text style={[styles.renameSecondaryText, { color: tokens.muted }]}>{copy.cancel}</Text>
-            </KaelLiquidPressable>
-            <KaelLiquidPressable accessibilityRole="button" accessibilityState={{ disabled: draftTitle.trim().length === 0 }} disabled={draftTitle.trim().length === 0} onPress={onSaveRename} reduceMotion={reduceMotion} style={[styles.renamePrimary, { backgroundColor: tokens.primary }, draftTitle.trim().length === 0 ? styles.disabled : null]} testID="customer-v21-kael-session-title-save">
-              <Text style={styles.renamePrimaryText}>{copy.save}</Text>
-            </KaelLiquidPressable>
-          </View>
-        </KaelLiquidReveal>
-      ) : null}
     </View>
   )
 }

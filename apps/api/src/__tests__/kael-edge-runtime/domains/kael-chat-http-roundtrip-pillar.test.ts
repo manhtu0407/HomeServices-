@@ -54,11 +54,13 @@ function sseBody(frames: string[]) {
 // counts every call so the refused request can prove no model was reached.
 function providerFetch(content: string) {
   const calls: string[] = []
+  const requests: Array<{ host: string; body: Record<string, unknown> }> = []
   const fetchImpl = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url
     const host = new URL(url).hostname
     calls.push(host)
     const body = JSON.parse(String(init?.body ?? '{}')) as { stream?: boolean }
+    requests.push({ host, body })
     if (host === 'api.anthropic.com') {
       if (body.stream) {
         return new Response(sseBody([
@@ -82,7 +84,7 @@ function providerFetch(content: string) {
     }
     throw new Error(`unexpected provider URL ${url}`)
   })
-  return { fetch: fetchImpl as unknown as typeof globalThis.fetch, calls }
+  return { fetch: fetchImpl as unknown as typeof globalThis.fetch, calls, requests }
 }
 
 function conversationRow(totalTurns: number) {
@@ -107,11 +109,20 @@ function setup() {
     append_customer_kael_conversation_exchange: [{ data: 2, error: null }],
   }, {
     kael_customer_conversations: [
-      { data: conversationRow(0), error: null },
-      { data: conversationRow(2), error: null },
+      ...Array.from({ length: 4 }, () => ({ data: conversationRow(0), error: null })),
+      ...Array.from({ length: 6 }, () => ({ data: conversationRow(2), error: null })),
     ],
     kael_customer_conversation_turns: [
       { data: null, error: null },
+      { data: [], error: null },
+      { data: [], error: null },
+      {
+        data: [
+          { id: 't1', conversation_id: CONVERSATION, customer_id: CUSTOMER, client_request_id: CLIENT_REQUEST, turn_index: 1, role: 'customer', text_content: 'Máy lạnh nhà tôi chảy nước', media_refs: [], created_at: '2026-09-28T00:00:01.000Z' },
+          { id: 't2', conversation_id: CONVERSATION, customer_id: CUSTOMER, client_request_id: null, turn_index: 2, role: 'kael', text_content: REPLY, media_refs: [], created_at: '2026-09-28T00:00:02.000Z' },
+        ],
+        error: null,
+      },
       {
         data: [
           { id: 't1', conversation_id: CONVERSATION, customer_id: CUSTOMER, client_request_id: CLIENT_REQUEST, turn_index: 1, role: 'customer', text_content: 'Máy lạnh nhà tôi chảy nước', media_refs: [], created_at: '2026-09-28T00:00:01.000Z' },
@@ -176,14 +187,23 @@ function setupWorker() {
     // projection; each read sees the row as the database would at that point.
     kael_worker_chat_sessions: [
       ...Array.from({ length: 4 }, () => ({ data: workerSessionRow(0), error: null })),
-      ...Array.from({ length: 6 }, () => ({ data: workerSessionRow(2), error: null })),
+      ...Array.from({ length: 10 }, () => ({ data: workerSessionRow(2), error: null })),
     ],
     kael_worker_chat_turns: [
       { data: [], error: null },
       {
         data: [
-          { id: 'w1', session_id: WORKER_SESSION, turn_index: 0, role: 'worker', content_type: 'text', text_content: 'Ổ cắm bị cháy đen', media_refs: [], safety_notes: [], created_at: '2026-09-28T00:00:01.000Z' },
-          { id: 'w2', session_id: WORKER_SESSION, turn_index: 1, role: 'kael', content_type: 'text', text_content: WORKER_REPLY, media_refs: [], safety_notes: [], created_at: '2026-09-28T00:00:02.000Z' },
+          { id: 'c252abcd-0000-4000-8000-0000000000f2', session_id: WORKER_SESSION, turn_index: 3, role: 'worker', content_type: 'text', text_content: 'Ổ cắm bị cháy đen', media_refs: [], safety_notes: [], created_at: '2026-09-28T00:00:03.000Z' },
+          { id: 'w2', session_id: WORKER_SESSION, turn_index: 2, role: 'kael', content_type: 'text', text_content: 'Bạn hãy ngắt điện trước khi kiểm tra.', media_refs: [], safety_notes: [], created_at: '2026-09-28T00:00:02.000Z' },
+          { id: 'w1', session_id: WORKER_SESSION, turn_index: 1, role: 'worker', content_type: 'text', text_content: 'Tôi đã kiểm tra CB tổng.', media_refs: [], safety_notes: [], created_at: '2026-09-28T00:00:01.000Z' },
+        ],
+        error: null,
+      },
+      { data: [], error: null },
+      {
+        data: [
+          { id: 'c252abcd-0000-4000-8000-0000000000f2', session_id: WORKER_SESSION, turn_index: 3, role: 'worker', content_type: 'text', text_content: 'Ổ cắm bị cháy đen', media_refs: [], safety_notes: [], created_at: '2026-09-28T00:00:03.000Z' },
+          { id: 'w3', session_id: WORKER_SESSION, turn_index: 4, role: 'kael', content_type: 'text', text_content: WORKER_REPLY, media_refs: [], safety_notes: [], created_at: '2026-09-28T00:00:04.000Z' },
         ],
         error: null,
       },
@@ -290,6 +310,14 @@ describe('P252 Kael chat over the real mobile-api handler', () => {
     })
     const result = events.find((item) => item.event === 'result')?.data as { turns?: Array<{ role: string; text_content: string }> }
     expect(result?.turns?.at(-1), pillarWhy(PILLAR, text.slice(0, 800))).toMatchObject({ role: 'kael', text_content: WORKER_REPLY })
+    const request = provider.requests.find((item) => item.host === 'api.deepseek.com')?.body as {
+      messages?: Array<{ role: string; content: string }>
+    } | undefined
+    const workerPrompt = request?.messages?.find((message) => message.role === 'user')?.content ?? ''
+    expect(workerPrompt).toContain('Untrusted transcript from this same normal-chat session')
+    expect(workerPrompt).toContain('Tôi đã kiểm tra CB tổng.')
+    expect(workerPrompt).not.toContain('"text":"Ổ cắm bị cháy đen"')
+    expect(workerPrompt).toContain('Worker question: Ổ cắm bị cháy đen')
   })
 
   it('refuses the same Worker turn from a web client before auth, database, or provider', async () => {

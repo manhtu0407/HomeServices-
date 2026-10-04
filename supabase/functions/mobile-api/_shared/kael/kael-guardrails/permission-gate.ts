@@ -164,6 +164,11 @@ const ACTIONS_BY_PURPOSE: Record<KaelPurpose, readonly KaelAction[]> = {
   job_incident: ["read_context", "ask_clarification", "generate_advisory"],
   post_job_learning: ["write_memory", "create_learning_candidate"],
   educational_response: ["generate_advisory", "read_context"],
+  normal_chat_vision: ["analyze_media"],
+  normal_chat_response: ["generate_advisory", "read_context"],
+  normal_chat_memory: ["write_memory", "read_context"],
+  normal_chat_search: ["lookup_market"],
+  normal_chat_suggestions: ["read_context", "generate_advisory"],
 };
 
 export function evaluateKaelPermissionGate(
@@ -217,6 +222,32 @@ function evaluateAllowedTopic(
         ACTIONS_BY_PURPOSE.educational_response.includes(request.action)
       ? allow(request, "ALLOW_EDUCATIONAL_RESPONSE")
       : deny(request, "DENY_TOPIC_NOT_ALLOWED", "out_of_domain_question");
+  }
+  if (request.purpose === "normal_chat_response") {
+    return allow(request, "ALLOW_NORMAL_CHAT_RESPONSE");
+  }
+  if (request.purpose === "normal_chat_vision") {
+    return request.action === "analyze_media"
+      ? allow(request, "ALLOW_NORMAL_CHAT_VISION")
+      : deny(request, "DENY_NORMAL_CHAT_VISION_ACTION", "cannot_do_action");
+  }
+  if (request.purpose === "normal_chat_memory") {
+    return request.action === "write_memory" || request.action === "read_context"
+      ? allow(request, "ALLOW_NORMAL_CHAT_MEMORY")
+      : deny(request, "DENY_NORMAL_CHAT_MEMORY_ACTION", "cannot_do_action");
+  }
+  if (request.purpose === "normal_chat_search") {
+    return request.action === "lookup_market"
+      ? allow(request, "ALLOW_NORMAL_CHAT_SEARCH")
+      : deny(request, "DENY_NORMAL_CHAT_SEARCH_ACTION", "cannot_do_action");
+  }
+  if (request.purpose === "normal_chat_suggestions") {
+    return (request.actor === "customer" || request.actor === "worker")
+        && request.jobRelation === "none"
+        && (request.action === "read_context" || request.action === "generate_advisory")
+        && request.topic === "app_usage_help"
+      ? allow(request, "ALLOW_NORMAL_CHAT_SUGGESTIONS")
+      : deny(request, "DENY_NORMAL_CHAT_SUGGESTIONS_ACTION", "cannot_do_action");
   }
   if (request.actor === "system") {
     return request.purpose === "post_job_learning"

@@ -76,6 +76,7 @@ import {
   sendCustomerKaelConversationTurn,
   setCustomerKaelConversationPinned,
 } from "./domains/customer/kael-conversation.ts";
+import { createNormalChatSuggestions } from "./domains/kael-chat/normal-chat-suggestions.ts";
 import { archiveWorkerKaelChat, askKaelForWorker, createWorkerKaelChat, getWorkerKaelChat, listWorkerKaelChats, renameWorkerKaelChat, sendWorkerKaelChatTurn, setWorkerKaelChatPinned } from "./domains/worker/kael-chat.ts";
 import {
   streamKaelChatEvidence,
@@ -222,10 +223,10 @@ import {
 import { saveCustomerAddress } from "./domains/customer/address.ts";
 import { deleteAccount } from "./domains/account/account-deletion.ts";
 
-import type { MobileApiContext } from "./platform/auth.ts";
 import type { MobileApiServices } from "./http/contracts.ts";
 
-import { type EdgeAiSecrets, type EdgeGuardClient, getPublicKaelCharter } from "./kael/index.ts";
+import { type EdgeAiSecrets, getPublicKaelCharter } from "./kael/index.ts";
+import { aiRuntime } from "./kael/runtime.ts";
 import type {
   PlatformManualBankConfig,
   SePayVietQrConfig,
@@ -295,6 +296,7 @@ function createKaelChatServices(secrets: EdgeServiceSecrets): Pick<
   | "setCustomerKaelConversationPinned"
   | "getCustomerKaelConversation"
   | "sendCustomerKaelConversationTurn"
+  | "createCustomerKaelConversationSuggestions"
   | "streamCustomerKaelConversationTurn"
   | "createKaelChatMediaUpload"
   | "revokeKaelChatMedia"
@@ -322,6 +324,8 @@ function createKaelChatServices(secrets: EdgeServiceSecrets): Pick<
     getCustomerKaelConversation,
     sendCustomerKaelConversationTurn: (ctx, conversationId, input) =>
       sendCustomerKaelConversationTurn(ctx, conversationId, input, aiRuntime(ctx, secrets)),
+    createCustomerKaelConversationSuggestions: (ctx, conversationId, input) =>
+      createNormalChatSuggestions(ctx, "customer", conversationId, input, aiRuntime(ctx, secrets)),
     streamCustomerKaelConversationTurn: (ctx, conversationId, input) =>
       streamCustomerKaelConversationTurn(ctx, conversationId, input, aiRuntime(ctx, secrets)),
     createKaelChatMediaUpload,
@@ -416,6 +420,7 @@ function createWorkerWorkflowServices(secrets: EdgeServiceSecrets): Pick<
   | "renameWorkerKaelChat"
   | "getWorkerKaelChat"
   | "sendWorkerKaelChatTurn"
+  | "createWorkerKaelChatSuggestions"
   | "streamWorkerKaelChatTurn"
   | "submitWorkerKaelFeedback"
   | "getWorkerKaelTrainingConsent"
@@ -447,6 +452,8 @@ function createWorkerWorkflowServices(secrets: EdgeServiceSecrets): Pick<
     getWorkerKaelChat,
     sendWorkerKaelChatTurn: (ctx, sessionId, input) =>
       sendWorkerKaelChatTurn(ctx, sessionId, input, aiRuntime(ctx, secrets)),
+    createWorkerKaelChatSuggestions: (ctx, sessionId, input) =>
+      createNormalChatSuggestions(ctx, "worker", sessionId, input, aiRuntime(ctx, secrets)),
     streamWorkerKaelChatTurn: (ctx, sessionId, input) =>
       streamWorkerKaelChatTurn(ctx, sessionId, input, aiRuntime(ctx, secrets)),
     submitWorkerKaelFeedback,
@@ -772,26 +779,6 @@ function getHarnessHealth(secrets: EdgeServiceSecrets) {
 
 function getKaelCharter() {
   return getPublicKaelCharter();
-}
-
-function aiRuntime(
-  ctx: MobileApiContext,
-  secrets: EdgeServiceSecrets,
-): EdgeAiSecrets {
-  const trace = ctx.traceContext
-    ? Object.freeze({
-      ...ctx.traceContext,
-      client: (ctx.privilegedSupabase ?? ctx.supabase) as EdgeGuardClient,
-    })
-    : undefined;
-  return {
-    ...secrets,
-    ...(ctx.signal ? { requestSignal: ctx.signal } : {}),
-    ...(secrets.durableGuardsEnabled
-      ? { durableGuardClient: (ctx.privilegedSupabase ?? ctx.supabase) as EdgeGuardClient }
-      : {}),
-    ...(trace ? { harnessTrace: trace } : {}),
-  };
 }
 
 export { buildCustomerProfileInsights } from "./domains/customer/profile-insights.ts";

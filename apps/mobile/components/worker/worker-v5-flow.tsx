@@ -16,7 +16,7 @@ import { useGlassAccessibility } from '@/components/ui/accessibility-motion'
 import { useDockScrollHandler } from '@/components/ui/dock-scroll-state'
 import { MintAura } from '@/components/ui/kael-primitives'
 import { LiquidBackButton } from '@/components/ui/liquid-back-button'
-import type { AppLanguage } from '@/lib/app-language'
+import { useAppLanguage, type AppLanguage } from '@/lib/app-language'
 import { useAuth } from '@/lib/auth-provider'
 import { useFrontendWorkflow } from '@/lib/frontend-workflow-provider'
 import type {
@@ -65,6 +65,7 @@ import {
   WorkerV5TransactionHistoryBody,
   WorkerV5ViolationsBody,
 } from './earnings/body-surfaces'
+import { WorkerEarningsFullBleedScene } from './earnings/income-dashboard-surface'
 import { resolveWorkerEarningsPeriod, type WorkerEarningsPeriod } from './earnings/overview-model'
 import { useWorkerV5RoutePreview, type WorkerV5RoutePreviewState } from './jobs/use-worker-route-preview'
 import { textByLanguage } from './ui/format'
@@ -147,7 +148,8 @@ export function WorkerProfileSurface() {
 
 function WorkerV5ScreenSurface({ screen }: { screen: WorkerV5ScreenDefinition }) {
   const params = useLocalSearchParams<WorkerV5RouteParams>()
-  const language = resolveWorkerV5Language(params)
+  const appLanguage = useAppLanguage()
+  const language = resolveWorkerV5Language(params, appLanguage)
   const auditRole = firstRouteParam(params.ns_audit_role)
   const routeJobIdParam = firstRouteParam(params.job_id)
   const routeLanguage = firstRouteParam(params.ns_worker_lang)
@@ -706,7 +708,7 @@ function WorkerV5ScreenLayout({ actions, state }: { actions: WorkerV5ScreenLayou
   const usesStageSixProduction = screen.id === '2.8-scope-change' && scopeMode !== 'edit'
   const usesStageEightProduction = screen.id === '2.10-completion-evidence'
   const usesStageNineEmptyProduction = isStageNineEmptyScreen(screen.id, runtime.state.deal)
-  return <SafeAreaView edges={usesStageNineEmptyProduction ? STAGE_NINE_EMPTY_SAFE_AREA_EDGES : undefined} style={[styles.safeArea, surfaceStyle, usesStageFiveProduction ? styles.stageFiveSafeArea : null, usesStageNineEmptyProduction ? stageNineHostStyles.safeArea : null]} testID={`worker-v5-screen-${screen.id}`}>
+  const screenContent = <SafeAreaView edges={usesStageNineEmptyProduction ? STAGE_NINE_EMPTY_SAFE_AREA_EDGES : undefined} style={[styles.safeArea, surfaceStyle, headerState.usesEarningsOverviewHandoff ? { backgroundColor: 'transparent' } : null, usesStageFiveProduction ? styles.stageFiveSafeArea : null, usesStageNineEmptyProduction ? stageNineHostStyles.safeArea : null]} testID={`worker-v5-screen-${screen.id}`}>
     {usesStageFiveProduction || usesStageNineEmptyProduction ? null : <WorkerV5ScreenAuras state={auraState} />}
     <ScrollView bounces={false} contentContainerStyle={[styles.scrollContent, usesStageFiveProduction ? styles.stageFiveScrollContent : null, usesStageNineEmptyProduction ? stageNineHostStyles.scrollContent : null, headerState.usesEarningsOverviewHandoff ? styles.earningsOverviewScrollContent : null, usesKaelOrbHandoff ? styles.kaelOrbCustomerScrollContent : null, { minHeight }]} onScroll={actions.onDockScroll} scrollEventThrottle={16} showsVerticalScrollIndicator={false} testID="worker-v5-scroll">
       {usesStageNineEmptyProduction || usesStageThreeWaitingProduction || usesStageSevenWaitingProduction || usesStageSixProduction || usesCaseClosedProduction || usesStageFiveProduction || usesStageEightProduction || headerState.usesEarningsOverviewHandoff || headerState.usesOpportunityInboxHandoff || headerState.usesTravelHandoff ? null : <WorkerV5ScreenHeader onBack={actions.onHeaderBack} onOpenJobChat={actions.onOpenJobChat} state={headerState} />}
@@ -751,6 +753,9 @@ function WorkerV5ScreenLayout({ actions, state }: { actions: WorkerV5ScreenLayou
       </View>}
     </ScrollView>
   </SafeAreaView>
+  return headerState.usesEarningsOverviewHandoff
+    ? <WorkerEarningsFullBleedScene>{screenContent}</WorkerEarningsFullBleedScene>
+    : screenContent
 }
 
 function WorkerV5Body({

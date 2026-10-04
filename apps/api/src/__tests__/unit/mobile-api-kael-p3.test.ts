@@ -18,7 +18,7 @@ describe('mobile-api Kael P3 routing foundation', () => {
     KAEL_CIRCUIT_BREAKER.reset()
   })
 
-  it('defines routable config for all 11 Kael purposes', () => {
+  it('defines routable config for every declared Kael purpose', () => {
     expect(Object.keys(KAEL_ROUTING_CONFIG).sort()).toEqual([...KAEL_PURPOSES].sort())
     expect(KAEL_ROUTING_CONFIG.intent_classification.primary.provider).toBe('deepseek')
     expect(KAEL_ROUTING_CONFIG.intent_classification.fallback?.provider).toBe('anthropic')
@@ -27,6 +27,51 @@ describe('mobile-api Kael P3 routing foundation', () => {
     expect(KAEL_ROUTING_CONFIG.price_synthesis.primary.provider).toBe('anthropic')
     expect(KAEL_ROUTING_CONFIG.price_synthesis.fallback).toBeUndefined()
     expect(KAEL_ROUTING_CONFIG.scope_change.primary.provider).toBe('anthropic')
+    expect(KAEL_ROUTING_CONFIG.normal_chat_search).toMatchObject({
+      primary: { provider: 'perplexity', model: 'pplx-fast-search' },
+      fallback: undefined,
+      modelFallback: undefined,
+      userVisible: false,
+    })
+  })
+
+  it('uses Perplexity Search API for normal-chat lookup and returns source evidence only', async () => {
+    const fetchSpy = vi.fn(async (_url: string | URL, _init?: RequestInit) => new Response(JSON.stringify({
+      results: [{
+        title: 'Hướng dẫn bảo hành',
+        url: 'https://example.com/warranty',
+        snippet: 'Thời hạn bảo hành được công bố tại đây.',
+        date: '2026-10-01',
+      }],
+    }), { status: 200, headers: { 'Content-Type': 'application/json' } }))
+    vi.stubGlobal('fetch', fetchSpy)
+
+    const response = await callAI({
+      purpose: 'normal_chat_search',
+      provider: 'perplexity',
+      model: 'pplx-fast-search',
+      messages: [{ role: 'user', content: 'Tìm nguồn chính thức về bảo hành máy lạnh.' }],
+      maxTokens: 5,
+      maxRetries: 0,
+      searchContextSize: 'low',
+      searchLanguageFilter: ['vi'],
+    }, { perplexityApiKey: 'pplx-test' }, allowKaelSpendForTest('customer-1'))
+
+    expect(fetchSpy).toHaveBeenCalledOnce()
+    expect(String(fetchSpy.mock.calls[0]?.[0])).toBe('https://api.perplexity.ai/search')
+    const sent = JSON.parse(String(fetchSpy.mock.calls[0]?.[1]?.body)) as Record<string, unknown>
+    expect(sent).toMatchObject({
+      query: 'Tìm nguồn chính thức về bảo hành máy lạnh.',
+      max_results: 5,
+      search_type: 'fast',
+      search_context_size: 'low',
+      search_language_filter: ['vi'],
+    })
+    expect(response).toMatchObject({ success: true, citations: ['https://example.com/warranty'] })
+    if (!response.success) throw new Error('expected bounded search evidence')
+    expect(JSON.parse(response.content)).toMatchObject({
+      results: [{ title: 'Hướng dẫn bảo hành', url: 'https://example.com/warranty' }],
+    })
   })
 
   it('uses the §40 M1 model roster while keeping escalation separate from failover', () => {

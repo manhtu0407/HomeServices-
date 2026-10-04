@@ -30,16 +30,6 @@ export const DOCKER_CONTRACT_FILES = [
   'config/harness/manifest.json',
 ]
 
-export function ramFloorForProfile(profile) {
-  if (profile === 'lean') return 4
-  if (profile === 'full') return 7
-  throw new Error(`unknown Docker profile: ${profile}`)
-}
-
-export function ramPassesProfile(profile, availableGb) {
-  return Number.isFinite(availableGb) && availableGb >= ramFloorForProfile(profile)
-}
-
 function requireText(problems, files, path, patterns, message) {
   const text = files[path]
   if (typeof text !== 'string') {
@@ -114,7 +104,37 @@ export function dockerContractProblems(files) {
   for (const path of ['docker/scripts/doctor.ps1', 'docker/scripts/doctor.sh']) {
     rejectText(problems, files, path, /docker system prune/i, 'broad cleanup advice is forbidden')
     rejectText(problems, files, path, /db:local:down/i, 'a port failure cannot assume unverified stack ownership')
-    requireText(problems, files, path, [/lean[^\n]*4/i, /full[^\n]*7/i], 'lean/full RAM floors must remain 4 GB and 7 GB')
+    rejectText(
+      problems,
+      files,
+      path,
+      /RamFloors|RequiredRamGb|required_ram_gb|available RAM[^\r\n]*(?:FAIL|floor)|(?:\$failures\s*\+=|failures\s*\+=\s*\()[^\r\n]*RAM/i,
+      'RAM must never gate local runtime',
+    )
+    requireText(
+      problems,
+      files,
+      path,
+      [/add[-_]line\s+"available RAM"[^\r\n]*"INFO"/i],
+      'RAM must be informational and must not block local runtime',
+    )
+  }
+
+  for (const path of ['docker/profiles/lean.md', 'docker/profiles/full.md']) {
+    requireText(
+      problems,
+      files,
+      path,
+      [/available RAM[\s\S]{0,120}no minimum RAM\s+requirement/i],
+      'profiles must document RAM as advisory without a startup threshold',
+    )
+    rejectText(
+      problems,
+      files,
+      path,
+      /(?:minimum|floor)[^\r\n]{0,40}\b[47]\s*GB\b|\b[47]\s*GB\b[^\r\n]{0,40}(?:minimum|floor)/i,
+      'profile documentation must not reinstate a RAM threshold',
+    )
   }
 
   requireText(
@@ -166,6 +186,22 @@ export function dockerContractProblems(files) {
 
   requireText(problems, files, 'docker/scripts/up.ps1', [/doctor\.ps1/i, /run-supabase\.ps1/i], 'up must run doctor before one Supabase start')
   requireText(problems, files, 'docker/scripts/up.sh', [/doctor\.sh/i, /run-supabase\.sh/i], 'up must run doctor before one Supabase start')
+  for (const path of ['docker/scripts/up.ps1', 'docker/scripts/up.sh']) {
+    requireText(
+      problems,
+      files,
+      path,
+      [
+        /prepare-migration-workdir\.mjs/i,
+        /--empty-reset/i,
+        /migration-inventory\.json/i,
+        /local-migrations/i,
+        /--reuse/i,
+        /--workdir/i,
+      ],
+      'up must prepare and start from the canonical local migration workdir',
+    )
+  }
 
   for (const path of ['docker/scripts/down.ps1', 'docker/scripts/down.sh']) {
     rejectText(problems, files, path, /Purge|--purge|--no-backup/i, 'the agent-facing down runner must be non-destructive')
@@ -222,13 +258,11 @@ export function dockerContractProblems(files) {
       /15 seconds/i,
       /Next Step/i,
       /version update:\s*0\/1/i,
-      /RAM recovery:\s*0\/1/i,
+      /RAM is informational only and never blocks local runtime/i,
       /docker desktop update --quiet/i,
       /latest stable|latest-stable/i,
       /suitable/i,
-      /read-only process inventory/i,
-      /stale task-owned/i,
-      /protects Codex, Claude Code, system\/security/i,
+      /Do not stop processes solely to satisfy\s+a RAM number/i,
       /Windows launch-origin gate/i,
       /Codex Desktop[\s\S]{0,120}AppContainer[\s\S]{0,120}CodexSandboxUsers/i,
       /WSL\/DrvFS[\s\S]{0,180}must not launch Docker Desktop/i,
@@ -247,7 +281,7 @@ export function dockerContractProblems(files) {
       /Stop reason:/i,
       /PASS \| PARTIAL \| UNVERIFIED/i,
     ],
-    'the skill must carry bounded version, safe RAM recovery, lane-aware completion, and closeout contracts',
+    'the skill must carry bounded version, advisory RAM, lane-aware completion, and closeout contracts',
   )
   rejectText(
     problems,
@@ -265,6 +299,7 @@ export function dockerContractProblems(files) {
       /WSL\/DrvFS[\s\S]{0,220}do not launch Docker Desktop/i,
       /Windows Start menu or an unsandboxed Windows shell/i,
       /single final doctor probe/i,
+      /Available RAM is informational for both profiles and never\s+blocks the local-runtime lane/i,
       /Lane C may close an exact structure question/i,
       /When local runtime is closed, source\/static work can continue independently/i,
     ],
@@ -282,6 +317,9 @@ export function dockerContractProblems(files) {
   if (pkg) {
     if (!/db reset --local(?:\s|$)/.test(pkg.scripts?.['db:local:reset'] ?? '')) {
       problems.push('package.json: db:local:reset must spell out --local')
+    }
+    if (!/db reset --local .*--workdir \.scratch[\\/]local-migrations/.test(pkg.scripts?.['db:local:reset'] ?? '')) {
+      problems.push('package.json: db:local:reset must use the canonical local migration workdir')
     }
     if (!/check-docker-contracts\.mjs/.test(pkg.scripts?.['docker:contracts'] ?? '')) {
       problems.push('package.json: docker:contracts must run the Docker contract ratchet')

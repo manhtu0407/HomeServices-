@@ -3,6 +3,7 @@ import {
   customerKaelConversationPinSchema,
   customerKaelConversationRenameSchema,
   customerKaelConversationTurnSchema,
+  normalChatSuggestionsRequestSchema,
 } from "../../../../_shared/domain.ts";
 import { apiFailure } from "../../platform/api-failure.ts";
 import { readJson } from "../read-json.ts";
@@ -49,6 +50,11 @@ export async function dispatchCustomerRoute(
       const input = customerKaelConversationTurnSchema.safeParse(await readJson(request));
       if (!input.success) apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
       return services.sendCustomerKaelConversationTurn(ctx, route.conversationId, input.data);
+    }
+    case "customer.kaelConversations.suggestions": {
+      const input = normalChatSuggestionsRequestSchema.safeParse(await readJson(request));
+      if (!input.success) apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
+      return services.createCustomerKaelConversationSuggestions(ctx, route.conversationId, input.data);
     }
     case "customer.kaelConversations.stream": {
       const input = customerKaelConversationTurnSchema.safeParse(await readJson(request));

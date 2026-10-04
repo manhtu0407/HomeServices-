@@ -8,8 +8,6 @@ import { fileURLToPath } from 'node:url'
 
 import {
   dockerContractProblems,
-  ramFloorForProfile,
-  ramPassesProfile,
   readDockerContractFiles,
 } from './check-docker-contracts.mjs'
 import { prepareRunnerEnv } from './run.mjs'
@@ -258,6 +256,12 @@ function combinedOutput(result) {
   return `${result.stdout ?? ''}${result.stderr ?? ''}`
 }
 
+function skipIfHostBlocksNativeDockerShim(context, output) {
+  if (!/Application Control policy has blocked this file/i.test(output)) return false
+  context.skip('Host policy blocks the temporary native Docker test shim')
+  return true
+}
+
 function bashExecutable() {
   if (process.platform !== 'win32') return 'bash'
   return join(process.env.ProgramFiles ?? 'C:\\Program Files', 'Git', 'bin', 'bash.exe')
@@ -274,13 +278,11 @@ function goodFiles() {
       '15 seconds',
       'A plain “Next Step” does not reopen a closed lane.',
       'version update: 0/1',
-      'RAM recovery: 0/1',
+      'RAM is informational only and never blocks local runtime',
+      'Do not stop processes solely to satisfy a RAM number',
       'docker desktop update --quiet',
       'latest stable',
       'suitable',
-      'read-only process inventory',
-      'stale task-owned helper',
-      'protects Codex, Claude Code, system/security',
       'Windows launch-origin gate',
       'Codex Desktop AppContainer CodexSandboxUsers',
       'WSL/DrvFS mismatch means the skill must not launch Docker Desktop',
@@ -312,14 +314,13 @@ function goodFiles() {
       '$process.WaitForExit($DaemonTimeoutSeconds * 1000)',
       '$process.WaitForExit()',
       'Stop-Process -Id $process.Id',
-      '$RamFloors = @{ lean = 4; full = 7 }',
+      'Add-Line "available RAM" "$availGb GB (informational; no RAM minimum)" "INFO"',
     ].join('\n'),
     'docker/scripts/doctor.sh': [
       'daemon_timeout_seconds=15',
       'kill_probe_tree "$probe_pid" TERM',
       'kill_probe_tree "$probe_pid" KILL',
-      'lean) required_ram_gb=4',
-      'full) required_ram_gb=7',
+      'add_line "available RAM" "$avail_gb GB (informational; no RAM minimum)" "INFO"',
     ].join('\n'),
     'docker/scripts/ensure-version.ps1': [
       '$UpdateTimeoutSeconds = 300',
@@ -351,8 +352,8 @@ function goodFiles() {
       'docker compose pull --help',
       'docker compose run --help',
     ].join('\n'),
-    'docker/scripts/up.ps1': 'doctor.ps1 -Profile $Profile\nscripts\\run-supabase.ps1 start',
-    'docker/scripts/up.sh': 'doctor.sh --profile "$profile"\nscripts/run-supabase.sh start',
+    'docker/scripts/up.ps1': 'doctor.ps1 -Profile $Profile\nprepare-migration-workdir.mjs --empty-reset --inventory config/harness/migration-inventory.json --output .scratch/local-migrations --reuse\nscripts\\run-supabase.ps1 start --workdir .scratch/local-migrations',
+    'docker/scripts/up.sh': 'doctor.sh --profile "$profile"\nprepare-migration-workdir.mjs --empty-reset --inventory config/harness/migration-inventory.json --output .scratch/local-migrations --reuse\nscripts/run-supabase.sh start --workdir .scratch/local-migrations',
     'docker/scripts/down.ps1': 'scripts\\run-supabase.ps1 stop',
     'docker/scripts/down.sh': 'scripts/run-supabase.sh stop',
     'docker/scripts/edge-check.ps1': [
@@ -382,19 +383,20 @@ function goodFiles() {
       'no SQL verification files matched',
       'discovered=$discovered executed=$executed passed=$passed failed=$failed stopped_early=$stopped_early',
     ].join('\n'),
-    'docker/profiles/lean.md': 'The lean profile requires 4 GB available RAM.',
-    'docker/profiles/full.md': 'The full profile requires 7 GB available RAM.',
+    'docker/profiles/lean.md': 'Available RAM is informational only; there is no minimum RAM requirement.',
+    'docker/profiles/full.md': 'Available RAM is reported for context only. There is no minimum RAM\nrequirement for this profile.',
     'docker/INDEX.md': [
       'Codex Desktop AppContainer CodexSandboxUsers',
       'WSL/DrvFS mismatch means do not launch Docker Desktop',
       'Windows Start menu or an unsandboxed Windows shell',
       'single final doctor probe',
+      'Available RAM is informational for both profiles and never blocks the local-runtime lane',
       'Lane C may close an exact structure question',
       'When local runtime is closed, source/static work can continue independently.',
     ].join('\n'),
     'package.json': JSON.stringify({
       scripts: {
-        'db:local:reset': 'node scripts/run.mjs run-supabase db reset --local',
+        'db:local:reset': 'node scripts/run.mjs run-supabase db reset --local --workdir .scratch/local-migrations',
         'docker:contracts': 'node scripts/run.mjs run-node scripts/check-docker-contracts.mjs',
         'docker:version:ensure': 'node scripts/run.mjs docker/scripts/ensure-version',
       },
@@ -415,14 +417,28 @@ test('the accepted Docker contract has no violations', () => {
   assert.deepEqual(dockerContractProblems(goodFiles()), [])
 })
 
-test('RAM floors are immutable at the boundary', () => {
-  assert.equal(ramFloorForProfile('lean'), 4)
-  assert.equal(ramFloorForProfile('full'), 7)
-  assert.equal(ramPassesProfile('lean', 3.99), false)
-  assert.equal(ramPassesProfile('lean', 4), true)
-  assert.equal(ramPassesProfile('full', 6.99), false)
-  assert.equal(ramPassesProfile('full', 7), true)
-  assert.throws(() => ramFloorForProfile('unknown'), /unknown Docker profile/)
+test('local database start and reset require the canonical migration workdir', () => {
+  const files = goodFiles()
+  files['docker/scripts/up.ps1'] = files['docker/scripts/up.ps1'].replace('--reuse', '')
+  files['docker/scripts/up.sh'] = files['docker/scripts/up.sh'].replace('--workdir .scratch/local-migrations', '')
+  files['package.json'] = files['package.json'].replace('--workdir .scratch/local-migrations', '')
+  const report = dockerContractProblems(files).join('\n')
+  assert.match(report, /canonical local migration workdir/u)
+})
+
+test('RAM is advisory and low memory does not become a startup gate', () => {
+  const files = goodFiles()
+  assert.deepEqual(dockerContractProblems(files), [])
+
+  files['docker/scripts/doctor.ps1'] = files['docker/scripts/doctor.ps1']
+    .replace('"INFO"', '"FAIL"')
+  let report = dockerContractProblems(files).join('\n')
+  assert.match(report, /RAM must be informational and must not block local runtime/u)
+
+  files['docker/scripts/doctor.ps1'] = files['docker/scripts/doctor.ps1']
+    .replace('"FAIL"', '"INFO"\n$failures += "Available RAM is below a minimum"')
+  report = dockerContractProblems(files).join('\n')
+  assert.match(report, /RAM must never gate local runtime/u)
 })
 
 test('doctor and up bypasses are rejected by the contract', () => {
@@ -661,13 +677,15 @@ test('gen-types.sh preserves the Supabase exit code and removes its temporary fi
   }
 })
 
-test('an Edge registry failure is attempted once and reported without false success', () => {
+test('an Edge registry failure is attempted once and reported without false success', (context) => {
   const fake = fakeDocker('fail')
   try {
     const result = runRunner(['docker/scripts/edge-check', '--only', 'mobile-api'], { env: fake.env })
-    assert.equal(result.status, 1, combinedOutput(result))
-    assert.match(combinedOutput(result), /no automatic retry/i)
-    assert.match(combinedOutput(result), /checked=0 failed=0/)
+    const output = combinedOutput(result)
+    if (skipIfHostBlocksNativeDockerShim(context, output)) return
+    assert.equal(result.status, 1, output)
+    assert.match(output, /no automatic retry/i)
+    assert.match(output, /checked=0 failed=0/)
     assert.equal(readFileSync(fake.log, 'utf8').trim().split(/\r?\n/).length, 1)
   } finally {
     rmSync(fake.directory, { recursive: true, force: true })
@@ -700,6 +718,7 @@ test('a failing Windows daemon shim preserves its numeric exit state', (context)
   try {
     const result = runDockerProbe({ env: fake.env })
     const output = combinedOutput(result)
+    if (skipIfHostBlocksNativeDockerShim(context, output)) return
     assert.equal(result.status, 1, output)
     assert.match(output, /unreachable \(exit 9\)/i)
     assert.doesNotMatch(output, /null-valued expression/i)
@@ -719,6 +738,7 @@ test('a successful Windows daemon shim reports the daemon reachable', (context) 
   try {
     const result = runRunner(['docker/scripts/doctor'], { env: fake.env, timeout: 30_000 })
     const output = combinedOutput(result)
+    if (skipIfHostBlocksNativeDockerShim(context, output)) return
     assert.match(output, /docker daemon\s+reachable \(server 29\.7\.2\)\s+OK/i)
     assert.doesNotMatch(output, /Docker daemon probe failed/i)
   } finally {
@@ -726,14 +746,16 @@ test('a successful Windows daemon shim reports the daemon reachable', (context) 
   }
 })
 
-test('a hanging daemon probe is killed at the fixed timeout', { timeout: 25_000 }, () => {
+test('a hanging daemon probe is killed at the fixed timeout', { timeout: 25_000 }, (context) => {
   const fake = fakeDocker('hang')
   try {
     const started = Date.now()
     const result = runDockerProbe({ env: fake.env, timeout: 23_000 })
     const elapsed = Date.now() - started
-    assert.equal(result.status, 1, combinedOutput(result))
-    assert.match(combinedOutput(result), /timeout after 15 seconds/i)
+    const output = combinedOutput(result)
+    if (skipIfHostBlocksNativeDockerShim(context, output)) return
+    assert.equal(result.status, 1, output)
+    assert.match(output, /timeout after 15 seconds/i)
     assert.ok(elapsed >= 14_000 && elapsed < 21_000, `daemon timeout took ${elapsed}ms`)
 
     const pid = Number.parseInt(readFileSync(fake.pidFile, 'utf8').trim(), 10)

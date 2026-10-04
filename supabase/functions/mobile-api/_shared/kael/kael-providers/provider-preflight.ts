@@ -178,8 +178,12 @@ async function providerCallBlocker(
   const switches: HarnessKillSwitch[] = [
     "global_ai",
     `provider_${request.provider}` as HarnessKillSwitch,
-    ...(request.purpose === "market_lookup" ? ["tool_market_lookup" as const] : []),
-    ...(request.purpose === "vision_analysis" ? ["tool_vision" as const] : []),
+    ...(request.purpose === "market_lookup" || request.purpose === "normal_chat_search"
+      ? ["tool_market_lookup" as const]
+      : []),
+    ...(request.purpose === "vision_analysis" || request.purpose === "normal_chat_vision"
+      ? ["tool_vision" as const]
+      : []),
   ];
   const killSwitch = await assertHarnessCapabilityEnabled(
     secrets.durableGuardClient as unknown as HarnessPromotionClient,

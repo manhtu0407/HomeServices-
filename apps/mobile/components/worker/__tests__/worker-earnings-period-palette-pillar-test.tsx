@@ -1,14 +1,15 @@
 import { Children, isValidElement } from 'react'
 import { fireEvent, render, screen, within } from '@testing-library/react-native'
-import { StyleSheet } from 'react-native'
+import { StyleSheet, View } from 'react-native'
 import { LinearGradient } from 'react-native-svg'
 
 import { withPillarContext, type PillarManifest } from '@/__tests__/pillar-manifest'
 import { color } from '@/design/theme'
 import type { EarningsResponse } from '@/lib/api-types'
 
+import { WorkerEarningsFullBleedScene } from '../earnings/income-dashboard-surface'
 import { WorkerV5EarningsOverviewBody } from '../earnings/body-surfaces'
-import { workerIncomeDashboardTokens as incomeTokens } from '../earnings/income-dashboard-tokens'
+import { workerIncomeDashboardAssets, workerIncomeDashboardTokens as incomeTokens } from '../earnings/income-dashboard-tokens'
 import { WorkerV5PayoutRequest } from '../earnings/payout-request-surfaces'
 import { WorkerV5EarningsDashboard } from '../earnings/salary-overview-surfaces'
 import { getReducedTransparencyWorkerTokens, getWorkerThemeTokens } from '../worker-theme'
@@ -69,20 +70,52 @@ function expectIncomeOrbGradient() {
 export const PILLAR = {
   id: 'P24-worker-earnings-period-palette',
   invariant:
-    'Worker Earnings uses a frameless responsive income canvas aligned to the Production content rhythm while period selection inherits the Worker Navigation teal lens and 44-point target',
+    'Worker Earnings paints its scene behind native safe-area content on a full-height responsive canvas while period selection keeps the Worker Navigation teal lens and 44-point target',
   authority: [
     'governance/RULES.md (visual consistency and language)',
     'governance/protocols/frontend-test.md G1 (layout) and G4 (accessibility state)',
     'reference/accepted-design.png in the audited Final White package',
   ],
-  target: 'apps/mobile/components/worker/earnings/period-selector.tsx',
+  target: 'apps/mobile/components/worker/earnings/income-dashboard-surface.tsx',
   layer: 'ui-visual',
   siblings: ['P08-worker-dock-motion', 'P55-worker-home-earnings-snapshot'],
   mutation:
-    'restore the scaled 317-wide frame, narrow the money panels, restore the violet period state, remove the navigation lens, or shrink the tab hit area — the layout and selected-state assertions turn red',
+    'remove the full-screen safe-area backdrop or its full-height wrapper, restore the scaled 317-wide frame, narrow the money panels, restore the violet period state, remove the navigation lens, or shrink the tab hit area — the canvas, layout, and selected-state assertions turn red',
 } as const satisfies PillarManifest
 
 describe('Worker Earnings period palette contract', () => {
+  it('paints the Earnings scene behind content across the native safe-area canvas', () => {
+    render(
+      <WorkerEarningsFullBleedScene>
+        <View testID="worker-v5-earnings-safe-area-content" />
+      </WorkerEarningsFullBleedScene>,
+    )
+
+    const scene = screen.getByTestId('worker-v5-earnings-full-bleed-scene')
+    const background = screen.getByTestId('worker-v5-earnings-safe-area-background')
+
+    withPillarContext(
+      PILLAR,
+      () => {
+        expect(StyleSheet.flatten(scene.props.style)).toMatchObject({ flex: 1, position: 'relative' })
+        expect(background.props).toMatchObject({
+          contentFit: 'fill',
+          pointerEvents: 'none',
+        })
+        expect(background.props.source).toEqual([workerIncomeDashboardAssets.background])
+        expect(StyleSheet.flatten(background.props.style)).toMatchObject({
+          bottom: 0,
+          left: 0,
+          position: 'absolute',
+          right: 0,
+          top: 0,
+        })
+        expect(within(scene).getByTestId('worker-v5-earnings-safe-area-content')).toBeOnTheScreen()
+      },
+      'the Earnings artwork must fill the screen root behind its safe-area-limited interactive content',
+    )
+  })
+
   it('uses the Worker Navigation teal lens for the selected period', () => {
     const tokens = getWorkerThemeTokens('light')
     render(

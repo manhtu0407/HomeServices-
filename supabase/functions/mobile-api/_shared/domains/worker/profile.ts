@@ -12,7 +12,7 @@ import { blankWorkerProfile, clampServiceRadius, maskBankAccount } from "../../p
 import { apiFailure } from "../../platform/api-failure.ts";
 import type { MobileApiContext } from "../../platform/auth.ts";
 import {
-  resolveWorkerHomeAvatarUrl,
+  resolveWorkerOwnProfileAvatarUrl,
   resolveWorkerAvatarUrl,
 } from "./avatar.ts";
 import {
@@ -55,12 +55,11 @@ export async function getWorkerProfile(ctx: MobileApiContext) {
     };
   }
   const worker = result.data;
-  const avatarUrl = await resolveWorkerHomeAvatarUrl(
+  const avatarUrl = await resolveWorkerOwnProfileAvatarUrl(
     ctx.supabase,
     account.data?.avatar_url,
     worker.selfie_url,
     ctx.user.id,
-    worker.verification_status === "approved" && worker.is_approved === true,
   );
   const serviceTypes = asServiceTypeArray(worker.service_types);
   const selectedServiceTypes = selectedServiceTypesForWorker(worker);

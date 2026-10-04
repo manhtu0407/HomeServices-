@@ -14,6 +14,8 @@ import type {
   CustomerRefundAccountSaveRequest,
   EdgeCustomerKaelConversationCreateInput,
   EdgeCustomerKaelConversationMode,
+  EdgeNormalChatSuggestionsRequest,
+  EdgeNormalChatSuggestionsResponse,
   EdgeCustomerKaelConversationTurnInput,
   CustomerKaelFeedbackInput,
   CustomerScopeDecisionInput,
@@ -276,6 +278,11 @@ export type MobileApiServices = AdminControlServices & ProgramServices & {
     conversationId: string,
     input: EdgeCustomerKaelConversationTurnInput,
   ): Promise<EdgeCustomerKaelConversationResponse>;
+  createCustomerKaelConversationSuggestions(
+    ctx: MobileApiContext,
+    conversationId: string,
+    input: EdgeNormalChatSuggestionsRequest,
+  ): Promise<EdgeNormalChatSuggestionsResponse>;
   streamCustomerKaelConversationTurn(
     ctx: MobileApiContext,
     conversationId: string,
@@ -457,6 +464,11 @@ export type MobileApiServices = AdminControlServices & ProgramServices & {
     sessionId: string,
     input: WorkerKaelChatTurnInput,
   ): Promise<EdgeWorkerKaelChatResponse>;
+  createWorkerKaelChatSuggestions(
+    ctx: MobileApiContext,
+    sessionId: string,
+    input: EdgeNormalChatSuggestionsRequest,
+  ): Promise<EdgeNormalChatSuggestionsResponse>;
   streamWorkerKaelChatTurn(
     ctx: MobileApiContext,
     sessionId: string,

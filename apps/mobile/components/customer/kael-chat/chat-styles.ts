@@ -1,6 +1,6 @@
 import { Platform, StyleSheet, type ViewStyle } from 'react-native'
 
-import { typography } from '@/design/theme'
+import { spacing, typography } from '@/design/theme'
 
 const customerV21WebFocusRing = Platform.OS === 'web'
   ? ({ outlineColor: 'rgba(13,167,151,0.62)' } as unknown as ViewStyle)
@@ -250,6 +250,9 @@ export const customerV21ChatStyles = StyleSheet.create({
     position: 'relative',
     zIndex: 1,
   },
+  chatMediaIconOpticallyAligned: {
+    transform: [{ translateY: -(spacing.xxs / 2) }],
+  },
   chatModeButton: {
     position: 'relative',
     zIndex: 1,
@@ -309,19 +312,10 @@ export const customerV21ChatStyles = StyleSheet.create({
     textAlign: 'left',
   },
   chatModeSwitch: {
-    backgroundColor: 'rgba(255,255,255,0.18)',
-    borderColor: 'rgba(255,255,255,0.72)',
-    borderRadius: 18,
-    borderWidth: 1,
-    boxShadow: '0 10px 22px rgba(8,125,114,0.10)',
     gap: 4,
     minHeight: 46,
-    overflow: 'hidden',
     padding: 4,
     position: 'relative',
-  },
-  chatModeMenuLiquid: {
-    borderWidth: 0,
   },
   chatTranscript: {
     flexGrow: 1,
@@ -366,6 +360,7 @@ export const customerV21KaelChatRootStyles = StyleSheet.create({
     // (44 minHeight - 20 lineHeight) / 2.
     paddingVertical: 12,
     position: 'relative',
+    textAlignVertical: 'top',
     zIndex: 1,
   },
   composerTextFieldShell: {
@@ -375,6 +370,7 @@ export const customerV21KaelChatRootStyles = StyleSheet.create({
     minHeight: 44,
     paddingHorizontal: 0,
     paddingVertical: 0,
+    position: 'relative',
   },
   composerTextFieldStack: {
     flex: 1,

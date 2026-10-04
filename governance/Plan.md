@@ -129,8 +129,6 @@ Mười luật. Mỗi luật là một lỗi đã trả giá thật trong §0–
 
 Plan đang sống viết từ đây xuống, bắt đầu từ **§51**.
 
----
-
 ## 51. `kael-work-router` — lớp định tuyến vào trước mọi việc — 2026-08-21
 
 > **Trigger.** Tu yêu cầu nghiên cứu một skill hệ Supporting luôn Active cho cả skills system và Codex, ban đầu tên `Kael-anti-overengineers`. Tu bổ sung hai lần: (1) bản chất không chỉ là effort budget — Codex/Claude có xu hướng gom sạch thông tin trước rồi làm từ từ, Input phình, mất dần do context, Output yếu; skill nên đổi tên và hoạt động như support/link skill phân bổ skills theo tasks; (2) plan chưa nói skill **nhận diện task thuộc dạng nào** để định hướng. Audit chạy trong chat, plan ở file riêng ngoài repo. Nhánh `claude/skills-structure-review-fdda04`.
@@ -1211,258 +1209,143 @@ failed=0`. Không restart Docker, không start/reset local Supabase, không sử
 
 ---
 
-## 56. Codex kiểm chứng OCR Snapshot Mode — 2026-09-21
+## 57. Kael Chat thường — phân tích ảnh, memory theo session và hội thoại tự nhiên — 2026-10-02
 
-> **Trigger.** Tu yêu cầu trong phiên Claude Code, nhánh `claude/find-open-source-repos-7a37bf`: đưa phần cần Codex kiểm chứng vào `governance/Plan.md` để Codex xem và biết kiểm chứng. Claude đã build và push (`3ea0b3cc`), rồi sửa runbook, `AGENTS.md` và một chú thích của hook sau khi tự review lại (`56128ca5`, không đổi hành vi). Section này giao Codex phần Claude **không tự chứng minh được**: thứ chỉ chạy đúng trong môi trường Codex, và những phép đo mà người viết công cụ không nên tự chấm. Không có audit riêng; bằng chứng của Claude nằm ở §56.7.
-> **Freshness check (2026-09-21T15:30Z, đo ngay trước khi chốt Mốc của section này).** `git status` sạch tại HEAD `56128ca5`, ngoài chính section này chưa commit · `origin/main` = `e2994bac` (#264, vừa `git fetch origin main`): `git merge-base --is-ancestor origin/main HEAD` exit `0`, chiều ngược lại exit `1` (nhánh hơn `main` 2 commit, không sau commit nào) · `node --test scripts/ocr-review-gate.test.mjs scripts/harness/classify-ci-changes.test.mjs` = `tests 35 · pass 35 · fail 0`, exit `0` · `ocr` v1.12.7 · node v24.19.0 · git 2.55.0.windows.4 · `plan --full` tại Mốc = `8 reviewable files, 1132 changed lines, 4 batches`, snapshot `7fd49c5c774581f36004b1cc47ad0979449e3f67`.
-> **EXECUTING.** Claude đã build, push và tự kiểm phần Claude làm được. Codex chưa chạy V1–V5. P0–P3 chạy non-stop; P4–P5 chờ Tu nói "go" vì tốn token.
+> **Trigger.** Tu yêu cầu lập rồi thực thi trọn plan ba Phase cho Kael Chat thường ở cả Customers và Workers: (1) phân tích ảnh bằng Sonnet, (2) context/memory theo từng session, (3) câu trả lời tự nhiên hơn. Chốt thêm rằng chat thường vẫn dùng DeepSeek, Perplexity chỉ tìm thông tin hiện hành/dịch vụ; Kael Work giữ nguyên. Audit và baseline chạy trong Codex worktree.
+> **Freshness check (2026-10-02, ngay trước khi viết section).** `git status --porcelain` = 40 path dirty có sẵn, được giữ nguyên; `git status --short --branch` = `codex/kael-chat-three-phases-20261002` · HEAD và `origin/main` đều `7eb3e41f2af8c947c0434287be6c9280276365aa`; `git merge-base --is-ancestor origin/main HEAD` exit 0, chiều ngược exit 0 · baseline thật `pnpm test:mobile`: 232 suites passed, 2225 tests passed, exit 0; một số test in cảnh báo React `act(...)`.
+> **EXECUTING.** P1–P3 đã có implementation cho Customers và Workers. Lượt xác minh cuối còn bị chặn bởi finding PII P1 trong review, thiếu RAM để chạy local Supabase, và native device matrix chưa chạy. Chưa commit, push, mở PR, deploy, hay thay Production.
 
-### 56.0 Metadata
+### 57.0 Metadata
 
-```text
-Plan ID:        plan-ocr-codex-verification-20260921
-Created:        2026-09-21
-Owner:          Manh Tu
-Branch:         claude/find-open-source-repos-7a37bf
-Status:         EXECUTING (build + push xong; chờ Codex chạy V1-V5)
-Mốc:            HEAD 56128ca5 · main tại e2994bac (#264), nhánh hơn main 2 commit
-                (commit kế tiếp chỉ thêm section này và một mục memory)
-Trigger:        Tu: đưa phần cần Codex kiểm chứng vào Plan.md để Codex xem và biết kiểm chứng.
-Scope:          Codex kiểm chứng độc lập OCR Snapshot Mode: chạy lại test tất định trong checkout sạch
-                · chuỗi plan/diff/mark trong sandbox thật của Codex · review độc lập chính mã công cụ
-                · Codex có tự theo AGENTS.md không · chất lượng review của Codex trên lỗi gieo sẵn.
-Out of scope:   KHÔNG sửa mã công cụ hay .opencodereview/rule.json (thấy lỗi thì ghi thành finding, Tu quyết)
-                · KHÔNG dùng `ocr review` hay `ocr config provider` (engine API key, Tu đã bác)
-                · KHÔNG nối Headroom · KHÔNG sửa ~/.claude hay ~/.codex ngoài mục trust nêu ở bẫy 7
-                · KHÔNG commit, push, mở PR, merge · KHÔNG sửa các file bị khóa
-                · KHÔNG làm §55 (Production activation) hay §51-§54
-                · KHÔNG "sửa" lint:authority hay flake Docker (xem §56.0.2)
-Effort:         6 phase P0-P5, 8 gate G1-G8
-Authority:      RULES.md #0 · critical.md §3 · critical.md §8 · STRUCTURES.md §4.5
-                · docs/ops/agent-tooling.md · governance/protocols/work-router.md
-Skill mapping:  P0-P5 kael-work-router · P2 kael-diagnose · P3 kael-security-sweep, kael-core-hygiene
-                · P4-P5 kael-ai-boundary (nội dung lỗi gieo) · cuối phiên source-command-kael-mem
-```
+| Field | Value |
+|---|---|
+| Plan ID | `plan-kael-chat-three-phases-20261002` |
+| Created / Owner | 2026-10-02 / Manh Tu |
+| Branch | `codex/kael-chat-three-phases-20261002` |
+| Status | EXECUTING |
+| Mốc | HEAD `7eb3e41f2af8c947c0434287be6c9280276365aa` = `origin/main`; 40 dirty paths existed before this plan |
+| Trigger | Tu yêu cầu triển khai ba Phase cho Kael Chat thường ở Customers và Workers. |
+| Scope | Ảnh và vision analysis; memory cô lập theo session; hội thoại Việt/Anh tự nhiên, tra cứu web khi cần. |
+| Out of scope | Kael Work/Case Work; mở rộng dịch vụ booking; tự chuyển workflow; Production/release; credentials, commit, push, PR, merge. |
+| Effort | 3 phase tuần tự; code, DB/Edge và kiểm chứng cả hai role. |
+| Authority | `governance/RULES.md` #0/#6/#7/#9; `governance/critical.md` §3/§4/§8/§24/§25; `governance/STRUCTURES.md`; protocols ai-data-security, backend-structure, backend-parity, frontend-test, tdd, ui. |
+| Skill mapping | P1 kael-ai-boundary/backend-structure/backend-parity/supabase/security-sweep/tdd; P2 kael-codebase-memory/backend-parity/supabase/tdd; P3 kael-ai-boundary/tdd/accessible-content; shared kael-work-router/core-hygiene/review/frontend-test/visual-qa. |
 
-### 56.0.1 Pre-Plan Deep-Read
+### 57.0.1 Pre-Plan Deep-Read
 
-Đọc từ nhánh, không đọc từ checkout của bạn (checkout chính đang có §55 chưa commit): `git show claude/find-open-source-repos-7a37bf:<đường dẫn>`.
+Đọc trước khi sửa code: `AGENTS.md`; `governance/RULES.md`; `governance/critical.md`; `governance/protocols/code-hygiene.md`; `governance/protocols/work-router.md`; `governance/protocols/ai-data-security.md`; `governance/protocols/backend-structure.md`; `governance/protocols/frontend-test.md`; `governance/protocols/test-pillars.md`; `governance/protocols/tdd.md`; `governance/protocols/ui.md`; `governance/design/runtime.md`; `governance/design.md`; `governance/skills.md`; `docs/architecture/code-ownership-map.md`; `docs/memory/INDEX.md`; `docker/INDEX.md`; `.claude/MEMORY.md` (đọc cuối).
 
-- `docs/ops/agent-tooling.md` — runbook: Snapshot Mode, Stop hook, bản đồ phủ sóng, riêng tư, rollback
-- `AGENTS.md` mục `## OCR Review` — bước Codex phải làm trước phản hồi cuối
-- `.claude/commands/ocr-review.md` — thủ tục review; Codex không có slash command nên làm tay theo file này
-- `scripts/ocr-review.mjs` và `scripts/lib/ocr-review-gate.mjs` — CLI và thư viện (snapshot, base, tăng dần, chia lô)
-- `.claude/hooks/verify-ocr-review.mjs` — Stop hook, chỉ dành cho Claude Code; đọc để review, không chạy trong Codex
-- `scripts/ocr-review-gate.test.mjs` — 20 test tất định: repo git tạm, worktree liên kết thật, `ocr` giả
-- `.opencodereview/rule.json` — 12 luật, mỗi luật trích một rule của `governance/RULES.md` hoặc `governance/STRUCTURES.md` §4.5
-- `docs/memory/2026-09.md` mục 2026-09-21 — quyết định của Tu và các giới hạn đã biết
-- `governance/RULES.md` và `governance/STRUCTURES.md` §4.5 — chuẩn để đối chiếu các trích dẫn của rule.json (đọc, không sửa)
+Đã lần theo code hiện có: `apps/mobile/components/customer/kael-chat/kael-chat-composer.tsx`; `apps/mobile/components/worker/chat/kael-orb-media-picker.ts`; `apps/mobile/components/worker/chat/kael-orb-send-action.ts`; `packages/shared/src/contracts/customer.ts`; `packages/shared/src/contracts/worker.ts`; `supabase/functions/mobile-api/_shared/domains/customer/kael-conversation-turn.ts`; `supabase/functions/mobile-api/_shared/domains/worker/kael-chat-turn.ts`; `supabase/functions/mobile-api/_shared/domains/kael-chat/customer-conversation-stream.ts`; `supabase/functions/mobile-api/_shared/kael/tools/vision.ts`; `supabase/functions/mobile-api/_shared/kael/kael-providers/routing.config.ts`; `supabase/functions/mobile-api/_shared/kael/kael-providers/routing.ts`; `supabase/functions/mobile-api/_shared/kael/kael-providers/provider-adapter.ts`; `supabase/functions/mobile-api/_shared/kael/kael-usage/model-pricing.ts`; `supabase/functions/mobile-api/_shared/kael/kael-memory/memory.ts`; `supabase/migrations/20260929100000_worker_kael_general_chat_images.sql`.
 
-### 56.0.2 Phần đã XONG trong phiên Claude (không làm lại)
-
-Ba chế độ của OCR (`workspace`, `range`, `commit`) mỗi chế độ sót một phần worktree: `workspace` chỉ thấy phần chưa commit (0 file trên nhánh đã commit sạch), `range` không bao giờ thấy phần chưa commit hay file mới, và `--from main` với `main` cục bộ cũ kéo commit của người khác vào. `scripts/ocr-review.mjs` gộp chúng thành **một** Snapshot Mode: chụp cả cây bằng git plumbing vào kho object riêng `.scratch/ocr/objects` (không ghi gì vào `.git`, nên chạy được trong sandbox Codex) rồi chạy `ocr delegate preview --from origin/main --to <snapshot>`. Chỉ Delegation Mode: agent review, OCR không gọi LLM, không API key.
-
-Claude đã tự kiểm, và **giới hạn của từng bằng chứng chính là lý do Codex phải làm lại**:
-
-| Bằng chứng của Claude | Kết quả | Vì sao chưa đủ |
-|---|---|---|
-| 20 test tất định + 15 test classifier | 35/35 | cùng một agent viết cả mã lẫn test |
-| Lab OCR thật, 17 kịch bản (worktree liên kết chạy từ thư mục con, `main` cũ, tăng dần, rebase, đổi tên) | 17/17 | lab do Claude viết, chỉ chạy trên máy này |
-| `plan`, `diff`, `mark` trong sandbox Codex thật | exit 0 | n=1, chạy bằng `codex exec`, chưa qua app Codex |
-| Review mù lỗi gieo sẵn | 7/7 bắt đúng dòng, 1/3 đối chứng báo nhầm | n=8, Claude vừa gieo vừa chấm; chưa đo với Codex làm reviewer |
-| Codex tự theo `AGENTS.md` khi làm một task thật | có | n=1 |
-| Stop hook | nối tay: exit 2 rồi exit 0 | chưa quan sát trong phiên Claude Code thật; Claude-only nên không giao Codex |
-
-**Bốn thứ đã kiểm và KHÔNG phải lỗi của công việc này** — đừng điều tra lại:
-
-- `node scripts/check-authority-citations.mjs` đỏ ngay trên `e2994bac` (bản sạch, chưa có commit nào của nhánh này): hai trích dẫn hỏng trong test pillar, một tới rule số 19 của `governance/RULES.md` và một tới mục 22.3 của `governance/STRUCTURES.md`, cả hai không tồn tại. Có sẵn từ trước, không nằm trong `ship:check`, không có workflow CI nào gọi nó.
-- Một clone sạch không có `node_modules`: 33 test khác trong `scripts/` thất bại với `Cannot find module 'typescript'`. Bình thường; chỉ chạy các lệnh của §56.0.5.
-- `ship:check` gate "script fixture suites" từng đỏ ngắt quãng ở `ensure-docker-*` trong phiên Claude, và xanh 405/405 ở worktree có `node_modules`. Flake không liên quan tới OCR.
-- Headroom đã cài nhưng chủ ý không nối: Claude Desktop ghi đè `ANTHROPIC_BASE_URL` nên không proxy được (upstream `headroomlabs-ai/headroom#869`), và Codex chỉ tiết kiệm 0,44 đến 0,6% input token. Đừng đề xuất nối lại.
-
-### 56.0.3 Ranh giới với §55 và các section khác
-
-| Section | Việc | Trạng thái |
-|---|---|---|
-| §51–§54 | `kael-work-router`, đo playbook, playbook 6 nghề, `kael-docker` | không liên quan |
-| §55 | Six-service Production activation | Codex đang chạy; chỉ tồn tại dưới dạng sửa chưa commit ở checkout chính (nhánh `codex/stage1`), đo ngày 2026-09-21 |
-| **§56** | **Kiểm chứng OCR Snapshot Mode** | **section này** |
-
-§55 chiếm số 55 trước, nên section này lấy §56. Cả hai nhánh cùng nối đuôi `Plan.md`, nên lúc merge git sẽ báo xung đột ở cuối file: giữ **cả hai** section, không sửa nội dung của bên kia.
-
-### 56.0.4 Decision Log
+### 57.0.2 Decision Log
 
 | # | Quyết định | Ai chốt | Ngày | Lý do |
 |---|---|---|---|---|
-| D1 | Chỉ Delegation Mode, không API key | Tu ✔ | 2026-09-21 | Tu: Codex và Claude Code đủ lo phần suy luận; không thích tích hợp API key vì tốn tiền mà ít dùng |
-| D2 | Snapshot Mode: một commit object không gắn nhánh chứa cả phần chưa commit lẫn đã commit | Tu ✔ | 2026-09-21 | Ba chế độ của OCR mỗi chế độ sót một phần; ngoại lệ Git Rule đã duyệt, rồi rút gọn thành không ghi gì vào `.git` (object nằm ở `.scratch/ocr/objects`) |
-| D3 | Tự kích hoạt bằng `AGENTS.md` + `/ocr-review` + Stop hook; không thêm vào `ship:check` hay CI | Tu ✔ | 2026-09-21 | CI đã bị chặn billing năm lần trong tháng 9 (`docs/ops/github-actions-cost.md`) |
-| D4 | Codex kiểm chứng trong một checkout riêng ở đường dẫn ngắn, không dùng checkout chính | Claude ✔ | 2026-09-21 | Snapshot chụp **cả cây** kể cả §55 chưa commit; đường dẫn dài vượt MAX_PATH trên Windows |
-| D5 | Số `§56`, Plan ID `plan-ocr-codex-verification-20260921` | Claude ✔ | 2026-09-21 | §55 đã bị chiếm ở checkout chính; số § chỉ là chỗ ngồi, Plan ID mới là danh tính (mục A) |
-| D6 | P4 và P5 chỉ chạy khi Tu nói "go" | Claude ✔ | 2026-09-21 | Một task Codex thật ở repo này tốn khoảng 4,6 triệu token input (Claude đo bằng `codex exec`); Tu gánh quota |
-| D7 | Thấy lỗi của công cụ thì ghi finding, không tự sửa | Claude ✔ | 2026-09-21 | Người kiểm chứng sửa thứ mình đang chấm thì mất tính độc lập; sửa là bước Tu yêu cầu riêng |
-| D8 | Kết quả ghi vào phản hồi cuối theo bảng §56.7, không sửa `Plan.md` | Claude ✔ | 2026-09-21 | Git Rule cấm commit khi Tu chưa yêu cầu, worktree tạm sẽ bị xóa, và sửa cuối file gây xung đột với §55 |
+| D1 | Chỉ Kael Chat thường, Customers và Workers; ảnh có thể gửi cùng text hoặc không có text, tối đa theo giới hạn hiện hành 5 ảnh. | Tu ✔ | 2026-10-02 | Yêu cầu hiện tại; user cần gửi ảnh để Kael scan/phân tích. |
+| D2 | Dùng API model claude-sonnet-5-5 để phân tích ảnh; claude-sonnet-5 chỉ là fallback vision có giới hạn chi phí. Sonnet không tạo câu trả lời hội thoại. DeepSeek phân tích hội thoại và duy nhất viết câu trả lời hiển thị; nếu DeepSeek lỗi thì báo trạng thái có thể thử lại và giữ bản nháp. Lượt text-only luôn dùng DeepSeek. | Tu ✔ | 2026-10-02 | Tách đúng nhiệm vụ theo chi phí và quyết định trước của Tu. |
+| D3 | Perplexity Search API chỉ truy vấn nguồn hiện hành cho thông tin dịch vụ/sự kiện và trả structured search results; DeepSeek tổng hợp câu trả lời. Không gửi ảnh, transcript thô hay PII cho Perplexity. Không dùng Perplexity làm model chat. | Tu ✔ | 2026-10-02 | Không dùng Perplexity làm model chat. |
+| D4 | Transcript lưu đầy đủ là nguồn sự thật; summary, fact và vision evidence phải giữ session/actor/source-turn rõ ràng, cô lập giữa session/role/user. DeepSeek tạo memory summary; không dùng Sonnet cho việc đó. | Tu ✔ | 2026-10-02 | Kael phải nhớ nội dung trong chính session, kể cả khi mở lại trên thiết bị khác. |
+| D5 | Chat thường được nói chuyện tự nhiên cả trong NestScout lẫn kiến thức chung ngoài NestScout; đây không mở rộng taxonomy dịch vụ được booking. | Tu ✔ | 2026-10-02 | Tu đã chọn cả hai phạm vi trả lời. |
+| D6 | Giọng thân thiện như bạn đồng hành; tiếng Việt dùng “mình–bạn”, có thể đùa nhẹ đúng lúc; vấn đề sửa chữa/an toàn phải rõ và nghiêm túc. Trả lời ngắn khi đủ, chi tiết khi cần; giới hạn đề xuất 4.000 ký tự và 1.500 output tokens. | Tu ✔ | 2026-10-02 | Kael cần tự nhiên, không trả lời cứng nhắc. |
+| D7 | Không sửa Kael Work; vision routing dùng task purpose riêng cho normal chat, không đổi routing dùng chung của Work. Không deploy Production hay commit/push/PR trong plan này. | Tu ✔ | 2026-10-02 | Giữ regression boundary và quyền kiểm soát release. |
+| D8 | Ngân sách tối đa 0,05 USD cho một lượt phân tích ảnh, reserve trước provider attempts. Tài liệu Anthropic hiện niêm yết Sonnet 5.5 và Sonnet 5 cùng $2/MTok input, $10/MTok output; tài liệu Anthropic nêu 5.5 thường cần ít tokens hơn. Perplexity Fast Search là $1/1.000 requests. Đo token/cost với ảnh kích thước thực và không vượt cap. | Tu ✔ | 2026-10-02 | Giới hạn chi phí mỗi lượt; không bắt đầu provider call khi không reserve được. |
 
-Không còn dòng `OPEN`.
-
-### 56.0.5 DoD Gates
-
-Mọi lệnh chạy trong `C:/tmp/ocr-verify` (dựng ở P0), trừ khi ghi khác.
+### 57.0.3 DoD Gates
 
 | Gate | Đo bằng lệnh | Pass = |
 |---|---|---|
-| G1 | `node --test scripts/ocr-review-gate.test.mjs scripts/harness/classify-ci-changes.test.mjs` | `exit 0`, `tests 35`, `pass 35`, `fail 0` |
-| G2 | `node scripts/run.mjs run-node scripts/ocr-review.mjs plan --full --fetch` | `exit 0`; `Base: origin/main (merge-base e2994bac10320847acfa8ea70470308ac90cd9d4)`; `8 reviewable files, 1132 changed lines, 4 batches.`; `Snapshot: 7fd49c5c774581f36004b1cc47ad0979449e3f67` (dòng đếm và `Snapshot:` chỉ đúng tại Mốc, xem P0) |
-| G3 | P2 bước 3: `plan` sau `mark` và một file thăm dò mới | `exit 0`; `Review: incremental`; đúng `1 reviewable files, 1 changed lines, 1 batches.` |
-| G4 | P2 bước 6: `plan` sau lần `mark` thứ hai | `exit 0` và có dòng `Nothing new to review since the last review.` |
-| G5 | P2 bước 7: `git cat-file -e <S2>` không đặt biến môi trường, rồi đặt `GIT_ALTERNATE_OBJECT_DIRECTORIES` trỏ vào `.scratch/ocr/objects` | lệnh đầu in `exit=` khác 0 (snapshot không nằm trong object database của repo), lệnh sau in `exit=0` |
-| G6 | P3: lệnh `mark` in ở cuối `plan --full` | `exit 0`, bảng coverage có `total = reviewed + skipped` |
-| G7 | P4 sau khi Codex làm xong task thật: `node scripts/run.mjs run-node scripts/ocr-review.mjs plan` | `exit 0` và `Nothing new to review since the last review.`, cộng dòng `Verification:` của Codex có kết quả OCR |
-| G8 | P5: chấm theo bảng đáp án | báo số đo thật; ngưỡng khởi đầu `>= 6/8` lỗi bắt đúng và `<= 1/3` đối chứng báo nhầm |
+| G1 | `pnpm test:mobile` | exit 0; toàn bộ suite mobile pass, gồm customer/worker normal chat và regression Kael Work. |
+| G2 | `pnpm type-check:mobile` | exit 0. |
+| G3 | `pnpm test:api` | exit 0 cho API/shared harness được package test thu thập. |
+| G4 | `pnpm edge:check` | exit 0; toàn bộ Edge functions được chọn đều check thành công. |
+| G5 | `pnpm harness:migrations:check` và `pnpm lint:edge-db` | cả hai exit 0; migration inventory và Edge/DB contract không có residue chưa giải quyết. |
+| G6 | `pnpm db:local:doctor`, sau đó `pnpm db:local:up`, `pnpm db:local:reset`, `pnpm db:local:test`, cuối cùng `pnpm db:local:down` | doctor xác nhận RAM/disk/ports/daemon; clean replay và SQL/RLS/concurrency tests pass; local stack được tắt. Nếu host chặn, ghi BLOCKED đúng gate, không dùng Staging/Production thay thế. |
+| G7 | `pnpm lint:comments` và `pnpm doctor:react:changed` | cả hai exit 0; không thêm comment residue và React Doctor findings mới phải được xử lý hoặc ghi rõ. |
+| G8 | OCR runbook: `node scripts/run.mjs run-node scripts/ocr-review.mjs plan --fetch` rồi review từng batch theo `.claude/commands/ocr-review.md` | review snapshot của thay đổi plan này hoàn tất và kết quả report-only được ghi; không tự sửa finding ngoài scope. |
+| G9 | `kael-review` theo `governance/critical.md` §8; tự-check §24/§25 | không có finding chặn chưa xử lý; kết quả và gap nêu rõ. |
+| G10 | Native iPhone/Android verification theo `governance/protocols/frontend-test.md` G0–G6 | kiểm tra ảnh gửi thành công/lỗi/retry, history reopen, tiếng Việt/Anh, accessibility và Kael Work. Không có thiết bị thì ghi NOT RUN; browser preview không thay bằng chứng native. |
 
-Ngưỡng của G8 là giá trị khởi đầu do Claude đặt, không phải benchmark: số của Alibaba không áp dụng cho Delegation Mode vì nó thiếu bước gom bundle, định vị dòng và reflection của `ocr review`.
+### 57.0.4 Execution Continuity
 
-### 56.0.6 Execution Continuity
+Chạy tuần tự cả ba phase trên một branch cho tới khi có kết quả review được. Không dừng xin duyệt giữa phase; nếu host, credential, API availability hay policy gate chặn một bước, tiếp tục phần độc lập, ghi chính xác BLOCKED/NOT RUN và không giả lập kết quả thật. Giữ Kael Work cùng các dirty files ban đầu nguyên trạng; không commit, push, PR, merge, deploy hoặc sửa backend được link tới Production.
 
-P0 → P3 chạy non-stop, ghi kết quả sau từng phase. **P4 và P5 dừng chờ Tu nói "go"** (D6). Không có phase nào cần Tu duyệt giữa chừng khác.
+### 57.1 Phase 1 — Image analysis an toàn và cùng hành vi cho hai role
 
-Tu bắt đầu bằng một câu trong Codex: `Đọc governance/Plan.md §56 trên nhánh claude/find-open-source-repos-7a37bf (git show claude/find-open-source-repos-7a37bf:governance/Plan.md), rồi chạy P0 đến P3. Chưa chạy P4, P5.`
+**Thứ tự.** (1) TDD audit cho upload, request contract, route purpose, cost reservation và persisted result ở Customer/Worker; (2) thêm/điều chỉnh đường vision riêng cho Kael Chat thường với model claude-sonnet-5-5 cho vision, claude-sonnet-5 fallback vision; không có Sonnet answer fallback trong ngân sách, schema kiểm tra kết quả; (3) chuyển evidence đã xác thực vào DeepSeek để tạo câu trả lời; (4) lưu an toàn analysis/source-turn metadata vào transcript; (5) giữ retry/idempotency/cancel, lỗi provider và state UI; (6) regression riêng cho Work và hai role.
 
-Kết thúc: phản hồi cuối theo khuôn `Changed / Verification / Risks / Next Step` của `AGENTS.md`, kèm bảng §56.7 đã điền `PASS`, `FAIL`, `BLOCKED` (môi trường hoặc sandbox chặn, kèm lỗi nguyên văn) hoặc `NOT RUN`. Không commit, không sửa `Plan.md` (D8).
+**File dự kiến.** `apps/mobile/components/customer/kael-chat/kael-chat-composer.tsx`; `apps/mobile/components/worker/chat/kael-orb-media-picker.ts`; `apps/mobile/components/worker/chat/kael-orb-send-action.ts`; `packages/shared/src/contracts/customer.ts`; `packages/shared/src/contracts/worker.ts`; `supabase/functions/mobile-api/_shared/domains/customer/kael-conversation-turn.ts`; `supabase/functions/mobile-api/_shared/domains/worker/kael-chat-turn.ts`; `supabase/functions/mobile-api/_shared/domains/kael-chat/customer-conversation-stream.ts`; `supabase/functions/mobile-api/_shared/kael/tools/vision.ts`; `supabase/functions/mobile-api/_shared/kael/kael-providers/routing.config.ts`; `supabase/functions/mobile-api/_shared/kael/kael-providers/routing.ts`; `supabase/functions/mobile-api/_shared/kael/kael-providers/provider-adapter.ts`; `supabase/functions/mobile-api/_shared/kael/kael-usage/model-pricing.ts`; `supabase/migrations/20260929100000_worker_kael_general_chat_images.sql`; migration mới chỉ khi audit xác nhận schema thiếu.
 
-### 56.0.7 Chín cái bẫy đã trả giá — đọc trước khi chạy
+**Acceptance.** Gửi 1–5 ảnh cùng hoặc không cùng text; preview/remove; image-only hợp lệ; preserve draft khi upload/provider fail; Vision gọi đúng Sonnet và trả schema-validated finding; DeepSeek viết câu trả lời dựa trên finding; cap 0,05 USD được reserve/enforce; Sonnet chỉ phân tích ảnh, không viết câu trả lời hiển thị; Perplexity không nhận ảnh/transcript/PII; lỗi/retry không nhân đôi lượt và phải giữ bản nháp; output analysis theo session được lưu và lấy lại; Customer/Worker parity; Work không đổi. Không tuyên bố Preview 426 là thành công gửi ảnh: web release guard vẫn fail-closed.
 
-1. **Đừng chạy OCR trong checkout đang bẩn của bạn.** Snapshot chụp cả cây, kể cả việc chưa commit của bạn. Dùng `C:/tmp/ocr-verify`; đường dẫn dài vượt MAX_PATH trên Windows.
-2. **Sandbox `workspace-write` của Codex cấm ghi `.git/objects`**, và `.git` của một worktree liên kết nằm ngoài writable root: `git add`, `commit-tree`, `fetch` có thể bị từ chối. Script được thiết kế để không cần ghi vào `.git`, nên `plan`, `diff`, `mark` phải chạy được. `git worktree add` của P0 thì có thể bị chặn. Bị chặn: ghi nguyên văn lỗi, thử đường dự phòng của P0, vẫn chặn thì `BLOCKED`. **Không nâng quyền sandbox khi chưa có Tu.**
-3. **Dòng đầu stderr của git thường là cảnh báo vô hại** (`warning: unable to access ... ignore`); lỗi thật nằm ở dòng sau. Script đã lọc; khi tự chạy git, đọc hết stderr.
-4. **`git diff` thường không thấy snapshot.** Dùng dòng `diff:` do `plan` in ra.
-5. **Chỉ dùng `ocr` 1.12.7** (`ocr --version`). Script từ chối `schema_version` lạ. **Không chạy `ocr review` hay `ocr config provider`.**
-6. **PowerShell chặn shim `ocr.ps1`.** Gọi qua `node scripts/run.mjs run-node ...`, đừng gọi `ocr` trực tiếp. Codex chạy lệnh shell qua `powershell.exe -Command`.
-7. **`codex exec -C <thư mục mới>` với quyền ghi làm Codex thêm `[projects.'<dir>'] trust_level = "trusted"` vào `~/.codex/config.toml`.** Xóa đúng mục đó sau thử nghiệm và không đụng gì khác; app Codex tự ghi các cài đặt UI (`conversationDetailMode`) vào cùng file, đừng nhận nhầm là của mình.
-8. **Chi phí:** một task Codex thật ở repo này tốn khoảng 4,6 triệu token input, phần lớn là cached, cho vòng đọc Tier 1 trước khi động vào mã. Chỉ P4 và P5 cần; báo số bạn đo được.
-9. **Không có `node_modules` trong checkout sạch** (bẫy đã ghi ở §56.0.2). Đừng cài để cho các test khác chạy: ngoài phạm vi.
+**Rủi ro/verify riêng.** Gửi trực tiếp raw ảnh qua chat model có thể tăng chi phí/lộ dữ liệu; dùng storage ref private, signed URL sống ngắn và validate MIME/size/ownership/EXIF theo rule hiện hành. Thêm tests cho model/purpose isolation, cap, provider fallback, timeout/cancel, malformed output, image-only contract, RLS/SQL và regression Work; chạy G1–G7 cùng targeted Edge/SQL proof.
 
----
+### 57.2 Phase 2 — Context và memory được cô lập theo session
 
-### 56.1 P0 — Checkout kiểm chứng riêng, tại đúng Mốc
+**Thứ tự.** (1) lập bảng luồng transcript/retrieval hiện tại cho Customer và Worker; (2) bổ sung session-scoped summary/facts/evidence có source turn ID và revision, chỉ khi code audit chứng minh thiếu; (3) cập nhật transcript đầy đủ và retrieval hai role từ cùng nguồn sự thật, giữ recent turns + chunk summaries + nguồn gốc facts + vision evidence; (4) summary tạo bằng DeepSeek khoảng mỗi 10 exchanges với context budget mục tiêu 8.000 tokens; (5) kiểm soát sửa/xóa, stale summaries, concurrent generation và replay/idempotency; (6) RLS, index, migration, SQL và regression Work.
 
-**Đụng tới:** không file nào của repo. Chỉ tạo `C:/tmp/ocr-verify` và metadata worktree.
+**File dự kiến.** `apps/mobile/components/customer/kael-chat/`; `apps/mobile/components/worker/chat/`; `packages/shared/src/contracts/kael-chat.ts`; `supabase/functions/mobile-api/_shared/domains/customer/kael-conversation-turn.ts`; `supabase/functions/mobile-api/_shared/domains/worker/kael-chat-turn.ts`; `supabase/functions/mobile-api/_shared/kael/kael-memory/memory.ts`; `supabase/functions/mobile-api/_shared/domains/kael-chat/customer-conversation-stream.ts`; migration mới dưới `supabase/migrations/` với tên timestamp theo lịch migration lúc tạo. Không thêm embedding provider; tái sử dụng retrieval/index hiện có hoặc SQL search có source IDs.
 
-```powershell
-git worktree add --detach C:/tmp/ocr-verify 56128ca5
-cd C:/tmp/ocr-verify
-git rev-parse --short HEAD          # 56128ca5
-ocr --version                       # dòng đầu: open-code-review v1.12.7
-```
+**Acceptance.** Mọi user/assistant turn trong session còn truy xuất được đầy đủ; Kael trả được thông tin cũ chính xác sau nhiều exchanges, session reopen và thiết bị mới; Customer/Worker context tách biệt; sessions/users không rò dữ liệu; retrieved fact trỏ về source turn; corrected/deleted turn không làm stale summary được trình bày như sự thật; image analysis follow-up vẫn có evidence; history không gửi ra ngoài scope; message/query giới hạn token/latency/cost.
 
-- **Đường dự phòng** nếu `git worktree add` bị từ chối: `git clone --local <thư mục repo của bạn> C:/tmp/ocr-verify`, rồi `git checkout --detach 56128ca5`. Trong clone, thêm `--base e2994bac10320847acfa8ea70470308ac90cd9d4` vào **mọi** lệnh `plan` (dòng `Base:` khi đó in SHA thay vì `origin/main`), vì `origin/main` của clone là `main` cục bộ của repo nguồn và có thể cũ.
-- **Mốc đã bị nhánh vượt qua?** Nếu `git log 56128ca5..claude/find-open-source-repos-7a37bf -- scripts .claude .opencodereview` không rỗng, mã đã đổi sau Mốc: kiểm chứng ở đầu nhánh, và dòng đếm cùng `Snapshot:` của G2 không còn áp dụng vì chúng chỉ khớp tại Mốc. Mọi gate khác vẫn áp dụng.
+**Rủi ro/verify riêng.** Memory summary không được thay transcript gốc và không được trộn giữa session hoặc role. Viết test retrieval với >10 exchanges, pinned source, correction, deletion, concurrent summarize, retry, stale revision, user/session/role isolation; SQL proves indexes/RLS/grants; edge contract check và local migration replay. Kael Work transcript/worker jobs không được hưởng context normal-chat ngoài contract hiện hữu.
 
-**Verify riêng:** HEAD in `56128ca5` và `ocr` in `v1.12.7`. Thiếu `ocr` thì dừng và báo Tu, không tự cài (`docs/ops/agent-tooling.md`).
+### 57.3 Phase 3 — Kael trả lời tự nhiên nhưng giữ ranh giới sản phẩm
 
-### 56.2 P1 — V1: chạy lại test tất định trong checkout sạch
+**Thứ tự.** (1) phân loại intent của normal chat: danh tính Kael, small talk, kiến thức chung, dịch vụ, follow-up từ memory, và tìm thông tin hiện hành; (2) tách policy normal chat khỏi Case Work/Work và sáu dịch vụ booking; (3) cập nhật prompt/response validation cho VI/EN, giọng thân thiện, câu ngắn khi đủ và giải thích kỹ khi cần; (4) chỉ route Perplexity cho current facts/service lookup và chuyển nguồn cho DeepSeek tổng hợp; (5) mở rộng độ dài output tới 4.000 ký tự/1.500 output tokens có truncation an toàn; (6) test cả hai role với scope, safety, language và history.
 
-**Đụng tới:** không file nào.
+**File dự kiến.** `supabase/functions/mobile-api/_shared/kael/prompts/system-prompt.ts`; `supabase/functions/mobile-api/_shared/kael/contracts/types.ts`; `supabase/functions/mobile-api/_shared/domains/customer/assistant.ts`; `supabase/functions/mobile-api/_shared/kael/kael-providers/routing.config.ts`; `supabase/functions/mobile-api/_shared/kael/kael-providers/provider-adapter.ts`; `supabase/functions/mobile-api/_shared/kael/tools/market.ts`; `supabase/functions/mobile-api/_shared/kael/tools/market-provider.ts`; `governance/RULES.md` #6 chỉ nếu cần làm rõ chat được trả lời rộng trong khi booking giữ nguyên danh mục; các test Customer/Worker Kael Chat tương ứng.
 
-```powershell
-node --test scripts/ocr-review-gate.test.mjs scripts/harness/classify-ci-changes.test.mjs
-```
+**Acceptance.** “Kael là ai?” được trả lời tự nhiên; small talk và kiến thức chung có ích, không giả vờ có trải nghiệm người thật; câu hỏi về NestScout vẫn chính xác; lời khuyên sửa chữa giữ cảnh báo an toàn; yêu cầu chuyên môn regulated xử lý đúng policy; VI và EN không trộn; câu trả lời lịch sử dùng memory có nguồn; câu hỏi cần current facts dùng Perplexity Search làm retrieval có nguồn, DeepSeek vẫn là người soạn; không tự hứa giá/worker/workflow ngoài dữ liệu; không thay đổi sáu dịch vụ được booking hoặc bất kỳ gate chuyển trạng thái nào.
 
-Đạt G1. Giá trị: 20 test tạo repo git tạm và một worktree liên kết thật dưới thư mục tạm của hệ điều hành, nên chúng thử được máy và sandbox của Codex, không chỉ máy của Claude. Sandbox chặn ghi thư mục tạm thì `BLOCKED` kèm lỗi nguyên văn, đó là một phát hiện về môi trường chứ không phải lỗi mã.
+**Rủi ro/verify riêng.** Prompt mềm không được nới privacy, safety, professional refusal, service taxonomy, Kael autonomy, PII, budget hay output validation. Kiểm thử conversation cases cho cả hai role: danh tính, chào hỏi/đùa phù hợp, generic knowledge, mỗi nhóm booking scope, ngoài scope, safety, VI/EN, current lookup citations, history recall và provider failure; duyệt answer sample thủ công, review policy diff, đo token/cost.
 
-### 56.3 P2 — V2: chuỗi plan/diff/mark trong sandbox Codex thật
+### 57.4 Verification
 
-**Đây là phase giá trị nhất: chỉ Codex chạy được.** Claude đã thấy chuỗi này chạy một lần trong `codex exec`; câu hỏi là nó có chạy trong môi trường Codex bạn dùng hằng ngày không.
+**Baseline trước code:** `pnpm test:mobile` — PASS, 232 suites / 2225 tests, exit 0; một số test có cảnh báo React `act(...)`. Kết quả bên dưới là lệnh thực chạy sau implementation.
 
-**Đụng tới:** tạo rồi xóa `scripts/lib/ocr-verify-probe.mjs` (file chưa theo dõi, chỉ trong `C:/tmp/ocr-verify`); tạo `.scratch/ocr/` (đã gitignore). Tuyệt đối không chạy trong checkout chính.
-
-| Bước | Lệnh | Mong đợi |
+| Gate | Kết quả | Bằng chứng / giới hạn |
 |---|---|---|
-| 1 | `node scripts/run.mjs run-node scripts/ocr-review.mjs plan --full --fetch` | G2. Có thể có dòng `Warning: git fetch origin main failed or timed out ...` nếu sandbox chặn mạng hoặc `.git`: chấp nhận, ghi lại có hay không. Chép giá trị `Snapshot:` thành **S1** |
-| 2 | `node scripts/run.mjs run-node scripts/ocr-review.mjs mark --snapshot <S1> --base origin/main` | `exit 0`, `Recorded review of snapshot <S1>.` (chỉ thử cơ chế, chưa phải một review thật) |
-| 3 | `node -e "require('fs').writeFileSync('scripts/lib/ocr-verify-probe.mjs','export const ocrVerifyProbe = 1\n')"` rồi `node scripts/run.mjs run-node scripts/ocr-review.mjs plan` | G3. Chép `Snapshot:` mới thành **S2** và dòng `diff:` |
-| 4 | chạy **nguyên văn** dòng `diff:` của bước 3 | `exit 0`, có dòng `+export const ocrVerifyProbe = 1` |
-| 5 | `node scripts/run.mjs run-node scripts/ocr-review.mjs mark --snapshot <S2> --base origin/main` | `exit 0` |
-| 6 | `node scripts/run.mjs run-node scripts/ocr-review.mjs plan` | G4 |
-| 7 | `git cat-file -e <S2>; "exit=$LASTEXITCODE"` rồi `$env:GIT_ALTERNATE_OBJECT_DIRECTORIES = "$PWD/.scratch/ocr/objects"; git cat-file -e <S2>; "exit=$LASTEXITCODE"; Remove-Item Env:GIT_ALTERNATE_OBJECT_DIRECTORIES` rồi `git status --porcelain` | G5: lệnh đầu in `exit=` khác 0, lệnh sau in `exit=0` (mã thoát của cả dòng PowerShell là của `Remove-Item`, nên phải in `$LASTEXITCODE`). `git status` chỉ có `?? scripts/lib/ocr-verify-probe.mjs` |
-| 8 | `node -e "require('fs').rmSync('scripts/lib/ocr-verify-probe.mjs')"` rồi `git status --porcelain` | rỗng |
+| G1 `pnpm test:mobile` | PASS | 232 suites / 2226 tests, exit 0; còn cảnh báo `act(...)`. |
+| G2 `pnpm type-check:mobile` | PASS | Exit 0. |
+| G3 `pnpm test:api` | PASS | `pnpm test:api` exit 0: Vitest 122 files passed / 2 skipped, 1,703 tests passed / 2 skipped; Node contract suite 58/58 passed. Root cause được tái hiện và sửa: release source collection lấy tracked paths từ Git index nhưng không loại explicit unstaged deletions; `releaseSourceFilePaths` nay bỏ đúng các đường dẫn được `git diff --diff-filter=D` xác nhận. Hai test fixture chứng minh untracked source vẫn được giữ và absent `skip-worktree` tracked file vẫn fail closed. Không phục hồi file UI đã xóa có chủ ý. |
+| G4 `pnpm edge:check` | PASS | Exit 0; 6/6 Edge functions được Deno 2.9.4 pinned image check, 0 failures. Image đã có local nên không pull image. Đây là source type-check, không phải deploy/runtime proof. |
+| G5 migration + Edge/DB contract | PASS | `pnpm harness:migrations:check` PASS với 429 migrations; `pnpm lint:edge-db` PASS, 247 RPC (211 literal / 36 local const), 0 unscannable. SQL phát ra từ `--emit-sql` được truy vấn trên DB local sau reset; `--functions .scratch/edge-db-functions.json` xác nhận đủ 247 RPC hiện diện. Đây là parity catalog proof, không phải Edge runtime/deployment proof. |
+| G6 local DB + SQL | PASS | RAM không còn là ngưỡng chặn; doctor ghi `3.42 GB (informational; no RAM minimum)` khi khởi động lean stack. `pnpm db:local:reset` PASS, replay 422 migrations và seed trên DB sạch; `pnpm db:local:test` PASS 128/128 (0 failed), gồm routing catalog 17 purposes và normal-chat session memory. `pnpm db:local:down` PASS sau xác minh; dữ liệu volume local được giữ. Docker Desktop/Engine vẫn chạy (`29.8.1`); doctor sau đó vẫn PASS ở 4.08 GB với RAM chỉ là INFO. |
+| G7 comments + React Doctor | PASS WITH FINDINGS | `pnpm lint:comments --working` exit 0. `pnpm doctor:react:changed` exit 0; 34 diagnostics trên 129 file, nằm ở Admin/customer profile/report/compensation/dock và Worker discipline surfaces; không có diagnostic cho Worker Kael composer. Findings được ghi nhận, không tự sửa ngoài scope. |
+| G8 OCR | PASS | Latest snapshot `4fe77872e065adac5b8290a196baebe01e5aca7a`: 2 reviewable files / 47 lines / 1 batch; report-only review found no actionable issue and `mark` passed. `governance/Plan.md` was not selected by OCR and was reviewed manually. |
+| G9 `kael-review` + §24/§25 | PASS (scoped current delta) | Fixed point là uncommitted worktree tại HEAD `7eb3e41f2af8c947c0434287be6c9280276365aa`. Review xác nhận chỉ bỏ explicit unstaged deletions khỏi release-source paths; sparse/skip-worktree missing path vẫn được giữ để digest fail closed; test/API/Edge outcomes khớp evidence. Không có finding chặn hoặc mở rộng scope. Plan vẫn EXECUTING: G10 native matrix chưa chạy, provider API end-to-end chưa xác minh và giới hạn PII address scrubber vẫn còn. |
+| G10 native device matrix | NOT RUN | `adb`, `emulator`, `xcrun` không có trên PATH; Android SDK paths kiểm tra đều không tồn tại và không có emulator/qemu process. Chưa có native iPhone/Android runtime; browser Preview không thay thế bằng chứng thiết bị. |
 
-Ý nghĩa: bước 1 và 3–6 chứng minh chuỗi chạy trọn trong sandbox mà **không ghi vào `.git`**; bước 7 chứng minh điều đó bằng dữ kiện: snapshot có trong kho riêng và không có trong object database của repo. Snapshot là hàm thuần của (cây, cha) với danh tính và ngày cố định, nên `Snapshot:` của bước 1 phải trùng đúng chuỗi ở G2 trên mọi máy và mọi đường dẫn; lệch nghĩa là có thứ phụ thuộc môi trường, đáng điều tra: so `git rev-parse HEAD^{tree}` với dòng `tree` của `git cat-file -p <S1>` (chạy với biến `GIT_ALTERNATE_OBJECT_DIRECTORIES` như bước 7).
+#### 57.4.1 Manual review
 
-Bước nào thất bại: ghi **lệnh và lỗi nguyên văn**, gồm cả dòng sau các dòng `warning:`. `FAIL` là lỗi của công cụ; `BLOCKED` là sandbox hoặc môi trường chặn việc kiểm chứng.
+- **Fixed point / spec:** uncommitted worktree so với HEAD `7eb3e41f2af8c947c0434287be6c9280276365aa`; spec là §57 và quyết định của Tu trong phiên này.
+- **Spec compliance:** P1–P3 có code cho Customer và Worker, model routing riêng, memory/session SQL và tests. Clean local migration replay, SQL/RLS assertions (128/128) và Edge RPC-to-DB catalog parity (247/247) đã được chứng minh. Provider API end-to-end và native device matrix chưa được kiểm tra; do đó chưa thể tuyên bố Phase nào đạt toàn bộ DoD.
+- **Rules / standards:** OCR phát hiện Customer `previousTurns` và bộ tóm tắt session dùng transcript chưa scrub trong request DeepSeek. Đã sửa: Customer answer history và normal-chat memory summary/facts/vision evidence được scrub ở cả lúc tạo summary và lúc render context; Worker normal-chat summary/history được scrub trước model request. Edge và shared scrubber cùng nhận nhãn tiếng Anh `floor`/`level`, `unit`/`apartment`/`apt`/`room`/`suite`, kể cả câu `unit is ...`, và giữ nguyên số đo diện tích. Regression tests xác nhận phone, floor, unit mẫu không còn trong request của Customer, Worker hoặc summarizer. Free-form address formats ngoài các pattern hiện có của scrubber chưa được chứng minh đầy đủ.
+- **Maintainability / scope:** code đặt ở normal-chat domains, provider purposes và session memory; thay đổi giữ Kael Work ngoài luồng normal-chat. Không thấy thêm provider call từ mobile hoặc đưa transcript vào Perplexity.
+- **P1 remediation:** finding về đường transcript bypass scrubber đã được đóng trong source và regression tests. OCR report-only finding được sửa sau khi Tu cho phép. Đây chưa phải bằng chứng rằng mọi biến thể địa chỉ tự do đều được nhận dạng; giữ giới hạn đó cùng các gate chưa chạy ở trạng thái mở.
+- **Other verification gaps:** `pnpm lint:workplan` exit 1 vì `.scratch/work-plan.json` thuộc mission khác; giữ nguyên. `pnpm edge:check` hiện PASS cho source type-check; đây không phải deploy proof. Lúc Supabase lean stack khởi chạy, migration workdir cảnh báo thiếu `index.ts` của sáu Edge functions không được mount vào workdir đó; DB/SQL vẫn chạy, và đây không thay thế Edge check vừa chạy. Native iPhone/Android matrix chưa chạy do thiếu SDK/toolchain. Docker RAM gate đã được loại bỏ khỏi doctor, profile, skill và contract tests; RAM hiện chỉ được báo INFO.
 
-### 56.4 P3 — V3: review độc lập chính mã của công cụ
-
-**Đụng tới:** không sửa file nào (D7). Tạo `.scratch/ocr/` trong `C:/tmp/ocr-verify`.
-
-Chạy `node scripts/run.mjs run-node scripts/ocr-review.mjs plan --full` (**không** dùng `plan` trần: P2 đã `mark`, nên nó sẽ báo "Nothing new") và làm theo `.claude/commands/ocr-review.md` từng bước, đúng như Codex phải làm hằng ngày. Tại Mốc đó là 4 batch, 8 file reviewable; 7 file Markdown nằm ở mục "Not reviewed by OCR" và bạn phải xem tay theo `critical.md` §8: `AGENTS.md`, `docs/ops/agent-tooling.md`, `.claude/commands/ocr-review.md`, `.claude/commands/review.md`, `docs/INDEX.md`, `docs/memory/2026-09.md`, `.claude/MEMORY.md`.
-
-**Nghi ngờ có chủ đích** — Claude không tin những chỗ này, hãy thử phá chúng:
-
-- (a) đường dẫn có khoảng trắng, `[id]`, `(tabs)` hoặc dấu nháy đơn trong dòng `diff:` in ra; script quote kiểu POSIX, còn Codex chạy PowerShell
-- (b) không có `origin/main`, HEAD detached, hoặc repo chưa có commit nào
-- (c) một file rất lớn chưa bị ignore nằm trong cây: `git add -A` phải băm nó vào kho riêng
-- (d) một file **đã theo dõi** trùng mẫu bí mật (`.env.*`, `*.pem`, `.npmrc`): sửa nó không vào snapshot, nên không bao giờ được review
-- (e) hai lần `plan` hoặc `mark` chạy song song: `.scratch/ocr/state.json` không ghi nguyên tử
-- (f) mọi đường thoát của Stop hook (stdin rỗng, JSON hỏng, `ocr` thiếu, hết thời gian) phải `exit 0`; chỉ đường nudge mới `exit 2`
-- (g) 12 trích dẫn trong `.opencodereview/rule.json` có khớp `governance/RULES.md` và `governance/STRUCTURES.md` §4.5 không (`node scripts/check-authority-citations.mjs` không quét file `.json`)
-- (h) các khẳng định trong `docs/ops/agent-tooling.md` có đúng với mã không: "không ghi gì vào `.git`", hook chỉ ghi dưới `.scratch/ocr`, và bảng phủ sóng (Claude đo bằng OCR thật: một commit rỗng làm `from`, cả cây làm `to`; đo lại nếu làm được trong sandbox)
-- (i) mục "Codex hooks" của `docs/ops/agent-tooling.md` và câu tương ứng trong `AGENTS.md`: Claude viết chúng từ `codex features list` và một bản tóm tắt tài liệu chính thức, tức là nguồn đã bị nén. Đối chiếu với trang chính thức và với bản Codex bạn đang chạy: có sự kiện `Stop`, `exit 2` có tiếp tục lượt không, hỗ trợ Windows ra sao, hook phải được trust thế nào. Đây chỉ là kiểm chứng câu chữ; nối hook thật là quyết định của Tu, không thuộc plan này
-- (j) bước nào trong `.claude/commands/ocr-review.md` Codex phải đoán hoặc không làm được (`$ARGUMENTS`, `allowed-tools`, "the ocr-review skill" trong thông báo của hook)
-
-**Báo cáo** theo khuôn của file đó: `P1/P2 - file:line - vấn đề, tác động, cách sửa`, kèm bảng coverage và mục "Not reviewed by OCR". Mỗi finding ghi thêm **cách kiểm**: lệnh và kết quả nếu bạn tái hiện được, hoặc "đọc, chưa chạy". Đạt G6 khi chạy được `mark` cuối phiên. Không có finding nào cũng là kết quả hợp lệ, miễn nêu rõ đã xem những gì.
-
-### 56.5 P4 — V4: Codex có tự theo `AGENTS.md` không (chờ Tu "go")
-
-Claude quan sát một lần Codex tự chạy bước OCR (n=1). Một lần chưa phải một tỷ lệ tuân thủ.
-
-**Đụng tới:** một worktree dùng một lần `C:/tmp/ocr-comply` (`git worktree add --detach C:/tmp/ocr-comply 56128ca5`, không có `.scratch`). Codex tạo `scripts/lib/format-duration.mjs` và `scripts/format-duration.test.mjs` trong đó, không nơi nào khác.
-
-Giao cho một phiên Codex **mới**, nguyên văn, không nhắc tới OCR:
-
-> Trong repo này, thêm `scripts/lib/format-duration.mjs` xuất hàm `formatDuration(ms)` đổi mili-giây thành chuỗi như `1h 02m 03s` (xử lý 0, số âm, số thập phân, giá trị rất lớn), kèm `scripts/format-duration.test.mjs` chạy bằng `node --test`. Làm theo quy trình của repo và báo cáo cuối theo khuôn của `AGENTS.md`.
-
-Đo, không đánh giá: (1) phản hồi cuối có nêu kết quả OCR trong dòng `Verification:` không; (2) `.scratch/ocr/objects` có tồn tại không; (3) G7; (4) Codex có tự sửa finding không (`AGENTS.md` chỉ cho báo cáo); (5) token đã dùng. Codex bỏ qua bước OCR là **một kết quả** (bằng chứng cần siết câu chữ trong `AGENTS.md`), không phải plan thất bại. Dọn: xóa worktree khi Tu đã nhận kết quả.
-
-### 56.6 P5 — V5: chất lượng review mù, Codex làm reviewer (chờ Tu "go")
-
-Claude đo 7/7 trên lỗi do chính Claude gieo và chấm. Phép đo đáng tin phải do một người khác gieo, một phiên khác review, và reviewer là Codex vì Codex là người sẽ review thật trong các phiên Codex.
-
-**Đụng tới:** worktree dùng một lần `C:/tmp/ocr-blind` (`git worktree add -b blind-probe C:/tmp/ocr-blind 56128ca5`, nhánh tạm, không bao giờ push) và đáp án ở `C:/tmp/ocr-blind-key.json`, **ngoài** worktree.
-
-1. **Phiên A (người gieo).** Nguyên văn: *Trong `C:/tmp/ocr-blind`, tạo đúng 8 lỗi thật và 3 đoạn đối chứng vô hại (trông đáng ngờ nhưng đúng) dưới `supabase/functions/mobile-api/_shared/{http,domains,kael,platform}`, rải trên ít nhất 5 file, mỗi loại 2 lỗi: (1) module `domains/` gọi thẳng nhà cung cấp AI thay vì qua wrapper Kael; (2) log ra token, secret hoặc PII; (3) tầng thấp import ngược tầng cao, ví dụ `platform/` import `http/`; (4) gọi mạng không có timeout hoặc vòng retry không giới hạn. Không để comment nào gợi ý lỗi. Không commit. Ghi đáp án vào `C:/tmp/ocr-blind-key.json` dạng `[{file, line, category, kind}]`, `kind` là `defect` hoặc `control`.*
-2. **Phiên B (reviewer), phiên mới hoàn toàn.** Nguyên văn: *Review toàn bộ thay đổi trong `C:/tmp/ocr-blind` theo `.claude/commands/ocr-review.md`. Chỉ báo cáo. Không đọc `C:/tmp/ocr-blind-key.json`.*
-3. **Chấm** (một bước riêng, hoặc Tu): một lỗi là *bắt được* khi có finding trên **cùng file, trong ±3 dòng, cùng loại**; một đoạn đối chứng bị finding P1/P2 là *báo nhầm*. Báo `n/8`, `n/3`, và độ chính xác dòng (đúng dòng, trong ±3).
-
-Đạt G8 theo ngưỡng khởi đầu, hoặc báo số thật nếu dưới ngưỡng. Giới hạn phải ghi cùng kết quả: người gieo và reviewer cùng một mô hình nên "mù" chỉ ở mức không chia sẻ ngữ cảnh, n=8 nhỏ, và mã gieo nằm trong repo này nên không đại diện cho mọi loại lỗi. Dọn: xóa hai worktree/nhánh tạm và file đáp án.
-
-### 56.7 Verification
-
-Trạng thái: `PASS` · `FAIL` · `BLOCKED` (môi trường hoặc sandbox chặn, kèm lỗi nguyên văn) · `NOT RUN`.
-
-| ID | Việc | Ai | Kết quả | Bằng chứng / giới hạn |
-|---|---|---|---|---|
-| C1 | Lab OCR thật, 17 kịch bản worktree và branch | Claude | PASS 17/17 | lab dùng một lần đã xóa, chỉ chạy trên máy này |
-| C2 | Hai suite của G1 tại `56128ca5`, trong worktree mới không có `node_modules` | Claude | PASS 35/35, exit 0 | cùng agent viết mã và test |
-| C3 | `plan`, `diff`, `mark` trong sandbox Codex thật | Claude | PASS exit 0 (n=1) | `codex exec`, chưa qua app Codex |
-| C4 | Review mù lỗi gieo sẵn | Claude | 7/7 đúng dòng; 1/3 đối chứng báo nhầm | n=8; Claude gieo và chấm |
-| C5 | Codex tự theo `AGENTS.md` | Claude | có (n=1) | một lần, chưa lặp |
-| C6 | Stop hook nối tay | Claude | exit 2 rồi exit 0 | chưa thấy trong phiên Claude Code thật |
-| C7 | Dry-run P0–P2 trong worktree mới tại Mốc, không có `node_modules`, ngoài sandbox: một lần bằng bash (19 kiểm tra), một lần chạy **nguyên văn bảng P2 của section này** qua `powershell.exe` (14 kiểm tra) | Claude | PASS 19/19 và 14/14 tại `56128ca5`; `Snapshot:` = `7fd49c5c774581f36004b1cc47ad0979449e3f67` khớp ở ba worktree khác đường dẫn | chứng minh lệnh chạy đúng như viết, và lần chạy đầu bằng PowerShell bắt được một lỗi của chính section này (đường dẫn kho riêng viết cứng ở bước 7, đã sửa thành `$PWD`); **không** chứng minh chúng chạy trong sandbox Codex |
-| V1 | G1 | Codex | NOT RUN | |
-| V2 | G2–G5 | Codex | NOT RUN | |
-| V3 | G6 | Codex | NOT RUN | |
-| V4 | G7 | Codex | NOT RUN (chờ Tu "go") | |
-| V5 | G8 | Codex | NOT RUN (chờ Tu "go") | |
-
-**Việc còn lại không thuộc Codex** (ghi để không ai tưởng đã có người làm):
-
-- **N1 — Stop hook trong phiên Claude Code thật.** Hook chỉ nạp lúc khởi động phiên. Tu mở một phiên Code-tab **mới** trong một worktree của nhánh này, sửa ít nhất 30 dòng trong file OCR quét được, rồi kết thúc lượt: phải thấy đúng một lần bị chặn kèm thông điệp OCR, và lượt kết thúc kế tiếp cho cùng trạng thái thì đi qua.
-- **N2 — test Claude headless.** Cần Tu chạy `claude auth login` một lần; phiên OAuth của CLI đi kèm app đã hết hạn.
-- **N3 — Headroom.** Tu quyết giữ hay gỡ (`uv tool uninstall headroom-ai`). Không chặn plan này.
-
-### 56.8 Change Log
+### 57.5 Change Log
 
 | Ver | Ngày | Ai | Đổi gì |
 |---|---|---|---|
-| 0.1 | 2026-09-21 | Claude | viết lần đầu; build và push tại `3ea0b3cc`, sửa sau tự review tại `56128ca5`; Codex chưa chạy V1–V5 |
+| 0.1 | 2026-10-02 | Codex | Tu chốt triển khai cả ba phase; đo baseline, tạo branch riêng, lưu §56 vào archive và mở plan này ở EXECUTING. |
+| 0.2 | 2026-10-02 | Codex | Khóa ranh giới Sonnet chỉ cho vision; ghi model IDs và cập nhật Perplexity sang Search API theo tài liệu vendor hiện tại. |
+| 0.3 | 2026-10-02 | Codex | Hoàn tất implementation P1–P3 cho hai role; ghi gate results trung thực, OCR coverage và finding P1 còn mở. |
+| 0.4 | 2026-10-02 | Codex | Scrub transcript/memory Customer và Worker trước DeepSeek; bổ sung parity scrub tiếng Anh cho floor/unit; P1 bypass finding đã có regression coverage và OCR remediation snapshot. |
+| 0.5 | 2026-10-02 | Codex | Rerun local doctor: RAM 1.86 GB dưới sàn 4 GB nên stack không khởi động; giữ SQL gate BLOCKED và ghi nhận workplan scratch lệch mission. |
+| 0.6 | 2026-10-02 | Codex | Gửi close request nhẹ cho cửa sổ ChatGPT ngoài Codex; RAM tăng lên 2.42 GB nhưng vẫn dưới sàn, nên doctor tiếp tục chặn local stack và SQL. |
+| 0.7 | 2026-10-02 | Codex | Theo yêu cầu của Tu, dừng hẳn các app process trees không dùng, giữ ChatGPT Desktop/Codex/Docker; RAM đủ ngưỡng và Docker version pass. `up` dừng ở workdir migration stale; exec tool policy từ chối lệnh xóa đệ quy thư mục generated, nên chưa start/reset/SQL. |
+| 0.8 | 2026-10-02 | Codex | Xác nhận `.scratch/local-migrations` đã được xóa; retry `up` bị doctor chặn ở `3.43 GB < 4 GB`, trước khi start stack. Chưa reset/SQL. |
+| 0.9 | 2026-10-02 | Codex | Theo duyệt của Tu, dừng `ProtonVPN.Client.exe`; `up` doctor cuối vẫn chặn ở `3.65 GB < 4 GB`, nên không start/reset/SQL. VPN client cần được mở lại nếu Tu muốn tiếp tục dùng VPN. |
+| 1.0 | 2026-10-02 | Codex | Theo yêu cầu tự tiếp tục của Tu, rà toàn bộ tiến trình và chạy thêm một `up`; RAM `3.61 GB < 4 GB`, doctor từ chối. Giữ ChatGPT/Codex/Docker/WSL và tiến trình hệ thống; không start/reset/SQL. |
+| 1.1 | 2026-10-03 | Codex | Đóng Douyin và Phone Link đã tự chạy lại; `up` doctor cuối đo `3.47 GB < 4 GB`, từ chối trước khi start. Đánh dấu local-runtime attempt đã hết; không start/reset/SQL. |
+| 1.2 | 2026-10-03 | Codex | Theo yêu cầu tiếp tục giải phóng RAM, inventory đọc-only đo `2.90 GB`; các tiến trình còn chiếm đáng kể thuộc ChatGPT/Codex, Docker/WSL, Windows/security và MCP của Codex. Không tìm thấy mục tiêu an toàn đủ giải phóng phần thiếu, không dừng tiến trình bảo vệ, không chạy lại Docker/SQL. |
+| 1.3 | 2026-10-03 | Codex | Next Step Lane A: version ensure PASS; `up` doctor ban đầu đo `3.92 GB`, một lượt thu hồi working set đạt tạm `4.13 GB`, nhưng `up` cuối đo `3.56 GB < 4 GB` và từ chối trước start. Không reset/SQL; local runtime vẫn BLOCKED. |
+| 1.4 | 2026-10-03 | Codex | Dừng pinned Deno pull cũ đang kẹt và helper MCP không phục vụ SQL; version ensure PASS, `up` doctor PASS tại 4.04 GB. Workdir preparation phát hiện checksum cũ của migration `20261002170000`; tạo lại inventory bằng writer chuẩn và check PASS 429 migrations. Workdir partial do lần chạy lỗi tạo ra không có apply plan; automatic command policy từ chối xóa đúng target, nên chưa thể start/reset/SQL. |
+| 1.5 | 2026-10-03 | Codex | Kiểm tra lại xác nhận `.scratch/local-migrations` đã vắng mặt. `up` doctor đo RAM 3.00 GB; thu hồi working set của ChatGPT/Codex một lần rồi retry, doctor đo 3.26 GB < 4 GB và từ chối trước start. Daemon, disk và ports đạt; không reset/SQL. |
+| 1.6 | 2026-10-03 | Codex | Theo chỉ dẫn giải phóng RAM, đóng 21 tiến trình app thuộc Zalo, Douyin, Proton VPN Client, Proton Drive và Phone Link. RAM khả dụng tăng từ 2.00 lên 3.80 GB, sau đó 3.94 GB; vẫn thấp hơn sàn 4 GB. Docker Desktop/backend và named pipe không còn sẵn sàng ở lần kiểm tra cuối; không start/reset/SQL. |
+| 1.7 | 2026-10-03 | Codex | Theo chỉ dẫn của Tu, bỏ hoàn toàn điều kiện RAM tối thiểu khỏi Docker doctor, profiles, skill và contract tests; chạy lean stack khi doctor báo 3.42 GB (INFO), reset DB sạch qua 422 migrations + seed, sửa SQL catalog assertion từ 13 lên 17 purpose theo migration thật, rồi chạy 128/128 SQL và đối chiếu đủ 247 RPC với DB. `db:local:down` PASS; Docker Engine vẫn chạy và RAM không còn là gate. |
+| 1.8 | 2026-10-03 | Codex | Sửa root cause G3: release bundle loại explicit unstaged deletions theo Git, vẫn fail closed với missing `skip-worktree`; hồi quy targeted 14/14; `pnpm test:api` PASS (122 Vitest files, 1,703 tests + 58 Node contract tests; 2 Vitest skips). `pnpm edge:check` PASS 6/6; ghi native G10 NOT RUN vì thiếu SDK/toolchain. |
+
+---

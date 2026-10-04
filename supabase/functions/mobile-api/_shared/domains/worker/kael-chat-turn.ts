@@ -8,8 +8,10 @@ import type { MobileApiContext } from "../../platform/auth.ts";
 import {
   buildKaelL2L3MemorySummary,
   buildWorkerKaelSessionTitle,
+  loadNormalChatSessionContext,
   runWorkerAssist,
   scrubSensitiveForLLM,
+  summarizeNormalChatSessionIfDue,
   updateKaelProgress,
   type EdgeAiSecrets,
   type KaelReasoningReporter,
@@ -24,7 +26,16 @@ import {
   createRuntimeKaelSpendGate,
   type KaelSpendGate,
 } from "../../kael/kael-guardrails/spend-gate.ts";
-import { analyzeDescription } from "../../kael/tools/vision.ts";
+import {
+  analyzeDescription,
+  analyzeNormalChatImages,
+  type NormalChatImageAnalysis,
+} from "../../kael/tools/vision.ts";
+import {
+  appendNormalChatSources,
+  searchNormalChatQuestion,
+  shouldSearchNormalChatQuestion,
+} from "../../kael/tools/normal-chat-search.ts";
 import { kaelChatProgressSchema, sanitizeForLLM } from "../../../../_shared/domain.ts";
 import type { WorkerVisionFinding } from "../../kael/contracts/types.ts";
 import {
@@ -201,6 +212,8 @@ export async function sendWorkerKaelChatTurn(
   return finalizeWorkerKaelChatTurn({
     client, ctx, sessionId, input, sessionJobId, answer, needsInitialTitle,
     claim, claimId, reasoning: options.reasoning, response: options.response, safeMessage,
+    normalChatSession: sessionMode === "normal" && sessionJobId === null,
+    secrets,
   });
 }
 
@@ -228,16 +241,55 @@ async function runWorkerKaelAssistant(input: {
   safeMessage: string;
 }) {
   const needsInitialTitle = asNumber(input.session.total_turns) === 0 && !nullableString(input.session.title);
-  const recentTurns = await readWorkerKaelRecentTurns(input.client, input.sessionId);
-  const workerVisionFinding = await findWorkerKaelVision(input);
-  const memorySummary = input.conversationScope === "opportunity_intake"
-    ? null
-    : await buildKaelL2L3MemorySummary(input.client, {
-      jobId: input.sessionJobId,
-      includeCustomer: false,
-      maxTotalTokens: 500,
-    });
   try {
+    const normalChatScope = input.conversationScope === "normal"
+      ? { actorRole: "worker" as const, actorId: input.ctx.user.id, sessionId: input.sessionId }
+      : null;
+    if (normalChatScope) {
+      await summarizeNormalChatSessionIfDue(
+        input.client,
+        normalChatScope,
+        input.secrets,
+        input.input.language,
+      ).catch((error) => console.warn("normal worker Kael memory refresh skipped", {
+        sessionId: input.sessionId,
+        errorName: error instanceof Error ? error.name : typeof error,
+      }));
+    }
+    const sessionContext = normalChatScope
+      ? await loadNormalChatSessionContext(input.client, normalChatScope)
+      : null;
+    const recentTurns = sessionContext
+      ? sessionContext.previousTurns
+        .filter((turn) => turn.id !== asString(input.claim.worker_turn_id))
+        .map((turn) => ({
+        role: turn.role as "worker" | "kael" | "system",
+        text: turn.text,
+        }))
+      : await readWorkerKaelRecentTurns(input.client, input.sessionId);
+    const { workerVisionFinding, normalChatImageAnalysis } = await findWorkerKaelVision(input);
+    if (normalChatScope && normalChatImageAnalysis) {
+      await persistWorkerNormalChatImageAnalysis(input, normalChatImageAnalysis);
+    }
+    const memorySummary = sessionContext?.memorySummary ?? (
+      input.conversationScope === "opportunity_intake"
+        ? null
+        : await buildKaelL2L3MemorySummary(input.client, {
+          jobId: input.sessionJobId,
+          includeCustomer: false,
+          maxTotalTokens: 500,
+        })
+    );
+    const normalChatSearchResults = normalChatScope && shouldSearchNormalChatQuestion(input.safeMessage)
+      ? await searchNormalChatQuestion({
+        question: input.safeMessage,
+        language: input.input.language,
+        actorRole: "worker",
+        actorId: input.ctx.user.id,
+        client: input.client,
+        secrets: input.secrets,
+      })
+      : undefined;
     const answer = await runWorkerAssist({
       conversationMode: input.sessionMode,
       conversationScope: input.conversationScope,
@@ -252,15 +304,28 @@ async function runWorkerKaelAssistant(input: {
           kael_worker_brief_guidance: nullableRecord(input.job.kael_worker_brief_guidance),
         }
         : null,
-      question: input.safeMessage, language: input.input.language, mediaRefs: input.input.media_refs,
+      question: input.safeMessage || (input.input.language === "en"
+        ? "Please analyze the attached image(s)."
+        : "Hãy phân tích ảnh đính kèm."),
+      language: input.input.language, mediaRefs: input.input.media_refs,
       opportunities: input.opportunityContext?.opportunities,
       opportunityPreferences: input.opportunityContext?.preferences,
       reasoning: input.reasoning,
       response: input.response,
-      visionFinding: workerVisionFinding, previousTurns: recentTurns,
+      visionFinding: workerVisionFinding,
+      normalChatImageAnalysis,
+      normalChatSearchResults,
+      normalChatSearchUnavailable: normalChatSearchResults === null,
+      previousTurns: recentTurns,
       memorySummary, secrets: input.secrets, spendGate: input.spendGate,
     });
-    return { answer, needsInitialTitle };
+    const answerWithSources = normalChatSearchResults?.length
+      ? {
+        ...answer,
+        text: appendNormalChatSources(answer.text, normalChatSearchResults, input.input.language),
+      }
+      : answer;
+    return { answer: answerWithSources, needsInitialTitle };
   } catch (error) {
     await releaseWorkerKaelTurnClaim(input.client, {
       claimId: input.claimId, discard: false, requestId: asString(input.claim.request_id),
@@ -297,8 +362,32 @@ function emptyWorkerOpportunityAnswer(
 
 async function findWorkerKaelVision(
   input: Pick<Parameters<typeof runWorkerKaelAssistant>[0], "sessionId" | "job" | "visionPhotoUrls" | "safeMessage" | "secrets" | "spendGate" | "input">,
-): Promise<WorkerVisionFinding | null> {
-  if (input.visionPhotoUrls.length === 0) return null;
+): Promise<{
+  workerVisionFinding: WorkerVisionFinding | null;
+  normalChatImageAnalysis: NormalChatImageAnalysis | null;
+}> {
+  if (input.visionPhotoUrls.length === 0) {
+    return { workerVisionFinding: null, normalChatImageAnalysis: null };
+  }
+  if (input.input.media_refs.length > 0 && input.sessionId && !input.job) {
+    const analysis = await analyzeNormalChatImages(
+      input.safeMessage,
+      input.visionPhotoUrls,
+      input.secrets,
+      input.spendGate,
+      input.input.language,
+    );
+    if (!analysis.success) {
+      apiFailure(
+        "AI_UNAVAILABLE",
+        input.input.language === "en"
+          ? "Kael could not analyze the attached image. Your message is still available to retry."
+          : "Kael chưa thể phân tích ảnh đính kèm. Tin nhắn của bạn vẫn có thể gửi lại.",
+        502,
+      );
+    }
+    return { workerVisionFinding: null, normalChatImageAnalysis: analysis.analysis };
+  }
   try {
     const visionContext = input.job
       ? [
@@ -310,14 +399,54 @@ async function findWorkerKaelVision(
       input.safeMessage, visionContext, input.visionPhotoUrls, input.secrets,
       input.spendGate, input.input.language,
     );
-    return vision.success
+    return { workerVisionFinding: vision.success
       ? buildSafeWorkerVisionFinding(vision.analysis, input.job ? nullableString(input.job.service_type) : null)
-      : null;
+      : null, normalChatImageAnalysis: null };
   } catch (err) {
     console.warn("worker-assist vision analysis threw; continuing without findings", {
       sessionId: input.sessionId, errorName: err instanceof Error ? err.name : typeof err,
     });
-    return null;
+    return { workerVisionFinding: null, normalChatImageAnalysis: null };
+  }
+}
+
+async function persistWorkerNormalChatImageAnalysis(
+  input: Parameters<typeof runWorkerKaelAssistant>[0],
+  analysis: NormalChatImageAnalysis,
+) {
+  const workerTurnId = asString(input.claim.worker_turn_id);
+  const sourceTurn = await dbQuery<Record<string, unknown>>(
+    input.client.from("kael_worker_chat_turns")
+      .select("id, turn_index, safe_metadata")
+      .eq("id", workerTurnId)
+      .eq("session_id", input.sessionId)
+      .eq("role", "worker")
+      .is("job_id", null)
+      .single(),
+  );
+  if (sourceTurn.error || !sourceTurn.data) {
+    apiFailure("DB_ERROR", "Không thể lưu bằng chứng ảnh trong phiên Kael", 500);
+  }
+  const safeMetadata = {
+    ...asRecord(sourceTurn.data.safe_metadata),
+    normal_chat_image_analysis: {
+      schema_version: "normal_chat_image_analysis.v1",
+      source_turn_id: workerTurnId,
+      source_turn_index: asNumber(sourceTurn.data.turn_index),
+      ...analysis,
+    },
+  };
+  const saved = await dbQuery<Array<Record<string, unknown>>>(
+    input.client.from("kael_worker_chat_turns")
+      .update({ safe_metadata: safeMetadata })
+      .eq("id", workerTurnId)
+      .eq("session_id", input.sessionId)
+      .eq("role", "worker")
+      .is("job_id", null)
+      .select("id"),
+  );
+  if (saved.error || !saved.data?.length) {
+    apiFailure("DB_ERROR", "Không thể lưu bằng chứng ảnh trong phiên Kael", 500);
   }
 }
 
@@ -334,6 +463,8 @@ async function finalizeWorkerKaelChatTurn(input: {
   reasoning?: KaelReasoningReporter;
   response?: KaelResponseReporter;
   safeMessage: string;
+  normalChatSession?: boolean;
+  secrets?: EdgeAiSecrets;
 }) {
   await updateKaelProgress(input.client, { table: "kael_worker_chat_sessions", id: input.sessionId }, {
     stage: "worker_assist", status: "running", progress: 0.8,
@@ -367,6 +498,17 @@ async function finalizeWorkerKaelChatTurn(input: {
   }
   if (asBoolean(completed.stale)) {
     apiFailure("WORKFLOW_STALE", "Trạng thái công việc đã đổi trong lúc Kael xử lý. Vui lòng gửi lại yêu cầu.", 409);
+  }
+  if (input.normalChatSession && input.secrets) {
+    await summarizeNormalChatSessionIfDue(
+      input.client,
+      { actorRole: "worker", actorId: input.ctx.user.id, sessionId: input.sessionId },
+      input.secrets,
+      input.input.language,
+    ).catch((error) => console.warn("normal worker Kael memory refresh skipped", {
+      sessionId: input.sessionId,
+      errorName: error instanceof Error ? error.name : typeof error,
+    }));
   }
   input.response?.complete(input.answer.text);
   await updateKaelProgress(input.client, { table: "kael_worker_chat_sessions", id: input.sessionId }, {

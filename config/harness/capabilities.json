@@ -3,7 +3,7 @@
   "source": {
     "routeRoot": "supabase/functions/mobile-api/_shared/http/routes",
     "fileCount": 21,
-    "sha256": "dc9ae3469befa1d743c7b53bb01247f726491245c694557bb511fa5774eaaa6c"
+    "sha256": "435115edc2d6f6151557f38e36f02512bc37772a28223d0e08ff61bbac6d1850"
   },
   "entries": [
     {
@@ -2824,6 +2824,29 @@
       ]
     },
     {
+      "kind": "customer.kaelConversations.suggestions",
+      "capability": "mobile.route.customer.kaelConversations.suggestions",
+      "public": false,
+      "methods": [
+        "POST"
+      ],
+      "roles": [
+        "admin",
+        "customer"
+      ],
+      "risk": "write",
+      "operationClass": "idempotent_write",
+      "sideEffectClass": "idempotent-write",
+      "privileged": false,
+      "resourceType": "conversation",
+      "requiresResourceCheck": true,
+      "confirmationGate": "none",
+      "envelopeTtlMs": 120000,
+      "sources": [
+        "supabase/functions/mobile-api/_shared/http/routes/customer-kael-conversation-routes.ts"
+      ]
+    },
+    {
       "kind": "customer.kaelConversations.turn",
       "capability": "mobile.route.customer.kaelConversations.turn",
       "public": false,
@@ -5501,6 +5524,29 @@
       "risk": "write",
       "operationClass": "provider_call",
       "sideEffectClass": "conditional-write",
+      "privileged": true,
+      "resourceType": "session",
+      "requiresResourceCheck": true,
+      "confirmationGate": "none",
+      "envelopeTtlMs": 120000,
+      "sources": [
+        "supabase/functions/mobile-api/_shared/http/routes/worker-kael-chat-routes.ts"
+      ]
+    },
+    {
+      "kind": "workers.kaelChat.suggestions",
+      "capability": "mobile.route.workers.kaelChat.suggestions",
+      "public": false,
+      "methods": [
+        "POST"
+      ],
+      "roles": [
+        "admin",
+        "worker"
+      ],
+      "risk": "write",
+      "operationClass": "idempotent_write",
+      "sideEffectClass": "idempotent-write",
       "privileged": true,
       "resourceType": "session",
       "requiresResourceCheck": true,

@@ -1282,6 +1282,18 @@ export type DatabaseFunctions = {
             }
             Returns: number
           }
+        | {
+            Args: {
+              p_client_request_id: string
+              p_conversation_id: string
+              p_customer_id: string
+              p_customer_text: string
+              p_kael_text: string
+              p_media_refs: string[]
+              p_safe_metadata: Json
+            }
+            Returns: number
+          }
       append_harness_evaluation_sample: {
         Args: {
           p_authorization_bypass: boolean
@@ -4681,6 +4693,18 @@ export type DatabaseFunctions = {
           revision: number
           source_event_id: string
         }[]
+      }
+      upsert_kael_normal_chat_session_memory: {
+        Args: {
+          p_actor_id: string
+          p_actor_role: string
+          p_expected_revision: number
+          p_facts: Json
+          p_session_id: string
+          p_source_through_turn_index: number
+          p_summary: string
+        }
+        Returns: boolean
       }
       upsert_worker_payout_method: {
         Args: {

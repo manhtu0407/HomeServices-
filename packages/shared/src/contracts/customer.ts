@@ -13,14 +13,36 @@ export const customerKaelConversationCreateSchema = z.object({
 }).strict()
 
 export const customerKaelConversationTurnSchema = z.object({
-  message: z.string().trim().min(1).max(2000),
+  message: z.string().trim().max(2000),
   language: z.enum(['vi', 'en']).default('vi'),
   client_request_id: z.string().uuid(),
   media_refs: z.array(kaelChatVisionMediaRefSchema).max(5).optional().refine(
     (mediaRefs) => mediaRefs === undefined || new Set(mediaRefs).size === mediaRefs.length,
     'Customer normal chat media_refs must be unique',
   ),
+}).strict().superRefine((value, ctx) => {
+  if (!value.message && (value.media_refs?.length ?? 0) === 0) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'A Customer Kael turn needs text or an attached image.',
+      path: ['message'],
+    })
+  }
+})
+
+export const normalChatSuggestionsRequestSchema = z.object({
+  language: z.enum(['vi', 'en']),
+  source_turn_id: z.string().uuid(),
 }).strict()
+
+export type NormalChatSuggestionsRequest = z.infer<typeof normalChatSuggestionsRequestSchema>
+export type NormalChatSuggestionsResponse = {
+  status: 'ready' | 'unavailable'
+  session_id: string
+  source_turn_id: string
+  language: 'vi' | 'en'
+  suggestions: { id: string; text: string }[]
+}
 
 export const customerKaelConversationRenameSchema = z.object({
   title: z.string().trim().min(1).max(64),

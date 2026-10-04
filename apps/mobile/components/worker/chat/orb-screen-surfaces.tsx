@@ -1,15 +1,19 @@
 import { useCallback, useMemo, useRef, useState } from 'react'
-import { Pressable, Text as RNText, View, type StyleProp, type TextProps, type ViewStyle , KeyboardAvoidingView, Platform } from 'react-native'
+import { Pressable, Text as RNText, View, TextInput, type StyleProp, type TextProps, type ViewStyle , KeyboardAvoidingView, Platform } from 'react-native'
 import { useAnimatedStyle, useSharedValue, withSequence, withSpring, withTiming, withDelay } from 'react-native-reanimated'
 import { type LocalDeal } from '@nestscout/shared'
 import { useFocusEffect } from 'expo-router'
 import { KaelButton, KaelTextField } from '@/components/ui/kael-primitives'
 import { GlassSurface } from '@/components/ui/glass-surface'
 import { KaelSendStopGlyph } from '@/components/ui/kael-send-stop-glyph'
+import { NormalChatGhostOverlay } from '@/components/ui/normal-chat-ghost-overlay'
+import { NormalChatStarterRail } from '@/components/ui/normal-chat-starter-rail'
+import { EMPTY_NORMAL_CHAT_SUGGESTIONS, getNormalChatGhostSuffix, getNormalChatSendPalette } from '@/components/ui/normal-chat-composer-model'
 import { motionDuration, motionTokens } from '@/components/ui/motion-tokens'
-import { color } from '@/design/theme'
+import { color, customerTheme } from '@/design/theme'
 import { type AppLanguage } from '@/lib/app-language'
 import { useAuth } from '@/lib/auth-provider'
+import { useNormalChatSuggestions } from '@/lib/normal-chat-suggestions'
 import { isWorkerActiveExecutionStatus } from '@/lib/frontend-workflow/helpers'
 import { takePendingWorkerKaelDraft, type PendingWorkerKaelDraftScope } from '@/lib/pending-worker-kael-draft'
 import { WorkerV5ScreenDefinition, WorkerV5ScreenId } from '../dock/types'
@@ -18,7 +22,8 @@ import { getWorkerV5ChatJobId } from '../ui/labels'
 import { styles, workerV5KaelComposerWebTextInputNoOutline } from '../worker-v5-flow-styles'
 import { WorkerV5KaelOrbCameraIcon } from './orb-camera-icon'
 import { useWorkerV5KaelOrbChat } from './use-kael-orb-chat'
-import { canUseWorkerV5KaelOrbSession } from './kael-orb-chat-model'
+import { workerKaelChatService } from '@/lib/services'
+import { canShowWorkerStaticNormalChatStarters, canUseWorkerV5KaelOrbSession } from './kael-orb-chat-model'
 import { canUseWorkerV5PrivateKaelChat } from './use-worker-kael-orb-chat'
 import type { useFrontendWorkflow } from '@/lib/frontend-workflow-provider'
 
@@ -34,6 +39,18 @@ import { workerV5Icons, workerV5OpportunityServiceIcons } from '../ui/screen-ico
 import { workerV5JobsDestinationScreenId } from '../ui/screen-navigation'
 
 type WorkerV5Runtime = ReturnType<typeof useFrontendWorkflow>
+const KAEL_COMPOSER_MIN_HEIGHT = 44
+const KAEL_COMPOSER_MAX_HEIGHT = 124
+
+function getWorkerV5KaelComposerArrowColor(normalComposer: boolean, canSubmit: boolean) {
+  if (normalComposer) {
+    if (canSubmit) return color.text.strong
+    return customerTheme.lightLayer.muted
+  }
+  if (canSubmit) return color.text.inverse
+  return color.text.muted
+}
+
 function Text({ style, ...props }: TextProps) {
   return <RNText {...props} style={[styles.workerCustomerFontText, style]} />
 }
@@ -146,6 +163,27 @@ export function WorkerV5KaelOrbScreenSurface({
     opacity: modeMenuTriggerScale.value,
   }))
   const orbChat = useWorkerV5KaelOrbChat(deal, language, mode)
+  const lastWorkerChatTurn = orbChat.liveTurns[orbChat.liveTurns.length - 1]
+  const suggestionSourceTurnId = lastWorkerChatTurn?.role === 'kael' ? lastWorkerChatTurn.id : null
+  const activeSuggestionSessionId = orbChat.activeSessionId
+  const fetchWorkerSuggestions = useCallback(async (input: { language: 'vi' | 'en'; source_turn_id: string }, signal: AbortSignal) => {
+    if (!activeSuggestionSessionId) throw new Error('normal_chat_session_missing')
+    const result = await workerKaelChatService.getSuggestions(activeSuggestionSessionId, input, signal)
+    if (!result.success) throw new Error('normal_chat_suggestions_unavailable')
+    return result.data
+  }, [activeSuggestionSessionId])
+  const normalChatSuggestions = useNormalChatSuggestions({
+    accountId: session?.user.id,
+    enabled: mode === 'normal'
+      && !orbChat.busy
+      && !orbChat.streamingReply
+      && !orbChat.isLocalVisualAuditSession,
+    fetcher: fetchWorkerSuggestions,
+    language,
+    role: 'worker',
+    sessionId: activeSuggestionSessionId,
+    sourceTurnId: suggestionSourceTurnId,
+  })
   const hasJobIntakeScope = mode === 'intake' && canUseWorkerV5KaelOrbSession(deal)
   const pendingDraftScope: PendingWorkerKaelDraftScope = mode === 'normal'
     ? 'normal'
@@ -210,6 +248,8 @@ export function WorkerV5KaelOrbScreenSurface({
         mediaEnabled={hasJobIntakeScope || mode === 'normal'}
         mediaCount={orbChat.mediaCount}
         mode={mode}
+        normalChatStarterAllowed={canShowWorkerStaticNormalChatStarters(mode, orbChat.liveTurns.length)}
+        normalChatSuggestions={normalChatSuggestions?.status === 'ready' ? normalChatSuggestions.suggestions : []}
         onActivityChange={setComposerActive}
         onPickMedia={() => void orbChat.pickMedia()}
         onSend={orbChat.send}
@@ -228,6 +268,7 @@ export function WorkerV5KaelOrbScreenSurface({
     language,
     mode,
     navigateToScreen,
+    normalChatSuggestions,
     orbChat,
     pendingDraftScope,
     profile,
@@ -359,6 +400,8 @@ export function WorkerV5KaelOrbComposer({
   mediaEnabled = true,
   mediaCount,
   mode,
+  normalChatStarterAllowed = false,
+  normalChatSuggestions = EMPTY_NORMAL_CHAT_SUGGESTIONS,
   onActivityChange,
   onPickMedia,
   onSend,
@@ -376,6 +419,8 @@ export function WorkerV5KaelOrbComposer({
   mediaEnabled?: boolean
   mediaCount: number
   mode: WorkerV5KaelOrbMode
+  normalChatStarterAllowed?: boolean
+  normalChatSuggestions?: { id: string; text: string }[]
   onActivityChange?: (active: boolean) => void
   onPickMedia: () => void
   onSend: (message: string) => Promise<boolean>
@@ -390,24 +435,48 @@ export function WorkerV5KaelOrbComposer({
       ? takePendingWorkerKaelDraft(draftOwnerId, mode, draftScope)?.message ?? ''
       : ''
   ))
+  const [measuredInputHeight, setMeasuredInputHeight] = useState(KAEL_COMPOSER_MIN_HEIGHT)
+  const inputHeight = draft ? measuredInputHeight : KAEL_COMPOSER_MIN_HEIGHT
   const focusedRef = useRef(false)
+  const inputRef = useRef<TextInput>(null)
+  const [selection, setSelection] = useState<{ start: number; end: number } | null>(null)
+  const [isComposing, setIsComposing] = useState(false)
   const trimmedDraft = draft.trim()
   const stopping = sending && stopAvailable && Boolean(onStop)
-  const canSubmit = !busy && Boolean(trimmedDraft)
+  const normalComposer = mode === 'normal'
+  const canSubmit = !busy && (Boolean(trimmedDraft) || (normalComposer && mediaCount > 0))
   const mediaLabel = mode === 'normal'
     ? textByLanguage(language, 'Thêm ảnh cho Kael', 'Add photo for Kael')
     : textByLanguage(language, 'Thêm ảnh công việc cho Kael', 'Add work photo for Kael')
+  const starterVisible = normalChatStarterAllowed && normalComposer && !busy && !draft.trim() && mediaCount === 0
+  const ghost = normalComposer && !busy
+    ? getNormalChatGhostSuffix(draft, normalChatSuggestions, selection, isComposing)
+    : null
+  const liveGhostContext = useRef({ draft, isComposing, selection, suggestions: normalChatSuggestions })
+  liveGhostContext.current = { draft, isComposing, selection, suggestions: normalChatSuggestions }
+  const acceptGhost = () => {
+    const latest = liveGhostContext.current
+    const currentGhost = getNormalChatGhostSuffix(latest.draft, latest.suggestions, latest.selection, latest.isComposing)
+    if (!currentGhost || currentGhost.suggestionId !== ghost?.suggestionId) return
+    updateDraft(latest.draft ? `${latest.draft}${currentGhost.text}` : currentGhost.text)
+    setSelection(null)
+    inputRef.current?.focus()
+  }
+  const inputTextStyle = [styles.kaelOrbComposerInput, normalComposer && styles.kaelOrbNormalComposerInput, { height: inputHeight }, workerV5KaelComposerWebTextInputNoOutline]
 
   const submitDraft = async () => {
-    if (!trimmedDraft || busy) return
+    if ((!trimmedDraft && !(normalComposer && mediaCount > 0)) || busy) return
     const sent = await onSend(trimmedDraft)
     if (!sent) return
     setDraft('')
+    setMeasuredInputHeight(KAEL_COMPOSER_MIN_HEIGHT)
     onActivityChange?.(focusedRef.current)
   }
 
   const updateDraft = (nextDraft: string) => {
+    setSelection(null)
     setDraft(nextDraft)
+    if (!nextDraft) setMeasuredInputHeight(KAEL_COMPOSER_MIN_HEIGHT)
     onActivityChange?.(focusedRef.current || nextDraft.trim().length > 0)
   }
 
@@ -423,12 +492,34 @@ export function WorkerV5KaelOrbComposer({
 
   return (
     <View style={styles.kaelOrbComposerStack} testID="worker-v5-kael-orb-composer">
+      {starterVisible ? (
+        <NormalChatStarterRail
+          actorRole="worker"
+          language={language}
+          onSelect={(starterDraft) => {
+            updateDraft(starterDraft)
+            setSelection(null)
+            inputRef.current?.focus()
+          }}
+          visible
+        />
+      ) : null}
+      {ghost && !starterVisible ? (
+        <Text style={styles.kaelOrbSuggestionHint} testID="worker-v5-kael-ghost-hint">
+          {textByLanguage(language, 'Chạm chữ mờ để thêm vào tin nhắn.', 'Tap the faded text to add it to your message.')}
+        </Text>
+      ) : null}
       <GlassSurface
         backgroundColor={color.surface.soft}
-        borderColor={color.surface.stroke}
+        borderColor={normalComposer ? customerTheme.lightLayer.glassBorder : color.surface.stroke}
         material="liquid"
         mode="light"
-        style={[styles.kaelOrbComposerCard, reduceTransparency && styles.opaqueCard]}
+        style={[
+          styles.kaelOrbComposerCard,
+          normalComposer && styles.kaelOrbNormalComposerCard,
+          styles.kaelOrbComposerCardMultiline,
+          reduceTransparency && styles.opaqueCard,
+        ]}
         testID="worker-v5-kael-orb-composer-frame"
         variant="control"
       >
@@ -459,17 +550,43 @@ export function WorkerV5KaelOrbComposer({
         </Pressable> : null}
         <KaelTextField
           accessibilityLabel={textByLanguage(language, 'Nhắn Kael', 'Message Kael')}
+          inputRef={inputRef}
+          inputShellAdornment={ghost ? (
+            <NormalChatGhostOverlay
+              draft={draft}
+              draftColor={color.kaelChatSend.idleForeground}
+              language={language}
+              onAccept={acceptGhost}
+              suggestionColor={color.text.muted}
+              suffix={ghost.text}
+              textStyle={inputTextStyle}
+            />
+          ) : undefined}
           inputShellStyle={styles.kaelOrbComposerInputShell}
           inputShellTestID="worker-v5-kael-orb-input-shell"
+          multiline
+          onChange={(event) => {
+            const nativeEvent = event.nativeEvent as typeof event.nativeEvent & { composing?: boolean; isComposing?: boolean }
+            setIsComposing(Boolean(nativeEvent.isComposing ?? nativeEvent.composing))
+          }}
+          onContentSizeChange={(event) => {
+            const nextHeight = event.nativeEvent.contentSize.height
+            const height = Math.min(Math.max(nextHeight, KAEL_COMPOSER_MIN_HEIGHT), KAEL_COMPOSER_MAX_HEIGHT)
+            setMeasuredInputHeight(height)
+          }}
           onBlur={blurComposer}
           onChangeText={updateDraft}
+          onSelectionChange={(event) => setSelection(event.nativeEvent.selection)}
           onFocus={focusComposer}
           onSubmitEditing={submitDraft}
-          placeholder={textByLanguage(language, 'Nhập tin nhắn cho Kael...', 'Message Kael...')}
+          placeholder={ghost ? '' : textByLanguage(language, 'Nhập tin nhắn cho Kael...', 'Message Kael...')}
           placeholderTextColor={color.text.muted}
           returnKeyType="send"
+          selectionColor={color.kaelChatSend.idleForeground}
+          scrollEnabled={inputHeight >= KAEL_COMPOSER_MAX_HEIGHT}
           shellStyle={styles.kaelOrbComposerField}
-          style={[styles.kaelOrbComposerInput, workerV5KaelComposerWebTextInputNoOutline]}
+          style={[...inputTextStyle, { color: ghost ? 'transparent' : color.text.strong, zIndex: 1 }]}
+          submitBehavior="submit"
           testID="worker-v5-kael-orb-input"
           value={draft}
         />
@@ -484,7 +601,9 @@ export function WorkerV5KaelOrbComposer({
           style={({ pressed }) => [
             styles.kaelOrbSendButton,
             {
-              backgroundColor: stopping || canSubmit ? color.brand.primary : color.surface.soft,
+              backgroundColor: normalComposer
+                ? getNormalChatSendPalette(sending).background
+                : stopping || canSubmit ? color.brand.primary : color.surface.soft,
               borderColor: color.surface.stroke,
               borderRadius: 22,
               borderWidth: 1,
@@ -496,9 +615,11 @@ export function WorkerV5KaelOrbComposer({
           testID="worker-v5-kael-orb-send"
         >
           <KaelSendStopGlyph
-            arrowColor={canSubmit ? color.text.inverse : color.text.muted}
+            arrowColor={normalComposer
+              ? getNormalChatSendPalette(sending).foreground
+              : getWorkerV5KaelComposerArrowColor(false, canSubmit)}
             reduceMotion={reduceMotion}
-            stopColor={color.text.inverse}
+            stopColor={normalComposer ? getNormalChatSendPalette(sending).foreground : color.text.inverse}
             stopping={stopping}
             testIDPrefix="worker-v5-kael-orb"
           />

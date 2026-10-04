@@ -1,6 +1,6 @@
 import { readFileSync } from 'fs'
 import { resolve } from 'path'
-import { act, fireEvent, render, renderHook, screen, waitFor } from '@testing-library/react-native'
+import { act, fireEvent, render, renderHook, screen, waitFor, within } from '@testing-library/react-native'
 import { Platform, StyleSheet, Text } from 'react-native'
 import type { LocalDeal } from '@nestscout/shared'
 
@@ -636,7 +636,7 @@ describe('active customer Kael chat surface wiring', () => {
   })
 
   it('grows the composer with the draft instead of scrolling long text sideways', async () => {
-    const view = render(<CustomerKaelSurface />)
+    render(<CustomerKaelSurface />)
     await waitForConversationCatalog('normal')
 
     const input = screen.getByTestId('customer-v21-kael-input')
@@ -770,7 +770,7 @@ describe('active customer Kael chat surface wiring', () => {
       fontSize: 13,
     })
     expect(screen.getByTestId('customer-v21-kael-session-menu-glass')).toBeOnTheScreen()
-    expect(screen.getByTestId('customer-v21-kael-session-menu-liquid-layers')).toBeOnTheScreen()
+    expect(screen.queryByTestId('customer-v21-kael-session-menu-liquid-layers')).toBeNull()
     expect(screen.getByTestId('customer-v21-kael-session-new-liquid-layers')).toBeOnTheScreen()
     expect(StyleSheet.flatten(screen.getByTestId('customer-v21-kael-session-new').props.style)).toMatchObject({
       alignSelf: 'stretch',
@@ -1650,7 +1650,17 @@ describe('active customer Kael chat surface wiring', () => {
       borderColor: 'transparent',
       borderWidth: 0,
     })
-    expect(screen.getByTestId('customer-v21-chat-mode-menu-liquid-layers')).toBeOnTheScreen()
+    const modeMenu = screen.getByTestId('customer-v21-chat-mode-menu')
+    const modeMenuStyle = StyleSheet.flatten(modeMenu.props.style)
+    expect(modeMenuStyle.backgroundColor).toBeUndefined()
+    expect(modeMenuStyle.borderWidth).toBeUndefined()
+    expect(modeMenuStyle.boxShadow).toBeUndefined()
+    expect(screen.queryByTestId('customer-v21-chat-mode-menu-liquid-layers')).toBeNull()
+    expect(screen.queryByTestId('customer-v21-chat-mode-mint-aura')).toBeNull()
+    expect(StyleSheet.flatten(screen.getByTestId('customer-v21-chat-tab-case-work').props.style)).toMatchObject({
+      borderRadius: 13,
+      borderWidth: 1,
+    })
     await settleKaelChatSurfaceUpdates()
   })
 
@@ -2213,12 +2223,34 @@ describe('active customer Kael chat surface wiring', () => {
     const renameMenuStyle = StyleSheet.flatten(screen.getByTestId('customer-v21-kael-session-menu-shell').props.style)
     const renameListStyle = StyleSheet.flatten(screen.getByTestId('customer-v21-kael-session-list').props.style)
     const renameInput = screen.getByTestId('customer-v21-kael-session-title-input')
+    const titleRow = screen.getByTestId('customer-v21-kael-session-title-row-normal-session')
+    const sessionCopy = screen.getByTestId('customer-v21-kael-session-copy-normal-session')
+    const renameActions = screen.getByTestId('customer-v21-kael-session-rename-actions-normal-session')
+    const renameCancel = screen.getByTestId('customer-v21-kael-session-title-cancel')
+    const renameSave = screen.getByTestId('customer-v21-kael-session-title-save')
+    expect(within(titleRow).getByTestId('customer-v21-kael-session-title-input')).toBeOnTheScreen()
+    expect(screen.queryByTestId('customer-v21-kael-session-rename-editor-normal-session')).toBeNull()
     expect(renameMenuStyle.width).toBe('92%')
     expect(renameMenuStyle.maxWidth).toBeLessThanOrEqual(440)
     expect(renameListStyle.maxHeight).toBeGreaterThan(138)
     expect(renameListStyle.maxHeight).toBeLessThanOrEqual(240)
     expect(renameInput.props.selectTextOnFocus).toBeFalsy()
-    expect(StyleSheet.flatten(renameInput.props.style)).toMatchObject({ flex: 1, minWidth: 0, width: '100%' })
+    expect(StyleSheet.flatten(renameInput.props.style)).toMatchObject({
+      backgroundColor: 'transparent',
+      borderWidth: 0,
+      flex: 1,
+      minWidth: 0,
+      paddingHorizontal: 0,
+    })
+    expect(StyleSheet.flatten(sessionCopy.props.style)).toMatchObject({ paddingRight: 94 })
+    expect(StyleSheet.flatten(renameActions.props.style)).toMatchObject({
+      bottom: 0,
+      position: 'absolute',
+      right: 8,
+      top: 0,
+    })
+    expect(StyleSheet.flatten(renameCancel.props.style)).toMatchObject({ minHeight: 44, minWidth: 44 })
+    expect(StyleSheet.flatten(renameSave.props.style)).toMatchObject({ minHeight: 44, minWidth: 44 })
     fireEvent.changeText(screen.getByTestId('customer-v21-kael-session-title-input'), 'Nhà bếp')
     fireEvent.press(screen.getByTestId('customer-v21-kael-session-title-save'))
     await waitFor(() => expect(mockConversationRename).toHaveBeenCalledWith('normal-session', { title: 'Nhà bếp' }))

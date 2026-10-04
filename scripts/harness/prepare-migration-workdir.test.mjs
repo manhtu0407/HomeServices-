@@ -90,3 +90,24 @@ test('only the isolated empty-reset workdir pins the patched Postgres image', ()
   assert.equal(existsSync(join(root, 'hosted/supabase/.temp/postgres-version')), false)
   assert.equal(existsSync(join(root, 'supabase/.temp/postgres-version')), false)
 })
+
+test('canonical empty-reset workdir can be reused when it still matches the inventory', () => {
+  const root = mkdtempSync(join(tmpdir(), 'nestscout-reuse-migrations-'))
+  mkdirSync(join(root, 'supabase/migrations'), { recursive: true })
+  const sql = 'select 1;\n'
+  writeFileSync(join(root, 'supabase/config.toml'), 'project_id = "fixture"\n')
+  writeFileSync(join(root, 'supabase/seed.sql'), sql)
+  writeFileSync(join(root, 'supabase/migrations/20260804000000_fixture.sql'), sql)
+  const fixtureInventory = { migrationEquivalences: { version: '1.0.0', groups: [] }, entries: [{ version: '20260804000000',
+    file: 'supabase/migrations/20260804000000_fixture.sql',
+    sha256: createHash('sha256').update(sql).digest('hex') }] }
+  const input = { root, output: 'empty', inventory: fixtureInventory }
+  const first = materializeEmptyMigrationWorkdir(input)
+  const reused = materializeEmptyMigrationWorkdir({ ...input, reuseExisting: true })
+  assert.deepEqual(reused, first)
+  writeFileSync(join(root, 'empty/supabase/migrations/20260801000000_alias.sql'), sql)
+  assert.throws(
+    () => materializeEmptyMigrationWorkdir({ ...input, reuseExisting: true }),
+    /canonical migration file set/u,
+  )
+})

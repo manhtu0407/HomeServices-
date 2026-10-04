@@ -126,8 +126,11 @@ function resolveWorkerV5EarningsScreenId(params: WorkerV5RouteParams): WorkerV5S
   return workerV5SectionRootIds.earnings
 }
 
-export function resolveWorkerV5Language(params: WorkerV5RouteParams): AppLanguage {
+export function resolveWorkerV5Language(
+  params: WorkerV5RouteParams,
+  appLanguage: AppLanguage,
+): AppLanguage {
   const routeLanguage = firstRouteParam(params.ns_worker_lang)
   if (routeLanguage === 'en' || routeLanguage === 'vi') return routeLanguage
-  return 'vi'
+  return appLanguage
 }

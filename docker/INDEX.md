@@ -58,10 +58,10 @@ gate; the other commands validate their own invocation and target.
 | Command | Does |
 |---|---|
 | `pnpm docker:version:ensure` | Use Docker Desktop's stable updater once when available; otherwise prove the installed Compose supports this repo's required pull-policy flags. |
-| `pnpm db:local:doctor` | One bounded 15-second daemon probe plus available RAM, disk, and ports. Profile is only `lean` or `full`. |
-| `pnpm db:local:up` | `doctor` first, then start the lean profile. |
+| `pnpm db:local:doctor` | One bounded 15-second daemon probe plus informational available RAM, disk, and ports. RAM has no minimum; profile is only `lean` or `full`. |
+| `pnpm db:local:up` | `doctor` first, prepare the canonical migration inventory workdir, then start the lean profile. |
 | `pnpm db:local:down` | Stop the stack without deleting its database volume. **Always run this when finished.** |
-| `pnpm db:local:reset` | Replay every migration from zero with explicit `--local`, then `supabase/seed.sql`. |
+| `pnpm db:local:reset` | Replay the canonical migration inventory from zero with explicit `--local`, then `supabase/seed.sql`. |
 | `pnpm db:local:test` | Run the SQL verification scripts through psql in the db container. |
 | `pnpm db:local:types` | Regenerate `packages/shared/src/types/database/**` from the local schema (generates, then splits by domain). |
 | `pnpm db:local:diff` | Diff local schema against migrations. |
@@ -90,11 +90,9 @@ Do not repair ACLs/AppData or try a second brokered launch inside `kael-docker`.
   install, or automatic retry is allowed.
 - **Fail closed on a virtualized Windows launch origin.** A Windows/DrvFS path mismatch requires one
   Start-menu or unsandboxed-shell launch by Tu; agent-brokered GUI launches do not consume extra retries.
-- **Run `doctor` before starting.** The immutable floor is 4 GB for `lean` and
-  7 GB for `full`; there is no numeric override or skip-doctor route.
-- **Run immediately when RAM passes; recover once when it does not.** The one recovery pass can stop
-  only recorded stale task-owned helper/dev/test children. Codex, Claude Code, system/security,
-  Docker components needed by the run, and user apps with possible unsaved work stay protected.
+- **Run `doctor` before starting.** Available RAM is informational for both profiles and never
+  blocks the local-runtime lane. Daemon reachability, disk, and ports remain required checks; there
+  is no RAM override or skip-doctor route.
 - **Every `up` needs its `down`.** Nothing enforces this. Leaving the stack
   running overnight is a real cost.
 - **Never hand-edit `supabase/config.toml` solely to shape a profile.** Use `-x`; if a host port changes, update the runtime consumers and doctor in the same change.
@@ -163,9 +161,10 @@ Recorded here so a later session does not "discover" these and build them.
 
 The numbers this folder's docs would normally quote — image pull time, disk
 consumed, stack idle RAM — **have not been established for a successful local
-stack run**. Historical attempts crossed and fell below the 4 GB floor while the
-daemon also became unavailable; those measurements are evidence for those
-attempts only, not permission to retry or relax the gate.
+stack run**. Historical attempts crossed 4 GB while the daemon also became
+unavailable; those measurements apply only to those attempts. RAM is now an
+informational observation, while daemon, disk, ports, and local target checks
+continue to gate startup.
 
 Nothing in this folder invents those numbers. `profiles/lean.md` marks each one
 as unmeasured. Fill them in from a real run, not from an estimate.

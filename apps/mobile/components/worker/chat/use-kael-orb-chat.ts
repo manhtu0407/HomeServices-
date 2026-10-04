@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useRef } from 'react'
 import type { LocalDeal, WorkerKaelChatMode } from '@nestscout/shared'
 import type { AppLanguage } from '@/lib/app-language'
+import { clearNormalChatSuggestionCache } from '@/lib/normal-chat-suggestions'
 import type { WorkerKaelChatResponse, WorkerKaelChatSession } from '@/lib/api-types'
 import { useAuth } from '@/lib/auth-provider'
 import { generateClientRequestId } from '@/lib/client-request-id'
@@ -545,6 +546,7 @@ export function useWorkerV5KaelOrbChat(
         if (activeOwnerRef.current !== requestedOwner) return true
         locallyCreatedSessionIdsRef.current.delete(sessionId)
         locallyUpdatedSessionIdsRef.current.delete(sessionId)
+        if (workerId) clearNormalChatSuggestionCache({ accountId: workerId, sessionId })
         return true
       }
       const archived = await workerKaelChatService.archive(sessionId)
@@ -555,6 +557,7 @@ export function useWorkerV5KaelOrbChat(
       if (activeOwnerRef.current !== requestedOwner) return true
       locallyCreatedSessionIdsRef.current.delete(sessionId)
       locallyUpdatedSessionIdsRef.current.delete(sessionId)
+      if (workerId) clearNormalChatSuggestionCache({ accountId: workerId, sessionId })
       return true
     } catch {
       if (
@@ -730,6 +733,7 @@ export function useWorkerV5KaelOrbChat(
 
   return {
     activeSessionId,
+    isLocalVisualAuditSession: localVisualAuditSession,
     archiveSession,
     archiveActiveSession,
     busy: busy || creatingSession || Boolean(openingSessionId),

@@ -92,6 +92,7 @@ function makeServices(overrides: Partial<MobileApiServices> = {}): MobileApiServ
     setCustomerKaelConversationPinned: vi.fn(),
     getCustomerKaelConversation: vi.fn(),
     sendCustomerKaelConversationTurn: vi.fn(),
+    createCustomerKaelConversationSuggestions: vi.fn(),
     streamCustomerKaelConversationTurn: vi.fn(async () => new Response(new ReadableStream(), {
       headers: { 'Content-Type': 'text/event-stream; charset=utf-8' },
     })),
@@ -165,6 +166,7 @@ function makeServices(overrides: Partial<MobileApiServices> = {}): MobileApiServ
     setWorkerKaelChatPinned: vi.fn(),
     getWorkerKaelChat: vi.fn(),
     sendWorkerKaelChatTurn: vi.fn(),
+    createWorkerKaelChatSuggestions: vi.fn(),
     submitWorkerKaelFeedback: vi.fn(),
     getWorkerKaelTrainingConsent: vi.fn(),
     setWorkerKaelTrainingConsent: vi.fn(),
@@ -523,6 +525,84 @@ describe('mobile-api Edge router contract', () => {
       error: 'Vui lòng đăng nhập',
     })
     expect(listServices).not.toHaveBeenCalled()
+  })
+
+  it('routes strict Customer and Worker suggestion requests only to their authenticated role services', async () => {
+    const customerSuggestions = vi.fn(async (
+      _ctx: Parameters<MobileApiServices['createCustomerKaelConversationSuggestions']>[0],
+      conversationId: string,
+      input: Parameters<MobileApiServices['createCustomerKaelConversationSuggestions']>[2],
+    ) => ({
+      status: 'ready' as const,
+      session_id: conversationId,
+      source_turn_id: input.source_turn_id,
+      language: input.language,
+      suggestions: [{ id: 'suggestion-1', text: 'Tôi muốn hỏi thêm.' }],
+    }))
+    const workerSuggestions = vi.fn(async (
+      _ctx: Parameters<MobileApiServices['createWorkerKaelChatSuggestions']>[0],
+      sessionId: string,
+      input: Parameters<MobileApiServices['createWorkerKaelChatSuggestions']>[2],
+    ) => ({
+      status: 'ready' as const,
+      session_id: sessionId,
+      source_turn_id: input.source_turn_id,
+      language: input.language,
+      suggestions: [{ id: 'suggestion-2', text: 'Tôi muốn hỏi thêm.' }],
+    }))
+    const customerHandler = createMobileApiHandler({
+      authenticate: vi.fn(async () => customerAuth),
+      services: makeServices({ createCustomerKaelConversationSuggestions: customerSuggestions }),
+    })
+    const workerHandler = createMobileApiHandler({
+      authenticate: vi.fn(async () => workerAuth),
+      services: makeServices({ createWorkerKaelChatSuggestions: workerSuggestions }),
+    })
+    const requestBody = { language: 'vi', source_turn_id: 'c300abcd-0000-4000-8000-0000000000a1' }
+    const customerResponse = await customerHandler(new Request(
+      'https://example.test/mobile-api/me/kael/conversations/c300abcd-0000-4000-8000-0000000000c1/suggestions',
+      { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(requestBody) },
+    ))
+    const workerResponse = await workerHandler(new Request(
+      'https://example.test/mobile-api/workers/me/kael/chat/c300abcd-0000-4000-8000-0000000000d1/suggestions',
+      { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(requestBody) },
+    ))
+
+    expect(customerResponse.status).toBe(200)
+    expect(workerResponse.status).toBe(200)
+    expect(customerSuggestions).toHaveBeenCalledWith(expect.objectContaining({ role: 'customer' }), 'c300abcd-0000-4000-8000-0000000000c1', requestBody)
+    expect(workerSuggestions).toHaveBeenCalledWith(expect.objectContaining({ role: 'worker' }), 'c300abcd-0000-4000-8000-0000000000d1', requestBody)
+  })
+
+  it('rejects actor-supplied suggestion scope fields and cross-role requests before calling a service', async () => {
+    const customerSuggestions = vi.fn()
+    const workerSuggestions = vi.fn()
+    const customerHandler = createMobileApiHandler({
+      authenticate: vi.fn(async () => customerAuth),
+      services: makeServices({ createCustomerKaelConversationSuggestions: customerSuggestions }),
+    })
+    const workerHandler = createMobileApiHandler({
+      authenticate: vi.fn(async () => workerAuth),
+      services: makeServices({ createWorkerKaelChatSuggestions: workerSuggestions }),
+    })
+    const invalidBody = {
+      language: 'vi',
+      source_turn_id: 'c300abcd-0000-4000-8000-0000000000a1',
+      actor_id: '11111111-1111-4111-8111-111111111111',
+    }
+    const invalidResponse = await customerHandler(new Request(
+      'https://example.test/mobile-api/me/kael/conversations/c300abcd-0000-4000-8000-0000000000c1/suggestions',
+      { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(invalidBody) },
+    ))
+    const crossRoleResponse = await customerHandler(new Request(
+      'https://example.test/mobile-api/workers/me/kael/chat/c300abcd-0000-4000-8000-0000000000d1/suggestions',
+      { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ language: 'vi', source_turn_id: 'c300abcd-0000-4000-8000-0000000000a1' }) },
+    ))
+
+    expect(invalidResponse.status).toBe(400)
+    expect(crossRoleResponse.status).toBe(403)
+    expect(customerSuggestions).not.toHaveBeenCalled()
+    expect(workerSuggestions).not.toHaveBeenCalled()
   })
 
   it('routes notification inbox through authenticated mobile API services', async () => {

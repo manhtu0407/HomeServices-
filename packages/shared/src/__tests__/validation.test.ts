@@ -633,6 +633,7 @@ describe('Customer Kael conversation schemas', () => {
     expect(() => customerKaelConversationTurnSchema.parse({ ...base, media_refs: Array(6).fill(imageRef) })).toThrow()
   })
 
+
   it('validates rename and pin actions', () => {
     expect(customerKaelConversationRenameSchema.parse({ title: 'Nhà bếp' })).toEqual({ title: 'Nhà bếp' })
     expect(customerKaelConversationPinSchema.parse({ pinned: true })).toEqual({ pinned: true })

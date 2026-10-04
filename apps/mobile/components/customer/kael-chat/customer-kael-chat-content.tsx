@@ -1,4 +1,6 @@
 import { useCallback, useMemo } from 'react'
+import { customerKaelConversationService } from '@/lib/services'
+import { useNormalChatSuggestions } from '@/lib/normal-chat-suggestions'
 
 import { MediaDraftPreviewTray } from './media-draft-preview-tray'
 import { CustomerAgenticEstimateNode } from './customer-agentic-estimate-node'
@@ -50,6 +52,27 @@ export function CustomerKaelChatContent({ controller }: { controller: Controller
     visibleError,
   } = controller
   const composerBusy = conversation.loading || chatUi.uploadingMedia || conversations.sending
+  const lastNormalTurn = conversation.turns[conversation.turns.length - 1]
+  const suggestionSourceTurnId = lastNormalTurn?.role === 'kael' ? lastNormalTurn.id : null
+  const activeSuggestionSessionId = conversations.activeSessionId
+  const fetchCustomerSuggestions = useCallback(async (input: { language: 'vi' | 'en'; source_turn_id: string }, signal: AbortSignal) => {
+    if (!activeSuggestionSessionId) throw new Error('normal_chat_session_missing')
+    const result = await customerKaelConversationService.getSuggestions(activeSuggestionSessionId, input, signal)
+    if (!result.success) throw new Error('normal_chat_suggestions_unavailable')
+    return result.data
+  }, [activeSuggestionSessionId])
+  const normalChatSuggestions = useNormalChatSuggestions({
+    accountId: controller.pendingDraftOwnerId,
+    enabled: mode === 'normal'
+      && !composerBusy
+      && !conversation.streamingReply
+      && !conversations.isLocalVisualAuditSession,
+    fetcher: fetchCustomerSuggestions,
+    language,
+    role: 'customer',
+    sessionId: activeSuggestionSessionId,
+    sourceTurnId: suggestionSourceTurnId,
+  })
   const canUseComposerMedia = mode === 'normal' || (mode === 'case' && (
     !deal ||
     presentation.caseEvidenceGateActive ||
@@ -232,11 +255,20 @@ export function CustomerKaelChatContent({ controller }: { controller: Controller
       composerMediaDrafts={conversation.composerMediaDrafts}
       composer={{
         busy: composerBusy,
+        sending: conversations.sending,
         canUseMedia: canUseComposerMedia,
         draft: chatUi.draft,
         hasVoiceTranscript: Boolean(chatUi.voiceTranscript.trim()),
         mediaDraftCount: conversation.composerMediaDrafts.length,
         placeholder: composerPlaceholder,
+        starterVisible: mode === 'normal'
+          && conversation.turns.length === 0
+          && !conversation.pendingNormalMessage
+          && !conversation.composerMediaDrafts.length
+          && !chatUi.voiceTranscript.trim()
+          && !chatUi.draft.trim()
+          && !composerBusy,
+        suggestions: normalChatSuggestions?.status === 'ready' ? normalChatSuggestions.suggestions : [],
         show: presentation.showComposer,
       }}
       error={inlineError}

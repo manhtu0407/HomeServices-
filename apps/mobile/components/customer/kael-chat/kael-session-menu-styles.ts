@@ -1,6 +1,6 @@
 import { StyleSheet } from 'react-native'
 
-import { typography } from '@/design/theme'
+import { color, typography } from '@/design/theme'
 
 export const styles = StyleSheet.create({
   actionButton: { alignItems: 'center', flex: 1, justifyContent: 'center', minHeight: 44, minWidth: 0, paddingHorizontal: 3 },
@@ -24,16 +24,14 @@ export const styles = StyleSheet.create({
   newSession: { alignItems: 'center', alignSelf: 'stretch', backgroundColor: 'rgba(255,255,255,0.18)', borderColor: 'rgba(255,255,255,0.72)', borderRadius: 999, borderWidth: 1, flexDirection: 'row', gap: 8, justifyContent: 'center', marginHorizontal: -4, minHeight: 44, paddingHorizontal: 13, position: 'relative' },
   newSessionLiquid: { borderWidth: 0 },
   newSessionText: { ...typography.footnote, fontWeight: '600' },
-  renameActions: { alignItems: 'center', flexDirection: 'row', justifyContent: 'flex-end', width: '100%' },
-  renameEditor: { backgroundColor: 'rgba(246,253,251,0.98)', borderRadius: 15, borderWidth: 1, gap: 5, padding: 8, width: '100%' },
-  renameInput: { ...typography.subheadline, flex: 1, minHeight: 38, minWidth: 0, paddingHorizontal: 10, paddingVertical: 7, width: '100%' },
-  renameInputShell: { borderRadius: 12, minHeight: 40, width: '100%' },
-  renamePrimary: { alignItems: 'center', borderRadius: 999, justifyContent: 'center', minHeight: 44, minWidth: 70, paddingHorizontal: 13 },
-  renamePrimaryText: { ...typography.caption2, color: '#FFFFFF', fontWeight: '600' },
-  renameSecondary: { alignItems: 'center', borderRadius: 999, justifyContent: 'center', minHeight: 44, minWidth: 64, paddingHorizontal: 10 },
-  renameSecondaryText: { ...typography.caption2, fontWeight: '600' },
+  inlineRenameActions: { alignItems: 'center', bottom: 0, flexDirection: 'row', gap: 2, position: 'absolute', right: 8, top: 0 },
+  inlineRenameCancel: { alignItems: 'center', borderRadius: 999, justifyContent: 'center', minHeight: 44, minWidth: 44, paddingHorizontal: 3 },
+  inlineRenameCancelText: { ...typography.caption2, fontWeight: '600' },
+  inlineRenameSave: { alignItems: 'center', borderRadius: 999, justifyContent: 'center', minHeight: 44, minWidth: 44, paddingHorizontal: 4 },
+  inlineRenameSaveText: { ...typography.caption2, color: color.text.inverse, fontWeight: '600' },
   session: { alignItems: 'center', backgroundColor: 'rgba(250,253,252,0.96)', borderCurve: 'continuous', borderRadius: 16, borderWidth: 1, flexDirection: 'row', minHeight: 44, overflow: 'hidden', position: 'relative' },
   sessionCopy: { flex: 1, gap: 0, minWidth: 0 },
+  sessionCopyRenaming: { paddingRight: 94 },
   sessionGroup: { gap: 3 },
   sessionList: { gap: 3 },
   sessionListViewport: { marginTop: 6, maxHeight: 138 },
@@ -42,6 +40,7 @@ export const styles = StyleSheet.create({
   moreButton: { alignItems: 'center', alignSelf: 'stretch', borderRadius: 13, flexShrink: 0, justifyContent: 'center', minHeight: 44, minWidth: 44, position: 'relative', width: 44, zIndex: 2, elevation: 2 },
   sessionMeta: { ...typography.caption2 },
   sessionTitle: { ...typography.caption2, flexShrink: 1, fontWeight: '600' },
+  sessionTitleInput: { backgroundColor: 'transparent', borderColor: 'transparent', borderWidth: 0, flex: 1, minWidth: 0, paddingHorizontal: 0, paddingVertical: 0, textAlignVertical: 'center' },
   sessionTitleRow: { alignItems: 'center', flexDirection: 'row', gap: 3, minWidth: 0 },
   statusDot: { backgroundColor: 'rgba(143,174,169,0.68)', borderRadius: 4, height: 6, marginRight: 7, width: 6 },
 })

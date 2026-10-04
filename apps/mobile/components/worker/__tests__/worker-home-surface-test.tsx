@@ -1448,8 +1448,8 @@ describe('Worker runtime surface wiring', () => {
       letterSpacing: -0.23,
       lineHeight: 20,
       minHeight: 44,
-      paddingHorizontal: 10,
-      paddingVertical: 0,
+      paddingHorizontal: 4,
+      paddingVertical: 12,
       WebkitBoxShadow: 'none',
     })
     expect(StyleSheet.flatten(screen.getByTestId('worker-v5-kael-orb-input-shell').props.style)).toMatchObject({
@@ -1863,19 +1863,18 @@ describe('Worker runtime surface wiring', () => {
     const modeMenu = screen.getByTestId('worker-v5-kael-mode-menu')
     expect(modeMenu).toBeOnTheScreen()
     expect(screen.getByTestId('worker-v5-kael-mode-menu-options')).toBeOnTheScreen()
-    expect(StyleSheet.flatten(modeMenu.props.style)).toMatchObject({
-      backgroundColor: 'rgba(255,255,255,0.18)',
-      borderColor: 'rgba(255,255,255,0.72)',
-      borderRadius: 18,
-      borderWidth: 1,
-      maxWidth: 208,
-      width: '59%',
-    })
-    expect(screen.getByTestId('worker-v5-kael-mode-menu-liquid-layers')).toBeOnTheScreen()
-    expect(screen.getByTestId('worker-v5-kael-mode-menu-mint-aura')).toBeOnTheScreen()
+    const modeMenuStyle = StyleSheet.flatten(modeMenu.props.style)
+    expect(modeMenuStyle.backgroundColor).toBeUndefined()
+    expect(modeMenuStyle.borderWidth).toBeUndefined()
+    expect(modeMenuStyle.boxShadow).toBeUndefined()
+    expect(modeMenuStyle).toMatchObject({ maxWidth: 208, width: '59%' })
+    expect(screen.queryByTestId('worker-v5-kael-mode-menu-liquid-layers')).toBeNull()
+    expect(screen.queryByTestId('worker-v5-kael-mode-menu-mint-aura')).toBeNull()
     expect(screen.queryByTestId('worker-v5-kael-mode-menu-sheen')).toBeNull()
     expect(StyleSheet.flatten(screen.getByTestId('worker-v5-kael-mode-menu-normal').props.style)).toMatchObject({
       backgroundColor: 'rgba(255,255,255,0.42)',
+      borderRadius: 13,
+      borderWidth: 1,
     })
     expect(StyleSheet.flatten(screen.getByTestId('worker-v5-kael-mode-menu-intake').props.style)).toMatchObject({
       minHeight: 46,
@@ -2553,7 +2552,7 @@ describe('Worker runtime surface wiring', () => {
     expect(StyleSheet.flatten(screen.getByTestId('worker-v5-kael-session-menu-glass').props.style)).toMatchObject({
       borderRadius: 18,
     })
-    expect(screen.getByTestId('worker-v5-kael-session-menu-liquid-layers')).toBeOnTheScreen()
+    expect(screen.queryByTestId('worker-v5-kael-session-menu-liquid-layers')).toBeNull()
     expect(StyleSheet.flatten(screen.getByTestId('worker-v5-kael-session-list').props.style)).toMatchObject({
       marginTop: 6,
       maxHeight: 138,
@@ -2654,6 +2653,10 @@ describe('Worker runtime surface wiring', () => {
     fireEvent.press(screen.getByTestId('worker-v5-kael-session-toggle'))
     fireEvent.press(await screen.findByTestId('worker-v5-kael-session-actions-worker-kael-session-2'))
     fireEvent.press(screen.getByTestId('worker-v5-kael-session-rename-worker-kael-session-2'))
+    const titleRow = screen.getByTestId('worker-v5-kael-session-title-row-worker-kael-session-2')
+    expect(within(titleRow).getByTestId('worker-v5-kael-session-title-input')).toBeOnTheScreen()
+    expect(screen.queryByTestId('worker-v5-kael-session-rename-editor-worker-kael-session-2')).toBeNull()
+    expect(screen.getByTestId('worker-v5-kael-session-title-cancel')).toBeOnTheScreen()
     fireEvent.changeText(screen.getByTestId('worker-v5-kael-session-title-input'), 'Kiểm tra rò nước lavabo')
     fireEvent.press(screen.getByTestId('worker-v5-kael-session-title-save'))
 

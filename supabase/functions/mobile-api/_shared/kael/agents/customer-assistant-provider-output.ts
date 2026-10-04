@@ -60,7 +60,10 @@ const ASSISTANT_INTERNAL_REPLY_MARKERS = [
   "perplexity",
 ] as const;
 
-export function normalizeAssistantPayload(value: unknown) {
+export function normalizeAssistantPayload(
+  value: unknown,
+  maxAnswerLength = MAX_ASSISTANT_ANSWER_LENGTH,
+) {
   const records = assistantPayloadRecords(value);
   if (records.length === 0) return value;
   const firstPublicSummary = records.findIndex((record) => (
@@ -75,7 +78,7 @@ export function normalizeAssistantPayload(value: unknown) {
     : records.slice(firstPublicSummary);
   const answer = firstPublicAssistantString(
     ...publicRecords.flatMap((record) => ASSISTANT_ANSWER_KEYS.map((key) => record[key])),
-  )?.slice(0, MAX_ASSISTANT_ANSWER_LENGTH);
+  )?.slice(0, maxAnswerLength);
   return {
     ...(answer ? { answer } : {}),
     safety_notes: normalizeRecordStringArrays(
@@ -109,15 +112,18 @@ export function normalizeAssistantPayload(value: unknown) {
   };
 }
 
-export function recoverAssistantProviderAnswer(result: StructuredAIError): string | null {
-  const normalized = normalizeAssistantPayload(result.parsedValue);
+export function recoverAssistantProviderAnswer(
+  result: StructuredAIError,
+  maxAnswerLength = MAX_ASSISTANT_ANSWER_LENGTH,
+): string | null {
+  const normalized = normalizeAssistantPayload(result.parsedValue, maxAnswerLength);
   if (normalized && typeof normalized === "object" && !Array.isArray(normalized)) {
     const record = normalized as Record<string, unknown>;
     const answer = firstString(record.answer);
-    if (answer) return answer.slice(0, MAX_ASSISTANT_ANSWER_LENGTH);
+    if (answer) return answer.slice(0, maxAnswerLength);
   }
   if (assistantRecoveryHasInternalEnvelope(result.parsedValue)) return null;
-  return recoverAssistantText(result.response?.content);
+  return recoverAssistantText(result.response?.content, maxAnswerLength);
 }
 
 function assistantPayloadRecords(value: unknown): Record<string, unknown>[] {
@@ -247,14 +253,17 @@ function assistantRecoveryHasInternalEnvelope(value: unknown, depth = 0): boolea
     .some((item) => assistantRecoveryHasInternalEnvelope(item, depth + 1));
 }
 
-function recoverAssistantText(value: unknown): string | null {
+function recoverAssistantText(
+  value: unknown,
+  maxAnswerLength = MAX_ASSISTANT_ANSWER_LENGTH,
+): string | null {
   if (typeof value !== "string") return null;
   const withoutThinking = stripLeadingAssistantThinking(value);
   if (withoutThinking === null || hasAssistantInternalReplyMarker(withoutThinking)) return null;
   const plain = stripOptionalMarkdownFence(withoutThinking);
   if (!plain) return null;
-  if (!/^[{[]/.test(plain)) return plain.slice(0, MAX_ASSISTANT_ANSWER_LENGTH);
-  return recoverAllowedJsonStringField(plain);
+  if (!/^[{[]/.test(plain)) return plain.slice(0, maxAnswerLength);
+  return recoverAllowedJsonStringField(plain, maxAnswerLength);
 }
 
 function stripLeadingAssistantThinking(value: string): string | null {
@@ -276,7 +285,10 @@ function stripOptionalMarkdownFence(value: string) {
     .trim();
 }
 
-function recoverAllowedJsonStringField(value: string): string | null {
+function recoverAllowedJsonStringField(
+  value: string,
+  maxAnswerLength = MAX_ASSISTANT_ANSWER_LENGTH,
+): string | null {
   const bounded = value.slice(0, MAX_RECOVERY_SCAN_LENGTH);
   for (let index = 0; index < bounded.length; index += 1) {
     if (bounded[index] !== '"') continue;
@@ -291,7 +303,7 @@ function recoverAllowedJsonStringField(value: string): string | null {
     const answer = parseJsonStringAt(bounded, cursor);
     const normalized = answer?.value.trim();
     if (normalized && !hasAssistantInternalReplyMarker(normalized)) {
-      return normalized.slice(0, MAX_ASSISTANT_ANSWER_LENGTH);
+      return normalized.slice(0, maxAnswerLength);
     }
   }
   return null;

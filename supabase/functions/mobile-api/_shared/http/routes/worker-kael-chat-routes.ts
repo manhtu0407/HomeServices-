@@ -8,7 +8,8 @@ export type WorkerKaelChatRoute =
   | { kind: "workers.kaelChat.rename"; method: "PATCH"; sessionId: string; roles: UserRole[] }
   | { kind: "workers.kaelChat.get"; method: "GET"; sessionId: string; roles: UserRole[] }
   | { kind: "workers.kaelChat.stream"; method: "POST"; sessionId: string; roles: UserRole[] }
-  | { kind: "workers.kaelChat.turn"; method: "POST"; sessionId: string; roles: UserRole[] };
+  | { kind: "workers.kaelChat.turn"; method: "POST"; sessionId: string; roles: UserRole[] }
+  | { kind: "workers.kaelChat.suggestions"; method: "POST"; sessionId: string; roles: UserRole[] };
 
 export function matchWorkerKaelChatRoute(
   path: string,
@@ -28,6 +29,14 @@ export function matchWorkerKaelChatRoute(
       };
     }
     return null;
+  }
+
+  const suggestions = path.match(/^\/workers\/me\/kael\/chat\/([^/]+)\/suggestions$/);
+  if (suggestions) {
+    const sessionId = decodePathSegment(suggestions[1] ?? "");
+    return method === "POST" && sessionId
+      ? { kind: "workers.kaelChat.suggestions", method: "POST", sessionId, roles: ["worker"] }
+      : null;
   }
 
   const stream = path.match(/^\/workers\/me\/kael\/chat\/([^/]+)\/stream$/);

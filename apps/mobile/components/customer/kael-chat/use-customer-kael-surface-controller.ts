@@ -342,6 +342,7 @@ export function useCustomerKaelSurfaceController(stateScopeKey: string) {
     messageActions,
     mode,
     modeMenu,
+    pendingDraftOwnerId,
     presentation,
     processController,
     reduceMotion,

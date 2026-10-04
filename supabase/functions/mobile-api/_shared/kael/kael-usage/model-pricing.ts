@@ -85,6 +85,9 @@ const SONNET_5_INTRO_PRICE = anthropicPrice(2, 10, {
 const SONNET_5_STANDARD_PRICE = anthropicPrice(3, 15, {
   effectiveFrom: "2026-09-01T00:00:00.000Z",
 });
+const SONNET_5_5_STANDARD_PRICE = anthropicPrice(2, 10, {
+  effectiveFrom: "2026-01-01T00:00:00.000Z",
+});
 
 // Canonical §40 M0 / §41 P2 registry. Each model stays a one-row extension
 // point; the one known time-based price transition is resolved separately.
@@ -92,6 +95,7 @@ export const MODEL_PRICE_TABLE: Readonly<Record<string, ModelPricePeriod>> =
   Object.freeze({
     "claude-sonnet-4-6": anthropicPrice(3, 15),
     "claude-sonnet-5": SONNET_5_INTRO_PRICE,
+    "claude-sonnet-5-5": SONNET_5_5_STANDARD_PRICE,
     "claude-opus-4-8": anthropicPrice(5, 25),
     "claude-haiku-4-5-20251001": anthropicPrice(1, 5),
     "deepseek-v4-flash": deepseekPrice(0.14, 0.28, 0.0028),
@@ -105,6 +109,11 @@ export const MODEL_PRICE_TABLE: Readonly<Record<string, ModelPricePeriod>> =
       low: 0.006,
       medium: 0.01,
       high: 0.014,
+    }),
+    "pplx-fast-search": perplexityPrice(0, 0, {
+      low: 0.001,
+      medium: 0.001,
+      high: 0.001,
     }),
   });
 

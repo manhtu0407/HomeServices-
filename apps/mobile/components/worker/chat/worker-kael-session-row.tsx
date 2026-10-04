@@ -1,11 +1,20 @@
-import { Pressable, Text, View } from 'react-native'
+import { Platform, Pressable, Text, TextInput, View, type TextStyle } from 'react-native'
 
-import { KaelTextField } from '@/components/ui/kael-primitives'
 import { color } from '@/design/theme'
 import type { WorkerKaelChatSession } from '@/lib/api-types'
 
 import { WorkerV5KaelSessionIcon } from './session-menu-icons'
 import { styles } from './session-menu-styles'
+
+const inlineRenameInputWebStyle = Platform.select({
+  web: {
+    outlineColor: 'transparent',
+    outlineOffset: 0,
+    outlineStyle: 'none',
+    outlineWidth: 0,
+  } as unknown as TextStyle,
+  default: null,
+})
 
 export type WorkerKaelSessionCopy = {
   cancel: string
@@ -68,6 +77,71 @@ export function WorkerV5KaelSessionRow({
   title: string
 }) {
   const pinned = Boolean(session.pinned_at)
+  const titleAndMeta = (
+    <>
+      <View style={[styles.statusDot, selected ? styles.statusDotSelected : null]} />
+      <View
+        style={[styles.sessionCopy, renaming ? styles.sessionCopyRenaming : null]}
+        testID={`worker-v5-kael-session-copy-${session.id}`}
+      >
+        <View style={styles.sessionTitleRow} testID={`worker-v5-kael-session-title-row-${session.id}`}>
+          {pinned ? (
+            <View accessibilityLabel={copy.pinned} style={styles.pinnedIcon} testID={`worker-v5-kael-session-pinned-${session.id}`}>
+              <WorkerV5KaelSessionIcon filled kind="pin" />
+            </View>
+          ) : null}
+          {renaming ? (
+            <TextInput
+              accessibilityLabel={copy.renamePlaceholder}
+              autoCapitalize="sentences"
+              autoCorrect
+              spellCheck={false}
+              autoFocus
+              editable={!pending}
+              maxLength={64}
+              numberOfLines={1}
+              onChangeText={onDraftTitleChange}
+              onSubmitEditing={onSaveRename}
+              returnKeyType="done"
+              selectionColor={color.brand.primary}
+              style={[styles.sessionTitle, styles.sessionTitleInput, inlineRenameInputWebStyle]}
+              testID="worker-v5-kael-session-title-input"
+              underlineColorAndroid="transparent"
+              value={draftTitle}
+            />
+          ) : (
+            <Text numberOfLines={1} style={styles.sessionTitle}>{title}</Text>
+          )}
+        </View>
+        <Text numberOfLines={1} style={styles.sessionMeta}>{meta}</Text>
+      </View>
+      {renaming ? (
+        <View style={styles.inlineRenameActions} testID={`worker-v5-kael-session-rename-actions-${session.id}`}>
+          <Pressable
+            accessibilityLabel={copy.cancel}
+            accessibilityRole="button"
+            onPress={onCancelRename}
+            style={({ pressed }) => [styles.inlineRenameCancel, pressed ? styles.pressedReduced : null]}
+            testID="worker-v5-kael-session-title-cancel"
+          >
+            <Text style={styles.inlineRenameCancelText}>{copy.cancel}</Text>
+          </Pressable>
+          <Pressable
+            accessibilityLabel={copy.save}
+            accessibilityRole="button"
+            accessibilityState={{ disabled: draftTitle.trim().length === 0 || pending }}
+            disabled={draftTitle.trim().length === 0 || pending}
+            onPress={onSaveRename}
+            style={({ pressed }) => [styles.inlineRenameSave, draftTitle.trim().length === 0 || pending ? styles.disabled : null, pressed ? styles.pressedReduced : null]}
+            testID="worker-v5-kael-session-title-save"
+          >
+            <Text style={styles.inlineRenameSaveText}>{copy.save}</Text>
+          </Pressable>
+        </View>
+      ) : null}
+      {!renaming && selected ? <Text style={styles.check}>✓</Text> : null}
+    </>
+  )
   return (
     <View style={styles.sessionGroup}>
       <View
@@ -84,30 +158,24 @@ export function WorkerV5KaelSessionRow({
         ]}
         testID={`worker-v5-kael-session-row-${session.id}`}
       >
-        <Pressable
-          accessibilityLabel={title}
-          accessibilityRole="button"
-          accessibilityState={{ busy: pending, selected }}
-          disabled={pending}
-          onPress={() => onSelect(session.id)}
-          style={({ pressed }) => [styles.sessionMain, pressed && !pending ? (reduceMotion ? styles.pressedReduced : styles.pressed) : null]}
-          testID={`worker-v5-kael-session-${session.id}`}
-        >
-          <View style={[styles.statusDot, selected ? styles.statusDotSelected : null]} />
-          <View style={styles.sessionCopy}>
-            <View style={styles.sessionTitleRow}>
-              {pinned ? (
-                <View accessibilityLabel={copy.pinned} style={styles.pinnedIcon} testID={`worker-v5-kael-session-pinned-${session.id}`}>
-                  <WorkerV5KaelSessionIcon filled kind="pin" />
-                </View>
-              ) : null}
-              <Text numberOfLines={1} style={styles.sessionTitle}>{title}</Text>
-            </View>
-            <Text numberOfLines={1} style={styles.sessionMeta}>{meta}</Text>
+        {renaming ? (
+          <View style={styles.sessionMain} testID={`worker-v5-kael-session-${session.id}`}>
+            {titleAndMeta}
           </View>
-          {selected ? <Text style={styles.check}>✓</Text> : null}
-        </Pressable>
-        <Pressable
+        ) : (
+          <Pressable
+            accessibilityLabel={title}
+            accessibilityRole="button"
+            accessibilityState={{ busy: pending, selected }}
+            disabled={pending}
+            onPress={() => onSelect(session.id)}
+            style={({ pressed }) => [styles.sessionMain, pressed && !pending ? (reduceMotion ? styles.pressedReduced : styles.pressed) : null]}
+            testID={`worker-v5-kael-session-${session.id}`}
+          >
+            {titleAndMeta}
+          </Pressable>
+        )}
+        {!renaming ? <Pressable
           accessibilityLabel={`${copy.more} ${title}`}
           accessibilityRole="button"
           accessibilityState={{ busy: pending, expanded: actionOpen || deleting || renaming }}
@@ -118,7 +186,7 @@ export function WorkerV5KaelSessionRow({
           testID={`worker-v5-kael-session-actions-${session.id}`}
         >
           <WorkerV5KaelSessionIcon kind="more" />
-        </Pressable>
+        </Pressable> : null}
       </View>
 
       {actionOpen ? (
@@ -146,40 +214,6 @@ export function WorkerV5KaelSessionRow({
           }}
           sessionId={session.id}
         />
-      ) : null}
-      {renaming ? (
-        <View style={styles.renameEditor} testID={`worker-v5-kael-session-rename-editor-${session.id}`}>
-          <KaelTextField
-            accessibilityLabel={copy.renamePlaceholder}
-            autoCapitalize="sentences"
-            autoCorrect
-            autoFocus
-            inputShellStyle={styles.renameInputShell}
-            maxLength={64}
-            onChangeText={onDraftTitleChange}
-            onSubmitEditing={onSaveRename}
-            placeholder={copy.renamePlaceholder}
-            returnKeyType="done"
-            style={styles.renameInput}
-            testID="worker-v5-kael-session-title-input"
-            value={draftTitle}
-          />
-          <View style={styles.renameActions}>
-            <Pressable accessibilityRole="button" onPress={onCancelRename} style={({ pressed }) => [styles.renameSecondary, pressed ? styles.pressedReduced : null]}>
-              <Text style={styles.renameSecondaryText}>{copy.cancel}</Text>
-            </Pressable>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityState={{ disabled: draftTitle.trim().length === 0 }}
-              disabled={draftTitle.trim().length === 0}
-              onPress={onSaveRename}
-              style={({ pressed }) => [styles.renamePrimary, draftTitle.trim().length === 0 ? styles.disabled : null, pressed ? styles.pressedReduced : null]}
-              testID="worker-v5-kael-session-title-save"
-            >
-              <Text style={styles.renamePrimaryText}>{copy.save}</Text>
-            </Pressable>
-          </View>
-        </View>
       ) : null}
     </View>
   )

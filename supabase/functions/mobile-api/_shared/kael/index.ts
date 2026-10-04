@@ -22,6 +22,7 @@ export * from "./kael-guardrails/autonomy-gate.ts";
 export * from "./kael-guardrails/permission-gate.ts";
 export * from "./kael-memory/memory-sanitizer.ts";
 export * from "./kael-memory/memory.ts";
+export * from "./kael-memory/normal-chat-session.ts";
 export * from "./learning/skills/registry.ts";
 export * from "./learning/learning.ts";
 export * from "./tools/knowledge.ts";

@@ -1,6 +1,9 @@
 import assert from 'node:assert/strict'
-import { readFileSync } from 'node:fs'
+import { execFileSync } from 'node:child_process'
+import { mkdtempSync, readFileSync, rmSync, unlinkSync, writeFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { test } from 'node:test'
 
 import {
@@ -10,7 +13,7 @@ import {
   runtimeReleaseBindingsFromRelease,
   runtimeReleaseBindingsFromStagingRelease,
 } from './runtime-release-bindings.mjs'
-import { buildHarnessRelease } from './release-bundle.mjs'
+import { buildHarnessRelease, releaseSourceFilePaths } from './release-bundle.mjs'
 import { buildMobileBinaryAttestation, verifyMobileBinaryAttestation } from './mobile-binary-attestation.mjs'
 import { compareDeploymentState } from './deployment-drift.mjs'
 import { canonicalMigrationEntries } from './migration-history.mjs'
@@ -24,6 +27,38 @@ const runtimeModule = ts.transpileModule(runtimeSource, {
 const { readHarnessRuntimeRelease, harnessHealthPayload } = await import(
   `data:text/javascript;base64,${Buffer.from(runtimeModule).toString('base64')}`
 )
+
+function withGitFixture(run) {
+  const root = mkdtempSync(join(tmpdir(), 'nestscout-release-paths-'))
+  try {
+    execFileSync('git', ['init', '--quiet'], { cwd: root })
+    run(root)
+  } finally {
+    rmSync(root, { recursive: true, force: true })
+  }
+}
+
+test('release source paths exclude only Git-confirmed unstaged deletions', () => {
+  withGitFixture((root) => {
+    writeFileSync(join(root, 'deleted.ts'), 'tracked before deletion')
+    execFileSync('git', ['add', '--', 'deleted.ts'], { cwd: root })
+    unlinkSync(join(root, 'deleted.ts'))
+    writeFileSync(join(root, 'new.ts'), 'untracked source')
+
+    assert.deepEqual(releaseSourceFilePaths(root), ['new.ts'])
+  })
+})
+
+test('release source paths retain missing skip-worktree files so digesting still fails closed', () => {
+  withGitFixture((root) => {
+    writeFileSync(join(root, 'sparse.ts'), 'tracked source')
+    execFileSync('git', ['add', '--', 'sparse.ts'], { cwd: root })
+    execFileSync('git', ['update-index', '--skip-worktree', 'sparse.ts'], { cwd: root })
+    unlinkSync(join(root, 'sparse.ts'))
+
+    assert.deepEqual(releaseSourceFilePaths(root), ['sparse.ts'])
+  })
+})
 
 test('Edge health preserves the release manifest provider readiness contract without exposing credentials', () => {
   const readiness = {

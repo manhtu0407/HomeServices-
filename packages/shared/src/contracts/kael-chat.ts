@@ -5,6 +5,8 @@ import { clientRequestIdSchema, serviceTypeSchema } from './common'
 import { apartmentAccessProfileSchema } from './job'
 import { intakeConfirmationKindSchema } from './stage1-reliability'
 
+export type NormalChatSuggestionRole = 'customer' | 'worker'
+
 function isRealCalendarDate(s: string): boolean {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return false
   const d = new Date(s)
@@ -284,7 +286,7 @@ function truncateWithoutSplittingSurrogate(value: string, maxLength: number): st
 function looksLikePrivateUnitIdentifier(value: string, trailingContext = '') {
   const measurementCandidate = `${value}${trailingContext.slice(0, 8)}`.replace(/\s+/g, '')
   if (/^\d{1,4}(?:[.,]\d{1,2})?(?:m(?:2|²)|㎡|sqm)/iu.test(measurementCandidate)) return false
-  return /\d/u.test(value) || /^[A-Z](?:[A-Z0-9._/-]*)$/.test(value)
+  return /\d/u.test(value) || /^[A-Z](?:[A-Z0-9._/-]*)$/.test(value) || /^[a-z]$/u.test(value)
 }
 
 function followsServiceMeasurementUnit(trailingContext: string) {
@@ -298,7 +300,7 @@ export function scrubSensitiveForLLM(input: string): string {
     .replace(/\b\d{9,12}\b/g, '[id-number]')
     .replace(/\b\d{8}\b/g, '[bank-account]')
     .replace(/\b\d{13,20}\b/g, '[bank-account]')
-    .replace(/\b(?:Vinhomes|Vincom|Masteri|Saigon Pearl|Saigon Royal|Saigon South|Sun Avenue|Sun Village|Sunwah|Estella|Lexington|Diamond Island|Empire City|Eco Green|Phu My Hung|Phú Mỹ Hưng|Hoang Anh Gia Lai|Hoàng Anh Gia Lai|Riviera Point|Vista Verde|Era Town|The Manor|Lancaster|City Garden|Lavila|Centana|Topaz|Jamila|Akari|Sunrise City|Botanica|Pearl Plaza|Landmark|The Sun|Citadines|Lumière|Lumiere)(?:\s+(?!tầng|tang|lầu|lau|căn|can|phòng|phong|block|toà|tòa|toa|số|so|STK|TK)[A-Za-zÀ-ỹ][\wÀ-ỹ.]*){0,2}/gi, '[building]')
+    .replace(/\b(?:Vinhomes|Vincom|Masteri|Saigon Pearl|Saigon Royal|Saigon South|Sun Avenue|Sun Village|Sunwah|Estella|Lexington|Diamond Island|Empire City|Eco Green|Phu My Hung|Phú Mỹ Hưng|Hoang Anh Gia Lai|Hoàng Anh Gia Lai|Riviera Point|Vista Verde|Era Town|The Manor|Lancaster|City Garden|Lavila|Centana|Topaz|Jamila|Akari|Sunrise City|Botanica|Pearl Plaza|Landmark|The Sun|Citadines|Lumière|Lumiere)(?:\s+(?!tầng|tang|lầu|lau|floor|level|căn|can|phòng|phong|block|unit|apartment|apt\.?|room|suite|toà|tòa|toa|số|so|STK|TK)[A-Za-zÀ-ỹ][\wÀ-ỹ.]*){0,2}/gi, '[building]')
     .replace(
       /\b(?:số|so)[^\S\r\n]+\d+[A-Za-z]?\b/gi,
       (match, offset: number, source: string) =>
@@ -310,9 +312,9 @@ export function scrubSensitiveForLLM(input: string): string {
         followsServiceMeasurementUnit(source.slice(offset + match.length)) ? match : '[house-no]',
     )
     .replace(/(?<![:\p{L}\p{N}])\d{1,5}[A-Za-z]?(?:[/-]\d{1,5}[A-Za-z]?)?(?=[^\S\r\n]+(?:đường|duong|phố|pho|hẻm|hem)[^\S\r\n]+\p{L})/giu, '[house-no]')
-    .replace(/\b(?:tầng|tang|lầu|lau)\s*\d{1,3}\b/gi, '[floor]')
+    .replace(/\b(?:tầng|tang|lầu|lau|floor|level)\s*\d{1,3}\b/gi, '[floor]')
     .replace(
-      /(?<![\p{L}\p{N}])(?:căn(?:[^\S\r\n]+hộ)?|can(?:[^\S\r\n]+ho)?|phòng|phong|block|toà|tòa|toa)[^\S\r\n]+([\p{L}\p{N}](?:[\p{L}\p{N}._/-]*[\p{L}\p{N}])?)/giu,
+      /(?<![\p{L}\p{N}])(?:căn(?:[^\S\r\n]+hộ)?|can(?:[^\S\r\n]+ho)?|phòng|phong|block|toà|tòa|toa|(?:unit|apartment|apt\.?|room|suite)(?:[^\S\r\n]+is)?)[^\S\r\n]+([\p{L}\p{N}](?:[\p{L}\p{N}._/-]*[\p{L}\p{N}])?)/giu,
       (match, identifier: string, offset: number, source: string) =>
         looksLikePrivateUnitIdentifier(identifier, source.slice(offset + match.length)) ? '[unit]' : match,
     )

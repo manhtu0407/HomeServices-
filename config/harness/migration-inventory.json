@@ -5,7 +5,7 @@
     "immutableThroughVersion": "20260904113000",
     "sha256": "12da2bac288e0e718e61a27653e8cba9ffdb13b8e9900979407d41e1217b2077"
   },
-  "migrationCount": 427,
+  "migrationCount": 430,
   "migrationEquivalences": {
     "version": "1.0.0",
     "groups": [
@@ -74,10 +74,10 @@
       }
     ]
   },
-  "migrationsSha256": "1997122a0b5120491861b840b142af178e1292c1cb5c25a14cbe59b09b56a641",
+  "migrationsSha256": "bc4bef5bc45c52550ba8437f90e7fa014a3171c2a8b81983784d4278619c386e",
   "databaseTypes": {
     "file": "packages/shared/src/types/database",
-    "sha256": "54bbf52ff17ad72f29b0a560c9332eb44949d3dcad394a2abdef495a33a196fc"
+    "sha256": "0fcc401abfcf616a7bd559a99fd2f77e080b41b7fbf48b8ad29c9c11e9688bd7"
   },
   "entries": [
     {
@@ -3068,6 +3068,27 @@
       "file": "supabase/migrations/20261001024256_admin_operator_capability_parity.sql",
       "sha256": "b633557adc433d78a70d28d2992d8e380be4d16ba7f6b341ad1190ac630cabbd",
       "bytes": 14275
+    },
+    {
+      "version": "20261002160000",
+      "name": "kael_normal_chat_image_foundation",
+      "file": "supabase/migrations/20261002160000_kael_normal_chat_image_foundation.sql",
+      "sha256": "15f4f5ef9f2d03e29a130faf05131b557348d48295d13c3f5d5d6f9f97b700d4",
+      "bytes": 14989
+    },
+    {
+      "version": "20261002170000",
+      "name": "kael_normal_chat_session_memory",
+      "file": "supabase/migrations/20261002170000_kael_normal_chat_session_memory.sql",
+      "sha256": "fc483ceaa2179f8da1a691200a5a3b04f268ef8f5fde6b8c6fdb845b1c3e9bdf",
+      "bytes": 11832
+    },
+    {
+      "version": "20261003100000",
+      "name": "kael_normal_chat_suggestions_routing",
+      "file": "supabase/migrations/20261003100000_kael_normal_chat_suggestions_routing.sql",
+      "sha256": "6df7e4903b09985ff66b57c70c7173d3a8247eb64c8e8a7cb2aaa85d17f1a817",
+      "bytes": 1456
     }
   ]
 }

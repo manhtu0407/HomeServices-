@@ -313,7 +313,15 @@ const workerKaelMediaRefSchema = z
     'Worker Kael media_refs must be Supabase job-media storage refs',
   )
 
-const workerKaelMediaRefsSchema = z.array(workerKaelMediaRefSchema).max(5).default([])
+const workerKaelGeneralChatMediaRefSchema = z.string().min(1).max(500).regex(
+  /^supabase:\/\/kael-chat-media\/[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\/kael-chat\/model_vision\/(?!.*(?:\.\.|\/\/))[^\s?#/]+$/i,
+  'Worker normal-chat media_refs must be private Kael model_vision refs',
+)
+
+const workerKaelMediaRefsSchema = z.array(z.union([
+  workerKaelMediaRefSchema,
+  workerKaelGeneralChatMediaRefSchema,
+])).max(5).default([])
 
 export const workerKaelChatModeSchema = z.enum(['normal', 'intake'])
 
@@ -333,11 +341,20 @@ export const workerKaelChatCreateSchema = z.object({
 })
 
 export const workerKaelChatTurnSchema = z.object({
-  message: z.string().trim().min(1).max(1200),
+  message: z.string().trim().max(1200),
   media_refs: workerKaelMediaRefsSchema,
   language: z.enum(['vi', 'en']).default('vi'),
   client_request_id: clientRequestIdSchema,
-}).strict()
+}).strict().superRefine((value, ctx) => {
+  const hasGeneralChatImage = value.media_refs.some((ref) => ref.startsWith('supabase://kael-chat-media/'))
+  if (!value.message && !hasGeneralChatImage) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'A Worker Kael turn needs text or a normal-chat image.',
+      path: ['message'],
+    })
+  }
+})
 
 export const workerKaelChatRenameSchema = z.object({
   title: z.string().trim().min(1).max(64),

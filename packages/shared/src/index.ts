@@ -9,7 +9,8 @@ export * from './contracts/rfq-price'
 export * from './contracts/ambassador'
 export * from './contracts/discipline'
 export { refundSummarySchema, type RefundSummary } from './contracts/payment'
-export type { MatchingPushDeliveryAckInput } from './contracts/customer'
+export { normalChatSuggestionsRequestSchema, type MatchingPushDeliveryAckInput, type NormalChatSuggestionsRequest, type NormalChatSuggestionsResponse } from './contracts/customer'
+export type { NormalChatSuggestionRole } from './contracts/kael-chat'
 export type {
   KaelEstimateAnalysisReceipt,
   KaelEstimate,

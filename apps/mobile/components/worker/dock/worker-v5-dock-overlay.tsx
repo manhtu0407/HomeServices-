@@ -15,6 +15,7 @@ import {
 import { useGlassAccessibility } from '@/components/ui/accessibility-motion'
 import { DockScrollStateProvider, useDockScrollState, useDockScrollTransform } from '@/components/ui/dock-scroll-state'
 import { KaelNavigationAccessory } from '@/components/ui/kael-navigation-accessory'
+import { useAppLanguage } from '@/lib/app-language'
 
 import type { LiquidNavFilledIconName } from '@/components/customer/dock/liquid-nav-filled-icons'
 import { LiquidTabPlane } from '@/components/customer/dock/liquid-tab-plane'
@@ -52,7 +53,8 @@ export function WorkerDockLayoutProvider({ children }: { children: ReactNode }) 
 export function WorkerRebuildDockOverlay({ active }: { active: WorkerDockActive }) {
   const router = useRouter()
   const params = useLocalSearchParams<WorkerV5RouteParams>()
-  const language = resolveWorkerV5Language(params)
+  const appLanguage = useAppLanguage()
+  const language = resolveWorkerV5Language(params, appLanguage)
   const { width } = useWindowDimensions()
   const insets = useSafeAreaInsets()
   const { reduceMotion, reduceTransparency } = useGlassAccessibility()
