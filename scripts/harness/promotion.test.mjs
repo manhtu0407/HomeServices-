@@ -466,7 +466,9 @@ test('Plan 55 validates mapped producer workflows and fails closed on missing ga
     toState: 'paired_wave_1',
   }, policy)
   assert.ok(!packetProblems.includes(`promotion config: ${missingRollbackProducer}`))
-  assert.ok(packetProblems.includes('Plan 55 paired-wave context does not match source-locked preregistration'))
+  assert.ok(packetProblems.includes(
+    'Plan 55 paired-wave preregistration must use v2 with minimum sample counts and a cost attribution source',
+  ))
   assert.ok(verifyPromotionPacket({
     schemaVersion: '1.0.0',
     environment: 'production',
@@ -591,7 +593,7 @@ test('publication packet proof binds an immutable receipts_validated packet to i
   }
 })
 
-test('Plan 55 paired-wave context comes only from source-locked policy preregistration', () => {
+test('Plan 55 paired-wave promotion requires v2 source-locked preregistration', () => {
   const policy = loadPlan55ProductionOnlyPolicy(resolve('.'))
   const plan55Release = buildHarnessRelease({
     environment: 'production',
@@ -637,7 +639,9 @@ test('Plan 55 paired-wave context comes only from source-locked policy preregist
     ...preregistration,
     sha256: createHash('sha256').update(JSON.stringify(preregistration)).digest('hex'),
   })
-  assert.throws(() => buildPromotionPacket(input), /missing required release gate:/u)
+  const versionTwoRequiredMessage = 'Plan 55 paired-wave preregistration must use v2 with minimum sample counts and a cost attribution source'
+  const versionTwoRequired = new RegExp(versionTwoRequiredMessage, 'u')
+  assert.throws(() => buildPromotionPacket(input), versionTwoRequired)
   assert.throws(() => buildPromotionPacket({
     ...input,
     cohort: 'customer@example.com',
@@ -716,53 +720,24 @@ test('Plan 55 paired-wave context comes only from source-locked policy preregist
     environment: 'production',
     fromState: 'rollback_drill',
     toState: 'paired_wave_1',
+    cohort: safeCohort,
+    observationWindowMinutes: 60,
+    pairedWavePreregistrationSha256: resolved.sha256,
   }
-  assert.ok(verifyPromotionPacket(packetContext, policy)
-    .includes('Plan 55 paired-wave context does not match source-locked preregistration'))
-  assert.ok(verifyPromotionPacket({
-    ...packetContext,
-    cohort: safeCohort,
-    observationWindowMinutes: 60,
-    pairedWavePreregistrationSha256: '0'.repeat(64),
-  }, preregisteredPolicy).includes('Plan 55 paired-wave context does not match source-locked preregistration'))
-  assert.ok(!verifyPromotionPacket({
-    ...packetContext,
-    cohort: safeCohort,
-    observationWindowMinutes: 60,
-    pairedWavePreregistrationSha256: resolved.sha256,
-  }, preregisteredPolicy).includes('Plan 55 paired-wave context does not match source-locked preregistration'))
-
-  assert.ok(!verifyPromotionPacket({
-    ...packetContext,
-    cohort: safeCohort,
-    observationWindowMinutes: 60,
-    pairedWavePreregistrationSha256: resolved.sha256,
-  }, policy).includes('Plan 55 paired-wave context does not match source-locked preregistration'))
+  assert.ok(verifyPromotionPacket(packetContext, preregisteredPolicy).includes(versionTwoRequiredMessage))
+  assert.throws(() => buildPromotionPacket(input), versionTwoRequired)
 
   const productionPacketContext = {
     ...packetContext,
     fromState: 'paired_wave_3',
     toState: 'production',
   }
-  assert.ok(verifyPromotionPacket(productionPacketContext, policy)
-    .includes('Plan 55 paired-wave context does not match source-locked preregistration'))
-  assert.ok(verifyPromotionPacket({
-    ...productionPacketContext,
-    cohort: safeCohort,
-    observationWindowMinutes: 60,
-    pairedWavePreregistrationSha256: '0'.repeat(64),
-  }, preregisteredPolicy).includes('Plan 55 paired-wave context does not match source-locked preregistration'))
-  assert.ok(!verifyPromotionPacket({
-    ...productionPacketContext,
-    cohort: safeCohort,
-    observationWindowMinutes: 60,
-    pairedWavePreregistrationSha256: resolved.sha256,
-  }, preregisteredPolicy).includes('Plan 55 paired-wave context does not match source-locked preregistration'))
+  assert.ok(verifyPromotionPacket(productionPacketContext, policy).includes(versionTwoRequiredMessage))
   assert.throws(() => buildPromotionPacket({
     ...input,
     currentState: 'paired_wave_3',
     targetState: 'production',
-  }), /missing required release gate:/u)
+  }), versionTwoRequired)
 })
 
 test('blocks a canary when a critical threshold fails', () => {
