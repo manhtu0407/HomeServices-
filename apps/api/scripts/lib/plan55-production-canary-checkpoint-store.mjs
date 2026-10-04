@@ -16,6 +16,12 @@ const LOCK_SCHEMA = 'plan55-production-canary-lock/v1'
 const HANDLE_SCHEMA = 'plan55-production-canary-lock-handle/v1'
 const RECOVERY_SCHEMA = 'plan55-production-canary-interrupted-checkpoint/v1'
 const RECOVERY_COMMIT_SCHEMA = 'plan55-production-canary-recovery-commit/v1'
+const ACTOR_LIFECYCLE_KEYS = Object.freeze([
+  'authAdminVerified',
+  'syntheticActorCreated',
+  'actorScopeVerified',
+  'disposableWorkerIsolated',
+])
 const CLEANUP_TABLES = Object.freeze([
   'profiles',
   'customer_profiles',
@@ -383,6 +389,15 @@ function isSafeMetricTree(value, seen = new Set()) {
 
 function sanitizeCleanup(cleanup) {
   assertPlan55Cleanup(cleanup)
+  let actorLifecycle
+  if (cleanup.actorLifecycle !== undefined) {
+    if (!isRecord(cleanup.actorLifecycle) ||
+        !isDeepStrictEqual(Object.keys(cleanup.actorLifecycle).sort(), [...ACTOR_LIFECYCLE_KEYS].sort()) ||
+        ACTOR_LIFECYCLE_KEYS.some((key) => typeof cleanup.actorLifecycle[key] !== 'boolean')) {
+      throw new Error('plan55_checkpoint_integrity_failed')
+    }
+    actorLifecycle = Object.fromEntries(ACTOR_LIFECYCLE_KEYS.map((key) => [key, cleanup.actorLifecycle[key]]))
+  }
   return {
     globalFlags: 'absent',
     canaryFlag: 'absent',
@@ -390,6 +405,7 @@ function sanitizeCleanup(cleanup) {
     authStatus: 404,
     orphanWorkers: cleanup.orphanWorkers,
     rows: Object.fromEntries(CLEANUP_TABLES.map((table) => [table, 0])),
+    ...(actorLifecycle ? { actorLifecycle } : {}),
   }
 }
 

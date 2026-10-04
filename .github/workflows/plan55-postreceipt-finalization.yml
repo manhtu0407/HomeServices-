@@ -1,6 +1,40 @@
 name: Plan 55 post-receipt finalization packet
 
 on:
+  workflow_call:
+    inputs:
+      source_sha:
+        description: Exact locked Plan 55 merge SHA
+        required: true
+        type: string
+      source_run_id:
+        description: Successful Plan 55 Production-only workflow run that produced release and receipt artifacts
+        required: true
+        type: string
+      source_run_attempt:
+        description: Exact successful source workflow attempt
+        required: true
+        type: string
+      release_artifact_id:
+        description: Immutable plan55-release artifact ID from the exact source run
+        required: true
+        type: string
+      receipts_artifact_id:
+        description: Immutable plan55-six-receipts artifact ID from the exact source run
+        required: true
+        type: string
+      gate_evidence_artifact_id:
+        description: Immutable gate-evidence artifact ID containing the source-bound receipt set
+        required: true
+        type: string
+      target_state:
+        description: Policy state for which to build a read-only promotion packet
+        required: true
+        type: string
+    outputs:
+      promotion_artifact_id:
+        description: Immutable artifact ID for the read-only promotion packet
+        value: ${{ jobs.finalize-packet.outputs.promotion_artifact_id }}
   workflow_dispatch:
     inputs:
       source_sha:
@@ -27,20 +61,13 @@ on:
         description: Immutable gate-evidence artifact ID containing the source-bound receipt set
         required: true
         type: string
-      cohort_id:
-        description: Safe opaque cohort ID for a paired-wave packet; never include personal data
-        required: false
-        type: string
-      observation_window_minutes:
-        description: Positive integer observation window for a paired-wave packet
-        required: false
-        type: string
       target_state:
         description: Policy state for which to build a read-only promotion packet
         required: true
         type: choice
         options:
           - receipts_validated
+          - rollback_drill
           - paired_wave_1
           - paired_wave_2
           - paired_wave_3
@@ -59,6 +86,8 @@ jobs:
     if: github.ref == 'refs/heads/main' && inputs.source_sha == github.sha
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    outputs:
+      promotion_artifact_id: ${{ steps.receipt-packet.outputs.artifact-id || steps.non-deploying-packet.outputs.artifact-id }}
     permissions:
       actions: read
       contents: read
@@ -121,6 +150,11 @@ jobs:
 
           const sourceWorkflow = '.github/workflows/ci.yml'
           const gateEvidenceWorkflow = '.github/workflows/plan55-gate-evidence-package.yml'
+          const gateEvidenceInSourceRun = sourceRunId === Number(process.env.GITHUB_RUN_ID) &&
+            sourceRunAttempt === Number(process.env.GITHUB_RUN_ATTEMPT)
+          const gateEvidenceWorkflowPaths = gateEvidenceInSourceRun
+            ? [sourceWorkflow]
+            : [gateEvidenceWorkflow]
           const download = (artifactId, artifactNamePrefix, expectedRunId, expectedRunAttempt,
             trustedWorkflowPaths = [sourceWorkflow]) => downloadPlan55GitHubRunArtifact({
             repository: policy.repository,
@@ -136,8 +170,9 @@ jobs:
           const [releaseArtifact, receiptsArtifact, gateEvidenceArtifact] = await Promise.all([
             download(releaseArtifactId, 'plan55-release', sourceRunId, sourceRunAttempt),
             download(receiptsArtifactId, 'plan55-six-receipts', sourceRunId, sourceRunAttempt),
-            download(gateEvidenceArtifactId, 'plan55-gate-evidence', undefined,
-              undefined, [gateEvidenceWorkflow]),
+            download(gateEvidenceArtifactId, 'plan55-gate-evidence',
+              gateEvidenceInSourceRun ? sourceRunId : undefined,
+              gateEvidenceInSourceRun ? sourceRunAttempt : undefined, gateEvidenceWorkflowPaths),
           ])
           if (releaseArtifact.workflowPath !== sourceWorkflow ||
               receiptsArtifact.workflowPath !== sourceWorkflow) {
@@ -232,36 +267,17 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           PLAN55_TARGET_STATE: ${{ inputs.target_state }}
           PLAN55_ACTOR: ${{ github.actor }}
-          PLAN55_COHORT_ID: ${{ inputs.cohort_id }}
-          PLAN55_OBSERVATION_WINDOW_MINUTES: ${{ inputs.observation_window_minutes }}
         run: |
           set -euo pipefail
           node scripts/harness/promotion.mjs --check-plan55
           case "$PLAN55_TARGET_STATE" in
             receipts_validated) from_state=service_cleanup ;;
-            paired_wave_1) from_state=receipts_validated ;;
+            rollback_drill) from_state=receipts_validated ;;
+            paired_wave_1) from_state=rollback_drill ;;
             paired_wave_2) from_state=paired_wave_1 ;;
             paired_wave_3) from_state=paired_wave_2 ;;
             production) from_state=paired_wave_3 ;;
             *) echo "plan55_invalid_target_state" >&2; exit 1 ;;
-          esac
-          cohort_args=()
-          case "$PLAN55_TARGET_STATE" in
-            paired_wave_1|paired_wave_2|paired_wave_3)
-              if [[ ! "$PLAN55_COHORT_ID" =~ ^plan55-cohort-[0-9a-f]{32}$ ||
-                    ! "$PLAN55_OBSERVATION_WINDOW_MINUTES" =~ ^[1-9][0-9]*$ ]]; then
-                echo "plan55_cohort_context_required" >&2
-                exit 1
-              fi
-              cohort_args+=(--cohort "$PLAN55_COHORT_ID"
-                --observation-window-minutes "$PLAN55_OBSERVATION_WINDOW_MINUTES")
-              ;;
-            *)
-              if [[ -n "$PLAN55_COHORT_ID" || -n "$PLAN55_OBSERVATION_WINDOW_MINUTES" ]]; then
-                echo "plan55_cohort_context_not_allowed" >&2
-                exit 1
-              fi
-              ;;
           esac
           node scripts/harness/promotion.mjs --plan55 \
             --release artifacts/harness/release-manifest.json \
@@ -269,8 +285,58 @@ jobs:
             --gate-receipts artifacts/harness/gate-evidence/gate-evidence-set.json \
             --from "$from_state" --to "$PLAN55_TARGET_STATE" \
             --approval "$PLAN55_ACTOR:$GITHUB_RUN_ID" \
-            --output artifacts/harness/promotion-packet.json "${cohort_args[@]}"
+            --output artifacts/harness/promotion-packet.json
+      - name: Build the publication proof only for the validated-receipts packet
+        if: inputs.target_state == 'receipts_validated'
+        env:
+          PLAN55_REPOSITORY: ${{ github.repository }}
+          PLAN55_SOURCE_SHA: ${{ inputs.source_sha }}
+          PLAN55_GITHUB_SHA: ${{ github.sha }}
+          PLAN55_GITHUB_REF: ${{ github.ref }}
+          PLAN55_EVENT_NAME: ${{ github.event_name }}
+          PLAN55_RUN_ID: ${{ github.run_id }}
+          PLAN55_RUN_ATTEMPT: ${{ github.run_attempt }}
+        run: |
+          node --input-type=module <<'NODE'
+          import { readFileSync, writeFileSync } from 'node:fs'
+          import {
+            buildPlan55PublicationPacketProof,
+            loadPlan55ProductionOnlyPolicy,
+          } from './scripts/harness/promotion.mjs'
+
+          const policy = loadPlan55ProductionOnlyPolicy(process.cwd())
+          const release = JSON.parse(readFileSync('artifacts/harness/release-manifest.json', 'utf8'))
+          const packetBytes = readFileSync('artifacts/harness/promotion-packet.json')
+          const proof = buildPlan55PublicationPacketProof({
+            root: process.cwd(),
+            policy,
+            release,
+            packetBytes,
+            repository: process.env.PLAN55_REPOSITORY,
+            sourceSha: process.env.PLAN55_SOURCE_SHA,
+            githubSha: process.env.PLAN55_GITHUB_SHA,
+            githubRef: process.env.PLAN55_GITHUB_REF,
+            eventName: process.env.PLAN55_EVENT_NAME,
+            runId: process.env.PLAN55_RUN_ID,
+            runAttempt: Number(process.env.PLAN55_RUN_ATTEMPT),
+          })
+          writeFileSync('artifacts/harness/publication-packet-proof.json',
+            `${JSON.stringify(proof)}\n`, { flag: 'wx' })
+          NODE
+      - name: Publish the receipt packet and publication proof
+        id: receipt-packet
+        if: inputs.target_state == 'receipts_validated'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: plan55-promotion-packet-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            artifacts/harness/promotion-packet.json
+            artifacts/harness/publication-packet-proof.json
+          if-no-files-found: error
+          retention-days: 90
       - name: Publish the non-deploying promotion packet
+        id: non-deploying-packet
+        if: inputs.target_state != 'receipts_validated'
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: plan55-promotion-packet-${{ github.run_id }}-${{ github.run_attempt }}

@@ -132,6 +132,8 @@ const SYNTHETIC_CLEANUP_TABLES = new Set([
   'worker_payout_methods',
   'worker_withdrawal_requests',
 ])
+const STAGE1_FAILURE_COHORT_ID = /^synthetic-stage1-[0-9a-f]{12}-[0-9a-f]{12}-[A-Za-z0-9_-]{1,48}$/u
+const PLAN55_FAILURE_COHORT_ID = /^synthetic-plan55-[0-9a-f]{32}$/u
 
 function auditDollarQuotedBodies(source, problems) {
   for (const block of source.matchAll(/(\$[A-Za-z_][A-Za-z0-9_]*\$|\$\$)([\s\S]*?)\1/gu)) {
@@ -224,7 +226,10 @@ export function buildReleaseFailureReceipt(input) {
     generatedAt: new Date(input.now ?? Date.now()).toISOString(),
     receiptSha256: '',
   }
-  if (receipt.cohortId !== null && !/^synthetic-stage1-[0-9a-f]{12}-[0-9a-f]{12}-[A-Za-z0-9_-]{1,48}$/u.test(receipt.cohortId)) {
+  const validCohort = release.releaseLane === 'plan55-production-only'
+    ? PLAN55_FAILURE_COHORT_ID.test(receipt.cohortId ?? '')
+    : receipt.cohortId === null || STAGE1_FAILURE_COHORT_ID.test(receipt.cohortId)
+  if (!validCohort) {
     throw new Error('failure receipt cohort is invalid')
   }
   receipt.receiptSha256 = releaseFailureReceiptSha256(receipt)

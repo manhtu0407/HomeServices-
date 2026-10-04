@@ -7,6 +7,13 @@ on:
         description: Exact merged source SHA on default main descended from the pinned Production release base
         required: true
         type: string
+    outputs:
+      receipts_artifact_id:
+        description: Immutable exact-run artifact containing all six service receipts
+        value: ${{ jobs.validate-six-receipts.outputs.receipts_artifact_id }}
+      promotion_artifact_id:
+        description: Read-only post-receipt promotion packet artifact ID
+        value: ${{ jobs.finalize-receipts-packet.outputs.promotion_artifact_id }}
     secrets:
       ANTHROPIC_API_KEY:
         required: false
@@ -298,6 +305,7 @@ jobs:
             --hosted-before artifacts/release/hosted-before.json \
             --hosted-rollback-snapshot artifacts/release/hosted-rollback-snapshot.json \
             --rollback-mobile-source-sha256 artifacts/release/rollback-mobile-source-sha256.txt \
+            --mobile-binary-attestation artifacts/release/mobile-binary-attestation.json \
             --output artifacts/release/plan55-gate-evidence
           echo "release_id=$(node -p "require('./artifacts/release/release.json').releaseId")" >> "$GITHUB_OUTPUT"
           echo "source_sha=$GITHUB_SHA" >> "$GITHUB_OUTPUT"
@@ -453,7 +461,10 @@ jobs:
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: plan55-release-${{ github.run_id }}-${{ github.run_attempt }}
-          path: artifacts/release
+          path: |
+            artifacts/release
+            artifacts/rollback/supabase/config.toml
+            artifacts/rollback/supabase/functions/mobile-api
           if-no-files-found: warn
           retention-days: 90
 
@@ -517,6 +528,8 @@ jobs:
     if: always() && needs.deploy_guard_off.result == 'success' && needs.hvac.result == 'success' && needs.handyman.result == 'success' && needs.cleaning.result == 'success' && needs.upholstery.result == 'success' && needs.plumbing.result == 'success' && needs.electrical.result == 'success'
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    outputs:
+      receipts_artifact_id: ${{ steps.receipts.outputs.artifact-id }}
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
         with:
@@ -590,6 +603,7 @@ jobs:
           for (const [gate, bytes] of files) writeFileSync(resolve(output, `${gate}.json`), bytes, { flag: 'wx' })
           NODE
       - name: Preserve exact six-receipt aggregate
+        id: receipts
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
@@ -602,3 +616,29 @@ jobs:
           if-no-files-found: error
           include-hidden-files: true
           retention-days: 90
+
+  package-receipt-gate-evidence:
+    needs: [deploy_guard_off, validate-six-receipts]
+    if: needs.deploy_guard_off.result == 'success' && needs.validate-six-receipts.result == 'success'
+    uses: ./.github/workflows/plan55-gate-evidence-package.yml
+    with:
+      source_sha: ${{ inputs.source_sha }}
+      source_run_id: ${{ github.run_id }}
+      source_run_attempt: ${{ github.run_attempt }}
+      release_artifact_id: ${{ needs.deploy_guard_off.outputs.release_artifact_id }}
+      target_state: receipts_validated
+      evidence_artifacts_json: >-
+        [{"gate":"plan55-six-current-source-receipts","artifact_id":${{ needs.validate-six-receipts.outputs.receipts_artifact_id }},"artifact_name_prefix":"plan55-six-receipts","evidence_path":"artifacts/release/gate-evidence/plan55-six-current-source-receipts.json"},{"gate":"plan55-six-cleanup-passes","artifact_id":${{ needs.validate-six-receipts.outputs.receipts_artifact_id }},"artifact_name_prefix":"plan55-six-receipts","evidence_path":"artifacts/release/gate-evidence/plan55-six-cleanup-passes.json"}]
+
+  finalize-receipts-packet:
+    needs: [deploy_guard_off, validate-six-receipts, package-receipt-gate-evidence]
+    if: needs.deploy_guard_off.result == 'success' && needs.validate-six-receipts.result == 'success' && needs.package-receipt-gate-evidence.result == 'success'
+    uses: ./.github/workflows/plan55-postreceipt-finalization.yml
+    with:
+      source_sha: ${{ inputs.source_sha }}
+      source_run_id: ${{ github.run_id }}
+      source_run_attempt: ${{ github.run_attempt }}
+      release_artifact_id: ${{ needs.deploy_guard_off.outputs.release_artifact_id }}
+      receipts_artifact_id: ${{ needs.validate-six-receipts.outputs.receipts_artifact_id }}
+      gate_evidence_artifact_id: ${{ needs.package-receipt-gate-evidence.outputs.gate_artifact_id }}
+      target_state: receipts_validated

@@ -426,19 +426,30 @@ test('synthetic actor refreshes its in-memory session without changing actor ide
   const epoch = Math.floor(currentNow.getTime() / 1000)
   const refreshRequests = []
   let refreshedUserId = actorId
+  let actorExists = false
+  let actorEmail = null
   const admin = {
     auth: {
       admin: {
-        createUser: async () => ({ data: { user: { id: actorId } }, error: null }),
-        deleteUser: async () => ({ error: null }),
-        getUserById: async () => ({
-          data: { user: { id: actorId, app_metadata: { role: 'customer', plan55_disposable: true } } },
-          error: null,
-        }),
+        createUser: async (attributes) => {
+          actorExists = true
+          actorEmail = attributes.email
+          return { data: { user: { id: actorId, email: attributes.email } }, error: null }
+        },
+        deleteUser: async () => { actorExists = false; return { error: null } },
+        getUserById: async () => actorExists
+          ? { data: { user: { id: actorId, email: actorEmail, app_metadata: { role: 'customer', plan55_disposable: true } } }, error: null }
+          : { data: { user: null }, error: { status: 404, code: 'user_not_found' } },
       },
     },
     from(table) {
-      assert.equal(table, 'profiles')
+      if (table !== 'profiles') {
+        return {
+          select: (_column, options) => ({
+            eq: async () => options?.head ? { count: 0, error: null } : { data: [], error: null },
+          }),
+        }
+      }
       return {
         select: () => ({
           eq: () => ({ maybeSingle: async () => ({ data: { id: actorId, role: 'customer' }, error: null }) }),
@@ -511,7 +522,7 @@ test('ambiguous Auth creation cleans the pre-recorded synthetic actor by its exa
           authIdentityReads += 1
           assert.equal(userId, actorId)
           return actorExists
-            ? { data: { user: { id: actorId, app_metadata: { role: 'customer', plan55_disposable: true } } }, error: null }
+            ? { data: { user: { id: actorId, email: createdAttributes.email, app_metadata: { role: 'customer', plan55_disposable: true } } }, error: null }
             : { data: { user: null }, error: { status: 404, code: 'user_not_found' } }
         },
         deleteUser: async (userId) => {
@@ -560,6 +571,150 @@ test('ambiguous Auth creation cleans the pre-recorded synthetic actor by its exa
   assert.ok(authIdentityReads >= 2)
   assert.equal(createFailure?.message, 'plan55_canary_actor_setup_failed')
   assert.deepEqual(managementReads, [])
+})
+
+test('canary enable requires source preflight and exact actor-scoped secret readback', async (t) => {
+  const rootDir = await mkdtemp(join(tmpdir(), 'plan55-actor-scope-'))
+  t.after(() => rm(rootDir, { recursive: true, force: true }))
+  const actorId = validEnvironment().PLAN55_CANARY_ACTOR_ID
+  const sourceSha = 'a'.repeat(40)
+  const health = {
+    service: 'mobile-api',
+    status: 'ok',
+    environment: {
+      project_ref: PRODUCTION_PROJECT_REF,
+      provider_configuration_class: 'production-locked',
+      webhook_configuration_class: 'production-signed',
+    },
+    release: {
+      registered: true,
+      git_sha: sourceSha,
+      release_id: `harness-${sourceSha.slice(0, 12)}-abcdef`,
+      deployment_id: `${PRODUCTION_PROJECT_REF}_mobile-api_1`,
+      manifest_sha256: 'b'.repeat(64),
+      bundle_sha256: 'c'.repeat(64),
+      source_bundle_sha256: 'd'.repeat(64),
+      edge_bundle_sha256: 'e'.repeat(64),
+      release_lane: 'plan55-production-only',
+      client_compatibility: {
+        gitSha: PLAN55_PRODUCTION_SOURCE_BASE.sha,
+        releaseId: PLAN55_PRODUCTION_SOURCE_BASE.releaseId,
+        contractEpoch: 2,
+        ios: {
+          applicationId: 'com.phanmanhtu.homeservices',
+          minimumBuildNumber: 730,
+          easBuildId: '123e4567-e89b-42d3-a456-426614174000',
+          runtimeVersion: '4.9.0',
+        },
+      },
+      provider_readiness: { anthropic: true, global_ai_enabled: true, durable_guards: true },
+    },
+  }
+  let actorEmail = null
+  let actorExists = false
+  let scopedSecrets = []
+  let mismatchReadback = false
+  const admin = {
+    auth: {
+      admin: {
+        getUserById: async () => actorExists
+          ? { data: { user: { id: actorId, email: actorEmail, app_metadata: { role: 'customer', plan55_disposable: true } } }, error: null }
+          : { data: { user: null }, error: { status: 404, code: 'user_not_found' } },
+        createUser: async (attributes) => {
+          actorExists = true
+          actorEmail = attributes.email
+          return { data: { user: { id: actorId, email: actorEmail } }, error: null }
+        },
+        deleteUser: async () => { actorExists = false; return { error: null } },
+      },
+    },
+    from(table) {
+      if (table === 'profiles') {
+        return { select: (_column, options) => options?.head
+          ? { eq: async () => ({ count: 0, error: null }) }
+          : { eq: () => ({ maybeSingle: async () => ({ data: { id: actorId, role: 'customer' }, error: null }) }) } }
+      }
+      return { select: (_column, options) => ({ eq: async () => options?.head
+        ? { count: 0, error: null }
+        : { data: [], error: null } }) }
+    },
+  }
+  const anonymous = {
+    auth: {
+      signInWithPassword: async () => ({
+        data: { session: {
+          user: { id: actorId }, access_token: 'synthetic-test-token', refresh_token: 'refresh-token', expires_at: 4_102_444_800,
+        } },
+        error: null,
+      }),
+    },
+  }
+  const fetchImpl = async (url, init = {}) => {
+    const target = String(url)
+    if (target === `${PRODUCTION_MOBILE_API_URL}/harness/health`) {
+      return new Response(JSON.stringify(health), { status: 200 })
+    }
+    if (target.endsWith(`/projects/${PRODUCTION_PROJECT_REF}/secrets`)) {
+      if (init.method === 'GET') {
+        const values = mismatchReadback
+          ? scopedSecrets.map((item) => item.name.endsWith('_CANARY_USER_ID')
+            ? { ...item, value: '123e4567-e89b-42d3-a456-426614174099' }
+            : item)
+          : scopedSecrets
+        return new Response(JSON.stringify(values), { status: 200 })
+      }
+      if (init.method === 'POST') {
+        scopedSecrets = JSON.parse(init.body)
+        return new Response(JSON.stringify({ created: true }), { status: 200 })
+      }
+      if (init.method === 'DELETE') {
+        scopedSecrets = []
+        return new Response(JSON.stringify({ deleted: true }), { status: 200 })
+      }
+    }
+    throw new Error('unexpected_test_request')
+  }
+  const operations = await createPlan55ProductionCanaryOperations({
+    env: validEnvironment(),
+    fetchImpl,
+    checkpointRoot: rootDir,
+    sleep: async () => {},
+    clientFactory: (_url, key) => key.startsWith('test-service') ? admin : anonymous,
+    sourceAttestationProvider: async () => buildSourceAttestation(sourceSha),
+    holdoutAttestationEvidenceProvider: async (input) => buildHoldoutAttestationEvidence(input),
+  })
+  await assert.rejects(
+    operations.enableActorCanary('hvac', { id: actorId, synthetic: true }),
+    { message: 'plan55_canary_actor_scope_invalid' },
+  )
+  await operations.preflight()
+
+  const actor = await operations.createSyntheticActor('hvac')
+  await operations.enableActorCanary('hvac', actor)
+  assert.deepEqual(scopedSecrets, [
+    { name: 'KAEL_PLAYBOOK_HVAC_CANARY_ENABLED', value: 'true' },
+    { name: 'KAEL_PLAYBOOK_HVAC_CANARY_USER_ID', value: actorId },
+  ])
+  const successfulCleanup = await operations.cleanupService({ service: 'hvac', actor, flagMayBeEnabled: true })
+  assert.deepEqual(successfulCleanup.actorLifecycle, {
+    authAdminVerified: true,
+    syntheticActorCreated: true,
+    actorScopeVerified: true,
+    disposableWorkerIsolated: true,
+  })
+  assert.deepEqual(scopedSecrets, [])
+
+  mismatchReadback = true
+  const mismatchedActor = await operations.createSyntheticActor('hvac')
+  await assert.rejects(
+    operations.enableActorCanary('hvac', mismatchedActor),
+    { message: 'plan55_canary_actor_scope_readback_mismatch' },
+  )
+  const mismatchedCleanup = await operations.cleanupService({
+    service: 'hvac', actor: mismatchedActor, flagMayBeEnabled: true,
+  })
+  assert.equal(mismatchedCleanup.actorLifecycle.actorScopeVerified, false)
+  assert.deepEqual(scopedSecrets, [])
 })
 
 test('preflight derives source-bound proofs without a plan55 field on public Production health', async (t) => {
@@ -709,6 +864,40 @@ test('live chat requests retain the current Production client identity while att
   let chatHeaders
   let sourceDrift = false
   let hostedEdgeReads = 0
+  const actorId = validEnvironment().PLAN55_CANARY_ACTOR_ID
+  let actorEmail = null
+  let actorExists = false
+  const admin = {
+    auth: {
+      admin: {
+        getUserById: async () => actorExists
+          ? { data: { user: { id: actorId, email: actorEmail, app_metadata: { role: 'customer', plan55_disposable: true } } }, error: null }
+          : { data: { user: null }, error: { status: 404, code: 'user_not_found' } },
+        createUser: async (attributes) => {
+          actorExists = true
+          actorEmail = attributes.email
+          return { data: { user: { id: actorId, email: actorEmail } }, error: null }
+        },
+        deleteUser: async () => { actorExists = false; return { error: null } },
+      },
+    },
+    from(table) {
+      if (table === 'profiles') {
+        return { select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: { id: actorId, role: 'customer' }, error: null }) }) }) }
+      }
+      return { select: (_column, options) => ({ eq: async () => ({ count: options?.head ? 0 : null, error: null }) }) }
+    },
+  }
+  const anonymous = {
+    auth: {
+      signInWithPassword: async () => ({
+        data: { session: {
+          user: { id: actorId }, access_token: 'synthetic-test-token', refresh_token: 'refresh-token', expires_at: 4_102_444_800,
+        } },
+        error: null,
+      }),
+    },
+  }
   const fetchImpl = async (url, init = {}) => {
     const target = String(url)
     if (target === `${PRODUCTION_MOBILE_API_URL}/harness/health`) {
@@ -748,20 +937,17 @@ test('live chat requests retain the current Production client identity while att
     fetchImpl,
     checkpointRoot: rootDir,
     sleep: async () => {},
-    clientFactory: () => ({ auth: {} }),
+    clientFactory: (_url, key) => key.startsWith('test-service') ? admin : anonymous,
     sourceAttestationProvider: async () => buildSourceAttestation(sourceSha),
     holdoutAttestationEvidenceProvider: async (input) => buildHoldoutAttestationEvidence(input),
   })
   const preflight = await operations.preflight()
+  const actor = await operations.createSyntheticActor('hvac')
   const slice = buildPlan55ServiceSlices('hvac')[0]
 
   await assert.rejects(operations.runSlice({
     service: 'hvac',
-    actor: {
-      id: '123e4567-e89b-42d3-a456-426614174000',
-      synthetic: true,
-      getAccessToken: async () => 'synthetic-test-token',
-    },
+    actor,
     slice,
     deployment: preflight.deployment,
     clientHeaders: preflight.clientHeaders,
@@ -773,11 +959,7 @@ test('live chat requests retain the current Production client identity while att
   sourceDrift = true
   await assert.rejects(operations.runSlice({
     service: 'hvac',
-    actor: {
-      id: '123e4567-e89b-42d3-a456-426614174000',
-      synthetic: true,
-      getAccessToken: async () => 'synthetic-test-token',
-    },
+    actor,
     slice,
     deployment: preflight.deployment,
     clientHeaders: preflight.clientHeaders,
@@ -789,11 +971,7 @@ test('live chat requests retain the current Production client identity while att
 
   await assert.rejects(operations.runSlice({
     service: 'hvac',
-    actor: {
-      id: '123e4567-e89b-42d3-a456-426614174000',
-      synthetic: true,
-      getAccessToken: async () => 'synthetic-test-token',
-    },
+    actor,
     slice,
     deployment: preflight.deployment,
     clientHeaders: preflight.clientHeaders,
@@ -806,6 +984,7 @@ test('live chat requests retain the current Production client identity while att
   }
   assert.equal(chatHeaders?.get('authorization'), 'Bearer synthetic-test-token')
   assert.equal(hostedEdgeReads, 1)
+  actor.clearSession()
 })
 
 test('cleanup retries transient deletion visibility and proves scoped flags, Auth, rows, and workers are clear', async (t) => {
@@ -868,7 +1047,7 @@ test('cleanup retries transient deletion visibility and proves scoped flags, Aut
         },
       },
     },
-    from(table) {
+    from() {
       return {
         select(column, options) {
           return {
@@ -893,7 +1072,6 @@ test('cleanup retries transient deletion visibility and proves scoped flags, Aut
       ? admin
       : { auth: {} },
   })
-  await operations.enableActorCanary('hvac', { id: actorId, synthetic: true })
   const startMarker = {
     schema: 'plan55-service-start/v1',
     service: 'hvac',
@@ -922,6 +1100,12 @@ test('cleanup retries transient deletion visibility and proves scoped flags, Aut
     canaryActorId: 'absent',
     authStatus: 404,
     orphanWorkers: 0,
+    actorLifecycle: {
+      authAdminVerified: false,
+      syntheticActorCreated: false,
+      actorScopeVerified: false,
+      disposableWorkerIsolated: false,
+    },
     rows: {
       profiles: 0,
       customer_profiles: 0,

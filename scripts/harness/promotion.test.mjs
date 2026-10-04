@@ -4,8 +4,10 @@ import { mkdtempSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSyn
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import test from 'node:test'
+import { inspectPlan55GateEvidenceCoverage } from './plan55-gate-receipts.mjs'
 import {
   buildPromotionPacket,
+  buildPlan55PublicationPacketProof,
   buildRollbackPacket,
   canTransition,
   evaluateAbortThresholds,
@@ -13,6 +15,7 @@ import {
   requiredPromotionGates,
   releaseCompatibilityProblems,
   resolvePromotionPath,
+  resolvePlan55PairedWavePreregistration,
   sanitizePromotionEvidence,
   simulateCanaryDecision,
   validatePromotionConfig,
@@ -21,6 +24,15 @@ import {
 import { buildHarnessRelease } from './release-bundle.mjs'
 
 const config = JSON.parse(readFileSync(resolve('config/harness/promotion.json'), 'utf8'))
+
+test('Plan 55 gate producer source contains no duplicate JSON keys', () => {
+  const policySource = readFileSync(resolve('config/harness/plan55-production-only-policy.json'), 'utf8')
+  const producerMap = /"trustedEvidenceWorkflowPathsByGate"\s*:\s*\{([\s\S]*?)^[ \t]*\},/mu.exec(policySource)
+  assert.ok(producerMap, 'trusted evidence producer map is present')
+  const keys = [...producerMap[1].matchAll(/^[ \t]*"([^"]+)"\s*:/gmu)].map((match) => match[1])
+  assert.ok(keys.length > 0, 'trusted evidence producer map is non-empty')
+  assert.equal(new Set(keys).size, keys.length, 'trusted evidence producer keys are unique')
+})
 
 test('promotion CLI paths reject traversal and links escaping the repository root', (t) => {
   const root = mkdtempSync(join(tmpdir(), 'plan55-promotion-root-'))
@@ -114,6 +126,83 @@ function plan55GateReceipts(policy, release, gates, targetState) {
     }]
   }))
 }
+
+function publicationPacketFixture(policy, release) {
+  const gates = [...requiredPromotionGates(policy, 'receipts_validated')].sort()
+  const gateReceipts = Object.fromEntries(gates.map((gate, index) => {
+    const sourceEvidenceBytes = Buffer.from(`${JSON.stringify({ gate, status: 'PASS' })}\n`)
+    const evidenceProof = {
+      schemaVersion: 'plan55-gate-result.v1',
+      gate,
+      status: 'PASS',
+      environment: 'production',
+      projectRef: policy.projectRef,
+      policyId: policy.policyId,
+      policySha256: policy.policySha256,
+      releaseId: release.releaseId,
+      sourceSha: release.gitSha,
+      targetState: 'receipts_validated',
+    }
+    const evidenceBytes = Buffer.from(`${JSON.stringify(evidenceProof)}\n`)
+    const receipt = {
+      schemaVersion: 'plan55-gate-evidence.v2',
+      gate,
+      status: 'PASS',
+      environment: 'production',
+      projectRef: policy.projectRef,
+      policyId: policy.policyId,
+      policySha256: policy.policySha256,
+      releaseId: release.releaseId,
+      sourceSha: release.gitSha,
+      targetState: 'receipts_validated',
+      evidence: {
+        path: `evidence/${gate}.json`,
+        sha256: createHash('sha256').update(evidenceBytes).digest('hex'),
+        sourcePath: `source-results/${gate}.json`,
+        sourceSha256: createHash('sha256').update(sourceEvidenceBytes).digest('hex'),
+      },
+      provenance: {
+        repository: policy.repository,
+        workflowPath: policy.trustedEvidenceWorkflowPathsByGate[gate],
+        runId: '7001',
+        runAttempt: 1,
+        workflowHeadSha: release.gitSha,
+        artifactId: 8000 + index,
+        artifactName: `plan55-gate-${index}-7001-1`,
+        artifactDigest: `sha256:${'f'.repeat(64)}`,
+        artifactEvidencePath: `evidence/${gate}.json`,
+      },
+    }
+    const receiptJson = JSON.stringify(receipt)
+    return [gate, {
+      receipt,
+      receiptSha256: createHash('sha256').update(receiptJson).digest('hex'),
+      receiptFileSha256: createHash('sha256').update(`${receiptJson}\n`).digest('hex'),
+      evidenceSha256: receipt.evidence.sha256,
+      sourceEvidenceBytes,
+      evidenceProof,
+    }]
+  }))
+  const packet = {
+    schemaVersion: '1.0.0',
+    environment: 'production',
+    fromState: 'service_cleanup',
+    toState: 'receipts_validated',
+    releaseId: release.releaseId,
+    gitSha: release.gitSha,
+    releaseBundleSha256: release.bundleSha256,
+    sourceBundleSha256: release.sourceBundleSha256,
+    policyId: policy.policyId,
+    policySha256: policy.policySha256,
+    projectRef: policy.projectRef,
+    passedGates: gates,
+    gateReceipts,
+    packetSha256: '',
+  }
+  packet.packetSha256 = createHash('sha256')
+    .update(JSON.stringify({ ...packet, packetSha256: undefined })).digest('hex')
+  return Buffer.from(`${JSON.stringify(packet)}\n`)
+}
 const releaseTemplate = buildHarnessRelease({
   environment: 'staging',
   gitSha: 'f'.repeat(40),
@@ -164,10 +253,17 @@ test('validates transition, runbook, kill-switch, and SLO policy', () => {
 
 test('Plan 55 has a separate fail-closed Production-only transition policy with no Staging path', () => {
   const policy = loadPlan55ProductionOnlyPolicy(resolve('.'))
-  assert.deepEqual(validatePromotionConfig(policy, { root: resolve('.') }), [])
+  assert.deepEqual(validatePromotionConfig(policy, {
+    root: resolve('.'),
+    targetState: 'paired_wave_1',
+  }), [])
   assert.equal(policy.projectRef, 'iwevizmsedyqozxlawwl')
   assert.equal(policy.repository, 'manhtu0407/HomeServices-')
-  assert.deepEqual(policy.trustedEvidenceWorkflowPaths, ['.github/workflows/ci.yml'])
+  assert.deepEqual(policy.trustedEvidenceWorkflowPaths, [
+    '.github/workflows/ci.yml',
+    '.github/workflows/plan55-postreceipt-finalization.yml',
+    '.github/workflows/plan55-rollback-drill.yml',
+  ])
   assert.ok(validatePromotionConfig({
     ...policy,
     trustedEvidenceWorkflowPaths: ['.github/workflows/not-present.yml'],
@@ -189,10 +285,42 @@ test('Plan 55 has a separate fail-closed Production-only transition policy with 
   assert.equal(canTransition(policy, 'verified', 'guard_deployed_off'), true)
   assert.equal(canTransition(policy, 'paired_wave_3', 'production'), true)
   assert.equal(canTransition(policy, 'service_canary', 'paired_wave_1'), false)
+  assert.equal(canTransition(policy, 'receipts_validated', 'rollback_drill'), true)
+  assert.equal(canTransition(policy, 'rollback_drill', 'paired_wave_1'), true)
+  assert.equal(canTransition(policy, 'receipts_validated', 'paired_wave_1'), false)
   for (const wave of [1, 2, 3]) {
-    assert.ok(policy.requiredGatesByTarget[`paired_wave_${wave}`].includes(`plan55-paired-wave-${wave}-pass`))
     assert.ok(requiredPromotionGates(policy, 'production').includes(`plan55-paired-wave-${wave}-pass`))
   }
+  assert.ok(!policy.requiredGatesByTarget.paired_wave_1.includes('plan55-paired-wave-1-pass'))
+  assert.ok(policy.requiredGatesByTarget.paired_wave_1.includes('plan55-rollback-drill'))
+  assert.deepEqual(policy.requiredGatesByTarget.paired_wave_2, ['plan55-paired-wave-1-pass'])
+  assert.deepEqual(policy.requiredGatesByTarget.paired_wave_3, ['plan55-paired-wave-2-pass'])
+  const beforeFirstWave = requiredPromotionGates(policy, 'rollback_drill')
+  assert.ok(beforeFirstWave.includes('plan55-rollback-preflight'))
+  assert.ok(!beforeFirstWave.includes('plan55-rollback-drill'))
+  assert.deepEqual(policy.requiredGatesByTarget.paired_wave_1, ['plan55-rollback-drill'])
+  assert.deepEqual(requiredPromotionGates(policy, 'paired_wave_1').sort(),
+    [...beforeFirstWave, 'plan55-rollback-drill'].sort())
+  assert.ok(requiredPromotionGates(policy, 'paired_wave_2').includes('plan55-rollback-drill'))
+  for (const [target, priorPass, currentPass] of [
+    ['paired_wave_1', null, 'plan55-paired-wave-1-pass'],
+    ['paired_wave_2', 'plan55-paired-wave-1-pass', 'plan55-paired-wave-2-pass'],
+    ['paired_wave_3', 'plan55-paired-wave-2-pass', 'plan55-paired-wave-3-pass'],
+  ]) {
+    const gates = requiredPromotionGates(policy, target)
+    if (priorPass) assert.ok(gates.includes(priorPass))
+    assert.ok(!gates.includes(currentPass))
+  }
+  const cyclicWaveGate = {
+    ...policy,
+    requiredGatesByTarget: {
+      ...policy.requiredGatesByTarget,
+      paired_wave_1: [...policy.requiredGatesByTarget.paired_wave_1, 'plan55-paired-wave-1-pass'],
+    },
+  }
+  assert.ok(validatePromotionConfig(cyclicWaveGate).includes(
+    'Plan 55 target has unexpected gate: paired_wave_1:plan55-paired-wave-1-pass',
+  ))
   assert.ok(policy.requiredGatesByTarget.production.includes('plan55-post-rollout-cohort-pass'))
   const missingHoldoutGate = {
     ...policy,
@@ -230,6 +358,57 @@ test('Plan 55 has a separate fail-closed Production-only transition policy with 
   ))
 })
 
+test('rollback drill is a wave-one prerequisite and is not duplicated in the wave-two delta', () => {
+  const currentPolicy = loadPlan55ProductionOnlyPolicy(process.cwd())
+  const drillPrerequisites = requiredPromotionGates(currentPolicy, 'rollback_drill')
+  const firstWave = requiredPromotionGates(currentPolicy, 'paired_wave_1')
+  const secondWave = requiredPromotionGates(currentPolicy, 'paired_wave_2')
+
+  assert.ok(drillPrerequisites.includes('plan55-rollback-preflight'))
+  assert.ok(!drillPrerequisites.includes('plan55-rollback-drill'))
+  assert.ok(firstWave.includes('plan55-rollback-drill'))
+  assert.ok(firstWave.includes('plan55-rollback-preflight'))
+  assert.ok(!firstWave.includes('plan55-paired-wave-1-pass'))
+  assert.ok(secondWave.includes('plan55-paired-wave-1-pass'))
+  assert.ok(secondWave.includes('plan55-rollback-drill'))
+  assert.deepEqual(currentPolicy.requiredGatesByTarget.paired_wave_2, ['plan55-paired-wave-1-pass'])
+})
+
+test('Plan 55 validates mapped producer workflows and fails closed on missing gate coverage', () => {
+  const root = resolve('.')
+  const policy = loadPlan55ProductionOnlyPolicy(root)
+  const missingRollbackProducer = 'Plan 55 trusted evidence workflow is missing or outside the repository'
+
+  assert.deepEqual(validatePromotionConfig(policy, { root, targetState: 'rollback_drill' }), [])
+  assert.deepEqual(validatePromotionConfig(policy, { root, targetState: 'paired_wave_1' }), [])
+  assert.deepEqual(validatePromotionConfig(policy, { root, targetState: 'paired_wave_2' }), [])
+  assert.deepEqual(validatePromotionConfig(policy, { root }), [])
+  assert.ok(validatePromotionConfig(policy, { root, targetState: 'unknown' })
+    .includes('Plan 55 promotion target state is invalid'))
+  const waveTwoGates = requiredPromotionGates(policy, 'paired_wave_2')
+  const coverage = inspectPlan55GateEvidenceCoverage({
+    policy,
+    targetState: 'paired_wave_2',
+    requiredGates: waveTwoGates,
+  })
+  assert.equal(coverage.ready, false)
+  assert.ok(coverage.missingApprovedProducerGates.includes('plan55-paired-wave-1-pass'))
+  const packetProblems = verifyPromotionPacket({
+    schemaVersion: '1.0.0',
+    environment: 'production',
+    fromState: 'rollback_drill',
+    toState: 'paired_wave_1',
+  }, policy)
+  assert.ok(!packetProblems.includes(`promotion config: ${missingRollbackProducer}`))
+  assert.ok(packetProblems.includes('Plan 55 paired-wave preregistration is missing or invalid'))
+  assert.ok(verifyPromotionPacket({
+    schemaVersion: '1.0.0',
+    environment: 'production',
+    fromState: 'receipts_validated',
+    toState: 'paired_wave_1',
+  }, policy).includes('promotion packet transition is invalid'))
+})
+
 test('Plan 55 promotion fails closed when a required gate has no semantic verifier', () => {
   const policy = loadPlan55ProductionOnlyPolicy(resolve('.'))
   const plan55Release = buildHarnessRelease({
@@ -265,7 +444,82 @@ test('Plan 55 promotion fails closed when a required gate has no semantic verifi
   })
 })
 
-test('Plan 55 paired-wave packets require a safe cohort ID and positive observation window', () => {
+test('publication packet proof binds an immutable receipts_validated packet to its main-branch run', () => {
+  const policy = loadPlan55ProductionOnlyPolicy(resolve('.'))
+  const release = buildHarnessRelease({
+    environment: 'production',
+    gitSha: '8'.repeat(40),
+    lane: 'plan55-production-only',
+    requireCleanWorktree: false,
+    providerReadiness: releaseTemplate.providerReadiness,
+    hostedBeforeBytes: plan55HostedBeforeBytes(policy),
+  })
+  const packetBytes = publicationPacketFixture(policy, release)
+  const input = {
+    root: resolve('.'),
+    policy,
+    release,
+    packetBytes,
+    repository: policy.repository,
+    sourceSha: release.gitSha,
+    githubSha: release.gitSha,
+    githubRef: 'refs/heads/main',
+    eventName: 'workflow_dispatch',
+    runId: '7002',
+    runAttempt: 2,
+  }
+  const proof = buildPlan55PublicationPacketProof(input)
+
+  assert.equal(proof.schemaVersion, 'plan55-publication-packet-proof.v1')
+  assert.equal(proof.gate, 'plan55-publication-packet')
+  assert.equal(proof.packetTargetState, 'receipts_validated')
+  assert.equal(proof.sourceSha, release.gitSha)
+  assert.equal(proof.releaseId, release.releaseId)
+  assert.equal(proof.producerRunId, '7002')
+  assert.equal(proof.producerRunAttempt, 2)
+  assert.equal(proof.packetFileSha256,
+    createHash('sha256').update(packetBytes).digest('hex'))
+  assert.throws(() => buildPlan55PublicationPacketProof({ ...input, sourceSha: '9'.repeat(40) }),
+    /producer identity is invalid/u)
+  assert.throws(() => buildPlan55PublicationPacketProof({ ...input, githubRef: 'refs/heads/feature' }),
+    /producer identity is invalid/u)
+  assert.throws(() => buildPlan55PublicationPacketProof({ ...input, eventName: 'pull_request' }),
+    /producer identity is invalid/u)
+  assert.throws(() => buildPlan55PublicationPacketProof({ ...input, runAttempt: 0 }),
+    /producer identity is invalid/u)
+
+  const alteredPacket = JSON.parse(packetBytes.toString('utf8'))
+  alteredPacket.toState = 'paired_wave_1'
+  alteredPacket.packetSha256 = createHash('sha256')
+    .update(JSON.stringify({ ...alteredPacket, packetSha256: undefined })).digest('hex')
+  assert.throws(() => buildPlan55PublicationPacketProof({
+    ...input,
+    packetBytes: Buffer.from(`${JSON.stringify(alteredPacket)}\n`),
+  }), /packet identity is invalid/u)
+
+  const incompletePacket = JSON.parse(packetBytes.toString('utf8'))
+  delete incompletePacket.gateReceipts[Object.keys(incompletePacket.gateReceipts)[0]]
+  incompletePacket.packetSha256 = createHash('sha256')
+    .update(JSON.stringify({ ...incompletePacket, packetSha256: undefined })).digest('hex')
+  assert.throws(() => buildPlan55PublicationPacketProof({
+    ...input,
+    packetBytes: Buffer.from(`${JSON.stringify(incompletePacket)}\n`),
+  }), /gate-inventory verification/u)
+
+  for (const key of ['receiptSha256', 'receiptFileSha256', 'evidenceSha256']) {
+    const inconsistentPacket = JSON.parse(packetBytes.toString('utf8'))
+    const firstGate = Object.keys(inconsistentPacket.gateReceipts)[0]
+    inconsistentPacket.gateReceipts[firstGate][key] = '0'.repeat(64)
+    inconsistentPacket.packetSha256 = createHash('sha256')
+      .update(JSON.stringify({ ...inconsistentPacket, packetSha256: undefined })).digest('hex')
+    assert.throws(() => buildPlan55PublicationPacketProof({
+      ...input,
+      packetBytes: Buffer.from(`${JSON.stringify(inconsistentPacket)}\n`),
+    }), /gate-inventory verification/u, key)
+  }
+})
+
+test('Plan 55 paired-wave context comes only from source-locked policy preregistration', () => {
   const policy = loadPlan55ProductionOnlyPolicy(resolve('.'))
   const plan55Release = buildHarnessRelease({
     environment: 'production',
@@ -292,75 +546,67 @@ test('Plan 55 paired-wave packets require a safe cohort ID and positive observat
     release: plan55Release,
     evaluation: plan55Evaluation,
     environment: 'production',
-    currentState: 'receipts_validated',
+    currentState: 'rollback_drill',
     targetState: 'paired_wave_1',
     humanApprovalId: 'approval-1',
     rollbackRelease,
   }
-  const safeCohort = 'plan55-cohort-0123456789abcdef0123456789abcdef'
-  const missingContext = /Plan 55 paired-wave packet requires a safe cohort ID and positive integer observation window/u
-  assert.throws(() => buildPromotionPacket(input), missingContext)
+  const safeCohort = 'synthetic-plan55-0123456789abcdef0123456789abcdef'
+  assert.match(safeCohort, /^synthetic-[a-z0-9-]{8,100}$/u)
+  const missingPreregistration = /Plan 55 paired-wave preregistration is missing or invalid/u
+  const callerContext = /Plan 55 paired-wave values must not be supplied by the caller/u
+  assert.equal(resolvePlan55PairedWavePreregistration(policy), null)
+  assert.throws(() => buildPromotionPacket(input), missingPreregistration)
   assert.throws(() => buildPromotionPacket({
     ...input,
     cohort: 'customer@example.com',
     observationWindowMinutes: 60,
-  }), missingContext)
-  assert.throws(() => buildPromotionPacket({
-    ...input,
-    cohort: '0901234567',
+  }), callerContext)
+
+  const preregistration = {
+    schemaVersion: 'plan55-paired-wave-preregistration.v1',
+    cohortId: safeCohort,
     observationWindowMinutes: 60,
-  }), missingContext)
-  assert.throws(() => buildPromotionPacket({
-    ...input,
-    cohort: 'John-Doe',
-    observationWindowMinutes: 60,
-  }), missingContext)
-  assert.throws(() => buildPromotionPacket({
-    ...input,
-    cohort: ` ${safeCohort} `,
-    observationWindowMinutes: 60,
-  }), missingContext)
-  assert.throws(() => buildPromotionPacket({
-    ...input,
-    cohort: safeCohort,
-    observationWindowMinutes: 0,
-  }), missingContext)
-  assert.throws(() => buildPromotionPacket({
-    ...input,
-    cohort: safeCohort,
-    observationWindowMinutes: 60.5,
-  }), missingContext)
-  assert.throws(() => buildPromotionPacket({
-    ...input,
-    cohort: safeCohort,
-    observationWindowMinutes: Number.MAX_SAFE_INTEGER + 1,
-  }), missingContext)
-  assert.throws(() => buildPromotionPacket({
-    ...input,
-    cohort: safeCohort,
-    observationWindowMinutes: 60,
-  }), /missing required release gate/u)
+  }
+  const preregisteredPolicy = { ...policy, pairedWavePreregistration: preregistration }
+  const resolved = resolvePlan55PairedWavePreregistration(preregisteredPolicy)
+  assert.deepEqual(resolved, {
+    ...preregistration,
+    sha256: createHash('sha256').update(JSON.stringify(preregistration)).digest('hex'),
+  })
+  assert.ok(validatePromotionConfig(preregisteredPolicy).includes('Plan 55 policy source binding is invalid'))
+  assert.throws(() => buildPromotionPacket({ ...input, config: preregisteredPolicy }), /policy source binding is invalid/u)
+
+  const invalidPreregistration = { ...preregistration, cohortId: 'customer@example.com' }
+  assert.equal(resolvePlan55PairedWavePreregistration({
+    ...policy,
+    pairedWavePreregistration: invalidPreregistration,
+  }), null)
+  assert.ok(validatePromotionConfig({
+    ...preregisteredPolicy,
+    pairedWavePreregistration: invalidPreregistration,
+  }).includes('Plan 55 paired-wave preregistration is invalid'))
 
   const packetContext = {
     schemaVersion: '1.0.0',
     environment: 'production',
-    fromState: 'receipts_validated',
+    fromState: 'rollback_drill',
     toState: 'paired_wave_1',
   }
-  const contextError = 'Plan 55 paired-wave packet requires a safe cohort ID and positive integer observation window'
-  for (const [cohort, observationWindowMinutes] of [
-    [null, 60],
-    ['John-Doe', 60],
-    ['plan55-cohort-a', 0],
-    ['plan55-cohort-a', '60'],
-  ]) {
-    assert.ok(verifyPromotionPacket({
-      ...packetContext, cohort, observationWindowMinutes,
-    }, policy).includes(contextError))
-  }
+  assert.ok(verifyPromotionPacket(packetContext, policy)
+    .includes('Plan 55 paired-wave preregistration is missing or invalid'))
+  assert.ok(verifyPromotionPacket({
+    ...packetContext,
+    cohort: safeCohort,
+    observationWindowMinutes: 60,
+    pairedWavePreregistrationSha256: '0'.repeat(64),
+  }, preregisteredPolicy).includes('Plan 55 paired-wave context does not match source-locked preregistration'))
   assert.ok(!verifyPromotionPacket({
-    ...packetContext, cohort: safeCohort, observationWindowMinutes: 60,
-  }, policy).includes(contextError))
+    ...packetContext,
+    cohort: safeCohort,
+    observationWindowMinutes: 60,
+    pairedWavePreregistrationSha256: resolved.sha256,
+  }, preregisteredPolicy).includes('Plan 55 paired-wave context does not match source-locked preregistration'))
 })
 
 test('blocks a canary when a critical threshold fails', () => {

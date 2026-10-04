@@ -37,6 +37,9 @@ const provenance = {
   workflowPath: '.github/workflows/ci.yml',
   runId: '9001',
   runAttempt: 2,
+  runCreatedAt: '2026-10-01T00:00:00.000Z',
+  runStartedAt: '2026-10-01T00:01:00.000Z',
+  runUpdatedAt: '2026-10-01T00:02:00.000Z',
 }
 const edgeSourceSha256 = '1'.repeat(64)
 const runtimeConfigurationSha256 = '2'.repeat(64)

@@ -7,14 +7,18 @@ import test from 'node:test'
 import {
   assertPlan55GateEvidenceCoverage,
   assertPlan55FinalizationArtifactFiles,
+  assertPlan55RollbackDrillFollowsWaveOne,
+  assertPlan55PublicationPacketGateProof,
   buildPlan55CanaryGateEvidenceFiles,
   buildPlan55GateEvidenceArtifact,
   downloadPlan55GitHubRunArtifact,
   inspectPlan55GateEvidenceCoverage,
+  isPlan55GateReceiptRecord,
   loadPlan55GateEvidenceSet,
   PLAN55_DEPLOYED_GUARD_GATES,
   PLAN55_PREFLIGHT_GATE_CHECKS,
   PLAN55_RELEASE_STAGE_GATES,
+  plan55RollbackDrillPrerequisiteGates,
   verifyPlan55GitHubArtifactProvenance,
 } from './plan55-gate-receipts.mjs'
 import { loadPlan55ProductionOnlyPolicy, requiredPromotionGates } from './promotion.mjs'
@@ -25,24 +29,35 @@ import {
 import {
   buildPlan55ReleaseStageGateProofs,
 } from './plan55-release-gate-proofs.mjs'
+import { PROVIDER_READINESS_KEYS } from './release-bundle.mjs'
 
 const sourcePolicy = loadPlan55ProductionOnlyPolicy(resolve('.'))
-const requiredGates = [
+const receiptGates = [
   'plan55-service-slice-integrity-pass',
   'plan55-service-g5-safety-pass',
   'plan55-service-cleanup-pass',
   'plan55-six-current-source-receipts',
   'plan55-six-cleanup-passes',
 ]
+const actorLifecycleGates = [
+  'plan55-auth-admin-verified',
+  'plan55-synthetic-actor-created',
+  'plan55-actor-scope-verified',
+  'plan55-disposable-worker-isolated',
+]
+const requiredGates = [...receiptGates, ...actorLifecycleGates]
+const canaryEvidenceWorkflow = '.github/workflows/ci.yml'
 const policy = {
   ...sourcePolicy,
-  requiredGatesByTarget: Object.fromEntries(Object.keys(sourcePolicy.requiredGatesByTarget).map((target) => [
-    target,
-    target === 'receipts_validated' ? requiredGates : [],
-  ])),
+  requiredGatesByTarget: Object.fromEntries(Object.keys(sourcePolicy.requiredGatesByTarget).map((target) => {
+    let gates = []
+    if (target === 'service_canary') gates = actorLifecycleGates
+    else if (target === 'receipts_validated') gates = receiptGates
+    return [target, gates]
+  })),
   trustedEvidenceWorkflowPathsByGate: Object.fromEntries(requiredGates.map((gate) => [
     gate,
-    '.github/workflows/ci.yml',
+    canaryEvidenceWorkflow,
   ])),
 }
 const release = {
@@ -55,6 +70,168 @@ const targetState = 'receipts_validated'
 
 function digest(bytes) {
   return createHash('sha256').update(bytes).digest('hex')
+}
+
+function artifactProvenance(gate, runId, runCreatedAt, runStartedAt, runUpdatedAt, producerPolicy = sourcePolicy) {
+  return {
+    repository: producerPolicy.repository,
+    workflowPath: producerPolicy.trustedEvidenceWorkflowPathsByGate[gate],
+    runId: String(runId),
+    runAttempt: 1,
+    workflowHeadSha: release.gitSha,
+    artifactId: runId + 100,
+    artifactName: `plan55-${gate}-${runId}-1`,
+    artifactDigest: `sha256:${digest(Buffer.from(String(runId)))}`,
+    artifactEvidencePath: `evidence/${gate}.json`,
+    runCreatedAt,
+    runStartedAt,
+    runUpdatedAt,
+  }
+}
+
+test('rollback drill prerequisites are the exact wave-one inventory without its own result gate', () => {
+  const rollbackGate = 'plan55-rollback-drill'
+  const waveOneGates = requiredPromotionGates(sourcePolicy, 'paired_wave_1').sort()
+  assert.ok(waveOneGates.includes(rollbackGate))
+  assert.deepEqual(plan55RollbackDrillPrerequisiteGates(sourcePolicy),
+    waveOneGates.filter((gate) => gate !== rollbackGate))
+  assert.deepEqual(plan55RollbackDrillPrerequisiteGates({
+    ...sourcePolicy,
+    requiredGatesByTarget: {
+      ...sourcePolicy.requiredGatesByTarget,
+      paired_wave_1: sourcePolicy.requiredGatesByTarget.paired_wave_1
+        .filter((gate) => gate !== rollbackGate),
+    },
+  }), [])
+})
+
+test('rollback drill must follow all wave-one prerequisites and finish before wave one starts', () => {
+  const waveOneGate = 'plan55-paired-wave-1-pass'
+  const rollbackGate = 'plan55-rollback-drill'
+  const prerequisiteGate = 'plan55-rollback-preflight'
+  const waveOneWorkflow = '.github/workflows/plan55-paired-wave.yml'
+  const wavePolicy = {
+    ...sourcePolicy,
+    requiredGatesByTarget: Object.fromEntries(Object.keys(sourcePolicy.requiredGatesByTarget).map((target) => [
+      target,
+      target === 'rollback_drill' ? [prerequisiteGate] :
+        target === 'paired_wave_1' ? [rollbackGate] :
+          target === 'paired_wave_2' ? [waveOneGate] : [],
+    ])),
+    trustedEvidenceWorkflowPaths: [
+      '.github/workflows/ci.yml',
+      waveOneWorkflow,
+      '.github/workflows/plan55-rollback-drill.yml',
+    ],
+    trustedEvidenceWorkflowPathsByGate: {
+      ...sourcePolicy.trustedEvidenceWorkflowPathsByGate,
+      [prerequisiteGate]: '.github/workflows/ci.yml',
+      [rollbackGate]: '.github/workflows/plan55-rollback-drill.yml',
+      [waveOneGate]: waveOneWorkflow,
+    },
+  }
+  const waveOneGates = requiredPromotionGates(wavePolicy, 'paired_wave_1').sort()
+  const waveOnePrerequisites = waveOneGates.filter((gate) => gate !== rollbackGate)
+  const sourceEvidence = new Map(waveOnePrerequisites.map((gate, index) => [gate, {
+    provenance: artifactProvenance(
+      gate, 50 + index, '2026-10-01T10:00:00Z', '2026-10-01T10:00:00Z', '2026-10-01T10:05:00Z', wavePolicy),
+  }]))
+  sourceEvidence.set(rollbackGate, { provenance: artifactProvenance(
+    rollbackGate, 200, '2026-10-01T10:06:00Z', '2026-10-01T10:06:00Z', '2026-10-01T10:20:00Z', wavePolicy) })
+  const input = {
+    targetState: 'paired_wave_1',
+    requiredGates: waveOneGates,
+    sourceEvidence,
+    policy: wavePolicy,
+    release,
+  }
+
+  assert.equal(assertPlan55RollbackDrillFollowsWaveOne(input), true)
+
+  const rollbackBeforePrerequisite = new Map(sourceEvidence)
+  rollbackBeforePrerequisite.set(rollbackGate, { provenance: artifactProvenance(
+    rollbackGate, 200, '2026-10-01T10:04:00Z', '2026-10-01T10:04:00Z', '2026-10-01T10:20:00Z', wavePolicy) })
+  assert.throws(() => assertPlan55RollbackDrillFollowsWaveOne({
+    ...input, sourceEvidence: rollbackBeforePrerequisite,
+  }), /rollback drill workflow did not follow the exact wave-one prerequisites/u)
+
+  const wrongSource = new Map(sourceEvidence)
+  wrongSource.set(rollbackGate, { provenance: {
+    ...artifactProvenance(rollbackGate, 200, '2026-10-01T10:04:00Z', '2026-10-01T10:06:00Z', '2026-10-01T10:20:00Z', wavePolicy),
+    workflowHeadSha: 'b'.repeat(40),
+  } })
+  assert.throws(() => assertPlan55RollbackDrillFollowsWaveOne({
+    ...input, sourceEvidence: wrongSource,
+  }), /rollback drill workflow did not follow the exact wave-one prerequisites/u)
+
+  const missingPrerequisite = new Map(sourceEvidence)
+  missingPrerequisite.delete(prerequisiteGate)
+  assert.throws(() => assertPlan55RollbackDrillFollowsWaveOne({
+    ...input, sourceEvidence: missingPrerequisite,
+  }), /rollback drill workflow did not follow the exact wave-one prerequisites/u)
+
+  const waveOneAfterRollback = new Map(sourceEvidence)
+  waveOneAfterRollback.set(waveOneGate, { provenance: artifactProvenance(
+    waveOneGate, 300, '2026-10-01T10:21:00Z', '2026-10-01T10:22:00Z', '2026-10-01T10:30:00Z', wavePolicy) })
+  const afterWaveOneInput = {
+    ...input,
+    targetState: 'paired_wave_2',
+    requiredGates: requiredPromotionGates(wavePolicy, 'paired_wave_2').sort(),
+    sourceEvidence: waveOneAfterRollback,
+  }
+  assert.equal(assertPlan55RollbackDrillFollowsWaveOne(afterWaveOneInput), true)
+
+  const waveOneStartedTooEarly = new Map(waveOneAfterRollback)
+  waveOneStartedTooEarly.set(waveOneGate, { provenance: artifactProvenance(
+    waveOneGate, 300, '2026-10-01T10:15:00Z', '2026-10-01T10:21:00Z', '2026-10-01T10:30:00Z', wavePolicy) })
+  assert.throws(() => assertPlan55RollbackDrillFollowsWaveOne({
+    ...afterWaveOneInput, sourceEvidence: waveOneStartedTooEarly,
+  }), /rollback drill workflow did not finish before paired wave 1 started/u)
+})
+
+function canonicalJson(value) {
+  const canonicalize = (item) => {
+    if (Array.isArray(item)) return item.map(canonicalize)
+    if (item && typeof item === 'object') {
+      return Object.fromEntries(Object.keys(item).sort().map((key) => [key, canonicalize(item[key])]))
+    }
+    return item
+  }
+  return JSON.stringify(canonicalize(value))
+}
+
+function mobileBinaryAttestation(releaseManifest) {
+  const platforms = Object.fromEntries(['ios', 'android'].map((platform) => {
+    const active = releaseManifest.activeClientCompatibility[platform]
+    return [platform, {
+      easBuildId: active.easBuildId,
+      applicationId: active.applicationId,
+      appVersion: '0.2.0',
+      buildNumber: active.minimumBuildNumber,
+      runtimeVersion: active.runtimeVersion,
+      gitCommitHash: releaseManifest.gitSha,
+      easFingerprintAlgorithm: 'sha1',
+      easFingerprintHash: 'c'.repeat(40),
+      artifactSha256: 'd'.repeat(64),
+      artifactSizeBytes: 1,
+      completedAt: '2026-10-03T00:00:00.000Z',
+      distribution: 'store',
+      profile: 'production',
+    }]
+  }))
+  const receipt = {
+    schemaVersion: 'stage1-mobile-binary-attestation.v2',
+    releaseId: releaseManifest.releaseId,
+    gitSha: releaseManifest.gitSha,
+    sourceFingerprintSha256: releaseManifest.mobileBuildFingerprintSha256,
+    contractEpoch: 2,
+    binaryRelation: 'active_production',
+    platforms,
+    generatedAt: '2026-10-03T00:00:00.000Z',
+    receiptSha256: '',
+  }
+  receipt.receiptSha256 = digest(Buffer.from(canonicalJson({ ...receipt, receiptSha256: undefined })))
+  return receipt
 }
 
 const cleanupRows = Object.freeze({
@@ -79,6 +256,12 @@ function cleanupProof() {
     canaryActorId: 'absent',
     authStatus: 404,
     orphanWorkers: 0,
+    actorLifecycle: {
+      authAdminVerified: true,
+      syntheticActorCreated: true,
+      actorScopeVerified: true,
+      disposableWorkerIsolated: true,
+    },
     rows: { ...cleanupRows },
     reused: true,
   }
@@ -281,9 +464,12 @@ function makeEvidenceSet(t, overrides = {}) {
       },
       provenance: {
         repository: 'manhtu0407/HomeServices-',
-        workflowPath: '.github/workflows/ci.yml',
+        workflowPath: policy.trustedEvidenceWorkflowPathsByGate[gate],
         runId: String(9000 + index),
         runAttempt: 1,
+        runCreatedAt: `2026-10-01T00:${String(index).padStart(2, '0')}:00Z`,
+        runStartedAt: `2026-10-01T00:${String(index).padStart(2, '0')}:15Z`,
+        runUpdatedAt: `2026-10-01T00:${String(index).padStart(2, '0')}:30Z`,
         workflowHeadSha: release.gitSha,
         artifactId,
         artifactName: `plan55-gate-${gate}`,
@@ -348,11 +534,31 @@ test('auto-packages release-stage gates from the exact Production release artifa
     ])),
   }
   const releaseSourceSha = 'a'.repeat(40)
+  const providerReadiness = Object.fromEntries(
+    PROVIDER_READINESS_KEYS.map((provider) => [provider, provider !== 'deepseek']),
+  )
   const releaseManifest = {
     environment: 'production',
     releaseId: `harness-${releaseSourceSha.slice(0, 12)}-${'b'.repeat(12)}`,
     gitSha: releaseSourceSha,
     releaseLane: releasePolicy.releaseLane,
+    mobileBuildFingerprintSha256: 'e'.repeat(64),
+    providerReadiness,
+    providerReadinessFingerprintSha256: digest(Buffer.from(canonicalJson(providerReadiness))),
+    activeClientCompatibility: {
+      ios: {
+        easBuildId: '00000000-0000-4000-8000-000000000001',
+        applicationId: 'com.phanmanhtu.homeservices',
+        minimumBuildNumber: 45,
+        runtimeVersion: '0.2.0',
+      },
+      android: {
+        easBuildId: '00000000-0000-4000-8000-000000000002',
+        applicationId: 'com.phanmanhtu.nestscout',
+        minimumBuildNumber: 4,
+        runtimeVersion: '0.2.0',
+      },
+    },
   }
   const mobileApi = {
     status: 'ACTIVE',
@@ -375,17 +581,61 @@ test('auto-packages release-stage gates from the exact Production release artifa
   const hostedBeforeBytes = Buffer.from(`${JSON.stringify(productionSnapshot)}\n`)
   const hostedRollbackBytes = Buffer.from(`${JSON.stringify(productionSnapshot)}\n`)
   const rollbackSourceBytes = Buffer.from(`${digest(Buffer.from('rollback-mobile-source'))}\n`)
+  const mobileBinaryAttestationBytes = Buffer.from(`${JSON.stringify(mobileBinaryAttestation(releaseManifest))}\n`)
   const provenance = {
     workflowPath: '.github/workflows/ci.yml',
     runId: '97531',
     runAttempt: 2,
+    runCreatedAt: '2026-10-01T01:00:00Z',
+    runStartedAt: '2026-10-01T01:01:00Z',
+    runUpdatedAt: '2026-10-01T01:10:00Z',
   }
+  const syntheticActorIdSha256 = digest(Buffer.from('synthetic-provider-probe-actor'))
+  const androidReceiptIdSha256 = digest(Buffer.from('android-provider-receipt'))
+  const iosReceiptIdSha256 = digest(Buffer.from('ios-provider-receipt'))
+  const providerProbeEvidenceBytes = Buffer.from(`${JSON.stringify({
+    schemaVersion: 'plan55-live-provider-probe.v1',
+    status: 'PASS',
+    environment: 'production',
+    projectRef: releasePolicy.projectRef,
+    releaseId: releaseManifest.releaseId,
+    sourceSha: releaseSourceSha,
+    workflowPath: provenance.workflowPath,
+    runId: provenance.runId,
+    runAttempt: provenance.runAttempt,
+    observedAt: new Date().toISOString(),
+    syntheticActorIdSha256,
+    providers: {
+      android_fcm_v1: {
+        status: 'PASS', provider: 'android_fcm_v1', platform: 'android', transport: 'expo',
+        ticketStatus: 'ok', receiptStatus: 'ok', deviceTokenSha256: '1'.repeat(64),
+        ticketIdSha256: '2'.repeat(64), receiptIdSha256: androidReceiptIdSha256,
+        syntheticActorIdSha256,
+      },
+      ios_apns: {
+        status: 'PASS', provider: 'ios_apns', platform: 'ios', transport: 'expo',
+        ticketStatus: 'ok', receiptStatus: 'ok', deviceTokenSha256: '6'.repeat(64),
+        ticketIdSha256: '4'.repeat(64), receiptIdSha256: iosReceiptIdSha256,
+        syntheticActorIdSha256,
+      },
+      push_receipt_reconciler: {
+        status: 'PASS', provider: 'push_receipt_reconciler', checkedCount: 2,
+        appliedCount: 2, unresolvedCount: 0, failedCount: 0,
+        receiptSetSha256: digest(Buffer.from(canonicalJson([
+          androidReceiptIdSha256, iosReceiptIdSha256,
+        ].sort()))),
+        syntheticActorIdSha256,
+      },
+    },
+  })}\n`)
   const proofs = buildPlan55ReleaseStageGateProofs({
     policy: releasePolicy,
     releaseBytes,
     hostedBeforeBytes,
     hostedRollbackBytes,
     rollbackSourceSha256: rollbackSourceBytes.toString('utf8'),
+    mobileBinaryAttestationBytes,
+    providerProbeEvidenceBytes,
     provenance,
   })
   const artifactFiles = new Map([
@@ -393,6 +643,8 @@ test('auto-packages release-stage gates from the exact Production release artifa
     ['hosted-before.json', hostedBeforeBytes],
     ['hosted-rollback-snapshot.json', hostedRollbackBytes],
     ['rollback-mobile-source-sha256.txt', rollbackSourceBytes],
+    ['mobile-binary-attestation.json', mobileBinaryAttestationBytes],
+    ['provider-readiness-live.json', providerProbeEvidenceBytes],
   ])
   const artifactId = 97532
   const artifactDigest = `sha256:${digest(Buffer.from('exact release artifact archive'))}`
@@ -453,6 +705,10 @@ test('canary evidence rejects altered slices, cleanup, G5 deltas, and source ide
     ({ aggregate }) => { aggregate.services[0].g5_deltas.corpus.scope_signal.after.passed = 17 },
     ({ aggregate }) => { aggregate.services[0].status = 'G5_FAILED_SERVICE_OFF' },
     ({ checkpoint }) => { checkpoint.services[0].cleanup.rows.profiles = 1 },
+    ({ aggregate }) => { aggregate.services[0].cleanup.actorLifecycle.actorScopeVerified = false },
+    ({ checkpoint }) => { checkpoint.services[0].cleanup.actorLifecycle.disposableWorkerIsolated = false },
+    ({ aggregate }) => { delete aggregate.services[0].cleanup.actorLifecycle },
+    ({ checkpoint }) => { checkpoint.services[0].cleanup.actorLifecycle.unverified = true },
   ]
   for (const mutate of mutations) {
     const inputs = canaryProofInputs()
@@ -474,22 +730,36 @@ test('repackages receipt evidence for later targets without claiming wave outcom
   assert.equal(evidence.proof.validatedTargetState, 'receipts_validated')
 })
 
+test('emits source-bound canary evidence for every per-service actor lifecycle gate', () => {
+  const files = buildPlan55CanaryGateEvidenceFiles({ policy, release, ...canaryProofInputs() })
+  for (const gate of actorLifecycleGates) {
+    const evidence = JSON.parse(files.get(gate).toString('utf8'))
+    assert.equal(evidence.gate, gate)
+    assert.equal(evidence.status, 'PASS')
+    assert.equal(evidence.sourceSha, release.gitSha)
+  }
+})
+
 test('reports every missing Plan 55 verifier and producer before artifact downloads', () => {
-  const gates = requiredPromotionGates(sourcePolicy, targetState)
+  const coverageTargetState = 'paired_wave_1'
+  const gates = requiredPromotionGates(sourcePolicy, coverageTargetState)
   const coverage = inspectPlan55GateEvidenceCoverage({
     policy: sourcePolicy,
-    targetState,
+    targetState: coverageTargetState,
     requiredGates: gates,
   })
   const supportedGates = [
+    ...actorLifecycleGates,
     'plan55-service-slice-integrity-pass',
     'plan55-service-g5-safety-pass',
     'plan55-service-cleanup-pass',
     'plan55-six-current-source-receipts',
     'plan55-six-cleanup-passes',
+    'plan55-publication-packet',
     ...Object.keys(PLAN55_PREFLIGHT_GATE_CHECKS),
     ...PLAN55_RELEASE_STAGE_GATES,
     ...PLAN55_DEPLOYED_GUARD_GATES,
+    'plan55-rollback-drill',
   ]
   const unsupportedGates = gates.filter((gate) => !supportedGates.includes(gate)).sort()
   const gatesWithoutProducer = gates.filter((gate) =>
@@ -502,19 +772,336 @@ test('reports every missing Plan 55 verifier and producer before artifact downlo
   assert.deepEqual(coverage.missingApprovedProducerGates, gatesWithoutProducer)
   assert.ok(coverage.missingSemanticVerifierGates.includes('plan55-independent-cohort-outcome'))
   assert.ok(!coverage.missingSemanticVerifierGates.includes('workspace-typecheck'))
+  assert.ok(!coverage.missingSemanticVerifierGates.includes('plan55-full-production-readiness'))
   assert.ok(coverage.requiredGates.includes('workspace-typecheck'))
 })
 
-test('coverage preflight names the full unsupported gate set in one error', () => {
+test('rollback drill has a dedicated semantic verifier and exact-source producer', () => {
+  const gate = 'plan55-rollback-drill'
+  const targetState = 'paired_wave_1'
   const gates = requiredPromotionGates(sourcePolicy, targetState)
   const coverage = inspectPlan55GateEvidenceCoverage({
     policy: sourcePolicy,
     targetState,
     requiredGates: gates,
   })
+
+  assert.ok(!coverage.missingSemanticVerifierGates.includes(gate))
+  assert.ok(!coverage.missingApprovedProducerGates.includes(gate))
+  assert.equal(
+    sourcePolicy.trustedEvidenceWorkflowPathsByGate[gate],
+    '.github/workflows/plan55-rollback-drill.yml',
+  )
+  assert.ok(sourcePolicy.trustedEvidenceWorkflowPaths.includes(
+    '.github/workflows/plan55-rollback-drill.yml',
+  ))
+})
+
+test('publication proof is produced by the exact-source post-receipt finalizer', () => {
+  const gate = 'plan55-publication-packet'
+  const coverageTargetState = 'paired_wave_1'
+  const gates = requiredPromotionGates(sourcePolicy, coverageTargetState)
+  const coverage = inspectPlan55GateEvidenceCoverage({
+    policy: sourcePolicy,
+    targetState: coverageTargetState,
+    requiredGates: gates,
+  })
+
+  assert.ok(!coverage.missingSemanticVerifierGates.includes(gate))
+  assert.equal(
+    sourcePolicy.trustedEvidenceWorkflowPathsByGate[gate],
+    '.github/workflows/plan55-postreceipt-finalization.yml',
+  )
+  assert.ok(sourcePolicy.trustedEvidenceWorkflowPaths.includes(
+    '.github/workflows/plan55-postreceipt-finalization.yml',
+  ))
+})
+
+test('publication packet gate verifies and reloads the exact packet file from its finalizer artifact', (t) => {
+  const gate = 'plan55-publication-packet'
+  const producerWorkflow = '.github/workflows/plan55-postreceipt-finalization.yml'
+  const publicationPolicy = {
+    ...sourcePolicy,
+    trustedEvidenceWorkflowPaths: [...new Set([
+      ...sourcePolicy.trustedEvidenceWorkflowPaths,
+      producerWorkflow,
+    ])],
+    trustedEvidenceWorkflowPathsByGate: {
+      ...sourcePolicy.trustedEvidenceWorkflowPathsByGate,
+      [gate]: producerWorkflow,
+    },
+    requiredGatesByTarget: Object.fromEntries(Object.keys(sourcePolicy.requiredGatesByTarget).map((target) => [
+      target,
+      target === 'paired_wave_1' ? [gate] : [],
+    ])),
+  }
+  const publicationRelease = {
+    ...release,
+    bundleSha256: 'b'.repeat(64),
+    sourceBundleSha256: 'c'.repeat(64),
+  }
+  const packet = {
+    schemaVersion: '1.0.0',
+    environment: 'production',
+    fromState: 'service_cleanup',
+    toState: 'receipts_validated',
+    releaseId: publicationRelease.releaseId,
+    gitSha: publicationRelease.gitSha,
+    releaseBundleSha256: publicationRelease.bundleSha256,
+    sourceBundleSha256: publicationRelease.sourceBundleSha256,
+    policyId: publicationPolicy.policyId,
+    policySha256: publicationPolicy.policySha256,
+    projectRef: publicationPolicy.projectRef,
+    passedGates: [],
+    gateReceipts: {},
+    packetSha256: '',
+  }
+  packet.packetSha256 = digest(Buffer.from(JSON.stringify({ ...packet, packetSha256: undefined })))
+  const packetBytes = Buffer.from(`${JSON.stringify(packet)}\n`)
+  const provenance = {
+    repository: publicationPolicy.repository,
+    workflowPath: producerWorkflow,
+    runId: '7002',
+    runAttempt: 2,
+    runCreatedAt: '2026-10-01T02:00:00Z',
+    runStartedAt: '2026-10-01T02:01:00Z',
+    runUpdatedAt: '2026-10-01T02:10:00Z',
+    workflowHeadSha: publicationRelease.gitSha,
+    artifactId: 8802,
+    artifactName: 'plan55-promotion-packet-7002-2',
+    artifactDigest: `sha256:${'a'.repeat(64)}`,
+    artifactEvidencePath: 'publication-packet-proof.json',
+  }
+  const proof = {
+    schemaVersion: 'plan55-publication-packet-proof.v1',
+    gate,
+    status: 'PASS',
+    environment: 'production',
+    projectRef: publicationPolicy.projectRef,
+    policyId: publicationPolicy.policyId,
+    policySha256: publicationPolicy.policySha256,
+    releaseId: publicationRelease.releaseId,
+    sourceSha: publicationRelease.gitSha,
+    packetTargetState: 'receipts_validated',
+    packetSha256: packet.packetSha256,
+    packetFileSha256: digest(packetBytes),
+    producerWorkflowPath: producerWorkflow,
+    producerRunId: provenance.runId,
+    producerRunAttempt: provenance.runAttempt,
+    producerGithubRef: 'refs/heads/main',
+    producerEvent: 'workflow_dispatch',
+    repository: publicationPolicy.repository,
+  }
+  const proofBytes = Buffer.from(`${JSON.stringify(proof)}\n`)
+  const artifactFiles = new Map([
+    ['promotion-packet.json', packetBytes],
+    ['publication-packet-proof.json', proofBytes],
+  ])
+  const sourceEvidence = new Map([[gate, {
+    evidenceBytes: proofBytes,
+    artifactEvidencePath: 'publication-packet-proof.json',
+    artifactFiles,
+    provenance,
+  }]])
+  const files = buildPlan55GateEvidenceArtifact({
+    policy: publicationPolicy,
+    release: publicationRelease,
+    targetState: 'paired_wave_1',
+    requiredGates: [gate],
+    sourceEvidence,
+  })
+  const evidence = JSON.parse(files.get(`evidence/${gate}.json`).toString('utf8'))
+  assert.deepEqual(evidence.proof, proof)
+  assert.equal(evidence.targetState, 'paired_wave_1')
+  assert.equal(assertPlan55PublicationPacketGateProof(proof, {
+    gate,
+    policy: publicationPolicy,
+    release: publicationRelease,
+    targetState: 'paired_wave_1',
+    provenance,
+    sourceArtifactFiles: artifactFiles,
+  }), true)
+
+  const evidenceRoot = mkdtempSync(join(tmpdir(), 'plan55-publication-packet-proof-'))
+  t.after(() => rmSync(evidenceRoot, { recursive: true, force: true }))
+  for (const directory of ['receipts', 'evidence', 'source-results']) {
+    mkdirSync(join(evidenceRoot, directory), { recursive: true })
+  }
+  for (const [name, bytes] of files) {
+    if (name.endsWith('/')) continue
+    writeFileSync(join(evidenceRoot, name), bytes)
+  }
+  const receiptSet = loadPlan55GateEvidenceSet(join(evidenceRoot, 'gate-evidence-set.json'), {
+    policy: publicationPolicy,
+    release: publicationRelease,
+    targetState: 'paired_wave_1',
+    requiredGates: [gate],
+  })
+  assert.equal(isPlan55GateReceiptRecord(receiptSet[gate], gate, {
+    policy: publicationPolicy,
+    release: publicationRelease,
+    targetState: 'paired_wave_1',
+  }), true)
+
+  const alteredPacketFiles = new Map(artifactFiles)
+  alteredPacketFiles.set('promotion-packet.json', Buffer.from(`${packetBytes.toString('utf8')} `))
+  assert.throws(() => assertPlan55PublicationPacketGateProof(proof, {
+    gate, policy: publicationPolicy, release: publicationRelease, targetState: 'paired_wave_1',
+    provenance, sourceArtifactFiles: alteredPacketFiles,
+  }), /proof contract failed/u)
+  assert.throws(() => assertPlan55PublicationPacketGateProof({ ...proof, producerRunAttempt: 1 }, {
+    gate, policy: publicationPolicy, release: publicationRelease, targetState: 'paired_wave_1',
+    provenance, sourceArtifactFiles: artifactFiles,
+  }), /proof contract failed/u)
+  assert.throws(() => buildPlan55GateEvidenceArtifact({
+    policy: publicationPolicy,
+    release: publicationRelease,
+    targetState: 'paired_wave_1',
+    requiredGates: [gate],
+    sourceEvidence: new Map([[gate, {
+      ...sourceEvidence.get(gate),
+      artifactEvidencePath: 'promotion-packet.json',
+    }]]),
+  }), /source artifact does not prove the gate evidence/u)
+})
+
+test('publication packet gate rejects inconsistent embedded receipt checksums', () => {
+  const gate = 'plan55-publication-packet'
+  const receiptGate = 'plan55-service-slice-integrity-pass'
+  const producerWorkflow = '.github/workflows/plan55-postreceipt-finalization.yml'
+  const publicationPolicy = {
+    ...sourcePolicy,
+    trustedEvidenceWorkflowPaths: [...new Set([
+      ...sourcePolicy.trustedEvidenceWorkflowPaths,
+      producerWorkflow,
+    ])],
+    trustedEvidenceWorkflowPathsByGate: {
+      ...sourcePolicy.trustedEvidenceWorkflowPathsByGate,
+      [gate]: producerWorkflow,
+    },
+    requiredGatesByTarget: Object.fromEntries(Object.keys(sourcePolicy.requiredGatesByTarget).map((target) => [
+      target,
+      target === 'receipts_validated' ? [receiptGate] : target === 'paired_wave_1' ? [gate] : [],
+    ])),
+  }
+  const publicationRelease = {
+    ...release,
+    bundleSha256: 'b'.repeat(64),
+    sourceBundleSha256: 'c'.repeat(64),
+  }
+  const receipt = {
+    gate: receiptGate,
+    status: 'PASS',
+    environment: 'production',
+    projectRef: publicationPolicy.projectRef,
+    policyId: publicationPolicy.policyId,
+    policySha256: publicationPolicy.policySha256,
+    releaseId: publicationRelease.releaseId,
+    sourceSha: publicationRelease.gitSha,
+    targetState: 'receipts_validated',
+    evidence: { sha256: 'd'.repeat(64) },
+  }
+  const receiptJson = JSON.stringify(receipt)
+  const packet = {
+    schemaVersion: '1.0.0',
+    environment: 'production',
+    fromState: 'service_cleanup',
+    toState: 'receipts_validated',
+    releaseId: publicationRelease.releaseId,
+    gitSha: publicationRelease.gitSha,
+    releaseBundleSha256: publicationRelease.bundleSha256,
+    sourceBundleSha256: publicationRelease.sourceBundleSha256,
+    policyId: publicationPolicy.policyId,
+    policySha256: publicationPolicy.policySha256,
+    projectRef: publicationPolicy.projectRef,
+    passedGates: [receiptGate],
+    gateReceipts: {
+      [receiptGate]: {
+        receipt,
+        receiptSha256: digest(Buffer.from(receiptJson)),
+        receiptFileSha256: digest(Buffer.from(`${receiptJson}\n`)),
+        evidenceSha256: receipt.evidence.sha256,
+      },
+    },
+    packetSha256: '',
+  }
+  packet.packetSha256 = digest(Buffer.from(JSON.stringify({ ...packet, packetSha256: undefined })))
+  const packetBytes = Buffer.from(`${JSON.stringify(packet)}\n`)
+  const provenance = {
+    repository: publicationPolicy.repository,
+    runId: '7002',
+    runAttempt: 2,
+    artifactName: 'plan55-promotion-packet-7002-2',
+    artifactEvidencePath: 'publication-packet-proof.json',
+  }
+  const proof = {
+    schemaVersion: 'plan55-publication-packet-proof.v1',
+    gate,
+    status: 'PASS',
+    environment: 'production',
+    projectRef: publicationPolicy.projectRef,
+    policyId: publicationPolicy.policyId,
+    policySha256: publicationPolicy.policySha256,
+    releaseId: publicationRelease.releaseId,
+    sourceSha: publicationRelease.gitSha,
+    packetTargetState: 'receipts_validated',
+    packetSha256: packet.packetSha256,
+    packetFileSha256: digest(packetBytes),
+    producerWorkflowPath: producerWorkflow,
+    producerRunId: provenance.runId,
+    producerRunAttempt: provenance.runAttempt,
+    producerGithubRef: 'refs/heads/main',
+    producerEvent: 'workflow_dispatch',
+    repository: publicationPolicy.repository,
+  }
+  const proofBytes = Buffer.from(`${JSON.stringify(proof)}\n`)
+  const artifactFiles = new Map([
+    ['promotion-packet.json', packetBytes],
+    ['publication-packet-proof.json', proofBytes],
+  ])
+  const verify = (candidateProof, candidateFiles) => assertPlan55PublicationPacketGateProof(candidateProof, {
+    gate,
+    policy: publicationPolicy,
+    release: publicationRelease,
+    targetState: 'paired_wave_1',
+    provenance,
+    sourceArtifactFiles: candidateFiles,
+  })
+
+  assert.equal(verify(proof, artifactFiles), true)
+  for (const key of ['receiptSha256', 'receiptFileSha256', 'evidenceSha256']) {
+    const inconsistentPacket = JSON.parse(packetBytes.toString('utf8'))
+    inconsistentPacket.gateReceipts[receiptGate][key] = '0'.repeat(64)
+    inconsistentPacket.packetSha256 = digest(Buffer.from(JSON.stringify({
+      ...inconsistentPacket,
+      packetSha256: undefined,
+    })))
+    const inconsistentPacketBytes = Buffer.from(`${JSON.stringify(inconsistentPacket)}\n`)
+    const inconsistentProof = {
+      ...proof,
+      packetSha256: inconsistentPacket.packetSha256,
+      packetFileSha256: digest(inconsistentPacketBytes),
+    }
+    const inconsistentProofBytes = Buffer.from(`${JSON.stringify(inconsistentProof)}\n`)
+    const inconsistentFiles = new Map([
+      ['promotion-packet.json', inconsistentPacketBytes],
+      ['publication-packet-proof.json', inconsistentProofBytes],
+    ])
+    assert.throws(() => verify(inconsistentProof, inconsistentFiles), /proof contract failed/u, key)
+  }
+})
+
+test('coverage preflight names the full unsupported gate set in one error', () => {
+  const coverageTargetState = 'paired_wave_1'
+  const gates = requiredPromotionGates(sourcePolicy, coverageTargetState)
+  const coverage = inspectPlan55GateEvidenceCoverage({
+    policy: sourcePolicy,
+    targetState: coverageTargetState,
+    requiredGates: gates,
+  })
   assert.throws(() => assertPlan55GateEvidenceCoverage({
     policy: sourcePolicy,
-    targetState,
+    targetState: coverageTargetState,
     requiredGates: gates,
   }), (error) => {
     assert.match(error.message, /gate evidence coverage is incomplete/u)
@@ -541,56 +1128,22 @@ test('coverage inspection rejects malformed gate inventories without partial res
   }
 })
 
-test('does not package an independent-outcome gate without its semantic verifier and producer', (t) => {
-  const { sourceEvidence } = makeEvidenceSet(t)
+test('does not package an independent-outcome gate without its semantic verifier', () => {
   const gate = 'plan55-independent-cohort-outcome'
-  const expandedGates = [...requiredGates, gate]
+  const coverageTargetState = 'paired_wave_1'
+  const expandedGates = requiredPromotionGates(sourcePolicy, coverageTargetState)
   const expandedPolicy = {
-    ...policy,
-    requiredGatesByTarget: {
-      ...policy.requiredGatesByTarget,
-      receipts_validated: expandedGates,
-    },
+    ...sourcePolicy,
     trustedEvidenceWorkflowPathsByGate: {
-      ...policy.trustedEvidenceWorkflowPathsByGate,
+      ...sourcePolicy.trustedEvidenceWorkflowPathsByGate,
       [gate]: '.github/workflows/ci.yml',
     },
   }
-  const identityOnly = Buffer.from(JSON.stringify({
-    schemaVersion: 'plan55-gate-result.v1',
-    gate,
-    status: 'PASS',
-    environment: 'production',
-    projectRef: expandedPolicy.projectRef,
-    policyId: expandedPolicy.policyId,
-    policySha256: expandedPolicy.policySha256,
-    releaseId: release.releaseId,
-    sourceSha: release.gitSha,
-    targetState,
-  }) + '\n')
-  const artifactId = 102
-  const artifactEvidencePath = `source-results/${gate}.json`
-  const artifactBytes = zipStored([[artifactEvidencePath, identityOnly]])
-  sourceEvidence.set(gate, {
-    evidenceBytes: identityOnly,
-    artifactEvidencePath,
-    artifactFiles: new Map([[artifactEvidencePath, identityOnly]]),
-    provenance: {
-      repository: expandedPolicy.repository,
-      workflowPath: '.github/workflows/ci.yml',
-      runId: '9002',
-      runAttempt: 1,
-      workflowHeadSha: release.gitSha,
-      artifactId,
-      artifactName: `plan55-gate-${gate}`,
-      artifactDigest: `sha256:${digest(artifactBytes)}`,
-      artifactEvidencePath,
-    },
-  })
+  const sourceEvidence = new Map(expandedGates.map((requiredGate) => [requiredGate, {}]))
   assert.throws(() => buildPlan55GateEvidenceArtifact({
     policy: expandedPolicy,
     release,
-    targetState,
+    targetState: coverageTargetState,
     requiredGates: expandedGates,
     sourceEvidence,
   }), (error) => {
@@ -1019,6 +1572,9 @@ test('downloads an artifact only from its exact successful main-branch source ru
     run_attempt: runAttempt,
     status: 'completed',
     conclusion: 'success',
+    created_at: '2026-10-01T03:00:00Z',
+    run_started_at: '2026-10-01T03:01:00Z',
+    updated_at: '2026-10-01T03:05:00Z',
     head_sha: release.gitSha,
     head_branch: 'main',
     path: workflowPath,
@@ -1048,6 +1604,9 @@ test('downloads an artifact only from its exact successful main-branch source ru
 
   assert.equal(result.artifactId, artifactId)
   assert.equal(result.runId, runId)
+  assert.equal(result.runCreatedAt, run.created_at)
+  assert.equal(result.runStartedAt, run.run_started_at)
+  assert.equal(result.runUpdatedAt, run.updated_at)
   assert.equal(result.files.get('release-manifest.json').toString(), `{"gitSha":"${release.gitSha}"}\n`)
   assert.equal(requests.length, 3)
   assert.ok(requests.every(({ options }) => options.headers.authorization === 'Bearer test-token'))
@@ -1073,6 +1632,9 @@ test('rejects artifacts with wrong source, run, name, path, status, expiry, or c
     run_attempt: runAttempt,
     status: 'completed',
     conclusion: 'success',
+    created_at: '2026-10-01T04:00:00Z',
+    run_started_at: '2026-10-01T04:00:01Z',
+    updated_at: '2026-10-01T04:05:00Z',
     head_sha: release.gitSha,
     head_branch: 'main',
     path: workflowPath,
@@ -1122,6 +1684,21 @@ test('rejects artifacts with wrong source, run, name, path, status, expiry, or c
   await assert.rejects(verify(), /workflow-run provenance verification failed/u)
   assert.equal(archiveRequested, false)
   runOverride = { path: '.github/workflows/untrusted.yml' }
+  await assert.rejects(verify(), /workflow-run provenance verification failed/u)
+  assert.equal(archiveRequested, false)
+  runOverride = { created_at: 'not-a-github-timestamp' }
+  await assert.rejects(verify(), /workflow-run provenance verification failed/u)
+  assert.equal(archiveRequested, false)
+  runOverride = { created_at: '2026-02-30T04:00:00Z' }
+  await assert.rejects(verify(), /workflow-run provenance verification failed/u)
+  assert.equal(archiveRequested, false)
+  runOverride = { run_started_at: 'not-a-github-timestamp' }
+  await assert.rejects(verify(), /workflow-run provenance verification failed/u)
+  assert.equal(archiveRequested, false)
+  runOverride = { run_started_at: '2026-10-01T03:59:59Z' }
+  await assert.rejects(verify(), /workflow-run provenance verification failed/u)
+  assert.equal(archiveRequested, false)
+  runOverride = { updated_at: '2026-10-01T03:59:59Z' }
   await assert.rejects(verify(), /workflow-run provenance verification failed/u)
   assert.equal(archiveRequested, false)
   runOverride = {}

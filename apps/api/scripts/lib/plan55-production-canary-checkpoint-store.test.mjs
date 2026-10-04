@@ -45,6 +45,12 @@ function cleanReceipt() {
     canaryActorId: 'absent',
     authStatus: 404,
     orphanWorkers: 0,
+    actorLifecycle: {
+      authAdminVerified: true,
+      syntheticActorCreated: true,
+      actorScopeVerified: true,
+      disposableWorkerIsolated: true,
+    },
     rows: {
       profiles: 0,
       customer_profiles: 0,
@@ -184,6 +190,27 @@ test('Plan 55 status reads are read-only and reuse only exact, cleaned source re
     await store.readVerifiedServiceStatus({ service: 'hvac', deployment: changedDeployment }),
     emptyStatus,
   )
+})
+
+test('Plan 55 checkpoint preserves only the closed actor lifecycle boolean proof', async (t) => {
+  const { store } = await makeStore(t)
+  const slice = buildPlan55ServiceSlices('hvac')[0]
+  const checkpoint = await store.beginServiceCheckpoint({ service: 'hvac', deployment, slices: [slice] })
+  const receipt = receiptFor(slice)
+  await store.persistVerifiedSliceReceipt({ checkpoint, service: 'hvac', slice, deployment, receipt })
+
+  const malformed = cleanReceipt()
+  malformed.actorLifecycle.secret = 'must-not-be-persisted'
+  await assert.rejects(store.persistVerifiedServiceCleanup({
+    checkpoint, service: 'hvac', deployment, slices: [receipt], cleanup: malformed,
+  }), { message: 'plan55_checkpoint_integrity_failed' })
+
+  const clean = cleanReceipt()
+  await store.persistVerifiedServiceCleanup({
+    checkpoint, service: 'hvac', deployment, slices: [receipt], cleanup: clean,
+  })
+  const status = await store.readVerifiedServiceStatus({ service: 'hvac', deployment })
+  assert.deepEqual(status.cleanup.actorLifecycle, clean.actorLifecycle)
 })
 
 test('Plan 55 status rejects staged receipts without their active lock', async (t) => {

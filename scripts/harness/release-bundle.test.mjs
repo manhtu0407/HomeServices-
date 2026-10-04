@@ -5,7 +5,24 @@ import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os'
 import { dirname, resolve } from 'node:path'
 import test from 'node:test'
-import { assertCleanReleaseWorktree, buildHarnessRelease, checkHarnessRelease, edgeFunctionBundles, resolveReleaseArtifactPath } from './release-bundle.mjs'
+import {
+  assertCleanReleaseWorktree,
+  buildHarnessRelease,
+  checkHarnessRelease,
+  edgeFunctionBundles,
+  PRODUCTION_REQUIRED_PROVIDERS,
+  PROVIDER_READINESS_KEYS,
+  resolveReleaseArtifactPath,
+} from './release-bundle.mjs'
+
+test('Production readiness providers stay a strict subset of the release readiness schema', () => {
+  assert.deepEqual(PRODUCTION_REQUIRED_PROVIDERS, [
+    'android_fcm_v1', 'anthropic', 'durable_guards', 'global_ai_enabled',
+    'ios_apns', 'perplexity', 'push_receipt_reconciler', 'vietmap',
+  ])
+  assert.ok(PRODUCTION_REQUIRED_PROVIDERS.every((provider) => PROVIDER_READINESS_KEYS.includes(provider)))
+  assert.ok(!PRODUCTION_REQUIRED_PROVIDERS.includes('deepseek'), 'DeepSeek remains optional')
+})
 
 test('builds a deterministic immutable release bundle', () => {
   const input = { environment: 'preview', gitSha: 'a'.repeat(40) }

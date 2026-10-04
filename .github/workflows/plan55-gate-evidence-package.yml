@@ -1,6 +1,36 @@
 name: Plan 55 exact-source gate evidence package
 
 on:
+  workflow_call:
+    inputs:
+      source_sha:
+        description: Exact locked Plan 55 merge SHA
+        required: true
+        type: string
+      source_run_id:
+        description: Successful Plan 55 Production-only workflow run that produced the release artifact
+        required: true
+        type: string
+      source_run_attempt:
+        description: Exact successful Production-only workflow attempt
+        required: true
+        type: string
+      release_artifact_id:
+        description: Immutable plan55-release artifact ID from that run
+        required: true
+        type: string
+      target_state:
+        description: Promotion state whose complete cumulative gate inventory is packaged
+        required: true
+        type: string
+      evidence_artifacts_json:
+        description: JSON array of {gate, artifact_id, artifact_name_prefix, evidence_path} for required gates not auto-sourced from the exact Plan 55 release artifact
+        required: true
+        type: string
+    outputs:
+      gate_artifact_id:
+        description: Immutable exact-source artifact containing the packaged gate evidence set
+        value: ${{ jobs.package-evidence.outputs.gate_artifact_id }}
   workflow_dispatch:
     inputs:
       source_sha:
@@ -25,6 +55,7 @@ on:
         type: choice
         options:
           - receipts_validated
+          - rollback_drill
           - paired_wave_1
           - paired_wave_2
           - paired_wave_3
@@ -102,7 +133,7 @@ jobs:
           if (!/^[a-f0-9]{40}$/.test(sourceSha ?? '') ||
               ![sourceRunId, sourceRunAttempt, releaseArtifactId].every((value) =>
                 Number.isSafeInteger(value) && value > 0) ||
-              !['receipts_validated', 'paired_wave_1', 'paired_wave_2', 'paired_wave_3', 'production']
+              !['receipts_validated', 'rollback_drill', 'paired_wave_1', 'paired_wave_2', 'paired_wave_3', 'production']
                 .includes(targetState)) {
             throw new Error('Plan 55 evidence-package inputs are invalid')
           }
@@ -192,6 +223,9 @@ jobs:
                 workflowPath: artifact.workflowPath,
                 runId: String(artifact.runId),
                 runAttempt: artifact.runAttempt,
+                runCreatedAt: artifact.runCreatedAt,
+                runStartedAt: artifact.runStartedAt,
+                runUpdatedAt: artifact.runUpdatedAt,
                 workflowHeadSha: artifact.sourceSha,
                 artifactId: artifact.artifactId,
                 artifactName: artifact.artifactName,
