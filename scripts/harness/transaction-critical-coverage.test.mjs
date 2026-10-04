@@ -9,6 +9,7 @@ import {
   unmappedEntries,
   validateTransactionCoverage,
 } from './transaction-critical-coverage.mjs'
+import { requiredPromotionGates } from './promotion.mjs'
 
 const manifest = JSON.parse(readFileSync(resolve('config/harness/transaction-critical-coverage.json'), 'utf8'))
 const capabilities = JSON.parse(readFileSync(resolve('config/harness/capabilities.json'), 'utf8'))
@@ -211,7 +212,8 @@ test('Plan 55 canary requires bound assertions without moving full readiness ahe
   assert.match(plan55, /--results artifacts\/transactions\/mobile-jest\.json/u)
   assert.ok(policy.requiredGatesByTarget.receipts_validated.includes('plan55-six-current-source-receipts'))
   assert.ok(!policy.requiredGatesByTarget.receipts_validated.includes('plan55-independent-cohort-outcome'))
-  assert.ok(policy.requiredGatesByTarget.paired_wave_1.includes('plan55-independent-cohort-outcome'))
+  const pairedWaveGates = requiredPromotionGates(policy, 'paired_wave_1')
+  assert.ok(pairedWaveGates.includes('plan55-independent-cohort-outcome'))
   for (const gate of [
     'plan55-auth-admin-verified',
     'plan55-synthetic-actor-created',
@@ -220,7 +222,7 @@ test('Plan 55 canary requires bound assertions without moving full readiness ahe
   ]) {
     assert.ok(policy.requiredGatesByTarget.service_canary.includes(gate))
   }
-  assert.ok(policy.requiredGatesByTarget.paired_wave_1.includes('plan55-full-production-readiness'))
+  assert.ok(pairedWaveGates.includes('plan55-full-production-readiness'))
 
   for (const stage of ['verified', 'guard_deployed_off', 'service_canary', 'service_cleanup', 'receipts_validated']) {
     assert.ok(!policy.requiredGatesByTarget[stage].includes('plan55-full-production-readiness'), `${stage} must not require paired-wave readiness`)
