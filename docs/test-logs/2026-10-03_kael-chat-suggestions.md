@@ -133,18 +133,18 @@ The user authorized committing, pushing, and merging the complete current diff. 
 | `pnpm design:preflight` | PASS |
 | `pnpm lint:edge-db` | PASS — 247 RPC names resolved; 0 unscannable |
 | `pnpm exec node --test scripts/check-docker-contracts.test.mjs` | PASS — 27 passed / 1 skipped / 0 failed |
-| `pnpm ship:check` | PENDING — requires the committed clean worktree; run before push |
+| `pnpm ship:check` | PASS — 10/10 gates on clean HEAD `6b5e9033`; the checker explicitly lists type-check/test/build/lint, Edge, and SQL as separate commands rather than proof from this gate |
 | `pnpm lint:workplan` | FAIL — `.scratch/work-plan.json` is stale for another mission (42 work-router violations; 77 declared paths versus 143 dirty paths); scratch state was preserved |
 | `git diff --check` | PASS — only line-ending notices |
 | `pnpm db:local:down` | PASS — local services stopped; verified `nestscout` Docker volume remains present |
 
 ### Review and remaining evidence
 
-- Current review fixed point: uncommitted worktree at branch `codex/kael-chat-three-phases-20261002`, HEAD `7eb3e41f2af8c947c0434287be6c9280276365aa`.
+- Source review fixed point: original implementation diff from `7eb3e41f2af8c947c0434287be6c9280276365aa` through `cd7fdf0e`; generated-inventory follow-up is commit `6b5e9033` on branch `codex/kael-chat-three-phases-20261002`.
 - Spec source: Tu's approved Kael Chat implementation plan and the subsequent explicit requests to remove starter-chip plus signs and include every current diff in the ship request.
 - Spec compliance: Customer and Worker use the shared starter rail and message-suggestion behavior; suggestions are server-routed through the existing spend/provider boundary, and the separate Work flow remains outside this route. Docker RAM is informational and no longer blocks the local lane.
 - Rules and security: ownership, role, normal-chat scope, latest-turn freshness, PII scrubbing, and no transcript/memory writes were reviewed in the implementation record above. Free-form address formats beyond known scrubber patterns remain a limitation, not a proven complete PII defense.
 - Maintainability: starter UI and suggestion cache are shared; role API handlers remain thin; new suggestion purpose is registered in the manifest. The host-policy test skip is narrowly matched to the OS block message.
 - Scope: this is deliberately a multi-theme PR because the user authorized all current diff. No unrelated `.scratch` work-plan or Production state is being changed.
-- `pnpm ship:check` must run on the clean committed tree before push. At this report point no commit, push, PR, or merge has occurred.
+- The first clean `pnpm ship:check` run caught stale migration/access digests after removing the extra EOF blank line from the new migration. Both registries were regenerated through the official writers; the focused Plan 55 suite passed 53/53, `pnpm harness:verify` passed, and a clean rerun of `pnpm ship:check` passed all 10 gates at `6b5e9033`.
 - Authenticated local HTTP/provider-stub flows, live DeepSeek smoke, deliberate mutation checks, and native iPhone/Android screenshots remain NOT RUN. Browser Preview is not native evidence. These gaps keep full feature acceptance unverified even though automated unit/type, SQL, Edge, and build gates pass.
