@@ -315,6 +315,10 @@ test('Plan 55 has a separate fail-closed Production-only transition policy with 
   })
   assert.ok(!policy.requiredGatesByTarget.verified.includes('main-branch-merge'))
   assert.ok(policy.requiredGatesByTarget.verified.includes('plan55-exact-production-base-ancestry'))
+  assert.ok(!policy.requiredGatesByTarget.verified.includes('plan55-independent-holdout-freeze'))
+  assert.ok(policy.requiredGatesByTarget.service_canary.includes('plan55-independent-holdout-freeze'))
+  assert.ok(!requiredPromotionGates(policy, 'verified').includes('plan55-independent-holdout-freeze'))
+  assert.ok(requiredPromotionGates(policy, 'service_canary').includes('plan55-independent-holdout-freeze'))
   assert.deepEqual(policy.serviceOrder, ['hvac', 'handyman', 'cleaning', 'upholstery', 'plumbing', 'electrical'])
   assert.equal(policy.slicesPerService, 8)
   assert.equal(policy.casesPerSlice, 12)
@@ -366,11 +370,12 @@ test('Plan 55 has a separate fail-closed Production-only transition policy with 
     ...policy,
     requiredGatesByTarget: {
       ...policy.requiredGatesByTarget,
-      verified: policy.requiredGatesByTarget.verified.filter((gate) => gate !== 'plan55-independent-holdout-freeze'),
+      service_canary: policy.requiredGatesByTarget.service_canary
+        .filter((gate) => gate !== 'plan55-independent-holdout-freeze'),
     },
   }
   assert.ok(validatePromotionConfig(missingHoldoutGate).includes(
-    'Plan 55 target is missing required gate: verified:plan55-independent-holdout-freeze',
+    'Plan 55 target is missing required gate: service_canary:plan55-independent-holdout-freeze',
   ))
   const mutableBase = {
     ...policy,
@@ -507,7 +512,6 @@ test('Plan 55 promotion fails closed when a required gate has no semantic verifi
   }), (error) => {
     assert.match(error.message, /gate evidence coverage is incomplete/u)
     assert.ok(error.message.includes('plan55-actor-scoped-guard-tests'))
-    assert.ok(error.message.includes('plan55-independent-holdout-freeze'))
     return true
   })
 })

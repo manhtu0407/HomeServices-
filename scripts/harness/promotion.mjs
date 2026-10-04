@@ -267,9 +267,9 @@ function validatePlan55Policy(policy, root, targetState) {
       }
     }
     const requiredByTarget = {
-      verified: ['plan55-production-source-merge', 'plan55-exact-production-base-ancestry', 'workspace-typecheck', 'workspace-tests', 'workspace-build', 'security', 'harness', 'edge-deno', 'sql-verification', 'generated-types', 'hosted-drift-baseline', 'production-ui-normality', 'compatible-rollback-target', 'plan55-production-target-attestation', 'plan55-actor-scoped-guard-tests', 'plan55-canary-runner-tests', 'plan55-source-lock', 'plan55-independent-holdout-freeze', 'plan55-rollback-preflight'],
+      verified: ['plan55-production-source-merge', 'plan55-exact-production-base-ancestry', 'workspace-typecheck', 'workspace-tests', 'workspace-build', 'security', 'harness', 'edge-deno', 'sql-verification', 'generated-types', 'hosted-drift-baseline', 'production-ui-normality', 'compatible-rollback-target', 'plan55-production-target-attestation', 'plan55-actor-scoped-guard-tests', 'plan55-canary-runner-tests', 'plan55-source-lock', 'plan55-rollback-preflight'],
       guard_deployed_off: ['plan55-runtime-source-match', 'plan55-guard-deployed', 'plan55-all-global-flags-off', 'plan55-provider-readiness', 'plan55-no-migration'],
-      service_canary: ['plan55-auth-admin-verified', 'plan55-synthetic-actor-created', 'plan55-actor-scope-verified', 'plan55-disposable-worker-isolated'],
+      service_canary: ['plan55-independent-holdout-freeze', 'plan55-auth-admin-verified', 'plan55-synthetic-actor-created', 'plan55-actor-scope-verified', 'plan55-disposable-worker-isolated'],
       service_cleanup: ['plan55-service-slice-integrity-pass', 'plan55-service-g5-safety-pass', 'plan55-service-cleanup-pass'],
       receipts_validated: ['plan55-six-current-source-receipts', 'plan55-six-cleanup-passes'],
       rollback_drill: ['plan55-docker-sql-edge-gates', 'plan55-hosted-drift-pass', 'plan55-full-production-readiness', 'plan55-exact-binary-release-attestation', 'plan55-publication-packet', 'plan55-independent-cohort-outcome'],

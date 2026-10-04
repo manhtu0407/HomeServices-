@@ -120,6 +120,7 @@ jobs:
             buildPlan55GateEvidenceArtifact,
             downloadPlan55GitHubRunArtifact,
             PLAN55_DEPLOYED_GUARD_GATES,
+            PLAN55_PREFLIGHT_GATE_CHECKS,
             PLAN55_RELEASE_STAGE_GATES,
           } from './scripts/harness/plan55-gate-receipts.mjs'
           import { loadPlan55ProductionOnlyPolicy, requiredPromotionGates } from './scripts/harness/promotion.mjs'
@@ -140,6 +141,8 @@ jobs:
           const expectedGates = requiredPromotionGates(policy, targetState)
           assertPlan55GateEvidenceCoverage({ policy, targetState, requiredGates: expectedGates })
           const releaseArtifactGates = new Set([
+            ...Object.keys(PLAN55_PREFLIGHT_GATE_CHECKS)
+              .filter((gate) => gate !== 'plan55-independent-holdout-freeze'),
             ...PLAN55_RELEASE_STAGE_GATES,
             ...PLAN55_DEPLOYED_GUARD_GATES,
           ].filter((gate) =>

@@ -140,7 +140,6 @@
       "plan55-actor-scoped-guard-tests",
       "plan55-canary-runner-tests",
       "plan55-source-lock",
-      "plan55-independent-holdout-freeze",
       "plan55-rollback-preflight"
     ],
     "guard_deployed_off": [
@@ -151,6 +150,7 @@
       "plan55-no-migration"
     ],
     "service_canary": [
+      "plan55-independent-holdout-freeze",
       "plan55-auth-admin-verified",
       "plan55-synthetic-actor-created",
       "plan55-actor-scope-verified",

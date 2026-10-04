@@ -48,6 +48,8 @@ jobs:
     if: github.ref == 'refs/heads/main' && inputs.source_sha == github.sha
     runs-on: ubuntu-latest
     timeout-minutes: 90
+    outputs:
+      preflight_artifact_id: ${{ steps.preflight-artifact.outputs.artifact-id }}
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
         with:
@@ -72,12 +74,6 @@ jobs:
           test "$base_sha" = "891b1e26dd9a785f05671002c5e74cb270678be4"
           git merge-base --is-ancestor "$base_sha" "$GITHUB_SHA"
           test -z "$(git status --porcelain=v1 --untracked-files=all)"
-      - id: independent_holdout_preflight
-        name: Require independent holdout attestation before Docker and long quality gates
-        env:
-          GH_TOKEN: ${{ github.token }}
-          PLAN55_SOURCE_SHA: ${{ inputs.source_sha }}
-        run: node apps/api/scripts/plan55-independent-holdout-preflight.mjs
       - id: docker_ram_floor
         name: Require the Docker RAM floor before local SQL gates
         run: |
@@ -168,7 +164,6 @@ jobs:
           PLAN55_PRODUCTION_UI_NORMALITY_OUTCOME: ${{ steps.production_ui_normality.outcome }}
           PLAN55_SECRET_SCAN_OUTCOME: ${{ steps.secret_scan.outcome }}
           PLAN55_SQL_VERIFICATION_OUTCOME: ${{ steps.sql_verification.outcome }}
-          PLAN55_INDEPENDENT_HOLDOUT_PREFLIGHT_OUTCOME: ${{ steps.independent_holdout_preflight.outcome }}
         run: node scripts/harness/plan55-preflight-gate-evidence.mjs --output artifacts/release/plan55-gate-evidence
       - name: Preserve source-gate evidence
         if: always()
@@ -182,6 +177,7 @@ jobs:
           if-no-files-found: warn
           retention-days: 90
       - name: Publish exact-source preflight gate proofs
+        id: preflight-artifact
         if: success()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
@@ -213,11 +209,11 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - name: Require independent holdout attestation before Production changes
-        env:
-          GH_TOKEN: ${{ github.token }}
-          PLAN55_SOURCE_SHA: ${{ inputs.source_sha }}
-        run: node apps/api/scripts/plan55-independent-holdout-preflight.mjs
+      - name: Reuse exact-source pre-deploy gate proofs
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          artifact-ids: ${{ needs.quality-and-preflight.outputs.preflight_artifact_id }}
+          path: artifacts/release/plan55-gate-evidence
       - name: Assemble exact Production release and prove rollback source
         id: assemble
         env:
@@ -310,6 +306,8 @@ jobs:
             --rollback-mobile-source-sha256 artifacts/release/rollback-mobile-source-sha256.txt \
             --mobile-binary-attestation artifacts/release/mobile-binary-attestation.json \
             --output artifacts/release/plan55-gate-evidence
+          mkdir -p artifacts/release/rollback/supabase
+          cp -a artifacts/rollback/supabase/. artifacts/release/rollback/supabase/
           echo "release_id=$(node -p "require('./artifacts/release/release.json').releaseId")" >> "$GITHUB_OUTPUT"
           echo "source_sha=$GITHUB_SHA" >> "$GITHUB_OUTPUT"
       - name: Register release metadata and deploy actor-scoped guard with every flag OFF
@@ -394,7 +392,6 @@ jobs:
             exit "$result"
           }
           trap rollback EXIT
-          node apps/api/scripts/plan55-independent-holdout-preflight.mjs
           node scripts/harness/release-control.mjs --action register --environment production \
             --project-ref "$PRODUCTION_PROJECT_REF" --release artifacts/release/release.json \
             > artifacts/release/register.json
@@ -464,15 +461,71 @@ jobs:
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: plan55-release-${{ github.run_id }}-${{ github.run_attempt }}
-          path: |
-            artifacts/release
-            artifacts/rollback/supabase/config.toml
-            artifacts/rollback/supabase/functions/mobile-api
+          path: artifacts/release
           if-no-files-found: warn
           retention-days: 90
 
-  hvac:
+  independent_holdout_attestation:
     needs: deploy_guard_off
+    if: needs.deploy_guard_off.result == 'success' && github.ref == 'refs/heads/main' && inputs.source_sha == github.sha
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      actions: read
+      checks: read
+      contents: read
+      issues: read
+      pull-requests: read
+    outputs:
+      evidence_artifact_id: ${{ steps.holdout-artifact.outputs.artifact-id }}
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          ref: ${{ inputs.source_sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+      - id: verify_source
+        name: Verify exact merged source before independent holdout check
+        env:
+          PLAN55_SOURCE_SHA: ${{ inputs.source_sha }}
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF" = "refs/heads/main"
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test "$GITHUB_SHA" = "$PLAN55_SOURCE_SHA"
+          test -z "$(git status --porcelain=v1 --untracked-files=all)"
+      - id: holdout_preflight
+        name: Verify independent holdout attestation for the locked source
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PLAN55_SOURCE_SHA: ${{ inputs.source_sha }}
+        run: |
+          mkdir -p artifacts/release
+          node apps/api/scripts/plan55-independent-holdout-preflight.mjs \
+            > artifacts/release/independent-holdout-preflight.json
+      - name: Record exact-source independent holdout gate proof
+        if: success()
+        env:
+          PLAN55_SOURCE_SHA: ${{ inputs.source_sha }}
+          PLAN55_INDEPENDENT_HOLDOUT_PREFLIGHT_OUTCOME: ${{ steps.holdout_preflight.outcome }}
+        run: node scripts/harness/plan55-preflight-gate-evidence.mjs --holdout-only --output artifacts/release/plan55-gate-evidence
+      - name: Preserve exact-source holdout proof and preflight result
+        id: holdout-artifact
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: plan55-independent-holdout-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            artifacts/release/independent-holdout-preflight.json
+            artifacts/release/plan55-gate-evidence/plan55-independent-holdout-freeze.json
+          if-no-files-found: error
+          retention-days: 90
+
+  hvac:
+    needs: [deploy_guard_off, independent_holdout_attestation]
     uses: ./.github/workflows/plan55-production-canary-service.yml
     with:
       service: hvac
@@ -481,7 +534,7 @@ jobs:
       prior_artifact_ids: ''
     secrets: inherit
   handyman:
-    needs: [deploy_guard_off, hvac]
+    needs: [deploy_guard_off, independent_holdout_attestation, hvac]
     uses: ./.github/workflows/plan55-production-canary-service.yml
     with:
       service: handyman
@@ -490,7 +543,7 @@ jobs:
       prior_artifact_ids: ${{ needs.hvac.outputs.canary_artifact_id }}
     secrets: inherit
   cleaning:
-    needs: [deploy_guard_off, hvac, handyman]
+    needs: [deploy_guard_off, independent_holdout_attestation, hvac, handyman]
     uses: ./.github/workflows/plan55-production-canary-service.yml
     with:
       service: cleaning
@@ -499,7 +552,7 @@ jobs:
       prior_artifact_ids: ${{ needs.hvac.outputs.canary_artifact_id }},${{ needs.handyman.outputs.canary_artifact_id }}
     secrets: inherit
   upholstery:
-    needs: [deploy_guard_off, hvac, handyman, cleaning]
+    needs: [deploy_guard_off, independent_holdout_attestation, hvac, handyman, cleaning]
     uses: ./.github/workflows/plan55-production-canary-service.yml
     with:
       service: upholstery
@@ -508,7 +561,7 @@ jobs:
       prior_artifact_ids: ${{ needs.hvac.outputs.canary_artifact_id }},${{ needs.handyman.outputs.canary_artifact_id }},${{ needs.cleaning.outputs.canary_artifact_id }}
     secrets: inherit
   plumbing:
-    needs: [deploy_guard_off, hvac, handyman, cleaning, upholstery]
+    needs: [deploy_guard_off, independent_holdout_attestation, hvac, handyman, cleaning, upholstery]
     uses: ./.github/workflows/plan55-production-canary-service.yml
     with:
       service: plumbing
@@ -517,7 +570,7 @@ jobs:
       prior_artifact_ids: ${{ needs.hvac.outputs.canary_artifact_id }},${{ needs.handyman.outputs.canary_artifact_id }},${{ needs.cleaning.outputs.canary_artifact_id }},${{ needs.upholstery.outputs.canary_artifact_id }}
     secrets: inherit
   electrical:
-    needs: [deploy_guard_off, hvac, handyman, cleaning, upholstery, plumbing]
+    needs: [deploy_guard_off, independent_holdout_attestation, hvac, handyman, cleaning, upholstery, plumbing]
     uses: ./.github/workflows/plan55-production-canary-service.yml
     with:
       service: electrical
@@ -527,8 +580,8 @@ jobs:
     secrets: inherit
 
   validate-six-receipts:
-    needs: [deploy_guard_off, hvac, handyman, cleaning, upholstery, plumbing, electrical]
-    if: always() && needs.deploy_guard_off.result == 'success' && needs.hvac.result == 'success' && needs.handyman.result == 'success' && needs.cleaning.result == 'success' && needs.upholstery.result == 'success' && needs.plumbing.result == 'success' && needs.electrical.result == 'success'
+    needs: [deploy_guard_off, independent_holdout_attestation, hvac, handyman, cleaning, upholstery, plumbing, electrical]
+    if: always() && needs.deploy_guard_off.result == 'success' && needs.independent_holdout_attestation.result == 'success' && needs.hvac.result == 'success' && needs.handyman.result == 'success' && needs.cleaning.result == 'success' && needs.upholstery.result == 'success' && needs.plumbing.result == 'success' && needs.electrical.result == 'success'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     outputs:
@@ -621,8 +674,8 @@ jobs:
           retention-days: 90
 
   package-receipt-gate-evidence:
-    needs: [deploy_guard_off, validate-six-receipts]
-    if: needs.deploy_guard_off.result == 'success' && needs.validate-six-receipts.result == 'success'
+    needs: [deploy_guard_off, independent_holdout_attestation, validate-six-receipts]
+    if: needs.deploy_guard_off.result == 'success' && needs.independent_holdout_attestation.result == 'success' && needs.validate-six-receipts.result == 'success'
     uses: ./.github/workflows/plan55-gate-evidence-package.yml
     with:
       source_sha: ${{ inputs.source_sha }}
@@ -631,11 +684,11 @@ jobs:
       release_artifact_id: ${{ needs.deploy_guard_off.outputs.release_artifact_id }}
       target_state: receipts_validated
       evidence_artifacts_json: >-
-        [{"gate":"plan55-six-current-source-receipts","artifact_id":${{ needs.validate-six-receipts.outputs.receipts_artifact_id }},"artifact_name_prefix":"plan55-six-receipts","evidence_path":"artifacts/release/gate-evidence/plan55-six-current-source-receipts.json"},{"gate":"plan55-six-cleanup-passes","artifact_id":${{ needs.validate-six-receipts.outputs.receipts_artifact_id }},"artifact_name_prefix":"plan55-six-receipts","evidence_path":"artifacts/release/gate-evidence/plan55-six-cleanup-passes.json"}]
+        [{"gate":"plan55-independent-holdout-freeze","artifact_id":${{ needs.independent_holdout_attestation.outputs.evidence_artifact_id }},"artifact_name_prefix":"plan55-independent-holdout","evidence_path":"plan55-gate-evidence/plan55-independent-holdout-freeze.json"},{"gate":"plan55-auth-admin-verified","artifact_id":${{ needs.validate-six-receipts.outputs.receipts_artifact_id }},"artifact_name_prefix":"plan55-six-receipts","evidence_path":"artifacts/release/gate-evidence/plan55-auth-admin-verified.json"},{"gate":"plan55-synthetic-actor-created","artifact_id":${{ needs.validate-six-receipts.outputs.receipts_artifact_id }},"artifact_name_prefix":"plan55-six-receipts","evidence_path":"artifacts/release/gate-evidence/plan55-synthetic-actor-created.json"},{"gate":"plan55-actor-scope-verified","artifact_id":${{ needs.validate-six-receipts.outputs.receipts_artifact_id }},"artifact_name_prefix":"plan55-six-receipts","evidence_path":"artifacts/release/gate-evidence/plan55-actor-scope-verified.json"},{"gate":"plan55-disposable-worker-isolated","artifact_id":${{ needs.validate-six-receipts.outputs.receipts_artifact_id }},"artifact_name_prefix":"plan55-six-receipts","evidence_path":"artifacts/release/gate-evidence/plan55-disposable-worker-isolated.json"},{"gate":"plan55-service-slice-integrity-pass","artifact_id":${{ needs.validate-six-receipts.outputs.receipts_artifact_id }},"artifact_name_prefix":"plan55-six-receipts","evidence_path":"artifacts/release/gate-evidence/plan55-service-slice-integrity-pass.json"},{"gate":"plan55-service-g5-safety-pass","artifact_id":${{ needs.validate-six-receipts.outputs.receipts_artifact_id }},"artifact_name_prefix":"plan55-six-receipts","evidence_path":"artifacts/release/gate-evidence/plan55-service-g5-safety-pass.json"},{"gate":"plan55-service-cleanup-pass","artifact_id":${{ needs.validate-six-receipts.outputs.receipts_artifact_id }},"artifact_name_prefix":"plan55-six-receipts","evidence_path":"artifacts/release/gate-evidence/plan55-service-cleanup-pass.json"},{"gate":"plan55-six-current-source-receipts","artifact_id":${{ needs.validate-six-receipts.outputs.receipts_artifact_id }},"artifact_name_prefix":"plan55-six-receipts","evidence_path":"artifacts/release/gate-evidence/plan55-six-current-source-receipts.json"},{"gate":"plan55-six-cleanup-passes","artifact_id":${{ needs.validate-six-receipts.outputs.receipts_artifact_id }},"artifact_name_prefix":"plan55-six-receipts","evidence_path":"artifacts/release/gate-evidence/plan55-six-cleanup-passes.json"}]
 
   finalize-receipts-packet:
-    needs: [deploy_guard_off, validate-six-receipts, package-receipt-gate-evidence]
-    if: needs.deploy_guard_off.result == 'success' && needs.validate-six-receipts.result == 'success' && needs.package-receipt-gate-evidence.result == 'success'
+    needs: [deploy_guard_off, independent_holdout_attestation, validate-six-receipts, package-receipt-gate-evidence]
+    if: needs.deploy_guard_off.result == 'success' && needs.independent_holdout_attestation.result == 'success' && needs.validate-six-receipts.result == 'success' && needs.package-receipt-gate-evidence.result == 'success'
     uses: ./.github/workflows/plan55-postreceipt-finalization.yml
     with:
       source_sha: ${{ inputs.source_sha }}

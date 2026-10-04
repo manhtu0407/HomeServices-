@@ -17,8 +17,9 @@ const OUTCOME_ENVIRONMENT = Object.freeze({
   production_ui_normality: 'PLAN55_PRODUCTION_UI_NORMALITY_OUTCOME',
   secret_scan: 'PLAN55_SECRET_SCAN_OUTCOME',
   sql_verification: 'PLAN55_SQL_VERIFICATION_OUTCOME',
-  independent_holdout_preflight: 'PLAN55_INDEPENDENT_HOLDOUT_PREFLIGHT_OUTCOME',
 })
+
+const HOLDOUT_GATE = 'plan55-independent-holdout-freeze'
 
 export { PLAN55_PREFLIGHT_GATE_CHECKS }
 
@@ -47,6 +48,7 @@ export function buildPlan55PreflightGateEvidenceFiles({
 
   const files = new Map()
   for (const [gate, checkIds] of Object.entries(PLAN55_PREFLIGHT_GATE_CHECKS)) {
+    if (gate === HOLDOUT_GATE) continue
     const workflowPath = policy.trustedEvidenceWorkflowPathsByGate?.[gate]
     if (workflowPath !== SOURCE_WORKFLOW_PATH ||
         !policy.trustedEvidenceWorkflowPaths?.includes(workflowPath)) fail()
@@ -70,6 +72,49 @@ export function buildPlan55PreflightGateEvidenceFiles({
     files.set(`plan55-gate-evidence/${gate}.json`, Buffer.from(`${JSON.stringify(proof)}\n`))
   }
   return files
+}
+
+export function buildPlan55IndependentHoldoutGateEvidenceFiles({
+  policy,
+  sourceSha,
+  githubSha,
+  githubRef,
+  eventName,
+  repository,
+  runId,
+  runAttempt,
+  outcome,
+}) {
+  const fail = () => { throw new Error('Plan 55 independent holdout gate evidence inputs are invalid') }
+  const gate = HOLDOUT_GATE
+  const workflowPath = policy?.trustedEvidenceWorkflowPathsByGate?.[gate]
+  if (!policy || policy.policyId !== 'plan55-production-only' || policy.environment !== 'production' ||
+      policy.repository !== REQUIRED_REPOSITORY || !policy.projectRef ||
+      !/^[a-f0-9]{40}$/u.test(sourceSha ?? '') || githubSha !== sourceSha ||
+      githubRef !== 'refs/heads/main' || eventName !== 'workflow_dispatch' ||
+      repository !== REQUIRED_REPOSITORY || !/^[1-9]\d{0,15}$/u.test(runId ?? '') ||
+      !Number.isSafeInteger(Number(runId)) || !Number.isSafeInteger(runAttempt) || runAttempt < 1 ||
+      outcome !== 'success' || workflowPath !== SOURCE_WORKFLOW_PATH ||
+      !policy.trustedEvidenceWorkflowPaths?.includes(workflowPath)) fail()
+
+  const proof = {
+    schemaVersion: 'plan55-preflight-gate-proof.v1',
+    gate,
+    status: 'PASS',
+    environment: policy.environment,
+    projectRef: policy.projectRef,
+    policyId: policy.policyId,
+    policySha256: policy.policySha256,
+    sourceSha,
+    workflowPath,
+    runId,
+    runAttempt,
+    checks: PLAN55_PREFLIGHT_GATE_CHECKS[gate].map((id) => ({ id, outcome })),
+  }
+  assertPlan55PreflightGateProof(proof, {
+    gate, policy, sourceSha, runId, runAttempt, workflowPath,
+  })
+  return new Map([[`plan55-gate-evidence/${gate}.json`, Buffer.from(`${JSON.stringify(proof)}\n`)]])
 }
 
 export function writePlan55PreflightGateEvidence(outputInput, input) {
@@ -98,7 +143,7 @@ export function writePlan55PreflightGateEvidence(outputInput, input) {
   return files.size
 }
 
-function readWorkflowInputs(environment) {
+function readWorkflowContext(environment) {
   return {
     policy: loadPlan55ProductionOnlyPolicy(process.cwd()),
     sourceSha: environment.PLAN55_SOURCE_SHA,
@@ -108,11 +153,51 @@ function readWorkflowInputs(environment) {
     repository: environment.GITHUB_REPOSITORY,
     runId: environment.GITHUB_RUN_ID,
     runAttempt: Number(environment.GITHUB_RUN_ATTEMPT),
+  }
+}
+
+function readWorkflowInputs(environment) {
+  return {
+    ...readWorkflowContext(environment),
     outcomes: Object.fromEntries(Object.entries(OUTCOME_ENVIRONMENT).map(([id, key]) => [id, environment[key]])),
   }
 }
 
+function writePlan55IndependentHoldoutGateEvidence(outputInput, input) {
+  const repositoryRoot = realpathSync(process.cwd())
+  const outputRoot = resolve(outputInput)
+  const expectedRoot = resolve(repositoryRoot, 'artifacts/release/plan55-gate-evidence')
+  if (outputRoot !== expectedRoot) {
+    throw new Error('Plan 55 independent holdout gate evidence output path is invalid')
+  }
+  mkdirSync(outputRoot, { recursive: true })
+  if (realpathSync(outputRoot) !== outputRoot) {
+    throw new Error('Plan 55 independent holdout gate evidence output path is invalid')
+  }
+  const files = buildPlan55IndependentHoldoutGateEvidenceFiles(input)
+  for (const [relativePath, bytes] of files) {
+    const expectedPrefix = 'plan55-gate-evidence/'
+    if (!relativePath.startsWith(expectedPrefix) || relativePath.split('/').includes('..')) {
+      throw new Error('Plan 55 independent holdout gate evidence file path is invalid')
+    }
+    const filePath = resolve(outputRoot, relativePath.slice(expectedPrefix.length))
+    if (!filePath.startsWith(`${outputRoot}/`) && !filePath.startsWith(`${outputRoot}\\`)) {
+      throw new Error('Plan 55 independent holdout gate evidence file path is invalid')
+    }
+    writeFileSync(filePath, bytes, { flag: 'wx' })
+  }
+  return files.size
+}
+
 function runCli() {
+  if (process.argv.length === 5 && process.argv[2] === '--holdout-only' && process.argv[3] === '--output') {
+    const written = writePlan55IndependentHoldoutGateEvidence(process.argv[4], {
+      ...readWorkflowContext(process.env),
+      outcome: process.env.PLAN55_INDEPENDENT_HOLDOUT_PREFLIGHT_OUTCOME,
+    })
+    process.stdout.write(`${JSON.stringify({ gateCount: written, status: 'PASS' })}\n`)
+    return
+  }
   if (process.argv.length !== 4 || process.argv[2] !== '--output') {
     throw new Error('Usage: plan55-preflight-gate-evidence.mjs --output artifacts/release/plan55-gate-evidence')
   }
