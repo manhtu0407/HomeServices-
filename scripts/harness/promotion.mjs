@@ -14,6 +14,7 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..')
 const CONFIG_PATH = resolve(ROOT, 'config/harness/promotion.json')
 const PLAN55_POLICY_RELATIVE_PATH = 'config/harness/plan55-production-only-policy.json'
 const PLAN55_POLICY_ID = 'plan55-production-only'
+const PLAN55_PAIRED_WAVE_PREREGISTRATION_V2_ERROR = 'Plan 55 paired-wave preregistration must use v2 with minimum sample counts and a cost attribution source'
 const PLAN55_PAIRED_WAVE_OUTCOME_THRESHOLDS = Object.freeze({
   schemaVersion: 'plan55-paired-wave-outcome-thresholds.v1',
   criticalFailureClasses: Object.freeze(['safety', 'authorization', 'confirmation']),
@@ -402,6 +403,9 @@ export function buildPromotionPacket(input) {
   if (requiresPlan55Preregistration && !pairedWavePreregistration) {
     throw new Error('Plan 55 paired-wave preregistration is missing or invalid')
   }
+  if (requiresPlan55Preregistration && pairedWavePreregistration.schemaVersion !== 'plan55-paired-wave-preregistration.v2') {
+    throw new Error(PLAN55_PAIRED_WAVE_PREREGISTRATION_V2_ERROR)
+  }
   const requiredGates = requiredPromotionGates(input.config, input.targetState)
   const passedGates = input.passedGates ?? []
   for (const gate of requiredGates) {
@@ -504,6 +508,8 @@ export function verifyPromotionPacket(packet, config) {
     const preregistration = resolvePlan55PairedWavePreregistration(config)
     if (!preregistration) {
       problems.push('Plan 55 paired-wave preregistration is missing or invalid')
+    } else if (preregistration.schemaVersion !== 'plan55-paired-wave-preregistration.v2') {
+      problems.push(PLAN55_PAIRED_WAVE_PREREGISTRATION_V2_ERROR)
     } else if (packet.cohort !== preregistration.cohortId ||
       packet.observationWindowMinutes !== preregistration.observationWindowMinutes ||
       packet.pairedWavePreregistrationSha256 !== preregistration.sha256) {
