@@ -192,7 +192,6 @@ test('preflight gate proofs bind exact source and successful CI step outcomes be
     production_ui_normality: 'PLAN55_PRODUCTION_UI_NORMALITY_OUTCOME',
     secret_scan: 'PLAN55_SECRET_SCAN_OUTCOME',
     sql_verification: 'PLAN55_SQL_VERIFICATION_OUTCOME',
-    independent_holdout_preflight: 'PLAN55_INDEPENDENT_HOLDOUT_PREFLIGHT_OUTCOME',
   }
   for (const [stepId, variable] of Object.entries(outcomeBindings)) {
     assert.match(proofStep, new RegExp(`${variable}: \\\$\\{\\{ steps\\.${stepId}\\.outcome \\}\\}`,'u'),
@@ -268,10 +267,15 @@ test('release-stage gate proofs bind the pinned hosted baseline and rollback bef
     '--mobile-binary-attestation artifacts/release/mobile-binary-attestation.json',
   ]) assert.ok(assemble.includes(argument), `release-stage proof input is missing: ${argument}`)
   assert.match(assemble, /--output artifacts\/release\/plan55-gate-evidence/u)
+  assert.match(assemble,
+    /cp -a artifacts\/rollback\/supabase\/\. artifacts\/release\/rollback\/supabase\//u,
+    'rollback inputs must be normalized under the release artifact root before upload')
   const releaseArtifactUpload = assemble.slice(assemble.indexOf('name: Preserve guard-deploy and rollback evidence'))
   assert.match(releaseArtifactUpload,
-    /path:\s*\|\r?\n\s*artifacts\/release\r?\n\s*artifacts\/rollback\/supabase\/config\.toml\r?\n\s*artifacts\/rollback\/supabase\/functions\/mobile-api/u,
-    'the exact-source release artifact must retain gate proofs and only the pinned rollback deploy inputs')
+    /path:\s*artifacts\/release\r?\n\s*if-no-files-found: warn/u,
+    'the exact-source release artifact must have one normalized root for release, proof, and rollback files')
+  assert.doesNotMatch(releaseArtifactUpload, /artifacts\/rollback/u,
+    'the uploaded artifact must not introduce a second path root')
   assert.match(releaseGateProofs, /hosted\.gitSha !== pinned\.sha/u)
   assert.match(releaseGateProofs, /JSON\.stringify\(rollback\.migrations\) !== JSON\.stringify\(before\.migrations\)/u)
   assert.match(releaseGateProofs, /sameMobileApiIdentity\(beforeEdge, rollbackEdge\)/u)
@@ -287,43 +291,56 @@ test('release-stage gate proofs bind the pinned hosted baseline and rollback bef
   ])
 })
 
-test('independent holdout attestation fails fast before Docker RAM and long workspace gates', () => {
+test('independent holdout attestation gates canary actors after the guard is deployed OFF', () => {
   const quality = jobBlock(release, 'quality-and-preflight')
-  const sourceIndex = quality.indexOf('id: verify_source')
-  const holdoutStepIndex = quality.indexOf('name: Require independent holdout attestation before Docker and long quality gates')
-  const holdoutIndex = quality.indexOf('node apps/api/scripts/plan55-independent-holdout-preflight.mjs', holdoutStepIndex)
-  const dockerIndex = quality.indexOf('id: docker_ram_floor')
-  const installIndex = quality.indexOf('run: pnpm install --frozen-lockfile')
-  const workspaceIndex = quality.indexOf('id: workspace_quality')
+  const deploy = jobBlock(release, 'deploy_guard_off')
+  const holdout = jobBlock(release, 'independent_holdout_attestation')
+  const holdoutIndex = holdout.indexOf('node apps/api/scripts/plan55-independent-holdout-preflight.mjs')
+  const proofIndex = holdout.indexOf('plan55-preflight-gate-evidence.mjs --holdout-only')
+  const uploadIndex = holdout.indexOf('name: plan55-independent-holdout-')
 
-  assert.ok(sourceIndex >= 0 && holdoutStepIndex > sourceIndex,
-    'exact source identity must be verified before the read-only holdout request')
-  assert.ok(holdoutIndex > holdoutStepIndex && dockerIndex > holdoutIndex &&
-    installIndex > dockerIndex && workspaceIndex > installIndex,
-  'missing independent adjudication must fail before Docker, dependency installation, and the long quality suite')
-  assert.equal(quality.slice(0, dockerIndex).match(/node apps\/api\/scripts\/plan55-independent-holdout-preflight\.mjs/gu)?.length, 1,
-    'the quality job must perform exactly one early read-only holdout check')
-
-  const earlyGate = quality.slice(holdoutStepIndex, dockerIndex)
-  assert.match(earlyGate, /GH_TOKEN: \$\{\{ github\.token \}\}/u,
-    'the early check must use only the workflow-scoped read-only token')
-  assert.match(earlyGate, /PLAN55_SOURCE_SHA: \$\{\{ inputs\.source_sha \}\}/u,
-    'the early check must remain bound to the exact requested source')
+  assert.doesNotMatch(quality, /plan55-independent-holdout-preflight\.mjs/u,
+    'independent adjudication must not block source-bound local quality and SQL checks')
+  assert.doesNotMatch(deploy, /plan55-independent-holdout-preflight\.mjs/u,
+    'the OFF-only guard deployment must not require holdout adjudication')
+  assert.match(quality, /preflight_artifact_id: \$\{\{ steps\.preflight-artifact\.outputs\.artifact-id \}\}/u,
+    'the quality job must expose its immutable pre-deploy proof artifact')
+  assert.match(quality, /id: preflight-artifact/u,
+    'the pre-deploy proof upload must expose its artifact ID')
+  assert.match(deploy,
+    /actions\/download-artifact@[a-f0-9]+[\s\S]*?artifact-ids: \$\{\{ needs\.quality-and-preflight\.outputs\.preflight_artifact_id \}\}[\s\S]*?path: artifacts\/release\/plan55-gate-evidence/u,
+    'the release artifact must preserve the exact quality proof artifact for final receipt packaging')
+  assert.deepEqual(needsFor('independent_holdout_attestation'), ['deploy_guard_off'],
+    'the exact-source attestation check must run after the deployed guard is verified')
+  assert.ok(holdoutIndex >= 0 && proofIndex > holdoutIndex && uploadIndex > proofIndex,
+    'the holdout result must be validated, converted to gate evidence, then uploaded')
+  assert.match(holdout, /GH_TOKEN: \$\{\{ github\.token \}\}/u,
+    'the review check must use only the workflow-scoped read-only token')
+  assert.match(holdout, /PLAN55_SOURCE_SHA: \$\{\{ inputs\.source_sha \}\}/u,
+    'the review check must stay bound to the exact requested source')
+  assert.match(holdout, /PLAN55_INDEPENDENT_HOLDOUT_PREFLIGHT_OUTCOME: \$\{\{ steps\.holdout_preflight\.outcome \}\}/u,
+    'the gate proof must consume the actual successful review-check outcome')
+  assert.doesNotMatch(holdout, /SUPABASE_(?:ACCESS_TOKEN|SERVICE_ROLE_KEY)|PLAN55_PRODUCTION_CANARY_OPT_IN/u,
+    'the holdout job must not create an actor, change flags, or call the database')
+  assert.ok(needsFor('hvac').includes('independent_holdout_attestation'),
+    'no first-service actor can be created before independent holdout attestation succeeds')
 })
 
-test('independent holdout attestation and guard CI are required before assembling or mutating Production', () => {
+test('guard deployment stays OFF-only and independent holdout remains mandatory before canary', () => {
   const deploy = jobBlock(release, 'deploy_guard_off')
-  const reviewGateIndex = deploy.indexOf('node apps/api/scripts/plan55-independent-holdout-preflight.mjs')
   const assembleIndex = deploy.indexOf('name: Assemble exact Production release and prove rollback source')
   const deployIndex = deploy.indexOf('functions deploy mobile-api')
 
-  assert.ok(reviewGateIndex >= 0, 'Production deploy must run the independent holdout preflight')
-  assert.ok(assembleIndex > reviewGateIndex, 'review eligibility must be established before Production release assembly')
+  assert.doesNotMatch(deploy, /plan55-independent-holdout-preflight\.mjs/u,
+    'the pre-canary review must not block a safe guard-OFF deploy')
+  assert.ok(assembleIndex >= 0, 'the guard-off deploy must still assemble the exact Production release')
   assert.ok(deployIndex > assembleIndex, 'release assembly must precede the actual Edge deployment')
+  assert.deepEqual(needsFor('independent_holdout_attestation'), ['deploy_guard_off'])
+  assert.ok(needsFor('hvac').includes('independent_holdout_attestation'))
   assert.match(deploy, /GH_TOKEN: \$\{\{ github\.token \}\}/u,
-    'preflight must use the workflow-scoped read-only GitHub token')
+    'the guard deploy keeps its existing read-only GitHub checks')
   assert.match(deploy, /PLAN55_SOURCE_SHA: \$\{\{ inputs\.source_sha \}\}/u,
-    'preflight must validate the exact dispatched source SHA')
+    'the guard deploy remains bound to the exact dispatched source SHA')
   assert.match(release, /issues: read/u,
     'the workflow token must read only the attestation comments on the exact merged PR')
   assert.match(release, /pull-requests: read/u,
@@ -336,23 +353,22 @@ test('independent holdout attestation and guard CI are required before assemblin
     'the CLI must not treat the pinned ancestry base as the workflow dispatch ref')
 })
 
-test('holdout review is revalidated immediately before the first Production write', () => {
-  const gatePath = 'node apps/api/scripts/plan55-independent-holdout-preflight.mjs'
-  const firstGate = release.indexOf(gatePath)
-  const finalGate = release.indexOf(gatePath, firstGate + gatePath.length)
-  const register = release.indexOf('node scripts/harness/release-control.mjs --action register')
-  const deployStep = release.slice(release.indexOf('      - name: Register release metadata and deploy actor-scoped guard'))
+test('holdout review is revalidated before any service actor or scoped flag mutation', () => {
+  const operations = readFileSync('apps/api/scripts/lib/plan55-production-canary-operations.mjs', 'utf8')
+  const preflightMethod = operations.indexOf('async preflight(service')
+  const proofCheck = operations.indexOf('verifyPlan55IndependentHoldoutAttestationProof', preflightMethod)
+  const actorCreation = operations.indexOf('async createSyntheticActor(service)')
+  const sequencePreflight = canaryCore.indexOf(
+    'const preflight = assertPlan55CanaryPreflight(await operations.preflight(service))')
+  const sequenceActorCreation = canaryCore.indexOf('actor = await operations.createSyntheticActor(service)', sequencePreflight)
+  const scopedFlagEnable = canaryCore.indexOf('await operations.enableActorCanary(service, actor)', sequenceActorCreation)
 
-  assert.ok(firstGate >= 0 && finalGate > firstGate,
-    'review eligibility must be checked early and again after long release assembly')
-  assert.ok(register > finalGate,
-    'no release registration or secret/Edge mutation may precede the fresh review check')
-  assert.match(deployStep, /GH_TOKEN: \$\{\{ github\.token \}\}/u,
-    'the final review check must use the read-only workflow token')
-  assert.match(deployStep, /PLAN55_SOURCE_SHA: \$\{\{ inputs\.source_sha \}\}/u,
-    'the final review check must remain bound to the exact source SHA')
-  assert.match(deployStep, /trap rollback EXIT[\s\S]*?node apps\/api\/scripts\/plan55-independent-holdout-preflight\.mjs[\s\S]*?release-control\.mjs --action register/u,
-    'the immediate recheck must fail before release registration while retaining existing rollback behavior')
+  assert.ok(preflightMethod >= 0 && proofCheck > preflightMethod && actorCreation > proofCheck,
+    'the independent review proof must be re-fetched before the actor-creation operation')
+  assert.ok(sequencePreflight >= 0 && sequenceActorCreation > sequencePreflight && scopedFlagEnable > sequenceActorCreation,
+    'every service run must complete its exact-source preflight before actor creation and scoped flag enablement')
+  assert.match(release, /needs: \[deploy_guard_off, independent_holdout_attestation\]/u,
+    'the first canary job must also wait for the post-deploy independent attestation artifact')
 })
 
 test('Production source attestation is bound to downloaded hosted Edge bytes and live deployment metadata', () => {
@@ -410,11 +426,12 @@ test('deployed guard proofs consume only exact post-deploy Production evidence b
 test('service workflow preserves order and resumes only an exact-source cleaned checkpoint', () => {
   const ordered = ['hvac', 'handyman', 'cleaning', 'upholstery', 'plumbing', 'electrical']
   for (const [index, serviceName] of ordered.entries()) {
-    const expectedNeeds = ['deploy_guard_off', ...ordered.slice(0, index)]
+    const expectedNeeds = ['deploy_guard_off', 'independent_holdout_attestation', ...ordered.slice(0, index)]
     assert.deepEqual(needsFor(serviceName), expectedNeeds, `${serviceName} must wait for the release and all prior services`)
     assert.match(release, new RegExp(`service: ${serviceName}\\r?\\n`, 'u'))
   }
-  assert.deepEqual(needsFor('validate-six-receipts'), ['deploy_guard_off', ...ordered])
+  assert.deepEqual(needsFor('validate-six-receipts'),
+    ['deploy_guard_off', 'independent_holdout_attestation', ...ordered])
   assert.match(service, /timeout-minutes: 360/u)
   assert.match(service, /--run --service "\$PLAN55_SERVICE"/u)
   assert.match(service, /BLOCKED_UNVERIFIED/u)
@@ -557,6 +574,10 @@ test('gate evidence packaging preserves exact-source evidence and has no Product
   assert.match(gateEvidencePackage, /runUpdatedAt:\s*artifact\.runUpdatedAt/u)
   assert.match(gateEvidencePackage, /PLAN55_RELEASE_STAGE_GATES/u)
   assert.match(gateEvidencePackage, /PLAN55_DEPLOYED_GUARD_GATES/u)
+  assert.match(gateEvidencePackage, /PLAN55_PREFLIGHT_GATE_CHECKS/u)
+  assert.match(gateEvidencePackage,
+    /Object\.keys\(PLAN55_PREFLIGHT_GATE_CHECKS\)[\s\S]*?filter\(\(gate\) => gate !== 'plan55-independent-holdout-freeze'\)/u,
+    'pre-deploy proofs belong to the exact release artifact while holdout remains a post-deploy external gate')
   assert.match(gateEvidencePackage,
     /const releaseArtifactGates = new Set\(\[[\s\S]*?\.filter\(\(gate\) =>\s*expectedGates\.includes\(gate\)\)\)/u,
     'deployed and pre-deploy proofs must be auto-sourced from the exact release artifact')
@@ -792,8 +813,9 @@ test('successful six-service receipts automatically package and finalize the rec
 
   const packageJobName = 'package-receipt-gate-evidence'
   const packageJob = jobBlock(release, packageJobName)
-  assert.deepEqual(needsFor(packageJobName), ['deploy_guard_off', 'validate-six-receipts'],
-    'the evidence package must wait for the successful deployed guard and all six receipts')
+  assert.deepEqual(needsFor(packageJobName),
+    ['deploy_guard_off', 'independent_holdout_attestation', 'validate-six-receipts'],
+    'the evidence package must wait for the guard, independent holdout attestation, and all six receipts')
   assert.match(packageJob, /uses: \.\/\.github\/workflows\/plan55-gate-evidence-package\.yml/u)
   assert.match(packageJob, /target_state: receipts_validated/u)
   assert.match(packageJob, /source_run_id: \$\{\{ github\.run_id \}\}/u)
@@ -801,8 +823,27 @@ test('successful six-service receipts automatically package and finalize the rec
   assert.match(packageJob,
     /"artifact_id":\$\{\{ needs\.validate-six-receipts\.outputs\.receipts_artifact_id \}\}/u,
     'both receipt gates must reference the exact uploaded six-receipt artifact')
-  assert.equal((packageJob.match(/"artifact_id":\$\{\{ needs\.validate-six-receipts\.outputs\.receipts_artifact_id \}\}/gu) ?? []).length, 2,
-    'the current-source and cleanup gates must share only the validated receipt artifact')
+  assert.equal((packageJob.match(/"artifact_id":\$\{\{ needs\.validate-six-receipts\.outputs\.receipts_artifact_id \}\}/gu) ?? []).length, 9,
+    'all seven service-gate proofs and both aggregate receipt gates must share the validated receipt artifact')
+  assert.ok(packageJob.includes('needs.independent_holdout_attestation.outputs.evidence_artifact_id'),
+    'the independent holdout gate must use the exact successful attestation job artifact')
+  assert.ok(packageJob.includes('plan55-independent-holdout'))
+  assert.ok(packageJob.includes('plan55-independent-holdout-freeze.json'))
+  for (const gate of [
+    'plan55-independent-holdout-freeze',
+    'plan55-auth-admin-verified',
+    'plan55-synthetic-actor-created',
+    'plan55-actor-scope-verified',
+    'plan55-disposable-worker-isolated',
+    'plan55-service-slice-integrity-pass',
+    'plan55-service-g5-safety-pass',
+    'plan55-service-cleanup-pass',
+    'plan55-six-current-source-receipts',
+    'plan55-six-cleanup-passes',
+  ]) {
+    assert.ok(packageJob.includes(`"gate":"${gate}"`),
+      `the final receipt package must reference exact evidence for ${gate}`)
+  }
   for (const gate of ['plan55-six-current-source-receipts', 'plan55-six-cleanup-passes']) {
     assert.ok(packageJob.includes(gate), `the package must verify ${gate}`)
   }
@@ -815,8 +856,8 @@ test('successful six-service receipts automatically package and finalize the rec
   const finalizationJobName = 'finalize-receipts-packet'
   const finalizationJob = jobBlock(release, finalizationJobName)
   assert.deepEqual(needsFor(finalizationJobName), [
-    'deploy_guard_off', 'validate-six-receipts', packageJobName,
-  ], 'finalization must not run unless the deployed guard, receipts, and evidence package succeed')
+    'deploy_guard_off', 'independent_holdout_attestation', 'validate-six-receipts', packageJobName,
+  ], 'finalization must not run unless the deployed guard, independent attestation, receipts, and evidence package succeed')
   assert.match(finalizationJob,
     /uses: \.\/\.github\/workflows\/plan55-postreceipt-finalization\.yml/u)
   assert.match(finalizationJob, /target_state: receipts_validated/u)

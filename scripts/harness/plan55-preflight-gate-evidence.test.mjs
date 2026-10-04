@@ -9,6 +9,7 @@ import {
   loadPlan55GateEvidenceSet,
 } from './plan55-gate-receipts.mjs'
 import {
+  buildPlan55IndependentHoldoutGateEvidenceFiles,
   buildPlan55PreflightGateEvidenceFiles,
   PLAN55_PREFLIGHT_GATE_CHECKS,
 } from './plan55-preflight-gate-evidence.mjs'
@@ -24,7 +25,6 @@ const outcomes = {
   production_ui_normality: 'success',
   secret_scan: 'success',
   sql_verification: 'success',
-  independent_holdout_preflight: 'success',
 }
 
 function buildProofs(overrides = {}) {
@@ -44,10 +44,12 @@ function buildProofs(overrides = {}) {
 
 test('emits deterministic per-gate proofs bound to the exact main run and required successful steps', () => {
   const files = buildProofs()
-  assert.deepEqual([...files.keys()].sort(), Object.keys(PLAN55_PREFLIGHT_GATE_CHECKS)
+  const qualityGateChecks = Object.fromEntries(Object.entries(PLAN55_PREFLIGHT_GATE_CHECKS)
+    .filter(([gate]) => gate !== 'plan55-independent-holdout-freeze'))
+  assert.deepEqual([...files.keys()].sort(), Object.keys(qualityGateChecks)
     .map((gate) => `plan55-gate-evidence/${gate}.json`).sort())
 
-  for (const [gate, requiredChecks] of Object.entries(PLAN55_PREFLIGHT_GATE_CHECKS)) {
+  for (const [gate, requiredChecks] of Object.entries(qualityGateChecks)) {
     const evidence = JSON.parse(files.get(`plan55-gate-evidence/${gate}.json`).toString('utf8'))
     assert.equal(evidence.schemaVersion, 'plan55-preflight-gate-proof.v1')
     assert.equal(evidence.gate, gate)
@@ -64,14 +66,49 @@ test('emits deterministic per-gate proofs bound to the exact main run and requir
   }
 })
 
-test('binds the independent holdout freeze to its successful source-bound preflight outcome', () => {
+test('keeps independent holdout attestation out of pre-deploy quality proofs', () => {
   const gate = 'plan55-independent-holdout-freeze'
   assert.deepEqual(PLAN55_PREFLIGHT_GATE_CHECKS[gate], ['independent_holdout_preflight'])
   assert.equal(policy.trustedEvidenceWorkflowPathsByGate[gate], '.github/workflows/ci.yml')
 
   const files = buildProofs()
-  const evidence = JSON.parse(files.get(`plan55-gate-evidence/${gate}.json`).toString('utf8'))
-  assert.deepEqual(evidence.checks, [{ id: 'independent_holdout_preflight', outcome: 'success' }])
+  assert.equal(files.has(`plan55-gate-evidence/${gate}.json`), false)
+})
+
+test('emits the independent holdout proof only after its exact-source attestation succeeds', () => {
+  const gate = 'plan55-independent-holdout-freeze'
+  const input = {
+    policy,
+    sourceSha,
+    githubSha: sourceSha,
+    githubRef: 'refs/heads/main',
+    eventName: 'workflow_dispatch',
+    repository: policy.repository,
+    runId: '7001',
+    runAttempt: 2,
+    outcome: 'success',
+  }
+  const files = buildPlan55IndependentHoldoutGateEvidenceFiles(input)
+  assert.deepEqual([...files.keys()], [`plan55-gate-evidence/${gate}.json`])
+  const proof = JSON.parse(files.get(`plan55-gate-evidence/${gate}.json`).toString('utf8'))
+  assert.equal(proof.gate, gate)
+  assert.equal(proof.sourceSha, sourceSha)
+  assert.equal(proof.workflowPath, '.github/workflows/ci.yml')
+  assert.deepEqual(proof.checks, [{ id: 'independent_holdout_preflight', outcome: 'success' }])
+
+  for (const overrides of [
+    { githubSha: 'b'.repeat(40) },
+    { githubRef: 'refs/heads/feature' },
+    { eventName: 'push' },
+    { runId: '0' },
+    { runAttempt: 0 },
+    { outcome: 'failure' },
+    { outcome: undefined },
+    { policy: { ...policy, trustedEvidenceWorkflowPaths: [] } },
+  ]) {
+    assert.throws(() => buildPlan55IndependentHoldoutGateEvidenceFiles({ ...input, ...overrides }),
+      /Plan 55 independent holdout gate evidence/u)
+  }
 })
 
 test('binds the Docker, Edge, and SQL release gate to three distinct successful outcomes', () => {
@@ -105,11 +142,9 @@ test('rejects non-main, stale source, missing run identity, and any failed, skip
     { outcomes: { ...outcomes, edge_deno: 'failure' } },
     { outcomes: { ...outcomes, sql_verification: 'failure' } },
     { outcomes: { ...outcomes, production_ui_normality: 'failure' } },
-    { outcomes: { ...outcomes, independent_holdout_preflight: 'failure' } },
     { outcomes: { ...outcomes, unexpected: 'success' } },
     { outcomes: Object.fromEntries(Object.entries(outcomes).filter(([id]) => id !== 'workspace_quality')) },
     { outcomes: Object.fromEntries(Object.entries(outcomes).filter(([id]) => id !== 'edge_deno')) },
-    { outcomes: Object.fromEntries(Object.entries(outcomes).filter(([id]) => id !== 'independent_holdout_preflight')) },
   ]) {
     assert.throws(() => buildProofs(overrides), /Plan 55 preflight gate evidence/u)
   }
