@@ -99,7 +99,11 @@
   "slicesPerService": 8,
   "casesPerSlice": 12,
   "serviceConcurrency": 1,
-  "pairedWavePreregistration": null,
+  "pairedWavePreregistration": {
+    "schemaVersion": "plan55-paired-wave-preregistration.v1",
+    "cohortId": "synthetic-plan55-7df85505281d69d5968170ef5816fcdc",
+    "observationWindowMinutes": 60
+  },
   "globalServiceFlags": "absent",
   "realCustomerTraffic": false,
   "cleanupBeforeNextService": true,
