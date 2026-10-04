@@ -18,6 +18,7 @@ const REQUIRED_CANARY_PROVIDERS = Object.freeze(['anthropic', 'durable_guards', 
 export async function inspectPlan55ProductionReleasePreflight({
   env = process.env,
   fetchImpl = fetch,
+  expectedRelease,
 } = {}) {
   const accessToken = env.SUPABASE_ACCESS_TOKEN
   if (!accessToken) throw new Error('plan55_release_preflight_access_token_missing')
@@ -31,8 +32,12 @@ export async function inspectPlan55ProductionReleasePreflight({
     headers: { accept: 'application/json' },
   }, 'plan55_release_preflight_health_unavailable')
   const deployment = validateProductionHealthPayload(health)
-  const sourceBase = POLICY.productionSourceBase
-  if (deployment.git_sha !== sourceBase.sha || deployment.release_id !== sourceBase.releaseId) {
+  const expected = expectedRelease
+    ? validateExpectedRelease(expectedRelease)
+    : POLICY.productionSourceBase
+  const expectedSha = expectedRelease ? expected.gitSha : expected.sha
+  const expectedReleaseId = expected.releaseId
+  if (deployment.git_sha !== expectedSha || deployment.release_id !== expectedReleaseId) {
     throw new Error('plan55_release_preflight_production_base_changed')
   }
 
@@ -70,6 +75,17 @@ export async function inspectPlan55ProductionReleasePreflight({
     )),
     mutations: 0,
   })
+}
+
+function validateExpectedRelease(release) {
+  if (!release || typeof release !== 'object' || Array.isArray(release) ||
+      release.environment !== POLICY.environment || release.releaseLane !== POLICY.releaseLane ||
+      !/^[a-f0-9]{40}$/u.test(release.gitSha ?? '') ||
+      !new RegExp(`^harness-${release.gitSha?.slice(0, 12)}-[a-f0-9]{12}$`, 'u')
+        .test(release.releaseId ?? '')) {
+    throw new Error('plan55_release_preflight_expected_release_invalid')
+  }
+  return release
 }
 
 async function readJson(fetchImpl, url, init, errorCode) {

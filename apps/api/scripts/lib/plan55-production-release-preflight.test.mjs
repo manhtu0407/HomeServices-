@@ -103,3 +103,44 @@ test('Production release preflight fails closed on credentials, target, source, 
     { message: 'plan55_release_preflight_provider_not_ready' },
   )
 })
+
+test('post-deploy preflight binds read-only flags and provider checks to the exact candidate release', async () => {
+  const sourceSha = 'a'.repeat(40)
+  const release = {
+    environment: 'production',
+    releaseLane: 'plan55-production-only',
+    releaseId: `harness-${sourceSha.slice(0, 12)}-${'b'.repeat(12)}`,
+    gitSha: sourceSha,
+  }
+  const candidateHealth = fetchFor({
+    healthPayload: health({ git_sha: sourceSha, release_id: release.releaseId }),
+  })
+  const result = await inspectPlan55ProductionReleasePreflight({
+    env: { SUPABASE_ACCESS_TOKEN: 'opaque' },
+    fetchImpl: candidateHealth.fetchImpl,
+    expectedRelease: release,
+  })
+  assert.equal(result.source_sha, sourceSha)
+  assert.equal(result.release_id, release.releaseId)
+  assert.equal(result.plan55_flags_absent, true)
+  assert.deepEqual(result.required_provider_readiness, {
+    anthropic: true,
+    durable_guards: true,
+    global_ai_enabled: true,
+  })
+  assert.equal(candidateHealth.requests.every(({ init }) => init.method === 'GET'), true)
+
+  const wrongCandidate = fetchFor({
+    healthPayload: health({ git_sha: 'c'.repeat(40), release_id: `harness-${'c'.repeat(12)}-d426155f83de` }),
+  })
+  await assert.rejects(inspectPlan55ProductionReleasePreflight({
+    env: { SUPABASE_ACCESS_TOKEN: 'opaque' },
+    fetchImpl: wrongCandidate.fetchImpl,
+    expectedRelease: release,
+  }), { message: 'plan55_release_preflight_production_base_changed' })
+  await assert.rejects(inspectPlan55ProductionReleasePreflight({
+    env: { SUPABASE_ACCESS_TOKEN: 'opaque' },
+    fetchImpl: candidateHealth.fetchImpl,
+    expectedRelease: { ...release, releaseLane: 'verification' },
+  }), { message: 'plan55_release_preflight_expected_release_invalid' })
+})

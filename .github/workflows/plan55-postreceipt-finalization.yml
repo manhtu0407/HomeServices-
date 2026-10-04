@@ -1,0 +1,279 @@
+name: Plan 55 post-receipt finalization packet
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_sha:
+        description: Exact locked Plan 55 merge SHA
+        required: true
+        type: string
+      source_run_id:
+        description: Successful Plan 55 Production-only workflow run that produced release and receipt artifacts
+        required: true
+        type: string
+      source_run_attempt:
+        description: Exact successful source workflow attempt
+        required: true
+        type: string
+      release_artifact_id:
+        description: Immutable plan55-release artifact ID from the exact source run
+        required: true
+        type: string
+      receipts_artifact_id:
+        description: Immutable plan55-six-receipts artifact ID from the exact source run
+        required: true
+        type: string
+      gate_evidence_artifact_id:
+        description: Immutable gate-evidence artifact ID containing the source-bound receipt set
+        required: true
+        type: string
+      cohort_id:
+        description: Safe opaque cohort ID for a paired-wave packet; never include personal data
+        required: false
+        type: string
+      observation_window_minutes:
+        description: Positive integer observation window for a paired-wave packet
+        required: false
+        type: string
+      target_state:
+        description: Policy state for which to build a read-only promotion packet
+        required: true
+        type: choice
+        options:
+          - receipts_validated
+          - paired_wave_1
+          - paired_wave_2
+          - paired_wave_3
+          - production
+
+permissions:
+  actions: read
+  contents: read
+
+concurrency:
+  group: plan55-postreceipt-${{ github.repository }}-${{ inputs.source_sha }}
+  cancel-in-progress: false
+
+jobs:
+  finalize-packet:
+    if: github.ref == 'refs/heads/main' && inputs.source_sha == github.sha
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      actions: read
+      contents: read
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          ref: ${{ inputs.source_sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+      - name: Confirm the locked source and Production ancestry
+        env:
+          PLAN55_SOURCE_SHA: ${{ inputs.source_sha }}
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF" = "refs/heads/main"
+          [[ "$PLAN55_SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          test "$GITHUB_SHA" = "$PLAN55_SOURCE_SHA"
+          test "$(git rev-parse HEAD)" = "$PLAN55_SOURCE_SHA"
+          test -z "$(git status --porcelain=v1 --untracked-files=all)"
+          base_sha=$(node -p "require('./config/harness/plan55-production-only-policy.json').productionSourceBase.sha")
+          git merge-base --is-ancestor "$base_sha" "$PLAN55_SOURCE_SHA"
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+      - name: Install the locked workspace toolchain
+        run: pnpm install --frozen-lockfile
+      - name: Verify and stage the independently produced exact-source artifacts
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PLAN55_SOURCE_SHA: ${{ inputs.source_sha }}
+          PLAN55_SOURCE_RUN_ID: ${{ inputs.source_run_id }}
+          PLAN55_SOURCE_RUN_ATTEMPT: ${{ inputs.source_run_attempt }}
+          PLAN55_RELEASE_ARTIFACT_ID: ${{ inputs.release_artifact_id }}
+          PLAN55_RECEIPTS_ARTIFACT_ID: ${{ inputs.receipts_artifact_id }}
+          PLAN55_GATE_EVIDENCE_ARTIFACT_ID: ${{ inputs.gate_evidence_artifact_id }}
+          PLAN55_TARGET_STATE: ${{ inputs.target_state }}
+        run: |
+          node --input-type=module <<'NODE'
+          import { mkdirSync, writeFileSync } from 'node:fs'
+          import { dirname, resolve, sep } from 'node:path'
+          import {
+            assertPlan55FinalizationArtifactFiles,
+            buildPlan55CanaryGateEvidenceFiles,
+            downloadPlan55GitHubRunArtifact,
+          } from './scripts/harness/plan55-gate-receipts.mjs'
+          import { loadPlan55ProductionOnlyPolicy } from './scripts/harness/promotion.mjs'
+
+          const policy = loadPlan55ProductionOnlyPolicy(process.cwd())
+          const sourceRunId = Number(process.env.PLAN55_SOURCE_RUN_ID)
+          const sourceRunAttempt = Number(process.env.PLAN55_SOURCE_RUN_ATTEMPT)
+          const releaseArtifactId = Number(process.env.PLAN55_RELEASE_ARTIFACT_ID)
+          const receiptsArtifactId = Number(process.env.PLAN55_RECEIPTS_ARTIFACT_ID)
+          const gateEvidenceArtifactId = Number(process.env.PLAN55_GATE_EVIDENCE_ARTIFACT_ID)
+          if (![sourceRunId, sourceRunAttempt, releaseArtifactId, receiptsArtifactId,
+            gateEvidenceArtifactId]
+            .every((value) => Number.isSafeInteger(value) && value > 0)) {
+            throw new Error('Plan 55 source and evidence artifact inputs are invalid')
+          }
+
+          const sourceWorkflow = '.github/workflows/ci.yml'
+          const gateEvidenceWorkflow = '.github/workflows/plan55-gate-evidence-package.yml'
+          const download = (artifactId, artifactNamePrefix, expectedRunId, expectedRunAttempt,
+            trustedWorkflowPaths = [sourceWorkflow]) => downloadPlan55GitHubRunArtifact({
+            repository: policy.repository,
+            trustedWorkflowPaths,
+            sourceSha: process.env.PLAN55_SOURCE_SHA,
+            artifactId,
+            artifactNamePrefix,
+            expectedRunId,
+            expectedRunAttempt,
+            token: process.env.GH_TOKEN,
+          })
+
+          const [releaseArtifact, receiptsArtifact, gateEvidenceArtifact] = await Promise.all([
+            download(releaseArtifactId, 'plan55-release', sourceRunId, sourceRunAttempt),
+            download(receiptsArtifactId, 'plan55-six-receipts', sourceRunId, sourceRunAttempt),
+            download(gateEvidenceArtifactId, 'plan55-gate-evidence', undefined,
+              undefined, [gateEvidenceWorkflow]),
+          ])
+          if (releaseArtifact.workflowPath !== sourceWorkflow ||
+              receiptsArtifact.workflowPath !== sourceWorkflow) {
+            throw new Error('Plan 55 release and receipt artifacts are not from the exact source workflow')
+          }
+
+          const uniqueFile = (files, basename, label) => {
+            const matches = [...files].filter(([name]) =>
+              name === basename || name.endsWith(`/${basename}`))
+            if (matches.length !== 1) throw new Error(`Plan 55 ${label} artifact file is missing or ambiguous`)
+            return matches[0][1]
+          }
+          const releaseBytes = uniqueFile(releaseArtifact.files, 'release.json', 'release')
+          const hostedBeforeBytes = uniqueFile(releaseArtifact.files, 'hosted-before.json', 'hosted-before')
+          const release = JSON.parse(releaseBytes.toString('utf8'))
+          if (release.gitSha !== process.env.PLAN55_SOURCE_SHA ||
+              release.environment !== 'production' ||
+              release.releaseLane !== policy.releaseLane ||
+              !new RegExp(`^harness-${process.env.PLAN55_SOURCE_SHA.slice(0, 12)}-[a-f0-9]{12}$`, 'u')
+                .test(release.releaseId ?? '')) {
+            throw new Error('Plan 55 finalization release identity is invalid')
+          }
+
+          const checkpointBytes = uniqueFile(receiptsArtifact.files, 'checkpoint-status.json', 'receipt')
+          const aggregateBytes = uniqueFile(receiptsArtifact.files, 'six-service-g5-receipt.json', 'receipt')
+          const checkpoint = JSON.parse(checkpointBytes.toString('utf8'))
+          const aggregate = JSON.parse(aggregateBytes.toString('utf8'))
+          const targetState = process.env.PLAN55_TARGET_STATE
+          const expectedCanaryEvidence = buildPlan55CanaryGateEvidenceFiles({
+            policy, release, checkpoint, aggregate, targetState,
+          })
+          if (checkpoint.schema !== 'plan55-production-checkpoint-status/v2' ||
+              checkpoint.scope !== 'currently_served_production_release_only' ||
+              checkpoint.canary_started !== true || checkpoint.canary_attempt_cleaned !== true ||
+              checkpoint.deployment?.project_ref !== policy.projectRef ||
+              checkpoint.deployment?.source_sha !== release.gitSha ||
+              checkpoint.deployment?.release_id !== release.releaseId ||
+              checkpoint.verified_slice_count !== 48 || checkpoint.services?.length !== 6 ||
+              checkpoint.services.some((service, index) =>
+                service.service !== policy.serviceOrder[index] || service.complete !== true ||
+                service.cleanup_verified !== true || service.verified_slice_count !== 8 ||
+                service.missing_slice_count !== 0 || service.verified_slice_ids?.length !== 8 ||
+                service.missing_slice_ids?.length !== 0) ||
+              aggregate.project_ref !== policy.projectRef ||
+              aggregate.scope !== 'production_synthetic_actor_sequence' ||
+              aggregate.status !== 'SIX_SERVICE_CANARY_PASS_PENDING_REMAINING_GATES' ||
+              aggregate.services?.length !== 6 || aggregate.services.some((service, index) =>
+                service.service !== policy.serviceOrder[index] || service.status !== 'G5_PASSED' ||
+                service.slice_count !== 8 || service.case_count !== 96 || service.error_count !== 0 ||
+                service.release_id !== release.releaseId || service.source_sha !== release.gitSha ||
+                typeof service.cleanup?.reused !== 'boolean')) {
+            throw new Error('Plan 55 six-service receipt artifact failed exact-source validation')
+          }
+
+          const gateFiles = gateEvidenceArtifact.files
+          assertPlan55FinalizationArtifactFiles(gateFiles)
+          for (const [gate, expectedBytes] of expectedCanaryEvidence) {
+            const actualBytes = gateFiles.get(`evidence/${gate}.json`)
+            if (!actualBytes || !actualBytes.equals(expectedBytes)) {
+              throw new Error(`Plan 55 finalization canary evidence mismatch: ${gate}`)
+            }
+          }
+
+          const outputRoot = resolve('artifacts/harness')
+          mkdirSync(outputRoot, { recursive: true })
+          writeFileSync(resolve(outputRoot, 'release-manifest.json'), releaseBytes, { flag: 'wx' })
+          writeFileSync(resolve(outputRoot, 'hosted-before.json'), hostedBeforeBytes, { flag: 'wx' })
+          writeFileSync(resolve(outputRoot, 'six-service-checkpoint-status.json'), checkpointBytes, { flag: 'wx' })
+          writeFileSync(resolve(outputRoot, 'six-service-g5-receipt.json'), aggregateBytes, { flag: 'wx' })
+          for (const [name, bytes] of gateFiles) {
+            if (name.endsWith('/')) continue
+            const outputPath = resolve(outputRoot, 'gate-evidence', name)
+            if (!outputPath.startsWith(`${outputRoot}${sep}`)) {
+              throw new Error('Plan 55 finalization artifact path escaped its output directory')
+            }
+            mkdirSync(dirname(outputPath), { recursive: true })
+            writeFileSync(outputPath, bytes, { flag: 'wx' })
+          }
+          NODE
+      - name: Build and verify the deterministic release evaluation
+        run: |
+          set -euo pipefail
+          node scripts/harness/release-bundle.mjs --verify artifacts/harness/release-manifest.json \
+            --hosted-before artifacts/harness/hosted-before.json
+          node scripts/harness/evaluate-release.mjs \
+            --evidence deterministic --evaluator kael-deterministic-v1 --samples 1 \
+            --release artifacts/harness/release-manifest.json \
+            --output artifacts/harness/evaluation-report.json
+          node scripts/harness/evaluate-release.mjs --verify artifacts/harness/evaluation-report.json
+      - name: Validate promotion policy and emit a packet only
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PLAN55_TARGET_STATE: ${{ inputs.target_state }}
+          PLAN55_ACTOR: ${{ github.actor }}
+          PLAN55_COHORT_ID: ${{ inputs.cohort_id }}
+          PLAN55_OBSERVATION_WINDOW_MINUTES: ${{ inputs.observation_window_minutes }}
+        run: |
+          set -euo pipefail
+          node scripts/harness/promotion.mjs --check-plan55
+          case "$PLAN55_TARGET_STATE" in
+            receipts_validated) from_state=service_cleanup ;;
+            paired_wave_1) from_state=receipts_validated ;;
+            paired_wave_2) from_state=paired_wave_1 ;;
+            paired_wave_3) from_state=paired_wave_2 ;;
+            production) from_state=paired_wave_3 ;;
+            *) echo "plan55_invalid_target_state" >&2; exit 1 ;;
+          esac
+          cohort_args=()
+          case "$PLAN55_TARGET_STATE" in
+            paired_wave_1|paired_wave_2|paired_wave_3)
+              if [[ ! "$PLAN55_COHORT_ID" =~ ^plan55-cohort-[0-9a-f]{32}$ ||
+                    ! "$PLAN55_OBSERVATION_WINDOW_MINUTES" =~ ^[1-9][0-9]*$ ]]; then
+                echo "plan55_cohort_context_required" >&2
+                exit 1
+              fi
+              cohort_args+=(--cohort "$PLAN55_COHORT_ID"
+                --observation-window-minutes "$PLAN55_OBSERVATION_WINDOW_MINUTES")
+              ;;
+            *)
+              if [[ -n "$PLAN55_COHORT_ID" || -n "$PLAN55_OBSERVATION_WINDOW_MINUTES" ]]; then
+                echo "plan55_cohort_context_not_allowed" >&2
+                exit 1
+              fi
+              ;;
+          esac
+          node scripts/harness/promotion.mjs --plan55 \
+            --release artifacts/harness/release-manifest.json \
+            --evaluation artifacts/harness/evaluation-report.json \
+            --gate-receipts artifacts/harness/gate-evidence/gate-evidence-set.json \
+            --from "$from_state" --to "$PLAN55_TARGET_STATE" \
+            --approval "$PLAN55_ACTOR:$GITHUB_RUN_ID" \
+            --output artifacts/harness/promotion-packet.json "${cohort_args[@]}"
+      - name: Publish the non-deploying promotion packet
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: plan55-promotion-packet-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/harness/promotion-packet.json
+          if-no-files-found: error
+          retention-days: 90

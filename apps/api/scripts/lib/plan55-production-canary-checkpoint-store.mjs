@@ -14,12 +14,21 @@ import {
 const STORE_SCHEMA = 'plan55-production-canary-checkpoint/v1'
 const LOCK_SCHEMA = 'plan55-production-canary-lock/v1'
 const HANDLE_SCHEMA = 'plan55-production-canary-lock-handle/v1'
+const RECOVERY_SCHEMA = 'plan55-production-canary-interrupted-checkpoint/v1'
+const RECOVERY_COMMIT_SCHEMA = 'plan55-production-canary-recovery-commit/v1'
 const CLEANUP_TABLES = Object.freeze([
   'profiles',
   'customer_profiles',
   'customer_account_deletion_requests',
   'kael_chat_sessions',
   'kael_chat_turns',
+  'worker_profiles',
+  'jobs_as_customer',
+  'jobs_as_worker',
+  'job_broadcasts_as_worker',
+  'job_events_as_actor',
+  'chat_messages_as_sender',
+  'notifications_as_user',
 ])
 
 export function createPlan55FileCheckpointStore({
@@ -40,7 +49,7 @@ export function createPlan55FileCheckpointStore({
       const slices = buildPlan55ServiceSlices(service)
       await assertNoActiveCheckpoint(lockPath)
       const body = await readCheckpoint(recordsDir, identity)
-      if (!body) return serviceCheckpointStatus(service, slices, null)
+      if (!body) return serviceCheckpointStatus(service, slices, null, null)
       if (!body.cleanup || Object.keys(body.pendingSlices).length > 0) {
         throw new Error('plan55_checkpoint_integrity_failed')
       }
@@ -52,7 +61,7 @@ export function createPlan55FileCheckpointStore({
         if (!slice) throw new Error('plan55_checkpoint_integrity_failed')
         assertStoredSlice(entry, slice, identity)
       }
-      return serviceCheckpointStatus(service, slices, body.verifiedSlices)
+      return serviceCheckpointStatus(service, slices, body.verifiedSlices, body.cleanup)
     },
 
     async loadVerifiedSliceReceipt({ service, slice, deployment }) {
@@ -67,6 +76,127 @@ export function createPlan55FileCheckpointStore({
       if (!entry) return null
       assertStoredSlice(entry, canonicalSlice, identity)
       return structuredClone(entry.receipt)
+    },
+
+    async readInterruptedServiceCheckpoint({ service, deployment }) {
+      const identity = checkpointIdentity(service, deployment)
+      const lock = await readAndValidateActiveLock(lockPath, service, identity)
+      const body = await readCheckpoint(recordsDir, identity)
+      const slices = new Map(buildPlan55ServiceSlices(service).map((slice) => [slice.id, slice]))
+      const verifiedSlices = body?.verifiedSlices ?? {}
+      const pendingSlices = body?.pendingSlices ?? {}
+      const recoveryCommit = body?.recoveryCommit ?? null
+      if (recoveryCommit) assertRecoveryCommit(recoveryCommit, service, identity, slices)
+      const commitMatchesLock = recoveryCommit?.lockToken === lock.token
+
+      for (const [sliceId, entry] of Object.entries(verifiedSlices)) {
+        const slice = slices.get(sliceId)
+        if (!slice || (lock.sliceIds.includes(sliceId) && !commitMatchesLock)) {
+          throw new Error('plan55_checkpoint_integrity_failed')
+        }
+        assertStoredSlice(entry, slice, identity)
+      }
+      for (const [sliceId, entry] of Object.entries(pendingSlices)) {
+        const slice = slices.get(sliceId)
+        if (!slice || !lock.sliceIds.includes(sliceId)) {
+          throw new Error('plan55_checkpoint_integrity_failed')
+        }
+        assertStoredSlice(entry, slice, identity)
+      }
+
+      if (commitMatchesLock) {
+        assertCommittedRecoveryTransition({ recoveryCommit, lock, body, verifiedSlices })
+        await releaseInterruptedCheckpointLock(lockPath, lock)
+        throw new Error('plan55_checkpoint_service_not_interrupted')
+      }
+
+      const receipts = [...Object.values(verifiedSlices), ...Object.values(pendingSlices)]
+        .map(({ receipt }) => structuredClone(receipt))
+      return Object.freeze({
+        schema: RECOVERY_SCHEMA,
+        service,
+        identityKey: JSON.stringify(identity),
+        lockToken: lock.token,
+        sliceIds: [...lock.sliceIds],
+        receipts,
+      })
+    },
+
+    async recoverInterruptedServiceCheckpoint({
+      checkpoint, service, deployment, validatedReceipts, invalidatedSliceIds, cleanup,
+    }) {
+      const identity = checkpointIdentity(service, deployment)
+      if (!checkpoint || checkpoint.schema !== RECOVERY_SCHEMA || checkpoint.service !== service ||
+          checkpoint.identityKey !== JSON.stringify(identity) || typeof checkpoint.lockToken !== 'string' ||
+          !Array.isArray(validatedReceipts) || !Array.isArray(invalidatedSliceIds)) {
+        throw new Error('plan55_checkpoint_lock_lost')
+      }
+      assertPlan55Cleanup(cleanup)
+
+      const activeLock = await readAndValidateActiveLock(lockPath, service, identity)
+      if (activeLock.token !== checkpoint.lockToken) {
+        throw new Error('plan55_checkpoint_lock_lost')
+      }
+      const body = await readCheckpoint(recordsDir, identity)
+      const verifiedSlices = body?.verifiedSlices ?? {}
+      const pendingSlices = body?.pendingSlices ?? {}
+      const priorEntries = new Map([
+        ...Object.entries(verifiedSlices),
+        ...Object.entries(pendingSlices),
+      ])
+      if (priorEntries.size !== Object.keys(verifiedSlices).length + Object.keys(pendingSlices).length) {
+        throw new Error('plan55_checkpoint_integrity_failed')
+      }
+
+      const expectedIds = new Set([...priorEntries.keys(), ...activeLock.sliceIds])
+      const accounted = new Set()
+      const nextVerifiedSlices = {}
+      for (const receipt of validatedReceipts) {
+        const slice = findCanonicalSlice(service, receipt?.sliceId)
+        const safeReceipt = sanitizeReceipt(receipt, slice, identity)
+        const id = slice.id
+        const prior = priorEntries.get(id)
+        if (!prior || !isDeepStrictEqual(prior, { slice, receipt: safeReceipt }) || accounted.has(id)) {
+          throw new Error('plan55_checkpoint_recovery_receipt_invalid')
+        }
+        accounted.add(id)
+        nextVerifiedSlices[id] = { slice, receipt: safeReceipt }
+      }
+
+      const invalidated = new Set()
+      for (const sliceId of invalidatedSliceIds) {
+        const slice = findCanonicalSlice(service, sliceId)
+        if (!expectedIds.has(slice.id) || accounted.has(slice.id) || invalidated.has(slice.id)) {
+          throw new Error('plan55_checkpoint_recovery_accounting_invalid')
+        }
+        accounted.add(slice.id)
+        invalidated.add(slice.id)
+      }
+      if (accounted.size !== expectedIds.size || [...expectedIds].some((id) => !accounted.has(id))) {
+        throw new Error('plan55_checkpoint_recovery_accounting_invalid')
+      }
+
+      const nextBody = {
+        ...(body ?? emptyCheckpoint(identity, nowIso(clock))),
+        verifiedSlices: nextVerifiedSlices,
+        pendingSlices: {},
+        cleanup: sanitizeCleanup(cleanup),
+        recoveryCommit: {
+          schema: RECOVERY_COMMIT_SCHEMA,
+          lockToken: activeLock.token,
+          sliceIds: [...activeLock.sliceIds],
+          invalidatedSliceIds: [...invalidated],
+          committedAt: nowIso(clock),
+        },
+        updatedAt: nowIso(clock),
+      }
+      await writeCheckpoint(recordsDir, identity, nextBody)
+      await releaseInterruptedCheckpointLock(lockPath, activeLock)
+      return Object.freeze({
+        service,
+        retainedSliceCount: Object.keys(nextVerifiedSlices).length,
+        invalidatedSliceIds: [...invalidated],
+      })
     },
 
     async beginServiceCheckpoint({ service, deployment, slices }) {
@@ -162,7 +292,7 @@ export function createPlan55FileCheckpointStore({
   })
 }
 
-function serviceCheckpointStatus(service, slices, verifiedSlices) {
+function serviceCheckpointStatus(service, slices, verifiedSlices, cleanup) {
   const verifiedSliceIds = slices
     .filter(({ id }) => verifiedSlices && Object.hasOwn(verifiedSlices, id))
     .map(({ id }) => id)
@@ -173,6 +303,7 @@ function serviceCheckpointStatus(service, slices, verifiedSlices) {
     verifiedSliceIds,
     missingSliceIds,
     cleanupVerified: verifiedSlices !== null,
+    cleanup: cleanup === null ? null : structuredClone(cleanup),
     complete: missingSliceIds.length === 0 && verifiedSlices !== null,
   }
 }
@@ -253,11 +384,12 @@ function isSafeMetricTree(value, seen = new Set()) {
 function sanitizeCleanup(cleanup) {
   assertPlan55Cleanup(cleanup)
   return {
+    globalFlags: 'absent',
     canaryFlag: 'absent',
     canaryActorId: 'absent',
     authStatus: 404,
+    orphanWorkers: cleanup.orphanWorkers,
     rows: Object.fromEntries(CLEANUP_TABLES.map((table) => [table, 0])),
-    orphanWorkers: 0,
   }
 }
 
@@ -267,6 +399,44 @@ function assertStoredSlice(entry, slice, identity) {
   }
   const safeReceipt = sanitizeReceipt(entry.receipt, slice, identity)
   if (!isDeepStrictEqual(safeReceipt, entry.receipt)) {
+    throw new Error('plan55_checkpoint_integrity_failed')
+  }
+}
+
+function assertRecoveryCommit(commit, service, identity, slices) {
+  const expectedKeys = ['committedAt', 'invalidatedSliceIds', 'lockToken', 'schema', 'sliceIds']
+  if (!isRecord(commit) || !isDeepStrictEqual(Object.keys(commit).sort(), expectedKeys) ||
+      commit.schema !== RECOVERY_COMMIT_SCHEMA ||
+      typeof commit.lockToken !== 'string' ||
+      !/^[a-f0-9]{8}-[a-f0-9]{4}-[1-8][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/iu.test(commit.lockToken) ||
+      !Array.isArray(commit.sliceIds) || commit.sliceIds.length === 0 ||
+      !Array.isArray(commit.invalidatedSliceIds) || !Number.isFinite(Date.parse(commit.committedAt))) {
+    throw new Error('plan55_checkpoint_integrity_failed')
+  }
+  const seen = new Set()
+  for (const sliceId of commit.sliceIds) {
+    if (!slices.has(sliceId) || seen.has(sliceId)) throw new Error('plan55_checkpoint_integrity_failed')
+    seen.add(sliceId)
+  }
+  const invalidated = new Set()
+  for (const sliceId of commit.invalidatedSliceIds) {
+    if (!seen.has(sliceId) || invalidated.has(sliceId)) {
+      throw new Error('plan55_checkpoint_integrity_failed')
+    }
+    invalidated.add(sliceId)
+  }
+  if (identity.service !== service) throw new Error('plan55_checkpoint_integrity_failed')
+}
+
+function assertCommittedRecoveryTransition({ recoveryCommit, lock, body, verifiedSlices }) {
+  if (!isDeepStrictEqual(recoveryCommit.sliceIds, lock.sliceIds) ||
+      Object.keys(body.pendingSlices).length > 0 || !body.cleanup) {
+    throw new Error('plan55_checkpoint_integrity_failed')
+  }
+  const invalidated = new Set(recoveryCommit.invalidatedSliceIds)
+  const expectedVerified = lock.sliceIds.filter((sliceId) => !invalidated.has(sliceId)).sort()
+  const actualVerified = lock.sliceIds.filter((sliceId) => Object.hasOwn(verifiedSlices, sliceId)).sort()
+  if (!isDeepStrictEqual(actualVerified, expectedVerified)) {
     throw new Error('plan55_checkpoint_integrity_failed')
   }
 }
@@ -358,6 +528,41 @@ async function assertActiveCheckpoint(lockPath, checkpoint, service, identity) {
   if (lock?.schema !== LOCK_SCHEMA || lock.token !== checkpoint.token ||
       !isDeepStrictEqual(lock.identity, identity)) {
     throw new Error('plan55_checkpoint_lock_lost')
+  }
+}
+
+async function readAndValidateActiveLock(lockPath, service, identity) {
+  let lock
+  try {
+    lock = JSON.parse(await readFile(lockPath, 'utf8'))
+  } catch (error) {
+    if (error?.code === 'ENOENT') throw new Error('plan55_checkpoint_service_not_interrupted')
+    throw new Error('plan55_checkpoint_lock_unreadable')
+  }
+  const slices = new Map(buildPlan55ServiceSlices(service).map((slice) => [slice.id, slice]))
+  if (lock?.schema !== LOCK_SCHEMA || !isDeepStrictEqual(lock.identity, identity) ||
+      typeof lock.token !== 'string' || !/^[a-f0-9-]{36}$/iu.test(lock.token) ||
+      !Array.isArray(lock.sliceIds) || lock.sliceIds.length === 0 ||
+      !Number.isFinite(Date.parse(lock.createdAt))) {
+    throw new Error('plan55_checkpoint_lock_lost')
+  }
+  const seen = new Set()
+  for (const sliceId of lock.sliceIds) {
+    if (!slices.has(sliceId) || seen.has(sliceId)) {
+      throw new Error('plan55_checkpoint_integrity_failed')
+    }
+    seen.add(sliceId)
+  }
+  return lock
+}
+
+async function releaseInterruptedCheckpointLock(lockPath, expectedLock) {
+  const current = await readAndValidateActiveLock(lockPath, expectedLock.identity.service, expectedLock.identity)
+  if (!isDeepStrictEqual(current, expectedLock)) throw new Error('plan55_checkpoint_lock_lost')
+  try {
+    await rm(lockPath)
+  } catch {
+    throw new Error('plan55_checkpoint_lock_release_failed')
   }
 }
 

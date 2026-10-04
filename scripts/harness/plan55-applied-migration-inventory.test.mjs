@@ -1,8 +1,9 @@
 import assert from 'node:assert/strict'
 import { createHash } from 'node:crypto'
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import test from 'node:test'
 
 import { buildPlan55AppliedMigrationInventory } from './plan55-applied-migration-inventory.mjs'
@@ -74,6 +75,49 @@ test('builds a source-attested inventory from exactly the applied Production mig
   assert.equal(result.migrationsSha256, createHash('sha256')
     .update(entries.slice(0, 3).map((entry) => `${entry.version}:${entry.name}:${entry.sha256}\n`).join(''))
     .digest('hex'))
+})
+
+test('selects canonical Production migrations when the source inventory contains superseded equivalents', () => {
+  const root = fileURLToPath(new URL('../..', import.meta.url))
+  const inventory = JSON.parse(readFileSync(resolve(root, 'config/harness/migration-inventory.json'), 'utf8'))
+  const supersededVersions = new Set(inventory.migrationEquivalences.groups.flatMap((group) =>
+    group.versions.filter((version) => version !== group.canonicalVersion)))
+  const hostedMigrations = inventory.entries
+    .filter(({ version }) => !supersededVersions.has(version))
+    .map(({ version, name }) => ({ version, name }))
+
+  assert.ok(inventory.migrationEquivalences.groups.length > 0)
+  assert.ok(supersededVersions.size > 0)
+  for (const group of inventory.migrationEquivalences.groups) {
+    assert.ok(hostedMigrations.some(({ version }) => version === group.canonicalVersion),
+      `canonical migration ${group.canonicalVersion} must remain in the Production inventory`)
+    for (const version of group.versions) {
+      if (version !== group.canonicalVersion) {
+        assert.ok(!hostedMigrations.some((migration) => migration.version === version),
+          `superseded migration ${version} must not be reported as applied`)
+      }
+    }
+  }
+
+  const result = buildPlan55AppliedMigrationInventory({
+    root,
+    sourceInventory: inventory,
+    hostedState: {
+      environment: 'production',
+      projectRef: productionRef,
+      releaseId,
+      gitSha: sourceSha,
+      releaseLane: 'verification',
+      migrations: hostedMigrations,
+    },
+    expectedProjectRef: productionRef,
+    expectedProductionBase: { sha: sourceSha, releaseId },
+  })
+
+  assert.equal(result.migrationCount, hostedMigrations.length)
+  assert.deepEqual(result.entries.map(({ version, name }) => ({ version, name })), hostedMigrations)
+  assert.equal(result.entries.some(({ version }) => supersededVersions.has(version)), false)
+  assert.deepEqual(result.migrationEquivalences, { version: '1.0.0', groups: [] })
 })
 
 test('rejects an applied Production migration missing from the source inventory', (t) => {

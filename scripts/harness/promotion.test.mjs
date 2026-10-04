@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict'
 import { createHash } from 'node:crypto'
-import { readFileSync } from 'node:fs'
-import { resolve } from 'node:path'
+import { mkdtempSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join, resolve } from 'node:path'
 import test from 'node:test'
 import {
   buildPromotionPacket,
@@ -9,7 +10,9 @@ import {
   canTransition,
   evaluateAbortThresholds,
   loadPlan55ProductionOnlyPolicy,
+  requiredPromotionGates,
   releaseCompatibilityProblems,
+  resolvePromotionPath,
   sanitizePromotionEvidence,
   simulateCanaryDecision,
   validatePromotionConfig,
@@ -18,6 +21,24 @@ import {
 import { buildHarnessRelease } from './release-bundle.mjs'
 
 const config = JSON.parse(readFileSync(resolve('config/harness/promotion.json'), 'utf8'))
+
+test('promotion CLI paths reject traversal and links escaping the repository root', (t) => {
+  const root = mkdtempSync(join(tmpdir(), 'plan55-promotion-root-'))
+  const outside = mkdtempSync(join(tmpdir(), 'plan55-promotion-outside-'))
+  t.after(() => {
+    rmSync(root, { recursive: true, force: true })
+    rmSync(outside, { recursive: true, force: true })
+  })
+  mkdirSync(join(root, '.scratch'))
+  writeFileSync(join(outside, 'release.json'), '{}\n')
+  symlinkSync(outside, join(root, 'outside-link'), process.platform === 'win32' ? 'junction' : 'dir')
+
+  assert.throws(() => resolvePromotionPath('../plan55-promotion-outside/release.json', { root }), /outside the repository/u)
+  assert.throws(() => resolvePromotionPath('outside-link/release.json', { root }), /outside the repository/u)
+  assert.throws(() => resolvePromotionPath('outside-link/packet.json', { root, mustExist: false }), /outside the repository/u)
+  assert.equal(resolvePromotionPath('.scratch/packet.json', { root, mustExist: false }), join(root, '.scratch', 'packet.json'))
+})
+
 function plan55HostedBeforeBytes(policy) {
   const inventory = JSON.parse(readFileSync(resolve('config/harness/migration-inventory.json'), 'utf8'))
   return Buffer.from(`${JSON.stringify({
@@ -41,6 +62,57 @@ function plan55HostedBeforeBytes(policy) {
     },
     migrations: inventory.entries.slice(0, 3).map(({ version, name }) => ({ version, name })),
   }, null, 2)}\n`)
+}
+
+function plan55GateReceipts(policy, release, gates, targetState) {
+  return Object.fromEntries(gates.map((gate, index) => {
+    const evidenceProof = {
+      schemaVersion: 'plan55-gate-result.v1',
+      gate,
+      status: 'PASS',
+      environment: 'production',
+      projectRef: policy.projectRef,
+      policyId: policy.policyId,
+      policySha256: policy.policySha256,
+      releaseId: release.releaseId,
+      sourceSha: release.gitSha,
+      targetState,
+    }
+    const evidenceBytes = Buffer.from(`${JSON.stringify(evidenceProof)}\n`)
+    const evidenceSha256 = createHash('sha256').update(evidenceBytes).digest('hex')
+    const receipt = {
+      schemaVersion: 'plan55-gate-evidence.v1',
+      gate,
+      status: 'PASS',
+      environment: 'production',
+      projectRef: policy.projectRef,
+      policyId: policy.policyId,
+      policySha256: policy.policySha256,
+      releaseId: release.releaseId,
+      sourceSha: release.gitSha,
+      targetState,
+      evidence: { path: 'evidence.json', sha256: evidenceSha256 },
+      provenance: {
+        repository: policy.repository,
+        workflowPath: '.github/workflows/plan55-production-only.yml',
+        runId: String(100 + index),
+        runAttempt: 1,
+        workflowHeadSha: release.gitSha,
+        artifactId: 200 + index,
+        artifactName: `plan55-gate-${index}`,
+        artifactDigest: `sha256:${'f'.repeat(64)}`,
+        artifactEvidencePath: 'evidence.json',
+      },
+    }
+    const receiptBytes = Buffer.from(`${JSON.stringify(receipt)}\n`)
+    return [gate, {
+      receipt,
+      receiptSha256: createHash('sha256').update(JSON.stringify(receipt)).digest('hex'),
+      receiptFileSha256: createHash('sha256').update(receiptBytes).digest('hex'),
+      evidenceSha256,
+      evidenceProof,
+    }]
+  }))
 }
 const releaseTemplate = buildHarnessRelease({
   environment: 'staging',
@@ -94,6 +166,12 @@ test('Plan 55 has a separate fail-closed Production-only transition policy with 
   const policy = loadPlan55ProductionOnlyPolicy(resolve('.'))
   assert.deepEqual(validatePromotionConfig(policy, { root: resolve('.') }), [])
   assert.equal(policy.projectRef, 'iwevizmsedyqozxlawwl')
+  assert.equal(policy.repository, 'manhtu0407/HomeServices-')
+  assert.deepEqual(policy.trustedEvidenceWorkflowPaths, ['.github/workflows/ci.yml'])
+  assert.ok(validatePromotionConfig({
+    ...policy,
+    trustedEvidenceWorkflowPaths: ['.github/workflows/not-present.yml'],
+  }, { root: resolve('.') }).some((problem) => problem.includes('trusted evidence workflow is missing')))
   assert.deepEqual(policy.productionSourceBase, {
     branch: 'codex/plan55-production-base-891b1e26-review-v2',
     sha: '891b1e26dd9a785f05671002c5e74cb270678be4',
@@ -111,6 +189,10 @@ test('Plan 55 has a separate fail-closed Production-only transition policy with 
   assert.equal(canTransition(policy, 'verified', 'guard_deployed_off'), true)
   assert.equal(canTransition(policy, 'paired_wave_3', 'production'), true)
   assert.equal(canTransition(policy, 'service_canary', 'paired_wave_1'), false)
+  for (const wave of [1, 2, 3]) {
+    assert.ok(policy.requiredGatesByTarget[`paired_wave_${wave}`].includes(`plan55-paired-wave-${wave}-pass`))
+    assert.ok(requiredPromotionGates(policy, 'production').includes(`plan55-paired-wave-${wave}-pass`))
+  }
   assert.ok(policy.requiredGatesByTarget.production.includes('plan55-post-rollout-cohort-pass'))
   const missingHoldoutGate = {
     ...policy,
@@ -148,7 +230,7 @@ test('Plan 55 has a separate fail-closed Production-only transition policy with 
   ))
 })
 
-test('Plan 55 promotion packets bind every target gate to a checksummed receipt', () => {
+test('Plan 55 promotion fails closed when a required gate has no semantic verifier', () => {
   const policy = loadPlan55ProductionOnlyPolicy(resolve('.'))
   const plan55Release = buildHarnessRelease({
     environment: 'production',
@@ -170,28 +252,115 @@ test('Plan 55 promotion packets bind every target gate to a checksummed receipt'
     },
   }
   const passedGates = policy.requiredGatesByTarget.verified
-  const gateReceipts = Object.fromEntries(passedGates.map((gate, index) => [gate, String(index + 1).padStart(64, '0')]))
-  const packet = buildPromotionPacket({
+  const gateReceipts = plan55GateReceipts(policy, plan55Release, passedGates, 'verified')
+  assert.throws(() => buildPromotionPacket({
     root: resolve('.'), config: policy, release: plan55Release, evaluation: plan55Evaluation,
     environment: 'production', currentState: 'assembled', targetState: 'verified',
     passedGates, gateReceipts, now: 0,
+  }), (error) => {
+    assert.match(error.message, /gate evidence coverage is incomplete/u)
+    assert.ok(error.message.includes('plan55-actor-scoped-guard-tests'))
+    assert.ok(error.message.includes('plan55-independent-holdout-freeze'))
+    return true
   })
-  assert.equal(packet.policyId, 'plan55-production-only')
-  assert.equal(packet.policySha256, policy.policySha256)
-  assert.deepEqual(packet.passedGates, [...passedGates].sort())
-  assert.deepEqual(verifyPromotionPacket(packet, policy), [])
-  const changedPolicy = resealPacket({ ...packet, policySha256: '0'.repeat(64) })
-  assert.match(verifyPromotionPacket(changedPolicy, policy).join('; '), /policy binding/u)
+})
+
+test('Plan 55 paired-wave packets require a safe cohort ID and positive observation window', () => {
+  const policy = loadPlan55ProductionOnlyPolicy(resolve('.'))
+  const plan55Release = buildHarnessRelease({
+    environment: 'production',
+    gitSha: '9'.repeat(40),
+    lane: 'plan55-production-only',
+    requireCleanWorktree: false,
+    providerReadiness: releaseTemplate.providerReadiness,
+    hostedBeforeBytes: plan55HostedBeforeBytes(policy),
+  })
+  const plan55Evaluation = {
+    ...evaluation,
+    suiteVersion: plan55Release.evaluationSuiteVersion,
+    release: plan55Release,
+    versions: {
+      promptBundleSha256: plan55Release.promptBundleSha256,
+      policyBundleSha256: plan55Release.policyBundleSha256,
+      toolManifestSha256: plan55Release.manifestSha256,
+      capabilityRegistrySha256: plan55Release.capabilityRegistrySha256,
+    },
+  }
+  const input = {
+    root: resolve('.'),
+    config: policy,
+    release: plan55Release,
+    evaluation: plan55Evaluation,
+    environment: 'production',
+    currentState: 'receipts_validated',
+    targetState: 'paired_wave_1',
+    humanApprovalId: 'approval-1',
+    rollbackRelease,
+  }
+  const safeCohort = 'plan55-cohort-0123456789abcdef0123456789abcdef'
+  const missingContext = /Plan 55 paired-wave packet requires a safe cohort ID and positive integer observation window/u
+  assert.throws(() => buildPromotionPacket(input), missingContext)
   assert.throws(() => buildPromotionPacket({
-    root: resolve('.'), config: policy, release: plan55Release, evaluation: plan55Evaluation,
-    environment: 'production', currentState: 'assembled', targetState: 'verified',
-    passedGates: passedGates.slice(1), gateReceipts, now: 0,
+    ...input,
+    cohort: 'customer@example.com',
+    observationWindowMinutes: 60,
+  }), missingContext)
+  assert.throws(() => buildPromotionPacket({
+    ...input,
+    cohort: '0901234567',
+    observationWindowMinutes: 60,
+  }), missingContext)
+  assert.throws(() => buildPromotionPacket({
+    ...input,
+    cohort: 'John-Doe',
+    observationWindowMinutes: 60,
+  }), missingContext)
+  assert.throws(() => buildPromotionPacket({
+    ...input,
+    cohort: ` ${safeCohort} `,
+    observationWindowMinutes: 60,
+  }), missingContext)
+  assert.throws(() => buildPromotionPacket({
+    ...input,
+    cohort: safeCohort,
+    observationWindowMinutes: 0,
+  }), missingContext)
+  assert.throws(() => buildPromotionPacket({
+    ...input,
+    cohort: safeCohort,
+    observationWindowMinutes: 60.5,
+  }), missingContext)
+  assert.throws(() => buildPromotionPacket({
+    ...input,
+    cohort: safeCohort,
+    observationWindowMinutes: Number.MAX_SAFE_INTEGER + 1,
+  }), missingContext)
+  assert.throws(() => buildPromotionPacket({
+    ...input,
+    cohort: safeCohort,
+    observationWindowMinutes: 60,
   }), /missing required release gate/u)
-  assert.throws(() => buildPromotionPacket({
-    root: resolve('.'), config: policy, release: plan55Release, evaluation: plan55Evaluation,
-    environment: 'production', currentState: 'assembled', targetState: 'verified',
-    passedGates, gateReceipts: { ...gateReceipts, [passedGates[0]]: 'not-a-digest' }, now: 0,
-  }), /valid receipt digest/u)
+
+  const packetContext = {
+    schemaVersion: '1.0.0',
+    environment: 'production',
+    fromState: 'receipts_validated',
+    toState: 'paired_wave_1',
+  }
+  const contextError = 'Plan 55 paired-wave packet requires a safe cohort ID and positive integer observation window'
+  for (const [cohort, observationWindowMinutes] of [
+    [null, 60],
+    ['John-Doe', 60],
+    ['plan55-cohort-a', 0],
+    ['plan55-cohort-a', '60'],
+  ]) {
+    assert.ok(verifyPromotionPacket({
+      ...packetContext, cohort, observationWindowMinutes,
+    }, policy).includes(contextError))
+  }
+  assert.ok(!verifyPromotionPacket({
+    ...packetContext, cohort: safeCohort, observationWindowMinutes: 60,
+  }, policy).includes(contextError))
 })
 
 test('blocks a canary when a critical threshold fails', () => {

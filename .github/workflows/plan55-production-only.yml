@@ -29,6 +29,7 @@ permissions:
   actions: read
   checks: read
   contents: read
+  issues: read
   pull-requests: read
 
 concurrency:
@@ -51,7 +52,8 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
-      - name: Verify the one merged Production-source SHA
+      - id: verify_source
+        name: Verify the one merged Production-source SHA
         env:
           PLAN55_SOURCE_SHA: ${{ inputs.source_sha }}
         run: |
@@ -63,12 +65,20 @@ jobs:
           test "$base_sha" = "891b1e26dd9a785f05671002c5e74cb270678be4"
           git merge-base --is-ancestor "$base_sha" "$GITHUB_SHA"
           test -z "$(git status --porcelain=v1 --untracked-files=all)"
-      - name: Require the Docker RAM floor before local SQL gates
+      - id: independent_holdout_preflight
+        name: Require independent holdout attestation before Docker and long quality gates
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PLAN55_SOURCE_SHA: ${{ inputs.source_sha }}
+        run: node apps/api/scripts/plan55-independent-holdout-preflight.mjs
+      - id: docker_ram_floor
+        name: Require the Docker RAM floor before local SQL gates
         run: |
           node --input-type=module -e 'import { readFileSync } from "node:fs"; const available=Number(readFileSync("/proc/meminfo","utf8").match(/^MemAvailable:\s+(\d+) kB$/m)?.[1] ?? 0); if (available < 4*1024*1024) { console.error("plan55_docker_ram_below_4_gib"); process.exit(1) } console.log("Plan 55 Docker RAM floor passed")'
           node scripts/run.mjs docker/scripts/doctor --profile lean
       - run: pnpm install --frozen-lockfile
-      - name: Workspace quality and security gates
+      - id: workspace_quality
+        name: Workspace quality and security gates
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
@@ -93,7 +103,6 @@ jobs:
           pnpm lint:comments
           pnpm lint:structure
           pnpm lint:workplan
-          pnpm lint:production-ui-copy -- --output artifacts/release/production-ui-normality.json
           pnpm lint:test-collection
           pnpm skills:check
           pnpm skills:contracts
@@ -108,16 +117,22 @@ jobs:
           pnpm harness:migrations:check
           pnpm harness:reliability:check
           pnpm harness:promotion:check
+          pnpm harness:promotion:plan55:check
           pnpm edge:check
-          node scripts/harness/transaction-critical-coverage.mjs --require-behavioral \
+          node scripts/harness/transaction-critical-coverage.mjs --require-bound-assertions \
             --results artifacts/transactions/api-vitest.json \
             --results artifacts/transactions/mobile-jest.json
-      - name: Secret scan
+      - id: production_ui_normality
+        name: Verify Production UI copy normality
+        run: pnpm lint:production-ui-copy -- --output artifacts/release/production-ui-normality.json
+      - id: secret_scan
+        name: Secret scan
         uses: gitleaks/gitleaks-action@ff98106e4c7b2bc287b24eaf42907196329070c7 # v2
         env:
           GITHUB_TOKEN: ${{ github.token }}
           GITLEAKS_CONFIG: config/security/gitleaks.toml
-      - name: Prepare isolated SQL verification database
+      - id: sql_verification
+        name: Prepare isolated SQL verification database
         run: |
           set -euo pipefail
           node scripts/harness/prepare-migration-workdir.mjs \
@@ -133,6 +148,18 @@ jobs:
           cmp /tmp/rejoined.types.ts /tmp/database.types.ts
           pnpm --filter @nestscout/api exec supabase --workdir "$GITHUB_WORKSPACE/artifacts/empty-reset" \
             db lint --local --fail-on warning
+      - name: Record exact-source preflight gate proofs
+        if: success()
+        env:
+          PLAN55_SOURCE_SHA: ${{ inputs.source_sha }}
+          PLAN55_VERIFY_SOURCE_OUTCOME: ${{ steps.verify_source.outcome }}
+          PLAN55_DOCKER_RAM_FLOOR_OUTCOME: ${{ steps.docker_ram_floor.outcome }}
+          PLAN55_WORKSPACE_QUALITY_OUTCOME: ${{ steps.workspace_quality.outcome }}
+          PLAN55_PRODUCTION_UI_NORMALITY_OUTCOME: ${{ steps.production_ui_normality.outcome }}
+          PLAN55_SECRET_SCAN_OUTCOME: ${{ steps.secret_scan.outcome }}
+          PLAN55_SQL_VERIFICATION_OUTCOME: ${{ steps.sql_verification.outcome }}
+          PLAN55_INDEPENDENT_HOLDOUT_PREFLIGHT_OUTCOME: ${{ steps.independent_holdout_preflight.outcome }}
+        run: node scripts/harness/plan55-preflight-gate-evidence.mjs --output artifacts/release/plan55-gate-evidence
       - name: Preserve source-gate evidence
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
@@ -143,6 +170,14 @@ jobs:
             artifacts/release/production-ui-normality.json
             /tmp/database.types.ts
           if-no-files-found: warn
+          retention-days: 90
+      - name: Publish exact-source preflight gate proofs
+        if: success()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: plan55-preflight-gates-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/release/plan55-gate-evidence/
+          if-no-files-found: error
           retention-days: 90
 
   deploy_guard_off:
@@ -168,7 +203,7 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - name: Require independent holdout approval before Production changes
+      - name: Require independent holdout attestation before Production changes
         env:
           GH_TOKEN: ${{ github.token }}
           PLAN55_SOURCE_SHA: ${{ inputs.source_sha }}
@@ -258,6 +293,12 @@ jobs:
           NODE
           node scripts/harness/edge-source-proof.mjs --source-root artifacts/rollback \
             --function mobile-api --digest-only > artifacts/release/rollback-mobile-source-sha256.txt
+          node scripts/harness/plan55-release-gate-proofs.mjs \
+            --release artifacts/release/release.json \
+            --hosted-before artifacts/release/hosted-before.json \
+            --hosted-rollback-snapshot artifacts/release/hosted-rollback-snapshot.json \
+            --rollback-mobile-source-sha256 artifacts/release/rollback-mobile-source-sha256.txt \
+            --output artifacts/release/plan55-gate-evidence
           echo "release_id=$(node -p "require('./artifacts/release/release.json').releaseId")" >> "$GITHUB_OUTPUT"
           echo "source_sha=$GITHUB_SHA" >> "$GITHUB_OUTPUT"
       - name: Register release metadata and deploy actor-scoped guard with every flag OFF
@@ -392,6 +433,17 @@ jobs:
               hosted.migrations?.length !== JSON.parse(readFileSync('artifacts/release/hosted-before.json', 'utf8')).migrations?.length ||
               JSON.stringify(hosted.migrations) !== JSON.stringify(JSON.parse(readFileSync('artifacts/release/hosted-before.json', 'utf8')).migrations)) process.exit(1)
           NODE
+          node apps/api/scripts/plan55-production-release-preflight.mjs \
+            --release artifacts/release/release.json \
+            > artifacts/release/production-release-preflight.json
+          node scripts/harness/plan55-deployed-guard-gate-proofs.mjs \
+            --release artifacts/release/release.json \
+            --hosted-before artifacts/release/hosted-before.json \
+            --hosted-deployed artifacts/release/hosted-guard-deployed.json \
+            --edge-source-proof artifacts/release/production-edge-source-proof.json \
+            --source-attestation artifacts/release/production-source-attestation.json \
+            --release-preflight artifacts/release/production-release-preflight.json \
+            --output artifacts/release/plan55-gate-evidence
           bindings_changed=false
           edge_deploy_attempted=false
           trap - EXIT
@@ -507,20 +559,46 @@ jobs:
             > artifacts/release/six-service-g5-receipt.json
           node --input-type=module <<'NODE'
           import { readFileSync } from 'node:fs'
+          import { assertPlan55Cleanup } from './apps/api/scripts/lib/plan55-production-canary-core.mjs'
           const status = JSON.parse(readFileSync('artifacts/release/checkpoint-status.json', 'utf8'))
           const g5 = JSON.parse(readFileSync('artifacts/release/six-service-g5-receipt.json', 'utf8'))
           if (status.services?.length !== 6 || status.services.some((item) => !item.complete ||
               item.verified_slice_ids?.length !== 8 || !item.cleanup_verified) ||
               g5.services?.length !== 6 || g5.services.some((item) =>
-                !['G5_PASSED', 'G5_FAILED_SERVICE_OFF'].includes(item.status) ||
+                item.status !== 'G5_PASSED' ||
                 item.slice_count !== 8 || item.case_count !== 96 || item.error_count !== 0 ||
-                item.cleanup?.reused !== true)) process.exit(1)
+                typeof item.cleanup?.reused !== 'boolean')) process.exit(1)
+          for (const service of status.services) {
+            try { assertPlan55Cleanup(service.cleanup) } catch { process.exit(1) }
+          }
+          for (const service of g5.services) {
+            try { assertPlan55Cleanup(service.cleanup) } catch { process.exit(1) }
+          }
+          NODE
+          node --input-type=module <<'NODE'
+          import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+          import { resolve } from 'node:path'
+          import { buildPlan55CanaryGateEvidenceFiles } from './scripts/harness/plan55-gate-receipts.mjs'
+          import { loadPlan55ProductionOnlyPolicy } from './scripts/harness/promotion.mjs'
+          const policy = loadPlan55ProductionOnlyPolicy(process.cwd())
+          const release = JSON.parse(readFileSync('artifacts/release/release.json', 'utf8'))
+          const checkpoint = JSON.parse(readFileSync('artifacts/release/checkpoint-status.json', 'utf8'))
+          const aggregate = JSON.parse(readFileSync('artifacts/release/six-service-g5-receipt.json', 'utf8'))
+          const files = buildPlan55CanaryGateEvidenceFiles({ policy, release, checkpoint, aggregate })
+          const output = resolve('artifacts/release/gate-evidence')
+          mkdirSync(output, { recursive: true })
+          for (const [gate, bytes] of files) writeFileSync(resolve(output, `${gate}.json`), bytes, { flag: 'wx' })
           NODE
       - name: Preserve exact six-receipt aggregate
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: plan55-six-receipts-${{ github.run_id }}-${{ github.run_attempt }}
-          path: artifacts/release
-          if-no-files-found: warn
+          path: |
+            artifacts/release
+            .scratch/plan55-production-canary/records/**
+            .scratch/plan55-production-canary/attempts/**
+            docs/test-logs/plan55/${{ inputs.source_sha }}/
+          if-no-files-found: error
+          include-hidden-files: true
           retention-days: 90

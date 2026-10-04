@@ -6,13 +6,16 @@ const packageRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const apiNodeTests = [
   'apps/api/scripts/lib/kael-playbook-eval-targets.test.mjs',
   'apps/api/scripts/lib/plan55-independent-holdout-review.test.mjs',
+  'apps/api/scripts/lib/plan55-independent-holdout-package.test.mjs',
   'apps/api/scripts/lib/plan55-production-canary-core.test.mjs',
   'apps/api/scripts/lib/plan55-production-canary-checkpoint-store.test.mjs',
   'apps/api/scripts/lib/plan55-production-canary-operations.test.mjs',
   'apps/api/scripts/lib/plan55-production-release-preflight.test.mjs',
+  'scripts/harness/plan55-deployed-guard-gate-proofs.test.mjs',
   'scripts/check-edge-db-contract.test.mjs',
   'scripts/harness/runtime-release-bindings.test.mjs',
   'scripts/harness/plan55-workflow-contract.test.mjs',
+  'scripts/harness/plan55-applied-migration-inventory.test.mjs',
 ]
 
 export function apiTestCommandPlan(vitestOptions = []) {

@@ -1,13 +1,20 @@
 import { createHash, randomUUID } from 'node:crypto'
-import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs'
-import { dirname, resolve } from 'node:path'
+import { existsSync, lstatSync, mkdirSync, readFileSync, realpathSync, statSync, writeFileSync } from 'node:fs'
+import { dirname, isAbsolute, relative, resolve, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { checkHarnessRelease } from './release-bundle.mjs'
+import {
+  assertPlan55GateEvidenceCoverage,
+  isPlan55GateReceiptRecord,
+  loadPlan55GateEvidenceSet,
+  verifyPlan55GitHubArtifactProvenance,
+} from './plan55-gate-receipts.mjs'
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..')
 const CONFIG_PATH = resolve(ROOT, 'config/harness/promotion.json')
 const PLAN55_POLICY_RELATIVE_PATH = 'config/harness/plan55-production-only-policy.json'
 const PLAN55_POLICY_ID = 'plan55-production-only'
+const PLAN55_WORKFLOW_PATH = /^\.github\/workflows\/[A-Za-z0-9_.-]+\.ya?ml$/u
 const RELEASE_PATH = resolve(ROOT, 'artifacts/harness/release-manifest.json')
 const EVALUATION_PATH = resolve(ROOT, 'artifacts/harness/evaluation-report.json')
 const OUTPUT_PATH = resolve(ROOT, 'artifacts/harness/promotion-packet.json')
@@ -20,6 +27,8 @@ const ROLLBACK_REQUIRED_STATES = new Set([
   'canary', 'production', 'rolled_back', 'guard_deployed_off', 'service_canary',
   'service_cleanup', 'receipts_validated', 'paired_wave_1', 'paired_wave_2', 'paired_wave_3',
 ])
+const PLAN55_PAIRED_WAVE_STATES = new Set(['paired_wave_1', 'paired_wave_2', 'paired_wave_3'])
+const PLAN55_COHORT_ID = /^plan55-cohort-[0-9a-f]{32}$/u
 const PROMOTION_ENVIRONMENTS = new Set(['preview', 'staging', 'production'])
 const PLAN55_STATES = Object.freeze([
   'assembled', 'verified', 'guard_deployed_off', 'service_canary', 'service_cleanup',
@@ -56,6 +65,7 @@ export function loadPlan55ProductionOnlyPolicy(rootInput = ROOT) {
 export function validatePromotionConfig(config, options = {}) {
   const problems = []
   if (!config || typeof config !== 'object') return ['promotion config must be an object']
+  const root = options.root ?? ROOT
   if (!/^\d+\.\d+\.\d+$/.test(config.version ?? '')) problems.push('promotion version is invalid')
   if (!Array.isArray(config.states) || !config.states.length) problems.push('promotion states must be non-empty')
   const states = new Set(config.states ?? [])
@@ -95,16 +105,67 @@ export function validatePromotionConfig(config, options = {}) {
     if (!Number.isInteger(slo.window_days) || slo.window_days < 1) problems.push(`SLO window is invalid: ${slo.id}`)
     if (options.root && slo.runbook && !existsSync(resolve(options.root, slo.runbook))) problems.push(`SLO runbook is missing: ${slo.runbook}`)
   }
-  if (plan55) problems.push(...validatePlan55Policy(config))
+  if (plan55) problems.push(...validatePlan55Policy(config, root))
   return problems
 }
 
-function validatePlan55Policy(policy) {
+function validatePlan55Policy(policy, root) {
   const problems = []
   if (policy.schemaVersion !== 'plan55-production-only-policy.v1' ||
       policy.environment !== 'production' || policy.projectRef !== 'iwevizmsedyqozxlawwl' ||
-      policy.releaseLane !== PLAN55_POLICY_ID) {
+      policy.repository !== 'manhtu0407/HomeServices-' || policy.releaseLane !== PLAN55_POLICY_ID) {
     problems.push('Plan 55 policy target or schema is invalid')
+  }
+  const trustedWorkflowPaths = policy.trustedEvidenceWorkflowPaths
+  if (!Array.isArray(trustedWorkflowPaths) || trustedWorkflowPaths.length === 0 ||
+      new Set(trustedWorkflowPaths).size !== trustedWorkflowPaths.length ||
+      trustedWorkflowPaths.some((path) => typeof path !== 'string' || !PLAN55_WORKFLOW_PATH.test(path))) {
+    problems.push('Plan 55 trusted evidence workflow allowlist is invalid')
+  } else {
+    for (const path of trustedWorkflowPaths) {
+      try {
+        resolvePromotionPath(path, { root, mustExist: true })
+      } catch {
+        problems.push('Plan 55 trusted evidence workflow is missing or outside the repository')
+        break
+      }
+    }
+  }
+  const expectedEvidenceWorkflowPathsByGate = {
+    'plan55-production-source-merge': '.github/workflows/ci.yml',
+    'plan55-exact-production-base-ancestry': '.github/workflows/ci.yml',
+    'plan55-source-lock': '.github/workflows/ci.yml',
+    'hosted-drift-baseline': '.github/workflows/ci.yml',
+    'compatible-rollback-target': '.github/workflows/ci.yml',
+    'plan55-production-target-attestation': '.github/workflows/ci.yml',
+    'plan55-rollback-preflight': '.github/workflows/ci.yml',
+    'plan55-runtime-source-match': '.github/workflows/ci.yml',
+    'plan55-guard-deployed': '.github/workflows/ci.yml',
+    'plan55-all-global-flags-off': '.github/workflows/ci.yml',
+    'plan55-provider-readiness': '.github/workflows/ci.yml',
+    'plan55-no-migration': '.github/workflows/ci.yml',
+    'workspace-typecheck': '.github/workflows/ci.yml',
+    'workspace-tests': '.github/workflows/ci.yml',
+    'workspace-build': '.github/workflows/ci.yml',
+    'production-ui-normality': '.github/workflows/ci.yml',
+    security: '.github/workflows/ci.yml',
+    harness: '.github/workflows/ci.yml',
+    'plan55-actor-scoped-guard-tests': '.github/workflows/ci.yml',
+    'plan55-canary-runner-tests': '.github/workflows/ci.yml',
+    'plan55-independent-holdout-freeze': '.github/workflows/ci.yml',
+    'edge-deno': '.github/workflows/ci.yml',
+    'sql-verification': '.github/workflows/ci.yml',
+    'generated-types': '.github/workflows/ci.yml',
+    'plan55-service-slice-integrity-pass': '.github/workflows/ci.yml',
+    'plan55-service-g5-safety-pass': '.github/workflows/ci.yml',
+    'plan55-service-cleanup-pass': '.github/workflows/ci.yml',
+    'plan55-six-current-source-receipts': '.github/workflows/ci.yml',
+    'plan55-six-cleanup-passes': '.github/workflows/ci.yml',
+  }
+  if (JSON.stringify(policy.trustedEvidenceWorkflowPathsByGate) !==
+      JSON.stringify(expectedEvidenceWorkflowPathsByGate) ||
+      Object.values(expectedEvidenceWorkflowPathsByGate).some((path) => !trustedWorkflowPaths?.includes(path))) {
+    problems.push('Plan 55 gate-specific evidence producer map is invalid')
   }
   const productionSourceBase = policy.productionSourceBase
   if (!productionSourceBase || typeof productionSourceBase !== 'object' ||
@@ -255,13 +316,21 @@ export function buildPromotionPacket(input) {
   const humanApprovalId = normalizeApprovalId(input.humanApprovalId)
   if (REMOTE_STATES.has(input.targetState) && !humanApprovalId) throw new Error('remote promotion requires explicit human approval')
   if (!canTransition(input.config, input.currentState, input.targetState)) throw new Error(`promotion transition is not allowed: ${input.currentState}->${input.targetState}`)
+  if (input.config.policyId === PLAN55_POLICY_ID && PLAN55_PAIRED_WAVE_STATES.has(input.targetState) &&
+      !hasValidPlan55PairedWaveContext(input.cohort, input.observationWindowMinutes)) {
+    throw new Error('Plan 55 paired-wave packet requires a safe cohort ID and positive integer observation window')
+  }
   const requiredGates = requiredPromotionGates(input.config, input.targetState)
   const passedGates = input.passedGates ?? []
   for (const gate of requiredGates) {
     if (!passedGates.includes(gate)) throw new Error(`missing required release gate: ${gate}`)
   }
   const plan55GateReceipts = input.config.policyId === PLAN55_POLICY_ID
-    ? buildPlan55GateReceiptSet(requiredGates, input.gateReceipts)
+    ? buildPlan55GateReceiptSet(requiredGates, input.gateReceipts, {
+      policy: input.config,
+      release: input.release,
+      targetState: input.targetState,
+    })
     : null
   const abort = evaluateAbortThresholds(input.config, input.metrics ?? input.evaluation.metrics ?? {})
   if (!abort.passed) throw new Error(`promotion abort threshold failed: ${abort.failures.map((failure) => failure.metric).join(', ')}`)
@@ -308,6 +377,7 @@ export function buildPromotionPacket(input) {
     ...(input.config.policyId === PLAN55_POLICY_ID ? {
       policyId: PLAN55_POLICY_ID,
       policySha256: input.config.policySha256,
+      projectRef: input.config.projectRef,
       passedGates: [...requiredGates].sort(),
       gateReceipts: plan55GateReceipts,
     } : {}),
@@ -317,7 +387,9 @@ export function buildPromotionPacket(input) {
       migrationInventorySha256: rollbackRelease.migrationInventorySha256,
       databaseTypesSha256: rollbackRelease.databaseTypesSha256,
     } : null,
-    cohort: input.cohort ?? null,
+    cohort: input.config.policyId === PLAN55_POLICY_ID && PLAN55_PAIRED_WAVE_STATES.has(input.targetState)
+      ? normalizePlan55CohortId(input.cohort)
+      : input.cohort ?? null,
     observationWindowMinutes: input.observationWindowMinutes ?? null,
     abortThresholds: abort.results,
     killSwitches: Object.fromEntries((input.config.kill_switches ?? []).map((id) => [id, false])),
@@ -338,6 +410,10 @@ export function verifyPromotionPacket(packet, config) {
   if (!canTransition(config, packet.fromState, packet.toState)) problems.push('promotion packet transition is invalid')
   if (config?.policyId === PLAN55_POLICY_ID && packet.environment !== 'production') {
     problems.push('Plan 55 promotion packet target is invalid')
+  }
+  if (config?.policyId === PLAN55_POLICY_ID && PLAN55_PAIRED_WAVE_STATES.has(packet.toState) &&
+      !hasValidPlan55PairedWaveContext(packet.cohort, packet.observationWindowMinutes)) {
+    problems.push('Plan 55 paired-wave packet requires a safe cohort ID and positive integer observation window')
   }
   if (!/^harness-[0-9a-f]{12}-[0-9a-f]{12}$/.test(packet.releaseId ?? '')) problems.push('promotion release ID is invalid')
   if (REMOTE_STATES.has(packet.toState) && !normalizeApprovalId(packet.humanApprovalId)) {
@@ -417,7 +493,8 @@ function assertEvaluationAlignment(release, evaluation) {
 function verifyPromotionPolicyBinding(packet, config, problems) {
   const policy = config && typeof config === 'object' ? config : {}
   if (policy.policyId === PLAN55_POLICY_ID) {
-    if (packet.policyId !== PLAN55_POLICY_ID || packet.policySha256 !== policy.policySha256) {
+    if (packet.policyId !== PLAN55_POLICY_ID || packet.policySha256 !== policy.policySha256 ||
+        packet.projectRef !== policy.projectRef) {
       problems.push('Plan 55 promotion packet policy binding is invalid')
     }
     const requiredGates = requiredPromotionGates(policy, packet.toState)
@@ -430,14 +507,22 @@ function verifyPromotionPolicyBinding(packet, config, problems) {
     const gateReceipts = packet.gateReceipts && typeof packet.gateReceipts === 'object' && !Array.isArray(packet.gateReceipts)
       ? packet.gateReceipts
       : {}
-    for (const [gate, digest] of Object.entries(gateReceipts)) {
-      if (!/^[0-9a-f]{64}$/u.test(digest ?? '')) problems.push(`Plan 55 gate receipt digest is invalid: ${gate}`)
+    const context = {
+      policy,
+      release: { environment: packet.environment, releaseId: packet.releaseId, gitSha: packet.gitSha },
+      targetState: packet.toState,
+    }
+    for (const [gate, receipt] of Object.entries(gateReceipts)) {
+      if (!isPlan55GateReceiptRecord(receipt, gate, context)) {
+        problems.push(`Plan 55 gate evidence receipt is invalid: ${gate}`)
+      }
     }
     if (JSON.stringify(Object.keys(gateReceipts).sort()) !== JSON.stringify(expectedGates) ||
-        requiredGates.some((gate) => !/^[0-9a-f]{64}$/u.test(gateReceipts[gate] ?? ''))) {
-      problems.push('Plan 55 promotion packet is missing a required gate receipt digest')
+        requiredGates.some((gate) => !isPlan55GateReceiptRecord(gateReceipts[gate], gate, context))) {
+      problems.push('Plan 55 promotion packet is missing a required source-bound gate receipt')
     }
   } else if (Object.hasOwn(packet, 'policyId') || Object.hasOwn(packet, 'policySha256') ||
+      Object.hasOwn(packet, 'projectRef') ||
       Object.hasOwn(packet, 'gateReceipts') || Object.hasOwn(packet, 'passedGates')) {
     problems.push('promotion packet contains Plan 55-only policy fields')
   }
@@ -472,7 +557,7 @@ function verifyPromotionPolicyBinding(packet, config, problems) {
   }
 }
 
-function requiredPromotionGates(policy, targetState) {
+export function requiredPromotionGates(policy, targetState) {
   if (policy?.policyId !== PLAN55_POLICY_ID) return []
   if (targetState === 'aborted') return []
   if (targetState === 'rolled_back') return [...(policy.requiredGatesByTarget?.rolled_back ?? [])]
@@ -482,17 +567,29 @@ function requiredPromotionGates(policy, targetState) {
     .flatMap((phase) => policy.requiredGatesByTarget?.[phase] ?? []))]
 }
 
-function buildPlan55GateReceiptSet(requiredGates, suppliedReceipts) {
+function buildPlan55GateReceiptSet(requiredGates, suppliedReceipts, context) {
+  if (requiredGates.length === 0 && suppliedReceipts === undefined) return {}
+  assertPlan55GateEvidenceCoverage({
+    policy: context.policy,
+    targetState: context.targetState,
+    requiredGates,
+  })
   if (!suppliedReceipts || typeof suppliedReceipts !== 'object' || Array.isArray(suppliedReceipts)) {
-    throw new Error('Plan 55 promotion requires checksum-bound gate receipts')
+    throw new Error('Plan 55 promotion requires a source-bound gate evidence set')
+  }
+  const expectedGates = [...requiredGates].sort()
+  if (JSON.stringify(Object.keys(suppliedReceipts).sort()) !== JSON.stringify(expectedGates)) {
+    throw new Error('Plan 55 promotion gate evidence inventory is incomplete or unexpected')
   }
   const receiptSet = {}
-  for (const gate of requiredGates) {
-    const digest = suppliedReceipts[gate]
-    if (!/^[0-9a-f]{64}$/u.test(digest ?? '')) {
-      throw new Error(`Plan 55 promotion requires a valid receipt digest for ${gate}`)
+  for (const gate of expectedGates) {
+    const receipt = suppliedReceipts[gate]
+    if (!isPlan55GateReceiptRecord(receipt, gate, context)) {
+      throw new Error(`Plan 55 promotion requires a valid source-bound receipt for ${gate}`)
     }
-    receiptSet[gate] = digest
+    const safeReceipt = Object.fromEntries(Object.entries(receipt)
+      .filter(([key]) => !['evidenceBytes', 'evidencePath'].includes(key)))
+    receiptSet[gate] = safeReceipt
   }
   return receiptSet
 }
@@ -501,6 +598,37 @@ function normalizeApprovalId(value) {
   if (typeof value !== 'string') return null
   const normalized = value.trim()
   return normalized && normalized.length <= 120 ? normalized : null
+}
+
+function normalizePlan55CohortId(value) {
+  return typeof value === 'string' && PLAN55_COHORT_ID.test(value) ? value : null
+}
+
+function hasValidPlan55PairedWaveContext(cohort, observationWindowMinutes) {
+  const normalizedCohort = normalizePlan55CohortId(cohort)
+  return normalizedCohort !== null && normalizedCohort === cohort &&
+    Number.isSafeInteger(observationWindowMinutes) &&
+    observationWindowMinutes > 0
+}
+
+function optionalArgument(name) {
+  const indexes = process.argv.flatMap((argument, index) => argument === name ? [index] : [])
+  if (indexes.length > 1) throw new Error(`promotion command accepts ${name} only once`)
+  if (indexes.length === 0) return undefined
+  const value = process.argv[indexes[0] + 1]
+  if (typeof value !== 'string' || !value || value.startsWith('--')) {
+    throw new Error(`promotion command requires a value after ${name}`)
+  }
+  return value
+}
+
+function optionalPositiveSafeIntegerArgument(name) {
+  const value = optionalArgument(name)
+  if (value === undefined) return undefined
+  if (!/^[1-9]\d*$/u.test(value)) throw new Error(`promotion command requires a positive integer after ${name}`)
+  const parsed = Number(value)
+  if (!Number.isSafeInteger(parsed)) throw new Error(`promotion command requires a positive integer after ${name}`)
+  return parsed
 }
 
 function sha256(value) {
@@ -520,38 +648,155 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
       process.exitCode = 1
     } else console.log(`${config.policyId ?? 'standard'} promotion policy ok: ${config.states.length} states, ${config.kill_switches.length} kill switches, ${config.slos.length} SLOs`)
   } else {
-    const release = JSON.parse(readFileSync(RELEASE_PATH, 'utf8'))
-    const evaluation = JSON.parse(readFileSync(EVALUATION_PATH, 'utf8'))
+    const releasePath = argumentPath('--release', RELEASE_PATH)
+    const evaluationPath = argumentPath('--evaluation', EVALUATION_PATH)
+    const outputPath = argumentPath('--output', OUTPUT_PATH, { mustExist: false })
+    const release = readJson(releasePath, 'release bundle')
+    const evaluation = readJson(evaluationPath, 'evaluation report')
     const fromIndex = process.argv.indexOf('--from')
     const toIndex = process.argv.indexOf('--to')
     const approvalIndex = process.argv.indexOf('--approval')
     const rollbackIndex = process.argv.indexOf('--rollback-release')
     const rollbackRelease = rollbackIndex >= 0
-      ? JSON.parse(readFileSync(resolve(ROOT, process.argv[rollbackIndex + 1]), 'utf8'))
+      ? readJson(argumentPath('--rollback-release'), 'rollback release bundle')
       : null
     const passedGatesIndex = process.argv.indexOf('--passed-gates')
     const gateReceiptsIndex = process.argv.indexOf('--gate-receipts')
-    const passedGates = passedGatesIndex >= 0
-      ? JSON.parse(readFileSync(resolve(ROOT, process.argv[passedGatesIndex + 1]), 'utf8'))
+    let passedGates = passedGatesIndex >= 0
+      ? readJson(argumentPath('--passed-gates'), 'passed-gates list')
       : undefined
-    const gateReceipts = gateReceiptsIndex >= 0
-      ? JSON.parse(readFileSync(resolve(ROOT, process.argv[gateReceiptsIndex + 1]), 'utf8'))
-      : undefined
+    const currentState = fromIndex >= 0 ? process.argv[fromIndex + 1] : 'assembled'
+    const targetState = toIndex >= 0 ? process.argv[toIndex + 1] : 'verified'
+    const cohort = optionalArgument('--cohort')
+    const observationWindowMinutes = optionalPositiveSafeIntegerArgument('--observation-window-minutes')
+    if ((!plan55Mode || !PLAN55_PAIRED_WAVE_STATES.has(targetState)) &&
+        (cohort !== undefined || observationWindowMinutes !== undefined)) {
+      throw new Error('paired-wave context is only accepted for Plan 55 paired-wave targets')
+    }
+    const requiredGates = requiredPromotionGates(config, targetState)
+    let gateReceipts
+    if (plan55Mode) {
+      if (requiredGates.length === 0) gateReceipts = {}
+      else {
+        if (gateReceiptsIndex < 0 || !process.argv[gateReceiptsIndex + 1]) {
+          throw new Error('Plan 55 promotion requires --gate-receipts evidence manifest')
+        }
+        gateReceipts = loadPlan55GateEvidenceSet(argumentPath('--gate-receipts'), {
+          policy: config,
+          release,
+          targetState,
+          requiredGates,
+        })
+        await verifyPlan55GitHubArtifactProvenance(gateReceipts, {
+          repository: config.repository,
+          trustedEvidenceWorkflowPaths: config.trustedEvidenceWorkflowPaths,
+          trustedEvidenceWorkflowPathsByGate: config.trustedEvidenceWorkflowPathsByGate,
+          sourceSha: release.gitSha,
+          token: process.env.GH_TOKEN ?? process.env.GITHUB_TOKEN,
+        })
+      }
+      passedGates ??= Object.keys(gateReceipts)
+    } else {
+      gateReceipts = gateReceiptsIndex >= 0
+        ? readJson(argumentPath('--gate-receipts'), 'gate receipts')
+        : undefined
+    }
     const packet = buildPromotionPacket({
       root: ROOT,
       config,
       release,
       evaluation,
       environment: release.environment,
-      currentState: fromIndex >= 0 ? process.argv[fromIndex + 1] : 'assembled',
-      targetState: toIndex >= 0 ? process.argv[toIndex + 1] : 'verified',
+      currentState,
+      targetState,
       humanApprovalId: approvalIndex >= 0 ? process.argv[approvalIndex + 1] : null,
       rollbackRelease,
       passedGates,
       gateReceipts,
+      cohort,
+      observationWindowMinutes,
     })
-    mkdirSync(dirname(OUTPUT_PATH), { recursive: true })
-    writeFileSync(OUTPUT_PATH, `${JSON.stringify(packet, null, 2)}\n`)
-    console.log(`${packet.packetId} ${OUTPUT_PATH}`)
+    mkdirSync(dirname(outputPath), { recursive: true })
+    writeFileSync(outputPath, `${JSON.stringify(packet, null, 2)}\n`)
+    console.log(`${packet.packetId} ${outputPath}`)
+  }
+}
+
+function argumentPath(name, fallback, { mustExist = true } = {}) {
+  const index = process.argv.indexOf(name)
+  if (index < 0 && fallback) return resolvePromotionPath(fallback, { mustExist })
+  const value = index >= 0 ? process.argv[index + 1] : null
+  if (typeof value !== 'string' || !value || value.startsWith('--')) {
+    throw new Error(`promotion command requires a path after ${name}`)
+  }
+  try {
+    return resolvePromotionPath(value, { mustExist })
+  } catch {
+    throw new Error(`promotion path is missing, invalid, or outside the repository: ${name}`)
+  }
+}
+
+export function resolvePromotionPath(value, { root = ROOT, mustExist = true } = {}) {
+  if (typeof value !== 'string' || !value.trim()) {
+    throw new Error('promotion path is invalid')
+  }
+  const repositoryRoot = realpathSync(root)
+  const candidate = resolve(repositoryRoot, value)
+  assertPromotionPathWithin(repositoryRoot, candidate)
+
+  if (mustExist) {
+    const canonical = realpathSync(candidate)
+    assertPromotionPathWithin(repositoryRoot, canonical)
+    if (!statSync(canonical).isFile()) throw new Error('promotion input is not a file')
+    return canonical
+  }
+
+  let parent = dirname(candidate)
+  const missingParts = []
+  while (true) {
+    let parentEntry
+    try {
+      parentEntry = lstatSync(parent)
+    } catch (error) {
+      if (error?.code !== 'ENOENT') throw error
+      const nextParent = dirname(parent)
+      if (nextParent === parent) throw new Error('promotion output parent is invalid')
+      missingParts.unshift(parent.slice(nextParent.length + 1))
+      parent = nextParent
+      continue
+    }
+    const canonicalParent = realpathSync(parent)
+    assertPromotionPathWithin(repositoryRoot, canonicalParent)
+    if (!parentEntry.isDirectory() && !statSync(canonicalParent).isDirectory()) {
+      throw new Error('promotion output parent is not a directory')
+    }
+    const resolvedParent = resolve(canonicalParent, ...missingParts)
+    const outputPath = resolve(resolvedParent, candidate.slice(dirname(candidate).length + 1))
+    try {
+      const outputEntry = lstatSync(outputPath)
+      if (outputEntry.isSymbolicLink()) throw new Error('promotion output must not be a symbolic link')
+      const canonicalOutput = realpathSync(outputPath)
+      assertPromotionPathWithin(repositoryRoot, canonicalOutput)
+      if (!statSync(canonicalOutput).isFile()) throw new Error('promotion output is not a file')
+      return canonicalOutput
+    } catch (error) {
+      if (error?.code !== 'ENOENT') throw error
+      return outputPath
+    }
+  }
+}
+
+function assertPromotionPathWithin(root, candidate) {
+  const fromRoot = relative(root, candidate)
+  if (!fromRoot || fromRoot === '..' || fromRoot.startsWith(`..${sep}`) || isAbsolute(fromRoot)) {
+    throw new Error('promotion path is outside the repository')
+  }
+}
+
+function readJson(path, label) {
+  try {
+    return JSON.parse(readFileSync(path, 'utf8'))
+  } catch {
+    throw new Error(`promotion ${label} is missing or invalid JSON`)
   }
 }

@@ -11,19 +11,28 @@ import {
 } from './kael-playbook-production-attestation.mjs'
 
 export const PLAN55_GITHUB_REPOSITORY = 'manhtu0407/HomeServices-'
-export const PLAN55_GITHUB_REVIEW_VERIFICATION = 'github-pull-request-review-api/v1'
+export const PLAN55_GITHUB_ATTESTATION_VERIFICATION = 'github-pull-request-issue-comment-api/v1'
+export const PLAN55_ALLOWED_HOLDOUT_ATTESTATION_ASSOCIATIONS = Object.freeze([
+  'COLLABORATOR', 'MEMBER', 'OWNER',
+])
 export const PLAN55_ACTOR_GUARD_VERIFICATION = 'github-check-run-and-release-source/v1'
 export const PLAN55_ACTOR_GUARD_CHECK_NAME = 'plan55-actor-scoped-guard-tests'
 
 const REPO_ROOT = resolve(fileURLToPath(new URL('../../../..', import.meta.url)))
-const APPROVED_ASSOCIATIONS = new Set(['COLLABORATOR', 'MEMBER', 'OWNER'])
+const TRUSTED_ASSOCIATIONS = new Set(PLAN55_ALLOWED_HOLDOUT_ATTESTATION_ASSOCIATIONS)
 const SHA256_PATTERN = /^sha256:[a-f0-9]{64}$/iu
 const GIT_SHA_PATTERN = /^[a-f0-9]{40}$/iu
 const PLAN55_POLICY = JSON.parse(readFileSync(
   resolve(REPO_ROOT, 'config/harness/plan55-production-only-policy.json'),
   'utf8',
 ))
+export const PLAN55_MINIMUM_INDEPENDENT_HOLDOUT_REVIEWERS = PLAN55_POLICY.minimumIndependentHoldoutReviewers
 export const PLAN55_PRODUCTION_SOURCE_BASE = Object.freeze(PLAN55_POLICY.productionSourceBase ?? {})
+export const PLAN55_PRODUCTION_SOURCE_TARGET_BRANCH = PLAN55_POLICY.productionSourceTargetBranch
+if (!Number.isSafeInteger(PLAN55_MINIMUM_INDEPENDENT_HOLDOUT_REVIEWERS) ||
+    PLAN55_MINIMUM_INDEPENDENT_HOLDOUT_REVIEWERS < 1) {
+  throw new Error('plan55_policy_minimum_independent_reviewers_invalid')
+}
 const GUARD_RUNTIME_PATH = PLAN55_RUNTIME_SOURCE_PATHS[0]
 const GUARD_TEST_PATH = 'apps/api/src/__tests__/unit/kael-playbook-registry-pillar.test.ts'
 const GUARD_EVIDENCE_PATHS = Object.freeze([
@@ -32,6 +41,19 @@ const GUARD_EVIDENCE_PATHS = Object.freeze([
   'apps/api/package.json',
   '.github/workflows/ci.yml',
 ])
+
+export function isPlan55PredeploymentHoldoutContextValid({
+  sourceSha,
+  githubSha,
+  githubRef,
+  githubToken,
+} = {}) {
+  const normalizedSourceSha = typeof sourceSha === 'string' ? sourceSha.toLowerCase() : ''
+  return GIT_SHA_PATTERN.test(normalizedSourceSha) &&
+    normalizedSourceSha === String(githubSha ?? '').toLowerCase() &&
+    githubRef === `refs/heads/${PLAN55_PRODUCTION_SOURCE_TARGET_BRANCH}` &&
+    typeof githubToken === 'string' && githubToken.trim().length > 0
+}
 
 export function plan55HoldoutLabelsSha256(casesByService) {
   const services = Object.keys(PLAN55_SOURCE_ASSETS).sort()
@@ -53,7 +75,7 @@ export function plan55HoldoutLabelsSha256(casesByService) {
   return `sha256:${createHash('sha256').update(canonicalJson(projection)).digest('hex')}`
 }
 
-export function buildPlan55HoldoutReviewBody({
+export function buildPlan55HoldoutAttestationCommentBody({
   reviewedHeadSha,
   holdoutHashes,
   labelsSha256,
@@ -81,7 +103,7 @@ export function buildPlan55HoldoutReviewBody({
   ].join('\n')
 }
 
-export function createPlan55GithubReviewEvidenceProvider({
+export function createPlan55GithubHoldoutAttestationEvidenceProvider({
   cwd = REPO_ROOT,
   execFileSyncImpl = execFileSync,
 } = {}) {
@@ -92,7 +114,7 @@ export function createPlan55GithubReviewEvidenceProvider({
     expectedHoldoutLabelsSha256,
     sourceAttestation,
   } = {}) => {
-    const evidence = await readVerifiedPlan55GithubReviewEvidence({
+    const evidence = await readVerifiedPlan55GithubHoldoutEvidence({
       cwd,
       execFileSyncImpl,
       expectedSourceSha,
@@ -112,7 +134,7 @@ export function createPlan55GithubReviewEvidenceProvider({
       proof: evidence.verifiedProof,
       pullRequest: evidence.pullRequest,
       mergeCommit: evidence.mergeCommit,
-      reviews: Object.freeze(evidence.reviews),
+      attestationComments: Object.freeze(evidence.attestationComments),
       actorGuardProof,
     })
   }
@@ -128,7 +150,7 @@ export function createPlan55GithubIndependentHoldoutPreflightProvider({
     expectedHoldoutCaseCounts,
     expectedHoldoutLabelsSha256,
   } = {}) => {
-    const evidence = await readVerifiedPlan55GithubReviewEvidence({
+    const evidence = await readVerifiedPlan55GithubHoldoutEvidence({
       cwd,
       execFileSyncImpl,
       expectedSourceSha,
@@ -136,21 +158,26 @@ export function createPlan55GithubIndependentHoldoutPreflightProvider({
       expectedHoldoutCaseCounts,
       expectedHoldoutLabelsSha256,
     })
-    const reviewVerification = evidence.verifiedProof.github_review_verification
+    const attestationVerification = evidence.verifiedProof.github_attestation_verification
     return Object.freeze({
-      schema: 'plan55-predeployment-holdout-review/v1',
+      schema: 'plan55-predeployment-holdout-attestation/v1',
       status: 'PASS',
       source_sha: evidence.sourceSha,
       pull_request_number: evidence.pullRequest.number,
-      reviewed_head_sha: reviewVerification.reviewed_head_sha,
-      review_count: reviewVerification.review_ids.length,
+      reviewed_head_sha: attestationVerification.reviewed_head_sha,
+      attestation_count: attestationVerification.attestation_comment_ids.length,
       actor_guard_check_run_id: evidence.actorGuardWorkflow.checkRun.id,
-      holdout_root_sha256: reviewVerification.holdout_root_sha256,
+      holdout_root_sha256: attestationVerification.holdout_root_sha256,
+      production_source_target_branch: attestationVerification.production_source_target_branch,
+      production_source_target_branch_tip_sha: attestationVerification.production_source_target_branch_tip_sha,
+      production_source_target_branch_ancestry_status:
+        attestationVerification.production_source_target_branch_ancestry_status,
+      production_source_base_ancestry_status: attestationVerification.production_source_base_ancestry_status,
     })
   }
 }
 
-async function readVerifiedPlan55GithubReviewEvidence({
+async function readVerifiedPlan55GithubHoldoutEvidence({
   cwd,
   execFileSyncImpl,
   expectedSourceSha,
@@ -176,37 +203,61 @@ async function readVerifiedPlan55GithubReviewEvidence({
   const pullRequestNumber = matchingPullRequests[0].number
   const pullPath = `repos/${PLAN55_GITHUB_REPOSITORY}/pulls/${pullRequestNumber}`
   const pullRequest = readGithubJson(execFileSyncImpl, cwd, pullPath)
-  const mergeCommit = readGithubJson(
+  const sourceMergeCommit = readGithubJson(
     execFileSyncImpl,
     cwd,
     `repos/${PLAN55_GITHUB_REPOSITORY}/commits/${sourceSha}`,
   )
+  const targetBranch = readGithubJson(
+    execFileSyncImpl,
+    cwd,
+    `repos/${PLAN55_GITHUB_REPOSITORY}/branches/${PLAN55_PRODUCTION_SOURCE_TARGET_BRANCH}`,
+  )
+  const targetBranchTipSha = String(targetBranch?.commit?.sha ?? '').toLowerCase()
+  if (!GIT_SHA_PATTERN.test(targetBranchTipSha)) {
+    throw new Error('plan55_preflight_independent_holdout_unverified')
+  }
+  const productionBaseComparison = readGithubJson(
+    execFileSyncImpl,
+    cwd,
+    `repos/${PLAN55_GITHUB_REPOSITORY}/compare/${PLAN55_PRODUCTION_SOURCE_BASE.sha}...${sourceSha}`,
+  )
+  const targetBranchComparison = readGithubJson(
+    execFileSyncImpl,
+    cwd,
+    `repos/${PLAN55_GITHUB_REPOSITORY}/compare/${sourceSha}...${targetBranchTipSha}`,
+  )
+  const mergeCommit = Object.freeze({
+    ...sourceMergeCommit,
+    plan55ProductionBaseComparison: productionBaseComparison,
+    plan55TargetBranchComparison: targetBranchComparison,
+  })
   if (!isVerifiedMergedProductionPullRequest(pullRequest, pullRequestNumber, sourceSha, mergeCommit)) {
     throw new Error('plan55_preflight_independent_holdout_unverified')
   }
-  const [reviews, checkRuns, sourceFiles] = await Promise.all([
-    readGithubPages(execFileSyncImpl, cwd, `${pullPath}/reviews`),
+  const [attestationComments, checkRuns, sourceFiles] = await Promise.all([
+    readGithubPages(execFileSyncImpl, cwd, `repos/${PLAN55_GITHUB_REPOSITORY}/issues/${pullRequestNumber}/comments`),
     readGithubCheckRuns(execFileSyncImpl, cwd, pullRequest.head.sha),
     readGuardSourceFiles(execFileSyncImpl, cwd, pullRequest.head.sha, sourceSha),
   ])
-  const proof = buildProofFromGithubReviews({
+  const proof = buildProofFromGithubAttestationComments({
     expectedSourceSha: sourceSha,
     expectedHoldoutHashes,
     expectedHoldoutCaseCounts,
     expectedHoldoutLabelsSha256,
     pullRequest,
     mergeCommit,
-    reviews,
+    attestationComments,
     actorGuardFileBlobSha: sourceFiles[GUARD_RUNTIME_PATH].headSha,
   })
-  const verifiedProof = verifyPlan55IndependentHoldoutReviewEvidence({
+  const verifiedProof = verifyPlan55IndependentHoldoutAttestationProof({
     proof,
     expectedSourceSha: sourceSha,
     expectedHoldoutHashes,
     expectedHoldoutLabelsSha256,
     pullRequest,
     mergeCommit,
-    reviews,
+    attestationComments,
   })
   const actorGuardWorkflow = await readActorGuardWorkflowEvidence(
     execFileSyncImpl,
@@ -219,7 +270,7 @@ async function readVerifiedPlan55GithubReviewEvidence({
     sourceSha,
     pullRequest,
     mergeCommit,
-    reviews: Object.freeze(reviews),
+    attestationComments: Object.freeze(attestationComments),
     checkRuns: Object.freeze(checkRuns),
     sourceFiles: Object.freeze(sourceFiles),
     verifiedProof,
@@ -227,14 +278,14 @@ async function readVerifiedPlan55GithubReviewEvidence({
   })
 }
 
-function buildProofFromGithubReviews({
+function buildProofFromGithubAttestationComments({
   expectedSourceSha,
   expectedHoldoutHashes,
   expectedHoldoutCaseCounts,
   expectedHoldoutLabelsSha256,
   pullRequest,
   mergeCommit,
-  reviews,
+  attestationComments,
   actorGuardFileBlobSha,
 }) {
   const fail = () => { throw new Error('plan55_preflight_independent_holdout_unverified') }
@@ -248,45 +299,33 @@ function buildProofFromGithubReviews({
         mergeCommit,
       ) || !pullAuthorId || !GIT_SHA_PATTERN.test(reviewedHeadSha) ||
       !GIT_SHA_PATTERN.test(actorGuardFileBlobSha ?? '') ||
-      !SHA256_PATTERN.test(expectedHoldoutLabelsSha256 ?? '') || !Array.isArray(reviews)) fail()
+      !SHA256_PATTERN.test(expectedHoldoutLabelsSha256 ?? '') || !Array.isArray(attestationComments)) fail()
   const holdoutRoot = holdoutRootSha256(expectedHoldoutHashes)
-  const latestByReviewer = new Map()
-  for (const review of reviews) {
-    const reviewerId = githubId(review?.user?.id)
-    const submitted = Date.parse(review?.submitted_at ?? '')
-    if (!isRecord(review) || !Number.isSafeInteger(review.id) || review.id < 1 ||
-        !reviewerId || !Number.isFinite(submitted) ||
-        String(review.commit_id ?? '').toLowerCase() !== reviewedHeadSha) continue
-    const previous = latestByReviewer.get(reviewerId)
-    if (!previous || Date.parse(previous.submitted_at) < submitted ||
-        (Date.parse(previous.submitted_at) === submitted && previous.id < review.id)) {
-      latestByReviewer.set(reviewerId, review)
-    }
-  }
+  const latestByReviewer = latestAttestationCommentsByReviewer(attestationComments)
 
   const reviewerAttestations = []
-  for (const [reviewerId, review] of latestByReviewer) {
-    if (review.state !== 'APPROVED' || !APPROVED_ASSOCIATIONS.has(review.author_association) ||
-        reviewerId === pullAuthorId) continue
-    const normalizedLines = typeof review.body === 'string'
-      ? review.body.replace(/\r\n/gu, '\n').split('\n')
+  for (const [reviewerId, comment] of latestByReviewer) {
+    if (!TRUSTED_ASSOCIATIONS.has(comment.author_association) || reviewerId === pullAuthorId) continue
+    const normalizedLines = typeof comment.body === 'string'
+      ? comment.body.replace(/\r\n/gu, '\n').split('\n')
       : []
     const labelsMatch = normalizedLines[5]?.match(/^labels_sha256=([a-f0-9]{64})$/u) ?? null
     const labelsSha256 = labelsMatch ? `sha256:${labelsMatch[1].toLowerCase()}` : null
-    if (labelsSha256 !== expectedHoldoutLabelsSha256 || !isAttestationBody(review.body, {
+    if (labelsSha256 !== expectedHoldoutLabelsSha256 || !isAttestationBody(comment.body, {
       reviewedHeadSha,
       holdoutRoot,
       labelsSha256,
       actorGuardFileBlobSha,
     })) continue
     reviewerAttestations.push({
-      review_id: review.id,
+      comment_id: comment.id,
       reviewer_id_sha256: hashIdentity(reviewerId),
+      author_association: comment.author_association,
       labels_sha256: labelsSha256,
     })
   }
-  reviewerAttestations.sort((left, right) => left.review_id - right.review_id)
-  if (reviewerAttestations.length < 2) fail()
+  reviewerAttestations.sort((left, right) => left.comment_id - right.comment_id)
+  if (reviewerAttestations.length < PLAN55_MINIMUM_INDEPENDENT_HOLDOUT_REVIEWERS) fail()
 
   const holdoutServices = Object.keys(expectedHoldoutHashes ?? {}).sort()
   if (!isRecord(expectedHoldoutCaseCounts) ||
@@ -304,7 +343,7 @@ function buildProofFromGithubReviews({
   if (holdoutServices.some((service) => !holdouts[service]?.path)) fail()
 
   return {
-    schema: 'plan55-independent-holdout-proof/v2',
+    schema: 'plan55-independent-holdout-proof/v5',
     status: 'PASS',
     blinded: true,
     reviewed_by_author: false,
@@ -317,8 +356,13 @@ function buildProofFromGithubReviews({
       reviewed_head_sha: reviewedHeadSha,
       production_source_base_branch: PLAN55_PRODUCTION_SOURCE_BASE.branch,
       production_source_base_sha: PLAN55_PRODUCTION_SOURCE_BASE.sha,
+      production_source_target_branch: PLAN55_PRODUCTION_SOURCE_TARGET_BRANCH,
+      production_source_target_branch_tip_sha:
+        String(mergeCommit.plan55TargetBranchComparison.head_commit.sha).toLowerCase(),
+      production_source_target_branch_ancestry_status: mergeCommit.plan55TargetBranchComparison.status,
+      production_source_base_ancestry_status: mergeCommit.plan55ProductionBaseComparison.status,
       actor_guard_file_blob_sha1: actorGuardFileBlobSha.toLowerCase(),
-      review_ids: reviewerAttestations.map(({ review_id }) => review_id),
+      attestation_comment_ids: reviewerAttestations.map(({ comment_id }) => comment_id),
     },
     reviewer_attestations: reviewerAttestations,
     holdouts,
@@ -551,22 +595,34 @@ function isExpectedProductionSourceBase() {
   const { branch, sha, releaseId } = PLAN55_PRODUCTION_SOURCE_BASE
   return GIT_SHA_PATTERN.test(sha ?? '') &&
     branch === `codex/plan55-production-base-${String(sha).slice(0, 8)}-review-v2` &&
-    new RegExp(`^harness-${String(sha).slice(0, 12)}-[a-f0-9]{12}$`, 'u').test(releaseId ?? '')
+    new RegExp(`^harness-${String(sha).slice(0, 12)}-[a-f0-9]{12}$`, 'u').test(releaseId ?? '') &&
+    PLAN55_PRODUCTION_SOURCE_TARGET_BRANCH === 'main'
 }
 
 function isVerifiedMergedProductionPullRequest(pullRequest, number, sourceSha, mergeCommit) {
+  const reviewedHeadSha = String(pullRequest?.head?.sha ?? '').toLowerCase()
+  const comparison = mergeCommit?.plan55ProductionBaseComparison
+  const targetComparison = mergeCommit?.plan55TargetBranchComparison
   return pullRequest?.number === number && pullRequest.state === 'closed' && pullRequest.merged === true &&
     Number.isFinite(Date.parse(pullRequest.merged_at ?? '')) &&
     String(pullRequest.merge_commit_sha ?? '').toLowerCase() === sourceSha &&
     isExpectedProductionSourceBase() &&
-    pullRequest.base?.ref === PLAN55_PRODUCTION_SOURCE_BASE.branch &&
+    pullRequest.base?.ref === PLAN55_PRODUCTION_SOURCE_TARGET_BRANCH &&
     pullRequest.base?.repo?.full_name === PLAN55_GITHUB_REPOSITORY &&
     pullRequest.head?.repo?.full_name === PLAN55_GITHUB_REPOSITORY &&
-    GIT_SHA_PATTERN.test(pullRequest.head?.sha ?? '') &&
+    GIT_SHA_PATTERN.test(reviewedHeadSha) &&
     String(mergeCommit?.sha ?? '').toLowerCase() === sourceSha &&
     Array.isArray(mergeCommit?.parents) &&
-    String(mergeCommit.parents[0]?.sha ?? '').toLowerCase() === PLAN55_PRODUCTION_SOURCE_BASE.sha &&
-    String(mergeCommit.parents[1]?.sha ?? '').toLowerCase() === String(pullRequest.head.sha).toLowerCase()
+    mergeCommit.parents.length >= 1 &&
+    mergeCommit.parents.every((parent) => GIT_SHA_PATTERN.test(String(parent?.sha ?? ''))) &&
+    isRecord(comparison) &&
+    ['ahead', 'identical'].includes(comparison.status) &&
+    String(comparison.base_commit?.sha ?? '').toLowerCase() === PLAN55_PRODUCTION_SOURCE_BASE.sha &&
+    String(comparison.head_commit?.sha ?? '').toLowerCase() === sourceSha &&
+    isRecord(targetComparison) &&
+    ['ahead', 'identical'].includes(targetComparison.status) &&
+    String(targetComparison.base_commit?.sha ?? '').toLowerCase() === sourceSha &&
+    GIT_SHA_PATTERN.test(String(targetComparison.head_commit?.sha ?? ''))
 }
 
 function parseJsonFile(value) {
@@ -585,19 +641,19 @@ function gitBlobSha1(bytes) {
     .digest('hex')
 }
 
-export function verifyPlan55IndependentHoldoutReviewEvidence({
+export function verifyPlan55IndependentHoldoutAttestationProof({
   proof,
   expectedSourceSha,
   expectedHoldoutHashes,
   expectedHoldoutLabelsSha256,
   pullRequest,
   mergeCommit,
-  reviews,
+  attestationComments,
 }) {
   const fail = () => { throw new Error('plan55_preflight_independent_holdout_unverified') }
   const evidence = proof?.review_evidence
   const expectedSource = String(expectedSourceSha ?? '').toLowerCase()
-  if (!proof || proof.schema !== 'plan55-independent-holdout-proof/v2' ||
+  if (!proof || proof.schema !== 'plan55-independent-holdout-proof/v5' ||
       proof.status !== 'PASS' || proof.blinded !== true || proof.reviewed_by_author !== false ||
       !GIT_SHA_PATTERN.test(expectedSource) ||
       typeof proof.source_sha !== 'string' || proof.source_sha.toLowerCase() !== expectedSource ||
@@ -607,10 +663,20 @@ export function verifyPlan55IndependentHoldoutReviewEvidence({
       !GIT_SHA_PATTERN.test(evidence.reviewed_head_sha ?? '') ||
       evidence.production_source_base_branch !== PLAN55_PRODUCTION_SOURCE_BASE.branch ||
       String(evidence.production_source_base_sha ?? '').toLowerCase() !== PLAN55_PRODUCTION_SOURCE_BASE.sha ||
+      evidence.production_source_target_branch !== PLAN55_PRODUCTION_SOURCE_TARGET_BRANCH ||
+      evidence.production_source_base_ancestry_status !== mergeCommit?.plan55ProductionBaseComparison?.status ||
+      String(evidence.production_source_target_branch_tip_sha ?? '').toLowerCase() !==
+        String(mergeCommit?.plan55TargetBranchComparison?.head_commit?.sha ?? '').toLowerCase() ||
+      evidence.production_source_target_branch_ancestry_status !==
+        mergeCommit?.plan55TargetBranchComparison?.status ||
+      String(mergeCommit?.plan55ProductionBaseComparison?.head_commit?.sha ?? '').toLowerCase() !== expectedSource ||
+      String(mergeCommit?.plan55TargetBranchComparison?.base_commit?.sha ?? '').toLowerCase() !== expectedSource ||
       !GIT_SHA_PATTERN.test(evidence.actor_guard_file_blob_sha1 ?? '') ||
-      !Array.isArray(evidence.review_ids) || evidence.review_ids.length < 2 ||
-      !Array.isArray(proof.reviewer_attestations) || proof.reviewer_attestations.length < 2 ||
-      !Array.isArray(reviews) || !isRecord(pullRequest)) fail()
+      !Array.isArray(evidence.attestation_comment_ids) ||
+      evidence.attestation_comment_ids.length < PLAN55_MINIMUM_INDEPENDENT_HOLDOUT_REVIEWERS ||
+      !Array.isArray(proof.reviewer_attestations) ||
+      proof.reviewer_attestations.length < PLAN55_MINIMUM_INDEPENDENT_HOLDOUT_REVIEWERS ||
+      !Array.isArray(attestationComments) || !isRecord(pullRequest)) fail()
 
   if (!isRecord(expectedHoldoutHashes) || Array.isArray(expectedHoldoutHashes) ||
       Object.keys(expectedHoldoutHashes).length === 0 ||
@@ -639,74 +705,93 @@ export function verifyPlan55IndependentHoldoutReviewEvidence({
 
   const attestations = new Map()
   for (const attestation of proof.reviewer_attestations) {
-    if (!isRecord(attestation) || !Number.isSafeInteger(attestation.review_id) || attestation.review_id < 1 ||
+    if (!isRecord(attestation) || !Number.isSafeInteger(attestation.comment_id) || attestation.comment_id < 1 ||
         !SHA256_PATTERN.test(attestation.reviewer_id_sha256 ?? '') ||
-        !SHA256_PATTERN.test(attestation.labels_sha256 ?? '') || attestations.has(attestation.review_id)) fail()
-    attestations.set(attestation.review_id, attestation)
+        !SHA256_PATTERN.test(attestation.labels_sha256 ?? '') || attestations.has(attestation.comment_id)) fail()
+    attestations.set(attestation.comment_id, attestation)
   }
-  const evidenceReviewIds = uniqueSortedIds(evidence.review_ids)
-  const attestedReviewIds = uniqueSortedIds([...attestations.keys()])
-  if (evidenceReviewIds.length !== evidence.review_ids.length ||
-      evidenceReviewIds.length !== attestedReviewIds.length ||
-      evidenceReviewIds.join(',') !== attestedReviewIds.join(',')) fail()
+  const evidenceCommentIds = uniqueSortedIds(evidence.attestation_comment_ids)
+  const attestedCommentIds = uniqueSortedIds([...attestations.keys()])
+  if (evidenceCommentIds.length !== evidence.attestation_comment_ids.length ||
+      evidenceCommentIds.length !== attestedCommentIds.length ||
+      evidenceCommentIds.join(',') !== attestedCommentIds.join(',')) fail()
 
-  const reviewsById = new Map()
-  const latestByReviewer = new Map()
-  for (const review of reviews) {
-    const reviewerId = githubId(review?.user?.id)
-    const submitted = Date.parse(review?.submitted_at ?? '')
-    if (!isRecord(review) || !Number.isSafeInteger(review.id) || review.id < 1 ||
-        !reviewerId || !Number.isFinite(submitted)) continue
-    reviewsById.set(review.id, review)
-    if (String(review.commit_id ?? '').toLowerCase() !== pullHeadSha) continue
-    const previous = latestByReviewer.get(reviewerId)
-    if (!previous || Date.parse(previous.submitted_at) < submitted ||
-        (Date.parse(previous.submitted_at) === submitted && previous.id < review.id)) {
-      latestByReviewer.set(reviewerId, review)
-    }
-  }
+  const latestByReviewer = latestAttestationCommentsByReviewer(attestationComments)
+  const commentsById = new Map([...latestByReviewer.values()].map((comment) => [comment.id, comment]))
 
   const reviewerHashes = new Set()
-  const verifiedReviewIds = []
+  const verifiedCommentIds = []
   const holdoutRoot = holdoutRootSha256(expectedHoldoutHashes)
-  for (const reviewId of evidenceReviewIds) {
-    const attestation = attestations.get(reviewId)
-    const review = reviewsById.get(reviewId)
-    const reviewerId = githubId(review?.user?.id)
-    if (!review || !reviewerId || latestByReviewer.get(reviewerId)?.id !== reviewId ||
-        review.state !== 'APPROVED' ||
-        String(review.commit_id ?? '').toLowerCase() !== pullHeadSha ||
-        !APPROVED_ASSOCIATIONS.has(review.author_association) ||
+  for (const commentId of evidenceCommentIds) {
+    const attestation = attestations.get(commentId)
+    const comment = commentsById.get(commentId)
+    const reviewerId = githubId(comment?.user?.id)
+    if (!comment || !reviewerId || latestByReviewer.get(reviewerId)?.id !== commentId ||
+        !TRUSTED_ASSOCIATIONS.has(comment.author_association) ||
+        attestation.author_association !== comment.author_association ||
         reviewerId === pullAuthorId ||
         hashIdentity(reviewerId) !== attestation.reviewer_id_sha256 ||
         reviewerHashes.has(attestation.reviewer_id_sha256) ||
-         attestation.labels_sha256 !== expectedHoldoutLabelsSha256 ||
-        !isAttestationBody(review.body, {
+        attestation.labels_sha256 !== expectedHoldoutLabelsSha256 ||
+        !isAttestationBody(comment.body, {
           reviewedHeadSha: pullHeadSha,
           holdoutRoot,
           labelsSha256: attestation.labels_sha256,
           actorGuardFileBlobSha: evidence.actor_guard_file_blob_sha1,
         })) fail()
     reviewerHashes.add(attestation.reviewer_id_sha256)
-    verifiedReviewIds.push(reviewId)
+    verifiedCommentIds.push(commentId)
   }
-  if (verifiedReviewIds.length < 2) fail()
+  if (verifiedCommentIds.length < PLAN55_MINIMUM_INDEPENDENT_HOLDOUT_REVIEWERS) fail()
 
   return Object.freeze({
     ...proof,
-    github_review_verification: Object.freeze({
-      method: PLAN55_GITHUB_REVIEW_VERIFICATION,
+    github_attestation_verification: Object.freeze({
+      method: PLAN55_GITHUB_ATTESTATION_VERIFICATION,
       repository: PLAN55_GITHUB_REPOSITORY,
       pull_request_number: evidence.pull_request_number,
       reviewed_head_sha: pullHeadSha,
       merge_sha: expectedSource,
       production_source_base_branch: PLAN55_PRODUCTION_SOURCE_BASE.branch,
       production_source_base_sha: PLAN55_PRODUCTION_SOURCE_BASE.sha,
+      production_source_target_branch: PLAN55_PRODUCTION_SOURCE_TARGET_BRANCH,
+      production_source_target_branch_tip_sha:
+        String(mergeCommit.plan55TargetBranchComparison.head_commit.sha).toLowerCase(),
+      production_source_target_branch_ancestry_status: mergeCommit.plan55TargetBranchComparison.status,
+      production_source_base_ancestry_status: mergeCommit.plan55ProductionBaseComparison.status,
       holdout_root_sha256: holdoutRoot,
       holdout_labels_sha256: expectedHoldoutLabelsSha256,
-      review_ids: Object.freeze(verifiedReviewIds.sort((left, right) => left - right)),
+      attestation_comment_ids: Object.freeze(verifiedCommentIds.sort((left, right) => left - right)),
     }),
   })
+}
+
+function latestAttestationCommentsByReviewer(comments) {
+  const fail = () => { throw new Error('plan55_preflight_independent_holdout_unverified') }
+  if (!Array.isArray(comments)) fail()
+  const latestByReviewer = new Map()
+  const commentIds = new Set()
+  for (const comment of comments) {
+    if (!hasAttestationMarker(comment?.body)) continue
+    const reviewerId = githubId(comment?.user?.id)
+    const created = Date.parse(comment?.created_at ?? '')
+    const updated = Date.parse(comment?.updated_at ?? '')
+    if (!isRecord(comment) || !Number.isSafeInteger(comment.id) || comment.id < 1 ||
+        !reviewerId || !Number.isFinite(created) || !Number.isFinite(updated) || updated < created ||
+        commentIds.has(comment.id)) fail()
+    commentIds.add(comment.id)
+    const previous = latestByReviewer.get(reviewerId)
+    if (!previous || Date.parse(previous.updated_at) < updated ||
+        (Date.parse(previous.updated_at) === updated && previous.id < comment.id)) {
+      latestByReviewer.set(reviewerId, comment)
+    }
+  }
+  return latestByReviewer
+}
+
+function hasAttestationMarker(body) {
+  return typeof body === 'string' && body.replace(/\r\n/gu, '\n').split('\n')
+    .some((line) => line.trim() === 'PLAN55-HOLDOUT-ATTEST v1')
 }
 
 function readGithubJson(execFileSyncImpl, cwd, endpoint) {
