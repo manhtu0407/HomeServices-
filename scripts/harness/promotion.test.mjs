@@ -265,6 +265,9 @@ test('Plan 55 has a separate fail-closed Production-only transition policy with 
     '.github/workflows/plan55-postreceipt-finalization.yml',
     '.github/workflows/plan55-rollback-drill.yml',
   ])
+  assert.equal(policy.trustedEvidenceWorkflowPathsByGate['plan55-docker-sql-edge-gates'],
+    '.github/workflows/ci.yml')
+  assert.ok(policy.requiredGatesByTarget.rollback_drill.includes('plan55-docker-sql-edge-gates'))
   assert.ok(validatePromotionConfig({
     ...policy,
     trustedEvidenceWorkflowPaths: ['.github/workflows/not-present.yml'],

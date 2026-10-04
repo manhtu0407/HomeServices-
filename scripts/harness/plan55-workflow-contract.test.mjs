@@ -185,6 +185,7 @@ test('preflight gate proofs bind exact source and successful CI step outcomes be
   const outcomeBindings = {
     verify_source: 'PLAN55_VERIFY_SOURCE_OUTCOME',
     docker_ram_floor: 'PLAN55_DOCKER_RAM_FLOOR_OUTCOME',
+    edge_deno: 'PLAN55_EDGE_DENO_OUTCOME',
     workspace_quality: 'PLAN55_WORKSPACE_QUALITY_OUTCOME',
     production_ui_normality: 'PLAN55_PRODUCTION_UI_NORMALITY_OUTCOME',
     secret_scan: 'PLAN55_SECRET_SCAN_OUTCOME',
@@ -197,6 +198,15 @@ test('preflight gate proofs bind exact source and successful CI step outcomes be
   }
   assert.equal(quality.match(/pnpm lint:production-ui-copy -- --output artifacts\/release\/production-ui-normality\.json/gu)?.length, 1,
     'Production UI normality must run exactly once as its independently attributable gate')
+  assert.equal(quality.match(/pnpm edge:check/gu)?.length, 1,
+    'the Deno Edge check must be a single dedicated preflight step')
+  assert.match(quality, /- id: edge_deno\s+name: Verify Edge Functions with Deno\s+run: pnpm edge:check/u,
+    'the Edge proof must bind directly to the workflow step that runs Deno checks')
+  const dockerFloorIndex = quality.indexOf('- id: docker_ram_floor')
+  const edgeDenoIndex = quality.indexOf('- id: edge_deno')
+  const sqlVerificationIndex = quality.indexOf('- id: sql_verification')
+  assert.ok(dockerFloorIndex >= 0 && dockerFloorIndex < edgeDenoIndex && edgeDenoIndex < sqlVerificationIndex,
+    'the Docker floor must pass before Edge and SQL checks can produce their composite proof')
   assert.match(proofStep, /node scripts\/harness\/plan55-preflight-gate-evidence\.mjs --output artifacts\/release\/plan55-gate-evidence/u)
   assert.deepEqual(Object.keys(PLAN55_PREFLIGHT_GATE_CHECKS).sort(), [
     'edge-deno',
@@ -204,6 +214,7 @@ test('preflight gate proofs bind exact source and successful CI step outcomes be
     'harness',
     'plan55-actor-scoped-guard-tests',
     'plan55-canary-runner-tests',
+    'plan55-docker-sql-edge-gates',
     'plan55-exact-production-base-ancestry',
     'plan55-independent-holdout-freeze',
     'plan55-production-source-merge',
@@ -215,6 +226,7 @@ test('preflight gate proofs bind exact source and successful CI step outcomes be
     'workspace-tests',
     'workspace-typecheck',
   ])
+  assert.deepEqual(PLAN55_PREFLIGHT_GATE_CHECKS['edge-deno'], ['edge_deno'])
 
   const sourceArtifactStep = quality.slice(sourceArtifactIndex, proofArtifactIndex)
   assert.match(sourceArtifactStep, /artifacts\/release\/production-ui-normality\.json/u,

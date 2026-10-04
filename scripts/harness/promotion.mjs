@@ -186,6 +186,7 @@ function validatePlan55Policy(policy, root, targetState) {
     'plan55-actor-scoped-guard-tests': '.github/workflows/ci.yml',
     'plan55-canary-runner-tests': '.github/workflows/ci.yml',
     'plan55-independent-holdout-freeze': '.github/workflows/ci.yml',
+    'plan55-docker-sql-edge-gates': '.github/workflows/ci.yml',
     'edge-deno': '.github/workflows/ci.yml',
     'sql-verification': '.github/workflows/ci.yml',
     'generated-types': '.github/workflows/ci.yml',

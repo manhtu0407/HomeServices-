@@ -125,10 +125,12 @@ jobs:
           pnpm harness:reliability:check
           pnpm harness:promotion:check
           pnpm harness:promotion:plan55:check
-          pnpm edge:check
           node scripts/harness/transaction-critical-coverage.mjs --require-bound-assertions \
             --results artifacts/transactions/api-vitest.json \
             --results artifacts/transactions/mobile-jest.json
+      - id: edge_deno
+        name: Verify Edge Functions with Deno
+        run: pnpm edge:check
       - id: production_ui_normality
         name: Verify Production UI copy normality
         run: pnpm lint:production-ui-copy -- --output artifacts/release/production-ui-normality.json
@@ -161,6 +163,7 @@ jobs:
           PLAN55_SOURCE_SHA: ${{ inputs.source_sha }}
           PLAN55_VERIFY_SOURCE_OUTCOME: ${{ steps.verify_source.outcome }}
           PLAN55_DOCKER_RAM_FLOOR_OUTCOME: ${{ steps.docker_ram_floor.outcome }}
+          PLAN55_EDGE_DENO_OUTCOME: ${{ steps.edge_deno.outcome }}
           PLAN55_WORKSPACE_QUALITY_OUTCOME: ${{ steps.workspace_quality.outcome }}
           PLAN55_PRODUCTION_UI_NORMALITY_OUTCOME: ${{ steps.production_ui_normality.outcome }}
           PLAN55_SECRET_SCAN_OUTCOME: ${{ steps.secret_scan.outcome }}

@@ -69,9 +69,10 @@ export const PLAN55_PREFLIGHT_GATE_CHECKS = Object.freeze({
   'plan55-actor-scoped-guard-tests': Object.freeze(['workspace_quality']),
   'plan55-canary-runner-tests': Object.freeze(['workspace_quality']),
   'plan55-independent-holdout-freeze': Object.freeze(['independent_holdout_preflight']),
-  'edge-deno': Object.freeze(['workspace_quality']),
+  'edge-deno': Object.freeze(['edge_deno']),
   'sql-verification': Object.freeze(['docker_ram_floor', 'sql_verification']),
   'generated-types': Object.freeze(['docker_ram_floor', 'sql_verification']),
+  'plan55-docker-sql-edge-gates': Object.freeze(['docker_ram_floor', 'edge_deno', 'sql_verification']),
 })
 const PREFLIGHT_RECEIPT_GATES = new Set(Object.keys(PLAN55_PREFLIGHT_GATE_CHECKS))
 const RELEASE_STAGE_RECEIPT_GATES = new Set(PLAN55_RELEASE_STAGE_GATES)
