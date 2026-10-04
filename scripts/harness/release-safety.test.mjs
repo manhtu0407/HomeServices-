@@ -248,3 +248,37 @@ test('failure receipt is safe, immutable-release-bound, and checksummed', () => 
   assert.match(receipt.receiptSha256, /^[0-9a-f]{64}$/u)
   assert.equal(JSON.stringify(receipt).includes('token'), false)
 })
+
+test('Plan 55 failure receipts accept only a bounded synthetic Plan 55 cohort', () => {
+  const release = {
+    bundleSha256: 'c'.repeat(64),
+    gitSha: 'd'.repeat(40),
+    releaseId: 'harness-aaaaaaaaaaaa-bbbbbbbbbbbb',
+    releaseLane: 'plan55-production-only',
+  }
+  const receipt = buildReleaseFailureReceipt({
+    cohortId: 'synthetic-plan55-0123456789abcdef0123456789abcdef',
+    now: '2026-08-23T10:00:00.000Z',
+    phase: 'paired_wave_1',
+    reasonCode: 'PAIR_ABORTED',
+    release,
+    runId: 'plan55-wave-1',
+  })
+
+  assert.equal(receipt.status, 'aborted')
+  assert.equal(receipt.cohortId, 'synthetic-plan55-0123456789abcdef0123456789abcdef')
+  assert.match(receipt.receiptSha256, /^[0-9a-f]{64}$/u)
+  assert.throws(() => buildReleaseFailureReceipt({
+    cohortId: 'synthetic-stage1-aaaaaaaaaaaa-bbbbbbbbbbbb-run',
+    phase: 'paired_wave_1',
+    reasonCode: 'PAIR_ABORTED',
+    release,
+    runId: 'plan55-wave-1',
+  }), /failure receipt cohort/u)
+  assert.throws(() => buildReleaseFailureReceipt({
+    phase: 'paired_wave_1',
+    reasonCode: 'PAIR_ABORTED',
+    release,
+    runId: 'plan55-wave-1',
+  }), /failure receipt cohort/u)
+})

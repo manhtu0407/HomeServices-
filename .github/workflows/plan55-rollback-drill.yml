@@ -1,0 +1,519 @@
+name: Plan 55 source-bound Production rollback drill
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_sha:
+        description: Exact locked Plan 55 merge SHA
+        required: true
+        type: string
+      source_run_id:
+        description: Successful CI run that produced the exact release artifact
+        required: true
+        type: string
+      source_run_attempt:
+        description: Exact successful CI attempt
+        required: true
+        type: string
+      release_artifact_id:
+        description: Immutable plan55-release artifact ID from the exact CI run
+        required: true
+        type: string
+      gate_evidence_run_id:
+        description: Successful exact-source rollback_drill gate-package run ID
+        required: true
+        type: string
+      gate_evidence_run_attempt:
+        description: Exact successful gate-package attempt
+        required: true
+        type: string
+      gate_evidence_artifact_id:
+        description: Immutable plan55-gate-evidence artifact ID with all rollback prerequisites
+        required: true
+        type: string
+
+permissions:
+  actions: read
+  contents: read
+
+concurrency:
+  group: production-release
+  cancel-in-progress: false
+
+jobs:
+  rollback-drill:
+    if: github.ref == 'refs/heads/main' && inputs.source_sha == github.sha
+    runs-on: ubuntu-latest
+    environment: production
+    timeout-minutes: 45
+    permissions:
+      actions: read
+      contents: read
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          ref: ${{ inputs.source_sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+      - name: Install the locked workspace toolchain
+        run: pnpm install --frozen-lockfile
+      - name: Confirm exact main source and pinned Production ancestry
+        env:
+          PLAN55_SOURCE_SHA: ${{ inputs.source_sha }}
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF" = "refs/heads/main"
+          [[ "$PLAN55_SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          test "$GITHUB_SHA" = "$PLAN55_SOURCE_SHA"
+          test "$(git rev-parse HEAD)" = "$PLAN55_SOURCE_SHA"
+          test -z "$(git status --porcelain=v1 --untracked-files=all)"
+          base_sha=$(node -p "require('./config/harness/plan55-production-only-policy.json').productionSourceBase.sha")
+          git merge-base --is-ancestor "$base_sha" "$PLAN55_SOURCE_SHA"
+      - name: Verify exact release and prerequisite gate artifacts before Production access
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PLAN55_SOURCE_SHA: ${{ inputs.source_sha }}
+          PLAN55_SOURCE_RUN_ID: ${{ inputs.source_run_id }}
+          PLAN55_SOURCE_RUN_ATTEMPT: ${{ inputs.source_run_attempt }}
+          PLAN55_RELEASE_ARTIFACT_ID: ${{ inputs.release_artifact_id }}
+          PLAN55_GATE_EVIDENCE_RUN_ID: ${{ inputs.gate_evidence_run_id }}
+          PLAN55_GATE_EVIDENCE_RUN_ATTEMPT: ${{ inputs.gate_evidence_run_attempt }}
+          PLAN55_GATE_EVIDENCE_ARTIFACT_ID: ${{ inputs.gate_evidence_artifact_id }}
+        run: |
+          node --input-type=module <<'NODE'
+          import { mkdirSync, writeFileSync } from 'node:fs'
+          import { dirname, resolve, sep } from 'node:path'
+          import {
+            assertPlan55GateEvidenceCoverage,
+            downloadPlan55GitHubRunArtifact,
+            loadPlan55GateEvidenceSet,
+          } from './scripts/harness/plan55-gate-receipts.mjs'
+          import { loadPlan55ProductionOnlyPolicy, requiredPromotionGates } from './scripts/harness/promotion.mjs'
+
+          const policy = loadPlan55ProductionOnlyPolicy(process.cwd())
+          const sourceSha = process.env.PLAN55_SOURCE_SHA
+          const sourceRunId = Number(process.env.PLAN55_SOURCE_RUN_ID)
+          const sourceRunAttempt = Number(process.env.PLAN55_SOURCE_RUN_ATTEMPT)
+          const releaseArtifactId = Number(process.env.PLAN55_RELEASE_ARTIFACT_ID)
+          const gateRunId = Number(process.env.PLAN55_GATE_EVIDENCE_RUN_ID)
+          const gateRunAttempt = Number(process.env.PLAN55_GATE_EVIDENCE_RUN_ATTEMPT)
+          const gateArtifactId = Number(process.env.PLAN55_GATE_EVIDENCE_ARTIFACT_ID)
+          if (!/^[a-f0-9]{40}$/u.test(sourceSha ?? '') ||
+              ![sourceRunId, sourceRunAttempt, releaseArtifactId, gateRunId, gateRunAttempt, gateArtifactId]
+                .every((value) => Number.isSafeInteger(value) && value > 0) ||
+              sourceSha !== process.env.GITHUB_SHA || process.env.GITHUB_REF !== 'refs/heads/main') {
+            throw new Error('Plan 55 rollback-drill source and artifact inputs are invalid')
+          }
+
+          const sourceWorkflow = '.github/workflows/ci.yml'
+          const gateWorkflow = '.github/workflows/plan55-gate-evidence-package.yml'
+          const download = (artifactId, prefix, runId, runAttempt, workflowPath) =>
+            downloadPlan55GitHubRunArtifact({
+              repository: policy.repository,
+              trustedWorkflowPaths: [workflowPath],
+              sourceSha,
+              artifactId,
+              artifactNamePrefix: prefix,
+              expectedRunId: runId,
+              expectedRunAttempt: runAttempt,
+              token: process.env.GH_TOKEN,
+            })
+          const [releaseArtifact, gateArtifact] = await Promise.all([
+            download(releaseArtifactId, 'plan55-release', sourceRunId, sourceRunAttempt, sourceWorkflow),
+            download(gateArtifactId, 'plan55-gate-evidence', gateRunId, gateRunAttempt, gateWorkflow),
+          ])
+          if (releaseArtifact.workflowPath !== sourceWorkflow || gateArtifact.workflowPath !== gateWorkflow) {
+            throw new Error('Plan 55 rollback-drill artifacts came from an untrusted workflow')
+          }
+
+          const uniqueFile = (files, basename, label) => {
+            const matches = [...files].filter(([name]) => name === basename || name.endsWith(`/${basename}`))
+            if (matches.length !== 1) throw new Error(`Plan 55 ${label} artifact file is missing or ambiguous`)
+            return matches[0][1]
+          }
+          const releaseBytes = uniqueFile(releaseArtifact.files, 'release.json', 'release')
+          const baselineBytes = uniqueFile(releaseArtifact.files, 'hosted-before.json', 'baseline')
+          const candidateBytes = uniqueFile(releaseArtifact.files, 'hosted-guard-deployed.json', 'candidate')
+          const release = JSON.parse(releaseBytes.toString('utf8'))
+          const baseline = JSON.parse(baselineBytes.toString('utf8'))
+          const candidate = JSON.parse(candidateBytes.toString('utf8'))
+          if (release.environment !== 'production' || release.projectRef !== policy.projectRef ||
+              release.releaseLane !== policy.releaseLane || release.gitSha !== sourceSha ||
+              candidate.environment !== 'production' || candidate.projectRef !== policy.projectRef ||
+              candidate.releaseId !== release.releaseId || candidate.gitSha !== sourceSha ||
+              baseline.environment !== 'production' || baseline.projectRef !== policy.projectRef ||
+              baseline.releaseId !== policy.productionSourceBase.releaseId ||
+              baseline.gitSha !== policy.productionSourceBase.sha ||
+              !Array.isArray(baseline.migrations) ||
+              JSON.stringify(baseline.migrations) !== JSON.stringify(candidate.migrations)) {
+            throw new Error('Plan 55 release artifact does not bind the exact baseline and candidate sources')
+          }
+
+          const requiredGates = requiredPromotionGates(policy, 'rollback_drill')
+          if (requiredGates.includes('plan55-rollback-drill')) {
+            throw new Error('Plan 55 rollback prerequisite inventory is self-referential')
+          }
+          assertPlan55GateEvidenceCoverage({ policy, targetState: 'rollback_drill', requiredGates })
+
+          const artifactRoot = resolve('artifacts/harness/rollback-prerequisites')
+          const writeSafe = (root, name, bytes) => {
+            if (typeof name !== 'string' || name.includes('\\') || name.startsWith('/') ||
+                name.split('/').some((part) => !part || part === '.' || part === '..')) {
+              throw new Error('Plan 55 rollback prerequisite artifact path is invalid')
+            }
+            const output = resolve(root, name)
+            if (!output.startsWith(`${root}${sep}`)) throw new Error('Plan 55 artifact path escaped its root')
+            mkdirSync(dirname(output), { recursive: true })
+            writeFileSync(output, bytes, { flag: 'wx' })
+          }
+          for (const [name, bytes] of gateArtifact.files) {
+            if (name.endsWith('/')) continue
+            writeSafe(artifactRoot, name, bytes)
+          }
+          writeSafe(artifactRoot, 'release.json', releaseBytes)
+          writeSafe(artifactRoot, 'hosted-baseline.json', baselineBytes)
+
+          const manifestPath = resolve(artifactRoot, 'gate-evidence-set.json')
+          loadPlan55GateEvidenceSet(manifestPath, {
+            policy,
+            release,
+            targetState: 'rollback_drill',
+            requiredGates,
+          })
+
+          const rollbackRoot = resolve('artifacts/rollback')
+          let copiedFiles = 0
+          for (const [name, bytes] of releaseArtifact.files) {
+            const parts = name.split('/')
+            const rollbackIndex = parts.lastIndexOf('rollback')
+            if (rollbackIndex < 0 || parts[rollbackIndex + 1] !== 'supabase') continue
+            writeSafe(rollbackRoot, parts.slice(rollbackIndex + 1).join('/'), bytes)
+            copiedFiles += 1
+          }
+          if (copiedFiles < 3 || !releaseArtifact.files.has('artifacts/release/rollback-mobile-source-sha256.txt') &&
+              ![...releaseArtifact.files.keys()].some((name) => name.endsWith('/rollback-mobile-source-sha256.txt'))) {
+            throw new Error('Plan 55 release artifact omitted the pinned rollback source or digest')
+          }
+          const rollbackDigest = uniqueFile(releaseArtifact.files, 'rollback-mobile-source-sha256.txt', 'rollback source')
+          writeSafe(resolve('artifacts/harness'), 'rollback-mobile-source-sha256.txt', rollbackDigest)
+          writeSafe(resolve('artifacts/harness'), 'release-manifest.json', releaseBytes)
+          writeSafe(resolve('artifacts/harness'), 'hosted-baseline.json', baselineBytes)
+          writeSafe(resolve('artifacts/harness'), 'hosted-candidate.json', candidateBytes)
+          process.stdout.write('Plan 55 exact-source rollback prerequisites verified before Production access\n')
+          NODE
+      - name: Verify Production identity and execute the read-only-control rollback drill
+        id: drill
+        env:
+          PLAN55_SOURCE_SHA: ${{ inputs.source_sha }}
+          PRODUCTION_PROJECT_REF: iwevizmsedyqozxlawwl
+          PRODUCTION_PROJECT_URL: https://iwevizmsedyqozxlawwl.supabase.co
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.PRODUCTION_SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          set -Eeuo pipefail
+          write_attempted=false
+          baseline_deploy_attempted=false
+          candidate_restore_verified=false
+          candidate_recovery_attempted=false
+          json_compact() {
+            node --input-type=module - "$1" "$2" <<'NODE'
+          import { readFileSync, writeFileSync } from 'node:fs'
+          const [input, output] = process.argv.slice(2)
+          const value = JSON.parse(readFileSync(input, 'utf8'))
+          writeFileSync(output, `${JSON.stringify(value)}\n`)
+          NODE
+          }
+          capture_hosted() {
+            local output="$1"
+            local raw="${output}.raw"
+            node scripts/harness/hosted-state.mjs --environment production \
+              --project-ref "$PRODUCTION_PROJECT_REF" --project-url "$PRODUCTION_PROJECT_URL" \
+              --output "$raw"
+            json_compact "$raw" "$output"
+          }
+          capture_control() {
+            local output="$1"
+            local raw="${output}.raw"
+            node scripts/harness/release-control.mjs --action read --environment production \
+              --project-ref "$PRODUCTION_PROJECT_REF" > "$raw"
+            json_compact "$raw" "$output"
+          }
+          capture_flags() {
+            local output="$1"
+            PLAN55_FLAGS_OUTPUT="$output" node --input-type=module <<'NODE'
+          import { writeFileSync } from 'node:fs'
+          import { PLAN55_PRODUCTION_FLAG_NAMES } from './apps/api/scripts/lib/plan55-production-canary-operations.mjs'
+          import { PLAN55_SERVICE_ORDER } from './apps/api/scripts/lib/plan55-production-canary-core.mjs'
+          const projectRef = process.env.PRODUCTION_PROJECT_REF
+          const response = await fetch(`https://api.supabase.com/v1/projects/${projectRef}/secrets`, {
+            headers: { authorization: `Bearer ${process.env.SUPABASE_ACCESS_TOKEN}` },
+            signal: AbortSignal.timeout(20000),
+          })
+          if (!response.ok) throw new Error('Plan 55 Production flag inventory could not be verified')
+          const secrets = await response.json()
+          if (!Array.isArray(secrets)) throw new Error('Plan 55 Production flag inventory is invalid')
+          const present = new Set(secrets.map((secret) => secret?.name).filter((name) => typeof name === 'string'))
+          const globalNames = [
+            ...PLAN55_SERVICE_ORDER.map((service) => `KAEL_PLAYBOOK_${service.toUpperCase()}_ENABLED`),
+            'KAEL_INTAKE_EVAL_OBSERVATION_ENABLED',
+          ]
+          const scopedNames = [
+            ...PLAN55_SERVICE_ORDER.map((service) => `KAEL_PLAYBOOK_${service.toUpperCase()}_CANARY_ENABLED`),
+            ...PLAN55_SERVICE_ORDER.map((service) => `KAEL_PLAYBOOK_${service.toUpperCase()}_CANARY_USER_ID`),
+          ]
+          const expectedNames = new Set([...globalNames, ...scopedNames])
+          if (PLAN55_PRODUCTION_FLAG_NAMES.length !== expectedNames.size ||
+              PLAN55_PRODUCTION_FLAG_NAMES.some((name) => !expectedNames.has(name))) {
+            throw new Error('Plan 55 Production flag inventory does not match the current evaluator')
+          }
+          const snapshot = {
+            environment: 'production',
+            projectRef,
+            globalServiceFlagsAbsent: globalNames.every((name) => !present.has(name)),
+            scopedCanaryFlagAbsent: scopedNames.every((name) => !present.has(name)),
+          }
+          writeFileSync(process.env.PLAN55_FLAGS_OUTPUT, `${JSON.stringify(snapshot)}\n`, { flag: 'wx' })
+          if (!snapshot.globalServiceFlagsAbsent || !snapshot.scopedCanaryFlagAbsent) {
+            throw new Error('Plan 55 requires all Production service and scoped canary flags to be absent')
+          }
+          NODE
+          }
+          apply_runtime_bindings() {
+            local target="$1"
+            local current="$2"
+            local target_text current_text
+            local -a target_bindings current_bindings unset_names
+            target_text=$(node scripts/harness/runtime-release-bindings.mjs --hosted "$target")
+            current_text=$(node scripts/harness/runtime-release-bindings.mjs --hosted "$current")
+            mapfile -t target_bindings <<< "$target_text"
+            mapfile -t current_bindings <<< "$current_text"
+            { [ "${#target_bindings[@]}" -eq 25 ] || [ "${#target_bindings[@]}" -eq 28 ]; }
+            { [ "${#current_bindings[@]}" -eq 25 ] || [ "${#current_bindings[@]}" -eq 28 ]; }
+            declare -A target_names=()
+            for binding in "${target_bindings[@]}"; do target_names["${binding%%=*}"]=1; done
+            unset_names=()
+            for binding in "${current_bindings[@]}"; do
+              name="${binding%%=*}"
+              if [ -z "${target_names[$name]+set}" ]; then unset_names+=("$name"); fi
+            done
+            ./apps/api/node_modules/.bin/supabase secrets set "${target_bindings[@]}" \
+              --project-ref "$PRODUCTION_PROJECT_REF"
+            if [ "${#unset_names[@]}" -gt 0 ]; then
+              ./apps/api/node_modules/.bin/supabase secrets unset "${unset_names[@]}" \
+                --project-ref "$PRODUCTION_PROJECT_REF" --yes
+            fi
+          }
+          restore_candidate_on_failure() {
+            local original_status=$?
+            trap - EXIT
+            trap '' HUP INT TERM
+            if [ "$original_status" -eq 0 ] || [ "$write_attempted" = false ]; then exit "$original_status"; fi
+            set +e
+            local restore_status=0
+            apply_runtime_bindings artifacts/harness/hosted-candidate.json artifacts/harness/hosted-baseline.json || restore_status=1
+            if [ "$baseline_deploy_attempted" = true ] && [ "$candidate_restore_verified" = false ] &&
+                [ "$candidate_recovery_attempted" = false ] && [ "$restore_status" -eq 0 ]; then
+              candidate_recovery_attempted=true
+              ./apps/api/node_modules/.bin/supabase functions deploy mobile-api \
+                --project-ref "$PRODUCTION_PROJECT_REF" --use-api --no-verify-jwt || restore_status=1
+            fi
+            if [ "$restore_status" -eq 0 ]; then
+              capture_hosted artifacts/rollback-drill/hosted-after-restore.json || restore_status=1
+              capture_flags artifacts/rollback-drill/flags-after-failure.json || restore_status=1
+              capture_control artifacts/rollback-drill/control-after-restore.json || restore_status=1
+            fi
+            if [ "$restore_status" -eq 0 ]; then
+              node --input-type=module -e 'import fs from "node:fs";const s=JSON.parse(fs.readFileSync("artifacts/rollback-drill/hosted-after-restore.json","utf8"));const r=JSON.parse(fs.readFileSync("artifacts/harness/release-manifest.json","utf8"));const a=JSON.parse(fs.readFileSync("artifacts/rollback-drill/control-before-drill.json","utf8"));const b=JSON.parse(fs.readFileSync("artifacts/rollback-drill/control-after-restore.json","utf8"));if(s.releaseId!==r.releaseId||s.gitSha!==r.gitSha||JSON.stringify(a.result)!==JSON.stringify(b.result))process.exit(1)' || restore_status=1
+              mkdir -p artifacts/candidate-after-failure/supabase || restore_status=1
+              cp supabase/config.toml artifacts/candidate-after-failure/supabase/config.toml || restore_status=1
+              ./apps/api/node_modules/.bin/supabase --workdir artifacts/candidate-after-failure functions download mobile-api \
+                --project-ref "$PRODUCTION_PROJECT_REF" --use-api || restore_status=1
+              candidate_digest=$(node scripts/harness/edge-source-proof.mjs --source-root artifacts/candidate-after-failure \
+                --function mobile-api --digest-only) || restore_status=1
+              expected_digest=$(node -p "require('./artifacts/harness/release-manifest.json').edgeFunctions['mobile-api']") || restore_status=1
+              [ "$candidate_digest" = "$expected_digest" ] || restore_status=1
+            fi
+            if [ "$restore_status" -eq 0 ]; then
+              echo 'Plan 55 failed rollback drill restored and rechecked the initial candidate bundle; proof remains failed' >&2
+            else
+              echo '::error::Plan 55 rollback drill failed and automatic candidate restoration could not be verified' >&2
+            fi
+            exit "$original_status"
+          }
+          trap 'exit 129' HUP
+          trap 'exit 130' INT
+          trap 'exit 143' TERM
+          trap restore_candidate_on_failure EXIT
+
+          test "$GITHUB_REF" = refs/heads/main
+          test "$(git rev-parse HEAD)" = "$PLAN55_SOURCE_SHA"
+          test "$PRODUCTION_PROJECT_REF" = iwevizmsedyqozxlawwl
+          test -n "$SUPABASE_ACCESS_TOKEN"
+          test -n "$SUPABASE_SERVICE_ROLE_KEY"
+          json_compact artifacts/harness/release-manifest.json artifacts/rollback-drill/release.json
+          json_compact artifacts/harness/hosted-baseline.json artifacts/rollback-drill/hosted-baseline.json
+          cp artifacts/harness/rollback-mobile-source-sha256.txt \
+            artifacts/rollback-drill/baseline-mobile-api-source-sha256.txt
+          node scripts/harness/release-bundle.mjs --verify artifacts/harness/release-manifest.json \
+            --hosted-before artifacts/harness/hosted-baseline.json
+          node scripts/harness/hosted-state.mjs --environment production \
+            --project-ref "$PRODUCTION_PROJECT_REF" --project-url "$PRODUCTION_PROJECT_URL" \
+            --output artifacts/rollback-drill/hosted-before-drill.raw
+          json_compact artifacts/rollback-drill/hosted-before-drill.raw \
+            artifacts/rollback-drill/hosted-before-drill.json
+          node scripts/harness/deployment-drift.mjs --release artifacts/harness/release-manifest.json \
+            --hosted artifacts/rollback-drill/hosted-before-drill.json \
+            --environment production --project-ref "$PRODUCTION_PROJECT_REF"
+          capture_control artifacts/rollback-drill/control-before-drill.json
+          capture_flags artifacts/rollback-drill/flags-before.json
+          mkdir -p artifacts/candidate-before/supabase
+          cp supabase/config.toml artifacts/candidate-before/supabase/config.toml
+          ./apps/api/node_modules/.bin/supabase --workdir artifacts/candidate-before functions download mobile-api \
+            --project-ref "$PRODUCTION_PROJECT_REF" --use-api
+          node scripts/harness/edge-source-proof.mjs --source-root artifacts/candidate-before \
+            --function mobile-api --digest-only > artifacts/rollback-drill/candidate-before-mobile-api-source-sha256.txt
+          node --input-type=module <<'NODE'
+          import { readFileSync } from 'node:fs'
+          import { loadPlan55ProductionOnlyPolicy } from './scripts/harness/promotion.mjs'
+          const policy = loadPlan55ProductionOnlyPolicy(process.cwd())
+          const release = JSON.parse(readFileSync('artifacts/harness/release-manifest.json', 'utf8'))
+          const baseline = JSON.parse(readFileSync('artifacts/harness/hosted-baseline.json', 'utf8'))
+          const candidate = JSON.parse(readFileSync('artifacts/harness/hosted-candidate.json', 'utf8'))
+          const before = JSON.parse(readFileSync('artifacts/rollback-drill/hosted-before-drill.json', 'utf8'))
+          const control = JSON.parse(readFileSync('artifacts/rollback-drill/control-before-drill.json', 'utf8'))
+          const active = control?.result
+          const same = (left, right) => JSON.stringify(left) === JSON.stringify(right)
+          if (baseline.releaseId !== policy.productionSourceBase.releaseId ||
+              baseline.gitSha !== policy.productionSourceBase.sha ||
+              candidate.releaseId !== release.releaseId || candidate.gitSha !== release.gitSha ||
+              before.releaseId !== candidate.releaseId || before.gitSha !== candidate.gitSha ||
+              before.migrations?.length !== baseline.migrations?.length ||
+              !same(before.migrations, baseline.migrations) ||
+              readFileSync('artifacts/rollback-drill/candidate-before-mobile-api-source-sha256.txt', 'utf8').trim() !==
+                release.edgeFunctions?.['mobile-api'] ||
+              active?.active_release_id !== policy.productionSourceBase.releaseId ||
+              active?.previous_active_release_id !== null || active?.candidate_release_id !== null ||
+              active?.candidate_cohort_id !== null || active?.candidate_packet_sha256 !== null ||
+              active?.candidate_started_at !== null || !Number.isSafeInteger(active?.revision) ||
+              active.revision < 1) {
+            throw new Error('Plan 55 rollback drill failed its exact initial Production/control preconditions')
+          }
+          for (const functionName of Object.keys(baseline.managedEdgeFunctions ?? {})) {
+            if (functionName !== 'mobile-api' &&
+                !same(baseline.managedEdgeFunctions[functionName], candidate.managedEdgeFunctions?.[functionName])) {
+              throw new Error('Plan 55 release artifact changed an unrelated managed Production function')
+            }
+          }
+          NODE
+          baseline_digest=$(<artifacts/harness/rollback-mobile-source-sha256.txt)
+          downloaded_baseline_digest=$(node scripts/harness/edge-source-proof.mjs \
+            --source-root artifacts/rollback --function mobile-api --digest-only)
+          test "$downloaded_baseline_digest" = "$baseline_digest"
+
+          write_attempted=true
+          apply_runtime_bindings artifacts/harness/hosted-baseline.json artifacts/harness/hosted-candidate.json
+          baseline_deploy_attempted=true
+          ./apps/api/node_modules/.bin/supabase --workdir artifacts/rollback functions deploy mobile-api \
+            --project-ref "$PRODUCTION_PROJECT_REF" --use-api --no-verify-jwt
+          match_baseline=false
+          for attempt in {1..12}; do
+            if capture_hosted artifacts/rollback-drill/hosted-after-rollback.json && \
+                node --input-type=module -e 'import fs from "node:fs";const s=JSON.parse(fs.readFileSync(process.argv[1],"utf8"));const p=JSON.parse(fs.readFileSync("config/harness/plan55-production-only-policy.json","utf8"));if(s.environment!=="production"||s.projectRef!==p.projectRef||s.releaseId!==p.productionSourceBase.releaseId||s.gitSha!==p.productionSourceBase.sha)process.exit(1)' \
+                  artifacts/rollback-drill/hosted-after-rollback.json; then
+              match_baseline=true
+              break
+            fi
+            sleep 10
+          done
+          test "$match_baseline" = true
+          node scripts/harness/edge-source-proof.mjs --source-root artifacts/rollback \
+            --function mobile-api --digest-only > artifacts/rollback-drill/rollback-mobile-api-source-sha256.txt
+          test "$(<artifacts/rollback-drill/rollback-mobile-api-source-sha256.txt)" = "$baseline_digest"
+          mkdir -p artifacts/rollback-after/supabase
+          cp artifacts/rollback/supabase/config.toml artifacts/rollback-after/supabase/config.toml
+          ./apps/api/node_modules/.bin/supabase --workdir artifacts/rollback-after functions download mobile-api \
+            --project-ref "$PRODUCTION_PROJECT_REF" --use-api
+          rollback_deployed_digest=$(node scripts/harness/edge-source-proof.mjs \
+            --source-root artifacts/rollback-after --function mobile-api --digest-only)
+          test "$rollback_deployed_digest" = "$baseline_digest"
+          capture_control artifacts/rollback-drill/control-after-rollback.raw
+          node --input-type=module <<'NODE'
+          import { readFileSync, writeFileSync } from 'node:fs'
+          const before = JSON.parse(readFileSync('artifacts/rollback-drill/control-before-drill.json', 'utf8')).result
+          const after = JSON.parse(readFileSync('artifacts/rollback-drill/control-after-rollback.raw', 'utf8')).result
+          if (JSON.stringify(before) !== JSON.stringify(after)) throw new Error('Stage 1 release control changed during rollback')
+          writeFileSync('artifacts/rollback-drill/control-recovery.json',
+            `${JSON.stringify({ action: 'read', mode: 'unchanged', before, after })}\n`, { flag: 'wx' })
+          NODE
+          capture_flags artifacts/rollback-drill/flags-after-rollback.json
+
+          apply_runtime_bindings artifacts/rollback-drill/hosted-before-drill.json \
+            artifacts/rollback-drill/hosted-after-rollback.json
+          ./apps/api/node_modules/.bin/supabase functions deploy mobile-api \
+            --project-ref "$PRODUCTION_PROJECT_REF" --use-api --no-verify-jwt
+          match_candidate=false
+          for attempt in {1..12}; do
+            if capture_hosted artifacts/rollback-drill/hosted-after-restore.json && \
+                node --input-type=module -e 'import fs from "node:fs";const s=JSON.parse(fs.readFileSync(process.argv[1],"utf8"));const r=JSON.parse(fs.readFileSync("artifacts/harness/release-manifest.json","utf8"));if(s.environment!=="production"||s.projectRef!==r.projectRef||s.releaseId!==r.releaseId||s.gitSha!==r.gitSha)process.exit(1)' \
+                  artifacts/rollback-drill/hosted-after-restore.json; then
+              match_candidate=true
+              break
+            fi
+            sleep 10
+          done
+          test "$match_candidate" = true
+          mkdir -p artifacts/candidate-after/supabase
+          cp supabase/config.toml artifacts/candidate-after/supabase/config.toml
+          ./apps/api/node_modules/.bin/supabase --workdir artifacts/candidate-after functions download mobile-api \
+            --project-ref "$PRODUCTION_PROJECT_REF" --use-api
+          node scripts/harness/edge-source-proof.mjs --source-root artifacts/candidate-after \
+            --function mobile-api --digest-only > artifacts/rollback-drill/candidate-after-mobile-api-source-sha256.txt
+          test "$(<artifacts/rollback-drill/candidate-after-mobile-api-source-sha256.txt)" = \
+            "$(node -p "require('./artifacts/harness/release-manifest.json').edgeFunctions['mobile-api']")"
+          capture_control artifacts/rollback-drill/control-after-restore.json
+          node --input-type=module -e 'import fs from "node:fs";const a=JSON.parse(fs.readFileSync("artifacts/rollback-drill/control-before-drill.json","utf8"));const b=JSON.parse(fs.readFileSync("artifacts/rollback-drill/control-after-restore.json","utf8"));if(JSON.stringify(a.result)!==JSON.stringify(b.result))process.exit(1)'
+          capture_flags artifacts/rollback-drill/flags-after.json
+          candidate_restore_verified=true
+          echo 'Plan 55 rollback drill restored the exact source with release control and flags unchanged'
+      - name: Build and self-verify the archived rollback proof
+        if: success()
+        run: |
+          node --input-type=module <<'NODE'
+          import { readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs'
+          import { resolve, relative, sep } from 'node:path'
+          import {
+            assertPlan55RollbackDrillProof,
+            buildPlan55RollbackDrillProofFromArchive,
+          } from './scripts/harness/rollback-proof.mjs'
+          import { loadPlan55ProductionOnlyPolicy } from './scripts/harness/promotion.mjs'
+          const root = resolve('artifacts/rollback-drill')
+          const files = new Map()
+          const walk = (directory) => {
+            for (const entry of readdirSync(directory, { withFileTypes: true })) {
+              const absolute = resolve(directory, entry.name)
+              if (entry.isDirectory()) walk(absolute)
+              else if (entry.isFile()) files.set(`artifacts/rollback-drill/${relative(root, absolute).split(sep).join('/')}`, readFileSync(absolute))
+            }
+          }
+          walk(root)
+          const policy = loadPlan55ProductionOnlyPolicy(process.cwd())
+          const release = JSON.parse(readFileSync('artifacts/harness/release-manifest.json', 'utf8'))
+          const proof = buildPlan55RollbackDrillProofFromArchive({ policy, release, sourceArtifactFiles: files })
+          if (proof.status !== 'PASS') throw new Error(`Plan 55 rollback drill proof blocked: ${proof.problems.join('; ')}`)
+          const proofBytes = Buffer.from(`${JSON.stringify(proof)}\n`)
+          writeFileSync(resolve(root, 'plan55-rollback-drill-proof.json'), proofBytes, { flag: 'wx' })
+          files.set('artifacts/rollback-drill/plan55-rollback-drill-proof.json', proofBytes)
+          assertPlan55RollbackDrillProof(proof, { policy, release, sourceArtifactFiles: files })
+          NODE
+      - name: Preserve rollback drill evidence for diagnosis or exact-source packaging
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: plan55-rollback-drill-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/rollback-drill
+          if-no-files-found: ignore
+          retention-days: 90

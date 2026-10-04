@@ -13,12 +13,20 @@ import { verifySyntheticSmokeReceiptChecksum } from '../../apps/api/scripts/lib/
 import { verifyStage1PromotionPacket } from './stage1-promotion-packet.mjs'
 import { verifyEdgeSourceProof } from './edge-source-proof.mjs'
 import { verifyStage1StagingValidationPacket } from './stage1-staging-validation-packet.mjs'
+import {
+  loadPlan55ProductionOnlyPolicy,
+  resolvePlan55PairedWavePreregistration,
+  verifyPromotionPacket,
+} from './promotion.mjs'
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..')
 const ACTIONS = new Set(['abort', 'configure', 'promote', 'read', 'reconcile-stale', 'record', 'recover', 'register'])
 const SHA256 = /^[0-9a-f]{64}$/u
 const RELEASE_ID = /^harness-[0-9a-f]{12}-[0-9a-f]{12}$/u
 const COHORT_ID = /^synthetic-stage1-[0-9a-f]{12}-[0-9a-f]{12}-[A-Za-z0-9_-]{1,48}$/u
+const PLAN55_POLICY_ID = 'plan55-production-only'
+const PLAN55_COHORT_ID = /^synthetic-plan55-[0-9a-f]{32}$/u
+const PLAN55_RELEASE_CONTROL_STATES = new Set(['paired_wave_1', 'paired_wave_2', 'paired_wave_3', 'production'])
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu
 
 export function parseReleaseControlArgs(args = process.argv.slice(2)) {
@@ -77,8 +85,11 @@ export function buildReleaseControlInvocation(input) {
   }
   if (action === 'configure' || action === 'promote') {
     assertReleaseCore(release)
-    assertPacket(release, input.packet, input.cohortId)
-    assertCohort(input.cohortId)
+    const effectiveCohortId = assertPacket(release, input.packet, input.cohortId)
+    assertCohort(effectiveCohortId, release)
+    if (release.releaseLane === PLAN55_POLICY_ID) {
+      assertPlan55ReleaseControlActionState(action, input.packet)
+    }
     if (action === 'configure') {
       if (input.expectedActiveReleaseId !== null && !RELEASE_ID.test(input.expectedActiveReleaseId ?? '')) {
         throw new Error('configure requires the exact active release ID or none')
@@ -88,7 +99,7 @@ export function buildReleaseControlInvocation(input) {
         args: {
           p_environment: release.environment,
           p_release_id: release.releaseId,
-          p_cohort_id: input.cohortId,
+          p_cohort_id: effectiveCohortId,
           p_expected_active_release_id: input.expectedActiveReleaseId,
           p_packet_sha256: input.packet.packetSha256,
         },
@@ -104,7 +115,7 @@ export function buildReleaseControlInvocation(input) {
       args: {
         p_environment: release.environment,
         p_release_id: release.releaseId,
-        p_cohort_id: input.cohortId,
+        p_cohort_id: effectiveCohortId,
         p_expected_revision: input.expectedRevision,
         p_packet_sha256: input.packet.packetSha256,
         p_mobile_deployment_id: input.sourceProof.deploymentId,
@@ -159,10 +170,13 @@ export async function executeReleaseControl(input, client) {
   }
   if (input.action === 'configure') {
     const row = result[0]
+    const expectedCohortId = input.release?.releaseLane === PLAN55_POLICY_ID
+      ? input.packet?.cohort
+      : input.cohortId
     if (!Number.isSafeInteger(row?.revision) || row.revision < 1 ||
         row.active_release_id !== input.expectedActiveReleaseId ||
         row.candidate_release_id !== input.release.releaseId ||
-        row.candidate_cohort_id !== input.cohortId) {
+        row.candidate_cohort_id !== expectedCohortId) {
       throw new Error('hosted release configure returned the wrong atomic control state')
     }
   }
@@ -337,9 +351,23 @@ function smokeReceiptArgs(release, receipt) {
 }
 
 function assertFailureReceipt(release, receipt) {
+  const cohortValid = release?.releaseLane === PLAN55_POLICY_ID
+    ? PLAN55_COHORT_ID.test(receipt?.cohortId ?? '')
+    : COHORT_ID.test(receipt?.cohortId ?? '')
+  let plan55CohortBound = true
+  if (release?.releaseLane === PLAN55_POLICY_ID) {
+    try {
+      const policy = loadPlan55ProductionOnlyPolicy(ROOT)
+      const preregistration = resolvePlan55PairedWavePreregistration(policy)
+      plan55CohortBound = Boolean(preregistration && preregistration.cohortId === receipt?.cohortId)
+    } catch {
+      plan55CohortBound = false
+    }
+  }
   if (receipt?.status !== 'aborted' || receipt.releaseId !== release.releaseId ||
       receipt.releaseBundleSha256 !== release.bundleSha256 || !SHA256.test(receipt.receiptSha256 ?? '') ||
-      !COHORT_ID.test(receipt.cohortId ?? '') || !verifyReleaseFailureReceiptChecksum(receipt)) {
+      receipt.gitSha !== release.gitSha || !cohortValid || !plan55CohortBound ||
+      !verifyReleaseFailureReceiptChecksum(receipt)) {
     throw new Error('abort requires a checksummed failure receipt for this release and cohort')
   }
 }
@@ -364,6 +392,22 @@ function assertReleaseCore(release) {
 }
 
 function assertPacket(release, packet, cohortId) {
+  if (release?.releaseLane === PLAN55_POLICY_ID) {
+    if (checkHarnessRelease(release).length > 0) {
+      throw new Error('Plan 55 release-control requires a valid immutable release artifact')
+    }
+    let policy
+    try {
+      policy = loadPlan55ProductionOnlyPolicy(ROOT)
+    } catch {
+      throw new Error('Plan 55 release-control policy is unavailable')
+    }
+    const effectiveCohortId = resolvePlan55ReleaseControlCohort({ release, packet, cohortId, policy })
+    if (verifyPromotionPacket(packet, policy).length > 0) {
+      throw new Error('Plan 55 promotion packet does not match its source-locked policy and release gates')
+    }
+    return effectiveCohortId
+  }
   const problems = release?.environment === 'staging'
     ? verifyStage1StagingValidationPacket(packet)
     : verifyStage1PromotionPacket(packet)
@@ -372,10 +416,48 @@ function assertPacket(release, packet, cohortId) {
       packet?.environment !== release.environment || packet?.cohortId !== cohortId) {
     throw new Error('promotion packet does not match the selected release')
   }
+  return cohortId
 }
 
-function assertCohort(value) {
-  if (!COHORT_ID.test(value ?? '')) throw new Error('release-control cohort ID is invalid')
+function assertCohort(value, release) {
+  const valid = release?.releaseLane === PLAN55_POLICY_ID
+    ? PLAN55_COHORT_ID.test(value ?? '')
+    : COHORT_ID.test(value ?? '')
+  if (!valid) throw new Error('release-control cohort ID is invalid')
+}
+
+export function resolvePlan55ReleaseControlCohort({ release, packet, cohortId, policy }) {
+  const preregistration = resolvePlan55PairedWavePreregistration(policy)
+  if (release?.environment !== 'production' || release?.releaseLane !== PLAN55_POLICY_ID ||
+      policy?.policyId !== PLAN55_POLICY_ID ||
+      !PLAN55_RELEASE_CONTROL_STATES.has(packet?.toState) ||
+      packet?.environment !== 'production' ||
+      packet?.releaseId !== release.releaseId ||
+      packet?.releaseBundleSha256 !== release.bundleSha256 ||
+      packet?.gitSha !== release.gitSha ||
+      packet?.sourceBundleSha256 !== release.sourceBundleSha256 ||
+      packet?.policyId !== policy.policyId ||
+      packet?.policySha256 !== policy.policySha256 ||
+      packet?.projectRef !== policy.projectRef ||
+      !preregistration ||
+      preregistration.cohortId !== packet?.cohort ||
+      preregistration.observationWindowMinutes !== packet?.observationWindowMinutes ||
+      preregistration.sha256 !== packet?.pairedWavePreregistrationSha256 ||
+      (cohortId !== undefined && cohortId !== preregistration.cohortId)) {
+    throw new Error('Plan 55 release-control context does not match the source-locked Production preregistration')
+  }
+  return preregistration.cohortId
+}
+
+export function assertPlan55ReleaseControlActionState(action, packet) {
+  const expectedState = action === 'configure'
+    ? 'paired_wave_1'
+    : action === 'promote'
+      ? 'production'
+      : null
+  if (!expectedState || packet?.toState !== expectedState) {
+    throw new Error(`Plan 55 release-control ${action ?? 'unknown action'} is not allowed for packet state ${packet?.toState ?? 'missing'}`)
+  }
 }
 
 function assertSourceProof(release, proof, expectedFunctionName) {

@@ -71,6 +71,7 @@ export const PLAN55_EVALUATOR_PATHS = Object.freeze([
   '.github/workflows/plan55-postreceipt-finalization.yml',
   '.github/workflows/plan55-gate-evidence-package.yml',
   '.github/workflows/plan55-independent-holdout-package.yml',
+  '.github/workflows/plan55-rollback-drill.yml',
   'apps/api/scripts/kael-playbook-production-canary.mjs',
   'apps/api/scripts/plan55-independent-holdout-package.mjs',
   'apps/api/scripts/kael-playbook-production-attest.mjs',

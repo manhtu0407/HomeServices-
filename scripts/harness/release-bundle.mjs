@@ -26,7 +26,7 @@ const SOURCE_EXTENSIONS = ['.ts', '.tsx', '.js', '.mjs', '.json']
 const FUNCTION_CONFIG_NAMES = ['deno.json', 'deno.jsonc', 'deno.lock', 'import_map.json', 'import-map.json']
 const GLOBAL_RUNTIME_CONFIGS = ['supabase/config.toml']
 export const RELEASE_EDGE_FUNCTIONS = Object.freeze(['kael-matching-maintainer', 'mobile-api'])
-const PROVIDER_READINESS_KEYS = Object.freeze([
+export const PROVIDER_READINESS_KEYS = Object.freeze([
   'android_fcm_v1', 'anthropic', 'deepseek', 'durable_guards', 'global_ai_enabled',
   'ios_apns', 'perplexity', 'push_receipt_reconciler', 'vietmap',
 ])
@@ -35,7 +35,7 @@ const PROVIDER_READINESS_KEYS = Object.freeze([
 const VERIFICATION_REQUIRED_PROVIDERS = Object.freeze([
   'anthropic', 'durable_guards', 'global_ai_enabled', 'perplexity', 'vietmap',
 ])
-const PRODUCTION_REQUIRED_PROVIDERS = Object.freeze([
+export const PRODUCTION_REQUIRED_PROVIDERS = Object.freeze([
   'android_fcm_v1', 'anthropic', 'durable_guards', 'global_ai_enabled',
   'ios_apns', 'perplexity', 'push_receipt_reconciler', 'vietmap',
 ])

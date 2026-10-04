@@ -5,7 +5,9 @@
   "projectRef": "iwevizmsedyqozxlawwl",
   "repository": "manhtu0407/HomeServices-",
   "trustedEvidenceWorkflowPaths": [
-    ".github/workflows/ci.yml"
+    ".github/workflows/ci.yml",
+    ".github/workflows/plan55-postreceipt-finalization.yml",
+    ".github/workflows/plan55-rollback-drill.yml"
   ],
   "trustedEvidenceWorkflowPathsByGate": {
     "plan55-production-source-merge": ".github/workflows/ci.yml",
@@ -15,6 +17,8 @@
     "compatible-rollback-target": ".github/workflows/ci.yml",
     "plan55-production-target-attestation": ".github/workflows/ci.yml",
     "plan55-rollback-preflight": ".github/workflows/ci.yml",
+    "plan55-exact-binary-release-attestation": ".github/workflows/ci.yml",
+    "plan55-full-production-readiness": ".github/workflows/ci.yml",
     "plan55-runtime-source-match": ".github/workflows/ci.yml",
     "plan55-guard-deployed": ".github/workflows/ci.yml",
     "plan55-all-global-flags-off": ".github/workflows/ci.yml",
@@ -29,6 +33,10 @@
     "plan55-actor-scoped-guard-tests": ".github/workflows/ci.yml",
     "plan55-canary-runner-tests": ".github/workflows/ci.yml",
     "plan55-independent-holdout-freeze": ".github/workflows/ci.yml",
+    "plan55-auth-admin-verified": ".github/workflows/ci.yml",
+    "plan55-synthetic-actor-created": ".github/workflows/ci.yml",
+    "plan55-actor-scope-verified": ".github/workflows/ci.yml",
+    "plan55-disposable-worker-isolated": ".github/workflows/ci.yml",
     "edge-deno": ".github/workflows/ci.yml",
     "sql-verification": ".github/workflows/ci.yml",
     "generated-types": ".github/workflows/ci.yml",
@@ -36,7 +44,9 @@
     "plan55-service-g5-safety-pass": ".github/workflows/ci.yml",
     "plan55-service-cleanup-pass": ".github/workflows/ci.yml",
     "plan55-six-current-source-receipts": ".github/workflows/ci.yml",
-    "plan55-six-cleanup-passes": ".github/workflows/ci.yml"
+    "plan55-six-cleanup-passes": ".github/workflows/ci.yml",
+    "plan55-publication-packet": ".github/workflows/plan55-postreceipt-finalization.yml",
+    "plan55-rollback-drill": ".github/workflows/plan55-rollback-drill.yml"
   },
   "releaseLane": "plan55-production-only",
   "productionSourceBase": {
@@ -53,6 +63,7 @@
     "service_canary",
     "service_cleanup",
     "receipts_validated",
+    "rollback_drill",
     "paired_wave_1",
     "paired_wave_2",
     "paired_wave_3",
@@ -71,8 +82,10 @@
     ["service_cleanup", "service_canary"],
     ["service_cleanup", "receipts_validated"],
     ["service_cleanup", "aborted"],
-    ["receipts_validated", "paired_wave_1"],
+    ["receipts_validated", "rollback_drill"],
     ["receipts_validated", "aborted"],
+    ["rollback_drill", "paired_wave_1"],
+    ["rollback_drill", "aborted"],
     ["paired_wave_1", "paired_wave_2"],
     ["paired_wave_1", "aborted"],
     ["paired_wave_2", "paired_wave_3"],
@@ -86,6 +99,7 @@
   "slicesPerService": 8,
   "casesPerSlice": 12,
   "serviceConcurrency": 1,
+  "pairedWavePreregistration": null,
   "globalServiceFlags": "absent",
   "realCustomerTraffic": false,
   "cleanupBeforeNextService": true,
@@ -132,20 +146,21 @@
     ],
     "receipts_validated": [
       "plan55-six-current-source-receipts",
-      "plan55-six-cleanup-passes",
-      "plan55-independent-cohort-outcome"
+      "plan55-six-cleanup-passes"
     ],
-    "paired_wave_1": [
+    "rollback_drill": [
       "plan55-docker-sql-edge-gates",
       "plan55-hosted-drift-pass",
       "plan55-full-production-readiness",
       "plan55-exact-binary-release-attestation",
       "plan55-publication-packet",
-      "plan55-rollback-drill",
-      "plan55-paired-wave-1-pass"
+      "plan55-independent-cohort-outcome"
     ],
-    "paired_wave_2": ["plan55-paired-wave-1-pass", "plan55-paired-wave-2-pass"],
-    "paired_wave_3": ["plan55-paired-wave-2-pass", "plan55-paired-wave-3-pass"],
+    "paired_wave_1": [
+      "plan55-rollback-drill"
+    ],
+    "paired_wave_2": ["plan55-paired-wave-1-pass"],
+    "paired_wave_3": ["plan55-paired-wave-2-pass"],
     "production": ["plan55-paired-wave-3-pass", "plan55-post-rollout-cohort-pass"],
     "aborted": [],
     "rolled_back": ["plan55-rollback-executed"]

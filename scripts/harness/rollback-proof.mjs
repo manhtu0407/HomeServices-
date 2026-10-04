@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto'
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, relative, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -96,6 +97,351 @@ export function verifyRollbackProof(input) {
     activeReleaseId: controlAfter?.active_release_id ?? null,
     restoredFunctions,
   })
+}
+
+export function verifyPlan55RollbackDrillProof(input, { policy, release, sourceArtifactFiles } = {}) {
+  const problems = []
+  const artifactFileSha256 = verifyArchivedRollbackEvidence({
+    sourceArtifactFiles, input, release, problems,
+  })
+  const baseline = policy?.productionSourceBase
+  const candidateSha = release?.gitSha
+  const baselineSha = baseline?.sha
+  const candidateId = release?.releaseId
+  const baselineId = baseline?.releaseId
+  const hostedBaseline = input?.hostedBaseline
+  const hostedBefore = input?.hostedBefore
+  const hostedAfterRollback = input?.hostedAfterRollback
+  const hostedAfterRestore = input?.hostedAfterRestore
+  const controlBefore = releaseControlSnapshot(input?.controlBefore)
+  const controlAfter = releaseControlSnapshot(input?.controlAfter)
+  const recoveryBefore = releaseControlSnapshot(input?.controlRecovery?.before)
+  const recoveryAfter = releaseControlSnapshot(input?.controlRecovery?.after)
+  const flagsBefore = input?.flagsBefore
+  const flagsAfter = input?.flagsAfter
+
+  if (policy?.environment !== 'production' || policy?.releaseLane !== 'plan55-production-only' ||
+      !/^[a-z0-9]{20}$/u.test(policy?.projectRef ?? '') || release?.environment !== 'production' ||
+      release?.projectRef !== policy?.projectRef || !/^[a-f0-9]{40}$/u.test(candidateSha ?? '') ||
+      release?.releaseLane !== 'plan55-production-only' ||
+      !new RegExp(`^harness-${candidateSha.slice(0, 12)}-[a-f0-9]{12}$`, 'u').test(candidateId ?? '') ||
+      !SHA256.test(release?.edgeFunctions?.['mobile-api'] ?? '')) {
+    problems.push('rollback drill candidate does not match the exact Plan 55 Production release')
+  }
+  if (!/^[a-f0-9]{40}$/u.test(baselineSha ?? '') ||
+      !new RegExp(`^harness-${baselineSha.slice(0, 12)}-[a-f0-9]{12}$`, 'u').test(baselineId ?? '') ||
+      baseline?.branch !== `codex/plan55-production-base-${String(baselineSha ?? '').slice(0, 8)}-review-v2`) {
+    problems.push('rollback drill baseline is not the pinned Production source')
+  }
+
+  if (!controlBefore || !controlAfter || !recoveryBefore || !recoveryAfter) {
+    problems.push('rollback drill release-control snapshots are missing or invalid')
+  } else {
+    if (controlBefore.activeReleaseId !== baselineId ||
+        controlBefore.previousActiveReleaseId !== null ||
+        !emptyReleaseControlCandidate(controlBefore)) {
+      problems.push('rollback drill did not preserve the pinned Stage 1 baseline as the only active release')
+    }
+    if (input?.controlRecovery?.action !== 'read' ||
+        input.controlRecovery.mode !== 'unchanged' ||
+        !sameReleaseControlSnapshot(recoveryBefore, controlBefore)) {
+      problems.push('rollback drill lacks read-only release-control snapshots around the hosted rollback')
+    }
+    if (!sameReleaseControlSnapshot(recoveryBefore, recoveryAfter) ||
+        !sameReleaseControlSnapshot(controlBefore, recoveryAfter)) {
+      problems.push('rollback drill changed global Stage 1 release control')
+    }
+    if (!sameReleaseControlSnapshot(controlBefore, controlAfter)) {
+      problems.push('rollback drill changed the global Stage 1 release-control lane')
+    }
+  }
+
+  const snapshots = [
+    ['pinned baseline', hostedBaseline, baselineId, baselineSha],
+    ['candidate before rollback', hostedBefore, candidateId, candidateSha],
+    ['restored baseline', hostedAfterRollback, baselineId, baselineSha],
+    ['candidate after restore', hostedAfterRestore, candidateId, candidateSha],
+  ]
+  for (const [label, hosted, expectedReleaseId, expectedSha] of snapshots) {
+    if (hosted?.environment !== 'production' || hosted.projectRef !== policy?.projectRef ||
+        hosted.releaseId !== expectedReleaseId || hosted.gitSha !== expectedSha ||
+        !Array.isArray(hosted.migrations)) {
+      problems.push(`rollback drill ${label} snapshot has the wrong Production identity`)
+    }
+  }
+
+  const baselineBindings = safeRuntimeBindings(hostedBaseline, problems, 'pinned baseline')
+  const rollbackBindings = safeRuntimeBindings(hostedAfterRollback, problems, 'restored baseline')
+  const candidateBindings = safeRuntimeBindings(hostedBefore, problems, 'candidate before rollback')
+  const restoredCandidateBindings = safeRuntimeBindings(hostedAfterRestore, problems, 'candidate after restore')
+  if (baselineBindings && rollbackBindings &&
+      JSON.stringify(baselineBindings) !== JSON.stringify(rollbackBindings)) {
+    problems.push('rollback drill did not restore the pinned Production runtime bindings')
+  }
+  if (candidateBindings && restoredCandidateBindings &&
+      JSON.stringify(candidateBindings) !== JSON.stringify(restoredCandidateBindings)) {
+    problems.push('rollback drill did not reapply the exact Plan 55 candidate runtime bindings')
+  }
+
+  const baselineMigrations = migrationVersions(hostedBaseline?.migrations, problems, 'pinned baseline')
+  for (const [label, hosted] of [
+    ['candidate before rollback', hostedBefore],
+    ['restored baseline', hostedAfterRollback],
+    ['candidate after restore', hostedAfterRestore],
+  ]) {
+    const versions = migrationVersions(hosted?.migrations, problems, label)
+    if (baselineMigrations && versions && JSON.stringify(versions) !== JSON.stringify(baselineMigrations)) {
+      problems.push(`rollback drill ${label} changed Production migration history`)
+    }
+  }
+
+  const baselineMobile = hostedBaseline?.managedEdgeFunctions?.['mobile-api']
+  const candidateMobile = hostedBefore?.managedEdgeFunctions?.['mobile-api']
+  const rollbackMobile = hostedAfterRollback?.managedEdgeFunctions?.['mobile-api']
+  const restoredMobile = hostedAfterRestore?.managedEdgeFunctions?.['mobile-api']
+  if ([baselineMobile, candidateMobile, rollbackMobile, restoredMobile].some((item) => !validActiveFunction(item)) ||
+      !(baselineMobile?.version < candidateMobile?.version &&
+        candidateMobile?.version < rollbackMobile?.version &&
+        rollbackMobile?.version < restoredMobile?.version)) {
+    problems.push('rollback drill does not prove candidate, baseline rollback, and candidate restore deployments in order')
+  }
+  if (validActiveFunction(baselineMobile) && validActiveFunction(rollbackMobile) &&
+      !sameRuntimeConfiguration(baselineMobile, rollbackMobile)) {
+    problems.push('rollback drill baseline restore changed the pinned mobile-api runtime configuration')
+  }
+  if (validActiveFunction(candidateMobile) && validActiveFunction(restoredMobile) &&
+      !sameRuntimeConfiguration(candidateMobile, restoredMobile)) {
+    problems.push('rollback drill candidate restore changed the mobile-api runtime configuration')
+  }
+  for (const functionName of RELEASE_EDGE_FUNCTIONS) {
+    if (functionName === 'mobile-api') continue
+    const entries = snapshots.map(([, hosted]) => hosted?.managedEdgeFunctions?.[functionName])
+    if (entries.some((entry) => !validActiveFunction(entry)) ||
+        entries.slice(1).some((entry) => JSON.stringify(entry) !== JSON.stringify(entries[0]))) {
+      problems.push(`rollback drill unexpectedly changed managed Edge function ${functionName}`)
+    }
+  }
+
+  const baselineSourceSha256 = input?.baselineSourceSha256
+  const rollbackSourceSha256 = input?.rollbackSourceSha256
+  const candidateBeforeSourceSha256 = input?.candidateBeforeSourceSha256
+  const candidateAfterSourceSha256 = input?.candidateAfterSourceSha256
+  if (!SHA256.test(baselineSourceSha256 ?? '') ||
+      rollbackSourceSha256 !== baselineSourceSha256) {
+    problems.push('rollback drill did not restore the exact pinned Production mobile-api source')
+  }
+  if (!SHA256.test(release?.edgeFunctions?.['mobile-api'] ?? '') ||
+      candidateBeforeSourceSha256 !== release.edgeFunctions['mobile-api'] ||
+      candidateAfterSourceSha256 !== release.edgeFunctions['mobile-api']) {
+    problems.push('rollback drill did not restore the exact locked Plan 55 mobile-api source')
+  }
+
+  for (const [label, flags] of [['before', flagsBefore], ['after', flagsAfter]]) {
+    if (flags?.environment !== 'production' || flags?.projectRef !== policy?.projectRef ||
+        flags?.globalServiceFlagsAbsent !== true || flags?.scopedCanaryFlagAbsent !== true) {
+      problems.push(`rollback drill ${label} flag snapshot is not clean and Production-scoped`)
+    }
+  }
+
+  return Object.freeze({
+    schemaVersion: 'plan55-rollback-drill-proof.v2',
+    gate: 'plan55-rollback-drill',
+    status: problems.length === 0 ? 'PASS' : 'BLOCKED',
+    environment: 'production',
+    projectRef: policy?.projectRef ?? null,
+    baselineReleaseId: baselineId ?? null,
+    baselineSourceSha: baselineSha ?? null,
+    candidateReleaseId: candidateId ?? null,
+    candidateSourceSha: candidateSha ?? null,
+    restoredReleaseId: hostedAfterRestore?.releaseId ?? null,
+    restoredSourceSha: hostedAfterRestore?.gitSha ?? null,
+    edgeVersions: {
+      baseline: baselineMobile?.version ?? null,
+      candidateBeforeRollback: candidateMobile?.version ?? null,
+      baselineAfterRollback: rollbackMobile?.version ?? null,
+      candidateAfterRestore: restoredMobile?.version ?? null,
+    },
+    baselineSourceSha256: SHA256.test(baselineSourceSha256 ?? '') ? baselineSourceSha256 : null,
+    candidateSourceSha256: SHA256.test(candidateAfterSourceSha256 ?? '') ? candidateAfterSourceSha256 : null,
+    releaseControl: {
+      recoveryMode: input?.controlRecovery?.mode ?? null,
+      revisionBefore: controlBefore?.revision ?? null,
+      revisionAfterRollback: recoveryAfter?.revision ?? null,
+      revisionAfterRestore: controlAfter?.revision ?? null,
+      activeReleaseAfterRestore: controlAfter?.activeReleaseId ?? null,
+    },
+    artifactFileSha256,
+    problems,
+  })
+}
+
+export function buildPlan55RollbackDrillProofFromArchive({ policy, release, sourceArtifactFiles } = {}) {
+  if (!(sourceArtifactFiles instanceof Map)) {
+    throw new Error('Plan 55 rollback drill source artifact is missing')
+  }
+  const archivedRelease = readRollbackJson(sourceArtifactFiles, 'release.json')
+  if (JSON.stringify(archivedRelease) !== JSON.stringify(release)) {
+    throw new Error('Plan 55 rollback drill release manifest does not match its source artifact')
+  }
+  const input = {
+    hostedBaseline: readRollbackJson(sourceArtifactFiles, 'hosted-baseline.json'),
+    hostedBefore: readRollbackJson(sourceArtifactFiles, 'hosted-before-drill.json'),
+    hostedAfterRollback: readRollbackJson(sourceArtifactFiles, 'hosted-after-rollback.json'),
+    hostedAfterRestore: readRollbackJson(sourceArtifactFiles, 'hosted-after-restore.json'),
+    controlBefore: readRollbackJson(sourceArtifactFiles, 'control-before-drill.json'),
+    controlRecovery: readRollbackJson(sourceArtifactFiles, 'control-recovery.json'),
+    controlAfter: readRollbackJson(sourceArtifactFiles, 'control-after-restore.json'),
+    flagsBefore: readRollbackJson(sourceArtifactFiles, 'flags-before.json'),
+    flagsAfter: readRollbackJson(sourceArtifactFiles, 'flags-after.json'),
+    baselineSourceSha256: readRollbackDigest(sourceArtifactFiles, 'baseline-mobile-api-source-sha256.txt'),
+    rollbackSourceSha256: readRollbackDigest(sourceArtifactFiles, 'rollback-mobile-api-source-sha256.txt'),
+    candidateBeforeSourceSha256: readRollbackDigest(
+      sourceArtifactFiles, 'candidate-before-mobile-api-source-sha256.txt'),
+    candidateAfterSourceSha256: readRollbackDigest(
+      sourceArtifactFiles, 'candidate-after-mobile-api-source-sha256.txt'),
+  }
+  return verifyPlan55RollbackDrillProof(input, { policy, release, sourceArtifactFiles })
+}
+
+export function assertPlan55RollbackDrillProof(proof, options = {}) {
+  const expected = buildPlan55RollbackDrillProofFromArchive(options)
+  const proofBytes = uniqueRollbackArtifactFile(
+    options.sourceArtifactFiles, 'plan55-rollback-drill-proof.json', [],
+  )
+  if (expected.status !== 'PASS' || JSON.stringify(proof) !== JSON.stringify(expected) ||
+      !proofBytes?.equals(Buffer.from(`${JSON.stringify(proof)}\n`))) {
+    throw new Error('Plan 55 rollback drill proof does not match its exact archived rollback artifact')
+  }
+  return true
+}
+
+function verifyArchivedRollbackEvidence({ sourceArtifactFiles, input, release, problems }) {
+  const jsonFiles = [
+    ['releaseManifest', 'release.json', release],
+    ['hostedBaseline', 'hosted-baseline.json', input?.hostedBaseline],
+    ['hostedBefore', 'hosted-before-drill.json', input?.hostedBefore],
+    ['hostedAfterRollback', 'hosted-after-rollback.json', input?.hostedAfterRollback],
+    ['hostedAfterRestore', 'hosted-after-restore.json', input?.hostedAfterRestore],
+    ['controlBefore', 'control-before-drill.json', input?.controlBefore],
+    ['controlRecovery', 'control-recovery.json', input?.controlRecovery],
+    ['controlAfter', 'control-after-restore.json', input?.controlAfter],
+    ['flagsBefore', 'flags-before.json', input?.flagsBefore],
+    ['flagsAfter', 'flags-after.json', input?.flagsAfter],
+  ]
+  const textFiles = [
+    ['baselineMobileSource', 'baseline-mobile-api-source-sha256.txt', input?.baselineSourceSha256],
+    ['rollbackMobileSource', 'rollback-mobile-api-source-sha256.txt', input?.rollbackSourceSha256],
+    ['candidateBeforeSource', 'candidate-before-mobile-api-source-sha256.txt', input?.candidateBeforeSourceSha256],
+    ['candidateAfterSource', 'candidate-after-mobile-api-source-sha256.txt', input?.candidateAfterSourceSha256],
+  ]
+  const digests = {}
+  if (!(sourceArtifactFiles instanceof Map)) {
+    problems.push('archived Plan 55 rollback drill evidence is missing or invalid')
+    return digests
+  }
+
+  for (const [key, filename, expected] of jsonFiles) {
+    const bytes = uniqueRollbackArtifactFile(sourceArtifactFiles, filename, problems)
+    if (!bytes) continue
+    try {
+      const parsed = JSON.parse(bytes.toString('utf8'))
+      if (JSON.stringify(parsed) !== JSON.stringify(expected)) {
+        problems.push(`archived Plan 55 rollback evidence does not match parsed input: ${filename}`)
+      }
+    } catch {
+      problems.push(`archived Plan 55 rollback evidence is invalid JSON: ${filename}`)
+    }
+    digests[key] = sha256(bytes)
+  }
+  for (const [key, filename, expected] of textFiles) {
+    const bytes = uniqueRollbackArtifactFile(sourceArtifactFiles, filename, problems)
+    if (!bytes) continue
+    if (!bytes.equals(Buffer.from(`${expected ?? ''}\n`))) {
+      problems.push(`archived Plan 55 rollback source digest does not match parsed input: ${filename}`)
+    }
+    digests[key] = sha256(bytes)
+  }
+  return Object.freeze(digests)
+}
+
+function safeRuntimeBindings(hosted, problems, label) {
+  try {
+    return runtimeReleaseBindingsFromHostedState(hosted)
+  } catch (error) {
+    problems.push(`rollback drill ${label} runtime bindings are invalid: ${error instanceof Error ? error.message : String(error)}`)
+    return null
+  }
+}
+
+function readRollbackJson(sourceArtifactFiles, filename) {
+  const bytes = uniqueRollbackArtifactFile(sourceArtifactFiles, filename, [])
+  if (!bytes) throw new Error(`Plan 55 rollback drill artifact is missing: ${filename}`)
+  try {
+    const value = JSON.parse(bytes.toString('utf8'))
+    if (!bytes.equals(Buffer.from(`${JSON.stringify(value)}\n`))) throw new Error('serialization')
+    return value
+  } catch {
+    throw new Error(`Plan 55 rollback drill artifact is invalid: ${filename}`)
+  }
+}
+
+function readRollbackDigest(sourceArtifactFiles, filename) {
+  const bytes = uniqueRollbackArtifactFile(sourceArtifactFiles, filename, [])
+  if (!bytes) throw new Error(`Plan 55 rollback drill source digest is missing: ${filename}`)
+  const value = bytes.toString('utf8')
+  if (!/^[a-f0-9]{64}\n$/u.test(value)) {
+    throw new Error(`Plan 55 rollback drill source digest is invalid: ${filename}`)
+  }
+  return value.slice(0, -1)
+}
+
+function uniqueRollbackArtifactFile(sourceArtifactFiles, filename, problems) {
+  const matches = [...sourceArtifactFiles].filter(([path, bytes]) =>
+    typeof path === 'string' && path.split('/').at(-1) === filename && Buffer.isBuffer(bytes) &&
+    bytes.length > 0 && bytes.length <= 16 * 1024 * 1024)
+  if (matches.length !== 1) {
+    problems.push(`archived rollback evidence is missing, oversized, or ambiguous: ${filename}`)
+    return undefined
+  }
+  return matches[0][1]
+}
+
+function sha256(bytes) {
+  return createHash('sha256').update(bytes).digest('hex')
+}
+
+function releaseControlSnapshot(value) {
+  const state = value?.result ?? value
+  if (!state || typeof state !== 'object' || Array.isArray(state) ||
+      !Number.isSafeInteger(state.revision) || state.revision < 1 ||
+      ['active_release_id', 'previous_active_release_id', 'candidate_release_id',
+        'candidate_cohort_id', 'candidate_packet_sha256', 'candidate_started_at'].some((key) =>
+        !Object.prototype.hasOwnProperty.call(state, key))) return null
+  const snapshot = {
+    activeReleaseId: state.active_release_id ?? null,
+    previousActiveReleaseId: state.previous_active_release_id ?? null,
+    candidateReleaseId: state.candidate_release_id ?? null,
+    candidateCohortId: state.candidate_cohort_id ?? null,
+    candidatePacketSha256: state.candidate_packet_sha256 ?? null,
+    candidateStartedAt: state.candidate_started_at ?? null,
+    revision: state.revision,
+  }
+  for (const field of ['activeReleaseId', 'previousActiveReleaseId', 'candidateReleaseId']) {
+    if (snapshot[field] !== null && !/^harness-[0-9a-f]{12}-[0-9a-f]{12}$/u.test(snapshot[field])) return null
+  }
+  if (snapshot.candidateCohortId !== null &&
+      !/^synthetic-[a-z0-9-]{8,100}$/u.test(snapshot.candidateCohortId)) return null
+  if (snapshot.candidatePacketSha256 !== null && !SHA256.test(snapshot.candidatePacketSha256)) return null
+  return Object.freeze(snapshot)
+}
+
+function emptyReleaseControlCandidate(state) {
+  return state.candidateReleaseId === null && state.candidateCohortId === null &&
+    state.candidatePacketSha256 === null && state.candidateStartedAt === null
+}
+
+function sameReleaseControlSnapshot(left, right) {
+  return Boolean(left && right) && JSON.stringify(left) === JSON.stringify(right)
 }
 
 function validActiveFunction(value) {

@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { readFileSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import test from 'node:test'
 import { apiTestCommandPlan } from '../../apps/api/scripts/test-runner.mjs'
 import {
@@ -12,12 +12,14 @@ const releasePath = '.github/workflows/plan55-production-only.yml'
 const servicePath = '.github/workflows/plan55-production-canary-service.yml'
 const finalizationPath = '.github/workflows/plan55-postreceipt-finalization.yml'
 const gateEvidencePackagePath = '.github/workflows/plan55-gate-evidence-package.yml'
+const rollbackDrillPath = '.github/workflows/plan55-rollback-drill.yml'
 const blindHoldoutPackagePath = '.github/workflows/plan55-independent-holdout-package.yml'
 const ciPath = '.github/workflows/ci.yml'
 const release = readFileSync(releasePath, 'utf8')
 const service = readFileSync(servicePath, 'utf8')
 const finalization = readFileSync(finalizationPath, 'utf8').replace(/\r\n/gu, '\n')
 const gateEvidencePackage = readFileSync(gateEvidencePackagePath, 'utf8')
+const rollbackDrill = existsSync(rollbackDrillPath) ? readFileSync(rollbackDrillPath, 'utf8') : ''
 const blindHoldoutPackage = readFileSync(blindHoldoutPackagePath, 'utf8')
 const ci = readFileSync(ciPath, 'utf8')
 const sourceAttestation = readFileSync('apps/api/scripts/lib/kael-playbook-production-attestation.mjs', 'utf8')
@@ -249,10 +251,13 @@ test('release-stage gate proofs bind the pinned hosted baseline and rollback bef
     '--hosted-before artifacts/release/hosted-before.json',
     '--hosted-rollback-snapshot artifacts/release/hosted-rollback-snapshot.json',
     '--rollback-mobile-source-sha256 artifacts/release/rollback-mobile-source-sha256.txt',
+    '--mobile-binary-attestation artifacts/release/mobile-binary-attestation.json',
   ]) assert.ok(assemble.includes(argument), `release-stage proof input is missing: ${argument}`)
   assert.match(assemble, /--output artifacts\/release\/plan55-gate-evidence/u)
-  assert.match(release, /path: artifacts\/release/u,
-    'the exact-source release artifact must retain the generated gate proof files')
+  const releaseArtifactUpload = assemble.slice(assemble.indexOf('name: Preserve guard-deploy and rollback evidence'))
+  assert.match(releaseArtifactUpload,
+    /path:\s*\|\r?\n\s*artifacts\/release\r?\n\s*artifacts\/rollback\/supabase\/config\.toml\r?\n\s*artifacts\/rollback\/supabase\/functions\/mobile-api/u,
+    'the exact-source release artifact must retain gate proofs and only the pinned rollback deploy inputs')
   assert.match(releaseGateProofs, /hosted\.gitSha !== pinned\.sha/u)
   assert.match(releaseGateProofs, /JSON\.stringify\(rollback\.migrations\) !== JSON\.stringify\(before\.migrations\)/u)
   assert.match(releaseGateProofs, /sameMobileApiIdentity\(beforeEdge, rollbackEdge\)/u)
@@ -261,6 +266,8 @@ test('release-stage gate proofs bind the pinned hosted baseline and rollback bef
   assert.deepEqual([...PLAN55_RELEASE_STAGE_GATES].sort(), [
     'compatible-rollback-target',
     'hosted-drift-baseline',
+    'plan55-exact-binary-release-attestation',
+    'plan55-full-production-readiness',
     'plan55-production-target-attestation',
     'plan55-rollback-preflight',
   ])
@@ -473,6 +480,8 @@ test('release workflows are covered by the deployed evaluator source attestation
     'gate evidence package workflow must be included in the evaluator attestation')
   expectWorkflowMatch(sourceAttestation, /'\.github\/workflows\/plan55-independent-holdout-package\.yml'/u,
     'blind holdout package workflow must be included in the evaluator attestation')
+  expectWorkflowMatch(sourceAttestation, /'\.github\/workflows\/plan55-rollback-drill\.yml'/u,
+    'rollback drill workflow must be included in the evaluator attestation')
   expectWorkflowMatch(sourceAttestation, /'apps\/api\/scripts\/plan55-independent-holdout-package\.mjs'/u,
     'blind holdout package CLI must be included in the evaluator attestation')
   expectWorkflowMatch(sourceAttestation, /'apps\/api\/scripts\/lib\/plan55-independent-holdout-package\.mjs'/u,
@@ -521,7 +530,7 @@ test('blind holdout review packaging is source-bound, read-only, and excludes la
 })
 
 test('gate evidence packaging preserves exact-source evidence and has no Production write capability', () => {
-  expectWorkflowMatch(gateEvidencePackage, /^on:\r?\n  workflow_dispatch:/mu,
+  expectWorkflowMatch(gateEvidencePackage, /^on:[\s\S]*?^  workflow_dispatch:/mu,
     'evidence packaging must be explicitly dispatched')
   expectWorkflowMatch(gateEvidencePackage, /permissions:\r?\n  actions: read\r?\n  contents: read/u,
     'evidence packaging must be read-only')
@@ -529,6 +538,9 @@ test('gate evidence packaging preserves exact-source evidence and has no Product
     'evidence packaging must run on the exact locked main SHA')
   assert.match(gateEvidencePackage, /buildPlan55GateEvidenceArtifact/u)
   assert.match(gateEvidencePackage, /downloadPlan55GitHubRunArtifact/u)
+  assert.match(gateEvidencePackage, /runCreatedAt:\s*artifact\.runCreatedAt/u)
+  assert.match(gateEvidencePackage, /runStartedAt:\s*artifact\.runStartedAt/u)
+  assert.match(gateEvidencePackage, /runUpdatedAt:\s*artifact\.runUpdatedAt/u)
   assert.match(gateEvidencePackage, /PLAN55_RELEASE_STAGE_GATES/u)
   assert.match(gateEvidencePackage, /PLAN55_DEPLOYED_GUARD_GATES/u)
   assert.match(gateEvidencePackage,
@@ -572,6 +584,10 @@ test('gate evidence packaging preserves exact-source evidence and has no Product
     'plan55-production-target-attestation',
     'plan55-rollback-preflight',
     ...PLAN55_DEPLOYED_GUARD_GATES,
+    'plan55-auth-admin-verified',
+    'plan55-synthetic-actor-created',
+    'plan55-actor-scope-verified',
+    'plan55-disposable-worker-isolated',
     'plan55-service-slice-integrity-pass',
     'plan55-service-g5-safety-pass',
     'plan55-service-cleanup-pass',
@@ -589,8 +605,68 @@ test('gate evidence packaging preserves exact-source evidence and has no Product
     'the packager may produce aggregate artifacts but must not be trusted as a raw gate-evidence source')
 })
 
+test('rollback drill prerequisites can be packaged without accepting the drill result itself', () => {
+  expectWorkflowMatch(gateEvidencePackage,
+    /- rollback_drill\r?\n\s+- paired_wave_1/u,
+    'the evidence packager must expose rollback_drill as the pre-wave target state')
+  expectWorkflowMatch(gateEvidencePackage,
+    /!\[[^\]]*'rollback_drill'[^\]]*\]\s*\.includes\(targetState\)/u,
+    'the exact-source packager must validate rollback_drill as an allowed target')
+  assert.ok(rollbackDrill.length > 0, 'the source-bound rollback drill producer must exist')
+  expectWorkflowMatch(rollbackDrill, /^on:\r?\n  workflow_dispatch:/mu,
+    'the Production rollback drill must be explicitly dispatched only after its gates pass')
+  expectWorkflowMatch(rollbackDrill,
+    /group: production-release\r?\n\s+cancel-in-progress: false/u,
+    'the drill must serialize with every Production release workflow')
+  expectWorkflowMatch(rollbackDrill,
+    /if: github\.ref == 'refs\/heads\/main' && inputs\.source_sha == github\.sha[\s\S]*?environment: production/u,
+    'the drill must bind its manual run to the exact locked main source and Production environment')
+  expectWorkflowMatch(rollbackDrill,
+    /loadPlan55GateEvidenceSet\(manifestPath,[\s\S]*?targetState: 'rollback_drill'/u,
+    'the drill must verify the exact prerequisite evidence package before live access')
+  expectWorkflowMatch(rollbackDrill,
+    /name: Verify exact release and prerequisite gate artifacts before Production access[\s\S]*?name: Verify Production identity and execute/u,
+    'all exact-source prerequisites must be verified before the Production mutation job step')
+  expectWorkflowMatch(rollbackDrill,
+    /release-control\.mjs --action read/u,
+    'the rollback drill may only read global Stage 1 release control')
+  assert.doesNotMatch(rollbackDrill,
+    /release-control\.mjs --action (?:configure|promote|recover|register|abort)|configure_stage1_release_canary|promote_stage1_release_attested_atomic|supabase db|functions deploy (?!mobile-api)/u,
+    'the drill must not activate a global release-control lane, apply migrations, or deploy other functions')
+  assert.equal((rollbackDrill.match(/functions deploy mobile-api/gu) ?? []).length, 3,
+    'the drill may deploy the pinned baseline and candidate, plus one bounded candidate-only recovery attempt')
+  expectWorkflowMatch(rollbackDrill,
+    /PLAN55_PRODUCTION_FLAG_NAMES[\s\S]*?globalServiceFlagsAbsent:[\s\S]*?scopedCanaryFlagAbsent:/u,
+    'all global and actor-scoped canary flags must be absent before and after the drill')
+  expectWorkflowMatch(rollbackDrill,
+    /restore_candidate_on_failure[\s\S]*?trap restore_candidate_on_failure EXIT/u,
+    'a failed rollback drill must attempt one bounded restore of its initial candidate state')
+  const restoreFunctionIndex = rollbackDrill.indexOf('restore_candidate_on_failure() {')
+  const exitHandlerIndex = rollbackDrill.indexOf('trap restore_candidate_on_failure EXIT')
+  assert.ok(restoreFunctionIndex >= 0 && exitHandlerIndex > restoreFunctionIndex,
+    'the rollback handler must be defined before it is registered')
+  const firstIdentityCheckIndex = rollbackDrill.indexOf('test "$GITHUB_REF" = refs/heads/main', exitHandlerIndex)
+  assert.ok(firstIdentityCheckIndex > exitHandlerIndex,
+    'signal and exit handlers must be installed before any Production preflight can fail')
+  for (const [signal, exitCode] of [['HUP', 129], ['INT', 130], ['TERM', 143]]) {
+    const signalHandlerIndex = rollbackDrill.indexOf(`trap 'exit ${exitCode}' ${signal}`)
+    assert.ok(signalHandlerIndex >= 0 && signalHandlerIndex < exitHandlerIndex,
+      `${signal} must enter the EXIT rollback handler with status ${exitCode}`)
+  }
+  const restoreFunction = rollbackDrill.slice(restoreFunctionIndex, exitHandlerIndex)
+  assert.match(restoreFunction,
+    /local original_status=\$\?[\s\S]*?trap - EXIT[\s\S]*?trap '' HUP INT TERM/u,
+    'restoration must preserve the interrupted status and ignore repeat signals while cleanup runs')
+  expectWorkflowMatch(rollbackDrill,
+    /buildPlan55RollbackDrillProofFromArchive[\s\S]*?assertPlan55RollbackDrillProof/u,
+    'the uploaded proof must be rebuilt and verified against the exact archived evidence bytes')
+  expectWorkflowMatch(rollbackDrill,
+    /name: Preserve rollback drill evidence[\s\S]*?if: always\(\)/u,
+    'failed executions must preserve diagnostic evidence but cannot produce a successful gate artifact')
+})
+
 test('post-receipt finalization consumes separately attested exact-source artifacts and cannot mutate Production', () => {
-  expectWorkflowMatch(finalization, /^on:\r?\n  workflow_dispatch:/mu,
+  expectWorkflowMatch(finalization, /^on:[\s\S]*?^  workflow_dispatch:/mu,
     'post-receipt finalization must be manually dispatched')
   expectWorkflowMatch(finalization, /permissions:\r?\n  actions: read\r?\n  contents: read/u,
     'post-receipt finalization must use read-only GitHub permissions')
@@ -604,8 +680,12 @@ test('post-receipt finalization consumes separately attested exact-source artifa
   assert.match(finalization, /download\(receiptsArtifactId, 'plan55-six-receipts', sourceRunId, sourceRunAttempt\)/u)
   assert.match(finalization, /download\(gateEvidenceArtifactId, 'plan55-gate-evidence'/u)
   assert.match(finalization, /const gateEvidenceWorkflow = '\.github\/workflows\/plan55-gate-evidence-package\.yml'/u)
-  assert.match(finalization, /undefined,\s*\[gateEvidenceWorkflow\]\)/u,
-    'the aggregate evidence artifact must come from its dedicated packager')
+  assert.match(finalization,
+    /const gateEvidenceInSourceRun = sourceRunId === Number\(process\.env\.GITHUB_RUN_ID\)[\s\S]*?const gateEvidenceWorkflowPaths = gateEvidenceInSourceRun[\s\S]*?\[sourceWorkflow\][\s\S]*?\[gateEvidenceWorkflow\]/u,
+    'nested release calls must trust the caller run, while standalone packaging remains bound to its dedicated workflow')
+  assert.match(finalization,
+    /download\(gateEvidenceArtifactId, 'plan55-gate-evidence',[\s\S]*?gateEvidenceWorkflowPaths\)/u,
+    'gate evidence provenance must use the exact producer path selected for this invocation')
   assert.match(finalization, /six-service receipt artifact failed exact-source validation/u)
   assert.match(finalization, /scripts\/harness\/evaluate-release\.mjs/u)
   assert.match(finalization, /uniqueFile\(releaseArtifact\.files, 'hosted-before\.json', 'hosted-before'\)/u,
@@ -619,18 +699,12 @@ test('post-receipt finalization consumes separately attested exact-source artifa
   assert.match(finalization, /PLAN55_RELEASE_ARTIFACT_ID: \$\{\{ inputs\.release_artifact_id \}\}/u)
   assert.match(finalization, /PLAN55_RECEIPTS_ARTIFACT_ID: \$\{\{ inputs\.receipts_artifact_id \}\}/u)
   assert.match(finalization, /PLAN55_GATE_EVIDENCE_ARTIFACT_ID: \$\{\{ inputs\.gate_evidence_artifact_id \}\}/u)
-  assert.match(finalization, /cohort_id:\s*\n\s*description:[^\n]*\n\s*required: false\n\s*type: string/u)
-  assert.match(finalization, /observation_window_minutes:\s*\n\s*description:[^\n]*\n\s*required: false\n\s*type: string/u)
-  assert.match(finalization, /PLAN55_COHORT_ID: \$\{\{ inputs\.cohort_id \}\}/u)
-  assert.match(finalization, /PLAN55_OBSERVATION_WINDOW_MINUTES: \$\{\{ inputs\.observation_window_minutes \}\}/u)
-  assert.ok(finalization.includes('if [[ ! "$PLAN55_COHORT_ID" =~ ^plan55-cohort-[0-9a-f]{32}$ ||'),
-    'workflow input must use the same opaque cohort-ID grammar as the packet verifier')
-  assert.match(finalization, /plan55_cohort_context_required/u,
-    'paired-wave packet context must be required by the non-deploying workflow')
-  assert.match(finalization, /plan55_cohort_context_not_allowed/u,
-    'unused cohort context must be rejected for non-wave packet targets')
-  assert.match(finalization, /--cohort "\$PLAN55_COHORT_ID"/u)
-  assert.match(finalization, /--observation-window-minutes "\$PLAN55_OBSERVATION_WINDOW_MINUTES"/u)
+  assert.doesNotMatch(finalization, /cohort_id|observation_window_minutes|PLAN55_COHORT_ID|PLAN55_OBSERVATION_WINDOW_MINUTES/u,
+    'finalization must not accept post-result caller-supplied paired-wave values')
+  assert.doesNotMatch(finalization, /--cohort|--observation-window-minutes/u,
+    'paired-wave context must come from the source-locked preregistration policy')
+  assert.match(finalization, /promotion\.mjs --plan55[\s\S]*?--to "\$PLAN55_TARGET_STATE"/u,
+    'the packet builder must resolve preregistered wave context from the locked policy')
   assert.match(finalization, /test "\$GITHUB_SHA" = "\$PLAN55_SOURCE_SHA"/u)
   const artifactVerificationStep = finalization.indexOf('name: Verify and stage the independently produced exact-source artifacts')
   assert.ok(artifactVerificationStep >= 0 &&
@@ -640,10 +714,83 @@ test('post-receipt finalization consumes separately attested exact-source artifa
   'artifact provenance must be verified before packet creation')
   assert.match(finalization, /--gate-receipts artifacts\/harness\/gate-evidence\/gate-evidence-set\.json/u)
   assert.match(finalization, /actions\/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02/u)
+  const packetProofStep = finalization.indexOf('name: Build the publication proof only for the validated-receipts packet')
+  const packetEmitStep = finalization.indexOf('name: Validate promotion policy and emit a packet only')
+  const packetUploadStep = finalization.indexOf('name: Publish the receipt packet and publication proof')
+  assert.ok(packetEmitStep >= 0 && packetEmitStep < packetProofStep && packetProofStep < packetUploadStep,
+    'publication proof must be created only after the exact-source receipts_validated packet')
+  expectWorkflowMatch(finalization,
+    /name: Build the publication proof only for the validated-receipts packet\r?\n\s+if: inputs\.target_state == 'receipts_validated'/u,
+    'only the receipts_validated packet may produce the publication gate proof')
+  assert.match(finalization, /buildPlan55PublicationPacketProof\(/u)
+  assert.match(finalization, /packetBytes,\s*repository: process\.env\.PLAN55_REPOSITORY/u)
+  assert.match(finalization, /github\.ref\s*\}\}[\s\S]*?PLAN55_EVENT_NAME/u)
+  assert.match(finalization, /artifacts\/harness\/promotion-packet\.json\r?\n\s+artifacts\/harness\/publication-packet-proof\.json/u)
+  assert.match(finalization,
+    /name: Publish the non-deploying promotion packet\r?\n\s+id: non-deploying-packet\r?\n\s+if: inputs\.target_state != 'receipts_validated'/u)
   assert.doesNotMatch(finalization, /SUPABASE|release-control\.mjs|supabase db|supabase functions deploy|production environment/u)
-  for (const target of ['receipts_validated', 'paired_wave_1', 'paired_wave_2', 'paired_wave_3', 'production']) {
+  for (const target of ['receipts_validated', 'rollback_drill', 'paired_wave_1', 'paired_wave_2', 'paired_wave_3', 'production']) {
     assert.match(finalization, new RegExp(target, 'u'), `finalizer must support the policy state ${target}`)
   }
+  expectWorkflowMatch(finalization,
+    /rollback_drill\) from_state=receipts_validated/u,
+    'the read-only packet finalizer must emit the rollback_drill transition after validated receipts')
+  expectWorkflowMatch(finalization,
+    /paired_wave_1\) from_state=rollback_drill/u,
+    'paired wave 1 must require the completed rollback drill transition')
+})
+
+test('successful six-service receipts automatically package and finalize the receipts_validated packet', () => {
+  const receiptJob = jobBlock(release, 'validate-six-receipts')
+  assert.match(receiptJob,
+    /outputs:\r?\n\s+receipts_artifact_id: \$\{\{ steps\.receipts\.outputs\.artifact-id \}\}/u,
+    'the exact six-receipt artifact ID must be exported only from its upload step')
+  assert.match(receiptJob,
+    /id: receipts\r?\n\s+if: always\(\)[\s\S]*?name: plan55-six-receipts-/u,
+    'the aggregate receipt upload must expose its immutable artifact ID')
+
+  const packageJobName = 'package-receipt-gate-evidence'
+  const packageJob = jobBlock(release, packageJobName)
+  assert.deepEqual(needsFor(packageJobName), ['deploy_guard_off', 'validate-six-receipts'],
+    'the evidence package must wait for the successful deployed guard and all six receipts')
+  assert.match(packageJob, /uses: \.\/\.github\/workflows\/plan55-gate-evidence-package\.yml/u)
+  assert.match(packageJob, /target_state: receipts_validated/u)
+  assert.match(packageJob, /source_run_id: \$\{\{ github\.run_id \}\}/u)
+  assert.match(packageJob, /source_run_attempt: \$\{\{ github\.run_attempt \}\}/u)
+  assert.match(packageJob,
+    /"artifact_id":\$\{\{ needs\.validate-six-receipts\.outputs\.receipts_artifact_id \}\}/u,
+    'both receipt gates must reference the exact uploaded six-receipt artifact')
+  assert.equal((packageJob.match(/"artifact_id":\$\{\{ needs\.validate-six-receipts\.outputs\.receipts_artifact_id \}\}/gu) ?? []).length, 2,
+    'the current-source and cleanup gates must share only the validated receipt artifact')
+  for (const gate of ['plan55-six-current-source-receipts', 'plan55-six-cleanup-passes']) {
+    assert.ok(packageJob.includes(gate), `the package must verify ${gate}`)
+  }
+  assert.match(gateEvidencePackage, /^on:\r?\n  workflow_call:/mu,
+    'the exact-source evidence packager must be callable in the release run')
+  assert.match(gateEvidencePackage,
+    /workflow_call:[\s\S]*?outputs:\r?\n\s+gate_artifact_id:[\s\S]*?value: \$\{\{ jobs\.package-evidence\.outputs\.gate_artifact_id \}\}/u,
+    'the packager must return the immutable aggregate evidence artifact ID')
+
+  const finalizationJobName = 'finalize-receipts-packet'
+  const finalizationJob = jobBlock(release, finalizationJobName)
+  assert.deepEqual(needsFor(finalizationJobName), [
+    'deploy_guard_off', 'validate-six-receipts', packageJobName,
+  ], 'finalization must not run unless the deployed guard, receipts, and evidence package succeed')
+  assert.match(finalizationJob,
+    /uses: \.\/\.github\/workflows\/plan55-postreceipt-finalization\.yml/u)
+  assert.match(finalizationJob, /target_state: receipts_validated/u)
+  assert.match(finalizationJob,
+    /receipts_artifact_id: \$\{\{ needs\.validate-six-receipts\.outputs\.receipts_artifact_id \}\}/u)
+  assert.match(finalizationJob,
+    /gate_evidence_artifact_id: \$\{\{ needs\.package-receipt-gate-evidence\.outputs\.gate_artifact_id \}\}/u)
+  assert.match(finalization,
+    /workflow_call:[\s\S]*?outputs:\r?\n\s+promotion_artifact_id:[\s\S]*?value: \$\{\{ jobs\.finalize-packet\.outputs\.promotion_artifact_id \}\}/u,
+    'the read-only packet artifact must be returned to the calling run')
+  assert.match(finalization, /^on:\r?\n  workflow_call:/mu,
+    'the exact-source packet finalizer must run in the receipt workflow chain')
+  assert.match(finalization,
+    /promotion\.mjs --plan55[\s\S]*?--from "\$from_state" --to "\$PLAN55_TARGET_STATE"/u,
+    'the automatic finalizer must validate only the policy transition requested for this exact packet')
 })
 
 test('API JSON evidence is emitted by Vitest without dropping the Node contract suite', () => {

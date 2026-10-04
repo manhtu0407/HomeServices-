@@ -228,6 +228,9 @@ export async function createPlan55ProductionCanaryOperations({
   const anonymous = makeClient(credentials.expectedUrl, credentials.anonKey, { auth: authOptions() })
   const store = createPlan55FileCheckpointStore({ rootDir: checkpointRoot, clock })
   let enabledService = null
+  let enabledActorId = null
+  let activeActorId = null
+  let actorLifecycle = emptyActorLifecycleProof()
   let setupCleanupActorId = null
   let setupCleanupActorIdentityUnknown = false
   let verifiedClientHeaders = null
@@ -243,15 +246,25 @@ export async function createPlan55ProductionCanaryOperations({
     return { health, deployment: validateProductionHealthPayload(health) }
   }
 
-  async function readSecretNames() {
+  async function readSecretInventory() {
     const body = await readJson(boundedFetch, `${MANAGEMENT_ORIGIN}/projects/${PRODUCTION_PROJECT_REF}/secrets`, {
       method: 'GET',
       headers: managementHeaders(credentials.accessToken),
     }, 'plan55_canary_secret_inventory_unavailable')
-    if (!Array.isArray(body) || body.some((item) => !isRecord(item) || typeof item.name !== 'string')) {
+    if (!Array.isArray(body) || body.some((item) =>
+      !isRecord(item) || typeof item.name !== 'string' || !item.name || typeof item.value !== 'string')) {
       throw new Error('plan55_canary_secret_inventory_invalid')
     }
-    return new Set(body.map((item) => item.name))
+    const values = new Map()
+    for (const item of body) {
+      if (values.has(item.name)) throw new Error('plan55_canary_secret_inventory_invalid')
+      values.set(item.name, item.value)
+    }
+    return values
+  }
+
+  async function readSecretNames() {
+    return new Set((await readSecretInventory()).keys())
   }
 
   async function assertCurrentHostedEdgeSource() {
@@ -339,7 +352,6 @@ export async function createPlan55ProductionCanaryOperations({
     }
 
     const proof = await waitForServiceCleanupProof({
-      service,
       actor: cleanupActorId ? { id: cleanupActorId } : null,
       names,
       readSecretNames,
@@ -357,15 +369,23 @@ export async function createPlan55ProductionCanaryOperations({
       throw new Error('plan55_canary_orphan_worker_unverified')
     }
     if (orphanWorkers !== 0) throw new Error('plan55_canary_orphan_worker_unverified')
+    const actorLifecycleProof = { ...actorLifecycle }
     if (enabledService === service) enabledService = null
+    if (enabledService === null) enabledActorId = null
+    if (activeActorId === cleanupActorId) activeActorId = null
+    actorLifecycle = emptyActorLifecycleProof()
     setupCleanupActorId = null
     setupCleanupActorIdentityUnknown = false
-    return { ...proof, orphanWorkers }
+    return { ...proof, orphanWorkers, actorLifecycle: actorLifecycleProof }
   }
 
   return Object.freeze({
     async preflight(service = PLAN55_SERVICE_ORDER[0]) {
       assertService(service)
+      if (activeActorId !== null || enabledService !== null) {
+        throw new Error('plan55_canary_previous_actor_not_cleaned')
+      }
+      actorLifecycle = emptyActorLifecycleProof()
       verifiedClientHeaders = null
       verifiedDeployment = null
       verifiedSourceAttestationSha256 = null
@@ -434,6 +454,9 @@ export async function createPlan55ProductionCanaryOperations({
 
     async createSyntheticActor(service) {
       assertService(service)
+      if (activeActorId !== null || enabledService !== null || setupCleanupActorId !== null) {
+        throw new Error('plan55_canary_actor_scope_invalid')
+      }
       const userId = typeof env.PLAN55_CANARY_ACTOR_ID === 'string'
         ? env.PLAN55_CANARY_ACTOR_ID.toLowerCase()
         : ''
@@ -441,9 +464,15 @@ export async function createPlan55ProductionCanaryOperations({
       const email = `plan55-${service}-${randomUUID()}@example.invalid`
       const password = randomBytes(32).toString('base64url')
       let sessionAccess = null
+      let creationAttempted = false
       try {
+        const { data: priorActor, error: priorActorError } = await admin.auth.admin.getUserById(userId)
+        const actorAbsent = priorActorError?.status === 404 || priorActorError?.code === 'user_not_found'
+        if (!actorAbsent || priorActor?.user) throw new Error('plan55_canary_actor_id_not_available')
         setupCleanupActorId = userId
-        setupCleanupActorIdentityUnknown = false
+        setupCleanupActorIdentityUnknown = true
+        actorLifecycle = emptyActorLifecycleProof()
+        creationAttempted = true
         const { data, error } = await admin.auth.admin.createUser({
           id: userId,
           email,
@@ -453,6 +482,8 @@ export async function createPlan55ProductionCanaryOperations({
           user_metadata: { full_name: 'Plan 55 synthetic customer' },
         })
         if (error || data?.user?.id !== userId) throw new Error('plan55_canary_actor_create_failed')
+        activeActorId = userId
+        setupCleanupActorIdentityUnknown = false
         const { data: profile, error: profileError } = await waitForSyntheticProfile(admin, userId, sleep)
         if (profileError || profile?.role !== 'customer') {
           throw new Error('plan55_canary_actor_profile_not_customer')
@@ -465,9 +496,17 @@ export async function createPlan55ProductionCanaryOperations({
         const { data: verified, error: verifyError } = await admin.auth.admin.getUserById(userId)
         if (verifyError || verified?.user?.id !== userId ||
             verified?.user?.app_metadata?.role !== 'customer' ||
-            verified?.user?.app_metadata?.plan55_disposable !== true) {
+            verified?.user?.app_metadata?.plan55_disposable !== true ||
+            verified?.user?.email !== email) {
           throw new Error('plan55_canary_actor_marker_unverified')
         }
+        actorLifecycle.authAdminVerified = true
+        actorLifecycle.syntheticActorCreated = true
+        const workerCounts = await readActorWorkerIsolationCounts(admin, userId)
+        if (Object.values(workerCounts).some((count) => count !== 0)) {
+          throw new Error('plan55_canary_disposable_worker_not_isolated')
+        }
+        actorLifecycle.disposableWorkerIsolated = true
         return Object.freeze({
           id: userId,
           synthetic: true,
@@ -476,19 +515,31 @@ export async function createPlan55ProductionCanaryOperations({
         })
       } catch (error) {
         sessionAccess?.clear()
-        if (userId) {
-          setupCleanupActorId = userId
-          setupCleanupActorIdentityUnknown = false
+        if (creationAttempted && setupCleanupActorId === userId) {
           try {
-            await retryCleanupMutation(
-              () => deleteSyntheticAuthActor(admin, userId),
-              'plan55_canary_actor_setup_cleanup_failed',
-              sleep,
-            )
-            await waitForActorDeletionProof(admin, userId, sleep)
-            setupCleanupActorId = null
+            const { data: current, error: lookupError } = await admin.auth.admin.getUserById(userId)
+            if (lookupError?.status === 404 || lookupError?.code === 'user_not_found') {
+              setupCleanupActorId = null
+              setupCleanupActorIdentityUnknown = false
+              activeActorId = null
+            } else if (!lookupError && current?.user?.id === userId &&
+                current.user.email === email && current.user.app_metadata?.role === 'customer' &&
+                current.user.app_metadata?.plan55_disposable === true) {
+              setupCleanupActorIdentityUnknown = false
+              await retryCleanupMutation(
+                () => deleteSyntheticAuthActor(admin, userId),
+                'plan55_canary_actor_setup_cleanup_failed',
+                sleep,
+              )
+              await waitForActorDeletionProof(admin, userId, sleep)
+              setupCleanupActorId = null
+              activeActorId = null
+            } else {
+              throw new Error('plan55_canary_actor_cleanup_identity_unknown')
+            }
           } catch {
             setupCleanupActorId = userId
+            setupCleanupActorIdentityUnknown = true
             throw new Error('plan55_canary_actor_setup_cleanup_failed')
           }
         }
@@ -501,7 +552,12 @@ export async function createPlan55ProductionCanaryOperations({
 
     async enableActorCanary(service, actor) {
       assertService(service)
-      if (actor?.synthetic !== true || !isUuid(actor.id) || enabledService !== null) {
+      if (!verifiedDeployment || !verifiedClientHeaders || !verifiedSourceAttestationSha256 ||
+          !verifiedSourceAttestation || actor?.synthetic !== true || !isUuid(actor.id) ||
+          actor.id.toLowerCase() !== activeActorId ||
+          enabledService !== null || enabledActorId !== null ||
+          actorLifecycle.authAdminVerified !== true || actorLifecycle.syntheticActorCreated !== true ||
+          actorLifecycle.disposableWorkerIsolated !== true) {
         throw new Error('plan55_canary_actor_scope_invalid')
       }
       const names = scopedFlagNames(service)
@@ -510,6 +566,7 @@ export async function createPlan55ProductionCanaryOperations({
         throw new Error('plan55_canary_existing_flag_prevents_mutation')
       }
       enabledService = service
+      enabledActorId = actor.id.toLowerCase()
       await readJson(boundedFetch, `${MANAGEMENT_ORIGIN}/projects/${PRODUCTION_PROJECT_REF}/secrets`, {
         method: 'POST',
         headers: managementHeaders(credentials.accessToken, true),
@@ -518,6 +575,14 @@ export async function createPlan55ProductionCanaryOperations({
           { name: names.actor, value: actor.id },
         ]),
       }, 'plan55_canary_scoped_flag_enable_failed')
+      const verifiedSecrets = await readSecretInventory()
+      const unexpectedFlags = PLAN55_PRODUCTION_FLAG_NAMES.some((name) =>
+        verifiedSecrets.has(name) && name !== names.enabled && name !== names.actor)
+      if (unexpectedFlags || verifiedSecrets.get(names.enabled) !== 'true' ||
+          verifiedSecrets.get(names.actor) !== enabledActorId) {
+        throw new Error('plan55_canary_actor_scope_readback_mismatch')
+      }
+      actorLifecycle.actorScopeVerified = true
     },
 
     async runSlice({ service, actor, slice, deployment, clientHeaders, sourceAttestation, sourceAttestationSha256 }) {
@@ -526,11 +591,16 @@ export async function createPlan55ProductionCanaryOperations({
           (slice.playbookEnabled || enabledService !== null)) {
         throw new Error('plan55_canary_slice_flag_scope_mismatch')
       }
-      if (actor?.synthetic !== true || !isUuid(actor.id) || typeof actor.getAccessToken !== 'function' ||
+      if (actor?.synthetic !== true || !isUuid(actor.id) || actor.id.toLowerCase() !== activeActorId ||
+          typeof actor.getAccessToken !== 'function' ||
           !sameDeploymentIdentity(deployment, verifiedDeployment) ||
           !sameClientHeaders(clientHeaders, verifiedClientHeaders) ||
           sourceAttestationSha256 !== verifiedSourceAttestationSha256 ||
           plan55SourceAttestationSha256(sourceAttestation, deployment.git_sha) !== verifiedSourceAttestationSha256) {
+        throw new Error('plan55_canary_slice_actor_or_target_invalid')
+      }
+      if (slice.playbookEnabled &&
+          (enabledActorId !== actor.id.toLowerCase() || actorLifecycle.actorScopeVerified !== true)) {
         throw new Error('plan55_canary_slice_actor_or_target_invalid')
       }
       await assertCurrentReleaseSource()
@@ -921,12 +991,19 @@ async function readActorCleanupCounts(admin, actorId) {
   }
 }
 
+async function readActorWorkerIsolationCounts(admin, actorId) {
+  const [workerProfiles, jobs, broadcasts] = await Promise.all([
+    exactCount(admin, 'worker_profiles', 'id', actorId),
+    exactCount(admin, 'jobs', 'worker_id', actorId),
+    exactCount(admin, 'job_broadcasts', 'worker_id', actorId),
+  ])
+  return { workerProfiles, jobs, broadcasts }
+}
+
 async function waitForServiceCleanupProof({
-  service,
   actor,
   names,
   readSecretNames,
-  readHealth,
   admin,
   sleep,
   actorIdentityUnknown,
@@ -957,7 +1034,10 @@ async function waitForServiceCleanupProof({
       else return proof
     } catch (error) {
       if (error instanceof Error && error.message === 'plan55_canary_auth_actor_identity_unknown') throw error
-      lastFailure = 'plan55_canary_cleanup_unverified'
+      const code = error instanceof Error ? error.message : ''
+      lastFailure = /^plan55_[a-z0-9_]{1,120}$/u.test(code)
+        ? code
+        : 'plan55_canary_cleanup_unverified'
     }
     if (attempt + 1 < CLEANUP_RETRIES) await sleep(CLEANUP_RETRY_DELAY_MS)
   }
@@ -1444,6 +1524,15 @@ function managementHeaders(accessToken, json = false) {
     authorization: `Bearer ${accessToken}`,
     accept: 'application/json',
     ...(json ? { 'content-type': 'application/json' } : {}),
+  }
+}
+
+function emptyActorLifecycleProof() {
+  return {
+    authAdminVerified: false,
+    syntheticActorCreated: false,
+    actorScopeVerified: false,
+    disposableWorkerIsolated: false,
   }
 }
 

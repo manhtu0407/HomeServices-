@@ -210,7 +210,16 @@ test('Plan 55 canary requires bound assertions without moving full readiness ahe
   assert.match(plan55, /--results artifacts\/transactions\/api-vitest\.json/u)
   assert.match(plan55, /--results artifacts\/transactions\/mobile-jest\.json/u)
   assert.ok(policy.requiredGatesByTarget.receipts_validated.includes('plan55-six-current-source-receipts'))
-  assert.ok(policy.requiredGatesByTarget.receipts_validated.includes('plan55-independent-cohort-outcome'))
+  assert.ok(!policy.requiredGatesByTarget.receipts_validated.includes('plan55-independent-cohort-outcome'))
+  assert.ok(policy.requiredGatesByTarget.paired_wave_1.includes('plan55-independent-cohort-outcome'))
+  for (const gate of [
+    'plan55-auth-admin-verified',
+    'plan55-synthetic-actor-created',
+    'plan55-actor-scope-verified',
+    'plan55-disposable-worker-isolated',
+  ]) {
+    assert.ok(policy.requiredGatesByTarget.service_canary.includes(gate))
+  }
   assert.ok(policy.requiredGatesByTarget.paired_wave_1.includes('plan55-full-production-readiness'))
 
   for (const stage of ['verified', 'guard_deployed_off', 'service_canary', 'service_cleanup', 'receipts_validated']) {
