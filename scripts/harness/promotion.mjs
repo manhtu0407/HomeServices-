@@ -793,9 +793,16 @@ function normalizeApprovalId(value) {
 export function resolvePlan55PairedWavePreregistration(policy) {
   const preregistration = policy?.pairedWavePreregistration
   if (!preregistration || typeof preregistration !== 'object' || Array.isArray(preregistration)) return null
-  const expectedKeys = ['cohortId', 'observationWindowMinutes', 'schemaVersion']
+  const versionOneKeys = ['cohortId', 'observationWindowMinutes', 'schemaVersion']
+  const versionTwoKeys = [
+    ...versionOneKeys, 'minimumSampleCounts', 'costAttributionSourceId',
+  ].sort()
+  const expectedKeys = preregistration.schemaVersion === 'plan55-paired-wave-preregistration.v2'
+    ? versionTwoKeys
+    : versionOneKeys
   if (JSON.stringify(Object.keys(preregistration).sort()) !== JSON.stringify(expectedKeys) ||
-      preregistration.schemaVersion !== 'plan55-paired-wave-preregistration.v1' ||
+      !['plan55-paired-wave-preregistration.v1', 'plan55-paired-wave-preregistration.v2']
+        .includes(preregistration.schemaVersion) ||
       typeof preregistration.cohortId !== 'string' || !PLAN55_COHORT_ID.test(preregistration.cohortId) ||
       !Number.isSafeInteger(preregistration.observationWindowMinutes) ||
       preregistration.observationWindowMinutes <= 0) {
@@ -805,6 +812,21 @@ export function resolvePlan55PairedWavePreregistration(policy) {
     schemaVersion: preregistration.schemaVersion,
     cohortId: preregistration.cohortId,
     observationWindowMinutes: preregistration.observationWindowMinutes,
+  }
+  if (preregistration.schemaVersion === 'plan55-paired-wave-preregistration.v2') {
+    const sampleCountKeys = [
+      'eligibleActors', 'requests', 'completedCases', 'latencyObservations', 'costObservations',
+    ].sort()
+    const sampleCounts = preregistration.minimumSampleCounts
+    if (!sampleCounts || typeof sampleCounts !== 'object' || Array.isArray(sampleCounts) ||
+        JSON.stringify(Object.keys(sampleCounts).sort()) !== JSON.stringify(sampleCountKeys) ||
+        sampleCountKeys.some((key) => !Number.isSafeInteger(sampleCounts[key]) || sampleCounts[key] <= 0) ||
+        typeof preregistration.costAttributionSourceId !== 'string' ||
+        !/^[a-z][a-z0-9._-]{2,63}$/u.test(preregistration.costAttributionSourceId)) {
+      return null
+    }
+    normalized.minimumSampleCounts = Object.fromEntries(sampleCountKeys.map((key) => [key, sampleCounts[key]]))
+    normalized.costAttributionSourceId = preregistration.costAttributionSourceId
   }
   return Object.freeze({ ...normalized, sha256: sha256(JSON.stringify(normalized)) })
 }

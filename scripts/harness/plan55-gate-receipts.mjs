@@ -17,6 +17,7 @@ import {
 } from './plan55-deployed-guard-gate-proofs.mjs'
 import { assertPlan55RollbackDrillProof } from './rollback-proof.mjs'
 import { assertPlan55HostedDriftGateProof } from './plan55-hosted-drift-gate-proofs.mjs'
+import { resolvePlan55PairedWavePreregistration } from './promotion.mjs'
 export { PLAN55_RELEASE_STAGE_GATES }
 export { PLAN55_DEPLOYED_GUARD_GATES }
 
@@ -859,7 +860,7 @@ function assertGateSpecificEvidence(evidence, gate, {
   }
   if (PAIRED_WAVE_OUTCOME_RECEIPT_GATES.has(gate)) {
     assertPlan55PairedWaveOutcomeProof(evidence.proof, {
-      gate, policy, release, targetState, provenance,
+      gate, policy, release, targetState, provenance, sourceArtifactFiles,
     })
     return
   }
@@ -869,15 +870,24 @@ function assertGateSpecificEvidence(evidence, gate, {
   assertSixServiceCanaryProof(evidence.proof, gate, { policy, release })
 }
 
-export function assertPlan55PairedWaveOutcomeProof(proof, { gate, policy, release, targetState, provenance }) {
+export function assertPlan55PairedWaveOutcomeProof(proof, {
+  gate, policy, release, targetState, provenance, sourceArtifactFiles,
+}) {
   const fail = () => { throw new Error(`Plan 55 paired-wave outcome evidence contract failed: ${gate}`) }
   const waveNumber = Number(/^plan55-paired-wave-([123])-pass$/u.exec(gate)?.[1])
   const expectedKeys = [
     'schemaVersion', 'gate', 'status', 'environment', 'projectRef', 'policyId', 'policySha256',
     'releaseId', 'sourceSha', 'waveNumber', 'cohortId', 'observationWindowMinutes',
-    'windowStartedAt', 'windowCompletedAt', 'metrics',
+    'windowStartedAt', 'windowCompletedAt', 'activationEvidenceSha256', 'observationsEvidenceSha256',
+    'costAttributionEvidenceSha256', 'metrics',
   ].sort()
-  const preregistration = policy?.pairedWavePreregistration
+  const identityKeys = [
+    'environment', 'projectRef', 'policyId', 'policySha256', 'releaseId', 'sourceSha', 'waveNumber', 'cohortId',
+  ]
+  const sampleCountKeys = [
+    'eligibleActors', 'requests', 'completedCases', 'latencyObservations', 'costObservations',
+  ]
+  const preregistration = resolvePlan55PairedWavePreregistration(policy)
   const outcomeThresholds = policy?.pairedWaveOutcomeThresholds
   const abortThresholds = policy?.abort_thresholds
   const thresholdMapping = {
@@ -903,20 +913,25 @@ export function assertPlan55PairedWaveOutcomeProof(proof, { gate, policy, releas
   const expectedProofMetricKeys = Object.values(proofMetricByAbortMetric).sort()
   const waveStateIndex = PROMOTION_GATE_PHASES.indexOf(`paired_wave_${waveNumber}`)
   const targetStateIndex = PROMOTION_GATE_PHASES.indexOf(targetState)
+  const cumulativeRequiredGates = targetStateIndex < 0 ? [] : [...new Set(PROMOTION_GATE_PHASES
+    .slice(0, targetStateIndex + 1)
+    .flatMap((phase) => policy?.requiredGatesByTarget?.[phase] ?? []))]
   const startedAt = typeof proof?.windowStartedAt === 'string' ? Date.parse(proof.windowStartedAt) : Number.NaN
   const completedAt = typeof proof?.windowCompletedAt === 'string' ? Date.parse(proof.windowCompletedAt) : Number.NaN
   const producerCompletedAt = parseGitHubTimestamp(provenance?.runUpdatedAt)
 
   if (!Number.isInteger(waveNumber) || !proof || typeof proof !== 'object' || Array.isArray(proof) ||
       JSON.stringify(Object.keys(proof).sort()) !== JSON.stringify(expectedKeys) ||
-      proof.schemaVersion !== 'plan55-paired-wave-outcome-proof.v1' || proof.gate !== gate ||
+      proof.schemaVersion !== 'plan55-paired-wave-outcome-proof.v2' || proof.gate !== gate ||
       proof.status !== 'PASS' || proof.environment !== 'production' ||
       proof.projectRef !== policy?.projectRef ||
       proof.policyId !== policy?.policyId || proof.policySha256 !== policy?.policySha256 ||
       proof.releaseId !== release?.releaseId || proof.sourceSha !== release?.gitSha || !isGitSha(proof.sourceSha) ||
       proof.waveNumber !== waveNumber || targetStateIndex <= waveStateIndex ||
-      !policy?.requiredGatesByTarget?.[targetState]?.includes(gate) ||
-      !preregistration || proof.cohortId !== preregistration.cohortId ||
+      !cumulativeRequiredGates.includes(gate) ||
+      !preregistration ||
+      proof.cohortId !== preregistration.cohortId ||
+      preregistration.schemaVersion !== 'plan55-paired-wave-preregistration.v2' ||
       proof.observationWindowMinutes !== preregistration.observationWindowMinutes ||
       !Number.isSafeInteger(proof.observationWindowMinutes) || proof.observationWindowMinutes <= 0 ||
       outcomeThresholds?.schemaVersion !== 'plan55-paired-wave-outcome-thresholds.v1' ||
@@ -931,13 +946,110 @@ export function assertPlan55PairedWaveOutcomeProof(proof, { gate, policy, releas
       !Number.isFinite(startedAt) || !Number.isFinite(completedAt) ||
       new Date(startedAt).toISOString() !== proof.windowStartedAt ||
       new Date(completedAt).toISOString() !== proof.windowCompletedAt ||
-      completedAt - startedAt < proof.observationWindowMinutes * 60_000 ||
+      completedAt - startedAt !== proof.observationWindowMinutes * 60_000 ||
       producerCompletedAt === null || completedAt > producerCompletedAt) fail()
+
+  const wavePaths = {
+    activation: `plan55/paired-wave-${waveNumber}/activation.json`,
+    observations: `plan55/paired-wave-${waveNumber}/observations.json`,
+    costAttribution: `plan55/paired-wave-${waveNumber}/cost-attribution.json`,
+  }
+  const readBoundSidecar = (path, expectedSha256, label) => {
+    const bytes = sourceArtifactFiles?.get?.(path)
+    if (!(sourceArtifactFiles instanceof Map) || !(bytes instanceof Buffer) ||
+        !isSha256(expectedSha256) || sha256(bytes) !== expectedSha256) fail()
+    try {
+      const value = parseJson(bytes, label)
+      if (!value || typeof value !== 'object' || Array.isArray(value)) fail()
+      return value
+    } catch {
+      fail()
+    }
+  }
+  const activation = readBoundSidecar(
+    wavePaths.activation, proof.activationEvidenceSha256, 'paired-wave activation evidence',
+  )
+  const observations = readBoundSidecar(
+    wavePaths.observations, proof.observationsEvidenceSha256, 'paired-wave observation evidence',
+  )
+  const costAttribution = readBoundSidecar(
+    wavePaths.costAttribution, proof.costAttributionEvidenceSha256, 'paired-wave cost attribution evidence',
+  )
+  const matchesIdentity = (value) => identityKeys.every((key) => value[key] === proof[key])
+  const exactKeys = (value, keys) => JSON.stringify(Object.keys(value).sort()) === JSON.stringify([...keys].sort())
+  const expectedActivationKeys = [
+    'schemaVersion', ...identityKeys, 'fromState', 'toState', 'transitionId', 'activatedAt',
+  ]
+  const expectedFromState = waveNumber === 1 ? 'rollback_drill' : `paired_wave_${waveNumber - 1}`
+  const expectedToState = `paired_wave_${waveNumber}`
+  const activationAt = typeof activation.activatedAt === 'string' ? Date.parse(activation.activatedAt) : Number.NaN
+  if (!exactKeys(activation, expectedActivationKeys) ||
+      activation.schemaVersion !== 'plan55-paired-wave-activation-evidence.v1' || !matchesIdentity(activation) ||
+      activation.fromState !== expectedFromState || activation.toState !== expectedToState ||
+      typeof activation.transitionId !== 'string' ||
+      !/^transition-[a-f0-9]{64}$/u.test(activation.transitionId) ||
+      !Number.isFinite(activationAt) || new Date(activationAt).toISOString() !== activation.activatedAt ||
+      activation.activatedAt !== proof.windowStartedAt) fail()
+
+  const minimumSampleCounts = preregistration.minimumSampleCounts
+  const expectedObservationKeys = [
+    'schemaVersion', ...identityKeys, 'activationEvidenceSha256', 'windowStartedAt', 'windowCompletedAt',
+    'sampleCounts', 'failures', 'latency',
+  ]
+  const expectedFailureKeys = ['safety', 'authorization', 'confirmation', 'requestErrors']
+  if (!exactKeys(observations, expectedObservationKeys) ||
+      observations.schemaVersion !== 'plan55-paired-wave-observations.v1' || !matchesIdentity(observations) ||
+      observations.activationEvidenceSha256 !== proof.activationEvidenceSha256 ||
+      observations.windowStartedAt !== proof.windowStartedAt ||
+      observations.windowCompletedAt !== proof.windowCompletedAt ||
+      !observations.sampleCounts || typeof observations.sampleCounts !== 'object' ||
+      Array.isArray(observations.sampleCounts) || !exactKeys(observations.sampleCounts, sampleCountKeys) ||
+      sampleCountKeys.some((key) => !Number.isSafeInteger(observations.sampleCounts[key]) ||
+        observations.sampleCounts[key] < minimumSampleCounts[key]) ||
+      !observations.failures || typeof observations.failures !== 'object' || Array.isArray(observations.failures) ||
+      !exactKeys(observations.failures, expectedFailureKeys) ||
+      expectedFailureKeys.some((key) => !Number.isSafeInteger(observations.failures[key]) || observations.failures[key] < 0) ||
+      observations.failures.requestErrors > observations.sampleCounts.requests ||
+      !observations.latency || typeof observations.latency !== 'object' || Array.isArray(observations.latency) ||
+      !exactKeys(observations.latency, ['baselineP95Ms', 'observedP95Ms']) ||
+      !Number.isFinite(observations.latency.baselineP95Ms) || observations.latency.baselineP95Ms <= 0 ||
+      !Number.isFinite(observations.latency.observedP95Ms) || observations.latency.observedP95Ms < 0) fail()
+
+  const expectedCostKeys = [
+    'schemaVersion', ...identityKeys, 'sourceId', 'attributionId', 'currency',
+    'windowStartedAt', 'windowCompletedAt', 'sampleCount', 'baselineUsd', 'observedUsd',
+  ]
+  if (!exactKeys(costAttribution, expectedCostKeys) ||
+      costAttribution.schemaVersion !== 'plan55-paired-wave-cost-attribution.v1' ||
+      !matchesIdentity(costAttribution) ||
+      costAttribution.sourceId !== preregistration.costAttributionSourceId ||
+      typeof costAttribution.attributionId !== 'string' ||
+      !/^cost-[a-f0-9]{64}$/u.test(costAttribution.attributionId) ||
+      costAttribution.currency !== 'USD' || costAttribution.windowStartedAt !== proof.windowStartedAt ||
+      costAttribution.windowCompletedAt !== proof.windowCompletedAt ||
+      costAttribution.sampleCount !== observations.sampleCounts.costObservations ||
+      !Number.isSafeInteger(costAttribution.sampleCount) ||
+      costAttribution.sampleCount < minimumSampleCounts.costObservations ||
+      !Number.isFinite(costAttribution.baselineUsd) || costAttribution.baselineUsd <= 0 ||
+      !Number.isFinite(costAttribution.observedUsd) || costAttribution.observedUsd < 0) fail()
+
+  const observedMetrics = {
+    critical_safety_failures: observations.failures.safety,
+    authz_bypass_failures: observations.failures.authorization,
+    confirmation_bypass_failures: observations.failures.confirmation,
+    error_rate: roundMetric(observations.failures.requestErrors / observations.sampleCounts.requests),
+    p95_latency_regression: roundMetric(
+      observations.latency.observedP95Ms / observations.latency.baselineP95Ms - 1,
+    ),
+    cost_regression: roundMetric(costAttribution.observedUsd / costAttribution.baselineUsd - 1),
+  }
+  if (Object.entries(observedMetrics).some(([metric, value]) => proof.metrics[metric] !== value)) fail()
 
   for (const [metric, threshold] of Object.entries(abortThresholds)) {
     const actual = proof.metrics[proofMetricByAbortMetric[metric]]
     if (!Number.isFinite(threshold) || threshold < 0 || !Number.isFinite(actual) || actual > threshold) fail()
     if (metric === 'error_rate' && (actual < 0 || actual > 1)) fail()
+    if ((metric === 'p95_latency_regression' || metric === 'cost_regression') && actual < -1) fail()
     if (metric.endsWith('_failures') && (!Number.isSafeInteger(actual) || actual < 0)) fail()
   }
   return true
