@@ -187,8 +187,8 @@ jobs:
           retention-days: 90
 
   deploy_guard_off:
-    needs: quality-and-preflight
-    if: github.ref == 'refs/heads/main' && inputs.source_sha == github.sha
+    needs: [quality-and-preflight, independent_holdout_attestation]
+    if: needs.quality-and-preflight.result == 'success' && needs.independent_holdout_attestation.result == 'success' && github.ref == 'refs/heads/main' && inputs.source_sha == github.sha
     runs-on: ubuntu-latest
     timeout-minutes: 45
     environment: production
@@ -466,8 +466,8 @@ jobs:
           retention-days: 90
 
   independent_holdout_attestation:
-    needs: deploy_guard_off
-    if: needs.deploy_guard_off.result == 'success' && github.ref == 'refs/heads/main' && inputs.source_sha == github.sha
+    needs: quality-and-preflight
+    if: needs.quality-and-preflight.result == 'success' && github.ref == 'refs/heads/main' && inputs.source_sha == github.sha
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
