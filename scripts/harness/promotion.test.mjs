@@ -427,7 +427,7 @@ test('Plan 55 validates mapped producer workflows and fails closed on missing ga
     toState: 'paired_wave_1',
   }, policy)
   assert.ok(!packetProblems.includes(`promotion config: ${missingRollbackProducer}`))
-  assert.ok(packetProblems.includes('Plan 55 paired-wave preregistration is missing or invalid'))
+  assert.ok(packetProblems.includes('Plan 55 paired-wave context does not match source-locked preregistration'))
   assert.ok(verifyPromotionPacket({
     schemaVersion: '1.0.0',
     environment: 'production',
@@ -584,31 +584,35 @@ test('Plan 55 paired-wave context comes only from source-locked policy preregist
     humanApprovalId: 'approval-1',
     rollbackRelease,
   }
-  const safeCohort = 'synthetic-plan55-0123456789abcdef0123456789abcdef'
+  const safeCohort = 'synthetic-plan55-7df85505281d69d5968170ef5816fcdc'
   assert.match(safeCohort, /^synthetic-[a-z0-9-]{8,100}$/u)
-  const missingPreregistration = /Plan 55 paired-wave preregistration is missing or invalid/u
+  const preregistration = {
+    schemaVersion: 'plan55-paired-wave-preregistration.v1',
+    cohortId: safeCohort,
+    observationWindowMinutes: 60,
+  }
   const callerContext = /Plan 55 preregistered cohort values must not be supplied by the caller/u
-  assert.equal(resolvePlan55PairedWavePreregistration(policy), null)
-  assert.throws(() => buildPromotionPacket(input), missingPreregistration)
+  assert.deepEqual(policy.pairedWavePreregistration, preregistration)
+  const resolved = resolvePlan55PairedWavePreregistration(policy)
+  assert.deepEqual(resolved, {
+    ...preregistration,
+    sha256: createHash('sha256').update(JSON.stringify(preregistration)).digest('hex'),
+  })
+  assert.throws(() => buildPromotionPacket(input), /missing required release gate:/u)
   assert.throws(() => buildPromotionPacket({
     ...input,
     cohort: 'customer@example.com',
     observationWindowMinutes: 60,
   }), callerContext)
 
-  const preregistration = {
-    schemaVersion: 'plan55-paired-wave-preregistration.v1',
-    cohortId: safeCohort,
-    observationWindowMinutes: 60,
-  }
   const preregisteredPolicy = { ...policy, pairedWavePreregistration: preregistration }
-  const resolved = resolvePlan55PairedWavePreregistration(preregisteredPolicy)
-  assert.deepEqual(resolved, {
-    ...preregistration,
-    sha256: createHash('sha256').update(JSON.stringify(preregistration)).digest('hex'),
-  })
-  assert.ok(validatePromotionConfig(preregisteredPolicy).includes('Plan 55 policy source binding is invalid'))
-  assert.throws(() => buildPromotionPacket({ ...input, config: preregisteredPolicy }), /policy source binding is invalid/u)
+  assert.ok(!validatePromotionConfig(preregisteredPolicy).includes('Plan 55 policy source binding is invalid'))
+  const modifiedPolicy = {
+    ...policy,
+    pairedWavePreregistration: { ...preregistration, observationWindowMinutes: 61 },
+  }
+  assert.ok(validatePromotionConfig(modifiedPolicy).includes('Plan 55 policy source binding is invalid'))
+  assert.throws(() => buildPromotionPacket({ ...input, config: modifiedPolicy }), /policy source binding is invalid/u)
 
   const invalidPreregistration = { ...preregistration, cohortId: 'customer@example.com' }
   assert.equal(resolvePlan55PairedWavePreregistration({
@@ -627,7 +631,7 @@ test('Plan 55 paired-wave context comes only from source-locked policy preregist
     toState: 'paired_wave_1',
   }
   assert.ok(verifyPromotionPacket(packetContext, policy)
-    .includes('Plan 55 paired-wave preregistration is missing or invalid'))
+    .includes('Plan 55 paired-wave context does not match source-locked preregistration'))
   assert.ok(verifyPromotionPacket({
     ...packetContext,
     cohort: safeCohort,
@@ -641,13 +645,20 @@ test('Plan 55 paired-wave context comes only from source-locked policy preregist
     pairedWavePreregistrationSha256: resolved.sha256,
   }, preregisteredPolicy).includes('Plan 55 paired-wave context does not match source-locked preregistration'))
 
+  assert.ok(!verifyPromotionPacket({
+    ...packetContext,
+    cohort: safeCohort,
+    observationWindowMinutes: 60,
+    pairedWavePreregistrationSha256: resolved.sha256,
+  }, policy).includes('Plan 55 paired-wave context does not match source-locked preregistration'))
+
   const productionPacketContext = {
     ...packetContext,
     fromState: 'paired_wave_3',
     toState: 'production',
   }
   assert.ok(verifyPromotionPacket(productionPacketContext, policy)
-    .includes('Plan 55 paired-wave preregistration is missing or invalid'))
+    .includes('Plan 55 paired-wave context does not match source-locked preregistration'))
   assert.ok(verifyPromotionPacket({
     ...productionPacketContext,
     cohort: safeCohort,
@@ -664,7 +675,7 @@ test('Plan 55 paired-wave context comes only from source-locked policy preregist
     ...input,
     currentState: 'paired_wave_3',
     targetState: 'production',
-  }), missingPreregistration)
+  }), /missing required release gate:/u)
 })
 
 test('blocks a canary when a critical threshold fails', () => {
