@@ -6,6 +6,7 @@
   "repository": "manhtu0407/HomeServices-",
   "trustedEvidenceWorkflowPaths": [
     ".github/workflows/ci.yml",
+    ".github/workflows/plan55-hosted-drift.yml",
     ".github/workflows/plan55-postreceipt-finalization.yml",
     ".github/workflows/plan55-rollback-drill.yml"
   ],
@@ -34,6 +35,7 @@
     "plan55-canary-runner-tests": ".github/workflows/ci.yml",
     "plan55-independent-holdout-freeze": ".github/workflows/ci.yml",
     "plan55-docker-sql-edge-gates": ".github/workflows/ci.yml",
+    "plan55-hosted-drift-pass": ".github/workflows/plan55-hosted-drift.yml",
     "plan55-auth-admin-verified": ".github/workflows/ci.yml",
     "plan55-synthetic-actor-created": ".github/workflows/ci.yml",
     "plan55-actor-scope-verified": ".github/workflows/ci.yml",

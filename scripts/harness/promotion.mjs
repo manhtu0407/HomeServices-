@@ -201,6 +201,7 @@ function validatePlan55Policy(policy, root, targetState) {
     'plan55-six-cleanup-passes': '.github/workflows/ci.yml',
     'plan55-publication-packet': PLAN55_PUBLICATION_PACKET_WORKFLOW,
     'plan55-rollback-drill': '.github/workflows/plan55-rollback-drill.yml',
+    'plan55-hosted-drift-pass': '.github/workflows/plan55-hosted-drift.yml',
   }
   const actualProducerEntries = policy.trustedEvidenceWorkflowPathsByGate &&
     typeof policy.trustedEvidenceWorkflowPathsByGate === 'object' &&

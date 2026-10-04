@@ -16,6 +16,7 @@ import {
   PLAN55_DEPLOYED_GUARD_GATES,
 } from './plan55-deployed-guard-gate-proofs.mjs'
 import { assertPlan55RollbackDrillProof } from './rollback-proof.mjs'
+import { assertPlan55HostedDriftGateProof } from './plan55-hosted-drift-gate-proofs.mjs'
 export { PLAN55_RELEASE_STAGE_GATES }
 export { PLAN55_DEPLOYED_GUARD_GATES }
 
@@ -78,6 +79,7 @@ const PREFLIGHT_RECEIPT_GATES = new Set(Object.keys(PLAN55_PREFLIGHT_GATE_CHECKS
 const RELEASE_STAGE_RECEIPT_GATES = new Set(PLAN55_RELEASE_STAGE_GATES)
 const DEPLOYED_GUARD_RECEIPT_GATES = new Set(PLAN55_DEPLOYED_GUARD_GATES)
 const ROLLBACK_DRILL_RECEIPT_GATES = new Set(['plan55-rollback-drill'])
+const HOSTED_DRIFT_RECEIPT_GATES = new Set(['plan55-hosted-drift-pass'])
 const CANARY_EVIDENCE_TARGET_STATES = new Set([
   'receipts_validated', 'rollback_drill', 'paired_wave_1', 'paired_wave_2', 'paired_wave_3', 'production',
 ])
@@ -197,6 +199,7 @@ export function inspectPlan55GateEvidenceCoverage({
       ...RELEASE_STAGE_RECEIPT_GATES,
       ...DEPLOYED_GUARD_RECEIPT_GATES,
       ...ROLLBACK_DRILL_RECEIPT_GATES,
+      ...HOSTED_DRIFT_RECEIPT_GATES,
       ...PUBLICATION_PACKET_RECEIPT_GATES,
     ])
     : new Set()
@@ -842,6 +845,12 @@ function assertGateSpecificEvidence(evidence, gate, {
   }
   if (ROLLBACK_DRILL_RECEIPT_GATES.has(gate)) {
     assertPlan55RollbackDrillProof(evidence.proof, { policy, release, sourceArtifactFiles })
+    return
+  }
+  if (HOSTED_DRIFT_RECEIPT_GATES.has(gate)) {
+    assertPlan55HostedDriftGateProof(evidence.proof, {
+      policy, release, targetState, provenance, sourceArtifactFiles,
+    })
     return
   }
   if (!CANARY_RECEIPT_GATES.has(gate)) {
