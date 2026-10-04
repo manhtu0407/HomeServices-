@@ -103,6 +103,18 @@ Date: 2026-10-03
 - `apps/mobile/.env.local` is absent in this worktree, so the guarded Production-preview launcher could not load its required app environment. The running Preview uses the workspace Expo web script without Supabase credentials. It is UI-only: authenticated HTTP, provider calls, and send actions were not exercised. `ns_audit_role` selects local audit presentation; it is not authentication proof.
 - This browser Preview is not native iPhone/Android evidence. Live DeepSeek, provider-stub HTTP, mutation checks, native screenshots, and the previously blocked `pnpm edge:check` remain open as listed above.
 
+## Post-merge-base CI recovery — 2026-10-04
+
+- Review point: PR #314, branch `codex/kael-chat-three-phases-20261002`, source HEAD `cc1bb1ae06b3b6f5a800d711f75666fd4f4b641c`.
+- The first CI run after merging the current `main` base exposed two contract issues: the exact retired mode-menu aura file was missing from the deletion allow-list, and a workflow contract test assumed LF line endings. The allow-list now permits only that exact removed path; the test normalizes CRLF before assertions.
+- `node --test scripts/harness/plan55-workflow-contract.test.mjs`: PASS — 18/18.
+- PowerShell deletion-policy check: PASS — one deleted path, the approved aura component; zero unapproved deletions. The GitHub Linux control job also passed this guard.
+- `pnpm lint:comments --working`: PASS. `git diff --check`: PASS.
+- `pnpm ship:check`: PASS — 10/10 gates on clean HEAD `cc1bb1ae`. The command lists type-check/tests/build/lint, Edge checking, and SQL replay/matrix as separate checks not run by that local command.
+- GitHub Actions on `cc1bb1ae`: PASS — secret/repository controls, harness and script-fixture suites, actor-scoped guard tests, type-check/tests/build/Kael evals/Edge checks, empty database replay/generated types/integration suite, and the Plan 55 package job. Production-only release jobs were skipped by their normal pull-request conditions.
+- The first WSL shell reproduction could not resolve this Windows linked-worktree Git path; the PowerShell policy check and the actual GitHub Linux control job subsequently verified the deletion guard.
+- This establishes CI and SQL matrix evidence for the pushed code. Authenticated local HTTP/provider-stub flows, live DeepSeek smoke, deliberate mutation checks, and native iPhone/Android screenshots remain NOT RUN. They remain open acceptance evidence; no deployment was performed.
+
 ## Ship preparation — 2026-10-04
 
 The user authorized committing, pushing, and merging the complete current diff. This branch includes the Kael Chat phases and UI follow-ups, Worker dock/earnings/profile updates, and the requested Docker RAM-gate removal. They are being reviewed as one explicitly multi-theme change set. No deployment is included.
