@@ -1,4 +1,4 @@
-# Start the Supabase CLI-owned local stack after the immutable resource gate.
+# Start the Supabase CLI-owned local stack after bounded non-RAM preflight checks.
 
 $ErrorActionPreference = "Stop"
 $Profile = "lean"
@@ -27,7 +27,19 @@ if ($LASTEXITCODE -ne 0) {
 
 Push-Location $repoRoot
 try {
-  $supabaseArgs = @("start")
+  $localWorkdir = ".scratch/local-migrations"
+  $nodeRunner = Join-Path $repoRoot "scripts\run-node.ps1"
+  & powershell -NoProfile -ExecutionPolicy Bypass -File $nodeRunner `
+    "scripts/harness/prepare-migration-workdir.mjs" `
+    --empty-reset --inventory "config/harness/migration-inventory.json" `
+    --output $localWorkdir --reuse
+  $prepareCode = $LASTEXITCODE
+  if ($prepareCode -ne 0) {
+    Write-Output "canonical migration workdir preparation failed with exit code $prepareCode"
+    exit $prepareCode
+  }
+
+  $supabaseArgs = @("start", "--workdir", $localWorkdir)
   if ($Profile -eq "lean") { $supabaseArgs += @("-x", ($leanExclude -join ",")) }
 
   Write-Output "starting supabase ($Profile): supabase $($supabaseArgs -join ' ')"

@@ -10,6 +10,7 @@ import {
 
 const mockAccessibility = { reduceMotion: false, reduceTransparency: false }
 let mockRouteParams: Record<string, string | string[] | undefined> = {}
+let mockAppLanguage: 'en' | 'vi' = 'vi'
 
 jest.mock('expo-router', () => ({
   useLocalSearchParams: () => mockRouteParams,
@@ -20,6 +21,11 @@ jest.mock('@/components/ui/accessibility-motion', () => ({
   useGlassAccessibility: () => mockAccessibility,
 }))
 
+jest.mock('@/lib/app-language', () => ({
+  ...jest.requireActual('@/lib/app-language'),
+  useAppLanguage: () => mockAppLanguage,
+}))
+
 jest.mock('react-native-safe-area-context', () => ({
   useSafeAreaInsets: () => ({ bottom: 0, left: 0, right: 0, top: 0 }),
 }))
@@ -28,13 +34,14 @@ import {
   WorkerDockLayoutProvider,
   WorkerRebuildDockOverlay,
 } from '../dock/worker-v5-dock-overlay'
-import { resolveWorkerV5DockVisible } from '../dock/routing'
+import { resolveWorkerV5DockVisible, resolveWorkerV5Language } from '../dock/routing'
 
 export const PILLAR = {
   id: 'P08-worker-dock-motion',
   invariant:
-    'the worker dock exposes four labelled tabs with exactly one selected, never restores route-following decoration, and neither Reduce Motion nor Reduce Transparency removes a tab or its selected state',
+    'the worker dock exposes four labelled tabs in the selected app language, falling back to the shared app preference when route language is absent, with exactly one selected and all tabs retained under Reduce Motion and Reduce Transparency',
   authority: [
+    'governance/RULES.md #5 (the language shown matches the selected app language)',
     'governance/protocols/frontend-test.md G4 (Reduce Motion, Reduce Transparency)',
     'governance/design/runtime.md (motion is decoration, never the carrier of state)',
   ],
@@ -42,7 +49,7 @@ export const PILLAR = {
   layer: 'ui-visual',
   siblings: ['P07-worker-verification-states', 'P06-payment-unlock-gate'],
   mutation:
-    'restore a route-following lens, shimmer, or caustic layer — the static-selection cases turn red',
+    'return Vietnamese when ns_worker_lang is absent after English is selected — the missing-route English label case turns red',
 } as const satisfies PillarManifest
 
 const TAB_LABELS_VI = ['Trang chủ', 'Công việc', 'Thu nhập', 'Hồ sơ']
@@ -60,6 +67,7 @@ beforeEach(() => {
   mockAccessibility.reduceMotion = false
   mockAccessibility.reduceTransparency = false
   mockRouteParams = {}
+  mockAppLanguage = 'vi'
 })
 
 describe('WorkerRebuildDockOverlay', () => {
@@ -107,6 +115,22 @@ describe('WorkerRebuildDockOverlay', () => {
         expect(screen.queryByRole('tab', { name: 'Trang chủ' })).toBeNull()
       },
       'one language per selected mode',
+    )
+  })
+
+  it('keeps the selected app language when a Worker route has no language param', () => {
+    mockAppLanguage = 'en'
+    expect(resolveWorkerV5Language(mockRouteParams, mockAppLanguage)).toBe('en')
+    mountDock()
+    withPillarContext(
+      PILLAR,
+      () => {
+        for (const label of TAB_LABELS_EN) {
+          expect(screen.getByRole('tab', { name: label })).toBeTruthy()
+        }
+        expect(screen.queryByRole('tab', { name: 'Trang chủ' })).toBeNull()
+      },
+      'the shared English preference must survive navigation after ns_worker_lang is dropped',
     )
   })
 

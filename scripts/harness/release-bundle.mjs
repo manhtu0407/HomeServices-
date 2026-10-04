@@ -746,17 +746,23 @@ function digestPaths(root, paths) {
   return digestFileSet(root, files)
 }
 
-function releaseSourceFilePaths(root) {
+export function releaseSourceFilePaths(root) {
   const output = execFileSync(
     'git',
     ['ls-files', '--cached', '--others', '--exclude-standard', '-z'],
     { cwd: root, encoding: 'utf8' },
   )
+  const deletedWorktreePaths = new Set(execFileSync(
+    'git',
+    ['diff', '--name-only', '--diff-filter=D', '--no-renames', '-z'],
+    { cwd: root, encoding: 'utf8' },
+  ).split('\0').map(repoPath).filter(Boolean))
   return output
     .split('\0')
     .map(repoPath)
     .filter(Boolean)
     .filter((path) => !path.startsWith('artifacts/') && !path.startsWith('.scratch/'))
+    .filter((path) => !deletedWorktreePaths.has(path))
     .sort()
 }
 

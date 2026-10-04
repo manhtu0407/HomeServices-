@@ -244,13 +244,11 @@ export async function resolveWorkerAvatarUrl(
   return resolveProfileAvatarUrl(storageClient, rawAvatarRef, WORKER_AVATAR_BUCKET);
 }
 
-export async function resolveApprovedWorkerSelfieUrl(
+async function resolveWorkerProfileSelfieUrl(
   storageClient: unknown,
   rawSelfieRef: unknown,
   expectedWorkerId: string,
-  isApproved: boolean,
 ): Promise<string | null> {
-  if (!isApproved) return null;
   const objectPath = workerVerificationSelfieObjectPath(rawSelfieRef, expectedWorkerId);
   if (!objectPath) return null;
 
@@ -294,21 +292,20 @@ export function workerVerificationSelfieObjectPath(
   return `${match[1]}/selfie/${match[2]}`;
 }
 
-export async function resolveWorkerHomeAvatarUrl(
+// GET /workers/me passes ctx.user.id here; customer projections must keep using worker-avatars only.
+export async function resolveWorkerOwnProfileAvatarUrl(
   storageClient: unknown,
   rawAvatarRef: unknown,
   rawSelfieRef: unknown,
   expectedWorkerId: string,
-  isApproved: boolean,
 ): Promise<string | null> {
   const avatarRef = nullableString(rawAvatarRef);
   const profileAvatarUrl = await resolveWorkerAvatarUrl(storageClient, avatarRef);
   if (profileAvatarUrl || avatarRef) return profileAvatarUrl;
-  return resolveApprovedWorkerSelfieUrl(
+  return resolveWorkerProfileSelfieUrl(
     storageClient,
     rawSelfieRef,
     expectedWorkerId,
-    isApproved,
   );
 }
 

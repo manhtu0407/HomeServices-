@@ -1,8 +1,7 @@
-import { Text, View } from 'react-native'
+import { Text, View, type StyleProp, type ViewStyle } from 'react-native'
 import Svg, { Defs, Path, Rect } from 'react-native-svg'
 
 import { FormulaMintCanvasAura } from '@/components/ui/formula-mint-canvas'
-import { KaelModeMenuMintAura } from '@/components/ui/kael-mode-menu-mint-aura'
 import { AlphaStop as Stop, NativeSafeRadialGradient as RadialGradient } from '@/components/ui/svg-alpha-stop'
 import type { CustomerThemeTokens } from '../customer-theme'
 import { LiquidNavIcon } from '../dock/liquid-nav-icons'
@@ -40,18 +39,8 @@ export function ChatBubble({
   )
 }
 
-export function ChatMediaCameraIcon({ color, size = 20 }: { color: string; size?: number }) {
-  return <LiquidNavIcon color={color} name="camera" selected size={size} testID="customer-v21-kael-media-camera-icon" />
-}
-
-export function ChatModeSwitchAura({ reduceTransparency }: { reduceTransparency: boolean }) {
-  return (
-    <KaelModeMenuMintAura
-      reduceTransparency={reduceTransparency}
-      scope="Customer"
-      testID="customer-v21-chat-mode-mint-aura"
-    />
-  )
+export function ChatMediaCameraIcon({ color, size = 20, style }: { color: string; size?: number; style?: StyleProp<ViewStyle> }) {
+  return <LiquidNavIcon color={color} name="camera" selected size={size} style={style} testID="customer-v21-kael-media-camera-icon" />
 }
 
 export function ChatComposerAura({ reduceTransparency }: { reduceTransparency: boolean }) {

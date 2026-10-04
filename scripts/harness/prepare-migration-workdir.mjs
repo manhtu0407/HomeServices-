@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto'
-import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs'
 import { dirname, relative, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -83,10 +83,50 @@ export function materializeMigrationApplyWorkdir(input) {
 export function materializeEmptyMigrationWorkdir(input) {
   const root = resolve(input.root ?? ROOT)
   const output = resolveInsideRoot(root, input.output)
-  if (existsSync(output)) throw new Error('empty reset migration workdir already exists')
   const plan = buildEmptyMigrationApplyPlan(input)
+  if (existsSync(output)) {
+    if (!input.reuseExisting) throw new Error('empty reset migration workdir already exists')
+    assertReusableEmptyMigrationWorkdir({ root, output, plan })
+    return plan
+  }
   materializeMigrationWorkdir({ root, output, plan, includeSeed: true })
   return plan
+}
+
+function assertReusableEmptyMigrationWorkdir(input) {
+  const applyPlanPath = resolve(input.output, 'apply-plan.json')
+  if (!existsSync(applyPlanPath)) throw new Error('existing local migration workdir has no apply plan')
+  const existingPlan = JSON.parse(readFileSync(applyPlanPath, 'utf8'))
+  if (JSON.stringify(existingPlan) !== JSON.stringify(input.plan)) {
+    throw new Error('existing local migration workdir is stale; remove .scratch/local-migrations and retry')
+  }
+
+  const copiedConfig = readFileSync(resolve(input.output, 'supabase/config.toml'))
+  const sourceConfig = readFileSync(resolve(input.root, 'supabase/config.toml'))
+  if (!copiedConfig.equals(sourceConfig)) throw new Error('existing local migration workdir config differs from source')
+
+  const copiedSeed = readFileSync(resolve(input.output, 'supabase/seed.sql'))
+  const sourceSeed = readFileSync(resolve(input.root, 'supabase/seed.sql'))
+  if (!copiedSeed.equals(sourceSeed)) throw new Error('existing local migration workdir seed differs from source')
+  if (readFileSync(resolve(input.output, 'supabase/.temp/postgres-version'), 'utf8') !== '17.6.1.121\n') {
+    throw new Error('existing local migration workdir Postgres image pin differs from source')
+  }
+
+  const migrationRoot = resolve(input.output, 'supabase/migrations')
+  const expectedFiles = input.plan.files.map((entry) => entry.file.split('/').at(-1)).sort()
+  const actualFiles = readdirSync(migrationRoot).sort()
+  if (JSON.stringify(actualFiles) !== JSON.stringify(expectedFiles)) {
+    throw new Error('existing local migration workdir does not contain the canonical migration file set')
+  }
+  for (const entry of input.plan.files) {
+    const source = resolveInsideRoot(input.root, entry.file)
+    const copied = resolve(migrationRoot, entry.file.split('/').at(-1))
+    const sourceDigest = migrationDigest(readFileSync(source, 'utf8'))
+    const copiedDigest = migrationDigest(readFileSync(copied, 'utf8'))
+    if (sourceDigest !== entry.sha256 || copiedDigest !== entry.sha256) {
+      throw new Error(`existing local migration workdir source checksum mismatch: ${entry.version}`)
+    }
+  }
 }
 
 function materializeMigrationWorkdir(input) {
@@ -104,7 +144,7 @@ function materializeMigrationWorkdir(input) {
   for (const entry of plan.files) {
     const source = resolveInsideRoot(root, entry.file)
     const bytes = readFileSync(source)
-    if (createHash('sha256').update(bytes.toString('utf8').replace(/\r\n/gu, '\n')).digest('hex') !== entry.sha256) {
+    if (migrationDigest(bytes.toString('utf8')) !== entry.sha256) {
       throw new Error(`migration apply source checksum mismatch: ${entry.version}`)
     }
     copyFileSync(source, resolve(migrationRoot, entry.file.split('/').at(-1)))
@@ -119,6 +159,10 @@ function resolveInsideRoot(root, value) {
   return path
 }
 
+function migrationDigest(source) {
+  return createHash('sha256').update(source.replace(/\r\n/gu, '\n')).digest('hex')
+}
+
 function parseArgs(args) {
   const options = {}
   for (let index = 0; index < args.length; index += 1) {
@@ -129,6 +173,10 @@ function parseArgs(args) {
     }
     if (key === '--empty-reset') {
       options.emptyReset = true
+      continue
+    }
+    if (key === '--reuse') {
+      options.reuse = true
       continue
     }
     if (!['--inventory', '--hosted', '--receipt', '--output'].includes(key)) {
@@ -148,6 +196,7 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
     for (const required of requiredOptions) {
       if (!options[required]) throw new Error(`--${required} is required`)
     }
+    if (options.reuse && !options.emptyReset) throw new Error('--reuse requires --empty-reset')
     if (options.emptyReset && (options.stagingCatchup || options.receipt || options.hosted)) {
       throw new Error('--empty-reset cannot be combined with hosted release options')
     }
@@ -165,6 +214,7 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
         : null,
       mode: options.stagingCatchup ? 'staging-catchup' : 'expand-only-release',
       output: options.output,
+      reuseExisting: options.reuse,
     }
     const plan = options.emptyReset
       ? materializeEmptyMigrationWorkdir(input)

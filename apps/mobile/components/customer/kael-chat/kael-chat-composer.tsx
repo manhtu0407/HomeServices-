@@ -1,7 +1,8 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import {
   Pressable,
   Text,
+  TextInput,
   View,
   type StyleProp,
   type TextStyle,
@@ -12,6 +13,9 @@ import { GlassSurface } from '@/components/ui/glass-surface'
 import { KaelSendStopGlyph } from '@/components/ui/kael-send-stop-glyph'
 import { useGlassAccessibility } from '@/components/ui/accessibility-motion'
 import { KaelTextField } from '@/components/ui/kael-primitives'
+import { NormalChatGhostOverlay } from '@/components/ui/normal-chat-ghost-overlay'
+import { NormalChatStarterRail } from '@/components/ui/normal-chat-starter-rail'
+import { EMPTY_NORMAL_CHAT_SUGGESTIONS, getNormalChatGhostSuffix, getNormalChatSendPalette } from '@/components/ui/normal-chat-composer-model'
 import { color } from '@/design/theme'
 import type { AppLanguage } from '@/lib/app-language'
 import type { LocalMediaUploadDraft } from '@/lib/media-upload'
@@ -43,6 +47,7 @@ export function KaelChatComposer({
   composerBusy,
   composerMediaDraftCount,
   composerMediaDrafts,
+  composerSending = false,
   composerPlaceholder,
   draft,
   hasVoiceTranscript,
@@ -54,6 +59,8 @@ export function KaelChatComposer({
   onRemoveComposerMediaDraft,
   onSendMessage,
   onStopMessage,
+  normalChatStarterVisible = false,
+  normalChatSuggestions = EMPTY_NORMAL_CHAT_SUGGESTIONS,
   rootStyles,
   stopAvailable = true,
   textInputNoOutlineStyle,
@@ -62,6 +69,7 @@ export function KaelChatComposer({
   allowVideoSelection: boolean
   canUseComposerMedia: boolean
   composerBusy: boolean
+  composerSending?: boolean
   composerMediaDraftCount: number
   composerMediaDrafts: LocalMediaUploadDraft[]
   composerPlaceholder: string
@@ -75,6 +83,8 @@ export function KaelChatComposer({
   onRemoveComposerMediaDraft: (index: number) => void
   onSendMessage: () => void
   onStopMessage: () => void
+  normalChatStarterVisible?: boolean
+  normalChatSuggestions?: { id: string; text: string }[]
   rootStyles: RootChatStyles
   /** False while the busy request has no cancellation path; Stop must not claim to cancel it. */
   stopAvailable?: boolean
@@ -82,6 +92,9 @@ export function KaelChatComposer({
   tokens: CustomerThemeTokens
 }) {
   const { reduceMotion } = useGlassAccessibility()
+  const inputRef = useRef<TextInput>(null)
+  const [selection, setSelection] = useState<{ start: number; end: number } | null>(null)
+  const [isComposing, setIsComposing] = useState(false)
   const canSubmit = canSubmitCustomerKaelComposer({
     busy: composerBusy,
     draft,
@@ -93,6 +106,8 @@ export function KaelChatComposer({
     ? composerMediaDrafts.filter((item) => item.type === 'image')
     : []
   const activeMediaIconColor = tokens.mode === 'light' ? color.text.strong : tokens.primaryText
+  const normalSendPalette = getNormalChatSendPalette(composerSending)
+  const isLightNormalChat = !allowVideoSelection && tokens.mode === 'light'
   const activeSendBackground = tokens.mode === 'light' ? color.mint.white : tokens.primary
   const activeSendBorder = tokens.mode === 'light' ? color.surface.stroke : tokens.borderStrong
   const activeSendForeground = tokens.mode === 'light' ? color.text.strong : tokens.primaryText
@@ -106,8 +121,39 @@ export function KaelChatComposer({
     setMeasuredInput({ hasDraft: Boolean(draft), height: draft ? measuredInput.height : COMPOSER_MIN_HEIGHT })
   }
   const inputHeight = draft ? measuredInput.height : COMPOSER_MIN_HEIGHT
+  const ghost = !allowVideoSelection && !composerBusy
+    ? getNormalChatGhostSuffix(draft, normalChatSuggestions, selection, isComposing)
+    : null
+  const liveGhostContext = useRef({ draft, isComposing, selection, suggestions: normalChatSuggestions })
+  liveGhostContext.current = { draft, isComposing, selection, suggestions: normalChatSuggestions }
+  const acceptGhost = () => {
+    const latest = liveGhostContext.current
+    const currentGhost = getNormalChatGhostSuffix(latest.draft, latest.suggestions, latest.selection, latest.isComposing)
+    if (!currentGhost || currentGhost.suggestionId !== ghost?.suggestionId) return
+    onDraftChange(latest.draft ? `${latest.draft}${currentGhost.text}` : currentGhost.text)
+    setSelection(null)
+    inputRef.current?.focus()
+  }
+  const inputTextStyle = [rootStyles.composerInput, { height: inputHeight }, textInputNoOutlineStyle, { color: tokens.text }]
   return (
     <>
+      {normalChatStarterVisible && !allowVideoSelection ? (
+        <NormalChatStarterRail
+          actorRole="customer"
+          language={language}
+          onSelect={(starterDraft) => {
+            onDraftChange(starterDraft)
+            setSelection(null)
+            inputRef.current?.focus()
+          }}
+          visible
+        />
+      ) : null}
+      {ghost && !normalChatStarterVisible ? (
+        <Text style={{ color: tokens.muted, fontSize: 12, fontWeight: '600', textAlign: 'center' }} testID="customer-v21-kael-ghost-hint">
+          {language === 'vi' ? 'Chạm chữ mờ để thêm vào tin nhắn.' : 'Tap the faded text to add it to your message.'}
+        </Text>
+      ) : null}
       <GlassSurface
         backgroundColor={tokens.glass}
         borderColor={tokens.glassBorder}
@@ -159,7 +205,11 @@ export function KaelChatComposer({
           ]}
           testID="customer-v21-kael-media-picker"
         >
-          <ChatMediaCameraIcon color={mediaPickerEnabled ? activeMediaIconColor : tokens.muted} size={27} />
+          <ChatMediaCameraIcon
+            color={mediaPickerEnabled ? activeMediaIconColor : tokens.muted}
+            size={27}
+            style={!allowVideoSelection ? chatStyles.chatMediaIconOpticallyAligned : undefined}
+          />
           {allowVideoSelection && composerMediaDraftCount > 0 ? (
             <View
               style={[chatStyles.chatMediaBadge, { backgroundColor: tokens.primary }]}
@@ -173,25 +223,47 @@ export function KaelChatComposer({
         </Pressable>
         <KaelTextField
           editable={!composerBusy}
+          inputRef={inputRef}
+          inputShellAdornment={ghost ? (
+            <NormalChatGhostOverlay
+              draft={draft}
+              draftColor={tokens.text}
+              language={language}
+              onAccept={acceptGhost}
+              suggestionColor={tokens.muted}
+              suffix={ghost.text}
+              textStyle={inputTextStyle}
+            />
+          ) : undefined}
           inputShellStyle={rootStyles.composerTextFieldShell}
           inputShellTestID="customer-v21-kael-input-shell"
           multiline
+          onChange={(event) => {
+            const nativeEvent = event.nativeEvent as typeof event.nativeEvent & { composing?: boolean; isComposing?: boolean }
+            setIsComposing(Boolean(nativeEvent.isComposing ?? nativeEvent.composing))
+          }}
           onBlur={onBlur}
-          onChangeText={onDraftChange}
+          onChangeText={(nextDraft) => {
+            setSelection(null)
+            onDraftChange(nextDraft)
+          }}
           onContentSizeChange={(event) => {
             const nextHeight = event.nativeEvent.contentSize.height
             const height = Math.min(Math.max(nextHeight, COMPOSER_MIN_HEIGHT), COMPOSER_MAX_HEIGHT)
             setMeasuredInput((current) => ({ ...current, height }))
           }}
           onFocus={onFocus}
+          onSelectionChange={(event) => setSelection(event.nativeEvent.selection)}
           onSubmitEditing={onSendMessage}
           maxLength={CUSTOMER_KAEL_MESSAGE_MAX_LENGTH}
-          placeholder={composerPlaceholder}
+          placeholder={ghost ? '' : composerPlaceholder}
           placeholderTextColor={tokens.subtleText}
           returnKeyType="send"
+          selectionColor={isLightNormalChat ? color.kaelChatSend.idleForeground : tokens.primary}
           scrollEnabled={inputHeight >= COMPOSER_MAX_HEIGHT}
           shellStyle={rootStyles.composerTextFieldStack}
-          style={[rootStyles.composerInput, { height: inputHeight }, textInputNoOutlineStyle, { color: tokens.text }]}
+          submitBehavior="submit"
+          style={[...inputTextStyle, { color: ghost ? 'transparent' : tokens.text, zIndex: 1 }]}
           testID="customer-v21-kael-input"
           value={draft}
         />
@@ -209,7 +281,9 @@ export function KaelChatComposer({
             rootStyles.sendButton,
             {
               alignItems: 'center',
-              backgroundColor: composerBusy || canSubmit ? activeSendBackground : idleSendBackground,
+              backgroundColor: isLightNormalChat
+                ? normalSendPalette.background
+                : composerBusy || canSubmit ? activeSendBackground : idleSendBackground,
               borderColor: composerBusy || canSubmit ? activeSendBorder : idleSendBorder,
               borderRadius: 22,
               borderWidth: 1,
@@ -222,9 +296,11 @@ export function KaelChatComposer({
           testID="customer-v21-kael-send"
         >
           <KaelSendStopGlyph
-            arrowColor={canSubmit ? activeSendForeground : tokens.muted}
+            arrowColor={isLightNormalChat
+              ? normalSendPalette.foreground
+              : canSubmit ? activeSendForeground : tokens.muted}
             reduceMotion={reduceMotion}
-            stopColor={activeSendForeground}
+            stopColor={isLightNormalChat ? normalSendPalette.foreground : activeSendForeground}
             stopping={composerBusy && stopAvailable}
             testIDPrefix="customer-v21-kael"
           />

@@ -5,10 +5,19 @@ import type {
 } from "../../../../_shared/domain.ts";
 import {
   scrubSensitiveForLLM,
+  loadNormalChatSessionContext,
+  summarizeNormalChatSessionIfDue,
   type EdgeAiSecrets,
+  type NormalChatPreviousTurn,
   type KaelReasoningReporter,
   type KaelResponseReporter,
 } from "../../kael/index.ts";
+import type { NormalChatImageAnalysis } from "../../kael/tools/vision.ts";
+import {
+  appendNormalChatSources,
+  searchNormalChatQuestion,
+  shouldSearchNormalChatQuestion,
+} from "../../kael/tools/normal-chat-search.ts";
 import { sanitizeCustomerCaseEvidenceText } from "../../kael/evidence/untrusted-evidence.ts";
 import { apiFailure } from "../../platform/api-failure.ts";
 import type { MobileApiContext } from "../../platform/auth.ts";
@@ -149,11 +158,53 @@ export async function sendCustomerKaelConversationTurn(
   const visionEvidence = buildKaelVisionValidationEvidence([], mediaRefs);
   const imageUrls = await createSignedVisionUrls(ctx, visionEvidence, ctx.user.id);
 
+  const normalChatScope = conversationMode === "normal"
+    ? { actorRole: "customer" as const, actorId: ctx.user.id, sessionId: conversationId }
+    : null;
+  if (normalChatScope) {
+    await summarizeNormalChatSessionIfDue(
+      client,
+      normalChatScope,
+      secrets,
+      input.language,
+    ).catch((error) => console.warn("normal customer Kael memory refresh skipped", {
+      sessionId: conversationId,
+      errorName: error instanceof Error ? error.name : typeof error,
+    }));
+  }
+  const sessionContext = normalChatScope
+    ? await loadNormalChatSessionContext(client, normalChatScope)
+    : { memorySummary: null, previousTurns: [] };
+  const normalChatSearchResults = normalChatScope && shouldSearchNormalChatQuestion(input.message)
+    ? await searchNormalChatQuestion({
+      question: input.message,
+      language: input.language,
+      actorRole: "customer",
+      actorId: ctx.user.id,
+      client,
+      secrets,
+    })
+    : undefined;
+  let normalChatImageAnalysis: NormalChatImageAnalysis | null = null;
+
   const answer = await answerKaelAssistant(ctx, {
     language: input.language,
     message: input.message,
     surface: "customer_normal",
-  }, secrets, { imageUrls, reasoning: options.reasoning, response: options.response });
+  }, secrets, {
+    imageUrls,
+    memorySummary: sessionContext.memorySummary,
+    previousTurns: sessionContext.previousTurns.filter((turn): turn is NormalChatPreviousTurn & { role: "customer" | "kael" } =>
+      turn.role === "customer" || turn.role === "kael"
+    ),
+    normalChatSearchResults,
+    normalChatSearchUnavailable: normalChatSearchResults === null,
+    onNormalChatImageAnalysis: (analysis) => {
+      normalChatImageAnalysis = analysis;
+    },
+    reasoning: options.reasoning,
+    response: options.response,
+  });
   throwIfCustomerConversationAborted(ctx.signal, secrets.requestSignal);
   const customerText = (
     conversationMode === "case"
@@ -165,12 +216,15 @@ export async function sendCustomerKaelConversationTurn(
   const answerWithSafety = notes.length > 0
     ? `${answer.answer}\n\n${noteLabel}: ${notes.join(" ")}`
     : answer.answer;
-  const kaelText = (
+  const safeKaelText = (
     conversationMode === "case"
       ? sanitizeCustomerCaseEvidenceText(answerWithSafety)
       : scrubSensitiveForLLM(answerWithSafety)
   ).slice(0, 4000);
-  if (!customerText || !kaelText) {
+  const kaelText = normalChatSearchResults?.length
+    ? appendNormalChatSources(safeKaelText, normalChatSearchResults, input.language)
+    : safeKaelText;
+  if ((!customerText && mediaRefs.length === 0) || !kaelText) {
     apiFailure("AI_INVALID_OUTPUT", "Kael chưa thể tạo câu trả lời an toàn", 502);
   }
 
@@ -182,10 +236,24 @@ export async function sendCustomerKaelConversationTurn(
       p_customer_text: customerText,
       p_media_refs: mediaRefs,
       p_kael_text: kaelText,
+      p_safe_metadata: normalChatImageAnalysis
+        ? { normal_chat_image_analysis: normalChatImageAnalysis }
+        : {},
     }),
   );
   if (appended.error) {
     apiFailure("DB_ERROR", "Không thể lưu lượt trò chuyện Kael", 500);
+  }
+  if (normalChatScope) {
+    await summarizeNormalChatSessionIfDue(
+      client,
+      normalChatScope,
+      secrets,
+      input.language,
+    ).catch((error) => console.warn("normal customer Kael memory refresh skipped", {
+      sessionId: conversationId,
+      errorName: error instanceof Error ? error.name : typeof error,
+    }));
   }
   options.response?.complete(kaelText);
   const response = await getCustomerKaelConversation(ctx, conversationId);

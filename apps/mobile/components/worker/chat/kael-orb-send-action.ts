@@ -92,7 +92,8 @@ export function createWorkerKaelOrbSendAction({
 }: WorkerKaelOrbSendActionOptions) {
   return async (message: string) => {
     const content = message.trim()
-    if (!content || busy || openingSessionId) return false
+    const canSendImageOnly = mode === 'normal' && mediaItems.length > 0
+    if ((!content && !canSendImageOnly) || busy || openingSessionId) return false
     if (isLocalVisualAuditSession) {
       setError(textByLanguage(
         language,

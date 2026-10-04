@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { fireEvent, render, screen } from '@testing-library/react-native'
 
 import { withPillarContext, type PillarManifest } from '@/__tests__/pillar-manifest'
@@ -6,7 +7,7 @@ import type { LocalMediaUploadDraft } from '@/lib/media-upload'
 
 import { getCustomerThemeTokens } from '../customer-theme'
 import { KaelChatComposer, type RootChatStyles } from '../kael-chat/kael-chat-composer'
-import { customerV21KaelChatRootStyles } from '../kael-chat/chat-styles'
+import { customerV21ChatStyles as chatStyles, customerV21KaelChatRootStyles } from '../kael-chat/chat-styles'
 import { canSubmitCustomerKaelComposer } from '../kael-chat/customer-kael-composer-state'
 import { customerKaelInlineError } from '../kael-chat/customer-kael-error-display'
 import { MediaDraftPreviewTray } from '../kael-chat/media-draft-preview-tray'
@@ -18,12 +19,12 @@ import { preAgenticUnsupportedService } from '../kael-chat/customer-kael-pre-age
 
 export const PILLAR = {
   id: 'P205-kael-composer-and-failure-boundary',
-  invariant: 'Kael never submits an empty composer, never sends a message beyond the shared 5000-character boundary, keeps text close to the camera, resets the text field after a draft is cleared and keeps its measured height across same-size edits, previews normal-chat images without filenames and with accessible X removal controls, allows image analysis while keeping video in Work handling, renders a 27px dark-toned media icon in a 44px touch target, uses a pale liquid-glass send and stop surface with accessible themed controls, offers Stop only when the busy request can be cancelled, and renders one user-facing failure copy',
+  invariant: 'Kael never submits an empty composer, never sends a message beyond the shared 5000-character boundary, keeps text close to the camera, aligns the normal-chat camera glyph with the placeholder, leaves multiline input uncapped by one native line, resets the text field after a draft is cleared and keeps its measured height across same-size edits, previews normal-chat images without filenames and with accessible X removal controls, allows image analysis while keeping video in Work handling, renders a 27px dark-toned media icon in a 44px touch target, uses a pale liquid-glass send and stop surface with accessible themed controls, offers Stop only when the busy request can be cancelled, and renders one user-facing failure copy',
   authority: ['governance/RULES.md #3, #6, and #7', 'governance/protocols/frontend-test.md G3 and G4'],
   target: 'apps/mobile/components/customer/kael-chat/kael-chat-composer.tsx',
   layer: 'unit',
   siblings: ['P104-kael-ephemeral-state-scope', 'P75-transaction-critical-route-coverage'],
-  mutation: 'allow whitespace submission, lower the UI boundary without the contract constant, widen spacing between the camera and text field, retain stale input height after the parent clears a draft, collapse a measured multi-line draft on an edit that keeps its line count, render normal-chat filenames instead of in-composer thumbnails with X controls, disable normal-chat image picking, enlarge the composer media icon past 27px, color the enabled camera teal instead of matching the dark send glyph, replace the pale light-theme send surface with a saturated fill or low-contrast icon, restore the thick stop ring, disable the busy stop action, show Stop for a busy request that cannot be cancelled, render an inline failure beside the receipt, or mix VI and EN decline copy; an assertion fails',
+  mutation: 'allow whitespace submission, lower the UI boundary without the contract constant, restore numberOfLines=1 on the multiline field, widen spacing between the camera and text field, leave the normal-chat camera glyph below the placeholder, retain stale input height after the parent clears a draft, collapse a measured multi-line draft on an edit that keeps its line count, render normal-chat filenames instead of in-composer thumbnails with X controls, disable normal-chat image picking, enlarge the composer media icon past 27px, color the enabled camera teal instead of matching the dark send glyph, replace the pale light-theme send surface with a saturated fill or low-contrast icon, restore the thick stop ring, disable the busy stop action, show Stop for a busy request that cannot be cancelled, render an inline failure beside the receipt, or mix VI and EN decline copy; an assertion fails',
 } as const satisfies PillarManifest
 
 const rootStyles: RootChatStyles = {
@@ -46,24 +47,35 @@ function renderComposer(
   composerMediaDrafts: LocalMediaUploadDraft[] = [],
   onRemoveComposerMediaDraft = () => undefined,
   stopAvailable = true,
+  overrides: {
+    composerSending?: boolean
+    draft?: string
+    normalChatStarterVisible?: boolean
+    normalChatSuggestions?: { id: string; text: string }[]
+    onDraftChange?: (value: string) => void
+    onSendMessage?: () => void
+  } = {},
 ) {
   const props = {
     allowVideoSelection,
     canUseComposerMedia,
     composerBusy,
+    composerSending: overrides.composerSending,
     composerMediaDraftCount: composerMediaDrafts.length,
     composerMediaDrafts,
     composerPlaceholder: 'Nhập tin nhắn cho Kael...',
-    draft: 'Xin chào Kael',
+    draft: overrides.draft ?? 'Xin chào Kael',
     hasVoiceTranscript: false,
     language: 'vi' as const,
     onBlur: () => undefined,
-    onDraftChange: () => undefined,
+    onDraftChange: overrides.onDraftChange ?? (() => undefined),
     onFocus: () => undefined,
     onPickMedia: () => undefined,
     onRemoveComposerMediaDraft,
-    onSendMessage: () => undefined,
+    onSendMessage: overrides.onSendMessage ?? (() => undefined),
     onStopMessage,
+    normalChatStarterVisible: overrides.normalChatStarterVisible,
+    normalChatSuggestions: overrides.normalChatSuggestions,
     rootStyles,
     stopAvailable,
     textInputNoOutlineStyle: {},
@@ -115,9 +127,11 @@ describe('Kael composer and failure boundary', () => {
       expect(screen.getByTestId('customer-v21-kael-media-picker')).toHaveProp('accessibilityState', { disabled: false })
       expect(screen.getByTestId('customer-v21-kael-media-picker')).toHaveProp('accessibilityLabel', 'Thêm ảnh')
       expect(screen.getByTestId('customer-v21-kael-media-picker')).toHaveStyle({ height: 44, width: 44 })
-      expect(normalComposer.UNSAFE_getByProps({ testID: 'customer-v21-kael-media-camera-icon' }).props).toMatchObject({
+      const normalCameraIcon = normalComposer.UNSAFE_getByProps({ testID: 'customer-v21-kael-media-camera-icon' })
+      expect(normalCameraIcon.props).toMatchObject({
         color: color.text.strong,
         size: 27,
+        style: chatStyles.chatMediaIconOpticallyAligned,
       })
       normalComposer.unmount()
 
@@ -125,10 +139,12 @@ describe('Kael composer and failure boundary', () => {
       expect(screen.getByTestId('customer-v21-kael-media-picker')).toHaveProp('accessibilityState', { disabled: false })
       expect(screen.getByTestId('customer-v21-kael-media-picker')).toHaveProp('accessibilityLabel', 'Thêm ảnh hoặc video')
       expect(screen.getByTestId('customer-v21-kael-media-picker')).toHaveStyle({ height: 44, width: 44 })
-      expect(workComposer.UNSAFE_getByProps({ testID: 'customer-v21-kael-media-camera-icon' }).props).toMatchObject({
+      const workCameraIcon = workComposer.UNSAFE_getByProps({ testID: 'customer-v21-kael-media-camera-icon' })
+      expect(workCameraIcon.props).toMatchObject({
         color: color.text.strong,
         size: 27,
       })
+      expect(workCameraIcon.props.style).toBeUndefined()
     })
   })
 
@@ -141,6 +157,17 @@ describe('Kael composer and failure boundary', () => {
         paddingHorizontal: 4,
       }))
     })
+  })
+
+  it('does not cap the native multiline composer at one line', () => {
+    withPillarContext(PILLAR, () => {
+      const composer = renderComposer('light')
+      const input = screen.getByTestId('customer-v21-kael-input')
+
+      expect(input.props.multiline).toBe(true)
+      expect(input.props.numberOfLines).toBeUndefined()
+      composer.unmount()
+    }, 'wrapped Customer text must remain visible on iOS New Architecture')
   })
 
   it('resets measured input height when the parent clears the draft', () => {
@@ -257,6 +284,129 @@ describe('Kael composer and failure boundary', () => {
         .findAll((node) => typeof node.props.stroke === 'string')
         .map((node) => node.props.stroke)).toContain(darkTokens.primaryText)
     })
+  })
+
+  it('uses the confirmed normal-chat idle palette and its inverse while sending', () => {
+    withPillarContext(PILLAR, () => {
+      const idle = renderComposer('light', true, false, undefined, false, [], undefined, true, {
+        draft: 'Xin chào',
+        composerSending: false,
+      })
+      expect(screen.getByTestId('customer-v21-kael-send')).toHaveStyle({ backgroundColor: '#F2FAF9' })
+      expect(idle.UNSAFE_getByProps({ testID: 'customer-v21-kael-send-arrow' })
+        .findAll((node) => typeof node.props.stroke === 'string')
+        .map((node) => node.props.stroke)).toContain('#071A24')
+      idle.unmount()
+
+      const sending = renderComposer('light', true, true, () => undefined, false, [], undefined, true, {
+        draft: 'Xin chào',
+        composerSending: true,
+      })
+      expect(screen.getByTestId('customer-v21-kael-send')).toHaveStyle({ backgroundColor: '#071A24' })
+      expect(sending.UNSAFE_getByProps({ testID: 'customer-v21-kael-stop-square' }).props.style)
+        .toEqual(expect.objectContaining({ backgroundColor: '#F2FAF9' }))
+      sending.unmount()
+
+      const darkTokens = getCustomerThemeTokens('dark')
+      const dark = renderComposer('dark', true, false, undefined, false, [], undefined, true, {
+        draft: 'Xin chào',
+        composerSending: true,
+      })
+      expect(screen.getByTestId('customer-v21-kael-send')).toHaveStyle({ backgroundColor: darkTokens.primary })
+      expect(dark.UNSAFE_getByProps({ testID: 'customer-v21-kael-send-arrow' })
+        .findAll((node) => typeof node.props.stroke === 'string')
+        .map((node) => node.props.stroke)).toContain(darkTokens.primaryText)
+    }, 'normal-chat colors are exact in light mode while dark mode continues using its existing theme')
+  })
+
+  it('loads a starter into the editable draft without sending it', () => {
+    const onSendMessage = jest.fn()
+    function ControlledCustomerComposer() {
+      const [draft, setDraft] = useState('')
+      return (
+        <KaelChatComposer
+          allowVideoSelection={false}
+          canUseComposerMedia
+          composerBusy={false}
+          composerMediaDraftCount={0}
+          composerMediaDrafts={[]}
+          composerPlaceholder="Nhập tin nhắn cho Kael..."
+          draft={draft}
+          hasVoiceTranscript={false}
+          language="vi"
+          onBlur={() => undefined}
+          onDraftChange={setDraft}
+          onFocus={() => undefined}
+          onPickMedia={() => undefined}
+          onRemoveComposerMediaDraft={() => undefined}
+          onSendMessage={onSendMessage}
+          onStopMessage={() => undefined}
+          normalChatStarterVisible={!draft}
+          rootStyles={rootStyles}
+          textInputNoOutlineStyle={{}}
+          tokens={getCustomerThemeTokens('light')}
+        />
+      )
+    }
+
+    withPillarContext(PILLAR, () => {
+      render(<ControlledCustomerComposer />)
+      expect(screen.queryByText('Chọn một gợi ý hoặc chạm camera để thêm ảnh.')).toBeNull()
+      fireEvent.press(screen.getByTestId('normal-chat-starter-what-can-kael-do'))
+      expect(screen.getByTestId('customer-v21-kael-input').props.value).toBe('Kael có thể giúp tôi những gì?')
+      expect(onSendMessage).not.toHaveBeenCalled()
+      fireEvent.press(screen.getByTestId('customer-v21-kael-send'))
+      expect(onSendMessage).toHaveBeenCalledTimes(1)
+    }, 'choosing a starter edits the real Customer composer draft and never sends by itself')
+  })
+
+  it('keeps ghost text outside the Customer draft until accepted', () => {
+    const onSendMessage = jest.fn()
+    function ControlledCustomerComposer() {
+      const [draft, setDraft] = useState('Hướng dẫn')
+      return (
+        <KaelChatComposer
+          allowVideoSelection={false}
+          canUseComposerMedia
+          composerBusy={false}
+          composerMediaDraftCount={0}
+          composerMediaDrafts={[]}
+          composerPlaceholder="Nhập tin nhắn cho Kael..."
+          draft={draft}
+          hasVoiceTranscript={false}
+          language="vi"
+          onBlur={() => undefined}
+          onDraftChange={setDraft}
+          onFocus={() => undefined}
+          onPickMedia={() => undefined}
+          onRemoveComposerMediaDraft={() => undefined}
+          onSendMessage={() => onSendMessage(draft)}
+          onStopMessage={() => undefined}
+          normalChatSuggestions={[{ id: 'follow-up-1', text: 'Hướng dẫn tôi mô tả vấn đề rõ hơn.' }]}
+          rootStyles={rootStyles}
+          textInputNoOutlineStyle={{}}
+          tokens={getCustomerThemeTokens('light')}
+        />
+      )
+    }
+
+    withPillarContext(PILLAR, () => {
+      render(<ControlledCustomerComposer />)
+      const input = screen.getByTestId('customer-v21-kael-input')
+      fireEvent(input, 'selectionChange', {
+        nativeEvent: { selection: { start: input.props.value.length, end: input.props.value.length } },
+      })
+      const ghost = screen.getByTestId('normal-chat-ghost-accept')
+      expect(ghost.props.accessibilityLabel).toContain('Thêm phần gợi ý')
+      expect(ghost.props.accessibilityHint).toContain('Thêm phần gợi ý')
+      expect(input.props.value).toBe('Hướng dẫn')
+      fireEvent.press(screen.getByTestId('customer-v21-kael-send'))
+      expect(onSendMessage).toHaveBeenCalledWith('Hướng dẫn')
+
+      fireEvent.press(ghost)
+      expect(screen.getByTestId('customer-v21-kael-input').props.value)
+        .toBe('Hướng dẫn tôi mô tả vấn đề rõ hơn.')
+    }, 'typing shows a Vietnamese accessible ghost suffix, sending ignores it, and tapping accepts it once into the real draft')
   })
 
   it('only enables send for meaningful content and keeps the shared length limit', () => {

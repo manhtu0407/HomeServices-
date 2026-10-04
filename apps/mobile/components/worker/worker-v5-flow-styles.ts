@@ -1,6 +1,6 @@
 import { StyleSheet, type TextStyle } from 'react-native'
 
-import { color, glass, radius, shadow, signature, typography } from '@/design/theme'
+import { color, glass, radius, shadow, signature, spacing, typography } from '@/design/theme'
 
 export const workerV5KaelComposerWebTextInputNoOutline = {
   WebkitBoxShadow: 'none',
@@ -1735,6 +1735,12 @@ export const styles = StyleSheet.create({
     padding: 8,
     position: 'relative',
   },
+  kaelOrbNormalComposerCard: {
+    gap: spacing.xs,
+  },
+  kaelOrbComposerCardMultiline: {
+    alignItems: 'flex-end',
+  },
   kaelOrbComposerCameraButton: {
     alignItems: 'center',
     justifyContent: 'center',
@@ -1767,6 +1773,12 @@ export const styles = StyleSheet.create({
     paddingBottom: 12,
     textAlign: 'center',
   },
+  kaelOrbSuggestionHint: {
+    color: color.text.secondary,
+    ...typography.caption2,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
   kaelOrbComposerField: {
     flex: 1,
     minWidth: 0,
@@ -1779,8 +1791,11 @@ export const styles = StyleSheet.create({
     boxShadow: 'none',
     minHeight: 44,
     paddingHorizontal: 10,
-    paddingVertical: 0,
-    textAlignVertical: 'center',
+    paddingVertical: 12,
+    textAlignVertical: 'top',
+  },
+  kaelOrbNormalComposerInput: {
+    paddingHorizontal: spacing.xs,
   },
   kaelOrbComposerInputShell: {
     backgroundColor: 'transparent',
@@ -1789,6 +1804,7 @@ export const styles = StyleSheet.create({
     minHeight: 44,
     paddingHorizontal: 0,
     paddingVertical: 0,
+    position: 'relative',
   },
   kaelOrbCustomerChatFrame: {
     flex: 1,
@@ -1803,19 +1819,13 @@ export const styles = StyleSheet.create({
   },
   kaelOrbCustomerModeMenu: {
     alignSelf: 'flex-end',
-    backgroundColor: 'rgba(255,255,255,0.18)',
-    borderColor: 'rgba(255,255,255,0.72)',
-    borderRadius: 18,
-    borderWidth: 1,
     gap: 3,
     minHeight: 0,
-    overflow: 'hidden',
     paddingBottom: 4,
     paddingHorizontal: 4,
     paddingTop: 4,
     position: 'absolute',
     maxWidth: 208,
-    boxShadow: '0 10px 22px rgba(8,125,114,0.10)',
     right: 16,
     top: 68,
     width: '59%',

@@ -182,7 +182,7 @@ export function traceForAttempt(
   });
 }
 
-export function normalizeWorkerAssistPayload(value: unknown) {
+export function normalizeWorkerAssistPayload(value: unknown, maxTextLength = MAX_WORKER_ASSIST_TEXT_LENGTH) {
   const records = workerAssistPayloadRecords(value);
   if (records.length === 0) return value;
   const firstPublicSummary = records.findIndex((record) => (
@@ -191,7 +191,7 @@ export function normalizeWorkerAssistPayload(value: unknown) {
   const publicRecords = firstPublicSummary < 0
     ? workerAssistPayloadHasInternalEnvelope(value) ? [] : records
     : records.slice(firstPublicSummary);
-  const text = publicRecords.map(normalizedWorkerAssistReply).find(Boolean);
+  const text = publicRecords.map((record) => normalizedWorkerAssistReply(record, 0, maxTextLength)).find(Boolean);
   const safetyNotes = uniqueWorkerAssistStrings(
     publicRecords.flatMap((record) => normalizeProviderSafetyNotes(record) ?? []),
     3,
@@ -336,6 +336,7 @@ function normalizeProviderSafetyNotes(record: Record<string, unknown>) {
 function normalizedWorkerAssistReply(
   value: unknown,
   depth = 0,
+  maxTextLength = MAX_WORKER_ASSIST_TEXT_LENGTH,
 ): string | undefined {
   if (!value || typeof value !== "object" || Array.isArray(value) || depth > 3) {
     return undefined;
@@ -345,11 +346,11 @@ function normalizedWorkerAssistReply(
   for (const key of WORKER_ASSIST_REPLY_KEYS) {
     const candidate = record[key];
     if (typeof candidate === "string" && candidate.trim() && !hasWorkerAssistInternalReplyMarker(candidate)) {
-      return candidate.trim().slice(0, MAX_WORKER_ASSIST_TEXT_LENGTH);
+      return candidate.trim().slice(0, maxTextLength);
     }
   }
   for (const key of WORKER_ASSIST_WRAPPER_KEYS) {
-    const nested = normalizedWorkerAssistReply(record[key], depth + 1);
+    const nested = normalizedWorkerAssistReply(record[key], depth + 1, maxTextLength);
     if (nested) return nested;
   }
   return undefined;
@@ -363,12 +364,16 @@ function hasWorkerAssistInternalReplyMarker(value: string) {
 export function recoverWorkerAssistProviderReply(
   parsedValue: unknown,
   responseContent: unknown,
+  maxTextLength = MAX_WORKER_ASSIST_TEXT_LENGTH,
 ): string | undefined {
-  return recoverWorkerAssistProviderValue(parsedValue)
-    ?? recoverWorkerAssistProviderValue(responseContent);
+  return recoverWorkerAssistProviderValue(parsedValue, 0, maxTextLength)
+    ?? recoverWorkerAssistProviderValue(responseContent, 0, maxTextLength);
 }
 
-export function recoverWorkerAssistPlainReply(value: unknown): string | undefined {
+export function recoverWorkerAssistPlainReply(
+  value: unknown,
+  maxTextLength = MAX_WORKER_ASSIST_TEXT_LENGTH,
+): string | undefined {
   if (typeof value !== "string") return undefined;
   let reply = value.trim();
   const hasThinkBlock = /<think(?:ing)?>/i.test(reply);
@@ -382,41 +387,42 @@ export function recoverWorkerAssistPlainReply(value: unknown): string | undefine
     return undefined;
   }
   if (hasWorkerAssistInternalReplyMarker(reply)) return undefined;
-  return reply.slice(0, MAX_WORKER_ASSIST_TEXT_LENGTH);
+  return reply.slice(0, maxTextLength);
 }
 
 function recoverWorkerAssistProviderValue(
   value: unknown,
   depth = 0,
+  maxTextLength = MAX_WORKER_ASSIST_TEXT_LENGTH,
 ): string | undefined {
   if (depth > MAX_WORKER_ASSIST_RECOVERY_DEPTH || value === null || value === undefined) {
     return undefined;
   }
   if (Array.isArray(value)) {
     for (const item of value.slice(0, MAX_WORKER_ASSIST_RECOVERY_ITEMS)) {
-      const recovered = recoverWorkerAssistProviderValue(item, depth + 1);
+      const recovered = recoverWorkerAssistProviderValue(item, depth + 1, maxTextLength);
       if (recovered) return recovered;
     }
     return undefined;
   }
   if (typeof value === "string") {
-    const plainReply = recoverWorkerAssistPlainReply(value);
+    const plainReply = recoverWorkerAssistPlainReply(value, maxTextLength);
     if (plainReply) return plainReply;
     const parsed = parseWorkerAssistRecoveryJson(value);
     return parsed === undefined
       ? undefined
-      : recoverWorkerAssistProviderValue(parsed, depth + 1);
+      : recoverWorkerAssistProviderValue(parsed, depth + 1, maxTextLength);
   }
   if (typeof value !== "object") return undefined;
 
   const record = value as Record<string, unknown>;
   if (isWorkerAssistInternalEnvelope(record)) return undefined;
   for (const key of WORKER_ASSIST_REPLY_KEYS) {
-    const recovered = recoverWorkerAssistProviderValue(record[key], depth + 1);
+    const recovered = recoverWorkerAssistProviderValue(record[key], depth + 1, maxTextLength);
     if (recovered) return recovered;
   }
   for (const key of [...WORKER_ASSIST_WRAPPER_KEYS, "choices", "items", "results"]) {
-    const recovered = recoverWorkerAssistProviderValue(record[key], depth + 1);
+    const recovered = recoverWorkerAssistProviderValue(record[key], depth + 1, maxTextLength);
     if (recovered) return recovered;
   }
   return undefined;
@@ -643,9 +649,14 @@ export function buildWorkerAssistContext(input: WorkerAssistInput) {
         .slice(0, 20),
     }
     : undefined;
-  const turns = (input.previousTurns ?? []).slice(-6).map((turn) => ({
+  const recentTurns = conversationScope === "normal"
+    ? []
+    : (input.previousTurns ?? []).slice(-6);
+  const turns = recentTurns.map((turn) => ({
     role: turn.role,
-    text: turn.text ? scrubSensitiveForLLM(turn.text).slice(0, 240) : null,
+    text: turn.text
+      ? scrubSensitiveForLLM(turn.text).slice(0, conversationScope === "normal" ? 1_500 : 240)
+      : null,
   }));
   if (!job) {
     return JSON.stringify({

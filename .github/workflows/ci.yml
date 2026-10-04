@@ -353,6 +353,7 @@ jobs:
               'apps/mobile/components/customer/ui/payment-styles.ts'|\
               'apps/mobile/components/customer/ui/payment-surfaces.tsx'|\
               'apps/mobile/components/kael/kael-svg-lottie-view.tsx'|\
+              'apps/mobile/components/ui/kael-mode-menu-mint-aura.tsx'|\
               'apps/mobile/components/worker/earnings/overview-styles.ts'|\
               'apps/mobile/components/worker/earnings/overview-surfaces.tsx'|\
               'apps/mobile/components/worker/earnings/salary-assets.ts'|\

@@ -162,14 +162,6 @@ export function CustomerKaelSessionMenu({
         testID="customer-v21-kael-session-menu-glass"
         variant="sheet"
       >
-        {!reduceTransparency ? (
-          <LiquidSurfaceOverlay
-            designHeight={180}
-            mode={tokens.mode}
-            radius={18}
-            testID="customer-v21-kael-session-menu-liquid"
-          />
-        ) : null}
         <View
           accessibilityLabel={copy.accessibilityLabel}
           accessibilityRole="menu"

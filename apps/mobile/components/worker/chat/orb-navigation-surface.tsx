@@ -4,7 +4,6 @@ import type { AppLanguage } from '@/lib/app-language'
 import { KaelLiquidPressable } from '@/components/customer/kael-chat/kael-liquid-pressable'
 import { GlassSurface } from '@/components/ui/glass-surface'
 import { LiquidBackButton, LiquidSurfaceOverlay } from '@/components/ui/liquid-back-button'
-import { KaelModeMenuMintAura } from '@/components/ui/kael-mode-menu-mint-aura'
 import { color } from '@/design/theme'
 import { textByLanguage } from '../ui/format'
 import { styles } from '../worker-v5-flow-styles'
@@ -152,26 +151,10 @@ export function WorkerV5KaelOrbNavigationSurface({
       <Animated.View
         style={[
           styles.kaelOrbCustomerModeMenu,
-          reduceTransparency ? styles.opaqueCard : null,
           animatedModeMenuStyle,
         ]}
         testID="worker-v5-kael-mode-menu"
       >
-        {!reduceTransparency ? (
-          <>
-            <KaelModeMenuMintAura
-              reduceTransparency={reduceTransparency}
-              scope="Worker"
-              testID="worker-v5-kael-mode-menu-mint-aura"
-            />
-            <LiquidSurfaceOverlay
-              designHeight={120}
-              mode="light"
-              radius={18}
-              testID="worker-v5-kael-mode-menu-liquid"
-            />
-          </>
-        ) : null}
         <Animated.View style={[styles.kaelOrbCustomerModeMenuOptions, animatedModeMenuContentStyle]} testID="worker-v5-kael-mode-menu-options">
           {modeOptions.map((item) => {
             const selected = mode === item.value

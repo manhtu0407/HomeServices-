@@ -936,6 +936,7 @@ export type KaelTables = {
           id: string
           media_refs: string[]
           role: string
+          safe_metadata: Json
           text_content: string
           turn_index: number
         }
@@ -947,6 +948,7 @@ export type KaelTables = {
           id?: string
           media_refs?: string[]
           role: string
+          safe_metadata?: Json
           text_content: string
           turn_index: number
         }
@@ -958,6 +960,7 @@ export type KaelTables = {
           id?: string
           media_refs?: string[]
           role?: string
+          safe_metadata?: Json
           text_content?: string
           turn_index?: number
         }
@@ -1693,6 +1696,50 @@ export type KaelTables = {
           {
             foreignKeyName: "kael_memory_update_receipts_subject_id_fkey"
             columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      kael_normal_chat_session_memory: {
+        Row: {
+          actor_id: string
+          actor_role: string
+          created_at: string
+          facts: Json
+          revision: number
+          session_id: string
+          source_through_turn_index: number
+          summary: string
+          updated_at: string
+        }
+        Insert: {
+          actor_id: string
+          actor_role: string
+          created_at?: string
+          facts?: Json
+          revision?: number
+          session_id: string
+          source_through_turn_index: number
+          summary: string
+          updated_at?: string
+        }
+        Update: {
+          actor_id?: string
+          actor_role?: string
+          created_at?: string
+          facts?: Json
+          revision?: number
+          session_id?: string
+          source_through_turn_index?: number
+          summary?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "kael_normal_chat_session_memory_actor_id_fkey"
+            columns: ["actor_id"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]

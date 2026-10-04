@@ -371,6 +371,11 @@ export const KAEL_PURPOSES = [
   "post_job_learning",
   "educational_response",
   "worker_assist",
+  "normal_chat_vision",
+  "normal_chat_response",
+  "normal_chat_memory",
+  "normal_chat_search",
+  "normal_chat_suggestions",
 ] as const;
 
 export type KaelPurpose = (typeof KAEL_PURPOSES)[number];
@@ -531,6 +536,7 @@ export type AIRequest = {
   searchRecencyFilter?: "hour" | "day" | "week" | "month" | "year";
   searchMode?: "web" | "academic";
   searchContextSize?: "low" | "medium" | "high";
+  searchLanguageFilter?: readonly string[];
 };
 
 export type AIResponse = {

@@ -6,11 +6,13 @@ import {
   type EdgeAiSecrets,
   type KaelReasoningReporter,
   type KaelResponseReporter,
+  type NormalChatPreviousTurn,
 } from "../../kael/index.ts";
 import { apiFailure } from "../../platform/api-failure.ts";
 import type { MobileApiContext } from "../../platform/auth.ts";
 import { AI_SESSION_LIMIT, checkRateLimit } from "../../platform/rate-limit.ts";
 import type { JobStatus, KaelAssistantInput } from "../../../../_shared/domain.ts";
+import type { NormalChatSearchResult } from "../../kael/tools/normal-chat-search.ts";
 import { asString, nullableString } from "../../platform/coercions.ts";
 import { db } from "../../platform/db.ts";
 
@@ -39,6 +41,11 @@ export async function answerKaelAssistant(
   secrets: EdgeAiSecrets,
   options: {
     imageUrls?: readonly string[];
+    memorySummary?: string | null;
+    previousTurns?: readonly NormalChatPreviousTurn[];
+    normalChatSearchResults?: readonly NormalChatSearchResult[] | null;
+    normalChatSearchUnavailable?: boolean;
+    onNormalChatImageAnalysis?: (analysis: NonNullable<Awaited<ReturnType<typeof runCustomerAssistant>>["normalChatImageAnalysis"]>) => void;
     reasoning?: KaelReasoningReporter;
     response?: KaelResponseReporter;
   } = {},
@@ -79,12 +86,14 @@ export async function answerKaelAssistant(
     );
   }
 
-  const memorySummary = await buildKaelL2L3MemorySummary(client, {
-    customerId: ctx.user.id,
-    jobId: input.job_id ?? null,
-    includeCustomer: true,
-    maxTotalTokens: 1000,
-  });
+  const memorySummary = input.surface === "customer_normal"
+    ? options.memorySummary ?? null
+    : await buildKaelL2L3MemorySummary(client, {
+      customerId: ctx.user.id,
+      jobId: input.job_id ?? null,
+      includeCustomer: true,
+      maxTotalTokens: 1000,
+    });
   const answer = await runCustomerAssistant({
     actorId: ctx.user.id,
     client,
@@ -104,6 +113,11 @@ export async function answerKaelAssistant(
     serviceType: input.service_type ?? null,
     language: input.language,
     memorySummary,
+    previousTurns: options.previousTurns?.filter((turn): turn is NormalChatPreviousTurn & {
+      role: "customer" | "kael";
+    } => turn.role === "customer" || turn.role === "kael"),
+    normalChatSearchResults: options.normalChatSearchResults,
+    normalChatSearchUnavailable: options.normalChatSearchUnavailable,
     message: input.message,
     imageUrls: options.imageUrls,
     reasoning: options.reasoning,
@@ -111,6 +125,9 @@ export async function answerKaelAssistant(
     secrets,
     surface: input.surface,
   });
+  if (answer.normalChatImageAnalysis) {
+    options.onNormalChatImageAnalysis?.(answer.normalChatImageAnalysis);
+  }
   return {
     answer: answer.answer,
     safety_notes: answer.safety_notes,

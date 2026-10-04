@@ -26,7 +26,7 @@ Take the narrowest lane whose evidence answers that exact class:
 | **D — exact prior evidence** | `behavior` or `types` already executed for the exact commit | Exact commit SHA, workflow and job URL, and the log line that answers the question |
 | **C — hosted read-only** | `structure` on one named hosted target | Read-only access and the target's project ref or environment name |
 | **B — pinned Deno toolbox** | Current-checkout Edge `types` | An open local-runtime attempt budget, Docker daemon, and registry |
-| **A — local Supabase stack** | Current-checkout database `behavior`, migrations, SQL checks, and generated types | An open local-runtime attempt budget, daemon, registry, immutable RAM floor, disk, ports, and Supabase CLI |
+| **A — local Supabase stack** | Current-checkout database `behavior`, migrations, SQL checks, and generated types | An open local-runtime attempt budget, daemon, registry, disk, ports, and Supabase CLI; available RAM is informational |
 
 Never turn source inspection, an old green run, or a different commit into runtime proof. If no lane
 answers the question, report it as unanswered.
@@ -58,13 +58,11 @@ The local-runtime precondition is **gated and bounded**. Measure it only when La
 1. Complete the version policy above once for the current local attempt.
 2. Run one doctor probe with profile `lean` or `full`. The Docker daemon probe times out after exactly
    **15 seconds** and must reap its child process.
-3. `lean` has an immutable **4 GB** available-RAM floor. `full` has an immutable **7 GB** floor.
-   There is no numeric override and no skip-doctor route.
-4. When RAM is at or above the selected floor, run the required runtime lane immediately. When RAM
-   is below the floor, perform at most one safe RAM recovery pass, then one final doctor probe.
-5. If Tu explicitly asks to launch or restart Docker Desktop, do that at most once. Coalesce an
-   authorized launch/restart and any safe RAM recovery before the same single final bounded probe. A
-   plain **“Next Step”** does not authorize another launch, restart, recovery pass, or probe.
+3. Report available RAM for capacity context only. There is no minimum for either profile, no RAM
+   override, and RAM alone must never block a local-runtime attempt.
+4. If the doctor passes its daemon, disk, and port checks, run the required runtime lane immediately.
+5. If Tu explicitly asks to launch or restart Docker Desktop, do that at most once before the final
+   bounded doctor probe. A plain **“Next Step”** does not authorize another launch, restart, or probe.
 6. After that final probe, the attempt budget is exhausted. Retry only after Tu explicitly identifies
    a changed environment and authorizes a new attempt.
 
@@ -82,12 +80,6 @@ Tu. That user launch consumes the same `1/1` launch budget and permits exactly o
 If it is unavailable, close Lane A/B for the current attempt. Do not try elevation, scheduled tasks,
 WSL interop, AppData recreation, ACL repair, or a second launch as a workaround.
 
-The safe RAM recovery pass begins with a read-only process inventory. It may stop only stale task-owned
-helper, dev-server, test, or child processes tied to the current repo/session that are no longer needed,
-and have an exact PID, command, and root recorded. It protects Codex, Claude Code, system/security
-processes, Docker components needed by the run, and every user application that may contain unsaved
-work. Closing any other application requires Tu's explicit approval of the exact target.
-
 The skill never kills or terminates WSL, edits AppData or reparse points, touches Docker data,
 disables services, prunes images or volumes, or guesses ownership from a port. Those are separate
 host-repair or cleanup tasks and need their own exact scope and authority.
@@ -99,9 +91,8 @@ Record the counter before using the local runtime:
 ```text
 version update: 0/1
 daemon probes: 0/1
-RAM recovery: 0/1
 Docker Desktop launches or restarts: 0/0 unless explicitly authorized, then 0/1
-final probe after launch/restart or RAM recovery: 0/1
+final probe after launch/restart: 0/1
 Supabase starts: 0/1
 Deno registry pulls: 0/1
 runtime proof: 0/1
@@ -111,8 +102,8 @@ runtime proof: 0/1
   starts.
 - Explicit Docker Desktop authority permits one launch or restart and one final probe; it does not
   permit Windows, WSL, process, filesystem, or Docker-data repair.
-- RAM recovery is one bounded inventory-and-stop pass, not repeated host tuning. If the final probe
-  remains below the floor, local runtime is closed for this task state.
+- RAM is informational only and never blocks local runtime. Do not stop processes solely to satisfy
+  a RAM number; daemon, disk, and port checks still determine doctor readiness.
 - `up` calls `supabase start` once. `edge-check` pulls the pinned Deno image once. A failure is a
   result and closes that route for the current attempt.
 
@@ -238,7 +229,7 @@ Lane:
 Target or commit SHA:
 Docker version/current target:
 Attempt count:
-RAM recovery:
+RAM observation:
 Commands run:
 Runtime evidence: <lane-specific proof, or NOT REQUIRED>
 Local-runtime state: READY | BLOCKED | NOT REQUIRED
@@ -251,8 +242,8 @@ Unanswered:
 `PASS` means the chosen evidence route fully answered the exact question. `PARTIAL` means valid
 evidence answered only part of it. `UNVERIFIED` means no valid route produced evidence. For Lane C,
 name the read-only target. For Lane D, include SHA, workflow/job URLs, and the relevant log. For Lane
-A/B, include each bounded attempt count, the final Docker/Compose version result, RAM recovery
-decision, runtime command, and why the route stopped. Mark runtime evidence `NOT REQUIRED` when the
+A/B, include each bounded attempt count, the final Docker/Compose version result, the RAM observation
+(informational only), runtime command, and why the route stopped. Mark runtime evidence `NOT REQUIRED` when the
 question is fully answered without local execution; otherwise include lane-specific proof. `DONE`
 means all requested acceptance claims are answered. Use `BLOCKED` when a required proof route is
 unavailable; never claim completion from an unrun command or a closed lane.

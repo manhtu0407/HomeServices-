@@ -2,7 +2,6 @@ import { useState } from 'react'
 import { useWindowDimensions, View } from 'react-native'
 
 import { GlassSurface } from '@/components/ui/glass-surface'
-import { LiquidSurfaceOverlay } from '@/components/ui/liquid-back-button'
 import { color } from '@/design/theme'
 
 import { styles } from './session-menu-styles'
@@ -29,14 +28,6 @@ export function WorkerV5KaelSessionMenu({ reduceTransparency, ...props }: Worker
         testID="worker-v5-kael-session-menu-glass"
         variant="sheet"
       >
-        {!reduceTransparency ? (
-          <LiquidSurfaceOverlay
-            designHeight={180}
-            mode="light"
-            radius={18}
-            testID="worker-v5-kael-session-menu-liquid"
-          />
-        ) : null}
         <WorkerV5KaelSessionList onRenameEditorOpenChange={setRenameEditorOpen} reduceTransparency={reduceTransparency} {...props} />
       </GlassSurface>
     </View>

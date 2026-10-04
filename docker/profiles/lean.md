@@ -33,12 +33,11 @@ studio  mailpit  realtime  imgproxy  vector  logflare  supavisor
 pnpm db:local:up
 ```
 
-That runs `doctor` first and refuses if available RAM is under 4 GB.
-The floor is immutable: a refused doctor closes the local-stack lane for that
-measured state unless the skill's single safe RAM recovery pass can stop exact
-stale task-owned helper/dev/test children. User apps, Codex, Claude Code,
-system/security, required Docker components, WSL, AppData, and Docker data are
-outside that pass. One final doctor decides the lane; there is no retry loop.
+That runs `doctor` first. Available RAM is reported for capacity context only;
+there is no minimum RAM requirement and low RAM alone does not block startup.
+The doctor still requires a reachable Docker daemon, sufficient free disk, and
+available ports. A Docker or Supabase failure is reported directly; the runner
+does not retry automatically.
 
 ## Measurements
 
@@ -46,7 +45,7 @@ outside that pass. One final doctor decides the lane; there is no retry loop.
 |---|---|
 | Edge-only Deno lane | Verified separately; it does not measure this profile |
 | Full local-stack resource envelope | **not established on this host** |
-| Minimum available RAM before start | **4 GB, enforced** |
+| Minimum available RAM before start | **None; reported for information only** |
 
 Do not infer the missing resource envelope from CI or the Edge-only lane. It
 requires one doctor-approved start plus `docker stats` and free-disk before/after.

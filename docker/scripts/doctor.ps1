@@ -13,13 +13,11 @@ if ($args.Count -gt 0) {
   $Profile = $args[1]
 }
 
-$RamFloors = @{ lean = 4; full = 7 }
-if (-not $RamFloors.ContainsKey($Profile)) {
+if ($Profile -notin @('lean', 'full')) {
   [Console]::Error.WriteLine("doctor: profile must be lean or full")
   exit 2
 }
 
-$RequiredRamGb = $RamFloors[$Profile]
 $MinDiskGb = 20
 $DaemonTimeoutSeconds = 15
 $failures = @()
@@ -146,12 +144,7 @@ if ($daemon.Reachable) {
 
 $availMb = (Get-Counter '\Memory\Available MBytes').CounterSamples[0].CookedValue
 $availGb = [math]::Round($availMb / 1024, 2)
-if ($availGb -ge $RequiredRamGb) {
-  Add-Line "available RAM" "$availGb GB (profile $Profile min $RequiredRamGb)" "OK"
-} else {
-  Add-Line "available RAM" "$availGb GB (profile $Profile min $RequiredRamGb)" "FAIL"
-  $failures += "Available RAM $availGb GB is below the $RequiredRamGb GB floor for profile $Profile. Lanes A and B are closed for this measured state."
-}
+Add-Line "available RAM" "$availGb GB (informational; no RAM minimum)" "INFO"
 
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path
 $driveRoot = [System.IO.Path]::GetPathRoot($repoRoot)

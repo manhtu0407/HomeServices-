@@ -180,59 +180,39 @@ export const styles = StyleSheet.create({
   pressedReduced: {
     opacity: 0.78,
   },
-  renameActions: {
+  inlineRenameActions: {
     alignItems: 'center',
+    bottom: 0,
     flexDirection: 'row',
-    justifyContent: 'flex-end',
-    width: '100%',
+    gap: 2,
+    position: 'absolute',
+    right: 8,
+    top: 0,
   },
-  renameEditor: {
-    backgroundColor: 'rgba(246, 253, 251, 0.98)',
-    borderColor: 'rgba(137, 208, 199, 0.66)',
-    borderRadius: 15,
-    borderWidth: 1,
-    gap: 5,
-    padding: 8,
-    width: '100%',
+  inlineRenameCancel: {
+    alignItems: 'center',
+    borderRadius: radius.pill,
+    justifyContent: 'center',
+    minHeight: 44,
+    minWidth: 44,
+    paddingHorizontal: 3,
   },
-  renameInput: {
-    ...typography.caption1,
-    flex: 1,
-    minHeight: 38,
-    minWidth: 0,
-    paddingHorizontal: 10,
-    paddingVertical: 7,
-    width: '100%',
+  inlineRenameCancelText: {
+    color: color.text.muted,
+    ...typography.caption2,
+    fontWeight: '600',
   },
-  renameInputShell: {
-    borderRadius: 12,
-    minHeight: 40,
-    width: '100%',
-  },
-  renamePrimary: {
+  inlineRenameSave: {
     alignItems: 'center',
     backgroundColor: color.brand.primary,
     borderRadius: radius.pill,
     justifyContent: 'center',
     minHeight: 44,
-    minWidth: 70,
-    paddingHorizontal: 13,
+    minWidth: 44,
+    paddingHorizontal: 4,
   },
-  renamePrimaryText: {
-    color: '#FFFFFF',
-    ...typography.caption2,
-    fontWeight: '600',
-  },
-  renameSecondary: {
-    alignItems: 'center',
-    borderRadius: radius.pill,
-    justifyContent: 'center',
-    minHeight: 44,
-    minWidth: 64,
-    paddingHorizontal: 10,
-  },
-  renameSecondaryText: {
-    color: color.text.muted,
+  inlineRenameSaveText: {
+    color: color.text.inverse,
     ...typography.caption2,
     fontWeight: '600',
   },
@@ -252,6 +232,9 @@ export const styles = StyleSheet.create({
     flex: 1,
     gap: 0,
     minWidth: 0,
+  },
+  sessionCopyRenaming: {
+    paddingRight: 94,
   },
   sessionGroup: {
     gap: 3,
@@ -286,6 +269,16 @@ export const styles = StyleSheet.create({
     flexShrink: 1,
     ...typography.caption2,
     fontWeight: '600',
+  },
+  sessionTitleInput: {
+    backgroundColor: 'transparent',
+    borderColor: 'transparent',
+    borderWidth: 0,
+    flex: 1,
+    minWidth: 0,
+    paddingHorizontal: 0,
+    paddingVertical: 0,
+    textAlignVertical: 'center',
   },
   sessionTitleRow: {
     alignItems: 'center',

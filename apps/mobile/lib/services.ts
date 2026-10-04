@@ -1,6 +1,7 @@
 import { api, mobileApiUrl } from './api'
 import { customerMatchingRetryService } from './services/customer-matching-retry'
 import { customerMatchingSelectionService } from './services/customer-matching-selection'
+import { customerNormalChatSessionMethods, workerNormalChatSessionMethods } from './services/normal-chat-suggestions'
 import type { ApartmentAccessAuthorizationInput, CandidateDecisionStatus } from '@nestscout/shared'
 import { readResponseBlobBounded, withNetworkDeadline } from './response-guard'
 import {
@@ -342,6 +343,8 @@ export const kaelCharterService = {
 }
 
 export const customerKaelConversationService = {
+  ...customerNormalChatSessionMethods,
+
   create(input: CustomerKaelConversationCreateInput) {
     return api.post<CustomerKaelConversationResponse>('/me/kael/conversations', input)
   },
@@ -352,11 +355,6 @@ export const customerKaelConversationService = {
 
   get(conversationId: string) {
     return api.get<CustomerKaelConversationResponse>(`/me/kael/conversations/${conversationId}`)
-  },
-
-  archive(conversationId: string, confirmCaseWork = false) {
-    const confirmation = confirmCaseWork ? '?confirm_case_work=true' : ''
-    return api.delete<CustomerKaelConversationArchiveResponse>(`/me/kael/conversations/${conversationId}${confirmation}`)
   },
 
   rename(conversationId: string, input: CustomerKaelConversationRenameInput) {
@@ -410,16 +408,14 @@ export const kaelChatStreamService = {
 }
 
 export const workerKaelChatService = {
+  ...workerNormalChatSessionMethods,
+
   create(input: WorkerKaelChatCreateInput) {
     return api.post<WorkerKaelChatResponse>('/workers/me/kael/chat', input)
   },
 
   list(mode: WorkerKaelChatMode) {
     return api.get<WorkerKaelChatListResponse>(`/workers/me/kael/chat?mode=${encodeURIComponent(mode)}`)
-  },
-
-  archive(sessionId: string) {
-    return api.delete<WorkerKaelChatArchiveResponse>(`/workers/me/kael/chat/${sessionId}`)
   },
 
   rename(sessionId: string, input: WorkerKaelChatRenameInput) {

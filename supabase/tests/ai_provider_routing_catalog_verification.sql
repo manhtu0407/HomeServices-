@@ -28,7 +28,12 @@ begin
     ('job_incident', 'deepseek', 'deepseek-v4-flash', 'anthropic', 'claude-sonnet-5', 0.004::numeric, 5000, true, 30::numeric),
     ('post_job_learning', 'deepseek', 'deepseek-v4-pro', 'anthropic', 'claude-sonnet-5', 0.012::numeric, 15000, false, 30::numeric),
     ('educational_response', 'deepseek', 'deepseek-v4-flash', 'anthropic', 'claude-haiku-4-5-20251001', 0.003::numeric, 2000, true, 30::numeric),
-    ('worker_assist', 'deepseek', 'deepseek-v4-flash', 'anthropic', 'claude-sonnet-5', 0.004::numeric, 5000, true, 30::numeric)
+    ('worker_assist', 'deepseek', 'deepseek-v4-flash', 'anthropic', 'claude-sonnet-5', 0.004::numeric, 5000, true, 30::numeric),
+    ('normal_chat_vision', 'anthropic', 'claude-sonnet-5-5', 'anthropic', 'claude-sonnet-5', 0.025::numeric, 15000, false, 30::numeric),
+    ('normal_chat_response', 'deepseek', 'deepseek-v4-pro', 'deepseek', 'deepseek-v4-flash', 0.010::numeric, 12000, true, 30::numeric),
+    ('normal_chat_memory', 'deepseek', 'deepseek-v4-flash', null, null, 0.005::numeric, 8000, false, 30::numeric),
+    ('normal_chat_search', 'perplexity', 'pplx-fast-search', null, null, 0.001::numeric, 8000, false, 30::numeric),
+    ('normal_chat_suggestions', 'deepseek', 'deepseek-v4-flash', null, null, 0.005::numeric, 8000, false, 30::numeric)
   )
   select count(*)::integer
     into v_mismatch_count
@@ -48,8 +53,8 @@ begin
     raise exception 'durable provider routing catalog differs from runtime config';
   end if;
 
-  if (select count(*) from public.ai_provider_routing) <> 13 then
-    raise exception 'provider routing catalog must contain exactly 13 purposes';
+  if (select count(*) from public.ai_provider_routing) <> 18 then
+    raise exception 'provider routing catalog must contain exactly 18 purposes';
   end if;
 
   begin
@@ -82,6 +87,17 @@ select jsonb_build_object(
     select count(*) = 2
     from public.ai_provider_routing
     where purpose in ('job_incident', 'worker_assist')
+  ),
+  'normal_chat_purposes_present', (
+    select count(*) = 5
+    from public.ai_provider_routing
+    where purpose in (
+      'normal_chat_vision',
+      'normal_chat_response',
+      'normal_chat_memory',
+      'normal_chat_search',
+      'normal_chat_suggestions'
+    )
   )
 ) as verification;
 

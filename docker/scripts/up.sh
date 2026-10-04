@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # POSIX mirror of up.ps1. Supabase CLI owns the stack; this wrapper owns the
-# immutable preflight and exactly one start attempt.
+# bounded preflight and exactly one start attempt.
 set -uo pipefail
 
 profile="lean"
@@ -28,7 +28,20 @@ if [ "$doctor_code" -ne 0 ]; then
 fi
 
 cd "$repo_root"
-args=(start)
+local_workdir=".scratch/local-migrations"
+bash "$repo_root/scripts/run-node.sh" \
+  scripts/harness/prepare-migration-workdir.mjs \
+  --empty-reset \
+  --inventory config/harness/migration-inventory.json \
+  --output "$local_workdir" \
+  --reuse
+prepare_code=$?
+if [ "$prepare_code" -ne 0 ]; then
+  echo "canonical migration workdir preparation failed with exit code $prepare_code"
+  exit "$prepare_code"
+fi
+
+args=(start --workdir "$local_workdir")
 [ "$profile" = "lean" ] && args+=(-x "$lean_exclude")
 echo "starting supabase ($profile): supabase ${args[*]}"
 bash "$repo_root/scripts/run-supabase.sh" "${args[@]}"

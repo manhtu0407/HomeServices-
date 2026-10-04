@@ -50,6 +50,10 @@ const perplexity = (model = "sonar"): ProviderRoute => ({
   provider: "perplexity",
   model,
 });
+const perplexityFastSearch = (): ProviderRoute => ({
+  provider: "perplexity",
+  model: "pplx-fast-search",
+});
 
 export const KAEL_ROUTING_CONFIG: Record<KaelPurpose, KaelPurposeRoutingConfig> = Object.freeze({
   // Staging telemetry over 2699 successful calls put this route at p50 3.4s / p90 4.0s / p99 5.8s,
@@ -87,6 +91,16 @@ export const KAEL_ROUTING_CONFIG: Record<KaelPurpose, KaelPurposeRoutingConfig> 
   worker_assist: config("worker_assist", deepseek(), anthropic(), 0.004, 5_000, true, 180, {
     simpleNormalChatPrimary: deepseekFlash(),
   }),
+  normal_chat_vision: config("normal_chat_vision", anthropic("claude-sonnet-5-5"), undefined, 0.025, 15_000, false, 600, {
+    modelFallback: anthropic("claude-sonnet-5"),
+  }),
+  normal_chat_response: config("normal_chat_response", deepseek(), undefined, 0.01, 12_000, true, 1_500, {
+    simpleNormalChatPrimary: deepseekFlash(),
+    modelFallback: deepseekFlash(),
+  }),
+  normal_chat_memory: config("normal_chat_memory", deepseek("deepseek-v4-flash"), undefined, 0.005, 8_000, false, 800),
+  normal_chat_search: config("normal_chat_search", perplexityFastSearch(), undefined, 0.001, 8_000, false, 5),
+  normal_chat_suggestions: config("normal_chat_suggestions", deepseekFlash(), undefined, 0.005, 8_000, false, 350),
 });
 
 export function maxTokensForPurpose(

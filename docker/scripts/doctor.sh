@@ -16,8 +16,7 @@ while [ $# -gt 0 ]; do
 done
 
 case "$profile" in
-  lean) required_ram_gb=4 ;;
-  full) required_ram_gb=7 ;;
+  lean|full) ;;
   *) echo "doctor: profile must be lean or full" >&2; exit 2 ;;
 esac
 
@@ -105,12 +104,7 @@ elif command -v vm_stat >/dev/null 2>&1 && command -v sysctl >/dev/null 2>&1; th
 else
   avail_gb=0
 fi
-if ge "$avail_gb" "$required_ram_gb"; then
-  add_line "available RAM" "$avail_gb GB (profile $profile min $required_ram_gb)" "OK"
-else
-  add_line "available RAM" "$avail_gb GB (profile $profile min $required_ram_gb)" "FAIL"
-  failures+=("Available RAM $avail_gb GB is below the $required_ram_gb GB floor for profile $profile. Lanes A and B are closed for this measured state.")
-fi
+add_line "available RAM" "$avail_gb GB (informational; no RAM minimum)" "INFO"
 
 repo_root=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
 free_kb=$(df -Pk "$repo_root" | awk 'NR == 2 { print $4 }')

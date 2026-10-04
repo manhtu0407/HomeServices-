@@ -95,6 +95,7 @@
   "kael_memory_archive",
   "kael_memory_audit",
   "kael_memory_update_receipts",
+  "kael_normal_chat_session_memory",
   "kael_optimization_metrics",
   "kael_permission_audit",
   "kael_provider_circuit",

@@ -11,6 +11,7 @@ import {
   workerKaelChatPinSchema,
   workerKaelChatRenameSchema,
   workerKaelChatTurnSchema,
+  normalChatSuggestionsRequestSchema,
   workerKaelFeedbackSchema,
   workerKaelMemoryPreferenceUpdateSchema,
   workerKaelTrainingConsentSchema,
@@ -137,6 +138,11 @@ export async function dispatchWorkerRoute(
       const input = workerKaelChatTurnSchema.safeParse(await readJson(request));
       if (!input.success) apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
       return services.sendWorkerKaelChatTurn(ctx, route.sessionId, input.data);
+    }
+    case "workers.kaelChat.suggestions": {
+      const input = normalChatSuggestionsRequestSchema.safeParse(await readJson(request));
+      if (!input.success) apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
+      return services.createWorkerKaelChatSuggestions(ctx, route.sessionId, input.data);
     }
     case "workers.kaelFeedback": {
       const input = workerKaelFeedbackSchema.safeParse(await readJson(request));

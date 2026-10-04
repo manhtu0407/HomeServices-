@@ -139,7 +139,7 @@ const ANTHROPIC_ADAPTER: ProviderAdapter = {
 };
 
 function anthropicRejectsSamplingParameters(model: string): boolean {
-  return model === "claude-sonnet-5" || model === "claude-opus-4-8";
+  return model === "claude-sonnet-5" || model === "claude-sonnet-5-5" || model === "claude-opus-4-8";
 }
 
 const DEEPSEEK_ADAPTER: ProviderAdapter = {
@@ -167,16 +167,97 @@ const PERPLEXITY_ADAPTER: ProviderAdapter = {
     jsonMode: false,
     promptCache: false,
   },
-  buildRequest: ({ request, apiKey }) => openAiCompatibleRequest({
-    request,
-    apiKey,
-    url: "https://api.perplexity.ai/v1/sonar",
-    provider: "perplexity",
-  }),
-  parseResponse: (input) => parseOpenAiCompatibleResponse(input, PERPLEXITY_ADAPTER),
+  buildRequest: ({ request, apiKey }) => request.purpose === "normal_chat_search"
+    ? perplexityNormalChatSearchRequest(request, apiKey)
+    : openAiCompatibleRequest({
+      request,
+      apiKey,
+      url: "https://api.perplexity.ai/v1/sonar",
+      provider: "perplexity",
+    }),
+  parseResponse: (input) => input.request.purpose === "normal_chat_search"
+    ? parsePerplexityNormalChatSearchResponse(input)
+    : parseOpenAiCompatibleResponse(input, PERPLEXITY_ADAPTER),
   cost: (input) => calculateAdapterCost("perplexity", input),
   classifyFailure: classifyTransportFailure,
 };
+
+function perplexityNormalChatSearchRequest(
+  request: AIRequest,
+  apiKey: string,
+): ProviderRequestSpec {
+  const latestUserMessage = [...request.messages].reverse()
+    .find((message) => message.role === "user");
+  const query = aiMessageContentToText(latestUserMessage?.content).trim().slice(0, 500);
+  if (!query) throw new Error("NORMAL_CHAT_SEARCH_QUERY_REQUIRED");
+  return {
+    url: "https://api.perplexity.ai/search",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: {
+      query,
+      country: "VN",
+      max_results: 5,
+      search_type: "fast",
+      search_context_size: "low",
+      search_language_filter: request.searchLanguageFilter ?? ["vi", "en"],
+    },
+  };
+}
+
+function parsePerplexityNormalChatSearchResponse(
+  input: ProviderAdapterResponseInput,
+): AIResponse {
+  const rawResults = Array.isArray(input.data.results) ? input.data.results : [];
+  const results = rawResults.slice(0, 5).flatMap((value) => {
+    if (!value || typeof value !== "object" || Array.isArray(value)) return [];
+    const row = value as Record<string, unknown>;
+    const title = typeof row.title === "string" ? row.title.trim().slice(0, 180) : "";
+    const snippet = typeof row.snippet === "string" ? row.snippet.trim().slice(0, 1_000) : "";
+    const url = safeSearchResultUrl(row.url);
+    if (!title || !snippet || !url) return [];
+    return [{
+      title,
+      url,
+      snippet,
+      ...(typeof row.date === "string" ? { date: row.date.slice(0, 40) } : {}),
+      ...(typeof row.last_updated === "string" ? { last_updated: row.last_updated.slice(0, 40) } : {}),
+    }];
+  });
+  return {
+    success: true,
+    content: JSON.stringify({ results }),
+    usage: {
+      inputTokens: 0,
+      outputTokens: 0,
+      costUsd: PERPLEXITY_ADAPTER.cost({
+        model: input.model,
+        inputTokens: 0,
+        outputTokens: 0,
+        searchContextSize: "low",
+        pricingAt: input.pricingAt,
+        unknownModelPolicy: input.unknownModelPolicy,
+      }),
+    },
+    latencyMs: input.latencyMs,
+    citations: results.map((result) => result.url),
+  };
+}
+
+function safeSearchResultUrl(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  try {
+    const url = new URL(value);
+    if ((url.protocol !== "https:" && url.protocol !== "http:") || url.username || url.password) {
+      return null;
+    }
+    return url.toString().slice(0, 2_000);
+  } catch {
+    return null;
+  }
+}
 
 const PROVIDER_ADAPTERS: Record<AIProvider, ProviderAdapter> = {
   anthropic: ANTHROPIC_ADAPTER,

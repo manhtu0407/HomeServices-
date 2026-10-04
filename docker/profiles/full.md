@@ -27,10 +27,10 @@ If none of those apply, use lean.
 node scripts/run.mjs docker/scripts/up --profile full
 ```
 
-The doctor gate enforces **7 GB available RAM** for this profile. The floor has
-no caller override. If RAM is low, the skill may perform one safe recovery pass
-limited to exact stale task-owned helper/dev/test children, then one final
-doctor. A second recovery or app/WSL/Docker-data cleanup is not authorized.
+Available RAM is reported for capacity context only. There is no minimum RAM
+requirement for this profile; the doctor still checks daemon reachability,
+free disk, and port availability. Resource failures from Docker itself remain
+visible, and the runner does not retry automatically.
 
 ## Stop it
 

@@ -157,6 +157,22 @@ function DashboardBackground({ reduceMotion, reduceTransparency }: { reduceMotio
   )
 }
 
+export function WorkerEarningsFullBleedScene({ children }: { children: ReactNode }) {
+  return (
+    <View style={styles.fullBleedScene} testID="worker-v5-earnings-full-bleed-scene">
+      <Image
+        accessible={false}
+        contentFit="fill"
+        pointerEvents="none"
+        source={workerIncomeDashboardAssets.background}
+        style={styles.fullBleedBackground}
+        testID="worker-v5-earnings-safe-area-background"
+      />
+      {children}
+    </View>
+  )
+}
+
 function comparisonCopy(comparison: WorkerEarningsComparison, language: AppLanguage) {
   if (comparison.state === 'missing-baseline') {
     return textByLanguage(language, 'Chưa đủ dữ liệu kỳ trước', 'Not enough previous-period data')
@@ -693,6 +709,8 @@ const absoluteFill = { bottom: 0, left: 0, position: 'absolute', right: 0, top: 
 
 const styles = StyleSheet.create({
   root: { alignItems: 'center', alignSelf: 'center', overflow: 'visible' },
+  fullBleedScene: { flex: 1, position: 'relative' },
+  fullBleedBackground: { ...absoluteFill },
   backgroundBleed: { left: 0, overflow: 'hidden', position: 'absolute' },
   stage: { position: 'relative', zIndex: 1 },
   dashboardCard: { backgroundColor: colors.transparent, overflow: 'hidden', width: '100%' },

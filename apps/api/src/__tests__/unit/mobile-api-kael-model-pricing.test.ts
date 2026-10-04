@@ -23,22 +23,26 @@ describe('mobile-api Kael per-model pricing registry', () => {
       'claude-opus-4-8',
       'claude-sonnet-4-6',
       'claude-sonnet-5',
+      'claude-sonnet-5-5',
       'deepseek-v4-flash',
       'deepseek-v4-pro',
       'sonar',
       'sonar-pro',
+      'pplx-fast-search',
     ]))
   })
 
   it.each([
     ['anthropic', 'claude-sonnet-4-6', 18],
     ['anthropic', 'claude-sonnet-5', 12],
+    ['anthropic', 'claude-sonnet-5-5', 12],
     ['anthropic', 'claude-opus-4-8', 30],
     ['anthropic', 'claude-haiku-4-5-20251001', 6],
     ['deepseek', 'deepseek-v4-flash', 0.42],
     ['deepseek', 'deepseek-v4-pro', 1.305],
     ['perplexity', 'sonar', 2.005],
     ['perplexity', 'sonar-pro', 18.006],
+    ['perplexity', 'pplx-fast-search', 0.001],
   ] as const)('calculates official token and low-context request cost for %s/%s', (
     provider,
     model,

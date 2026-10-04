@@ -2,8 +2,8 @@
   "version": "1.0.0",
   "source": {
     "migrationRoot": "supabase/migrations",
-    "migrationCount": 427,
-    "migrationDigest": "80e59e1e147c7a64cf17330d7ea2cf35e1da8fb4e189e1172afeacbbf9661504"
+    "migrationCount": 430,
+    "migrationDigest": "377b009ae772154676aa377bb255cbebd1767725b2e67423970450040221e43a"
   },
   "actors": [
     "anonymous",
@@ -1729,6 +1729,24 @@
       "actorCommands": {
         "anonymous": [],
         "authenticated": []
+      },
+      "serviceRole": [
+        "select",
+        "insert",
+        "update",
+        "delete"
+      ],
+      "realtime": false
+    },
+    {
+      "name": "kael_normal_chat_session_memory",
+      "classification": "actor-scoped",
+      "rlsEnabled": true,
+      "actorCommands": {
+        "anonymous": [],
+        "authenticated": [
+          "select"
+        ]
       },
       "serviceRole": [
         "select",
@@ -4155,6 +4173,14 @@
       ]
     },
     {
+      "signature": "append_customer_kael_conversation_exchange(uuid, uuid, uuid, text, text[], text, jsonb)",
+      "securityDefiner": false,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
       "signature": "append_customer_kael_conversation_exchange(uuid, uuid, uuid, text, text[], text)",
       "securityDefiner": false,
       "fixedSearchPath": true,
@@ -6202,6 +6228,14 @@
     },
     {
       "signature": "upsert_job_incident_signal_atomic(uuid, uuid, text, text, jsonb, uuid, uuid, text)",
+      "securityDefiner": true,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
+      "signature": "upsert_kael_normal_chat_session_memory(text, uuid, uuid, integer, integer, text, jsonb)",
       "securityDefiner": true,
       "fixedSearchPath": true,
       "executeRoles": [

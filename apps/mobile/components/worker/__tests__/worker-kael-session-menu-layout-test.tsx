@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react-native'
+import { fireEvent, render, screen, within } from '@testing-library/react-native'
 import { StyleSheet } from 'react-native'
 
 import type { WorkerKaelChatSession } from '@/lib/api-types'
@@ -32,7 +32,7 @@ const session: WorkerKaelChatSession = {
 }
 
 describe('Worker Kael session rename layout', () => {
-  it('expands the session menu and keeps the title editor within its available width', () => {
+  it('edits the title directly on its row and keeps the input within the available width', () => {
     const onSelect = jest.fn()
     render(
       <WorkerV5KaelSessionMenu
@@ -72,11 +72,34 @@ describe('Worker Kael session rename layout', () => {
     const menuStyle = StyleSheet.flatten(screen.getByTestId('worker-v5-kael-session-menu-shell').props.style)
     const listStyle = StyleSheet.flatten(screen.getByTestId('worker-v5-kael-session-list').props.style)
     const input = screen.getByTestId('worker-v5-kael-session-title-input')
+    const titleRow = screen.getByTestId('worker-v5-kael-session-title-row-layout-session')
+    const sessionCopy = screen.getByTestId('worker-v5-kael-session-copy-layout-session')
+    const renameActions = screen.getByTestId('worker-v5-kael-session-rename-actions-layout-session')
+    const renameCancel = screen.getByTestId('worker-v5-kael-session-title-cancel')
+    const renameSave = screen.getByTestId('worker-v5-kael-session-title-save')
     expect(menuStyle.width).toBe('92%')
     expect(menuStyle.maxWidth).toBeLessThanOrEqual(440)
     expect(listStyle.maxHeight).toBeGreaterThan(138)
     expect(listStyle.maxHeight).toBeLessThanOrEqual(240)
+    expect(within(titleRow).getByTestId('worker-v5-kael-session-title-input')).toBeOnTheScreen()
+    expect(screen.queryByTestId('worker-v5-kael-session-rename-editor-layout-session')).toBeNull()
     expect(input.props.selectTextOnFocus).toBeFalsy()
-    expect(StyleSheet.flatten(input.props.style)).toMatchObject({ flex: 1, minWidth: 0, width: '100%' })
+    expect(StyleSheet.flatten(input.props.style)).toMatchObject({
+      backgroundColor: 'transparent',
+      borderWidth: 0,
+      flex: 1,
+      minWidth: 0,
+      paddingHorizontal: 0,
+    })
+    expect(renameCancel).toBeOnTheScreen()
+    expect(StyleSheet.flatten(sessionCopy.props.style)).toMatchObject({ paddingRight: 94 })
+    expect(StyleSheet.flatten(renameActions.props.style)).toMatchObject({
+      bottom: 0,
+      position: 'absolute',
+      right: 8,
+      top: 0,
+    })
+    expect(StyleSheet.flatten(renameCancel.props.style)).toMatchObject({ minHeight: 44, minWidth: 44 })
+    expect(StyleSheet.flatten(renameSave.props.style)).toMatchObject({ minHeight: 44, minWidth: 44 })
   })
 })

@@ -172,19 +172,18 @@ type KaelTextFieldProps = TextInputProps & {
   inputShellAdornment?: ReactNode
   inputShellStyle?: StyleProp<ViewStyle>
   inputShellTestID?: string
+  inputRef?: Ref<TextInput>
   label?: string
   labelStyle?: StyleProp<TextStyle>
   mode?: 'text' | 'search'
   shellStyle?: StyleProp<ViewStyle>
 }
 
-// A multiline field starts one line tall with equal padding, so its text sits centred like a
-// single-line field, and grows with what is typed up to a cap, then scrolls without a visible bar.
-// Native inputs grow by themselves; the web textarea is sized from its content height.
+// Multiline fields stay uncapped; bounded composers size from content events, and web fields use content height.
 const MULTILINE_ONE_LINE_HEIGHT = 46
 const MULTILINE_MAX_HEIGHT = 160
 
-export function KaelTextField({ inputShellAdornment, inputShellStyle, inputShellTestID, label, labelStyle, mode = 'text', onContentSizeChange, shellStyle, style, ...inputProps }: KaelTextFieldProps) {
+export function KaelTextField({ inputRef, inputShellAdornment, inputShellStyle, inputShellTestID, label, labelStyle, mode = 'text', onContentSizeChange, shellStyle, style, ...inputProps }: KaelTextFieldProps) {
   const [contentHeight, setContentHeight] = useState(MULTILINE_ONE_LINE_HEIGHT)
   const multiline = Boolean(inputProps.multiline)
   const webHeight = multiline && Platform.OS === 'web'
@@ -197,10 +196,10 @@ export function KaelTextField({ inputShellAdornment, inputShellStyle, inputShell
         {inputShellAdornment}
         {mode === 'search' ? <SearchIcon /> : null}
         <TextInput spellCheck={false}
-          numberOfLines={multiline ? 1 : undefined}
           placeholderTextColor={component.input.placeholder}
           style={[styles.input, webTextInputNoOutline, mode === 'search' ? styles.searchInput : null, multiline ? [styles.multilineInput, webHeight] : styles.singleLineInput, style]}
           {...inputProps}
+          ref={inputRef}
           onContentSizeChange={(event) => {
             if (multiline) setContentHeight(event.nativeEvent.contentSize.height)
             onContentSizeChange?.(event)

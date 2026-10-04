@@ -34,11 +34,14 @@ type Props = {
   composerMediaDrafts: LocalMediaUploadDraft[]
   composer: {
     busy: boolean
+    sending: boolean
     canUseMedia: boolean
     draft: string
     hasVoiceTranscript: boolean
     mediaDraftCount: number
     placeholder: string
+    starterVisible: boolean
+    suggestions: { id: string; text: string }[]
     show: boolean
   }
   error: string | null
@@ -126,7 +129,7 @@ export function KaelChatSurfaceView({
   visibility,
   workerCandidateNode,
 }: Props) {
-  const { busy: composerBusy, canUseMedia: canUseComposerMedia, draft, hasVoiceTranscript, mediaDraftCount: composerMediaDraftCount, placeholder: composerPlaceholder, show: showComposer } = composer
+  const { busy: composerBusy, sending: composerSending, canUseMedia: canUseComposerMedia, draft, hasVoiceTranscript, mediaDraftCount: composerMediaDraftCount, placeholder: composerPlaceholder, starterVisible, suggestions, show: showComposer } = composer
   const { reduceMotion, reduceTransparency } = motion
   const {
     hydratingCase,
@@ -216,6 +219,7 @@ export function KaelChatSurfaceView({
               allowVideoSelection={mode === 'case'}
               canUseComposerMedia={canUseComposerMedia}
               composerBusy={composerBusy}
+              composerSending={composerSending}
               composerMediaDraftCount={composerMediaDraftCount}
               composerMediaDrafts={mode === 'normal' ? composerMediaDrafts : []}
               composerPlaceholder={composerPlaceholder}
@@ -229,6 +233,8 @@ export function KaelChatSurfaceView({
               onRemoveComposerMediaDraft={onRemoveComposerMediaDraft}
               onSendMessage={onSendMessage}
               onStopMessage={onStopMessage}
+              normalChatStarterVisible={starterVisible}
+              normalChatSuggestions={suggestions}
               rootStyles={rootStyles}
               stopAvailable={mode === 'normal'}
               textInputNoOutlineStyle={textInputNoOutlineStyle}

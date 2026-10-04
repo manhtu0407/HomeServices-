@@ -20,6 +20,11 @@ export const customerKaelConversationTurnSchema = z.object({
   ),
 }).strict();
 
+export const normalChatSuggestionsRequestSchema = z.object({
+  language: z.enum(["vi", "en"]),
+  source_turn_id: z.string().uuid(),
+}).strict();
+
 export const customerKaelConversationRenameSchema = z.object({
   title: z.string().trim().min(1).max(64),
 }).strict();
@@ -37,6 +42,16 @@ export type EdgeCustomerKaelConversationCreateInput = z.infer<
 export type EdgeCustomerKaelConversationTurnInput = z.infer<
   typeof customerKaelConversationTurnSchema
 >;
+export type EdgeNormalChatSuggestionsRequest = z.infer<
+  typeof normalChatSuggestionsRequestSchema
+>;
+export type EdgeNormalChatSuggestionsResponse = {
+  status: "ready" | "unavailable";
+  session_id: string;
+  source_turn_id: string;
+  language: "vi" | "en";
+  suggestions: { id: string; text: string }[];
+};
 export type EdgeCustomerKaelConversationRenameInput = z.infer<
   typeof customerKaelConversationRenameSchema
 >;

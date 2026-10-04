@@ -45,6 +45,12 @@ export const color = {
     stroke: '#D8EBE8',
     strokeStrong: '#B8E7DF',
   },
+  kaelChatSend: {
+    idleBackground: '#F2FAF9',
+    idleForeground: '#071A24',
+    sendingBackground: '#071A24',
+    sendingForeground: '#F2FAF9',
+  },
   accent: {
     aqua: '#22D1C8',
     skyBlue: '#38BDF8',

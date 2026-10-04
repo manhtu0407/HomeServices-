@@ -29,6 +29,13 @@ export type WorkerV5KaelSessionListRequest = {
 
 export const PREFETCH_SESSION_LIMIT = 4
 
+export function canShowWorkerStaticNormalChatStarters(
+  mode: 'normal' | 'intake',
+  liveTurnCount: number,
+) {
+  return mode === 'normal' && liveTurnCount === 0
+}
+
 export function workerV5KaelAdvisoryUnavailableReply(
   readOnly: boolean,
   language: AppLanguage,
