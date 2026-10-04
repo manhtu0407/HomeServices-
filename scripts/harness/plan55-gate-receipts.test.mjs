@@ -1138,7 +1138,77 @@ test('coverage preflight names the full unsupported gate set in one error', () =
 
 test('paired-wave outcome proof is exact-source, preregistered, complete, and threshold-bound', () => {
   const gate = 'plan55-paired-wave-1-pass'
-  const preregistration = sourcePolicy.pairedWavePreregistration
+  const fixtureMinimumSampleCounts = {
+    eligibleActors: 2,
+    requests: 20,
+    completedCases: 12,
+    latencyObservations: 20,
+    costObservations: 20,
+  }
+  const preregistration = {
+    schemaVersion: 'plan55-paired-wave-preregistration.v2',
+    cohortId: sourcePolicy.pairedWavePreregistration.cohortId,
+    observationWindowMinutes: sourcePolicy.pairedWavePreregistration.observationWindowMinutes,
+    minimumSampleCounts: fixtureMinimumSampleCounts,
+    costAttributionSourceId: 'test_cost_export_v1',
+  }
+  const policy = { ...sourcePolicy, pairedWavePreregistration: preregistration }
+  const identity = {
+    environment: 'production',
+    projectRef: policy.projectRef,
+    policyId: policy.policyId,
+    policySha256: policy.policySha256,
+    releaseId: release.releaseId,
+    sourceSha: release.gitSha,
+    waveNumber: 1,
+    cohortId: preregistration.cohortId,
+  }
+  const activation = {
+    schemaVersion: 'plan55-paired-wave-activation-evidence.v1',
+    ...identity,
+    fromState: 'rollback_drill',
+    toState: 'paired_wave_1',
+    transitionId: `transition-${'a'.repeat(64)}`,
+    activatedAt: '2026-10-01T10:00:00.000Z',
+  }
+  const observations = {
+    schemaVersion: 'plan55-paired-wave-observations.v1',
+    ...identity,
+    activationEvidenceSha256: digest(Buffer.from(JSON.stringify(activation))),
+    windowStartedAt: activation.activatedAt,
+    windowCompletedAt: '2026-10-01T11:00:00.000Z',
+    sampleCounts: {
+      eligibleActors: 4,
+      requests: 200,
+      completedCases: 48,
+      latencyObservations: 200,
+      costObservations: 200,
+    },
+    failures: { safety: 0, authorization: 0, confirmation: 0, requestErrors: 0 },
+    latency: { baselineP95Ms: 800, observedP95Ms: 800 },
+  }
+  const costAttribution = {
+    schemaVersion: 'plan55-paired-wave-cost-attribution.v1',
+    ...identity,
+    sourceId: preregistration.costAttributionSourceId,
+    attributionId: `cost-${'b'.repeat(64)}`,
+    currency: 'USD',
+    windowStartedAt: observations.windowStartedAt,
+    windowCompletedAt: observations.windowCompletedAt,
+    sampleCount: observations.sampleCounts.costObservations,
+    baselineUsd: 1.25,
+    observedUsd: 1.25,
+  }
+  const sidecarPaths = {
+    activation: 'plan55/paired-wave-1/activation.json',
+    observations: 'plan55/paired-wave-1/observations.json',
+    costAttribution: 'plan55/paired-wave-1/cost-attribution.json',
+  }
+  const sourceArtifactFiles = new Map([
+    [sidecarPaths.activation, Buffer.from(JSON.stringify(activation))],
+    [sidecarPaths.observations, Buffer.from(JSON.stringify(observations))],
+    [sidecarPaths.costAttribution, Buffer.from(JSON.stringify(costAttribution))],
+  ])
   const metrics = {
     critical_safety_failures: 0,
     authz_bypass_failures: 0,
@@ -1148,31 +1218,36 @@ test('paired-wave outcome proof is exact-source, preregistered, complete, and th
     cost_regression: 0,
   }
   const proof = {
-    schemaVersion: 'plan55-paired-wave-outcome-proof.v1',
+    schemaVersion: 'plan55-paired-wave-outcome-proof.v2',
     gate,
     status: 'PASS',
-    environment: 'production',
-    projectRef: sourcePolicy.projectRef,
-    policyId: sourcePolicy.policyId,
-    policySha256: sourcePolicy.policySha256,
-    releaseId: release.releaseId,
-    sourceSha: release.gitSha,
-    waveNumber: 1,
-    cohortId: preregistration.cohortId,
+    ...identity,
     observationWindowMinutes: preregistration.observationWindowMinutes,
-    windowStartedAt: '2026-10-01T10:00:00.000Z',
-    windowCompletedAt: '2026-10-01T11:00:00.000Z',
+    windowStartedAt: observations.windowStartedAt,
+    windowCompletedAt: observations.windowCompletedAt,
+    activationEvidenceSha256: digest(sourceArtifactFiles.get(sidecarPaths.activation)),
+    observationsEvidenceSha256: digest(sourceArtifactFiles.get(sidecarPaths.observations)),
+    costAttributionEvidenceSha256: digest(sourceArtifactFiles.get(sidecarPaths.costAttribution)),
     metrics,
   }
   const context = {
     gate,
-    policy: sourcePolicy,
+    policy,
     release,
     targetState: 'paired_wave_2',
     provenance: { runUpdatedAt: '2026-10-01T11:05:00.000Z' },
+    sourceArtifactFiles,
   }
 
   assert.equal(assertPlan55PairedWaveOutcomeProof(proof, context), true)
+
+  for (const targetState of ['paired_wave_3', 'production']) {
+    assert.equal(assertPlan55PairedWaveOutcomeProof(proof, { ...context, targetState }), true)
+  }
+  assert.throws(() => assertPlan55PairedWaveOutcomeProof(proof, {
+    ...context,
+    policy: sourcePolicy,
+  }), /paired-wave outcome evidence contract failed/u)
 
   const mutations = [
     (value) => { value.sourceSha = 'b'.repeat(40) },
@@ -1196,6 +1271,64 @@ test('paired-wave outcome proof is exact-source, preregistered, complete, and th
     ...context,
     provenance: { runUpdatedAt: '2026-10-01T10:59:00.000Z' },
   }), /paired-wave outcome evidence contract failed/u)
+
+  const staleActivation = new Map(sourceArtifactFiles)
+  const staleActivationBytes = Buffer.from(JSON.stringify({ ...activation, activatedAt: '2026-10-01T09:59:00.000Z' }))
+  staleActivation.set(sidecarPaths.activation, staleActivationBytes)
+  const staleObservationBytes = Buffer.from(JSON.stringify({
+    ...observations,
+    activationEvidenceSha256: digest(staleActivationBytes),
+  }))
+  staleActivation.set(sidecarPaths.observations, staleObservationBytes)
+  assert.throws(() => assertPlan55PairedWaveOutcomeProof({
+    ...proof,
+    activationEvidenceSha256: digest(staleActivationBytes),
+    observationsEvidenceSha256: digest(staleObservationBytes),
+  }, { ...context, sourceArtifactFiles: staleActivation }),
+  /paired-wave outcome evidence contract failed/u)
+
+  const undersampled = new Map(sourceArtifactFiles)
+  const undersampledBytes = Buffer.from(JSON.stringify({
+    ...observations,
+    sampleCounts: { ...observations.sampleCounts, requests: fixtureMinimumSampleCounts.requests - 1 },
+  }))
+  undersampled.set(sidecarPaths.observations, undersampledBytes)
+  assert.throws(() => assertPlan55PairedWaveOutcomeProof({
+    ...proof,
+    observationsEvidenceSha256: digest(undersampledBytes),
+  }, { ...context, sourceArtifactFiles: undersampled }),
+  /paired-wave outcome evidence contract failed/u)
+
+  const missingCostProof = { ...proof }
+  delete missingCostProof.costAttributionEvidenceSha256
+  assert.throws(() => assertPlan55PairedWaveOutcomeProof(missingCostProof, context),
+    /paired-wave outcome evidence contract failed/u)
+
+  const unattributedCost = new Map(sourceArtifactFiles)
+  const wrongSourceBytes = Buffer.from(JSON.stringify({ ...costAttribution, sourceId: 'unapproved_export' }))
+  unattributedCost.set(sidecarPaths.costAttribution, wrongSourceBytes)
+  assert.throws(() => assertPlan55PairedWaveOutcomeProof({
+    ...proof,
+    costAttributionEvidenceSha256: digest(wrongSourceBytes),
+  }, { ...context, sourceArtifactFiles: unattributedCost }),
+  /paired-wave outcome evidence contract failed/u)
+
+  const noOpObservations = new Map(sourceArtifactFiles)
+  const noOpBytes = Buffer.from(JSON.stringify({
+    ...observations,
+    sampleCounts: { eligibleActors: 0, requests: 0, completedCases: 0, latencyObservations: 0, costObservations: 0 },
+  }))
+  noOpObservations.set(sidecarPaths.observations, noOpBytes)
+  assert.throws(() => assertPlan55PairedWaveOutcomeProof({
+    ...proof,
+    observationsEvidenceSha256: digest(noOpBytes),
+  }, { ...context, sourceArtifactFiles: noOpObservations }),
+  /paired-wave outcome evidence contract failed/u)
+
+  const impossibleRatio = structuredClone(proof)
+  impossibleRatio.metrics.p95_latency_regression = -1.01
+  assert.throws(() => assertPlan55PairedWaveOutcomeProof(impossibleRatio, context),
+    /paired-wave outcome evidence contract failed/u)
 })
 
 test('coverage inspection rejects malformed gate inventories without partial results', () => {

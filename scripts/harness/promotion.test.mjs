@@ -663,6 +663,54 @@ test('Plan 55 paired-wave context comes only from source-locked policy preregist
     pairedWavePreregistration: invalidPreregistration,
   }).includes('Plan 55 paired-wave preregistration is invalid'))
 
+  const sampleCountKeys = [
+    'completedCases', 'costObservations', 'eligibleActors', 'latencyObservations', 'requests',
+  ]
+  const versionTwoPreregistration = {
+    ...preregistration,
+    schemaVersion: 'plan55-paired-wave-preregistration.v2',
+    minimumSampleCounts: {
+      eligibleActors: 2,
+      requests: 20,
+      completedCases: 12,
+      latencyObservations: 20,
+      costObservations: 20,
+    },
+    costAttributionSourceId: 'production_cost_export_v1',
+  }
+  const resolvedVersionTwo = resolvePlan55PairedWavePreregistration({
+    ...policy,
+    pairedWavePreregistration: versionTwoPreregistration,
+  })
+  const normalizedVersionTwo = {
+    schemaVersion: versionTwoPreregistration.schemaVersion,
+    cohortId: versionTwoPreregistration.cohortId,
+    observationWindowMinutes: versionTwoPreregistration.observationWindowMinutes,
+    minimumSampleCounts: Object.fromEntries(sampleCountKeys.map((key) => [
+      key,
+      versionTwoPreregistration.minimumSampleCounts[key],
+    ])),
+    costAttributionSourceId: versionTwoPreregistration.costAttributionSourceId,
+  }
+  assert.deepEqual(resolvedVersionTwo, {
+    ...normalizedVersionTwo,
+    sha256: createHash('sha256').update(JSON.stringify(normalizedVersionTwo)).digest('hex'),
+  })
+  assert.equal(resolvePlan55PairedWavePreregistration({
+    ...policy,
+    pairedWavePreregistration: {
+      ...versionTwoPreregistration,
+      minimumSampleCounts: { ...versionTwoPreregistration.minimumSampleCounts, requests: 0 },
+    },
+  }), null)
+  assert.equal(resolvePlan55PairedWavePreregistration({
+    ...policy,
+    pairedWavePreregistration: {
+      ...versionTwoPreregistration,
+      costAttributionSourceId: 'billing@example.com',
+    },
+  }), null)
+
   const packetContext = {
     schemaVersion: '1.0.0',
     environment: 'production',
