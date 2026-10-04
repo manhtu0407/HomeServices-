@@ -1,0 +1,210 @@
+name: Plan 55 exact-source Production hosted drift
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_sha:
+        description: Exact locked Plan 55 merge SHA
+        required: true
+        type: string
+      source_run_id:
+        description: Successful CI caller run that produced the exact Plan 55 release artifact
+        required: true
+        type: string
+      source_run_attempt:
+        description: Exact CI caller run attempt
+        required: true
+        type: string
+      release_artifact_id:
+        description: Immutable plan55-release artifact ID from the exact source run
+        required: true
+        type: string
+      target_state:
+        description: Plan 55 state for which hosted drift is being checked
+        required: true
+        type: choice
+        options:
+          - rollback_drill
+          - paired_wave_1
+          - paired_wave_2
+          - paired_wave_3
+          - production
+
+permissions:
+  actions: read
+  contents: read
+
+concurrency:
+  group: plan55-hosted-drift-${{ github.repository }}-${{ inputs.source_sha }}
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    if: github.ref == 'refs/heads/main' && inputs.source_sha == github.sha
+    runs-on: ubuntu-latest
+    environment: production
+    timeout-minutes: 20
+    permissions:
+      actions: read
+      contents: read
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          ref: ${{ inputs.source_sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+      - name: Verify exact source artifact and compare live Production state read-only
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          PLAN55_SOURCE_SHA: ${{ inputs.source_sha }}
+          PLAN55_SOURCE_RUN_ID: ${{ inputs.source_run_id }}
+          PLAN55_SOURCE_RUN_ATTEMPT: ${{ inputs.source_run_attempt }}
+          PLAN55_RELEASE_ARTIFACT_ID: ${{ inputs.release_artifact_id }}
+          PLAN55_TARGET_STATE: ${{ inputs.target_state }}
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF" = "refs/heads/main"
+          test "$GITHUB_SHA" = "$PLAN55_SOURCE_SHA"
+          test "$(git rev-parse HEAD)" = "$PLAN55_SOURCE_SHA"
+          test -z "$(git status --porcelain=v1 --untracked-files=all)"
+          node --input-type=module <<'NODE'
+          import { mkdirSync, writeFileSync } from 'node:fs'
+          import { dirname, resolve, sep } from 'node:path'
+          import { collectHostedDeploymentState } from './scripts/harness/deployment-drift.mjs'
+          import { downloadPlan55GitHubRunArtifact } from './scripts/harness/plan55-gate-receipts.mjs'
+          import {
+            buildPlan55HostedDriftGateProof,
+          } from './scripts/harness/plan55-hosted-drift-gate-proofs.mjs'
+          import { loadPlan55ProductionOnlyPolicy } from './scripts/harness/promotion.mjs'
+
+          const policy = loadPlan55ProductionOnlyPolicy(process.cwd())
+          const sourceSha = process.env.PLAN55_SOURCE_SHA
+          const sourceRunId = Number(process.env.PLAN55_SOURCE_RUN_ID)
+          const sourceRunAttempt = Number(process.env.PLAN55_SOURCE_RUN_ATTEMPT)
+          const releaseArtifactId = Number(process.env.PLAN55_RELEASE_ARTIFACT_ID)
+          const targetState = process.env.PLAN55_TARGET_STATE
+          if (!/^[a-f0-9]{40}$/u.test(sourceSha ?? '') ||
+              ![sourceRunId, sourceRunAttempt, releaseArtifactId]
+                .every((value) => Number.isSafeInteger(value) && value > 0) ||
+              !['rollback_drill', 'paired_wave_1', 'paired_wave_2', 'paired_wave_3', 'production']
+                .includes(targetState) || !process.env.SUPABASE_ACCESS_TOKEN?.trim()) {
+            throw new Error('Plan 55 hosted drift inputs are invalid')
+          }
+
+          const sourceWorkflowPath = '.github/workflows/ci.yml'
+          const releaseArtifact = await downloadPlan55GitHubRunArtifact({
+            repository: policy.repository,
+            trustedWorkflowPaths: [sourceWorkflowPath],
+            sourceSha,
+            artifactId: releaseArtifactId,
+            artifactNamePrefix: 'plan55-release',
+            expectedRunId: sourceRunId,
+            expectedRunAttempt: sourceRunAttempt,
+            token: process.env.GH_TOKEN,
+          })
+          if (releaseArtifact.workflowPath !== sourceWorkflowPath ||
+              releaseArtifact.sourceSha !== sourceSha ||
+              String(releaseArtifact.runId) !== String(sourceRunId) ||
+              releaseArtifact.runAttempt !== sourceRunAttempt) {
+            throw new Error('Plan 55 hosted drift release artifact provenance is invalid')
+          }
+          const uniqueFile = (files, basename) => {
+            const matches = [...files].filter(([name]) => name === basename || name.endsWith(`/${basename}`))
+            if (matches.length !== 1) throw new Error('Plan 55 hosted drift release artifact is incomplete')
+            return matches[0][1]
+          }
+          const releaseBytes = uniqueFile(releaseArtifact.files, 'release.json')
+          const baselineBytes = uniqueFile(releaseArtifact.files, 'hosted-before.json')
+          const guardBytes = uniqueFile(releaseArtifact.files, 'hosted-guard-deployed.json')
+          const release = JSON.parse(releaseBytes.toString('utf8'))
+          const baseline = JSON.parse(baselineBytes.toString('utf8'))
+          const guardDeployed = JSON.parse(guardBytes.toString('utf8'))
+          if (release.environment !== 'production' || release.projectRef !== policy.projectRef ||
+              release.releaseLane !== policy.releaseLane || release.gitSha !== sourceSha ||
+              !new RegExp(`^harness-${sourceSha.slice(0, 12)}-[a-f0-9]{12}$`, 'u')
+                .test(release.releaseId ?? '') ||
+              baseline.environment !== 'production' || baseline.projectRef !== policy.projectRef ||
+              baseline.releaseId !== policy.productionSourceBase.releaseId ||
+              baseline.gitSha !== policy.productionSourceBase.sha ||
+              guardDeployed.environment !== 'production' || guardDeployed.projectRef !== policy.projectRef ||
+              guardDeployed.releaseId !== release.releaseId || guardDeployed.gitSha !== sourceSha ||
+              !Array.isArray(baseline.migrations) || !Array.isArray(guardDeployed.migrations) ||
+              JSON.stringify(baseline.migrations) !== JSON.stringify(guardDeployed.migrations)) {
+            throw new Error('Plan 55 hosted drift release identity or migration history is invalid')
+          }
+
+          const hostedObservedState = await collectHostedDeploymentState({
+            accessToken: process.env.SUPABASE_ACCESS_TOKEN,
+            environment: 'production',
+            projectRef: policy.projectRef,
+          })
+          const snapshotBytes = Buffer.from(`${JSON.stringify(hostedObservedState, null, 2)}\n`)
+          const sourceArtifactFiles = new Map([
+            ['release.json', releaseBytes],
+            ['hosted-before.json', baselineBytes],
+            ['hosted-guard-deployed.json', guardBytes],
+            ['hosted-observed.json', snapshotBytes],
+          ])
+          const provenance = {
+            workflowPath: '.github/workflows/plan55-hosted-drift.yml',
+            runId: process.env.GITHUB_RUN_ID,
+            runAttempt: Number(process.env.GITHUB_RUN_ATTEMPT),
+            workflowHeadSha: process.env.GITHUB_SHA,
+          }
+          const proof = buildPlan55HostedDriftGateProof({
+            policy,
+            release,
+            targetState,
+            provenance,
+            sourceRun: { id: String(sourceRunId), attempt: sourceRunAttempt },
+            releaseArtifactId,
+            sourceArtifactFiles,
+          })
+          const evidence = {
+            schemaVersion: 'plan55-gate-result.v1',
+            gate: 'plan55-hosted-drift-pass',
+            status: 'PASS',
+            environment: 'production',
+            projectRef: policy.projectRef,
+            policyId: policy.policyId,
+            policySha256: policy.policySha256,
+            releaseId: release.releaseId,
+            sourceSha,
+            targetState,
+            proof,
+          }
+
+          const outputRoot = resolve('artifacts/hosted-drift')
+          const files = new Map([
+            ['plan55-gate-evidence/plan55-hosted-drift-pass.json', Buffer.from(`${JSON.stringify(evidence)}\n`)],
+            ['release.json', releaseBytes],
+            ['hosted-before.json', baselineBytes],
+            ['hosted-guard-deployed.json', guardBytes],
+            ['hosted-observed.json', snapshotBytes],
+          ])
+          for (const [name, bytes] of files) {
+            if (name.split('/').some((part) => !part || part === '.' || part === '..')) {
+              throw new Error('Plan 55 hosted drift evidence path is invalid')
+            }
+            const output = resolve(outputRoot, name)
+            if (!output.startsWith(`${outputRoot}${sep}`)) {
+              throw new Error('Plan 55 hosted drift evidence path escaped its artifact directory')
+            }
+            mkdirSync(dirname(output), { recursive: true })
+            writeFileSync(output, bytes, { flag: 'wx' })
+          }
+          process.stdout.write(`Plan 55 hosted drift PASS for ${release.releaseId}\n`)
+          NODE
+      - name: Publish exact-source hosted drift evidence
+        if: success()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: plan55-hosted-drift-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/hosted-drift
+          if-no-files-found: error
+          include-hidden-files: true
+          retention-days: 90

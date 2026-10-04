@@ -756,6 +756,7 @@ test('reports every missing Plan 55 verifier and producer before artifact downlo
     'plan55-six-current-source-receipts',
     'plan55-six-cleanup-passes',
     'plan55-publication-packet',
+    'plan55-hosted-drift-pass',
     ...Object.keys(PLAN55_PREFLIGHT_GATE_CHECKS),
     ...PLAN55_RELEASE_STAGE_GATES,
     ...PLAN55_DEPLOYED_GUARD_GATES,
@@ -771,6 +772,7 @@ test('reports every missing Plan 55 verifier and producer before artifact downlo
   assert.deepEqual(coverage.missingSemanticVerifierGates, unsupportedGates)
   assert.deepEqual(coverage.missingApprovedProducerGates, gatesWithoutProducer)
   assert.ok(coverage.missingSemanticVerifierGates.includes('plan55-independent-cohort-outcome'))
+  assert.ok(!coverage.missingSemanticVerifierGates.includes('plan55-hosted-drift-pass'))
   assert.ok(!coverage.missingSemanticVerifierGates.includes('workspace-typecheck'))
   assert.ok(!coverage.missingSemanticVerifierGates.includes('plan55-full-production-readiness'))
   assert.ok(coverage.requiredGates.includes('workspace-typecheck'))

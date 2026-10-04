@@ -262,6 +262,7 @@ test('Plan 55 has a separate fail-closed Production-only transition policy with 
   assert.equal(policy.repository, 'manhtu0407/HomeServices-')
   assert.deepEqual(policy.trustedEvidenceWorkflowPaths, [
     '.github/workflows/ci.yml',
+    '.github/workflows/plan55-hosted-drift.yml',
     '.github/workflows/plan55-postreceipt-finalization.yml',
     '.github/workflows/plan55-rollback-drill.yml',
   ])

@@ -13,6 +13,7 @@ const servicePath = '.github/workflows/plan55-production-canary-service.yml'
 const finalizationPath = '.github/workflows/plan55-postreceipt-finalization.yml'
 const gateEvidencePackagePath = '.github/workflows/plan55-gate-evidence-package.yml'
 const rollbackDrillPath = '.github/workflows/plan55-rollback-drill.yml'
+const hostedDriftPath = '.github/workflows/plan55-hosted-drift.yml'
 const blindHoldoutPackagePath = '.github/workflows/plan55-independent-holdout-package.yml'
 const ciPath = '.github/workflows/ci.yml'
 const release = readFileSync(releasePath, 'utf8')
@@ -20,6 +21,7 @@ const service = readFileSync(servicePath, 'utf8')
 const finalization = readFileSync(finalizationPath, 'utf8').replace(/\r\n/gu, '\n')
 const gateEvidencePackage = readFileSync(gateEvidencePackagePath, 'utf8')
 const rollbackDrill = existsSync(rollbackDrillPath) ? readFileSync(rollbackDrillPath, 'utf8') : ''
+const hostedDrift = existsSync(hostedDriftPath) ? readFileSync(hostedDriftPath, 'utf8') : ''
 const blindHoldoutPackage = readFileSync(blindHoldoutPackagePath, 'utf8')
 const ci = readFileSync(ciPath, 'utf8')
 const sourceAttestation = readFileSync('apps/api/scripts/lib/kael-playbook-production-attestation.mjs', 'utf8')
@@ -615,6 +617,33 @@ test('gate evidence packaging preserves exact-source evidence and has no Product
     'the called service workflow is not a standalone GitHub workflow run')
   assert.ok(!policy.trustedEvidenceWorkflowPaths.includes(gateEvidencePackagePath),
     'the packager may produce aggregate artifacts but must not be trusted as a raw gate-evidence source')
+  assert.equal(policy.trustedEvidenceWorkflowPathsByGate['plan55-hosted-drift-pass'], hostedDriftPath)
+  assert.ok(policy.trustedEvidenceWorkflowPaths.includes(hostedDriftPath))
+})
+
+test('post-receipt hosted drift is read-only, exact-source, and bound to immutable Production snapshots', () => {
+  expectWorkflowMatch(hostedDrift, /^on:\r?\n\s+workflow_dispatch:/mu,
+    'hosted drift must be explicitly dispatched at a named Plan 55 phase')
+  expectWorkflowMatch(hostedDrift,
+    /permissions:\r?\n\s+actions: read\r?\n\s+contents: read/u,
+    'hosted drift must have read-only GitHub permissions')
+  expectWorkflowMatch(hostedDrift,
+    /if: github\.ref == 'refs\/heads\/main' && inputs\.source_sha == github\.sha/u,
+    'hosted drift must run only against the locked main SHA')
+  expectWorkflowMatch(hostedDrift, /environment: production/u,
+    'hosted drift must use the protected Production environment')
+  expectWorkflowMatch(hostedDrift,
+    /downloadPlan55GitHubRunArtifact\([\s\S]*?trustedWorkflowPaths: \[sourceWorkflowPath\][\s\S]*?artifactNamePrefix: 'plan55-release'/u,
+    'the release snapshot must come from the exact root CI artifact')
+  expectWorkflowMatch(hostedDrift,
+    /collectHostedDeploymentState\([\s\S]*?environment: 'production'[\s\S]*?projectRef: policy\.projectRef/u,
+    'only the registered Production project may be queried')
+  expectWorkflowMatch(hostedDrift,
+    /buildPlan55HostedDriftGateProof\([\s\S]*?hosted-observed\.json/u,
+    'the pass artifact must bind the live snapshot, guard deployment, and source release')
+  assert.doesNotMatch(hostedDrift,
+    /SUPABASE_SERVICE_ROLE_KEY|release-control\.mjs|functions deploy|supabase db push|supabase migration/u,
+    'hosted drift must not contain a Production write path')
 })
 
 test('rollback drill prerequisites can be packaged without accepting the drill result itself', () => {
