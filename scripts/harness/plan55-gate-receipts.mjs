@@ -873,7 +873,7 @@ export function assertPlan55PublicationPacketGateProof(proof, {
       proof.producerGithubRef !== 'refs/heads/main' || proof.producerEvent !== 'workflow_dispatch' ||
       proof.repository !== policy.repository ||
       provenance?.artifactName !== `plan55-promotion-packet-${proof.producerRunId}-${proof.producerRunAttempt}` ||
-      !['paired_wave_1', 'paired_wave_2', 'paired_wave_3', 'production'].includes(targetState)) {
+      !['rollback_drill', 'paired_wave_1', 'paired_wave_2', 'paired_wave_3', 'production'].includes(targetState)) {
     fail()
   }
 

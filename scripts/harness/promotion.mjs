@@ -25,11 +25,12 @@ const REMOTE_STATES = new Set([
   'guard_deployed_off', 'service_canary', 'service_cleanup', 'receipts_validated',
   'rollback_drill', 'paired_wave_1', 'paired_wave_2', 'paired_wave_3',
 ])
-const ROLLBACK_REQUIRED_STATES = new Set([
+const ROLLBACK_BUNDLE_REQUIRED_STATES = new Set([
   'canary', 'production', 'rolled_back', 'guard_deployed_off', 'service_canary',
-  'service_cleanup', 'receipts_validated', 'rollback_drill', 'paired_wave_1', 'paired_wave_2', 'paired_wave_3',
+  'service_cleanup', 'paired_wave_1', 'paired_wave_2', 'paired_wave_3',
 ])
 const PLAN55_PAIRED_WAVE_STATES = new Set(['paired_wave_1', 'paired_wave_2', 'paired_wave_3'])
+const PLAN55_PREREGISTRATION_REQUIRED_STATES = new Set([...PLAN55_PAIRED_WAVE_STATES, 'production'])
 const PLAN55_COHORT_ID = /^synthetic-plan55-[0-9a-f]{32}$/u
 const PROMOTION_ENVIRONMENTS = new Set(['preview', 'staging', 'production'])
 const PLAN55_STATES = Object.freeze([
@@ -373,15 +374,15 @@ export function buildPromotionPacket(input) {
   const humanApprovalId = normalizeApprovalId(input.humanApprovalId)
   if (REMOTE_STATES.has(input.targetState) && !humanApprovalId) throw new Error('remote promotion requires explicit human approval')
   if (!canTransition(input.config, input.currentState, input.targetState)) throw new Error(`promotion transition is not allowed: ${input.currentState}->${input.targetState}`)
-  const isPlan55PairedWave = input.config.policyId === PLAN55_POLICY_ID &&
-    PLAN55_PAIRED_WAVE_STATES.has(input.targetState)
-  const pairedWavePreregistration = isPlan55PairedWave
+  const requiresPlan55Preregistration = input.config.policyId === PLAN55_POLICY_ID &&
+    PLAN55_PREREGISTRATION_REQUIRED_STATES.has(input.targetState)
+  const pairedWavePreregistration = requiresPlan55Preregistration
     ? resolvePlan55PairedWavePreregistration(input.config)
     : null
-  if (isPlan55PairedWave && (input.cohort !== undefined || input.observationWindowMinutes !== undefined)) {
-    throw new Error('Plan 55 paired-wave values must not be supplied by the caller')
+  if (requiresPlan55Preregistration && (input.cohort !== undefined || input.observationWindowMinutes !== undefined)) {
+    throw new Error('Plan 55 preregistered cohort values must not be supplied by the caller')
   }
-  if (isPlan55PairedWave && !pairedWavePreregistration) {
+  if (requiresPlan55Preregistration && !pairedWavePreregistration) {
     throw new Error('Plan 55 paired-wave preregistration is missing or invalid')
   }
   const requiredGates = requiredPromotionGates(input.config, input.targetState)
@@ -400,7 +401,7 @@ export function buildPromotionPacket(input) {
   if (!abort.passed) throw new Error(`promotion abort threshold failed: ${abort.failures.map((failure) => failure.metric).join(', ')}`)
 
   const rollbackRelease = input.rollbackRelease ?? null
-  if (ROLLBACK_REQUIRED_STATES.has(input.targetState)) {
+  if (ROLLBACK_BUNDLE_REQUIRED_STATES.has(input.targetState)) {
     const compatibility = releaseCompatibilityProblems(input.release, rollbackRelease)
     if (compatibility.length) throw new Error(compatibility.join('; '))
   }
@@ -464,6 +465,13 @@ export function buildPromotionPacket(input) {
   return Object.freeze(packet)
 }
 
+export function serializePromotionPacket(packet) {
+  if (!packet || typeof packet !== 'object' || Array.isArray(packet)) {
+    throw new Error('promotion packet is invalid')
+  }
+  return Buffer.from(`${JSON.stringify(packet)}\n`)
+}
+
 export function verifyPromotionPacket(packet, config) {
   const problems = []
   if (!packet || typeof packet !== 'object') return ['promotion packet is invalid']
@@ -475,7 +483,7 @@ export function verifyPromotionPacket(packet, config) {
   if (config?.policyId === PLAN55_POLICY_ID && packet.environment !== 'production') {
     problems.push('Plan 55 promotion packet target is invalid')
   }
-  if (config?.policyId === PLAN55_POLICY_ID && PLAN55_PAIRED_WAVE_STATES.has(packet.toState)) {
+  if (config?.policyId === PLAN55_POLICY_ID && PLAN55_PREREGISTRATION_REQUIRED_STATES.has(packet.toState)) {
     const preregistration = resolvePlan55PairedWavePreregistration(config)
     if (!preregistration) {
       problems.push('Plan 55 paired-wave preregistration is missing or invalid')
@@ -502,7 +510,7 @@ export function verifyPromotionPacket(packet, config) {
   }
   const expected = sha256(JSON.stringify({ ...packet, packetSha256: undefined }))
   if (packet.packetSha256 !== expected) problems.push('promotion packet checksum mismatch')
-  if (ROLLBACK_REQUIRED_STATES.has(packet.toState)) {
+  if (ROLLBACK_BUNDLE_REQUIRED_STATES.has(packet.toState)) {
     if (!packet.rollbackReleaseId || !packet.rollbackCompatibility) problems.push('promotion packet has no compatible rollback release')
     if (!/^harness-[0-9a-f]{12}-[0-9a-f]{12}$/.test(packet.rollbackReleaseId ?? '')) {
       problems.push('promotion rollback release ID is invalid')
@@ -893,7 +901,7 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
       observationWindowMinutes,
     })
     mkdirSync(dirname(outputPath), { recursive: true })
-    writeFileSync(outputPath, `${JSON.stringify(packet, null, 2)}\n`)
+    writeFileSync(outputPath, serializePromotionPacket(packet))
     console.log(`${packet.packetId} ${outputPath}`)
   }
 }

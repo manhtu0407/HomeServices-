@@ -921,6 +921,14 @@ test('publication packet gate verifies and reloads the exact packet file from it
     provenance,
     sourceArtifactFiles: artifactFiles,
   }), true)
+  assert.equal(assertPlan55PublicationPacketGateProof(proof, {
+    gate,
+    policy: publicationPolicy,
+    release: publicationRelease,
+    targetState: 'rollback_drill',
+    provenance,
+    sourceArtifactFiles: artifactFiles,
+  }), true)
 
   const evidenceRoot = mkdtempSync(join(tmpdir(), 'plan55-publication-packet-proof-'))
   t.after(() => rmSync(evidenceRoot, { recursive: true, force: true }))
