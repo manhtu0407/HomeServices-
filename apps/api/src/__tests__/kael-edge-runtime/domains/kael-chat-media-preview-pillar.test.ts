@@ -7,7 +7,7 @@ import { makeSequenceClient } from '../harness'
 export const PILLAR = {
   id: 'P312-kael-chat-media-preview-links',
   invariant:
-    'a saved chat turn shows only its owner\'s own photos through short-lived links; a photo past retention reads as expired, and a foreign ref, unreadable retention state, or signing failure reads as unavailable without failing the history read',
+    'a saved chat turn shows only its owner\'s own photos through short-lived links signed in one batch; a photo past retention reads as expired, and a foreign ref, a missing or unreadable retention row, or signing failure reads as unavailable without failing the history read',
   authority: [
     'governance/RULES.md Multimodal Evidence Privacy (owner-only media access)',
     'governance/RULES.md #8 (no silent degradation: expired and unavailable are reported, never confused)',
@@ -71,5 +71,38 @@ describe('P312 Kael chat media preview links', () => {
     Object.assign(client, { storage: { from: vi.fn(() => ({ createSignedUrl: vi.fn(async () => ({ data: null, error: { message: 'denied' } })) })) } })
     await expect(createKaelChatMediaPreviews(context(client), [ownRef('kept.jpg')], OWNER))
       .resolves.toEqual([{ ref: ownRef('kept.jpg'), status: 'unavailable', url: null }])
+  })
+
+  it('reports unavailable, not expired, when a photo has no retention row', async () => {
+    const { client, createSignedUrl } = clientWith({
+      data: [{ object_path: OWN_PATH, status: 'consumed', cleaned_at: null, delete_after: '2099-01-01T00:00:00.000Z' }],
+      error: null,
+    })
+    await expect(createKaelChatMediaPreviews(context(client), [ownRef('kept.jpg'), ownRef('legacy.jpg')], OWNER), pillarWhy(PILLAR, 'no retention evidence is not proof the photo expired'))
+      .resolves.toEqual([
+        { ref: ownRef('kept.jpg'), status: 'available', url: `https://storage.example.test/${OWN_PATH}?token=t` },
+        { ref: ownRef('legacy.jpg'), status: 'unavailable', url: null },
+      ])
+    expect(createSignedUrl).toHaveBeenCalledTimes(1)
+  })
+
+  it('signs a whole photo history in one Storage request when batch signing is available', async () => {
+    const paths = Array.from({ length: 12 }, (_, index) => `${OWNER}/kael-chat/model_vision/p${index}.jpg`)
+    const client = makeSequenceClient([], {}, {
+      kael_chat_media_upload_intents: [{
+        data: paths.map((objectPath) => ({ object_path: objectPath, status: 'consumed', cleaned_at: null, delete_after: '2099-01-01T00:00:00.000Z' })),
+        error: null,
+      }],
+    })
+    const createSignedUrl = vi.fn()
+    const createSignedUrls = vi.fn(async (batch: string[]) => ({
+      data: batch.map((path) => ({ path, signedUrl: `https://storage.example.test/${path}?token=t`, error: null })),
+      error: null,
+    }))
+    Object.assign(client, { storage: { from: vi.fn(() => ({ createSignedUrl, createSignedUrls })) } })
+    const previews = await createKaelChatMediaPreviews(context(client), paths.map((path) => `supabase://kael-chat-media/${path}`), OWNER)
+    expect(previews.every((preview) => preview.status === 'available')).toBe(true)
+    expect(createSignedUrls, pillarWhy(PILLAR, 'a long history must not fan out one signing request per photo')).toHaveBeenCalledTimes(1)
+    expect(createSignedUrl).not.toHaveBeenCalled()
   })
 })

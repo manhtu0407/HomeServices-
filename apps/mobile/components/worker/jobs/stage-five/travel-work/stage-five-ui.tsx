@@ -3,25 +3,28 @@ import { Animated, Dimensions, Easing, Pressable, Text, View } from 'react-nativ
 import type { ViewStyle } from 'react-native'
 import Svg, { Defs, RadialGradient, Rect, Stop } from 'react-native-svg'
 import { PrimaryCtaFill } from '@/components/ui/primary-cta-fill'
-import { component, type AppleTypographyRole } from '@/design/theme'
+import { component, customerTheme, type AppleTypographyRole } from '@/design/theme'
 import { stageTypography } from '../../stage-ratio'
 import { Icon } from './stage-five-icons'
 import type { IconName } from './stage-five-icons'
 import { TW as TWLight } from './stage-five-tokens'
 import { stageFiveText, type StageFiveLanguage } from './stage-five-copy'
 import { workerThemedTokensProxy } from '../../../ui/worker-dark-styles'
+import { getWorkerThemeModeNow } from '../../../worker-theme'
 
 const TW = workerThemedTokensProxy(TWLight)
 let gradientId = 0
+// Dark mode paints the shared flat dark surfaces; the light radial washes are light-only art.
+const DARK_PAINT = { background: customerTheme.darkLayer.canvas, card: customerTheme.darkLayer.base, tint: customerTheme.darkLayer.statusSurface }
 export class Paint extends React.PureComponent<{tint?:boolean; background?:boolean}> {
  private id = `tw-paint-${++gradientId}`
- render(){const {tint,background}=this.props;return <View pointerEvents="none" style={{position:'absolute',top:0,left:0,right:0,bottom:0,overflow:'hidden'}}><Svg width="100%" height="100%"><Defs><RadialGradient id={this.id} cx={background?'52%':'8%'} cy={background?'48%':'0%'} rx="90%" ry="80%"><Stop offset="0%" stopColor={background?'#EAFBF7':tint?'#E5FFF5':'#FFFFFF'}/><Stop offset="100%" stopColor={background?'#FBFDFE':tint?'#F5FFFC':'#FAFDFE'}/></RadialGradient></Defs><Rect x="0" y="0" width="100%" height="100%" fill={`url(#${this.id})`}/></Svg></View>}
+ render(){const {tint,background}=this.props;if(getWorkerThemeModeNow()==='dark')return <View pointerEvents="none" style={{position:'absolute',top:0,left:0,right:0,bottom:0,backgroundColor:background?DARK_PAINT.background:tint?DARK_PAINT.tint:DARK_PAINT.card}}/>;return <View pointerEvents="none" style={{position:'absolute',top:0,left:0,right:0,bottom:0,overflow:'hidden'}}><Svg width="100%" height="100%"><Defs><RadialGradient id={this.id} cx={background?'52%':'8%'} cy={background?'48%':'0%'} rx="90%" ry="80%"><Stop offset="0%" stopColor={background?'#EAFBF7':tint?'#E5FFF5':'#FFFFFF'}/><Stop offset="100%" stopColor={background?'#FBFDFE':tint?'#F5FFFC':'#FAFDFE'}/></RadialGradient></Defs><Rect x="0" y="0" width="100%" height="100%" fill={`url(#${this.id})`}/></Svg></View>}
 }
 export function Copy({children,windowWidth,role='subheadline',weight='400',color=TW.color.ink,style={},lines}:{children:React.ReactNode;windowWidth:number;role?:AppleTypographyRole;weight?:'400'|'500'|'600'|'700';color?:string;style?:object;lines?:number}) {
  return <Text selectable numberOfLines={lines} style={[stageTypography(role,windowWidth),{fontWeight:weight,color,position:'relative',zIndex:1},style]}>{children}</Text>
 }
 export function Box({children,s=1,height,style={},tint=false}:{children:React.ReactNode;s?:number;height?:number;style?:ViewStyle;tint?:boolean}) {
- return <View style={[{minHeight:height?height*s:undefined,borderRadius:22*s,borderWidth:1,borderColor:TW.color.line,backgroundColor:'#FFFFFF',overflow:'hidden',boxShadow:TW.shadow},style]}><Paint tint={tint}/>{children}</View>
+ return <View style={[{minHeight:height?height*s:undefined,borderRadius:22*s,borderWidth:1,borderColor:TW.color.line,backgroundColor:getWorkerThemeModeNow()==='dark'?DARK_PAINT.card:'#FFFFFF',overflow:'hidden',boxShadow:TW.shadow},style]}><Paint tint={tint}/>{children}</View>
 }
 export function IconSlot({name,s=1,size=40,coral=false,blue=false}:{name:IconName;s?:number;size?:number;coral?:boolean;blue?:boolean}) {
  return <View style={{width:size*s,height:size*s,alignItems:'center',justifyContent:'center'}}><Icon name={name} size={(size>44?38:29)*s} color={coral?'#F18F83':blue?'#087ADE':'#009A83'}/></View>

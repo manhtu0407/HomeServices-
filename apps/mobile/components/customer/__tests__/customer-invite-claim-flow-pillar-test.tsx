@@ -187,4 +187,21 @@ describe('Customer invite-claim flow', () => {
     await waitFor(() => expect(screen.getByTestId('customer-membership-code-entry')).toBeOnTheScreen())
     expect(screen.queryByTestId('customer-membership-message')).toBeNull()
   })
+
+  it('updates a card already on screen when the invite-link claim lands after it loaded', async () => {
+    getMembership.mockResolvedValue(membership(open))
+    await renderCard()
+    await waitFor(() => expect(screen.getByTestId('customer-membership-code-entry')).toBeOnTheScreen())
+    await savePendingInvite('KX7M4Q2P')
+    claim.mockResolvedValue({ success: true, data: { outcome: 'LINKED' } })
+    getMembership.mockResolvedValue(membership(null, true))
+    await act(async () => {
+      await claimPendingInvite('customer-token')
+    })
+    await waitFor(() => expect(screen.getByTestId('customer-membership-message')).toBeOnTheScreen())
+    withPillarContext(PILLAR, () => {
+      expect(screen.getByTestId('customer-membership-message')).toHaveTextContent(/^Mã từ link mời: /)
+      expect(getMembership).toHaveBeenCalledTimes(2)
+    })
+  })
 })

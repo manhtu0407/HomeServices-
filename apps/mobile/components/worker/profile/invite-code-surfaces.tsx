@@ -106,11 +106,16 @@ export function WorkerV5InviteCode({
               <Text style={styles.summaryBody}>
                 {textByLanguage(language, 'Gửi mã này cho khách mới. Khách nhập mã khi đăng ký để trở thành khách của bạn.', 'Send this code to new customers. They enter it when they sign up to become your customers.')}
               </Text>
-              <View
-                accessibilityLabel={textByLanguage(language, `Mã mời ${code.split('').join(' ')}`, `Invite code ${code.split('').join(' ')}`)}
-                style={ambassadorStyles.codeBox}
-              >
-                <RNText selectable style={ambassadorStyles.codeValue} testID="worker-v5-invite-code-value">{code}</RNText>
+              <View style={ambassadorStyles.codeBox}>
+                <RNText
+                  accessibilityLabel={textByLanguage(language, `Mã mời ${code.split('').join(' ')}`, `Invite code ${code.split('').join(' ')}`)}
+                  accessible
+                  selectable
+                  style={ambassadorStyles.codeValue}
+                  testID="worker-v5-invite-code-value"
+                >
+                  {code}
+                </RNText>
               </View>
             </>
           ) : (

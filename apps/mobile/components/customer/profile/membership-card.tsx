@@ -9,6 +9,7 @@ import { useAuth } from '@/lib/auth-provider'
 import {
   inviteCodeHasNeverIssuedCharacter,
   normalizeInviteCode,
+  subscribeInviteClaimResult,
   takeInviteClaimResult,
 } from '@/lib/referral/pending-invite'
 import {
@@ -114,16 +115,6 @@ export function CustomerMembershipCard() {
   const [confirming, setConfirming] = useState(false)
   const [linkClaimOutcome, setLinkClaimOutcome] = useState<ReferralClaimOutcome | null>(null)
 
-  useEffect(() => {
-    let active = true
-    void takeInviteClaimResult().then((outcome) => {
-      if (active && isReferralClaimOutcome(outcome)) setLinkClaimOutcome(outcome)
-    })
-    return () => {
-      active = false
-    }
-  }, [])
-
   const load = useCallback(async () => {
     const result = await membershipService.getMembership(accessToken)
     if (result.success) {
@@ -133,6 +124,23 @@ export function CustomerMembershipCard() {
       setLoadFailed(true)
     }
   }, [accessToken])
+
+  useEffect(() => {
+    let active = true
+    const takeResult = (reload: boolean) => {
+      void takeInviteClaimResult().then((outcome) => {
+        if (!active || !isReferralClaimOutcome(outcome)) return
+        setLinkClaimOutcome(outcome)
+        if (reload) void load()
+      })
+    }
+    takeResult(false)
+    const unsubscribe = subscribeInviteClaimResult(() => takeResult(true))
+    return () => {
+      active = false
+      unsubscribe()
+    }
+  }, [load])
 
   useEffect(() => {
     void load()

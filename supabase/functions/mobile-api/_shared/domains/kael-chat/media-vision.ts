@@ -204,21 +204,57 @@ export async function createKaelChatMediaPreviews(
     return refs.map(unavailable);
   }
 
-  return Promise.all(refs.map(async (ref): Promise<KaelChatMediaPreview> => {
+  // A ref whose intent row is missing has no retention evidence, so it is unavailable, not expired.
+  const statusOf = (objectPath: string) => {
+    const intent = intentsByPath.get(objectPath);
+    if (!intent) return "unavailable" as const;
+    return isExpiredKaelChatMediaIntent(intent) ? "expired" as const : "signable" as const;
+  };
+  const signable = [...new Set(ownedPaths.filter((objectPath) => statusOf(objectPath) === "signable"))];
+  const signedByPath = await signKaelChatMediaPaths(bucket, signable);
+
+  return refs.map((ref): KaelChatMediaPreview => {
     const objectPath = ownedPath(ref);
     if (!objectPath) return unavailable(ref);
-    if (isExpiredKaelChatMediaIntent(intentsByPath.get(objectPath))) {
-      return { ref, status: "expired", url: null };
-    }
+    const status = statusOf(objectPath);
+    if (status === "expired") return { ref, status: "expired", url: null };
+    const url = status === "signable" ? signedByPath.get(objectPath) : undefined;
+    return url ? { ref, status: "available", url } : unavailable(ref);
+  });
+}
+
+// One Storage request signs a whole history; a client without batch signing falls back to small
+// sequential batches so a long photo history never fans out into one request per photo at once.
+const KAEL_CHAT_MEDIA_SIGNING_BATCH = 6;
+
+async function signKaelChatMediaPaths(
+  bucket: ReturnType<NonNullable<KaelMediaStorage["storage"]>["from"]>,
+  paths: string[],
+): Promise<Map<string, string>> {
+  const signed = new Map<string, string>();
+  if (paths.length === 0) return signed;
+  if (bucket.createSignedUrls) {
     try {
-      const signed = await bucket.createSignedUrl(objectPath, KAEL_CHAT_MEDIA_PREVIEW_URL_EXPIRES_IN_SECONDS);
-      return signed.error || !signed.data?.signedUrl
-        ? unavailable(ref)
-        : { ref, status: "available", url: signed.data.signedUrl };
+      const result = await bucket.createSignedUrls(paths, KAEL_CHAT_MEDIA_PREVIEW_URL_EXPIRES_IN_SECONDS);
+      for (const item of result.error ? [] : result.data ?? []) {
+        if (item.path && item.signedUrl && !item.error) signed.set(item.path, item.signedUrl);
+      }
     } catch {
-      return unavailable(ref);
+      return signed;
     }
-  }));
+    return signed;
+  }
+  for (let index = 0; index < paths.length; index += KAEL_CHAT_MEDIA_SIGNING_BATCH) {
+    await Promise.all(paths.slice(index, index + KAEL_CHAT_MEDIA_SIGNING_BATCH).map(async (objectPath) => {
+      try {
+        const result = await bucket.createSignedUrl(objectPath, KAEL_CHAT_MEDIA_PREVIEW_URL_EXPIRES_IN_SECONDS);
+        if (!result.error && result.data?.signedUrl) signed.set(objectPath, result.data.signedUrl);
+      } catch {
+        // An unsigned path reads as unavailable.
+      }
+    }));
+  }
+  return signed;
 }
 
 function isExpiredKaelChatMediaIntent(intent: Record<string, unknown> | undefined) {

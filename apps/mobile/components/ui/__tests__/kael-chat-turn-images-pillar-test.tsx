@@ -1,4 +1,4 @@
-import { render, renderHook, screen } from '@testing-library/react-native'
+import { fireEvent, render, renderHook, screen } from '@testing-library/react-native'
 import type { ReactElement } from 'react'
 
 import { withPillarContext, type PillarManifest } from '@/__tests__/pillar-manifest'
@@ -205,5 +205,20 @@ describe('P313 Kael chat turn images', () => {
       role: 'worker',
       text: '',
     }]))
+  })
+
+  it('retries a photo whose earlier link failed once the history brings a fresh link', () => {
+    const colors = { border: '#E5EEEC', muted: '#6B7C80', surface: '#F7FBFA' }
+    const view = (uri: string) => (
+      <KaelChatTurnImages colors={colors} images={[{ key: ref('kept.jpg'), status: 'available', uri }]} language="vi" testID="turn-images" />
+    )
+    const { rerender } = render(view('https://storage.example.test/kept.jpg?token=old'))
+    fireEvent(screen.getByTestId('turn-images-0'), 'error', { nativeEvent: { error: 'expired link' } })
+    withPillarContext(PILLAR, () => expect(screen.getByTestId('turn-images-0-unavailable')).toBeOnTheScreen())
+    rerender(view('https://storage.example.test/kept.jpg?token=new'))
+    withPillarContext(PILLAR, () => {
+      expect(screen.queryByTestId('turn-images-0-unavailable')).toBeNull()
+      expect(screen.getByTestId('turn-images-0')).toBeOnTheScreen()
+    })
   })
 })

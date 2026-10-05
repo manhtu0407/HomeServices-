@@ -42,8 +42,9 @@ function KaelChatTurnImageTile({
   language: AppLanguage
   testID: string
 }) {
-  const [failed, setFailed] = useState(false)
-  const status = failed ? 'unavailable' : image.status
+  // A failed load belongs to that URL only: a refreshed signed URL for the same photo retries.
+  const [failedUri, setFailedUri] = useState<string | null>(null)
+  const status = failedUri !== null && failedUri === image.uri ? 'unavailable' : image.status
   if (status !== 'available' || !image.uri) {
     const label = status === 'expired'
       ? language === 'vi' ? 'Ảnh đã hết hạn lưu' : 'Photo no longer kept'
@@ -66,7 +67,7 @@ function KaelChatTurnImageTile({
         accessibilityLabel={language === 'vi' ? 'Ảnh bạn đã gửi' : 'Photo you sent'}
         accessible
         contentFit="cover"
-        onError={() => setFailed(true)}
+        onError={() => setFailedUri(image.uri ?? null)}
         source={{ uri: image.uri }}
         style={styles.image}
         testID={testID}

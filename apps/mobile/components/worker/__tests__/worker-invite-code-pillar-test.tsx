@@ -158,6 +158,7 @@ describe('Worker invite code in Profile', () => {
     render(<WorkerV5InviteCode controller={controller({ summary: summary({ referral_code: 'ABCD2345' }) })} language="vi" onOpenRewards={jest.fn()} />)
     withPillarContext(PILLAR, () => {
       expect(screen.getByTestId('worker-v5-invite-code-value')).toHaveTextContent('ABCD2345')
+      expect(screen.getByLabelText('Mã mời A B C D 2 3 4 5')).toBe(screen.getByTestId('worker-v5-invite-code-value'))
       expect(screen.queryByTestId('worker-v5-invite-code-create')).toBeNull()
       expect(screen.getByTestId('worker-v5-invite-code-customers')).toHaveTextContent('3 khách đã liên kết · 2 khách đang hoạt động')
       expect(screen.getByTestId('worker-v5-invite-code-claim-rule')).toHaveTextContent(/trong 7 ngày sau khi đăng ký.*Liên kết kéo dài 12 tháng/)

@@ -23,8 +23,19 @@ export function inviteCodeHasNeverIssuedCharacter(value: string): boolean {
   return NEVER_ISSUED_CHARACTERS.test(compactInviteCode(value))
 }
 
+const claimResultListeners = new Set<() => void>()
+
 export async function saveInviteClaimResult(outcome: string): Promise<void> {
   await AsyncStorage.setItem(INVITE_CLAIM_RESULT_KEY, outcome).catch(() => undefined)
+  claimResultListeners.forEach((listener) => listener())
+}
+
+// A card already on screen when the claim lands is told so it can read the result and reload.
+export function subscribeInviteClaimResult(listener: () => void): () => void {
+  claimResultListeners.add(listener)
+  return () => {
+    claimResultListeners.delete(listener)
+  }
 }
 
 // Read once: the result of a claim made from an invite link is shown a single time.
