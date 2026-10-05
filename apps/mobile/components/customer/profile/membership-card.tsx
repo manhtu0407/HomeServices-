@@ -6,10 +6,16 @@ import { KaelTextInput } from '@/components/ui/kael-primitives'
 import { typography } from '@/design/theme'
 import { useAppLanguage, type AppLanguage } from '@/lib/app-language'
 import { useAuth } from '@/lib/auth-provider'
-import { normalizeInviteCode } from '@/lib/referral/pending-invite'
+import {
+  inviteCodeHasNeverIssuedCharacter,
+  normalizeInviteCode,
+  takeInviteClaimResult,
+} from '@/lib/referral/pending-invite'
 import {
   membershipService,
+  REFERRAL_CLAIM_OUTCOMES,
   type CustomerMembership,
+  type InviteClaimStatus,
   type ReferralClaimOutcome,
 } from '@/lib/services/membership-service'
 
@@ -50,6 +56,48 @@ export function claimOutcomeCopy(outcome: ReferralClaimOutcome, language: AppLan
   }
 }
 
+function isReferralClaimOutcome(value: string | null): value is ReferralClaimOutcome {
+  return value !== null && (REFERRAL_CLAIM_OUTCOMES as readonly string[]).includes(value)
+}
+
+export function inviteClaimClosedCopy(
+  status: Exclude<InviteClaimStatus, 'open'>,
+  claimDays: number | null,
+  language: AppLanguage,
+): string | null {
+  const vi = language === 'vi'
+  switch (status) {
+    case 'window_closed':
+      return claimDays
+        ? vi
+          ? `Mã mời chỉ nhập được trong ${claimDays} ngày đầu sau khi đăng ký.`
+          : `Invite codes can be entered only in the first ${claimDays} days after signing up.`
+        : claimOutcomeCopy('CLAIM_WINDOW_CLOSED', language)
+    case 'transacted':
+      return claimOutcomeCopy('ALREADY_TRANSACTED', language)
+    case 'program_unavailable':
+      return claimOutcomeCopy('PROGRAM_UNAVAILABLE', language)
+    case 'linked':
+      return null
+  }
+}
+
+export function inviteLinkConfirmCopy(linkMonths: number | null, language: AppLanguage): string {
+  if (language === 'vi') {
+    return linkMonths
+      ? `Mã này kết nối bạn với thợ đã mời trong ${linkMonths} tháng. Mỗi tài khoản chỉ dùng được một mã mời.`
+      : 'Mã này kết nối bạn với thợ đã mời. Mỗi tài khoản chỉ dùng được một mã mời.'
+  }
+  return linkMonths
+    ? `This code links you to the worker who invited you for ${linkMonths} months. Each account can use one invite code.`
+    : 'This code links you to the worker who invited you. Each account can use one invite code.'
+}
+
+function inviteLinkResultCopy(outcome: ReferralClaimOutcome, language: AppLanguage): string {
+  const prefix = language === 'vi' ? 'Mã từ link mời: ' : 'Code from your invite link: '
+  return `${prefix}${claimOutcomeCopy(outcome, language)}`
+}
+
 export function CustomerMembershipCard() {
   const language = useAppLanguage()
   const { session } = useAuth()
@@ -63,6 +111,18 @@ export function CustomerMembershipCard() {
   const [code, setCode] = useState('')
   const [claiming, setClaiming] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
+  const [confirming, setConfirming] = useState(false)
+  const [linkClaimOutcome, setLinkClaimOutcome] = useState<ReferralClaimOutcome | null>(null)
+
+  useEffect(() => {
+    let active = true
+    void takeInviteClaimResult().then((outcome) => {
+      if (active && isReferralClaimOutcome(outcome)) setLinkClaimOutcome(outcome)
+    })
+    return () => {
+      active = false
+    }
+  }, [])
 
   const load = useCallback(async () => {
     const result = await membershipService.getMembership(accessToken)
@@ -79,10 +139,22 @@ export function CustomerMembershipCard() {
   }, [load])
 
   const normalized = normalizeInviteCode(code)
+  const neverIssuedCharacter = inviteCodeHasNeverIssuedCharacter(code)
+  // The first tap only explains the twelve-month link; the claim is sent on the second.
+  const pressApply = () => {
+    if (!normalized || claiming) return
+    if (!confirming) {
+      setConfirming(true)
+      return
+    }
+    setConfirming(false)
+    void claim()
+  }
   const claim = async () => {
     if (!normalized || claiming) return
     setClaiming(true)
     setMessage(null)
+    setLinkClaimOutcome(null)
     const result = await membershipService.claimReferralCode(normalized, accessToken)
     setClaiming(false)
     if (!result.success) {
@@ -111,6 +183,12 @@ export function CustomerMembershipCard() {
   }
 
   const linked = membership.linked_worker
+  const inviteClaim = membership.invite_claim ?? null
+  const claimOpen = !linked && (inviteClaim === null || inviteClaim.status === 'open')
+  const closedCopy = !linked && inviteClaim && inviteClaim.status !== 'open'
+    ? inviteClaimClosedCopy(inviteClaim.status, inviteClaim.claim_days, language)
+    : null
+  const shownMessage = message ?? (linkClaimOutcome ? inviteLinkResultCopy(linkClaimOutcome, language) : null)
   return (
     <V21Card style={styles.card} testID="customer-membership-card">
       <Text style={[styles.title, { color: tokens.text }]}>{language === 'vi' ? 'Cách tích điểm' : 'How points are earned'}</Text>
@@ -129,9 +207,17 @@ export function CustomerMembershipCard() {
             ? `Thợ quen của bạn: ${linked.display_name ?? 'Thợ NestScout'} · đến ${formatDate(linked.expires_at, language)}`
             : `Your regular worker: ${linked.display_name ?? 'NestScout worker'} · until ${formatDate(linked.expires_at, language)}`}
         </Text>
-      ) : (
+      ) : null}
+      {claimOpen ? (
         <View style={styles.entry} testID="customer-membership-code-entry">
           <Text style={[styles.label, { color: tokens.text }]}>{language === 'vi' ? 'Có mã mời từ thợ?' : 'Have a code from a worker?'}</Text>
+          {inviteClaim?.closes_at ? (
+            <Text style={[styles.body, { color: tokens.muted }]} testID="customer-membership-claim-deadline">
+              {language === 'vi'
+                ? `Nhập mã trước ${formatDate(inviteClaim.closes_at, language)}, khi chưa có đơn thanh toán trong app.`
+                : `Enter a code before ${formatDate(inviteClaim.closes_at, language)}, before any paid order in the app.`}
+            </Text>
+          ) : null}
           <KaelTextInput
             accessibilityLabel={language === 'vi' ? 'Mã mời gồm 8 ký tự' : '8-character invite code'}
             autoCapitalize="characters"
@@ -140,28 +226,49 @@ export function CustomerMembershipCard() {
             onChangeText={(value) => {
               setCode(value)
               setMessage(null)
+              setConfirming(false)
             }}
             placeholder={language === 'vi' ? 'Nhập 8 ký tự' : 'Enter 8 characters'}
             placeholderTextColor={tokens.subtleText}
-            style={[styles.input, code.length > 0 && styles.inputFilled, { borderColor: tokens.borderStrong, color: tokens.text }]}
+            style={[styles.input, code.length > 0 && styles.inputFilled, { borderColor: neverIssuedCharacter ? tokens.danger : tokens.borderStrong, color: tokens.text }]}
             testID="customer-membership-code-input"
             value={code}
           />
+          {neverIssuedCharacter ? (
+            <Text accessibilityLiveRegion="polite" style={[styles.body, { color: tokens.danger }]} testID="customer-membership-code-hint">
+              {language === 'vi'
+                ? 'Mã mời không có số 0, số 1, chữ O và chữ I. Kiểm tra lại mã thợ gửi.'
+                : 'Invite codes never contain 0, 1, O or I. Check the code your worker sent.'}
+            </Text>
+          ) : null}
+          {confirming ? (
+            <Text accessibilityLiveRegion="polite" style={[styles.body, { color: tokens.text }]} testID="customer-membership-code-confirm">
+              {inviteLinkConfirmCopy(inviteClaim?.link_months ?? null, language)}
+            </Text>
+          ) : null}
           <Pressable
+            accessibilityHint={confirming ? inviteLinkConfirmCopy(inviteClaim?.link_months ?? null, language) : undefined}
             accessibilityRole="button"
             accessibilityState={{ disabled: !normalized || claiming, busy: claiming }}
             disabled={!normalized || claiming}
-            onPress={() => void claim()}
-            style={({ pressed }) => [styles.button, { borderColor: tokens.borderStrong }, (!normalized || claiming) && styles.disabled, pressed && styles.pressed]}
+            onPress={pressApply}
+            style={({ pressed }) => [styles.button, { borderColor: confirming ? tokens.primary : tokens.borderStrong }, (!normalized || claiming) && styles.disabled, pressed && styles.pressed]}
             testID="customer-membership-code-submit"
           >
             <Text style={[styles.buttonLabel, { color: tokens.primary }]}>
-              {claiming ? (language === 'vi' ? 'Đang kiểm tra' : 'Checking') : (language === 'vi' ? 'Nhập mã' : 'Apply code')}
+              {claiming
+                ? (language === 'vi' ? 'Đang kiểm tra' : 'Checking')
+                : confirming
+                  ? (language === 'vi' ? 'Xác nhận áp dụng mã' : 'Confirm code')
+                  : (language === 'vi' ? 'Áp dụng mã' : 'Apply code')}
             </Text>
           </Pressable>
         </View>
-      )}
-      {message ? <Text accessibilityLiveRegion="polite" style={[styles.body, { color: tokens.text }]} testID="customer-membership-message">{message}</Text> : null}
+      ) : null}
+      {closedCopy ? (
+        <Text style={[styles.body, { color: tokens.muted }]} testID="customer-membership-claim-closed">{closedCopy}</Text>
+      ) : null}
+      {shownMessage ? <Text accessibilityLiveRegion="polite" style={[styles.body, { color: tokens.text }]} testID="customer-membership-message">{shownMessage}</Text> : null}
     </V21Card>
   )
 }

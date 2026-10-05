@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react'
 
 import { membershipService, type ReferralClaimOutcome } from '../services/membership-service'
-import { clearPendingInvite, loadPendingInvite } from './pending-invite'
+import { clearPendingInvite, loadPendingInvite, saveInviteClaimResult } from './pending-invite'
 
 // Outcomes that can change on a later attempt keep the code; every final answer drops it.
 const RETRYABLE_OUTCOMES = new Set<ReferralClaimOutcome>(['RATE_LIMITED', 'PROGRAM_UNAVAILABLE'])
@@ -18,6 +18,7 @@ export async function claimPendingInvite(accessToken: string): Promise<ReferralC
     return null
   }
   if (!RETRYABLE_OUTCOMES.has(result.data.outcome)) await clearPendingInvite()
+  await saveInviteClaimResult(result.data.outcome)
   return result.data.outcome
 }
 
