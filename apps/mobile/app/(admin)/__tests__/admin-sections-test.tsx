@@ -611,7 +611,7 @@ describe('AdminSections', () => {
 
     const closeButton = screen.getByTestId('admin-production-capability-close')
     expect(closeButton.findAllByType(LinearGradient)).toHaveLength(1)
-    expect(closeButton.findAllByType(Stop).map((stop) => stop.props.stopColor)).toEqual([
+    expect(closeButton.findAllByType(Stop).map((stop) => stop.props.stopColor).slice(0, 3)).toEqual([
       ...component.button.primary.gradient,
     ])
   })

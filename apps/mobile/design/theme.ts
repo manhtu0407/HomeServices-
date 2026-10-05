@@ -5,7 +5,8 @@ import { Platform, type TextStyle } from 'react-native'
  *
  * Source: Customer v2.1 and Worker v5.0 verified design zips.
  * Rule: implementation values come from this file. Formula mint primary is #08AF9C;
- * the app-wide primary CTA gradient follows the final mint aura formula.
+ * every filled primary CTA paints component.button.primary (the sign-in button recipe)
+ * through components/ui/primary-cta-fill.tsx.
  */
 
 export const color = {
@@ -251,17 +252,15 @@ export const aura = {
 export const component = {
   button: {
     primary: {
-      gradient: ['#31D7C2', '#09B29E', '#077C72'] as const,
+      gradient: ['#49CFC0', '#24B3A1', '#088779'] as const,
       gradientStops: [0, 0.5, 1] as const,
+      highlight: { cx: '22%', cy: '0%', r: '78%', opacity: 0.34 } as const,
       text: '#FFFFFF',
-      border: 'rgba(255,255,255,0.72)',
+      border: 'rgba(255,255,255,0.68)',
+      boxShadow: '0px 14px 16px rgba(8,135,121,0.24)',
       height: 48,
       radius: 22,
       paddingX: 20,
-    },
-    primaryPressed: {
-      gradient: ['#09B29E', '#077C72'] as const,
-      gradientStops: [0, 1] as const,
     },
     secondary: {
       bg: '#F7FFFB',

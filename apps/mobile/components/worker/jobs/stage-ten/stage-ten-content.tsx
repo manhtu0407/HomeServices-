@@ -2,7 +2,8 @@ import { useState, type ReactNode } from 'react'
 import { Image } from 'expo-image'
 import { Pressable, StyleSheet, Text, View, useWindowDimensions, type LayoutChangeEvent } from 'react-native'
 
-import { typography } from '@/design/theme'
+import { PrimaryCtaFill } from '@/components/ui/primary-cta-fill'
+import { component, typography } from '@/design/theme'
 import { stageTapSize, stageTypography } from '../stage-ratio'
 import { stageTenAssets } from './stage-ten-assets'
 import { date10, fitStageTenValueSize, money10, text10 } from './stage-ten-model'
@@ -224,10 +225,11 @@ function StageTenActionButton({ accessibilityLabel, disabled = false, label, onP
       style={({ pressed }) => [
         styles.action,
         {
-          borderColor: primary ? 'transparent' : tc('line', '#25BFB3'),
+          borderColor: primary ? component.button.primary.border : tc('line', '#25BFB3'),
           borderRadius: stageTenTokens.buttonRadius * scale,
-          borderWidth: primary ? 0 : 1,
+          borderWidth: 1,
           backgroundColor: primary ? stageTenTokens.mint : stageTenTokens.page,
+          boxShadow: primary && !disabled ? component.button.primary.boxShadow : undefined,
           minHeight: stageTapSize(46, scale),
           overflow: primary ? 'hidden' : 'visible',
           opacity: pressed ? (primary ? 0.8 : 0.75) : disabled ? 0.52 : 1,
@@ -235,7 +237,7 @@ function StageTenActionButton({ accessibilityLabel, disabled = false, label, onP
       ]}
       testID={testID}
     >
-      {primary ? <StageTenGradient from="#26D4C4" id="stage10-button-gradient" to="#008776" /> : null}
+      {primary ? <PrimaryCtaFill radius={0} /> : null}
       <Text style={{ ...stageTypography('subheadline', windowWidth), color: primary ? 'white' : tc('ink', '#008C80'), fontWeight: '600', position: 'relative', textAlign: 'center', zIndex: 1 }}>{label}</Text>
     </Pressable>
   )

@@ -11,6 +11,7 @@ import {
   View,
 } from 'react-native'
 
+import { PrimaryCtaFill, primaryCtaFrame } from '@/components/ui/primary-cta-fill'
 import { type AppleTypographyRole } from '@/design/theme'
 import type { AppLanguage } from '@/lib/app-language'
 
@@ -319,6 +320,7 @@ export function StageEightEvidenceScreen({
         style={[styles.submit, canSubmit && styles.submitEnabled, { marginTop: px(notice ? 8 : 13, scale), height: px(55, scale), borderRadius: px(17, scale) }]}
         testID="worker-v5-stage-eight-fidelity-submit"
       >
+        {canSubmit ? <PrimaryCtaFill radius={0} /> : null}
         <Text adjustsFontSizeToFit minimumFontScale={0.84} numberOfLines={1} style={[stageTypography('body', width), styles.submitText, canSubmit && styles.submitTextEnabled]}>
           {submitting ? copy.completeRecordSending : copy.completeRecord}
         </Text>
@@ -387,7 +389,7 @@ const stylesLight = StyleSheet.create({
   counter: { position: 'absolute', color: '#6D7F87' },
   notice: { alignSelf: 'stretch', color: '#B34A46', fontWeight: '600', marginTop: 8, paddingHorizontal: 4 },
   submit: { backgroundColor: C.disabledBg, flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
-  submitEnabled: { backgroundColor: '#17B48B' },
+  submitEnabled: { backgroundColor: '#24B3A1', overflow: 'hidden', ...primaryCtaFrame },
   submitText: { color: C.disabled, fontWeight: '700' },
-  submitTextEnabled: { color: '#FFFFFF' },
+  submitTextEnabled: { color: '#FFFFFF', position: 'relative', zIndex: 1 },
 })

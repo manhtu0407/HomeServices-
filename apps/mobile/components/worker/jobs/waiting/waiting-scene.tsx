@@ -1,5 +1,6 @@
 import React from 'react'
 import { View } from 'react-native'
+import { PrimaryCtaFill } from '@/components/ui/primary-cta-fill'
 import Svg, { Circle, Defs, LinearGradient, Path, RadialGradient, Rect, Stop } from 'react-native-svg'
 import { useWorkerColor } from '../../ui/worker-dark-styles'
 
@@ -40,11 +41,8 @@ export function WaitingParticles({ scale, id }: { scale: number; id: string }) {
     <Circle cx={179} cy={13} r={10} fill={`url(#${id}-blur)`}/><Circle cx={454} cy={102} r={3.3} fill="#95EBD7"/><Circle cx={118} cy={317} r={2.7} fill="#A1ECDC"/><Circle cx={434} cy={337} r={3.4} fill="#76E1C7"/>
   </Svg>
 }
-export function WaitingButtonFill({ id, colors }: { id: string; colors: readonly [string, string] }) {
-  return <View pointerEvents="none" style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0 }}>
-    <Svg width="100%" height="100%" viewBox="0 0 508 80" preserveAspectRatio="none" accessible={false}>
-      <Defs><LinearGradient id={`${id}-button`} x1="0%" y1="0%" x2="75%" y2="100%"><Stop offset="0" stopColor={colors[0]}/><Stop offset="1" stopColor={colors[1]}/></LinearGradient><LinearGradient id={`${id}-shine`} x1="0" y1="0" x2="0" y2="1"><Stop offset="0" stopColor="white" stopOpacity={0.42}/><Stop offset="0.12" stopColor="white" stopOpacity={0}/></LinearGradient></Defs>
-      <Rect x={0.5} y={0.5} width={507} height={79} rx={40} fill={`url(#${id}-button)`}/><Rect x={1} y={1} width={506} height={78} rx={39} fill={`url(#${id}-shine)`} stroke="#4FE1BE" strokeWidth={0.8}/>
-    </Svg>
+export function WaitingButtonFill({ radius }: { radius: number }) {
+  return <View pointerEvents="none" style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, borderRadius: radius, overflow: 'hidden' }}>
+    <PrimaryCtaFill radius={0} />
   </View>
 }

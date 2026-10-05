@@ -12,7 +12,7 @@ import {
 import { Image } from 'expo-image'
 import { LinearGradient } from 'expo-linear-gradient'
 
-import { type AppleTypographyRole } from '@/design/theme'
+import { component, type AppleTypographyRole } from '@/design/theme'
 import type { AppLanguage } from '@/lib/app-language'
 
 import { STAGE_MAX_FONT_MULTIPLIER, stageTypography } from '../stage-ratio'
@@ -77,7 +77,6 @@ export function StageNineEmptyStage({
   const measuredBottom = y(T.layout.titleTop) + copyHeight + T.layout.bottomBreathingRoom * s
   const stageHeight = Math.max(canvasHeight + safeShift, measuredBottom) + bottomClearance
   const buttonRadius = T.layout.buttonRadius * s
-  const buttonBorder = T.layout.buttonBorder * s
   const font = (token: StageTypeToken): TextStyle => ({ ...stageTypography(token.role, window.width), fontWeight: token.weight })
 
   const onLayout = useCallback((event: LayoutChangeEvent) => {
@@ -180,7 +179,7 @@ export function StageNineEmptyStage({
             }}
             style={({ pressed }) => ({
               borderRadius: buttonRadius,
-              boxShadow: T.colors.buttonShadow,
+              boxShadow: component.button.primary.boxShadow,
               height: T.layout.buttonHeight * s,
               marginHorizontal: T.layout.buttonInset * s,
               marginTop: T.layout.buttonGap * s,
@@ -192,15 +191,9 @@ export function StageNineEmptyStage({
             {/* Clipping lives on this inner layer so the outer shadow is never cut by overflow. */}
             <View
               pointerEvents="none"
-              style={{ borderColor: T.colors.buttonBorder, borderRadius: buttonRadius, borderWidth: buttonBorder, bottom: 0, left: 0, overflow: 'hidden', position: 'absolute', right: 0, top: 0 }}
+              style={{ borderColor: component.button.primary.border, borderRadius: buttonRadius, borderWidth: 1, bottom: 0, left: 0, overflow: 'hidden', position: 'absolute', right: 0, top: 0 }}
             >
-              <StageNineButtonSurface
-                height={(T.layout.buttonHeight - T.layout.buttonBorder * 2) * s}
-                width={(T.reference.width - T.layout.buttonInset * 2 - T.layout.buttonBorder * 2) * s}
-              />
-              <View
-                style={{ borderRadius: buttonRadius, borderTopColor: T.colors.buttonHighlight, borderTopWidth: 1.5 * s, bottom: 0, left: 0, position: 'absolute', right: 0, top: 0 }}
-              />
+              <StageNineButtonSurface />
             </View>
             <View pointerEvents="none" style={{ alignItems: 'center', flex: 1, justifyContent: 'center' }}>
               <StageText

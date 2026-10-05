@@ -1,4 +1,4 @@
-import { scaledTypography, typography } from '@/design/theme'
+import { component, scaledTypography, typography } from '@/design/theme'
 import { Image } from 'expo-image'
 import { Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native'
 import Svg, { Defs, Rect } from 'react-native-svg'
@@ -8,6 +8,7 @@ import type { AppLanguage } from '@/lib/app-language'
 import type { CustomerThemeTokens } from '../customer-theme'
 import { customerV21HomeV4Assets } from '../ui/assets'
 import { AlphaStop as Stop, NativeSafeLinearGradient as LinearGradient } from '@/components/ui/svg-alpha-stop'
+import { PrimaryCtaFill, primaryCtaFrame } from '@/components/ui/primary-cta-fill'
 
 type HomeGuidanceBannerProps = {
   language: AppLanguage
@@ -86,9 +87,10 @@ export function HomeGuidanceBanner({ language, onPress, reduceTransparency, toke
             accessibilityLabel={copy.button}
             accessibilityRole="button"
             onPress={onPress}
-            style={[styles.button, { backgroundColor: tokens.primary, borderRadius: q(24) + 2, height: q(47) + 4, marginTop: q(18), paddingHorizontal: q(21) + 4 }]}
+            style={[styles.button, primaryCtaFrame, { borderRadius: q(24) + 2, height: q(47) + 4, marginTop: q(18), paddingHorizontal: q(21) + 4 }]}
             testID="customer-v21-home-promo-action"
           >
+            <PrimaryCtaFill radius={q(24) + 2} />
             <Text
               adjustsFontSizeToFit
               minimumFontScale={0.72}
@@ -97,7 +99,7 @@ export function HomeGuidanceBanner({ language, onPress, reduceTransparency, toke
                 styles.buttonText,
                 buttonTypography,
                 {
-                  color: tokens.primaryText,
+                  color: component.button.primary.text,
                   fontSize: (buttonTypography.fontSize ?? 0) + 3,
                   lineHeight: (buttonTypography.lineHeight ?? 0) + 3,
                 },
@@ -128,6 +130,8 @@ const styles = StyleSheet.create({
   buttonText: {
     ...typography.headline,
     color: '#FFFFFF',
+    position: 'relative',
+    zIndex: 1,
   },
   card: {
     alignSelf: 'center',

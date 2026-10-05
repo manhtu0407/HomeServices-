@@ -1,6 +1,7 @@
 import React from 'react'
 import { Dimensions, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { Image } from 'expo-image'
+import { PrimaryCtaFill, primaryCtaFrame } from '@/components/ui/primary-cta-fill'
 import { stageTypography } from '../stage-ratio'
 import { StageElevenIcon, type StageElevenIconName } from './stage-eleven-icons'
 import { StageElevenSuccess } from './stage-eleven-success'
@@ -218,8 +219,11 @@ function Detail({ icon, label, value, windowWidth }: { icon: StageElevenIconName
 function Button({ label, icon, onPress, primary, disabled, testID, windowWidth }: { label: string; icon: StageElevenIconName; onPress: () => void; primary?: boolean; disabled?: boolean; testID?: string; windowWidth: number }) {
   return <Pressable onPress={onPress} disabled={disabled} accessibilityRole="button" accessibilityState={{ disabled: !!disabled }}
     style={({ pressed }) => [s.button, primary && s.primaryButton, disabled && s.disabled, pressed && !disabled && s.pressed]} testID={testID}>
-    <StageElevenIcon name={icon} size={19} color={primary ? '#FFFFFF' : t.text} filled={!!primary}/>
-    <Text style={[stageTypography('footnote', windowWidth), s.buttonText, primary && { color: '#FFFFFF' }]}>{label}</Text>
+    {primary ? <PrimaryCtaFill radius={0}/> : null}
+    <View style={s.buttonContent}>
+      <StageElevenIcon name={icon} size={19} color={primary ? '#FFFFFF' : t.text} filled={!!primary}/>
+      <Text style={[stageTypography('footnote', windowWidth), s.buttonText, primary && { color: '#FFFFFF' }]}>{label}</Text>
+    </View>
   </Pressable>
 }
 const s = workerThemedStylesProxy(StyleSheet.create({
@@ -265,7 +269,8 @@ const s = workerThemedStylesProxy(StyleSheet.create({
   thanksCopy: { flex: 1, gap: 3 }, thanksTitle: { fontWeight: '600', color: t.text }, thanksBody: { color: t.muted },
   actions: { gap: 9, marginTop: 1 },
   button: { minHeight: 47, paddingHorizontal: 11, paddingVertical: 10, borderRadius: 24, borderWidth: 1, borderColor: '#DCE5EC', backgroundColor: '#FFFFFF', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7 },
-  primaryButton: { minHeight: 52, backgroundColor: '#00956D', borderColor: '#00956D' }, buttonText: { fontWeight: '600', color: t.text, flexShrink: 1, textAlign: 'center' },
+  buttonContent: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, flexShrink: 1 },
+  primaryButton: { minHeight: 52, backgroundColor: '#24B3A1', overflow: 'hidden', ...primaryCtaFrame }, buttonText: { fontWeight: '600', color: t.text, flexShrink: 1, textAlign: 'center' },
   disabled: { opacity: .45 }, pressed: { opacity: .76, transform: [{ scale: .985 }] },
   notice: { color: t.greenDark, paddingVertical: 6 },
 }))

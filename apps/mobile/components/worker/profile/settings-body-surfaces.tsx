@@ -199,8 +199,7 @@ export function WorkerV5SettingsBody({ language, reduceTransparency, runtime }: 
               disabled={accountSaving || !accountCanSave}
               label={accountSaving ? textByLanguage(language, 'Đang lưu', 'Saving') : textByLanguage(language, 'Lưu thông tin', 'Save details')}
               onPress={() => void saveAccountSettings()}
-              showPrimaryGradient={false}
-              style={[styles.workerSettingsSaveButton, accountCanSave && !accountSaving ? styles.workerSettingsSaveButtonActive : null]}
+              style={accountCanSave && !accountSaving ? null : styles.workerSettingsSaveButton}
               testID="worker-v5-settings-account-save"
             />
             {accountMessage ? (
@@ -261,8 +260,7 @@ export function WorkerV5SettingsBody({ language, reduceTransparency, runtime }: 
               disabled={passwordSaving || !passwordCanSave}
               label={passwordSaving ? textByLanguage(language, 'Đang đổi', 'Changing') : textByLanguage(language, 'Lưu mật khẩu', 'Save password')}
               onPress={() => void savePasswordSettings()}
-              showPrimaryGradient={false}
-              style={[styles.workerSettingsSaveButton, passwordCanSave && !passwordSaving ? styles.workerSettingsSaveButtonActive : null]}
+              style={passwordCanSave && !passwordSaving ? null : styles.workerSettingsSaveButton}
               testID="worker-v5-settings-password-save"
             />
             {passwordMessage ? <Text style={passwordMessage.includes('Đã') || passwordMessage === 'Password changed' ? styles.workerSettingsMessage : styles.workerSettingsMessageError} testID="worker-v5-settings-password-message">{passwordMessage}</Text> : null}

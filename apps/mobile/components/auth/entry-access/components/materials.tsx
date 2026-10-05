@@ -13,7 +13,7 @@ import {
   type StyleProp,
   type ViewStyle,
 } from 'react-native'
-import Svg, { Defs, LinearGradient, RadialGradient, Rect, Stop } from 'react-native-svg'
+import { PrimaryCtaFill } from '@/components/ui/primary-cta-fill'
 import { KaelCoreV9 } from '@/components/ui/kael-core-v9'
 import { useAppLanguage } from '@/lib/app-language'
 import { entryAccessCopy } from '../copy'
@@ -134,21 +134,7 @@ export function PrimaryButton({
       style={({ pressed }: { pressed: boolean }) => [styles.primaryButton, disabled && styles.disabled, pressed && !disabled && styles.pressed]}
       testID={testID}
     >
-      <Svg pointerEvents="none" width="100%" height="100%" style={StyleSheet.absoluteFill} preserveAspectRatio="none">
-        <Defs>
-          <LinearGradient id="primaryGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-            <Stop offset="0" stopColor="#49CFC0" />
-            <Stop offset="0.5" stopColor="#24B3A1" />
-            <Stop offset="1" stopColor="#088779" />
-          </LinearGradient>
-          <RadialGradient id="buttonLight" cx="22%" cy="0%" r="78%">
-            <Stop offset="0" stopColor="#FFFFFF" stopOpacity="0.34" />
-            <Stop offset="1" stopColor="#FFFFFF" stopOpacity="0" />
-          </RadialGradient>
-        </Defs>
-        <Rect width="100%" height="100%" rx="24" fill="url(#primaryGradient)" />
-        <Rect width="100%" height="100%" rx="24" fill="url(#buttonLight)" />
-      </Svg>
+      <PrimaryCtaFill radius={24} />
       <View style={styles.primaryLabelSlot}>
         <Text style={styles.primaryLabel}>{label}</Text>
       </View>

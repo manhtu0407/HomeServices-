@@ -1,7 +1,7 @@
 import React from 'react'
 import { AccessibilityInfo, Animated, AppState, Dimensions, Easing, Image, Pressable, StyleSheet, Text, View } from 'react-native'
 import type { AppStateStatus, LayoutChangeEvent } from 'react-native'
-import { color } from '@/design/theme'
+import { color, component } from '@/design/theme'
 import { stageButtonHeight, stageLayout, stageMetric, stageTypography } from '../stage-ratio'
 import { waitingAssets, waitingDarkAssets } from './waiting-assets'
 import { waitingCopy } from './waiting-copy'
@@ -72,7 +72,6 @@ export class WaitingContent extends React.PureComponent<WaitingContentProps, Loc
     const windowWidth = Dimensions.get('window').width
     const timerScale = reading.text.length > 5 ? t.timerScale.long : t.timerScale.short
     const timerStyle = stageTypography('largeTitle', windowWidth, timerScale)
-    const colors = this.props.buttonColors ?? [t.colors.buttonStart, t.colors.buttonEnd] as const
     // The design floor alone leaves the near-white atmosphere short of a tall device's actual
     // bottom edge; the same 620/0.92 floor worker-v5-flow.tsx gives its own ScrollView keeps this
     // screen's own background reaching that edge instead of handing off to a mismatched parent fill.
@@ -107,8 +106,8 @@ export class WaitingContent extends React.PureComponent<WaitingContentProps, Loc
         </View>
         <View style={{ marginTop: 2 * s, paddingBottom: stageMetric(stageLayout.sectionGap, windowWidth) }}>
           <Pressable onPress={onOpenDetails} accessibilityRole="button" accessibilityLabel={copy.action} testID={`waiting-details-${model.kind}`}
-            style={({ pressed }) => [{ height: stageButtonHeight(windowWidth), borderRadius: stageMetric(stageLayout.buttonRadius, windowWidth), alignItems: 'center', justifyContent: 'center', boxShadow: '0 8px 19px rgba(0,199,158,0.23)', transform: [{ scale: pressed ? 0.987 : 1 }] }]}>
-            <WaitingButtonFill id={this.id} colors={colors}/>
+            style={({ pressed }) => [{ height: stageButtonHeight(windowWidth), borderRadius: stageMetric(stageLayout.buttonRadius, windowWidth), alignItems: 'center', justifyContent: 'center', borderColor: component.button.primary.border, borderWidth: 1, boxShadow: component.button.primary.boxShadow, transform: [{ scale: pressed ? 0.987 : 1 }] }]}>
+            <WaitingButtonFill radius={stageMetric(stageLayout.buttonRadius, windowWidth)}/>
             <Text style={{ ...stageTypography(t.type.button.role, windowWidth), position: 'relative', zIndex: 1, color: '#FFFFFF', fontWeight: t.type.button.weight, textAlign: 'center' }} maxFontSizeMultiplier={1.15}>{copy.action}</Text>
           </Pressable>
         </View>

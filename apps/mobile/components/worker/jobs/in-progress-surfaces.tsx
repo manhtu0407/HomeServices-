@@ -35,6 +35,7 @@ import { StageFiveWork } from './stage-five/travel-work/stage-five-work'
 import type { Actions as StageFiveActions, StageFiveJobStatus, WorkModel as StageFiveWorkModel } from './stage-five/travel-work/stage-five.types'
 import { workerV5ArrivalDestinationLabel } from '../ui/route'
 import { useWorkerThemedStyles } from '../ui/worker-dark-styles'
+import { PrimaryCtaFill, primaryCtaFrame } from '@/components/ui/primary-cta-fill'
 
 type WorkerV5Runtime = ReturnType<typeof useFrontendWorkflow>
 type StageFiveMutableStatus = Extract<StageFiveJobStatus, 'arrived' | 'inspecting' | 'repairing'>
@@ -651,8 +652,9 @@ export function WorkerV5InProgressBody({
                 <Pressable accessibilityRole="button" accessibilityLabel={textByLanguage(language, 'Hủy ghi chú', 'Cancel note')} onPress={() => setStageFiveNoteOpen(false)} style={{ flex: 1, minHeight: 48, alignItems: 'center', justifyContent: 'center', borderColor: '#E4EFF0', borderRadius: 24, borderWidth: 1 }}>
                   <Text style={{ ...typography.body, color: '#496580', fontWeight: '600' }}>{textByLanguage(language, 'Hủy', 'Cancel')}</Text>
                 </Pressable>
-                <Pressable accessibilityRole="button" accessibilityLabel={textByLanguage(language, 'Lưu ghi chú', 'Save note')} disabled={phaseActionBusy} onPress={() => void saveStageFiveNote()} style={{ flex: 1, minHeight: 48, alignItems: 'center', justifyContent: 'center', backgroundColor: '#009F89', borderRadius: 24, opacity: phaseActionBusy ? 0.5 : 1 }}>
-                  <Text style={{ ...typography.body, color: '#FFFFFF', fontWeight: '700' }}>{phaseActionBusy ? textByLanguage(language, 'Đang lưu…', 'Saving…') : textByLanguage(language, 'Lưu ghi chú', 'Save note')}</Text>
+                <Pressable accessibilityRole="button" accessibilityLabel={textByLanguage(language, 'Lưu ghi chú', 'Save note')} disabled={phaseActionBusy} onPress={() => void saveStageFiveNote()} style={{ flex: 1, minHeight: 48, alignItems: 'center', justifyContent: 'center', backgroundColor: '#24B3A1', borderRadius: 24, overflow: 'hidden', opacity: phaseActionBusy ? 0.5 : 1, ...primaryCtaFrame }}>
+                  <PrimaryCtaFill radius={0} />
+                  <Text style={{ ...typography.body, color: '#FFFFFF', fontWeight: '700', position: 'relative', zIndex: 1 }}>{phaseActionBusy ? textByLanguage(language, 'Đang lưu…', 'Saving…') : textByLanguage(language, 'Lưu ghi chú', 'Save note')}</Text>
                 </Pressable>
               </View>
             </View>

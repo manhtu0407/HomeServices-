@@ -2289,9 +2289,6 @@ export const styles = StyleSheet.create({
     borderColor: 'rgba(39,189,166,0.28)',
     borderWidth: 1,
   },
-  workerSettingsSaveButtonActive: {
-    backgroundColor: color.brand.primary,
-  },
   earningsHeroAmount: {
     color: color.text.strong,
     flexShrink: 1,

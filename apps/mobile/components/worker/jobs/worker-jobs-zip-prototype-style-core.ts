@@ -1,6 +1,6 @@
 import { StyleSheet } from 'react-native'
 
-import { color, typography } from '@/design/theme'
+import { color, component, typography } from '@/design/theme'
 
 import { stageLayout } from './stage-ratio'
 
@@ -33,7 +33,9 @@ export const prototypeCoreStyles = StyleSheet.create({
   },
   opportunityActionPrimary: {
     backgroundColor: color.brand.primary,
-    borderColor: color.brand.primary,
+    borderColor: component.button.primary.border,
+    boxShadow: component.button.primary.boxShadow,
+    overflow: 'hidden',
   },
   opportunityActionDisabled: {
     backgroundColor: color.surface.disabled,
@@ -42,7 +44,9 @@ export const prototypeCoreStyles = StyleSheet.create({
   opportunityActionText: {
     ...typography.body,
     fontWeight: '700',
+    position: 'relative',
     textAlign: 'center',
+    zIndex: 1,
   },
   opportunityActionSecondaryText: {
     color: color.brand.primaryDark,

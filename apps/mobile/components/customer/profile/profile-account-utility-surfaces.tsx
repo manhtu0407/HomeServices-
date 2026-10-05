@@ -139,7 +139,6 @@ export function ProfilePersonalDetailsView({
               ? (language === 'vi' ? 'Đang lưu' : 'Saving')
               : (language === 'vi' ? 'Lưu thay đổi' : 'Save changes')}
             onPress={account.onSave}
-            showPrimaryGradient={false}
             style={styles.primaryButton}
             testID="customer-v21-profile-settings-account-save"
           />
@@ -268,7 +267,6 @@ export function ProfileLoginSecurityView({
               ? (language === 'vi' ? 'Đang đổi' : 'Changing')
               : (language === 'vi' ? 'Lưu mật khẩu' : 'Save password')}
             onPress={password.onSave}
-            showPrimaryGradient={false}
             style={styles.primaryButton}
             testID="customer-v21-profile-settings-password-save"
           />

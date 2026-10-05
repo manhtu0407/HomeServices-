@@ -1,8 +1,6 @@
-import { useId } from 'react'
-import { StyleSheet } from 'react-native'
-import Svg, { Circle, Defs, LinearGradient, Path, Rect, Stop } from 'react-native-svg'
+import Svg, { Circle, Path, Rect } from 'react-native-svg'
 
-import { stageFourGradient } from './worker-jobs-zip-prototype-stage-four-styles'
+import { PrimaryCtaFill } from '@/components/ui/primary-cta-fill'
 
 export type StageFourIconName =
   | 'building'
@@ -23,21 +21,8 @@ export type StageFourIconName =
   | 'share'
   | 'traffic'
 
-// SVG ids are document-global on web, so every fill needs its own gradient id.
 export function StageFourGradientFill({ testID }: { testID?: string }) {
-  const gradientId = `stage4-gradient-${useId().replace(/[^A-Za-z0-9_-]/g, '')}`
-  return (
-    <Svg pointerEvents="none" preserveAspectRatio="none" style={StyleSheet.absoluteFill} testID={testID} viewBox="0 0 100 100">
-      <Defs>
-        <LinearGradient id={gradientId} x1="0%" x2="75%" y1="0%" y2="100%">
-          {stageFourGradient.colors.map((stopColor, index) => (
-            <Stop key={stopColor} offset={stageFourGradient.stops[index]} stopColor={stopColor} />
-          ))}
-        </LinearGradient>
-      </Defs>
-      <Rect fill={`url(#${gradientId})`} height="100" width="100" x="0" y="0" />
-    </Svg>
-  )
+  return <PrimaryCtaFill radius={0} testID={testID} />
 }
 
 export function StageFourIcon({ color, name, size }: { color: string; name: StageFourIconName; size: number }) {

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Pressable, View } from 'react-native'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import type { LocalDeal } from '@nestscout/shared'
+import { PrimaryCtaFill } from '@/components/ui/primary-cta-fill'
 import { color } from '@/design/theme'
 import { localizedServiceLabel, type AppLanguage } from '@/lib/app-language'
 import type { WorkerBroadcast } from '@/lib/api-types'
@@ -305,6 +306,7 @@ function WorkerJobsLegacyPrototypeOpportunityActions({
         style={({ pressed }) => [prototypeStyles.opportunityAction, size, prototypeStyles.opportunityActionPrimary, primaryDisabled && prototypeStyles.opportunityActionDisabled, pressed && !primaryDisabled && { opacity: 0.84 }]}
         testID="worker-v5-primary-action"
       >
+        {primaryDisabled ? null : <PrimaryCtaFill radius={0} />}
         <Text style={[prototypeStyles.opportunityActionText, primaryDisabled ? prototypeStyles.opportunityActionDisabledText : prototypeStyles.opportunityActionPrimaryText]}>{primary}</Text>
       </Pressable>
     </View>

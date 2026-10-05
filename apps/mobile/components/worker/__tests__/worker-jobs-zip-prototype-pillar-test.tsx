@@ -255,9 +255,9 @@ describe('Worker Jobs ZIP Prototype', () => {
     })
     expect(light.pill.amber.text).toBe('#C67A16')
     expect(light.pill.mint.text).toBe('#0F8F7E')
-    expect(light.primary.colors).toEqual(['#20CBB0', '#10B896', '#06977D'])
+    expect(light.primary.text).toBe('#FFFFFF')
     expect(dark).toMatchObject({ card: darkTokens.raised, cardBorder: darkTokens.border, glyph: darkTokens.primary })
-    expect(dark.primary.glow).toBeNull()
+    expect(dark.primary.text).toBe('#FFFFFF')
     expect(light.disabled.background).toBe(getWorkerThemeTokens('light').disabled)
   })
 

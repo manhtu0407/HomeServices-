@@ -16,6 +16,7 @@ import {
 } from './ambassador-model'
 import { styles as lightStyles } from './ambassador-styles'
 import { useWorkerThemedStyles } from '../ui/worker-dark-styles'
+import { PrimaryCtaFill } from '@/components/ui/primary-cta-fill'
 
 type AmbassadorController = ReturnType<typeof useWorkerAmbassador>
 
@@ -110,6 +111,7 @@ function MilestoneRow({
           style={({ pressed }) => [styles.redeemButton, confirming && styles.redeemButtonConfirm, pressed && styles.pressed]}
           testID={`worker-v5-ambassador-redeem-${milestone.rank}`}
         >
+          {confirming ? <PrimaryCtaFill radius={0} /> : null}
           <Text style={[styles.redeemLabel, confirming && styles.redeemLabelConfirm]}>{label}</Text>
         </Pressable>
       ) : null}

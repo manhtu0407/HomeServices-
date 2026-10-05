@@ -121,20 +121,18 @@ export function WorkerV5ActionRail({
           primaryUsesSourceTone && !isJobsReview ? styles.primaryActionButtonSource : null,
           isJobsReview ? styles.navButtonJobsReview : null,
           isJobsReview ? styles.navButtonPrimaryJobsReview : null,
-          reduceTransparency && (primaryUsesSourceTone ? styles.primaryActionButtonSource : styles.opaqueCard),
           primaryIsDisabled && (primaryUsesSourceTone ? styles.sourceActionDisabled : styles.navButtonDisabled),
           pressed && !primaryIsDisabled ? styles.pressed : null,
         ]}
         testID={primaryTestID}
       >
-        {primaryUsesSourceTone && !isJobsReview ? <PrimaryButtonFill disabled={primaryIsDisabled} variant="source" /> : null}
+        <PrimaryButtonFill disabled={primaryIsDisabled} variant="source" />
         <Text
           style={[
             styles.navButtonText,
             isJobsReview ? styles.navButtonTextJobsReview : null,
             styles.actionRailButtonText,
             styles.navButtonPrimaryText,
-            reduceTransparency && !primaryUsesSourceTone && styles.actionRailPrimaryText,
             primaryIsDisabled && (primaryUsesSourceTone ? styles.sourceActionDisabledText : styles.navButtonDisabledText),
           ]}
           adjustsFontSizeToFit
@@ -177,13 +175,12 @@ export function WorkerV5SingleSourceActionButton({
         styles.primaryActionButton,
         styles.primaryActionButtonSource,
         isJobsReview ? styles.primaryActionButtonJobsReview : null,
-        reduceTransparency && styles.primaryActionButtonSource,
         disabled && styles.sourceActionDisabled,
         pressed && !disabled ? styles.pressed : null,
       ]}
       testID={testID}
     >
-      {!isJobsReview ? <PrimaryButtonFill disabled={disabled} variant="source" /> : null}
+      <PrimaryButtonFill disabled={disabled} variant="source" />
       <Text
         adjustsFontSizeToFit
         minimumFontScale={0.76}

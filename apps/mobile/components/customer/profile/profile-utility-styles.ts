@@ -156,13 +156,6 @@ export const customerV21ProfileUtilityStyles = StyleSheet.create({
   profileAddressSaveDefaultButton: {
     borderRadius: 22,
   },
-  profileAddressSaveDefaultButtonActive: {
-    backgroundColor: '#12B8A4',
-    shadowColor: '#087D72',
-    shadowOffset: { height: 12, width: 0 },
-    shadowOpacity: 0.22,
-    shadowRadius: 20,
-  },
   profileAddressSavedIcon: {
     flexShrink: 0,
     minHeight: 62,

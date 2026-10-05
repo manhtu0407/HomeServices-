@@ -13,6 +13,7 @@ import {
 import { Image } from 'expo-image'
 import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg'
 
+import { PrimaryCtaFill, primaryCtaFrame } from '@/components/ui/primary-cta-fill'
 import type { AppleTypographyRole } from '@/design/theme'
 import type { AppLanguage } from '@/lib/app-language'
 import { useJobMediaPreviewUrls } from '@/lib/job-media-preview'
@@ -117,17 +118,13 @@ function cssGradientLine(angle: number, width: number, height: number) {
   return { x1: width / 2 - dx * half, x2: width / 2 + dx * half, y1: height / 2 - dy * half, y2: height / 2 + dy * half }
 }
 
-const PRIMARY_STOPS = [['0%', CLight.primaryStart], ['43%', CLight.primaryMiddle], ['100%', CLight.primaryEnd]] as const
 const SECONDARY_STOPS = [['0%', CLight.secondaryStart], ['100%', CLight.secondaryEnd]] as const
 
-function StageSixButtonBackground({ radius, variant }: { radius: number; variant: 'primary' | 'secondary' }) {
+function StageSixButtonBackground({ radius }: { radius: number }) {
   const stageSixTokens = useWorkerThemedTokens(stageSixTokensLight)
-  const C = useWorkerThemedTokens(CLight)
   const fillId = useSvgId('stage-six-button-fill')
-  const bevelId = useSvgId('stage-six-button-bevel')
   const [size, setSize] = useState<{ height: number; width: number } | null>(null)
-  const primary = variant === 'primary'
-  const line = size ? cssGradientLine(primary ? stageSixTokens.gradients.primaryAngle : stageSixTokens.gradients.secondaryAngle, size.width, size.height) : null
+  const line = size ? cssGradientLine(stageSixTokens.gradients.secondaryAngle, size.width, size.height) : null
 
   const handleLayout = (event: LayoutChangeEvent) => {
     const { height, width } = event.nativeEvent.layout
@@ -141,24 +138,10 @@ function StageSixButtonBackground({ radius, variant }: { radius: number; variant
         <Svg height={size.height} width={size.width}>
           <Defs>
             <LinearGradient gradientUnits="userSpaceOnUse" id={fillId} x1={line.x1} x2={line.x2} y1={line.y1} y2={line.y2}>
-              {(primary ? PRIMARY_STOPS : SECONDARY_STOPS).map(([offset, stopColor]) => <Stop key={offset} offset={offset} stopColor={stopColor} />)}
+              {SECONDARY_STOPS.map(([offset, stopColor]) => <Stop key={offset} offset={offset} stopColor={stopColor} />)}
             </LinearGradient>
-            {primary ? (
-              <LinearGradient id={bevelId} x1="0" x2="0" y1="0" y2="1">
-                <Stop offset="0%" stopColor={C.primaryBevelLight} stopOpacity={0.4} />
-                <Stop offset="8%" stopColor={C.primaryBevelLight} stopOpacity={0} />
-                <Stop offset="92%" stopColor={C.primaryBevelShade} stopOpacity={0} />
-                <Stop offset="100%" stopColor={C.primaryBevelShade} stopOpacity={0.125} />
-              </LinearGradient>
-            ) : null}
           </Defs>
           <Rect fill={`url(#${fillId})`} height={size.height} rx={radius} width={size.width} x={0} y={0} />
-          {primary ? (
-            <>
-              <Rect fill="none" height={size.height - 1} rx={radius - 0.5} stroke={C.primaryStroke} strokeOpacity={0.7} strokeWidth={1} width={size.width - 1} x={0.5} y={0.5} />
-              <Rect fill="none" height={size.height - 3} rx={radius - 1.5} stroke={`url(#${bevelId})`} strokeWidth={1} width={size.width - 3} x={1.5} y={1.5} />
-            </>
-          ) : null}
         </Svg>
       ) : null}
     </View>
@@ -462,7 +445,7 @@ export function StageSixTimeline({
             ]}
             testID="worker-v5-stage-six-edit-action"
           >
-            <StageSixButtonBackground radius={s(L.button.radius)} variant="secondary" />
+            <StageSixButtonBackground radius={s(L.button.radius)} />
             <StageSixIcon color={C.secondaryInk} name="edit" size={s(L.glyph.edit)} />
             <StageSixText numberOfLines={1} style={[styles.actionText, styles.secondaryText, type(TYPE.action)]}>{textByLanguage(language, 'Chỉnh sửa', 'Edit')}</StageSixText>
           </Pressable>
@@ -482,7 +465,7 @@ export function StageSixTimeline({
             ]}
             testID="worker-v5-stage-six-primary-action"
           >
-            <StageSixButtonBackground radius={s(L.button.radius)} variant="primary" />
+            <PrimaryCtaFill radius={s(L.button.radius)} />
             {busy ? (
               <ActivityIndicator color={C.white} size="small" testID="worker-v5-stage-six-primary-busy" />
             ) : (
@@ -546,7 +529,7 @@ const stylesLight = StyleSheet.create({
   buttonPairCompact: { width: '100%' },
   action: { alignItems: 'center', flexDirection: 'row', justifyContent: 'center' },
   secondary: { backgroundColor: CLight.secondaryBase },
-  primary: { backgroundColor: CLight.primaryBase, boxShadow: stageSixTokensLight.shadows.primary },
+  primary: { backgroundColor: CLight.primaryBase, ...primaryCtaFrame },
   flexSecondary: { flex: 1, minWidth: 0 },
   flexPrimary: { flex: 1.3, minWidth: 0 },
   actionText: { color: CLight.white, fontWeight: '600' },

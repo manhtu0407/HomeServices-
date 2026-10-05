@@ -19,9 +19,12 @@ import { AlphaStop, NativeSafeLinearGradient } from '../svg-alpha-stop'
 import { KaelButton, KaelChip, KaelTextField, KaelTextInput } from '../kael-primitives'
 
 describe('Kael UI primitives', () => {
-  it('keeps the primary CTA gradient aligned with the final mint aura colors without extra white overlays', () => {
-    expect(component.button.primary.gradient).toEqual(['#31D7C2', '#09B29E', '#077C72'])
+  it('paints the primary CTA with the sign-in button recipe', () => {
+    expect(component.button.primary.gradient).toEqual(['#49CFC0', '#24B3A1', '#088779'])
     expect(component.button.primary.gradientStops).toEqual([0, 0.5, 1])
+    expect(component.button.primary.highlight).toEqual({ cx: '22%', cy: '0%', r: '78%', opacity: 0.34 })
+    expect(component.button.primary.border).toBe('rgba(255,255,255,0.68)')
+    expect(component.button.primary.boxShadow).toBe('0px 14px 16px rgba(8,135,121,0.24)')
     expect(shadow.primary).toMatchObject({
       shadowColor: '#087D72',
       shadowOffset: { height: 14, width: 0 },
@@ -38,12 +41,12 @@ describe('Kael UI primitives', () => {
       </>,
     )
 
-    const gradients = UNSAFE_getAllByType(LinearGradient)
-    const gradientIds = gradients.map((gradient) => gradient.props.id)
+    const gradientIds = UNSAFE_getAllByType(LinearGradient).map((gradient) => gradient.props.id)
+    const lightIds = UNSAFE_getAllByType(RadialGradient).map((gradient) => gradient.props.id)
     const fills = UNSAFE_getAllByType(Rect).map((rect) => rect.props.fill)
 
-    expect(new Set(gradientIds).size).toBe(2)
-    expect(fills).toEqual(gradientIds.map((gradientId) => `url(#${gradientId})`))
+    expect(new Set([...gradientIds, ...lightIds]).size).toBe(4)
+    expect(fills).toEqual(gradientIds.flatMap((gradientId, index) => [`url(#${gradientId})`, `url(#${lightIds[index]})`]))
   })
 
   it('normalizes rgba gradient stops into native-safe hex color plus opacity', () => {
@@ -162,12 +165,10 @@ describe('Kael UI primitives', () => {
     const buttonStyle = StyleSheet.flatten(button.props.style)
 
     expect(buttonStyle.borderRadius).toBe(18)
-    expect(UNSAFE_getAllByType(Svg)[0].props.viewBox).toBe('0 0 100 36')
-    expect(UNSAFE_getAllByType(Rect)).toHaveLength(1)
-    expect(UNSAFE_getAllByType(Rect)[0].props).toMatchObject({
-      height: 36,
-    })
-    expect(UNSAFE_getAllByType(Rect)[0].props.rx).toBeUndefined()
+    expect(buttonStyle.overflow).toBe('hidden')
+    expect(UNSAFE_getAllByType(Svg)[0].props).toMatchObject({ height: '100%', width: '100%' })
+    expect(UNSAFE_getAllByType(Rect)).toHaveLength(2)
+    expect(UNSAFE_getAllByType(Rect).map((rect) => rect.props.rx)).toEqual([0, 0])
   })
 
   it('keeps Kael visual identity to one vector core, one Home clip, and one bow interaction', () => {

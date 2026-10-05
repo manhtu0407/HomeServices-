@@ -1,6 +1,6 @@
 import { StyleSheet } from 'react-native'
 
-import { color, shadow, typography } from '@/design/theme'
+import { color, component, shadow, typography } from '@/design/theme'
 
 export const styles = StyleSheet.create({
   workerCustomerFontText: {
@@ -121,8 +121,10 @@ export const styles = StyleSheet.create({
     paddingHorizontal: 12,
   },
   redeemButtonConfirm: {
-    backgroundColor: color.brand.primaryDark,
-    borderColor: color.brand.primaryDark,
+    backgroundColor: '#24B3A1',
+    borderColor: component.button.primary.border,
+    boxShadow: component.button.primary.boxShadow,
+    overflow: 'hidden',
   },
   redeemLabel: {
     color: color.brand.primaryDark,
@@ -131,6 +133,8 @@ export const styles = StyleSheet.create({
   },
   redeemLabelConfirm: {
     color: color.text.inverse,
+    position: 'relative',
+    zIndex: 1,
   },
   receipt: {
     backgroundColor: color.surface.mint,

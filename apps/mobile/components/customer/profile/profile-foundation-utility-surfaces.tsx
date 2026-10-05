@@ -469,7 +469,6 @@ export function ProfileDeleteAccountView({
             <KaelButton
               label={language === 'vi' ? 'Đăng nhập lại' : 'Sign in again'}
               onPress={() => void onReauthenticate()}
-              showPrimaryGradient={false}
               testID="customer-v21-profile-delete-account-reauthenticate"
             />
           ) : null}

@@ -1,6 +1,6 @@
 import { StyleSheet } from 'react-native'
 
-import { color, component, glass, radius, shadow, typography } from '@/design/theme'
+import { color, component, glass, radius, typography } from '@/design/theme'
 
 export const styles = StyleSheet.create({
   workerCustomerFontText: {
@@ -22,9 +22,6 @@ export const styles = StyleSheet.create({
     opacity: 0.82,
     right: -34,
     top: -48,
-  },
-  actionRailPrimaryText: {
-    color: color.brand.primaryDark,
   },
   actionRailZipAura: {
     bottom: -18,
@@ -88,15 +85,19 @@ export const styles = StyleSheet.create({
   },
   navButtonPrimary: {
     backgroundColor: color.brand.primary,
-    ...shadow.primary,
+    borderColor: component.button.primary.border,
+    borderWidth: 1,
+    boxShadow: component.button.primary.boxShadow,
   },
   navButtonPrimaryJobsReview: {
-    backgroundColor: '#0EA897',
-    borderColor: '#0A8D80',
+    borderColor: component.button.primary.border,
     borderWidth: 1,
+    boxShadow: component.button.primary.boxShadow,
   },
   navButtonPrimaryText: {
     color: color.text.inverse,
+    position: 'relative',
+    zIndex: 1,
   },
   navButtonSecondary: {
     backgroundColor: glass.bgStrong,
@@ -151,25 +152,18 @@ export const styles = StyleSheet.create({
     overflow: 'hidden',
     paddingHorizontal: 18,
     position: 'relative',
-    ...shadow.primary,
+    boxShadow: component.button.primary.boxShadow,
   },
   primaryActionButtonSource: {
-    backgroundColor: '#13CBB8',
-    borderColor: 'rgba(2,126,115,0.22)',
+    borderColor: component.button.primary.border,
     borderWidth: 1,
-    shadowColor: '#059F8E',
-    shadowOffset: { height: 14, width: 0 },
-    shadowOpacity: 0.27,
-    shadowRadius: 28,
+    boxShadow: component.button.primary.boxShadow,
   },
   primaryActionButtonJobsReview: {
-    backgroundColor: '#11B5A4',
-    borderColor: '#0C9588',
+    borderColor: component.button.primary.border,
+    borderWidth: 1,
+    boxShadow: component.button.primary.boxShadow,
     borderRadius: 16,
-    elevation: 0,
-    shadowColor: 'transparent',
-    shadowOpacity: 0,
-    shadowRadius: 0,
   },
   primaryActionText: {
     color: color.text.inverse,

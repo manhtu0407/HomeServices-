@@ -7,6 +7,7 @@ import { buildWaitingModel } from './waiting-model'
 import type { WaitingSnapshot } from './waiting-model'
 import type { WaitingKind, WaitingLanguage } from './waiting.types'
 import { useWorkerColor } from '../../ui/worker-dark-styles'
+import { PrimaryCtaFill, primaryCtaFrame } from '@/components/ui/primary-cta-fill'
 
 /** Read-only adapter. No accept / approve / status mutation from timers or navigation. */
 export function WorkerWaitingRuntime({ kind, language, runtime, onMessage, onContinue, reduceMotion, timing }: {
@@ -41,7 +42,7 @@ export function WorkerWaitingRuntime({ kind, language, runtime, onMessage, onCon
           <Pressable onPress={() => void refresh()} disabled={busy} accessibilityRole="button" style={{ padding: 14, borderRadius: 16, backgroundColor: tc('surface', '#E8F9F4') }}><Text style={{ ...typography.footnote, fontWeight: '600', textAlign: 'center', color: '#00856F' }}>{busy ? (vi ? 'Đang cập nhật…' : 'Updating…') : (vi ? 'Kiểm tra lại trạng thái' : 'Refresh status')}</Text></Pressable>
           {kind === 'scope-approval' && onMessage ? <Pressable accessibilityRole="button" onPress={() => { setDetails(false); onMessage() }} style={{ padding: 14 }}><Text style={{ ...typography.footnote, fontWeight: '600', color: '#00856F', textAlign: 'center' }}>{vi ? 'Nhắn khách' : 'Message customer'}</Text></Pressable> : null}
           {kind === 'scope-approval' && model.state === 'approved' && onContinue ? <Pressable accessibilityRole="button" onPress={() => { setDetails(false); onContinue() }} style={{ padding: 14 }}><Text style={{ ...typography.footnote, fontWeight: '600', color: '#00856F', textAlign: 'center' }}>{vi ? 'Tiếp tục' : 'Continue'}</Text></Pressable> : null}
-          <Pressable accessibilityRole="button" onPress={() => setDetails(false)} style={{ padding: 14, backgroundColor: '#00AD97', borderRadius: 16 }}><Text style={{ ...typography.footnote, color: '#FFFFFF', fontWeight: '600', textAlign: 'center' }}>{vi ? 'Đóng' : 'Close'}</Text></Pressable>
+          <Pressable accessibilityRole="button" onPress={() => setDetails(false)} style={{ padding: 14, backgroundColor: '#24B3A1', borderRadius: 16, overflow: 'hidden', ...primaryCtaFrame }}><PrimaryCtaFill radius={0} /><Text style={{ ...typography.footnote, color: '#FFFFFF', fontWeight: '600', textAlign: 'center', position: 'relative', zIndex: 1 }}>{vi ? 'Đóng' : 'Close'}</Text></Pressable>
         </View>
       </View>
     </Modal>

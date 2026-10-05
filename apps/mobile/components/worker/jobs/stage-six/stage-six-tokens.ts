@@ -31,12 +31,6 @@ export const stageSixTokens = {
     plusGlyph: '#00988E',
     price: '#008A82',
     primaryBase: '#09B09E',
-    primaryBevelLight: '#FFFFFF',
-    primaryBevelShade: '#006960',
-    primaryEnd: '#007B77',
-    primaryMiddle: '#02AE9C',
-    primaryStart: '#22CDB3',
-    primaryStroke: '#60D6CB',
     secondaryBase: '#EDF3F5',
     secondaryEnd: '#E7EEF2',
     secondaryInk: '#698297',
@@ -49,12 +43,10 @@ export const stageSixTokens = {
     white: '#FFFFFF',
   },
   gradients: {
-    primaryAngle: 115,
     secondaryAngle: 135,
   },
   shadows: {
     checkDisc: '0 2px 2px rgba(0,123,114,0.1)',
     plus: '0 1px 3px rgba(28,85,110,0.133)',
-    primary: '0 9px 14px -7px rgba(9,176,156,0.396)',
   },
 } as const

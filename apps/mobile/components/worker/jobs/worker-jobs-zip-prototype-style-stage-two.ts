@@ -93,12 +93,8 @@ export const stageTwoCardTokens = {
     actionGap: 17,
     actionGhostFlex: 330,
     actionHeight: 90,
-    actionInsetBlur: 16,
-    actionInsetY: 10,
     actionPrimaryFlex: 382,
     actionRadius: 23,
-    actionShadowBlur: 28,
-    actionShadowY: 12,
     cardPaddingBottom: 20,
     cardPaddingTop: 16,
     cardPaddingX: 24,
@@ -147,7 +143,7 @@ export type StageTwoPalette = {
   glyph: string
   line: string
   pill: Record<StageTwoPillTone, { colors: readonly [string, string]; text: string }>
-  primary: { colors: readonly [string, string, string]; glow: string | null; text: string }
+  primary: { text: string }
   rowSub: string
   rowTitle: string
   sectionSub: string
@@ -171,7 +167,7 @@ const LIGHT_PALETTE: Omit<StageTwoPalette, 'disabled'> = {
     mint: { colors: ['#E4F8F2', '#DFF7F1'], text: '#0F8F7E' },
     neutral: { colors: ['#F0F4F7', '#EBF1F5'], text: '#243240' },
   },
-  primary: { colors: ['#20CBB0', '#10B896', '#06977D'], glow: 'rgba(21, 181, 160, 0.22)', text: '#FFFFFF' },
+  primary: { text: '#FFFFFF' },
   rowSub: '#6F8192',
   rowTitle: '#0B1A31',
   sectionSub: '#6A7F91',
@@ -197,7 +193,7 @@ export function stageTwoPalette(tokens: WorkerThemeTokens): StageTwoPalette {
       mint: { colors: flat, text: tokens.primary },
       neutral: { colors: flat, text: tokens.text },
     },
-    primary: { colors: [tokens.primary, tokens.primary, tokens.primary], glow: null, text: tokens.primaryText },
+    primary: { text: '#FFFFFF' },
     rowSub: tokens.muted,
     rowTitle: tokens.text,
     sectionSub: tokens.muted,

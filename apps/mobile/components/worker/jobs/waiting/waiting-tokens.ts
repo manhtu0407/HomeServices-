@@ -7,7 +7,7 @@
  */
 export const waitingTokens = {
   width: 560, contentHeight: 890,
-  colors: { background: '#FAFFFE', text: '#09293E', secondary: '#59668B', mint: '#00C8A0', ringTrack: '#E6FBF7', buttonStart: '#40D5B1', buttonEnd: '#00AD97' },
+  colors: { background: '#FAFFFE', text: '#09293E', secondary: '#59668B', mint: '#00C8A0', ringTrack: '#E6FBF7' },
   ring: { diameter: 348, radius: 168, stroke: 12, x: 106, y: 20 },
   layout: { bodyOffset: 72 },
   type: {

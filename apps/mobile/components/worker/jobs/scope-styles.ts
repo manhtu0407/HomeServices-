@@ -36,10 +36,14 @@ export const styles = StyleSheet.create({
   },
   navButtonPrimary: {
     backgroundColor: color.brand.primary,
-    ...shadow.primary,
+    borderColor: component.button.primary.border,
+    borderWidth: 1,
+    boxShadow: component.button.primary.boxShadow,
   },
   navButtonPrimaryText: {
     color: color.text.inverse,
+    position: 'relative',
+    zIndex: 1,
   },
   navButtonSecondary: {
     backgroundColor: glass.bgStrong,
@@ -60,13 +64,9 @@ export const styles = StyleSheet.create({
     transform: [{ scale: 0.98 }],
   },
   primaryActionButtonSource: {
-    backgroundColor: '#13CBB8',
-    borderColor: 'rgba(2,126,115,0.22)',
+    borderColor: component.button.primary.border,
     borderWidth: 1,
-    shadowColor: '#059F8E',
-    shadowOffset: { height: 14, width: 0 },
-    shadowOpacity: 0.27,
-    shadowRadius: 28,
+    boxShadow: component.button.primary.boxShadow,
   },
   privateKaelMediaImage: {
     backgroundColor: color.mint.mint100,

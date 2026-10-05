@@ -2,7 +2,7 @@ import { Pressable, Text as RNText, View, useWindowDimensions, type StyleProp, t
 import type { ReactNode } from 'react'
 import type { LocalDeal } from '@nestscout/shared'
 
-import { spacing, type AppleTypographyRole } from '@/design/theme'
+import { component, spacing, type AppleTypographyRole } from '@/design/theme'
 import { stageLayout, stageTypography } from './stage-ratio'
 import type { WorkerV5ScreenId } from '../dock/types'
 import {
@@ -532,7 +532,7 @@ function StageFourPrimaryButton({
       <StageFourGradientFill testID="stage4-primary-gradient" />
       <View style={styles.primaryRow}>
         <View style={styles.primaryCopy}>
-          <Copy color={tokens.primaryText} numberOfLines={1} textRole="body" tokens={tokens} weight="700" windowWidth={windowWidth}>{displayLabel}</Copy>
+          <Copy color={component.button.primary.text} numberOfLines={1} textRole="body" tokens={tokens} weight="700" windowWidth={windowWidth}>{displayLabel}</Copy>
           <Copy color={palette.ctaSubtitle} numberOfLines={2} textRole="caption1" style={{ marginTop: -1 * scale }} tokens={tokens} windowWidth={windowWidth}>{subtitle}</Copy>
         </View>
       </View>
@@ -597,7 +597,7 @@ function StageFourIconDisc({
       {primary ? <StageFourGradientFill /> : null}
       {/* A positioned wrapper keeps the glyph above the absolute gradient on web, where static SVGs paint underneath it. */}
       <View>
-        <StageFourIcon color={primary ? tokens.primaryText : tokens.primary} name={name} size={(size > 44 ? 30 : 23) * scale} />
+        <StageFourIcon color={primary ? component.button.primary.text : tokens.primary} name={name} size={(size > 44 ? 30 : 23) * scale} />
       </View>
     </View>
   )

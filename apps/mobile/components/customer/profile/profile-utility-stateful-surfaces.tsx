@@ -125,11 +125,7 @@ export function ProfileUtilityAddressView({
             disabled={addressSaving || currentDefaultAddress.length === 0}
             label={addressSaving ? (language === 'vi' ? 'Đang lưu' : 'Saving') : (language === 'vi' ? 'Lưu mặc định' : 'Save default')}
             onPress={onSaveDefaultAddress}
-            showPrimaryGradient={false}
-            style={[
-              profileUtilityStyles.profileAddressSaveDefaultButton,
-              currentDefaultAddress.length > 0 && !addressSaving ? profileUtilityStyles.profileAddressSaveDefaultButtonActive : null,
-            ]}
+            style={profileUtilityStyles.profileAddressSaveDefaultButton}
             testID="customer-v21-profile-default-address-save"
           />
         </View>
@@ -457,8 +453,7 @@ export function ProfileUtilityPaymentView({
           disabled={paymentSaving || !paymentCanSave}
           label={paymentSaving ? (language === 'vi' ? 'Đang lưu tài khoản' : 'Saving account') : (language === 'vi' ? 'Lưu tài khoản hoàn tiền' : 'Save refund account')}
           onPress={onSave}
-          showPrimaryGradient={false}
-          style={[profilePaymentStyles.saveButton, paymentCanSave && !paymentSaving ? { backgroundColor: tokens.primary } : null]}
+          style={profilePaymentStyles.saveButton}
           testID="customer-v21-profile-payment-account-save"
           variant="primary"
         />

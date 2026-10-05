@@ -1,13 +1,9 @@
 import { Dimensions, StyleSheet } from 'react-native'
 
+import { component } from '@/design/theme'
+
 import type { WorkerThemeTokens } from '../worker-theme'
 import { stageButtonHeight, stageLayout, stageMetric } from './stage-ratio'
-
-// Approved Stage 4 values from the fidelity reference; scoped here so global theme tokens stay untouched.
-export const stageFourGradient = {
-  colors: ['#2AD9B3', '#02B49B', '#009783'],
-  stops: [0, 0.58, 1],
-} as const
 
 export type StageFourPalette = ReturnType<typeof getStageFourPalette>
 
@@ -233,7 +229,9 @@ export function createStageFourStyles(scale: number, tokens: WorkerThemeTokens) 
       alignItems: 'center',
       backgroundColor: tokens.primary,
       borderRadius: m(stageLayout.buttonRadius),
-      boxShadow: '0 7px 19px rgba(0, 169, 143, 0.19)',
+      borderColor: component.button.primary.border,
+      borderWidth: 1,
+      boxShadow: component.button.primary.boxShadow,
       height: stageButtonHeight(Dimensions.get('window').width),
       justifyContent: 'center',
       marginTop: s(1),
