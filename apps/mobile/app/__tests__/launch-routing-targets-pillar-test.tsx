@@ -22,8 +22,13 @@ const MOBILE_ROOT = path.resolve(__dirname, '..', '..')
 const APP_DIR = path.join(MOBILE_ROOT, 'app')
 const SCAN_DIRS = ['app', 'components', 'lib']
 const ROUTE_EXT = /\.(tsx|ts|jsx|js)$/
-const TARGET_PATTERN =
-  /(?:router\.(?:replace|push)\(\s*|<Redirect\s+href=)(?:\{?\s*)?['"](\/[^'"`$]*)['"]/g
+// Quoted literals, object `pathname` values, and the static part of template literals
+// (everything before the first `?` or `${`).
+const TARGET_PATTERNS = [
+  /(?:router\.(?:replace|push)\(\s*|<Redirect\s+href=)(?:\{?\s*)?['"](\/[^'"`$]*)['"]/g,
+  /pathname:\s*['"](\/[^'"`$]*)['"]/g,
+  /(?:router\.(?:replace|push)\(\s*|<Redirect\s+href=\{?\s*)`(\/[^`$?]*)/g,
+]
 
 function walk(dir: string, out: string[] = []): string[] {
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
@@ -62,8 +67,10 @@ function collectTargets() {
   for (const dir of SCAN_DIRS) {
     for (const file of walk(path.join(MOBILE_ROOT, dir))) {
       const source = fs.readFileSync(file, 'utf8')
-      for (const match of source.matchAll(TARGET_PATTERN)) {
-        found.push({ target: match[1], file: path.relative(MOBILE_ROOT, file) })
+      for (const pattern of TARGET_PATTERNS) {
+        for (const match of source.matchAll(pattern)) {
+          found.push({ target: match[1], file: path.relative(MOBILE_ROOT, file) })
+        }
       }
     }
   }
