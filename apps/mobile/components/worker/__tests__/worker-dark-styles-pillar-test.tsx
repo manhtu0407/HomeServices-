@@ -3,12 +3,18 @@ import { StyleSheet } from 'react-native'
 import { withPillarContext, type PillarManifest } from '@/__tests__/pillar-manifest'
 import { color, customerTheme } from '@/design/theme'
 
-import { deriveWorkerDarkStyles } from '../ui/worker-dark-styles'
+import { deriveWorkerDarkStyles, deriveWorkerDarkTokens, workerThemedTokensProxy } from '../ui/worker-dark-styles'
+
+let mockMode: 'light' | 'dark' = 'dark'
+jest.mock('../worker-theme', () => ({
+  ...jest.requireActual('../worker-theme'),
+  getWorkerThemeModeNow: () => mockMode,
+}))
 
 export const PILLAR = {
   id: 'P320-worker-derived-dark-styles',
   invariant:
-    'a static light Worker StyleSheet renders in dark mode with its colours mapped onto the shared dark tokens by role: light surfaces become dark cards, dark and brand ink becomes white or the dark mint accent, grey ink the secondary grey, light hairlines dark borders, while saturated brand fills, white text and non-colour properties are left as they are',
+    'a static light Worker StyleSheet or stage token object renders in dark mode with its colours mapped onto the shared dark tokens by role: light surfaces become dark cards, dark and brand ink becomes white or the dark mint accent, grey ink the secondary grey, light hairlines dark borders, while saturated brand fills, white text and non-colour properties are left as they are',
   authority: [
     'governance/design/signature.md §2 and §5 (one neutral dark token set for every surface)',
     'governance/design/accessible-content.md (text contrast ≥ 4.5:1 in both light and dark)',
@@ -50,6 +56,21 @@ describe('P320 derived dark styles for Worker screens', () => {
       expect(derived.buttonLabel).toEqual(light.buttonLabel)
       expect(derived.danger.color).toBe('#E5484D')
       expect(deriveWorkerDarkStyles(light)).toBe(derived)
+    })
+  })
+
+  it('maps stage token colours by name and lightness, and the class-component proxy follows the mode', () => {
+    const stageTokens = { colors: { border: '#EDF6F6', ink: '#10252D', primaryBase: '#09B09E', surface: '#FCFFFE' }, radius: 12 }
+    const proxied = workerThemedTokensProxy(stageTokens)
+    withPillarContext(PILLAR, () => {
+      expect(deriveWorkerDarkTokens(stageTokens)).toEqual({
+        colors: { border: dark.border, ink: dark.text, primaryBase: '#09B09E', surface: dark.base },
+        radius: 12,
+      })
+      expect(proxied.colors.ink).toBe(dark.text)
+      mockMode = 'light'
+      expect(proxied.colors.ink).toBe('#10252D')
+      mockMode = 'dark'
     })
   })
 })

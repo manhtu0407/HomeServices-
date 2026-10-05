@@ -15,7 +15,8 @@ import type { AppLanguage } from '@/lib/app-language'
 import type { WorkerV5IconName } from '../dock/types'
 import { WorkerV5FormulaMintCardAura } from '../ui/aura-surfaces'
 import { textByLanguage } from '../ui/format'
-import { styles } from './shared-styles'
+import { styles as stylesLight } from './shared-styles'
+import { useWorkerThemedStyles } from '../ui/worker-dark-styles'
 
 type WorkerV5SharedAuraComponent = ComponentType<{
   scope: string
@@ -36,6 +37,7 @@ type WorkerV5InfoGridItem = {
 }
 
 function Text({ style, ...props }: TextProps) {
+  const styles = useWorkerThemedStyles(stylesLight)
   return <RNText {...props} style={[styles.workerCustomerFontText, style]} />
 }
 
@@ -58,6 +60,7 @@ export function WorkerV5KaelDraftCard({
   title: string
   zipAura: WorkerV5SharedAuraComponent
 }) {
+  const styles = useWorkerThemedStyles(stylesLight)
   return (
     <View style={[styles.kaelDraftCard, reduceTransparency && styles.opaqueCard]} testID="worker-v5-kael-draft-card">
       {formulaAura && !reduceTransparency ? (
@@ -94,6 +97,7 @@ export function WorkerV5PriceLines({
   total?: WorkerV5PriceLine
   zipAura: WorkerV5SharedAuraComponent
 }) {
+  const styles = useWorkerThemedStyles(stylesLight)
   return (
     <View style={[styles.priceLinesCard, reduceTransparency && styles.opaqueCard]} testID="worker-v5-price-lines">
       {formulaAura && !reduceTransparency ? (
@@ -133,6 +137,7 @@ export function WorkerV5InfoRow({
   reduceTransparency?: boolean
   value: string
 }) {
+  const styles = useWorkerThemedStyles(stylesLight)
   return (
     <View style={styles.infoRow}>
       <View style={styles.infoIconShell} testID="worker-v5-info-icon-shell">
@@ -164,6 +169,7 @@ export function WorkerV5InfoGrid({
   items: readonly WorkerV5InfoGridItem[]
   reduceTransparency: boolean
 }) {
+  const styles = useWorkerThemedStyles(stylesLight)
   return (
     <View style={styles.infoGrid} testID="worker-v5-info-grid">
       {items.map((item, index) => (

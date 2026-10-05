@@ -11,7 +11,8 @@ import type { AppLanguage } from '@/lib/app-language'
 
 import { WorkerV5FormulaMintCardAura } from '../ui/aura-surfaces'
 import { textByLanguage } from '../ui/format'
-import { styles } from './progress-styles'
+import { styles as stylesLight } from './progress-styles'
+import { useWorkerThemedStyles } from '../ui/worker-dark-styles'
 
 type WorkerV5ProgressAuraComponent = ComponentType<{
   scope: string
@@ -28,6 +29,7 @@ type WorkerV5ProgressItem = {
 }
 
 function Text({ style, ...props }: TextProps) {
+  const styles = useWorkerThemedStyles(stylesLight)
   return <RNText {...props} style={[styles.workerCustomerFontText, style]} />
 }
 
@@ -67,6 +69,7 @@ export function WorkerV5WorkProgressBoard({
   styleVariant?: 'default' | 'jobs-review'
   zipAura: WorkerV5ProgressAuraComponent
 }) {
+  const styles = useWorkerThemedStyles(stylesLight)
   const isJobsReview = styleVariant === 'jobs-review'
   return (
     <View style={[styles.workProgressBoardShell, isJobsReview && styles.workProgressBoardShellJobsReview]} testID="worker-v5-work-progress-board">
@@ -99,6 +102,7 @@ function WorkerV5Rail({
   reduceTransparency: boolean
   testID: string
 }) {
+  const styles = useWorkerThemedStyles(stylesLight)
   return (
     <View style={[styles.railCard, reduceTransparency && styles.opaqueCard]} testID={testID}>
       {formulaAura ? (
@@ -147,6 +151,7 @@ function WorkerV5StepList({
   testID?: string
   zipAura: WorkerV5ProgressAuraComponent
 }) {
+  const styles = useWorkerThemedStyles(stylesLight)
   const isJobsReview = styleVariant === 'jobs-review'
   const primaryActiveIndex = isJobsReview ? items.findIndex((item) => item.state === 'active') : -1
   return (

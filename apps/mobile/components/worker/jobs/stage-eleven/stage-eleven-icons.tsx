@@ -1,8 +1,8 @@
 import React from 'react'
 import Svg, { Path, Circle, Rect } from 'react-native-svg'
-import { stageElevenTokens as t } from './stage-eleven.tokens'
+import { stageElevenTokens as tLight } from './stage-eleven.tokens'
 export type StageElevenIconName = 'check' | 'back' | 'bank' | 'wallet' | 'receipt' | 'briefcase' | 'pin' | 'user' | 'calendar' | 'clock' | 'copy' | 'coins' | 'home' | 'sprout' | 'down' | 'refresh' | 'alert' | 'download' | 'star'
-export function StageElevenIcon({ name, size = 20, color = t.text, filled = false }: {
+export function StageElevenIcon({ name, size = 20, color = tLight.text, filled = false }: {
   name: StageElevenIconName; size?: number; color?: string; filled?: boolean
 }) {
   const stroke = { fill: 'none', stroke: color, strokeWidth: 1.65, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const }

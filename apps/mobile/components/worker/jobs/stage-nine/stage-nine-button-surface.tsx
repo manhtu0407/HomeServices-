@@ -1,10 +1,12 @@
 import { useId } from 'react'
 import Svg, { Defs, LinearGradient, Mask, Rect, Stop } from 'react-native-svg'
 
-import { stageNineTokens as T } from './stage-nine-tokens'
+import { stageNineTokens as TLight } from './stage-nine-tokens'
+import { useWorkerThemedTokens } from '../../ui/worker-dark-styles'
 
 /** Two horizontal ramps blended top-to-bottom, calibrated to the approved call-to-action material. */
 export function StageNineButtonSurface({ height = 76, width = 340 }: { height?: number; width?: number }) {
+  const T = useWorkerThemedTokens(TLight)
   // SVG ids are document-global on web, so each instance needs its own gradient and mask ids.
   const prefix = `stageNineButton${useId().replace(/[^a-zA-Z0-9]/g, '')}`
   const lastStop = T.colors.buttonSurfaceTop.length - 1

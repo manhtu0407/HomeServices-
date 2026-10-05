@@ -2,12 +2,12 @@ import type { ReactNode } from 'react'
 
 import Svg, { Circle, Defs, G, LinearGradient, Path, Rect, Stop } from 'react-native-svg'
 
-import { stageTenTokens } from './stage-ten-tokens'
+import { stageTenTokens as stageTenTokensLight } from './stage-ten-tokens'
 
 export type StageTenIconName = 'calendar' | 'chart' | 'check' | 'chevron' | 'info' | 'photo' | 'pin' | 'star' | 'trend' | 'trophy' | 'wallet'
 
 export function StageTenIcon({
-  color = stageTenTokens.mint,
+  color = stageTenTokensLight.mint,
   filled = false,
   name,
   size = 20,

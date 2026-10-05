@@ -5,8 +5,11 @@ import { stageTypography } from '../stage-ratio'
 import { StageElevenIcon, type StageElevenIconName } from './stage-eleven-icons'
 import { StageElevenSuccess } from './stage-eleven-success'
 import { formatStageElevenDate, formatStageElevenMoney, stageElevenServiceName, text11 } from './stage-eleven-model'
-import { stageElevenTokens as t } from './stage-eleven.tokens'
+import { stageElevenTokens as tLight } from './stage-eleven.tokens'
 import type { StageElevenActions, StageElevenImage, StageElevenLanguage, StageElevenModel, StageElevenSupplement } from './stage-eleven.types'
+import { workerThemedStylesProxy, workerThemedTokensProxy } from '../../ui/worker-dark-styles'
+
+const t = workerThemedTokensProxy(tLight)
 
 export type StageElevenContentProps = {
   model: StageElevenModel
@@ -219,7 +222,7 @@ function Button({ label, icon, onPress, primary, disabled, testID, windowWidth }
     <Text style={[stageTypography('footnote', windowWidth), s.buttonText, primary && { color: '#FFFFFF' }]}>{label}</Text>
   </Pressable>
 }
-const s = StyleSheet.create({
+const s = workerThemedStylesProxy(StyleSheet.create({
   page: { flex: 1, backgroundColor: t.canvas },
   scrollContent: { paddingHorizontal: 20, paddingTop: 8 },
   content: { gap: 12, width: '100%', maxWidth: 520, alignSelf: 'center', backgroundColor: t.canvas },
@@ -265,4 +268,4 @@ const s = StyleSheet.create({
   primaryButton: { minHeight: 52, backgroundColor: '#00956D', borderColor: '#00956D' }, buttonText: { fontWeight: '600', color: t.text, flexShrink: 1, textAlign: 'center' },
   disabled: { opacity: .45 }, pressed: { opacity: .76, transform: [{ scale: .985 }] },
   notice: { color: t.greenDark, paddingVertical: 6 },
-})
+}))

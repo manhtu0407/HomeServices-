@@ -7,7 +7,8 @@ import {
   type ViewStyle,
 } from 'react-native'
 
-import { styles } from './timeline-styles'
+import { styles as stylesLight } from './timeline-styles'
+import { useWorkerThemedStyles } from '../ui/worker-dark-styles'
 
 type WorkerV5TimelineAuraComponent = ComponentType<{
   scope: string
@@ -36,6 +37,7 @@ type WorkerV5StatusTimelineProps = WorkerV5StatusTimelineBaseProps & {
 }
 
 function Text({ style, ...props }: TextProps) {
+  const styles = useWorkerThemedStyles(stylesLight)
   return <RNText {...props} style={[styles.workerCustomerFontText, style]} />
 }
 
@@ -47,6 +49,7 @@ export function WorkerV5StatusTimeline({
   testID,
   zipAura: ZipAura,
 }: WorkerV5StatusTimelineProps) {
+  const styles = useWorkerThemedStyles(stylesLight)
   return (
     <View style={[styles.timeline, reduceTransparency && styles.opaqueCard]} testID={testID}>
       {formulaAura && !reduceTransparency && CaseWideAura && ZipAura ? (

@@ -7,7 +7,8 @@ import {
   type TextProps,
   type ViewStyle,
 } from 'react-native'
-import { styles } from './advisory-styles'
+import { styles as stylesLight } from './advisory-styles'
+import { useWorkerThemedStyles } from '../ui/worker-dark-styles'
 
 type WorkerV5CaseAuraComponent = ComponentType<{
   scope: string
@@ -21,6 +22,7 @@ type WorkerV5PrimaryButtonFillComponent = ComponentType<{
 }>
 
 function Text({ style, ...props }: TextProps) {
+  const styles = useWorkerThemedStyles(stylesLight)
   return <RNText {...props} style={[styles.workerCustomerFontText, style]} />
 }
 
@@ -33,6 +35,7 @@ export function WorkerV5ChatBubble({
   body: string
   label: string
 }) {
+  const styles = useWorkerThemedStyles(stylesLight)
   return (
     <View style={[styles.chatBubble, align === 'right' ? styles.chatBubbleRight : null]}>
       <Text style={styles.chatBubbleBody} numberOfLines={4}>{body}</Text>
@@ -74,6 +77,7 @@ export function WorkerV5ActionRail({
   styleVariant?: 'default' | 'jobs-review'
   zipAura: WorkerV5CaseAuraComponent
 }) {
+  const styles = useWorkerThemedStyles(stylesLight)
   const primaryIsDisabled = primaryDisabled || !onPrimary
   const primaryUsesSourceTone = primaryVariant === 'source'
   const isJobsReview = styleVariant === 'jobs-review'
@@ -161,6 +165,7 @@ export function WorkerV5SingleSourceActionButton({
   styleVariant?: 'default' | 'jobs-review'
   testID: string
 }) {
+  const styles = useWorkerThemedStyles(stylesLight)
   const isJobsReview = styleVariant === 'jobs-review'
   return (
     <Pressable

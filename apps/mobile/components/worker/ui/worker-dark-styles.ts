@@ -1,6 +1,6 @@
 import { customerTheme } from '@/design/theme'
 
-import { useWorkerThemeMode } from '../worker-theme'
+import { getWorkerThemeModeNow, useWorkerThemeMode } from '../worker-theme'
 
 // Many Worker screens were built as static light StyleSheets. In dark mode their colours are mapped
 // onto the shared neutral dark tokens by role, so a screen follows the theme without a hand-written
@@ -120,4 +120,85 @@ export function useWorkerThemedStyles<T extends Record<string, object>>(sheet: T
 export function workerThemedColor(mode: 'light' | 'dark', role: 'ink' | 'line' | 'surface', value: string) {
   if (mode === 'light') return value
   return role === 'ink' ? darkInkColor(value) : role === 'line' ? darkLineColor(value) : darkSurfaceColor(value)
+}
+
+// Stage screens keep their colours in local token objects. In dark each colour is mapped by the
+// role its name gives it (ink, line) and otherwise by its lightness: light values are surfaces,
+// near-black and grey values are ink, and saturated brand colours are kept.
+const LINE_NAME = /(border|line|stroke|dashed|connector|divider|outline|track|hairline)/i
+const INK_NAME = /(ink|text|muted|faint|eyebrow|value|label|title|copy|caption|price|glyph|icon|kael|secondary)/i
+
+function darkTokenColor(key: string, value: string) {
+  const parsed = parseColor(value)
+  if (!parsed || parsed.a === 0) return value
+  if (LINE_NAME.test(key)) return darkLineColor(value)
+  if (INK_NAME.test(key)) return darkInkColor(value)
+  const { lum, sat } = describe(parsed)
+  if (lum >= 0.45) return darkSurfaceColor(value)
+  if (sat < 0.45) return darkInkColor(value)
+  return value
+}
+
+function darkenTokens(value: unknown, key: string): unknown {
+  if (typeof value === 'string') return darkTokenColor(key, value)
+  if (Array.isArray(value)) return value.map((item) => darkenTokens(item, key))
+  if (value && typeof value === 'object') {
+    const next: Record<string, unknown> = {}
+    for (const [childKey, child] of Object.entries(value)) next[childKey] = darkenTokens(child, childKey)
+    return next
+  }
+  return value
+}
+
+const derivedTokens = new WeakMap<object, object>()
+
+export function deriveWorkerDarkTokens<T extends object>(tokens: T): T {
+  const cached = derivedTokens.get(tokens)
+  if (cached) return cached as T
+  const next = darkenTokens(tokens, '') as T
+  derivedTokens.set(tokens, next as object)
+  return next
+}
+
+export function useWorkerThemedTokens<T extends object>(tokens: T): T {
+  return useWorkerThemeMode() === 'dark' ? deriveWorkerDarkTokens(tokens) : tokens
+}
+
+// Class components read the theme at render time; their hook-based parents re-render them on a change.
+export function workerThemedTokensNow<T extends object>(tokens: T): T {
+  return getWorkerThemeModeNow() === 'dark' ? deriveWorkerDarkTokens(tokens) : tokens
+}
+
+export function workerThemedStylesNow<T extends Record<string, object>>(sheet: T): T {
+  return getWorkerThemeModeNow() === 'dark' ? deriveWorkerDarkStyles(sheet) : sheet
+}
+
+// A stand-in for a module-level token object or StyleSheet that answers with the dark-mapped value
+// whenever the Worker theme is dark at the moment of the read, so class components and module-level
+// helpers follow the theme without hooks. The target is a blank object so frozen sources stay valid.
+function themedProxy<T extends object>(source: T, derive: (value: T) => T): T {
+  const current = () => (getWorkerThemeModeNow() === 'dark' ? derive(source) : source)
+  return new Proxy({} as T, {
+    get: (_target, key) => Reflect.get(current(), key),
+    has: (_target, key) => Reflect.has(current(), key),
+    ownKeys: () => Reflect.ownKeys(current()),
+    getOwnPropertyDescriptor: (_target, key) => {
+      const descriptor = Reflect.getOwnPropertyDescriptor(current(), key)
+      return descriptor ? { ...descriptor, configurable: true } : undefined
+    },
+  })
+}
+
+export function workerThemedTokensProxy<T extends object>(tokens: T): T {
+  return themedProxy(tokens, deriveWorkerDarkTokens)
+}
+
+export function workerThemedStylesProxy<T extends Record<string, object>>(sheet: T): T {
+  return themedProxy(sheet, deriveWorkerDarkStyles)
+}
+
+// For colours written inline in a component: maps a light value by role while the theme is dark.
+export function useWorkerColor() {
+  const mode = useWorkerThemeMode()
+  return (role: 'ink' | 'line' | 'surface', value: string) => workerThemedColor(mode, role, value)
 }

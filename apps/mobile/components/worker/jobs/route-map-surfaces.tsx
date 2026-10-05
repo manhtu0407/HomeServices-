@@ -8,10 +8,12 @@ import { workerRouteService } from '@/lib/services'
 import { WorkerV5CustomerCaseWideMintAura, WorkerV5CustomerMapMintAura, WorkerV5CustomerZipMintAura } from '../ui/aura-surfaces'
 import { textByLanguage } from '../ui/format'
 import { workerV5ArrivalDestinationLabel } from '../ui/route'
-import { styles } from '../worker-v5-flow-styles'
+import { styles as stylesLight } from '../worker-v5-flow-styles'
 import { WorkerV5StatusTimeline as WorkerV5StatusTimelineSurface, type WorkerV5StatusTimelineBaseProps } from './timeline-surfaces'
 import { type WorkerV5RoutePreviewState } from './use-worker-route-preview'
+import { useWorkerThemedStyles } from '../ui/worker-dark-styles'
 function Text({ style, ...props }: TextProps) {
+  const styles = useWorkerThemedStyles(stylesLight)
   return <RNText {...props} style={[styles.workerCustomerFontText, style]} />
 }
 
@@ -26,6 +28,7 @@ export function WorkerV5RouteMapStage({
   reduceTransparency: boolean
   routePreview: WorkerV5RoutePreviewState
 }) {
+  const styles = useWorkerThemedStyles(stylesLight)
   const destinationLabel = workerV5ArrivalDestinationLabel(deal, language)
   const originLabel = routePreview.locationStatus === 'ready'
     ? textByLanguage(language, 'Vị trí của bạn đang được cập nhật', 'Your position is updating')
@@ -97,6 +100,7 @@ function WorkerV5AuthenticatedRouteMapImage({
   language: AppLanguage
   uri: string
 }) {
+  const styles = useWorkerThemedStyles(stylesLight)
   const [headers, setHeaders] = useState<Record<string, string> | null>(null)
   const [webUri, setWebUri] = useState<string | null>(null)
   const [failed, setFailed] = useState(false)

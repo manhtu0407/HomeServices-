@@ -19,6 +19,7 @@ import { textByLanguage } from '../../ui/format'
 import { stageEightAssets } from './stage-eight-assets'
 import { StageEightIcon, type StageEightIconName } from './stage-eight-icons'
 import type { StageEightEvidenceProps } from './stage-eight.types'
+import { useWorkerThemedStyles } from '../../ui/worker-dark-styles'
 
 const BASE = 420
 const C = {
@@ -37,6 +38,7 @@ function px(value: number, scale: number) {
 }
 
 function StepPill({ label, active, scale, width, windowWidth }: { label: string; active?: boolean; scale: number; width: number; windowWidth: number }) {
+  const styles = useWorkerThemedStyles(stylesLight)
   return (
     <View
       style={[
@@ -81,6 +83,7 @@ function SectionHeader({
   title: string
   windowWidth: number
 }) {
+  const styles = useWorkerThemedStyles(stylesLight)
   return (
     <View style={[styles.sectionHeader, { marginTop: px(marginTop, scale) }]}>
       <View style={[styles.sectionLeft, { gap: px(8, scale) }]}>
@@ -136,6 +139,7 @@ export function StageEightEvidenceScreen({
   showWorkflowHeader = true,
   submitting = false,
 }: StageEightEvidenceProps) {
+  const styles = useWorkerThemedStyles(stylesLight)
   const { width } = useWindowDimensions()
   const copy = stageCopy(language)
   const availableWidth = embedded ? Math.max(280, width - 32) : width
@@ -330,7 +334,7 @@ export function StageEightEvidenceScreen({
   )
 }
 
-const styles = StyleSheet.create({
+const stylesLight = StyleSheet.create({
   root: { backgroundColor: '#FFFFFF', alignItems: 'center' },
   embeddedRoot: { width: '100%' },
   scrollRoot: { flex: 1, backgroundColor: '#FFFFFF' },

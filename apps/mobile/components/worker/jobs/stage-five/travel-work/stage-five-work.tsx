@@ -1,11 +1,14 @@
 import React from 'react'
 import { AppState, View, Image } from 'react-native'
 import type { ActionId, WorkModel, SurfaceProps } from './stage-five.types'
-import { TW } from './stage-five-tokens'
+import { TW as TWLight } from './stage-five-tokens'
 import { Icon } from './stage-five-icons'
 import { Box, Copy, Header, SurfaceFrame, Tap, IconSlot, ToolTile, Primary, Caution } from './stage-five-ui'
 import { elapsedSeconds, formatClock } from './stage-five-model'
 import { stageFiveText } from './stage-five-copy'
+import { workerThemedTokensProxy } from '../../../ui/worker-dark-styles'
+
+const TW = workerThemedTokensProxy(TWLight)
 /** Stage 5 only. This is a monitor; visual timer and progress cannot write job status. */
 export class StageFiveWork extends React.PureComponent<SurfaceProps<WorkModel>,{now:number;error:string|null;localBusy:boolean}> {
  state={now:Date.now(),error:null,localBusy:false}

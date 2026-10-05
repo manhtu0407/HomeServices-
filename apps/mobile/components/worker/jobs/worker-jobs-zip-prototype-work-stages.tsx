@@ -20,7 +20,8 @@ import {
   type WorkerJobsLegacyPrototypeRuntime,
   workerJobsLegacyPrototypeStageEightCompletionWorkart,
 } from './worker-jobs-zip-prototype-shared'
-import { prototypeStyles } from './worker-jobs-zip-prototype-styles'
+import { prototypeStyles as prototypeStylesLight } from './worker-jobs-zip-prototype-styles'
+import { useWorkerThemedStyles } from '../ui/worker-dark-styles'
 
 export function WorkerJobsLegacyPrototypeStageFiveBody({
   actionBusy,
@@ -39,6 +40,7 @@ export function WorkerJobsLegacyPrototypeStageFiveBody({
   runRouteAction: () => void | Promise<void>
   runtime: WorkerJobsLegacyPrototypeRuntime
 }) {
+  const prototypeStyles = useWorkerThemedStyles(prototypeStylesLight)
   const deal = runtime.state.deal
   if (deal) {
     return (
@@ -123,6 +125,7 @@ export function WorkerJobsLegacyPrototypeStageSixBody({
   reduceTransparency: boolean
   runtime: WorkerJobsLegacyPrototypeRuntime
 }) {
+  const prototypeStyles = useWorkerThemedStyles(prototypeStylesLight)
   const scopeChange = useWorkerV5ScopeChangeActions({ deal: runtime.state.deal, language, runtime })
   if (scopeChange.scopeEvidenceOpen) {
     return <View style={prototypeStyles.bodyStack}><WorkerV5ScopeChangeBody language={language} navigateNext={navigateNext} reduceTransparency={reduceTransparency} scopeChange={scopeChange} /></View>
@@ -187,6 +190,7 @@ export function WorkerJobsLegacyPrototypeStageEightBody({
   reduceTransparency: boolean
   runtime: WorkerJobsLegacyPrototypeRuntime
 }) {
+  const prototypeStyles = useWorkerThemedStyles(prototypeStylesLight)
   const deal = runtime.state.deal
   const jobId = deal?.id ?? null
   const [completionNote, setCompletionNote] = useState(deal?.completionNotes ?? '')

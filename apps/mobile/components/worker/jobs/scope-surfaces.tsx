@@ -15,7 +15,8 @@ import type { AppLanguage } from '@/lib/app-language'
 import type { WorkerV5IconName } from '../dock/types'
 import { textByLanguage } from '../ui/format'
 import { scopeChangeDeltaLabel } from '../ui/labels'
-import { styles } from './scope-styles'
+import { styles as stylesLight } from './scope-styles'
+import { useWorkerThemedStyles } from '../ui/worker-dark-styles'
 
 type WorkerV5ScopeInfoRowProps = {
   icon: WorkerV5IconName
@@ -29,6 +30,7 @@ type WorkerV5ScopeMediaPreview = {
 }
 
 function Text({ style, ...props }: TextProps) {
+  const styles = useWorkerThemedStyles(stylesLight)
   return <RNText {...props} style={[styles.workerCustomerFontText, style]} />
 }
 
@@ -73,6 +75,7 @@ export function WorkerV5ScopeEvidenceGate({
   scopeSubmitDisabled: boolean
   scopeSubmitting: boolean
 }) {
+  const styles = useWorkerThemedStyles(stylesLight)
   if (!scope && !scopeEvidenceOpen) return null
 
   return (

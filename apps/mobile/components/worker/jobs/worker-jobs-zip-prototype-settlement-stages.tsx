@@ -20,8 +20,9 @@ import {
   type WorkerJobsLegacyPrototypeRuntime,
   workerJobsLegacyPrototypeStageNineWorkart,
 } from './worker-jobs-zip-prototype-shared'
-import { prototypeStyles } from './worker-jobs-zip-prototype-styles'
+import { prototypeStyles as prototypeStylesLight } from './worker-jobs-zip-prototype-styles'
 import { WorkerJobsLegacyPrototypeOfferInfoGroup } from './worker-jobs-zip-prototype-early-stages'
+import { useWorkerThemedStyles } from '../ui/worker-dark-styles'
 
 export function WorkerJobsLegacyPrototypeStageNineBody({
   actionBusy,
@@ -42,6 +43,7 @@ export function WorkerJobsLegacyPrototypeStageNineBody({
   reduceTransparency: boolean
   runtime: WorkerJobsLegacyPrototypeRuntime
 }) {
+  const prototypeStyles = useWorkerThemedStyles(prototypeStylesLight)
   const insets = useSafeAreaInsets()
   const record = readStageNineRecordState(runtime.state.deal)
   const { awaitingDirectPaymentConfirmation, customerConfirmed, hasSubmittedArtifact, paymentRecorded, sourceCount } = record

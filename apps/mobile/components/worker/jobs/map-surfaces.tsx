@@ -21,9 +21,11 @@ import {
   workerV5LiveEtaSignal,
 } from '../ui/route'
 import type { WorkerV5RoutePreview } from './use-worker-route-preview'
-import { styles } from './map-styles'
+import { styles as stylesLight } from './map-styles'
+import { useWorkerThemedStyles } from '../ui/worker-dark-styles'
 
 function Text({ style, ...props }: TextProps) {
+  const styles = useWorkerThemedStyles(stylesLight)
   return <RNText {...props} style={[styles.workerCustomerFontText, style]} />
 }
 
@@ -38,6 +40,7 @@ export function WorkerV5EtaSummaryCard({
   reduceTransparency: boolean
   route?: WorkerV5RoutePreview | null
 }) {
+  const styles = useWorkerThemedStyles(stylesLight)
   const etaSignal = route
     ? workerV5LiveEtaSignal(route, language)
     : buildWorkerV5AcceptEtaSignal(deal, language)

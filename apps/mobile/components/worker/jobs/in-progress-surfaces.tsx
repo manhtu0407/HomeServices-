@@ -22,7 +22,7 @@ import { WorkerV5CustomerCaseWideMintAura, WorkerV5CustomerZipMintAura } from '.
 import { textByLanguage } from '../ui/format'
 import { WorkerV5TimerCard } from '../ui/metrics-surfaces'
 import { WorkerV5PrimaryButtonFill, WorkerV5SectionHeader } from '../ui/primitives-surfaces'
-import { styles } from '../worker-v5-flow-styles'
+import { styles as stylesLight } from '../worker-v5-flow-styles'
 import { WorkerV5InProgressTravelGate } from './active-body-surfaces'
 import { WorkerV5ActionRail, WorkerV5SingleSourceActionButton } from './advisory-surfaces'
 import { WorkerV5EvidenceTray } from './evidence-surfaces'
@@ -34,6 +34,7 @@ import { WorkerV5RouteMapStage } from './route-map-surfaces'
 import { StageFiveWork } from './stage-five/travel-work/stage-five-work'
 import type { Actions as StageFiveActions, StageFiveJobStatus, WorkModel as StageFiveWorkModel } from './stage-five/travel-work/stage-five.types'
 import { workerV5ArrivalDestinationLabel } from '../ui/route'
+import { useWorkerThemedStyles } from '../ui/worker-dark-styles'
 
 type WorkerV5Runtime = ReturnType<typeof useFrontendWorkflow>
 type StageFiveMutableStatus = Extract<StageFiveJobStatus, 'arrived' | 'inspecting' | 'repairing'>
@@ -58,6 +59,7 @@ async function withImagePickerDeadline<T>(pickerResult: Promise<T>) {
 }
 
 function Text({ style, ...props }: TextProps) {
+  const styles = useWorkerThemedStyles(stylesLight)
   return <RNText {...props} style={[styles.workerCustomerFontText, style]} />
 }
 
@@ -84,6 +86,7 @@ export function WorkerV5InProgressBody({
   onBackToTravel?: () => void
   styleVariant?: 'default' | 'jobs-review'
 }) {
+  const styles = useWorkerThemedStyles(stylesLight)
   const params = useLocalSearchParams<WorkerV5RouteParams>()
   const rfqTokens = getWorkerThemeTokens(useWorkerThemeMode())
   const router = useRouter()

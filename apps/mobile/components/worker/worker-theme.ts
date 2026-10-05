@@ -35,6 +35,10 @@ export function setWorkerThemeMode(next: ThemePreference) {
   return workerThemeStore.setPreference(next)
 }
 
+export function getWorkerThemeModeNow(): WorkerThemeMode {
+  return workerThemeStore.getResolvedMode()
+}
+
 export function useWorkerThemePreference() {
   return workerThemeStore.usePreference()
 }

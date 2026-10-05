@@ -21,7 +21,8 @@ import type { WorkerThemeTokens } from '../worker-theme'
 import { STAGE_MIN_TAP_SIZE, stageButtonHeight, stageLayout, stageMetric, stageTypography } from './stage-ratio'
 import type { WorkerV5RoutePreviewState } from './use-worker-route-preview'
 import type { useFrontendWorkflow } from '@/lib/frontend-workflow-provider'
-import { prototypeStyles } from './worker-jobs-zip-prototype-styles'
+import { prototypeStyles as prototypeStylesLight } from './worker-jobs-zip-prototype-styles'
+import { useWorkerThemedStyles } from '../ui/worker-dark-styles'
 import {
   stageTwoCardTokens,
   stageTwoPalette,
@@ -111,10 +112,12 @@ export function workerJobsLegacyPrototypeOpportunityArtwork(deal: LocalDeal | nu
 }
 
 export function Text({ style, ...props }: TextProps) {
+  const prototypeStyles = useWorkerThemedStyles(prototypeStylesLight)
   return <RNText {...props} style={[prototypeStyles.text, style]} />
 }
 
 export function WorkerJobsLegacyPrototypeMetaIcon({ kind, size = 16 }: { kind: 'photo' | 'price' | 'status' | 'time'; size?: number }) {
+  const prototypeStyles = useWorkerThemedStyles(prototypeStylesLight)
   const iconColor = color.brand.primaryDark
   const strokeProps = { fill: 'none' as const, stroke: iconColor, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const, strokeWidth: 1.7 }
 
@@ -254,6 +257,7 @@ export function WorkerJobsLegacyPrototypeStageActionButton({
   primary?: boolean
   testID: string
 }) {
+  const prototypeStyles = useWorkerThemedStyles(prototypeStylesLight)
   const isDisabled = Boolean(disabled)
   const { width: windowWidth } = useWindowDimensions()
   return (

@@ -19,7 +19,8 @@ import { STAGE_MAX_FONT_MULTIPLIER, stageTypography } from '../stage-ratio'
 import { stageNineAssets } from './stage-nine-assets'
 import { StageNineButtonSurface } from './stage-nine-button-surface'
 import { stageNineCopy as C } from './stage-nine-copy'
-import { stageNineTokens as T } from './stage-nine-tokens'
+import { stageNineTokens as TLight } from './stage-nine-tokens'
+import { useWorkerThemedTokens } from '../../ui/worker-dark-styles'
 
 export type StageNineEmptyStageProps = {
   /** Extra scroll room under the stage, e.g. for a floating dock. */
@@ -52,6 +53,7 @@ export function StageNineEmptyStage({
   reduceMotion = false,
   topInset = 0,
 }: StageNineEmptyStageProps) {
+  const T = useWorkerThemedTokens(TLight)
   const window = useWindowDimensions()
   const [hostWidth, setHostWidth] = useState(() => Math.min(window.width, T.maxWidth))
   const [copyHeight, setCopyHeight] = useState(0)
@@ -77,7 +79,7 @@ export function StageNineEmptyStage({
   const font = (token: StageTypeToken): TextStyle => ({ ...stageTypography(token.role, window.width), fontWeight: token.weight })
 
   const onLayout = useCallback((event: LayoutChangeEvent) => {
-    const next = Math.min(event.nativeEvent.layout.width, T.maxWidth)
+    const next = Math.min(event.nativeEvent.layout.width, TLight.maxWidth)
     if (next > 0) setHostWidth((previous) => (Math.abs(previous - next) > 0.1 ? next : previous))
   }, [])
 

@@ -82,5 +82,10 @@ export function createThemePreferenceStore(storageKey: string) {
     return resolveThemePreference(current, systemScheme)
   }
 
-  return { setPreference, usePreference, useResolvedMode }
+  // For class components, which cannot call hooks: the mode resolved at render time.
+  function getResolvedMode(): ResolvedThemeMode {
+    return resolveThemePreference(preference, Appearance.getColorScheme())
+  }
+
+  return { getResolvedMode, setPreference, usePreference, useResolvedMode }
 }

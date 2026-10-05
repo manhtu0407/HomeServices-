@@ -3,13 +3,17 @@ import { AccessibilityInfo, Animated, AppState, Dimensions, Easing, Image, Press
 import type { AppStateStatus, LayoutChangeEvent } from 'react-native'
 import { color } from '@/design/theme'
 import { stageButtonHeight, stageLayout, stageMetric, stageTypography } from '../stage-ratio'
-import { waitingAssets } from './waiting-assets'
+import { waitingAssets, waitingDarkAssets } from './waiting-assets'
 import { waitingCopy } from './waiting-copy'
 import { clockAnchor, epochNow, readWaitingClock } from './waiting-time'
 import type { ClockReading } from './waiting-time'
 import type { ClockAnchor, WaitingContentProps } from './waiting.types'
 import { WaitingAtmosphere, WaitingButtonFill, WaitingClockIcon, WaitingParticles, WaitingRing } from './waiting-scene'
-import { waitingTokens as t } from './waiting-tokens'
+import { waitingTokens as tLight } from './waiting-tokens'
+import { workerThemedStylesProxy, workerThemedTokensProxy } from '../../ui/worker-dark-styles'
+import { getWorkerThemeModeNow } from '../../worker-theme'
+
+const t = workerThemedTokensProxy(tLight)
 
 type LocalState = { width: number; reading: ClockReading; reduced: boolean; foreground: boolean }
 let instanceSequence = 0
@@ -61,7 +65,7 @@ export class WaitingContent extends React.PureComponent<WaitingContentProps, Loc
   render() {
     const { model, onOpenDetails, language = 'vi' } = this.props
     const { reading } = this.state, s = this.state.width / t.width
-    const copy = waitingCopy(model, reading, language), assets = waitingAssets[model.kind]
+    const copy = waitingCopy(model, reading, language), assets = (getWorkerThemeModeNow() === 'dark' ? waitingDarkAssets : waitingAssets)[model.kind]
     const closed = model.state !== 'waiting'
     // Text resolves against the real window width, not the measured/capped card width `s`
     // uses for layout, so the app's Apple type scale never shrinks relative to other screens.
@@ -112,4 +116,4 @@ export class WaitingContent extends React.PureComponent<WaitingContentProps, Loc
     </View>
   }
 }
-const styles = StyleSheet.create({ root: { width: '100%', maxWidth: 560, alignSelf: 'center', position: 'relative', backgroundColor: '#FCFFFE' } })
+const styles = workerThemedStylesProxy(StyleSheet.create({ root: { width: '100%', maxWidth: 560, alignSelf: 'center', position: 'relative', backgroundColor: '#FCFFFE' } }))

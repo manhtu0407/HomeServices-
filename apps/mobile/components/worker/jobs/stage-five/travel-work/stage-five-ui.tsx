@@ -6,8 +6,11 @@ import { type AppleTypographyRole } from '@/design/theme'
 import { stageTypography } from '../../stage-ratio'
 import { Icon } from './stage-five-icons'
 import type { IconName } from './stage-five-icons'
-import { TW } from './stage-five-tokens'
+import { TW as TWLight } from './stage-five-tokens'
 import { stageFiveText, type StageFiveLanguage } from './stage-five-copy'
+import { workerThemedTokensProxy } from '../../../ui/worker-dark-styles'
+
+const TW = workerThemedTokensProxy(TWLight)
 let gradientId = 0
 export class Paint extends React.PureComponent<{primary?:boolean; tint?:boolean; background?:boolean}> {
  private id = `tw-paint-${++gradientId}`

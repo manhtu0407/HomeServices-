@@ -21,9 +21,10 @@ import { textByLanguage } from '../../ui/format'
 import { STAGE_MAX_FONT_MULTIPLIER, STAGE_MIN_TAP_SIZE, stageTapSize, stageTypography } from '../stage-ratio'
 import { stageSixAssets } from './stage-six-assets'
 import { StageSixIcon, type StageSixIconName } from './stage-six-icons'
-import { stageSixTokens } from './stage-six-tokens'
+import { stageSixTokens as stageSixTokensLight } from './stage-six-tokens'
+import { useWorkerThemedStyles, useWorkerThemedTokens } from '../../ui/worker-dark-styles'
 
-const C = stageSixTokens.colors
+const CLight = stageSixTokensLight.colors
 
 type StageSixField = 'items' | 'reason' | 'evidence' | 'price'
 
@@ -116,10 +117,12 @@ function cssGradientLine(angle: number, width: number, height: number) {
   return { x1: width / 2 - dx * half, x2: width / 2 + dx * half, y1: height / 2 - dy * half, y2: height / 2 + dy * half }
 }
 
-const PRIMARY_STOPS = [['0%', C.primaryStart], ['43%', C.primaryMiddle], ['100%', C.primaryEnd]] as const
-const SECONDARY_STOPS = [['0%', C.secondaryStart], ['100%', C.secondaryEnd]] as const
+const PRIMARY_STOPS = [['0%', CLight.primaryStart], ['43%', CLight.primaryMiddle], ['100%', CLight.primaryEnd]] as const
+const SECONDARY_STOPS = [['0%', CLight.secondaryStart], ['100%', CLight.secondaryEnd]] as const
 
 function StageSixButtonBackground({ radius, variant }: { radius: number; variant: 'primary' | 'secondary' }) {
+  const stageSixTokens = useWorkerThemedTokens(stageSixTokensLight)
+  const C = useWorkerThemedTokens(CLight)
   const fillId = useSvgId('stage-six-button-fill')
   const bevelId = useSvgId('stage-six-button-bevel')
   const [size, setSize] = useState<{ height: number; width: number } | null>(null)
@@ -163,6 +166,7 @@ function StageSixButtonBackground({ radius, variant }: { radius: number; variant
 }
 
 function StageSixConnectorFill() {
+  const C = useWorkerThemedTokens(CLight)
   const gradientId = useSvgId('stage-six-connector')
   return (
     <Svg height="100%" preserveAspectRatio="none" style={StyleSheet.absoluteFill} viewBox="0 0 2 100" width="100%">
@@ -203,6 +207,9 @@ export function StageSixTimeline({
   reason,
   reduceMotion,
 }: StageSixTimelineProps) {
+  const stageSixTokens = useWorkerThemedTokens(stageSixTokensLight)
+  const C = useWorkerThemedTokens(CLight)
+  const styles = useWorkerThemedStyles(stylesLight)
   const previewUrls = useJobMediaPreviewUrls(attachmentPreviews.slice(0, 3))
   const { fontScale, width: windowWidth } = useWindowDimensions()
   const [width, setWidth] = useState(windowWidth)
@@ -491,36 +498,36 @@ export function StageSixTimeline({
   )
 }
 
-const styles = StyleSheet.create({
-  root: { marginHorizontal: -stageSixTokens.hostGutter },
-  card: { backgroundColor: C.surface, borderColor: C.cardBorder, borderWidth: 1 },
+const stylesLight = StyleSheet.create({
+  root: { marginHorizontal: -stageSixTokensLight.hostGutter },
+  card: { backgroundColor: CLight.surface, borderColor: CLight.cardBorder, borderWidth: 1 },
   header: { alignItems: 'center', flexDirection: 'row', zIndex: 2 },
   glyphSlot: { alignItems: 'center', flexShrink: 0, justifyContent: 'center' },
   heading: { flex: 1, minWidth: 0 },
-  eyebrow: { color: C.eyebrow, fontWeight: '500' },
-  title: { color: C.ink, fontWeight: '700' },
+  eyebrow: { color: CLight.eyebrow, fontWeight: '500' },
+  title: { color: CLight.ink, fontWeight: '700' },
   kael: { alignItems: 'center', flexDirection: 'row', flexShrink: 0 },
-  kaelText: { color: C.kael, fontWeight: '500' },
+  kaelText: { color: CLight.kael, fontWeight: '500' },
   workartFrame: { overflow: 'hidden', position: 'absolute' },
   connector: { position: 'absolute' },
   row: { alignItems: 'center', flexDirection: 'row' },
   rowPressed: { opacity: 0.72 },
   // The card-coloured disc hides the connector behind each bare glyph, so the line reads as segments between icons.
-  node: { alignItems: 'center', backgroundColor: C.surface, flexShrink: 0, justifyContent: 'center' },
+  node: { alignItems: 'center', backgroundColor: CLight.surface, flexShrink: 0, justifyContent: 'center' },
   rowContent: { alignItems: 'center', flex: 1, flexDirection: 'row', minWidth: 0 },
   rowContentCompact: { alignItems: 'flex-start', flexDirection: 'column', justifyContent: 'center' },
   // Drawn out of flow like the reference's ::after hairline, so it never shifts the row's centered text.
-  rowDivider: { backgroundColor: C.line, bottom: 0, height: 1, left: 0, position: 'absolute', right: 0 },
-  rowLabel: { color: C.text, fontWeight: '400' },
-  rowValue: { color: C.value, flex: 1, minWidth: 0 },
+  rowDivider: { backgroundColor: CLight.line, bottom: 0, height: 1, left: 0, position: 'absolute', right: 0 },
+  rowLabel: { color: CLight.text, fontWeight: '400' },
+  rowValue: { color: CLight.value, flex: 1, minWidth: 0 },
   rowValueCompact: { flex: 0 },
-  price: { color: C.price, fontWeight: '600' },
+  price: { color: CLight.price, fontWeight: '600' },
   footer: { alignItems: 'center', flexDirection: 'row' },
   footerCompact: { alignItems: 'stretch', flexDirection: 'column' },
   attachment: {
     alignItems: 'center',
-    backgroundColor: C.tile,
-    borderColor: C.dashed,
+    backgroundColor: CLight.tile,
+    borderColor: CLight.dashed,
     borderStyle: 'dashed',
     borderWidth: 1,
     flex: 1,
@@ -529,23 +536,23 @@ const styles = StyleSheet.create({
   },
   attachmentCompact: { flex: 0 },
   thumbRow: { alignItems: 'center', flexDirection: 'row', flexShrink: 0 },
-  thumb: { alignItems: 'center', backgroundColor: C.secondaryBase, borderColor: C.tile, justifyContent: 'center', overflow: 'hidden' },
+  thumb: { alignItems: 'center', backgroundColor: CLight.secondaryBase, borderColor: CLight.tile, justifyContent: 'center', overflow: 'hidden' },
   thumbImage: { height: '100%', width: '100%' },
   attachmentCopy: { flex: 1, minWidth: 0 },
-  attachmentTitle: { color: C.value, fontWeight: '600' },
-  attachmentHint: { color: C.muted },
-  plus: { alignItems: 'center', backgroundColor: C.tile, borderColor: C.plusBorder, borderWidth: 1, boxShadow: stageSixTokens.shadows.plus, justifyContent: 'center' },
+  attachmentTitle: { color: CLight.value, fontWeight: '600' },
+  attachmentHint: { color: CLight.muted },
+  plus: { alignItems: 'center', backgroundColor: CLight.tile, borderColor: CLight.plusBorder, borderWidth: 1, boxShadow: stageSixTokensLight.shadows.plus, justifyContent: 'center' },
   buttonPair: { alignItems: 'center', flexDirection: 'row' },
   buttonPairCompact: { width: '100%' },
   action: { alignItems: 'center', flexDirection: 'row', justifyContent: 'center' },
-  secondary: { backgroundColor: C.secondaryBase },
-  primary: { backgroundColor: C.primaryBase, boxShadow: stageSixTokens.shadows.primary },
+  secondary: { backgroundColor: CLight.secondaryBase },
+  primary: { backgroundColor: CLight.primaryBase, boxShadow: stageSixTokensLight.shadows.primary },
   flexSecondary: { flex: 1, minWidth: 0 },
   flexPrimary: { flex: 1.3, minWidth: 0 },
-  actionText: { color: C.white, fontWeight: '600' },
-  secondaryText: { color: C.secondaryInk, flexShrink: 1 },
+  actionText: { color: CLight.white, fontWeight: '600' },
+  secondaryText: { color: CLight.secondaryInk, flexShrink: 1 },
   primaryText: { flexShrink: 1, textAlign: 'center' },
-  checkDisc: { alignItems: 'center', backgroundColor: C.checkDisc, boxShadow: stageSixTokens.shadows.checkDisc, justifyContent: 'center' },
+  checkDisc: { alignItems: 'center', backgroundColor: CLight.checkDisc, boxShadow: stageSixTokensLight.shadows.checkDisc, justifyContent: 'center' },
   pressed: { opacity: 0.88, transform: [{ scale: 0.982 }] },
   pressedStatic: { opacity: 0.88 },
   disabled: { opacity: 0.48 },

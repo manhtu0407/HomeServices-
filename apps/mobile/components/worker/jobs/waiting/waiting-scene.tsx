@@ -1,6 +1,7 @@
 import React from 'react'
 import { View } from 'react-native'
 import Svg, { Circle, Defs, LinearGradient, Path, RadialGradient, Rect, Stop } from 'react-native-svg'
+import { useWorkerColor } from '../../ui/worker-dark-styles'
 
 export function WaitingClockIcon({ size = 24, color = '#073448' }: { size?: number; color?: string }) {
   return <Svg width={size} height={size} viewBox="0 0 24 24" accessible={false}>
@@ -9,10 +10,11 @@ export function WaitingClockIcon({ size = 24, color = '#073448' }: { size?: numb
   </Svg>
 }
 export function WaitingAtmosphere({ id }: { id: string }) {
+  const tc = useWorkerColor()
   return <View pointerEvents="none" style={{ position: 'absolute', left: 0, top: 0, right: 0, bottom: 0 }} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
     <Svg width="100%" height="100%" viewBox="0 0 560 890" preserveAspectRatio="none" accessible={false}>
       <Defs>
-        <LinearGradient id={`${id}-bg`} x1="0" y1="0" x2="0" y2="1"><Stop offset="0" stopColor="#FCFFFE"/><Stop offset="0.8" stopColor="#F4FFFC"/><Stop offset="1" stopColor="#FBFFFE"/></LinearGradient>
+        <LinearGradient id={`${id}-bg`} x1="0" y1="0" x2="0" y2="1"><Stop offset="0" stopColor={tc('surface', '#FCFFFE')}/><Stop offset="0.8" stopColor={tc('surface', '#F4FFFC')}/><Stop offset="1" stopColor={tc('surface', '#FBFFFE')}/></LinearGradient>
         <RadialGradient id={`${id}-haze`}><Stop offset="0" stopColor="#86E3D1" stopOpacity="0.25"/><Stop offset="1" stopColor="#A4F0DB" stopOpacity="0"/></RadialGradient>
       </Defs>
       <Rect width={560} height={890} fill={`url(#${id}-bg)`}/>
@@ -21,10 +23,11 @@ export function WaitingAtmosphere({ id }: { id: string }) {
   </View>
 }
 export function WaitingRing({ scale, id }: { scale: number; id: string }) {
+  const tc = useWorkerColor()
   const r = 168
   return <Svg width={348 * scale} height={348 * scale} viewBox="0 0 348 348" accessible={false}>
     <Defs><LinearGradient id={`${id}-ring`} x1="0" y1="0" x2="0" y2="1"><Stop offset="0" stopColor="#12CDA7"/><Stop offset="0.23" stopColor="#8AE1CA"/><Stop offset="0.7" stopColor="#A9EEDF"/><Stop offset="1" stopColor="#E9FCF8"/></LinearGradient></Defs>
-    <Circle cx={174} cy={174} r={r} fill="none" stroke="#E7FBF8" strokeWidth={12}/>
+    <Circle cx={174} cy={174} r={r} fill="none" stroke={tc('line', '#E7FBF8')} strokeWidth={12}/>
     <Path d="M174 6A168 168 0 0 1 174 342" fill="none" stroke={`url(#${id}-ring)`} strokeWidth={12} strokeLinecap="round"/>
     <Path d="M174 6a168 168 0 0 1 58 10.3" stroke="#08CDA8" strokeWidth={12} strokeLinecap="round" fill="none" opacity={0.65}/>
   </Svg>

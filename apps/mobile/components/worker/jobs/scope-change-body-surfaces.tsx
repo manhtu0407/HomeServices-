@@ -14,7 +14,8 @@ import { WorkerV5PriceLines } from './shared-surfaces'
 import { WorkerV5ProgressRail } from './progress-surfaces'
 import type { WorkerV5ScopeChangeActions } from './use-worker-scope-change-actions'
 
-import { styles } from '../worker-v5-flow-styles'
+import { styles as stylesLight } from '../worker-v5-flow-styles'
+import { useWorkerThemedStyles } from '../ui/worker-dark-styles'
 
 
 function WorkerV5ScopePriceSummary({
@@ -182,6 +183,7 @@ export function WorkerV5ScopeChangeBody({
   /** Shared with the Stage 6 Timeline Card so photos picked there reach this form's evidence upload. */
   scopeChange: WorkerV5ScopeChangeActions
 }) {
+  const styles = useWorkerThemedStyles(stylesLight)
   const primaryButtonFill = useMemo(
     () => !scopeChange.scopeSubmitDisabled ? <WorkerV5PrimaryButtonFill disabled={false} variant="source" /> : null,
     [scopeChange.scopeSubmitDisabled],
