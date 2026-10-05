@@ -352,8 +352,8 @@ export function CustomerServiceHistorySurface({
               accessibilityIgnoresInvertColors
               accessible={false}
               contentFit="contain"
-              source={customerV21Assets.historyErrorWorkart}
-              style={[styles.historyStateIllustration, mode === 'dark' ? styles.historyStateIllustrationDark : null]}
+              source={mode === 'dark' ? customerV21Assets.historyErrorWorkartDark : customerV21Assets.historyErrorWorkart}
+              style={styles.historyStateIllustration}
               testID="customer-v21-history-error-workart"
             />
             <View style={styles.historyErrorIconFrame} testID="customer-v21-history-error-icon">

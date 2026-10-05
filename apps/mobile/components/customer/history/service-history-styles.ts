@@ -220,10 +220,6 @@ export const customerV21ServiceHistoryStyles = StyleSheet.create({
     maxWidth: 340,
     width: '100%',
   },
-  historyStateIllustrationDark: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 20,
-  },
   historyStateBody: {
     fontSize: 14,
     lineHeight: 20,
