@@ -125,6 +125,7 @@ describe('Customer invite-claim flow', () => {
     fireEvent.press(screen.getByTestId('customer-membership-code-submit'))
     fireEvent.press(screen.getByTestId('customer-membership-code-submit'))
     withPillarContext(PILLAR, () => {
+      expect(screen.getByTestId('customer-membership-code-input').props.value).toBe('KX7M4Q2O')
       expect(screen.getByTestId('customer-membership-code-hint')).toHaveTextContent(/không có số 0, số 1, chữ O và chữ I/)
       expect(claim).not.toHaveBeenCalled()
     })

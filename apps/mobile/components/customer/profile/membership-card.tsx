@@ -224,7 +224,7 @@ export function CustomerMembershipCard() {
             autoCorrect={false}
             maxLength={12}
             onChangeText={(value) => {
-              setCode(value)
+              setCode(value.toUpperCase())
               setMessage(null)
               setConfirming(false)
             }}
