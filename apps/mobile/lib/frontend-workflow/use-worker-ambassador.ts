@@ -17,6 +17,7 @@ export type WorkerAmbassadorState = {
   redeemErrorCode: string | null
   receipt: AmbassadorRedeemReceiptView | null
   codeBusy: boolean
+  codeErrorCode: string | null
 }
 
 export function useWorkerAmbassador() {
@@ -31,6 +32,7 @@ export function useWorkerAmbassador() {
     redeemErrorCode: null,
     receipt: null,
     codeBusy: false,
+    codeErrorCode: null,
   })
 
   const reload = useCallback(async () => {
@@ -63,7 +65,7 @@ export function useWorkerAmbassador() {
   }, [accessToken, reload])
 
   const ensureReferralCode = useCallback(async () => {
-    setState((current) => ({ ...current, codeBusy: true }))
+    setState((current) => ({ ...current, codeBusy: true, codeErrorCode: null }))
     const result = await ambassadorService.ensureReferralCode(accessToken)
     setState((current) => ({
       ...current,
@@ -71,7 +73,7 @@ export function useWorkerAmbassador() {
       summary: result.success && current.summary
         ? { ...current.summary, referral_code: result.data.referral_code }
         : current.summary,
-      loadErrorCode: result.success ? current.loadErrorCode : result.code,
+      codeErrorCode: result.success ? null : result.code,
     }))
   }, [accessToken])
 

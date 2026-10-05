@@ -106,6 +106,7 @@ import { WorkerV5ServiceAreaMapCard } from './profile/service-area-map-surfaces'
 import { workerV5CaseHeaderSubtitle, workerV5OfferHeaderSubtitle, workerV5TravelHeaderSubtitle } from './jobs/header-copy'
 import { WorkerV5ProfileProductionSurface } from './profile/production-overview-surfaces'
 import { WorkerV5DeleteAccountBody } from './profile/delete-account-surfaces'
+import { WorkerV5InviteCodeBody } from './profile/invite-code-surfaces'
 import { useWorkerThemeMode } from './worker-theme'
 import type { WorkerV5Runtime } from './worker-v5-runtime'
 
@@ -226,7 +227,7 @@ function WorkerV5ScreenSurface({ screen }: { screen: WorkerV5ScreenDefinition })
   const usesKaelOrbHandoff = screen.id === '3.1-kael-chat-normal' || screen.id === '3.2-kael-job-intake'
   const usesEarningsHandoff = screen.id === '4.1-earnings-overview' || screen.id === '4.2-ledger-detail' || screen.id === '4.3-payout-request' || screen.id === '4.4-payout-method' || screen.id === '4.5-commission-policy' || screen.id === '4.6-ambassador' || screen.id === '4.7-violations'
   const usesEarningsOverviewHandoff = screen.id === '4.1-earnings-overview'
-  const usesProfileHandoff = screen.id === '5.1-profile-overview' || screen.id === '5.15-worker-delete-account' || screen.id === '5.2-worker-ranking' || screen.id === '5.3-skills-service-area' || screen.id === '5.4-reliability-insights' || screen.id === '5.5-account-utilities' || screen.id === '5.6-agent-memory-preferences' || screen.id === '5.7-verification-documents' || screen.id === '5.9-reviews-feedback' || screen.id === '5.10-support-settings' || screen.id === '5.11-worker-availability' || screen.id === '5.12-worker-notifications' || screen.id === '5.13-worker-support' || screen.id === '5.14-worker-policies'
+  const usesProfileHandoff = screen.id === '5.1-profile-overview' || screen.id === '5.15-worker-delete-account' || screen.id === '5.2-worker-ranking' || screen.id === '5.3-skills-service-area' || screen.id === '5.4-reliability-insights' || screen.id === '5.5-account-utilities' || screen.id === '5.6-agent-memory-preferences' || screen.id === '5.7-verification-documents' || screen.id === '5.9-reviews-feedback' || screen.id === '5.10-support-settings' || screen.id === '5.11-worker-availability' || screen.id === '5.12-worker-notifications' || screen.id === '5.13-worker-support' || screen.id === '5.14-worker-policies' || screen.id === '5.16-worker-invite-code'
   const hidesHeaderUtility = usesProfileHandoff
   const usesCaseExecutionHandoff = usesCustomerConfirmationWaitHandoff || usesInProgressHandoff || usesScopeChangeHandoff || usesApprovalWaitHandoff || usesCompletionEvidenceHandoff || usesCompletionSubmittedHandoff || usesCaseClosedHandoff
   const usesHandoffStage = usesOpportunityInboxHandoff || usesOfferDetailHandoff || usesTravelHandoff || usesCaseExecutionHandoff || usesKaelOrbHandoff || usesEarningsHandoff || usesProfileHandoff
@@ -236,7 +237,7 @@ function WorkerV5ScreenSurface({ screen }: { screen: WorkerV5ScreenDefinition })
       ? null
     : screen.id === '5.4-reliability-insights'
       ? null
-    : screen.id === '5.5-account-utilities' || screen.id === '5.10-support-settings' || screen.id === '5.15-worker-delete-account'
+    : screen.id === '5.5-account-utilities' || screen.id === '5.10-support-settings' || screen.id === '5.15-worker-delete-account' || screen.id === '5.16-worker-invite-code'
       ? null
     : screen.id === '5.11-worker-availability'
       ? null
@@ -948,6 +949,8 @@ function WorkerV5Body({
       return <WorkerV5SupportBody language={language} navigateToJobs={navigateToJobs} navigateToKael={navigateSupportKael} />
     case '5.14-worker-policies':
       return <WorkerV5PoliciesBody language={language} reduceTransparency={reduceTransparency} />
+    case '5.16-worker-invite-code':
+      return <WorkerV5InviteCodeBody language={language} onOpenRewards={() => navigateToScreen('4.6-ambassador')} />
     default:
       return null
   }
@@ -1087,6 +1090,7 @@ function getWorkerV5PrimaryAction(
     case '5.12-worker-notifications':
     case '5.13-worker-support':
     case '5.14-worker-policies':
+    case '5.16-worker-invite-code':
       return null
     default:
       return null

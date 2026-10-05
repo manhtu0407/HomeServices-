@@ -163,6 +163,7 @@ export function WorkerV5AmbassadorBody({
     <WorkerV5Ambassador
       controller={controller}
       language={language}
+      onOpenInviteCode={() => navigateToScreen('5.16-worker-invite-code')}
       onOpenViolations={() => navigateToScreen('4.7-violations')}
     />
   )

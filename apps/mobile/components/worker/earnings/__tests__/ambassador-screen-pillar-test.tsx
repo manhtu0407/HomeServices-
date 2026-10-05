@@ -74,6 +74,7 @@ function controller(overrides: Partial<ReturnType<typeof useWorkerAmbassador>> =
     redeemErrorCode: null,
     receipt: null,
     codeBusy: false,
+    codeErrorCode: null,
     reload: jest.fn(async () => undefined),
     redeem: jest.fn(async () => undefined),
     ensureReferralCode: jest.fn(async () => undefined),
@@ -83,7 +84,7 @@ function controller(overrides: Partial<ReturnType<typeof useWorkerAmbassador>> =
 
 describe('Worker ambassador screen', () => {
   it('shows no point count before the summary loads', () => {
-    render(<WorkerV5Ambassador controller={controller({ summary: null, loading: true })} language="vi" onOpenViolations={jest.fn()} />)
+    render(<WorkerV5Ambassador controller={controller({ summary: null, loading: true })} language="vi" onOpenInviteCode={jest.fn()} onOpenViolations={jest.fn()} />)
     withPillarContext(PILLAR, () => {
       expect(screen.queryByTestId('worker-v5-ambassador-points')).toBeNull()
       expect(screen.getByText('Đang tải chương trình thưởng')).toBeOnTheScreen()
@@ -91,7 +92,7 @@ describe('Worker ambassador screen', () => {
   })
 
   it('shows ledger points and the gap to the next approved milestone', () => {
-    render(<WorkerV5Ambassador controller={controller()} language="vi" onOpenViolations={jest.fn()} />)
+    render(<WorkerV5Ambassador controller={controller()} language="vi" onOpenInviteCode={jest.fn()} onOpenViolations={jest.fn()} />)
     withPillarContext(PILLAR, () => {
       expect(screen.getByTestId('worker-v5-ambassador-points')).toHaveTextContent('12,5')
       expect(screen.getByTestId('worker-v5-ambassador-next')).toHaveTextContent('Còn 37,5 điểm tới mốc Kết nối (125.000đ).')
@@ -102,15 +103,26 @@ describe('Worker ambassador screen', () => {
 
   it('redeems only after a confirming second tap', () => {
     const view = controller()
-    render(<WorkerV5Ambassador controller={view} language="vi" onOpenViolations={jest.fn()} />)
+    render(<WorkerV5Ambassador controller={view} language="vi" onOpenInviteCode={jest.fn()} onOpenViolations={jest.fn()} />)
     fireEvent.press(screen.getByTestId('worker-v5-ambassador-redeem-1'))
     withPillarContext(PILLAR, () => expect(view.redeem).not.toHaveBeenCalled())
     fireEvent.press(screen.getByTestId('worker-v5-ambassador-redeem-1'))
     withPillarContext(PILLAR, () => expect(view.redeem).toHaveBeenCalledWith('m1'))
   })
 
+  it('links to the invite-code screen in Profile instead of creating a code here', () => {
+    const openInviteCode = jest.fn()
+    render(<WorkerV5Ambassador controller={controller()} language="vi" onOpenInviteCode={openInviteCode} onOpenViolations={jest.fn()} />)
+    withPillarContext(PILLAR, () => {
+      expect(screen.queryByTestId('worker-v5-ambassador-create-code')).toBeNull()
+      expect(screen.getByTestId('worker-v5-ambassador-open-invite-code')).toHaveTextContent(/Mã ABCD2345 · 3 khách đã liên kết/)
+    })
+    fireEvent.press(screen.getByTestId('worker-v5-ambassador-open-invite-code'))
+    expect(openInviteCode).toHaveBeenCalledTimes(1)
+  })
+
   it('holds redemption until the bonus tax policy is approved', () => {
-    render(<WorkerV5Ambassador controller={controller({ summary: summary({ tax_policy_ready: false }) })} language="vi" onOpenViolations={jest.fn()} />)
+    render(<WorkerV5Ambassador controller={controller({ summary: summary({ tax_policy_ready: false }) })} language="vi" onOpenInviteCode={jest.fn()} onOpenViolations={jest.fn()} />)
     withPillarContext(PILLAR, () => {
       expect(screen.queryByTestId('worker-v5-ambassador-redeem-1')).toBeNull()
       expect(screen.getByTestId('worker-v5-ambassador-tax-pending')).toBeOnTheScreen()
@@ -121,6 +133,7 @@ describe('Worker ambassador screen', () => {
     render(<WorkerV5Ambassador
       controller={controller({ receipt: { redemption_id: 'r1', reward_vnd: 1400000, tax_withheld_vnd: 140000, net_vnd: 1260000, points_left_milli: 0, replayed: false } })}
       language="vi"
+      onOpenInviteCode={jest.fn()}
       onOpenViolations={jest.fn()}
     />)
     withPillarContext(PILLAR, () => {

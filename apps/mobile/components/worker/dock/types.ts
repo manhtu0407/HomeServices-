@@ -56,6 +56,7 @@ export type WorkerV5ScreenId =
   | '5.12-worker-notifications'
   | '5.13-worker-support'
   | '5.14-worker-policies'
+  | '5.16-worker-invite-code'
 
 export type WorkerV5ScreenDefinition = {
   authority: string

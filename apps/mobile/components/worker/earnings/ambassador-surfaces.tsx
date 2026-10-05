@@ -1,7 +1,7 @@
 import { useState } from 'react'
-import { Pressable, Share, Text as RNText, View, type TextProps } from 'react-native'
+import { Pressable, Text as RNText, View, type TextProps } from 'react-native'
 
-import type { AmbassadorMilestoneView, AmbassadorRedeemReceiptView, WorkerAmbassadorSummary } from '@/lib/api-types/program'
+import type { AmbassadorMilestoneView, AmbassadorRedeemReceiptView } from '@/lib/api-types/program'
 import type { AppLanguage } from '@/lib/app-language'
 import type { useWorkerAmbassador } from '@/lib/frontend-workflow/use-worker-ambassador'
 
@@ -113,61 +113,15 @@ function MilestoneRow({
   )
 }
 
-function InviteCard({ controller, language, summary }: { controller: AmbassadorController; language: AppLanguage; summary: WorkerAmbassadorSummary }) {
-  const code = summary.referral_code
-  const claimDays = summary.program?.invite_claim_days ?? null
-  const share = () => {
-    if (!code) return
-    void Share.share({
-      message: textByLanguage(
-        language,
-        `Đặt thợ sửa chữa, vệ sinh căn hộ trên NestScout và nhập mã ${code} khi đăng ký.`,
-        `Book apartment repair and cleaning on NestScout and enter code ${code} when you sign up.`,
-      ),
-    })
-  }
-  return (
-    <View style={styles.card} testID="worker-v5-ambassador-invite">
-      <Text style={styles.sectionTitle}>{textByLanguage(language, 'Mã mời khách', 'Customer invite code')}</Text>
-      <Text style={styles.sectionHint}>
-        {claimDays === null
-          ? textByLanguage(language, 'Khách nhập mã trước đơn thanh toán đầu tiên để trở thành khách của bạn.', 'A customer enters the code before their first paid order to become yours.')
-          : textByLanguage(language, `Khách nhập mã trong ${claimDays} ngày sau khi đăng ký và trước đơn thanh toán đầu tiên. Khách đặt lại bạn lần thứ hai trong app cũng trở thành khách của bạn.`, `A customer enters the code within ${claimDays} days of signing up and before their first paid order. A customer who books you a second time in the app also becomes yours.`)}
-      </Text>
-      {code ? (
-        <>
-          <View accessibilityLabel={textByLanguage(language, `Mã mời ${code.split('').join(' ')}`, `Invite code ${code.split('').join(' ')}`)} style={styles.codeBox}>
-            <Text selectable style={styles.codeValue} testID="worker-v5-ambassador-code">{code}</Text>
-          </View>
-          <Pressable accessibilityRole="button" onPress={share} style={({ pressed }) => [styles.secondaryButton, pressed && styles.pressed]} testID="worker-v5-ambassador-share">
-            <Text style={styles.secondaryLabel}>{textByLanguage(language, 'Chia sẻ mã mời', 'Share invite code')}</Text>
-          </Pressable>
-        </>
-      ) : (
-        <Pressable
-          accessibilityRole="button"
-          accessibilityState={{ disabled: controller.codeBusy, busy: controller.codeBusy }}
-          disabled={controller.codeBusy}
-          onPress={() => void controller.ensureReferralCode()}
-          style={({ pressed }) => [styles.secondaryButton, pressed && styles.pressed]}
-          testID="worker-v5-ambassador-create-code"
-        >
-          <Text style={styles.secondaryLabel}>{controller.codeBusy
-            ? textByLanguage(language, 'Đang tạo mã', 'Creating code')
-            : textByLanguage(language, 'Tạo mã mời', 'Create invite code')}</Text>
-        </Pressable>
-      )}
-    </View>
-  )
-}
-
 export function WorkerV5Ambassador({
   controller,
   language,
+  onOpenInviteCode,
   onOpenViolations,
 }: {
   controller: AmbassadorController
   language: AppLanguage
+  onOpenInviteCode: () => void
   onOpenViolations: () => void
 }) {
   const [confirmingId, setConfirmingId] = useState<string | null>(null)
@@ -291,7 +245,17 @@ export function WorkerV5Ambassador({
         </View>
       )}
 
-      <InviteCard controller={controller} language={language} summary={summary} />
+      <Pressable accessibilityRole="button" onPress={onOpenInviteCode} style={({ pressed }) => [styles.card, styles.linkRow, pressed && styles.pressed]} testID="worker-v5-ambassador-open-invite-code">
+        <View style={styles.milestoneCopy}>
+          <Text style={styles.milestoneTitle}>{textByLanguage(language, 'Mã mời khách', 'Customer invite code')}</Text>
+          <Text style={styles.milestoneMeta}>
+            {summary.referral_code
+              ? textByLanguage(language, `Mã ${summary.referral_code} · ${summary.linked_customers} khách đã liên kết`, `Code ${summary.referral_code} · ${summary.linked_customers} linked customers`)
+              : textByLanguage(language, 'Tạo và chia sẻ mã trong Hồ sơ', 'Create and share your code in Profile')}
+          </Text>
+        </View>
+        <Text style={styles.linkChevron}>›</Text>
+      </Pressable>
 
       <View style={styles.card} testID="worker-v5-ambassador-history">
         <Text style={styles.sectionTitle}>{textByLanguage(language, 'Lịch sử điểm', 'Point history')}</Text>

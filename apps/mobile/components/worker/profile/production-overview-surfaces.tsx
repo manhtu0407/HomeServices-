@@ -297,6 +297,14 @@ function buildProfileGroups({
           title: textByLanguage(language, 'Cài đặt', 'Settings'),
         },
         {
+          glyph: 'activity',
+          id: 'invite-code',
+          onPress: () => navigateToScreen('5.16-worker-invite-code'),
+          status: textByLanguage(language, 'Mở', 'Open'),
+          statusTone: 'active',
+          title: textByLanguage(language, 'Mã mời khách', 'Customer invite code'),
+        },
+        {
           glyph: 'memory',
           id: 'memory',
           onPress: () => navigateToScreen('5.6-agent-memory-preferences'),

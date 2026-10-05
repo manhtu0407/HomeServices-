@@ -221,7 +221,7 @@ export function WorkerV5EarningsUtilities({
         <View style={[styles.divider, { backgroundColor: tokens.border }]} />
         <WorkerV5EarningsUtilityRow detail={commissionRate ? textByLanguage(language, `Mức hiện tại ${commissionRate}`, `Current rate ${commissionRate}`) : textByLanguage(language, 'Theo giao dịch', 'Per transaction')} icon={commissionIcon} onPress={onOpenCommission} reduceMotion={reduceMotion} testID="worker-v5-earnings-utility-commission" title={textByLanguage(language, 'Chính sách hoa hồng', 'Commission policy')} tokens={tokens} />
         <View style={[styles.divider, { backgroundColor: tokens.border }]} />
-        <WorkerV5EarningsUtilityRow detail={textByLanguage(language, 'Mã mời, điểm và mốc thưởng', 'Invite code, points and milestones')} icon={ambassadorIcon} onPress={onOpenAmbassador} reduceMotion={reduceMotion} testID="worker-v5-earnings-utility-ambassador" title={textByLanguage(language, 'Thưởng đại sứ', 'Ambassador rewards')} tokens={tokens} />
+        <WorkerV5EarningsUtilityRow detail={textByLanguage(language, 'Điểm và mốc thưởng', 'Points and milestones')} icon={ambassadorIcon} onPress={onOpenAmbassador} reduceMotion={reduceMotion} testID="worker-v5-earnings-utility-ambassador" title={textByLanguage(language, 'Thưởng đại sứ', 'Ambassador rewards')} tokens={tokens} />
       </View>
     </View>
   )
