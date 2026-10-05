@@ -143,7 +143,7 @@ export function CustomerMembershipCard() {
             }}
             placeholder={language === 'vi' ? 'Nhập 8 ký tự' : 'Enter 8 characters'}
             placeholderTextColor={tokens.subtleText}
-            style={[styles.input, { borderColor: tokens.borderStrong, color: tokens.text }]}
+            style={[styles.input, code.length > 0 && styles.inputFilled, { borderColor: tokens.borderStrong, color: tokens.text }]}
             testID="customer-membership-code-input"
             value={code}
           />
@@ -189,9 +189,15 @@ const styles = StyleSheet.create({
   input: {
     borderRadius: 14,
     borderWidth: 1,
+    fontFamily: typography.body.fontFamily,
+    fontSize: typography.body.fontSize,
+    fontWeight: typography.body.fontWeight,
+    letterSpacing: typography.body.letterSpacing,
     minHeight: 44,
     paddingHorizontal: 12,
-    ...typography.body,
+    paddingVertical: 0,
+  },
+  inputFilled: {
     letterSpacing: 2,
   },
   button: {
