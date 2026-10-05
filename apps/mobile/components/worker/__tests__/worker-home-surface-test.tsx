@@ -1435,11 +1435,12 @@ describe('Worker runtime surface wiring', () => {
     expect(screen.queryByTestId('worker-v5-kael-orb-live-thread')).toBeNull()
     expect(screen.queryByText('Cuộc trò chuyện mới. Hãy gửi tin nhắn đầu tiên cho Kael.')).toBeNull()
     expect(screen.getByTestId('worker-v5-kael-orb-composer')).toBeOnTheScreen()
+    // The test renderer reports no safe-area inset, so the frame keeps its minimum bottom gap.
     expect(StyleSheet.flatten(screen.getByTestId('worker-v5-kael-customer-frame').props.style)).toMatchObject({
-      paddingBottom: 0,
+      paddingBottom: 8,
     })
     expect(StyleSheet.flatten(screen.getByTestId('worker-v5-kael-orb-disclaimer').props.style)).toMatchObject({
-      paddingBottom: 12,
+      paddingBottom: 0,
     })
     expect(StyleSheet.flatten(screen.getByTestId('worker-v5-kael-orb-input').props.style)).toMatchObject({
       boxShadow: 'none',

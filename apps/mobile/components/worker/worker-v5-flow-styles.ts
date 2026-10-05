@@ -1769,8 +1769,8 @@ export const styles = StyleSheet.create({
     ...typography.caption2,
     fontWeight: '600',
     marginTop: 6,
-    // Lifts the composer and this note off the bottom edge together.
-    paddingBottom: 12,
+    // The gap below this note comes from useKaelComposerBottomInset on the chat frame.
+    paddingBottom: 0,
     textAlign: 'center',
   },
   kaelOrbSuggestionHint: {

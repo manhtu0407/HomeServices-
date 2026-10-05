@@ -616,12 +616,13 @@ describe('active customer Kael chat surface wiring', () => {
         paddingVertical: 0,
       })
       expect(screen.getByTestId('customer-v21-kael-chat-disclaimer')).toBeOnTheScreen()
+      // The test renderer reports no safe-area inset, so the frame keeps its minimum bottom gap.
       expect(StyleSheet.flatten(screen.getByTestId('customer-v21-screen-2.4-chat-normal').props.style)).toMatchObject({
-        paddingBottom: 0,
+        paddingBottom: 8,
       })
       expect(StyleSheet.flatten(screen.getByTestId('customer-v21-kael-chat-disclaimer').props.style)).toMatchObject({
         marginTop: -4,
-        paddingBottom: 12,
+        paddingBottom: 0,
       })
       expect(screen.queryByTestId('customer-v21-normal-greeting-bubble')).toBeNull()
       expect(screen.queryByText(/nhận việc|cơ hội việc/i)).toBeNull()

@@ -10,6 +10,7 @@ import { KaelSendStopGlyph } from '@/components/ui/kael-send-stop-glyph'
 import { NormalChatGhostOverlay } from '@/components/ui/normal-chat-ghost-overlay'
 import { LiquidControlButton } from '@/components/ui/liquid-back-button'
 import { NormalChatStarterRail } from '@/components/ui/normal-chat-starter-rail'
+import { useKaelComposerBottomInset } from '@/components/ui/use-kael-composer-bottom-inset'
 import { EMPTY_NORMAL_CHAT_SUGGESTIONS, getNormalChatGhostSuffix, getNormalChatSendPalette } from '@/components/ui/normal-chat-composer-model'
 import { motionDuration, motionTokens } from '@/components/ui/motion-tokens'
 import { color, customerTheme } from '@/design/theme'
@@ -30,7 +31,7 @@ import { canUseWorkerV5PrivateKaelChat } from './use-worker-kael-orb-chat'
 import type { useFrontendWorkflow } from '@/lib/frontend-workflow-provider'
 
 
-import { SafeAreaView } from 'react-native-safe-area-context'
+import { SafeAreaView, type Edge } from 'react-native-safe-area-context'
 
 import { WorkerV5KaelOrbBody } from './body-surfaces'
 import { WorkerV5KaelOrbNavigationSurface } from './orb-navigation-surface'
@@ -41,6 +42,9 @@ import { workerV5Icons, workerV5OpportunityServiceIcons } from '../ui/screen-ico
 import { workerV5JobsDestinationScreenId } from '../ui/screen-navigation'
 
 type WorkerV5Runtime = ReturnType<typeof useFrontendWorkflow>
+
+// The bottom edge is padded by useKaelComposerBottomInset so the composer can sit near the device edge.
+const KAEL_ORB_SAFE_AREA_EDGES: Edge[] = ['top', 'left', 'right']
 
 function getWorkerV5KaelComposerArrowColor(normalComposer: boolean, canSubmit: boolean) {
   if (normalComposer) {
@@ -105,6 +109,7 @@ export function WorkerV5KaelOrbScreenSurface({
   const [sessionMenuOpen, setSessionMenuOpen] = useState(false)
   const [chatEntryKey, setChatEntryKey] = useState(0)
   const [composerActive, setComposerActive] = useState(false)
+  const composerBottomInset = useKaelComposerBottomInset()
   const modeMenuOpacity = useSharedValue(reduceMotion ? 1 : 0)
   const modeMenuScaleX = useSharedValue(reduceMotion ? 1 : 0.92)
   const modeMenuScaleY = useSharedValue(reduceMotion ? 1 : 0.8)
@@ -278,10 +283,10 @@ export function WorkerV5KaelOrbScreenSurface({
   ])
 
   return (
-    <SafeAreaView style={[styles.safeArea, surfaceStyle, styles.kaelOrbCustomerSafeArea]} testID={`worker-v5-screen-${screen.id}`}>
+    <SafeAreaView edges={KAEL_ORB_SAFE_AREA_EDGES} style={[styles.safeArea, surfaceStyle, styles.kaelOrbCustomerSafeArea]} testID={`worker-v5-screen-${screen.id}`}>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.kaelOrbCustomerKeyboard}>
         <View
-          style={[styles.kaelOrbCustomerChatFrame, mode === 'intake' ? styles.kaelOrbCustomerChatFrameIntake : null]}
+          style={[styles.kaelOrbCustomerChatFrame, { paddingBottom: composerBottomInset }, mode === 'intake' ? styles.kaelOrbCustomerChatFrameIntake : null]}
           testID="worker-v5-kael-customer-frame"
         >
           <WorkerV5KaelOrbNavigationSurface

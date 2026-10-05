@@ -109,8 +109,8 @@ export const customerV21ChatStyles = StyleSheet.create({
     ...typography.caption2,
     fontWeight: '600',
     marginTop: -4,
-    // Lifts the composer and this note off the bottom edge together.
-    paddingBottom: 12,
+    // The gap below this note comes from useKaelComposerBottomInset on the chat frame.
+    paddingBottom: 0,
     textAlign: 'center',
   },
   chatEmptyHero: {
