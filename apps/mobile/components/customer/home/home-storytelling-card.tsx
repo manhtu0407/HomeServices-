@@ -48,6 +48,8 @@ export function HomeStorytellingCard({ language, onSearch, onSearchFocus, reduce
   const titleTypography = scaledTypography('largeTitle', scale)
   const descriptionTypography = scaledTypography('subheadline', scale)
   const searchTypography = scaledTypography('body', Math.min(scale * 1.35, 1))
+  // Without the light artwork the solid dark card needs theme ink; the light hero keeps its own palette.
+  const solidDark = reduceTransparency && tokens.mode === 'dark'
   const content = (
     <>
       {!reduceTransparency ? (
@@ -80,6 +82,7 @@ export function HomeStorytellingCard({ language, onSearch, onSearchFocus, reduce
           style={[
             styles.title,
             titleTypography,
+            solidDark && { color: tokens.text },
             {
               fontSize: (titleTypography.fontSize ?? 0) + 3,
               lineHeight: (titleTypography.lineHeight ?? 0) + 3,
@@ -95,6 +98,7 @@ export function HomeStorytellingCard({ language, onSearch, onSearchFocus, reduce
           style={[
             styles.description,
             descriptionTypography,
+            solidDark && { color: tokens.muted },
             {
               fontSize: (descriptionTypography.fontSize ?? 0) + 1,
               lineHeight: (descriptionTypography.lineHeight ?? 0) + 1,
@@ -106,7 +110,7 @@ export function HomeStorytellingCard({ language, onSearch, onSearchFocus, reduce
         </Text>
       </View>
 
-      <View style={[styles.search, { borderRadius: q(40), height: q(80), left: q(33), paddingHorizontal: q(28), right: q(33), top: q(228) }]} testID="customer-v21-home-search">
+      <View style={[styles.search, solidDark && { backgroundColor: tokens.base, borderColor: tokens.border }, { borderRadius: q(40), height: q(80), left: q(33), paddingHorizontal: q(28), right: q(33), top: q(228) }]} testID="customer-v21-home-search">
         <HomeIcon color={tokens.muted} name="search" size={q(38)} />
         <TextInput spellCheck={false}
           accessibilityLabel={copy.searchPlaceholder}
@@ -117,7 +121,7 @@ export function HomeStorytellingCard({ language, onSearch, onSearchFocus, reduce
           placeholder={copy.searchPlaceholder}
           placeholderTextColor={tokens.muted}
           returnKeyType="search"
-          style={[customerV21WebTextInputNoOutline, styles.searchInput, searchTypography, { borderWidth: 0, height: q(68), includeFontPadding: false, paddingHorizontal: q(19), paddingVertical: 0, textAlignVertical: 'center' }]}
+          style={[customerV21WebTextInputNoOutline, styles.searchInput, searchTypography, solidDark && { color: tokens.text }, { borderWidth: 0, height: q(68), includeFontPadding: false, paddingHorizontal: q(19), paddingVertical: 0, textAlignVertical: 'center' }]}
           value={value}
         />
       </View>

@@ -11,6 +11,7 @@ import { validateWorkerProposal } from '@/lib/frontend-workflow/worker-proposal'
 import type { WorkerThemeTokens } from '../worker-theme'
 import { textByLanguage } from '../ui/format'
 import { Text } from './worker-jobs-zip-prototype-shared'
+import { useWorkerThemedStyles } from '../ui/worker-dark-styles'
 
 type ProposalAction = Exclude<WorkerBroadcastProposalAction, 'accept_priced_offer'>
 
@@ -53,6 +54,7 @@ export function WorkerBroadcastProposalForm({
   submitted: boolean
   tokens: WorkerThemeTokens
 }) {
+  const styles = useWorkerThemedStyles(stylesLight)
   const submitInFlightRef = useRef(false)
   const [form, dispatch] = useReducer(proposalFormReducer, INITIAL_PROPOSAL_FORM_STATE)
   const { attempted, priceMaxText, priceMinText, scopeSummary, submitting } = form
@@ -197,7 +199,7 @@ function validationMessage(code: string, language: AppLanguage) {
   return textByLanguage(language, 'Nhập đủ hai mức giá hợp lệ.', 'Enter both valid price bounds.')
 }
 
-const styles = StyleSheet.create({
+const stylesLight = StyleSheet.create({
   body: { ...typography.subheadline },
   button: { alignItems: 'center', borderRadius: 16, justifyContent: 'center', minHeight: 48, paddingHorizontal: 16 },
   buttonText: { ...typography.body, fontWeight: '700' },

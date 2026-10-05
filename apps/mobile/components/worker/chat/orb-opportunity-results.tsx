@@ -14,6 +14,7 @@ import { textByLanguage } from '../ui/format'
 import { workerV5TimeChoiceLabel } from '../ui/labels'
 import { buildWorkerV5RouteDistanceSignal, workerV5KaelOpportunityMatchScore } from '../ui/route'
 import { styles } from './orb-styles'
+import { useWorkerThemedStyles } from '../ui/worker-dark-styles'
 
 type WorkerV5ServiceIconMap = Partial<Record<ServiceType, ImageSourcePropType>>
 
@@ -36,6 +37,7 @@ export function WorkerV5KaelOrbOpportunityResults({
   reduceTransparency: boolean
   serviceIcons: WorkerV5ServiceIconMap
 }) {
+  const opaqueCard = useWorkerThemedStyles(styles).opaqueCard
   if (!deal?.broadcast) {
     return null
   }
@@ -60,7 +62,7 @@ export function WorkerV5KaelOrbOpportunityResults({
 
   return (
     <View style={styles.kaelOrbOpportunityList} testID="worker-v5-kael-orb-opportunities">
-      <View style={[styles.kaelOrbOpportunityCard, reduceTransparency && styles.opaqueCard]} testID="worker-v5-kael-orb-opportunity-card">
+      <View style={[styles.kaelOrbOpportunityCard, reduceTransparency && opaqueCard]} testID="worker-v5-kael-orb-opportunity-card">
         {!reduceTransparency ? (
           <>
             <WorkerV5SourceCardSkin testID="worker-v5-kael-orb-opportunity-skin" />

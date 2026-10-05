@@ -135,7 +135,7 @@ export function WorkerJobsZipPrototype() {
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        <View style={[styles.surface, glass.reduceTransparency && { backgroundColor: color.mint.white }]}>
+        <View style={[styles.surface, glass.reduceTransparency && { backgroundColor: workerThemeMode === 'dark' ? themeTokens.canvas : color.mint.white }]}>
           <WorkerJobsLegacyPrototypeBody
             actionBusy={actionBusy}
             language={language}

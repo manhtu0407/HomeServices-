@@ -11,7 +11,7 @@ jest.mock('expo-image', () => {
   }
 })
 
-import { color, component, scaledTypography, shadow, typography } from '@/design/theme'
+import { component, scaledTypography, shadow, typography } from '@/design/theme'
 import { FORMULA_MINT_CANVAS_STANDARD_RADIAL_RADIUS, FormulaMintCanvasAura } from '../formula-mint-canvas'
 import { FormulaMintCardAura } from '../formula-mint-card'
 import { KAEL_CORE_V9_CONTRACT } from '../kael-core-v9-contract'
@@ -19,9 +19,12 @@ import { AlphaStop, NativeSafeLinearGradient } from '../svg-alpha-stop'
 import { KaelButton, KaelChip, KaelTextField, KaelTextInput } from '../kael-primitives'
 
 describe('Kael UI primitives', () => {
-  it('keeps the primary CTA gradient aligned with the final mint aura colors without extra white overlays', () => {
-    expect(component.button.primary.gradient).toEqual(['#31D7C2', '#09B29E', '#077C72'])
+  it('paints the primary CTA with the sign-in button recipe', () => {
+    expect(component.button.primary.gradient).toEqual(['#49CFC0', '#24B3A1', '#088779'])
     expect(component.button.primary.gradientStops).toEqual([0, 0.5, 1])
+    expect(component.button.primary.highlight).toEqual({ cx: '22%', cy: '0%', r: '78%', opacity: 0.34 })
+    expect(component.button.primary.border).toBe('rgba(255,255,255,0.68)')
+    expect(component.button.primary.boxShadow).toBe('0px 14px 16px rgba(8,135,121,0.24)')
     expect(shadow.primary).toMatchObject({
       shadowColor: '#087D72',
       shadowOffset: { height: 14, width: 0 },
@@ -38,12 +41,12 @@ describe('Kael UI primitives', () => {
       </>,
     )
 
-    const gradients = UNSAFE_getAllByType(LinearGradient)
-    const gradientIds = gradients.map((gradient) => gradient.props.id)
+    const gradientIds = UNSAFE_getAllByType(LinearGradient).map((gradient) => gradient.props.id)
+    const lightIds = UNSAFE_getAllByType(RadialGradient).map((gradient) => gradient.props.id)
     const fills = UNSAFE_getAllByType(Rect).map((rect) => rect.props.fill)
 
-    expect(new Set(gradientIds).size).toBe(2)
-    expect(fills).toEqual(gradientIds.map((gradientId) => `url(#${gradientId})`))
+    expect(new Set([...gradientIds, ...lightIds]).size).toBe(4)
+    expect(fills).toEqual(gradientIds.flatMap((gradientId, index) => [`url(#${gradientId})`, `url(#${lightIds[index]})`]))
   })
 
   it('normalizes rgba gradient stops into native-safe hex color plus opacity', () => {
@@ -115,11 +118,11 @@ describe('Kael UI primitives', () => {
 
   it('keeps standard SVG radial geometry for the dark canvas', () => {
     const { UNSAFE_getAllByType } = render(
-      <FormulaMintCanvasAura mode="dark" reduceTransparency scope="Customer Home Test" testID="formula-mint-canvas-parity-test" />,
+      <FormulaMintCanvasAura mode="dark" scope="Customer Home Test" testID="formula-mint-canvas-parity-test" />,
     )
 
     const gradients = UNSAFE_getAllByType(RadialGradient)
-    expect(gradients).toHaveLength(7)
+    expect(gradients).toHaveLength(1)
     gradients.forEach((gradient) => {
       expect(gradient.props.gradientUnits).toBe('userSpaceOnUse')
       expect(gradient.props.r).toBe(FORMULA_MINT_CANVAS_STANDARD_RADIAL_RADIUS)
@@ -128,14 +131,17 @@ describe('Kael UI primitives', () => {
     })
   })
 
-  it('uses a dark canvas palette instead of the light mint wash', () => {
-    const { UNSAFE_getAllByType } = render(
+  it('uses a black iOS base with one faint mint wash in dark, and drops the wash under Reduce Transparency', () => {
+    const { getByTestId, UNSAFE_getAllByType, UNSAFE_queryAllByType, rerender } = render(
       <FormulaMintCanvasAura mode="dark" scope="Customer Dark Test" testID="formula-mint-canvas-dark-test" />,
     )
 
+    expect(StyleSheet.flatten(getByTestId('formula-mint-canvas-dark-test').props.style)).toMatchObject({ backgroundColor: '#000000' })
     const stopColors = UNSAFE_getAllByType(Stop).map((stop) => stop.props.stopColor)
-    expect(stopColors).toEqual(expect.arrayContaining(['#0B0F0E', '#0E1513', '#101A17', '#32C2A9']))
-    expect(stopColors).not.toContain('#F9FFFD')
+    expect(stopColors).toEqual(['#63E6D0', '#63E6D0'])
+
+    rerender(<FormulaMintCanvasAura mode="dark" reduceTransparency scope="Customer Dark Test" testID="formula-mint-canvas-dark-test" />)
+    expect(UNSAFE_queryAllByType(RadialGradient)).toHaveLength(0)
   })
 
   it('renders the primary button and handles presses', () => {
@@ -159,12 +165,10 @@ describe('Kael UI primitives', () => {
     const buttonStyle = StyleSheet.flatten(button.props.style)
 
     expect(buttonStyle.borderRadius).toBe(18)
-    expect(UNSAFE_getAllByType(Svg)[0].props.viewBox).toBe('0 0 100 36')
-    expect(UNSAFE_getAllByType(Rect)).toHaveLength(1)
-    expect(UNSAFE_getAllByType(Rect)[0].props).toMatchObject({
-      height: 36,
-    })
-    expect(UNSAFE_getAllByType(Rect)[0].props.rx).toBeUndefined()
+    expect(buttonStyle.overflow).toBe('hidden')
+    expect(UNSAFE_getAllByType(Svg)[0].props).toMatchObject({ height: '100%', width: '100%' })
+    expect(UNSAFE_getAllByType(Rect)).toHaveLength(2)
+    expect(UNSAFE_getAllByType(Rect).map((rect) => rect.props.rx)).toEqual([0, 0])
   })
 
   it('keeps Kael visual identity to one vector core, one Home clip, and one bow interaction', () => {
@@ -227,8 +231,8 @@ describe('Kael UI primitives', () => {
       backgroundColor: 'transparent',
       includeFontPadding: false,
       textAlignVertical: 'center',
-      WebkitBoxShadow: `0 0 0 1000px ${component.input.bg} inset`,
-      WebkitTextFillColor: color.text.primary,
+      WebkitBoxShadow: '0 0 0 1000px transparent inset',
+      WebkitTextFillColor: 'currentcolor',
     })
   })
 

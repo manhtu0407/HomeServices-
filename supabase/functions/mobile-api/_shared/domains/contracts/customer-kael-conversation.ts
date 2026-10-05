@@ -36,6 +36,7 @@ export type EdgeCustomerKaelConversationTurnResponse = {
   role: "customer" | "kael" | "system";
   text_content: string;
   media_refs?: string[];
+  media_previews?: { ref: string; status: "available" | "expired" | "unavailable"; url: string | null }[];
   created_at: string;
 };
 

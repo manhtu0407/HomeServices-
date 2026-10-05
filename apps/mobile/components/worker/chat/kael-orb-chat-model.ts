@@ -2,11 +2,13 @@ import type { ImagePickerAsset } from 'expo-image-picker'
 import type { LocalDeal, WorkerKaelChatMode } from '@nestscout/shared'
 
 import type { AppLanguage } from '@/lib/app-language'
+import { kaelChatTurnImages, localKaelChatMediaUri, type KaelChatTurnImage } from '@/lib/kael-chat-local-media'
 import type { WorkerKaelChatSession, WorkerKaelChatTurn } from '@/lib/api-types'
 import { textByLanguage } from '../ui/format'
 
 export type WorkerV5KaelOrbLocalTurn = {
   id: string
+  images?: KaelChatTurnImage[]
   role: 'kael' | 'worker'
   text: string
 }
@@ -137,12 +139,21 @@ export function workerV5KaelOrbTurnsFromResponse(
   turns: WorkerKaelChatTurn[],
 ): WorkerV5KaelOrbLocalTurn[] {
   return turns
-    .filter((turn) => (turn.role === 'worker' || turn.role === 'kael') && turn.text_content)
-    .map((turn) => ({
-      id: turn.id,
-      role: turn.role as 'kael' | 'worker',
-      text: turn.text_content ?? '',
-    }))
+    .flatMap((turn) => {
+      if (turn.role !== 'worker' && turn.role !== 'kael') return []
+      const images = turn.role === 'worker' ? workerTurnImages(turn) : []
+      if (!turn.text_content && images.length === 0) return []
+      return [{ id: turn.id, images, role: turn.role, text: turn.text_content ?? '' }]
+    })
+}
+
+// General-chat photos live in Kael chat media and come back with preview links. Job-conversation
+// photos are filed with the job and carry none, so only this device's copies of them are shown.
+function workerTurnImages(turn: WorkerKaelChatTurn) {
+  const shownRefs = turn.media_refs.filter((mediaRef) =>
+    mediaRef.startsWith('supabase://kael-chat-media/') || localKaelChatMediaUri(mediaRef) !== null
+  )
+  return kaelChatTurnImages(shownRefs, turn.media_previews)
 }
 
 export function workerV5KaelOrbMediaName(

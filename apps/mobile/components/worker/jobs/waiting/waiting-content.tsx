@@ -1,15 +1,19 @@
 import React from 'react'
 import { AccessibilityInfo, Animated, AppState, Dimensions, Easing, Image, Pressable, StyleSheet, Text, View } from 'react-native'
 import type { AppStateStatus, LayoutChangeEvent } from 'react-native'
-import { color } from '@/design/theme'
+import { color, component } from '@/design/theme'
 import { stageButtonHeight, stageLayout, stageMetric, stageTypography } from '../stage-ratio'
-import { waitingAssets } from './waiting-assets'
+import { waitingAssets, waitingDarkAssets } from './waiting-assets'
 import { waitingCopy } from './waiting-copy'
 import { clockAnchor, epochNow, readWaitingClock } from './waiting-time'
 import type { ClockReading } from './waiting-time'
 import type { ClockAnchor, WaitingContentProps } from './waiting.types'
 import { WaitingAtmosphere, WaitingButtonFill, WaitingClockIcon, WaitingParticles, WaitingRing } from './waiting-scene'
-import { waitingTokens as t } from './waiting-tokens'
+import { waitingTokens as tLight } from './waiting-tokens'
+import { workerThemedStylesProxy, workerThemedTokensProxy } from '../../ui/worker-dark-styles'
+import { getWorkerThemeModeNow } from '../../worker-theme'
+
+const t = workerThemedTokensProxy(tLight)
 
 type LocalState = { width: number; reading: ClockReading; reduced: boolean; foreground: boolean }
 let instanceSequence = 0
@@ -61,14 +65,13 @@ export class WaitingContent extends React.PureComponent<WaitingContentProps, Loc
   render() {
     const { model, onOpenDetails, language = 'vi' } = this.props
     const { reading } = this.state, s = this.state.width / t.width
-    const copy = waitingCopy(model, reading, language), assets = waitingAssets[model.kind]
+    const copy = waitingCopy(model, reading, language), assets = (getWorkerThemeModeNow() === 'dark' ? waitingDarkAssets : waitingAssets)[model.kind]
     const closed = model.state !== 'waiting'
     // Text resolves against the real window width, not the measured/capped card width `s`
     // uses for layout, so the app's Apple type scale never shrinks relative to other screens.
     const windowWidth = Dimensions.get('window').width
     const timerScale = reading.text.length > 5 ? t.timerScale.long : t.timerScale.short
     const timerStyle = stageTypography('largeTitle', windowWidth, timerScale)
-    const colors = this.props.buttonColors ?? [t.colors.buttonStart, t.colors.buttonEnd] as const
     // The design floor alone leaves the near-white atmosphere short of a tall device's actual
     // bottom edge; the same 620/0.92 floor worker-v5-flow.tsx gives its own ScrollView keeps this
     // screen's own background reaching that edge instead of handing off to a mismatched parent fill.
@@ -103,8 +106,8 @@ export class WaitingContent extends React.PureComponent<WaitingContentProps, Loc
         </View>
         <View style={{ marginTop: 2 * s, paddingBottom: stageMetric(stageLayout.sectionGap, windowWidth) }}>
           <Pressable onPress={onOpenDetails} accessibilityRole="button" accessibilityLabel={copy.action} testID={`waiting-details-${model.kind}`}
-            style={({ pressed }) => [{ height: stageButtonHeight(windowWidth), borderRadius: stageMetric(stageLayout.buttonRadius, windowWidth), alignItems: 'center', justifyContent: 'center', boxShadow: '0 8px 19px rgba(0,199,158,0.23)', transform: [{ scale: pressed ? 0.987 : 1 }] }]}>
-            <WaitingButtonFill id={this.id} colors={colors}/>
+            style={({ pressed }) => [{ height: stageButtonHeight(windowWidth), borderRadius: stageMetric(stageLayout.buttonRadius, windowWidth), alignItems: 'center', justifyContent: 'center', borderColor: component.button.primary.border, borderWidth: 1, boxShadow: component.button.primary.boxShadow, transform: [{ scale: pressed ? 0.987 : 1 }] }]}>
+            <WaitingButtonFill radius={stageMetric(stageLayout.buttonRadius, windowWidth)}/>
             <Text style={{ ...stageTypography(t.type.button.role, windowWidth), position: 'relative', zIndex: 1, color: '#FFFFFF', fontWeight: t.type.button.weight, textAlign: 'center' }} maxFontSizeMultiplier={1.15}>{copy.action}</Text>
           </Pressable>
         </View>
@@ -112,4 +115,4 @@ export class WaitingContent extends React.PureComponent<WaitingContentProps, Loc
     </View>
   }
 }
-const styles = StyleSheet.create({ root: { width: '100%', maxWidth: 560, alignSelf: 'center', position: 'relative', backgroundColor: '#FCFFFE' } })
+const styles = workerThemedStylesProxy(StyleSheet.create({ root: { width: '100%', maxWidth: 560, alignSelf: 'center', position: 'relative', backgroundColor: '#FCFFFE' } }))

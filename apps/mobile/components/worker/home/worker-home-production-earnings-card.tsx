@@ -14,6 +14,7 @@ import type { AppLanguage } from '@/lib/app-language'
 import type { EarningsResponse } from '@/lib/api-types'
 import { LiquidPopUpButton } from '@/components/ui/liquid-pop-up-button'
 import { getWorkerThemeTokens } from '../worker-theme'
+import { customerTheme } from '@/design/theme'
 
 function pointLabel(dateKey: string, period: WorkerEarningsPeriod, language: AppLanguage) {
   if (period === 'year') return textByLanguage(language, `T${Number(dateKey.slice(5, 7))}`, `M${Number(dateKey.slice(5, 7))}`)
@@ -55,7 +56,7 @@ function EarningsChart({
                 <Circle
                   cx={point.x}
                   cy={point.y}
-                  fill={index === plot.length - 1 ? (themeMode === 'dark' ? '#17312D' : '#FFFFFF') : '#55C9B7'}
+                  fill={index === plot.length - 1 ? (themeMode === 'dark' ? customerTheme.darkLayer.base : '#FFFFFF') : '#55C9B7'}
                   key={point.dateKey}
                   r={index === plot.length - 1 ? 4 : 2.5}
                   stroke={index === plot.length - 1 ? '#0FAF93' : 'none'}
@@ -165,7 +166,7 @@ const styles = StyleSheet.create({
   barRow: { alignItems: 'flex-end', bottom: 0, flexDirection: 'row', height: 68, left: 0, position: 'absolute', right: 0 },
   borderDark: { borderTopColor: 'rgba(174, 211, 204, 0.2)' },
   card: { backgroundColor: '#FFFEFF', borderColor: '#E1E9E7', borderCurve: 'continuous', borderRadius: 16, borderWidth: 1, boxShadow: '0 5px 16px rgba(24, 67, 66, 0.062)', gap: 9, marginHorizontal: 11, marginTop: 9, overflow: 'hidden', padding: 11 },
-  cardDark: { backgroundColor: '#17312D', borderColor: 'rgba(174, 211, 204, 0.24)' },
+  cardDark: { backgroundColor: customerTheme.darkLayer.base, borderColor: customerTheme.darkLayer.glassBorder },
   chart: { flex: 1.16, minHeight: 98, minWidth: 0, position: 'relative' },
   chartEmpty: { alignItems: 'center', flex: 1, gap: 10, justifyContent: 'center', minHeight: 92 },
   chartEmptyRule: { backgroundColor: '#E7ECEF', borderRadius: 999, height: 6, width: '72%' },
@@ -177,7 +178,7 @@ const styles = StyleSheet.create({
   footer: { alignItems: 'center', borderTopColor: '#E1E9E7', borderTopWidth: 1, flexDirection: 'row', gap: 10, justifyContent: 'space-between', paddingTop: 8 },
   headline: { color: '#102437', fontSize: 22, fontVariant: ['tabular-nums'], fontWeight: '600', lineHeight: 27 },
   meta: { color: '#66768A', fontSize: 10, lineHeight: 14 },
-  mutedDark: { color: '#AAC0BC' },
+  mutedDark: { color: customerTheme.darkLayer.muted },
   notice: { color: '#A85C15', fontSize: 11, fontWeight: '600', lineHeight: 15 },
   openButton: { alignItems: 'center', backgroundColor: '#FFFFFF', borderColor: '#DDE5E4', borderRadius: 10, borderWidth: 1, justifyContent: 'center', minHeight: 30, paddingHorizontal: 12 },
   openButtonDark: { backgroundColor: '#1E3C37', borderColor: 'rgba(174, 211, 204, 0.28)' },
@@ -188,7 +189,7 @@ const styles = StyleSheet.create({
   retryLabel: { color: '#078F7A', fontSize: 11, fontWeight: '600' },
   ruleDark: { backgroundColor: '#2B4944' },
   summary: { flex: 0.84, gap: 5, justifyContent: 'center', minWidth: 0 },
-  textDark: { color: '#F1F6F4' },
+  textDark: { color: customerTheme.darkLayer.text },
   title: { color: '#102437', flexGrow: 1, flexShrink: 1, fontSize: 14, fontWeight: '600', lineHeight: 19, minWidth: 120 },
   valueBadge: { backgroundColor: '#08A388', borderRadius: 5, paddingHorizontal: 5, paddingVertical: 3, position: 'absolute', right: 0, top: 0, zIndex: 3 },
   valueBadgeText: { color: '#FFFFFF', fontSize: 8, fontVariant: ['tabular-nums'], fontWeight: '700', lineHeight: 10 },

@@ -178,7 +178,6 @@ export function WorkerV5DeleteAccountBody({
           <KaelButton
             label={textByLanguage(language, 'Đăng nhập lại', 'Sign in again')}
             onPress={() => void onReauthenticate()}
-            showPrimaryGradient={false}
             testID="worker-v5-delete-account-reauthenticate"
           />
         ) : null}

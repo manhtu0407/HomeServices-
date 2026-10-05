@@ -108,6 +108,13 @@ export type EdgeReferralClaimResponse = {
   linked_worker_id: string | null;
 };
 
+export type EdgeInviteClaimStatus =
+  | "open"
+  | "linked"
+  | "window_closed"
+  | "transacted"
+  | "program_unavailable";
+
 export type EdgeCustomerMembershipResponse = {
   points: number;
   customer_vnd_per_point: number | null;
@@ -116,6 +123,13 @@ export type EdgeCustomerMembershipResponse = {
     display_name: string | null;
     source: "invite_code" | "rebook";
     expires_at: string;
+  } | null;
+  // null while the database still runs the summary that predates invite_claim.
+  invite_claim: {
+    status: EdgeInviteClaimStatus;
+    closes_at: string | null;
+    claim_days: number | null;
+    link_months: number | null;
   } | null;
   recent_entries: Array<{
     job_id: string;

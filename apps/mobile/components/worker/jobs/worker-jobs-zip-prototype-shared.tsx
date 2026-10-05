@@ -13,7 +13,8 @@ import {
 import Svg, { Circle, Defs, G, Line, LinearGradient, Path, Rect, Stop } from 'react-native-svg'
 
 import type { LocalDeal } from '@nestscout/shared'
-import { color } from '@/design/theme'
+import { PrimaryCtaFill } from '@/components/ui/primary-cta-fill'
+import { color, component } from '@/design/theme'
 import type { AppLanguage } from '@/lib/app-language'
 import { WorkerV5PrimaryButtonFill } from '../ui/primitives-surfaces'
 import type { WorkerV5ScreenDefinition, WorkerV5ScreenId } from '../dock/types'
@@ -21,7 +22,8 @@ import type { WorkerThemeTokens } from '../worker-theme'
 import { STAGE_MIN_TAP_SIZE, stageButtonHeight, stageLayout, stageMetric, stageTypography } from './stage-ratio'
 import type { WorkerV5RoutePreviewState } from './use-worker-route-preview'
 import type { useFrontendWorkflow } from '@/lib/frontend-workflow-provider'
-import { prototypeStyles } from './worker-jobs-zip-prototype-styles'
+import { prototypeStyles as prototypeStylesLight } from './worker-jobs-zip-prototype-styles'
+import { useWorkerThemedStyles } from '../ui/worker-dark-styles'
 import {
   stageTwoCardTokens,
   stageTwoPalette,
@@ -111,10 +113,12 @@ export function workerJobsLegacyPrototypeOpportunityArtwork(deal: LocalDeal | nu
 }
 
 export function Text({ style, ...props }: TextProps) {
+  const prototypeStyles = useWorkerThemedStyles(prototypeStylesLight)
   return <RNText {...props} style={[prototypeStyles.text, style]} />
 }
 
 export function WorkerJobsLegacyPrototypeMetaIcon({ kind, size = 16 }: { kind: 'photo' | 'price' | 'status' | 'time'; size?: number }) {
+  const prototypeStyles = useWorkerThemedStyles(prototypeStylesLight)
   const iconColor = color.brand.primaryDark
   const strokeProps = { fill: 'none' as const, stroke: iconColor, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const, strokeWidth: 1.7 }
 
@@ -254,6 +258,7 @@ export function WorkerJobsLegacyPrototypeStageActionButton({
   primary?: boolean
   testID: string
 }) {
+  const prototypeStyles = useWorkerThemedStyles(prototypeStylesLight)
   const isDisabled = Boolean(disabled)
   const { width: windowWidth } = useWindowDimensions()
   return (
@@ -618,10 +623,6 @@ export function WorkerJobsStageTwoAction({ accessibilityLabel, disabled, label, 
   const primary = variant === 'primary'
   const height = stageButtonHeight(windowWidth)
   const radius = metric(stageLayout.buttonRadius)
-  const width = px(stageTwoGeometry.actionPrimaryFlex)
-  // A 135deg CSS gradient has no react-native equivalent on a non-square box, so the ramp is laid
-  // out in user space along the diagonal that gives the same 45deg iso-colour lines.
-  const vector = { x1: (width - height) / 4, x2: (3 * width + height) / 4, y1: (height - width) / 4, y2: (3 * height + width) / 4 }
   const ink = disabled ? palette.disabled.text : primary ? palette.primary.text : palette.ghost.text
   const showFill = primary && !disabled
 
@@ -635,15 +636,13 @@ export function WorkerJobsStageTwoAction({ accessibilityLabel, disabled, label, 
       style={({ pressed }) => ({
         alignItems: 'center',
         backgroundColor: disabled ? palette.disabled.background : primary ? undefined : palette.ghost.background,
-        borderColor: disabled ? palette.disabled.border : palette.ghost.border,
+        borderColor: disabled ? palette.disabled.border : primary ? component.button.primary.border : palette.ghost.border,
         borderRadius: radius,
-        borderWidth: disabled ? 1 : primary ? 0 : Math.max(1, px(2)),
+        borderWidth: disabled || primary ? 1 : Math.max(1, px(2)),
         boxShadow: disabled
           ? undefined
           : primary
-            ? palette.primary.glow
-              ? `0 ${px(stageTwoGeometry.actionShadowY)}px ${px(stageTwoGeometry.actionShadowBlur)}px ${palette.primary.glow}`
-              : undefined
+            ? component.button.primary.boxShadow
             : palette.ghost.highlight
               ? `inset 0 1px 0 ${palette.ghost.highlight}`
               : undefined,
@@ -657,18 +656,7 @@ export function WorkerJobsStageTwoAction({ accessibilityLabel, disabled, label, 
     >
       {showFill ? (
         <View pointerEvents="none" style={[StyleSheet.absoluteFill, { borderRadius: radius, overflow: 'hidden' }]}>
-          <StageTwoGradient colors={palette.primary.colors} locations={[0, 0.42, 1]} vector={vector} />
-          {palette.primary.glow ? (
-            <View
-              style={[
-                StyleSheet.absoluteFill,
-                {
-                  borderRadius: radius,
-                  boxShadow: `inset 0 1px 1px rgba(255, 255, 255, 0.2), inset 0 ${-px(stageTwoGeometry.actionInsetY)}px ${px(stageTwoGeometry.actionInsetBlur)}px rgba(1, 90, 78, 0.08)`,
-                },
-              ]}
-            />
-          ) : null}
+          <PrimaryCtaFill radius={0} />
         </View>
       ) : null}
       <Text numberOfLines={2} style={[text('action'), { color: ink, textAlign: 'center' }]}>{label}</Text>

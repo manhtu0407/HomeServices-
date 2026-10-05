@@ -11,6 +11,7 @@ import {
   View,
 } from 'react-native'
 
+import { PrimaryCtaFill, primaryCtaFrame } from '@/components/ui/primary-cta-fill'
 import { type AppleTypographyRole } from '@/design/theme'
 import type { AppLanguage } from '@/lib/app-language'
 
@@ -19,6 +20,7 @@ import { textByLanguage } from '../../ui/format'
 import { stageEightAssets } from './stage-eight-assets'
 import { StageEightIcon, type StageEightIconName } from './stage-eight-icons'
 import type { StageEightEvidenceProps } from './stage-eight.types'
+import { useWorkerThemedStyles } from '../../ui/worker-dark-styles'
 
 const BASE = 420
 const C = {
@@ -37,6 +39,7 @@ function px(value: number, scale: number) {
 }
 
 function StepPill({ label, active, scale, width, windowWidth }: { label: string; active?: boolean; scale: number; width: number; windowWidth: number }) {
+  const styles = useWorkerThemedStyles(stylesLight)
   return (
     <View
       style={[
@@ -81,6 +84,7 @@ function SectionHeader({
   title: string
   windowWidth: number
 }) {
+  const styles = useWorkerThemedStyles(stylesLight)
   return (
     <View style={[styles.sectionHeader, { marginTop: px(marginTop, scale) }]}>
       <View style={[styles.sectionLeft, { gap: px(8, scale) }]}>
@@ -136,6 +140,7 @@ export function StageEightEvidenceScreen({
   showWorkflowHeader = true,
   submitting = false,
 }: StageEightEvidenceProps) {
+  const styles = useWorkerThemedStyles(stylesLight)
   const { width } = useWindowDimensions()
   const copy = stageCopy(language)
   const availableWidth = embedded ? Math.max(280, width - 32) : width
@@ -315,6 +320,7 @@ export function StageEightEvidenceScreen({
         style={[styles.submit, canSubmit && styles.submitEnabled, { marginTop: px(notice ? 8 : 13, scale), height: px(55, scale), borderRadius: px(17, scale) }]}
         testID="worker-v5-stage-eight-fidelity-submit"
       >
+        {canSubmit ? <PrimaryCtaFill radius={0} /> : null}
         <Text adjustsFontSizeToFit minimumFontScale={0.84} numberOfLines={1} style={[stageTypography('body', width), styles.submitText, canSubmit && styles.submitTextEnabled]}>
           {submitting ? copy.completeRecordSending : copy.completeRecord}
         </Text>
@@ -330,7 +336,7 @@ export function StageEightEvidenceScreen({
   )
 }
 
-const styles = StyleSheet.create({
+const stylesLight = StyleSheet.create({
   root: { backgroundColor: '#FFFFFF', alignItems: 'center' },
   embeddedRoot: { width: '100%' },
   scrollRoot: { flex: 1, backgroundColor: '#FFFFFF' },
@@ -383,7 +389,7 @@ const styles = StyleSheet.create({
   counter: { position: 'absolute', color: '#6D7F87' },
   notice: { alignSelf: 'stretch', color: '#B34A46', fontWeight: '600', marginTop: 8, paddingHorizontal: 4 },
   submit: { backgroundColor: C.disabledBg, flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
-  submitEnabled: { backgroundColor: '#17B48B' },
+  submitEnabled: { backgroundColor: '#24B3A1', overflow: 'hidden', ...primaryCtaFrame },
   submitText: { color: C.disabled, fontWeight: '700' },
-  submitTextEnabled: { color: '#FFFFFF' },
+  submitTextEnabled: { color: '#FFFFFF', position: 'relative', zIndex: 1 },
 })

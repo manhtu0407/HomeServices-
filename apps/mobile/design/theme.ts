@@ -5,7 +5,8 @@ import { Platform, type TextStyle } from 'react-native'
  *
  * Source: Customer v2.1 and Worker v5.0 verified design zips.
  * Rule: implementation values come from this file. Formula mint primary is #08AF9C;
- * the app-wide primary CTA gradient follows the final mint aura formula.
+ * every filled primary CTA paints component.button.primary (the sign-in button recipe)
+ * through components/ui/primary-cta-fill.tsx.
  */
 
 export const color = {
@@ -251,17 +252,15 @@ export const aura = {
 export const component = {
   button: {
     primary: {
-      gradient: ['#31D7C2', '#09B29E', '#077C72'] as const,
+      gradient: ['#49CFC0', '#24B3A1', '#088779'] as const,
       gradientStops: [0, 0.5, 1] as const,
+      highlight: { cx: '22%', cy: '0%', r: '78%', opacity: 0.34 } as const,
       text: '#FFFFFF',
-      border: 'rgba(255,255,255,0.72)',
+      border: 'rgba(255,255,255,0.68)',
+      boxShadow: '0px 14px 16px rgba(8,135,121,0.24)',
       height: 48,
       radius: 22,
       paddingX: 20,
-    },
-    primaryPressed: {
-      gradient: ['#09B29E', '#077C72'] as const,
-      gradientStops: [0, 1] as const,
     },
     secondary: {
       bg: '#F7FFFB',
@@ -461,41 +460,42 @@ export const customerTheme = {
     copper: '#BB743D',
     danger: color.accent.destructive,
   },
+  // iOS-style neutral dark: a black base, neutral elevated surfaces, and mint kept as the one accent.
   darkLayer: {
     mode: 'dark',
-    canvas: '#0B0F0E',
-    base: '#111614',
-    raised: '#171D1B',
-    service: '#183832',
-    water: '#172F31',
-    warm: '#2A241D',
-    depthSurface: '#131918',
-    ghost: 'rgba(190,210,205,0.10)',
-    glass: 'rgba(22,29,27,0.58)',
-    glassStrong: 'rgba(30,38,35,0.68)',
-    glassWarm: 'rgba(30,37,34,0.66)',
-    glassBorder: 'rgba(190,210,205,0.16)',
-    glassHighlight: 'rgba(230,244,240,0.13)',
-    glassShadow: '0 22px 56px rgba(0,0,0,0.42)',
-    glassFloatShadow: '0 12px 34px rgba(0,0,0,0.30)',
-    disabled: '#1D2522',
-    border: 'rgba(190,210,205,0.12)',
-    borderStrong: 'rgba(105,222,198,0.26)',
-    text: '#F1F6F4',
-    muted: '#A9B7B3',
-    subtleText: '#83938F',
+    canvas: '#000000',
+    base: '#1C1C1E',
+    raised: '#2C2C2E',
+    service: '#233030',
+    water: '#262F32',
+    warm: '#302A26',
+    depthSurface: '#151517',
+    ghost: 'rgba(255,255,255,0.08)',
+    glass: 'rgba(118,118,128,0.24)',
+    glassStrong: 'rgba(118,118,128,0.34)',
+    glassWarm: 'rgba(128,120,112,0.30)',
+    glassBorder: 'rgba(255,255,255,0.14)',
+    glassHighlight: 'rgba(255,255,255,0.22)',
+    glassShadow: '0 22px 56px rgba(0,0,0,0.55)',
+    glassFloatShadow: '0 12px 34px rgba(0,0,0,0.45)',
+    disabled: '#2C2C2E',
+    border: 'rgba(84,84,88,0.65)',
+    borderStrong: 'rgba(99,230,208,0.32)',
+    text: '#FFFFFF',
+    muted: '#AEAEB2',
+    subtleText: '#98989F',
     primary: '#63E6D0',
     guidanceAction: '#087D72',
     progressActive: '#63E6D0',
-    progressInactiveText: '#A9B7B3',
-    statusSurface: '#183832',
+    progressInactiveText: '#AEAEB2',
+    statusSurface: '#233030',
     statusText: '#63E6D0',
-    progressTrack: 'rgba(190,210,205,0.22)',
-    progressBorder: 'rgba(190,210,205,0.42)',
+    progressTrack: 'rgba(255,255,255,0.16)',
+    progressBorder: 'rgba(255,255,255,0.32)',
     primaryText: '#08201D',
     aqua: '#82DDE2',
     copper: '#E2A56E',
-    danger: '#F29A8D',
+    danger: '#FF8A80',
   },
   reducedTransparency: {
     light: {
@@ -505,10 +505,10 @@ export const customerTheme = {
       glassWarm: '#FFF8EB',
     },
     dark: {
-      ghost: '#161D1B',
-      glass: '#161D1B',
-      glassStrong: '#1D2522',
-      glassWarm: '#2A241D',
+      ghost: '#1C1C1E',
+      glass: '#1C1C1E',
+      glassStrong: '#2C2C2E',
+      glassWarm: '#302A26',
     },
   },
 } as const
@@ -524,12 +524,13 @@ export const liquidTabLensTheme = {
     liftBorder: 'rgba(255,255,255,0.96)',
     liftShadow: '0 10px 24px rgba(13,70,65,0.20)',
   },
+  // iOS 27 dark: the lighter glass bar carries a darker selection platter instead of a lighter one.
   dark: {
-    restFill: 'rgba(235,245,242,0.13)',
-    restBorder: 'rgba(235,245,242,0)',
-    liftFill: 'rgba(230,244,240,0.18)',
-    liftBorder: 'rgba(230,244,240,0.34)',
-    liftShadow: '0 12px 28px rgba(0,0,0,0.44)',
+    restFill: 'rgba(0,0,0,0.32)',
+    restBorder: 'rgba(255,255,255,0)',
+    liftFill: 'rgba(255,255,255,0.16)',
+    liftBorder: 'rgba(255,255,255,0.30)',
+    liftShadow: '0 12px 28px rgba(0,0,0,0.5)',
   },
 } as const
 
@@ -542,80 +543,82 @@ export const liquidPopUpMenuTheme = {
     shadow: '0 18px 44px rgba(13,40,36,0.22)',
   },
   dark: {
-    fallbackFill: 'rgba(30,38,35,0.96)',
-    rowPressed: 'rgba(235,245,242,0.12)',
+    fallbackFill: 'rgba(44,44,46,0.96)',
+    rowPressed: 'rgba(255,255,255,0.10)',
     shadow: '0 20px 48px rgba(0,0,0,0.5)',
   },
 } as const
 
+// Dark glass follows iOS 27: a lighter neutral fill, a thin darkened rim (the 0.5px black ring) and a
+// brighter top specular line, so floating controls read as a separate layer over black content.
 export const glassSurfaceTheme = {
   shadowByVariant: {
     nav: {
-      dark: '0 18px 36px rgba(0,0,0,0.28)',
+      dark: '0 18px 36px rgba(0,0,0,0.40), 0 0 0 0.5px rgba(0,0,0,0.55)',
       light: '0 18px 36px rgba(21,89,78,0.18), inset 0 1px 0 rgba(255,255,255,0.94)',
     },
     control: {
-      dark: '0 6px 14px rgba(0,0,0,0.16)',
+      dark: '0 6px 14px rgba(0,0,0,0.28), 0 0 0 0.5px rgba(0,0,0,0.55)',
       light: '0 6px 14px rgba(13,70,65,0.07)',
     },
     hero: {
-      dark: '0 12px 30px rgba(0,0,0,0.20)',
+      dark: '0 12px 30px rgba(0,0,0,0.32), 0 0 0 0.5px rgba(0,0,0,0.55)',
       light: '0 12px 30px rgba(13,70,65,0.09)',
     },
     sheet: {
-      dark: '0 14px 34px rgba(0,0,0,0.22)',
+      dark: '0 14px 34px rgba(0,0,0,0.34), 0 0 0 0.5px rgba(0,0,0,0.55)',
       light: '0 14px 34px rgba(13,70,65,0.09)',
     },
   },
   liquidShadowByVariant: {
     nav: {
-      dark: '0 18px 34px rgba(0,0,0,0.24), inset 0 1px 0 rgba(190,210,205,0.10)',
+      dark: '0 18px 34px rgba(0,0,0,0.36), 0 0 0 0.5px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.22)',
       light: '0 18px 34px rgba(20,73,66,0.12), inset 0 1px 0 rgba(255,255,255,0.30)',
     },
     control: {
-      dark: '0 8px 18px rgba(0,0,0,0.18), inset 0 1px 0 rgba(190,210,205,0.09)',
+      dark: '0 8px 18px rgba(0,0,0,0.30), 0 0 0 0.5px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.22)',
       light: '0 8px 18px rgba(20,73,66,0.07), inset 0 1px 0 rgba(255,255,255,0.28)',
     },
     hero: {
-      dark: '0 16px 34px rgba(0,0,0,0.22), inset 0 1px 0 rgba(190,210,205,0.10)',
+      dark: '0 16px 34px rgba(0,0,0,0.34), 0 0 0 0.5px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.22)',
       light: '0 16px 34px rgba(20,73,66,0.09), inset 0 1px 0 rgba(255,255,255,0.30)',
     },
     sheet: {
-      dark: '0 18px 38px rgba(0,0,0,0.26), inset 0 1px 0 rgba(190,210,205,0.10)',
+      dark: '0 18px 38px rgba(0,0,0,0.38), 0 0 0 0.5px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.22)',
       light: '0 18px 38px rgba(20,73,66,0.10), inset 0 1px 0 rgba(255,255,255,0.30)',
     },
   },
   liquidFallbackBackground: {
-    dark: '#161D1B',
+    dark: '#1C1C1E',
     light: '#FFFFFF',
   },
   standardFallbackBackground: {
-    dark: '#112522',
+    dark: '#1C1C1E',
     light: '#FFFDF8',
   },
   liquidBackground: {
-    dark: 'rgba(22,29,27,0.38)',
+    dark: 'rgba(118,118,128,0.26)',
     navLight: 'rgba(255,255,255,0.10)',
     light: 'rgba(255,255,255,0.46)',
   },
   standardBackground: {
-    dark: 'rgba(16,36,32,0.72)',
+    dark: 'rgba(28,28,30,0.78)',
     navLight: 'rgba(255,255,255,0.78)',
     light: 'rgba(255,255,255,0.70)',
   },
   liquidBorder: {
-    dark: 'rgba(190,210,205,0.16)',
+    dark: 'rgba(255,255,255,0.14)',
     navLight: 'rgba(255,255,255,0.70)',
     light: 'rgba(255,255,255,0.34)',
   },
   standardBorder: {
-    dark: 'rgba(255,255,255,0.14)',
+    dark: 'rgba(255,255,255,0.12)',
     navLight: 'rgba(255,255,255,0.88)',
     light: 'rgba(255,255,255,0.78)',
   },
   opaqueRow: {
-    darkBackground: '#122724',
-    darkBorder: 'rgba(255,255,255,0.09)',
+    darkBackground: '#1C1C1E',
+    darkBorder: 'rgba(255,255,255,0.08)',
     lightBorder: 'rgba(210,232,225,0.82)',
   },
 } as const

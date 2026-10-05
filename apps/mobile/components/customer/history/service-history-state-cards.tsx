@@ -70,8 +70,8 @@ export function HistoryEmptyCard({
           accessibilityIgnoresInvertColors
           accessible={false}
           contentFit="contain"
-          source={customerV21Assets.historyErrorWorkart}
-          style={[styles.historyStateIllustration, dark ? styles.historyStateIllustrationDark : null]}
+          source={dark ? customerV21Assets.historyErrorWorkartDark : customerV21Assets.historyErrorWorkart}
+          style={styles.historyStateIllustration}
           testID="customer-v21-history-empty-workart"
         />
         <Text style={[styles.historyStateTitle, { color: tokens.text }]} testID="customer-v21-history-empty-title">

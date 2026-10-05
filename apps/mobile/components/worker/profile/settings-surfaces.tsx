@@ -8,6 +8,7 @@ import {
 import { useWorkerThemeMode } from '../worker-theme'
 import { WorkerV5FormulaMintCardAura } from '../ui/aura-surfaces'
 import { styles } from './settings-styles'
+import { useWorkerThemedStyles } from '../ui/worker-dark-styles'
 
 function Text({ style, ...props }: TextProps) {
   return <RNText {...props} style={[styles.workerCustomerFontText, style]} />
@@ -57,8 +58,9 @@ export function WorkerV5ReadOnlyToggleList({
   items: readonly { enabled: boolean; label: string; value: string }[]
   reduceTransparency: boolean
 }) {
+  const opaqueCard = useWorkerThemedStyles(styles).opaqueCard
   return (
-    <View style={[styles.toggleList, formula && styles.toggleListFormula, reduceTransparency && styles.opaqueCard]} testID="worker-v5-toggle-list">
+    <View style={[styles.toggleList, formula && styles.toggleListFormula, reduceTransparency && opaqueCard]} testID="worker-v5-toggle-list">
       {formula ? <WorkerV5FormulaMintCardAura reduceTransparency={reduceTransparency} scope="WorkerVerificationRenewal" testID="worker-v5-verification-renewal-formula-mint-aura" /> : null}
       {items.map((item, index) => (
         <View key={`${item.label}-${item.value}`} style={styles.toggleRow} testID={`worker-v5-toggle-row-${index}`}>

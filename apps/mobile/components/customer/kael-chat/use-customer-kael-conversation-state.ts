@@ -36,6 +36,7 @@ type CustomerKaelConversationState = {
   loading: boolean
   localMode: CustomerKaelMode
   pendingDraft: PendingKaelChatDraft | null
+  pendingNormalImageUris: string[]
   pendingNormalMessage: string | null
   reasoningReceipt: KaelReasoningReceiptState
   routeDraftEvidencePending: boolean
@@ -51,6 +52,7 @@ type CustomerKaelConversationAction =
   | { type: 'set-loading'; value: SetStateAction<boolean> }
   | { type: 'set-local-mode'; value: SetStateAction<CustomerKaelMode> }
   | { type: 'set-pending-draft'; value: SetStateAction<PendingKaelChatDraft | null> }
+  | { type: 'set-pending-normal-images'; value: string[] }
   | { type: 'set-pending-normal-message'; value: SetStateAction<string | null> }
   | { type: 'set-reasoning-receipt'; value: SetStateAction<KaelReasoningReceiptState> }
   | { type: 'set-route-draft-evidence'; value: SetStateAction<boolean> }
@@ -93,6 +95,7 @@ export function customerKaelConversationReducer(
         ...state,
         error: clearsMissingServiceError ? null : state.error,
         localMode,
+        pendingNormalImageUris: localMode === state.localMode ? state.pendingNormalImageUris : [],
         pendingNormalMessage: localMode === state.localMode ? state.pendingNormalMessage : null,
         reasoningReceipt: localMode === state.localMode
           ? state.reasoningReceipt
@@ -108,11 +111,16 @@ export function customerKaelConversationReducer(
         pendingDraft,
       }
     }
-    case 'set-pending-normal-message':
+    case 'set-pending-normal-images':
+      return { ...state, pendingNormalImageUris: action.value }
+    case 'set-pending-normal-message': {
+      const pendingNormalMessage = resolveStateAction(state.pendingNormalMessage, action.value)
       return {
         ...state,
-        pendingNormalMessage: resolveStateAction(state.pendingNormalMessage, action.value),
+        pendingNormalImageUris: pendingNormalMessage === null ? [] : state.pendingNormalImageUris,
+        pendingNormalMessage,
       }
+    }
     case 'set-reasoning-receipt':
       return {
         ...state,
@@ -132,6 +140,7 @@ export function customerKaelConversationReducer(
         loading: action.loading,
         localMode: 'case',
         pendingDraft: action.draft,
+        pendingNormalImageUris: [],
         pendingNormalMessage: null,
         reasoningReceipt: initialKaelReasoningReceiptState,
         routeDraftEvidencePending: true,
@@ -146,6 +155,7 @@ export function customerKaelConversationReducer(
         error: null,
         loading: false,
         pendingDraft: action.consumePendingDraft ? null : state.pendingDraft,
+        pendingNormalImageUris: [],
         pendingNormalMessage: null,
         reasoningReceipt: state.localMode === 'normal'
           ? state.reasoningReceipt
@@ -168,6 +178,7 @@ export function customerKaelConversationReducer(
         intakeDisplayMessage: null,
         loading: false,
         localMode: action.mode,
+        pendingNormalImageUris: [],
         pendingNormalMessage: null,
         reasoningReceipt: initialKaelReasoningReceiptState,
         streamingReply: null,
@@ -200,6 +211,7 @@ export function createCustomerKaelConversationState(input: {
     loading: input.initialLoading,
     localMode: input.initialMode,
     pendingDraft: input.pendingDraft,
+    pendingNormalImageUris: [],
     pendingNormalMessage: null,
     reasoningReceipt: initialKaelReasoningReceiptState,
     routeDraftEvidencePending: Boolean(input.pendingDraft),
@@ -245,6 +257,9 @@ export function useCustomerKaelConversationState(input: {
   }, [])
   const setPendingDraftState: Dispatch<SetStateAction<PendingKaelChatDraft | null>> = useCallback((value) => {
     dispatch({ type: 'set-pending-draft', value })
+  }, [])
+  const setPendingNormalImageUris = useCallback((value: string[]) => {
+    dispatch({ type: 'set-pending-normal-images', value })
   }, [])
   const setPendingNormalMessage: Dispatch<SetStateAction<string | null>> = useCallback((value) => {
     dispatch({ type: 'set-pending-normal-message', value })
@@ -301,6 +316,7 @@ export function useCustomerKaelConversationState(input: {
     setLoading,
     setLocalMode,
     setPendingDraftState,
+    setPendingNormalImageUris,
     setPendingNormalMessage,
     setReasoningReceipt,
     setRouteDraftEvidencePending,

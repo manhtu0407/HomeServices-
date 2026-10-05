@@ -144,8 +144,8 @@ export function buildWorkerV5OfferPriceRows(
       icon: 'earnings',
       meta: textByLanguage(
         language,
-        `${quote.commissionRateBps / 100}% theo cấp ${quote.commissionLevel}; không đổi sau khi bạn xác nhận.`,
-        `${quote.commissionRateBps / 100}% at level ${quote.commissionLevel}; unchanged after you confirm.`,
+        `${quote.commissionRateBps / 100}% cố định cho mọi thợ; không đổi sau khi bạn xác nhận.`,
+        `${quote.commissionRateBps / 100}% fixed for every worker; unchanged after you confirm.`,
       ),
       status: textByLanguage(language, 'Phí nền tảng', 'Platform fee'),
       title: formatVnd(quote.platformFee),

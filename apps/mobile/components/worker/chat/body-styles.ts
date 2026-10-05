@@ -1,4 +1,5 @@
 import { StyleSheet } from 'react-native'
+import { spacing } from '@/design/theme'
 
 export const styles = StyleSheet.create({
   kaelOrbCustomerShell: {
@@ -24,22 +25,24 @@ export const styles = StyleSheet.create({
     flex: 1,
   },
   kaelOrbLatestButton: {
-    alignItems: 'center',
-    borderRadius: 18,
-    borderWidth: 1,
     bottom: 86,
-    justifyContent: 'center',
-    minHeight: 36,
     minWidth: 84,
-    paddingHorizontal: 14,
     position: 'absolute',
     right: 12,
     zIndex: 10,
   },
   kaelOrbLatestButtonText: {
-    fontWeight: '600',
+    fontSize: 12,
+    fontWeight: '700',
+    lineHeight: 16,
+    paddingHorizontal: 16,
   },
   kaelOrbChatBody: {
     gap: 8,
+  },
+  // A sent photo and its message stay one group: the photo never touches the bubble.
+  kaelOrbTurnGroup: {
+    gap: spacing.sm,
+    width: '100%',
   },
 })

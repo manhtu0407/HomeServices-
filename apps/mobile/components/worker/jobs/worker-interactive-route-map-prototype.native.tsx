@@ -5,6 +5,7 @@ import { color, typography } from '@/design/theme'
 import { type AppLanguage } from '@/lib/app-language'
 
 import { textByLanguage } from '../ui/format'
+import { workerThemedColor } from '../ui/worker-dark-styles'
 import { getWorkerThemeTokens, useWorkerThemeMode } from '../worker-theme'
 import type { WorkerV5RoutePreviewState } from './use-worker-route-preview'
 
@@ -28,7 +29,7 @@ export function WorkerInteractiveRouteMapPrototype({
       style={[
         styles.panel,
         {
-          backgroundColor: reduceTransparency ? color.mint.white : theme.raised,
+          backgroundColor: reduceTransparency ? workerThemedColor(workerThemeMode, 'surface', color.mint.white) : theme.raised,
           borderColor: theme.borderStrong,
         },
       ]}

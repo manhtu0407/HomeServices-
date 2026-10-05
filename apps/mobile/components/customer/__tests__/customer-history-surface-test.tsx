@@ -59,6 +59,9 @@ jest.mock('@/lib/app-language', () => {
 })
 
 import { CustomerHistorySurface } from '../customer-surfaces'
+import { getCustomerThemeTokens } from '../customer-theme'
+import { HistoryEmptyCard } from '../history/service-history-state-cards'
+import { customerV21Assets } from '../ui/assets'
 
 function buildWorkflow() {
   mockWorkflowValue = {
@@ -257,8 +260,20 @@ describe('CustomerHistorySurface service history', () => {
     expect(screen.queryByTestId('customer-v21-history-empty-asset')).toBeNull()
 
     const historySurfaceSource = readFileSync(resolve(__dirname, '../history/service-history-surface.tsx'), 'utf8')
-    expect(historySurfaceSource).toContain('source={customerV21Assets.historyErrorWorkart}')
+    expect(historySurfaceSource).toContain("source={mode === 'dark' ? customerV21Assets.historyErrorWorkartDark : customerV21Assets.historyErrorWorkart}")
     expect(existsSync(resolve(__dirname, '../../../assets/customer-history/history-error-workart.png'))).toBe(true)
+  })
+
+  it('shows the history workart cut out of its white background in dark mode', () => {
+    const tokens = getCustomerThemeTokens('dark')
+    const { rerender } = render(<HistoryEmptyCard body="b" dark title="t" tokens={tokens} />)
+    const darkWorkart = screen.getByTestId('customer-v21-history-empty-workart')
+    expect(darkWorkart.props.source).toBe(customerV21Assets.historyErrorWorkartDark)
+    expect(StyleSheet.flatten(darkWorkart.props.style).backgroundColor).toBeUndefined()
+
+    rerender(<HistoryEmptyCard body="b" dark={false} title="t" tokens={getCustomerThemeTokens('light')} />)
+    expect(screen.getByTestId('customer-v21-history-empty-workart').props.source).toBe(customerV21Assets.historyErrorWorkart)
+    expect(existsSync(resolve(__dirname, '../../../assets/customer-history/history-error-workart-dark.png'))).toBe(true)
   })
 
   it('saves a worker and updates every completed deal from that worker', async () => {

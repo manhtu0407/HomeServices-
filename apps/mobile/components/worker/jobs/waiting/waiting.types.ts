@@ -33,5 +33,4 @@ export interface WaitingContentProps extends WaitingActions {
   /** For screenshot QA only: stable server time; not a production timer source. */
   previewNowMs?: number
   /** Optional token override supplied by the production button system. */
-  buttonColors?: readonly [string, string]
 }

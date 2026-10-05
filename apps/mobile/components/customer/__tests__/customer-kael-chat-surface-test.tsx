@@ -8,6 +8,7 @@ import { color } from '@/design/theme'
 import type { CustomerKaelConversationSession } from '@/lib/api-types/customer'
 import { clearPendingKaelChatMessage, stagePendingKaelChatMessage } from '@/lib/pending-kael-chat-message'
 import { setPendingKaelChatDraft } from '@/lib/pending-kael-chat-draft'
+import { getCustomerThemeTokens } from '../customer-theme'
 import { customerV21ServiceCopy } from '../ui/copy'
 import { isLikelyKaelIntakeRequest } from '../kael-chat/customer-kael-chat-helpers'
 
@@ -615,12 +616,13 @@ describe('active customer Kael chat surface wiring', () => {
         paddingVertical: 0,
       })
       expect(screen.getByTestId('customer-v21-kael-chat-disclaimer')).toBeOnTheScreen()
+      // The test renderer reports no safe-area inset, so the frame keeps its minimum bottom gap.
       expect(StyleSheet.flatten(screen.getByTestId('customer-v21-screen-2.4-chat-normal').props.style)).toMatchObject({
-        paddingBottom: 0,
+        paddingBottom: 8,
       })
       expect(StyleSheet.flatten(screen.getByTestId('customer-v21-kael-chat-disclaimer').props.style)).toMatchObject({
         marginTop: -4,
-        paddingBottom: 12,
+        paddingBottom: 0,
       })
       expect(screen.queryByTestId('customer-v21-normal-greeting-bubble')).toBeNull()
       expect(screen.queryByText(/nhận việc|cơ hội việc/i)).toBeNull()
@@ -635,31 +637,49 @@ describe('active customer Kael chat surface wiring', () => {
     }
   })
 
-  it('grows the composer with the draft instead of scrolling long text sideways', async () => {
+  it('lets the native composer grow with its text up to the cap instead of pinning a measured height', async () => {
     render(<CustomerKaelSurface />)
     await waitForConversationCatalog('normal')
 
     const input = screen.getByTestId('customer-v21-kael-input')
-    expect(input.props.multiline).toBe(true)
-    expect(StyleSheet.flatten(input.props.style).height).toBe(44)
-
     fireEvent.changeText(input, 'Nhà tôi bị hỏng đường ống nước ở phòng bếp')
-    fireEvent(input, 'contentSizeChange', { nativeEvent: { contentSize: { height: 90, width: 300 } } })
-    expect(StyleSheet.flatten(screen.getByTestId('customer-v21-kael-input').props.style).height).toBe(90)
-    expect(screen.getByTestId('customer-v21-kael-input').props.scrollEnabled).toBe(false)
-
-    // A long paste should not take over the screen — it caps and scrolls internally instead.
-    fireEvent(input, 'contentSizeChange', { nativeEvent: { contentSize: { height: 400, width: 300 } } })
-    expect(StyleSheet.flatten(screen.getByTestId('customer-v21-kael-input').props.style).height).toBe(124)
+    const style = StyleSheet.flatten(screen.getByTestId('customer-v21-kael-input').props.style)
+    expect(input.props.multiline).toBe(true)
+    expect(style.height).toBeUndefined()
+    expect(style.maxHeight).toBe(124)
     expect(screen.getByTestId('customer-v21-kael-input').props.scrollEnabled).toBe(true)
+  })
 
-    // Clearing the draft (sent, or deleted by hand) snaps the box back down via
-    // an effect — onContentSizeChange does not reliably re-fire on every
-    // platform for that, so it needs its own render pass to take effect.
-    fireEvent.changeText(input, '')
-    await waitFor(() => {
-      expect(StyleSheet.flatten(screen.getByTestId('customer-v21-kael-input').props.style).height).toBe(44)
-    })
+  it('grows the web composer with the draft instead of scrolling long text sideways', async () => {
+    const platform = jest.replaceProperty(Platform, 'OS', 'web')
+    try {
+      render(<CustomerKaelSurface />)
+      await waitForConversationCatalog('normal')
+
+      const input = screen.getByTestId('customer-v21-kael-input')
+      expect(input.props.multiline).toBe(true)
+      expect(StyleSheet.flatten(input.props.style).height).toBe(44)
+
+      fireEvent.changeText(input, 'Nhà tôi bị hỏng đường ống nước ở phòng bếp')
+      fireEvent(input, 'contentSizeChange', { nativeEvent: { contentSize: { height: 90, width: 300 } } })
+      expect(StyleSheet.flatten(screen.getByTestId('customer-v21-kael-input').props.style).height).toBe(90)
+      expect(screen.getByTestId('customer-v21-kael-input').props.scrollEnabled).toBe(false)
+
+      // A long paste should not take over the screen — it caps and scrolls internally instead.
+      fireEvent(input, 'contentSizeChange', { nativeEvent: { contentSize: { height: 400, width: 300 } } })
+      expect(StyleSheet.flatten(screen.getByTestId('customer-v21-kael-input').props.style).height).toBe(124)
+      expect(screen.getByTestId('customer-v21-kael-input').props.scrollEnabled).toBe(true)
+
+      // Clearing the draft (sent, or deleted by hand) snaps the box back down via
+      // an effect — onContentSizeChange does not reliably re-fire on every
+      // platform for that, so it needs its own render pass to take effect.
+      fireEvent.changeText(input, '')
+      await waitFor(() => {
+        expect(StyleSheet.flatten(screen.getByTestId('customer-v21-kael-input').props.style).height).toBe(44)
+      })
+    } finally {
+      platform.restore()
+    }
   })
 
   // Icon colour, size and stroke weight are props of a rendered node, and the
@@ -689,7 +709,7 @@ describe('active customer Kael chat surface wiring', () => {
     const liquidReveal = readCustomerSource('kael-chat/kael-liquid-reveal.tsx')
 
     expect(header).toContain('KaelLiquidPressable')
-    expect(menu).toContain('KaelLiquidPressable')
+    expect(readCustomerSource('kael-chat/customer-kael-session-row.tsx')).toContain('KaelLiquidPressable')
     expect(menu).toContain('KaelLiquidReveal')
     expect(liquidPressable).toContain('motionTokens.liquid.press')
     expect(liquidReveal).toContain('motionTokens.liquid.entrance')
@@ -763,31 +783,30 @@ describe('active customer Kael chat surface wiring', () => {
     const sessionList = screen.getByTestId('customer-v21-kael-session-list')
 
     expect(StyleSheet.flatten(sessionList.props.style)).toMatchObject({
-      marginTop: 6,
       maxHeight: 138,
     })
     expect(StyleSheet.flatten(screen.getByTestId('customer-v21-kael-session-new-label').props.style)).toMatchObject({
-      fontSize: 13,
+      fontSize: 15,
+      fontWeight: '700',
     })
     expect(screen.getByTestId('customer-v21-kael-session-menu-glass')).toBeOnTheScreen()
     expect(screen.queryByTestId('customer-v21-kael-session-menu-liquid-layers')).toBeNull()
     expect(screen.getByTestId('customer-v21-kael-session-new-liquid-layers')).toBeOnTheScreen()
-    expect(StyleSheet.flatten(screen.getByTestId('customer-v21-kael-session-new').props.style)).toMatchObject({
-      alignSelf: 'stretch',
+    expect(StyleSheet.flatten(screen.getByTestId('customer-v21-kael-session-new-surface').props.style)).toMatchObject({
+      borderRadius: 24,
       borderWidth: 0,
       gap: 8,
-      marginHorizontal: -4,
-      paddingHorizontal: 13,
-      position: 'relative',
+      minHeight: 48,
     })
+    expect(StyleSheet.flatten(screen.getByTestId('customer-v21-kael-session-new-surface').props.style).marginHorizontal).toBeUndefined()
     expect(StyleSheet.flatten(screen.getByTestId('customer-v21-kael-session-row-session-spacing').props.style)).toMatchObject({
       borderCurve: 'continuous',
       borderRadius: 16,
       overflow: 'hidden',
       position: 'relative',
     })
-    expect(screen.getByTestId('customer-v21-kael-session-new-plus')).toHaveProp('height', 21)
-    expect(screen.getByTestId('customer-v21-kael-session-new-plus')).toHaveProp('width', 21)
+    expect(screen.getByTestId('customer-v21-kael-session-new-plus')).toHaveProp('height', 20)
+    expect(screen.getByTestId('customer-v21-kael-session-new-plus')).toHaveProp('width', 20)
   })
 
   it('sends a normal Kael message when the keyboard submits the composer', async () => {
@@ -1606,14 +1625,12 @@ describe('active customer Kael chat surface wiring', () => {
       borderColor: color.surface.stroke,
     })
     fireEvent.changeText(screen.getByTestId('customer-v21-kael-input'), 'Mô tả nhu cầu cần gửi')
-    expect(screen.getByTestId('customer-v21-kael-send')).toHaveStyle({
-      backgroundColor: color.mint.white,
-      borderColor: color.surface.stroke,
-    })
+    expect(screen.getByTestId('customer-v21-kael-send')).toHaveStyle({ borderRadius: 22, height: 44, width: 44 })
+    expect(screen.getByTestId('customer-v21-kael-send-surface')).toBeOnTheScreen()
     const sendArrowStrokes = view.UNSAFE_getByProps({ testID: 'customer-v21-kael-send-arrow' })
       .findAll((node) => typeof node.props.stroke === 'string')
       .map((node) => node.props.stroke)
-    expect(sendArrowStrokes).toContain(color.text.strong)
+    expect(sendArrowStrokes).toContain(getCustomerThemeTokens('light').text)
     expect(screen.getByTestId('customer-v21-kael-media-camera-icon')).toBeOnTheScreen()
     expect(screen.getByTestId('customer-v21-kael-send-arrow')).toBeOnTheScreen()
     expect(screen.getByTestId('customer-v21-kael-input')).toHaveProp('placeholder', 'Mô tả nhu cầu cho Kael...')
@@ -2230,10 +2247,8 @@ describe('active customer Kael chat surface wiring', () => {
     const renameSave = screen.getByTestId('customer-v21-kael-session-title-save')
     expect(within(titleRow).getByTestId('customer-v21-kael-session-title-input')).toBeOnTheScreen()
     expect(screen.queryByTestId('customer-v21-kael-session-rename-editor-normal-session')).toBeNull()
-    expect(renameMenuStyle.width).toBe('92%')
-    expect(renameMenuStyle.maxWidth).toBeLessThanOrEqual(440)
-    expect(renameListStyle.maxHeight).toBeGreaterThan(138)
-    expect(renameListStyle.maxHeight).toBeLessThanOrEqual(240)
+    expect(renameMenuStyle).toMatchObject({ maxWidth: 208, width: '59%' })
+    expect(renameListStyle.maxHeight).toBe(138)
     expect(renameInput.props.selectTextOnFocus).toBeFalsy()
     expect(StyleSheet.flatten(renameInput.props.style)).toMatchObject({
       backgroundColor: 'transparent',
@@ -2242,15 +2257,12 @@ describe('active customer Kael chat surface wiring', () => {
       minWidth: 0,
       paddingHorizontal: 0,
     })
-    expect(StyleSheet.flatten(sessionCopy.props.style)).toMatchObject({ paddingRight: 94 })
-    expect(StyleSheet.flatten(renameActions.props.style)).toMatchObject({
-      bottom: 0,
-      position: 'absolute',
-      right: 8,
-      top: 0,
-    })
-    expect(StyleSheet.flatten(renameCancel.props.style)).toMatchObject({ minHeight: 44, minWidth: 44 })
-    expect(StyleSheet.flatten(renameSave.props.style)).toMatchObject({ minHeight: 44, minWidth: 44 })
+    expect(StyleSheet.flatten(sessionCopy.props.style).paddingRight).toBeUndefined()
+    expect(StyleSheet.flatten(renameActions.props.style)).toMatchObject({ flexDirection: 'row', flexShrink: 0 })
+    expect(StyleSheet.flatten(renameActions.props.style).position).toBeUndefined()
+    expect(StyleSheet.flatten(renameCancel.props.style)).toMatchObject({ height: 30, width: 30 })
+    expect(StyleSheet.flatten(renameSave.props.style)).toMatchObject({ height: 30, width: 30 })
+    expect(screen.getByTestId('customer-v21-kael-session-title-save-surface')).toBeOnTheScreen()
     fireEvent.changeText(screen.getByTestId('customer-v21-kael-session-title-input'), 'Nhà bếp')
     fireEvent.press(screen.getByTestId('customer-v21-kael-session-title-save'))
     await waitFor(() => expect(mockConversationRename).toHaveBeenCalledWith('normal-session', { title: 'Nhà bếp' }))
@@ -2258,8 +2270,7 @@ describe('active customer Kael chat surface wiring', () => {
     fireEvent.press(screen.getByTestId('customer-v21-kael-session-actions-normal-session'))
     fireEvent.press(screen.getByTestId('customer-v21-kael-session-delete-normal-session'))
     const deleteMenuStyle = StyleSheet.flatten(screen.getByTestId('customer-v21-kael-session-menu-shell').props.style)
-    expect(deleteMenuStyle.width).toBe('92%')
-    expect(deleteMenuStyle.maxWidth).toBeLessThanOrEqual(440)
+    expect(deleteMenuStyle).toMatchObject({ maxWidth: 208, width: '59%' })
     fireEvent.press(screen.getByTestId('customer-v21-kael-session-delete-confirm-action-normal-session'))
     await waitFor(() => expect(mockConversationArchive).toHaveBeenCalledWith('normal-session', false))
     expect(screen.queryByTestId('customer-v21-kael-session-normal-session')).toBeNull()
@@ -2716,7 +2727,7 @@ describe('active customer Kael chat surface wiring', () => {
     expect(menu).toContain("'Ghim'")
     expect(menu).toContain("'Đổi tên'")
     expect(menu).toContain("'Xóa'")
-    expect(menu).toContain('customer-v21-kael-session-new')
+    expect(menu).toContain('KaelSessionNewButton')
     expect(menuStyles).toContain('maxWidth: 208')
     expect(chatStyles).toContain('maxWidth: 208')
     expect(chatStyles).toContain("outlineColor: 'rgba(13,167,151,0.62)'")

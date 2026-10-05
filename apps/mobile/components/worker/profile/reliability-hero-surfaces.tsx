@@ -4,17 +4,19 @@ import { type AppLanguage } from '@/lib/app-language'
 import { WorkerV5FormulaMintCardAura } from '../ui/aura-surfaces'
 import { textByLanguage } from '../ui/format'
 import { workerV5HasNumber, workerV5NumericInsight } from '../ui/performance'
-import { styles } from '../worker-v5-flow-styles'
+import { styles as lightStyles } from '../worker-v5-flow-styles'
+import { useWorkerThemedStyles } from '../ui/worker-dark-styles'
 import type { useFrontendWorkflow } from '@/lib/frontend-workflow-provider'
 
 
 import { motionTokens } from '@/components/ui/motion-tokens'
-import { styles as reliabilityStyles } from './reliability-styles'
+import { styles as reliabilityStylesLight } from './reliability-styles'
 import { useEffect } from 'react'
 
 
 type WorkerV5Runtime = ReturnType<typeof useFrontendWorkflow>
 function Text({ style, ...props }: TextProps) {
+  const styles = useWorkerThemedStyles(lightStyles)
   return <RNText {...props} style={[styles.workerCustomerFontText, style]} />
 }
 
@@ -29,6 +31,8 @@ export function WorkerV5ReliabilityHero({
   profile: WorkerV5Runtime['workerProfile']
   reduceTransparency: boolean
 }) {
+  const reliabilityStyles = useWorkerThemedStyles(reliabilityStylesLight)
+  const styles = useWorkerThemedStyles(lightStyles)
   const hasScore = workerV5HasNumber(insights?.performance_score)
   const score = workerV5NumericInsight(insights?.performance_score)
   return (
@@ -59,6 +63,7 @@ export function WorkerV5ReliabilityAxisFill({
   reduceMotion: boolean
   score: number
 }) {
+  const reliabilityStyles = useWorkerThemedStyles(reliabilityStylesLight)
   const target = hasData ? Math.max(0, Math.min(100, score)) : 0
   const progress = useSharedValue(reduceMotion ? target : 0)
   const animatedFillStyle = useAnimatedStyle(() => ({

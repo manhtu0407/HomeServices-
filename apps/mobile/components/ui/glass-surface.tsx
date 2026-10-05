@@ -37,7 +37,7 @@ export function GlassSurface({ backgroundColor, borderColor, children, material 
   // Manual 1px highlight for the blur / solid fallbacks only. The native GlassView
   // path draws its own edge, so stacking this there double-highlights the surface.
   const edgeHighlightStyle = showEdgeHighlight
-    ? [styles.edgeHighlight, material === 'liquid' ? liquidEdgeHighlightStyle(mode) : null]
+    ? [styles.edgeHighlight, material === 'liquid' ? liquidEdgeHighlightStyle(mode) : mode === 'dark' ? styles.edgeHighlightStandardDark : null]
     : null
   const blurIntensity = material === 'liquid' ? liquidBlurIntensityByVariant[variant] : blurIntensityByVariant[variant]
 
@@ -126,7 +126,7 @@ const glassStyleByVariant: Record<GlassVariant, GlassStyle> = {
 
 function liquidEdgeHighlightStyle(mode: GlassMode): ViewStyle {
   return {
-    backgroundColor: mode === 'dark' ? 'rgba(190,210,205,0.14)' : 'rgba(255,255,255,0.46)',
+    backgroundColor: mode === 'dark' ? 'rgba(255,255,255,0.24)' : 'rgba(255,255,255,0.46)',
     opacity: mode === 'dark' ? 1 : 0.98,
   }
 }
@@ -152,6 +152,11 @@ const styles = StyleSheet.create({
     top: 1,
     zIndex: 1,
   },
+  // A full-white line glows on dark glass; dark mode keeps a soft gray specular edge.
+  edgeHighlightStandardDark: {
+    backgroundColor: 'rgba(255,255,255,0.14)',
+    opacity: 1,
+  },
   nativeUntintedBackground: {
     backgroundColor: 'transparent',
   },
@@ -159,8 +164,8 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   webNavBackingDark: {
-    backgroundColor: '#102420',
-    borderColor: 'rgba(105,222,198,0.20)',
+    backgroundColor: '#1C1C1E',
+    borderColor: 'rgba(255,255,255,0.12)',
   },
   webNavBackingLight: {
     backgroundColor: 'rgba(255,255,255,0.78)',
@@ -169,8 +174,8 @@ const styles = StyleSheet.create({
   } as any,
   webLiquidNavBackingDark: {
     backdropFilter: 'blur(24px) saturate(1.45) contrast(1.04)',
-    backgroundColor: 'rgba(22,29,27,0.42)',
-    borderColor: 'rgba(190,210,205,0.16)',
+    backgroundColor: 'rgba(118,118,128,0.30)',
+    borderColor: 'rgba(255,255,255,0.14)',
     WebkitBackdropFilter: 'blur(24px) saturate(1.45) contrast(1.04)',
   } as any,
   webLiquidNavBackingLight: {

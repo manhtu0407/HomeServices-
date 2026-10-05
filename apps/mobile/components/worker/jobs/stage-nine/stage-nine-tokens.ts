@@ -15,12 +15,7 @@ export const stageNineTokens = {
     page: '#fcfefe',
     background: ['#cce1de', '#daf0ed', '#eef9f8', '#f6fcfc', '#fcfefe'],
     backgroundLocations: [0, 0.44, 0.64, 0.88, 1],
-    buttonBorder: '#e5fff5',
-    buttonHighlight: 'rgba(255, 255, 255, 0.48)',
     buttonLabel: '#ffffff',
-    buttonShadow: '0px 13px 30px rgba(82, 203, 185, 0.14)',
-    buttonSurfaceTop: ['#7ae3c7', '#4dd2b5', '#2ac0a4', '#11ae95', '#029a87', '#00857c'],
-    buttonSurfaceBottom: ['#13b394', '#029f87', '#008c7a', '#007a6d', '#026861', '#135656'],
   },
   layout: {
     quoteTop: 141,
@@ -30,7 +25,6 @@ export const stageNineTokens = {
     buttonInset: 25,
     buttonHeight: 76,
     buttonRadius: 40,
-    buttonBorder: 1.25,
     bottomBreathingRoom: 63,
     // With the breathing room this matches the 126 pt every other worker screen keeps below its
     // content, so large text or an error note never ends the scroll under the floating dock.

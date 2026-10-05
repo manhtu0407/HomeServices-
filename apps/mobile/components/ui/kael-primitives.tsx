@@ -1,4 +1,4 @@
-import { useId, useState, type ReactNode, type Ref } from 'react'
+import { useState, type ReactNode, type Ref } from 'react'
 import {
   ActivityIndicator,
   Platform,
@@ -15,10 +15,11 @@ import {
   View,
 } from 'react-native'
 import Svg, { Defs, Path, Rect } from 'react-native-svg'
-import { aura, color, component, shadow, spacing, typography } from '@/design/theme'
+import { aura, color, component, spacing, typography } from '@/design/theme'
+import { PrimaryCtaFill, primaryCtaFrame } from './primary-cta-fill'
 import { useGlassAccessibility } from './accessibility-motion'
 import { reduceMotionAwarePressStyle } from './reduce-motion-aware-animation'
-import { AlphaStop as Stop, NativeSafeLinearGradient as LinearGradient, NativeSafeRadialGradient as RadialGradient } from './svg-alpha-stop'
+import { AlphaStop as Stop, NativeSafeRadialGradient as RadialGradient } from './svg-alpha-stop'
 
 type KaelButtonVariant = 'primary' | 'secondary' | 'ghost' | 'destructive'
 type KaelChipVariant = 'selected' | 'unselected' | 'successStatus' | 'warning' | 'error'
@@ -28,8 +29,9 @@ const webTextInputNoOutline = {
   outlineColor: 'transparent',
   outlineStyle: 'none',
   outlineWidth: 0,
-  WebkitBoxShadow: `0 0 0 1000px ${component.input.bg} inset`,
-  WebkitTextFillColor: color.text.primary,
+  WebkitBoxShadow: '0 0 0 1000px transparent inset',
+  // currentcolor keeps web text and placeholder on the themed colour instead of a fixed light-mode ink.
+  WebkitTextFillColor: 'currentcolor',
 } as unknown as TextStyle
 
 type KaelTextInputProps = TextInputProps & { ref?: Ref<TextInput> }
@@ -49,6 +51,7 @@ type KaelButtonProps = {
   onPress: () => void
   size?: 'default' | 'small'
   backgroundLayer?: ReactNode
+  // Off only for primary-variant buttons that paint a non-mint fill of their own (danger red).
   showPrimaryGradient?: boolean
   style?: StyleProp<ViewStyle>
   textStyle?: StyleProp<TextStyle>
@@ -74,7 +77,6 @@ export function KaelButton({
   variant = 'primary',
 }: KaelButtonProps) {
   const { reduceMotion } = useGlassAccessibility()
-  const primaryGradientId = `kael-primary-button-${useId().replace(/[^a-zA-Z0-9_-]/g, '')}`
   const isPrimary = variant === 'primary'
   const isDisabled = disabled || loading
   const minHeight = size === 'small' ? component.button.small.height : component.button.primary.height
@@ -102,9 +104,7 @@ export function KaelButton({
       testID={testID}
     >
       {backgroundLayer}
-      {isPrimary && !isDisabled && showPrimaryGradient ? (
-        <PrimaryButtonGradient gradientId={primaryGradientId} height={minHeight} />
-      ) : null}
+      {isPrimary && !isDisabled && showPrimaryGradient ? <PrimaryCtaFill radius={0} /> : null}
       {loading ? (
         <ActivityIndicator color={isPrimary ? component.button.primary.text : buttonTextColor(variant, isDisabled)} />
       ) : (
@@ -228,21 +228,6 @@ export function MintAura({ intensity = 'component', style, testID }: { intensity
   )
 }
 
-function PrimaryButtonGradient({ gradientId, height }: { gradientId: string; height: number }) {
-  return (
-    <Svg pointerEvents="none" style={StyleSheet.absoluteFill} viewBox={`0 0 100 ${height}`} preserveAspectRatio="none">
-      <Defs>
-        <LinearGradient id={gradientId} x1="0" y1="0" x2="1" y2="0">
-          {component.button.primary.gradient.map((stopColor, index) => (
-            <Stop key={stopColor} offset={component.button.primary.gradientStops[index]} stopColor={stopColor} />
-          ))}
-        </LinearGradient>
-      </Defs>
-      <Rect x="0" y="0" width="100" height={height} fill={`url(#${gradientId})`} />
-    </Svg>
-  )
-}
-
 function SearchIcon() {
   return (
     <Svg width={18} height={18} viewBox="0 0 24 24" fill="none">
@@ -259,11 +244,7 @@ function buttonVariantStyle(variant: KaelButtonVariant, disabled: boolean, showP
     }
   }
   if (variant === 'primary') {
-    return {
-      backgroundColor: showPrimaryGradient ? 'transparent' : component.button.primary.gradient[1],
-      borderColor: component.button.primary.border,
-      ...shadow.primary,
-    } as ViewStyle
+    return { backgroundColor: showPrimaryGradient ? 'transparent' : component.button.primary.gradient[1], ...primaryCtaFrame } as ViewStyle
   }
   if (variant === 'secondary') {
     return {

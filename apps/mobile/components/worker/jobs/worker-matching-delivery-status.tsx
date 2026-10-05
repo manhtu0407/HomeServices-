@@ -3,6 +3,7 @@ import { StyleSheet, Text, View } from 'react-native'
 
 import { typography } from '@/design/theme'
 import type { AppLanguage } from '@/lib/app-language'
+import { useWorkerThemedStyles } from '../ui/worker-dark-styles'
 
 const DELIVERY_STATE_COPY = {
   vi: {
@@ -30,6 +31,7 @@ export function WorkerMatchingDeliveryStatus({
   language: AppLanguage
   receipt: MatchingDeliveryReceipt
 }) {
+  const styles = useWorkerThemedStyles(stylesLight)
   const count = Number.isInteger(confirmedRecipientCount) && (confirmedRecipientCount ?? -1) >= 0
     ? confirmedRecipientCount
     : null
@@ -46,7 +48,7 @@ export function WorkerMatchingDeliveryStatus({
   )
 }
 
-const styles = StyleSheet.create({
+const stylesLight = StyleSheet.create({
   container: { backgroundColor: '#F2F7F5', borderColor: '#C9DDD5', borderRadius: 14, borderWidth: 1, gap: 3, paddingHorizontal: 12, paddingVertical: 9 },
   detail: { ...typography.caption1, color: '#52645D' },
   status: { ...typography.footnote, color: '#123B31', fontWeight: '700' },

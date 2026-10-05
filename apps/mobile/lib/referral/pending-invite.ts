@@ -4,11 +4,45 @@ import AsyncStorage from '@react-native-async-storage/async-storage'
 // that follows opening the invite link.
 const PENDING_INVITE_KEY = 'nestscout.pending-invite.v1'
 const PENDING_INVITE_TTL_MS = 14 * 24 * 60 * 60 * 1000
-const INVITE_CODE_PATTERN = /^[A-Z0-9]{8}$/
+const INVITE_CLAIM_RESULT_KEY = 'nestscout.invite-claim-result.v1'
+// Mirrors the alphabet of public.ensure_worker_referral_code: 0, 1, I and O are never issued,
+// so a code containing them is a typo and must not spend one of the daily claim attempts.
+const INVITE_CODE_PATTERN = /^[A-HJ-NP-Z2-9]{8}$/
+const NEVER_ISSUED_CHARACTERS = /[01IO]/
+
+function compactInviteCode(value: string): string {
+  return value.replace(/[\s-]/g, '').toUpperCase()
+}
 
 export function normalizeInviteCode(value: string): string | null {
-  const code = value.replace(/[\s-]/g, '').toUpperCase()
+  const code = compactInviteCode(value)
   return INVITE_CODE_PATTERN.test(code) ? code : null
+}
+
+export function inviteCodeHasNeverIssuedCharacter(value: string): boolean {
+  return NEVER_ISSUED_CHARACTERS.test(compactInviteCode(value))
+}
+
+const claimResultListeners = new Set<() => void>()
+
+export async function saveInviteClaimResult(outcome: string): Promise<void> {
+  await AsyncStorage.setItem(INVITE_CLAIM_RESULT_KEY, outcome).catch(() => undefined)
+  claimResultListeners.forEach((listener) => listener())
+}
+
+// A card already on screen when the claim lands is told so it can read the result and reload.
+export function subscribeInviteClaimResult(listener: () => void): () => void {
+  claimResultListeners.add(listener)
+  return () => {
+    claimResultListeners.delete(listener)
+  }
+}
+
+// Read once: the result of a claim made from an invite link is shown a single time.
+export async function takeInviteClaimResult(): Promise<string | null> {
+  const outcome = await AsyncStorage.getItem(INVITE_CLAIM_RESULT_KEY).catch(() => null)
+  if (outcome !== null) await AsyncStorage.removeItem(INVITE_CLAIM_RESULT_KEY).catch(() => undefined)
+  return outcome
 }
 
 export async function savePendingInvite(value: string): Promise<string | null> {

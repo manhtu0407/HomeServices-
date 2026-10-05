@@ -22,7 +22,7 @@ import { WorkerV5CustomerCaseWideMintAura, WorkerV5CustomerZipMintAura } from '.
 import { textByLanguage } from '../ui/format'
 import { WorkerV5TimerCard } from '../ui/metrics-surfaces'
 import { WorkerV5PrimaryButtonFill, WorkerV5SectionHeader } from '../ui/primitives-surfaces'
-import { styles } from '../worker-v5-flow-styles'
+import { styles as stylesLight } from '../worker-v5-flow-styles'
 import { WorkerV5InProgressTravelGate } from './active-body-surfaces'
 import { WorkerV5ActionRail, WorkerV5SingleSourceActionButton } from './advisory-surfaces'
 import { WorkerV5EvidenceTray } from './evidence-surfaces'
@@ -34,6 +34,8 @@ import { WorkerV5RouteMapStage } from './route-map-surfaces'
 import { StageFiveWork } from './stage-five/travel-work/stage-five-work'
 import type { Actions as StageFiveActions, StageFiveJobStatus, WorkModel as StageFiveWorkModel } from './stage-five/travel-work/stage-five.types'
 import { workerV5ArrivalDestinationLabel } from '../ui/route'
+import { useWorkerThemedStyles } from '../ui/worker-dark-styles'
+import { PrimaryCtaFill, primaryCtaFrame } from '@/components/ui/primary-cta-fill'
 
 type WorkerV5Runtime = ReturnType<typeof useFrontendWorkflow>
 type StageFiveMutableStatus = Extract<StageFiveJobStatus, 'arrived' | 'inspecting' | 'repairing'>
@@ -58,6 +60,7 @@ async function withImagePickerDeadline<T>(pickerResult: Promise<T>) {
 }
 
 function Text({ style, ...props }: TextProps) {
+  const styles = useWorkerThemedStyles(stylesLight)
   return <RNText {...props} style={[styles.workerCustomerFontText, style]} />
 }
 
@@ -84,6 +87,7 @@ export function WorkerV5InProgressBody({
   onBackToTravel?: () => void
   styleVariant?: 'default' | 'jobs-review'
 }) {
+  const styles = useWorkerThemedStyles(stylesLight)
   const params = useLocalSearchParams<WorkerV5RouteParams>()
   const rfqTokens = getWorkerThemeTokens(useWorkerThemeMode())
   const router = useRouter()
@@ -648,8 +652,9 @@ export function WorkerV5InProgressBody({
                 <Pressable accessibilityRole="button" accessibilityLabel={textByLanguage(language, 'Hủy ghi chú', 'Cancel note')} onPress={() => setStageFiveNoteOpen(false)} style={{ flex: 1, minHeight: 48, alignItems: 'center', justifyContent: 'center', borderColor: '#E4EFF0', borderRadius: 24, borderWidth: 1 }}>
                   <Text style={{ ...typography.body, color: '#496580', fontWeight: '600' }}>{textByLanguage(language, 'Hủy', 'Cancel')}</Text>
                 </Pressable>
-                <Pressable accessibilityRole="button" accessibilityLabel={textByLanguage(language, 'Lưu ghi chú', 'Save note')} disabled={phaseActionBusy} onPress={() => void saveStageFiveNote()} style={{ flex: 1, minHeight: 48, alignItems: 'center', justifyContent: 'center', backgroundColor: '#009F89', borderRadius: 24, opacity: phaseActionBusy ? 0.5 : 1 }}>
-                  <Text style={{ ...typography.body, color: '#FFFFFF', fontWeight: '700' }}>{phaseActionBusy ? textByLanguage(language, 'Đang lưu…', 'Saving…') : textByLanguage(language, 'Lưu ghi chú', 'Save note')}</Text>
+                <Pressable accessibilityRole="button" accessibilityLabel={textByLanguage(language, 'Lưu ghi chú', 'Save note')} disabled={phaseActionBusy} onPress={() => void saveStageFiveNote()} style={{ flex: 1, minHeight: 48, alignItems: 'center', justifyContent: 'center', backgroundColor: '#24B3A1', borderRadius: 24, overflow: 'hidden', opacity: phaseActionBusy ? 0.5 : 1, ...primaryCtaFrame }}>
+                  <PrimaryCtaFill radius={0} />
+                  <Text style={{ ...typography.body, color: '#FFFFFF', fontWeight: '700', position: 'relative', zIndex: 1 }}>{phaseActionBusy ? textByLanguage(language, 'Đang lưu…', 'Saving…') : textByLanguage(language, 'Lưu ghi chú', 'Save note')}</Text>
                 </Pressable>
               </View>
             </View>

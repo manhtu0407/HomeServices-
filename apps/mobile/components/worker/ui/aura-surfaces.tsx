@@ -3,6 +3,7 @@ import Svg, { Circle, Defs, Rect } from 'react-native-svg'
 
 import { FORMULA_MINT_CANVAS_STANDARD_RADIAL_RADIUS, FormulaMintCanvasAura } from '@/components/ui/formula-mint-canvas'
 import { AlphaStop as Stop, NativeSafeLinearGradient as LinearGradient, NativeSafeRadialGradient as RadialGradient } from '@/components/ui/svg-alpha-stop'
+import { useWorkerThemeMode } from '../worker-theme'
 import { styles } from './aura-styles'
 
 export const WORKER_V5_FORMULA_MINT_CARD_AURA_INTENSITY = 1.4
@@ -17,7 +18,9 @@ function safeWorkerAuraScope(scope: string) {
   return scope.replace(/[^a-zA-Z0-9]/g, '') || 'Card'
 }
 
-export function WorkerV5FormulaMintCardAura({
+// Light-mode decoration: the white card skins and mint glows. Dark keeps the neutral token
+// surfaces instead, so each exported aura renders nothing in dark.
+function WorkerV5FormulaMintCardAuraLight({
   reduceTransparency = false,
   scope,
   style,
@@ -64,7 +67,11 @@ export function WorkerV5FormulaMintCardAura({
   )
 }
 
-export function WorkerV5CustomerCaseWideMintAura({
+export function WorkerV5FormulaMintCardAura(props: Parameters<typeof WorkerV5FormulaMintCardAuraLight>[0]) {
+  return useWorkerThemeMode() === 'dark' ? null : <WorkerV5FormulaMintCardAuraLight {...props} />
+}
+
+function WorkerV5CustomerCaseWideMintAuraLight({
   scope,
   style,
   testID,
@@ -103,6 +110,10 @@ export function WorkerV5CustomerCaseWideMintAura({
   )
 }
 
+export function WorkerV5CustomerCaseWideMintAura(props: Parameters<typeof WorkerV5CustomerCaseWideMintAuraLight>[0]) {
+  return useWorkerThemeMode() === 'dark' ? null : <WorkerV5CustomerCaseWideMintAuraLight {...props} />
+}
+
 export function WorkerV5CustomerFulfillmentCanvasAura({
   reduceTransparency = false,
   scope,
@@ -112,8 +123,10 @@ export function WorkerV5CustomerFulfillmentCanvasAura({
   scope: string
   testID?: string
 }) {
+  const mode = useWorkerThemeMode()
   return (
     <FormulaMintCanvasAura
+      mode={mode}
       reduceTransparency={reduceTransparency}
       scope={`WorkerV5Fulfillment${scope}`}
       testID={testID ?? `worker-v5-fulfillment-formula-mint-aura-${scope}`}
@@ -121,7 +134,7 @@ export function WorkerV5CustomerFulfillmentCanvasAura({
   )
 }
 
-export function WorkerV5SourceCardSkin({ testID }: { testID?: string }) {
+function WorkerV5SourceCardSkinLight({ testID }: { testID?: string }) {
   return (
     <View pointerEvents="none" style={StyleSheet.absoluteFill} testID={testID}>
       <Svg height="100%" preserveAspectRatio="none" viewBox="0 0 100 100" width="100%">
@@ -143,7 +156,11 @@ export function WorkerV5SourceCardSkin({ testID }: { testID?: string }) {
   )
 }
 
-export function WorkerV5CustomerCaseWorkCardAura({
+export function WorkerV5SourceCardSkin(props: Parameters<typeof WorkerV5SourceCardSkinLight>[0]) {
+  return useWorkerThemeMode() === 'dark' ? null : <WorkerV5SourceCardSkinLight {...props} />
+}
+
+function WorkerV5CustomerCaseWorkCardAuraLight({
   scope,
   testID,
 }: {
@@ -173,7 +190,11 @@ export function WorkerV5CustomerCaseWorkCardAura({
   )
 }
 
-export function WorkerV5CustomerZipMintAura({
+export function WorkerV5CustomerCaseWorkCardAura(props: Parameters<typeof WorkerV5CustomerCaseWorkCardAuraLight>[0]) {
+  return useWorkerThemeMode() === 'dark' ? null : <WorkerV5CustomerCaseWorkCardAuraLight {...props} />
+}
+
+function WorkerV5CustomerZipMintAuraLight({
   scope,
   style,
   testID,
@@ -200,7 +221,11 @@ export function WorkerV5CustomerZipMintAura({
   )
 }
 
-export function WorkerV5KaelChatScreenAura({
+export function WorkerV5CustomerZipMintAura(props: Parameters<typeof WorkerV5CustomerZipMintAuraLight>[0]) {
+  return useWorkerThemeMode() === 'dark' ? null : <WorkerV5CustomerZipMintAuraLight {...props} />
+}
+
+function WorkerV5KaelChatScreenAuraLight({
   reduceTransparency = false,
   scope,
   testID,
@@ -227,7 +252,11 @@ export function WorkerV5KaelChatScreenAura({
   )
 }
 
-export function WorkerV5CustomerMapMintAura({
+export function WorkerV5KaelChatScreenAura(props: Parameters<typeof WorkerV5KaelChatScreenAuraLight>[0]) {
+  return useWorkerThemeMode() === 'dark' ? null : <WorkerV5KaelChatScreenAuraLight {...props} />
+}
+
+function WorkerV5CustomerMapMintAuraLight({
   scope,
   style,
   testID,
@@ -262,11 +291,15 @@ export function WorkerV5CustomerMapMintAura({
   )
 }
 
-export function WorkerV5HomeAuraBackground({ reduceTransparency = false }: { reduceTransparency?: boolean } = {}) {
-  return <FormulaMintCanvasAura reduceTransparency={reduceTransparency} scope="WorkerV5Home" testID="worker-v5-page-mint-aura" />
+export function WorkerV5CustomerMapMintAura(props: Parameters<typeof WorkerV5CustomerMapMintAuraLight>[0]) {
+  return useWorkerThemeMode() === 'dark' ? null : <WorkerV5CustomerMapMintAuraLight {...props} />
 }
 
-export function WorkerV5HomeHeroSourceAura() {
+export function WorkerV5HomeAuraBackground({ reduceTransparency = false }: { reduceTransparency?: boolean } = {}) {
+  return <FormulaMintCanvasAura mode={useWorkerThemeMode()} reduceTransparency={reduceTransparency} scope="WorkerV5Home" testID="worker-v5-page-mint-aura" />
+}
+
+function WorkerV5HomeHeroSourceAuraLight() {
   return (
     <View pointerEvents="none" style={styles.homeCommandAura} testID="worker-v5-hero-mint-aura">
       <Svg height="100%" preserveAspectRatio="none" viewBox="0 0 360 220" width="100%">
@@ -288,7 +321,11 @@ export function WorkerV5HomeHeroSourceAura() {
   )
 }
 
-export function WorkerV5HomeQuickActionsAura() {
+export function WorkerV5HomeHeroSourceAura() {
+  return useWorkerThemeMode() === 'dark' ? null : <WorkerV5HomeHeroSourceAuraLight />
+}
+
+function WorkerV5HomeQuickActionsAuraLight() {
   return (
     <View pointerEvents="none" style={styles.homeListMintAura} testID="worker-v5-list-mint-aura">
       <Svg height="100%" preserveAspectRatio="none" viewBox="0 0 360 220" width="100%">
@@ -310,7 +347,11 @@ export function WorkerV5HomeQuickActionsAura() {
   )
 }
 
-export function WorkerV5EarningsHomeHeroAura({ testID }: { testID: string }) {
+export function WorkerV5HomeQuickActionsAura() {
+  return useWorkerThemeMode() === 'dark' ? null : <WorkerV5HomeQuickActionsAuraLight />
+}
+
+function WorkerV5EarningsHomeHeroAuraLight({ testID }: { testID: string }) {
   return (
     <View pointerEvents="none" style={styles.homeCommandAura} testID={testID}>
       <Svg height="100%" preserveAspectRatio="none" viewBox="0 0 360 220" width="100%">
@@ -332,7 +373,11 @@ export function WorkerV5EarningsHomeHeroAura({ testID }: { testID: string }) {
   )
 }
 
-export function WorkerV5EarningsHomeListAura({ testID }: { testID: string }) {
+export function WorkerV5EarningsHomeHeroAura(props: Parameters<typeof WorkerV5EarningsHomeHeroAuraLight>[0]) {
+  return useWorkerThemeMode() === 'dark' ? null : <WorkerV5EarningsHomeHeroAuraLight {...props} />
+}
+
+function WorkerV5EarningsHomeListAuraLight({ testID }: { testID: string }) {
   return (
     <View pointerEvents="none" style={styles.homeListMintAura} testID={testID}>
       <Svg height="100%" preserveAspectRatio="none" viewBox="0 0 360 220" width="100%">
@@ -352,4 +397,8 @@ export function WorkerV5EarningsHomeListAura({ testID }: { testID: string }) {
       </Svg>
     </View>
   )
+}
+
+export function WorkerV5EarningsHomeListAura(props: Parameters<typeof WorkerV5EarningsHomeListAuraLight>[0]) {
+  return useWorkerThemeMode() === 'dark' ? null : <WorkerV5EarningsHomeListAuraLight {...props} />
 }

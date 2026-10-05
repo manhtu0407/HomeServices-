@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Pressable, View } from 'react-native'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import type { LocalDeal } from '@nestscout/shared'
+import { PrimaryCtaFill } from '@/components/ui/primary-cta-fill'
 import { color } from '@/design/theme'
 import { localizedServiceLabel, type AppLanguage } from '@/lib/app-language'
 import type { WorkerBroadcast } from '@/lib/api-types'
@@ -23,7 +24,7 @@ import {
 import { buildWorkerV5AcceptReviewChecks, workerV5CanAcceptOpenOffer } from './acceptance'
 import { WorkerBroadcastProposalForm } from './worker-broadcast-proposal-form'
 import { WorkerStageTwoOfferWorkart } from './worker-jobs-stage-two-workart'
-import { prototypeStyles, stageTwoStyles } from './worker-jobs-zip-prototype-styles'
+import { prototypeStyles as prototypeStylesLight, stageTwoStyles as stageTwoStylesLight } from './worker-jobs-zip-prototype-styles'
 import { stageTwoCardTokens, type StageTwoPillTone } from './worker-jobs-zip-prototype-style-stage-two'
 import {
   Text,
@@ -43,6 +44,7 @@ import {
 } from './worker-jobs-zip-prototype-shared'
 import { WorkerMatchingDeliveryStatus } from './worker-matching-delivery-status'
 import { stageLayout, useStageLayout } from './stage-ratio'
+import { useWorkerColor, useWorkerThemedStyles } from '../ui/worker-dark-styles'
 
 export { WorkerJobsLegacyPrototypeRouteEtaBody } from './worker-jobs-zip-prototype-route-stage'
 
@@ -65,6 +67,7 @@ export function WorkerJobsLegacyPrototypeOpportunityCard({
   showPrice?: boolean
   testID?: string
 }) {
+  const prototypeStyles = useWorkerThemedStyles(prototypeStylesLight)
   const isIncoming = currentDeal?.status === 'broadcasting' && currentDeal.broadcast?.status === 'sent'
   const service = currentDeal ? localizedServiceLabel(currentDeal.draft.serviceType, language) : textByLanguage(language, 'Cơ hội công việc', 'Job opportunity')
   const area = currentDeal?.broadcast?.generalArea || currentDeal?.draft.districtLabel
@@ -279,6 +282,8 @@ function WorkerJobsLegacyPrototypeOpportunityActions({
   primaryDisabled: boolean
   reduceTransparency: boolean
 }) {
+  const prototypeStyles = useWorkerThemedStyles(prototypeStylesLight)
+  const wc = useWorkerColor()
   const layout = useStageLayout()
   const size = { borderRadius: layout.metric(stageLayout.buttonRadius), minHeight: layout.buttonHeight }
   return (
@@ -287,7 +292,7 @@ function WorkerJobsLegacyPrototypeOpportunityActions({
         accessibilityLabel={textByLanguage(language, 'Kael nhận việc', 'Kael job intake')}
         accessibilityRole="button"
         onPress={onKael}
-        style={({ pressed }) => [prototypeStyles.opportunityAction, size, prototypeStyles.opportunityActionSecondary, reduceTransparency && { backgroundColor: color.mint.white }, pressed && { opacity: 0.84 }]}
+        style={({ pressed }) => [prototypeStyles.opportunityAction, size, prototypeStyles.opportunityActionSecondary, reduceTransparency && { backgroundColor: wc('surface', color.mint.white) }, pressed && { opacity: 0.84 }]}
         testID="worker-v5-opportunity-kael-action"
       >
         <Text style={[prototypeStyles.opportunityActionText, prototypeStyles.opportunityActionSecondaryText]}>{textByLanguage(language, 'Kael nhận việc', 'Kael job intake')}</Text>
@@ -301,6 +306,7 @@ function WorkerJobsLegacyPrototypeOpportunityActions({
         style={({ pressed }) => [prototypeStyles.opportunityAction, size, prototypeStyles.opportunityActionPrimary, primaryDisabled && prototypeStyles.opportunityActionDisabled, pressed && !primaryDisabled && { opacity: 0.84 }]}
         testID="worker-v5-primary-action"
       >
+        {primaryDisabled ? null : <PrimaryCtaFill radius={0} />}
         <Text style={[prototypeStyles.opportunityActionText, primaryDisabled ? prototypeStyles.opportunityActionDisabledText : prototypeStyles.opportunityActionPrimaryText]}>{primary}</Text>
       </Pressable>
     </View>
@@ -318,6 +324,7 @@ export function WorkerJobsLegacyPrototypeOpportunityInboxBody({
   reduceTransparency: boolean
   runtime: WorkerJobsLegacyPrototypeRuntime
 }) {
+  const prototypeStyles = useWorkerThemedStyles(prototypeStylesLight)
   const params = useLocalSearchParams<{
     ns_audit_role?: string | string[]
     ns_worker_jobs_variant?: string | string[]
@@ -440,6 +447,7 @@ function WorkerJobsLegacyPrototypeOfferSummary({
   tokens: ReturnType<typeof getWorkerThemeTokens>
   showPrice?: boolean
 }) {
+  const stageTwoStyles = useWorkerThemedStyles(stageTwoStylesLight)
   const service = deal
     ? localizedServiceLabel(deal.draft.serviceType, language)
     : previewJob?.title[language] || textByLanguage(language, 'Chưa có đề nghị', 'No offer yet')
@@ -486,6 +494,7 @@ export function WorkerJobsLegacyPrototypeOfferInfoGroup({
   testID: string
   title: string
 }) {
+  const prototypeStyles = useWorkerThemedStyles(prototypeStylesLight)
   return (
     <View style={prototypeStyles.offerInfoGroup} testID={testID}>
       <View style={prototypeStyles.offerInfoGroupHeader}>
@@ -520,6 +529,7 @@ export function WorkerJobsLegacyPrototypeOfferDetailBody({
   runWorkerAction: WorkerJobsLegacyPrototypeBodyProps['runWorkerAction']
   runtime: WorkerJobsLegacyPrototypeRuntime
 }) {
+  const stageTwoStyles = useWorkerThemedStyles(stageTwoStylesLight)
   const themeMode = useWorkerThemeMode()
   const tokens = getWorkerThemeTokens(themeMode)
   const scale = useWorkerJobsStageTwoScale(tokens)

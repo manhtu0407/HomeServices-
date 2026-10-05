@@ -18,7 +18,8 @@ import { WorkerV5ReceivingAccount } from './receiving-account-surfaces'
 import { WorkerV5PayoutRequest } from './payout-request-surfaces'
 import { WorkerV5TransactionHistory } from './transaction-history-surfaces'
 import { styles } from './body-styles'
-import { workerIncomeDashboardAssets } from './income-dashboard-tokens'
+import { workerIncomeDashboardAssets, workerIncomeDashboardDarkAssets, workerIncomeDashboardTokens } from './income-dashboard-tokens'
+import { useWorkerThemeMode } from '../worker-theme'
 import type { WorkerEarningsPeriod } from './overview-model'
 
 type WorkerV5Runtime = ReturnType<typeof useFrontendWorkflow>
@@ -38,8 +39,10 @@ export function WorkerV5EarningsOverviewBody({
   reduceTransparency: boolean
   runtime: WorkerV5Runtime
 }) {
+  const dark = useWorkerThemeMode() === 'dark'
+  const darkColors = workerIncomeDashboardTokens.darkColors
   return (
-    <View style={styles.sectionStack} testID="worker-v5-earnings-overview-layout">
+    <View style={[styles.sectionStack, dark ? { backgroundColor: darkColors.opaqueTint } : null]} testID="worker-v5-earnings-overview-layout">
       <WorkerV5EarningsDashboard
         earnings={runtime.workerEarnings}
         earningsError={runtime.workerEarningsError}
@@ -51,12 +54,12 @@ export function WorkerV5EarningsOverviewBody({
         reduceMotion={reduceMotion}
         reduceTransparency={reduceTransparency}
       />
-      <View style={styles.productionContent} testID="worker-v5-earnings-production-content">
+      <View style={[styles.productionContent, dark ? { backgroundColor: darkColors.page } : null]} testID="worker-v5-earnings-production-content">
         <Image
           accessible={false}
           contentFit="cover"
           pointerEvents="none"
-          source={workerIncomeDashboardAssets.background}
+          source={dark ? workerIncomeDashboardDarkAssets.background : workerIncomeDashboardAssets.background}
           style={styles.productionBackground}
           testID="worker-v5-earnings-production-background"
         />
@@ -163,6 +166,7 @@ export function WorkerV5AmbassadorBody({
     <WorkerV5Ambassador
       controller={controller}
       language={language}
+      onOpenInviteCode={() => navigateToScreen('5.16-worker-invite-code')}
       onOpenViolations={() => navigateToScreen('4.7-violations')}
     />
   )

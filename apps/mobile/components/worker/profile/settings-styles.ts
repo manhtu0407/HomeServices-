@@ -1,6 +1,6 @@
 import { StyleSheet } from 'react-native'
 
-import { color, radius, shadow, typography } from '@/design/theme'
+import { color, customerTheme, radius, shadow, typography } from '@/design/theme'
 
 export const styles = StyleSheet.create({
   choiceBody: {
@@ -8,7 +8,7 @@ export const styles = StyleSheet.create({
     ...typography.caption1,
   },
   choiceBodyDark: {
-    color: '#A9B7B3',
+    color: customerTheme.darkLayer.muted,
   },
   choiceCopy: {
     flex: 1,
@@ -26,7 +26,7 @@ export const styles = StyleSheet.create({
     width: 22,
   },
   choiceMarkDark: {
-    borderColor: 'rgba(190,210,205,0.34)',
+    borderColor: customerTheme.darkLayer.glassBorder,
   },
   choiceMarkDot: {
     backgroundColor: color.brand.primary,
@@ -51,8 +51,8 @@ export const styles = StyleSheet.create({
     paddingVertical: 10,
   },
   choiceRowDark: {
-    backgroundColor: '#1D2522',
-    borderColor: 'rgba(190,210,205,0.16)',
+    backgroundColor: customerTheme.darkLayer.raised,
+    borderColor: customerTheme.darkLayer.glassBorder,
   },
   choiceRowSelected: {
     backgroundColor: 'rgba(231, 250, 246, 0.95)',
@@ -60,7 +60,7 @@ export const styles = StyleSheet.create({
   },
   choiceRowSelectedDark: {
     backgroundColor: '#173832',
-    borderColor: '#63E6D0',
+    borderColor: customerTheme.darkLayer.primary,
   },
   opaqueCard: {
     backgroundColor: color.surface.base,
@@ -140,6 +140,6 @@ export const styles = StyleSheet.create({
     ...typography.subheadline,
   },
   choiceTitleDark: {
-    color: '#F1F6F4',
+    color: customerTheme.darkLayer.text,
   },
 })

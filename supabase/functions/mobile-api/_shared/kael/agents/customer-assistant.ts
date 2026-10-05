@@ -368,7 +368,7 @@ function buildCustomerAssistantRunContext(input: CustomerAssistantInput) {
   ).slice(0, 2000);
   const workflowQuestion = scrubSensitiveForLLM(sourceMessage).slice(0, 2000);
   const serviceType = input.serviceType ?? inferAssistantServiceType(cleanQuestion, input.job);
-  const topic = classifyAssistantTopic(cleanQuestion, serviceType);
+  const topic = classifyAssistantTopic(cleanQuestion, serviceType, surface, hasImages);
   const boundary = evaluateMessageBoundary(cleanQuestion, serviceType, {
     actorId: input.actorId,
     semanticInjectionClassifierEnabled: true,

@@ -11,7 +11,7 @@ import { customerAccountService } from '@/lib/services'
 import { localizeRfqNotification } from '@/lib/frontend-workflow/notifications'
 import { isCustomerCompensationNotification } from '@/lib/program-notification-routes'
 
-import type { CustomerThemeTokens, ThemeMode } from '../customer-theme'
+import type { CustomerThemeTokens, ThemePreference } from '../customer-theme'
 import { customerV21ProfileFoundationUtilityStyles as styles } from './profile-foundation-utility-styles'
 import { ProfilePreferenceOption, ProfilePreferencePanel } from './profile-preference-surfaces'
 import { ProfileSettingsGlyph, type ProfileSettingsGlyphName } from './profile-settings-icons'
@@ -43,16 +43,22 @@ export function ProfileAppearanceView({
   tokens,
 }: {
   language: AppLanguage
-  mode: ThemeMode
-  onSelectMode: (mode: ThemeMode) => void
+  mode: ThemePreference
+  onSelectMode: (mode: ThemePreference) => void
   tokens: CustomerThemeTokens
 }) {
   const options: readonly {
     body: string
-    mode: ThemeMode
+    mode: ThemePreference
     title: string
     visual: string
   }[] = [
+    {
+      body: language === 'vi' ? 'Tự đổi Sáng hoặc Tối theo cài đặt của điện thoại.' : 'Switches between Light and Dark with your phone setting.',
+      mode: 'system',
+      title: language === 'vi' ? 'Theo hệ thống' : 'System',
+      visual: '📱',
+    },
     {
       body: language === 'vi' ? 'Nền sáng, rõ và thoáng.' : 'A bright, clear surface.',
       mode: 'light',
@@ -463,7 +469,6 @@ export function ProfileDeleteAccountView({
             <KaelButton
               label={language === 'vi' ? 'Đăng nhập lại' : 'Sign in again'}
               onPress={() => void onReauthenticate()}
-              showPrimaryGradient={false}
               testID="customer-v21-profile-delete-account-reauthenticate"
             />
           ) : null}

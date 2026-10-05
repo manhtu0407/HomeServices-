@@ -5,9 +5,11 @@ import type { EarningsResponse } from '@/lib/api-types'
 
 import { WorkerV5FormulaMintCardAura } from '../ui/aura-surfaces'
 import { textByLanguage } from '../ui/format'
-import { styles } from './commission-policy-styles'
+import { styles as lightStyles } from './commission-policy-styles'
+import { useWorkerThemedStyles } from '../ui/worker-dark-styles'
 
 function Text({ style, ...props }: TextProps) {
+  const styles = useWorkerThemedStyles(lightStyles)
   return <RNText {...props} style={[styles.workerCustomerFontText, style]} />
 }
 
@@ -17,6 +19,7 @@ function commissionRates(rateBps: number | null | undefined) {
 }
 
 function PolicyPoint({ children }: { children: string }) {
+  const styles = useWorkerThemedStyles(lightStyles)
   return (
     <View style={styles.point}>
       <View style={styles.pointDot} />
@@ -34,6 +37,7 @@ export function WorkerV5CommissionPolicy({
   language: AppLanguage
   reduceTransparency: boolean
 }) {
+  const styles = useWorkerThemedStyles(lightStyles)
   const rates = commissionRates(earnings?.current_commission_rate_bps)
 
   return (

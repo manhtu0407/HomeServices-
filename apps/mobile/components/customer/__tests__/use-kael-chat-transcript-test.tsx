@@ -31,6 +31,7 @@ function makeInput(overrides: Partial<Parameters<typeof useKaelChatTranscript>[0
     normalReasoningReceipt,
     onToggleNormalReasoningReceipt: () => undefined,
     pendingDraftMessage: '',
+    pendingNormalImageUris: [],
     pendingNormalMessage: null,
     processLinesNode: null,
     reduceMotion: true,

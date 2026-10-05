@@ -4,9 +4,10 @@ import {
   type WorkerJobsLegacyPrototypeBodyProps,
   type WorkerJobsLegacyPrototypeStage,
 } from './worker-jobs-zip-prototype-shared'
-import { prototypeStyles } from './worker-jobs-zip-prototype-styles'
+import { prototypeStyles as prototypeStylesLight } from './worker-jobs-zip-prototype-styles'
 import { WorkerWaitingRuntime } from './waiting/waiting-runtime'
 import { isStageElevenPaymentRecorded } from './stage-eleven/stage-eleven-model'
+import { useWorkerThemedStyles } from '../ui/worker-dark-styles'
 import {
   WorkerJobsLegacyPrototypeOfferDetailBody,
   WorkerJobsLegacyPrototypeOpportunityInboxBody,
@@ -24,9 +25,10 @@ import {
 } from './worker-jobs-zip-prototype-settlement-stages'
 
 export type { WorkerJobsLegacyPrototypeBodyProps, WorkerJobsLegacyPrototypeStage }
-export { prototypeStyles }
+export { prototypeStylesLight as prototypeStyles }
 
 export function WorkerJobsLegacyPrototypeBody(props: WorkerJobsLegacyPrototypeBodyProps) {
+  const prototypeStyles = useWorkerThemedStyles(prototypeStylesLight)
   const { prototypeStage, screen } = props
   const deal = props.runtime.state.deal
   const paymentRecorded = isStageElevenPaymentRecorded({

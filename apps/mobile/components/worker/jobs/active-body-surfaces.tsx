@@ -16,7 +16,8 @@ import { WorkerV5EtaSummaryCard } from './map-surfaces'
 import { WorkerV5CustomerCaseWideMintAura, WorkerV5CustomerZipMintAura } from '../ui/aura-surfaces'
 import { WorkerV5PrimaryButtonFill } from '../ui/primitives-surfaces'
 import { useWorkerV5RoutePreview, type WorkerV5RoutePreview, type WorkerV5RoutePreviewState } from './use-worker-route-preview'
-import { styles } from './active-body-styles'
+import { styles as stylesLight } from './active-body-styles'
+import { useWorkerThemedStyles } from '../ui/worker-dark-styles'
 
 type WorkerV5CaseAuraComponent = ComponentType<{
   scope: string
@@ -72,6 +73,7 @@ export function WorkerV5RouteEtaBody({
   routePreview: WorkerV5RoutePreviewState
   zipAura: WorkerV5CaseAuraComponent
 }) {
+  const styles = useWorkerThemedStyles(stylesLight)
   const pendingRouteLabel = workerV5PendingRouteLabel(routePreview, language)
   const etaSignal = routePreview.route
     ? workerV5LiveEtaSignal(routePreview.route, language)

@@ -4,6 +4,7 @@ import Animated from 'react-native-reanimated'
 
 import { GlassSurface } from '@/components/ui/glass-surface'
 import { LiquidBackButton, LiquidSurfaceOverlay } from '@/components/ui/liquid-back-button'
+import { liquidPillPalette } from '@/components/ui/liquid-pill-button'
 import type { AppLanguage } from '@/lib/app-language'
 
 import type { CustomerThemeTokens } from '../customer-theme'
@@ -73,8 +74,8 @@ export function CustomerKaelChatHeader({
         />
         <View style={styles.chatHeaderSpacer} />
         <GlassSurface
-          backgroundColor={reduceTransparency ? tokens.raised : tokens.mode === 'dark' ? 'rgba(22,29,27,0.42)' : 'rgba(255,255,255,0.16)'}
-          borderColor={reduceTransparency ? tokens.border : tokens.mode === 'dark' ? 'rgba(190,210,205,0.16)' : 'rgba(255,255,255,0.72)'}
+          backgroundColor={reduceTransparency ? tokens.raised : liquidPillPalette[tokens.mode].background}
+          borderColor={reduceTransparency ? tokens.border : liquidPillPalette[tokens.mode].border}
           material="liquid"
           mode={tokens.mode}
           showEdgeHighlight={false}

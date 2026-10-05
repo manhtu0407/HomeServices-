@@ -20,7 +20,8 @@ import {
   type WorkerJobsLegacyPrototypeRuntime,
   workerJobsLegacyPrototypeStageEightCompletionWorkart,
 } from './worker-jobs-zip-prototype-shared'
-import { prototypeStyles } from './worker-jobs-zip-prototype-styles'
+import { prototypeStyles as prototypeStylesLight } from './worker-jobs-zip-prototype-styles'
+import { useWorkerColor, useWorkerThemedStyles } from '../ui/worker-dark-styles'
 
 export function WorkerJobsLegacyPrototypeStageFiveBody({
   actionBusy,
@@ -39,6 +40,8 @@ export function WorkerJobsLegacyPrototypeStageFiveBody({
   runRouteAction: () => void | Promise<void>
   runtime: WorkerJobsLegacyPrototypeRuntime
 }) {
+  const prototypeStyles = useWorkerThemedStyles(prototypeStylesLight)
+  const wc = useWorkerColor()
   const deal = runtime.state.deal
   if (deal) {
     return (
@@ -59,7 +62,7 @@ export function WorkerJobsLegacyPrototypeStageFiveBody({
   const evidenceSlots = [null, null, null]
   return (
     <View style={prototypeStyles.bodyStack} testID="worker-v5-stage-five-prototype">
-      <View style={[prototypeStyles.stageSummaryCard, reduceTransparency && { backgroundColor: color.mint.white }]} testID="worker-v5-stage-five-summary-card">
+      <View style={[prototypeStyles.stageSummaryCard, reduceTransparency && { backgroundColor: wc('surface', color.mint.white) }]} testID="worker-v5-stage-five-summary-card">
         <View style={prototypeStyles.stageSummaryCopy}>
           <Text style={prototypeStyles.stageSummaryEyebrow}>{textByLanguage(language, 'Tiến độ theo trạng thái', 'Progress by status')}</Text>
           <Text style={prototypeStyles.stageSummaryTitle}>{textByLanguage(language, 'Chưa có việc', 'No active job')}</Text>
@@ -123,6 +126,7 @@ export function WorkerJobsLegacyPrototypeStageSixBody({
   reduceTransparency: boolean
   runtime: WorkerJobsLegacyPrototypeRuntime
 }) {
+  const prototypeStyles = useWorkerThemedStyles(prototypeStylesLight)
   const scopeChange = useWorkerV5ScopeChangeActions({ deal: runtime.state.deal, language, runtime })
   if (scopeChange.scopeEvidenceOpen) {
     return <View style={prototypeStyles.bodyStack}><WorkerV5ScopeChangeBody language={language} navigateNext={navigateNext} reduceTransparency={reduceTransparency} scopeChange={scopeChange} /></View>
@@ -187,6 +191,8 @@ export function WorkerJobsLegacyPrototypeStageEightBody({
   reduceTransparency: boolean
   runtime: WorkerJobsLegacyPrototypeRuntime
 }) {
+  const prototypeStyles = useWorkerThemedStyles(prototypeStylesLight)
+  const wc = useWorkerColor()
   const deal = runtime.state.deal
   const jobId = deal?.id ?? null
   const [completionNote, setCompletionNote] = useState(deal?.completionNotes ?? '')
@@ -283,7 +289,7 @@ export function WorkerJobsLegacyPrototypeStageEightBody({
   const fieldEvidencePhotoUrls = deal?.fieldEvidencePhotoUrls ?? []
   return (
     <View style={prototypeStyles.bodyStack} testID="worker-v5-stage-eight-prototype">
-      <View style={[prototypeStyles.stageCompletionHero, reduceTransparency && { backgroundColor: color.mint.white }]} testID="worker-v5-stage-eight-hero">
+      <View style={[prototypeStyles.stageCompletionHero, reduceTransparency && { backgroundColor: wc('surface', color.mint.white) }]} testID="worker-v5-stage-eight-hero">
         <View style={prototypeStyles.stageCompletionCopy}>
           <Text style={prototypeStyles.stageCompletionKicker}>{textByLanguage(language, 'Hoàn tất công việc', 'Complete the job')}</Text>
           <Text numberOfLines={2} style={prototypeStyles.stageCompletionTitle}>{hasCompletionPhoto || Boolean(completionNote.trim()) ? textByLanguage(language, 'Hồ sơ đang hoàn thiện', 'Completion record in progress') : textByLanguage(language, 'Chưa có hồ sơ hoàn tất', 'No completion record yet')}</Text>
@@ -321,7 +327,7 @@ export function WorkerJobsLegacyPrototypeStageEightBody({
         <Text style={prototypeStyles.stageSectionTitle}>{textByLanguage(language, 'Ảnh hoàn tất', 'Completion photos')}</Text>
         <Text style={prototypeStyles.stageSectionAction}>{completionPhotoUrls.length} ảnh</Text>
       </View>
-      <View style={[prototypeStyles.stageCompletionPhotoCard, reduceTransparency && { backgroundColor: color.mint.white }]} testID="worker-v5-completion-after-gallery">
+      <View style={[prototypeStyles.stageCompletionPhotoCard, reduceTransparency && { backgroundColor: wc('surface', color.mint.white) }]} testID="worker-v5-completion-after-gallery">
         {completionPhotoUrls.length > 0 ? (
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
             {completionPhotoUrls.map((uri) => <Image key={uri} contentFit="cover" source={{ uri }} style={prototypeStyles.stageCompletionPhoto} />)}

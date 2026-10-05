@@ -13,9 +13,10 @@ import type { WorkerV5IconName } from '../dock/types'
 import { formatNullablePercent, formatNullableRating, textByLanguage } from '../ui/format'
 import { workerPerformanceAxisLabel, workerPerformanceAxisShortLabel } from '../ui/labels'
 import { WorkerV5ProfileFormulaCard } from './worker-profile-formula-surfaces'
-import { styles as formulaStyles } from './worker-profile-formula-styles'
+import { styles as formulaStylesLight } from './worker-profile-formula-styles'
 import { WorkerReviewsGlyph } from './worker-profile-sections-surfaces'
-import { styles } from './reviews-styles'
+import { styles as stylesLight } from './reviews-styles'
+import { useWorkerThemedStyles } from '../ui/worker-dark-styles'
 
 type WorkerV5ReviewsProfile = WorkerProfileResponse | null | undefined
 type WorkerV5ReviewsInsights = WorkerPerformanceInsightsResponse | null | undefined
@@ -29,6 +30,7 @@ type WorkerV5KaelBriefCard = ComponentType<{
 }>
 
 function Text({ style, ...props }: TextProps) {
+  const styles = useWorkerThemedStyles(stylesLight)
   return <RNText {...props} style={[styles.workerCustomerFontText, style]} />
 }
 
@@ -54,6 +56,8 @@ export function WorkerV5ReviewsHero({
   profile: WorkerV5ReviewsProfile
   reduceTransparency: boolean
 }) {
+  const formulaStyles = useWorkerThemedStyles(formulaStylesLight)
+  const styles = useWorkerThemedStyles(stylesLight)
   const rating = insights?.average_rating ?? profile?.rating ?? null
   const hasRating = typeof rating === 'number' && rating > 0
   const reviewCount = typeof insights?.review_count === 'number' && Number.isFinite(insights.review_count)
@@ -100,6 +104,7 @@ export function WorkerV5ReviewSignalGrid({
   metricTile: WorkerV5MetricTile
   profile: WorkerV5ReviewsProfile
 }) {
+  const styles = useWorkerThemedStyles(stylesLight)
   const axisCells = insights?.performance_axes
     ?.filter((axis) => typeof axis.score === 'number' && Number.isFinite(axis.score))
     .slice(0, 3)
@@ -133,6 +138,7 @@ export function WorkerV5RecentFeedbackList({
   language: AppLanguage
   reduceTransparency: boolean
 }) {
+  const styles = useWorkerThemedStyles(stylesLight)
   const reviewCount = typeof insights?.review_count === 'number' && Number.isFinite(insights.review_count)
     ? insights.review_count
     : null

@@ -11,7 +11,8 @@ import {
   WorkerV5ProfileGroupDivider,
   WorkerV5ProfileGroupRow,
 } from './grouped-list-surfaces'
-import { styles } from './overview-styles'
+import { styles as lightStyles } from './overview-styles'
+import { useWorkerThemedStyles } from '../ui/worker-dark-styles'
 
 type WorkerV5ProfileOverviewProfile = WorkerProfileResponse | null | undefined
 type WorkerV5ProfileOverviewInsights = WorkerPerformanceInsightsResponse | null | undefined
@@ -38,6 +39,7 @@ export function WorkerV5ProfileDossierCard({
   onSignOut: () => void
   profile: WorkerV5ProfileOverviewProfile
 }) {
+  const styles = useWorkerThemedStyles(lightStyles)
   const selectedServices = profile?.selected_service_types
     ?? profile?.active_service_types
     ?? profile?.service_types

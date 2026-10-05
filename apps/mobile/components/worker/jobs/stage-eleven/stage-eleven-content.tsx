@@ -1,12 +1,16 @@
 import React from 'react'
 import { Dimensions, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { Image } from 'expo-image'
+import { PrimaryCtaFill, primaryCtaFrame } from '@/components/ui/primary-cta-fill'
 import { stageTypography } from '../stage-ratio'
 import { StageElevenIcon, type StageElevenIconName } from './stage-eleven-icons'
 import { StageElevenSuccess } from './stage-eleven-success'
 import { formatStageElevenDate, formatStageElevenMoney, stageElevenServiceName, text11 } from './stage-eleven-model'
-import { stageElevenTokens as t } from './stage-eleven.tokens'
+import { stageElevenTokens as tLight } from './stage-eleven.tokens'
 import type { StageElevenActions, StageElevenImage, StageElevenLanguage, StageElevenModel, StageElevenSupplement } from './stage-eleven.types'
+import { workerThemedStylesProxy, workerThemedTokensProxy } from '../../ui/worker-dark-styles'
+
+const t = workerThemedTokensProxy(tLight)
 
 export type StageElevenContentProps = {
   model: StageElevenModel
@@ -215,54 +219,58 @@ function Detail({ icon, label, value, windowWidth }: { icon: StageElevenIconName
 function Button({ label, icon, onPress, primary, disabled, testID, windowWidth }: { label: string; icon: StageElevenIconName; onPress: () => void; primary?: boolean; disabled?: boolean; testID?: string; windowWidth: number }) {
   return <Pressable onPress={onPress} disabled={disabled} accessibilityRole="button" accessibilityState={{ disabled: !!disabled }}
     style={({ pressed }) => [s.button, primary && s.primaryButton, disabled && s.disabled, pressed && !disabled && s.pressed]} testID={testID}>
-    <StageElevenIcon name={icon} size={19} color={primary ? '#FFFFFF' : t.text} filled={!!primary}/>
-    <Text style={[stageTypography('footnote', windowWidth), s.buttonText, primary && { color: '#FFFFFF' }]}>{label}</Text>
+    {primary ? <PrimaryCtaFill radius={0}/> : null}
+    <View style={s.buttonContent}>
+      <StageElevenIcon name={icon} size={19} color={primary ? '#FFFFFF' : t.text} filled={!!primary}/>
+      <Text style={[stageTypography('footnote', windowWidth), s.buttonText, primary && { color: '#FFFFFF' }]}>{label}</Text>
+    </View>
   </Pressable>
 }
-const s = StyleSheet.create({
-  page: { flex: 1, backgroundColor: t.canvas },
+const s = workerThemedStylesProxy(StyleSheet.create({
+  page: { flex: 1, backgroundColor: tLight.canvas },
   scrollContent: { paddingHorizontal: 20, paddingTop: 8 },
-  content: { gap: 12, width: '100%', maxWidth: 520, alignSelf: 'center', backgroundColor: t.canvas },
+  content: { gap: 12, width: '100%', maxWidth: 520, alignSelf: 'center', backgroundColor: tLight.canvas },
   header: { flexDirection: 'row', alignItems: 'center', minHeight: 52, gap: 8 },
-  back: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', backgroundColor: '#F9FCFB', boxShadow: t.shadow },
+  back: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', backgroundColor: '#F9FCFB', boxShadow: tLight.shadow },
   hero: { alignItems: 'center', paddingTop: 0, paddingBottom: 5 },
-  successPill: { borderRadius: 99, backgroundColor: t.mintStrong, paddingVertical: 7, paddingHorizontal: 18, maxWidth: '100%' },
-  pendingPill: { backgroundColor: '#FFF6E8' }, successTitle: { fontWeight: '600', color: t.greenDark, textAlign: 'center' },
-  amount: { fontWeight: '700', fontVariant: ['tabular-nums'], color: t.greenDeep, marginTop: 7 },
-  heroSubtitle: { color: t.muted, textAlign: 'center', paddingHorizontal: 8, marginTop: 1 },
+  successPill: { borderRadius: 99, backgroundColor: tLight.mintStrong, paddingVertical: 7, paddingHorizontal: 18, maxWidth: '100%' },
+  pendingPill: { backgroundColor: '#FFF6E8' }, successTitle: { fontWeight: '600', color: tLight.greenDark, textAlign: 'center' },
+  amount: { fontWeight: '700', fontVariant: ['tabular-nums'], color: tLight.greenDeep, marginTop: 7 },
+  heroSubtitle: { color: tLight.muted, textAlign: 'center', paddingHorizontal: 8, marginTop: 1 },
   summary: { flexDirection: 'row', gap: 9 },
-  summaryTile: { flex: 1, backgroundColor: t.mint, borderRadius: 16, paddingHorizontal: 5, paddingVertical: 13, minHeight: 97, alignItems: 'center', justifyContent: 'center', gap: 5 },
-  summaryTitle: { textAlign: 'center', fontWeight: '600', color: t.text },
-  summaryValue: { textAlign: 'center', color: t.muted },
-  card: { backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: t.line, borderRadius: t.cardRadius, padding: 13, boxShadow: t.shadow },
+  summaryTile: { flex: 1, backgroundColor: tLight.mint, borderRadius: 16, paddingHorizontal: 5, paddingVertical: 13, minHeight: 97, alignItems: 'center', justifyContent: 'center', gap: 5 },
+  summaryTitle: { textAlign: 'center', fontWeight: '600', color: tLight.text },
+  summaryValue: { textAlign: 'center', color: tLight.muted },
+  card: { backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: tLight.line, borderRadius: tLight.cardRadius, padding: 13, boxShadow: tLight.shadow },
   cardHeading: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 7, marginBottom: 12, minHeight: 28 },
   headingLabel: { flexDirection: 'row', alignItems: 'center', gap: 8, flexShrink: 1 },
-  cardTitle: { fontWeight: '600', color: t.text, flexShrink: 1 },
-  chip: { borderRadius: 99, backgroundColor: t.mint, color: t.greenDark, fontWeight: '600', paddingHorizontal: 9, paddingVertical: 5, overflow: 'hidden' },
+  cardTitle: { fontWeight: '600', color: tLight.text, flexShrink: 1 },
+  chip: { borderRadius: 99, backgroundColor: tLight.mint, color: tLight.greenDark, fontWeight: '600', paddingHorizontal: 9, paddingVertical: 5, overflow: 'hidden' },
   jobRow: { flexDirection: 'row', gap: 12, alignItems: 'stretch' }, photo: { width: 105, minHeight: 120, borderRadius: 12, overflow: 'hidden', backgroundColor: '#F3F7F5' },
   photoCompact: { width: 84 }, photoImage: { width: '100%', height: '100%', position: 'absolute' },
-  photoFallback: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: 6 }, photoFallbackText: { color: t.muted },
-  jobDetails: { flex: 1, gap: 5 }, jobName: { fontWeight: '600', color: t.text },
-  meta: { flexDirection: 'row', gap: 6, alignItems: 'flex-start' }, metaText: { flex: 1, color: t.muted },
-  rating: { flexDirection: 'row', alignItems: 'center', gap: 1, marginTop: 2 }, ratingValue: { marginLeft: 6, fontWeight: '600', color: t.text },
-  noRating: { color: t.muted },
+  photoFallback: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: 6 }, photoFallbackText: { color: tLight.muted },
+  jobDetails: { flex: 1, gap: 5 }, jobName: { fontWeight: '600', color: tLight.text },
+  meta: { flexDirection: 'row', gap: 6, alignItems: 'flex-start' }, metaText: { flex: 1, color: tLight.muted },
+  rating: { flexDirection: 'row', alignItems: 'center', gap: 1, marginTop: 2 }, ratingValue: { marginLeft: 6, fontWeight: '600', color: tLight.text },
+  noRating: { color: tLight.muted },
   disclosureHeading: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', minHeight: 44, marginTop: -7, marginBottom: 3 },
   detailRows: { gap: 12 }, detail: { flexDirection: 'row', alignItems: 'flex-start', gap: 7 },
-  detailLabel: { color: t.muted, flex: 1 },
-  detailValue: { color: t.text, textAlign: 'right', flex: 1.15, fontVariant: ['tabular-nums'] },
+  detailLabel: { color: tLight.muted, flex: 1 },
+  detailValue: { color: tLight.text, textAlign: 'right', flex: 1.15, fontVariant: ['tabular-nums'] },
   transactionRow: { flexDirection: 'row', alignItems: 'center' }, transactionValue: { flex: 1 }, copy: { width: 44, height: 44, marginVertical: -13, alignItems: 'flex-end', justifyContent: 'center' },
-  totalRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderTopWidth: 1, borderTopColor: t.line, paddingTop: 12, gap: 10 },
-  totalLabel: { flexShrink: 1, fontWeight: '600', color: t.text },
-  totalValue: { fontWeight: '700', color: t.green, fontVariant: ['tabular-nums'] },
-  emptyCopy: { color: t.muted }, inlineLink: { minHeight: 44, justifyContent: 'center' }, linkText: { color: t.greenDark, fontWeight: '600' },
+  totalRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderTopWidth: 1, borderTopColor: tLight.line, paddingTop: 12, gap: 10 },
+  totalLabel: { flexShrink: 1, fontWeight: '600', color: tLight.text },
+  totalValue: { fontWeight: '700', color: tLight.green, fontVariant: ['tabular-nums'] },
+  emptyCopy: { color: tLight.muted }, inlineLink: { minHeight: 44, justifyContent: 'center' }, linkText: { color: tLight.greenDark, fontWeight: '600' },
   // Quiet, white closing note: same content inset and typography as the cards.
   // No mint banner, oversized icon bubble, or additional card inside the card stack.
-  thanks: { flexDirection: 'row', gap: 10, alignItems: 'flex-start', backgroundColor: t.canvas, paddingHorizontal: 13, paddingTop: 9, paddingBottom: 9 },
+  thanks: { flexDirection: 'row', gap: 10, alignItems: 'flex-start', backgroundColor: tLight.canvas, paddingHorizontal: 13, paddingTop: 9, paddingBottom: 9 },
   thanksIcon: { width: 27, height: 27, alignItems: 'center', justifyContent: 'center', marginTop: 1 },
-  thanksCopy: { flex: 1, gap: 3 }, thanksTitle: { fontWeight: '600', color: t.text }, thanksBody: { color: t.muted },
+  thanksCopy: { flex: 1, gap: 3 }, thanksTitle: { fontWeight: '600', color: tLight.text }, thanksBody: { color: tLight.muted },
   actions: { gap: 9, marginTop: 1 },
   button: { minHeight: 47, paddingHorizontal: 11, paddingVertical: 10, borderRadius: 24, borderWidth: 1, borderColor: '#DCE5EC', backgroundColor: '#FFFFFF', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7 },
-  primaryButton: { minHeight: 52, backgroundColor: '#00956D', borderColor: '#00956D' }, buttonText: { fontWeight: '600', color: t.text, flexShrink: 1, textAlign: 'center' },
+  buttonContent: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, flexShrink: 1 },
+  primaryButton: { minHeight: 52, backgroundColor: '#24B3A1', overflow: 'hidden', ...primaryCtaFrame }, buttonText: { fontWeight: '600', color: tLight.text, flexShrink: 1, textAlign: 'center' },
   disabled: { opacity: .45 }, pressed: { opacity: .76, transform: [{ scale: .985 }] },
-  notice: { color: t.greenDark, paddingVertical: 6 },
-})
+  notice: { color: tLight.greenDark, paddingVertical: 6 },
+}))

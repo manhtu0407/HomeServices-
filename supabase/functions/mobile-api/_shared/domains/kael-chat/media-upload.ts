@@ -27,6 +27,13 @@ export type KaelMediaStorage = {
         data: { signedUrl?: string } | null;
         error: unknown;
       }>;
+      createSignedUrls?(
+        paths: string[],
+        expiresIn: number,
+      ): Promise<{
+        data: Array<{ path: string | null; signedUrl?: string | null; error?: string | null }> | null;
+        error: unknown;
+      }>;
       remove?(
         paths: string[],
       ): Promise<{ data?: unknown; error: unknown }>;

@@ -1,9 +1,12 @@
 import React from 'react'
 import { AccessibilityInfo, Animated, AppState, Easing, Platform, StyleSheet, View } from 'react-native'
 import Svg, { Circle, Defs, LinearGradient, Path, Stop } from 'react-native-svg'
-import { stageElevenMotion as m, stageElevenTokens as t } from './stage-eleven.tokens'
+import { stageElevenMotion as m, stageElevenTokens as tLight } from './stage-eleven.tokens'
 import { StageElevenIcon } from './stage-eleven-icons'
 import type { StageElevenState } from './stage-eleven.types'
+import { workerThemedStylesProxy, workerThemedTokensProxy } from '../../ui/worker-dark-styles'
+
+const t = workerThemedTokensProxy(tLight)
 
 const AnimatedPath = Animated.createAnimatedComponent(Path)
 let nextId = 0
@@ -131,11 +134,11 @@ export class StageElevenSuccess extends React.PureComponent<StageElevenSuccessPr
     </View>
   }
 }
-const s = StyleSheet.create({
+const s = workerThemedStylesProxy(StyleSheet.create({
   stage: { height: 124, width: 180, alignItems: 'center', justifyContent: 'center', alignSelf: 'center' },
   halo: { position: 'absolute', width: 116, height: 116, borderRadius: 58, borderWidth: 1, borderColor: '#7EDCBB' },
   ring: { position: 'absolute', width: 106, height: 106, borderRadius: 53, backgroundColor: t.mintStrong },
   core: { width: 76, height: 76, borderRadius: 38 },
   spark: { position: 'absolute', width: 3, height: 9, borderRadius: 2 },
   pending: { width: 76, height: 76, borderRadius: 38, borderWidth: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#FFF9F0' },
-})
+}))

@@ -15,9 +15,10 @@ import { WorkerV5IntegratedIcon } from '../ui/integrated-icon-surfaces'
 import { workerPerformanceAxisLabel } from '../ui/labels'
 import { workerV5HasNumber, workerV5NumericInsight } from '../ui/performance'
 import { WorkerV5DetailRail } from '../ui/worker-v5-detail-rail'
-import { styles } from './ranking-styles'
+import { styles as lightStyles } from './ranking-styles'
+import { useWorkerThemedStyles } from '../ui/worker-dark-styles'
 import { WorkerV5ProfileFormulaCard } from './worker-profile-formula-surfaces'
-import { styles as formulaStyles } from './worker-profile-formula-styles'
+import { styles as formulaStylesLight } from './worker-profile-formula-styles'
 
 type WorkerV5RankingProfile = WorkerProfileResponse | null | undefined
 type WorkerV5RankingInsights = WorkerPerformanceInsightsResponse | null | undefined
@@ -60,6 +61,7 @@ function rankingAxisStatus(axisId: string, score: number | null, insights: Worke
 }
 
 function Text({ style, ...props }: TextProps) {
+  const styles = useWorkerThemedStyles(lightStyles)
   return <RNText {...props} style={[styles.workerCustomerFontText, style]} />
 }
 
@@ -76,6 +78,8 @@ export function WorkerV5RankingStatsStrip({
   profile: WorkerV5RankingProfile
   reduceTransparency: boolean
 }) {
+  const formulaStyles = useWorkerThemedStyles(formulaStylesLight)
+  const styles = useWorkerThemedStyles(lightStyles)
   const pending = textByLanguage(language, 'Chờ', 'Pending')
   const completedJobCount = insights?.completed_job_count ?? profile?.total_jobs
   const stats = [
@@ -119,6 +123,7 @@ export function WorkerV5RankingLeaderboard({
   profileIcon: ImageSourcePropType
   reduceTransparency: boolean
 }) {
+  const styles = useWorkerThemedStyles(lightStyles)
   const score = workerV5HasNumber(insights?.performance_score)
     ? workerV5NumericInsight(insights.performance_score)
     : null
@@ -179,6 +184,7 @@ export function WorkerV5RankingImprovementList({
   listAura: WorkerV5RankingAura
   reduceTransparency: boolean
 }) {
+  const styles = useWorkerThemedStyles(lightStyles)
   const scoreByAxis = new Map(insights?.performance_axes.map((axis) => [axis.id, axis.score] as const) ?? [])
   const rows = rankingImprovementAxisOrder.map((id) => ({ id, score: scoreByAxis.get(id) ?? null }))
   return (

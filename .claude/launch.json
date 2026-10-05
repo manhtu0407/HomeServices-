@@ -43,6 +43,15 @@
       "port": 8085
     },
     {
+      "name": "mobile-web-production-linux",
+      "runtimeExecutable": "bash",
+      "runtimeArgs": [
+        "-c",
+        "set -a; . apps/mobile/.env.local; set +a; export EXPO_NO_DOTENV=1 NESTSCOUT_MOBILE_ENV_FILE=\"$PWD/apps/mobile/.env.local\" BROWSER=none; cd apps/mobile && exec node node_modules/expo/bin/cli start --web --port 8085 --clear"
+      ],
+      "port": 8085
+    },
+    {
       "name": "api-nextjs",
       "runtimeExecutable": "powershell.exe",
       "runtimeArgs": [

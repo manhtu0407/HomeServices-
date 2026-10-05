@@ -112,7 +112,6 @@ export function ProfilePersonalDetailsPrototype() {
         <KaelButton
           label={saved ? 'Đã lưu' : 'Lưu thay đổi'}
           onPress={() => setSaved(true)}
-          showPrimaryGradient={false}
           style={styles.saveButton}
           testID="customer-profile-personal-details-prototype-save"
           variant="primary"

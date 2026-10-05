@@ -1,11 +1,12 @@
 import { useState, type ComponentProps, type ReactNode } from 'react'
 import { Keyboard, KeyboardAvoidingView, Platform, Text, View, type StyleProp, type TextStyle, type ViewStyle } from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
+import { SafeAreaView, type Edge } from 'react-native-safe-area-context'
 import Animated from 'react-native-reanimated'
 
 import type { AppLanguage } from '@/lib/app-language'
 import type { LocalMediaUploadDraft } from '@/lib/media-upload'
 import type { KaelReasoningReceiptState } from '@/lib/kael-reasoning-receipt'
+import { useKaelComposerBottomInset } from '@/components/ui/use-kael-composer-bottom-inset'
 
 import type { CustomerThemeTokens } from '../customer-theme'
 import { customerV21HistoryActiveStyles as historyActiveStyles } from '../history/history-active-styles'
@@ -66,6 +67,7 @@ type Props = {
   onToggleNormalReasoningReceipt: () => void
   onToggleSessionMenu?: () => void
   pendingDraftMessage: string
+  pendingNormalImageUris: string[]
   pendingNormalMessage: string | null
   processLinesNode: ReactNode
   rootStyles: RootChatStyles
@@ -86,6 +88,9 @@ type Props = {
   }
   workerCandidateNode: ReactNode
 }
+
+// The bottom edge is padded by useKaelComposerBottomInset so the composer can sit near the device edge.
+const KAEL_CHAT_SAFE_AREA_EDGES: Edge[] = ['top', 'left', 'right']
 
 export function KaelChatSurfaceView({
   agenticEstimateNode,
@@ -118,6 +123,7 @@ export function KaelChatSurfaceView({
   onToggleNormalReasoningReceipt,
   onToggleSessionMenu,
   pendingDraftMessage,
+  pendingNormalImageUris,
   pendingNormalMessage,
   processLinesNode,
   rootStyles,
@@ -158,6 +164,7 @@ export function KaelChatSurfaceView({
     normalReasoningReceipt,
     onToggleNormalReasoningReceipt,
     pendingDraftMessage,
+    pendingNormalImageUris,
     pendingNormalMessage,
     processLinesNode,
     reduceMotion,
@@ -168,6 +175,7 @@ export function KaelChatSurfaceView({
     tokens,
     workerCandidateNode,
   })
+  const composerBottomInset = useKaelComposerBottomInset()
   const toggleSessionMenu = () => {
     Keyboard.dismiss()
     setComposerFocused(false)
@@ -180,11 +188,11 @@ export function KaelChatSurfaceView({
   }
 
   return (
-    <SafeAreaView style={[sharedStyles.safeArea, { backgroundColor: tokens.canvas }]} testID="customer-v21-kael-chat">
+    <SafeAreaView edges={KAEL_CHAT_SAFE_AREA_EDGES} style={[sharedStyles.safeArea, { backgroundColor: tokens.canvas }]} testID="customer-v21-kael-chat">
       <CustomerThemeSystemBar mode={tokens.mode} />
       <ChatCanvasAura mode={tokens.mode} reduceTransparency={reduceTransparency} />
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={rootStyles.flex}>
-        <View style={[chatStyles.chatFrame, mode === 'case' ? historyActiveStyles.caseChatFrame : null]} testID={mode === 'normal' ? 'customer-v21-screen-2.4-chat-normal' : 'customer-v21-screen-2.5-chat-case'}>
+        <View style={[chatStyles.chatFrame, { paddingBottom: composerBottomInset }, mode === 'case' ? historyActiveStyles.caseChatFrame : null]} testID={mode === 'normal' ? 'customer-v21-screen-2.4-chat-normal' : 'customer-v21-screen-2.5-chat-case'}>
           <CustomerKaelChatHeader
             animatedModeMenuStyle={animatedModeMenuStyle}
             caseWorkLabel={caseWorkLabel}

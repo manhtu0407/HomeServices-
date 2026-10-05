@@ -6,7 +6,7 @@ import Svg, { Circle, Path, Rect } from 'react-native-svg'
 import { motionTokens } from '@/components/ui/motion-tokens'
 import { KaelButton } from '@/components/ui/kael-primitives'
 import { ProfileSettingsGlyph } from '@/components/customer/profile/profile-settings-icons'
-import { color } from '@/design/theme'
+import { color, customerTheme } from '@/design/theme'
 import { type AppLanguage } from '@/lib/app-language'
 import { textByLanguage } from '../ui/format'
 import { workerAvailabilityLabel } from '../ui/labels'
@@ -254,7 +254,7 @@ export function WorkerV5AvailabilityCard({
           themeMode === 'dark' ? styles.availabilityArtworkFrameDark : null,
         ]
         const avatarContent = avatarUploadBusy && usesProfileAvatarPresentation ? (
-          <ActivityIndicator color={themeMode === 'dark' ? '#63E6D0' : color.brand.primaryDark} size="small" testID="worker-v5-availability-avatar-loading" />
+          <ActivityIndicator color={themeMode === 'dark' ? customerTheme.darkLayer.primary : color.brand.primaryDark} size="small" testID="worker-v5-availability-avatar-loading" />
         ) : showAvatar ? (
           <Image
             accessibilityLabel={textByLanguage(language, 'Ảnh đại diện của thợ', 'Worker profile photo')}
@@ -269,7 +269,7 @@ export function WorkerV5AvailabilityCard({
         ) : showProfilePlaceholder ? (
           <View style={styles.availabilityAvatarPlaceholder} testID="worker-v5-availability-avatar-placeholder">
             <ProfileSettingsGlyph
-              color={themeMode === 'dark' ? '#F1F6F4' : color.text.primary}
+              color={themeMode === 'dark' ? customerTheme.darkLayer.text : color.text.primary}
               name="personal"
               testID="worker-v5-availability-avatar-placeholder-glyph"
             />
@@ -290,7 +290,7 @@ export function WorkerV5AvailabilityCard({
             testID="worker-v5-availability-camera-badge"
           >
             <CameraGlyph
-              color={themeMode === 'dark' ? '#F1F6F4' : color.text.primary}
+              color={themeMode === 'dark' ? customerTheme.darkLayer.text : color.text.primary}
               testID="worker-v5-availability-camera-glyph"
             />
           </View>

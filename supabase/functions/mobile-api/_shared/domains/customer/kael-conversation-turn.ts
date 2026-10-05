@@ -30,7 +30,11 @@ import {
 } from "../../platform/coercions.ts";
 import { db, dbQuery, type DbClient } from "../../platform/db.ts";
 import { answerKaelAssistant } from "./assistant.ts";
-import { buildKaelVisionValidationEvidence, createSignedVisionUrls } from "../kael-chat/media-vision.ts";
+import {
+  buildKaelVisionValidationEvidence,
+  createKaelChatMediaPreviews,
+  createSignedVisionUrls,
+} from "../kael-chat/media-vision.ts";
 import { validateAndConsumeKaelChatEvidenceMediaRefs } from "../kael-chat/media-upload.ts";
 import { cancelJob, requestCustomerCancellation } from "./cancellation.ts";
 import type {
@@ -76,7 +80,10 @@ export async function getCustomerKaelConversation(
   const linkedCase = caseSessionId
     ? await readLinkedCustomerCaseSession(client, ctx.user.id, caseSessionId)
     : null;
-  const turns = await readCustomerConversationTurns(client, ctx.user.id, conversationId);
+  const turns = await withCustomerMediaPreviews(
+    ctx,
+    await readCustomerConversationTurns(client, ctx.user.id, conversationId),
+  );
   return {
     session: serializeCustomerConversation(linkedCase
       ? {
@@ -482,6 +489,25 @@ function serializeCustomerConversationTurn(
     media_refs: role === "customer" ? customerConversationMediaRefs(row.media_refs) : [],
     created_at: asString(row.created_at),
   };
+}
+
+async function withCustomerMediaPreviews(
+  ctx: MobileApiContext,
+  turns: EdgeCustomerKaelConversationTurnResponse[],
+) {
+  const refs = turns.flatMap((turn) => turn.media_refs ?? []);
+  if (refs.length === 0) return turns;
+  const previews = new Map(
+    (await createKaelChatMediaPreviews(ctx, refs, ctx.user.id)).map((preview) => [preview.ref, preview]),
+  );
+  return turns.map((turn) =>
+    turn.media_refs?.length
+      ? {
+        ...turn,
+        media_previews: turn.media_refs.map((ref) => previews.get(ref) ?? { ref, status: "unavailable" as const, url: null }),
+      }
+      : turn
+  );
 }
 
 function customerConversationMediaRefs(value: unknown): string[] {

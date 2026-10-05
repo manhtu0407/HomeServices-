@@ -1,6 +1,6 @@
 import { StyleSheet } from 'react-native'
 
-import { color, radius, shadow, typography } from '@/design/theme'
+import { color, customerTheme, radius, shadow, typography } from '@/design/theme'
 
 export const styles = StyleSheet.create({
   workerCustomerFontText: {
@@ -37,7 +37,7 @@ export const styles = StyleSheet.create({
   },
   earningsHeroCardDark: {
     backgroundColor: '#171D1B',
-    borderColor: 'rgba(190,210,205,0.16)',
+    borderColor: customerTheme.darkLayer.glassBorder,
   },
   earningsHeroCopy: {
     flex: 1,
@@ -59,7 +59,7 @@ export const styles = StyleSheet.create({
     width: 48,
   },
   memoryHeroIconFrameDark: {
-    borderColor: 'rgba(190,210,205,0.16)',
+    borderColor: customerTheme.darkLayer.glassBorder,
   },
   memorySwitchCopy: {
     flex: 1,
@@ -77,7 +77,7 @@ export const styles = StyleSheet.create({
   },
   memorySwitchListDark: {
     backgroundColor: '#171D1B',
-    borderColor: 'rgba(190,210,205,0.16)',
+    borderColor: customerTheme.darkLayer.glassBorder,
   },
   memorySwitchRow: {
     alignItems: 'center',
@@ -90,7 +90,7 @@ export const styles = StyleSheet.create({
     paddingVertical: 10,
   },
   memorySwitchRowDark: {
-    borderBottomColor: 'rgba(190,210,205,0.16)',
+    borderBottomColor: customerTheme.darkLayer.glassBorder,
   },
   memorySwitchRowLast: {
     borderBottomWidth: 0,
@@ -100,7 +100,7 @@ export const styles = StyleSheet.create({
     ...typography.subheadline,
   },
   darkText: {
-    color: '#F1F6F4',
+    color: customerTheme.darkLayer.text,
   },
   memorySwitchIconFrame: {
     alignItems: 'center',
@@ -113,14 +113,14 @@ export const styles = StyleSheet.create({
     width: 36,
   },
   memorySwitchIconFrameDark: {
-    borderColor: 'rgba(190,210,205,0.16)',
+    borderColor: customerTheme.darkLayer.glassBorder,
   },
   memorySwitchValue: {
     color: color.text.secondary,
     ...typography.caption2,
   },
   memorySwitchValueDark: {
-    color: '#A9B7B3',
+    color: customerTheme.darkLayer.muted,
   },
   toggleKnob: {
     backgroundColor: color.surface.base,
@@ -133,7 +133,7 @@ export const styles = StyleSheet.create({
     width: 20,
   },
   toggleKnobDark: {
-    backgroundColor: '#F1F6F4',
+    backgroundColor: customerTheme.darkLayer.text,
   },
   toggleKnobOn: {
     marginLeft: 18,
@@ -149,7 +149,7 @@ export const styles = StyleSheet.create({
     width: 44,
   },
   toggleTrackDark: {
-    backgroundColor: 'rgba(190,210,205,0.22)',
+    backgroundColor: customerTheme.darkLayer.ghost,
   },
   toggleTrackOn: {
     backgroundColor: color.brand.primary,

@@ -8,7 +8,8 @@ import {
 
 import { MintAura } from '@/components/ui/kael-primitives'
 
-import { styles } from './integrated-icon-styles'
+import { styles as lightStyles } from './integrated-icon-styles'
+import { useWorkerThemedStyles } from './worker-dark-styles'
 
 type WorkerV5IntegratedIconVariant =
   | 'compact'
@@ -49,6 +50,7 @@ export function WorkerV5IntegratedIcon({
   tone?: WorkerV5IntegratedIconTone
   variant?: WorkerV5IntegratedIconVariant
 }) {
+  const styles = useWorkerThemedStyles(lightStyles)
   const isPanel = variant === 'compactPanel' || variant === 'heroPanel' || variant === 'panel' || variant === 'stagePanel'
   const anchorStyle = variant === 'compact'
     ? styles.iconAnchorCompact

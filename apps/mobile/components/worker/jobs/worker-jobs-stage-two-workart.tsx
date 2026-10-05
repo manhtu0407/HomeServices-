@@ -5,8 +5,9 @@ import Svg, { Defs, Rect } from 'react-native-svg'
 import type { CustomerServiceId, LocalDeal, ServiceType } from '@nestscout/shared'
 import { customerV21Assets, customerV21BookingWorkartAssets } from '@/components/customer/ui/assets'
 import { AlphaStop as Stop, NativeSafeLinearGradient as LinearGradient } from '@/components/ui/svg-alpha-stop'
-import { stageTwoStyles } from './worker-jobs-zip-prototype-styles'
+import { stageTwoStyles as stageTwoStylesLight } from './worker-jobs-zip-prototype-styles'
 import type { WorkerJobsLegacyPrototypePreviewJob } from './worker-jobs-zip-prototype-shared'
+import { useWorkerThemedStyles } from '../ui/worker-dark-styles'
 
 const SERVICE_WORKART_KEY: Record<ServiceType, CustomerServiceId> = {
   cleaning: 'home_cleaning',
@@ -43,7 +44,7 @@ function WorkerStageTwoOfferWorkartWash({ gradientID, reduceTransparency, surfac
     <Svg
       height="100%"
       preserveAspectRatio="none"
-      style={stageTwoStyles.heroWorkartWash}
+      style={stageTwoStylesLight.heroWorkartWash}
       viewBox="0 0 100 120"
       width={42}
     >
@@ -78,6 +79,7 @@ export function WorkerStageTwoOfferWorkart({
   reduceTransparency: boolean
   surfaceColor: string
 }) {
+  const stageTwoStyles = useWorkerThemedStyles(stageTwoStylesLight)
   const gradientID = `${panelTestID}-wash`.replace(/[^A-Za-z0-9_-]/g, '-')
 
   return (

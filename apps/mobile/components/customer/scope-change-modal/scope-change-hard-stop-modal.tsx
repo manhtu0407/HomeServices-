@@ -299,11 +299,10 @@ export function ScopeChangeHardStopModal({
               disabled={busy || !decisionEnabled}
               label={text.approve}
               onPress={onApprove}
-              showPrimaryGradient={false}
               size="small"
-              style={[styles.primaryButton, { backgroundColor: tokens.primary, borderColor: tokens.primary }]}
+              style={styles.primaryButton}
               testID="customer-scope-change-modal-approve"
-              textStyle={[styles.primaryText, { color: tokens.primaryText }]}
+              textStyle={styles.primaryText}
             />
           </View>
           </View>

@@ -10,7 +10,7 @@ import type { useFrontendWorkflow } from '@/lib/frontend-workflow-provider'
 
 import { textByLanguage } from '../ui/format'
 import { workerV5StringFromUnknown } from '../ui/route'
-import { useWorkerThemeMode, setWorkerThemeMode } from '../worker-theme'
+import { setWorkerThemeMode, useWorkerThemePreference } from '../worker-theme'
 import { styles } from '../worker-v5-flow-styles'
 import {
   WorkerV5ProfileGroup,
@@ -28,7 +28,7 @@ function Text({ style, ...props }: TextProps) {
 
 export function WorkerV5SettingsBody({ language, reduceTransparency, runtime }: { language: AppLanguage; reduceTransparency: boolean; runtime: WorkerV5Runtime }) {
   const router = useRouter()
-  const themeMode = useWorkerThemeMode()
+  const themePreference = useWorkerThemePreference()
   const { session, updateCustomerProfile, updatePassword } = useAuth()
   const metadata = session?.user.user_metadata
   const metadataFullName = workerV5StringFromUnknown(metadata?.full_name ?? metadata?.name)
@@ -72,9 +72,11 @@ export function WorkerV5SettingsBody({ language, reduceTransparency, runtime }: 
   const passwordMatches = newPasswordDraft.length > 0 && newPasswordDraft === confirmPasswordDraft
   const passwordCanSave = currentPasswordDraft.trim().length > 0 && newPasswordDraft.length >= 8 && passwordMatches
   const currentLanguage = language === 'vi' ? 'Tiếng Việt' : 'English'
-  const currentAppearance = themeMode === 'light'
-    ? textByLanguage(language, 'Sáng', 'Light')
-    : textByLanguage(language, 'Tối', 'Dark')
+  const currentAppearance = themePreference === 'system'
+    ? textByLanguage(language, 'Theo hệ thống', 'System')
+    : themePreference === 'light'
+      ? textByLanguage(language, 'Sáng', 'Light')
+      : textByLanguage(language, 'Tối', 'Dark')
   const notificationStatus = runtime.notificationUnreadCount > 0
     ? textByLanguage(language, `${runtime.notificationUnreadCount} chưa đọc`, `${runtime.notificationUnreadCount} unread`)
     : textByLanguage(language, 'Không có mới', 'No new items')
@@ -197,8 +199,7 @@ export function WorkerV5SettingsBody({ language, reduceTransparency, runtime }: 
               disabled={accountSaving || !accountCanSave}
               label={accountSaving ? textByLanguage(language, 'Đang lưu', 'Saving') : textByLanguage(language, 'Lưu thông tin', 'Save details')}
               onPress={() => void saveAccountSettings()}
-              showPrimaryGradient={false}
-              style={[styles.workerSettingsSaveButton, accountCanSave && !accountSaving ? styles.workerSettingsSaveButtonActive : null]}
+              style={accountCanSave && !accountSaving ? null : styles.workerSettingsSaveButton}
               testID="worker-v5-settings-account-save"
             />
             {accountMessage ? (
@@ -259,8 +260,7 @@ export function WorkerV5SettingsBody({ language, reduceTransparency, runtime }: 
               disabled={passwordSaving || !passwordCanSave}
               label={passwordSaving ? textByLanguage(language, 'Đang đổi', 'Changing') : textByLanguage(language, 'Lưu mật khẩu', 'Save password')}
               onPress={() => void savePasswordSettings()}
-              showPrimaryGradient={false}
-              style={[styles.workerSettingsSaveButton, passwordCanSave && !passwordSaving ? styles.workerSettingsSaveButtonActive : null]}
+              style={passwordCanSave && !passwordSaving ? null : styles.workerSettingsSaveButton}
               testID="worker-v5-settings-password-save"
             />
             {passwordMessage ? <Text style={passwordMessage.includes('Đã') || passwordMessage === 'Password changed' ? styles.workerSettingsMessage : styles.workerSettingsMessageError} testID="worker-v5-settings-password-message">{passwordMessage}</Text> : null}
@@ -290,7 +290,7 @@ export function WorkerV5SettingsBody({ language, reduceTransparency, runtime }: 
         ) : null}
         <WorkerV5ProfileGroupDivider />
         <WorkerV5ProfileGroupRow
-          accessibilityHint={textByLanguage(language, 'Chọn nền sáng hoặc tối cho thiết bị này.', 'Choose light or dark appearance for this device.')}
+          accessibilityHint={textByLanguage(language, 'Chọn Theo hệ thống, Sáng hoặc Tối cho thiết bị này.', 'Choose System, Light or Dark for this device.')}
           density="compact"
           iconElement={<WorkerV5UtilityGlyph name="palette" />}
           iconFrame="outlined"
@@ -304,8 +304,9 @@ export function WorkerV5SettingsBody({ language, reduceTransparency, runtime }: 
         />
         {appearancePanelOpen ? (
           <View accessibilityRole="radiogroup" testID="worker-v5-settings-appearance-options">
-            <WorkerV5SettingsChoiceRow body={textByLanguage(language, 'Nền sáng, rõ và thoáng.', 'Bright, clear, and airy.')} onPress={() => void setWorkerThemeMode('light')} selected={themeMode === 'light'} testID="worker-v5-settings-appearance-light" title={textByLanguage(language, 'Sáng', 'Light')} />
-            <WorkerV5SettingsChoiceRow body={textByLanguage(language, 'Nền tối dịu hơn khi dùng ban đêm.', 'A darker canvas for night use.')} onPress={() => void setWorkerThemeMode('dark')} selected={themeMode === 'dark'} testID="worker-v5-settings-appearance-dark" title={textByLanguage(language, 'Tối', 'Dark')} />
+            <WorkerV5SettingsChoiceRow body={textByLanguage(language, 'Tự đổi Sáng hoặc Tối theo cài đặt của điện thoại.', 'Switches between Light and Dark with your phone setting.')} onPress={() => void setWorkerThemeMode('system')} selected={themePreference === 'system'} testID="worker-v5-settings-appearance-system" title={textByLanguage(language, 'Theo hệ thống', 'System')} />
+            <WorkerV5SettingsChoiceRow body={textByLanguage(language, 'Nền sáng, rõ và thoáng.', 'Bright, clear, and airy.')} onPress={() => void setWorkerThemeMode('light')} selected={themePreference === 'light'} testID="worker-v5-settings-appearance-light" title={textByLanguage(language, 'Sáng', 'Light')} />
+            <WorkerV5SettingsChoiceRow body={textByLanguage(language, 'Nền tối dịu hơn khi dùng ban đêm.', 'A darker canvas for night use.')} onPress={() => void setWorkerThemeMode('dark')} selected={themePreference === 'dark'} testID="worker-v5-settings-appearance-dark" title={textByLanguage(language, 'Tối', 'Dark')} />
           </View>
         ) : null}
         <WorkerV5ProfileGroupDivider />

@@ -1,9 +1,11 @@
 import { useMemo, type ReactNode } from 'react'
-import { ActivityIndicator } from 'react-native'
+import { ActivityIndicator, View, type ViewStyle } from 'react-native'
 
+import { KaelChatTurnImages } from '@/components/ui/kael-chat-turn-images'
 import { KaelReasoningReceipt } from '@/components/ui/kael-reasoning-receipt'
-import { color } from '@/design/theme'
+import { color, spacing } from '@/design/theme'
 import type { AppLanguage } from '@/lib/app-language'
+import type { KaelChatTurnImage } from '@/lib/kael-chat-local-media'
 import type { KaelReasoningReceiptState } from '@/lib/kael-reasoning-receipt'
 import { createCompletedKaelResponseState } from '@/lib/kael-response-stream'
 
@@ -20,6 +22,7 @@ import type { CustomerKaelMode } from '../ui/types'
 
 export type ChatTurnView = {
   id: string
+  images?: KaelChatTurnImage[]
   role: 'customer' | 'worker' | 'kael'
   text_content: string
 }
@@ -46,6 +49,7 @@ type Input = {
   normalReasoningReceipt: KaelReasoningReceiptState
   onToggleNormalReasoningReceipt: () => void
   pendingDraftMessage: string
+  pendingNormalImageUris: string[]
   pendingNormalMessage: string | null
   processLinesNode: ReactNode
   reduceMotion: boolean
@@ -62,7 +66,42 @@ function appendRow(rows: ChatTranscriptRow[], key: string, node: ReactNode) {
   rows.push({ key, node })
 }
 
+const turnGroupStyle: ViewStyle = { gap: spacing.sm, width: '100%' }
+
+function CustomerTurnBubble({
+  images,
+  language,
+  testID,
+  text,
+  tokens,
+}: {
+  images: readonly KaelChatTurnImage[]
+  language: AppLanguage
+  testID?: string
+  text: string
+  tokens: CustomerThemeTokens
+}) {
+  if (images.length === 0) {
+    return text.trim() ? <ChatBubble speaker="customer" testID={testID} text={text} tokens={tokens} /> : null
+  }
+  // Photos and their message read as one sent group, with a small gap so they never touch.
+  return (
+    <View style={turnGroupStyle} testID={testID ? `${testID}-group` : 'customer-v21-kael-turn-group'}>
+      <KaelChatTurnImages
+        colors={{ border: tokens.border, muted: tokens.muted, surface: tokens.service }}
+        images={images}
+        language={language}
+        testID={testID ? `${testID}-images` : 'customer-v21-kael-turn-images'}
+      />
+      {text.trim() ? <ChatBubble speaker="customer" testID={testID} text={text} tokens={tokens} /> : null}
+    </View>
+  )
+}
+
 function renderTurn(turn: ChatTurnView, language: AppLanguage, reduceMotion: boolean, tokens: CustomerThemeTokens) {
+  if (turn.role === 'customer') {
+    return <CustomerTurnBubble images={turn.images ?? []} language={language} text={turn.text_content} tokens={tokens} />
+  }
   if (turn.role !== 'kael') return <ChatBubble speaker={turn.role} text={turn.text_content} tokens={tokens} />
   return <KaelResponseSurface language={language} reduceMotion={reduceMotion} state={createCompletedKaelResponseState(turn.text_content, turn.id)} tokens={tokens} />
 }
@@ -83,6 +122,7 @@ export function useKaelChatTranscript({
   normalReasoningReceipt,
   onToggleNormalReasoningReceipt,
   pendingDraftMessage,
+  pendingNormalImageUris,
   pendingNormalMessage,
   processLinesNode,
   reduceMotion,
@@ -94,7 +134,7 @@ export function useKaelChatTranscript({
   workerCandidateNode,
 }: Input) {
   const normalReasoningReceiptNode = useMemo(() => (
-    mode === 'normal' && !pendingNormalMessage && normalReasoningReceipt.status !== 'idle' ? (
+    mode === 'normal' && pendingNormalMessage === null && normalReasoningReceipt.status !== 'idle' ? (
       <KaelReasoningReceipt
         colors={{ accent: tokens.mode === 'light' ? color.brand.primaryDark : tokens.primary, border: tokens.border, mutedText: tokens.muted, surface: tokens.raised, text: tokens.text }}
         language={language}
@@ -104,18 +144,28 @@ export function useKaelChatTranscript({
       />
     ) : null
   ), [language, mode, normalReasoningReceipt, onToggleNormalReasoningReceipt, pendingNormalMessage, tokens])
+  // The pending message and Kael's thinking card are separate transcript rows, so the row gap keeps
+  // the card off the message instead of the two touching.
+  const normalPendingMessageNode = useMemo(() => (
+    mode === 'normal' && pendingNormalMessage !== null ? (
+      <CustomerTurnBubble
+        images={pendingNormalImageUris.map((uri) => ({ key: uri, status: 'available' as const, uri }))}
+        language={language}
+        testID="customer-v21-kael-reasoning-pending-message"
+        text={pendingNormalMessage}
+        tokens={tokens}
+      />
+    ) : null
+  ), [language, mode, pendingNormalImageUris, pendingNormalMessage, tokens])
   const normalPendingReasoningNode = useMemo(() => (
-    mode === 'normal' && pendingNormalMessage ? (
-      <>
-        <ChatBubble speaker="customer" testID="customer-v21-kael-reasoning-pending-message" text={pendingNormalMessage} tokens={tokens} />
-        <KaelReasoningReceipt
-          colors={{ accent: tokens.mode === 'light' ? color.brand.primaryDark : tokens.primary, border: tokens.border, mutedText: tokens.muted, surface: tokens.raised, text: tokens.text }}
-          language={language}
-          onToggle={onToggleNormalReasoningReceipt}
-          state={normalReasoningReceipt}
-          testID="customer-v21-kael-reasoning-receipt"
-        />
-      </>
+    mode === 'normal' && pendingNormalMessage !== null ? (
+      <KaelReasoningReceipt
+        colors={{ accent: tokens.mode === 'light' ? color.brand.primaryDark : tokens.primary, border: tokens.border, mutedText: tokens.muted, surface: tokens.raised, text: tokens.text }}
+        language={language}
+        onToggle={onToggleNormalReasoningReceipt}
+        state={normalReasoningReceipt}
+        testID="customer-v21-kael-reasoning-receipt"
+      />
     ) : null
   ), [language, mode, normalReasoningReceipt, onToggleNormalReasoningReceipt, pendingNormalMessage, tokens])
   const transcriptRows = useMemo(() => {
@@ -183,6 +233,7 @@ export function useKaelChatTranscript({
       }
       if (finalKaelTurnIndex < 0) appendRow(rows, 'normal-reasoning-receipt', normalReasoningReceiptNode)
     }
+    appendRow(rows, 'normal-pending-message', normalPendingMessageNode)
     appendRow(rows, 'normal-pending-reasoning', normalPendingReasoningNode)
     appendRow(rows, 'process-lines', processLinesNode)
     appendRow(rows, streamingReplyTurnId ? `turn-${streamingReplyTurnId}` : 'streaming-reply', streamingReplyNode)
@@ -191,7 +242,7 @@ export function useKaelChatTranscript({
   }, [
     agenticEstimateNode, agenticVisibleTurns, analysisEvidenceNode, caseAssistantTurns, caseIntakeResponseNode,
     caseThreadNode, emptyHeroVisible, hydratingCase, language, missingCaseWorkDeal, mode, normalAssistantTurns,
-    normalPendingReasoningNode, normalReasoningReceiptNode, pendingDraftMessage, processLinesNode, reduceMotion,
+    normalPendingMessageNode, normalPendingReasoningNode, normalReasoningReceiptNode, pendingDraftMessage, processLinesNode, reduceMotion,
     showNormalGreeting, showPendingDraftBubble, streamingReplyNode, streamingReplyTurnId, tokens, workerCandidateNode,
   ])
 

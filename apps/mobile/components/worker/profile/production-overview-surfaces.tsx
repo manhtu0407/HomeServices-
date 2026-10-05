@@ -39,7 +39,7 @@ type ProfileRowConfig = {
   title: string
 }
 
-type WorkerProfileGlyphName = ProfileSettingsGlyphName | 'availability' | 'feedback' | 'ranking' | 'reliability'
+type WorkerProfileGlyphName = ProfileSettingsGlyphName | 'availability' | 'feedback' | 'ranking' | 'reliability' | 'ticket'
 
 type ProfileGroupConfig = {
   id: string
@@ -217,6 +217,20 @@ function buildProfileGroups({
 
   return [
     {
+      id: 'special',
+      title: textByLanguage(language, 'Đặc biệt', 'Special'),
+      rows: [
+        {
+          glyph: 'ticket',
+          id: 'invite-code',
+          onPress: () => navigateToScreen('5.16-worker-invite-code'),
+          status: textByLanguage(language, 'Mở', 'Open'),
+          statusTone: 'active',
+          title: textByLanguage(language, 'Mã mời khách', 'Customer invite code'),
+        },
+      ],
+    },
+    {
       id: 'professional',
       title: textByLanguage(language, 'Hồ sơ & năng lực', 'Profile & skills'),
       rows: [
@@ -379,7 +393,7 @@ function textByLanguage(language: AppLanguage, vi: string, en: string) {
 }
 
 function WorkerProfileGlyph({ color, name, testID }: { color: string; name: WorkerProfileGlyphName; testID?: string }) {
-  if (name !== 'availability' && name !== 'feedback' && name !== 'ranking' && name !== 'reliability') {
+  if (name !== 'availability' && name !== 'feedback' && name !== 'ranking' && name !== 'reliability' && name !== 'ticket') {
     return <ProfileSettingsGlyph color={color} name={name} testID={testID} />
   }
 
@@ -407,6 +421,15 @@ function WorkerProfileGlyph({ color, name, testID }: { color: string; name: Work
       <Svg height={21} testID={testID} viewBox="0 0 20 20" width={21}>
         <Circle {...common} cx={10} cy={8.2} r={3.7} />
         <Path {...common} d="m7.6 11.3-1.2 5 3.6-2 3.6 2-1.2-5M8.7 8.3l.9.9 1.8-1.8" />
+      </Svg>
+    )
+  }
+
+  if (name === 'ticket') {
+    return (
+      <Svg height={21} testID={testID} viewBox="0 0 20 20" width={21}>
+        <Path {...common} d="M4 4.8h12a1.5 1.5 0 0 1 1.5 1.5v2.1a1.6 1.6 0 0 0 0 3.2v2.1a1.5 1.5 0 0 1-1.5 1.5H4a1.5 1.5 0 0 1-1.5-1.5v-2.1a1.6 1.6 0 0 0 0-3.2V6.3A1.5 1.5 0 0 1 4 4.8Z" />
+        <Path {...common} d="M12.6 6.9v1.1M12.6 9.45v1.1M12.6 12v1.1" />
       </Svg>
     )
   }

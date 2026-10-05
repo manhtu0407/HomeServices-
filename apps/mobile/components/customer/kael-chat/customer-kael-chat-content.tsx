@@ -93,7 +93,7 @@ export function CustomerKaelChatContent({ controller }: { controller: Controller
         conversation.chat ||
         conversation.turns.length > 0 ||
         presentation.normalAssistantTurns.length > 0 ||
-        Boolean(conversation.pendingNormalMessage) ||
+        conversation.pendingNormalMessage !== null ||
         conversation.reasoningReceipt.status !== 'idle' ||
         conversation.composerMediaDrafts.length > 0 ||
         chatUi.voiceTranscript.trim()
@@ -263,7 +263,7 @@ export function CustomerKaelChatContent({ controller }: { controller: Controller
         placeholder: composerPlaceholder,
         starterVisible: mode === 'normal'
           && conversation.turns.length === 0
-          && !conversation.pendingNormalMessage
+          && conversation.pendingNormalMessage === null
           && !conversation.composerMediaDrafts.length
           && !chatUi.voiceTranscript.trim()
           && !chatUi.draft.trim()
@@ -291,6 +291,7 @@ export function CustomerKaelChatContent({ controller }: { controller: Controller
       onToggleNormalReasoningReceipt={onToggleNormalReasoningReceipt}
       onToggleSessionMenu={sessionCatalog.toggleSessionMenu}
       pendingDraftMessage={presentation.pendingDraftMessage}
+      pendingNormalImageUris={conversation.pendingNormalImageUris}
       pendingNormalMessage={conversation.pendingNormalMessage}
       processLinesNode={processLinesNode}
       streamingReplyNode={streamingReplyNode}

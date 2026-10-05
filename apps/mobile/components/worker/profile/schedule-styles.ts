@@ -1,10 +1,10 @@
 import { StyleSheet } from 'react-native'
 
-import { color, typography } from '@/design/theme'
+import { color, customerTheme, typography } from '@/design/theme'
 
 export const styles = StyleSheet.create({
   darkText: {
-    color: '#F1F6F4',
+    color: customerTheme.darkLayer.text,
   },
   stack: {
     gap: 18,

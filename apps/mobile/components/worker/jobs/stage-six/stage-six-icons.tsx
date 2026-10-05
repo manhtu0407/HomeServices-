@@ -2,7 +2,8 @@ import type { ReactNode } from 'react'
 
 import Svg, { Circle, G, Path, Rect } from 'react-native-svg'
 
-import { stageSixTokens } from './stage-six-tokens'
+import { stageSixTokens as stageSixTokensLight } from './stage-six-tokens'
+import { useWorkerThemedTokens } from '../../ui/worker-dark-styles'
 
 export type StageSixIconName = 'check' | 'clock' | 'edit' | 'evidence' | 'item' | 'photos' | 'plus' | 'price' | 'reason' | 'sparkle'
 
@@ -18,6 +19,7 @@ export function StageSixIcon({
   size?: number
   strokeWidth?: number
 }) {
+  const stageSixTokens = useWorkerThemedTokens(stageSixTokensLight)
   let shape: ReactNode
 
   switch (name) {

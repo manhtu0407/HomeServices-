@@ -1,6 +1,5 @@
 import { Fragment, useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import {
-  Pressable,
   ScrollView,
   Text,
   View,
@@ -12,11 +11,14 @@ import Animated, { FadeInDown } from 'react-native-reanimated'
 import type { LocalDeal, ServiceType } from '@nestscout/shared'
 
 import { KaelReasoningReceipt } from '@/components/ui/kael-reasoning-receipt'
+import { KaelChatTurnImages } from '@/components/ui/kael-chat-turn-images'
+import { LiquidPillButton } from '@/components/ui/liquid-pill-button'
 import { motionTokens } from '@/components/ui/motion-tokens'
 import { useKaelResponseStreamPresentation } from '@/components/ui/use-kael-respond-stream-presentation'
 import { color } from '@/design/theme'
 import { localizedServiceLabel, localizedStatusLabel, type AppLanguage } from '@/lib/app-language'
 import type { KaelReasoningReceiptState } from '@/lib/kael-reasoning-receipt'
+import type { KaelChatTurnImage } from '@/lib/kael-chat-local-media'
 import {
   initialKaelResponseStreamState,
   type KaelResponseStreamState,
@@ -24,6 +26,7 @@ import {
 
 import { textByLanguage } from '../ui/format'
 import { WorkerV5KaelOrbBubble } from './orb-surfaces'
+import { useWorkerKaelOrbPalette } from './orb-palette'
 import { WorkerV5KaelOrbOpportunityResults } from './orb-opportunity-results'
 import { WorkerV5KaelEmptyHero } from './empty-hero'
 import { styles } from './body-styles'
@@ -32,6 +35,7 @@ type WorkerV5ServiceIconMap = Partial<Record<ServiceType, ImageSourcePropType>>
 
 type WorkerV5KaelOrbLiveTurn = {
   id: string
+  images?: KaelChatTurnImage[]
   role: 'kael' | 'worker'
   text: string
 }
@@ -134,6 +138,7 @@ export function WorkerV5KaelOrbBody({
 }) {
   const hasActiveSession = Boolean(activeSessionId)
   const visibleTurns = liveTurns.slice(-8)
+  const palette = useWorkerKaelOrbPalette()
   const presentedStreamingReply = useKaelResponseStreamPresentation(
     streamingReply ?? initialKaelResponseStreamState,
     {
@@ -152,7 +157,13 @@ export function WorkerV5KaelOrbBody({
     && reasoningReceipt.status !== 'idle'
     && onToggleReasoningReceipt ? (
       <KaelReasoningReceipt
-        colors={{
+        colors={palette.mode === 'dark' ? {
+          accent: palette.accent,
+          border: palette.opaqueBorder,
+          mutedText: palette.muted,
+          surface: palette.opaqueFill,
+          text: palette.ink,
+        } : {
           accent: color.brand.primaryDark,
           border: color.surface.stroke,
           mutedText: color.text.secondary,
@@ -278,12 +289,26 @@ export function WorkerV5KaelOrbBody({
             {visibleThreadTurns.map((turn, index) => (
               <Fragment key={turn.id}>
                 {receiptBeforeFinalKaelTurn && index === visibleThreadTurns.length - 1 ? reasoningReceiptNode : null}
-                <WorkerV5KaelOrbBubble
-                  align={turn.role === 'worker' ? 'right' : undefined}
-                  appearance={mode === 'normal' && turn.role === 'kael' ? 'bare' : 'bubble'}
-                  body={turn.text}
-                  speakerLabel={turn.role === 'worker' ? textByLanguage(language, 'Bạn', 'You') : 'Kael'}
-                />
+                <View style={styles.kaelOrbTurnGroup} testID={`worker-v5-kael-turn-group-${turn.id}`}>
+                  {turn.images?.length ? (
+                    <KaelChatTurnImages
+                      colors={palette.mode === 'dark'
+                        ? { border: palette.opaqueBorder, muted: palette.muted, surface: palette.opaqueFill }
+                        : { border: color.surface.stroke, muted: color.text.secondary, surface: color.surface.soft }}
+                      images={turn.images}
+                      language={language}
+                      testID={`worker-v5-kael-turn-images-${turn.id}`}
+                    />
+                  ) : null}
+                  {turn.text.trim() ? (
+                    <WorkerV5KaelOrbBubble
+                      align={turn.role === 'worker' ? 'right' : undefined}
+                      appearance={mode === 'normal' && turn.role === 'kael' ? 'bare' : 'bubble'}
+                      body={turn.text}
+                      speakerLabel={turn.role === 'worker' ? textByLanguage(language, 'Bạn', 'You') : 'Kael'}
+                    />
+                  ) : null}
+                </View>
               </Fragment>
             ))}
             {!receiptBeforeFinalKaelTurn ? reasoningReceiptNode : null}
@@ -306,20 +331,20 @@ export function WorkerV5KaelOrbBody({
         ) : null}
       </ScrollView>
       {newResponseAvailable ? (
-        <Pressable
+        <LiquidPillButton
           accessibilityLabel={textByLanguage(language, 'Chuyển đến phần mới', 'Jump to the latest response')}
-          accessibilityRole="button"
+          height={36}
+          mode={palette.mode}
           onPress={scrollToLatest}
-          style={[styles.kaelOrbLatestButton, {
-            backgroundColor: color.brand.primaryDark,
-            borderColor: color.surface.stroke,
-          }]}
+          opaqueBackgroundColor={palette.mode === 'dark' ? palette.opaqueFill : color.surface.soft}
+          opaqueBorderColor={palette.mode === 'dark' ? palette.opaqueBorder : color.surface.stroke}
+          style={styles.kaelOrbLatestButton}
           testID="worker-v5-kael-orb-jump-to-latest"
         >
-          <Text style={[styles.kaelOrbLatestButtonText, { color: color.text.inverse }]}>
+          <Text style={[styles.kaelOrbLatestButtonText, { color: palette.icon }]}>
             {textByLanguage(language, 'Phần mới', 'Latest')}
           </Text>
-        </Pressable>
+        </LiquidPillButton>
       ) : null}
       {composer}
     </View>

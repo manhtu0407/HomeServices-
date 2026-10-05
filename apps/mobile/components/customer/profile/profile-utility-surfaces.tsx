@@ -1,7 +1,9 @@
-import { Fragment, type ComponentType, type ReactNode } from 'react'
+import { Fragment, useState, type ComponentType, type ReactNode } from 'react'
 import { Image } from 'expo-image'
-import { Text, View, type ImageSourcePropType, type StyleProp, type ViewStyle } from 'react-native'
-import Svg, { Circle, Path, Rect } from 'react-native-svg'
+import { Text, View, type ImageSourcePropType, type LayoutChangeEvent, type StyleProp, type ViewStyle } from 'react-native'
+import Svg, { Circle, Defs, Path, Rect } from 'react-native-svg'
+
+import { AlphaStop as Stop, NativeSafeLinearGradient as LinearGradient } from '@/components/ui/svg-alpha-stop'
 
 import { KaelChip } from '@/components/ui/kael-primitives'
 import { useGlassAccessibility } from '@/components/ui/accessibility-motion'
@@ -73,6 +75,33 @@ type ProfileInsightModel = {
 
 function profileAuraScope(value: string) {
   return value.replace(/[^a-zA-Z0-9]/g, '')
+}
+
+// Height over width of the usage-rank watercolor plate (770 x 694).
+const RANKING_ART_ASPECT = 694 / 770
+const RANKING_ART_STRETCH_LIMIT = 1.12
+
+// When the plate is cropped its right edge is lost, so its last quarter fades into the copy surface instead of ending in a hard cut.
+function ProfileRankingHeroArtFade({ color }: { color: string }) {
+  return (
+    <View
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants"
+      pointerEvents="none"
+      style={styles.profileRankingHeroArtFade}
+      testID="customer-v21-profile-ranking-hero-workart-fade"
+    >
+      <Svg height="100%" preserveAspectRatio="none" viewBox="0 0 100 100" width="100%">
+        <Defs>
+          <LinearGradient id="profile-ranking-hero-art-fade" x1="0" x2="1" y1="0" y2="0">
+            <Stop offset="0" stopColor={color} stopOpacity="0" />
+            <Stop offset="1" stopColor={color} stopOpacity="1" />
+          </LinearGradient>
+        </Defs>
+        <Rect fill="url(#profile-ranking-hero-art-fade)" height="100" width="100" x="0" y="0" />
+      </Svg>
+    </View>
+  )
 }
 
 export function ProfileAuraCard({
@@ -312,31 +341,56 @@ export function ProfileRankingPanel({
     : rank === 0
       ? (language === 'vi' ? 'Chưa xếp hạng' : 'Not ranked')
       : String(rank)
+  const rankLabel = language === 'vi' ? 'Hạng hiện tại' : 'Current level'
   const rankDescription = rank === null
     ? (language === 'vi' ? 'Kael đánh giá từ dữ liệu sử dụng thật.' : 'Kael evaluates real usage data.')
     : rankTitle
   const metricIconColor = tokens.mode === 'dark' ? tokens.text : '#182B34'
+  const [artFrame, setArtFrame] = useState<{ height: number; width: number } | null>(null)
+  // Same rule as the Profile usage-rank card: the plate stretches to fill while that keeps it within
+  // 12% of its own aspect, so its curved edge stays whole; past that it is cropped and faded instead.
+  const artCropped = artFrame !== null && artFrame.height > artFrame.width * RANKING_ART_ASPECT * RANKING_ART_STRETCH_LIMIT
+  const onArtLayout = (event: LayoutChangeEvent) => {
+    const { height, width } = event.nativeEvent.layout
+    if (width <= 0) return
+    setArtFrame((current) => (current?.height === height && current.width === width ? current : { height, width }))
+  }
 
   return (
     <View testID="customer-v21-profile-ranking">
       <ProfileAuraCard cardStyle={styles.profileRankingHeroCard} contentStyle={styles.profileRankingHero} scope="RankingHero" showMintAura={false} testID="customer-v21-profile-ranking-hero">
-        <View style={styles.profileRankingHeroWorkartFrame} testID="customer-v21-profile-ranking-hero-workart-frame">
+        <View onLayout={onArtLayout} style={styles.profileRankingHeroWorkartFrame} testID="customer-v21-profile-ranking-hero-workart-frame">
           <Image
             accessibilityLabel={language === 'vi' ? 'Minh họa hành trình sử dụng dịch vụ' : 'Usage journey illustration'}
-            contentFit="contain"
-            source={customerV21Assets.usageRankingWorkart}
+            contentFit={artCropped ? 'cover' : 'fill'}
+            contentPosition={{ left: 0, top: 0 }}
+            source={customerV21Assets.usageRankArt}
             style={styles.profileRankingHeroWorkart}
             testID="customer-v21-profile-ranking-hero-workart"
           />
+          {artCropped ? <ProfileRankingHeroArtFade color={tokens.raised} /> : null}
         </View>
         <View
           style={[styles.profileRankingHeroCopy, { backgroundColor: tokens.raised }]}
           testID="customer-v21-profile-ranking-hero-copy"
         >
-          <Text style={[styles.profileRankingHeroCurrentLine, { color: tokens.muted }]} testID="customer-v21-profile-ranking-current-line">
-            <Text style={[styles.profileRankingHeroKicker, { color: tokens.muted }]} testID="customer-v21-profile-ranking-hero-kicker">{language === 'vi' ? 'Hạng hiện tại:' : 'Current level:'}</Text>
-            <Text style={[styles.profileRankingHeroValue, { color: tokens.muted }]} testID="customer-v21-profile-ranking-current-value">{` ${rankValue}`}</Text>
-          </Text>
+          <View
+            accessible
+            accessibilityLabel={`${rankLabel}: ${rankValue}`}
+            style={styles.profileRankingHeroCurrentLine}
+            testID="customer-v21-profile-ranking-current-line"
+          >
+            <Text numberOfLines={1} style={[styles.profileRankingHeroKicker, { color: tokens.muted }]} testID="customer-v21-profile-ranking-hero-kicker">{rankLabel}</Text>
+            <Text
+              adjustsFontSizeToFit
+              minimumFontScale={0.85}
+              numberOfLines={1}
+              style={[styles.profileRankingHeroValue, { color: tokens.text }]}
+              testID="customer-v21-profile-ranking-current-value"
+            >
+              {rankValue}
+            </Text>
+          </View>
           <View style={styles.profileRankingHeroPointLine} testID="customer-v21-profile-ranking-hero-body-line">
             <ProfileRankingUsageSignalIcon color={tokens.primary} testID="customer-v21-profile-ranking-hero-body-icon" />
             <Text numberOfLines={2} style={[styles.profileRankingHeroBody, { color: tokens.muted }]} testID="customer-v21-profile-ranking-hero-body">{rankDescription}</Text>
@@ -355,6 +409,8 @@ export function ProfileRankingPanel({
           </View>
           <View style={styles.profileRankingHeroProgress} testID="customer-v21-profile-ranking-progress-slot">{progressBar}</View>
         </View>
+        {/* Drawn last so the card ring stays visible over the full-bleed plate. */}
+        <View pointerEvents="none" style={[styles.profileRankingHeroRing, { borderColor: tokens.mode === 'dark' ? tokens.border : 'rgba(113,225,209,0.50)' }]} testID="customer-v21-profile-ranking-hero-ring" />
       </ProfileAuraCard>
       {membershipCard}
 

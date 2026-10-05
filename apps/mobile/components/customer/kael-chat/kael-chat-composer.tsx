@@ -12,8 +12,10 @@ import {
 import { GlassSurface } from '@/components/ui/glass-surface'
 import { KaelSendStopGlyph } from '@/components/ui/kael-send-stop-glyph'
 import { useGlassAccessibility } from '@/components/ui/accessibility-motion'
+import { useKaelComposerInputSizing } from '@/components/ui/kael-composer-input-height'
 import { KaelTextField } from '@/components/ui/kael-primitives'
 import { NormalChatGhostOverlay } from '@/components/ui/normal-chat-ghost-overlay'
+import { LiquidControlButton } from '@/components/ui/liquid-back-button'
 import { NormalChatStarterRail } from '@/components/ui/normal-chat-starter-rail'
 import { EMPTY_NORMAL_CHAT_SUGGESTIONS, getNormalChatGhostSuffix, getNormalChatSendPalette } from '@/components/ui/normal-chat-composer-model'
 import { color } from '@/design/theme'
@@ -26,9 +28,6 @@ import { MediaDraftPreviewTray } from './media-draft-preview-tray'
 import { customerV21ChatStyles as chatStyles } from './chat-styles'
 import { canSubmitCustomerKaelComposer } from './customer-kael-composer-state'
 import { CUSTOMER_KAEL_MESSAGE_MAX_LENGTH } from './customer-kael-message-limits'
-
-const COMPOSER_MIN_HEIGHT = 44
-const COMPOSER_MAX_HEIGHT = 124
 
 export type RootChatStyles = {
   bodyText: StyleProp<TextStyle>
@@ -105,7 +104,7 @@ export function KaelChatComposer({
   const normalChatImageDrafts = !allowVideoSelection
     ? composerMediaDrafts.filter((item) => item.type === 'image')
     : []
-  const activeMediaIconColor = tokens.mode === 'light' ? color.text.strong : tokens.primaryText
+  const activeMediaIconColor = tokens.mode === 'light' ? color.text.strong : tokens.text
   const normalSendPalette = getNormalChatSendPalette(composerSending)
   const isLightNormalChat = !allowVideoSelection && tokens.mode === 'light'
   const activeSendBackground = tokens.mode === 'light' ? color.mint.white : tokens.primary
@@ -114,13 +113,7 @@ export function KaelChatComposer({
   // The idle send button is a visible soft disc, the same as the Worker composer's.
   const idleSendBackground = tokens.mode === 'light' ? color.surface.soft : tokens.glassStrong
   const idleSendBorder = tokens.mode === 'light' ? color.surface.stroke : tokens.glassBorder
-  // Measurement survives edits that keep the line count: native fires no new
-  // contentSize event for them, and web can fire it before the new draft renders.
-  const [measuredInput, setMeasuredInput] = useState({ hasDraft: Boolean(draft), height: COMPOSER_MIN_HEIGHT })
-  if (measuredInput.hasDraft !== Boolean(draft)) {
-    setMeasuredInput({ hasDraft: Boolean(draft), height: draft ? measuredInput.height : COMPOSER_MIN_HEIGHT })
-  }
-  const inputHeight = draft ? measuredInput.height : COMPOSER_MIN_HEIGHT
+  const inputSizing = useKaelComposerInputSizing(draft)
   const ghost = !allowVideoSelection && !composerBusy
     ? getNormalChatGhostSuffix(draft, normalChatSuggestions, selection, isComposing)
     : null
@@ -134,13 +127,15 @@ export function KaelChatComposer({
     setSelection(null)
     inputRef.current?.focus()
   }
-  const inputTextStyle = [rootStyles.composerInput, { height: inputHeight }, textInputNoOutlineStyle, { color: tokens.text }]
+  const inputTextStyle = [rootStyles.composerInput, inputSizing.inputStyle, textInputNoOutlineStyle, { color: tokens.text }]
   return (
     <>
       {normalChatStarterVisible && !allowVideoSelection ? (
         <NormalChatStarterRail
           actorRole="customer"
+          colors={{ opaqueBackground: tokens.raised, opaqueBorder: tokens.border, text: tokens.text }}
           language={language}
+          mode={tokens.mode}
           onSelect={(starterDraft) => {
             onDraftChange(starterDraft)
             setSelection(null)
@@ -247,64 +242,82 @@ export function KaelChatComposer({
             setSelection(null)
             onDraftChange(nextDraft)
           }}
-          onContentSizeChange={(event) => {
-            const nextHeight = event.nativeEvent.contentSize.height
-            const height = Math.min(Math.max(nextHeight, COMPOSER_MIN_HEIGHT), COMPOSER_MAX_HEIGHT)
-            setMeasuredInput((current) => ({ ...current, height }))
-          }}
+          onContentSizeChange={inputSizing.onContentSizeChange}
           onFocus={onFocus}
           onSelectionChange={(event) => setSelection(event.nativeEvent.selection)}
           onSubmitEditing={onSendMessage}
           maxLength={CUSTOMER_KAEL_MESSAGE_MAX_LENGTH}
           placeholder={ghost ? '' : composerPlaceholder}
           placeholderTextColor={tokens.subtleText}
-          returnKeyType="send"
+          returnKeyType={inputSizing.returnKeyType}
           selectionColor={isLightNormalChat ? color.kaelChatSend.idleForeground : tokens.primary}
-          scrollEnabled={inputHeight >= COMPOSER_MAX_HEIGHT}
+          scrollEnabled={inputSizing.scrollEnabled}
           shellStyle={rootStyles.composerTextFieldStack}
-          submitBehavior="submit"
+          submitBehavior={inputSizing.submitBehavior}
           style={[...inputTextStyle, { color: ghost ? 'transparent' : tokens.text, zIndex: 1 }]}
           testID="customer-v21-kael-input"
           value={draft}
         />
-        <Pressable
-          accessibilityLabel={composerBusy
-            ? stopAvailable
-              ? (language === 'vi' ? 'Dừng phản hồi' : 'Stop response')
-              : (language === 'vi' ? 'Kael đang xử lý' : 'Kael is working')
-            : (language === 'vi' ? 'Gửi tin nhắn cho Kael' : 'Send message to Kael')}
-          accessibilityRole="button"
-          accessibilityState={{ busy: composerBusy, disabled: composerBusy ? !stopAvailable : !canSubmit }}
-          disabled={composerBusy ? !stopAvailable : !canSubmit}
-          onPress={composerBusy ? onStopMessage : onSendMessage}
-          style={({ pressed }) => [
-            rootStyles.sendButton,
-            {
-              alignItems: 'center',
-              backgroundColor: isLightNormalChat
-                ? normalSendPalette.background
-                : composerBusy || canSubmit ? activeSendBackground : idleSendBackground,
-              borderColor: composerBusy || canSubmit ? activeSendBorder : idleSendBorder,
-              borderRadius: 22,
-              borderWidth: 1,
-              height: 44,
-              justifyContent: 'center',
-              width: 44,
-            },
-            pressed && !reduceMotion ? { transform: [{ scale: 0.96 }] } : null,
-          ]}
-          testID="customer-v21-kael-send"
-        >
-          <KaelSendStopGlyph
-            arrowColor={isLightNormalChat
-              ? normalSendPalette.foreground
-              : canSubmit ? activeSendForeground : tokens.muted}
-            reduceMotion={reduceMotion}
-            stopColor={isLightNormalChat ? normalSendPalette.foreground : activeSendForeground}
-            stopping={composerBusy && stopAvailable}
-            testIDPrefix="customer-v21-kael"
-          />
-        </Pressable>
+        {!composerBusy && canSubmit ? (
+          // Ready to send: the header's liquid glass control, so the active button reads as the same
+          // material as the back button. Empty and Stop keep their own clearer states.
+          <LiquidControlButton
+            accessibilityLabel={language === 'vi' ? 'Gửi tin nhắn cho Kael' : 'Send message to Kael'}
+            accessibilityState={{ busy: false }}
+            mode={tokens.mode}
+            onPress={onSendMessage}
+            size={44}
+            style={rootStyles.sendButton}
+            testID="customer-v21-kael-send"
+          >
+            <KaelSendStopGlyph
+              arrowColor={tokens.text}
+              reduceMotion={reduceMotion}
+              stopColor={tokens.text}
+              stopping={false}
+              testIDPrefix="customer-v21-kael"
+            />
+          </LiquidControlButton>
+        ) : (
+          <Pressable
+            accessibilityLabel={composerBusy
+              ? stopAvailable
+                ? (language === 'vi' ? 'Dừng phản hồi' : 'Stop response')
+                : (language === 'vi' ? 'Kael đang xử lý' : 'Kael is working')
+              : (language === 'vi' ? 'Gửi tin nhắn cho Kael' : 'Send message to Kael')}
+            accessibilityRole="button"
+            accessibilityState={{ busy: composerBusy, disabled: composerBusy ? !stopAvailable : !canSubmit }}
+            disabled={composerBusy ? !stopAvailable : !canSubmit}
+            onPress={composerBusy ? onStopMessage : onSendMessage}
+            style={({ pressed }) => [
+              rootStyles.sendButton,
+              {
+                alignItems: 'center',
+                backgroundColor: isLightNormalChat
+                  ? normalSendPalette.background
+                  : composerBusy || canSubmit ? activeSendBackground : idleSendBackground,
+                borderColor: composerBusy || canSubmit ? activeSendBorder : idleSendBorder,
+                borderRadius: 22,
+                borderWidth: 1,
+                height: 44,
+                justifyContent: 'center',
+                width: 44,
+              },
+              pressed && !reduceMotion ? { transform: [{ scale: 0.96 }] } : null,
+            ]}
+            testID="customer-v21-kael-send"
+          >
+            <KaelSendStopGlyph
+              arrowColor={isLightNormalChat
+                ? normalSendPalette.foreground
+                : canSubmit ? activeSendForeground : tokens.muted}
+              reduceMotion={reduceMotion}
+              stopColor={isLightNormalChat ? normalSendPalette.foreground : activeSendForeground}
+              stopping={composerBusy && stopAvailable}
+              testIDPrefix="customer-v21-kael"
+            />
+          </Pressable>
+        )}
         </View>
       </GlassSurface>
       <Text

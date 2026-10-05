@@ -1,6 +1,7 @@
 import type { LocalDeal } from '@nestscout/shared'
 
 import type { AppLanguage } from '@/lib/app-language'
+import { kaelChatTurnImages } from '@/lib/kael-chat-local-media'
 import type { CustomerKaelConversationTurn } from '@/lib/api-types/customer'
 import type { KaelChatResponse, KaelChatTurn } from '@/lib/api-types'
 import type { PendingKaelChatDraft } from '@/lib/pending-kael-chat-draft'
@@ -71,6 +72,7 @@ export function deriveCustomerKaelPresentation({
   })
   const catalogConversationTurns = catalogTurns.map((turn) => ({
     id: turn.id,
+    images: turn.role === 'customer' ? kaelChatTurnImages(turn.media_refs, turn.media_previews) : [],
     role: turn.role === 'customer' ? 'customer' as const : 'kael' as const,
     text_content: turn.role === 'customer'
       ? customerVisibleIntakeSummaryText(turn.text_content, language)

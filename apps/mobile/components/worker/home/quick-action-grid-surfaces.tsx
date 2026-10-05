@@ -10,6 +10,7 @@ import { MintAura } from '@/components/ui/kael-primitives'
 
 import type { WorkerV5IconName } from '../dock/types'
 import { styles } from './action-styles'
+import { useWorkerThemedStyles } from '../ui/worker-dark-styles'
 
 type WorkerV5IconMap = Record<WorkerV5IconName, ImageSourcePropType>
 type WorkerV5QuickActionItem = {
@@ -31,10 +32,11 @@ export function WorkerV5QuickActionGrid({
   items: readonly WorkerV5QuickActionItem[]
   reduceTransparency: boolean
 }) {
+  const opaqueCard = useWorkerThemedStyles(styles).opaqueCard
   return (
     <View style={styles.quickActionGrid} testID="worker-v5-quick-action-grid">
       {items.map((item, index) => (
-        <View key={`${item.icon}-${item.title}`} style={[styles.quickActionCard, reduceTransparency && styles.opaqueCard]} testID={`worker-v5-quick-action-${index}`}>
+        <View key={`${item.icon}-${item.title}`} style={[styles.quickActionCard, reduceTransparency && opaqueCard]} testID={`worker-v5-quick-action-${index}`}>
           <View style={styles.quickActionIconTile}>
             {!reduceTransparency ? <MintAura intensity="iconTile" style={styles.iconTileMintAura} /> : null}
             <Image source={icons[item.icon]} style={styles.quickActionIcon} />

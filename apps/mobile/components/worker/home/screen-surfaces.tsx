@@ -26,6 +26,7 @@ import { InfoListCard, MetricTile, WorkerV5ScreenInfoRow } from '../ui/screen-at
 import { workerV5Icons } from '../ui/screen-icons'
 import Svg, { Circle, Defs, LinearGradient } from 'react-native-svg'
 import { AlphaStop as Stop } from '@/components/ui/svg-alpha-stop'
+import { useWorkerThemedStyles } from '../ui/worker-dark-styles'
 
 
 
@@ -48,6 +49,7 @@ export function WorkerV5HomeScreenSurface({
   runtime: WorkerV5Runtime
   surfaceStyle: StyleProp<ViewStyle>
 }) {
+  const opaqueCard = useWorkerThemedStyles(styles).opaqueCard
   const onDockScroll = useDockScrollHandler()
   const profile = runtime.workerProfile
   const deal = runtime.state.deal
@@ -203,7 +205,7 @@ export function WorkerV5HomeScreenSurface({
           reduceTransparency={glass.reduceTransparency}
         />
 
-        <View style={[styles.homeCommandCard, glass.reduceTransparency && styles.opaqueCard]} testID="worker-v5-home-command-center">
+        <View style={[styles.homeCommandCard, glass.reduceTransparency && opaqueCard]} testID="worker-v5-home-command-center">
           {!glass.reduceTransparency ? <WorkerV5HomeHeroSourceAura /> : null}
           <View style={styles.homeCommandTopRow}>
             <View style={styles.homeCommandCopy}>

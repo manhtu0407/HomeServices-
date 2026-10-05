@@ -4,7 +4,7 @@ import Svg, { Defs, Rect } from 'react-native-svg'
 import { AlphaStop as Stop, NativeSafeLinearGradient as LinearGradient, NativeSafeRadialGradient as RadialGradient } from '@/components/ui/svg-alpha-stop'
 import { useGlassAccessibility } from '@/components/ui/accessibility-motion'
 import { FormulaMintCanvasAura } from '@/components/ui/formula-mint-canvas'
-import type { ThemeMode } from '../customer-theme'
+import { useCustomerThemeMode, type ThemeMode } from '../customer-theme'
 import type { CustomerV21ScreenId } from './types'
 import { customerV21AuraStyles as styles } from './aura-styles'
 
@@ -16,9 +16,13 @@ type CanvasAuraProps = ReduceTransparencyProps & {
   mode: ThemeMode
 }
 
+// The white card skin and the mint glows are light-mode decoration. In dark the card keeps its own
+// token surface, matching the neutral iOS dark material instead of a white wash on black.
 export function SourceCardSkin({ testID }: { testID?: string }) {
   const { reduceTransparency } = useGlassAccessibility()
+  const mode = useCustomerThemeMode()
 
+  if (mode === 'dark') return null
   if (reduceTransparency) {
     return <View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: '#FFFFFF' }]} testID={testID} />
   }
@@ -46,8 +50,9 @@ export function SourceCardSkin({ testID }: { testID?: string }) {
 
 export function SourceIconAura() {
   const { reduceTransparency } = useGlassAccessibility()
+  const mode = useCustomerThemeMode()
 
-  if (reduceTransparency) {
+  if (reduceTransparency || mode === 'dark') {
     return null
   }
 
@@ -69,7 +74,9 @@ export function SourceIconAura() {
 
 export function SourceIconTileSkin() {
   const { reduceTransparency } = useGlassAccessibility()
+  const mode = useCustomerThemeMode()
 
+  if (mode === 'dark') return null
   if (reduceTransparency) {
     return <View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: '#F7FFFB' }]} />
   }
@@ -91,7 +98,8 @@ export function SourceIconTileSkin() {
 
 export function ZipMintAura({ intensity = 'default', scope, testID }: { intensity?: 'default' | 'soft' | 'strong'; scope: string; testID?: string }) {
   const { reduceTransparency } = useGlassAccessibility()
-  if (reduceTransparency) return null
+  const mode = useCustomerThemeMode()
+  if (reduceTransparency || mode === 'dark') return null
 
   const fillId = `zipMintAura${scope}`
   const soft = intensity === 'soft'
@@ -123,7 +131,8 @@ export function CaseWideMintAura({
   testID?: string
 }) {
   const { reduceTransparency } = useGlassAccessibility()
-  if (reduceTransparency) return null
+  const mode = useCustomerThemeMode()
+  if (reduceTransparency || mode === 'dark') return null
 
   const topId = `caseWideMintAuraTop${scope}`
   const leftId = `caseWideMintAuraLeft${scope}`
@@ -240,7 +249,8 @@ export function CustomerScreenCanvasAura({
 }
 
 export function HomeEmptySourceAura({ reduceTransparency }: ReduceTransparencyProps) {
-  if (reduceTransparency) {
+  const mode = useCustomerThemeMode()
+  if (reduceTransparency || mode === 'dark') {
     return null
   }
 
@@ -266,7 +276,8 @@ export function HomeEmptySourceAura({ reduceTransparency }: ReduceTransparencyPr
 }
 
 export function BookingProblemChipAura({ reduceTransparency }: ReduceTransparencyProps) {
-  if (reduceTransparency) {
+  const mode = useCustomerThemeMode()
+  if (reduceTransparency || mode === 'dark') {
     return null
   }
 
@@ -292,7 +303,8 @@ export function BookingProblemChipAura({ reduceTransparency }: ReduceTransparenc
 }
 
 export function BookingDraftButtonAura({ reduceTransparency }: ReduceTransparencyProps) {
-  if (reduceTransparency) {
+  const mode = useCustomerThemeMode()
+  if (reduceTransparency || mode === 'dark') {
     return null
   }
 

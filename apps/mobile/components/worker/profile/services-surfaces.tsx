@@ -396,7 +396,6 @@ export function WorkerV5ServiceCardGrid({
               : textByLanguage(language, 'Đã lưu', 'Saved')}
           loading={saving}
           onPress={() => { void savePreferences() }}
-          showPrimaryGradient={false}
           style={styles.servicePreferenceSave}
           testID="worker-v5-service-preferences-save"
           variant="primary"

@@ -13,9 +13,15 @@ jest.mock('@/components/ui/glass-surface', () => {
   }
 })
 
-jest.mock('@/components/ui/liquid-back-button', () => ({
-  LiquidSurfaceOverlay: () => null,
-}))
+jest.mock('@/components/ui/liquid-back-button', () => {
+  const React = require('react') as typeof import('react')
+  const { Pressable } = require('react-native') as typeof import('react-native')
+  return {
+    LiquidControlButton: ({ children, size = 30, ...props }: { children: React.ReactNode; size?: number } & Record<string, unknown>) =>
+      React.createElement(Pressable, { ...props, style: { height: size, width: size } }, children),
+    LiquidSurfaceOverlay: () => null,
+  }
+})
 
 const session: WorkerKaelChatSession = {
   closed_at: null,
@@ -32,7 +38,7 @@ const session: WorkerKaelChatSession = {
 }
 
 describe('Worker Kael session rename layout', () => {
-  it('edits the title directly on its row and keeps the input within the available width', () => {
+  it('edits the title directly on its row and keeps the input within the fixed menu width', () => {
     const onSelect = jest.fn()
     render(
       <WorkerV5KaelSessionMenu
@@ -77,10 +83,8 @@ describe('Worker Kael session rename layout', () => {
     const renameActions = screen.getByTestId('worker-v5-kael-session-rename-actions-layout-session')
     const renameCancel = screen.getByTestId('worker-v5-kael-session-title-cancel')
     const renameSave = screen.getByTestId('worker-v5-kael-session-title-save')
-    expect(menuStyle.width).toBe('92%')
-    expect(menuStyle.maxWidth).toBeLessThanOrEqual(440)
-    expect(listStyle.maxHeight).toBeGreaterThan(138)
-    expect(listStyle.maxHeight).toBeLessThanOrEqual(240)
+    expect(menuStyle).toMatchObject({ maxWidth: 208, width: '59%' })
+    expect(listStyle.maxHeight).toBe(138)
     expect(within(titleRow).getByTestId('worker-v5-kael-session-title-input')).toBeOnTheScreen()
     expect(screen.queryByTestId('worker-v5-kael-session-rename-editor-layout-session')).toBeNull()
     expect(input.props.selectTextOnFocus).toBeFalsy()
@@ -92,14 +96,10 @@ describe('Worker Kael session rename layout', () => {
       paddingHorizontal: 0,
     })
     expect(renameCancel).toBeOnTheScreen()
-    expect(StyleSheet.flatten(sessionCopy.props.style)).toMatchObject({ paddingRight: 94 })
-    expect(StyleSheet.flatten(renameActions.props.style)).toMatchObject({
-      bottom: 0,
-      position: 'absolute',
-      right: 8,
-      top: 0,
-    })
-    expect(StyleSheet.flatten(renameCancel.props.style)).toMatchObject({ minHeight: 44, minWidth: 44 })
-    expect(StyleSheet.flatten(renameSave.props.style)).toMatchObject({ minHeight: 44, minWidth: 44 })
+    expect(StyleSheet.flatten(sessionCopy.props.style).paddingRight).toBeUndefined()
+    expect(StyleSheet.flatten(renameActions.props.style)).toMatchObject({ flexDirection: 'row', flexShrink: 0 })
+    expect(StyleSheet.flatten(renameActions.props.style).position).toBeUndefined()
+    expect(StyleSheet.flatten(renameCancel.props.style)).toMatchObject({ height: 30, width: 30 })
+    expect(StyleSheet.flatten(renameSave.props.style)).toMatchObject({ height: 30, width: 30 })
   })
 })

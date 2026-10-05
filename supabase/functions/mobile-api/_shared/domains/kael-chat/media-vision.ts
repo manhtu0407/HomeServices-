@@ -166,6 +166,97 @@ export async function createSignedCaseWorkEvidenceUrls(
   return resolved.filter((mediaRef): mediaRef is string => Boolean(mediaRef));
 }
 
+type KaelChatMediaPreview = {
+  ref: string;
+  status: "available" | "expired" | "unavailable";
+  url: string | null;
+};
+
+const KAEL_CHAT_MEDIA_PREVIEW_URL_EXPIRES_IN_SECONDS = 15 * 60;
+
+// Display links for the chat photos an owner sent. A photo past retention is reported as expired;
+// a ref outside the owner's folder, unreadable retention state, or a signing error is reported as
+// unavailable, so the chat says which one happened instead of failing the whole history read.
+export async function createKaelChatMediaPreviews(
+  ctx: MobileApiContext,
+  mediaRefs: readonly string[],
+  ownerId: string | null,
+): Promise<KaelChatMediaPreview[]> {
+  const refs = [...new Set(mediaRefs)];
+  if (refs.length === 0) return [];
+  const unavailable = (ref: string): KaelChatMediaPreview => ({ ref, status: "unavailable", url: null });
+  const storagePrefix = `supabase://${KAEL_CHAT_MEDIA_BUCKET}/`;
+  const ownedPath = (mediaRef: string) => {
+    const match = mediaRef.match(KAEL_CHAT_MEDIA_REF_PATTERN);
+    return ownerId && match?.[1] === ownerId && match[2] === "model_vision"
+      ? mediaRef.slice(storagePrefix.length)
+      : null;
+  };
+  const ownedPaths = refs.flatMap((mediaRef) => ownedPath(mediaRef) ?? []);
+  const storageClient = ctx.privilegedSupabase ?? ctx.supabase;
+  const bucket = (storageClient as KaelMediaStorage).storage?.from(KAEL_CHAT_MEDIA_BUCKET);
+  if (ownedPaths.length === 0 || !bucket) return refs.map(unavailable);
+
+  let intentsByPath: Map<string, Record<string, unknown>>;
+  try {
+    intentsByPath = await loadKaelChatMediaIntents(ctx, ownedPaths);
+  } catch {
+    return refs.map(unavailable);
+  }
+
+  // A ref whose intent row is missing has no retention evidence, so it is unavailable, not expired.
+  const statusOf = (objectPath: string) => {
+    const intent = intentsByPath.get(objectPath);
+    if (!intent) return "unavailable" as const;
+    return isExpiredKaelChatMediaIntent(intent) ? "expired" as const : "signable" as const;
+  };
+  const signable = [...new Set(ownedPaths.filter((objectPath) => statusOf(objectPath) === "signable"))];
+  const signedByPath = await signKaelChatMediaPaths(bucket, signable);
+
+  return refs.map((ref): KaelChatMediaPreview => {
+    const objectPath = ownedPath(ref);
+    if (!objectPath) return unavailable(ref);
+    const status = statusOf(objectPath);
+    if (status === "expired") return { ref, status: "expired", url: null };
+    const url = status === "signable" ? signedByPath.get(objectPath) : undefined;
+    return url ? { ref, status: "available", url } : unavailable(ref);
+  });
+}
+
+// One Storage request signs a whole history; a client without batch signing falls back to small
+// sequential batches so a long photo history never fans out into one request per photo at once.
+const KAEL_CHAT_MEDIA_SIGNING_BATCH = 6;
+
+async function signKaelChatMediaPaths(
+  bucket: ReturnType<NonNullable<KaelMediaStorage["storage"]>["from"]>,
+  paths: string[],
+): Promise<Map<string, string>> {
+  const signed = new Map<string, string>();
+  if (paths.length === 0) return signed;
+  if (bucket.createSignedUrls) {
+    try {
+      const result = await bucket.createSignedUrls(paths, KAEL_CHAT_MEDIA_PREVIEW_URL_EXPIRES_IN_SECONDS);
+      for (const item of result.error ? [] : result.data ?? []) {
+        if (item.path && item.signedUrl && !item.error) signed.set(item.path, item.signedUrl);
+      }
+    } catch {
+      return signed;
+    }
+    return signed;
+  }
+  for (let index = 0; index < paths.length; index += KAEL_CHAT_MEDIA_SIGNING_BATCH) {
+    await Promise.all(paths.slice(index, index + KAEL_CHAT_MEDIA_SIGNING_BATCH).map(async (objectPath) => {
+      try {
+        const result = await bucket.createSignedUrl(objectPath, KAEL_CHAT_MEDIA_PREVIEW_URL_EXPIRES_IN_SECONDS);
+        if (!result.error && result.data?.signedUrl) signed.set(objectPath, result.data.signedUrl);
+      } catch {
+        // An unsigned path reads as unavailable.
+      }
+    }));
+  }
+  return signed;
+}
+
 function isExpiredKaelChatMediaIntent(intent: Record<string, unknown> | undefined) {
   if (!intent || typeof intent.status !== "string") return true;
   if (

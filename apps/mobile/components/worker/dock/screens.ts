@@ -380,6 +380,17 @@ export const WORKER_V5_SCREENS: WorkerV5ScreenDefinition[] = [
     section: 'profile',
     title: { en: 'Worker policies', vi: 'Chính sách dành cho thợ' },
   },
+  {
+    authority: 'system',
+    guardrail: 'Mã mời do máy chủ tạo một lần; khách chỉ liên kết khi nhập mã hợp lệ trong thời hạn và trước đơn thanh toán đầu tiên.',
+    icon: 'profile',
+    id: '5.16-worker-invite-code',
+    order: 41,
+    phase: 'grow',
+    primaryNext: '5.1-profile-overview',
+    section: 'profile',
+    title: { en: 'Customer invite code', vi: 'Mã mời khách' },
+  },
 ]
 
 export const workerV5EnglishGuardrails: Partial<Record<WorkerV5ScreenId, string>> = {
@@ -404,6 +415,7 @@ export const workerV5EnglishGuardrails: Partial<Record<WorkerV5ScreenId, string>
   '4.6-ambassador': 'Points and milestones read from the real points ledger; the server records every redemption and its tax withholding.',
   '4.7-violations': 'The violation record shows real decisions only; the system proposes, an admin confirms, and the worker can appeal.',
   '5.1-profile-overview': 'Profile shows real worker data only, without invented level or job totals.',
+  '5.16-worker-invite-code': 'The server issues the invite code once; a customer links only by entering a valid code inside the claim window and before their first paid order.',
   '5.15-worker-delete-account': 'Account deletion starts in-app after explicit confirmation and is blocked while active work, disputes, payments, or settlements remain open.',
   '5.2-worker-ranking': 'Ranking reads from real performance insights or shows an honest empty state.',
   '5.3-skills-service-area': 'Skills and service area update through the real worker profile.',

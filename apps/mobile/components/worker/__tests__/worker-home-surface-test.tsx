@@ -1435,11 +1435,12 @@ describe('Worker runtime surface wiring', () => {
     expect(screen.queryByTestId('worker-v5-kael-orb-live-thread')).toBeNull()
     expect(screen.queryByText('Cuộc trò chuyện mới. Hãy gửi tin nhắn đầu tiên cho Kael.')).toBeNull()
     expect(screen.getByTestId('worker-v5-kael-orb-composer')).toBeOnTheScreen()
+    // The test renderer reports no safe-area inset, so the frame keeps its minimum bottom gap.
     expect(StyleSheet.flatten(screen.getByTestId('worker-v5-kael-customer-frame').props.style)).toMatchObject({
-      paddingBottom: 0,
+      paddingBottom: 8,
     })
     expect(StyleSheet.flatten(screen.getByTestId('worker-v5-kael-orb-disclaimer').props.style)).toMatchObject({
-      paddingBottom: 12,
+      paddingBottom: 0,
     })
     expect(StyleSheet.flatten(screen.getByTestId('worker-v5-kael-orb-input').props.style)).toMatchObject({
       boxShadow: 'none',
@@ -2554,22 +2555,20 @@ describe('Worker runtime surface wiring', () => {
     })
     expect(screen.queryByTestId('worker-v5-kael-session-menu-liquid-layers')).toBeNull()
     expect(StyleSheet.flatten(screen.getByTestId('worker-v5-kael-session-list').props.style)).toMatchObject({
-      marginTop: 6,
       maxHeight: 138,
     })
-    expect(screen.getByText('Cuộc trò chuyện mới')).toBeOnTheScreen()
+    expect(screen.getByText('Trò chuyện mới')).toBeOnTheScreen()
     expect(screen.getByTestId('worker-v5-kael-session-new-liquid-layers')).toBeOnTheScreen()
-    expect(StyleSheet.flatten(screen.getByTestId('worker-v5-kael-session-new').props.style)).toMatchObject({
-      alignSelf: 'stretch',
+    expect(StyleSheet.flatten(screen.getByTestId('worker-v5-kael-session-new-surface').props.style)).toMatchObject({
+      borderRadius: 24,
       borderWidth: 0,
       gap: 8,
-      marginHorizontal: -4,
-      paddingHorizontal: 13,
+      minHeight: 48,
     })
     expect(StyleSheet.flatten(screen.getByTestId('worker-v5-kael-session-new-label').props.style))
-      .toMatchObject({ color: color.brand.primary, fontSize: 13 })
-    expect(screen.getByTestId('worker-v5-kael-session-new-plus')).toHaveProp('height', 21)
-    expect(screen.getByTestId('worker-v5-kael-session-new-plus')).toHaveProp('width', 21)
+      .toMatchObject({ color: color.brand.primary, fontSize: 15, fontWeight: '700' })
+    expect(screen.getByTestId('worker-v5-kael-session-new-plus')).toHaveProp('height', 20)
+    expect(screen.getByTestId('worker-v5-kael-session-new-plus')).toHaveProp('width', 20)
     expect(screen.queryByText('Phiên Kael')).toBeNull()
     expect(screen.getByText('Kiểm tra phạm vi lavabo')).toBeOnTheScreen()
     expect(screen.queryByText('2')).toBeNull()
