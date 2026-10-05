@@ -5,7 +5,7 @@
     "immutableThroughVersion": "20260904113000",
     "sha256": "12da2bac288e0e718e61a27653e8cba9ffdb13b8e9900979407d41e1217b2077"
   },
-  "migrationCount": 430,
+  "migrationCount": 431,
   "migrationEquivalences": {
     "version": "1.0.0",
     "groups": [
@@ -74,7 +74,7 @@
       }
     ]
   },
-  "migrationsSha256": "87ed3fbd49549e6ba651cf6aa85c4facdf775451ea50cd001db8f8fd698c4358",
+  "migrationsSha256": "17ce26595c7d8dcd0e4158e78edf83cee64cc7f6283e7ece5df1b006c08b2f55",
   "databaseTypes": {
     "file": "packages/shared/src/types/database",
     "sha256": "0fcc401abfcf616a7bd559a99fd2f77e080b41b7fbf48b8ad29c9c11e9688bd7"
@@ -3089,6 +3089,13 @@
       "file": "supabase/migrations/20261003100000_kael_normal_chat_suggestions_routing.sql",
       "sha256": "6df7e4903b09985ff66b57c70c7173d3a8247eb64c8e8a7cb2aaa85d17f1a817",
       "bytes": 1456
+    },
+    {
+      "version": "20261005100000",
+      "name": "customer_membership_invite_claim_status",
+      "file": "supabase/migrations/20261005100000_customer_membership_invite_claim_status.sql",
+      "sha256": "275e0d0df6c8dbc56b37ce5a45d60b505622a135424b2db0e7169c322aa62147",
+      "bytes": 3128
     }
   ]
 }
