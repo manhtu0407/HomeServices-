@@ -2,7 +2,6 @@ import { fireEvent, render, screen } from '@testing-library/react-native'
 import { View } from 'react-native'
 
 import { withPillarContext, type PillarManifest } from '@/__tests__/pillar-manifest'
-import { color } from '@/design/theme'
 import { WorkerV5KaelOrbBody } from '../chat/body-surfaces'
 import { getWorkerKaelEmptyHeroCopy } from '../chat/empty-hero-copy'
 
@@ -64,7 +63,7 @@ describe('Worker Kael transcript follow behavior', () => {
 
     withPillarContext(PILLAR, () => {
       expect(screen.getByTestId('worker-v5-kael-orb-jump-to-latest')).toHaveTextContent('Phần mới')
-      expect(screen.getByTestId('worker-v5-kael-orb-jump-to-latest')).toHaveStyle({ backgroundColor: color.brand.primaryDark })
+      expect(screen.getByTestId('worker-v5-kael-orb-jump-to-latest-liquid-layers', { includeHiddenElements: true })).toBeTruthy()
     }, 'new replies must remain discoverable without pulling the reader away from older content')
 
     fireEvent.scroll(screen.getByTestId('worker-v5-kael-orb-transcript'), {

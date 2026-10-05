@@ -16,6 +16,8 @@ import {
 import type { AppLanguage } from '@/lib/app-language'
 import type { LocalMediaUploadDraft } from '@/lib/media-upload'
 
+import { LiquidControlButton } from '@/components/ui/liquid-back-button'
+
 import type { CustomerThemeTokens } from '../customer-theme'
 
 export function MediaDraftPreviewTray({
@@ -44,10 +46,10 @@ export function MediaDraftPreviewTray({
       key: `${draft.uri}:${index}`,
       onRemove: () => onRemove(index),
       removeAccessibilityLabel: language === 'vi' ? 'Xóa ảnh đã chọn' : 'Remove selected photo',
-      removeButtonStyle: [styles.composerRemoveButton, { backgroundColor: tokens.raised, borderColor: tokens.border }],
+      mode: tokens.mode,
       removeTextStyle: [styles.composerRemoveText, { color: tokens.text }],
     }]
-  }), [busy, drafts, language, onRemove, tokens.border, tokens.raised, tokens.text])
+  }), [busy, drafts, language, onRemove, tokens.border, tokens.mode, tokens.text])
 
   if (drafts.length === 0) return null
 
@@ -123,7 +125,7 @@ type ComposerImageDraftRow = {
   key: string
   onRemove: () => void
   removeAccessibilityLabel: string
-  removeButtonStyle: StyleProp<ViewStyle>
+  mode: CustomerThemeTokens['mode']
   removeTextStyle: StyleProp<TextStyle>
 }
 
@@ -142,9 +144,9 @@ function ComposerImageDraftRowView({
   frameStyle,
   imageSource,
   index,
+  mode,
   onRemove,
   removeAccessibilityLabel,
-  removeButtonStyle,
   removeTextStyle,
 }: ComposerImageDraftRow) {
   return (
@@ -158,18 +160,18 @@ function ComposerImageDraftRowView({
         style={styles.composerImage}
         testID={`customer-kael-composer-image-${index}`}
       />
-      <Pressable
+      <LiquidControlButton
         accessibilityLabel={removeAccessibilityLabel}
-        accessibilityRole="button"
-        accessibilityState={accessibilityState}
         disabled={accessibilityState.disabled}
         hitSlop={7}
+        mode={mode}
         onPress={onRemove}
-        style={removeButtonStyle}
+        size={30}
+        style={styles.composerRemoveButton}
         testID={`customer-kael-media-draft-remove-${index}`}
       >
         <Text style={removeTextStyle}>×</Text>
-      </Pressable>
+      </LiquidControlButton>
     </View>
   )
 }
@@ -187,15 +189,9 @@ const styles = StyleSheet.create({
   composerImageRail: { flexGrow: 0, maxHeight: 126, width: '100%' },
   composerImageRailContent: { alignItems: 'center', paddingHorizontal: 5, paddingVertical: 7 },
   composerRemoveButton: {
-    alignItems: 'center',
-    borderRadius: 15,
-    borderWidth: 1,
-    height: 30,
-    justifyContent: 'center',
     position: 'absolute',
     right: -6,
     top: -6,
-    width: 30,
   },
   composerRemoveText: { fontSize: 22, fontWeight: '500', lineHeight: 24, marginTop: -2 },
   disclosure: { ...typography.caption2 },

@@ -2,7 +2,6 @@ import { useCallback, useRef, useState, type ReactNode } from 'react'
 import {
   FlatList,
   Platform,
-  Pressable,
   Text,
   type ListRenderItemInfo,
   type NativeScrollEvent,
@@ -11,6 +10,7 @@ import {
   type ViewStyle,
 } from 'react-native'
 
+import { LiquidPillButton } from '@/components/ui/liquid-pill-button'
 import type { AppLanguage } from '@/lib/app-language'
 
 import type { CustomerThemeTokens } from '../customer-theme'
@@ -93,20 +93,20 @@ export function KaelChatTranscript({
         windowSize={7}
       />
       {newResponseAvailable ? (
-        <Pressable
+        <LiquidPillButton
           accessibilityLabel={language === 'vi' ? 'Chuy\u1ec3n \u0111\u1ebfn ph\u1ea7n m\u1edbi' : 'Jump to the latest response'}
-          accessibilityRole="button"
+          height={36}
+          mode={tokens.mode}
           onPress={() => scrollToLatest(!reduceMotion)}
-          style={[
-            styles.chatLatestButton,
-            { backgroundColor: tokens.primary, boxShadow: '0px 8px 18px rgba(8, 135, 121, 0.28)' },
-          ]}
+          opaqueBackgroundColor={tokens.raised}
+          opaqueBorderColor={tokens.border}
+          style={styles.chatLatestButton}
           testID="customer-v21-kael-jump-to-latest"
         >
-          <Text style={[styles.chatLatestButtonText, { color: tokens.primaryText }]}>
+          <Text style={[styles.chatLatestButtonText, { color: tokens.text }]}>
             {language === 'vi' ? 'Ph\u1ea7n m\u1edbi' : 'Latest'}
           </Text>
-        </Pressable>
+        </LiquidPillButton>
       ) : null}
     </>
   )

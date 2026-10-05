@@ -1,6 +1,5 @@
 import { Fragment, useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import {
-  Pressable,
   ScrollView,
   Text,
   View,
@@ -13,6 +12,7 @@ import type { LocalDeal, ServiceType } from '@nestscout/shared'
 
 import { KaelReasoningReceipt } from '@/components/ui/kael-reasoning-receipt'
 import { KaelChatTurnImages } from '@/components/ui/kael-chat-turn-images'
+import { LiquidPillButton } from '@/components/ui/liquid-pill-button'
 import { motionTokens } from '@/components/ui/motion-tokens'
 import { useKaelResponseStreamPresentation } from '@/components/ui/use-kael-respond-stream-presentation'
 import { color } from '@/design/theme'
@@ -321,20 +321,19 @@ export function WorkerV5KaelOrbBody({
         ) : null}
       </ScrollView>
       {newResponseAvailable ? (
-        <Pressable
+        <LiquidPillButton
           accessibilityLabel={textByLanguage(language, 'Chuyển đến phần mới', 'Jump to the latest response')}
-          accessibilityRole="button"
+          height={36}
           onPress={scrollToLatest}
-          style={[styles.kaelOrbLatestButton, {
-            backgroundColor: color.brand.primaryDark,
-            borderColor: color.surface.stroke,
-          }]}
+          opaqueBackgroundColor={color.surface.soft}
+          opaqueBorderColor={color.surface.stroke}
+          style={styles.kaelOrbLatestButton}
           testID="worker-v5-kael-orb-jump-to-latest"
         >
-          <Text style={[styles.kaelOrbLatestButtonText, { color: color.text.inverse }]}>
+          <Text style={[styles.kaelOrbLatestButtonText, { color: color.text.primary }]}>
             {textByLanguage(language, 'Phần mới', 'Latest')}
           </Text>
-        </Pressable>
+        </LiquidPillButton>
       ) : null}
       {composer}
     </View>

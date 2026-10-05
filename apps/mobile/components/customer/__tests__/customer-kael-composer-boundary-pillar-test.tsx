@@ -287,41 +287,32 @@ describe('Kael composer and failure boundary', () => {
     expect(onRemove).toHaveBeenCalledWith(0)
   })
 
-  it('uses mint send colors in light and dark themes', () => {
+  it('uses the header liquid glass control for a ready send in light and dark themes', () => {
     withPillarContext(PILLAR, () => {
       const lightComposer = renderComposer('light')
-      expect(screen.getByTestId('customer-v21-kael-send')).toHaveStyle({
-        backgroundColor: color.mint.white,
-        borderColor: color.surface.stroke,
-      })
+      expect(screen.getByTestId('customer-v21-kael-send-surface')).toBeOnTheScreen()
       expect(lightComposer.UNSAFE_getByProps({ testID: 'customer-v21-kael-send-arrow' })
         .findAll((node) => typeof node.props.stroke === 'string')
-        .map((node) => node.props.stroke)).toContain(color.text.strong)
+        .map((node) => node.props.stroke)).toContain(getCustomerThemeTokens('light').text)
       lightComposer.unmount()
 
       const darkTokens = getCustomerThemeTokens('dark')
       const darkComposer = renderComposer('dark')
-      expect(screen.getByTestId('customer-v21-kael-send')).toHaveStyle({
-        backgroundColor: darkTokens.primary,
-        borderColor: darkTokens.borderStrong,
-      })
+      expect(screen.getByTestId('customer-v21-kael-send-surface')).toBeOnTheScreen()
       expect(darkComposer.UNSAFE_getByProps({ testID: 'customer-v21-kael-send-arrow' })
         .findAll((node) => typeof node.props.stroke === 'string')
-        .map((node) => node.props.stroke)).toContain(darkTokens.primaryText)
+        .map((node) => node.props.stroke)).toContain(darkTokens.text)
     })
   })
 
-  it('uses the confirmed normal-chat idle palette and its inverse while sending', () => {
+  it('keeps the confirmed dark Stop fill while sending and the glass control when ready', () => {
     withPillarContext(PILLAR, () => {
-      const idle = renderComposer('light', true, false, undefined, false, [], undefined, true, {
+      const ready = renderComposer('light', true, false, undefined, false, [], undefined, true, {
         draft: 'Xin chào',
         composerSending: false,
       })
-      expect(screen.getByTestId('customer-v21-kael-send')).toHaveStyle({ backgroundColor: '#F2FAF9' })
-      expect(idle.UNSAFE_getByProps({ testID: 'customer-v21-kael-send-arrow' })
-        .findAll((node) => typeof node.props.stroke === 'string')
-        .map((node) => node.props.stroke)).toContain('#071A24')
-      idle.unmount()
+      expect(screen.getByTestId('customer-v21-kael-send-surface')).toBeOnTheScreen()
+      ready.unmount()
 
       const sending = renderComposer('light', true, true, () => undefined, false, [], undefined, true, {
         draft: 'Xin chào',
@@ -330,18 +321,7 @@ describe('Kael composer and failure boundary', () => {
       expect(screen.getByTestId('customer-v21-kael-send')).toHaveStyle({ backgroundColor: '#071A24' })
       expect(sending.UNSAFE_getByProps({ testID: 'customer-v21-kael-stop-square' }).props.style)
         .toEqual(expect.objectContaining({ backgroundColor: '#F2FAF9' }))
-      sending.unmount()
-
-      const darkTokens = getCustomerThemeTokens('dark')
-      const dark = renderComposer('dark', true, false, undefined, false, [], undefined, true, {
-        draft: 'Xin chào',
-        composerSending: true,
-      })
-      expect(screen.getByTestId('customer-v21-kael-send')).toHaveStyle({ backgroundColor: darkTokens.primary })
-      expect(dark.UNSAFE_getByProps({ testID: 'customer-v21-kael-send-arrow' })
-        .findAll((node) => typeof node.props.stroke === 'string')
-        .map((node) => node.props.stroke)).toContain(darkTokens.primaryText)
-    }, 'normal-chat colors are exact in light mode while dark mode continues using its existing theme')
+    }, 'Stop stays high-contrast; a ready send uses the header glass material')
   })
 
   it('loads a starter into the editable draft without sending it', () => {

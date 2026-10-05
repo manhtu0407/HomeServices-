@@ -215,19 +215,13 @@ export const customerV21ChatStyles = StyleSheet.create({
     minWidth: 0,
   },
   chatLatestButton: {
-    alignItems: 'center',
     alignSelf: 'center',
-    borderRadius: 16,
-    minHeight: 32,
-    paddingHorizontal: 14,
-    paddingVertical: 7,
-    shadowOffset: { height: 5, width: 0 },
-    shadowOpacity: 0.10,
-    shadowRadius: 12,
+    marginVertical: 4,
   },
   chatLatestButtonText: {
     ...typography.caption1,
-    fontWeight: '600',
+    fontWeight: '700',
+    paddingHorizontal: 16,
   },
   chatMediaBadge: {
     alignItems: 'center',

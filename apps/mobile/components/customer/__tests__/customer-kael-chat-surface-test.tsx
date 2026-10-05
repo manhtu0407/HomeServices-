@@ -8,6 +8,7 @@ import { color } from '@/design/theme'
 import type { CustomerKaelConversationSession } from '@/lib/api-types/customer'
 import { clearPendingKaelChatMessage, stagePendingKaelChatMessage } from '@/lib/pending-kael-chat-message'
 import { setPendingKaelChatDraft } from '@/lib/pending-kael-chat-draft'
+import { getCustomerThemeTokens } from '../customer-theme'
 import { customerV21ServiceCopy } from '../ui/copy'
 import { isLikelyKaelIntakeRequest } from '../kael-chat/customer-kael-chat-helpers'
 
@@ -1624,14 +1625,12 @@ describe('active customer Kael chat surface wiring', () => {
       borderColor: color.surface.stroke,
     })
     fireEvent.changeText(screen.getByTestId('customer-v21-kael-input'), 'Mô tả nhu cầu cần gửi')
-    expect(screen.getByTestId('customer-v21-kael-send')).toHaveStyle({
-      backgroundColor: color.mint.white,
-      borderColor: color.surface.stroke,
-    })
+    expect(screen.getByTestId('customer-v21-kael-send')).toHaveStyle({ borderRadius: 22, height: 44, width: 44 })
+    expect(screen.getByTestId('customer-v21-kael-send-surface')).toBeOnTheScreen()
     const sendArrowStrokes = view.UNSAFE_getByProps({ testID: 'customer-v21-kael-send-arrow' })
       .findAll((node) => typeof node.props.stroke === 'string')
       .map((node) => node.props.stroke)
-    expect(sendArrowStrokes).toContain(color.text.strong)
+    expect(sendArrowStrokes).toContain(getCustomerThemeTokens('light').text)
     expect(screen.getByTestId('customer-v21-kael-media-camera-icon')).toBeOnTheScreen()
     expect(screen.getByTestId('customer-v21-kael-send-arrow')).toBeOnTheScreen()
     expect(screen.getByTestId('customer-v21-kael-input')).toHaveProp('placeholder', 'Mô tả nhu cầu cho Kael...')

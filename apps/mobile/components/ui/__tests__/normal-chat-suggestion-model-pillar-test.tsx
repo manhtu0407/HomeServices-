@@ -6,8 +6,7 @@ import {
   getNormalChatGhostSuffix,
   getNormalChatStarterSuggestions,
 } from '../normal-chat-composer-model'
-import { NormalChatStarterRail, getNormalChatStarterChipStyle } from '../normal-chat-starter-rail'
-import { color } from '@/design/theme'
+import { NormalChatStarterRail } from '../normal-chat-starter-rail'
 
 export const PILLAR = {
   id: 'P302-normal-chat-suggestion-model',
@@ -16,7 +15,7 @@ export const PILLAR = {
   target: 'apps/mobile/components/ui/normal-chat-starter-rail.tsx',
   layer: 'unit',
   siblings: ['P205-kael-composer-and-failure-boundary', 'P298-worker-kael-composer-layout'],
-  mutation: 'remove role-specific wording, omit a starter, add decorative plus glyphs to chips, change the rail to wrapped cards or show its scroll indicator, alter the confirmed mint capsule colors, skip Unicode or whitespace normalization, show a suffix after a non-terminal selection or during composition, accept a nonmatching suggestion, or append ghost text to the controlled draft; at least one focused assertion turns red',
+  mutation: 'remove role-specific wording, omit a starter, add decorative plus glyphs to chips, change the rail to wrapped cards or show its scroll indicator, give the chips a solid fill instead of the header liquid pill, skip Unicode or whitespace normalization, show a suffix after a non-terminal selection or during composition, accept a nonmatching suggestion, or append ghost text to the controlled draft; at least one focused assertion turns red',
 } as const satisfies PillarManifest
 
 describe('normal Kael Chat suggestion model', () => {
@@ -32,17 +31,9 @@ describe('normal Kael Chat suggestion model', () => {
       expect(screen.getAllByRole('button')).toHaveLength(4)
       expect(screen.queryByText('+')).toBeNull()
       expect(screen.queryByText('Chọn một gợi ý hoặc chạm camera để thêm ảnh.')).toBeNull()
-      expect(getNormalChatStarterChipStyle()).toMatchObject({
-        backgroundColor: '#F2FAF9',
-        borderRadius: 26,
-        borderWidth: 1,
-        minHeight: 52,
-        minWidth: 156,
-        shadowColor: color.brand.primary,
-      })
-      expect(getNormalChatStarterChipStyle().opacity).toBe(1)
-      expect(getNormalChatStarterChipStyle(true).opacity).toBe(0.84)
-    }, 'both roles must use swipeable horizontal suggestions with matching light-mint capsule treatment')
+      expect(screen.getByTestId('normal-chat-starter-what-can-kael-do-surface')).toHaveStyle({ borderRadius: 22, minHeight: 44 })
+      expect(screen.getByTestId('normal-chat-starter-what-can-kael-do-liquid-layers', { includeHiddenElements: true })).toBeTruthy()
+    }, 'both roles must use swipeable horizontal suggestions in the header liquid pill material')
 
     fireEvent.press(screen.getByTestId(`normal-chat-starter-${role === 'customer' ? 'describe-a-problem' : 'describe-a-fault'}`))
     expect(onSelect).toHaveBeenCalledWith(role === 'customer'

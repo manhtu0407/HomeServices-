@@ -8,6 +8,7 @@ import { KaelButton, KaelTextField } from '@/components/ui/kael-primitives'
 import { GlassSurface } from '@/components/ui/glass-surface'
 import { KaelSendStopGlyph } from '@/components/ui/kael-send-stop-glyph'
 import { NormalChatGhostOverlay } from '@/components/ui/normal-chat-ghost-overlay'
+import { LiquidControlButton } from '@/components/ui/liquid-back-button'
 import { NormalChatStarterRail } from '@/components/ui/normal-chat-starter-rail'
 import { EMPTY_NORMAL_CHAT_SUGGESTIONS, getNormalChatGhostSuffix, getNormalChatSendPalette } from '@/components/ui/normal-chat-composer-model'
 import { motionDuration, motionTokens } from '@/components/ui/motion-tokens'
@@ -582,40 +583,60 @@ export function WorkerV5KaelOrbComposer({
           testID="worker-v5-kael-orb-input"
           value={draft}
         />
-        <Pressable
-          accessibilityLabel={stopping
-            ? textByLanguage(language, 'Dừng phản hồi', 'Stop response')
-            : textByLanguage(language, 'Gửi tin nhắn cho Kael', 'Send message to Kael')}
-          accessibilityRole="button"
-          accessibilityState={{ busy, disabled: !stopping && !canSubmit }}
-          disabled={!stopping && !canSubmit}
-          onPress={stopping ? onStop : submitDraft}
-          style={({ pressed }) => [
-            styles.kaelOrbSendButton,
-            {
-              backgroundColor: normalComposer
-                ? getNormalChatSendPalette(sending).background
-                : stopping || canSubmit ? color.brand.primary : color.surface.soft,
-              borderColor: color.surface.stroke,
-              borderRadius: 22,
-              borderWidth: 1,
-              height: 44,
-              width: 44,
-            },
-            pressed && !reduceMotion ? { transform: [{ scale: 0.96 }] } : null,
-          ]}
-          testID="worker-v5-kael-orb-send"
-        >
-          <KaelSendStopGlyph
-            arrowColor={normalComposer
-              ? getNormalChatSendPalette(sending).foreground
-              : getWorkerV5KaelComposerArrowColor(false, canSubmit)}
-            reduceMotion={reduceMotion}
-            stopColor={normalComposer ? getNormalChatSendPalette(sending).foreground : color.text.inverse}
-            stopping={stopping}
-            testIDPrefix="worker-v5-kael-orb"
-          />
-        </Pressable>
+        {!stopping && canSubmit ? (
+          // Ready to send: the header's liquid glass control. Empty and Stop keep their own states.
+          <LiquidControlButton
+            accessibilityLabel={textByLanguage(language, 'Gửi tin nhắn cho Kael', 'Send message to Kael')}
+            accessibilityState={{ busy }}
+            onPress={submitDraft}
+            size={44}
+            style={styles.kaelOrbSendButton}
+            testID="worker-v5-kael-orb-send"
+          >
+            <KaelSendStopGlyph
+              arrowColor={color.text.primary}
+              reduceMotion={reduceMotion}
+              stopColor={color.text.primary}
+              stopping={false}
+              testIDPrefix="worker-v5-kael-orb"
+            />
+          </LiquidControlButton>
+        ) : (
+          <Pressable
+            accessibilityLabel={stopping
+              ? textByLanguage(language, 'Dừng phản hồi', 'Stop response')
+              : textByLanguage(language, 'Gửi tin nhắn cho Kael', 'Send message to Kael')}
+            accessibilityRole="button"
+            accessibilityState={{ busy, disabled: !stopping && !canSubmit }}
+            disabled={!stopping && !canSubmit}
+            onPress={stopping ? onStop : submitDraft}
+            style={({ pressed }) => [
+              styles.kaelOrbSendButton,
+              {
+                backgroundColor: normalComposer
+                  ? getNormalChatSendPalette(sending).background
+                  : stopping || canSubmit ? color.brand.primary : color.surface.soft,
+                borderColor: color.surface.stroke,
+                borderRadius: 22,
+                borderWidth: 1,
+                height: 44,
+                width: 44,
+              },
+              pressed && !reduceMotion ? { transform: [{ scale: 0.96 }] } : null,
+            ]}
+            testID="worker-v5-kael-orb-send"
+          >
+            <KaelSendStopGlyph
+              arrowColor={normalComposer
+                ? getNormalChatSendPalette(sending).foreground
+                : getWorkerV5KaelComposerArrowColor(false, canSubmit)}
+              reduceMotion={reduceMotion}
+              stopColor={normalComposer ? getNormalChatSendPalette(sending).foreground : color.text.inverse}
+              stopping={stopping}
+              testIDPrefix="worker-v5-kael-orb"
+            />
+          </Pressable>
+        )}
       </GlassSurface>
       <Text style={styles.kaelOrbComposerDisclaimer} testID="worker-v5-kael-orb-disclaimer">
         {textByLanguage(language, 'Kael có thể mắc lỗi. Hãy kiểm tra các thông tin quan trọng.', 'Kael can make mistakes. Check important information.')}
