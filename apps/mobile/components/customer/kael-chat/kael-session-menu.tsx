@@ -273,7 +273,7 @@ function sessionMenuCopy(language: AppLanguage, mode: CustomerKaelConversationMo
       deleteConfirm: 'Remove this conversation from the list?',
       deleteRowCaseNote: 'Kael is handling this work', deleteRowCaseTitle: 'Cancel & delete?',
       deleteRowNote: 'Removes it from your list', deleteRowTitle: 'Delete chat?', empty: 'No conversations yet.',
-      loading: 'Loading conversations...', more: 'Options for', newSession: 'New conversation',
+      loading: 'Loading conversations...', more: 'Options for', newSession: 'New chat',
       pin: 'Pin', rename: 'Rename', renamePlaceholder: 'Conversation name', save: 'Save', unpin: 'Unpin',
     }
   }
@@ -284,7 +284,7 @@ function sessionMenuCopy(language: AppLanguage, mode: CustomerKaelConversationMo
     deleteConfirm: 'Xóa cuộc trò chuyện này khỏi danh sách?',
     deleteRowCaseNote: 'Kael đang xử lý công việc này', deleteRowCaseTitle: 'Hủy việc, xóa?',
     deleteRowNote: 'Gỡ khỏi danh sách phiên', deleteRowTitle: 'Xóa phiên?', empty: 'Chưa có cuộc trò chuyện.',
-    loading: 'Đang tải cuộc trò chuyện...', more: 'Tùy chọn cho', newSession: 'Cuộc trò chuyện mới',
+    loading: 'Đang tải cuộc trò chuyện...', more: 'Tùy chọn cho', newSession: 'Trò chuyện mới',
     pin: 'Ghim', rename: 'Đổi tên', renamePlaceholder: 'Tên cuộc trò chuyện', save: 'Lưu', unpin: 'Bỏ ghim',
   }
 }

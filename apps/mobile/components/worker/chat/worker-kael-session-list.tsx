@@ -192,13 +192,13 @@ function sessionMenuCopy(language: AppLanguage, mode: WorkerKaelChatMode): Worke
     ? {
         accessibilityLabel: 'Các cuộc trò chuyện Kael', cancel: 'Hủy', delete: 'Xóa',
         deleteConfirm: 'Xóa khỏi danh sách? Nội dung vẫn được lưu bảo mật.', deleteRowNote: 'Nội dung vẫn lưu bảo mật', deleteRowTitle: 'Xóa phiên?', empty,
-        loading: 'Đang tải cuộc trò chuyện...', more: 'Tùy chọn cho', newSession: 'Cuộc trò chuyện mới',
+        loading: 'Đang tải cuộc trò chuyện...', more: 'Tùy chọn cho', newSession: 'Trò chuyện mới',
         pin: 'Ghim', pinned: 'Đã ghim', rename: 'Đổi tên', renamePlaceholder: 'Tên cuộc trò chuyện', save: 'Lưu', unpin: 'Bỏ ghim',
       }
     : {
         accessibilityLabel: 'Kael conversations', cancel: 'Cancel', delete: 'Delete',
         deleteConfirm: 'Remove from the list? Content remains securely retained.', deleteRowNote: 'Content stays retained', deleteRowTitle: 'Delete chat?', empty,
-        loading: 'Loading conversations...', more: 'Options for', newSession: 'New conversation',
+        loading: 'Loading conversations...', more: 'Options for', newSession: 'New chat',
         pin: 'Pin', pinned: 'Pinned', rename: 'Rename', renamePlaceholder: 'Conversation name', save: 'Save', unpin: 'Unpin',
       }
 }

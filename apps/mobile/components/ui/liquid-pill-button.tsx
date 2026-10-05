@@ -22,6 +22,7 @@ export function LiquidPillButton({
   accessibilityLabel,
   accessibilityState,
   children,
+  contentPaddingHorizontal = 0,
   disabled = false,
   height = 44,
   mode = 'light',
@@ -34,6 +35,7 @@ export function LiquidPillButton({
   accessibilityLabel: string
   accessibilityState?: PressableProps['accessibilityState']
   children: ReactNode
+  contentPaddingHorizontal?: number
   disabled?: boolean
   height?: number
   mode?: GlassMode
@@ -84,7 +86,7 @@ export function LiquidPillButton({
           showEdgeHighlight={false}
           style={[
             styles.surface,
-            { borderRadius: radius, minHeight: height },
+            { borderRadius: radius, minHeight: height, paddingHorizontal: contentPaddingHorizontal },
             // GlassSurface keeps its own fallback fill under Reduce Transparency; the themed colour wins here.
             reduceTransparency ? { backgroundColor: opaqueBackgroundColor, borderColor: opaqueBorderColor } : styles.surfaceLiquid,
           ]}

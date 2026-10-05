@@ -785,7 +785,7 @@ describe('active customer Kael chat surface wiring', () => {
       maxHeight: 138,
     })
     expect(StyleSheet.flatten(screen.getByTestId('customer-v21-kael-session-new-label').props.style)).toMatchObject({
-      fontSize: 14,
+      fontSize: 15,
       fontWeight: '700',
     })
     expect(screen.getByTestId('customer-v21-kael-session-menu-glass')).toBeOnTheScreen()

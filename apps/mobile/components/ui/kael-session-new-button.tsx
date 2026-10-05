@@ -31,6 +31,7 @@ export function KaelSessionNewButton({
   return (
     <LiquidPillButton
       accessibilityLabel={label}
+      contentPaddingHorizontal={14}
       disabled={disabled}
       height={48}
       mode={mode}
@@ -59,6 +60,6 @@ export function KaelSessionNewButton({
 const styles = StyleSheet.create({
   disabled: { opacity: 0.48 },
   frame: { alignSelf: 'stretch' },
-  // 14pt bold keeps the full label inside the menu's fixed 208pt width; native also shrinks to fit.
-  label: { ...typography.subheadline, flexShrink: 1, fontSize: 14, fontWeight: '700', lineHeight: 19 },
+  // The short label at 15pt bold sits centred with even padding inside the menu's fixed 208pt width.
+  label: { ...typography.subheadline, flexShrink: 1, fontWeight: '700' },
 })

@@ -11,7 +11,7 @@ import type { CustomerKaelConversationSession } from '@/lib/api-types/customer'
 export const PILLAR = {
   id: 'P315-kael-session-menu-fixed-size',
   invariant:
-    'the Kael session menu keeps one size while a row is renamed, pinned or deleted, in the Customer and Worker chats: renaming puts Cancel and Save in the row as liquid controls, Save is locked while the name is empty, the delete confirmation fits the menu width, and "New conversation" is the 48pt header-material pill inside the menu frame',
+    'the Kael session menu keeps one size while a row is renamed, pinned or deleted, in the Customer and Worker chats: renaming puts Cancel and Save in the row as liquid controls, Save is locked while the name is empty, the delete confirmation fits the menu width, and "Trò chuyện mới" is the 48pt header-material pill with even inner padding inside the menu frame',
   authority: [
     'governance/design.md (controls keep their footprint; one material per control family)',
     'governance/RULES.md #8 (no destructive action without an explicit confirmation)',
@@ -87,7 +87,8 @@ describe('P315 Kael session menu keeps its size', () => {
     withPillarContext(PILLAR, () => {
       expect(initial.shell).toMatchObject({ maxWidth: 208, width: '59%' })
       expect(initial.list.maxHeight).toBe(138)
-      expect(StyleSheet.flatten(screen.getByTestId(`${prefix}-session-new-surface`).props.style)).toMatchObject({ minHeight: 48 })
+      expect(StyleSheet.flatten(screen.getByTestId(`${prefix}-session-new-surface`).props.style)).toMatchObject({ minHeight: 48, paddingHorizontal: 14 })
+      expect(screen.getByTestId(`${prefix}-session-new-label`)).toHaveTextContent('Trò chuyện mới')
     })
 
     fireEvent.press(screen.getByTestId(`${prefix}-session-actions-size-session`))

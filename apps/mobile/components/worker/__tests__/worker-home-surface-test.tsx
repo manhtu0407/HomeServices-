@@ -2556,7 +2556,7 @@ describe('Worker runtime surface wiring', () => {
     expect(StyleSheet.flatten(screen.getByTestId('worker-v5-kael-session-list').props.style)).toMatchObject({
       maxHeight: 138,
     })
-    expect(screen.getByText('Cuộc trò chuyện mới')).toBeOnTheScreen()
+    expect(screen.getByText('Trò chuyện mới')).toBeOnTheScreen()
     expect(screen.getByTestId('worker-v5-kael-session-new-liquid-layers')).toBeOnTheScreen()
     expect(StyleSheet.flatten(screen.getByTestId('worker-v5-kael-session-new-surface').props.style)).toMatchObject({
       borderRadius: 24,
@@ -2565,7 +2565,7 @@ describe('Worker runtime surface wiring', () => {
       minHeight: 48,
     })
     expect(StyleSheet.flatten(screen.getByTestId('worker-v5-kael-session-new-label').props.style))
-      .toMatchObject({ color: color.brand.primary, fontSize: 14, fontWeight: '700' })
+      .toMatchObject({ color: color.brand.primary, fontSize: 15, fontWeight: '700' })
     expect(screen.getByTestId('worker-v5-kael-session-new-plus')).toHaveProp('height', 20)
     expect(screen.getByTestId('worker-v5-kael-session-new-plus')).toHaveProp('width', 20)
     expect(screen.queryByText('Phiên Kael')).toBeNull()
