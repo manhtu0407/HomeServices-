@@ -30,7 +30,8 @@ import type { AppLanguage } from '@/lib/app-language'
 import type { EarningsResponse } from '@/lib/api-types'
 
 import { formatVndDong, textByLanguage } from '../ui/format'
-import { workerIncomeDashboardAssets, workerIncomeDashboardTokens as tokens } from './income-dashboard-tokens'
+import { workerIncomeDashboardAssets, workerIncomeDashboardDarkAssets, workerIncomeDashboardTokens as tokens, type WorkerIncomeDashboardColors } from './income-dashboard-tokens'
+import { useWorkerThemeMode } from '../worker-theme'
 import {
   buildEarningsDashboardModel,
   buildWorkerEarningsSnapshot,
@@ -41,10 +42,10 @@ import {
 import { WorkerEarningsPeriodSelector } from './period-selector'
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable)
-const colors = tokens.colors
 const ORB_PROXIMITY_PADDING = 24
 
 function IncomeOrbWithdrawFill() {
+  const { colors } = useIncomeDashboardTheme()
   const gradientId = 'workerIncomeOrbWithdrawGradient'
   return (
     <Svg pointerEvents="none" preserveAspectRatio="none" style={StyleSheet.absoluteFill} testID="worker-v5-income-dashboard-orb-withdraw-gradient" viewBox="0 0 100 38">
@@ -101,6 +102,7 @@ function MotionButton({
 }
 
 function LoadingValue({ style }: { style?: StyleProp<ViewStyle> }) {
+  const { styles } = useIncomeDashboardTheme()
   return (
     <View
       accessible={false}
@@ -111,6 +113,7 @@ function LoadingValue({ style }: { style?: StyleProp<ViewStyle> }) {
 }
 
 function DashboardBackground({ reduceMotion, reduceTransparency }: { reduceMotion: boolean; reduceTransparency: boolean }) {
+  const { assets, colors, styles } = useIncomeDashboardTheme()
   const ambient = useSharedValue(0)
   const ambientStyle = useAnimatedStyle(() => ({
     opacity: interpolate(ambient.value, [0, 1], [0.08, 0.18]),
@@ -139,7 +142,7 @@ function DashboardBackground({ reduceMotion, reduceTransparency }: { reduceMotio
   return (
     <View pointerEvents="none" style={StyleSheet.absoluteFill}>
       <View style={[styles.whiteBase, reduceTransparency ? styles.opaqueBase : null]} />
-      <Image contentFit="fill" source={workerIncomeDashboardAssets.background} style={styles.backgroundImage} testID="worker-v5-income-dashboard-background" />
+      <Image contentFit="fill" source={assets.background} style={styles.backgroundImage} testID="worker-v5-income-dashboard-background" />
       {!reduceTransparency ? (
         <Animated.View style={[styles.ambientAura, ambientStyle]} testID="worker-v5-income-dashboard-ambient">
           <Svg height="100%" viewBox="0 0 210 180" width="100%">
@@ -158,13 +161,14 @@ function DashboardBackground({ reduceMotion, reduceTransparency }: { reduceMotio
 }
 
 export function WorkerEarningsFullBleedScene({ children }: { children: ReactNode }) {
+  const { assets, styles } = useIncomeDashboardTheme()
   return (
     <View style={styles.fullBleedScene} testID="worker-v5-earnings-full-bleed-scene">
       <Image
         accessible={false}
         contentFit="fill"
         pointerEvents="none"
-        source={workerIncomeDashboardAssets.background}
+        source={assets.background}
         style={styles.fullBleedBackground}
         testID="worker-v5-earnings-safe-area-background"
       />
@@ -189,6 +193,7 @@ function comparisonCopy(comparison: WorkerEarningsComparison, language: AppLangu
 }
 
 function DeltaRow({ comparison, language, statusCopy }: { comparison: WorkerEarningsComparison; language: AppLanguage; statusCopy?: string }) {
+  const { styles } = useIncomeDashboardTheme()
   const direction = comparison.state === 'available' ? comparison.direction : 'flat'
   const copy = statusCopy ?? comparisonCopy(comparison, language)
   return (
@@ -204,6 +209,7 @@ function DeltaRow({ comparison, language, statusCopy }: { comparison: WorkerEarn
 }
 
 function MiniTrendChart({ points }: { points: ReturnType<typeof buildEarningsDashboardModel>['visiblePoints'] }) {
+  const { colors, styles } = useIncomeDashboardTheme()
   const trend = buildWorkerEarningsTrend(points)
   if (!trend) return null
   return (
@@ -239,6 +245,7 @@ function LiquidBalanceOrb({
   top: number
   width: number
 }) {
+  const { assets, colors, styles } = useIncomeDashboardTheme()
   const orbExtra = dynamicExtra * 0.27
   const orbRatio = width / 176
   const orbHeight = width * 153 / 176 + orbExtra
@@ -422,7 +429,7 @@ function LiquidBalanceOrb({
         testID="worker-v5-income-dashboard-orb"
       >
         {reduceTransparency ? <View style={styles.orbOpaqueBacking} /> : null}
-        <Image contentFit="fill" source={workerIncomeDashboardAssets.orb} style={styles.orbImage} testID="worker-v5-income-dashboard-orb-surface" />
+        <Image contentFit="fill" source={assets.orb} style={styles.orbImage} testID="worker-v5-income-dashboard-orb-surface" />
         <View pointerEvents="none" style={styles.orbReactionClip}>
           {!reduceTransparency ? (
             <Animated.View style={[styles.orbReactionFrost, frostStyle]} testID="worker-v5-income-dashboard-orb-reaction-frost">
@@ -507,6 +514,7 @@ function CashflowCard({
   top: number
   width: number
 }) {
+  const { styles } = useIncomeDashboardTheme()
   const chartLabel = state === 'loading'
     ? textByLanguage(language, 'Đang tải biểu đồ thu nhập', 'Loading earnings chart')
     : state === 'empty'
@@ -555,6 +563,7 @@ function StatsStrip({
   transferred: string | null
   width: number
 }) {
+  const { styles } = useIncomeDashboardTheme()
   const items = [
     { id: 'withdrawn', label: textByLanguage(language, 'Đã chuyển', 'Transferred'), value: transferred },
     { id: 'pending', label: textByLanguage(language, 'Dự kiến', 'Expected'), value: expected },
@@ -604,6 +613,7 @@ export function WorkerIncomeDashboard({
   reduceMotion: boolean
   reduceTransparency: boolean
 }) {
+  const { styles } = useIncomeDashboardTheme()
   const [period, setPeriod] = useState<WorkerEarningsPeriod>(initialPeriod)
   const { fontScale, width: windowWidth } = useWindowDimensions()
   const [widthMeasurement, setWidthMeasurement] = useState(() => ({ availableWidth: Math.max(0, windowWidth), windowWidth }))
@@ -707,58 +717,76 @@ export function WorkerIncomeDashboard({
 
 const absoluteFill = { bottom: 0, left: 0, position: 'absolute', right: 0, top: 0 } as const
 
-const styles = StyleSheet.create({
-  root: { alignItems: 'center', alignSelf: 'center', overflow: 'visible' },
-  fullBleedScene: { flex: 1, position: 'relative' },
-  fullBleedBackground: { ...absoluteFill },
-  backgroundBleed: { left: 0, overflow: 'hidden', position: 'absolute' },
-  stage: { position: 'relative', zIndex: 1 },
-  dashboardCard: { backgroundColor: colors.transparent, overflow: 'hidden', width: '100%' },
-  whiteBase: { ...absoluteFill, backgroundColor: colors.page },
-  opaqueBase: { backgroundColor: colors.opaqueTint },
-  backgroundImage: { ...absoluteFill },
-  ambientAura: { height: 220, position: 'absolute', right: -28, top: 154, width: 260 },
-  dynamicContent: { ...absoluteFill },
-  hero: { alignItems: 'center', left: 0, position: 'absolute', top: 44, width: '100%', zIndex: 4 },
-  heroLabel: { color: colors.muted, fontSize: 14, fontWeight: '500', letterSpacing: -0.16, lineHeight: 18, textAlign: 'center' },
-  totalIncome: { color: colors.inkStrong, fontSize: 28, fontVariant: ['tabular-nums'], fontWeight: '600', letterSpacing: -0.62, lineHeight: 34, marginTop: 2, maxWidth: 360, textAlign: 'center' },
-  deltaRow: { alignItems: 'center', flexDirection: 'row', justifyContent: 'center', marginTop: 3, maxWidth: 360, paddingHorizontal: 12 },
-  deltaArrow: { borderBottomColor: colors.green, borderBottomWidth: 6, borderLeftColor: colors.transparent, borderLeftWidth: 4, borderRightColor: colors.transparent, borderRightWidth: 4, height: 0, marginRight: 4, width: 0 },
-  deltaArrowDown: { borderBottomColor: colors.transparent, borderBottomWidth: 0, borderTopColor: colors.purpleStrong, borderTopWidth: 6 },
-  deltaText: { color: colors.greenStrong, fontSize: 12, fontWeight: '600', letterSpacing: -0.04, lineHeight: 16, textAlign: 'center' },
-  deltaTextDecrease: { color: colors.purpleStrong },
-  orbProximityZone: { borderRadius: 999, position: 'absolute' },
-  orbShell: { position: 'absolute', zIndex: 2 },
-  orbOpaqueBacking: { backgroundColor: colors.white, borderRadius: 999, bottom: 8, left: 7, position: 'absolute', right: 8, top: 6 },
-  orbImage: { ...absoluteFill },
-  orbReactionClip: { ...absoluteFill, borderRadius: 999, overflow: 'hidden' },
-  orbReactionFrost: { ...absoluteFill },
-  orbReactionCaustic: { ...absoluteFill },
-  orbReactionSheen: { backgroundColor: colors.white, borderRadius: 999, bottom: 10, left: '50%', opacity: 0, position: 'absolute', top: 8, width: 24 },
-  orbReactionRing: { borderColor: colors.greenStrong, borderRadius: 999, borderWidth: 2, bottom: 7, left: 6, position: 'absolute', right: 7, top: 5 },
-  orbLabel: { color: colors.muted, fontSize: 14, fontWeight: '600', left: 0, letterSpacing: -0.18, lineHeight: 18, position: 'absolute', right: 0, textAlign: 'center' },
-  orbAmountFrame: { position: 'absolute' },
-  orbAmount: { color: colors.inkStrong, fontSize: 24, fontVariant: ['tabular-nums'], fontWeight: '700', letterSpacing: -0.82, lineHeight: 30, textAlign: 'center' },
-  orbWithdrawHitTarget: { alignItems: 'center', height: 48, justifyContent: 'center', position: 'absolute', width: tokens.layout.orbActionWidth },
-  orbWithdrawButton: { alignItems: 'center', borderRadius: 20, height: 38, justifyContent: 'center', overflow: 'hidden', width: tokens.layout.orbActionWidth },
-  orbWithdrawText: { color: colors.white, fontSize: 15, fontWeight: '700', letterSpacing: -0.18, lineHeight: 20 },
-  cashflowCard: { backgroundColor: colors.contentSurface, borderColor: colors.borderSoft, borderRadius: tokens.layout.panelRadius, borderWidth: StyleSheet.hairlineWidth, overflow: 'hidden', position: 'absolute' },
-  cashflowCopy: { left: 16, maxWidth: '52%', position: 'absolute', top: 13, zIndex: 2 },
-  cashflowLabel: { color: colors.muted, fontSize: 13, fontWeight: '600', letterSpacing: 0.12, lineHeight: 16 },
-  cashflowAmount: { color: colors.inkValue, fontSize: 20, fontVariant: ['tabular-nums'], fontWeight: '700', letterSpacing: -0.56, lineHeight: 24, marginTop: 4 },
-  cashflowEmpty: { color: colors.mutedSoft, fontSize: 10, lineHeight: 13, marginTop: 2 },
-  chartFrame: { bottom: 10, height: 44, maxWidth: 160, position: 'absolute', right: 12, width: '40%' },
-  statsStrip: { backgroundColor: colors.contentSurface, borderColor: colors.borderSoft, borderRadius: tokens.layout.panelRadius, borderWidth: StyleSheet.hairlineWidth, flexDirection: 'row', overflow: 'hidden', position: 'absolute' },
-  stat: { alignItems: 'center', flex: 1, justifyContent: 'center', minWidth: 0, paddingHorizontal: 6, paddingVertical: 7 },
-  statDivider: { borderLeftColor: colors.borderSoft, borderLeftWidth: StyleSheet.hairlineWidth },
-  statLabel: { color: colors.mutedSoft, fontSize: 12, fontWeight: '500', letterSpacing: 0.2, lineHeight: 15, textAlign: 'center' },
-  statValue: { color: colors.ink, fontSize: 14, fontVariant: ['tabular-nums'], fontWeight: '700', letterSpacing: -0.3, lineHeight: 18, marginTop: 4, textAlign: 'center' },
-  loadingValue: { backgroundColor: colors.muted, borderRadius: 999, opacity: 0.18 },
-  loadingTotalFrame: { alignItems: 'center', height: 28, justifyContent: 'center', marginTop: 1 },
-  loadingTotalValue: { height: 18, width: 140 },
-  loadingOrbValue: { alignSelf: 'center', height: 16, width: 128 },
-  loadingCashflowFrame: { height: 24, justifyContent: 'center', marginTop: 4 },
-  loadingCashflowValue: { height: 13, width: 148 },
-  loadingStatValue: { height: 10, marginTop: 4, width: 64 },
-  periodPosition: { height: tokens.layout.periodHeight, position: 'absolute', zIndex: 6 },
-})
+function createIncomeDashboardStyles(colors: WorkerIncomeDashboardColors) {
+  return StyleSheet.create({
+    root: { alignItems: 'center', alignSelf: 'center', overflow: 'visible' },
+    fullBleedScene: { flex: 1, position: 'relative' },
+    fullBleedBackground: { ...absoluteFill },
+    backgroundBleed: { left: 0, overflow: 'hidden', position: 'absolute' },
+    stage: { position: 'relative', zIndex: 1 },
+    dashboardCard: { backgroundColor: colors.transparent, overflow: 'hidden', width: '100%' },
+    whiteBase: { ...absoluteFill, backgroundColor: colors.page },
+    opaqueBase: { backgroundColor: colors.opaqueTint },
+    backgroundImage: { ...absoluteFill },
+    ambientAura: { height: 220, position: 'absolute', right: -28, top: 154, width: 260 },
+    dynamicContent: { ...absoluteFill },
+    hero: { alignItems: 'center', left: 0, position: 'absolute', top: 44, width: '100%', zIndex: 4 },
+    heroLabel: { color: colors.muted, fontSize: 14, fontWeight: '500', letterSpacing: -0.16, lineHeight: 18, textAlign: 'center' },
+    totalIncome: { color: colors.inkStrong, fontSize: 28, fontVariant: ['tabular-nums'], fontWeight: '600', letterSpacing: -0.62, lineHeight: 34, marginTop: 2, maxWidth: 360, textAlign: 'center' },
+    deltaRow: { alignItems: 'center', flexDirection: 'row', justifyContent: 'center', marginTop: 3, maxWidth: 360, paddingHorizontal: 12 },
+    deltaArrow: { borderBottomColor: colors.green, borderBottomWidth: 6, borderLeftColor: colors.transparent, borderLeftWidth: 4, borderRightColor: colors.transparent, borderRightWidth: 4, height: 0, marginRight: 4, width: 0 },
+    deltaArrowDown: { borderBottomColor: colors.transparent, borderBottomWidth: 0, borderTopColor: colors.purpleStrong, borderTopWidth: 6 },
+    deltaText: { color: colors.greenStrong, fontSize: 12, fontWeight: '600', letterSpacing: -0.04, lineHeight: 16, textAlign: 'center' },
+    deltaTextDecrease: { color: colors.purpleStrong },
+    orbProximityZone: { borderRadius: 999, position: 'absolute' },
+    orbShell: { position: 'absolute', zIndex: 2 },
+    orbOpaqueBacking: { backgroundColor: colors.orbBacking, borderRadius: 999, bottom: 8, left: 7, position: 'absolute', right: 8, top: 6 },
+    orbImage: { ...absoluteFill },
+    orbReactionClip: { ...absoluteFill, borderRadius: 999, overflow: 'hidden' },
+    orbReactionFrost: { ...absoluteFill },
+    orbReactionCaustic: { ...absoluteFill },
+    orbReactionSheen: { backgroundColor: colors.white, borderRadius: 999, bottom: 10, left: '50%', opacity: 0, position: 'absolute', top: 8, width: 24 },
+    orbReactionRing: { borderColor: colors.greenStrong, borderRadius: 999, borderWidth: 2, bottom: 7, left: 6, position: 'absolute', right: 7, top: 5 },
+    orbLabel: { color: colors.muted, fontSize: 14, fontWeight: '600', left: 0, letterSpacing: -0.18, lineHeight: 18, position: 'absolute', right: 0, textAlign: 'center' },
+    orbAmountFrame: { position: 'absolute' },
+    orbAmount: { color: colors.inkStrong, fontSize: 24, fontVariant: ['tabular-nums'], fontWeight: '700', letterSpacing: -0.82, lineHeight: 30, textAlign: 'center' },
+    orbWithdrawHitTarget: { alignItems: 'center', height: 48, justifyContent: 'center', position: 'absolute', width: tokens.layout.orbActionWidth },
+    orbWithdrawButton: { alignItems: 'center', borderRadius: 20, height: 38, justifyContent: 'center', overflow: 'hidden', width: tokens.layout.orbActionWidth },
+    orbWithdrawText: { color: colors.white, fontSize: 15, fontWeight: '700', letterSpacing: -0.18, lineHeight: 20 },
+    cashflowCard: { backgroundColor: colors.contentSurface, borderColor: colors.borderSoft, borderRadius: tokens.layout.panelRadius, borderWidth: StyleSheet.hairlineWidth, overflow: 'hidden', position: 'absolute' },
+    cashflowCopy: { left: 16, maxWidth: '52%', position: 'absolute', top: 13, zIndex: 2 },
+    cashflowLabel: { color: colors.muted, fontSize: 13, fontWeight: '600', letterSpacing: 0.12, lineHeight: 16 },
+    cashflowAmount: { color: colors.inkValue, fontSize: 20, fontVariant: ['tabular-nums'], fontWeight: '700', letterSpacing: -0.56, lineHeight: 24, marginTop: 4 },
+    cashflowEmpty: { color: colors.mutedSoft, fontSize: 10, lineHeight: 13, marginTop: 2 },
+    chartFrame: { bottom: 10, height: 44, maxWidth: 160, position: 'absolute', right: 12, width: '40%' },
+    statsStrip: { backgroundColor: colors.contentSurface, borderColor: colors.borderSoft, borderRadius: tokens.layout.panelRadius, borderWidth: StyleSheet.hairlineWidth, flexDirection: 'row', overflow: 'hidden', position: 'absolute' },
+    stat: { alignItems: 'center', flex: 1, justifyContent: 'center', minWidth: 0, paddingHorizontal: 6, paddingVertical: 7 },
+    statDivider: { borderLeftColor: colors.borderSoft, borderLeftWidth: StyleSheet.hairlineWidth },
+    statLabel: { color: colors.mutedSoft, fontSize: 12, fontWeight: '500', letterSpacing: 0.2, lineHeight: 15, textAlign: 'center' },
+    statValue: { color: colors.ink, fontSize: 14, fontVariant: ['tabular-nums'], fontWeight: '700', letterSpacing: -0.3, lineHeight: 18, marginTop: 4, textAlign: 'center' },
+    loadingValue: { backgroundColor: colors.muted, borderRadius: 999, opacity: 0.18 },
+    loadingTotalFrame: { alignItems: 'center', height: 28, justifyContent: 'center', marginTop: 1 },
+    loadingTotalValue: { height: 18, width: 140 },
+    loadingOrbValue: { alignSelf: 'center', height: 16, width: 128 },
+    loadingCashflowFrame: { height: 24, justifyContent: 'center', marginTop: 4 },
+    loadingCashflowValue: { height: 13, width: 148 },
+    loadingStatValue: { height: 10, marginTop: 4, width: 64 },
+    periodPosition: { height: tokens.layout.periodHeight, position: 'absolute', zIndex: 6 },
+  })
+}
+
+const stylesByMode = {
+  dark: createIncomeDashboardStyles(tokens.darkColors),
+  light: createIncomeDashboardStyles(tokens.colors),
+}
+
+// The dashboard keeps its own purple-and-mint palette; dark swaps in the dark colour set and the
+// dark background and orb artwork so it sits on the black canvas instead of glowing white.
+function useIncomeDashboardTheme() {
+  const mode = useWorkerThemeMode()
+  return {
+    assets: mode === 'dark' ? workerIncomeDashboardDarkAssets : workerIncomeDashboardAssets,
+    colors: mode === 'dark' ? tokens.darkColors : tokens.colors,
+    styles: stylesByMode[mode],
+  }
+}

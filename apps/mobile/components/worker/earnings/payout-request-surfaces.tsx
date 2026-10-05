@@ -20,11 +20,13 @@ import { WorkerV5SingleSourceActionButton } from '../jobs/advisory-surfaces'
 import { textByLanguage } from '../ui/format'
 import { WorkerV5PrimaryButtonFill } from '../ui/primitives-surfaces'
 import { WorkerV5EarningsDataNotice } from './salary-overview-surfaces'
-import { styles } from './payout-request-styles'
+import { styles as lightStyles } from './payout-request-styles'
+import { useWorkerThemedStyles } from '../ui/worker-dark-styles'
 
 type WorkerV5Runtime = ReturnType<typeof useFrontendWorkflow>
 
 function Text({ style, ...props }: TextProps) {
+  const styles = useWorkerThemedStyles(lightStyles)
   return <RNText {...props} style={[styles.workerCustomerFontText, style]} />
 }
 
@@ -75,6 +77,7 @@ export function WorkerV5PayoutRequest({
   reduceTransparency: boolean
   runtime: WorkerV5Runtime
 }) {
+  const styles = useWorkerThemedStyles(lightStyles)
   const [amountText, setAmountText] = useState('')
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState<string | null>(null)

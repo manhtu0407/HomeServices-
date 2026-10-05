@@ -1,6 +1,6 @@
 import Svg, { Circle, Path, Rect } from 'react-native-svg'
 
-import { color } from '@/design/theme'
+import { color, customerTheme } from '@/design/theme'
 
 import { useWorkerThemeMode } from '../worker-theme'
 
@@ -23,7 +23,7 @@ export type WorkerV5UtilityGlyphName =
 
 function useWorkerUtilityGlyphStroke() {
   const workerThemeMode = useWorkerThemeMode()
-  return workerThemeMode === 'dark' ? '#63E6D0' : color.brand.primary
+  return workerThemeMode === 'dark' ? customerTheme.darkLayer.primary : color.brand.primary
 }
 
 export function WorkerV5UtilityGlyph({ name, size = 22, testID }: { name: WorkerV5UtilityGlyphName; size?: number; testID?: string }) {

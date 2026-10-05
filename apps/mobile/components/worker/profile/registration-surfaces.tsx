@@ -5,7 +5,7 @@ import { SERVICE_TYPES, type ServiceType, type WorkerRegistrationDraftInput } fr
 import Svg, { Circle, Path, Rect } from 'react-native-svg'
 
 import { KaelButton, KaelChip, KaelTextField } from '@/components/ui/kael-primitives'
-import { color } from '@/design/theme'
+import { color, customerTheme } from '@/design/theme'
 import type { AppLanguage } from '@/lib/app-language'
 import { localizedServiceLabel } from '@/lib/app-language'
 import type { LocalMediaUploadDraft } from '@/lib/media-upload'
@@ -303,7 +303,7 @@ export function WorkerV5WorkerRegistrationBody({
         <View style={styles.registrationHeading}>
           <RegistrationHeaderGlyph
             isDark={isDark}
-            stroke={isDark ? '#63E6D0' : color.brand.primary}
+            stroke={isDark ? customerTheme.darkLayer.primary : color.brand.primary}
             testID="worker-v5-registration-title-icon"
           />
           <Text>{textByLanguage(language, 'Hoàn tất hồ sơ thợ', 'Complete your worker profile')}</Text>
@@ -318,21 +318,21 @@ export function WorkerV5WorkerRegistrationBody({
 
       <View style={styles.formGap}>
         <Field label={textByLanguage(language, 'Họ và tên', 'Legal name')}>
-          <KaelTextField editable={!locked} accessibilityLabel={textByLanguage(language, 'Họ và tên', 'Legal name')} inputShellStyle={styles.fieldShell} onChangeText={setField('legalName')} placeholder={textByLanguage(language, 'Nhập đúng như giấy tờ', 'Enter the name on your document')} testID="worker-v5-registration-legal-name" value={state.legalName} />
+          <KaelTextField editable={!locked} accessibilityLabel={textByLanguage(language, 'Họ và tên', 'Legal name')} inputShellStyle={[styles.fieldShell, isDark ? styles.fieldShellDark : null]} placeholderTextColor={isDark ? customerTheme.darkLayer.subtleText : undefined} style={isDark ? styles.fieldInputDark : undefined} onChangeText={setField('legalName')} placeholder={textByLanguage(language, 'Nhập đúng như giấy tờ', 'Enter the name on your document')} testID="worker-v5-registration-legal-name" value={state.legalName} />
         </Field>
         <View style={styles.formGap}>
           <Field label={textByLanguage(language, 'Ngày sinh', 'Date of birth')}>
-            <KaelTextField editable={!locked} accessibilityLabel={textByLanguage(language, 'Ngày sinh', 'Date of birth')} inputShellStyle={styles.fieldShell} onChangeText={setField('dateOfBirth')} placeholder="YYYY-MM-DD" testID="worker-v5-registration-date-of-birth" value={state.dateOfBirth} />
+            <KaelTextField editable={!locked} accessibilityLabel={textByLanguage(language, 'Ngày sinh', 'Date of birth')} inputShellStyle={[styles.fieldShell, isDark ? styles.fieldShellDark : null]} placeholderTextColor={isDark ? customerTheme.darkLayer.subtleText : undefined} style={isDark ? styles.fieldInputDark : undefined} onChangeText={setField('dateOfBirth')} placeholder="YYYY-MM-DD" testID="worker-v5-registration-date-of-birth" value={state.dateOfBirth} />
           </Field>
           <Field label={textByLanguage(language, 'Số năm kinh nghiệm', 'Years of experience')}>
-            <KaelTextField editable={!locked} accessibilityLabel={textByLanguage(language, 'Số năm kinh nghiệm', 'Years of experience')} inputShellStyle={styles.fieldShell} keyboardType="number-pad" onChangeText={setField('yearsExperience')} placeholder="0" testID="worker-v5-registration-years" value={state.yearsExperience} />
+            <KaelTextField editable={!locked} accessibilityLabel={textByLanguage(language, 'Số năm kinh nghiệm', 'Years of experience')} inputShellStyle={[styles.fieldShell, isDark ? styles.fieldShellDark : null]} placeholderTextColor={isDark ? customerTheme.darkLayer.subtleText : undefined} style={isDark ? styles.fieldInputDark : undefined} keyboardType="number-pad" onChangeText={setField('yearsExperience')} placeholder="0" testID="worker-v5-registration-years" value={state.yearsExperience} />
           </Field>
         </View>
         <Field label={textByLanguage(language, 'Khu vực nhận việc', 'Work area')}>
-          <KaelTextField editable={!locked} accessibilityLabel={textByLanguage(language, 'Khu vực nhận việc', 'Work area')} inputShellStyle={styles.fieldShell} onChangeText={setField('districts')} placeholder={textByLanguage(language, 'Ví dụ: Quận 1, Bình Thạnh', 'Example: District 1, Binh Thanh')} testID="worker-v5-registration-districts" value={state.districts} />
+          <KaelTextField editable={!locked} accessibilityLabel={textByLanguage(language, 'Khu vực nhận việc', 'Work area')} inputShellStyle={[styles.fieldShell, isDark ? styles.fieldShellDark : null]} placeholderTextColor={isDark ? customerTheme.darkLayer.subtleText : undefined} style={isDark ? styles.fieldInputDark : undefined} onChangeText={setField('districts')} placeholder={textByLanguage(language, 'Ví dụ: Quận 1, Bình Thạnh', 'Example: District 1, Binh Thanh')} testID="worker-v5-registration-districts" value={state.districts} />
         </Field>
         <Field label={textByLanguage(language, 'Bán kính nhận việc (km)', 'Work radius (km)')}>
-          <KaelTextField editable={!locked} accessibilityLabel={textByLanguage(language, 'Bán kính nhận việc', 'Work radius')} inputShellStyle={styles.fieldShell} keyboardType="number-pad" onChangeText={setField('serviceRadiusKm')} placeholder="8" testID="worker-v5-registration-radius" value={state.serviceRadiusKm} />
+          <KaelTextField editable={!locked} accessibilityLabel={textByLanguage(language, 'Bán kính nhận việc', 'Work radius')} inputShellStyle={[styles.fieldShell, isDark ? styles.fieldShellDark : null]} placeholderTextColor={isDark ? customerTheme.darkLayer.subtleText : undefined} style={isDark ? styles.fieldInputDark : undefined} keyboardType="number-pad" onChangeText={setField('serviceRadiusKm')} placeholder="8" testID="worker-v5-registration-radius" value={state.serviceRadiusKm} />
         </Field>
         <Field label={textByLanguage(language, 'Dịch vụ có thể nhận', 'Services you can provide')}>
           <View style={styles.serviceWrap} testID="worker-v5-registration-services">
@@ -355,15 +355,15 @@ export function WorkerV5WorkerRegistrationBody({
           </View>
         </Field>
         <Field label={textByLanguage(language, 'Mô tả kỹ năng chính', 'Main skills')}>
-          <KaelTextField editable={!locked} accessibilityLabel={textByLanguage(language, 'Mô tả kỹ năng chính', 'Main skills')} inputShellStyle={styles.fieldShell} onChangeText={setField('problemSpecializations')} placeholder={textByLanguage(language, 'Ngăn cách bằng dấu phẩy', 'Separate items with commas')} testID="worker-v5-registration-specializations" value={state.problemSpecializations} />
+          <KaelTextField editable={!locked} accessibilityLabel={textByLanguage(language, 'Mô tả kỹ năng chính', 'Main skills')} inputShellStyle={[styles.fieldShell, isDark ? styles.fieldShellDark : null]} placeholderTextColor={isDark ? customerTheme.darkLayer.subtleText : undefined} style={isDark ? styles.fieldInputDark : undefined} onChangeText={setField('problemSpecializations')} placeholder={textByLanguage(language, 'Ngăn cách bằng dấu phẩy', 'Separate items with commas')} testID="worker-v5-registration-specializations" value={state.problemSpecializations} />
         </Field>
         <Field label={textByLanguage(language, 'Tài khoản nhận tiền', 'Payout account')}>
           <View style={styles.formGap}>
             {profile?.bank_account_masked && !state.bankAccount ? <RNText style={[styles.note, isDark ? styles.darkCopy : null]} testID="worker-v5-registration-bank-saved">
               {textByLanguage(language, 'Đã có tài khoản nhận tiền được lưu. Chỉ nhập lại nếu muốn thay đổi.', 'A payout account is already saved. Enter new details only to change it.')}
             </RNText> : null}
-            <KaelTextField editable={!locked} accessibilityLabel={textByLanguage(language, 'Tên ngân hàng', 'Bank name')} inputShellStyle={styles.fieldShell} onChangeText={setField('bankName')} placeholder={textByLanguage(language, 'Tên ngân hàng', 'Bank name')} testID="worker-v5-registration-bank-name" value={state.bankName} />
-            <KaelTextField editable={!locked} accessibilityLabel={textByLanguage(language, 'Số tài khoản', 'Account number')} inputShellStyle={styles.fieldShell} keyboardType="number-pad" onChangeText={setField('bankAccount')} placeholder={textByLanguage(language, 'Số tài khoản', 'Account number')} secureTextEntry testID="worker-v5-registration-bank-account" value={state.bankAccount} />
+            <KaelTextField editable={!locked} accessibilityLabel={textByLanguage(language, 'Tên ngân hàng', 'Bank name')} inputShellStyle={[styles.fieldShell, isDark ? styles.fieldShellDark : null]} placeholderTextColor={isDark ? customerTheme.darkLayer.subtleText : undefined} style={isDark ? styles.fieldInputDark : undefined} onChangeText={setField('bankName')} placeholder={textByLanguage(language, 'Tên ngân hàng', 'Bank name')} testID="worker-v5-registration-bank-name" value={state.bankName} />
+            <KaelTextField editable={!locked} accessibilityLabel={textByLanguage(language, 'Số tài khoản', 'Account number')} inputShellStyle={[styles.fieldShell, isDark ? styles.fieldShellDark : null]} placeholderTextColor={isDark ? customerTheme.darkLayer.subtleText : undefined} style={isDark ? styles.fieldInputDark : undefined} keyboardType="number-pad" onChangeText={setField('bankAccount')} placeholder={textByLanguage(language, 'Số tài khoản', 'Account number')} secureTextEntry testID="worker-v5-registration-bank-account" value={state.bankAccount} />
           </View>
         </Field>
       </View>

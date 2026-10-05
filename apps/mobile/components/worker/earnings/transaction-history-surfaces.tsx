@@ -5,7 +5,8 @@ import type { EarningsResponse } from '@/lib/api-types'
 
 import { WorkerV5FormulaMintCardAura } from '../ui/aura-surfaces'
 import { formatVndDong, textByLanguage } from '../ui/format'
-import { styles } from './transaction-history-styles'
+import { styles as lightStyles } from './transaction-history-styles'
+import { useWorkerThemedStyles } from '../ui/worker-dark-styles'
 
 type WorkerTransaction = EarningsResponse['recent_transactions'][number]
 
@@ -23,6 +24,7 @@ const transactionDateFormatter: Record<AppLanguage, Intl.DateTimeFormat> = {
 }
 
 function Text({ style, ...props }: TextProps) {
+  const styles = useWorkerThemedStyles(lightStyles)
   return <RNText {...props} style={[styles.workerCustomerFontText, style]} />
 }
 
@@ -68,6 +70,7 @@ export function WorkerV5TransactionHistory({
   language: AppLanguage
   reduceTransparency: boolean
 }) {
+  const styles = useWorkerThemedStyles(lightStyles)
   const transactions = earnings?.recent_transactions ?? []
   const emptyTitle = earnings
     ? textByLanguage(language, 'Chưa có giao dịch', 'No transactions yet')

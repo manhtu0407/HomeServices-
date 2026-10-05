@@ -1,6 +1,6 @@
 import { StyleSheet } from 'react-native'
 
-import { color, shadow, typography } from '@/design/theme'
+import { color, customerTheme, shadow, typography } from '@/design/theme'
 
 export const styles = StyleSheet.create({
   workerCustomerFontText: {
@@ -25,8 +25,8 @@ export const styles = StyleSheet.create({
     ...shadow.soft,
   },
   profileAvatarDark: {
-    backgroundColor: '#1D2522',
-    borderColor: 'rgba(190,210,205,0.16)',
+    backgroundColor: customerTheme.darkLayer.raised,
+    borderColor: customerTheme.darkLayer.glassBorder,
     boxShadow: '0 10px 22px rgba(0,0,0,0.22)',
   },
   profileAvatarAddGlyph: {
@@ -34,7 +34,7 @@ export const styles = StyleSheet.create({
     ...typography.title1,
   },
   profileAvatarAddGlyphDark: {
-    color: '#63E6D0',
+    color: customerTheme.darkLayer.primary,
   },
   profileAvatarEmpty: {
     alignItems: 'center',
@@ -69,7 +69,7 @@ export const styles = StyleSheet.create({
   },
   profileHeaderDark: {
     backgroundColor: '#171D1B',
-    borderColor: 'rgba(190,210,205,0.16)',
+    borderColor: customerTheme.darkLayer.glassBorder,
     boxShadow: '0 14px 30px rgba(0,0,0,0.24)',
   },
   profileHeaderMeta: {
@@ -77,14 +77,14 @@ export const styles = StyleSheet.create({
     ...typography.caption2,
   },
   profileHeaderMetaDark: {
-    color: '#A9B7B3',
+    color: customerTheme.darkLayer.muted,
   },
   profileHeaderName: {
     color: color.text.strong,
     ...typography.callout,
   },
   profileHeaderNameDark: {
-    color: '#F1F6F4',
+    color: customerTheme.darkLayer.text,
   },
   profileHeaderText: {
     flex: 1,

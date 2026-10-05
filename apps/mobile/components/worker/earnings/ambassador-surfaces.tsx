@@ -14,11 +14,13 @@ import {
   milestoneTitle,
   pointEntryLabel,
 } from './ambassador-model'
-import { styles } from './ambassador-styles'
+import { styles as lightStyles } from './ambassador-styles'
+import { useWorkerThemedStyles } from '../ui/worker-dark-styles'
 
 type AmbassadorController = ReturnType<typeof useWorkerAmbassador>
 
 function Text({ style, ...props }: TextProps) {
+  const styles = useWorkerThemedStyles(lightStyles)
   return <RNText {...props} style={[styles.workerCustomerFontText, style]} />
 }
 
@@ -44,6 +46,7 @@ function redeemErrorCopy(code: string, language: AppLanguage): string {
 }
 
 function ReceiptCard({ language, receipt }: { language: AppLanguage; receipt: AmbassadorRedeemReceiptView }) {
+  const styles = useWorkerThemedStyles(lightStyles)
   return (
     <View accessibilityLiveRegion="polite" style={styles.receipt} testID="worker-v5-ambassador-receipt">
       <Text style={styles.noticeTitle}>{textByLanguage(language, 'Đã đổi thưởng', 'Reward redeemed')}</Text>
@@ -78,6 +81,7 @@ function MilestoneRow({
   onPress: () => void
   redeeming: boolean
 }) {
+  const styles = useWorkerThemedStyles(lightStyles)
   const title = milestoneTitle(milestone, language)
   const label = redeeming
     ? textByLanguage(language, 'Đang đổi', 'Redeeming')
@@ -124,6 +128,7 @@ export function WorkerV5Ambassador({
   onOpenInviteCode: () => void
   onOpenViolations: () => void
 }) {
+  const styles = useWorkerThemedStyles(lightStyles)
   const [confirmingId, setConfirmingId] = useState<string | null>(null)
   const { summary } = controller
 

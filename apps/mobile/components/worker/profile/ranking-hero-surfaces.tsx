@@ -3,14 +3,16 @@ import { Text as RNText, View, type TextProps , type ViewStyle } from 'react-nat
 import { type AppLanguage } from '@/lib/app-language'
 import { textByLanguage } from '../ui/format'
 import { workerV5HasNumber, workerV5NumericInsight } from '../ui/performance'
-import { styles as rankingStyles } from './ranking-styles'
+import { styles as rankingStylesLight } from './ranking-styles'
 import type { useFrontendWorkflow } from '@/lib/frontend-workflow-provider'
 import { WorkerV5FormulaMintCardAura } from '../ui/aura-surfaces'
 import { WorkerV5ProfileFormulaCard } from './worker-profile-formula-surfaces'
-import { styles as formulaStyles } from './worker-profile-formula-styles'
+import { styles as formulaStylesLight } from './worker-profile-formula-styles'
+import { useWorkerThemedStyles } from '../ui/worker-dark-styles'
 
 type WorkerV5Runtime = ReturnType<typeof useFrontendWorkflow>
 function Text({ style, ...props }: TextProps) {
+  const rankingStyles = useWorkerThemedStyles(rankingStylesLight)
   return <RNText {...props} style={[rankingStyles.workerCustomerFontText, style]} />
 }
 
@@ -27,6 +29,8 @@ export function WorkerV5RankingHero({
   profile: WorkerV5Runtime['workerProfile']
   reduceTransparency: boolean
 }) {
+  const rankingStyles = useWorkerThemedStyles(rankingStylesLight)
+  const formulaStyles = useWorkerThemedStyles(formulaStylesLight)
   const score = workerV5NumericInsight(insights?.performance_score)
   const hasScore = workerV5HasNumber(insights?.performance_score)
   const completedSource = insights?.completed_job_count ?? profile?.total_jobs

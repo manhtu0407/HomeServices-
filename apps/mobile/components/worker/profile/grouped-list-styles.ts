@@ -1,6 +1,6 @@
 import { StyleSheet } from 'react-native'
 
-import { color, glass, shadow, typography } from '@/design/theme'
+import { color, customerTheme, glass, shadow, typography } from '@/design/theme'
 
 export const styles = StyleSheet.create({
   workerCustomerFontText: {
@@ -20,7 +20,7 @@ export const styles = StyleSheet.create({
   },
   groupCardDark: {
     backgroundColor: '#171D1B',
-    borderColor: 'rgba(190,210,205,0.16)',
+    borderColor: customerTheme.darkLayer.glassBorder,
     boxShadow: '0 14px 30px rgba(0,0,0,0.24)',
   },
   groupDivider: {
@@ -29,7 +29,7 @@ export const styles = StyleSheet.create({
     marginLeft: 74,
   },
   groupDividerDark: {
-    backgroundColor: 'rgba(190,210,205,0.12)',
+    backgroundColor: customerTheme.darkLayer.ghost,
   },
   groupRow: {
     alignItems: 'center',
@@ -49,7 +49,7 @@ export const styles = StyleSheet.create({
     ...typography.title1,
   },
   groupRowChevronDark: {
-    color: '#63E6D0',
+    color: customerTheme.darkLayer.primary,
   },
   groupRowCopy: {
     flex: 1,
@@ -61,7 +61,7 @@ export const styles = StyleSheet.create({
     ...typography.caption1,
   },
   groupRowDescriptionDark: {
-    color: '#A9B7B3',
+    color: customerTheme.darkLayer.muted,
   },
   groupRowIcon: {
     flexShrink: 0,
@@ -94,7 +94,7 @@ export const styles = StyleSheet.create({
     backgroundColor: color.surface.base,
   },
   groupRowIconFrameOutlinedDark: {
-    borderColor: 'rgba(190,210,205,0.22)',
+    borderColor: customerTheme.darkLayer.glassBorder,
   },
   groupRowIconFrameOutlinedWhiteDark: {
     backgroundColor: 'rgba(255,255,255,0.08)',
@@ -114,10 +114,10 @@ export const styles = StyleSheet.create({
     ...typography.caption2,
   },
   groupRowMetaActiveDark: {
-    color: '#63E6D0',
+    color: customerTheme.darkLayer.primary,
   },
   groupRowMetaDark: {
-    color: '#A9B7B3',
+    color: customerTheme.darkLayer.muted,
   },
   groupRowMetaActive: {
     color: color.brand.primaryDark,
@@ -130,7 +130,7 @@ export const styles = StyleSheet.create({
     ...typography.subheadline,
   },
   groupRowTitleDark: {
-    color: '#F1F6F4',
+    color: customerTheme.darkLayer.text,
   },
   groupTitle: {
     color: color.text.strong,
@@ -138,7 +138,7 @@ export const styles = StyleSheet.create({
     ...typography.title3,
   },
   groupTitleDark: {
-    color: '#F1F6F4',
+    color: customerTheme.darkLayer.text,
   },
   pressed: {
     opacity: 0.76,

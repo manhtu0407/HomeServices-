@@ -17,8 +17,9 @@ import {
 import { WorkerV5IntegratedIcon } from '../ui/integrated-icon-surfaces'
 import { WorkerV5DetailRail, type WorkerV5DetailGlyph } from '../ui/worker-v5-detail-rail'
 import { WorkerV5FormulaMintCardAura } from '../ui/aura-surfaces'
-import { styles } from './reliability-styles'
-import { styles as formulaStyles } from './worker-profile-formula-styles'
+import { styles as lightStyles } from './reliability-styles'
+import { useWorkerThemedStyles } from '../ui/worker-dark-styles'
+import { styles as formulaStylesLight } from './worker-profile-formula-styles'
 
 type WorkerV5ReliabilityAura = ComponentType<{ testID: string }>
 type WorkerV5ReliabilityIcons = Record<string, ImageSourcePropType>
@@ -29,6 +30,7 @@ type WorkerV5ReliabilityFillRenderer = (props: {
 }) => ReactNode
 
 function Text({ style, ...props }: TextProps) {
+  const styles = useWorkerThemedStyles(lightStyles)
   return <RNText {...props} style={[styles.workerCustomerFontText, style]} />
 }
 
@@ -53,6 +55,7 @@ export function WorkerV5ReliabilityComponentList({
   reduceTransparency: boolean
   renderAxisFill: WorkerV5ReliabilityFillRenderer
 }) {
+  const styles = useWorkerThemedStyles(lightStyles)
   return (
     <View style={[styles.reliabilityAxisList, reduceTransparency && styles.opaqueCard]} testID="worker-v5-reliability-components">
       <WorkerV5FormulaMintCardAura
@@ -99,6 +102,8 @@ export function WorkerV5ReliabilityComponentList({
 }
 
 export function WorkerV5ReliabilityStatTile({ label, testID, value }: { label: string; testID: string; value: string }) {
+  const formulaStyles = useWorkerThemedStyles(formulaStylesLight)
+  const styles = useWorkerThemedStyles(lightStyles)
   return (
     <View style={[styles.reliabilityStatTile, formulaStyles.compactMetric]} testID={testID}>
       <View pointerEvents="none" style={styles.cardTopHighlight} />

@@ -10,15 +10,18 @@ import Svg, { Defs, Rect } from 'react-native-svg'
 import { AlphaStop as Stop, NativeSafeLinearGradient as LinearGradient } from '@/components/ui/svg-alpha-stop'
 import { component } from '@/design/theme'
 
-import { styles } from './primitives-styles'
+import { styles as lightStyles } from './primitives-styles'
+import { useWorkerThemedStyles } from './worker-dark-styles'
 
 export { WorkerV5InfoRow } from '../jobs/shared-surfaces'
 
 function Text({ style, ...props }: TextProps) {
+  const styles = useWorkerThemedStyles(lightStyles)
   return <RNText {...props} style={[styles.workerCustomerFontText, style]} />
 }
 
 export function WorkerV5SectionHeader({ action, styleVariant = 'default', title }: { action?: string; styleVariant?: 'default' | 'jobs-review'; title: string }) {
+  const styles = useWorkerThemedStyles(lightStyles)
   return (
     <View style={[styles.sectionHeader, styleVariant === 'jobs-review' && styles.sectionHeaderJobsReview]} testID="worker-v5-section-header">
       <Text style={[styles.sectionHeaderTitle, styleVariant === 'jobs-review' && styles.sectionHeaderTitleJobsReview]}>{title}</Text>
@@ -38,6 +41,7 @@ export function WorkerV5NavButton({
   onPress: () => void
   primary?: boolean
 }) {
+  const styles = useWorkerThemedStyles(lightStyles)
   return (
     <Pressable
       accessibilityRole="button"
@@ -105,6 +109,7 @@ export function WorkerV5PrimaryActionButton({
   onPress: () => void
   variant?: 'default' | 'source'
 }) {
+  const styles = useWorkerThemedStyles(lightStyles)
   const usesSourceTone = variant === 'source'
   return (
     <Pressable

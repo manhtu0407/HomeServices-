@@ -1,6 +1,6 @@
 import { StyleSheet } from 'react-native'
 
-import { color, radius, shadow, typography } from '@/design/theme'
+import { color, customerTheme, radius, shadow, typography } from '@/design/theme'
 
 export const styles = StyleSheet.create({
   card: {
@@ -20,24 +20,31 @@ export const styles = StyleSheet.create({
     zIndex: 1,
   },
   cardDark: {
-    backgroundColor: 'rgba(13,36,42,0.94)',
-    borderColor: 'rgba(143,226,212,0.22)',
+    backgroundColor: customerTheme.darkLayer.base,
+    borderColor: customerTheme.darkLayer.border,
   },
   cardOpaque: {
     backgroundColor: color.surface.base,
   },
   cardOpaqueDark: {
-    backgroundColor: '#0D242A',
+    backgroundColor: customerTheme.darkLayer.base,
   },
   copy: {
     color: color.text.secondary,
     ...typography.footnote,
   },
   darkCopy: {
-    color: '#B8D0CF',
+    color: customerTheme.darkLayer.muted,
   },
   darkTitle: {
-    color: '#F1F6F4',
+    color: customerTheme.darkLayer.text,
+  },
+  fieldInputDark: {
+    color: customerTheme.darkLayer.text,
+  },
+  fieldShellDark: {
+    backgroundColor: customerTheme.darkLayer.raised,
+    borderColor: customerTheme.darkLayer.border,
   },
   fieldShell: {
     backgroundColor: color.surface.base,
@@ -61,8 +68,8 @@ export const styles = StyleSheet.create({
     paddingVertical: 9,
   },
   fileRowDark: {
-    backgroundColor: 'rgba(31,61,65,0.8)',
-    borderColor: 'rgba(143,226,212,0.22)',
+    backgroundColor: customerTheme.darkLayer.raised,
+    borderColor: customerTheme.darkLayer.border,
   },
   fileRowPressed: {
     opacity: 0.78,
@@ -75,7 +82,7 @@ export const styles = StyleSheet.create({
     ...typography.caption1,
   },
   fileStatusDark: {
-    color: '#8FE2D4',
+    color: customerTheme.darkLayer.primary,
   },
   fileTitle: {
     color: color.text.strong,
@@ -101,8 +108,8 @@ export const styles = StyleSheet.create({
     width: 56,
   },
   registrationHeadingIconTileDark: {
-    backgroundColor: 'rgba(31,61,65,0.8)',
-    borderColor: 'rgba(143,226,212,0.22)',
+    backgroundColor: customerTheme.darkLayer.raised,
+    borderColor: customerTheme.darkLayer.border,
   },
   formLabel: {
     color: color.text.secondary,

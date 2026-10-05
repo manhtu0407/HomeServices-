@@ -1,10 +1,10 @@
 import { StyleSheet } from 'react-native'
 
-import { color, typography } from '@/design/theme'
+import { color, customerTheme, typography } from '@/design/theme'
 
 export const styles = StyleSheet.create({
   darkText: {
-    color: '#F1F6F4',
+    color: customerTheme.darkLayer.text,
   },
   emptyBody: {
     color: color.text.secondary,
@@ -88,7 +88,7 @@ export const styles = StyleSheet.create({
     width: 46,
   },
   policyIconFrameDark: {
-    borderColor: 'rgba(190,210,205,0.22)',
+    borderColor: customerTheme.darkLayer.glassBorder,
   },
   policyIntro: {
     gap: 5,

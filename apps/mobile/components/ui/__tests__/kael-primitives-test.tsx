@@ -11,7 +11,7 @@ jest.mock('expo-image', () => {
   }
 })
 
-import { color, component, scaledTypography, shadow, typography } from '@/design/theme'
+import { component, scaledTypography, shadow, typography } from '@/design/theme'
 import { FORMULA_MINT_CANVAS_STANDARD_RADIAL_RADIUS, FormulaMintCanvasAura } from '../formula-mint-canvas'
 import { FormulaMintCardAura } from '../formula-mint-card'
 import { KAEL_CORE_V9_CONTRACT } from '../kael-core-v9-contract'
@@ -230,7 +230,7 @@ describe('Kael UI primitives', () => {
       backgroundColor: 'transparent',
       includeFontPadding: false,
       textAlignVertical: 'center',
-      WebkitBoxShadow: `0 0 0 1000px ${component.input.bg} inset`,
+      WebkitBoxShadow: '0 0 0 1000px transparent inset',
       WebkitTextFillColor: 'currentcolor',
     })
   })

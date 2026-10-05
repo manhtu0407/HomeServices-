@@ -23,6 +23,7 @@ import { WorkerHomeProductionEarningsCard } from './worker-home-production-earni
 import { WorkerHomeProductionIcon, type WorkerHomeProductionIconName } from './worker-home-production-icon'
 import { buildWorkerHomeProductionModel, type WorkerHomeProductionModel } from './worker-home-production-model'
 import type { WorkerEarningsPeriod } from '../earnings/overview-model'
+import { customerTheme } from '@/design/theme'
 
 const SERVICE_WORKART_KEY: Record<ServiceType, CustomerServiceId> = {
   cleaning: 'home_cleaning',
@@ -73,11 +74,11 @@ function Header({
           <Image contentFit="cover" source={{ uri: avatarUrl }} style={styles.avatar} testID="worker-home-production-avatar" />
         ) : (
           <View style={styles.avatarPlaceholder} testID="worker-home-production-avatar-placeholder">
-            <ProfileSettingsGlyph color={dark ? '#F1F6F4' : '#0A6F60'} name="personal" testID="worker-home-production-avatar-placeholder-glyph" />
+            <ProfileSettingsGlyph color={dark ? customerTheme.darkLayer.text : '#0A6F60'} name="personal" testID="worker-home-production-avatar-placeholder-glyph" />
           </View>
         )}
         <View pointerEvents="none" style={[styles.avatarCameraBadge, dark && styles.avatarCameraBadgeDark]}>
-          <WorkerHomeProductionIcon color={dark ? '#F1F6F4' : '#0A6F60'} name="camera" size={12} />
+          <WorkerHomeProductionIcon color={dark ? customerTheme.darkLayer.text : '#0A6F60'} name="camera" size={12} />
         </View>
       </Pressable>
       <View style={styles.headerCopy}>
@@ -337,7 +338,7 @@ function TodayJob({ language, model, onOpen, reduceMotion, themeMode }: {
           <Text style={[styles.scheduleTime, dark && styles.textDark]}>{job.scheduledLabel}</Text>
           <View style={styles.scheduleArtworkPanel}>
             <Image accessibilityIgnoresInvertColors contentFit="cover" source={workart(job.serviceType)} style={styles.scheduleArtwork} />
-            <LinearGradient colors={['rgba(255,254,255,0)', themeMode === 'dark' ? '#17322C' : '#FFFEFF']} end={{ x: 1, y: 0 }} pointerEvents="none" start={{ x: 0, y: 0 }} style={styles.scheduleArtworkWash} />
+            <LinearGradient colors={['rgba(255,254,255,0)', themeMode === 'dark' ? customerTheme.darkLayer.base : '#FFFEFF']} end={{ x: 1, y: 0 }} pointerEvents="none" start={{ x: 0, y: 0 }} style={styles.scheduleArtworkWash} />
           </View>
           <View style={styles.scheduleCopy}>
             <Text numberOfLines={2} style={[styles.scheduleTitle, dark && styles.textDark]}>{job.title}</Text>
@@ -488,15 +489,15 @@ const styles = StyleSheet.create({
   availabilitySlot: { marginHorizontal: 11, marginTop: 10 },
   avatar: { borderRadius: 23, height: '100%', width: '100%' },
   avatarButton: { backgroundColor: '#FEFFFF', borderColor: '#D8EBE7', borderRadius: 23, borderWidth: 1, boxShadow: '0 4px 12px rgba(24,67,66,0.08)', height: 45, position: 'relative', width: 45 },
-  avatarButtonDark: { backgroundColor: '#1D2522', borderColor: 'rgba(190,210,205,0.28)' },
+  avatarButtonDark: { backgroundColor: customerTheme.darkLayer.raised, borderColor: customerTheme.darkLayer.glassBorder },
   avatarCameraBadge: { alignItems: 'center', backgroundColor: '#FEFFFF', borderColor: '#D8EBE7', borderRadius: 9, borderWidth: 1, bottom: -1, height: 18, justifyContent: 'center', position: 'absolute', right: -1, width: 18 },
-  avatarCameraBadgeDark: { backgroundColor: '#1D2522', borderColor: 'rgba(190,210,205,0.28)' },
+  avatarCameraBadgeDark: { backgroundColor: customerTheme.darkLayer.raised, borderColor: customerTheme.darkLayer.glassBorder },
   avatarPlaceholder: { alignItems: 'center', backgroundColor: 'transparent', borderRadius: 23, height: '100%', justifyContent: 'center', width: '100%' },
-  cardDark: { backgroundColor: '#17322C', borderColor: '#31554D' },
+  cardDark: { backgroundColor: customerTheme.darkLayer.base, borderColor: customerTheme.darkLayer.border },
   compactEmpty: { alignItems: 'center', backgroundColor: '#F8FBFA', borderColor: '#E1E9E7', borderRadius: 13, borderWidth: 1, justifyContent: 'center', marginHorizontal: 11, minHeight: 54, padding: 12 },
   compactEmptyText: { color: '#657488', fontSize: 11, lineHeight: 15, textAlign: 'center' },
   divider: { backgroundColor: '#ECF0EF', bottom: 10, left: 0, position: 'absolute', top: 10, width: 1 },
-  dividerDark: { backgroundColor: '#31554D' },
+  dividerDark: { backgroundColor: customerTheme.darkLayer.border },
   header: { alignItems: 'flex-start', flexDirection: 'row', height: 55, paddingLeft: 8, paddingRight: 11 },
   headerCopy: { flex: 1, paddingLeft: 8, paddingTop: 1 },
   headerMeta: { color: '#526177', fontSize: 9.8, lineHeight: 12, marginTop: 5 },
@@ -521,7 +522,7 @@ const styles = StyleSheet.create({
   jobStatusPill: { alignItems: 'center', backgroundColor: '#E9F8F5', borderRadius: 999, bottom: 7, flexDirection: 'row', left: 8, paddingHorizontal: 6, paddingVertical: 2, position: 'absolute' },
   jobStatusPillDark: { backgroundColor: '#21463F' },
   jobTitle: { color: '#102437', fontSize: 9, fontWeight: '600', lineHeight: 11 },
-  mutedDark: { color: '#AAC0BC' },
+  mutedDark: { color: customerTheme.darkLayer.muted },
   modeOption: { alignItems: 'center', borderColor: '#DCE8E5', borderRadius: 16, borderWidth: 1, flexDirection: 'row', gap: 12, minHeight: 64, paddingHorizontal: 14, paddingVertical: 10 },
   modeOptionCopy: { flex: 1, minWidth: 0 },
   modeOptionDescription: { color: '#617084', fontSize: 12, lineHeight: 17, marginTop: 3 },
@@ -577,5 +578,5 @@ const styles = StyleSheet.create({
   statusLabel: { color: '#66768A', fontSize: 9.1, lineHeight: 11 },
   statusRow: { alignItems: 'center', flexDirection: 'row', gap: 5, marginTop: 5 },
   surface: { alignSelf: 'center', paddingBottom: 16, paddingTop: 14, width: '100%' },
-  textDark: { color: '#F1F6F4' },
+  textDark: { color: customerTheme.darkLayer.text },
 })

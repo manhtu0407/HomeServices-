@@ -19,9 +19,11 @@ import {
 } from './aura-surfaces'
 import { textByLanguage } from './format'
 import { workerStatusStage } from './labels'
-import { styles } from './metrics-styles'
+import { styles as lightStyles } from './metrics-styles'
+import { useWorkerThemedStyles } from './worker-dark-styles'
 
 function Text({ style, ...props }: TextProps) {
+  const styles = useWorkerThemedStyles(lightStyles)
   return <RNText {...props} style={[styles.workerCustomerFontText, style]} />
 }
 
@@ -40,6 +42,7 @@ export function WorkerV5PremiumStatusSeal({
   size?: 'default' | 'large'
   testID: string
 }) {
+  const styles = useWorkerThemedStyles(lightStyles)
   const isLarge = size === 'large'
   const artSize = isLarge ? 60 : 52
 
@@ -136,6 +139,7 @@ export function WorkerV5PremiumStatusPill({
   testID: string
   textTestID?: string
 }) {
+  const styles = useWorkerThemedStyles(lightStyles)
   return (
     <View
       style={[
@@ -208,6 +212,7 @@ export function WorkerV5SuccessEmblem({
   status?: string
   title: string
 }) {
+  const styles = useWorkerThemedStyles(lightStyles)
   const isEmpty = state === 'empty'
 
   return (
@@ -280,6 +285,7 @@ export function WorkerV5TimerCard({
   sourceCount: number
   styleVariant?: 'default' | 'jobs-review'
 }) {
+  const styles = useWorkerThemedStyles(lightStyles)
   const isJobsReview = styleVariant === 'jobs-review'
   const stage = workerStatusStage(deal?.status)
   const status = deal ? localizedStatusLabel(deal.status, language, deal.draft.serviceType) : textByLanguage(language, 'Chưa có việc', 'No work')
@@ -354,6 +360,7 @@ export function WorkerV5BoundaryNote({
   reduceTransparency?: boolean
   title: string
 }) {
+  const styles = useWorkerThemedStyles(lightStyles)
   return (
     <View style={[styles.boundaryNote, reduceTransparency && styles.opaqueCard]} testID="worker-v5-boundary-note">
       {formulaAura && !reduceTransparency ? (

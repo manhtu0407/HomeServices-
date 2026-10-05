@@ -24,7 +24,8 @@ import {
   workerV5ReliabilityRatingValue,
 } from '../ui/performance'
 import { workerV5VerificationChecks } from './verification-model'
-import { styles } from './worker-profile-sections-styles'
+import { styles as lightStyles } from './worker-profile-sections-styles'
+import { useWorkerThemedStyles } from '../ui/worker-dark-styles'
 
 type WorkerV5ReviewsInsights = WorkerPerformanceInsightsResponse | null | undefined
 type WorkerV5Profile = WorkerProfileResponse | null | undefined
@@ -42,10 +43,12 @@ const glyphCommon = {
 const workerRankingAxisOrder = ['arrival', 'completion', 'rating', 'work_response', 'incident_handling'] as const
 
 function Text({ style, ...props }: TextProps) {
+  const styles = useWorkerThemedStyles(lightStyles)
   return <RNText {...props} style={[styles.rowMeta, style]} />
 }
 
 function SectionHeading({ action, title }: { action?: string; title: string }) {
+  const styles = useWorkerThemedStyles(lightStyles)
   return (
     <View style={styles.sectionHeading}>
       <RNText style={styles.sectionHeadingTitle}>{title}</RNText>
@@ -180,6 +183,7 @@ export function WorkerReviewsGlyph({ name, testID }: { name: WorkerReviewsIconNa
 }
 
 function IconFrame({ icon, testID }: { icon: WorkerProfileSectionIconName; testID: string }) {
+  const styles = useWorkerThemedStyles(lightStyles)
   return (
     <View style={styles.rowIconFrame} testID={`${testID}-frame`}>
       <SectionGlyph name={icon} testID={testID} />
@@ -188,6 +192,7 @@ function IconFrame({ icon, testID }: { icon: WorkerProfileSectionIconName; testI
 }
 
 function SummaryIconFrame({ icon, testID }: { icon: WorkerProfileSectionIconName; testID: string }) {
+  const styles = useWorkerThemedStyles(lightStyles)
   return (
     <View style={styles.summaryIconFrame}>
       <SectionGlyph name={icon} testID={testID} />
@@ -196,6 +201,7 @@ function SummaryIconFrame({ icon, testID }: { icon: WorkerProfileSectionIconName
 }
 
 function ReviewsIconFrame({ icon, testID }: { icon: WorkerReviewsIconName; testID: string }) {
+  const styles = useWorkerThemedStyles(lightStyles)
   return (
     <View style={styles.rowIconFrame} testID={`${testID}-frame`}>
       <WorkerReviewsGlyph name={icon} testID={testID} />
@@ -204,6 +210,7 @@ function ReviewsIconFrame({ icon, testID }: { icon: WorkerReviewsIconName; testI
 }
 
 function ReviewsSummaryIconFrame({ icon, testID }: { icon: WorkerReviewsIconName; testID: string }) {
+  const styles = useWorkerThemedStyles(lightStyles)
   return (
     <View style={styles.summaryIconFrame}>
       <WorkerReviewsGlyph name={icon} testID={testID} />
@@ -212,6 +219,7 @@ function ReviewsSummaryIconFrame({ icon, testID }: { icon: WorkerReviewsIconName
 }
 
 function ReliabilityIconFrame({ icon, testID }: { icon: WorkerReliabilityIconName; testID: string }) {
+  const styles = useWorkerThemedStyles(lightStyles)
   return (
     <View style={styles.rowIconFrame} testID={`${testID}-frame`}>
       <ReliabilityGlyph name={icon} testID={testID} />
@@ -220,6 +228,7 @@ function ReliabilityIconFrame({ icon, testID }: { icon: WorkerReliabilityIconNam
 }
 
 function ReliabilitySummaryIconFrame({ icon, testID }: { icon: WorkerReliabilityIconName; testID: string }) {
+  const styles = useWorkerThemedStyles(lightStyles)
   return (
     <View style={styles.summaryIconFrame}>
       <ReliabilityGlyph name={icon} testID={testID} />
@@ -228,6 +237,7 @@ function ReliabilitySummaryIconFrame({ icon, testID }: { icon: WorkerReliability
 }
 
 function ProgressBar({ score, testID }: { score: number | null; testID: string }) {
+  const styles = useWorkerThemedStyles(lightStyles)
   return (
     <View style={styles.progressTrack} testID={testID}>
       <View style={[styles.progressFill, { width: `${score == null ? 0 : Math.max(0, Math.min(100, score))}%` }]} />
@@ -236,6 +246,7 @@ function ProgressBar({ score, testID }: { score: number | null; testID: string }
 }
 
 function Divider() {
+  const styles = useWorkerThemedStyles(lightStyles)
   return <View style={styles.divider} />
 }
 
@@ -260,6 +271,7 @@ export function WorkerV5RankingSection({
   language: AppLanguage
   profile: WorkerV5Profile
 }) {
+  const styles = useWorkerThemedStyles(lightStyles)
   const score = numericOrNull(insights?.performance_score)
   const completed = numericOrNull(insights?.completed_job_count ?? profile?.total_jobs)
   const reviewCount = numericOrNull(insights?.review_count)
@@ -357,6 +369,7 @@ export function WorkerV5ReliabilitySection({
   language: AppLanguage
   profile: WorkerV5Profile
 }) {
+  const styles = useWorkerThemedStyles(lightStyles)
   const score = numericOrNull(insights?.performance_score)
   const axes = workerV5ReliabilityAxes(insights)
   return (
@@ -418,6 +431,7 @@ export function WorkerV5ReviewsSection({
   language: AppLanguage
   profile: WorkerV5Profile
 }) {
+  const styles = useWorkerThemedStyles(lightStyles)
   const rating = insights?.average_rating ?? profile?.rating ?? null
   const hasRating = workerV5HasNumber(rating) && rating > 0
   const reviewCount = workerV5HasNumber(insights?.review_count) ? insights.review_count : null
@@ -503,6 +517,7 @@ export function WorkerV5VerificationSection({
   language: AppLanguage
   profile: WorkerV5Profile
 }) {
+  const styles = useWorkerThemedStyles(lightStyles)
   const checks = workerV5VerificationChecks(profile, language)
   const missingCount = checks.filter((check) => !check.done).length
   const completed = checks.length - missingCount
@@ -553,6 +568,7 @@ export function WorkerV5VerificationSection({
 }
 
 function CompactMetric({ border, label, testID, value }: { border?: boolean; label: string; testID: string; value: string }) {
+  const styles = useWorkerThemedStyles(lightStyles)
   return (
     <View style={[styles.compactMetric, border ? styles.compactMetricBorder : null]}>
       <RNText style={styles.compactMetricValue} numberOfLines={1} testID={testID}>{value}</RNText>
@@ -562,6 +578,7 @@ function CompactMetric({ border, label, testID, value }: { border?: boolean; lab
 }
 
 function CompactRow({ label, value }: { label: string; value: string }) {
+  const styles = useWorkerThemedStyles(lightStyles)
   return (
     <View style={styles.listRow}>
       <View style={styles.rowCopy}>
@@ -603,6 +620,7 @@ function DetailRow({
   title: string
   titleTestID?: string
 }) {
+  const styles = useWorkerThemedStyles(lightStyles)
   return (
     <View style={[styles.listRow, progress !== undefined ? styles.listRowTall : null]} testID={testID}>
       {reviewsIcon ? <ReviewsIconFrame icon={reviewsIcon} testID={`${testID}-icon`} /> : reliabilityIcon ? <ReliabilityIconFrame icon={reliabilityIcon} testID={`${testID}-icon`} /> : icon ? <IconFrame icon={icon} testID={`${testID}-icon`} /> : null}

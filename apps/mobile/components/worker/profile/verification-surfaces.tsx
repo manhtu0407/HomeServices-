@@ -17,8 +17,9 @@ import { WorkerV5FormulaMintCardAura } from '../ui/aura-surfaces'
 import { textByLanguage } from '../ui/format'
 import { workerV5VerificationChecks } from './verification-model'
 import { WorkerV5ProfileFormulaCard } from './worker-profile-formula-surfaces'
-import { styles as formulaStyles } from './worker-profile-formula-styles'
-import { styles } from './verification-styles'
+import { styles as formulaStylesLight } from './worker-profile-formula-styles'
+import { styles as stylesLight } from './verification-styles'
+import { useWorkerThemedStyles } from '../ui/worker-dark-styles'
 
 type WorkerV5VerificationProfile = WorkerProfileResponse | null | undefined
 type WorkerV5VerificationIcons = Record<WorkerV5IconName, ImageSourcePropType>
@@ -34,6 +35,7 @@ type WorkerV5ReadOnlyToggleList = ComponentType<{
 }>
 
 function Text({ style, ...props }: TextProps) {
+  const styles = useWorkerThemedStyles(stylesLight)
   return <RNText {...props} style={[styles.workerCustomerFontText, style]} />
 }
 
@@ -48,6 +50,8 @@ export function WorkerV5VerificationHero({
   profile: WorkerV5VerificationProfile
   reduceTransparency: boolean
 }) {
+  const formulaStyles = useWorkerThemedStyles(formulaStylesLight)
+  const styles = useWorkerThemedStyles(stylesLight)
   const checks = workerV5VerificationChecks(profile, language)
   const completed = checks.filter((check) => check.done).length
   const ready = completed === checks.length && Boolean(profile?.is_approved)
@@ -95,6 +99,7 @@ export function WorkerV5VerificationChecklist({
   reduceTransparency: boolean
   zipAura: WorkerV5VerificationAura
 }) {
+  const styles = useWorkerThemedStyles(stylesLight)
   const checks = workerV5VerificationChecks(profile, language)
   return (
     <WorkerV5ProfileFormulaCard

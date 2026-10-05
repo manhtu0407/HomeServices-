@@ -20,7 +20,8 @@ import {
 } from './services-surfaces'
 import { WorkerV5WorkerRegistrationBody } from './registration-surfaces'
 import { workerNeedsRegistration } from './registration-model'
-import { styles } from './body-styles'
+import { styles as lightStyles } from './body-styles'
+import { useWorkerThemedStyles } from '../ui/worker-dark-styles'
 type WorkerV5Runtime = ReturnType<typeof useFrontendWorkflow>
 type WorkerV5DossierIconMap = Record<'logout' | 'reliability' | 'schedule' | 'services' | 'settings', ImageSourcePropType>
 type WorkerV5AuraComponent = ComponentType<{ testID: string }>
@@ -52,6 +53,7 @@ export function WorkerV5ProfileOverviewBody({
   reduceTransparency: boolean
   runtime: WorkerV5Runtime
 }) {
+  const styles = useWorkerThemedStyles(lightStyles)
   const profile = runtime.workerProfile
   const insights = runtime.workerPerformanceInsights
   return (
@@ -103,6 +105,7 @@ export function WorkerV5SkillsServiceAreaBody({
   runtime: WorkerV5Runtime
   serviceAreaMapCard: WorkerV5ServiceAreaMapCardComponent
 }) {
+  const styles = useWorkerThemedStyles(lightStyles)
   const profile = runtime.workerProfile
   const serviceAreaOwnerKey = [
     profile?.id ?? 'no-profile',
@@ -160,6 +163,7 @@ export function WorkerV5VerificationDocumentsBody({
   reduceTransparency: boolean
   runtime: WorkerV5Runtime
 }) {
+  const styles = useWorkerThemedStyles(lightStyles)
   const profile = runtime.workerProfile
   if (workerNeedsRegistration(profile)) {
     return (

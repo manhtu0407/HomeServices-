@@ -2,7 +2,8 @@ import type { ReactNode } from 'react'
 import { View, type StyleProp, type ViewStyle } from 'react-native'
 
 import { WorkerV5FormulaMintCardAura } from '../ui/aura-surfaces'
-import { styles } from './worker-profile-formula-styles'
+import { styles as lightStyles } from './worker-profile-formula-styles'
+import { useWorkerThemedStyles } from '../ui/worker-dark-styles'
 
 export function WorkerV5ProfileFormulaCard({
   auraTestID,
@@ -21,6 +22,7 @@ export function WorkerV5ProfileFormulaCard({
   style?: StyleProp<ViewStyle>
   testID: string
 }) {
+  const styles = useWorkerThemedStyles(lightStyles)
   return (
     <View style={[styles.card, style]} testID={testID}>
       {!reduceTransparency ? (

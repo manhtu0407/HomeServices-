@@ -5,6 +5,12 @@ export const workerIncomeDashboardAssets = {
   orb: require('../../../assets/worker-income-dashboard/orb-surface.png') as ImageSourcePropType,
 } as const
 
+// The same field and orb with the pastel light removed, so the purple and mint glow on black.
+export const workerIncomeDashboardDarkAssets = {
+  background: require('../../../assets/worker-income-dashboard/background-field-dark.png') as ImageSourcePropType,
+  orb: require('../../../assets/worker-income-dashboard/orb-surface-dark.png') as ImageSourcePropType,
+} as const
+
 export const workerIncomeDashboardTokens = {
   layout: {
     contentInset: 13,
@@ -38,6 +44,7 @@ export const workerIncomeDashboardTokens = {
     muted: '#77838F',
     mutedSoft: '#898F99',
     opaqueTint: '#F7F4FF',
+    orbBacking: '#FFFFFF',
     page: '#FFFFFF',
     purple: '#8A5DF5',
     purpleBorder: 'rgba(150,105,249,0.70)',
@@ -51,6 +58,37 @@ export const workerIncomeDashboardTokens = {
     white: '#FFFFFF',
     whiteSoft: 'rgba(255,255,255,0.24)',
   },
+  darkColors: {
+    border: 'rgba(255,255,255,0.14)',
+    borderSoft: 'rgba(255,255,255,0.12)',
+    cashGlassEnd: 'rgba(44,44,46,0.66)',
+    cashGlassStart: 'rgba(44,44,46,0.80)',
+    cashGlassStop: 'rgba(44,44,46,0.72)',
+    cashViolet: '#B9A2FF',
+    chartGlow: 'rgba(173,145,255,0.22)',
+    contentSurface: '#1C1C1E',
+    green: '#3ED6A6',
+    greenStrong: '#45D9AA',
+    ink: '#FFFFFF',
+    inkStrong: '#FFFFFF',
+    inkValue: '#FFFFFF',
+    muted: '#AEAEB2',
+    mutedSoft: '#98989F',
+    opaqueTint: '#1C1C1E',
+    orbBacking: '#2C2C2E',
+    page: '#000000',
+    purple: '#9B78FF',
+    purpleBorder: 'rgba(173,145,255,0.70)',
+    purpleBorderOpaque: '#A88BFF',
+    purpleStrong: '#B9A2FF',
+    selectedGlass: 'rgba(255,255,255,0.16)',
+    statsGlassEnd: 'rgba(255,255,255,0.06)',
+    statsGlassStart: 'rgba(255,255,255,0.10)',
+    transparent: 'transparent',
+    violetAura: '#8D5BFF',
+    white: '#FFFFFF',
+    whiteSoft: 'rgba(255,255,255,0.12)',
+  },
   motion: {
     ambientHalfCycleMs: 8500,
     fadeInMs: 180,
@@ -60,3 +98,5 @@ export const workerIncomeDashboardTokens = {
     selectedPeriod: '0 4px 4.5px rgba(121,83,227,0.065)',
   },
 } as const
+
+export type WorkerIncomeDashboardColors = { [Key in keyof typeof workerIncomeDashboardTokens.colors]: string }
