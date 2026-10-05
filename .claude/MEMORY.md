@@ -10,6 +10,7 @@ The active Recall Index is intentionally short. Full entry detail lives in `docs
 
 ## Recall Index -> `docs/memory/2026-10.md`
 
+- **2026-10-05** Ranking hero workart — Tu wanted only the art changed, not the card (first attempt `3a9dd2b` swapped the whole hero; restored in `eb7ff83`); plate `usageRankArt` full-bleed left at 56%, fill within 12% stretch else cover+fade; web light/dark checked, native pending.
 - **2026-10-05** Kael Chat composers (Build 51: long draft stuck at one line, lines pushed up) — native pinned measured `height` + scroll off never grows on iOS; shared `useKaelComposerInputSizing` (native min/max + scroll on, web measured), Return=newline on native; trap: `await withPillarContext(async…)` never awaited (sync wrapper). Device proof pending.
 - **2026-10-05** Invite-code flow — core was already live from #294 (0 codes/links in Production); added `invite_claim` status (migration `20261005100000`, **not applied**), customer two-tap claim + alphabet check, worker code as Profile setting 5.16, fixed-fee offer copy; P307–P310, mobile 2281 green, localhost E2E via `ns_audit_role` + Playwright mocks; Edge not deployed, SQL/deno unrun.
 - **2026-10-02** Kael Chat inline session rename and mode-menu polish — Customer/Worker titles edit in-row; mode selectors have no outer backing; mobile suite green, native iPhone verification pending.
