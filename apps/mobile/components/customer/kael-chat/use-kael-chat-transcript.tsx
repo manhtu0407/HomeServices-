@@ -1,9 +1,9 @@
 import { useMemo, type ReactNode } from 'react'
-import { ActivityIndicator } from 'react-native'
+import { ActivityIndicator, View, type ViewStyle } from 'react-native'
 
 import { KaelChatTurnImages } from '@/components/ui/kael-chat-turn-images'
 import { KaelReasoningReceipt } from '@/components/ui/kael-reasoning-receipt'
-import { color } from '@/design/theme'
+import { color, spacing } from '@/design/theme'
 import type { AppLanguage } from '@/lib/app-language'
 import type { KaelChatTurnImage } from '@/lib/kael-chat-local-media'
 import type { KaelReasoningReceiptState } from '@/lib/kael-reasoning-receipt'
@@ -66,6 +66,8 @@ function appendRow(rows: ChatTranscriptRow[], key: string, node: ReactNode) {
   rows.push({ key, node })
 }
 
+const turnGroupStyle: ViewStyle = { gap: spacing.sm, width: '100%' }
+
 function CustomerTurnBubble({
   images,
   language,
@@ -79,8 +81,12 @@ function CustomerTurnBubble({
   text: string
   tokens: CustomerThemeTokens
 }) {
+  if (images.length === 0) {
+    return text.trim() ? <ChatBubble speaker="customer" testID={testID} text={text} tokens={tokens} /> : null
+  }
+  // Photos and their message read as one sent group, with a small gap so they never touch.
   return (
-    <>
+    <View style={turnGroupStyle} testID={testID ? `${testID}-group` : 'customer-v21-kael-turn-group'}>
       <KaelChatTurnImages
         colors={{ border: tokens.border, muted: tokens.muted, surface: tokens.service }}
         images={images}
@@ -88,7 +94,7 @@ function CustomerTurnBubble({
         testID={testID ? `${testID}-images` : 'customer-v21-kael-turn-images'}
       />
       {text.trim() ? <ChatBubble speaker="customer" testID={testID} text={text} tokens={tokens} /> : null}
-    </>
+    </View>
   )
 }
 

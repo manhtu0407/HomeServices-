@@ -1,4 +1,5 @@
 import { StyleSheet } from 'react-native'
+import { spacing } from '@/design/theme'
 
 export const styles = StyleSheet.create({
   kaelOrbCustomerShell: {
@@ -41,5 +42,10 @@ export const styles = StyleSheet.create({
   },
   kaelOrbChatBody: {
     gap: 8,
+  },
+  // A sent photo and its message stay one group: the photo never touches the bubble.
+  kaelOrbTurnGroup: {
+    gap: spacing.sm,
+    width: '100%',
   },
 })

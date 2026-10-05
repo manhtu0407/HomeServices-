@@ -101,7 +101,7 @@ describe('P313 Kael chat turn images', () => {
     ]))
   })
 
-  it('shows the photos of a saved customer turn above its text, with a labelled tile for one no longer kept', () => {
+  it('shows the photos of a saved customer turn above its text with a gap, and a labelled tile for one no longer kept', () => {
     renderRows(transcriptInput({
       normalAssistantTurns: [{
         id: 'turn-1',
@@ -117,6 +117,7 @@ describe('P313 Kael chat turn images', () => {
       expect(screen.getByTestId('customer-v21-kael-turn-images-0')).toBeOnTheScreen()
       expect(screen.getByTestId('customer-v21-kael-turn-images-1-expired')).toHaveTextContent('Ảnh đã hết hạn lưu')
       expect(screen.getByText('Ảnh này là ảnh gì?')).toBeOnTheScreen()
+      expect(screen.getByTestId('customer-v21-kael-turn-group')).toHaveStyle({ gap: 8 })
     })
   })
 

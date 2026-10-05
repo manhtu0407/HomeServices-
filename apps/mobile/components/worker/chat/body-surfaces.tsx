@@ -281,22 +281,24 @@ export function WorkerV5KaelOrbBody({
             {visibleThreadTurns.map((turn, index) => (
               <Fragment key={turn.id}>
                 {receiptBeforeFinalKaelTurn && index === visibleThreadTurns.length - 1 ? reasoningReceiptNode : null}
-                {turn.images?.length ? (
-                  <KaelChatTurnImages
-                    colors={{ border: color.surface.stroke, muted: color.text.secondary, surface: color.surface.soft }}
-                    images={turn.images}
-                    language={language}
-                    testID={`worker-v5-kael-turn-images-${turn.id}`}
-                  />
-                ) : null}
-                {turn.text.trim() ? (
-                  <WorkerV5KaelOrbBubble
-                    align={turn.role === 'worker' ? 'right' : undefined}
-                    appearance={mode === 'normal' && turn.role === 'kael' ? 'bare' : 'bubble'}
-                    body={turn.text}
-                    speakerLabel={turn.role === 'worker' ? textByLanguage(language, 'Bạn', 'You') : 'Kael'}
-                  />
-                ) : null}
+                <View style={styles.kaelOrbTurnGroup} testID={`worker-v5-kael-turn-group-${turn.id}`}>
+                  {turn.images?.length ? (
+                    <KaelChatTurnImages
+                      colors={{ border: color.surface.stroke, muted: color.text.secondary, surface: color.surface.soft }}
+                      images={turn.images}
+                      language={language}
+                      testID={`worker-v5-kael-turn-images-${turn.id}`}
+                    />
+                  ) : null}
+                  {turn.text.trim() ? (
+                    <WorkerV5KaelOrbBubble
+                      align={turn.role === 'worker' ? 'right' : undefined}
+                      appearance={mode === 'normal' && turn.role === 'kael' ? 'bare' : 'bubble'}
+                      body={turn.text}
+                      speakerLabel={turn.role === 'worker' ? textByLanguage(language, 'Bạn', 'You') : 'Kael'}
+                    />
+                  ) : null}
+                </View>
               </Fragment>
             ))}
             {!receiptBeforeFinalKaelTurn ? reasoningReceiptNode : null}
