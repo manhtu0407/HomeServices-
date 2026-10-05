@@ -86,7 +86,7 @@ function controller(overrides: Partial<ReturnType<typeof useWorkerAmbassador>> =
 }
 
 describe('Worker invite code in Profile', () => {
-  it('reaches the invite code from the Account & support group like any other setting', () => {
+  it('reaches the invite code from its own Special group at the top of Profile, with the ticket icon', () => {
     const navigate = jest.fn()
     render(
       <WorkerV5ProfileProductionSurface
@@ -99,10 +99,14 @@ describe('Worker invite code in Profile', () => {
         profile={null}
       />,
     )
-    const group = screen.getByTestId('worker-v5-profile-group-settings')
+    const group = screen.getByTestId('worker-v5-profile-group-special')
+    const groups = screen.getByTestId('worker-v5-profile-groups')
     withPillarContext(PILLAR, () => {
-      expect(group).toHaveTextContent(/Tài khoản & hỗ trợ/)
+      expect(group).toHaveTextContent(/^Đặc biệt/)
       expect(group).toHaveTextContent(/Mã mời khách/)
+      expect(screen.getByTestId('worker-v5-profile-group-settings')).not.toHaveTextContent(/Mã mời khách/)
+      expect(groups).toHaveTextContent(/^Đặc biệt\s*Mã mời khách/)
+      expect(screen.getByTestId('worker-v5-profile-row-invite-code-icon')).toBeOnTheScreen()
     })
     fireEvent.press(screen.getByTestId('worker-v5-profile-row-invite-code'))
     withPillarContext(PILLAR, () => expect(navigate).toHaveBeenCalledWith('5.16-worker-invite-code'))
