@@ -417,18 +417,14 @@ export const customerV21ProfileUtilityStyles = StyleSheet.create({
     position: 'relative',
     zIndex: 3,
   },
+  // Label over value: the value never wraps under its label, so a long one cannot orphan.
   profileRankingHeroCurrentLine: {
-    ...typography.footnote,
-    fontSize: 14,
-    lineHeight: 19,
-    marginLeft: 0,
-    transform: [{ translateY: -2 }],
+    gap: 2,
+    marginBottom: 4,
   },
   profileRankingHeroKicker: {
-    ...typography.footnote,
-    fontSize: 14,
-    fontWeight: '700',
-    lineHeight: 19,
+    ...typography.caption1,
+    fontWeight: '600',
   },
   profileRankingHeroPointLine: {
     alignItems: 'center',
@@ -457,10 +453,8 @@ export const customerV21ProfileUtilityStyles = StyleSheet.create({
     width: '100%',
   },
   profileRankingHeroValue: {
-    ...typography.footnote,
-    fontSize: 14,
+    ...typography.headline,
     fontWeight: '700',
-    lineHeight: 19,
   },
   profileRankingHeroRing: {
     borderRadius: 24,

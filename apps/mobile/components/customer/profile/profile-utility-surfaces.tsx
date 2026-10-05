@@ -341,6 +341,7 @@ export function ProfileRankingPanel({
     : rank === 0
       ? (language === 'vi' ? 'Chưa xếp hạng' : 'Not ranked')
       : String(rank)
+  const rankLabel = language === 'vi' ? 'Hạng hiện tại' : 'Current level'
   const rankDescription = rank === null
     ? (language === 'vi' ? 'Kael đánh giá từ dữ liệu sử dụng thật.' : 'Kael evaluates real usage data.')
     : rankTitle
@@ -373,10 +374,23 @@ export function ProfileRankingPanel({
           style={[styles.profileRankingHeroCopy, { backgroundColor: tokens.raised }]}
           testID="customer-v21-profile-ranking-hero-copy"
         >
-          <Text style={[styles.profileRankingHeroCurrentLine, { color: tokens.muted }]} testID="customer-v21-profile-ranking-current-line">
-            <Text style={[styles.profileRankingHeroKicker, { color: tokens.muted }]} testID="customer-v21-profile-ranking-hero-kicker">{language === 'vi' ? 'Hạng hiện tại:' : 'Current level:'}</Text>
-            <Text style={[styles.profileRankingHeroValue, { color: tokens.muted }]} testID="customer-v21-profile-ranking-current-value">{` ${rankValue}`}</Text>
-          </Text>
+          <View
+            accessible
+            accessibilityLabel={`${rankLabel}: ${rankValue}`}
+            style={styles.profileRankingHeroCurrentLine}
+            testID="customer-v21-profile-ranking-current-line"
+          >
+            <Text numberOfLines={1} style={[styles.profileRankingHeroKicker, { color: tokens.muted }]} testID="customer-v21-profile-ranking-hero-kicker">{rankLabel}</Text>
+            <Text
+              adjustsFontSizeToFit
+              minimumFontScale={0.85}
+              numberOfLines={1}
+              style={[styles.profileRankingHeroValue, { color: tokens.text }]}
+              testID="customer-v21-profile-ranking-current-value"
+            >
+              {rankValue}
+            </Text>
+          </View>
           <View style={styles.profileRankingHeroPointLine} testID="customer-v21-profile-ranking-hero-body-line">
             <ProfileRankingUsageSignalIcon color={tokens.primary} testID="customer-v21-profile-ranking-hero-body-icon" />
             <Text numberOfLines={2} style={[styles.profileRankingHeroBody, { color: tokens.muted }]} testID="customer-v21-profile-ranking-hero-body">{rankDescription}</Text>
