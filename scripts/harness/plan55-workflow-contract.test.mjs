@@ -291,7 +291,7 @@ test('release-stage gate proofs bind the pinned hosted baseline and rollback bef
   ])
 })
 
-test('independent holdout attestation gates canary actors after the guard is deployed OFF', () => {
+test('independent holdout attestation gates the OFF-only guard deployment before any Production mutation', () => {
   const quality = jobBlock(release, 'quality-and-preflight')
   const deploy = jobBlock(release, 'deploy_guard_off')
   const holdout = jobBlock(release, 'independent_holdout_attestation')
@@ -302,7 +302,7 @@ test('independent holdout attestation gates canary actors after the guard is dep
   assert.doesNotMatch(quality, /plan55-independent-holdout-preflight\.mjs/u,
     'independent adjudication must not block source-bound local quality and SQL checks')
   assert.doesNotMatch(deploy, /plan55-independent-holdout-preflight\.mjs/u,
-    'the OFF-only guard deployment must not require holdout adjudication')
+    'the deployment job must consume the separate read-only attestation job, not rerun adjudication')
   assert.match(quality, /preflight_artifact_id: \$\{\{ steps\.preflight-artifact\.outputs\.artifact-id \}\}/u,
     'the quality job must expose its immutable pre-deploy proof artifact')
   assert.match(quality, /id: preflight-artifact/u,
@@ -310,8 +310,13 @@ test('independent holdout attestation gates canary actors after the guard is dep
   assert.match(deploy,
     /actions\/download-artifact@[a-f0-9]+[\s\S]*?artifact-ids: \$\{\{ needs\.quality-and-preflight\.outputs\.preflight_artifact_id \}\}[\s\S]*?path: artifacts\/release\/plan55-gate-evidence/u,
     'the release artifact must preserve the exact quality proof artifact for final receipt packaging')
-  assert.deepEqual(needsFor('independent_holdout_attestation'), ['deploy_guard_off'],
-    'the exact-source attestation check must run after the deployed guard is verified')
+  assert.deepEqual(needsFor('independent_holdout_attestation'), ['quality-and-preflight'],
+    'independent attestation must complete after local quality checks and before deployment')
+  assert.deepEqual(needsFor('deploy_guard_off'), ['quality-and-preflight', 'independent_holdout_attestation'],
+    'Production deployment must wait for both local quality and the independent exact-source attestation')
+  assert.match(deploy,
+    /if: needs\.quality-and-preflight\.result == 'success' && needs\.independent_holdout_attestation\.result == 'success' && github\.ref == 'refs\/heads\/main' && inputs\.source_sha == github\.sha/u,
+    'a failed or skipped pre-deploy attestation must fail closed before Production mutation')
   assert.ok(holdoutIndex >= 0 && proofIndex > holdoutIndex && uploadIndex > proofIndex,
     'the holdout result must be validated, converted to gate evidence, then uploaded')
   assert.match(holdout, /GH_TOKEN: \$\{\{ github\.token \}\}/u,
@@ -326,16 +331,19 @@ test('independent holdout attestation gates canary actors after the guard is dep
     'no first-service actor can be created before independent holdout attestation succeeds')
 })
 
-test('guard deployment stays OFF-only and independent holdout remains mandatory before canary', () => {
+test('guard deployment stays OFF-only and cannot precede independent holdout attestation', () => {
   const deploy = jobBlock(release, 'deploy_guard_off')
   const assembleIndex = deploy.indexOf('name: Assemble exact Production release and prove rollback source')
   const deployIndex = deploy.indexOf('functions deploy mobile-api')
 
   assert.doesNotMatch(deploy, /plan55-independent-holdout-preflight\.mjs/u,
-    'the pre-canary review must not block a safe guard-OFF deploy')
+    'deployment consumes the separate read-only attestation result and must not rerun adjudication')
   assert.ok(assembleIndex >= 0, 'the guard-off deploy must still assemble the exact Production release')
   assert.ok(deployIndex > assembleIndex, 'release assembly must precede the actual Edge deployment')
-  assert.deepEqual(needsFor('independent_holdout_attestation'), ['deploy_guard_off'])
+  assert.deepEqual(needsFor('independent_holdout_attestation'), ['quality-and-preflight'])
+  assert.deepEqual(needsFor('deploy_guard_off'), ['quality-and-preflight', 'independent_holdout_attestation'])
+  assert.match(deploy,
+    /if: needs\.quality-and-preflight\.result == 'success' && needs\.independent_holdout_attestation\.result == 'success'/u)
   assert.ok(needsFor('hvac').includes('independent_holdout_attestation'))
   assert.match(deploy, /GH_TOKEN: \$\{\{ github\.token \}\}/u,
     'the guard deploy keeps its existing read-only GitHub checks')
@@ -368,7 +376,7 @@ test('holdout review is revalidated before any service actor or scoped flag muta
   assert.ok(sequencePreflight >= 0 && sequenceActorCreation > sequencePreflight && scopedFlagEnable > sequenceActorCreation,
     'every service run must complete its exact-source preflight before actor creation and scoped flag enablement')
   assert.match(release, /needs: \[deploy_guard_off, independent_holdout_attestation\]/u,
-    'the first canary job must also wait for the post-deploy independent attestation artifact')
+    'the first canary job must wait for both the deployed guard and the pre-deploy independent attestation')
 })
 
 test('Production source attestation is bound to downloaded hosted Edge bytes and live deployment metadata', () => {
