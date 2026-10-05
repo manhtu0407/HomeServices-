@@ -61,6 +61,9 @@ Ambassador program (Tu, 2026-09-25)
 |- no activation bonus: it would break the cap and make fake customers profitable
 |- redemption credits the withdrawable balance after withholding under an approved worker_bonus tax policy; with no approved policy, redemption fails closed
 |- unredeemed points never expire; forfeited points are cancelled, never booked as revenue
+|- the membership summary reports invite_claim.status (open, linked, window_closed, transacted, program_unavailable) in claim_referral_code's order; the app offers the code field only while it is open and asks for a confirming second tap that states the link length
+|- codes use an alphabet without 0, 1, I and O; the app rejects those characters before any claim attempt
+|- a worker creates and shares the code from Profile (5.16); the ambassador screen only links to it
 ```
 
 Customer membership points come from the same paid-in-app ledger (one entry per paid order, reversed on refund) and carry zero-cost benefits only.

@@ -10,6 +10,7 @@ The active Recall Index is intentionally short. Full entry detail lives in `docs
 
 ## Recall Index -> `docs/memory/2026-10.md`
 
+- **2026-10-05** Invite-code flow — core was already live from #294 (0 codes/links in Production); added `invite_claim` status (migration `20261005100000`, **not applied**), customer two-tap claim + alphabet check, worker code as Profile setting 5.16, fixed-fee offer copy; P307–P310, mobile 2281 green, localhost E2E via `ns_audit_role` + Playwright mocks; Edge not deployed, SQL/deno unrun.
 - **2026-10-02** Kael Chat inline session rename and mode-menu polish — Customer/Worker titles edit in-row; mode selectors have no outer backing; mobile suite green, native iPhone verification pending.
 - **2026-10-01** Activity tab: empty state moved onto the new card + preview shows the real empty state (P297); the compensation banner was `GET /me/compensation` 404 because Edge v275 predates PR #294. The 19 `20260928*` migrations are now applied to Production (sha256-guarded, history 419, 30 RPCs back); **Edge deploy and Docker were not done**, so the banner stays until Edge ships from `main`.
 
