@@ -126,7 +126,7 @@ export function workerThemedColor(mode: 'light' | 'dark', role: 'ink' | 'line' |
 // role its name gives it (ink, line) and otherwise by its lightness: light values are surfaces,
 // near-black and grey values are ink, and saturated brand colours are kept.
 const LINE_NAME = /(border|line|stroke|dashed|connector|divider|outline|track|hairline)/i
-const INK_NAME = /(ink|text|muted|faint|eyebrow|value|label|title|copy|caption|price|glyph|icon|kael|secondary)/i
+const INK_NAME = /(ink|text|muted|faint|eyebrow|value|label|title|copy|caption|price|glyph|icon|kael|secondary|quote|body|heading|subtitle|description|hint)/i
 
 function darkTokenColor(key: string, value: string) {
   const parsed = parseColor(value)

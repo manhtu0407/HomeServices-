@@ -16,11 +16,12 @@ import { type AppleTypographyRole } from '@/design/theme'
 import type { AppLanguage } from '@/lib/app-language'
 
 import { STAGE_MAX_FONT_MULTIPLIER, stageTypography } from '../stage-ratio'
-import { stageNineAssets } from './stage-nine-assets'
+import { stageNineAssets, stageNineDarkAssets } from './stage-nine-assets'
 import { StageNineButtonSurface } from './stage-nine-button-surface'
 import { stageNineCopy as C } from './stage-nine-copy'
 import { stageNineTokens as TLight } from './stage-nine-tokens'
 import { useWorkerThemedTokens } from '../../ui/worker-dark-styles'
+import { useWorkerThemeMode } from '../../worker-theme'
 
 export type StageNineEmptyStageProps = {
   /** Extra scroll room under the stage, e.g. for a floating dock. */
@@ -54,6 +55,7 @@ export function StageNineEmptyStage({
   topInset = 0,
 }: StageNineEmptyStageProps) {
   const T = useWorkerThemedTokens(TLight)
+  const themeMode = useWorkerThemeMode()
   const window = useWindowDimensions()
   const [hostWidth, setHostWidth] = useState(() => Math.min(window.width, T.maxWidth))
   const [copyHeight, setCopyHeight] = useState(0)
@@ -112,7 +114,7 @@ export function StageNineEmptyStage({
           accessibilityIgnoresInvertColors
           accessible={false}
           contentFit="fill"
-          source={stageNineAssets.scene}
+          source={(themeMode === 'dark' ? stageNineDarkAssets : stageNineAssets).scene}
           style={{ height: (hostWidth * T.illustration.height) / T.illustration.width, left: 0, position: 'absolute', top: safeShift, width: hostWidth }}
           testID="worker-v5-stage-nine-empty-scene"
           transition={0}
