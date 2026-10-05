@@ -20,14 +20,12 @@ import { CaseOverviewScoreAura } from '../history/history-surfaces'
 import { ProfileLiquidScore, ProfileStatCard } from './profile-metrics-surfaces'
 import {
   ProfileRankingMetricIcon,
-  ProfileRankingNextLevelIcon,
-  ProfileRankingPointsIcon,
   ProfileRankingRuleIcon,
-  ProfileRankingUsageSignalIcon,
   type ProfileRankingMetricKind,
   type ProfileRankingRuleKind,
 } from './profile-ranking-icons'
 import { ProfileRankingMilestoneRail } from './profile-ranking-progress'
+import { UsageRankCard } from './usage-rank-card'
 import { customerV21ProfileSettingsStyles as settingsStyles } from './profile-settings-styles'
 import { customerV21ProfileUtilityStyles as styles } from './profile-utility-styles'
 import { AssetTile, SectionActionHeader, V21Card } from '../ui/shared-surfaces'
@@ -282,80 +280,37 @@ function ProfileInsightRow({
 export function ProfileRankingPanel({
   membershipCard,
   metrics,
-  nextRankPointsText,
   pointsText,
-  progressBar,
   rank,
   rankNodes,
   rankProcess,
-  rankTitle,
   rules,
   rulesTitle,
 }: {
   membershipCard?: ReactNode
   metrics: ProfilePanelMetric[]
-  nextRankPointsText: string | null
   pointsText: string
-  progressBar: ReactNode
   rank: number | null
   rankNodes: ProfileRankingNode[]
   rankProcess: ReactNode
-  rankTitle: string
   rules: ProfileInsightModel[]
   rulesTitle: string
 }) {
   const language = useAppLanguage()
   const glass = useGlassAccessibility()
   const tokens = useCustomerV21ProfileTheme()
-  const rankValue = rank === null
-    ? (language === 'vi' ? 'Chưa có' : 'Pending')
-    : rank === 0
-      ? (language === 'vi' ? 'Chưa xếp hạng' : 'Not ranked')
-      : String(rank)
-  const rankDescription = rank === null
-    ? (language === 'vi' ? 'Kael đánh giá từ dữ liệu sử dụng thật.' : 'Kael evaluates real usage data.')
-    : rankTitle
   const metricIconColor = tokens.mode === 'dark' ? tokens.text : '#182B34'
 
   return (
     <View testID="customer-v21-profile-ranking">
-      <ProfileAuraCard cardStyle={styles.profileRankingHeroCard} contentStyle={styles.profileRankingHero} scope="RankingHero" showMintAura={false} testID="customer-v21-profile-ranking-hero">
-        <View style={styles.profileRankingHeroWorkartFrame} testID="customer-v21-profile-ranking-hero-workart-frame">
-          <Image
-            accessibilityLabel={language === 'vi' ? 'Minh họa hành trình sử dụng dịch vụ' : 'Usage journey illustration'}
-            contentFit="contain"
-            source={customerV21Assets.usageRankingWorkart}
-            style={styles.profileRankingHeroWorkart}
-            testID="customer-v21-profile-ranking-hero-workart"
-          />
-        </View>
-        <View
-          style={[styles.profileRankingHeroCopy, { backgroundColor: tokens.raised }]}
-          testID="customer-v21-profile-ranking-hero-copy"
-        >
-          <Text style={[styles.profileRankingHeroCurrentLine, { color: tokens.muted }]} testID="customer-v21-profile-ranking-current-line">
-            <Text style={[styles.profileRankingHeroKicker, { color: tokens.muted }]} testID="customer-v21-profile-ranking-hero-kicker">{language === 'vi' ? 'Hạng hiện tại:' : 'Current level:'}</Text>
-            <Text style={[styles.profileRankingHeroValue, { color: tokens.muted }]} testID="customer-v21-profile-ranking-current-value">{` ${rankValue}`}</Text>
-          </Text>
-          <View style={styles.profileRankingHeroPointLine} testID="customer-v21-profile-ranking-hero-body-line">
-            <ProfileRankingUsageSignalIcon color={tokens.primary} testID="customer-v21-profile-ranking-hero-body-icon" />
-            <Text numberOfLines={2} style={[styles.profileRankingHeroBody, { color: tokens.muted }]} testID="customer-v21-profile-ranking-hero-body">{rankDescription}</Text>
-          </View>
-          <View style={styles.profileRankingHeroPointsGroup} testID="customer-v21-profile-ranking-points">
-            <View style={styles.profileRankingHeroPointLine} testID="customer-v21-profile-ranking-points-total-line">
-              <ProfileRankingPointsIcon color={tokens.muted} testID="customer-v21-profile-ranking-points-total-icon" />
-              <Text numberOfLines={1} style={[styles.profileRankingHeroPoints, { color: tokens.muted }]} testID="customer-v21-profile-ranking-points-total">{pointsText}</Text>
-            </View>
-            {nextRankPointsText ? (
-              <View style={styles.profileRankingHeroPointLine} testID="customer-v21-profile-ranking-next-points">
-                <ProfileRankingNextLevelIcon color={tokens.primary} testID="customer-v21-profile-ranking-next-points-icon" />
-                <Text numberOfLines={2} style={[styles.profileRankingHeroNextPointsText, { color: tokens.muted }]} testID="customer-v21-profile-ranking-next-points-text">{nextRankPointsText}</Text>
-              </View>
-            ) : null}
-          </View>
-          <View style={styles.profileRankingHeroProgress} testID="customer-v21-profile-ranking-progress-slot">{progressBar}</View>
-        </View>
-      </ProfileAuraCard>
+      <View testID="customer-v21-profile-ranking-hero">
+        <UsageRankCard
+          statusLabel={pointsText}
+          tagline={language === 'vi' ? 'Nhà sạch hơn · Cuộc sống tốt hơn' : 'A cleaner home · A better life'}
+          testID="customer-v21-profile-ranking-hero-card"
+          title={language === 'vi' ? 'Xếp hạng sử dụng' : 'Usage ranking'}
+        />
+      </View>
       {membershipCard}
 
       <View style={styles.profileMetrics}>

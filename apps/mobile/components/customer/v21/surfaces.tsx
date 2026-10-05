@@ -1414,22 +1414,10 @@ function ProfileRanking({ insights }: { insights: CustomerProfileInsightsRespons
   const language = useAppLanguage()
   const copy = customerV21CommonCopy[language]
   const membership = membershipRank(insights, language)
-  const { nextRank, points, rank } = membership
+  const { rank } = membership
   const numericRank = rank ?? 0
-  const progress = membership.progressPercent
-  const remaining = membership.pointsToNext ?? 0
   const levelProgress = membership.levelProgressPercent
   const levelProgressLabel = membership.pointsLabel ?? copy.dataPending
-  const rankTitle = rank === null
-    ? copy.dataPending
-    : numericRank > 0
-      ? (language === 'vi' ? 'Sử dụng tích cực, hành vi tốt.' : 'Positive usage and good behavior.')
-      : (language === 'vi' ? 'Chưa có hoạt động đủ điều kiện để xếp hạng.' : 'No qualifying activity yet for a level.')
-  const nextRankPointsText = points !== null && nextRank
-    ? (language === 'vi'
-      ? `Còn ${formatNumber(remaining, language)} điểm lên hạng ${nextRank}`
-      : `${formatNumber(remaining, language)} to level ${nextRank}`)
-    : null
   const completedCount = insightNumber(insights, 'completed_service_count', copy.emptyProfileMetric, language)
   const streakLabel = insightNumber(insights, 'active_streak_days', copy.emptyProfileMetric, language, (value) => (language === 'vi' ? `${formatNumber(value, language)} ngày` : `${formatNumber(value, language)} days`))
   const reviewRate = insightNumber(
@@ -1440,10 +1428,6 @@ function ProfileRanking({ insights }: { insights: CustomerProfileInsightsRespons
     (value) => `${formatNumber(value, language)}%`,
   )
   const protectedTransactions = protectedTransactionLabel(insights, language, copy.emptyProfileMetric)
-  const progressBar = useMemo(
-    () => <ProfileProgressBar percent={numericRank > 0 && points !== null ? progress : 0} testID="customer-v21-profile-ranking-progress" />,
-    [numericRank, points, progress],
-  )
   const rankProcess = useMemo(
     () => (
       <ProfileRankProcess
@@ -1462,13 +1446,10 @@ function ProfileRanking({ insights }: { insights: CustomerProfileInsightsRespons
         { icon: 'streak', label: language === 'vi' ? 'Chuỗi hoạt động' : 'Active streak', testID: 'customer-v21-profile-ranking-metric-streak', value: streakLabel },
         { icon: 'reviews', label: language === 'vi' ? 'Đánh giá tích cực' : 'Positive reviews', testID: 'customer-v21-profile-ranking-metric-reviews', value: reviewRate },
       ]}
-      nextRankPointsText={nextRankPointsText}
       pointsText={levelProgressLabel}
-      progressBar={progressBar}
       rank={rank}
       rankNodes={[1, 2, 3, 4, 5].map((node) => ({ active: numericRank === node, label: rankLabel(node, language), value: node }))}
       rankProcess={rankProcess}
-      rankTitle={rankTitle}
       rules={[
         {
           details: [

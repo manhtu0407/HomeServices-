@@ -478,22 +478,11 @@ describe('CustomerProfileSurface v2.1', () => {
     expect(screen.getByTestId('customer-v21-profile-ranking')).toHaveTextContent(/620/)
     expect(screen.queryByRole('button', { name: 'i' })).toBeNull()
     expect(screen.queryByTestId('customer-v21-profile-ranking-status-chip')).toBeNull()
-    expect(screen.getByTestId('customer-v21-profile-ranking-hero-workart')).toBeOnTheScreen()
-    expect(screen.getByTestId('customer-v21-profile-ranking-hero')).toHaveStyle({ marginHorizontal: 7 })
-    expect(screen.getByTestId('customer-v21-profile-ranking-hero-workart-frame')).toHaveStyle({ height: 198, width: '50%' })
-    expect(screen.getByTestId('customer-v21-profile-ranking-hero-workart')).toHaveStyle({ height: 198, transform: [{ scale: 1.8 }], width: '100%' })
-    expect(screen.getByTestId('customer-v21-profile-ranking-hero-copy')).toHaveStyle({ paddingLeft: 12, paddingRight: 16, zIndex: 3 })
-    expect(screen.getByTestId('customer-v21-profile-ranking-current-line')).toHaveStyle({ fontSize: 14, lineHeight: 19, marginLeft: 0, transform: [{ translateY: -2 }] })
-    expect(screen.getByTestId('customer-v21-profile-ranking-hero-kicker')).toHaveStyle({ fontSize: 14, fontWeight: '700', lineHeight: 19 })
-    expect(screen.getByTestId('customer-v21-profile-ranking-current-value')).toHaveStyle({ fontSize: 14, fontWeight: '700', lineHeight: 19 })
-    expect(screen.getByTestId('customer-v21-profile-ranking-current-line')).toHaveTextContent(/Hạng hiện tại:\s*4/)
-    expect(screen.getByTestId('customer-v21-profile-ranking-hero-body')).toHaveStyle({ fontSize: 11, lineHeight: 15 })
-    expect(screen.getByTestId('customer-v21-profile-ranking-hero-body-line')).toHaveStyle({ flexDirection: 'row', gap: 4 })
-    expect(screen.getByTestId('customer-v21-profile-ranking-hero-body-icon')).toBeOnTheScreen()
-    expect(screen.queryByTestId('customer-v21-profile-ranking-hero-wide-mint-aura')).toBeNull()
-    expect(screen.queryByTestId('customer-v21-profile-ranking-hero-mint-aura')).toBeNull()
-    expect(screen.getByTestId('customer-v21-profile-ranking-current-value')).toHaveTextContent('4')
-    expect(screen.getByTestId('customer-v21-profile-ranking-progress')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-v21-profile-ranking-hero-card')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-v21-profile-ranking-hero-card-art')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-v21-profile-ranking-hero-card-title')).toHaveTextContent('Xếp hạng sử dụng')
+    expect(screen.getByTestId('customer-v21-profile-ranking-hero-card-points')).toHaveTextContent('620 / 800 điểm')
+    expect(screen.getByTestId('customer-v21-profile-ranking-hero-card-tagline', { includeHiddenElements: true })).toHaveTextContent(/Nhà sạch hơn/)
     expect(screen.getByTestId('customer-v21-profile-rank-rail-node-4')).toBeOnTheScreen()
     expect(screen.getByTestId('customer-v21-profile-rank-rail-node-4')).toHaveStyle({ borderRadius: 6, height: 12, width: 12 })
     expect(screen.getByTestId('customer-v21-profile-rank-rail-track-path')).toHaveProp(
@@ -548,20 +537,15 @@ describe('CustomerProfileSurface v2.1', () => {
     expect(screen.getByTestId('customer-v21-profile-money')).toHaveTextContent(/2.150.000đ/)
   })
 
-  it('keeps pending and real ranking states honest in the workart hero and level rail', () => {
+  it('keeps pending and real ranking states honest in the usage card and level rail', () => {
     mockScreenParam = '6.2-usage-ranking'
 
     const { rerender } = render(<CustomerProfileSurface />)
 
     expect(screen.queryByTestId('customer-v21-profile-ranking-status-chip')).toBeNull()
     expect(screen.queryByText('Hạng phản ánh cách bạn sử dụng dịch vụ')).toBeNull()
-    expect(screen.getByTestId('customer-v21-profile-ranking-hero-workart')).toBeOnTheScreen()
-    expect(screen.getByTestId('customer-v21-profile-ranking-current-value')).toHaveTextContent('Chưa có')
-    expect(screen.getByTestId('customer-v21-profile-ranking-current-line')).toHaveTextContent(/Hạng hiện tại:\s*Chưa có/)
-    expect(screen.getByTestId('customer-v21-profile-ranking-points-total')).toHaveTextContent('Chưa có')
-    expect(screen.getByTestId('customer-v21-profile-ranking-points-total-icon')).toBeOnTheScreen()
-    expect(screen.queryByTestId('customer-v21-profile-ranking-next-points')).toBeNull()
-    expect(screen.getByTestId('customer-v21-profile-ranking-progress')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-v21-profile-ranking-hero-card-art')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-v21-profile-ranking-hero-card-points')).toHaveTextContent('Chưa có')
     expect(screen.queryByTestId('customer-v21-profile-score-Ranking-value')).toBeNull()
     expect(screen.queryByTestId('customer-v21-profile-score-Ranking-progress-dot')).toBeNull()
 
@@ -573,7 +557,7 @@ describe('CustomerProfileSurface v2.1', () => {
     }
     rerender(<CustomerProfileSurface />)
 
-    expect(screen.getByTestId('customer-v21-profile-ranking-current-value')).toHaveTextContent('2')
+    expect(screen.getByTestId('customer-v21-profile-ranking-hero-card-points')).toHaveTextContent('250 / 400 điểm')
     expect(screen.getByTestId('customer-v21-profile-rank-rail-node-2')).toBeOnTheScreen()
     expect(screen.getByTestId('customer-v21-profile-ranking')).toHaveTextContent(/250/)
 
@@ -585,17 +569,8 @@ describe('CustomerProfileSurface v2.1', () => {
     }
     rerender(<CustomerProfileSurface />)
 
-    expect(screen.getByTestId('customer-v21-profile-ranking-current-value')).toHaveTextContent('4')
-    expect(screen.getByTestId('customer-v21-profile-ranking')).toHaveTextContent(/620/)
-    expect(screen.getByTestId('customer-v21-profile-ranking-points-total')).toHaveTextContent('620 / 800 điểm')
-    expect(screen.getByTestId('customer-v21-profile-ranking-points-total-line')).toHaveStyle({ flexDirection: 'row', gap: 4 })
-    expect(screen.getByTestId('customer-v21-profile-ranking-points-total-icon')).toBeOnTheScreen()
-    expect(screen.getByTestId('customer-v21-profile-ranking-next-points-text')).toHaveTextContent('Còn 180 điểm lên hạng 5')
-    expect(screen.getByTestId('customer-v21-profile-ranking-next-points-icon')).toBeOnTheScreen()
-    expect(screen.getByTestId('customer-v21-profile-ranking-points')).toHaveStyle({ gap: 6, transform: [{ translateY: 2 }] })
-    expect(screen.getByTestId('customer-v21-profile-ranking-next-points')).toHaveStyle({ flexDirection: 'row', gap: 4 })
-    expect(screen.getByTestId('customer-v21-profile-ranking-progress')).toBeOnTheScreen()
-    expect(screen.getByTestId('customer-v21-profile-ranking-progress-slot')).toHaveStyle({ marginTop: 6 })
+    expect(screen.getByTestId('customer-v21-profile-ranking-hero-card-points')).toHaveTextContent('620 / 800 điểm')
+    expect(screen.getByTestId('customer-v21-profile-rank-rail-node-4')).toBeOnTheScreen()
   })
 
   it('removes the smart utility section and Agentic Center entry from Profile', () => {

@@ -1,34 +1,7 @@
-import { Platform } from 'react-native'
 import Svg, { Circle, Path, Rect } from 'react-native-svg'
 
 export type ProfileRankingMetricKind = 'reviews' | 'services' | 'streak'
 export type ProfileRankingRuleKind = 'completion' | 'protected' | 'review'
-
-export function ProfileRankingPointsIcon({ color, testID }: { color: string; testID?: string }) {
-  return (
-    <Svg accessible={Platform.OS === 'web' ? undefined : false} height={16} testID={testID} viewBox="0 0 16 16" width={16}>
-      <Path d="m3.5 5.1 4.5-1.7 4.5 1.7L8 6.8 3.5 5.1ZM3.5 8 8 9.7 12.5 8M3.5 10.9 8 12.6l4.5-1.7" fill="none" stroke={color} strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.35} />
-    </Svg>
-  )
-}
-
-export function ProfileRankingNextLevelIcon({ color, testID }: { color: string; testID?: string }) {
-  return (
-    <Svg accessible={Platform.OS === 'web' ? undefined : false} height={16} testID={testID} viewBox="0 0 16 16" width={16}>
-      <Circle cx={8} cy={8} fill="none" r={6.25} stroke={color} strokeWidth={1.35} />
-      <Path d="m4.7 9.4 2.1-2.1 1.7 1.7 2.8-2.8M9.9 6.2h1.4v1.4" fill="none" stroke={color} strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.35} />
-    </Svg>
-  )
-}
-
-export function ProfileRankingUsageSignalIcon({ color, testID }: { color: string; testID?: string }) {
-  return (
-    <Svg accessible={Platform.OS === 'web' ? undefined : false} height={16} testID={testID} viewBox="0 0 16 16" width={16}>
-      <Path d="m8 2.4 1.5 4.1L13.6 8l-4.1 1.5L8 13.6 6.5 9.5 2.4 8l4.1-1.5L8 2.4Z" fill="none" stroke={color} strokeLinejoin="round" strokeWidth={1.35} />
-      <Circle cx={13.1} cy={3.2} fill={color} r={0.9} />
-    </Svg>
-  )
-}
 
 export function ProfileRankingMetricIcon({ color, kind, testID }: { color: string; kind: ProfileRankingMetricKind; testID?: string }) {
   return (
