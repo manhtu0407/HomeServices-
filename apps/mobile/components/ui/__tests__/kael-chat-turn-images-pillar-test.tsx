@@ -121,6 +121,14 @@ describe('P313 Kael chat turn images', () => {
     })
   })
 
+  it('keeps Kael\'s thinking card in its own row below the pending message, so the two never touch', () => {
+    const { result } = renderHook(() => useKaelChatTranscript(transcriptInput({ pendingNormalMessage: 'Ảnh này là ảnh gì?' })))
+    withPillarContext(PILLAR, () => expect(result.current.transcriptRows.map(({ key }) => key)).toEqual([
+      'normal-pending-message',
+      'normal-pending-reasoning',
+    ]))
+  })
+
   it('shows a photo-only message in the pending bubble while Kael answers', () => {
     renderRows(transcriptInput({ pendingNormalImageUris: ['file:///photo.jpg'], pendingNormalMessage: '' }))
     withPillarContext(PILLAR, () => {
