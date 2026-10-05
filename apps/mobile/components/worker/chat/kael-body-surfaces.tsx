@@ -18,6 +18,7 @@ import { useWorkerV5KaelOrbChat } from './use-kael-orb-chat'
 import { useWorkerKaelOrbPalette } from './orb-palette'
 import type { useFrontendWorkflow } from '@/lib/frontend-workflow-provider'
 import { workerV5JobsDestinationScreenId } from '../ui/screen-navigation'
+import { useWorkerThemedStyles } from '../ui/worker-dark-styles'
 
 
 type WorkerV5Runtime = ReturnType<typeof useFrontendWorkflow>
@@ -64,6 +65,7 @@ function WorkerV5SharedJobIncidentChat({
   language: AppLanguage
   reduceTransparency: boolean
 }) {
+  const opaqueCard = useWorkerThemedStyles(styles).opaqueCard
   const jobId = getWorkerV5ChatJobId(deal)
   const { error, loading, messages, send, sending } = useJobChatThread(
     jobId,
@@ -80,7 +82,7 @@ function WorkerV5SharedJobIncidentChat({
     if (sent) setDraft('')
   }
   return (
-    <View style={[styles.jobRoomThreadCard, reduceTransparency && styles.opaqueCard]} testID="worker-v5-shared-job-incident-chat">
+    <View style={[styles.jobRoomThreadCard, reduceTransparency && opaqueCard]} testID="worker-v5-shared-job-incident-chat">
       {!reduceTransparency ? <MintAura intensity="component" style={styles.jobRoomThreadAura} /> : null}
       <View style={styles.jobRoomBubbleStack}>
         {loading ? <Text style={styles.boundaryBody}>{textByLanguage(language, 'Đang tải Kael Công việc...', 'Loading Kael Work...')}</Text> : null}

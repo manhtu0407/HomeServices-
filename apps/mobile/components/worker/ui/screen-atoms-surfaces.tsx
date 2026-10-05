@@ -6,6 +6,7 @@ import { styles } from '../worker-v5-flow-styles'
 import { WorkerV5CustomerMapMintAura, WorkerV5EarningsHomeListAura, WorkerV5FormulaMintCardAura } from './aura-surfaces'
 import { WorkerV5InfoRow as WorkerV5PrimitiveInfoRow } from './primitives-surfaces'
 import { WORKER_V5_PROFILE_ICON_VISUAL_BOOST, workerV5Icons } from './screen-icons'
+import { useWorkerThemedStyles } from './worker-dark-styles'
 
 function Text({ style, ...props }: TextProps) {
   return <RNText {...props} style={[styles.workerCustomerFontText, style]} />
@@ -22,8 +23,9 @@ export function InfoListCard({
   formula?: boolean
   reduceTransparency: boolean
 }) {
+  const opaqueCard = useWorkerThemedStyles(styles).opaqueCard
   return (
-    <View style={[styles.infoListCard, reduceTransparency && styles.opaqueCard]}>
+    <View style={[styles.infoListCard, reduceTransparency && opaqueCard]}>
       {formula ? (
         <WorkerV5FormulaMintCardAura reduceTransparency={reduceTransparency} scope="WorkerReviewsInfo" testID="worker-v5-reviews-info-formula-mint-aura" />
       ) : !reduceTransparency ? <MintAura intensity="component" style={styles.listCardMintAura} testID="worker-v5-list-mint-aura" /> : null}

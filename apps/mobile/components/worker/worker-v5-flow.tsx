@@ -109,6 +109,7 @@ import { WorkerV5DeleteAccountBody } from './profile/delete-account-surfaces'
 import { WorkerV5InviteCodeBody } from './profile/invite-code-surfaces'
 import { useWorkerThemeMode } from './worker-theme'
 import type { WorkerV5Runtime } from './worker-v5-runtime'
+import { useWorkerThemedStyles } from './ui/worker-dark-styles'
 
 export type { WorkerDockActive } from './dock/types'
 export type { WorkerV5Runtime } from './worker-v5-runtime'
@@ -675,6 +676,7 @@ type WorkerV5ScreenLayoutActions = {
 }
 
 function WorkerV5ScreenLayout({ actions, state }: { actions: WorkerV5ScreenLayoutActions; state: WorkerV5ScreenLayoutState }) {
+  const opaqueCard = useWorkerThemedStyles(styles).opaqueCard
   const { auraState, content, headerState, nextScreen, previousScreen } = state
   const {
     accessToken,
@@ -714,7 +716,7 @@ function WorkerV5ScreenLayout({ actions, state }: { actions: WorkerV5ScreenLayou
     <ScrollView bounces={false} contentContainerStyle={[styles.scrollContent, usesStageFiveProduction ? styles.stageFiveScrollContent : null, usesStageNineEmptyProduction ? stageNineHostStyles.scrollContent : null, headerState.usesEarningsOverviewHandoff ? styles.earningsOverviewScrollContent : null, usesKaelOrbHandoff ? styles.kaelOrbCustomerScrollContent : null, { minHeight }]} onScroll={actions.onDockScroll} scrollEventThrottle={16} showsVerticalScrollIndicator={false} testID="worker-v5-scroll">
       {usesStageNineEmptyProduction || usesStageThreeWaitingProduction || usesStageSevenWaitingProduction || usesStageSixProduction || usesCaseClosedProduction || usesStageFiveProduction || usesStageEightProduction || headerState.usesEarningsOverviewHandoff || headerState.usesOpportunityInboxHandoff || headerState.usesTravelHandoff ? null : <WorkerV5ScreenHeader onBack={actions.onHeaderBack} onOpenJobChat={actions.onOpenJobChat} state={headerState} />}
       {usesStageSixProduction ? <View style={styles.headerRow}><LiquidBackButton label={language === 'vi' ? 'Quay lại giao diện thợ hiện tại' : 'Back to current worker surface'} mode={headerState.workerThemeMode} onPress={actions.onHeaderBack} testID="worker-v5-back" /></View> : null}
-      {!usesHandoffStage ? <View style={[styles.glassCard, reduceTransparency && styles.opaqueCard]}>
+      {!usesHandoffStage ? <View style={[styles.glassCard, reduceTransparency && opaqueCard]}>
         {!reduceTransparency ? <MintAura intensity="component" style={styles.cardMintAura} testID="worker-v5-hero-mint-aura" /> : null}
         <View pointerEvents="none" style={styles.cardTopHighlight} />
         <View style={styles.heroTopRow}><View style={styles.statusDot} /><Text style={styles.kickerText}>{language === 'vi' ? 'Dữ liệu đã đồng bộ' : 'Synced data'}</Text></View>

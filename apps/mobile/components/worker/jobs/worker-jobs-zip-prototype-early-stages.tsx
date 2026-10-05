@@ -43,7 +43,7 @@ import {
 } from './worker-jobs-zip-prototype-shared'
 import { WorkerMatchingDeliveryStatus } from './worker-matching-delivery-status'
 import { stageLayout, useStageLayout } from './stage-ratio'
-import { useWorkerThemedStyles } from '../ui/worker-dark-styles'
+import { useWorkerColor, useWorkerThemedStyles } from '../ui/worker-dark-styles'
 
 export { WorkerJobsLegacyPrototypeRouteEtaBody } from './worker-jobs-zip-prototype-route-stage'
 
@@ -282,6 +282,7 @@ function WorkerJobsLegacyPrototypeOpportunityActions({
   reduceTransparency: boolean
 }) {
   const prototypeStyles = useWorkerThemedStyles(prototypeStylesLight)
+  const wc = useWorkerColor()
   const layout = useStageLayout()
   const size = { borderRadius: layout.metric(stageLayout.buttonRadius), minHeight: layout.buttonHeight }
   return (
@@ -290,7 +291,7 @@ function WorkerJobsLegacyPrototypeOpportunityActions({
         accessibilityLabel={textByLanguage(language, 'Kael nhận việc', 'Kael job intake')}
         accessibilityRole="button"
         onPress={onKael}
-        style={({ pressed }) => [prototypeStyles.opportunityAction, size, prototypeStyles.opportunityActionSecondary, reduceTransparency && { backgroundColor: color.mint.white }, pressed && { opacity: 0.84 }]}
+        style={({ pressed }) => [prototypeStyles.opportunityAction, size, prototypeStyles.opportunityActionSecondary, reduceTransparency && { backgroundColor: wc('surface', color.mint.white) }, pressed && { opacity: 0.84 }]}
         testID="worker-v5-opportunity-kael-action"
       >
         <Text style={[prototypeStyles.opportunityActionText, prototypeStyles.opportunityActionSecondaryText]}>{textByLanguage(language, 'Kael nhận việc', 'Kael job intake')}</Text>

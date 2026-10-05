@@ -41,6 +41,7 @@ import { localizedServiceLabel } from '@/lib/app-language'
 
 import { workerV5Icons, workerV5OpportunityServiceIcons } from '../ui/screen-icons'
 import { workerV5JobsDestinationScreenId } from '../ui/screen-navigation'
+import { useWorkerThemedStyles } from '../ui/worker-dark-styles'
 
 type WorkerV5Runtime = ReturnType<typeof useFrontendWorkflow>
 
@@ -350,6 +351,7 @@ function WorkerV5KaelIntakeReadinessActions({
   profile: WorkerV5Runtime['workerProfile']
   reduceTransparency: boolean
 }) {
+  const opaqueCard = useWorkerThemedStyles(styles).opaqueCard
   const activeServices = profile?.active_service_types
     ?? profile?.selected_service_types
     ?? profile?.service_types
@@ -362,7 +364,7 @@ function WorkerV5KaelIntakeReadinessActions({
 
   return (
     <View
-      style={[styles.kaelIntakeReadinessCard, reduceTransparency && styles.opaqueCard]}
+      style={[styles.kaelIntakeReadinessCard, reduceTransparency && opaqueCard]}
       testID="worker-v5-kael-intake-readiness"
     >
       <Text style={styles.kaelIntakeReadinessTitle}>

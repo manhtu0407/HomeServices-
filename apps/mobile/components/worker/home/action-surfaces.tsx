@@ -11,6 +11,7 @@ import { WorkerV5FormulaMintCardAura } from '../ui/aura-surfaces'
 import { WorkerV5IntegratedIcon, type WorkerV5IntegratedIconTone } from '../ui/integrated-icon-surfaces'
 import { WorkerV5DetailRail, type WorkerV5DetailRailItem } from '../ui/worker-v5-detail-rail'
 import { styles } from './action-styles'
+import { useWorkerThemedStyles } from '../ui/worker-dark-styles'
 
 export { WorkerV5KaelBriefCard } from './kael-brief-surfaces'
 export { WorkerV5QuickActionGrid } from './quick-action-grid-surfaces'
@@ -38,6 +39,7 @@ export function WorkerV5HomeQuickActionGrid({
   reduceMotion: boolean
   reduceTransparency: boolean
 }) {
+  const opaqueCard = useWorkerThemedStyles(styles).opaqueCard
   return (
     <View style={styles.quickActionGrid} testID="worker-v5-quick-action-grid">
       {items.map((item, index) => (
@@ -49,7 +51,7 @@ export function WorkerV5HomeQuickActionGrid({
           style={({ pressed }) => [
             styles.quickActionCard,
             styles.homeQuickActionCard,
-            reduceTransparency && styles.opaqueCard,
+            reduceTransparency && opaqueCard,
             pressed && !reduceMotion ? styles.pressed : null,
           ]}
           testID={`worker-v5-quick-action-${index}`}

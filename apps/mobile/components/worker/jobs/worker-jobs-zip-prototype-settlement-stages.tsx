@@ -22,7 +22,7 @@ import {
 } from './worker-jobs-zip-prototype-shared'
 import { prototypeStyles as prototypeStylesLight } from './worker-jobs-zip-prototype-styles'
 import { WorkerJobsLegacyPrototypeOfferInfoGroup } from './worker-jobs-zip-prototype-early-stages'
-import { useWorkerThemedStyles } from '../ui/worker-dark-styles'
+import { useWorkerColor, useWorkerThemedStyles } from '../ui/worker-dark-styles'
 
 export function WorkerJobsLegacyPrototypeStageNineBody({
   actionBusy,
@@ -44,6 +44,7 @@ export function WorkerJobsLegacyPrototypeStageNineBody({
   runtime: WorkerJobsLegacyPrototypeRuntime
 }) {
   const prototypeStyles = useWorkerThemedStyles(prototypeStylesLight)
+  const wc = useWorkerColor()
   const insets = useSafeAreaInsets()
   const record = readStageNineRecordState(runtime.state.deal)
   const { awaitingDirectPaymentConfirmation, customerConfirmed, hasSubmittedArtifact, paymentRecorded, sourceCount } = record
@@ -110,7 +111,7 @@ export function WorkerJobsLegacyPrototypeStageNineBody({
 
   return (
     <View style={prototypeStyles.bodyStack} testID="worker-v5-stage-nine-prototype">
-      <View style={[prototypeStyles.stageSubmissionHero, reduceTransparency && { backgroundColor: color.mint.white }]} testID="worker-v5-stage-nine-hero">
+      <View style={[prototypeStyles.stageSubmissionHero, reduceTransparency && { backgroundColor: wc('surface', color.mint.white) }]} testID="worker-v5-stage-nine-hero">
         <View style={prototypeStyles.stageSubmissionCopy}>
           <Text style={prototypeStyles.stageSubmissionKicker}>{textByLanguage(language, 'Hồ sơ hoàn tất', 'Completion record')}</Text>
           <Text numberOfLines={2} style={prototypeStyles.stageSubmissionTitle}>{heroTitle}</Text>
@@ -129,7 +130,7 @@ export function WorkerJobsLegacyPrototypeStageNineBody({
         </View>
       </View>
 
-      <View style={[prototypeStyles.offerInfoCard, reduceTransparency && { backgroundColor: color.mint.white }]} testID="worker-v5-stage-nine-status-card">
+      <View style={[prototypeStyles.offerInfoCard, reduceTransparency && { backgroundColor: wc('surface', color.mint.white) }]} testID="worker-v5-stage-nine-status-card">
         <WorkerJobsLegacyPrototypeOfferInfoGroup
           rows={rows}
           testID="worker-v5-stage-nine-status-list"

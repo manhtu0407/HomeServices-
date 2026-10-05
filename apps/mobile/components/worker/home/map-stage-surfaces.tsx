@@ -11,6 +11,7 @@ import type { useFrontendWorkflow } from '@/lib/frontend-workflow-provider'
 import { Image } from 'expo-image'
 
 import { useEffect, useState } from 'react'
+import { useWorkerThemedStyles } from '../ui/worker-dark-styles'
 
 type WorkerV5Runtime = ReturnType<typeof useFrontendWorkflow>
 function Text({ style, ...props }: TextProps) {
@@ -34,6 +35,7 @@ export function WorkerV5MapStage({
   selectedLabel: string | null
   testID: string
 }) {
+  const opaqueCard = useWorkerThemedStyles(styles).opaqueCard
   const districts = profile?.districts?.slice(0, 2) ?? []
   const mapLabel = selectedLabel ??
     deal?.broadcast?.generalArea ??
@@ -41,7 +43,7 @@ export function WorkerV5MapStage({
     (districts[0] ? formatWorkerDistrict(districts[0], language) : null)
 
   return (
-    <View style={[styles.mapPanel, reduceTransparency && styles.opaqueCard]} testID={testID}>
+    <View style={[styles.mapPanel, reduceTransparency && opaqueCard]} testID={testID}>
       {!reduceTransparency ? <WorkerV5CustomerMapMintAura scope="DemandMapPanel" style={styles.demandMapPanelAura} testID="worker-v5-demand-map-mint-aura" /> : null}
       {activeLocation ? (
         <WorkerV5VietMapStaticPreview

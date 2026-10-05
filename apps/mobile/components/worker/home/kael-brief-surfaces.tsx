@@ -13,6 +13,7 @@ import { MintAura } from '@/components/ui/kael-primitives'
 
 import type { WorkerV5IconName } from '../dock/types'
 import { styles } from './action-styles'
+import { useWorkerThemedStyles } from '../ui/worker-dark-styles'
 
 type WorkerV5IconMap = Record<WorkerV5IconName, ImageSourcePropType>
 type WorkerV5CaseAuraComponent = ComponentType<{
@@ -46,8 +47,9 @@ export function WorkerV5KaelBriefCard({
   title: string
   zipAura?: WorkerV5CaseAuraComponent
 }) {
+  const opaqueCard = useWorkerThemedStyles(styles).opaqueCard
   return (
-    <View style={[styles.kaelBriefCard, reduceTransparency && styles.opaqueCard]} testID="worker-v5-kael-brief-card">
+    <View style={[styles.kaelBriefCard, reduceTransparency && opaqueCard]} testID="worker-v5-kael-brief-card">
       {auraScope && CaseWideAura && ZipAura && !reduceTransparency ? (
         <>
           <CaseWideAura scope={`${auraScope}Wide`} style={styles.kaelBriefAura} />
