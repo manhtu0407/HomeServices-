@@ -11,7 +11,7 @@ import { NormalChatGhostOverlay } from '@/components/ui/normal-chat-ghost-overla
 import { LiquidControlButton } from '@/components/ui/liquid-back-button'
 import { NormalChatStarterRail } from '@/components/ui/normal-chat-starter-rail'
 import { useKaelComposerBottomInset } from '@/components/ui/use-kael-composer-bottom-inset'
-import { EMPTY_NORMAL_CHAT_SUGGESTIONS, getNormalChatGhostSuffix, getNormalChatSendPalette } from '@/components/ui/normal-chat-composer-model'
+import { EMPTY_NORMAL_CHAT_SUGGESTIONS, getNormalChatGhostSuffix } from '@/components/ui/normal-chat-composer-model'
 import { motionDuration, motionTokens } from '@/components/ui/motion-tokens'
 import { color, customerTheme } from '@/design/theme'
 import { type AppLanguage } from '@/lib/app-language'
@@ -25,6 +25,7 @@ import { getWorkerV5ChatJobId } from '../ui/labels'
 import { styles, workerV5KaelComposerWebTextInputNoOutline } from '../worker-v5-flow-styles'
 import { WorkerV5KaelOrbCameraIcon } from './orb-camera-icon'
 import { useWorkerV5KaelOrbChat } from './use-kael-orb-chat'
+import { useWorkerKaelOrbPalette } from './orb-palette'
 import { workerKaelChatService } from '@/lib/services'
 import { canShowWorkerStaticNormalChatStarters, canUseWorkerV5KaelOrbSession } from './kael-orb-chat-model'
 import { canUseWorkerV5PrivateKaelChat } from './use-worker-kael-orb-chat'
@@ -441,6 +442,8 @@ export function WorkerV5KaelOrbComposer({
       : ''
   ))
   const inputSizing = useKaelComposerInputSizing(draft)
+  const palette = useWorkerKaelOrbPalette()
+  const dark = palette.mode === 'dark'
   const focusedRef = useRef(false)
   const inputRef = useRef<TextInput>(null)
   const [selection, setSelection] = useState<{ start: number; end: number } | null>(null)
@@ -497,7 +500,9 @@ export function WorkerV5KaelOrbComposer({
       {starterVisible ? (
         <NormalChatStarterRail
           actorRole="worker"
+          colors={dark ? { opaqueBackground: palette.opaqueFill, opaqueBorder: palette.opaqueBorder, text: palette.ink } : undefined}
           language={language}
+          mode={palette.mode}
           onSelect={(starterDraft) => {
             updateDraft(starterDraft)
             setSelection(null)
@@ -507,20 +512,20 @@ export function WorkerV5KaelOrbComposer({
         />
       ) : null}
       {ghost && !starterVisible ? (
-        <Text style={styles.kaelOrbSuggestionHint} testID="worker-v5-kael-ghost-hint">
+        <Text style={[styles.kaelOrbSuggestionHint, dark ? { color: palette.muted } : null]} testID="worker-v5-kael-ghost-hint">
           {textByLanguage(language, 'Chạm chữ mờ để thêm vào tin nhắn.', 'Tap the faded text to add it to your message.')}
         </Text>
       ) : null}
       <GlassSurface
-        backgroundColor={color.surface.soft}
-        borderColor={normalComposer ? customerTheme.lightLayer.glassBorder : color.surface.stroke}
+        backgroundColor={palette.composerFill}
+        borderColor={dark || normalComposer ? palette.composerBorder : color.surface.stroke}
         material="liquid"
-        mode="light"
+        mode={palette.mode}
         style={[
           styles.kaelOrbComposerCard,
           normalComposer && styles.kaelOrbNormalComposerCard,
           styles.kaelOrbComposerCardMultiline,
-          reduceTransparency && styles.opaqueCard,
+          reduceTransparency && [styles.opaqueCard, dark ? { backgroundColor: palette.opaqueFill } : null],
         ]}
         testID="worker-v5-kael-orb-composer-frame"
         variant="control"
@@ -543,7 +548,7 @@ export function WorkerV5KaelOrbComposer({
           ]}
           testID="worker-v5-kael-orb-camera"
         >
-          <WorkerV5KaelOrbCameraIcon color={busy ? color.text.muted : color.text.strong} size={27} />
+          <WorkerV5KaelOrbCameraIcon color={busy ? palette.muted : palette.ink} size={27} />
           {mediaCount > 0 ? (
             <View style={styles.kaelOrbComposerCameraBadge} testID="worker-v5-kael-orb-camera-count">
               <Text style={styles.kaelOrbComposerCameraBadgeText}>{mediaCount}</Text>
@@ -556,10 +561,10 @@ export function WorkerV5KaelOrbComposer({
           inputShellAdornment={ghost ? (
             <NormalChatGhostOverlay
               draft={draft}
-              draftColor={color.kaelChatSend.idleForeground}
+              draftColor={dark ? palette.ink : color.kaelChatSend.idleForeground}
               language={language}
               onAccept={acceptGhost}
-              suggestionColor={color.text.muted}
+              suggestionColor={palette.muted}
               suffix={ghost.text}
               textStyle={inputTextStyle}
             />
@@ -578,12 +583,12 @@ export function WorkerV5KaelOrbComposer({
           onFocus={focusComposer}
           onSubmitEditing={submitDraft}
           placeholder={ghost ? '' : textByLanguage(language, 'Nhập tin nhắn cho Kael...', 'Message Kael...')}
-          placeholderTextColor={color.text.muted}
+          placeholderTextColor={palette.muted}
           returnKeyType={inputSizing.returnKeyType}
-          selectionColor={color.kaelChatSend.idleForeground}
+          selectionColor={dark ? palette.accent : color.kaelChatSend.idleForeground}
           scrollEnabled={inputSizing.scrollEnabled}
           shellStyle={styles.kaelOrbComposerField}
-          style={[...inputTextStyle, { color: ghost ? 'transparent' : color.text.strong, zIndex: 1 }]}
+          style={[...inputTextStyle, { color: ghost ? 'transparent' : palette.ink, zIndex: 1 }]}
           submitBehavior={inputSizing.submitBehavior}
           testID="worker-v5-kael-orb-input"
           value={draft}
@@ -593,15 +598,16 @@ export function WorkerV5KaelOrbComposer({
           <LiquidControlButton
             accessibilityLabel={textByLanguage(language, 'Gửi tin nhắn cho Kael', 'Send message to Kael')}
             accessibilityState={{ busy }}
+            mode={palette.mode}
             onPress={submitDraft}
             size={44}
             style={styles.kaelOrbSendButton}
             testID="worker-v5-kael-orb-send"
           >
             <KaelSendStopGlyph
-              arrowColor={color.text.primary}
+              arrowColor={palette.icon}
               reduceMotion={reduceMotion}
-              stopColor={color.text.primary}
+              stopColor={palette.icon}
               stopping={false}
               testIDPrefix="worker-v5-kael-orb"
             />
@@ -618,10 +624,10 @@ export function WorkerV5KaelOrbComposer({
             style={({ pressed }) => [
               styles.kaelOrbSendButton,
               {
-                backgroundColor: normalComposer
-                  ? getNormalChatSendPalette(sending).background
+                backgroundColor: normalComposer || dark
+                  ? palette.sendIdle(sending).background
                   : stopping || canSubmit ? color.brand.primary : color.surface.soft,
-                borderColor: color.surface.stroke,
+                borderColor: dark ? palette.composerBorder : color.surface.stroke,
                 borderRadius: 22,
                 borderWidth: 1,
                 height: 44,
@@ -632,18 +638,18 @@ export function WorkerV5KaelOrbComposer({
             testID="worker-v5-kael-orb-send"
           >
             <KaelSendStopGlyph
-              arrowColor={normalComposer
-                ? getNormalChatSendPalette(sending).foreground
+              arrowColor={normalComposer || dark
+                ? palette.sendIdle(sending).foreground
                 : getWorkerV5KaelComposerArrowColor(false, canSubmit)}
               reduceMotion={reduceMotion}
-              stopColor={normalComposer ? getNormalChatSendPalette(sending).foreground : color.text.inverse}
+              stopColor={normalComposer || dark ? palette.sendIdle(sending).foreground : color.text.inverse}
               stopping={stopping}
               testIDPrefix="worker-v5-kael-orb"
             />
           </Pressable>
         )}
       </GlassSurface>
-      <Text style={styles.kaelOrbComposerDisclaimer} testID="worker-v5-kael-orb-disclaimer">
+      <Text style={[styles.kaelOrbComposerDisclaimer, dark ? { color: palette.muted } : null]} testID="worker-v5-kael-orb-disclaimer">
         {textByLanguage(language, 'Kael có thể mắc lỗi. Hãy kiểm tra các thông tin quan trọng.', 'Kael can make mistakes. Check important information.')}
       </Text>
     </View>

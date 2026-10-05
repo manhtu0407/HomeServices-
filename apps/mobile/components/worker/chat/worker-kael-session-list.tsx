@@ -7,7 +7,8 @@ import { color } from '@/design/theme'
 import type { AppLanguage } from '@/lib/app-language'
 import type { WorkerKaelChatSession } from '@/lib/api-types'
 
-import { styles } from './session-menu-styles'
+import { useWorkerKaelOrbPalette } from './orb-palette'
+import { darkStyles, styles } from './session-menu-styles'
 import { type WorkerKaelSessionCopy, WorkerV5KaelSessionRow } from './worker-kael-session-row'
 
 export type WorkerV5KaelSessionMenuProps = {
@@ -53,6 +54,8 @@ export function WorkerV5KaelSessionList({
   const [draftTitle, setDraftTitle] = useState('')
   const sessionListRef = useRef<FlatList<WorkerKaelChatSession>>(null)
   const copy = sessionMenuCopy(language, mode)
+  const palette = useWorkerKaelOrbPalette()
+  const dark = palette.mode === 'dark'
   // A short list is locked at its resting height while a row shows actions or a confirmation, so
   // that content scrolls inside the list instead of growing the menu.
   const focusedSessionId = renamingSessionId ?? deletingSessionId ?? actionSessionId
@@ -144,19 +147,19 @@ export function WorkerV5KaelSessionList({
   return (
     <View accessibilityLabel={copy.accessibilityLabel} accessibilityRole="menu" style={styles.menuContent} testID="worker-v5-kael-session-menu">
       <KaelSessionNewButton
-        accentColor={color.brand.primary}
+        accentColor={palette.accent}
         disabled={!canCreate}
         label={copy.newSession}
-        mode="light"
+        mode={palette.mode}
         onPress={onCreate}
-        opaqueBackgroundColor={color.surface.raised}
-        opaqueBorderColor={color.surface.stroke}
+        opaqueBackgroundColor={dark ? palette.opaqueFill : color.surface.raised}
+        opaqueBorderColor={dark ? palette.opaqueBorder : color.surface.stroke}
         testIDPrefix="worker-v5-kael"
       />
 
-      {loading ? <Text style={styles.feedback}>{copy.loading}</Text> : null}
-      {!loading && error ? <Text style={styles.error}>{error}</Text> : null}
-      {!loading && !error && sessions.length === 0 ? <Text style={styles.feedback}>{copy.empty}</Text> : null}
+      {loading ? <Text style={[styles.feedback, dark ? darkStyles.feedback : null]}>{copy.loading}</Text> : null}
+      {!loading && error ? <Text style={[styles.error, dark ? darkStyles.error : null]}>{error}</Text> : null}
+      {!loading && !error && sessions.length === 0 ? <Text style={[styles.feedback, dark ? darkStyles.feedback : null]}>{copy.empty}</Text> : null}
 
       {!loading && sessions.length > 0 ? (
         <FlatList

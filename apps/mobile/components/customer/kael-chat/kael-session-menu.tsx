@@ -157,8 +157,8 @@ export function CustomerKaelSessionMenu({
     >
       {/* Denser than the header glass: the menu sits over the conversation, which must not read through it. */}
       <GlassSurface
-        backgroundColor={reduceTransparency ? tokens.raised : tokens.mode === 'dark' ? 'rgba(22,29,27,0.88)' : 'rgba(255,255,255,0.86)'}
-        borderColor={reduceTransparency ? tokens.border : tokens.mode === 'dark' ? 'rgba(190,210,205,0.16)' : 'rgba(255,255,255,0.72)'}
+        backgroundColor={reduceTransparency ? tokens.raised : tokens.mode === 'dark' ? 'rgba(44,44,46,0.92)' : 'rgba(255,255,255,0.86)'}
+        borderColor={reduceTransparency ? tokens.border : tokens.mode === 'dark' ? tokens.glassBorder : 'rgba(255,255,255,0.72)'}
         material="liquid"
         mode={tokens.mode}
         showEdgeHighlight={false}

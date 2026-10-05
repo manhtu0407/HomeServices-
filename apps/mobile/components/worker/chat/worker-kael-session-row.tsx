@@ -6,7 +6,8 @@ import { color } from '@/design/theme'
 import type { WorkerKaelChatSession } from '@/lib/api-types'
 
 import { WorkerV5KaelSessionIcon } from './session-menu-icons'
-import { styles } from './session-menu-styles'
+import { useWorkerKaelOrbPalette } from './orb-palette'
+import { darkStyles, styles } from './session-menu-styles'
 
 const inlineRenameInputWebStyle = Platform.select({
   web: {
@@ -81,6 +82,8 @@ export function WorkerV5KaelSessionRow({
   title: string
 }) {
   const pinned = Boolean(session.pinned_at)
+  const palette = useWorkerKaelOrbPalette()
+  const dark = palette.mode === 'dark'
   const saveDisabled = draftTitle.trim().length === 0 || pending
   const titleAndMeta = (
     <>
@@ -92,7 +95,7 @@ export function WorkerV5KaelSessionRow({
         <View style={styles.sessionTitleRow} testID={`worker-v5-kael-session-title-row-${session.id}`}>
           {pinned ? (
             <View accessibilityLabel={copy.pinned} style={styles.pinnedIcon} testID={`worker-v5-kael-session-pinned-${session.id}`}>
-              <WorkerV5KaelSessionIcon filled kind="pin" />
+              <WorkerV5KaelSessionIcon filled kind="pin" strokeColor={dark ? palette.accent : undefined} />
             </View>
           ) : null}
           {renaming ? (
@@ -108,19 +111,19 @@ export function WorkerV5KaelSessionRow({
               onChangeText={onDraftTitleChange}
               onSubmitEditing={onSaveRename}
               returnKeyType="done"
-              selectionColor={color.brand.primary}
-              style={[styles.sessionTitle, styles.sessionTitleInput, inlineRenameInputWebStyle]}
+              selectionColor={palette.accent}
+              style={[styles.sessionTitle, dark ? darkStyles.sessionTitle : null, styles.sessionTitleInput, inlineRenameInputWebStyle]}
               testID="worker-v5-kael-session-title-input"
               underlineColorAndroid="transparent"
               value={draftTitle}
             />
           ) : (
-            <Text numberOfLines={1} style={styles.sessionTitle}>{deleting ? copy.deleteRowTitle : title}</Text>
+            <Text numberOfLines={1} style={[styles.sessionTitle, dark ? darkStyles.sessionTitle : null]}>{deleting ? copy.deleteRowTitle : title}</Text>
           )}
         </View>
-        <Text numberOfLines={1} style={styles.sessionMeta}>{deleting ? copy.deleteRowNote : meta}</Text>
+        <Text numberOfLines={1} style={[styles.sessionMeta, dark ? darkStyles.sessionMeta : null]}>{deleting ? copy.deleteRowNote : meta}</Text>
       </View>
-      {!renaming && !deleting && selected ? <Text style={styles.check}>✓</Text> : null}
+      {!renaming && !deleting && selected ? <Text style={[styles.check, dark ? darkStyles.check : null]}>✓</Text> : null}
     </>
   )
   return (
@@ -129,12 +132,16 @@ export function WorkerV5KaelSessionRow({
         style={[
           styles.session,
           {
-            backgroundColor: reduceTransparency
-              ? color.surface.raised
-              : selected ? color.surface.mint : color.surface.soft,
-            borderColor: reduceTransparency
-              ? (selected ? color.brand.primary : color.surface.stroke)
-              : selected ? color.surface.strokeStrong : color.surface.stroke,
+            backgroundColor: dark
+              ? (selected ? palette.tokens.statusSurface : palette.opaqueFill)
+              : reduceTransparency
+                ? color.surface.raised
+                : selected ? color.surface.mint : color.surface.soft,
+            borderColor: dark
+              ? (selected ? palette.tokens.borderStrong : palette.opaqueBorder)
+              : reduceTransparency
+                ? (selected ? color.brand.primary : color.surface.stroke)
+                : selected ? color.surface.strokeStrong : color.surface.stroke,
           },
         ]}
         testID={`worker-v5-kael-session-row-${session.id}`}
@@ -159,23 +166,24 @@ export function WorkerV5KaelSessionRow({
         {renaming ? (
           // Cancel and Save take the place of the options button, so the row and the menu keep their size.
           <View style={styles.renameActions} testID={`worker-v5-kael-session-rename-actions-${session.id}`}>
-            <LiquidControlButton accessibilityLabel={copy.cancel} onPress={onCancelRename} size={30} testID="worker-v5-kael-session-title-cancel">
-              <KaelSessionRenameCancelIcon color={color.text.muted} />
+            <LiquidControlButton accessibilityLabel={copy.cancel} mode={palette.mode} onPress={onCancelRename} size={30} testID="worker-v5-kael-session-title-cancel">
+              <KaelSessionRenameCancelIcon color={palette.muted} />
             </LiquidControlButton>
-            <LiquidControlButton accessibilityLabel={copy.save} disabled={saveDisabled} onPress={onSaveRename} size={30} testID="worker-v5-kael-session-title-save">
-              <KaelSessionRenameSaveIcon color={color.brand.primary} />
+            <LiquidControlButton accessibilityLabel={copy.save} disabled={saveDisabled} mode={palette.mode} onPress={onSaveRename} size={30} testID="worker-v5-kael-session-title-save">
+              <KaelSessionRenameSaveIcon color={palette.accent} />
             </LiquidControlButton>
           </View>
         ) : null}
         {deleting ? (
           // The confirmation replaces the row in place, like rename, so the menu keeps its size.
           <View accessibilityLabel={copy.deleteConfirm} accessibilityRole="alert" style={styles.renameActions} testID={`worker-v5-kael-session-delete-confirm-${session.id}`}>
-            <LiquidControlButton accessibilityLabel={copy.cancel} disabled={pending} onPress={onCancelDelete} size={30} testID={`worker-v5-kael-session-delete-cancel-${session.id}`}>
-              <KaelSessionRenameCancelIcon color={color.text.muted} />
+            <LiquidControlButton accessibilityLabel={copy.cancel} disabled={pending} mode={palette.mode} onPress={onCancelDelete} size={30} testID={`worker-v5-kael-session-delete-cancel-${session.id}`}>
+              <KaelSessionRenameCancelIcon color={palette.muted} />
             </LiquidControlButton>
             <LiquidControlButton
               accessibilityLabel={copy.delete}
               disabled={pending}
+              mode={palette.mode}
               onPress={() => {
                 onCancelDelete()
                 void onArchive(session.id)
@@ -183,7 +191,7 @@ export function WorkerV5KaelSessionRow({
               size={30}
               testID={`worker-v5-kael-session-delete-submit-${session.id}`}
             >
-              <KaelSessionDeleteIcon color="#E5484D" />
+              <KaelSessionDeleteIcon color={dark ? palette.tokens.danger : '#E5484D'} />
             </LiquidControlButton>
           </View>
         ) : null}
@@ -197,7 +205,7 @@ export function WorkerV5KaelSessionRow({
           style={({ pressed }) => [styles.moreButton, actionOpen ? styles.moreButtonOpen : null, pressed && !pending ? styles.pressedReduced : null]}
           testID={`worker-v5-kael-session-actions-${session.id}`}
         >
-          <WorkerV5KaelSessionIcon kind="more" />
+          <WorkerV5KaelSessionIcon kind="more" strokeColor={dark ? palette.ink : undefined} />
         </Pressable> : null}
       </View>
 
@@ -236,12 +244,13 @@ function WorkerV5KaelSessionActionMenu({
   renameLabel: string
   sessionId: string
 }) {
+  const dark = useWorkerKaelOrbPalette().mode === 'dark'
   return (
-    <View accessibilityRole="menu" style={styles.actionMenu} testID={`worker-v5-kael-session-action-menu-${sessionId}`}>
+    <View accessibilityRole="menu" style={[styles.actionMenu, dark ? darkStyles.actionMenu : null]} testID={`worker-v5-kael-session-action-menu-${sessionId}`}>
       <ActionRow disabled={disabled} label={pinLabel} onPress={onPin} testID={`worker-v5-kael-session-pin-${sessionId}`} />
-      <View style={styles.actionDivider} />
+      <View style={[styles.actionDivider, dark ? darkStyles.actionDivider : null]} />
       <ActionRow disabled={disabled} label={renameLabel} onPress={onRename} testID={`worker-v5-kael-session-rename-${sessionId}`} />
-      <View style={styles.actionDivider} />
+      <View style={[styles.actionDivider, dark ? darkStyles.actionDivider : null]} />
       <ActionRow destructive disabled={disabled} label={deleteLabel} onPress={onDelete} testID={`worker-v5-kael-session-delete-${sessionId}`} />
     </View>
   )
@@ -254,16 +263,17 @@ function ActionRow({ destructive = false, disabled = false, label, onPress, test
   onPress: () => void
   testID: string
 }) {
+  const dark = useWorkerKaelOrbPalette().mode === 'dark'
   return (
     <Pressable
       accessibilityRole="menuitem"
       accessibilityState={{ disabled }}
       disabled={disabled}
       onPress={onPress}
-      style={({ pressed }) => [styles.actionRow, disabled ? styles.disabled : null, pressed && !disabled ? styles.actionRowPressed : null]}
+      style={({ pressed }) => [styles.actionRow, disabled ? styles.disabled : null, pressed && !disabled ? [styles.actionRowPressed, dark ? darkStyles.actionRowPressed : null] : null]}
       testID={testID}
     >
-      <Text style={destructive ? styles.deleteActionText : styles.actionText}>{label}</Text>
+      <Text style={destructive ? [styles.deleteActionText, dark ? darkStyles.deleteActionText : null] : [styles.actionText, dark ? darkStyles.actionText : null]}>{label}</Text>
     </Pressable>
   )
 }

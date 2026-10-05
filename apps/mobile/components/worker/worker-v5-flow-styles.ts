@@ -1,6 +1,6 @@
 import { StyleSheet, type TextStyle } from 'react-native'
 
-import { color, glass, radius, shadow, signature, spacing, typography } from '@/design/theme'
+import { color, customerTheme, glass, radius, shadow, signature, spacing, typography } from '@/design/theme'
 
 export const workerV5KaelComposerWebTextInputNoOutline = {
   WebkitBoxShadow: 'none',
@@ -63,8 +63,8 @@ export const styles = StyleSheet.create({
     shadowRadius: 0,
   },
   availabilityCardDark: {
-    backgroundColor: '#1A332F',
-    borderColor: 'rgba(169,213,204,0.35)',
+    backgroundColor: customerTheme.darkLayer.base,
+    borderColor: customerTheme.darkLayer.border,
   },
   availabilityCopy: {
     flex: 1,
@@ -94,8 +94,8 @@ export const styles = StyleSheet.create({
     width: 84,
   },
   availabilityArtworkFrameDark: {
-    backgroundColor: '#1D2522',
-    borderColor: 'rgba(190,210,205,0.16)',
+    backgroundColor: customerTheme.darkLayer.raised,
+    borderColor: customerTheme.darkLayer.glassBorder,
   },
   availabilityArtworkPressed: {
     opacity: 0.88,
@@ -121,8 +121,8 @@ export const styles = StyleSheet.create({
     width: 26,
   },
   availabilityCameraBadgeDark: {
-    backgroundColor: '#1D2522',
-    borderColor: 'rgba(190,210,205,0.16)',
+    backgroundColor: customerTheme.darkLayer.raised,
+    borderColor: customerTheme.darkLayer.glassBorder,
   },
   availabilityKnob: {
     backgroundColor: color.mint.white,
@@ -145,8 +145,8 @@ export const styles = StyleSheet.create({
     width: 44,
   },
   availabilitySwitchDark: {
-    backgroundColor: '#29433F',
-    borderColor: 'rgba(169,213,204,0.32)',
+    backgroundColor: customerTheme.darkLayer.raised,
+    borderColor: customerTheme.darkLayer.border,
   },
   availabilitySwitchDisabled: {
     opacity: 0.58,
@@ -176,7 +176,7 @@ export const styles = StyleSheet.create({
     fontWeight: '600',
   },
   availabilityTitleDark: {
-    color: '#F1F6F4',
+    color: customerTheme.darkLayer.text,
   },
   availabilityDescription: {
     color: color.text.muted,
@@ -184,7 +184,7 @@ export const styles = StyleSheet.create({
     fontWeight: '500',
   },
   availabilityDescriptionDark: {
-    color: '#A9B7B3',
+    color: customerTheme.darkLayer.muted,
   },
   homeCommandBody: {
     color: color.text.muted,
@@ -536,7 +536,7 @@ export const styles = StyleSheet.create({
     fontWeight: '600',
   },
   headerSubtitleTextDark: {
-    color: '#A9B7B3',
+    color: customerTheme.darkLayer.muted,
   },
   heroBody: {
     color: color.text.secondary,
@@ -895,7 +895,7 @@ export const styles = StyleSheet.create({
     backgroundColor: color.mint.white,
   },
   opaqueCardDark: {
-    backgroundColor: '#1A332F',
+    backgroundColor: customerTheme.darkLayer.base,
   },
   opportunityInboxStack: {
     gap: 8,
@@ -1022,7 +1022,7 @@ export const styles = StyleSheet.create({
     fontWeight: '600',
   },
   phaseTextDark: {
-    color: '#63E6D0',
+    color: customerTheme.darkLayer.primary,
   },
   pressed: {
     opacity: 0.82,
@@ -1411,7 +1411,7 @@ export const styles = StyleSheet.create({
     backgroundColor: signature.bg,
   },
   surfaceDark: {
-    backgroundColor: '#122724',
+    backgroundColor: customerTheme.darkLayer.canvas,
   },
   surfaceSolid: {
     backgroundColor: color.surface.base,
@@ -1485,7 +1485,7 @@ export const styles = StyleSheet.create({
     fontWeight: '600',
   },
   titleTextDark: {
-    color: '#F1F6F4',
+    color: customerTheme.darkLayer.text,
   },
   earningsOverviewTitle: {
     marginLeft: 8,

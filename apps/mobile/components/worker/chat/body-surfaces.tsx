@@ -26,6 +26,7 @@ import {
 
 import { textByLanguage } from '../ui/format'
 import { WorkerV5KaelOrbBubble } from './orb-surfaces'
+import { useWorkerKaelOrbPalette } from './orb-palette'
 import { WorkerV5KaelOrbOpportunityResults } from './orb-opportunity-results'
 import { WorkerV5KaelEmptyHero } from './empty-hero'
 import { styles } from './body-styles'
@@ -137,6 +138,7 @@ export function WorkerV5KaelOrbBody({
 }) {
   const hasActiveSession = Boolean(activeSessionId)
   const visibleTurns = liveTurns.slice(-8)
+  const palette = useWorkerKaelOrbPalette()
   const presentedStreamingReply = useKaelResponseStreamPresentation(
     streamingReply ?? initialKaelResponseStreamState,
     {
@@ -155,7 +157,13 @@ export function WorkerV5KaelOrbBody({
     && reasoningReceipt.status !== 'idle'
     && onToggleReasoningReceipt ? (
       <KaelReasoningReceipt
-        colors={{
+        colors={palette.mode === 'dark' ? {
+          accent: palette.accent,
+          border: palette.opaqueBorder,
+          mutedText: palette.muted,
+          surface: palette.opaqueFill,
+          text: palette.ink,
+        } : {
           accent: color.brand.primaryDark,
           border: color.surface.stroke,
           mutedText: color.text.secondary,
@@ -284,7 +292,9 @@ export function WorkerV5KaelOrbBody({
                 <View style={styles.kaelOrbTurnGroup} testID={`worker-v5-kael-turn-group-${turn.id}`}>
                   {turn.images?.length ? (
                     <KaelChatTurnImages
-                      colors={{ border: color.surface.stroke, muted: color.text.secondary, surface: color.surface.soft }}
+                      colors={palette.mode === 'dark'
+                        ? { border: palette.opaqueBorder, muted: palette.muted, surface: palette.opaqueFill }
+                        : { border: color.surface.stroke, muted: color.text.secondary, surface: color.surface.soft }}
                       images={turn.images}
                       language={language}
                       testID={`worker-v5-kael-turn-images-${turn.id}`}
@@ -324,13 +334,14 @@ export function WorkerV5KaelOrbBody({
         <LiquidPillButton
           accessibilityLabel={textByLanguage(language, 'Chuyển đến phần mới', 'Jump to the latest response')}
           height={36}
+          mode={palette.mode}
           onPress={scrollToLatest}
-          opaqueBackgroundColor={color.surface.soft}
-          opaqueBorderColor={color.surface.stroke}
+          opaqueBackgroundColor={palette.mode === 'dark' ? palette.opaqueFill : color.surface.soft}
+          opaqueBorderColor={palette.mode === 'dark' ? palette.opaqueBorder : color.surface.stroke}
           style={styles.kaelOrbLatestButton}
           testID="worker-v5-kael-orb-jump-to-latest"
         >
-          <Text style={[styles.kaelOrbLatestButtonText, { color: color.text.primary }]}>
+          <Text style={[styles.kaelOrbLatestButtonText, { color: palette.icon }]}>
             {textByLanguage(language, 'Phần mới', 'Latest')}
           </Text>
         </LiquidPillButton>

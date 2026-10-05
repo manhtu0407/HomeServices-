@@ -4,11 +4,11 @@ import type { AppLanguage } from '@/lib/app-language'
 import { KaelLiquidPressable } from '@/components/customer/kael-chat/kael-liquid-pressable'
 import { GlassSurface } from '@/components/ui/glass-surface'
 import { LiquidBackButton, LiquidSurfaceOverlay } from '@/components/ui/liquid-back-button'
-import { color } from '@/design/theme'
 import { textByLanguage } from '../ui/format'
 import { styles } from '../worker-v5-flow-styles'
 import { WorkerV5KaelSessionMenu } from './session-menu'
 import { WorkerV5KaelSessionIcon } from './session-menu-icons'
+import { useWorkerKaelOrbPalette } from './orb-palette'
 import { useWorkerV5KaelOrbChat } from './use-kael-orb-chat'
 
 type WorkerV5KaelOrbMode = 'intake' | 'normal'
@@ -64,20 +64,22 @@ export function WorkerV5KaelOrbNavigationSurface({
   sessionMenuOpen: boolean
   showMenus?: boolean
 }) {
+  const palette = useWorkerKaelOrbPalette()
   return <>
-    <View style={[styles.kaelOrbCustomerTopBar, reduceTransparency && styles.opaqueCard]} testID="worker-v5-kael-source-header">
+    <View style={[styles.kaelOrbCustomerTopBar, reduceTransparency && [styles.opaqueCard, palette.mode === 'dark' ? { backgroundColor: palette.opaqueFill } : null]]} testID="worker-v5-kael-source-header">
       <LiquidBackButton
-        iconColor={color.text.primary}
+        iconColor={palette.icon}
+        mode={palette.mode}
         label={language === 'vi' ? 'Quay lại' : 'Back'}
         onPress={onBack}
         testID="worker-v5-back"
       />
       <View style={styles.kaelOrbCustomerTopSpacer} />
       <GlassSurface
-        backgroundColor="rgba(255,255,255,0.16)"
-        borderColor="rgba(255,255,255,0.72)"
+        backgroundColor={palette.headerFill}
+        borderColor={palette.headerBorder}
         material="liquid"
-        mode="light"
+        mode={palette.mode}
         showEdgeHighlight={false}
         style={[
           styles.kaelOrbCustomerHeaderActions,
@@ -91,7 +93,7 @@ export function WorkerV5KaelOrbNavigationSurface({
           <LiquidSurfaceOverlay
             designHeight={44}
             designWidth={158}
-            mode="light"
+            mode={palette.mode}
             radius={22}
             testID="worker-v5-kael-header-actions-liquid"
           />
@@ -109,7 +111,7 @@ export function WorkerV5KaelOrbNavigationSurface({
           ]}
           testID="worker-v5-kael-session-toggle"
         >
-          <WorkerV5KaelSessionIcon kind="plus" strokeColor={color.text.primary} strokeWidth={2.7} />
+          <WorkerV5KaelSessionIcon kind="plus" strokeColor={palette.icon} strokeWidth={2.7} />
         </KaelLiquidPressable>
         <Animated.View
           style={[
@@ -137,7 +139,7 @@ export function WorkerV5KaelOrbNavigationSurface({
               adjustsFontSizeToFit
               minimumFontScale={0.78}
               numberOfLines={1}
-              style={styles.kaelOrbCustomerModeTriggerText}
+              style={[styles.kaelOrbCustomerModeTriggerText, { color: palette.ink }]}
               testID="worker-v5-kael-active-mode"
             >
               {activeMode.label}
@@ -168,15 +170,19 @@ export function WorkerV5KaelOrbNavigationSurface({
               style={[
                 styles.kaelOrbCustomerModeMenuOption,
                 selected ? styles.kaelOrbCustomerModeMenuOptionActive : null,
-                reduceTransparency ? styles.opaqueCard : null,
+                palette.mode === 'dark' ? {
+                  backgroundColor: selected ? palette.menuActiveFill : palette.menuFill,
+                  borderColor: selected ? palette.menuActiveBorder : palette.menuBorder,
+                } : null,
+                reduceTransparency ? [styles.opaqueCard, palette.mode === 'dark' ? { backgroundColor: palette.opaqueFill, borderColor: palette.opaqueBorder } : null] : null,
               ]}
               testID={`worker-v5-kael-mode-menu-${item.value}`}
             >
               <View style={styles.kaelOrbCustomerModeMenuCopy}>
-                <Text style={[styles.kaelOrbCustomerModeMenuText, selected ? styles.kaelOrbCustomerModeMenuTextActive : null]}>{item.label}</Text>
-                <Text style={styles.kaelOrbCustomerModeMenuDescription}>{item.description}</Text>
+                <Text style={[styles.kaelOrbCustomerModeMenuText, { color: selected ? palette.accent : palette.ink }]}>{item.label}</Text>
+                <Text style={[styles.kaelOrbCustomerModeMenuDescription, { color: palette.muted }]}>{item.description}</Text>
               </View>
-              {selected ? <Text style={styles.kaelOrbCustomerModeMenuCheck}>{'✓'}</Text> : null}
+              {selected ? <Text style={[styles.kaelOrbCustomerModeMenuCheck, { color: palette.accent }]}>{'✓'}</Text> : null}
             </KaelLiquidPressable>
           })}
         </Animated.View>

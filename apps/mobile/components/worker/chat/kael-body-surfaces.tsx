@@ -4,7 +4,6 @@ import { type LocalDeal } from '@nestscout/shared'
 import { useGlassAccessibility } from '@/components/ui/accessibility-motion'
 import { KaelTextField, MintAura } from '@/components/ui/kael-primitives'
 import { LiquidControlButton, LiquidSendArrowIcon } from '@/components/ui/liquid-back-button'
-import { color } from '@/design/theme'
 import { type AppLanguage } from '@/lib/app-language'
 import { useJobChatThread } from '@/lib/use-job-chat-thread'
 import { WorkerV5ScreenId } from '../dock/types'
@@ -16,6 +15,7 @@ import { styles, workerV5KaelComposerWebTextInputNoOutline } from '../worker-v5-
 import { WorkerV5KaelOrbBody } from './body-surfaces'
 import { WorkerV5KaelOrbComposer } from './orb-screen-surfaces'
 import { useWorkerV5KaelOrbChat } from './use-kael-orb-chat'
+import { useWorkerKaelOrbPalette } from './orb-palette'
 import type { useFrontendWorkflow } from '@/lib/frontend-workflow-provider'
 import { workerV5JobsDestinationScreenId } from '../ui/screen-navigation'
 
@@ -71,6 +71,8 @@ function WorkerV5SharedJobIncidentChat({
     language,
   )
   const [draft, setDraft] = useState('')
+  const palette = useWorkerKaelOrbPalette()
+  const dark = palette.mode === 'dark'
   const submit = async () => {
     const content = draft.trim()
     if (!content || sending) return
@@ -96,17 +98,17 @@ function WorkerV5SharedJobIncidentChat({
         ))}
         {error ? <WorkerV5ChatBubble body={error} label={textByLanguage(language, 'Kael · trạng thái', 'Kael · status')} /> : null}
       </View>
-      <View style={styles.kaelOrbComposerCard}>
+      <View style={[styles.kaelOrbComposerCard, dark ? { backgroundColor: palette.composerFill, borderColor: palette.composerBorder } : null]}>
         <KaelTextField
           accessibilityLabel={textByLanguage(language, 'Nhắn trong Kael Công việc', 'Message in Kael Work')}
           inputShellStyle={styles.kaelOrbComposerInputShell}
           onChangeText={setDraft}
           onSubmitEditing={() => void submit()}
           placeholder={textByLanguage(language, 'Nhắn cho khách hoặc trả lời Kael...', 'Message the customer or reply to Kael...')}
-          placeholderTextColor={color.text.muted}
+          placeholderTextColor={palette.muted}
           returnKeyType="send"
           shellStyle={styles.kaelOrbComposerField}
-          style={[styles.kaelOrbComposerInput, workerV5KaelComposerWebTextInputNoOutline]}
+          style={[styles.kaelOrbComposerInput, workerV5KaelComposerWebTextInputNoOutline, dark ? { color: palette.ink } : null]}
           testID="worker-v5-shared-job-incident-input"
           value={draft}
         />
@@ -114,13 +116,13 @@ function WorkerV5SharedJobIncidentChat({
           accessibilityLabel={textByLanguage(language, 'Gửi tin nhắn Kael Công việc', 'Send Kael Work message')}
           dimWhenDisabled={false}
           disabled={sending || !draft.trim()}
-          mode="light"
+          mode={palette.mode}
           onPress={() => void submit()}
           size={44}
           style={styles.kaelOrbSendButton}
           testID="worker-v5-shared-job-incident-send"
         >
-          <LiquidSendArrowIcon color={color.text.primary} testID="worker-v5-shared-job-incident-send-arrow" />
+          <LiquidSendArrowIcon color={palette.icon} testID="worker-v5-shared-job-incident-send-arrow" />
         </LiquidControlButton>
       </View>
     </View>

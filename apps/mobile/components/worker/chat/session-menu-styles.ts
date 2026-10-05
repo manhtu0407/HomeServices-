@@ -1,6 +1,6 @@
 import { StyleSheet } from 'react-native'
 
-import { color, shadow, typography } from '@/design/theme'
+import { color, customerTheme, shadow, typography } from '@/design/theme'
 
 export const styles = StyleSheet.create({
   actionDivider: {
@@ -192,4 +192,19 @@ export const styles = StyleSheet.create({
   statusDotSelected: {
     backgroundColor: color.brand.primary,
   },
+})
+
+// Dark overrides for the light menu above, from the shared neutral dark tokens.
+const dark = customerTheme.darkLayer
+export const darkStyles = StyleSheet.create({
+  actionDivider: { backgroundColor: dark.border },
+  actionMenu: { backgroundColor: dark.raised, borderColor: dark.glassBorder },
+  actionRowPressed: { backgroundColor: dark.ghost },
+  actionText: { color: dark.text },
+  check: { color: dark.primary },
+  deleteActionText: { color: dark.danger },
+  error: { color: dark.danger },
+  feedback: { color: dark.muted },
+  sessionMeta: { color: dark.muted },
+  sessionTitle: { color: dark.text },
 })
