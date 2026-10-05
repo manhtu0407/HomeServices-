@@ -6,12 +6,34 @@ import { requireRealTrafficActor } from "../../platform/synthetic-cohort.ts";
 import type { EdgeReferralClaimInput } from "../../../../_shared/domain.ts";
 import type {
   EdgeCustomerMembershipResponse,
+  EdgeInviteClaimStatus,
   EdgeReferralClaimOutcome,
   EdgeReferralClaimResponse,
 } from "../contracts/ambassador.ts";
 import { malformed, nullableInteger, recordArray, requiredInteger, requiredText } from "./parse.ts";
 
 type Row = Record<string, unknown>;
+
+const INVITE_CLAIM_STATUSES: readonly EdgeInviteClaimStatus[] = [
+  "open",
+  "linked",
+  "window_closed",
+  "transacted",
+  "program_unavailable",
+];
+
+function parseInviteClaim(value: unknown): EdgeCustomerMembershipResponse["invite_claim"] {
+  if (value === undefined || value === null) return null;
+  if (!isRecord(value) || !INVITE_CLAIM_STATUSES.includes(value.status as EdgeInviteClaimStatus)) {
+    malformed("membership.invite_claim");
+  }
+  return {
+    status: value.status as EdgeInviteClaimStatus,
+    closes_at: nullableString(value.closes_at),
+    claim_days: nullableInteger(value.claim_days, "membership.invite_claim.claim_days"),
+    link_months: nullableInteger(value.link_months, "membership.invite_claim.link_months"),
+  };
+}
 
 const CLAIM_OUTCOMES: readonly EdgeReferralClaimOutcome[] = [
   "LINKED",
@@ -58,6 +80,7 @@ export async function getCustomerMembership(
     points: requiredInteger(value.points, "membership.points"),
     customer_vnd_per_point: nullableInteger(value.customer_vnd_per_point, "membership.customer_vnd_per_point"),
     linked_worker: linkedWorker,
+    invite_claim: parseInviteClaim(value.invite_claim),
     recent_entries: recordArray(value.recent_entries, "membership.recent_entries").map((row) => {
       if (row.entry_kind !== "accrual" && row.entry_kind !== "reversal") malformed("membership.entry_kind");
       return {
