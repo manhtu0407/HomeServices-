@@ -20,7 +20,7 @@ Direction (locked by Tu 2026-05-29): **classic, minimal, OS-grade** (Apple Liqui
 
 What is already good (keep): `expo-glass-effect` native Liquid Glass + blur/View fallbacks; `borderCurve: 'continuous'`; Reduce Motion / Reduce Transparency handling; the dock squash/stretch + sheen.
 
-## 2. Palette — Neutral base + ONE mint accent (proposed)
+## 2. Palette — Neutral base + ONE mint accent
 
 Drop the multi-mint/jade/aqua/copper zoo from signature surfaces. Surfaces are **neutral**; mint appears only on the **single signature moment** per screen (active pill, primary CTA, key focus).
 
@@ -38,14 +38,17 @@ Light (neutral):
   glassTint       rgba(255,255,255,0.62)
   edgeHighlight   rgba(255,255,255,0.30)   (1px inner border)
 
-Dark (neutral charcoal, faint green-neutral):
-  bg              #0E1413
-  surface         #161D1B
-  text            #EAF1EF
-  textSecondary   #9DB0AB
-  line            rgba(255,255,255,0.08)
-  glassTint       rgba(22,29,27,0.55)
-  edgeHighlight   rgba(190,210,205,0.14)   (neutral-gray, NOT pure white)
+Dark (iOS-style neutral; canonical values live in design/theme.ts customerTheme.darkLayer):
+  bg (base)       #000000   (true black base, as iOS systemBackground)
+  surface         #1C1C1E   (card)
+  raised          #2C2C2E   (elevated layer)
+  text            #FFFFFF
+  textSecondary   #AEAEB2
+  textTertiary    #98989F
+  line            rgba(84,84,88,0.65)
+  glassTint       rgba(118,118,128,0.24)   (lighter neutral glass, iOS 27)
+  edgeHighlight   rgba(255,255,255,0.22)   (top specular; standard material 0.14)
+  rim             0 0 0 0.5px rgba(0,0,0,0.55)   (darkened edge so glass floats over content)
 ```
 
 Rules: max **one** mint accent per screen region; neutral elsewhere. Warning/price-uncertainty may use a single restrained warm accent (existing `clay`), sparingly. No purple/blue AI gradients (RULES).
@@ -80,9 +83,10 @@ The "bubble pop" = on activate, the element scales up a hair (overshoot) while t
 
 ## 5. Dark mode (the explicit fix)
 
-- Use the dark token set in §2 (neutral charcoal, neutral-gray edge highlight, lower opacity).
-- Highlights must be **soft** — pure white glows harshly on dark. Mint accent stays the same hue but at slightly lower opacity.
-- Sheen/specular must remain visible but gentle (dark sheen ~rgba(255,255,255,0.10), light ~0.5).
+- Use the dark token set in §2: black base, neutral elevated surfaces (base darker, raised lighter, per Apple HIG Dark Mode), no green tint. Mint is the single accent.
+- Glass follows the iOS 27 dark look: a lighter neutral fill, a thin darkened rim and a brighter but soft top specular line. A full-white line still glows harshly on dark, so the standard material keeps a gray 0.14 edge.
+- Light-mode decoration (white card skins, mint auras, the multi-wash canvas) is not drawn in dark; the dark canvas is flat black with at most one faint mint wash.
+- Appearance defaults to "Theo hệ thống" (follow the phone), with Light/Dark as manual overrides.
 - Both modes must keep text contrast ≥ WCAG (4.5:1 body, 3:1 large/UI).
 
 ## 6. Guardrails (RULES preserved — do not break)

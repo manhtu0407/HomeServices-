@@ -12,7 +12,7 @@ import type { GlassMode } from './tokens'
 // a top-left frost highlight and a faint mint shadow. Any pill-shaped control in the chat reuses it
 // so the screen reads as one material instead of one colour per button.
 export const liquidPillPalette = {
-  dark: { background: 'rgba(22,29,27,0.42)', border: 'rgba(190,210,205,0.16)' },
+  dark: { background: 'rgba(118,118,128,0.26)', border: 'rgba(255,255,255,0.14)' },
   light: { background: 'rgba(255,255,255,0.16)', border: 'rgba(255,255,255,0.72)' },
 } as const
 

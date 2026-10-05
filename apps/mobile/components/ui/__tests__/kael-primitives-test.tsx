@@ -115,11 +115,11 @@ describe('Kael UI primitives', () => {
 
   it('keeps standard SVG radial geometry for the dark canvas', () => {
     const { UNSAFE_getAllByType } = render(
-      <FormulaMintCanvasAura mode="dark" reduceTransparency scope="Customer Home Test" testID="formula-mint-canvas-parity-test" />,
+      <FormulaMintCanvasAura mode="dark" scope="Customer Home Test" testID="formula-mint-canvas-parity-test" />,
     )
 
     const gradients = UNSAFE_getAllByType(RadialGradient)
-    expect(gradients).toHaveLength(7)
+    expect(gradients).toHaveLength(1)
     gradients.forEach((gradient) => {
       expect(gradient.props.gradientUnits).toBe('userSpaceOnUse')
       expect(gradient.props.r).toBe(FORMULA_MINT_CANVAS_STANDARD_RADIAL_RADIUS)
@@ -128,14 +128,17 @@ describe('Kael UI primitives', () => {
     })
   })
 
-  it('uses a dark canvas palette instead of the light mint wash', () => {
-    const { UNSAFE_getAllByType } = render(
+  it('uses a black iOS base with one faint mint wash in dark, and drops the wash under Reduce Transparency', () => {
+    const { getByTestId, UNSAFE_getAllByType, UNSAFE_queryAllByType, rerender } = render(
       <FormulaMintCanvasAura mode="dark" scope="Customer Dark Test" testID="formula-mint-canvas-dark-test" />,
     )
 
+    expect(StyleSheet.flatten(getByTestId('formula-mint-canvas-dark-test').props.style)).toMatchObject({ backgroundColor: '#000000' })
     const stopColors = UNSAFE_getAllByType(Stop).map((stop) => stop.props.stopColor)
-    expect(stopColors).toEqual(expect.arrayContaining(['#0B0F0E', '#0E1513', '#101A17', '#32C2A9']))
-    expect(stopColors).not.toContain('#F9FFFD')
+    expect(stopColors).toEqual(['#63E6D0', '#63E6D0'])
+
+    rerender(<FormulaMintCanvasAura mode="dark" reduceTransparency scope="Customer Dark Test" testID="formula-mint-canvas-dark-test" />)
+    expect(UNSAFE_queryAllByType(RadialGradient)).toHaveLength(0)
   })
 
   it('renders the primary button and handles presses', () => {
@@ -228,7 +231,7 @@ describe('Kael UI primitives', () => {
       includeFontPadding: false,
       textAlignVertical: 'center',
       WebkitBoxShadow: `0 0 0 1000px ${component.input.bg} inset`,
-      WebkitTextFillColor: color.text.primary,
+      WebkitTextFillColor: 'currentcolor',
     })
   })
 

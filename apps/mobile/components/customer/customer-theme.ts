@@ -1,10 +1,10 @@
-import { useEffect, useSyncExternalStore } from 'react'
-import AsyncStorage from '@react-native-async-storage/async-storage'
 import { customerTheme } from '@/design/theme'
+import { createThemePreferenceStore, type ResolvedThemeMode, type ThemePreference } from '@/lib/theme-preference-store'
 
 const CUSTOMER_THEME_STORAGE_KEY = 'customer.theme.mode.v4'
 
-export type ThemeMode = 'light' | 'dark'
+export type ThemeMode = ResolvedThemeMode
+export type { ThemePreference }
 
 export type CustomerThemeTokens = {
   mode: ThemeMode
@@ -51,67 +51,18 @@ const CUSTOMER_THEME_TOKENS = {
   darkLayer,
 }
 
-let customerThemeMode: ThemeMode = 'light'
-let customerThemeSubscribers: (() => void)[] = []
-let customerThemeHydrated = false
-let customerThemeSelectionRevision = 0
-let pendingThemePersistence: ThemeMode | null = null
-let themePersistenceDrain: Promise<void> | null = null
+const customerThemeStore = createThemePreferenceStore(CUSTOMER_THEME_STORAGE_KEY)
 
-function getCustomerThemeModeSnapshot() {
-  return customerThemeMode
+export function setCustomerThemeMode(next: ThemePreference) {
+  return customerThemeStore.setPreference(next)
 }
 
-function subscribeCustomerThemeMode(listener: () => void) {
-  customerThemeSubscribers = [...customerThemeSubscribers, listener]
-  return () => {
-    customerThemeSubscribers = customerThemeSubscribers.filter((item) => item !== listener)
-  }
+export function useCustomerThemePreference() {
+  return customerThemeStore.usePreference()
 }
 
-export function setCustomerThemeMode(nextMode: ThemeMode) {
-  customerThemeSelectionRevision += 1
-  const changed = customerThemeMode !== nextMode
-  customerThemeMode = nextMode
-  const persisted = persistCustomerThemeMode(nextMode)
-  if (!changed) return persisted
-  for (const listener of customerThemeSubscribers) listener()
-  return persisted
-}
-
-function persistCustomerThemeMode(nextMode: ThemeMode) {
-  pendingThemePersistence = nextMode
-  if (themePersistenceDrain) return themePersistenceDrain
-  themePersistenceDrain = drainThemePersistence()
-  return themePersistenceDrain
-}
-
-async function drainThemePersistence() {
-  try {
-    while (pendingThemePersistence) {
-      const nextMode = pendingThemePersistence
-      pendingThemePersistence = null
-      await AsyncStorage.setItem(CUSTOMER_THEME_STORAGE_KEY, nextMode).catch(() => undefined)
-    }
-  } finally {
-    themePersistenceDrain = null
-  }
-}
-
-export function useCustomerThemeMode() {
-  useEffect(() => {
-    if (customerThemeHydrated) return
-    customerThemeHydrated = true
-    const selectionRevisionAtStart = customerThemeSelectionRevision
-    AsyncStorage.getItem(CUSTOMER_THEME_STORAGE_KEY)
-      .then((stored) => {
-        if (customerThemeSelectionRevision !== selectionRevisionAtStart) return
-        if (stored === 'light' || stored === 'dark') setCustomerThemeMode(stored)
-      })
-      .catch(() => undefined)
-  }, [])
-
-  return useSyncExternalStore(subscribeCustomerThemeMode, getCustomerThemeModeSnapshot, getCustomerThemeModeSnapshot)
+export function useCustomerThemeMode(): ThemeMode {
+  return customerThemeStore.useResolvedMode()
 }
 
 export function getCustomerThemeTokens(mode: ThemeMode) {

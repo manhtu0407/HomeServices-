@@ -21,12 +21,12 @@ const liquidBackButtonPalette = {
     contactEnd: 'rgba(255,255,255,0)',
     contactMid: 'rgba(255,255,255,0.12)',
     contactStart: 'rgba(255,255,255,0.32)',
-    edgeDark: 'rgba(190,210,205,0.10)',
-    edgeLight: 'rgba(255,255,255,0.24)',
+    edgeDark: 'rgba(0,0,0,0.45)',
+    edgeLight: 'rgba(255,255,255,0.30)',
     frostEnd: 'rgba(255,255,255,0.04)',
     frostMid: 'rgba(255,255,255,0.06)',
     frostStart: 'rgba(255,255,255,0.18)',
-    sceneEnd: 'rgba(23,169,149,0.06)',
+    sceneEnd: 'rgba(255,255,255,0.04)',
     sceneStart: 'rgba(255,255,255,0.16)',
   },
   light: {
@@ -334,7 +334,7 @@ export function LiquidBackButton({
         <Svg fill="none" height={iconSize} viewBox="0 0 24 24" width={iconSize}>
           <Path
             d="M14.8 5.8 8.6 12l6.2 6.2"
-            stroke={iconColor ?? (mode === 'dark' ? '#EAF1EF' : color.brand.primaryDark)}
+            stroke={iconColor ?? (mode === 'dark' ? '#FFFFFF' : color.brand.primaryDark)}
             strokeLinecap="round"
             strokeLinejoin="round"
             strokeWidth={2.35}

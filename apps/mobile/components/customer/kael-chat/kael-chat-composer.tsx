@@ -104,7 +104,7 @@ export function KaelChatComposer({
   const normalChatImageDrafts = !allowVideoSelection
     ? composerMediaDrafts.filter((item) => item.type === 'image')
     : []
-  const activeMediaIconColor = tokens.mode === 'light' ? color.text.strong : tokens.primaryText
+  const activeMediaIconColor = tokens.mode === 'light' ? color.text.strong : tokens.text
   const normalSendPalette = getNormalChatSendPalette(composerSending)
   const isLightNormalChat = !allowVideoSelection && tokens.mode === 'light'
   const activeSendBackground = tokens.mode === 'light' ? color.mint.white : tokens.primary

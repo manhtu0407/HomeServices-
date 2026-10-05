@@ -29,7 +29,8 @@ const webTextInputNoOutline = {
   outlineStyle: 'none',
   outlineWidth: 0,
   WebkitBoxShadow: `0 0 0 1000px ${component.input.bg} inset`,
-  WebkitTextFillColor: color.text.primary,
+  // currentcolor keeps web text and placeholder on the themed colour instead of a fixed light-mode ink.
+  WebkitTextFillColor: 'currentcolor',
 } as unknown as TextStyle
 
 type KaelTextInputProps = TextInputProps & { ref?: Ref<TextInput> }

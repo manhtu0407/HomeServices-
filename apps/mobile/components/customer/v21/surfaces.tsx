@@ -35,7 +35,7 @@ import {
   setPendingKaelChatDraft,
 } from '../kael-chat/pending-intake'
 import { ScopeChangeHardStopModal } from '../scope-change-modal/scope-change-hard-stop-modal'
-import { setCustomerThemeMode, type CustomerThemeTokens } from '../customer-theme'
+import { setCustomerThemeMode, useCustomerThemePreference, type CustomerThemeTokens } from '../customer-theme'
 import { customerV21Assets, customerV21BankAssets, customerV21BookingWorkartAssets } from '../ui/assets'
 import { CustomerBookingEntryView, CustomerBookingGuestGateView } from '../booking/booking-entry-stateful-surfaces'
 import { HomeStorytellingCard } from '../home/home-storytelling-card'
@@ -833,6 +833,7 @@ export function CustomerProfileSurface() {
     uploadAvatar: workflow.actions.customerUploadAvatar,
   })
   const { tokens } = useV21Theme()
+  const themePreference = useCustomerThemePreference()
   const copy = customerV21CommonCopy[language]
   const insights = workflow.customerProfileInsights ?? null
   const directProfileScreen = profileScreenParam(firstParam(params.screen))
@@ -920,7 +921,7 @@ export function CustomerProfileSurface() {
           ) : directProfileUtility === 'appearance' ? (
             <ProfileAppearanceView
               language={language}
-              mode={tokens.mode}
+              mode={themePreference}
               onSelectMode={(mode) => void setCustomerThemeMode(mode)}
               tokens={tokens}
             />

@@ -1061,7 +1061,9 @@ describe('CustomerProfileSurface v2.1', () => {
     expect(screen.getByTestId('customer-v21-profile-appearance-card-header-icon')).toBeOnTheScreen()
     expect(screen.getByTestId('customer-v21-profile-appearance-light-visual')).toHaveStyle({ alignSelf: 'center' })
     expect(screen.getByTestId('customer-v21-profile-appearance-dark-visual')).toHaveStyle({ alignSelf: 'center' })
-    expect(screen.getByRole('radio', { name: 'Sáng' }).props.accessibilityState).toEqual({ selected: true })
+    // With nothing saved the preference is "Theo hệ thống", so neither manual option is selected.
+    expect(screen.getByRole('radio', { name: 'Theo hệ thống' }).props.accessibilityState).toEqual({ selected: true })
+    expect(screen.getByRole('radio', { name: 'Sáng' }).props.accessibilityState).toEqual({ selected: false })
     expect(screen.getByRole('radio', { name: 'Tối' }).props.accessibilityState).toEqual({ selected: false })
     expect(within(screen.getByRole('radio', { name: 'Sáng' })).queryByText('Đang dùng')).toBeNull()
     expect(within(screen.getByRole('radio', { name: 'Tối' })).queryByText('Đang dùng')).toBeNull()

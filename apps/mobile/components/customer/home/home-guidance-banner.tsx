@@ -39,15 +39,18 @@ export function HomeGuidanceBanner({ language, onPress, reduceTransparency, toke
   const q = (size: number) => size * scale
   const buttonTypography = scaledTypography('headline', scale)
   const titleTypography = scaledTypography('title1', scale)
+  // Dark keeps the card on the neutral elevated surface with only a faint mint end, so the
+  // token-coloured title stays readable.
+  const dark = tokens.mode === 'dark'
   const content = (
     <>
       {!reduceTransparency ? (
         <Svg height="100%" pointerEvents="none" preserveAspectRatio="none" style={StyleSheet.absoluteFill} viewBox="0 0 100 100" width="100%">
           <Defs>
             <LinearGradient id="customer-home-v4-promo-gradient" x1="0" x2="1" y1="0.5" y2="0.5">
-              <Stop offset="0" stopColor="#FFFFFF" />
-              <Stop offset="0.48" stopColor="#FBFFFE" />
-              <Stop offset="1" stopColor="#D9F8F3" />
+              <Stop offset="0" stopColor={dark ? tokens.base : '#FFFFFF'} />
+              <Stop offset="0.48" stopColor={dark ? tokens.base : '#FBFFFE'} />
+              <Stop offset="1" stopColor={dark ? tokens.service : '#D9F8F3'} />
             </LinearGradient>
           </Defs>
           <Rect fill="url(#customer-home-v4-promo-gradient)" height="100" width="100" />
@@ -94,6 +97,7 @@ export function HomeGuidanceBanner({ language, onPress, reduceTransparency, toke
                 styles.buttonText,
                 buttonTypography,
                 {
+                  color: tokens.primaryText,
                   fontSize: (buttonTypography.fontSize ?? 0) + 3,
                   lineHeight: (buttonTypography.lineHeight ?? 0) + 3,
                 },
