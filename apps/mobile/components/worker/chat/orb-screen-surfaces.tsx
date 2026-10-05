@@ -3,6 +3,7 @@ import { Pressable, Text as RNText, View, TextInput, type StyleProp, type TextPr
 import { useAnimatedStyle, useSharedValue, withSequence, withSpring, withTiming, withDelay } from 'react-native-reanimated'
 import { type LocalDeal } from '@nestscout/shared'
 import { useFocusEffect } from 'expo-router'
+import { useKaelComposerInputSizing } from '@/components/ui/kael-composer-input-height'
 import { KaelButton, KaelTextField } from '@/components/ui/kael-primitives'
 import { GlassSurface } from '@/components/ui/glass-surface'
 import { KaelSendStopGlyph } from '@/components/ui/kael-send-stop-glyph'
@@ -39,8 +40,6 @@ import { workerV5Icons, workerV5OpportunityServiceIcons } from '../ui/screen-ico
 import { workerV5JobsDestinationScreenId } from '../ui/screen-navigation'
 
 type WorkerV5Runtime = ReturnType<typeof useFrontendWorkflow>
-const KAEL_COMPOSER_MIN_HEIGHT = 44
-const KAEL_COMPOSER_MAX_HEIGHT = 124
 
 function getWorkerV5KaelComposerArrowColor(normalComposer: boolean, canSubmit: boolean) {
   if (normalComposer) {
@@ -435,8 +434,7 @@ export function WorkerV5KaelOrbComposer({
       ? takePendingWorkerKaelDraft(draftOwnerId, mode, draftScope)?.message ?? ''
       : ''
   ))
-  const [measuredInputHeight, setMeasuredInputHeight] = useState(KAEL_COMPOSER_MIN_HEIGHT)
-  const inputHeight = draft ? measuredInputHeight : KAEL_COMPOSER_MIN_HEIGHT
+  const inputSizing = useKaelComposerInputSizing(draft)
   const focusedRef = useRef(false)
   const inputRef = useRef<TextInput>(null)
   const [selection, setSelection] = useState<{ start: number; end: number } | null>(null)
@@ -462,21 +460,19 @@ export function WorkerV5KaelOrbComposer({
     setSelection(null)
     inputRef.current?.focus()
   }
-  const inputTextStyle = [styles.kaelOrbComposerInput, normalComposer && styles.kaelOrbNormalComposerInput, { height: inputHeight }, workerV5KaelComposerWebTextInputNoOutline]
+  const inputTextStyle = [styles.kaelOrbComposerInput, normalComposer && styles.kaelOrbNormalComposerInput, inputSizing.inputStyle, workerV5KaelComposerWebTextInputNoOutline]
 
   const submitDraft = async () => {
     if ((!trimmedDraft && !(normalComposer && mediaCount > 0)) || busy) return
     const sent = await onSend(trimmedDraft)
     if (!sent) return
     setDraft('')
-    setMeasuredInputHeight(KAEL_COMPOSER_MIN_HEIGHT)
     onActivityChange?.(focusedRef.current)
   }
 
   const updateDraft = (nextDraft: string) => {
     setSelection(null)
     setDraft(nextDraft)
-    if (!nextDraft) setMeasuredInputHeight(KAEL_COMPOSER_MIN_HEIGHT)
     onActivityChange?.(focusedRef.current || nextDraft.trim().length > 0)
   }
 
@@ -569,11 +565,7 @@ export function WorkerV5KaelOrbComposer({
             const nativeEvent = event.nativeEvent as typeof event.nativeEvent & { composing?: boolean; isComposing?: boolean }
             setIsComposing(Boolean(nativeEvent.isComposing ?? nativeEvent.composing))
           }}
-          onContentSizeChange={(event) => {
-            const nextHeight = event.nativeEvent.contentSize.height
-            const height = Math.min(Math.max(nextHeight, KAEL_COMPOSER_MIN_HEIGHT), KAEL_COMPOSER_MAX_HEIGHT)
-            setMeasuredInputHeight(height)
-          }}
+          onContentSizeChange={inputSizing.onContentSizeChange}
           onBlur={blurComposer}
           onChangeText={updateDraft}
           onSelectionChange={(event) => setSelection(event.nativeEvent.selection)}
@@ -581,12 +573,12 @@ export function WorkerV5KaelOrbComposer({
           onSubmitEditing={submitDraft}
           placeholder={ghost ? '' : textByLanguage(language, 'Nhập tin nhắn cho Kael...', 'Message Kael...')}
           placeholderTextColor={color.text.muted}
-          returnKeyType="send"
+          returnKeyType={inputSizing.returnKeyType}
           selectionColor={color.kaelChatSend.idleForeground}
-          scrollEnabled={inputHeight >= KAEL_COMPOSER_MAX_HEIGHT}
+          scrollEnabled={inputSizing.scrollEnabled}
           shellStyle={styles.kaelOrbComposerField}
           style={[...inputTextStyle, { color: ghost ? 'transparent' : color.text.strong, zIndex: 1 }]}
-          submitBehavior="submit"
+          submitBehavior={inputSizing.submitBehavior}
           testID="worker-v5-kael-orb-input"
           value={draft}
         />

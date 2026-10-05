@@ -1,6 +1,7 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native'
+import { Platform, StyleSheet } from 'react-native'
 
-import { withPillarContext, type PillarManifest } from '@/__tests__/pillar-manifest'
+import { pillarWhy, withPillarContext, type PillarManifest } from '@/__tests__/pillar-manifest'
 import { color, customerTheme } from '@/design/theme'
 
 import { WorkerV5KaelOrbComposer } from '../chat/orb-screen-surfaces'
@@ -8,19 +9,28 @@ import { canShowWorkerStaticNormalChatStarters } from '../chat/kael-orb-chat-mod
 
 export const PILLAR = {
   id: 'P298-worker-kael-composer-layout',
-  invariant: 'Worker Kael Chat matches the Customer composer border, camera-to-input spacing, and send-arrow state colors, accepts multiline input that grows to its measured draft height up to its bound, scrolls within the field only after the bound, and returns to one line after a successful send; an empty normal-chat screen keeps its static starter rail visible without leading plus glyphs even when dynamic suggestions are unavailable',
+  invariant: 'Worker Kael Chat matches the Customer composer border, camera-to-input spacing, and send-arrow state colors, accepts multiline input that on native grows with its text up to its bound with scrolling always on and Return inserting a line, on web grows to its measured draft height and scrolls only after the bound, and returns to one line after a successful send; an empty normal-chat screen keeps its static starter rail visible without leading plus glyphs even when dynamic suggestions are unavailable',
   authority: ['governance/protocols/frontend-test.md G3 and G4', 'React Native TextInput multiline contract'],
   target: 'apps/mobile/components/worker/chat/orb-screen-surfaces.tsx',
   layer: 'ui-visual',
   siblings: ['P205-kael-composer-and-failure-boundary', 'P296-worker-kael-stop-response'],
-  mutation: 'change the Customer-matched border or send-arrow colors, widen the camera-to-input gap or input padding, remove multiline, restore numberOfLines=1, stop measuring content height, remove the maximum-height scroll state, fail to reset height after send, add leading plus glyphs to the Worker starter rail, or hide the empty normal-chat starter rail when dynamic suggestions are unavailable; a rendered composer or starter eligibility assertion turns red',
+  mutation: 'change the Customer-matched border or send-arrow colors, widen the camera-to-input gap or input padding, remove multiline, restore numberOfLines=1, pin a measured height on native, make native Return send, stop measuring content height on web, remove the maximum-height scroll state, fail to reset height after send, add leading plus glyphs to the Worker starter rail, or hide the empty normal-chat starter rail when dynamic suggestions are unavailable; a rendered composer or starter eligibility assertion turns red',
 } as const satisfies PillarManifest
 
-describe('Worker Kael composer layout', () => {
-  it('shows wrapped draft lines and scrolls only after the composer reaches its cap', async () => {
-    const onSend = jest.fn(async () => true)
+// withPillarContext is synchronous, so an async body passed to it would run detached and its
+// later assertions would never fail the test; async cases await their body here instead.
+async function withPillarContextAsync(run: () => Promise<void>, detail?: string) {
+  try {
+    await run()
+  } catch (error) {
+    if (error instanceof Error) error.message = `${pillarWhy(PILLAR, detail)}\n\n${error.message}`
+    throw error
+  }
+}
 
-    await withPillarContext(PILLAR, async () => {
+describe('Worker Kael composer layout', () => {
+  it('lets the native field grow with its text up to the cap, scroll past it, and insert a line on Return', () => {
+    withPillarContext(PILLAR, () => {
       render(
         <WorkerV5KaelOrbComposer
           busy={false}
@@ -29,51 +39,84 @@ describe('Worker Kael composer layout', () => {
           mediaCount={0}
           mode="normal"
           onPickMedia={() => undefined}
-          onSend={onSend}
+          onSend={async () => true}
           reduceMotion
           reduceTransparency={false}
         />,
       )
-
-      const composerFrame = screen.getByTestId('worker-v5-kael-orb-composer-frame')
-      expect(composerFrame).toHaveStyle({ borderColor: customerTheme.lightLayer.glassBorder, gap: 4 })
-      const sendArrowStrokes = () => screen.getByTestId('worker-v5-kael-orb-send-arrow')
-        .findAll((node) => typeof node.props.stroke === 'string')
-        .map((node) => node.props.stroke)
-      expect(sendArrowStrokes()).toContain('#071A24')
       const input = screen.getByTestId('worker-v5-kael-orb-input')
-      expect(input).toHaveStyle({ paddingHorizontal: 4 })
-      expect(input.props.multiline).toBe(true)
-      expect(input.props.numberOfLines).toBeUndefined()
-      expect(input).toHaveStyle({ height: 44 })
-
       fireEvent.changeText(input, 'Mô tả dài cần hiển thị hết khi xuống dòng trong ô chat.')
-      expect(sendArrowStrokes()).toContain('#071A24')
-      fireEvent(input, 'contentSizeChange', { nativeEvent: { contentSize: { height: 88, width: 300 } } })
-      expect(screen.getByTestId('worker-v5-kael-orb-input')).toHaveStyle({ height: 88 })
-      expect(screen.getByTestId('worker-v5-kael-orb-input').props.scrollEnabled).toBe(false)
+      const typed = screen.getByTestId('worker-v5-kael-orb-input')
+      expect(typed).toHaveStyle({ maxHeight: 124, minHeight: 44 })
+      expect(StyleSheet.flatten(typed.props.style).height).toBeUndefined()
+      expect(typed.props.scrollEnabled).toBe(true)
+      expect(typed.props.submitBehavior).toBe('newline')
+      expect(typed.props.returnKeyType).toBe('default')
+    }, 'a pinned native height never grew on iOS and pushed earlier lines out of view (Build 51)')
+  })
 
-      fireEvent.changeText(screen.getByTestId('worker-v5-kael-orb-input'), '')
-      expect(screen.getByTestId('worker-v5-kael-orb-input')).toHaveStyle({ height: 44 })
+  it('shows wrapped draft lines on web and scrolls only after the composer reaches its cap', async () => {
+    const onSend = jest.fn(async () => true)
+    const platform = jest.replaceProperty(Platform, 'OS', 'web')
 
-      fireEvent.changeText(screen.getByTestId('worker-v5-kael-orb-input'), 'Mô tả dài cần hiển thị hết khi xuống dòng trong ô chat.')
-      expect(screen.getByTestId('worker-v5-kael-orb-input')).toHaveStyle({ height: 44 })
+    try {
+      await withPillarContextAsync(async () => {
+        render(
+          <WorkerV5KaelOrbComposer
+            busy={false}
+            initialDraft=""
+            language="vi"
+            mediaCount={0}
+            mode="normal"
+            onPickMedia={() => undefined}
+            onSend={onSend}
+            reduceMotion
+            reduceTransparency={false}
+          />,
+        )
 
-      fireEvent(input, 'contentSizeChange', { nativeEvent: { contentSize: { height: 400, width: 300 } } })
-      expect(screen.getByTestId('worker-v5-kael-orb-input')).toHaveStyle({ height: 124 })
-      expect(screen.getByTestId('worker-v5-kael-orb-input').props.scrollEnabled).toBe(true)
+        const composerFrame = screen.getByTestId('worker-v5-kael-orb-composer-frame')
+        expect(composerFrame).toHaveStyle({ borderColor: customerTheme.lightLayer.glassBorder, gap: 4 })
+        const sendArrowStrokes = () => screen.getByTestId('worker-v5-kael-orb-send-arrow')
+          .findAll((node) => typeof node.props.stroke === 'string')
+          .map((node) => node.props.stroke)
+        expect(sendArrowStrokes()).toContain('#071A24')
+        const input = screen.getByTestId('worker-v5-kael-orb-input')
+        expect(input).toHaveStyle({ paddingHorizontal: 4 })
+        expect(input.props.multiline).toBe(true)
+        expect(input.props.numberOfLines).toBeUndefined()
+        expect(input).toHaveStyle({ height: 44 })
 
-      await act(async () => {
-        fireEvent.press(screen.getByTestId('worker-v5-kael-orb-send'))
-        await Promise.resolve()
-      })
-      expect(onSend).toHaveBeenCalledWith('Mô tả dài cần hiển thị hết khi xuống dòng trong ô chat.')
-      await waitFor(() => expect(screen.getByTestId('worker-v5-kael-orb-input')).toHaveStyle({ height: 44 }))
-    }, 'Worker Chat must keep the full multiline draft visible, then restore the compact field after send')
+        fireEvent.changeText(input, 'Mô tả dài cần hiển thị hết khi xuống dòng trong ô chat.')
+        expect(sendArrowStrokes()).toContain('#071A24')
+        fireEvent(input, 'contentSizeChange', { nativeEvent: { contentSize: { height: 88, width: 300 } } })
+        expect(screen.getByTestId('worker-v5-kael-orb-input')).toHaveStyle({ height: 88 })
+        expect(screen.getByTestId('worker-v5-kael-orb-input').props.scrollEnabled).toBe(false)
+
+        fireEvent.changeText(screen.getByTestId('worker-v5-kael-orb-input'), '')
+        expect(screen.getByTestId('worker-v5-kael-orb-input')).toHaveStyle({ height: 44 })
+
+        fireEvent.changeText(screen.getByTestId('worker-v5-kael-orb-input'), 'Mô tả dài cần hiển thị hết khi xuống dòng trong ô chat.')
+        expect(screen.getByTestId('worker-v5-kael-orb-input')).toHaveStyle({ height: 44 })
+
+        fireEvent(input, 'contentSizeChange', { nativeEvent: { contentSize: { height: 400, width: 300 } } })
+        expect(screen.getByTestId('worker-v5-kael-orb-input')).toHaveStyle({ height: 124 })
+        expect(screen.getByTestId('worker-v5-kael-orb-input').props.scrollEnabled).toBe(true)
+
+        await act(async () => {
+          fireEvent.press(screen.getByTestId('worker-v5-kael-orb-send'))
+          await Promise.resolve()
+        })
+        expect(onSend).toHaveBeenCalledWith('Mô tả dài cần hiển thị hết khi xuống dòng trong ô chat.')
+        await waitFor(() => expect(screen.getByTestId('worker-v5-kael-orb-input')).toHaveStyle({ height: 44 }))
+      }, 'Worker Chat must keep the full multiline draft visible, then restore the compact field after send')
+    } finally {
+      platform.restore()
+    }
   })
 
   it('keeps intake composer styling outside normal-chat Customer parity', async () => {
-    await withPillarContext(PILLAR, async () => {
+    await withPillarContextAsync(async () => {
       render(
         <WorkerV5KaelOrbComposer
           busy={false}
@@ -103,7 +146,7 @@ describe('Worker Kael composer layout', () => {
   it('allows an image-only normal-chat turn but keeps text-only empty turns disabled', async () => {
     const onSend = jest.fn(async () => true)
 
-    await withPillarContext(PILLAR, async () => {
+    await withPillarContextAsync(async () => {
       render(
         <WorkerV5KaelOrbComposer
           busy={false}
@@ -131,7 +174,7 @@ describe('Worker Kael composer layout', () => {
   it('shows the horizontal suggestion rail and only fills the draft when a card is chosen', async () => {
     const onSend = jest.fn(async () => true)
 
-    await withPillarContext(PILLAR, async () => {
+    await withPillarContextAsync(async () => {
       render(
         <WorkerV5KaelOrbComposer
           busy={false}
@@ -166,7 +209,7 @@ describe('Worker Kael composer layout', () => {
   })
 
   it('keeps static starters available without dynamic suggestions and hides them after a turn or in intake', async () => {
-    await withPillarContext(PILLAR, async () => {
+    await withPillarContextAsync(async () => {
       expect(canShowWorkerStaticNormalChatStarters('normal', 0)).toBe(true)
       expect(canShowWorkerStaticNormalChatStarters('normal', 1)).toBe(false)
       expect(canShowWorkerStaticNormalChatStarters('intake', 0)).toBe(false)
@@ -192,7 +235,7 @@ describe('Worker Kael composer layout', () => {
   })
 
   it('uses the exact normal-chat idle send colors and the inverse while waiting for Kael', async () => {
-    await withPillarContext(PILLAR, async () => {
+    await withPillarContextAsync(async () => {
       const idle = render(
         <WorkerV5KaelOrbComposer
           busy={false}
@@ -236,7 +279,7 @@ describe('Worker Kael composer layout', () => {
   it('keeps an unaccepted Worker ghost suffix out of the sent text and adds it only on tap', async () => {
     const onSend = jest.fn(async () => false)
 
-    await withPillarContext(PILLAR, async () => {
+    await withPillarContextAsync(async () => {
       render(
         <WorkerV5KaelOrbComposer
           busy={false}

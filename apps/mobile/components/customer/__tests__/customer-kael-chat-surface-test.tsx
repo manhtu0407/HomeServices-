@@ -635,31 +635,49 @@ describe('active customer Kael chat surface wiring', () => {
     }
   })
 
-  it('grows the composer with the draft instead of scrolling long text sideways', async () => {
+  it('lets the native composer grow with its text up to the cap instead of pinning a measured height', async () => {
     render(<CustomerKaelSurface />)
     await waitForConversationCatalog('normal')
 
     const input = screen.getByTestId('customer-v21-kael-input')
-    expect(input.props.multiline).toBe(true)
-    expect(StyleSheet.flatten(input.props.style).height).toBe(44)
-
     fireEvent.changeText(input, 'Nhà tôi bị hỏng đường ống nước ở phòng bếp')
-    fireEvent(input, 'contentSizeChange', { nativeEvent: { contentSize: { height: 90, width: 300 } } })
-    expect(StyleSheet.flatten(screen.getByTestId('customer-v21-kael-input').props.style).height).toBe(90)
-    expect(screen.getByTestId('customer-v21-kael-input').props.scrollEnabled).toBe(false)
-
-    // A long paste should not take over the screen — it caps and scrolls internally instead.
-    fireEvent(input, 'contentSizeChange', { nativeEvent: { contentSize: { height: 400, width: 300 } } })
-    expect(StyleSheet.flatten(screen.getByTestId('customer-v21-kael-input').props.style).height).toBe(124)
+    const style = StyleSheet.flatten(screen.getByTestId('customer-v21-kael-input').props.style)
+    expect(input.props.multiline).toBe(true)
+    expect(style.height).toBeUndefined()
+    expect(style.maxHeight).toBe(124)
     expect(screen.getByTestId('customer-v21-kael-input').props.scrollEnabled).toBe(true)
+  })
 
-    // Clearing the draft (sent, or deleted by hand) snaps the box back down via
-    // an effect — onContentSizeChange does not reliably re-fire on every
-    // platform for that, so it needs its own render pass to take effect.
-    fireEvent.changeText(input, '')
-    await waitFor(() => {
-      expect(StyleSheet.flatten(screen.getByTestId('customer-v21-kael-input').props.style).height).toBe(44)
-    })
+  it('grows the web composer with the draft instead of scrolling long text sideways', async () => {
+    const platform = jest.replaceProperty(Platform, 'OS', 'web')
+    try {
+      render(<CustomerKaelSurface />)
+      await waitForConversationCatalog('normal')
+
+      const input = screen.getByTestId('customer-v21-kael-input')
+      expect(input.props.multiline).toBe(true)
+      expect(StyleSheet.flatten(input.props.style).height).toBe(44)
+
+      fireEvent.changeText(input, 'Nhà tôi bị hỏng đường ống nước ở phòng bếp')
+      fireEvent(input, 'contentSizeChange', { nativeEvent: { contentSize: { height: 90, width: 300 } } })
+      expect(StyleSheet.flatten(screen.getByTestId('customer-v21-kael-input').props.style).height).toBe(90)
+      expect(screen.getByTestId('customer-v21-kael-input').props.scrollEnabled).toBe(false)
+
+      // A long paste should not take over the screen — it caps and scrolls internally instead.
+      fireEvent(input, 'contentSizeChange', { nativeEvent: { contentSize: { height: 400, width: 300 } } })
+      expect(StyleSheet.flatten(screen.getByTestId('customer-v21-kael-input').props.style).height).toBe(124)
+      expect(screen.getByTestId('customer-v21-kael-input').props.scrollEnabled).toBe(true)
+
+      // Clearing the draft (sent, or deleted by hand) snaps the box back down via
+      // an effect — onContentSizeChange does not reliably re-fire on every
+      // platform for that, so it needs its own render pass to take effect.
+      fireEvent.changeText(input, '')
+      await waitFor(() => {
+        expect(StyleSheet.flatten(screen.getByTestId('customer-v21-kael-input').props.style).height).toBe(44)
+      })
+    } finally {
+      platform.restore()
+    }
   })
 
   // Icon colour, size and stroke weight are props of a rendered node, and the

@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { fireEvent, render, screen } from '@testing-library/react-native'
+import { Platform, StyleSheet } from 'react-native'
 
 import { withPillarContext, type PillarManifest } from '@/__tests__/pillar-manifest'
 import { color } from '@/design/theme'
@@ -19,12 +20,12 @@ import { preAgenticUnsupportedService } from '../kael-chat/customer-kael-pre-age
 
 export const PILLAR = {
   id: 'P205-kael-composer-and-failure-boundary',
-  invariant: 'Kael never submits an empty composer, never sends a message beyond the shared 5000-character boundary, keeps text close to the camera, aligns the normal-chat camera glyph with the placeholder, leaves multiline input uncapped by one native line, resets the text field after a draft is cleared and keeps its measured height across same-size edits, previews normal-chat images without filenames and with accessible X removal controls, allows image analysis while keeping video in Work handling, renders a 27px dark-toned media icon in a 44px touch target, uses a pale liquid-glass send and stop surface with accessible themed controls, offers Stop only when the busy request can be cancelled, and renders one user-facing failure copy',
+  invariant: 'Kael never submits an empty composer, never sends a message beyond the shared 5000-character boundary, keeps text close to the camera, aligns the normal-chat camera glyph with the placeholder, leaves multiline input uncapped by one native line, lets the native field grow with its text up to its cap with scrolling on and Return inserting a line, on web resets the text field after a draft is cleared and keeps its measured height across same-size edits, previews normal-chat images without filenames and with accessible X removal controls, allows image analysis while keeping video in Work handling, renders a 27px dark-toned media icon in a 44px touch target, uses a pale liquid-glass send and stop surface with accessible themed controls, offers Stop only when the busy request can be cancelled, and renders one user-facing failure copy',
   authority: ['governance/RULES.md #3, #6, and #7', 'governance/protocols/frontend-test.md G3 and G4'],
   target: 'apps/mobile/components/customer/kael-chat/kael-chat-composer.tsx',
   layer: 'unit',
   siblings: ['P104-kael-ephemeral-state-scope', 'P75-transaction-critical-route-coverage'],
-  mutation: 'allow whitespace submission, lower the UI boundary without the contract constant, restore numberOfLines=1 on the multiline field, widen spacing between the camera and text field, leave the normal-chat camera glyph below the placeholder, retain stale input height after the parent clears a draft, collapse a measured multi-line draft on an edit that keeps its line count, render normal-chat filenames instead of in-composer thumbnails with X controls, disable normal-chat image picking, enlarge the composer media icon past 27px, color the enabled camera teal instead of matching the dark send glyph, replace the pale light-theme send surface with a saturated fill or low-contrast icon, restore the thick stop ring, disable the busy stop action, show Stop for a busy request that cannot be cancelled, render an inline failure beside the receipt, or mix VI and EN decline copy; an assertion fails',
+  mutation: 'allow whitespace submission, lower the UI boundary without the contract constant, restore numberOfLines=1 on the multiline field, pin a measured height on native, make native Return send, widen spacing between the camera and text field, leave the normal-chat camera glyph below the placeholder, retain stale input height after the parent clears a draft, collapse a measured multi-line draft on an edit that keeps its line count, render normal-chat filenames instead of in-composer thumbnails with X controls, disable normal-chat image picking, enlarge the composer media icon past 27px, color the enabled camera teal instead of matching the dark send glyph, replace the pale light-theme send surface with a saturated fill or low-contrast icon, restore the thick stop ring, disable the busy stop action, show Stop for a busy request that cannot be cancelled, render an inline failure beside the receipt, or mix VI and EN decline copy; an assertion fails',
 } as const satisfies PillarManifest
 
 const rootStyles: RootChatStyles = {
@@ -36,6 +37,16 @@ const rootStyles: RootChatStyles = {
   errorText: {},
   flex: {},
   sendButton: {},
+}
+
+// Web inputs do not grow on their own, so the measured-height path is web-only.
+function onWeb(run: () => void) {
+  const platform = jest.replaceProperty(Platform, 'OS', 'web')
+  try {
+    run()
+  } finally {
+    platform.restore()
+  }
 }
 
 function renderComposer(
@@ -170,7 +181,21 @@ describe('Kael composer and failure boundary', () => {
     }, 'wrapped Customer text must remain visible on iOS New Architecture')
   })
 
-  it('resets measured input height when the parent clears the draft', () => {
+  it('lets the native field grow with its text up to the cap, scroll past it, and insert a line on Return', () => {
+    withPillarContext(PILLAR, () => {
+      const composer = renderComposer('light')
+      const input = screen.getByTestId('customer-v21-kael-input')
+
+      expect(input).toHaveStyle({ maxHeight: 124, minHeight: 44 })
+      expect(StyleSheet.flatten(input.props.style).height).toBeUndefined()
+      expect(input.props.scrollEnabled).toBe(true)
+      expect(input.props.submitBehavior).toBe('newline')
+      expect(input.props.returnKeyType).toBe('default')
+      composer.unmount()
+    }, 'a pinned native height never grew on iOS and pushed earlier lines out of view (Build 51)')
+  })
+
+  it('resets measured input height on web when the parent clears the draft', () => onWeb(() => {
     withPillarContext(PILLAR, () => {
       const composer = renderComposer('light')
       const input = screen.getByTestId('customer-v21-kael-input')
@@ -186,9 +211,9 @@ describe('Kael composer and failure boundary', () => {
       composer.rerenderDraft('New draft')
       expect(input).toHaveStyle({ height: 44 })
     }, 'clearing a sent draft must not leave the next message in a stale tall input')
-  })
+  }))
 
-  it('keeps the measured height while an edit leaves the line count unchanged', () => {
+  it('keeps the web measured height while an edit leaves the line count unchanged', () => onWeb(() => {
     withPillarContext(PILLAR, () => {
       const composer = renderComposer('light')
       const input = screen.getByTestId('customer-v21-kael-input')
@@ -201,9 +226,9 @@ describe('Kael composer and failure boundary', () => {
       composer.rerenderDraft('Xin chào Kael!')
       expect(input).toHaveStyle({ height: 64 })
     }, 'a two-line draft must not collapse to one line and scroll its first line out of view')
-  })
+  }))
 
-  it('keeps a measurement that arrives before a restored draft renders', () => {
+  it('keeps a web measurement that arrives before a restored draft renders', () => onWeb(() => {
     withPillarContext(PILLAR, () => {
       const composer = renderComposer('light')
       const input = screen.getByTestId('customer-v21-kael-input')
@@ -215,7 +240,7 @@ describe('Kael composer and failure boundary', () => {
       composer.rerenderDraft('Xin chào Kael, máy lạnh nhà tôi chảy nước')
       expect(input).toHaveStyle({ height: 64 })
     }, 'web measures a restored draft before the parent renders it; that height must not be discarded')
-  })
+  }))
 
   it('shows normal-chat image thumbnails inside the composer with X removal and no filename text', () => {
     withPillarContext(PILLAR, () => {

@@ -12,6 +12,7 @@ import {
 import { GlassSurface } from '@/components/ui/glass-surface'
 import { KaelSendStopGlyph } from '@/components/ui/kael-send-stop-glyph'
 import { useGlassAccessibility } from '@/components/ui/accessibility-motion'
+import { useKaelComposerInputSizing } from '@/components/ui/kael-composer-input-height'
 import { KaelTextField } from '@/components/ui/kael-primitives'
 import { NormalChatGhostOverlay } from '@/components/ui/normal-chat-ghost-overlay'
 import { NormalChatStarterRail } from '@/components/ui/normal-chat-starter-rail'
@@ -26,9 +27,6 @@ import { MediaDraftPreviewTray } from './media-draft-preview-tray'
 import { customerV21ChatStyles as chatStyles } from './chat-styles'
 import { canSubmitCustomerKaelComposer } from './customer-kael-composer-state'
 import { CUSTOMER_KAEL_MESSAGE_MAX_LENGTH } from './customer-kael-message-limits'
-
-const COMPOSER_MIN_HEIGHT = 44
-const COMPOSER_MAX_HEIGHT = 124
 
 export type RootChatStyles = {
   bodyText: StyleProp<TextStyle>
@@ -114,13 +112,7 @@ export function KaelChatComposer({
   // The idle send button is a visible soft disc, the same as the Worker composer's.
   const idleSendBackground = tokens.mode === 'light' ? color.surface.soft : tokens.glassStrong
   const idleSendBorder = tokens.mode === 'light' ? color.surface.stroke : tokens.glassBorder
-  // Measurement survives edits that keep the line count: native fires no new
-  // contentSize event for them, and web can fire it before the new draft renders.
-  const [measuredInput, setMeasuredInput] = useState({ hasDraft: Boolean(draft), height: COMPOSER_MIN_HEIGHT })
-  if (measuredInput.hasDraft !== Boolean(draft)) {
-    setMeasuredInput({ hasDraft: Boolean(draft), height: draft ? measuredInput.height : COMPOSER_MIN_HEIGHT })
-  }
-  const inputHeight = draft ? measuredInput.height : COMPOSER_MIN_HEIGHT
+  const inputSizing = useKaelComposerInputSizing(draft)
   const ghost = !allowVideoSelection && !composerBusy
     ? getNormalChatGhostSuffix(draft, normalChatSuggestions, selection, isComposing)
     : null
@@ -134,7 +126,7 @@ export function KaelChatComposer({
     setSelection(null)
     inputRef.current?.focus()
   }
-  const inputTextStyle = [rootStyles.composerInput, { height: inputHeight }, textInputNoOutlineStyle, { color: tokens.text }]
+  const inputTextStyle = [rootStyles.composerInput, inputSizing.inputStyle, textInputNoOutlineStyle, { color: tokens.text }]
   return (
     <>
       {normalChatStarterVisible && !allowVideoSelection ? (
@@ -247,22 +239,18 @@ export function KaelChatComposer({
             setSelection(null)
             onDraftChange(nextDraft)
           }}
-          onContentSizeChange={(event) => {
-            const nextHeight = event.nativeEvent.contentSize.height
-            const height = Math.min(Math.max(nextHeight, COMPOSER_MIN_HEIGHT), COMPOSER_MAX_HEIGHT)
-            setMeasuredInput((current) => ({ ...current, height }))
-          }}
+          onContentSizeChange={inputSizing.onContentSizeChange}
           onFocus={onFocus}
           onSelectionChange={(event) => setSelection(event.nativeEvent.selection)}
           onSubmitEditing={onSendMessage}
           maxLength={CUSTOMER_KAEL_MESSAGE_MAX_LENGTH}
           placeholder={ghost ? '' : composerPlaceholder}
           placeholderTextColor={tokens.subtleText}
-          returnKeyType="send"
+          returnKeyType={inputSizing.returnKeyType}
           selectionColor={isLightNormalChat ? color.kaelChatSend.idleForeground : tokens.primary}
-          scrollEnabled={inputHeight >= COMPOSER_MAX_HEIGHT}
+          scrollEnabled={inputSizing.scrollEnabled}
           shellStyle={rootStyles.composerTextFieldStack}
-          submitBehavior="submit"
+          submitBehavior={inputSizing.submitBehavior}
           style={[...inputTextStyle, { color: ghost ? 'transparent' : tokens.text, zIndex: 1 }]}
           testID="customer-v21-kael-input"
           value={draft}
