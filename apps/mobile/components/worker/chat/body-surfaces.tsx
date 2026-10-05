@@ -12,11 +12,13 @@ import Animated, { FadeInDown } from 'react-native-reanimated'
 import type { LocalDeal, ServiceType } from '@nestscout/shared'
 
 import { KaelReasoningReceipt } from '@/components/ui/kael-reasoning-receipt'
+import { KaelChatTurnImages } from '@/components/ui/kael-chat-turn-images'
 import { motionTokens } from '@/components/ui/motion-tokens'
 import { useKaelResponseStreamPresentation } from '@/components/ui/use-kael-respond-stream-presentation'
 import { color } from '@/design/theme'
 import { localizedServiceLabel, localizedStatusLabel, type AppLanguage } from '@/lib/app-language'
 import type { KaelReasoningReceiptState } from '@/lib/kael-reasoning-receipt'
+import type { KaelChatTurnImage } from '@/lib/kael-chat-local-media'
 import {
   initialKaelResponseStreamState,
   type KaelResponseStreamState,
@@ -32,6 +34,7 @@ type WorkerV5ServiceIconMap = Partial<Record<ServiceType, ImageSourcePropType>>
 
 type WorkerV5KaelOrbLiveTurn = {
   id: string
+  images?: KaelChatTurnImage[]
   role: 'kael' | 'worker'
   text: string
 }
@@ -278,12 +281,22 @@ export function WorkerV5KaelOrbBody({
             {visibleThreadTurns.map((turn, index) => (
               <Fragment key={turn.id}>
                 {receiptBeforeFinalKaelTurn && index === visibleThreadTurns.length - 1 ? reasoningReceiptNode : null}
-                <WorkerV5KaelOrbBubble
-                  align={turn.role === 'worker' ? 'right' : undefined}
-                  appearance={mode === 'normal' && turn.role === 'kael' ? 'bare' : 'bubble'}
-                  body={turn.text}
-                  speakerLabel={turn.role === 'worker' ? textByLanguage(language, 'Bạn', 'You') : 'Kael'}
-                />
+                {turn.images?.length ? (
+                  <KaelChatTurnImages
+                    colors={{ border: color.surface.stroke, muted: color.text.secondary, surface: color.surface.soft }}
+                    images={turn.images}
+                    language={language}
+                    testID={`worker-v5-kael-turn-images-${turn.id}`}
+                  />
+                ) : null}
+                {turn.text.trim() ? (
+                  <WorkerV5KaelOrbBubble
+                    align={turn.role === 'worker' ? 'right' : undefined}
+                    appearance={mode === 'normal' && turn.role === 'kael' ? 'bare' : 'bubble'}
+                    body={turn.text}
+                    speakerLabel={turn.role === 'worker' ? textByLanguage(language, 'Bạn', 'You') : 'Kael'}
+                  />
+                ) : null}
               </Fragment>
             ))}
             {!receiptBeforeFinalKaelTurn ? reasoningReceiptNode : null}

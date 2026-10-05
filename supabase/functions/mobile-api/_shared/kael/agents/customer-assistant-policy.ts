@@ -131,7 +131,11 @@ export function inferAssistantServiceType(
   return null;
 }
 
-export function classifyAssistantTopic(text: string, serviceType: ServiceType | null): KaelTopic {
+export function classifyAssistantTopic(
+  text: string,
+  serviceType: ServiceType | null,
+  surface: CustomerAssistantSurface = "customer_case",
+): KaelTopic {
   const normalized = normalizeText(text);
   if (/\b(lua dao|scam|fraud|gia mao|mao danh|otp|ma xac nhan|duong dan la|link la|qr la|dat coc|chuyen khoan truoc|ngoai ung dung|ngoai luong|tai khoan ca nhan|tai khoan khac|ep thanh toan|doi gia|thu them phi|giu giay to|xin can cuoc|chup can cuoc)\b/.test(normalized)) {
     return "service_trust_safety";
@@ -179,7 +183,9 @@ export function classifyAssistantTopic(text: string, serviceType: ServiceType | 
   if (/^(xin chao|chao|hello|hi|hey|kael|giup toi|help me)[.!? ]*$/.test(normalized)) {
     return "support_redirect";
   }
-  return "out_of_scope_services_anything";
+  // Normal chat answers general questions and attached images, so a message that names no service
+  // is ordinary conversation there. Only a case chat treats it as outside the six services.
+  return surface === "customer_normal" ? "normal_chat_general" : "out_of_scope_services_anything";
 }
 
 export function normalizeText(text: string) {

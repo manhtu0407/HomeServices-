@@ -44,6 +44,7 @@ export type KaelTopic =
   | "service_trust_safety"
   | "legal_safety_awareness"
   | "support_redirect"
+  | "normal_chat_general"
   | "medical_advice"
   | "legal_advice"
   | "financial_advice"

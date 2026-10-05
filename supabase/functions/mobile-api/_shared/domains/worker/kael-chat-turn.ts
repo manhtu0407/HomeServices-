@@ -42,7 +42,11 @@ import {
   buildSafeWorkerVisionFinding,
   prepareWorkerKaelVisionUrls,
 } from "./kael-media.ts";
-import { buildKaelVisionValidationEvidence, createSignedVisionUrls } from "../kael-chat/media-vision.ts";
+import {
+  buildKaelVisionValidationEvidence,
+  createKaelChatMediaPreviews,
+  createSignedVisionUrls,
+} from "../kael-chat/media-vision.ts";
 import { validateAndConsumeKaelChatEvidenceMediaRefs } from "../kael-chat/media-upload.ts";
 import {
   claimWorkerKaelChatTurn,
@@ -76,9 +80,19 @@ export async function getWorkerKaelChat(
   if (turnsResult.error) {
     apiFailure("DB_ERROR", "Kh\u00f4ng th\u1ec3 t\u1ea3i l\u1ecbch s\u1eed Kael", 500);
   }
+  const turns = (turnsResult.data ?? []).map(serializeWorkerKaelTurn);
+  const refs = turns.flatMap((turn) => turn.role === "worker" ? turn.media_refs : []);
+  const previews = new Map(
+    (await createKaelChatMediaPreviews(ctx, refs, nullableString(session.worker_id)))
+      .map((preview) => [preview.ref, preview]),
+  );
   return {
     session: serializeWorkerKaelSession(session),
-    turns: (turnsResult.data ?? []).map(serializeWorkerKaelTurn),
+    turns: turns.map((turn) =>
+      turn.role === "worker" && turn.media_refs.length > 0
+        ? { ...turn, media_previews: turn.media_refs.map((ref) => previews.get(ref) ?? { ref, status: "unavailable" as const, url: null }) }
+        : turn
+    ),
   };
 }
 

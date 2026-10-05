@@ -1,3 +1,4 @@
+import type { KaelChatMediaPreview } from '@/lib/kael-chat-local-media'
 import type {
   CustomerKaelConversationCreateInput,
   CustomerKaelConversationMode,
@@ -41,6 +42,7 @@ export type CustomerKaelConversationTurn = {
   role: 'customer' | 'kael' | 'system'
   text_content: string
   media_refs?: string[]
+  media_previews?: KaelChatMediaPreview[]
   created_at: string
 }
 

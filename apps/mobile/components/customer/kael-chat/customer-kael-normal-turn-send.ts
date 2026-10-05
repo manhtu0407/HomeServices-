@@ -1,5 +1,6 @@
 import type { AppLanguage } from '@/lib/app-language'
 import type { LocalMediaUploadDraft } from '@/lib/media-upload'
+import { rememberKaelChatLocalMedia } from '@/lib/kael-chat-local-media'
 import {
   cleanupKaelChatMediaRefs,
   localizeMediaUploadFailure,
@@ -14,7 +15,6 @@ type Props = {
   beginReasoningReceipt: () => void
   clearComposer: () => void
   commitComposer: () => void
-  clearMediaDrafts: () => void
   completeLegacyStreamingReply: () => void
   conversations: ReturnType<typeof useCustomerKaelConversations>
   failReasoningReceipt: (message: string) => void
@@ -35,6 +35,8 @@ type Props = {
   restoreComposer: () => void
   setError: (message: string | null) => void
   setLoading: (loading: boolean) => void
+  setMediaDrafts: (drafts: LocalMediaUploadDraft[]) => void
+  setPendingNormalImageUris: (uris: string[]) => void
   setPendingNormalMessage: (message: string | null) => void
   setUploadingMedia: (uploading: boolean) => void
   stopProcessLines: () => void
@@ -45,7 +47,6 @@ export async function sendCustomerNormalTurn({
   beginReasoningReceipt,
   clearComposer,
   commitComposer,
-  clearMediaDrafts,
   completeLegacyStreamingReply,
   conversations,
   failReasoningReceipt,
@@ -63,9 +64,11 @@ export async function sendCustomerNormalTurn({
   onResponseEvent,
   onRetainStreamingReply,
   resetReasoningReceipt,
-  restoreComposer,
+  restoreComposer: restoreComposerText,
   setError,
   setLoading,
+  setMediaDrafts,
+  setPendingNormalImageUris,
   setPendingNormalMessage,
   setUploadingMedia,
   stopProcessLines,
@@ -77,7 +80,17 @@ export async function sendCustomerNormalTurn({
     return
   }
 
+  // The photos leave the composer with the message and ride in its pending bubble, as in any chat;
+  // every path that returns the message to the composer returns its photos too.
+  const restoreComposer = () => {
+    restoreComposerText()
+    if (hasComposerMedia) setMediaDrafts(mediaDrafts)
+  }
   setPendingNormalMessage(message)
+  if (hasComposerMedia) {
+    setPendingNormalImageUris(mediaDrafts.map((draft) => draft.uri))
+    setMediaDrafts([])
+  }
   beginReasoningReceipt()
   clearComposer()
   setLoading(true)
@@ -115,6 +128,7 @@ export async function sendCustomerNormalTurn({
         return
       }
       uploadedMediaRefs = uploaded.mediaRefs
+      rememberKaelChatLocalMedia(uploadedMediaRefs, mediaDrafts.map((draft) => draft.uri))
     }
     sendStarted = true
     const result = await conversations.sendConversationTurn(message, {
@@ -158,7 +172,6 @@ export async function sendCustomerNormalTurn({
     completeLegacyStreamingReply()
     onRetainStreamingReply(getReceivedResponseTerminal())
     commitComposer()
-    if (hasComposerMedia) clearMediaDrafts()
   } catch {
     if (sendStarted) outcomeUncertain = true
     await revokeUnusedMedia()

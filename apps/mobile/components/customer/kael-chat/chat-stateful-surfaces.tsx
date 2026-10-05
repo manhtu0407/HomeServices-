@@ -66,6 +66,7 @@ type Props = {
   onToggleNormalReasoningReceipt: () => void
   onToggleSessionMenu?: () => void
   pendingDraftMessage: string
+  pendingNormalImageUris: string[]
   pendingNormalMessage: string | null
   processLinesNode: ReactNode
   rootStyles: RootChatStyles
@@ -118,6 +119,7 @@ export function KaelChatSurfaceView({
   onToggleNormalReasoningReceipt,
   onToggleSessionMenu,
   pendingDraftMessage,
+  pendingNormalImageUris,
   pendingNormalMessage,
   processLinesNode,
   rootStyles,
@@ -158,6 +160,7 @@ export function KaelChatSurfaceView({
     normalReasoningReceipt,
     onToggleNormalReasoningReceipt,
     pendingDraftMessage,
+    pendingNormalImageUris,
     pendingNormalMessage,
     processLinesNode,
     reduceMotion,

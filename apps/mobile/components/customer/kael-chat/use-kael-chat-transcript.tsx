@@ -1,9 +1,11 @@
 import { useMemo, type ReactNode } from 'react'
 import { ActivityIndicator } from 'react-native'
 
+import { KaelChatTurnImages } from '@/components/ui/kael-chat-turn-images'
 import { KaelReasoningReceipt } from '@/components/ui/kael-reasoning-receipt'
 import { color } from '@/design/theme'
 import type { AppLanguage } from '@/lib/app-language'
+import type { KaelChatTurnImage } from '@/lib/kael-chat-local-media'
 import type { KaelReasoningReceiptState } from '@/lib/kael-reasoning-receipt'
 import { createCompletedKaelResponseState } from '@/lib/kael-response-stream'
 
@@ -20,6 +22,7 @@ import type { CustomerKaelMode } from '../ui/types'
 
 export type ChatTurnView = {
   id: string
+  images?: KaelChatTurnImage[]
   role: 'customer' | 'worker' | 'kael'
   text_content: string
 }
@@ -46,6 +49,7 @@ type Input = {
   normalReasoningReceipt: KaelReasoningReceiptState
   onToggleNormalReasoningReceipt: () => void
   pendingDraftMessage: string
+  pendingNormalImageUris: string[]
   pendingNormalMessage: string | null
   processLinesNode: ReactNode
   reduceMotion: boolean
@@ -62,7 +66,36 @@ function appendRow(rows: ChatTranscriptRow[], key: string, node: ReactNode) {
   rows.push({ key, node })
 }
 
+function CustomerTurnBubble({
+  images,
+  language,
+  testID,
+  text,
+  tokens,
+}: {
+  images: readonly KaelChatTurnImage[]
+  language: AppLanguage
+  testID?: string
+  text: string
+  tokens: CustomerThemeTokens
+}) {
+  return (
+    <>
+      <KaelChatTurnImages
+        colors={{ border: tokens.border, muted: tokens.muted, surface: tokens.service }}
+        images={images}
+        language={language}
+        testID={testID ? `${testID}-images` : 'customer-v21-kael-turn-images'}
+      />
+      {text.trim() ? <ChatBubble speaker="customer" testID={testID} text={text} tokens={tokens} /> : null}
+    </>
+  )
+}
+
 function renderTurn(turn: ChatTurnView, language: AppLanguage, reduceMotion: boolean, tokens: CustomerThemeTokens) {
+  if (turn.role === 'customer') {
+    return <CustomerTurnBubble images={turn.images ?? []} language={language} text={turn.text_content} tokens={tokens} />
+  }
   if (turn.role !== 'kael') return <ChatBubble speaker={turn.role} text={turn.text_content} tokens={tokens} />
   return <KaelResponseSurface language={language} reduceMotion={reduceMotion} state={createCompletedKaelResponseState(turn.text_content, turn.id)} tokens={tokens} />
 }
@@ -83,6 +116,7 @@ export function useKaelChatTranscript({
   normalReasoningReceipt,
   onToggleNormalReasoningReceipt,
   pendingDraftMessage,
+  pendingNormalImageUris,
   pendingNormalMessage,
   processLinesNode,
   reduceMotion,
@@ -94,7 +128,7 @@ export function useKaelChatTranscript({
   workerCandidateNode,
 }: Input) {
   const normalReasoningReceiptNode = useMemo(() => (
-    mode === 'normal' && !pendingNormalMessage && normalReasoningReceipt.status !== 'idle' ? (
+    mode === 'normal' && pendingNormalMessage === null && normalReasoningReceipt.status !== 'idle' ? (
       <KaelReasoningReceipt
         colors={{ accent: tokens.mode === 'light' ? color.brand.primaryDark : tokens.primary, border: tokens.border, mutedText: tokens.muted, surface: tokens.raised, text: tokens.text }}
         language={language}
@@ -105,9 +139,15 @@ export function useKaelChatTranscript({
     ) : null
   ), [language, mode, normalReasoningReceipt, onToggleNormalReasoningReceipt, pendingNormalMessage, tokens])
   const normalPendingReasoningNode = useMemo(() => (
-    mode === 'normal' && pendingNormalMessage ? (
+    mode === 'normal' && pendingNormalMessage !== null ? (
       <>
-        <ChatBubble speaker="customer" testID="customer-v21-kael-reasoning-pending-message" text={pendingNormalMessage} tokens={tokens} />
+        <CustomerTurnBubble
+          images={pendingNormalImageUris.map((uri) => ({ key: uri, status: 'available' as const, uri }))}
+          language={language}
+          testID="customer-v21-kael-reasoning-pending-message"
+          text={pendingNormalMessage}
+          tokens={tokens}
+        />
         <KaelReasoningReceipt
           colors={{ accent: tokens.mode === 'light' ? color.brand.primaryDark : tokens.primary, border: tokens.border, mutedText: tokens.muted, surface: tokens.raised, text: tokens.text }}
           language={language}
@@ -117,7 +157,7 @@ export function useKaelChatTranscript({
         />
       </>
     ) : null
-  ), [language, mode, normalReasoningReceipt, onToggleNormalReasoningReceipt, pendingNormalMessage, tokens])
+  ), [language, mode, normalReasoningReceipt, onToggleNormalReasoningReceipt, pendingNormalImageUris, pendingNormalMessage, tokens])
   const transcriptRows = useMemo(() => {
     const rows: ChatTranscriptRow[] = []
     if (emptyHeroVisible) appendRow(rows, 'empty-hero', <CustomerKaelEmptyHero language={language} mode={mode} reduceMotion={reduceMotion} tokens={tokens} />)

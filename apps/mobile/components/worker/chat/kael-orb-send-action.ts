@@ -10,6 +10,7 @@ import {
   localizeKaelConversationFailure,
   unreleasedClientKaelCopy,
 } from '@/lib/kael-conversation-failure'
+import { rememberKaelChatLocalMedia } from '@/lib/kael-chat-local-media'
 import { cleanupKaelChatMediaRefs, uploadJobMediaDrafts, uploadKaelChatMediaDrafts, type LocalMediaUploadDraft } from '@/lib/media-upload'
 import { workerKaelChatService } from '@/lib/services'
 import {
@@ -113,7 +114,16 @@ export function createWorkerKaelOrbSendAction({
     reasoningActions.reset()
     setStreamingReply(null)
     const workerTurnId = `worker-orb-${Date.now()}`
-    setTurns((current) => [...current, { id: workerTurnId, role: 'worker', text: content }])
+    // The photos leave the composer with the message and ride in its bubble; a send that does not
+    // complete hands them back to the composer.
+    const submittedMedia = mediaItems
+    setTurns((current) => [...current, {
+      id: workerTurnId,
+      images: submittedMedia.map((item) => ({ key: item.uri, status: 'available' as const, uri: item.uri })),
+      role: 'worker',
+      text: content,
+    }])
+    if (submittedMedia.length > 0) setMediaItems([])
 
     if (!canUseKaelSession) {
       setTurns((current) => [...current, { id: `kael-orb-${Date.now()}`, role: 'kael', text: advisoryUnavailableReply }])
@@ -186,6 +196,7 @@ export function createWorkerKaelOrbSendAction({
           return cancelSend()
         }
         mediaRefs = uploaded.mediaRefs
+        rememberKaelChatLocalMedia(mediaRefs, submittedMedia.map((item) => item.uri))
       }
 
       let sessionId = sessionRef.current?.jobId === currentJobId
@@ -355,7 +366,6 @@ export function createWorkerKaelOrbSendAction({
         setActiveSessionId(finalResponse.data.session.id)
         setProgress(finalResponse.data.session.progress)
         setTurns(workerV5KaelOrbTurnsFromResponse(finalResponse.data.turns))
-        setMediaItems([])
         commitSessionSummary(finalResponse.data.session)
         if (!receivedReasoningTerminal) {
           if (activeReasoningReceiptId) {
@@ -374,6 +384,7 @@ export function createWorkerKaelOrbSendAction({
       if (abortControllerRef.current === abortController) abortControllerRef.current = null
       if (sendRequestRef.current === sendRequestId) {
         if (!turnCompleted && !cancelled) reasoningActions.fail(interruptedMessage)
+        if (!turnCompleted && submittedMedia.length > 0) setMediaItems(submittedMedia)
         setBusy(false)
       }
     }
