@@ -456,19 +456,21 @@ export function WorkerHomeProductionSurface({
           <Header avatarUploadBusy={avatarUploadBusy} avatarUrl={runtime.workerProfile?.avatar_url ?? null} displayName={model.displayName} language={language} onPickAvatar={onPickAvatar} statusLabel={model.statusLabel} themeMode={themeMode} workerDisplayCode={model.workerDisplayCode} />
           <Hero language={language} mode={model.mode} onSearch={openKaelFromSearch} reduceMotion={glass.reduceMotion} searchError={searchError} searchMode={searchMode} setSearchMode={setSearchMode} />
           {runtime.workerProfile?.is_approved ? (
-            <WorkerV5AvailabilityCard
-              availabilityGuardReady={runtime.workerJobsHydrated}
-              avatarPresentation="workart"
-              hasActiveJob={hasActiveJob}
-              language={language}
-              onOpenProfileSetup={openProfile}
-              onToggleAvailability={runtime.actions.workerUpdateAvailability}
-              profile={runtime.workerProfile}
-              reduceMotion={glass.reduceMotion}
-              reduceTransparency={glass.reduceTransparency}
-              surface="default"
-              themeMode={themeMode}
-            />
+            <View style={styles.availabilitySlot} testID="worker-home-production-availability-slot">
+              <WorkerV5AvailabilityCard
+                availabilityGuardReady={runtime.workerJobsHydrated}
+                avatarPresentation="workart"
+                hasActiveJob={hasActiveJob}
+                language={language}
+                onOpenProfileSetup={openProfile}
+                onToggleAvailability={runtime.actions.workerUpdateAvailability}
+                profile={runtime.workerProfile}
+                reduceMotion={glass.reduceMotion}
+                reduceTransparency={glass.reduceTransparency}
+                surface="default"
+                themeMode={themeMode}
+              />
+            </View>
           ) : null}
           <WorkerHomeProductionEarningsCard earnings={runtime.workerEarnings} earningsError={runtime.workerEarningsError} language={language} onOpen={onOpenEarnings} onRetry={() => void runtime.actions.workerRefresh()} reduceMotion={glass.reduceMotion} themeMode={themeMode} />
           <Stats language={language} model={model} onOpenJobs={openJobs} onOpenProfile={openProfile} themeMode={themeMode} />
@@ -483,6 +485,7 @@ export function WorkerHomeProductionSurface({
 }
 
 const styles = StyleSheet.create({
+  availabilitySlot: { marginHorizontal: 11, marginTop: 10 },
   avatar: { borderRadius: 23, height: '100%', width: '100%' },
   avatarButton: { backgroundColor: '#FEFFFF', borderColor: '#D8EBE7', borderRadius: 23, borderWidth: 1, boxShadow: '0 4px 12px rgba(24,67,66,0.08)', height: 45, position: 'relative', width: 45 },
   avatarButtonDark: { backgroundColor: '#1D2522', borderColor: 'rgba(190,210,205,0.28)' },
