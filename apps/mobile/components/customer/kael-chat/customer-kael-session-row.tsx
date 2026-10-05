@@ -1,6 +1,8 @@
 import { Platform, Text, TextInput, View, type TextStyle } from 'react-native'
 import Svg, { Circle, Path } from 'react-native-svg'
 
+import { KaelSessionDeleteIcon, KaelSessionRenameCancelIcon, KaelSessionRenameSaveIcon } from '@/components/ui/kael-session-rename-icons'
+import { LiquidControlButton } from '@/components/ui/liquid-back-button'
 import { color } from '@/design/theme'
 import type { CustomerKaelConversationSession } from '@/lib/api-types/customer'
 
@@ -25,6 +27,10 @@ export type CustomerKaelSessionCopy = {
   deleteCaseAction: string
   deleteCaseConfirm: string
   deleteConfirm: string
+  deleteRowCaseNote: string
+  deleteRowCaseTitle: string
+  deleteRowNote: string
+  deleteRowTitle: string
   more: string
   pin: string
   rename: string
@@ -83,12 +89,13 @@ export function CustomerKaelSessionRow({
   tokens: CustomerThemeTokens
 }) {
   const pinned = Boolean(session.pinned_at)
+  const saveDisabled = draftTitle.trim().length === 0 || pending
   const linkedCaseWork = Boolean(session.case_session_id)
   const titleAndMeta = (
     <>
       <View style={[styles.statusDot, selected ? { backgroundColor: tokens.primary } : null]} />
       <View
-        style={[styles.sessionCopy, renaming ? styles.sessionCopyRenaming : null]}
+        style={styles.sessionCopy}
         testID={`customer-v21-kael-session-copy-${session.id}`}
       >
         <View style={styles.sessionTitleRow} testID={`customer-v21-kael-session-title-row-${session.id}`}>
@@ -113,38 +120,16 @@ export function CustomerKaelSessionRow({
               value={draftTitle}
             />
           ) : (
-            <Text numberOfLines={1} style={[styles.sessionTitle, { color: tokens.text }]}>{title}</Text>
+            <Text numberOfLines={1} style={[styles.sessionTitle, { color: tokens.text }]}>
+              {deleting ? (linkedCaseWork ? copy.deleteRowCaseTitle : copy.deleteRowTitle) : title}
+            </Text>
           )}
         </View>
-        <Text numberOfLines={1} style={[styles.sessionMeta, { color: tokens.muted }]}>{meta}</Text>
+        <Text numberOfLines={deleting ? 2 : 1} style={[styles.sessionMeta, { color: tokens.muted }]}>
+          {deleting ? (linkedCaseWork ? copy.deleteRowCaseNote : copy.deleteRowNote) : meta}
+        </Text>
       </View>
-      {renaming ? (
-        <View style={styles.inlineRenameActions} testID={`customer-v21-kael-session-rename-actions-${session.id}`}>
-          <KaelLiquidPressable
-            accessibilityLabel={copy.cancel}
-            accessibilityRole="button"
-            onPress={onCancelRename}
-            reduceMotion={reduceMotion}
-            style={styles.inlineRenameCancel}
-            testID="customer-v21-kael-session-title-cancel"
-          >
-            <Text style={[styles.inlineRenameCancelText, { color: tokens.muted }]}>{copy.cancel}</Text>
-          </KaelLiquidPressable>
-          <KaelLiquidPressable
-            accessibilityLabel={copy.save}
-            accessibilityRole="button"
-            accessibilityState={{ disabled: draftTitle.trim().length === 0 || pending }}
-            disabled={draftTitle.trim().length === 0 || pending}
-            onPress={onSaveRename}
-            reduceMotion={reduceMotion}
-            style={[styles.inlineRenameSave, { backgroundColor: tokens.primary }, draftTitle.trim().length === 0 || pending ? styles.disabled : null]}
-            testID="customer-v21-kael-session-title-save"
-          >
-            <Text style={styles.inlineRenameSaveText}>{copy.save}</Text>
-          </KaelLiquidPressable>
-        </View>
-      ) : null}
-      {!renaming && selected ? <Text style={[styles.check, { color: tokens.primary }]}>✓</Text> : null}
+      {!renaming && !deleting && selected ? <Text style={[styles.check, { color: tokens.primary }]}>✓</Text> : null}
     </>
   )
   return (
@@ -167,7 +152,7 @@ export function CustomerKaelSessionRow({
         ]}
         testID={`customer-v21-kael-session-row-${session.id}`}
       >
-        {renaming ? (
+        {renaming || deleting ? (
           <View style={styles.sessionMain} testID={`customer-v21-kael-session-${session.id}`}>
             {titleAndMeta}
           </View>
@@ -186,7 +171,63 @@ export function CustomerKaelSessionRow({
             {titleAndMeta}
           </KaelLiquidPressable>
         )}
-        {!renaming ? <KaelLiquidPressable
+        {renaming ? (
+          // Cancel and Save take the place of the options button, so the row and the menu keep their size.
+          <View style={styles.renameActions} testID={`customer-v21-kael-session-rename-actions-${session.id}`}>
+            <LiquidControlButton
+              accessibilityLabel={copy.cancel}
+              mode={tokens.mode}
+              onPress={onCancelRename}
+              size={30}
+              testID="customer-v21-kael-session-title-cancel"
+            >
+              <KaelSessionRenameCancelIcon color={tokens.muted} />
+            </LiquidControlButton>
+            <LiquidControlButton
+              accessibilityLabel={copy.save}
+              disabled={saveDisabled}
+              mode={tokens.mode}
+              onPress={onSaveRename}
+              size={30}
+              testID="customer-v21-kael-session-title-save"
+            >
+              <KaelSessionRenameSaveIcon color={tokens.primary} />
+            </LiquidControlButton>
+          </View>
+        ) : null}
+        {deleting ? (
+          // The confirmation replaces the row in place, like rename, so the menu keeps its size.
+          <View
+            accessibilityLabel={linkedCaseWork ? copy.deleteCaseConfirm : copy.deleteConfirm}
+            accessibilityRole="alert"
+            style={styles.renameActions}
+            testID={`customer-v21-kael-session-delete-confirm-${session.id}`}
+          >
+            <LiquidControlButton
+              accessibilityLabel={copy.cancel}
+              mode={tokens.mode}
+              onPress={onCancelDelete}
+              size={30}
+              testID={`customer-v21-kael-session-delete-cancel-${session.id}`}
+            >
+              <KaelSessionRenameCancelIcon color={tokens.muted} />
+            </LiquidControlButton>
+            <LiquidControlButton
+              accessibilityLabel={linkedCaseWork ? copy.deleteCaseAction : copy.delete}
+              disabled={pending}
+              mode={tokens.mode}
+              onPress={() => {
+                onCancelDelete()
+                void onArchive(session.id)
+              }}
+              size={30}
+              testID={`customer-v21-kael-session-delete-confirm-action-${session.id}`}
+            >
+              <KaelSessionDeleteIcon color="#E5484D" />
+            </LiquidControlButton>
+          </View>
+        ) : null}
+        {!renaming && !deleting ? <KaelLiquidPressable
           accessibilityLabel={`${copy.more} ${title}`}
           accessibilityRole="button"
           accessibilityState={{ busy: pending, expanded: actionsOpen || deleting || renaming }}
@@ -210,34 +251,6 @@ export function CustomerKaelSessionRow({
         </KaelLiquidReveal>
       ) : null}
 
-      {deleting ? (
-        <KaelLiquidReveal
-          accessibilityLabel={linkedCaseWork ? copy.deleteCaseConfirm : copy.deleteConfirm}
-          accessibilityRole="alert"
-          reduceMotion={reduceMotion}
-          style={[styles.deleteConfirm, linkedCaseWork ? styles.linkedCaseDeleteConfirm : null, { borderColor: tokens.border }]}
-          testID={`customer-v21-kael-session-delete-confirm-${session.id}`}
-        >
-          <Text numberOfLines={linkedCaseWork ? 4 : 2} style={[styles.deleteConfirmCopy, { color: tokens.text }]}>{linkedCaseWork ? copy.deleteCaseConfirm : copy.deleteConfirm}</Text>
-          <KaelLiquidPressable accessibilityRole="button" onPress={onCancelDelete} reduceMotion={reduceMotion} style={styles.confirmAction}>
-            <Text style={[styles.confirmCancel, { color: tokens.muted }]}>{copy.cancel}</Text>
-          </KaelLiquidPressable>
-          <KaelLiquidPressable
-            accessibilityLabel={linkedCaseWork ? copy.deleteCaseAction : copy.delete}
-            accessibilityRole="button"
-            disabled={pending}
-            onPress={() => {
-              onCancelDelete()
-              void onArchive(session.id)
-            }}
-            reduceMotion={reduceMotion}
-            style={[styles.confirmAction, pending ? styles.disabled : null]}
-            testID={`customer-v21-kael-session-delete-confirm-action-${session.id}`}
-          >
-            <Text numberOfLines={2} style={styles.confirmDelete}>{linkedCaseWork ? copy.deleteCaseAction : copy.delete}</Text>
-          </KaelLiquidPressable>
-        </KaelLiquidReveal>
-      ) : null}
 
     </View>
   )

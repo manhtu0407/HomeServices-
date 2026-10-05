@@ -1,6 +1,6 @@
 import { StyleSheet } from 'react-native'
 
-import { color, radius, shadow, typography } from '@/design/theme'
+import { color, shadow, typography } from '@/design/theme'
 
 export const styles = StyleSheet.create({
   actionDivider: {
@@ -48,45 +48,6 @@ export const styles = StyleSheet.create({
     ...typography.caption2,
     fontWeight: '600',
   },
-  deleteConfirm: {
-    alignItems: 'center',
-    backgroundColor: 'rgba(255, 250, 250, 0.98)',
-    borderColor: 'rgba(229, 72, 77, 0.22)',
-    borderRadius: 12,
-    borderWidth: 1,
-    flexDirection: 'row',
-    minHeight: 52,
-    overflow: 'hidden',
-  },
-  deleteConfirmAction: {
-    alignItems: 'center',
-    alignSelf: 'stretch',
-    justifyContent: 'center',
-    minHeight: 44,
-    minWidth: 42,
-    paddingHorizontal: 5,
-  },
-  deleteConfirmCancelText: {
-    color: color.text.muted,
-    ...typography.caption2,
-    fontWeight: '600',
-  },
-  deleteConfirmCopy: {
-    color: color.text.strong,
-    flex: 1,
-    ...typography.caption2,
-    fontWeight: '600',
-    paddingHorizontal: 7,
-  },
-  deleteConfirmDivider: {
-    alignSelf: 'center',
-    backgroundColor: 'rgba(229, 72, 77, 0.14)',
-    height: 26,
-    width: StyleSheet.hairlineWidth,
-  },
-  deleteConfirmPressed: {
-    backgroundColor: 'rgba(255, 232, 233, 0.82)',
-  },
   disabled: {
     opacity: 0.48,
   },
@@ -118,13 +79,10 @@ export const styles = StyleSheet.create({
     width: '59%',
     zIndex: 42,
   },
-  menuPositionExpanded: {
-    maxWidth: 440,
-    width: '92%',
-  },
   menuContent: {
+    gap: 8,
     overflow: 'hidden',
-    padding: 5,
+    padding: 6,
   },
   moreButton: {
     alignItems: 'center',
@@ -142,32 +100,6 @@ export const styles = StyleSheet.create({
   moreButtonOpen: {
     backgroundColor: 'rgba(217, 246, 240, 0.78)',
   },
-  newSession: {
-    alignItems: 'center',
-    alignSelf: 'stretch',
-    backgroundColor: 'rgba(255,255,255,0.18)',
-    borderColor: 'rgba(255,255,255,0.72)',
-    borderRadius: radius.pill,
-    borderWidth: 1,
-    flexDirection: 'row',
-    gap: 8,
-    justifyContent: 'center',
-    marginHorizontal: -4,
-    minHeight: 44,
-    paddingHorizontal: 13,
-    position: 'relative',
-  },
-  newSessionPressed: {
-    opacity: 0.78,
-  },
-  newSessionLiquid: {
-    borderWidth: 0,
-  },
-  newSessionText: {
-    color: color.brand.primary,
-    ...typography.footnote,
-    fontWeight: '600',
-  },
   pinnedIcon: {
     alignItems: 'center',
     justifyContent: 'center',
@@ -179,42 +111,6 @@ export const styles = StyleSheet.create({
   },
   pressedReduced: {
     opacity: 0.78,
-  },
-  inlineRenameActions: {
-    alignItems: 'center',
-    bottom: 0,
-    flexDirection: 'row',
-    gap: 2,
-    position: 'absolute',
-    right: 8,
-    top: 0,
-  },
-  inlineRenameCancel: {
-    alignItems: 'center',
-    borderRadius: radius.pill,
-    justifyContent: 'center',
-    minHeight: 44,
-    minWidth: 44,
-    paddingHorizontal: 3,
-  },
-  inlineRenameCancelText: {
-    color: color.text.muted,
-    ...typography.caption2,
-    fontWeight: '600',
-  },
-  inlineRenameSave: {
-    alignItems: 'center',
-    backgroundColor: color.brand.primary,
-    borderRadius: radius.pill,
-    justifyContent: 'center',
-    minHeight: 44,
-    minWidth: 44,
-    paddingHorizontal: 4,
-  },
-  inlineRenameSaveText: {
-    color: color.text.inverse,
-    ...typography.caption2,
-    fontWeight: '600',
   },
   session: {
     alignItems: 'center',
@@ -233,9 +129,6 @@ export const styles = StyleSheet.create({
     gap: 0,
     minWidth: 0,
   },
-  sessionCopyRenaming: {
-    paddingRight: 94,
-  },
   sessionGroup: {
     gap: 3,
   },
@@ -243,11 +136,14 @@ export const styles = StyleSheet.create({
     gap: 3,
   },
   sessionListViewport: {
-    marginTop: 6,
     maxHeight: 138,
   },
-  sessionListViewportExpanded: {
-    maxHeight: 240,
+  renameActions: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    flexShrink: 0,
+    gap: 6,
+    paddingRight: 7,
   },
   sessionMain: {
     alignItems: 'center',

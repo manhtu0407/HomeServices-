@@ -1,13 +1,12 @@
 import { useCallback, useRef, useState } from 'react'
-import { FlatList, Pressable, Text, useWindowDimensions, View } from 'react-native'
+import { FlatList, Text, View } from 'react-native'
 import type { WorkerKaelChatMode } from '@nestscout/shared'
 
-import { LiquidSurfaceOverlay } from '@/components/ui/liquid-back-button'
+import { KaelSessionNewButton } from '@/components/ui/kael-session-new-button'
 import { color } from '@/design/theme'
 import type { AppLanguage } from '@/lib/app-language'
 import type { WorkerKaelChatSession } from '@/lib/api-types'
 
-import { WorkerV5KaelSessionIcon } from './session-menu-icons'
 import { styles } from './session-menu-styles'
 import { type WorkerKaelSessionCopy, WorkerV5KaelSessionRow } from './worker-kael-session-row'
 
@@ -29,9 +28,7 @@ export type WorkerV5KaelSessionMenuProps = {
   sessions: WorkerKaelChatSession[]
 }
 
-type WorkerV5KaelSessionListProps = WorkerV5KaelSessionMenuProps & {
-  onRenameEditorOpenChange: (open: boolean) => void
-}
+type WorkerV5KaelSessionListProps = WorkerV5KaelSessionMenuProps
 
 export function WorkerV5KaelSessionList({
   activeSessionId,
@@ -40,7 +37,6 @@ export function WorkerV5KaelSessionList({
   language,
   loading,
   mode,
-  onRenameEditorOpenChange,
   onArchive,
   onCreate,
   onPin,
@@ -56,8 +52,11 @@ export function WorkerV5KaelSessionList({
   const [renamingSessionId, setRenamingSessionId] = useState<string | null>(null)
   const [draftTitle, setDraftTitle] = useState('')
   const sessionListRef = useRef<FlatList<WorkerKaelChatSession>>(null)
-  const { height: windowHeight } = useWindowDimensions()
   const copy = sessionMenuCopy(language, mode)
+  // A short list is locked at its resting height while a row shows actions or a confirmation, so
+  // that content scrolls inside the list instead of growing the menu.
+  const focusedSessionId = renamingSessionId ?? deletingSessionId ?? actionSessionId
+  const [restingListHeight, setRestingListHeight] = useState<number | null>(null)
 
   const scrollToSession = useCallback((sessionId: string) => {
     const sessionIndex = sessions.findIndex((session) => session.id === sessionId)
@@ -68,28 +67,24 @@ export function WorkerV5KaelSessionList({
     setActionSessionId(null)
     setDeletingSessionId(null)
     setRenamingSessionId(session.id)
-    onRenameEditorOpenChange(true)
     setDraftTitle(sessionTitle(session, language))
     scrollToSession(session.id)
-  }, [language, onRenameEditorOpenChange, scrollToSession])
+  }, [language, scrollToSession])
   const openActions = useCallback((sessionId: string, open: boolean) => {
     setRenamingSessionId(null)
     setDeletingSessionId(null)
-    onRenameEditorOpenChange(false)
     setActionSessionId(open ? null : sessionId)
     if (!open) scrollToSession(sessionId)
-  }, [onRenameEditorOpenChange, scrollToSession])
+  }, [scrollToSession])
   const beginDelete = useCallback((sessionId: string) => {
     setActionSessionId(null)
     setDeletingSessionId(sessionId)
-    onRenameEditorOpenChange(false)
     scrollToSession(sessionId)
-  }, [onRenameEditorOpenChange, scrollToSession])
+  }, [scrollToSession])
   const cancelRename = useCallback(() => {
     setRenamingSessionId(null)
     setDraftTitle('')
-    onRenameEditorOpenChange(false)
-  }, [onRenameEditorOpenChange])
+  }, [])
   const cancelDelete = useCallback(() => setDeletingSessionId(null), [])
   const saveRename = useCallback(() => {
     const sessionId = renamingSessionId
@@ -97,9 +92,8 @@ export function WorkerV5KaelSessionList({
     if (!sessionId || title.length === 0 || title.length > 64 || pendingSessionIds.includes(sessionId)) return
     setRenamingSessionId(null)
     setDraftTitle('')
-    onRenameEditorOpenChange(false)
     void onRename(sessionId, title)
-  }, [draftTitle, onRename, onRenameEditorOpenChange, pendingSessionIds, renamingSessionId])
+  }, [draftTitle, onRename, pendingSessionIds, renamingSessionId])
   const renderSession = useCallback(({ item: session }: { item: WorkerKaelChatSession }) => (
     <WorkerV5KaelSessionRow
       actionOpen={actionSessionId === session.id}
@@ -149,35 +143,16 @@ export function WorkerV5KaelSessionList({
 
   return (
     <View accessibilityLabel={copy.accessibilityLabel} accessibilityRole="menu" style={styles.menuContent} testID="worker-v5-kael-session-menu">
-      <Pressable
-        accessibilityLabel={copy.newSession}
-        accessibilityRole="button"
-        accessibilityState={{ disabled: !canCreate }}
+      <KaelSessionNewButton
+        accentColor={color.brand.primary}
         disabled={!canCreate}
+        label={copy.newSession}
+        mode="light"
         onPress={onCreate}
-        style={({ pressed }) => [
-          styles.newSession,
-          {
-            backgroundColor: reduceTransparency ? color.surface.raised : 'rgba(255,255,255,0.18)',
-            borderColor: reduceTransparency ? color.surface.stroke : 'rgba(255,255,255,0.72)',
-          },
-          !reduceTransparency ? styles.newSessionLiquid : null,
-          !canCreate && styles.disabled,
-          pressed && canCreate ? (reduceMotion ? styles.pressedReduced : styles.newSessionPressed) : null,
-        ]}
-        testID="worker-v5-kael-session-new"
-      >
-        {!reduceTransparency ? (
-          <LiquidSurfaceOverlay
-            designHeight={44}
-            mode="light"
-            radius={22}
-            testID="worker-v5-kael-session-new-liquid"
-          />
-        ) : null}
-        <WorkerV5KaelSessionIcon kind="plus" size={21} testID="worker-v5-kael-session-new-plus" />
-        <Text style={styles.newSessionText} testID="worker-v5-kael-session-new-label">{copy.newSession}</Text>
-      </Pressable>
+        opaqueBackgroundColor={color.surface.raised}
+        opaqueBorderColor={color.surface.stroke}
+        testIDPrefix="worker-v5-kael"
+      />
 
       {loading ? <Text style={styles.feedback}>{copy.loading}</Text> : null}
       {!loading && error ? <Text style={styles.error}>{error}</Text> : null}
@@ -193,13 +168,10 @@ export function WorkerV5KaelSessionList({
           ref={sessionListRef}
           renderItem={renderSession}
           showsVerticalScrollIndicator={false}
-          style={[
-            styles.sessionListViewport,
-            renamingSessionId ? styles.sessionListViewportExpanded : null,
-            renamingSessionId
-              ? { maxHeight: Math.min(240, Math.max(120, windowHeight - 220)) }
-              : null,
-          ]}
+          onLayout={(event) => {
+            if (!focusedSessionId) setRestingListHeight(event.nativeEvent.layout.height)
+          }}
+          style={[styles.sessionListViewport, focusedSessionId && restingListHeight ? { height: restingListHeight } : null]}
           testID="worker-v5-kael-session-list"
         />
       ) : null}
@@ -219,13 +191,13 @@ function sessionMenuCopy(language: AppLanguage, mode: WorkerKaelChatMode): Worke
   return language === 'vi'
     ? {
         accessibilityLabel: 'Các cuộc trò chuyện Kael', cancel: 'Hủy', delete: 'Xóa',
-        deleteConfirm: 'Xóa khỏi danh sách? Nội dung vẫn được lưu bảo mật.', empty,
+        deleteConfirm: 'Xóa khỏi danh sách? Nội dung vẫn được lưu bảo mật.', deleteRowNote: 'Nội dung vẫn lưu bảo mật', deleteRowTitle: 'Xóa phiên?', empty,
         loading: 'Đang tải cuộc trò chuyện...', more: 'Tùy chọn cho', newSession: 'Cuộc trò chuyện mới',
         pin: 'Ghim', pinned: 'Đã ghim', rename: 'Đổi tên', renamePlaceholder: 'Tên cuộc trò chuyện', save: 'Lưu', unpin: 'Bỏ ghim',
       }
     : {
         accessibilityLabel: 'Kael conversations', cancel: 'Cancel', delete: 'Delete',
-        deleteConfirm: 'Remove from the list? Content remains securely retained.', empty,
+        deleteConfirm: 'Remove from the list? Content remains securely retained.', deleteRowNote: 'Content stays retained', deleteRowTitle: 'Delete chat?', empty,
         loading: 'Loading conversations...', more: 'Options for', newSession: 'New conversation',
         pin: 'Pin', pinned: 'Pinned', rename: 'Rename', renamePlaceholder: 'Conversation name', save: 'Save', unpin: 'Unpin',
       }

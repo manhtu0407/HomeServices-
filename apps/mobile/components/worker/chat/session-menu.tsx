@@ -1,5 +1,4 @@
-import { useState } from 'react'
-import { useWindowDimensions, View } from 'react-native'
+import { View } from 'react-native'
 
 import { GlassSurface } from '@/components/ui/glass-surface'
 import { color } from '@/design/theme'
@@ -8,19 +7,14 @@ import { styles } from './session-menu-styles'
 import { WorkerV5KaelSessionList, type WorkerV5KaelSessionMenuProps } from './worker-kael-session-list'
 
 export function WorkerV5KaelSessionMenu({ reduceTransparency, ...props }: WorkerV5KaelSessionMenuProps) {
-  const [renameEditorOpen, setRenameEditorOpen] = useState(false)
-  const { width: windowWidth } = useWindowDimensions()
   return (
     <View
-      style={[
-        styles.menuPosition,
-        renameEditorOpen ? styles.menuPositionExpanded : null,
-        renameEditorOpen ? { maxWidth: Math.min(440, Math.max(0, windowWidth - 28)) } : null,
-      ]}
+      style={styles.menuPosition}
       testID="worker-v5-kael-session-menu-shell"
     >
+      {/* Denser than the header glass: the menu sits over the conversation, which must not read through it. */}
       <GlassSurface
-        backgroundColor={reduceTransparency ? color.surface.raised : 'rgba(255,255,255,0.18)'}
+        backgroundColor={reduceTransparency ? color.surface.raised : 'rgba(255,255,255,0.86)'}
         borderColor={reduceTransparency ? color.surface.stroke : 'rgba(255,255,255,0.72)'}
         material="liquid"
         showEdgeHighlight={false}
@@ -28,7 +22,7 @@ export function WorkerV5KaelSessionMenu({ reduceTransparency, ...props }: Worker
         testID="worker-v5-kael-session-menu-glass"
         variant="sheet"
       >
-        <WorkerV5KaelSessionList onRenameEditorOpenChange={setRenameEditorOpen} reduceTransparency={reduceTransparency} {...props} />
+        <WorkerV5KaelSessionList reduceTransparency={reduceTransparency} {...props} />
       </GlassSurface>
     </View>
   )

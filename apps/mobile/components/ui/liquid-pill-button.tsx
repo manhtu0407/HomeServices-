@@ -113,6 +113,8 @@ const styles = StyleSheet.create({
     borderCurve: 'continuous',
     borderWidth: 1,
     boxShadow: '0 7px 16px rgba(8,125,114,0.08)',
+    flexDirection: 'row',
+    gap: 8,
     justifyContent: 'center',
     overflow: 'hidden',
   },

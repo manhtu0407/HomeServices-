@@ -1,5 +1,7 @@
 import { Platform, Pressable, Text, TextInput, View, type TextStyle } from 'react-native'
 
+import { KaelSessionDeleteIcon, KaelSessionRenameCancelIcon, KaelSessionRenameSaveIcon } from '@/components/ui/kael-session-rename-icons'
+import { LiquidControlButton } from '@/components/ui/liquid-back-button'
 import { color } from '@/design/theme'
 import type { WorkerKaelChatSession } from '@/lib/api-types'
 
@@ -20,6 +22,8 @@ export type WorkerKaelSessionCopy = {
   cancel: string
   delete: string
   deleteConfirm: string
+  deleteRowNote: string
+  deleteRowTitle: string
   more: string
   pin: string
   pinned: string
@@ -77,11 +81,12 @@ export function WorkerV5KaelSessionRow({
   title: string
 }) {
   const pinned = Boolean(session.pinned_at)
+  const saveDisabled = draftTitle.trim().length === 0 || pending
   const titleAndMeta = (
     <>
       <View style={[styles.statusDot, selected ? styles.statusDotSelected : null]} />
       <View
-        style={[styles.sessionCopy, renaming ? styles.sessionCopyRenaming : null]}
+        style={styles.sessionCopy}
         testID={`worker-v5-kael-session-copy-${session.id}`}
       >
         <View style={styles.sessionTitleRow} testID={`worker-v5-kael-session-title-row-${session.id}`}>
@@ -110,36 +115,12 @@ export function WorkerV5KaelSessionRow({
               value={draftTitle}
             />
           ) : (
-            <Text numberOfLines={1} style={styles.sessionTitle}>{title}</Text>
+            <Text numberOfLines={1} style={styles.sessionTitle}>{deleting ? copy.deleteRowTitle : title}</Text>
           )}
         </View>
-        <Text numberOfLines={1} style={styles.sessionMeta}>{meta}</Text>
+        <Text numberOfLines={1} style={styles.sessionMeta}>{deleting ? copy.deleteRowNote : meta}</Text>
       </View>
-      {renaming ? (
-        <View style={styles.inlineRenameActions} testID={`worker-v5-kael-session-rename-actions-${session.id}`}>
-          <Pressable
-            accessibilityLabel={copy.cancel}
-            accessibilityRole="button"
-            onPress={onCancelRename}
-            style={({ pressed }) => [styles.inlineRenameCancel, pressed ? styles.pressedReduced : null]}
-            testID="worker-v5-kael-session-title-cancel"
-          >
-            <Text style={styles.inlineRenameCancelText}>{copy.cancel}</Text>
-          </Pressable>
-          <Pressable
-            accessibilityLabel={copy.save}
-            accessibilityRole="button"
-            accessibilityState={{ disabled: draftTitle.trim().length === 0 || pending }}
-            disabled={draftTitle.trim().length === 0 || pending}
-            onPress={onSaveRename}
-            style={({ pressed }) => [styles.inlineRenameSave, draftTitle.trim().length === 0 || pending ? styles.disabled : null, pressed ? styles.pressedReduced : null]}
-            testID="worker-v5-kael-session-title-save"
-          >
-            <Text style={styles.inlineRenameSaveText}>{copy.save}</Text>
-          </Pressable>
-        </View>
-      ) : null}
-      {!renaming && selected ? <Text style={styles.check}>✓</Text> : null}
+      {!renaming && !deleting && selected ? <Text style={styles.check}>✓</Text> : null}
     </>
   )
   return (
@@ -158,7 +139,7 @@ export function WorkerV5KaelSessionRow({
         ]}
         testID={`worker-v5-kael-session-row-${session.id}`}
       >
-        {renaming ? (
+        {renaming || deleting ? (
           <View style={styles.sessionMain} testID={`worker-v5-kael-session-${session.id}`}>
             {titleAndMeta}
           </View>
@@ -175,7 +156,38 @@ export function WorkerV5KaelSessionRow({
             {titleAndMeta}
           </Pressable>
         )}
-        {!renaming ? <Pressable
+        {renaming ? (
+          // Cancel and Save take the place of the options button, so the row and the menu keep their size.
+          <View style={styles.renameActions} testID={`worker-v5-kael-session-rename-actions-${session.id}`}>
+            <LiquidControlButton accessibilityLabel={copy.cancel} onPress={onCancelRename} size={30} testID="worker-v5-kael-session-title-cancel">
+              <KaelSessionRenameCancelIcon color={color.text.muted} />
+            </LiquidControlButton>
+            <LiquidControlButton accessibilityLabel={copy.save} disabled={saveDisabled} onPress={onSaveRename} size={30} testID="worker-v5-kael-session-title-save">
+              <KaelSessionRenameSaveIcon color={color.brand.primary} />
+            </LiquidControlButton>
+          </View>
+        ) : null}
+        {deleting ? (
+          // The confirmation replaces the row in place, like rename, so the menu keeps its size.
+          <View accessibilityLabel={copy.deleteConfirm} accessibilityRole="alert" style={styles.renameActions} testID={`worker-v5-kael-session-delete-confirm-${session.id}`}>
+            <LiquidControlButton accessibilityLabel={copy.cancel} disabled={pending} onPress={onCancelDelete} size={30} testID={`worker-v5-kael-session-delete-cancel-${session.id}`}>
+              <KaelSessionRenameCancelIcon color={color.text.muted} />
+            </LiquidControlButton>
+            <LiquidControlButton
+              accessibilityLabel={copy.delete}
+              disabled={pending}
+              onPress={() => {
+                onCancelDelete()
+                void onArchive(session.id)
+              }}
+              size={30}
+              testID={`worker-v5-kael-session-delete-submit-${session.id}`}
+            >
+              <KaelSessionDeleteIcon color="#E5484D" />
+            </LiquidControlButton>
+          </View>
+        ) : null}
+        {!renaming && !deleting ? <Pressable
           accessibilityLabel={`${copy.more} ${title}`}
           accessibilityRole="button"
           accessibilityState={{ busy: pending, expanded: actionOpen || deleting || renaming }}
@@ -201,51 +213,6 @@ export function WorkerV5KaelSessionRow({
           sessionId={session.id}
         />
       ) : null}
-      {deleting ? (
-        <WorkerV5KaelSessionDeleteConfirm
-          cancelLabel={copy.cancel}
-          confirmCopy={copy.deleteConfirm}
-          deleteLabel={copy.delete}
-          disabled={pending}
-          onCancel={onCancelDelete}
-          onConfirm={() => {
-            onCancelDelete()
-            void onArchive(session.id)
-          }}
-          sessionId={session.id}
-        />
-      ) : null}
-    </View>
-  )
-}
-
-function WorkerV5KaelSessionDeleteConfirm({
-  cancelLabel,
-  confirmCopy,
-  deleteLabel,
-  disabled,
-  onCancel,
-  onConfirm,
-  sessionId,
-}: {
-  cancelLabel: string
-  confirmCopy: string
-  deleteLabel: string
-  disabled: boolean
-  onCancel: () => void
-  onConfirm: () => void
-  sessionId: string
-}) {
-  return (
-    <View accessibilityLabel={confirmCopy} accessibilityRole="alert" style={styles.deleteConfirm} testID={`worker-v5-kael-session-delete-confirm-${sessionId}`}>
-      <Text numberOfLines={3} style={styles.deleteConfirmCopy}>{confirmCopy}</Text>
-      <Pressable accessibilityRole="button" accessibilityState={{ disabled }} disabled={disabled} onPress={onCancel} style={({ pressed }) => [styles.deleteConfirmAction, disabled ? styles.disabled : null, pressed && !disabled ? styles.actionRowPressed : null]} testID={`worker-v5-kael-session-delete-cancel-${sessionId}`}>
-        <Text style={styles.deleteConfirmCancelText}>{cancelLabel}</Text>
-      </Pressable>
-      <View style={styles.deleteConfirmDivider} />
-      <Pressable accessibilityRole="button" accessibilityState={{ disabled }} disabled={disabled} onPress={onConfirm} style={({ pressed }) => [styles.deleteConfirmAction, disabled ? styles.disabled : null, pressed && !disabled ? styles.deleteConfirmPressed : null]} testID={`worker-v5-kael-session-delete-submit-${sessionId}`}>
-        <Text style={styles.deleteActionText}>{deleteLabel}</Text>
-      </Pressable>
     </View>
   )
 }

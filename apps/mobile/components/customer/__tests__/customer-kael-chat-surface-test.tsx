@@ -708,7 +708,7 @@ describe('active customer Kael chat surface wiring', () => {
     const liquidReveal = readCustomerSource('kael-chat/kael-liquid-reveal.tsx')
 
     expect(header).toContain('KaelLiquidPressable')
-    expect(menu).toContain('KaelLiquidPressable')
+    expect(readCustomerSource('kael-chat/customer-kael-session-row.tsx')).toContain('KaelLiquidPressable')
     expect(menu).toContain('KaelLiquidReveal')
     expect(liquidPressable).toContain('motionTokens.liquid.press')
     expect(liquidReveal).toContain('motionTokens.liquid.entrance')
@@ -782,31 +782,30 @@ describe('active customer Kael chat surface wiring', () => {
     const sessionList = screen.getByTestId('customer-v21-kael-session-list')
 
     expect(StyleSheet.flatten(sessionList.props.style)).toMatchObject({
-      marginTop: 6,
       maxHeight: 138,
     })
     expect(StyleSheet.flatten(screen.getByTestId('customer-v21-kael-session-new-label').props.style)).toMatchObject({
-      fontSize: 13,
+      fontSize: 14,
+      fontWeight: '700',
     })
     expect(screen.getByTestId('customer-v21-kael-session-menu-glass')).toBeOnTheScreen()
     expect(screen.queryByTestId('customer-v21-kael-session-menu-liquid-layers')).toBeNull()
     expect(screen.getByTestId('customer-v21-kael-session-new-liquid-layers')).toBeOnTheScreen()
-    expect(StyleSheet.flatten(screen.getByTestId('customer-v21-kael-session-new').props.style)).toMatchObject({
-      alignSelf: 'stretch',
+    expect(StyleSheet.flatten(screen.getByTestId('customer-v21-kael-session-new-surface').props.style)).toMatchObject({
+      borderRadius: 24,
       borderWidth: 0,
       gap: 8,
-      marginHorizontal: -4,
-      paddingHorizontal: 13,
-      position: 'relative',
+      minHeight: 48,
     })
+    expect(StyleSheet.flatten(screen.getByTestId('customer-v21-kael-session-new-surface').props.style).marginHorizontal).toBeUndefined()
     expect(StyleSheet.flatten(screen.getByTestId('customer-v21-kael-session-row-session-spacing').props.style)).toMatchObject({
       borderCurve: 'continuous',
       borderRadius: 16,
       overflow: 'hidden',
       position: 'relative',
     })
-    expect(screen.getByTestId('customer-v21-kael-session-new-plus')).toHaveProp('height', 21)
-    expect(screen.getByTestId('customer-v21-kael-session-new-plus')).toHaveProp('width', 21)
+    expect(screen.getByTestId('customer-v21-kael-session-new-plus')).toHaveProp('height', 20)
+    expect(screen.getByTestId('customer-v21-kael-session-new-plus')).toHaveProp('width', 20)
   })
 
   it('sends a normal Kael message when the keyboard submits the composer', async () => {
@@ -2247,10 +2246,8 @@ describe('active customer Kael chat surface wiring', () => {
     const renameSave = screen.getByTestId('customer-v21-kael-session-title-save')
     expect(within(titleRow).getByTestId('customer-v21-kael-session-title-input')).toBeOnTheScreen()
     expect(screen.queryByTestId('customer-v21-kael-session-rename-editor-normal-session')).toBeNull()
-    expect(renameMenuStyle.width).toBe('92%')
-    expect(renameMenuStyle.maxWidth).toBeLessThanOrEqual(440)
-    expect(renameListStyle.maxHeight).toBeGreaterThan(138)
-    expect(renameListStyle.maxHeight).toBeLessThanOrEqual(240)
+    expect(renameMenuStyle).toMatchObject({ maxWidth: 208, width: '59%' })
+    expect(renameListStyle.maxHeight).toBe(138)
     expect(renameInput.props.selectTextOnFocus).toBeFalsy()
     expect(StyleSheet.flatten(renameInput.props.style)).toMatchObject({
       backgroundColor: 'transparent',
@@ -2259,15 +2256,12 @@ describe('active customer Kael chat surface wiring', () => {
       minWidth: 0,
       paddingHorizontal: 0,
     })
-    expect(StyleSheet.flatten(sessionCopy.props.style)).toMatchObject({ paddingRight: 94 })
-    expect(StyleSheet.flatten(renameActions.props.style)).toMatchObject({
-      bottom: 0,
-      position: 'absolute',
-      right: 8,
-      top: 0,
-    })
-    expect(StyleSheet.flatten(renameCancel.props.style)).toMatchObject({ minHeight: 44, minWidth: 44 })
-    expect(StyleSheet.flatten(renameSave.props.style)).toMatchObject({ minHeight: 44, minWidth: 44 })
+    expect(StyleSheet.flatten(sessionCopy.props.style).paddingRight).toBeUndefined()
+    expect(StyleSheet.flatten(renameActions.props.style)).toMatchObject({ flexDirection: 'row', flexShrink: 0 })
+    expect(StyleSheet.flatten(renameActions.props.style).position).toBeUndefined()
+    expect(StyleSheet.flatten(renameCancel.props.style)).toMatchObject({ height: 30, width: 30 })
+    expect(StyleSheet.flatten(renameSave.props.style)).toMatchObject({ height: 30, width: 30 })
+    expect(screen.getByTestId('customer-v21-kael-session-title-save-surface')).toBeOnTheScreen()
     fireEvent.changeText(screen.getByTestId('customer-v21-kael-session-title-input'), 'Nhà bếp')
     fireEvent.press(screen.getByTestId('customer-v21-kael-session-title-save'))
     await waitFor(() => expect(mockConversationRename).toHaveBeenCalledWith('normal-session', { title: 'Nhà bếp' }))
@@ -2275,8 +2269,7 @@ describe('active customer Kael chat surface wiring', () => {
     fireEvent.press(screen.getByTestId('customer-v21-kael-session-actions-normal-session'))
     fireEvent.press(screen.getByTestId('customer-v21-kael-session-delete-normal-session'))
     const deleteMenuStyle = StyleSheet.flatten(screen.getByTestId('customer-v21-kael-session-menu-shell').props.style)
-    expect(deleteMenuStyle.width).toBe('92%')
-    expect(deleteMenuStyle.maxWidth).toBeLessThanOrEqual(440)
+    expect(deleteMenuStyle).toMatchObject({ maxWidth: 208, width: '59%' })
     fireEvent.press(screen.getByTestId('customer-v21-kael-session-delete-confirm-action-normal-session'))
     await waitFor(() => expect(mockConversationArchive).toHaveBeenCalledWith('normal-session', false))
     expect(screen.queryByTestId('customer-v21-kael-session-normal-session')).toBeNull()
@@ -2733,7 +2726,7 @@ describe('active customer Kael chat surface wiring', () => {
     expect(menu).toContain("'Ghim'")
     expect(menu).toContain("'Đổi tên'")
     expect(menu).toContain("'Xóa'")
-    expect(menu).toContain('customer-v21-kael-session-new')
+    expect(menu).toContain('KaelSessionNewButton')
     expect(menuStyles).toContain('maxWidth: 208')
     expect(chatStyles).toContain('maxWidth: 208')
     expect(chatStyles).toContain("outlineColor: 'rgba(13,167,151,0.62)'")
