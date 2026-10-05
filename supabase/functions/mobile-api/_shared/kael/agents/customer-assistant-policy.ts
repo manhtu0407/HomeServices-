@@ -131,10 +131,14 @@ export function inferAssistantServiceType(
   return null;
 }
 
+// Everyday words about a home, so normal chat can take an unnamed question about the apartment.
+const HOME_CONTEXT = /\b(nha cua|nha minh|trong nha|ngoi nha|can nha|can ho|chung cu|phong ngu|phong khach|phong tam|nha tam|nha bep|ban cong|bon cau|ve sinh|tuong nha|tran nha|san nha|cua so|cua chinh|o cam|cong tac|bong den|day dien|voi nuoc|ong nuoc|lavabo|may lanh|dieu hoa|quat tran|giuong|nem|rem cua|tham trai san|sofa|am moc|nam moc|tham nuoc|ro ri|hu hong|don dep|mui hoi|home|house|apartment|bedroom|kitchen|bathroom|ceiling|socket|wiring|faucet|toilet|aircon|air conditioner|mattress|curtain|carpet|mold|damp)\b/;
+
 export function classifyAssistantTopic(
   text: string,
   serviceType: ServiceType | null,
   surface: CustomerAssistantSurface = "customer_case",
+  hasImages = false,
 ): KaelTopic {
   const normalized = normalizeText(text);
   if (/\b(lua dao|scam|fraud|gia mao|mao danh|otp|ma xac nhan|duong dan la|link la|qr la|dat coc|chuyen khoan truoc|ngoai ung dung|ngoai luong|tai khoan ca nhan|tai khoan khac|ep thanh toan|doi gia|thu them phi|giu giay to|xin can cuoc|chup can cuoc)\b/.test(normalized)) {
@@ -183,9 +187,10 @@ export function classifyAssistantTopic(
   if (/^(xin chao|chao|hello|hi|hey|kael|giup toi|help me)[.!? ]*$/.test(normalized)) {
     return "support_redirect";
   }
-  // Normal chat answers general questions and attached images, so a message that names no service
-  // is ordinary conversation there. Only a case chat treats it as outside the six services.
-  return surface === "customer_normal" ? "normal_chat_general" : "out_of_scope_services_anything";
+  // Normal chat looks at any attached photo and answers unnamed questions about the home; an
+  // unrelated text-only request is declined like everywhere else (RULES.md #6).
+  if (surface === "customer_normal" && (hasImages || HOME_CONTEXT.test(normalized))) return "normal_chat_general";
+  return "out_of_scope_services_anything";
 }
 
 export function normalizeText(text: string) {

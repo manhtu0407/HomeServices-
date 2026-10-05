@@ -9,16 +9,16 @@ import type { AIRequest } from '../../../../../supabase/functions/mobile-api/_sh
 export const PILLAR = {
   id: 'P311-customer-normal-chat-topic-gate',
   invariant:
-    'a Customer normal-chat message that names no service, with or without a photo, reaches the vision and answer providers instead of the canned out-of-scope refusal; explicit out-of-scope services and forbidden topics are still refused, and a case chat still treats an unnamed request as outside the six services',
+    'a Customer normal-chat message that names no service reaches the vision and answer providers when it carries a photo or is about the home, instead of the canned out-of-scope refusal; an unrelated text-only request, explicit out-of-scope services and forbidden topics are still refused without a provider call, and a case chat still treats an unnamed request as outside the six services',
   authority: [
-    'governance/RULES.md #6-#7 (Kael normal chat answers general questions; booking stays within the six services)',
+    'governance/RULES.md #6 (Kael declines unrelated requests; home questions and attached photos are in scope)',
     'governance/RULES.md #8 (a real photo must not silently degrade into a refusal)',
   ],
   target: 'supabase/functions/mobile-api/_shared/kael/agents/customer-assistant-policy.ts',
   layer: 'unit',
   siblings: ['P217-customer-assistant-image-analysis'],
   mutation:
-    'return out_of_scope_services_anything from the normal-chat fallthrough in classifyAssistantTopic — the photo and general-question cases turn red',
+    'return out_of_scope_services_anything from the normal-chat fallthrough, or return normal_chat_general for every unnamed message — the photo or home case, or the unrelated-request case, turns red',
 } as const satisfies PillarManifest
 
 const REFUSAL = /ngoài sáu dịch vụ đang hỗ trợ/
@@ -79,21 +79,22 @@ describe('P311 Customer normal-chat topic gate', () => {
     expect(answer.fallback_used).toBe(false)
   })
 
-  it('answers a general question with no photo through the normal-chat route', async () => {
+  it('answers an unnamed question about the home with no photo through the normal-chat route', async () => {
     const requests: AIRequest[] = []
     const answer = await runCustomerAssistant({
       callAI: recordingProvider(requests),
       language: 'vi',
-      message: 'Gợi ý giúp mình vài cuốn sách hay để đọc cuối tuần?',
+      message: 'Tường căn hộ mình bị ẩm mốc thì nên làm gì?',
       secrets: { knowledgeRetrievalEnabled: false },
       surface: 'customer_normal',
     })
-    expect(requests.map((request) => request.purpose), pillarWhy(PILLAR, 'general conversation is normal chat, not a service request'))
+    expect(requests.map((request) => request.purpose), pillarWhy(PILLAR, 'a home question is in scope for normal chat'))
       .toEqual(['normal_chat_response'])
     expect(answer.answer).not.toMatch(REFUSAL)
   })
 
   it.each([
+    ['an unrelated text-only request', 'Gợi ý giúp mình vài cuốn sách hay để đọc cuối tuần nha?', REFUSAL],
     ['an explicit out-of-scope service', 'Mình cần thuê người sơn nhà', REFUSAL],
     ['financial advice', 'Có nên đầu tư chứng khoán lúc này không?', /ngoài chuyên môn dịch vụ nhà ở/],
   ])('still refuses %s without calling a provider', async (_label, message, refusal) => {
@@ -112,6 +113,8 @@ describe('P311 Customer normal-chat topic gate', () => {
   it('keeps an unnamed request outside the six services in a case chat', () => {
     expect(classifyAssistantTopic('Ảnh này là ảnh gì?', null, 'customer_case'), pillarWhy(PILLAR, 'case chat stays within the six services'))
       .toBe('out_of_scope_services_anything')
-    expect(classifyAssistantTopic('Ảnh này là ảnh gì?', null, 'customer_normal')).toBe('normal_chat_general')
+    expect(classifyAssistantTopic('Ảnh này là ảnh gì?', null, 'customer_normal', true)).toBe('normal_chat_general')
+    expect(classifyAssistantTopic('Giúp mình nha', null, 'customer_normal'), pillarWhy(PILLAR, 'the chat particle "nha" is not a home question'))
+      .toBe('out_of_scope_services_anything')
   })
 })
