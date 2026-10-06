@@ -729,7 +729,7 @@ export function CustomerBookingEntryView({
             {selectedService ? (
               <View style={[bookingStyles.bookingField, bookingStyles.bookingProblemField]}>
                 <BookingProblemChipAura reduceTransparency={reduceTransparency} />
-                <Text style={[bookingStyles.bookingFieldLabel, { color: tokens.text }]}>{language === 'vi' ? 'Chi tiết' : 'Details'}</Text>
+                <Text style={[isWideBookingForm ? bookingStyles.bookingWideDateLabel : bookingStyles.bookingFieldLabel, bookingStyles.bookingProblemLabel, { color: tokens.text }]}>{language === 'vi' ? 'Chi tiết' : 'Details'}</Text>
                 <View style={rootStyles.chipWrap}>
                   {problemOptions.map((problem) => (
                     <KaelChip

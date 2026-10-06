@@ -439,6 +439,9 @@ export const customerV21BookingStyles = StyleSheet.create({
     paddingBottom: 2,
     paddingTop: 2,
   },
+  bookingProblemLabel: {
+    marginBottom: 6,
+  },
   bookingJourneyArtwork: {
     height: 164,
     width: '100%',
