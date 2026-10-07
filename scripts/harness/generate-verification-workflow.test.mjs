@@ -62,6 +62,14 @@ test('every mutation and rollback step is the strict workflow text, byte for byt
   }
 })
 
+test('candidate and rollback counts include the optional release lane binding', () => {
+  for (const workflow of [strict, verification]) {
+    assert.match(workflow, /test "\$\{#release_bindings\[@\]\}" -eq "\$expected_binding_count"/u)
+    assert.match(workflow, /\[ "\$\{#rollback_bindings\[@\]\}" -eq "\$expected_rollback_binding_count" \]/u)
+    assert.equal((workflow.match(/releaseLane==='plan55-production-only'\?28:r\.releaseLane\?26:25/gu) ?? []).length, 2)
+  }
+})
+
 test('it can only be dispatched by hand on main with the confirmation phrase', () => {
   assert.match(verification, /^on:\n {2}workflow_dispatch:\n {4}inputs:\n {6}confirm:\n/mu)
   for (const trigger of ['push:', 'schedule:', 'pull_request', 'workflow_run', 'repository_dispatch']) {
