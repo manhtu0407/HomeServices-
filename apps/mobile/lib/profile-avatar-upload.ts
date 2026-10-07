@@ -4,6 +4,7 @@ import {
 
 import type { ApiResult } from './api'
 import { supabase } from './supabase'
+import { reencodeUploadImage } from './vision-image-reencode'
 
 export type ProfileAvatarDraft = {
   uri: string
@@ -41,13 +42,14 @@ type ProfileAvatarService<Response extends ProfileAvatarResponse> = {
 const ALLOWED_AVATAR_MIME_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp'])
 
 export async function uploadProfileAvatar<Response extends ProfileAvatarResponse>(
-  draft: ProfileAvatarDraft,
+  pickedDraft: ProfileAvatarDraft,
   service: ProfileAvatarService<Response>,
 ): Promise<ApiResult<Response>> {
   if (!supabase) {
     return failure('MEDIA_STORAGE_UNAVAILABLE', 'Kho ảnh đại diện chưa được cấu hình')
   }
 
+  const draft: ProfileAvatarDraft = await reencodeUploadImage({ ...pickedDraft, type: 'image' })
   const mimeType = normalizeAvatarMime(draft.mimeType, draft.fileName, draft.uri)
   if (!mimeType || !ALLOWED_AVATAR_MIME_TYPES.has(mimeType)) {
     return failure('UNSUPPORTED_MEDIA', 'Ảnh đại diện phải là JPEG, PNG hoặc WebP')

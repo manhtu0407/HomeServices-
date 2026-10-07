@@ -21,7 +21,7 @@ export const PILLAR = {
     'drop the maxOfferVnd bound from the counter check, or show the accept button while the balance is short — the worker balance case turns red',
 } as const satisfies PillarManifest
 
-jest.mock('@/lib/auth-provider', () => ({ useAuth: () => ({ session: { access_token: 'token-p233' } }) }))
+jest.mock('@/lib/auth-provider', () => ({ useAuth: () => ({ session: { access_token: 'token-p233', user: { id: 'owner-p233' } } }) }))
 jest.mock('@/lib/frontend-workflow/compensation-evidence', () => ({
   MAX_COMPENSATION_PHOTOS: 3,
   uploadCompensationPhotos: jest.fn(async () => ({ success: true, paths: [] })),

@@ -12,6 +12,10 @@ jest.mock('@/lib/services', () => ({
   },
 }))
 
+jest.mock('@/lib/auth-provider', () => ({
+  useAuth: () => ({ session: { user: { id: 'customer-candidate-test' } } }),
+}))
+
 it('loads saved workers from Activity and keeps the backend decision behind final confirmation', async () => {
   mockListMyServiceHistory.mockResolvedValue({
     data: {

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useReducer, useState } from 'react'
+import { useEffect, useMemo, useReducer, useState } from 'react'
 import { Image } from 'expo-image'
 import {
   ActivityIndicator,
@@ -20,10 +20,12 @@ import Animated, {
 import { KaelButton } from '@/components/ui/kael-primitives'
 import { motionTokens } from '@/components/ui/motion-tokens'
 import { ReduceMotionAwareEntranceView } from '@/components/ui/reduce-motion-aware-animation'
-import type { CustomerServiceHistoryItem } from '@/lib/api-types'
+import type { CustomerServiceHistoryItem, CustomerServiceHistoryResponse } from '@/lib/api-types'
 import { useAppLanguage, type AppLanguage } from '@/lib/app-language'
 import { useAuth } from '@/lib/auth-provider'
 import { formatVnd } from '@/lib/format'
+import { readResource, writeResource } from '@/lib/resource-cache/resource-cache'
+import { useCachedResource } from '@/lib/resource-cache/use-cached-resource'
 import { jobService } from '@/lib/services'
 
 import { customerV21Assets } from '../ui/assets'
@@ -36,6 +38,7 @@ import { ServiceHistoryFilterRail, type HistoryFilter } from './service-history-
 import { HistoryCardAura, HistoryEmptyCard } from './service-history-state-cards'
 import { V21Card, V21Screen, useCustomerV21SurfaceTheme } from '../ui/shared-surfaces'
 import { customerV21ServiceHistoryStyles as styles } from './service-history-styles'
+import { stableImageSource } from '@/lib/stable-image-source'
 
 const historyDayFormatters = {
   en: new Intl.DateTimeFormat('en-GB', {
@@ -89,6 +92,20 @@ const initialHistoryState: HistoryState = {
   loadFailed: false,
   loading: true,
   supportingJobId: null,
+}
+
+const listServiceHistory = () => jobService.listMyServiceHistory()
+
+// The server already confirmed the change, so the cached list is corrected in place instead of refetched.
+function markFavoriteInCachedHistory(ownerId: string, workerId: string, isFavorite: boolean) {
+  const cached = readResource<CustomerServiceHistoryResponse>(ownerId, 'customer.service-history')
+  if (!cached) return
+  writeResource(ownerId, 'customer.service-history', {
+    ...cached.data,
+    service_history: cached.data.service_history.map((item) => (
+      item.worker?.id === workerId ? { ...item, worker: { ...item.worker, is_favorite: isFavorite } } : item
+    )),
+  }, cached.fetchedAt)
 }
 
 function historyReducer(state: HistoryState, action: HistoryAction): HistoryState {
@@ -196,30 +213,24 @@ export function CustomerServiceHistorySurface({
   const { session } = useAuth()
   const localVisualAuditSession = session?.user.app_metadata?.provider === 'local-visual-audit'
 
-  const load = useCallback(async () => {
-    if (localVisualAuditSession) {
-      dispatch({ type: 'load_success', items: [] })
-      return
-    }
-    dispatch({ type: 'load_start' })
-    try {
-      const result = await jobService.listMyServiceHistory()
-      if (!result.success) {
-        dispatch({ type: 'load_failure' })
-        return
-      }
-      dispatch({ type: 'load_success', items: result.data.service_history })
-    } catch {
-      dispatch({ type: 'load_failure' })
-    }
-  }, [localVisualAuditSession])
+  const ownerId = session?.user.id ?? null
+  // Re-entering the tab renders the last list at once; the server is asked only once it is stale.
+  const history = useCachedResource({
+    enabled: !localVisualAuditSession,
+    fetcher: listServiceHistory,
+    key: 'customer.service-history',
+    ownerId,
+  })
+  const historyData = history.data
+  const historyStatus = history.status
+  const load = history.refresh
 
   useEffect(() => {
-    const initialLoad = setTimeout(() => {
-      void load()
-    }, 0)
-    return () => clearTimeout(initialLoad)
-  }, [load])
+    if (localVisualAuditSession) dispatch({ type: 'load_success', items: [] })
+    else if (historyData) dispatch({ type: 'load_success', items: historyData.service_history })
+    else if (historyStatus === 'error' || historyStatus === 'idle') dispatch({ type: 'load_failure' })
+    else dispatch({ type: 'load_start' })
+  }, [historyData, historyStatus, localVisualAuditSession])
 
   const visibleItems = useMemo(() => {
     if (filter === 'all') return items
@@ -238,6 +249,7 @@ export function CustomerServiceHistorySurface({
     try {
       const result = await jobService.setFavoriteWorker(worker.id, nextFavorite)
       if (!result.success) throw new Error('favorite_worker_update_failed')
+      if (ownerId) markFavoriteInCachedHistory(ownerId, worker.id, nextFavorite)
     } catch {
       dispatch({ type: 'favorite_change', workerId: worker.id, isFavorite: worker.is_favorite })
       Alert.alert(
@@ -523,7 +535,7 @@ function HistoryDealCard({
                 <Image
                   accessibilityIgnoresInvertColors
                   contentFit="cover"
-                  source={{ uri: item.worker.avatar_url }}
+                  source={stableImageSource(item.worker.avatar_url)}
                   style={[styles.workerAvatar, { borderColor: tokens.text }]}
                   testID={`customer-v21-history-worker-avatar-${item.id}`}
                 />

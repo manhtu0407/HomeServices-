@@ -178,16 +178,32 @@ describe('mobile uploads to private Storage buckets', () => {
     )
   })
 
-  it('re-encodes a worker Kael reference photo but leaves other job evidence untouched', async () => {
+  it('re-encodes every job photo before it is read for upload', async () => {
     await uploadJobMediaDrafts('job-1', [photo], 'kael_reference')
     await uploadJobMediaDrafts('job-1', [photo], 'before')
     const readUris = (global.fetch as jest.Mock).mock.calls.map(([uri]) => String(uri))
     withPillarContext(
       PILLAR,
       () => {
-        expect(readUris).toEqual(['file:///cache/reencoded.jpg', photo.uri])
+        expect(readUris).toEqual(['file:///cache/reencoded.jpg', 'file:///cache/reencoded.jpg'])
       },
-      'only images a vision model will see are re-encoded',
+      'vision and evidence photos both leave the device re-encoded, so a 3G uplink sends the smaller file',
+    )
+  })
+
+  it('uploads the original evidence photo when the device cannot re-encode it', async () => {
+    mockManipulate.mockImplementationOnce(() => {
+      throw new Error('decode failed')
+    })
+    const result = await uploadJobMediaDrafts('job-1', [photo], 'before')
+    const readUris = (global.fetch as jest.Mock).mock.calls.map(([uri]) => String(uri))
+    withPillarContext(
+      PILLAR,
+      () => {
+        expect(result).toMatchObject({ success: true })
+        expect(readUris).toEqual([photo.uri])
+      },
+      'an evidence upload must never fail only because it could not be resized',
     )
   })
 

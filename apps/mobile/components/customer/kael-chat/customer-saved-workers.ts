@@ -1,6 +1,8 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useMemo } from 'react'
 
 import type { CustomerServiceHistoryItem } from '@/lib/api-types'
+import { useAuth } from '@/lib/auth-provider'
+import { useCachedResource } from '@/lib/resource-cache/use-cached-resource'
 import { jobService } from '@/lib/services'
 
 export type SavedWorkerSummary = Readonly<{
@@ -11,19 +13,7 @@ export type SavedWorkerSummary = Readonly<{
 
 export type SavedWorkersStatus = 'error' | 'loading' | 'ready'
 
-type SavedWorkersSnapshot = Readonly<{
-  jobId: string | null
-  reloadVersion: number
-  status: SavedWorkersStatus
-  workers: readonly SavedWorkerSummary[]
-}>
-
-const emptySavedWorkersSnapshot: SavedWorkersSnapshot = {
-  jobId: null,
-  reloadVersion: 0,
-  status: 'ready',
-  workers: [],
-}
+const listServiceHistory = () => jobService.listMyServiceHistory()
 
 export function savedWorkerSummariesFromHistory(
   history: readonly CustomerServiceHistoryItem[],
@@ -48,52 +38,25 @@ export function savedWorkerSummariesFromHistory(
 }
 
 export function useCustomerSavedWorkers(candidateJobId: string | null) {
-  const [reloadVersion, setReloadVersion] = useState(0)
-  const [snapshot, setSnapshot] = useState<SavedWorkersSnapshot>({
-    jobId: candidateJobId,
-    reloadVersion: 0,
-    status: candidateJobId ? 'loading' : 'ready',
-    workers: [],
+  const { session } = useAuth()
+  const history = useCachedResource({
+    enabled: Boolean(candidateJobId),
+    fetcher: listServiceHistory,
+    key: 'customer.service-history',
+    ownerId: session?.user.id ?? null,
   })
-  const reload = useCallback(() => setReloadVersion((version) => version + 1), [])
+  const workers = useMemo(
+    () => (history.data ? savedWorkerSummariesFromHistory(history.data.service_history) : []),
+    [history.data],
+  )
+  const { refresh } = history
+  const reload = useCallback(() => {
+    void refresh()
+  }, [refresh])
 
-  useEffect(() => {
-    if (!candidateJobId) {
-      return
-    }
-
-    let active = true
-    void jobService.listMyServiceHistory().then((result) => {
-      if (!active) return
-      if (!result.success) {
-        setSnapshot({ jobId: candidateJobId, reloadVersion, status: 'error', workers: [] })
-        return
-      }
-      setSnapshot({
-        jobId: candidateJobId,
-        reloadVersion,
-        status: 'ready',
-        workers: savedWorkerSummariesFromHistory(result.data.service_history),
-      })
-    }).catch(() => {
-      if (active) setSnapshot({ jobId: candidateJobId, reloadVersion, status: 'error', workers: [] })
-    })
-
-    return () => {
-      active = false
-    }
-  }, [candidateJobId, reloadVersion])
-
-  const snapshotMatchesRequest = snapshot.jobId === candidateJobId && snapshot.reloadVersion === reloadVersion
-  const visibleSnapshot = candidateJobId
-    ? snapshotMatchesRequest
-      ? snapshot
-      : { ...snapshot, jobId: candidateJobId, reloadVersion, status: 'loading' as const }
-    : emptySavedWorkersSnapshot
-
-  return {
-    status: visibleSnapshot.status,
-    workers: visibleSnapshot.workers,
-    reload,
-  }
+  if (!candidateJobId) return { status: 'ready' as SavedWorkersStatus, workers: [] as readonly SavedWorkerSummary[], reload }
+  const status: SavedWorkersStatus = history.data
+    ? 'ready'
+    : history.status === 'error' || history.status === 'idle' ? 'error' : 'loading'
+  return { status, workers, reload }
 }

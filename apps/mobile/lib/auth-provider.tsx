@@ -30,6 +30,8 @@ import { notificationService, workerService } from './services'
 import { useSessionPushRegistration } from './use-session-push-registration'
 import { getRememberedCredentialsForNativeRelaunch } from './auth-native-relaunch'
 import { useAuthRoleLookup } from './use-auth-role-lookup'
+import { forgetResourceOwner } from './resource-cache/resource-cache-persistence'
+import { clearAccountImageCache } from './stable-image-source'
 import {
   AuthContext,
   INITIAL_AUTH_SNAPSHOT,
@@ -91,6 +93,8 @@ function useAuthController(): AuthState {
     if (previousUserId !== nextUserId) accountMutationSequenceRef.current += 1
     if (previousUserId && previousUserId !== nextUserId) {
       unregisterPushTokenForSession(previousSession)
+      void forgetResourceOwner(previousUserId)
+      clearAccountImageCache()
       void clearPendingKaelChatDraft(previousUserId)
       clearPendingWorkerKaelDraft(previousUserId)
     }

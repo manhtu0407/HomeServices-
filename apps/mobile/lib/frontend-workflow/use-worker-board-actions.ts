@@ -51,6 +51,10 @@ import {
 import { dealToSnapshot, workerBroadcastToSnapshot, workerJobToSnapshot } from './snapshots'
 
 const WORKER_STARTUP_REFRESH_RETRY_DELAYS_MS = [1_000, 3_000] as const
+const WORKER_SLOW_REFRESH_MS = 5 * 60_000
+
+// 'full' reads everything; 'live' is the periodic poll and reads only offers, assigned jobs and the heartbeat.
+type WorkerRefreshMode = 'full' | 'live'
 
 type WorkerRemoteState = {
   broadcasts: WorkerBroadcast[]
@@ -118,6 +122,7 @@ export function useWorkerBoardActions({
   const workerRefreshInFlightRequestIdRef = useRef<number | null>(null)
   // A trigger that lands mid-refresh may carry a change the running pass already read past.
   const workerRefreshQueuedRef = useRef(false)
+  const workerSlowRefreshedAtRef = useRef(0)
   const workerRefreshRef = useRef<(() => Promise<boolean>) | null>(null)
   const workerActivityHeartbeatBusyRef = useRef(false)
   const workerProposalInFlightRef = useRef<string | null>(null)
@@ -140,9 +145,10 @@ export function useWorkerBoardActions({
     workerRefreshRequestIdRef.current += 1
     workerRefreshInFlightRequestIdRef.current = null
     workerRefreshQueuedRef.current = false
+    workerSlowRefreshedAtRef.current = 0
   }, [role, sessionUserId])
 
-  const workerRefresh = useCallback(async () => {
+  const workerRefresh = useCallback(async (mode: WorkerRefreshMode = 'full') => {
     if (role !== 'worker' && role !== 'admin') return true
     if (workerRefreshInFlightRequestIdRef.current !== null) {
       workerRefreshQueuedRef.current = true
@@ -154,15 +160,22 @@ export function useWorkerBoardActions({
     try {
       const isCurrentWorkerRefresh = () => workerRefreshRequestIdRef.current === workerRefreshRequestId
 
-      const profileRequest = workerService.getProfile()
-      const earningsRequest = workerService.getEarnings(currentWorkerYearRange())
-      const performanceInsightsRequest = workerService.getPerformanceInsights()
-      const payoutMethodRequest = role === 'worker'
-        ? workerService.getPayoutMethod()
-        : Promise.resolve({ success: true as const, data: { payout_method: null } })
-      const withdrawalRequestsRequest = role === 'worker'
-        ? workerService.listWithdrawalRequests()
-        : Promise.resolve({ success: true as const, data: { requests: [] } })
+      // Offers and assigned jobs change minute to minute; profile, earnings and payout data rarely do,
+      // so the periodic poll skips them until they are WORKER_SLOW_REFRESH_MS old (5 of 8 requests on 3G).
+      const includeSlow = mode === 'full' || Date.now() - workerSlowRefreshedAtRef.current >= WORKER_SLOW_REFRESH_MS
+      const profileRequest = includeSlow ? workerService.getProfile() : null
+      const earningsRequest = includeSlow ? workerService.getEarnings(currentWorkerYearRange()) : null
+      const performanceInsightsRequest = includeSlow ? workerService.getPerformanceInsights() : null
+      const payoutMethodRequest = !includeSlow
+        ? null
+        : role === 'worker'
+          ? workerService.getPayoutMethod()
+          : Promise.resolve({ success: true as const, data: { payout_method: null } })
+      const withdrawalRequestsRequest = !includeSlow
+        ? null
+        : role === 'worker'
+          ? workerService.listWithdrawalRequests()
+          : Promise.resolve({ success: true as const, data: { requests: [] } })
       const broadcastsRequest = workerService.getBroadcasts()
       const jobsRequest = workerService.getJobs()
       const matchingHeartbeatRequest = role === 'worker' && releaseClientPlatform()
@@ -247,6 +260,13 @@ export function useWorkerBoardActions({
         workflowError = jobs
       }
 
+      if (!profileRequest || !earningsRequest || !performanceInsightsRequest || !payoutMethodRequest || !withdrawalRequestsRequest) {
+        await matchingHeartbeatRequest
+        if (!isCurrentWorkerRefresh()) return true
+        if (workflowError) return setRemoteError(workflowError)
+        return true
+      }
+
       // The post-I/O generation check prevents an older refresh from committing after a newer refresh starts.
       // react-doctor-disable-next-line react-doctor/async-defer-await
       const [profile, earnings, performanceInsights, payoutMethod, withdrawalRequests] = await Promise.all([
@@ -259,6 +279,7 @@ export function useWorkerBoardActions({
       ])
       if (!isCurrentWorkerRefresh()) return true
       if (!profile.success) return setRemoteError(profile)
+      workerSlowRefreshedAtRef.current = Date.now()
 
       setWorkerEarningsError(earnings.success ? null : localizeWorkflowError(earnings, language))
       const nextPerformanceInsights = performanceInsights.success ? performanceInsights.data : null
@@ -581,7 +602,7 @@ export function useWorkerBoardActions({
       void refreshWorkerStartupState(0)
     }, 0)
     const interval = setInterval(() => {
-      if (isAppForeground()) void workerRefresh()
+      if (isAppForeground()) void workerRefresh('live')
     }, 20_000)
     return () => {
       cancelled = true

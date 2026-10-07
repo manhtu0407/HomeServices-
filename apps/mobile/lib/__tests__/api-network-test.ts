@@ -117,7 +117,8 @@ describe('mobile API response guard', () => {
         supportCode: null,
       },
     })
-    expect(mockFetch).toHaveBeenCalledTimes(3)
+    // Two transport failures mark the app offline, so the read skips its last retry (P326).
+    expect(mockFetch).toHaveBeenCalledTimes(2)
     expect(generated).toHaveBeenCalledTimes(1)
   })
 

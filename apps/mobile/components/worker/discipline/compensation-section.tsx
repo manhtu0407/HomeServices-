@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useState } from 'react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
 
 import {
@@ -9,6 +9,7 @@ import {
 import { color } from '@/design/theme'
 import type { AppLanguage } from '@/lib/app-language'
 import { useAuth } from '@/lib/auth-provider'
+import { useCachedResource } from '@/lib/resource-cache/use-cached-resource'
 import { compensationService, type WorkerCompensation } from '@/lib/services/compensation-service'
 
 import { textByLanguage } from '../ui/format'
@@ -23,24 +24,20 @@ const palette = { text: color.text.strong, muted: color.text.secondary, border: 
 export function WorkerCompensationSection({ language }: { language: AppLanguage }) {
   const { session } = useAuth()
   const accessToken = session?.access_token ?? ''
-  const [data, setData] = useState<WorkerCompensation | null>(null)
-  const [loadFailed, setLoadFailed] = useState(false)
-
-  const load = useCallback(async () => {
-    if (!accessToken) return
+  const fetchCompensation = useCallback(async () => {
     const result = await compensationService.listForWorker(accessToken)
-    if (result.success) {
-      setData(result.data)
-      setLoadFailed(false)
-    } else {
-      setLoadFailed(true)
-      console.warn('worker compensation load failed', { code: result.code, status: result.status })
-    }
+    if (!result.success) console.warn('worker compensation load failed', { code: result.code, status: result.status })
+    return result
   }, [accessToken])
-
-  useEffect(() => {
-    void load()
-  }, [load])
+  const compensation = useCachedResource({
+    enabled: Boolean(accessToken),
+    fetcher: fetchCompensation,
+    key: 'worker.compensation',
+    ownerId: session?.user.id ?? null,
+  })
+  const data = compensation.data
+  const loadFailed = compensation.status === 'error'
+  const load = compensation.refresh
 
   if (!data && loadFailed) {
     return (

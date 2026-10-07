@@ -1,5 +1,24 @@
 // Test-environment setup, loaded after the jest framework is ready.
 
+// Connectivity is module state learned from transport failures; a suite that drives it offline
+// must not change retry behavior in the next test. Required lazily so a suite's own mock wins.
+beforeEach(async () => {
+  const connectivity = require('@/lib/connectivity') as { resetConnectivityForTests?: () => void }
+  connectivity.resetConnectivityForTests?.()
+  const cache = require('@/lib/resource-cache/resource-cache') as { resetResourceCacheForTests?: () => void }
+  cache.resetResourceCacheForTests?.()
+  const persistence = require('@/lib/resource-cache/resource-cache-persistence') as {
+    RESOURCE_CACHE_STORAGE_KEY?: string
+    resetResourcePersistenceForTests?: () => void
+  }
+  persistence.resetResourcePersistenceForTests?.()
+  if (persistence.RESOURCE_CACHE_STORAGE_KEY) {
+    type Storage = { removeItem?: (key: string) => Promise<void> }
+    const storageModule = require('@react-native-async-storage/async-storage') as Storage & { default?: Storage }
+    await (storageModule.default ?? storageModule).removeItem?.(persistence.RESOURCE_CACHE_STORAGE_KEY)
+  }
+})
+
 // react-native-reanimated v4 relies on the react-native-worklets runtime, which
 // does not exist under jsdom/node. Use the package's official mock so components
 // that import reanimated (directly or via the glass motion helpers) render.

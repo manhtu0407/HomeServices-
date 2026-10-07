@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useState } from 'react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
 
 import {
@@ -12,6 +12,7 @@ import { KaelButton, KaelTextField } from '@/components/ui/kael-primitives'
 import { typography } from '@/design/theme'
 import type { AppLanguage } from '@/lib/app-language'
 import { useAuth } from '@/lib/auth-provider'
+import { useCachedResource } from '@/lib/resource-cache/use-cached-resource'
 import { MAX_COMPENSATION_PHOTOS, uploadCompensationPhotos, type CompensationPhotoDraft } from '@/lib/frontend-workflow/compensation-evidence'
 import {
   compensationService,
@@ -30,24 +31,23 @@ const MIN_NOTE = 10
 export function CustomerCompensationSection({ language, tokens }: { language: AppLanguage; tokens: CustomerThemeTokens }) {
   const { session } = useAuth()
   const accessToken = session?.access_token ?? ''
-  const [data, setData] = useState<CustomerCompensation | null>(null)
-  const [loadFailed, setLoadFailed] = useState(false)
-
-  const load = useCallback(async () => {
-    if (!accessToken) return
+  const fetchCompensation = useCallback(async () => {
     const result = await compensationService.listForCustomer(accessToken)
-    if (result.success) {
-      setData(result.data)
-      setLoadFailed(false)
-    } else {
-      setLoadFailed(true)
-      console.warn('customer compensation load failed', { code: result.code, status: result.status })
-    }
+    if (!result.success) console.warn('customer compensation load failed', { code: result.code, status: result.status })
+    return result
   }, [accessToken])
-
-  useEffect(() => {
-    void load()
-  }, [load])
+  const compensation = useCachedResource({
+    enabled: Boolean(accessToken),
+    fetcher: fetchCompensation,
+    key: 'customer.compensation',
+    ownerId: session?.user.id ?? null,
+  })
+  const data = compensation.data
+  const loadFailed = compensation.status === 'error'
+  const { refresh } = compensation
+  const load = useCallback(async () => {
+    await refresh()
+  }, [refresh])
 
   if (!data && loadFailed) {
     return (

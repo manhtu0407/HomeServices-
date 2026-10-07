@@ -5,6 +5,7 @@ import { supabase } from './supabase'
 import { mobileRuntimeConfig } from './runtime-config'
 import { releaseClientPlatform } from './release-client-platform'
 import { generateClientRequestId } from './client-request-id'
+import { isConnectivityOffline, reportTransportFailure, reportTransportSuccess } from './connectivity'
 import type { ApiResponseMetadata } from './api-types/shared'
 import {
   readResponseTextBounded,
@@ -138,6 +139,7 @@ async function request<T>(
         signal: controller.signal,
       })
       responseStatus = response.status
+      reportTransportSuccess()
       responseMetadata = { ...clientMetadata, ...extractApiResponseMetadata(response.headers) }
 
       const responseText = await readResponseTextBounded(response, MAX_API_RESPONSE_BYTES)
@@ -179,7 +181,11 @@ async function request<T>(
           meta: responseMetadata,
         }
       }
-      if (attempt < retryBudget && shouldRetryRequestError(err, method, path)) {
+      if (responseStatus === 0 && shouldRetryError(err)) reportTransportFailure()
+      // Once the transport is known to be down, reads fail fast so cached screens show offline instead of
+      // waiting ~46s; idempotent writes keep their full retry budget because a lost write costs the user more.
+      const readFailsFast = (method === 'GET' || method === 'HEAD') && isConnectivityOffline()
+      if (attempt < retryBudget && !readFailsFast && shouldRetryRequestError(err, method, path)) {
         await waitForRetry(method, path, attempt, isAbortError(err) ? 'TIMEOUT' : 'NETWORK_ERROR')
         continue
       }
