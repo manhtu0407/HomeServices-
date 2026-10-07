@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { spawn, spawnSync } from 'node:child_process'
-import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, openSync, rmSync, writeFileSync } from 'node:fs'
 import { createServer } from 'node:net'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -57,6 +57,7 @@ function killTree(child) {
 
 // Metro roots its transform cache in os.tmpdir(); a private TEMP keeps another checkout's bundle out of this one.
 function startMetro() {
+  const metroLog = serveOnly ? null : openSync(join(outDir, 'metro.log'), 'w')
   const tmp = join(mobile, '.expo', 'metro-tmp')
   mkdirSync(tmp, { recursive: true })
   return spawn(process.execPath, ['node_modules/expo/bin/cli', 'start', '--web', '--port', String(APP_PORT), '--clear'], {
@@ -67,18 +68,19 @@ function startMetro() {
       BROWSER: 'none',
       EXPO_NO_DOTENV: '1',
       EXPO_PUBLIC_API_BASE_URL: `http://localhost:${MOCK_PORT}/functions/v1/mobile-api`,
-      EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY: 'mock-key',
+      EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY: 'sb_publishable_test-key',
       EXPO_PUBLIC_SUPABASE_URL: `http://localhost:${MOCK_PORT}`,
       TEMP: tmp,
       TMP: tmp,
     },
-    stdio: serveOnly ? 'inherit' : 'ignore',
+    stdio: serveOnly ? 'inherit' : ['ignore', metroLog, metroLog],
   })
 }
 
-async function waitForApp(timeoutMs) {
+async function waitForApp(metro, timeoutMs) {
   const t0 = Date.now()
   while (Date.now() - t0 < timeoutMs) {
+    if (metro.exitCode !== null) throw new Error(`Metro exited with code ${metro.exitCode}; see ${join(outDir, 'metro.log')}`)
     try {
       const html = await (await fetch(APP)).text()
       const bundle = /src="([^"]*\.bundle[^"]*)"/.exec(html)?.[1]
@@ -339,7 +341,7 @@ async function main() {
 
   try {
     console.log(`mock backend on ${MOCK}; starting Metro on ${APP} (first build takes a few minutes)`)
-    if (!(await waitForApp(10 * 60_000))) throw new Error('Metro did not serve the app bundle')
+    if (!(await waitForApp(metro, 10 * 60_000))) throw new Error(`Metro did not serve the app bundle; see ${join(outDir, 'metro.log')}`)
     if (serveOnly) {
       console.log(`ready: open ${APP}/login and sign in with customer.a@nestscout.test (password in mock-backend.mjs); Ctrl+C stops both`)
       await new Promise(() => undefined)
