@@ -4,6 +4,23 @@ import type { AppLanguage } from '@/lib/app-language'
 
 export const NESTSCOUT_PRIVACY_POLICY_URL = 'https://manhtu0407.github.io/nestscout-privacy-policy/'
 
+// The in-app browser sheet keeps the registration form mounted underneath and closes back to it.
+// A binary built before expo-web-browser shipped has no native module, so fall back to the
+// system browser instead of failing the tap.
+async function openPrivacyPolicy(toolbarColor: string) {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports -- resolved lazily so a missing native module reaches the catch
+    const WebBrowser = require('expo-web-browser') as typeof import('expo-web-browser')
+    await WebBrowser.openBrowserAsync(NESTSCOUT_PRIVACY_POLICY_URL, {
+      controlsColor: toolbarColor,
+      dismissButtonStyle: 'done',
+      presentationStyle: WebBrowser.WebBrowserPresentationStyle.FULL_SCREEN,
+    })
+  } catch {
+    await Linking.openURL(NESTSCOUT_PRIVACY_POLICY_URL)
+  }
+}
+
 export function PublicPrivacyPolicyLink({
   color = '#087D72',
   language,
@@ -24,7 +41,7 @@ export function PublicPrivacyPolicyLink({
       accessibilityLabel={label}
       accessibilityRole="link"
       hitSlop={8}
-      onPress={() => { void Linking.openURL(NESTSCOUT_PRIVACY_POLICY_URL) }}
+      onPress={() => { void openPrivacyPolicy(color) }}
       style={({ pressed }) => [styles.link, pressed ? styles.pressed : null]}
       testID={testID}
     >

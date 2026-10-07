@@ -25,6 +25,7 @@ export const entryBrandAccessFlowStyles = StyleSheet.create({
   keyboard: { flex: 1 },
   lead: { ...entryTheme.typography.body, color: entryTheme.color.text.secondary },
   link: { ...entryTheme.typography.footnote, color: entryTheme.color.mint.mint700, fontWeight: '600' },
+  notice: { ...entryTheme.typography.caption1, color: entryTheme.color.mint.mint800, marginBottom: 12, marginTop: -2 },
   onboardingBottom: { marginTop: 'auto' },
   onboardingHead: { alignItems: 'center', paddingHorizontal: 8, paddingTop: 18 },
   onboardingLead: { marginTop: 7, textAlign: 'center' },

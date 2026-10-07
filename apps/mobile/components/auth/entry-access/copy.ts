@@ -35,6 +35,8 @@ type EntryAuthErrorKey =
   | 'workerApplicationContact'
   | 'workerApplicationFailed'
   | 'workerApplicationNotSubmitted'
+  | 'workerApplicationRetryByLogin'
+  | 'workerApplicationUpdateRequired'
   | 'workerApplicationRejected'
   | 'workerChangesRequested'
   | 'workerEmailRequired'
@@ -131,6 +133,7 @@ export type EntryAccessCopy = Readonly<{
     terms: string
     topbar: string
     workerSubmit: string
+    workerSubmitted: string
     workerTitle: string
   }>
   roleGate: Readonly<{
@@ -188,6 +191,8 @@ const viCopy: EntryAccessCopy = {
     workerApplicationContact: 'Nhập thư điện tử để gửi xét duyệt.',
     workerApplicationFailed: 'Không thể gửi hồ sơ xét duyệt lúc này. Vui lòng thử lại.',
     workerApplicationNotSubmitted: 'Tài khoản đã được xác nhận, nhưng hồ sơ thợ chưa được gửi. Vui lòng thử lại sau.',
+    workerApplicationRetryByLogin: 'Tài khoản đã được tạo nhưng hồ sơ thợ chưa gửi được. Hãy đăng nhập tài khoản thợ để gửi lại.',
+    workerApplicationUpdateRequired: 'Tài khoản đã được tạo nhưng bản NestScout này chưa gửi được hồ sơ thợ. Hãy dùng ứng dụng NestScout mới nhất rồi đăng nhập để gửi hồ sơ.',
     workerApplicationRejected: 'Hồ sơ ứng tuyển thợ đã bị từ chối. Liên hệ hỗ trợ nếu bạn cần làm rõ.',
     workerChangesRequested: 'Hồ sơ ứng tuyển cần được bổ sung trước khi gửi lại.',
     workerEmailRequired: 'Tài khoản thợ chỉ hỗ trợ thư điện tử và mật khẩu.',
@@ -202,7 +207,7 @@ const viCopy: EntryAccessCopy = {
   fields: {
     customerIdentifierLabel: 'Gmail hoặc SĐT',
     customerIdentifierPlaceholder: 'ten@vidu.vn hoặc 090 123 4567',
-    workerIdentifierLabel: 'Thư điện tử',
+    workerIdentifierLabel: 'Gmail',
     workerIdentifierPlaceholder: 'ten@vidu.vn',
   },
   login: {
@@ -251,7 +256,7 @@ const viCopy: EntryAccessCopy = {
     busy: 'Đang xử lý…',
     customerLead: '',
     customerSubmit: 'Đăng ký',
-    customerTitle: 'Tạo tài khoản của bạn.',
+    customerTitle: 'Tạo tài khoản.',
     fullNameLabel: 'Họ và tên',
     fullNamePlaceholder: 'Nguyễn Hoàng Minh',
     login: 'Đăng nhập',
@@ -262,7 +267,8 @@ const viCopy: EntryAccessCopy = {
     terms: 'Tôi đồng ý với Điều khoản sử dụng và Chính sách bảo mật của NestScout.',
     topbar: 'Đăng ký',
     workerSubmit: 'Tạo tài khoản thợ',
-    workerTitle: 'Tạo hồ sơ đối tác.',
+    workerSubmitted: 'Đã tạo tài khoản và gửi hồ sơ thợ. Hãy đăng nhập bằng tài khoản thợ để theo dõi xét duyệt.',
+    workerTitle: 'Tạo hồ sơ.',
   },
   roleGate: {
     chooseRole: 'Chọn vai trò',
@@ -278,7 +284,7 @@ const viCopy: EntryAccessCopy = {
     worker: {
       description: 'Nhận việc linh hoạt,\ngia tăng thu nhập.',
       meta: 'Tài khoản thợ · Xác thực hồ sơ',
-      title: 'Đối tác thợ',
+      title: 'Đối tác',
     },
   },
 }
@@ -327,6 +333,8 @@ const enCopy: EntryAccessCopy = {
     workerApplicationContact: 'Enter an email address for the application.',
     workerApplicationFailed: 'Unable to submit the worker application. Please try again.',
     workerApplicationNotSubmitted: 'Your account is confirmed, but the worker application was not submitted. Please try again later.',
+    workerApplicationRetryByLogin: 'Your account was created but the worker application could not be sent. Sign in with your worker account to send it again.',
+    workerApplicationUpdateRequired: 'Your account was created, but this NestScout version cannot send the worker application. Use the latest NestScout app, then sign in to send it.',
     workerApplicationRejected: 'Your worker application was rejected. Contact support if you need clarification.',
     workerChangesRequested: 'Your worker application needs changes before it can be resubmitted.',
     workerEmailRequired: 'Worker accounts support email and password only.',
@@ -390,7 +398,7 @@ const enCopy: EntryAccessCopy = {
     busy: 'Working…',
     customerLead: '',
     customerSubmit: 'Create account',
-    customerTitle: 'Create your account.',
+    customerTitle: 'Create account.',
     fullNameLabel: 'Full name',
     fullNamePlaceholder: 'Alex Nguyen',
     login: 'Sign in',
@@ -401,7 +409,8 @@ const enCopy: EntryAccessCopy = {
     terms: 'I agree to the NestScout Terms of Use and Privacy Policy.',
     topbar: 'Create account',
     workerSubmit: 'Create worker account',
-    workerTitle: 'Create your partner profile.',
+    workerSubmitted: 'Account created and worker application sent. Sign in with your worker account to follow the review.',
+    workerTitle: 'Create profile.',
   },
   roleGate: {
     chooseRole: 'Choose your role',
@@ -516,6 +525,7 @@ const errorMatchers: readonly Readonly<{
   { key: 'accountExists', patterns: [/user already registered/i, /already exists/i, /tài khoản.*đã tồn tại/i] },
   { key: 'roleUnavailable', patterns: [/không thể tải vai trò/i, /load.*account role/i] },
   { key: 'workerApplicationContact', patterns: [/nhập email.*số điện thoại.*xét duyệt/i, /email.*phone.*application/i] },
+  { key: 'workerApplicationUpdateRequired', patterns: [/cần được cập nhật/i, /client update required/i] },
   { key: 'workerApplicationFailed', patterns: [/không thể gửi.*xét duyệt/i, /không thể gửi hồ sơ/i, /submit.*worker application/i] },
   { key: 'workerEmailRequired', patterns: [/tài khoản thợ.*thư điện tử.*mật khẩu/i, /worker accounts?.*email.*password/i, /worker applications? require an email/i] },
   { key: 'tryAgainLater', patterns: [/rate.?limit/i, /too many requests/i, /bị giới hạn/i] },

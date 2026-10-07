@@ -1023,6 +1023,26 @@ describe('AuthProvider Email/SDT signup', () => {
     })
   })
 
+  it('tells the user the account already exists instead of a generic signup failure', async () => {
+    mockGetSession.mockResolvedValueOnce({ data: { session: null } })
+    mockSignUp.mockResolvedValueOnce({
+      data: { session: null, user: null },
+      error: { code: 'user_already_exists', message: 'User already registered', status: 422 },
+    })
+
+    render(
+      <AuthProvider>
+        <SignupHarness />
+      </AuthProvider>,
+    )
+
+    fireEvent.press(screen.getByTestId('signup-email'))
+
+    await waitFor(() => {
+      expect(screen.getByTestId('signup-result')).toHaveTextContent('Tài khoản này đã tồn tại. Hãy đăng nhập hoặc dùng thông tin khác.')
+    })
+  })
+
   it('explains an invalid email without exposing the Supabase error', async () => {
     mockGetSession.mockResolvedValueOnce({ data: { session: null } })
     mockSignUp.mockResolvedValueOnce({

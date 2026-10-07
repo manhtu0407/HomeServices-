@@ -34,13 +34,17 @@ function entryAccessStateReducer(
   }
 }
 
-export function useEntryAccessState(initialRole: EntryRole, initialStep: EntryAccessStep) {
+export function useEntryAccessState(
+  initialRole: EntryRole,
+  initialStep: EntryAccessStep,
+  initial: Partial<Pick<EntryAccessState, 'error' | 'identifier'>> = {},
+) {
   const [state, dispatch] = useReducer(entryAccessStateReducer, {
     acceptedTerms: false,
     busy: false,
-    error: null,
+    error: initial.error ?? null,
     fullName: '',
-    identifier: '',
+    identifier: initial.identifier ?? '',
     password: '',
     passwordConfirmation: '',
     recoveryIdentifier: '',

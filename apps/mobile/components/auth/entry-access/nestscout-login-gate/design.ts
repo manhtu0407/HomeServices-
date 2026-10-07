@@ -70,7 +70,7 @@ export const DESIGN = {
     {
       id: 'worker-title',
       rect: [115, 1110, 248, 62],
-      text: 'Đối tác thợ',
+      text: 'Đối tác',
       fontSize: 46,
       lineHeight: 62,
       fontWeight: '700',
@@ -110,7 +110,6 @@ export const DESIGN = {
     {
       id: 'customer',
       rect: [82, 470, 776, 495],
-      arrow: [115, 793, 116, 114],
       label: 'Khách hàng',
       description: 'Đặt dịch vụ, nhà luôn gọn gàng.',
       testID: 'auth-entry-role-customer',
@@ -118,8 +117,7 @@ export const DESIGN = {
     {
       id: 'worker',
       rect: [82, 979, 776, 495],
-      arrow: [115, 1290, 116, 114],
-      label: 'Đối tác thợ',
+      label: 'Đối tác',
       description: 'Nhận việc linh hoạt, gia tăng thu nhập.',
       testID: 'auth-entry-role-worker',
     },
@@ -151,9 +149,7 @@ export const ASSETS = {
   'footer-caption': require('./assets/footer-caption.png'),
   'footer-caption-clean': require('./assets/footer-caption-clean.png'),
   'customer-surface': require('./assets/customer-surface.png'),
-  'customer-arrow': require('./assets/customer-arrow.png'),
   'worker-surface': require('./assets/worker-surface.png'),
-  'worker-arrow': require('./assets/worker-arrow.png'),
   'app-backdrop': require('./assets/app-backdrop.png'),
 } as const
 

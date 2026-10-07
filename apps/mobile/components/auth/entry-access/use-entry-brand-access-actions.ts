@@ -126,7 +126,8 @@ export function useEntryBrandAccessActions({
         ])
       }
       if (!isCurrentAction(actionVersion)) return
-      if (result.nextStep === 'onboarding') go('onboarding')
+      if (result.nextStep === 'onboarding' || result.nextStep === 'login') go(result.nextStep)
+      if (result.notice) setNotice(result.notice)
     } catch {
       if (isCurrentAction(actionVersion)) controller.setError(copy.errors.connectionFailed)
     } finally {
@@ -157,6 +158,7 @@ export function useEntryBrandAccessActions({
       const result = await actions.onRegister({ identifier: controller.identifier.trim(), fullName: controller.fullName.trim(), password: controller.password, role: controller.role })
       if (!isCurrentAction(actionVersion)) return
       if (!result.success) {
+        if (result.nextStep) go(result.nextStep)
         controller.setError(localizeEntryAuthError(result.error, language, 'signupFailed'))
         return
       }
@@ -164,6 +166,7 @@ export function useEntryBrandAccessActions({
       controller.setPasswordConfirmation('')
       if (result.nextStep) go(result.nextStep)
       else if (controller.role === 'worker') go('onboarding')
+      if (result.notice) setNotice(result.notice)
     } catch {
       if (isCurrentAction(actionVersion)) controller.setError(copy.errors.connectionFailed)
     } finally {
