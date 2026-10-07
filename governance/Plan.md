@@ -1346,27 +1346,28 @@ Chỉ complete Pursuing Goal khi đồng thời có: **6 receipts PASS + mọi g
 
 **Historical next action at this snapshot:** replace the comment-only holdout preflight with an exact-source Codex blind-result + Perplexity Agent API evidence path, add fail-closed schema/coverage/citation/usage validation and workflow transport, then test that path locally. This work is recorded in 55.3 below; do not treat this historical instruction as current.
 
-#### 55.3 Execution checkpoint — 2026-10-07 15:55 UTC
+#### 55.3 Execution checkpoint — 2026-10-07 16:49 UTC
 
 - Goal `01a03e98-182b-76e0-af1d-31e220d9791e` remains `active`; continue that goal. Ultimate Plan 55.1 is the sole execution authority. Production-only; no Staging, RAM cleanup, or canary has been started.
 - PR #335 is `MERGED`: head `56d679d4873df23fddc01503c3d9163ad3c00a1c`, merge/main SHA `66fd5726d8f2e0748e8116436fa3a15c5e8ef095`, merged `2026-10-07T15:32:33Z`. Exact-head PR checks passed. Main push CI run `37644747771` passed on that SHA; `release-production` run `37644746030` was skipped, so this merge did not deploy Production. The earlier PR-merge/API-500 blocker is retired.
-- At the start of this checkpoint correction, implementation branch `codex/plan55-merged-checkpoint` was clean at `66fd5726d8f2e0748e8116436fa3a15c5e8ef095`, equal to `origin/main`. The current diff is only this checkpoint correction, to be submitted by PR; source lock remains `FAIL` until the final main SHA and every evaluator/data fingerprint are frozen after that merge.
-- A fresh read-only `--next-action` at 15:53 UTC returned `REPAIR_LOCAL` / `source_or_predeploy_evidence_incomplete`, with missing final source/fingerprints, source-bound independent holdout evidence, and exact-source predeploy proofs; it reported `mutations=0`. The served Production identity remained project `iwevizmsedyqozxlawwl`, release `harness-d753f26174ee-0b25b027f0cb`, source `d753f26174ee0bc17e9ae350a535707f4113ec0a`, with `0/48` verified slices, no proven canary start, and cleanup false. Its checkpoint still named PR #335 merge retry as safe work even though #335 had merged; the machine checkpoint below corrects that stale instruction. No canary, live judge call, or Production mutation occurred.
+- PR #336 is `MERGED` at `2026-10-07T16:08:44Z`; its merge SHA is `e967525824a0fe88b0ece4f56ae96d4ca34cebbb`. The implementation checkout `codex/plan55-execution-after-checkpoint` is clean at that exact SHA, and `git ls-remote origin refs/heads/main` agrees. The earlier “checkpoint-only correction itself must merge” instruction is retired.
+- A fresh read-only `--next-action` at `16:43:44Z` returned `REPAIR_LOCAL` / `source_or_predeploy_evidence_incomplete`; missing source-bound independent holdout evidence and exact-source predeploy proofs; it reported `mutations=0`. The served Production identity remained project `iwevizmsedyqozxlawwl`, release `harness-d753f26174ee-0b25b027f0cb`, source `d753f26174ee0bc17e9ae350a535707f4113ec0a`, with `0/48` verified slices, no proven canary start, and cleanup false. No canary, live judge call, or Production mutation occurred.
 - The exact-source, synthetic, label-free holdout package and Codex/Perplexity Agent API workflow are implemented and merged in PR #335. Tu explicitly selected the narrow Perplexity exception now present in `RULES.md` and the AI security protocol; it remains limited to this Plan 55 holdout. Local checks reject empty, duplicate, fabricated, or unknown source IDs. No live provider call or independent holdout receipt exists yet.
 - Current protected `production` environment secret-name inventory includes `PERPLEXITY_API_KEY` but not `CODEX_ACCESS_TOKEN`; names only were inspected and no value was read. The Codex judge must remain uncalled until that exact protected prerequisite is provisioned; do not substitute another provider.
 - Latest available aggregate cohort evidence is not a preregistered pilot and must be refreshed before its gate: prior 30-day snapshot had zero non-synthetic completed jobs/service; prior 90-day counts were HVAC 1, Handyman 2, Cleaning 1, Upholstery 1, Plumbing 7, Electrical 1, with one distinct customer and worker per service. Those aggregates do not pass pilot/cohort readiness.
-- A process scan at 15:55 UTC found no matching Node/Deno/Python Plan 55 evaluator, and no local `.scratch/plan55-production-canary` store was present. This cannot prove absence of an external attempt.
+- A process scan at `16:49 UTC` found no matching Node/Deno/Python Plan 55 evaluator, and no local `.scratch/plan55-production-canary` store was present. This cannot prove absence of an external attempt.
+- Read-only fingerprinting at main SHA `e967525824a0fe88b0ece4f56ae96d4ca34cebbb` covered all 18 corpus/holdout/playbook files, 28 evaluator files, and 21 runtime files. Ordered-root hashes are recorded below. All six services contain 24 holdout cases; IDs are unique, the package builder enforces non-empty inputs and labels, and exact prompt-input overlap with the same-service corpus is zero. A whitespace-token Jaccard screen (lowercase Vietnamese NFC, punctuation stripped, threshold `0.85`) found no pairs above threshold; maximum corpus/holdout similarity was `0.706` (electrical), maximum within-holdout similarity was `0.320` (handyman). This is lexical screening only, not semantic adjudication or a holdout PASS.
 
 <!-- PLAN55_EXECUTION_CHECKPOINT_START -->
 {
   "schema": "plan55-execution-checkpoint/v1",
-  "observedAtUtc": "2026-10-07T15:55:21Z",
+  "observedAtUtc": "2026-10-07T16:49:15Z",
   "production": {
     "projectRef": "iwevizmsedyqozxlawwl",
     "releaseId": "harness-d753f26174ee-0b25b027f0cb",
     "sourceSha": "d753f26174ee0bc17e9ae350a535707f4113ec0a"
   },
-  "sourceLock": "FAIL",
+  "sourceLock": "PASS",
   "independentHoldout": "UNKNOWN",
   "predeployGates": "UNKNOWN",
   "guardDeployedOff": "UNKNOWN",
@@ -1389,20 +1390,34 @@ Chỉ complete Pursuing Goal khi đồng thời có: **6 receipts PASS + mọi g
     "prepare source-bound cohort and final-readiness evidence without Production writes",
     "resolve the missing protected Production CODEX_ACCESS_TOKEN before any Codex holdout provider call"
   ],
+  "sourceFingerprintSnapshot": {
+    "observedMainSha": "e967525824a0fe88b0ece4f56ae96d4ca34cebbb",
+    "remoteMainMatched": true,
+    "rootAlgorithm": "sha256 of ordered concatenation: path, NUL, sha256(file bytes), LF; paths follow the exported Plan 55 path lists",
+    "sourceAssets": { "fileCount": 18, "rootSha256": "sha256:7d771e48609bb706af3a2c465e5209752e8f5adc52f04708f8b9e334d9b3b1a8" },
+    "evaluator": { "fileCount": 28, "rootSha256": "sha256:25d1c149947b855742bc9ea0d757fdb49d414a415d6f316f3ed7575e67ce0b1e" },
+    "runtime": { "fileCount": 21, "rootSha256": "sha256:e0da4733b6ba60dacde5fd42cc4034d99ace329ad0a117b509a483c46286da62" },
+    "holdoutLabelsSha256": "sha256:3a143cf2b4aaabd08ba032131e37995e4eb4f0ba9528c2c6a00462718009e214",
+    "holdoutRubricSha256": "sha256:5c25c0b0f12cc4d1e6f2dc13337ae3193c6fcb583af320ccf7d4fc82925eb52f",
+    "productionPolicySha256": "sha256:48fc790b9def54022d6b2a285069ee0a1e78abaff5ce4961fa91c9cf158b7176",
+    "rulesSha256": "sha256:87f505524e72390b4e18c4a1e9fbcec63babeba42accc49200436307cbdfa910",
+    "aiSecurityProtocolSha256": "sha256:c2cded9c36d911841178eec830b77fb80477dd632e960be82e15f05e68f33e7a",
+    "exactWorkflowSourceSha": "resolve the then-current main GITHUB_SHA at dispatch and recheck these roots before any provider call"
+  },
   "evidence": {
-    "productionCheckpoint": "read-only --next-action at 2026-10-07T15:53:48Z: project iwevizmsedyqozxlawwl; release harness-d753f26174ee-0b25b027f0cb serves d753f26174ee0bc17e9ae350a535707f4113ec0a; 0/48 verified slices; canary_started null; cleanup false; mutations=0",
-    "evaluator": "process scan at 2026-10-07T15:55:21Z found no matching Node/Deno/Python Plan 55 evaluator and no local .scratch/plan55-production-canary store; excludes this checkpoint-only work and cannot rule out external attempts",
-    "currentMainPullRequest": "PR 335 MERGED at 2026-10-07T15:32:33Z; exact PR head 56d679d4873df23fddc01503c3d9163ad3c00a1c, merge/main SHA 66fd5726d8f2e0748e8116436fa3a15c5e8ef095. Exact-head required PR checks passed; main push CI run 37644747771 passed; release-production run 37644746030 was SKIPPED, so no Production deploy occurred",
-    "implementationSource": "current implementation branch codex/plan55-merged-checkpoint at 66fd5726d8f2e0748e8116436fa3a15c5e8ef095, equal to origin/main before this checkpoint-only Plan.md edit; current diff is limited to governance/Plan.md",
-    "holdoutImplementation": "exact-source label-free Codex/Perplexity Agent API path and workflow transport implemented; Tu approved the narrow Perplexity-only policy exception for this synthetic holdout; empty/duplicate/unknown Perplexity source IDs fail closed; no live provider call or holdout receipt",
+    "productionCheckpoint": "read-only --next-action at 2026-10-07T16:43:44Z: project iwevizmsedyqozxlawwl; release harness-d753f26174ee-0b25b027f0cb serves d753f26174ee0bc17e9ae350a535707f4113ec0a; 0/48 verified slices; canary_started null; cleanup false; mutations=0",
+    "evaluator": "process scan at 2026-10-07T16:49:15Z found no matching Node/Deno/Python Plan 55 evaluator and no local .scratch/plan55-production-canary store; excludes this observation command and cannot rule out external attempts",
+    "currentMainPullRequest": "PR 336 MERGED at 2026-10-07T16:08:44Z, merge/main SHA e967525824a0fe88b0ece4f56ae96d4ca34cebbb; gh PR state and git ls-remote main agree",
+    "implementationSource": "clean local branch codex/plan55-execution-after-checkpoint and origin/main matched e967525824a0fe88b0ece4f56ae96d4ca34cebbb at observation; source/runtime/evaluator fingerprints are in sourceFingerprintSnapshot; workflow must resolve and attest the then-current main GITHUB_SHA",
+    "holdoutImplementation": "exact-source label-free Codex/Perplexity Agent API path and workflow transport implemented and merged; narrow Perplexity exception is present in RULES.md and AI security protocol; package enforces 24 cases/service, unique IDs, non-empty prompt inputs and labels; local lexical duplicate screen is preliminary only; no provider call or independent receipt",
     "verification": "pnpm test:api Vitest 128 files 1765 PASS/2 SKIP and Node 111 PASS/1 SKIP; focused Plan55 holdout/workflow tests 40/40 PASS; lint:workplan and lint:comments PASS; diff checks PASS; PR #335 required CI checks PASS and live release jobs SKIPPED on PR",
-    "providerSecretNames": "Production environment has PERPLEXITY_API_KEY but no CODEX_ACCESS_TOKEN; names only checked, no secret values read",
+    "providerSecretNames": "Production environment has PERPLEXITY_API_KEY but no CODEX_ACCESS_TOKEN; names only checked at 2026-10-07T16:49:15Z, no secret values read",
     "cohortAggregate": "zero non-synthetic completed jobs in 30d for all six services; 90d per-service completed counts HVAC 1, Handyman 2, Cleaning 1, Upholstery 1, Plumbing 7, Electrical 1; each service has one distinct completed customer and worker; Plumbing has one paid job; one Electrical synthetic-tagged job is not completed; not a preregistered cohort or pilot",
     "providerSchemaReview": "official Agent API docs confirm structured JSON Schema and source extraction from actual search_results; minItems/uniqueItems support is not documented, so remote schema is conservative and local validation enforces citations",
     "failedWorkflowRun": "37195685554 failed before Docker/deploy at the legacy comment-only independent-holdout preflight; no live adjudication or canary evidence"
   },
   "nextAction": "REPAIR_LOCAL",
-  "nextActionReason": "PR #335 is merged and CI passed, but release-production was skipped. Keep Production unchanged: source/fingerprints are not yet locked, no source-bound independent holdout receipt or exact-source predeploy proof exists, and the protected Production environment lacks CODEX_ACCESS_TOKEN for the configured Codex judge. The checkpoint-only correction itself must merge before final source lock"
+  "nextActionReason": "PR #336 is merged and source/evaluator/data fingerprint snapshot passes at e967525824a0fe88b0ece4f56ae96d4ca34cebbb; the exact workflow SHA must be resolved from current main and fingerprint-checked at dispatch. Keep Production unchanged: no source-bound Codex+Perplexity holdout receipt or exact-source predeploy proofs exist, and the protected Production environment lacks CODEX_ACCESS_TOKEN for the configured Codex judge. Continue independent cohort/readiness preparation; do not call either provider or start the canary until exact prerequisites pass."
 }
 <!-- PLAN55_EXECUTION_CHECKPOINT_END -->
 
