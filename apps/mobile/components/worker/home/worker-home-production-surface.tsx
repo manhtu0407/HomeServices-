@@ -24,6 +24,7 @@ import { WorkerHomeProductionIcon, type WorkerHomeProductionIconName } from './w
 import { buildWorkerHomeProductionModel, type WorkerHomeProductionModel } from './worker-home-production-model'
 import type { WorkerEarningsPeriod } from '../earnings/overview-model'
 import { customerTheme } from '@/design/theme'
+import { stableImageSource } from '@/lib/stable-image-source'
 
 const SERVICE_WORKART_KEY: Record<ServiceType, CustomerServiceId> = {
   cleaning: 'home_cleaning',
@@ -71,7 +72,7 @@ function Header({
         style={[styles.avatarButton, dark && styles.avatarButtonDark]}
       >
         {avatarUrl ? (
-          <Image contentFit="cover" source={{ uri: avatarUrl }} style={styles.avatar} testID="worker-home-production-avatar" />
+          <Image contentFit="cover" source={stableImageSource(avatarUrl)} style={styles.avatar} testID="worker-home-production-avatar" />
         ) : (
           <View style={styles.avatarPlaceholder} testID="worker-home-production-avatar-placeholder">
             <ProfileSettingsGlyph color={dark ? customerTheme.darkLayer.text : '#0A6F60'} name="personal" testID="worker-home-production-avatar-placeholder-glyph" />

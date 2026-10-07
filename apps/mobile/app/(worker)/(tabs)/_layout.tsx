@@ -4,6 +4,7 @@ import { WorkerDockLayoutProvider, WorkerRebuildDockOverlay } from '@/components
 import { resolveWorkerV5DockActive, resolveWorkerV5DockVisible } from '@/components/worker/dock/routing'
 import type { WorkerV5RouteParams } from '@/components/worker/dock/types'
 import { getWorkerThemeTokens, useWorkerThemeMode } from '@/components/worker/worker-theme'
+import { OfflineStatusPill } from '@/components/ui/offline-status-pill'
 
 function WorkerFallbackTabs() {
   const workerThemeMode = useWorkerThemeMode()
@@ -18,6 +19,7 @@ function WorkerFallbackTabs() {
       <View style={{ backgroundColor: workerThemeTokens.canvas, flex: 1 }}>
         <Slot />
         {dockVisible ? <WorkerRebuildDockOverlay active={activeDock} /> : null}
+        <OfflineStatusPill tokens={workerThemeTokens} />
       </View>
     </WorkerDockLayoutProvider>
   )

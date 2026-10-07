@@ -17,6 +17,7 @@ import { customerV21SurfaceContentWidth } from '../../customer/ui/shared-styles'
 import { workerIsWaitingForReview, workerNeedsRegistration } from './registration-model'
 import { getReducedTransparencyWorkerTokens, getWorkerThemeTokens, useWorkerThemeMode } from '../worker-theme'
 import type { WorkerV5ScreenId } from '../dock/types'
+import { stableImageSource } from '@/lib/stable-image-source'
 
 type WorkerProfileProductionSurfaceProps = {
   avatarUploadBusy: boolean
@@ -105,7 +106,7 @@ export function WorkerV5ProfileProductionSurface({
               testID={testIDPrefix === 'worker-v5-profile' ? `${testIDPrefix}-avatar-picker` : `${testIDPrefix}-avatar`}
             >
               {profile?.avatar_url ? (
-                <Image contentFit="cover" source={{ uri: profile.avatar_url }} style={styles.avatarImage} testID={`${testIDPrefix}-avatar-image`} />
+                <Image contentFit="cover" source={stableImageSource(profile.avatar_url)} style={styles.avatarImage} testID={`${testIDPrefix}-avatar-image`} />
               ) : (
                 <ProfileSettingsGlyph color={tokens.text} name="personal" testID={`${testIDPrefix}-avatar-placeholder`} />
               )}

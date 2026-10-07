@@ -1349,3 +1349,98 @@ Chạy tuần tự cả ba phase trên một branch cho tới khi có kết qu�
 | 1.8 | 2026-10-03 | Codex | Sửa root cause G3: release bundle loại explicit unstaged deletions theo Git, vẫn fail closed với missing `skip-worktree`; hồi quy targeted 14/14; `pnpm test:api` PASS (122 Vitest files, 1,703 tests + 58 Node contract tests; 2 Vitest skips). `pnpm edge:check` PASS 6/6; ghi native G10 NOT RUN vì thiếu SDK/toolchain. |
 
 ---
+
+## 58. Cache dữ liệu hiển thị, cold start không màn trắng, chạy được trên 3G–5G — 2026-10-07
+
+> **Trigger.** Tu yêu cầu (1) cache GUI cần thiết ở Login Gate / navigation tĩnh, (2) vào tab lớn không reload/request server mỗi lần, (3) app vẫn chạy trên mạng di động 3G–5G khi không có wifi.
+> **Freshness check (2026-10-07, lúc viết section).** Branch `claude/cache-gui-navigation-optimize-558865`, HEAD `cf52ff8b6c15a16e7d0aca6d502576d60396846c`; `origin/main` đã đi tới `fbfdd429a966994defde5d8b3924272f1b320789` — branch chưa sync, phải sync trước khi mở PR. 54 path dirty, toàn bộ là diff của plan này.
+> **EXECUTING.** P0–P5 đã code xong và đóng gate JS. Chưa commit, push, PR. Native (splash thật, SecureStore, mạng di động thật, Image disk cache) chưa chạy được; E2E Expo Web chưa chạy.
+
+### 58.0 Metadata
+
+| Field | Value |
+|---|---|
+| Plan ID | `plan-cache-gui-cellular-20261007` |
+| Created / Owner | 2026-10-07 / Manh Tu |
+| Branch | `claude/cache-gui-navigation-optimize-558865` |
+| Status | EXECUTING |
+| Scope | Chỉ `apps/mobile/**`: cache owner-scoped tự viết, splash giữ tới khi route gate quyết định, cache role + admin activation, cache các tab lớn, worker poll nhẹ, pill offline, cache key ảnh ổn định, nén ảnh upload, timeout upload theo dung lượng. |
+| Out of scope | Offline write queue (RULES #7); sửa Edge/DB, ETag/Cache-Control; đổi navigator (`Slot` giữ nguyên); cache chat Kael; thêm `expo-network`/NetInfo hay thư viện cache; nén video. |
+| Authority | `governance/RULES.md` #0/#5/#7/#8/#9/#10; `docs/foundation/pre-app-build-contract.md` §4 (trạng thái offline); `governance/protocols/test-pillars.md`; `governance/protocols/frontend-test.md`. |
+| Skill mapping | P0 kael-tdd/kael-security-sweep; P1 kael-diagnose/kael-tdd; P2 kael-codebase-memory/react-doctor; P4 kael-design-preflight; tất cả kael-frontend-test/kael-core-hygiene. Backend lane không fire (không chạm `supabase/**`, `packages/shared/src/contracts/**`). |
+
+### 58.0.1 Decision Log
+
+| # | Quyết định | Ai chốt | Ngày | Lý do |
+|---|---|---|---|---|
+| D1 | Triệu chứng ưu tiên: màn trắng khi mở app. | Tu ✔ | 2026-10-07 | Cold start nối tiếp `getSession` → `profiles.role` → `/me/admin-activation` qua mạng. |
+| D2 | Lưu đĩa *dữ liệu hiển thị*: role, Home, lịch sử việc, thông báo, việc + thu nhập worker. Không lưu tài khoản nhận/hoàn tiền, địa chỉ chính xác, nội dung chat, signed URL. Xoá khi sign-out hoặc đổi tài khoản. | Tu ✔ | 2026-10-07 | Dữ liệu tiền và PII không nằm trên đĩa. |
+| D3 | Cache tự viết mỏng, không thêm dependency. | Tu ✔ | 2026-10-07 | Bề mặt nhỏ, kiểm soát owner-scope. |
+| D4 | Giữ `Slot` + dock, chỉ thêm cache. | Tu ✔ | 2026-10-07 | Không đổi geometry dock / navigator. |
+| D5 | Ảnh bằng chứng nén 2048px JPEG ~0.85, timeout upload theo dung lượng; video giữ nguyên. | Tu ✔ | 2026-10-07 | Uplink 3G ~384 kbps. |
+
+### 58.1 Đã làm
+
+- **P0 lõi.** `apps/mobile/lib/resource-cache/` (`resource-policies.ts`, `resource-cache.ts`, `resource-cache-persistence.ts`, `use-cached-resource.ts`): stale-while-revalidate, key `${ownerId}\u0000${key}`, dedupe in-flight, guard generation chống response trễ sau khi đổi owner, envelope AsyncStorage một owner `nestscout.resource-cache.v1` trần 900k ký tự, chỉ family `persist: true` xuống đĩa. `apps/mobile/lib/connectivity.ts`: 2 lỗi transport liên tiếp = offline, có response = online + `onReconnect`. `apps/mobile/lib/api.ts`: GET/HEAD khi offline thử 1 lần thay vì 3. Pillar P325, P326.
+- **P1 cold start.** `apps/mobile/components/ui/launch-splash-gate.tsx` giữ native splash tới khi route gate thôi chặn và ảnh Login Gate đã tải (trần 3s). `apps/mobile/lib/use-auth-role-lookup.ts` route ngay theo role cache, revalidate ngầm, mất mạng giữ role thay vì `profile_error`. `apps/mobile/lib/admin-activation-provider.tsx` cache trạng thái kích hoạt; server luôn thắng cache. `apps/mobile/lib/auth-provider.tsx` xoá cache + ảnh khi đổi user. Pillar P327, P328.
+- **P2 tab.** Lịch sử (dùng chung một resource cho saved workers), membership, compensation customer/worker, notifications, profile insights, admin system resource (bỏ `Map` module-level không scope user). Pillar P329.
+- **P3 worker poll.** `apps/mobile/lib/frontend-workflow/use-worker-board-actions.ts`: chu kỳ 20s chỉ còn live (broadcasts, jobs, heartbeat); profile/earnings/performance/payout/withdrawals 5 phút một lần hoặc khi refresh đầy đủ. Pillar P330.
+- **P4 offline.** `apps/mobile/components/ui/offline-status-pill.tsx` "Đang ngoại tuyến · cập nhật lúc HH:mm" / "Offline · updated at HH:mm", gắn ở tab layout customer và worker. Pillar P331. Sau E2E: `apps/mobile/lib/connectivity.ts` thêm recovery probe — khi offline và app không ở background, một lượt đọc nhẹ (`GET /notifications`, đăng ký trong `apps/mobile/lib/frontend-workflow/use-notification-actions.ts`, lỗi thì im lặng) thử lại theo 5 s → 10 s → 20 s → 30 s; thành công thì `onReconnect` làm mới các màn còn lại. Lý do: màn có dữ liệu còn tươi không gửi request nào, nên trước đó app kẹt offline sau khi mạng có lại (chỉ poll thông báo 60 s cứu được). P326 thêm 3 case.
+- **P5 ảnh/upload.** `apps/mobile/lib/stable-image-source.ts` cache key theo object path của signed URL; `apps/mobile/lib/upload-deadline.ts` `max(60s, bytes/48KB/s + 15s)` trần 240s, nối vào `apps/mobile/lib/media-upload.ts` và `apps/mobile/lib/supabase.ts`; `reencodeUploadImage` (2048px, 0.85, lỗi thì gửi bản gốc) ở job media, avatar, hồ sơ xác minh worker. Pillar P332.
+
+### 58.2 Lệch so với plan đã duyệt
+
+- Tài khoản hoàn tiền và Kael memory (customer/worker) chưa chuyển sang cache — policy đã khai báo `persist: false`, component vẫn fetch khi mount.
+- Worker settings vẫn `refreshNotifications` khi mount.
+- Active job chưa seed từ cache.
+- Dữ liệu chậm của worker (profile/earnings/…) giảm tần suất poll nhưng chưa đi qua resource cache, nên chưa có trên đĩa khi cold start.
+- Nút ghi workflow chưa bị disable khi offline; server vẫn là cổng, request ghi vẫn được gửi và báo lỗi thật.
+- Pill offline đặt ở top inset, không phải dưới dock.
+- Avatar cache key dùng object path thay vì `customer_id:updated_at` — object path đổi đúng khi ảnh đổi, áp được cho cả evidence.
+
+### 58.3 Verification
+
+Chạy 2026-10-07 trên worktree, exit code thật:
+
+| Gate | Lệnh | Kết quả |
+|---|---|---|
+| Type-check | `node ../../node_modules/typescript/bin/tsc --noEmit -p .` (apps/mobile) | exit 0 |
+| Mobile tests | `node node_modules/jest/bin/jest.js --silent` (apps/mobile) | 259 suites / 2379 tests passed (sau probe + màn offline phiên) |
+| API tests | `node node_modules/vitest/vitest.mjs run` (apps/api) | 128 files passed, 2 skipped; 1765 tests passed, 2 skipped |
+| Pillar registry | `node scripts/harness/pillar-registry.mjs` | exit 0, 313 pillars |
+| Structure | `node scripts/lint-structure.mjs` | exit 0 |
+| Comments | `node scripts/check-comment-discipline.mjs --working` | clean |
+| Ship | `node scripts/check-ship-ready.mjs` | 10/10 gate ok; NOT READY vì git state (chưa commit) |
+
+Mỗi mutation khai báo trong P325–P332 đã được áp và quan sát đỏ, rồi khôi phục.
+
+Expo Web smoke (Metro port 8098, private TEMP, runtime marker `cf52ff8b6c15`, không backend, `?ns_audit_role=`): customer Home → Hoạt động → Hồ sơ → Hoạt động → Home và worker Home render, 0 console error, không có pill offline khi không có lỗi transport, `nestscout.resource-cache.v1` không bị ghi khi không có lượt đọc thành công. "Chưa tải được mục bồi thường" ở Hoạt động là hành vi sẵn có của audit mode (token giả), `main` cũng vậy.
+
+E2E trên môi trường cô lập (2026-10-07): mock backend localhost:54399 đóng vai Supabase Auth + PostgREST + `mobile-api` với 3 tài khoản test, công tắc offline (reset kết nối), hang (không trả lời), delay; Metro web build trỏ vào mock; Edge headless điều khiển qua CDP. Đã đưa vào repo: `scripts/preview/cache-e2e/run.mjs` (một lệnh, tự khởi động mock + Metro, chạy kịch bản, dừng hết; `--serve` chỉ mở môi trường, launch entry `mobile-web-mock`), `scripts/preview/cache-e2e/mock-backend.mjs`, runbook `docs/ops/cache-e2e.md`. Kết quả lần chạy đầu 11/11, bản trong repo 12/12 (chạy 3 lần từ trạng thái nguội, đều exit 0):
+
+| Kịch bản | Kết quả đo |
+|---|---|
+| Cold start, backend chậm (2 s, role 5 s) | không cache: chữ đầu tiên 9.8 s, dữ liệu 11.9 s · có cache: 0.65 s / 0.71 s |
+| Vào lại tab Hoạt động (backend chậm 3 s) | 0 request `/me/jobs/history`, dữ liệu hiện sau 4–9 ms |
+| Cold start khi mất mạng, có cache | dữ liệu 155 ms, pill "Đang ngoại tuyến" 36 ms, ở lại `/history`, không `profile_error` |
+| Mạng có lại, màn đang đứng yên | probe `/notifications` sau ~4 s, pill tắt sau 4.07 s |
+| Link treo (3G mép sóng) | biết offline sau 30.7 s (2 lần timeout 15 s, bỏ lần 3), vẫn hiện dữ liệu cache |
+| Slow 3G (latency 2 s, 50 KB/s) | vào lại tab hiện dữ liệu sau 6 ms |
+| Đăng xuất qua UI | `nestscout.resource-cache.v1` và session bị xoá khỏi đĩa |
+| Đăng nhập tài khoản B sau A | chỉ thấy lịch sử B; envelope cũ của A không bao giờ hiện cho B, kể cả offline |
+
+Phát hiện có sẵn từ trước (A/B với `use-auth-role-lookup.ts` của HEAD cho kết quả giống hệt): mở app khi mất mạng mà **chưa có cache role** → shell trống 7.9 s (mất kết nối) hoặc 20.9 s (link treo) rồi rơi về Login Gate dù session còn hạn. **Đã sửa (Tu duyệt 2026-10-07):** `ProfileStatus` thêm `network_unavailable` (postgrest trả `status: 0`, hoặc throw khi connectivity offline) thay cho `profile_error`; `apps/mobile/lib/auth-loading-gate.ts` giữ shell thay vì để guard đẩy về Login Gate; `apps/mobile/components/ui/session-offline-screen.tsx` (gắn ở `apps/mobile/app/_layout.tsx`) hiện "Chưa kết nối được máy chủ" + "Thử lại" + "Đăng xuất", đứng yên qua các lượt retry, tự thử lại bằng recovery probe. Đo lại: màn offline hiện sau 1.1 s (trước: 7.9 s trống rồi Login Gate), tự về đúng tài khoản ~2 s sau khi có mạng; light + dark đều chụp. Server trả lỗi thật (status ≠ 0) vẫn là `profile_error` như cũ. Pillar P333 (5 case; 3 mutation đều đỏ); P327 case "no cache" đổi sang lỗi server 500 cho đúng nghĩa. Còn lại: lượt đọc role vẫn gửi đôi request `profiles` (có sẵn trên `main`, chưa sửa); link treo vẫn cần 20 s timeout đầu tiên trước khi màn offline hiện.
+
+Không kiểm được trên web: nén ảnh/upload (cần image picker native), pill có giờ "cập nhật lúc" khi cold start offline (giờ chỉ tính từ lần server trả lời trong phiên này nên hiện "Đang ngoại tuyến" trơn).
+
+KHÔNG CHẠY ĐƯỢC: backend thật (Production) — cần Tu đăng nhập; native iOS/Android (splash thật, SecureStore, mạng di động thật, Image disk cache) — cần TestFlight/thiết bị. `pnpm` không có trên PATH nên CI phải chạy `pnpm type-check/test/build/lint`.
+
+### 58.4 Change Log
+
+| Ver | Ngày | Ai | Đổi gì |
+|---|---|---|---|
+| 0.1 | 2026-10-07 | Claude | viết lần đầu sau khi P0–P5 đóng gate JS |
+| 0.2 | 2026-10-07 | Claude | E2E trên mock backend 11/11; thêm recovery probe; ghi phát hiện shell trống khi offline chưa có cache |
+| 0.3 | 2026-10-07 | Claude | Màn offline phiên (P333) thay shell trống + Login Gate; đưa mock + E2E vào repo (`scripts/preview/cache-e2e/`, `docs/ops/cache-e2e.md`), 12/12 |
+
+---

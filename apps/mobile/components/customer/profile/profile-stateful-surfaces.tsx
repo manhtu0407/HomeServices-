@@ -13,6 +13,7 @@ import { ProfileAuraCard, ProfileFormulaMintSurface } from './profile-utility-su
 import { customerV21ProfileUtilityStyles as profileUtilityStyles } from './profile-utility-styles'
 import { UsageRankCard } from './usage-rank-card'
 import { useCustomerV21SurfaceTheme, V21TopBar } from '../ui/shared-surfaces'
+import { stableImageSource } from '@/lib/stable-image-source'
 
 type RootProfileOverviewStyles = {
   flex: StyleProp<ViewStyle>
@@ -136,7 +137,7 @@ export function CustomerProfileOverviewView({
             <Image
               accessibilityIgnoresInvertColors
               contentFit="cover"
-              source={{ uri: avatarUrl }}
+              source={stableImageSource(avatarUrl)}
               style={profileUtilityStyles.profileAvatarImage}
               testID="customer-v21-profile-avatar-image"
             />

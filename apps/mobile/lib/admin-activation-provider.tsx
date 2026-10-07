@@ -2,6 +2,10 @@ import { createContext, use, useCallback, useEffect, useMemo, useState, type Rea
 import type { AdminOperatorActivationInput } from '@nestscout/shared'
 import { api, type ApiResult } from './api'
 import { useAuth } from './auth-provider'
+import { readResource, writeResource } from './resource-cache/resource-cache'
+import { hydrateResourceOwner } from './resource-cache/resource-cache-persistence'
+
+const ACTIVATION_RESOURCE_KEY = 'auth.admin-activation'
 
 type AdminActivationStatus = {
   required: boolean
@@ -52,14 +56,38 @@ export function AdminActivationProvider({ children }: { children: ReactNode }) {
     setLoading(false)
   }, [activationUnavailable, applyResult, session, sessionKey])
 
+  const ownerId = session?.user.id ?? null
   useEffect(() => {
-    if (!session || activationUnavailable || !sessionKey) return
+    if (!ownerId || activationUnavailable || !sessionKey) return
     let cancelled = false
+    let serverAnswered = false
+    const resourceKey = `${ACTIVATION_RESOURCE_KEY}:${role}`
+    // A known answer from the last launch unblocks the shell now; the server answer still wins when it lands.
+    void hydrateResourceOwner(ownerId).then(() => {
+      const cached = readResource<AdminActivationStatus | null>(ownerId, resourceKey)
+      if (cancelled || serverAnswered || !cached) return
+      setStatus(cached.data)
+      setError(null)
+      setResolvedSessionKey(sessionKey)
+    })
     void api.get<AdminActivationStatus>('/me/admin-activation').then((result) => {
-      if (!cancelled) applyResult(result, sessionKey)
+      if (cancelled) return
+      serverAnswered = true
+      if (result.success) writeResource(ownerId, resourceKey, result.data)
+      else if (result.status === 404 || result.status === 403) writeResource(ownerId, resourceKey, null)
+      else {
+        const cached = readResource<AdminActivationStatus | null>(ownerId, resourceKey)
+        if (cached) {
+          setStatus(cached.data)
+          setError(null)
+          setResolvedSessionKey(sessionKey)
+          return
+        }
+      }
+      applyResult(result, sessionKey)
     })
     return () => { cancelled = true }
-  }, [activationUnavailable, applyResult, session, sessionKey])
+  }, [activationUnavailable, applyResult, ownerId, role, sessionKey])
 
   const activate = useCallback(async (input: AdminOperatorActivationInput) => {
     if (!session || role !== 'customer' || localVisualAuditSession) {

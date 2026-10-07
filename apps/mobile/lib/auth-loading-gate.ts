@@ -13,5 +13,6 @@ export function isAuthShellBlocking(input: {
   if (input.guestMode) return false
   if (!input.session) return input.loading
   if (input.role) return false
-  return input.loading || input.profileStatus === 'loading'
+  // An unreachable server is not a signed-out user: hold the shell so no guard bounces the session to the Login Gate.
+  return input.loading || input.profileStatus === 'loading' || input.profileStatus === 'network_unavailable'
 }

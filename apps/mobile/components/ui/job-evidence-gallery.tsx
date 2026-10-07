@@ -13,6 +13,7 @@ import {
 import type { AppLanguage } from '@/lib/app-language'
 import { useJobMediaPreviewUrls } from '@/lib/job-media-preview'
 import { useGlassAccessibility } from './accessibility-motion'
+import { stableImageSource } from '@/lib/stable-image-source'
 
 const MIN_ZOOM = 1
 const MAX_ZOOM = 3
@@ -216,7 +217,7 @@ export function JobEvidenceGallery({
                 <Image
                   accessibilityIgnoresInvertColors
                   contentFit="contain"
-                  source={{ uri: previewUrl }}
+                  source={stableImageSource(previewUrl)}
                   style={styles.image}
                   testID={`${testID}-image-${viewerItemIndex}`}
                 />
@@ -275,7 +276,7 @@ export function JobEvidenceGallery({
                 <Image
                   accessibilityIgnoresInvertColors
                   contentFit="contain"
-                  source={{ uri: activeItem.previewUrl }}
+                  source={stableImageSource(activeItem.previewUrl)}
                   style={styles.viewerImage}
                   testID={`${testID}-viewer-image`}
                 />

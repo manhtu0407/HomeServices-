@@ -2,7 +2,7 @@ import { createContext } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import type { UserRole, WorkerApplicationStatus, WorkerReadiness } from '@nestscout/shared'
 
-export type ProfileStatus = 'idle' | 'loading' | 'ready' | 'profile_missing' | 'profile_error' | 'config_missing'
+export type ProfileStatus = 'idle' | 'loading' | 'ready' | 'profile_missing' | 'profile_error' | 'network_unavailable' | 'config_missing'
 
 export type CustomerProfileDraft = {
   birthDate?: string; defaultAddress?: string; displayName?: string

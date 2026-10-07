@@ -3,6 +3,7 @@ import { View } from 'react-native'
 import { CustomerDockOverlay, type CustomerDockActive } from '@/components/customer/customer-surfaces'
 import { getCustomerThemeTokens, useCustomerThemeMode } from '@/components/customer/customer-theme'
 import { DockScrollStateProvider } from '@/components/ui/dock-scroll-state'
+import { OfflineStatusPill } from '@/components/ui/offline-status-pill'
 
 function activeCustomerDockFromPath(pathname: string): CustomerDockActive {
   if (pathname.includes('booking')) return 'services'
@@ -22,6 +23,7 @@ function CustomerFallbackTabs() {
       <View style={{ backgroundColor: tokens.canvas, flex: 1 }}>
         <Slot />
         <CustomerDockOverlay active={activeDock} />
+        <OfflineStatusPill tokens={tokens} />
       </View>
     </DockScrollStateProvider>
   )

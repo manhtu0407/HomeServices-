@@ -155,6 +155,7 @@ import {
   customerV21InvisibleTextInputScrollbar,
   customerV21WebTextInputNoOutline,
 } from '../ui/platform-styles'
+import { stableImageSource } from '@/lib/stable-image-source'
 
 
 const customerBookingServiceIdForHistory: Record<ServiceType, CustomerServiceId> = {
@@ -234,7 +235,7 @@ function CustomerHomeHeader({
         style={[homeHeaderStyles.avatarButton, { backgroundColor: tokens.raised, borderColor: tokens.border }]}
       >
         {avatarUrl ? (
-          <Image contentFit="cover" source={{ uri: avatarUrl }} style={homeHeaderStyles.avatarImage} testID="customer-v21-home-avatar" />
+          <Image contentFit="cover" source={stableImageSource(avatarUrl)} style={homeHeaderStyles.avatarImage} testID="customer-v21-home-avatar" />
         ) : (
           <View style={homeHeaderStyles.avatarPlaceholder} testID="customer-v21-home-avatar-placeholder">
             <ProfileSettingsGlyph color={tokens.text} name="personal" testID="customer-v21-home-avatar-placeholder-icon" />

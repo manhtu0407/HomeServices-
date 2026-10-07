@@ -26,7 +26,7 @@ export const PILLAR = {
     'remove compensation_agreed from customerCompensationEvents, or return null on a failed load in CustomerCompensationSection — the customer tap or the retry-row case turns red',
 } as const satisfies PillarManifest
 
-jest.mock('@/lib/auth-provider', () => ({ useAuth: () => ({ session: { access_token: 'token-p288' } }) }))
+jest.mock('@/lib/auth-provider', () => ({ useAuth: () => ({ session: { access_token: 'token-p288', user: { id: 'owner-token-p288' } } }) }))
 jest.mock('@/lib/services/compensation-service', () => ({
   compensationService: {
     listForCustomer: jest.fn(),

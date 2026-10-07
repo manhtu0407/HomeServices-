@@ -77,6 +77,15 @@
         "apps/mobile"
       ],
       "port": 8081
+    },
+    {
+      "name": "mobile-web-mock",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "scripts/preview/cache-e2e/run.mjs",
+        "--serve"
+      ],
+      "port": 8098
     }
   ]
 }

@@ -15,14 +15,23 @@ jest.mock('expo-video-thumbnails', () => ({
   getThumbnailAsync: (...args: unknown[]) => mockGetThumbnailAsync(...args),
 }))
 
+const mockManipulate = jest.fn((uri: string) => ({
+  renderAsync: async () => ({ height: 800, saveAsync: async () => ({ uri }), width: 600 }),
+}))
+
 jest.mock('expo-image-manipulator', () => ({
   SaveFormat: { JPEG: 'jpeg' },
   ImageManipulator: {
-    manipulate: (uri: string) => ({
-      renderAsync: async () => ({ height: 800, saveAsync: async () => ({ uri }), width: 600 }),
-    }),
+    manipulate: (uri: string) => mockManipulate(uri),
   },
 }))
+
+// Verification photos are re-encoded first; these cases pin what happens when the device cannot.
+function failEveryReencode() {
+  for (let photo = 0; photo < 3; photo += 1) mockManipulate.mockImplementationOnce(() => {
+    throw new Error('decode failed')
+  })
+}
 
 jest.mock('../supabase', () => ({
   supabase: {
@@ -337,6 +346,7 @@ describe('Kael chat media upload', () => {
   })
 
   it('rejects an oversized worker verification file before reading any selected document', async () => {
+    failEveryReencode()
     const result = await uploadWorkerVerificationDrafts({
       cccdFront: { fileSizeBytes: 10 * 1024 * 1024 + 1, mimeType: 'image/jpeg', type: 'image', uri: 'file:///front.jpg' },
       cccdBack: { fileSizeBytes: 42, mimeType: 'image/jpeg', type: 'image', uri: 'file:///back.jpg' },
@@ -362,6 +372,7 @@ describe('Kael chat media upload', () => {
   })
 
   it('canonicalizes worker verification object extensions from MIME types', async () => {
+    failEveryReencode()
     const result = await uploadWorkerVerificationDrafts({
       cccdFront: { fileSizeBytes: 42, fileName: 'front.exe', mimeType: 'image/jpeg', type: 'image', uri: 'file:///front.exe' },
       cccdBack: { fileSizeBytes: 42, fileName: 'back.bin', mimeType: 'image/png', type: 'image', uri: 'file:///back.bin' },
@@ -373,6 +384,23 @@ describe('Kael chat media upload', () => {
       expect.stringMatching(/\/cccd-front\/[0-9a-f-]{36}\.jpg$/),
       expect.stringMatching(/\/cccd-back\/[0-9a-f-]{36}\.png$/),
       expect.stringMatching(/\/selfie\/[0-9a-f-]{36}\.webp$/),
+    ])
+  })
+
+  it('uploads re-encoded JPEG verification photos when the device can re-encode them', async () => {
+    mockManipulate.mockClear()
+    const result = await uploadWorkerVerificationDrafts({
+      cccdFront: { fileSizeBytes: 10 * 1024 * 1024 + 1, mimeType: 'image/jpeg', type: 'image', uri: 'file:///front.jpg' },
+      cccdBack: { fileSizeBytes: 42, mimeType: 'image/png', type: 'image', uri: 'file:///back.png' },
+      selfie: { fileSizeBytes: 42, mimeType: 'image/webp', type: 'image', uri: 'file:///selfie.webp' },
+    })
+
+    expect(result.success).toBe(true)
+    expect(mockManipulate).toHaveBeenCalledTimes(3)
+    expect(mockUpload.mock.calls.map((call) => call[0])).toEqual([
+      expect.stringMatching(/\/cccd-front\/[0-9a-f-]{36}\.jpg$/),
+      expect.stringMatching(/\/cccd-back\/[0-9a-f-]{36}\.jpg$/),
+      expect.stringMatching(/\/selfie\/[0-9a-f-]{36}\.jpg$/),
     ])
   })
 

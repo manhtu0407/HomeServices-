@@ -5,6 +5,10 @@ import { color } from '@/design/theme'
 import { AuthProvider } from '@/lib/auth-provider'
 import { AdminActivationProvider } from '@/lib/admin-activation-provider'
 import { FrontendWorkflowProvider } from '@/lib/frontend-workflow-provider'
+import { LaunchSplashGate, preventLaunchSplashAutoHide } from '@/components/ui/launch-splash-gate'
+import { SessionOfflineGate } from '@/components/ui/session-offline-screen'
+
+preventLaunchSplashAutoHide()
 
 const NESTSCOUT_SYSTEM_TYPOGRAPHY_WEB_STYLE_ID = 'nestscout-system-typography-web-style'
 
@@ -46,6 +50,8 @@ export default function RootLayout() {
       <AdminActivationProvider>
         <FrontendWorkflowProvider>
           <Slot />
+          <SessionOfflineGate />
+          <LaunchSplashGate />
         </FrontendWorkflowProvider>
       </AdminActivationProvider>
     </AuthProvider>

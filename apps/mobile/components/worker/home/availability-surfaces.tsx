@@ -13,6 +13,7 @@ import { workerAvailabilityLabel } from '../ui/labels'
 import { workerIsWaitingForReview, workerNeedsAvailabilityVerification, workerNeedsRegistration } from '../profile/registration-model'
 import { styles } from '../worker-v5-flow-styles'
 import type { useFrontendWorkflow } from '@/lib/frontend-workflow-provider'
+import { stableImageSource } from '@/lib/stable-image-source'
 
 type WorkerV5Runtime = ReturnType<typeof useFrontendWorkflow>
 
@@ -262,7 +263,7 @@ export function WorkerV5AvailabilityCard({
             contentFit="cover"
             onError={avatarUrl ? () => setFailedAvatarUrl(avatarUrl) : undefined}
             onLoad={avatarUrl ? () => setFailedAvatarUrl(null) : undefined}
-            source={{ uri: avatarUrl! }}
+            source={stableImageSource(avatarUrl!)}
             style={styles.availabilityArtwork}
             testID="worker-v5-availability-avatar"
           />
