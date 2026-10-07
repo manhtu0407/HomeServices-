@@ -11,12 +11,8 @@ import {
 import {
   PLAN55_ACTOR_GUARD_CHECK_NAME,
   PLAN55_ACTOR_GUARD_VERIFICATION,
-  PLAN55_ALLOWED_HOLDOUT_ATTESTATION_ASSOCIATIONS,
   PLAN55_GITHUB_REPOSITORY,
-  PLAN55_GITHUB_ATTESTATION_VERIFICATION,
-  PLAN55_MINIMUM_INDEPENDENT_HOLDOUT_REVIEWERS,
   PLAN55_PRODUCTION_SOURCE_BASE,
-  PLAN55_PRODUCTION_SOURCE_TARGET_BRANCH,
 } from './plan55-independent-holdout-review.mjs'
 
 export const PLAN55_SERVICE_ORDER = Object.freeze([
@@ -27,6 +23,7 @@ const DATASETS = Object.freeze(['corpus', 'holdout'])
 const ARMS = Object.freeze(['baseline', 'after'])
 const REPETITIONS = Object.freeze([1, 2])
 const CASES_PER_SLICE = 12
+const GIT_SHA_PATTERN = /^[a-f0-9]{40}$/u
 const GLOBAL_FLAG_NAMES = Object.freeze(PLAN55_SERVICE_ORDER.map(
   (service) => `KAEL_PLAYBOOK_${service.toUpperCase()}_ENABLED`,
 ))
@@ -373,79 +370,98 @@ export function assertPlan55IndependentHoldoutProof(
   expectedHoldoutLabelsSha256,
 ) {
   const fail = () => { throw new Error('plan55_preflight_independent_holdout_unverified') }
-  const evidence = proof?.review_evidence
-  const verification = proof?.github_attestation_verification
-  if (!proof || proof.schema !== 'plan55-independent-holdout-proof/v5' ||
-      proof.status !== 'PASS' || proof.blinded !== true ||
-      proof.reviewed_by_author !== false ||
-      typeof proof.source_sha !== 'string' ||
-      proof.source_sha.toLowerCase() !== String(expectedSourceSha).toLowerCase() ||
+  const expectedSource = String(expectedSourceSha ?? '').toLowerCase()
+  if (!proof || proof.schema !== 'plan55-independent-holdout-proof/v6' ||
+      proof.status !== 'PASS' || proof.blinded !== true || proof.reviewed_by_author !== false ||
+      !GIT_SHA_PATTERN.test(expectedSource) || proof.source_sha !== expectedSource ||
+      !isDigest(proof.package_sha256) || !isDigest(proof.rubric_sha256) ||
+      typeof proof.rubric_version !== 'string' || !proof.rubric_version.trim() ||
+      !/^[a-f0-9]{64}$/u.test(proof.holdout_root_sha256 ?? '') ||
       proof.holdout_labels_sha256 !== expectedHoldoutLabelsSha256 ||
-      !/^sha256:[a-f0-9]{64}$/iu.test(expectedHoldoutLabelsSha256 ?? '') ||
-      typeof proof.author_id_sha256 !== 'string' || !/^sha256:[a-f0-9]{64}$/iu.test(proof.author_id_sha256) ||
-      !evidence || evidence.repository !== PLAN55_GITHUB_REPOSITORY ||
-      !Number.isSafeInteger(evidence.pull_request_number) || evidence.pull_request_number < 1 ||
-      typeof evidence.reviewed_head_sha !== 'string' || !/^[a-f0-9]{40}$/iu.test(evidence.reviewed_head_sha) ||
-      !verification || typeof verification !== 'object' || Array.isArray(verification) ||
-      evidence.production_source_base_branch !== PLAN55_PRODUCTION_SOURCE_BASE.branch ||
-      String(evidence.production_source_base_sha ?? '').toLowerCase() !== PLAN55_PRODUCTION_SOURCE_BASE.sha ||
-      evidence.production_source_target_branch !== PLAN55_PRODUCTION_SOURCE_TARGET_BRANCH ||
-      String(evidence.production_source_target_branch_tip_sha ?? '').toLowerCase() !==
-        String(verification.production_source_target_branch_tip_sha ?? '').toLowerCase() ||
-      !/^[a-f0-9]{40}$/iu.test(evidence.production_source_target_branch_tip_sha ?? '') ||
-      !['ahead', 'identical'].includes(evidence.production_source_base_ancestry_status) ||
-      !['ahead', 'identical'].includes(evidence.production_source_target_branch_ancestry_status) ||
-      !Array.isArray(proof.reviewer_attestations) ||
-      proof.reviewer_attestations.length < PLAN55_MINIMUM_INDEPENDENT_HOLDOUT_REVIEWERS ||
-      verification.method !== PLAN55_GITHUB_ATTESTATION_VERIFICATION ||
-      verification.repository !== PLAN55_GITHUB_REPOSITORY ||
-      verification.pull_request_number !== evidence.pull_request_number ||
-      String(verification.reviewed_head_sha ?? '').toLowerCase() !== evidence.reviewed_head_sha.toLowerCase() ||
-      String(verification.merge_sha ?? '').toLowerCase() !== String(expectedSourceSha).toLowerCase() ||
-      verification.production_source_base_branch !== PLAN55_PRODUCTION_SOURCE_BASE.branch ||
-      String(verification.production_source_base_sha ?? '').toLowerCase() !== PLAN55_PRODUCTION_SOURCE_BASE.sha ||
-      verification.production_source_target_branch !== PLAN55_PRODUCTION_SOURCE_TARGET_BRANCH ||
-      verification.production_source_base_ancestry_status !== evidence.production_source_base_ancestry_status ||
-      verification.production_source_target_branch_ancestry_status !==
-        evidence.production_source_target_branch_ancestry_status ||
-      !['ahead', 'identical'].includes(verification.production_source_base_ancestry_status) ||
-      !['ahead', 'identical'].includes(verification.production_source_target_branch_ancestry_status) ||
-       verification.holdout_labels_sha256 !== expectedHoldoutLabelsSha256 ||
-      !Array.isArray(verification.attestation_comment_ids) ||
-      verification.attestation_comment_ids.length < PLAN55_MINIMUM_INDEPENDENT_HOLDOUT_REVIEWERS ||
-      !Array.isArray(evidence.attestation_comment_ids) ||
-      evidence.attestation_comment_ids.length < PLAN55_MINIMUM_INDEPENDENT_HOLDOUT_REVIEWERS) fail()
-
-  const reviewers = new Set()
-  const commentIds = new Set()
-  for (const attestation of proof.reviewer_attestations) {
-    if (!attestation || !Number.isSafeInteger(attestation.comment_id) || attestation.comment_id < 1 ||
-        typeof attestation.reviewer_id_sha256 !== 'string' ||
-        !/^sha256:[a-f0-9]{64}$/iu.test(attestation.reviewer_id_sha256) ||
-        !PLAN55_ALLOWED_HOLDOUT_ATTESTATION_ASSOCIATIONS.includes(attestation.author_association) ||
-        attestation.labels_sha256 !== expectedHoldoutLabelsSha256 ||
-        !/^sha256:[a-f0-9]{64}$/iu.test(attestation.labels_sha256 ?? '') ||
-        reviewers.has(attestation.reviewer_id_sha256) ||
-        commentIds.has(attestation.comment_id) ||
-        attestation.reviewer_id_sha256 === proof.author_id_sha256) fail()
-    reviewers.add(attestation.reviewer_id_sha256)
-    commentIds.add(attestation.comment_id)
+      !isDigest(expectedHoldoutLabelsSha256) ||
+      !sameDigestMap(proof.holdout_asset_hashes, expectedHoldoutHashes) ||
+      !validHoldoutCoverage(proof.coverage) ||
+      !validJudgeMetadata(proof.judges?.codex, 'codex') ||
+      !validJudgeMetadata(proof.judges?.perplexity, 'perplexity') ||
+      !Array.isArray(proof.source_evidence) || proof.source_evidence.length === 0 ||
+      !Number.isFinite(Date.parse(proof.verified_at_utc ?? '')) ||
+      !/^[a-f0-9]{64}$/u.test(proof.input_root_sha256 ?? '') ||
+      !isDigest(proof.proof_sha256)) fail()
+  for (const source of proof.source_evidence) {
+    let url
+    try {
+      url = new URL(source.url)
+    } catch {
+      fail()
+    }
+    if (!source || typeof source.id !== 'string' || !source.id.trim() ||
+        typeof source.title !== 'string' || !source.title.trim() || url.protocol !== 'https:' ||
+        url.username || url.password || url.hash) fail()
   }
-  const sortIds = (values) => [...values].sort((left, right) => left - right).join(',')
-  if (sortIds(evidence.attestation_comment_ids) !== sortIds(commentIds) ||
-      sortIds(verification.attestation_comment_ids) !== sortIds(commentIds)) fail()
+  const unsignedProof = { ...proof }
+  delete unsignedProof.proof_sha256
+  if (sha256(canonicalPlan55Json(unsignedProof)) !== proof.proof_sha256) fail()
+  return true
+}
 
-  if (!expectedHoldoutHashes || typeof expectedHoldoutHashes !== 'object' ||
-      !proof.holdouts || typeof proof.holdouts !== 'object' || Array.isArray(proof.holdouts) ||
-      Object.keys(proof.holdouts).length !== PLAN55_SERVICE_ORDER.length) fail()
-  for (const service of PLAN55_SERVICE_ORDER) {
-    const holdout = proof.holdouts[service]
-    if (!holdout || holdout.path !== PLAN55_SOURCE_ASSETS[service].holdout ||
-        !/^sha256:[a-f0-9]{64}$/iu.test(holdout.sha256 ?? '') ||
-        holdout.sha256.toLowerCase() !== String(expectedHoldoutHashes[service] ?? '').toLowerCase() ||
-        !Number.isSafeInteger(holdout.case_count) || holdout.case_count < CASES_PER_SLICE * 2) fail()
+function validHoldoutCoverage(coverage) {
+  if (!coverage || coverage.service_count !== PLAN55_SERVICE_ORDER.length ||
+      coverage.case_count_per_service !== 24 ||
+      coverage.total_case_count !== PLAN55_SERVICE_ORDER.length * 24 ||
+      coverage.mismatch_count !== 0 || coverage.unresolved_safety_disagreement_count !== 0 ||
+      !coverage.agreement_by_service || typeof coverage.agreement_by_service !== 'object' ||
+      Array.isArray(coverage.agreement_by_service) ||
+      Object.keys(coverage.agreement_by_service).sort().join('\n') !==
+        [...PLAN55_SERVICE_ORDER].sort().join('\n')) return false
+  return PLAN55_SERVICE_ORDER.every((service) => {
+    const result = coverage.agreement_by_service[service]
+    return result && result.case_count === 24 && result.mismatches === 0 &&
+      result.unresolved_safety_disagreements === 0
+  })
+}
+
+function validJudgeMetadata(value, provider) {
+  if (!value || value.provider !== provider || typeof value.model_id !== 'string' ||
+      !value.model_id.trim() || value.model_id.length > 160 ||
+      typeof value.invocation_id !== 'string' || !value.invocation_id.trim() ||
+      value.invocation_id.length > 180 || !isDigest(value.prompt_sha256) ||
+      !isDigest(value.judgments_sha256) || !value.usage || typeof value.usage !== 'object' ||
+      Array.isArray(value.usage)) return false
+  const { cost_usd: costUsd, input_tokens: inputTokens, output_tokens: outputTokens } = value.usage
+  if (!(costUsd === null || (typeof costUsd === 'number' && Number.isFinite(costUsd) && costUsd >= 0)) ||
+      !(inputTokens === null || (Number.isSafeInteger(inputTokens) && inputTokens >= 0)) ||
+      !(outputTokens === null || (Number.isSafeInteger(outputTokens) && outputTokens >= 0))) return false
+  if (provider === 'codex') {
+    return value.context === 'fresh' && value.fork_context === false
   }
   return true
+}
+
+function sameDigestMap(actual, expected) {
+  if (!actual || typeof actual !== 'object' || Array.isArray(actual) ||
+      !expected || typeof expected !== 'object' || Array.isArray(expected) ||
+      Object.keys(actual).sort().join('\n') !== [...PLAN55_SERVICE_ORDER].sort().join('\n') ||
+      Object.keys(expected).sort().join('\n') !== [...PLAN55_SERVICE_ORDER].sort().join('\n')) return false
+  return PLAN55_SERVICE_ORDER.every((service) =>
+    isDigest(actual[service]) && actual[service] === expected[service])
+}
+
+function isDigest(value) {
+  return typeof value === 'string' && /^sha256:[a-f0-9]{64}$/u.test(value)
+}
+
+function sha256(value) {
+  return `sha256:${createHash('sha256').update(value).digest('hex')}`
+}
+
+function canonicalPlan55Json(value) {
+  return JSON.stringify(canonicalPlan55Value(value))
+}
+
+function canonicalPlan55Value(value) {
+  if (Array.isArray(value)) return value.map(canonicalPlan55Value)
+  if (!value || typeof value !== 'object') return value
+  return Object.fromEntries(Object.keys(value).sort().map((key) => [key, canonicalPlan55Value(value[key])]))
 }
 
 export function assertPlan55Cleanup(value) {

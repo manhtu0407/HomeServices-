@@ -465,19 +465,15 @@ jobs:
           if-no-files-found: warn
           retention-days: 90
 
-  independent_holdout_attestation:
+  independent_holdout_package:
     needs: quality-and-preflight
     if: needs.quality-and-preflight.result == 'success' && github.ref == 'refs/heads/main' && inputs.source_sha == github.sha
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
-      actions: read
-      checks: read
       contents: read
-      issues: read
-      pull-requests: read
     outputs:
-      evidence_artifact_id: ${{ steps.holdout-artifact.outputs.artifact-id }}
+      package_artifact_id: ${{ steps.holdout-package-artifact.outputs.artifact-id }}
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
         with:
@@ -497,20 +493,183 @@ jobs:
           test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
           test "$GITHUB_SHA" = "$PLAN55_SOURCE_SHA"
           test -z "$(git status --porcelain=v1 --untracked-files=all)"
-      - id: holdout_preflight
-        name: Verify independent holdout attestation for the locked source
+      - id: holdout_package
+        name: Build the exact-source synthetic blind package and judge contracts
         env:
-          GH_TOKEN: ${{ github.token }}
+          PLAN55_SOURCE_SHA: ${{ inputs.source_sha }}
+        run: node apps/api/scripts/plan55-independent-holdout-package.mjs --source-sha "$PLAN55_SOURCE_SHA"
+      - id: holdout-package-artifact
+        name: Preserve the label-free package and isolated judge runtime
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: plan55-blind-holdout-package-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/plan55-blind-holdout/
+          if-no-files-found: error
+          retention-days: 90
+
+  independent_holdout_judges:
+    needs: independent_holdout_package
+    if: needs.independent_holdout_package.result == 'success' && github.ref == 'refs/heads/main' && inputs.source_sha == github.sha
+    runs-on: ubuntu-latest
+    environment: production
+    timeout-minutes: 45
+    permissions:
+      contents: read
+    outputs:
+      result_artifact_id: ${{ steps.judgments-artifact.outputs.artifact-id }}
+    steps:
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+      - name: Download only the label-free holdout package
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          artifact-ids: ${{ needs.independent_holdout_package.outputs.package_artifact_id }}
+          path: artifacts/plan55-blind-holdout
+      - id: codex-secret-preflight
+        name: Require the Codex credential before any provider request
+        env:
+          CODEX_ACCESS_TOKEN: ${{ secrets.CODEX_ACCESS_TOKEN }}
+        run: |
+          if [[ -z "$CODEX_ACCESS_TOKEN" ]]; then
+            printf '::error::plan55_codex_access_token_missing\n'
+            exit 1
+          fi
+      - id: perplexity-secret-preflight
+        name: Require the Perplexity credential before any provider request
+        env:
+          PERPLEXITY_API_KEY: ${{ secrets.PERPLEXITY_API_KEY }}
+        run: |
+          if [[ -z "$PERPLEXITY_API_KEY" ]]; then
+            printf '::error::plan55_perplexity_api_key_missing\n'
+            exit 1
+          fi
+      - id: codex-cli
+        name: Resolve the pinned Codex CLI before exposing its credential
+        run: |
+          set -euo pipefail
+          codex_cli_path="$(npm exec --yes --package=@openai/codex@0.160.1 -- sh -c 'command -v codex' 2>/dev/null | tail -n 1)"
+          test -x "$codex_cli_path"
+          printf 'path=%s\n' "$codex_cli_path" >> "$GITHUB_OUTPUT"
+      - id: codex_judge
+        name: Run Codex in a fresh read-only context with no source checkout
+        env:
+          CODEX_ACCESS_TOKEN: ${{ secrets.CODEX_ACCESS_TOKEN }}
+          CODEX_HOME: ${{ runner.temp }}/plan55-codex-home
+          CODEX_CLI_PATH: ${{ steps.codex-cli.outputs.path }}
+        run: |
+          set -euo pipefail
+          judge_dir="$(mktemp -d "$RUNNER_TEMP/plan55-codex.XXXXXX")"
+          trap 'rm -rf "$judge_dir"' EXIT
+          umask 077
+          mkdir -p "$CODEX_HOME"
+          cp artifacts/plan55-blind-holdout/codex-prompt.md "$judge_dir/prompt.md"
+          cp artifacts/plan55-blind-holdout/codex-output-schema.json "$judge_dir/output-schema.json"
+          mkdir -p "$GITHUB_WORKSPACE/artifacts/release"
+          if (
+            cd "$judge_dir"
+            "$CODEX_CLI_PATH" exec \
+              --model gpt-6.1-sol \
+              --sandbox read-only \
+              --ephemeral \
+              --skip-git-repo-check \
+              --ignore-user-config \
+              --ignore-rules \
+              --config 'shell_environment_policy.inherit="none"' \
+              --config 'shell_environment_policy.ignore_default_excludes=false' \
+              --config 'shell_environment_policy.filters={"PATH"="include","HOME"="include","TMPDIR"="include","TMP"="include","TEMP"="include"}' \
+              --output-schema "$judge_dir/output-schema.json" \
+              --output-last-message "$GITHUB_WORKSPACE/artifacts/release/plan55-codex-holdout-output.json" \
+              - < "$judge_dir/prompt.md" > "$judge_dir/stdout.log" 2> "$judge_dir/stderr.log"
+          ); then
+            :
+          else
+            codex_status=$?
+            printf '::error::plan55_codex_holdout_judge_failed_exit_%s\n' "$codex_status" >&2
+            exit "$codex_status"
+          fi
+          if [[ ! -s artifacts/release/plan55-codex-holdout-output.json ]]; then
+            printf '::error::plan55_codex_holdout_output_missing\n' >&2
+            exit 1
+          fi
+      - id: perplexity_judge
+        name: Run the bounded Perplexity Agent API blind judge
+        env:
+          PERPLEXITY_API_KEY: ${{ secrets.PERPLEXITY_API_KEY }}
+        run: |
+          set -euo pipefail
+          node artifacts/plan55-blind-holdout/runner/plan55-independent-holdout-perplexity.mjs \
+            --review-package artifacts/plan55-blind-holdout/review-package.json \
+            --contract artifacts/plan55-blind-holdout/perplexity-contract.json \
+            --output artifacts/release/plan55-perplexity-holdout-result.json
+
+      - id: judgments-artifact
+        if: always()
+        name: Preserve both structured judgments and provider usage
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: plan55-independent-holdout-judgments-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            artifacts/release/plan55-codex-holdout-output.json
+            artifacts/release/plan55-perplexity-holdout-result.json
+          if-no-files-found: warn
+          retention-days: 90
+
+  independent_holdout_attestation:
+    needs: [independent_holdout_package, independent_holdout_judges]
+    if: needs.independent_holdout_package.result == 'success' && needs.independent_holdout_judges.result == 'success' && github.ref == 'refs/heads/main' && inputs.source_sha == github.sha
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    outputs:
+      evidence_artifact_id: ${{ steps.holdout-artifact.outputs.artifact-id }}
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          ref: ${{ inputs.source_sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+      - id: verify_source
+        name: Reverify exact merged source and clean evaluator checkout
+        env:
           PLAN55_SOURCE_SHA: ${{ inputs.source_sha }}
         run: |
-          mkdir -p artifacts/release
-          node apps/api/scripts/plan55-independent-holdout-preflight.mjs \
-            > artifacts/release/independent-holdout-preflight.json
-      - name: Record exact-source independent holdout gate proof
-        if: success()
+          set -euo pipefail
+          test "$GITHUB_REF" = "refs/heads/main"
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test "$GITHUB_SHA" = "$PLAN55_SOURCE_SHA"
+          test -z "$(git status --porcelain=v1 --untracked-files=all)"
+      - name: Restore the exact blind package
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          artifact-ids: ${{ needs.independent_holdout_package.outputs.package_artifact_id }}
+          path: artifacts/plan55-blind-holdout
+      - name: Restore only the structured blind judgments
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          artifact-ids: ${{ needs.independent_holdout_judges.outputs.result_artifact_id }}
+          path: artifacts/release
+      - id: holdout_verify
+        name: Verify both independent results against the exact frozen source
         env:
           PLAN55_SOURCE_SHA: ${{ inputs.source_sha }}
-          PLAN55_INDEPENDENT_HOLDOUT_PREFLIGHT_OUTCOME: ${{ steps.holdout_preflight.outcome }}
+        run: |
+          node apps/api/scripts/plan55-independent-holdout-verify.mjs \
+            --review-package artifacts/plan55-blind-holdout/review-package.json \
+            --codex-contract artifacts/plan55-blind-holdout/codex-contract.json \
+            --codex-output artifacts/release/plan55-codex-holdout-output.json \
+            --perplexity-contract artifacts/plan55-blind-holdout/perplexity-contract.json \
+            --perplexity-result artifacts/release/plan55-perplexity-holdout-result.json \
+            --output artifacts/release/plan55-independent-holdout-proof.json
+      - name: Record exact-source independent holdout gate proof
+        if: steps.holdout_verify.outcome == 'success'
+        env:
+          PLAN55_SOURCE_SHA: ${{ inputs.source_sha }}
+          PLAN55_INDEPENDENT_HOLDOUT_PREFLIGHT_OUTCOME: ${{ steps.holdout_verify.outcome }}
         run: node scripts/harness/plan55-preflight-gate-evidence.mjs --holdout-only --output artifacts/release/plan55-gate-evidence
       - name: Preserve exact-source holdout proof and preflight result
         id: holdout-artifact
@@ -519,7 +678,9 @@ jobs:
         with:
           name: plan55-independent-holdout-${{ github.run_id }}-${{ github.run_attempt }}
           path: |
-            artifacts/release/independent-holdout-preflight.json
+            artifacts/release/plan55-independent-holdout-proof.json
+            artifacts/release/plan55-codex-holdout-output.json
+            artifacts/release/plan55-perplexity-holdout-result.json
             artifacts/release/plan55-gate-evidence/plan55-independent-holdout-freeze.json
           if-no-files-found: error
           retention-days: 90

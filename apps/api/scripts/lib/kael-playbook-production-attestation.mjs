@@ -74,6 +74,8 @@ export const PLAN55_EVALUATOR_PATHS = Object.freeze([
   '.github/workflows/plan55-rollback-drill.yml',
   'apps/api/scripts/kael-playbook-production-canary.mjs',
   'apps/api/scripts/plan55-independent-holdout-package.mjs',
+  'apps/api/scripts/plan55-independent-holdout-perplexity.mjs',
+  'apps/api/scripts/plan55-independent-holdout-verify.mjs',
   'apps/api/scripts/kael-playbook-production-attest.mjs',
   'apps/api/scripts/lib/kael-playbook-production-attestation.mjs',
   'apps/api/scripts/lib/plan55-production-canary-core.mjs',
@@ -81,12 +83,16 @@ export const PLAN55_EVALUATOR_PATHS = Object.freeze([
   'apps/api/scripts/lib/plan55-production-canary-operations.mjs',
   'apps/api/scripts/lib/plan55-independent-holdout-review.mjs',
   'apps/api/scripts/lib/plan55-independent-holdout-package.mjs',
+  'apps/api/scripts/lib/plan55-independent-holdout-agent.mjs',
+  'apps/api/scripts/lib/plan55-independent-holdout-adjudication.mjs',
   'apps/api/scripts/plan55-production-release-preflight.mjs',
   'apps/api/scripts/kael-playbook-eval.mjs',
   'apps/api/scripts/lib/kael-playbook-eval-core.mjs',
   'scripts/harness/release-control-client.mjs',
   'scripts/run-supabase.ps1',
   'config/harness/plan55-production-only-policy.json',
+  'governance/RULES.md',
+  'governance/protocols/ai-data-security.md',
 ])
 
 const PLAN55_ATTESTED_SOURCE_PATHS = new Set([

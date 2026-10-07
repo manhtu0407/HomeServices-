@@ -90,6 +90,19 @@ The Edge wrapper takes the spend gate as an argument; do not call a provider aro
 
 Both wrappers must provide timeout, retry, error handling, cost logging, response validation hooks, and safe fallback behavior.
 
+#### Narrow Plan 55 independent-holdout exception
+
+The only exception to the wrapper routing above is the dedicated, one-shot evaluator at
+`apps/api/scripts/plan55-independent-holdout-perplexity.mjs`. It may call the Perplexity Agent API
+directly only for the exact-source `plan55-independent-blind-holdout-package/v3` containing synthetic,
+label-free cases. Before any network request, the runner must reconstruct and compare the complete
+Perplexity contract from that package. The request must contain no expected labels, rationales, real
+user/Production data, PII, account credentials, or provider secrets. Keep the API key server-side;
+require structured output and validate the complete response, citations, and actual usage metadata.
+Apply a bounded timeout, response-size limit, and retry policy, and never log prompts, raw responses,
+or secrets. This exception is limited to the Plan 55 blind holdout workflow; it does not authorize
+Perplexity calls from product routes or change the market-pricing-only product policy.
+
 ---
 
 ## Rule #3: Validate AI Output Before It Reaches Users

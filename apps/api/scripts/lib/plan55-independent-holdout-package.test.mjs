@@ -34,7 +34,7 @@ function fixture(overrides = {}) {
 test('blind holdout package is source-bound and omits expected labels, rationales, and details', () => {
   const result = buildPlan55BlindHoldoutPackage(fixture())
 
-  assert.equal(result.schema, 'plan55-independent-blind-holdout-package/v2')
+  assert.equal(result.schema, 'plan55-independent-blind-holdout-package/v3')
   assert.equal(result.reviewed_head_sha, '1'.repeat(40))
   assert.equal(result.coverage.service_count, 6)
   assert.equal(result.coverage.case_count_per_service, 24)
@@ -48,12 +48,14 @@ test('blind holdout package is source-bound and omits expected labels, rationale
   assert.ok(!serialized.includes('private rationale'))
   assert.ok(!serialized.includes('private detail'))
   assert.ok(!serialized.includes('"expected"'))
-  assert.match(result.independent_attestation_comment_body, /PLAN55-HOLDOUT-ATTEST v1/u)
-  assert.match(result.independent_attestation_comment_body, /reviewed_by_author=false/u)
-  assert.ok(result.independent_attestation_comment_body.includes(`holdout_root_sha256=${result.holdout_root_sha256}`))
-  assert.ok(result.independent_attestation_comment_body.includes(`labels_sha256=${result.labels_sha256.slice('sha256:'.length)}`))
+  assert.equal(result.rubric_version, 'plan55-independent-holdout-rubric/v1')
+  assert.match(result.rubric_sha256, /^sha256:[a-f0-9]{64}$/u)
+  assert.ok(!Object.hasOwn(result, 'holdout_hashes'))
+  assert.ok(!Object.hasOwn(result, 'labels_sha256'))
+  assert.ok(!Object.hasOwn(result, 'independent_attestation_comment_body'))
   assert.match(result.holdout_root_sha256, /^[a-f0-9]{64}$/u)
-  assert.match(result.labels_sha256, /^sha256:[a-f0-9]{64}$/u)
+  assert.equal(result.input_hashes_by_service.hvac.length, 24)
+  assert.match(result.input_hashes_by_service.hvac[0].input_sha256, /^sha256:[a-f0-9]{64}$/u)
   assert.match(result.package_sha256, /^sha256:[a-f0-9]{64}$/u)
 })
 

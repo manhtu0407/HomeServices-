@@ -11,8 +11,6 @@ const DEFAULT_FIXTURE_PATH = resolve(REPO_ROOT, 'apps/api/fixtures/kael-eval/gol
 const DEFAULT_KNOWLEDGE_FIXTURE_PATH = resolve(REPO_ROOT, 'apps/api/fixtures/kael-eval/knowledge-cases.json')
 const DEFAULT_REPORT_PATH = resolve(REPO_ROOT, `docs/test-logs/${new Date().toISOString().slice(0, 10)}_kael-eval.md`)
 const KAEL_EVAL_MODE = process.env.KAEL_EVAL_MODE ?? 'deterministic'
-const PRODUCTION_REF = 'iwevizmsedyqozxlawwl'
-
 const DEFAULT_THRESHOLDS = {
   serviceAccuracy: numberEnv('KAEL_EVAL_SERVICE_THRESHOLD', 0.85),
   complexityAccuracy: numberEnv('KAEL_EVAL_COMPLEXITY_THRESHOLD', 0.75),
@@ -699,7 +697,7 @@ async function writeReport(input) {
     '',
     '- WARNING: deterministic mode does not exercise an AI model; 100% means fixtures and local rules agree, not that live Kael is correct.',
     '- Deterministic mode uses local fixture scoring and does not call AI providers.',
-    '- Live mode requires KAEL_EVAL_RUN_LIVE=yes, a Production/local KAEL_EVAL_MOBILE_API_URL, and KAEL_EVAL_BEARER_TOKEN; KAEL_EVAL_ANON_KEY is optional for Edge deployments that require apikey.',
+    '- Live mode requires KAEL_EVAL_RUN_LIVE=yes, a local-only KAEL_EVAL_MOBILE_API_URL, and KAEL_EVAL_BEARER_TOKEN; Production evaluation must use the scoped Plan 55 canary.',
     '- Runner exits non-zero when any threshold is below target.',
     '',
     '## Limitations',
@@ -729,7 +727,7 @@ function buildConfig(mode) {
   if (mode !== 'live') return {}
   assert(process.env.KAEL_EVAL_RUN_LIVE === 'yes', 'Set KAEL_EVAL_RUN_LIVE=yes for live evaluation')
   const mobileApiUrl = requiredEnv('KAEL_EVAL_MOBILE_API_URL').replace(/\/+$/, '')
-  assertProductionOrLocalUrl(mobileApiUrl, 'KAEL_EVAL_MOBILE_API_URL')
+  assertLocalEvalUrl(mobileApiUrl, 'KAEL_EVAL_MOBILE_API_URL')
   return {
     mobileApiUrl,
     bearerToken: requiredEnv('KAEL_EVAL_BEARER_TOKEN'),
@@ -849,13 +847,12 @@ function asService(value) {
     : null
 }
 
-function assertProductionOrLocalUrl(value, label) {
+function assertLocalEvalUrl(value, label) {
   const url = new URL(value)
-  const isLocal = url.hostname === 'localhost' || url.hostname === '127.0.0.1' || url.hostname === '[::1]'
-  const isProduction = url.hostname === `${PRODUCTION_REF}.supabase.co`
+  const isLoopback = url.hostname === 'localhost' || url.hostname === '127.0.0.1' || url.hostname === '[::1]'
   assert(!url.username && !url.password && !url.search && !url.hash, `${label} must not contain credentials, query, or hash`)
-  assert(isLocal || url.protocol === 'https:', `${label} must use HTTPS outside local development`)
-  assert(isLocal || isProduction, `${label} must target local or Production ref ${PRODUCTION_REF}`)
+  assert(url.protocol === 'http:' || url.protocol === 'https:', `${label} must use HTTP or HTTPS`)
+  assert(isLoopback, `${label} must target local development only`)
   assert(url.pathname.replace(/\/+$/, '') === '/functions/v1/mobile-api', `${label} must target the mobile-api function`)
 }
 

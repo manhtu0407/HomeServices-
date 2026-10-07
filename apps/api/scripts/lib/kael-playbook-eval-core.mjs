@@ -955,6 +955,11 @@ function validateCorpusExpected(value, id, serviceType) {
   }
 }
 
+export function validatePlan55HoldoutExpected(value, id, serviceType) {
+  validateCorpusExpected(value, id, serviceType)
+  return value
+}
+
 function validateCorpusUserTurns(value, id) {
   if (value === undefined) return
   if (!Array.isArray(value) || value.length > 8) throw new Error(`invalid corpus user_turns: ${id}`)
